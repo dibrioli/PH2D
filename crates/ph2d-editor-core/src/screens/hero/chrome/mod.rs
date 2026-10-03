@@ -57,7 +57,6 @@ mod command_palette;
 mod curve_point_handle;
 mod falloff_handle;
 mod fill_modal;
-mod flip_toggle;
 mod image_actions;
 mod image_tools_toggle;
 mod input_map;
@@ -199,7 +198,6 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || motion_path_handle::apply(hero, event)
         || falloff_handle::apply(hero, event)
         || vector_toggle::apply(hero, event)
-        || flip_toggle::apply(hero, event)
         || model3d_toggle::apply(hero, event)
         || motion_toggle::apply(hero, event)
         || timeline_segment::apply(hero, event)

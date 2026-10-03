@@ -151,8 +151,8 @@ pub fn flip_edit_domain_refresh(
     if !crate::select::wants_edit(state) {
         return false;
     }
-    let active_layer = state.active_layer;
-    let Some((oid, _lid, did)) = visible_drawing(flip, playhead, active_layer) else {
+    let target = state.target;
+    let Some((oid, _lid, did)) = visible_drawing(flip, playhead, target) else {
         return false;
     };
     let Some(drawing) = flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {

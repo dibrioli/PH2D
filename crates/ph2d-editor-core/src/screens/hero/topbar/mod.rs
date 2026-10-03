@@ -36,9 +36,6 @@ pub fn populate(store: &mut WidgetStore) {
         // (painted + hit-indexed in the fixture → MUST be registered here or the
         // pill is dead on click). Motion Nodes M0.T9.
         ids::TOPBAR_MOTION,
-        // Flip pill — same parity requirement (registered here or dead on click).
-        // ADR-0114 W2.
-        ids::TOPBAR_FLIP,
         ids::TOPBAR_PHYSICS,
         // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09) — registado AQUI e **sem pill na fixture**,
         // como o Widget Lab: a porta de produto é a linha do menu *Window*. O que este registo

@@ -74,7 +74,7 @@ impl crate::App {
                 hover,
                 flip,
                 &self.playhead,
-                self.flip_state.active_layer,
+                self.flip_state.target,
                 &l2w,
                 camera,
                 crate::scene_mapping::janela(hero.view.center_split, surface.size()),
@@ -168,7 +168,7 @@ impl crate::App {
                 // função livre porque aqui `self.gfx` está destruturado.
                 ph2d_flip_entities::transform::active_pose(
                     flip,
-                    self.flip_state.active_layer,
+                    self.flip_state.target,
                     &self.playhead,
                 ),
                 camera,

@@ -252,8 +252,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Remove from Sheet: this object is not in a sheet"
         }
         "shell.fase_sprite_precision_emissive.removed_from_sheet" => "Removed from sheet",
-        "shell.fase_tool_mirrors.layer_1" => "Layer 1",
-        "shell.fase_tool_mirrors.flip" => "Flip",
         "shell.fase_world_panel_bridges.modelling_took_the" => "Modelling took the canvas",
         "shell.fase_world_panel_bridges.modelling_stepped" => {
             "Modelling stepped aside for the other tool"

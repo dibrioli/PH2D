@@ -6,9 +6,9 @@
 //! ⚠️ O guarda `gfx.is_none()` fica deste lado: quem tem o `Option` é a shell.
 
 impl crate::App {
-    /// O FPS do objeto Flip ativo. `None` sem objeto.
+    /// O FPS do desenho em edição. `None` sem desenho em edição.
     pub(crate) fn flip_fps(&self) -> Option<f64> {
-        ph2d_app_flip::strip::fps(&self.gfx.as_ref()?.flip)
+        ph2d_app_flip::strip::fps(&self.gfx.as_ref()?.flip, self.flip_state.target)
     }
 
     /// **O flip por DESENHO** — leva o playhead à chave anterior/seguinte, pulando os holds.

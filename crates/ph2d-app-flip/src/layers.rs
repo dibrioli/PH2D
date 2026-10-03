@@ -3,21 +3,22 @@
 //! The docked panel forwards layer edits as `ToolPanelEvent`s (the tool ignores
 //! them — they are DOCUMENT edits, mirror of the Vector Boolean/Arrange ops). The
 //! shell drain calls [`apply_panel_event`], which decodes the (fixed or runtime
-//! per-row) id against the active object's layers and mutates `FlipDoc` +
+//! per-row) id against the layers of the drawing in edit and mutates `FlipDoc` +
 //! the active-layer pointer. Runtime ids are decoded via the shared
 //! `flip_layer_widget_id` (the same twin the panel paints with).
 
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_flip::{BlendMode, FlipDoc, LayerId};
+use ph2d_flip::{BlendMode, FlipDoc, FlipTarget, LayerId};
 use ph2d_panel_flip::ids::FlipLayerWidget;
 
-/// Decode a runtime per-row id → `(LayerId, kind)` via the active object's
-/// layers (brute-force over rows × kinds — a handful of layers).
+/// Decode a runtime per-row id → `(LayerId, kind)` via the layers of the drawing in
+/// edit (brute-force over rows × kinds — a handful of layers).
 fn decode_widget(
     flip: &FlipDoc,
+    target: FlipTarget,
     id: ph2d_editor_core::NodeId,
 ) -> Option<(LayerId, FlipLayerWidget)> {
-    let obj = flip.objects().first()?;
+    let obj = target.drawing(flip)?;
     for l in obj.layers() {
         for kind in FlipLayerWidget::ALL {
             if ph2d_panel_flip::ids::flip_layer_widget_id(u64::from(l.id.0), kind) == id {
@@ -28,19 +29,20 @@ fn decode_widget(
     None
 }
 
-/// Apply one panel event to the Flip document + the active-layer pointer.
-/// No-op when `ev` doesn't address a Flip layer control. Returns `true` if it
+/// Apply one panel event to the drawing in edit + the active-layer pointer
+/// (`target.layer`; `target.object` is never written here). No-op when `ev` doesn't
+/// address a Flip layer control, or with no drawing in edit (Object mode). Returns `true` if it
 /// mutated the document (so the caller can note a real edit happened).
 pub fn apply_panel_event(
     ev: &PanelEvent,
     flip: &mut FlipDoc,
-    active_layer: &mut Option<LayerId>,
+    target: &mut FlipTarget,
     playhead: &ph2d_core::Playhead,
     // W8: o DOMÍNIO da seleção (do snapshot da tool) — All/Delete agem em pontos ou em
     // traços conforme o toggle do painel.
     point_domain: bool,
 ) -> bool {
-    let Some(oid) = flip.objects().first().map(|o| o.id) else {
+    let Some(oid) = target.object.filter(|oid| flip.object(*oid).is_some()) else {
         return false;
     };
     match ev {
@@ -57,8 +59,7 @@ pub fn apply_panel_event(
                 || *id == ph2d_panel_flip::ids::FLIP_EDIT_DESELECT
                 || *id == ph2d_panel_flip::ids::FLIP_EDIT_DELETE =>
         {
-            let Some((_oid, _lid, did)) =
-                crate::select::visible_drawing(flip, playhead, *active_layer)
+            let Some((_oid, _lid, did)) = crate::select::visible_drawing(flip, playhead, *target)
             else {
                 return false; // camada travada / quadro sem desenho
             };
@@ -98,7 +99,7 @@ pub fn apply_panel_event(
                     ph2d_flip::Hold::Implicit,
                     ph2d_flip::KeyKind::Keyframe,
                 );
-                *active_layer = Some(new);
+                target.layer = Some(new);
                 return true;
             }
             false
@@ -107,41 +108,38 @@ pub fn apply_panel_event(
             // Duplica a camada ATIVA (§4.C) — uma cópia independente, acima da original,
             // que vira a ativa (o Illustrator/PS). Sem camada ativa: no-op (o botão já
             // nasce desabilitado, mas a recusa mora aqui também, não só na pintura).
-            let Some(target) = *active_layer else {
+            let Some(source) = target.layer else {
                 return false;
             };
             if let Some(obj) = flip.object_mut(oid)
-                && let Some(new) = obj.duplicate_layer(target)
+                && let Some(new) = obj.duplicate_layer(source)
             {
-                *active_layer = Some(new);
+                target.layer = Some(new);
                 return true;
             }
             false
         }
         PanelEvent::Click(id) if *id == ph2d_panel_flip::ids::FLIP_LAYER_DELETE => {
-            let Some(target) = active_layer.or_else(|| {
-                flip.object(oid)
-                    .and_then(|o| o.layers().last().map(|l| l.id))
-            }) else {
+            let Some(doomed) = flip.object(oid).and_then(|o| target.layer_in(o)) else {
                 return false;
             };
             if let Some(obj) = flip.object_mut(oid)
-                && obj.remove_layer(target)
+                && obj.remove_layer(doomed)
             {
                 obj.remove_unused_drawings();
                 // Point the active layer at the new top (or clear if none left).
-                *active_layer = obj.layers().last().map(|l| l.id);
+                target.layer = obj.layers().last().map(|l| l.id);
                 return true;
             }
             false
         }
         PanelEvent::Click(id) => {
-            let Some((layer, kind)) = decode_widget(flip, *id) else {
+            let Some((layer, kind)) = decode_widget(flip, *target, *id) else {
                 return false;
             };
             match kind {
                 FlipLayerWidget::Row => {
-                    *active_layer = Some(layer);
+                    target.layer = Some(layer);
                     // Selection is not a document mutation — no undo step.
                     false
                 }
@@ -174,7 +172,7 @@ pub fn apply_panel_event(
                 | FlipLayerWidget::Blend => false,
             }
         }
-        PanelEvent::SetValue(id, v) => match decode_widget(flip, *id) {
+        PanelEvent::SetValue(id, v) => match decode_widget(flip, *target, *id) {
             Some((layer, FlipLayerWidget::Opacity)) => {
                 if let Some(l) = flip.object_mut(oid).and_then(|o| o.layer_mut(layer)) {
                     l.opacity = (*v as f32).clamp(0.0, 1.0);
@@ -192,7 +190,7 @@ pub fn apply_panel_event(
             }
             _ => false,
         },
-        PanelEvent::SelectOption(id, val) => match decode_widget(flip, *id) {
+        PanelEvent::SelectOption(id, val) => match decode_widget(flip, *target, *id) {
             // Inline rename (§4.C): the panel forwards the new name on the layer's Row
             // id. An empty name is refused here too (the panel already trims + drops
             // empty, but the recusa lives at the apply, not only in the field).
@@ -243,7 +241,7 @@ mod tests {
     fn add_and_delete_layer() {
         let (mut doc, _a, _b) = doc_2layers();
         let oid = doc.objects().first().unwrap().id;
-        let mut active = None;
+        let mut active = FlipTarget::on(oid, None);
         assert!(apply_panel_event(
             &PanelEvent::Click(ph2d_tool_flip::ids::FLIP_LAYER_ADD),
             &mut doc,
@@ -252,7 +250,7 @@ mod tests {
             false,
         ));
         assert_eq!(doc.object(oid).unwrap().layers().len(), 3);
-        assert!(active.is_some(), "new layer becomes active");
+        assert!(active.layer.is_some(), "new layer becomes active");
         // Delete the active layer.
         assert!(apply_panel_event(
             &PanelEvent::Click(ph2d_panel_flip::ids::FLIP_LAYER_DELETE),
@@ -290,7 +288,7 @@ mod tests {
         obj.drawing_mut(d).unwrap().strokes.push(s);
         let drawings_before = obj.drawing_count();
 
-        let mut active = Some(b);
+        let mut active = FlipTarget::on(oid, Some(b));
         assert!(apply_panel_event(
             &PanelEvent::Click(ph2d_panel_flip::ids::FLIP_LAYER_DUPLICATE),
             &mut doc,
@@ -300,8 +298,8 @@ mod tests {
         ));
         let obj = doc.object(oid).unwrap();
         assert_eq!(obj.layers().len(), 3, "a cópia é uma camada nova");
-        assert_ne!(active, Some(b), "a cópia vira a ativa");
-        assert!(active.is_some());
+        assert_ne!(active.layer, Some(b), "a cópia vira a ativa");
+        assert!(active.layer.is_some());
         assert_eq!(
             obj.drawing_count(),
             drawings_before + 1,
@@ -315,7 +313,7 @@ mod tests {
         let (mut doc, _a, _b) = doc_2layers();
         let oid = doc.objects().first().unwrap().id;
         let before = doc.object(oid).unwrap().layers().len();
-        let mut active = None;
+        let mut active = FlipTarget::on(oid, None);
         assert!(!apply_panel_event(
             &PanelEvent::Click(ph2d_panel_flip::ids::FLIP_LAYER_DUPLICATE),
             &mut doc,
@@ -329,7 +327,8 @@ mod tests {
     #[test]
     fn row_select_sets_active_layer() {
         let (mut doc, a, _b) = doc_2layers();
-        let mut active = None;
+        let oid = doc.objects()[0].id;
+        let mut active = FlipTarget::on(oid, None);
         // Row-select is not a doc mutation (returns false) but sets active.
         assert!(!apply_panel_event(
             &PanelEvent::Click(wid(a, FlipLayerWidget::Row)),
@@ -338,14 +337,14 @@ mod tests {
             &ph2d_core::Playhead::default(),
             false,
         ));
-        assert_eq!(active, Some(a));
+        assert_eq!(active.layer, Some(a));
     }
 
     #[test]
     fn visibility_and_lock_toggle() {
         let (mut doc, a, _b) = doc_2layers();
         let oid = doc.objects().first().unwrap().id;
-        let mut active = None;
+        let mut active = FlipTarget::on(oid, None);
         assert!(apply_panel_event(
             &PanelEvent::Click(wid(a, FlipLayerWidget::Visibility)),
             &mut doc,
@@ -368,7 +367,7 @@ mod tests {
     fn reorder_up_swaps_layers() {
         let (mut doc, a, b) = doc_2layers(); // [a, b]
         let oid = doc.objects().first().unwrap().id;
-        let mut active = None;
+        let mut active = FlipTarget::on(oid, None);
         // Raise the bottom layer `a` → [b, a].
         assert!(apply_panel_event(
             &PanelEvent::Click(wid(a, FlipLayerWidget::MoveUp)),
@@ -396,7 +395,7 @@ mod tests {
     fn rename_layer_via_select_option_on_the_row_id() {
         let (mut doc, a, _b) = doc_2layers();
         let oid = doc.objects().first().unwrap().id;
-        let mut active = None;
+        let mut active = FlipTarget::on(oid, None);
         assert!(apply_panel_event(
             &PanelEvent::SelectOption(wid(a, FlipLayerWidget::Row), "Rough".to_string()),
             &mut doc,
@@ -414,7 +413,7 @@ mod tests {
         let (mut doc, a, _b) = doc_2layers();
         let oid = doc.objects().first().unwrap().id;
         let before = doc.object(oid).unwrap().layer(a).unwrap().name.clone();
-        let mut active = None;
+        let mut active = FlipTarget::on(oid, None);
         assert!(!apply_panel_event(
             &PanelEvent::SelectOption(wid(a, FlipLayerWidget::Row), "   ".to_string()),
             &mut doc,
@@ -429,7 +428,7 @@ mod tests {
     fn opacity_setvalue_and_blend_selectoption() {
         let (mut doc, _a, b) = doc_2layers();
         let oid = doc.objects().first().unwrap().id;
-        let mut active = None;
+        let mut active = FlipTarget::on(oid, None);
         // Opacity slider on the top layer.
         assert!(apply_panel_event(
             &PanelEvent::SetValue(wid(b, FlipLayerWidget::Opacity), 0.4),
@@ -465,7 +464,7 @@ mod tests {
     fn depth_setvalue_sets_the_layer_depth() {
         let (mut doc, _a, b) = doc_2layers();
         let oid = doc.objects().first().unwrap().id;
-        let mut active = None;
+        let mut active = FlipTarget::on(oid, None);
         assert_eq!(
             doc.object(oid).unwrap().layer(b).unwrap().depth,
             1.0,

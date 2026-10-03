@@ -9,7 +9,7 @@ fn fresh_tool_defaults() {
     let t = FlipTool::new();
     assert_eq!(t.stroke_rgba(), DEFAULT_STROKE);
     assert_eq!(t.width_px(), DEFAULT_WIDTH_PX);
-    assert_eq!(t.mode(), FlipMode::Select); // gizmo por default (ADR-0112)
+    assert_eq!(t.mode(), FlipMode::Draw); // a 1.ª ferramenta do Draw Mode (spec/06 F3)
     assert_eq!(t.hardness(), 1.0);
 }
 

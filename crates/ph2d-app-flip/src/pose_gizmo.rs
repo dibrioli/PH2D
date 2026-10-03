@@ -31,7 +31,7 @@
 use ph2d_core::{Playhead, Vec2};
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::{GizmoCamera, GizmoModifiers, GizmoSnap, GizmoView, TransformSnapshot};
-use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, Frame, LayerId, Pose};
+use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, FlipTarget, Frame, LayerId, Pose};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 
@@ -147,12 +147,8 @@ struct PoseTarget {
 /// uma INSTÂNCIA (arte compartilhada — é a pose que move; arte exclusiva segue no
 /// arrasto-geometria do Edit e não abre gizmo).
 #[must_use]
-fn pose_target(
-    flip: &FlipDoc,
-    playhead: &Playhead,
-    active_layer: Option<LayerId>,
-) -> Option<PoseTarget> {
-    let (oid, lid, key, did) = crate::select::visible_key(flip, playhead, active_layer)?;
+fn pose_target(flip: &FlipDoc, playhead: &Playhead, target: FlipTarget) -> Option<PoseTarget> {
+    let (oid, lid, key, did) = crate::select::visible_key(flip, playhead, target)?;
     let obj = flip.object(oid)?;
     let drawing = obj.drawing(did)?;
     if !drawing.is_instanced() {
@@ -180,7 +176,7 @@ fn pose_target(
 #[derive(Clone, Copy)]
 pub struct PoseViewInputs<'a> {
     pub playhead: &'a Playhead,
-    pub active_layer: Option<LayerId>,
+    pub target: FlipTarget,
     pub last_pointer: (f32, f32),
 }
 
@@ -193,7 +189,7 @@ pub fn pose_view(
     camera: &Camera2d,
     window_size: WindowSize,
 ) -> Option<GizmoView> {
-    let t = pose_target(flip, inputs.playhead, inputs.active_layer)?;
+    let t = pose_target(flip, inputs.playhead, inputs.target)?;
     let e = map
         .get(&t.oid)
         .map(|&b| ph2d_ecs::Entity::from_bits(b))
@@ -259,7 +255,7 @@ pub fn gizmo_down(
     if !wants_edit {
         return false;
     }
-    let active_layer = state.active_layer;
+    let target = state.target;
     let Some(hit_id) = hero.chrome_hit(x, y) else {
         return false;
     };
@@ -269,7 +265,7 @@ pub fn gizmo_down(
     if hit.target != ph2d_editor_core::GizmoTarget::FlipPose {
         return false;
     }
-    let Some(t) = pose_target(f.flip, f.playhead, active_layer) else {
+    let Some(t) = pose_target(f.flip, f.playhead, target) else {
         return false;
     };
     let Some(e) = state

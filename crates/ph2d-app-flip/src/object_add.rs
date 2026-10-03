@@ -4,13 +4,14 @@
 //! ([`crate::demo::demo_scene`] só semeia sob `PH2D_FLIP_DEMO`), e a caneta sem objecto descarta o
 //! traço. O desenho nasce com UMA camada, para o primeiro traço ter onde cair.
 //!
-//! ⚠️ **Com dois desenhos, a caneta ainda escreve no PRIMEIRO** (`autokey::target_drawing`): abrir
-//! o módulo sobre a entidade activa é a F3 do spec/06, e o handoff regista-o.
+//! ⭐ **Nasce em Draw** (escolha do dono, 03/10: vazio, o próximo gesto é desenhar) — marca
+//! [`FlipState::born`] e o quadro do modo entra ([`crate::flip_mode`]).
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 use ph2d_flip::FlipDoc;
-use ph2d_flip_entities::entities::FlipEntityMap;
+
+use crate::state::FlipState;
 
 /// A entrada do menu.
 pub const FLIP: AddEntry = AddEntry::new("object_add.flip", AddGroup::TwoD);
@@ -27,7 +28,7 @@ pub fn add(
     entry: AddEntry,
     sim: &mut SimWorld,
     doc: &mut FlipDoc,
-    map: &mut FlipEntityMap,
+    state: &mut FlipState,
 ) -> Option<Result<u64, &'static str>> {
     if entry != FLIP {
         return None;
@@ -36,9 +37,12 @@ pub fn add(
     if let Some(obj) = doc.object_mut(oid) {
         obj.add_layer(ph2d_i18n::tr("object_add.flip.first_layer"));
     }
-    ph2d_flip_entities::entities::sync(sim, doc, map);
+    ph2d_flip_entities::entities::sync(sim, doc, &mut state.entities);
+    state.born = Some(oid);
     Some(
-        map.get(&oid)
+        state
+            .entities
+            .get(&oid)
             .copied()
             .ok_or_else(|| ph2d_i18n::tr("object_add.not_born")),
     )
@@ -55,8 +59,8 @@ mod tests {
     fn the_menu_flip_is_born_a_flip_object_with_a_layer() {
         let mut sim = SimWorld::new();
         let mut doc = FlipDoc::new();
-        let mut map = FlipEntityMap::new();
-        let bits = add(FLIP, &mut sim, &mut doc, &mut map)
+        let mut state = FlipState::default();
+        let bits = add(FLIP, &mut sim, &mut doc, &mut state)
             .expect("é desta família")
             .expect("nasce");
         let e = ph2d_ecs::Entity::from_bits(bits);
@@ -74,6 +78,11 @@ mod tests {
             1,
             "sem camada, o primeiro traço cai no chão"
         );
+        assert_eq!(
+            state.born,
+            Some(obj.id),
+            "nasce a pedir o Draw (escolha do dono)"
+        );
     }
 
     /// **Uma entrada de outra família não é desta** — e nada nasce.
@@ -81,9 +90,9 @@ mod tests {
     fn an_entry_of_another_family_is_not_ours() {
         let mut sim = SimWorld::new();
         let mut doc = FlipDoc::new();
-        let mut map = FlipEntityMap::new();
+        let mut state = FlipState::default();
         let empty = ph2d_editor_core::object_add::EMPTY;
-        assert!(add(empty, &mut sim, &mut doc, &mut map).is_none());
+        assert!(add(empty, &mut sim, &mut doc, &mut state).is_none());
         assert!(doc.objects().is_empty());
     }
 }

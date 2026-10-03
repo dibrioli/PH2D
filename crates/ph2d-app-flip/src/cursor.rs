@@ -132,7 +132,8 @@ mod tests {
             (FlipMode::Reshape, true),
             (FlipMode::Colorize, true),
             (FlipMode::Fill, false),
-            (FlipMode::Select, false),
+            (FlipMode::Edit, false),
+            (FlipMode::Trace, false),
         ] {
             let r = ring_radius(
                 Some(FlipStyleSnapshot {

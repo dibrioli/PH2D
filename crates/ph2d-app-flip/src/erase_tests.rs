@@ -4,7 +4,12 @@
 
 use super::*;
 use ph2d_core::Playhead;
-use ph2d_flip::{FlipDoc, Hold, KeyKind, Point, Rgba};
+use ph2d_flip::{FlipDoc, Hold, KeyKind, LayerId, Point, Rgba};
+
+/// O alvo da autoria no (único) desenho do teste, na camada `l`.
+fn on(doc: &FlipDoc, l: LayerId) -> FlipTarget {
+    FlipTarget::on(doc.objects()[0].id, Some(l))
+}
 
 fn doc_with_line() -> (FlipDoc, LayerId) {
     let mut doc = FlipDoc::new();
@@ -30,10 +35,11 @@ fn doc_with_line() -> (FlipDoc, LayerId) {
 #[test]
 fn stroke_mode_removes_the_whole_touched_stroke() {
     let (mut doc, l) = doc_with_line();
+    let t = on(&doc, l);
     let hit = erase_at(
         &mut doc,
         &Playhead::default(),
-        Some(l),
+        t,
         &mut crate::strip::FlipStrip::default(),
         EraseMode::Stroke,
         Vec2::new(2.0, 0.0),
@@ -50,10 +56,11 @@ fn stroke_mode_removes_the_whole_touched_stroke() {
 fn hard_mode_splits_the_stroke_at_the_gap() {
     let (mut doc, l) = doc_with_line();
     // Erase the middle point (x=2) → two runs [0,1] and [3,4].
+    let t = on(&doc, l);
     let hit = erase_at(
         &mut doc,
         &Playhead::default(),
-        Some(l),
+        t,
         &mut crate::strip::FlipStrip::default(),
         EraseMode::Hard,
         Vec2::new(2.0, 0.0),
@@ -77,10 +84,11 @@ fn soft_mode_reduces_opacity_then_cleanup_removes_faded() {
     // certo é que elas sobrem parcialmente (é a borda macia da borracha). A premissa
     // antiga era o bug do §4.C.5 escrito como teste; varrer é o que o artista faz.
     for x in 0..5 {
+        let t = on(&doc, l);
         erase_at(
             &mut doc,
             &Playhead::default(),
-            Some(l),
+            t,
             &mut crate::strip::FlipStrip::default(),
             EraseMode::Soft,
             Vec2::new(x as f32, 0.0),
@@ -99,10 +107,11 @@ fn soft_mode_reduces_opacity_then_cleanup_removes_faded() {
         min_op < OPACITY_REMOVE_THRESHOLD,
         "center faded below threshold"
     );
+    let t = on(&doc, l);
     assert!(cleanup_soft(
         &mut doc,
         &Playhead::default(),
-        Some(l),
+        t,
         &mut crate::strip::FlipStrip::default(),
     ));
 }
@@ -118,10 +127,11 @@ fn opacity_at(doc: &FlipDoc, l: LayerId, i: usize) -> f32 {
 fn soft_erase_n(dabs: usize, strength: f32) -> (FlipDoc, LayerId) {
     let (mut doc, l) = doc_with_line();
     for _ in 0..dabs {
+        let t = on(&doc, l);
         erase_at(
             &mut doc,
             &Playhead::default(),
-            Some(l),
+            t,
             &mut crate::strip::FlipStrip::default(),
             EraseMode::Soft,
             Vec2::new(2.0, 0.0), // exatamente sobre o ponto de índice 2
@@ -188,10 +198,11 @@ fn strength_is_the_translucency_that_remains() {
 fn a_weak_pass_never_restores_what_a_strong_one_erased() {
     let (mut doc, l) = soft_erase_n(3, 0.9); // centro → 0.1
     let before = opacity_at(&doc, l, 2);
+    let t = on(&doc, l);
     erase_at(
         &mut doc,
         &Playhead::default(),
-        Some(l),
+        t,
         &mut crate::strip::FlipStrip::default(),
         EraseMode::Soft,
         Vec2::new(2.0, 0.0),
@@ -211,10 +222,11 @@ fn locked_layer_refuses_erase() {
     doc.objects().first().unwrap(); // sanity
     let oid = doc.objects().first().unwrap().id;
     doc.object_mut(oid).unwrap().layer_mut(l).unwrap().locked = true;
+    let t = on(&doc, l);
     let hit = erase_at(
         &mut doc,
         &Playhead::default(),
-        Some(l),
+        t,
         &mut crate::strip::FlipStrip::default(),
         EraseMode::Stroke,
         Vec2::new(2.0, 0.0),
@@ -297,17 +309,19 @@ fn the_soft_eraser_does_not_delete_gap_closures_anywhere_on_the_canvas() {
     let before = strokes_of(&doc).len();
 
     // Um toque de borracha macia LONGE de tudo (em (100, 100)).
+    let t = on(&doc, l);
     erase_at(
         &mut doc,
         &ph,
-        Some(l),
+        t,
         &mut strip,
         EraseMode::Soft,
         Vec2::new(100.0, 100.0),
         1.0,
         1.0,
     );
-    cleanup_soft(&mut doc, &ph, Some(l), &mut strip);
+    let t = on(&doc, l);
+    cleanup_soft(&mut doc, &ph, t, &mut strip);
 
     let after = strokes_of(&doc);
     assert_eq!(
@@ -333,17 +347,19 @@ fn a_point_eraser_does_not_shred_a_filled_region() {
         let mut strip = crate::strip::FlipStrip::default();
 
         // Apaga bem no MEIO da região preenchida.
+        let t = on(&doc, l);
         erase_at(
             &mut doc,
             &ph,
-            Some(l),
+            t,
             &mut strip,
             mode,
             Vec2::new(5.0, 5.0),
             4.0,
             1.0,
         );
-        cleanup_soft(&mut doc, &ph, Some(l), &mut strip);
+        let t = on(&doc, l);
+        cleanup_soft(&mut doc, &ph, t, &mut strip);
 
         let fills: Vec<FlipStroke> = strokes_of(&doc)
             .into_iter()
@@ -408,10 +424,11 @@ fn erasing_a_square_capped_stroke_does_not_extend_the_cut_ends() {
     }
     st.cap = (Cap::Square, Cap::Square);
     obj.drawing_mut(d).unwrap().strokes.push(st);
+    let t = on(&doc, l);
     let hit = erase_at(
         &mut doc,
         &Playhead::default(),
-        Some(l),
+        t,
         &mut crate::strip::FlipStrip::default(),
         EraseMode::Hard,
         Vec2::new(2.0, 0.0),

@@ -133,7 +133,7 @@ fn the_pose_gizmo_box_lands_on_the_posed_art() {
         &map,
         PoseViewInputs {
             playhead: &playhead,
-            active_layer: None,
+            target: ph2d_flip::FlipTarget::on(oid, None),
             last_pointer: (0.0, 0.0),
         },
         &cam,
@@ -197,7 +197,7 @@ fn an_exclusive_drawing_never_opens_the_pose_gizmo() {
             &map,
             PoseViewInputs {
                 playhead: &p,
-                active_layer: None,
+                target: ph2d_flip::FlipTarget::on(oid, None),
                 last_pointer: (0.0, 0.0),
             },
             &cam,

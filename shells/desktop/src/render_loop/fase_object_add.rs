@@ -116,7 +116,7 @@ impl crate::App {
         ) {
             r.map(Born::Entity).map_err(String::from)
         } else if let Some(r) =
-            ph2d_app_flip::object_add::add(entry, sim, flip, &mut self.flip_state.entities)
+            ph2d_app_flip::object_add::add(entry, sim, flip, &mut self.flip_state)
         {
             r.map(Born::Entity).map_err(String::from)
         } else {

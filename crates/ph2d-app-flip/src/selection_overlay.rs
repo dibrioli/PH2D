@@ -26,7 +26,7 @@
 //! usa —, mas aplicada aos PONTOS. Sem a pose da chave, o realce fica deslocado da linha
 //! por todo o offset da chave ("o traço afastado do seu mesh", smoke do Enio 2026-07-14).
 
-use ph2d_flip::FlipDoc;
+use ph2d_flip::{FlipDoc, FlipTarget};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_vec_scene::Xform;
@@ -114,7 +114,7 @@ pub fn draw_flip_selection(
     hover: Option<(usize, &[usize])>,
     doc: &FlipDoc,
     playhead: &ph2d_core::Playhead,
-    active_layer: Option<ph2d_flip::LayerId>,
+    target: FlipTarget,
     l2w: &Xform,
     camera: &Camera2d,
     window: WindowSize,
@@ -123,7 +123,7 @@ pub fn draw_flip_selection(
     if !active || !editing {
         return;
     }
-    let Some((oid, lid, did)) = crate::select::visible_drawing(doc, playhead, active_layer) else {
+    let Some((oid, lid, did)) = crate::select::visible_drawing(doc, playhead, target) else {
         return;
     };
     let Some(obj) = doc.object(oid) else {

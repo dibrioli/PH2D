@@ -425,7 +425,7 @@ impl crate::App {
             flip_compose,
             flip_composite,
             flip_preview.as_ref(),
-            self.flip_state.active_layer,
+            self.flip_state.target,
             &flip_models,
             &self.playhead,
             ghost_selection,

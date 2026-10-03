@@ -36,63 +36,28 @@ pub(crate) struct BodyCtx<'a> {
 }
 
 impl BodyCtx<'_> {
-    /// Mode row (Select / Draw / Erase · Fill / Sculpt / Edit · Colorize / Trace) — o gizmo só
-    /// está vivo no Select.
+    /// **A linha das ferramentas do modo em curso** — Draw Mode: Draw · Erase · Fill · Colorize ·
+    /// Trace; Edit Mode: Select · Sculpt (spec/06 F3 do Flip). As do outro modo NÃO aparecem: o modo
+    /// troca-se no seletor *Mode* (D6 — nada cinzento).
     ///
-    /// ⭐⭐ **É UM corpo de oito peças em três fileiras** (wave 20, report do dono: *«tudo o que
-    /// puder ser ajuntado, ajunte»*): os oito respondem à MESMA pergunta — *que modo está na mão?*
-    /// —, logo separá-los em três controlos era dizer ao olho que são três assuntos.
+    /// ⭐⭐ **É UM corpo de peças em fileiras que encostam** (wave 20, report do dono: *«tudo o que
+    /// puder ser ajuntado, ajunte»*): todas respondem à MESMA pergunta — *que ferramenta está na mão?*
     ///
-    /// ⚠️ **A grelha `3·3·2` é MEDIDA e fica**: o painel docado dá ~33 px por rótulo numa fileira
-    /// de seis, e «Sculpt» não cabe. O que muda é as três fileiras passarem a **encostar**.
+    /// ⚠️ **No máximo três por fileira, MEDIDO**: o painel docado dá ~33 px por rótulo numa fileira
+    /// de seis, e «Sculpt» não cabe.
     pub(crate) fn mode_row(&mut self, snap: &FlipStyleSnapshot, y: f32) -> f32 {
-        self.segmented_block(
-            tr("panel.flip.tool.mode"),
-            &[
-                (
-                    ph2d_tool_flip::ids::FLIP_MODE_SELECT,
-                    tr("panel.flip.tool.select"),
-                    snap.mode == FlipMode::Select,
-                ),
-                (
-                    ph2d_tool_flip::ids::FLIP_MODE_DRAW,
-                    tr("panel.flip.tool.draw"),
-                    snap.mode == FlipMode::Draw,
-                ),
-                (
-                    ph2d_tool_flip::ids::FLIP_MODE_ERASE,
-                    tr("panel.flip.tool.erase"),
-                    snap.mode == FlipMode::Erase,
-                ),
-                (
-                    ph2d_tool_flip::ids::FLIP_MODE_FILL,
-                    tr("panel.flip.tool.fill"),
-                    snap.mode == FlipMode::Fill,
-                ),
-                (
-                    ph2d_tool_flip::ids::FLIP_MODE_RESHAPE,
-                    tr("panel.flip.tool.sculpt"),
-                    snap.mode == FlipMode::Reshape,
-                ),
-                (
-                    ph2d_tool_flip::ids::FLIP_MODE_EDIT,
-                    tr("panel.flip.tool.edit"),
-                    snap.mode == FlipMode::Edit,
-                ),
-                (
-                    ph2d_tool_flip::ids::FLIP_MODE_COLORIZE,
-                    tr("panel.flip.tool.colorize"),
-                    snap.mode == FlipMode::Colorize,
-                ),
-                (
-                    ph2d_tool_flip::ids::FLIP_MODE_TRACE,
-                    tr("panel.flip.tool.trace"),
-                    snap.mode == FlipMode::Trace,
-                ),
-            ],
-            &[3, 3, 2],
-            y,
-        )
+        let opts: Vec<_> = FlipMode::tools_of(snap.mode.object_mode())
+            .iter()
+            .map(|m| {
+                let (id, key) = tool_button(*m);
+                (id, tr(key), snap.mode == *m)
+            })
+            .collect();
+        let cols: Vec<usize> = (0..opts.len())
+            .step_by(3)
+            .map(|i| (opts.len() - i).min(3))
+            .collect();
+        self.segmented_block(tr("panel.flip.tool.mode"), &opts, &cols, y)
     }
 
     /// **Trace section** (Shift & Trace) — só no modo Trace: o Reset devolve todos os
@@ -435,5 +400,19 @@ impl BodyCtx<'_> {
             ],
             y,
         )
+    }
+}
+
+/// O botão e o rótulo de cada ferramenta (a tabela única do painel).
+pub fn tool_button(m: FlipMode) -> (ph2d_a11y::NodeId, &'static str) {
+    use ph2d_tool_flip::ids as t;
+    match m {
+        FlipMode::Draw => (t::FLIP_MODE_DRAW, "panel.flip.tool.draw"),
+        FlipMode::Erase => (t::FLIP_MODE_ERASE, "panel.flip.tool.erase"),
+        FlipMode::Fill => (t::FLIP_MODE_FILL, "panel.flip.tool.fill"),
+        FlipMode::Colorize => (t::FLIP_MODE_COLORIZE, "panel.flip.tool.colorize"),
+        FlipMode::Trace => (t::FLIP_MODE_TRACE, "panel.flip.tool.trace"),
+        FlipMode::Edit => (t::FLIP_MODE_EDIT, "panel.flip.tool.select"),
+        FlipMode::Reshape => (t::FLIP_MODE_RESHAPE, "panel.flip.tool.sculpt"),
     }
 }

@@ -135,7 +135,7 @@ impl crate::App {
         ph2d_app_flip::layers::apply_panel_event(
             &ev,
             flip,
-            &mut self.flip_state.active_layer,
+            &mut self.flip_state.target,
             &self.playhead,
             matches!(
                 self.flip_state.style.map(|s| s.edit_domain),
@@ -154,7 +154,7 @@ impl crate::App {
         ph2d_app_flip::strip::apply_panel_event(
             &ev,
             flip,
-            self.flip_state.active_layer,
+            self.flip_state.target,
             &mut self.playhead,
             &mut self.flip_state.strip,
             self.modifiers.shift_key()

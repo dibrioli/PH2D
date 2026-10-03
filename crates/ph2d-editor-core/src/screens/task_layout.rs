@@ -170,7 +170,7 @@ impl TaskLayout {
                 wire: "flip",
                 open: &["hierarchy", "inspector"],
                 slots: &[],
-                canvas: CanvasOwner::Tool("flip"),
+                canvas: CanvasOwner::Mode(crate::object_mode::ObjectMode::Draw),
             },
             Self::Modeling3d => LayoutSpec {
                 title: TextKey::new("chrome.layout.model"),

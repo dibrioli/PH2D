@@ -102,7 +102,7 @@ impl App {
         // ou a borracha activos a mão escreve MUNDO a cada quadro, e somar geometria + `Transform`
         // deslocaria a arte de baixo do cursor.
         let flip_gesturing = (self.flip_state.draw.is_active() || self.flip_state.erasing)
-            .then(|| gfx.flip.objects().first().map(|o| o.id))
+            .then_some(self.flip_state.target.object)
             .flatten();
         ph2d_flip_entities::transform::settle_origins(
             &mut gfx.sim,

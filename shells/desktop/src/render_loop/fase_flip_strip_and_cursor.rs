@@ -31,14 +31,14 @@ impl crate::App {
         // logo acima também ignora o seu.)
         let _ = ph2d_app_flip::strip_drag::apply_strip_intents(
             flip,
-            self.flip_state.active_layer,
+            self.flip_state.target,
             &mut self.flip_state.strip,
         );
         let (flip_active, flip_style) = ph2d_app_flip::bridge::publish(
             hero,
             tools,
             flip,
-            self.flip_state.active_layer,
+            self.flip_state.target,
             &self.playhead,
             &self.flip_state.strip,
         );

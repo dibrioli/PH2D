@@ -65,6 +65,10 @@ pub const OBJECT_MODE_OBJECT: NodeId = hash_node_id("object_mode.row.object");
 pub const OBJECT_MODE_PAINT: NodeId = hash_node_id("object_mode.row.paint");
 /// Ver [`OBJECT_MODE_OBJECT`].
 pub const OBJECT_MODE_SCULPT: NodeId = hash_node_id("object_mode.row.sculpt");
+/// Ver [`OBJECT_MODE_OBJECT`].
+pub const OBJECT_MODE_DRAW: NodeId = hash_node_id("object_mode.row.draw");
+/// Ver [`OBJECT_MODE_OBJECT`].
+pub const OBJECT_MODE_EDIT: NodeId = hash_node_id("object_mode.row.edit");
 
 pub const TOOL_UNDO: NodeId = hash_node_id("tool_undo");
 pub const TOOL_REDO: NodeId = hash_node_id("tool_redo");

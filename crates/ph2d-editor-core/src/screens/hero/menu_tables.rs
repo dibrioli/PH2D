@@ -229,7 +229,6 @@ pub(super) const MENU_BAR_VIEW_ROWS: &[MenuRow] = &[
 pub(super) const MENU_BAR_WINDOW_ROWS: &[MenuRow] = &[
     menu_row(ids::TOPBAR_VECTOR, "chrome.menu.vector"),
     menu_row(ids::TOPBAR_MOTION, "chrome.menu.motion_nodes"),
-    menu_row(ids::TOPBAR_FLIP, "chrome.menu.flip"),
     menu_row(ids::TOPBAR_PHYSICS, "chrome.menu.physics"),
     // ⭐⭐⭐ **AS TAGS** (TOP-20 #9, W4). ⚠️ Vizinho da Física porque os dois são painéis de
     // MUNDO — e é a **única** porta do painel num projecto **sem** tag nenhuma, que é onde o

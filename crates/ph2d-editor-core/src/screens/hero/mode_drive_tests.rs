@@ -86,7 +86,7 @@ impl ModeFamily for SculptFamily {
     fn follow(&mut self, current: Option<ActiveMode>, _: &mut ToolRegistry) {
         self.followed.push(current);
     }
-    fn wants(&mut self) -> Option<(u64, ObjectMode)> {
+    fn wants(&mut self, _: &mut ToolRegistry) -> Option<(u64, ObjectMode)> {
         self.born.take().map(|e| (e, ObjectMode::Sculpt))
     }
 }

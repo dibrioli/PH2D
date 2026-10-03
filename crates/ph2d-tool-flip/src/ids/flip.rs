@@ -13,10 +13,7 @@
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
 
-// ── Canvas mode (Select / Draw / Erase — ADR-0112 arbitration) ───────────────
-/// Select: the sprite gizmo moves the object (no drawing).
-pub const FLIP_MODE_SELECT: NodeId = hash_node_id("flip.mode.select");
-
+// ── A ferramenta na mão (Draw / Erase / … — o modo do desenho é o seletor Mode) ──
 /// Draw: each canvas drag creates a stroke on the active drawing.
 pub const FLIP_MODE_DRAW: NodeId = hash_node_id("flip.mode.draw");
 

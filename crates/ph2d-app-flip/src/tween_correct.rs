@@ -22,7 +22,9 @@
 //! afim, e é por isso que o pick é feito em tela (um espaço só) em vez de inverter duas poses.
 
 use ph2d_core::Vec2;
-use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, FlipStroke, Frame, LayerId, Pose, TweenPlan};
+use ph2d_flip::{
+    FlipDoc, FlipDrawing, FlipObjectId, FlipStroke, FlipTarget, Frame, LayerId, Pose, TweenPlan,
+};
 use ph2d_vec_scene::Xform;
 use ph2d_vector::{Affine, Point};
 
@@ -75,10 +77,10 @@ pub struct TweenCorrect {
 #[must_use]
 pub fn build(
     flip: &FlipDoc,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     playhead: &ph2d_core::Playhead,
 ) -> Option<TweenCorrect> {
-    let (oid, lid, from, to) = crate::strip::current_tween_interval(flip, active_layer, playhead)?;
+    let (oid, lid, from, to) = crate::strip::current_tween_interval(flip, target, playhead)?;
     let obj = flip.object(oid)?;
     let layer = obj.layer(lid)?;
     let da = layer.frames().get(&from).and_then(|f| f.drawing)?;
@@ -259,19 +261,19 @@ pub fn upkeep(state: &mut FlipState, flip: &ph2d_flip::FlipDoc, playhead: &ph2d_
     if state.strip.tween_correct.is_none() {
         return;
     }
-    let active_layer = state.active_layer;
+    let target = state.target;
     let session = state
         .strip
         .tween_correct
         .as_ref()
         .map(|tc| (tc.layer, tc.from, tc.to));
-    let cur = crate::strip::current_tween_interval(flip, active_layer, playhead);
+    let cur = crate::strip::current_tween_interval(flip, target, playhead);
     let rebuild = matches!(
         (session, cur),
         (Some(s), Some((_, lid, from, to))) if s != (lid, from, to)
     );
     if rebuild {
-        state.strip.tween_correct = build(flip, active_layer, playhead);
+        state.strip.tween_correct = build(flip, target, playhead);
     }
 }
 

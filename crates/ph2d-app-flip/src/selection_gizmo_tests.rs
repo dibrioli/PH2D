@@ -4,7 +4,7 @@
 
 use super::*;
 use ph2d_ecs::{FlipObjectRef, Name, Transform};
-use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
+use ph2d_flip::{FlipStroke, Hold, KeyKind, LayerId, Point, Rgba};
 use ph2d_vec_scene::Xform;
 
 /// Um objeto (1 camada, chave 0 de arte EXCLUSIVA) com dois traços fechados: um
@@ -270,7 +270,7 @@ fn the_selection_gizmo_box_lands_on_the_posed_selection() {
         &map,
         SelectionViewInputs {
             playhead: &ph,
-            active_layer: None,
+            target: FlipTarget::on(oid, None),
             last_pointer: (0.0, 0.0),
         },
         &cam,
@@ -315,7 +315,7 @@ fn the_selection_gizmo_box_lands_on_the_posed_selection() {
 fn the_snapshot_is_only_the_selected_points() {
     let (mut doc, _sim, _map, oid, lid, _e) = doc_two_shapes();
     // Dá um BURACO ao retângulo (traço 0, o selecionado inteiro).
-    let did = crate::select::visible_drawing(&doc, &paused(), Some(lid))
+    let did = crate::select::visible_drawing(&doc, &paused(), FlipTarget::on(oid, Some(lid)))
         .map(|(_, _, d)| d)
         .unwrap();
     doc.object_mut(oid)
@@ -439,7 +439,7 @@ fn an_instanced_drawing_never_opens_the_selection_gizmo() {
             &map,
             SelectionViewInputs {
                 playhead: &paused(),
-                active_layer: Some(lid),
+                target: FlipTarget::on(oid, Some(lid)),
                 last_pointer: (0.0, 0.0),
             },
             &cam,
@@ -457,7 +457,7 @@ fn an_instanced_drawing_never_opens_the_selection_gizmo() {
 fn an_empty_selection_never_opens_the_gizmo() {
     let (mut doc, sim, map, oid, lid, _e) = doc_two_shapes();
     // Desmarca tudo.
-    let did = crate::select::visible_drawing(&doc, &paused(), Some(lid))
+    let did = crate::select::visible_drawing(&doc, &paused(), FlipTarget::on(oid, Some(lid)))
         .map(|(_, _, d)| d)
         .unwrap();
     doc.object_mut(oid)
@@ -477,7 +477,7 @@ fn an_empty_selection_never_opens_the_gizmo() {
             &map,
             SelectionViewInputs {
                 playhead: &paused(),
-                active_layer: Some(lid),
+                target: FlipTarget::on(oid, Some(lid)),
                 last_pointer: (0.0, 0.0),
             },
             &cam,

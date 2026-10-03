@@ -37,6 +37,7 @@ mod paint_tip;
 pub mod populate;
 pub mod state;
 
+pub use paint_sections::tool_button;
 pub use state::{
     FlipLayerRow, FlipLayersSnapshot, LayerRename, last_content_h, last_visible_h,
     set_current_flip_layers, set_current_flip_style,

@@ -1,8 +1,9 @@
-//! **Fase do quadro: OS ESPELHOS DA FERRAMENTA VECTORIAL, DO FLIP E DA FÍSICA** — o modo e as formas da ferramenta vectorial para o input, o objecto inicial do Flip na
-//! borda de activação e o painel de mundo da física (OBRA 2 da `line/render-loop`, 2026-09-13).
+//! **Fase do quadro: OS ESPELHOS DA FERRAMENTA VECTORIAL E DA FÍSICA** — o modo e as formas da
+//! ferramenta vectorial para o input e o painel de mundo da física (OBRA 2 da `line/render-loop`,
+//! 2026-09-13). ⛔ O objecto inicial do Flip que nascia aqui ao activar a ferramenta saiu (spec/06
+//! F3): um desenho nasce pelo menu Add, e o modo nunca cria um objecto (§6.5).
 
 use super::*;
-use ph2d_i18n::tr;
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
@@ -13,8 +14,6 @@ impl crate::App {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
         let FrameGfx {
-            tools,
-            flip,
             hero_screen,
             physics,
             ..
@@ -40,22 +39,6 @@ impl crate::App {
             self.vec.draw_config.bone_action = ph2d_tool_vector::BoneAction::Weight;
         }
 
-        // ADR-0114 W2 T2.17 (ready-to-smoke): ativar a tool Flip num documento
-        // VAZIO cria um objeto inicial (1 camada) pra desenhar na hora — sem
-        // ele o `bake_stroke` sai (não há objeto). Só na borda de ativação;
-        // um doc já povoado (ex. PH2D_FLIP_DEMO) não é tocado.
-        {
-            let now_active = tools
-                .active()
-                .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"));
-            if now_active && !self.flip_state.active && flip.is_empty() {
-                let oid = flip.push_object(tr("shell.fase_tool_mirrors.flip"));
-                if let Some(obj) = flip.object_mut(oid) {
-                    self.flip_state.active_layer =
-                        Some(obj.add_layer(tr("shell.fase_tool_mirrors.layer_1")));
-                }
-            }
-        }
         // ADR-0114 W2: espelha o estado da tool Flip (ativa + estilo de brush)
         // pro input_dispatch decidir/assar o desenho sem downcast (o downcast
         // vive no flip_bridge, allowlistado).

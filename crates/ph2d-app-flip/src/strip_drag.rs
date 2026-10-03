@@ -9,7 +9,7 @@
 //! `set_exposure`, exatamente as que os botões `◀`/`▶` e a caixa **Hold** chamam. Se um dia
 //! a semântica de mover uma chave mudar, ela muda num lugar só.
 
-use ph2d_flip::{FlipDoc, LayerId};
+use ph2d_flip::{FlipDoc, FlipTarget};
 
 /// Aplica os pedidos que o arrasto da tira enfileirou neste frame.
 ///
@@ -20,12 +20,12 @@ use ph2d_flip::{FlipDoc, LayerId};
 /// então as N aplicações do percurso são UM diff no soltar.
 pub fn apply_strip_intents(
     flip: &mut FlipDoc,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     strip: &mut crate::strip::FlipStrip,
 ) -> bool {
     #[cfg(not(feature = "panel-flip-frames"))]
     {
-        let _ = (flip, active_layer, strip);
+        let _ = (flip, target, strip);
         false
     }
     #[cfg(feature = "panel-flip-frames")]
@@ -37,19 +37,7 @@ pub fn apply_strip_intents(
         }
         // O alvo é resolvido UMA vez: o objeto/camada não muda no meio de um drain, e
         // re-resolvê-lo por pedido só daria a chance de discordar de si mesmo.
-        let Some(obj) = flip.objects().first().map(|o| o.id) else {
-            return false;
-        };
-        let Some(lid) = active_layer
-            .filter(|id| {
-                flip.object(obj)
-                    .is_some_and(|o: &ph2d_flip::FlipObject| o.layer(*id).is_some())
-            })
-            .or_else(|| {
-                flip.object(obj)
-                    .and_then(|o| o.layers().last().map(|l| l.id))
-            })
-        else {
+        let Some((obj, lid)) = target.resolve(flip) else {
             return false;
         };
         let Some(o) = flip.object_mut(obj) else {
@@ -91,11 +79,11 @@ pub fn apply_strip_intents(
 #[cfg(all(test, feature = "panel-flip-frames"))]
 mod tests {
     use super::*;
-    use ph2d_flip::{Hold, KeyKind};
+    use ph2d_flip::{FlipObjectId, Hold, KeyKind, LayerId};
     use ph2d_panel_flip_frames::FlipStripIntent;
 
     /// Um objeto com chaves em 0, 4 e 8 — a fixture da tira.
-    fn doc() -> (FlipDoc, LayerId) {
+    fn doc() -> (FlipDoc, FlipObjectId, LayerId) {
         let mut flip = FlipDoc::default();
         let oid = flip.push_object("Flip");
         let obj = flip.object_mut(oid).expect("objeto");
@@ -103,7 +91,7 @@ mod tests {
         for key in [0, 4, 8] {
             obj.insert_frame(lid, key, Hold::Implicit, KeyKind::Keyframe);
         }
-        (flip, lid)
+        (flip, oid, lid)
     }
 
     fn keys(flip: &FlipDoc, lid: LayerId) -> Vec<i32> {
@@ -119,12 +107,12 @@ mod tests {
     /// 🔴 O pedido do arrasto chega ao documento: a chave anda.
     #[test]
     fn a_move_intent_moves_the_key() {
-        let (mut flip, lid) = doc();
+        let (mut flip, oid, lid) = doc();
         let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
         ph2d_panel_flip_frames::push_intent_for_tests(FlipStripIntent::MoveKey { from: 4, to: 6 });
         assert!(apply_strip_intents(
             &mut flip,
-            Some(lid),
+            FlipTarget::on(oid, Some(lid)),
             &mut crate::strip::FlipStrip::default()
         ));
         assert_eq!(keys(&flip, lid), vec![0, 6, 8]);
@@ -135,7 +123,7 @@ mod tests {
     /// vizinha.
     #[test]
     fn a_hold_intent_pushes_the_following_keys() {
-        let (mut flip, lid) = doc();
+        let (mut flip, oid, lid) = doc();
         let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
         ph2d_panel_flip_frames::push_intent_for_tests(FlipStripIntent::SetHold {
             key: 0,
@@ -143,7 +131,7 @@ mod tests {
         });
         assert!(apply_strip_intents(
             &mut flip,
-            Some(lid),
+            FlipTarget::on(oid, Some(lid)),
             &mut crate::strip::FlipStrip::default()
         ));
         assert_eq!(
@@ -160,12 +148,16 @@ mod tests {
     /// apontando um quadro sem chave, e nada na tela dizia por quê.
     #[test]
     fn a_moved_key_carries_its_pin_along() {
-        let (mut flip, lid) = doc();
+        let (mut flip, oid, lid) = doc();
         let mut strip = crate::strip::FlipStrip::default();
         strip.toggle_pin(8);
         let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
         ph2d_panel_flip_frames::push_intent_for_tests(FlipStripIntent::MoveKey { from: 8, to: 9 });
-        assert!(apply_strip_intents(&mut flip, Some(lid), &mut strip));
+        assert!(apply_strip_intents(
+            &mut flip,
+            FlipTarget::on(oid, Some(lid)),
+            &mut strip
+        ));
         assert_eq!(strip.pinned_keys(), &[9], "a referência foi junto");
     }
 
@@ -174,7 +166,7 @@ mod tests {
     /// pins à direita de uma vez.
     #[test]
     fn stretching_a_hold_pushes_the_pins_that_the_keys_push() {
-        let (mut flip, lid) = doc();
+        let (mut flip, oid, lid) = doc();
         let mut strip = crate::strip::FlipStrip::default();
         strip.toggle_pin(8); // a última chave
         let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
@@ -183,7 +175,11 @@ mod tests {
             key: 0,
             frames: 6,
         });
-        assert!(apply_strip_intents(&mut flip, Some(lid), &mut strip));
+        assert!(apply_strip_intents(
+            &mut flip,
+            FlipTarget::on(oid, Some(lid)),
+            &mut strip
+        ));
         assert_eq!(keys(&flip, lid), vec![0, 6, 10]);
         assert_eq!(
             strip.pinned_keys(),
@@ -196,13 +192,17 @@ mod tests {
     /// para um quadro onde não há chave nenhuma.
     #[test]
     fn a_refused_move_leaves_the_pin_where_it_is() {
-        let (mut flip, lid) = doc();
+        let (mut flip, oid, lid) = doc();
         let mut strip = crate::strip::FlipStrip::default();
         strip.toggle_pin(4);
         let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
         // 4 → 8 é ocupado (a última chave está lá): `move_frame` recusa.
         ph2d_panel_flip_frames::push_intent_for_tests(FlipStripIntent::MoveKey { from: 4, to: 8 });
-        assert!(!apply_strip_intents(&mut flip, Some(lid), &mut strip));
+        assert!(!apply_strip_intents(
+            &mut flip,
+            FlipTarget::on(oid, Some(lid)),
+            &mut strip
+        ));
         assert_eq!(strip.pinned_keys(), &[4]);
     }
 
@@ -228,7 +228,11 @@ mod tests {
             selection: vec![4, 5],
             ..Default::default()
         };
-        assert!(apply_strip_intents(&mut flip, Some(lid), &mut strip));
+        assert!(apply_strip_intents(
+            &mut flip,
+            FlipTarget::on(oid, Some(lid)),
+            &mut strip
+        ));
         assert_eq!(keys(&flip, lid), vec![0, 5, 6], "as DUAS pousaram");
         assert_eq!(
             strip.selection,
@@ -242,14 +246,18 @@ mod tests {
     /// multiframe passa a mirar um fantasma). Latente desde o arrasto de UMA célula.
     #[test]
     fn a_moved_key_carries_the_selection_along() {
-        let (mut flip, lid) = doc();
+        let (mut flip, oid, lid) = doc();
         let mut strip = crate::strip::FlipStrip {
             selection: vec![4],
             ..Default::default()
         };
         let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
         ph2d_panel_flip_frames::push_intent_for_tests(FlipStripIntent::MoveKey { from: 4, to: 6 });
-        assert!(apply_strip_intents(&mut flip, Some(lid), &mut strip));
+        assert!(apply_strip_intents(
+            &mut flip,
+            FlipTarget::on(oid, Some(lid)),
+            &mut strip
+        ));
         assert_eq!(strip.selection, vec![6], "a marca foi junto");
     }
 
@@ -257,7 +265,7 @@ mod tests {
     /// fila inteira; sem isto UM gesto de hold orfanaria todas as marcas à direita.
     #[test]
     fn stretching_a_hold_pushes_the_marks_that_the_keys_push() {
-        let (mut flip, lid) = doc();
+        let (mut flip, oid, lid) = doc();
         let mut strip = crate::strip::FlipStrip {
             selection: vec![4, 8],
             ..Default::default()
@@ -268,7 +276,11 @@ mod tests {
             key: 0,
             frames: 6,
         });
-        assert!(apply_strip_intents(&mut flip, Some(lid), &mut strip));
+        assert!(apply_strip_intents(
+            &mut flip,
+            FlipTarget::on(oid, Some(lid)),
+            &mut strip
+        ));
         assert_eq!(
             strip.selection,
             vec![6, 10],
@@ -280,11 +292,11 @@ mod tests {
     /// de virar um passo de undo.
     #[test]
     fn an_empty_drain_changes_nothing() {
-        let (mut flip, lid) = doc();
+        let (mut flip, oid, lid) = doc();
         let _ = ph2d_panel_flip_frames::drain_flip_strip_intents();
         assert!(!apply_strip_intents(
             &mut flip,
-            Some(lid),
+            FlipTarget::on(oid, Some(lid)),
             &mut crate::strip::FlipStrip::default()
         ));
         assert_eq!(keys(&flip, lid), vec![0, 4, 8]);

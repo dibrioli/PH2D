@@ -225,12 +225,16 @@ fn a_born_piece_asks_for_sculpt_once_and_otherwise_the_clay_leaves() {
         "o follow tirou o barro da peça nascida antes de ela entrar"
     );
     assert!(
-        f.wants().is_some(),
+        f.wants(&mut tools).is_some(),
         "o follow largou a peça nascida antes de ela entrar"
     );
     drop(f);
     let mut f = familia(&mut scene);
-    assert_eq!(f.wants(), None, "o pedido do nascimento repetiu-se");
+    assert_eq!(
+        f.wants(&mut tools),
+        None,
+        "o pedido do nascimento repetiu-se"
+    );
     f.follow(None, &mut tools);
     drop(f);
     assert!(!scene.clay_on_screen(), "sem modo o barro ficou na tela");
@@ -243,6 +247,7 @@ fn the_born_piece_is_the_active_one() {
     let gpu = gpu_or_skip!();
     let mut scene = duas_pecas(&gpu.device);
     scene.active = 1;
+    let mut tools = ToolRegistry::new();
     let mut f = familia(&mut scene);
-    assert_eq!(f.wants(), Some((B, ObjectMode::Sculpt)));
+    assert_eq!(f.wants(&mut tools), Some((B, ObjectMode::Sculpt)));
 }

@@ -11,12 +11,12 @@
 //! (`stroke_from_samples`), e não desta.
 
 use ph2d_core::Vec2;
-use ph2d_flip::{FlipDoc, LayerId};
+use ph2d_flip::{FlipDoc, FlipTarget};
 use ph2d_tool_flip::FlipStyleSnapshot;
 use ph2d_vec_scene::Xform;
 
 /// Assa `(points, pressures)` (mundo) num `FlipStroke` e o empurra no desenho
-/// ativo do 1º objeto na CAMADA ATIVA (fallback: topo) no quadro atual. Cria uma
+/// em edição ([`FlipTarget`]), na CAMADA ATIVA (fallback: topo) no quadro atual. Cria uma
 /// chave se o quadro ainda não tem desenho. `px_to_world` = mundo por pixel de
 /// tela (a largura do brush é em px → convertida pra mundo). Uma camada TRAVADA
 /// (`locked`) recusa o traço. Devolve `true` se assou.
@@ -25,7 +25,7 @@ pub fn bake_stroke(
     flip: &mut FlipDoc,
     playhead: &ph2d_core::Playhead,
     style: &FlipStyleSnapshot,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     strip: &mut crate::strip::FlipStrip,
     points: &[Vec2],
     pressures: &[f32],
@@ -40,7 +40,7 @@ pub fn bake_stroke(
     let (oid, _lid, did) = crate::autokey::target_drawing(
         flip,
         playhead,
-        active_layer,
+        target,
         strip,
         crate::autokey::FlipEdit::Draw,
     )?;

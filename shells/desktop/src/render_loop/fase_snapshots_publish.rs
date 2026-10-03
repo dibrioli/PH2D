@@ -117,7 +117,7 @@ impl crate::App {
             &tool_preview_bits,
             vec_scene,
             // ⭐⭐⭐ **A caixa de objecto só existe quando NENHUMA ferramenta autora no canvas**
-            // (ADR-0112) — a vectorial fora do Select dela, **e a do Flip fora do Select dela**.
+            // (ADR-0112) — a vectorial fora do Select dela, **e a do Flip sempre** (ela só está na mão em Draw/Edit).
             // As alças registam hit-rects, e os dois ramos de canvas (`ramo_ferramenta_vetorial` e
             // `ramo_flip_premidos`) exigem o MESMO `on_canvas`: uma caixa sobre um canvas de
             // autoria é um ladrão de cliques, seja qual for a família do objecto que a publica.
@@ -130,13 +130,9 @@ impl crate::App {
                 .active()
                 .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"))
                 || self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Select)
-                && (!tools
+                && !tools
                     .active()
                     .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"))
-                    || matches!(
-                        self.flip_state.style.map(|s| s.mode),
-                        Some(ph2d_tool_flip::FlipMode::Select)
-                    ))
                 && !self.ui_preview.is_on(),
             // As poses que o último desenho derivou — sem elas a caixa do gizmo de um filho
             // colocado aparece onde a forma foi AUTORADA.

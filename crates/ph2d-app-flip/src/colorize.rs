@@ -297,7 +297,7 @@ pub fn apply(
     let Some(style) = state.style else {
         return false;
     };
-    let active_layer = state.active_layer;
+    let target = state.target;
     // A MESMA largura que o overlay desenhou — o que o artista pinta é o que semeia.
     let seed_width = scribble_width(&style, w2l);
 
@@ -336,7 +336,7 @@ pub fn apply(
     let Some((oid, lid, did)) = crate::autokey::target_drawing(
         f.flip,
         playhead,
-        active_layer,
+        target,
         &mut state.strip,
         crate::autokey::FlipEdit::Modify,
     ) else {

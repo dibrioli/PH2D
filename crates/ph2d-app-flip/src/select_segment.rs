@@ -294,7 +294,7 @@ pub fn hover_refresh(
     }
     state.segment_hover_at = Some(cursor);
 
-    let active_layer = state.active_layer;
+    let target = state.target;
     let Some(f) = f else {
         // Sem `AppGfx` não há câmera nem documento — o `and_then(|gfx| …)` de antes dava
         // `None` aqui, e é isso que se preserva. ⚠️ O guarda ACIMA corre na mesma: limpar o
@@ -307,7 +307,7 @@ pub fn hover_refresh(
         let px_to_world = f.px_to_world();
         let l = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
         let local = Vec2::new(l[0] as f32, l[1] as f32);
-        let (oid, lid, did) = crate::select::visible_drawing(f.flip, f.playhead, active_layer)?;
+        let (oid, lid, did) = crate::select::visible_drawing(f.flip, f.playhead, target)?;
         let obj = f.flip.object(oid)?;
         let cutters = frame_cutters(obj, obj.frame_at(f.playhead), lid);
         let drawing = obj.drawing(did)?;

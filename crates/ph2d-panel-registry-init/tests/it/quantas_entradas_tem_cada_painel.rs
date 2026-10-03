@@ -2728,9 +2728,21 @@ fn selectores_de_cor() -> Vec<SeletorDeCor> {
                             *xs.entry((q.x * 2.0).round() as i32).or_default() += 1;
                         }
                     }
+                    // ⚠️ Um painel SEM campo sozinho na fileira (o Flip em Draw: só sliders com o
+                    //    número ao lado e grupos de botões) não tem moda — e «sem coluna medida» não
+                    //    é «fora da coluna». Ali a coluna é a da LEI, a mesma da tabela acima.
                     xs.into_iter()
                         .max_by_key(|(_, n)| *n)
                         .map(|(x, _)| x as f32 / 2.0)
+                        .or_else(|| {
+                            let lei = ph2d_editor_core::property_row::caixa_do_controlo(
+                                ix,
+                                iw,
+                                0.0,
+                                ph2d_editor_core::property_row::Seccao::apenas_campos(1),
+                            );
+                            Some(lei.x)
+                        })
                 });
                 out.push(SeletorDeCor {
                     painel: id,

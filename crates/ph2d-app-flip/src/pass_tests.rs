@@ -66,7 +66,7 @@ fn a_layers_ghost_sits_above_the_layers_below_it() {
         &doc,
         &ph,
         None,
-        None,
+        FlipTarget::on(doc.objects()[0].id, None),
         &[],
         Some(crate::pass_ghosts::GhostSources::default()),
         None,
@@ -127,7 +127,15 @@ fn the_render_samples_through_the_cycle() {
     // Sem ciclo, o quadro 20 estaria além de tudo (o cru seguraria d8 pra sempre).
     // Com Loop, ele volta ao quadro 4 → d0. E o 28 volta ao 12 → d8.
     let layer_drawing = |doc: &FlipDoc, f: i32| {
-        let (layers, _) = collect_layers(doc, &at(f), None, None, &[], None, None);
+        let (layers, _) = collect_layers(
+            doc,
+            &at(f),
+            None,
+            FlipTarget::on(doc.objects()[0].id, None),
+            &[],
+            None,
+            None,
+        );
         // A última fatia é a do FG (o BG vem primeiro; sem fantasmas aqui).
         layers.last().and_then(|l| {
             let (_, did) = l.cache_key;
@@ -144,7 +152,15 @@ fn the_render_samples_through_the_cycle() {
 #[test]
 fn there_are_no_ghosts_without_the_tool_or_during_play() {
     let doc = doc_bg_fg();
-    let (layers, _) = collect_layers(&doc, &at(8), None, None, &[], None, None);
+    let (layers, _) = collect_layers(
+        &doc,
+        &at(8),
+        None,
+        FlipTarget::on(doc.objects()[0].id, None),
+        &[],
+        None,
+        None,
+    );
     assert!(layers.iter().all(|l| l.ghost.is_none()), "tool inativa");
 
     let mut playing = at(8);
@@ -153,7 +169,7 @@ fn there_are_no_ghosts_without_the_tool_or_during_play() {
         &doc,
         &playing,
         None,
-        None,
+        FlipTarget::on(doc.objects()[0].id, None),
         &[],
         Some(crate::pass_ghosts::GhostSources::default()),
         None,
@@ -236,7 +252,7 @@ fn each_slice_carries_the_pose_of_its_own_key() {
         &doc,
         &at(8),
         None,
-        None,
+        FlipTarget::on(doc.objects()[0].id, None),
         &[],
         Some(crate::pass_ghosts::GhostSources::default()),
         None,
@@ -275,7 +291,15 @@ fn under_a_loop_the_pose_travels_with_the_drawing() {
     };
 
     // O quadro 16 é o quadro 0 de novo (2ª volta do Loop).
-    let (layers, _) = collect_layers(&doc, &at(16), None, None, &[], None, None);
+    let (layers, _) = collect_layers(
+        &doc,
+        &at(16),
+        None,
+        FlipTarget::on(doc.objects()[0].id, None),
+        &[],
+        None,
+        None,
+    );
     let fg_slice = layers.last().expect("a camada FG compoe");
     assert_eq!(
         [fg_slice.model.0[4], fg_slice.model.0[5]],
@@ -346,7 +370,7 @@ fn a_traced_ghost_wears_its_shift_and_an_empty_map_changes_nothing() {
         &doc,
         &ph,
         None,
-        None,
+        FlipTarget::on(doc.objects()[0].id, None),
         &[],
         Some(GhostSources::default()),
         None,
@@ -358,7 +382,15 @@ fn a_traced_ghost_wears_its_shift_and_an_empty_map_changes_nothing() {
         trace: Some(&empty),
         ..Default::default()
     };
-    let (with_empty, _) = collect_layers(&doc, &ph, None, None, &[], Some(src_empty), None);
+    let (with_empty, _) = collect_layers(
+        &doc,
+        &ph,
+        None,
+        FlipTarget::on(doc.objects()[0].id, None),
+        &[],
+        Some(src_empty),
+        None,
+    );
     for (a, b) in base.iter().zip(with_empty.iter()) {
         assert_eq!(a.model.0, b.model.0, "mapa vazio moveu um model");
     }
@@ -370,7 +402,15 @@ fn a_traced_ghost_wears_its_shift_and_an_empty_map_changes_nothing() {
         trace: Some(&map),
         ..Default::default()
     };
-    let (shifted, _) = collect_layers(&doc, &ph, None, None, &[], Some(src_map), None);
+    let (shifted, _) = collect_layers(
+        &doc,
+        &ph,
+        None,
+        FlipTarget::on(doc.objects()[0].id, None),
+        &[],
+        Some(src_map),
+        None,
+    );
     for (a, b) in base.iter().zip(shifted.iter()) {
         if b.ghost.is_some() {
             assert_eq!(
@@ -431,12 +471,20 @@ fn holding_the_flip_keys_peeks_the_neighbour_drawing_of_the_active_layer() {
 
     // No quadro 8 (chave ativa 8), F1 = a folha ANTERIOR: a fatia do FG mostra o
     // desenho da chave 0. O BG — que TEM um vizinho para onde folhear — fica parado.
-    let (base, _) = collect_layers(&doc, &at(8), None, Some(fg_id), &[], None, None);
+    let (base, _) = collect_layers(
+        &doc,
+        &at(8),
+        None,
+        FlipTarget::on(doc.objects()[0].id, Some(fg_id)),
+        &[],
+        None,
+        None,
+    );
     let (prev, _) = collect_layers(
         &doc,
         &at(8),
         None,
-        Some(fg_id),
+        FlipTarget::on(doc.objects()[0].id, Some(fg_id)),
         &[],
         None,
         Some(crate::peek::PeekDir::Prev),
@@ -458,7 +506,7 @@ fn holding_the_flip_keys_peeks_the_neighbour_drawing_of_the_active_layer() {
         &doc,
         &at(0),
         None,
-        Some(fg_id),
+        FlipTarget::on(doc.objects()[0].id, Some(fg_id)),
         &[],
         None,
         Some(crate::peek::PeekDir::Next),
@@ -480,9 +528,24 @@ fn peeking_where_there_is_no_neighbour_stays_put() {
         (8, crate::peek::PeekDir::Here),
         (0, crate::peek::PeekDir::Prev),
     ] {
-        let (base, _) = collect_layers(&doc, &at(ph_frame), None, Some(fg_id), &[], None, None);
-        let (peeked, _) =
-            collect_layers(&doc, &at(ph_frame), None, Some(fg_id), &[], None, Some(dir));
+        let (base, _) = collect_layers(
+            &doc,
+            &at(ph_frame),
+            None,
+            FlipTarget::on(doc.objects()[0].id, Some(fg_id)),
+            &[],
+            None,
+            None,
+        );
+        let (peeked, _) = collect_layers(
+            &doc,
+            &at(ph_frame),
+            None,
+            FlipTarget::on(doc.objects()[0].id, Some(fg_id)),
+            &[],
+            None,
+            Some(dir),
+        );
         for (a, b) in base.iter().zip(peeked.iter()) {
             assert_eq!(
                 a.cache_key, b.cache_key,
@@ -519,7 +582,7 @@ fn mid_hold_the_peek_anchors_on_the_active_key_not_the_raw_frame() {
         &doc,
         &at(5),
         None,
-        Some(l),
+        FlipTarget::on(doc.objects()[0].id, Some(l)),
         &[],
         None,
         Some(crate::peek::PeekDir::Prev),

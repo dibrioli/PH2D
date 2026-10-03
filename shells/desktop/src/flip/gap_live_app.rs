@@ -35,9 +35,7 @@ impl crate::App {
 
         // O desenho NA TELA, read-only — nunca o `flip_autokey` (que CRIA chave; um
         // overlay que autora seria o gesto acontecendo sem ninguém gesticular).
-        let Some((oid, lid)) =
-            ph2d_app_flip::strip_resolve::target(&gfx.flip, self.flip_state.active_layer)
-        else {
+        let Some((oid, lid)) = self.flip_state.target.resolve(&gfx.flip) else {
             self.flip_state.gap.clear();
             return;
         };

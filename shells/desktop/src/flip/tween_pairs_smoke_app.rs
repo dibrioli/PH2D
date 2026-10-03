@@ -35,7 +35,7 @@ impl crate::App {
         // largada não é ready-to-smoke).
         self.flip_state.strip.tween_correct = ph2d_app_flip::tween_correct::build(
             &self.gfx.as_ref().unwrap().flip,
-            None,
+            ph2d_flip::FlipTarget::on(oid, None),
             &self.playhead,
         );
 

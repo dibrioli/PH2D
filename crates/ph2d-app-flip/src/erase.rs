@@ -12,7 +12,7 @@
 //! HR-5: the falloff is a clamped linear ramp (no transcendentals).
 
 use ph2d_core::Vec2;
-use ph2d_flip::{Cap, FlipDrawing, FlipStroke, LayerId};
+use ph2d_flip::{Cap, FlipDrawing, FlipStroke, FlipTarget};
 use ph2d_tool_flip::EraseMode;
 
 /// Below this opacity a soft-erased point is dropped on pen-up (the GP eraser's law).
@@ -56,13 +56,13 @@ fn soft_erased(current: f32, strength: f32, falloff: f32) -> f32 {
 fn active_drawing_mut<'a>(
     flip: &'a mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     strip: &mut crate::strip::FlipStrip,
 ) -> Option<&'a mut FlipDrawing> {
     let (oid, _lid, did) = crate::autokey::target_drawing(
         flip,
         playhead,
-        active_layer,
+        target,
         strip,
         crate::autokey::FlipEdit::Modify,
     )?;
@@ -183,14 +183,14 @@ fn split_by<F: Fn(usize) -> bool>(s: &FlipStroke, keep: F) -> Vec<FlipStroke> {
 pub(crate) fn erase_at(
     flip: &mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     strip: &mut crate::strip::FlipStrip,
     mode: EraseMode,
     center: Vec2,
     radius: f32,
     strength: f32,
 ) -> bool {
-    let Some(dr) = active_drawing_mut(flip, playhead, active_layer, strip) else {
+    let Some(dr) = active_drawing_mut(flip, playhead, target, strip) else {
         return false;
     };
     match mode {
@@ -262,10 +262,10 @@ pub(crate) fn erase_at(
 pub(crate) fn cleanup_soft(
     flip: &mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     strip: &mut crate::strip::FlipStrip,
 ) -> bool {
-    let Some(dr) = active_drawing_mut(flip, playhead, active_layer, strip) else {
+    let Some(dr) = active_drawing_mut(flip, playhead, target, strip) else {
         return false;
     };
     let before = dr.strokes.len();
@@ -309,7 +309,7 @@ pub(crate) fn apply(
     let Some(style) = state.style else {
         return;
     };
-    let active_layer = state.active_layer;
+    let target = state.target;
     let w = f.to_world(x, y);
     // Raio/força EFETIVOS da borracha (§4.C): `erase_px`/`erase_strength` já vêm com o link
     // resolvido pela tool. **O raio é fixo no MUNDO** (§4.C.6) — dar zoom não muda o que ela leva.
@@ -319,7 +319,7 @@ pub(crate) fn apply(
     erase_at(
         f.flip,
         f.playhead,
-        active_layer,
+        target,
         &mut state.strip,
         style.erase,
         Vec2::new(local[0] as f32, local[1] as f32),
@@ -374,8 +374,8 @@ pub fn canvas_up(
         Some(ph2d_tool_flip::EraseMode::Soft)
     );
     if soft {
-        let active_layer = state.active_layer;
-        cleanup_soft(flip, playhead, active_layer, &mut state.strip);
+        let target = state.target;
+        cleanup_soft(flip, playhead, target, &mut state.strip);
     }
     true
 }

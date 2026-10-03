@@ -27,8 +27,7 @@ use ph2d_painter_effects::MAX_BLEND_MODES;
 /// `apply_event` match guard (that fn sits at the 200-LOC cap) — a pure predicate,
 /// so a seam test can drive each id without the whole router.
 fn is_style_forward_click(id: ph2d_a11y::NodeId) -> bool {
-    id == ph2d_tool_flip::ids::FLIP_MODE_SELECT
-        || id == ph2d_tool_flip::ids::FLIP_MODE_DRAW
+    id == ph2d_tool_flip::ids::FLIP_MODE_DRAW
         || id == ph2d_tool_flip::ids::FLIP_MODE_ERASE
         || id == ph2d_tool_flip::ids::FLIP_MODE_FILL
         || id == ph2d_tool_flip::ids::FLIP_MODE_RESHAPE

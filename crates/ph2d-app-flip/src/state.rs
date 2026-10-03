@@ -57,10 +57,21 @@ pub struct FlipState {
     /// topo do frame seguinte. Falso fora do clique.
     pub pending_colorize_apply: bool,
     pub pending_colorize_clear: bool,
-    /// ADR-0114 W2: a camada ATIVA do Flip (alvo do traço/borracha + destaque no
-    /// painel). Setada pela seleção de linha no painel (drain do shell); `None`
-    /// ⇒ o bake usa a camada de topo (o `flip_bridge` também destaca a de topo).
-    pub active_layer: Option<ph2d_flip::LayerId>,
+    /// ⭐ **O ALVO da autoria** (spec/06 F3 do Flip): o desenho que o modo Draw/Edit tem em mãos
+    /// (escrito SÓ por [`crate::flip_mode`]) e a camada ATIVA nele (a linha escolhida no painel;
+    /// `None` ⇒ a de topo). Todo gesto, painel e pré-visualização resolve por
+    /// [`ph2d_flip::FlipTarget`] — nunca pelo 1.º objecto.
+    pub target: ph2d_flip::FlipTarget,
+    /// Um desenho que nasceu pelo menu Add e pede o Draw Mode (escolha do dono, 03/10).
+    pub born: Option<ph2d_flip::FlipObjectId>,
+    /// O modo do Flip que o quadro anterior seguia — a borda que separa *«a ferramenta chegou à mão
+    /// por uma porta antiga e pede o modo»* de *«o modo acabou e a ferramenta sai»*.
+    pub following: Option<ph2d_editor_core::object_mode::ObjectMode>,
+    /// A última ferramenta de cada modo (o Blender lembra a ferramenta activa por modo).
+    pub last_tool: std::collections::BTreeMap<
+        ph2d_editor_core::object_mode::ObjectMode,
+        ph2d_tool_flip::FlipMode,
+    >,
     /// ADR-0114 W2 T2.9: uma borracha do Flip está em curso (Down..Up no modo
     /// Erase). Enquanto `true`, cada move apaga sob o cursor; o pen-up faz o
     /// cleanup do Soft. `false` quando não há gesto.

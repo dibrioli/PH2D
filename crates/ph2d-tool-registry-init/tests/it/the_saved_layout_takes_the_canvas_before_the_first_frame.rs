@@ -105,7 +105,8 @@ fn every_saved_layout_takes_its_tool_at_startup_and_leaves_no_request_behind() {
         }
     }
     // ⛔ Controlo de população: uma lei que respondesse «não» a tudo passava as duas metades acima.
-    for id in ["vector", "flip", "motion"] {
+    // (O `flip` saiu da lista: o layout Flip pede o MODO Draw, spec/06 F3 — sem activo, Object.)
+    for id in ["vector", "motion"] {
         assert!(
             pegaram.contains(&id),
             "controlo: o layout de `{id}` devia pegar a ferramenta no arranque (pegaram {pegaram:?})"

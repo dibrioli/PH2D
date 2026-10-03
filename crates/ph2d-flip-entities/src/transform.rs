@@ -110,8 +110,8 @@ pub fn world_to_art(object: &Xform, key_pose: Pose) -> Xform {
         .unwrap_or(Xform::IDENTITY)
 }
 
-/// A pose (afim) da chave que está NA TELA agora, para o 1º objeto e a camada ativa
-/// (fallback: o topo) — a MESMA amostragem do render (`pose_at_cycled`, W7.2).
+/// A pose (afim) da chave que está NA TELA agora, para o desenho em edição e a camada
+/// do [`ph2d_flip::FlipTarget`] — a MESMA amostragem do render (`pose_at_cycled`, W7.2).
 ///
 /// Função livre porque tem DOIS chamadores com borrows diferentes:
 /// `App::flip_active_pose` (o funil da autoria, `&self` inteiro) e o overlay dos
@@ -121,16 +121,15 @@ pub fn world_to_art(object: &Xform, key_pose: Pose) -> Xform {
 #[must_use]
 pub fn active_pose(
     flip: &FlipDoc,
-    active_layer: Option<ph2d_flip::LayerId>,
+    target: ph2d_flip::FlipTarget,
     playhead: &ph2d_core::Playhead,
 ) -> Pose {
-    let Some(obj) = flip.objects().first() else {
+    let Some(obj) = target.drawing(flip) else {
         return Pose::IDENTITY;
     };
     let frame = obj.frame_at(playhead);
-    active_layer
-        .filter(|id| obj.layer(*id).is_some())
-        .or_else(|| obj.layers().last().map(|l| l.id))
+    target
+        .layer_in(obj)
         .and_then(|lid| obj.layer(lid))
         .map_or(Pose::IDENTITY, |l| l.pose_at_cycled(frame))
 }

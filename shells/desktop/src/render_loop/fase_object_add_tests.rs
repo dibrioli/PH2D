@@ -152,7 +152,7 @@ fn creating_then_undoing_returns_the_project_to_the_bit() {
         let mut vec_scene = ph2d_vec_scene::VecScene::new();
         let mut flip = ph2d_flip::FlipDoc::new();
         let mut vec = ph2d_app_vec::state::VecState::default();
-        let mut fmap = ph2d_flip_entities::entities::FlipEntityMap::new();
+        let mut fstate = ph2d_app_flip::state::FlipState::default();
         // ⚠️ **O projecto NÃO começa vazio:** um undo que apagasse tudo passaria sobre um vazio.
         ph2d_app_components::object_add::spawn_empty_root(&mut sim, "Pre");
         vec_scene.push_path(ph2d_vec_scene::rectangle([0.0, 0.0], [2.0, 2.0]));
@@ -184,7 +184,7 @@ fn creating_then_undoing_returns_the_project_to_the_bit() {
                 ph2d_app_flip::object_add::FLIP,
                 &mut sim,
                 &mut flip,
-                &mut fmap,
+                &mut fstate,
             )
             .expect("é do Flip")
             .map_err(String::from),

@@ -53,7 +53,7 @@
 use ph2d_core::{Playhead, Vec2};
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::{GizmoCamera, GizmoModifiers, GizmoSnap, GizmoView, TransformSnapshot};
-use ph2d_flip::{DrawingId, FlipDoc, FlipDrawing, FlipObjectId, LayerId, Pose};
+use ph2d_flip::{DrawingId, FlipDoc, FlipDrawing, FlipObjectId, FlipTarget, Pose};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_vec_scene::Xform;
@@ -278,12 +278,8 @@ struct SelTarget {
 /// [`grabbable_selection_box`] admite (arte instanciada · sem seleção · seleção sem
 /// extensão). É o inverso exato do `flip_pose_gizmo::pose_target` (que exige instância).
 #[must_use]
-fn selection_target(
-    flip: &FlipDoc,
-    playhead: &Playhead,
-    active_layer: Option<LayerId>,
-) -> Option<SelTarget> {
-    let (oid, lid, key, did) = crate::select::visible_key(flip, playhead, active_layer)?;
+fn selection_target(flip: &FlipDoc, playhead: &Playhead, target: FlipTarget) -> Option<SelTarget> {
+    let (oid, lid, key, did) = crate::select::visible_key(flip, playhead, target)?;
     let obj = flip.object(oid)?;
     let drawing = obj.drawing(did)?;
     // A caixa CRUA da arte (a recusa mora aqui). A FOLGA é somada pelo consumidor, que é
@@ -302,7 +298,7 @@ fn selection_target(
 #[derive(Clone, Copy)]
 pub struct SelectionViewInputs<'a> {
     pub playhead: &'a Playhead,
-    pub active_layer: Option<LayerId>,
+    pub target: FlipTarget,
     pub last_pointer: (f32, f32),
 }
 
@@ -319,7 +315,7 @@ pub fn selection_view(
     camera: &Camera2d,
     window_size: WindowSize,
 ) -> Option<GizmoView> {
-    let t = selection_target(flip, inputs.playhead, inputs.active_layer)?;
+    let t = selection_target(flip, inputs.playhead, inputs.target)?;
     let e = map
         .get(&t.oid)
         .map(|&b| ph2d_ecs::Entity::from_bits(b))
@@ -387,7 +383,7 @@ pub fn gizmo_down(
     if !wants_edit {
         return false;
     }
-    let active_layer = state.active_layer;
+    let target = state.target;
     let Some(hit_id) = hero.chrome_hit(x, y) else {
         return false;
     };
@@ -397,7 +393,7 @@ pub fn gizmo_down(
     if hit.target != ph2d_editor_core::GizmoTarget::FlipSelection {
         return false;
     }
-    let Some(t) = selection_target(f.flip, f.playhead, active_layer) else {
+    let Some(t) = selection_target(f.flip, f.playhead, target) else {
         return false;
     };
     let Some(e) = state

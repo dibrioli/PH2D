@@ -16,6 +16,7 @@ impl crate::App {
             tools,
             toasts,
             hero_screen,
+            flip,
             #[cfg(feature = "sculpt3d")]
             sculpt3d,
             ..
@@ -26,14 +27,17 @@ impl crate::App {
         let request = request.or_else(|| ph2d_app_painter::paint_mode::smoke_step(sim, hero));
         #[cfg(feature = "sculpt3d")]
         ph2d_app_sculpt3d::sculpt_mode::smoke_step(sim, hero);
+        ph2d_app_flip::flip_mode::smoke_step(&self.flip_state, hero);
         // ⭐ **As famílias que declaram modos**, compiladas.
         let mut paint = ph2d_app_painter::paint_mode::Family;
         #[cfg(feature = "sculpt3d")]
         let mut sculpt = ph2d_app_sculpt3d::sculpt_mode::Family::new(sim, sculpt3d.as_mut());
+        let mut flip = ph2d_app_flip::flip_mode::Family::new(&mut self.flip_state, flip);
         let families: &mut [&mut dyn ModeFamily] = &mut [
             &mut paint,
             #[cfg(feature = "sculpt3d")]
             &mut sculpt,
+            &mut flip,
         ];
         let world = sim.world();
         if ph2d_app_components::object_mode::drive(world, families, tools, hero, toasts, request) {

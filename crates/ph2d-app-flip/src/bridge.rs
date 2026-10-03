@@ -16,16 +16,17 @@
 //! before paint): a freshly-activated tool is seen this frame.
 
 use ph2d_editor_core::{HeroScreen, ToolId, ToolRegistry};
-use ph2d_flip::{FlipDoc, LayerId};
+use ph2d_flip::{FlipDoc, FlipTarget};
 use ph2d_tool_flip::{FlipStyleSnapshot, FlipTool};
 
-/// Build the panel's layer snapshot from the active object (the first object,
-/// matching `flip_draw::bake_stroke`). `active` falls back to the TOP layer so
-/// the panel highlights a sensible default + the stroke has a target.
+/// Build the panel's layer snapshot from the drawing in edit ([`FlipTarget`], the same
+/// one `flip_draw::bake_stroke` paints on). The active row falls back to the TOP layer
+/// so the panel highlights a sensible default + the stroke has a target. No drawing
+/// in edit (Object mode) ⇒ empty snapshot.
 #[cfg(feature = "panel-flip")]
-fn layers_snapshot(flip: &FlipDoc, active: Option<LayerId>) -> ph2d_panel_flip::FlipLayersSnapshot {
+fn layers_snapshot(flip: &FlipDoc, target: FlipTarget) -> ph2d_panel_flip::FlipLayersSnapshot {
     use ph2d_panel_flip::{FlipLayerRow, FlipLayersSnapshot};
-    let Some(obj) = flip.objects().first() else {
+    let Some(obj) = target.drawing(flip) else {
         return FlipLayersSnapshot::default();
     };
     let rows = obj
@@ -41,9 +42,7 @@ fn layers_snapshot(flip: &FlipDoc, active: Option<LayerId>) -> ph2d_panel_flip::
             locked: l.locked,
         })
         .collect();
-    let active = active
-        .filter(|id| obj.layer(*id).is_some())
-        .or_else(|| obj.layers().last().map(|l| l.id));
+    let active = target.layer_in(obj);
     FlipLayersSnapshot {
         rows,
         active: active.map(|id| u64::from(id.0)),
@@ -56,17 +55,15 @@ fn layers_snapshot(flip: &FlipDoc, active: Option<LayerId>) -> ph2d_panel_flip::
 #[cfg(feature = "panel-flip-frames")]
 fn strip_snapshot(
     flip: &FlipDoc,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     playhead: &ph2d_core::Playhead,
     strip: &crate::strip::FlipStrip,
 ) -> ph2d_panel_flip_frames::FlipStripSnapshot {
     use ph2d_panel_flip_frames::{FlipCell, FlipStripSnapshot};
-    let Some(obj) = flip.objects().first() else {
+    let Some(obj) = target.drawing(flip) else {
         return FlipStripSnapshot::default();
     };
-    let layer = active_layer
-        .and_then(|id| obj.layer(id))
-        .or_else(|| obj.layers().last());
+    let layer = target.layer_in(obj).and_then(|id| obj.layer(id));
     let Some(layer) = layer else {
         return FlipStripSnapshot {
             fps: obj.fps,
@@ -143,8 +140,8 @@ fn cycle_wire(post: ph2d_flip::CycleMode) -> u8 {
 /// `(flip_active, style)` — `flip_active` = the Flip tool is ACTIVE; `style` =
 /// the brush/mode snapshot (present whenever the tool is registered). Also
 /// drives panel visibility + publishes the style/layers snapshots the panel
-/// paints. `flip` = the live document; `active_layer` = the shell's active layer
-/// (drawn-onto + highlighted).
+/// paints. `flip` = the live document; `target` = the drawing in edit and its
+/// active layer (drawn-onto + highlighted).
 // ⚠️ **HOWTO §2.4 tornada VISÍVEL:** quatro destes parâmetros só são lidos pelos braços
 // `#[cfg(feature = "panel-flip"/"panel-flip-frames")]` abaixo. Sem as features a assinatura
 // fica com eles por usar — e é BOM que o compilador o diga, porque é exactamente o sintoma
@@ -159,7 +156,7 @@ pub fn publish(
     hero: &mut HeroScreen,
     tools: &mut ToolRegistry,
     flip: &FlipDoc,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     playhead: &ph2d_core::Playhead,
     strip: &crate::strip::FlipStrip,
 ) -> (bool, Option<FlipStyleSnapshot>) {
@@ -230,7 +227,7 @@ pub fn publish(
     {
         ph2d_panel_flip::set_current_flip_style(if flip_active { style } else { None });
         ph2d_panel_flip::set_current_flip_layers(if flip_active {
-            layers_snapshot(flip, active_layer)
+            layers_snapshot(flip, target)
         } else {
             ph2d_panel_flip::FlipLayersSnapshot::default()
         });
@@ -239,7 +236,7 @@ pub fn publish(
     // ── 5. Publish the frame-strip snapshot (W3). ──
     #[cfg(feature = "panel-flip-frames")]
     ph2d_panel_flip_frames::set_current_flip_strip(if flip_active {
-        strip_snapshot(flip, active_layer, playhead, strip)
+        strip_snapshot(flip, target, playhead, strip)
     } else {
         ph2d_panel_flip_frames::FlipStripSnapshot::default()
     });

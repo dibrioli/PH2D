@@ -1,4 +1,4 @@
-//! Flip-tool UI vocabulary — o modo de canvas (Select/Draw/Erase), o modo de
+//! Flip-tool UI vocabulary — a ferramenta na mão (Draw/Erase/…), o modo de
 //! borracha, e os mapeamentos slider↔valor do brush, compartilhados pelo painel
 //! docado (`ph2d-panel-flip`) e pela tool (`handle_panel_event`).
 //!
@@ -6,15 +6,18 @@
 //! projeta-o num [`FlipStyleSnapshot`] por frame (o shell publica → o painel lê),
 //! e os dois lados concordam no mapa afim do slider (drag e tool em lock-step).
 
-/// O gesto de canvas que a tool Flip executa. Espelha a arbitragem do Vector
-/// (ADR-0112): **gizmo só no `Select`** (os modos de desenho não publicam
-/// `GizmoView`, senão as alças comeriam o clique). O pill alterna.
+use ph2d_editor_core::object_mode::ObjectMode;
+
+/// **A ferramenta do Flip na mão** — o gesto do ponteiro DENTRO de um modo do desenho (D3: o modo
+/// é do objecto, a ferramenta é do modo). Cada uma pertence a UM modo ([`FlipMode::object_mode`]):
+/// o painel só mostra as do modo em curso ([`FlipMode::tools_of`]).
+///
+/// ⛔ Não há `Select`: mover/rodar/escalar o desenho inteiro é o modo **Object**, onde a
+/// ferramenta Flip nem está na mão (spec/06 F3 do Flip; antes era a seta preta do ADR-0112).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum FlipMode {
-    /// Seta preta: seleciona e TRANSFORMA o objeto pelo gizmo. Não desenha.
-    #[default]
-    Select,
     /// Lápis: cada arrasto no canvas cria um traço novo no desenho ativo.
+    #[default]
     Draw,
     /// Borracha: remove cobertura/traço (ver [`EraseMode`]).
     Erase,
@@ -22,12 +25,7 @@ pub enum FlipMode {
     Fill,
     /// **Reshape**: esculpe o traço já desenhado (W5 — ver [`ReshapeKind`]).
     Reshape,
-    /// **Edit**: seleciona TRAÇOS (W6 — o Edit Mode do GP).
-    ///
-    /// É um modo próprio, e **não** uma sobrecarga do [`FlipMode::Select`]: o Select é a
-    /// arbitragem do ADR-0112 — ali quem manda é o **gizmo**, que move/gira/escala o
-    /// objeto Flip inteiro. Se o clique do Select passasse a pegar traço, o usuário
-    /// perderia o gizmo. É a mesma separação Object Mode × Edit Mode do Grease Pencil.
+    /// **Edit**: seleciona TRAÇOS e pontos (W6 — o Edit Mode do GP).
     Edit,
     /// **Colorize**: rabisca cores sobre as linhas; o corte LazyBrush transforma os
     /// rabiscos em regiões preenchidas num só solve (C2 — `docs/Flip/09_colorize.md`).
@@ -49,8 +47,7 @@ impl FlipMode {
     /// dispara. Agora os gates varrem `ALL` e afirmam que a tabela deles a cobre INTEIRA,
     /// então o próximo modo quebra o teste no dia em que nascer — que é o único momento em
     /// que o custo de arrumar é baixo.
-    pub const ALL: [FlipMode; 8] = [
-        FlipMode::Select,
+    pub const ALL: [FlipMode; 7] = [
         FlipMode::Draw,
         FlipMode::Erase,
         FlipMode::Fill,
@@ -59,6 +56,40 @@ impl FlipMode {
         FlipMode::Colorize,
         FlipMode::Trace,
     ];
+
+    /// As ferramentas do **Draw Mode**: as que põem ou tiram tinta (a ordem do painel).
+    pub const DRAW_TOOLS: [FlipMode; 5] = [
+        FlipMode::Draw,
+        FlipMode::Erase,
+        FlipMode::Fill,
+        FlipMode::Colorize,
+        FlipMode::Trace,
+    ];
+    /// As ferramentas do **Edit Mode**: as que mexem no traço que já existe.
+    pub const EDIT_TOOLS: [FlipMode; 2] = [FlipMode::Edit, FlipMode::Reshape];
+
+    /// ⭐ **O modo do desenho a que esta ferramenta pertence** (D6: Flip ▸ Draw · Edit).
+    #[must_use]
+    pub const fn object_mode(self) -> ObjectMode {
+        match self {
+            FlipMode::Edit | FlipMode::Reshape => ObjectMode::Edit,
+            FlipMode::Draw
+            | FlipMode::Erase
+            | FlipMode::Fill
+            | FlipMode::Colorize
+            | FlipMode::Trace => ObjectMode::Draw,
+        }
+    }
+
+    /// As ferramentas de `mode` (vazio para um modo que não é do Flip).
+    #[must_use]
+    pub const fn tools_of(mode: ObjectMode) -> &'static [FlipMode] {
+        match mode {
+            ObjectMode::Draw => &Self::DRAW_TOOLS,
+            ObjectMode::Edit => &Self::EDIT_TOOLS,
+            ObjectMode::Object | ObjectMode::Paint | ObjectMode::Sculpt => &[],
+        }
+    }
 }
 
 /// **O DOMÍNIO da seleção no modo Edit** (W8/§4.B — o `.selection` do GP vive em Point OU
@@ -454,7 +485,7 @@ impl Default for FlipStyleSnapshot {
             pressure_response: 0.5,
             opacity: 1.0,
             smoothing: 0.5,
-            mode: FlipMode::Select,
+            mode: FlipMode::Draw,
             erase: EraseMode::Soft,
             // Linkados por default ⇒ os efetivos são os do pincel.
             erase_px: 6.0,

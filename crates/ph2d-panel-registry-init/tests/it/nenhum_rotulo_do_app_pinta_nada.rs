@@ -688,8 +688,12 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⚠️ São **dívida da linha**, não decisão de produto: o §7 do handoff de 20/09 já os nomeia
     //    (*«os ~46 cortes do degrau estreito FORA do Inspector, em sete painéis»*) — o que faltava
     //    era a régua conseguir vê-los.
-    // `["Delete", "Duplicate"]`
-    ("flip", 2),
+    // `["Delete", "Duplicate", "Square", "Squares"]`
+    // ⚠️ `2 → 4` em 2026-10-03, e NÃO é regressão — é a POPULAÇÃO a crescer: a seta preta do Flip
+    //    saiu (spec/06 F3, é o modo Object), e o estado de fábrica do painel passou a ser o Draw, que
+    //    pinta as fileiras Tip e Cap. Elas cortavam no degrau estreito desde sempre; a varredura via o
+    //    painel no Select, onde não existem.
+    ("flip", 4),
     // `["Composite Brush", "Digital Basic", "Sync with other tools", "View Plane"]`
     // ⚠️⚠️ **`3 → 4` em 2026-09-21, e NÃO é regressão — é a POPULAÇÃO a crescer.** Este painel
     //    passou a ser ARMADO (`super::o_painter_armado`), e armado ele pinta as fileiras que só
@@ -765,7 +769,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⛔ Os dois que só a árvore inteira vê — o mecanismo está na irmã
     //    [`CORTES_NO_DEGRAU_ESTREITO`]. ⚠️ O `wet_tuning` NÃO entra aqui: os dois rótulos dele
     //    são cortes que **não acabam em reticência**, e é isso que separa esta catraca da irmã.
-    ("flip", 2),
+    // ⚠️ `2 → 4` em 2026-10-03 pelo MESMO motivo da irmã: o estado de fábrica passou a ser o Draw.
+    ("flip", 4),
     // ⚠️ `3 → 4` em 2026-09-21 pelo MESMO motivo da irmã: o Painter passou a ser ARMADO e o
     //    `View Plane` só existe com um padrão escolhido. Ver a nota lá.
     // ⚠️ `4 → 5` no mesmo dia: a varredura passou a ABRIR as gavetas, e o `Use Color Ramp` vive

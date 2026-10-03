@@ -121,9 +121,8 @@ impl Default for FlipTool {
             pressure_response: 0.5,
             opacity: DEFAULT_OPACITY,
             smoothing: DEFAULT_SMOOTHING,
-            // Default = Select (gizmo transforma o objeto; arbitragem ADR-0112).
-            // O painel docado (T2.15) tem a linha de modos Select/Draw/Erase.
-            mode: FlipMode::Select,
+            // A ferramenta Flip só está na mão num modo do desenho; o Draw é o primeiro.
+            mode: FlipMode::Draw,
             erase: EraseMode::Soft,
             erase_px: DEFAULT_WIDTH_PX,
             erase_strength: DEFAULT_OPACITY,
@@ -410,11 +409,7 @@ impl Tool for FlipTool {
         // blend/opacity) são edições de DOCUMENTO e ficam com o drain do shell
         // (mesmo padrão do Vector: Boolean/Arrange caem no drain, não na tool).
         match event {
-            // Linha de modos Select/Draw/Erase (gizmo só no Select — o shell lê
-            // `mode()` pra rotear input + publicar o `GizmoView`).
-            PanelEvent::Click(id) if id == crate::ids::FLIP_MODE_SELECT => {
-                self.mode = FlipMode::Select
-            }
+            // A linha das ferramentas do modo em curso (o shell lê `mode()` pra rotear input).
             PanelEvent::Click(id) if id == crate::ids::FLIP_MODE_DRAW => self.mode = FlipMode::Draw,
             PanelEvent::Click(id) if id == crate::ids::FLIP_MODE_ERASE => {
                 self.mode = FlipMode::Erase

@@ -124,8 +124,7 @@ pub fn populate(store: &mut WidgetStore) {
 
 /// O rádio de MODO, a seção Edit e o grupo de estilo do Draw.
 fn modes_and_edit(store: &mut WidgetStore) {
-    // Mode row (Select / Draw / Erase / Fill / Sculpt).
-    button(store, ph2d_tool_flip::ids::FLIP_MODE_SELECT);
+    // A linha das ferramentas (Draw / Erase / Sculpt / Edit; Fill, Colorize e Trace abaixo).
     button(store, ph2d_tool_flip::ids::FLIP_MODE_DRAW);
     button(store, ph2d_tool_flip::ids::FLIP_MODE_ERASE);
     button(store, ph2d_tool_flip::ids::FLIP_MODE_RESHAPE);

@@ -46,14 +46,14 @@ impl crate::App {
         )
     }
 
-    /// O afim LOCAL(objeto)→MUNDO do objeto Flip ativo — **sem a pose da chave**. É a
+    /// O afim LOCAL(objeto)→MUNDO do desenho em edição — **sem a pose da chave**. É a
     /// cadeia do `Transform` do ECS (o gizmo), e nada mais.
     #[must_use]
     fn flip_active_object_xform(&self) -> Xform {
         let Some(gfx) = self.gfx.as_ref() else {
             return Xform::IDENTITY;
         };
-        let Some(oid) = gfx.flip.objects().first().map(|o| o.id) else {
+        let Some(oid) = self.flip_state.target.object else {
             return Xform::IDENTITY;
         };
         self.flip_state
@@ -77,7 +77,7 @@ impl crate::App {
         };
         ph2d_flip_entities::transform::active_pose(
             &gfx.flip,
-            self.flip_state.active_layer,
+            self.flip_state.target,
             &self.playhead,
         )
     }
@@ -173,7 +173,7 @@ impl crate::App {
             return true; // toque simples (<2 pontos): consumido, sem traço
         };
         let style = self.flip_state.style;
-        let active_layer = self.flip_state.active_layer;
+        let target = self.flip_state.target;
         // Fronteira MUNDO→LOCAL (ADR-0111): num objeto já movido pelo gizmo o traço
         // é guardado no espaço local dele. Identidade num objeto novo (o comum).
         let w2l = self.flip_active_world_to_local();
@@ -190,7 +190,7 @@ impl crate::App {
                 &mut gfx.flip,
                 &playhead,
                 &style,
-                active_layer,
+                target,
                 strip_ref,
                 &points,
                 &pressures,

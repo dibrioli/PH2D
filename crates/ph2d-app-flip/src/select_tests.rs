@@ -248,12 +248,12 @@ fn a_locked_layer_yields_no_drawing_to_select_in() {
     let playhead = Playhead::default();
 
     assert!(
-        visible_drawing(&doc, &playhead, Some(lid)).is_some(),
+        visible_drawing(&doc, &playhead, FlipTarget::on(oid, Some(lid))).is_some(),
         "a camada destravada tem de entregar o desenho"
     );
     doc.object_mut(oid).unwrap().layer_mut(lid).unwrap().locked = true;
     assert!(
-        visible_drawing(&doc, &playhead, Some(lid)).is_none(),
+        visible_drawing(&doc, &playhead, FlipTarget::on(oid, Some(lid))).is_none(),
         "a camada TRAVADA entregou o desenho — e o clique editaria arte protegida"
     );
 }

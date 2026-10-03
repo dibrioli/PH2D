@@ -23,7 +23,7 @@
 
 use crate::pass_cache::TessCache;
 use ph2d_core::Playhead;
-use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, LayerId};
+use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, FlipTarget, LayerId};
 use ph2d_flip_entities::transform::art_to_world;
 use ph2d_flip_render::engine::new_engine_armed;
 use ph2d_flip_render::{CameraRaw, FlipCompose, FlipGpuData, FlipRenderer};
@@ -120,7 +120,7 @@ struct LayerRef<'a> {
 
 /// Compõe o Flip amostrado em `playhead` no `game_rt`, mais o **preview ao vivo**
 /// do traço em curso (`preview`, se houver), **dobrado na fatia da camada ativa**
-/// (`active_layer`) para compor pelo blend/opacity dela em tempo real. No-op se
+/// do desenho em edição (`target`) para compor pelo blend/opacity dela em tempo real. No-op se
 /// não há camada ativa NEM preview (cena vazia = o default sem `PH2D_FLIP_DEMO`).
 #[allow(clippy::too_many_arguments)]
 pub fn render(
@@ -129,7 +129,7 @@ pub fn render(
     flip_compose: &mut FlipCompose,
     flip_composite: &mut Option<FlipComposite>,
     preview: Option<&FlipGpuData>,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     models: &[(FlipObjectId, Xform)],
     playhead: &Playhead,
     // Ghost Frames: `Some(chaves selecionadas)` = a tool Flip está ativa (fantasmas
@@ -153,8 +153,7 @@ pub fn render(
     // sobra quando a camada-alvo é invisível/irresolvível — aí cai no overlay
     // Normal (o usuário nunca desenha às cegas). Os fantasmas entram na MESMA lista,
     // cada um como uma fatia logo abaixo da sua camada.
-    let (layers, unfolded) =
-        collect_layers(flip, playhead, preview, active_layer, models, ghosts, peek);
+    let (layers, unfolded) = collect_layers(flip, playhead, preview, target, models, ghosts, peek);
     if layers.is_empty() && unfolded.is_none() {
         return;
     }
@@ -399,8 +398,8 @@ pub(super) fn draw_overlay(
 /// amostra pelo SEU FPS. NÃO empacota — isso é sob demanda no cache (`ensure_tess`),
 /// pra troca de quadro barata.
 ///
-/// O `preview` (traço em curso) é **dobrado na camada-alvo** — a `active_layer` do
-/// 1º objeto (fallback: topo, igual ao bake) — para compor pelo blend/opacity dela
+/// O `preview` (traço em curso) é **dobrado na camada-alvo** — a do [`FlipTarget`]
+/// (o desenho em edição; fallback: topo, igual ao bake) — para compor pelo blend/opacity dela
 /// em tempo real, na posição z certa (inclusive uma camada ainda VAZIA, sintetizada
 /// aqui). Devolve `(camadas, preview_não_atribuído)`: o 2º é `Some` só quando a
 /// camada-alvo é oculta/inexistente (cai no overlay Normal — nunca desenhar às cegas).
@@ -408,30 +407,19 @@ fn collect_layers<'a>(
     flip: &'a FlipDoc,
     playhead: &Playhead,
     preview: Option<&'a FlipGpuData>,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     models: &[(FlipObjectId, Xform)],
     ghosts: Option<crate::pass_ghosts::GhostSources<'_>>,
     peek: Option<crate::peek::PeekDir>,
 ) -> (Vec<LayerRef<'a>>, Option<&'a FlipGpuData>) {
-    // Camada-alvo do preview: a ativa do 1º objeto (se ainda existe) ou o topo —
-    // exatamente o fallback que o `bake_stroke` usa. `None` sem preview.
-    let target: Option<(u64, LayerId)> = preview.and_then(|_| {
-        let obj = flip.objects().first()?;
-        let lid = active_layer
-            .filter(|id| obj.layer(*id).is_some())
-            .or_else(|| obj.layers().last().map(|l| l.id))?;
-        Some((obj.id.0, lid))
-    });
+    // Camada-alvo do preview: a do alvo da autoria — a MESMA que o `bake_stroke`
+    // usa. `None` sem preview ou sem desenho em edição.
+    let resolved = target.resolve(flip).map(|(oid, lid)| (oid.0, lid));
+    let target: Option<(u64, LayerId)> = preview.and(resolved);
 
-    // A camada que o PEEK retima — a MESMA resolução do alvo do preview (a ativa do
-    // 1º objeto, ou o topo): é a camada que o animador está folheando.
-    let peek_target: Option<(u64, LayerId)> = peek.and_then(|_| {
-        let obj = flip.objects().first()?;
-        let lid = active_layer
-            .filter(|id| obj.layer(*id).is_some())
-            .or_else(|| obj.layers().last().map(|l| l.id))?;
-        Some((obj.id.0, lid))
-    });
+    // A camada que o PEEK retima — a MESMA resolução do alvo do preview: é a camada
+    // que o animador está folheando.
+    let peek_target: Option<(u64, LayerId)> = peek.and(resolved);
 
     let mut out = Vec::new();
     let mut unfolded = preview; // vira None assim que o preview é dobrado

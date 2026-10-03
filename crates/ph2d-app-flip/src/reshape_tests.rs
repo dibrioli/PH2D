@@ -126,7 +126,12 @@ fn the_multiframe_falloff_defaults_to_the_active_frame() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 use ph2d_core::Playhead;
-use ph2d_flip::{FlipDoc, FlipStroke, Hold, KeyKind, Point, Rgba};
+use ph2d_flip::{FlipDoc, FlipStroke, Hold, KeyKind, LayerId, Point, Rgba};
+
+/// O alvo da autoria no (único) desenho do teste, na camada `l`.
+fn on(doc: &FlipDoc, l: LayerId) -> FlipTarget {
+    FlipTarget::on(doc.objects()[0].id, Some(l))
+}
 
 /// Um documento com uma linha reta de 5 pontos numa chave no quadro 0.
 fn doc_with_line() -> (FlipDoc, LayerId) {
@@ -174,7 +179,8 @@ fn a_sculpt_gesture_edits_the_active_drawing() {
         delta: Vec2::new(0.0, 1.0),
         pressure: 1.0,
     };
-    let (oid_g, mut targets) = reshape_begin(&mut doc, &ph, Some(l), &mut strip, &p, &s, false)
+    let t = on(&doc, l);
+    let (oid_g, mut targets) = reshape_begin(&mut doc, &ph, t, &mut strip, &p, &s, false)
         .expect("ha desenho na camada ativa");
     assert!(
         strokes_at(&doc, l, 0)[0].positions()[2].y > 0.5,
@@ -209,10 +215,11 @@ fn a_locked_layer_refuses_the_sculpt() {
         delta: Vec2::new(0.0, 1.0),
         pressure: 1.0,
     };
+    let t = on(&doc, l);
     let got = reshape_begin(
         &mut doc,
         &Playhead::new(1.0 / f64::from(ph2d_flip::DEFAULT_FPS)),
-        Some(l),
+        t,
         &mut crate::strip::FlipStrip::default(),
         &p,
         &s,
@@ -266,8 +273,8 @@ fn sculpting_inside_a_hold_duplicates_the_visible_drawing_never_a_blank_one() {
         delta: Vec2::new(0.0, 1.0),
         pressure: 1.0,
     };
-    reshape_begin(&mut doc, &ph, Some(l), &mut strip, &p, &s, false)
-        .expect("o autokey cria a chave");
+    let t = on(&doc, l);
+    reshape_begin(&mut doc, &ph, t, &mut strip, &p, &s, false).expect("o autokey cria a chave");
 
     let here = strokes_at(&doc, l, 5);
     assert_eq!(
@@ -418,7 +425,8 @@ fn the_sculpt_reaches_every_selected_key() {
     };
     let ph = Playhead::new(1.0 / f64::from(ph2d_flip::DEFAULT_FPS)); // quadro 0 = o ativo
 
-    let (_, targets) = reshape_begin(&mut doc, &ph, Some(l), &mut strip, &p, &s, false)
+    let t = on(&doc, l);
+    let (_, targets) = reshape_begin(&mut doc, &ph, t, &mut strip, &p, &s, false)
         .expect("ha desenho na camada ativa");
 
     assert_eq!(targets.len(), 2, "o gesto nao alcancou as duas chaves");
@@ -468,7 +476,8 @@ fn an_instanced_drawing_is_sculpted_only_once() {
     };
     let ph = Playhead::new(1.0 / f64::from(ph2d_flip::DEFAULT_FPS));
 
-    let (_, targets) = reshape_begin(&mut doc, &ph, Some(l), &mut strip, &p, &s, false).unwrap();
+    let t = on(&doc, l);
+    let (_, targets) = reshape_begin(&mut doc, &ph, t, &mut strip, &p, &s, false).unwrap();
 
     assert_eq!(
         targets.len(),
@@ -531,7 +540,8 @@ fn multiframe_is_art_anchored_not_world_anchored() {
     };
     let ph = Playhead::new(1.0 / f64::from(ph2d_flip::DEFAULT_FPS));
 
-    let (oid, _targets) = reshape_begin(&mut doc, &ph, Some(l), &mut strip, &p, &s, false).unwrap();
+    let t = on(&doc, l);
+    let (oid, _targets) = reshape_begin(&mut doc, &ph, t, &mut strip, &p, &s, false).unwrap();
 
     // Nos DOIS quadros, quem andou é o MESMO ponto da arte (o índice 2) — inclusive no
     // quadro que está a 100 unidades de distância na tela.

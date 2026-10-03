@@ -101,15 +101,8 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_MOTION,
             TopBarCluster::single(tr("chrome.topbar.pill.motion"), IconId::MotionNodes),
         ),
-        // Flip drawing tool — the single `flip_tools` pill (ADR-0114 W2). Click
-        // activates it via `flip_toggle::apply` →
-        // `EditorAction::ActivateTool { tool_id: "flip" }`.
-        (
-            ids::TOPBAR_FLIP,
-            TopBarCluster::single(tr("chrome.topbar.pill.flip"), IconId::Flip),
-        ),
-        // Modelagem 3D por campo implícito (ADR-0161). ⚠️ O vizinho SCULPT saiu (spec/06 F3): a
-        // escultura abre-se pelo MODO da peça (Sculpt Mode), não por um pill.
+        // Modelagem 3D por campo implícito (ADR-0161). ⚠️ Os vizinhos SCULPT e FLIP saíram (spec/06
+        // F3): a escultura e o desenho Flip abrem-se pelo MODO do objecto, não por um pill.
         (
             ids::TOPBAR_MODEL3D,
             TopBarCluster::single(tr("chrome.topbar.pill.model"), IconId::Cube),

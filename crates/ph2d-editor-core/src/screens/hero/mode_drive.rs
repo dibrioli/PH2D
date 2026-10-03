@@ -33,8 +33,9 @@ pub trait ModeFamily {
     /// modo o declarar é largado aqui (a outra metade da rede `still_holds`).
     fn follow(&mut self, _current: Option<ActiveMode>, _tools: &mut ToolRegistry) {}
     /// ⭐ **Um objecto que NASCEU num modo** pede-o uma vez: `(entidade, modo)`. O quadro selecciona
-    /// a entidade e entra.
-    fn wants(&mut self) -> Option<(u64, ObjectMode)> {
+    /// a entidade e entra. Também a porta antiga: a ferramenta de um modo que chegou à mão sem ele
+    /// (por isso o registo).
+    fn wants(&mut self, _tools: &mut ToolRegistry) -> Option<(u64, ObjectMode)> {
         None
     }
 }
@@ -79,7 +80,7 @@ pub fn drive(
     let mut changed = false;
     // 0. Um objecto que nasceu num modo pede-o (só sem pedido do artista neste quadro).
     let request = request.or_else(|| {
-        let (bits, mode) = families.iter_mut().find_map(|f| f.wants())?;
+        let (bits, mode) = families.iter_mut().find_map(|f| f.wants(tools))?;
         hero.gizmo.replace_selection(Some(bits));
         Some(ModeRequest::Enter(mode))
     });

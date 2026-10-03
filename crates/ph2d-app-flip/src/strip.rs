@@ -10,7 +10,7 @@
 //! que a timeline e o resto do engine leem): quando a integração com a timeline
 //! chegar (W6), não há relógio para reconciliar — já é o mesmo.
 
-use crate::strip_resolve::{ensure_cycle_span, seek, source_frame, target};
+use crate::strip_resolve::{ensure_cycle_span, seek, source_frame};
 // O intervalo do tween é um resolvedor (mudou-se para o irmão junto com os outros três),
 // mas é o único com consumidores FORA daqui — re-exportado para os caller paths ficarem
 // intactos, o mesmo que o `inspector_model_physics` fez quando a física se dividiu.
@@ -18,7 +18,7 @@ pub(crate) use crate::strip_resolve::current_tween_interval;
 use ph2d_core::Playhead;
 use ph2d_flip::{
     CycleMode, DupMode, Easing, EasingFamily, EasingMode, FlipDoc, Frame, Hold, Interp, KeyKind,
-    LayerId, TweenOptions, TweenRequest,
+    TweenOptions, TweenRequest,
 };
 
 /// O estado de autoria da tira (o que NÃO é documento).
@@ -140,14 +140,14 @@ fn toggle_key(sel: &mut Vec<Frame>, k: Frame) {
 pub fn apply_panel_event(
     ev: &ph2d_editor_core::tool::PanelEvent,
     flip: &mut FlipDoc,
-    active_layer: Option<LayerId>,
+    target: ph2d_flip::FlipTarget,
     playhead: &mut Playhead,
     strip: &mut FlipStrip,
     add: bool,
 ) -> bool {
     use ph2d_editor_core::tool::PanelEvent;
 
-    let Some((oid, lid)) = target(flip, active_layer) else {
+    let Some((oid, lid)) = target.resolve(flip) else {
         return false;
     };
     let fps = flip.object(oid).map_or(24.0, |o| o.fps);
@@ -180,12 +180,12 @@ pub fn apply_panel_event(
             let Some(layer) = flip.object(oid).and_then(|o| o.layer(lid)) else {
                 return false;
             };
-            let target = if next {
+            let to = if next {
                 layer.next_drawing_key(frame)
             } else {
                 layer.prev_drawing_key(frame)
             };
-            if let Some(f) = target {
+            if let Some(f) = to {
                 seek(playhead, fps, f);
                 strip.selection = vec![f];
             }
@@ -400,7 +400,7 @@ pub fn apply_panel_event(
             if strip.tween_correct.is_some() {
                 strip.tween_correct = None; // fecha
             } else {
-                strip.tween_correct = crate::tween_correct::build(flip, active_layer, playhead);
+                strip.tween_correct = crate::tween_correct::build(flip, target, playhead);
             }
             false // estado de autoria, não documento
         }
@@ -410,8 +410,7 @@ pub fn apply_panel_event(
             // chave e o inbetween vizinho (lixo entre 0 e 2) em vez de REGENERAR o
             // intervalo 0→8. E parado em cima de um inbetween, o extremo A é a chave
             // anterior — clicar Add de novo regenera, não empilha.
-            let Some((_, _, from, to)) = current_tween_interval(flip, active_layer, playhead)
-            else {
+            let Some((_, _, from, to)) = current_tween_interval(flip, target, playhead) else {
                 return false; // sem os dois extremos não há entre o quê interpolar
             };
             let req = TweenRequest {
@@ -518,13 +517,13 @@ mod pin_tests;
 #[path = "strip_tests.rs"]
 mod tests;
 
-/// O FPS do objeto Flip ativo (o relógio em que "um quadro" faz sentido para o
-/// animador). `None` sem objeto.
+/// O FPS do desenho em edição (o relógio em que "um quadro" faz sentido para o
+/// animador). `None` sem desenho em edição.
 ///
 /// ⭐ W2/L5 2.ª volta: era um método de `App`. O que ele pedia à shell era **um tipo de
 /// outra crate** (`FlipDoc`), nunca a `App` — logo é ASSINATURA, não porta (regra 4).
-pub fn fps(flip: &ph2d_flip::FlipDoc) -> Option<f64> {
-    flip.objects().first().map(|o| f64::from(o.fps))
+pub fn fps(flip: &ph2d_flip::FlipDoc, target: ph2d_flip::FlipTarget) -> Option<f64> {
+    target.drawing(flip).map(|o| f64::from(o.fps))
 }
 
 /// **O flip por DESENHO** (atalho das setas ↑/↓ e dos botões da tira): leva o
@@ -535,8 +534,8 @@ pub fn step_drawing(
     playhead: &mut ph2d_core::Playhead,
     next: bool,
 ) {
-    let active_layer = state.active_layer;
-    let Some((oid, lid)) = target(flip, active_layer) else {
+    let target = state.target;
+    let Some((oid, lid)) = target.resolve(flip) else {
         return;
     };
     let Some(obj) = flip.object(oid) else {

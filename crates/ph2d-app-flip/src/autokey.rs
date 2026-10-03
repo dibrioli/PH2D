@@ -18,7 +18,7 @@
 //!   desenho.
 
 use ph2d_core::Playhead;
-use ph2d_flip::{AutokeyPolicy, DrawingId, FlipDoc, FlipObjectId, LayerId};
+use ph2d_flip::{AutokeyPolicy, DrawingId, FlipDoc, FlipObjectId, FlipTarget, LayerId};
 
 /// O que o gesto vai fazer com o desenho.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -47,15 +47,12 @@ pub(crate) enum FlipEdit {
 pub(crate) fn target_drawing(
     flip: &mut FlipDoc,
     playhead: &Playhead,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     strip: &mut crate::strip::FlipStrip,
     edit: FlipEdit,
 ) -> Option<(FlipObjectId, LayerId, DrawingId)> {
-    let oid = flip.objects().first().map(|o| o.id)?;
+    let (oid, lid) = target.resolve(flip)?;
     let obj = flip.object_mut(oid)?;
-    let lid = active_layer
-        .filter(|id| obj.layer(*id).is_some())
-        .or_else(|| obj.layers().last().map(|l| l.id))?;
     if obj.layer(lid).is_some_and(|l| l.locked) {
         return None; // camada travada recusa qualquer gesto (regra do GP)
     }
@@ -118,7 +115,7 @@ mod tests {
     use ph2d_flip::{FlipStroke, Hold, KeyKind};
 
     /// Um doc com um objeto, uma camada e uma chave em 0 com um traço.
-    fn doc() -> (FlipDoc, LayerId) {
+    fn doc() -> (FlipDoc, FlipObjectId, LayerId) {
         let mut d = FlipDoc::new();
         let oid = d.push_object("O");
         let o = d.object_mut(oid).unwrap();
@@ -131,7 +128,7 @@ mod tests {
         s.push_default(Vec2::new(0.0, 0.0));
         s.push_default(Vec2::new(1.0, 1.0));
         o.drawing_mut(did).unwrap().strokes.push(s);
-        (d, l)
+        (d, oid, l)
     }
 
     /// O playhead no quadro `f` (12 fps).
@@ -145,10 +142,16 @@ mod tests {
     /// A caneta no rabo do hold cria uma chave EM BRANCO — o desenho seguinte.
     #[test]
     fn drawing_past_the_hold_creates_a_blank_key() {
-        let (mut d, l) = doc();
+        let (mut d, oid, l) = doc();
         let mut strip = FlipStrip::default(); // autokey ON, additive OFF
-        let (oid, _, did) =
-            target_drawing(&mut d, &at(5), Some(l), &mut strip, FlipEdit::Draw).unwrap();
+        let (oid, _, did) = target_drawing(
+            &mut d,
+            &at(5),
+            FlipTarget::on(oid, Some(l)),
+            &mut strip,
+            FlipEdit::Draw,
+        )
+        .unwrap();
         let o = d.object(oid).unwrap();
         assert!(
             o.drawing(did).unwrap().strokes.is_empty(),
@@ -161,10 +164,16 @@ mod tests {
     /// o desenho que o usuário vê ficaria intacto lá atrás.
     #[test]
     fn erasing_past_the_hold_duplicates_the_drawing_on_screen() {
-        let (mut d, l) = doc();
+        let (mut d, oid, l) = doc();
         let mut strip = FlipStrip::default();
-        let (oid, _, did) =
-            target_drawing(&mut d, &at(5), Some(l), &mut strip, FlipEdit::Modify).unwrap();
+        let (oid, _, did) = target_drawing(
+            &mut d,
+            &at(5),
+            FlipTarget::on(oid, Some(l)),
+            &mut strip,
+            FlipEdit::Modify,
+        )
+        .unwrap();
         let o = d.object(oid).unwrap();
         assert_eq!(
             o.drawing(did).unwrap().strokes.len(),
@@ -179,13 +188,19 @@ mod tests {
     /// Additive: a caneta também duplica (desenhar por cima do anterior).
     #[test]
     fn additive_makes_the_pen_duplicate_too() {
-        let (mut d, l) = doc();
+        let (mut d, oid, l) = doc();
         let mut strip = FlipStrip {
             additive: true,
             ..Default::default()
         };
-        let (oid, _, did) =
-            target_drawing(&mut d, &at(5), Some(l), &mut strip, FlipEdit::Draw).unwrap();
+        let (oid, _, did) = target_drawing(
+            &mut d,
+            &at(5),
+            FlipTarget::on(oid, Some(l)),
+            &mut strip,
+            FlipEdit::Draw,
+        )
+        .unwrap();
         assert_eq!(
             d.object(oid).unwrap().drawing(did).unwrap().strokes.len(),
             1
@@ -196,13 +211,19 @@ mod tests {
     /// nenhuma chave nova nasce.
     #[test]
     fn without_autokey_the_gesture_edits_what_is_on_screen() {
-        let (mut d, l) = doc();
+        let (mut d, oid, l) = doc();
         let mut strip = FlipStrip {
             autokey: false,
             ..Default::default()
         };
-        let (oid, _, did) =
-            target_drawing(&mut d, &at(5), Some(l), &mut strip, FlipEdit::Draw).unwrap();
+        let (oid, _, did) = target_drawing(
+            &mut d,
+            &at(5),
+            FlipTarget::on(oid, Some(l)),
+            &mut strip,
+            FlipEdit::Draw,
+        )
+        .unwrap();
         let o = d.object(oid).unwrap();
         assert_eq!(did, o.drawing_at(l, 0).unwrap(), "é o desenho do quadro 0");
         assert_eq!(o.layer(l).unwrap().cells().len(), 1, "nenhuma chave nova");
@@ -215,20 +236,34 @@ mod tests {
         let oid = d.push_object("O");
         let l = d.object_mut(oid).unwrap().add_layer("L");
         let mut strip = FlipStrip::default();
-        assert!(target_drawing(&mut d, &at(3), Some(l), &mut strip, FlipEdit::Modify).is_none());
+        assert!(
+            target_drawing(
+                &mut d,
+                &at(3),
+                FlipTarget::on(oid, Some(l)),
+                &mut strip,
+                FlipEdit::Modify
+            )
+            .is_none()
+        );
         assert_eq!(d.object(oid).unwrap().layer(l).unwrap().cells().len(), 0);
     }
 
     /// Camada travada recusa tudo.
     #[test]
     fn a_locked_layer_refuses_the_gesture() {
-        let (mut d, l) = doc();
-        d.object_mut(FlipObjectId(0))
-            .unwrap()
-            .layer_mut(l)
-            .unwrap()
-            .locked = true;
+        let (mut d, oid, l) = doc();
+        d.object_mut(oid).unwrap().layer_mut(l).unwrap().locked = true;
         let mut strip = FlipStrip::default();
-        assert!(target_drawing(&mut d, &at(0), Some(l), &mut strip, FlipEdit::Draw).is_none());
+        assert!(
+            target_drawing(
+                &mut d,
+                &at(0),
+                FlipTarget::on(oid, Some(l)),
+                &mut strip,
+                FlipEdit::Draw
+            )
+            .is_none()
+        );
     }
 }

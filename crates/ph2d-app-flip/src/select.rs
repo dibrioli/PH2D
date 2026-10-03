@@ -20,7 +20,7 @@
 //!    óbvio, e é o que o GP faz.
 
 use ph2d_core::{Playhead, Vec2};
-use ph2d_flip::{DrawingId, FlipDoc, FlipDrawing, FlipObjectId, Frame, LayerId};
+use ph2d_flip::{DrawingId, FlipDoc, FlipDrawing, FlipObjectId, FlipTarget, Frame, LayerId};
 
 /// O pick de TRAÇO mora no módulo-irmão (cap de LOC), mas a porta é ESTA: quem seleciona
 /// chama `flip_select::stroke_at`, e não existe um 2º hit-test.
@@ -28,7 +28,7 @@ pub(crate) use crate::select_pick::stroke_at;
 
 /// O desenho que está **na tela** para a camada ativa — sem criar chave nenhuma.
 ///
-/// Espelha a resolução do [`crate::autokey::target_drawing`] (objeto → camada ativa
+/// Espelha a resolução do [`crate::autokey::target_drawing`] (o [`FlipTarget`]
 /// → quadro de AUTORIA, com a camada travada recusando), mas recebe o doc **imutável**:
 /// selecionar lê, nunca materializa. Camada travada = `None` (a regra do GP: uma camada
 /// travada não entrega os traços dela nem para seleção).
@@ -36,9 +36,9 @@ pub(crate) use crate::select_pick::stroke_at;
 pub(crate) fn visible_drawing(
     flip: &FlipDoc,
     playhead: &Playhead,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
 ) -> Option<(FlipObjectId, LayerId, DrawingId)> {
-    let (oid, lid, _key, did) = visible_key(flip, playhead, active_layer)?;
+    let (oid, lid, _key, did) = visible_key(flip, playhead, target)?;
     Some((oid, lid, did))
 }
 
@@ -48,13 +48,10 @@ pub(crate) fn visible_drawing(
 pub(crate) fn visible_key(
     flip: &FlipDoc,
     playhead: &Playhead,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
 ) -> Option<(FlipObjectId, LayerId, Frame, DrawingId)> {
-    let oid = flip.objects().first().map(|o| o.id)?;
-    let obj = flip.object(oid)?;
-    let lid = active_layer
-        .filter(|id| obj.layer(*id).is_some())
-        .or_else(|| obj.layers().last().map(|l| l.id))?;
+    let obj = target.drawing(flip)?;
+    let (oid, lid) = (obj.id, target.layer_in(obj)?);
     let layer = obj.layer(lid)?;
     if layer.locked {
         return None;
@@ -209,8 +206,8 @@ pub fn flip_edit_style_refresh(
         state.edit_style = None;
         return false;
     };
-    let active_layer = state.active_layer;
-    let Some((oid, _lid, did)) = visible_drawing(flip, playhead, active_layer) else {
+    let target = state.target;
+    let Some((oid, _lid, did)) = visible_drawing(flip, playhead, target) else {
         state.edit_style = None;
         return false;
     };
@@ -410,7 +407,7 @@ pub fn canvas_down(
         return (false, false);
     }
     let pick = if shift { Pick::Toggle } else { Pick::Replace };
-    let active_layer = state.active_layer;
+    let target = state.target;
     let domain = edit_domain_now(state);
     let playhead = f.playhead;
 
@@ -424,7 +421,7 @@ pub fn canvas_down(
     let local_obj = w2o.apply([f64::from(world[0]), f64::from(world[1])]);
     let move_seed = Vec2::new(local_obj[0] as f32, local_obj[1] as f32);
 
-    let Some((oid, lid, did)) = visible_drawing(f.flip, playhead, active_layer) else {
+    let Some((oid, lid, did)) = visible_drawing(f.flip, playhead, target) else {
         // Camada travada, ou quadro sem desenho: DIZ, em vez de engolir o clique em silêncio
         // (o mesmo princípio dos erros do balde).
         toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
@@ -535,8 +532,8 @@ pub fn delete_selected(
     flip: &mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
 ) -> bool {
-    let active_layer = state.active_layer;
-    let Some((oid, _lid, did)) = visible_drawing(flip, playhead, active_layer) else {
+    let target = state.target;
+    let Some((oid, _lid, did)) = visible_drawing(flip, playhead, target) else {
         return false;
     };
     let Some(drawing) = flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {

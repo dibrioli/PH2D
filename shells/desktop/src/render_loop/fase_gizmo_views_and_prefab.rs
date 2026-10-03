@@ -64,7 +64,7 @@ impl crate::App {
                     &self.flip_state.entities,
                     ph2d_app_flip::pose_gizmo::PoseViewInputs {
                         playhead: &self.playhead,
-                        active_layer: self.flip_state.active_layer,
+                        target: self.flip_state.target,
                         last_pointer: self.last_pointer,
                     },
                     camera,
@@ -80,7 +80,7 @@ impl crate::App {
                     &self.flip_state.entities,
                     ph2d_app_flip::selection_gizmo::SelectionViewInputs {
                         playhead: &self.playhead,
-                        active_layer: self.flip_state.active_layer,
+                        target: self.flip_state.target,
                         last_pointer: self.last_pointer,
                     },
                     camera,

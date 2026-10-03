@@ -39,6 +39,7 @@ mod onion;
 mod pose;
 mod segment;
 mod stroke;
+mod target;
 mod tween;
 mod tween_flip;
 mod tween_match;
@@ -61,6 +62,7 @@ pub use stroke::{
     Cap, DEFAULT_DOT_SPACING, DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_WIDTH, Fill, FlipStroke,
     Point, StrokeTip,
 };
+pub use target::FlipTarget;
 pub use tween::{TweenOptions, TweenRequest, tween_drawing};
 pub use tween_match::{PAIR_REJECT_COST, StrokeFeatures, TweenPlan, features};
 

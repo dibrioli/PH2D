@@ -382,7 +382,7 @@ pub fn canvas_down(
     let Some(style) = state.style else {
         return no;
     };
-    let active_layer = state.active_layer;
+    let target = state.target;
     let world = f.to_world(x, y);
     let px_to_world = f.px_to_world();
     let local = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
@@ -392,7 +392,7 @@ pub fn canvas_down(
     let Some((oid, lid, did)) = crate::autokey::target_drawing(
         f.flip,
         playhead,
-        active_layer,
+        target,
         &mut state.strip,
         crate::autokey::FlipEdit::Modify,
     ) else {

@@ -26,11 +26,22 @@ pub enum ObjectMode {
     Paint,
     /// Esculpir a peça com o barro na tela (Sculpt ▸ Sculpt, D6).
     Sculpt,
+    /// Desenhar traços no desenho Flip (Flip ▸ Draw, D6 — o Draw Mode do Grease Pencil, que NÃO é
+    /// o Paint: o que se edita é um traço, não um pixel).
+    Draw,
+    /// Mexer no que já está desenhado: seleccionar traços e pontos, esculpir o traço (Flip ▸ Edit).
+    Edit,
 }
 
 impl ObjectMode {
     /// Todos, em ordem — a fonte da iteração (⛔ nunca escreva a lista uma segunda vez).
-    pub const ALL: [ObjectMode; 3] = [ObjectMode::Object, ObjectMode::Paint, ObjectMode::Sculpt];
+    pub const ALL: [ObjectMode; 5] = [
+        ObjectMode::Object,
+        ObjectMode::Paint,
+        ObjectMode::Sculpt,
+        ObjectMode::Draw,
+        ObjectMode::Edit,
+    ];
 
     /// O nome que o artista lê.
     #[must_use]
@@ -39,6 +50,8 @@ impl ObjectMode {
             ObjectMode::Object => "object_mode.object",
             ObjectMode::Paint => "object_mode.paint",
             ObjectMode::Sculpt => "object_mode.sculpt",
+            ObjectMode::Draw => "object_mode.draw",
+            ObjectMode::Edit => "object_mode.edit",
         })
     }
 
@@ -49,6 +62,8 @@ impl ObjectMode {
             ObjectMode::Object => crate::ids::OBJECT_MODE_OBJECT,
             ObjectMode::Paint => crate::ids::OBJECT_MODE_PAINT,
             ObjectMode::Sculpt => crate::ids::OBJECT_MODE_SCULPT,
+            ObjectMode::Draw => crate::ids::OBJECT_MODE_DRAW,
+            ObjectMode::Edit => crate::ids::OBJECT_MODE_EDIT,
         }
     }
 

@@ -7,17 +7,7 @@
 //! (*resolver* × *aplicar*), não o tamanho do arquivo.
 
 use ph2d_core::Playhead;
-use ph2d_flip::{FlipDoc, FlipObjectId, Frame, LayerId};
-
-/// O objeto e a camada que a tira edita: o 1º objeto (igual ao `bake_stroke`) e a
-/// camada ativa (fallback: o topo).
-pub fn target(flip: &FlipDoc, active_layer: Option<LayerId>) -> Option<(FlipObjectId, LayerId)> {
-    let obj = flip.objects().first()?;
-    let lid = active_layer
-        .filter(|id| obj.layer(*id).is_some())
-        .or_else(|| obj.layers().last().map(|l| l.id))?;
-    Some((obj.id, lid))
-}
+use ph2d_flip::{FlipDoc, FlipObjectId, FlipTarget, Frame, LayerId};
 
 /// Leva o playhead ao quadro `f` (no FPS do objeto) e PAUSA — quem clica numa
 /// célula quer ver aquele desenho, não continuar tocando a partir dele.
@@ -36,10 +26,10 @@ pub fn seek(playhead: &mut Playhead, fps: f32, f: Frame) {
 /// em silêncio).
 pub fn current_tween_interval(
     flip: &FlipDoc,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     playhead: &Playhead,
 ) -> Option<(FlipObjectId, LayerId, Frame, Frame)> {
-    let (oid, lid) = target(flip, active_layer)?;
+    let (oid, lid) = target.resolve(flip)?;
     let frame = source_frame(flip, oid, lid, playhead);
     let layer = flip.object(oid)?.layer(lid)?;
     let from = layer.keyframe_at_or_before(frame)?;

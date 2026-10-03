@@ -37,6 +37,7 @@ pub mod fill;
 pub mod fill_dilate;
 pub mod fill_smoke;
 pub mod fill_target;
+pub mod flip_mode;
 pub mod gap_live;
 pub mod gap_overlay;
 pub mod gizmo_view;

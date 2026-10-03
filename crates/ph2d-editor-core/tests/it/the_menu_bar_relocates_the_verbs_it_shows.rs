@@ -665,7 +665,7 @@ fn clicking_a_toggle_row_moves_its_mark() {
 
 /// ⛔⛔⛔ **O RAMO *cancelar* dos três activadores de ferramenta VOLTOU A EXISTIR.**
 ///
-/// `vector_toggle`/`motion_toggle`/`flip_toggle` escolhem entre `ActivateTool` e `CancelActiveTool`
+/// `vector_toggle`/`motion_toggle` escolhem entre `ActivateTool` e `CancelActiveTool`
 /// lendo *«a minha ferramenta está activa?»*. Enquanto a pergunta era `store.button_state(id)` —
 /// que **ninguém escrevia** — a resposta era sempre *não*: o segundo clique **reactivava**, e o
 /// artista não tinha como desligar o módulo pelo menu.
@@ -682,7 +682,6 @@ fn the_tool_toggles_can_cancel_and_not_only_activate() {
     for (id, tool) in [
         (ids::TOPBAR_VECTOR, "vector"),
         (ids::TOPBAR_MOTION, "motion"),
-        (ids::TOPBAR_FLIP, "flip"),
     ] {
         // (a) desligada ⇒ o clique ACTIVA.
         let mut h = hero();

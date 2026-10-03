@@ -158,7 +158,7 @@ impl ModeFamily for Family<'_> {
                 true
             }
             ObjectMode::Paint => painter_in_hand(tools) || tools.set_active(&ToolId::new(PAINTER)),
-            ObjectMode::Object => false,
+            ObjectMode::Object | ObjectMode::Draw | ObjectMode::Edit => false,
         }
     }
 
@@ -200,7 +200,7 @@ impl ModeFamily for Family<'_> {
         }
     }
 
-    fn wants(&mut self) -> Option<(u64, ObjectMode)> {
+    fn wants(&mut self, _: &mut ToolRegistry) -> Option<(u64, ObjectMode)> {
         let scene = self.scene.as_deref_mut()?;
         if !scene.pede_o_modo {
             return None;

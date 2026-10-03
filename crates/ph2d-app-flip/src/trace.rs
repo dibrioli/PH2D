@@ -120,7 +120,7 @@ pub fn wants(state: &FlipState) -> bool {
 /// Espelha os gates do passe (`crate::pass_ghosts::collect`): o que não é desenhado
 /// não pode ser pego.
 fn candidates(state: &FlipState, f: &FlipFrame<'_>) -> Vec<TraceGhost> {
-    let Some((oid, lid)) = crate::strip_resolve::target(f.flip, state.active_layer) else {
+    let Some((oid, lid)) = state.target.resolve(f.flip) else {
         return Vec::new();
     };
     let Some(obj) = f.flip.object(oid) else {

@@ -173,14 +173,14 @@ fn dot_spacing_slider_drag_reaches_tool() {
     );
 }
 
-/// Clicking the Draw mode button must switch the tool's canvas mode through the
-/// seam (Select → Draw).
+/// Clicking a tool button must switch the tool through the seam (Draw → Erase → Draw).
 #[test]
 fn draw_mode_button_switches_the_tool_mode() {
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
     let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
-    assert_eq!(tool.mode(), FlipMode::Select, "fresh tool starts in Select");
+    assert_eq!(tool.mode(), FlipMode::Draw, "fresh tool starts in Draw");
+    tool.set_mode(FlipMode::Erase);
 
     let outcome = host.apply_panel_event::<FlipPanel>(
         &mut panel_state,
@@ -233,7 +233,7 @@ fn the_self_overlap_toggle_is_draw_only_and_forwards_to_the_tool() {
 
     // (b) MODAL: some fora do Draw (o *self overlap* é atributo do traço desenhado).
     ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
-        mode: FlipMode::Select,
+        mode: FlipMode::Edit,
         ..Default::default()
     }));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
@@ -303,7 +303,7 @@ fn the_cap_selector_is_draw_only_and_forwards_to_the_tool() {
 
     // (b) MODAL: some fora do Draw (a ponta é atributo do traço desenhado).
     ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
-        mode: FlipMode::Select,
+        mode: FlipMode::Edit,
         ..Default::default()
     }));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
@@ -381,7 +381,7 @@ fn the_airbrush_toggle_is_draw_only_and_forwards_to_the_tool() {
 
     // (b) MODAL: some fora do Draw (o *airbrush* é atributo do pincel de desenho).
     ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
-        mode: FlipMode::Select,
+        mode: FlipMode::Edit,
         ..Default::default()
     }));
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
@@ -434,33 +434,61 @@ fn viewport() -> ph2d_editor_core::zones::Rect {
     ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0)
 }
 
-/// **Todo botão de MODO é pintado e clicável** — inclusive o Fill (W4).
+/// **Toda ferramenta do modo em curso é pintada e clicável — e as do OUTRO modo não existem na
+/// tela** (spec/06 F3 do Flip: o modo troca-se no seletor *Mode*; D6, nada cinzento).
 ///
-/// Mutação que sangra: apague a entrada do Fill do `mode_row` e este teste fica
-/// vermelho, enquanto TODOS os outros gates do projeto seguem verdes.
+/// Mutação que sangra: apague a entrada do Fill do `DRAW_TOOLS`, ou pinte as oito ferramentas em
+/// todo modo, e este teste fica vermelho.
 #[test]
 fn every_mode_button_is_painted_and_clickable() {
-    let mut host = MockPanelHost::with_panel::<FlipPanel>();
-    let mut st = FlipPanelState::default();
-    let painted = host.paint::<FlipPanel>(&mut st, viewport());
-
-    for (id, name) in [
-        (ph2d_tool_flip::ids::FLIP_MODE_SELECT, "Select"),
-        (ph2d_tool_flip::ids::FLIP_MODE_DRAW, "Draw"),
-        (ph2d_tool_flip::ids::FLIP_MODE_ERASE, "Erase"),
-        (ph2d_tool_flip::ids::FLIP_MODE_FILL, "Fill"),
-        (ph2d_tool_flip::ids::FLIP_MODE_RESHAPE, "Sculpt"),
-        (ph2d_tool_flip::ids::FLIP_MODE_EDIT, "Edit"),
+    use ph2d_editor_core::object_mode::ObjectMode;
+    let mut covered = 0;
+    for (mode, names) in [
+        (
+            ObjectMode::Draw,
+            &["Draw", "Erase", "Fill", "Colorize", "Trace"][..],
+        ),
+        (ObjectMode::Edit, &["Select", "Sculpt"][..]),
     ] {
-        let hit = painted.iter().find(|(w, _)| *w == id);
-        let Some((_, r)) = hit else {
-            panic!("o botao de modo {name} NAO e pintado: nao existe na tela");
-        };
-        assert!(
-            r.w > 0.0 && r.h > 0.0,
-            "o botao de modo {name} foi pintado com area ZERO: invisivel e inclicavel ({r:?})"
+        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut st = FlipPanelState::default();
+        let tools = FlipMode::tools_of(mode);
+        ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+            mode: tools[0],
+            ..Default::default()
+        }));
+        let painted = host.paint::<FlipPanel>(&mut st, viewport());
+        assert_eq!(
+            tools.len(),
+            names.len(),
+            "a tabela de {mode:?} cobre as ferramentas dele"
         );
+        for (tool, name) in tools.iter().zip(names) {
+            let (id, key) = ph2d_panel_flip::tool_button(*tool);
+            assert_eq!(ph2d_i18n::tr(key), *name, "o rótulo de {tool:?}");
+            let Some((_, r)) = painted.iter().find(|(w, _)| *w == id) else {
+                panic!("a ferramenta {name} NAO e pintada em {mode:?}: nao existe na tela");
+            };
+            assert!(
+                r.w > 0.0 && r.h > 0.0,
+                "a ferramenta {name} foi pintada com area ZERO: invisivel e inclicavel ({r:?})"
+            );
+            covered += 1;
+        }
+        for other in FlipMode::ALL.iter().filter(|m| m.object_mode() != mode) {
+            let (id, _) = ph2d_panel_flip::tool_button(*other);
+            assert!(
+                painted.iter().all(|(w, _)| *w != id),
+                "{other:?} (de outro modo) foi pintada em {mode:?}"
+            );
+        }
     }
+    assert_eq!(
+        covered,
+        FlipMode::ALL.len(),
+        "os dois modos cobrem TODAS as ferramentas"
+    );
+    ph2d_panel_flip::set_current_flip_style(None);
 }
 
 /// A seção do balde é **modal**: só aparece no modo Fill. Fora dele, os widgets do
@@ -699,7 +727,7 @@ fn each_mode_shows_only_its_own_attributes() {
         FlipMode,
         &[(&str, ph2d_a11y::NodeId)],
         &[&[(&str, ph2d_a11y::NodeId)]],
-    ); 8] = [
+    ); 7] = [
         (
             FlipMode::Draw,
             &stroke_only,
@@ -750,22 +778,6 @@ fn each_mode_shows_only_its_own_attributes() {
                 &bucket_only,
                 &trap_shared,
                 &fill_swatch,
-                &edit_only,
-                &colorize_only,
-                &trace_only,
-            ],
-        ),
-        // Select move/gira o objeto: não tem atributo de pintura nenhum.
-        (
-            FlipMode::Select,
-            &[],
-            &[
-                &stroke_only,
-                &eraser_only,
-                &bucket_only,
-                &trap_shared,
-                &fill_swatch,
-                &sculpt_only,
                 &edit_only,
                 &colorize_only,
                 &trace_only,
@@ -880,7 +892,6 @@ fn size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere() {
         (FlipMode::Reshape, true),
         (FlipMode::Edit, true),
         (FlipMode::Fill, false),
-        (FlipMode::Select, false),
         // Colorize COMPARTILHA o Size (regra do Erase/Sculpt): ele é a espessura do rabisco,
         // e como o rabisco semeia pela CÁPSULA, é o Size que decide se um toque curto pega a
         // região. A `colorize_section` pinta os MESMOS ids `FLIP_SIZE`/`_NUM`.
@@ -1027,7 +1038,7 @@ fn the_shape_row_toggles_the_filled_stroke_and_lives_only_in_draw_mode() {
         (FlipMode::Erase, false),
         (FlipMode::Fill, false),
         (FlipMode::Reshape, false),
-        (FlipMode::Select, false),
+        (FlipMode::Edit, false),
     ] {
         let mut host = MockPanelHost::with_panel::<FlipPanel>();
         let mut st = FlipPanelState::default();

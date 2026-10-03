@@ -86,7 +86,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.topbar.pill.wave" => "WAVE",
         "chrome.topbar.pill.vector" => "VECTOR",
         "chrome.topbar.pill.motion" => "MOTION",
-        "chrome.topbar.pill.flip" => "FLIP",
         "chrome.topbar.pill.model" => "MODEL",
         "chrome.topbar.pill.widget" => "WIDGET",
         "chrome.topbar.pill.grid" => "GRID",

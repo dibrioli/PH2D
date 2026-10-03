@@ -7,7 +7,7 @@
 
 use super::*;
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_flip::{DrawingId, FlipObjectId, Hold, KeyKind};
+use ph2d_flip::{DrawingId, FlipObjectId, FlipTarget, Hold, KeyKind, LayerId};
 
 /// Um doc com UM objeto, UMA camada e a chave 0 (com desenho próprio), playhead em 0.
 pub(super) fn doc_with_key0() -> (FlipDoc, FlipObjectId, LayerId, Playhead) {
@@ -31,14 +31,8 @@ pub(super) fn click(
     playhead: &mut Playhead,
     strip: &mut FlipStrip,
 ) -> bool {
-    apply_panel_event(
-        &PanelEvent::Click(id),
-        doc,
-        Some(lid),
-        playhead,
-        strip,
-        false,
-    )
+    let t = FlipTarget::on(doc.objects()[0].id, Some(lid));
+    apply_panel_event(&PanelEvent::Click(id), doc, t, playhead, strip, false)
 }
 
 /// 🔴 **Key Instance cria uma chave que COMPARTILHA o desenho.**
@@ -295,10 +289,11 @@ fn the_scrub_lane_moves_the_playhead_without_touching_the_selection() {
         ..FlipStrip::default()
     };
 
+    let t = FlipTarget::on(doc.objects()[0].id, Some(lid));
     let edited = apply_panel_event(
         &PanelEvent::SetValue(ph2d_panel_flip_frames::ids::FLIP_SCRUB, 4.0),
         &mut doc,
-        Some(lid),
+        t,
         &mut ph,
         &mut strip,
         false,
@@ -338,13 +333,14 @@ fn the_easing_chip_reaches_the_tween_options() {
         (2, EasingMode::Out),
         (3, EasingMode::InOut),
     ] {
+        let t = FlipTarget::on(doc.objects()[0].id, Some(lid));
         apply_panel_event(
             &PanelEvent::SelectOption(
                 ph2d_panel_flip_frames::ids::FLIP_TWEEN_EASE_DD,
                 preset.to_string(),
             ),
             &mut doc,
-            Some(lid),
+            t,
             &mut playhead,
             &mut strip,
             false,
@@ -359,10 +355,11 @@ fn the_easing_chip_reaches_the_tween_options() {
         );
     }
     // E volta ao uniforme.
+    let t = FlipTarget::on(doc.objects()[0].id, Some(lid));
     apply_panel_event(
         &PanelEvent::SelectOption(ph2d_panel_flip_frames::ids::FLIP_TWEEN_EASE_DD, "0".into()),
         &mut doc,
-        Some(lid),
+        t,
         &mut playhead,
         &mut strip,
         false,
@@ -421,10 +418,11 @@ fn the_add_button_generates_with_the_easing_the_bar_selected() {
     obj.drawing_mut(b).unwrap().strokes.push(s2);
 
     // Ease In (acelera do repouso): o inbetween do MEIO fica ATRÁS da metade do caminho.
+    let t = FlipTarget::on(doc.objects()[0].id, Some(lid));
     apply_panel_event(
         &PanelEvent::SelectOption(ph2d_panel_flip_frames::ids::FLIP_TWEEN_EASE_DD, "1".into()),
         &mut doc,
-        Some(lid),
+        t,
         &mut playhead,
         &mut strip,
         false,

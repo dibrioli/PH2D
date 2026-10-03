@@ -292,8 +292,8 @@ pub fn canvas_move(
                 down,
                 collapse_to,
             });
-            let active_layer = state.active_layer;
-            let dirty = crate::select::visible_key(f.flip, f.playhead, active_layer)
+            let target = state.target;
+            let dirty = crate::select::visible_key(f.flip, f.playhead, target)
                 .is_some_and(|(oid, lid, key, did)| move_points(f.flip, oid, lid, key, did, delta));
             (true, dirty)
         }
@@ -315,8 +315,8 @@ pub fn canvas_move(
                 down,
                 collapse_to,
             });
-            let active_layer = state.active_layer;
-            let dirty = crate::select::visible_key(f.flip, f.playhead, active_layer).is_some_and(
+            let target = state.target;
+            let dirty = crate::select::visible_key(f.flip, f.playhead, target).is_some_and(
                 |(oid, lid, key, did)| move_drawing(f.flip, oid, lid, key, did, delta),
             );
             (true, dirty)
@@ -338,7 +338,7 @@ pub fn canvas_up(
     let Some(gesture) = state.edit_gesture.take() else {
         return (false, false);
     };
-    let active_layer = state.active_layer;
+    let target = state.target;
     let domain = crate::select::edit_domain_now(state);
     let EditGesture::Marquee {
         start,
@@ -355,8 +355,7 @@ pub fn canvas_up(
             collapse_to: Some(i),
             ..
         } = gesture
-            && let Some((oid, _l, did)) =
-                crate::select::visible_drawing(f.flip, f.playhead, active_layer)
+            && let Some((oid, _l, did)) = crate::select::visible_drawing(f.flip, f.playhead, target)
             && let Some(dr) = f.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
             && crate::select::apply_pick(dr, Some(i), crate::select::Pick::Replace)
         {
@@ -371,7 +370,7 @@ pub fn canvas_up(
             ..
         } = gesture
             && let Some((oid, lid, did)) =
-                crate::select::visible_drawing(f.flip, f.playhead, active_layer)
+                crate::select::visible_drawing(f.flip, f.playhead, target)
         {
             let cutters = (domain == ph2d_tool_flip::EditDomain::Segment)
                 .then(|| {
@@ -418,8 +417,7 @@ pub fn canvas_up(
     // a caixa recortaria o traço na borda dela, que é o oposto do que o modo promete); no
     // Stroke, traços. A escolha vem do snapshot da tool — a mesma porta do down.
     let mut dirty = false;
-    if let Some((oid, lid, did)) = crate::select::visible_drawing(f.flip, f.playhead, active_layer)
-    {
+    if let Some((oid, lid, did)) = crate::select::visible_drawing(f.flip, f.playhead, target) {
         let cutters = (domain == ph2d_tool_flip::EditDomain::Segment)
             .then(|| {
                 f.flip

@@ -16,7 +16,7 @@
 //!    enquanto anda e o resultado dependeria do caminho do mouse.
 
 use ph2d_core::Vec2;
-use ph2d_flip::LayerId;
+use ph2d_flip::FlipTarget;
 use ph2d_flip_reshape::{InputSample, ReshapeKind, ReshapeParams, Session};
 use ph2d_tool_flip::FlipStyleSnapshot;
 use ph2d_vec_scene::Xform;
@@ -118,7 +118,7 @@ pub(crate) fn params_from(
 pub(crate) fn reshape_begin(
     flip: &mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
-    active_layer: Option<LayerId>,
+    target: FlipTarget,
     strip: &mut crate::strip::FlipStrip,
     p: &ReshapeParams,
     s: &InputSample,
@@ -127,7 +127,7 @@ pub(crate) fn reshape_begin(
     let (oid, lid, did) = crate::autokey::target_drawing(
         flip,
         playhead,
-        active_layer,
+        target,
         strip,
         crate::autokey::FlipEdit::Modify,
     )?;
@@ -236,7 +236,7 @@ pub fn canvas_down(
     let (local, px_to_world) = local_at(f, w2l, x, y);
     let p = params_from(&style, px_to_world, w2l, invert);
 
-    let active_layer = state.active_layer;
+    let target = state.target;
     let falloff_on = state.strip.falloff;
     let s = InputSample {
         pos: local,
@@ -246,7 +246,7 @@ pub fn canvas_down(
     let Some((oid, targets)) = reshape_begin(
         f.flip,
         f.playhead,
-        active_layer,
+        target,
         &mut state.strip,
         &p,
         &s,

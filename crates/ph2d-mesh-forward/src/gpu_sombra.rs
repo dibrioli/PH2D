@@ -226,6 +226,11 @@ fn vista_da_camera(cena: &Cena<'_>, pontos: &[[f32; 3]]) -> Vec<[f32; 3]> {
     v
 }
 
+/// A margem da cobertura em ALTURAS da cena: o céu que uma peça tapa ao chão cai como `(r/D)³` e
+/// a `4×` a altura já está abaixo de meio byte (o oráculo do céu do chão); o resto cai a zero na borda
+/// (`gpu_ceu_chao::Parametros::borda`).
+const MARGEM_CEU: f32 = 4.0;
+
 /// ⭐⭐ **Os dois mapas do quadro.**
 pub(super) fn enquadra(
     cena: &Cena<'_>,
@@ -254,8 +259,13 @@ pub(super) fn enquadra(
     let chao = cena.chao.unwrap_or(lo_y);
     // A cobertura: de cima, com a margem da caixa de quem chama — o mapa de sempre.
     let tan_ceu = cena.caixa_tan.unwrap_or(0.0);
-    let (ceu_vp, [cx, cz], meia_ceu, fundo_ceu) =
-        mapa(&cantos, [0.0, 1.0, 0.0], tan_ceu, chao, None);
+    let (ceu_vp, [cx, cz], meia_ceu, fundo_ceu) = mapa(
+        &cantos,
+        [0.0, 1.0, 0.0],
+        tan_ceu.max(MARGEM_CEU),
+        chao,
+        None,
+    );
     let vertical = chave.is_none_or(|k| k.l == [0.0, 1.0, 0.0]);
     let Some(k) = chave.filter(|_| !vertical) else {
         let mut cena_pts = cantos.clone();

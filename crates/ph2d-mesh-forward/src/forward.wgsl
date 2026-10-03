@@ -66,6 +66,8 @@ struct Objeto {
 @group(0) @binding(12) var tri_cor_tex: texture_2d_array<f32>;
 @group(0) @binding(13) var tri_nrh_tex: texture_2d_array<f32>;
 @group(0) @binding(14) var tri_amostrador: sampler;
+// O ceu que o chao ve (`gpu_ceu_chao.rs`).
+@group(0) @binding(15) var ceu_chao: texture_2d<f32>;
 @group(1) @binding(0) var<uniform> objeto: Objeto;
 
 fn tri_cor_ler(camada: i32, uv: vec2<f32>, lod: f32) -> vec4<f32> {
@@ -468,10 +470,14 @@ fn fs_cobertura(i: CobOut) -> @location(0) vec4<f32> {
     return vec4<f32>(1.0, clamp(i.z, 0.0, 1.0), 0.0, 1.0);
 }
 
+@fragment
+fn fs_cobertura_baixo(i: CobOut) -> @location(0) vec4<f32> {
+    return vec4<f32>(0.0, 0.0, clamp(i.z, 0.0, 1.0), 0.0);
+}
+
 // ⭐⭐ A SOMBRA QUE POUSA NO CHAO: o nivel da cobertura cujo borrao tem o tamanho FISICO da penumbra
 // (`tangente da caixa x distancia ao bloqueador`) — duro onde a peca encosta, mole longe dela.
-// Devolve (visibilidade da caixa, visibilidade do ceu). ⭐ A do CEU e' o escurecimento de contacto:
-// a fraccao do ceu que um objecto a altura `h` tapa ~ a cobertura numa janela do tamanho de `h`.
+// Devolve (visibilidade da caixa, visibilidade do ceu). A do CEU vem do passe do ceu do chao.
 fn visibilidade_do_chao(p: vec3<f32>) -> vec2<f32> {
     if (quadro.sombra.w < 0.5) {
         return vec2<f32>(1.0);
@@ -486,47 +492,21 @@ fn visibilidade_do_chao(p: vec3<f32>) -> vec2<f32> {
     let texel = 2.0 * quadro.ceu.x / lado;
     let tan_p = quadro.ceu.z;
     let fundo = quadro.ceu.y;
+    // O ceu: o do passe do ceu do chao (`ceu_chao.wgsl`), pre-multiplicado pela validade.
+    let s = textureSampleLevel(ceu_chao, liso, uv, 0.0);
+    let ceu = select(1.0, s.r / s.g, s.g > 1.0e-3);
     // 1) quem tapa, e a que altura: a caixa vista daqui ate' ao topo da cena.
     let busca = tan_p * c.z * fundo;
     let a = textureSampleLevel(cobertura, liso, uv, clamp(log2(max(2.0 * busca / texel, 1.0)), 0.0, topo));
     if (a.r < 1.0e-3) {
-        return vec2<f32>(1.0);
+        return vec2<f32>(1.0, ceu);
     }
     let zb = a.g / a.r;
     let h = max(c.z - zb, 0.0) * fundo;
     // 2) a penumbra: o diametro do borrao e' 2 x tangente x distancia ao bloqueador.
     let w = tan_p * h;
     let b = textureSampleLevel(cobertura, liso, uv, clamp(log2(max(2.0 * w / texel, 1.0)), 0.0, topo));
-    return vec2<f32>(1.0 - clamp(b.r, 0.0, 1.0), ceu_do_chao(uv, c.z, texel, fundo, topo));
-}
-
-// ⭐⭐ O CEU QUE O CHAO VE — oclusao por HORIZONTE sobre o mapa de alturas visto de cima (o HBAO de
-// terreno): em cada uma de 8 direccoes, o angulo do horizonte (o topo mais alto visto dali); a
-// fraccao do ceu ponderada pelo cosseno que uma fatia ve e' cos^2 desse angulo.
-// ⛔ Medido (02/10): a cobertura media numa janela dava 5 % de escurecimento ao lado de uma esfera
-// pousada, onde a conta fisica da' ~25 %.
-const PASSOS_CEU: array<f32, 5> = array<f32, 5>(0.02, 0.05, 0.1, 0.2, 0.4);
-
-fn ceu_do_chao(uv: vec2<f32>, zc: f32, texel: f32, fundo: f32, topo: f32) -> f32 {
-    var vis = 0.0;
-    for (var d = 0u; d < 8u; d = d + 1u) {
-        let ang = f32(d) * 0.7853982;
-        let dir = vec2<f32>(cos(ang), sin(ang));
-        var horizonte = 0.0;
-        for (var k = 0u; k < 5u; k = k + 1u) {
-            let dist = PASSOS_CEU[k];
-            let q = uv + dir * (dist / (texel * f32(textureDimensions(cobertura, 0).x)));
-            let lod = clamp(log2(max(dist / texel * 0.25, 1.0)), 0.0, topo);
-            let a = textureSampleLevel(cobertura, liso, q, lod);
-            if (a.r > 0.5) {
-                let h = max(zc - a.g / a.r, 0.0) * fundo;
-                horizonte = max(horizonte, atan2(h, dist));
-            }
-        }
-        let c = cos(horizonte);
-        vis = vis + c * c;
-    }
-    return vis / 8.0;
+    return vec2<f32>(1.0 - clamp(b.r, 0.0, 1.0), ceu);
 }
 
 // ── O CHAO QUE SO' RECEBE: aparece so' o quanto ele escurece ─────────────────────────────────────

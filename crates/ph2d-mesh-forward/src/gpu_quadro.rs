@@ -325,6 +325,10 @@ impl Forward {
                     resource: wgpu::BindingResource::Sampler(&self.liso),
                 },
                 wgpu::BindGroupEntry {
+                    binding: 15,
+                    resource: wgpu::BindingResource::TextureView(&self.cobertura.ceu.vista),
+                },
+                wgpu::BindGroupEntry {
                     binding: 8,
                     resource: wgpu::BindingResource::TextureView(
                         self.foto.as_ref().map_or(&self.foto_vazia, |(_, v)| v),

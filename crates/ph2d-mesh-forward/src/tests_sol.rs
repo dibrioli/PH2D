@@ -17,7 +17,7 @@ const CAIXA: ([f32; 3], f32) = ([0.6, 0.2, 0.0], 0.4);
 const ORACULO: &str = include_str!("../fixtures/oraculo_sombra_sol.csv");
 
 /// Uma caixa de aresta `a`, faces planas.
-fn cubo(a: f32) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
+pub(crate) fn cubo(a: f32) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     let h = a * 0.5;
     let (mut p, mut n, mut idx) = (Vec::new(), Vec::new(), Vec::new());
     for eixo in 0..3 {

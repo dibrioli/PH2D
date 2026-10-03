@@ -177,8 +177,9 @@ impl Forward {
         self.cor
     }
 
-    /// ⭐ **Quantos pipelines este desenhista já compilou** — fixo desde que nasce: `7` (objeto,
-    /// chão, fundo, sombra, cobertura, redução, codificação) e `+5` do brilho onde a placa o tem
+    /// ⭐ **Quantos pipelines este desenhista já compilou** — fixo desde que nasce: `10` (objeto,
+    /// chão, fundo, sombra, cobertura de cima e de baixo, redução, céu do chão e o borrão dele,
+    /// codificação) e `+5` do brilho onde a placa o tem
     /// (objeto, chão e fundo com a cena-linear, descer, subir). Ligar, desligar ou mexer no brilho,
     /// ou trocar de céu, não compila nada.
     #[must_use]
@@ -252,6 +253,7 @@ impl Forward {
                 tri[0],
                 tri[1],
                 tri[2],
+                crate::gpu_ceu_chao::entrada(15),
             ],
         });
         // ⚠️ O passe de sombra ESCREVE o mapa: não o pode ter ligado para leitura. Só o quadro.
@@ -522,7 +524,7 @@ impl Forward {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let pipelines = if brilho.is_some() { 12 } else { 7 };
+        let pipelines = if brilho.is_some() { 15 } else { 10 };
         let cobertura =
             crate::gpu_cobertura::Cobertura::nova(&device, &modulo, &pl_sombra, &so_posicao);
         Self {
@@ -600,6 +602,7 @@ impl Forward {
             &vec![0u8; n_vertices * 8],
             wgpu::BufferUsages::VERTEX,
         );
+        self.cobertura.ceu.malha_mudou();
         self.malhas.insert(
             id,
             MalhaGpu {
@@ -633,6 +636,7 @@ impl Forward {
 
     /// Esquece a malha `id`.
     pub fn esquece(&mut self, id: u64) {
+        self.cobertura.ceu.malha_mudou();
         self.malhas.remove(&id);
     }
 
@@ -665,6 +669,9 @@ impl Forward {
         let chave = sombra_impl::chave(cena, self.foto.is_some(), self.sol.as_ref());
         let enquadra =
             sombra_impl::enquadra(cena, chave, |id| self.malhas.get(&id).map(|m| m.caixa));
+        let chao = cena.chao.unwrap_or(0.0);
+        let (ceu, vp, objs) = (enquadra.ceu, &enquadra.ceu_vp, cena.objetos);
+        (self.cobertura.ceu).prepara(&self.queue, ceu, vp, chao, objs);
         let dados = quadro_impl::uniforme_do_quadro(
             cena,
             &enquadra,

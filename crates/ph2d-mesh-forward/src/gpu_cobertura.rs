@@ -15,10 +15,11 @@
 
 use crate::gpu_alvo::PROFUNDIDADE;
 
-/// O lado da cobertura. ⚠️ Basta pouco: ela só alimenta a sombra MOLE (a dura é do mapa de
-/// [`crate::SOMBRA_LADO`]), e o nível mais fino já é mais fino que a penumbra mais curta que o
-/// chão recebe.
-pub const COBERTURA_LADO: u32 = 512;
+/// O lado da cobertura. Ela alimenta a sombra MOLE (a dura é do mapa de [`crate::SOMBRA_LADO`]) e o
+/// céu do chão ([`crate::gpu_ceu_chao`]); com a margem do céu (`4×` a altura) o quadro cresce, e
+/// `1024` mantém o texel perto do de antes (`~0,7 cm` na cena do gate). Medido contra o Cycles:
+/// `512` dá `|Δ|` médio até `0,009`, `1024` até `0,007`.
+pub const COBERTURA_LADO: u32 = 1024;
 
 pub(crate) const FORMATO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
@@ -32,6 +33,11 @@ pub(crate) struct Cobertura {
     degraus: Vec<(wgpu::BindGroup, wgpu::Texture, wgpu::TextureView)>,
     reduz: wgpu::RenderPipeline,
     pub desenha: wgpu::RenderPipeline,
+    /// O mesmo enquadramento visto de BAIXO (`b` = a profundidade da superfície mais funda): o céu
+    /// que passa por baixo de uma peça redonda ou a flutuar.
+    desenha_baixo: wgpu::RenderPipeline,
+    /// O céu que o chão vê, calculado sobre esta cobertura.
+    pub ceu: crate::gpu_ceu_chao::CeuChao,
 }
 
 fn niveis() -> u32 {
@@ -165,6 +171,39 @@ impl Cobertura {
             cache: None,
         });
 
+        let so_azul = [Some(wgpu::ColorTargetState {
+            format: FORMATO,
+            blend: None,
+            write_mask: wgpu::ColorWrites::BLUE,
+        })];
+        let desenha_baixo = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("ph2d-mesh-forward cobertura de baixo"),
+            layout: Some(pl_sombra),
+            vertex: wgpu::VertexState {
+                module: modulo,
+                entry_point: Some("vs_cobertura"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: vertice,
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: modulo,
+                entry_point: Some("fs_cobertura_baixo"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &so_azul,
+            }),
+            primitive: prim,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: PROFUNDIDADE,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Greater),
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview_mask: None,
+            cache: None,
+        });
+
         let degraus = (0..niveis() - 1)
             .map(|k| {
                 let fonte = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -194,7 +233,10 @@ impl Cobertura {
                 (fonte, passagem, v)
             })
             .collect();
+        let ceu =
+            crate::gpu_ceu_chao::CeuChao::novo(device, &vista, crate::gpu_ceu_chao::CEU_CHAO_LADO);
         Self {
+            ceu,
             textura,
             vista,
             profundidade,
@@ -202,6 +244,7 @@ impl Cobertura {
             degraus,
             reduz,
             desenha,
+            desenha_baixo,
         }
     }
 
@@ -238,6 +281,34 @@ impl Cobertura {
                 multiview_mask: None,
             });
             pass.set_pipeline(&self.desenha);
+            pass.set_bind_group(0, g0_sombra, &[]);
+            desenha_objetos(&mut pass);
+        }
+        {
+            let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("ph2d-mesh-forward cobertura de baixo"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.nivel0,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.profundidade,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_pipeline(&self.desenha_baixo);
             pass.set_bind_group(0, g0_sombra, &[]);
             desenha_objetos(&mut pass);
         }
@@ -284,5 +355,6 @@ impl Cobertura {
                 },
             );
         }
+        self.ceu.grava(enc);
     }
 }

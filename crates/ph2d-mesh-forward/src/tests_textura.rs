@@ -283,3 +283,74 @@ fn a_textura_e_a_lei_da_casa() {
         assert!(q(0.5) <= 1.0 && q(0.99) <= 1.0, "quadrado {k}: a placa diverge da CPU");
     }
 }
+
+/// ⭐⭐ **Trocar de textura não compila nada, e o quadro não depende do anterior** — os dois
+/// inegociáveis da linha (`nada_compila_ao_editar`, `quadro_pronto_na_hora`) com a textura ligada:
+/// subir outra camada (a matriz cresce e copia), trocar de camada e de números, e voltar.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn trocar_de_textura_nao_compila_nem_acumula() {
+    let Some(mut fw) = Forward::no_aparelho(&ambiente()) else {
+        eprintln!("sem aparelho");
+        return;
+    };
+    let (p, n, idx) = crate::tests::esfera(0.5);
+    let ao = vec![1.0; p.len()];
+    let mat = vec![0u32; p.len()];
+    fw.sobe(
+        1,
+        &Malha {
+            posicoes: &p,
+            normais: &n,
+            ao: &ao,
+            material: &mat,
+            indices: &idx,
+        },
+    );
+    let m = mapas();
+    fw.sobe_textura(0, &m);
+    let antes = fw.pipelines_compilados();
+    let objs = [Instancia {
+        malha: 1,
+        modelo: ID,
+    }];
+    let s = ph2d_material::OpenPbr::default().prepare();
+    let mats = [ph2d_material::wgsl::pack(&s, ph2d_material::wgsl::EnvLobe::of(&s))];
+    let tex = |camada, tamanho| {
+        [Some(TexturaMaterial {
+            camada,
+            triplanar: Triplanar {
+                tamanho,
+                aspecto: 1.0,
+                blend: 0.3,
+                relevo: 1.0,
+            },
+            tem_normal: true,
+            tem_rugosidade: true,
+            mundo_para_folha: [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+            ],
+        })]
+    };
+    let quadro = |fw: &mut Forward, t: &[Option<TexturaMaterial>]| {
+        fw.quadro(&crate::Cena {
+            texturas: t,
+            ..cena(&objs, &mats, camera(1.0, 0.0))
+        })
+        .expect("quadro")
+    };
+    let a = quadro(&mut fw, &tex(0, 0.3));
+    // Outra camada (a matriz cresce de 1 para 2 e copia a 0), outros números.
+    let mut outra = m.clone();
+    outra.tem_normal = false;
+    fw.sobe_textura(1, &outra);
+    let b = quadro(&mut fw, &tex(1, 0.7));
+    let sem = quadro(&mut fw, &[]);
+    let a2 = quadro(&mut fw, &tex(0, 0.3));
+    assert_eq!(fw.pipelines_compilados(), antes, "trocar de textura compilou");
+    assert_eq!(a, a2, "a camada 0 voltou diferente depois de a matriz crescer");
+    assert_ne!(a, b, "o controlo: outra camada e outro ladrilho são outra imagem");
+    assert_ne!(a, sem, "o controlo: a textura muda a imagem");
+}

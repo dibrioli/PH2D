@@ -71,8 +71,9 @@ pub use rounded::{
 fn snap_x_apply(x: f32, snap: ph2d_tokens::SnapX) -> f32 {
     match snap {
         ph2d_tokens::SnapX::None => x,
-        ph2d_tokens::SnapX::Half => (x * 2.0).round() * 0.5,
-        ph2d_tokens::SnapX::Full => x.round(),
+        // No píxel do ECRÃ (`ui_scale::ao_pixel`): a `100 %` é o arredondamento de sempre.
+        ph2d_tokens::SnapX::Half => crate::ui_scale::ao_pixel(x * 2.0) * 0.5,
+        ph2d_tokens::SnapX::Full => crate::ui_scale::ao_pixel(x),
     }
 }
 

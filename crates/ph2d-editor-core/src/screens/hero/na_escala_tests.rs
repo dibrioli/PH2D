@@ -158,3 +158,54 @@ fn no_ecra_hidpi_a_escala_multiplica_e_o_clique_cai_no_mesmo_id() {
         );
     }
 }
+
+/// ⭐⭐ **O texto do chrome pousa no píxel do ECRÃ** — a `125 %` e a `175 %`, a linha de base
+/// de cada glifo (×`s`) é inteira; fora da porta a grelha volta a `1,0`. ⛔ Arredondado no
+/// lógico, as bordas horizontais do texto pequeno ficavam `43 %` mais macias (foto medida, 02/10).
+#[test]
+fn o_texto_do_chrome_pousa_no_pixel_do_ecra() {
+    for (ecra, z) in [
+        (1.0, UiScale::P125),
+        (1.0, UiScale::P175),
+        (1.5, UiScale::P100),
+    ] {
+        let mapa = crate::ui_scale::UiScaleMap::no_ecra(z, ecra);
+        let s = mapa.factor();
+        let mut cena = VectorScene::new();
+        let mut ts = TextSystem::without_system_fonts();
+        crate::ui_scale::pintar_no_chrome(
+            mapa,
+            Rect::new(0.0, 0.0, 800.0, 600.0),
+            &mut cena,
+            |vp, c| {
+                crate::paint::paint_text(
+                    &mut ts,
+                    c,
+                    "Hierarchy",
+                    10.3,
+                    63.7,
+                    11.0,
+                    vp.w,
+                    ph2d_vector::Color::WHITE,
+                );
+            },
+        );
+        assert_eq!(
+            crate::ui_scale::ao_pixel(0.4).to_bits(),
+            0.0_f32.to_bits(),
+            "a grelha volta a 1"
+        );
+        let res = &cena.inner().encoding().resources;
+        assert!(!res.glyph_runs.is_empty(), "{z:?}: nenhum glifo");
+        for run in &res.glyph_runs {
+            let ty = run.transform.translation[1];
+            for g in &res.glyphs[run.glyphs.clone()] {
+                let y = ty + s * g.y;
+                assert!(
+                    (y - y.round()).abs() < 1e-3,
+                    "{ecra} × {z:?}: a linha de base cai em {y} píxeis do ecrã"
+                );
+            }
+        }
+    }
+}

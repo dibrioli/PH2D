@@ -236,7 +236,9 @@ pub(crate) fn paint_text_lines(
     // `rect.y + (rect.h - font_size) * 0.5`. Rounding here makes every
     // caller crisp without each one having to remember to align.
     let y = centrado(y, font_size);
-    let translate = Affine::translate((x.round() as f64, y.round() as f64));
+    // ⚠️ No píxel do ECRÃ, não no lógico (`ui_scale::ao_pixel`) — a 125 % são outros.
+    let (x, y) = (crate::ui_scale::ao_pixel(x), crate::ui_scale::ao_pixel(y));
+    let translate = Affine::translate((x as f64, y as f64));
     let params = rendering.params();
     let snap_x = params.snap_x;
     let hint = params.hint;
@@ -298,7 +300,7 @@ pub(crate) fn paint_text_lines(
                         // reintroduzi-lo. Para o latino precomposto que o chrome
                         // usa, `y_offset` é 0 e a saída não muda um bit.
                         x: snap_x_apply(g.x, snap_x),
-                        y: g.y.round(),
+                        y: crate::ui_scale::ao_pixel(g.y),
                     }),
                 );
         }

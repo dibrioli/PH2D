@@ -17,6 +17,8 @@ use ph2d_vector::VectorScene;
 
 thread_local! {
     static ACTIVE: std::cell::Cell<UiScale> = const { std::cell::Cell::new(UiScale::P100) };
+    /// O `s` da grelha do ECRÃ enquanto o chrome pinta ([`pintar_no_chrome`]); `1,0` fora dele.
+    static GRELHA: std::cell::Cell<f32> = const { std::cell::Cell::new(1.0) };
     /// A cena lógica, reutilizada entre quadros (o Vello guarda as alocações) — um rascunho de
     /// pintura, não estado: nasce vazia em cada [`pintar_no_chrome`].
     static CHROME_LOGICO: std::cell::RefCell<VectorScene> = std::cell::RefCell::new(VectorScene::new());
@@ -37,11 +39,24 @@ pub fn pintar_no_chrome<R>(
     CHROME_LOGICO.with(|c| {
         let mut chrome = c.borrow_mut();
         chrome.reset();
+        let antes = GRELHA.replace(mapa.factor());
         let r = f(mapa.rect_to_logical(viewport), &mut chrome);
+        GRELHA.set(antes);
         let s = f64::from(mapa.factor());
         scene.append_transformed(&chrome, ph2d_vector::Affine::scale(s));
         r
     })
+}
+
+/// ⭐ **Arredonda uma coordenada LÓGICA ao píxel do ECRÃ** — o que o texto usa para pousar a
+/// linha de base e o snap-X. ⛔ Arredondar no lógico (`v.round()`) a `125 %` põe a linha de base
+/// entre duas linhas de píxeis do ecrã: medido em 02/10, as bordas horizontais do texto pequeno
+/// ficavam `43 %` mais macias que a `100 %` (o preset de fábrica não tem *hint*). A `s = 1` é
+/// `v.round()` AO BIT.
+#[must_use]
+pub fn ao_pixel(v: f32) -> f32 {
+    let s = GRELHA.with(std::cell::Cell::get);
+    (v * s).round() / s
 }
 
 /// Publica a escala do quadro — o `paint_hero_screen` chama-a, como faz com o estilo do texto.
@@ -127,6 +142,15 @@ impl UiScaleMap {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A `100 %` o arredondamento ao píxel é o `round` de sempre, AO BIT; o texto que pousa no
+    /// píxel do ecrã sob a escala é provado em `screens::hero::na_escala_tests`.
+    #[test]
+    fn ao_pixel_a_cem_por_cento_e_o_round() {
+        for v in [0.0_f32, 0.49, 0.5, 10.3, -7.75, 1365.6] {
+            assert_eq!(ao_pixel(v).to_bits(), v.round().to_bits(), "{v}");
+        }
+    }
 
     /// A fábrica é a identidade AO BIT, e ida-e-volta devolve o rect.
     #[test]

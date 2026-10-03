@@ -47,7 +47,7 @@ pub const SELCOLOR_BUCKETS: [&str; 9] = [
 /// masks, biased toward low-chroma pixels); the matching groups' CMYK shifts are
 /// accumulated and applied (C/M/Y subtract R/G/B, K darkens all). `Relative`
 /// scales the shift by the channel's existing value; `Absolute` is a flat shift.
-/// `acc` is straight LINEAR f32 RGBA (alpha preserved). All-zero groups
+/// Display space, on the encoded values (alpha preserved). All-zero groups
 /// early-return an exact identity.
 pub(crate) fn apply_selective_color(p: &SelectiveColorParams, acc: &mut [[f32; 4]]) {
     let buckets: [CmykAdjust; 9] = core::array::from_fn(|i| selcolor_bucket(p, i));
@@ -60,9 +60,9 @@ pub(crate) fn apply_selective_color(p: &SelectiveColorParams, acc: &mut [[f32; 4
     let relative = matches!(p.method, SelectiveMethod::Relative);
     for px in acc.iter_mut() {
         let (r, g, b) = (
-            linear_to_srgb_f32(px[0]),
-            linear_to_srgb_f32(px[1]),
-            linear_to_srgb_f32(px[2]),
+            px[0].clamp(0.0, 1.0),
+            px[1].clamp(0.0, 1.0),
+            px[2].clamp(0.0, 1.0),
         );
         let m = r.min(g).min(b);
         let chroma = r.max(g).max(b) - m;
@@ -100,9 +100,9 @@ pub(crate) fn apply_selective_color(p: &SelectiveColorParams, acc: &mut [[f32; 4
         } else {
             (r - (tc + tk), g - (tm + tk), b - (ty + tk))
         };
-        px[0] = srgb_to_linear_f32(nr.clamp(0.0, 1.0));
-        px[1] = srgb_to_linear_f32(ng.clamp(0.0, 1.0));
-        px[2] = srgb_to_linear_f32(nb.clamp(0.0, 1.0));
+        px[0] = nr.clamp(0.0, 1.0);
+        px[1] = ng.clamp(0.0, 1.0);
+        px[2] = nb.clamp(0.0, 1.0);
     }
 }
 

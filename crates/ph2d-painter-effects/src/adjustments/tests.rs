@@ -242,6 +242,7 @@ fn bc_brightness_extremes_clamp_to_black_and_white() {
 // ── T4.x — per-pixel fan-out kinds (Invert/Exposure/Vibrance/Posterize/
 // Threshold): invariant tests (neutral identity, extremes, alpha, gray-safe).
 
+/// `px` and the result are the compositor's ENCODED straight values (ADR-0177).
 fn run(kind: AdjustmentKind, params: AdjustmentParams, px: [f32; 4]) -> [f32; 4] {
     let mut acc = [px];
     apply_adjustment(&kind, &params, &mut acc);
@@ -280,7 +281,8 @@ fn exposure_neutral_identity_and_ev_brightens() {
         px,
     );
     assert_eq!(neutral, px, "all-zero Exposure is an exact identity");
-    // +1 EV doubles linear light.
+    // +1 EV doubles the LIGHT (it converts at its boundary): linear 0.25 → 0.5.
+    let e = linear_to_srgb_f32(0.25);
     let up = run(
         AdjustmentKind::Exposure,
         AdjustmentParams::Exposure(ExposureParams {
@@ -288,9 +290,13 @@ fn exposure_neutral_identity_and_ev_brightens() {
             offset: 0.0,
             gamma_correction: 0.0,
         }),
-        [0.25, 0.25, 0.25, 0.4],
+        [e, e, e, 0.4],
     );
-    assert!((up[0] - 0.5).abs() < 1e-5, "+1 EV: 0.25 → 0.5: {up:?}");
+    let l = srgb_to_linear_f32(up[0]);
+    assert!(
+        (l - 0.5).abs() < 2e-4,
+        "+1 EV: 0.25 → 0.5 in light: {l} ({up:?})"
+    );
     assert_eq!(up[3], 0.4, "alpha preserved");
 }
 
@@ -376,21 +382,37 @@ fn threshold_splits_on_luma() {
 }
 
 #[test]
-fn invert_lut_tracks_direct_reference() {
-    // The per-call LUT (perf path) must match the exact display-space
-    // transfer across the range (handoff §3: cheaper compute, same result).
-    for i in 0..=64 {
-        let v = i as f32 / 64.0;
-        let direct = srgb_to_linear_f32(1.0 - linear_to_srgb_f32(v));
+fn threshold_is_the_luma_byte_at_least_the_threshold() {
+    // Photoshop's rule on an exact gray, at every threshold: byte `t` → white, `t − 1` →
+    // black (an f32 cut at `t/255` sent the gray AT the threshold to black — the
+    // Rec.601 weights sum to just under 1).
+    let gray = |b: u8, t: u8| {
+        let v = f32::from(b) / 255.0;
+        run(
+            AdjustmentKind::Threshold,
+            AdjustmentParams::Threshold(ThresholdParams { threshold: t }),
+            [v, v, v, 1.0],
+        )[0]
+    };
+    for t in 1..=255u8 {
+        assert_eq!(gray(t, t), 1.0, "gray {t} at threshold {t}");
+        assert_eq!(gray(t - 1, t), 0.0, "gray {} at threshold {t}", t - 1);
+    }
+}
+
+#[test]
+fn invert_is_the_exact_display_negative_at_every_byte() {
+    // On the encoded values Invert is `1 - x` exactly: byte `b` comes back `255 - b`
+    // (the old linear contract went through a 1024-entry round-trip table that
+    // missed by one in 12 of 9 216 bytes of a composite — ADR-0177 P3).
+    for b in 0..=255u8 {
+        let v = f32::from(b) / 255.0;
         let out = run(
             AdjustmentKind::Invert,
             AdjustmentParams::Invert(InvertParams {}),
             [v, v, v, 1.0],
         )[0];
-        assert!(
-            (out - direct).abs() < 2e-3,
-            "invert LUT vs direct at {v}: {out} vs {direct}"
-        );
+        assert_eq!((out * 255.0).round() as u8, 255 - b, "byte {b}: {out}");
     }
 }
 
@@ -452,7 +474,7 @@ fn levels_neutral_default_is_exact_identity() {
 #[test]
 fn levels_gamma_above_one_brightens_midtones() {
     // A mid-gray pixel (≈ display 0.5) gets brighter under γ = 2 (PS: out = t^(1/γ)).
-    let mid = srgb_to_linear_f32(0.5);
+    let mid = 0.5;
     let out = run(
         AdjustmentKind::Levels,
         levels(0.0, 2.0, 1.0, 0.0, 1.0),
@@ -466,16 +488,12 @@ fn levels_gamma_above_one_brightens_midtones() {
 fn levels_input_points_clip_to_black_and_white() {
     // black_point=0.25 / white_point=0.75: anything ≤ 0.25 → black, ≥ 0.75 → white.
     let p = levels(0.25, 1.0, 0.75, 0.0, 1.0);
-    let lo = run(
-        AdjustmentKind::Levels,
-        p.clone(),
-        [srgb_to_linear_f32(0.15); 4],
-    );
+    let lo = run(AdjustmentKind::Levels, p.clone(), [0.15; 4]);
     assert!(
         lo[0] < 1e-3,
         "below the input black point clips to black: {lo:?}"
     );
-    let hi = run(AdjustmentKind::Levels, p, [srgb_to_linear_f32(0.85); 4]);
+    let hi = run(AdjustmentKind::Levels, p, [0.85; 4]);
     assert!(
         hi[0] > 0.999,
         "above the input white point clips to white: {hi:?}"
@@ -490,7 +508,7 @@ fn levels_output_range_compresses() {
         levels(0.0, 1.0, 1.0, 0.2, 0.8),
         [1.0, 1.0, 1.0, 0.4],
     );
-    let want = srgb_to_linear_f32(0.8);
+    let want = 0.8;
     assert!(
         (out[0] - want).abs() < 5e-3,
         "white compresses toward output_white: {out:?} want {want}"
@@ -500,7 +518,7 @@ fn levels_output_range_compresses() {
         levels(0.0, 1.0, 1.0, 0.2, 0.8),
         [0.0, 0.0, 0.0, 1.0],
     );
-    let want_lo = srgb_to_linear_f32(0.2);
+    let want_lo = 0.2;
     assert!(
         (out_lo[0] - want_lo).abs() < 5e-3,
         "black lifts toward output_black: {out_lo:?}"
@@ -554,16 +572,14 @@ fn levels_apply_tracks_exported_lut() {
     };
     let lut = levels_display_lut(&p);
     for &disp in &[0.0_f32, 0.2, 0.37, 0.5, 0.83, 1.0] {
-        let lin = srgb_to_linear_f32(disp);
-        let mut acc = [[lin, lin, lin, 1.0]];
+        let mut acc = [[disp, disp, disp, 1.0]];
         apply_levels(&p, &mut acc);
-        let s = linear_to_srgb_f32(lin);
-        let t = s.clamp(0.0, 1.0) * (DISPLAY_LUT_N - 1) as f32;
+        let t = disp * (DISPLAY_LUT_N - 1) as f32;
         let idx = t as usize;
         let frac = t - idx as f32;
         let a = lut[idx];
         let b = lut[(idx + 1).min(DISPLAY_LUT_N - 1)];
-        let expected = srgb_to_linear_f32(a + (b - a) * frac);
+        let expected = (a + (b - a) * frac).clamp(0.0, 1.0);
         assert!(
             (acc[0][0] - expected).abs() < 1e-6,
             "apply_levels uses the exported LUT at {disp}: {} vs {expected}",
@@ -673,16 +689,14 @@ fn curves_apply_tracks_exported_lut() {
     };
     let luts = curves_display_luts(&p);
     for &disp in &[0.0_f32, 0.27, 0.5, 0.61, 1.0] {
-        let lin = srgb_to_linear_f32(disp);
-        let mut acc = [[lin, lin, lin, 1.0]];
+        let mut acc = [[disp, disp, disp, 1.0]];
         apply_curves(&p, &mut acc);
-        let s = linear_to_srgb_f32(lin);
-        let t = s.clamp(0.0, 1.0) * (DISPLAY_LUT_N - 1) as f32;
+        let t = disp * (DISPLAY_LUT_N - 1) as f32;
         let idx = t as usize;
         let frac = t - idx as f32;
         let a = luts[0][idx];
         let b = luts[0][(idx + 1).min(DISPLAY_LUT_N - 1)];
-        let expected = srgb_to_linear_f32(a + (b - a) * frac);
+        let expected = (a + (b - a) * frac).clamp(0.0, 1.0);
         assert!(
             (acc[0][0] - expected).abs() < 1e-6,
             "apply_curves uses the exported LUT at {disp}"
@@ -726,9 +740,11 @@ fn photo(temperature: f32, density: f32, preserve: bool, px: [f32; 4]) -> [f32; 
     )
 }
 
-/// Rec.709 linear luma — the same weights `apply_photo_filter` renormalizes on.
+/// Rec.709 luma IN LIGHT of an encoded pixel — the weights and the space
+/// `apply_photo_filter` renormalizes in.
 fn luma(px: [f32; 4]) -> f32 {
-    0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2]
+    let l = |v: f32| srgb_to_linear_f32(v);
+    0.2126 * l(px[0]) + 0.7152 * l(px[1]) + 0.0722 * l(px[2])
 }
 
 #[test]
@@ -908,16 +924,13 @@ fn color_balance_shadow_scope_targets_dark_tones() {
 #[test]
 fn color_balance_preserve_luminosity_holds_display_luma() {
     // With preserve-luminosity the shift moves color but not display brightness.
-    let mid = srgb_to_linear_f32(0.5);
     let out = run(
         AdjustmentKind::ColorBalance,
         colorbalance(0.8, 0.0, -0.4, ToneScope::Midtones, true),
-        [mid, mid, mid, 1.0],
+        [0.5, 0.5, 0.5, 1.0],
     );
     let l_in = 0.299 * 0.5 + 0.587 * 0.5 + 0.114 * 0.5;
-    let l_out = 0.299 * linear_to_srgb_f32(out[0])
-        + 0.587 * linear_to_srgb_f32(out[1])
-        + 0.114 * linear_to_srgb_f32(out[2]);
+    let l_out = 0.299 * out[0] + 0.587 * out[1] + 0.114 * out[2];
     assert!(
         (l_out - l_in).abs() < 5e-3,
         "preserve-lum keeps display luma: {l_out} vs {l_in}"
@@ -937,16 +950,14 @@ fn color_balance_apply_tracks_exported_lut() {
     };
     let luts = colorbalance_display_luts(&p);
     for &disp in &[0.0_f32, 0.25, 0.5, 0.75, 1.0] {
-        let lin = srgb_to_linear_f32(disp);
-        let mut acc = [[lin, lin, lin, 1.0]];
+        let mut acc = [[disp, disp, disp, 1.0]];
         apply_color_balance(&p, &mut acc);
-        let s = linear_to_srgb_f32(lin);
-        let t = s.clamp(0.0, 1.0) * (DISPLAY_LUT_N - 1) as f32;
+        let t = disp * (DISPLAY_LUT_N - 1) as f32;
         let idx = t as usize;
         let frac = t - idx as f32;
         let a = luts[0][idx];
         let b = luts[0][(idx + 1).min(DISPLAY_LUT_N - 1)];
-        let expected = srgb_to_linear_f32(a + (b - a) * frac);
+        let expected = (a + (b - a) * frac).clamp(0.0, 1.0);
         assert!(
             (acc[0][0] - expected).abs() < 1e-6,
             "apply_color_balance uses the exported LUT at {disp}"
@@ -1064,12 +1075,7 @@ fn channel_mixer_swaps_red_and_blue() {
 #[test]
 fn channel_mixer_monochrome_writes_weighted_gray() {
     // Monochrome writes the red_out mix to all three channels (a weighted B&W).
-    let px = [
-        srgb_to_linear_f32(0.8),
-        srgb_to_linear_f32(0.4),
-        srgb_to_linear_f32(0.1),
-        0.5,
-    ];
+    let px = [0.8, 0.4, 0.1, 0.5];
     let out = run(
         AdjustmentKind::ChannelMixer,
         mixer(
@@ -1086,16 +1092,16 @@ fn channel_mixer_monochrome_writes_weighted_gray() {
         "all channels equal (gray): {out:?}"
     );
     assert!(
-        (linear_to_srgb_f32(out[0]) - gray_disp).abs() < 3e-3,
+        (out[0] - gray_disp).abs() < 1e-6,
         "gray = weighted display sum: {} vs {gray_disp}",
-        linear_to_srgb_f32(out[0])
+        out[0]
     );
     assert_eq!(out[3], 0.5, "alpha preserved");
 }
 
 #[test]
 fn channel_mixer_constant_offsets_output() {
-    let v = srgb_to_linear_f32(0.5);
+    let v = 0.5;
     let out = run(
         AdjustmentKind::ChannelMixer,
         mixer(
@@ -1107,14 +1113,11 @@ fn channel_mixer_constant_offsets_output() {
         [v, v, v, 1.0],
     );
     assert!(
-        (linear_to_srgb_f32(out[0]) - 0.75).abs() < 3e-3,
+        (out[0] - 0.75).abs() < 1e-6,
         "constant lifts R to display 0.75: {}",
-        linear_to_srgb_f32(out[0])
+        out[0]
     );
-    assert!(
-        (linear_to_srgb_f32(out[1]) - 0.5).abs() < 3e-3,
-        "G unchanged"
-    );
+    assert!((out[1] - 0.5).abs() < 1e-6, "G unchanged");
 }
 
 #[test]
@@ -1332,18 +1335,15 @@ fn gradient_map_apply_tracks_lut() {
         ],
         interpolation: GradientInterp::Linear,
     };
-    let lut = gradient_map_lut(&p);
-    let encode = build_lut(linear_to_srgb_f32);
+    let lut = gradient_map_lut(&p); // interpolated in light; encoded per entry
     for &disp in &[0.0_f32, 0.3, 0.5, 0.9, 1.0] {
-        let lin = srgb_to_linear_f32(disp);
-        let luma = sample_lut(&encode, lin); // gray → every channel identical
-        let t = luma.clamp(0.0, 1.0) * 255.0;
+        let t = disp * 255.0; // gray → the luma is the value itself
         let i = t as usize;
         let frac = t - i as f32;
-        let a = lut[i.min(255)];
-        let b = lut[(i + 1).min(255)];
-        let expected = a[0] + (b[0] - a[0]) * frac;
-        let mut acc = [[lin, lin, lin, 1.0]];
+        let a = linear_to_srgb_f32(lut[i.min(255)][0]);
+        let b = linear_to_srgb_f32(lut[(i + 1).min(255)][0]);
+        let expected = a + (b - a) * frac;
+        let mut acc = [[disp, disp, disp, 1.0]];
         apply_gradient_map(&p, &mut acc);
         assert!(
             (acc[0][0] - expected).abs() < 1e-5,
@@ -1657,8 +1657,9 @@ fn gaussian_blur_spreads_an_impulse() {
     assert!(acc[centre][0] < 1.0, "centre energy spread out");
     let neighbour = (4 * n + 5) as usize;
     assert!(acc[neighbour][0] > 0.0, "energy reached the neighbour");
-    // Energy is conserved (separable, normalised, no clamping of a positive field).
-    let total: f32 = acc.iter().map(|p| p[0]).sum();
+    // Energy is conserved IN LIGHT, the kernel's space (separable, normalised, no
+    // clamping of a positive field).
+    let total: f32 = acc.iter().map(|p| srgb_to_linear_f32(p[0])).sum();
     assert!((total - 1.0).abs() < 1e-3, "blur conserves energy: {total}");
 }
 

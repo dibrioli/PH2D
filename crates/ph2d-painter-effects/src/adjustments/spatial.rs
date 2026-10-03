@@ -18,16 +18,17 @@
 //!    W-spatial enable must pick ONE model and gate it before trusting either.
 //! 2. **CPU fallback** when a stack is not GPU-representable (per-layer mask /
 //!    clipping / reference layer): [`apply_adjustment_windowed`] runs the kernel
-//!    on the compositor's linear f32 window.
+//!    on the compositor's f32 window.
 //!
-//! All inputs/outputs are **straight, LINEAR f32 RGBA** (the compositor's blend
-//! space), matching [`apply_adjustment`](super::apply_adjustment). The spatial
-//! blurs/gathers run internally in **premultiplied** space (see [`premultiply`]),
-//! so colour AND coverage feather together and transparent texels contribute
-//! nothing — fixing both the clipped-to-silhouette blur and the transparent-edge
-//! colour speckle. The compositor combine then uses the kernel's feathered alpha
-//! for spatial kinds (see `compositor::compose`). Noise / Halftone are defined in
-//! display (sRGB) space, round-trip internally, and DO preserve coverage.
+//! All inputs/outputs are **straight, ENCODED f32 RGBA** (the compositor's
+//! accumulator, ADR-0177), matching [`apply_adjustment`](super::apply_adjustment).
+//! The spatial blurs/gathers run internally in **premultiplied LIGHT** — their
+//! boundary is [`premultiply`] / [`unpremultiply`] —, so colour AND coverage
+//! feather together and transparent texels contribute nothing — fixing both the
+//! clipped-to-silhouette blur and the transparent-edge colour speckle. The
+//! compositor combine then uses the kernel's feathered alpha for spatial kinds
+//! (see `compositor::compose`). Noise / Halftone / Shadows-Highlights are defined
+//! in display (sRGB) space — the values as they are — and DO preserve coverage.
 //!
 //! ### Documented limitations (mirror the GPU pass-graph's own, handoff §4)
 //! - **Spatial blur on a sub-window:** the kernels sample with clamp-to-edge at
@@ -45,7 +46,7 @@
 //!   Coord). The GPU pass-graph must premultiply the materialised below-composite
 //!   to match (the visible path — handoff to Coord).
 
-use super::compute::{linear_to_srgb_f32, srgb_to_linear_f32};
+use super::compute::{em_luz, linear_to_srgb_f32};
 use super::*;
 
 #[path = "spatial_tonal.rs"]
@@ -103,7 +104,7 @@ impl AdjustWindow {
     }
 }
 
-/// Apply any adjustment `kind` to the compositor's linear f32 window, with the
+/// Apply any adjustment `kind` to the compositor's ENCODED f32 window, with the
 /// `win` geometry available to the spatial / coordinate kinds. Per-pixel kinds
 /// delegate to [`apply_adjustment`](super::apply_adjustment) verbatim (the flat
 /// path stays the single dispatch for those + keeps `ph2d-render`'s GPU-parity
@@ -202,8 +203,8 @@ fn sample_clamp(buf: &[[f32; 4]], w: i32, h: i32, x: i32, y: i32) -> [f32; 4] {
     buf[(yc * w + xc) as usize]
 }
 
-/// Premultiply RGB by alpha in place (straight → premultiplied linear). The blurs
-/// MUST run premultiplied: a transparent texel then contributes `(0,0,0,0)` — not
+/// The blurs' boundary (ADR-0177): encoded straight → premultiplied LIGHT, in
+/// place — the kernels are defined in light. The blurs MUST run premultiplied: a transparent texel then contributes `(0,0,0,0)` — not
 /// a stale/black colour — at an alpha edge (no dark halo), and **coverage (alpha)
 /// feathers outward with the colour** instead of staying clipped to the original
 /// opaque silhouette. (The straight-RGB blur the spike shipped left the alpha
@@ -212,23 +213,21 @@ fn sample_clamp(buf: &[[f32; 4]], w: i32, h: i32, x: i32, y: i32) -> [f32; 4] {
 fn premultiply(buf: &mut [[f32; 4]]) {
     for px in buf.iter_mut() {
         let a = px[3].clamp(0.0, 1.0);
-        px[0] *= a;
-        px[1] *= a;
-        px[2] *= a;
-        px[3] = a;
+        let l = em_luz(px);
+        *px = [l[0] * a, l[1] * a, l[2] * a, a];
     }
 }
 
-/// Inverse of [`premultiply`] (premultiplied → straight). A fully feathered-out
-/// (near-zero alpha) texel collapses to transparent black.
+/// Inverse of [`premultiply`] (premultiplied light → encoded straight). A fully
+/// feathered-out (near-zero alpha) texel collapses to transparent black.
 #[inline]
 fn unpremultiply(buf: &mut [[f32; 4]]) {
     for px in buf.iter_mut() {
         let a = px[3].clamp(0.0, 1.0);
         if a > 1e-6 {
-            px[0] /= a;
-            px[1] /= a;
-            px[2] /= a;
+            px[0] = linear_to_srgb_f32(px[0] / a);
+            px[1] = linear_to_srgb_f32(px[1] / a);
+            px[2] = linear_to_srgb_f32(px[2] / a);
             px[3] = a;
         } else {
             *px = [0.0, 0.0, 0.0, 0.0];
@@ -530,21 +529,16 @@ pub fn apply_noise(p: &NoiseParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
                 )
             };
             for (c, n) in [n0, n1, n2].into_iter().enumerate() {
-                let d = linear_to_srgb_f32(px[c]);
-                let v = (d + p.amount * n * NOISE_SCALE).clamp(0.0, 1.0);
-                px[c] = srgb_to_linear_f32(v);
+                px[c] = (px[c] + p.amount * n * NOISE_SCALE).clamp(0.0, 1.0);
             }
         }
     });
 }
 
-/// Rec.709 display luma of a linear pixel.
+/// Rec.709 display luma of an encoded pixel (the values as they are).
 #[inline]
 fn display_luma(px: &[f32; 4]) -> f32 {
-    let r = linear_to_srgb_f32(px[0]);
-    let g = linear_to_srgb_f32(px[1]);
-    let b = linear_to_srgb_f32(px[2]);
-    0.2126 * r + 0.7152 * g + 0.0722 * b
+    0.2126 * px[0].clamp(0.0, 1.0) + 0.7152 * px[1].clamp(0.0, 1.0) + 0.0722 * px[2].clamp(0.0, 1.0)
 }
 
 #[inline]
@@ -558,8 +552,7 @@ fn fract(v: f32) -> f32 {
 pub fn apply_halftone(p: &HalftoneParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
     let cell = p.dot_size.max(1.0);
     let (sin, cos) = p.angle.sin_cos();
-    let white = srgb_to_linear_f32(1.0);
-    let black = srgb_to_linear_f32(0.0);
+    let (white, black) = (1.0, 0.0);
     let (wu, hu) = (win.width as usize, win.height as usize);
     par_rows(acc, wu, hu, |y, out_row| {
         let gy = (win.origin_y + y as u32) as f32;

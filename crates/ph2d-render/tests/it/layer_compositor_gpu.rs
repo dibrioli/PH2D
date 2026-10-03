@@ -42,9 +42,6 @@ fn em_ecra(p: [f32; 4]) -> [f32; 4] {
 fn luz(buf: &[[f32; 4]]) -> Vec<[f32; 4]> {
     buf.iter().map(|&p| em_luz(p)).collect()
 }
-fn ecra(buf: &[[f32; 4]]) -> Vec<[f32; 4]> {
-    buf.iter().map(|&p| em_ecra(p)).collect()
-}
 use ph2d_gpu::GpuContext;
 use ph2d_painter_effects::adjustments::{
     AdjustWindow, BloomParams, ColorLookupLutParams, HalftoneParams, HalftoneShape, LevelsParams,
@@ -59,7 +56,7 @@ use ph2d_render::{
 };
 use std::collections::BTreeMap;
 
-fn try_headless_gpu() -> Option<GpuContext> {
+pub(super) fn try_headless_gpu() -> Option<GpuContext> {
     use std::sync::OnceLock;
     static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
     SHARED
@@ -69,12 +66,12 @@ fn try_headless_gpu() -> Option<GpuContext> {
 
 /// Test pixel provider: canvas-sized straight-sRGB8 buffers keyed by layer id.
 #[derive(Default)]
-struct MapProvider {
+pub(super) struct MapProvider {
     layers: BTreeMap<u64, (u64, Vec<u8>)>,
 }
 
 impl MapProvider {
-    fn insert(&mut self, key: u64, version: u64, bytes: Vec<u8>) {
+    pub(super) fn insert(&mut self, key: u64, version: u64, bytes: Vec<u8>) {
         self.layers.insert(key, (version, bytes));
     }
     fn bytes(&self, key: u64) -> &[u8] {
@@ -129,11 +126,12 @@ fn cpu_adjust_op(code: u8, p: [f32; 3], blend: u8, opacity: f32, acc: [f32; 4]) 
         _ => return acc,
     };
     let kind = params.kind();
-    let mut px = [em_luz(acc)];
+    let mut px = [acc]; // encoded: each kind converts at its own boundary
     apply_adjustment(&kind, &params, &mut px);
-    let a = em_ecra(px[0]);
-    let src_px = [a[0], a[1], a[2], acc[3]];
-    let blended = apply_blend(BlendMode::from_u8(blend), acc, src_px);
+    let a = px[0];
+    // The colour mixes as if both were opaque; the coverage is kept.
+    let opaco = [acc[0], acc[1], acc[2], 1.0];
+    let blended = apply_blend(BlendMode::from_u8(blend), opaco, [a[0], a[1], a[2], 1.0]);
     let t = opacity.clamp(0.0, 1.0);
     [
         acc[0] + (blended[0] - acc[0]) * t,
@@ -1763,9 +1761,8 @@ fn gpu_bloom_matches_cpu_reference() {
 
     // CPU full-canvas reference: materialise → apply_bloom → above.
     let mat = cpu_seg_linear(&below, &prov, w, h, None);
-    let mut bloomed = luz(&mat);
+    let mut bloomed = mat.clone(); // the kernels take the encoded accumulator
     apply_bloom(&bp, &mut bloomed, AdjustWindow::full(w, h));
-    let bloomed = ecra(&bloomed);
     let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&bloomed));
     let want_full = cpu_encode_full(&above_lin);
 
@@ -1860,9 +1857,8 @@ fn gpu_bloom_haloes_into_transparency() {
     ];
 
     let mat = cpu_seg_linear(&below, &prov, w, h, None);
-    let mut bloomed = luz(&mat);
+    let mut bloomed = mat.clone(); // the kernels take the encoded accumulator
     apply_bloom(&bp, &mut bloomed, AdjustWindow::full(w, h));
-    let bloomed = ecra(&bloomed);
     let want = cpu_encode_full(&bloomed);
 
     let mut comp = LayerCompositor::new(&gpu);
@@ -1966,9 +1962,8 @@ fn gpu_shadows_highlights_matches_cpu_reference() {
 
     // CPU full-canvas reference: materialise → apply_shadows_highlights → above.
     let mat = cpu_seg_linear(&below, &prov, w, h, None);
-    let mut corrected = luz(&mat);
+    let mut corrected = mat.clone(); // the kernels take the encoded accumulator
     apply_shadows_highlights(&shp, &mut corrected, AdjustWindow::full(w, h));
-    let corrected = ecra(&corrected);
     let above_lin = cpu_seg_linear(&above, &prov, w, h, Some(&corrected));
     let want_full = cpu_encode_full(&above_lin);
 
@@ -2072,9 +2067,8 @@ fn gpu_noise_matches_cpu_reference() {
             },
         ];
         let mat = cpu_seg_linear(&below, &prov, w, h, None);
-        let mut noised = luz(&mat);
+        let mut noised = mat.clone(); // the kernels take the encoded accumulator
         apply_noise(&np, &mut noised, AdjustWindow::full(w, h));
-        let noised = ecra(&noised);
         let want_full = cpu_encode_full(&noised);
 
         comp.composite(&gpu, &ops, &prov, w, h, Region::full(w, h))
@@ -2152,9 +2146,8 @@ fn gpu_halftone_matches_cpu_reference() {
         },
     ];
     let mat = cpu_seg_linear(&below, &prov, w, h, None);
-    let mut halftoned = luz(&mat);
+    let mut halftoned = mat.clone(); // the kernels take the encoded accumulator
     apply_halftone(&hp, &mut halftoned, AdjustWindow::full(w, h));
-    let halftoned = ecra(&halftoned);
     let want = cpu_encode_full(&halftoned);
 
     let mut comp = LayerCompositor::new(&gpu);
@@ -2247,9 +2240,8 @@ fn gpu_color_lookup_matches_cpu_reference() {
             profile: LutProfile::Srgb,
         };
         let mat = cpu_seg_linear(&below, &prov, w, h, None);
-        let mut graded = luz(&mat);
+        let mut graded = mat.clone(); // the kernels take the encoded accumulator
         apply_color_lookup(&clp, &mut graded);
-        let graded = ecra(&graded);
         let want = cpu_encode_full(&graded);
 
         comp.composite(&gpu, &ops, &prov, w, h, Region::full(w, h))

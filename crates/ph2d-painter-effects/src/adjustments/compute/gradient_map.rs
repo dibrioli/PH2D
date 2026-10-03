@@ -147,15 +147,15 @@ pub fn remove_gradient_stop(p: &mut GradientMapParams, stop: usize) {
 /// Gradient Map — remaps each pixel's DISPLAY-space luma (Rec.601, like Threshold)
 /// to a color along the gradient ([`gradient_map_lut`], the same table the GPU
 /// binds). Builds the LUT once, then the per-pixel loop is a luma + lerped lookup.
-/// `acc` is straight LINEAR f32 RGBA (alpha preserved). Always applies (a fresh
-/// Gradient Map is a visible remap, like Posterize).
+/// The luma reads the encoded values as they are; the gradient is interpolated in
+/// light (the table), so its 256 entries are encoded once here. Alpha preserved.
+/// Always applies (a fresh Gradient Map is a visible remap, like Posterize).
 pub(crate) fn apply_gradient_map(p: &GradientMapParams, acc: &mut [[f32; 4]]) {
-    let lut = gradient_map_lut(p);
-    let encode = build_lut(linear_to_srgb_f32); // luma is computed in display space
+    let lut = gradient_map_lut(p).map(|c| c.map(linear_to_srgb_f32));
     for px in acc.iter_mut() {
-        let luma = 0.299 * sample_lut(&encode, px[0])
-            + 0.587 * sample_lut(&encode, px[1])
-            + 0.114 * sample_lut(&encode, px[2]);
+        let luma = 0.299 * px[0].clamp(0.0, 1.0)
+            + 0.587 * px[1].clamp(0.0, 1.0)
+            + 0.114 * px[2].clamp(0.0, 1.0);
         let t = luma.clamp(0.0, 1.0) * 255.0;
         let i = t as usize;
         let frac = t - i as f32;

@@ -60,7 +60,7 @@ fn separable_blur_scalar(radius: f32, field: &mut [f32], win: AdjustWindow) {
     });
 }
 
-/// Bloom — bright-pass → blur → additive glow, in **premultiplied** linear. Pixels
+/// Bloom — bright-pass → blur → additive glow, in **premultiplied** light. Pixels
 /// whose display luma is above `threshold` (softened by the `falloff` knee) are
 /// extracted as the bright EXCESS, blurred by `radius`, and added back scaled by
 /// `intensity`. The glow is premultiplied, so it carries coverage and **haloes
@@ -85,7 +85,8 @@ pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
                 let base = src[y * wu + x];
                 let w_bright = smoothstep(p.threshold, p.threshold + knee, display_luma(&base));
                 let k = base[3].clamp(0.0, 1.0) * w_bright;
-                *g = [base[0] * k, base[1] * k, base[2] * k, k];
+                let l = em_luz(&base); // the glow is light
+                *g = [l[0] * k, l[1] * k, l[2] * k, k];
             }
         });
     }
@@ -208,8 +209,9 @@ fn bilinear(buf: &[[f32; 4]], w: i32, h: i32, fx: f32, fy: f32) -> [f32; 4] {
 /// highlights recover based on the NEIGHBOURHOOD tone — preserving local contrast,
 /// unlike a global curve. `*_tonal_width` set how far into the range each reaches;
 /// `midtone_contrast` is an S-curve around mid-grey; `color_correction` scales
-/// saturation in the corrected regions. Coverage is PRESERVED (a tonal op, not an
-/// image blur — `feathers_coverage` is false).
+/// saturation in the corrected regions. Defined in display tones end to end (the
+/// encoded values as they are). Coverage is PRESERVED (a tonal op, not an image
+/// blur — `feathers_coverage` is false).
 pub fn apply_shadows_highlights(
     p: &ShadowsHighlightsParams,
     acc: &mut [[f32; 4]],
@@ -238,9 +240,9 @@ pub fn apply_shadows_highlights(
             new_l = (0.5 + (new_l - 0.5) * (1.0 + p.midtone_contrast)).clamp(0.0, 1.0);
             // Re-tone in display space, preserving hue (scale toward new_l).
             let mut d = [
-                linear_to_srgb_f32(px[0]),
-                linear_to_srgb_f32(px[1]),
-                linear_to_srgb_f32(px[2]),
+                px[0].clamp(0.0, 1.0),
+                px[1].clamp(0.0, 1.0),
+                px[2].clamp(0.0, 1.0),
             ];
             if l > 1e-4 {
                 let ratio = new_l / l;
@@ -257,9 +259,9 @@ pub fn apply_shadows_highlights(
                     *c = (new_l + (*c - new_l) * (1.0 + cc)).clamp(0.0, 1.0);
                 }
             }
-            px[0] = srgb_to_linear_f32(d[0]);
-            px[1] = srgb_to_linear_f32(d[1]);
-            px[2] = srgb_to_linear_f32(d[2]);
+            px[0] = d[0];
+            px[1] = d[1];
+            px[2] = d[2];
         }
     });
 }

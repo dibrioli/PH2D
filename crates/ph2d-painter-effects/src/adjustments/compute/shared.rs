@@ -5,10 +5,9 @@
 
 // ─────────────────────── sRGB transfer (display space) ───────────────────
 //
-// Continuous f32 sRGB ↔ linear transfer (IEC 61966), for kinds conventionally
-// defined in display space (Invert / Posterize / Threshold). The `ph2d_color`
-// crate exposes only the 8-bit byte transfer; these f32 twins avoid the
-// quantization round-trip while staying byte-identical at the sample points.
+// Continuous f32 sRGB ↔ linear transfer (IEC 61966), for the kinds defined in
+// light (their boundary, below) and the spatial kernels. Same literals as
+// `ph2d_color::srgb::*_unit`, but both clamp their input to `0..=1`.
 
 /// linear-light intensity → sRGB-encoded `0..=1` (display space).
 #[inline]
@@ -30,6 +29,36 @@ pub(crate) fn srgb_to_linear_f32(v: f32) -> f32 {
     } else {
         ((v + 0.055) / 1.055).powf(2.4)
     }
+}
+
+// ─────────── the boundary of what is defined in light (ADR-0177) ───────────
+//
+// An adjustment receives the accumulator ENCODED (the layers join in display
+// tones). A kind defined in light / OKLab converts at ITS OWN boundary with these
+// two; a display-space kind works on the values as they are.
+
+/// The colour of an encoded straight pixel, in light (alpha is not colour).
+#[inline]
+pub(crate) fn em_luz(px: &[f32; 4]) -> [f32; 3] {
+    [
+        srgb_to_linear_f32(px[0]),
+        srgb_to_linear_f32(px[1]),
+        srgb_to_linear_f32(px[2]),
+    ]
+}
+
+/// … and back: writes the light `rgb` into `px` encoded, alpha untouched.
+#[inline]
+pub(crate) fn em_tons_de_ecra(rgb: [f32; 3], px: &mut [f32; 4]) {
+    px[0] = linear_to_srgb_f32(rgb[0]);
+    px[1] = linear_to_srgb_f32(rgb[1]);
+    px[2] = linear_to_srgb_f32(rgb[2]);
+}
+
+/// A per-channel 1-D function `f` defined in light, folded into ONE table over the
+/// encoded domain (`encode ∘ f ∘ decode`): the boundary costs nothing per pixel.
+pub(crate) fn build_lut_em_luz<F: Fn(f32) -> f32>(f: F) -> [f32; LUT_N] {
+    build_lut(|s| linear_to_srgb_f32(f(srgb_to_linear_f32(s))))
 }
 
 // ─────────────────────────── per-call 1-D LUT ───────────────────────────

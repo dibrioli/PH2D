@@ -17,7 +17,7 @@
 
 use ph2d_color::LinearRgba;
 use ph2d_color::oklab::OklabColor;
-use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
+use ph2d_color::srgb::srgb_to_linear_byte;
 use ph2d_ecs::FxOp;
 use ph2d_painter_effects::adjustments::{
     AdjustmentKind, AdjustmentParams, HsbParams, apply_adjustment,
@@ -128,22 +128,16 @@ fn sample(px: &[u8], i: usize, y: u32) -> [u8; 4] {
 /// A resposta da CPU do PAINTER para a mesma cor e os mesmos knobs — byte de entrada a byte de
 /// saída, atravessando as mesmas duas transferências que o dispositivo atravessa.
 fn painter_cpu(rgb: [u8; 3], h: f32, s: f32, b: f32) -> [u8; 3] {
-    let mut acc = [[
-        srgb_to_linear_byte(rgb[0]),
-        srgb_to_linear_byte(rgb[1]),
-        srgb_to_linear_byte(rgb[2]),
-        1.0,
-    ]];
+    // O Painter recebe o acumulador CODIFICADO e o HSB converte na fronteira dele (ADR-0177).
+    let e = |v: u8| f32::from(v) / 255.0;
+    let mut acc = [[e(rgb[0]), e(rgb[1]), e(rgb[2]), 1.0]];
     apply_adjustment(
         &AdjustmentKind::HueSaturationBrightness,
         &AdjustmentParams::HueSaturationBrightness(HsbParams { h, s, b }),
         &mut acc,
     );
-    [
-        linear_to_srgb_byte(acc[0][0]),
-        linear_to_srgb_byte(acc[0][1]),
-        linear_to_srgb_byte(acc[0][2]),
-    ]
+    let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    [byte(acc[0][0]), byte(acc[0][1]), byte(acc[0][2])]
 }
 
 /// **O gate da wave: o degrau desenha o que a camada de ajuste do Painter desenha.**

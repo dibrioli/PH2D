@@ -7,7 +7,7 @@
 //! working feature; this crate is its effects half:
 //!
 //! - [`blend`] — the 22 canonical W3C blend modes ([`BlendMode`] + [`apply`]),
-//!   operating on straight linear-sRGB RGBA. Consumed by the CPU compositor
+//!   operating on straight encoded sRGB RGBA (ADR-0177). Consumed by the CPU compositor
 //!   in `ph2d-tool-painter` and mirrored by the GPU compositor in `ph2d-render`.
 //! - [`adjustments`] — non-destructive adjustment layers (HSB, Curves, Levels,
 //!   Gaussian/Motion blur, Sharpen, Bloom, Shadows/Highlights, Color Lookup,

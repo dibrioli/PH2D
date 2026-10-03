@@ -8,10 +8,10 @@
 //! - per-kind sub-`*Params` structs with the field caps in §2.6.
 //!
 //! This module defines ONLY the data + sensible `Default`s + serde. The compute
-//! logic (`apply_adjustment(kind, params, &mut [[f32; 4]])` per ADR-0045 §2.7,
-//! plus the W4-triage Coord decision — straight LINEAR f32 acc, not 8-bit, so
-//! the per-frame composite never round-trips through sRGB8) is the
-//! implementer's (T4.3+). T4.2 ships the no-op stub + the compositor wiring.
+//! logic is `apply_adjustment(kind, params, &mut [[f32; 4]])` (ADR-0045 §2.7)
+//! over the compositor's straight ENCODED f32 accumulator (ADR-0177) — f32, not
+//! 8-bit, so the per-frame composite never round-trips through sRGB8 — and each
+//! kind converts at its own boundary when it is defined in light.
 //!
 //! **Amendment-1 crate-placement:** `AdjustmentLayer.{id, clipped_by, mask}` are
 //! raw `u64` (LayerId values), not the `LayerId` newtype, because `LayerId` lives

@@ -2,10 +2,15 @@
 //! editor state): HSB / Exposure / Vibrance / Posterize / Threshold / Invert /
 //! Brightness-Contrast / Photo Filter / Black & White. Split out of the former
 //! monolithic `compute.rs` (pure move).
+//!
+//! `acc` is the compositor's ENCODED straight f32 RGBA (ADR-0177). The kinds
+//! defined in light (Exposure, Brightness/Contrast, Photo Filter) or OKLab (HSB,
+//! Vibrance, the B&W tint) convert at their own boundary; the display-space ones
+//! (Posterize, Threshold, Invert, Black & White) work on the values as they are.
 
 use super::*;
 
-/// Exposure — `acc` is straight LINEAR f32 RGBA (alpha preserved). A photographic
+/// Exposure — defined in LIGHT (alpha preserved). A photographic
 /// exposure in stops (`exposure_ev`, a `2^ev` gain on linear light), then a
 /// linear `offset` (lifts/drops the floor), then a `gamma_correction` applied as
 /// a power in linear (stored as an offset from 1.0 so the all-zero `Default` is
@@ -16,9 +21,9 @@ pub(crate) fn apply_exposure(p: &ExposureParams, acc: &mut [[f32; 4]]) {
     }
     let gain = 2.0_f32.powf(p.exposure_ev);
     let inv_gamma = 1.0 / (1.0 + p.gamma_correction).max(1e-3);
-    // The whole chain is a 1-D function of the input channel — LUT it (the only
-    // `powf` left is the per-call table build, not per pixel).
-    let lut = build_lut(|v| (v * gain + p.offset).max(0.0).powf(inv_gamma));
+    // The whole chain — its boundary included — is a 1-D function of the input
+    // channel: LUT it (the only `powf` left is the per-call table build).
+    let lut = build_lut_em_luz(|v| (v * gain + p.offset).max(0.0).powf(inv_gamma));
     for px in acc.iter_mut() {
         for ch in px.iter_mut().take(3) {
             *ch = sample_lut(&lut, *ch);
@@ -31,7 +36,7 @@ pub(crate) fn apply_exposure(p: &ExposureParams, acc: &mut [[f32; 4]]) {
 /// "protect already-saturated colors / skin tones" behavior), while `saturation`
 /// scales every pixel's chroma uniformly. Both `-1..1`, neutral 0. Rotation-free
 /// (hue preserved) and gray-safe (zero chroma stays zero — no rainbow). Alpha
-/// preserved; neutral early-returns identity.
+/// preserved; neutral early-returns identity. Defined in OKLab (from light).
 pub(crate) fn apply_vibrance(p: &VibranceParams, acc: &mut [[f32; 4]]) {
     if p.vibrance == 0.0 && p.saturation == 0.0 {
         return;
@@ -41,53 +46,48 @@ pub(crate) fn apply_vibrance(p: &VibranceParams, acc: &mut [[f32; 4]]) {
     // vibrance weight (1 - normalized_chroma) reads "how unsaturated is this".
     const CHROMA_NORM: f32 = 0.4;
     for px in acc.iter_mut() {
-        let lab = OklabColor::from_linear(LinearRgba::new(px[0], px[1], px[2], 1.0));
+        let [r, g, b] = em_luz(px);
+        let lab = OklabColor::from_linear(LinearRgba::new(r, g, b, 1.0));
         let chroma = (lab.a * lab.a + lab.b * lab.b).sqrt();
         if chroma > 1e-6 {
             let nc = (chroma / CHROMA_NORM).min(1.0);
             let vib_mul = (1.0 + p.vibrance * (1.0 - nc)).max(0.0);
             let scale = sat_mul * vib_mul;
             let out = OklabColor::new(lab.l, lab.a * scale, lab.b * scale, 1.0).to_linear();
-            px[0] = out.r();
-            px[1] = out.g();
-            px[2] = out.b();
+            em_tons_de_ecra([out.r(), out.g(), out.b()], px);
         }
     }
 }
 
 /// Posterize — quantize each channel to `levels` (`2..=32`) evenly-spaced steps
-/// in DISPLAY (sRGB) space (where the bands read as Photoshop's do), then convert
-/// back to linear. `acc` is straight LINEAR f32 RGBA (alpha preserved). Always
-/// applies (a freshly-created Posterize is a visible effect, like Photoshop).
+/// in DISPLAY (sRGB) space, where the bands read as Photoshop's do (alpha
+/// preserved). Always applies (a freshly-created Posterize is a visible effect,
+/// like Photoshop).
 pub(crate) fn apply_posterize(p: &PosterizeParams, acc: &mut [[f32; 4]]) {
     let levels = p.levels.clamp(2, 32);
     let steps = (levels - 1) as f32;
-    // Encode (linear→sRGB) LUT picks the band; `band_out[k]` is the exact linear
-    // value of band `k` (≤32 transcendentals total, none per pixel). The hard
-    // `round()` stays exact so the quantization boundaries don't smear.
-    let encode = build_lut(linear_to_srgb_f32);
-    let band_out: [f32; 32] =
-        core::array::from_fn(|k| srgb_to_linear_f32((k as f32 / steps).min(1.0)));
     let max_k = (levels - 1) as usize;
     for px in acc.iter_mut() {
         for ch in px.iter_mut().take(3) {
-            let s = sample_lut(&encode, *ch);
-            let k = ((s * steps).round() as usize).min(max_k);
-            *ch = band_out[k];
+            let k = ((ch.clamp(0.0, 1.0) * steps).round() as usize).min(max_k);
+            *ch = (k as f32 / steps).min(1.0);
         }
     }
 }
 
 /// Threshold — every pixel becomes pure black or white by comparing its display-
 /// space luma (Rec.601 weights on sRGB, matching Photoshop's Threshold) against
-/// `threshold` (`0..=255`). `acc` is straight LINEAR f32 RGBA (alpha preserved).
+/// `threshold` (`0..=255`). Alpha preserved.
 pub(crate) fn apply_threshold(p: &ThresholdParams, acc: &mut [[f32; 4]]) {
-    let cut = p.threshold as f32 / 255.0;
-    let encode = build_lut(linear_to_srgb_f32); // luma is computed in display space
+    // Photoshop's 8-bit rule — the luma BYTE `≥ threshold` — is the continuous
+    // luma `≥ (threshold − ½)/255` (GIMP's `low = 0.5` for 128). Cutting at
+    // `threshold/255` sent an exact gray AT the threshold to black: the Rec.601
+    // weights sum to just under 1 in f32 (`oraculo_ajustes_tests`).
+    let cut = (p.threshold as f32 - 0.5) / 255.0;
     for px in acc.iter_mut() {
-        let luma = 0.299 * sample_lut(&encode, px[0])
-            + 0.587 * sample_lut(&encode, px[1])
-            + 0.114 * sample_lut(&encode, px[2]);
+        let luma = 0.299 * px[0].clamp(0.0, 1.0)
+            + 0.587 * px[1].clamp(0.0, 1.0)
+            + 0.114 * px[2].clamp(0.0, 1.0);
         let v = if luma >= cut { 1.0 } else { 0.0 };
         px[0] = v;
         px[1] = v;
@@ -96,18 +96,16 @@ pub(crate) fn apply_threshold(p: &ThresholdParams, acc: &mut [[f32; 4]]) {
 }
 
 /// Invert — a photographic negative: `1 - x` per channel in DISPLAY (sRGB) space
-/// (a linear `1 - x` would skew midtones), converted back to linear. `acc` is
-/// straight LINEAR f32 RGBA (alpha preserved).
+/// (a linear `1 - x` would skew midtones). Alpha preserved.
 pub(crate) fn apply_invert(acc: &mut [[f32; 4]]) {
-    let lut = build_lut(|v| srgb_to_linear_f32(1.0 - linear_to_srgb_f32(v)));
     for px in acc.iter_mut() {
         for ch in px.iter_mut().take(3) {
-            *ch = sample_lut(&lut, *ch);
+            *ch = 1.0 - ch.clamp(0.0, 1.0);
         }
     }
 }
 
-/// Brightness/Contrast. `acc` is straight LINEAR f32 RGBA (alpha preserved).
+/// Brightness/Contrast, defined in LIGHT (alpha preserved).
 /// Contrast scales each channel around the perceptual mid-gray pivot; brightness
 /// then lerps toward black (`-1`) / white (`+1`) — exact extremes (the same
 /// brightness model as [`apply_hsb`], for consistency). Both `-1..1`, neutral 0.
@@ -119,24 +117,28 @@ pub(crate) fn apply_brightness_contrast(p: &BrightnessContrastParams, acc: &mut 
     // (a linear-0.5 pivot would sit far too bright).
     const PIVOT: f32 = 0.214_041_14;
     let scale = 1.0 + p.contrast; // -1 → flat to pivot, +1 → 2×
+    // A 1-D function of each channel, its boundary folded in (as Exposure).
+    let lut = build_lut_em_luz(|ch| {
+        // Contrast around the pivot, clamped so the brightness lerp below
+        // stays well-defined (LDR).
+        let mut v = ((ch - PIVOT) * scale + PIVOT).clamp(0.0, 1.0);
+        if p.brightness > 0.0 {
+            v += (1.0 - v) * p.brightness;
+        } else if p.brightness < 0.0 {
+            v *= 1.0 + p.brightness;
+        }
+        v
+    });
     for px in acc.iter_mut() {
         for ch in px.iter_mut().take(3) {
-            // Contrast around the pivot, clamped so the brightness lerp below
-            // stays well-defined (LDR; the compositor encode clamps anyway).
-            let mut v = ((*ch - PIVOT) * scale + PIVOT).clamp(0.0, 1.0);
-            if p.brightness > 0.0 {
-                v += (1.0 - v) * p.brightness;
-            } else if p.brightness < 0.0 {
-                v *= 1.0 + p.brightness;
-            }
-            *ch = v;
+            *ch = sample_lut(&lut, *ch);
         }
     }
 }
 
 /// Photo Filter — a colored gel over the image. A photographic filter is a
 /// physical sheet of tinted glass in front of the lens, so it is a straight
-/// LINEAR-light multiply (the space `acc` already lives in — no sRGB round-trip).
+/// LINEAR-light multiply (converted at its boundary).
 /// `temperature` (`-1..1`, neutral 0) picks a WARM (`>0`, passes red/green, cuts
 /// blue) or COOL (`<0`, passes blue, cuts red) gel; `density` (`0..1`) is its
 /// strength; with `preserve_luminosity` each pixel's luminance is renormalized
@@ -162,22 +164,24 @@ pub(crate) fn apply_photo_filter(p: &PhotoFilterParams, acc: &mut [[f32; 4]]) {
         let gel = 1.0 + (anchor[c] - 1.0) * mag;
         1.0 + (gel - 1.0) * density
     });
-    // Linear Rec.709 luma (acc is linear light) for the optional preserve-lum renorm.
+    // Linear Rec.709 luma (in light) for the optional preserve-lum renorm.
     const LW: [f32; 3] = [0.2126, 0.7152, 0.0722];
     for px in acc.iter_mut() {
-        let l_in = LW[0] * px[0] + LW[1] * px[1] + LW[2] * px[2];
+        let mut l = em_luz(px);
+        let l_in = LW[0] * l[0] + LW[1] * l[1] + LW[2] * l[2];
         for (c, e) in eff.iter().enumerate() {
-            px[c] *= e;
+            l[c] *= e;
         }
         if p.preserve_luminosity {
-            let l_out = LW[0] * px[0] + LW[1] * px[1] + LW[2] * px[2];
+            let l_out = LW[0] * l[0] + LW[1] * l[1] + LW[2] * l[2];
             if l_out > 1e-6 {
                 let k = l_in / l_out;
-                for c in px.iter_mut().take(3) {
+                for c in &mut l {
                     *c *= k;
                 }
             }
         }
+        em_tons_de_ecra(l, px);
     }
 }
 
@@ -187,7 +191,7 @@ pub(crate) fn apply_photo_filter(p: &PhotoFilterParams, acc: &mut [[f32; 4]]) {
 /// contributes to the output gray (`-2..3`; the achromatic floor `min(r,g,b)`
 /// always passes through). With a `tint_color` (+ `tint_amount`) the gray is then
 /// colorized in OKLab — the tint's hue/chroma applied at each pixel's lightness
-/// (Photoshop's "Tint"). `acc` is straight LINEAR f32 RGBA (alpha preserved).
+/// (Photoshop's "Tint", from light). Alpha preserved.
 /// Always applies (a fresh Black & White is a visible grayscale, like Posterize).
 pub(crate) fn apply_black_and_white(p: &BlackAndWhiteParams, acc: &mut [[f32; 4]]) {
     let w = [p.reds, p.yellows, p.greens, p.cyans, p.blues, p.magentas];
@@ -203,9 +207,9 @@ pub(crate) fn apply_black_and_white(p: &BlackAndWhiteParams, acc: &mut [[f32; 4]
     };
     for px in acc.iter_mut() {
         let (r, g, b) = (
-            linear_to_srgb_f32(px[0]),
-            linear_to_srgb_f32(px[1]),
-            linear_to_srgb_f32(px[2]),
+            px[0].clamp(0.0, 1.0),
+            px[1].clamp(0.0, 1.0),
+            px[2].clamp(0.0, 1.0),
         );
         let m = r.min(g).min(b);
         let (rr, gg, bb) = (r - m, g - m, b - m);
@@ -229,26 +233,23 @@ pub(crate) fn apply_black_and_white(p: &BlackAndWhiteParams, acc: &mut [[f32; 4]
             + blues * w[4]
             + magentas * w[5])
             .clamp(0.0, 1.0);
-        let gray_lin = srgb_to_linear_f32(gray);
         if tint.is_some() {
             // Colorize: keep the gray's OKLab lightness, set the tint chroma vector.
+            let gray_lin = srgb_to_linear_f32(gray);
             let l = OklabColor::from_linear(LinearRgba::new(gray_lin, gray_lin, gray_lin, 1.0)).l;
             let out = OklabColor::new(l, ta, tb, 1.0).to_linear();
-            px[0] = out.r();
-            px[1] = out.g();
-            px[2] = out.b();
+            em_tons_de_ecra([out.r(), out.g(), out.b()], px);
         } else {
-            px[0] = gray_lin;
-            px[1] = gray_lin;
-            px[2] = gray_lin;
+            px[0] = gray;
+            px[1] = gray;
+            px[2] = gray;
         }
     }
 }
 
 /// Hue / Saturation / Brightness in **OKLab** (the project's perceptual color
-/// space — gold standard, and the brush engine's native space). `acc` is
-/// straight LINEAR f32 RGBA; only RGB is transformed — the alpha (= coverage)
-/// is preserved.
+/// space — gold standard), from light. Only RGB is transformed — the alpha
+/// (= coverage) is preserved.
 ///
 /// - **Hue** (`h`, in turns) is a RIGID rotation of the `(a, b)` chroma vector,
 ///   so chroma magnitude is preserved exactly and near-neutral pixels stay
@@ -270,7 +271,8 @@ pub(crate) fn apply_hsb(p: &HsbParams, acc: &mut [[f32; 4]]) {
     let (hue_sin, hue_cos) = hue_rad.sin_cos();
     let chroma_scale = (1.0 + p.s).max(0.0); // -1 → 0 (gray), +1 → 2×
     for px in acc.iter_mut() {
-        let lab = OklabColor::from_linear(LinearRgba::new(px[0], px[1], px[2], 1.0));
+        let [r, g, b] = em_luz(px);
+        let lab = OklabColor::from_linear(LinearRgba::new(r, g, b, 1.0));
         // Hue rotation (rigid) + saturation (scale) of the chroma vector; L kept.
         let a = (lab.a * hue_cos - lab.b * hue_sin) * chroma_scale;
         let b = (lab.a * hue_sin + lab.b * hue_cos) * chroma_scale;
@@ -287,8 +289,6 @@ pub(crate) fn apply_hsb(p: &HsbParams, acc: &mut [[f32; 4]]) {
             g *= k;
             bl *= k;
         }
-        px[0] = r;
-        px[1] = g;
-        px[2] = bl;
+        em_tons_de_ecra([r, g, bl], px);
     }
 }

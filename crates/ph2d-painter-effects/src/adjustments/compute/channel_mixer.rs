@@ -18,9 +18,8 @@ fn channel_mixer_is_neutral(p: &ChannelMixerParams) -> bool {
 /// space (Photoshop applies the mix to the gamma-encoded channel values). Each
 /// output row is `[r, g, b, constant]`: `out = r·R + g·G + b·B + constant`
 /// (display, clamped). With `monochromatic` the `red_out` row is the single GRAY
-/// mix written to all three channels (a weighted B&W conversion). `acc` is
-/// straight LINEAR f32 RGBA (alpha preserved). The identity matrix early-returns
-/// an exact identity.
+/// mix written to all three channels (a weighted B&W conversion). Alpha preserved.
+/// The identity matrix early-returns an exact identity.
 pub(crate) fn apply_channel_mixer(p: &ChannelMixerParams, acc: &mut [[f32; 4]]) {
     if channel_mixer_is_neutral(p) {
         return;
@@ -30,19 +29,19 @@ pub(crate) fn apply_channel_mixer(p: &ChannelMixerParams, acc: &mut [[f32; 4]]) 
     };
     for px in acc.iter_mut() {
         let (r, g, b) = (
-            linear_to_srgb_f32(px[0]),
-            linear_to_srgb_f32(px[1]),
-            linear_to_srgb_f32(px[2]),
+            px[0].clamp(0.0, 1.0),
+            px[1].clamp(0.0, 1.0),
+            px[2].clamp(0.0, 1.0),
         );
         if p.monochromatic {
-            let gray = srgb_to_linear_f32(mix(p.red_out, r, g, b));
+            let gray = mix(p.red_out, r, g, b);
             px[0] = gray;
             px[1] = gray;
             px[2] = gray;
         } else {
-            px[0] = srgb_to_linear_f32(mix(p.red_out, r, g, b));
-            px[1] = srgb_to_linear_f32(mix(p.green_out, r, g, b));
-            px[2] = srgb_to_linear_f32(mix(p.blue_out, r, g, b));
+            px[0] = mix(p.red_out, r, g, b);
+            px[1] = mix(p.green_out, r, g, b);
+            px[2] = mix(p.blue_out, r, g, b);
         }
     }
 }

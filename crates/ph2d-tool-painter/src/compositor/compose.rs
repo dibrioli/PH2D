@@ -457,9 +457,9 @@ fn composite_into(
             // bottom-up). Copy the window, run the kind's compute, then blend
             // the result back over `acc` by the adjustment's OWN opacity × mask
             // in its blend mode (inner fields authoritative, amendment-1).
-            // The kinds are defined in straight LINEAR f32: they receive the
-            // accumulator in light and hand it back encoded (ADR-0177, the
-            // boundary), and the blend-back runs in the accumulator's space.
+            // Each kind receives the ENCODED accumulator and converts at its own
+            // boundary if it is defined in light (ADR-0177); the blend-back runs
+            // in the accumulator's space.
             // Mask/opacity live HERE, not in the compute hook (W4-triage).
             LayerKind::Adjustment(adj) => {
                 if !adj.visible || adj.opacity <= 0.0 {
@@ -480,7 +480,7 @@ fn composite_into(
                 }
                 let adj_opacity = adj.opacity.clamp(0.0, 1.0);
                 let adj_mode = adj.blend_mode;
-                let mut adjusted: Vec<[f32; 4]> = acc.iter().map(|&p| em_luz(p)).collect();
+                let mut adjusted: Vec<[f32; 4]> = acc.to_vec();
                 // Window-aware dispatch: spatial blurs (Gaussian/Sharpen/Motion/
                 // Chroma) need the 2-D layout; Noise/Halftone need the absolute
                 // canvas coordinate (origin + local). Per-pixel kinds delegate to
@@ -499,9 +499,6 @@ fn composite_into(
                         origin_y: ry,
                     },
                 );
-                for p in &mut adjusted {
-                    *p = em_tons_de_ecra(*p);
-                }
                 // Optional mask — raw layer-id (amendment-1): white = full
                 // effect. Missing/short buffer = no mask (full effect).
                 let mask = adj.mask.and_then(|mid| {
@@ -552,11 +549,14 @@ fn composite_into(
                                 base[3] + (result[3] - base[3]) * t,
                             ];
                         } else {
-                            // Per-pixel colour adjustment: blend the adjusted color
-                            // (carrying the base's coverage) over the base, lerp by
-                            // t; coverage is KEPT (adjustments don't change alpha).
-                            let src_px = [adjusted[i][0], adjusted[i][1], adjusted[i][2], base[3]];
-                            let blended = apply_blend(adj_mode, base, src_px);
+                            // Per-pixel colour adjustment: it changes the COLOUR the
+                            // pixel has, never its coverage — so the mode mixes the two
+                            // colours as if both were opaque (an `over` carrying the
+                            // base's alpha applied only part of a 100 % adjustment on a
+                            // translucent pixel: 79 steps off the GIMP oracle,
+                            // `oraculo_ajustes_tests`), lerp by t, coverage KEPT.
+                            let opaco = |p: [f32; 4]| [p[0], p[1], p[2], 1.0];
+                            let blended = apply_blend(adj_mode, opaco(base), opaco(adjusted[i]));
                             acc[i] = [
                                 base[0] + (blended[0] - base[0]) * t,
                                 base[1] + (blended[1] - base[1]) * t,
@@ -573,20 +573,6 @@ fn composite_into(
             LayerKind::Mask(_) => continue,
         }
     }
-}
-
-/// The boundary of an adjustment defined in light (ADR-0177): encoded → linear, alpha untouched.
-#[inline]
-fn em_luz(p: [f32; 4]) -> [f32; 4] {
-    use ph2d_color::srgb::srgb_to_linear_unit as l;
-    [l(p[0]), l(p[1]), l(p[2]), p[3]]
-}
-
-/// … and back: linear → encoded, alpha untouched.
-#[inline]
-fn em_tons_de_ecra(p: [f32; 4]) -> [f32; 4] {
-    use ph2d_color::srgb::linear_to_srgb_unit as e;
-    [e(p[0]), e(p[1]), e(p[2]), p[3]]
 }
 
 /// Blend one source layer (sampled by `sample(global_x, global_y)`) over

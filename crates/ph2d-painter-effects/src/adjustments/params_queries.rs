@@ -53,8 +53,9 @@ impl AdjustmentParams {
             Self::BrightnessContrast(p) => [p.brightness, p.contrast, 0.0],
             Self::Invert(_) => [0.0, 0.0, 0.0],
             Self::Posterize(p) => [p.levels as f32, 0.0, 0.0],
-            // Threshold's shader cut is normalized (`luma >= p0`); the CPU stores
-            // a `0..=255` byte, so divide to match `apply_threshold`.
+            // Threshold's shader cut is normalized (`luma >= p0 − ½/255`, the luma
+            // byte `≥ threshold`); the CPU stores a `0..=255` byte, so divide to
+            // match `apply_threshold`.
             Self::Threshold(p) => [p.threshold as f32 / 255.0, 0.0, 0.0],
             Self::Exposure(p) => [p.exposure_ev, p.offset, p.gamma_correction],
             Self::Vibrance(p) => [p.vibrance, p.saturation, 0.0],

@@ -170,16 +170,12 @@ fn linear_to_srgb(v: f32) -> f32 {
     return 1.055 * pow(c, 1.0 / 2.4) - 0.055;
 }
 
-// Rec.709 display luma of a straight-linear pixel — the perceptual brightness in
-// DISPLAY (sRGB-encoded) space, mirror of `ph2d_painter_brush::adjustments::
-// spatial::display_luma` (used by Bloom's bright-pass + Shadows/Highlights' tone
-// maps). The channels go through the sRGB encode first (so the weighting is
-// perceptual), then the standard luma coefficients.
+// Rec.709 display luma of an ENCODED straight pixel (the values as they are) —
+// mirror of `ph2d_painter_effects::adjustments::spatial::display_luma` (Bloom's
+// bright-pass, Shadows/Highlights' tone maps, Halftone).
 fn display_luma(rgb: vec3<f32>) -> f32 {
-    let r = linear_to_srgb(rgb.r);
-    let g = linear_to_srgb(rgb.g);
-    let b = linear_to_srgb(rgb.b);
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    let c = clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0));
+    return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 }
 
 // ── Deterministic integer hash (Noise) — bit-identical to the Rust reference ──
@@ -313,12 +309,20 @@ fn encode_final(acc: vec4<f32>) -> vec4<f32> {
 }
 
 // The boundary of what is defined in light (ADR-0177): encoded ↔ linear on the
-// colour, alpha untouched. Mirror of the CPU `compose::{em_luz, em_tons_de_ecra}`.
+// colour, alpha untouched. Mirror of the CPU `adjustments::compute::{em_luz,
+// em_tons_de_ecra}` — each kind (and each kernel's first reader / combine) that
+// is defined in light converts at ITS boundary; the accumulator stays encoded.
+fn em_luz3(c: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(srgb_to_linear_f32(c.r), srgb_to_linear_f32(c.g), srgb_to_linear_f32(c.b));
+}
+fn em_tons_de_ecra3(c: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(linear_to_srgb(c.r), linear_to_srgb(c.g), linear_to_srgb(c.b));
+}
 fn em_luz(c: vec4<f32>) -> vec4<f32> {
-    return vec4<f32>(srgb_to_linear_f32(c.r), srgb_to_linear_f32(c.g), srgb_to_linear_f32(c.b), c.a);
+    return vec4<f32>(em_luz3(c.rgb), c.a);
 }
 fn em_tons_de_ecra(c: vec4<f32>) -> vec4<f32> {
-    return vec4<f32>(linear_to_srgb(c.r), linear_to_srgb(c.g), linear_to_srgb(c.b), c.a);
+    return vec4<f32>(em_tons_de_ecra3(c.rgb), c.a);
 }
 
 
@@ -436,83 +440,89 @@ fn apply_look(idx: u32, c: vec3<f32>) -> vec3<f32> {
     }
 }
 
-// Apply an adjustment kind to a straight-linear rgb triple (RGB transform only;
-// the caller preserves alpha = coverage). `coord` is the absolute canvas pixel —
-// used ONLY by the coordinate-dependent kinds (Noise/Halftone), ignored by the
-// rest. Unknown kind → identity.
+// Apply an adjustment kind to an ENCODED straight rgb triple (RGB transform
+// only; the caller preserves alpha = coverage) — mirror of the CPU
+// `apply_adjustment`: the display-space kinds work on the values as they are, the
+// ones defined in light/OKLab convert at their own boundary (ADR-0177). `coord`
+// is the absolute canvas pixel — used ONLY by the coordinate-dependent kinds
+// (Noise/Halftone), ignored by the rest. Unknown kind → identity.
 fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>, coord: vec2<i32>) -> vec3<f32> {
     switch ap.kind {
-        case 0u: { // ADJ_HSB — p0=hue(turns), p1=sat(-1..1), p2=bright(-1..1)
+        case 0u: { // ADJ_HSB — p0=hue(turns), p1=sat(-1..1), p2=bright(-1..1); OKLab
+            if ap.p0 == 0.0 && ap.p1 == 0.0 && ap.p2 == 0.0 {
+                return rgb; // neutral: the boundary is not crossed (CPU early-out)
+            }
             // A lei mora no `colour_adjust.wgsl` desde que ganhou o 2º consumidor.
-            return adjust_hsb(rgb, ap.p0, ap.p1, ap.p2);
+            return em_tons_de_ecra3(adjust_hsb(em_luz3(rgb), ap.p0, ap.p1, ap.p2));
         }
-        case 1u: { // ADJ_BRIGHTNESS_CONTRAST — p0=brightness, p1=contrast
+        case 1u: { // ADJ_BRIGHTNESS_CONTRAST — p0=brightness, p1=contrast; in light
+            if ap.p0 == 0.0 && ap.p1 == 0.0 {
+                return rgb;
+            }
             let PIVOT = 0.21404114;
             let scale = 1.0 + ap.p1;
-            var v = clamp((rgb - vec3<f32>(PIVOT)) * scale + vec3<f32>(PIVOT), vec3<f32>(0.0), vec3<f32>(1.0));
+            var v = clamp((em_luz3(rgb) - vec3<f32>(PIVOT)) * scale + vec3<f32>(PIVOT), vec3<f32>(0.0), vec3<f32>(1.0));
             if ap.p0 > 0.0 {
                 v = v + (vec3<f32>(1.0) - v) * ap.p0;
             } else if ap.p0 < 0.0 {
                 v = v * (1.0 + ap.p0);
             }
-            return v;
+            return em_tons_de_ecra3(v);
         }
         case 2u: { // ADJ_INVERT — display-space negative
-            return vec3<f32>(
-                srgb_to_linear_f32(1.0 - linear_to_srgb(rgb.r)),
-                srgb_to_linear_f32(1.0 - linear_to_srgb(rgb.g)),
-                srgb_to_linear_f32(1.0 - linear_to_srgb(rgb.b)),
-            );
+            return vec3<f32>(1.0) - clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0));
         }
         case 3u: { // ADJ_POSTERIZE — p0=levels (2..32), display-space quantize
             let levels = clamp(ap.p0, 2.0, 32.0);
             let steps = levels - 1.0;
-            let s = vec3<f32>(linear_to_srgb(rgb.r), linear_to_srgb(rgb.g), linear_to_srgb(rgb.b));
-            let q = round(s * steps) / steps;
-            return vec3<f32>(srgb_to_linear_f32(q.r), srgb_to_linear_f32(q.g), srgb_to_linear_f32(q.b));
+            return round(clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0)) * steps) / steps;
         }
         case 4u: { // ADJ_THRESHOLD — p0=cut (0..1), display-space luma → B/W
-            let luma = 0.299 * linear_to_srgb(rgb.r) + 0.587 * linear_to_srgb(rgb.g) + 0.114 * linear_to_srgb(rgb.b);
-            let v = select(0.0, 1.0, luma >= ap.p0);
+            let c = clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0));
+            let luma = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+            // The luma BYTE `≥ threshold` (Photoshop): the cut sits half a step below.
+            let v = select(0.0, 1.0, luma >= ap.p0 - 0.5 / 255.0);
             return vec3<f32>(v, v, v);
         }
-        case 5u: { // ADJ_EXPOSURE — p0=EV, p1=offset, p2=gamma_correction
+        case 5u: { // ADJ_EXPOSURE — p0=EV, p1=offset, p2=gamma_correction; in light
+            if ap.p0 == 0.0 && ap.p1 == 0.0 && ap.p2 == 0.0 {
+                return rgb;
+            }
             let gain = exp2(ap.p0);
             let inv_gamma = 1.0 / max(1.0 + ap.p2, 0.001);
-            let v = max(rgb * gain + vec3<f32>(ap.p1), vec3<f32>(0.0));
-            return pow(v, vec3<f32>(inv_gamma));
+            let v = max(em_luz3(rgb) * gain + vec3<f32>(ap.p1), vec3<f32>(0.0));
+            return em_tons_de_ecra3(pow(v, vec3<f32>(inv_gamma)));
         }
         case 6u: { // ADJ_VIBRANCE — p0=vibrance, p1=saturation (OKLab chroma)
+            if ap.p0 == 0.0 && ap.p1 == 0.0 {
+                return rgb;
+            }
             let sat_mul = max(1.0 + ap.p1, 0.0);
-            let lab = oklab_from_linear(rgb);
+            let lab = oklab_from_linear(em_luz3(rgb));
             let chroma = sqrt(lab.y * lab.y + lab.z * lab.z);
             if chroma > 1e-6 {
                 let nc = min(chroma / 0.4, 1.0);
                 let vib_mul = max(1.0 + ap.p0 * (1.0 - nc), 0.0);
                 let scale = sat_mul * vib_mul;
-                return oklab_to_linear(vec3<f32>(lab.x, lab.y * scale, lab.z * scale));
+                return em_tons_de_ecra3(oklab_to_linear(vec3<f32>(lab.x, lab.y * scale, lab.z * scale)));
             }
             return rgb;
         }
         case 7u: { // ADJ_CURVES — p0=base; 3 tables (R/G/B), 256 each, display-space
             let base = u32(ap.p0);
-            let sr = clamp(linear_to_srgb(rgb.r), 0.0, 1.0);
-            let sg = clamp(linear_to_srgb(rgb.g), 0.0, 1.0);
-            let sb = clamp(linear_to_srgb(rgb.b), 0.0, 1.0);
-            let or_ = adj_luts[base + 0u * 256u + u32(sr * 255.0 + 0.5)];
-            let og = adj_luts[base + 1u * 256u + u32(sg * 255.0 + 0.5)];
-            let ob = adj_luts[base + 2u * 256u + u32(sb * 255.0 + 0.5)];
-            return vec3<f32>(srgb_to_linear_f32(or_), srgb_to_linear_f32(og), srgb_to_linear_f32(ob));
+            let s = clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0));
+            let or_ = adj_luts[base + 0u * 256u + u32(s.r * 255.0 + 0.5)];
+            let og = adj_luts[base + 1u * 256u + u32(s.g * 255.0 + 0.5)];
+            let ob = adj_luts[base + 2u * 256u + u32(s.b * 255.0 + 0.5)];
+            return clamp(vec3<f32>(or_, og, ob), vec3<f32>(0.0), vec3<f32>(1.0));
         }
         case 8u: { // ADJ_LEVELS — p0=base; 1 table (channel-uniform), display-space
             let base = u32(ap.p0);
-            let sr = clamp(linear_to_srgb(rgb.r), 0.0, 1.0);
-            let sg = clamp(linear_to_srgb(rgb.g), 0.0, 1.0);
-            let sb = clamp(linear_to_srgb(rgb.b), 0.0, 1.0);
-            let or_ = adj_luts[base + u32(sr * 255.0 + 0.5)];
-            let og = adj_luts[base + u32(sg * 255.0 + 0.5)];
-            let ob = adj_luts[base + u32(sb * 255.0 + 0.5)];
-            return vec3<f32>(srgb_to_linear_f32(or_), srgb_to_linear_f32(og), srgb_to_linear_f32(ob));
+            let s = clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0));
+            let or_ = adj_luts[base + u32(s.r * 255.0 + 0.5)];
+            let og = adj_luts[base + u32(s.g * 255.0 + 0.5)];
+            let ob = adj_luts[base + u32(s.b * 255.0 + 0.5)];
+            return clamp(vec3<f32>(or_, og, ob), vec3<f32>(0.0), vec3<f32>(1.0));
         }
         case 9u: { // ADJ_NOISE — p0=amount, p1=kind(0/1), p2=monochromatic(0/1)
             // Display-space film grain, deterministic per absolute canvas coord.
@@ -528,16 +538,7 @@ fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>, coord: vec2<i32>) -> vec3<f32
             }
             let ns = vec3<f32>(n0, n1, n2);
             // NOISE_SCALE = 0.5 (display amplitude of amount = 1).
-            let d = vec3<f32>(
-                clamp(linear_to_srgb(rgb.r) + ap.p0 * ns.r * 0.5, 0.0, 1.0),
-                clamp(linear_to_srgb(rgb.g) + ap.p0 * ns.g * 0.5, 0.0, 1.0),
-                clamp(linear_to_srgb(rgb.b) + ap.p0 * ns.b * 0.5, 0.0, 1.0),
-            );
-            return vec3<f32>(
-                srgb_to_linear_f32(d.r),
-                srgb_to_linear_f32(d.g),
-                srgb_to_linear_f32(d.b),
-            );
+            return clamp(rgb + ap.p0 * ns * 0.5, vec3<f32>(0.0), vec3<f32>(1.0));
         }
         case 10u: { // ADJ_HALFTONE — p0=dot_size, p1=angle(rad), p2=shape(0/1/2)
             // Black-on-white ink screen whose dot size encodes luma, on a rotated
@@ -548,7 +549,7 @@ fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>, coord: vec2<i32>) -> vec3<f32
             let l = display_luma(rgb);
             let coverage = 1.0 - l;
             if coverage * cell < 0.5 {
-                return vec3<f32>(1.0, 1.0, 1.0); // clean paper (linear white = 1)
+                return vec3<f32>(1.0, 1.0, 1.0); // clean paper (white = 1)
             }
             let ang = ap.p1;
             let cs = cos(ang);
@@ -578,33 +579,23 @@ fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>, coord: vec2<i32>) -> vec3<f32
                 return rgb; // None / out-of-range / zero intensity → identity
             }
             // Grade in DISPLAY (sRGB) space, then blend toward it by intensity.
-            let d = vec3<f32>(
-                linear_to_srgb(rgb.r),
-                linear_to_srgb(rgb.g),
-                linear_to_srgb(rgb.b),
-            );
+            let d = clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0));
             let graded = clamp(apply_look(idx, d), vec3<f32>(0.0), vec3<f32>(1.0));
-            let out_d = mix(d, graded, amount);
-            return vec3<f32>(
-                srgb_to_linear_f32(out_d.r),
-                srgb_to_linear_f32(out_d.g),
-                srgb_to_linear_f32(out_d.b),
-            );
+            return mix(d, graded, amount);
         }
         default: { return rgb; }
     }
 }
 
 // Apply an OP_ADJUSTMENT over the current accumulator (everything below). Mirror
-// of the CPU arm: transform acc.rgb by the kind, blend the result back over acc
-// in the adjustment's mode, then lerp by the adjustment's opacity; coverage
-// (acc.a) is preserved.
+// of the CPU arm: transform acc.rgb by the kind, mix it with acc.rgb in the
+// adjustment's mode AS IF BOTH WERE OPAQUE (an adjustment changes the colour a
+// pixel has, never its coverage), then lerp by the adjustment's opacity;
+// coverage (acc.a) is preserved.
 fn apply_adjustment_op(op: Op, acc: vec4<f32>, coord: vec2<i32>) -> vec4<f32> {
     let ap = adj_params[op.layer_slot];
-    let lin = em_luz(acc);
-    let adj_rgb = em_tons_de_ecra(vec4<f32>(apply_adjustment(ap, lin.rgb, coord), acc.a)).rgb;
-    let src_px = vec4<f32>(adj_rgb, acc.a);
-    let blended = apply_blend(op.blend_mode, acc, src_px);
+    let src_px = vec4<f32>(apply_adjustment(ap, acc.rgb, coord), 1.0);
+    let blended = apply_blend(op.blend_mode, vec4<f32>(acc.rgb, 1.0), src_px);
     let t = clamp(adjustment_strength(op, coord), 0.0, 1.0);
     return vec4<f32>(mix(acc.rgb, blended.rgb, t), acc.a);
 }
@@ -1147,11 +1138,11 @@ fn cs_bloom_bright(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let p = vec2<i32>(i32(x), i32(y));
-    let base = em_luz(textureLoad(bloom_base, p, 0)); // straight linear RGBA
+    let enc = textureLoad(bloom_base, p, 0); // straight encoded
     let knee = max(bloom_g.falloff, 1e-3);
-    let w_bright = smoothstep(bloom_g.threshold, bloom_g.threshold + knee, display_luma(base.rgb));
-    let k = clamp(base.a, 0.0, 1.0) * w_bright;
-    textureStore(bloom_glow, p, vec4<f32>(base.rgb * k, k));
+    let w_bright = smoothstep(bloom_g.threshold, bloom_g.threshold + knee, display_luma(enc.rgb));
+    let k = clamp(enc.a, 0.0, 1.0) * w_bright;
+    textureStore(bloom_glow, p, vec4<f32>(em_luz3(enc.rgb) * k, k)); // the glow is light
 }
 
 // ── Bloom mip down/up — radius-independent (O(1)) blur ────────────────────────
@@ -1268,7 +1259,7 @@ fn cs_sh_luma(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let p = vec2<i32>(i32(x), i32(y));
-    let base = em_luz(textureLoad(sh_base, p, 0));
+    let base = textureLoad(sh_base, p, 0);
     textureStore(sh_luma_out, p, vec4<f32>(display_luma(base.rgb), 0.0, 0.0, 0.0));
 }
 
@@ -1283,8 +1274,7 @@ fn cs_combine_sh(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let p = vec2<i32>(i32(x), i32(y));
     let base_enc = textureLoad(sh_base, p, 0); // straight encoded (coverage = base.a)
-    let base = em_luz(base_enc);
-    let l = display_luma(base.rgb);
+    let l = display_luma(base_enc.rgb);
     let local_lo = textureLoad(sh_lo, p, 0).r;
     let local_hi = textureLoad(sh_hi, p, 0).r;
     let tw_s = max(sh_g.shadows_tonal_width, 1e-3);
@@ -1295,7 +1285,7 @@ fn cs_combine_sh(@builtin(global_invocation_id) gid: vec3<u32>) {
     var new_l = l + sh_g.shadows_amount * ws - sh_g.highlights_amount * wh;
     new_l = clamp(0.5 + (new_l - 0.5) * (1.0 + sh_g.midtone_contrast), 0.0, 1.0);
     // Re-tone in DISPLAY space, preserving hue (scale the display RGB toward new_l).
-    var d = vec3<f32>(linear_to_srgb(base.r), linear_to_srgb(base.g), linear_to_srgb(base.b));
+    var d = clamp(base_enc.rgb, vec3<f32>(0.0), vec3<f32>(1.0));
     if l > 1e-4 {
         d = clamp(d * (new_l / l), vec3<f32>(0.0), vec3<f32>(1.0));
     } else {
@@ -1310,17 +1300,12 @@ fn cs_combine_sh(@builtin(global_invocation_id) gid: vec3<u32>) {
             vec3<f32>(1.0),
         );
     }
-    let corrected = vec3<f32>(
-        srgb_to_linear_f32(d.r),
-        srgb_to_linear_f32(d.g),
-        srgb_to_linear_f32(d.b),
-    );
-    // Back to the accumulator's space; the adjustment's own blend/opacity over the
-    // base run there. Coverage PRESERVED.
-    var result_rgb = em_tons_de_ecra(vec4<f32>(corrected, base.a)).rgb;
+    // Display tones end to end (the CPU `apply_shadows_highlights`); the
+    // adjustment's own blend/opacity over the base run there. Coverage PRESERVED.
+    var result_rgb = d;
     if sh_g.blend_mode != 0u {
-        result_rgb = apply_blend(sh_g.blend_mode, base_enc, vec4<f32>(result_rgb, base.a)).rgb;
+        result_rgb = apply_blend(sh_g.blend_mode, vec4<f32>(base_enc.rgb, 1.0), vec4<f32>(result_rgb, 1.0)).rgb;
     }
     let t = clamp(sh_g.opacity, 0.0, 1.0);
-    textureStore(sh_dst, p, vec4<f32>(mix(base_enc.rgb, result_rgb, t), base.a));
+    textureStore(sh_dst, p, vec4<f32>(mix(base_enc.rgb, result_rgb, t), base_enc.a));
 }

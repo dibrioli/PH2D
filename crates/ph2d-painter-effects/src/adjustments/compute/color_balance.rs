@@ -58,8 +58,8 @@ fn colorbalance_is_neutral(p: &ColorBalanceParams) -> bool {
 /// own behaviour; audit 2026-06-18 note — `apply_photo_filter` does the same renorm
 /// but WITHOUT the final clamp, so the two diverge at the gamut boundary). Builds the per-channel LUTs
 /// ([`colorbalance_display_luts`], the same tables the GPU binds) once, then maps
-/// each pixel via an sRGB round-trip. `acc` is straight LINEAR f32 RGBA (alpha
-/// preserved). Neutral shifts early-return an exact identity.
+/// each encoded pixel through them (alpha preserved). Neutral shifts early-return
+/// an exact identity.
 pub(crate) fn apply_color_balance(p: &ColorBalanceParams, acc: &mut [[f32; 4]]) {
     if colorbalance_is_neutral(p) {
         return;
@@ -69,9 +69,9 @@ pub(crate) fn apply_color_balance(p: &ColorBalanceParams, acc: &mut [[f32; 4]]) 
     const LW: [f32; 3] = [0.299, 0.587, 0.114];
     for px in acc.iter_mut() {
         let s = [
-            linear_to_srgb_f32(px[0]),
-            linear_to_srgb_f32(px[1]),
-            linear_to_srgb_f32(px[2]),
+            px[0].clamp(0.0, 1.0),
+            px[1].clamp(0.0, 1.0),
+            px[2].clamp(0.0, 1.0),
         ];
         let mut o = [
             sample_display_lut(&luts[0], s[0]),
@@ -89,7 +89,7 @@ pub(crate) fn apply_color_balance(p: &ColorBalanceParams, acc: &mut [[f32; 4]]) 
             }
         }
         for (c, ov) in o.iter().enumerate() {
-            px[c] = srgb_to_linear_f32(*ov);
+            px[c] = ov.clamp(0.0, 1.0);
         }
     }
 }

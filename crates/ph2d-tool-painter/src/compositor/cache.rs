@@ -12,7 +12,7 @@ use super::*;
 /// `BTreeMap`, not `HashMap`) for the impl/T4.x to wire.
 #[derive(Default)]
 pub struct CompositorCache {
-    /// Cached straight-linear accumulator just below each adjustment layer,
+    /// Cached straight encoded accumulator just below each adjustment layer,
     /// keyed by the adjustment's [`LayerId`]. Stable key + deterministic
     /// iteration (HR-5 — no `std::HashMap` in the compositor, ADR-0022).
     pub(crate) cuts: std::collections::BTreeMap<LayerId, Vec<[f32; 4]>>,

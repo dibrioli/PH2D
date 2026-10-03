@@ -47,29 +47,25 @@ pub use selective_color::*;
 pub use shared::*;
 
 /// Apply a non-destructive adjustment to a window of the compositor's
-/// accumulator IN PLACE. `acc` is **straight, LINEAR f32 RGBA** (the same space
-/// `ph2d_tool_painter::compositor` blends in) — operating on f32 keeps a stack
-/// of adjustments band-free (no 8-bit round-trip in the per-frame composite).
+/// accumulator IN PLACE. `acc` is **straight, ENCODED f32 RGBA** — the display
+/// tones `ph2d_tool_painter::compositor` joins the layers in (ADR-0177);
+/// operating on f32 keeps a stack of adjustments band-free (no 8-bit round-trip
+/// in the per-frame composite).
 ///
 /// Mask / opacity / blend-mode are handled by the compositor AROUND this call
 /// (copy → `apply_adjustment` → blend by mask×opacity in the layer's blend
-/// mode), so this fn is the pure `kind` + `params` → pixel transform. Kinds
-/// conventionally defined in display space (Curves / Levels / Posterize)
-/// convert linear↔sRGB internally.
-///
-/// **STUB (W4 T4.1/T4.2 Coord):** the hook signature + wiring are landed (the
-/// compositor calls this for every `LayerKind::Adjustment`), but the per-kind
-/// compute is the implementer's (T4.3+, HSB first for the Day-4 smoke). Replace
-/// the no-op body with `match kind { … }`; an implemented arm goes live the next
-/// frame.
+/// mode), so this fn is the pure `kind` + `params` → pixel transform. Each kind
+/// owns its space: the display-space ones (Curves, Levels, Posterize, Threshold,
+/// Invert, Color Balance, Selective Color, Channel Mixer, Color Lookup, Black &
+/// White, Gradient Map) work on the values as they are; the ones defined in
+/// light or OKLab (HSB, Exposure, Vibrance, Brightness/Contrast, Photo Filter)
+/// convert at their own boundary (`shared::{em_luz, em_tons_de_ecra}`).
 pub fn apply_adjustment(kind: &AdjustmentKind, params: &AdjustmentParams, acc: &mut [[f32; 4]]) {
     debug_assert_eq!(
         params.kind(),
         *kind,
         "apply_adjustment: kind/params variant mismatch"
     );
-    // The match grows an arm per kind as T4.x land; the remaining kinds stay
-    // no-ops (identity) until theirs ships.
     match (kind, params) {
         // T4.3 — Hue/Saturation/Brightness (Day-4 smoke).
         (AdjustmentKind::HueSaturationBrightness, AdjustmentParams::HueSaturationBrightness(p)) => {

@@ -54,8 +54,8 @@ fn levels_is_neutral(p: &LevelsParams) -> bool {
 
 /// Levels — Photoshop-style black/gamma/white input remap + output remap in
 /// DISPLAY space. Builds the channel-uniform LUT ([`levels_display_lut`]) once,
-/// then maps each pixel via an sRGB round-trip. `acc` is straight LINEAR f32 RGBA
-/// (alpha preserved). Neutral params early-return an exact identity.
+/// then maps each encoded channel through it (alpha preserved). Neutral params
+/// early-return an exact identity.
 pub(crate) fn apply_levels(p: &LevelsParams, acc: &mut [[f32; 4]]) {
     if levels_is_neutral(p) {
         return;
@@ -63,8 +63,7 @@ pub(crate) fn apply_levels(p: &LevelsParams, acc: &mut [[f32; 4]]) {
     let lut = levels_display_lut(p);
     for px in acc.iter_mut() {
         for v in px.iter_mut().take(3) {
-            let s = linear_to_srgb_f32(*v);
-            *v = srgb_to_linear_f32(sample_display_lut(&lut, s));
+            *v = sample_display_lut(&lut, *v).clamp(0.0, 1.0);
         }
     }
 }

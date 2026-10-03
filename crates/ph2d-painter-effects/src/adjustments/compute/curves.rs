@@ -111,9 +111,8 @@ pub fn curves_display_luts(p: &CurvesParams) -> [[f32; DISPLAY_LUT_N]; 3] {
 
 /// Curves — per-channel tone curve in DISPLAY space. Builds the per-channel LUTs
 /// ([`curves_display_luts`], the same tables the GPU samples) once, then maps each
-/// pixel via an sRGB round-trip. `acc` is straight LINEAR f32 RGBA (alpha
-/// preserved). All-empty curves (the neutral default) early-return an exact
-/// identity (skipping the round-trip — the hot-path win, mirror of [`apply_hsb`]).
+/// pixel through them, on the encoded values as they are (alpha preserved).
+/// All-empty curves (the neutral default) early-return an exact identity.
 pub(crate) fn apply_curves(p: &CurvesParams, acc: &mut [[f32; 4]]) {
     if p.points_rgb.points.is_empty()
         && p.points_r.points.is_empty()
@@ -125,8 +124,7 @@ pub(crate) fn apply_curves(p: &CurvesParams, acc: &mut [[f32; 4]]) {
     let luts = curves_display_luts(p);
     for px in acc.iter_mut() {
         for (ch, v) in px.iter_mut().take(3).enumerate() {
-            let s = linear_to_srgb_f32(*v);
-            *v = srgb_to_linear_f32(sample_display_lut(&luts[ch], s));
+            *v = sample_display_lut(&luts[ch], *v).clamp(0.0, 1.0);
         }
     }
 }

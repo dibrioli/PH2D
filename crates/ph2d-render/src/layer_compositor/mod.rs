@@ -5,7 +5,7 @@
 //! # What this is
 //!
 //! A single compute pass that composites a flattened layer op-list into a
-//! straight-sRGB8 output texture, blending in linear light with the 22 W3C
+//! straight-sRGB8 output texture, blending in display tones (ADR-0177) with the 22 W3C
 //! Compositing Level 1 modes. The blend math source-of-truth is
 //! `ph2d_painter_brush::blend::apply`; this crate stays decoupled from the
 //! painter tool (it speaks raw `u8` blend codes, not the `BlendMode` enum), so
@@ -352,14 +352,14 @@ struct GpuGlobals {
 //
 // The single-pass `cs_flat`/`cs_grouped` write straight sRGB8 directly and start
 // from a zeroed accumulator. The segmented path instead composites *runs* of ops
-// into linear `Rgba32Float` intermediates (so a spatial kernel can read a radius
+// into encoded `Rgba32Float` intermediates (so a spatial kernel can read a radius
 // of neighbours), with these per-pass uniforms. Each pass operates on the
 // `work_region` = the requested dirty rect dilated by the total blur halo (so the
 // kernel has valid neighbours up to the region edge); intermediate local coords
 // map to canvas coords via `region_*`, exactly like `resolve_pixel`.
 
 /// Globals for `cs_segment` (48 bytes; mirrors WGSL `SegGlobals`). Composites
-/// `ops[op_start..op_end]` over `work_region` into a linear target, starting the
+/// `ops[op_start..op_end]` over `work_region` into an encoded target, starting the
 /// accumulator from `base_in` when `seg_from_base != 0` (else from zero).
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -379,7 +379,8 @@ struct SegGlobals {
 }
 
 /// Globals for the blur passes (32 bytes; mirrors WGSL `BlurGlobals`). A
-/// convolution over a `width × height` linear texture with the symmetric kernel
+/// convolution over a `width × height` texture (premultiplied light, the blur's
+/// space — its first reader converts) with the symmetric kernel
 /// `weights[0..=half]` (clamp-to-edge). `cs_blur_h`/`cs_blur_v` ignore the
 /// direction (axis-aligned); `cs_blur_dir` samples taps along `(dir_x, dir_y)`.
 #[repr(C)]
@@ -416,7 +417,7 @@ struct CombineGlobals {
 }
 
 /// Globals for `cs_encode` (16 bytes; mirrors WGSL `EncodeGlobals`). Reads the
-/// final linear `work_region` intermediate at `(src_off_x, src_off_y)` and
+/// final encoded `work_region` intermediate at `(src_off_x, src_off_y)` and
 /// writes the `out_w × out_h` straight-sRGB8 output (the requested dirty rect).
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -558,7 +559,7 @@ pub struct LayerCompositor {
     op_buffer: Option<(wgpu::Buffer, u64)>,
     /// Persistent globals uniform buffer.
     globals_buffer: wgpu::Buffer,
-    /// Immutable sRGB→linear decode LUT (uploaded once at construction).
+    /// Immutable byte decode table `b/255` (uploaded once at construction).
     decode_lut_buffer: wgpu::Buffer,
     /// Persistent adjustment-params storage buffer (grown as needed; always
     /// holds ≥1 element so binding 5 is never zero-sized).
@@ -571,7 +572,7 @@ pub struct LayerCompositor {
     // Only built/used when an op-list contains a `LayerOp::SpatialAdjustment`;
     // the single-pass path above is untouched (bit-identical for the common
     // case). Pipelines are created once at construction (cheap, no textures).
-    /// Composites a run of ops into a linear `Rgba32Float` intermediate, optionally
+    /// Composites a run of ops into an encoded `Rgba32Float` intermediate, optionally
     /// starting from a base texture (segment between pass breaks).
     pipeline_segment: wgpu::ComputePipeline,
     /// Separable-blur horizontal / vertical passes (shared bgl `bgl_blur`).
@@ -593,7 +594,7 @@ pub struct LayerCompositor {
     pipeline_sh_combine: wgpu::ComputePipeline,
     /// Blends the blurred result back over the base (spatial `apply_adjustment_op`).
     pipeline_combine: wgpu::ComputePipeline,
-    /// Encodes the final linear intermediate → straight-sRGB8 output (cropped to
+    /// Quantises the final encoded intermediate → straight-sRGB8 output (cropped to
     /// the requested dirty rect).
     pipeline_encode: wgpu::ComputePipeline,
     bgl_segment: wgpu::BindGroupLayout,
@@ -617,7 +618,7 @@ pub struct LayerCompositor {
     sh_globals_buffer: wgpu::Buffer,
     /// Separable Gaussian weights (`weights[0..=half]`), grown as needed.
     blur_weights_buffer: Option<(wgpu::Buffer, u64)>,
-    /// 1×1 linear dummy bound as `base_in` for the first segment (start-from-zero).
+    /// 1×1 dummy bound as `base_in` for the first segment (start-from-zero).
     seg_base_dummy: wgpu::TextureView,
     /// Linear `Rgba32Float` work intermediates, sized to the current `work_region`
     /// (rebuilt when it grows). `base[2]` ping-pong across segments + combines;

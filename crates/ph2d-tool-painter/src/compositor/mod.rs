@@ -128,6 +128,8 @@ mod cache;
 mod compose;
 mod gpu_ops; // the stack → the GPU compositor's op-list (two consumers)
 #[cfg(test)]
+mod oraculo_ajustes_tests;
+#[cfg(test)]
 mod oraculo_gimp_tests;
 #[cfg(test)]
 mod tests;

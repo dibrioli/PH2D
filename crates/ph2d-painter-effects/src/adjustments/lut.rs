@@ -20,7 +20,6 @@
 //!   "+ Adjustment" `Dropdown`) is a UI-polish follow-up.
 
 use super::ColorLookupLutParams;
-use super::compute::{linear_to_srgb_f32, srgb_to_linear_f32};
 
 /// Rec.709 display luma of a normalised-sRGB triple.
 #[inline]
@@ -122,13 +121,12 @@ pub const LUT_PRESETS: &[(&str, LookFn)] = &[
 pub const LUT_PRESET_COUNT: usize = LUT_PRESETS.len();
 
 /// Apply the Color Lookup adjustment in place. The preset is authored in display
-/// (sRGB) space, so each pixel round-trips linear→sRGB→linear around the look;
-/// `intensity` blends toward it (0 = identity, 1 = full look). Coverage (alpha)
+/// (sRGB) space — the encoded values `acc` holds (ADR-0177); `intensity` blends toward it (0 = identity, 1 = full look). Coverage (alpha)
 /// is preserved — a colour grade does not change shape. Handle 0 / out-of-range /
 /// zero intensity is a no-op.
 ///
 /// `profile` is honoured for a future loaded `.cube` (a `Linear`-authored LUT
-/// would skip the sRGB round-trip); the built-in presets are sRGB, so v1 always
+/// would convert at its boundary); the built-in presets are sRGB, so v1 always
 /// grades in display space.
 pub fn apply_color_lookup(p: &ColorLookupLutParams, acc: &mut [[f32; 4]]) {
     let idx = p.lut_3d.0 as usize;
@@ -137,17 +135,13 @@ pub fn apply_color_lookup(p: &ColorLookupLutParams, acc: &mut [[f32; 4]]) {
         return;
     }
     let look = LUT_PRESETS[idx].1;
-    // Per-pixel + independent → parallel (the grade is 6 transcendentals/pixel).
+    // Per-pixel + independent → parallel. The look is defined on the encoded
+    // values, which is what `acc` holds.
     super::spatial::par_pixels(acc, |px| {
-        let d = [
-            linear_to_srgb_f32(px[0]),
-            linear_to_srgb_f32(px[1]),
-            linear_to_srgb_f32(px[2]),
-        ];
+        let d = [clamp01(px[0]), clamp01(px[1]), clamp01(px[2])];
         let graded = look(d);
         for c in 0..3 {
-            let out_d = d[c] + (clamp01(graded[c]) - d[c]) * amount;
-            px[c] = srgb_to_linear_f32(out_d);
+            px[c] = d[c] + (clamp01(graded[c]) - d[c]) * amount;
         }
     });
 }

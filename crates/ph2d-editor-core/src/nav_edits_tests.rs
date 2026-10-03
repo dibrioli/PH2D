@@ -263,14 +263,22 @@ fn a_ordem_de_um_verbo_manda_na_queixa() {
     assert_eq!(a.queixa(), Some(AgentQueixa::Desligado));
     assert_eq!(a.posto_a_andar_por_accao(), None);
     a.ordem = Some(true);
-    assert_eq!(a.queixa(), None, "um Start pô-lo a andar: não está desligado");
+    assert_eq!(
+        a.queixa(),
+        None,
+        "um Start pô-lo a andar: não está desligado"
+    );
     assert_eq!(a.posto_a_andar_por_accao(), Some(""));
 
     let mut b = agente();
     b.ordem = Some(false);
     assert_eq!(b.queixa(), Some(AgentQueixa::ParadoPorAccao));
     b.ordem = Some(true);
-    assert_eq!(b.posto_a_andar_por_accao(), None, "ligado e com o alvo autorado: nada a dizer");
+    assert_eq!(
+        b.posto_a_andar_por_accao(),
+        None,
+        "ligado e com o alvo autorado: nada a dizer"
+    );
 
     let mut c = agente();
     c.alvo_modo = NavAlvoModo::Nenhum;

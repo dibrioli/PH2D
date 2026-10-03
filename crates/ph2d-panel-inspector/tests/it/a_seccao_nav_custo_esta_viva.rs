@@ -397,7 +397,10 @@ fn as_frases_da_ordem_e_da_passagem_aparecem_quando_valem() {
         });
         a
     };
-    let cede = tr_with("panel.inspector.nav.giving_way_x_m_to_go", &[("dist", &"2.00")]);
+    let cede = tr_with(
+        "panel.inspector.nav.giving_way_x_m_to_go",
+        &[("dist", &"2.00")],
+    );
     let anda = tr_with("panel.inspector.nav.moving_x_m_to_go", &[("dist", &"2.00")]);
     let f = frases(info(Some(a_andar(true)), None, None));
     assert!(f.contains(&cede) && !f.contains(&anda), "{f:?}");
@@ -412,14 +415,19 @@ fn as_frases_da_ordem_e_da_passagem_aparecem_quando_valem() {
     assert!(frases(info(Some(a.clone()), None, None)).contains(&desligado.into()));
     a.ordem = Some(true);
     let f = frases(info(Some(a), None, None));
-    assert!(f.contains(&posto.into()) && !f.contains(&desligado.into()), "{f:?}");
+    assert!(
+        f.contains(&posto.into()) && !f.contains(&desligado.into()),
+        "{f:?}"
+    );
     let mut b = agente(true, true);
     b.ordem = Some(false);
     assert!(frases(info(Some(b), None, None)).contains(&parado.into()));
     let mut c = agente(true, true);
     c.ordem = Some(true);
     c.alvo_da_ordem = "Hero".to_string();
-    let depois = tr_with("panel.inspector.nav.started_by_an_action_after_x", &[("name", &"Hero")]);
+    let depois = tr_with(
+        "panel.inspector.nav.started_by_an_action_after_x",
+        &[("name", &"Hero")],
+    );
     assert!(frases(info(Some(c), None, None)).contains(&depois));
 }
-

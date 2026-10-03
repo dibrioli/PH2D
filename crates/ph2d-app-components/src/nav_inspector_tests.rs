@@ -570,13 +570,20 @@ fn o_painel_le_a_ordem_que_a_ponte_guarda() {
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let mut ponte = PhysicsBridge::new();
     ponte.dispatch(&mut sim, true, 0);
-    assert_eq!(agente_de(&sim, agente).queixa(), Some(AgentQueixa::Desligado));
+    assert_eq!(
+        agente_de(&sim, agente).queixa(),
+        Some(AgentQueixa::Desligado)
+    );
 
     ponte.pede_navegacao(agente, PedidoDeNavegacao::Anda(0));
     ponte.dispatch(&mut sim, true, 1);
     ponte.dispatch(&mut sim, true, 2);
     let a = agente_de(&sim, agente);
-    assert_eq!(a.queixa(), None, "um Start pô-lo a andar e o painel diz «desligado»");
+    assert_eq!(
+        a.queixa(),
+        None,
+        "um Start pô-lo a andar e o painel diz «desligado»"
+    );
     assert_eq!(a.posto_a_andar_por_accao(), Some(""));
     assert_eq!(a.agora.map(|n| n.estado), Some(NavEstado::AAndar));
 

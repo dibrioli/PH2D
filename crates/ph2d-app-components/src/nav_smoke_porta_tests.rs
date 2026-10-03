@@ -144,4 +144,3 @@ fn quem_da_passagem_na_porta_diz_que_da() {
     assert!(andar > 100, "o vermelho sozinho andou {andar} tiques");
     assert_eq!(passagem, 0, "sozinho, ele diz que dá passagem a ninguém");
 }
-

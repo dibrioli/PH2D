@@ -58,6 +58,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.inert.sky_background_is_off" => {
             "Inactive: the sky is not shown behind the model. Switch Background to On to use it."
         }
+        "field.inert.sky_has_no_sun" => {
+            "Inactive: this sky is overcast and has no sun, so there is no key light to weigh. \
+             Pick a sunny Sky to use it."
+        }
         _ => return None,
     })
 }

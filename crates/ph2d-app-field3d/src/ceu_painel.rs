@@ -99,6 +99,9 @@ fn apagada(l: &Linha, c: &Ceu) -> Option<&'static str> {
     if l.slot == 5 && !c.fundo {
         return Some("field.inert.sky_background_is_off");
     }
+    if l.slot == 3 && c.embarcado().is_some_and(crate::ceu_foto::sem_sol) {
+        return Some("field.inert.sky_has_no_sun");
+    }
     None
 }
 

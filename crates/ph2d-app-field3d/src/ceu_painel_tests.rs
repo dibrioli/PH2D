@@ -90,10 +90,40 @@ fn todo_o_texto_tem_traducao() {
         true,
     );
     chaves.extend(sem_fundo.iter().filter_map(|r| r.inert));
+    chaves.extend(rows(patio_pronto(), true).iter().filter_map(|r| r.inert));
     assert!(chaves.contains(&"field.inert.sky_is_studio"));
     assert!(chaves.contains(&"field.inert.sky_background_is_off"));
+    assert!(chaves.contains(&"field.inert.sky_has_no_sun"));
     for k in chaves {
         assert_ne!(ph2d_i18n::tr(k), k, "a chave {k} não tem texto");
+    }
+}
+
+/// O pátio (nublado) com o atlas JÁ montado — a luz-chave só se apaga quando a lei o diz.
+fn patio_pronto() -> Ceu {
+    let e = ph2d_sky::Embarcado::Patio;
+    let inicio = std::time::Instant::now();
+    while crate::ceu_foto::pronto(e).is_none() {
+        assert!(inicio.elapsed().as_secs() < 120, "o atlas do pátio não chegou");
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let qual = ph2d_sky::Embarcado::TODOS.iter().position(|x| *x == e).expect("embarcado") + 1;
+    Ceu {
+        qual: qual as u8,
+        ..Ceu::default()
+    }
+}
+
+/// ⭐ **Um céu sem sol apaga a luz-chave** (o pátio nublado), com a razão; o resto continua a valer.
+#[test]
+fn um_ceu_sem_sol_apaga_a_luz_chave() {
+    let r = rows(patio_pronto(), true);
+    for l in &r {
+        let ph2d_field::Param::Sky(slot) = l.param else {
+            panic!("fileira do céu com outra família");
+        };
+        let esperado = (slot == 3).then_some("field.inert.sky_has_no_sun");
+        assert_eq!(l.inert, esperado, "{}", l.key);
     }
 }
 

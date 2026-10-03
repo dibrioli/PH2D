@@ -310,3 +310,16 @@ fn instrumento_sol() {
         }
     }
 }
+
+/// ⭐ **Um céu nublado não tem sol** (o pátio: `0,1 %` da energia no pico) e fica INTACTO; o sol mais
+/// fraco de verdade (o pôr do sol, `2,3 %`) continua a sê-lo.
+#[test]
+fn o_patio_nublado_nao_tem_sol() {
+    let p = Embarcado::Patio.panorama();
+    let (sem, sol) = p.separa_sol();
+    assert!(sol.is_none(), "o pátio nublado não tem sol");
+    assert_eq!(sem, p, "e o céu fica intacto");
+    let (_, sol) = Embarcado::Por.panorama().separa_sol();
+    let s = sol.expect("o pôr do sol tem sol");
+    assert!(f64::from(s.fracao) > super::FRACAO_MIN, "{}", s.fracao);
+}

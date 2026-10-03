@@ -27,6 +27,13 @@ use crate::{Panorama, Rgb};
 /// `0,5–1`, logo é a mesma ordem.)
 pub const LIMIAR: f64 = 16.0;
 
+/// ⭐ **Abaixo desta fracção da energia o céu NÃO tem sol** — o excesso fica nele e não há luz-chave.
+///
+/// Medido (03/10, `instrumento_sol`): o menor sol de verdade dos embarcados é o do pôr do sol,
+/// `2,3 %`; o pátio nublado dá `0,1 %` (uma nuvem clara a `14°`, sem sombra que se veja). `1 %` fica
+/// entre os dois.
+pub const FRACAO_MIN: f64 = 0.01;
+
 /// Amostras da tabela no eixo `√α`, de `0` a `1` (as do estúdio).
 pub const RUGOSIDADES: usize = 49;
 /// Amostras no eixo `√(1 − cos ψ)/√2`, de `0` a `1` — passo [`PASSO`] junto do eixo.
@@ -313,6 +320,10 @@ impl Panorama {
             }
             peso += we;
         }
+        let fracao = luma(energia.map(|v| v as f32)) / (media * 4.0 * std::f64::consts::PI);
+        if fracao < FRACAO_MIN {
+            return (self.clone(), None);
+        }
         let lc = (centro[0] * centro[0] + centro[1] * centro[1] + centro[2] * centro[2]).sqrt();
         let dir = centro.map(|v| v / lc);
         // O 2.º momento, com o do PRÓPRIO texel (um quadrado de lado Δ tem Δ²/12 por eixo): um sol de
@@ -336,7 +347,7 @@ impl Panorama {
             raio: raio as f32,
             radiancia: energia.map(|v| (v / om) as f32),
             energia: energia.map(|v| v as f32),
-            fracao: (luma(energia.map(|v| v as f32)) / (media * 4.0 * pi)) as f32,
+            fracao: fracao as f32,
             tabela: tabela(&perfil),
         };
         (sem, Some(sol))

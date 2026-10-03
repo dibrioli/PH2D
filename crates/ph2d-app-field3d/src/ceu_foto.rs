@@ -174,6 +174,17 @@ pub fn pronto(e: Embarcado) -> Option<Arc<ph2d_sky::Ceu>> {
     None
 }
 
+/// ⭐ **O céu `e` não tem sol?** — `true` só quando o atlas já está montado e a lei não achou sol
+/// ([`ph2d_sky::sol::FRACAO_MIN`]: um céu nublado). Não monta nada: quem pinta o painel pergunta aqui.
+#[must_use]
+pub fn sem_sol(e: Embarcado) -> bool {
+    cache()
+        .lock()
+        .ok()
+        .and_then(|c| c.prontos.get(&e).map(|a| a.sol().is_none()))
+        .unwrap_or(false)
+}
+
 /// ⚙️ A escolha que o `PH2D_FIELD_SKY=<nome>` pede ao abrir (para FOTOGRAFAR, como o
 /// `PH2D_FIELD_BLOOM=1`): o nome é o id do [`Embarcado::chave`]; o céu aparece atrás.
 #[must_use]

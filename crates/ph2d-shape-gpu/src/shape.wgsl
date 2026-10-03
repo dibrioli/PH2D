@@ -100,7 +100,8 @@ struct VsOut {
 // escreve-as, o desenho só as lê): por cópia TRÊS `vec4` — `(primeiro bloco, blocos do
 // preenchimento, das marcas, do contorno)`, `(primeira célula, linhas, 0, a primeira linha em bits
 // de f32)` e `(a primeira coluna em bits, células por linha, a regra, 0)`; a caixa da cópia inteira;
-// e a COBERTURA acabada de cada pixel das células (`pack2x16unorm` do preenchimento e do traço).
+// e a acumulação das células, cuja 1.ª palavra de cada pixel o cálculo deixou com a COBERTURA acabada
+// (`pack2x16unorm` do preenchimento e do traço).
 @group(1) @binding(0) var<storage, read> ccopias: array<vec4<u32>>;
 @group(1) @binding(1) var<storage, read> ccaixas: array<vec4<f32>>;
 @group(1) @binding(2) var<storage, read> ccobertura: array<u32>;
@@ -451,7 +452,10 @@ fn cobertura_de_ecra(ii: u32, xy: vec2<f32>) -> vec2<f32> {
     if r < 0.0 || r >= f32(c1.y) || x < 0.0 || x >= f32(c2.y) * LARGURA_DA_CELULA {
         return vec2<f32>(0.0);
     }
-    return unpack2x16unorm(ccobertura[(c1.x + u32(r) * c2.y) * PIXELS_DA_CELULA + u32(x)]);
+    // A coluna `x` corre a fileira inteira: a célula dela e, dentro da célula, a palavra do pixel.
+    let xi = u32(x);
+    let cel = c1.x + u32(r) * c2.y + xi / PIXELS_DA_CELULA;
+    return unpack2x16unorm(ccobertura[cel * ACUMULA + xi % PIXELS_DA_CELULA]);
 }
 
 fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f32>) -> f32 {

@@ -27,7 +27,7 @@ struct Contas {
     cap: u32,
     // `1` ⇒ nenhuma cópia ganha contorno (o caminho de antes, para os gates o compararem).
     sem_contorno: u32,
-    // Quantas CÉLULAS cabem (`ccelulas_rw`, `acumula_rw`, `cobertura_rw`).
+    // Quantas CÉLULAS cabem (`ccelulas_rw`, `acumula_rw`).
     cap_celulas: u32,
     // A área no ecrã (px², da caixa estimada) a partir da qual uma cópia CONFORME vai pelas arestas
     // no ecrã (`contorno.rs`, `AREA_MINIMA_CONFORME`).
@@ -53,9 +53,9 @@ struct Contas {
 // de célula. Os totais só existem na placa, e lê-los no CPU custaria dois quadros.
 @group(2) @binding(7) var<storage, read_write> despacho_rw: array<u32>;
 // ⭐ doc 121 §9.12 — o buffer de ACUMULAÇÃO (`ACUMULA` palavras por célula: as três famílias, cada uma
-// com os `PIXELS_DA_CELULA` depósitos em ponto fixo) e a COBERTURA acabada (uma palavra por pixel).
+// com os `PIXELS_DA_CELULA` depósitos em ponto fixo). O `cs_varre` grava a COBERTURA acabada de cada
+// pixel NO LUGAR do depósito do preenchimento dele, que já leu: é a palavra que o desenho lê.
 @group(2) @binding(8) var<storage, read_write> acumula_rw: array<atomic<u32>>;
-@group(2) @binding(9) var<storage, read_write> cobertura_rw: array<u32>;
 
 // O estado da emissão de UMA cópia (um fio por cópia). A ordem das arestas não importa a ninguém: as
 // células as tomam uma a uma (doc 121 §9.8).
@@ -881,9 +881,9 @@ fn cs_varre(
     let cel = g / PIXELS_DA_CELULA;
     let p = g % PIXELS_DA_CELULA;
     let viva = cel < celulas_em_uso();
+    let a = cel * ACUMULA + p;
     var v = vec3<i32>(0);
     if viva {
-        let a = cel * ACUMULA + p;
         v = vec3<i32>(
             bitcast<i32>(atomicLoad(&acumula_rw[a])),
             bitcast<i32>(atomicLoad(&acumula_rw[a + PIXELS_DA_CELULA])),
@@ -916,5 +916,7 @@ fn cs_varre(
         af = abs(af0 - 2.0 * round(0.5 * af0));
     }
     let as_ = min(min(abs(f32(s.y) / ESCALA_FIXA), 1.0) + min(abs(f32(s.z) / ESCALA_FIXA), 1.0), 1.0);
-    cobertura_rw[g] = pack2x16unorm(vec2<f32>(af, as_));
+    // ⭐ Na palavra do PRÓPRIO fio, lida antes das barreiras: nenhum outro fio a lê (o prefixo vive na
+    // memória de grupo), e o `cs_zera` do quadro seguinte apaga-a com as outras.
+    atomicStore(&acumula_rw[a], pack2x16unorm(vec2<f32>(af, as_)));
 }

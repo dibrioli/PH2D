@@ -45,7 +45,7 @@ MUTS = [
     ("A12 sem a verificacao da capacidade das celulas", [(C,
         "        || mbase + nmask_reservado > contas.cap_celulas {", "        {", 1)]),
     ("A13 o fragmento le a fileira com o passo errado", [(S,
-        "(c1.x + u32(r) * c2.y) * PIXELS_DA_CELULA", "(c1.x + u32(r) * (c2.y + 1u)) * PIXELS_DA_CELULA", 1)]),
+        "let cel = c1.x + u32(r) * c2.y + xi", "let cel = c1.x + u32(r) * (c2.y + 1u) + xi", 1)]),
     ("A14 preenchimento e contorno trocados na familia da aresta", [(C,
         "a.fam = select(select(2u, 1u, bl < c0.y + c0.z), 0u, bl < c0.y);",
         "a.fam = select(select(0u, 1u, bl < c0.y + c0.z), 2u, bl < c0.y);", 1)]),
@@ -55,6 +55,12 @@ MUTS = [
         "ceil((hi - a.x0) / LARGURA_DA_CELULA)", "floor((hi - a.x0) / LARGURA_DA_CELULA)", 1)]),
     ("A17 o deposito sem a diferenca para o pixel anterior", [(C,
         "deposita(q0, a.fam, x, v - ant);", "deposita(q0, a.fam, x, v);", 1)]),
+    # doc 121 §9.12 (a memória): a cobertura acabada vive NO LUGAR do 1.º acumulador do pixel.
+    ("A18 a cobertura gravada na palavra das marcas (o fragmento le a do preenchimento)", [(C,
+        "atomicStore(&acumula_rw[a], pack2x16unorm", "atomicStore(&acumula_rw[a + PIXELS_DA_CELULA], pack2x16unorm", 1)]),
+    ("A19 o fragmento soma a coluna da fileira sem a partir em celula e pixel", [(S,
+        "let cel = c1.x + u32(r) * c2.y + xi / PIXELS_DA_CELULA;\n    return unpack2x16unorm(ccobertura[cel * ACUMULA + xi % PIXELS_DA_CELULA]);",
+        "let cel = c1.x + u32(r) * c2.y;\n    return unpack2x16unorm(ccobertura[cel * ACUMULA + xi]);", 1)]),
 ]
 
 CMD = ["bash", "scripts/ph2d-run.sh", "cargo", "test", "-p", "ph2d-shape-gpu", "--release", "--", "--ignored"]

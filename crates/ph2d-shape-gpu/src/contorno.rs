@@ -51,11 +51,18 @@ const ARESTAS_POR_COPIA_INICIAL: u64 = 32;
 // escada de `32 768` com `264 MB`, pedidas pelo PALPITE e não pela cena (medido no app, W5 de 03/10).
 /// Pixels de uma célula (`PIXELS_DA_CELULA` no WGSL).
 const PIXELS_DA_CELULA: u64 = 32;
-/// Bytes de uma célula em cada buffer (doc 121 §9.12): o REGISTO (os três fundos e a regra), a
-/// ACUMULAÇÃO (três famílias × um depósito por pixel) e a COBERTURA acabada (uma palavra por pixel).
+/// Bytes de uma célula em cada buffer (doc 121 §9.12): o REGISTO (os três fundos e a regra) e a
+/// ACUMULAÇÃO (três famílias × um depósito por pixel; o `cs_varre` grava a cobertura acabada no lugar
+/// do depósito do preenchimento — sem buffer próprio, `528 → 400 B` por célula).
 const REGISTO: u64 = 4 * 4;
 const ACUMULA: u64 = 3 * PIXELS_DA_CELULA * 4;
-const COBERTURA: u64 = PIXELS_DA_CELULA * 4;
+
+/// A capacidade das células para `n` pedidas: o múltiplo seguinte de um OITAVO do degrau de potência
+/// de dois abaixo de `n` (doc 121 §9.12). A potência de dois pedia até o DOBRO do medido (`107 520 →
+/// 131 072` na `=127` densa); assim sobra menos de `1/8`. Só as células: crescem só por medição.
+fn ao_oitavo_do_degrau(n: u64) -> u64 {
+    n.next_multiple_of(1 << n.max(1).ilog2().saturating_sub(3))
+}
 
 /// Onde estão, no buffer do despacho, os argumentos de um fio por LINHA, por ARESTA e por PIXEL de
 /// célula (`despacha` no WGSL).
@@ -97,10 +104,9 @@ pub(crate) struct Contorno {
     /// Os registos de célula (doc 121 §9.12): por cópia, por fileira de pixels, por célula, os três
     /// fundos e a regra.
     celulas_buf: wgpu::Buffer,
-    /// A acumulação das células (doc 121 §9.12).
+    /// A acumulação das células (doc 121 §9.12); a 1.ª palavra de cada pixel acaba com a cobertura
+    /// que o desenho lê.
     acumula: wgpu::Buffer,
-    /// A cobertura acabada de cada pixel das células — o que o desenho lê.
-    cobertura: wgpu::Buffer,
     /// Os argumentos dos despachos indirectos das células (escritos pelo `cs_soma`): `[0, 3)` por
     /// linha, `[3, 6)` por aresta, `[6, 9)` por pixel de célula.
     despacho: wgpu::Buffer,
@@ -229,7 +235,6 @@ impl Contorno {
             entrada(5, armazem(false), c),
             entrada(6, armazem(false), c),
             entrada(8, armazem(false), c),
-            entrada(9, armazem(false), c),
             entrada(7, armazem(false), c),
         ];
         let escrita = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -314,7 +319,6 @@ impl Contorno {
             caixas: buffer(gpu, "ph2d-shape-gpu caixas do contorno", 16, armazens),
             celulas_buf: buffer(gpu, "ph2d-shape-gpu celulas do contorno", 16, armazens),
             acumula: buffer(gpu, "ph2d-shape-gpu acumulacao das celulas", 16, armazens),
-            cobertura: buffer(gpu, "ph2d-shape-gpu cobertura das celulas", 16, armazens),
             despacho: buffer(
                 gpu,
                 "ph2d-shape-gpu despacho das celulas",
@@ -416,14 +420,13 @@ impl Contorno {
         let tecto_m = self.tecto_celulas.min(self.celulas_no_maximo);
         let pedido_m = self.total_visto_m.min(tecto_m);
         if pedido_m > self.cap_celulas {
-            let cap = pedido_m.next_power_of_two().min(tecto_m);
+            let cap = ao_oitavo_do_degrau(pedido_m).min(tecto_m);
             let armazens = wgpu::BufferUsages::STORAGE;
             self.celulas_buf = buffer(gpu, "ph2d-shape-gpu celulas do contorno", cap * REGISTO, armazens);
             self.acumula = buffer(gpu, "ph2d-shape-gpu acumulacao das celulas", cap * ACUMULA, armazens);
-            self.cobertura = buffer(gpu, "ph2d-shape-gpu cobertura das celulas", cap * COBERTURA, armazens);
             self.cap_celulas = cap;
             if self.relata {
-                let mb = cap * (REGISTO + ACUMULA + COBERTURA) / (1024 * 1024);
+                let mb = cap * (REGISTO + ACUMULA) / (1024 * 1024);
                 eprintln!(
                     "[formas] celulas: capacidade {cap} ({mb} MB) para {pedido_m} pedidas por {n} copias"
                 );
@@ -482,10 +485,6 @@ impl Contorno {
             wgpu::BindGroupEntry {
                 binding: 8,
                 resource: self.acumula.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 9,
-                resource: self.cobertura.as_entire_binding(),
             },
         ];
         // O grupo do passe das células: as mesmas ligações SEM o `despacho`.
@@ -641,9 +640,13 @@ impl Contorno {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: self.cobertura.as_entire_binding(),
+                    resource: self.acumula.as_entire_binding(),
                 },
             ],
         })
     }
 }
+
+#[cfg(test)]
+#[path = "contorno_tests.rs"]
+mod tests;

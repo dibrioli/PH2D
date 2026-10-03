@@ -1128,7 +1128,7 @@ de `32 px` percorre a lista INTEIRA da célula, e a aresta que só cruza um pixe
 `32`. O piso do hardware é `0,09`; o registo, `0,04`. O resto do quadro é o cálculo: células `0,43` ·
 escrita `0,17` · contagem `0,07`.
 
-**O desenho seguinte (⏳ por construir — janela nova).** Não o rasterizador fino inteiro no cálculo que o
+**O desenho seguinte (✅ construído e medido no §9.12 — passou à 1.ª tentativa).** Não o rasterizador fino inteiro no cálculo que o
 handoff de 02/10 previa: esse pedia a ORDEM entre cópias, porque a mistura passava ao cálculo. Basta tirar
 do fragmento a SOMA, e deixar-lhe a mistura (o hardware já a faz na ordem certa):
 
@@ -1220,3 +1220,49 @@ volta a medir-se (o `QUADROS_DO_PRODUTO = 5` era o das listas).
 **Réguas:** `registos_dos_shaders.sh` (o fragmento tem de descer dos `56` VGPRs) · os `10` gates GPU da
 crate e os `5` do produto · a sonda intercalada com `PERFIL=1 PLACAS=igpu` (e `rtx`) · a mutação nova
 e, no fecho, a `21/21` do tracejado.
+
+**✅ O resultado — a 1.ª tentativa (a DENSA) passa o kill-criterion** (commit `cd3ec059e`; o binário de
+`8cb0ab9e1` intercalado na MESMA janela, `PH2D_FLUID_PROFILE=1`, `2` corridas por célula, a soma dos
+passes do perfilador, ms):
+
+| arranjo | iGPU cura | iGPU acumulação | critério | RTX cura | RTX acumulação |
+|---|---:|---:|---:|---:|---:|
+| `72` grandes esticadas | `1,50` · `1,52` | **`0,88`** · `0,98`¹ | `≤ 1,0` ✅ | `0,25` · `0,26` | **`0,22`** · `0,22` |
+| `72` grandes conformes | `0,76` · `0,76` | **`0,59`** · `0,59` | `≤ 0,76` ✅ | `0,10` · `0,10` | **`0,09`** · `0,10` |
+| `1225` densas da `=127` | `1,50` · `1,50` | **`1,00`** · `1,00` | `≤ 1,50` ✅ | `0,11` · `0,11` | **`0,10`** · `0,10` |
+
+¹ a 2.ª corrida das esticadas caiu numa janela com a média de 5 min a `8,5` (outra linha); a 1.ª a `1,8`.
+
+A decomposição iGPU das esticadas: desenho `0,83 → 0,14` (o fragmento só lê — o piso da ablação era
+`0,13`) · células `0,43 → 0,50` · escrita `0,17` e contagem `0,07` iguais. ⇒ **o preço do cálculo novo
+é `+0,07 ms` para tirar `0,69` ao desenho.** No relógio de parede da sonda as esticadas ficam em
+`0,98` contra `0,94` do Vello (antes `1,64` contra `1,13`): o último arranjo em que o proxy de telemóvel
+perdia para o Vello passa a empatar. As conformes ficam `0,70` contra `0,87`; as densas `1,13` contra
+`2,65` (`2,3×`).
+
+⚠️ **Onde a densa paga:** nas densas as células sobem `0,51 → 0,78 ms` — a `cs_zera` e a `cs_varre`
+correm em TODO pixel de célula, e `1225` cópias sobrepostas são muitos pixels de grelha por pixel de
+ecrã. A 2.ª tentativa (a ESPARSA, acima) é exactamente esta alavanca: fica como item medido, não como
+pendência do critério. A memória: as esticadas pedem `10 362` células (`~5,5 MB`, `528 B` por célula);
+o gate das estrelas sobrepostas a `512²`, `77 502` (`~41 MB`) — o tecto do recurso continua a ser o
+`max_storage_buffer_binding_size`, e quem não cabe vai por cópia.
+
+**Registos** (`registos_dos_shaders.sh`, iGPU): o fragmento continua a `56` VGPRs · `18` ondas (o caminho
+de sempre está no MESMO shader e manda nos registos), código `16 620 → 15 336 B`; os quatro kernels novos
+`≤ 32` VGPRs, nada em scratch.
+
+**Gates** (RTX): `ph2d-shape-gpu` **10/10** — todos os quadros de todas as fixturas com `alfa ≤ 1` e `0`
+pixels `> 1` contra o eixo, inclusive o 1.º (a mistura com o caminho de sempre) e a metade das células
+(`as_copias_que_nao_cabem_nas_celulas_desenham_o_mesmo`: `21/40`, `2/6` e `26/60` cópias nas células, o
+resto por cópia, a mesma imagem); o tracejado contra o Vello no mesmo `71` do §9.9 · produto **5/5** +
+sonda.
+
+**Mutação `17` de `17`** ([arnês](ferramentas/mutacao_o_buffer_de_acumulacao_2026-10-03.py), pré-voo `17/17`,
+corrida LIMPA `10` verdes, nenhuma por shader inválido): fundo uma célula depois da `kb` · o 1.º pixel
+cruzado perdido · o degrau final até `dy` perdido · o prefixo que não recomeça na célula · `cs_fundo` sem
+prefixo · `cs_zera` sem apagar a acumulação · sem apagar o fundo · varredura não segmentada · a regra
+par-ímpar ignorada no `cs_varre` · e no `cs_escreve` · escala dobrada · o recorte com o mínimo trocado ·
+sem a verificação da capacidade · o passo da fileira no fragmento · preenchimento e contorno trocados ·
+a `kb` por `floor` · o depósito sem a diferença. As duas do `cs_zera` morrem no gate da cena que muda
+(o análogo da M10 do §9.8) e no da metade das células. O arnês das listas (`14/14`) foi aposentado com
+o código que mutava.

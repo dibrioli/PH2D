@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Prova de mutação das listas de arestas das células (doc 121 §9.8): cada mutação tem de SANGRAR no
+"""⛔ APOSENTADO em 2026-10-03: as listas saíram com o buffer de acumulação (doc 121 §9.12); as âncoras
+deste arnês já não existem. O sucessor é `mutacao_o_buffer_de_acumulacao_2026-10-03.py` (17/17).
+
+Prova de mutação das listas de arestas das células (doc 121 §9.8): cada mutação tem de SANGRAR no
 gate de GPU de `ph2d-shape-gpu` (7 testes `--ignored`: paridade com o Vello, contorno par contra par,
 fileiras que não cabem, cena que muda, quina exacta, NaN vertical, rota).
 

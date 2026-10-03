@@ -70,9 +70,9 @@ Paridade placa/CPU na pilha rica: `23` de `188 424` bytes a um degrau (`0,012 %`
 | | |
 |---|---|
 | sem placa | `composto_na_placa_tests` (3: todo escritor muda a versão · a cor por vértice é o prefixo da peça · a dobra cabe e é a mais estreita) · `uma_pilha_translucida_recomposta_fica` · `um_v6_abre_com_o_fundo_da_cor_por_vertice` · `a_forma_da_pilha_gravada_e_pinada` re-pinado `83`/`3 590` (a conta fecha à mão) · `ph2d-mesh-render::a_grade_cobre_cada_amostra_uma_vez` |
-| com placa | `tinta_no_produto_tests::placa::` (3: a pilha rica a um degrau, `8x..32x` + `128x`, metadado e faixa suja · o painel muda a pilha e a placa tem a peça + subida inteira atrasada · a pilha que a placa recusa) — produto inteiro `--ignored tinta_no_produto --skip diag_`: **⏳ ver §6** |
+| com placa | `tinta_no_produto_tests::placa::` (3: a pilha rica a um degrau, `8x..32x` + `128x`, metadado e faixa suja · o painel muda a pilha e a placa tem a peça + subida inteira atrasada · a pilha que a placa recusa) — produto inteiro `--ignored tinta_no_produto --skip diag_`: **33/33** |
 | mutação | `docs/3D/ferramentas/muta_a_pilha_na_placa.sh` **19/19** (a 1.ª corrida deixou 3 vivas: o gate da deriva comparava recomposições entre si; a grade do despacho só tem 2.ª linha acima de `16,7 M`; «outra dobra, outro compositor» repetia o `ensure_array` e SAIU) · W7 do `muta_a_pilha_da_peca.sh` re-ancorada · pré-voo dos 19 `muta_*.sh` limpo |
-| fecho batched | **⏳ ver §6** |
+| fecho batched (HEAD `bc53d7271` + o fmt e a M2 em `bc78dfb17`) | `nextest-impacted` **19 403/19 403** · `CARGO_BUILD_WARNINGS=deny check --workspace --all-targets` · clippy `-D warnings` · `machete` · `check-standalone-optional` · `check-workflow-packages` · `architecture_*` **102/102** · `fmt --check` · pré-voo dos 19 `muta_*.sh` — limpos. A 1.ª corrida apanhou `architecture_no_dependency_climbs_a_layer` (a 1.ª casa do tradutor) e o censo do `sync_mesh` da shell — curados em `9f08a1ec6` |
 
 ## §4. Para o integrador
 
@@ -99,4 +99,31 @@ Paridade placa/CPU na pilha rica: `23` de `188 424` bytes a um degrau (`0,012 %`
 
 ## §6. Fecho, smoke e binário
 
-⏳ preenchido no fim desta sessão.
+Binário compilado nesta worktree no HEAD, depois de `rm -rf target/*/incremental` (`29 G` + `4,2 G`);
+a 1.ª build foi de `29,0 s`:
+
+```
+$ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
+    Finished `smoke` profile [optimized] target(s) in 0.22s
+```
+
+Smoke ao dono (cena `52`):
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-sculpt3d && env PH2D_SCULPT3D_SMOKE=52 cargo run -p ph2d-host-desktop --profile smoke
+```
+
+1. `Paint Detail` → `64x`; `IMG` → `PNTR`; no painel do Painter, o separador `Layers`; `+` → `Layer 2`;
+   pinte um traço vermelho na bola.
+2. Arraste o slider de opacidade da `Layer 2` de um lado para o outro: o vermelho acompanha o slider
+   sem atraso (antes, a `64x`, cada passo levava dois quadros e meio).
+3. Escolha a `Layer 1` e ponha a opacidade dela a meio: a bola clareia. Depois arraste a opacidade da
+   `Layer 2` várias vezes: FORA do vermelho a cor da bola não pode mudar (antes escorregava a cada
+   movimento).
+4. `Ctrl+Z` várias vezes: cada passo volta atrás.
+5. `Paint Detail` → `256x` e repita o 2: continua a acompanhar.
+6. Deu errado se: o slider arrasta com atraso a `64x`, a cor fora do vermelho muda no passo 3, ou o
+   `Ctrl+Z` não devolve a bola.
+
+`bash scripts/agent-loop-profile.sh` (20 sessões): paralelismo `1,16` · respostas/sessão `184` ·
+`test:check` `2,0` · edições pela `Edit` `37 %` · contexto por passo `483 mil` · início `63 mil`.

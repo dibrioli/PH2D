@@ -38,11 +38,6 @@ pub(crate) const RECUSA_FORMAS_DESLIGADAS: &str =
 /// Uma forma que o passe não desenha como o Vello (tinta própria, traço de padrão ou de pincel).
 pub(crate) const RECUSA_FORMA_DO_VELLO: &str =
     "CPU: uma forma viva so' o Vello a desenha (tinta propria, traco de padrao ou de pincel)";
-/// Uma forma com traço TRACEJADO: no dispositivo a pose de cada cópia não se lê, e sob um afim não
-/// conforme o tracejado mede-se no MUNDO (bug #27). ⭐ Um traço CONTÍNUO vai à placa desde a W4 do
-/// doc 121 — o shader constrói-o no ecrã a partir do eixo.
-pub(crate) const RECUSA_FORMA_TRACEJADA: &str =
-    "CPU: uma forma viva tem traco TRACEJADO -- sob afim nao conforme o tracejado mede-se no mundo";
 /// O halo do `fx.glow` lê as cópias da CPU (`motion_glow_layer`), que a rota do dispositivo não tem.
 pub(crate) const RECUSA_FORMA_COM_BRILHO: &str =
     "CPU: formas vivas com fx.glow -- o halo le' as copias da CPU";
@@ -178,8 +173,7 @@ pub(crate) fn formas_para_a_placa(
     for &h in vivas {
         match geometrias.veredito(h, store) {
             Veredito::Recusada => return Err(RECUSA_FORMA_DO_VELLO),
-            Veredito::Pronta { so_conforme: true } => return Err(RECUSA_FORMA_TRACEJADA),
-            Veredito::Pronta { so_conforme: false } | Veredito::Vazia | Veredito::Ausente => {}
+            Veredito::Pronta | Veredito::Vazia | Veredito::Ausente => {}
         }
     }
     Ok(())

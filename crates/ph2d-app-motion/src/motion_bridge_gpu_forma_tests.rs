@@ -3,8 +3,7 @@
 
 use super::{
     RECUSA_FORMA_COM_BRILHO, RECUSA_FORMA_COM_COLISOR, RECUSA_FORMA_DO_VELLO,
-    RECUSA_FORMA_TRACEJADA, RECUSA_FORMAS_DESLIGADAS, formas_para_a_placa, handles_publicados,
-    saida_com_mistura_em_formas,
+    RECUSA_FORMAS_DESLIGADAS, formas_para_a_placa, handles_publicados, saida_com_mistura_em_formas,
 };
 use crate::motion_shape_gen::VecPathStore;
 use crate::motion_shape_placa::GeometriasDaPlaca;
@@ -133,10 +132,9 @@ fn a_cerca_das_formas_nomeia_cada_recusa() {
         cerca(true, &[lisa], false, true),
         Err(RECUSA_FORMA_COM_COLISOR)
     );
-    assert_eq!(
-        cerca(true, &[lisa, tracada], false, false),
-        Err(RECUSA_FORMA_TRACEJADA)
-    );
+    // ⭐ doc 121 §9.9 — o traço TRACEJADO vai à placa: sob escala não uniforme o shader corta-o pelo
+    // comprimento de arco no ecrã (até lá recusava o quadro inteiro, a cena `=76`).
+    assert_eq!(cerca(true, &[lisa, tracada], false, false), Ok(()));
     // ⭐ doc 121 W4 — o CONTROLO do traço: o mesmo traço CONTÍNUO vai à placa.
     let mut continuo = ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.5);
     continuo.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 0.05));

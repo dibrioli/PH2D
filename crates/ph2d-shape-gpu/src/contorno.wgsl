@@ -232,16 +232,98 @@ fn emite_peca(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32) {
         return;
     }
     if it.tipo == 2u {
-        if it.ponta == 1u {
-            emite_quad(b + nr, b + nr + u * r, b - nr + u * r, b - nr);
-        } else if it.ponta == 2u {
-            let dir = sign(nr.x * u.y - nr.y * u.x);
-            emite_leque(b, nr, -nr, -1.0, dir, r);
-        }
+        emite_tampa(b, u, r, it.ponta);
     }
 }
 
-// As peças do eixo de uma cópia (os cabeçalhos de bloco não desenham nada).
+// A ponta de estilo `tampa` em `c`, virada para `u` — o `tampa_px` da soma por pixel, como arestas.
+fn emite_tampa(c: vec2<f32>, u: vec2<f32>, r: f32, tampa: u32) {
+    let nr = perp(u) * r;
+    if tampa == 1u {
+        emite_quad(c + nr, c + nr + u * r, c - nr + u * r, c - nr);
+    } else if tampa == 2u {
+        let dir = sign(nr.x * u.y - nr.y * u.x);
+        emite_leque(c, nr, -nr, -1.0, dir, r);
+    }
+}
+
+// doc 121 §9.9 — o `pedaco_px` da soma por pixel, como arestas.
+fn emite_pedaco(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, tr: TrocoTracejado, p: Pedaco) {
+    let r = it.meia * caneta;
+    if tr.corda <= 0.0 || tr.len <= 0.0 || r <= 0.0 {
+        return;
+    }
+    let a = aplica(lin, t, it.a);
+    let b = aplica(lin, t, it.b);
+    let q = cantos_do_pedaco(a, b, tr, p);
+    let u = (b - a) / tr.corda;
+    let nr = perp(u) * r;
+    var m0 = nr;
+    var m1 = nr;
+    var faixa0 = false;
+    var faixa1 = false;
+    if p.liga0 {
+        let e = bissectriz_ate(aplica(lin, t, it.d), a, b, r, (it.ponta & 4u) != 0u, it.junta, it.limite, p.recuo0);
+        if e.z > 0.0 {
+            m0 = e.xy;
+            faixa0 = true;
+        }
+    } else {
+        emite_tampa(q.xy, -u, r, (it.ponta >> 6u) & 3u);
+    }
+    if p.liga1 {
+        let quina = (it.ponta & 8u) != 0u;
+        let cf = aplica(lin, t, it.c);
+        let e = bissectriz_ate(a, b, cf, r, quina, it.junta, it.limite, p.recuo1);
+        if e.z > 0.0 {
+            m1 = e.xy;
+            faixa1 = true;
+        } else {
+            emite_junta(u, b, cf, r, select(2u, it.junta, quina), it.limite);
+        }
+    } else {
+        emite_tampa(q.zw, u, r, (it.ponta >> 8u) & 3u);
+    }
+    let q0 = q.xy + m0;
+    let q1 = q.zw + m1;
+    let q2 = q.zw - m1;
+    let q3 = q.xy - m0;
+    let s = positivo(q0, q1, q2);
+    if !faixa0 {
+        aresta(q3, q0, s);
+    }
+    aresta(q0, q1, s);
+    aresta(q2, q3, s);
+    if !faixa1 {
+        aresta(q1, q2, s);
+    }
+}
+
+// O sub-caminho tracejado que começa no troço `i0` — o `tracejado_px` da soma por pixel.
+fn emite_tracejado(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32) {
+    let sub = sub_tracejado(i0, lin, t, caneta);
+    if sub.per <= 0.0 {
+        return;
+    }
+    var i = i0;
+    var s0 = 0.0;
+    for (var k = 0u; k < sub.n; k += 1u) {
+        i = proximo_troco(i);
+        let it = eixo[i];
+        let tr = troco_tracejado(it, sub, k, s0, lin, t);
+        for (var n = tr.n0; n <= tr.n1; n += 1.0) {
+            let p = pedaco(tr, sub, n);
+            if p.valido {
+                emite_pedaco(it, lin, t, caneta, tr, p);
+            }
+        }
+        s0 = tr.fim;
+        i += 1u;
+    }
+}
+
+// As peças do eixo de uma cópia (os cabeçalhos de bloco não desenham nada; um sub-caminho tracejado
+// percorre-se inteiro a partir do primeiro troço dele).
 fn percorre(cp: Copia) {
     cursor = 0u;
     let caneta = bitcast<f32>(cp.eixo_rg.w);
@@ -250,7 +332,11 @@ fn percorre(cp: Copia) {
         if it.tipo == 3u {
             continue;
         }
-        emite_peca(it, cp.lin, cp.t, caneta);
+        if !tracejado(it) {
+            emite_peca(it, cp.lin, cp.t, caneta);
+        } else if (it.ponta & SUB_INICIO) != 0u {
+            emite_tracejado(i, cp.lin, cp.t, caneta);
+        }
     }
 }
 
@@ -334,13 +420,24 @@ fn arestas_do_leque(r: f32) -> u32 {
     return 3u * k;
 }
 
+fn arestas_da_tampa(tampa: u32, r: f32) -> u32 {
+    return select(select(0u, 4u, tampa == 1u), arestas_do_leque(r), tampa == 2u);
+}
+
 fn limite_de_arestas(cp: Copia) -> u32 {
     let caneta = bitcast<f32>(cp.eixo_rg.w);
     var n = 0u;
     for (var i = cp.eixo_rg.x; i < cp.eixo_rg.x + cp.eixo_rg.y; i += 1u) {
         let it = eixo[i];
         let r = it.meia * caneta;
-        if it.tipo == 0u {
+        if it.tipo == 0u && tracejado(it) {
+            // doc 121 §9.9 — cada traço que toca o troço: o quadrilátero, as duas pontas e a junta.
+            let per = (it.traco + it.vao) * caneta;
+            let len = arco(it, cp.lin, cp.t);
+            let pecas = u32(min(ceil(len / max(per, 1.0e-30)), TRACOS_POR_TROCO_MAX)) + 2u;
+            let tampa = max(arestas_da_tampa((it.ponta >> 6u) & 3u, r), arestas_da_tampa((it.ponta >> 8u) & 3u, r));
+            n = min(n + pecas * (4u + 2u * tampa + max(4u, arestas_do_leque(r))), 0x3fffffffu);
+        } else if it.tipo == 0u {
             n += 4u;
             if (it.ponta & 2u) != 0u {
                 n += max(4u, arestas_do_leque(r));

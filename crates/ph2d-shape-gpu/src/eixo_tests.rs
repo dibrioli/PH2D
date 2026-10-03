@@ -173,40 +173,78 @@ fn um_troço_nunca_tem_comprimento_zero_na_placa() {
     );
 }
 
-/// ⛔ **O tracejado marca a geometria e não dá eixo.**
+fn prepara_traco(bp: &BezPath, st: &Stroke) -> crate::ShapeGeometry {
+    crate::ShapeGeometry::prepare(&crate::ShapeInput {
+        fill: None,
+        strokes: vec![crate::StrokeInput {
+            path: bp,
+            style: st,
+            color: [0.0, 0.0, 0.0, 1.0],
+        }],
+        stroke_fills: Vec::new(),
+    })
+    .expect("prepara")
+}
+
+/// ⭐ doc 121 §9.9 — **o tracejado da casa (`[traço, vão]`, fase `0`) dá eixo**, com o padrão e as
+/// pontas em cada troço, o sub-caminho marcado no primeiro e nenhum item de ponta; só um padrão que o
+/// eixo não exprime fica com a cerca do conforme.
 #[test]
-fn o_tracejado_so_se_desenha_conforme() {
+fn o_tracejado_da_casa_da_eixo_e_o_outro_so_se_desenha_conforme() {
     let mut bp = BezPath::new();
     bp.move_to((0.0, 0.0));
     bp.line_to((1.0, 0.0));
-    let st = Stroke::new(0.1).with_dashes(0.0, [0.1, 0.1]);
-    let g = crate::ShapeGeometry::prepare(&crate::ShapeInput {
-        fill: None,
-        strokes: vec![crate::StrokeInput {
-            path: &bp,
-            style: &st,
-            color: [0.0, 0.0, 0.0, 1.0],
-        }],
-        stroke_fills: Vec::new(),
-    })
-    .expect("prepara");
-    assert_ne!(g.record.flags & crate::FLAG_SO_CONFORME, 0);
-    assert!(g.eixo.is_empty());
-    assert!(g.record.eixo.iter().all(|e| e[1] == 0));
-    // CONTROLO: o mesmo traço sem tracejado dá eixo, em todo nível.
-    let liso = Stroke::new(0.1);
-    let g = crate::ShapeGeometry::prepare(&crate::ShapeInput {
-        fill: None,
-        strokes: vec![crate::StrokeInput {
-            path: &bp,
-            style: &liso,
-            color: [0.0, 0.0, 0.0, 1.0],
-        }],
-        stroke_fills: Vec::new(),
-    })
-    .expect("prepara");
+    bp.line_to((1.0, 1.0));
+    let st = Stroke::new(0.1)
+        .with_start_cap(Cap::Round)
+        .with_end_cap(Cap::Square)
+        .with_dashes(0.0, [0.1, 0.05]);
+    let g = prepara_traco(&bp, &st);
     assert_eq!(g.record.flags & crate::FLAG_SO_CONFORME, 0);
     assert!(g.record.eixo.iter().all(|e| e[1] > 0));
+    let n = g.record.eixo[0][1] as usize;
+    let nivel0 = &g.eixo[..n];
+    let trocos: Vec<_> = nivel0.iter().filter(|i| i.tipo == ITEM_TROCO).collect();
+    assert_eq!(trocos.len(), 2);
+    assert!(
+        nivel0.iter().all(|i| i.tipo != ITEM_PONTA),
+        "o tracejado não leva itens de ponta"
+    );
+    assert!(trocos.iter().all(|i| i.traco == 0.1 && i.vao == 0.05));
+    assert_eq!(trocos[0].ponta & (SUB_INICIO | SUB_FECHADO), SUB_INICIO);
+    assert_eq!(
+        trocos[0]._pad, 2,
+        "o primeiro troço diz quantos o sub-caminho tem"
+    );
+    assert_eq!(trocos[1].ponta & SUB_INICIO, 0);
+    for t in &trocos {
+        assert_eq!((t.ponta >> TAMPA_INICIO_BIT) & 3, PONTA_REDONDA);
+        assert_eq!((t.ponta >> TAMPA_FIM_BIT) & 3, PONTA_QUADRADA);
+    }
+    assert!(
+        nivel0
+            .iter()
+            .filter(|i| i.tipo == ITEM_BLOCO)
+            .all(|c| c.ponta == BLOCO_TRACEJADO)
+    );
+    // ⛔ Um padrão de TRÊS e uma fase: a cerca de sempre.
+    for outro in [
+        Stroke::new(0.1).with_dashes(0.0, [0.1, 0.05, 0.02]),
+        Stroke::new(0.1).with_dashes(0.03, [0.1, 0.05]),
+    ] {
+        let g = prepara_traco(&bp, &outro);
+        assert_ne!(g.record.flags & crate::FLAG_SO_CONFORME, 0);
+        assert!(g.eixo.is_empty());
+    }
+    // CONTROLO: o traço contínuo dá eixo com pontas e nada de tracejado.
+    let g = prepara_traco(&bp, &Stroke::new(0.1));
+    assert_eq!(g.record.flags & crate::FLAG_SO_CONFORME, 0);
+    assert!(g.eixo.iter().any(|i| i.tipo == ITEM_PONTA));
+    assert!(
+        g.eixo
+            .iter()
+            .all(|i| i.traco == 0.0 && i.vao == 0.0 && i.ponta & SUB_INICIO == 0)
+    );
 }
 
 /// ⭐ **Os BLOCOS guardam as peças todas, pela ordem, e a caixa de cada um cobre o alcance delas.**

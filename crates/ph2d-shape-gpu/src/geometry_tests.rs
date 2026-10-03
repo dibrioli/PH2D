@@ -205,12 +205,12 @@ fn uma_forma_vazia_nao_prepara() {
     );
 }
 
-/// O registo tem o tamanho que o `shape.wgsl` lê (`Record`: 352 bytes; o `Eixo`: 56). Um campo a mais num lado
+/// O registo tem o tamanho que o `shape.wgsl` lê (`Record`: 352 bytes; o `Eixo`: 72). Um campo a mais num lado
 /// só desalinharia TODOS os registos a seguir ao primeiro, em silêncio.
 #[test]
 fn o_registo_tem_o_tamanho_do_shader() {
     assert_eq!(std::mem::size_of::<GeometryRecord>(), 352);
-    assert_eq!(std::mem::size_of::<crate::EixoItem>(), 56);
+    assert_eq!(std::mem::size_of::<crate::EixoItem>(), 72);
     assert_eq!(std::mem::size_of::<crate::ShapeInstance>(), 64);
     assert_eq!(std::mem::size_of::<crate::ShapeView>(), 32);
 }

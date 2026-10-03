@@ -18,13 +18,16 @@
 //! entrega ao deslocar uma curva lisa. O estilo (esquadria · chanfro · redonda) vale só entre dois
 //! ELEMENTOS do caminho cujas tangentes discordam.
 //!
-//! ⛔ **O tracejado NÃO entra:** sob escala não uniforme o comprimento de arco no MUNDO não é
-//! proporcional ao local (depende da direcção), e a lei da casa mede o tracejado no mundo. Uma
-//! geometria com traço tracejado é marcada ([`crate::geometry::FLAG_SO_CONFORME`]) e quem chama manda
-//! as cópias não conformes dela ao Vello.
+//! ⭐ **O tracejado mede-se no ECRÃ** (doc 121 §9.9): sob escala não uniforme o comprimento de arco no
+//! mundo não é proporcional ao local, e a lei da casa traceja a geometria JÁ transformada com o padrão
+//! `× √|det|`. Os troços levam o padrão e as pontas; o shader percorre cada sub-caminho somando o
+//! comprimento no ecrã e corta os traços onde o `kurbo::dash` os cortaria. Só um padrão que o eixo
+//! não exprime ([`tracejado_do_eixo`]) fica com a [`crate::geometry::FLAG_SO_CONFORME`].
 
 use bytemuck::{Pod, Zeroable};
-use ph2d_vector::{BezPath, Cap, Join, PathEl, Point, Stroke, flatten};
+use ph2d_vector::{
+    BezPath, Cap, Join, ParamCurve, ParamCurveNearest, PathEl, Point, Stroke, flatten,
+};
 
 /// Um troço do eixo: de `a` a `b`, com o vizinho de trás em `d` e o da frente em `c` (lidos só
 /// quando o bit [`FAIXA_INICIO`]/[`FAIXA_FIM`] de `ponta` está aceso).
@@ -71,7 +74,20 @@ pub const PONTA_RENTE: u32 = 0;
 pub const PONTA_QUADRADA: u32 = 1;
 pub const PONTA_REDONDA: u32 = 2;
 
-/// Um item do eixo, como a placa o lê (`shape.wgsl`, `Eixo`): `56` bytes.
+/// doc 121 §9.9 — no `ponta` de um troço TRACEJADO: o primeiro troço do sub-caminho (o `_pad` dele
+/// diz quantos troços o sub-caminho tem).
+pub const SUB_INICIO: u32 = 16;
+/// No `ponta` do primeiro troço tracejado: o sub-caminho é FECHADO.
+pub const SUB_FECHADO: u32 = 32;
+/// No `ponta` de um troço tracejado, a ponta do INÍCIO de cada traço (`PONTA_*`) a partir deste bit,
+/// e a do FIM dois bits acima — o kurbo põe a `start_cap` e a `end_cap` em cada traço.
+pub const TAMPA_INICIO_BIT: u32 = 6;
+pub const TAMPA_FIM_BIT: u32 = 8;
+/// No `ponta` de um cabeçalho de BLOCO: há um troço tracejado lá dentro — o desenho pixel a pixel
+/// não o salta pela caixa (o comprimento de arco tem de passar por todos os troços).
+pub const BLOCO_TRACEJADO: u32 = 1;
+
+/// Um item do eixo, como a placa o lê (`shape.wgsl`, `Eixo`): `72` bytes.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct EixoItem {
@@ -87,6 +103,30 @@ pub struct EixoItem {
     pub junta: u32,
     pub ponta: u32,
     pub _pad: u32,
+    /// doc 121 §9.9 — o tracejado do troço em unidades LOCAIS (`traço`, `vão`); `(0, 0)` ⇒ contínuo.
+    /// O shader multiplica-o pela caneta `√|det|`, como a casa (`stroke_uniform::pen_for`).
+    pub traco: f32,
+    pub vao: f32,
+    /// A FLECHA da corda `a → b` (local): o ponto da curva no meio dela menos o meio da corda; zero
+    /// num troço recto. O tracejado mede o ARCO no ecrã (`c + 8h²/3c`): só com as cordas, os cantos
+    /// arredondados ficavam curtos e o padrão escorregava ao longo do contorno.
+    pub flecha: [f32; 2],
+}
+
+/// O tracejado que o eixo sabe percorrer: `[traço, vão]` com fase `0` — o que o `kurbo_stroke` da
+/// casa produz. `None` para um traço contínuo e para um padrão que o eixo não exprime (outra
+/// contagem, fase, período nulo): esse fica com a [`crate::geometry::FLAG_SO_CONFORME`].
+#[must_use]
+pub fn tracejado_do_eixo(style: &Stroke) -> Option<[f32; 2]> {
+    let [t, v] = style.dash_pattern.as_slice() else {
+        return None;
+    };
+    let ok = |x: f64| x.is_finite() && x >= 0.0;
+    (style.dash_offset == 0.0 && ok(*t) && ok(*v) && t + v > 0.0).then(|| {
+        #[expect(clippy::cast_possible_truncation, reason = "a placa lê f32")]
+        let p = [*t as f32, *v as f32];
+        p
+    })
 }
 
 fn junta_de(j: Join) -> u32 {
@@ -142,6 +182,8 @@ fn quina(t0: Point, t1: Point) -> bool {
 struct Sub {
     pontos: Vec<Point>,
     quinas: Vec<bool>,
+    /// A flecha da corda que CHEGA a cada ponto (zero no primeiro).
+    flechas: Vec<Point>,
     fechado: bool,
     /// A tangente à saída do 1.º elemento e à chegada do último — para a quina do fecho.
     t_inicio: Option<Point>,
@@ -178,6 +220,7 @@ fn sub_caminhos(path: &BezPath, tol: f64) -> Vec<Sub> {
                 atual = Some(Sub {
                     pontos: vec![p],
                     quinas: vec![false],
+                    flechas: vec![Point::ZERO],
                     fechado: false,
                     t_inicio: None,
                     t_fim: None,
@@ -216,12 +259,20 @@ fn sub_caminhos(path: &BezPath, tol: f64) -> Vec<Sub> {
                 let mut bp = BezPath::new();
                 bp.move_to(cur);
                 bp.push(el);
+                let seg = bp.segments().next();
                 flatten(bp.iter(), tol, |e| {
                     if let PathEl::LineTo(p) = e
-                        && s.pontos.last().is_none_or(|u| *u != p)
+                        && let Some(&u) = s.pontos.last()
+                        && u != p
                     {
+                        let meio = u.midpoint(p);
+                        let flecha = seg.map_or(Point::ZERO, |sg| {
+                            let c = sg.eval(sg.nearest(meio, 1e-9).t);
+                            Point::new(c.x - meio.x, c.y - meio.y)
+                        });
                         s.pontos.push(p);
                         s.quinas.push(false);
+                        s.flechas.push(flecha);
                     }
                 });
                 cur = match el {
@@ -258,11 +309,13 @@ pub fn em_blocos(pecas: &[EixoItem]) -> Vec<EixoItem> {
             };
             alcance = alcance.max(it.meia_largura * fator);
         }
+        let tracejado = bloco.iter().any(|it| it.traco + it.vao > 0.0);
         out.push(EixoItem {
             a: lo,
             b: hi,
             meia_largura: alcance,
             tipo: ITEM_BLOCO,
+            ponta: if tracejado { BLOCO_TRACEJADO } else { 0 },
             #[expect(clippy::cast_possible_truncation, reason = "um bloco tem 16 peças")]
             _pad: bloco.len() as u32,
             ..EixoItem::default()
@@ -293,13 +346,27 @@ fn f(p: Point) -> [f32; 2] {
 pub fn eixo(path: &BezPath, style: &Stroke, tol: f64, out: &mut Vec<EixoItem>) -> f32 {
     #[expect(clippy::cast_possible_truncation, reason = "a placa lê f32")]
     let (meia, limite) = ((style.width * 0.5) as f32, style.miter_limit as f32);
+    let tracejado = tracejado_do_eixo(style);
+    let [traco, vao] = tracejado.unwrap_or_default();
     let base = EixoItem {
         meia_largura: meia,
         limite_esquadria: limite,
         junta: junta_de(style.join),
+        traco,
+        vao,
         ..EixoItem::default()
     };
+    // ⭐ doc 121 §9.9 — com tracejado cada TRAÇO tem pontas (o shader põe-nas onde o traço começa e
+    // acaba): os troços levam o estilo delas, e não há itens de ponta.
+    let tampas = if tracejado.is_some() {
+        (ponta_de(style.start_cap) << TAMPA_INICIO_BIT) | (ponta_de(style.end_cap) << TAMPA_FIM_BIT)
+    } else {
+        0
+    };
     let mut ext: f32 = 1.0;
+    if tracejado.is_some() && (style.start_cap == Cap::Square || style.end_cap == Cap::Square) {
+        ext = ext.max(std::f32::consts::SQRT_2);
+    }
     for s in sub_caminhos(path, tol) {
         // ⚠️ Os pontos vão à placa em `f32`, e dois pontos distintos em `f64` podem coincidir lá:
         // um troço de comprimento ZERO partiria a faixa (o shader não tem direcção para ele, e os
@@ -307,7 +374,8 @@ pub fn eixo(path: &BezPath, style: &Stroke, tol: f64, out: &mut Vec<EixoItem>) -
         // LÊ, e uma quina absorvida passa ao ponto que fica.
         let mut p: Vec<[f32; 2]> = Vec::with_capacity(s.pontos.len());
         let mut q: Vec<bool> = Vec::with_capacity(s.pontos.len());
-        for (pt, &eh) in s.pontos.iter().zip(&s.quinas) {
+        let mut fl: Vec<[f32; 2]> = Vec::with_capacity(s.pontos.len());
+        for ((pt, &eh), fc) in s.pontos.iter().zip(&s.quinas).zip(&s.flechas) {
             let pf = f(*pt);
             if p.last() == Some(&pf) {
                 if let Some(u) = q.last_mut() {
@@ -316,13 +384,17 @@ pub fn eixo(path: &BezPath, style: &Stroke, tol: f64, out: &mut Vec<EixoItem>) -
             } else {
                 p.push(pf);
                 q.push(eh);
+                fl.push(f(*fc));
             }
         }
         // Um fechado cujo último ponto É o primeiro: tira-se o repetido, e a junta do fecho fica
-        // no ponto 0.
+        // no ponto 0 (com a flecha da corda que lá chega).
         if s.fechado && p.len() > 2 && p.first() == p.last() {
             p.pop();
             q.pop();
+            if let Some(ultima) = fl.pop() {
+                fl[0] = ultima;
+            }
         }
         let n = p.len();
         if n < 2 {
@@ -345,7 +417,13 @@ pub fn eixo(path: &BezPath, style: &Stroke, tol: f64, out: &mut Vec<EixoItem>) -
         let troços = if s.fechado { n } else { n - 1 };
         for i in 0..troços {
             let j = (i + 1) % n;
-            let mut flags = 0;
+            let mut flags = tampas;
+            let mut pad = 0;
+            if tracejado.is_some() && i == 0 {
+                flags |= SUB_INICIO | if s.fechado { SUB_FECHADO } else { 0 };
+                pad = u32::try_from(troços)
+                    .expect("um sub-caminho com mais de 4 mil milhoes de troços");
+            }
             if interior(i) {
                 flags |= FAIXA_INICIO | if q[i] { QUINA_INICIO } else { 0 };
             }
@@ -362,10 +440,12 @@ pub fn eixo(path: &BezPath, style: &Stroke, tol: f64, out: &mut Vec<EixoItem>) -
                 d: p[(i + n - 1) % n],
                 tipo: ITEM_TROCO,
                 ponta: flags,
+                _pad: pad,
+                flecha: if tracejado.is_some() { fl[j] } else { [0.0; 2] },
                 ..base
             });
         }
-        if !s.fechado {
+        if !s.fechado && tracejado.is_none() {
             for (de, em, cap) in [
                 (p[1], p[0], style.start_cap),
                 (p[n - 2], p[n - 1], style.end_cap),

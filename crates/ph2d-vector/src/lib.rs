@@ -77,6 +77,8 @@ pub use vello::kurbo::{
 // viram segmentos —, e a placa desenha as `N` cópias. Re-exportados pela mesma razão de versão que
 // o resto do `kurbo` acima; o `stroke` com nome próprio porque `Stroke` já é o ESTILO.
 pub use vello::kurbo::{StrokeOpts, flatten, stroke as expand_stroke};
+// E a FLECHA de cada corda do aplanamento (o tracejado do passe mede o arco no ecrã, doc 121 §9.9).
+pub use vello::kurbo::{ParamCurve, ParamCurveNearest, PathSeg};
 pub use vello::peniko::{
     Brush, Color, ColorStop, ColorStops, Extend, Fill, Gradient, GradientKind, ImageData,
     ImageQuality, LinearGradientPosition,

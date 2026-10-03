@@ -52,6 +52,11 @@ struct Eixo {
     junta: u32,
     ponta: u32,
     _pad: u32,
+    // doc 121 §9.9 — o tracejado em unidades LOCAIS (`traço`, `vão`); `(0, 0)` ⇒ contínuo.
+    traco: f32,
+    vao: f32,
+    // A flecha da corda (local): o meio da curva menos o meio da corda.
+    flecha: vec2<f32>,
 }
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -500,13 +505,19 @@ fn traco_do_eixo(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32,
         let fb = cab.meia * caneta + FAIXA_FOLGA;
         let blo = cx.xy - vec2<f32>(fb);
         let bhi = cx.zw + vec2<f32>(fb);
-        if bhi.x < xa.x || blo.x > xb.x || bhi.y < xa.y || blo.y > xb.y {
+        // ⚠️ Um bloco com troços TRACEJADOS não se salta: o comprimento de arco passa por todos.
+        if (cab.ponta & 1u) == 0u && (bhi.x < xa.x || blo.x > xb.x || bhi.y < xa.y || blo.y > xb.y) {
             i = fim;
             continue;
         }
         i += 1u;
         for (; i < fim; i += 1u) {
-            s += peca_do_eixo(eixo[inicio + i], lin, t, caneta, xy);
+            let it = eixo[inicio + i];
+            if !tracejado(it) {
+                s += peca_do_eixo(it, lin, t, caneta, xy);
+            } else if (it.ponta & SUB_INICIO) != 0u {
+                s += tracejado_px(inicio + i, lin, t, caneta, xy);
+            }
         }
     }
     return min(abs(s), 1.0);
@@ -540,6 +551,12 @@ const FAIXA_FOLGA: f32 = 0.1;
 // aresta partilhada cancelar-se: a decisão e a bissectriz saem iguais nos dois lados, e uma junta
 // que um desse e o outro não ficaria como uma cunha por pintar.
 fn bissectriz(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, r: f32, quina: bool, junta: u32, limite: f32) -> vec3<f32> {
+    return bissectriz_ate(p0, p1, p2, r, quina, junta, limite, 0.5 * min(length(p1 - p0), length(p2 - p1)));
+}
+
+// A mesma, com o recuo máximo dado: num traço TRACEJADO (doc 121 §9.9) o que limita o recuo são os
+// PEDAÇOS de traço dos dois lados do vértice, e não os troços inteiros.
+fn bissectriz_ate(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, r: f32, quina: bool, junta: u32, limite: f32, recuo_max: f32) -> vec3<f32> {
     let d0 = p1 - p0;
     let d1 = p2 - p1;
     let l0 = length(d0);
@@ -561,7 +578,7 @@ fn bissectriz(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, r: f32, quina: bool, 
     let m = (perp(u0) + perp(u1)) * (r / (1.0 + dt));
     let fora = r + FAIXA_FOLGA;
     let recuo = r * sqrt(max(1.0 - dt, 0.0) / (1.0 + dt));
-    if (!quina && dot(m, m) > fora * fora) || recuo > 0.5 * min(l0, l1) {
+    if (!quina && dot(m, m) > fora * fora) || recuo > recuo_max {
         return vec3<f32>(0.0);
     }
     return vec3<f32>(m, 1.0);
@@ -651,6 +668,251 @@ fn peca_do_eixo(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f3
         return leque(b, nr, -nr, -1.0, dir, r, xy);
     }
     return 0.0;
+}
+
+// ⭐⭐ doc 121 §9.9 — **O TRACEJADO NO ECRÃ.** A lei da casa traceja a geometria JÁ transformada com o
+// padrão `× √|det|` (`stroke_uniform::pen_for`) e o `kurbo::dash` corta-o pelo comprimento de arco: a
+// fase recomeça em cada sub-caminho, cada traço tem as suas pontas, e num fechado o último traço
+// EMENDA no primeiro quando atravessa o início. Aqui cada sub-caminho é percorrido somando o
+// comprimento de cada troço no ecrã; o traço `n` ocupa `[n·período, n·período + traço]`.
+//
+// ⚠️ Os dois troços de um vértice decidem a faixa com os MESMOS números (o comprimento de cada troço
+// sai de `comprimento`, com os mesmos argumentos dos dois lados, e o arco é uma soma sequencial) —
+// uma decisão diferente deixava uma cunha por pintar.
+const SUB_INICIO: u32 = 16u;
+const SUB_FECHADO: u32 = 32u;
+// Quantos traços um troço corta, no máximo — o tecto é o do VIGIA do dispositivo (um laço sem fim
+// perde a placa), não uma escolha de desenho: `2¹⁶` traços num troço é um traço abaixo do pixel.
+const TRACOS_POR_TROCO_MAX: f32 = 65536.0;
+
+fn tracejado(it: Eixo) -> bool {
+    return it.traco + it.vao > 0.0;
+}
+
+fn comprimento(lin: vec4<f32>, t: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
+    return length(aplica(lin, t, b) - aplica(lin, t, a));
+}
+
+// O ARCO do troço no ecrã — a corda mais `8h²/3c`, com `h` a flecha levada pelo afim (o arco de uma
+// parábola pela corda e pelo ponto do meio). É ele que anda o tracejado: só com as cordas, um canto
+// arredondado ficava curto e o padrão escorregava ao longo do contorno (medido: alfa `134` → ver
+// doc 121 §9.9). As decisões de faixa ficam nas CORDAS, que os dois lados de um vértice recalculam.
+fn arco(it: Eixo, lin: vec4<f32>, t: vec2<f32>) -> f32 {
+    let d = aplica(lin, t, it.b) - aplica(lin, t, it.a);
+    let c = length(d);
+    if c <= 0.0 {
+        return 0.0;
+    }
+    let f = vec2<f32>(lin.x * it.flecha.x + lin.z * it.flecha.y, lin.y * it.flecha.x + lin.w * it.flecha.y);
+    let h = (d.x * f.y - d.y * f.x) / c;
+    return c + 8.0 * h * h / (3.0 * c);
+}
+
+// O primeiro TROÇO a partir de `i` (salta os cabeçalhos de bloco).
+fn proximo_troco(i: u32) -> u32 {
+    var j = i;
+    while eixo[j].tipo != 0u {
+        j += 1u;
+    }
+    return j;
+}
+
+struct SubTracejado {
+    n: u32,
+    fechado: bool,
+    // O traço e o período no ecrã.
+    tr: f32,
+    per: f32,
+    // Num fechado: o comprimento inteiro, o início do traço que o atravessa no fim, e se ele EMENDA.
+    tot: f32,
+    a_fim: f32,
+    emenda: bool,
+}
+
+fn sub_tracejado(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32) -> SubTracejado {
+    let it = eixo[i0];
+    var s: SubTracejado;
+    s.n = it._pad;
+    s.fechado = (it.ponta & SUB_FECHADO) != 0u;
+    s.tr = it.traco * caneta;
+    s.per = (it.traco + it.vao) * caneta;
+    s.tot = 0.0;
+    s.emenda = false;
+    if s.fechado && s.per > 0.0 {
+        var i = i0;
+        for (var k = 0u; k < s.n; k += 1u) {
+            i = proximo_troco(i);
+            let e = eixo[i];
+            s.tot = s.tot + arco(e, lin, t);
+            i += 1u;
+        }
+        s.a_fim = floor(s.tot / s.per) * s.per;
+        s.emenda = s.a_fim < s.tot && s.tot < s.a_fim + s.tr;
+    }
+    return s;
+}
+
+struct TrocoTracejado {
+    s0: f32,
+    fim: f32,
+    // O arco (anda o tracejado) e a corda (a direcção e as decisões de faixa).
+    len: f32,
+    corda: f32,
+    lprev: f32,
+    lnext: f32,
+    tem_ant: bool,
+    tem_seg: bool,
+    // O primeiro e o último troço de um FECHADO (a emenda).
+    primeiro: bool,
+    ultimo: bool,
+    n0: f32,
+    n1: f32,
+}
+
+fn troco_tracejado(it: Eixo, sub: SubTracejado, k: u32, s0: f32, lin: vec4<f32>, t: vec2<f32>) -> TrocoTracejado {
+    var tr: TrocoTracejado;
+    tr.s0 = s0;
+    tr.len = arco(it, lin, t);
+    tr.corda = comprimento(lin, t, it.a, it.b);
+    tr.fim = s0 + tr.len;
+    tr.lprev = comprimento(lin, t, it.d, it.a);
+    tr.lnext = comprimento(lin, t, it.b, it.c);
+    tr.tem_ant = k > 0u || sub.fechado;
+    tr.tem_seg = k + 1u < sub.n || sub.fechado;
+    tr.primeiro = k == 0u && sub.fechado;
+    tr.ultimo = k + 1u == sub.n && sub.fechado;
+    tr.n0 = floor(s0 / sub.per);
+    tr.n1 = min(floor(tr.fim / sub.per), tr.n0 + TRACOS_POR_TROCO_MAX);
+    return tr;
+}
+
+// O traço `n` dentro de um troço: o arco `[x0, x1]`, se liga ao troço de trás e ao da frente, e o
+// recuo máximo da faixa em cada vértice ligado (metade do menor dos dois pedaços que lá se tocam).
+struct Pedaco {
+    valido: bool,
+    x0: f32,
+    x1: f32,
+    liga0: bool,
+    liga1: bool,
+    recuo0: f32,
+    recuo1: f32,
+}
+
+fn pedaco(tr: TrocoTracejado, sub: SubTracejado, n: f32) -> Pedaco {
+    var p: Pedaco;
+    p.valido = false;
+    let a = n * sub.per;
+    let b = a + sub.tr;
+    // Um traço é do troço onde COMEÇA (`[s0, fim)`), e continua nos seguintes.
+    if a >= tr.fim || (a < tr.s0 && b <= tr.s0) {
+        return p;
+    }
+    p.valido = true;
+    p.x0 = max(a, tr.s0);
+    p.x1 = min(b, tr.fim);
+    p.liga0 = a < tr.s0 && tr.tem_ant;
+    var la = tr.s0 - a;
+    if tr.primeiro && n == 0.0 {
+        p.liga0 = sub.emenda;
+        la = sub.tot - sub.a_fim;
+    }
+    p.recuo0 = 0.5 * min(min(tr.lprev, la), min(tr.corda, b - tr.s0));
+    p.liga1 = b > tr.fim && tr.tem_seg;
+    var ld = b - tr.fim;
+    if tr.ultimo {
+        ld = sub.tr;
+    }
+    p.recuo1 = 0.5 * min(min(tr.corda, tr.fim - a), min(tr.lnext, ld));
+    return p;
+}
+
+// Os cantos do pedaço no ecrã — no VÉRTICE quando o pedaço chega lá (o vizinho usa os mesmos bits).
+fn cantos_do_pedaco(a: vec2<f32>, b: vec2<f32>, tr: TrocoTracejado, p: Pedaco) -> vec4<f32> {
+    let q0 = select(mix(a, b, (p.x0 - tr.s0) / tr.len), a, p.x0 <= tr.s0);
+    let q1 = select(mix(a, b, (p.x1 - tr.s0) / tr.len), b, p.x1 >= tr.fim);
+    return vec4<f32>(q0, q1);
+}
+
+// A ponta de estilo `tampa` em `c`, virada para `u`.
+fn tampa_px(c: vec2<f32>, u: vec2<f32>, r: f32, tampa: u32, xy: vec2<f32>) -> f32 {
+    let nr = perp(u) * r;
+    if tampa == 1u {
+        return quad(c + nr, c + nr + u * r, c - nr + u * r, c - nr, xy);
+    }
+    if tampa == 2u {
+        let dir = sign(nr.x * u.y - nr.y * u.x);
+        return leque(c, nr, -nr, -1.0, dir, r, xy);
+    }
+    return 0.0;
+}
+
+// Um pedaço de traço, pixel a pixel: o quadrilátero, a faixa nos vértices ligados, a junta de quem
+// chega a um vértice ligado que a faixa não cobre, e as pontas onde o traço começa ou acaba.
+fn pedaco_px(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, tr: TrocoTracejado, p: Pedaco, xy: vec2<f32>) -> f32 {
+    let r = it.meia * caneta;
+    let a = aplica(lin, t, it.a);
+    let b = aplica(lin, t, it.b);
+    let q = cantos_do_pedaco(a, b, tr, p);
+    let fp = r * max(alcance_da_peca(it), 1.5) + FAIXA_FOLGA;
+    let plo = min(q.xy, q.zw) - vec2<f32>(fp);
+    let phi = max(q.xy, q.zw) + vec2<f32>(fp);
+    if phi.x < xy.x || plo.x > xy.x + 1.0 || phi.y < xy.y || plo.y > xy.y + 1.0 {
+        return 0.0;
+    }
+    if tr.corda <= 0.0 || tr.len <= 0.0 || r <= 0.0 {
+        return 0.0;
+    }
+    let u = (b - a) / tr.corda;
+    let nr = perp(u) * r;
+    var m0 = nr;
+    var m1 = nr;
+    var s = 0.0;
+    if p.liga0 {
+        let e = bissectriz_ate(aplica(lin, t, it.d), a, b, r, (it.ponta & 4u) != 0u, it.junta, it.limite, p.recuo0);
+        if e.z > 0.0 {
+            m0 = e.xy;
+        }
+    } else {
+        s += tampa_px(q.xy, -u, r, (it.ponta >> 6u) & 3u, xy);
+    }
+    if p.liga1 {
+        let quina = (it.ponta & 8u) != 0u;
+        let cf = aplica(lin, t, it.c);
+        let e = bissectriz_ate(a, b, cf, r, quina, it.junta, it.limite, p.recuo1);
+        if e.z > 0.0 {
+            m1 = e.xy;
+        } else {
+            s += junta_em(u, b, cf, r, select(2u, it.junta, quina), it.limite, xy);
+        }
+    } else {
+        s += tampa_px(q.zw, u, r, (it.ponta >> 8u) & 3u, xy);
+    }
+    return s + quad(q.xy + m0, q.zw + m1, q.zw - m1, q.xy - m0, xy);
+}
+
+// O sub-caminho tracejado que começa no troço `i0`, pixel a pixel.
+fn tracejado_px(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, xy: vec2<f32>) -> f32 {
+    let sub = sub_tracejado(i0, lin, t, caneta);
+    if sub.per <= 0.0 {
+        return 0.0;
+    }
+    var s = 0.0;
+    var i = i0;
+    var s0 = 0.0;
+    for (var k = 0u; k < sub.n; k += 1u) {
+        i = proximo_troco(i);
+        let it = eixo[i];
+        let tr = troco_tracejado(it, sub, k, s0, lin, t);
+        for (var n = tr.n0; n <= tr.n1; n += 1.0) {
+            let p = pedaco(tr, sub, n);
+            if p.valido {
+                s += pedaco_px(it, lin, t, caneta, tr, p, xy);
+            }
+        }
+        s0 = tr.fim;
+        i += 1u;
+    }
+    return s;
 }
 
 @fragment

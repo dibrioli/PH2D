@@ -20,10 +20,10 @@
 //! - uma geometria que a placa não desenha como o Vello
 //!   ([`ph2d_vec_render::forma_para_a_placa`] devolve `None`: tinta própria, traço de padrão ou
 //!   de pincel);
-//! - ⛔ **um traço TRACEJADO sob afim NÃO conforme** — o tracejado mede-se no MUNDO (a lei do dono,
-//!   bug #27), e sob escala não uniforme o comprimento de arco no mundo não é proporcional ao local.
-//!   ⭐ Um traço CONTÍNUO sob escala não uniforme vai à placa desde a W4: o shader constrói-o no
-//!   ecrã a partir do EIXO, com a caneta redonda `w·√|det|` ([`ph2d_shape_gpu`], `eixo`).
+//!   ⭐ O traço sob escala não uniforme vai à placa: o shader constrói-o no ecrã a partir do EIXO,
+//!   com a caneta redonda `w·√|det|` (W4) e, desde o §9.9 do doc 121, o tracejado cortado pelo
+//!   comprimento de arco no ecrã ([`ph2d_shape_gpu`], `eixo`). Um padrão que o eixo não exprime
+//!   ([`ph2d_shape_gpu::FLAG_SO_CONFORME`] — o `kurbo_stroke` da casa nunca o faz) é desta lista.
 //!
 //! ⚠️ **E a placa desenha numa CAMADA própria de meio-float**, que o presente cola no acumulador
 //! do mundo entre o documento e os gizmos: o Vello grava a cor SEPARADA do alfa, logo o passe não
@@ -48,12 +48,8 @@ pub const FORMATO_DA_CAMADA: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Fl
 
 /// O que uma geometria É para a placa.
 enum Entrada {
-    /// A placa desenha-a. `so_conforme` = o traço dela é TRACEJADO, e então só vai com afim
-    /// conforme (o [`ph2d_shape_gpu::FLAG_SO_CONFORME`] da geometria).
-    Pronta {
-        geometria: Box<ShapeGeometry>,
-        so_conforme: bool,
-    },
+    /// A placa desenha-a.
+    Pronta { geometria: Box<ShapeGeometry> },
     /// Não desenha nada (sem preenchimento nem traço) — a cópia é saltada, como no Vello.
     Vazia,
     /// A placa não a sabe desenhar como o Vello — o quadro inteiro fica no Vello.
@@ -88,8 +84,11 @@ fn prepara(path: &VecPath) -> Entrada {
         stroke_fills: f.preenchimentos_do_traco.iter().collect(),
     };
     match ShapeGeometry::prepare(&input) {
+        // ⚠️ Um tracejado que o eixo não exprime só se desenharia conforme — e a placa não o sabe
+        // sob escala não uniforme. O `kurbo_stroke` da casa nunca o produz; se um dia produzir, o
+        // quadro fica no Vello em vez de desenhar outra coisa.
+        Some(g) if g.record.flags & ph2d_shape_gpu::FLAG_SO_CONFORME != 0 => Entrada::Recusada,
         Some(g) => Entrada::Pronta {
-            so_conforme: g.record.flags & ph2d_shape_gpu::FLAG_SO_CONFORME != 0,
             geometria: Box::new(g),
         },
         None => Entrada::Vazia,
@@ -128,9 +127,8 @@ pub struct GeometriasDaPlaca {
 /// O que uma geometria é para a placa, sem a geometria — a resposta que a ponte lê.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Veredito {
-    /// A placa desenha-a; `so_conforme` = o traço dela é TRACEJADO (e então só vai com afim
-    /// conforme).
-    Pronta { so_conforme: bool },
+    /// A placa desenha-a.
+    Pronta,
     /// Não desenha nada (sem preenchimento nem traço).
     Vazia,
     /// A placa não a sabe desenhar como o Vello.
@@ -156,9 +154,7 @@ impl GeometriasDaPlaca {
             None => Veredito::Ausente,
             Some(Entrada::Recusada) => Veredito::Recusada,
             Some(Entrada::Vazia) => Veredito::Vazia,
-            Some(Entrada::Pronta { so_conforme, .. }) => Veredito::Pronta {
-                so_conforme: *so_conforme,
-            },
+            Some(Entrada::Pronta { .. }) => Veredito::Pronta,
         }
     }
 
@@ -345,10 +341,7 @@ impl PlacaDeFormas {
                 // ⚠️ Na rota da CPU um handle ausente devolve o quadro ao Vello, como sempre fez.
                 Veredito::Recusada | Veredito::Ausente => return false,
                 Veredito::Vazia => {}
-                Veredito::Pronta { so_conforme } => {
-                    if so_conforme && !conforme(inst) {
-                        return false;
-                    }
+                Veredito::Pronta => {
                     self.copias.push(ShapeInstance {
                         pos: inst.world_pos,
                         size: inst.size,

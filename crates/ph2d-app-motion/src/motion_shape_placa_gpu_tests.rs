@@ -550,3 +550,6 @@ fn sonda_relogio_das_estrelas_grandes() {
 
 #[path = "motion_shape_placa_gpu_letras_tests.rs"]
 mod letras;
+
+#[path = "motion_shape_placa_gpu_tracejado_tests.rs"]
+mod tracejado;

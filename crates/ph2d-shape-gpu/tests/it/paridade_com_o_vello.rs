@@ -260,9 +260,12 @@ fn pelo_vello(gpu: &GpuContext, forma: &Forma<'_>, cs: &[Copia]) -> Vec<u8> {
             } else {
                 // ⭐ A LEI DA CASA sob escala não uniforme (`ph2d_vec_render::stroke_uniform`, bug
                 // #27): a geometria atravessa o afim, a caneta não — ela é REDONDA, de largura
-                // `w·√|det|`.
+                // `w·√|det|`, e o tracejado escala com ela (`pen_for`).
+                let k = t.determinant().abs().sqrt();
                 let mut pen = s.clone();
-                pen.width *= t.determinant().abs().sqrt();
+                pen.width *= k;
+                pen.dash_pattern = s.dash_pattern.iter().map(|d| d * k).collect();
+                pen.dash_offset = s.dash_offset * k;
                 cena.stroke(
                     &pen,
                     Affine::IDENTITY,
@@ -526,15 +529,15 @@ pub(super) fn pelo_passe_em_etapas(
 /// O que a comparação devolve: o pior desvio de alfa, o pior de cor (separada, onde `α ≥ 64`), e
 /// quantos pixels desviam mais de `1` no alfa.
 #[derive(Debug)]
-struct Desvio {
-    alfa_max: u8,
-    cor_max: u8,
-    alfa_acima_de_1: usize,
+pub(super) struct Desvio {
+    pub(super) alfa_max: u8,
+    pub(super) cor_max: u8,
+    pub(super) alfa_acima_de_1: usize,
     /// Pixels em que a cor separada desvia mais de `4` num canal.
     cor_acima_de_4: usize,
     /// O pixel do pior desvio de cor, e os dois valores lá (Vello, passe).
     pior_cor: (usize, [u8; 4], [u8; 4]),
-    pixels_com_tinta: usize,
+    pub(super) pixels_com_tinta: usize,
 }
 
 fn compara(vello: &[u8], passe: &[u8]) -> Desvio {
@@ -586,7 +589,7 @@ fn grava(dir: &std::path::Path, nome: &str, rgba: &[u8]) {
     let _ = std::fs::write(dir.join(format!("{nome}.ppm")), ppm);
 }
 
-fn corre(nome: &str, forma: &Forma<'_>, cs: &[Copia]) -> Option<Desvio> {
+pub(super) fn corre(nome: &str, forma: &Forma<'_>, cs: &[Copia]) -> Option<Desvio> {
     let gpu = gpu()?;
     let v = pelo_vello(&gpu, forma, cs);
     let p8 = pelo_passe(&gpu, forma, cs, wgpu::TextureFormat::Rgba8Unorm);

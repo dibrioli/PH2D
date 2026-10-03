@@ -28,9 +28,10 @@ pub const TOL_STEP: f64 = 0.25;
 
 /// `flags` bit 0: a regra even-odd.
 pub const FLAG_EVEN_ODD: u32 = 1;
-/// `flags` bit 1: **o traço só se desenha sob afim CONFORME** — um tracejado, que sob escala não
-/// uniforme se mede no MUNDO (ver [`crate::eixo`]). Quem chama manda as cópias não conformes ao
-/// Vello.
+/// `flags` bit 1: **o traço só se desenha sob afim CONFORME** — um tracejado que o eixo não exprime
+/// (outro que `[traço, vão]` com fase `0`, [`crate::eixo::tracejado_do_eixo`]); sob escala não
+/// uniforme ele mede-se no MUNDO e o eixo é quem o faz. Quem chama manda as cópias não conformes
+/// dele ao Vello.
 pub const FLAG_SO_CONFORME: u32 = 2;
 
 /// A regra de preenchimento — a mesma escolha que o Vello recebe (`Fill`).
@@ -110,10 +111,11 @@ impl ShapeGeometry {
         let mut record = GeometryRecord::zeroed();
         let mut caixa = Caixa::vazia();
         let mut ext_fora: f32 = 0.0;
-        let tracejado = input
-            .strokes
-            .iter()
-            .any(|s| !s.style.dash_pattern.is_empty());
+        // ⭐ doc 121 §9.9 — o eixo percorre o tracejado `[traço, vão]` da casa; um padrão que ele não
+        // exprime fica com a cerca de sempre (só conforme).
+        let tracejado = input.strokes.iter().any(|s| {
+            !s.style.dash_pattern.is_empty() && crate::eixo::tracejado_do_eixo(s.style).is_none()
+        });
         for nivel in 0..LEVELS {
             #[expect(clippy::cast_possible_wrap, reason = "LEVELS é oito")]
             let tol = ext * TOL_BASE * TOL_STEP.powi(nivel as i32);

@@ -69,15 +69,6 @@ fn a_cena_tem_contorno_esticao_e_simulacao() {
         "o preenchimento separa o contorno"
     );
     assert!(
-        doc.graph
-            .node_params()
-            .get(&forma)
-            .and_then(|m| m.get(p::DASH).copied())
-            .unwrap_or(0.0)
-            <= 0.0,
-        "tracejado sob escala nao-uniforme fica no Vello -- a cena mostraria a rota errada"
-    );
-    assert!(
         param(&doc, estica, "uniform") < 0.5,
         "o esticao tem de ter os eixos SEPARADOS"
     );

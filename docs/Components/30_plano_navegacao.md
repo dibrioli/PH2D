@@ -669,7 +669,7 @@ escolhe o corredor errado). Abaixo de `1,0` é o oráculo a errar.
 
 **A cena GRANDE** (`100 × 100` m, `1 000` obstáculos, `100` lamas a peso 4 — `~25 %` do chão; load alto,
 só a ordem de grandeza): o uniforme `0,36 ms` de mediana e `5 650` nós expandidos por consulta; o
-ponderado `~5,7 ms` e `87 000` (15×). Os mosaicos com as 100 lamas constroem a frio em `~71 ms` (39 sem),
+ponderado `~4,9 ms` e `64 500` (11×; eram `87 000` antes de sair o «dobrar» redundante, §15.4). Os mosaicos com as 100 lamas constroem a frio em `~71 ms` (39 sem),
 e uma lama a mexer refaz em `~11 ms` (a montagem O(malha), o aberto da W6).
 
 ### §15.2 — As decisões, cada uma com a medição
@@ -682,7 +682,7 @@ e uma lama a mexer refaz em `~11 ms` (a montagem O(malha), o aberto da W6).
 | a construção parte o chão em PEDAÇOS disjuntos pelo Clipper (o comum + uma peça por área, a mais cara manda), UMA triangulação, a paridade generalizada a «em que pedaço estou» | sem áreas a construção de sempre ao bit (gate); a fusão em convexos só dentro do pedaço |
 | junções em T a menos de **2 unidades** da grelha entram na aresta | o Clipper arredonda o mesmo cruzamento de formas diferentes: medido um vértice a `1,016` unidades (o pior caso é `√2`) |
 | onde a troca por dono é ambígua (`[0, 0, 2, 5]` — quatro pedaços num ponto), ponto-no-polígono EXACTO do baricentro | a troca por dono etiquetava um triângulo de fora |
-| **o Polyanya que refracta**: três movimentos numa aresta onde o custo muda — atravessar (raízes na grelha e nas pontas do intervalo), **deslizar** em cima da fronteira para o lado de TRÁS caro, **dobrar** num vértice com algo mais caro à volta — e o polimento de Snell | cada movimento achado por uma cena que o oráculo resolvia e a procura não (abaixo) |
+| **o Polyanya que refracta**: dois movimentos numa aresta onde o custo muda — atravessar (raízes na grelha e nas pontas do intervalo; num vértice, o leque inteiro) e **deslizar** em cima da fronteira para o lado de TRÁS caro — e o polimento de Snell | cada movimento achado por uma cena que o oráculo resolvia e a procura não (abaixo) |
 | as raízes de fronteira entram no heap como PROMESSAS (`g + w_min·|x − t|`) | 3,3× mais rápido, o mesmo custo (2 815 → 132 raízes materializadas num caso pesado) |
 | **o atalho exacto**: se o caminho UNIFORME custa `w_min × comprimento`, ele É o óptimo ponderado; senão a resposta é o melhor dos dois | nenhum caminho custa menos que `w_min × comprimento` ≥ `w_min ×` o mais curto — prova de duas linhas |
 | o atalho é um grafo pequeno sobre a procura: {partida, alvo, pontas}, arestas = procuras reais preguiçosas | o mais curto com atalhos é exacto (cada troço já é o óptimo da malha) |
@@ -697,7 +697,8 @@ e uma lama a mexer refaz em `~11 ms` (a montagem O(malha), o aberto da W6).
   recta dentro de uma área uniforme virava ziguezague. ⇒ Steiner só nas fronteiras, custo exacto por
   segmento.
 - **Os três movimentos que faltavam**, cada um pela sonda `DBG_CASO` (o caminho do oráculo troço a troço):
-  (1) o caminho que contorna a lama dobra no vértice DELA, que não é canto de parede; (2) dentro da lama o
+  (1) o caminho que contorna a lama dobra no vértice DELA, que não é canto de parede (a 1.ª cura —
+  marcá-lo como canto — saiu depois: a mutação achou-a redundante com as raízes-vértice, ver §15.4); (2) dentro da lama o
   atalho «mesmo polígono ⇒ a direito» só é óptimo com custo uniforme (com custos é uma candidata no heap);
   (3) o óptimo SAI da lama, corre em cima da fronteira e volta a entrar — no ângulo crítico de Snell
   (`5 + 2d·√(w² − 1)`, gate analítico a `1e-9`).
@@ -719,11 +720,12 @@ e uma lama a mexer refaz em `~11 ms` (a montagem O(malha), o aberto da W6).
 | o custo do caminho uniforme como TECTO da procura ponderada | piorava a precisão (máx `1,0189` contra `1,0000` a peso 4): o polimento traz para baixo do tecto o que a discretização punha acima |
 | a grelha a `0,5` m | escolhe o corredor errado (9 % a peso 10) |
 | deslizar para a FRENTE | redundante (desigualdade triangular), e não mudava o custo |
+| dobrar no vértice de uma fronteira como num canto de parede | a mutação M8 sobreviveu; sem ela os mesmos custos ao dígito e menos 26 % de nós na cena grande |
 
 ### §15.6 — ⏳ O que fica
 
-- **A procura ponderada numa cena com muita lama custa ~15× a uniforme** (`100` lamas e `1 000` obstáculos:
-  `87 000` nós contra `5 650`): várias raízes na MESMA fronteira abrem frentes paralelas que só se podam
+- **A procura ponderada numa cena com muita lama custa ~11× a uniforme** (`100` lamas e `1 000` obstáculos:
+  `64 500` nós contra `5 650`): várias raízes na MESMA fronteira abrem frentes paralelas que só se podam
   nos cantos e nas fronteiras seguintes. A próxima alavanca: uma dominância entre as frentes. Só a paga
   quem tem lama (a lava é furo, a procura é a uniforme) e só quando o caminho uniforme a toca.
 - A construção INTEIRA com áreas é lenta a escala (`1,2 s` a 100 lamas e 1 000 obstáculos); a ponte usa

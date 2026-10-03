@@ -49,8 +49,8 @@ M = [
     # ── a procura que refracta (ph2d-nav) ───────────────────────────────────────────────────────
     ('M7 sem a refracção', 'NAVMESH', PA,
      '        if self.cost(mesh, p) != cw {', '        if false && self.cost(mesh, p) != cw {'),
-    ('M8 o canto de custo não dobra', 'NAVMESH', PC,
-     '                .any(|&q| self.cost(mesh, q) > cw)', '                .any(|&q| false && self.cost(mesh, q) > cw)'),
+    # ⚠️ A M8 («o canto de custo não dobra») SOBREVIVEU e era EQUIVALENTE: as raízes-vértice e o
+    # deslize já cobrem o contorno (a sonda deu os mesmos custos ao dígito, e mais barato). Saiu do código.
     ('M9 sem o deslize', 'NAVMESH', PC,
      '        if slide && w_outro > w_into {', '        if false && slide && w_outro > w_into {'),
     ('M10 sem o polimento de Snell', 'NAVMESH', PC,

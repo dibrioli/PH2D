@@ -6,7 +6,7 @@
 //! O Polyanya supõe custo UNIFORME: um troço recto da raiz até onde ela vê. Entre áreas de custos
 //! diferentes o caminho óptimo continua RECTO dentro de cada área, mas DOBRA na fronteira (a lei de
 //! Snell das regiões pesadas, Mitchell & Papadimitriou 1991) — num ponto que nenhum vértice marca.
-//! Três movimentos novos, todos numa aresta onde o custo muda:
+//! Dois movimentos novos, os dois numa aresta onde o custo muda:
 //!
 //! 1. **Atravessar** — um intervalo que chega a ela não continua: nascem RAÍZES nela, no pedaço que a
 //!    raiz vê — as duas pontas do intervalo (onde um caminho que roça um canto atravessa) e os pontos
@@ -16,8 +16,12 @@
 //!    pontos da grelha nascem a esse custo, e emitem para o lado de TRÁS quando ele é o caro. É o que
 //!    faz o óptimo dentro da lama: sair, correr encostado à fronteira, e voltar a entrar (medido na
 //!    cena `custo::dentro_da_lama…`). Num vértice, ao longo de cada aresta de fronteira que lhe toca.
-//! 3. **Dobrar** no vértice de uma fronteira — é a volta num canto, com o vértice marcado como canto
-//!    quando o custo muda à volta dele (`Polyanya::is_corner`).
+//!
+//! ⛔ **Medido e recusado: «dobrar» no vértice de uma fronteira como num canto de parede.** Foi a 1.ª
+//! cura do contorno da lama (antes de existirem as raízes-vértice com o leque inteiro e o deslize), e
+//! a prova de mutação da W7 achou-a SOBREVIVENTE: sem ela a sonda `medir_custo` dá os mesmos custos ao
+//! dígito, e a procura fica mais barata (12 % nas cenas pequenas; na grande, `64 500` nós contra
+//! `87 300`, metade das voltas). Saiu.
 //!
 //! No fim, o **polimento de Snell** desliza cada raiz de fronteira no seu pedaço até ao mínimo de
 //! `w₁·|x − P| + w₂·|N − x|` (convexo na posição ⇒ bissecção na derivada), aceitando só o que o custo
@@ -442,19 +446,6 @@ impl Polyanya {
             Ok(p) if p.cost < c0 => p,
             _ => geral,
         })
-    }
-
-    /// Um vértice onde um caminho que anda numa região de custo `cw` pode DOBRAR: um canto de parede
-    /// ou (W7) um vértice onde há algo MAIS CARO que `cw` — contornar a lama encostado à fronteira
-    /// dobra no vértice dela como numa parede (medido: sem isto o caminho atravessava a lama a `2,5×`
-    /// o óptimo). Contornar uma área mais BARATA nunca ajuda (entrar nela é a refracção). Sem áreas,
-    /// só as paredes.
-    pub(super) fn is_corner(&self, mesh: &NavMesh, v: u32, cw: f64) -> bool {
-        mesh.is_corner(v)
-            || mesh
-                .polys_at_vertex(v)
-                .iter()
-                .any(|&q| self.cost(mesh, q) > cw)
     }
 
     /// O custo da área do polígono `p` nesta consulta.

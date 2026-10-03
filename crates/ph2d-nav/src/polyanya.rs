@@ -399,10 +399,10 @@ impl Polyanya {
         }
 
         // A volta nos cantos — só quando o extremo do intervalo É o vértice da aresta.
-        if same(right, mesh.vert(b)) && self.is_corner(mesh, b, cw) {
+        if same(right, mesh.vert(b)) && mesh.is_corner(b) {
             self.turn(mesh, root, p, k, Side::Right, cw, t);
         }
-        if same(left, mesh.vert(a)) && self.is_corner(mesh, a, cw) {
+        if same(left, mesh.vert(a)) && mesh.is_corner(a) {
             self.turn(mesh, root, p, k, Side::Left, cw, t);
         }
 

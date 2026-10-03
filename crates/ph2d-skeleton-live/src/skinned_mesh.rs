@@ -305,3 +305,8 @@ mod rive_sondas_tests;
 #[cfg(test)]
 #[path = "skinned_mesh_desenho_tests.rs"]
 mod desenho_tests;
+
+/// ⭐⭐⭐ **A forma presa com EFEITO contra o padrão-ouro** (2026-10-02).
+#[cfg(test)]
+#[path = "skinned_mesh_efeitos_tests.rs"]
+mod efeitos_tests;

@@ -34,6 +34,7 @@ const PRODUTO: Leis = Leis {
     c1: false,
     desenho: true,
     contacto: true,
+    efeitos: true,
 };
 
 /// ⭐⭐⭐ **GATE — A GAVETA NÃO MUDA A RESPOSTA: o caminho da cena é a lei de sempre, AO BIT.**
@@ -157,18 +158,18 @@ fn os_nos_do_artista_ficam_e_o_desenho_tem_os_que_precisa() {
     );
 }
 
-/// ⭐⭐ **GATE — QUINAS VIVAS NÃO SE PERCORREM PELOS NÓS, e EFEITOS ficam de fora.**
+/// ⭐⭐ **GATE — QUINAS VIVAS NÃO SE PERCORREM PELOS NÓS.**
 ///
 /// Uma quina viva mora no NÓ e o bake re-escreve os nós ⇒ os nós crus não servem, e o bake
 /// percorre a fonte JÁ arredondada (o gate de fidelidade é o
-/// `skinned_mesh::desenho_tests::uma_forma_com_quinas_vivas_segue_o_padrao_ouro`). Um efeito mora
-/// no caminho VIVO e corre sobre a contagem de nós ⇒ essa forma desenha-se como antes.
+/// `skinned_mesh::desenho_tests::uma_forma_com_quinas_vivas_segue_o_padrao_ouro`). Os EFEITOS
+/// seguem a mesma lei — gates em `skinned_mesh::efeitos_tests`.
 #[test]
-fn quinas_vivas_nao_vao_pelos_nos_e_efeitos_ficam_de_fora() {
+fn quinas_vivas_nao_vao_pelos_nos() {
     let (_sim, scene, _map, id, _ossos) = barra_da_cena_com(false);
     let base = caminho(&scene, id);
     assert!(
-        os_nos_servem(&base) && o_estilo_serve(&base),
+        os_nos_servem(&base) && estilo_de(&base) == Estilo::Serve,
         "o CONTROLO: a barra serve"
     );
     let mut quina = base.clone();
@@ -177,14 +178,6 @@ fn quinas_vivas_nao_vao_pelos_nos_e_efeitos_ficam_de_fora() {
     assert!(
         !quina.has_live_corner() || !os_nos_servem(&quina),
         "uma quina viva foi percorrida pelos NÓS crus — o bake re-escreve os nós e mataria o raio"
-    );
-    let mut fx = base.clone();
-    fx.effects.push(ph2d_vec_scene::effect::FxEntry::new(
-        ph2d_vec_scene::effect::PathEffect::Trim(ph2d_vec_scene::fx_trim::TrimSpec::default()),
-    ));
-    assert!(
-        !o_estilo_serve(&fx),
-        "um efeito passou pelo bake — ele corre sobre a contagem de nós"
     );
 }
 

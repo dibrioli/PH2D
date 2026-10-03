@@ -349,6 +349,7 @@ pub fn recook_com_mistura(
             c1: ph2d_vec_skin::curva::lei_c1_activa(),
             desenho: false,
             contacto: false,
+            efeitos: false,
         },
     );
 }
@@ -405,13 +406,11 @@ pub fn recook_leis(
         //
         // Uma fonte corrompida é PULADA (não há o que deformar, e melhor não escrever lixo) — a
         // forma fica com a última geometria boa. Mesma escolha do envelope.
-        let estilo_serve = scene
-            .paths()
-            .iter()
-            .find(|p| p.id == id)
-            .is_some_and(crate::skin_desenho::o_estilo_serve);
-        let Some(q) = crate::skin_desenho::quadro(e.to_bits(), &skin, &pele, leis, estilo_serve)
-        else {
+        let estilo = scene.paths().iter().find(|p| p.id == id).map_or(
+            crate::skin_desenho::Estilo::NaoServe,
+            crate::skin_desenho::estilo_de,
+        );
+        let Some(q) = crate::skin_desenho::quadro(e.to_bits(), &skin, &pele, leis, &estilo) else {
             continue;
         };
         if let Some(p) = scene.path_mut(id) {
@@ -422,10 +421,12 @@ pub fn recook_leis(
             // [`ph2d_vec_scene::recook`].
             p.replace_geometry(q.cru);
             // ⭐⭐⭐ **E O DESENHO FIEL leva o ESTILO VIVO** pela mesma porta: a geometria vem do
-            // bake, o resto do caminho da cena.
+            // bake, o resto do caminho da cena. ⚠️ Menos a PILHA DE EFEITOS: o desenhado já a
+            // leva cozida (em repouso), e um consumidor que o cozesse outra vez aplicá-la-ia duas.
             if let Some(d) = q.desenhado {
                 let mut visto = p.clone();
                 visto.replace_geometry(d);
+                visto.effects.clear();
                 desenho.insert(id, visto);
             }
         }

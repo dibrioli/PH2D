@@ -94,9 +94,10 @@ Tudo 1× sobre o diff acumulado, régua no merge-base (`1ad60a1ce`), dentro da f
 
 | portão | resultado |
 |---|---|
-| `nextest-impacted.sh` | **`19 503 / 19 503`** verdes (`11 485` saltados, `136,7 s`; `load ~63` de outras linhas) |
+| `nextest-impacted.sh` | **`19 503 / 19 503`** no fecho da W8; **`19 507 / 19 507`** depois dos três defeitos (§2-bis), `138 s` |
 | `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` | verde |
 | clippy `--all-targets --all-features -D warnings` (app-components, panel-inspector, physics-ecs, nav, navmesh, editor-core, i18n, host-desktop) | zero |
+| clippy, de novo depois do §2-bis (orca, physics-ecs, editor-core, app-components, panel-inspector, panel-registry-init, i18n, host-desktop) | zero (a 1.ª corrida acusou `too_many_arguments` no `perseguidor`: os dois raios passaram a um par) |
 | `cargo fmt --all --check` | verde (depois do commit de fmt) |
 | `typos` · `cargo machete` | zero · zero |
 | `check-standalone-optional.sh` · `check-workflow-packages.sh` (32/398) | verdes |
@@ -144,10 +145,11 @@ lava com `Avoid Harm`; a Salamandra parada depois do nome, ou a esperar na borda
 
 ### O smoke compilado (a 2.ª corrida, colada)
 
-Depois de `rm -rf target/*/incremental` (15 G do `debug` + 3,5 G do `smoke`), a 2.ª corrida de
+Depois dos defeitos do §2-bis e de `rm -rf target/*/incremental` (29 G do `debug` + 2,3 G do `smoke`; na W8
+tinham sido 15 G + 3,5 G), a 2.ª corrida de
 `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` — zero linhas `Compiling`:
 
 ```
 ▸ linha line_components · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.37s
+    Finished `smoke` profile [optimized] target(s) in 0.22s
 ```

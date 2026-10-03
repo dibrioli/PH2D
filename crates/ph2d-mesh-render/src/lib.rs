@@ -61,6 +61,7 @@ pub use matcap::{Credit, Encoding, Matcap};
 /// aresta nova para a folha do olhar só por causa de um literal seria um segundo sítio por onde a
 /// versão dela entra.
 pub use ph2d_view_transform::Look;
+pub use pipeline::tinta_achata::AchataDaTinta;
 pub use pipeline::tinta_gpu::cfg_de as tinta_cfg;
 pub use pipeline::{MeshRenderer, camera_uniform_bytes, view_proj_from_bytes};
 pub use shade::{

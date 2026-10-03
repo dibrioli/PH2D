@@ -127,7 +127,10 @@ fn a_pilha_atravessa_o_ficheiro() {
     let p = pilha_rica(&t);
     let bytes = postcard::to_allocvec(&CamadasDoc::da_pilha(&p)).expect("serializa");
     let lida: CamadasDoc = postcard::from_bytes(&bytes).expect("re-lê");
-    assert_eq!(lida.pilha(t.amostras().len()).as_ref(), Some(&p));
+    // ⭐ O FUNDO viaja com ela (v7) — é o gravado que volta, não um derivado.
+    assert_eq!(lida.fundo.as_slice(), p.fundo());
+    let fundo = lida.fundo.clone();
+    assert_eq!(lida.pilha(t.amostras().len(), fundo).as_ref(), Some(&p));
 }
 
 /// ⛔⛔ **GATE — Uma pilha que não descreve o plano RECUSA o load**, e diz qual
@@ -235,10 +238,11 @@ fn a_forma_da_pilha_gravada_e_pinada() {
     // | `arena`: comprimento + o `Layer` (id 1 · nome `7+1` · `Raster` 1 + `1024` 2 + `1` 1 · modo 1 · opacidade 4 · 5 flags · máscara `None` 1 · profundidade 4 · composição 1 · relevo 1) | 1 + 30 |
     // | `root` (1 id) · `active` (`Some` + id) · `next_id` | 2 + 2 + 1 |
     // | `planos`: comprimento + id + `Corridas` (variante + comprimento + `(3, [u8; 4])`) + relevo `None` | 1 + 1 + 7 + 1 |
-    // | **total** | **46** |
+    // | `fundo` (v7, 03/10): comprimento + `3 × [f32; 3]` (a rica: `1 + 6 × 12 = 73`) | 1 + 36 |
+    // | **total** | **83** |
     assert_eq!(
         (uma, rica),
-        (46, 3517),
+        (83, 3590),
         "a forma da pilha gravada mudou — suba SCULPT_DOC_VERSION, não re-pine este número"
     );
 }

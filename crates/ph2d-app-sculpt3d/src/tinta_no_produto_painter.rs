@@ -67,7 +67,7 @@ fn vermelha(c: &[f32; 3]) -> bool {
 fn um_traco_do_painter_pinta_a_peca_e_o_ctrl_z_devolve() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let virgem = amostras(&s);
     assert!(!virgem.is_empty(), "o plano de tinta fina está armado");
     let mut p = painter_vermelho();
@@ -77,7 +77,7 @@ fn um_traco_do_painter_pinta_a_peca_e_o_ctrl_z_devolve() {
     );
 
     assert!(traco(&mut s, &mut p, 420.0), "o pen-down foi do Painter");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let depois = amostras(&s);
     let vermelhas = depois.iter().filter(|c| vermelha(c)).count();
     assert!(vermelhas > 0, "o traço do Painter não aterrou na peça");
@@ -91,7 +91,7 @@ fn um_traco_do_painter_pinta_a_peca_e_o_ctrl_z_devolve() {
     );
 
     assert!(tecla(&mut s, false), "o Ctrl+Z tem de ser consumido");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(amostras(&s), virgem, "o Ctrl+Z não devolveu a peça, ao bit");
 }
 
@@ -103,7 +103,7 @@ fn sem_tinta_fina_o_painter_pinta_os_vertices() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
     s.tinta_nivel = None;
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert!(
         amostras(&s).is_empty(),
         "o CONTROLO: o plano está desarmado"
@@ -111,14 +111,14 @@ fn sem_tinta_fina_o_painter_pinta_os_vertices() {
     let antes = cores(&s);
     let mut p = painter_vermelho();
     assert!(traco(&mut s, &mut p, 420.0));
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let depois = cores(&s);
     assert!(
         depois.iter().any(vermelha),
         "o traço não aterrou nos vértices"
     );
     assert!(tecla(&mut s, false));
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(cores(&s), antes, "o Ctrl+Z não devolveu a cor por vértice");
 }
 
@@ -161,16 +161,16 @@ fn traco_por(s: &mut crate::Sculpt3dScene, p: &mut PainterTool, pontos: &[(f32, 
 fn um_borrao_do_painter_arrasta_a_tinta_da_peca_e_o_ctrl_z_devolve() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = painter_vermelho();
     assert!(traco(&mut s, &mut p, 420.0), "o traço vermelho");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let depois_do_vermelho = amostras(&s);
     p.set_paint_tool_mode("smear");
     assert!(p.screen_canvas_reads_the_piece());
     let descer: Vec<(f32, f32)> = (0..=20).map(|k| (447.0, 350.0 + 3.0 * k as f32)).collect();
     assert!(traco_por(&mut s, &mut p, &descer), "o pen-down do borrão");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let depois_do_borrao = amostras(&s);
     let avermelharam = depois_do_borrao
         .iter()
@@ -185,7 +185,7 @@ fn um_borrao_do_painter_arrasta_a_tinta_da_peca_e_o_ctrl_z_devolve() {
         "o borrão não levou o vermelho a amostra nenhuma que não o tinha"
     );
     assert!(tecla(&mut s, false), "o Ctrl+Z tem de ser consumido");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         amostras(&s),
         depois_do_vermelho,
@@ -214,7 +214,7 @@ fn um_borrao_do_painter_arrasta_a_tinta_da_peca_e_o_ctrl_z_devolve() {
 fn a_aquarela_fica_molhada_entre_dois_tracos_e_o_ctrl_z_a_seca() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = painter_vermelho();
     p.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
     assert!(p.screen_canvas_reads_the_piece());
@@ -235,7 +235,7 @@ fn a_aquarela_fica_molhada_entre_dois_tracos_e_o_ctrl_z_a_seca() {
 
     // ── O CONTROLO: o desfazer tira à peça o que a tela mostra ──
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = painter_vermelho();
     p.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
     assert!(traco(&mut s, &mut p, 420.0));
@@ -259,7 +259,7 @@ fn a_aquarela_fica_molhada_entre_dois_tracos_e_o_ctrl_z_a_seca() {
     // dele foi construído para esta metade e RETIRADO por mutação (ver o doc do
     // `TelaMolhada`).
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = painter_vermelho();
     p.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
     assert!(traco(&mut s, &mut p, 420.0));
@@ -276,7 +276,7 @@ fn a_aquarela_fica_molhada_entre_dois_tracos_e_o_ctrl_z_a_seca() {
 
     // ── E rodar a vista entre os dois: a humidade vive nos píxeis do ECRÃ ──
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = painter_vermelho();
     p.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
     assert!(traco(&mut s, &mut p, 420.0));
@@ -302,7 +302,7 @@ fn diag_fotografa_a_pincelada_do_painter() {
     };
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = painter_vermelho();
     p.set_brush_size_px(14.0);
     for (k, y) in [300.0f32, 340.0, 380.0].into_iter().enumerate() {
@@ -500,7 +500,7 @@ fn diag_o_preco_de_pintar_em_cada_degrau() {
         s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1400.0, 900.0));
         s.tinta_nivel = Some(k);
         let t0 = Instant::now();
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(&gpu);
         let armar = t0.elapsed();
         let n = s
             .obj()
@@ -518,7 +518,7 @@ fn diag_o_preco_de_pintar_em_cada_degrau() {
             PointerPhase::Down
         ));
         quadro(Some(&mut s), Some(&mut p));
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(&gpu);
         let down = t1.elapsed();
         let mut pior = std::time::Duration::ZERO;
         for j in 1..=20u8 {
@@ -532,7 +532,7 @@ fn diag_o_preco_de_pintar_em_cada_degrau() {
                 PointerPhase::Move,
             );
             quadro(Some(&mut s), Some(&mut p));
-            s.sync_mesh(&gpu.device, &gpu.queue);
+            s.sync_mesh(&gpu);
             pior = pior.max(t.elapsed());
         }
         entrega(&mut s, &mut p, 680.0, 450.0, 1.0, PointerPhase::Up);
@@ -555,7 +555,7 @@ fn diag_de_que_e_feito_o_pen_down() {
     let mut s = cena_52(&gpu.device);
     s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1400.0, 900.0));
     s.tinta_nivel = Some(8);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let ms = |t: Instant| t.elapsed().as_secs_f64() * 1e3;
     let tinta = s.objects[s.active].tinta.clone().expect("plano");
     let mesh = s.objects[s.active].stack.mesh().clone();
@@ -638,7 +638,7 @@ fn diag_o_relevo_visto_inclinado() {
     let dir = std::path::PathBuf::from(dir);
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = painter_vermelho();
     p.set_paint_media(ph2d_tool_painter::PaintMedia::Impasto);
     p.set_brush_color_srgb8([230, 30, 30]);
@@ -650,7 +650,7 @@ fn diag_o_relevo_visto_inclinado() {
         })
         .collect();
     traco_por(&mut s, &mut p, &pontos);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     fotografa(&gpu, &mut s, dir.join("relevo_cima.png").as_os_str());
     let pitch0 = s.camera.pitch;
     for (nome, dp) in [("relevo_inclinado", 0.9f32), ("relevo_rasante", 1.25)] {

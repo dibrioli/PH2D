@@ -45,7 +45,7 @@ fn molhado() -> PainterTool {
 fn a_tinta_molhada_escorre_na_peca_depois_de_largar_e_fecha_quando_para() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let antes = amostras(&s);
     assert!(!antes.is_empty(), "a cena abre com o plano armado");
     let passos = s.undo.len();
@@ -96,7 +96,7 @@ fn a_tinta_molhada_escorre_na_peca_depois_de_largar_e_fecha_quando_para() {
 fn um_ctrl_z_com_a_agua_a_correr_desfaz_o_traco_inteiro() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let antes = amostras(&s);
     let mut p = molhado();
     assert!(traco(&mut s, &mut p, 420.0));
@@ -130,7 +130,7 @@ fn um_ctrl_z_com_a_agua_a_correr_desfaz_o_traco_inteiro() {
 fn o_digital_fecha_no_pen_up() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = painter_vermelho();
     assert!(traco(&mut s, &mut p, 420.0));
     assert!(s.painter_escorre.is_none() && s.painter_tela.is_none());
@@ -148,7 +148,7 @@ fn sem_tinta_fina_a_agua_escorre_nos_vertices_e_o_traco_fica_aberto() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
     s.tinta_nivel = None;
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     // ⚠️ **Um pincel LARGO, de propósito:** a água deixa uma linha de poucos
     // píxeis, e nesta peça grossa ela cai ENTRE as fileiras de vértices — medido,
     // a leitura nos três vértices sob o traço é a do retrato, ao bit. A linha
@@ -175,7 +175,7 @@ fn sem_tinta_fina_a_agua_escorre_nos_vertices_e_o_traco_fica_aberto() {
 fn outra_mao_na_peca_fecha_a_pincelada_que_escorre() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = molhado();
     assert!(traco(&mut s, &mut p, 420.0));
     um_quadro(&mut s, &mut p);
@@ -195,7 +195,7 @@ fn outra_mao_na_peca_fecha_a_pincelada_que_escorre() {
     // pelo teclado, que fecha a pincelada ANTES de chegar ao desfazer, logo a
     // porta do próprio desfazer era inobservável dali.
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let antes = amostras(&s);
     let mut p = molhado();
     assert!(traco(&mut s, &mut p, 420.0));
@@ -217,7 +217,7 @@ fn outra_mao_na_peca_fecha_a_pincelada_que_escorre() {
 
     // ── E a vista muda de TAMANHO: a tela renasce transparente ──
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = molhado();
     assert!(traco(&mut s, &mut p, 420.0));
     um_quadro(&mut s, &mut p);
@@ -249,7 +249,7 @@ fn trocar_a_cor_com_a_agua_a_correr_nao_fecha_a_pincelada() {
     use ph2d_panel_sculpt3d::Sculpt3dIntent;
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = molhado();
     assert!(traco(&mut s, &mut p, 420.0), "o traço molhado");
     for _ in 0..5 {
@@ -310,7 +310,7 @@ fn um_segundo_traco_nao_seca_a_agua_do_primeiro() {
     use ph2d_editor_core::tool::PanelEvent;
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let antes = amostras(&s);
     let mut p = molhado();
     assert!(traco(&mut s, &mut p, 420.0), "o 1.º traço molhado");
@@ -368,7 +368,7 @@ fn um_segundo_traco_nao_seca_a_agua_do_primeiro() {
 fn rodar_a_vista_com_a_agua_a_correr_nao_fecha_a_pincelada() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = molhado();
     assert!(traco(&mut s, &mut p, 420.0), "o traço molhado");
     for _ in 0..5 {
@@ -432,7 +432,7 @@ fn rodar_a_vista_com_a_agua_a_correr_nao_fecha_a_pincelada() {
 fn rodar_e_pintar_nao_seca_a_agua_do_primeiro_traco() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let antes = amostras(&s);
     let mut p = molhado();
     assert!(traco(&mut s, &mut p, 420.0), "o 1.º traço molhado");
@@ -492,7 +492,7 @@ fn diag_o_segundo_traco_seca() {
     let gpu = gpu_or_skip!();
     for esperar_parar in [false, true] {
         let mut s = cena_52(&gpu.device);
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(&gpu);
         let mut p = molhado();
         for (i, x) in [420.0, 340.0, 260.0].into_iter().enumerate() {
             eprintln!(
@@ -554,7 +554,7 @@ fn depois_de_rodar_a_semente_e_a_peca_sem_a_agua() {
     use ph2d_editor_core::tool::PointerPhase;
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = molhado();
     p.set_brush_size_px(60.0);
     assert!(traco(&mut s, &mut p, 420.0), "o 1.º traço molhado");

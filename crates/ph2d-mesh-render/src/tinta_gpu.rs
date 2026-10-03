@@ -21,7 +21,7 @@ use crate::MeshRenderer;
 
 /// Os oito buffers, e o que cabe em cada um hoje.
 pub(super) struct TintaGpu {
-    amostras: wgpu::Buffer,
+    pub(super) amostras: wgpu::Buffer,
     topo: wgpu::Buffer,
     origem: wgpu::Buffer,
     idx: wgpu::Buffer,
@@ -181,7 +181,12 @@ impl TintaGpu {
         let zero4 = bytemuck::cast_slice(&[0.0f32; 4]);
         let zero4u = bytemuck::cast_slice(&[0u32; 4]);
         Self {
-            amostras: um("ph2d-mesh tinta amostras", zero4, st),
+            // `COPY_SRC`: o plano ACHATADO na placa (`tinta_achata`) lê-se de volta nos gates.
+            amostras: um(
+                "ph2d-mesh tinta amostras",
+                zero4,
+                st | wgpu::BufferUsages::COPY_SRC,
+            ),
             topo: um("ph2d-mesh tinta topo", zero4u, st),
             origem: um("ph2d-mesh tinta origem", zero4u, st),
             idx: um("ph2d-mesh tinta idx", zero4u, st),
@@ -336,7 +341,7 @@ impl MeshRenderer {
                 &mut g.cap_amostras,
                 amostras,
                 "amostras",
-                st,
+                st | wgpu::BufferUsages::COPY_SRC,
             );
             refez |= poe(
                 device,

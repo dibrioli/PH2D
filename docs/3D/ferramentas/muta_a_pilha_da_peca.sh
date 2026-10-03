@@ -126,8 +126,8 @@ muta $S/tela_semente.rs '                px[3] = (a.clamp(0.0, 1.0) * 255.0 + 0.
   'W5 a semente do Painter perde a opacidade da camada' core
 muta $S/tinta_fina.rs '        if mudou_a {' '        if false {' \
   'W6 repintar não escreve a opacidade' core
-muta $A/tinta_da_peca_pilha.rs '    pilha.compoe_amostras(sujas, peca, || semente(mesh, k).amostras().to_vec());' \
-  '    let _ = (mesh, k);' 'W7 o quadro desce à camada e não recompõe a peça' gpu
+muta $A/tinta_da_peca_pilha.rs '    p.compoe_amostras(sujas, peca, || p.fundo_semeado(mesh, k));' \
+  '    let _ = (mesh, k, p);' 'W7 o quadro desce à camada e não recompõe a peça' gpu
 muta $A/pilha_da_peca_traco.rs '        if let Some(r) = w.relevo()' '        if let Some(r) = None::<&[[f32; 2]]>' \
   'W8 o relevo do traço não desce à base' app
 muta $A/pilha_da_peca_traco.rs '            Some((_, fim)) if *fim == i => *fim += 1,' '            Some((_, fim)) if *fim == i => *fim += 0,' \

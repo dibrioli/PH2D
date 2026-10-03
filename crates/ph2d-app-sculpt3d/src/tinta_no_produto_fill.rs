@@ -27,7 +27,7 @@ fn cores(s: &crate::Sculpt3dScene) -> Option<Vec<[f32; 3]>> {
 fn o_fill_pinta_os_dois_canais_e_o_ctrl_z_devolve_os_dois() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let virgem = amostras(&s);
     let cor_virgem = cores(&s);
     assert!(
@@ -37,7 +37,7 @@ fn o_fill_pinta_os_dois_canais_e_o_ctrl_z_devolve_os_dois() {
     assert_eq!(s.brush.color, VERMELHO, "a cena entrega o pincel vermelho");
 
     assert_eq!(s.fill_color(), Preenchido::Feito { fina: true });
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let depois = amostras(&s);
     assert!(
         depois.iter().all(|c| *c == VERMELHO),
@@ -49,7 +49,7 @@ fn o_fill_pinta_os_dois_canais_e_o_ctrl_z_devolve_os_dois() {
     );
 
     assert!(tecla(&mut s, false), "o Ctrl+Z tem de ser consumido");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         amostras(&s),
         virgem,
@@ -62,7 +62,7 @@ fn o_fill_pinta_os_dois_canais_e_o_ctrl_z_devolve_os_dois() {
     );
 
     assert!(tecla(&mut s, true), "o Ctrl+Shift+Z tem de ser consumido");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         amostras(&s),
         depois,
@@ -78,7 +78,7 @@ fn o_fill_pinta_os_dois_canais_e_o_ctrl_z_devolve_os_dois() {
 fn a_meio_de_um_traco_o_fill_recusa() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut host = super::HostDeTeste {
         ponteiro: (420.0, 350.0),
     };
@@ -111,12 +111,12 @@ fn a_meio_de_um_traco_o_fill_recusa() {
 fn com_a_peca_ja_pintada_o_ctrl_z_devolve_a_cor_de_antes_do_fill() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert!(
         gesto(&mut s, 380.0, 470.0, 10),
         "o pen-down nao foi da cena"
     );
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let pintada = cores(&s);
     assert!(
         pintada
@@ -128,11 +128,11 @@ fn com_a_peca_ja_pintada_o_ctrl_z_devolve_a_cor_de_antes_do_fill() {
 
     s.brush.color = [0.1, 0.8, 0.2];
     assert_eq!(s.fill_color(), Preenchido::Feito { fina: true });
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_ne!(cores(&s), pintada, "o Fill tem de ter mudado a cor");
 
     assert!(tecla(&mut s, false), "o Ctrl+Z tem de ser consumido");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         cores(&s),
         pintada,

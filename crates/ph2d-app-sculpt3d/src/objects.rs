@@ -122,6 +122,13 @@ pub(crate) struct SceneObject {
     pub(super) pilha: Option<crate::pilha_da_peca::PilhaDaPeca>,
     /// A pilha do plano estacionado (`tinta_parqueada`).
     pub(super) pilha_parqueada: Option<crate::pilha_da_peca::PilhaDaPeca>,
+    /// ⭐⭐ **A placa tem de compor a pilha** (`docs/3D/30` §13, W1b) — o
+    /// painel mudou-a; o `sync_mesh` compõe-na no compositor do Painter e
+    /// achata-a no plano da placa (ou na CPU, se a placa a recusa).
+    pub(super) compor_na_placa: bool,
+    /// A cor por VÉRTICE mudou sem a malha mudar — sobe sozinha, sem levar o
+    /// plano (`sync_mesh`).
+    pub(super) cores_sujas: bool,
 }
 
 impl SceneObject {
@@ -174,6 +181,8 @@ impl SceneObject {
             tinta_suja: false,
             pilha: None,
             pilha_parqueada: None,
+            compor_na_placa: false,
+            cores_sujas: false,
         }
     }
 
@@ -196,6 +205,8 @@ impl SceneObject {
             tinta_suja: false,
             pilha: None,
             pilha_parqueada: None,
+            compor_na_placa: false,
+            cores_sujas: false,
         }
     }
 }

@@ -41,7 +41,7 @@ use super::{SceneObject, Sculpt3dScene};
 /// não falha, devolve lixo bem-formado. O gate `the_shape_of_a_saved_scene_is_pinned`
 /// prende o tamanho codificado de uma cena-fixture justamente para transformar
 /// "lembre-se" em vermelho.
-pub(crate) const SCULPT_DOC_VERSION: u32 = 6;
+pub(crate) const SCULPT_DOC_VERSION: u32 = 7;
 
 /// ⭐⭐⭐⭐ **O PLANO DE TINTA FINA de uma peça, como o arquivo o guarda** (v6):
 /// a topologia (o degrau e, num plano antigo, o nível de cada face) e a PILHA
@@ -154,8 +154,13 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
     // um v1 falha a parsar como v2, e o postcard é POSICIONAL: *ele devolve
     // lixo bem-formado*.
     let (versao, _) = postcard::take_from_bytes::<u32>(bytes).map_err(SculptDocError::Bytes)?;
-    let (objetos, active) = if versao == SCULPT_DOC_VERSION {
-        let doc: SculptDoc = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
+    let (objetos, active) = if versao == SCULPT_DOC_VERSION || versao == V_ANTES_DO_FUNDO {
+        // ⭐ Um v6 chega aqui na forma v7, com o fundo VAZIO (`migracao::de_v6`).
+        let doc: SculptDoc = if versao == SCULPT_DOC_VERSION {
+            postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?
+        } else {
+            migracao::de_v6(bytes)?
+        };
         let objetos = doc
             .objects
             .into_iter()
@@ -240,19 +245,29 @@ fn tinta_das_camadas(
     let mesh = stack.mesh();
     let mut t = plano_vazio(mesh, doc.nivel, &doc.niveis, peca)?;
     let esperadas = t.amostras().len();
+    // ⭐⭐ O FUNDO: o gravado (v7), ou — um v6 — a cor por vértice gravada, que
+    //   era o fundo que ele lia. ⛔ Um fundo de outra malha é recusa.
+    let fundo_por_vertice = if doc.camadas.fundo.is_empty() {
+        match mesh.colors() {
+            Some(c) => c.to_vec(),
+            None => vec![ph2d_mesh_colors::BRANCO; mesh.vert_count()],
+        }
+    } else {
+        doc.camadas.fundo.clone()
+    };
+    if fundo_por_vertice.len() != mesh.vert_count() {
+        return Err(SculptDocError::Tinta { peca, esperadas });
+    }
     let pilha = doc
         .camadas
-        .pilha(esperadas)
+        .pilha(esperadas, fundo_por_vertice.clone())
         .ok_or(SculptDocError::Tinta { peca, esperadas })?;
     let fundo = || {
         let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
         let semente = if doc.niveis.is_empty() {
-            Some(crate::tinta_da_peca::semente(mesh, doc.nivel))
+            Some(Tinta::semeada(&fundo_por_vertice, faces(), doc.nivel))
         } else {
-            match mesh.colors() {
-                Some(c) => Tinta::semeada_graduada(c, faces(), &doc.niveis, doc.nivel),
-                None => Tinta::graduada(mesh.vert_count(), faces(), &doc.niveis, doc.nivel),
-            }
+            Tinta::semeada_graduada(&fundo_por_vertice, faces(), &doc.niveis, doc.nivel)
         };
         semente.map(|s| s.amostras().to_vec()).unwrap_or_default()
     };
@@ -464,7 +479,7 @@ pub fn install_pending(
 mod migracao;
 #[cfg(test)]
 use migracao::{ObjectDocV5, SculptDocV5, V_ANTES_DAS_CAMADAS};
-use migracao::{TintaDocV5, ate_v5};
+use migracao::{TintaDocV5, V_ANTES_DO_FUNDO, ate_v5};
 
 #[path = "doc_tinta.rs"]
 mod doc_tinta;

@@ -72,17 +72,16 @@ fn a_pilha_estaciona_e_volta_com_o_plano() {
     );
 }
 
-/// 🔎 **SONDA — uma pilha TRANSLÚCIDA recomposta várias vezes fica igual?** O
-/// fundo dela é a `semente`, que lê a cor por vértice — e a [`recompoe`]
-/// reescreve a cor por vértice com o composto. Imprime quanto o plano anda
-/// entre recomposições sem nada mudar na pilha.
+/// ⛔⛔ **GATE — Uma pilha TRANSLÚCIDA recomposta FICA** (`docs/3D/30` §13).
+/// O fundo lia-se da cor por vértice VIVA, que a recomposição reescreve com o
+/// composto: cada passo do arrasto, desfazer ou balde andava a cor (`50`, `37`,
+/// `27` degraus de sRGB8). O fundo fixado quando a pilha nasce cura-o.
 #[test]
-#[ignore = "sonda: imprime"]
-fn diag_uma_pilha_translucida_recomposta_anda() {
+fn uma_pilha_translucida_recomposta_fica() {
     use crate::objects::{ObjectId, SceneObject};
     let mesh = crate::scenes::tinta_fina::peca();
     let mut obj = SceneObject::new(ObjectId(1), mesh, ph2d_mesh::Pose::default());
-    obj.tinta = Some(semente(obj.stack.mesh(), 3));
+    obj.tinta = Some(crate::tinta_da_peca::semente(obj.stack.mesh(), 3));
     acompanha(obj.tinta.as_mut(), &mut obj.pilha);
     let p = obj.pilha.as_mut().expect("pilha");
     let base = p.base().expect("base");
@@ -92,24 +91,26 @@ fn diag_uma_pilha_translucida_recomposta_anda() {
     p.plano_mut(base)
         .expect("plano")
         .escreve(&vec![[230, 20, 20, 255]; n], None);
-    let mut antes = Vec::new();
+    let vermelho = [230.0 / 255.0, 20.0 / 255.0, 20.0 / 255.0];
+    let mut primeira: Option<Vec<[f32; 3]>> = None;
     for vez in 0..4 {
         recompoe(&mut obj);
-        let agora = obj.tinta.as_ref().expect("plano").amostras().to_vec();
-        if vez > 0 {
-            let pior = antes
-                .iter()
-                .zip(&agora)
-                .map(|(a, b): (&[f32; 3], &[f32; 3])| {
-                    (0..3).map(|c| (a[c] - b[c]).abs()).fold(0.0f32, f32::max)
-                })
-                .fold(0.0f32, f32::max);
-            eprintln!(
-                "recomposição {vez}: a maior mudança de uma amostra = {:.4} ({:.1} degraus de sRGB8)",
-                pior,
-                pior * 255.0
-            );
+        let lida = para_ler(&obj, obj.tinta.as_ref().expect("plano"))
+            .amostras()
+            .to_vec();
+        match &primeira {
+            None => {
+                // CONTROLO: o fundo VÊ-SE (a pilha é mesmo translúcida).
+                assert!(
+                    lida.iter().any(|c| *c != vermelho),
+                    "a base a 50 % deixa ver o fundo"
+                );
+                primeira = Some(lida);
+            }
+            Some(p) => assert!(
+                lida == *p,
+                "a recomposição {vez} andou a cor da peça sem nada mudar na pilha"
+            ),
         }
-        antes = agora;
     }
 }

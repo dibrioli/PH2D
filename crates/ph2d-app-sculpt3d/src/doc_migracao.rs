@@ -24,6 +24,73 @@ pub(super) const V_ANTES_DO_CORPO: u32 = 4;
 /// Painter na peça (`docs/3D/30`). Ver [`decode`].
 pub(super) const V_ANTES_DAS_CAMADAS: u32 = 5;
 
+/// A versão em que a pilha de camadas não guardava o FUNDO — antes da W1b
+/// (`docs/3D/30` §13): ele lia-se da cor por vértice VIVA. Ver [`de_v6`].
+pub(super) const V_ANTES_DO_FUNDO: u32 = 6;
+
+/// A pilha de um documento **v6** — congelada, e lida só pela migração.
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
+pub(super) struct CamadasDocV6 {
+    pub(super) pilha: ph2d_tool_painter::LayerStack,
+    pub(super) planos: Vec<doc_camadas::PlanoDoc>,
+}
+
+/// O plano de um documento **v6** — congelado, e lido só pela migração.
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
+pub(super) struct TintaDocV6 {
+    pub(super) nivel: u8,
+    pub(super) niveis: Vec<u8>,
+    pub(super) camadas: CamadasDocV6,
+}
+
+/// A peça de um documento **v6** — congelada, e lida só pela migração.
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
+pub(super) struct ObjectDocV6 {
+    pub(super) stack: StackData,
+    pub(super) pose: PoseData,
+    pub(super) tinta: Option<TintaDocV6>,
+}
+
+/// Um documento **v6** — congelado, e lido só pela migração.
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
+pub(super) struct SculptDocV6 {
+    #[allow(dead_code)]
+    pub(super) version: u32,
+    pub(super) objects: Vec<ObjectDocV6>,
+    pub(super) active: u32,
+}
+
+/// ⭐⭐ **Um v6 na forma v7**: tudo igual, e o fundo VAZIO — o leitor resolve-o
+/// pela cor por vértice gravada, que era o fundo que o v6 lia.
+pub(super) fn de_v6(bytes: &[u8]) -> Result<SculptDoc, SculptDocError> {
+    let v6: SculptDocV6 = postcard::from_bytes(bytes).map_err(SculptDocError::Bytes)?;
+    Ok(SculptDoc {
+        version: SCULPT_DOC_VERSION,
+        objects: v6
+            .objects
+            .into_iter()
+            .map(|o| ObjectDoc {
+                stack: o.stack,
+                pose: o.pose,
+                tinta: o.tinta.map(|t| TintaDoc {
+                    nivel: t.nivel,
+                    niveis: t.niveis,
+                    camadas: doc_camadas::CamadasDoc {
+                        pilha: t.camadas.pilha,
+                        planos: t.camadas.planos,
+                        fundo: Vec::new(),
+                    },
+                }),
+            })
+            .collect(),
+        active: v6.active,
+    })
+}
+
 /// ⭐⭐⭐⭐ **O PLANO DE TINTA FINA de um documento v5** — congelado, e lido só
 /// pela migração.
 ///

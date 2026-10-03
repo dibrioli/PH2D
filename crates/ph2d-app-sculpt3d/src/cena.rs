@@ -136,6 +136,9 @@ pub struct Sculpt3dScene {
     /// entre quadros para o upload incremental da tinta fina não alocar a cada
     /// dab. Ver [`crate::slots`] e a `TintaDoTraco::drena_sujas`.
     pub(crate) tinta_sujas: Vec<u32>,
+    /// ⭐⭐ **A pilha de cada peça composta NA PLACA** (`docs/3D/30` §13) —
+    /// o compositor de camadas do Painter e o achatamento no plano.
+    pub(crate) na_placa: crate::composto_na_placa::CompostosDaCena,
     /// **A TABELA DE SLOTS DO DEVICE** — quem mora em cada índice do
     /// renderizador. Ver [`slots`], que é onde a lei dela está escrita.
     pub(crate) slots: Vec<ObjectId>,

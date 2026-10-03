@@ -274,6 +274,9 @@ pub(crate) fn albedo_texture(device: &wgpu::Device, size: (u32, u32)) -> wgpu::T
     })
 }
 
+/// ⭐ O composto das camadas achatado no plano, NA PLACA (`docs/3D/30` §13).
+#[path = "tinta_achata.rs"]
+pub mod tinta_achata;
 /// COMO A MALHA SOBE para o device — ver o módulo.
 /// ⭐⭐ **A tinta fina no device.** Irmã do [`upload`] e pelo mesmo motivo:
 /// ela toca os `slots`, que são privados a este módulo.

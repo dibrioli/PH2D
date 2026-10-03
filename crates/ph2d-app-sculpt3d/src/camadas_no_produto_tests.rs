@@ -18,10 +18,10 @@ fn traco_com_quadros(s: &mut Sculpt3dScene, gpu: &ph2d_gpu::GpuContext, x0: f32)
     );
     for k in 1..=8u8 {
         crate::input::pointer_move(s, x0 + 6.0 * f32::from(k), 350.0);
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(gpu);
     }
     crate::input::pointer_up(s);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(gpu);
 }
 
 fn pilha(s: &Sculpt3dScene) -> &PilhaDaPeca {
@@ -64,7 +64,7 @@ fn a_peca_e_a_composicao(s: &Sculpt3dScene, quando: &str) {
 fn pintar_escreve_so_a_camada_activa_e_o_desfazer_a_tira() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     a_peca_e_a_composicao(&s, "ao armar");
     let base = pilha(&s).base().expect("base");
     let cima = s.objects[s.active]
@@ -113,7 +113,7 @@ fn pintar_escreve_so_a_camada_activa_e_o_desfazer_a_tira() {
     );
 
     assert!(s.undo_stroke(), "o desfazer tinha uma entrada");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert!(
         bytes(&s, cima).iter().all(|&b| b == 0),
         "o desfazer não devolveu a camada ao transparente"
@@ -132,7 +132,7 @@ fn pintar_escreve_so_a_camada_activa_e_o_desfazer_a_tira() {
     );
 
     assert!(s.redo_stroke(), "o refazer");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         bytes(&s, cima),
         cima_px,
@@ -155,14 +155,14 @@ fn pintar_escreve_so_a_camada_activa_e_o_desfazer_a_tira() {
 fn na_peca_de_uma_camada_o_traco_pinta_a_base() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let base = pilha(&s).base().expect("base");
     let base_antes = bytes(&s, base);
     traco_com_quadros(&mut s, &gpu, 400.0);
     assert_ne!(bytes(&s, base), base_antes, "o traço pintou a base");
     a_peca_e_a_composicao(&s, "depois do traço");
     assert!(s.undo_stroke());
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         bytes(&s, base),
         base_antes,

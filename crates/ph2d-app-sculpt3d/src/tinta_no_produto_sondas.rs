@@ -25,7 +25,7 @@ fn diag_onde_mora_o_plano_entre_dois_tracos() {
     let mut s = cena_52(&gpu.device);
     let (on, _) = s.toggle_dyntopo();
     eprintln!("[diag] interruptor armado = {on}");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     fn onde(s: &Sculpt3dScene, quando: &str) {
         eprintln!(
             "[diag] {quando:<28} peca={:?} traco={:?} nivel={:?} topo={:?}",
@@ -41,11 +41,11 @@ fn diag_onde_mora_o_plano_entre_dois_tracos() {
     onde(&s, "inicio");
     let a = traco(&mut s, 400.0);
     onde(&s, "A: pen-up, pre-sync");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     onde(&s, "A: pos-sync");
     let b = traco(&mut s, 250.0);
     onde(&s, "B: pen-up, pre-sync");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     onde(&s, "B: pos-sync");
     eprintln!("[diag] pen-down aceite: A={a} B={b}");
 }
@@ -57,7 +57,7 @@ fn diag_onde_mora_o_plano_entre_dois_tracos() {
 fn diag_o_gesto_que_comeca_fora_da_peca() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let nasceu = amostras(&s).len();
     fn conta(s: &Sculpt3dScene) -> usize {
         amostras(s)
@@ -79,17 +79,17 @@ fn diag_o_gesto_que_comeca_fora_da_peca() {
 
     // (A) um traco NORMAL, todo dentro da peca.
     gesto(&mut s, 380.0, 460.0, 10);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     estado(&s, "A: dentro da peca");
 
     // (B) o gesto do report: COMECA FORA e entra na peca.
     gesto(&mut s, 150.0, 480.0, 20);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     estado(&s, "B: comecou FORA, entrou");
 
     // (C) e um traco normal outra vez, para ver o que sobrou.
     gesto(&mut s, 380.0, 460.0, 10);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     estado(&s, "C: dentro outra vez");
 }
 
@@ -129,7 +129,7 @@ fn diag_a_tinta_so_cai_onde_ha_vertice() {
     }
     for raio in [6.0f32, 12.0, 24.0, 48.0] {
         let mut s = cena_52(&gpu.device);
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(&gpu);
         s.radius_px = raio;
         let pintadas = |s: &Sculpt3dScene| {
             amostras(s)
@@ -144,7 +144,7 @@ fn diag_a_tinta_so_cai_onde_ha_vertice() {
         let mut x = 300.0f32;
         while x <= 600.0 {
             gesto(&mut s, x, x, 1);
-            s.sync_mesh(&gpu.device, &gpu.queue);
+            s.sync_mesh(&gpu);
             let agora = pintadas(&s);
             sitios += 1;
             if agora > antes {
@@ -178,7 +178,7 @@ fn diag_o_ctrl_z_desfaz_a_tinta_fina() {
     use winit::keyboard::KeyCode as K;
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let pintadas = |s: &Sculpt3dScene| {
         amostras(s)
             .iter()
@@ -190,7 +190,7 @@ fn diag_o_ctrl_z_desfaz_a_tinta_fina() {
         gesto(&mut s, 380.0, 470.0, 10),
         "o pen-down nao foi da cena"
     );
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let depois = pintadas(&s);
     eprintln!("[diag] depois do traco: {depois} amostras pintadas");
 
@@ -213,7 +213,7 @@ fn diag_o_ctrl_z_desfaz_a_tinta_fina() {
         &factos,
         "",
     );
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     eprintln!(
         "[diag] Ctrl+Z consumido={consumiu}; depois do desfazer: {} amostras pintadas",
         pintadas(&s)
@@ -248,9 +248,9 @@ fn diag_a_mascara_ainda_decide_na_tinta_fina() {
             s.brush.surface_only = mascara;
             s.tinta_nivel = crate::scenes::tinta_fina::DEGRAU_DA_LICAO.nivel();
             s.radius_px = raio;
-            s.sync_mesh(&gpu.device, &gpu.queue);
+            s.sync_mesh(&gpu);
             gesto(&mut s, 420.0, 470.0, 8);
-            s.sync_mesh(&gpu.device, &gpu.queue);
+            s.sync_mesh(&gpu);
             let n = amostras(&s)
                 .iter()
                 .filter(|c| **c != [1.0, 1.0, 1.0])
@@ -276,10 +276,10 @@ fn diag_onde_a_pegada_de_vertices_fica_vazia() {
         while x <= 600.0 {
             let mut s = cena_52(&gpu.device);
             s.radius_px = raio;
-            s.sync_mesh(&gpu.device, &gpu.queue);
+            s.sync_mesh(&gpu);
             let antes = s.undo.len();
             gesto(&mut s, x, x, 1);
-            s.sync_mesh(&gpu.device, &gpu.queue);
+            s.sync_mesh(&gpu);
             let conta = match s.undo.last().map(|e| &e.undo) {
                 Some(crate::StrokeUndo::Stroke { verts, finas, .. }) => {
                     format!("v={} f={:?}", verts.len(), finas.as_ref().map(|_| "sim"))

@@ -83,11 +83,17 @@ fn topologia(s: &Sculpt3dScene) -> (usize, usize) {
     (s.mesh().vert_count(), s.mesh().faces().len())
 }
 
+/// A peça INTEIRA na CPU (a referência): a placa compõe a pilha e o plano da
+/// CPU pode estar para trás (`docs/3D/30` §13).
 fn amostras(s: &Sculpt3dScene) -> Vec<[f32; 3]> {
-    s.objects[s.active]
-        .tinta
+    let o = &s.objects[s.active];
+    o.tinta
         .as_ref()
-        .map(|t| t.amostras().to_vec())
+        .map(|t| {
+            crate::tinta_da_peca::pilha::para_ler(o, t)
+                .amostras()
+                .to_vec()
+        })
         .unwrap_or_default()
 }
 
@@ -111,7 +117,7 @@ fn dois_tracos_de_cor_com_dyntopo_nao_perdem_o_detalhe_do_primeiro() {
     let mut s = cena_52(&gpu.device);
     let (on, _) = s.toggle_dyntopo();
     assert!(on, "a fixtura precisa do interruptor LIGADO");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let topo_0 = topologia(&s);
     assert!(
         !amostras(&s).is_empty(),
@@ -119,7 +125,7 @@ fn dois_tracos_de_cor_com_dyntopo_nao_perdem_o_detalhe_do_primeiro() {
     );
 
     assert!(traco(&mut s, 400.0), "o pen-down de A não foi da cena");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let depois_de_a = amostras(&s);
     let pintadas: Vec<usize> = depois_de_a
         .iter()
@@ -140,7 +146,7 @@ fn dois_tracos_de_cor_com_dyntopo_nao_perdem_o_detalhe_do_primeiro() {
     // `mudou == 0` la em baixo reprova sobre produto CERTO: `560` cobre
     // `[510, 658]`, do outro lado da peca.
     assert!(traco(&mut s, 560.0), "o pen-down de B não foi da cena");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let depois_de_b = amostras(&s);
 
     assert_eq!(
@@ -177,7 +183,7 @@ fn dois_tracos_de_cor_com_dyntopo_nao_perdem_o_detalhe_do_primeiro() {
         traco(&mut s, 400.0),
         "o pen-down do controlo não foi da cena"
     );
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_ne!(
         topologia(&s),
         topo_0,
@@ -202,7 +208,7 @@ fn o_interruptor_nao_triangula_a_peca_com_a_tinta_fina_armada() {
     let gpu = gpu_or_skip!();
 
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert!(
         s.tinta_fina_armada(),
         "a fixtura precisa do plano armado antes do interruptor"
@@ -227,7 +233,7 @@ fn o_interruptor_nao_triangula_a_peca_com_a_tinta_fina_armada() {
     // ⭐ CONTROLO — sem plano, ele continua a triangular.
     let mut sem = cena_52(&gpu.device);
     sem.tinta_nivel = None;
-    sem.sync_mesh(&gpu.device, &gpu.queue);
+    sem.sync_mesh(&gpu);
     assert!(!sem.tinta_fina_armada(), "o CONTROLO não devia ter plano");
     let (on, trianguladas) = sem.toggle_dyntopo();
     assert!(on);
@@ -260,7 +266,7 @@ fn o_interruptor_nao_triangula_a_peca_com_a_tinta_fina_armada() {
 fn um_pen_down_que_erra_a_peca_nao_fica_com_o_plano() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let nasceu = amostras(&s).len();
     assert!(nasceu > 0, "o plano não nasceu: a fixtura não tem fenómeno");
 
@@ -269,7 +275,7 @@ fn um_pen_down_que_erra_a_peca_nao_fica_com_o_plano() {
         traco(&mut s, 400.0),
         "o pen-down do controlo não foi da cena"
     );
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         amostras(&s).len(),
         nasceu,
@@ -307,7 +313,7 @@ fn um_pen_down_que_erra_a_peca_nao_fica_com_o_plano() {
     );
 
     // E o quadro seguinte não o reconstrói semeado (= não voltou ao modo mesh).
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         amostras(&s).len(),
         nasceu,
@@ -355,7 +361,7 @@ fn gesto(s: &mut Sculpt3dScene, x0: f32, x1: f32, n: u16) -> bool {
 fn um_traco_de_cor_que_comeca_fora_da_peca_pinta() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let pintadas = |s: &Sculpt3dScene| {
         amostras(s)
             .iter()
@@ -370,7 +376,7 @@ fn um_traco_de_cor_que_comeca_fora_da_peca_pinta() {
         gesto(&mut s, 150.0, 480.0, 20),
         "o pen-down não foi da cena"
     );
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let n = pintadas(&s);
     assert!(
         n > 0,
@@ -391,7 +397,7 @@ fn um_traco_de_cor_que_comeca_fora_da_peca_pinta() {
         gesto(&mut s, 150.0, 480.0, 20),
         "o pen-down do controlo não foi da cena"
     );
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         s.mesh().positions(),
         &antes[..],
@@ -415,13 +421,13 @@ fn sitios_que_pintam(gpu: &ph2d_gpu::GpuContext, raio: f32, nivel: Option<u8>) -
     let mut s = cena_52(&gpu.device);
     s.tinta_nivel = nivel;
     s.radius_px = raio;
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(gpu);
     let (mut acertos, mut sitios) = (0usize, 0usize);
     let mut antes = pintadas(&s);
     let mut x = 300.0f32;
     while x <= 600.0 {
         gesto(&mut s, x, x, 1);
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(gpu);
         let agora = pintadas(&s);
         sitios += 1;
         if agora > antes {
@@ -499,9 +505,9 @@ fn a_folha_que_o_olho_ve_vale_para_a_amostra() {
         s.brush.surface_only = mascara;
         s.tinta_nivel = crate::scenes::tinta_fina::DEGRAU_DA_LICAO.nivel();
         s.radius_px = raio;
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(&gpu);
         gesto(&mut s, 420.0, 470.0, 8);
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(&gpu);
         pintadas(&s)
     };
     // ⚠️ A barbatana tem `0,06` de espessura: um pincel GORDO alcança as costas
@@ -562,7 +568,7 @@ fn tecla(s: &mut Sculpt3dScene, shift: bool) -> bool {
 fn o_ctrl_z_desfaz_a_tinta_fina() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let virgem = amostras(&s);
     assert_eq!(pintadas(&s), 0, "a peça abre por pintar");
 
@@ -570,7 +576,7 @@ fn o_ctrl_z_desfaz_a_tinta_fina() {
         gesto(&mut s, 380.0, 470.0, 10),
         "o pen-down não foi da cena"
     );
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let depois = amostras(&s);
     let n = pintadas(&s);
     assert!(
@@ -579,7 +585,7 @@ fn o_ctrl_z_desfaz_a_tinta_fina() {
     );
 
     assert!(tecla(&mut s, false), "o Ctrl+Z tem de ser consumido");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         amostras(&s),
         virgem,
@@ -589,7 +595,7 @@ fn o_ctrl_z_desfaz_a_tinta_fina() {
     );
 
     assert!(tecla(&mut s, true), "o Ctrl+Shift+Z tem de ser consumido");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         amostras(&s),
         depois,
@@ -615,11 +621,11 @@ fn um_traco_de_cor_sem_vertice_debaixo_do_pincel_deixa_desfazer() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
     s.radius_px = 6.0;
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let virgem = amostras(&s);
     let antes = s.undo.len();
     assert!(gesto(&mut s, 400.0, 400.0, 1), "o pen-down não foi da cena");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert!(pintadas(&s) > 0, "a fixtura não pintou uma amostra");
     assert_eq!(s.undo.len(), antes + 1, "o traço tem de deixar UMA entrada");
 
@@ -637,7 +643,7 @@ fn um_traco_de_cor_sem_vertice_debaixo_do_pincel_deixa_desfazer() {
     }
 
     assert!(tecla(&mut s, false), "o Ctrl+Z tem de ser consumido");
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     assert_eq!(
         amostras(&s),
         virgem,

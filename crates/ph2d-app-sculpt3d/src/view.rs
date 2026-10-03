@@ -39,7 +39,7 @@ impl Sculpt3dScene {
         if !self.shows_clay() {
             return;
         }
-        self.sync_mesh(&gpu.device, &gpu.queue);
+        self.sync_mesh(gpu);
         // O rig é RESOLVIDO por frame, não guardado resolvido: a resolução é
         // barata (quatro lâmpadas) e uma cópia resolvida seria uma segunda
         // verdade sobre onde a luz está — a que fica velha no frame seguinte ao

@@ -26,7 +26,7 @@ fn diag_o_relogio_da_subida_com_relevo() {
     ] {
         let mut s = cena_52(&gpu.device);
         s.note_canvas(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1400.0, 900.0));
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(&gpu);
         let mut p = painter_vermelho();
         p.set_paint_media(meio);
         p.set_brush_size_px(28.0);
@@ -79,7 +79,7 @@ fn diag_o_relogio_da_subida_com_relevo() {
             } else {
                 s.objects[s.active].tinta_suja = true;
             }
-            s.sync_mesh(&gpu.device, &gpu.queue);
+            s.sync_mesh(&gpu);
         }
         entrega(&mut s, &mut p, 720.0, 330.0, 1.0, PointerPhase::Up);
         let relevo = s.objects[s.active]
@@ -125,7 +125,7 @@ fn diag_o_preco_de_refazer_as_inclinacoes() {
     for k in [3u8, 4, 5, 6] {
         let mut s = cena_52(&gpu.device);
         s.tinta_nivel = Some(k);
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(&gpu);
         let o = &mut s.objects[s.active];
         let mesh = o.stack.mesh().clone();
         let Some(t) = o.tinta.as_mut() else { continue };

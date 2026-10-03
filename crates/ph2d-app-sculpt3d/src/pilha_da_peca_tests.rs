@@ -27,7 +27,7 @@ fn pinta(p: &mut PilhaDaPeca, id: LayerId, px: &[u8]) {
 /// ⭐ A FIXTURA: base opaca + Multiply a 60 % + Overlay recortada com máscara
 /// + um ajuste HSB — modo, opacidade, recorte, máscara e ajuste exercidos.
 pub(super) fn pilha_rica(n: usize) -> (PilhaDaPeca, [LayerId; 4]) {
-    let mut p = PilhaDaPeca::de_partes(LayerStack::new(), BTreeMap::new(), n);
+    let mut p = PilhaDaPeca::de_partes(LayerStack::new(), BTreeMap::new(), n, Vec::new());
     let base = p.nova_camada(nome_da_base()).expect("base");
     let mut opaca = plano(n, 1);
     opaca
@@ -212,7 +212,7 @@ fn a_pilha_e_os_planos_andam_juntos() {
 /// ⭐⭐ **GATE — O TECTO de camadas recusa sem partir a sincronia.**
 #[test]
 fn o_tecto_de_camadas_recusa_e_a_pilha_fica_inteira() {
-    let mut p = PilhaDaPeca::de_partes(LayerStack::new(), BTreeMap::new(), 8);
+    let mut p = PilhaDaPeca::de_partes(LayerStack::new(), BTreeMap::new(), 8, Vec::new());
     for i in 0..ph2d_tool_painter::HARD_CAP_LAYERS {
         p.nova_camada(&format!("c{i}")).expect("abaixo do tecto");
     }

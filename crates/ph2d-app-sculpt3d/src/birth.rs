@@ -43,6 +43,7 @@ impl Sculpt3dScene {
             pente_campo: ph2d_quadflow::regiao::CampoDoTraco::default(),
             dyn_queixa_dita: false,
             tinta_sujas: Vec::new(),
+            na_placa: crate::composto_na_placa::CompostosDaCena::default(),
             slots: Vec::new(),
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),

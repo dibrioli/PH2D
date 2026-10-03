@@ -138,7 +138,7 @@ fn activa(s: &crate::Sculpt3dScene) -> (usize, Option<LayerId>, Option<f32>) {
 fn o_painel_de_camadas_muda_a_cor_da_peca_e_o_ctrl_z_a_devolve_ao_bit() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = painter_vermelho();
     let mut painel = Painel::novo();
     assert!(
@@ -168,7 +168,7 @@ fn o_painel_de_camadas_muda_a_cor_da_peca_e_o_ctrl_z_a_devolve_ao_bit() {
 
     // 2. Pintar — o traço pousa na camada nova.
     traco(&mut s, &mut p, 420.0);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     quadro(Some(&mut s), Some(&mut p));
     let pintada = amostras(&s);
     assert_ne!(
@@ -254,7 +254,7 @@ fn o_painel_de_camadas_muda_a_cor_da_peca_e_o_ctrl_z_a_devolve_ao_bit() {
 fn com_um_ajuste_activo_o_traco_recusa_e_o_painel_diz_porque() {
     let gpu = gpu_or_skip!();
     let mut s = cena_52(&gpu.device);
-    s.sync_mesh(&gpu.device, &gpu.queue);
+    s.sync_mesh(&gpu);
     let mut p = painter_vermelho();
     let mut painel = Painel::novo();
     quadro(Some(&mut s), Some(&mut p));
@@ -315,8 +315,9 @@ fn com_um_ajuste_activo_o_traco_recusa_e_o_painel_diz_porque() {
 
 /// 🔎 **SONDA — o preço de ARRASTAR a opacidade, de ponta a ponta** (`docs/3D/30` §7, a W3:
 /// *«se passar de um quadro, a W1b é a onda seguinte»*). Por degrau da peça da lição, com 3 camadas:
-/// cada passo = os pedidos do quadro pela porta + a peça INTEIRA recomposta (CPU) + a subida do
-/// plano à placa (`sync_mesh`, o plano inteiro — a peça mudou toda).
+/// cada passo = os pedidos do quadro pela porta + a recomposição (desde a W1b, `docs/3D/30` §13: na
+/// CPU só o prefixo dos vértices) + o `sync_mesh` (a pilha composta e achatada NA PLACA, até ela
+/// acabar).
 #[test]
 #[ignore = "sonda: precisa de adaptador e imprime a tabela"]
 fn diag_o_preco_de_arrastar_a_opacidade_de_ponta_a_ponta() {
@@ -326,7 +327,7 @@ fn diag_o_preco_de_arrastar_a_opacidade_de_ponta_a_ponta() {
     for k in 3u8..=6 {
         let mut s = cena_52(&gpu.device);
         s.tinta_nivel = Some(k);
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(&gpu);
         let mut p = painter_vermelho();
         quadro(Some(&mut s), Some(&mut p));
         for _ in 0..2 {
@@ -337,7 +338,7 @@ fn diag_o_preco_de_arrastar_a_opacidade_de_ponta_a_ponta() {
         }
         traco(&mut s, &mut p, 420.0);
         quadro(Some(&mut s), Some(&mut p));
-        s.sync_mesh(&gpu.device, &gpu.queue);
+        s.sync_mesh(&gpu);
         let n = amostras(&s).len();
         let (_, cima, _) = activa(&s);
         let cima = cima.expect("cima");
@@ -355,7 +356,7 @@ fn diag_o_preco_de_arrastar_a_opacidade_de_ponta_a_ponta() {
             assert!(recusa.is_none());
             quadro(Some(&mut s), Some(&mut p));
             let t = Instant::now();
-            s.sync_mesh(&gpu.device, &gpu.queue);
+            s.sync_mesh(&gpu);
             gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
             placa.push(t.elapsed().as_secs_f64() * 1e3);
         }
@@ -363,7 +364,7 @@ fn diag_o_preco_de_arrastar_a_opacidade_de_ponta_a_ponta() {
         placa.sort_by(f64::total_cmp);
         eprintln!(
             "degrau {k} ({}x) · {n} amostras · um passo do arrasto: porta+recompor (CPU) mediana \
-             {:.2} ms · pior {:.2} ms | subir o plano (sync_mesh) mediana {:.2} ms · pior {:.2} ms",
+             {:.2} ms · pior {:.2} ms | sync_mesh (compor na placa) mediana {:.2} ms · pior {:.2} ms",
             1u32 << k,
             cpu[10],
             cpu[19],

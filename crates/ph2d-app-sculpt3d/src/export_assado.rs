@@ -66,8 +66,11 @@ pub(crate) fn assa(scene: &Sculpt3dScene) -> Assados {
             continue;
         };
         let mesh = scene.objects[i].stack.mesh();
+        // ⭐ A peça INTEIRA na CPU, mesmo que a placa a tenha composto e o plano
+        //   da CPU tenha ficado para trás (`docs/3D/30` §13).
+        let tinta = crate::tinta_da_peca::pilha::para_ler(&scene.objects[i], tinta);
         match ph2d_mesh_colors::assar(
-            tinta,
+            &tinta,
             mesh.faces().iter().map(ph2d_mesh::Face::verts),
             TECTO_DE_TEXELS,
         ) {

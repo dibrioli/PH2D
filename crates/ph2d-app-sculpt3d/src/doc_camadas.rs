@@ -8,6 +8,9 @@
 //! `Layer` muda o blob da escultura sem tocar no `SCULPT_DOC_VERSION`. O gate
 //! `a_forma_da_pilha_gravada_e_pinada` transforma isso em vermelho.
 //!
+//! ⭐ **v7: o FUNDO** (a cor por baixo da pilha, por vértice) viaja no fim
+//! (`CamadasDoc::fundo`); a forma v6 está congelada no `doc_migracao`.
+//!
 //! ⚠️ **O plano guarda-se SEM a cauda da dobra** — a dobra é a disposição da
 //! memória para o compositor, não um dado da peça.
 
@@ -36,6 +39,10 @@ pub(super) struct CamadasDoc {
     /// Na ordem das chaves (`LayerId` crescente): o ficheiro sai igual byte a
     /// byte para a mesma pilha.
     pub(super) planos: Vec<PlanoDoc>,
+    /// ⭐⭐ **O FUNDO da pilha, por vértice** (v7, `docs/3D/30` §13) — a cor por
+    /// baixo dela, fixada quando ela nasceu. Vazio = um documento v6, que não o
+    /// guardava: abre com a cor por vértice gravada, que era o fundo que ele lia.
+    pub(super) fundo: Vec<[f32; 3]>,
 }
 
 impl CamadasDoc {
@@ -56,6 +63,7 @@ impl CamadasDoc {
         Self {
             pilha: p.pilha().clone(),
             planos,
+            fundo: p.fundo().to_vec(),
         }
     }
 
@@ -64,8 +72,9 @@ impl CamadasDoc {
     /// sem camada (ou o contrário), uma camada de um tipo que a peça não tem.
     ///
     /// ⚠️ As dimensões dos rasters vêm da DOBRA de `n` e não do ficheiro: são
-    /// derivadas, como a topologia do plano.
-    pub(super) fn pilha(self, n: usize) -> Option<PilhaDaPeca> {
+    /// derivadas, como a topologia do plano. O `fundo` é o resolvido pelo
+    /// leitor (o gravado, ou o de um v6).
+    pub(super) fn pilha(self, n: usize, fundo: Vec<[f32; 3]>) -> Option<PilhaDaPeca> {
         let (l, h) = crate::pilha_da_peca::dobra(n);
         let mut pilha = self.pilha;
         let ids: Vec<LayerId> = pilha.all_ids().collect();
@@ -89,7 +98,7 @@ impl CamadasDoc {
                 return None;
             }
         }
-        let p = PilhaDaPeca::de_partes(pilha, planos, n);
+        let p = PilhaDaPeca::de_partes(pilha, planos, n, fundo);
         p.sincronizada().then_some(p)
     }
 }

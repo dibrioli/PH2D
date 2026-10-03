@@ -12,7 +12,7 @@ use ph2d_mesh::Mesh;
 use ph2d_mesh_colors::Tinta;
 use ph2d_sculpt3d::tinta_fina::TintaDoTraco;
 
-use super::{concorda_com, garante_e_diz, semente};
+use super::{concorda_com, garante_e_diz};
 use crate::pilha_da_peca::PilhaDaPeca;
 
 /// De onde veio o plano que a [`super::garante_e_diz`] deixou na peça.
@@ -131,7 +131,8 @@ pub(crate) fn desce_do_traco(
     fina.drena_sujas(sujas);
     pilha.recebe_do_traco(id, fina.tinta(), sujas);
     let (mesh, k) = (stack.mesh(), peca.nivel());
-    pilha.compoe_amostras(sujas, peca, || semente(mesh, k).amostras().to_vec());
+    let p = &*pilha;
+    p.compoe_amostras(sujas, peca, || p.fundo_semeado(mesh, k));
     true
 }
 
@@ -166,28 +167,67 @@ pub(crate) fn devolve_camada(
     None
 }
 
-/// ⭐⭐⭐ **A peça volta a ser a composição da pilha** — inteira (o painel
-/// mudou o metadado ou a estrutura) — e a cor por vértice segue-a.
+/// ⭐⭐⭐⭐ **A peça volta a ser a composição da pilha** — inteira (o painel
+/// mudou o metadado ou a estrutura, o balde pintou uma camada, um desfazer
+/// deles) — e a cor por vértice segue-a.
+///
+/// ⭐ **Quem compõe a peça inteira é a PLACA** (`docs/3D/30` §13): aqui só o
+/// prefixo dos vértices se compõe na CPU (a cor por vértice), o resto do plano
+/// da CPU fica ATRASADO e o `sync_mesh` compõe-na no compositor do Painter.
+/// Quem precisa da peça inteira na CPU pede-a por [`em_dia`].
 pub(crate) fn recompoe(obj: &mut crate::SceneObject) {
+    if !recompoe_o_plano(obj) {
+        return;
+    }
     let crate::objects::SceneObject {
         stack,
         tinta,
-        pilha,
-        tinta_suja,
-        uploaded,
+        cores_sujas,
         ..
     } = obj;
-    let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_ref()) else {
-        return;
-    };
-    let (mesh, k) = (stack.mesh(), peca.nivel());
-    pilha.pinta_tinta(peca, || semente(mesh, k).amostras().to_vec());
-    if concorda_com(peca, stack.mesh()) {
+    if let Some(peca) = tinta.as_ref()
+        && concorda_com(peca, stack.mesh())
+    {
         let por_vertice = peca.plano_por_vertice().to_vec();
         stack.mesh_mut().colors_mut().copy_from_slice(&por_vertice);
-        *uploaded = false;
+        *cores_sujas = true;
     }
-    *tinta_suja = true;
+}
+
+/// ⭐⭐ **Só o PLANO volta a ser a composição da pilha** (na placa; na CPU o
+/// prefixo dos vértices) — a cor por vértice fica como está: o desfazer do
+/// balde repõe-na ele mesmo, ao bit. `false` se a peça não tem pilha.
+pub(crate) fn recompoe_o_plano(obj: &mut crate::SceneObject) -> bool {
+    let crate::objects::SceneObject {
+        tinta,
+        pilha,
+        compor_na_placa,
+        ..
+    } = obj;
+    let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
+        return false;
+    };
+    pilha.atrasa(peca);
+    *compor_na_placa = true;
+    true
+}
+
+/// ⭐⭐⭐ **A peça INTEIRA para quem a lê na CPU** (assar, exportar, doar ao
+/// 2D) — o `plano` se ele está em dia com a pilha (o caso de sempre fora de um
+/// gesto do painel), senão uma cópia composta agora, na CPU: a REFERÊNCIA.
+pub(crate) fn para_ler<'a>(
+    obj: &crate::SceneObject,
+    plano: &'a Tinta,
+) -> std::borrow::Cow<'a, Tinta> {
+    match obj.pilha.as_ref() {
+        Some(p) if p.atrasada() && p.amostras() == plano.amostras().len() => {
+            let mut fresco = plano.clone();
+            let (mesh, k) = (obj.stack.mesh(), plano.nivel());
+            p.pinta_tinta(&mut fresco, || p.fundo_semeado(mesh, k));
+            std::borrow::Cow::Owned(fresco)
+        }
+        _ => std::borrow::Cow::Borrowed(plano),
+    }
 }
 
 /// O que o balde fez na pilha.
@@ -234,12 +274,7 @@ pub(crate) fn preenche_camada(obj: &mut crate::SceneObject, cor: [f32; 3]) -> Ba
     if mudou {
         let todas: Vec<u32> = (0..u32::try_from(w.amostras().len()).unwrap_or(u32::MAX)).collect();
         pilha.recebe_do_traco(id, &w, &todas);
-        let (mesh, k) = (stack.mesh(), peca.nivel());
-        pilha.pinta_tinta(peca, || semente(mesh, k).amostras().to_vec());
-        if concorda_com(peca, stack.mesh()) {
-            let por_vertice = peca.plano_por_vertice().to_vec();
-            stack.mesh_mut().colors_mut().copy_from_slice(&por_vertice);
-        }
+        recompoe(obj);
     }
     Balde::Pintou { id, antes, mudou }
 }

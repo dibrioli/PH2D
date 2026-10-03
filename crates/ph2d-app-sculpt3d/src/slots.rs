@@ -94,6 +94,31 @@ pub(super) fn plan_slots(slots: &[ObjectId], visible: &[PieceState]) -> Vec<Slot
 }
 
 impl Sculpt3dScene {
+    /// ⭐⭐⭐ **A pilha da peça `i` composta na placa, no slot `k`** — e, se a
+    /// placa a recusa (um ajuste sem código de GPU, o slot sem plano), a peça
+    /// inteira composta na CPU e o plano subido como sempre.
+    fn compoe_na_placa(&mut self, gpu: &ph2d_gpu::GpuContext, i: usize, k: usize) {
+        let crate::objects::SceneObject {
+            id,
+            stack,
+            tinta,
+            pilha,
+            ..
+        } = &mut self.objects[i];
+        let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
+            return;
+        };
+        let mesh = stack.mesh();
+        let feito =
+            self.na_placa
+                .compoe_e_achata(gpu, &self.renderer, k, *id, pilha, mesh, peca.nivel());
+        if feito.is_err() {
+            pilha.em_dia(peca, mesh);
+            self.renderer
+                .upload_tinta_at(&gpu.device, &gpu.queue, k, mesh, Some(peca));
+        }
+    }
+
     /// O plano deste frame — os fatos da cena, pela porta acima.
     ///
     /// ⚠️ A alocação é uma por FRAME, no laço de desenho — não no de dab, que é
@@ -122,8 +147,12 @@ impl Sculpt3dScene {
     /// slot `k`. É assim que o isolamento some com as outras sem o renderizador
     /// aprender o que é visibilidade — e é assim que a DOAÇÃO passa a doar só o
     /// que se vê, de graça, porque o G-buffer sai do mesmo renderizador.
-    pub(super) fn sync_mesh(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+    pub(super) fn sync_mesh(&mut self, gpu: &ph2d_gpu::GpuContext) {
+        let (device, queue) = (&*gpu.device, &*gpu.queue);
         let plan = self.slot_plan();
+        let objetos = &self.objects;
+        self.na_placa
+            .so_estas(|id| objetos.iter().any(|o| o.id == id));
         self.renderer.truncate_objects(plan.len());
         self.slots.truncate(plan.len());
         for (k, line) in plan.into_iter().enumerate() {
@@ -270,6 +299,30 @@ impl Sculpt3dScene {
             {
                 self.objects[i].preview.whole_dirty = false;
             }
+            // ⭐ **A cor por VÉRTICE mudou sem a malha mudar** (o painel de
+            //   camadas, `docs/3D/30` §13): sobe pela janela de todos os
+            //   vértices, SEM levar o plano — o `Full` já a levou.
+            if std::mem::take(&mut self.objects[i].cores_sujas)
+                && !matches!(line.job, SlotJob::Full)
+            {
+                let obj = &self.objects[i];
+                let todos: Vec<u32> = (0..obj.stack.mesh().vert_count() as u32).collect();
+                if !self.renderer.upload_region_at(
+                    queue,
+                    k,
+                    obj.stack.mesh(),
+                    &todos,
+                    &obj.preview.values,
+                ) {
+                    self.renderer.upload_at(
+                        device,
+                        queue,
+                        k,
+                        obj.stack.mesh(),
+                        &obj.preview.values,
+                    );
+                }
+            }
             // ⭐ **E o plano sobe DEPOIS**, sempre: os índices e as posições
             // que ele carrega têm de ser os da topologia que o device acabou de
             // receber (a porta di-lo por escrito).
@@ -284,6 +337,7 @@ impl Sculpt3dScene {
             // que é uma janela de VÉRTICES — não há upload parcial a que
             // recorrer, e a alternativa era não mostrar o traço enquanto ele
             // dura.
+            let mut subiu_inteiro = false;
             if self.objects[i].tinta_suja
                 || mexeu
                 || emprestado
@@ -370,7 +424,19 @@ impl Sculpt3dScene {
                         plano,
                     );
                     self.objects[i].tinta_suja = false;
+                    subiu_inteiro = true;
                 }
+            }
+            // ⭐⭐⭐⭐ **A PILHA COMPOSTA NA PLACA** (`docs/3D/30` §13): o painel
+            //   mudou-a, ou o plano acabou de subir da CPU ATRASADA — a placa
+            //   compõe-na e achata-a no plano do slot, DEPOIS da subida (que é
+            //   o que ela corrige).
+            let atrasada = self.objects[i]
+                .pilha
+                .as_ref()
+                .is_some_and(crate::pilha_da_peca::PilhaDaPeca::atrasada);
+            if std::mem::take(&mut self.objects[i].compor_na_placa) || (subiu_inteiro && atrasada) {
+                self.compoe_na_placa(gpu, i, k);
             }
             // ⚠️ **As ARESTAS, só com a malha armada.** A lista custa até 24 B por
             // vértice e a maioria esculpe sem ela; construí-la junto com a malha

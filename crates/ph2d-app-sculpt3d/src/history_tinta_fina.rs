@@ -152,9 +152,8 @@ impl JanelaFina {
             None => None,
         };
         let (mesh, k) = (stack.mesh(), peca.nivel());
-        pilha.compoe_amostras(&self.amostras, peca, || {
-            crate::tinta_da_peca::semente(mesh, k).amostras().to_vec()
-        });
+        let p = &*pilha;
+        p.compoe_amostras(&self.amostras, peca, || p.fundo_semeado(mesh, k));
         Some(Self {
             relevo,
             camada: Some((id, rgba)),
@@ -294,12 +293,7 @@ impl PlanoInteiro {
         let Some((id, rgba8)) = self.camada else {
             return self.troca(obj.tinta.as_mut());
         };
-        let crate::objects::SceneObject {
-            stack,
-            tinta,
-            pilha,
-            ..
-        } = obj;
+        let crate::objects::SceneObject { tinta, pilha, .. } = obj;
         let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
             return None;
         };
@@ -307,10 +301,7 @@ impl PlanoInteiro {
             return None;
         }
         let rgba8 = pilha.troca_plano(id, rgba8)?;
-        let (mesh, k) = (stack.mesh(), peca.nivel());
-        pilha.pinta_tinta(peca, || {
-            crate::tinta_da_peca::semente(mesh, k).amostras().to_vec()
-        });
+        crate::tinta_da_peca::pilha::recompoe_o_plano(obj);
         Some(Self {
             camada: Some((id, rgba8)),
             ..self

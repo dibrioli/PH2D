@@ -7,7 +7,7 @@ use std::time::Instant;
 use ph2d_tool_painter::{AdjustmentKind, AdjustmentParams, BlendMode, HsbParams, LayerId};
 
 use crate::composto_na_placa::CompostoNaPlaca;
-use crate::pilha_da_peca::PilhaDaPeca;
+use crate::pilha_da_peca::{PilhaDaPeca, dobra};
 
 /// Píxeis de hash por amostra (cor e alfa variados).
 fn px(n: usize, semente: u32) -> Vec<[u8; 4]> {
@@ -91,9 +91,16 @@ fn compara(cpu: &[u8], placa: &[u8]) -> (usize, u8) {
         .fold((0, 0), |(n, m), (a, b)| (n + 1, m.max(a.abs_diff(*b))))
 }
 
-/// ⭐⭐⭐⭐ **O composto da placa é o da CPU, byte a byte** — na pilha rica, nos
-/// degraus `8x..32x`; depois de mudar só o METADADO (nada sobe); e depois de
-/// sujar uma FAIXA de uma camada (só ela sobe).
+/// O contrato placa↔CPU (`docs/3D/30` §13, decisão do dono 03/10): nenhum byte
+/// a mais de UM degrau, e poucos a um degrau — a divisão do WGSL (`2,5 ULP`) num
+/// valor na fronteira. Medido: `23` de `188 424` bytes (`0,012 %`) na pilha
+/// rica a `8x`; o tecto da fracção é `10×` isso — uma lei DIFERENTE que só
+/// erre por um degrau espalha-se por muito mais.
+const FRACCAO_A_UM_DEGRAU: f64 = 0.001_2;
+
+/// ⭐⭐⭐⭐ **O composto da placa é o da CPU, a um degrau de sRGB8** — na pilha
+/// rica, nos degraus `8x..32x`; depois de mudar só o METADADO (nada sobe); e
+/// depois de sujar uma FAIXA de uma camada (só ela sobe).
 #[test]
 #[ignore = "precisa de placa"]
 fn a_placa_compoe_a_pilha_rica_como_a_cpu() {
@@ -101,14 +108,13 @@ fn a_placa_compoe_a_pilha_rica_como_a_cpu() {
     for k in 3u8..=5 {
         let (mut p, mult) = pilha_rica(k);
         let n = p.amostras();
-        let mut placa = CompostoNaPlaca::novo(&gpu);
+        let mut placa = CompostoNaPlaca::novo(&gpu, dobra(p.amostras()));
         let mut confere = |p: &mut PilhaDaPeca, o_que: &str| {
             placa.compoe(&gpu, p).expect("a pilha rica é representável");
             let lida = placa.le(&gpu).expect("composto");
             let (difs, pior) = compara(&p.compor(), &lida[..n * 4]);
-            assert_eq!(
-                (difs, pior),
-                (0, 0),
+            assert!(
+                pior <= 1 && (difs as f64) <= FRACCAO_A_UM_DEGRAU * (n * 4) as f64,
                 "{}x, {o_que}: {difs} bytes de {} diferem da CPU (pior {pior})",
                 1u32 << k,
                 n * 4
@@ -135,22 +141,34 @@ fn diag_que_ingrediente_difere_da_cpu() {
     type Ingrediente = fn(&mut PilhaDaPeca);
     let ingredientes: [(&str, Ingrediente); 14] = [
         ("nada", |_| {}),
-        ("normal 1.0", |p| drop(nova(p, BlendMode::Normal, 1.0))),
-        ("normal 0.55", |p| drop(nova(p, BlendMode::Normal, 0.55))),
-        ("multiply 0.7", |p| drop(nova(p, BlendMode::Multiply, 0.7))),
+        ("normal 1.0", |p| {
+            let _ = nova(p, BlendMode::Normal, 1.0);
+        }),
+        ("normal 0.55", |p| {
+            let _ = nova(p, BlendMode::Normal, 0.55);
+        }),
+        ("multiply 0.7", |p| {
+            let _ = nova(p, BlendMode::Multiply, 0.7);
+        }),
         ("multiply + máscara", |p| {
             let id = nova(p, BlendMode::Multiply, 1.0);
             let m = p.nova_mascara(id).expect("máscara");
             pinta(p, m, 2);
         }),
         ("overlay recortado", |p| {
-            drop(nova(p, BlendMode::Multiply, 1.0));
+            let _ = nova(p, BlendMode::Multiply, 1.0);
             let o = nova(p, BlendMode::Overlay, 1.0);
             p.define_recorte(o, true);
         }),
-        ("screen 0.55", |p| drop(nova(p, BlendMode::Screen, 0.55))),
-        ("softlight", |p| drop(nova(p, BlendMode::SoftLight, 1.0))),
-        ("color 0.8", |p| drop(nova(p, BlendMode::Color, 0.8))),
+        ("screen 0.55", |p| {
+            let _ = nova(p, BlendMode::Screen, 0.55);
+        }),
+        ("softlight", |p| {
+            let _ = nova(p, BlendMode::SoftLight, 1.0);
+        }),
+        ("color 0.8", |p| {
+            let _ = nova(p, BlendMode::Color, 0.8);
+        }),
         ("hsb", |p| {
             let h = p
                 .novo_ajuste(AdjustmentKind::HueSaturationBrightness)
@@ -174,10 +192,10 @@ fn diag_que_ingrediente_difere_da_cpu() {
             p.define_opacidade(i, 0.4);
         }),
         ("invert 1.0", |p| {
-            drop(p.novo_ajuste(AdjustmentKind::Invert).expect("ajuste"))
+            let _ = p.novo_ajuste(AdjustmentKind::Invert).expect("ajuste");
         }),
         ("curves", |p| {
-            drop(p.novo_ajuste(AdjustmentKind::Curves).expect("ajuste"))
+            let _ = p.novo_ajuste(AdjustmentKind::Curves).expect("ajuste");
         }),
     ];
     for base_op in [1.0f32, 0.85] {
@@ -187,7 +205,7 @@ fn diag_que_ingrediente_difere_da_cpu() {
             p.define_opacidade(base, base_op);
             faz(&mut p);
             let n = p.amostras();
-            let mut placa = CompostoNaPlaca::novo(&gpu);
+            let mut placa = CompostoNaPlaca::novo(&gpu, dobra(p.amostras()));
             placa.compoe(&gpu, &mut p).expect("representável");
             let lida = placa.le(&gpu).expect("composto");
             let (difs, pior) = compara(&p.compor(), &lida[..n * 4]);
@@ -225,7 +243,7 @@ fn diag_o_preco_de_compor_na_placa() {
         let cima = cima.expect("cima");
         p.novo_ajuste(AdjustmentKind::HueSaturationBrightness)
             .expect("ajuste");
-        let mut placa = CompostoNaPlaca::novo(&gpu);
+        let mut placa = CompostoNaPlaca::novo(&gpu, dobra(p.amostras()));
         let t = Instant::now();
         placa.compoe(&gpu, &mut p).expect("compõe");
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -249,4 +267,85 @@ fn diag_o_preco_de_compor_na_placa() {
             passos[19]
         );
     }
+}
+
+/// O slot do device onde mora a peça activa.
+fn slot_da_activa(s: &crate::Sculpt3dScene) -> usize {
+    let id = s.objects[s.active].id;
+    s.slots
+        .iter()
+        .position(|&o| o == id)
+        .expect("a peça activa está à vista")
+}
+
+/// ⭐⭐⭐⭐ **GATE — O painel muda a pilha e a PLACA tem a peça** (`docs/3D/30`
+/// §13): pela cena real, uma camada Multiply sobre a base TRANSLÚCIDA, a
+/// recomposição do painel (`recompoe`) e um quadro (`sync_mesh`) — o plano LIDO
+/// DA PLACA é a peça da CPU (a referência, `para_ler`) a um degrau de sRGB8, e a
+/// cor por vértice é o prefixo dela ao bit. CONTROLO: o plano da CPU ficou para
+/// trás — quem compôs a peça foi a placa.
+#[test]
+#[ignore = "precisa de placa"]
+fn o_painel_muda_a_pilha_e_a_placa_tem_a_peca() {
+    let gpu = gpu_or_skip!();
+    let mut s = super::cena_52(&gpu.device);
+    s.sync_mesh(&gpu);
+    let a = s.active;
+    {
+        let p = s.objects[a]
+            .pilha
+            .as_mut()
+            .expect("a peça com plano tem pilha");
+        let cima = p.nova_camada("cima").expect("camada");
+        p.define_modo(cima, BlendMode::Multiply);
+        pinta(p, cima, 9);
+        let base = p.base().expect("base");
+        p.define_opacidade(base, 0.8);
+    }
+    let antes = s.objects[a]
+        .tinta
+        .as_ref()
+        .expect("plano")
+        .amostras()
+        .to_vec();
+    crate::tinta_da_peca::pilha::recompoe(&mut s.objects[a]);
+    s.sync_mesh(&gpu);
+    let o = &s.objects[a];
+    let pilha = o.pilha.as_ref().expect("pilha");
+    assert!(pilha.atrasada(), "a recomposição do painel é da placa");
+    let plano_cpu = o.tinta.as_ref().expect("plano");
+    let v = o.stack.mesh().vert_count();
+    assert_eq!(
+        plano_cpu.amostras()[v..],
+        antes[v..],
+        "CONTROLO: fora dos vértices o plano da CPU ficou como estava"
+    );
+    let referencia = crate::tinta_da_peca::pilha::para_ler(o, plano_cpu)
+        .amostras()
+        .to_vec();
+    let placa = s
+        .renderer
+        .le_tinta_at(&gpu.device, &gpu.queue, slot_da_activa(&s))
+        .expect("o plano está armado na placa");
+    assert_eq!(placa.len(), referencia.len());
+    let degrau = 1.0 / 255.0 + 1e-5;
+    let mut a_um_degrau = 0usize;
+    for (i, (g, c)) in placa.iter().zip(&referencia).enumerate() {
+        let d = (0..3).map(|j| (g[j] - c[j]).abs()).fold(0.0f32, f32::max);
+        assert!(d <= degrau, "amostra {i}: placa {g:?} contra a CPU {c:?}");
+        if d > 1e-5 {
+            a_um_degrau += 1;
+        }
+    }
+    assert!(
+        (a_um_degrau as f64) <= FRACCAO_A_UM_DEGRAU * (referencia.len() * 3) as f64,
+        "{a_um_degrau} amostras a um degrau de {}",
+        referencia.len()
+    );
+    assert_eq!(
+        o.stack.mesh().colors().expect("cor por vértice"),
+        &referencia[..v],
+        "a cor por vértice é o prefixo da peça, ao bit"
+    );
+    assert_ne!(referencia, antes, "a camada mudou a peça");
 }

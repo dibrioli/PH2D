@@ -329,8 +329,7 @@ impl Sculpt3dScene {
     /// primeiro: num frame em que ninguém esculpiu nem girou, esta função não toca a GPU.
     fn rasterise_form(
         &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        gpu: &ph2d_gpu::GpuContext,
         size: (u32, u32),
     ) -> Option<ph2d_form_donation::donated_form::DonatedPlanes> {
         let stamp = self.form_stamp(size);
@@ -340,7 +339,8 @@ impl Sculpt3dScene {
         // ⚠️ A malha tem de estar no device ANTES de rasterizar — e o upload vive no laço de
         // desenho, que num frame em modo LUZ nem roda. Perguntar aqui custa um `if` e é o que
         // impede a doação de descrever a malha de antes do traço.
-        self.sync_mesh(device, queue);
+        self.sync_mesh(gpu);
+        let (device, queue) = (&*gpu.device, &*gpu.queue);
         let planes = self.renderer.form_plane(
             device,
             queue,
@@ -376,7 +376,7 @@ impl Sculpt3dScene {
         size: (u32, u32),
         framing: ph2d_mesh_render::Framing,
     ) -> Option<ph2d_mesh_render::FormPlanes> {
-        self.sync_mesh(&gpu.device, &gpu.queue);
+        self.sync_mesh(gpu);
         self.renderer.form_plane_in(
             &gpu.device,
             &gpu.queue,
@@ -466,7 +466,7 @@ impl Sculpt3dScene {
         if *carimbo == Some(agora) {
             return false;
         }
-        self.sync_mesh(&gpu.device, &gpu.queue);
+        self.sync_mesh(gpu);
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -550,7 +550,7 @@ pub fn donate_form(
     // (W2/L3-B). Ele e a cena viviam no mesmo `AppGfx`, e a versão anterior desta função
     // clonava os dois `Arc` só para separar os empréstimos; quem desmonta o `AppGfx` agora é
     // a shell, que é a dona dele, e aqui não sobra clone nenhum.
-    if let Some(plane) = scene.rasterise_form(&gpu.device, &gpu.queue, size) {
+    if let Some(plane) = scene.rasterise_form(gpu, size) {
         canal.news = Some(Some(plane));
     }
 }

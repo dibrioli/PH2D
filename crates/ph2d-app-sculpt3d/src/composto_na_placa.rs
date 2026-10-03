@@ -12,7 +12,13 @@
 //! o mesmo composto, byte a byte (gate
 //! `tinta_no_produto_tests::placa::a_placa_compoe_a_pilha_rica_como_a_cpu`).
 
+use std::collections::BTreeMap;
+
 use ph2d_gpu::GpuContext;
+use ph2d_mesh::Mesh;
+use ph2d_mesh_render::{AchataDaTinta, MeshRenderer};
+
+use crate::objects::ObjectId;
 use ph2d_painter_layer_ops::flatten_for_gpu;
 use ph2d_render::layer_compositor::{
     LayerCompositeError, LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
@@ -29,6 +35,8 @@ pub(crate) enum NaoCompos {
     NaoRepresentavel,
     /// O compositor recusou (tecto de camadas, dobra maior que a placa…).
     Compositor(LayerCompositeError),
+    /// O slot da peça não tem o plano armado com estas amostras.
+    SemPlano,
 }
 
 /// Os píxeis das camadas da pilha, pela versão de cada uma.
@@ -62,15 +70,102 @@ fn chaves(ops: &[LayerOp]) -> impl Iterator<Item = u64> + '_ {
 }
 
 /// ⭐⭐⭐ **O compositor de GPU de UMA peça** — as fatias dele são as camadas
-/// dela (a chave é o `LayerId`, que só é único dentro de uma pilha).
+/// dela (a chave é o `LayerId`, que só é único dentro de uma pilha) — e o
+/// FUNDO dela na placa, amostra a amostra, em luz.
 pub(crate) struct CompostoNaPlaca {
     compositor: LayerCompositor,
+    /// A dobra para que o compositor foi montado: outra dobra, outro compositor.
+    dobra: (u32, u32),
+    /// O fundo na placa e a chave dele (o fundo por vértice e o degrau).
+    fundo: Option<(wgpu::Buffer, Vec<[f32; 3]>, u8)>,
+}
+
+/// ⭐ **A composição na placa de uma cena**: o pipeline do achatamento e o
+/// compositor de cada peça.
+#[derive(Default)]
+pub(crate) struct CompostosDaCena {
+    achata: Option<AchataDaTinta>,
+    por_peca: BTreeMap<ObjectId, CompostoNaPlaca>,
+}
+
+impl CompostosDaCena {
+    /// ⭐⭐⭐⭐ **A pilha da peça composta na placa e achatada no plano do slot
+    /// `k`** — o plano da placa fica com a cor da peça sem subir da CPU.
+    #[allow(clippy::too_many_arguments)] // gpu+renderer+slot+peça+pilha+malha+degrau
+    pub(crate) fn compoe_e_achata(
+        &mut self,
+        gpu: &GpuContext,
+        renderer: &MeshRenderer,
+        k: usize,
+        peca: ObjectId,
+        pilha: &mut PilhaDaPeca,
+        mesh: &Mesh,
+        nivel: u8,
+    ) -> Result<(), NaoCompos> {
+        let achata = self
+            .achata
+            .get_or_insert_with(|| AchataDaTinta::new(&gpu.device));
+        let n = pilha.amostras();
+        let dobra = dobra(n);
+        let c = self
+            .por_peca
+            .entry(peca)
+            .or_insert_with(|| CompostoNaPlaca::novo(gpu, dobra));
+        if c.dobra != dobra {
+            *c = CompostoNaPlaca::novo(gpu, dobra);
+        }
+        c.compoe(gpu, pilha)?;
+        c.garante_fundo(gpu, pilha, mesh, nivel);
+        let fundo = &c.fundo.as_ref().ok_or(NaoCompos::SemPlano)?.0;
+        let vista = c
+            .composto()
+            .ok_or(NaoCompos::SemPlano)?
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        renderer
+            .achata_tinta_at(
+                &gpu.device,
+                &gpu.queue,
+                k,
+                achata,
+                &vista,
+                dobra.0,
+                fundo,
+                n,
+            )
+            .then_some(())
+            .ok_or(NaoCompos::SemPlano)
+    }
+
+    /// Esquece as peças que já não estão na cena.
+    pub(crate) fn so_estas(&mut self, vivas: impl Fn(ObjectId) -> bool) {
+        self.por_peca.retain(|id, _| vivas(*id));
+    }
 }
 
 impl CompostoNaPlaca {
-    pub(crate) fn novo(gpu: &GpuContext) -> Self {
+    pub(crate) fn novo(gpu: &GpuContext, dobra: (u32, u32)) -> Self {
         Self {
             compositor: LayerCompositor::new(gpu),
+            dobra,
+            fundo: None,
+        }
+    }
+
+    /// ⭐ **O fundo da pilha na placa** — sobe UMA vez por pilha e degrau: o
+    /// fundo é fixado quando a pilha nasce (`pilha_da_peca_fundo`).
+    fn garante_fundo(&mut self, gpu: &GpuContext, pilha: &PilhaDaPeca, mesh: &Mesh, nivel: u8) {
+        let serve = self
+            .fundo
+            .as_ref()
+            .is_some_and(|(_, v, k)| *k == nivel && v.as_slice() == pilha.fundo());
+        if !serve {
+            let luz: Vec<[f32; 3]> = pilha
+                .fundo_semeado(mesh, nivel)
+                .iter()
+                .map(|c| c.map(ph2d_color::srgb::srgb_to_linear_unit))
+                .collect();
+            let buf = AchataDaTinta::fundo(&gpu.device, &luz);
+            self.fundo = Some((buf, pilha.fundo().to_vec(), nivel));
         }
     }
 
@@ -102,3 +197,7 @@ impl CompostoNaPlaca {
         self.compositor.read_output(gpu)
     }
 }
+
+#[cfg(test)]
+#[path = "composto_na_placa_tests.rs"]
+mod tests;

@@ -195,6 +195,11 @@ pub(crate) struct PilhaDaPeca {
     /// A camada que o traço em curso pinta (ver `pilha_da_peca_traco`) —
     /// estado da sessão, nunca do documento.
     em_traco: Option<LayerId>,
+    /// ⭐⭐ O FUNDO: a cor do barro por baixo da pilha, POR VÉRTICE, fixada
+    /// quando a pilha nasce (`pilha_da_peca_fundo`).
+    fundo: Vec<[f32; 3]>,
+    /// O plano de tinta da CPU ficou atrás da pilha (a placa compôs) — sessão.
+    cpu: fundo::Atraso,
 }
 
 impl LayerPixelSource for PilhaDaPeca {
@@ -250,6 +255,8 @@ impl PilhaDaPeca {
             planos: BTreeMap::from([(base, plano)]),
             amostras: n,
             em_traco: None,
+            fundo: t.plano_por_vertice().to_vec(),
+            cpu: fundo::Atraso::default(),
         }
     }
 
@@ -259,12 +266,15 @@ impl PilhaDaPeca {
         pilha: LayerStack,
         planos: BTreeMap<LayerId, PlanoDaCamada>,
         amostras: usize,
+        fundo: Vec<[f32; 3]>,
     ) -> Self {
         Self {
             pilha,
             planos,
             amostras,
             em_traco: None,
+            fundo,
+            cpu: fundo::Atraso::default(),
         }
     }
 
@@ -623,6 +633,11 @@ pub(crate) fn achata(composto: &[u8], fundo: impl Fn(usize) -> [f32; 3], destino
 #[path = "pilha_da_peca_traco.rs"]
 mod traco;
 pub(crate) use traco::para_bytes;
+
+/// ⭐ **O fundo da pilha e o plano da CPU atrasado** (W1b) — a cor por baixo
+/// da pilha fixada quando ela nasce, e a composição na placa.
+#[path = "pilha_da_peca_fundo.rs"]
+mod fundo;
 
 /// ⭐ **O painel sobre a pilha** (W3) — o metadado de uma vez e a troca
 /// estrutural do desfazer.

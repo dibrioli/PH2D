@@ -1,9 +1,10 @@
-# HANDOFF DE CONTINUAÇÃO — `line/motion-value`, 2026-10-02 (AS LISTAS DAS CÉLULAS)
+# HANDOFF DE CONTINUAÇÃO — `line/motion-value`, 2026-10-02 (AS LISTAS DAS CÉLULAS · O TRACEJADO NO ECRÃ)
 
 > **Para a próxima janela da MESMA linha** (não é um handoff de integração: a linha continua aberta).
 > Assuma pelo [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)
 > (`cd` + `pwd` + `git branch --show-current` ANTES de ler). O mecanismo inteiro está no
-> [doc 121 §9.8](../121_as_formas_na_placa.md); aqui só o estado e o que fica aberto.
+> [doc 121 §9.8–§9.9](../121_as_formas_na_placa.md); aqui só o estado e o que fica aberto.
+> ⭐ **A próxima janela começa pelo §6** (as grandes ESTICADAS no proxy de telemóvel).
 
 ## §0 — Identidade
 
@@ -12,7 +13,7 @@
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` |
 | ramo | `line/motion-value` |
 | base | `main` @ `1ad60a1ce` (a linha foi alinhada por `git reset --keep main` — `cherry` dava `0`) |
-| commits desta jornada | `5febba023` (as listas) · `22e7d069f` (gate da cena que muda + mutação 14/14) · `0d94bdfbc` (doc 121) · `7a58e7aaf` (gate das letras) · `3abf99b77` (o tracejado na placa) · `4aa06e738` (a variante tracejada da `=127`) · este handoff |
+| commits desta jornada | `5febba023` (as listas) · `22e7d069f` (gate da cena que muda + mutação 14/14) · `0d94bdfbc` (doc 121) · `7a58e7aaf` (gate das letras) · `3abf99b77` (o tracejado na placa) · `4aa06e738` (a variante tracejada da `=127`) · `042327a6a` (o ajuste da emenda no ecrã, nas duas rotas) · `cefdb9667`/`19a359f2c` (docs) · este handoff |
 | ⚠️ o nome | o Enio chamou-a «linha `Nodes`»; não existe `line/Nodes` — a linha do Motion Nodes é esta |
 
 ## §1 — O que esta jornada fechou (itens 1 e 2 do handoff de 01/10)
@@ -43,14 +44,18 @@
 
 ## §2 — Gates e provas (corridos nesta árvore)
 
-- Novos (§1b): `tracejado::o_tracejado_esticado_desenha_o_que_o_vello_desenha` ·
+- ✅ **`nextest-impacted` sobre o diff acumulado: `17 042` passaram** (02/10, depois do `042327a6a`). ⚠️ O
+  resto do fecho (censos da árvore combinada, handoff de INTEGRAÇÃO, binário do smoke no fim) NÃO correu
+  — a linha continua aberta.
+- 1.ª janela (§1): `tracejado::o_tracejado_esticado_desenha_o_que_o_vello_desenha` ·
   `tracejado::o_tracejado_calculado_desenha_o_que_o_pixel_desenha` ·
   `motion_shape_placa::gpu_tests::tracejado::a_rota_da_placa_traceja_o_esticado_como_a_casa` ·
   `…::letras::a_rota_da_placa_desenha_as_letras_como_a_cena_vello` ·
-  `a_variante_tracejada_poe_o_dash_na_forma`. Clippy `-D warnings` ✅ em `ph2d-shape-gpu`,
-  `ph2d-app-motion`, `ph2d-vector`. ⚠️ O gate batched de FECHO continua SEM correr.
-
-- GPU RTX: `ph2d-shape-gpu` **7/7** (+ `as_fileiras_que_nao_cabem_nas_listas_desenham_o_mesmo` e
+  `a_variante_tracejada_poe_o_dash_na_forma` · e (`042327a6a`) `o_tracejado_esticado_fecha_no_contorno_do_ecra`
+  · `o_tracejado_esticado_aberto_acaba_com_traco_inteiro` em `ph2d-vec-render`. Clippy `-D warnings` ✅ em
+  `ph2d-shape-gpu`, `ph2d-app-motion`, `ph2d-vector`, `ph2d-vec-render`. GPU RTX: `ph2d-shape-gpu --test it`
+  **9/9**, `motion_shape_placa::gpu_tests` **6/6**, censo de rota `19` das `23`.
+- 1.ª janela, GPU RTX: `ph2d-shape-gpu` **7/7** (+ `as_fileiras_que_nao_cabem_nas_listas_desenham_o_mesmo` e
   `uma_cena_que_muda_nao_le_as_arestas_do_quadro_anterior`, novos) · `ph2d-app-motion` placa **4/4** +
   ponte **1/1** · `ph2d-gpu-cook` formas **2/2**.
 - Mutação **14/14** ([arnês](../ferramentas/mutacao_as_listas_das_celulas_2026-10-02.py)); a M10
@@ -71,7 +76,12 @@
 4. O perfilador separa agora o cálculo em `render.contorno.conta` · `.escreve` · `.celulas` (era um
    relógio só, `render.contorno`).
 5. `ph2d-vector` re-exporta `ParamCurve`, `ParamCurveNearest`, `PathSeg` (foundational, append-only).
-6. `EixoItem` cresceu `56 → 72 B` (gate `o_registo_tem_o_tamanho_do_shader`).
+6. `EixoItem` cresceu `56 → 72 B` (gate `o_registo_tem_o_tamanho_do_shader`) — ⚠️ TODO eixo, também o
+   das estrelas SEM tracejado: ver §6, a linha de base tem de ser re-medida.
+7. **`ph2d-vec-render::stroke_uniform` mudou de lei** (`042327a6a`): sob afim NÃO conforme o tracejado
+   ajusta-se ao contorno do ECRÃ (`ajusta_no_ecra`, `FOLGA_DO_AJUSTE = 1e-4`) — também no vetor de
+   documento. Nenhuma outra linha toca nesse ficheiro (conferido em 02/10); o integrador deve saber.
+8. `ph2d-shape-gpu` tem `ph2d-vec-render` como dev-dep (a régua CHAMA a lei da casa; sem ciclo).
 
 ## §4 — ⏳ O QUE FICA ABERTO, na ordem proposta
 
@@ -88,7 +98,7 @@
 ## §5 — Instrumentos (versionados)
 
 - [`mutacao_o_tracejado_no_ecra_2026-10-02.py`](../ferramentas/mutacao_o_tracejado_no_ecra_2026-10-02.py)
-  — a mutação `17` de `17` do tracejado.
+  — a mutação `21` de `21` do tracejado (os 9 gates GPU da crate + os 6 de paridade do produto).
 - [`mede_sonda_das_estrelas.sh`](../ferramentas/mede_sonda_das_estrelas.sh) — a sonda nos três arranjos,
   nas duas placas, só com `load < 4`, a placa pela porta da casa só durante a corrida. COPIE o binário
   antes (o próximo build do mesmo perfil sobrescreve o nome).
@@ -96,3 +106,37 @@
   por passe.
 - [`mede_formas_na_placa.sh`](../ferramentas/mede_formas_na_placa.sh) — a W5 no app (não edite `.rs`
   enquanto corre: o fotógrafo recompila e recusa código mais novo que o binário).
+
+## §6 — ⭐ O PRÓXIMO ITEM: as grandes ESTICADAS no proxy de telemóvel
+
+**O alvo:** `72` estrelas grandes esticadas na iGPU — placa `1,74 ms` contra Vello `1,05` (sonda calma de
+02/10, ANTES do §9.9). As conformes já empatam (`0,94` · `0,92`) e as densas ganham (`1,71` · `2,81`).
+
+**Ordem de ataque:**
+
+1. **Re-medir a linha de base ANTES de tocar em nada.** O §9.9 cresceu o `EixoItem` `56 → 72 B` (o
+   desenho lê o eixo das cópias esticadas) e o número de `1,74` é anterior. Corra
+   [`mede_sonda_das_estrelas.sh`](../ferramentas/mede_sonda_das_estrelas.sh) nos três arranjos, nas duas
+   placas, só com `load < 4` (a máquina é partilhada: em 02/10 o `load` andou entre `2` e `70`;
+   [`medir_quando_calmo.sh`](../ferramentas/medir_quando_calmo.sh) espera). Se o eixo maior pesou, isso já é
+   um achado: o tracejado podia viver num buffer à parte e o eixo contínuo voltar a `56 B`.
+2. **Decomposição com `PH2D_FLUID_PROFILE=1`** (o relógio da placa por passe): de 02/10, desenho `0,82` ·
+   células `0,43` · escrita das arestas `0,20` (um fio por CÓPIA) · contagem `0,06`. O desenho é o maior.
+3. **O degrau seguinte é o do Vello inteiro**: rasterizar fino em CÁLCULO (`4 px` por fio, a área por
+   pixel acumulada como o `fine.wgsl`), e isso pede a ORDEM entre cópias (a mistura é por cima) —
+   desenho próprio, não um ajuste. Escreva o kill-criterion ANTES de construir (DIRETIVA §5).
+
+**⛔ Já medido e RECUSADO — não reconstruir** (doc 121 §9.7–§9.8): montar as listas com um fio por FILEIRA
+(`0,57 → 1,52 ms` de cálculo) · largura de célula `16` ou `64` (fica `32`) · recortar a aresta à fileira
+(`1,52 → 1,40`, uma divisão por aresta) · o protótipo «cobertura 8 px por fio» do §9.7 (não estava
+guardado e só dividia a leitura). E do §9.4–§9.5: a árvore de blocos no eixo · herdar a bissectriz do
+troço anterior.
+
+**⚠️ Não quebre o que o §9.9 pôs no mesmo caminho:** o desenho pixel a pixel (`traco_do_eixo`) e o
+contorno calculado (`percorre`) têm agora o ramo TRACEJADO (`tracejado_px`/`emite_tracejado`, o
+`ajuste_do_tracejado` por cópia). Qualquer reescrita do desenho corre os `9` gates GPU da crate e os `6` do
+produto, e o arnês do tracejado (`21` mutações) tem de continuar a sangrar tudo.
+
+**Fecho desta linha** (quando o Enio o pedir, ou ao acabar o item): DIRETRIZ §1.5.9 — gate batched,
+handoff de INTEGRAÇÃO, `rm -rf target/*/incremental`, e o binário do smoke deixado compilado.
+

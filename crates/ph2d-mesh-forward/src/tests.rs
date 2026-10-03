@@ -233,7 +233,7 @@ fn o_brilho_acende_fora_da_peca() {
         "o controlo: desligado é o quadro de sempre, ao byte"
     );
     let mut acesos = 0;
-    for (a, b) in sem.chunks_exact(4).zip(com.chunks_exact(4)) {
+    for (a, b) in sem.as_chunks::<4>().0.iter().zip(com.as_chunks::<4>().0) {
         for k in 0..4 {
             assert!(b[k] >= a[k], "o brilho escureceu um canal: {a:?} → {b:?}");
         }

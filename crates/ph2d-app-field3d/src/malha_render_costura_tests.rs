@@ -208,8 +208,10 @@ fn in_the_mesh_render_the_panel_offers_the_bloom_and_switching_it_on_lights_the_
         );
         let com = quadro();
         let acesos = sem
-            .chunks_exact(4)
-            .zip(com.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(com.as_chunks::<4>().0)
             .filter(|(a, b)| a[3] == 0 && b[3] > 0)
             .count();
         assert!(

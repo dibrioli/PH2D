@@ -134,7 +134,8 @@ fn a_dominancia_corta_nos_e_nunca_encarece_um_caminho() {
 
 /// O par da sonda onde a dominância escolheu, entre dois caminhos discretos de custo IGUAL, o que
 /// guarda um ponto a mais na quina arredondada da lama — e o polimento ficava preso nele (`1,0002`
-/// do oráculo). Tirar o ponto e polir de novo leva-o ao óptimo.
+/// do oráculo) enquanto a gama de deslize de uma raiz de refracção era «o que a raiz vê». Com a
+/// ARESTA inteira, a travessia desliza para onde o vizinho a vê, e o ponto da quina fica colinear.
 #[test]
 fn a_quina_da_lama_nao_prende_o_polimento() {
     let m = cena(5);

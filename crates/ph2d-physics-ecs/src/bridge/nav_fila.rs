@@ -13,7 +13,7 @@ use super::{ChaveMalha, Vez};
 use crate::bridge::PhysicsBridge;
 
 /// ⭐ **O orçamento de nós da procura por tique** para os caminhos que a fila deve — o recurso é o
-/// TEMPO do tique (`~60 ns` por nó na procura uniforme desta cena ⇒ `~1,2 ms`). Medido
+/// TEMPO do tique (`~110 ns` por nó na procura uniforme, `~330` na ponderada ⇒ `~2–7 ms`). Medido
 /// (`examples/medir_replaneio.rs`, `--release`, load `~3`, `100 × 100 m`, `1 000` caixas, a porta a
 /// alternar seis vezes; o pior tique da janela que se segue, mediana):
 ///

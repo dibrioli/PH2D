@@ -792,3 +792,135 @@ identificadores `NavAlvoModo::Objecto` e `ArgKind::ObjectName`. Cura na PORTA (`
   a porta que anda (discos ao longo da forma: `1,55 m → 0,02 m` fora do caminho) e o defeito G da vida.
   Detalhe e gates: o handoff da W8 §2-bis.
 - Os outros abertos da W5–W7 continuam (§15.6 e o handoff da W7 §4).
+
+---
+
+## §17 — W9 FEITA (2026-10-03): o custo à escala
+
+**O que muda para quem usa:** nada que se veja numa cena pequena — e é esse o ponto. Numa cena grande
+(`100 × 100 m`, `1 000` obstáculos) a procura com muita lama gasta menos de metade, uma porta que pára
+refaz a malha num terço a menos, e uma porta que muda já não congela o jogo com todos os inimigos a
+replanear no mesmo tique: eles entram numa FILA e são servidos aos poucos, os de caminho partido
+primeiro. De passagem, a sonda com 200 agentes achou um **crash** do desvio (ORCA) quando um agente
+fica entalado entre duas paredes — curado.
+
+### §17.1 — As medições (`--release`, load `~2–3`; antes = o fecho da W8)
+
+**A procura ponderada** (`medir_custo` §4, `100 × 100 m`, `1 000` obstáculos, `100` lamas a peso 4, 40
+consultas; os nós não dependem da carga):
+
+| | nós expandidos / consulta | mediana · p95 · máx | §3 a `0,25 m`, peso 4 · 10 |
+|---|---|---|---|
+| uniforme (a régua) | `5 650` | `0,32 · 1,7 · 4,9 ms` | — |
+| ponderada, antes (o fecho da W8) | `64 508` | `4,7 · 38 · 66 ms` | `143 · 291 µs` |
+| **ponderada, W9** (com a malha contígua) | **`24 661`** | **`3,5 · 21 · 30 ms`** | **`118 · 202 µs`** |
+| CONTROLO: o mesmo binário, `SEM_DOMINANCIA=1` | `64 508` | `4,7 · 38 · 66 ms` | — |
+
+Custo / oráculo (§3, `0,25 m`, os quatro pesos): **ao dígito o mesmo de antes** — `1,0000 · 1,0000 ·
+1,0053` (1,5) · `1,0000 · 1,0000 · 1,0107` (2) · `0,9998 · 1,0000 · 1,0000` (4) · `0,9997 · 1,0000 ·
+1,0045` (10) —, e a lista dos pares acima de `1,0001` é a MESMA com e sem a dominância
+(`PIOR=1`).
+
+**A montagem da malha** (`medir_custo` §4, o mínimo de 5, três corridas alternadas antes/depois na
+mesma máquina):
+
+| uma actualização | antes | **W9** |
+|---|---|---|
+| uma porta (sem lamas) | `3,96 ms` | **`2,65 ms`** |
+| uma porta (com 100 lamas) | `5,66 ms` | **`3,76 ms`** |
+| uma lama a mexer | `7,13 ms` | **`5,23 ms`** |
+| a frio (com 100 lamas) | `58,6 ms` | `56,8 ms` |
+
+**O replaneio em massa** (`examples/medir_replaneio.rs` da ponte, a porta a alternar; o pior tique da
+janela que se segue, mediana de seis):
+
+| orçamento de nós / tique | 10 · 50 · 200 agentes | a fila esvazia (200) | o último partido (200) |
+|---|---|---|---|
+| sem fila (antes) | `10,4 · 34,3 · 124,3 ms` | `1` tique | `1` |
+| `40 000` | `9,3 · 18,5 · 52,6` | `30` | `5` |
+| **`20 000` (o produto)** | **`6,9 · 16,5 · 51,7`** | **`58`** | **`9`** |
+| `10 000` | `7,0 · 16,1 · 51,3` | `97` | `16` |
+
+O CONTROLO (o mesmo tique sem a porta mexer) é `2,1 · 10,5 · 37,6 ms` — a 200 agentes o tique que muda
+já está a `14 ms` do que não muda.
+
+### §17.2 — As decisões
+
+| decisão | porquê (medido) |
+|---|---|
+| **a dominância entre frentes** (`polyanya_dominancia.rs`): um nó numa aresta onde o custo NÃO muda é cortado nas pontas onde uma frente já EXPANDIDA na mesma aresta chega por `g + w·|ρ − y|` menor ou igual | `D(y)` tem no máximo um extremo ao longo de uma recta (a curva de nível é uma hipérbole) ⇒ o corte é exacto e só nas pontas (conservador); `64 508 → 24 661` nós |
+| só na procura ponderada | a uniforme fica ao bit (gate); e ela já é a régua |
+| só onde o custo não muda na aresta | onde muda, a refracção poda por ponto (`steiner_g`); cortar ali dava os mesmos nós (`24 615` contra `24 663`) e perdia, em teoria, as PONTAS de quem roça um canto — fica a escolha segura |
+| `12` bissecções | o corte é conservador: menos passos só cortam menos. `60` → `347 ms`, `24` → `291`, `12` → `275` (os mesmos nós) |
+| a gama de deslize de uma raiz de refracção é a ARESTA inteira (era «o que a raiz vê») | um par a peso 4 dava `1,0002` com a dominância: dois caminhos discretos de custo igual (`20,797590847` contra `…882`), e o que guarda um ponto a mais na quina arredondada da lama ficava preso — o polimento move um ponto de cada vez, e a gama curta não deixava a travessia ir para onde fica colinear. O polimento só aceita o que a caminhada real confirma |
+| **a malha em listas CONTÍGUAS** (`ring_off`/`ring`/`nbrs`/`twin`); o `Poly` é uma vista | três listas por polígono eram `~43 000` alocações por construção (`0,62 ms` a criar e `0,28` a largar, medido à parte); a porta validada é uma só (`from_rings`) |
+| a vizinhança e a sobreposição pelas arestas que SAEM de cada vértice | a mesma resposta (a 1.ª pela ordem dos polígonos), menos varrimento |
+| **a fila do replaneio** (`ph2d_nav::refresh` + `bridge/nav_fila.rs`) | um caminho que ainda se anda não precisa de ser refeito no tique da mudança; um partido sim, e passa à frente |
+| o orçamento em NÓS, com a estimativa = a última procura de cada um | determinístico (nada lê um relógio); o tempo varia com a máquina, a contagem não |
+| a ordem: partidos, quem espera há mais tiques, a ordem das ENTIDADES (o `Ord` delas, o dos mapas da ponte) | sem o envelhecimento, uma malha que muda sem parar servia sempre os primeiros (gate) |
+| o estado (`owed`, `broken`, `last_nodes`) no `AgentRuntime` | ele já vai no anel: um scrub para o meio da fila devolve a fila a meio (gate) |
+
+### §17.3 — O que a medição derrubou
+
+- **A 1.ª dominância custava mais do que poupava**: `2,6×` menos nós e o mesmo tempo — `0,4 µs` por nó
+  contra `0,18`. A árvore por aresta saiu (uma lista por polígono), e as `60` bissecções desceram a `12`.
+- **Repetir o corte até nada mudar** (uma frente pode cobrir a ponta depois de outra a cortar): `344 ms`
+  contra `275`, e quase nenhum nó a menos. ⇒ As frentes que restam são LEGÍTIMAS: cada raiz da grelha de
+  uma fronteira é a mais barata na sua fatia — o resto da distância à uniforme (`4,4×` nós) é a grelha.
+- **A montagem incremental «reaproveitar os mosaicos que não mudaram»**: desenhada e medida antes de
+  escrita — o que fica O(malha) depois das listas contíguas é a grelha (`0,46 ms`), as ilhas (`0,24`),
+  o índice vértice→polígonos (`0,11`) e a ligação (`~0,8`); reaproveitar peças poupava `~0,5 ms`,
+  porque inserir um mosaico desloca a numeração de todos os seguintes. A alavanca seguinte é outra
+  (§17.6).
+- **Um `!m.poly_count() == 0`**: a troca por script de `!m.polys().is_empty()` virou um NÃO bit-a-bit
+  sobre o número — toda malha parecia vazia. Compila; apanharam-no os gates do agente (7 vermelhos).
+- **A 1.ª cura da quina** («tirar cada raiz cujo caminho sem ela, polido de novo, não custa mais»): a
+  mutação achou-a SOBREVIVENTE — sem ela a sonda dá os mesmos custos ao dígito, e a procura fica mais
+  rápida (mediana `3,8 → 3,5 ms`). Saiu; a cura é só a gama.
+- **A minha 1.ª fixtura do scrub da fila** movia a porta à mão (uma edição do mundo): o scrub reprovava
+  também SEM a fila. A porta passou a ser uma curva da cena (`SceneAtTick`), como a timeline. E a 2.ª ia
+  para o tique 9 — o anel guarda um âncora de 10 em 10, logo o scrub refazia tudo do zero e a mutação
+  «o seed não devolve a dívida» SOBREVIVIA. Agora a porta muda no 8 e o scrub vai para o 13 (semeia do
+  10, a meio da fila).
+- **A ordem da fila pela consulta ao mundo** (a 1.ª redacção) servia os guardas ao contrário da ordem das
+  entidades; e na fixtura as duas ordens coincidiam (a mutação sobrevivia) até metade dos guardas
+  levar um componente de teste — a consulta percorre por tabelas.
+- **A 1.ª fixtura de «o partido passa à frente»** punha o vigia em ÚLTIMO na ordem das entidades — o
+  gate passava sem a prioridade. Agora a pré-condição está afirmada.
+
+### §17.4 — ⛔ Recusas MEDIDAS
+
+| recusado | medição |
+|---|---|
+| o corte repetido até ao ponto fixo | `344 ms` contra `275`, quase os mesmos nós |
+| a dominância nas arestas onde o custo muda | os mesmos nós (`24 615` contra `24 663`); fica de fora pelo argumento das pontas |
+| `60` (ou `24`) bissecções no corte | `347` / `291 ms` contra `275`, os mesmos nós |
+| montar reaproveitando as peças dos mosaicos com a numeração de hoje | `~0,5 ms` de `2,0` — a numeração desloca-se; ver §17.6 |
+| um orçamento abaixo de `20 000` nós | o tique não desce (`51,3` contra `51,7 ms` a 200) e a espera dobra (`97` tiques) |
+| tirar os pontos a mais e polir de novo (a 1.ª cura da quina) | redundante com a gama da aresta inteira (os mesmos custos ao dígito) e mais lento |
+
+### §17.5 — A prova
+
+Gates novos: `a_dominancia_corta_nos_e_nunca_encarece_um_caminho` (CONTROLO sem a dominância: `26 493`
+nós contra `43 543`, e nenhum caminho mais caro) · `a_quina_da_lama_nao_prende_o_polimento` (o par da
+sonda, `≤ 1,0001` do oráculo) · `a_fila_serve_os_partidos_depois_os_mais_antigos_e_nunca_salta_a_frente`
+· `a_porta_que_abre_um_atalho_serve_os_agentes_um_por_tique` (CONTROLO sem fila: os oito no mesmo tique)
+· `o_caminho_partido_passa_a_frente_na_fila` · `um_scrub_para_o_meio_da_fila_devolve_a_mesma_corrida`
+· `uma_malha_que_nao_para_de_mudar_serve_todos_a_vez` · `entalado_entre_duas_paredes_o_3d_nao_parte`
+(visto VERMELHO, o mesmo panic, sem a cura). Os gates de sempre (incremental = a frio, por mosaicos = a
+inteira, o oráculo exacto, o hash c9) passam sobre a malha contígua.
+Mutação: [`mutacao_navegacao_w9_2026-10-03.py`](ferramentas/mutacao_navegacao_w9_2026-10-03.py) —
+resultado no handoff.
+
+### §17.6 — ⏳ O que fica
+
+- **Uma malha com ids FIXOS por mosaico** (o idioma do Detour: polígono = mosaico + índice local, com
+  folga): a montagem passaria a ser proporcional ao mosaico tocado. Mexe no núcleo da procura (todo
+  `u32` de polígono), por isso é uma wave própria. Hoje uma porta custa `2,65 ms` (`0,6` o mosaico,
+  `2,0` a montagem).
+- **O tique a 200 agentes SEM mudança nenhuma é `37,6 ms`** (o CONTROLO da `medir_replaneio`) — o
+  desvio e a física à escala; ninguém o mediu por fase ainda.
+- **A procura ponderada continua `~4×` os nós da uniforme** (a grelha das fronteiras, §17.3) e `~12×` o
+  tempo na mediana; e o orçamento da fila em nós não é tempo uniforme entre as duas (`~110 ns` por nó na
+  uniforme, `~330` na ponderada: os totais da §17.1 sobre os nós).
+- A 1.ª procura de agentes que nascem juntos não passa pela fila (só a mudança de malha passa).

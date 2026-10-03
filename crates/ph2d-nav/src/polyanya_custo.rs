@@ -149,8 +149,9 @@ impl Polyanya {
         for (x, j) in pontos {
             let g = r.g + w * dist(r.p, x);
             // A gama do polimento é a ARESTA inteira, não o que esta raiz vê (W9): o polimento só
-            // aceita o que a caminhada real confirma, e quando um ponto anterior sai
-            // (`sem_pontos_a_mais`) a travessia tem de poder ir para onde o novo vizinho a vê.
+            // aceita o que a caminhada real confirma. Com «o que a raiz vê», dois caminhos discretos
+            // de custo IGUAL polem-se diferente — o que guarda um ponto a mais na quina arredondada
+            // da lama ficava preso nele (medido: `1,0002` do oráculo contra `1,0000`).
             let lado = Lado {
                 into: p,
                 other: de,
@@ -504,7 +505,6 @@ impl Polyanya {
                     i += 1;
                 }
             }
-            sem_pontos_a_mais(mesh, &self.costs, &mut pts);
             // Depois de deslizar, o custo é o REAL (a caminhada), não o do modelo de cada troço.
             let xs: Vec<V2> = pts.iter().map(|p| p.0).collect();
             cost = crate::cost::path_cost(mesh, &self.costs, &xs).unwrap_or(cost);
@@ -582,35 +582,6 @@ pub(super) fn polish(mesh: &NavMesh, costs: &[f64], pts: &mut [Ponto]) {
         }
         if !mexeu {
             break;
-        }
-    }
-}
-
-/// (W9) Tira cada raiz de fronteira cujo caminho SEM ela, polido de novo, não custa mais (pela
-/// caminhada REAL). Dois caminhos discretos de custo IGUAL polem-se diferente: o que guarda um ponto a
-/// mais na quina da lama fica preso nele, porque o polimento move um ponto de cada vez e a quina só
-/// sai quando a travessia seguinte se mexe COM ela (medido: `1,0002` do oráculo contra `1,0000`).
-fn sem_pontos_a_mais(mesh: &NavMesh, costs: &[f64], pts: &mut Vec<Ponto>) {
-    let custo = |pts: &[Ponto]| {
-        let xs: Vec<V2> = pts.iter().map(|p| p.0).collect();
-        crate::cost::path_cost(mesh, costs, &xs)
-    };
-    let Some(mut atual) = custo(pts) else { return };
-    let mut i = 1;
-    while i + 1 < pts.len() {
-        if pts[i].2.is_none() {
-            i += 1;
-            continue;
-        }
-        let mut sem = pts.clone();
-        sem.remove(i);
-        polish(mesh, costs, &mut sem);
-        match custo(&sem) {
-            Some(c) if c <= atual => {
-                *pts = sem;
-                atual = c;
-            }
-            _ => i += 1,
         }
     }
 }

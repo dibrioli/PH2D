@@ -334,6 +334,11 @@ fn so_os_agentes_da_malha_que_mudou_refazem_o_caminho() {
 
 // ── (W9) A FILA DO REPLANEIO ────────────────────────────────────────────────────────────────────
 
+/// Um componente só de teste: metade dos guardas leva-o, e a CONSULTA ao mundo passa a percorrê-los
+/// por tabelas — outra ordem que a das entidades (a fila tem de seguir a das entidades).
+#[derive(bevy_ecs::component::Component)]
+struct Marca;
+
 /// Uma parede em `x = 0` com dois vãos: o de cima (`4 < y < 6`, o caminho LONGO) sempre aberto, e o
 /// do meio (`|y| < 1`, o CURTO) com uma porta. Oito guardas à esquerda com alvos à direita.
 fn atalho(porta_fechada: bool) -> (SimWorld, Entity, Vec<Entity>) {
@@ -355,12 +360,16 @@ fn atalho(porta_fechada: bool) -> (SimWorld, Entity, Vec<Entity>) {
     let guardas = (0..8)
         .map(|i| {
             let (x, y) = (-7.0 + 1.0 * (i % 4) as f32, -5.0 + 1.2 * (i / 4) as f32);
-            agente(
+            let e = agente(
                 &mut sim,
                 &format!("Guarda {i}"),
                 (x, y),
                 NavTarget::Point([6.0, -4.0 + 0.8 * i as f32]),
-            )
+            );
+            if i % 2 == 0 {
+                sim.world_mut().entity_mut(e).insert(Marca);
+            }
+            e
         })
         .collect();
     (sim, porta, guardas)
@@ -379,11 +388,21 @@ struct PortaQueMuda {
     porta: Entity,
     de: (f32, f32),
     para: (f32, f32),
+    /// O tique em que ela muda.
+    quando: u64,
 }
 
 impl ph2d_physics_ecs::SceneAtTick for PortaQueMuda {
     fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool {
-        poe(sim, self.porta, if tick < 5 { self.de } else { self.para });
+        poe(
+            sim,
+            self.porta,
+            if tick < self.quando {
+                self.de
+            } else {
+                self.para
+            },
+        );
         true
     }
 }
@@ -425,6 +444,7 @@ fn a_porta_que_abre_um_atalho_serve_os_agentes_um_por_tique() {
             porta,
             de: (0.0, 0.0),
             para: (30.0, 30.0),
+            quando: 5,
         };
         let pt = com_a_porta_a_mudar(&mut sim, &mut b, &mut cena, &quem, 30);
         // E todos acabam pelo atalho.
@@ -477,6 +497,7 @@ fn o_caminho_partido_passa_a_frente_na_fila() {
         porta,
         de: (30.0, 30.0),
         para: (0.0, 0.0),
+        quando: 5,
     };
     let pt = com_a_porta_a_mudar(&mut sim, &mut b, &mut cena, &quem, 30);
     let vigia_em = servido_em(&pt, 0).expect("o vigia acaba por ser servido");
@@ -502,6 +523,7 @@ fn um_scrub_para_o_meio_da_fila_devolve_a_mesma_corrida() {
         porta,
         de: (0.0, 0.0),
         para: (30.0, 30.0),
+        quando: 8,
     };
     let posicoes = |sim: &mut SimWorld| -> Vec<(f32, f32)> {
         quem.iter()
@@ -516,8 +538,11 @@ fn um_scrub_para_o_meio_da_fila_devolve_a_mesma_corrida() {
         b.dispatch_with_scene(&mut sim, true, t, &mut cena);
         primeira.push(posicoes(&mut sim));
     }
-    // O meio da fila: o 1.º servido é ≥ 5, e há oito — o tique 9 está no meio.
-    const MEIO: u64 = 9;
+    // ⚠️ O anel guarda um âncora de 10 em 10 tiques (`STRIDE`): o scrub para o 13 SEMEIA do 10 e
+    // replaya três. A porta muda no 8 e a fila serve um por tique a partir do 9 — os dois tiques
+    // caem a meio dela. (A 1.ª redacção ia para o 9: sem âncora antes, o scrub refazia tudo do zero e
+    // a mutação «o seed não devolve a dívida» SOBREVIVIA.)
+    const MEIO: u64 = 13;
     let antes = quem
         .iter()
         .filter(|&&e| b.nav_agent(e).is_some_and(|r| r.owed > 0))
@@ -544,4 +569,48 @@ fn um_scrub_para_o_meio_da_fila_devolve_a_mesma_corrida() {
         primeira[MEIO as usize..].to_vec(),
         "o resto da corrida"
     );
+}
+
+/// Uma pedra num canto, longe de todos os caminhos, que pára num sítio e noutro de dois em dois
+/// tiques: a malha muda sem parar, e nenhum caminho se parte.
+struct PedraInquieta {
+    pedra: Entity,
+}
+
+impl ph2d_physics_ecs::SceneAtTick for PedraInquieta {
+    fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool {
+        let y = if (tick / 2) % 2 == 0 { 5.3 } else { 4.6 };
+        poe(sim, self.pedra, (-7.6, y));
+        true
+    }
+}
+
+/// ⭐ Uma malha que muda SEM PARAR não deixa ninguém à espera para sempre: quem espera envelhece e
+/// passa à frente de quem a mudança seguinte volta a pôr na fila (sem isso, os primeiros na ordem
+/// das entidades seriam servidos de novo a cada mudança e os últimos nunca).
+#[test]
+fn uma_malha_que_nao_para_de_mudar_serve_todos_a_vez() {
+    let (mut sim, _porta, quem) = atalho(false);
+    let pedra = corpo(
+        &mut sim,
+        "Pedra",
+        BodyKind::Kinematic,
+        (-7.6, 5.3),
+        (0.2, 0.2),
+    );
+    let mut b = PhysicsBridge::new();
+    b.set_nav_replan_budget(1);
+    let mut cena = PedraInquieta { pedra };
+    let mut por_tique = Vec::new();
+    for t in 1..=40 {
+        b.dispatch_with_scene(&mut sim, true, t, &mut cena);
+        por_tique.push(procuras_de(&b, &quem));
+    }
+    for (i, &e) in quem.iter().enumerate() {
+        assert!(
+            por_tique[39][i] >= por_tique[9][i] + 2,
+            "{e:?} procurou {} vezes entre os tiques 10 e 40",
+            por_tique[39][i] - por_tique[9][i]
+        );
+    }
 }

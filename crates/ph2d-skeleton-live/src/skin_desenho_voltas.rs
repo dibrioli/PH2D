@@ -98,14 +98,14 @@ fn contorno(verts: &[VecVertex], fechado: bool) -> Vec<VecVertex> {
         let mut ps = Vec::new();
         pedacos([a.anchor, a.out_handle, b.in_handle, b.anchor], 0, &mut ps);
         if k == 0 {
-            out.push(a.clone());
+            out.push(*a);
         }
         if let Some(ultimo) = out.last_mut() {
             ultimo.out_handle = ps[0][1];
         }
         for (i, p) in ps.iter().enumerate() {
             let fim = i + 1 == ps.len();
-            let mut v = if fim { b.clone() } else { a.clone() };
+            let mut v = if fim { *b } else { *a };
             v.anchor = p[3];
             v.in_handle = p[2];
             v.corner_radius = 0.0;

@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**67 handoffs** · **14** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**69 handoffs** · **15** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 > ⚠️ **Reconciliado outra vez em 2026-09-16, e a diferença era SEIS** — as quatro fases da saída da
@@ -90,6 +90,7 @@
 | 2026-10-01 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-10-01.md](HANDOFF_INTEGRACAO_line_motion_value_2026-10-01.md) | integração | **AS FORMAS NA PLACA** (doc 121) — crate nova `ph2d-shape-gpu`, a cobertura do Vello portada, as rotas da CPU e do dispositivo; zero contadores partilhados; o §2.1 tem a única mudança não aditiva (`LOWER_COLUMNS` a `[_; 9]`) |
 | 2026-10-02 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-02.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-02.md) | continuação | **AS LISTAS DAS CÉLULAS** (doc 121 §9.8) — cada célula guarda as arestas que a cruzam, montadas por aresta em ponto fixo; a `=127` densa no proxy `20,7 → 17,6 ms`; abertos: grandes esticadas, tracejado esticado, glifos |
 | 2026-10-03 |   | [HANDOFF_CONTINUACAO_line_motion_value_2026-10-03.md](HANDOFF_CONTINUACAO_line_motion_value_2026-10-03.md) | continuação | **A VARIANTE ENXUTA** (doc 121 §9.10–§9.11) — o tracejado inline dobrara os registos de toda a cena na iGPU (`1,74 → 2,45 ms`), curado por `override`; a ablação põe `84 %` do desenho no laço das listas; próximo: o buffer de acumulação |
+| 2026-10-03 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_2026-10-03.md](HANDOFF_INTEGRACAO_line_motion_value_2026-10-03.md) | integração | **O BUFFER DE ACUMULAÇÃO** (doc 121 §9.8–§9.12) — substitui as listas das células; iGPU esticadas `1,50 → 0,88 ms` (kill-criterion à 1.ª), tracejado no ecrã, variante enxuta; `shells/desktop` intocada; aberto: memória a 1080p, variante esparsa |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

@@ -213,7 +213,7 @@ fn the_round_trip_through_the_document_is_exact() {
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 /// Uma peça de TRÊS esferas em união — a raiz é o grupo, e as folhas são os filhos dela.
-fn three_balls() -> (SimWorld, Entity, Vec<Entity>) {
+pub(crate) fn three_balls() -> (SimWorld, Entity, Vec<Entity>) {
     let mut sim = SimWorld::new();
     let bola = |x: f32| ph2d_field::Node {
         xform: Xform::at(x, 0.0, 0.0),

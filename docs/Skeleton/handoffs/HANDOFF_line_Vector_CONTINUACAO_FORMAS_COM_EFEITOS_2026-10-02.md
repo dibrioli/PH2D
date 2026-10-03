@@ -9,7 +9,10 @@
 > ✅ **ACTUALIZAÇÃO (mesma data, janela seguinte): o §2 FOI FEITO — F50** (`326589c2f` a lei,
 > `436f97e63` a cena `=5`). O efeito coze-se no REPOUSO e dobra com a forma; `PH2D_SKIN_EFEITOS=0`
 > volta à lei antiga. Mecanismo, medições, preço e os três abertos: [fila §F50](../01_a_fila.md).
-> O §2 abaixo fica como estava, como o porquê. Os abertos do §3 não mudaram.
+> O §2 abaixo fica como estava, como o porquê. **03/10 (F50-d…g, pelos reports do dono):** campo do
+> contorno cozido, ajuste que só aceita cúbicas que andam para a frente (curou também o gancho da
+> F43 na origem), a união sem lascas e só dos fechados, a agulha do *Bloat*. Os abertos do §3 foram
+> auditados contra o código: três eram notas envelhecidas (fila §F50).
 
 ## 0. Onde está
 

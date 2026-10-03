@@ -1152,3 +1152,71 @@ tentativa, e nenhuma das outras duas pior que hoje (`0,76` · `1,50` de soma dos
 arranjo mais de `10 %` pior. Falhou ⇒ fica a lista, e o desenho entra aqui como recusa medida. É a 3.ª
 topologia do caminho das células (§9.6 máscaras → §9.8 listas → acumulação): a prova do modelo é esta
 ablação — o fragmento só com o registo custa `0,13` — e o que falta provar é o PREÇO do cálculo novo.
+
+### §9.12 — O BUFFER DE ACUMULAÇÃO: o plano (2026-10-03, escrito ANTES de construir)
+
+Comparação: o binário da sonda de `8cb0ab9e1` (a cura), compilado e copiado antes de mexer no shader.
+
+**A lei que se preserva.** Hoje um pixel `x` de uma célula `k` soma `fundo(k) + Σ fixo(c(e, x))` sobre a
+lista da célula (`c` = `contribuicao`). Para cada aresta numa fileira, `c(x)` é `0` à esquerda do
+pedaço recortado à fileira `[xa, xb]`, `dy` a partir de `ceil(xb)`, e só varia nos pixels que ele
+CRUZA. ⇒ cada aresta deposita, por pixel `x ∈ [floor(xa), ceil(xb))`, `fixo(c(x)) − fixo(c(x − 1))`, e
+`fixo(dy) − fixo(c(ceil(xb) − 1))` em `ceil(xb)`; o prefixo dos depósitos dá `Σ fixo(c(e, x))`. Os
+depósitos param na célula `kb` (a primeira cujo início `≥ xb`): dali para a frente a aresta é FUNDO,
+como hoje. O prefixo RECOMEÇA em cada célula (o primeiro pixel de uma célula recebe `fixo(c(x))`
+inteiro, não a diferença), porque o fundo da célula só conta as arestas que acabam ANTES dela. Em
+inteiros a soma não depende da ordem dos fios: determinístico, como hoje. ⚠️ O pedaço é recortado à
+fileira (uma divisão por aresta, não por fileira): uma aresta paga os pixels que cruza, não `32` por
+célula. O resto `~1e-6` da `contribuicao` à esquerda do pedaço recortado (o do Vello) deixa de entrar
+— `≤ 1` unidade de `2¹⁶`, dentro do `ALFA_MAX = 2`.
+
+**Os passes** (os quatro despachos indirectos ficam quatro; o `cs_conta`, o `cs_soma` e o `cs_escreve`
+ficam, com a unidade das células em CÉLULAS e não em palavras):
+
+| passe | fio por | faz |
+|---|---|---|
+| `cs_zera` | PIXEL de célula | apaga os três acumuladores do pixel; os fios `0..3` da célula apagam o fundo |
+| `cs_deposita` | ARESTA | por fileira: o fundo da célula `kb` (atómico, como hoje) e os depósitos `[floor(xa), ceil(xb)]` nas células `< kb` |
+| `cs_fundo` | FILEIRA | o prefixo dos fundos ao longo da fileira (a metade de cima do `cs_lugar_das_listas`) |
+| `cs_varre` | PIXEL (grupos de `64` = duas células) | prefixo SEGMENTADO por célula em memória de grupo (`5` passos), mais o fundo, as duas regras (`af` com a da cópia, `as_` com a soma das marcas e do contorno) e grava `pack2x16unorm(af, as_)` |
+
+O fragmento: `(c1.x + r · células) · 32 + (x − x0)`, UMA leitura e `unpack2x16unorm`; as regras saem
+dele para esta via (o caminho de sempre continua a aplicá-las).
+
+**Os buffers** (por célula, indexados pelo número GLOBAL da célula — o prefixo das células de cada
+cópia já é contíguo): `celulas` `4` palavras (os três fundos, `atomic`) · `acumula` `96` palavras (`3`
+famílias × `32` pixels, família a família, para a leitura do `cs_varre` ser coalescida) · `cobertura`
+`32` palavras. Saem as `listas` e o `lista_total`. A regra da cópia (`even_odd`) passa ao `cs_escreve`
+(`ccopias[3·ii + 2].z`, livre). O `despacho` ganha `[6, 9)`: um fio por pixel de célula.
+
+**A capacidade:** uma só, a das células (contada no `cs_conta`, lida dois quadros depois, como as
+arestas). O tecto do recurso é o `acumula` (`max_storage_buffer_binding_size / 384 B`). Uma cópia que
+não cabe vai INTEIRA pelo caminho de sempre (o `cs_escreve` já a recusa). ⇒ **não há fileira que não
+caiba**: o `SEM_LISTA` e o «dois quadros depois das arestas» deixam de existir, e o regime do produto
+volta a medir-se (o `QUADROS_DO_PRODUTO = 5` era o das listas).
+
+**As guardas do §9.8, recontadas:**
+
+- `as_fileiras_que_nao_cabem_nas_listas_desenham_o_mesmo` → **`as_copias_que_nao_cabem_nas_celulas_desenham_o_mesmo`**
+  (tecto em metade das células pedidas: as que cabem pelas células, as outras pelo caminho de sempre,
+  a mesma imagem; controlo: o tecto morde E alguma cópia continua nas células). Porta
+  `ShapePass::limita_as_celulas` (sai `limita_as_listas`); instrumento `celulas_do_ultimo_quadro`.
+- `uma_cena_que_muda_nao_le_as_arestas_do_quadro_anterior` fica — e passa a guardar também o
+  `cs_zera` (um acumulador que traz o quadro anterior).
+- A mutação `14/14` das listas morre com o código dela: um arnês novo
+  (`mutacao_o_buffer_de_acumulacao_2026-10-03.py`) com os análogos — fundo na `kb − 1`, o 1.º pixel
+  cruzado perdido, o degrau final perdido, o prefixo que não recomeça na célula, depósitos em `≥ kb`,
+  `cs_fundo` sem prefixo, `cs_zera` mudo, varredura não segmentada, `even_odd` ignorado, escala
+  dobrada, `min/max` do recorte trocados, sem a verificação da capacidade, passo da fileira errado no
+  fragmento, preenchimento e contorno trocados.
+
+**As duas tentativas** (o kill-criterion do §9.11 conta-se depois da 2.ª):
+
+1. a DENSA acima (zera e varre todo pixel de célula);
+2. se a 1.ª falhar: a ESPARSA — uma marca por célula TOCADA (o `cs_deposita` a põe); o `cs_varre` só
+   corre nas tocadas e devolve-lhes os acumuladores a zero (sai o `cs_zera`), e uma célula sem
+   depósitos é constante — o fragmento lê-a do registo. Paga uma leitura encadeada a mais nas bordas.
+
+**Réguas:** `registos_dos_shaders.sh` (o fragmento tem de descer dos `56` VGPRs) · os `10` gates GPU da
+crate e os `5` do produto · a sonda intercalada com `PERFIL=1 PLACAS=igpu` (e `rtx`) · a mutação nova
+e, no fecho, a `21/21` do tracejado.

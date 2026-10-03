@@ -10,6 +10,8 @@ use crate::{Ambiente, Cena, Malha};
 
 #[path = "gpu_quadro.rs"]
 mod quadro_impl;
+#[path = "gpu_sombra.rs"]
+mod sombra_impl;
 #[path = "gpu_texturas.rs"]
 mod texturas;
 
@@ -18,8 +20,18 @@ const VERTICE: u64 = 32;
 /// O alinhamento do deslocamento dinâmico de um uniforme (o mínimo que todo aparelho aceita).
 pub(crate) const SLOT: u64 = 256;
 /// O tamanho do uniforme do quadro — o `Quadro` do WGSL.
-pub(crate) const QUADRO: usize =
-    2 * 16 + 6 * 4 + ph2d_style::wgsl::PACKED + 4 + 4 + 4 + 4 + 4 + 16 + 2 * crate::MAX_LUZES * 4;
+pub(crate) const QUADRO: usize = 2 * 16
+    + 6 * 4
+    + ph2d_style::wgsl::PACKED
+    + 4
+    + 4
+    + 4
+    + 4
+    + 4
+    + 16
+    + 4
+    + 16
+    + 2 * crate::MAX_LUZES * 4;
 
 struct MalhaGpu {
     vertices: wgpu::Buffer,
@@ -62,7 +74,7 @@ pub struct Forward {
     /// O sol do céu subido (`None` = o céu não tem sol); a ligação lê então `sol_vazia`.
     sol: Option<texturas::SolGpu>,
     sol_vazia: wgpu::TextureView,
-    mapa_sombra: wgpu::TextureView,
+    mapas_sombra: [wgpu::TextureView; sombra_impl::NIVEIS],
     compara: wgpu::Sampler,
     liso: wgpu::Sampler,
     cobertura: crate::gpu_cobertura::Cobertura,
@@ -92,6 +104,19 @@ fn textura_float(binding: u32) -> wgpu::BindGroupLayoutEntry {
         visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Texture {
             sample_type: wgpu::TextureSampleType::Float { filterable: false },
+            view_dimension: wgpu::TextureViewDimension::D2,
+            multisampled: false,
+        },
+        count: None,
+    }
+}
+
+fn textura_prof(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::FRAGMENT,
+        ty: wgpu::BindingType::Texture {
+            sample_type: wgpu::TextureSampleType::Depth,
             view_dimension: wgpu::TextureViewDimension::D2,
             multisampled: false,
         },
@@ -195,16 +220,7 @@ impl Forward {
                 uniforme(1, false, wgpu::ShaderStages::FRAGMENT),
                 textura_float(2),
                 textura_float(3),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Depth,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
+                textura_prof(4),
                 wgpu::BindGroupLayoutEntry {
                     binding: 5,
                     visibility: wgpu::ShaderStages::FRAGMENT,
@@ -229,6 +245,8 @@ impl Forward {
                 },
                 textura_float(8),
                 textura_float(9),
+                textura_prof(10),
+                textura_prof(11),
             ],
         });
         // ⚠️ O passe de sombra ESCREVE o mapa: não o pode ter ligado para leitura. Só o quadro.
@@ -465,23 +483,7 @@ impl Forward {
         let tabela = texturas::textura_de_floats(&device, &queue, ambiente.tabela);
         let foto_vazia = texturas::vazia(&device, &queue);
         let sol_vazia = texturas::textura_de_floats(&device, &queue, &[0.0]);
-        let mapa_sombra = device
-            .create_texture(&wgpu::TextureDescriptor {
-                label: Some("ph2d-mesh-forward mapa de sombra"),
-                size: wgpu::Extent3d {
-                    width: crate::SOMBRA_LADO,
-                    height: crate::SOMBRA_LADO,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: PROFUNDIDADE,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                    | wgpu::TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
-            })
-            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mapas_sombra = sombra_impl::mapas(&device);
         let compara = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("ph2d-mesh-forward compara"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -534,7 +536,7 @@ impl Forward {
             foto_vazia,
             sol: None,
             sol_vazia,
-            mapa_sombra,
+            mapas_sombra,
             compara,
             liso,
             cobertura,
@@ -648,8 +650,9 @@ impl Forward {
         let brilho =
             self.prepara_brilho(&cena.brilho.sanitized(), (w, h), cena.exposicao, cena.vista);
         self.sobe_materiais(cena.materiais);
+        let chave = sombra_impl::chave(cena, self.foto.is_some(), self.sol.as_ref());
         let enquadra =
-            quadro_impl::enquadra_sombra(cena, |id| self.malhas.get(&id).map(|m| m.caixa));
+            sombra_impl::enquadra(cena, chave, |id| self.malhas.get(&id).map(|m| m.caixa));
         let dados = quadro_impl::uniforme_do_quadro(
             cena,
             &enquadra,
@@ -664,7 +667,12 @@ impl Forward {
             .filter(|o| self.malhas.contains_key(&o.malha))
             .collect();
         self.sobe_objetos(&visiveis);
-        self.desenha(cena, &visiveis, enquadra.ha_sombra, brilho);
+        self.desenha(
+            cena,
+            &visiveis,
+            (enquadra.ha_sombra, enquadra.ha_chao),
+            brilho,
+        );
         self.le((w, h))
     }
 }

@@ -244,6 +244,16 @@ fn instrumento_sol() {
             }
         }
         let media = potencia / (4.0 * std::f64::consts::PI);
+        if let (_, Some(s)) = p.separa_sol() {
+            eprintln!(
+                "{:>10} SOL: altura {:.1}° raio {:.2}° leva {:.1} % · radiância {:.0}",
+                e.chave(),
+                f64::from(s.dir[1]).asin().to_degrees(),
+                f64::from(s.raio).to_degrees(),
+                100.0 * s.fracao,
+                luma(s.radiancia)
+            );
+        }
         let dp = p.direcao(onde.0, onde.1);
         eprintln!(
             "{:>10} {}x{} média {media:.4} pico {pico:.1} ({:.0}× a média) elev {:.1}°",

@@ -18,7 +18,7 @@ struct Quadro {
     chao: vec4<f32>,
     // O quadrado do chao em xz: centro (x, z) e meia-aresta (x, z) — o do mapa de sombra.
     chao_xz: vec4<f32>,
-    // x = profundidade do mapa em mundo (perto→longe) · y = vies · z = ha' sombra (0/1) · w = _
+    // x = profundidade do mapa em mundo (perto→longe) · y = vies · z = ha' sombra (0/1) · w = ha' chao (0/1)
     sombra: vec4<f32>,
     // x = exposicao (stops) · y = codigo da vista · z = numero de luzes · w = _
     olhar: vec4<f32>,
@@ -34,6 +34,11 @@ struct Quadro {
     sol: vec4<f32>,
     // rgb = a radiancia da calote (ja' com a forca do ceu e o peso da luz-chave) · w = _
     sol_rad: vec4<f32>,
+    // A COBERTURA vista de cima (o mapa de sombra olha ao longo da chave, que so' no estudio e' +y).
+    ceu_vp: mat4x4<f32>,
+    // x = meia-aresta · y = profundidade em mundo · z = tangente da caixa de cima · w = 1 o chao le a
+    // chave na cobertura (estudio) / 0 no mapa de sombra (o sol)
+    ceu: vec4<f32>,
     // O inverso do `view_proj` (o fundo pergunta a direccao de cada pixel).
     inv_view_proj: mat4x4<f32>,
     // pares (posicao, radiancia a 1), ate' `MAX_LUZES` luzes
@@ -54,6 +59,9 @@ struct Objeto {
 @group(0) @binding(7) var liso: sampler;
 @group(0) @binding(8) var ceu_foto: texture_2d<f32>;
 @group(0) @binding(9) var sol_tab: texture_2d<f32>;
+// Os niveis mais grossos do mapa de sombra (o mesmo enquadramento a 1/4 e 1/16 do lado).
+@group(0) @binding(10) var mapa_sombra_1: texture_depth_2d;
+@group(0) @binding(11) var mapa_sombra_2: texture_depth_2d;
 @group(1) @binding(0) var<uniform> objeto: Objeto;
 
 fn tabela_ler(i: u32) -> f32 {
@@ -158,15 +166,58 @@ fn vista(p: vec3<f32>) -> vec3<f32> {
 // sombra e' dura onde o objecto toca o chao e mole longe dele. Pontos fixos (nada de ruido rodado por
 // pixel): a mesma imagem em todo quadro.
 const DISCO: array<vec2<f32>, 16> = array<vec2<f32>, 16>(
-    vec2<f32>(-0.94201624, -0.39906216), vec2<f32>(0.94558609, -0.76890725),
-    vec2<f32>(-0.09418410, -0.92938870), vec2<f32>(0.34495938, 0.29387760),
-    vec2<f32>(-0.91588581, 0.45771432), vec2<f32>(-0.81544232, -0.87912464),
-    vec2<f32>(-0.38277543, 0.27676845), vec2<f32>(0.97484398, 0.75648379),
-    vec2<f32>(0.44323325, -0.97511554), vec2<f32>(0.53742981, -0.47373420),
-    vec2<f32>(-0.26496911, -0.41893023), vec2<f32>(0.79197514, 0.19090188),
-    vec2<f32>(-0.24188840, 0.99706507), vec2<f32>(-0.81409955, 0.91437590),
-    vec2<f32>(0.19984126, 0.78641367), vec2<f32>(0.14383161, -0.14100790),
+    vec2<f32>(0.17677670, 0.00000000),
+    vec2<f32>(-0.22577219, 0.20682582),
+    vec2<f32>(0.03455805, -0.39377118),
+    vec2<f32>(0.28457122, 0.37117276),
+    vec2<f32>(-0.52222319, -0.09237393),
+    vec2<f32>(0.49469539, -0.31468471),
+    vec2<f32>(-0.16546593, 0.61552500),
+    vec2<f32>(-0.31556147, -0.60759440),
+    vec2<f32>(0.68464216, 0.25003022),
+    vec2<f32>(-0.71225609, 0.29400896),
+    vec2<f32>(0.34335450, -0.73372862),
+    vec2<f32>(0.25373024, 0.80893199),
+    vec2<f32>(-0.76474589, -0.44318588),
+    vec2<f32>(0.89713398, -0.19723239),
+    vec2<f32>(-0.54750690, 0.77877223),
+    vec2<f32>(-0.12648677, -0.97608970),
 );
+
+// ⭐ O raio maximo do PCSS em texels do NIVEL: 16 amostras numa janela maior mostram degraus. Uma
+// penumbra maior le um nivel mais grosso do mapa (o mesmo enquadramento redesenhado a 1/4 do lado).
+const PCSS_MAX: f32 = 48.0;
+const PCSS_MIN: f32 = 12.0;
+
+fn nivel_do_raio(raio0: f32) -> u32 {
+    if (raio0 <= PCSS_MAX) {
+        return 0u;
+    }
+    if (raio0 <= PCSS_MAX * 4.0) {
+        return 1u;
+    }
+    return 2u;
+}
+
+fn prof_no_nivel(k: u32, q: vec2<i32>) -> f32 {
+    if (k == 0u) {
+        return textureLoad(mapa_sombra, q, 0);
+    }
+    if (k == 1u) {
+        return textureLoad(mapa_sombra_1, q, 0);
+    }
+    return textureLoad(mapa_sombra_2, q, 0);
+}
+
+fn compara_no_nivel(k: u32, uv: vec2<f32>, z: f32) -> f32 {
+    if (k == 0u) {
+        return textureSampleCompareLevel(mapa_sombra, compara, uv, z);
+    }
+    if (k == 1u) {
+        return textureSampleCompareLevel(mapa_sombra_1, compara, uv, z);
+    }
+    return textureSampleCompareLevel(mapa_sombra_2, compara, uv, z);
+}
 
 fn visibilidade_da_caixa(p: vec3<f32>) -> f32 {
     if (quadro.sombra.z < 0.5) {
@@ -177,19 +228,30 @@ fn visibilidade_da_caixa(p: vec3<f32>) -> f32 {
     if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
         return 1.0;
     }
-    let dims = vec2<f32>(textureDimensions(mapa_sombra));
+    let dims0 = vec2<f32>(textureDimensions(mapa_sombra));
     let zr = c.z;
+    // Alem do fundo do mapa nao ha' sombra: o fundo e' a sombra mais funda que os objetos deitam no
+    // chao, e o texel vazio (1) leria-se como bloqueador.
+    if (zr >= 1.0) {
+        return 1.0;
+    }
     let fundo = quadro.sombra.x;
     let texel = quadro.chao.w;
     let tan_p = quadro.chao.z;
-    // 1) quem tapa: a profundidade media dos bloqueadores numa janela do tamanho da caixa vista daqui.
-    let busca = clamp(tan_p * zr * fundo / texel, 1.0, 48.0);
+    // 1) quem tapa: a profundidade media dos bloqueadores numa janela do tamanho da caixa vista daqui
+    // (em texels do nivel 0; o nivel onde ela cabe).
+    let busca0 = max(tan_p * zr * fundo / texel, 1.0);
+    let ks = nivel_do_raio(busca0);
+    let es = f32(1u << (2u * ks));
+    let dims_s = dims0 / es;
+    let busca = clamp(busca0 / es, 1.0, PCSS_MAX);
+    let vies_s = quadro.sombra.y * es;
     var soma = 0.0;
     var n = 0.0;
     for (var i = 0u; i < 16u; i = i + 1u) {
-        let q = clamp(uv * dims + DISCO[i] * busca, vec2<f32>(0.0), dims - vec2<f32>(1.0));
-        let d = textureLoad(mapa_sombra, vec2<i32>(q), 0);
-        if (d < zr - quadro.sombra.y) {
+        let q = clamp(uv * dims_s + DISCO[i] * busca, vec2<f32>(0.0), dims_s - vec2<f32>(1.0));
+        let d = prof_no_nivel(ks, vec2<i32>(q));
+        if (d < zr - vies_s) {
             soma = soma + d;
             n = n + 1.0;
         }
@@ -198,12 +260,29 @@ fn visibilidade_da_caixa(p: vec3<f32>) -> f32 {
         return 1.0;
     }
     let zb = soma / n;
-    // 2) a penumbra: a distancia ao bloqueador vezes a tangente da caixa, em texels.
-    let raio = clamp(tan_p * (zr - zb) * fundo / texel, 1.0, 48.0);
+    // 2) a penumbra: a distancia ao bloqueador vezes a tangente da caixa, em texels do nivel 0, lida
+    // no nivel CONTINUO onde o raio fica em [PCSS_MIN, PCSS_MAX): entre dois niveis mistura-se (sem
+    // degrau onde um pixel troca de nivel).
+    let raio0 = max(tan_p * (zr - zb) * fundo / texel, 1.0);
+    let l = max(log2(raio0 / PCSS_MIN) * 0.5, 0.0);
+    let k0 = min(u32(l), 2u);
+    var vis = filtra_no_nivel(k0, uv, zr, raio0, dims0);
+    let t = clamp(l - f32(k0), 0.0, 1.0);
+    if (k0 < 2u && t > 0.0) {
+        vis = mix(vis, filtra_no_nivel(k0 + 1u, uv, zr, raio0, dims0), t);
+    }
+    return vis;
+}
+
+// O PCF de 16 amostras no nivel `k`, com o raio dado em texels do nivel 0.
+fn filtra_no_nivel(k: u32, uv: vec2<f32>, zr: f32, raio0: f32, dims0: vec2<f32>) -> f32 {
+    let e = f32(1u << (2u * k));
+    let dims = dims0 / e;
+    let raio = clamp(raio0 / e, 1.0, PCSS_MAX);
+    let vies = quadro.sombra.y * e;
     var vis = 0.0;
     for (var i = 0u; i < 16u; i = i + 1u) {
-        let q = uv + DISCO[i] * raio / dims;
-        vis = vis + textureSampleCompareLevel(mapa_sombra, compara, q, zr - quadro.sombra.y);
+        vis = vis + compara_no_nivel(k, uv + DISCO[i] * raio / dims, zr - vies);
     }
     return vis / 16.0;
 }
@@ -296,7 +375,7 @@ fn fs_objeto_brilho(i: VsOut) -> DoisAlvos {
     return o;
 }
 
-// ── A SOMBRA: so' profundidade, vista de cima ────────────────────────────────────────────────────
+// ── A SOMBRA: so' profundidade, vista da chave ───────────────────────────────────────────────────
 @vertex
 fn vs_sombra(@location(0) p: vec3<f32>) -> @builtin(position) vec4<f32> {
     return quadro.sombra_vp * (objeto.modelo * vec4<f32>(p, 1.0));
@@ -311,7 +390,7 @@ struct CobOut {
 @vertex
 fn vs_cobertura(@location(0) p: vec3<f32>) -> CobOut {
     var o: CobOut;
-    o.clip = quadro.sombra_vp * (objeto.modelo * vec4<f32>(p, 1.0));
+    o.clip = quadro.ceu_vp * (objeto.modelo * vec4<f32>(p, 1.0));
     o.z = o.clip.z;
     return o;
 }
@@ -326,19 +405,19 @@ fn fs_cobertura(i: CobOut) -> @location(0) vec4<f32> {
 // Devolve (visibilidade da caixa, visibilidade do ceu). ⭐ A do CEU e' o escurecimento de contacto:
 // a fraccao do ceu que um objecto a altura `h` tapa ~ a cobertura numa janela do tamanho de `h`.
 fn visibilidade_do_chao(p: vec3<f32>) -> vec2<f32> {
-    if (quadro.sombra.z < 0.5) {
+    if (quadro.sombra.w < 0.5) {
         return vec2<f32>(1.0);
     }
-    let c = quadro.sombra_vp * vec4<f32>(p, 1.0);
+    let c = quadro.ceu_vp * vec4<f32>(p, 1.0);
     let uv = vec2<f32>(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);
     if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
         return vec2<f32>(1.0);
     }
     let lado = f32(textureDimensions(cobertura, 0).x);
     let topo = f32(textureNumLevels(cobertura)) - 1.0;
-    let texel = 2.0 * quadro.chao_xz.z / lado;
-    let tan_p = quadro.chao.z;
-    let fundo = quadro.sombra.x;
+    let texel = 2.0 * quadro.ceu.x / lado;
+    let tan_p = quadro.ceu.z;
+    let fundo = quadro.ceu.y;
     // 1) quem tapa, e a que altura: a caixa vista daqui ate' ao topo da cena.
     let busca = tan_p * c.z * fundo;
     let a = textureSampleLevel(cobertura, liso, uv, clamp(log2(max(2.0 * busca / texel, 1.0)), 0.0, topo));
@@ -390,13 +469,12 @@ struct ChaoOut {
 
 @vertex
 fn vs_chao(@builtin(vertex_index) k: u32) -> ChaoOut {
-    // Um quadrado do tamanho do mapa de sombra (alem dele nao ha' sombra a receber).
+    // O quadrado do chao: a cobertura e, sob o sol, as sombras compridas que ele deita.
     let canto = array<vec2<f32>, 6>(
         vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
         vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
     );
     let ndc = canto[k];
-    // O inverso do mapa de sombra em xz: o mapa e' ortografico e olha a direito para baixo.
     let inv = quadro.chao_xz;
     let p = vec3<f32>(inv.x + ndc.x * inv.z, quadro.chao.x, inv.y + ndc.y * inv.w);
     var o: ChaoOut;
@@ -435,7 +513,12 @@ fn escuro_do_chao(i: ChaoOut) -> vec4<f32> {
     }
     let sem = dot(ceu_e + caixa_e + lamp, LUMA);
     let vis = visibilidade_do_chao(i.mundo);
-    let com = dot(ceu_e * vis.y + caixa_e * vis.x + lamp, LUMA);
+    // A chave: no estudio a caixa larga (25 graus) pela cobertura; sob o sol, o mapa dele (PCSS).
+    var chave = vis.x;
+    if (quadro.ceu.w < 0.5) {
+        chave = visibilidade_da_caixa(i.mundo);
+    }
+    let com = dot(ceu_e * vis.y + caixa_e * chave + lamp, LUMA);
     let escuro = clamp(1.0 - com / max(sem, 1.0e-6), 0.0, 1.0);
     return vec4<f32>(0.0, 0.0, 0.0, escuro);
 }

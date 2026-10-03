@@ -25,7 +25,7 @@ impl ph2d_material::Environment for Chapado {
     }
 }
 
-fn ambiente() -> Ambiente<'static> {
+pub(crate) fn ambiente() -> Ambiente<'static> {
     Ambiente {
         wgsl: CEU_CHAPADO,
         constantes: &[L, 0.0, 0.0, 0.0],
@@ -35,7 +35,7 @@ fn ambiente() -> Ambiente<'static> {
 }
 
 /// Uma esfera UV de raio `r`.
-fn esfera(r: f32) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
+pub(crate) fn esfera(r: f32) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     let (anel, gomo) = (48u32, 96u32);
     let (mut p, mut n, mut idx) = (Vec::new(), Vec::new(), Vec::new());
     for i in 0..=anel {
@@ -62,7 +62,7 @@ fn esfera(r: f32) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     (p, n, idx)
 }
 
-const ID: [[f32; 4]; 4] = [
+pub(crate) const ID: [[f32; 4]; 4] = [
     [1.0, 0.0, 0.0, 0.0],
     [0.0, 1.0, 0.0, 0.0],
     [0.0, 0.0, 1.0, 0.0],
@@ -87,12 +87,12 @@ fn camera(s: f32, a: f32) -> Camera {
     }
 }
 
-fn material_cinza() -> [f32; ph2d_material::wgsl::PACKED] {
+pub(crate) fn material_cinza() -> [f32; ph2d_material::wgsl::PACKED] {
     let s = ph2d_material::OpenPbr::default().prepare();
     ph2d_material::wgsl::pack(&s, ph2d_material::wgsl::EnvLobe::of(&s))
 }
 
-fn cena<'a>(objs: &'a [Instancia], mats: &'a [[f32; 48]], cam: Camera) -> Cena<'a> {
+pub(crate) fn cena<'a>(objs: &'a [Instancia], mats: &'a [[f32; 48]], cam: Camera) -> Cena<'a> {
     Cena {
         objetos: objs,
         materiais: mats,

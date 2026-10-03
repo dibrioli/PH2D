@@ -127,7 +127,7 @@ O plano §15 tem tudo. Em um parágrafo: a **medição derrubou o A\*+funil plan
 (atravessar + deslizar + polimento de Snell, raízes preguiçosas, atalho exacto) com `STEINER_M` `0,25 m` (média
 `1,0000`, máximo `~1 %`). Zona **proibida** = buraco; **lava** (um `Damage` em repouso que `Damage::magoa` diz que
 fere ESTE agente) = buraco na malha DESSE agente (o `Avoid Harm`, decisão do dono de 02/10: o inimigo evita
-sozinho, com caixa para desligar); **lama** = área de custo finito; **Nav Link** = portal de teleporte ou porta de
+sozinho, com caixa para desligar — `NavAgent::avoid_harm` nasce **ligado**, `Default`); **lama** = área de custo finito; **Nav Link** = portal de teleporte ou porta de
 um sentido, com `on_crossed` vindo do atalho; cena `=4`.
 
 **Dois defeitos da W6 achados e curados na W7 porque a foto da cena os mostrou** (nenhum gate os via):

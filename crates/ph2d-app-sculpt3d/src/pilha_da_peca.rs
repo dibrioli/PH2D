@@ -112,6 +112,9 @@ pub(crate) struct PilhaDaPeca {
     planos: BTreeMap<LayerId, PlanoDaCamada>,
     /// `N`, o número de amostras do plano de tinta fina a que a pilha serve.
     amostras: usize,
+    /// A camada que o traço em curso pinta (ver `pilha_da_peca_traco`) —
+    /// estado da sessão, nunca do documento.
+    em_traco: Option<LayerId>,
 }
 
 impl LayerPixelSource for PilhaDaPeca {
@@ -166,6 +169,7 @@ impl PilhaDaPeca {
             pilha,
             planos: BTreeMap::from([(base, plano)]),
             amostras: n,
+            em_traco: None,
         }
     }
 
@@ -180,6 +184,7 @@ impl PilhaDaPeca {
             pilha,
             planos,
             amostras,
+            em_traco: None,
         }
     }
 
@@ -199,6 +204,21 @@ impl PilhaDaPeca {
     #[must_use]
     pub(crate) fn plano(&self, id: LayerId) -> Option<&PlanoDaCamada> {
         self.planos.get(&id)
+    }
+
+    /// Quantos bytes a pilha segura — os planos e os relevos (o metadado é
+    /// desprezável) — para o orçamento do desfazer.
+    #[must_use]
+    pub(crate) fn footprint_bytes(&self) -> usize {
+        self.planos
+            .values()
+            .map(|p| {
+                p.rgba8.capacity()
+                    + p.relevo
+                        .as_ref()
+                        .map_or(0, |r| r.capacity() * size_of::<[f32; 2]>())
+            })
+            .sum()
     }
 
     /// `N`.
@@ -298,6 +318,12 @@ impl PilhaDaPeca {
         let vivas: Vec<LayerId> = self.pilha.all_ids().collect();
         self.planos.retain(|k, _| vivas.contains(k));
         Ok(())
+    }
+
+    /// A camada activa (a que o traço pinta).
+    #[cfg(test)]
+    pub(crate) fn define_activa(&mut self, id: LayerId) {
+        self.pilha.set_active(id);
     }
 
     /// O modo de mistura de uma camada.
@@ -466,6 +492,12 @@ pub(crate) fn achata(composto: &[u8], fundo: impl Fn(usize) -> [f32; 3], destino
         }
     }
 }
+
+/// ⭐ **O traço sobre a pilha** (W2) — a cópia de trabalho, a descida ao
+/// byte, a recomposição incremental e as trocas do desfazer.
+#[path = "pilha_da_peca_traco.rs"]
+mod traco;
+pub(crate) use traco::para_bytes;
 
 #[cfg(test)]
 #[path = "pilha_da_peca_tests.rs"]

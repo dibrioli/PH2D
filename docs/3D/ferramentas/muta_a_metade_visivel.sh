@@ -417,8 +417,8 @@ muta "$SC/tinta_fina.rs" \
 #      prova de comportamento ate' a' tecla e' `#[ignore]` + placa. As duas
 #      ultimas matam-se nos gates puros da propria lei.
 muta "$APP/history.rs" \
-  '            let janela = JanelaFina::do_traco(&do_traco);' \
-  '            let janela: Option<JanelaFina> = None;' \
+  '            let janela = match camada {' \
+  '            let janela: Option<JanelaFina> = None; let _ = match camada {' \
   'M30 o close_stroke deixa de colher a janela do plano emprestado'
 
 muta "$APP/history.rs" \
@@ -429,7 +429,7 @@ muta "$APP/history.rs" \
 # ⚠️ A agulha e' a 3.a linha do bloco: ela quebra a do censo (que leva as TRES
 # juntas) E neutraliza a aplicacao — as duas metades na mesma mutacao.
 muta "$APP/undo.rs" \
-  '                    let inversa = j.troca(obj.tinta.as_mut())?;' \
+  '                    let inversa = j.troca_na_peca(obj)?;' \
   '                    let inversa = { drop(j); None }?;' \
   'M32 o quarto canal deixa de ser aplicado no desfazer'
 

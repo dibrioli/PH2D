@@ -19,7 +19,7 @@ fn plano(mesh: &Mesh, nivel: u8) -> Tinta {
 fn traco(t: Tinta, idx: &[u32], alt: Option<f32>) -> TintaDoTraco {
     let mut f = TintaDoTraco::nova(t, 0);
     for &i in idx {
-        f.repinta(i, |_| COR);
+        f.repinta(i, |_, a| (COR, a));
         if let Some(h) = alt {
             f.eleva(i, |antes| [antes[0] + h, 1.0]);
         }

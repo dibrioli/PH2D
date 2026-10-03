@@ -658,3 +658,7 @@ mod fill;
 /// ⭐⭐⭐ **O Painter pinta a peça pelo caminho do produto** — ver [`painter`].
 #[path = "tinta_no_produto_painter.rs"]
 mod painter;
+
+/// ⭐ As CAMADAS no produto (`docs/3D/30` §11, W2) — os gates que pedem a placa.
+#[path = "camadas_no_produto_tests.rs"]
+mod camadas;

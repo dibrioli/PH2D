@@ -145,13 +145,22 @@ pub fn preenche_plano(tinta: &mut Tinta, mesh: &Mesh, cor: [f32; 3]) -> Result<b
             });
         }
     }
-    let amostras = tinta.amostras_mut();
+    // ⚠️ Num plano de CAMADA (`ph2d_mesh_colors::alfa`) a opacidade segue a
+    //    mesma lei com alvo `1`: o balde pousa tinta opaca, como o pincel.
+    let camada = tinta.tem_alfa();
     let mut mudou = false;
     for (idx, keep) in keeps {
-        let a = &mut amostras[idx as usize];
-        let nova = mistura(*a, cor, keep);
-        mudou |= nova != *a;
-        *a = nova;
+        let i = idx as usize;
+        let antes = tinta.amostras()[i];
+        let nova = mistura(antes, cor, keep);
+        mudou |= nova != antes;
+        tinta.amostras_mut()[i] = nova;
+        if camada {
+            let a = tinta.opacidade(i);
+            let nova_a = a * (1.0 - keep) + keep;
+            mudou |= nova_a != a;
+            tinta.define_opacidade(i, nova_a);
+        }
     }
     Ok(mudou)
 }

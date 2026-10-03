@@ -72,6 +72,8 @@ const UNDO: &str = include_str!("undo.rs");
 /// de antes. A prova de comportamento é `#[ignore]` + placa
 /// (`tinta_no_produto_fill.rs`) — a população que nem o arnês nem o CI correm.
 const PREENCHE: &str = include_str!("preenche.rs");
+/// O balde e o traço sobre a CAMADA activa (W2, `docs/3D/30` §11).
+const PILHA: &str = include_str!("tinta_da_peca_pilha.rs");
 /// ⭐⭐⭐⭐ **E a CERCA DO DEVICE vive noutra crate ainda** — a
 /// `ph2d-mesh-render`, que é quem fala com a placa. O censo alcança-a pelo
 /// mesmo caminho relativo dos dois do motor, e pela mesma razão: *a cura mora
@@ -266,7 +268,9 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
         (
             "history.rs",
             "M30 o close_stroke deixa de colher a janela do plano emprestado",
-            "            let janela = JanelaFina::do_traco(&do_traco);".to_string(),
+            // ⚠️ Desde a W2 das camadas (`docs/3D/30` §11) a colheita escolhe
+            //    a janela da CAMADA ou a do plano — o elo é a escolha.
+            "            let janela = match camada {".to_string(),
             HISTORY,
         ),
         (
@@ -327,7 +331,8 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
         (
             "doc.rs",
             "P9 o save volta a ler o `Option` da peça em vez da PORTA",
-            "(o.stack.to_data(), o.pose.to_data(), self.plano_de(i))".to_string(),
+            // ⚠️ Desde a W2 o tuplo leva a pilha e o `fmt` parte-o em linhas.
+            "                    self.plano_de(i),".to_string(),
             DOCUMENTO,
         ),
         // ⛔⛔ **E o load tem de INSTALAR o que leu.** O `decode` pode estar
@@ -338,6 +343,8 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
             "P8 o install_doc lê o plano e deita-o fora",
             [
                 "            obj.tinta = peca.tinta;",
+                // ⚠️ E a PILHA volta com ele (W2, `docs/3D/30` §11).
+                "            obj.pilha = peca.pilha;",
                 "            obj.tinta_suja = true;",
             ]
             .join("\n"),
@@ -399,7 +406,7 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
             [
                 "                let finas_now = finas.and_then(|j| {",
                 "                    let obj = self.piece_mut();",
-                "                    let inversa = j.troca(obj.tinta.as_mut())?;",
+                "                    let inversa = j.troca_na_peca(obj)?;",
             ]
             .join("\n"),
             UNDO,
@@ -424,9 +431,10 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
         (
             "preenche.rs",
             "F1 o Fill deixa de preencher o PLANO de tinta fina",
-            "            Some(t) => match ph2d_sculpt3d::preenche::preenche_plano(t, obj.stack.mesh(), cor) {"
+            // ⚠️ Desde a W2 o balde pinta a CAMADA activa (`tinta_da_peca_pilha`).
+            "    let Ok(mudou) = ph2d_sculpt3d::preenche::preenche_plano(&mut w, stack.mesh(), cor) else {"
                 .to_string(),
-            PREENCHE,
+            PILHA,
         ),
         (
             "preenche.rs",
@@ -437,7 +445,7 @@ fn elos() -> Vec<(&'static str, &'static str, String, &'static str)> {
         (
             "undo.rs",
             "F3 o desfazer do Fill deixa de trocar o plano",
-            "                    let inversa = p.troca(obj.tinta.as_mut())?;".to_string(),
+            "                    let inversa = p.troca_na_peca(obj)?;".to_string(),
             UNDO,
         ),
         (

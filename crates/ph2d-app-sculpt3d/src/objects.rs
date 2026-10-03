@@ -115,6 +115,13 @@ pub(crate) struct SceneObject {
     /// upload parcial: o `payload` e os endereços mudam de uma vez. *Sem esta
     /// testemunha o custo de ter tinta fina seria pago em todo quadro parado.*
     pub(super) tinta_suja: bool,
+    /// ⭐⭐⭐ **A PILHA DE CAMADAS do plano** (`docs/3D/30`) — a verdade da cor;
+    /// o `tinta` é a composição dela, que a placa lê. Anda SEMPRE com o
+    /// plano: nasce, estaciona e volta com ele
+    /// (`crate::tinta_da_peca::pilha`).
+    pub(super) pilha: Option<crate::pilha_da_peca::PilhaDaPeca>,
+    /// A pilha do plano estacionado (`tinta_parqueada`).
+    pub(super) pilha_parqueada: Option<crate::pilha_da_peca::PilhaDaPeca>,
 }
 
 impl SceneObject {
@@ -147,6 +154,11 @@ impl SceneObject {
                 .tinta_parqueada
                 .as_ref()
                 .map_or(0, ph2d_mesh_colors::Tinta::footprint_bytes)
+            + [&self.pilha, &self.pilha_parqueada]
+                .into_iter()
+                .flatten()
+                .map(crate::pilha_da_peca::PilhaDaPeca::footprint_bytes)
+                .sum::<usize>()
     }
 
     pub(super) fn new(id: ObjectId, mesh: Mesh, pose: Pose) -> Self {
@@ -160,6 +172,8 @@ impl SceneObject {
             tinta: None,
             tinta_parqueada: None,
             tinta_suja: false,
+            pilha: None,
+            pilha_parqueada: None,
         }
     }
 
@@ -180,6 +194,8 @@ impl SceneObject {
             tinta: None,
             tinta_parqueada: None,
             tinta_suja: false,
+            pilha: None,
+            pilha_parqueada: None,
         }
     }
 }

@@ -69,10 +69,15 @@ pub fn semente(mesh: &Mesh, tinta: Option<&Tinta>, vista: &Vista) -> Vec<u8> {
             else {
                 continue;
             };
-            let cor = |bar: [f32; 3]| -> [f32; 3] {
+            // ⚠️ `(cor, opacidade)`: num plano de CAMADA a cor interpolada é a
+            //    pré-multiplicada, e divide-se pela opacidade interpolada.
+            let cor = |bar: [f32; 3]| -> ([f32; 3], f32) {
                 if let Some(tinta) = tinta {
                     if cantos.len() == 3 {
-                        return tinta.cor_tri(fi, cantos, bar);
+                        return (
+                            tinta.cor_tri(fi, cantos, bar),
+                            tinta.opacidade_tri(fi, cantos, bar),
+                        );
                     }
                     // O uv de cada canto do quad, e o do ponto por baricêntricas.
                     const UV: [[f32; 2]; 4] = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
@@ -80,7 +85,10 @@ pub fn semente(mesh: &Mesh, tinta: Option<&Tinta>, vista: &Vista) -> Vec<u8> {
                         bar[0] * UV[t[0]][0] + bar[1] * UV[t[1]][0] + bar[2] * UV[t[2]][0],
                         bar[0] * UV[t[0]][1] + bar[1] * UV[t[1]][1] + bar[2] * UV[t[2]][1],
                     ];
-                    return tinta.cor_quad(fi, cantos, uv);
+                    return (
+                        tinta.cor_quad(fi, cantos, uv),
+                        tinta.opacidade_quad(fi, cantos, uv),
+                    );
                 }
                 let mut o = [0.0f32; 3];
                 for (k, &c) in t.iter().enumerate() {
@@ -90,15 +98,16 @@ pub fn semente(mesh: &Mesh, tinta: Option<&Tinta>, vista: &Vista) -> Vec<u8> {
                         o[e] += cv[e] * bar[k];
                     }
                 }
-                o
+                (o, 1.0)
             };
             rasteriza_com(&ps, (w, h), &mut perto, |o, bar| {
-                let c = cor(bar);
+                let (c, a) = cor(bar);
                 let px = &mut rgba[o * 4..o * 4 + 4];
+                let dividir = if a < 1.0 && a > 0.0 { 1.0 / a } else { 1.0 };
                 for e in 0..3 {
-                    px[e] = (c[e].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                    px[e] = ((c[e] * dividir).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
                 }
-                px[3] = 255;
+                px[3] = (a.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
             });
         }
     }

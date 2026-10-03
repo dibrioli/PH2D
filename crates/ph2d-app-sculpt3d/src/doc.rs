@@ -313,6 +313,9 @@ pub struct LoadedPiece {
     pub pose: Pose,
     /// `None` = a peça não tinha detalhe fino quando foi gravada.
     pub tinta: Option<Tinta>,
+    /// A pilha de camadas do plano (v6) — `None` num documento anterior: a
+    /// peça ganha a de UMA camada no 1.º quadro (`tinta_da_peca::pilha`).
+    pub(crate) pilha: Option<crate::pilha_da_peca::PilhaDaPeca>,
 }
 
 /// **Lê um documento**, derivando de novo tudo o que é derivável.
@@ -352,15 +355,21 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<LoadedPiece>, usize), SculptDocError>
         // ⚠️ **O plano é montado DEPOIS da malha e a partir dela**: a topologia
         // é derivada das faces que acabaram de ser lidas, e é isso que faz o
         // documento não precisar de a guardar.
+        let mut pilha = None;
         let tinta = match tinta {
             None => None,
             Some(TintaGravada::Plano(t)) => Some(tinta_de(&stack, &t, i)?),
-            Some(TintaGravada::Camadas(t)) => Some(tinta_das_camadas(&stack, t, i)?),
+            Some(TintaGravada::Camadas(t)) => {
+                let (t, p) = tinta_das_camadas(&stack, t, i)?;
+                pilha = p;
+                Some(t)
+            }
         };
         pieces.push(LoadedPiece {
             stack,
             pose: Pose::from_data(pose),
             tinta,
+            pilha,
         });
     }
     // Clamp e não erro: a lista pode estar vazia (documento de projeto sem
@@ -510,7 +519,7 @@ fn tinta_das_camadas(
     stack: &Multires,
     doc: TintaDoc,
     peca: usize,
-) -> Result<Tinta, SculptDocError> {
+) -> Result<(Tinta, Option<crate::pilha_da_peca::PilhaDaPeca>), SculptDocError> {
     let mesh = stack.mesh();
     let mut t = plano_vazio(mesh, doc.nivel, &doc.niveis, peca)?;
     let esperadas = t.amostras().len();
@@ -531,7 +540,10 @@ fn tinta_das_camadas(
         semente.map(|s| s.amostras().to_vec()).unwrap_or_default()
     };
     pilha.pinta_tinta(&mut t, fundo);
-    uniforme(t, mesh, peca)
+    // ⚠️ Um plano GRADUADO (só de ficheiro antigo) sai UNIFORME e a pilha dele
+    //    não o descreve: a peça ganha a de UMA camada do composto.
+    let pilha = t.lado_uniforme().is_some().then_some(pilha);
+    Ok((uniforme(t, mesh, peca)?, pilha))
 }
 
 /// **O plano em branco que a topologia gravada descreve.**
@@ -590,40 +602,11 @@ fn uniforme(mut t: Tinta, mesh: &ph2d_mesh::Mesh, peca: usize) -> Result<Tinta, 
 /// coleta. O arch-gate `the_writer_goes_through_the_one_encoder` impede que
 /// ele volte a montar o `SculptDoc` por conta própria.
 pub fn encode(pieces: &[(StackData, PoseData, Option<&Tinta>)], active: usize) -> Vec<u8> {
-    let doc = SculptDoc {
-        version: SCULPT_DOC_VERSION,
-        objects: pieces
-            .iter()
-            .map(|(stack, pose, tinta)| ObjectDoc {
-                stack: stack.clone(),
-                pose: *pose,
-                tinta: tinta.map(|t| TintaDoc {
-                    nivel: t.nivel(),
-                    // ⭐ **Um plano UNIFORME grava a lista VAZIA**, e isso não é
-                    //   uma optimização: é o que faz um documento sem graduação
-                    //   sair byte a byte como saía antes da P2.
-                    niveis: if t.lado_uniforme().is_some() {
-                        Vec::new()
-                    } else {
-                        t.topologia().niveis().to_vec()
-                    },
-                    // ⚠️ Até à W2 (`docs/3D/30` §7) a peça não segura uma pilha:
-                    //   o plano É a camada de base, e a pilha dele é UMA camada.
-                    camadas: doc_camadas::CamadasDoc::da_pilha(
-                        &crate::pilha_da_peca::PilhaDaPeca::de_tinta(t),
-                    ),
-                }),
-            })
-            .collect(),
-        active: active as u32,
-    };
-    postcard::to_allocvec(&doc).unwrap_or_else(|e| {
-        // Um documento que não serializa é bug nosso, não entrada do artista —
-        // mas emitir bytes pela metade seria gravar um arquivo que não abre.
-        // Vazio + a razão no log é a única saída honesta.
-        eprintln!("[sculpt3d] documento nao serializou, projeto salvo SEM a escultura: {e}");
-        Vec::new()
-    })
+    let com: Vec<_> = pieces
+        .iter()
+        .map(|(s, p, t)| (s.clone(), *p, *t, None))
+        .collect();
+    doc_camadas::encode(&com, active)
 }
 
 impl Sculpt3dScene {
@@ -635,13 +618,20 @@ impl Sculpt3dScene {
         // é o GESTO, e um `Ctrl+S` a meio de uma pincelada gravaria a peça
         // **sem o detalhe fino**. É o TERCEIRO consumidor daquela porta, e foi
         // este que a obrigou a existir.
-        let pieces: Vec<(StackData, PoseData, Option<&Tinta>)> = (0..self.objects.len())
+        // ⭐ E a PILHA da peça (W2, `docs/3D/30` §11) — a verdade da cor; sem
+        //   ela o escritor grava o plano como UMA camada.
+        let pieces: Vec<_> = (0..self.objects.len())
             .map(|i| {
                 let o = &self.objects[i];
-                (o.stack.to_data(), o.pose.to_data(), self.plano_de(i))
+                (
+                    o.stack.to_data(),
+                    o.pose.to_data(),
+                    self.plano_de(i),
+                    o.pilha.as_ref(),
+                )
             })
             .collect();
-        encode(&pieces, self.active)
+        doc_camadas::encode(&pieces, self.active)
     }
 
     /// **Instala um documento lido** — a cena passa a ser a do arquivo.
@@ -676,6 +666,7 @@ impl Sculpt3dScene {
             // device ainda tem a cena ANTERIOR — o `sync_mesh` do quadro é quem
             // o sobe, e sem esta marca ele só o faria no primeiro traço.
             obj.tinta = peca.tinta;
+            obj.pilha = peca.pilha;
             obj.tinta_suja = true;
             self.objects.push(obj);
         }

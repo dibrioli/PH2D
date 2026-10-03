@@ -445,7 +445,7 @@ fn a_voz_da_tinta_fina_e_armada_pela_porta() {
     // ⭐⭐⭐ **O FACTO que torna a negativa uma lei e não um gosto.**
     const PEN_DOWN: &str = include_str!("input_down.rs");
     let empresta = PEN_DOWN
-        .find("tinta_da_peca::empresta(")
+        .find("tinta_da_peca::pilha::empresta_da_peca(")
         .expect("o pen-down deixou de emprestar o plano ao traço");
     let voz = PEN_DOWN
         .find("diz_a_recusa_do_pen_down()")

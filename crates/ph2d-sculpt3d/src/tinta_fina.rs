@@ -177,6 +177,9 @@ pub struct TintaDoTraco {
     slot: Vec<u32>,
     accum: Vec<f32>,
     base: Vec<[f32; 3]>,
+    /// A OPACIDADE de antes do traço, na ordem de [`Self::tocadas`] — `1`
+    /// num plano sem o canal (`ph2d_mesh_colors::alfa`).
+    base_alfa: Vec<f32>,
     /// O RELEVO de antes do traço, `[altura, corpo]`, na ordem de
     /// [`Self::tocadas`] (ver o filho `relevo`) — zeros onde o plano não tinha
     /// relevo.
@@ -211,6 +214,7 @@ impl TintaDoTraco {
             slot: vec![0; n],
             accum: Vec::new(),
             base: Vec::new(),
+            base_alfa: Vec::new(),
             base_alt: Vec::new(),
             tocadas: Vec::new(),
             suja: Vec::new(),
@@ -259,6 +263,13 @@ impl TintaDoTraco {
     #[must_use]
     pub fn base(&self) -> &[[f32; 3]] {
         &self.base
+    }
+
+    /// A OPACIDADE de antes do traço, na ordem de [`Self::tocadas`] — a
+    /// metade da janela do desfazer que uma CAMADA tem.
+    #[must_use]
+    pub fn base_alfa(&self) -> &[f32] {
+        &self.base_alfa
     }
 
     /// ⭐⭐ **As amostras das faces que o dab tocou, cada uma UMA vez.**
@@ -366,6 +377,7 @@ impl TintaDoTraco {
         self.slot[idx as usize] = u32::try_from(novo + 1).unwrap_or(u32::MAX);
         self.tocadas.push(idx);
         self.base.push(self.tinta.amostras()[idx as usize]);
+        self.base_alfa.push(self.tinta.opacidade(idx as usize));
         self.base_alt.push(self.tinta.espessura(idx as usize));
         self.accum.push(0.0);
         // Nasce suja: quem pede um slot é quem está prestes a escrever nele.
@@ -383,14 +395,27 @@ impl TintaDoTraco {
     /// Painter sobre a peça ([`crate::tela_na_malha`]). Capturar e escrever são
     /// um acto só, logo a janela do desfazer e a do upload enchem-se como as
     /// do pincel de pintura. Devolve se a amostra mudou.
-    pub fn repinta(&mut self, idx: u32, cor: impl FnOnce([f32; 3]) -> [f32; 3]) -> bool {
+    ///
+    /// ⚠️ A lei recebe e devolve `(cor, opacidade)`: num plano de CAMADA a cor é
+    /// pré-multiplicada; num plano opaco a opacidade é `1` e a que a lei
+    /// devolver não se escreve.
+    pub fn repinta(
+        &mut self,
+        idx: u32,
+        cor: impl FnOnce([f32; 3], f32) -> ([f32; 3], f32),
+    ) -> bool {
         let s = self.slot_de(idx);
-        let nova = cor(self.base[s]);
-        let viva = &mut self.tinta.amostras_mut()[idx as usize];
-        if *viva == nova {
+        let (nova, a) = cor(self.base[s], self.base_alfa[s]);
+        let i = idx as usize;
+        let mudou_a = self.tinta.tem_alfa() && self.tinta.opacidade(i) != a;
+        let viva = &mut self.tinta.amostras_mut()[i];
+        if *viva == nova && !mudou_a {
             return false;
         }
         *viva = nova;
+        if mudou_a {
+            self.tinta.define_opacidade(i, a);
+        }
         self.suja[s] = true;
         true
     }
@@ -596,14 +621,22 @@ impl crate::SculptStroke {
             } else {
                 w.clamp(0.0, 1.0)
             };
-            let de = if pintura {
-                fina.base[s]
+            let (de, de_a) = if pintura {
+                (fina.base[s], fina.base_alfa[s])
             } else {
-                fina.tinta.amostras()[a.idx as usize]
+                let i = a.idx as usize;
+                (fina.tinta.amostras()[i], fina.tinta.opacidade(i))
             };
             let out = &mut fina.tinta.amostras_mut()[a.idx as usize];
             for k in 0..3 {
                 out[k] = de[k] * (1.0 - acc) + alvo[k] * acc;
+            }
+            // ⭐ Numa CAMADA a opacidade segue a MESMA lei (a cor é
+            //   pré-multiplicada): `alvo[3]` é `1` para a pintura e a média do
+            //   anel para os verbos que o leem.
+            if fina.tinta.tem_alfa() {
+                fina.tinta
+                    .define_opacidade(a.idx as usize, de_a * (1.0 - acc) + alvo[3] * acc);
             }
             // ⚠️ **Marcada a cada escrita e não só na primeira:** um dab
             // seguinte re-escreve uma amostra que o anterior já tocou (o

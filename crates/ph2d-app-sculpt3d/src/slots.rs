@@ -180,12 +180,16 @@ impl Sculpt3dScene {
                     stack,
                     tinta,
                     tinta_parqueada,
+                    pilha,
+                    pilha_parqueada,
                     ..
                 } = obj;
-                if crate::tinta_da_peca::garante_no_orcamento(
+                if crate::tinta_da_peca::pilha::garante_com_pilha(
                     stack.mesh(),
                     tinta,
                     tinta_parqueada,
+                    pilha,
+                    pilha_parqueada,
                     pedir,
                     crate::tinta_da_peca::orcamento_da_placa(&device.limits()),
                 ) {
@@ -303,12 +307,36 @@ impl Sculpt3dScene {
                 // `mesh_rebuilt` limpa o próprio `dirty` que ele lê. Sem ela,
                 // o pen-down de um verbo com âncora saltava a cerca do plano
                 // e deixava a tinta a descrever a malha de antes.
+                // ⭐ Pintando uma CAMADA (W2): as sujas descem à camada e a
+                //   composição delas vai ao plano da peça EM TODO QUADRO — é
+                //   ele que sobe, por amostras ou inteiro.
+                let por_camada = emprestado
+                    && self.stroke.tinta_fina.as_mut().is_some_and(|fina| {
+                        crate::tinta_da_peca::pilha::desce_do_traco(
+                            &mut self.objects[i],
+                            fina,
+                            &mut self.tinta_sujas,
+                        )
+                    });
                 let so_as_amostras = crate::tinta_da_peca::so_as_amostras_bastam(
                     emprestado,
                     mexeu,
                     self.objects[i].tinta_suja,
                     matches!(line.job, SlotJob::Full),
                 ) && match self.stroke.tinta_fina.as_mut() {
+                    Some(_) if por_camada => {
+                        let obj = &self.objects[i];
+                        match obj.tinta.as_ref() {
+                            Some(peca) => self.renderer.upload_tinta_amostras_at(
+                                queue,
+                                k,
+                                obj.stack.mesh(),
+                                peca,
+                                &mut self.tinta_sujas,
+                            ),
+                            None => false,
+                        }
+                    }
                     Some(fina) => {
                         let sujas = &mut self.tinta_sujas;
                         fina.drena_sujas(sujas);

@@ -208,7 +208,7 @@ impl Sculpt3dScene {
                 }
                 obj.uploaded = false;
                 let finas_now = finas.and_then(|p| {
-                    let inversa = p.troca(obj.tinta.as_mut())?;
+                    let inversa = p.troca_na_peca(obj)?;
                     obj.tinta_suja = true;
                     Some(inversa)
                 });
@@ -447,7 +447,7 @@ impl Sculpt3dScene {
                 // a malha inteira aqui subiria posições que ninguém mexeu.
                 let finas_now = finas.and_then(|j| {
                     let obj = self.piece_mut();
-                    let inversa = j.troca(obj.tinta.as_mut())?;
+                    let inversa = j.troca_na_peca(obj)?;
                     obj.tinta_suja = true;
                     Some(inversa)
                 });

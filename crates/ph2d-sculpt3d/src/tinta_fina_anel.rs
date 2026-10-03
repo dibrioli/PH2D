@@ -20,18 +20,25 @@ impl crate::SculptStroke {
         brush: &Brush,
         dab: &Dab,
         amostras: &[Apanhada],
-    ) -> Vec<[f32; 3]> {
+    ) -> Vec<[f32; 4]> {
         if brush.verb == Verb::Paint {
-            return vec![brush.color; amostras.len()];
+            let [r, g, b] = brush.color;
+            return vec![[r, g, b, 1.0]; amostras.len()];
         }
         let fina = self.tinta_fina.as_ref().expect("chamado de dentro do dab");
-        let cor = |i: usize| fina.tinta.amostras()[amostras[i].idx as usize];
+        // ⚠️ A OPACIDADE entra na média como a 4.ª componente (numa camada a cor
+        //    é pré-multiplicada, e é a média dos pré-multiplicados que é certa).
+        let cor = |i: usize| {
+            let idx = amostras[i].idx as usize;
+            let [r, g, b] = fina.tinta.amostras()[idx];
+            [r, g, b, fina.tinta.opacidade(idx)]
+        };
         // ⚠️⚠️ **A PRÓPRIA amostra entra com peso `1`, nas DUAS leis** — é uma
         // relaxação *para* a vizinhança e não uma substituição por ela. Sem
         // ela, um dab a peso cheio apaga a cor de uma vez e o pincel deixa de
         // ter gradação. *Esquecê-la foi o meu segundo defeito nesta wave, e o
         // gate contra o caminho por-vértice mediu-o em `3,8e-2`.*
-        let mut soma: Vec<[f32; 3]> = (0..amostras.len()).map(cor).collect();
+        let mut soma: Vec<[f32; 4]> = (0..amostras.len()).map(cor).collect();
         let mut peso = vec![1.0f32; amostras.len()];
         let smear = brush.verb == Verb::SmearColor;
         for &(a, b) in &fina.pares {
@@ -63,13 +70,13 @@ impl crate::SculptStroke {
                 (1.0, 1.0)
             };
             if wa > 0.0 {
-                for k in 0..3 {
+                for k in 0..4 {
                     soma[ia][k] += cb[k] * wa;
                 }
                 peso[ia] += wa;
             }
             if wb > 0.0 {
-                for k in 0..3 {
+                for k in 0..4 {
                     soma[ib][k] += ca[k] * wb;
                 }
                 peso[ib] += wb;
@@ -81,13 +88,7 @@ impl crate::SculptStroke {
         // pincel que muda a peça onde não há nada a mudar é um passo de undo,
         // um upload de GPU e um ficheiro diferente por nada.*
         (0..amostras.len())
-            .map(|i| {
-                [
-                    soma[i][0] / peso[i],
-                    soma[i][1] / peso[i],
-                    soma[i][2] / peso[i],
-                ]
-            })
+            .map(|i| soma[i].map(|c| c / peso[i]))
             .collect()
     }
 }

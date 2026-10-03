@@ -204,6 +204,9 @@ pub mod tela_semente_relevo;
 mod tela_semente_tests;
 pub mod tinta_fina;
 #[cfg(test)]
+#[path = "tinta_fina_camada_tests.rs"]
+mod tinta_fina_camada_tests;
+#[cfg(test)]
 #[path = "tinta_fina_tests.rs"]
 mod tinta_fina_tests;
 mod transform;

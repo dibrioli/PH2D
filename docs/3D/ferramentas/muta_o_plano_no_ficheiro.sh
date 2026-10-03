@@ -110,9 +110,10 @@ muta "$APP/doc_tinta.rs" \
   'P5 cruas: a cerca da contagem da forma CRUA desaparece'
 
 # ── O DOCUMENTO ──────────────────────────────────────────────────────────
-muta "$APP/doc.rs" \
-  '                tinta: tinta.map(|t| TintaDoc {' \
-  '                tinta: None::<&Tinta>.map(|t: &Tinta| TintaDoc {' \
+# ⚠️ Desde o v6 o escritor único mora no `doc_camadas.rs` (`docs/3D/30` §11).
+muta "$APP/doc_camadas.rs" \
+  '                tinta: tinta.map(|t| super::TintaDoc {' \
+  '                tinta: None::<&ph2d_mesh_colors::Tinta>.map(|t: &ph2d_mesh_colors::Tinta| super::TintaDoc {' \
   'P6 encode: o plano deixa de ser escrito no ficheiro'
 
 muta "$APP/doc.rs" \
@@ -126,8 +127,8 @@ muta "$APP/doc.rs" \
   'P8 install_doc: o plano e lido e deitado fora'
 
 muta "$APP/doc.rs" \
-  '                (o.stack.to_data(), o.pose.to_data(), self.plano_de(i))' \
-  '                (o.stack.to_data(), o.pose.to_data(), o.tinta.as_ref())' \
+  '                    self.plano_de(i),' \
+  '                    o.tinta.as_ref(),' \
   'P9 save: volta a ler o Option da peca (um Ctrl+S a meio de um traco perde o plano)'
 
 muta "$APP/doc.rs" \

@@ -211,12 +211,17 @@ pub(crate) fn plano_da_peca<'a>(
     i: usize,
 ) -> Option<&'a Tinta> {
     let obj = objects.get(i)?;
+    // ⚠️ Com a pilha (W2) o plano da peça FICA na peça durante o traço — o
+    //    traço segura a cópia de trabalho da camada, que não é o que se vê.
+    if obj.tinta.is_some() {
+        return obj.tinta.as_ref();
+    }
     if let Some(t) = do_traco
         && t.dono() == obj.id.0
     {
         return Some(t.tinta());
     }
-    obj.tinta.as_ref()
+    None
 }
 
 /// ⭐⭐⭐⭐ **O PASSE DE TOPOLOGIA VAI CORRER NESTE PEN-DOWN?** — a pergunta
@@ -441,6 +446,10 @@ pub(crate) fn garante(
 // filho: aqui fica a lei do plano, lá o recurso do dispositivo que a limita.
 #[path = "tinta_da_peca_placa.rs"]
 mod placa;
+
+// ⭐ A PILHA DE CAMADAS que anda com o plano (`docs/3D/30` §11).
+#[path = "tinta_da_peca_pilha.rs"]
+pub(crate) mod pilha;
 pub(crate) use placa::{degrau_que_cabe, orcamento_da_placa};
 
 /// ⭐⭐⭐ **A [`garante`] com o tecto da PLACA** — o que o quadro chama.
@@ -451,6 +460,9 @@ pub(crate) use placa::{degrau_que_cabe, orcamento_da_placa};
 /// painel — senão o chip mostraria um degrau que a peça não tem e o quadro
 /// seguinte tentaria outra vez. *Um tecto que aceita e entrega menos sem dizer
 /// é o «aceita e mente» que esta casa já pagou três vezes.*
+// ⚠️ O quadro chama a `pilha::garante_com_pilha` (a mesma lei, pela
+//    `garante_e_diz`, com a pilha a seguir o plano); esta fica para os gates.
+#[cfg(test)]
 pub(crate) fn garante_no_orcamento(
     mesh: &Mesh,
     tinta: &mut Option<Tinta>,
@@ -458,12 +470,51 @@ pub(crate) fn garante_no_orcamento(
     nivel: Option<u8>,
     orcamento: u64,
 ) -> bool {
+    garante_e_diz(mesh, tinta, parque, nivel, orcamento).mudou
+}
+
+/// De onde veio o plano que a [`garante_e_diz`] deixou na peça.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Origem {
+    /// Nada mudou.
+    Ficou,
+    /// Voltou do estacionamento.
+    Parque,
+    /// Nasceu da semente.
+    Semente,
+    /// A peça ficou sem plano.
+    Nenhum,
+}
+
+/// O que a [`garante_e_diz`] fez — a pilha de camadas segue-o
+/// (`tinta_da_peca_pilha::garante_com_pilha`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) struct Desfecho {
+    pub(crate) mudou: bool,
+    pub(crate) origem: Origem,
+    /// O plano que estava foi para o estacionamento.
+    pub(crate) estacionou: bool,
+}
+
+/// ⭐⭐⭐ **A [`garante_no_orcamento`] que DIZ o que fez** — a mesma lei.
+pub(crate) fn garante_e_diz(
+    mesh: &Mesh,
+    tinta: &mut Option<Tinta>,
+    parque: &mut Option<Tinta>,
+    nivel: Option<u8>,
+    orcamento: u64,
+) -> Desfecho {
+    let ficou = Desfecho {
+        mudou: false,
+        origem: Origem::Ficou,
+        estacionou: false,
+    };
     let k = nivel.map(|k| k.min(NIVEL_MAX));
     if let (Some(k), Some(t)) = (k, tinta.as_ref())
         && t.nivel() == k
         && concorda_com(t, mesh)
     {
-        return false;
+        return ficou;
     }
     let ja = tinta
         .as_ref()
@@ -476,7 +527,7 @@ pub(crate) fn garante_no_orcamento(
         && t.nivel() == k
         && concorda_com(t, mesh)
     {
-        return false;
+        return ficou;
     }
 
     // ⚠️ **A ORDEM é load-bearing:** tira-se o que está no ar ANTES de olhar
@@ -484,11 +535,26 @@ pub(crate) fn garante_no_orcamento(
     //    sobrescreve aquele que se ia buscar.
     let antigo = tinta.take();
     let mudou = antigo.is_some() || k.is_some();
-    *tinta = k.map(|k| desparqueia(parque, mesh, k).unwrap_or_else(|| semente(mesh, k)));
+    let mut origem = Origem::Nenhum;
+    *tinta = k.map(|k| match desparqueia(parque, mesh, k) {
+        Some(t) => {
+            origem = Origem::Parque;
+            t
+        }
+        None => {
+            origem = Origem::Semente;
+            semente(mesh, k)
+        }
+    });
+    let estacionou = antigo.is_some();
     if let Some(t) = antigo {
         *parque = Some(t);
     }
-    mudou
+    Desfecho {
+        mudou,
+        origem,
+        estacionou,
+    }
 }
 
 /// ⭐⭐ **A SEMENTE de um plano no degrau `k`** — a cor por vértice
@@ -588,6 +654,9 @@ pub(crate) fn rota(
 /// da peça, e é ele que a [`devolve_ao_dono`] usa para achar o caminho de
 /// volta — *o empréstimo deixa de depender de o índice `active` não se mexer
 /// entre o pen-down e o pen-up*.
+// ⚠️ O produto empresta pela `pilha::empresta_da_peca` (a cópia de trabalho
+//    da camada activa, W2); esta — o plano inteiro — fica para os gates.
+#[cfg(test)]
 pub(crate) fn empresta(
     tinta: &mut Option<Tinta>,
     dono: crate::ObjectId,
@@ -645,6 +714,9 @@ pub(crate) fn devolve_ao_dono(
     let dono = do_traco.dono();
     let Some(obj) = objects.iter_mut().find(|o| o.id.0 == dono) else {
         return false;
+    };
+    let Err(do_traco) = pilha::devolve_camada(obj, do_traco) else {
+        return true;
     };
     let crate::objects::SceneObject {
         stack,

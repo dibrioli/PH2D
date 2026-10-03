@@ -236,7 +236,7 @@ muta "$COL/lib.rs" \
   'P26 o plano guarda o nivel MAIS FINO em vez do que foi PEDIDO'
 
 # ── E o PLANO GRADUADO atravessa o FICHEIRO ─────────────────────────────
-muta "$APP/doc.rs" \
+muta "$APP/doc_camadas.rs" \
   '                    niveis: if t.lado_uniforme().is_some() {' \
   '                    niveis: if true {' \
   'P24 o documento grava um plano graduado como se fosse uniforme'

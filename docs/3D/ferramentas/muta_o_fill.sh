@@ -127,15 +127,15 @@ muta "$SCU/tinta_fina.rs" '                    keep: crate::preenche::keep_da_am
   'L7 o carimbo volta a fazer a conta da mascara por conta propria'
 
 # ── A CENA ───────────────────────────────────────────────────────────────
-muta "$APP/preenche.rs" '        let (mudou_plano, fina) = match obj.tinta.as_mut() {' \
-  '        let (mudou_plano, fina) = match None::<&mut ph2d_mesh_colors::Tinta> {' \
+muta "$APP/tinta_da_peca_pilha.rs" '    let Ok(mudou) = ph2d_sculpt3d::preenche::preenche_plano(&mut w, stack.mesh(), cor) else {' \
+  '    let Ok(mudou) = Ok::<bool, ()>(false) else {' \
   'A1 o Fill deixa de pintar o PLANO de tinta fina'
 
 muta "$APP/preenche.rs" '            finas: if mudou_plano { finas_antes } else { None },' \
   '            finas: { let _ = finas_antes; None },' \
   'A2 a entrada grava-se sem o plano de antes'
 
-muta "$APP/undo.rs" '                    let inversa = p.troca(obj.tinta.as_mut())?;' \
+muta "$APP/undo.rs" '                    let inversa = p.troca_na_peca(obj)?;' \
   '                    let inversa = p.troca(None)?;' \
   'A3 o desfazer do Fill deixa de trocar o plano'
 

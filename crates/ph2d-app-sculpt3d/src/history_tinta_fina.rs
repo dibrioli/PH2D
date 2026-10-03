@@ -83,6 +83,10 @@ pub(crate) struct JanelaFina {
     /// traço não mudou o relevo: uma pincelada de cor sobre uma peça com relevo
     /// não paga o canal.
     relevo: Option<Vec<[f32; 2]>>,
+    /// ⭐ **A CAMADA pintada e os bytes dela de antes** (W2, `docs/3D/30`
+    /// §11) — com ela o desfazer troca a camada e recompõe a janela; sem ela
+    /// (`None`) troca o plano da peça como antes.
+    camada: Option<(ph2d_tool_painter::LayerId, Vec<[u8; 4]>)>,
 }
 
 impl JanelaFina {
@@ -101,6 +105,60 @@ impl JanelaFina {
             amostras: t.tocadas().to_vec(),
             cores: t.base().to_vec(),
             relevo: t.relevo_mudou().then(|| t.base_relevo().to_vec()),
+            camada: None,
+        })
+    }
+
+    /// ⭐⭐⭐ **A janela de um traço sobre a CAMADA `id`** — os bytes de antes
+    /// saem da cópia `f32` de antes (`para_bytes`, cuja ida e volta é a
+    /// identidade): são EXACTAMENTE os que a camada tinha.
+    pub(crate) fn do_traco_na_camada(
+        t: &TintaDoTraco,
+        id: ph2d_tool_painter::LayerId,
+    ) -> Option<Self> {
+        let mut j = Self::do_traco(t)?;
+        let rgba = t
+            .base()
+            .iter()
+            .zip(t.base_alfa())
+            .map(|(&c, &a)| crate::pilha_da_peca::para_bytes(c, a))
+            .collect();
+        j.cores = Vec::new();
+        j.camada = Some((id, rgba));
+        Some(j)
+    }
+
+    /// ⭐⭐⭐ **Desfaz/refaz na PEÇA** — pela camada se a janela é de uma, pelo
+    /// plano se não. `None` = a largada (o plano já não é aquele).
+    pub(crate) fn troca_na_peca(self, obj: &mut crate::SceneObject) -> Option<Self> {
+        let Some((id, rgba)) = self.camada else {
+            return self.troca(obj.tinta.as_mut());
+        };
+        let crate::objects::SceneObject {
+            stack,
+            tinta,
+            pilha,
+            ..
+        } = obj;
+        let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
+            return None;
+        };
+        if IdDoPlano::de(peca) != self.plano {
+            return None;
+        }
+        let rgba = pilha.troca_janela(id, &self.amostras, &rgba)?;
+        let relevo = match &self.relevo {
+            Some(r) => Some(pilha.troca_relevo(&self.amostras, r)?),
+            None => None,
+        };
+        let (mesh, k) = (stack.mesh(), peca.nivel());
+        pilha.compoe_amostras(&self.amostras, peca, || {
+            crate::tinta_da_peca::semente(mesh, k).amostras().to_vec()
+        });
+        Some(Self {
+            relevo,
+            camada: Some((id, rgba)),
+            ..self
         })
     }
 
@@ -169,15 +227,59 @@ impl JanelaFina {
 pub(crate) struct PlanoInteiro {
     plano: IdDoPlano,
     cores: Vec<[f32; 3]>,
+    /// ⭐ A CAMADA preenchida e o plano dela de antes (W2) — ver
+    /// [`JanelaFina::camada`].
+    camada: Option<(ph2d_tool_painter::LayerId, Vec<u8>)>,
 }
 
 impl PlanoInteiro {
+    /// ⚠️ O produto guarda o plano da CAMADA ([`Self::da_camada`], W2); esta
+    /// — o plano da peça — fica para os gates da lei.
+    #[cfg(test)]
     /// O plano inteiro, tal como está.
     pub(crate) fn de(t: &Tinta) -> Self {
         Self {
             plano: IdDoPlano::de(t),
             cores: t.amostras().to_vec(),
+            camada: None,
         }
+    }
+
+    /// ⭐⭐ **O balde sobre a CAMADA `id`** — o plano dela de antes, em RGBA8.
+    pub(crate) fn da_camada(t: &Tinta, id: ph2d_tool_painter::LayerId, rgba8: Vec<u8>) -> Self {
+        Self {
+            plano: IdDoPlano::de(t),
+            cores: Vec::new(),
+            camada: Some((id, rgba8)),
+        }
+    }
+
+    /// ⭐⭐ **Desfaz/refaz na PEÇA** — ver [`JanelaFina::troca_na_peca`].
+    pub(crate) fn troca_na_peca(self, obj: &mut crate::SceneObject) -> Option<Self> {
+        let Some((id, rgba8)) = self.camada else {
+            return self.troca(obj.tinta.as_mut());
+        };
+        let crate::objects::SceneObject {
+            stack,
+            tinta,
+            pilha,
+            ..
+        } = obj;
+        let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
+            return None;
+        };
+        if IdDoPlano::de(peca) != self.plano {
+            return None;
+        }
+        let rgba8 = pilha.troca_plano(id, rgba8)?;
+        let (mesh, k) = (stack.mesh(), peca.nivel());
+        pilha.pinta_tinta(peca, || {
+            crate::tinta_da_peca::semente(mesh, k).amostras().to_vec()
+        });
+        Some(Self {
+            camada: Some((id, rgba8)),
+            ..self
+        })
     }
 
     /// ⭐ **A TROCA**, com a mesma lei da [`JanelaFina::troca`]: devolve a
@@ -197,6 +299,7 @@ impl PlanoInteiro {
     /// Quanto ela segura — a régua do tecto da história.
     pub(crate) fn bytes(&self) -> usize {
         self.cores.capacity() * size_of::<[f32; 3]>()
+            + self.camada.as_ref().map_or(0, |(_, p)| p.capacity())
     }
 }
 
@@ -214,6 +317,7 @@ impl JanelaFina {
                 .relevo
                 .as_ref()
                 .map_or(0, |a| a.capacity() * size_of::<[f32; 2]>())
+            + self.camada.as_ref().map_or(0, |(_, p)| p.capacity() * 4)
     }
 }
 

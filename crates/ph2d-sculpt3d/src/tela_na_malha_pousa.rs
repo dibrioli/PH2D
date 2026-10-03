@@ -9,22 +9,42 @@ use crate::SculptStroke;
 use crate::preenche::keep_da_amostra;
 
 /// A mistura de uma amostra — ver o cabeçalho.
-fn pousa(base: [f32; 3], mistura: Mistura, k: f32) -> [f32; 3] {
+///
+/// ⚠️ `(base, alfa)` é a amostra como o plano a guarda: numa CAMADA a cor é
+/// pré-multiplicada (`ph2d_mesh_colors::alfa`). `Sobre` é a mesma conta nas
+/// quatro componentes; a `Diferenca` soma-se à cor DIREITA e não mexe na
+/// opacidade. Num plano opaco (`alfa = 1`) as duas são as de antes, ao bit.
+fn pousa(base: [f32; 3], alfa: f32, mistura: Mistura, k: f32) -> ([f32; 3], f32) {
     match mistura {
         Mistura::Sobre { pm, a } => {
             let fica = 1.0 - a * k;
-            [
-                base[0] * fica + pm[0] * k,
-                base[1] * fica + pm[1] * k,
-                base[2] * fica + pm[2] * k,
-            ]
+            (
+                [
+                    base[0] * fica + pm[0] * k,
+                    base[1] * fica + pm[1] * k,
+                    base[2] * fica + pm[2] * k,
+                ],
+                alfa * fica + a * k,
+            )
         }
-        Mistura::Diferenca(d) => [
-            (base[0] + d[0] * k).clamp(0.0, 1.0),
-            (base[1] + d[1] * k).clamp(0.0, 1.0),
-            (base[2] + d[2] * k).clamp(0.0, 1.0),
-        ],
-        Mistura::SemCor => base,
+        Mistura::Diferenca(_) if alfa <= 0.0 => (base, alfa),
+        Mistura::Diferenca(d) if alfa == 1.0 => (
+            [
+                (base[0] + d[0] * k).clamp(0.0, 1.0),
+                (base[1] + d[1] * k).clamp(0.0, 1.0),
+                (base[2] + d[2] * k).clamp(0.0, 1.0),
+            ],
+            alfa,
+        ),
+        Mistura::Diferenca(d) => (
+            [
+                (base[0] / alfa + d[0] * k).clamp(0.0, 1.0) * alfa,
+                (base[1] / alfa + d[1] * k).clamp(0.0, 1.0) * alfa,
+                (base[2] / alfa + d[2] * k).clamp(0.0, 1.0) * alfa,
+            ],
+            alfa,
+        ),
+        Mistura::SemCor => (base, alfa),
     }
 }
 
@@ -85,8 +105,8 @@ fn pousa_amostra(
         return false;
     }
     let k = keep_da_amostra(w, m);
-    let cor = fina.repinta(idx, |pre| {
-        pousa(base_de(sessao, idx, pre, p, mistura), mistura, k)
+    let cor = fina.repinta(idx, |pre, alfa| {
+        pousa(base_de(sessao, idx, pre, p, mistura), alfa, mistura, k)
     });
     // ⭐⭐ **`nova = antes + k·(tela − semente)`** (`docs/3D/29` D3 e §6): a
     //   altura convertida de píxeis para a peça no próprio ponto, e o corpo
@@ -303,7 +323,8 @@ impl SculptStroke {
                     }
                     let k = keep_da_amostra(&[1.0], &m[c..=c]);
                     if self.repinta_vertice(mesh, v, |pre| {
-                        pousa(base_de(sessao, v, pre, p, mistura), mistura, k)
+                        // a cor por vértice é sempre opaca
+                        pousa(base_de(sessao, v, pre, p, mistura), 1.0, mistura, k).0
                     }) {
                         mudaram += 1;
                         vertices.push(v);

@@ -83,6 +83,8 @@
 
 #![forbid(unsafe_code)]
 
+/// A opacidade por amostra — o canal de uma CAMADA (`docs/3D/30` §11).
+pub mod alfa;
 pub mod amostragem;
 pub mod assar;
 pub mod enderecos;
@@ -176,6 +178,9 @@ pub struct Tinta {
     /// lá (o impasto do Painter na peça). Ver [`relevo`]. ⚠️ `None` até à 1.ª
     /// escrita: uma peça que nunca levou impasto não paga um byte.
     relevo: Option<Vec<[f32; 2]>>,
+    /// ⭐ **A OPACIDADE de cada amostra** — só numa cópia de trabalho de uma
+    /// camada; com ela as cores são PRÉ-MULTIPLICADAS. Ver [`alfa`].
+    alfa: Option<Vec<f32>>,
 }
 
 // ⛔⛔⛔⛔ **E A LEI POR BAIXO (`niveis_por_area`) SAIU COM ELE.**
@@ -215,6 +220,7 @@ impl Tinta {
             topo,
             amostras: vec![BRANCO; n],
             relevo: None,
+            alfa: None,
         }
     }
 
@@ -261,6 +267,7 @@ impl Tinta {
             topo,
             amostras: vec![BRANCO; n],
             relevo: None,
+            alfa: None,
         })
     }
 
@@ -279,6 +286,7 @@ impl Tinta {
             topo,
             amostras: cores.to_vec(),
             relevo: None,
+            alfa: None,
         }
     }
 
@@ -371,6 +379,10 @@ impl Tinta {
                 .relevo
                 .as_ref()
                 .map_or(0, |a| a.capacity() * size_of::<[f32; 2]>())
+            + self
+                .alfa
+                .as_ref()
+                .map_or(0, |a| a.capacity() * size_of::<f32>())
             + self.topo.footprint_bytes()
     }
 

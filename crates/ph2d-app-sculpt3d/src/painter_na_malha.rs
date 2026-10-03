@@ -342,7 +342,7 @@ impl Sculpt3dScene {
         self.stroke.begin(self.objects[self.active].stack.mesh());
         let dono = self.objects[self.active].id;
         self.stroke.tinta_fina =
-            crate::tinta_da_peca::empresta(&mut self.objects[self.active].tinta, dono);
+            crate::tinta_da_peca::pilha::empresta_da_peca(&mut self.objects[self.active], dono);
         let mesh = self.objects[self.active].stack.mesh();
         let destino = self
             .stroke

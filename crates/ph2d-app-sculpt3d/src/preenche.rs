@@ -43,25 +43,26 @@ impl Sculpt3dScene {
             return Preenchido::SemPeca;
         };
         let colors_antes = obj.stack.mesh().colors().map(<[[f32; 3]]>::to_vec);
-        let finas_antes = obj.tinta.as_ref().map(PlanoInteiro::de);
         let mudou_vertices = ph2d_sculpt3d::preenche::preenche_vertices(obj.stack.mesh_mut(), cor);
-        let (mudou_plano, fina) = match obj.tinta.as_mut() {
-            Some(t) => match ph2d_sculpt3d::preenche::preenche_plano(t, obj.stack.mesh(), cor) {
-                Ok(m) => (m, true),
-                // ⚠️ Um plano que não descreve a malha: o quadro seguinte
-                // re-semeia-o da cor por vértice (a `tinta_da_peca::garante`),
-                // que acabou de ser preenchida — a peça fica certa, e o
-                // terminal di-lo.
-                Err(ph2d_sculpt3d::preenche::Recusa::NaoDescreve) => {
+        // ⭐ Com a pilha (W2) o balde pinta a CAMADA activa e a peça recompõe-se.
+        let (mudou_plano, fina, finas_antes) =
+            match crate::tinta_da_peca::pilha::preenche_camada(obj, cor) {
+                crate::tinta_da_peca::pilha::Balde::Pintou { id, antes, mudou } => (
+                    mudou,
+                    true,
+                    obj.tinta
+                        .as_ref()
+                        .map(|t| PlanoInteiro::da_camada(t, id, antes)),
+                ),
+                crate::tinta_da_peca::pilha::Balde::Recusado => {
                     eprintln!(
-                        "[sculpt3d] fill: o plano de tinta fina nao descreve a malha -- \
-                         pintei a cor por vertice e o plano volta a nascer dela"
+                        "[sculpt3d] fill: a camada activa nao recebe o balde (nao e de pintura, \
+                     ou o plano nao descreve a malha) -- pintei a cor por vertice"
                     );
-                    (false, false)
+                    (false, false, None)
                 }
-            },
-            None => (false, false),
-        };
+                crate::tinta_da_peca::pilha::Balde::SemCamada => (false, false, None),
+            };
         if !mudou_vertices && !mudou_plano {
             // ⚠️ O `colors_mut` pode ter MATERIALIZADO um plano de cor que não
             // existia; se nada mudou, devolve-se a malha ao que era.

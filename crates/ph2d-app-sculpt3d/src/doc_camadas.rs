@@ -98,3 +98,50 @@ impl CamadasDoc {
 fn como_pixeis(rgba8: &[u8]) -> Vec<[u8; 4]> {
     rgba8.as_chunks::<4>().0.to_vec()
 }
+
+/// ⭐⭐⭐ **O escritor único do documento** — cada peça com o plano dela e,
+/// se a tem, a PILHA; sem pilha o plano grava-se como UMA camada
+/// ([`PilhaDaPeca::de_tinta`]).
+pub(super) fn encode(
+    pieces: &[(
+        ph2d_mesh::StackData,
+        ph2d_mesh::PoseData,
+        Option<&ph2d_mesh_colors::Tinta>,
+        Option<&PilhaDaPeca>,
+    )],
+    active: usize,
+) -> Vec<u8> {
+    let doc = super::SculptDoc {
+        version: super::SCULPT_DOC_VERSION,
+        objects: pieces
+            .iter()
+            .map(|(stack, pose, tinta, pilha)| super::ObjectDoc {
+                stack: stack.clone(),
+                pose: *pose,
+                tinta: tinta.map(|t| super::TintaDoc {
+                    nivel: t.nivel(),
+                    // ⭐ **Um plano UNIFORME grava a lista VAZIA**, e isso não é
+                    //   uma optimização: é o que faz um documento sem graduação
+                    //   sair byte a byte como saía antes da P2.
+                    niveis: if t.lado_uniforme().is_some() {
+                        Vec::new()
+                    } else {
+                        t.topologia().niveis().to_vec()
+                    },
+                    camadas: match pilha.filter(|p| p.amostras() == t.amostras().len()) {
+                        Some(p) => CamadasDoc::da_pilha(p),
+                        None => CamadasDoc::da_pilha(&PilhaDaPeca::de_tinta(t)),
+                    },
+                }),
+            })
+            .collect(),
+        active: active as u32,
+    };
+    postcard::to_allocvec(&doc).unwrap_or_else(|e| {
+        // Um documento que não serializa é bug nosso, não entrada do artista —
+        // mas emitir bytes pela metade seria gravar um arquivo que não abre.
+        // Vazio + a razão no log é a única saída honesta.
+        eprintln!("[sculpt3d] documento nao serializou, projeto salvo SEM a escultura: {e}");
+        Vec::new()
+    })
+}

@@ -166,8 +166,8 @@ muta LEI crates/ph2d-sculpt3d/src/tela_na_malha.rs \
             self.raios += 1;' \
   'L6 a visibilidade deixa de ser lembrada: um raio por quadro'
 muta LEI crates/ph2d-sculpt3d/src/tinta_fina.rs \
-  '        let nova = cor(self.base[s]);' \
-  '        let nova = cor(self.tinta.amostras()[idx as usize]);' \
+  '        let (nova, a) = cor(self.base[s], self.base_alfa[s]);' \
+  '        let (nova, a) = cor(self.tinta.amostras()[idx as usize], self.base_alfa[s]);' \
   'L7 a amostra fina mistura sobre a CORRENTE: pousar duas vezes escurece'
 muta LEI crates/ph2d-sculpt3d/src/stroke_freeze.rs \
   '        let nova = cor(self.base_color[self.slot[v as usize] as usize]);' \

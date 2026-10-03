@@ -119,3 +119,66 @@ fn diag_o_compositor_do_painter_sobre_o_plano_da_peca() {
         );
     }
 }
+
+/// 🔎 **SONDA — o preço do traço sobre uma CAMADA** (`docs/3D/30` §7, o critério
+/// de desistência da W2: *o incremental passar de `1 ms` por quadro a `8x`*).
+///
+/// Na peça da lição (cena `52`), nos degraus `3..=6`, com a pilha de três
+/// camadas (Normal opaca · Multiply · Overlay) + um ajuste HSB e a de cima
+/// activa: (1) o PEN-DOWN — a cópia de trabalho da camada activa; (2) um QUADRO
+/// de traço — `300` amostras sujas em `10` corridas de `30` (a forma de um
+/// quadro medido: mediana `137`, máximo `323`, as de uma face contíguas)
+/// descem à camada e recompõem-se no plano da peça.
+#[test]
+#[ignore = "sonda: imprime a tabela"]
+fn diag_o_preco_do_traco_na_camada() {
+    use crate::pilha_da_peca::PilhaDaPeca;
+    let mesh = crate::scenes::tinta_fina::peca();
+    for k in 3u8..=6 {
+        let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
+        let mut peca = match mesh.colors() {
+            Some(c) => ph2d_mesh_colors::Tinta::semeada(c, faces(), k),
+            None => ph2d_mesh_colors::Tinta::nova(mesh.vert_count(), faces(), k),
+        };
+        let n = peca.amostras().len();
+        let mut p = PilhaDaPeca::de_tinta(&peca);
+        for (nome, modo) in [("mult", BlendMode::Multiply), ("over", BlendMode::Overlay)] {
+            let id = p.nova_camada(nome).expect("camada");
+            p.define_modo(id, modo);
+            let px: Vec<[u8; 4]> = camada(n, id.0 as u32).rgba8.as_chunks::<4>().0.to_vec();
+            p.plano_mut(id).expect("plano").escreve(&px, None);
+        }
+        let hsb = p.novo_ajuste(ph2d_tool_painter::AdjustmentKind::HueSaturationBrightness).expect("ajuste");
+        p.define_parametros(hsb, AdjustmentParams::HueSaturationBrightness(HsbParams { h: 30.0, s: 0.2, b: 0.1 }))
+            .expect("parâmetros");
+        p.define_activa(ph2d_tool_painter::LayerId(3));
+        p.pinta_tinta(&mut peca, Vec::new);
+
+        let t = Instant::now();
+        let (id, mut w) = p.trabalho_da_activa(&peca).expect("activa");
+        let pen_down = t.elapsed().as_secs_f64() * 1e3;
+
+        let passo = n / 11;
+        let sujas: Vec<u32> = (0..10u32).flat_map(|r| (0..30u32).map(move |j| r * passo as u32 + j)).collect();
+        let mut quadros = Vec::new();
+        for q in 0..50u32 {
+            for &i in &sujas {
+                w.amostras_mut()[i as usize] = [0.5, 0.25, (q % 7) as f32 * 0.1];
+                w.define_opacidade(i as usize, 0.75);
+            }
+            let t = Instant::now();
+            p.recebe_do_traco(id, &w, &sujas);
+            p.compoe_amostras(&sujas, &mut peca, Vec::new);
+            quadros.push(t.elapsed().as_secs_f64() * 1e3);
+        }
+        quadros.sort_by(f64::total_cmp);
+        eprintln!(
+            "degrau {k} ({}x) · {n} amostras · pen-down (cópia de trabalho) {pen_down:.2} ms · \
+             um quadro de 300 sujas em 10 corridas: mediana {:.3} ms · p90 {:.3} ms · pior {:.3} ms",
+            1u32 << k,
+            quadros[25],
+            quadros[45],
+            quadros[49]
+        );
+    }
+}

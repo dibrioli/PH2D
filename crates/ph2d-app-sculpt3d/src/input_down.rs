@@ -330,8 +330,10 @@ pub fn pointer_down(
             // [`crate::tinta_da_peca::devolve_ao_dono`], que acha a peça pelo
             // `ObjectId` em vez de reler o índice `active`.
             let dono = scene.objects[scene.active].id;
-            scene.stroke.tinta_fina =
-                crate::tinta_da_peca::empresta(&mut scene.objects[scene.active].tinta, dono);
+            scene.stroke.tinta_fina = crate::tinta_da_peca::pilha::empresta_da_peca(
+                &mut scene.objects[scene.active],
+                dono,
+            );
             // ⭐⭐ **A MEMÓRIA DO PENTE MORRE AQUI, e ela morre com o `begin` de
             // propósito:** as duas são indexadas pelo id de vértice da peça
             // ACTIVA, logo a mesma linha que redimensiona o traço na malha certa

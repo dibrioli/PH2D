@@ -184,6 +184,7 @@ fn uma_janela_cujos_indices_nao_cabem_e_recusada_e_nao_estoura() {
         amostras: vec![fora],
         cores: vec![COR],
         relevo: None,
+        camada: None,
     };
     assert!(
         janela.troca(Some(&mut t)).is_none(),

@@ -561,7 +561,17 @@ impl Sculpt3dScene {
         // sentido MUDO: quem a mudasse para depois leria um `Option` vazio e
         // gravaria uma janela vazia em todo traço, sem um erro.
         let finas = if let Some(do_traco) = self.stroke.tinta_fina.take() {
-            let janela = JanelaFina::do_traco(&do_traco);
+            // ⭐ Um traço sobre uma CAMADA (W2) guarda a janela DELA.
+            let camada = self
+                .objects
+                .iter()
+                .find(|o| o.id.0 == do_traco.dono())
+                .and_then(|o| o.pilha.as_ref())
+                .and_then(crate::pilha_da_peca::PilhaDaPeca::em_traco);
+            let janela = match camada {
+                Some(id) => JanelaFina::do_traco_na_camada(&do_traco, id),
+                None => JanelaFina::do_traco(&do_traco),
+            };
             // ⭐⭐⭐⭐ **Ao DONO, e nunca à peça ACTIVA** — o achado §10.5. As
             // duas pontas do empréstimo eram indexadas por `self.active`, e
             // nada as prendia à mesma peça: com o índice a mudar entre o

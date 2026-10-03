@@ -304,6 +304,13 @@ fn paint_choice(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y
     // local seria a segunda resposta que diverge num desfazer.
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let escolhido = row.value.round().max(0.0) as usize;
+    debug_assert!(
+        row.choices.len() <= crate::populate::MAX_CHOICES as usize,
+        "a escolha {} tem {} botões e o registo só cunha {} — os de fora seriam mudos sob o dedo",
+        row.key,
+        row.choices.len(),
+        crate::populate::MAX_CHOICES
+    );
     let labels: Vec<(&str, bool, ph2d_a11y::NodeId)> = row
         .choices
         .iter()

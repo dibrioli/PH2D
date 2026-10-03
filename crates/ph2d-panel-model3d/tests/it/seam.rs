@@ -1312,6 +1312,23 @@ fn a_click_on_a_character_chip_dispatches_that_slot_and_never_the_verb() {
 /// botão, um despacho que ignorasse a célula e mandasse sempre `0` passaria por acidente. *Uma
 /// fixtura cujo valor é o que o defeito produziria não mede nada.*
 fn scene_with_one_choice_row() {
+    scene_with_a_choice_row(&ph2d_field::Axis::KEYS, ph2d_field::Param::Mod { slot: 0, field: 4 });
+}
+
+/// ⭐ Os NOVE céus do Render por malha — a escolha mais longa que um produtor publica hoje.
+const NOVE: [&str; 9] = [
+    "panel.model3d.sky.studio",
+    "panel.model3d.sky.photo_studio",
+    "panel.model3d.sky.interior",
+    "panel.model3d.sky.city",
+    "panel.model3d.sky.courtyard",
+    "panel.model3d.sky.forest",
+    "panel.model3d.sky.sunrise",
+    "panel.model3d.sky.sunset",
+    "panel.model3d.sky.night",
+];
+
+fn scene_with_a_choice_row(choices: &'static [&'static str], param: ph2d_field::Param) {
     publish(ModelSnapshot {
         modes: Vec::new(),
         frames: Vec::new(),
@@ -1326,17 +1343,17 @@ fn scene_with_one_choice_row() {
         acts: Vec::new(),
         rows: vec![ParamRow {
             entity: THE_UNION,
-            param: ph2d_field::Param::Mod { slot: 0, field: 4 },
+            param,
             key: "field.mod.axis",
             value: 2.0,
             lo: 0.0,
             inert: None,
             integral: true,
             section: None,
-            choices: &ph2d_field::Axis::KEYS,
+            choices,
             swatch: None,
             subject: None,
-            bound: Bound::Hard(2.0),
+            bound: Bound::Hard((choices.len() - 1) as f32),
         }],
         views: Vec::new(),
         camera: Vec::new(),
@@ -1395,6 +1412,38 @@ fn a_click_on_an_axis_button_reaches_the_document() {
             value: 1.0,
         }],
         "o clique no botão do MEIO tem de despachar o índice `1` (Y) na entidade e no campo da linha"
+    );
+}
+
+/// ⭐⭐⭐ **O ÚLTIMO de NOVE botões também chega ao intent** — o céu do Render por malha tem nove
+/// (02/10). ⛔ O registo cunhava QUATRO por linha (`MAX_CHOICES`): o pintor quebrava a fileira e
+/// pintava os nove, e do 5.º em diante o botão era MUDO sob o dedo — a 2.ª espécie de controlo morto.
+#[test]
+fn a_click_on_the_ninth_choice_reaches_the_intent() {
+    scene_with_a_choice_row(&NOVE, ph2d_field::Param::Sky(0));
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    host.set_panel_visible(Model3dPanel::ID, true);
+    let mut panel_state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+    let _ = drain_intents();
+    for cell in 0..NOVE.len() as u32 {
+        let botao = ph2d_panel_model3d::ids::model3d_choice_button(0, cell);
+        assert!(
+            host.hit_index_mut().rect_for(botao).is_some(),
+            "o botão {cell} dos nove não está no índice de acerto — invisível ao ponteiro"
+        );
+    }
+    let botao = ph2d_panel_model3d::ids::model3d_choice_button(0, 8);
+    let saida = host.apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::Click(botao));
+    assert_eq!(saida, EventOutcome::Consumed, "o painel tem de consumir o clique no 9.º");
+    assert_eq!(
+        drain_intents(),
+        vec![ModelIntent::SetParam {
+            entity: THE_UNION,
+            param: ph2d_field::Param::Sky(0),
+            value: 8.0,
+        }],
     );
 }
 

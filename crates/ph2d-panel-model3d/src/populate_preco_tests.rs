@@ -20,16 +20,17 @@ fn widgets_previstos() -> usize {
 
 /// ⭐⭐⭐ **O QUE A FOLGA DA CENA CUSTA** — e a tabela que o doc do teto cita.
 ///
-/// Medido em 2026-09-19 nesta máquina (o relógio é impresso, não afirmado):
+/// Medido em 2026-09-19 nesta máquina e RE-MEDIDO em 03/10 com `MAX_CHOICES = 9` (o relógio é
+/// impresso, não afirmado):
 ///
 /// | parcela | entradas no store |
 /// |---|---:|
 /// | chips (`MAX_MODES × CHIP_FAMILY_COUNT`) | `208` |
-/// | linhas do pior NÓ (`85 × 6`) | `510` |
-/// | **a folga da CENA (`32 × 6`)** | **`192`** |
+/// | linhas do pior NÓ (`85 × 11`) | `935` |
+/// | **a folga da CENA (`32 × 11`)** | **`352`** |
 /// | a moldura e o fecho | `2` |
 ///
-/// ⇒ a folga que faz a secção de estilo caber custa **`192` entradas cunhadas uma vez no arranque**,
+/// ⇒ a folga que faz a secção de estilo caber custa **`352` entradas cunhadas uma vez no arranque**,
 /// e nada por quadro: o `paint` percorre `snapshot.rows`, que tem o tamanho do retrato e não o do
 /// registo.
 #[test]

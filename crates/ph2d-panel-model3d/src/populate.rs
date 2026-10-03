@@ -61,8 +61,9 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 /// | `3` | `32` | `37` |
 /// | **`27`** | `80` | **`85`** |
 ///
-/// ⭐ **O preço MEDIDO de cada subida:** cada linha regista `6` widgets, logo cinco linhas custam
-/// **`30` widgets e 5 `String`** no store, uma vez, no arranque — o mesmo nas quatro.
+/// ⭐ **O preço MEDIDO de cada subida:** cada linha regista `2 + MAX_CHOICES` widgets (`6` quando
+/// esta tabela foi escrita, `11` desde 03/10), logo cinco linhas custam **`55` widgets e 5
+/// `String`** no store, uma vez, no arranque — o mesmo nas quatro.
 ///
 /// ⛔⛔ **E a frase que aqui estava — *«o material FECHOU: são as `15` entradas do OpenPBR, e não há
 /// mais nenhuma para apender; este teto deixa de crescer por material»* — MORREU em 17/09.** Ela
@@ -116,11 +117,12 @@ pub const EXTRAS_DE_UM_NO: usize = 31;
 ///
 /// # ⚠️ De que recurso ele é, MEDIDO
 ///
-/// Do **registo de widgets**, e de mais nada: cada linha custa `2 + MAX_CHOICES` = **6** entradas no
+/// Do **registo de widgets**, e de mais nada: cada linha custa `2 + MAX_CHOICES` = **11** entradas no
 /// store, cunhadas uma vez no arranque. Medido em 2026-09-19 pelo gate
 /// `o_preco_do_teto_de_linhas_e_o_registo` (`populate_preco_tests.rs`), que re-mede a tabela:
-/// o `populate` inteiro cunha **912** entradas, das quais **192** são esta folga, e corre em
-/// **`172,9 µs` em `--release`** (`650,0 µs` em debug) — **uma vez, no arranque**. ⛔ E **nada por
+/// o `populate` inteiro cunha **1 497** entradas, das quais **352** são esta folga, e corre em
+/// **`179,3 µs` em `--release`** (`500 µs` em debug; re-medido 03/10 com `MAX_CHOICES = 9`, era
+/// `912` / `172,9 µs` com `4`) — **uma vez, no arranque**. ⛔ E **nada por
 /// quadro**: o `paint` percorre `snapshot.rows`, que tem o tamanho do RETRATO e não o do registo.
 ///
 /// ⛔ **E ele NÃO é `10`.** A camada de estilo cresce dentro da mesma jornada em que este número foi
@@ -141,10 +143,16 @@ const _: () = assert!(MAX_SCENE_ROWS >= 16);
 /// Quantos botões uma linha de **escolha** pode oferecer.
 ///
 /// ⚠️ **É um limite de REGISTO, e a mesma natureza do [`MAX_ROWS`]**: o `populate` corre antes de a
-/// peça existir e cunha a família às cegas. Hoje o único consumidor é o eixo, que tem **três**
-/// ([`ph2d_field::Axis::ALL`]); a folga de um é para a escolha seguinte não obrigar a mexer aqui, e
-/// o gate `every_choice_row_fits_the_registered_family` afirma que ninguém a estourou.
-pub const MAX_CHOICES: u32 = 4;
+/// peça existir e cunha a família às cegas. Os consumidores: o eixo (**três**,
+/// [`ph2d_field::Axis::ALL`]) e o CÉU do Render por malha (**nove**, 02/10).
+///
+/// ⛔⛔ **Era `4`, e o céu foi o 1.º a estourá-lo — EM SILÊNCIO:** o pintor quebra a fileira e
+/// pintava os nove, o registo só tinha quatro, e do 5.º em diante o botão era mudo sob o dedo. A nota
+/// que aqui estava citava um gate (`every_choice_row_fits_the_registered_family`) que **não existia**.
+/// Agora há dois: o clique no 9.º botão (`a_click_on_the_ninth_choice_reaches_the_intent`) e o
+/// `debug_assert!` no pintor (uma escolha mais longa do que o registo falha alto, não corta).
+/// O preço re-medido está no `o_preco_do_teto_de_linhas_e_o_registo`.
+pub const MAX_CHOICES: u32 = 9;
 
 /// Quantos verbos (e quantos referenciais) um seletor consegue mostrar.
 ///

@@ -6,6 +6,11 @@
 > (F48–F49) está em [HANDOFF F48](HANDOFF_line_Vector_F48_O_FECHO_DA_IMAGEM_2026-10-02.md) e na
 > [fila §F48–§F49](../01_a_fila.md).
 
+> ✅ **ACTUALIZAÇÃO (mesma data, janela seguinte): o §2 FOI FEITO — F50** (`326589c2f` a lei,
+> `436f97e63` a cena `=5`). O efeito coze-se no REPOUSO e dobra com a forma; `PH2D_SKIN_EFEITOS=0`
+> volta à lei antiga. Mecanismo, medições, preço e os três abertos: [fila §F50](../01_a_fila.md).
+> O §2 abaixo fica como estava, como o porquê. Os abertos do §3 não mudaram.
+
 ## 0. Onde está
 
 | | |

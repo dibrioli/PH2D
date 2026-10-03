@@ -193,7 +193,56 @@ fn so_o_efeito_activo_conta_e_o_offset_de_camada_fica_de_fora() {
     );
     let mut fx = base.clone();
     fx.effects.push(FxEntry::new(efeito.clone()));
-    assert_eq!(estilo_de(&fx), Estilo::Efeitos(vec![FxEntry::new(efeito)]));
+    assert_eq!(
+        estilo_de(&fx),
+        Estilo::Efeitos(vec![FxEntry::new(efeito.clone())])
+    );
+    // ⛔ E o offset de CAD numa camada manda para o caminho de sempre, com efeito ou sem ele.
+    let mut camada = ph2d_vec_scene::PaintEntry::stroke(ph2d_vec_scene::StrokeSpec::new(
+        ph2d_vec_scene::Rgba8::new(0, 0, 0, 255),
+        0.05,
+    ));
+    camada.dilate = 0.2;
+    fx.paints.push(camada);
+    assert_eq!(
+        estilo_de(&fx),
+        Estilo::NaoServe,
+        "um offset de camada entrou no bake — ele é indexado pelo id da FONTE"
+    );
+}
+
+/// ⭐⭐ **GATE — CÓPIAS QUE SE SOBREPÕEM DE PROPÓSITO não se fundem.** Um *Repeat* com as cópias a
+/// meia altura cruza-se já em REPOUSO: a união do contacto fundi-las-ia num contorno só, e o
+/// artista perderia o traço de cada cópia sem dobrar nada.
+#[test]
+fn copias_sobrepostas_em_repouso_nao_se_fundem() {
+    let mut p = b_palco(false);
+    let pilha = vec![FxEntry::new(PathEffect::Repeat(
+        ph2d_vec_scene::fx_repeat::RepeatSpec {
+            copies_y: 2.0,
+            move_y: 50.0,
+            ..Default::default()
+        },
+    ))];
+    caminho_mut(&mut p.scene, p.id).effects = pilha.clone();
+    let repouso = repouso_com(&p, &pilha);
+    let contornos = |c: &VecPath| 1 + c.subpaths.len();
+    assert!(
+        contornos(&repouso) >= 2 && ph2d_vec_boolean::resolve_overlap(&repouso).is_some(),
+        "o CONTROLO: as cópias da fixtura têm de se sobrepor em repouso"
+    );
+    for graus in [0.0_f32, 30.0] {
+        p.dobra_em_s(graus);
+        let d = crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), Leis::do_ambiente())
+            .remove(&p.id)
+            .expect("desenho");
+        assert_eq!(
+            contornos(&d),
+            contornos(&repouso),
+            "a {graus}° as cópias do Repeat fundiram-se — a união correu sobre uma sobreposição \
+             que o artista desenhou"
+        );
+    }
 }
 
 /// ⭐⭐ **GATE — MUDAR O EFEITO DEPOIS DO BIND chega ao desenho** (a pilha que vale é a VIVA, e a

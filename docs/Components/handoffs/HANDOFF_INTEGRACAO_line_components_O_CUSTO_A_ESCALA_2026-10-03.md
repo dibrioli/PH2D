@@ -33,6 +33,9 @@ iguais, zero crate nova, zero pacote externo, **zero linha em `shells/desktop`**
 | `crates/ph2d-nav/src/{polyanya.rs, polyanya_custo.rs, cost.rs, oracle.rs, lib.rs}` | `Stats` `+dominated` `+trimmed`; `Polyanya::set_front_dominance` (o CONTROLO); a gama de deslize de uma raiz de refracção é a aresta inteira |
 | `crates/ph2d-navmesh/src/tiles.rs` | a montagem escreve os anéis contíguos e chama `from_rings` |
 | `crates/ph2d-orca/src/lp.rs` | `lines[n_walls.min(i)..i]` (a cura do panic) |
+| `crates/ph2d-orca/src/walls.rs` | (depois do smoke) a GRELHA das arestas: `Walls::near` lê só as células ao alcance — a mesma resposta, ao bit; a varredura inteira fica como oráculo `#[cfg(test)]` |
+| `crates/ph2d-navmesh/src/tiles.rs` | (depois do smoke) `TiledMesh::changed_area() -> Option<Vec<(V2, V2)>>` (os mosaicos refeitos na última actualização) |
+| `crates/ph2d-nav/src/refresh.rs` | (depois do smoke) `path_still_walkable(mesh, rt, pos, onde: Option<&[(V2, V2)]>)` — só percorre os troços que tocam `onde` |
 | `crates/ph2d-physics-ecs/src/bridge/{nav.rs, nav_fila.rs NOVO}` | a fila na ponte; `ORCAMENTO_DE_NOS_POR_TIQUE = 20 000`; `PhysicsBridge::set_nav_replan_budget` (sonda e gates) |
 | exemplos | `ph2d-navmesh/examples/medir_custo.rs` (`SEM_DOMINANCIA`, `SO_GRANDE`, `PIOR`, a linha «uma porta»), `ph2d-physics-ecs/examples/medir_replaneio.rs` **NOVO** |
 | gates | `ph2d-navmesh/tests/it/dominancia.rs` **NOVO**, `ph2d-physics-ecs/tests/it/nav_mundo.rs` (+5), `ph2d-orca/src/tests.rs` (+1), `ph2d-nav/src/refresh.rs` (+1) |
@@ -62,7 +65,8 @@ O plano §17 tem tudo (as tabelas, as decisões, as recusas). Em resumo, numa ce
 | procura com 100 lamas: nós · mediana · p95 · máx | `64 508 · 4,7 · 38 · 66 ms` | **`24 661 · 3,5 · 21 · 30 ms`** |
 | uma porta que pára (sem · com lamas) | `3,96 · 5,66 ms` | **`2,65 · 3,76 ms`** |
 | uma lama a mexer | `7,13 ms` | **`5,23 ms`** |
-| o pior tique depois de uma porta, 10 · 50 · 200 agentes | `10,4 · 34,3 · 124,3 ms` | **`6,9 · 16,5 · 51,7 ms`** |
+| o pior tique depois de uma porta, 10 · 50 · 200 agentes | `10,4 · 34,3 · 124,3 ms` | **`5,7 · 6,5 · 10,1 ms`** (load `5–8`) |
+| o tique SEM nada a mudar, 10 · 50 · 200 agentes (depois do smoke) | `2,1 · 10,5 · 37,6 ms` | **`0,38 · 0,82 · 2,29 ms`** |
 
 A precisão da procura ponderada ficou **ao dígito** (a tabela §3 da sonda e a lista dos pares acima de
 `1,0001` iguais com e sem a dominância). E um **crash do ORCA** que só aparece à escala: um agente entalado
@@ -73,8 +77,11 @@ entre duas paredes (as paredes sozinhas sem velocidade comum) fazia o programa 3
 
 - **Uma malha com ids FIXOS por mosaico** (polígono = mosaico + índice local): a montagem passaria a ser
   proporcional ao mosaico tocado. Mexe no núcleo da procura — wave própria (plano §17.6).
-- **O tique a 200 agentes SEM mudança nenhuma é `37,6 ms`** (o CONTROLO da `medir_replaneio`): o desvio e
-  a física à escala, por medir por fase.
+- ✅ ~~O tique a 200 agentes SEM mudança nenhuma era `37,6 ms`~~ — curado depois do smoke (plano §17.7):
+  era o desvio a varrer TODAS as arestas de parede da malha por agente (`97 %` do tique). E no tique em
+  que a malha muda, a fila percorria o caminho inteiro de cada agente (`12,4 ms` a 200): agora só os
+  troços que tocam os mosaicos refeitos. O que sobra no tique da porta é a malha refeita DUAS vezes
+  (`~3 ms` cada: quando a porta começa a andar e quando pára).
 - A procura ponderada continua `~4×` os nós da uniforme (a grelha das fronteiras — legítimo, §17.3); o
   orçamento da fila em nós não é tempo uniforme entre as duas (`~110` contra `~330 ns` por nó).
 - A 1.ª procura de agentes que nascem juntos não passa pela fila.
@@ -96,10 +103,12 @@ Tudo 1× sobre o diff acumulado, régua no merge-base (`1ad60a1ce`), dentro da f
 | `doc-index.sh --check` | `20` índices em dia |
 | `#[cfg(target_os` escrito/movido | nenhum |
 | a máquina no fim | nada desta linha a correr; `/dev/dri` só Xwayland/plasmashell/code |
+| **depois do smoke** (a grelha das paredes, os troços): `nextest-impacted` · `check --workspace` deny · clippy (6 crates) · fmt · censos · typos | **`19 521 / 19 521`** · verde · zero (a 1.ª acusou um `!(range > 0.0)`) · verde · verdes · zero |
 
 ⚠️ **O que só o `ship.sh` corre e esta linha não correu:** `cargo deny`, `cargo audit` (zero pacote novo).
 
-**Mutação 15 / 15** a sangrar, zero defeitos de arnês
+**Mutação 19 / 19** a sangrar (15 no fecho + M17–M20 da grelha das paredes e dos troços, depois do smoke),
+zero defeitos de arnês
 ([`mutacao_navegacao_w9_2026-10-03.py`](../ferramentas/mutacao_navegacao_w9_2026-10-03.py), quatro
 controlos, grupos NAV · NAVMESH · ORCA · PONTE). ⛔ **A 1.ª corrida deu 13/16**, e cada sobrevivente
 mudou alguma coisa: o passo «tirar os pontos a mais e polir de novo» era REDUNDANTE com a gama da aresta

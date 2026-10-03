@@ -273,3 +273,36 @@ fn a_pilha_mista_corre_o_antes_dobrado_e_o_depois_por_cima() {
     println!("  mista vs (antes dobrado + depois): {d:.6}");
     assert!(d < 1e-6, "a pilha mista não é as duas fases em sequência ({d})");
 }
+
+/// ⭐⭐ **SONDA — O PREÇO POR QUADRO do «depois»**, contra o «antes» e a forma sem efeito, com a pose
+/// a MUDAR a cada chamada. Imprime; corra em `--release` e com a máquina calma.
+#[test]
+fn diag_o_preco_do_depois_por_quadro() {
+    use std::time::Instant;
+    let mede = |pilha: &[FxEntry]| {
+        let mut p = b_palco(false);
+        let mut sc = p.scene.clone();
+        sc.path_mut(p.id).expect("path").effects = pilha.to_vec();
+        let leis = Leis::do_ambiente();
+        let t = Instant::now();
+        let mut n = 0_u32;
+        while t.elapsed().as_millis() < 300 {
+            p.dobra_em_s(if n.is_multiple_of(2) { 90.0 } else { 60.0 });
+            let _ = crate::skin_live::recook_leis(&p.sim, &mut sc, leis);
+            n += 1;
+        }
+        t.elapsed().as_secs_f64() * 1e6 / f64::from(n)
+    };
+    let sem = mede(&[]);
+    for (nome, efeito) in mapas() {
+        let antes = mede(&[FxEntry::new(efeito.clone())]);
+        let dep = mede(&[depois(efeito)]);
+        println!(
+            "  {nome:>8}: µs/forma/quadro a mexer: sem efeito {sem:.1} · antes {antes:.1} · depois \
+             {dep:.1} · loadavg {}",
+            std::fs::read_to_string("/proc/loadavg")
+                .unwrap_or_default()
+                .trim()
+        );
+    }
+}

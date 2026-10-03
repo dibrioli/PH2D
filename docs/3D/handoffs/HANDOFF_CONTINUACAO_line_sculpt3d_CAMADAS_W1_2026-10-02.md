@@ -26,6 +26,20 @@
 - `tinta_da_peca.rs`: `semente(mesh, k)` — a porta única da semente (a `garante` e o fundo da pilha)
 - gates antigos com régua mudada (cor ao bit → meio degrau; v5 via `encode_v5`): ver `docs/3D/30` §10.3
 
+**Verde (02–03/10, perfil de teste, `load < 4`):** `ph2d-app-sculpt3d` 382 · `ph2d-i18n` 23 ·
+`ph2d-tool-painter -- compositor` 27 · `ph2d-painter-effects` (o gate do conjunto espacial).
+**Mutação** (10 mutações nas portas `dobra`, `compor_faixa`, `apaga`, `achata`, `relevo_composto`,
+`pinta_tinta`, `nova_mascara`, `byte_de`, `sincronizada`, leitor do v6): **10 / 10 sangram** — a M10
+(plano repetido no ficheiro) sobreviveu à 1.ª corrida porque o caso do gate era recusado pela
+CONTAGEM antes de chegar à repetição; curado. Pré-voo dos 17 `muta_*.sh`: limpos depois de re-ancorar
+a P17 (`muta_o_plano_no_ficheiro.sh`: o escritor do relevo mudou-se para o `doc_camadas.rs`).
+⚠️ Não há arnês versionado para estas 10 — ficaram na corrida do agente `mutacao`; o fecho da linha
+deve escrevê-las num `docs/3D/ferramentas/muta_a_pilha_da_peca.sh`.
+
+`cargo clippy -p ph2d-app-sculpt3d -p ph2d-painter-effects -p ph2d-tool-painter --all-targets -- -D warnings`
+limpo (curou também um `chunks_exact(4)` latente na `sonda_camadas.rs`, de antes desta onda). O binário
+do smoke (`--profile smoke`) está compilado nesta worktree no HEAD da onda: 2.ª corrida `Finished … in 0.23s`.
+
 ## §2. O que a W2 tem de fazer (a ordem importa)
 
 1. **Pôr a pilha na `SceneObject`** (`pilha: Option<PilhaDaPeca>` ao lado de `tinta`), nascida pela

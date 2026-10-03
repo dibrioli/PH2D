@@ -142,7 +142,8 @@ fn uma_pilha_que_nao_descreve_o_plano_recusa_o_load() {
         f(&mut doc.objects[0].tinta.as_mut().expect("plano").camadas);
         decode(&postcard::to_allocvec(&doc).expect("serializa"))
     };
-    let casos: [(&str, &dyn Fn(&mut CamadasDoc)); 4] = [
+    type Caso<'a> = (&'a str, &'a dyn Fn(&mut CamadasDoc));
+    let casos: [Caso; 4] = [
         ("uma camada sem plano", &|c| {
             c.planos.clear();
         }),

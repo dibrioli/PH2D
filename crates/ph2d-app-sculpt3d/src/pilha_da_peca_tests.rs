@@ -7,7 +7,7 @@ use ph2d_tool_painter::{HsbParams, LayerImage, MapPixelSource, composite};
 /// duas), semente `s`.
 fn plano(n: usize, s: u32) -> Vec<u8> {
     let mut v = vec![0u8; n * 4];
-    for (i, px) in v.chunks_exact_mut(4).enumerate() {
+    for (i, px) in v.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         let h = (i as u32 ^ s).wrapping_mul(2_654_435_761);
         px.copy_from_slice(&[
             (h >> 8) as u8,
@@ -30,7 +30,11 @@ fn pilha_rica(n: usize) -> (PilhaDaPeca, [LayerId; 4]) {
     let mut p = PilhaDaPeca::de_partes(LayerStack::new(), BTreeMap::new(), n);
     let base = p.nova_camada(nome_da_base()).expect("base");
     let mut opaca = plano(n, 1);
-    opaca.chunks_exact_mut(4).for_each(|px| px[3] = 255);
+    opaca
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .for_each(|px| px[3] = 255);
     pinta(&mut p, base, &opaca);
     let mult = p.nova_camada("mult").expect("mult");
     pinta(&mut p, mult, &plano(n, 2));

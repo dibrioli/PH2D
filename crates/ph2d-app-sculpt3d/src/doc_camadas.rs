@@ -96,8 +96,5 @@ impl CamadasDoc {
 
 /// As amostras de um plano RGBA8 como `[u8; 4]`.
 fn como_pixeis(rgba8: &[u8]) -> Vec<[u8; 4]> {
-    rgba8
-        .chunks_exact(4)
-        .map(|c| [c[0], c[1], c[2], c[3]])
-        .collect()
+    rgba8.as_chunks::<4>().0.to_vec()
 }

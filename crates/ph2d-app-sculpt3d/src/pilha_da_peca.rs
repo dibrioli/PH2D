@@ -75,7 +75,7 @@ impl PlanoDaCamada {
     /// Escreve as `px.len()` primeiras amostras e o relevo (a leitura do
     /// documento).
     pub(crate) fn escreve(&mut self, px: &[[u8; 4]], relevo: Option<Vec<[f32; 2]>>) {
-        for (d, s) in self.rgba8.chunks_exact_mut(4).zip(px) {
+        for (d, s) in self.rgba8.as_chunks_mut::<4>().0.iter_mut().zip(px) {
             d.copy_from_slice(s);
         }
         self.relevo = relevo;
@@ -147,7 +147,13 @@ impl PilhaDaPeca {
             .add_raster(nome_da_base(), l, h)
             .expect("uma pilha vazia está abaixo do tecto");
         let mut plano = PlanoDaCamada::transparente(n);
-        for (px, c) in plano.rgba8.chunks_exact_mut(4).zip(t.amostras()) {
+        for (px, c) in plano
+            .rgba8
+            .as_chunks_mut::<4>()
+            .0
+            .iter_mut()
+            .zip(t.amostras())
+        {
             px.copy_from_slice(&[byte_de(c[0]), byte_de(c[1]), byte_de(c[2]), 255]);
         }
         plano.relevo = t.relevo().map(<[_]>::to_vec);
@@ -430,7 +436,7 @@ impl PilhaDaPeca {
 /// `true` se alguma amostra do composto não é opaca (e o fundo se vê).
 #[must_use]
 pub(crate) fn precisa_de_fundo(composto: &[u8]) -> bool {
-    composto.chunks_exact(4).any(|px| px[3] < 255)
+    composto.as_chunks::<4>().0.iter().any(|px| px[3] < 255)
 }
 
 /// ⭐⭐⭐ **O composto sobre o FUNDO, na unidade do plano de tinta** (o byte
@@ -441,7 +447,13 @@ pub(crate) fn precisa_de_fundo(composto: &[u8]) -> bool {
 /// mistura é em LUZ (linear), como o compositor mistura as camadas.
 pub(crate) fn achata(composto: &[u8], fundo: impl Fn(usize) -> [f32; 3], destino: &mut [[f32; 3]]) {
     use ph2d_color::srgb::{linear_to_srgb_unit, srgb_to_linear_byte, srgb_to_linear_unit};
-    for (i, (px, out)) in composto.chunks_exact(4).zip(destino.iter_mut()).enumerate() {
+    for (i, (px, out)) in composto
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(destino.iter_mut())
+        .enumerate()
+    {
         if px[3] == 255 {
             *out = [px[0], px[1], px[2]].map(|b| f32::from(b) / 255.0);
             continue;

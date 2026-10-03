@@ -15,7 +15,7 @@ use std::time::Instant;
 
 fn camada(n: usize, semente: u32) -> LayerImage {
     let mut rgba8 = vec![0u8; n * 4];
-    for (i, px) in rgba8.chunks_exact_mut(4).enumerate() {
+    for (i, px) in rgba8.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         let h = (i as u32).wrapping_mul(2_654_435_761) ^ semente;
         px.copy_from_slice(&[
             (h >> 8) as u8,

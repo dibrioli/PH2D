@@ -227,6 +227,12 @@ imagem nova) e `=2` (em Paint, com a coluna de pintura e o painel do Painter) �
   ✓ contexto no inicio da sessao               62 mil   alvo: <= 80 mil
 ```
 
+## §8b — Depois do fecho (03/10)
+
+- **Smoke do dono: APROVADO** («smoke OK. Siga implementando»).
+- A F3 do Sculpt segue NESTA linha, noutra janela:
+  [`HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_SCULPT.md`](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_SCULPT.md).
+
 ## §9 — Binário de smoke (último passo: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida)
 
 ```

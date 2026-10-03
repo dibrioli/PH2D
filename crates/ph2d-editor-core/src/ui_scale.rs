@@ -26,12 +26,11 @@ thread_local! {
 /// de saída. `f` recebe o viewport lógico e a cena onde pintar. ⚠️ A `100 %` é o caminho de sempre,
 /// byte a byte: `f` pinta directamente em `scene`, sem cena intermédia nem `append`.
 pub fn pintar_no_chrome<R>(
-    scale: UiScale,
+    mapa: UiScaleMap,
     viewport: Rect,
     scene: &mut VectorScene,
     f: impl FnOnce(Rect, &mut VectorScene) -> R,
 ) -> R {
-    let mapa = UiScaleMap::new(scale);
     if mapa.is_identity() {
         return f(viewport, scene);
     }
@@ -62,10 +61,34 @@ pub struct UiScaleMap {
     s: f32,
 }
 
+impl Default for UiScaleMap {
+    /// A identidade: ecrã `1,0` × `100 %`.
+    fn default() -> Self {
+        Self::new(UiScale::P100)
+    }
+}
+
 impl UiScaleMap {
+    /// A preferência num ecrã de factor `1,0`.
     #[must_use]
     pub fn new(scale: UiScale) -> Self {
-        Self { s: scale.factor() }
+        Self::no_ecra(scale, 1.0)
+    }
+
+    /// ⭐ **HiDPI: `s` = factor do ECRÃ × a preferência.** `ecra` é o `scale_factor` do winit (o
+    /// Blender e a Godot multiplicam os dois: `docs/UI_New_and_Simple/spec/oraculos/`). Um factor
+    /// que não é finito e positivo não vem do winit — vale `1,0`.
+    #[must_use]
+    pub fn no_ecra(scale: UiScale, ecra: f32) -> Self {
+        debug_assert!(ecra.is_finite() && ecra > 0.0, "factor do ecrã {ecra}");
+        let ecra = if ecra.is_finite() && ecra > 0.0 {
+            ecra
+        } else {
+            1.0
+        };
+        Self {
+            s: ecra * scale.factor(),
+        }
     }
 
     /// O factor `s` (físico por lógico).
@@ -74,7 +97,8 @@ impl UiScaleMap {
         self.s
     }
 
-    /// `true` a `100 %` — quem pode saltar trabalho (o `append` da cena) pergunta aqui.
+    /// `true` com `s == 1,0` (ecrã `1,0` × `100 %`) — quem pode saltar trabalho (o `append` da
+    /// cena) pergunta aqui.
     #[must_use]
     pub fn is_identity(self) -> bool {
         self.s.to_bits() == 1.0_f32.to_bits()

@@ -112,3 +112,49 @@ fn as_vistas_do_mundo_caem_no_mesmo_pixel_em_toda_escala() {
         }
     }
 }
+
+/// ⭐⭐ **HiDPI: o factor do ECRÃ multiplica a preferência, e o clique cai no MESMO id.** Num ecrã
+/// de factor `2,0` (o winit de um 4K) e `1,5`, o centro de cada alvo registado, levado ao físico,
+/// volta pela porta física ao id que o índice lógico dá nesse ponto. A janela física é a de um
+/// ecrã denso: `JANELA × s`, o mesmo espaço lógico em todos os casos.
+#[test]
+fn no_ecra_hidpi_a_escala_multiplica_e_o_clique_cai_no_mesmo_id() {
+    assert!(crate::ui_scale::UiScaleMap::no_ecra(UiScale::P100, 1.0).is_identity());
+    for (ecra, z, s) in [
+        (2.0, UiScale::P100, 2.0),
+        (2.0, UiScale::P150, 3.0),
+        (1.5, UiScale::P80, 1.2),
+    ] {
+        let mut hero = HeroScreen::new(ph2d_a11y::NodeId(1));
+        hero.ui_scale = z;
+        hero.escala_do_ecra = ecra;
+        assert!((hero.escala().factor() - s).abs() < 1e-6, "{ecra} × {z:?}");
+        let mut scene = VectorScene::new();
+        let mut ts = TextSystem::without_system_fonts();
+        let janela = Rect::new(0.0, 0.0, JANELA.w * s, JANELA.h * s);
+        paint_hero_screen_na_escala(&mut hero, janela, &mut scene, &mut ts, |_, _, _, _| {});
+        assert!(
+            (hero.last_viewport.w - JANELA.w).abs() < 1e-3,
+            "{ecra} × {z:?}: viewport lógico"
+        );
+        let mut alvos = 0;
+        for (id, r) in hero.hit_index.iter_registrations() {
+            let (lx, ly) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+            if hero.hit_index.hit(lx, ly) != Some(id) {
+                continue;
+            }
+            alvos += 1;
+            assert_eq!(
+                hero.chrome_hit(lx * s, ly * s),
+                Some(id),
+                "{ecra} × {z:?}: o clique físico em ({:.1}, {:.1}) não cai em {id:?}",
+                lx * s,
+                ly * s
+            );
+        }
+        assert!(
+            alvos >= 20,
+            "{ecra} × {z:?}: só {alvos} alvos — a fixtura não pinta o chrome"
+        );
+    }
+}

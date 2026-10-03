@@ -189,6 +189,9 @@ pub struct HeroScreen {
     /// (`crate::ui_scale`) — os dois gravados em `prefs.txt`.
     pub text_style: ph2d_tokens::UiTextStyle,
     pub ui_scale: ph2d_tokens::UiScale,
+    /// O factor do ECRÃ (`scale_factor` do winit, HiDPI): a shell escreve-o ao pintar; o chrome
+    /// escala por ecrã × `ui_scale` ([`Self::escala`]).
+    pub escala_do_ecra: f32,
     pub selection: Option<HeroSelection>,
     /// Per-widget interactive state (hover/press/focus). Pre-populated
     /// at construction; mutated in-place by [`HeroScreen::handle_pointer`].
@@ -406,14 +409,8 @@ impl HeroScreen {
     }
 
     pub fn new(id: NodeId) -> Self {
-        // Wave 8 Phase 1: `HeroScreen::new` is a pure constructor. The
-        // host (or the test harness) installs `PANEL_REGISTRY` BEFORE
-        // the first `HeroScreen::new` call — production binaries via
-        // `ph2d_panel_registry_init::register_all_panels()` (which
-        // honors `panel-*` cargo features), tests via
-        // `crate::test_support::ensure_panel_registry()`. The previous
-        // auto-install here silently neutralized those features at
-        // runtime (audit B1).
+        // Pure constructor: the host installs `PANEL_REGISTRY` first (`register_all_panels()`;
+        // tests `ensure_panel_registry()`) — an auto-install here hid the `panel-*` features (B1).
         let mut store = WidgetStore::with_capacity(64);
         Self::pre_populate_store(&mut store);
         Self {
@@ -429,6 +426,7 @@ impl HeroScreen {
             text_rendering: ph2d_tokens::TextRendering::CrispHeavyPlus, // app default (Enio 2026-06-24)
             text_style: ph2d_tokens::UiTextStyle::default(),
             ui_scale: ph2d_tokens::UiScale::P100,
+            escala_do_ecra: 1.0,
             selection: Some(fixture::default_selection()),
             store,
             hit_index: HitIndex::new(),

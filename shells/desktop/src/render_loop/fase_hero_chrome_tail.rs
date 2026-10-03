@@ -26,10 +26,10 @@ impl crate::App {
             hero_screen,
             ..
         } = FrameGfx::of(gfx);
-        // ⭐ Os toasts e as barras são chrome: pintam-se na escala da interface (`ui_scale`).
+        // ⭐ Os toasts e as barras são chrome: pintam-se na escala da interface (ecrã × `ui_scale`).
         let escala = hero_screen
             .as_ref()
-            .map_or_else(Default::default, |h| h.ui_scale);
+            .map_or_else(Default::default, |h| h.escala());
         // Legacy `FloatingPanel` Procreate-style paint was retired
         // here (2026-05-17). The pink/magenta tab-strip + Accent
         // toggle decoration was inconsistent with the canonical

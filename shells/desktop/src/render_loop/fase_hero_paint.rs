@@ -6,6 +6,8 @@ use super::*;
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_hero_paint(&mut self, viewport: EditorRect) {
+        // ⭐ HiDPI: o factor do ecrã viaja com o índice de hit que esta pintura constrói.
+        let ecra = self.host.as_ref().map_or(1.0, |h| h.scale().get());
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -21,6 +23,7 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
+        hero.escala_do_ecra = ecra;
         let paint_ctx = PaintCtx {
             theme: *theme,
             viewport,

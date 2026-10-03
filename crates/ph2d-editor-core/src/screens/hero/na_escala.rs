@@ -9,7 +9,7 @@
 use super::*;
 use crate::ui_scale::UiScaleMap;
 
-/// Pinta o hero na escala `hero.ui_scale` para uma janela FÍSICA `viewport`; `depois` pinta, na
+/// Pinta o hero na escala [`HeroScreen::escala`] (ecrã × `ui_scale`) para uma janela FÍSICA `viewport`; `depois` pinta, na
 /// MESMA cena lógica e com o viewport lógico, o que é chrome e a shell desenha a seguir (a forma de
 /// onda do Audio Editor).
 pub fn paint_hero_screen_na_escala(
@@ -19,9 +19,9 @@ pub fn paint_hero_screen_na_escala(
     text_system: &mut TextSystem,
     depois: impl FnOnce(&mut HeroScreen, Rect, &mut VectorScene, &mut TextSystem),
 ) {
-    let mapa = UiScaleMap::new(hero.ui_scale);
+    let mapa = hero.escala();
     let fisico = (!mapa.is_identity()).then(|| Fisico::para_o_logico(hero, mapa));
-    crate::ui_scale::pintar_no_chrome(hero.ui_scale, viewport, scene, |vp, chrome| {
+    crate::ui_scale::pintar_no_chrome(mapa, viewport, scene, |vp, chrome| {
         paint_hero_screen(hero, vp, chrome, text_system);
         depois(hero, vp, chrome, text_system);
     });
@@ -35,10 +35,10 @@ pub fn paint_hero_screen_na_escala(
 /// `handle_wheel` com coordenadas cruas: o gate `a_shell_pergunta_ao_chrome_pelas_portas_fisicas`
 /// recusa-o (um ponto físico num índice lógico acerta no vizinho a qualquer escala ≠ 100 %).
 impl HeroScreen {
-    /// O mapa da escala deste hero.
+    /// O mapa da escala deste hero: o factor do ecrã × a preferência.
     #[must_use]
     pub fn escala(&self) -> UiScaleMap {
-        UiScaleMap::new(self.ui_scale)
+        UiScaleMap::no_ecra(self.ui_scale, self.escala_do_ecra)
     }
 
     /// O alvo do chrome sob um ponto FÍSICO da janela.

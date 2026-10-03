@@ -130,4 +130,10 @@ lava com `Avoid Harm`; a Salamandra parada depois do nome, ou a esperar na borda
 
 ### O smoke compilado (a 2.ª corrida, colada)
 
-(preenchido no último passo)
+Depois de `rm -rf target/*/incremental` (15 G do `debug` + 3,5 G do `smoke`), a 2.ª corrida de
+`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` — zero linhas `Compiling`:
+
+```
+▸ linha line_components · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.37s
+```

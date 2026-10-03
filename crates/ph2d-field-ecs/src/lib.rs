@@ -486,6 +486,81 @@ impl FieldLight {
     }
 }
 
+/// ⭐⭐⭐ **A TEXTURA DESTA FORMA** — a projecção triplanar (`ph2d_triplanar`) que pinta a cor, a
+/// rugosidade e o relevo do material (handoff `AS_TEXTURAS`). Componente PRÓPRIO e OPCIONAL pela
+/// razão do [`FieldMaterial`]: a ausência é *«sem textura»*, e o postcard é posicional.
+///
+/// ⚠️ **Os ficheiros importados viajam por CAMINHO** (o precedente da escultura importada): a
+/// imagem não entra no projecto; um caminho que sumiu diz-se e religa-se.
+#[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FieldTexture {
+    /// `0` nenhuma, `1..=7` o pacote embutido, [`ph2d_field::TEXTURE_FROM_FILE`] os ficheiros.
+    pub source: u8,
+    /// Quanto mede um ladrilho (unidades da folha); `0` = o tamanho real da textura embutida.
+    pub tile: f32,
+    /// A mistura das três vistas (o «Blend» do Blender), `0..1`.
+    pub blend: f32,
+    /// A força do relevo do mapa de normal.
+    pub bump: f32,
+    /// O caminho da imagem de cor importada.
+    pub color_file: String,
+    /// O caminho do mapa de normal importado (`""` = nenhum).
+    pub normal_file: String,
+    /// O caminho do mapa de rugosidade importado (`""` = nenhum).
+    pub roughness_file: String,
+}
+
+impl Default for FieldTexture {
+    fn default() -> Self {
+        Self {
+            source: 0,
+            tile: 0.0,
+            blend: 0.2,
+            bump: 1.0,
+            color_file: String::new(),
+            normal_file: String::new(),
+            roughness_file: String::new(),
+        }
+    }
+}
+
+impl FieldTexture {
+    /// O número `k` (ver [`ph2d_field::TEXTURE_FIELDS`]); os dois últimos dizem se há ficheiro.
+    #[must_use]
+    pub fn get(&self, k: u8) -> Option<f32> {
+        match k {
+            0 => Some(f32::from(self.source)),
+            1 => Some(self.tile),
+            2 => Some(self.blend),
+            3 => Some(self.bump),
+            4 => Some(f32::from(u8::from(!self.normal_file.is_empty()))),
+            5 => Some(f32::from(u8::from(!self.roughness_file.is_empty()))),
+            _ => None,
+        }
+    }
+
+    /// Escreve o número `k`. ⚠️ Os ficheiros só se ESCOLHEM pelo diálogo: aqui a fonte «de ficheiro»
+    /// só se aceita com a cor já escolhida, e os mapas `4`/`5` só se APAGAM (`0`).
+    pub fn set(&mut self, k: u8, v: f32) -> bool {
+        match k {
+            0 => {
+                let s = v.round().clamp(0.0, f32::from(ph2d_field::TEXTURE_SOURCES - 1)) as u8;
+                if s == ph2d_field::TEXTURE_FROM_FILE && self.color_file.is_empty() {
+                    return false;
+                }
+                self.source = s;
+            }
+            1 => self.tile = v.max(0.0),
+            2 => self.blend = v.clamp(0.0, 1.0),
+            3 => self.bump = v.max(0.0),
+            4 if v < 0.5 => self.normal_file.clear(),
+            5 if v < 0.5 => self.roughness_file.clear(),
+            _ => return false,
+        }
+        true
+    }
+}
+
 impl Default for FieldLight {
     /// ⚠️ **Branca e de força `1`** — a lâmpada que o rig da casa sempre teve, para que a primeira
     /// luz que um artista acrescenta não seja uma decisão de cor que ele não pediu.
@@ -521,6 +596,8 @@ pub fn register_field_components(reg: &mut ComponentRegistry) {
     // ⭐⭐⭐ **A LUZ** — `register_default` como o material: uma luz sem o componente é uma luz
     // branca de força `1`, que é o que o [`FieldLight::default`] diz.
     reg.register_default::<FieldLight>("ph2d::field::FieldLight");
+    // ⭐ **A TEXTURA** — `register_default`: a ausência é *«sem textura»*, que é o `Default`.
+    reg.register_default::<FieldTexture>("ph2d::field::FieldTexture");
 }
 
 /// O campo de uma **cena**: a união de todos os objetos, na ordem da chave.

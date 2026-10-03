@@ -113,6 +113,21 @@ pub fn set_param(
         // ⚠️ **Aqui NÃO se materializa nada:** escrever numa luz que não tem `FieldLight` seria
         // transformar uma forma em lâmpada por engano. Uma luz é criada por um gesto próprio, e o
         // que não é luz recusa.
+        // ⭐ **UM NÚMERO DA TEXTURA** — materializa como o material (a ausência é «sem textura»).
+        Param::Texture(k) => {
+            let mut t = world
+                .get::<crate::FieldTexture>(entity)
+                .cloned()
+                .unwrap_or_default();
+            if !t.set(k, value) {
+                return Err(FieldError::BadRoot);
+            }
+            let Ok(mut e) = world.get_entity_mut(entity) else {
+                return Err(FieldError::BadRoot);
+            };
+            e.insert(t);
+            Ok(())
+        }
         Param::Light(k) => {
             let Some(mut l) = world.get_mut::<crate::FieldLight>(entity) else {
                 return Err(FieldError::BadRoot);

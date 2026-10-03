@@ -575,6 +575,10 @@ fn copy_optional(world: &mut World, src: Entity, dst: Entity) {
     if let Some(material) = world.get::<crate::FieldMaterial>(src).copied() {
         world.entity_mut(dst).insert(material);
     }
+    // ⭐ **E a TEXTURA**, pela mesma razão (o gate irmão conta-a).
+    if let Some(textura) = world.get::<crate::FieldTexture>(src).cloned() {
+        world.entity_mut(dst).insert(textura);
+    }
 }
 
 /// ⭐ **Apaga um nó e o que está debaixo dele.**

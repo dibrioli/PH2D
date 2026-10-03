@@ -63,6 +63,11 @@ pub const DESCS: &[D] = &[
         "component.field_profile_source.name",
         C::Model3D,
     ),
+    D::machinery(
+        "ph2d::field::FieldTexture",
+        "component.field_texture.name",
+        C::Model3D,
+    ),
     // ⭐⭐ **O VERBO da forma** (W97) — com que operação ela dobra sobre os irmãos anteriores.
     //
     // ⚠️ **Máquina, como os irmãos, e por uma razão a mais que eles:** a AUSÊNCIA deste componente

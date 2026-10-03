@@ -185,6 +185,9 @@ pub enum Param {
     /// `ph2d_app_field3d::ceu_foto::Ceu::pack`. Da cena, como o [`Param::Bloom`]: o `entity` não é
     /// lido e quem o escreve é o dreno do painel, pela família.
     Sky(u8),
+    /// ⭐ **Um número da TEXTURA triplanar de uma FOLHA** (`ph2d_field_ecs::FieldTexture::get`):
+    /// espalha-se pela selecção como o material; as fileiras só existem no Render por malha.
+    Texture(u8),
 }
 
 /// Quantos números um material tem — ver [`Param::Material`].
@@ -206,6 +209,16 @@ pub const MATERIAL_FIELDS: u8 = 33;
 /// ⚠️ **Contado aqui e lido por toda a gente**, pela razão do [`MATERIAL_FIELDS`]: a tabela é o
 /// `FieldLight::get`, e uma segunda contagem escrita à mão seria a que envelhece.
 pub const LIGHT_FIELDS: u8 = 4;
+
+/// ⭐ **Quantos números uma TEXTURA tem**: a fonte (`0`), o tamanho do ladrilho (`1`), a mistura das
+/// vistas (`2`), o relevo (`3`), e se há mapa de normal (`4`) e de rugosidade (`5`) importados.
+pub const TEXTURE_FIELDS: u8 = 6;
+
+/// As escolhas da fonte: `0` nenhuma, `1..=7` o pacote embutido, [`TEXTURE_FROM_FILE`] os ficheiros.
+pub const TEXTURE_SOURCES: u8 = 9;
+
+/// A fonte «de ficheiro» — a última das [`TEXTURE_SOURCES`].
+pub const TEXTURE_FROM_FILE: u8 = TEXTURE_SOURCES - 1;
 
 impl Param {
     /// ⭐⭐⭐ **OS TRÊS CANAIS de uma cor, a partir da ÂNCORA** — `None` quando este param não abre

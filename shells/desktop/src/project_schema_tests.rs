@@ -287,7 +287,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`180` em 2026-10-03** — o que FERE, o que CUSTA e os ATALHOS (plano 30, W7): o campo
         // `NavAgent::avoid_harm` e `NavCostArea`/`NavLink` REGISTADOS (física `+2`, espelhos `0`).
         // A tripla NÃO vê este degrau.
-        (180, 13, 22),
+        // ⚠️ **`181` em 2026-10-03** (`line/3DModeling`) — a TEXTURA da forma: `FieldTexture`
+        // REGISTADO (campo `8 → 9`). A tripla NÃO vê este degrau.
+        (181, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

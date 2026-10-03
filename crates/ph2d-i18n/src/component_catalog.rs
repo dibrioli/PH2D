@@ -319,6 +319,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field_object.name" => "3D Model",
         "component.field_pose.name" => "Field Pose",
         "component.field_profile_source.name" => "Profile Source",
+        "component.field_texture.name" => "Field Texture",
         "component.field_verb.name" => "Field Verb",
         "component.flip_object_ref.name" => "Flip Object",
         "component.game_camera.name" => "Game Camera",

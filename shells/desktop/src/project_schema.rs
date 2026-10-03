@@ -358,4 +358,13 @@
 /// `ph2d-script`) NÃO se mexem. ⛔ Sem degrau de migração: um v179 é recusado em voz alta.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 180;
+///
+/// # `180 → 181` — **a TEXTURA da forma** (`line/3DModeling`, AS_TEXTURAS, 2026-10-03)
+///
+/// `ph2d_field_ecs::FieldTexture` passa a REGISTADO (o registo do campo `8 → 9`; o `copy_optional`
+/// leva-o): a fonte (nenhuma, o pacote CC0 embutido, ou ficheiros por CAMINHO), o ladrilho, a
+/// mistura das vistas e o relevo. Componente NOVO, como o raio e a vida: um documento anterior
+/// abre sem textura. ⛔ **Sem degrau de migração**, pela decisão de sempre.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 181;

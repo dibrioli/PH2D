@@ -191,3 +191,50 @@ fn uma_peca_convexa_nao_se_tapa() {
         );
     }
 }
+
+/// ⭐⭐ **A oclusão própria é do OBJETO, não do grupo** — duas bolas a `1 cm` uma da outra caem no
+/// mesmo grupo de extração (as bolas de bordo tocam-se) mas são dois objetos: cada uma, convexa, vê o
+/// céu todo SOZINHA. A vizinha tapa-a pela grelha dela, com a pose de agora — se a bake lesse o
+/// campo do grupo, a vizinha contava duas vezes e ficava presa à pose da extracção.
+#[test]
+fn a_oclusao_propria_nao_conta_a_vizinha() {
+    let reg = crate::smoke::sampled_registry();
+    let bola = |x: f32| {
+        ph2d_field_eval::leaf(
+            ph2d_field::Primitive::Sphere { radius: 0.2 },
+            ph2d_field::Xform::at(x, 0.2, 0.0),
+        )
+    };
+    let doc = ph2d_field::FieldDoc::new(
+        vec![
+            bola(-0.205),
+            bola(0.205),
+            ph2d_field::Node::new(
+                ph2d_field::Xform::IDENTITY,
+                ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
+                    children: vec![ph2d_field::NodeId(0), ph2d_field::NodeId(1)],
+                },
+            ),
+        ],
+        ph2d_field::NodeId(2),
+    )
+    .expect("doc");
+    let mut sim = ph2d_ecs::SimWorld::new();
+    crate::scene::sync_scene(&mut sim, Some(&doc), 0.0);
+    let root = {
+        let world = sim.world_mut();
+        let mut q = world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
+        q.iter(world).next().map(|(e, _)| e).expect("a peça")
+    };
+    let objs = crate::malha_render::extrair(sim.world(), root, &reg);
+    assert_eq!(objs.len(), 2, "duas bolas soltas são dois objetos");
+    for (k, o) in objs.iter().enumerate() {
+        let min = o.malha.ao.iter().copied().fold(1.0f32, f32::min);
+        assert!(o.contacto.is_some(), "objeto {k}: sem grelha");
+        assert!(
+            min > 0.97,
+            "objeto {k}: a oclusão própria contou a vizinha (mínimo {min})"
+        );
+    }
+}

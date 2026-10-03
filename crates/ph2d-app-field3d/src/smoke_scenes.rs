@@ -132,7 +132,7 @@ pub fn leaf(p: Primitive, x: Xform) -> Node {
 /// ⚠️ Ele **conta-se lendo o `match` abaixo**, nunca de memória: o gate
 /// `the_router_answers_for_every_level_it_claims` mede-o pelas DUAS pontas — a cena `CENAS` tem de
 /// ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-pub const CENAS: u32 = 39;
+pub const CENAS: u32 = 40;
 
 /// **As cenas PODADAS em 2026-09-11** — nenhum doc as citava pelo número e nenhum código as usava
 /// (ordem do Enio, briefing W2 §3.2). `952` linhas.
@@ -184,6 +184,9 @@ pub fn materiais_da_cena(n: u32) -> Option<Vec<ph2d_field_ecs::FieldMaterial>> {
     }
     if n == 39 {
         return Some(textura::materiais_39());
+    }
+    if n == 40 {
+        return Some(contacto::materiais_40());
     }
     if n == 36 {
         // ⛔⛔ **A BARRA LEVA MATERIAL PRÓPRIO, e a FOTO é que o exigiu:** sem ele ela herdava a
@@ -497,6 +500,8 @@ pub fn scene(n: u32) -> FieldDoc {
         38 => malha::cena_38(),
         // ⭐⭐⭐ AS TEXTURAS (03/10) — ver [`textura::cena_39`].
         39 => textura::cena_39(),
+        // ⭐⭐⭐ O CONTACTO (03/10) — ver [`contacto::cena_40`].
+        40 => contacto::cena_40(),
         _ => {
             // ⛔⛔ **O ROTEADOR DIZ QUANDO O NÚMERO NÃO EXISTE** (W2).
             //
@@ -559,6 +564,10 @@ pub fn scene(n: u32) -> FieldDoc {
 #[cfg(test)]
 #[path = "smoke_scene_tests.rs"]
 mod scene_tests;
+
+/// ⭐ A cena do contacto entre peças — ver [`contacto::cena_40`].
+#[path = "smoke_scenes_contacto.rs"]
+mod contacto;
 
 /// ⭐ As cenas dos dois recuos de uma aresta — ver [`edge`].
 #[path = "smoke_scenes_edge.rs"]

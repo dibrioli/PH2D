@@ -114,7 +114,7 @@ fn pose(k: usize, c: [f32; 3]) -> [[f32; 4]; 4] {
 }
 
 fn desenha(fw: &mut Forward) -> Vec<u8> {
-    desenha_com(fw, |k, c| pose(k, c))
+    desenha_com(fw, pose)
 }
 
 fn desenha_com(fw: &mut Forward, poe: impl Fn(usize, [f32; 3]) -> [[f32; 4]; 4]) -> Vec<u8> {

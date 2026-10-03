@@ -57,6 +57,7 @@ impl crate::App {
             self.flip_state.active && self.flip_state.strip.tween_correct.is_some();
         let suppress_gizmo = painter_deform_transform
             || flip_pairs_active
+            || !ph2d_editor_core::screens::hero::mode_drive::object_gizmo_shows(hero)
             || tools
                 .active()
                 .map(|t| {

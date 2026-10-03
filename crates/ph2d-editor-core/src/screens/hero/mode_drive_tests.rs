@@ -357,3 +357,15 @@ fn every_family_follows_the_mode_that_stayed() {
     let seen: Vec<_> = c.sculpt.followed.iter().map(|a| a.map(|a| a.mode)).collect();
     assert_eq!(seen, [Some(ObjectMode::Sculpt), None]);
 }
+
+/// ⭐ GATE — o gizmo de transformação só existe em Object: entrar num modo esconde-o, sair devolve-o.
+#[test]
+fn the_object_gizmo_shows_only_in_object_mode() {
+    let mut c = cena();
+    c.hero.gizmo.replace_selection(Some(PIECE));
+    assert!(object_gizmo_shows(&c.hero), "controlo: em Object o gizmo aparece");
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Sculpt)));
+    assert!(!object_gizmo_shows(&c.hero), "o gizmo ficou por cima do barro");
+    c.quadro(Some(ModeRequest::Toggle));
+    assert!(object_gizmo_shows(&c.hero));
+}

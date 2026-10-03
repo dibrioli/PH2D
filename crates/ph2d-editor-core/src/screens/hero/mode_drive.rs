@@ -170,6 +170,14 @@ pub fn refused(
     refuse
 }
 
+/// ⭐ **O gizmo de transformação É o modo Object** (D6): num modo de criação (Paint, Sculpt) ele
+/// seria um controlo que não responde por cima do módulo. A shell pergunta aqui ao decidir se o
+/// pinta; a selecção fica armada.
+#[must_use]
+pub fn object_gizmo_shows(hero: &HeroScreen) -> bool {
+    hero.gizmo.mode.active().is_none()
+}
+
 /// ⭐ **O botão direito no canvas livre** (spec/06 escolha 3): em Object abre o menu Add — o mesmo
 /// pedido do `+` da Hierarquia —; num modo de criação é do módulo. `true` = tomou-o.
 pub fn right_click_on_canvas(hero: &mut HeroScreen) -> bool {

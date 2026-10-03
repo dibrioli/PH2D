@@ -18,6 +18,7 @@ G = {
     'ECS': ['-p', 'ph2d-physics-ecs', '-E', 'test(nav_custo)'],
     'APPC': ['-p', 'ph2d-app-components', '-E', 'test(nav_smoke_lava) | test(nav_inspector)'],
     'PANEL': ['-p', 'ph2d-panel-inspector', '-E', 'test(nav)'],
+    'EDCORE': ['-p', 'ph2d-editor-core', '-E', 'test(nav_edits)'],
 }
 
 TRI = 'crates/ph2d-navmesh/src/triangulate.rs'
@@ -102,7 +103,25 @@ M = [
      '        if rt.arrival_told {\n            event = None;\n        }', '        let _ = rt.arrival_told;'),
     ('M32 ido embora não reanuncia', 'NAVMESH', AG,
      '        rt.arrival_told = false;\n', ''),
-    # ── o Inspector (a juntar com o relatório da camada do painel) ──────────────────────────────
+    # ── o Inspector ─────────────────────────────────────────────────────────────────────────────
+    ('M33 Avoid Harm não escreve', 'APPC', APPC + 'nav_inspector.rs',
+     '        NavFieldEdit::AvoidHarm(b) => a.avoid_harm = *b,', '        NavFieldEdit::AvoidHarm(_) => {}'),
+    ('M34 Forbidden não escreve', 'APPC', APPC + 'nav_inspector.rs',
+     '                NavFieldEdit::CostAreaForbidden(b) => c.forbidden = *b,', '                NavFieldEdit::CostAreaForbidden(_) => {}'),
+    ('M35 o custo da área aceita 0', 'APPC', APPC + 'nav_inspector.rs',
+     '                NavFieldEdit::CostAreaCost(v) => c.cost = v.max(NAV_AREA_COST_MIN),', '                NavFieldEdit::CostAreaCost(v) => c.cost = *v,'),
+    ('M36 a saída guarda o nome com espaços', 'APPC', APPC + 'nav_inspector.rs',
+     '                    let t = nome.trim();\n', '                    let t = nome.as_str();\n'),
+    ('M37 Teleport não escreve', 'APPC', APPC + 'nav_inspector.rs',
+     '                NavFieldEdit::LinkTeleport(b) => l.teleport = *b,', '                NavFieldEdit::LinkTeleport(_) => {}'),
+    ('M38 o clique em Avoid Harm pede o mesmo', 'PANEL', 'crates/ph2d-panel-inspector/src/event_nav.rs',
+     '            Some(NavFieldEdit::AvoidHarm(!info.agent.as_ref()?.avoid_harm))', '            Some(NavFieldEdit::AvoidHarm(info.agent.as_ref()?.avoid_harm))'),
+    ('M39 o clique em Forbidden pede o mesmo', 'PANEL', 'crates/ph2d-panel-inspector/src/event_nav.rs',
+     '            Some(NavFieldEdit::CostAreaForbidden(!info.cost_area?.forbidden))', '            Some(NavFieldEdit::CostAreaForbidden(info.cost_area?.forbidden))'),
+    ('M40 a vida não chega ao espelho', 'APPC', APPC + 'nav_inspector.rs',
+     '        has_health: world.get::<Health>(e).is_some(),', '        has_health: true,'),
+    ('M41 a frase «sem vida» cala-se', 'EDCORE', 'crates/ph2d-editor-core/src/nav_edits.rs',
+     '        self.avoid_harm && !self.has_health', '        false'),
 ]
 
 # `MUTA_SO=M2,M3` corre só estas.

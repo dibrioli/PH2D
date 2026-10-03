@@ -96,25 +96,41 @@ pub fn bloat_contour(
             (def[1] - orig[1]).mul_add(w, orig[1]),
         ]
     };
-    (
-        verts
-            .iter()
-            .map(|v| {
-                let w = falloff.map_or(1.0, |f| f.eval(v.anchor));
-                VecVertex {
-                    anchor: mix(v.anchor, scale(v.anchor, ka), w),
-                    in_handle: mix(v.in_handle, scale(v.in_handle, kh), w),
-                    out_handle: mix(v.out_handle, scale(v.out_handle, kh), w),
-                    kind: v.kind,
-                    // O raio de quina é um comprimento local ANCORADO na âncora, então segue o
-                    // fator dela. Os dois fatores divergem, e escolher o das alças poria o raio a
-                    // crescer enquanto a quina que ele arredonda encolhe.
-                    corner_radius: v.corner_radius * ka.abs(),
-                }
-            })
-            .collect(),
-        closed,
-    )
+    let mut out: Vec<VecVertex> = verts
+        .iter()
+        .map(|v| {
+            let w = falloff.map_or(1.0, |f| f.eval(v.anchor));
+            VecVertex {
+                anchor: mix(v.anchor, scale(v.anchor, ka), w),
+                in_handle: mix(v.in_handle, scale(v.in_handle, kh), w),
+                out_handle: mix(v.out_handle, scale(v.out_handle, kh), w),
+                kind: v.kind,
+                // O raio de quina é um comprimento local ANCORADO na âncora, então segue o
+                // fator dela. Os dois fatores divergem, e escolher o das alças poria o raio a
+                // crescer enquanto a quina que ele arredonda encolhe.
+                corner_radius: v.corner_radius * ka.abs(),
+            }
+        })
+        .collect();
+    // ⭐⭐ **Um segmento de comprimento ZERO continua de comprimento zero** (report do dono de
+    // 2026-10-03, foto: uma linha a atravessar a tampa de uma cápsula com *Pucker*). A cápsula do
+    // `RoundRect` com raio = meia espessura tem na tampa DOIS nós no mesmo sítio, ligados por um
+    // segmento nulo de alças recolhidas; os dois fatores opostos tiravam essas alças da âncora e o
+    // segmento virava uma AGULHA de largura zero, que o traço desenha como uma linha.
+    let n = verts.len();
+    let segs = if closed { n } else { n.saturating_sub(1) };
+    for k in 0..segs {
+        let j = (k + 1) % n;
+        let (a, b) = (&verts[k], &verts[j]);
+        let nulo = [a.out_handle, b.in_handle, b.anchor].iter().all(|q| {
+            (q[0] - a.anchor[0]).abs() <= f64::EPSILON && (q[1] - a.anchor[1]).abs() <= f64::EPSILON
+        });
+        if nulo {
+            out[k].out_handle = out[k].anchor;
+            out[j].in_handle = out[j].anchor;
+        }
+    }
+    (out, closed)
 }
 
 #[cfg(test)]

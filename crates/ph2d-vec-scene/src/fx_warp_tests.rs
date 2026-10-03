@@ -96,3 +96,45 @@ fn the_contour_keeps_its_closedness() {
     assert!(bloat_contour(&p.verts, true, &BloatSpec { amount: 40.0 }, &c, None).1);
     assert!(!bloat_contour(&p.verts, false, &BloatSpec { amount: 40.0 }, &c, None).1);
 }
+
+/// ⭐⭐ **GATE — a cápsula com *Pucker* não ganha uma AGULHA na tampa** (report do dono de
+/// 2026-10-03, foto: uma linha a atravessar a tampa). O `RoundRect` de raio = meia espessura tem
+/// na tampa dois nós no mesmo sítio; o segmento nulo entre eles tem de continuar nulo.
+#[test]
+fn a_capsula_com_pucker_nao_ganha_agulha_na_tampa() {
+    let capsula = crate::cook_tinted(
+        crate::ShapeKind::RoundRect,
+        [-2.25, -0.375],
+        [2.25, 0.375],
+        &[0.375],
+        [0, 0, 0],
+    );
+    let n = capsula.verts.len();
+    let nulos = |v: &[VecVertex]| {
+        (0..n)
+            .filter(|&k| {
+                let (a, b) = (&v[k], &v[(k + 1) % n]);
+                a.anchor == b.anchor
+            })
+            .count()
+    };
+    assert!(
+        nulos(&capsula.verts) >= 1,
+        "o CONTROLO: a cápsula tem o segmento nulo na tampa"
+    );
+    let c = FxCtx::of(&capsula);
+    for amount in [-60.0, -20.0, 20.0, 60.0] {
+        let (v, _) = bloat_contour(&capsula.verts, true, &BloatSpec { amount }, &c, None);
+        for k in 0..n {
+            let (a, b) = (&v[k], &v[(k + 1) % n]);
+            if a.anchor == b.anchor {
+                assert!(
+                    a.out_handle == a.anchor && b.in_handle == b.anchor,
+                    "Bloat {amount}: o segmento nulo {k} virou uma agulha ({:?} → {:?})",
+                    a.out_handle,
+                    b.in_handle
+                );
+            }
+        }
+    }
+}

@@ -200,12 +200,10 @@ fn uma_porta_a_rodar_no_sitio_nao_recorta() {
     }
     // Agora roda no sítio, um pouco a cada tique.
     for t in 19..=40u64 {
-        let mut tr = sim
-            .world_mut()
+        sim.world_mut()
             .get_mut::<Transform>(porta)
-            .expect("a porta");
-        tr.rotation = 0.05 * (t - 18) as f32;
-        drop(tr);
+            .expect("a porta")
+            .rotation = 0.05 * (t - 18) as f32;
         b.dispatch(&mut sim, true, t);
         if t > 20 {
             assert_eq!(

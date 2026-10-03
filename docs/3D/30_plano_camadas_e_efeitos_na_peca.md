@@ -135,7 +135,13 @@ e o orçamento real é a RAM: ⏳ medido na W1 com o histórico de desfazer.
 | **W6** efeitos de vizinhança | o gancho no compositor; blur/sharpen/bloom/sombras-luzes na retícula, raio no mundo | blur de raio razoável a `32x` passar de `100 ms` (vira «aplicar», não vivo) |
 | **W7** remesh e fecho | reamostrar todas as camadas; cena de smoke; arneses | — |
 
-## 8. Perguntas de PRODUTO ao dono
+## 8. Perguntas de PRODUTO ao dono — RESPONDIDAS em 02/10
+
+> ✅ **Decisões do dono (02/10), as quatro recomendadas:** (1) o painel de **Layers do Painter**
+> mostra as camadas da peça; (2) cada camada leva **cor + relevo** (rugosidade/brilho por camada ficam
+> para depois); (3) os efeitos de vizinhança entram **VIVOS**, como no 2D (W6); (4) exporta-se e
+> doa-se o **COMPOSTO**. O plano das §2–§7 é este; nada muda de forma.
+
 
 1. O painel de **Layers** do Painter passa a mostrar as camadas da PEÇA quando se pinta nela
    (recomendado), ou um painel próprio da escultura?

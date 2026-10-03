@@ -478,6 +478,10 @@ fn a_mode_of_parts_lets_the_selection_move_inside_the_piece() {
         ObjectMode::Edit,
         "desseleccionar saiu do Edit"
     );
+    assert!(
+        c.hero.gizmo.mode.available().contains(&ObjectMode::Edit),
+        "sem nada seleccionado o seletor perdeu o Edit — o activo publicado tem de ser a peça"
+    );
     c.hero.gizmo.replace_selection(Some(SHAPE));
     quadro(&mut c, &mut model, Some(ModeRequest::Toggle));
     assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Object);

@@ -797,6 +797,8 @@ identificadores `NavAlvoModo::Objecto` e `ArgKind::ObjectName`. Cura na PORTA (`
 
 ## §17 — W9 FEITA (2026-10-03): o custo à escala
 
+✅ **Smoke do dono APROVADO (03/10)** — as cenas `=3`, `=4` e a arena (`PH2D_VIDA_SMOKE=4`).
+
 **O que muda para quem usa:** nada que se veja numa cena pequena — e é esse o ponto. Numa cena grande
 (`100 × 100 m`, `1 000` obstáculos) a procura com muita lama gasta menos de metade, uma porta que pára
 refaz a malha num terço a menos, e uma porta que muda já não congela o jogo com todos os inimigos a

@@ -270,3 +270,67 @@ fn o_escritor_grava_a_pilha_da_peca_e_o_leitor_a_instala() {
         Some(composto.amostras().to_vec())
     );
 }
+
+/// ⭐⭐ **GATE — Um v6 abre com o FUNDO da cor por vértice gravada** (`docs/3D/30`
+/// §13): o v6 não guardava o fundo e lia-o da cor por vértice — o degrau dá-lhe
+/// essa, a peça é a composição sobre ela, e regravar leva-a no v7. CONTROLO: a
+/// cor por vértice gravada NÃO é o fundo com que a pilha nasceu.
+#[test]
+fn um_v6_abre_com_o_fundo_da_cor_por_vertice() {
+    let (mut stack, pose, t) = peca();
+    let mut p = pilha_rica(&t);
+    let base = p.pilha().root().last().copied().expect("base");
+    p.define_opacidade(base, 0.5);
+    stack.mesh_mut().colors_mut()[0] = [0.95, 0.9, 0.1];
+    let gravada = stack.mesh().colors().expect("cor").to_vec();
+    assert_ne!(
+        gravada.as_slice(),
+        p.fundo(),
+        "CONTROLO: a cor gravada não é o fundo de nascença"
+    );
+    let c = CamadasDoc::da_pilha(&p);
+    let v6 = super::migracao::SculptDocV6 {
+        version: super::migracao::V_ANTES_DO_FUNDO,
+        objects: vec![super::migracao::ObjectDocV6 {
+            stack: stack.to_data(),
+            pose: pose.to_data(),
+            tinta: Some(super::migracao::TintaDocV6 {
+                nivel: t.nivel(),
+                niveis: Vec::new(),
+                camadas: super::migracao::CamadasDocV6 {
+                    pilha: c.pilha,
+                    planos: c.planos,
+                },
+            }),
+        }],
+        active: 0,
+    };
+    let (lidas, _) = decode(&postcard::to_allocvec(&v6).expect("serializa")).expect("um v6 abre");
+    let lida = lidas[0].pilha.as_ref().expect("a pilha do v6");
+    assert_eq!(
+        lida.fundo(),
+        gravada.as_slice(),
+        "o fundo de um v6 é a cor por vértice gravada"
+    );
+    let plano = lidas[0].tinta.as_ref().expect("o plano");
+    let mut esperado = plano.clone();
+    lida.pinta_tinta(&mut esperado, || {
+        lida.fundo_semeado(lidas[0].stack.mesh(), t.nivel())
+    });
+    assert_eq!(
+        bits3(plano.amostras()),
+        bits3(esperado.amostras()),
+        "a peça é a composição sobre ele"
+    );
+    let v7 = super::doc_camadas::encode(
+        &[(stack.to_data(), pose.to_data(), Some(plano), Some(lida))],
+        0,
+    );
+    let doc: SculptDoc = postcard::from_bytes(&v7).expect("re-lê");
+    assert_eq!(doc.version, SCULPT_DOC_VERSION);
+    assert_eq!(
+        doc.objects[0].tinta.as_ref().expect("plano").camadas.fundo,
+        gravada,
+        "regravado, o v7 leva o fundo"
+    );
+}

@@ -278,30 +278,83 @@ fn slot_da_activa(s: &crate::Sculpt3dScene) -> usize {
         .expect("a peça activa está à vista")
 }
 
+/// ⛔ O plano LIDO DA PLACA é a peça da CPU (a referência, `para_ler`) a um
+/// degrau de sRGB8, poucos a um degrau; e a cor por vértice é o prefixo dela,
+/// ao bit. Devolve a referência.
+fn a_placa_tem_a_peca(
+    s: &crate::Sculpt3dScene,
+    gpu: &ph2d_gpu::GpuContext,
+    quando: &str,
+) -> Vec<[f32; 3]> {
+    let o = &s.objects[s.active];
+    let plano_cpu = o.tinta.as_ref().expect("plano");
+    let referencia = crate::tinta_da_peca::pilha::para_ler(o, plano_cpu)
+        .amostras()
+        .to_vec();
+    let placa = s
+        .renderer
+        .le_tinta_at(&gpu.device, &gpu.queue, slot_da_activa(s))
+        .expect("o plano está armado na placa");
+    assert_eq!(placa.len(), referencia.len(), "{quando}");
+    let degrau = 1.0 / 255.0 + 1e-5;
+    let mut a_um_degrau = 0usize;
+    for (i, (g, c)) in placa.iter().zip(&referencia).enumerate() {
+        let d = (0..3).map(|j| (g[j] - c[j]).abs()).fold(0.0f32, f32::max);
+        assert!(
+            d <= degrau,
+            "{quando}, amostra {i}: placa {g:?} contra a CPU {c:?}"
+        );
+        if d > 1e-5 {
+            a_um_degrau += 1;
+        }
+    }
+    assert!(
+        (a_um_degrau as f64) <= FRACCAO_A_UM_DEGRAU * (referencia.len() * 3) as f64,
+        "{quando}: {a_um_degrau} amostras a um degrau de {}",
+        referencia.len()
+    );
+    let v = o.stack.mesh().vert_count();
+    assert_eq!(
+        o.stack.mesh().colors().expect("cor por vértice"),
+        &referencia[..v],
+        "{quando}: a cor por vértice é o prefixo da peça, ao bit"
+    );
+    referencia
+}
+
+/// A cena `52` armada, com uma camada Multiply sobre a base TRANSLÚCIDA (o
+/// fundo vê-se) — e o que o `faz` acrescentar à pilha.
+fn cena_com_camada(
+    gpu: &ph2d_gpu::GpuContext,
+    faz: impl FnOnce(&mut PilhaDaPeca),
+) -> crate::Sculpt3dScene {
+    let mut s = super::cena_52(&gpu.device);
+    s.sync_mesh(gpu);
+    let p = s.objects[s.active]
+        .pilha
+        .as_mut()
+        .expect("a peça com plano tem pilha");
+    let cima = p.nova_camada("cima").expect("camada");
+    p.define_modo(cima, BlendMode::Multiply);
+    pinta(p, cima, 9);
+    let base = p.base().expect("base");
+    p.define_opacidade(base, 0.8);
+    faz(p);
+    s
+}
+
 /// ⭐⭐⭐⭐ **GATE — O painel muda a pilha e a PLACA tem a peça** (`docs/3D/30`
-/// §13): pela cena real, uma camada Multiply sobre a base TRANSLÚCIDA, a
-/// recomposição do painel (`recompoe`) e um quadro (`sync_mesh`) — o plano LIDO
-/// DA PLACA é a peça da CPU (a referência, `para_ler`) a um degrau de sRGB8, e a
-/// cor por vértice é o prefixo dela ao bit. CONTROLO: o plano da CPU ficou para
-/// trás — quem compôs a peça foi a placa.
+/// §13): pela cena real, a recomposição do painel (`recompoe`) e um quadro
+/// (`sync_mesh`) — o plano LIDO DA PLACA é a peça da CPU (`a_placa_tem_a_peca`).
+/// CONTROLO: o plano da CPU ficou para trás — quem compôs a peça foi a placa. E
+/// uma subida INTEIRA do plano (a CPU atrasada) volta a compor na placa, senão
+/// mostrava a peça de antes.
 #[test]
 #[ignore = "precisa de placa"]
 fn o_painel_muda_a_pilha_e_a_placa_tem_a_peca() {
     let gpu = gpu_or_skip!();
-    let mut s = super::cena_52(&gpu.device);
-    s.sync_mesh(&gpu);
+    let mut s = cena_com_camada(&gpu, |_| {});
     let a = s.active;
-    {
-        let p = s.objects[a]
-            .pilha
-            .as_mut()
-            .expect("a peça com plano tem pilha");
-        let cima = p.nova_camada("cima").expect("camada");
-        p.define_modo(cima, BlendMode::Multiply);
-        pinta(p, cima, 9);
-        let base = p.base().expect("base");
-        p.define_opacidade(base, 0.8);
-    }
     let antes = s.objects[a]
         .tinta
         .as_ref()
@@ -311,41 +364,49 @@ fn o_painel_muda_a_pilha_e_a_placa_tem_a_peca() {
     crate::tinta_da_peca::pilha::recompoe(&mut s.objects[a]);
     s.sync_mesh(&gpu);
     let o = &s.objects[a];
-    let pilha = o.pilha.as_ref().expect("pilha");
-    assert!(pilha.atrasada(), "a recomposição do painel é da placa");
-    let plano_cpu = o.tinta.as_ref().expect("plano");
+    assert!(
+        o.pilha.as_ref().expect("pilha").atrasada(),
+        "a recomposição do painel é da placa"
+    );
     let v = o.stack.mesh().vert_count();
     assert_eq!(
-        plano_cpu.amostras()[v..],
+        o.tinta.as_ref().expect("plano").amostras()[v..],
         antes[v..],
         "CONTROLO: fora dos vértices o plano da CPU ficou como estava"
     );
-    let referencia = crate::tinta_da_peca::pilha::para_ler(o, plano_cpu)
-        .amostras()
-        .to_vec();
-    let placa = s
-        .renderer
-        .le_tinta_at(&gpu.device, &gpu.queue, slot_da_activa(&s))
-        .expect("o plano está armado na placa");
-    assert_eq!(placa.len(), referencia.len());
-    let degrau = 1.0 / 255.0 + 1e-5;
-    let mut a_um_degrau = 0usize;
-    for (i, (g, c)) in placa.iter().zip(&referencia).enumerate() {
-        let d = (0..3).map(|j| (g[j] - c[j]).abs()).fold(0.0f32, f32::max);
-        assert!(d <= degrau, "amostra {i}: placa {g:?} contra a CPU {c:?}");
-        if d > 1e-5 {
-            a_um_degrau += 1;
-        }
-    }
-    assert!(
-        (a_um_degrau as f64) <= FRACCAO_A_UM_DEGRAU * (referencia.len() * 3) as f64,
-        "{a_um_degrau} amostras a um degrau de {}",
-        referencia.len()
-    );
-    assert_eq!(
-        o.stack.mesh().colors().expect("cor por vértice"),
-        &referencia[..v],
-        "a cor por vértice é o prefixo da peça, ao bit"
-    );
+    let referencia = a_placa_tem_a_peca(&s, &gpu, "depois do painel");
     assert_ne!(referencia, antes, "a camada mudou a peça");
+
+    // A peça sobe INTEIRA (o device esqueceu-a) com o plano da CPU atrasado.
+    s.objects[a].uploaded = false;
+    s.sync_mesh(&gpu);
+    a_placa_tem_a_peca(&s, &gpu, "depois de uma subida inteira");
+}
+
+/// ⭐⭐⭐ **GATE — Uma pilha que a placa NÃO exprime compõe-se na CPU** e a peça
+/// é a mesma: um ajuste sem código de placa (`ColorBalance`). CONTROLO: a
+/// porta da placa recusa-a mesmo; e o plano da CPU fica em dia.
+#[test]
+#[ignore = "precisa de placa"]
+fn uma_pilha_que_a_placa_recusa_compoe_na_cpu() {
+    let gpu = gpu_or_skip!();
+    let mut s = cena_com_camada(&gpu, |p| {
+        p.novo_ajuste(AdjustmentKind::ColorBalance)
+            .expect("ajuste de ponto");
+    });
+    let a = s.active;
+    assert!(
+        ph2d_painter_layer_ops::flatten_for_gpu(
+            s.objects[a].pilha.as_ref().expect("pilha").pilha()
+        )
+        .is_none(),
+        "CONTROLO: a placa não exprime o ColorBalance"
+    );
+    crate::tinta_da_peca::pilha::recompoe(&mut s.objects[a]);
+    s.sync_mesh(&gpu);
+    assert!(
+        !s.objects[a].pilha.as_ref().expect("pilha").atrasada(),
+        "a CPU compôs: o plano está em dia"
+    );
+    a_placa_tem_a_peca(&s, &gpu, "com o ajuste que a placa recusa");
 }

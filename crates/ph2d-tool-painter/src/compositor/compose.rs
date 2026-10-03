@@ -1,5 +1,5 @@
-//! Compositing entry points + linear-accumulator helpers, split out of the
-//! former `compositor.rs` (pure mechanical move).
+//! Compositing entry points + accumulator helpers, split out of the former `compositor.rs`. The
+//! accumulator holds straight ENCODED channels (ADR-0177).
 
 use super::*;
 
@@ -151,14 +151,14 @@ pub fn composite_below(
     // construction — the guard existed and the work happened anyway.
     //
     // Byte-identical, and the premise is a gate rather than an argument: the flat fill is the same
-    // bytes as `encode(decode_byte(ground))` only because the sRGB byte round-trip is the identity on
-    // all 256 values (`the_srgb_byte_round_trip_is_the_identity`). Conservative on purpose — a
+    // bytes as `encode(decode_byte(ground))` only because the byte round-trip is the identity on all
+    // 256 values (`the_byte_round_trip_is_the_identity`). Conservative on purpose — a
     // non-empty slice of layers that all happen to be invisible still takes the long path, because
     // *"empty"* is a fact about the list and *"invisible"* is a fact about each layer.
     if !found || slices.iter().all(|s| s.is_empty()) {
         return flat_fill(width, height, [ground[0], ground[1], ground[2], 255]);
     }
-    // Seed the accumulator with the opaque ground (decoded to linear once).
+    // Seed the accumulator with the opaque ground.
     let g = [
         super::decode_byte(ground[0]),
         super::decode_byte(ground[1]),
@@ -207,21 +207,16 @@ fn flat_fill(width: u32, height: u32, px: [u8; 4]) -> Vec<u8> {
 }
 
 pub(super) fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
-    // Force each LazyLock once per composite, not per pixel.
-    let thresh = &*SRGB_ENCODE_THRESH;
-    let coarse = &*SRGB_ENCODE_COARSE;
     let mut out = vec![0u8; acc.len() * 4];
     // Pure per-pixel map → split across the cores for large buffers (bit-identical: disjoint chunks,
     // no cross-pixel state). Small buffers stay serial (thread spawn would cost more than it saves).
     let threads = parallel_threads(acc.len(), acc.len());
     let cpb = acc.len().div_ceil(threads);
-    let encode_chunk = |out_chunk: &mut [u8], lin_chunk: &[[f32; 4]]| {
-        for (px, lin) in lin_chunk.iter().enumerate() {
-            out_chunk[px * 4] = encode_byte(thresh, coarse, lin[0]);
-            out_chunk[px * 4 + 1] = encode_byte(thresh, coarse, lin[1]);
-            out_chunk[px * 4 + 2] = encode_byte(thresh, coarse, lin[2]);
-            // Alpha is straight coverage — no transfer function (round, not LUT).
-            out_chunk[px * 4 + 3] = (lin[3].clamp(0.0, 1.0) * 255.0).round() as u8;
+    let encode_chunk = |out_chunk: &mut [u8], acc_chunk: &[[f32; 4]]| {
+        for (px, chans) in acc_chunk.iter().enumerate() {
+            for (k, &v) in chans.iter().enumerate() {
+                out_chunk[px * 4 + k] = encode_byte(v);
+            }
         }
     };
     if threads <= 1 {
@@ -462,9 +457,10 @@ fn composite_into(
             // bottom-up). Copy the window, run the kind's compute, then blend
             // the result back over `acc` by the adjustment's OWN opacity × mask
             // in its blend mode (inner fields authoritative, amendment-1).
-            // `apply_adjustment` works in straight linear f32 — no 8-bit round-
-            // trip in the per-frame composite. Mask/opacity live HERE, not in
-            // the compute hook (W4-triage Coord decision).
+            // The kinds are defined in straight LINEAR f32: they receive the
+            // accumulator in light and hand it back encoded (ADR-0177, the
+            // boundary), and the blend-back runs in the accumulator's space.
+            // Mask/opacity live HERE, not in the compute hook (W4-triage).
             LayerKind::Adjustment(adj) => {
                 if !adj.visible || adj.opacity <= 0.0 {
                     continue;
@@ -484,7 +480,7 @@ fn composite_into(
                 }
                 let adj_opacity = adj.opacity.clamp(0.0, 1.0);
                 let adj_mode = adj.blend_mode;
-                let mut adjusted = acc.to_vec();
+                let mut adjusted: Vec<[f32; 4]> = acc.iter().map(|&p| em_luz(p)).collect();
                 // Window-aware dispatch: spatial blurs (Gaussian/Sharpen/Motion/
                 // Chroma) need the 2-D layout; Noise/Halftone need the absolute
                 // canvas coordinate (origin + local). Per-pixel kinds delegate to
@@ -503,6 +499,9 @@ fn composite_into(
                         origin_y: ry,
                     },
                 );
+                for p in &mut adjusted {
+                    *p = em_tons_de_ecra(*p);
+                }
                 // Optional mask — raw layer-id (amendment-1): white = full
                 // effect. Missing/short buffer = no mask (full effect).
                 let mask = adj.mask.and_then(|mid| {
@@ -574,6 +573,20 @@ fn composite_into(
             LayerKind::Mask(_) => continue,
         }
     }
+}
+
+/// The boundary of an adjustment defined in light (ADR-0177): encoded → linear, alpha untouched.
+#[inline]
+fn em_luz(p: [f32; 4]) -> [f32; 4] {
+    use ph2d_color::srgb::srgb_to_linear_unit as l;
+    [l(p[0]), l(p[1]), l(p[2]), p[3]]
+}
+
+/// … and back: linear → encoded, alpha untouched.
+#[inline]
+fn em_tons_de_ecra(p: [f32; 4]) -> [f32; 4] {
+    use ph2d_color::srgb::linear_to_srgb_unit as e;
+    [e(p[0]), e(p[1]), e(p[2]), p[3]]
 }
 
 /// Blend one source layer (sampled by `sample(global_x, global_y)`) over

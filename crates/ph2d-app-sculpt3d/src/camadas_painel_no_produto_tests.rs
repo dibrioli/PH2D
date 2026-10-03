@@ -374,15 +374,15 @@ fn diag_o_preco_de_arrastar_a_opacidade_de_ponta_a_ponta() {
     }
 }
 
-/// 🔎 **SONDA — o MESMO traço preto na base e numa camada nova por cima** (report do dono, 03/10:
-/// *«o traço feito na camada 2 tem qualidade menor»*). A cena A pinta a base; a B pinta uma camada
-/// nova. Da A sai a cobertura `w` de cada amostra (`w = 1 − A/antes`, pincel preto); se a ÚNICA
-/// diferença da B fosse misturar em LUZ, a B seria `srgb(lin(antes)·(1 − w))`. Imprime o resíduo
-/// contra essa previsão e contra a A: pequeno em todo o lado = a lei de mistura; amostras soltas
-/// muito fora = defeito.
+/// ⭐ **O MESMO traço preto na base e numa camada nova por cima dá a MESMA peça, a um degrau**
+/// (report do dono, 03/10: *«o traço feito na camada 2 tem qualidade menor»*; ADR-0177, P1 gate b).
+/// A cena A pinta a base; a B pinta uma camada nova. O pincel mistura em tons de ecrã, e as camadas
+/// juntam-se no mesmo espaço — antes juntavam-se em luz e a B era `srgb(lin(antes)·(1 − w))`, até
+/// `0,286` (73 degraus) fora da A. Imprime também o resíduo contra essa previsão antiga, com
+/// `w = 1 − A/antes` (pincel preto).
 #[test]
-#[ignore = "sonda: precisa de adaptador e imprime a tabela"]
-fn diag_o_traco_numa_camada_e_o_da_base() {
+#[ignore = "precisa de adaptador"]
+fn o_traco_numa_camada_nova_e_o_traco_na_base() {
     use ph2d_color::srgb::{linear_to_srgb_unit, srgb_to_linear_unit};
     let gpu = gpu_or_skip!();
     let pinta = |camada_nova: bool| {
@@ -460,4 +460,11 @@ fn diag_o_traco_numa_camada_e_o_da_base() {
     eprintln!("amostras tocadas: {tocadas}");
     resume("B contra a previsão em LUZ", &mut fora_da_luz);
     resume("B contra A", &mut fora_da_a);
+    let pior = fora_da_a.first().map_or(0.0, |x| x.0);
+    assert!(tocadas > 100, "o traço tocou só {tocadas} amostras");
+    assert!(
+        pior <= 1.0 / 255.0 + 1e-4,
+        "o traço numa camada nova difere do traço na base em {:.1} degraus",
+        pior * 255.0
+    );
 }

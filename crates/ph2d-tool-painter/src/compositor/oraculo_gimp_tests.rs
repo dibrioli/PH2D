@@ -224,6 +224,28 @@ fn o_gimp_linear_e_a_mistura_w3c_em_luz() {
     assert_eq!(vistas, 2 * MODOS_DE_FORMULA_PARTILHADA.len());
 }
 
+/// ⭐ A LEI (ADR-0177, P1 gate a): o compositor de produção é o GIMP «perceptual» a um degrau em
+/// todo modo de fórmula partilhada, nas duas opacidades, com a base opaca e translúcida.
+#[test]
+fn o_compositor_junta_as_camadas_como_o_gimp_perceptual() {
+    let f = le();
+    let mut vistas = 0;
+    for c in f.corridas.iter().filter(|c| c.espaco == "perceptual") {
+        if !MODOS_DE_FORMULA_PARTILHADA.contains(&c.modo) {
+            continue;
+        }
+        vistas += 1;
+        let (pior, fora) = desvio(&compoe(&f, c), c.px);
+        assert!(
+            pior <= 1,
+            "{} {}%: pior {pior} degraus ({fora} canais)",
+            c.nome,
+            c.opacidade
+        );
+    }
+    assert_eq!(vistas, 2 * MODOS_DE_FORMULA_PARTILHADA.len());
+}
+
 /// Sonda: a tabela inteira — cada corrida do oráculo contra o compositor de produção, contra a
 /// matemática em luz e contra a mesma matemática em tons de ecrã.
 #[test]

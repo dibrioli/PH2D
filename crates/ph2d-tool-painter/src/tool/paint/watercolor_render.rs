@@ -513,20 +513,23 @@ impl PainterTool {
                         lut,
                     );
 
-                    // Effective base in linear light: the layer's own pixels composited over the REAL
-                    // ground (the backdrop under the active layer — so a transparent layer attenuates
-                    // what is actually beneath it, not a virtual cream; an opaque base uses only itself).
+                    // Effective base: the layer's own pixels composited over the REAL ground (the
+                    // backdrop under the active layer — so a transparent layer attenuates what is
+                    // actually beneath it, not a virtual cream; an opaque base uses only itself). The
+                    // compositor joins layers in TONES OF THE SCREEN (ADR-0177), so the appearance is
+                    // the encoded lerp; the optics below run on it in linear light.
                     let ab = f32::from(base[gi + 3]) / 255.0;
                     let ground_lin = [
                         lut.s2l[ground[gi] as usize],
                         lut.s2l[ground[gi + 1] as usize],
                         lut.s2l[ground[gi + 2] as usize],
                     ];
-                    let mut sb = [
-                        lut.s2l[base[gi] as usize] * ab + ground_lin[0] * (1.0 - ab),
-                        lut.s2l[base[gi + 1] as usize] * ab + ground_lin[1] * (1.0 - ab),
-                        lut.s2l[base[gi + 2] as usize] * ab + ground_lin[2] * (1.0 - ab),
-                    ];
+                    let ground_enc = [ground[gi], ground[gi + 1], ground[gi + 2]].map(f32::from);
+                    let base_app_enc: [f32; 3] = core::array::from_fn(|c| {
+                        (f32::from(base[gi + c]) * ab + ground_enc[c] * (1.0 - ab)) / 255.0
+                    });
+                    let ground_enc = ground_enc.map(|g| g / 255.0);
+                    let mut sb = base_app_enc.map(ph2d_color::srgb::srgb_to_linear_unit);
                     // Wet-on-wet LIFT ([`apply_wet_lift`]): rewetting walks the base's pigment toward the
                     // LOCAL ground in log space (`lift` already moisture-scaled — a dried spot won't lift).
                     apply_wet_lift(&mut sb, &ground_lin, lift, lut);
@@ -553,7 +556,7 @@ impl PainterTool {
                             // Keep the un-premultiply in gamut: body can push a channel past the `1 − t_min`
                             // floor. Uses the quantised `app` the un-premultiply reads ([`gamut_alpha`]).
                             a_body =
-                                a_body.max(gamut_alpha(lut.s2l[rgb[c] as usize], ground_lin[c]));
+                                a_body.max(gamut_alpha(f32::from(rgb[c]) / 255.0, ground_enc[c]));
                         }
                         t_lum += LUM[c] * t;
                         t_min = t_min.min(t);
@@ -618,16 +621,15 @@ impl PainterTool {
                     }
                     // Screen-space AA alpha (`aa_coverage` — 1.0 everywhere but a thin stroke's steep
                     // rim): composite the wash's target APPEARANCE over the base-over-ground appearance
-                    // by the texel's fractional silhouette coverage, in linear light and BEFORE the
-                    // un-premultiply — a byte-level lerp on the stored straight-alpha pixels broke the
-                    // flatten equality on a transparent layer (the stored L is not an appearance).
-                    // Linear on the appearance, so the fringe/Beer–Lambert saturation can't eat it.
+                    // by the texel's fractional silhouette coverage, in the compositor's space (tones
+                    // of the screen) and BEFORE the un-premultiply — a byte-level lerp on the stored
+                    // straight-alpha pixels broke the flatten equality on a transparent layer (the
+                    // stored L is not an appearance).
                     if aa_alpha < 1.0 {
                         for c in 0..3 {
-                            let app = lut.s2l[rgb[c] as usize];
-                            let base_app =
-                                lut.s2l[base[gi + c] as usize] * ab + ground_lin[c] * (1.0 - ab);
-                            rgb[c] = lut.l2s_byte(app * aa_alpha + base_app * (1.0 - aa_alpha));
+                            let app = f32::from(rgb[c]) / 255.0;
+                            let v = app * aa_alpha + base_app_enc[c] * (1.0 - aa_alpha);
+                            rgb[c] = (v.clamp(0.0, 1.0) * 255.0).round() as u8;
                         }
                     }
                     // Coverage alpha = the STRONGEST per-channel absorption (`1 − min_c T_c`), not the
@@ -644,7 +646,8 @@ impl PainterTool {
                     let out_a = (ab + (1.0 - ab) * cov_a).clamp(0.0, 1.0);
                     // `rgb` is the target APPEARANCE over the ground. The layer stores straight RGBA
                     // that the compositor will blend over that same ground — so solve the un-premultiply
-                    // `L = (appearance − ground·(1−a)) / a` in linear light. Baking the appearance
+                    // `L = (appearance − ground·(1−a)) / a` in the compositor's space (tones of the
+                    // screen, ADR-0177). Baking the appearance
                     // directly (the old path) baked the ground INTO the pixels: over a white backdrop
                     // the wash carried a permanent cream cast ("puxa para o bege", Enio 2026-07-06).
                     // Opaque base ⇒ a = 1 ⇒ L = appearance, byte-identical to the old path.
@@ -659,9 +662,9 @@ impl PainterTool {
                     let inv_a = 1.0 / out_a;
                     let mut px = [0u8; 4];
                     for c in 0..3 {
-                        let app = lut.s2l[rgb[c] as usize];
-                        let lin = (app - ground_lin[c] * (1.0 - out_a)) * inv_a;
-                        px[c] = lut.l2s_byte(lin);
+                        let app = f32::from(rgb[c]) / 255.0;
+                        let l = (app - ground_enc[c] * (1.0 - out_a)) * inv_a;
+                        px[c] = (l.clamp(0.0, 1.0) * 255.0).round() as u8;
                     }
                     px[3] = (out_a * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
                     // Paint gates (selection / protection): keep-lerp the painted bytes toward the

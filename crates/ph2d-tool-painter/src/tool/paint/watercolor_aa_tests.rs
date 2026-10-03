@@ -106,6 +106,12 @@ fn the_smooth_edges_click_flips_the_mode() {
 /// fixture: **494 bytes de 262144 (0,2%) · 192 px de 65536 (0,3%) · pior delta 14/255** — um quinto
 /// do 1º movimento, porque num flanco reto as duas réguas concordam e o `min` é quase inerte.
 ///
+/// **3º movimento (2026-10-03) — as camadas juntam-se em tons de ecrã** (ADR-0177): o
+/// des-premultiplicar passou a `round(L · 255)` sobre valores codificados. Com a base opaca ele É a
+/// aparência, e o caminho antigo `l2s_byte(s2l[b])` não era a identidade: a tabela indexa por `floor`
+/// e descia 1 degrau em 7 bytes escuros (3, 4, 7, 8, 11, 14, 17). Nesta fixture: **405 bytes em 135 px,
+/// todos por exactamente 1** (`0x9744233f9f852066` → `0x03c97ba0b481a619`).
+///
 /// ⚠️ **E ele move num traço RETO de propósito, não por acidente:** esta fixture tem `warp = 6`, e um
 /// contorno ondulado é localmente **côncavo** em metade das ondas. É a mesma correção da quina, na
 /// escala da ondulação — o que confirma que a lei antiga errava em toda concavidade, e não só no
@@ -120,7 +126,7 @@ fn smooth_edges_off_is_the_pre_aa_render_byte_for_byte() {
     let hard = wc_stroke_hard(256, 40.0, 6.0, &pts);
     assert_eq!(
         canvas_hash(&hard),
-        0x9744233f9f852066,
+        0x03c9_7ba0_b481_a619,
         "Smooth Edges OFF must render the hard-mode composite byte-for-byte"
     );
     // And the two modes genuinely differ where the AA lives (the rim) — the checkbox is not dead.

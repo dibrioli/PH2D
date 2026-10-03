@@ -285,5 +285,8 @@ mod composite_refill_tests; // a pilha obedece a lei do re-carimbo (ordem do don
 #[path = "watercolor_recarimbo_tests.rs"]
 mod watercolor_recarimbo_tests; // o reservatorio do mixer renasce com a cobertura (cura 2026-09-22)
 
+#[path = "o_traco_numa_camada_nova_tests.rs"]
+mod o_traco_numa_camada_nova_tests; // ADR-0177: a camada nova é a base (o report do dono, 03/10)
+
 #[path = "diag_cura_da_pilha.rs"]
 mod diag_cura_da_pilha; // o que a ACUMULAÇÃO entregou // AUDITORIA 2026-09-21: o preço e o carimbo da recomposição regional

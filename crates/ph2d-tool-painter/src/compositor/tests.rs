@@ -1,59 +1,5 @@
 use super::*;
 
-// ── sRGB transfer LUTs (PERF, byte/bit-exact) ─────────────────────────
-
-#[test]
-fn decode_lut_is_bit_exact_with_srgb_to_linear_byte() {
-    // The decode LUT must be the SAME bits as the powf path for every byte
-    // (the GPU compositor's `.to_bits()` gate decodes identically).
-    for b in 0u16..=255 {
-        let b = b as u8;
-        assert_eq!(
-            SRGB_DECODE_LUT[b as usize].to_bits(),
-            srgb_to_linear_byte(b).to_bits(),
-            "decode LUT drifted at byte {b}"
-        );
-    }
-}
-
-#[test]
-fn encode_via_threshold_matches_linear_to_srgb_byte() {
-    use ph2d_color::srgb::linear_to_srgb_byte;
-    // The LUT encode must produce the SAME byte as the powf round-to-nearest
-    // across a dense linear sweep (real pixel data) — byte-exact, no powf.
-    let thresh = &*SRGB_ENCODE_THRESH;
-    let coarse = &*SRGB_ENCODE_COARSE;
-    for i in 0..=300_000u32 {
-        let v = i as f32 / 300_000.0;
-        assert_eq!(
-            encode_byte(thresh, coarse, v),
-            linear_to_srgb_byte(v),
-            "encode mismatch at v={v}"
-        );
-    }
-    // Endpoints + out-of-range clamp.
-    assert_eq!(encode_byte(thresh, coarse, 0.0), linear_to_srgb_byte(0.0));
-    assert_eq!(encode_byte(thresh, coarse, 1.0), linear_to_srgb_byte(1.0));
-    assert_eq!(encode_byte(thresh, coarse, -1.0), 0);
-    assert_eq!(encode_byte(thresh, coarse, 2.0), 255);
-}
-
-#[test]
-fn decode_then_encode_round_trips_every_byte() {
-    // A pixel that is only decoded + re-encoded (no blend) must survive
-    // unchanged for every byte — proves the two LUTs are mutual inverses.
-    let thresh = &*SRGB_ENCODE_THRESH;
-    let coarse = &*SRGB_ENCODE_COARSE;
-    for b in 0u16..=255 {
-        let b = b as u8;
-        assert_eq!(
-            encode_byte(thresh, coarse, SRGB_DECODE_LUT[b as usize]),
-            b,
-            "round-trip byte {b}"
-        );
-    }
-}
-
 fn solid(w: u32, h: u32, rgba: [u8; 4]) -> LayerImage {
     LayerImage {
         width: w,
@@ -110,8 +56,8 @@ fn invisible_layer_is_skipped() {
 
 #[test]
 fn opacity_half_blends_toward_bottom() {
-    // 50% white over black → mid gray (in *linear*, then sRGB-encoded
-    // → ~188, NOT 128). Verifies opacity folds into alpha + linear blend.
+    // 50% white over black → mid gray IN TONES OF THE SCREEN (ADR-0177): 127.5 → 128, no
+    // longer the ~188 a linear-space half encoded to. Opacity folds into alpha.
     let (w, h) = (1, 1);
     let mut s = LayerStack::new();
     let bottom = s.add_raster("bottom", w, h).unwrap();
@@ -121,10 +67,9 @@ fn opacity_half_blends_toward_bottom() {
     src.insert(bottom, solid(w, h, [0, 0, 0, 255]));
     src.insert(top, solid(w, h, [255, 255, 255, 255]));
     let out = composite(&s, &src, w, h);
-    // linear 0.5 → sRGB ≈ 188.
     assert!(
-        (out[0] as i32 - 188).abs() <= 1,
-        "expected ~188 (linear-space half), got {}",
+        (out[0] as i32 - 128).abs() <= 1,
+        "expected ~128 (encoded half), got {}",
         out[0]
     );
     assert_eq!(out[3], 255);
@@ -176,8 +121,8 @@ fn group_opacity_attenuates_the_stack() {
     src.insert(child, solid(w, h, [255, 255, 255, 255]));
     let out = composite(&s, &src, w, h);
     assert!(
-        (out[0] as i32 - 188).abs() <= 1,
-        "group 50% → ~188, got {}",
+        (out[0] as i32 - 128).abs() <= 1,
+        "group 50% → ~128 (encoded half, ADR-0177), got {}",
         out[0]
     );
 }
@@ -654,19 +599,17 @@ fn cache_hit_skips_below_layers() {
     );
 }
 
-/// **O round-trip de byte da transferência sRGB é a IDENTIDADE nos 256 valores.**
+/// **O round-trip de byte (`byte / 255` → `round`) é a IDENTIDADE nos 256 valores.**
 ///
 /// É a premissa que autoriza um atalho no `composite_below`: quando NADA está abaixo da âncora, o
 /// resultado é o chão puro, e devolvê-lo como preenchimento chapado de bytes só é byte-idêntico ao
-/// caminho longo (`decode_byte` → acumulador `[f32;4]` → `encode`) se decodificar e recodificar um byte
-/// devolver o mesmo byte. Este repo já se queimou presumindo precisão de tabela de transferência
-/// (doc 24), então a premissa é MEDIDA aqui em vez de argumentada.
+/// caminho longo (`decode_byte` → acumulador `[f32;4]` → `encode`) se ler e reescrever um byte
+/// devolver o mesmo byte. MEDIDO aqui em vez de argumentado (ADR-0177: a curva sRGB saiu do caminho;
+/// as três tabelas e os seus 2 gates saíram com ela).
 #[test]
-fn the_srgb_byte_round_trip_is_the_identity() {
-    let thresh = &*super::SRGB_ENCODE_THRESH;
-    let coarse = &*super::SRGB_ENCODE_COARSE;
+fn the_byte_round_trip_is_the_identity() {
     for b in 0u8..=255 {
-        let back = super::encode_byte(thresh, coarse, super::decode_byte(b));
+        let back = super::encode_byte(super::decode_byte(b));
         assert_eq!(
             back, b,
             "decode→encode moveu o byte {b} para {back}: um chão chapado NÃO é byte-idêntico ao \

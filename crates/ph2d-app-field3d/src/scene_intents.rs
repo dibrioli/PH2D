@@ -421,6 +421,20 @@ pub(super) fn apply(
                     let _ = ph2d_field_ecs::set_param(world, alvo, param, value);
                 }
             }
+            // ⭐⭐⭐ **A TEXTURA** — espalha-se como o material; escolher «de ficheiro» abre o
+            // diálogo (o app) e só o ficheiro escolhido escreve (`texturas::aplica_escolhidos`).
+            ph2d_panel_model3d::ModelIntent::SetParam {
+                entity,
+                param: param @ ph2d_field::Param::Texture(slot),
+                value,
+            } => match crate::textura_painel::pede_ficheiro(slot, value) {
+                Some(canal) => crate::texturas::pede_importar(entity, canal),
+                None => {
+                    for alvo in crate::scene::panel::material_reach(world, selection, entity) {
+                        let _ = ph2d_field_ecs::set_param(world, alvo, param, value);
+                    }
+                }
+            },
             ph2d_panel_model3d::ModelIntent::SetParam {
                 entity,
                 param,

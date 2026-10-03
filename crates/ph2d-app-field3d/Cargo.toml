@@ -35,6 +35,13 @@ ph2d-field-render  = { path = "../ph2d-field-render" }
 # ⭐⭐⭐ O desenhista de JOGO do Render por malha (02/10): triangulos, luz de custo fixo, WebGL2.
 ph2d-mesh-forward  = { path = "../ph2d-mesh-forward" }
 ph2d-sky           = { path = "../ph2d-sky" }
+# A TEXTURA sem UV (triplanar) e as imagens que o artista importa para ela.
+ph2d-triplanar     = { path = "../ph2d-triplanar" }
+ph2d-imageio       = { path = "../ph2d-imageio" }
+ph2d-imageio-png   = { path = "../ph2d-imageio-png" }
+ph2d-imageio-jpeg  = { path = "../ph2d-imageio-jpeg" }
+ph2d-imageio-webp  = { path = "../ph2d-imageio-webp" }
+ph2d-imageio-tga   = { path = "../ph2d-imageio-tga" }
 # ⭐ A TRAVESSIA sRGB ↔ linear da cor base (`materials::base_color_srgb8`). O documento guarda a cor
 # em linear e o selector da casa fala sRGB8; a curva é uma só, e é esta — uma cópia local seria uma
 # segunda curva a divergir na terceira casa.

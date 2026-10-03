@@ -42,6 +42,7 @@ pub fn publish_snapshot(
         Some(crate::shading::Shading::Render)
     );
     let malha = crate::malha_render_estado::ligado();
+    crate::textura_painel::junta(world, render && malha, &mut rows);
     rows.extend(crate::estilo::rows(
         with_smoke(|s| s.style).unwrap_or_default(),
         render,

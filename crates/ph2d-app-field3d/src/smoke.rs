@@ -151,6 +151,7 @@ fn boot() -> Option<Smoke> {
         "[field-smoke] traçado no tamanho REAL da área, com anti-serrilhado — prato giratório, \
          feche a janela para sair"
     );
+    crate::texturas::semeia(scenes::texturas_da_cena(n));
     let mut smoke = Smoke {
         doc: Some(doc.clone()),
         seed: Some(doc),

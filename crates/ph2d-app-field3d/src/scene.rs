@@ -133,6 +133,7 @@ pub fn ecs_bridge(
     // ⭐⭐⭐ **E A TABELA DE MATERIAIS segue a peça** (`docs/Render3d/05`) — depois do cozimento,
     // porque ela é derivada dele, e fora do fecho acima, porque ela precisa do mundo.
     crate::materials::sync(sim, mudou_o_doc);
+    crate::texturas::sync(sim);
     // ⭐⭐⭐ **E AS LUZES também** (ordem do dono, 14/09) — mesma altura, mesma razão.
     crate::lights::sync(sim);
     // ⭐⭐⭐ **E O RENDER POR MALHA** (02/10) — a peça em objetos, e a pose de cada um.
@@ -362,6 +363,7 @@ pub fn sync_scene_and_birth(
                     world.entity_mut(e).insert(m);
                 }
             }
+            crate::texturas::planta(world, root);
             // ⭐⭐⭐ **E UMA LUZ NASCE COM ELA** (ordem do dono, 14/09: *«a luz deve virar objeto 3d
             // como nos app 3d»*) — como num aplicativo 3D, uma cena nova já tem uma.
             //
@@ -446,6 +448,7 @@ pub fn sync_scene_and_birth(
             node.shape = ph2d_field::NodeShape::Sampled { key };
         }
     }
+    crate::texturas::aplica_escolhidos(world, |w, e| panel::material_reach(w, selection, e));
     if let Some(key) = crate::smoke::take_pending_sculpt() {
         let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
         if let Ok(e) = ph2d_field_ecs::add_sampled(world, parent, &key, cam.target) {

@@ -48,6 +48,7 @@ impl crate::App {
         if let Some(e) = ph2d_app_field3d::smoke::take_relink_request() {
             ph2d_app_field3d::import::field3d_relink(e, toasts);
         }
+        ph2d_app_field3d::texturas::atende_pedido(toasts);
         // ⭐⭐ **O PERFIL DESENHADO VIRA PEÇA** (W53) — o fluxo do MoI, que o motor tem medido e
         // gateado desde a W3 e que **nenhum botão alcançava**.
         //

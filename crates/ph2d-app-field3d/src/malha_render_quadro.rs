@@ -39,6 +39,8 @@ struct Assinatura {
     /// O céu escolhido (saneado) — o atlas dele já está montado quando a assinatura nasce.
     ceu: crate::ceu_foto::Ceu,
     estilo: ph2d_style::Style,
+    /// A textura de cada material (`crate::texturas`).
+    texturas: Vec<Option<ph2d_mesh_forward::TexturaMaterial>>,
     raio: f32,
     /// A chave das curvaturas com que este quadro foi desenhado.
     curv: Option<crate::malha_render_estado::ChaveCurv>,
@@ -53,6 +55,8 @@ struct Desenhista {
     curv_subida: Option<crate::malha_render_estado::ChaveCurv>,
     /// O céu fotográfico cujo atlas está subido.
     ceu_subido: Option<ph2d_sky::Embarcado>,
+    /// As camadas de textura já subidas.
+    texturas_subidas: std::collections::BTreeSet<u32>,
 }
 
 /// ⛔ **GLOBAL, e não `thread_local`** — medido (02/10): um `Forward` numa `thread_local` é largado
@@ -94,6 +98,7 @@ fn desenhista() -> Option<&'static Mutex<Desenhista>> {
                     subida: (0, 0),
                     curv_subida: None,
                     ceu_subido: None,
+                    texturas_subidas: std::collections::BTreeSet::new(),
                 })
             })
         })
@@ -270,8 +275,13 @@ pub(crate) fn desenha(
         },
         None => None,
     };
+    // ⭐ As TEXTURAS: decodificam noutra thread da 1.ª vez, e o quadro espera por elas como pelo céu.
+    let Some((texturas, a_subir)) = crate::texturas::para_o_desenhista() else {
+        return Feito::Espera;
+    };
     let assinatura = Assinatura {
         geracao,
+        texturas,
         modelos,
         materiais: materiais(smoke),
         camera: camera(&smoke.vps[i].cam, tamanho),
@@ -338,6 +348,11 @@ pub(crate) fn desenha(
             d.fw.sobe_ceu(atlas);
             d.ceu_subido = Some(*e);
         }
+        for (camada, mapas) in &a_subir {
+            if d.texturas_subidas.insert(*camada) {
+                d.fw.sobe_textura(*camada, mapas);
+            }
+        }
         let fw = &mut d.fw;
         let instancias: Vec<Instancia> = assinatura
             .modelos
@@ -362,7 +377,7 @@ pub(crate) fn desenha(
             estilo: assinatura.estilo,
             raio_da_peca: assinatura.raio,
             foto: foto.as_ref().map(|(_, atlas)| assinatura.ceu.foto(atlas)),
-            texturas: &[],
+            texturas: &assinatura.texturas,
         })
     };
     rgba.map_or(Feito::Espera, Feito::Novo)

@@ -104,6 +104,8 @@ pub mod smoke;
 /// fechada, e a energia total dele não se mexe.
 pub mod studio;
 pub mod studio_wgsl;
+pub mod texturas;
+pub(crate) mod textura_painel;
 /// ADR-0161 W26 — o NUMERO digitado no meio do gesto do gizmo (o `G X 0,5` do Blender).
 pub mod typed;
 

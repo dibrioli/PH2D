@@ -105,6 +105,8 @@ mod model3d;
 mod model3d_bloom;
 /// ⭐⭐⭐ **O vocabulário do CÉU fotográfico** do Render por malha — irmão do [`model3d_bloom`].
 mod model3d_sky;
+/// ⭐⭐⭐ **O vocabulário da TEXTURA** das formas — irmão do [`model3d_sky`].
+mod model3d_texture;
 /// ⭐ **As RAZÕES de uma fileira apagada** (18/09) — irmão de ASSUNTO do [`model3d`], e não de
 /// painel: o corte foi imposto pelo tecto de LOC dele e separa *nomes de coisas* de *frases para o
 /// artista*.
@@ -492,6 +494,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| model3d_inert::tr(k))
             .or_else(|| model3d_bloom::tr(k))
             .or_else(|| model3d_sky::tr(k))
+            .or_else(|| model3d_texture::tr(k))
             .or_else(|| tags::tr(k))
             .or_else(|| factory::tr(k))
             .or_else(|| topdown::tr(k))

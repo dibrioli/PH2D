@@ -132,7 +132,7 @@ pub fn leaf(p: Primitive, x: Xform) -> Node {
 /// ⚠️ Ele **conta-se lendo o `match` abaixo**, nunca de memória: o gate
 /// `the_router_answers_for_every_level_it_claims` mede-o pelas DUAS pontas — a cena `CENAS` tem de
 /// ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-pub const CENAS: u32 = 38;
+pub const CENAS: u32 = 39;
 
 /// **As cenas PODADAS em 2026-09-11** — nenhum doc as citava pelo número e nenhum código as usava
 /// (ordem do Enio, briefing W2 §3.2). `952` linhas.
@@ -181,6 +181,9 @@ pub fn materiais_da_cena(n: u32) -> Option<Vec<ph2d_field_ecs::FieldMaterial>> {
     }
     if n == 38 {
         return Some(malha::materiais_38());
+    }
+    if n == 39 {
+        return Some(textura::materiais_39());
     }
     if n == 36 {
         // ⛔⛔ **A BARRA LEVA MATERIAL PRÓPRIO, e a FOTO é que o exigiu:** sem ele ela herdava a
@@ -492,6 +495,8 @@ pub fn scene(n: u32) -> FieldDoc {
         37 => malha::cena_37(),
         // ⭐⭐⭐ O CÉU fotográfico (02/10) — ver [`malha::cena_38`].
         38 => malha::cena_38(),
+        // ⭐⭐⭐ AS TEXTURAS (03/10) — ver [`textura::cena_39`].
+        39 => textura::cena_39(),
         _ => {
             // ⛔⛔ **O ROTEADOR DIZ QUANDO O NÚMERO NÃO EXISTE** (W2).
             //
@@ -568,3 +573,12 @@ mod lote;
 /// ⭐⭐⭐ A cena do Render por MALHA (02/10) — ver [`malha`].
 #[path = "smoke_scenes_malha.rs"]
 mod malha;
+
+/// As texturas que a cena `n` pede, na ordem das folhas (a semente do [`crate::texturas::semeia`]).
+#[must_use]
+pub fn texturas_da_cena(n: u32) -> Option<Vec<Option<ph2d_field_ecs::FieldTexture>>> {
+    (n == 39).then(textura::texturas_39)
+}
+
+#[path = "smoke_scenes_textura.rs"]
+mod textura;

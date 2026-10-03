@@ -95,7 +95,9 @@ M = [
      '.map(|r| (r.entity, chave_raio, custo::assinatura(&quem)));', '.map(|r| (r.entity, chave_raio, 0));'),
     # ── a cena ──────────────────────────────────────────────────────────────────────────────────
     ('M29 o controlo também evita', 'APPC', APPC + 'nav_smoke_lava.rs',
-     'CINZENTO_EM, CINZENTO_RGBA, false);', 'CINZENTO_EM, CINZENTO_RGBA, true);'),
+     '        CINZENTO_RGBA,\n        false,\n', '        CINZENTO_RGBA,\n        true,\n'),
+    ('M30 os espigões do Clipper ficam', 'NAVMESH', TRI,
+     '.map(|r| limpa_anel(r))', '.map(|r| r.clone())'),
     # ── o Inspector (a juntar com o relatório da camada do painel) ──────────────────────────────
 ]
 

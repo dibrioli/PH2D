@@ -43,12 +43,23 @@ pub fn triangulate(rings: &[Vec<P>]) -> Result<(Vec<P>, Vec<[u32; 3]>), TriError
 pub fn triangulate_pieces(
     pieces: &[Vec<Vec<P>>],
 ) -> Result<(Vec<P>, Vec<[u32; 3]>, Vec<u16>), TriError> {
+    // ⚠️ Os ESPIGÕES saem antes de tudo (ver `limpa_anel`).
+    let limpos: Vec<Vec<Vec<P>>> = pieces
+        .iter()
+        .map(|rings| {
+            rings
+                .iter()
+                .map(|r| limpa_anel(r))
+                .filter(|r| r.len() >= 3)
+                .collect()
+        })
+        .collect();
     let reparados;
-    let pieces = if pieces.len() > 1 {
-        reparados = repair_t_junctions(pieces);
+    let pieces = if limpos.len() > 1 {
+        reparados = repair_t_junctions(&limpos);
         &reparados[..]
     } else {
-        pieces
+        &limpos[..]
     };
     // Os vértices únicos, pela ordem em que aparecem (BTreeMap: o índice não depende de hash).
     let mut index: BTreeMap<P, u32> = BTreeMap::new();
@@ -198,6 +209,41 @@ pub fn triangulate_pieces(
         labels.push(k);
     }
     Ok((pts, tris, labels))
+}
+
+/// Um anel sem pontos repetidos e sem ESPIGÕES — um vértice onde o anel volta para trás pela MESMA
+/// recta (orientação inteira `0` e o sentido a inverter). ⚠️ Medido (a cena `PH2D_NAV_SMOKE=4`, o furo
+/// da lava a cortar a quina de quatro mosaicos com as paredes do recinto encostadas): o Clipper, que
+/// preserva os colineares, devolveu o anel andável de um mosaico a ir até `(0, 0)` e voltar sobre o
+/// fundo dele; as duas arestas sobrepostas entravam como restrições e a paridade etiquetava o entalhe
+/// DENTRO da lava como chão. Tirar um espigão pode criar outro ao lado: repete até não haver.
+fn limpa_anel(ring: &[P]) -> Vec<P> {
+    let mut v: Vec<P> = ring.to_vec();
+    loop {
+        let n = v.len();
+        if n < 3 {
+            return v;
+        }
+        let mut tirou = false;
+        let mut i = 0;
+        while i < v.len() && v.len() >= 3 {
+            let m = v.len();
+            let (a, b, c) = (v[(i + m - 1) % m], v[i], v[(i + 1) % m]);
+            let volta = orient(a, b, c) == 0
+                && i128::from(b.0 - a.0) * i128::from(c.0 - b.0)
+                    + i128::from(b.1 - a.1) * i128::from(c.1 - b.1)
+                    <= 0;
+            if b == a || volta {
+                v.remove(i);
+                tirou = true;
+            } else {
+                i += 1;
+            }
+        }
+        if !tirou {
+            return v;
+        }
+    }
 }
 
 /// O pedaço que contém o BARICENTRO do triângulo (ou `FORA`), por paridade de cruzamentos sobre os

@@ -331,3 +331,121 @@ fn com_areas_incremental_e_a_frio_dao_o_mesmo() {
         assert_eq!(t.stats().rebuilt, 0);
     }
 }
+
+/// Uma caixa alinhada de centro `c` e meias-medidas `h`.
+fn caixa(c: [f64; 2], h: [f64; 2]) -> Shape {
+    Shape::Convex(vec![
+        [c[0] - h[0], c[1] - h[1]],
+        [c[0] + h[0], c[1] - h[1]],
+        [c[0] + h[0], c[1] + h[1]],
+        [c[0] - h[0], c[1] + h[1]],
+    ])
+}
+
+/// ⭐ **O furo que corta a QUINA de quatro mosaicos, com as paredes do recinto encostadas, não vaza**
+/// (a cena `PH2D_NAV_SMOKE=4`, fotografada em 03/10: a malha do vermelho tinha chão DENTRO da lava). O
+/// Clipper devolvia o anel andável de um mosaico com um ESPIGÃO sobre a costura, e a paridade etiquetava
+/// o entalhe como chão. ⚠️ Herdado da W6 (medido no HEAD dela). CONTROLO: a mesma cena sem as paredes
+/// nunca vazou — são elas que tiram o anel do rectângulo do mosaico.
+#[test]
+fn o_furo_na_quina_de_quatro_mosaicos_nao_vaza() {
+    let reg = vec![[-5.8, -2.0], [5.8, -2.0], [5.8, 3.6], [-5.8, 3.6]];
+    let lava = caixa([0.0, 0.2], [0.6, 2.2]);
+    let paredes = vec![
+        caixa([0.0, 3.85], [6.3, 0.25]),
+        caixa([0.0, -2.25], [6.3, 0.25]),
+        caixa([-6.05, 0.8], [0.25, 2.8]),
+        caixa([6.05, 0.8], [0.25, 2.8]),
+    ];
+    let mut obs = paredes.clone();
+    obs.push(lava);
+    let p = Params {
+        agent_radius: 0.3515625,
+        ..Params::default()
+    };
+    let mut t = TiledMesh::new(p, 15.0);
+    t.update(&reg, &obs);
+    let inteira = build(&reg, &obs, &p).expect("constrói").mesh;
+    // ⚠️ A régua é a DISTÂNCIA ao rectângulo da lava contra o raio (a quina recuada é REDONDA): um
+    // ponto a menos de `r` dela não pode ser chão. A 1.ª redacção amostrava o rectângulo alargado e
+    // acusou um ponto da quina, a `0,36 m` dela.
+    let mut dentro = 0;
+    for i in 0..40 {
+        for j in 0..80 {
+            let q = [-1.0 + 2.0 * f64::from(i) / 39.0, -2.0 + 4.8 * f64::from(j) / 79.0];
+            let dx = (q[0].abs() - 0.6).max(0.0);
+            let dy = ((q[1] - 0.2).abs() - 2.2).max(0.0);
+            if (dx * dx + dy * dy).sqrt() >= p.agent_radius - 1e-3 {
+                continue;
+            }
+            assert!(t.mesh().locate(q).is_none(), "o ponto {q:?} da lava é chão nos mosaicos");
+            assert!(inteira.locate(q).is_none(), "o ponto {q:?} da lava é chão na inteira");
+            dentro += 1;
+        }
+    }
+    assert!(dentro >= 1_000, "só {dentro} pontos dentro da lava");
+    assert!(
+        (t.mesh().area() - inteira.area()).abs() < 1e-3,
+        "{} contra {}",
+        t.mesh().area(),
+        inteira.area()
+    );
+}
+
+/// A régua da W6 (por mosaicos ≡ inteira) em regiões que CRUZAM as costuras em coordenadas negativas,
+/// com paredes encostadas à região — a família que os gates de cima (no quadrante positivo, sem
+/// paredes no bordo) não viam.
+#[test]
+fn em_regioes_negativas_com_paredes_no_bordo_por_mosaicos_e_a_inteira() {
+    let mut casos = 0;
+    for seed in 1..=16u64 {
+        let mut rng = Lcg(seed * 41 + 3);
+        let (w, h) = (rng.range(6.0, 14.0), rng.range(4.0, 9.0));
+        let c = [rng.range(-3.0, 3.0), rng.range(-3.0, 3.0)];
+        let reg = vec![
+            [c[0] - w, c[1] - h],
+            [c[0] + w, c[1] - h],
+            [c[0] + w, c[1] + h],
+            [c[0] - w, c[1] + h],
+        ];
+        let mut obs = vec![
+            caixa([c[0], c[1] + h + 0.25], [w + 0.5, 0.25]),
+            caixa([c[0], c[1] - h - 0.25], [w + 0.5, 0.25]),
+            caixa([c[0] - w - 0.25, c[1]], [0.25, h]),
+            caixa([c[0] + w + 0.25, c[1]], [0.25, h]),
+        ];
+        for o in obstaculos(&mut rng, 6, 2.0 * w, 2.0 * h) {
+            obs.push(match o {
+                Shape::Convex(v) => Shape::Convex(
+                    v.iter()
+                        .map(|q| [q[0] + c[0] - w, q[1] + c[1] - h])
+                        .collect(),
+                ),
+                Shape::Circle { center, radius } => Shape::Circle {
+                    center: [center[0] + c[0] - w, center[1] + c[1] - h],
+                    radius,
+                },
+                Shape::Capsule { a, b, radius } => Shape::Capsule {
+                    a: [a[0] + c[0] - w, a[1] + c[1] - h],
+                    b: [b[0] + c[0] - w, b[1] + c[1] - h],
+                    radius,
+                },
+            });
+        }
+        let p = params(seed);
+        let inteira = build(&reg, &obs, &p).expect("constrói").mesh;
+        for lado in [3.0, 15.0] {
+            let mut t = TiledMesh::new(p, lado);
+            t.update(&reg, &obs);
+            assert_eq!(t.stats().failed, 0, "semente {seed}: um mosaico recusou");
+            let costura = 4.0 * (w + h) * (2.0 * w.max(h) / lado + 1.0);
+            let da = (t.mesh().area() - inteira.area()).abs();
+            assert!(
+                da <= costura / ph2d_navmesh::lattice::SCALE,
+                "semente {seed}, mosaico {lado}: a área mudou {da} m²"
+            );
+            casos += 1;
+        }
+    }
+    assert_eq!(casos, 32);
+}

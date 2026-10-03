@@ -348,7 +348,7 @@ fn a_memoria_do_pixel_nao_troca_respostas() {
     passe.uniforme([0.0, 0.0]);
     passe.desenha(1);
     let px = passe.le();
-    let conta = |c: usize| px.chunks_exact(4).filter(|p| p[c] == 255).count();
+    let conta = |c: usize| px.as_chunks::<4>().0.iter().filter(|p| p[c] == 255).count();
     let total = px.len() / 4;
     let (r1, r2, n, difere) = (conta(0), conta(1), conta(2), conta(3));
     eprintln!(

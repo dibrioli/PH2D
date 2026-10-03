@@ -6,6 +6,7 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod a_repeater_dense_union_does_not_panic;
 mod an_offset_past_the_shapes_death_leaves_no_phantom;
 mod arrangement_product_shapes;
 mod measure_aligned_stroke;

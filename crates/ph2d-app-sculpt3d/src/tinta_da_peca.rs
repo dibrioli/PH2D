@@ -715,7 +715,7 @@ pub(crate) fn devolve_ao_dono(
     let Some(obj) = objects.iter_mut().find(|o| o.id.0 == dono) else {
         return false;
     };
-    let Err(do_traco) = pilha::devolve_camada(obj, do_traco) else {
+    let Some(do_traco) = pilha::devolve_camada(obj, do_traco) else {
         return true;
     };
     let crate::objects::SceneObject {

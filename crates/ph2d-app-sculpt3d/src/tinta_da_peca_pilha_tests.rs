@@ -25,7 +25,7 @@ fn quando_a_pilha_nasce_o_plano_e_a_composicao_dela() {
     }
     assert!(!acompanha(t.as_mut(), &mut pilha), "a 2.ª vez nada muda");
     assert!(
-        acompanha(None, &mut pilha) == false && pilha.is_none(),
+        !acompanha(None, &mut pilha) && pilha.is_none(),
         "sem plano não há pilha"
     );
 }
@@ -36,7 +36,7 @@ fn quando_a_pilha_nasce_o_plano_e_a_composicao_dela() {
 fn a_pilha_estaciona_e_volta_com_o_plano() {
     let m = shapes::octahedron(1.0);
     let (mut t, mut parque, mut pilha, mut pilha_parque) = (None, None, None, None);
-    let mut garante = |nivel, t: &mut _, parque: &mut _, pilha: &mut _, pp: &mut _| {
+    let garante = |nivel, t: &mut _, parque: &mut _, pilha: &mut _, pp: &mut _| {
         garante_com_pilha(&m, t, parque, pilha, pp, nivel, u64::MAX)
     };
     assert!(garante(

@@ -114,13 +114,13 @@ pub(crate) fn desce_do_traco(
 
 /// ⭐⭐⭐ **O pen-up de um traço sobre uma camada**: a última descida, a cor por
 /// vértice (a projecção do plano da peça) e a cópia de trabalho deitada fora.
-/// `false` se o traço não era por camada.
+/// Devolve o traço de volta (`Some`) se ele não era por camada.
 pub(crate) fn devolve_camada(
     obj: &mut crate::SceneObject,
     mut do_traco: TintaDoTraco,
-) -> Result<(), TintaDoTraco> {
+) -> Option<TintaDoTraco> {
     if obj.pilha.as_ref().and_then(PilhaDaPeca::em_traco).is_none() {
-        return Err(do_traco);
+        return Some(do_traco);
     }
     let mut sujas = Vec::new();
     desce_do_traco(obj, &mut do_traco, &mut sujas);
@@ -140,7 +140,7 @@ pub(crate) fn devolve_camada(
         stack.mesh_mut().colors_mut().copy_from_slice(&por_vertice);
     }
     *tinta_suja = true;
-    Ok(())
+    None
 }
 
 /// O que o balde fez na pilha.

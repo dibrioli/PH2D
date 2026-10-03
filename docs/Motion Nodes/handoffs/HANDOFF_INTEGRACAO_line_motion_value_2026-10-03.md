@@ -210,7 +210,7 @@ integrador — releia a ORDEM das fases do quadro só se outra linha mexer em `f
 ✅ **Smoke do dono APROVADO em 03/10** (a `=127` pelo comando abaixo).
 
 Do dono (passos; binário já compilado — `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`
-corrido 2× DEPOIS do `9b133f887`, a 2.ª saída: `Finished smoke profile [optimized] target(s) in 0.20s`, zero `Compiling`):
+corrido 2× DEPOIS do `f2b830bcf` e do `rm -rf target/*/incremental`, a 2.ª saída: `Finished smoke profile [optimized] target(s) in 0.26s`, zero `Compiling`; a `=127` re-fotografada depois da §6.2):
 
 1. No terminal:
    ```
@@ -240,14 +240,14 @@ do worktree, com adaptador): `cargo test -p ph2d-shape-gpu --test it -- --ignore
 
 Troca só o link do handoff na entrada **Motion Nodes**: `Último: [handoff 03/10](docs/Motion%20Nodes/handoffs/HANDOFF_INTEGRACAO_line_motion_value_2026-10-03.md)`. A frase do módulo não muda de natureza.
 
-## §9 — PERFIL DO LOOP DO AGENTE (`bash scripts/agent-loop-profile.sh`, verbatim)
+## §9 — PERFIL DO LOOP DO AGENTE (`bash scripts/agent-loop-profile.sh`, verbatim, no fecho da §6.2)
 
 ```
 PERFIL DO LOOP DO AGENTE — 20 sessao(oes) mais recentes
-  ✗ paralelismo de ferramenta              1.16/passo   alvo: >= 1,5  (10% dos passos com 2+ chamadas)
-  ✓ respostas por sessao (mediana)                174   alvo: <= 800  (uma janela nova por onda de trabalho)
-  ✗ cargo test : cargo check                351 : 179   alvo: <= 1,0  razao 2.0x (baseline: 4,3x)
-  ✗ edicoes pela ferramenta Edit                  38%   alvo: >= 80%  (1347 por script; baseline: 48%)
-  ✗ contexto relido por passo (media)         482 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
+  ✗ paralelismo de ferramenta              1.14/passo   alvo: >= 1,5  (10% dos passos com 2+ chamadas)
+  ✓ respostas por sessao (mediana)                178   alvo: <= 800  (uma janela nova por onda de trabalho)
+  ✗ cargo test : cargo check                491 : 175   alvo: <= 1,0  razao 2.8x (baseline: 4,3x)
+  ✗ edicoes pela ferramenta Edit                  37%   alvo: >= 80%  (715 por script; baseline: 48%)
+  ✗ contexto relido por passo (media)         350 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
   ✓ contexto no inicio da sessao               63 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
 ```

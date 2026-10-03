@@ -336,6 +336,8 @@ mod tinta_da_peca;
 #[cfg(test)]
 #[path = "tinta_no_produto_tests.rs"]
 mod tinta_no_produto_tests;
+#[cfg(test)]
+mod sonda_camadas;
 
 /// **O OBJETO MISTO (O2)** — a forma acende um SPRITE da cena, e continua
 /// acendendo depois de a malha sair. Filho e irmão da [`donation`]:

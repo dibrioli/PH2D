@@ -61,3 +61,10 @@ outra linha. ⛔ A régua é **não lhe tocar**; quem precisa de arrumação det
 própria cena (`panel_visibility`, a selecção, o espaço de trabalho).
 
 ⭐ *Um ambiente partilhado desmente-se com `/proc`, não com raciocínio sobre o próprio diff.*
+
+- ⛔⛔ **Reproduza na cena do REPORT, na rota do PRODUTO, e leia a rota** (BUGS #12 do Motion, 03/10):
+  uma cena de reprodução mais simples que a do dono foi `fully-GPU` e aprovou o motor; a do dono ia pelo
+  ramo HÍBRIDO do `cook_gpu`, que não entregava os valores do fio. Cheguei a declarar o motor inocente e
+  a curar só o mostrador. *Dois laços à mão que devem concordar → gate POR RAMO, e `route_said` em toda
+  sonda.* **Why:** o defeito vivia no ramo que só a cena do report toma. **How to apply:** antes de
+  concluir «o motor está certo», corra a cena exacta do report nas rotas que o produto usa.

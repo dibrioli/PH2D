@@ -92,25 +92,25 @@ fn uma_pilha_translucida_recomposta_fica() {
         .expect("plano")
         .escreve(&vec![[230, 20, 20, 255]; n], None);
     let vermelho = [230.0 / 255.0, 20.0 / 255.0, 20.0 / 255.0];
-    let mut primeira: Option<Vec<[f32; 3]>> = None;
+    // A REFERÊNCIA: a peça composta antes de qualquer recomposição — a cor por
+    // vértice ainda é o fundo com que a pilha nasceu.
+    let mut referencia = obj.tinta.clone().expect("plano");
+    let mesh = obj.stack.mesh();
+    p.pinta_tinta(&mut referencia, || p.fundo_semeado(mesh, 3));
+    let referencia = referencia.amostras().to_vec();
+    // CONTROLO: o fundo VÊ-SE (a pilha é mesmo translúcida).
+    assert!(
+        referencia.iter().any(|c| *c != vermelho),
+        "a base a 50 % deixa ver o fundo"
+    );
     for vez in 0..4 {
         recompoe(&mut obj);
         let lida = para_ler(&obj, obj.tinta.as_ref().expect("plano"))
             .amostras()
             .to_vec();
-        match &primeira {
-            None => {
-                // CONTROLO: o fundo VÊ-SE (a pilha é mesmo translúcida).
-                assert!(
-                    lida.iter().any(|c| *c != vermelho),
-                    "a base a 50 % deixa ver o fundo"
-                );
-                primeira = Some(lida);
-            }
-            Some(p) => assert!(
-                lida == *p,
-                "a recomposição {vez} andou a cor da peça sem nada mudar na pilha"
-            ),
-        }
+        assert!(
+            lida == referencia,
+            "a recomposição {vez} andou a cor da peça sem nada mudar na pilha"
+        );
     }
 }

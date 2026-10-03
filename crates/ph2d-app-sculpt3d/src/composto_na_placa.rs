@@ -74,8 +74,6 @@ fn chaves(ops: &[LayerOp]) -> impl Iterator<Item = u64> + '_ {
 /// FUNDO dela na placa, amostra a amostra, em luz.
 pub(crate) struct CompostoNaPlaca {
     compositor: LayerCompositor,
-    /// A dobra para que o compositor foi montado: outra dobra, outro compositor.
-    dobra: (u32, u32),
     /// O fundo na placa e a chave dele (o fundo por vértice e o degrau).
     fundo: Option<(wgpu::Buffer, Vec<[f32; 3]>, u8)>,
 }
@@ -110,10 +108,7 @@ impl CompostosDaCena {
         let c = self
             .por_peca
             .entry(peca)
-            .or_insert_with(|| CompostoNaPlaca::novo(gpu, dobra));
-        if c.dobra != dobra {
-            *c = CompostoNaPlaca::novo(gpu, dobra);
-        }
+            .or_insert_with(|| CompostoNaPlaca::novo(gpu));
         c.compoe(gpu, pilha)?;
         c.garante_fundo(gpu, pilha, mesh, nivel);
         let fundo = &c.fundo.as_ref().ok_or(NaoCompos::SemPlano)?.0;
@@ -143,10 +138,11 @@ impl CompostosDaCena {
 }
 
 impl CompostoNaPlaca {
-    pub(crate) fn novo(gpu: &GpuContext, dobra: (u32, u32)) -> Self {
+    /// ⚠️ Uma dobra de outro tamanho (outro degrau) não pede outro compositor:
+    /// ele reconstrói as fatias e esquece o cache (`ensure_array`).
+    pub(crate) fn novo(gpu: &GpuContext) -> Self {
         Self {
             compositor: LayerCompositor::new(gpu),
-            dobra,
             fundo: None,
         }
     }

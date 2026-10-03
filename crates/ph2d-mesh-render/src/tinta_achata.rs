@@ -17,6 +17,16 @@ pub const TINTA_ACHATA_WGSL: &str = include_str!("shaders/tinta_achata.wgsl");
 
 const GRUPO: u32 = 256;
 
+/// ⭐ **A grade do despacho de `n` amostras**: `[gx, gy, passo_y]`, com no
+/// máximo `max_grupos` grupos numa dimensão — o shader lê a amostra
+/// `i = y · passo_y + x`, e cada `i < n` sai UMA vez (gate `a_grade_cobre_cada_amostra_uma_vez`).
+#[must_use]
+pub(crate) fn grade(n: u32, max_grupos: u32) -> [u32; 3] {
+    let grupos = n.div_ceil(GRUPO).max(1);
+    let gx = grupos.min(max_grupos.max(1));
+    [gx, grupos.div_ceil(gx), gx * GRUPO]
+}
+
 /// ⭐ **O pipeline do achatamento** — um por cena, de quem compõe as camadas.
 pub struct AchataDaTinta {
     pipeline: wgpu::ComputePipeline,
@@ -156,13 +166,11 @@ impl MeshRenderer {
         let Ok(n) = u32::try_from(n) else {
             return false;
         };
-        let grupos = n.div_ceil(GRUPO);
-        let gx = grupos.min(device.limits().max_compute_workgroups_per_dimension);
-        let gy = grupos.div_ceil(gx);
+        let [gx, gy, passo_y] = grade(n, device.limits().max_compute_workgroups_per_dimension);
         queue.write_buffer(
             &achata.cfg,
             0,
-            bytemuck::cast_slice(&[n, largura, gx * GRUPO, 0]),
+            bytemuck::cast_slice(&[n, largura, passo_y, 0]),
         );
         let grupo = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-mesh tinta achata"),
@@ -236,5 +244,41 @@ impl MeshRenderer {
         let lido = bytemuck::cast_slice::<u8, [f32; 3]>(&fatia.get_mapped_range()).to_vec();
         destino.unmap();
         Some(lido)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ⭐⭐ **GATE — A grade cobre cada amostra UMA vez** — também quando as
+    /// amostras passam do tecto de grupos de uma dimensão (a `64x` não passam:
+    /// o tecto pequeno aqui é o que faz a segunda linha de grupos existir).
+    #[test]
+    fn a_grade_cobre_cada_amostra_uma_vez() {
+        for (n, max) in [
+            (1u32, 4u32),
+            (256, 4),
+            (257, 1),
+            (5_000, 3),
+            (1_000, 1),
+            (3_000, 2),
+        ] {
+            let [gx, gy, passo] = grade(n, max);
+            assert!(gx <= max, "n {n}: {gx} grupos numa dimensão");
+            let mut vistas = vec![0u8; n as usize];
+            for y in 0..gy {
+                for x in 0..gx * GRUPO {
+                    let i = y * passo + x;
+                    if i < n {
+                        vistas[i as usize] += 1;
+                    }
+                }
+            }
+            assert!(
+                vistas.iter().all(|&v| v == 1),
+                "n {n}, max {max}: {vistas:?}"
+            );
+        }
     }
 }

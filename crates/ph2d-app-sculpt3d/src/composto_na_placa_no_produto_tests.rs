@@ -7,7 +7,7 @@ use std::time::Instant;
 use ph2d_tool_painter::{AdjustmentKind, AdjustmentParams, BlendMode, HsbParams, LayerId};
 
 use crate::composto_na_placa::CompostoNaPlaca;
-use crate::pilha_da_peca::{PilhaDaPeca, dobra};
+use crate::pilha_da_peca::PilhaDaPeca;
 
 /// Píxeis de hash por amostra (cor e alfa variados).
 fn px(n: usize, semente: u32) -> Vec<[u8; 4]> {
@@ -108,7 +108,7 @@ fn a_placa_compoe_a_pilha_rica_como_a_cpu() {
     for k in 3u8..=5 {
         let (mut p, mult) = pilha_rica(k);
         let n = p.amostras();
-        let mut placa = CompostoNaPlaca::novo(&gpu, dobra(p.amostras()));
+        let mut placa = CompostoNaPlaca::novo(&gpu);
         let mut confere = |p: &mut PilhaDaPeca, o_que: &str| {
             placa.compoe(&gpu, p).expect("a pilha rica é representável");
             let lida = placa.le(&gpu).expect("composto");
@@ -205,7 +205,7 @@ fn diag_que_ingrediente_difere_da_cpu() {
             p.define_opacidade(base, base_op);
             faz(&mut p);
             let n = p.amostras();
-            let mut placa = CompostoNaPlaca::novo(&gpu, dobra(p.amostras()));
+            let mut placa = CompostoNaPlaca::novo(&gpu);
             placa.compoe(&gpu, &mut p).expect("representável");
             let lida = placa.le(&gpu).expect("composto");
             let (difs, pior) = compara(&p.compor(), &lida[..n * 4]);
@@ -243,7 +243,7 @@ fn diag_o_preco_de_compor_na_placa() {
         let cima = cima.expect("cima");
         p.novo_ajuste(AdjustmentKind::HueSaturationBrightness)
             .expect("ajuste");
-        let mut placa = CompostoNaPlaca::novo(&gpu, dobra(p.amostras()));
+        let mut placa = CompostoNaPlaca::novo(&gpu);
         let t = Instant::now();
         placa.compoe(&gpu, &mut p).expect("compõe");
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());

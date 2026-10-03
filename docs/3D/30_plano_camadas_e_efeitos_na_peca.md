@@ -378,4 +378,60 @@ TRANSLÚCIDA (base a `0,5`, pintada) cada `recompoe` sem nada mudar ANDA a cor �
 degraus de sRGB8. O fundo é a `semente`, que lê a cor por vértice, e a `recompoe` reescreve a cor
 por vértice com o composto: um laço. Cada passo de arrasto, desfazer do painel ou balde empurra-a.
 
-**Parado aqui** pelo critério do §7 — a decisão vai ao dono antes da 2.ª tentativa.
+Parou-se aqui pelo critério do §7. ✅ **Decisão do dono (03/10): aceita-se o degrau** — a peça mostra
+a cor da placa enquanto se mexe; o que se grava, exporta e doa continua calculado pela CPU, exacto.
+
+### 13.1 W1b entregue (03/10)
+
+**O desenho (o que o código derrubou do §7):** o `tinta.wgsl` NÃO mudou — ele continua a ler o plano
+`[f32; 3]` por amostra; quem muda é QUEM ESCREVE esse plano na placa. Um passe de compute
+(`ph2d-mesh-render` `tinta_achata.rs` + `shaders/tinta_achata.wgsl`) achata o composto do compositor
+do Painter no buffer das amostras do slot, com a lei do `achata` (opaco = `byte/255` pela tabela da
+CPU, ao bit; translúcido em luz sobre o fundo, que chega linear da CPU).
+
+| porta | onde |
+|---|---|
+| a pilha composta e achatada na placa | `composto_na_placa::CompostosDaCena::compoe_e_achata` (um `LayerCompositor` por peça; o fundo sobe uma vez por pilha e degrau) |
+| quando | `slots::sync_mesh` (agora recebe o `GpuContext`): `SceneObject::compor_na_placa`, ou o plano acabou de subir INTEIRO com a CPU atrasada |
+| a recomposição do painel, do balde e dos desfazeres deles | `tinta_da_peca::pilha::recompoe` (+ a cor por vértice) / `recompoe_o_plano` (o desfazer do balde, que repõe a cor por vértice ele mesmo) — na CPU só o prefixo dos vértices (`PilhaDaPeca::por_vertice`, ao bit) |
+| o plano da CPU ATRASADO | `PilhaDaPeca::atrasada` (sessão); `em_dia` (CPU inteira); `tinta_da_peca::pilha::para_ler` (a peça inteira para quem a lê na CPU — o `assa` da exportação/doação) |
+| a recusa | a placa não exprime a pilha (os seis ajustes sem código de GPU) ou o slot não tem o plano ⇒ a CPU compõe e sobe como antes |
+| o tradutor pilha → operações | crate nova `ph2d-painter-layer-ops` (`flatten_for_gpu`, 2 consumidores) |
+| o FUNDO fixo | `pilha_da_peca_fundo`: a cor por vértice no nascimento da pilha; documento **v7** (`CamadasDoc::fundo`; v6 congelado em `doc_migracao`, abre com a cor por vértice gravada) |
+| a cor por vértice sem o plano | `SceneObject::cores_sujas` → `upload_region_at` com todos os vértices |
+
+**Premissas que o código derrubou:** (1) o `tinta.wgsl` não lê o composto — o plano da placa é
+escrito por compute, o shader fica intocado; (2) quase todos os leitores do plano na CPU leem só o
+PREFIXO dos vértices (`devolve`, `desparqueia`, `devolve_camada`) ou o comprimento (o ficheiro, que
+grava a pilha e não o composto) — mantê-lo em dia custa `0,04 ms`; o único leitor da peça inteira é o
+`assa`; (3) o RELEVO não passa pela recomposição do painel (só a base o leva até à W4); (4) o
+desfazer do balde não pode escrever a cor por vértice (ele repõe-na ao bit).
+
+**Medido** (perfil `smoke`, `load 3,5`, as réguas do §12):
+
+| degrau | um passo do arrasto: porta+recompor (CPU) · `sync_mesh` (placa) | W3 (CPU) |
+|---|---|---|
+| `16x` | `0,04` · `0,09 ms` | `2,47` · `0,24 ms` |
+| `32x` | `0,04` · `0,11 ms` | `7,52` · `0,66 ms` |
+| `64x` | **`0,04` · `0,27 ms`** (pior `0,06` · `0,45`) | `36,4` · `2,85 ms` |
+
+⇒ o passo a `64x` cai de `~39 ms` para **`~0,3 ms`** (`~125×`), `13×` abaixo do critério. A 1.ª
+composição de uma pilha sobe as camadas (`3,7 ms` a `64x`, uma vez; depois só as linhas sujas).
+
+**Gates** (W1b): sem placa `composto_na_placa_tests` (2: todo escritor muda a versão e marca as
+linhas, o metadado não · a cor por vértice é o prefixo da peça ao bit, translúcida) ·
+`uma_pilha_translucida_recomposta_fica` · `um_v6_abre_com_o_fundo_da_cor_por_vertice` · a forma
+gravada re-pinada (`83`/`3 590`, a conta fecha à mão); com placa `placa::` (3: a pilha rica a um
+degrau, `FRACCAO_A_UM_DEGRAU` · o painel muda a pilha e a placa tem a peça, + a subida inteira com a
+CPU atrasada · a pilha que a placa recusa compõe na CPU) · `ph2d-mesh-render`
+`a_grade_cobre_cada_amostra_uma_vez`. Mutação: `docs/3D/ferramentas/muta_a_pilha_na_placa.sh`,
+**18/18** — a 1.ª corrida deixou 3 vivas: o gate da deriva comparava recomposições ENTRE SI (desde a
+cura a cor por vértice sai do fundo fixo, e a deriva já não aparecia lá — agora compara com a peça de
+ANTES da 1.ª recomposição); a grade do despacho só tem 2.ª linha acima de `16,7 M` amostras (virou
+função pura com gate de tecto pequeno); e «outra dobra, outro compositor» era uma 2.ª resposta ao
+`ensure_array` do compositor, que já reconstrói as fatias — saiu.
+
+**Fica para depois (nomeado):** o traço continua a compor as amostras sujas na CPU (`0,04 ms`, sem
+razão para a placa); a pilha translúcida num traço semeia o fundo inteiro em cada quadro (`fundo_semeado`
+na `compoe_amostras` — o caso da base a menos de `100 %`; cachear o fundo por amostra é a cura se o
+dono o sentir).

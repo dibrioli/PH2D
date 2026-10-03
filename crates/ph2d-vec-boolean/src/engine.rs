@@ -57,7 +57,16 @@ pub(crate) fn binary_grouped_checked(
             ));
         }
     }
-    let contours = linesweeper::binary_op(a, b, rule, op).map_err(SweepFailed::from)?;
+    // ⛔ **E o `linesweeper` 0.4 também PANICA com geometria finita** — um `unwrap` em
+    // `curve/mod.rs:364`, medido com uma forma presa com um *Repeater* de `39 × 39` cópias que giram
+    // (2026-10-03, pela união do contacto). O `expand` já isolava o pânico dele; esta é a porta
+    // única, e isolá-lo AQUI cobre todos os consumidores: o pânico vira o mesmo `Err` de uma
+    // varredura recusada. `AssertUnwindSafe`: as entradas são só lidas e a saída nasce no bloco.
+    let contours = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        linesweeper::binary_op(a, b, rule, op)
+    }))
+    .map_err(|_| SweepFailed("o motor de booleanas desistiu desta geometria".to_owned()))?
+    .map_err(SweepFailed::from)?;
     Ok(contours
         .grouped()
         .iter()

@@ -63,17 +63,23 @@ pub const DETECTION_TOLERANCE: f64 = 1e-4;
 /// achatamento — nenhum segmento de verdade é tão curto.
 pub const FECHO_EXACTO: f64 = 1e-12;
 
+/// **A [`resolve_overlap`] teria o que unir?** — fechado e a cruzar-se, sem correr a varredura
+/// (cara, e capaz de falhar). É a pergunta de quem só quer saber se a união seria NEUTRA.
+#[must_use]
+pub fn overlaps_itself(path: &VecPath) -> bool {
+    path.closed
+        && path.subpaths.iter().all(|c| c.closed)
+        && crosses_itself(&crate::to_bez(path))
+}
+
 /// ⭐⭐⭐ **A silhueta de `path`** quando ele se sobrepõe a si mesmo; `None` quando não se
 /// sobrepõe, é aberto, ou o motor recusa (e aí quem chama desenha a forma como estava).
 #[must_use]
 pub fn resolve_overlap(path: &VecPath) -> Option<VecPath> {
-    if !path.closed || path.subpaths.iter().any(|c| !c.closed) {
+    if !overlaps_itself(path) {
         return None;
     }
     let bez = crate::to_bez(path);
-    if !crosses_itself(&bez) {
-        return None;
-    }
     let rule = match path.fill_rule {
         FillRule::NonZero => LsFillRule::NonZero,
         FillRule::EvenOdd => LsFillRule::EvenOdd,

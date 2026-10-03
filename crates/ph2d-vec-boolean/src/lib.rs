@@ -60,7 +60,7 @@ pub mod esporao;
 pub mod gancho;
 pub mod ilha;
 pub mod overlap;
-pub use overlap::{crosses_itself, quinas_de, resolve_overlap, silhueta_da_pele};
+pub use overlap::{crosses_itself, overlaps_itself, quinas_de, resolve_overlap, silhueta_da_pele};
 
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
 

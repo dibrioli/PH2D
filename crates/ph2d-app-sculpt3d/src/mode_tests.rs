@@ -100,7 +100,10 @@ fn the_d_key_never_enters_the_clay() {
         "o `D` voltou ao barro: {labels:?}"
     );
     assert!(labels[0].starts_with("LUZ") && labels[1].starts_with("DESLIGADA"));
-    assert!(labels[2].starts_with("LUZ"), "fora do barro o `D` não alterna: {labels:?}");
+    assert!(
+        labels[2].starts_with("LUZ"),
+        "fora do barro o `D` não alterna: {labels:?}"
+    );
 }
 
 /// **O painel do modo acompanha o modo — nas BORDAS, e só nelas.**

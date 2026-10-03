@@ -37,11 +37,26 @@ fn holds_needs_the_clay_the_piece_and_the_right_hand() {
     };
     assert!(holds(ObjectMode::Sculpt, h(true, true, false)), "controlo");
     assert!(holds(ObjectMode::Paint, h(true, true, true)), "controlo");
-    assert!(!holds(ObjectMode::Sculpt, h(false, true, false)), "o `D` tirou o barro");
-    assert!(!holds(ObjectMode::Sculpt, h(true, false, false)), "a peça foi apagada");
-    assert!(!holds(ObjectMode::Sculpt, h(true, true, true)), "Sculpt com o Painter em mãos");
-    assert!(!holds(ObjectMode::Paint, h(true, true, false)), "Paint sem o Painter");
-    assert!(!holds(ObjectMode::Object, h(true, true, false)), "Object não é desta família");
+    assert!(
+        !holds(ObjectMode::Sculpt, h(false, true, false)),
+        "o `D` tirou o barro"
+    );
+    assert!(
+        !holds(ObjectMode::Sculpt, h(true, false, false)),
+        "a peça foi apagada"
+    );
+    assert!(
+        !holds(ObjectMode::Sculpt, h(true, true, true)),
+        "Sculpt com o Painter em mãos"
+    );
+    assert!(
+        !holds(ObjectMode::Paint, h(true, true, false)),
+        "Paint sem o Painter"
+    );
+    assert!(
+        !holds(ObjectMode::Object, h(true, true, false)),
+        "Object não é desta família"
+    );
 }
 
 /// ⭐⭐ GATE — o barro SEGUE o modo: um modo desta família prende a peça dele; sem ele o barro sai,
@@ -49,15 +64,25 @@ fn holds_needs_the_clay_the_piece_and_the_right_hand() {
 #[test]
 fn the_clay_follows_the_mode() {
     let p = ObjectId(7);
-    assert_eq!(follow(Some((ObjectMode::Sculpt, Some(p))), false), Follow::Hold(p));
-    assert_eq!(follow(Some((ObjectMode::Paint, Some(p))), true), Follow::Hold(p));
+    assert_eq!(
+        follow(Some((ObjectMode::Sculpt, Some(p))), false),
+        Follow::Hold(p)
+    );
+    assert_eq!(
+        follow(Some((ObjectMode::Paint, Some(p))), true),
+        Follow::Hold(p)
+    );
     assert_eq!(follow(None, false), Follow::Release);
     assert_eq!(
         follow(Some((ObjectMode::Paint, None)), false),
         Follow::Release,
         "o Paint de uma IMAGEM deixou o barro na tela"
     );
-    assert_eq!(follow(None, true), Follow::Wait, "a peça nascida perdeu o barro antes de entrar");
+    assert_eq!(
+        follow(None, true),
+        Follow::Wait,
+        "a peça nascida perdeu o barro antes de entrar"
+    );
 }
 
 /// A ferramenta de omissão.
@@ -128,14 +153,20 @@ fn two_pieces_sculpt_on_one_never_aims_at_the_other() {
     tools.activate_default();
     let em_b = centro_da_peca(&scene, 1);
 
-    assert!(scene.aim(em_b.0, em_b.1), "controlo: o ponto não acerta na peça B");
+    assert!(
+        scene.aim(em_b.0, em_b.1),
+        "controlo: o ponto não acerta na peça B"
+    );
     assert_eq!(scene.active, 1, "controlo: em Object a mira toma a peça B");
 
     let mut f = familia(&mut scene);
     assert!(f.enter(ObjectMode::Sculpt, A, &mut tools));
     assert!(f.holds(ObjectMode::Sculpt, A, &mut tools));
     drop(f);
-    assert_eq!(scene.active, 0, "entrar não abriu SOBRE a peça desta entidade");
+    assert_eq!(
+        scene.active, 0,
+        "entrar não abriu SOBRE a peça desta entidade"
+    );
     assert!(!scene.aim(em_b.0, em_b.1), "a mira saltou para a peça B");
     assert_eq!(scene.active, 0, "a peça activa deixou a presa");
 
@@ -166,7 +197,10 @@ fn paint_on_the_piece_holds_the_painter_and_sculpt_lets_it_go() {
     assert!(!f.holds(ObjectMode::Sculpt, B, &mut tools));
     f.leave(ObjectMode::Paint, B, &mut tools);
     assert!(f.enter(ObjectMode::Sculpt, B, &mut tools));
-    assert!(!painter_in_hand(&tools), "Sculpt ficou com o Painter em mãos");
+    assert!(
+        !painter_in_hand(&tools),
+        "Sculpt ficou com o Painter em mãos"
+    );
     drop(f);
     assert_eq!(scene.active, 1);
 }
@@ -181,7 +215,10 @@ fn a_born_piece_asks_for_sculpt_once_and_otherwise_the_clay_leaves() {
     let mut tools = ToolRegistry::new();
     let mut f = familia(&mut scene);
     f.follow(None, &mut tools);
-    assert!(f.wants().is_some(), "o follow largou a peça nascida antes de ela entrar");
+    assert!(
+        f.wants().is_some(),
+        "o follow largou a peça nascida antes de ela entrar"
+    );
     drop(f);
     let mut f = familia(&mut scene);
     assert_eq!(f.wants(), None, "o pedido do nascimento repetiu-se");

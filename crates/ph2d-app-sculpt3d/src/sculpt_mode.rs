@@ -102,7 +102,9 @@ pub(crate) fn follow(current: Option<(ObjectMode, Option<ObjectId>)>, born: bool
 }
 
 fn painter_in_hand(tools: &ToolRegistry) -> bool {
-    tools.active().is_some_and(|t| t.id() == ToolId::new(PAINTER))
+    tools
+        .active()
+        .is_some_and(|t| t.id() == ToolId::new(PAINTER))
 }
 
 /// O Painter em mãos está PRESO à tela da peça (e não sobre uma imagem).

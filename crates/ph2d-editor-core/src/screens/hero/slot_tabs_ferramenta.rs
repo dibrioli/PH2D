@@ -107,8 +107,15 @@ mod tests {
     #[test]
     fn a_aba_nao_pede_um_modo_que_o_activo_nao_tem() {
         let imagem = em(IMAGEM, &[ObjectMode::Paint], ObjectMode::Paint);
-        assert_eq!(intencao_da_aba(SCULPT3D_PANEL, &imagem, Some("painter")), None);
-        let objecto = em(PECA, &[ObjectMode::Sculpt, ObjectMode::Paint], ObjectMode::Object);
+        assert_eq!(
+            intencao_da_aba(SCULPT3D_PANEL, &imagem, Some("painter")),
+            None
+        );
+        let objecto = em(
+            PECA,
+            &[ObjectMode::Sculpt, ObjectMode::Paint],
+            ObjectMode::Object,
+        );
         assert_eq!(intencao_da_aba(PAINTER_LAYERS_PANEL, &objecto, None), None);
     }
 }

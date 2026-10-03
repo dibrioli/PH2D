@@ -304,7 +304,10 @@ fn paint_declared_by_two_types_opens_the_family_of_the_type() {
     );
     c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
     assert_eq!(c.sculpt.held, Some((PIECE, ObjectMode::Paint)));
-    assert!(!c.paint_in_hand(), "Paint da peça abriu a ferramenta da imagem");
+    assert!(
+        !c.paint_in_hand(),
+        "Paint da peça abriu a ferramenta da imagem"
+    );
     c.quadro(Some(ModeRequest::Enter(ObjectMode::Object)));
     c.hero.gizmo.replace_selection(Some(IMG));
     c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
@@ -354,7 +357,12 @@ fn every_family_follows_the_mode_that_stayed() {
     c.hero.gizmo.replace_selection(Some(PIECE));
     c.quadro(Some(ModeRequest::Enter(ObjectMode::Sculpt)));
     c.quadro(Some(ModeRequest::Toggle));
-    let seen: Vec<_> = c.sculpt.followed.iter().map(|a| a.map(|a| a.mode)).collect();
+    let seen: Vec<_> = c
+        .sculpt
+        .followed
+        .iter()
+        .map(|a| a.map(|a| a.mode))
+        .collect();
     assert_eq!(seen, [Some(ObjectMode::Sculpt), None]);
 }
 
@@ -363,9 +371,15 @@ fn every_family_follows_the_mode_that_stayed() {
 fn the_object_gizmo_shows_only_in_object_mode() {
     let mut c = cena();
     c.hero.gizmo.replace_selection(Some(PIECE));
-    assert!(object_gizmo_shows(&c.hero), "controlo: em Object o gizmo aparece");
+    assert!(
+        object_gizmo_shows(&c.hero),
+        "controlo: em Object o gizmo aparece"
+    );
     c.quadro(Some(ModeRequest::Enter(ObjectMode::Sculpt)));
-    assert!(!object_gizmo_shows(&c.hero), "o gizmo ficou por cima do barro");
+    assert!(
+        !object_gizmo_shows(&c.hero),
+        "o gizmo ficou por cima do barro"
+    );
     c.quadro(Some(ModeRequest::Toggle));
     assert!(object_gizmo_shows(&c.hero));
 }

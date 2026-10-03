@@ -52,3 +52,41 @@ fn every_mode_row_is_registered() {
         assert!(hero.store.contains(m.row_id()), "{m:?}: linha sem registo");
     }
 }
+
+/// ⭐⭐ **A linha *Sculpt Mode* do seletor de uma PEÇA chega ao barramento** (spec/06 F3) — com todos
+/// os painéis registados, pela porta do quadro. ⚠️ O CONTROLO é a ordem das linhas: Object à frente,
+/// depois as da família na ordem que ela declara.
+#[test]
+fn the_sculpt_row_of_a_piece_asks_for_sculpt() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.gizmo
+        .mode
+        .publish(Some(9), &[ObjectMode::Sculpt, ObjectMode::Paint]);
+    let menu = hero.gizmo.mode.menu(&mut hero.store);
+    assert_eq!(
+        menu.as_ref().map(|m| m.faces.clone()),
+        Some(vec![
+            "Object Mode".to_string(),
+            "Sculpt Mode".to_string(),
+            "Paint Mode".to_string()
+        ])
+    );
+    hero.store.publish_mode_menu(menu);
+    hero.apply_event(WidgetEvent::Click(ph2d_editor_core::ids::area_menu_button(
+        0,
+    )));
+    let _ = hero.bus.drain().count();
+    hero.apply_event(WidgetEvent::Click(
+        ph2d_editor_core::ids::OBJECT_MODE_SCULPT,
+    ));
+    let asked: Vec<ModeRequest> = hero
+        .bus
+        .drain()
+        .filter_map(|a| match a {
+            EditorAction::ObjectMode(r) => Some(r),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(asked, vec![ModeRequest::Enter(ObjectMode::Sculpt)]);
+}

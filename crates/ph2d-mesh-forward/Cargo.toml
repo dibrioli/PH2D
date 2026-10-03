@@ -28,6 +28,8 @@ ph2d-bloom = { path = "../ph2d-bloom" }
 ph2d-style = { path = "../ph2d-style" }
 # O CEU FOTOGRAFICO (HDRI): o atlas pre-filtrado e a leitura dele em WGSL — uma porta.
 ph2d-sky = { path = "../ph2d-sky" }
+# A TEXTURA sem UV (triplanar): a lei e o gemeo WGSL — uma porta.
+ph2d-triplanar = { path = "../ph2d-triplanar" }
 # A porta de paridade sobe imagens `Rgba16Float` (o `half` ja' esta' no lock, pelo naga).
 half = { version = "2", features = ["bytemuck"] }
 pollster = "0.4.0"

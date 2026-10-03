@@ -44,8 +44,11 @@ pub fn fonte(ambiente: &crate::Ambiente<'_>) -> String {
          return env_radiance_da_cena(dir, alpha, shrink);\n}\n\
          fn env_irradiance(n: vec3<f32>) -> vec3<f32> {\n    return env_irradiance_da_cena(n);\n}\n",
     );
+    let material = format!("{material}\n{}", ph2d_material::wgsl::por_pixel());
     FORWARD
         .replace("{MATERIAL}", &material)
+        .replace("{TRIPLANAR}", ph2d_triplanar::wgsl::fonte())
+        .replace("{COL_TEX}", &crate::MATERIAL_V4.to_string())
         .replace("{AMBIENTE}", ambiente.wgsl)
         .replace("{OLHAR}", ph2d_view_transform::wgsl::SOURCE)
         .replace("{ESTILO}", &ph2d_style::wgsl::source())

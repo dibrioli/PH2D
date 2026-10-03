@@ -362,6 +362,7 @@ pub(crate) fn desenha(
             estilo: assinatura.estilo,
             raio_da_peca: assinatura.raio,
             foto: foto.as_ref().map(|(_, atlas)| assinatura.ceu.foto(atlas)),
+            texturas: &[],
         })
     };
     rgba.map_or(Feito::Espera, Feito::Novo)

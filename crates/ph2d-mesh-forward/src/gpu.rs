@@ -74,6 +74,7 @@ pub struct Forward {
     /// O sol do céu subido (`None` = o céu não tem sol); a ligação lê então `sol_vazia`.
     sol: Option<texturas::SolGpu>,
     sol_vazia: wgpu::TextureView,
+    triplanar: crate::gpu_triplanar::TexturasGpu,
     mapas_sombra: [wgpu::TextureView; sombra_impl::NIVEIS],
     compara: wgpu::Sampler,
     liso: wgpu::Sampler,
@@ -213,6 +214,7 @@ impl Forward {
         ambiente: &Ambiente<'_>,
     ) -> Self {
         let vf = wgpu::ShaderStages::VERTEX_FRAGMENT;
+        let tri = crate::gpu_triplanar::entradas();
         let g0_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-mesh-forward g0"),
             entries: &[
@@ -247,6 +249,9 @@ impl Forward {
                 textura_float(9),
                 textura_prof(10),
                 textura_prof(11),
+                tri[0],
+                tri[1],
+                tri[2],
             ],
         });
         // ⚠️ O passe de sombra ESCREVE o mapa: não o pode ter ligado para leitura. Só o quadro.
@@ -487,6 +492,7 @@ impl Forward {
         queue.write_buffer(&ceu, 0, bytemuck::cast_slice(&ceu_dados));
         let tabela = texturas::textura_de_floats(&device, &queue, ambiente.tabela);
         let foto_vazia = texturas::vazia(&device, &queue);
+        let triplanar = crate::gpu_triplanar::TexturasGpu::vazias(&device);
         let sol_vazia = texturas::textura_de_floats(&device, &queue, &[0.0]);
         let mapas_sombra = sombra_impl::mapas(&device);
         let compara = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -541,6 +547,7 @@ impl Forward {
             foto_vazia,
             sol: None,
             sol_vazia,
+            triplanar,
             mapas_sombra,
             compara,
             liso,
@@ -654,7 +661,7 @@ impl Forward {
         }
         let brilho =
             self.prepara_brilho(&cena.brilho.sanitized(), (w, h), cena.exposicao, cena.vista);
-        self.sobe_materiais(cena.materiais);
+        self.sobe_materiais(cena.materiais, cena.texturas);
         let chave = sombra_impl::chave(cena, self.foto.is_some(), self.sol.as_ref());
         let enquadra =
             sombra_impl::enquadra(cena, chave, |id| self.malhas.get(&id).map(|m| m.caixa));

@@ -21,10 +21,12 @@ mod gpu;
 mod gpu_alvo;
 mod gpu_brilho;
 mod gpu_cobertura;
+mod gpu_triplanar;
 
 pub use fonte::fonte;
 pub use gpu::Forward;
 pub use gpu_cobertura::COBERTURA_LADO;
+pub use gpu_triplanar::TEXTURA_V4;
 
 /// Quantas lâmpadas pontuais por quadro. ⚠️ É o recurso do bloco uniforme do quadro (o WebGL2 só
 /// garante `16 KiB` por bloco): `32` pares de `vec4` são `1 KiB`, folga larga para o resto.
@@ -149,6 +151,21 @@ pub struct Cena<'a> {
     /// ⭐ **O céu fotográfico** — `None` = o céu de quem chama ([`Ambiente`]). Sem céu subido
     /// ([`Forward::tem_ceu`]) é ignorado.
     pub foto: Option<Foto>,
+    /// ⭐ **A textura de cada material** (o índice é o de [`Cena::materiais`]); `None` ou fora da
+    /// lista = sem textura. A camada é a de [`Forward::sobe_textura`].
+    pub texturas: &'a [Option<TexturaMaterial>],
+}
+
+/// ⭐⭐ **A textura triplanar de um material** ([`ph2d_triplanar`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TexturaMaterial {
+    /// A camada subida por [`Forward::sobe_textura`].
+    pub camada: u32,
+    pub triplanar: ph2d_triplanar::Triplanar,
+    pub tem_normal: bool,
+    pub tem_rugosidade: bool,
+    /// Mundo → espaço da FOLHA (linhas de uma afim `3 × 4`): a textura anda com a forma.
+    pub mundo_para_folha: [[f32; 4]; 3],
 }
 
 #[cfg(test)]

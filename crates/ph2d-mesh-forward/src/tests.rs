@@ -108,6 +108,7 @@ pub(crate) fn cena<'a>(objs: &'a [Instancia], mats: &'a [[f32; 48]], cam: Camera
         estilo: ph2d_style::Style::default(),
         raio_da_peca: 0.5,
         foto: None,
+        texturas: &[],
     }
 }
 

@@ -56,6 +56,15 @@ impl Forward {
     }
 }
 
+impl Forward {
+    /// ⭐⭐ **Sobe (ou troca) a textura da `camada`** ([`ph2d_triplanar::Mapas`]). Nada compila; crescer
+    /// a matriz copia as camadas que já lá estavam.
+    pub fn sobe_textura(&mut self, camada: u32, mapas: &ph2d_triplanar::Mapas) {
+        self.triplanar
+            .sobe(&self.device, &self.queue, camada, mapas);
+    }
+}
+
 /// O texel vazio que a ligação do céu fotográfico lê enquanto nenhum céu subiu.
 pub(super) fn vazia(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView {
     let t = device.create_texture(&textura_meia("ph2d-mesh-forward ceu vazio", 1, 1));

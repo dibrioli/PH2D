@@ -6498,6 +6498,7 @@ dependencies = [
  "ph2d-material",
  "ph2d-sky",
  "ph2d-style",
+ "ph2d-triplanar",
  "ph2d-view-transform",
  "pollster",
  "wgpu",
@@ -9270,6 +9271,15 @@ version = "0.0.0"
 dependencies = [
  "ph2d-mesh",
  "ph2d-mesh-bool",
+]
+
+[[package]]
+name = "ph2d-triplanar"
+version = "0.0.0"
+dependencies = [
+ "ph2d-imageio",
+ "ph2d-imageio-jpeg",
+ "ph2d-imageio-png",
 ]
 
 [[package]]

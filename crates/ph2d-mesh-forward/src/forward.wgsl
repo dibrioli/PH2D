@@ -62,7 +62,21 @@ struct Objeto {
 // Os niveis mais grossos do mapa de sombra (o mesmo enquadramento a 1/4 e 1/16 do lado).
 @group(0) @binding(10) var mapa_sombra_1: texture_depth_2d;
 @group(0) @binding(11) var mapa_sombra_2: texture_depth_2d;
+// A TEXTURA TRIPLANAR: cor (sRGB) e nrh (normal rgb + rugosidade), uma camada por textura.
+@group(0) @binding(12) var tri_cor_tex: texture_2d_array<f32>;
+@group(0) @binding(13) var tri_nrh_tex: texture_2d_array<f32>;
+@group(0) @binding(14) var tri_amostrador: sampler;
 @group(1) @binding(0) var<uniform> objeto: Objeto;
+
+fn tri_cor_ler(camada: i32, uv: vec2<f32>, lod: f32) -> vec4<f32> {
+    return textureSampleLevel(tri_cor_tex, tri_amostrador, uv, camada, lod);
+}
+
+fn tri_nrh_ler(camada: i32, uv: vec2<f32>, lod: f32) -> vec4<f32> {
+    return textureSampleLevel(tri_nrh_tex, tri_amostrador, uv, camada, lod);
+}
+
+{TRIPLANAR}
 
 fn tabela_ler(i: u32) -> f32 {
     return textureLoad(tabela_tex, vec2<i32>(i32(i % {TAB_W}u), i32(i / {TAB_W}u)), 0).r;
@@ -153,6 +167,31 @@ fn material(k: u32) -> Mat {
         textureLoad(materiais, vec2<i32>(10, r), 0),
         textureLoad(materiais, vec2<i32>(11, r), 0),
     );
+}
+
+// A textura do material k: as colunas depois do `pack` (`gpu_triplanar::colunas`).
+struct Textura { ligada: bool, par: TriParams, m0: vec4<f32>, m1: vec4<f32>, m2: vec4<f32> };
+
+fn textura(k: u32) -> Textura {
+    let r = i32(k);
+    let a = textureLoad(materiais, vec2<i32>({COL_TEX}, r), 0);
+    let b = textureLoad(materiais, vec2<i32>({COL_TEX} + 1, r), 0);
+    return Textura(
+        a.x >= 0.0,
+        TriParams(a.yz, a.w, b.x, b.w, i32(a.x), b.y > 0.5, b.z > 0.5),
+        textureLoad(materiais, vec2<i32>({COL_TEX} + 2, r), 0),
+        textureLoad(materiais, vec2<i32>({COL_TEX} + 3, r), 0),
+        textureLoad(materiais, vec2<i32>({COL_TEX} + 4, r), 0),
+    );
+}
+
+// As linhas da afim mundo -> folha aplicadas a um vector (sem a translacao) e a transposta.
+fn folha_v(t: Textura, v: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(dot(t.m0.xyz, v), dot(t.m1.xyz, v), dot(t.m2.xyz, v));
+}
+
+fn mundo_v(t: Textura, v: vec3<f32>) -> vec3<f32> {
+    return t.m0.xyz * v.x + t.m1.xyz * v.y + t.m2.xyz * v.z;
 }
 
 fn vista(p: vec3<f32>) -> vec3<f32> {
@@ -357,8 +396,23 @@ fn com_a_curvatura(m_in: Mat, k: f32) -> Mat {
 // Render tracado: o indirecto, a SATURACAO dele (antes das lampadas: saturar no fim saturaria o
 // realce do sol), as lampadas, e o ESTILO entre a fisica e o olhar, com a emissao.
 fn luz_de_cena(i: VsOut) -> vec3<f32> {
-    let m = com_a_curvatura(material(i.material), i.k_mat);
-    let n = normalize(i.normal);
+    // As derivadas em fluxo UNIFORME, antes de qualquer ramo.
+    let dx = dpdx(i.mundo);
+    let dy = dpdy(i.mundo);
+    var m = com_a_curvatura(material(i.material), i.k_mat);
+    var n = normalize(i.normal);
+    let t = textura(i.material);
+    if (t.ligada) {
+        let pf = folha_v(t, i.mundo) + vec3<f32>(t.m0.w, t.m1.w, t.m2.w);
+        let r = tri_avalia(t.par, pf, normalize(folha_v(t, n)), folha_v(t, dx), folha_v(t, dy));
+        m = mx_at_base_color(m, m.base_color_weight.rgb * r.cor);
+        if (t.par.tem_rugosidade) {
+            m = mx_at_roughness(m, r.rugosidade);
+        }
+        if (t.par.tem_normal && t.par.relevo != 0.0) {
+            n = normalize(mundo_v(t, r.normal));
+        }
+    }
     let v = vista(i.mundo);
     peso_ceu = i.ao;
     peso_caixa = visibilidade_da_caixa(i.mundo);

@@ -133,14 +133,21 @@ pub(super) fn uniforme_do_quadro(
     u
 }
 
+/// As colunas de um material: o `pack` e a textura.
+const COLUNAS: u32 = crate::MATERIAL_V4 + crate::TEXTURA_V4;
+
 impl Forward {
-    pub(super) fn sobe_materiais(&mut self, mats: &[[f32; ph2d_material::wgsl::PACKED]]) {
+    pub(super) fn sobe_materiais(
+        &mut self,
+        mats: &[[f32; ph2d_material::wgsl::PACKED]],
+        texs: &[Option<crate::TexturaMaterial>],
+    ) {
         let n = (mats.len() as u32).max(1);
         if self.materiais.as_ref().is_none_or(|(k, _, _)| *k != n) {
             let t = self.device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("ph2d-mesh-forward materiais"),
                 size: wgpu::Extent3d {
-                    width: crate::MATERIAL_V4,
+                    width: COLUNAS,
                     height: n,
                     depth_or_array_layers: 1,
                 },
@@ -154,8 +161,18 @@ impl Forward {
             let v = t.create_view(&wgpu::TextureViewDescriptor::default());
             self.materiais = Some((n, t, v));
         }
-        let mut dados: Vec<f32> = mats.iter().flatten().copied().collect();
-        dados.resize((n * crate::MATERIAL_V4 * 4) as usize, 0.0);
+        let lado = self.triplanar.lado();
+        let mut dados: Vec<f32> = mats
+            .iter()
+            .enumerate()
+            .flat_map(|(i, m)| {
+                let t = texs.get(i).and_then(Option::as_ref);
+                m.iter()
+                    .copied()
+                    .chain(crate::gpu_triplanar::colunas(t, lado))
+            })
+            .collect();
+        dados.resize((n * COLUNAS * 4) as usize, 0.0);
         if let Some((_, t, _)) = &self.materiais {
             self.queue.write_texture(
                 wgpu::TexelCopyTextureInfo {
@@ -167,11 +184,11 @@ impl Forward {
                 bytemuck::cast_slice(&dados),
                 wgpu::TexelCopyBufferLayout {
                     offset: 0,
-                    bytes_per_row: Some(crate::MATERIAL_V4 * 16),
+                    bytes_per_row: Some(COLUNAS * 16),
                     rows_per_image: Some(n),
                 },
                 wgpu::Extent3d {
-                    width: crate::MATERIAL_V4,
+                    width: COLUNAS,
                     height: n,
                     depth_or_array_layers: 1,
                 },
@@ -312,6 +329,18 @@ impl Forward {
                     resource: wgpu::BindingResource::TextureView(
                         self.foto.as_ref().map_or(&self.foto_vazia, |(_, v)| v),
                     ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 12,
+                    resource: wgpu::BindingResource::TextureView(&self.triplanar.vista_cor),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 13,
+                    resource: wgpu::BindingResource::TextureView(&self.triplanar.vista_nrh),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 14,
+                    resource: wgpu::BindingResource::Sampler(&self.triplanar.amostrador),
                 },
                 wgpu::BindGroupEntry {
                     binding: 9,

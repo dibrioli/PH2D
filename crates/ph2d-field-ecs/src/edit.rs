@@ -41,5 +41,5 @@ pub use pose::{
 };
 pub use tree::{
     add_leaf, add_light, add_sampled, can_detach, can_wrap, duplicate, promote_leaf_hosts, remove,
-    set_op, set_radius, wrap_in_op,
+    set_op, set_radius, unique_root_name, wrap_in_op,
 };

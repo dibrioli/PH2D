@@ -86,7 +86,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.topbar.pill.wave" => "WAVE",
         "chrome.topbar.pill.vector" => "VECTOR",
         "chrome.topbar.pill.motion" => "MOTION",
-        "chrome.topbar.pill.model" => "MODEL",
         "chrome.topbar.pill.widget" => "WIDGET",
         "chrome.topbar.pill.grid" => "GRID",
         // ⚠️ `PREFS`, o nome do menu (*Edit ▸ Preferences…*): `SETTINGS` não cabe na coluna de
@@ -139,7 +138,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.topbar.name.physics" => "Physics",
         "chrome.topbar.name.tokens" => "Tokens",
         "chrome.topbar.name.authored_ui" => "Authored UI",
-        "chrome.topbar.name.n3d_model" => "3D Model",
         "chrome.topbar.name.grid_settings" => "Grid Settings",
         "chrome.topbar.name.settings" => "Settings",
         "chrome.topbar.name.trim_transparency" => "Trim Transparency",
@@ -171,7 +169,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.topbar.tip.physics_w" => "Physics \u{00b7} W",
         "chrome.topbar.tip.tokens_t" => "Tokens \u{00b7} T",
         "chrome.topbar.tip.authored_ui" => "Authored UI",
-        "chrome.topbar.tip.n3d_model_implicit_field" => "3D Model \u{00b7} implicit field",
         "chrome.topbar.tip.grid_settings" => "Grid Settings",
         "chrome.topbar.tip.project_settings" => "Project settings",
         "chrome.topbar.tip.project" => "Project",

@@ -138,36 +138,80 @@ fn a_layout_asks_for_a_mode_only_the_active_can_give() {
 fn the_mode_holds_only_its_own_entity() {
     let mut s = image_selected();
     assert!(
-        s.still_holds(None, 0, false),
+        s.still_holds(None, &[], false),
         "em Object não há nada a segurar"
     );
     s.enter(IMG, ObjectMode::Paint);
-    assert!(s.still_holds(Some(IMG), 0, true));
+    assert!(s.still_holds(Some(IMG), &[], true));
     assert!(
-        !s.still_holds(Some(OTHER), 0, true),
+        !s.still_holds(Some(OTHER), &[], true),
         "a selecção mudou por outra porta"
     );
     assert!(
-        !s.still_holds(None, 0, true),
+        !s.still_holds(None, &[], true),
         "a entidade saiu (apagar, desfazer)"
     );
     assert!(
-        !s.still_holds(Some(IMG), 1, true),
+        !s.still_holds(Some(IMG), &[OTHER], true),
         "uma segunda seleccionada"
     );
-    assert!(!s.still_holds(Some(IMG), 0, false), "o módulo largou-a");
+    assert!(!s.still_holds(Some(IMG), &[], false), "o módulo largou-a");
 }
 
 /// ⭐ GATE — o cadeado: em Object tudo passa; num modo, só a própria entidade e o limpar.
 #[test]
 fn the_lock_refuses_another_object_in_a_creation_mode() {
-    assert_eq!(decide(None, Some(OTHER), false), Decision::Allow);
-    assert_eq!(decide(None, Some(OTHER), true), Decision::Allow);
-    assert_eq!(decide(Some(IMG), Some(OTHER), false), Decision::Refuse);
-    assert_eq!(decide(Some(IMG), Some(IMG), false), Decision::Allow);
-    assert_eq!(decide(Some(IMG), Some(IMG), true), Decision::Refuse);
-    assert_eq!(decide(Some(IMG), Some(OTHER), true), Decision::Refuse);
-    assert_eq!(decide(Some(IMG), None, false), Decision::Allow);
+    assert_eq!(decide(None, None, Some(OTHER), false), Decision::Allow);
+    assert_eq!(decide(None, None, Some(OTHER), true), Decision::Allow);
+    assert_eq!(
+        decide(Some(IMG), None, Some(OTHER), false),
+        Decision::Refuse
+    );
+    assert_eq!(decide(Some(IMG), None, Some(IMG), false), Decision::Allow);
+    assert_eq!(decide(Some(IMG), None, Some(IMG), true), Decision::Refuse);
+    assert_eq!(decide(Some(IMG), None, Some(OTHER), true), Decision::Refuse);
+    assert_eq!(decide(Some(IMG), None, None, false), Decision::Allow);
+}
+
+/// ⭐ GATE — num modo que edita PARTES (o Edit do Model, spec/06 F3) a selecção pode ser qualquer
+/// parte, várias, ou nenhuma; outro objecto continua a derrubar o modo e a ser recusado.
+#[test]
+fn a_mode_of_parts_holds_and_admits_its_parts_only() {
+    const PART: u64 = 77;
+    const PART2: u64 = 78;
+    let mut s = image_selected();
+    s.enter(IMG, ObjectMode::Edit);
+    s.publish_parts(Some(vec![PART, PART2]));
+    assert!(s.still_holds(Some(PART), &[PART2], true), "duas partes");
+    assert!(
+        s.still_holds(None, &[], true),
+        "desseleccionar não sai do Edit"
+    );
+    assert!(
+        s.still_holds(Some(IMG), &[PART], true),
+        "o todo e uma parte"
+    );
+    assert!(!s.still_holds(Some(OTHER), &[], true), "outro objecto");
+    assert!(
+        !s.still_holds(Some(PART), &[OTHER], true),
+        "uma parte e outro objecto"
+    );
+    assert!(!s.still_holds(Some(PART), &[], false), "o módulo largou-a");
+    let parts = Some([PART, PART2].as_slice());
+    assert_eq!(decide(Some(IMG), parts, Some(PART), false), Decision::Allow);
+    assert_eq!(decide(Some(IMG), parts, Some(PART2), true), Decision::Allow);
+    assert_eq!(
+        decide(Some(IMG), parts, Some(OTHER), false),
+        Decision::Refuse
+    );
+    assert_eq!(
+        decide(Some(IMG), parts, Some(OTHER), true),
+        Decision::Refuse
+    );
+    assert_eq!(decide(Some(IMG), parts, None, true), Decision::Refuse);
+    assert_eq!(decide(Some(IMG), parts, None, false), Decision::Allow);
+    s.leave();
+    assert_eq!(s.parts(), None, "sair esquece as partes");
 }
 
 /// A entidade trancada é a do modo em curso — e só num modo de criação.

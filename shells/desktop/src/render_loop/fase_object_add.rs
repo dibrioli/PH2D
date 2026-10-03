@@ -68,15 +68,8 @@ impl crate::App {
             return;
         };
         if open {
-            let model = ph2d_app_field3d::object_add::why_not(sim);
             hero.store
-                .open_command_palette(object_add::build(FAMILIES, &|e| {
-                    if e == ph2d_app_field3d::object_add::MODEL {
-                        model
-                    } else {
-                        None
-                    }
-                }));
+                .open_command_palette(object_add::build(FAMILIES, &|_| None));
         }
         // ⚠️ O dreno é CONDICIONAL: o canal de pick tem outros quatro consumidores.
         let Some(entry) = hero
@@ -95,9 +88,7 @@ impl crate::App {
             hero.store.open_new_image_dialog();
             Ok(Born::Dialog)
         } else if entry == ph2d_app_field3d::object_add::MODEL {
-            ph2d_app_field3d::object_add::add(sim)
-                .map(Born::Entity)
-                .map_err(String::from)
+            Ok(Born::Entity(ph2d_app_field3d::object_add::add(sim)))
         } else if let Some(r) = ph2d_app_components::object_add::add(
             entry,
             sim,

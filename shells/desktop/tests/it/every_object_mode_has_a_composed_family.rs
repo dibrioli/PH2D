@@ -12,10 +12,11 @@ use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
 const FASE: &str = "src/render_loop/fase_object_mode.rs";
 
 /// `(o construtor no fonte, a variável que entra na lista)` de cada família.
-const FAMILIAS: [(&str, &str); 3] = [
+const FAMILIAS: [(&str, &str); 4] = [
     ("ph2d_app_painter::paint_mode::Family", "&mut paint"),
     ("ph2d_app_sculpt3d::sculpt_mode::Family::new", "&mut sculpt"),
     ("ph2d_app_flip::flip_mode::Family::new", "&mut flip"),
+    ("ph2d_app_field3d::model_mode::Family::new", "&mut model"),
 ];
 
 /// ⭐⭐ GATE — cada família é construída E entra na lista do quadro.
@@ -41,10 +42,11 @@ fn every_mode_family_is_in_the_frame_list() {
     }
 }
 
-/// ⭐⭐ GATE — as famílias da tabela declaram, juntas, TODO modo de criação do vocabulário.
+/// ⭐⭐ GATE — as famílias da tabela declaram, juntas, TODO modo de criação do vocabulário, e
+/// nenhum par (tipo, modo) duas vezes (o quadro abriria só a primeira).
 ///
 /// *Mutação que sangra:* um modo novo em `ObjectMode` sem família, ou a do Flip a deixar de
-/// declarar o Edit.
+/// declarar o Edit, ou a do Model a declarar o par de outra.
 #[test]
 fn the_composed_families_declare_every_creation_mode() {
     let mut sim = ph2d_ecs::SimWorld::new();
@@ -53,11 +55,12 @@ fn the_composed_families_declare_every_creation_mode() {
     let paint = ph2d_app_painter::paint_mode::Family;
     let sculpt = ph2d_app_sculpt3d::sculpt_mode::Family::new(&mut sim, None);
     let flip = ph2d_app_flip::flip_mode::Family::new(&mut state, &doc);
-    let declared: Vec<ObjectMode> = [paint.modes(), sculpt.modes(), flip.modes()]
-        .into_iter()
-        .flatten()
-        .map(|(_, m)| *m)
-        .collect();
+    let model = ph2d_app_field3d::model_mode::Family::new(&mut sim, false);
+    let pairs: Vec<_> = [paint.modes(), sculpt.modes(), flip.modes(), model.modes()].concat();
+    for (i, p) in pairs.iter().enumerate() {
+        assert!(!pairs[..i].contains(p), "{p:?} declarado por duas famílias");
+    }
+    let declared: Vec<ObjectMode> = pairs.iter().map(|(_, m)| *m).collect();
     for m in ObjectMode::ALL {
         if m == ObjectMode::Object {
             continue;

@@ -49,9 +49,6 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_TAGS,
         ids::TOPBAR_TOKENS,
         ids::TOPBAR_AUTHORED,
-        // Modelagem 3D (ADR-0161) — mesma exigência: sem registro AQUI o pill desenha e
-        // nasce morto sob o mouse.
-        ids::TOPBAR_MODEL3D,
         ids::TOPBAR_WIDGET_GALLERY,
         // Widget Lab — a bancada de desenho. ⚠️ **Registada aqui e SEM pill na fixture**, ao
         // contrário dos vizinhos: os pills são o chrome legado (`F9`) e a porta de produto é a

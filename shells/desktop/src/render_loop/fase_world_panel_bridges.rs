@@ -31,14 +31,15 @@ impl crate::App {
         // ADR-0161 W4: a peça de modelagem 3D é uma ENTIDADE, e esta é a ponte
         // que a mantém assim — nasce no mundo, aparece na Hierarquia, e as
         // edições do painel escrevem no COMPONENTE. Inerte sem o smoke armado.
-        // ⭐ **O pill é a porta de armar.** A visibilidade do painel É o interruptor do
+        // ⭐ **O painel é a porta de armar**, e quem o abre é o modo Edit da peça (spec/06 F3,
+        // `ph2d_app_field3d::model_mode`). A visibilidade do painel É o interruptor do
         // módulo: enquanto a única entrada era `PH2D_FIELD_SMOKE`, ele não existia
         // para quem abre o app.
         // ⭐ **QUEM TOMA O CANVAS LIBERTA QUEM O TINHA** (W40). Enio, 2026-08-22: *"o modo
         // Modelagem nunca é desativado e não consigo usar nenhum outro modo do app… Não consigo
         // esculpir nada pois o modo de modelagem permanece interferindo."*
         //
-        // ⚠️ Fecha-se o **painel**, e não se desarma em silêncio: o pill *é* o interruptor do
+        // ⚠️ Fecha-se o **painel**, e não se desarma em silêncio: o painel *é* o interruptor do
         // módulo (a linha abaixo), então um desarme invisível deixaria o botão aceso a mentir.
         // A lei (borda, não estado contínuo) e o porquê estão em `ph2d_app_field3d::mode`.
         {

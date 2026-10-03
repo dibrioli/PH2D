@@ -76,13 +76,6 @@ fn no_two_layouts_hand_the_canvas_to_the_same_owner() {
                 modal += 1;
                 assert!(seen.insert(t), "dois layouts pegam na ferramenta {t:?}");
             }
-            CanvasOwner::Model3d => {
-                modal += 1;
-                assert!(
-                    seen.insert("<model3d>"),
-                    "dois layouts entregam o canvas ao modelador"
-                );
-            }
             CanvasOwner::Mode(m) => {
                 modal += 1;
                 assert!(

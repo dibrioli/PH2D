@@ -197,7 +197,7 @@ pub fn forget_open_panel_request() {
 }
 
 thread_local! {
-    /// O pill do topo pediu o módulo ligado.
+    /// O painel `model3d` está aberto — hoje, pelo modo Edit da peça (`crate::model_mode`).
     static PILL_ARMED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
@@ -205,7 +205,9 @@ thread_local! {
 ///
 /// ⭐ O módulo passa a ter **duas** entradas: a variável de ambiente (a do smoke dirigido) e o
 /// **pill do topo** — que é a que um artista encontra. Enquanto a única porta era a `env`, o módulo
-/// não existia para quem abre o app (Enio, 2026-08-19: *"não temos um Pill no topo"*).
+/// não existia para quem abre o app (Enio, 2026-08-19: *"não temos um Pill no topo"*). ⭐ Desde a
+/// F3 do spec/06 o pill saiu: a porta do artista é o modo Edit da peça ([`crate::model_mode`]), que
+/// abre e fecha este painel.
 ///
 /// ⚠️ Uma porta que só quem já sabe consegue abrir é o mesmo que não existir — a lição que o pill do
 /// SCULPT já tinha registado ao lado, e que este módulo repetiu.
@@ -440,7 +442,7 @@ pub(super) fn armed_scene() -> Option<u32> {
 /// report de 22/08, à letra, um caminho ao lado. ⚠️ **E o gate da W42 estava verde**: nenhum
 /// teste corre com a env definida.
 ///
-/// Aberto pelo pill sem env, a cena é a `1` (a que mostra os dois arredondamentos de uma vez).
+/// Aberto sem env (e sem peça no mundo), a cena é a `1` (a que mostra os dois arredondamentos de uma vez).
 pub(crate) fn scene_for(env: Option<&str>, painel_aberto: bool) -> Option<u32> {
     painel_aberto.then(|| env.map_or(1, |v| v.parse().unwrap_or(1)))
 }

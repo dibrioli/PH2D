@@ -133,7 +133,7 @@ pub fn add_light(world: &mut World, world_pos: [f32; 3], light: crate::FieldLigh
 /// ⚠️ **Irmão do [`unique_sibling_name`] e não o mesmo**: aquele pergunta aos filhos de um pai, e uma
 /// raiz não tem pai. *Duas luzes chamadas «Light» na Hierarquia são duas linhas que o artista não
 /// consegue distinguir.*
-fn unique_root_name(world: &mut World, base: &str) -> String {
+pub fn unique_root_name(world: &mut World, base: &str) -> String {
     let mut q = world.query::<(Entity, &ph2d_ecs::Name)>();
     let usados: Vec<String> = q.iter(world).map(|(_, n)| n.0.clone()).collect();
     if !usados.iter().any(|u| u == base) {

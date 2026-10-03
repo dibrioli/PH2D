@@ -190,7 +190,6 @@ mod the_light_table_reaches_the_ghost_pass;
 mod the_marquee_shape_comes_from_one_door;
 mod the_matcap_table_and_its_chips_agree;
 mod the_math_is_installed_at_boot;
-mod the_model_pill_opens_the_3d_module;
 mod the_morph_fade_smoke_stages_a_fade_from_an_authored_pose;
 mod the_motion_images_sample_with_the_project_filter;
 mod the_motion_path_anchor_is_drawn_and_dragged;

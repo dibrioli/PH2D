@@ -144,8 +144,8 @@ fn clicking_a_layout_tab_still_requests_its_tool() {
         layout_switch::apply(&mut h, l);
         let esperado: Vec<&str> = match l.spec().canvas {
             CanvasOwner::Tool(id) => vec![id],
-            // O modelador e um MODO (spec/06 §3.3) não pedem ferramenta.
-            CanvasOwner::Model3d | CanvasOwner::Mode(_) => vec![],
+            // Um MODO (spec/06 §3.3) não pede ferramenta.
+            CanvasOwner::Mode(_) => vec![],
         };
         assert_eq!(pedidos_de_ferramenta(&h), esperado, "{l:?}");
     }

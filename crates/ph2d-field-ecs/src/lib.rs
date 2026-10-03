@@ -57,7 +57,7 @@ pub use edit::{
     add_leaf, add_light, add_mod, add_sampled, can_detach, can_wrap, dims_of, duplicate,
     material_key, mods_of, params_of, promote_leaf_hosts, radius_bound, radius_of, remove,
     remove_mod, rotate_world, rotate_world_about, scale_about, scale_by, set_dim, set_op,
-    set_param, set_radius, top_level, translate_world, walk, wrap_in_op,
+    set_param, set_radius, top_level, translate_world, unique_root_name, walk, wrap_in_op,
 };
 pub use edit_verb::{VerbRole, character_of, set_character, set_verb, verb_of, verb_role};
 pub use spawn::{shape_name, spawn_doc};

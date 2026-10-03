@@ -117,11 +117,13 @@ impl crate::App {
         for msg in ph2d_app_field3d::notice::drain() {
             toasts.push(ph2d_editor_core::Toast::info(msg));
         }
-        if ph2d_app_field3d::smoke::take_open_panel_request() {
+        // ⭐ O modo Edit (spec/06 F3) manda no painel; a abertura antiga só quando ele nada pede.
+        let open = ph2d_app_field3d::smoke::take_open_panel_request().then_some(true);
+        if let Some(v) = ph2d_app_field3d::model_mode::take_panel_request().or(open) {
             // O ID vem do PAINEL, nunca de um literal: uma segunda cópia da chave de
             // visibilidade é como se abre um painel que ninguém pinta.
             hero.panel_visibility
-                .insert(ph2d_panel_model3d::PANEL_ID, true);
+                .insert(ph2d_panel_model3d::PANEL_ID, v);
         }
     }
 }

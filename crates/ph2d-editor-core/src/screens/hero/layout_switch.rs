@@ -33,16 +33,13 @@ use crate::tool_activation::activation_gate;
 /// ⭐⭐ **O canvas muda de dono (D3), e não há caso de «não mexe»** — ver `CanvasOwner`. Um layout
 /// que não largasse a ferramenta traria os painéis dela atrás, porque quem os abre é a ponte da
 /// ferramenta e não esta função; foi o report de 2026-08-31. O pedido vai pelo barramento porque o
-/// hero não alcança o registo de ferramentas; ⛔ o `Model3d` não pede nada — quem larga a
-/// ferramenta é a lei do `field3d_mode` no shell, acordada pelo painel que a lista de abertos acabou
-/// de abrir.
+/// hero não alcança o registo de ferramentas.
 pub fn apply(hero: &mut HeroScreen, layout: TaskLayout) {
     match arrange(hero, layout) {
         CanvasOwner::Tool(tool_id) => hero.bus.push(EditorAction::ActivateTool { tool_id }),
         CanvasOwner::Mode(mode) => hero.bus.push(EditorAction::ObjectMode(
             crate::object_mode::ModeRequest::Open(mode),
         )),
-        CanvasOwner::Model3d => {}
     }
 }
 

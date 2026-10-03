@@ -10,7 +10,7 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_field::FieldDoc;
-use ph2d_field_ecs::{FieldNode, FieldObject};
+use ph2d_field_ecs::FieldNode;
 
 use super::SelectRequest;
 use crate::smoke::with_smoke;
@@ -279,9 +279,7 @@ fn pick_frame(
         area.h.round().max(1.0) as u32,
         cam.half_extent,
     );
-    let world = sim.world_mut();
-    let mut q = world.query::<(bevy_ecs::entity::Entity, &FieldObject)>();
-    let root = q.iter(world).next().map(|(e, _)| e)?;
+    let root = super::root_in_hand(sim.world_mut())?;
     Some((root, cam, screen))
 }
 

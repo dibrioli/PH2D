@@ -101,12 +101,8 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_MOTION,
             TopBarCluster::single(tr("chrome.topbar.pill.motion"), IconId::MotionNodes),
         ),
-        // Modelagem 3D por campo implícito (ADR-0161). ⚠️ Os vizinhos SCULPT e FLIP saíram (spec/06
-        // F3): a escultura e o desenho Flip abrem-se pelo MODO do objecto, não por um pill.
-        (
-            ids::TOPBAR_MODEL3D,
-            TopBarCluster::single(tr("chrome.topbar.pill.model"), IconId::Cube),
-        ),
+        // ⚠️ Os pills SCULPT, FLIP e MODEL saíram (spec/06 F3): a escultura, o desenho Flip e a
+        // peça de modelagem abrem-se pelo MODO do objecto, não por um pill.
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
         // Widget Gallery (palette) — toggles a floating reference

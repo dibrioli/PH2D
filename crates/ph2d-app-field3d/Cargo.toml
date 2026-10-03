@@ -23,6 +23,8 @@ ph2d-app-host      = { path = "../ph2d-app-host" }
 ph2d-viewport3d    = { path = "../ph2d-viewport3d" }
 bevy_ecs           = "0.19"
 ph2d-ecs           = { path = "../ph2d-ecs" }
+# O vocabulário dos tipos de objecto (`ObjectKind`) do modo Edit (spec/06 F3) — zero deps.
+ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-editor-core   = { path = "../ph2d-editor-core" }
 ph2d-field         = { path = "../ph2d-field" }
 ph2d-field-ecs     = { path = "../ph2d-field-ecs" }

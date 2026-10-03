@@ -74,7 +74,9 @@ fn a_layout_never_inherits_what_the_previous_one_left_open() {
         "a linha do tempo sobreviveu à troca para o *Model* — um layout virou um passo sobre o \
          anterior em vez do estado da tela"
     );
-    assert!(h.is_panel_visible("model3d"));
+    // ⭐ O painel do modelador vem com o MODO Edit da peça (spec/06 F3), não com a aba: sem peça
+    // activa abri-lo aqui armaria o módulo e plantaria a peça de demo (⛔ §6.5).
+    assert!(!h.is_panel_visible("model3d"));
 }
 
 /// ⚠️ **A tabela nomeia painéis que EXISTEM.** Um id com erro de escrita não falha nada — ele
@@ -209,14 +211,6 @@ fn every_layout_hands_the_canvas_over_and_none_inherits_it() {
                 vec![id],
                 "{l:?} declara a ferramenta `{id}` e não a pediu — a tela arruma-se e o canvas \
                  fica no modo anterior, com os painéis dele atrás"
-            ),
-            // ⛔ O modelador não é uma `Tool`: quem larga a que está em mãos é a lei do
-            // `field3d_mode`, no shell, acordada pelo painel que a lista de abertos abriu.
-            CanvasOwner::Model3d => assert!(
-                asked.is_empty(),
-                "{l:?} entrega o canvas ao modelador e mesmo assim pediu uma ferramenta \
-                 ({asked:?}) — a ponte leria isso como *«outro tomou o canvas»* e fecharia o \
-                 painel que a abriu"
             ),
             // ⭐ Um layout que pede um MODO (spec/06 §3.3) não pede ferramenta: quem a pega é o
             // modo, e só se o activo o tiver.

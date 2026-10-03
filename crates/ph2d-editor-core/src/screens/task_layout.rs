@@ -74,17 +74,6 @@ pub enum CanvasOwner {
     /// gesto de *largar* — o `CancelActiveTool`, o pill do vetor, o do motion — é escrito como
     /// *«volta à de omissão»*. ⇒ um layout que só quer a cena pede o `move`, e não fica calado.
     Tool(&'static str),
-    /// ⭐ O **modelador implícito** (ADR-0161). Ele não é uma `Tool` — o traçado e a navegação
-    /// moram no shell de propósito, e é isso que mantém a superfície congelada `Tool=12` fora do
-    /// caminho —, então não há `tool_id` que o exprima: quem o arma é a **visibilidade do painel**
-    /// (`field3d_smoke::set_armed_by_panel`).
-    ///
-    /// ⚠️ **E é por isso que ele não pede ferramenta nenhuma.** Quem larga a que estava em mãos é
-    /// a metade simétrica da lei do `field3d_mode` — *tomar o canvas liberta quem o tinha* —, que
-    /// corre no shell quando este painel abre, por qualquer porta (esta aba **ou** o menu
-    /// *Window*). Pedir o `move` aqui faria a ponte ler a nossa própria mão como *«outro tomou o
-    /// canvas»* e fechar o painel que a abriu.
-    Model3d,
     /// ⭐ **Um MODO do objecto activo** — o `Mode:` do Workspace do Blender (spec/06 §3.3). Entra
     /// nele se o activo o tiver; senão fica em Object com a ferramenta de omissão, e ⛔ não cria
     /// objecto nenhum (§6.5). Ver [`crate::object_mode::ModeRequest::Open`].
@@ -175,11 +164,11 @@ impl TaskLayout {
             Self::Modeling3d => LayoutSpec {
                 title: TextKey::new("chrome.layout.model"),
                 wire: "modeling_3d",
-                // ⚠️ Abrir o painel **é** entrar no modo (`set_armed_by_panel`) — por isso ele é do
-                // layout, e a ferramenta em mãos é largada pela lei do `field3d_mode`, no shell.
-                open: &["hierarchy", "inspector", "model3d"],
+                // ⭐ Modelar é o MODO Edit da peça (spec/06 F3): o painel `model3d` vem com o
+                // modo, e sem peça activa fica em Object (⛔ abri-lo aqui plantava a peça de demo).
+                open: &["hierarchy", "inspector"],
                 slots: &[],
-                canvas: CanvasOwner::Model3d,
+                canvas: CanvasOwner::Mode(crate::object_mode::ObjectMode::Edit),
             },
             Self::Animation => LayoutSpec {
                 title: TextKey::new("chrome.layout.animate"),

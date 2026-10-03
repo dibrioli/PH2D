@@ -22,9 +22,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "object_add.vector.polygon" => "Vector Polygon",
         "object_add.vector.star" => "Vector Star",
         "object_add.model" => "Model Solid",
-        "object_add.model.one_per_scene" => {
-            "this scene already has a Model \u{2014} add shapes to it with Add shape\u{2026}"
-        }
         "object_add.sculpt.sphere" => "Sculpt Sphere",
         "object_add.sculpt.cube" => "Sculpt Cube",
         "object_add.sculpt.cylinder" => "Sculpt Cylinder",

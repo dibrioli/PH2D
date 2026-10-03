@@ -38,6 +38,17 @@ pub trait ModeFamily {
     fn wants(&mut self, _tools: &mut ToolRegistry) -> Option<(u64, ObjectMode)> {
         None
     }
+    /// ⭐ **O que se edita DENTRO de `entity`** no modo em curso: `None` = o modo edita o objecto
+    /// inteiro (o cadeado exige a selecção exacta); `Some` = as partes que a selecção pode ter sem o
+    /// modo cair (o Edit do Model: as formas da peça são linhas próprias na Hierarquia).
+    fn parts(&mut self, _entity: u64) -> Option<Vec<u64>> {
+        None
+    }
+    /// ⭐ **De que objecto desta família `bits` é parte** — o seletor e o `Tab` sobre uma parte
+    /// respondem pelo dono (uma forma seleccionada na Hierarquia oferece o Edit da peça dela).
+    fn owner_of(&mut self, _bits: u64) -> Option<u64> {
+        None
+    }
 }
 
 fn family<'a>(
@@ -66,6 +77,36 @@ fn leave_current(
     }
 }
 
+/// Publica o activo e os modos do tipo dele; devolve o activo. Num modo, o activo é a entidade
+/// trancada (a selecção pode ser uma parte dela, ou nenhuma); em Object, uma parte responde pelo
+/// [dono](ModeFamily::owner_of).
+fn publish_active(
+    families: &mut [&mut dyn ModeFamily],
+    kind_of: &dyn Fn(u64) -> ObjectKind,
+    hero: &mut HeroScreen,
+) -> Option<u64> {
+    let picked = object_mode::active_of(hero.gizmo.selection, &hero.gizmo.extra_selection);
+    let active = hero.gizmo.mode.locked_entity().or_else(|| {
+        let bits = picked?;
+        Some(
+            families
+                .iter_mut()
+                .find_map(|f| f.owner_of(bits))
+                .unwrap_or(bits),
+        )
+    });
+    let modes: Vec<ObjectMode> = active.map_or_else(Vec::new, |bits| {
+        let kind = kind_of(bits);
+        let declared = families.iter().flat_map(|f| f.modes().iter());
+        declared
+            .filter(|(k, _)| *k == kind)
+            .map(|(_, m)| *m)
+            .collect()
+    });
+    hero.gizmo.mode.publish(active, &modes);
+    active
+}
+
 /// ⭐⭐ **O quadro do modo.** `kind_of`/`name_of` respondem pelos bits de uma entidade. Devolve se o
 /// modo mudou.
 pub fn drive(
@@ -85,23 +126,19 @@ pub fn drive(
         Some(ModeRequest::Enter(mode))
     });
     // 1. O activo e os modos que o TIPO dele declara.
-    let active = object_mode::active_of(hero.gizmo.selection, &hero.gizmo.extra_selection);
-    let modes: Vec<ObjectMode> = active.map_or_else(Vec::new, |bits| {
-        let kind = kind_of(bits);
-        let declared = families.iter().flat_map(|f| f.modes().iter());
-        declared
-            .filter(|(k, _)| *k == kind)
-            .map(|(_, m)| *m)
-            .collect()
-    });
-    hero.gizmo.mode.publish(active, &modes);
+    let mut active = publish_active(families, kind_of, hero);
     // 2. A rede de segurança: quem perdeu a entidade (por qualquer porta) volta a Object.
     if let Some(current) = hero.gizmo.mode.active() {
-        let held = family(families, kind_of(current.entity), current.mode)
-            .is_some_and(|f| f.holds(current.mode, current.entity, tools));
-        let (sel, extras) = (hero.gizmo.selection, hero.gizmo.extra_selection.len());
+        let f = family(families, kind_of(current.entity), current.mode);
+        let (held, parts) = f.map_or((false, None), |f| {
+            let held = f.holds(current.mode, current.entity, tools);
+            (held, f.parts(current.entity))
+        });
+        hero.gizmo.mode.publish_parts(parts);
+        let (sel, extras) = (hero.gizmo.selection, &hero.gizmo.extra_selection);
         if !hero.gizmo.mode.still_holds(sel, extras, held) {
             leave_current(families, kind_of, tools, hero);
+            active = publish_active(families, kind_of, hero);
             changed = true;
         }
     }
@@ -119,6 +156,7 @@ pub fn drive(
                     hero.gizmo.replace_selection(Some(bits));
                     if f.enter(m, bits, tools) {
                         hero.gizmo.mode.enter(bits, m);
+                        hero.gizmo.mode.publish_parts(f.parts(bits));
                         let label = m.label_key().tr();
                         toasts.push(Toast::info(tr_with(
                             "object_mode.entered",
@@ -128,7 +166,13 @@ pub fn drive(
                 }
             }
             Step::Leave => {
+                // Sair de um modo de partes devolve a selecção ao objecto inteiro (o `Tab` do
+                // Blender): uma parte seleccionada em Object não teria o modo de volta.
+                let whole = hero.gizmo.mode.parts().and(hero.gizmo.mode.locked_entity());
                 leave_current(families, kind_of, tools, hero);
+                if whole.is_some() {
+                    hero.gizmo.replace_selection(whole);
+                }
                 toasts.push(Toast::info(ph2d_i18n::tr("object_mode.left")));
             }
             Step::LeaveToDefault => {
@@ -163,8 +207,9 @@ pub fn refused(
     additive: bool,
     toasts: &mut ToastQueue,
 ) -> bool {
-    let locked = hero.gizmo.mode.locked_entity();
-    let refuse = object_mode::decide(locked, target, additive) == object_mode::Decision::Refuse;
+    let (locked, parts) = (hero.gizmo.mode.locked_entity(), hero.gizmo.mode.parts());
+    let refuse =
+        object_mode::decide(locked, parts, target, additive) == object_mode::Decision::Refuse;
     if refuse {
         toasts.push(Toast::warning(object_mode::refusal(&hero.gizmo.mode)));
     }

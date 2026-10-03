@@ -188,7 +188,7 @@ fn creating_then_undoing_returns_the_project_to_the_bit() {
             )
             .expect("é do Flip")
             .map_err(String::from),
-            _ => ph2d_app_field3d::object_add::add(&mut sim).map_err(String::from),
+            _ => Ok(ph2d_app_field3d::object_add::add(&mut sim)),
         };
         born.unwrap_or_else(|e| panic!("{which}: {e}"));
         let after = capture(&mut sim, &vec_scene, &flip, &reg);

@@ -9,7 +9,7 @@
 //!
 //! *Um modo em que se entra por um verbo e de que se sai por acidente é um modo sem saída* — e é o
 //! mesmo defeito que este repo já nomeou no pill que muda o dono do ponteiro
-//! ([`super::chrome::model3d_toggle`], que documenta precisamente ter de ter *«uma saída visível»*).
+//! (o antigo pill SCULPT, que precisava precisamente de *«uma saída visível»*).
 //!
 //! # As três coisas que ela diz, e porque são estas três
 //!

@@ -120,6 +120,10 @@ pub struct ModeState {
     published: Option<(u64, Vec<ObjectMode>)>,
     /// O último modo de criação de cada objecto — o destino do `Tab`.
     last: BTreeMap<u64, ObjectMode>,
+    /// ⭐ **As PARTES da entidade trancada**, publicadas em todo quadro pela família do modo:
+    /// `None` = o modo edita o objecto inteiro (Paint, Sculpt, Draw); `Some` = o modo edita o que
+    /// está DENTRO dele, e a selecção pode ser qualquer parte (o Edit do Model: as formas da peça).
+    parts: Option<Vec<u64>>,
 }
 
 impl ModeState {
@@ -170,7 +174,19 @@ impl ModeState {
 
     /// Volta a Object; devolve o modo que estava.
     pub fn leave(&mut self) -> Option<ActiveMode> {
+        self.parts = None;
         self.active.take()
+    }
+
+    /// ⭐ A família do modo em curso publica as partes da entidade dele (ver o campo).
+    pub fn publish_parts(&mut self, parts: Option<Vec<u64>>) {
+        self.parts = parts;
+    }
+
+    /// As partes publicadas da entidade trancada.
+    #[must_use]
+    pub fn parts(&self) -> Option<&[u64]> {
+        self.parts.as_deref()
     }
 
     /// ⭐⭐ **A LEI do pedido.** Pura: o mesmo estado e o mesmo pedido dão sempre o mesmo passo.
@@ -209,13 +225,23 @@ impl ModeState {
 
     /// ⭐⭐ **O modo em curso ainda se segura?** — a rede de segurança de cada quadro.
     ///
-    /// Ele só vale enquanto a selecção é EXACTAMENTE a entidade dele e o módulo a tem em mãos. A
-    /// selecção muda por dezenas de portas que não são gestos (criar, duplicar, apagar, desfazer,
-    /// largar um ficheiro) — em vez de as ensinar uma a uma, quem perde a entidade volta a Object.
+    /// Ele só vale enquanto o módulo tem a entidade em mãos e a selecção é EXACTAMENTE ela — ou,
+    /// num modo que edita as [partes](Self::publish_parts), só partes dela (nenhuma incluído: o
+    /// Edit do Blender não sai ao desseleccionar). A selecção muda por dezenas de portas que não
+    /// são gestos (criar, duplicar, apagar, desfazer, largar um ficheiro) — em vez de as ensinar
+    /// uma a uma, quem perde a entidade volta a Object.
     #[must_use]
-    pub fn still_holds(&self, selection: Option<u64>, extras: usize, module_holds: bool) -> bool {
-        self.active
-            .is_none_or(|a| selection == Some(a.entity) && extras == 0 && module_holds)
+    pub fn still_holds(&self, selection: Option<u64>, extras: &[u64], module_holds: bool) -> bool {
+        self.active.is_none_or(|a| {
+            module_holds
+                && match &self.parts {
+                    None => selection == Some(a.entity) && extras.is_empty(),
+                    Some(parts) => selection
+                        .iter()
+                        .chain(extras)
+                        .all(|b| *b == a.entity || parts.contains(b)),
+                }
+        })
     }
 
     /// ⭐ **O seletor** — o 1.º pulldown da fila; `None` sem objecto activo. Escreve o
@@ -260,27 +286,31 @@ pub enum Decision {
 }
 
 /// ⭐⭐ **O CADEADO** (escolha 4 do dono: *não trocar*) — a lei, pura. `locked` é a
-/// [`ModeState::locked_entity`].
+/// [`ModeState::locked_entity`] e `parts` as [`ModeState::parts`] dela.
 ///
 /// - em Object ⇒ nada muda;
-/// - o alvo é a MESMA entidade ⇒ passa (re-seleccionar é um no-op, e recusá-lo ensinaria o artista
-///   a ignorar avisos);
-/// - **acrescentar** ⇒ recusa, mesmo sobre a própria: o que o modo não sabe representar é o ESTADO
-///   de duas seleccionadas;
+/// - o alvo é a MESMA entidade, ou uma parte dela num modo que edita partes ⇒ passa
+///   (re-seleccionar é um no-op, e recusá-lo ensinaria o artista a ignorar avisos);
+/// - **acrescentar** ⇒ só entre partes; num modo de objecto inteiro recusa, mesmo sobre a própria:
+///   o que o modo não sabe representar é o ESTADO de duas seleccionadas;
 /// - limpar (alvo `None`) ⇒ passa — o `Esc` e o clique no vazio não podem parecer partidos;
 /// - outra entidade ⇒ recusa.
 #[must_use]
-pub fn decide(locked: Option<u64>, target: Option<u64>, additive: bool) -> Decision {
+pub fn decide(
+    locked: Option<u64>,
+    parts: Option<&[u64]>,
+    target: Option<u64>,
+    additive: bool,
+) -> Decision {
     let Some(locked) = locked else {
         return Decision::Allow;
     };
-    if additive {
-        return Decision::Refuse;
-    }
+    let inside = |t: u64| t == locked || parts.is_some_and(|p| p.contains(&t));
     match target {
-        None => Decision::Allow,
-        Some(t) if t == locked => Decision::Allow,
-        Some(_) => Decision::Refuse,
+        _ if additive && parts.is_none() => Decision::Refuse,
+        None if !additive => Decision::Allow,
+        Some(t) if inside(t) => Decision::Allow,
+        _ => Decision::Refuse,
     }
 }
 

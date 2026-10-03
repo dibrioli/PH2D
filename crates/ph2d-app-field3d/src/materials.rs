@@ -406,11 +406,7 @@ pub(crate) mod colour_row_tests;
 pub(crate) fn sync(sim: &mut ph2d_ecs::SimWorld, doc_mudou: bool) {
     // ⚠️ `&mut` para uma LEITURA porque `World::query` o exige — a mesma nota do
     // [`crate::scene::world_has_a_part`]. O empréstimo mutável acaba aqui, de propósito.
-    let root = {
-        let world = sim.world_mut();
-        let mut q = world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
-        q.iter(world).next().map(|(e, _)| e)
-    };
+    let root = crate::scene::root_in_hand(sim.world_mut());
     let Some(root) = root else {
         return;
     };

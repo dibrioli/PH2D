@@ -62,7 +62,6 @@ mod image_tools_toggle;
 mod input_map;
 mod io_menu;
 mod menu_bar;
-mod model3d_toggle;
 mod motion_path_handle;
 mod motion_toggle;
 mod new_image;
@@ -135,17 +134,6 @@ pub use command_palette::paint_command_palette;
 /// Mecanismo e a tabela das famílias hoistadas: [`super::pre_dispatch`].
 pub(super) use command_palette::apply as command_palette_pointer;
 
-/// A chave de visibilidade que o pill MODEL alterna (ADR-0161).
-///
-/// ⚠️ Re-exportada para o gate `the_model_pill_toggles_the_panel_the_shell_knows`, que a compara
-/// com a que a crate do painel declara: as duas escrevem o mesmo literal porque a dependência
-/// aponta ao contrário, e uma divergência ali alterna um painel que ninguém pinta — em silêncio,
-/// porque uma chave desconhecida só lê como `false`.
-///
-/// ⚠️ Fora dos marcadores do `ph2d-chrome-sync` de propósito: o bloco entre eles é **gerado**, e
-/// uma linha escrita à mão lá dentro é apagada na próxima corrida do gerador.
-pub use model3d_toggle::PANEL_KEY as MODEL3D_PANEL_KEY;
-
 /// The onion ghost-count↔slider mapping (ADR-0142). Lives next to the modal's painter (which shows
 /// the count) so there is ONE copy; the shell imports it for its read-back / open-seed.
 pub use onion_modal::{MAX_GHOSTS, count_to_frac, frac_to_count};
@@ -198,7 +186,6 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || motion_path_handle::apply(hero, event)
         || falloff_handle::apply(hero, event)
         || vector_toggle::apply(hero, event)
-        || model3d_toggle::apply(hero, event)
         || motion_toggle::apply(hero, event)
         || timeline_segment::apply(hero, event)
         || transport::apply(hero, event)

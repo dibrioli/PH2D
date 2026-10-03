@@ -44,10 +44,6 @@ pub(super) fn seed_tooltips(store: &mut WidgetStore) {
         (ids::TOPBAR_TOKENS, tr("chrome.topbar.tip.tokens_t")),
         (ids::TOPBAR_AUTHORED, tr("chrome.topbar.tip.authored_ui")),
         (
-            ids::TOPBAR_MODEL3D,
-            tr("chrome.topbar.tip.n3d_model_implicit_field"),
-        ),
-        (
             ids::TOPBAR_GRID_SETTINGS,
             tr("chrome.topbar.tip.grid_settings"),
         ),

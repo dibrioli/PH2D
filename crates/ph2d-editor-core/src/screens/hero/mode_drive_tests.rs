@@ -383,3 +383,120 @@ fn the_object_gizmo_shows_only_in_object_mode() {
     c.quadro(Some(ModeRequest::Toggle));
     assert!(object_gizmo_shows(&c.hero));
 }
+
+/// Um Model FALSO: Model3D ▸ Edit, que edita as PARTES da peça (as formas dela).
+#[derive(Default)]
+struct ModelFamily {
+    held: Option<u64>,
+}
+
+const MODEL: u64 = 40;
+const MODEL2: u64 = 41;
+const SHAPE: u64 = 42;
+const SHAPE2: u64 = 43;
+
+impl ModeFamily for ModelFamily {
+    fn modes(&self) -> &'static [(ObjectKind, ObjectMode)] {
+        &[(ObjectKind::Model3D, ObjectMode::Edit)]
+    }
+    fn holds(&mut self, _: ObjectMode, e: u64, _: &mut ToolRegistry) -> bool {
+        self.held == Some(e)
+    }
+    fn enter(&mut self, _: ObjectMode, e: u64, _: &mut ToolRegistry) -> bool {
+        self.held = Some(e);
+        true
+    }
+    fn leave(&mut self, _: ObjectMode, _: u64, _: &mut ToolRegistry) {
+        self.held = None;
+    }
+    fn parts(&mut self, e: u64) -> Option<Vec<u64>> {
+        (e == MODEL).then(|| vec![SHAPE, SHAPE2])
+    }
+    fn owner_of(&mut self, bits: u64) -> Option<u64> {
+        [SHAPE, SHAPE2].contains(&bits).then_some(MODEL)
+    }
+}
+
+fn model_kind(bits: u64) -> ObjectKind {
+    match bits {
+        MODEL | MODEL2 => ObjectKind::Model3D,
+        _ => ObjectKind::Empty,
+    }
+}
+
+/// ⭐⭐ GATE (spec/06 F3, o Edit do Model) — **num modo de PARTES a selecção anda dentro da peça**:
+/// uma forma em Object oferece o Edit do dono; em Edit, as formas (uma, duas, nenhuma) seguram o
+/// modo e o seletor continua a dizer Edit; outra peça é recusada; e o `Tab` de volta devolve a
+/// selecção à peça inteira, para o `Tab` seguinte voltar ao Edit.
+#[test]
+fn a_mode_of_parts_lets_the_selection_move_inside_the_piece() {
+    let mut c = cena();
+    let mut model = ModelFamily::default();
+    let mut quadro = |c: &mut Cena, model: &mut ModelFamily, req| {
+        drive(
+            &mut [model],
+            &model_kind,
+            &|_| "Obj".to_string(),
+            &mut c.tools,
+            &mut c.hero,
+            &mut c.toasts,
+            req,
+        );
+    };
+    c.hero.gizmo.replace_selection(Some(SHAPE));
+    quadro(&mut c, &mut model, None);
+    assert!(
+        c.hero.gizmo.mode.available().contains(&ObjectMode::Edit),
+        "uma forma em Object não oferece o Edit da peça dela"
+    );
+    quadro(&mut c, &mut model, Some(ModeRequest::Toggle));
+    assert_eq!(c.hero.gizmo.mode.locked_entity(), Some(MODEL));
+    c.hero.gizmo.replace_selection(Some(SHAPE));
+    c.hero.gizmo.extra_selection = vec![SHAPE2];
+    quadro(&mut c, &mut model, None);
+    assert_eq!(
+        c.hero.gizmo.mode.current(),
+        ObjectMode::Edit,
+        "duas formas derrubaram o Edit"
+    );
+    assert!(
+        c.hero.gizmo.mode.available().contains(&ObjectMode::Edit),
+        "o seletor perdeu o Edit com uma forma seleccionada"
+    );
+    assert!(
+        refused(&c.hero, Some(MODEL2), false, &mut c.toasts),
+        "outra peça"
+    );
+    assert!(
+        !refused(&c.hero, Some(SHAPE2), true, &mut c.toasts),
+        "acrescentar uma forma"
+    );
+    c.hero.gizmo.replace_selection(None);
+    quadro(&mut c, &mut model, None);
+    assert_eq!(
+        c.hero.gizmo.mode.current(),
+        ObjectMode::Edit,
+        "desseleccionar saiu do Edit"
+    );
+    c.hero.gizmo.replace_selection(Some(SHAPE));
+    quadro(&mut c, &mut model, Some(ModeRequest::Toggle));
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Object);
+    assert_eq!(
+        c.hero.gizmo.selection,
+        Some(MODEL),
+        "o Tab não devolveu a peça inteira"
+    );
+    quadro(&mut c, &mut model, Some(ModeRequest::Toggle));
+    assert_eq!(
+        c.hero.gizmo.mode.current(),
+        ObjectMode::Edit,
+        "o Tab não voltou ao Edit"
+    );
+    c.hero.gizmo.replace_selection(Some(MODEL2));
+    quadro(&mut c, &mut model, None);
+    assert_eq!(
+        c.hero.gizmo.mode.current(),
+        ObjectMode::Object,
+        "outra peça por outra porta e o Edit ficou de pé"
+    );
+}

@@ -83,6 +83,7 @@ pub mod malha_render_tri;
 pub mod materials;
 /// ADR-0161 W25 — a VOZ do módulo: uma peça que não cozinha diz porquê, e diz uma vez.
 pub mod mode;
+pub mod model_mode;
 pub mod notice;
 pub mod object_add;
 pub mod pick;

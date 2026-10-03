@@ -35,6 +35,7 @@ struct Assinatura {
     luzes: Vec<Luz>,
     chao: Option<f32>,
     look: ph2d_view_transform::Look,
+    brilho: ph2d_bloom::Bloom,
     tamanho: (u32, u32),
 }
 
@@ -54,6 +55,17 @@ thread_local! {
     static ULTIMA: RefCell<Vec<Option<Assinatura>>> = const { RefCell::new(Vec::new()) };
 }
 
+/// ⭐ **Esta placa desenha o brilho no Render por malha?** — quem pinta o painel pergunta aqui
+/// antes de oferecer as fileiras dele (um botão que não muda nada é pior do que nenhum). Fica de
+/// fora da trava do desenhista: a resposta nasce com ele e nunca muda.
+#[must_use]
+pub(crate) fn tem_brilho() -> bool {
+    desenhista().is_some() && TEM_BRILHO.get().copied().unwrap_or(false)
+}
+
+/// A resposta do [`tem_brilho`], escrita UMA vez quando o desenhista nasce.
+static TEM_BRILHO: OnceLock<bool> = OnceLock::new();
+
 fn desenhista() -> Option<&'static Mutex<Desenhista>> {
     DESENHISTA
         .get_or_init(|| {
@@ -65,7 +77,10 @@ fn desenhista() -> Option<&'static Mutex<Desenhista>> {
                 tabela: &tabela,
                 piso_luz: ph2d_field_render::POINT_LAMP_MIN_DISTANCE,
             })
-            .map(|fw| Mutex::new(Desenhista { fw, subida: (0, 0) }))
+            .map(|fw| {
+                let _ = TEM_BRILHO.set(fw.tem_brilho());
+                Mutex::new(Desenhista { fw, subida: (0, 0) })
+            })
         })
         .as_ref()
 }
@@ -201,6 +216,7 @@ pub(crate) fn desenha(
         luzes,
         chao,
         look: smoke.look,
+        brilho: smoke.bloom.sanitized(),
         tamanho,
     };
     let igual = ULTIMA.with(|u| {
@@ -261,6 +277,7 @@ pub(crate) fn desenha(
             exposicao: assinatura.look.exposure_stops,
             vista: ph2d_view_transform::wgsl::view_code(assinatura.look.view),
             tamanho,
+            brilho: assinatura.brilho,
         })
     };
     rgba.map_or(Feito::Espera, Feito::Novo)

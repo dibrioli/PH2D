@@ -34,6 +34,10 @@ pub struct Forward {
     chao: wgpu::RenderPipeline,
     sombra: wgpu::RenderPipeline,
     ecra: wgpu::RenderPipeline,
+    /// Os pipelines do brilho — `None` onde a placa não desenha `Rgba16Float` com `4×` (ali não há
+    /// cena-linear para ler, e o painel esconde as fileiras: [`Forward::tem_brilho`]).
+    brilho: Option<crate::gpu_brilho::Brilho>,
+    ecra_ub: wgpu::Buffer,
     g0_bgl: wgpu::BindGroupLayout,
     g0_sombra_bgl: wgpu::BindGroupLayout,
     g1_bgl: wgpu::BindGroupLayout,
@@ -124,11 +128,20 @@ impl Forward {
         self.cor
     }
 
-    /// ⭐ **Quantos pipelines este desenhista já compilou** — fica em `6` para sempre (objeto, chão,
-    /// sombra, cobertura, redução, codificação).
+    /// ⭐ **Quantos pipelines este desenhista já compilou** — fixo desde que nasce: `6` (objeto,
+    /// chão, sombra, cobertura, redução, codificação) e `+4` do brilho onde a placa o tem (objeto e
+    /// chão com a cena-linear, descer, subir). Ligar, desligar ou mexer no brilho não compila nada.
     #[must_use]
     pub fn pipelines_compilados(&self) -> usize {
         self.pipelines
+    }
+
+    /// ⭐ **Esta placa desenha o brilho?** — só com a cena-linear em `Rgba16Float` (ver
+    /// [`crate::gpu_alvo::formato_da_cor`]); sem ela o brilho não existe aqui, e quem pinta o painel
+    /// não oferece as fileiras dele.
+    #[must_use]
+    pub fn tem_brilho(&self) -> bool {
+        self.brilho.is_some()
     }
 
     #[must_use]
@@ -197,7 +210,11 @@ impl Forward {
         });
         let ecra_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-mesh-forward ecra"),
-            entries: &[textura_float(0)],
+            entries: &[
+                textura_float(0),
+                textura_float(1),
+                uniforme(2, false, wgpu::ShaderStages::FRAGMENT),
+            ],
         });
 
         let modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -206,7 +223,7 @@ impl Forward {
         });
         let modulo_ecra = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ph2d-mesh-forward ecra"),
-            source: wgpu::ShaderSource::Wgsl(crate::fonte::ECRA.into()),
+            source: wgpu::ShaderSource::Wgsl(crate::fonte::ecra().into()),
         });
         let layout = |bgls: &[&wgpu::BindGroupLayout]| {
             let v: Vec<Option<&wgpu::BindGroupLayout>> = bgls.iter().copied().map(Some).collect();
@@ -265,7 +282,7 @@ impl Forward {
         let pl_ecra = layout(&[&ecra_bgl]);
         let opts = wgpu::PipelineCompilationOptions::default;
 
-        let objeto = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let objeto_d = wgpu::RenderPipelineDescriptor {
             label: Some("ph2d-mesh-forward objeto"),
             layout: Some(&pl_g0g1),
             vertex: wgpu::VertexState {
@@ -289,10 +306,11 @@ impl Forward {
             multisample: msaa,
             multiview_mask: None,
             cache: None,
-        });
+        };
+        let objeto = device.create_render_pipeline(&objeto_d);
         // ⚠️ O chão vem PRIMEIRO, sem escrever profundidade: ele só existe onde nenhum objeto está
         // (os objetos pintam por cima, opacos) — uma peça abaixo do chão continua inteira.
-        let chao = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let chao_d = wgpu::RenderPipelineDescriptor {
             label: Some("ph2d-mesh-forward chao"),
             layout: Some(&pl_g0),
             vertex: wgpu::VertexState {
@@ -316,7 +334,10 @@ impl Forward {
             multisample: msaa,
             multiview_mask: None,
             cache: None,
-        });
+        };
+        let chao = device.create_render_pipeline(&chao_d);
+        let brilho = (cor == crate::gpu_brilho::LINEAR)
+            .then(|| crate::gpu_brilho::Brilho::novo(&device, cor, &objeto_d, &chao_d));
         let sombra = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("ph2d-mesh-forward sombra"),
             layout: Some(&pl_sombra),
@@ -423,6 +444,13 @@ impl Forward {
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
+        let ecra_ub = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-mesh-forward ecra"),
+            size: crate::gpu_brilho::ECRA,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let pipelines = if brilho.is_some() { 10 } else { 6 };
         let cobertura =
             crate::gpu_cobertura::Cobertura::nova(&device, &modulo, &pl_sombra, &so_posicao);
         Self {
@@ -433,6 +461,8 @@ impl Forward {
             chao,
             sombra,
             ecra,
+            brilho,
+            ecra_ub,
             g0_bgl,
             g0_sombra_bgl,
             g1_bgl,
@@ -448,7 +478,7 @@ impl Forward {
             objetos: None,
             malhas: BTreeMap::new(),
             alvos: None,
-            pipelines: 6,
+            pipelines,
         }
     }
 
@@ -517,8 +547,16 @@ impl Forward {
             return None;
         }
         if self.alvos.as_ref().is_none_or(|a| a.tamanho != (w, h)) {
-            self.alvos = Some(Alvos::novos(&self.device, (w, h), self.cor, &self.ecra_bgl));
+            self.alvos = Some(Alvos::novos(
+                &self.device,
+                (w, h),
+                self.cor,
+                &self.ecra_bgl,
+                &self.ecra_ub,
+            ));
         }
+        let brilho =
+            self.prepara_brilho(&cena.brilho.sanitized(), (w, h), cena.exposicao, cena.vista);
         self.sobe_materiais(cena.materiais);
         let enquadra =
             quadro_impl::enquadra_sombra(cena, |id| self.malhas.get(&id).map(|m| m.caixa));
@@ -531,9 +569,89 @@ impl Forward {
             .filter(|o| self.malhas.contains_key(&o.malha))
             .collect();
         self.sobe_objetos(&visiveis);
-        self.desenha(cena, &visiveis, enquadra.ha_sombra);
+        self.desenha(cena, &visiveis, enquadra.ha_sombra, brilho);
         self.le((w, h))
     }
+}
+
+impl Forward {
+    /// ⭐⭐ **A PORTA DE PARIDADE do brilho** — a cadeia e a codificação sobre imagens dadas por
+    /// quem chama: `olhar` é o que o passe da cena resolveria (pré-multiplicado, já no olhar) e
+    /// `cena` é a cena-linear. A malha fica de fora para a pergunta ser SÓ a do brilho; o gate do
+    /// modelador compara isto com `ph2d_bloom::halo` + `ph2d_field_render::soma_halo`.
+    ///
+    /// `None` onde a placa não tem o brilho, ou com tamanhos que não batem.
+    #[must_use]
+    pub fn brilho_sobre(
+        &mut self,
+        olhar: &[[f32; 4]],
+        cena: &[[f32; 4]],
+        (w, h): (u32, u32),
+        brilho: &ph2d_bloom::Bloom,
+        exposicao: f32,
+        vista: u32,
+    ) -> Option<Vec<u8>> {
+        let n = (w as usize) * (h as usize);
+        if self.brilho.is_none() || n == 0 || olhar.len() != n || cena.len() != n {
+            return None;
+        }
+        if self.alvos.as_ref().is_none_or(|a| a.tamanho != (w, h)) {
+            self.alvos = Some(Alvos::novos(
+                &self.device,
+                (w, h),
+                self.cor,
+                &self.ecra_bgl,
+                &self.ecra_ub,
+            ));
+        }
+        let corre = self.prepara_brilho(&brilho.sanitized(), (w, h), exposicao, vista);
+        let alvos = self.alvos.as_ref()?;
+        sobe_meia(&self.queue, &alvos.resolvida_tex, olhar, (w, h));
+        let com_brilho = self
+            .brilho
+            .as_ref()
+            .zip(alvos.cadeia.as_ref())
+            .filter(|_| corre);
+        if let Some((_, c)) = com_brilho {
+            sobe_meia(&self.queue, &c.linear, cena, (w, h));
+        }
+        let mut enc = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ph2d-mesh-forward brilho sobre"),
+            });
+        self.grava_ecra(&mut enc, alvos, com_brilho);
+        self.queue.submit([enc.finish()]);
+        self.le((w, h))
+    }
+}
+
+/// Uma imagem RGBA `f32` numa textura `Rgba16Float`.
+fn sobe_meia(queue: &wgpu::Queue, t: &wgpu::Texture, v: &[[f32; 4]], (w, h): (u32, u32)) {
+    let dados: Vec<half::f16> = v
+        .iter()
+        .flatten()
+        .map(|x| half::f16::from_f32(*x))
+        .collect();
+    queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture: t,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        bytemuck::cast_slice(&dados),
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(w * 8),
+            rows_per_image: Some(h),
+        },
+        wgpu::Extent3d {
+            width: w,
+            height: h,
+            depth_or_array_layers: 1,
+        },
+    );
 }
 
 /// Uma lista de floats numa textura `R32Float` de [`crate::TAB_W`] colunas.

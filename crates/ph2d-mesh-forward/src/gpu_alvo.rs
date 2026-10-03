@@ -55,9 +55,41 @@ pub(crate) struct Alvos {
     pub cor_msaa: wgpu::TextureView,
     pub profundidade: wgpu::TextureView,
     pub resolvida: wgpu::TextureView,
+    pub resolvida_tex: wgpu::Texture,
     pub saida: wgpu::Texture,
     pub saida_vista: wgpu::TextureView,
     pub ecra_bind: wgpu::BindGroup,
+    /// A cadeia do brilho deste tamanho — nasce no 1.º quadro em que o brilho contribui.
+    pub cadeia: Option<crate::gpu_brilho::Cadeia>,
+}
+
+/// O grupo da codificação: a imagem resolvida, o acumulado do brilho (sem brilho, a própria
+/// resolvida — o passe não a lê) e o uniforme.
+pub(crate) fn ecra_bind(
+    device: &wgpu::Device,
+    bgl: &wgpu::BindGroupLayout,
+    resolvida: &wgpu::TextureView,
+    acumulado: &wgpu::TextureView,
+    ub: &wgpu::Buffer,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("ph2d-mesh-forward ecra"),
+        layout: bgl,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(resolvida),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(acumulado),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: ub.as_entire_binding(),
+            },
+        ],
+    })
 }
 
 pub(crate) const PROFUNDIDADE: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
@@ -92,18 +124,20 @@ impl Alvos {
         tamanho: (u32, u32),
         cor: wgpu::TextureFormat,
         ecra_bgl: &wgpu::BindGroupLayout,
+        ecra_ub: &wgpu::Buffer,
     ) -> Self {
         let v = |t: &wgpu::Texture| t.create_view(&wgpu::TextureViewDescriptor::default());
         let ra = wgpu::TextureUsages::RENDER_ATTACHMENT;
         let cor_msaa = v(&textura(device, tamanho, cor, crate::MSAA, ra));
         let profundidade = v(&textura(device, tamanho, PROFUNDIDADE, crate::MSAA, ra));
-        let resolvida = v(&textura(
+        let resolvida_tex = textura(
             device,
             tamanho,
             cor,
             1,
-            ra | wgpu::TextureUsages::TEXTURE_BINDING,
-        ));
+            ra | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        );
+        let resolvida = v(&resolvida_tex);
         let saida = textura(
             device,
             tamanho,
@@ -112,22 +146,17 @@ impl Alvos {
             ra | wgpu::TextureUsages::COPY_SRC,
         );
         let saida_vista = v(&saida);
-        let ecra_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-mesh-forward ecra"),
-            layout: ecra_bgl,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(&resolvida),
-            }],
-        });
+        let ecra_bind = ecra_bind(device, ecra_bgl, &resolvida, &resolvida, ecra_ub);
         Self {
             tamanho,
             cor_msaa,
             profundidade,
             resolvida,
+            resolvida_tex,
             saida,
             saida_vista,
             ecra_bind,
+            cadeia: None,
         }
     }
 }

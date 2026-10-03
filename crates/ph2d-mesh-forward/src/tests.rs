@@ -103,6 +103,7 @@ fn cena<'a>(objs: &'a [Instancia], mats: &'a [[f32; 48]], cam: Camera) -> Cena<'
         exposicao: 0.0,
         vista: 0,
         tamanho: (96, 96),
+        brilho: ph2d_bloom::Bloom::default(),
     }
 }
 
@@ -163,16 +164,91 @@ fn quadro_pronto_na_hora() {
         modelo: ID,
     }];
     let mats = [material_cinza()];
-    let a = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("a");
-    let girado = fw
-        .quadro(&cena(&objs, &mats, camera(1.0, 0.7)))
-        .expect("girado");
-    let b = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0))).expect("b");
+    // ⚠️ E com o BRILHO ligado: a cadeia é refeita de raiz a cada quadro, nada vem do anterior.
+    for brilho in [ph2d_bloom::Bloom::default(), brilho_aceso()] {
+        let com = |a| Cena {
+            brilho,
+            ..cena(&objs, &mats, camera(1.0, a))
+        };
+        let a = fw.quadro(&com(0.0)).expect("a");
+        let girado = fw.quadro(&com(0.7)).expect("girado");
+        let b = fw.quadro(&com(0.0)).expect("b");
+        assert_eq!(
+            a, b,
+            "a mesma câmara depois de um giro tem de dar o mesmo quadro (brilho {})",
+            brilho.enabled
+        );
+        assert_ne!(a, girado, "o controlo: a câmara girada é outra imagem");
+    }
+}
+
+/// O brilho de um gate: a esfera cinzenta sob o céu chapado (`~0,6` de cena-linear) passa o limiar.
+fn brilho_aceso() -> ph2d_bloom::Bloom {
+    ph2d_bloom::Bloom {
+        enabled: true,
+        params: ph2d_bloom::BloomParams {
+            threshold: 0.2,
+            knee: 0.0,
+            intensity: 1.0,
+            ..ph2d_bloom::BloomParams::default()
+        },
+    }
+}
+
+/// ⭐⭐⭐ **O brilho acende FORA da peça, e nunca escurece** — o halo derrama-se no fundo (que a peça
+/// não cobre) e leva cobertura consigo; desligado, o quadro é AO BYTE o de sempre.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn o_brilho_acende_fora_da_peca() {
+    let Some(mut fw) = desenhista_com_esfera() else {
+        return;
+    };
+    if !fw.tem_brilho() {
+        eprintln!("esta placa não desenha Rgba16Float com 4× — sem brilho, o gate não corre");
+        return;
+    }
+    let objs = [Instancia {
+        malha: 1,
+        modelo: ID,
+    }];
+    let mats = [material_cinza()];
+    let base = cena(&objs, &mats, camera(1.0, 0.0));
+    let sem = fw.quadro(&base).expect("sem");
+    let com = fw
+        .quadro(&Cena {
+            brilho: brilho_aceso(),
+            ..base
+        })
+        .expect("com");
+    let mut desligado = brilho_aceso();
+    desligado.enabled = false;
+    let off = fw
+        .quadro(&Cena {
+            brilho: desligado,
+            ..base
+        })
+        .expect("desligado");
     assert_eq!(
-        a, b,
-        "a mesma câmara depois de um giro tem de dar o mesmo quadro"
+        sem, off,
+        "o controlo: desligado é o quadro de sempre, ao byte"
     );
-    assert_ne!(a, girado, "o controlo: a câmara girada é outra imagem");
+    let mut acesos = 0;
+    for (a, b) in sem.chunks_exact(4).zip(com.chunks_exact(4)) {
+        for k in 0..4 {
+            assert!(b[k] >= a[k], "o brilho escureceu um canal: {a:?} → {b:?}");
+        }
+        if a[3] == 0 && b[3] > 0 {
+            acesos += 1;
+        }
+    }
+    // A esfera tem `24` px de raio num quadro de `96`: o fundo que a rodeia é `~7 400` px.
+    assert!(acesos > 1000, "o halo mal chegou ao fundo: {acesos} píxeis");
+    let px = |img: &[u8], x: usize, y: usize| img[(y * 96 + x) * 4 + 3];
+    assert_eq!(px(&sem, 48, 16), 0, "a 8 px da silhueta é fundo");
+    assert!(
+        px(&com, 48, 16) > 0,
+        "a 8 px da silhueta o halo tem de chegar"
+    );
 }
 
 /// ⭐⭐ **Nada compila ao editar** — mover, mudar a cor e acrescentar um objeto não criam pipeline.
@@ -205,6 +281,19 @@ fn nada_compila_ao_editar() {
         modelo: movido,
     });
     let _ = fw.quadro(&cena(&objs, &mats, camera(1.0, 0.0)));
+    assert_eq!(fw.pipelines_compilados(), antes);
+    // ⭐ E o BRILHO: ligar, mexer no raio, no limiar e na tinta, e desligar — nada compila.
+    let mut b = brilho_aceso();
+    for passo in 0..4 {
+        b.params.radius = 1.0 + passo as f32;
+        b.params.threshold = 0.1 * passo as f32;
+        b.params.tint = [1.0, 0.5, 0.25 * passo as f32, 1.0];
+        b.enabled = passo != 3;
+        let _ = fw.quadro(&Cena {
+            brilho: b,
+            ..cena(&objs, &mats, camera(1.0, 0.0))
+        });
+    }
     assert_eq!(fw.pipelines_compilados(), antes);
 }
 
@@ -254,7 +343,8 @@ fn srgb(x: f32) -> f32 {
 fn o_shader_valida_sem_capacidades() {
     for (nome, src) in [
         ("forward", crate::fonte(&ambiente())),
-        ("ecra", crate::fonte::ECRA.to_string()),
+        ("ecra", crate::fonte::ecra()),
+        ("brilho", crate::fonte::brilho()),
     ] {
         let module = naga::front::wgsl::parse_str(&src)
             .unwrap_or_else(|e| panic!("{nome}: nao parsa: {}", e.emit_to_string(&src)));

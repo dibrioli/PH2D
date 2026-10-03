@@ -196,7 +196,45 @@ impl Forward {
         }
     }
 
-    pub(super) fn desenha(&self, cena: &Cena<'_>, objs: &[&crate::Instancia], ha_sombra: bool) {
+    /// ⭐ **Prepara o brilho do quadro**: a cadeia deste tamanho (só da 1.ª vez) e os uniformes —
+    /// nada compila aqui. Devolve se o brilho corre.
+    pub(super) fn prepara_brilho(
+        &mut self,
+        b: &ph2d_bloom::Bloom,
+        tamanho: (u32, u32),
+        exposicao: f32,
+        vista: u32,
+    ) -> bool {
+        let corre = self.brilho.is_some()
+            && b.contributes()
+            && ph2d_bloom::levels_that_fit(tamanho.0 as usize, tamanho.1 as usize) > 0;
+        let ecra = crate::gpu_brilho::ecra(b, tamanho, exposicao, vista, corre);
+        self.queue.write_buffer(&self.ecra_ub, 0, &ecra);
+        let (true, Some(br), Some(alvos)) = (corre, &self.brilho, &mut self.alvos) else {
+            return false;
+        };
+        let cadeia = alvos.cadeia.get_or_insert_with(|| {
+            crate::gpu_brilho::Cadeia::nova(
+                &self.device,
+                br,
+                tamanho,
+                &alvos.resolvida,
+                &self.ecra_bgl,
+                &self.ecra_ub,
+            )
+        });
+        self.queue
+            .write_buffer(&cadeia.uniforme, 0, &crate::gpu_brilho::passes(b, tamanho));
+        true
+    }
+
+    pub(super) fn desenha(
+        &self,
+        cena: &Cena<'_>,
+        objs: &[&crate::Instancia],
+        ha_sombra: bool,
+        brilho: bool,
+    ) {
         let (Some(alvos), Some((_, _, mat_view)), Some((_, _, g1))) =
             (&self.alvos, &self.materiais, &self.objetos)
         else {
@@ -288,18 +326,34 @@ impl Forward {
                 self.cobertura.grava(&mut enc, &g0s, desenha_objetos);
             }
         }
+        // ⭐ Com o brilho, o MESMO passe escreve a cena-linear num 2.º alvo (o que a cadeia lê).
+        let com_brilho = self
+            .brilho
+            .as_ref()
+            .zip(alvos.cadeia.as_ref())
+            .filter(|_| brilho);
         {
-            let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("ph2d-mesh-forward cena"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &alvos.cor_msaa,
+            let alvo = |view, resolve| {
+                Some(wgpu::RenderPassColorAttachment {
+                    view,
                     depth_slice: None,
-                    resolve_target: Some(&alvos.resolvida),
+                    resolve_target: Some(resolve),
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
                         store: wgpu::StoreOp::Discard,
                     },
-                })],
+                })
+            };
+            let alvos_cor = match com_brilho {
+                Some((_, c)) => vec![
+                    alvo(&alvos.cor_msaa, &alvos.resolvida),
+                    alvo(&c.linear_msaa, &c.linear_vista),
+                ],
+                None => vec![alvo(&alvos.cor_msaa, &alvos.resolvida)],
+            };
+            let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("ph2d-mesh-forward cena"),
+                color_attachments: &alvos_cor,
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &alvos.profundidade,
                     depth_ops: Some(wgpu::Operations {
@@ -313,12 +367,30 @@ impl Forward {
                 multiview_mask: None,
             });
             pass.set_bind_group(0, &g0, &[]);
+            let (chao, objeto) = match com_brilho {
+                Some((b, _)) => (&b.chao, &b.objeto),
+                None => (&self.chao, &self.objeto),
+            };
             if ha_sombra && cena.chao.is_some() {
-                pass.set_pipeline(&self.chao);
+                pass.set_pipeline(chao);
                 pass.draw(0..6, 0..1);
             }
-            pass.set_pipeline(&self.objeto);
+            pass.set_pipeline(objeto);
             desenha_objetos(&mut pass);
+        }
+        self.grava_ecra(&mut enc, alvos, com_brilho);
+        self.queue.submit([enc.finish()]);
+    }
+
+    /// A cadeia do brilho (se houver) e a codificação para o ecrã.
+    pub(super) fn grava_ecra(
+        &self,
+        enc: &mut wgpu::CommandEncoder,
+        alvos: &crate::gpu_alvo::Alvos,
+        com_brilho: Option<(&crate::gpu_brilho::Brilho, &crate::gpu_brilho::Cadeia)>,
+    ) {
+        if let Some((b, c)) = com_brilho {
+            c.grava(enc, b);
         }
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -338,10 +410,10 @@ impl Forward {
                 multiview_mask: None,
             });
             pass.set_pipeline(&self.ecra);
-            pass.set_bind_group(0, &alvos.ecra_bind, &[]);
+            let grupo = com_brilho.map_or(&alvos.ecra_bind, |(_, c)| &c.ecra_bind);
+            pass.set_bind_group(0, grupo, &[]);
             pass.draw(0..3, 0..1);
         }
-        self.queue.submit([enc.finish()]);
     }
 
     pub(super) fn le(&self, (w, h): (u32, u32)) -> Option<Vec<u8>> {

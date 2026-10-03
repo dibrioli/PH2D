@@ -149,3 +149,72 @@ fn a_locked_selection_is_announced_once_not_every_frame() {
         );
     });
 }
+
+/// ⭐⭐⭐ **O BRILHO NO RENDER POR MALHA, pela rota do produto** — no Render por malha o painel
+/// oferece as fileiras do brilho (onde a placa o tem) e não as do Estilo (que o desenhista de jogo
+/// ainda não tem); e ligá-lo PELO PAINEL acende o fundo à volta das bolas no quadro do desenhista.
+///
+/// ⚠️ A metade da placa só corre com aparelho; a do painel corre em todo lado.
+#[test]
+fn in_the_mesh_render_the_panel_offers_the_bloom_and_switching_it_on_lights_the_background() {
+    armed_with(&two_balls(), |sim| {
+        liga_o_render(sim);
+        crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
+        let rows = ph2d_panel_model3d::state::current().rows;
+        let conta = |f: fn(&ph2d_field::Param) -> bool| rows.iter().filter(|r| f(&r.param)).count();
+        let brilho = conta(|p| matches!(p, ph2d_field::Param::Bloom(_)));
+        let estilo = conta(|p| matches!(p, ph2d_field::Param::Style(_)));
+        assert_eq!(estilo, 0, "o Estilo ainda não chegou ao desenhista de jogo");
+        let tem = crate::malha_render_quadro::tem_brilho();
+        if !tem {
+            assert_eq!(brilho, 0, "sem brilho nesta placa, nada de fileiras mortas");
+            println!("sem brilho nesta placa — a metade da placa saltada");
+            return;
+        }
+        assert!(
+            brilho > 0,
+            "o brilho corre no desenhista: as fileiras têm de estar no painel"
+        );
+
+        let doc = crate::smoke::with_smoke(|s| s.doc.clone())
+            .flatten()
+            .expect("o documento");
+        let tamanho = (AREA.w.round() as u32, AREA.h.round() as u32);
+        let quadro = || {
+            let feito = crate::smoke::with_smoke(|s| {
+                crate::malha_render_quadro::desenha(s, s.active, tamanho, &doc, false)
+            })
+            .expect("armado");
+            match feito {
+                crate::malha_render_quadro::Feito::Novo(rgba) => rgba,
+                outro => panic!("o desenhista existe e não desenhou: {outro:?}"),
+            }
+        };
+        let sem = quadro();
+        // ⭐ Pelo painel: o interruptor (posição 0) e o limiar (posição 1) — a arrumação do `pack`.
+        for (slot, value) in [(0u8, 1.0f32), (1, 0.2)] {
+            ph2d_panel_model3d::state::push_intent_for_test(
+                ph2d_panel_model3d::ModelIntent::SetParam {
+                    entity: 0,
+                    param: ph2d_field::Param::Bloom(slot),
+                    value,
+                },
+            );
+        }
+        crate::scene::apply_intents_for_test(sim.world_mut(), &[]);
+        assert!(
+            crate::smoke::with_smoke(|s| s.bloom.enabled).unwrap_or(false),
+            "o intent do painel não chegou ao brilho da cena"
+        );
+        let com = quadro();
+        let acesos = sem
+            .chunks_exact(4)
+            .zip(com.chunks_exact(4))
+            .filter(|(a, b)| a[3] == 0 && b[3] > 0)
+            .count();
+        assert!(
+            acesos > 500,
+            "o halo não chegou ao fundo à volta das bolas: {acesos} píxeis"
+        );
+    });
+}

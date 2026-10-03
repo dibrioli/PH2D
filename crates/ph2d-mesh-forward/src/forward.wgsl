@@ -178,8 +178,8 @@ fn vs_objeto(
     return o;
 }
 
-@fragment
-fn fs_objeto(i: VsOut) -> @location(0) vec4<f32> {
+// A luz que o pixel devolve ao olho, em CENA-linear (antes da exposicao e do olhar).
+fn luz_de_cena(i: VsOut) -> vec3<f32> {
     let m = material(i.material);
     let n = normalize(i.normal);
     let v = vista(i.mundo);
@@ -188,7 +188,28 @@ fn fs_objeto(i: VsOut) -> @location(0) vec4<f32> {
     var c = mx_indirect(m, n, v);
     c = c + luz_das_lampadas(m, n, v, i.mundo);
     c = c + mx_emission(m, n, v);
-    return vec4<f32>(vt_to_display(c, quadro.olhar.x, u32(quadro.olhar.y)), 1.0);
+    return c;
+}
+
+@fragment
+fn fs_objeto(i: VsOut) -> @location(0) vec4<f32> {
+    return vec4<f32>(vt_to_display(luz_de_cena(i), quadro.olhar.x, u32(quadro.olhar.y)), 1.0);
+}
+
+// ⭐ Com o BRILHO ligado o mesmo passe escreve tambem a cena-linear (o que o brilho le): o alvo 0
+// continua a sair ja' no olhar, logo o anti-serrilhado das bordas e' o de sempre.
+struct DoisAlvos {
+    @location(0) olhar: vec4<f32>,
+    @location(1) cena: vec4<f32>,
+};
+
+@fragment
+fn fs_objeto_brilho(i: VsOut) -> DoisAlvos {
+    let c = luz_de_cena(i);
+    var o: DoisAlvos;
+    o.olhar = vec4<f32>(vt_to_display(c, quadro.olhar.x, u32(quadro.olhar.y)), 1.0);
+    o.cena = vec4<f32>(c, 1.0);
+    return o;
 }
 
 // ── A SOMBRA: so' profundidade, vista de cima ────────────────────────────────────────────────────
@@ -304,6 +325,19 @@ const LUMA: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
 
 @fragment
 fn fs_chao(i: ChaoOut) -> @location(0) vec4<f32> {
+    return escuro_do_chao(i);
+}
+
+// ⚠️ O chao NAO entra no brilho (a lei da CPU: so' os pixeis da PECA) — o alvo 1 tem mascara vazia.
+@fragment
+fn fs_chao_brilho(i: ChaoOut) -> DoisAlvos {
+    var o: DoisAlvos;
+    o.olhar = escuro_do_chao(i);
+    o.cena = vec4<f32>(0.0);
+    return o;
+}
+
+fn escuro_do_chao(i: ChaoOut) -> vec4<f32> {
     let up = vec3<f32>(0.0, 1.0, 0.0);
     let ceu_e = ceu_irradiance_sem_caixa(up);
     let caixa_e = ceu_irradiance_da_caixa(up);

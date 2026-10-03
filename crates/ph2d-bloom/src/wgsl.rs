@@ -145,6 +145,43 @@ fn bl_sobe_tenda(sw: u32, sh: u32, dw: u32, dh: u32, i: u32, j: u32, base: vec4<
 }
 "#;
 
+/// ⭐⭐⭐ **A COMPOSIÇÃO, em WGSL** — o gémeo do `ph2d_field_render::brilho::soma_halo`, sobre os
+/// bytes RGBA de UM pixel. `d` é o halo JÁ passado pelo olhar (`vt_to_display`), que é do chamador.
+///
+/// ⚠️ **Uma porta só para os dois dispositivos** — o traçado (compute, `ph2d-field-gpu`) e o
+/// desenhista de jogo (passes de desenho, `ph2d-mesh-forward`). Antes de 02/10 ela vivia dentro do
+/// primeiro; um segundo leitor com uma cópia era a lei duplicada à espera de divergir.
+pub const COMPOE: &str = r#"
+// A curva do `ph2d_color::srgb::srgb_to_linear_unit`, sobre um byte.
+fn bl_srgb_para_linear(b: u32) -> f32 {
+    let v = f32(b) / 255.0;
+    if (v <= 0.04045) { return v / 12.92; }
+    return pow((v + 0.055) / 1.055, 2.4);
+}
+
+// A do `linear_to_srgb_byte`, com o mesmo arredondamento.
+fn bl_linear_para_byte(linear: f32) -> u32 {
+    let v = clamp(linear, 0.0, 1.0);
+    var e = v * 12.92;
+    if (v > 0.0031308) { e = 1.055 * pow(v, 1.0 / 2.4) - 0.055; }
+    return u32(clamp(e * 255.0 + 0.5, 0.0, 255.0));
+}
+
+// ⭐⭐⭐ Soma a luz `d` (ecrã-linear) a um pixel de bytes, e a COBERTURA que essa luz traz consigo,
+// composta como toda camada — arredondada para CIMA, senão a cauda do halo evapora-se (a cor vai em
+// sRGB e a cobertura em linear, e as duas quantizam a ritmos muito diferentes).
+fn bl_compoe(px: vec4<u32>, d: vec3<f32>) -> vec4<u32> {
+    var o = px;
+    if (d.x > 0.0) { o.x = bl_linear_para_byte(bl_srgb_para_linear(px.x) + d.x); }
+    if (d.y > 0.0) { o.y = bl_linear_para_byte(bl_srgb_para_linear(px.y) + d.y); }
+    if (d.z > 0.0) { o.z = bl_linear_para_byte(bl_srgb_para_linear(px.z) + d.z); }
+    let c = clamp(max(d.x, max(d.y, d.z)), 0.0, 1.0);
+    let antes = f32(px.w) / 255.0;
+    o.w = min(u32(ceil((c + (1.0 - c) * antes) * 255.0)), 255u);
+    return o;
+}
+"#;
+
 #[cfg(test)]
 #[path = "wgsl_tests.rs"]
 mod wgsl_tests;

@@ -35,16 +35,16 @@ pub fn publish_snapshot(
     // ⚠️ **Só no modo Render**, e a ausência é a lei — ver o [`crate::estilo::rows`]: no matcap o
     // estilo não corre, e *uma affordance que não pode ser honrada é pior do que nenhuma*.
     //
-    // ⛔ **E não no Render por MALHA** (02/10): o desenhista de jogo ainda não tem o estilo nem o
-    // brilho (o brilho da casa é *compute*, e o WebGL2 do celular não o tem). Mostrar as fileiras
-    // seria pôr botões que não fazem nada — elas voltam quando o porte chegar (handoff, §ABERTO).
-    let no_render = matches!(
+    // ⛔ **E não no Render por MALHA** (02/10): o desenhista de jogo ainda não tem o estilo. Mostrar
+    // as fileiras seria pôr botões que não fazem nada — elas voltam quando o porte chegar (handoff).
+    let render = matches!(
         with_smoke(|s| s.vp().shading),
         Some(crate::shading::Shading::Render)
-    ) && !crate::malha_render_estado::ligado();
+    );
+    let malha = crate::malha_render_estado::ligado();
     rows.extend(crate::estilo::rows(
         with_smoke(|s| s.style).unwrap_or_default(),
-        no_render,
+        render && !malha,
     ));
     // ⭐⭐⭐ **E AS FILEIRAS DO BRILHO** (`docs/Render3d/12`, a `W7`) — a seguir às do estilo, que é
     // a ordem do pipeline: o estilo é por pixel, o brilho é o passe que vem depois dele.
@@ -53,9 +53,12 @@ pub fn publish_snapshot(
     // cauda do sombreamento de CPU e este módulo pinta no dispositivo por omissão, logo as fileiras
     // apareciam à vista e apagadas a dizê-lo. Desde que o gémeo em WGSL existe
     // ([`ph2d_bloom::wgsl`]) elas acendem nos dois caminhos.
+    //
+    // ⭐ **E no Render por MALHA desde 02/10** — a mesma lei em passes de desenho (o WebGL2 não tem
+    // compute), onde a placa desenha a cena-linear em `Rgba16Float`; sem isso, nada de fileiras.
     rows.extend(crate::brilho_painel::rows(
         with_smoke(|s| s.bloom).unwrap_or_default(),
-        no_render,
+        render && (!malha || crate::malha_render_quadro::tem_brilho()),
     ));
     let rows = rows;
     // ⚠️ A lista de verbos é **derivada de `Mode::ALL`**, que é a fonte da contagem. O painel não

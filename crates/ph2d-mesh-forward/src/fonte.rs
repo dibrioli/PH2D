@@ -7,8 +7,24 @@
 /// O corpo do desenhista.
 const FORWARD: &str = include_str!("forward.wgsl");
 
-/// O passe que codifica o pixel para o ecrã.
-pub(crate) const ECRA: &str = include_str!("ecra.wgsl");
+/// ⭐ **O passe que codifica o pixel para o ecrã, com o halo por cima** — a lei do brilho e a da
+/// composição são as do `ph2d_bloom::wgsl` (uma porta para os três motores), o olhar é o da casa.
+#[must_use]
+pub(crate) fn ecra() -> String {
+    format!(
+        "{}\n{}\n{}\n",
+        ph2d_bloom::wgsl::fonte(include_str!("ecra.wgsl")),
+        ph2d_bloom::wgsl::COMPOE,
+        ph2d_view_transform::wgsl::SOURCE
+    )
+}
+
+/// ⭐ **A cadeia do brilho** (descer e subir) — a lei do `ph2d_bloom::wgsl` com a porta de leitura
+/// desta crate no meio.
+#[must_use]
+pub(crate) fn brilho() -> String {
+    ph2d_bloom::wgsl::fonte(include_str!("brilho.wgsl"))
+}
 
 fn f(x: f32) -> String {
     let s = format!("{x:?}");

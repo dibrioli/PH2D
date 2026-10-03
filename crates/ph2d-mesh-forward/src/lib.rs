@@ -19,6 +19,7 @@
 mod fonte;
 mod gpu;
 mod gpu_alvo;
+mod gpu_brilho;
 mod gpu_cobertura;
 
 pub use fonte::fonte;
@@ -117,6 +118,10 @@ pub struct Cena<'a> {
     /// O código do `ph2d_view_transform::wgsl::view_code`.
     pub vista: u32,
     pub tamanho: (u32, u32),
+    /// ⭐ **O brilho** — o MESMO tipo que o Render traçado e o Motion autoram (`ph2d_bloom`). Sai
+    /// em cena-linear, é somado depois do olhar e com a mesma regra sobre a peça e o fundo
+    /// (`ph2d_field_render::soma_halo`). Onde a placa não o tem ([`Forward::tem_brilho`]) é ignorado.
+    pub brilho: ph2d_bloom::Bloom,
 }
 
 #[cfg(test)]

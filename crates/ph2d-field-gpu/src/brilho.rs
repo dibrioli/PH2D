@@ -395,28 +395,15 @@ fn fonte_da_composicao() -> String {
         "struct Comp {{\n    dims: vec4<u32>,\n    olhar: vec4<f32>,\n}};\n\
          @group(0) @binding(0) var<storage, read> halo: array<vec4<f32>>;\n\
          @group(0) @binding(1) var<storage, read_write> imagem: array<u32>;\n\
-         @group(0) @binding(2) var<uniform> C: Comp;\n{}\n{}\n",
+         @group(0) @binding(2) var<uniform> C: Comp;\n{}\n{}\n{}\n",
         ph2d_view_transform::wgsl::SOURCE,
+        ph2d_bloom::wgsl::COMPOE,
         COMPOSICAO
     )
 }
 
+// ⚠️ A lei por pixel é a `ph2d_bloom::wgsl::COMPOE` (uma porta, dois dispositivos); aqui só o acesso.
 const COMPOSICAO: &str = r#"
-// A curva do `ph2d_color::srgb::srgb_to_linear_unit`, sobre um byte.
-fn bl_srgb_para_linear(b: u32) -> f32 {
-    let v = f32(b) / 255.0;
-    if (v <= 0.04045) { return v / 12.92; }
-    return pow((v + 0.055) / 1.055, 2.4);
-}
-
-// A do `linear_to_srgb_byte`, com o mesmo arredondamento.
-fn bl_linear_para_byte(linear: f32) -> u32 {
-    let v = clamp(linear, 0.0, 1.0);
-    var e = v * 12.92;
-    if (v > 0.0031308) { e = 1.055 * pow(v, 1.0 / 2.4) - 0.055; }
-    return u32(clamp(e * 255.0 + 0.5, 0.0, 255.0));
-}
-
 @compute @workgroup_size(8, 8, 1)
 fn compoe(@builtin(global_invocation_id) g: vec3<u32>) {
     if (g.x >= C.dims.x || g.y >= C.dims.y) { return; }
@@ -424,19 +411,7 @@ fn compoe(@builtin(global_invocation_id) g: vec3<u32>) {
     // ⚠️ **O olhar corre UMA vez por pixel e não uma por canal** — a mesma nota do gémeo de CPU.
     let d = vt_to_display(halo[i].xyz, C.olhar.x, C.dims.z);
     let px = imagem[i];
-    var r = px & 255u;
-    var v = (px >> 8u) & 255u;
-    var b = (px >> 16u) & 255u;
-    let a = (px >> 24u) & 255u;
-    if (d.x > 0.0) { r = bl_linear_para_byte(bl_srgb_para_linear(r) + d.x); }
-    if (d.y > 0.0) { v = bl_linear_para_byte(bl_srgb_para_linear(v) + d.y); }
-    if (d.z > 0.0) { b = bl_linear_para_byte(bl_srgb_para_linear(b) + d.z); }
-    // ⭐⭐⭐ **A COBERTURA que esta luz traz consigo**, composta como toda camada — e o
-    // arredondamento é para CIMA, senão a cauda do halo evapora-se (a cor vai em sRGB e a cobertura
-    // em linear, e as duas quantizam a ritmos muito diferentes).
-    let c = clamp(max(d.x, max(d.y, d.z)), 0.0, 1.0);
-    let antes = f32(a) / 255.0;
-    let novo = min(u32(ceil((c + (1.0 - c) * antes) * 255.0)), 255u);
-    imagem[i] = r | (v << 8u) | (b << 16u) | (novo << 24u);
+    let o = bl_compoe(vec4<u32>(px & 255u, (px >> 8u) & 255u, (px >> 16u) & 255u, px >> 24u), d);
+    imagem[i] = o.x | (o.y << 8u) | (o.z << 16u) | (o.w << 24u);
 }
 "#;

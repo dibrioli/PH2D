@@ -144,7 +144,7 @@ pub(crate) fn campo_de_cena(
 /// um mecanismo por confirmar. ⭐ O vizinho (`a luz que a peça devolve ao chão`) foi curado no mesmo
 /// dia, por outra razão: ali a luz estava a ser **dividida pelo alfa da sombra**
 /// ([`crate::premultiplicado`]).
-pub(crate) fn soma_halo(out: &mut [u8], halo: &[[f32; 3]], pres: &Presentation) {
+pub fn soma_halo(out: &mut [u8], halo: &[[f32; 3]], pres: &Presentation) {
     if halo.is_empty() {
         return;
     }

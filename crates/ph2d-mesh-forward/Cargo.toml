@@ -22,6 +22,10 @@ bytemuck = { version = "1", features = ["derive"] }
 ph2d-material = { path = "../ph2d-material" }
 # O OLHAR (exposicao + view transform) em WGSL — a mesma lei do `to_display`.
 ph2d-view-transform = { path = "../ph2d-view-transform" }
+# A LEI do brilho (a mesma do Motion e do Render tracado) e a da composicao, em WGSL — uma porta.
+ph2d-bloom = { path = "../ph2d-bloom" }
+# A porta de paridade sobe imagens `Rgba16Float` (o `half` ja' esta' no lock, pelo naga).
+half = { version = "2", features = ["bytemuck"] }
 pollster = "0.4.0"
 
 [dev-dependencies]

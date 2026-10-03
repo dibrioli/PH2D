@@ -166,6 +166,9 @@ use tiles::{SLABS, TILE, tiled_trace};
 /// mudar de import seria o tecto a mandar na API.*
 pub use apresentacao::Presentation;
 pub use bounce::{BOUNCE_BLUR_PASSES, BounceSlice, blur_bounce, bounce_pass, bounce_slice};
+/// ⭐ A COMPOSIÇÃO do halo sobre os bytes — pública porque o desenhista de jogo
+/// (`ph2d-mesh-forward`) responde a ELA no gate de paridade do modelador.
+pub use brilho::soma_halo;
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Rays, Screen};
 pub use ground::{
     GROUND_SKY_FALLOFF, GROUND_SKY_SAMPLES, GROUND_SKY_SPREAD, GROUND_SKY_STRENGTH, Ground,

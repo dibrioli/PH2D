@@ -40,12 +40,14 @@ PARTIDO = 'o_caminho_partido_passa_a_frente_na_fila'
 SCRUB = 'um_scrub_para_o_meio_da_fila_devolve_a_mesma_corrida'
 AVEZ = 'uma_malha_que_nao_para_de_mudar_serve_todos_a_vez'
 ENTALADO = 'entalado_entre_duas_paredes_o_3d_nao_parte'
+GRELHA = 'a_grelha_das_paredes_da_o_mesmo_que_a_varredura_inteira'
+WALLS = 'crates/ph2d-orca/src/walls.rs'
 
 # grupo -> (comando base, os testes observadores do grupo)
 G = {
     'NAV': (['cargo', 'test', '-p', 'ph2d-nav', '--lib'], [ORDEM, SOBREP, CONTORNA, EXACTO]),
     'NAVMESH': (['cargo', 'test', '-p', 'ph2d-navmesh', '--test', 'it'], [DOMI, QUINA, MOSAICO]),
-    'ORCA': (['cargo', 'test', '-p', 'ph2d-orca', '--lib'], [ENTALADO]),
+    'ORCA': (['cargo', 'test', '-p', 'ph2d-orca', '--lib'], [ENTALADO, GRELHA]),
     'PONTE': (['cargo', 'test', '-p', 'ph2d-physics-ecs', '--test', 'it'],
               [UM_POR, PARTIDO, SCRUB, AVEZ]),
 }
@@ -103,6 +105,12 @@ M = [
      'for (i, (&e, v)) in por_entidade.iter().enumerate() {',
      'for (i, (e, v)) in vez.iter().map(|v| (v.p.entity, v)).enumerate() {',
      (UM_POR,)),
+    # ── a grelha das paredes (§17.7) ──
+    ('M17 a grelha lê só a célula do ponto', 'ORCA', WALLS,
+     'let (ax, ay) = g.celula([pos[0] - range, pos[1] - range]);', 'let (ax, ay) = g.celula(pos);',
+     (GRELHA,)),
+    ('M18 a grelha não tira as repetidas', 'ORCA', WALLS,
+     '        found.dedup_by_key(|x| x.1);\n', '', (GRELHA,)),
 ]
 
 so = set(os.environ['MUTA_SO'].split(',')) if os.environ.get('MUTA_SO') else None

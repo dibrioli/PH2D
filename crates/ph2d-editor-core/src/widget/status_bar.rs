@@ -271,6 +271,20 @@ fn teto_comum(textos: impl Iterator<Item = f32>, disponivel: f32) -> f32 {
 mod tests {
     use super::*;
 
+    /// ⭐ **Encher por água: a folga dos curtos vai para os longos.** Dois curtos (`10`) e dois
+    /// longos (`100`) em `120`: os curtos ficam inteiros e os longos levam `50` cada — nada se
+    /// perde. ⛔ Uma parte IGUAL (`120 / 4 = 30`) deixaria `40 px` vazios e cortaria os longos a
+    /// `30` (mutação que sobreviveu aos gates de fecho em 02/10).
+    #[test]
+    fn a_folga_dos_curtos_vai_para_os_longos() {
+        let textos = [100.0_f32, 10.0, 100.0, 10.0];
+        let teto = teto_comum(textos.into_iter(), 120.0);
+        assert_eq!(teto, 50.0);
+        let pintado: f32 = textos.iter().map(|w| w.min(teto)).sum();
+        assert_eq!(pintado, 120.0, "a largura disponível é toda usada");
+        assert_eq!(teto_comum(textos.into_iter(), 220.0), f32::INFINITY);
+    }
+
     fn fixture() -> StatusBar {
         StatusBar::new(
             NodeId(1),

@@ -147,9 +147,33 @@ mod tests {
     /// píxel do ecrã sob a escala é provado em `screens::hero::na_escala_tests`.
     #[test]
     fn ao_pixel_a_cem_por_cento_e_o_round() {
-        for v in [0.0_f32, 0.49, 0.5, 10.3, -7.75, 1365.6] {
+        // ⚠️ Os vizinhos de um EMPATE (`0,49999`, `10,49995`): sem eles um viés de `1e-4` passava.
+        for v in [0.0_f32, 0.49, 0.49999, 0.5, 10.3, 10.49995, -7.75, 1365.6] {
             assert_eq!(ao_pixel(v).to_bits(), v.round().to_bits(), "{v}");
         }
+    }
+
+    /// ⭐ **A `100 %` não há cena intermédia** — o chrome pinta DIRECTO na cena do quadro. ⛔ Uma
+    /// cena intermédia colada sob `scale(1)` dá o mesmo `draw_data` (a transformada vive noutra
+    /// stream), logo o `a_cem_por_cento_e_o_caminho_de_sempre` não a via: só o rascunho vazio a vê.
+    #[test]
+    fn a_identidade_pinta_directo_sem_rascunho() {
+        let quadrado = |c: &mut VectorScene| {
+            c.fill_rect(
+                ph2d_vector::Rect::new(1.0, 1.0, 9.0, 9.0),
+                ph2d_vector::Color::WHITE,
+            );
+        };
+        let vp = Rect::new(0.0, 0.0, 100.0, 100.0);
+        let rascunho_vazio = || CHROME_LOGICO.with(|c| c.borrow().inner().encoding().is_empty());
+        let mut cena = VectorScene::new();
+        pintar_no_chrome(UiScaleMap::default(), vp, &mut cena, |_, c| quadrado(c));
+        assert!(rascunho_vazio(), "a 100 % o rascunho não é usado");
+        assert!(!cena.inner().encoding().is_empty());
+        pintar_no_chrome(UiScaleMap::new(UiScale::P125), vp, &mut cena, |_, c| {
+            quadrado(c)
+        });
+        assert!(!rascunho_vazio(), "controlo: a 125 % o rascunho é usado");
     }
 
     /// A fábrica é a identidade AO BIT, e ida-e-volta devolve o rect.

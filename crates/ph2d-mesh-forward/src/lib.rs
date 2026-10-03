@@ -155,3 +155,5 @@ pub struct Cena<'a> {
 mod tests;
 #[cfg(test)]
 mod tests_sol;
+#[cfg(test)]
+mod tests_custo_textura;

@@ -131,7 +131,7 @@ muta "$APP/doc.rs" \
   '                    o.tinta.as_ref(),' \
   'P9 save: volta a ler o Option da peca (um Ctrl+S a meio de um traco perde o plano)'
 
-muta "$APP/doc.rs" \
+muta "$APP/doc_migracao.rs" \
   '        V_ANTES_DA_TINTA => {' \
   '        u32::MAX => {' \
   'P10 migracao: um documento v1 deixa de abrir'

@@ -90,7 +90,7 @@ fn com_a_tela_presa_os_gestos_do_painel_vao_para_a_pilha_da_peca() {
     assert_eq!(
         t.panel_layers(),
         Some(t.layers()),
-        "sem a tela, espelhar a peça não chega ao painel"
+        "sem a tela, o painel mostra o documento"
     );
     t.set_source(vec![0; 16 * 16 * 4], 16, 16);
     let antes = t.layers().len();

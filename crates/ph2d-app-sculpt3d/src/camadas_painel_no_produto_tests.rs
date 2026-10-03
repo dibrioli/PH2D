@@ -177,10 +177,19 @@ fn o_painel_de_camadas_muda_a_cor_da_peca_e_o_ctrl_z_a_devolve_ao_bit() {
         "o CONTROLO: o traço pintou a peça"
     );
 
-    // 3. Baixar a opacidade — arrastar o slider da linha dela.
+    // 3. Baixar a opacidade — arrastar o slider da linha dela, em DOIS quadros (um arrasto atravessa
+    //    quadros; o `Ctrl+Z` desfá-lo inteiro).
     let opacidade = painter_layer_widget_id(cima.0, PainterLayerWidget::Opacity);
-    painel.arrasta(&mut p, opacidade, 0.98, 0.2);
+    painel.arrasta(&mut p, opacidade, 0.98, 0.6);
     quadro(Some(&mut s), Some(&mut p));
+    let meio = activa(&s).2;
+    painel.arrasta(&mut p, opacidade, 0.6, 0.2);
+    quadro(Some(&mut s), Some(&mut p));
+    assert!(
+        meio > activa(&s).2,
+        "os dois passos chegaram: {meio:?} → {:?}",
+        activa(&s).2
+    );
     let (_, _, op) = activa(&s);
     assert!(
         op.is_some_and(|o| o < 0.5),

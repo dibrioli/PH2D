@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prova de mutação das CAMADAS na peça — W1 (a pilha, o documento v6) e W2
-# (pintar na camada activa). `docs/3D/30` §10–§11.
+# Prova de mutação das CAMADAS na peça — W1 (a pilha, o documento v6), W2
+# (pintar na camada activa) e W3 (o painel de Layers sobre a pilha). `docs/3D/30` §10–§12.
 #
 # Corre-se pela fatia da linha e com a placa (as corridas `gpu` pedem-na):
 #   PH2D_GPU=1 bash scripts/ph2d-run.sh bash docs/3D/ferramentas/muta_a_pilha_da_peca.sh
@@ -11,7 +11,8 @@
 # (`passed + failed`). Cada corrida tem o seu CONTROLO verde antes.
 set -u
 SO_ANCORAS="${MUTA_SO_ANCORAS:-}"
-SRCS=(crates/ph2d-app-sculpt3d/src crates/ph2d-sculpt3d/src crates/ph2d-mesh-colors/src)
+SRCS=(crates/ph2d-app-sculpt3d/src crates/ph2d-sculpt3d/src crates/ph2d-mesh-colors/src
+      crates/ph2d-tool-painter/src crates/ph2d-panel-painter-layers/src)
 BK=$(mktemp -d)
 for s in "${SRCS[@]}"; do mkdir -p "$BK/$s"; cp -r "$s/." "$BK/$s/"; done
 restore() {
@@ -28,12 +29,15 @@ corre() {
     core) cargo test -p ph2d-sculpt3d --lib -- tinta_fina_camada alfa_tests o_retrato_de_uma_camada 2>&1 ;;
     app) cargo test -p ph2d-app-sculpt3d --lib -- tinta_da_peca::pilha pilha_da_peca doc:: 2>&1 ;;
     gpu) cargo test -p ph2d-app-sculpt3d --lib -- --ignored camadas:: tinta_no_produto_tests::painter::um_traco_do_painter tinta_no_produto_tests::fill 2>&1 ;;
+    tool) cargo test -p ph2d-tool-painter --lib -- piece_layers 2>&1 ;;
+    painel) cargo test -p ph2d-panel-painter-layers --test it -- seam_peca 2>&1 ;;
+    w3gpu) cargo test -p ph2d-app-sculpt3d --lib -- --ignored tinta_no_produto_tests::painel:: 2>&1 ;;
   esac
 }
 contados() { grep -oP 'test result: \w+\. \K[0-9]+(?= passed)|[0-9]+(?= failed)' | awk '{s+=$1}END{print s+0}'; }
 
 if [ -z "$SO_ANCORAS" ]; then
-  for c in core app gpu; do
+  for c in core app gpu tool painel w3gpu; do
     out=$(corre "$c"); rc=$?
     n=$(echo "$out" | contados)
     echo "CONTROLO [$c]: rc=$rc, $n testes"
@@ -85,7 +89,7 @@ muta $A/pilha_da_peca.rs '                    x: x as u32,
                     h: 1,' 'M1 compor_faixa lê a faixa deslocada de uma amostra' app
 muta $A/pilha_da_peca.rs '(n as u64).div_ceil(u64::from(LARGURA_DA_DOBRA))' '((n as u64) / u64::from(LARGURA_DA_DOBRA))' \
   'M2 a dobra perde a última linha parcial' app
-muta $A/pilha_da_peca.rs '        self.planos.retain(|k, _| vivas.contains(k));' '' \
+muta $A/pilha_da_peca.rs '            .partition(|(k, _)| vivas.contains(k));' '            .partition(|_| true);' \
   'M3 apagar uma camada deixa o plano órfão' app
 muta $A/pilha_da_peca.rs '        if px[3] == 255 {' '        if px[3] == 254 {' \
   'M4 o opaco deixa de ser byte/255 exacto' app
@@ -139,6 +143,55 @@ muta $A/tinta_da_peca_pilha.rs '        if d.origem == Origem::Parque {' '      
   'W13 a pilha não volta do estacionamento' app
 muta $A/doc_camadas.rs '                    camadas: match pilha.filter(|p| p.amostras() == t.amostras().len()) {' \
   '                    camadas: match None::<&PilhaDaPeca> {' 'W14 o escritor grava UMA camada em vez da pilha' app
+
+# ── W3: o painel de Layers sobre a pilha da peça ────────────────────────────
+T=crates/ph2d-tool-painter/src/tool
+P=crates/ph2d-panel-painter-layers/src
+muta $A/painter_na_malha.rs '            s.camadas_do_painel(painter);' '' \
+  'P1 o quadro não drena os pedidos do painel' w3gpu
+muta $A/painter_na_malha_camadas.rs '        if !continua {' '        if true {' \
+  'P2 cada passo de um arrasto é um desfazer' w3gpu
+muta $A/painter_na_malha_camadas.rs '            crate::tinta_da_peca::pilha::recompoe(o);' '            let _ = o;' \
+  'P3 os pedidos mudam a pilha e a peça não se recompõe' w3gpu
+muta $A/history_tinta_fina.rs '        crate::tinta_da_peca::pilha::recompoe(obj);' '' \
+  'P4 o desfazer do painel não recompõe a peça' w3gpu
+muta $A/pilha_da_peca_porta.rs '        inversa.extend(sem_camada);' '        drop(sem_camada);' \
+  'P5 a troca perde o plano que fica sem camada' app
+muta $A/pilha_da_peca.rs '        Ok(mortos)' '        Ok({ drop(mortos); BTreeMap::new() })' \
+  'P6 apagar não devolve os planos ao desfazer' app
+muta $A/pilha_da_peca_porta.rs '        if !mesma_estrutura(&self.pilha, &nova) {' '        if false {' \
+  'P7 o metadado muda a estrutura' app
+muta $A/pilha_da_peca_porta.rs '        if nova.root().last() != self.pilha.root().last() {' '        if false {' \
+  'P8 a base sai do fundo pelo metadado' app
+muta $A/pilha_da_peca_porta.rs '        if self.em_traco.is_some() {' '        if false {' \
+  'P9 a porta mexe na pilha com um traço aberto' app
+muta $A/pilha_da_peca.rs '            p.relevo = None;' '' \
+  'P10 a cópia leva o relevo' app
+muta $A/pilha_da_peca.rs '            self.pilha.set_active(a);' '            let _ = a;' \
+  'P11 o ajuste novo rouba a activa' app
+muta $T/trait_impls.rs '        if self.route_piece_layer_event(&event) {' '        if false && self.route_piece_layer_event(&event) {' \
+  'P12 com a tela presa os gestos caem na pilha da tela' tool
+muta $T/piece_layers.rs '        self.piece_layers = Some(m.clone());' '' \
+  'P13 o espelho não segue o pedido' tool
+muta $T/piece_layers.rs '            PanelEvent::SetValue(id, _) => Some(*id),' '            PanelEvent::SetValue(..) => None,' \
+  'P14 o arrasto perde o id do controlo' tool
+muta $T/piece_layers.rs '        if self.panel_shows_the_piece() {
+            self.piece_layers.as_ref()' '        if true {
+            self.piece_layers.as_ref()' 'P15 o painel mostra a pilha da peça fora dela' tool
+muta $A/painter_na_malha.rs '        if let Some(r) = scene.a_activa_recusa_o_traco() {' \
+  '        if let Some(r) = None::<crate::pilha_da_peca::RecusaDaPilha> {' 'P16 o traço não recusa a activa que não é de pintura' w3gpu
+muta $P/peca.rs '    let Some(s) = stack else {
+        return false;
+    };' '    let Some(s) = stack else {
+        return false;
+    };
+    let _ = s;
+    return true;
+    #[allow(unreachable_code)]' 'P17 o painel oferece na peça o que ela não tem' painel
+muta $P/dropdown_popover.rs '        if opt.disabled {' '        if false {' \
+  'P18 a opção apagada continua clicável' painel
+muta $P/adjust_menu.rs '            .disabled(!crate::peca::adjustment_offered(*kind))' '' \
+  'P19 o menu da peça não apaga os de vizinhança' painel
 
 if [ -n "$SO_ANCORAS" ]; then
   echo "PRE-VOO: $sangram de $total ancoras casam exactamente uma vez (ZERO testes corridos)"

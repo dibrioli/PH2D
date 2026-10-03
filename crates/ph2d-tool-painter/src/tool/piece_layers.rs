@@ -63,9 +63,8 @@ impl PainterTool {
     }
 
     /// ⭐⭐ **A escultura espelha a pilha da peça** (`None` = a peça não tem plano de tinta fina). Fora
-    /// da tela da vista o espelho é deitado fora: a pilha da peça não aparece no Painter 2D.
+    /// da tela da vista o painel não o lê ([`Self::panel_layers`]) e soltar a tela deita-o fora.
     pub fn sync_piece_layers(&mut self, stack: Option<&LayerStack>) {
-        let stack = stack.filter(|_| self.panel_shows_the_piece());
         if self.piece_layers.as_ref() != stack {
             self.piece_layers = stack.cloned();
             self.layers_revision = self.layers_revision.wrapping_add(1);

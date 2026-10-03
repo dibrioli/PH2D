@@ -259,7 +259,12 @@ fn o_numero_de_linhas_que_um_cartao_declara_e_o_que_ele_pinta() {
             // ⚠️ Comentários fora ANTES de qualquer contagem — ver [`sem_comentarios`].
             let corpo = sem_comentarios(cru);
             let corpo = corpo.as_str();
-            let Some(pos) = corpo.find("card_frame(") else {
+            // ⚠️ A variante com altura extra (`card_frame_com_extra`, o cartão Wash com o preview do Flow)
+            //    é um cartão também — sem a 2.ª busca ele saía da população em silêncio.
+            let Some(pos) = corpo
+                .find("card_frame(")
+                .or_else(|| corpo.find("card_frame_com_extra("))
+            else {
                 continue;
             };
             let titulo = corpo.lines().next().unwrap_or("?").trim();

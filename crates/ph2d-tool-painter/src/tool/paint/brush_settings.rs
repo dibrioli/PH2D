@@ -518,6 +518,11 @@ pub struct BrushSettings {
     /// **Flow** pattern of the Ragged Edge (`TextureKind` wire u8; `0` = Classic) + its Size / Angle.
     pub flow_kind: u8,
     pub flow_size: f32,
+    /// O Size com que o motor amostra o padrão (o do artista vezes a normalização ao Classic) — o que a
+    /// pré-visualização do Flow desenha.
+    pub flow_size_efetivo: [f32; 2],
+    /// Os params do padrão de Flow (os defaults do kind, postos pelo `set_brush_edge_flow_kind`).
+    pub flow_params: [f32; ph2d_painter_brush::MAX_TEX_PARAMS],
     pub flow_angle: u16,
     /// **Paper Edge** (`0..1`) — how much the boundary follows the paper tooth.
     pub paper_edge: f32,

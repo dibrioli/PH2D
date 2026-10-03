@@ -24,11 +24,33 @@ pub(crate) fn card_frame(
     title: &str,
     n_rows: usize,
 ) -> (f32, f32, f32, f32) {
+    card_frame_com_extra(ctx, theme, x, content_w, y, title, n_rows, 0.0)
+}
+
+/// A largura INTERIOR de um cartão de largura `content_w` — a que o [`card_frame`] devolve às linhas.
+pub(crate) fn card_inner_w(content_w: f32) -> f32 {
+    content_w - 2.0 * Spacing::Sm.px()
+}
+
+/// O [`card_frame`] com `extra_h` px de conteúdo que NÃO é fileira — uma pré-visualização, que tem a
+/// altura das pré-visualizações da casa e não um múltiplo do passo das linhas (o cartão Wash, com o
+/// preview do Flow). `extra_h = 0` é o `card_frame`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn card_frame_com_extra(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    title: &str,
+    n_rows: usize,
+    extra_h: f32,
+) -> (f32, f32, f32, f32) {
     let pad = Spacing::Sm.px();
     let font = TypeToken::Sm.px();
     let title_h = font + Spacing::Sm.px();
     let row_adv = ph2d_tokens::row_pitch_px();
-    let card_h = pad + title_h + n_rows as f32 * row_adv + pad;
+    let card_h = pad + title_h + n_rows as f32 * row_adv + extra_h + pad;
     let card = Rect::new(x, y, content_w, card_h);
     // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
     let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
@@ -75,7 +97,7 @@ pub(crate) fn card_frame(
     );
     (
         x + pad,
-        content_w - 2.0 * pad,
+        card_inner_w(content_w),
         y + pad + title_h,
         y + card_h + ph2d_tokens::control_gap_px(),
     )

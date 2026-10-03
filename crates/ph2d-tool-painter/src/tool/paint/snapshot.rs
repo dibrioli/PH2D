@@ -377,6 +377,8 @@ impl PainterTool {
             warp: b.warp,
             flow_kind: b.edge_flow.kind.to_u8(),
             flow_size: b.edge_flow.size[0],
+            flow_size_efetivo: super::watercolor_flow::size_efetivo_do_flow(&b.edge_flow),
+            flow_params: b.edge_flow.params,
             flow_angle: b.edge_flow.angle_deg,
             paper_edge: b.paper_edge,
             wet_smudge: b.wet_smudge,

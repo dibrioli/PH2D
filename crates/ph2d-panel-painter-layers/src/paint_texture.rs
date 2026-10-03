@@ -314,12 +314,19 @@ pub(crate) fn brush_view_from_texture_layer(
     base
 }
 
+/// A altura da faixa de pré-visualização de uma textura numa largura `content_w` — a ÚNICA conta, que
+/// o cartão Wash também lê para dimensionar a moldura em volta da pré-visualização do Flow.
+pub(crate) fn altura_do_preview(content_w: f32) -> f32 {
+    (content_w * 0.5).clamp(56.0, 120.0) // LITERAL-PX-OK: preview-strip min/max height; CLAMP-OK: literais
+}
+
 /// Real-time preview of the active texture pattern: re-rendered each frame from the published snapshot
 /// (kind + params + size + offset) into a small buffer, then scale-blitted as one image. Grayscale by
 /// default; when the Color Ramp is on it is **ramp-coloured with the stop alpha** (translucent stops
 /// composite over a checker). Bounded resolution keeps it cheap; reflects every knob live.
 /// `image` is the slot's published luminance (heavy → out of the `Copy` snapshot): the Grain image for
-/// the Grain section, the Paper image for the Paper section. `pub(crate)` so `paint_watercolor` reuses it.
+/// the Grain section, the Paper image for the Paper section, the Flow image for the Wash card's Flow.
+/// `pub(crate)` so `paint_watercolor` and `paint_watercolor_flow` reuse it.
 pub(crate) fn paint_texture_preview(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -329,7 +336,7 @@ pub(crate) fn paint_texture_preview(
     brush: BrushSettings,
     image: Option<(std::sync::Arc<Vec<u8>>, u32, u32)>,
 ) -> f32 {
-    let ph = (content_w * 0.5).clamp(56.0, 120.0); // LITERAL-PX-OK: one-off preview-strip min/max height
+    let ph = altura_do_preview(content_w);
     let rect = Rect::new(x, y, content_w, ph);
     // When the Color Ramp is on, bake the EXACT 256-entry sRGB-RGBA LUT the tool paints with (rebuild
     // the real `ColorRamp` + its Mode/Interpolation), so the preview is faithful to every ramp option

@@ -3,7 +3,8 @@
 //!
 //! ⚠️ O cartão Wash passou a DELEGAR estas linhas a `paint_flow_rows`, e o censo
 //! `o_numero_de_linhas_que_um_cartao_declara_e_o_que_ele_pinta` salta os cartões que delegam — a
-//! contagem dele mora aqui, pela tela, nos dois estados (Classic: 2 linhas; padrão: 4).
+//! contagem dele mora aqui, pela tela, nos dois estados (Classic: 2 linhas; padrão: 4 + a faixa da
+//! pré-visualização, com a altura das outras do painel).
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -14,9 +15,9 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
 use ph2d_tool_painter::ids::{
-    PAINTER_WATERCOLOR_FLOW_ANGLE, PAINTER_WATERCOLOR_FLOW_KIND, PAINTER_WATERCOLOR_FLOW_SIZE,
-    PAINTER_WATERCOLOR_PAPER_EDGE, PAINTER_WATERCOLOR_SMOOTH_EDGES, PAINTER_WATERCOLOR_WARP,
-    painter_flow_kind_option_id,
+    PAINTER_WATERCOLOR_CHARGE, PAINTER_WATERCOLOR_FLOW_ANGLE, PAINTER_WATERCOLOR_FLOW_KIND,
+    PAINTER_WATERCOLOR_FLOW_SIZE, PAINTER_WATERCOLOR_PAPER_EDGE, PAINTER_WATERCOLOR_SMOOTH_EDGES,
+    PAINTER_WATERCOLOR_WARP, painter_flow_kind_option_id,
 };
 use ph2d_tool_painter::{PaintMedia, PainterTool, TextureKind};
 use ph2d_ui_testkit::MockPanelHost;
@@ -30,13 +31,11 @@ fn aquarela(flow: TextureKind) -> PainterTool {
 
 fn painted(tool: &PainterTool) -> (MockPanelHost, PainterLayersPanelState, Vec<(NodeId, Rect)>) {
     set_current_brush(Some(tool.brush_settings()));
-    // O preview publicado como a ponte o publica — a tela tem de o pintar sem empurrar nada.
-    let (lum, w, h) = tool.edge_flow_preview();
-    ph2d_panel_painter_layers::set_current_brush_flow_preview(Some((
-        std::sync::Arc::new(lum),
-        w,
-        h,
-    )));
+    // A imagem do Flow publicada como a ponte a publica — a tela tem de a pintar sem empurrar nada.
+    ph2d_panel_painter_layers::set_current_brush_flow_image(
+        tool.brush_flow_image()
+            .map(|(lum, w, h)| (std::sync::Arc::new(lum.to_vec()), w, h)),
+    );
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
     let mut st = PainterLayersPanelState;
     let rects = host.paint::<PainterLayersPanel>(&mut st, Rect::new(0.0, 0.0, 1600.0, 900.0));
@@ -87,14 +86,31 @@ fn as_linhas_do_flow_aparecem_em_ordem_dentro_do_cartao() {
             suave.y > y + 0.5,
             "{flow:?}: o Smooth Edges ficou por cima das linhas do Flow"
         );
-        // A pré-visualização mora entre o menu e a linha seguinte: 3 fileiras de espaço reservado.
+        // A pré-visualização (só com um padrão) mora entre o menu e a linha seguinte, com a altura das
+        // pré-visualizações da casa (a do Shape, do Grain e do Paper): nunca menos que o mínimo dela.
         let menu = rect_de(&rects, PAINTER_WATERCOLOR_FLOW_KIND).expect("Flow pintado");
-        let seguinte = rect_de(&rects, esperadas[1]).expect("a linha depois do preview");
+        let seguinte = rect_de(&rects, esperadas[1]).expect("a linha depois do menu");
         let passo = ph2d_tokens::row_pitch_px();
+        let (minimo, maximo) = if flow == TextureKind::None {
+            (passo - 0.5, passo + 0.5)
+        } else {
+            (passo + 56.0 - 0.5, passo + 120.0 + 2.0 * passo)
+        };
+        // ⚠️ E a MOLDURA cobre-a: um cartão curto demais não move nenhum retângulo de clique dele (o
+        //    censo das linhas não o vê — o Wash delega), mas empurra o cartão SEGUINTE para cima do
+        //    último controle deste. O 1.º controle do cartão Brush tem de nascer abaixo do Smooth Edges.
+        let carga = rect_de(&rects, PAINTER_WATERCOLOR_CHARGE).expect("o cartão Brush pintado");
         assert!(
-            seguinte.y - menu.y >= 4.0 * passo - 0.5,
-            "{flow:?}: o preview do Flow não tem as 3 fileiras dele ({} px entre o menu e a linha seguinte)",
-            seguinte.y - menu.y
+            carga.y >= suave.y + suave.h,
+            "{flow:?}: o cartão seguinte começa em {} px, por cima do Smooth Edges ({} + {})",
+            carga.y,
+            suave.y,
+            suave.h
+        );
+        let vao = seguinte.y - menu.y;
+        assert!(
+            vao >= minimo && vao <= maximo,
+            "{flow:?}: {vao} px entre o menu e a linha seguinte (esperado {minimo}..{maximo})"
         );
         if flow == TextureKind::None {
             assert!(

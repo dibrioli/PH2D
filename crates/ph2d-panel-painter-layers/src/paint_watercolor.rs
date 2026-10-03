@@ -193,7 +193,7 @@ fn paint_wash_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(
+    let (ix, iw, mut ry, next_y) = crate::card::card_frame_com_extra(
         ctx,
         theme,
         x,
@@ -201,6 +201,10 @@ fn paint_wash_card(
         y,
         tr("panel.painter_layers.watercolor.wash"),
         7 + crate::paint_watercolor_flow::flow_row_count(brush),
+        crate::paint_watercolor_flow::altura_extra_do_preview(
+            brush,
+            crate::card::card_inner_w(content_w),
+        ),
     );
     ry = card_row(
         ctx,

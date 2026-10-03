@@ -39,9 +39,7 @@ pub fn publica_previews(painter: &ph2d_tool_painter::PainterTool) {
             painter.brush_paper_image(),
         ));
     });
-    // O Flow (BUGS #31): o canal X do deslocamento que a borda lê — padrão, Classic ou a imagem.
-    se_mudou(&FLUXO, painter.edge_flow_preview_key(), || {
-        let (lum, w, h) = painter.edge_flow_preview();
-        ph2d_panel_painter_layers::set_current_brush_flow_preview(Some((Arc::new(lum), w, h)));
+    se_mudou(&FLUXO, painter.brush_flow_image_version(), || {
+        ph2d_panel_painter_layers::set_current_brush_flow_image(copia(painter.brush_flow_image()));
     });
 }

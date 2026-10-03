@@ -88,71 +88,35 @@ impl MapaDoFluxo {
     }
 }
 
-/// Largura da pré-visualização do Flow, em texels (`3 : 1`; o painel desenha-a no cartão Wash).
-const PREVIEW_W: u32 = 192;
-/// Altura da pré-visualização de um padrão (a janela de canvas é `PREVIEW_W × PREVIEW_H` px, 1:1).
-const PREVIEW_H: u32 = 64;
-
 impl super::PainterTool {
-    /// **A pré-visualização do Flow** — o canal X do deslocamento que a borda vai ler, pela MESMA porta
-    /// (`Classic` = o [`warp_offset`]; um padrão ou a imagem = o [`Amostrador::flow`]), em cinza
-    /// `½ + u/2`. Um padrão mostra uma janela de canvas 1:1 (`PREVIEW_W × PREVIEW_H` px: a escala real
-    /// do detalhe); a imagem do "Use as Flow" mostra-se INTEIRA, no aspecto dela (largura `PREVIEW_W`).
+    /// A imagem do Flow carregada pelo "Use as Flow" `(luminância, w, h)` — a ponte publica-a para a
+    /// pré-visualização, como a do Paper. `None` sem imagem.
     #[must_use]
-    pub fn edge_flow_preview(&self) -> (Vec<u8>, u32, u32) {
-        let s = self.paint.brush.edge_flow;
-        let imagens = self.imagens_da_borda();
-        let cinza = |u: f32| ((0.5 + 0.5 * u.clamp(-1.0, 1.0)) * 255.0 + 0.5) as u8;
-        if s.kind == TextureKind::None {
-            let lum = (0..PREVIEW_W * PREVIEW_H)
-                .map(|i| {
-                    let (x, y) = ((i % PREVIEW_W) as f32, (i / PREVIEW_W) as f32);
-                    cinza(warp_offset(x, y, NoiseTile::NONE).0)
-                })
-                .collect();
-            return (lum, PREVIEW_W, PREVIEW_H);
-        }
-        let Some(a) = Amostrador::flow(s, &imagens, NoiseTile::NONE) else {
-            return (
-                vec![128; (PREVIEW_W * PREVIEW_H) as usize],
-                PREVIEW_W,
-                PREVIEW_H,
-            );
-        };
-        // A janela: 1:1 para um padrão; a extensão da imagem (`W/Size`) para o "Use as Flow".
-        let (jw, jh) = match (s.kind, imagens.fluxo.as_ref()) {
-            (TextureKind::Image, Some(m)) => (
-                (m.width as f32 / s.size[0].max(1e-3)).max(1.0),
-                (m.height as f32 / s.size[1].max(1e-3)).max(1.0),
-            ),
-            _ => (PREVIEW_W as f32, PREVIEW_H as f32),
-        };
-        let h = ((PREVIEW_W as f32 * jh / jw).round() as u32).clamp(8, 3 * PREVIEW_H);
-        let e = a.estat();
-        let lum = (0..PREVIEW_W * h)
-            .map(|i| {
-                let x = ((i % PREVIEW_W) as f32 + 0.5) * jw / PREVIEW_W as f32;
-                let y = ((i / PREVIEW_W) as f32 + 0.5) * jh / h as f32;
-                cinza(a.unidade(&e, x as i64, y as i64).0)
-            })
-            .collect();
-        (lum, PREVIEW_W, h)
+    pub fn brush_flow_image(&self) -> Option<(&[u8], u32, u32)> {
+        self.paint
+            .flow_map
+            .imagem
+            .as_ref()
+            .map(super::brush_settings::BrushTextureImage::parts)
     }
 
-    /// Muda quando a [`Self::edge_flow_preview`] muda: as settings do Flow e a versão da imagem dele.
+    /// Versão de [`Self::brush_flow_image`] — a ponte republica só quando muda.
     #[must_use]
-    pub fn edge_flow_preview_key(&self) -> u64 {
-        let s = self.paint.brush.edge_flow;
-        let mut h = 0xcbf2_9ce4_8422_2325_u64;
-        let mut mistura = |v: u64| h = (h ^ v).wrapping_mul(0x0000_0100_0000_01b3);
-        mistura(u64::from(s.kind.to_u8()));
-        mistura(u64::from(s.angle_deg));
-        for f in s.size.iter().chain(&s.offset).chain(&s.params) {
-            mistura(u64::from(f.to_bits()));
-        }
-        mistura(self.paint.flow_map.versao);
-        h
+    pub fn brush_flow_image_version(&self) -> u64 {
+        self.paint.flow_map.versao
     }
+}
+
+/// O Size com que o motor AMOSTRA um padrão de Flow — o do artista vezes a escala que o normaliza ao
+/// Classic ([`escala_do_flow`]). A pré-visualização desenha o padrão com ele, para mostrar o que a borda
+/// segue; o Classic e a imagem devolvem o Size verbatim.
+#[must_use]
+pub(super) fn size_efetivo_do_flow(s: &TextureSettings) -> [f32; 2] {
+    if matches!(s.kind, TextureKind::None | TextureKind::Image) {
+        return s.size;
+    }
+    let base = escala_do_flow(s);
+    [s.size[0] * base, s.size[1] * base]
 }
 
 /// De que imagem um [`Amostrador`] lê (a outra metade da chave do memo).

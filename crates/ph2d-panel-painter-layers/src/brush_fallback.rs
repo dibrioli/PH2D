@@ -296,6 +296,8 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     warp: 6.0,    // LITERAL-PX-OK: default boundary warp px (mirrors BrushSpec::default)
     flow_kind: 0, // Classic (mirrors BrushSpec::default().edge_flow)
     flow_size: 1.0, // LITERAL-PX-OK: TextureSettings::default size (mirrors BrushSpec::default)
+    flow_size_efetivo: [1.0, 1.0], // LITERAL-PX-OK: Classic = o Size verbatim
+    flow_params: [0.5; 6], // LITERAL-PX-OK: neutral texture params (Classic não os lê)
     flow_angle: 0,
     paper_edge: 0.0, // LITERAL-PX-OK: the boundary ignores the paper (mirrors BrushSpec::default)
     wet_smudge: 0.0, // LITERAL-PX-OK: Wet Mix off by default (mirrors BrushSpec::default)

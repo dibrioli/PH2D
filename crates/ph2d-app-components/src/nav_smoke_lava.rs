@@ -92,6 +92,7 @@ fn inimigo(world: &mut World, nome: &str, em: [f32; 2], cor: [f32; 4], evita: bo
         nome,
         Vec2::new(em[0], em[1]),
         RAIO_PEQUENO,
+        RAIO_HEROI,
         VELOCIDADE,
         cor,
         ("caught you", ""),

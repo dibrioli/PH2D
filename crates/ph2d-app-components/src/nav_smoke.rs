@@ -49,22 +49,30 @@ const CONTROLO_RGBA: [f32; 4] = [0.55, 0.57, 0.60, 1.0];
 pub const CENTRO: [f32; 2] = [0.0, 0.8];
 /// O interior do recinto (meio): `x ∈ [−5,8 ; 5,8]`, `y ∈ [−2,0 ; 3,6]`.
 pub const MEIO_RECINTO: [f32; 2] = [5.8, 2.8];
-/// Espessura das paredes (meia).
-const MEIA_PAREDE: f32 = 0.25;
-/// A parede de baixo-a-meio (`x = 2,7`) deixa uma PORTA junto ao chão com esta largura.
-pub const PORTA: f32 = 1.0;
-/// O raio do corpo do VERMELHO — passa a porta com folga (`2·r < PORTA`).
-pub const RAIO_PEQUENO: f32 = 0.35;
+/// Espessura das paredes do labirinto (meia).
+///
+/// ⚠️ (W8) **A cena `=1` estava APERTADA** (smoke do dono, 01/10: *«não sei se intencionalmente»*):
+/// paredes de `0,5 m` e um roxo de `1,3 m` num recinto que já enche o ecrã. A cura escala os CORPOS,
+/// a porta e as paredes — a lição (o pequeno passa, o grande não) é a mesma, com o dobro do ar.
+const MEIA_PAREDE: f32 = 0.12;
+/// A parede de baixo-a-meio deixa uma PORTA junto ao chão com esta largura.
+pub const PORTA: f32 = 0.7;
+/// O raio do corpo do VERMELHO do labirinto — passa a porta com folga (`2·r < PORTA`).
+pub const LAB_RAIO_PEQUENO: f32 = 0.25;
 /// O raio do corpo do ROXO — não passa a porta (`2·r > PORTA`).
-pub const RAIO_GRANDE: f32 = 0.65;
-/// O raio do herói.
+pub const RAIO_GRANDE: f32 = 0.45;
+/// O raio do herói do labirinto.
+pub const LAB_RAIO_HEROI: f32 = 0.25;
+/// O raio de um perseguidor das cenas `=3`/`=4` (a lava e o guarda) — o de antes da W8.
+pub const RAIO_PEQUENO: f32 = 0.35;
+/// O raio do herói das cenas `=3`/`=4`.
 pub const RAIO_HEROI: f32 = 0.35;
 /// Onde a parede da porta está.
 pub const X_PORTA: f32 = 2.0;
 /// O `y` do chão do recinto (a porta abre junto dele).
 pub const Y_CHAO: f32 = CENTRO[1] - MEIO_RECINTO[1];
 
-const _: () = assert!(2.0 * RAIO_PEQUENO < PORTA && 2.0 * RAIO_GRANDE > PORTA);
+const _: () = assert!(2.0 * LAB_RAIO_PEQUENO < PORTA && 2.0 * RAIO_GRANDE > PORTA);
 
 /// O que o roteador montou — o nível, quem fica ESCOLHIDO (o Inspector mostra-o) e as peças da cena.
 pub struct Montada {
@@ -121,6 +129,7 @@ pub(crate) fn perseguidor(
     nome: &str,
     em: Vec2,
     raio: f32,
+    raio_do_alvo: f32,
     velocidade: f32,
     cor: [f32; 4],
     sinais: (&str, &str),
@@ -146,7 +155,7 @@ pub(crate) fn perseguidor(
                 target: NavTarget::Named(stable_name_id("Hero")),
                 // ⚠️ **Os corpos COLIDEM**: o centro do perseguidor nunca chega a menos de
                 // `r + r_herói` do centro do herói, logo «chegar» é encostar — com uma folga.
-                arrive_distance: raio + RAIO_HEROI + 0.15,
+                arrive_distance: raio + raio_do_alvo + 0.15,
                 on_arrived: sinais.0.to_owned(),
                 on_no_path: sinais.1.to_owned(),
                 ..NavAgent::default()
@@ -214,12 +223,14 @@ fn cena_um(world: &mut World) -> Montada {
                 kind: BodyKind::Kinematic,
             },
             Collider {
-                shape: ColliderShape::Ball { radius: RAIO_HEROI },
+                shape: ColliderShape::Ball {
+                    radius: LAB_RAIO_HEROI,
+                },
                 ..Collider::default()
             },
             Sprite::atlas(
                 WHITE_TILE_KEY,
-                [RAIO_HEROI * 2.0, RAIO_HEROI * 2.0],
+                [LAB_RAIO_HEROI * 2.0, LAB_RAIO_HEROI * 2.0],
                 HEROI_RGBA,
             ),
             TopDownPlayer::from_law(TopDownLaw {
@@ -235,7 +246,8 @@ fn cena_um(world: &mut World) -> Montada {
         world,
         "Chaser",
         Vec2::new(-4.5, -1.2),
-        RAIO_PEQUENO,
+        LAB_RAIO_PEQUENO,
+        LAB_RAIO_HEROI,
         2.5,
         VERMELHO_RGBA,
         ("caught you", ""),
@@ -245,6 +257,7 @@ fn cena_um(world: &mut World) -> Montada {
         "Big Chaser",
         Vec2::new(-4.5, 1.0),
         RAIO_GRANDE,
+        LAB_RAIO_HEROI,
         2.0,
         ROXO_RGBA,
         ("", "too big for the door"),
@@ -258,10 +271,16 @@ fn cena_um(world: &mut World) -> Montada {
                 kind: BodyKind::Kinematic,
             },
             Collider {
-                shape: ColliderShape::Ball { radius: 0.3 },
+                shape: ColliderShape::Ball {
+                    radius: LAB_RAIO_PEQUENO,
+                },
                 ..Collider::default()
             },
-            Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.6], CONTROLO_RGBA),
+            Sprite::atlas(
+                WHITE_TILE_KEY,
+                [LAB_RAIO_PEQUENO * 2.0, LAB_RAIO_PEQUENO * 2.0],
+                CONTROLO_RGBA,
+            ),
             ProjectileMotion::from_law(
                 ProjectileLaw {
                     initial_speed: 2.5,

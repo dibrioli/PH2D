@@ -37,6 +37,9 @@ pollster = "0.4.0"
 [dev-dependencies]
 # O PARSE e a VALIDACAO do shader sem aparelho (o mesmo major do wgpu 29), com capacidades VAZIAS.
 naga = { version = "29.0.4", features = ["wgsl-in"] }
+# As fixturas da triplanar (PNG) no gate de paridade.
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-imageio-png = { path = "../ph2d-imageio-png" }
 
 [lints]
 workspace = true

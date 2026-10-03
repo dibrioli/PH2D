@@ -174,3 +174,5 @@ mod tests;
 mod tests_sol;
 #[cfg(test)]
 mod tests_custo_textura;
+#[cfg(test)]
+mod tests_textura;

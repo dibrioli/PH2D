@@ -6495,6 +6495,8 @@ dependencies = [
  "half",
  "naga",
  "ph2d-bloom",
+ "ph2d-imageio",
+ "ph2d-imageio-png",
  "ph2d-material",
  "ph2d-sky",
  "ph2d-style",

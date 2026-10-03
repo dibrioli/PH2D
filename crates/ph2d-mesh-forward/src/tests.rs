@@ -71,7 +71,7 @@ pub(crate) const ID: [[f32; 4]; 4] = [
 ];
 
 /// Ortográfica a olhar para `−z`, meia-largura `s`, rodada `a` radianos em torno de `y`.
-fn camera(s: f32, a: f32) -> Camera {
+pub(crate) fn camera(s: f32, a: f32) -> Camera {
     let (c, si) = (a.cos(), a.sin());
     // vista: roda o mundo por −a em y; recorte: x/s, y/s, z = 0,5 − 0,1·z_vista.
     let vp = [
@@ -323,7 +323,7 @@ fn nada_compila_ao_editar() {
 }
 
 /// Os céus dos gates, pré-filtrados UMA vez por corrida (⚠️ em `--release`: o atlas é trabalho de CPU).
-fn ceu_de(e: ph2d_sky::Embarcado) -> &'static ph2d_sky::Ceu {
+pub(crate) fn ceu_de(e: ph2d_sky::Embarcado) -> &'static ph2d_sky::Ceu {
     use std::collections::BTreeMap;
     use std::sync::{Mutex, OnceLock};
     static CEUS: OnceLock<Mutex<BTreeMap<ph2d_sky::Embarcado, &'static ph2d_sky::Ceu>>> =
@@ -775,7 +775,7 @@ fn a_subsuperficie_le_a_curvatura_do_material() {
     );
 }
 
-fn srgb(x: f32) -> f32 {
+pub(crate) fn srgb(x: f32) -> f32 {
     let c = x.clamp(0.0, 1.0);
     if c <= 0.003_130_8 {
         c * 12.92

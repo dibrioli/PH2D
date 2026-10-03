@@ -15,7 +15,7 @@ mod embarcadas;
 mod mipmaps;
 pub mod wgsl;
 
-pub use embarcadas::Embarcada;
+pub use embarcadas::{Embarcada, Imagem, junta_nrh};
 pub use mipmaps::{Mipmaps, srgb_para_linear};
 
 /// O lado das imagens que a placa guarda: medido (handoff AS_TEXTURAS §2) — `1024` custa o mesmo

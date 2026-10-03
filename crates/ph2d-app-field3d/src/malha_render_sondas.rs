@@ -38,6 +38,9 @@ fn sonda_do_render_por_malha() {
     for n in cenas {
         let doc = crate::smoke::scenes::scene(n);
         armed_with(&doc, |sim| {
+            // ⛔ O mundo novo de cada cena dá à raiz o MESMO `Entity` da anterior, e o estado do
+            // Render (por thread) não recomeçava: a 2.ª cena era medida com as malhas da 1.ª.
+            crate::malha_render_estado::sync(sim, false, false);
             let slot = crate::shading::Shading::ALL
                 .iter()
                 .position(|s| *s == crate::shading::Shading::Render)
@@ -57,9 +60,17 @@ fn sonda_do_render_por_malha() {
                     world.entity_mut(*e).insert(m);
                 }
             }
+            // `PH2D_SONDA_BRILHO=1` liga o brilho de fábrica — o que o artista tem ao clicar «On».
+            let brilho = std::env::var("PH2D_SONDA_BRILHO").is_ok_and(|v| v == "1");
             crate::smoke::with_smoke(|s| {
                 s.vp_mut().cam = ph2d_field_render::Orbit::from_yaw_pitch(0.72, 0.52);
                 crate::input::frame_the_part(s);
+                if brilho {
+                    s.set_bloom(ph2d_field_render::Bloom {
+                        enabled: true,
+                        ..s.bloom
+                    });
+                }
             });
             let t0 = std::time::Instant::now();
             loop {
@@ -110,7 +121,9 @@ fn sonda_do_render_por_malha() {
                 )
             })
             .unwrap_or_default();
-            let caminho = std::path::Path::new(&dir).join(format!("render_malha_cena_{n}.ppm"));
+            let sufixo = if brilho { "_brilho" } else { "" };
+            let caminho =
+                std::path::Path::new(&dir).join(format!("render_malha_cena_{n}{sufixo}.ppm"));
             grava_ppm(&caminho, &primeira.expect("quadro"), tamanho);
             println!(
                 "SONDA cena {n}: {objs} objetos · {tris} triângulos · entrar {entrar:.0} ms · quadro a girar \

@@ -1,6 +1,7 @@
 //! ⭐⭐ **O DESENHISTA NA PLACA** — pipelines compilados UMA vez (mover, mudar a cor ou acrescentar
-//! um objeto não compila nada: gate `nada_compila_ao_editar`), malhas subidas por id, e o quadro em
-//! quatro passes: sombra → chão + objetos (MSAA, resolvido) → codificação → leitura.
+//! um objeto não compila nada: gate `nada_compila_ao_editar`), malhas subidas por id, e o quadro:
+//! sombra → chão + objetos (MSAA, resolvido; com o brilho, também a cena-linear) → a cadeia do
+//! brilho ([`crate::gpu_brilho`]) → codificação (com o halo) → leitura.
 
 use std::collections::BTreeMap;
 

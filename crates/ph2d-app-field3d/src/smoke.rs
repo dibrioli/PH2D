@@ -157,7 +157,12 @@ fn boot() -> Option<Smoke> {
         // ⭐ O material que ESTA cena pede — ver [`scenes::materiais_da_cena`].
         seed_materials: scenes::materiais_da_cena(n),
         isolated: v.isolated,
-        bloom: v.bloom,
+        // `PH2D_FIELD_BLOOM=1` abre com o brilho de fábrica LIGADO — para FOTOGRAFAR, como o
+        // `PH2D_FIELD_SHADING=render` abaixo; o dono vai pela fileira «Bloom».
+        bloom: ph2d_field_render::Bloom {
+            enabled: v.bloom.enabled || std::env::var("PH2D_FIELD_BLOOM").as_deref() == Ok("1"),
+            ..v.bloom
+        },
         flight: None,
         flight_gen: 0,
         flight_fresh: false,

@@ -311,22 +311,42 @@ fn a_cor_e_a_lei_da_casa() {
         modelo: ID,
     }];
     let mats = [material_cinza()];
-    let img = fw
-        .quadro(&cena(&objs, &mats, camera(1.0, 0.0)))
-        .expect("quadro");
+    // ⭐ E o TOM DE CÂMARA: a exposição e a vista entram pela mesma lei do `to_display`.
+    let olhares = [
+        (0.0, ph2d_view_transform::ViewTransform::Standard),
+        (1.0, ph2d_view_transform::ViewTransform::Neutral),
+        (-1.0, ph2d_view_transform::ViewTransform::Standard),
+        (2.0, ph2d_view_transform::ViewTransform::Neutral),
+    ];
     let i = (48 * 96 + 48) * 4;
     // No meio da esfera a normal e a vista são `+z`.
     let s = ph2d_material::OpenPbr::default().prepare();
     let c = s.indirect([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], &Chapado);
-    let d = ph2d_view_transform::to_display(c, 0.0, ph2d_view_transform::ViewTransform::Standard);
-    for k in 0..3 {
-        let esperado = (srgb(d[k]) * 255.0 + 0.5).floor();
-        let lido = f32::from(img[i + k]);
-        assert!(
-            (lido - esperado).abs() <= 2.0,
-            "canal {k}: placa {lido} contra CPU {esperado}"
-        );
+    let mut vistos = Vec::new();
+    for (exposicao, vista) in olhares {
+        let img = fw
+            .quadro(&Cena {
+                exposicao,
+                vista: ph2d_view_transform::wgsl::view_code(vista),
+                ..cena(&objs, &mats, camera(1.0, 0.0))
+            })
+            .expect("quadro");
+        let d = ph2d_view_transform::to_display(c, exposicao, vista);
+        for k in 0..3 {
+            let esperado = (srgb(d[k]) * 255.0 + 0.5).floor();
+            let lido = f32::from(img[i + k]);
+            assert!(
+                (lido - esperado).abs() <= 2.0,
+                "{vista:?}{exposicao:+}, canal {k}: placa {lido} contra CPU {esperado}"
+            );
+        }
+        vistos.push(img[i]);
     }
+    vistos.dedup();
+    assert!(
+        vistos.len() > 2,
+        "o controlo: os olhares têm de dar cores diferentes ({vistos:?})"
+    );
 }
 
 fn srgb(x: f32) -> f32 {

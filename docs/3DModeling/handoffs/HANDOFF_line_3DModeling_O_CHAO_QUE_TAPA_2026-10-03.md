@@ -196,9 +196,21 @@ dele e das vizinhas, e a bola grande fecha escura onde encosta.
 - ✅ **Smoke OK (03/10)** depois das duas curas: *«ok. Mas não temos reflexo dos objetos ao lado. isso é o
   esperado?»* — sim, até às capturas de reflexo (§5, o próximo item recomendado).
 
-## §8 — A PRÓXIMA ONDA
+## §8 — A PRÓXIMA ONDA — ⭐ ORDEM DO DONO (03/10)
 
-Candidatos sem ordem: (a) retirar o Render traçado (decisão de produto — perguntar ao dono) · (c) mobile
-real: o quadro, o passe do céu do chão, o contacto e agora o chão que tapa (`+0,30 ms` aqui) · (d) dentes
-de 2–3 px na quina côncava (§5-b do [O_RENDER_POR_MALHA](HANDOFF_line_3DModeling_O_RENDER_POR_MALHA_2026-10-02.md)) ·
-(e) LOD. O candidato (b) fecha com esta onda.
+> *«lembre-se que buscamos o padrão Unreal/Fortnite ou Plants vs Zombies. Pode apagar o render antigo»* —
+> a régua de qualidade continua a de 02/10; toda decisão técnica mede-se contra ela.
+
+1. **RETIRAR O RENDER TRAÇADO — APROVADO.** O ADR-0176 dizia «sai quando o rápido for aprovado»: está.
+   Antes de apagar, MEDIR quem ainda o lê: o Matcap NÃO é o traçado do Render (fica); gates que o usam
+   (os de paridade CPU↔placa do material/estilo/brilho que comparam com `ph2d_field_render` podem ter de
+   mudar de referência para a CPU da própria lei, não sair); `PH2D_FIELD_RENDER_TRACADO`; o `ground_sky` /
+   `ground_bounce` (o chão do traçado). Crates/ficheiros que só ele usa saem; o que o Matcap ou os gates de
+   lei usam fica. Gate de que nenhum caminho de produto chega ao traçado; censos e catracas a baixar (anotar
+   no handoff de integração). Smoke: o Render continua igual e o Matcap intacto.
+2. **CAPTURAS DE REFLEXO** (recomendado ao dono, ver §5): as peças brilhantes refletem as vizinhas e as
+   sombras delas; sai a máscara `sombra_propria`. Oráculo: as colunas `espelho_*`/`*_solo` já existem
+   (o Cycles mostra as vizinhas).
+3. Sem ordem: (c) mobile real (o quadro, o céu do chão, o contacto, o chão que tapa `+0,30 ms` aqui) ·
+   (d) dentes de 2–3 px na quina côncava (§5-b do [O_RENDER_POR_MALHA](HANDOFF_line_3DModeling_O_RENDER_POR_MALHA_2026-10-02.md)) ·
+   (e) LOD. O candidato (b) fechou com esta onda.

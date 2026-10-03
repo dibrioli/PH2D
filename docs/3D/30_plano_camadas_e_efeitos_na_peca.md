@@ -159,3 +159,49 @@ projects.blender.org/blender/blender/issues/155954 · code.blender.org/2022/02/l
 devtalk.blender.org (2025-1-14 sculpt-paint meeting) · ZBrush: help.maxon.net (3D layers) · 3DCoat:
 3dcoat.com/documentation (blending panel, polypaint) · Mari: learn.foundry.com (adjustments, ptex) ·
 Procreate: help.procreate.com (3d-painting/layers) · Yuksel 2010, *Mesh Colors*.
+
+## 10. W1 — a pilha (02/10)
+
+**Entregue:** `ph2d_app_sculpt3d::pilha_da_peca` (`PilhaDaPeca` · `PlanoDaCamada` · `achata`) e o
+documento **v6** (`doc_camadas.rs`). Gates em `pilha_da_peca_tests.rs` e `doc_camadas_tests.rs`.
+
+| porta | onde |
+|---|---|
+| a pilha + os planos, e o invariante | `PilhaDaPeca` · `sincronizada()` |
+| as operações que mexem em amostras | `nova_camada` · `nova_mascara` · `novo_ajuste` · `duplica` · `apaga` (+ `define_*`, metadado) |
+| a cor da peça | `compor()` / `compor_faixa(a, b)` = `ph2d_tool_painter::composite_region` sobre a dobra `1024 × ⌈N/1024⌉`, ao bit |
+| a peça composta no `Tinta` | `pinta_tinta(tinta, fundo)` → `achata` (opaco = `byte/255` exacto; senão mistura em luz sobre o fundo) |
+| o fundo por baixo da pilha | `tinta_da_peca::semente` (a cor por vértice — a mesma porta de onde um plano nasce) |
+| «este ajuste lê a disposição da imagem?» | `AdjustmentKind::reads_the_image_layout` (`ph2d-painter-effects`) — o compositor 2D passou a ler a mesma pergunta |
+
+**Premissas que o código derrubou (técnicas, delegadas):**
+
+1. **A `PilhaDaPeca` mora em `ph2d-app-sculpt3d`, não em `ph2d-sculpt3d`**: ela implementa
+   `LayerPixelSource` e guarda um `LayerStack`, e a `ph2d-sculpt3d` (o núcleo da escultura) não
+   depende da `ph2d-tool-painter` — puxar a ferramenta 2D inteira para o núcleo é a direcção errada.
+2. **Até à W2 a peça NÃO segura uma pilha em memória.** Seis sítios escrevem o `Tinta` hoje
+   (`tinta_fina`, a tela do Painter, `preenche`, `tela_semente`, `uniformiza`, o desfazer): uma pilha
+   guardada ao lado ficaria velha no 1.º traço e o `Ctrl+S` gravaria a velha. ⇒ o `encode` deriva a
+   pilha do plano (`PilhaDaPeca::de_tinta`: UMA camada opaca, `nome_da_base()`, chave `app.sculpt3d.pilha_da_peca.camada_de_base`) e o `decode` compõe a
+   pilha gravada no `Tinta`. A W2 põe a pilha na `SceneObject` **e** redirecciona os seis escritores
+   — as duas coisas no mesmo passo.
+3. **A cor atravessa o ficheiro a ≤ ½ degrau de sRGB8, não ao bit** (era `f32` até ao v5). É a
+   precisão das camadas que a §2 escolheu; o relevo continua `f32` ao bit. Os gates
+   `o_plano_de_tinta_fina_atravessa_o_ficheiro_a_meio_degrau` e
+   `um_v5_abre_igual_e_regrava_a_meio_degrau` dizem-no; um v5 ABRE ao bit (a leitura dele não passa
+   pelas camadas) e é a regravação que quantiza.
+4. **O fundo**: onde a pilha não é opaca a peça mostra a SEMENTE (gate
+   `uma_pilha_transparente_assenta_na_semente`) — nem branco nem preto.
+5. **`Noise` entra** (hash por píxel, não lê vizinhos); **`Halftone` fica de fora** com os seis
+   kernels (padrão de coordenada); **camadas `Texture` ficam de fora** (textura 2D sobre a ORDEM das
+   amostras). As três recusas estão em `sincronizada()`.
+6. **O relevo grava-se por camada**, mas até à W4 só a BASE o tem (`relevo_composto` com
+   `debug_assert`): a dobra de várias camadas é a do 2D extraída, e é a W4.
+7. O documento v6 **guarda `niveis`** (vazio = uniforme) como o v5: um plano graduado só nasce de um
+   ficheiro antigo, mas o escritor aceita-o e o leitor converte-o como antes.
+8. A máscara nova é branca só nas `N` amostras — a cauda da dobra fica a zero, senão o ficheiro não
+   voltava igual (achado pelo gate `a_pilha_atravessa_o_ficheiro`).
+
+**Para a W2:** o traço acumula em `f32` dentro do gesto e quantiza à camada NO FIM (o que o 2D faz):
+quantizar a cada quadro pararia um traço de `k` pequeno (`base + k·(c − s)` abaixo de meio degrau
+não muda o byte). As operações da porta estão em `#[cfg(test)]` até a W3 lhes dar o painel.

@@ -12,8 +12,31 @@ use ph2d_mesh::Mesh;
 use ph2d_mesh_colors::Tinta;
 use ph2d_sculpt3d::tinta_fina::TintaDoTraco;
 
-use super::{Origem, concorda_com, garante_e_diz, semente};
+use super::{concorda_com, garante_e_diz, semente};
 use crate::pilha_da_peca::PilhaDaPeca;
+
+/// De onde veio o plano que a [`super::garante_e_diz`] deixou na peça.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Origem {
+    /// Nada mudou.
+    Ficou,
+    /// Voltou do estacionamento.
+    Parque,
+    /// Nasceu da semente.
+    Semente,
+    /// A peça ficou sem plano.
+    Nenhum,
+}
+
+/// O que a [`super::garante_e_diz`] fez — a pilha de camadas segue-o
+/// (`tinta_da_peca_pilha::garante_com_pilha`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) struct Desfecho {
+    pub(crate) mudou: bool,
+    pub(crate) origem: Origem,
+    /// O plano que estava foi para o estacionamento.
+    pub(crate) estacionou: bool,
+}
 
 /// ⭐⭐⭐ **A pilha descreve o plano** — sem plano não há pilha; um plano sem
 /// pilha (ou com uma de outra contagem) ganha a de UMA camada dele, e é
@@ -141,6 +164,30 @@ pub(crate) fn devolve_camada(
     }
     *tinta_suja = true;
     None
+}
+
+/// ⭐⭐⭐ **A peça volta a ser a composição da pilha** — inteira (o painel
+/// mudou o metadado ou a estrutura) — e a cor por vértice segue-a.
+pub(crate) fn recompoe(obj: &mut crate::SceneObject) {
+    let crate::objects::SceneObject {
+        stack,
+        tinta,
+        pilha,
+        tinta_suja,
+        uploaded,
+        ..
+    } = obj;
+    let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_ref()) else {
+        return;
+    };
+    let (mesh, k) = (stack.mesh(), peca.nivel());
+    pilha.pinta_tinta(peca, || semente(mesh, k).amostras().to_vec());
+    if concorda_com(peca, stack.mesh()) {
+        let por_vertice = peca.plano_por_vertice().to_vec();
+        stack.mesh_mut().colors_mut().copy_from_slice(&por_vertice);
+        *uploaded = false;
+    }
+    *tinta_suja = true;
 }
 
 /// O que o balde fez na pilha.

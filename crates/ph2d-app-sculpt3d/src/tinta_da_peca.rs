@@ -26,12 +26,8 @@
 //! sobrevive a um remesh é a cor grossa, e o detalhe fino não tem onde caber
 //! numa topologia que já não é a dele.
 //!
-//! ⚠️⚠️ **E é por isso que o pen-down FALA** (a família do
-//! [`crate::recusa`]): um verbo que muda topologia com o plano armado vai
-//! custar o detalhe fino, e *apagar trabalho em silêncio é o pior desfecho
-//! desta fronteira*. ⛔ Ele fala e **não bloqueia** — a decisão de suprimir o
-//! passe de topologia enquanto a tinta fina está armada é de PRODUTO, e está
-//! nomeada como aberta.
+//! ⚠️⚠️ **E é por isso que o pen-down FALA** ([`crate::recusa`]): um verbo que muda topologia com o
+//! plano armado custa o detalhe fino. ⛔ Fala e **não bloqueia** — suprimir o passe é de PRODUTO.
 
 use ph2d_mesh::Mesh;
 use ph2d_mesh_colors::Tinta;
@@ -41,27 +37,8 @@ use ph2d_mesh_colors::Tinta;
 /// ([`orcamento_da_placa`]), e o degrau pedido DESCE ao maior que cabe
 /// ([`garante_no_orcamento`]).
 ///
-/// ⭐⭐⭐ **Subiu de `4` para `8` em 2026-09-24, por report do dono** (*«a
-/// resolução de 16x não chega para o painter»*) — e o report estava certo, com
-/// número. O Painter pinta à resolução do ECRÃ, logo a pergunta é *quantos
-/// píxeis cabem entre duas amostras* (sonda
-/// `diag_pixeis_por_amostra_da_tinta_fina`, peça da cena `=52`, arestas de
-/// frente, na vista `1900×1000`):
-///
-/// | `k` | lado | px por amostra p50 · p90 · máx | plano aqui | na peça de fábrica |
-/// |---|---|---|---|---|
-/// | `4` | `16` | `1,89` · `2,52` · `3,58` | `2,3 MB` | `302 MB` |
-/// | `5` | `32` | `0,94` · `1,26` · `1,79` | `9,1 MB` | `1,2 GB` |
-/// | `6` | `64` | `0,47` · `0,63` · `0,90` | `36 MB` | ⛔ `4,8 GB` |
-/// | `7` | `128` | `0,24` · `0,31` · `0,45` | `145 MB` | ⛔ `19 GB` |
-/// | `8` | `256` | `0,12` · `0,16` · `0,22` | `580 MB` | ⛔ `77 GB` |
-///
-/// ⛔⛔ **O tecto de ontem (`16x`) tinha sido medido na peça ERRADA:** os
-/// `288 MB` eram da peça de fábrica, e na peça em que o artista pinta com
-/// tinta fina (grossa, porque a resolução é da tinta) o mesmo degrau custa
-/// `2,3 MB`. *Um limite medido no caso mais caro e aplicado a todos é o caminho
-/// lento a definir o rápido* (§0.0). O recurso é por PEÇA, e quem o diz é a
-/// placa: `4 GiB` por buffer nesta máquina.
+/// ⭐⭐⭐ **Subiu de `4` para `8` em 2026-09-24, por report do dono** (*«a resolução de 16x não
+/// chega para o painter»*) — a medição está no doc 27 §16.10.
 ///
 /// ⚠️ **O que SOBRA e é do CHAMADOR:** a construção (`~3,8 ns` por amostra ⇒
 /// `~180 ms` a `256x` na peça da lição) corre **uma vez**, no gesto de
@@ -74,20 +51,10 @@ use ph2d_mesh_colors::Tinta;
 /// [`SceneObject::footprint_bytes`]: crate::objects::SceneObject
 pub(crate) const NIVEL_MAX: u8 = 8;
 
-/// ⭐ **Quantas amostras o tecto custa POR VÉRTICE, numa malha de quads** — o
-/// número que o parágrafo acima usa, e que o gate
-/// `o_custo_do_tecto_por_vertice_e_o_que_a_constante_diz` MEDE.
-///
-/// A aritmética fecha à mão: numa malha de quads fechada há `~1` face e `~2`
-/// arestas por vértice, logo `1 + 2(L−1) + (L−1)² = L²` — e a `L = 256` isso
-/// são **`65 536`** amostras por vértice, `768 KB` de `f32` contra os `12` bytes
-/// do canal por vértice.
-///
-/// ⚠️ **Ele é `#[cfg(test)]` e isso é a resposta certa, não uma cerca:** o
-/// produto não lê este número em sítio nenhum — quem paga a memória é o
-/// alocador da [`Tinta`], e o que este valor faz é impedir que a tabela do doc
-/// acima envelheça. *Pôr um consumidor artificial no produto para calar o
-/// `dead_code` seria escrever código para o linter.*
+/// ⭐ **Quantas amostras o tecto custa POR VÉRTICE, numa malha de quads** (`~1` face e `~2` arestas
+/// por vértice ⇒ `1 + 2(L−1) + (L−1)² = L²`, a `L = 256`) — o gate
+/// `o_custo_do_tecto_por_vertice_e_o_que_a_constante_diz` MEDE-o. `#[cfg(test)]`: o produto não o lê,
+/// e ele existe para a tabela do doc 27 §16.10 não envelhecer.
 #[cfg(test)]
 pub(crate) const CUSTO_POR_VERTICE_NO_TECTO: usize = 65_536;
 
@@ -450,6 +417,7 @@ mod placa;
 // ⭐ A PILHA DE CAMADAS que anda com o plano (`docs/3D/30` §11).
 #[path = "tinta_da_peca_pilha.rs"]
 pub(crate) mod pilha;
+pub(crate) use pilha::{Desfecho, Origem};
 pub(crate) use placa::{degrau_que_cabe, orcamento_da_placa};
 
 /// ⭐⭐⭐ **A [`garante`] com o tecto da PLACA** — o que o quadro chama.
@@ -471,29 +439,6 @@ pub(crate) fn garante_no_orcamento(
     orcamento: u64,
 ) -> bool {
     garante_e_diz(mesh, tinta, parque, nivel, orcamento).mudou
-}
-
-/// De onde veio o plano que a [`garante_e_diz`] deixou na peça.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) enum Origem {
-    /// Nada mudou.
-    Ficou,
-    /// Voltou do estacionamento.
-    Parque,
-    /// Nasceu da semente.
-    Semente,
-    /// A peça ficou sem plano.
-    Nenhum,
-}
-
-/// O que a [`garante_e_diz`] fez — a pilha de camadas segue-o
-/// (`tinta_da_peca_pilha::garante_com_pilha`).
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct Desfecho {
-    pub(crate) mudou: bool,
-    pub(crate) origem: Origem,
-    /// O plano que estava foi para o estacionamento.
-    pub(crate) estacionou: bool,
 }
 
 /// ⭐⭐⭐ **A [`garante_no_orcamento`] que DIZ o que fez** — a mesma lei.

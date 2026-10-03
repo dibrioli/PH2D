@@ -404,13 +404,9 @@ pub fn dispatch(
         // sluggish (Enio 2026-06-02 "muito lenta"). `layers_revision` bumps only
         // on structural/metadata edits (`invalidate_composite` + `set_source`),
         // NOT strokes and NOT cursor moves. So during an in-flight drag the
-        // structure is stable → we skip the clone entirely; the panel keeps its
-        // last published snapshot and reads the live `panel_row_drag()` cursor
-        // for the overlay (panel re-paints every frame regardless). First
-        // activation always publishes (sentinel `u64::MAX` ≠ any real revision);
-        // the single persistent `PainterTool` instance keeps `layers_revision`
-        // monotonic for the app lifetime, so an unchanged revision genuinely means
-        // an unchanged stack (never a stale skip).
+        // structure is stable → we skip the clone entirely (the panel keeps its last snapshot and
+        // reads the live `panel_row_drag()` cursor). First activation always publishes (sentinel
+        // `u64::MAX`); `layers_revision` is monotonic for the app lifetime (never a stale skip).
         // ⚠️ **A reatribuição do relógio vive DENTRO do `cfg`, e é obrigatório que viva** (W2 Fase
         // D): só este bloco o volta a ler, e na shell a feature era `default` — logo o código morto
         // sem ela nunca aparecia. Uma crate própria compila-se também SEM a feature, e aí um
@@ -422,8 +418,13 @@ pub fn dispatch(
             static LAST_LAYERS_REV: AtomicU64 = AtomicU64::new(u64::MAX);
             let rev = painter.layers_revision();
             if LAST_LAYERS_REV.swap(rev, Ordering::Relaxed) != rev {
-                ph2d_panel_painter_layers::set_current_layers(Some(painter.layers().clone()));
+                // ⭐ Com a tela da vista 3D presa, a pilha da PEÇA (`docs/3D/30` §4).
+                ph2d_panel_painter_layers::set_current_layers(painter.panel_layers().cloned());
             }
+            ph2d_panel_painter_layers::set_current_layers_on_piece(painter.panel_shows_the_piece());
+            ph2d_panel_painter_layers::set_current_piece_refusal(
+                painter.piece_layer_refusal().map(str::to_owned),
+            );
             ph_panel_sub[1] = elapsed_ms(m_p);
             m_p = perf_t0.map(|_| std::time::Instant::now());
             // (W3 multi-select) Publish the selection set every frame — a tiny
@@ -432,7 +433,7 @@ pub fn dispatch(
             // already-active layer changes the selection WITHOUT a structural
             // edit, so a revision gate would miss it. The panel reads this for
             // the multi-row highlight (active = strong outline, others = wash).
-            ph2d_panel_painter_layers::set_current_selection(painter.selection());
+            ph2d_panel_painter_layers::set_current_selection(painter.panel_selection());
             // (Mask view) Publish which mask's grayscale-view eye is open so its row draws it open.
             ph2d_panel_painter_layers::set_current_mask_grayscale_view(
                 painter.mask_view_grayscale(),

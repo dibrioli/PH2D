@@ -158,9 +158,15 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     // "+ Layer" moved to the header icon cluster (New layer / Group / Duplicate /
     // Delete) — `paint_header_actions`, registered post-body (last-wins).
     let footer_x = rect.x + PANEL_HEAD_PAD;
-    let apply_rect = Rect::new(footer_x + content_w - APPLY_BTN_W, y, APPLY_BTN_W, ROW_H_PX);
-    paint_apply_button(ctx, apply_rect, theme);
-    y += ROW_H_PX;
+    if crate::peca::on_piece() {
+        // ⭐ Na peça 3D não há Apply (a peça É a composição); no lugar dele, as frases da peça.
+        let stack = state::current_layers();
+        y = crate::peca::paint_piece_notes(ctx, theme, stack.as_ref(), footer_x, y, content_w);
+    } else {
+        let apply_rect = Rect::new(footer_x + content_w - APPLY_BTN_W, y, APPLY_BTN_W, ROW_H_PX);
+        paint_apply_button(ctx, apply_rect, theme);
+        y += ROW_H_PX;
+    }
 
     let content_h = (y - body_paint_top + PANEL_HEAD_PAD).max(0.0);
     set_last_content_h(content_h);
@@ -350,12 +356,20 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
             tr("panel.painter_layers.layers.delete_layer"),
         ),
     ];
+    let stack = state::current_layers();
     for (id, icon, label) in specs {
         let btn_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
-        let st = ctx.host.store().button_visual(id);
+        let ofertado = crate::peca::offered(id, stack.as_ref());
+        let st = if ofertado {
+            ctx.host.store().button_visual(id)
+        } else {
+            (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)
+        };
         let btn = Button::new(id, label).icon_only(icon).visual(st);
         paint_button(&btn, btn_rect, ctx.scene, ctx.text_system, theme);
-        ctx.host.hit_index_mut().register(id, btn_rect);
+        if ofertado {
+            ctx.host.hit_index_mut().register(id, btn_rect);
+        }
         x += HEADER_ICON_W + Spacing::Xs.px();
     }
 
@@ -392,12 +406,19 @@ fn paint_action_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_toke
     x += HEADER_ICON_W + Spacing::Xs.px();
     let tex_id = ph2d_tool_painter::ids::PAINTER_LAYERS_ADD_TEXTURE;
     let tex_rect = Rect::new(x, y, HEADER_ICON_W, HEADER_ICON_W);
-    let tex_st = ctx.host.store().button_visual(tex_id);
+    let tex_ok = crate::peca::offered(tex_id, stack.as_ref());
+    let tex_st = if tex_ok {
+        ctx.host.store().button_visual(tex_id)
+    } else {
+        (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)
+    };
     let tex_btn = Button::new(tex_id, tr("panel.painter_layers.layers.add_texture_layer"))
         .icon_only(IconId::Grid)
         .visual(tex_st);
     paint_button(&tex_btn, tex_rect, ctx.scene, ctx.text_system, theme);
-    ctx.host.hit_index_mut().register(tex_id, tex_rect);
+    if tex_ok {
+        ctx.host.hit_index_mut().register(tex_id, tex_rect);
+    }
 }
 
 /// Modifier toolbar (second row): Mask · Clip · Lock · Ref — text toggles on the ACTIVE layer (fill
@@ -431,11 +452,13 @@ fn paint_modifier_toolbar(ctx: &mut PaintCtx, toolbar_rect: Rect, theme: ph2d_to
             mods.is_some_and(|m| m.is_reference),
         ),
     ];
+    let stack = state::current_layers();
     for (id, label, on) in specs {
-        let eligible = raster
+        let eligible = (raster
             || (tex
                 && (id == ph2d_tool_painter::ids::PAINTER_LAYERS_MASK
-                    || id == ph2d_tool_painter::ids::PAINTER_LAYERS_CLIP));
+                    || id == ph2d_tool_painter::ids::PAINTER_LAYERS_CLIP)))
+            && crate::peca::offered(id, stack.as_ref());
         let btn_rect = Rect::new(x, y, MOD_BTN_W, ROW_H_PX);
         let st = if eligible {
             ctx.host.store().button_visual(id)

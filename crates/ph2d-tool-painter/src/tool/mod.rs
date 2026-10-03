@@ -315,6 +315,14 @@ pub struct PainterTool {
     /// The sprite the working document is currently bound to (`bind_document`), so switching sprites can
     /// stash THIS document's layers by id before binding the next. `None` until the first bind.
     bound_doc: Option<u64>,
+    /// ⭐ **A pilha da PEÇA 3D**, espelhada pela escultura a cada quadro enquanto a tela da vista está
+    /// presa — o que o painel de camadas mostra ali, e onde os gestos dele são lidos
+    /// ([`piece_layers`]). `None` fora da tela, ou numa peça sem plano de tinta fina.
+    piece_layers: Option<LayerStack>,
+    /// Os pedidos do painel sobre a pilha da peça, à espera de quem a tem ([`Self::take_piece_layer_ops`]).
+    piece_ops: Vec<PieceLayerOp>,
+    /// A frase da última recusa da pilha da peça, que o painel mostra (`None` = nenhuma).
+    piece_refusal: Option<String>,
     /// Stashed multi-layer documents by sprite id — switching sprites preserves each sprite's layer stack
     /// instead of flattening it. See [`crate::tool::documents`].
     doc_cache: BTreeMap<u64, documents::StashedDoc>,
@@ -413,6 +421,9 @@ impl Default for PainterTool {
             dock_shows_layers: false,
             paint: paint::PaintState::default(),
             bound_doc: None,
+            piece_layers: None,
+            piece_ops: Vec::new(),
+            piece_refusal: None,
             doc_cache: BTreeMap::new(),
             shape_source_doc: None,
             shape_source_revision: 0,
@@ -447,6 +458,10 @@ pub use paint::{
     WetKnobs, WetTool, brush_falloff_weight_at, render_classic_flow_preview,
 };
 pub use paint::{DICA_DO_PARAMETRO, Dependente, Inercias};
+mod layer_edit;
+mod piece_layers;
+pub use layers::seed_user_adjustment;
+pub use piece_layers::PieceLayerOp;
 mod runtime;
 mod screen_canvas;
 pub use screen_canvas::{SCREEN_CANVAS_DOC, ScreenCanvasFrame, ScreenCanvasRelief};

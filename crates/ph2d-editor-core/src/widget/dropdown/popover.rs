@@ -177,6 +177,8 @@ pub fn paint_dropdown_popover_scrolled<T: Clone + PartialEq>(
         }
         let fg = if is_selected {
             ColorToken::AccentFg
+        } else if opt.disabled {
+            ColorToken::TextDisabled
         } else {
             ColorToken::Text1
         };

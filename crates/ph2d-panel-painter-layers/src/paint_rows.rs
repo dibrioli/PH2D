@@ -364,7 +364,8 @@ fn paint_layer_row(
         resolve(ColorToken::Text2, theme),
     );
 
-    if layer.has_relief {
+    // ⚠️ Na peça 3D o relevo por camada é a W4: a linha não se pinta (as frases do fundo dizem-no).
+    if layer.has_relief && !crate::peca::on_piece() {
         paint_relief_line(ctx, theme, layer, x, content_right, depth_y, font, cell_gap);
     }
 

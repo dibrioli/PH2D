@@ -65,6 +65,10 @@ use crate::objects::ObjectId;
 #[path = "painter_na_malha_registo.rs"]
 mod registo;
 
+/// ⭐ O painel de Layers sobre a pilha da peça (W3) — ver [`camadas`].
+#[path = "painter_na_malha_camadas.rs"]
+pub(crate) mod camadas;
+
 /// ⭐⭐ **A tela da aquarela que ficou MOLHADA depois de um traço** — o que a
 /// peça recebeu, e a chave que diz se a tela ainda o descreve.
 ///
@@ -143,6 +147,8 @@ pub fn quadro(scene: Option<&mut Sculpt3dScene>, painter: Option<&mut PainterToo
                 s.painter_fecha();
             }
             s.painter_raio_px = Some(painter.screen_canvas_ring_px());
+            // ⭐ O painel de Layers mostra a pilha da PEÇA e os pedidos dele vão a ela.
+            s.camadas_do_painel(painter);
             if let Some(morreu) = registo::transicao(painter.screen_canvas_is_wet()) {
                 eprintln!(
                     "[painter3d] a agua mudou: morreu={morreu} · tela {:?} · escorre {:?} · \
@@ -202,9 +208,16 @@ pub fn entrega(
             }
             termina(scene, painter);
         }
+        // ⭐ A camada activa é um ajuste ou uma máscara: o traço não pousa, e o
+        // painel diz porquê (W3).
+        if let Some(r) = scene.a_activa_recusa_o_traco() {
+            painter.set_piece_layer_refusal(Some(camadas::frase(r)));
+            return false;
+        }
         if !scene.painter_abre(x, y) {
             return false;
         }
+        painter.set_piece_layer_refusal(None);
         if let Some(v) = voz_do_relevo(
             painter.stroke_shapes_relief(),
             scene.stroke.tinta_fina.is_some(),

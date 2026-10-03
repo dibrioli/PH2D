@@ -5174,6 +5174,7 @@ name = "ph2d-app-sculpt3d"
 version = "0.0.0"
 dependencies = [
  "image",
+ "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-color",
  "ph2d-core",
@@ -5192,6 +5193,7 @@ dependencies = [
  "ph2d-mesh-colors",
  "ph2d-mesh-render",
  "ph2d-painter-brush",
+ "ph2d-panel-painter-layers",
  "ph2d-panel-sculpt3d",
  "ph2d-quadchain",
  "ph2d-quadextract",
@@ -5207,6 +5209,7 @@ dependencies = [
  "ph2d-tool-painter",
  "ph2d-trace",
  "ph2d-trim",
+ "ph2d-ui-testkit",
  "ph2d-untangle",
  "ph2d-vector",
  "ph2d-viewport3d",

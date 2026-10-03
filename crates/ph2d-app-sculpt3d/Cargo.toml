@@ -100,6 +100,12 @@ ph2d-sculpt3d = { path = "../ph2d-sculpt3d", features = ["test-support"] }
 # desenha). ⛔ `dev` de propósito: o produto desta crate não mede texto.
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
+# ⭐ **A COSTURA DO PAINEL DE LAYERS sobre a peça** (`docs/3D/30` §4, W3): o gate pinta o painel
+# REAL e clica/arrasta no que ele registou, e o barramento chega ao Painter como na shell.
+# ⛔ `dev` de propósito: o produto desta crate fala com o painel só pela ferramenta.
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-panel-painter-layers = { path = "../ph2d-panel-painter-layers" }
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 
 [lints]
 workspace = true

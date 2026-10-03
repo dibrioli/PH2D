@@ -177,6 +177,32 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "a multiresolution stack is mounted -- J reverts it and the cut comes back"
         }
         "app.sculpt3d.pilha_da_peca.camada_de_base" => "Layer 1",
+        // ⭐ O painel de Layers sobre a peça 3D (`docs/3D/30` §4, W3): o nome de uma camada nova e
+        //    a frase de cada recusa da porta da pilha — o painel mostra-a, nenhum botão é mudo.
+        "app.sculpt3d.pilha_da_peca.camada_nova" => "Layer {n}",
+        "app.sculpt3d.camadas.recusa.tecto" => {
+            "No new layer: this piece already holds as many layers as a stack can"
+        }
+        "app.sculpt3d.camadas.recusa.desconhecida" => {
+            "That layer is not there any more -- pick one in the list"
+        }
+        "app.sculpt3d.camadas.recusa.le_a_vizinhanca" => {
+            "Blur, Sharpen, Bloom and the other effects that read neighbouring pixels are not on \
+             the 3D piece yet: on a surface they have to follow the shape, not the image"
+        }
+        "app.sculpt3d.camadas.recusa.a_base" => {
+            "The bottom layer stays where it is: it holds the relief of the piece"
+        }
+        "app.sculpt3d.camadas.recusa.traco_aberto" => {
+            "Lift the brush first -- the layers change between strokes"
+        }
+        "app.sculpt3d.camadas.recusa.muda_a_estrutura" => {
+            "That change is not available on the 3D piece yet"
+        }
+        "app.sculpt3d.camadas.recusa.activa_nao_pinta" => {
+            "The selected layer is an adjustment or a mask, so the stroke has nowhere to land -- \
+             pick a paint layer in the list"
+        }
         _ => return None,
     })
 }

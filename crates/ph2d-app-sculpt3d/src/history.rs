@@ -99,6 +99,13 @@ pub(super) enum StrokeUndo {
         colors: Option<Vec<[f32; 3]>>,
         finas: Option<PlanoInteiro>,
     },
+    /// ⭐⭐ **O painel de camadas mexeu na pilha da peça** (`docs/3D/30` §4, W3):
+    /// o metadado de antes e os planos que a operação tirou. `None` = largada
+    /// (o plano já não é aquele), e o passo fica inerte.
+    Camadas {
+        level: usize,
+        passo: Option<Box<CamadasDaPeca>>,
+    },
     /// **Um NÍVEL foi acrescentado** — aplicá-la é tirá-lo.
     ///
     /// ⚠️ **E ela deixou de guardar a malha inteira, que é o que a pilha
@@ -267,7 +274,7 @@ mod undo;
 mod history_tinta_fina;
 
 use history_tinta_fina::JanelaFina;
-pub(super) use history_tinta_fina::PlanoInteiro;
+pub(super) use history_tinta_fina::{CamadasDaPeca, PlanoInteiro};
 
 /// **OS DOIS REMESHES** — ver [`remesh`]. Irmão (`#[path]`) pelo motivo dos
 /// outros: o corte é de responsabilidade.

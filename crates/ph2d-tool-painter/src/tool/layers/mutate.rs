@@ -143,46 +143,10 @@ impl PainterTool {
         dragged: ph2d_a11y::NodeId,
         drop: ph2d_editor_core::interaction::PanelRowDrop,
     ) {
-        use ph2d_editor_core::interaction::PanelRowDrop;
-        let Some(d) = self.decode_layer_widget(dragged).map(|(l, _)| l) else {
-            return;
-        };
-        // Masks are owner-attached (not in the z-order) — never reparent one
-        // (the row is selectable, but dragging it must not touch the stack).
-        if matches!(
-            self.layers.get(d).map(|l| &l.kind),
-            Some(LayerKind::Mask(_))
-        ) {
+        if self.piece_reparent(dragged, drop) {
             return;
         }
-        let moved = match drop {
-            PanelRowDrop::Inside(t) => match self.decode_layer_widget(t) {
-                // Middle band: drop INTO a group folder. If the target isn't a
-                // group (or the nest is rejected — depth cap / cycle),
-                // `move_into_group` returns `false` WITHOUT mutating (its guards
-                // precede the detach), so we fall back to a sibling insert ABOVE
-                // the target. This kills the dead 40% middle band on normal layer
-                // rows: every position over a row now resolves to a meaningful
-                // move, and the panel's drop indicator mirrors it (box for a
-                // group, before-line for a leaf). Photoshop/Procreate semantics:
-                // you only nest into a folder; over a leaf it's always before/after.
-                Some((tgt, _)) => {
-                    self.layers.move_into_group(d, tgt)
-                        || self.layers.move_to_sibling_of(d, tgt, false)
-                }
-                None => false,
-            },
-            PanelRowDrop::Before(t) => match self.decode_layer_widget(t) {
-                Some((tgt, _)) => self.layers.move_to_sibling_of(d, tgt, false),
-                None => false,
-            },
-            PanelRowDrop::After(t) => match self.decode_layer_widget(t) {
-                Some((tgt, _)) => self.layers.move_to_sibling_of(d, tgt, true),
-                None => false,
-            },
-            PanelRowDrop::End => self.layers.move_to_root_bottom_above_base(d),
-        };
-        if moved {
+        if reparent_in(&mut self.layers, dragged, drop) {
             self.invalidate_composite();
         }
     }
@@ -652,5 +616,46 @@ impl PainterTool {
     pub fn move_layer_down(&mut self, id: RtLayerId) {
         self.layers.move_down(id);
         self.invalidate_composite();
+    }
+}
+
+/// ⭐ **A lei do arrasto de uma linha sobre uma pilha** — a do documento 2D e a da peça 3D (o espelho
+/// em `piece_layers`). `true` = a pilha mudou.
+pub(crate) fn reparent_in(
+    stack: &mut LayerStack,
+    dragged: ph2d_a11y::NodeId,
+    drop: ph2d_editor_core::interaction::PanelRowDrop,
+) -> bool {
+    use ph2d_editor_core::interaction::PanelRowDrop;
+    let find =
+        |s: &LayerStack, id| super::super::piece_layers::layer_widget_in(s, id).map(|(l, _)| l);
+    let Some(d) = find(stack, dragged) else {
+        return false;
+    };
+    // Masks are owner-attached (not in the z-order) — never reparent one
+    // (the row is selectable, but dragging it must not touch the stack).
+    if matches!(stack.get(d).map(|l| &l.kind), Some(LayerKind::Mask(_))) {
+        return false;
+    }
+    match drop {
+        // Middle band: drop INTO a group folder. If the target isn't a
+        // group (or the nest is rejected — depth cap / cycle),
+        // `move_into_group` returns `false` WITHOUT mutating (its guards
+        // precede the detach), so we fall back to a sibling insert ABOVE
+        // the target. This kills the dead 40% middle band on normal layer
+        // rows: every position over a row now resolves to a meaningful
+        // move, and the panel's drop indicator mirrors it (box for a
+        // group, before-line for a leaf). Photoshop/Procreate semantics:
+        // you only nest into a folder; over a leaf it's always before/after.
+        PanelRowDrop::Inside(t) => find(stack, t).is_some_and(|tgt| {
+            stack.move_into_group(d, tgt) || stack.move_to_sibling_of(d, tgt, false)
+        }),
+        PanelRowDrop::Before(t) => {
+            find(stack, t).is_some_and(|tgt| stack.move_to_sibling_of(d, tgt, false))
+        }
+        PanelRowDrop::After(t) => {
+            find(stack, t).is_some_and(|tgt| stack.move_to_sibling_of(d, tgt, true))
+        }
+        PanelRowDrop::End => stack.move_to_root_bottom_above_base(d),
     }
 }

@@ -29,6 +29,11 @@ pub struct DropdownOption<T> {
     /// It is for *kind*, never for decoration: a list where every row would carry the same
     /// glyph has learned nothing and spent a gutter saying so.
     pub icon: Option<IconId>,
+    /// ⭐ **A opção existe mas não se pode escolher AQUI** — pinta-se apagada e o painel não a regista
+    /// (o clique não chega). Quem a desliga mostra a frase do porquê ao lado: uma opção que some
+    /// ensina que não existe, uma apagada ensina que existe e ainda não serve. `false` em todo
+    /// chamador de antes.
+    pub disabled: bool,
 }
 
 impl<T> DropdownOption<T> {
@@ -38,7 +43,15 @@ impl<T> DropdownOption<T> {
             value,
             label: label.into(),
             icon: None,
+            disabled: false,
         }
+    }
+
+    /// Desliga a opção (ver [`Self::disabled`]).
+    #[must_use]
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
+        self
     }
 
     /// Mark what KIND of thing this row is (see [`Self::icon`]).

@@ -18,14 +18,16 @@
 //! cai em lado nenhum. [`PilhaDaPeca::sincronizada`] é o invariante, e os
 //! gates o leem depois de cada operação.
 //!
-//! ⚠️ As operações da porta são `#[cfg(test)]` até a W3 (o painel de Layers)
-//! as chamar: até lá o produto só cria a pilha de UMA camada (`de_tinta`).
+//! ⭐ O painel de Layers (W3) chama a porta pelos pedidos do Painter
+//! (`pilha_da_peca_porta`); os `define_*` soltos ficam para os gates — o
+//! produto muda o metadado de uma vez ([`PilhaDaPeca::troca_metadado`]).
 
 use std::collections::BTreeMap;
 
 use ph2d_mesh_colors::Tinta;
+use ph2d_tool_painter::AdjustmentKind;
 #[cfg(test)]
-use ph2d_tool_painter::{AdjustmentKind, AdjustmentParams, BlendMode};
+use ph2d_tool_painter::{AdjustmentParams, BlendMode};
 use ph2d_tool_painter::{
     LayerId, LayerKind, LayerPixelSource, LayerStack, Region, composite_region,
 };
@@ -92,7 +94,6 @@ impl PlanoDaCamada {
 }
 
 /// Por que a porta recusou uma operação.
-#[cfg(test)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum RecusaDaPilha {
     /// O tecto de camadas do Painter (`HARD_CAP_LAYERS`).
@@ -103,6 +104,18 @@ pub(crate) enum RecusaDaPilha {
     /// na peça a «imagem» é a ordem das amostras, e ele borraria ao longo dela
     /// e não da superfície. Entra com o gancho de vizinhança (W6, doc 30 §2).
     LeAVizinhanca(AdjustmentKind),
+    /// ⛔ A camada de BASE não se apaga nem sai do fundo: é onde o relevo da
+    /// peça mora até à W4 (`relevo_composto`).
+    ABase,
+    /// Um traço está a pintar a pilha (a cópia de trabalho é de uma camada
+    /// dela): mudar a estrutura por baixo dele perderia o traço.
+    TracoAberto,
+    /// Um pedido de METADADO que muda a estrutura (camadas, tipos, máscaras) —
+    /// isso só pelas operações da porta, que levam os planos.
+    MudaAEstrutura,
+    /// A camada activa não é de pintura (um ajuste, uma máscara): o traço não
+    /// tem onde pousar.
+    ActivaNaoPinta,
 }
 
 /// ⭐⭐⭐⭐ **A pilha da peça: o metadado do Painter + o plano de cada camada.**
@@ -258,8 +271,8 @@ impl PilhaDaPeca {
     }
 
     /// ⭐ **Uma camada nova, transparente, no topo** — e activa, como no 2D.
-    #[cfg(test)]
     pub(crate) fn nova_camada(&mut self, nome: &str) -> Result<LayerId, RecusaDaPilha> {
+        self.livre()?;
         let (l, h) = dobra(self.amostras);
         let id = self
             .pilha
@@ -271,9 +284,10 @@ impl PilhaDaPeca {
     }
 
     /// ⭐ **Uma máscara para a camada `dono`** — nasce BRANCA (tudo visível),
-    /// que é o que torna ligá-la uma operação que não muda a peça.
-    #[cfg(test)]
+    /// que é o que torna ligá-la uma operação que não muda a peça. A activa
+    /// continua a dona (pintar a máscara na peça ainda não existe).
     pub(crate) fn nova_mascara(&mut self, dono: LayerId) -> Result<LayerId, RecusaDaPilha> {
+        self.livre()?;
         let id = self
             .pilha
             .add_mask(dono)
@@ -284,40 +298,73 @@ impl PilhaDaPeca {
         Ok(id)
     }
 
-    /// ⭐ **Um ajuste novo no topo** — recusado se ele lê a vizinhança.
-    #[cfg(test)]
+    /// ⭐ **Um ajuste novo no topo** — recusado se ele lê a vizinhança. Nasce
+    /// como o do 2D (`seed_user_adjustment`), e a activa continua a camada de
+    /// pintura que era: um ajuste não se pinta.
     pub(crate) fn novo_ajuste(&mut self, kind: AdjustmentKind) -> Result<LayerId, RecusaDaPilha> {
+        self.livre()?;
         if kind.reads_the_image_layout() {
             return Err(RecusaDaPilha::LeAVizinhanca(kind));
         }
-        self.pilha.add_adjustment(kind).ok_or(RecusaDaPilha::Tecto)
+        let antes = self.pilha.active();
+        let id = self
+            .pilha
+            .add_adjustment(kind)
+            .ok_or(RecusaDaPilha::Tecto)?;
+        if let Some(a) = self.pilha.adjustment_mut(id) {
+            ph2d_tool_painter::seed_user_adjustment(&mut a.params);
+        }
+        if let Some(a) = antes {
+            self.pilha.set_active(a);
+        }
+        Ok(id)
     }
 
-    /// ⭐ **Duplica uma camada** logo acima dela, com uma CÓPIA do plano — a
-    /// semântica do `LayerStack::duplicate` do 2D: a máscara não vem junto.
-    #[cfg(test)]
+    /// ⭐ **Duplica uma camada de pintura** logo acima dela, com uma CÓPIA do
+    /// plano — a semântica do `LayerStack::duplicate` do 2D: a máscara não vem
+    /// junto. ⚠️ A cópia não leva o RELEVO: até à W4 ele é da BASE.
     pub(crate) fn duplica(&mut self, id: LayerId) -> Result<LayerId, RecusaDaPilha> {
+        self.livre()?;
+        if !matches!(
+            self.pilha.get(id).map(|c| &c.kind),
+            Some(LayerKind::Raster(_))
+        ) {
+            return Err(RecusaDaPilha::Desconhecida);
+        }
         let copia = self
             .pilha
             .duplicate(id)
             .ok_or(RecusaDaPilha::Desconhecida)?;
-        if let Some(p) = self.planos.get(&id).cloned() {
+        if let Some(mut p) = self.planos.get(&id).cloned() {
+            p.relevo = None;
             self.planos.insert(copia, p);
+        }
+        if let Some(c) = self.pilha.get_mut(copia) {
+            c.has_relief = false;
         }
         Ok(copia)
     }
 
-    /// ⭐ **Apaga uma camada** (com a máscara e, num grupo, os filhos) e os
-    /// planos dela.
-    #[cfg(test)]
-    pub(crate) fn apaga(&mut self, id: LayerId) -> Result<(), RecusaDaPilha> {
+    /// ⭐ **Apaga uma camada** (com a máscara e, num grupo, os filhos) e
+    /// devolve os planos dela — o desfazer leva-os. A BASE não se apaga.
+    pub(crate) fn apaga(
+        &mut self,
+        id: LayerId,
+    ) -> Result<BTreeMap<LayerId, PlanoDaCamada>, RecusaDaPilha> {
+        self.livre()?;
         if self.pilha.get(id).is_none() {
             return Err(RecusaDaPilha::Desconhecida);
         }
+        if self.base() == Some(id) {
+            return Err(RecusaDaPilha::ABase);
+        }
         self.pilha.remove(id);
         let vivas: Vec<LayerId> = self.pilha.all_ids().collect();
-        self.planos.retain(|k, _| vivas.contains(k));
-        Ok(())
+        let (vivos, mortos) = std::mem::take(&mut self.planos)
+            .into_iter()
+            .partition(|(k, _)| vivas.contains(k));
+        self.planos = vivos;
+        Ok(mortos)
     }
 
     /// A camada activa (a que o traço pinta).
@@ -498,6 +545,12 @@ pub(crate) fn achata(composto: &[u8], fundo: impl Fn(usize) -> [f32; 3], destino
 #[path = "pilha_da_peca_traco.rs"]
 mod traco;
 pub(crate) use traco::para_bytes;
+
+/// ⭐ **O painel sobre a pilha** (W3) — o metadado de uma vez e a troca
+/// estrutural do desfazer.
+#[path = "pilha_da_peca_porta.rs"]
+mod porta;
+pub(crate) use porta::TrocaDaPilha;
 
 #[cfg(test)]
 #[path = "pilha_da_peca_tests.rs"]

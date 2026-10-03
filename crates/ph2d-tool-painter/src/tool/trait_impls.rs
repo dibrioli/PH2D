@@ -2,7 +2,6 @@
 //! routes the panel events; `RasterEditTool` is the shell push / composite-preview / Apply-bake interface.
 
 use super::*;
-use crate::layers::ReliefComposite;
 
 impl Tool for PainterTool {
     fn id(&self) -> ToolId {
@@ -51,9 +50,13 @@ impl Tool for PainterTool {
     fn handle_panel_event(&mut self, event: ph2d_editor_core::tool::PanelEvent) {
         // The frozen generic channel (ADR-0040 TG-B): the layers panel emits PanelEvent::{Click,
         // SetValue, SelectOption}, each routed to the matching layer / adjustment edit.
-        use crate::ids::PainterLayerWidget;
         use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
+        // ⭐ Com a tela da vista 3D presa o painel de camadas mostra a pilha da PEÇA, e os pedidos dele
+        //   vão para ela (`piece_layers`, `docs/3D/30` §4) — nunca para a pilha da tela.
+        if self.route_piece_layer_event(&event) {
+            return;
+        }
         let appearance_before = self.appearance_sig(); // re-fill an open shape live on any appearance change
         if self.route_texture_layer_event(&event)
             || self.route_brush_jitter_event(&event)
@@ -74,6 +77,11 @@ impl Tool for PainterTool {
             self.refill_if_appearance_changed(appearance_before);
             return;
         }
+        if let Some(e) = super::layer_edit::decode(&event, |id| self.decode_layer_widget(id)) {
+            self.apply_layer_edit(e);
+            self.refill_if_appearance_changed(appearance_before);
+            return;
+        }
         match event {
             // ⭐ Os DOIS segmentos do grupo *Brush | Layers* — cada um ESCOLHE o seu lado, e
             //   tocar no que já está escolhido não faz nada (ver `set_dock_shows_layers`).
@@ -82,46 +90,6 @@ impl Tool for PainterTool {
             }
             PanelEvent::Click(id) if id == crate::ids::PAINTER_SIDEBAR_TOGGLE_DOCK => {
                 self.set_dock_shows_layers(false);
-            }
-            // ── Layers panel: "+ Layer" (create + activate a raster on top) ─
-            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_ADD => {
-                let name = format!("Layer {}", self.layers.len() + 1);
-                self.add_raster_layer(name);
-            }
-            // ── Header actions: duplicate / delete / group the active layer ─
-            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_DUPLICATE => {
-                if let Some(active) = self.layers.active() {
-                    self.duplicate_layer(active);
-                }
-            }
-            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_DELETE => {
-                if let Some(active) = self.layers.active() {
-                    self.delete_layer(active);
-                }
-            }
-            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_GROUP => {
-                self.group_selected();
-            }
-            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_MASK => {
-                self.add_mask_to_active();
-            }
-            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_CLIP => {
-                if let Some(a) = self.layers.active() {
-                    let now = self.layers.get(a).is_some_and(|l| l.clipping);
-                    self.set_layer_clipping(a, !now);
-                }
-            }
-            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_ALPHA_LOCK => {
-                if let Some(a) = self.layers.active() {
-                    let now = self.layers.get(a).is_some_and(|l| l.alpha_locked);
-                    self.set_layer_alpha_locked(a, !now);
-                }
-            }
-            PanelEvent::Click(id) if id == crate::ids::PAINTER_LAYERS_REFERENCE => {
-                if let Some(a) = self.layers.active() {
-                    let now = self.layers.get(a).is_some_and(|l| l.is_reference);
-                    self.set_layer_reference(a, !now);
-                }
             }
             // Apply CTA — commit the composite to the sprite next frame.
             PanelEvent::Click(id) if id == crate::ids::PAINTER_APPLY => {
@@ -170,53 +138,8 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == crate::ids::PAINTER_BRUSH_FALLOFF_ADD => {
                 self.add_brush_falloff_point(); // Brush Custom-falloff "+" point button
             }
-            // ── Layers panel: per-row click (row select / visibility eye) ──
-            PanelEvent::Click(id) => {
-                if let Some((layer, kind)) = self.decode_layer_widget(id) {
-                    match kind {
-                        // Multi-select (panel stashed Cmd/Shift): Shift = range, Cmd/Ctrl = additive, plain = single.
-                        PainterLayerWidget::Row => {
-                            let (cmd, shift) = take_pending_select_mods(id);
-                            if shift {
-                                self.select_range(layer);
-                            } else if cmd {
-                                self.select_additive(layer);
-                            } else {
-                                self.select_single(layer);
-                            }
-                        }
-                        PainterLayerWidget::Visibility => {
-                            let now = self.layers.get(layer).map(|l| l.visible).unwrap_or(true);
-                            self.set_layer_visible(layer, !now);
-                        }
-                        PainterLayerWidget::MoveUp => self.move_layer_up(layer),
-                        PainterLayerWidget::MoveDown => self.move_layer_down(layer),
-                        PainterLayerWidget::ImpastoLevel => {
-                            let now = self
-                                .layers
-                                .get(layer)
-                                .map(|l| l.impasto_composite)
-                                .unwrap_or_default();
-                            let next = match now {
-                                ReliefComposite::Add => ReliefComposite::Level,
-                                ReliefComposite::Level => ReliefComposite::Add,
-                            };
-                            self.set_layer_impasto_composite(layer, next);
-                        }
-                        PainterLayerWidget::MaskInvert => self.toggle_mask_inverted(layer),
-                        PainterLayerWidget::MaskApply => {
-                            self.apply_mask(layer);
-                        }
-                        PainterLayerWidget::MaskView => self.toggle_mask_view_grayscale(layer),
-                        PainterLayerWidget::AdjToggle0 => self.flip_adjustment_toggle(layer, 0),
-                        PainterLayerWidget::AdjToggle1 => self.flip_adjustment_toggle(layer, 1),
-                        PainterLayerWidget::AdjSegment0 => self.set_adjustment_segment(layer, 0),
-                        PainterLayerWidget::AdjSegment1 => self.set_adjustment_segment(layer, 1),
-                        PainterLayerWidget::AdjSegment2 => self.set_adjustment_segment(layer, 2),
-                        _ => {}
-                    }
-                }
-            }
+            // Os cliques por camada são do `layer_edit` (lido antes deste `match`).
+            PanelEvent::Click(_) => {}
             // ── Layers per-row sliders (opacity + adjustment params), stored 0..1 → mapped per id. ─
             PanelEvent::SetValue(id, v) => {
                 if id == crate::ids::PAINTER_BRUSH_SIZE_SLIDER {
@@ -292,49 +215,6 @@ impl Tool for PainterTool {
                     .position(|&p| p == id)
                 {
                     self.set_brush_texture_param_norm(slot, v as f32);
-                } else if let Some((layer, kind)) = self.decode_layer_widget(id) {
-                    match kind {
-                        PainterLayerWidget::Opacity => self.set_layer_opacity(layer, v as f32),
-                        PainterLayerWidget::ImpastoDepth => {
-                            self.set_layer_impasto_depth_norm(layer, v as f32)
-                        }
-                        PainterLayerWidget::AdjParam0 => {
-                            self.set_adjustment_param(layer, 0, v as f32)
-                        }
-                        PainterLayerWidget::AdjParam1 => {
-                            self.set_adjustment_param(layer, 1, v as f32)
-                        }
-                        PainterLayerWidget::AdjParam2 => {
-                            self.set_adjustment_param(layer, 2, v as f32)
-                        }
-                        PainterLayerWidget::AdjParam3 => {
-                            self.set_adjustment_param(layer, 3, v as f32)
-                        }
-                        PainterLayerWidget::AdjParam4 => {
-                            self.set_adjustment_param(layer, 4, v as f32)
-                        }
-                        PainterLayerWidget::AdjParam5 => {
-                            self.set_adjustment_param(layer, 5, v as f32)
-                        }
-                        PainterLayerWidget::AdjParam6 => {
-                            self.set_adjustment_param(layer, 6, v as f32)
-                        }
-                        PainterLayerWidget::AdjParam7 => {
-                            self.set_adjustment_param(layer, 7, v as f32)
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            // ── "+ Adjustment" kind pick: value = index into `AdjustmentKind::ALL`. ─
-            PanelEvent::SelectOption(id, value)
-                if id == crate::ids::PAINTER_LAYERS_ADD_ADJUSTMENT =>
-            {
-                if let Ok(idx) = value.parse::<usize>()
-                    && let Some(&kind) =
-                        ph2d_painter_effects::adjustments::AdjustmentKind::ALL.get(idx)
-                {
-                    self.add_adjustment_layer(kind);
                 }
             }
             // ── Preset pick (top of panel): value = preset idx (0 = Digital, 1 = Watercolor). ──
@@ -496,116 +376,8 @@ impl Tool for PainterTool {
                     self.set_paper_color_rgb8(r, g, b);
                 }
             }
-            // ── Curves editor 2-D point drag: value = "layer:channel:index:x:y". ─
-            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_CURVE_EDIT => {
-                let mut it = value.split(':');
-                if let (Some(l), Some(c), Some(i), Some(xs), Some(ys)) =
-                    (it.next(), it.next(), it.next(), it.next(), it.next())
-                    && let (Ok(layer), Ok(ch), Ok(idx), Ok(x), Ok(y)) = (
-                        l.parse::<u64>(),
-                        c.parse::<u8>(),
-                        i.parse::<usize>(),
-                        xs.parse::<f32>(),
-                        ys.parse::<f32>(),
-                    )
-                {
-                    self.set_curve_point(RtLayerId(layer), ch, idx, x, y);
-                }
-            }
-            // ── Channel Mixer weight edit: value = "layer:output:slot:value". ─
-            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_MIXER_EDIT => {
-                let mut it = value.split(':');
-                if let (Some(l), Some(o), Some(s), Some(v)) =
-                    (it.next(), it.next(), it.next(), it.next())
-                    && let (Ok(layer), Ok(output), Ok(slot), Ok(val)) = (
-                        l.parse::<u64>(),
-                        o.parse::<usize>(),
-                        s.parse::<usize>(),
-                        v.parse::<f32>(),
-                    )
-                {
-                    self.set_channel_mixer_weight(RtLayerId(layer), output, slot, val);
-                }
-            }
-            // ── Gradient Map editor: stop drag / add / remove / selected color. ─
-            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_GRADIENT_EDIT => {
-                let mut it = value.split(':');
-                if let (Some(l), Some(i), Some(o)) = (it.next(), it.next(), it.next())
-                    && let (Ok(layer), Ok(idx), Ok(off)) =
-                        (l.parse::<u64>(), i.parse::<usize>(), o.parse::<f32>())
-                {
-                    self.set_gradient_stop_offset(RtLayerId(layer), idx, off);
-                }
-            }
-            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_GRADIENT_ADD => {
-                if let Ok(layer) = value.parse::<u64>() {
-                    self.add_gradient_stop(RtLayerId(layer));
-                }
-            }
-            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_GRADIENT_REMOVE => {
-                let mut it = value.split(':');
-                if let (Some(l), Some(i)) = (it.next(), it.next())
-                    && let (Ok(layer), Ok(idx)) = (l.parse::<u64>(), i.parse::<usize>())
-                {
-                    self.remove_gradient_stop(RtLayerId(layer), idx);
-                }
-            }
-            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_GRADIENT_COLOR => {
-                let mut it = value.split(':');
-                if let (Some(l), Some(st), Some(s), Some(v)) =
-                    (it.next(), it.next(), it.next(), it.next())
-                    && let (Ok(layer), Ok(stop), Ok(slot), Ok(val)) = (
-                        l.parse::<u64>(),
-                        st.parse::<usize>(),
-                        s.parse::<usize>(),
-                        v.parse::<f32>(),
-                    )
-                {
-                    self.set_gradient_stop_color(RtLayerId(layer), stop, slot, val);
-                }
-            }
-            // ── Selective Color CMYK edit: value = "layer:bucket:slot:value". ─
-            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_SELCOLOR_EDIT => {
-                let mut it = value.split(':');
-                if let (Some(l), Some(bk), Some(s), Some(v)) =
-                    (it.next(), it.next(), it.next(), it.next())
-                    && let (Ok(layer), Ok(bucket), Ok(slot), Ok(val)) = (
-                        l.parse::<u64>(),
-                        bk.parse::<usize>(),
-                        s.parse::<usize>(),
-                        v.parse::<f32>(),
-                    )
-                {
-                    self.set_selective_color_value(RtLayerId(layer), bucket, slot, val);
-                }
-            }
-            // ── Curves editor add a point: value = "layer:channel". ──────────
-            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_CURVE_ADD => {
-                let mut it = value.split(':');
-                if let (Some(l), Some(c)) = (it.next(), it.next())
-                    && let (Ok(layer), Ok(ch)) = (l.parse::<u64>(), c.parse::<u8>())
-                {
-                    self.add_curve_point(RtLayerId(layer), ch);
-                }
-            }
-            // ── Curves editor remove a point: value = "layer:channel:index". ─
-            PanelEvent::SelectOption(id, value) if id == crate::ids::PAINTER_CURVE_REMOVE => {
-                let mut it = value.split(':');
-                if let (Some(l), Some(c), Some(i)) = (it.next(), it.next(), it.next())
-                    && let (Ok(layer), Ok(ch), Ok(idx)) =
-                        (l.parse::<u64>(), c.parse::<u8>(), i.parse::<usize>())
-                {
-                    self.remove_curve_point(RtLayerId(layer), ch, idx);
-                }
-            }
-            // ── Layers panel: per-row blend-mode pick (value = wire u8) ────
-            PanelEvent::SelectOption(id, value) => {
-                if let Some((layer, PainterLayerWidget::Blend)) = self.decode_layer_widget(id)
-                    && let Ok(mode) = value.parse::<u8>()
-                {
-                    self.set_layer_blend_mode(layer, BlendMode::from_u8(mode));
-                }
-            }
+            // Os pedidos por camada (ajustes, mistura) são do `layer_edit`.
+            PanelEvent::SelectOption(..) => {}
             PanelEvent::Toggle(_, _) => {}
         }
         self.refill_if_appearance_changed(appearance_before);

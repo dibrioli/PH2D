@@ -193,3 +193,56 @@ fn diag_o_preco_do_traco_na_camada() {
         );
     }
 }
+
+/// 🔎 **SONDA — o preço de ARRASTAR a opacidade de uma camada** (`docs/3D/30` §7, a W3: *«se passar
+/// de um quadro, a W1b é a onda seguinte»*).
+///
+/// Cada passo do arrasto é o que `aplica_pedidos_da_pilha` paga na CPU: o metadado novo pela porta
+/// (`troca_metadado`), a peça INTEIRA recomposta (`pinta_tinta`) e a cor por vértice (a projecção
+/// do plano). A subida do plano à placa é à parte (`sync_mesh`) e não está aqui.
+#[test]
+#[ignore = "sonda: imprime a tabela"]
+fn diag_o_preco_de_arrastar_a_opacidade() {
+    use crate::pilha_da_peca::PilhaDaPeca;
+    let mesh = crate::scenes::tinta_fina::peca();
+    for k in 3u8..=6 {
+        let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
+        let mut peca = match mesh.colors() {
+            Some(c) => ph2d_mesh_colors::Tinta::semeada(c, faces(), k),
+            None => ph2d_mesh_colors::Tinta::nova(mesh.vert_count(), faces(), k),
+        };
+        let n = peca.amostras().len();
+        let mut p = PilhaDaPeca::de_tinta(&peca);
+        let mut cima = None;
+        for (nome, modo) in [("mult", BlendMode::Multiply), ("over", BlendMode::Overlay)] {
+            let id = p.nova_camada(nome).expect("camada");
+            p.define_modo(id, modo);
+            let px: Vec<[u8; 4]> = camada(n, id.0 as u32).rgba8.as_chunks::<4>().0.to_vec();
+            p.plano_mut(id).expect("plano").escreve(&px, None);
+            cima = Some(id);
+        }
+        let cima = cima.expect("cima");
+        p.novo_ajuste(ph2d_tool_painter::AdjustmentKind::HueSaturationBrightness)
+            .expect("ajuste");
+        p.pinta_tinta(&mut peca, Vec::new);
+        let mut passos = Vec::new();
+        for q in 0..20u32 {
+            let mut nova = p.pilha().clone();
+            nova.set_opacity(cima, 1.0 - q as f32 * 0.04);
+            let t = Instant::now();
+            p.troca_metadado(nova).expect("metadado");
+            p.pinta_tinta(&mut peca, Vec::new);
+            let por_vertice = peca.plano_por_vertice().to_vec();
+            passos.push(t.elapsed().as_secs_f64() * 1e3);
+            std::hint::black_box(por_vertice);
+        }
+        passos.sort_by(f64::total_cmp);
+        eprintln!(
+            "degrau {k} ({}x) · {n} amostras · um passo do arrasto de opacidade (CPU): mediana \
+             {:.2} ms · pior {:.2} ms",
+            1u32 << k,
+            passos[10],
+            passos[19]
+        );
+    }
+}

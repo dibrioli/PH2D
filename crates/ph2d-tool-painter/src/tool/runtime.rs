@@ -37,15 +37,7 @@ impl PainterTool {
         &self,
         id: ph2d_a11y::NodeId,
     ) -> Option<(RtLayerId, crate::ids::PainterLayerWidget)> {
-        use crate::ids::{PainterLayerWidget, painter_layer_widget_id};
-        for layer in self.layers.all_ids() {
-            for kind in PainterLayerWidget::ALL {
-                if painter_layer_widget_id(layer.0, kind) == id {
-                    return Some((layer, kind));
-                }
-            }
-        }
-        None
+        super::piece_layers::layer_widget_in(&self.layers, id)
     }
 
     // ── Structural undo / redo (layer model) ────────────────────────────

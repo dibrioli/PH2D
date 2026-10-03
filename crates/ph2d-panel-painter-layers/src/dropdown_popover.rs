@@ -62,6 +62,9 @@ pub(crate) fn paint_dropdown_popover<T: Clone + PartialEq>(
     // Register only the VISIBLE part of each option row — scrolled-out rows must not be clickable.
     let hit_index = ctx.host.hit_index_mut();
     for (i, opt) in dd.options.iter().enumerate() {
+        if opt.disabled {
+            continue; // painted dimmed, never clickable
+        }
         let r = dd.option_rect_in_scrolled(chip_rect, panel, i, scroll);
         let top = r.y.max(panel.y);
         let bot = (r.y + r.h).min(panel.y + panel.h);

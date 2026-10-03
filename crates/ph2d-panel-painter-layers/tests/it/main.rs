@@ -27,6 +27,7 @@ mod seam_impasto_rig;
 mod seam_impasto_tool;
 mod seam_line_card;
 mod seam_paint_media;
+mod seam_peca; // o painel em modo PEÇA 3D: o que ela não oferece não se clica (`docs/3D/30` §4)
 mod seam_pigmento; // a fileira `Pigment`: a tela concorda com a porta, nos dois sentidos
 mod seam_sculpt;
 mod seam_shape_deposit;

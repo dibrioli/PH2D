@@ -166,6 +166,7 @@ impl PainterTool {
     /// ligar a sprite escolhida no quadro seguinte.
     pub fn release_screen_canvas(&mut self) {
         if self.bound_doc == Some(SCREEN_CANVAS_DOC) {
+            self.forget_piece_layers();
             self.reset_transient_edit_state();
             self.replace_canvas(Arc::new(Vec::new()));
             self.bound_doc = None;

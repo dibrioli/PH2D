@@ -662,3 +662,7 @@ mod painter;
 /// ⭐ As CAMADAS no produto (`docs/3D/30` §11, W2) — os gates que pedem a placa.
 #[path = "camadas_no_produto_tests.rs"]
 mod camadas;
+
+/// ⭐ O PAINEL de Layers sobre a peça (`docs/3D/30` §4, W3) — a costura inteira, com a placa.
+#[path = "camadas_painel_no_produto_tests.rs"]
+mod painel;

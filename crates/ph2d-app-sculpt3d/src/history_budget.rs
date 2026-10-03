@@ -62,6 +62,7 @@ impl StrokeUndo {
                     .map_or(0, |x| x.capacity() * size_of::<[f32; 3]>())
                     + finas.as_ref().map_or(0, super::PlanoInteiro::bytes)
             }
+            Self::Camadas { passo, level: _ } => passo.as_ref().map_or(0, |p| p.bytes()),
             Self::DroppedLevel(level) => level.bytes(),
             Self::Descended { stamped, .. } => stamped.bytes(),
             Self::ReversedLevel(r) => r.bytes(),

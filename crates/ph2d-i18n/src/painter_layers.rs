@@ -548,6 +548,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.tilt" => "Tilt",
         "panel.painter_layers.layers.save_as_object" => "Save As Object",
         // ph2d-migrar-texto:end
+        // ⭐ O painel a mostrar a pilha da peça 3D (`docs/3D/30` §4, W3) — as frases do fundo.
+        "panel.painter_layers.piece.no_plane" => {
+            "This piece has no Paint Detail, so it has no layers yet -- turn Paint Detail on (2x \
+             or finer) to paint it in layers"
+        }
+        "panel.painter_layers.piece.active_not_paint" => {
+            "The selected layer is an adjustment or a mask: strokes need a paint layer -- pick \
+             one in the list"
+        }
+        "panel.painter_layers.piece.off_here" => {
+            "Layers of the 3D piece. Not here yet: groups, texture layers, Lock, Ref, relief per \
+             layer, and the effects that read neighbouring pixels (Blur, Sharpen, Bloom...) -- \
+             on a surface those must follow the shape, not the image"
+        }
         _ => return None,
     })
 }

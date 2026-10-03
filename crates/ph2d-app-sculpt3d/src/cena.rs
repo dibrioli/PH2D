@@ -504,6 +504,10 @@ pub struct Sculpt3dScene {
     /// o que a peça recebeu e a chave que diz se a tela ainda a descreve; ver
     /// [`crate::painter_na_malha::TelaMolhada`].
     pub(crate) painter_molhada: Option<crate::painter_na_malha::TelaMolhada>,
+    /// ⭐ O ARRASTO do painel de camadas que gravou o último passo de desfazer
+    /// (o id do controlo e o `edits` depois dele) — os pedidos seguintes do
+    /// mesmo arrasto juntam-se a esse passo (`painter_na_malha::camadas`).
+    pub(crate) camadas_arrasto: Option<(ph2d_editor_core::NodeId, u64)>,
     /// ⭐⭐ **A pincelada do Painter continua ABERTA depois do pen-up porque a
     /// tinta molhada ainda escorre** (etapa 3). `Some(e)` guarda o `edits` do
     /// último pouso DESTE traço: se ele mudar por outra mão, o traço fecha antes

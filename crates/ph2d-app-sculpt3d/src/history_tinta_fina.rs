@@ -216,6 +216,41 @@ impl JanelaFina {
     }
 }
 
+/// ⭐⭐ **Um passo do painel de camadas** (`docs/3D/30` §4, W3) — a troca
+/// estrutural da pilha, com a cerca de [`IdDoPlano`]: um plano reconstruído
+/// tem outra pilha, e a troca de antes já não a descreve.
+pub(crate) struct CamadasDaPeca {
+    plano: IdDoPlano,
+    troca: crate::pilha_da_peca::TrocaDaPilha,
+}
+
+impl CamadasDaPeca {
+    /// O passo de antes de uma operação do painel sobre o plano `t`.
+    pub(crate) fn da_peca(t: &Tinta, troca: crate::pilha_da_peca::TrocaDaPilha) -> Self {
+        Self {
+            plano: IdDoPlano::de(t),
+            troca,
+        }
+    }
+
+    /// ⭐⭐ **Desfaz/refaz na PEÇA**: a troca na pilha e a peça recomposta.
+    /// `None` = a largada (o plano já não é aquele).
+    pub(crate) fn troca_na_peca(self, obj: &mut crate::SceneObject) -> Option<Self> {
+        let peca = obj.tinta.as_ref()?;
+        if IdDoPlano::de(peca) != self.plano {
+            return None;
+        }
+        let troca = obj.pilha.as_mut()?.troca_estrutura(self.troca)?;
+        crate::tinta_da_peca::pilha::recompoe(obj);
+        Some(Self { troca, ..self })
+    }
+
+    /// Quanto ele segura — a régua do tecto da história.
+    pub(crate) fn bytes(&self) -> usize {
+        self.troca.bytes()
+    }
+}
+
 /// ⭐⭐ **O PLANO INTEIRO de antes de um `Fill`** — o irmão de peça inteira da
 /// [`JanelaFina`], como a [`super::StrokeUndo::Mask`] é da janela de máscara.
 ///

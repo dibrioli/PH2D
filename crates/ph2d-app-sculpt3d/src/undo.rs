@@ -101,7 +101,8 @@ impl Sculpt3dScene {
         match entry {
             StrokeUndo::Stroke { level, .. }
             | StrokeUndo::Mask { level, .. }
-            | StrokeUndo::Fill { level, .. } => {
+            | StrokeUndo::Fill { level, .. }
+            | StrokeUndo::Camadas { level, .. } => {
                 if self.level() != level {
                     self.select_level(level);
                     self.mesh_rebuilt();
@@ -218,6 +219,14 @@ impl Sculpt3dScene {
                     colors: colors_now,
                     finas: finas_now,
                 }
+            }
+            // ⭐⭐ O painel de camadas: a pilha de antes e os planos que saíram
+            // trocam com os de agora, e a peça recompõe-se (W3).
+            StrokeUndo::Camadas { level, passo } => {
+                let obj = self.piece_mut();
+                let passo = passo.and_then(|p| p.troca_na_peca(obj)).map(Box::new);
+                self.edits += 1;
+                StrokeUndo::Camadas { level, passo }
             }
             // Tirar o topo — o nível de baixo nunca foi tocado. O que sai vira a
             // inversa, inteiro.

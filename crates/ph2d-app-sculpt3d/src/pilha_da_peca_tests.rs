@@ -26,7 +26,7 @@ fn pinta(p: &mut PilhaDaPeca, id: LayerId, px: &[u8]) {
 
 /// ⭐ A FIXTURA: base opaca + Multiply a 60 % + Overlay recortada com máscara
 /// + um ajuste HSB — modo, opacidade, recorte, máscara e ajuste exercidos.
-fn pilha_rica(n: usize) -> (PilhaDaPeca, [LayerId; 4]) {
+pub(super) fn pilha_rica(n: usize) -> (PilhaDaPeca, [LayerId; 4]) {
     let mut p = PilhaDaPeca::de_partes(LayerStack::new(), BTreeMap::new(), n);
     let base = p.nova_camada(nome_da_base()).expect("base");
     let mut opaca = plano(n, 1);

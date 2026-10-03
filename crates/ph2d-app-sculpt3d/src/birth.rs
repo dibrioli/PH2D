@@ -148,6 +148,7 @@ impl Sculpt3dScene {
             painter_tela: None,
             painter_raio_px: None,
             painter_molhada: None,
+            camadas_arrasto: None,
             painter_escorre: None,
         }
     }

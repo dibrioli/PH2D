@@ -87,7 +87,16 @@ pub(crate) fn paint_mask_row(
     // Grayscale-view eye — Eye (open) = show the mask's grayscale, EyeClosed (default) = show the effect.
     let eye_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::MaskView);
     register_button(ctx.host.store_mut(), eye_id);
-    let eye_st = ctx.host.store().button_visual(eye_id);
+    // ⚠️ Na peça 3D a vista em cinzento e o Apply não existem (as frases do fundo dizem-no).
+    let ofertado = !crate::peca::on_piece();
+    let eye_st = if ofertado {
+        ctx.host.store().button_visual(eye_id)
+    } else {
+        (
+            ph2d_editor_core::widget::ButtonState::Disabled,
+            ph2d_editor_core::motion::SETTLED,
+        )
+    };
     let eye_icon = if view_open {
         IconId::Eye
     } else {
@@ -97,7 +106,9 @@ pub(crate) fn paint_mask_row(
         .icon_only(eye_icon)
         .visual(eye_st);
     paint_button(&eye_btn, eye_rect, ctx.scene, ctx.text_system, theme);
-    ctx.host.hit_index_mut().register(eye_id, eye_rect);
+    if ofertado {
+        ctx.host.hit_index_mut().register(eye_id, eye_rect);
+    }
 
     // Invert toggle — accent-filled when on (mirror of the modifier toolbar).
     let inv_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::MaskInvert);
@@ -113,10 +124,19 @@ pub(crate) fn paint_mask_row(
     // Apply — destructive bake into the parent alpha, then remove the mask.
     let apply_id = painter_layer_widget_id(mask_id.0, PainterLayerWidget::MaskApply);
     register_button(ctx.host.store_mut(), apply_id);
-    let apply_st = ctx.host.store().button_visual(apply_id);
+    let apply_st = if ofertado {
+        ctx.host.store().button_visual(apply_id)
+    } else {
+        (
+            ph2d_editor_core::widget::ButtonState::Disabled,
+            ph2d_editor_core::motion::SETTLED,
+        )
+    };
     let apply_btn = Button::new(apply_id, tr("panel.painter_layers.mask.apply")).visual(apply_st);
     paint_button(&apply_btn, apply_rect, ctx.scene, ctx.text_system, theme);
-    ctx.host.hit_index_mut().register(apply_id, apply_rect);
+    if ofertado {
+        ctx.host.hit_index_mut().register(apply_id, apply_rect);
+    }
 
     y + ph2d_tokens::row_pitch_px()
 }

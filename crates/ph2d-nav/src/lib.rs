@@ -21,6 +21,7 @@
 pub mod agent;
 pub mod cost;
 pub mod geom;
+pub mod link;
 pub mod mesh;
 pub mod polyanya;
 
@@ -29,6 +30,7 @@ pub mod oracle;
 
 pub use agent::{AgentConfig, AgentRuntime, Event, Status, Steer};
 pub use geom::V2;
+pub use link::{Hop, Link, Query};
 pub use mesh::{MeshError, NavMesh, Poly};
 pub use polyanya::{NoPath, Path, Polyanya, Stats};
 

@@ -20,6 +20,7 @@
 //! está lá. Quem pinta o estado lê [`AgentRuntime::status`].
 
 use crate::geom::{EPS, V2, dist, dist_to_segment, scale, sub};
+use crate::link::{Hop, Query, plan_with_links};
 use crate::mesh::NavMesh;
 use crate::polyanya::{NoPath, Polyanya};
 
@@ -82,6 +83,8 @@ pub struct AgentRuntime {
     stuck_clock: f64,
     /// Quantas vezes a procura correu (os gates de Q6 contam isto).
     pub searches: u64,
+    /// (W7) Os ATALHOS do caminho em curso (o troço `path[at] → path[at + 1]` de cada um).
+    pub hops: Vec<Hop>,
 }
 
 /// A resposta de um tique.
@@ -90,12 +93,18 @@ pub struct Steer {
     /// Para onde ir: unitária, ou zero (parado).
     pub dir: V2,
     pub event: Option<Event>,
+    /// (W7) Um TELEPORTE: a ponte põe o corpo AQUI neste tique.
+    pub teleport: Option<V2>,
+    /// (W7) O atalho que o agente ATRAVESSOU neste tique (o `id` da ponte). ⚠️ Um campo à parte do
+    /// `event`: atravessar e chegar podem acontecer no mesmo tique, e nenhum cala o outro.
+    pub crossed: Option<u32>,
 }
 
 impl AgentRuntime {
     /// Esquece o caminho (a geometria mudou, ou o agente foi desligado): o próximo tique recalcula.
     pub fn forget_path(&mut self) {
         self.path.clear();
+        self.hops.clear();
         self.next = 0;
         self.planned_for = None;
         self.partial = false;
@@ -108,10 +117,19 @@ impl AgentRuntime {
             return 0.0;
         }
         let mut d = dist(pos, self.path[self.next]);
-        for w in self.path[self.next..].windows(2) {
-            d += dist(w[0], w[1]);
+        for (i, w) in self.path[self.next..].windows(2).enumerate() {
+            // Um teleporte não se anda.
+            if !self.hop_at(self.next + i).is_some_and(|h| h.teleport) {
+                d += dist(w[0], w[1]);
+            }
         }
         d
+    }
+
+    /// O atalho que começa no ponto `i` do caminho, se há.
+    #[must_use]
+    pub fn hop_at(&self, i: usize) -> Option<Hop> {
+        self.hops.iter().copied().find(|h| h.at == i)
     }
 }
 
@@ -121,6 +139,22 @@ pub fn step(
     rt: &mut AgentRuntime,
     mesh: Option<&NavMesh>,
     search: &mut Polyanya,
+    pos: V2,
+    target: Option<V2>,
+    cfg: &AgentConfig,
+    dt: f64,
+) -> Steer {
+    step_with(rt, mesh, search, &Query::default(), pos, target, cfg, dt)
+}
+
+/// ⭐ (W7) [`step`] com os custos das áreas e os atalhos ([`Query`]) — a MESMA condução; sem eles é
+/// `step`, ao bit.
+#[allow(clippy::too_many_arguments)]
+pub fn step_with(
+    rt: &mut AgentRuntime,
+    mesh: Option<&NavMesh>,
+    search: &mut Polyanya,
+    q: &Query<'_>,
     pos: V2,
     target: Option<V2>,
     cfg: &AgentConfig,
@@ -140,12 +174,18 @@ pub fn step(
     }
 
     // ── Recalcular? (Q6: só por um dos quatro motivos) ────────────────────────
-    let off_corridor = rt.next >= 1
+    // ⚠️ (W7) A meio de uma porta de um sentido o agente está FORA da malha (a porta é proibida para
+    // quem não a atravessa): replanear ali levava-o para trás. Só o «preso» replaneia lá dentro.
+    let numa_porta = rt.next >= 1 && rt.hop_at(rt.next - 1).is_some_and(|h| !h.teleport);
+    let off_corridor = !numa_porta
+        && rt.next >= 1
         && rt.next < rt.path.len()
         && dist_to_segment(rt.path[rt.next - 1], rt.path[rt.next], pos) > cfg.repath_distance;
-    let target_moved = rt
-        .planned_for
-        .is_none_or(|p| dist(p, t) > cfg.repath_distance);
+    let target_moved = rt.planned_for.is_none()
+        || (!numa_porta
+            && rt
+                .planned_for
+                .is_some_and(|p| dist(p, t) > cfg.repath_distance));
     let stuck = cfg.stuck_after_s > 0.0 && rt.stuck_clock >= cfg.stuck_after_s;
     let mut stuck_event = None;
     if rt.path.is_empty() || target_moved || off_corridor || stuck {
@@ -156,23 +196,48 @@ pub fn step(
         rt.best_remaining = f64::INFINITY;
         rt.searches += 1;
         rt.planned_for = Some(t);
-        match plan(mesh, search, pos, t) {
-            Some((path, partial)) => {
+        match plan(mesh, search, q, pos, t) {
+            Some((path, hops, partial)) => {
                 rt.path = path;
+                rt.hops = hops;
                 rt.partial = partial;
                 rt.next = 1.min(rt.path.len().saturating_sub(1));
             }
             None => {
                 rt.path.clear();
+                rt.hops.clear();
                 rt.next = 0;
                 return halt(rt, prev, Status::NoPath, stuck_event);
             }
         }
     }
 
-    // ── Avançar os pontos alcançados (Q5) ─────────────────────────────────────
+    // ── Avançar os pontos alcançados (Q5) — e os atalhos (W7) ─────────────────
     let accept = (cfg.speed * dt).max(EPS);
+    let mut crossed = None;
     while rt.next + 1 < rt.path.len() && dist(pos, rt.path[rt.next]) <= accept {
+        // A entrada de um TELEPORTE: o corpo salta para a saída neste tique.
+        if let Some(h) = rt.hop_at(rt.next)
+            && h.teleport
+        {
+            let saida = rt.path[rt.next + 1];
+            rt.next += 1;
+            rt.stuck_clock = 0.0;
+            rt.best_remaining = f64::INFINITY;
+            return Steer {
+                dir: [0.0; 2],
+                event: stuck_event,
+                teleport: Some(saida),
+                crossed: Some(h.link),
+            };
+        }
+        // A saída de uma porta de um sentido: atravessou.
+        if rt.next >= 1
+            && let Some(h) = rt.hop_at(rt.next - 1)
+            && !h.teleport
+        {
+            crossed = Some(h.link);
+        }
         rt.next += 1;
     }
     let Some(&goal) = rt.path.get(rt.next) else {
@@ -189,7 +254,9 @@ pub fn step(
         } else {
             Status::Arrived
         };
-        return halt(rt, prev, s, stuck_event);
+        let mut st = halt(rt, prev, s, stuck_event);
+        st.crossed = crossed;
+        return st;
     }
 
     // ── «Preso»: o que falta tem de DESCER ────────────────────────────────────
@@ -216,7 +283,12 @@ pub fn step(
     } else {
         scale(sub(goal, pos), 1.0 / l)
     };
-    Steer { dir, event }
+    Steer {
+        dir,
+        event,
+        teleport: None,
+        crossed,
+    }
 }
 
 /// Parado, num estado: a resposta e o evento da transição (se houve).
@@ -225,6 +297,8 @@ fn halt(rt: &mut AgentRuntime, prev: Status, s: Status, forced: Option<Event>) -
     Steer {
         dir: [0.0; 2],
         event: forced.or_else(|| transition(prev, s)),
+        teleport: None,
+        crossed: None,
     }
 }
 
@@ -242,24 +316,42 @@ fn transition(prev: Status, s: Status) -> Option<Event> {
     }
 }
 
-/// O caminho de `pos` até `t` (ou até ao ponto alcançável mais perto dele, `partial = true`).
-/// `None` só quando não há caminho nenhum.
-fn plan(mesh: &NavMesh, search: &mut Polyanya, pos: V2, t: V2) -> Option<(Vec<V2>, bool)> {
+/// O caminho de `pos` até `t` (ou até ao ponto alcançável mais perto dele, `partial = true`), e os
+/// atalhos dele. `None` só quando não há caminho nenhum.
+fn plan(
+    mesh: &NavMesh,
+    search: &mut Polyanya,
+    q: &Query<'_>,
+    pos: V2,
+    t: V2,
+) -> Option<(Vec<V2>, Vec<Hop>, bool)> {
     // Um agente empurrado para fora da malha volta pelo ponto mais perto dela.
     let (s, sp) = mesh.nearest_point(pos, None)?;
+    // (W7) Com atalhos, o alvo pode estar noutra ilha e ser alcançável (um teleporte liga-as): o
+    // grafo dos atalhos tenta o ponto mais perto dele em QUALQUER ilha; sem caminho, o de sempre.
+    if !q.links.is_empty()
+        && let Some((t_any, _)) = mesh.nearest_point(t, None)
+        && let Some((mut pts, mut hops, _)) = plan_with_links(mesh, search, q, s, t_any)
+    {
+        if dist(pts[0], pos) > EPS {
+            pts.insert(0, pos);
+            hops.iter_mut().for_each(|h| h.at += 1);
+        }
+        return Some((pts, hops, false));
+    }
     let island = mesh.island(sp);
     // ⚠️ «Parcial» quer dizer OUTRA ilha — o alvo fora da malha por estar encostado a uma parede está
     // na mesma ilha (o ponto mais perto dele, em qualquer ilha, é desta).
     let (_, tp_any) = mesh.nearest_point(t, None)?;
     let partial = mesh.island(tp_any) != island;
     let (t_in, _) = mesh.nearest_point(t, Some(island))?;
-    match search.find_path(mesh, s, t_in) {
+    match search.find_path_costs(mesh, q.costs, s, t_in) {
         Ok(p) => {
             let mut pts = p.points;
             if dist(pts[0], pos) > EPS {
                 pts.insert(0, pos);
             }
-            Some((pts, partial))
+            Some((pts, Vec::new(), partial))
         }
         Err(NoPath::Unreachable | NoPath::StartOff | NoPath::TargetOff) => None,
     }

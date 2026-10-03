@@ -2,6 +2,7 @@
 //! determinismo entre processos, e o corpus do Godot.
 
 mod areas;
+mod atalhos;
 mod cena;
 mod contra_o_exacto;
 mod custo;

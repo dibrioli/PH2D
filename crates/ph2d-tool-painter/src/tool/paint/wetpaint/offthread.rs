@@ -44,7 +44,7 @@ use std::time::{Duration, Instant};
 
 /// A sim é 40 Hz (SPEC §5) — o worker se ritma nisso, e ficar para trás é câmera lenta (a política
 /// do `max_substeps` da física, que este módulo herda).
-const STEP_S: f64 = 1.0 / 40.0;
+pub(super) const STEP_S: f64 = 1.0 / 40.0;
 
 /// Quanto atraso o worker aceita antes de DESISTIR do tempo perdido.
 ///
@@ -427,7 +427,12 @@ impl super::super::PainterTool {
             s.bring_home();
         }
     }
+}
 
+/// A porta dos gates de FÍSICA — e, pela feature `test-support`, do relógio fixo
+/// (`PainterTool::set_wet_relogio_fixo`).
+#[cfg(any(test, feature = "test-support"))]
+impl super::super::PainterTool {
     /// **`n` passos de sim SINCRONAMENTE, e o composite** — o `on_tick` de
     /// antes desta wave, para os gates cuja afirmação é sobre a FÍSICA (o
     /// escorrido do undo, a paridade de porta, a aceitação): eles pedem um

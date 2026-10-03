@@ -25,6 +25,9 @@ authors.workspace = true
 # upload/readback overhead beats CPU only above a size threshold).
 default = []
 gpu = ["dep:ph2d-gpu", "ph2d-inpaint/gpu"]
+# A água do Wet Paint num relógio FIXO (`PainterTool::set_wet_relogio_fixo`), para os gates que medem o
+# efeito de um controlo na tinta: ao relógio real, sob carga, duas corridas iguais divergiam.
+test-support = []
 
 [dependencies]
 # ⭐ A tabela de strings (folha, ZERO dependências): os quatro MEIOS que esta crate publica são

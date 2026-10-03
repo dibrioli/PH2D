@@ -136,6 +136,12 @@ pub(crate) struct WetPaintState {
     /// Quantas células de FLUIDO medem uma célula de FLUXO (plano 30). `1` = a
     /// grade de fluxo É a fina, que é o motor que sempre shipou.
     pub(super) flow_ratio: u8,
+    /// **O relógio FIXO dos gates** (feature `test-support`): `Some(dívida)` ⇒ o tique avança a água
+    /// SINCRONAMENTE pelo [`Self::relogio_fixo`] e nunca a entrega ao worker. O worker anda ao relógio
+    /// REAL, e sob carga duas corridas iguais divergiam em 1 148 texels (o censo dos controlos,
+    /// 2026-10-03): um gate que pergunta «este controlo muda a tinta?» precisa da mesma tinta duas vezes.
+    #[cfg(feature = "test-support")]
+    pub(super) relogio_fixo: Option<f64>,
 }
 
 impl Default for WetPaintState {
@@ -158,7 +164,19 @@ impl Default for WetPaintState {
             tuning_open: false,
             grid_ratio: grid_map::DEFAULT_RATIO,
             flow_ratio: 1,
+            #[cfg(feature = "test-support")]
+            relogio_fixo: None,
         }
+    }
+}
+
+#[cfg(feature = "test-support")]
+impl PainterTool {
+    /// **Os gates correm a água num relógio FIXO** — 40 passos por segundo de `on_tick`, síncronos, pela
+    /// mesma porta dos gates de física (`wet_step_sync`). O produto nunca a chama: a água dele anda ao
+    /// relógio real, numa thread própria (`wetpaint/offthread.rs`).
+    pub fn set_wet_relogio_fixo(&mut self, ligado: bool) {
+        self.paint.wetpaint.relogio_fixo = ligado.then_some(0.0);
     }
 }
 
@@ -255,6 +273,14 @@ impl PainterTool {
             if let Some(sess) = self.paint.wetpaint.session.as_mut() {
                 sess.try_bring_home();
             }
+            return;
+        }
+        #[cfg(feature = "test-support")]
+        if let Some(divida) = self.paint.wetpaint.relogio_fixo.as_mut() {
+            *divida += f64::from(_dt_s) / offthread::STEP_S;
+            let passos = divida.floor();
+            *divida -= passos;
+            self.wet_step_sync(passos as usize);
             return;
         }
         let facts = self.wet_facts();

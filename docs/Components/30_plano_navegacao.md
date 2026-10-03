@@ -498,6 +498,8 @@ na ponte. Gates novos: o oráculo do Godot passo a passo · o banco de cenários
 
 ## §14 — W6 FEITA (2026-10-02): o guarda patrulha, vê, persegue, e a porta fecha-se
 
+✅ **Smoke do dono APROVADO (02/10)** — a cena `=3`, depois das curas do Rewind (§14.3).
+
 **O que se consegue fazer agora:** uma porta que desliza e PÁRA vira parede para os agentes no tique em
 que pára (e deixa de o ser quando volta a andar); os verbos **Start Navigation** (com o nome de quem
 perseguir, ou vazio = o alvo autorado) e **Stop Navigation** na tabela de acções; dois alvos novos no

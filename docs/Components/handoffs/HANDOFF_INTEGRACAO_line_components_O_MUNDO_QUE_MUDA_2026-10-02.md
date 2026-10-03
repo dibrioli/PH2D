@@ -196,7 +196,8 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_NAV
 O guarda VERMELHO faz a ronda pelo rectângulo desenhado de cima, o CINZENTO (o controlo, sem cérebro) pelo de
 baixo. Setas: entrar pela porta e pisar a zona AMARELA — o vermelho persegue; voltar à zona VERDE — nasce a
 porta atrás do herói (uma fábrica no vão), o vermelho desiste e volta à ronda; o Rewind abre-a (o que nasceu
-na corrida é varrido) sem enxurrada de mensagens. Tecla `B`: o contorno claro da área andável fecha o
+na corrida é varrido) sem enxurrada de mensagens. ✅ **Smoke do dono APROVADO (02/10)**, depois das curas do
+Rewind. Tecla `B`: o contorno claro da área andável fecha o
 vão quando a porta pára. O guarda vem escolhido (Nav Agent: *Patrol* · *Patrol Route*). Fotografada aos `6 s`
 e `9 s` (ecrã virtual). As cenas `=1` e `=2` continuam iguais.
 

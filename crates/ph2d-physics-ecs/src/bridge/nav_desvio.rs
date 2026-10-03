@@ -60,7 +60,8 @@ impl PhysicsBridge {
             let c = [f64::from(pose.translation.x), f64::from(pose.translation.y)];
             let vel = self.velocidade_de(e);
             let w = f64::from(self.world.body_angvel(b.handle).unwrap_or(0.0));
-            let (sin, cos) = f64::from(pose.rotation.angle()).sin_cos();
+            // ⚠️ `libm`, nunca o `sin_cos` do `std`: a libc de cada SO muda o último ulp (o hash c9).
+            let (sin, cos) = libm::sincos(f64::from(pose.rotation.angle()));
             indice.insert(e, corpos.len() as u32);
             let forma = if alvos.contains(&e) {
                 vec![([0.0, 0.0], f64::from(raio_que_envolve(&b.rest)))]

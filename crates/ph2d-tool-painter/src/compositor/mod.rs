@@ -122,6 +122,8 @@ pub struct Region {
 }
 
 // ── Submodules (god-module split, 2026-06-04; pure mechanical move) ──
+#[cfg(test)]
+mod ajustes_na_fronteira_tests;
 mod cache;
 mod compose;
 mod gpu_ops; // the stack → the GPU compositor's op-list (two consumers)

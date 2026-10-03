@@ -57,6 +57,8 @@ use crate::mesh::NavMesh;
 
 #[path = "polyanya_custo.rs"]
 mod custo;
+#[path = "polyanya_dominancia.rs"]
+mod dominancia;
 
 /// Um caminho: os pontos por onde ele passa (o primeiro é a partida, o último o alvo, os do meio são
 /// CANTOS da malha — e, com áreas de custo, os pontos onde ele atravessa uma fronteira), o
@@ -92,6 +94,10 @@ pub struct Stats {
     pub refractions: u64,
     /// (W7) Raízes de fronteira que não nasceram por estarem dominadas.
     pub pruned_refractions: u64,
+    /// (W9) Nós que outra frente na mesma aresta dominava inteiros (não expandiram).
+    pub dominated: u64,
+    /// (W9) Nós cortados nas pontas por outra frente.
+    pub trimmed: u64,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -161,6 +167,10 @@ pub struct Polyanya {
     fan_g: Vec<f64>,
     pendentes: Vec<custo::Pendente>,
     steiner_override: Option<f64>,
+    /// (W9) A dominância entre frentes (só na procura ponderada) — `polyanya_dominancia.rs`.
+    dominancia: bool,
+    sem_dominancia: bool,
+    frentes: dominancia::Frentes,
     pub stats: Stats,
 }
 
@@ -187,6 +197,7 @@ impl Polyanya {
         self.steiner_g.clear();
         self.ponta_g.clear();
         self.pendentes.clear();
+        self.frentes.clear(mesh);
         self.seq = 0;
     }
 
@@ -378,6 +389,15 @@ impl Polyanya {
             self.refract(mesh, root, p, entry, left, right, cw, t);
             return;
         }
+        let (left, right) = if self.dominancia {
+            let r = self.roots[root as usize];
+            match self.domina(mesh, p, entry, r.p, r.g, cw, left, right) {
+                Some(lr) => lr,
+                None => return,
+            }
+        } else {
+            (left, right)
+        };
         let poly = &mesh.polys()[p as usize];
         let n = poly.len();
         let k = entry as usize;

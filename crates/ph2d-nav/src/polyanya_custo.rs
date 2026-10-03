@@ -148,10 +148,13 @@ impl Polyanya {
         let r = self.roots[root as usize];
         for (x, j) in pontos {
             let g = r.g + w * dist(r.p, x);
+            // A gama do polimento é a ARESTA inteira, não o que esta raiz vê (W9): o polimento só
+            // aceita o que a caminhada real confirma, e quando um ponto anterior sai
+            // (`sem_pontos_a_mais`) a travessia tem de poder ir para onde o novo vizinho a vê.
             let lado = Lado {
                 into: p,
                 other: de,
-                range: (left, right),
+                range: (ar.plo, ar.phi),
             };
             self.boundary_root(mesh, root, &ar, x, j, g, w, lado, true, t);
         }
@@ -442,7 +445,10 @@ impl Polyanya {
         if c0 <= wmin * p0.length * (1.0 + 1e-12) + EPS {
             return Ok(geral);
         }
-        Ok(match self.search(mesh, costs, s, t) {
+        self.dominancia = !self.sem_dominancia;
+        let ponderado = self.search(mesh, costs, s, t);
+        self.dominancia = false;
+        Ok(match ponderado {
             Ok(p) if p.cost < c0 => p,
             _ => geral,
         })
@@ -486,9 +492,9 @@ impl Polyanya {
         let length = |pts: &[Ponto]| -> f64 { pts.windows(2).map(|w| dist(w[0].0, w[1].0)).sum() };
         let mut cost: f64 = pts.windows(2).map(|w| w[1].1 * dist(w[0].0, w[1].0)).sum();
         if pts.iter().any(|p| p.2.is_some()) {
-            polish(mesh, &self.costs, &mut pts);
             // Uma travessia que ficou COLINEAR com os vizinhos não dobra nada (a recta através da
             // lama): sai, e o troço que a substitui leva o custo... do que o andar real disser.
+            polish(mesh, &self.costs, &mut pts);
             let mut i = 1;
             while i + 1 < pts.len() {
                 let (a, x, b) = (pts[i - 1].0, pts[i].0, pts[i + 1].0);
@@ -498,6 +504,7 @@ impl Polyanya {
                     i += 1;
                 }
             }
+            sem_pontos_a_mais(mesh, &self.costs, &mut pts);
             // Depois de deslizar, o custo é o REAL (a caminhada), não o do modelo de cada troço.
             let xs: Vec<V2> = pts.iter().map(|p| p.0).collect();
             cost = crate::cost::path_cost(mesh, &self.costs, &xs).unwrap_or(cost);
@@ -513,6 +520,11 @@ impl Polyanya {
     /// O passo da grelha desta procura (o produto usa [`STEINER_M`]; a sonda varia-o).
     fn steiner_m(&self) -> f64 {
         self.steiner_override.unwrap_or(STEINER_M)
+    }
+
+    /// O CONTROLO da sonda e dos gates: a procura ponderada sem a dominância entre frentes (W9).
+    pub fn set_front_dominance(&mut self, on: bool) {
+        self.sem_dominancia = !on;
     }
 
     /// A sonda e os gates escolhem outro passo da grelha (`None` volta ao do produto).
@@ -570,6 +582,35 @@ pub(super) fn polish(mesh: &NavMesh, costs: &[f64], pts: &mut [Ponto]) {
         }
         if !mexeu {
             break;
+        }
+    }
+}
+
+/// (W9) Tira cada raiz de fronteira cujo caminho SEM ela, polido de novo, não custa mais (pela
+/// caminhada REAL). Dois caminhos discretos de custo IGUAL polem-se diferente: o que guarda um ponto a
+/// mais na quina da lama fica preso nele, porque o polimento move um ponto de cada vez e a quina só
+/// sai quando a travessia seguinte se mexe COM ela (medido: `1,0002` do oráculo contra `1,0000`).
+fn sem_pontos_a_mais(mesh: &NavMesh, costs: &[f64], pts: &mut Vec<Ponto>) {
+    let custo = |pts: &[Ponto]| {
+        let xs: Vec<V2> = pts.iter().map(|p| p.0).collect();
+        crate::cost::path_cost(mesh, costs, &xs)
+    };
+    let Some(mut atual) = custo(pts) else { return };
+    let mut i = 1;
+    while i + 1 < pts.len() {
+        if pts[i].2.is_none() {
+            i += 1;
+            continue;
+        }
+        let mut sem = pts.clone();
+        sem.remove(i);
+        polish(mesh, costs, &mut sem);
+        match custo(&sem) {
+            Some(c) if c <= atual => {
+                *pts = sem;
+                atual = c;
+            }
+            _ => i += 1,
         }
     }
 }

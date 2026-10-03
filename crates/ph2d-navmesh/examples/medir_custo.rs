@@ -243,6 +243,9 @@ fn main() {
     };
     let pesos = [1.5, 2.0, 4.0, 10.0];
     let mut s = Polyanya::new();
+    // `SEM_DOMINANCIA=1`: o CONTROLO da W9 (a procura ponderada sem a dominância entre frentes).
+    s.set_front_dominance(std::env::var_os("SEM_DOMINANCIA").is_none());
+    let so_grande = std::env::var_os("SO_GRANDE").is_some();
     if let Ok(caso) = std::env::var("DBG_CASO") {
         let v: Vec<f64> = caso.split(',').map(|x| x.parse().unwrap()).collect();
         let (obs, areas) = cena(v[0] as u64, w, h, 10, 4);
@@ -289,6 +292,10 @@ fn main() {
         return;
     }
 
+    if so_grande {
+        grande(&mut s, &params);
+        return;
+    }
     // ── 1. A convergência do oráculo ──
     println!(
         "\n1. O ORÁCULO: o custo com Steiner a 0,4 / 0,2 / 0,1 m nas fronteiras, relativo a 0,05 m"
@@ -382,6 +389,16 @@ fn main() {
                     t2[k] += i2.elapsed().as_secs_f64();
                     refr[k] += s.stats.refractions - antes;
                     let real = path_cost(m, &costs, &p2.points).expect("C2 dentro");
+                    if std::env::var_os("PIOR").is_some() && g == 0.25 && real / o > 1.0001 {
+                        println!(
+                            "   PIOR {:.5} peso {peso} DBG_CASO={seed},{},{},{},{},{peso}",
+                            real / o,
+                            a[0],
+                            a[1],
+                            z[0],
+                            z[1]
+                        );
+                    }
                     assert!(
                         (real - p2.cost).abs() <= 1e-9 * real.max(1.0),
                         "C2 diz {} e custa {real}",
@@ -436,7 +453,12 @@ fn main() {
         println!("{l}");
     }
 
-    // ── 4. A cena GRANDE: o custo por consulta onde ele importa ──
+    grande(&mut s, &params);
+}
+
+/// ── 4. A cena GRANDE: o custo por consulta onde ele importa ──
+fn grande(s: &mut Polyanya, params: &Params) {
+    let params = *params;
     println!(
         "\n4. A cena GRANDE (100 × 100 m, 1 000 obstáculos, 100 lamas a peso 4): µs por consulta"
     );
@@ -523,13 +545,15 @@ fn main() {
         );
         let n = pares.len() as u64;
         println!(
-            "   {:>13}  por consulta: {} gerados · {} expandidos · {} voltas · {} raízes · {} podadas",
+            "   {:>13}  por consulta: {} gerados · {} expandidos · {} voltas · {} raízes · {} podadas · {} dominados · {} cortados",
             "",
             s.stats.generated / n,
             s.stats.expanded / n,
             s.stats.turns / n,
             s.stats.refractions / n,
-            s.stats.pruned_refractions / n
+            s.stats.pruned_refractions / n,
+            s.stats.dominated / n,
+            s.stats.trimmed / n
         );
     }
 }

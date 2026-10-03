@@ -239,6 +239,11 @@ pub struct CozidoFx {
     /// do que a camada desenha. `None` quando o solver não responde (um contorno que se cruza, o
     /// *Repeat* sobreposto): aí vale o campo da fonte.
     campo: Option<(CampoDoDominio, Option<IndiceDoCampo>)>,
+    /// ⭐⭐ **A união do contacto é NEUTRA no repouso deste cozido?** Um efeito pode desenhar
+    /// contornos que se cruzam DE PROPÓSITO (as cópias de um *Repeat*, a agulha de um *Bloat*
+    /// forte), e a união reescrevê-los-ia já em repouso. ⛔ *Uma lei de contacto que muda o
+    /// repouso não é de contacto* ⇒ ali o desenho sai sem ela.
+    contacto: bool,
 }
 
 struct Ultimo {
@@ -461,11 +466,13 @@ fn cozido_com_efeitos(g: &SkinnedPath, pilha: &[FxEntry], eixos: &[Handle]) -> O
         &caminho,
         campo.as_ref().map_or(da_fonte, |(c, _)| c),
     );
+    let contacto = ph2d_vec_boolean::resolve_overlap(&caminho).is_none();
     Some(CozidoFx {
         pilha: pilha.to_vec(),
         caminho,
         tabela,
         campo,
+        contacto,
     })
 }
 
@@ -571,14 +578,20 @@ fn calcula(
         // encosto; sem vinco apertado a forma sai ao bit. ⛔ Só no DESENHADO — o
         // `cru` são os nós que o artista edita, e trocá-los pela silhueta mudar-lhe-ia a malha.
         .map(|(d, quinas)| {
-            // ⛔⛔ **Numa forma com EFEITO, nenhuma silhueta** (report do dono de 2026-10-03, quatro
-            // fotos: pedaços de traço soltos, serrilha, um quarto de círculo). Medido
-            // (`skinned_mesh::efeitos_tests`): sem ela o desenho fica a `0,002`–`0,006` do ideal em
-            // toda a dobra; com a UNIÃO lia `0,16`–`2,04` a `90°`–`120°` (*Bloat* e *Twist*), e a
-            // bola custava `3,5`–`7 ms` no *Zig Zag*. As cristas e as pontas de um efeito não são
-            // o contorno do artista que a silhueta foi feita para fechar.
-            if !leis.contacto || fx.is_some() {
+            // ⭐⭐ **Numa forma com EFEITO, só a UNIÃO** — e só quando ela é neutra no repouso. A
+            // bola arredonda o vinco do contorno do ARTISTA, e as cristas e pontas de um efeito
+            // não o são (`3,5`–`7 ms` no *Zig Zag*). ⚠️ A F50-d tirou-a de todo (report do dono
+            // de 2026-10-03: pedaços de traço soltos, serrilha): a serrilha era a laçada do ajuste
+            // (F50-e) e os riscos soltos as LASCAS da união (F50-f) — curadas as duas, a união
+            // volta, e o traço deixa de se cruzar por dentro de uma dobra forte.
+            if !leis.contacto {
                 d
+            } else if let Some(c) = fx {
+                if c.contacto {
+                    ph2d_vec_boolean::resolve_overlap(&d).unwrap_or(d)
+                } else {
+                    d
+                }
             } else {
                 ph2d_vec_boolean::silhueta_da_pele(&d, &quinas).unwrap_or(d)
             }

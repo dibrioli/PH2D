@@ -105,6 +105,15 @@ fn efeitos_fortes() -> Vec<(&'static str, PathEffect)> {
     ]
 }
 
+/// As leis do produto SEM o contacto — o que o bake desenha, antes da união que a
+/// [`a_uniao_numa_forma_com_efeito_nao_deixa_lascas_nem_mexe_no_repouso`] julga à parte.
+fn so_o_bake() -> Leis {
+    Leis {
+        contacto: false,
+        ..Leis::do_ambiente()
+    }
+}
+
 /// O padrão-ouro de uma forma com efeito: a lei da IMAGEM ponto a ponto sobre o campo cujo DOMÍNIO
 /// é o contorno cozido — o que o *Puppet* do After Effects faz com o que a camada desenha.
 fn ouro_do_cozido(p: &BPalco, pele: &ph2d_skeleton::Skin, repouso: &VecPath) -> Vec<[f64; 2]> {
@@ -193,8 +202,8 @@ fn o_efeito_corre_no_repouso_e_dobra_com_a_forma() {
 ///    do *Twist* — `17`–`191×` de esticão entre amostras vizinhas). Um *Bloat* fica dentro do
 ///    alcance da barra e não rasga; ele está aqui pela 3.ª metade.
 /// 2. **Sobre o campo do contorno COZIDO o ideal não rasga** (`≤ 3,6×`).
-/// 3. **O desenho do PRODUTO (com a lei do contacto ligada) fica no ideal até `120°`** — a
-///    silhueta reescrevia-o (`0,16`–`2,04`) e era a fonte dos pedaços soltos e da serrilha.
+/// 3. **O desenho do BAKE fica no ideal até `120°`** (sem o contacto, que o reescreve DE
+///    PROPÓSITO onde o contorno se cruza — julgado à parte, F50-f).
 #[test]
 fn um_efeito_que_sai_da_forma_nao_rasga() {
     for (nome, efeito) in efeitos_fortes() {
@@ -212,10 +221,9 @@ fn um_efeito_que_sai_da_forma_nao_rasga() {
                 .collect();
             let ouro = ouro_do_cozido(&p, &pele, &repouso);
             let (ef, ec) = (esticao(&rest, &da_fonte), esticao(&rest, &ouro));
-            let d =
-                crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), Leis::do_ambiente())
-                    .remove(&p.id)
-                    .expect("desenho");
+            let d = crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), so_o_bake())
+                .remove(&p.id)
+                .expect("desenho");
             let (_, _, nmax) = b_perfil(&ouro, &b_amostra_com(&d, POR_SEG));
             println!(
                 "  {nome:>9} {graus:>4}°: esticão com o campo da fonte {ef:.2} · do cozido {ec:.2} \
@@ -469,10 +477,9 @@ fn o_desenho_nao_volta_para_tras_onde_a_arte_nao_volta() {
         let no_repouso = voltas(&repouso_com(&p, &pilha));
         for graus in [0.0_f32, 30.0, 60.0, 90.0] {
             p.dobra_em_s(graus);
-            let d =
-                crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), Leis::do_ambiente())
-                    .remove(&p.id)
-                    .expect("desenho");
+            let d = crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), so_o_bake())
+                .remove(&p.id)
+                .expect("desenho");
             let vistas = voltas(&d);
             assert!(
                 vistas <= no_repouso,
@@ -481,4 +488,57 @@ fn o_desenho_nao_volta_para_tras_onde_a_arte_nao_volta() {
             );
         }
     }
+}
+
+/// ⭐⭐⭐ **GATE — A UNIÃO numa forma com efeito não deixa LASCAS nem mexe no REPOUSO** (F50-f).
+///
+/// O contacto de uma forma com efeito é a UNIÃO (sem a bola): o traço deixa de se cruzar por dentro
+/// de uma dobra forte. ⛔ A 1.ª vez que voltou trazia as lascas — ilhas de área `~1e-16` que a
+/// agulha de um *Bloat* forte deixa, e que o traço desenha como riscos soltos (o report do dono de
+/// 2026-10-03). As três metades: em repouso o desenho é o do bake ao bit; nenhuma ilha abaixo do
+/// piso das lascas; e o CONTROLO de que a união corre de facto em alguma pose.
+#[test]
+fn a_uniao_numa_forma_com_efeito_nao_deixa_lascas_nem_mexe_no_repouso() {
+    let anel = |v: &[ph2d_vec_scene::VecVertex]| {
+        ph2d_vec_boolean::area(&VecPath {
+            verts: v.iter().copied().collect(),
+            closed: true,
+            ..VecPath::default()
+        })
+    };
+    let mut uniu = 0;
+    for (nome, efeito) in efeitos().into_iter().chain(efeitos_fortes()) {
+        let pilha = vec![FxEntry::new(efeito)];
+        let mut p = b_palco(false);
+        caminho_mut(&mut p.scene, p.id).effects = pilha.clone();
+        for graus in [0.0_f32, 60.0, 90.0, 120.0] {
+            p.dobra_em_s(graus);
+            let desenho = |leis| {
+                crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), leis)
+                    .remove(&p.id)
+                    .expect("desenho")
+            };
+            let (com, sem) = (desenho(Leis::do_ambiente()), desenho(so_o_bake()));
+            if graus == 0.0 {
+                assert_eq!(
+                    com.verts, sem.verts,
+                    "{nome} em repouso: o contacto mudou o desenho que o artista fez"
+                );
+            }
+            uniu += usize::from(com.verts != sem.verts);
+            let piso = anel(&com.verts) * 1e-4;
+            for (k, ilha) in com.subpaths.iter().enumerate() {
+                let a = anel(&ilha.verts);
+                assert!(
+                    a > piso,
+                    "{nome} a {graus}°: a ilha {k} tem área {a:.2e} — uma lasca que o traço desenha \
+                     como um risco solto"
+                );
+            }
+        }
+    }
+    assert!(
+        uniu >= 1,
+        "a união não correu em pose nenhuma — o gate não mede nada"
+    );
 }

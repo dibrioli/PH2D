@@ -91,7 +91,21 @@ pub fn resolve_overlap(path: &VecPath) -> Option<VecPath> {
         .map(|v| solda_os_segmentos_curtos(v, solda))
         .filter(|v| v.len() >= 3);
     let outer = contornos.next()?;
-    let resto: Vec<Contour> = contornos.map(Contour::new_closed).collect();
+    // ⭐ **As LASCAS saem** (F50-f, 2026-10-03): uma ponta de espessura nula (a agulha de um *Bloat*
+    // forte, os dois lados coincidentes) deixa ilhas de área `~1e-16`, e o traço desenha cada uma
+    // como um risco solto. A régua é a do [`crate::expand::drop_slivers`] — relativa à área.
+    let anel = |v: &Vec<VecVertex>| {
+        crate::area(&VecPath {
+            verts: v.clone(),
+            closed: true,
+            ..VecPath::default()
+        })
+    };
+    let piso = anel(&outer) * 1e-4;
+    let resto: Vec<Contour> = contornos
+        .filter(|v| anel(v) > piso)
+        .map(Contour::new_closed)
+        .collect();
     let mut out = path.clone();
     out.verts = outer;
     out.closed = true;

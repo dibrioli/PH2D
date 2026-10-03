@@ -146,14 +146,15 @@ fn uma_pilha_que_nao_descreve_o_plano_recusa_o_load() {
         ("uma camada sem plano", &|c| {
             c.planos.clear();
         }),
+        // ⚠️ A cópia é EXACTA (contagem certa): uma cópia com outra contagem era
+        //    recusada pela contagem e o caso não chegava à repetição (a mutação
+        //    M10 sobreviveu assim).
         ("um plano repetido", &|c| {
-            let p = c.planos.remove(0);
-            c.planos.push(super::doc_camadas::PlanoDoc {
-                id: p.id,
-                rgba: super::doc_tinta::Forma::Corridas(vec![(1, [0; 4])]),
-                relevo: None,
-            });
-            c.planos.push(p);
+            let copia = postcard::from_bytes::<super::doc_camadas::PlanoDoc>(
+                &postcard::to_allocvec(&c.planos[0]).expect("serializa"),
+            )
+            .expect("re-lê");
+            c.planos.push(copia);
         }),
         ("um plano sem camada", &|c| {
             let mut p = postcard::from_bytes::<super::doc_camadas::PlanoDoc>(

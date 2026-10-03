@@ -163,9 +163,10 @@ muta "$APP/doc_tinta.rs" \
   '        *self == *outra' \
   'P16 relevo: a igualdade volta a ser == e o -0.0 da altura junta-se ao +0.0'
 
-muta "$APP/doc.rs" \
-  '                    relevo: t.relevo().map(doc_tinta::a_menor_forma),' \
-  '                    relevo: None,' \
+# ⚠️ Desde o v6 (`docs/3D/30` §10) o relevo grava-se por CAMADA, no `doc_camadas.rs`.
+muta "$APP/doc_camadas.rs" \
+  '                relevo: pl.relevo().map(doc_tinta::a_menor_forma),' \
+  '                relevo: None,' \
   'P17 relevo: o escritor nao grava o relevo'
 
 muta "$APP/doc.rs" \

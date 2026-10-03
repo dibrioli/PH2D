@@ -69,7 +69,7 @@ fn le_de(fixtura: &'static [u8]) -> Fixtura {
         }
     }
     let n = (w * h * 4) as usize;
-    let mut bloco = |nome: &str, at: &mut usize| {
+    let bloco = |nome: &str, at: &mut usize| {
         assert_eq!(linha(fixtura, at), nome);
         let b = &fixtura[*at..*at + n];
         *at += n;
@@ -310,7 +310,10 @@ fn w3c_com(f: &Fixtura, c: &Corrida, b: fn(f32, f32) -> f32) -> Vec<u8> {
 }
 
 /// As fórmulas candidatas por modo (o nome diz de onde vêm). `B` SEM corte a `[0, 1]`.
-fn candidatas(m: BlendMode) -> Vec<(&'static str, fn(f32, f32) -> f32)> {
+/// Uma fórmula candidata: o nome (de onde vem) e a função de mistura separável.
+type Candidata = (&'static str, fn(f32, f32) -> f32);
+
+fn candidatas(m: BlendMode) -> Vec<Candidata> {
     match m {
         BlendMode::Add => vec![("cb+cs sem corte", |b, s| b + s)],
         BlendMode::LinearBurn => vec![("cb+cs-1 sem corte", |b, s| b + s - 1.0)],

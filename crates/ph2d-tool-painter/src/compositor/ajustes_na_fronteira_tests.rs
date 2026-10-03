@@ -11,7 +11,7 @@ const H: u32 = 48;
 /// Uma tela variada (nenhum píxel igual), com o alfa a variar também se `opaca` for falso.
 fn variada(seed: u32, opaca: bool) -> LayerImage {
     let mut v = vec![0u8; (W * H * 4) as usize];
-    for (i, px) in v.chunks_exact_mut(4).enumerate() {
+    for (i, px) in v.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         let p = i as u32;
         px[0] = (p.wrapping_mul(37).wrapping_add(seed * 11) % 256) as u8;
         px[1] = (p.wrapping_mul(91).wrapping_add(seed * 29) % 256) as u8;

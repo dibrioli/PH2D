@@ -3317,7 +3317,10 @@ fn gpu_a_metade_em_tons_de_ecra_e_128_ao_byte() {
     let got = comp.read_output(&gpu).expect("readback");
     assert_eq!(got.len(), (w * h * 4) as usize);
     assert!(
-        got.chunks_exact(4).all(|p| p == [128, 128, 128, 255]),
+        got.as_chunks::<4>()
+            .0
+            .iter()
+            .all(|p| *p == [128, 128, 128, 255]),
         "esperado 128 ao byte, primeiro píxel {:?}",
         &got[..4]
     );

@@ -242,3 +242,27 @@ fn a_forma_da_pilha_gravada_e_pinada() {
         "a forma da pilha gravada mudou — suba SCULPT_DOC_VERSION, não re-pine este número"
     );
 }
+
+/// ⭐⭐⭐ **GATE — O escritor grava a PILHA da peça** (e não a de UMA camada do
+/// plano), e o leitor instala-a — sem placa.
+#[test]
+fn o_escritor_grava_a_pilha_da_peca_e_o_leitor_a_instala() {
+    let (stack, pose, t) = peca();
+    let p = pilha_rica(&t);
+    let mut composto = t.clone();
+    p.pinta_tinta(&mut composto, || panic!("a base é opaca"));
+    let bytes = super::doc_camadas::encode(
+        &[(stack.to_data(), pose.to_data(), Some(&composto), Some(&p))],
+        0,
+    );
+    let (lidas, _) = decode(&bytes).expect("abre");
+    assert_eq!(
+        lidas[0].pilha.as_ref(),
+        Some(&p),
+        "a pilha atravessou o ficheiro"
+    );
+    assert_eq!(
+        lidas[0].tinta.as_ref().map(|x| x.amostras().to_vec()),
+        Some(composto.amostras().to_vec())
+    );
+}

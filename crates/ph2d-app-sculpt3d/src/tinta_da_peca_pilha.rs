@@ -196,3 +196,7 @@ pub(crate) fn preenche_camada(obj: &mut crate::SceneObject, cor: [f32; 3]) -> Ba
     }
     Balde::Pintou { id, antes, mudou }
 }
+
+#[cfg(test)]
+#[path = "tinta_da_peca_pilha_tests.rs"]
+mod tests;

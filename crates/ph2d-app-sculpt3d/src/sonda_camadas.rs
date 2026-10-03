@@ -148,9 +148,18 @@ fn diag_o_preco_do_traco_na_camada() {
             let px: Vec<[u8; 4]> = camada(n, id.0 as u32).rgba8.as_chunks::<4>().0.to_vec();
             p.plano_mut(id).expect("plano").escreve(&px, None);
         }
-        let hsb = p.novo_ajuste(ph2d_tool_painter::AdjustmentKind::HueSaturationBrightness).expect("ajuste");
-        p.define_parametros(hsb, AdjustmentParams::HueSaturationBrightness(HsbParams { h: 30.0, s: 0.2, b: 0.1 }))
-            .expect("parâmetros");
+        let hsb = p
+            .novo_ajuste(ph2d_tool_painter::AdjustmentKind::HueSaturationBrightness)
+            .expect("ajuste");
+        p.define_parametros(
+            hsb,
+            AdjustmentParams::HueSaturationBrightness(HsbParams {
+                h: 30.0,
+                s: 0.2,
+                b: 0.1,
+            }),
+        )
+        .expect("parâmetros");
         p.define_activa(ph2d_tool_painter::LayerId(3));
         p.pinta_tinta(&mut peca, Vec::new);
 
@@ -159,7 +168,9 @@ fn diag_o_preco_do_traco_na_camada() {
         let pen_down = t.elapsed().as_secs_f64() * 1e3;
 
         let passo = n / 11;
-        let sujas: Vec<u32> = (0..10u32).flat_map(|r| (0..30u32).map(move |j| r * passo as u32 + j)).collect();
+        let sujas: Vec<u32> = (0..10u32)
+            .flat_map(|r| (0..30u32).map(move |j| r * passo as u32 + j))
+            .collect();
         let mut quadros = Vec::new();
         for q in 0..50u32 {
             for &i in &sujas {

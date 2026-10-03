@@ -335,3 +335,7 @@ impl SculptStroke {
         (vertices, mudaram)
     }
 }
+
+#[cfg(test)]
+#[path = "tela_na_malha_pousa_alfa_tests.rs"]
+mod alfa_tests;

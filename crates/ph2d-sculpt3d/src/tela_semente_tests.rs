@@ -385,3 +385,36 @@ fn o_retrato_interpola_com_perspectiva() {
         "o meio do plano lê {px:?}, e a cor do meio é ~[128, 0, 128]"
     );
 }
+
+/// ⭐⭐ **GATE — O retrato de uma CAMADA tem a opacidade dela** (W2, `docs/3D/30`
+/// §11): a tela do Painter numa camada mostra a camada — transparente onde
+/// ela é transparente, e a cor DIREITA (a pré-multiplicada dividida pela
+/// opacidade interpolada) onde não é.
+#[test]
+fn o_retrato_de_uma_camada_tem_a_opacidade_dela() {
+    let m = malha(1);
+    let faces = || m.faces().iter().map(Face::verts);
+    let mut tinta = Tinta::semeada(m.colors().expect("pintada"), faces(), 4);
+    let n = tinta.amostras().len();
+    let cantos = m.faces()[0].verts();
+    let mut esquerda = Vec::new();
+    tinta.para_cada_amostra_quad(0, cantos, |idx, (i, _)| {
+        if i <= 1 {
+            esquerda.push(idx);
+        }
+    });
+    let mut alfa = vec![0.0f32; n];
+    tinta.amostras_mut().fill([0.0; 3]);
+    for &idx in &esquerda {
+        tinta.amostras_mut()[idx as usize] = [0.5, 0.0, 0.0];
+        alfa[idx as usize] = 0.5;
+    }
+    assert!(tinta.com_alfa(Some(alfa)));
+    let r = semente(&m, Some(&tinta), &vista());
+    assert_eq!(
+        pixel(&r, 2, 50),
+        [255, 0, 0, 128],
+        "vermelho direito a meia opacidade"
+    );
+    assert_eq!(pixel(&r, 97, 50)[3], 0, "o resto da camada é transparente");
+}

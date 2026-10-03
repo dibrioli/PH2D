@@ -157,3 +157,10 @@ fn as_trocas_do_desfazer_sao_involucoes() {
         "plano do tamanho errado"
     );
 }
+
+/// ⭐ **Um quase-transparente (opacidade abaixo de meio byte) é `[0; 4]`** — a
+/// cor dividida por uma opacidade quase nula explodiria ao branco.
+#[test]
+fn um_quase_transparente_e_o_transparente() {
+    assert_eq!(para_bytes([0.0004, 0.0, 0.0002], 0.001), [0; 4]);
+}

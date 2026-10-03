@@ -190,3 +190,28 @@ fn o_balde_numa_camada_pousa_opaco() {
     assert!(t.alfa().expect("canal").iter().all(|&a| a == 1.0));
     assert!(t.amostras().iter().all(|c| *c == COR));
 }
+
+/// ⭐⭐ **GATE — Repintar SÓ a opacidade conta como mudança** e escreve-a (o
+/// borrão do Painter que leva tinta a uma amostra vazia sem mudar a cor
+/// pré-multiplicada guardada); num plano opaco a opacidade devolvida não se
+/// escreve.
+#[test]
+fn repintar_so_a_opacidade_muda_a_amostra() {
+    let m = shapes::uv_sphere(8, 12, 1.0);
+    let mut t = plano(&m, 1);
+    let n = t.amostras().len();
+    assert!(t.com_alfa(Some(vec![1.0; n])));
+    let mut f = TintaDoTraco::nova(t, 0);
+    assert!(
+        f.repinta(3, |c, _| (c, 0.5)),
+        "só a opacidade mudou — e mudou"
+    );
+    assert_eq!(f.tinta().opacidade(3), 0.5);
+    let opaco = plano(&m, 1);
+    let mut g = TintaDoTraco::nova(opaco, 0);
+    assert!(
+        !g.repinta(3, |c, _| (c, 0.5)),
+        "num plano opaco a opacidade não se escreve"
+    );
+    assert!(!g.tinta().tem_alfa());
+}

@@ -132,7 +132,8 @@ por passo `334 mil` · início `63 mil`.
 
 ```
 bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
-<<SAIDA_DA_2A_CORRIDA>>
+$ # 2.ª corrida, depois de `rm -rf target/*/incremental` (16 G + 3,2 G)
+    Finished `smoke` profile [optimized] target(s) in 0.21s
 ```
 
 ### Passos (texto para o Enio)

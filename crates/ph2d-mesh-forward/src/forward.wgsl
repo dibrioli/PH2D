@@ -263,12 +263,9 @@ fn visibilidade_da_caixa(p: vec3<f32>) -> f32 {
     for (var i = 0u; i < 16u; i = i + 1u) {
         let q = clamp(uv * dims_s + DISCO[i] * busca, vec2<f32>(0.0), dims_s - vec2<f32>(1.0));
         let d = prof_no_nivel(ks, vec2<i32>(q));
-        // ⭐ So' tapa quem cai DENTRO do cone do disco visto daqui: a distancia lateral ate' ele (no
-        // mundo) <= tan x a distancia ao longo do raio (mais um texel do nivel). ⛔ Medido (03/10,
-        // oraculo DE PERTO): contando todos, o topo da caixa (perto no mapa, longe no raio) puxava a
-        // media e a sombra junto da base vazava luz (0,81 onde o Cycles da' 1).
-        let lateral = length(DISCO[i]) * busca * texel * es;
-        if (d < zr - vies_s && lateral <= tan_p * (zr - d) * fundo + texel * es) {
+        // ⛔ Medido (03/10, sol de 10 graus): o filtro «so' quem cai dentro do cone» cortava a ponta da
+        // penumbra (0 onde o Cycles da' 0,40); com as faces de TRAS no mapa ele ja' nao fazia falta.
+        if (d < zr - vies_s) {
             soma = soma + d;
             n = n + 1.0;
         }

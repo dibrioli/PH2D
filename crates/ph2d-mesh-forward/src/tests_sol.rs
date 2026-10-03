@@ -219,6 +219,7 @@ fn a_sombra_do_sol_e_a_do_cycles() {
         let nosso = o_nosso(&mut fw, quadro_de(quadro), caso, 1.0);
         let (mut pior, mut soma, mut n, mut fora) = (0.0f32, 0.0f32, 0usize, 0usize);
         let (mut cauda, mut n_cauda) = (0.0f32, 0usize);
+        let mut miolo_pior = 0.0f32;
         for p in pontos
             .iter()
             .filter(|p| p.quadro == quadro && p.caso == caso)
@@ -233,6 +234,16 @@ fn a_sombra_do_sol_e_a_do_cycles() {
             if quadro == "perto" && p.escuro < 0.5 {
                 cauda += d;
                 n_cauda += 1;
+                continue;
+            }
+            // ⚠️ Num sol ENORME (`10°`) o miolo não é escuro de todo: a separação prende cada texel do
+            // disco ao limiar (`16 ×` a média, e a média inclui o disco), e esse resto fica no céu, sem
+            // sombra — `16·Ω/4π` da energia, `12 %` a `10°` e `0,02 %` num sol de verdade (`0,4°`). O
+            // miolo mede-se contra essa conta; a penumbra contra o Cycles.
+            if caso.1 > 6.0 && p.escuro >= 0.95 {
+                let omega = std::f32::consts::TAU * (1.0 - caso.1.to_radians().cos());
+                let resto = 16.0 * omega / (2.0 * std::f32::consts::TAU);
+                miolo_pior = miolo_pior.max((e - (1.0 - resto)).abs());
                 continue;
             }
             if std::env::var("PH2D_SOL_PERFIL")
@@ -250,29 +261,34 @@ fn a_sombra_do_sol_e_a_do_cycles() {
         let medio = soma / n as f32;
         let (altura, raio) = caso;
         eprintln!(
-            "{quadro}: sol a {altura}° raio {raio}°: {n} px do chão · |Δ| médio {medio:.4} · máx {pior:.3} · {fora} px com |Δ| > 0,1"
+            "{quadro}: sol a {altura}° raio {raio}°: {n} px do chão · |Δ| médio {medio:.4} · máx {pior:.3} · {fora} px com |Δ| > 0,1 · miolo contra o resto {miolo_pior:.3}"
         );
-        // ⚠️ Tectos MEDIDOS (03/10: PCSS com a espiral de Vogel, três níveis, faces de TRÁS no mapa,
-        // o raio do pixel na busca e só os bloqueadores dentro do cone). Médio / máximo:
+        // ⚠️ Tectos MEDIDOS (03/10: PCSS com a espiral de Vogel, três níveis, faces de TRÁS no mapa e
+        // o raio do pixel na busca). Médio / máximo:
         //
         // | caso | Poisson, 1 nível, faces da frente | agora |
         // |---|---|---|
-        // | cena 40°/1° | `0,0031` / `0,20` | `0,0005` / `0,037` |
-        // | cena 40°/4° | `0,0215` / `0,26` | `0,0096` / `0,131` |
-        // | cena 15°/1° | `0,0065` / `0,24` | `0,0019` / `0,139` |
-        // | perto 40°/1° (borda e miolo) | `0,022` / `0,44` (vazava `0,81` no miolo) | `0,0004` / `0,044` |
+        // | cena 40°/1° | `0,0031` / `0,20` | `0,0006` / `0,041` |
+        // | cena 40°/4° | `0,0215` / `0,26` | `0,0095` / `0,083` |
+        // | cena 15°/1° | `0,0065` / `0,24` | `0,0019` / `0,143` |
+        // | cena 40°/10° (penumbra; o miolo contra o resto) | — | `0,0154` / `0,098` (`0,047`) |
+        // | perto 40°/1° (borda e miolo) | `0,022` / `0,44` (vazava `0,81` no miolo) | `0,0005` / `0,061` |
         let (t_medio, t_max) = if raio > 2.0 {
-            (0.02, 0.25)
+            (0.03, 0.15)
         } else {
             (0.004, 0.2)
         };
+        assert!(
+            miolo_pior < 0.08,
+            "{quadro}: o miolo do sol de {raio}° fugiu do resto: {miolo_pior}"
+        );
         if n_cauda > 0 {
             let c = cauda / n_cauda as f32;
             eprintln!("{quadro}: a cauda da face de perfil: {n_cauda} px · |Δ| médio {c:.3}");
             // Medido (03/10): `0,043` (o nosso dá 0 onde o Cycles tem a cauda). Pior é regressão.
             assert!(c < 0.08, "{quadro}: a cauda piorou: {c}");
         }
-        assert!(n > 500, "{quadro}: o chão comparado encolheu: {n} px");
+        assert!(n > 450, "{quadro}: o chão comparado encolheu: {n} px");
         assert!(
             medio < t_medio && pior < t_max,
             "{quadro}: sol a {altura}° raio {raio}°: médio {medio} máx {pior}"

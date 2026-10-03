@@ -27,7 +27,7 @@ LADO = 384  # pixels do enquadramento quadrado
 QUADROS = [("cena", 0.1, 0.0, 1.5), ("perto", 0.85, -0.2, 0.05)]
 ESFERA = ((-0.8, 0.6, 0.0), 0.3)  # (centro nosso, raio) — flutua 0,3 acima do chão
 CAIXA = ((0.6, 0.2, 0.0), 0.4)  # (centro nosso, aresta) — pousada
-CASOS = [(40.0, 1.0), (40.0, 4.0), (15.0, 1.0)]  # (altura do sol em graus, raio angular em graus)
+CASOS = [(40.0, 1.0), (40.0, 4.0), (15.0, 1.0), (40.0, 10.0)]  # (altura do sol, raio angular), graus
 AMOSTRAS = 512
 
 argv = sys.argv[sys.argv.index("--") + 1 :]

@@ -213,6 +213,12 @@ seletor aberto nas três faces; conferida antes e depois da cura do gizmo.
 - `Ctrl+Tab` (a lista de modos); Image ▸ Mask; a F4.
 - O `Edit` da malha (D6: «Edit quando existir»).
 
+## §7b — Depois do fecho (03/10)
+
+- **Smoke do dono: APROVADO** («smokle OK. Siga»).
+- A F3 do Flip segue NESTA linha, noutra janela:
+  [`HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_FLIP.md`](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_FLIP.md).
+
 ## §8 — Perfil do loop (`bash scripts/agent-loop-profile.sh`)
 
 ```

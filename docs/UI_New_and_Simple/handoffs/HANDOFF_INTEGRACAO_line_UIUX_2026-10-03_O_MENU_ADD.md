@@ -205,6 +205,12 @@ LOC LIDAS: ~300
   ✓ contexto no inicio da sessao               61 mil   alvo: <= 80 mil
 ```
 
+## §8b — Depois do fecho (03/10)
+
+- **Smoke do dono: APROVADO** («Smoke OK»).
+- A F2 segue NESTA linha, noutra janela:
+  [`HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F2.md`](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F2.md).
+
 ## §9 — Binário de smoke (último passo: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida)
 
 ```

@@ -372,14 +372,23 @@ fn o_furo_na_quina_de_quatro_mosaicos_nao_vaza() {
     let mut dentro = 0;
     for i in 0..40 {
         for j in 0..80 {
-            let q = [-1.0 + 2.0 * f64::from(i) / 39.0, -2.0 + 4.8 * f64::from(j) / 79.0];
+            let q = [
+                -1.0 + 2.0 * f64::from(i) / 39.0,
+                -2.0 + 4.8 * f64::from(j) / 79.0,
+            ];
             let dx = (q[0].abs() - 0.6).max(0.0);
             let dy = ((q[1] - 0.2).abs() - 2.2).max(0.0);
             if (dx * dx + dy * dy).sqrt() >= p.agent_radius - 1e-3 {
                 continue;
             }
-            assert!(t.mesh().locate(q).is_none(), "o ponto {q:?} da lava é chão nos mosaicos");
-            assert!(inteira.locate(q).is_none(), "o ponto {q:?} da lava é chão na inteira");
+            assert!(
+                t.mesh().locate(q).is_none(),
+                "o ponto {q:?} da lava é chão nos mosaicos"
+            );
+            assert!(
+                inteira.locate(q).is_none(),
+                "o ponto {q:?} da lava é chão na inteira"
+            );
             dentro += 1;
         }
     }

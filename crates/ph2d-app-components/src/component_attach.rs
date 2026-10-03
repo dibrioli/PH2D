@@ -12,20 +12,32 @@ use ph2d_editor_core::{HeroScreen, Toast};
 /// **Que TIPO de objeto é este** — lido por PRESENÇA de um marcador, nunca por um campo
 /// (ADR-0166 / o `ObjectKind` da F0).
 ///
-/// ⚠️ A ordem importa: um objeto pode carregar mais de um marcador em teoria, e o primeiro que
-/// casar manda. Hoje eles são exclusivos na prática; a ordem torna a resposta **determinística**
-/// mesmo que deixem de ser.
-fn kind_of(world: &ph2d_ecs::World, entity: ph2d_ecs::Entity) -> ph2d_component_desc::ObjectKind {
+/// ⚠️ A ordem importa e é a de [`ObjectKind::ALL`](ph2d_component_desc::ObjectKind::ALL): a
+/// imagem pintada tem `Sprite` **e** `PaintedDoc`, e é uma IMAGEM (pintar é um modo dela, escolha
+/// 1 do dono no spec/06). O primeiro que casar manda.
+///
+/// ⛔ Até 03/10 esta função conhecia **três** dos seis marcadores: um desenho Flip, uma imagem
+/// pintada sem `Sprite` e uma peça de escultura liam-se como VAZIO. O gate
+/// `every_marker_derives_its_kind` cobre os seis contra o [`ObjectKind::marker`].
+#[must_use]
+pub fn kind_of(
+    world: &ph2d_ecs::World,
+    entity: ph2d_ecs::Entity,
+) -> ph2d_component_desc::ObjectKind {
     use ph2d_component_desc::ObjectKind;
-    if world.get::<ph2d_render::Sprite>(entity).is_some() {
-        ObjectKind::Image
-    } else if world.get::<ph2d_ecs::VecPathRef>(entity).is_some() {
-        ObjectKind::Vector
-    } else if world.get::<ph2d_field_ecs::FieldObject>(entity).is_some() {
-        ObjectKind::Model3D
-    } else {
-        ObjectKind::Empty
-    }
+    let has = |kind: ObjectKind| match kind {
+        ObjectKind::Empty => false,
+        ObjectKind::Image => world.get::<ph2d_render::Sprite>(entity).is_some(),
+        ObjectKind::Vector => world.get::<ph2d_ecs::VecPathRef>(entity).is_some(),
+        ObjectKind::Flip => world.get::<ph2d_ecs::FlipObjectRef>(entity).is_some(),
+        ObjectKind::Painted => world.get::<ph2d_ecs::PaintedDoc>(entity).is_some(),
+        ObjectKind::Model3D => world.get::<ph2d_field_ecs::FieldObject>(entity).is_some(),
+        ObjectKind::Sculpt3D => world.get::<ph2d_ecs::Sculpt3dPieceRef>(entity).is_some(),
+    };
+    ObjectKind::ALL
+        .into_iter()
+        .find(|k| has(*k))
+        .unwrap_or(ObjectKind::Empty)
 }
 
 /// Os nomes canónicos que este objeto **já tem** — o que a paleta não pode voltar a oferecer.

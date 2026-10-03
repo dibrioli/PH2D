@@ -46,7 +46,6 @@ impl crate::App {
                 duplicate_row: take(&mut pd.duplicate_row),
                 duplicate_made: take(&mut pd.duplicate_made),
                 add_child_row: take(&mut pd.add_child_row),
-                add_root: take(&mut pd.add_root),
                 reset_transform_row: take(&mut pd.reset_transform_row),
                 revert_to_master_row: take(&mut pd.revert_to_master_row),
                 instance_verb_row: take(&mut pd.instance_verb_row),
@@ -113,6 +112,7 @@ impl crate::App {
             joint_pivot_commit,
         );
         self.fase_component_palette(pd.add_component_for);
+        self.fase_object_add(take(&mut pd.add_root));
         self.fase_criar_accao_do_mapa(take(&mut pd.create_input_actions));
         self.fase_sprite_precision_emissive(fase_sprite_precision_emissive::SpriteRowIntents {
             remove_from_sheet_row: take(&mut pd.remove_from_sheet_row),

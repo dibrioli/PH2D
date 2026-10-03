@@ -55,6 +55,8 @@ mod audio_fx;
 mod blend_modes;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
 mod chrome_menus;
+/// O menu Add de OBJECTOS (o `+` da Hierarquia e o `Shift+A`).
+mod object_add;
 /// As strings do RESTO da moldura (barra do topo, HUD, diálogos, seletor de cor, cartão de instância).
 mod chrome_panes;
 /// As strings da BARRA DE FERRAMENTAS (o rail esquerdo e a fila horizontal).
@@ -524,6 +526,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| motion_panels::tr(k))
             .or_else(|| asset_browser::tr(k))
             .or_else(|| chrome_menus::tr(k))
+            .or_else(|| object_add::tr(k))
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))
             .or_else(|| audio_fx::tr(k))

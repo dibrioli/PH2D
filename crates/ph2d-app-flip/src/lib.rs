@@ -44,6 +44,8 @@ pub mod hardness_smoke;
 pub mod layers;
 pub mod multiframe;
 pub mod multiplane_smoke;
+/// O desenho Flip no menu Add de objectos (spec/06 F1).
+pub mod object_add;
 pub mod pass;
 pub mod pass_cache;
 pub mod pass_ghosts;

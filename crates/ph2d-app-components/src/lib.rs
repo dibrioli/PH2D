@@ -85,6 +85,8 @@ pub mod camera_2d_smoke;
 /// ⭐⭐ **A secção CAMERA** (TOP-20 #7) — o instantâneo e o commit; veio da shell na W7 da paralaxe.
 pub mod camera_inspector;
 pub mod component_attach;
+/// O vazio e os objectos de JOGO no menu Add de objectos (spec/06 F1).
+pub mod object_add;
 pub mod component_palette;
 pub mod component_seed;
 pub mod component_smoke;

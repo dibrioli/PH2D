@@ -231,6 +231,18 @@ impl crate::App {
                     hero.store.open_new_image_dialog();
                 }
             }
+            // ⭐ Shift+A — o menu Add de objectos (spec/06 F1, escolha 3 do dono): o mesmo pedido
+            // do `+` da Hierarquia, e por isso o mesmo evento.
+            KeyCode::KeyA
+                if self.modifiers.shift_key() && !cmd_chord && !self.modifiers.alt_key() =>
+            {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.bus
+                        .push(ph2d_editor_core::action_bus::EditorAction::Hierarchy(
+                            ph2d_editor_core::action_bus::HierRequest::AddRoot,
+                        ));
+                }
+            }
             _ => self.ramo_teclas_editor_vista_e_transporte(code, cmd_chord, over_timeline),
         }
     }

@@ -27,7 +27,6 @@ mod gizmo_prune;
 /// **O número do arrasto de gizmo** — quem o publica (a lei mora no `editor-core`).
 mod gizmo_readout;
 mod hierarchy;
-mod hierarchy_add_root;
 /// ⭐⭐ **O menu de um cartão da biblioteca, e a poda de selecção morta** — irmão por assunto do
 /// [`hierarchy`], ver o cabeçalho de lá.
 mod hierarchy_asset_verbs;
@@ -204,6 +203,7 @@ mod fase_cataventos;
 mod fase_chrome_clock;
 /// Fase do quadro: a paleta de componentes.
 mod fase_component_palette;
+mod fase_object_add;
 /// Fase do quadro: os verbos de componente.
 mod fase_component_verbs;
 /// Fase do quadro: o composto, os encaixes e as reguas.

@@ -123,6 +123,8 @@ pub mod hier_group;
 pub mod marquee;
 pub mod morph_edit;
 pub mod morph_live;
+/// As formas vetoriais no menu Add de objectos (spec/06 F1).
+pub mod object_add;
 pub mod morph_machine_drive;
 pub mod offset_live;
 pub mod paint_dilate;

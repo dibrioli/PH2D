@@ -325,8 +325,13 @@ pub enum Attach {
 /// Medido em 2026-08-24 sobre os 107 registados: `Sprite` ⇒ [`ObjectKind::Image`] ·
 /// `VecPathRef` ⇒ [`ObjectKind::Vector`] · `FlipObjectRef` ⇒ [`ObjectKind::Flip`] ·
 /// `PaintedDoc` ⇒ [`ObjectKind::Painted`] · `FieldObject` ⇒ [`ObjectKind::Model3D`] ·
-/// `BakedForm` ⇒ [`ObjectKind::Sculpt3D`]. Nenhum deles ⇒ [`ObjectKind::Empty`], que é
+/// `Sculpt3dPieceRef` ⇒ [`ObjectKind::Sculpt3D`]. Nenhum deles ⇒ [`ObjectKind::Empty`], que é
 /// exatamente o objeto que a F3 aprende a criar.
+///
+/// ⚠️ **O marcador da escultura era o `BakedForm` até 03/10, e estava errado:** o `BakedForm` vai
+/// numa SPRITE assada (que é uma imagem), e a peça viva que a Hierarquia lista leva o
+/// `Sculpt3dPieceRef` — que nenhum tipo reconhecia, e por isso a peça lia-se como vazia
+/// (spec/06 F0, medido).
 ///
 /// ⚠️ **É derivado, e tem de continuar a ser.** Se algum dia isto virar um campo escrito à
 /// mão numa entidade, passa a haver duas respostas para *"que objeto é este?"* — e a que o
@@ -346,7 +351,7 @@ pub enum ObjectKind {
     Painted,
     /// Peça de modelagem 3D por campo implícito (`ph2d::field::FieldObject`).
     Model3D,
-    /// Forma assada do módulo de escultura (`ph2d::ecs::BakedForm`).
+    /// Peça viva do módulo de escultura (`ph2d::ecs::Sculpt3dPieceRef`).
     Sculpt3D,
 }
 
@@ -390,7 +395,7 @@ impl ObjectKind {
             ObjectKind::Flip => Some("ph2d::ecs::FlipObjectRef"),
             ObjectKind::Painted => Some("ph2d::ecs::PaintedDoc"),
             ObjectKind::Model3D => Some("ph2d::field::FieldObject"),
-            ObjectKind::Sculpt3D => Some("ph2d::ecs::BakedForm"),
+            ObjectKind::Sculpt3D => Some("ph2d::ecs::Sculpt3dPieceRef"),
         }
     }
 

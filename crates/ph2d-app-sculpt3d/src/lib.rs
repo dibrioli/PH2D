@@ -151,6 +151,8 @@ mod cursor;
 /// **ENTRAR E SAIR** — o pill SCULPT. Irmão do [`input`] e do [`keys`], e o corte é o mesmo com
 /// outro sujeito: aqueles perguntam *o que a mão faz com o barro*, este *quem é dono da tela*.
 pub mod mode;
+/// As peças de escultura no menu Add de objectos (spec/06 F1).
+pub mod object_add;
 pub use mode::sync_pill;
 
 pub use cursor::{OFF_SURFACE_RGBA, ON_SURFACE_RGBA};

@@ -269,10 +269,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.hierarchy.bone_has_no_rest" => {
             "This bone has no rest pose saved — use Set Rest Pose in the Skeleton panel"
         }
-        "shell.hierarchy.added_empty_object" => "Added empty object",
         "shell.hierarchy.added_child_entity" => "Added child entity",
         "shell.hierarchy.child" => "Child",
-        "shell.hierarchy_add_root.object" => "Object",
         "shell.hierarchy_delete.that_piece_comes_from" => {
             "That piece comes from a prefab \u{2014} delete it in the prefab, or Detach this copy first"
         }

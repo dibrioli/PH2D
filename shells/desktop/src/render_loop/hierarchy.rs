@@ -55,8 +55,6 @@ pub(super) fn dispatch(
     reparent_intent: Option<HierReparentIntent>,
     duplicate_row: Option<NodeId>,
     add_child_row: Option<NodeId>,
-    // ⭐ O botão `Add` do cabeçalho da Hierarquia (ADR-0166 / F3). Ver o bloco de `add_root`.
-    add_root: bool,
     reset_transform_row: Option<NodeId>,
     // ⭐ *Revert to Master* (ADR-0164 / F4.4) — a linha cuja instância volta à receita.
     revert_to_master_row: Option<NodeId>,
@@ -230,12 +228,6 @@ pub(super) fn dispatch(
     // invisível — que é o mecanismo dos dois reports de 30/08 (apagar e esconder).
     if let Some(bits) = verb_select.or(drop_select).or(card_select) {
         hero.gizmo.replace_selection(Some(bits));
-    }
-    if add_root {
-        let bits = super::hierarchy_add_root::spawn_empty_root(sim);
-        hero.gizmo.replace_selection(Some(bits));
-        toasts.push(Toast::success(tr("shell.hierarchy.added_empty_object")));
-        title_dirty = true;
     }
     // ⭐⭐⭐ **O que *Reset Transform* QUER DIZER numa linha mora no irmão** [`super::hierarchy_reset`]
     // — corte por assunto, imposto pelo tecto de 200 LOC quando a cura do osso entrou. Ali estão as

@@ -55,6 +55,7 @@ pub mod motion;
 /// A poeira de impacto do chrome (estudo de UI viva, D2) — irmã do [`motion`], e a primeira
 /// consumidora do `Role::Decoration`, que foi reservado e nunca teve uma.
 pub mod motion_burst;
+pub mod object_add;
 pub mod paint;
 /// Batched paint primitives (many shapes, one draw call) — see the module docs.
 pub mod paint_batch;

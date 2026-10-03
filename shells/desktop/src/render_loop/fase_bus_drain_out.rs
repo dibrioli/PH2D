@@ -32,8 +32,8 @@ pub(in crate::render_loop) struct DrainOut {
     // os dois verbos — eles são o mesmo gesto com o sinal trocado, e dois slots deixariam
     // a porta aberta a alguém drenar os dois no mesmo quadro.
     pub(in crate::render_loop) group_row: Option<(NodeId, bool)>,
-    // ⭐ **O `Add` do cabeçalho da Hierarquia** (ADR-0166 / F3) — um objeto vazio na raiz.
-    // Sem payload: ele não sai de uma linha, e por isso não tem pai (ver `HierAddRoot`).
+    // ⭐ **O `Add` do cabeçalho da Hierarquia e o `Shift+A`** — abrem o menu Add de objectos
+    // (spec/06 F1). Sem payload: o objecto nasce na raiz (ver `HierAddRoot`).
     pub(in crate::render_loop) add_root: bool,
     pub(in crate::render_loop) reset_transform_row: Option<NodeId>,
     // ⭐ *Revert to Master* (ADR-0164 / F4.4) — a linha cuja instância volta à receita.

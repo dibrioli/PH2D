@@ -57,7 +57,6 @@ pub fn apply_toggle(
         // do clique que ninguém lembra ter dado.
         return;
     };
-    let aspect = size.0 as f32 / size.1.max(1) as f32;
     // ⚠️ **A MESMA peça que o verbo de acrescentar cria.** Uma malha própria aqui seria a
     // segunda resposta a *com que forma uma escultura começa*.
     //
@@ -68,10 +67,19 @@ pub fn apply_toggle(
     // pincel padrão movia **um** vértice em toda resolução. *Blocagem* pressupõe que as formas
     // grandes se deixem esculpir, e elas não se deixavam — a densidade é o que o `K` ajusta a
     // partir de uma peça usável, não o que separa uma peça usável de uma inerte.
-    let mesh = crate::Primitive::Sphere.mesh();
-    let scene = Sculpt3dScene::new(device, mesh, aspect);
-    *slot = Some(scene);
+    *slot = Some(new_scene(device, size, crate::Primitive::Sphere));
     eprintln!("[sculpt3d] modo: BARRO (esculpir) -- cena nova");
+}
+
+/// ⭐ **Uma cena nova com `first` como primeira peça** — a porta única de nascer uma escultura,
+/// do pill (a esfera) e do menu Add de objectos (a peça escolhida).
+pub(crate) fn new_scene(
+    device: &wgpu::Device,
+    size: (u32, u32),
+    first: crate::Primitive,
+) -> Sculpt3dScene {
+    let aspect = size.0 as f32 / size.1.max(1) as f32;
+    Sculpt3dScene::new(device, first.mesh(), aspect)
 }
 
 impl Sculpt3dScene {

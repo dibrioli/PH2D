@@ -84,6 +84,7 @@ pub mod materials;
 /// ADR-0161 W25 — a VOZ do módulo: uma peça que não cozinha diz porquê, e diz uma vez.
 pub mod mode;
 pub mod notice;
+pub mod object_add;
 pub mod pick;
 pub mod preview;
 /// ADR-0161 W53 — o perfil DESENHADO vira peça: o fluxo do MoI, com a caneta que a casa já tem.

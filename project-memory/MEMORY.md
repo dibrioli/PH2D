@@ -93,7 +93,7 @@
 - [Estado autorado & relógios (21)](reference_topic_authored_state_and_clocks.md) · [modo que não exclui ninguém é outro produtor](feedback_a_mode_whose_entry_excludes_nobody_is_just_another_producer.md)
 - [seção partilhada regride quem chegou primeiro](feedback_a_shared_section_header_is_a_regression_to_whoever_arrived_first.md)
 - [filtro que casa ZERO imprime «SOBREVIVEU»](feedback_a_mutation_proof_needs_a_control_on_its_own_filter.md)
-- [Oráculo (22) — paridade da LEI ≠ o PRODUTO do dono](reference_topic_oracle_discipline.md)
+- [Oráculo (23) — paridade da LEI ≠ o PRODUTO do dono](reference_topic_oracle_discipline.md)
 - ⛔ [Janela I não faz grep por nome do alvo nos docs antigos do módulo](feedback_the_clean_window_does_not_grep_old_module_docs_for_a_target_name.md)
 - ⛔⛔ [A chave que o ARTISTA fez manda mais que a correção automática](feedback_the_artists_key_outranks_the_automatic_correction.md)
 - ⛔⛔ [A animação de DEMO de um app mostra a ferramenta, não a lei](feedback_a_vendors_demo_fixture_demonstrates_the_tool_not_the_truth.md)
@@ -140,7 +140,7 @@
 - ⛔⛔ [O que o undo NÃO fotografa o undo também não REPÕE — um relógio corrido, uma fábrica esgotada e uma SEMENTE sobreviviam ao Reset](feedback_what_the_undo_does_not_photograph_the_undo_does_not_restore.md)
 - ⛔ [O oráculo ensina a PERGUNTA; a resposta depende da natureza da SUA entrada — um NÍVEL e um EVENTO pedem paragens opostas](feedback_an_oracle_teaches_the_question_the_answer_depends_on_your_input_kind.md)
 - ⛔ [Um EVENTO lido como ESTADO acerta pelo tempo que ninguém o apagar — a etiqueta dependia de o relógio estar a andar](feedback_an_event_read_as_state_is_right_for_as_long_as_nobody_clears_it.md)
-- 📚 [Padrões de código (gotchas silenciosos): mais (22) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
+- 📚 [Padrões de código (gotchas silenciosos): mais (23) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 
 ## Arquitetura / norte / perf
 - ⛔ [REGRA DO DONO: editar pixels ou tamanho/margem = imagem SEM a dobra (exceto Liquify, cor, filtros); tamanho/margem SOLTA dos ossos](project_pixel_tools_flatten_bone_bound_art.md)

@@ -6,6 +6,7 @@ metadata:
   type: reference
 ---
 
+- [[feedback_an_oracle_parameter_on_a_half_step_tie_measures_float_noise]] — parâmetro em empate de meio degrau mede o f32 dos dois programas; o controlo parte do composto em FLOAT
 - [[feedback_an_oracle_that_accepts_any_name_paints_the_default]] — o Krita ecoa um id inventado e pinta Normal: controle com a corrida do modo padrão
 - [[feedback_oracle_must_model_appearance_not_implementation]] — derivado do shader fica verde com o bug
 - [[feedback_render_and_look_when_a_green_gate_is_contradicted]] — gate verde contradito? RENDERIZE

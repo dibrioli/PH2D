@@ -188,6 +188,12 @@ seletor aberto nas três faces e o painel só com as ferramentas do Draw. Confer
   Inspector (handoff de 20/09 §7).
 - `Ctrl+Tab`; Image ▸ Mask; F4 (a barra MOVE/ROT/SCALE continua visível nos modos de criação).
 
+## §7b — Depois do fecho (03/10)
+
+- **Smoke do dono: APROVADO** («smoke OK. Siga»).
+- A F3 do Model segue NESTA linha, noutra janela:
+  [`HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_MODEL.md`](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_MODEL.md).
+
 ## §8 — Perfil do loop (`bash scripts/agent-loop-profile.sh`)
 
 ```

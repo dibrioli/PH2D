@@ -233,9 +233,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.fase_audio_editor.ph2d_audio_preset" => "PH2D audio preset",
         "shell.fase_audio_editor.impulse_response" => "impulse response",
         "shell.fase_image_tool_activation.tool" => "Tool · {label}",
-        "shell.fase_image_tool_activation.painter_kept_the_last" => {
-            "Painter: kept the last selected sprite ({dropped} deselected)"
-        }
         "shell.fase_new_image_modal.new_canvas_failed" => "New canvas failed: {e}",
         "shell.fase_new_image_modal.new_canvas" => "New canvas · {label} ({size}²)",
         "shell.fase_use_as_brush.use_as_select_an_image" => "Use as {what}: select an image sprite",

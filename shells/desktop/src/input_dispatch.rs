@@ -499,21 +499,14 @@ impl App {
         ) {
             return;
         }
-        // ⭐ **O botão direito no canvas, em modo Object, abre o menu Add** (spec/06 escolha 3,
-        // F2) — o mesmo pedido do `+`. Só aqui, depois de todos os reivindicantes do botão
-        // direito: a ferramenta ou o modo que o usa já o tomou acima.
-        if matches!(
-            (mapped_button, kind),
-            (ph2d_host::PointerButton::Secondary, PointerKind::Down)
-        ) && on_canvas
+        // ⭐ O botão direito no canvas livre (spec/06 F2) — DEPOIS de todos os reivindicantes dele.
+        if matches!(kind, PointerKind::Down)
+            && mapped_button == ph2d_host::PointerButton::Secondary
+            && on_canvas
             && !menu_open_before
             && let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
-            && hero.gizmo.mode.active().is_none()
+            && ph2d_editor_core::screens::hero::mode_drive::right_click_on_canvas(hero)
         {
-            hero.bus
-                .push(ph2d_editor_core::action_bus::EditorAction::Hierarchy(
-                    ph2d_editor_core::action_bus::HierRequest::AddRoot,
-                ));
             return;
         }
 

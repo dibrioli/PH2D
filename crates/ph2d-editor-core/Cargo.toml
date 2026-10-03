@@ -19,6 +19,8 @@ build = "build.rs"
 [build-dependencies]
 
 [dependencies]
+# `ObjectKind` — o tipo que declara os modos (spec/06 F2, `screens::hero::mode_drive`).
+ph2d-component-desc = { path = "../ph2d-component-desc" }
 # ⭐ **O vocabulário do TWEEN** (suplente #22) — o modelo da secção lê o `Canal` (para a aridade e
 # para saber se ele é de pose) e o `AoAcabar`. ⚠️ **Os TIPOS, nunca uma segunda cópia deles:** a
 # queixa do painel é derivada das MESMAS portas que a lei usa, e uma tabela paralela aqui

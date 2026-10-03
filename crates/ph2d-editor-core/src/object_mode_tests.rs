@@ -26,8 +26,18 @@ fn the_selector_faces_are_the_modes_of_the_active_type() {
     let menu = image_selected().menu(&mut store).expect("há activo");
     assert_eq!(menu.faces, vec!["Object Mode", "Paint Mode"]);
     assert_eq!(menu.face, "Object Mode");
-    let ids: Vec<_> = menu.rows.iter().filter_map(ToolRailEntry::node_id).collect();
-    assert_eq!(ids, vec![crate::ids::OBJECT_MODE_OBJECT, crate::ids::OBJECT_MODE_PAINT]);
+    let ids: Vec<_> = menu
+        .rows
+        .iter()
+        .filter_map(ToolRailEntry::node_id)
+        .collect();
+    assert_eq!(
+        ids,
+        vec![
+            crate::ids::OBJECT_MODE_OBJECT,
+            crate::ids::OBJECT_MODE_PAINT
+        ]
+    );
 }
 
 /// ⭐ GATE — um modo que o tipo não declara NÃO aparece (nem cinzento, D6); sem activo, não há
@@ -54,30 +64,51 @@ fn the_face_reads_the_current_mode() {
 #[test]
 fn tab_goes_there_and_back() {
     let mut s = image_selected();
-    assert_eq!(s.resolve(ModeRequest::Toggle), Step::Enter(ObjectMode::Paint));
+    assert_eq!(
+        s.resolve(ModeRequest::Toggle),
+        Step::Enter(ObjectMode::Paint)
+    );
     s.enter(IMG, ObjectMode::Paint);
     assert_eq!(s.resolve(ModeRequest::Toggle), Step::Leave);
     s.leave();
     assert_eq!(s.current(), ObjectMode::Object);
-    assert_eq!(s.resolve(ModeRequest::Toggle), Step::Enter(ObjectMode::Paint));
+    assert_eq!(
+        s.resolve(ModeRequest::Toggle),
+        Step::Enter(ObjectMode::Paint)
+    );
 }
 
 /// `Tab` num objecto que só tem Object responde (com a razão), e sem activo também.
 #[test]
 fn tab_on_an_object_only_type_is_refused() {
-    assert_eq!(object_only_selected().resolve(ModeRequest::Toggle), Step::Refuse);
-    assert_eq!(ModeState::default().resolve(ModeRequest::Toggle), Step::Refuse);
+    assert_eq!(
+        object_only_selected().resolve(ModeRequest::Toggle),
+        Step::Refuse
+    );
+    assert_eq!(
+        ModeState::default().resolve(ModeRequest::Toggle),
+        Step::Refuse
+    );
 }
 
 /// O seletor: escolher o modo em curso não faz nada; Object sai; um modo alheio recusa.
 #[test]
 fn the_selector_rows_resolve() {
     let mut s = image_selected();
-    assert_eq!(s.resolve(ModeRequest::Enter(ObjectMode::Object)), Step::Stay);
-    assert_eq!(s.resolve(ModeRequest::Enter(ObjectMode::Paint)), Step::Enter(ObjectMode::Paint));
+    assert_eq!(
+        s.resolve(ModeRequest::Enter(ObjectMode::Object)),
+        Step::Stay
+    );
+    assert_eq!(
+        s.resolve(ModeRequest::Enter(ObjectMode::Paint)),
+        Step::Enter(ObjectMode::Paint)
+    );
     s.enter(IMG, ObjectMode::Paint);
     assert_eq!(s.resolve(ModeRequest::Enter(ObjectMode::Paint)), Step::Stay);
-    assert_eq!(s.resolve(ModeRequest::Enter(ObjectMode::Object)), Step::Leave);
+    assert_eq!(
+        s.resolve(ModeRequest::Enter(ObjectMode::Object)),
+        Step::Leave
+    );
     assert_eq!(
         object_only_selected().resolve(ModeRequest::Enter(ObjectMode::Paint)),
         Step::Refuse
@@ -106,12 +137,24 @@ fn a_layout_asks_for_a_mode_only_the_active_can_give() {
 #[test]
 fn the_mode_holds_only_its_own_entity() {
     let mut s = image_selected();
-    assert!(s.still_holds(None, 0, false), "em Object não há nada a segurar");
+    assert!(
+        s.still_holds(None, 0, false),
+        "em Object não há nada a segurar"
+    );
     s.enter(IMG, ObjectMode::Paint);
     assert!(s.still_holds(Some(IMG), 0, true));
-    assert!(!s.still_holds(Some(OTHER), 0, true), "a selecção mudou por outra porta");
-    assert!(!s.still_holds(None, 0, true), "a entidade saiu (apagar, desfazer)");
-    assert!(!s.still_holds(Some(IMG), 1, true), "uma segunda seleccionada");
+    assert!(
+        !s.still_holds(Some(OTHER), 0, true),
+        "a selecção mudou por outra porta"
+    );
+    assert!(
+        !s.still_holds(None, 0, true),
+        "a entidade saiu (apagar, desfazer)"
+    );
+    assert!(
+        !s.still_holds(Some(IMG), 1, true),
+        "uma segunda seleccionada"
+    );
     assert!(!s.still_holds(Some(IMG), 0, false), "o módulo largou-a");
 }
 
@@ -141,20 +184,22 @@ fn the_locked_entity_is_the_one_in_the_mode() {
 /// O activo é o ÚLTIMO acrescentado — o mesmo que o Painter guarda ao colapsar.
 #[test]
 fn the_active_object_is_the_last_one_added() {
-    let mut g = crate::screens::hero::GizmoStateGroup::default();
-    assert_eq!(active_of(&g), None);
-    g.replace_selection(Some(1));
-    assert_eq!(active_of(&g), Some(1));
-    g.add_to_selection(2);
-    g.add_to_selection(3);
-    assert_eq!(active_of(&g), Some(3));
+    assert_eq!(active_of(None, &[]), None);
+    assert_eq!(active_of(Some(1), &[]), Some(1));
+    assert_eq!(active_of(Some(1), &[2, 3]), Some(3));
 }
 
 /// Cada linha do seletor mapeia de volta a um só modo.
 #[test]
 fn every_row_maps_back_to_its_mode() {
-    assert_eq!(ObjectMode::of_row(crate::ids::OBJECT_MODE_OBJECT), Some(ObjectMode::Object));
-    assert_eq!(ObjectMode::of_row(crate::ids::OBJECT_MODE_PAINT), Some(ObjectMode::Paint));
+    assert_eq!(
+        ObjectMode::of_row(crate::ids::OBJECT_MODE_OBJECT),
+        Some(ObjectMode::Object)
+    );
+    assert_eq!(
+        ObjectMode::of_row(crate::ids::OBJECT_MODE_PAINT),
+        Some(ObjectMode::Paint)
+    );
     assert_eq!(ObjectMode::of_row(crate::ids::TOOL_BAR_OVERFLOW), None);
 }
 
@@ -165,16 +210,21 @@ fn the_mode_menu_leads_whatever_the_write_order() {
         label: l.into(),
         ..AreaMenu::default()
     };
-    let labels = |s: &WidgetStore| s.area_menus().iter().map(|a| a.label.clone()).collect::<Vec<_>>();
+    let labels = |s: &WidgetStore| {
+        s.area_menus()
+            .iter()
+            .map(|a| a.label.clone())
+            .collect::<Vec<_>>()
+    };
     let mut store = WidgetStore::default();
     store.set_area_commands(vec![m("View"), m("Shading")], Vec::new());
-    store.set_mode_menu(Some(m("Mode")));
+    store.publish_mode_menu(Some(m("Mode")));
     assert_eq!(labels(&store), ["Mode", "View", "Shading"]);
     store.set_area_commands(vec![m("View")], Vec::new());
     assert_eq!(labels(&store), ["Mode", "View"]);
-    store.set_mode_menu(None);
+    store.publish_mode_menu(None);
     assert_eq!(labels(&store), ["View"]);
-    store.set_mode_menu(Some(m("Mode")));
-    store.set_mode_menu(Some(m("Mode")));
+    store.publish_mode_menu(Some(m("Mode")));
+    store.publish_mode_menu(Some(m("Mode")));
     assert_eq!(labels(&store), ["Mode", "View"]);
 }

@@ -61,3 +61,30 @@ pub fn activation_gate(tool_id: &str, image_mode_on: bool) -> ActivationGate {
         ),
     }
 }
+
+/// ⭐ **Os pills acesos seguem a ferramenta activa** — cada pill cujo manifesto é a ferramenta em
+/// mãos fica `Pressed`, e um `Pressed` velho volta a `Normal`. Só as transições Normal↔Pressed: o
+/// `Hovered` e os estados de clique em curso ficam.
+///
+/// Derivado do registo (`image_tools` e `vector_tools`, o pill da caneta): uma ferramenta nova
+/// acende sozinha, e o id do pill é `hash_node_id(manifest.id)` (a convenção dos pills de imagem).
+/// Mudou-se da shell (`fase_image_tools_mode_and_pills`) na F2 do spec/06 — a shell só compõe.
+pub fn press_the_active_pill(store: &mut crate::interaction::WidgetStore, active: Option<&str>) {
+    use crate::widget::ButtonState;
+    let Some(reg) = crate::installed_registry() else {
+        return;
+    };
+    for cluster_name in ["image_tools", "vector_tools"] {
+        for manifest in reg.cluster(cluster_name) {
+            let pill_id = ph2d_tool_registry::hash_node_id(manifest.id);
+            let should_press = active == Some(manifest.id);
+            if let Some(crate::InteractiveState::Button { state }) = store.get_mut(pill_id) {
+                match (*state, should_press) {
+                    (ButtonState::Normal, true) => *state = ButtonState::Pressed,
+                    (ButtonState::Pressed, false) => *state = ButtonState::Normal,
+                    _ => {}
+                }
+            }
+        }
+    }
+}

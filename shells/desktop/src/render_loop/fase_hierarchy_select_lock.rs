@@ -20,12 +20,6 @@ impl crate::App {
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let hero = hero_screen.as_mut()?;
-        // Hierarchy intent dispatch phase — camera reset +
-        // view-focus + 9 hierarchy intents (visibility_toggle /
-        // reparent / duplicate / add_child / reset_transform /
-        // delete / row_click / rename_seed / rename_commit).
-        // Extracted to sibling `hierarchy.rs` as a free fn (Wave
-        // 3.2 stage A).
         // **O CADEADO DO MODO, na porta da HIERARQUIA** (Enio, 2026-08-19; do modo desde a F2 do
         // spec/06). Num modo de criação, clicar noutra linha não troca o objecto em edição:
         // recusa, e o aviso diz por onde sair.
@@ -33,7 +27,6 @@ impl crate::App {
         // ⚠️ A intenção é **consumida** (posta a `None`), não saltada: deixá-la viva faria a
         // mesma recusa repetir-se no quadro seguinte, e o artista veria o aviso a piscar.
         if let Some(intent) = hierarchy_select_intent {
-            let locked = hero.gizmo.mode.locked_entity();
             let (target, additive) = match intent {
                 hierarchy::HierarchySelectIntent::Row { row, modifier } => (
                     hero_live.as_ref().and_then(|l| l.bridge.entity_for(row)),
@@ -45,12 +38,8 @@ impl crate::App {
                 // Um intervalo é aditivo por definição.
                 hierarchy::HierarchySelectIntent::Range { .. } => (None, true),
             };
-            if ph2d_editor_core::object_mode::decide(locked, target, additive)
-                == ph2d_editor_core::object_mode::Decision::Refuse
+            if ph2d_editor_core::screens::hero::mode_drive::refused(hero, target, additive, toasts)
             {
-                toasts.push(Toast::warning(ph2d_editor_core::object_mode::refusal(
-                    &hero.gizmo.mode,
-                )));
                 hierarchy_select_intent = None;
                 self.title_dirty = true;
             }

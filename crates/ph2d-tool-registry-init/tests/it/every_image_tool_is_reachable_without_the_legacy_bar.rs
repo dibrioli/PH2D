@@ -1,5 +1,8 @@
 //! ⛔⛔⛔ **AS DEZ FERRAMENTAS DE IMAGEM — o PAINTER INCLUÍDO — têm de ser alcançáveis sem a `F9`.**
 //!
+//! ⭐ Desde a F2 do spec/06 o Painter chega-se pelo MODO Paint da imagem e NÃO por um botão da
+//! barra IMG (`object_mode::TOOLS_OPENED_BY_A_MODE`); o gate mede as duas metades.
+//!
 //! # O defeito que este gate existe para impedir de voltar
 //!
 //! Elas eram pintadas num sítio **só**: `paint_image_action_row`, dentro do `paint_top_bar`. Em
@@ -26,6 +29,7 @@
 //! de ferramentas** (`installed_registry`), que esta crate instala. Lá, `image_action_pills()`
 //! cai no fallback legado de três pills e o Painter nem aparece.
 
+use ph2d_editor_core::object_mode::{ObjectMode, TOOLS_OPENED_BY_A_MODE};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -69,21 +73,64 @@ fn every_image_tool_has_a_target_in_the_painted_frame() {
         "o cluster encolheu para {} — o registry não é o do boot",
         tools.len()
     );
+    let by_mode = |id: &str| TOOLS_OPENED_BY_A_MODE.iter().any(|(t, _)| *t == id);
     let missing: Vec<&str> = tools
         .iter()
-        .filter(|m| hero.hit_index.rect_for(hash_node_id(m.id)).is_none())
+        .filter(|m| !by_mode(m.id) && hero.hit_index.rect_for(hash_node_id(m.id)).is_none())
         .map(|m| m.id)
         .collect();
     assert!(
         missing.is_empty(),
         "ferramentas de imagem SEM alvo no quadro — inalcançáveis sem a `F9`: {missing:?}"
     );
-    // ⭐ O Painter pelo nome, porque é o que carrega a face inteira da fila.
+    // ⛔ E as que um MODO abre NÃO têm botão aqui: dois caminhos para o mesmo módulo divergem
+    // (spec/06 §5). A porta delas é medida em `the_painter_is_reached_by_the_paint_mode_of_an_image`.
+    for (id, _) in TOOLS_OPENED_BY_A_MODE {
+        assert!(
+            hero.hit_index.rect_for(hash_node_id(id)).is_none(),
+            "`{id}` voltou a ter botão na barra IMG além do modo que o abre"
+        );
+    }
+}
+
+/// ⭐⭐ **O PAINTER chega-se pelo MODO PAINT de uma imagem** (spec/06 F2), e é ele que carrega a face
+/// inteira de pintura da fila: com uma imagem activa o seletor *Mode* é pintado, oferece a linha
+/// *Paint Mode*, e em Paint a coluna mostra as ferramentas de pintura — sem o IMG.
+#[test]
+fn the_painter_is_reached_by_the_paint_mode_of_an_image() {
+    ph2d_editor_core::test_support::ensure_panel_registry();
+    install_boot_registry();
+    let mut hero = HeroScreen::new(ph2d_a11y::NodeId(1));
+    hero.gizmo.mode.publish(Some(7), &[ObjectMode::Paint]);
+    let menu = hero.gizmo.mode.menu(&mut hero.store);
+    hero.store.publish_mode_menu(menu);
+    let mut scene = ph2d_vector::VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    let viewport = Rect::new(0.0, 0.0, 1366.0, 1024.0);
+    ph2d_editor_core::screens::hero::paint_hero_screen(&mut hero, viewport, &mut scene, &mut text);
+    let chip = ph2d_editor_core::ids::area_menu_button(0);
     assert!(
         hero.hit_index
-            .rect_for(hash_node_id("painter"))
+            .rect_for(chip)
             .is_some_and(|r| r.w > 0.0 && r.h > 0.0),
-        "o PAINTER não tem alvo: a face de pintura da fila fica inalcançável por construção"
+        "o seletor de modo não tem alvo no quadro"
+    );
+    let rows: Vec<_> = hero
+        .store
+        .area_menu_rows(0)
+        .iter()
+        .filter_map(|e| e.node_id())
+        .collect();
+    assert!(
+        rows.contains(&ObjectMode::Paint.row_id()),
+        "o seletor não oferece o Paint"
+    );
+    hero.gizmo.mode.enter(7, ObjectMode::Paint);
+    hero.image_edit.active_tool_id = Some("painter");
+    assert!(!hero.image_edit.mode_on, "precondição: o IMG desligado");
+    assert!(
+        hero.rail_shows_painter_tools(),
+        "em Paint a coluna não mostra a pintura"
     );
 }
 

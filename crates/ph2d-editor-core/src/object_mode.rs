@@ -6,7 +6,8 @@
 //!   que o módulo dele abre sobre a entidade (D6: modo que não faz nada é controlo morto).
 //! - **O estado guarda a ENTIDADE, nunca o tipo** ([`ActiveMode`]). O tipo pergunta-se ao marcador
 //!   (`ph2d_app_components::component_attach::kind_of`), e quem compõe as famílias publica aqui os
-//!   modos do activo em todo quadro ([`ModeState::publish`]).
+//!   modos do activo em todo quadro ([`ModeState::publish`]). O quadro que os corre é o
+//!   `screens::hero::mode_drive` (este módulo não conhece o Hero: a fundação é um DAG).
 //! - **As leis são puras** ([`ModeState::resolve`], [`ModeState::still_holds`], [`decide`]); quem
 //!   abre e larga o módulo é a família dona, com os recursos dela.
 
@@ -221,7 +222,10 @@ impl ModeState {
         Some(AreaMenu {
             label: ph2d_i18n::tr("object_mode.menu").to_string(),
             face: current.label_key().tr().to_string(),
-            faces: modes.iter().map(|m| m.label_key().tr().to_string()).collect(),
+            faces: modes
+                .iter()
+                .map(|m| m.label_key().tr().to_string())
+                .collect(),
             rows,
         })
     }
@@ -267,15 +271,23 @@ pub const REFUSAL: TextKey = TextKey::new("object_mode.locked");
 /// A recusa já redigida, para o modo em curso.
 #[must_use]
 pub fn refusal(state: &ModeState) -> String {
-    ph2d_i18n::tr_with(REFUSAL.key(), &[("mode", &state.current().label_key().tr())])
+    ph2d_i18n::tr_with(
+        REFUSAL.key(),
+        &[("mode", &state.current().label_key().tr())],
+    )
 }
 
 /// ⭐ **O objecto ACTIVO** — o último que o artista acrescentou à selecção (o do Blender, e o que o
 /// Painter guarda ao colapsar uma selecção múltipla); sem extras, o primário.
 #[must_use]
-pub fn active_of(gizmo: &crate::screens::hero::GizmoStateGroup) -> Option<u64> {
-    gizmo.extra_selection.last().copied().or(gizmo.selection)
+pub fn active_of(selection: Option<u64>, extras: &[u64]) -> Option<u64> {
+    extras.last().copied().or(selection)
 }
+
+/// ⛔ **As ferramentas que um MODO abre, e que por isso NÃO são botão da barra IMG** — dois caminhos
+/// para o mesmo módulo divergem (spec/06 §5). A barra salta-as; os gates de alcance perguntam aqui
+/// por que porta elas chegam.
+pub const TOOLS_OPENED_BY_A_MODE: &[(&str, ObjectMode)] = &[("painter", ObjectMode::Paint)];
 
 #[cfg(test)]
 #[path = "object_mode_tests.rs"]

@@ -221,7 +221,10 @@ fn every_layout_hands_the_canvas_over_and_none_inherits_it() {
             // ⭐ Um layout que pede um MODO (spec/06 §3.3) não pede ferramenta: quem a pega é o
             // modo, e só se o activo o tiver.
             CanvasOwner::Mode(m) => {
-                assert!(asked.is_empty(), "{l:?} pede o modo {m:?} e também {asked:?}");
+                assert!(
+                    asked.is_empty(),
+                    "{l:?} pede o modo {m:?} e também {asked:?}"
+                );
                 assert_eq!(
                     modes,
                     vec![ph2d_editor_core::object_mode::ModeRequest::Open(m)],

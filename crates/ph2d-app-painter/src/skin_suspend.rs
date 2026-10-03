@@ -55,7 +55,7 @@ use ph2d_editor_core::ToolRegistry;
 /// ⭐⭐ **ATÉ ONDE A SUSPENSÃO CHEGA** — a imagem que a ferramenta edita, ou todas as que ela edita.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Alcance {
-    /// Só a imagem PRINCIPAL da selecção: o Painter trava a selecção numa só (`painter_lock`), e a
+    /// Só a imagem PRINCIPAL da selecção: o modo Paint trava a selecção numa só (`object_mode::decide`), e a
     /// Remoção de fundo pré-visualiza e aplica na principal.
     Principal,
     /// A SELECÇÃO inteira: o Padding, o Upscale e o Equalize Sizes aplicam a todas as selecionadas

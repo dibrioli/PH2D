@@ -22,9 +22,6 @@ use super::{
 };
 use crate::interaction::{HitIndex, WidgetStore};
 
-/// O manifesto que a fila salta — ver [`image_action_pills`].
-const PAINTER_IS_A_MODE: &str = "painter";
-
 /// Drawing source for one Image Tools action pill's glyph. When the
 /// pill came from a manifest the manifest's `icon_fn` already produced
 /// a 24×24 [`ph2d_vector::BezPath`]; when the pill came from the
@@ -68,7 +65,11 @@ pub(super) fn image_action_pills() -> Vec<ImageActionPill> {
         return reg
             .cluster("image_tools")
             .iter()
-            .filter(|m| m.id != PAINTER_IS_A_MODE)
+            .filter(|m| {
+                !crate::object_mode::TOOLS_OPENED_BY_A_MODE
+                    .iter()
+                    .any(|(id, _)| *id == m.id)
+            })
             .map(|m| ImageActionPill {
                 id: hash_node_id(m.id),
                 icon: PillIcon::FromManifest((m.icon_fn)()),

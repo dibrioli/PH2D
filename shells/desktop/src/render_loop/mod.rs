@@ -203,8 +203,6 @@ mod fase_cataventos;
 mod fase_chrome_clock;
 /// Fase do quadro: a paleta de componentes.
 mod fase_component_palette;
-mod fase_object_add;
-mod fase_object_mode;
 /// Fase do quadro: os verbos de componente.
 mod fase_component_verbs;
 /// Fase do quadro: o composto, os encaixes e as reguas.
@@ -289,6 +287,8 @@ mod fase_motion_gizmos;
 mod fase_new_image_modal;
 /// Fase do quadro: os verbos de no e de arranjo.
 mod fase_node_and_arrange_verbs;
+mod fase_object_add;
+mod fase_object_mode;
 /// Fase do quadro: a receita aberta (a marca, o pedido de palco, a trava e o pedido do Cancel).
 mod fase_open_recipe;
 /// Fase do quadro: as cenas do pincel do Painter (taper, tinta molhada).

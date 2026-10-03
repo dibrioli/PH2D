@@ -76,23 +76,6 @@ impl crate::App {
                     )));
                 }
             } else if gate_on && tools.set_active(&ph2d_editor_core::ToolId::new(tool_id)) {
-                // **ENTRAR NO PAINTER COLAPSA A SELEÇÃO À ÚLTIMA** (Enio, 2026-08-19: *"se o
-                // usuário estiver com múltiplas imagens selecionadas e entrar no painter,
-                // selecione a última selecionada e desselecione as outras antes de entrar"*).
-                //
-                // ⚠️ **Antes de entrar, e não depois:** o Painter lê a seleção ao ativar-se
-                // para saber que documento abrir. Colapsar depois deixá-lo-ia um quadro com o
-                // estado que a trava existe para impedir — e um quadro chega para ele ligar a
-                // prévia à sprite errada.
-                if tool_id == "painter" {
-                    let dropped = ph2d_app_painter::painter_lock::collapse_to_last(hero);
-                    if dropped > 0 {
-                        toasts.push(Toast::info(tr_with(
-                            "shell.fase_image_tool_activation.painter_kept_the_last",
-                            &[("dropped", &dropped)],
-                        )));
-                    }
-                }
                 self.title_dirty = true;
                 if tool_id == "bgremoval" {
                     self.bgremoval.last_pushed_entity = None;

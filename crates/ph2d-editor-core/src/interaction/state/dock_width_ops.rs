@@ -368,7 +368,7 @@ impl WidgetStore {
 
     /// ⭐ **Publica o seletor de modo** (`None` = nenhum objecto activo) — o 1.º pulldown da fila,
     /// à frente dos do módulo. Ver [`crate::interaction::AreaMenus`] e [`crate::object_mode`].
-    pub fn set_mode_menu(&mut self, menu: Option<crate::interaction::AreaMenu>) {
+    pub fn publish_mode_menu(&mut self, menu: Option<crate::interaction::AreaMenu>) {
         self.area_menus.set_leading(menu);
     }
 

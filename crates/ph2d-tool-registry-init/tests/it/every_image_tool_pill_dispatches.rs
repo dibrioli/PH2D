@@ -114,10 +114,16 @@ fn every_image_tool_pill_is_registered_and_therefore_focusable() {
     let reg = install_boot_registry();
 
     let hero = HeroScreen::new(ph2d_a11y::NodeId(1));
+    // ⭐ As que um MODO abre não são botão da barra (spec/06 F2): o registo que conta é a LINHA do
+    // seletor do modo delas.
+    let by_mode = ph2d_editor_core::object_mode::TOOLS_OPENED_BY_A_MODE;
     let unregistered: Vec<&str> = reg
         .cluster("image_tools")
         .iter()
-        .filter(|m| !hero.store.contains(hash_node_id(m.id)))
+        .filter(|m| match by_mode.iter().find(|(id, _)| *id == m.id) {
+            Some((_, mode)) => !hero.store.contains(mode.row_id()),
+            None => !hero.store.contains(hash_node_id(m.id)),
+        })
         .map(|m| m.id)
         .collect();
 

@@ -43,6 +43,8 @@ pub mod canvas_map;
 // prosa que cita o ficheiro, e a Fase A da `line/app-physics` pagou 76 citações numa
 // varredura só. Aqui dentro tudo é a família; o prefixo é só história que não custa nada.
 // ─────────────────────────────────────────────────────────────────────────
+/// ⭐⭐ Image ▸ Paint — o modo que esta família declara (spec/06 F2).
+pub mod paint_mode;
 /// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
 ///
 /// `pub(crate)` porque a frente L do plano 26 carimba a chegada do evento de ponteiro lá do
@@ -98,9 +100,6 @@ pub mod painter_bridge_shape_preview;
 pub mod painter_bridge_upload;
 pub mod painter_bridge_wetness;
 pub mod painter_gpu_preview;
-pub mod painter_lock;
-/// ⭐⭐ Image ▸ Paint — o modo que esta família declara (spec/06 F2).
-pub mod paint_mode;
 /// Display gates, producer-handoff half (upload-plan refusals + the CPU→GPU→CPU dance on real
 /// hardware) — split from the pipeline tests for the HR-18 file-LOC cap.
 #[cfg(test)]

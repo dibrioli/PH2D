@@ -118,17 +118,14 @@ impl App {
         }
 
         match code {
-            // ⭐ `Tab` alterna Object ↔ o último modo do objecto, como no Blender (spec/06 F2,
-            // escolha do dono 03/10); o zen passou ao `Ctrl+Space` (o «maximizar a área» do Blender).
+            // ⭐ `Tab` = o modo, como no Blender; o zen é `Ctrl+Space` (escolha do dono, 03/10).
             KeyCode::Tab if !cmd_chord => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.bus
-                        .push(ph2d_editor_core::action_bus::EditorAction::ObjectMode(
-                            ph2d_editor_core::object_mode::ModeRequest::Toggle,
-                        ));
+                    use ph2d_editor_core::{action_bus::EditorAction, object_mode::ModeRequest};
+                    hero.bus.push(EditorAction::ObjectMode(ModeRequest::Toggle));
                 }
             }
-            // ⚠️ Consumido mesmo dentro do intervalo do zen: cair adiante tocaria a linha do tempo.
+            // ⚠️ Consumido mesmo no intervalo do zen: cair adiante tocaria a linha do tempo.
             KeyCode::Space if cmd_chord => {
                 if gfx.zen.try_toggle() {
                     let msg = if gfx.zen.is_active() {

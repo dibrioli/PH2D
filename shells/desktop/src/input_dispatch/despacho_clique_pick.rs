@@ -201,17 +201,11 @@ impl crate::App {
             // é o caminho do **clique vazio**, que limpa e não seleciona outra — a lei
             // permite-o de propósito (recusar faria o `Esc` e o canvas parecerem
             // partidos). *Recusar a troca não é recusar o clique.*
+            let refused = ph2d_editor_core::screens::hero::mode_drive::refused;
             let picked = match picked {
                 Some(bits)
-                    if ph2d_editor_core::object_mode::decide(
-                        hero.gizmo.mode.locked_entity(),
-                        Some(bits),
-                        cmd_held || shift_held,
-                    ) == ph2d_editor_core::object_mode::Decision::Refuse =>
+                    if refused(hero, Some(bits), cmd_held || shift_held, &mut gfx.toasts) =>
                 {
-                    gfx.toasts.push(Toast::warning(ph2d_editor_core::object_mode::refusal(
-                        &hero.gizmo.mode,
-                    )));
                     self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);
                     None
                 }

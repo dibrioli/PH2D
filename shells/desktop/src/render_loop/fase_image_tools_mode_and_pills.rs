@@ -73,44 +73,11 @@ impl crate::App {
         let live = tools.active().map(|t| t.id());
         hero.image_edit.active_tool_id =
             crate::active_tool_mirror::intern_active_tool(live.as_ref().map(|i| i.0.as_str()));
-        // Reconcile Image Tools pill ButtonState ↔ active tool. Each pill
-        // whose manifest id matches `tools.active()` is forced to Pressed;
-        // pills holding a stale Pressed (tool no longer active) drop back
-        // to Normal. Hovered/click-transient states are preserved (we only
-        // touch the Normal↔Pressed transitions).
-        //
-        // Data-driven via `installed_registry().cluster("image_tools")` —
-        // zero hardcoded tool id (anti-padrão Image Tools Bugs §2.b
-        // fechado em T1.2). New tools dropped via fan-out drop-crate
-        // inherit the highlight wiring automatically.
-        {
-            let active_id_string: Option<String> = tools.active().map(|t| t.id().0.clone());
-            if let Some(reg) = ph2d_editor_core::installed_registry() {
-                // W1.T1.7 R3: iterate both image_tools (existing)
-                // AND vector_tools (Pen pill ship) so the Pressed-
-                // highlight reconcile picks up the Pen pill when
-                // the Vector Pen tool activates. Each pill's
-                // NodeId is computed via `hash_node_id(manifest.id)`
-                // — for Pen this matches `TOPBAR_VECTOR_PEN` only
-                // because `TOPBAR_VECTOR_PEN = hash_node_id("vector_pen")`
-                // (image-action pill convention; see ids.rs).
-                for cluster_name in ["image_tools", "vector_tools"] {
-                    for manifest in reg.cluster(cluster_name) {
-                        let pill_id = ph2d_tool_registry::hash_node_id(manifest.id);
-                        let should_press = active_id_string.as_deref() == Some(manifest.id);
-                        if let Some(ph2d_editor_core::InteractiveState::Button { state }) =
-                            hero.store.get_mut(pill_id)
-                        {
-                            use ph2d_editor_core::widget::ButtonState;
-                            match (*state, should_press) {
-                                (ButtonState::Normal, true) => *state = ButtonState::Pressed,
-                                (ButtonState::Pressed, false) => *state = ButtonState::Normal,
-                                _ => {} // preserve Hovered + already-consistent
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // Os pills acesos seguem a ferramenta activa — a lei mora na fundação.
+        let active = tools.active().map(|t| t.id().0.clone());
+        ph2d_editor_core::tool_activation::press_the_active_pill(
+            &mut hero.store,
+            active.as_deref(),
+        );
     }
 }

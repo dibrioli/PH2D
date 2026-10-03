@@ -85,8 +85,6 @@ pub mod camera_2d_smoke;
 /// ⭐⭐ **A secção CAMERA** (TOP-20 #7) — o instantâneo e o commit; veio da shell na W7 da paralaxe.
 pub mod camera_inspector;
 pub mod component_attach;
-/// O vazio e os objectos de JOGO no menu Add de objectos (spec/06 F1).
-pub mod object_add;
 pub mod component_palette;
 pub mod component_seed;
 pub mod component_smoke;
@@ -141,6 +139,10 @@ pub mod nav_smoke;
 pub mod nav_smoke_guarda;
 pub mod nav_smoke_lava;
 pub mod nav_smoke_porta;
+/// O vazio e os objectos de JOGO no menu Add de objectos (spec/06 F1).
+pub mod object_add;
+/// O modo do objecto activo, com o tipo pelo marcador (spec/06 F2).
+pub mod object_mode;
 /// ⭐⭐⭐ **A PARALAXE** (plano 24, W1) — um objecto guarda uma fracção do movimento do mundo; a
 /// lei, a referência e o caso do arrasto estão no cabeçalho.
 pub mod parallax_bridge;

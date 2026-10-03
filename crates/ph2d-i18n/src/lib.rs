@@ -55,10 +55,6 @@ mod audio_fx;
 mod blend_modes;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
 mod chrome_menus;
-/// O menu Add de OBJECTOS (o `+` da Hierarquia e o `Shift+A`).
-mod object_add;
-/// O MODO de edição do objecto (o seletor *Mode*, o `Tab` e o cadeado).
-mod object_mode;
 /// As strings do RESTO da moldura (barra do topo, HUD, diálogos, seletor de cor, cartão de instância).
 mod chrome_panes;
 /// As strings da BARRA DE FERRAMENTAS (o rail esquerdo e a fila horizontal).
@@ -76,6 +72,10 @@ mod image_tools;
 mod input_map;
 /// As strings dos painéis do Motion (grafo, params) e dos editores ricos partilhados.
 mod motion_panels;
+/// O menu Add de OBJECTOS (o `+` da Hierarquia e o `Shift+A`).
+mod object_add;
+/// O MODO de edição do objecto (o seletor *Mode*, o `Tab` e o cadeado).
+mod object_mode;
 /// As strings da SHELL (avisos, diálogos, nomes por omissão).
 mod shell;
 /// As strings da SHELL sobre mídia (imagem, folhas, importar/exportar, áudio).

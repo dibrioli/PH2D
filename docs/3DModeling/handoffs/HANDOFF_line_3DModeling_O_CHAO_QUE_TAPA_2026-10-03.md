@@ -4,7 +4,7 @@
 > a parte de baixo de uma peça pousada via o céu de BAIXO do estúdio. Base da linha `1ad60a1ce` (main não
 > andou). Commits: `f74e00a2b` a lei, o oráculo, os gates, a cena 41, a sonda · `7820979ce` a memória por
 > pixel · `19c32bd00` as direcções no laço · `e7260f990` o verniz no oráculo + o gate da memória
-> (`tests_custo_chao_tapa.rs → tests_passe_chao_tapa.rs`) · `58c65a45d` clippy. **Smoke do dono: pendente.**
+> (`tests_custo_chao_tapa.rs → tests_passe_chao_tapa.rs`) · `58c65a45d` clippy. **Smoke do dono: OK (03/10), depois de 2 reports.**
 
 ## ⛔ A premissa que a medição derrubou
 
@@ -193,7 +193,8 @@ dele e das vizinhas, e a bola grande fecha escura onde encosta.
   objeto. Contudo, o objeto está sobre a sombra»* — as manchas escuras no cromo eram as sombras das vizinhas
   sem as vizinhas. Cura: a zona da peça (§3). Foto da sonda (`PITCH 0.25`): o cromo sem manchas, com o
   escurecimento suave do contacto e a sombra dele em baixo.
-- pendente: o smoke do dono depois das duas curas.
+- ✅ **Smoke OK (03/10)** depois das duas curas: *«ok. Mas não temos reflexo dos objetos ao lado. isso é o
+  esperado?»* — sim, até às capturas de reflexo (§5, o próximo item recomendado).
 
 ## §8 — A PRÓXIMA ONDA
 

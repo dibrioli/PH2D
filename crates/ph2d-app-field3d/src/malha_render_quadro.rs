@@ -105,6 +105,22 @@ fn desenhista() -> Option<&'static Mutex<Desenhista>> {
         .as_ref()
 }
 
+/// Nos testes: subir as malhas SEM as grelhas do contacto (o controlo do gate da costura).
+#[cfg(test)]
+pub(crate) static SEM_CONTACTO: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+fn sem_contacto() -> bool {
+    #[cfg(test)]
+    {
+        SEM_CONTACTO.load(std::sync::atomic::Ordering::Relaxed)
+    }
+    #[cfg(not(test))]
+    {
+        false
+    }
+}
+
 /// O ângulo da caixa de luz do estúdio — a penumbra da sombra.
 fn caixa_tan() -> f32 {
     crate::studio::SOFTBOX_RADIUS_DEG.to_radians().tan()
@@ -327,7 +343,7 @@ pub(crate) fn desenha(
                         indices: &m.indices,
                     },
                 );
-                if let Some(g) = &o.contacto {
+                if let Some(g) = o.contacto.as_ref().filter(|_| !sem_contacto()) {
                     fw.sobe_contacto(k as u64, g);
                 }
             }

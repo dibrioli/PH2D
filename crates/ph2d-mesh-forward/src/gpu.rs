@@ -527,6 +527,8 @@ impl Forward {
             &vec![0u8; n_vertices * 8],
             wgpu::BufferUsages::VERTEX,
         );
+        // Outra malha no mesmo id: a grelha do contacto da antiga já não é a dela.
+        self.contacto.esquece(id);
         self.cobertura.ceu.malha_mudou();
         self.malhas.insert(
             id,

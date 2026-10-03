@@ -238,3 +238,103 @@ fn a_oclusao_propria_nao_conta_a_vizinha() {
         );
     }
 }
+
+/// Um quadro do Render por malha da cena `n` do smoke (a câmara da sonda), ou `None` sem aparelho.
+fn quadro_do_render(n: u32, tamanho: (u32, u32)) -> Option<Vec<u8>> {
+    let doc = crate::smoke::scenes::scene(n);
+    let mut out = None;
+    crate::scene::lasso_tests::armed_with(&doc, |sim| {
+        crate::malha_render_estado::sync(sim, false, false);
+        let slot = crate::shading::Shading::ALL
+            .iter()
+            .position(|s| *s == crate::shading::Shading::Render)
+            .expect("Render");
+        ph2d_panel_model3d::state::push_intent_for_test(
+            ph2d_panel_model3d::ModelIntent::SetShading { slot },
+        );
+        crate::scene::apply_intents_for_test(sim.world_mut(), &[]);
+        if let Some(mats) = crate::smoke::scenes::materiais_da_cena(n) {
+            let world = sim.world_mut();
+            let mut q = world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
+            let root = q.iter(world).next().map(|(e, _)| e).expect("a peça");
+            let folhas = crate::materials::folhas(world, root);
+            for ((e, _, _), m) in folhas.iter().zip(mats) {
+                world.entity_mut(*e).insert(m);
+            }
+        }
+        crate::smoke::with_smoke(|s| {
+            s.vp_mut().cam = ph2d_field_render::Orbit::from_yaw_pitch(0.72, 0.52);
+            crate::input::frame_the_part(s);
+        });
+        let t0 = std::time::Instant::now();
+        while !crate::malha_render_estado::com(|e| !e.esperando()).unwrap_or(false)
+            && t0.elapsed().as_secs() < 30
+        {
+            crate::scene::ecs_bridge(sim, None, &[], &crate::scene::no_drawing());
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        let doc = crate::smoke::with_smoke(|s| s.doc.clone())
+            .flatten()
+            .expect("doc");
+        let t1 = std::time::Instant::now();
+        while t1.elapsed().as_secs() < 30 {
+            match crate::smoke::with_smoke(|s| {
+                crate::malha_render_quadro::desenha(s, s.active, tamanho, &doc, false)
+            }) {
+                Some(crate::malha_render_quadro::Feito::Novo(rgba)) => {
+                    out = Some(rgba);
+                    break;
+                }
+                Some(crate::malha_render_quadro::Feito::SemAparelho) | None => break,
+                _ => std::thread::sleep(std::time::Duration::from_millis(2)),
+            }
+        }
+    });
+    out
+}
+
+/// ⭐⭐⭐ **O contacto CHEGA ao quadro do Render** — a costura app → desenhista: a cena 40 desenhada
+/// com as grelhas que o app assa e sem elas (o mesmo mundo, a mesma câmara). Com elas, as peças
+/// escurecem onde se olham (milhares de pixels, e bastante); nenhum pixel CLAREIA (o contacto só
+/// tapa céu). Controlo: sem as grelhas, o quadro é outro.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn o_contacto_chega_ao_quadro_do_render() {
+    let tamanho = (480u32, 270u32);
+    // ⚠️ COM primeiro: o desenhista é global, e o quadro SEM tem de não herdar as grelhas do outro
+    // (subir uma malha no mesmo id esquece a grelha velha).
+    let com = quadro_do_render(40, tamanho);
+    crate::malha_render_quadro::SEM_CONTACTO.store(true, std::sync::atomic::Ordering::Relaxed);
+    let sem = quadro_do_render(40, tamanho);
+    crate::malha_render_quadro::SEM_CONTACTO.store(false, std::sync::atomic::Ordering::Relaxed);
+    let (Some(sem), Some(com)) = (sem, com) else {
+        eprintln!("sem aparelho — o gate não corre aqui");
+        return;
+    };
+    let lum =
+        |p: &[u8]| 0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2]);
+    let (mut escuros, mut pior, mut clareou, mut pecas) = (0usize, 1.0f32, 0usize, 0usize);
+    for (a, b) in com.as_chunks::<4>().0.iter().zip(sem.as_chunks::<4>().0) {
+        if a[3] < 255 || b[3] < 255 {
+            continue;
+        }
+        pecas += 1;
+        let r = lum(a) / lum(b).max(1.0);
+        pior = pior.min(r);
+        if r < 0.9 {
+            escuros += 1;
+        }
+        if lum(a) > lum(b) + 2.0 {
+            clareou += 1;
+        }
+    }
+    eprintln!(
+        "{pecas} px de peça · {escuros} escurecem > 10 % · o mais escuro × {pior:.3} · {clareou} clareiam"
+    );
+    assert!(pecas > 10_000, "a cena encolheu: {pecas} px");
+    assert!(
+        escuros > 500 && pior < 0.7,
+        "o contacto não chegou ao quadro: {escuros} px · × {pior}"
+    );
+    assert!(clareou < 20, "o contacto CLAREOU {clareou} px");
+}

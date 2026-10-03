@@ -219,7 +219,9 @@ fn a_born_piece_asks_for_sculpt_once_and_otherwise_the_clay_leaves() {
     let mut f = familia(&mut scene);
     f.follow(None, &mut tools);
     assert!(
-        f.scene.as_deref().is_some_and(Sculpt3dScene::clay_on_screen),
+        f.scene
+            .as_deref()
+            .is_some_and(Sculpt3dScene::clay_on_screen),
         "o follow tirou o barro da peça nascida antes de ela entrar"
     );
     assert!(

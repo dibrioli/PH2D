@@ -259,3 +259,79 @@ Os 42 gates de produto da tinta fina (Painter, aquarela que escorre, balde, desf
 - Remesh / mudança de topologia: o plano novo nasce da semente e a pilha nasce com UMA camada (o
   detalhe das camadas perde-se como o do plano se perdia) — reamostrar cada camada é a W7.
 - O relevo continua da peça (mora na BASE) até à W4.
+
+## 12. W3 — o painel de Layers sobre a pilha da peça (03/10)
+
+**O desenho (o que o código derrubou do §4):** o painel não podia «ler a pilha da peça pela mesma
+`set_current_layers`» e seguir o barramento até ao `PainterTool` — com a tela da vista presa, a pilha
+da FERRAMENTA é a da tela (o traço em voo, uma camada só), e os gestos do painel mexiam nela em
+silêncio. ⇒ a ferramenta guarda um **espelho** da pilha da peça, publicado pela escultura a cada
+quadro, e o painel mostra o espelho; cada gesto vira um **pedido** que a escultura drena e aplica pela
+porta da `PilhaDaPeca`. Contratos congelados intocados: nenhuma variante de `PanelEvent`/`Tool`.
+
+| porta | onde |
+|---|---|
+| a leitura ÚNICA do fio do painel (ids por camada, cargas `"camada:canal:…"`) | `ph2d_tool_painter::tool::layer_edit::{decode, LayerEdit, ParamEdit}` — a pilha 2D (`apply_layer_edit`) e a da peça leem-na |
+| o espelho e os pedidos | `tool::piece_layers`: `sync_piece_layers` · `panel_layers` / `panel_selection` / `panel_shows_the_piece` · `take_piece_layer_ops` → `PieceLayerOp { NewLayer, NewMask, NewAdjustment, Duplicate, Delete, Metadata { stack, gesture } }` · `piece_layer_refusal` |
+| o metadado calculado com as leis do 2D | `LayerStack::set_*` + `apply_param_edit` (as funções puras dos ajustes; as curvas passaram a `set/add/remove_curve_point_in`, que os métodos 2D também chamam) · o arrasto pela lei única `reparent_in` |
+| a porta da pilha (sem `#[cfg(test)]`) | `nova_camada` · `nova_mascara` · `novo_ajuste` (semente `seed_user_adjustment`, a activa fica) · `duplica` (só pintura, sem relevo) · `apaga` (devolve os planos; a BASE fica) · `troca_metadado` (recusa estrutura e base fora do fundo) · todas recusam com traço aberto |
+| o desfazer estrutural | `TrocaDaPilha` (metadado de antes + planos tirados) · `troca_estrutura` (instala e devolve a inversa) · `StrokeUndo::Camadas { level, passo }` com a cerca `IdDoPlano` |
+| a escultura a cada quadro | `painter_na_malha::camadas`: `camadas_do_painel` (pedidos → porta → UMA recomposição → espelho) · `aplica_pedidos_da_pilha` · `a_activa_recusa_o_traco` |
+| o painel | `ph2d-panel-painter-layers::peca`: `offered` (barra), `adjustment_offered` (o menu de ajustes APAGA os de vizinhança — `DropdownOption::disabled`, novo, no `ph2d-editor-core`), `paint_piece_notes` (as frases do fundo, no lugar do Apply) |
+
+**Premissas que o código derrubou (técnicas, delegadas):**
+
+1. **Um arrasto é UM passo de desfazer**: o `PanelEvent::SetValue` não tem «largou», e um passo por
+   quadro do arrasto enchia a fila. O pedido leva o id do controlo (`gesture`), e a escultura junta-o
+   ao passo anterior enquanto nada mais mexeu na peça (`camadas_arrasto` = `(id, edits)` e o topo da
+   fila é um `Camadas`).
+2. **A base fica no fundo e não se apaga**: até à W4 o relevo da peça mora na camada de BASE
+   (`relevo_composto`); apagá-la ou subi-la levava o relevo com ela. Duplicar a base copia a cor e não
+   o relevo (duas camadas com relevo partiriam o `debug_assert` da W1).
+3. **A máscara nova não rouba a activa** (no 2D rouba, para se pintar): pintar uma máscara na peça
+   ainda não existe — a activa continua a dona, e escolher a linha da máscara dá a frase.
+4. **A activa que não é de pintura** (ajuste, máscara): o pen-down do Painter RECUSA e a frase vai ao
+   painel (`piece_layer_refusal`); antes, o traço pintava só a cor por vértice, por baixo da
+   composição.
+5. **A pilha nasce quando o painel a mostra** (`acompanha` no quadro), não só no pen-down: o artista
+   vê «Layer 1» antes do primeiro traço, e o «+» já tem onde cair.
+
+**Desligado na peça, com a frase do porquê** (`panel.painter_layers.piece.off_here`): grupos, camadas
+de textura, Lock, Ref, o relevo por camada (W4), a vista em cinzento e o Apply da máscara, o Apply do
+documento (a peça É a composição), e os ajustes que leem a vizinhança (W6) — apagados no menu.
+
+**Gates** (W3): ferramenta `piece_layers_tests` (4: os gestos vão ao espelho e a pilha da tela não
+muda, com o controlo do 2D · o arrasto de opacidade · o parâmetro de um ajuste é o do 2D ao bit · o
+que a peça não oferece não pede nada) · porta `pilha_da_peca_porta_tests` (4: cada passo desfaz e
+refaz ao bit · o metadado recusa estrutura, base e traço aberto · a base fica e a cópia não leva o
+relevo · o ajuste novo nasce como o do 2D) · produto, com placa e o painel REAL
+(`tinta_no_produto_tests::painel`): **«nova camada → pintar → baixar a opacidade → `Ctrl+Z`» muda a
+cor da peça e volta ao bit**, os dois `Ctrl+Z` seguintes até à peça de antes e o `Ctrl+Shift+Z` dos
+três · a activa que é um ajuste recusa o traço e o painel diz porquê (controlo: a base escolhida, o
+traço pousa).
+
+**Medido** (03/10, perfil `smoke`, `load 3,3`, peça da lição, 3 camadas + HSB, 20 passos por
+degrau). Sondas: `sonda_camadas::diag_o_preco_de_arrastar_a_opacidade` (CPU: porta + peça inteira
+recomposta + cor por vértice) e `tinta_no_produto_tests::painel::diag_o_preco_de_arrastar_a_opacidade_de_ponta_a_ponta`
+(o caminho do produto: `aplica_pedidos_da_pilha` e a subida do plano por `sync_mesh`):
+
+| degrau | amostras | um passo, CPU (sonda pura) mediana · pior | um passo, produto: porta+recompor · subir o plano (medianas) |
+|---|---|---|---|
+| `8x` | 47 k | `2,95` · `3,36 ms` | `2,44 ms` · `0,10 ms` |
+| `16x` | 188 k | `2,28` · `4,29 ms` | `2,47 ms` · `0,24 ms` |
+| `32x` | 754 k | `8,08` · `9,51 ms` | `7,52 ms` · `0,66 ms` |
+| `64x` | 3,0 M | **`37,8` · `39,3 ms`** | **`36,4 ms` · `2,85 ms`** |
+
+⇒ até `32x` um passo do arrasto cabe num quadro; **a `64x` são `~39 ms` (dois quadros e meio)**, e
+quase tudo é recompor a peça inteira na CPU (a subida à placa é `7 %`). Pelo critério do §7 a
+**W1b (compor na placa) passa a ser a onda seguinte** — o número que ela tem de bater: o passo a
+`64x` abaixo de `4 ms` (o critério de desistência dela) com a paridade ao bit-de-sRGB8.
+
+**Fica para depois (nomeado):**
+- Um arrasto é UM desfazer, e dois arrastos SEGUIDOS no mesmo controlo, sem nada entre eles, também
+  (o `PanelEvent` não tem «largou»; ver premissa 1).
+- Pintar uma MÁSCARA na peça (a activa máscara recusa o traço; a máscara nasce branca e inverte-se).
+- O pincel de pintura da PRÓPRIA escultura com a activa não-raster ainda pinta só a cor por vértice
+  (herdado da W2): o painel só é visível no Painter; a recusa do pen-down cobre o Painter.
+- Grupos, camadas de textura, Lock e Ref na peça; o relevo por camada é a W4; os ajustes de
+  vizinhança a W6.

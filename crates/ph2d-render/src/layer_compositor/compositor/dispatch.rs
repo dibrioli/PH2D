@@ -46,7 +46,7 @@ impl LayerCompositor {
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: self.srgb_lut_buffer.as_entire_binding(),
+                    resource: self.decode_lut_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,

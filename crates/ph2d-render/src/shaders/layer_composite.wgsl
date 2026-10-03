@@ -5,15 +5,16 @@
 //
 // ## What it mirrors
 //
-// The **source of truth** for the blend math is
-// `ph2d_painter_brush::blend::apply(mode, dst, src)` (22 W3C Compositing
-// Level 1 modes, straight linear-sRGB). The **structure** mirrors the CPU
-// `composite_into`: top-down (panel order top-first, blended bottom-to-top),
-// groups composite their children into a sub-accumulator and blend that as a
-// single layer, opacity folds into the source alpha, decode sRGB→linear on
-// read / encode linear→sRGB on write. The sRGB transfer literals are kept
-// bit-identical to `ph2d_color::srgb` (same discipline as stamp.wgsl's gamma
-// fix + the OKLab coefficient gate `shader_oklab_coefficients_bit_identical`).
+// The **source of truth** for the blend math is `ph2d_blend_mode::apply(mode,
+// dst, src)` (22 W3C Compositing Level 1 modes, straight). The **structure**
+// mirrors the CPU `composite_into`: top-down (panel order top-first, blended
+// bottom-to-top), groups composite their children into a sub-accumulator and
+// blend that as a single layer, opacity folds into the source alpha. Layers join
+// in TONES OF THE SCREEN (ADR-0177): a texel is `byte / 255` and the result goes
+// back by round — no transfer curve on the path. Adjustments defined in light
+// convert at their own boundary (`apply_adjustment_op`, and the spatial graph's
+// first readers + combines). The sRGB transfer literals they use are kept
+// bit-identical to `ph2d_color::srgb`.
 //
 // ## Per-pixel stack machine (instead of recursion)
 //
@@ -21,7 +22,7 @@
 // a linear op-list (`LayerOp`): `Layer{slot,mode,opacity}`,
 // `PushGroup`, `PopGroupBlend{mode,opacity}` — emitted in the same
 // bottom-to-top order the CPU recurses. Each pixel maintains a small stack of
-// linear-sRGB accumulators (`array<vec4<f32>, MAX_STACK>`); a group's
+// straight encoded accumulators (`array<vec4<f32>, MAX_STACK>`); a group's
 // "sub-buffer" at one pixel is just one `vec4`. The op-list is identical for
 // every pixel, so the `switch` on `op.kind` / `blend_mode` is **uniform
 // control flow** (no warp divergence) — only the data-dependent dodge/burn
@@ -30,9 +31,9 @@
 // ## Color space / determinism
 //
 // Layers bind as a `texture_2d_array<rgba8unorm>` (NOT `…UnormSrgb`): we want
-// the raw byte/255 so the in-shader transfer function matches the Rust LUT
-// (`srgb_to_linear_byte`) — hardware sRGB-texture decode is a different
-// piecewise approximation and would NOT agree byte-for-byte. As with
+// the raw byte, recovered and read through `decode_lut` (`b as f32 / 255.0`
+// computed on the CPU) — WGSL does not promise the unorm→float conversion is the
+// correctly-rounded `b / 255`, the table does on every driver. As with
 // stamp.wgsl, writing the same formula in WGSL and Rust does NOT guarantee
 // bit-identical *runtime* results — `pow`/`sqrt` are ULP-bounded (≤1-4 ULP)
 // across Metal/Vulkan/DX12. The textual gate
@@ -146,13 +147,10 @@ struct Globals {
 @group(0) @binding(2) var layers: texture_2d_array<f32>;
 // Region-sized straight sRGB8 output (rgba8unorm storage, write-only).
 @group(0) @binding(3) var out_tex: texture_storage_2d<rgba8unorm, write>;
-// 256-entry sRGB→linear decode LUT — `srgb_lut[b] = srgb_to_linear_byte(b)`,
-// computed on the CPU with the canonical `ph2d_color::srgb` transfer and
-// uploaded once. Replacing the per-texel `pow()` with an L1-cached lookup is
-// BOTH bit-exact (identical f32 to the CPU reference — no hardware-sRGB
-// approximation, no f16 loss) AND ~20× faster than 150 `pow`/pixel. The
-// `srgb_lut_matches_cpu_transfer` gate pins the table to the Rust function.
-@group(0) @binding(4) var<storage, read> srgb_lut: array<f32, 256>;
+// 256-entry decode table — `decode_lut[b] = b as f32 / 255.0`, computed on the
+// CPU and uploaded once: the exact f32 the CPU compositor reads a byte as
+// (ADR-0177). Gate `decode_lut_is_the_cpu_decode`.
+@group(0) @binding(4) var<storage, read> decode_lut: array<f32, 256>;
 // Per-adjustment params, indexed by an OP_ADJUSTMENT op's `layer_slot`.
 @group(0) @binding(5) var<storage, read> adj_params: array<AdjParams>;
 // W4 — display-space transfer LUTs for Curves (3×256 R/G/B) and Levels (1×256).
@@ -162,9 +160,8 @@ struct Globals {
 @group(0) @binding(6) var<storage, read> adj_luts: array<f32>;
 
 // ── sRGB gamma transfer (bit-identical to ph2d_color::srgb) ───────────────
-// Encode mirror of `linear_to_srgb_byte` on a normalized [0,1] value (the
-// store quantization handles the ×255). Same literals as stamp.wgsl's gamma
-// fix. Decode is the LUT above (the hot direction — 50× more calls).
+// Used ONLY at the boundary of what is defined in light (adjustments, spatial
+// effects). Same literals as stamp.wgsl's gamma fix.
 fn linear_to_srgb(v: f32) -> f32 {
     let c = clamp(v, 0.0, 1.0);
     if c <= 0.0031308 {
@@ -220,17 +217,16 @@ fn noise_value(x: u32, y: u32, channel: u32, kind: u32) -> f32 {
     return (sum - 2.0) * 0.5;
 }
 
-// Decode one straight sRGB8 texel of layer slice `slot` at canvas `coord` to
-// straight linear RGBA via the LUT. Alpha is linear coverage (no transfer),
-// per the CPU `compositor::decode`. `raw.{r,g,b}` are `byte/255` (unorm), so
+// Read one straight sRGB8 texel of layer slice `slot` at canvas `coord` as
+// straight ENCODED RGBA (every channel `byte / 255`, the CPU `compositor::decode`).
 // `round(raw * 255)` recovers the exact source byte to index the table.
 fn decode_layer(slot: u32, coord: vec2<i32>) -> vec4<f32> {
     let raw = textureLoad(layers, coord, i32(slot), 0);
     return vec4<f32>(
-        srgb_lut[u32(raw.r * 255.0 + 0.5)],
-        srgb_lut[u32(raw.g * 255.0 + 0.5)],
-        srgb_lut[u32(raw.b * 255.0 + 0.5)],
-        raw.a,
+        decode_lut[u32(raw.r * 255.0 + 0.5)],
+        decode_lut[u32(raw.g * 255.0 + 0.5)],
+        decode_lut[u32(raw.b * 255.0 + 0.5)],
+        decode_lut[u32(raw.a * 255.0 + 0.5)],
     );
 }
 
@@ -308,17 +304,21 @@ fn adjustment_strength(op: Op, coord: vec2<i32>) -> f32 {
     return t;
 }
 
-// Encode a straight linear accumulator → straight sRGB8 normalized, matching
-// `compositor::encode` byte-for-byte: RGB through `linear_to_srgb` then
-// `floor(x*255 + 0.5)` round-half-up (NOT the unorm-store's round-half-even),
-// alpha clamped + same rounding. Dividing the integer back by 255 makes the
-// `rgba8unorm` store re-quantize to the exact same byte.
+// Encode a straight encoded accumulator → sRGB8 normalized, matching
+// `compositor::encode` byte-for-byte: `floor(clamp(x)*255 + 0.5)` round-half-up
+// (NOT the unorm-store's round-half-even) on all four channels. Dividing the
+// integer back by 255 makes the `rgba8unorm` store re-quantize to the same byte.
 fn encode_final(acc: vec4<f32>) -> vec4<f32> {
-    let r = floor(linear_to_srgb(acc.r) * 255.0 + 0.5) / 255.0;
-    let gg = floor(linear_to_srgb(acc.g) * 255.0 + 0.5) / 255.0;
-    let b = floor(linear_to_srgb(acc.b) * 255.0 + 0.5) / 255.0;
-    let a = floor(clamp(acc.a, 0.0, 1.0) * 255.0 + 0.5) / 255.0;
-    return vec4<f32>(r, gg, b, a);
+    return floor(clamp(acc, vec4<f32>(0.0), vec4<f32>(1.0)) * 255.0 + 0.5) / 255.0;
+}
+
+// The boundary of what is defined in light (ADR-0177): encoded ↔ linear on the
+// colour, alpha untouched. Mirror of the CPU `compose::{em_luz, em_tons_de_ecra}`.
+fn em_luz(c: vec4<f32>) -> vec4<f32> {
+    return vec4<f32>(srgb_to_linear_f32(c.r), srgb_to_linear_f32(c.g), srgb_to_linear_f32(c.b), c.a);
+}
+fn em_tons_de_ecra(c: vec4<f32>) -> vec4<f32> {
+    return vec4<f32>(linear_to_srgb(c.r), linear_to_srgb(c.g), linear_to_srgb(c.b), c.a);
 }
 
 
@@ -334,11 +334,11 @@ fn over(top: vec4<f32>, bottom: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(clamp(premul / ao, vec3<f32>(0.0), vec3<f32>(1.0)), ao);
 }
 
-// Composite `src` over `dst` under `mode`. Straight linear-sRGB RGBA in
-// [0,1]. Port of `ph2d_painter_brush::blend::apply` over FINITE inputs: the
+// Composite `src` over `dst` under `mode`. Straight RGBA in [0,1], in the
+// accumulator's space. Port of `ph2d_painter_brush::blend::apply` over FINITE inputs: the
 // Rust side additionally routes outputs through `sanitize01` (NaN/±inf → 0,
 // defense-in-depth); this port uses plain `clamp` instead, because layer
-// inputs are LUT-bounded-finite (decode_layer reads rgba8unorm → finite LUT)
+// inputs are table-bounded-finite (decode_layer reads rgba8unorm → finite table)
 // and every division is guarded by `ao > F32_EPSILON`, so a non-finite value
 // can't arise here (audit 2026-06-01 LOW — confirmed unreachable). The literal
 // constants are still pinned to Rust by shader_blend_modes_bit_identical.
@@ -381,9 +381,9 @@ fn apply_blend(mode: u32, dst: vec4<f32>, src: vec4<f32>) -> vec4<f32> {
 }
 
 // ── Adjustment kernels (W4) — GPU mirror of ph2d_painter_brush::adjustments ──
-// Inputs/outputs are STRAIGHT LINEAR rgb (the accumulator space). Display-space
-// kinds (Invert/Posterize/Threshold) convert linear↔sRGB internally — same as
-// the CPU. OKLab uses `pow(x, 1/3)` for the cube root (the CPU uses libm cbrt;
+// Inputs/outputs are STRAIGHT LINEAR rgb — `apply_adjustment_op` converts the
+// encoded accumulator at the boundary (ADR-0177). Display-space kinds
+// (Invert/Posterize/Threshold) convert linear↔sRGB internally — same as the CPU. OKLab uses `pow(x, 1/3)` for the cube root (the CPU uses libm cbrt;
 // ULP-bounded, asserted within tolerance by the GPU↔CPU parity gate).
 
 // Continuous sRGB→linear (the LUT decode is byte-input only; display-space
@@ -601,7 +601,8 @@ fn apply_adjustment(ap: AdjParams, rgb: vec3<f32>, coord: vec2<i32>) -> vec3<f32
 // (acc.a) is preserved.
 fn apply_adjustment_op(op: Op, acc: vec4<f32>, coord: vec2<i32>) -> vec4<f32> {
     let ap = adj_params[op.layer_slot];
-    let adj_rgb = apply_adjustment(ap, acc.rgb, coord);
+    let lin = em_luz(acc);
+    let adj_rgb = em_tons_de_ecra(vec4<f32>(apply_adjustment(ap, lin.rgb, coord), acc.a)).rgb;
     let src_px = vec4<f32>(adj_rgb, acc.a);
     let blended = apply_blend(op.blend_mode, acc, src_px);
     let t = clamp(adjustment_strength(op, coord), 0.0, 1.0);
@@ -750,18 +751,19 @@ fn cs_grouped(@builtin(global_invocation_id) gid: vec3<u32>) {
 // which the single-pass per-pixel compositor (acc in a register) cannot do. The
 // Rust side splits the op-list at each root-level spatial adjustment into
 // segments and drives this graph: cs_segment materialises the below-composite
-// into a linear Rgba32Float texture → cs_blur_h/cs_blur_v run the separable
-// kernel through a ping-pong pair → cs_combine blends the result back over the
-// base → cs_segment continues the layers above → cs_encode writes straight
-// sRGB8. All passes work in STRAIGHT LINEAR space (the accumulator space); the
-// final encode is the only linear→sRGB step (byte-identical to the single-pass
-// `encode_final`). These entry points share every helper above (apply_blend,
+// into an Rgba32Float texture → cs_blur_h/cs_blur_v run the separable kernel
+// through a ping-pong pair → cs_combine blends the result back over the base →
+// cs_segment continues the layers above → cs_encode writes straight sRGB8. The
+// materialised textures hold the ENCODED accumulator (ADR-0177); the kernels are
+// defined in light, so each FIRST reader of the base converts it (`em_luz`) and
+// each combine hands the result back encoded and blends in the accumulator's
+// space — the CPU `compose` Adjustment arm, pass for pass. These entry points share every helper above (apply_blend,
 // decode_layer, apply_adjustment, encode_final) — no duplicated math.
 //
 // Bindings 7–20 are this graph's; the single-pass path (0–6) is untouched. Each
 // pipeline binds only the subset its entry point uses.
 
-// ── cs_segment — composite ops[op_start..op_end] into a linear intermediate ──
+// ── cs_segment — composite ops[op_start..op_end] into an encoded intermediate ──
 struct SegGlobals {
     canvas_width: u32,
     canvas_height: u32,
@@ -777,7 +779,7 @@ struct SegGlobals {
     _pad2: u32,
 }
 @group(0) @binding(7) var<uniform> sg: SegGlobals;
-// Linear straight-sRGB Rgba32Float intermediate this segment writes.
+// Straight encoded Rgba32Float intermediate this segment writes.
 @group(0) @binding(8) var seg_out: texture_storage_2d<rgba32float, write>;
 // The running base (previous segment / combine result), work_region-sized so
 // its local coord is 1:1 with seg_out. Only read when sg.seg_from_base != 0.
@@ -785,8 +787,8 @@ struct SegGlobals {
 
 // A segment is a complete root-level run with any fully-contained groups (the
 // Rust side only breaks at depth-0 spatial ops). Mirror of cs_grouped, but the
-// root accumulator starts from base_in and the result is written LINEAR (no
-// encode) for the next pass to sample. OP_SPATIAL placeholders are no-ops here.
+// root accumulator starts from base_in and the result is written unquantised
+// (no encode) for the next pass to sample. OP_SPATIAL placeholders are no-ops here.
 @compute @workgroup_size(8, 8, 1)
 fn cs_segment(@builtin(global_invocation_id) gid: vec3<u32>) {
     let lx = gid.x;
@@ -898,11 +900,14 @@ struct BlurGlobals {
 // canonical `apply_gaussian` once reconciled — the mechanism is what this proves).
 @group(0) @binding(13) var<storage, read> blur_weights: array<f32>;
 
-// Read a tap, premultiplying on the first pass (see the premul note above).
+// Read a tap, premultiplying on the first pass (see the premul note above). The
+// first pass reads the ENCODED base, so it also crosses into light there; later
+// passes (and the luma/glow fields, `premul_read = 0`) are already in the kernel's space.
 fn load_blur_tap(p: vec2<i32>) -> vec4<f32> {
     let t = textureLoad(blur_src, p, 0);
     if blur_g.premul_read != 0.0 {
-        return vec4<f32>(t.rgb * t.a, t.a);
+        let l = em_luz(t);
+        return vec4<f32>(l.rgb * l.a, l.a);
     }
     return t;
 }
@@ -1013,7 +1018,8 @@ fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let p = vec2<i32>(i32(x), i32(y));
-    let acc = textureLoad(comb_base, p, 0); // straight base (materialise output)
+    let acc_enc = textureLoad(comb_base, p, 0); // straight encoded base (materialise output)
+    let acc = em_luz(acc_enc); // the kernel's space
     var adj: vec4<f32>;
     if comb_g.combine_mode == 2u { // COMBINE_BLOOM — additive premultiplied glow
         let glow_pm = textureLoad(comb_blurred, p, 0); // blurred bright-pass (premul)
@@ -1034,15 +1040,16 @@ fn cs_combine(@builtin(global_invocation_id) gid: vec3<u32>) {
             );
         }
     }
-    var result = adj;
+    // Back to the accumulator's space; the blend-back and the lerp run there.
+    var result = em_tons_de_ecra(adj);
     if comb_g.blend_mode != 0u { // not Normal → blend the adjusted over the base
-        result = apply_blend(comb_g.blend_mode, acc, adj);
+        result = apply_blend(comb_g.blend_mode, acc_enc, result);
     }
     let t = clamp(comb_g.opacity, 0.0, 1.0);
-    textureStore(comb_dst, p, mix(acc, result, t));
+    textureStore(comb_dst, p, mix(acc_enc, result, t));
 }
 
-// ── cs_encode — final linear intermediate → straight sRGB8 (cropped) ─────────
+// ── cs_encode — final encoded intermediate → straight sRGB8 (cropped) ────────
 struct EncodeGlobals {
     out_w: u32,
     out_h: u32,
@@ -1107,9 +1114,9 @@ fn cs_chroma(@builtin(global_invocation_id) gid: vec3<u32>) {
     // so a transparent shifted texel contributes zero colour (no blue speckle).
     // Coverage (alpha) is sampled UNSHIFTED — the lens shifts colour, not coverage.
     // Output is premultiplied (combine un-premultiplies); opaque base ⇒ identity.
-    let tr = textureLoad(chroma_src, sr, 0);
-    let tg = textureLoad(chroma_src, sg, 0);
-    let tb = textureLoad(chroma_src, sb, 0);
+    let tr = em_luz(textureLoad(chroma_src, sr, 0));
+    let tg = em_luz(textureLoad(chroma_src, sg, 0));
+    let tb = em_luz(textureLoad(chroma_src, sb, 0));
     let a = textureLoad(chroma_src, p, 0).a; // coverage from the unshifted centre
     textureStore(chroma_dst, p, vec4<f32>(tr.r * tr.a, tg.g * tg.a, tb.b * tb.a, a));
 }
@@ -1140,7 +1147,7 @@ fn cs_bloom_bright(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let p = vec2<i32>(i32(x), i32(y));
-    let base = textureLoad(bloom_base, p, 0); // straight linear RGBA
+    let base = em_luz(textureLoad(bloom_base, p, 0)); // straight linear RGBA
     let knee = max(bloom_g.falloff, 1e-3);
     let w_bright = smoothstep(bloom_g.threshold, bloom_g.threshold + knee, display_luma(base.rgb));
     let k = clamp(base.a, 0.0, 1.0) * w_bright;
@@ -1245,7 +1252,7 @@ struct ShGlobals {
     _pad1: u32,
 }
 @group(0) @binding(27) var<uniform> sh_g: ShGlobals;
-@group(0) @binding(28) var sh_base: texture_2d<f32>;      // straight-linear base
+@group(0) @binding(28) var sh_base: texture_2d<f32>;      // straight ENCODED base
 @group(0) @binding(29) var sh_luma_out: texture_storage_2d<rgba32float, write>;
 @group(0) @binding(30) var sh_lo: texture_2d<f32>;        // blurred luma (shadows radius)
 @group(0) @binding(31) var sh_hi: texture_2d<f32>;        // blurred luma (highlights radius)
@@ -1261,7 +1268,7 @@ fn cs_sh_luma(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let p = vec2<i32>(i32(x), i32(y));
-    let base = textureLoad(sh_base, p, 0);
+    let base = em_luz(textureLoad(sh_base, p, 0));
     textureStore(sh_luma_out, p, vec4<f32>(display_luma(base.rgb), 0.0, 0.0, 0.0));
 }
 
@@ -1275,7 +1282,8 @@ fn cs_combine_sh(@builtin(global_invocation_id) gid: vec3<u32>) {
         return;
     }
     let p = vec2<i32>(i32(x), i32(y));
-    let base = textureLoad(sh_base, p, 0); // straight linear (coverage = base.a)
+    let base_enc = textureLoad(sh_base, p, 0); // straight encoded (coverage = base.a)
+    let base = em_luz(base_enc);
     let l = display_luma(base.rgb);
     let local_lo = textureLoad(sh_lo, p, 0).r;
     let local_hi = textureLoad(sh_hi, p, 0).r;
@@ -1307,11 +1315,12 @@ fn cs_combine_sh(@builtin(global_invocation_id) gid: vec3<u32>) {
         srgb_to_linear_f32(d.g),
         srgb_to_linear_f32(d.b),
     );
-    // The adjustment's own blend/opacity over the base; coverage PRESERVED.
-    var result_rgb = corrected;
+    // Back to the accumulator's space; the adjustment's own blend/opacity over the
+    // base run there. Coverage PRESERVED.
+    var result_rgb = em_tons_de_ecra(vec4<f32>(corrected, base.a)).rgb;
     if sh_g.blend_mode != 0u {
-        result_rgb = apply_blend(sh_g.blend_mode, base, vec4<f32>(corrected, base.a)).rgb;
+        result_rgb = apply_blend(sh_g.blend_mode, base_enc, vec4<f32>(result_rgb, base.a)).rgb;
     }
     let t = clamp(sh_g.opacity, 0.0, 1.0);
-    textureStore(sh_dst, p, vec4<f32>(mix(base.rgb, result_rgb, t), base.a));
+    textureStore(sh_dst, p, vec4<f32>(mix(base_enc.rgb, result_rgb, t), base.a));
 }

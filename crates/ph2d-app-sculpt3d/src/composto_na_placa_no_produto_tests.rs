@@ -95,7 +95,10 @@ fn compara(cpu: &[u8], placa: &[u8]) -> (usize, u8) {
 /// a mais de UM degrau, e poucos a um degrau — a divisão do WGSL (`2,5 ULP`) num
 /// valor na fronteira. Medido: `23` de `188 424` bytes (`0,012 %`) na pilha
 /// rica a `8x`; o tecto da fracção é `10×` isso — uma lei DIFERENTE que só
-/// erre por um degrau espalha-se por muito mais.
+/// erre por um degrau espalha-se por muito mais. Com as camadas em tons de ecrã
+/// (ADR-0177, sem curva sRGB no caminho) a divisão continua e o número desce
+/// para `11`–`12` (`0,006 %`); o pior caso é a subida inteira com a CPU atrasada,
+/// `31` de `141 318` canais (`0,022 %`). Não fecha ao bit ⇒ o tecto fica.
 const FRACCAO_A_UM_DEGRAU: f64 = 0.001_2;
 
 /// ⭐⭐⭐⭐ **O composto da placa é o da CPU, a um degrau de sRGB8** — na pilha

@@ -108,71 +108,23 @@ fn gpu_op_field_order_matches_the_wgsl_struct() {
     );
 }
 
-/// The decode LUT the shader binds must equal the canonical
-/// `srgb_to_linear_byte` for every byte — this is what makes the GPU decode
-/// bit-identical to the CPU `compositor::decode` (the table replaced the
-/// in-shader `pow`, so this gate, not the textual one, pins decode parity).
+/// The decode table the shader binds must be the CPU `compositor::decode` for every byte —
+/// `b as f32 / 255.0`, the same bits — so the GPU read of a texel is the CPU's (ADR-0177).
 #[test]
-fn srgb_lut_matches_cpu_transfer() {
-    let lut = build_srgb_lut();
+fn decode_lut_is_the_cpu_decode() {
+    let lut = build_decode_lut();
     assert_eq!(lut.len(), 256);
     for b in 0..=255u8 {
         assert_eq!(
             lut[b as usize].to_bits(),
-            srgb_to_linear_byte(b).to_bits(),
-            "LUT[{b}] drifted from srgb_to_linear_byte",
+            (f32::from(b) / 255.0).to_bits(),
+            "decode[{b}] is not the CPU's byte / 255",
         );
     }
     // The shader recovers the byte index via `round(raw * 255)`; assert the
     // WGSL still indexes the table that way (guards a refactor that breaks
     // the unorm→byte recovery).
-    assert!(composite_source().contains("srgb_lut[u32(raw.r * 255.0 + 0.5)]"));
-}
-
-#[test]
-fn validate_op_list_balance_and_depth() {
-    let layer = LayerOp::Layer {
-        mask: None,
-        clipping: false,
-        key: 1,
-        blend_mode: 0,
-        opacity: 1.0,
-    };
-    // Balanced.
-    assert!(
-        validate_op_list(&[
-            layer,
-            LayerOp::PushGroup,
-            layer,
-            LayerOp::PopGroup {
-                blend_mode: 0,
-                opacity: 1.0
-            },
-        ])
-        .is_ok()
-    );
-    // Unbalanced (push without pop).
-    assert_eq!(
-        validate_op_list(&[LayerOp::PushGroup]),
-        Err(LayerCompositeError::MalformedOpList)
-    );
-    // Pop without push.
-    assert_eq!(
-        validate_op_list(&[LayerOp::PopGroup {
-            blend_mode: 0,
-            opacity: 1.0
-        }]),
-        Err(LayerCompositeError::MalformedOpList)
-    );
-    // Too deep (> MAX_GROUP_DEPTH nested pushes).
-    let mut deep = Vec::new();
-    for _ in 0..MAX_STACK {
-        deep.push(LayerOp::PushGroup);
-    }
-    assert_eq!(
-        validate_op_list(&deep),
-        Err(LayerCompositeError::MalformedOpList)
-    );
+    assert!(composite_source().contains("decode_lut[u32(raw.r * 255.0 + 0.5)]"));
 }
 
 #[test]

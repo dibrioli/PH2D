@@ -99,7 +99,7 @@ impl LayerCompositor {
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Storage { read_only: true },
                             has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(SRGB_LUT_LEN as u64 * 4),
+                            min_binding_size: wgpu::BufferSize::new(DECODE_LUT_LEN as u64 * 4),
                         },
                         count: None,
                     },
@@ -204,7 +204,7 @@ impl LayerCompositor {
                 entries: &[
                     storage_ro(0, op_sz),                            // ops
                     sampled(2, wgpu::TextureViewDimension::D2Array), // layers
-                    storage_ro(4, SRGB_LUT_LEN as u64 * 4),          // srgb lut
+                    storage_ro(4, DECODE_LUT_LEN as u64 * 4),        // decode table
                     storage_ro(5, adj_sz),                           // adj params
                     storage_ro(6, 4),                                // adj luts
                     uniform(7, core::mem::size_of::<SegGlobals>() as u64),
@@ -436,15 +436,15 @@ impl LayerCompositor {
             mapped_at_creation: false,
         });
 
-        let lut = build_srgb_lut();
-        let srgb_lut_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-render layer_composite srgb lut"),
-            size: (SRGB_LUT_LEN * 4) as u64,
+        let lut = build_decode_lut();
+        let decode_lut_buffer = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-render layer_composite decode table"),
+            size: (DECODE_LUT_LEN * 4) as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         gpu.queue
-            .write_buffer(&srgb_lut_buffer, 0, bytemuck::cast_slice(&lut));
+            .write_buffer(&decode_lut_buffer, 0, bytemuck::cast_slice(&lut));
 
         Self {
             pipeline_flat,
@@ -461,7 +461,7 @@ impl LayerCompositor {
             scratch_ops: GpuOpScratch::new(),
             op_buffer: None,
             globals_buffer,
-            srgb_lut_buffer,
+            decode_lut_buffer,
             adj_params_buffer: None,
             adj_luts_buffer: None,
             pipeline_segment,

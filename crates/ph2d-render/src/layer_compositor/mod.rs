@@ -30,7 +30,6 @@
 //! the GPU↔CPU parity gate asserts agreement within ±1 byte. Same discipline
 //! as `stamp.wgsl` and the OKLab coefficient gate.
 
-use ph2d_color::srgb::srgb_to_linear_byte;
 use ph2d_gpu::GpuContext;
 use std::collections::BTreeMap;
 
@@ -76,19 +75,15 @@ pub(crate) fn composite_source() -> String {
 /// Workgroup edge (mirrors the `@workgroup_size(8, 8, 1)` in the shader).
 const WORKGROUP_EDGE: u32 = 8;
 
-/// sRGB decode LUT length (one entry per 8-bit byte value).
-const SRGB_LUT_LEN: usize = 256;
+/// Decode table length (one entry per 8-bit byte value).
+const DECODE_LUT_LEN: usize = 256;
 
-/// Build the 256-entry sRGB→linear decode table the shader binds. `[b]` is
-/// `srgb_to_linear_byte(b)` — the exact f32 the CPU compositor decodes with, so
-/// the GPU decode is bit-identical (no `pow` rounding drift, no hardware-sRGB
-/// approximation). Pinned by `srgb_lut_matches_cpu_transfer`.
-fn build_srgb_lut() -> [f32; SRGB_LUT_LEN] {
-    let mut lut = [0.0f32; SRGB_LUT_LEN];
-    for (b, slot) in lut.iter_mut().enumerate() {
-        *slot = srgb_to_linear_byte(b as u8);
-    }
-    lut
+/// Build the 256-entry decode table the shader binds: `[b] = b as f32 / 255.0`, the exact f32 the
+/// CPU compositor reads a byte as (layers join in tones of the screen, ADR-0177). A table and not the
+/// texture's unorm conversion, because WGSL does not promise that conversion is the correctly-rounded
+/// division on every driver. Pinned by `decode_lut_is_the_cpu_decode`.
+fn build_decode_lut() -> [f32; DECODE_LUT_LEN] {
+    core::array::from_fn(|b| b as f32 / 255.0)
 }
 
 /// VRAM the layer texture-array cache may hold on a **shared-memory** device
@@ -564,7 +559,7 @@ pub struct LayerCompositor {
     /// Persistent globals uniform buffer.
     globals_buffer: wgpu::Buffer,
     /// Immutable sRGB→linear decode LUT (uploaded once at construction).
-    srgb_lut_buffer: wgpu::Buffer,
+    decode_lut_buffer: wgpu::Buffer,
     /// Persistent adjustment-params storage buffer (grown as needed; always
     /// holds ≥1 element so binding 5 is never zero-sized).
     adj_params_buffer: Option<(wgpu::Buffer, u64)>,

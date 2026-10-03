@@ -49,6 +49,22 @@ pub struct FxRowView {
     /// dica no card — um Falloff sozinho (sem deformador abaixo) não pode parecer quebrado, e a
     /// resposta (`takes_falloff` do efeito abaixo) é conhecida pela ponte, não pelo painel.
     pub falloff_role: FalloffRole,
+    /// Numa forma PRESA a ossos: onde o efeito entra. Decidido pela ponte (que vê o esqueleto).
+    pub bones: FxBones,
+}
+
+/// ⭐⭐ **A ordem do efeito em relação aos ossos**, como o cartão a mostra.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum FxBones {
+    /// A forma não está presa: a escolha não muda nada, e não é oferecida.
+    #[default]
+    Unbound,
+    /// Presa, e o efeito coze em repouso e dobra com ela.
+    Before,
+    /// Presa, e o efeito é refeito sobre a forma dobrada.
+    After,
+    /// Presa, mas o efeito lê os NÓS do desenho: só pode vir antes — o cartão diz porquê.
+    BeforeOnly,
 }
 
 /// O papel de uma linha da pilha enquanto Falloff — decidido pela ponte (que conhece o motor),

@@ -483,6 +483,18 @@ pub fn vector_fx_hide_id(row: usize) -> NodeId {
     hash_node_id_runtime(&format!("vector.fx.hide.{row}"))
 }
 
+/// **Before bones** — numa forma presa, o efeito da linha `row` coze em repouso e dobra com ela.
+#[must_use]
+pub fn vector_fx_before_bones_id(row: usize) -> NodeId {
+    hash_node_id_runtime(&format!("vector.fx.bones.before.{row}"))
+}
+
+/// **After bones** — numa forma presa, o efeito da linha `row` é refeito sobre a forma dobrada.
+#[must_use]
+pub fn vector_fx_after_bones_id(row: usize) -> NodeId {
+    hash_node_id_runtime(&format!("vector.fx.bones.after.{row}"))
+}
+
 /// O slider do parâmetro `param` do efeito da linha `row`.
 #[must_use]
 pub fn vector_fx_param_id(row: usize, param: usize) -> NodeId {

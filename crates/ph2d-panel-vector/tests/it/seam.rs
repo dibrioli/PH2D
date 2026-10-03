@@ -1454,6 +1454,8 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
             },
         ],
         falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
+        // ⭐ Presa: a escolha «Before bones | After bones» é pintada e tem de chegar ao bus.
+        bones: ph2d_panel_vector::FxBones::Before,
     };
     let publish = || {
         ph2d_panel_vector::set_current_effects(true, KINDS, vec![row("Trim Path"), row("Zig Zag")]);
@@ -1481,6 +1483,14 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
     targets.push((
         ph2d_tool_vector::ids::vector_fx_hide_id(0),
         "olho linha 0".into(),
+    ));
+    targets.push((
+        ph2d_tool_vector::ids::vector_fx_before_bones_id(0),
+        "Before bones linha 0".into(),
+    ));
+    targets.push((
+        ph2d_tool_vector::ids::vector_fx_after_bones_id(1),
+        "After bones linha 1".into(),
     ));
     // O botão de SEÇÃO "Apply" — só é pintado com a pilha não-vazia (que a fixture publica).
     targets.push((
@@ -1564,6 +1574,49 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
     ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
 }
 
+/// ⭐⭐ **A escolha «Before bones | After bones» só existe numa forma PRESA** — solta, ela não muda
+/// nada (régua do controlo morto); num efeito que lê os nós ela não é oferecida (o cartão diz
+/// porquê). E presa ela É pintada — a metade de presença, sem a qual as duas ausências ficariam
+/// verdes com a fileira apagada.
+#[test]
+fn the_bones_choice_is_offered_only_on_a_bound_shape() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 4000.0,
+    };
+    let pinta = |bones: ph2d_panel_vector::FxBones| {
+        ph2d_panel_vector::set_current_effects(
+            true,
+            &["Twist"],
+            vec![ph2d_panel_vector::FxRowView {
+                label: "Twist",
+                enabled: true,
+                params: Vec::new(),
+                falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
+                bones,
+            }],
+        );
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        [
+            ph2d_tool_vector::ids::vector_fx_before_bones_id(0),
+            ph2d_tool_vector::ids::vector_fx_after_bones_id(0),
+        ]
+        .map(|id| {
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+                .is_some()
+        })
+    };
+    use ph2d_panel_vector::FxBones as B;
+    assert_eq!(pinta(B::Before), [true, true], "presa: as duas ordens são oferecidas");
+    assert_eq!(pinta(B::After), [true, true], "presa e depois: as duas ordens são oferecidas");
+    assert_eq!(pinta(B::Unbound), [false, false], "solta: a escolha não muda nada");
+    assert_eq!(pinta(B::BeforeOnly), [false, false], "lê os nós: só antes");
+    ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
+}
+
 /// **O chip mostra o número do DOCUMENTO durante o arrasto, não o track `0..1`.**
 ///
 /// Enio, 2026-07-18: *"o número que aparece ao arrastar a caixa numérica é de 0 a 1, sendo que
@@ -1613,6 +1666,7 @@ fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
             enabled: true,
             params,
             falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
+            bones: ph2d_panel_vector::FxBones::Unbound,
         }],
     );
     let mut host = MockPanelHost::with_panel::<VectorPanel>();

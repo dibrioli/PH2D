@@ -40,6 +40,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.section.filters" => "Filters",
         "panel.vector.fx.falloff.modulates" => "modulates the effect below",
         "panel.vector.fx.falloff.inert" => "add a deformer below (Bulge/Warp/Zig Zag)",
+        // ⭐ A ordem do efeito numa forma PRESA a ossos (2026-10-03).
+        "panel.vector.fx.bones.before" => "Before bones",
+        "panel.vector.fx.bones.after" => "After bones",
+        "panel.vector.fx.bones.nodes" => "follows your points: runs before bones",
         "panel.vector.section.stroke" => "Stroke",
         "panel.vector.section.fill" => "Fill",
         "panel.vector.section.fill_type" => "Fill Type",

@@ -1405,6 +1405,14 @@ fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             ("down", ph2d_tool_vector::ids::vector_fx_down_id(r)),
             ("card", ph2d_tool_vector::ids::vector_fx_card_id(r)),
             ("hide", ph2d_tool_vector::ids::vector_fx_hide_id(r)),
+            (
+                "before_bones",
+                ph2d_tool_vector::ids::vector_fx_before_bones_id(r),
+            ),
+            (
+                "after_bones",
+                ph2d_tool_vector::ids::vector_fx_after_bones_id(r),
+            ),
         ] {
             check(format!("vector_fx_{label}_id({r})"), id.0);
         }

@@ -17,7 +17,10 @@ impl crate::App {
         ph2d_panel_vector::set_current_effects(
             fx_target.is_some(),
             ph2d_vec_scene::effect::PathEffect::KINDS,
-            fx_target.map_or_else(Vec::new, |pid| crate::fx_bridge::stack_view(vec_scene, pid)),
+            fx_target.map_or_else(Vec::new, |pid| {
+                let bound = crate::fx_bridge::is_bound(sim, &self.vec.entities, pid);
+                crate::fx_bridge::stack_view(vec_scene, pid, bound)
+            }),
         );
         // Qual chip de gesto acende. O painel pergunta ao MESMO container que o
         // dispatch vai escrever, senao a tela mostraria um gesto e o clique mudaria outro.

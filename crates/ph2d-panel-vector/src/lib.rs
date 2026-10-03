@@ -182,7 +182,7 @@ pub use paint_connector::{ConnectorSnapshot, set_current_connector};
 pub use paint_sections::brush::BrushRow;
 pub use state::{
     EXPAND_KNOBS_AT_BIRTH, FILTER_DETAIL_MAX, FalloffRole, FillKind, FilterKindView, FilterRowView,
-    FontPreview, FxParamView, FxRowView, PathFillRule, RAMP_PREVIEW_N, StrokePaintKind,
+    FontPreview, FxBones, FxParamView, FxRowView, PathFillRule, RAMP_PREVIEW_N, StrokePaintKind,
     TextAxisSlot, TexturePatternRow, VectorPanelState, expand_join, expand_side, last_content_h,
     last_visible_h, selected_stop, set_current_brush, set_current_contour,
     set_current_contour_can_add, set_current_convertible, set_current_effects,

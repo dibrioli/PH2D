@@ -43,6 +43,8 @@ pub(super) fn populate_effects(store: &mut WidgetStore) {
         button(store, ph2d_tool_vector::ids::vector_fx_up_id(row));
         button(store, ph2d_tool_vector::ids::vector_fx_down_id(row));
         button(store, ph2d_tool_vector::ids::vector_fx_hide_id(row));
+        button(store, ph2d_tool_vector::ids::vector_fx_before_bones_id(row));
+        button(store, ph2d_tool_vector::ids::vector_fx_after_bones_id(row));
         for param in 0..ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS {
             // A caixinha tem id PRÓPRIO e é registada como BOTÃO — um id só pode ter um tipo de
             // widget, e um slider não emite `Click` no Up.

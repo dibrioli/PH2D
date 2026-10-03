@@ -361,14 +361,15 @@ fn o_gancho_da_dobra_nao_e_quina_do_artista() {
             "{segunda}°: uma zona côncava mais apertada que a bola vira {zona:.1}° em {onde:?}"
         );
     }
-    assert!(
-        ganchos >= 1,
-        "nenhuma pose da faixa tem o gancho — a fixtura deixou de conter o fenómeno"
-    );
-    assert!(
-        ficavam >= 1,
-        "com as quinas lidas no DEFORMADO o gancho não fica em pose nenhuma — o controlo deixou de \
-         medir o mecanismo"
+    // ⭐⭐⭐ F50-e (2026-10-03): o CONTROLO INVERTEU-SE. O gancho nascia no AJUSTE — uma cúbica que
+    // recua na ponta, menor que a tolerância — e o `fecha` do bake passou a exigir que a cúbica ande
+    // no sentido da fonte (`ph2d_vec_skin::curva_segundo_corpo::anda_para_a_frente`). Medido: em
+    // nenhuma pose da faixa o desenho SEM contacto vira `> 150°`. O passe dos ganchos fica como
+    // rede (a união ainda pode recortar uma cúbica), e esta metade afirma agora a cura na ORIGEM.
+    assert_eq!(
+        (ganchos, ficavam),
+        (0, 0),
+        "o gancho voltou a nascer no DESENHO — o ajuste aceitou uma cúbica que recua"
     );
 }
 
@@ -477,13 +478,15 @@ fn com_a_junta_quase_recta_nao_sobra_meia_lua() {
             "({primeira}°, {segunda}°): um vértice da silhueta vira {vira:.1}° — sobrou a meia-lua"
         );
     }
-    assert!(
-        no_desenho >= 1,
-        "nenhuma pose dobra — a fixtura deixou de conter o fenómeno"
-    );
-    assert!(
-        sem_passe >= 1,
-        "sem o passe dos ganchos a união e a bola já o curam — o controlo deixou de medir o mecanismo"
+    // ⭐⭐⭐ F50-e (2026-10-03): o CONTROLO INVERTEU-SE. O gancho nascia no AJUSTE — uma cúbica que
+    // recua na ponta, menor que a tolerância — e o `fecha` do bake passou a exigir que a cúbica ande
+    // no sentido da fonte (`ph2d_vec_skin::curva_segundo_corpo::anda_para_a_frente`). Medido: em
+    // nenhuma pose da faixa o desenho SEM contacto vira `> 150°`. O passe dos ganchos fica como
+    // rede (a união ainda pode recortar uma cúbica), e esta metade afirma agora a cura na ORIGEM.
+    assert_eq!(
+        (no_desenho, sem_passe),
+        (0, 0),
+        "a meia-volta voltou a nascer no DESENHO — o ajuste aceitou uma cúbica que recua"
     );
 }
 
@@ -510,9 +513,14 @@ fn com_as_duas_juntas_no_mesmo_sentido_nao_sobra_meia_lua() {
             );
         }
     }
-    assert!(
-        no_desenho >= 1,
-        "nenhuma pose dobra — a fixtura deixou de conter o fenómeno"
+    // ⭐⭐⭐ F50-e (2026-10-03): o CONTROLO INVERTEU-SE. O gancho nascia no AJUSTE — uma cúbica que
+    // recua na ponta, menor que a tolerância — e o `fecha` do bake passou a exigir que a cúbica ande
+    // no sentido da fonte (`ph2d_vec_skin::curva_segundo_corpo::anda_para_a_frente`). Medido: em
+    // nenhuma pose da faixa o desenho SEM contacto vira `> 150°`. O passe dos ganchos fica como
+    // rede (a união ainda pode recortar uma cúbica), e esta metade afirma agora a cura na ORIGEM.
+    assert_eq!(
+        no_desenho, 0,
+        "a meia-volta voltou a nascer no DESENHO — o ajuste aceitou uma cúbica que recua"
     );
 }
 

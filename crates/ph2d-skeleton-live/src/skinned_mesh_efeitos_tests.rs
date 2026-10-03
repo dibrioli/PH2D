@@ -420,3 +420,65 @@ fn diag_o_preco_do_campo_do_cozido() {
         );
     }
 }
+
+/// As VOLTAS de um desenho: quantas vezes, amostrado denso, ele muda de direcção mais de `90°`
+/// entre duas amostras vizinhas — uma quina desenhada (um bico de *Zig Zag*) ou uma laçada que o
+/// traço grosso desenha como um quarto de círculo.
+fn voltas(p: &VecPath) -> usize {
+    let mut n = 0;
+    for (verts, fechado) in (0..p.contour_count()).filter_map(|c| p.contour(c)) {
+        let segs = if fechado {
+            verts.len()
+        } else {
+            verts.len().saturating_sub(1)
+        };
+        let pts: Vec<[f64; 2]> = (0..segs)
+            .flat_map(|k| {
+                let c = b_cub(verts, k);
+                (0..64).map(move |i| b_eval(&c, f64::from(i) / 64.0))
+            })
+            .collect();
+        for w in pts.windows(3) {
+            let u = [w[1][0] - w[0][0], w[1][1] - w[0][1]];
+            let v = [w[2][0] - w[1][0], w[2][1] - w[1][1]];
+            let (lu, lv) = (u[0].hypot(u[1]), v[0].hypot(v[1]));
+            if lu > 1e-9 && lv > 1e-9 && (u[0] * v[0] + u[1] * v[1]) / (lu * lv) < 0.0 {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+/// ⭐⭐⭐ **GATE — O DESENHO NÃO VOLTA PARA TRÁS onde a arte não volta** (report do dono de
+/// 2026-10-03, seis fotos: *«vários defeitos no stroke»* — quartos de círculo ao longo do traço).
+///
+/// Um nó de quina do cozido (alça nula) deixava o ajuste com um braço `0` e o outro maior que a
+/// corda: uma laçada menor que a tolerância, que a distância aceitava. Medido antes da cura, a `60°`:
+/// *Twist* `9`, *Warp* `9` (e `2` já em repouso). ⛔ O CONTROLO é o próprio repouso: as quinas que o
+/// efeito desenha (os bicos) contam lá e aqui por igual.
+#[test]
+fn o_desenho_nao_volta_para_tras_onde_a_arte_nao_volta() {
+    let casos = std::iter::once(("sem efeito", None))
+        .chain(efeitos().into_iter().map(|(n, e)| (n, Some(e))))
+        .chain(efeitos_fortes().into_iter().map(|(n, e)| (n, Some(e))));
+    for (nome, efeito) in casos {
+        let pilha: Vec<FxEntry> = efeito.into_iter().map(FxEntry::new).collect();
+        let mut p = b_palco(false);
+        caminho_mut(&mut p.scene, p.id).effects = pilha.clone();
+        let no_repouso = voltas(&repouso_com(&p, &pilha));
+        for graus in [0.0_f32, 30.0, 60.0, 90.0] {
+            p.dobra_em_s(graus);
+            let d =
+                crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), Leis::do_ambiente())
+                    .remove(&p.id)
+                    .expect("desenho");
+            let vistas = voltas(&d);
+            assert!(
+                vistas <= no_repouso,
+                "{nome} a {graus}°: o desenho volta para trás {vistas} vezes, a arte {no_repouso} — \
+                 uma laçada que o traço desenha como um quarto de círculo"
+            );
+        }
+    }
+}

@@ -414,7 +414,7 @@ fn fecha(
     range: core::ops::Range<f64>,
     tolerancia: f64,
 ) -> bool {
-    use kurbo::{ParamCurve, ParamCurveNearest};
+    use kurbo::{ParamCurve, ParamCurveDeriv, ParamCurveNearest};
     const NA_CUBICA: usize = 24;
     #[expect(clippy::cast_precision_loss, reason = "um punhado de amostras")]
     let intervalos = (src.0.len().max(2) - 1) as f64;
@@ -434,13 +434,66 @@ fn fecha(
         })
         .collect();
     let folga2 = (2.0 * tolerancia).powi(2);
+    let deriv = c.deriv();
     (0..=NA_CUBICA).all(|i| {
         #[expect(clippy::cast_precision_loss, reason = "um punhado")]
-        let p = c.eval(i as f64 / NA_CUBICA as f64);
-        fonte
+        let t = i as f64 / NA_CUBICA as f64;
+        let p = c.eval(t);
+        let Some((d2, w)) = fonte
             .windows(2)
-            .any(|w| kurbo::Line::new(w[0], w[1]).nearest(p, 1e-12).distance_sq <= folga2)
-    })
+            .map(|w| {
+                (
+                    kurbo::Line::new(w[0], w[1]).nearest(p, 1e-12).distance_sq,
+                    w,
+                )
+            })
+            .min_by(|a, b| a.0.total_cmp(&b.0))
+        else {
+            return false;
+        };
+        // ⭐⭐ **E ANDA NO SENTIDO DA FONTE** (report do dono de 2026-10-03, «vários defeitos no
+        // stroke»: quartos de círculo ao longo do traço de uma forma com efeito). Um nó de quina
+        // (alça nula) deixa o `fit_to_cubic` com um braço `0` e o outro maior que a corda: a
+        // cúbica volta para trás numa laçada MENOR que a tolerância — a distância aceita-a, e o
+        // traço grosso desenha a meia-volta. Medido no *Twist* a `60°`: `9` voltas de `~180°`
+        // (barra sem efeito: `0`). Um ponto de derivada nula (a própria cúspide) não decide.
+        let v = deriv.eval(t).to_vec2();
+        let u = w[1] - w[0];
+        d2 <= folga2 && (v.hypot2() < 1e-18 || u.hypot2() < 1e-18 || v.dot(u) >= 0.0)
+    }) && {
+        // ⚠️ A laçada do braço `0` mora a `t < 0,01` de uma ponta — entre as amostras acima. Ali a
+        // conferência é EXACTA: a projecção da derivada (uma Bézier quadrática) na direcção da
+        // fonte nessa ponta, mínima no primeiro e no último quarto.
+        let ponta = |a: Point, b: Point| b - a;
+        let (n0, n1) = (fonte.len().min(2), fonte.len());
+        let u0 = ponta(fonte[0], fonte[n0 - 1]);
+        let u1 = ponta(fonte[n1.saturating_sub(2)], fonte[n1 - 1]);
+        anda_para_a_frente(c, u0, 0.0, 0.25) && anda_para_a_frente(c, u1, 0.75, 1.0)
+    }
+}
+
+/// A derivada de `c` projectada em `u` é `≥ 0` em todo `t ∈ [t0, t1]`? — exacta: a projecção é
+/// uma quadrática em `t`, e o mínimo dela num intervalo está nas pontas ou no vértice.
+fn anda_para_a_frente(c: kurbo::CubicBez, u: Vec2, t0: f64, t1: f64) -> bool {
+    if u.hypot2() < 1e-24 {
+        return true;
+    }
+    let a = 3.0 * (c.p1 - c.p0).dot(u);
+    let b = 3.0 * (c.p2 - c.p1).dot(u);
+    let d = 3.0 * (c.p3 - c.p2).dot(u);
+    let f = |t: f64| (1.0 - t).powi(2) * a + 2.0 * t * (1.0 - t) * b + t * t * d;
+    let curv = a - 2.0 * b + d;
+    let mut ts = vec![t0, t1];
+    if curv.abs() > 1e-300 {
+        let tv = (a - b) / curv;
+        if tv > t0 && tv < t1 {
+            ts.push(tv);
+        }
+    }
+    // Uma tolerância RELATIVA: a derivada nula na ponta (o braço `0`) é a cúspide em si, não uma
+    // volta — só um valor claramente negativo é ir para trás.
+    let escala = a.abs().max(b.abs()).max(d.abs());
+    ts.into_iter().all(|t| f(t) >= -1e-9 * escala)
 }
 
 /// A polilinha assada vista como curva paramétrica **lisa** — o que o fitter recebe.

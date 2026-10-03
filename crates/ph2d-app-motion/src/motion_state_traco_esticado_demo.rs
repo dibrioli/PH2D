@@ -138,6 +138,24 @@ pub(crate) fn arranjo_por(valor: Option<&str>) -> Arranjo {
     }
 }
 
+/// **A cena com o contorno TRACEJADO?** — `PH2D_TRACO_ESTICADO_TRACEJADO=1` (doc 121 §9.9: o tracejado
+/// esticado vai à placa). É o mesmo `Dash` do cartão da forma, posto à partida para a foto do smoke.
+fn tracejado_semeado() -> bool {
+    tracejado_por(
+        std::env::var("PH2D_TRACO_ESTICADO_TRACEJADO")
+            .ok()
+            .as_deref(),
+    )
+}
+
+/// A LEI da porta acima, **pura**.
+pub(crate) fn tracejado_por(valor: Option<&str>) -> bool {
+    valor.map(str::trim) == Some("1")
+}
+
+/// O tracejado da variante: `2` larguras de traço e `1,5` de vão (o `Dash` e o `Dash Gap` do cartão).
+pub(crate) const TRACEJADO: (f32, f32) = (2.0, 1.5);
+
 /// O índice da `Star` no enum — pela mesma porta da `=126` (nunca pelo rótulo, que é i18n).
 fn indice_da_estrela() -> f32 {
     let i = ph2d_node_motion_shape::ALL_KINDS
@@ -196,6 +214,16 @@ pub(crate) fn forma_da_cena(arranjo: Arranjo) -> ph2d_vec_scene::VecPath {
 
 /// Constrói o documento. `None` se algum tipo de nó não estiver registado.
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
+    monta(doc, reg, arranjo_semeado(), tracejado_semeado())
+}
+
+/// O documento com o arranjo e o tracejado dados — puro sobre o que recebe.
+pub(crate) fn monta(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+    arranjo: Arranjo,
+    tracejado: bool,
+) -> Option<Vec<NodeId>> {
     for tipo in [
         "motion.grid",
         "motion.duplicator",
@@ -218,7 +246,6 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         n
     };
 
-    let arranjo = arranjo_semeado();
     let grade = no(g, "motion.grid", 0.0, 0.0);
     #[expect(clippy::cast_precision_loss, reason = "um lado de grelha pequeno")]
     let lado = arranjo.lado as f32;
@@ -227,11 +254,15 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     g.set_param(grade, "gap_x", arranjo.vao());
     g.set_param(grade, "gap_y", arranjo.vao());
 
-    // ── A FORMA: uma estrela AMARELA com CONTORNO azul-escuro. ⚠️ Sem tracejado: o tracejado sob
-    // escala não-uniforme continua no Vello (doc 121 §9) e a cena mostraria a rota errada.
+    // ── A FORMA: uma estrela AMARELA com CONTORNO azul-escuro — TRACEJADO na variante (§9.9).
     let forma = no(g, "source.shape", 0.0, 220.0);
     for (chave, valor) in params_da_forma(arranjo) {
         g.set_param(forma, chave, valor);
+    }
+    if tracejado {
+        use ph2d_node_motion_shape::param as p;
+        g.set_param(forma, p::DASH, TRACEJADO.0);
+        g.set_param(forma, p::DASH_GAP, TRACEJADO.1);
     }
 
     // ── A SIMULAÇÃO COM CAMPOS: a galáxia da `=126` (regra do dono, doc 103 §1).
@@ -291,11 +322,16 @@ pub(super) fn announce() {
          (4) Feche e corra com `PH2D_TRACO_ESTICADO_DENSO=1 PH2D_FORMAS_NA_PLACA=0` a' frente:\n    \
          e' o caminho antigo, em que o processador desenhava as estrelas. A imagem tem de ser\n    \
          a MESMA; o `raw` CAI.\n\
+         (5) O CONTORNO TRACEJADO: corra com `PH2D_TRACO_ESTICADO_TRACEJADO=1` a' frente. O contorno\n    \
+         vira tracinhos do MESMO tamanho em toda a volta da estrela, nas pontas compridas e nas\n    \
+         curtas. No cartao `Shape`, mexa em `Dash` (o comprimento do tracinho) e `Dash Gap` (o\n    \
+         espaco entre eles): o contorno muda na hora, e as estrelas continuam a girar.\n\
          \n\
          DEU ERRADO se: as estrelas nao aparecerem; se ficarem PARADAS; se o contorno for\n\
          GROSSO em cima e em baixo e FINO dos lados (ou ao contrario); se houver uma LINHA\n\
          escura a atravessar as estrelas; se o contorno tiver BURACOS ou DENTES nas pontas;\n\
-         se a imagem for DIFERENTE entre as corridas (3) e (4); ou se o `raw` nao cair.\n"
+         se a imagem for DIFERENTE entre as corridas (3) e (4); se o `raw` nao cair; ou se, em\n\
+         (5), os tracinhos ficarem COMPRIDOS dos lados e CURTOS em cima e em baixo.\n"
     );
 }
 

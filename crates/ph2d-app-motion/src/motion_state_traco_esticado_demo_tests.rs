@@ -159,6 +159,35 @@ fn a_porta_do_arranjo_so_abre_com_um() {
     assert_eq!(arranjo_por(Some(" 1 ")), DENSO);
 }
 
+/// ⭐ doc 121 §9.9 — **a variante TRACEJADA põe o `Dash` e o `Dash Gap` na forma**, e só ela: o
+/// contorno da cena de sempre continua contínuo. A porta só abre com `1`.
+#[test]
+fn a_variante_tracejada_poe_o_dash_na_forma() {
+    use ph2d_node_motion_shape::param as p;
+    assert!(!tracejado_por(None) && !tracejado_por(Some("0")) && tracejado_por(Some(" 1 ")));
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registram");
+    let dash = |tracejado: bool| {
+        let mut doc = MotionDoc::default();
+        monta(&mut doc, &reg, LEGIVEL, tracejado).expect("a cena monta");
+        doc.graph.validate(&reg).expect("bem-tipada");
+        let forma = um(&doc, "source.shape");
+        let ps = doc
+            .graph
+            .node_params()
+            .get(&forma)
+            .cloned()
+            .unwrap_or_default();
+        (ps.get(p::DASH).copied(), ps.get(p::DASH_GAP).copied())
+    };
+    assert_eq!(dash(true), (Some(TRACEJADO.0), Some(TRACEJADO.1)));
+    assert_eq!(
+        dash(false),
+        (None, None),
+        "a cena de sempre fica com o contorno continuo"
+    );
+}
+
 /// **O `=127` monta esta cena, e o tecto da varredura alcança-a.**
 #[test]
 fn o_roteador_monta_esta_cena_no_127() {

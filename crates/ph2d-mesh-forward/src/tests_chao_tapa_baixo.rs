@@ -95,15 +95,15 @@ fn o_chao_visto_de_baixo_e_o_do_cycles() {
         ctl / n_ctl as f32 > 0.1,
         "CONTROLO: sem a lei a base vê o céu de baixo e erra"
     );
-    // Medido (03/10): difusa `0,0133` (máx `0,098`), na base `0,0107` (máx `0,074`); espelho `0,0027`, na
-    // base `0,0055`. Com o chão debaixo das peças lido ACESO (antes do report do dono): `0,1306` e na base
+    // Medido (03/10): difusa `0,0133` (máx `0,098`), na base `0,0107` (máx `0,074`); espelho `0,0097`, na
+    // base `0,0081` (o reflexo lê só a zona da peça; com o chão todo `0,0027` / `0,0055`, e a sombra órfã). Com o chão debaixo das peças lido ACESO (antes do report do dono): `0,1306` e na base
     // `0,3701`, máx `1,0`.
     assert!(
         media(0) < 0.018 && media(1) < 0.015,
         "a difusa de baixo afastou-se do Cycles"
     );
     assert!(
-        media(2) < 0.005 && media(3) < 0.009,
+        media(2) < 0.012 && media(3) < 0.011,
         "o espelho de baixo afastou-se do Cycles"
     );
 }

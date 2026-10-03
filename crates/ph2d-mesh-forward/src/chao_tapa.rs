@@ -78,6 +78,35 @@ pub(crate) fn escurecimento_com(
     baixo * soma / pesos
 }
 
+/// ⭐⭐ **A pegada de uma peça no chão** — `(centro x, centro z, raio)` da caixa local `caixa` posta no
+/// mundo por `modelo` (colunas). O REFLEXO da peça só lê o escurecimento do chão na zona dela: inteiro
+/// até `1,5` raios, a nada aos `3` (a sombra de uma esfera pousada aí já é `(1/√10)³ ≈ 3 %`).
+/// ⛔ Report do dono (03/10): o reflexo mostrava a sombra de uma VIZINHA sem a vizinha — ele sabe o céu
+/// e o chão, não as outras peças. ⛔ Recusado (medido): a grelha do contacto DELA no chão (a sombra só
+/// dela, sem palpite de distância) — imprecisa rente à peça, onde o chão está: base de baixo `0,073`
+/// contra `0,0055`, e `334` sombras órfãs fora da zona.
+#[must_use]
+pub fn pegada(modelo: &[[f32; 4]; 4], (lo, hi): ([f32; 3], [f32; 3])) -> [f32; 3] {
+    let (mut a, mut b) = ([f32::INFINITY; 2], [f32::NEG_INFINITY; 2]);
+    for k in 0..8 {
+        let c = [
+            if k & 1 == 0 { lo[0] } else { hi[0] },
+            if k & 2 == 0 { lo[1] } else { hi[1] },
+            if k & 4 == 0 { lo[2] } else { hi[2] },
+        ];
+        let w = [0, 2].map(|e| modelo[3][e] + (0..3).map(|j| modelo[j][e] * c[j]).sum::<f32>());
+        for e in 0..2 {
+            a[e] = a[e].min(w[e]);
+            b[e] = b[e].max(w[e]);
+        }
+    }
+    [
+        0.5 * (a[0] + b[0]),
+        0.5 * (a[1] + b[1]),
+        0.5 * (b[0] - a[0]).max(b[1] - a[1]),
+    ]
+}
+
 /// Direcções por anel do lobo do reflexo. ⚠️ Medido (03/10, contra o Cycles no metal de rugosidade
 /// `0,5`): `8` por anel `0,0233` onde o chão escurece, `4` por anel `0,0268` a METADE do custo
 /// (`+0,166 → +0,075 ms` em ecrã cheio a 1080p, RTX 5060 Ti). Na difusa a mesma troca custava `+50 %`
@@ -216,7 +245,8 @@ const TAP: &str = r"fn reflexo_tap(p: vec3<f32>, r: vec3<f32>, h: f32, phi: f32,
         return vec2<f32>(0.0, cf);
     }
     let x = p + d * (h / -d.y);
-    return vec2<f32>(cf * (1.0 - ceu_do_chao_tapado(vec3<f32>(x.x, quadro.chao.x, x.z))), cf);
+    let no_chao = vec3<f32>(x.x, quadro.chao.x, x.z);
+    return vec2<f32>(cf * sombra_propria(no_chao, 1.0 - ceu_do_chao_tapado(no_chao)), cf);
 }
 ";
 

@@ -188,6 +188,23 @@ fn o_reflexo_e_o_lobo() {
     );
 }
 
+/// ⭐ **O reflexo de `p` sai da zona da própria peça?** — a reflectida da câmara (a olhar ao longo de
+/// `−de`) bate no chão a mais de `3` raios da sua peça (`pecas[p.obj]`). Ali a verdade inclui as
+/// VIZINHAS e as sombras delas; o reflexo daqui não desenha as vizinhas, e a sombra delas sem elas é o
+/// que o dono recusou (03/10) — logo ali ele não escurece.
+pub(crate) fn reflete_fora(p: &Ponto, de: [f32; 3], pecas: &[Peca]) -> bool {
+    let f = norm(de.map(|c| -c));
+    let fn_ = f[0] * p.n[0] + f[1] * p.n[1] + f[2] * p.n[2];
+    let r: [f32; 3] = std::array::from_fn(|e| f[e] - 2.0 * fn_ * p.n[e]);
+    if r[1] >= -1.0e-3 {
+        return false;
+    }
+    let t = p.p[1] / -r[1];
+    let x = [p.p[0] + r[0] * t, p.p[2] + r[2] * t];
+    let (c, raio, _) = pecas[p.obj];
+    ((x[0] - c[0]).powi(2) + (x[1] - c[2]).powi(2)).sqrt() / raio > 3.0
+}
+
 fn oraculo() -> (Vec<Ponto>, Vec<Linha>) {
     oraculo_de(ORACULO)
 }
@@ -392,13 +409,15 @@ fn o_reflexo_do_chao_e_o_do_cycles() {
     let (pontos, linhas) = oraculo();
     let base = desenha(&mut fw, false);
     let borda = bordas(&pontos, &base);
-    // Medido (03/10, a razão): nítido `0,0030` / onde o chão escurece `0,0083` (sem a lei `0,0801`);
-    // áspero `0,0206` / `0,0304` (sem `0,0883`); com verniz `0,0195` / `0,0298` (sem `0,0881`). Com a base
-    // das vizinhas lida ACESA (antes do report) o áspero dava `0,0155` / `0,0268` — ver o doc do gate.
+    // Medido (03/10, a razão; o reflexo lê só a zona da peça — `chao_tapa::pegada`): nítido na zona
+    // `0,0182` / onde o chão escurece `0,0550` (sem a lei `0,1045`), fora dela `0` de `4 012` px escurecem
+    // (o Cycles escurece `1 042`: as sombras das vizinhas, que ele mostra porque desenha as vizinhas);
+    // áspero `0,0323` / `0,0652` (sem `0,0883`); verniz `0,0320` / `0,0657` (sem `0,0881`). Antes da zona
+    // (o chão todo no reflexo): nítido `0,0030` / `0,0083`, áspero `0,0206` / `0,0304` — e a sombra órfã.
     for (k, nome, mat, barra) in [
-        (0usize, "metal nítido", metal(0.0), (0.005f32, 0.012f32)),
-        (1, "metal áspero", metal(0.5), (0.025, 0.038)),
-        (2, "metal áspero com verniz", envernizado(), (0.025, 0.038)),
+        (0usize, "metal nítido", metal(0.0), (0.022f32, 0.065f32)),
+        (1, "metal áspero", metal(0.5), (0.038, 0.075)),
+        (2, "metal áspero com verniz", envernizado(), (0.038, 0.075)),
     ] {
         let (com, sem, so) = (
             desenha_de(&mut fw, true, mat),
@@ -407,6 +426,9 @@ fn o_reflexo_do_chao_e_o_do_cycles() {
         );
         let (mut n, mut s, mut s_ctl, mut nb, mut sb) = (0usize, 0.0f32, 0.0f32, 0usize, 0.0f32);
         let (mut sa, mut sba) = (0.0f32, 0.0f32);
+        // Fora da zona da peça: quantos px, onde o Cycles escurece (as sombras alheias), e os nossos que
+        // escurecem (a sombra órfã).
+        let (mut n_fora, mut alheias, mut orfaos) = (0usize, 0usize, 0usize);
         for (p, l) in pontos.iter().zip(&linhas) {
             let (cs, cc, solo) = (l.brilho[2 * k], l.brilho[2 * k + 1], l.brilho[6 + k]);
             let i = ((p.j * LADO + p.i) * 4 + 1) as usize;
@@ -417,6 +439,12 @@ fn o_reflexo_do_chao_e_o_do_cycles() {
                 || cs < 0.05
                 || solo < 0.05
             {
+                continue;
+            }
+            if k == 0 && reflete_fora(p, DE, &PECAS) {
+                n_fora += 1;
+                alheias += usize::from(cc / cs < 0.97);
+                orfaos += usize::from(lc / ls < 0.97);
                 continue;
             }
             let ciclos = cc / cs;
@@ -435,7 +463,8 @@ fn o_reflexo_do_chao_e_o_do_cycles() {
         let (nf, nbf) = (n as f32, nb as f32);
         eprintln!(
             "{nome}: {n} px · razão com/sem |Δ| médio {:.4} · onde o chão escurece ({nb} px) {:.4} · SEM a lei \
-             {:.4} · (absoluta, contra o `solo`: {:.4} / {:.4})",
+             {:.4} · (absoluta, contra o `solo`: {:.4} / {:.4}) · fora da zona da peça {n_fora} px: o Cycles \
+             escurece {alheias}, nós {orfaos}",
             s / nf,
             sb / nbf,
             s_ctl / nf,
@@ -443,6 +472,16 @@ fn o_reflexo_do_chao_e_o_do_cycles() {
             sba / nbf
         );
         assert!(n > 4000 && nb > 300, "a fixtura encolheu: {n} / {nb} px");
+        if k == 0 {
+            assert!(
+                alheias > 100,
+                "CONTROLO: o Cycles tem de mostrar sombras alheias no reflexo"
+            );
+            assert!(
+                orfaos * 50 < n_fora,
+                "o reflexo mostra a sombra de uma vizinha sem a vizinha: {orfaos} de {n_fora} px"
+            );
+        }
         assert!(
             s_ctl / nf > 0.04,
             "CONTROLO: sem a lei o erro tem de ser o escurecimento"

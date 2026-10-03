@@ -230,6 +230,12 @@ impl Forward {
             dados[at..at + 64].copy_from_slice(bytemuck::cast_slice(&o.modelo));
             // O índice da instância na lista do quadro: o contacto não a deixa tapar-se a si.
             dados[at + 64..at + 68].copy_from_slice(&(i as f32).to_le_bytes());
+            // A pegada da peça no chão (centro `x, z` e raio): o reflexo só lê a sombra DELA.
+            let pegada = self
+                .malhas
+                .get(&o.malha)
+                .map_or([0.0; 3], |m| crate::chao_tapa::pegada(&o.modelo, m.caixa));
+            dados[at + 68..at + 80].copy_from_slice(bytemuck::cast_slice(&pegada));
         }
         if let Some((_, b, _)) = &self.objetos
             && !dados.is_empty()

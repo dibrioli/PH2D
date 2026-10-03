@@ -32,6 +32,10 @@ fn vs(@builtin(vertex_index) k: u32) -> @builtin(position) vec4<f32> {
     return vec4<f32>(p, 0.5, 1.0);
 }
 
+fn sombra_propria(x: vec3<f32>, escuro: f32) -> f32 {
+    return escuro;
+}
+
 fn ponto(u: vec2<f32>) -> vec3<f32> {
     return vec3<f32>(u.x * 2.0 - 1.0, 0.05 + 0.3 * u.y, u.y * 2.0 - 1.0);
 }

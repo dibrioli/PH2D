@@ -47,7 +47,8 @@ struct Quadro {
 
 struct Objeto {
     modelo: mat4x4<f32>,
-    // x = o indice da instancia na lista do quadro (o contacto nao a deixa tapar-se a si).
+    // x = o indice da instancia na lista do quadro (o contacto nao a deixa tapar-se a si) ·
+    // yzw = a pegada no chao (centro x, z e raio): o reflexo so' le a sombra DELA (`chao_tapa.rs`).
     extra: vec4<f32>,
 };
 
@@ -542,6 +543,12 @@ fn fs_cobertura_baixo(i: CobOut) -> @location(0) vec4<f32> {
 }
 
 // O ceu que o chao ve (`ceu_do_chao`) e o chao que tapa as pecas (`chao_tapa`): `chao_tapa.rs`.
+// O escurecimento do chao que o REFLEXO desta peca le: so' o da zona dela (ver `chao_tapa::pegada`).
+fn sombra_propria(x: vec3<f32>, escuro: f32) -> f32 {
+    let r = max(objeto.extra.w, 1.0e-4);
+    let d = length(x.xz - objeto.extra.yz);
+    return escuro * (1.0 - clamp((d - 1.5 * r) / (1.5 * r), 0.0, 1.0));
+}
 {CHAO_TAPA}
 
 // ⭐⭐ A SOMBRA QUE POUSA NO CHAO: o nivel da cobertura cujo borrao tem o tamanho FISICO da penumbra

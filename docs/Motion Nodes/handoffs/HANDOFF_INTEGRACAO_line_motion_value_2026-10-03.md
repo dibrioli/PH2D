@@ -17,7 +17,7 @@
 |---|---|
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` |
 | ramo | `line/motion-value` |
-| HEAD | `311413f1e` (+ o commit deste handoff) |
+| HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1 |
 | base / merge-base | `main` @ `1ad60a1ce` — **0** commits do `main` por trazer; `--ff-only` possível |
 | commits | **18** (2026-10-02 → 03) · `36` ficheiros (+3 621 / −685) |
 
@@ -159,19 +159,33 @@ integrador — releia a ORDEM das fases do quadro só se outra linha mexer em `f
 
 | item | o endereço |
 |---|---|
-| ⚠️ **memória da acumulação na cena do APP a 1080p NÃO medida** | tecto = `max_storage_buffer_binding_size`; quem não cabe vai por cópia (correcto, mais lento). Medir com [`mede_formas_na_placa.sh`](../ferramentas/mede_formas_na_placa.sh) na próxima wave |
-| **variante ESPARSA** (só as células tocadas; tira o `cs_zera`) | a alavanca das densas, onde as células subiram `0,51 → 0,78 ms` na iGPU (§9.12) |
+| ✅ memória no app MEDIDA (§6.1) — `66 MB` na `=127` densa | alavancas que ficam: a cobertura NO LUGAR do 1.º acumulador (`−24 %`) e um arredondamento mais fino que a potência de dois |
+| **variante ESPARSA** (só as células tocadas; tira o `cs_zera`) | ⚠️ nas densas quase toda célula é tocada (estrelas de `~14 px`): MEÇA a fracção de células tocadas antes de a construir; a alavanca é das formas GRANDES |
 | a variante COMPLETA (com tracejado) a `128` VGPRs | encolher o ramo do tracejado; item próprio |
 | a mordida do traço rente depois de uma quina | divergência DECLARADA (§9.9), sem acção |
 | `M6` / `S6` / `S8` (§9.4–§9.5) e o `fx.glow` que lê o `pump` anterior | nomeados desde 01/10, sem mudança |
 | `fk.rs` duplicado em seis crates (bug #11) | wave própria |
+
+### §6.1 — Depois deste handoff (03/10, mesma linha, após o smoke aprovado)
+
+- ⛔→✅ **`87e605534` — as células só com a capacidade MEDIDA.** A W5 no app (`mede_formas_na_placa.sh`,
+  novo botão `FORMAS`) achou `132 MB` na `=127` densa e `264 MB` na escada de `32 768`, pedidos pelo
+  palpite de fábrica `16` células por cópia que entrava num `max` e nunca saía. Saiu
+  `CELULAS_POR_COPIA_INICIAL`; os 2 primeiros quadros de uma cena nova vão pelo caminho de sempre (a mesma
+  imagem). Re-medido: escadas `0` células; `=127` densa `107 520` (`66 MB`); iGPU `16,6 ms` com placa
+  contra `20,8` sem (as listas davam `17,6`), CPU `3,1` contra `8,2 ms`. Relato novo `[formas] celulas:`
+  sob `PH2D_FLUID_PROFILE=1`. Gates re-corridos: shape-gpu `10/10`, produto `5/5` + sonda, clippy das
+  duas crates, `cargo-test-narrow` shape-gpu `18` verdes. A mutação `17/17` foi ANTES desta mudança (ela
+  só toca a capacidade em `garante`, fora das âncoras).
+- ⛔ **`9b133f887` — recusa medida: estreitar a célula** (`16` empata, `8` perde nas esticadas). Fica `32`.
+  Tabela no doc 121 §9.12.
 
 ## §7 — OS SMOKES
 
 ✅ **Smoke do dono APROVADO em 03/10** (a `=127` pelo comando abaixo).
 
 Do dono (passos; binário já compilado — `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`
-corrido 2×, a 2.ª saída: `Finished smoke profile [optimized] target(s) in 0.23s`):
+corrido 2× DEPOIS do `9b133f887`, a 2.ª saída: `Finished smoke profile [optimized] target(s) in 0.20s`, zero `Compiling`):
 
 1. No terminal:
    ```

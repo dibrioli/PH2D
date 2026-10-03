@@ -129,3 +129,120 @@ fn a_oclusao_entre_pecas_e_a_do_cycles() {
         "a lei afastou-se do Cycles: médio {medio} · perto {perto} · máx {maximo} · viés {vies}"
     );
 }
+
+const PROPRIA: &str = include_str!("../fixtures/oraculo_oclusao_propria.csv");
+
+fn caixa(p: [f32; 3], c: [f32; 3], h: [f32; 3]) -> f32 {
+    let d: [f32; 3] = std::array::from_fn(|e| (p[e] - c[e]).abs() - h[e]);
+    let f = d.map(|x| x.max(0.0));
+    (f[0] * f[0] + f[1] * f[1] + f[2] * f[2]).sqrt() + d[0].max(d[1]).max(d[2]).min(0.0)
+}
+
+/// As peças do oráculo da oclusão própria (o cabeçalho do script).
+fn sdf_propria(peca: &str, p: [f32; 3]) -> f32 {
+    match peca {
+        "L" => caixa(p, [0.0, 0.1, 0.0], [0.3, 0.1, 0.2]).min(caixa(
+            p,
+            [-0.2, 0.35, 0.0],
+            [0.1, 0.15, 0.2],
+        )),
+        "bola" => {
+            let q = [p[0] - 0.05, p[1] - 0.3, p[2] - 0.05];
+            caixa(p, [0.0, 0.15, 0.0], [0.3, 0.15, 0.3])
+                .min((q[0] * q[0] + q[1] * q[1] + q[2] * q[2]).sqrt() - 0.18)
+        }
+        _ => {
+            let q = [p[0], p[1] - 0.1, p[2]];
+            let r = (q[0] * q[0] + q[2] * q[2]).sqrt() - 0.3;
+            (r * r + q[1] * q[1]).sqrt() - 0.1
+        }
+    }
+}
+
+/// ⭐⭐⭐ **A oclusão própria é a do Cycles** — peças fundidas (um L de duas caixas, uma bola meio
+/// enterrada numa caixa, um toro), cada uma sozinha, no volume `64³` da caixa dela, nos pontos e
+/// normais do Cycles. Controlo: a oclusão de Quilez que a casa assava (`5` passos em `0,01..0,16`).
+///
+/// Medido (03/10, `48` cones de `0,2` rad, volume `64³`, `14 712` pontos), médio / onde o Cycles
+/// `< 0,9`: L `0,012` / `0,016` · bola `0,006` / `0,008` · toro `0,011` / `0,031` (o toro sai um pouco
+/// CLARO, viés `+0,013`: os cones moles subestimam um tubo fino do outro lado do furo — `64` cones dão
+/// `0,029`). Quilez: `0,115` / `0,209` · `0,051` / `0,142` · `0,073` / `0,218`. ⛔ Recusado (medido): o limite inferior
+/// de FORA da caixa do volume nos cones (escurecia os que saem rasantes, viés `−0,025`).
+#[test]
+fn a_oclusao_propria_e_a_do_cycles() {
+    let mut por =
+        std::collections::BTreeMap::<String, Vec<(usize, [f32; 3], [f32; 3], f32)>>::new();
+    for (k, l) in PROPRIA
+        .lines()
+        .filter(|l| !l.starts_with('#'))
+        .skip(1)
+        .enumerate()
+    {
+        let c: Vec<&str> = l.split(',').collect();
+        let f = |i: usize| c[i].parse::<f32>().expect("número");
+        let n = [f(6), f(7), f(8)];
+        let ln = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt();
+        por.entry(c[0].to_string()).or_default().push((
+            k,
+            [f(3), f(4), f(5)],
+            n.map(|x| x / ln),
+            f(9),
+        ));
+    }
+    let caixas = [
+        ("L", [-0.32, -0.02, -0.22], [0.32, 0.52, 0.22]),
+        ("bola", [-0.32, -0.02, -0.32], [0.32, 0.5, 0.32]),
+        ("toro", [-0.42, -0.02, -0.42], [0.42, 0.22, 0.42]),
+    ];
+    let mut falhas = Vec::new();
+    for (peca, lo, hi) in caixas {
+        let pts = &por[peca];
+        let vol = Volume::de(lo, hi, 64, |q| {
+            q.iter().map(|p| sdf_propria(peca, *p)).collect()
+        });
+        let pos: Vec<[f32; 3]> = pts.iter().map(|p| p.1).collect();
+        let nrm: Vec<[f32; 3]> = pts.iter().map(|p| p.2).collect();
+        let diag = (0..3).map(|e| (hi[e] - lo[e]).powi(2)).sum::<f32>().sqrt();
+        let lei = crate::visibilidade_propria(&vol, &pos, &nrm, diag);
+        let quilez: Vec<f32> = pts
+            .iter()
+            .map(|(_, p, n, _)| {
+                let (mut occ, mut w) = (0.0, 0.0);
+                for (i, h) in [0.01f32, 0.02, 0.04, 0.08, 0.16].iter().enumerate() {
+                    let q = [0, 1, 2].map(|e| p[e] + n[e] * h);
+                    let pe = 0.5f32.powi(i as i32);
+                    occ += pe * ((h - sdf_propria(peca, q)) / h).clamp(0.0, 1.0);
+                    w += pe;
+                }
+                1.0 - occ / w
+            })
+            .collect();
+        let mede = |est: &[f32]| {
+            let (mut s, mut sp, mut np, mut m) = (0.0f32, 0.0f32, 0usize, 0.0f32);
+            for (e, p) in est.iter().zip(pts) {
+                let d = (e - p.3).abs();
+                s += d;
+                m = m.max(d);
+                if p.3 < 0.9 {
+                    sp += d;
+                    np += 1;
+                }
+            }
+            (s / pts.len() as f32, sp / np.max(1) as f32, m)
+        };
+        let ((m, p, x), (qm, qp, _)) = (mede(&lei), mede(&quilez));
+        eprintln!(
+            "{peca}: {} pontos · |Δ| médio {m:.4} · perto {p:.4} · máx {x:.3} (Quilez {qm:.4} · perto {qp:.4})",
+            pts.len()
+        );
+        if !(m < 0.02 && p < 0.035 && qp > 4.0 * p) {
+            falhas.push(format!(
+                "{peca}: médio {m:.4} · perto {p:.4} · máx {x:.3} · Quilez perto {qp:.4}"
+            ));
+        }
+    }
+    assert!(
+        falhas.is_empty(),
+        "a oclusão própria afastou-se do Cycles: {falhas:?}"
+    );
+}

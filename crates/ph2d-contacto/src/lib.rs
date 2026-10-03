@@ -15,10 +15,12 @@
 //! campo — `~1000×` mais barato que avaliar o campo por passo.
 
 mod grade;
+mod propria;
 mod volume;
 pub mod wgsl;
 
 pub use grade::{A_CONVOLUCAO, Grade, base_sh, direcoes};
+pub use propria::{ALFA, CONES, visibilidade_propria};
 pub use volume::Volume;
 
 /// Os pontos por aresta da grelha.

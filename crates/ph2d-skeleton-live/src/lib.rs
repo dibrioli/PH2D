@@ -64,6 +64,8 @@ pub mod skin_bake_cache;
 pub mod skin_budget;
 /// ⭐⭐⭐ **O DESENHO DA FORMA PRESA** — a gaveta por bind e o bake que se VÊ (2026-09-29).
 pub mod skin_desenho;
+/// ⭐⭐ As voltas apertadas de um cozido viram nós antes do bake (F50-h).
+pub mod skin_desenho_voltas;
 pub mod skin_image;
 /// ⭐ **PRENDER uma IMAGEM** — irmão do `skin_live` pelo tecto de LOC, cortado por assunto.
 pub mod skin_image_bind;

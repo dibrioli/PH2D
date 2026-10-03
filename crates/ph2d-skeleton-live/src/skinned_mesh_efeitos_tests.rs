@@ -576,3 +576,43 @@ fn o_contorno_de_um_hatch_tambem_se_une_e_as_riscas_ficam() {
         "a união levou riscas do Hatch"
     );
 }
+
+/// ⭐⭐⭐ **GATE — um BLOAT positivo forte não solta LINHAS ao dobrar** (F50-h, report do dono de
+/// 2026-10-03, foto: *«bloat +60 aparecem linhas bizarras»*).
+///
+/// O *Bloat* `+60` põe pontas que dão a volta dentro de um só segmento, e o bake (passo fixo,
+/// tangente de Catmull-Rom) saía em traços rectos de lado na ponta: `0,48` a `30°`, `0,92` a `60°`
+/// longe do ideal. Partidas as voltas em nós ([`crate::skin_desenho_voltas`]): `≤ 0,02`. ⚠️ A régua
+/// amostra o repouso JÁ partido — sobre os segmentos inteiros (que vão a `~3,6` da âncora) a
+/// polilinha de `12` amostras lia `0,025` em repouso, só de corda.
+#[test]
+fn um_bloat_positivo_forte_nao_solta_linhas_ao_dobrar() {
+    let pilha = vec![FxEntry::new(PathEffect::Bloat(
+        ph2d_vec_scene::fx_warp::BloatSpec { amount: 60.0 },
+    ))];
+    let mut p = b_palco(false);
+    caminho_mut(&mut p.scene, p.id).effects = pilha.clone();
+    let repouso = crate::skin_desenho_voltas::parte_nas_voltas(repouso_com(&p, &pilha));
+    let no_repouso = voltas(&repouso);
+    for graus in [0.0_f32, 30.0, 60.0, 90.0] {
+        p.dobra_em_s(graus);
+        let pele = p.pele();
+        let ouro = ouro_do_cozido(&p, &pele, &repouso);
+        let d = crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), so_o_bake())
+            .remove(&p.id)
+            .expect("desenho");
+        let (_, _, fora) = b_perfil(&b_amostra_com(&d, POR_SEG), &ouro);
+        println!(
+            "  {graus:>4}°: o desenho afasta-se {fora:.4} do ideal · voltas {}",
+            voltas(&d)
+        );
+        assert!(
+            fora < 0.03,
+            "a {graus}° o desenho do Bloat +60 afasta-se {fora} do ideal — uma linha solta"
+        );
+        assert!(
+            voltas(&d) <= no_repouso,
+            "a {graus}° o desenho volta para trás mais que a arte em repouso"
+        );
+    }
+}

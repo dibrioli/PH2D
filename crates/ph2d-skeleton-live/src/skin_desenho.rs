@@ -455,7 +455,8 @@ fn cozido_com_efeitos(g: &SkinnedPath, pilha: &[FxEntry], eixos: &[Handle]) -> O
     let da_fonte = g.campo.as_ref()?;
     let mut fonte = g.path.clone();
     fonte.effects = pilha.to_vec();
-    let caminho = fonte.cooked().into_owned();
+    // ⭐⭐ F50-h: as voltas apertadas do efeito viram NÓS — ver [`crate::skin_desenho_voltas`].
+    let caminho = crate::skin_desenho_voltas::parte_nas_voltas(fonte.cooked().into_owned());
     let campo = ph2d_vec_skin::pesos::campo_do_caminho(&caminho, eixos)
         .filter(|c| c.ossos() == da_fonte.ossos())
         .map(|c| {

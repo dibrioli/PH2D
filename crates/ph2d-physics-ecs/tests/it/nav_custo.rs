@@ -136,7 +136,7 @@ fn pisou(caminho: &[(f32, f32)], c: (f32, f32), h: (f32, f32)) -> bool {
 }
 
 #[test]
-fn o_inimigo_evita_a_lava_sozinho_e_os_tres_controlos_atravessam() {
+fn o_inimigo_evita_a_lava_sozinho_e_os_quatro_controlos_atravessam() {
     let (mut sim, mut b, quem) = cena_lava(Some(Health::default()), true);
     let caminho = corre(&mut sim, &mut b, quem, 600);
     assert_eq!(b.nav_agent(quem).map(|r| r.status), Some(Status::Arrived));
@@ -174,6 +174,48 @@ fn o_inimigo_evita_a_lava_sozinho_e_os_tres_controlos_atravessam() {
     let (mut sim, mut b, quem) = cena_lava(None, true);
     let caminho = corre(&mut sim, &mut b, quem, 600);
     assert!(pisou(&caminho, LAVA_C, LAVA_H), "sem vida devia atravessar");
+    // CONTROLO 4: o fogo CURA-o (a resistência que absorve) — não é uma zona que magoa.
+    let cura = Health {
+        resistances: vec![Resistance {
+            kind: "fogo".to_owned(),
+            rate: 1.0,
+            absorbs: true,
+        }],
+        ..Health::default()
+    };
+    let (mut sim, mut b, quem) = cena_lava(Some(cura), true);
+    let caminho = corre(&mut sim, &mut b, quem, 600);
+    assert!(
+        pisou(&caminho, LAVA_C, LAVA_H),
+        "quem se cura com o fogo devia atravessar"
+    );
+}
+
+#[test]
+fn onde_duas_areas_se_sobrepoem_manda_a_mais_cara() {
+    // Uma lama barata grande (1,05) com uma CARA (20) por dentro: a sobreposição é cara, e o agente
+    // contorna o miolo. Com a barata a mandar, o miolo seria barato e ele ia a direito.
+    let mut sim = SimWorld::new();
+    regiao(&mut sim);
+    let grande = caixa(&mut sim, "Lama larga", (0.0, 0.0), (3.0, 4.0), true);
+    sim.world_mut().entity_mut(grande).insert(NavCostArea {
+        cost: 1.05,
+        forbidden: false,
+    });
+    let miolo = caixa(&mut sim, "Lama funda", (0.0, 0.0), (1.0, 1.5), true);
+    sim.world_mut().entity_mut(miolo).insert(NavCostArea {
+        cost: 20.0,
+        forbidden: false,
+    });
+    marco(&mut sim, "Alvo", (5.0, 0.0));
+    let quem = agente(&mut sim, (-5.0, 0.0), "Alvo");
+    let mut b = PhysicsBridge::new();
+    let caminho = corre(&mut sim, &mut b, quem, 600);
+    assert_eq!(b.nav_agent(quem).map(|r| r.status), Some(Status::Arrived));
+    assert!(
+        !pisou(&caminho, (0.0, 0.0), (1.0, 1.5)),
+        "atravessou o miolo caro — a barata mandou na sobreposição"
+    );
 }
 
 /// A cena da LAMA (uma `NavCostArea` sensor no meio, a este custo).

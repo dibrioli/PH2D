@@ -138,3 +138,38 @@ fn a_refraccao_obedece_a_snell() {
         );
     }
 }
+
+#[test]
+fn a_volta_num_canto_de_custo_nao_reinunda_a_vizinhanca() {
+    // A lama arredondada (um círculo: 32 vértices, cada um um canto de custo) entre a partida e o
+    // alvo, a peso 10 — o caso que explodiu quando o leque de uma volta atravessava a fronteira.
+    let m = build_with_areas(
+        &retangulo(20.0, 12.0),
+        &[],
+        &[Area {
+            shape: Shape::Circle {
+                center: [10.0, 6.0],
+                radius: 3.0,
+            },
+            id: 1,
+        }],
+        &Params::default(),
+    )
+    .expect("constrói")
+    .mesh;
+    let mut s = Polyanya::new();
+    let mut total = 0u64;
+    for (a, z) in [
+        ([2.0, 6.0], [18.0, 6.0]),
+        ([8.0, 6.5], [12.0, 5.5]),
+        ([10.0, 8.6], [10.0, 3.4]),
+    ] {
+        s.stats = Default::default();
+        s.find_path_costs(&m, &[1.0, 10.0], a, z)
+            .expect("há caminho");
+        total += s.stats.expanded;
+    }
+    // Medido (03/10): `9 972` nós; com o leque a atravessar a fronteira (a mutação M13), `15 309 326`
+    // — e 22 s. A régua: dez vezes o medido.
+    assert!(total < 100_000, "{total} nós expandidos (medido: 9 972)");
+}

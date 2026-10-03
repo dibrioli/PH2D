@@ -166,3 +166,47 @@ fn o_atalho_so_se_usa_quando_compensa() {
     assert_eq!(st, Status::Arrived);
     assert!(cruzou.is_empty(), "usou o atalho caro: {cruzou:?}");
 }
+
+#[test]
+fn a_meio_da_porta_nao_se_replaneia_mesmo_com_o_alvo_a_andar() {
+    // O alvo foge (mais que `repath_distance`) a cada tique em que o agente está DENTRO da porta: lá
+    // ele está fora da malha, e replanear levava-o de volta à entrada — atravessaria outra vez.
+    let m = duas_salas();
+    let porta = Link {
+        id: 3,
+        from: [7.5, 5.0],
+        to: [12.5, 5.0],
+        two_way: false,
+        teleport: false,
+        cost: 0.0,
+    };
+    let q = Query {
+        costs: &[],
+        links: &[porta],
+    };
+    let mut rt = AgentRuntime::default();
+    let mut s = Polyanya::new();
+    let dt = 1.0 / 60.0;
+    let mut pos = [2.0, 5.0];
+    let mut alvo = [18.0, 5.0];
+    let mut cruzou = Vec::new();
+    let mut dentro = 0;
+    for _ in 0..3_000 {
+        if pos[0] > 8.0 && pos[0] < 12.0 {
+            alvo[1] = if alvo[1] > 5.0 { 2.0 } else { 8.0 };
+            dentro += 1;
+        }
+        let st = step_with(&mut rt, Some(&m), &mut s, &q, pos, Some(alvo), &cfg(), dt);
+        cruzou.extend(st.crossed);
+        if rt.status == Status::Arrived {
+            break;
+        }
+        pos = [pos[0] + st.dir[0] * 3.0 * dt, pos[1] + st.dir[1] * 3.0 * dt];
+    }
+    assert!(
+        dentro > 10,
+        "a fixtura não tem o agente dentro da porta ({dentro} tiques)"
+    );
+    assert_eq!(rt.status, Status::Arrived);
+    assert_eq!(cruzou, vec![3], "atravessou {cruzou:?}");
+}

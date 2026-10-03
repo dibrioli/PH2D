@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**19 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **19** são handoffs (registro **morto**).
+**20 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **20** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -34,6 +34,7 @@
 | 2026-10-01 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-01_A_LINHA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-01_A_LINHA.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-10-01 — A LINHA INTEIRA (rolagem · cartões · temas e notas · fonte, … |
 | 2026-10-02 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-02.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-02.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-02 (a linha NÃO fechou) |
 | 2026-10-02 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-02_A_ESCALA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-02_A_ESCALA.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-02 — a escala da interface (e o HiDPI) |
+| 2026-10-03 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-03.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-03 (a linha segue; NÃO integrar agora) |
 
 ---
 

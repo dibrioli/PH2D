@@ -1,9 +1,9 @@
-# HANDOFF (continuação, janela nova) — `line/Vector`: próximo = A PARTE DA FRENTE PINTA POR CIMA numa forma vectorial presa (2026-10-03)
+# HANDOFF (continuação, janela nova) — `line/Vector`: próximo = O PESO VIAJA COM O DESENHO (decisão do dono), depois A PARTE DA FRENTE PINTA POR CIMA (2026-10-03)
 
 > Para o agente que assume a linha numa janela NOVA (`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`). Não é
 > handoff de integração: o último de integração continua a ser o de
 > [2026-10-01](HANDOFF_INTEGRACAO_line_Vector_A_SILHUETA_DA_PELE_2026-10-01.md). A janela anterior
-> (F50…F50-j) está na [fila §F50](../01_a_fila.md) e no
+> (F50…F50-k) está na [fila §F50](../01_a_fila.md) e no
 > [handoff de 02/10](HANDOFF_line_Vector_CONTINUACAO_FORMAS_COM_EFEITOS_2026-10-02.md).
 
 ## 0. Onde está
@@ -24,7 +24,31 @@ curou na origem o gancho da F43 (F50-e); a união sem lascas e só dos fechados 
 (F50-i); o solver do campo numa thread (F50-j). Cena **`PH2D_VEC_BONE_SMOKE=5`** (seis barras).
 Os abertos de 01/10 foram auditados contra o código: três eram notas envelhecidas (fila §F50).
 
-## 2. ⭐ O PRÓXIMO: numa dobra muito forte, a parte da FRENTE pinta por cima (como a imagem)
+## 2. ⭐⭐⭐ O PRÓXIMO (decisão do dono, 2026-10-03): o peso VIAJA COM O DESENHO — cada pedaço segue o osso de onde VEIO
+
+**O report:** *«quanto mais veloz se arrasta o valor de twist mais deformações bizarras… com alguns
+valores após parar fica bom, com outros fica ruim»*. O arrasto foi curado (F50-k: mostra-se sempre
+o último par pilha+campo exacto). O resto é a LEI: o campo da F50-d é ESPACIAL (o domínio é o
+contorno cozido, à *Puppet* do After Effects) e, com um *Twist* forte, as pontas enrolam-se perto do
+osso do MEIO e passam a ser dele. Medido (nós do cozido dominados por osso, barra da fixtura):
+*Twist* `60°` `[55, 22, 55]` · `120°` `[33, 66, 33]` · `150°` `[40, 53, 39]` — a forma muda de dono
+conforme o valor. **O dono escolheu a lei MATERIAL** (pergunta directa, com a opção espacial ao
+lado): *«O osso de onde veio»* — é a do Blender (o grupo de vértices é do PONTO; um modificador
+antes do `Armature` move o ponto e o peso vai com ele; oráculo da F50 em
+`docs/Skeleton/oraculo/oraculo_ordem_dos_efeitos.py`).
+
+**Desenho proposto (NÃO medido):** para os efeitos que movem pontos (*Twist*, *Warp*, *Bloat*,
+*Falloff*), DEFORMAR A MALHA DO CAMPO DA FONTE pelo próprio efeito — os vértices da malha passam
+pelo efeito com o `FxCtx` da forma (como âncoras de alças recolhidas num contorno de marcadores;
+os deformadores mapeiam âncoras ponto a ponto) e os PESOS ficam os mesmos. O campo resultante é
+material por construção (sem solver: mais barato que o da F50-d) e a leitura baricêntrica dos nós
+do cozido fica igual. ⚠️ A medir: dobras da malha onde o efeito sobrepõe a forma a si mesma
+(*Twist* forte) — a leitura acha o primeiro triângulo; os geradores (*Hatch*, *Repeat*, *Zig Zag*,
+*Sketch*, *Trim*, *Knot*) não são mapas de pontos — fique com o campo do cozido (F50-d) para eles,
+e meça se a pilha mista (deformador + gerador) precisa das duas leis em sequência. Gate sugerido:
+os nós dominados por osso no cozido = os da fonte, em toda a varredura do *Twist* (`0°`…`360°`).
+
+## 3. ⭐ DEPOIS: numa dobra muito forte, a parte da FRENTE pinta por cima (como a imagem)
 
 **O que o artista vê hoje** (FOTOGRAFADO a `100°`–`110°` na `=5`): o contorno já se une (o «V»
 limpo), mas o que é ABERTO ou fica DENTRO — as riscas de um *Hatch*, os dentes de um *Zig Zag* —
@@ -46,14 +70,14 @@ resolve isto pela ORDEM DAS FACES: o osso mais adiante na corrente pinta por cim
 4. Perguntar primeiro se a COMPOSIÇÃO já o exprime (§5.0): talvez baste recortar só os caminhos
    abertos da parte de trás pela região da parte da frente deformada (sem partir o preenchimento).
 
-## 3. Os outros abertos (do dono — só se ele reparar)
+## 4. Os outros abertos (do dono — só se ele reparar)
 
 - A **cúspide da ARTE** junto a uma tampa redonda (limite da F49, imagem presa): pede o fecho sobre o
   contorno da ARTE (pixels na `attach_skin_meshes`).
 - No *Zig Zag* muito dobrado os dentes de dentro encavalam-se e fecham buraquinhos reais (a imagem
   também os mostra).
 
-## 4. Lições desta janela (morderam)
+## 5. Lições desta janela (morderam)
 
 - ⛔ **`git checkout -- <f>` para limpar uma SONDA levou um gate por commitar do mesmo ficheiro.**
   Commit antes de sondar, sempre.
@@ -65,7 +89,7 @@ resolve isto pela ORDEM DAS FACES: o osso mais adiante na corrente pinta por cim
 - ⭐ Separe as causas antes de curar: com `PH2D_SKIN_CONTACTO=0`, em repouso, e só o bake
   (`so_o_bake()` nos gates) — três dos reports do dono tinham causas diferentes do sintoma.
 
-## 5. Ao fechar a linha (quando o dono mandar)
+## 6. Ao fechar a linha (quando o dono mandar)
 
 Gate batched 1× (`BASE=1ad60a1ce bash scripts/ph2d-run.sh bash scripts/nextest-impacted.sh`) —
 ⚠️ os testes da SHELL ainda não correram nesta janela (`ph2d-vec-skin`, `ph2d-vec-boolean` e

@@ -77,7 +77,7 @@ materializa como o material; o `copy_optional` leva-a.
 | deps novas do `ph2d-app-field3d` | `ph2d-triplanar`, `ph2d-imageio`, `-png`, `-jpeg`, `-webp`, `-tga` |
 | fixturas | `crates/ph2d-triplanar/fixtures/{oraculo_triplanar.csv (7 344 linhas), teste_colorida.png, teste_normal.png}` |
 | instrumentos | `docs/3DModeling/ferramentas/oraculo_triplanar_blender.py` · `ph2d-mesh-forward::tests_custo_textura::instrumento_custo_triplanar` |
-| shell (`shells/desktop`) | `+11` linhas: o degrau do schema (`+10`) e `texturas::atende_pedido` (`+1`) |
+| shell (`shells/desktop`) | `+12` linhas líquidas (`+14 −2`): o degrau do schema e `texturas::atende_pedido` (`+1`) |
 
 ## §2 — Medições
 
@@ -148,7 +148,19 @@ material apagada com a frase. ⚠️ Relógio do quadro NÃO medido com `load < 
 | `ph2d-field-ecs` | `a_duplicate_carries_every_optional_component_of_a_node` (9 componentes, a textura viaja) |
 | `ph2d-app-field3d` | `a_matriz_leva_o_mundo_a_folha` · `a_ordem_e_a_dos_materiais` · `os_ficheiros_viram_mapas_ou_dizem_porque` · `a_semente_planta_e_gasta` · `os_nomes_seguem_o_pacote` · `as_fileiras_seguem_o_material_e_apagam_a_rugosidade` · `a_textura_espalha_pela_seleccao` · `de_ficheiro_pede_o_dialogo_e_o_escolhido_chega_ao_mundo` |
 
-**Mutações**: ⏳ (ver §4.1 quando corridas).
+**Mutações (18, todas com controlo verde e âncora única; restauro por cópia):** 18 VERMELHAS — a
+ordem dos eixos do Blender nos pesos · o `k` da vista X · o sinal do `t` da vista Y · o verde
+invertido (DirectX) · `t`/`b` trocados na Whiteout · a média do mip em bytes crus · o `main_alpha`
+ignorado no `at_roughness` · na PLACA: a rugosidade do mapa ignorada, a normal não devolvida ao mundo,
+a matriz da folha ignorada, o nível do mip a zero, os pesos sem a troca de eixos · a matriz que cresce
+sem copiar as camadas · a rugosidade do material não apagada · «From File…» sem pedir o diálogo · a
+textura que não espalha pela selecção · o sinal da translação mundo → folha · o duplicar sem textura.
+⛔ **A do mip SOBREVIVEU à 1.ª corrida**: o gate só usava preto e branco, pontos FIXOS da curva sRGB
+(a média crua também dá `188`); com um tom médio (linear `146` × crua `128`) ela sangra.
+
+**Suítes** (verificador, load 7–22): as 8 crates da lei e do documento verdes · `field3d` lib 517 ·
+`mesh-forward` 16/16 com a placa · `editor-core` architecture 102 · schema + registo descrito · clippy
+`-D warnings` limpo nas 8 crates · fmt limpo.
 
 ## §5 — ABERTO
 

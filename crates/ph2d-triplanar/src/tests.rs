@@ -203,6 +203,18 @@ fn o_mip_da_cor_faz_a_media_em_linear() {
     let m = Mipmaps::de_rgba8(2, 2, &px, 2, true);
     assert_eq!(m.contagem(), 2);
     assert_eq!(m.nivel(1)[0], [188, 188, 188, 255]);
+    // ⛔ Preto e branco são pontos FIXOS da curva (a média crua também dá 188 — a prova de mutação
+    // apanhou-o): um tom médio separa as duas contas (linear 146, crua 128).
+    let meio = [
+        [64, 64, 64, 255],
+        [192, 192, 192, 255],
+        [192, 192, 192, 255],
+        [64, 64, 64, 255],
+    ];
+    assert_eq!(
+        Mipmaps::de_rgba8(2, 2, &meio, 2, true).nivel(1)[0],
+        [146, 146, 146, 255]
+    );
     let n = Mipmaps::de_rgba8(2, 2, &px, 2, false);
     assert_eq!(
         n.nivel(1)[0],

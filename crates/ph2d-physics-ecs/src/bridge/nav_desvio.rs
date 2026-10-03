@@ -87,8 +87,14 @@ impl PhysicsBridge {
             .collect();
         let mut multidao = ph2d_orca::Crowd::new(corpos, ph2d_orca::Params::PRODUCT);
         let seguras =
-            multidao.solve_all(|i| paredes.get(i).copied().flatten().map(|w| (w, 0.0)), dt);
-        for (p, v) in pedidas.iter().zip(&seguras) {
+            multidao.solve_all_why(|i| paredes.get(i).copied().flatten().map(|w| (w, 0.0)), dt);
+        self.nav.avanco.clear();
+        for (p, (v, outros)) in pedidas.iter().zip(&seguras) {
+            // ⚠️ Só quando um OUTRO corpo cortou o pedido: sozinho, a quina também trava (medido).
+            if *outros && p.avoidance && p.speed > 0.0 {
+                let a = (v[0] * p.dir[0] + v[1] * p.dir[1]) / p.speed;
+                self.nav.avanco.insert(p.entity, a as f32);
+            }
             // ⚠️ A intenção é a velocidade em FRACÇÃO da máxima: o mover em modo livre passa-a
             // intacta (o comprimento incluído), logo um agente que trava para dar passagem anda
             // mesmo mais devagar. Um agente sem desvio leva a direcção da condução, ao bit.

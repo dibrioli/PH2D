@@ -82,6 +82,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐ A LEITURA VIVA — o que ele faz AGORA, do `NavNow` que a ponte publica.
         "panel.inspector.nav.idle" => "Idle.",
         "panel.inspector.nav.moving_x_m_to_go" => "Moving \u{b7} {dist} m to go",
+        "panel.inspector.nav.giving_way_x_m_to_go" => "Giving way \u{b7} {dist} m to go",
         "panel.inspector.nav.cant_reach_x_m" => {
             "Can\u{2019}t reach it \u{b7} going to the nearest point, {dist} m"
         }

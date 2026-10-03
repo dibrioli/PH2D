@@ -1160,6 +1160,7 @@ fn arma_o_top20() {
                 estado: NavEstado::Parcial,
                 restante: 12.5,
                 raio: 0.35,
+                dando_passagem: false,
             }),
             // Um `Start` com nome pô-lo a andar atrás de outro: a frase da ordem é mais uma linha.
             ordem: Some(true),

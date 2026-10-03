@@ -277,6 +277,7 @@ fn a_leitura_viva_sai_do_nav_now() {
         radius: 0.65,
         ordem: None,
         alvo_da_ordem: 0,
+        avanco: 1.0,
     });
     assert_eq!(
         agente_de(&sim, agente).agora,
@@ -284,6 +285,7 @@ fn a_leitura_viva_sai_do_nav_now() {
             estado: NavEstado::Parcial,
             restante: 3.25,
             raio: 0.65,
+            dando_passagem: false,
         })
     );
 }

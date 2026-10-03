@@ -137,6 +137,9 @@ pub struct NavAgora {
     pub restante: f32,
     /// O raio com que ele procura o caminho — o autorado, ou o DERIVADO do colisor.
     pub raio: f32,
+    /// ⭐ A DAR PASSAGEM: outro corpo cortou-lhe o pedido e o desvio tirou-lhe mais de metade da
+    /// rapidez pelo caminho. Sem isto um agente travado pela multidão lia-se *Moving*.
+    pub dando_passagem: bool,
 }
 
 /// Os campos do agente, mais as perguntas que decidem se a ponte o conduz.

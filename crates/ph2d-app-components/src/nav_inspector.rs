@@ -29,6 +29,15 @@ use ph2d_physics_ecs::{
 };
 
 /// O estado da ponte, no vocabulário do painel.
+/// ⭐ **Abaixo desta fracção da rapidez, travado por OUTRO corpo, ele DÁ PASSAGEM** — o `NavNow::avanco`.
+///
+/// Medido na cena `=2` (8 agentes cruzam a porta, 900 tiques), transições da leitura por limiar:
+/// `0,99` → 40 · `0,9` → 39 · `0,75` → 40 · **`0,5` → 34** · `0,25` → 18 · `0,1` → 16. A metade lê-se
+/// (≈ 4 trocas por agente numa travessia, nunca a piscar por tique) e só acusa quem perdeu mais do que
+/// ganhou. ⚠️ O «por OUTRO corpo» é a metade que importa: só pela rapidez, o agente SOZINHO no
+/// labirinto `=1` acusava 58 de 369 tiques (a quina também trava); com ela, zero.
+pub const AVANCO_DE_QUEM_DA_PASSAGEM: f32 = 0.5;
+
 fn estado(s: NavStatus) -> NavEstado {
     match s {
         NavStatus::Idle => NavEstado::Parado,
@@ -116,6 +125,7 @@ fn info_do_agente(world: &World, e: Entity, a: &NavAgent) -> InspectorNavAgent {
             estado: estado(n.status),
             restante: n.remaining,
             raio: n.radius,
+            dando_passagem: n.avanco < AVANCO_DE_QUEM_DA_PASSAGEM,
         }),
     }
 }

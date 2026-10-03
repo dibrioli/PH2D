@@ -81,6 +81,9 @@ pub(super) struct NavWorld {
     pub(super) atalhos: BTreeMap<u32, Entity>,
     /// Os buffers da procura (reaproveitados; nenhum estado entre consultas).
     search: Polyanya,
+    /// O AVANÇO do último desvio quando OUTRO corpo cortou o pedido: a fracção da rapidez que ele
+    /// deixou ir pelo caminho (ausente = `1`). Derivado por tique; só o `NavNow` o lê.
+    pub(super) avanco: BTreeMap<Entity, f32>,
     /// Os factos DESTE tique, à espera da porta de depois do passo.
     tick_events: Vec<NavEvent>,
     /// Os factos DESTE dispatch, publicados.
@@ -97,6 +100,7 @@ impl Default for NavWorld {
             rondas: BTreeMap::new(),
             arvore: ph2d_tags::TagTree::default(),
             atalhos: BTreeMap::new(),
+            avanco: BTreeMap::new(),
             search: Polyanya::new(),
             tick_events: Vec::new(),
             events: Vec::new(),
@@ -113,6 +117,7 @@ impl NavWorld {
         self.ordens = ordens::Ordens::default();
         self.rondas.clear();
         self.atalhos.clear();
+        self.avanco.clear();
         self.tick_events.clear();
         self.events.clear();
     }
@@ -477,6 +482,7 @@ impl PhysicsBridge {
             let agora = crate::NavNow {
                 ordem: ordem.ligado,
                 alvo_da_ordem: ordem.alvo,
+                avanco: self.nav.avanco.get(&e).copied().unwrap_or(1.0),
                 status: rt.status,
                 remaining: rt.remaining(pos) as f32,
                 radius: if autorado > 0.0 {

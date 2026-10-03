@@ -378,3 +378,48 @@ fn as_frases_da_w7_aparecem_quando_e_so_quando_valem() {
     l.to_perdido = true;
     assert!(frases(info(None, None, Some(l))).contains(&perdida.into()));
 }
+
+/// ⭐⭐ **A leitura diz quem MANDA e quem CEDE** — a ORDEM de um verbo e o *«Giving way»* (os dois
+/// abertos da W5/W6), pintados quando e só quando valem.
+///
+/// **Mutações que devem sangrar:** a leitura sem o ramo da passagem; a frase da ordem por pintar.
+#[test]
+fn as_frases_da_ordem_e_da_passagem_aparecem_quando_valem() {
+    use ph2d_editor_core::nav_edits::{NavAgora, NavEstado};
+    use ph2d_i18n::{tr, tr_with};
+    let a_andar = |cede: bool| {
+        let mut a = agente(true, true);
+        a.agora = Some(NavAgora {
+            estado: NavEstado::AAndar,
+            restante: 2.0,
+            raio: 0.3,
+            dando_passagem: cede,
+        });
+        a
+    };
+    let cede = tr_with("panel.inspector.nav.giving_way_x_m_to_go", &[("dist", &"2.00")]);
+    let anda = tr_with("panel.inspector.nav.moving_x_m_to_go", &[("dist", &"2.00")]);
+    let f = frases(info(Some(a_andar(true)), None, None));
+    assert!(f.contains(&cede) && !f.contains(&anda), "{f:?}");
+    let f = frases(info(Some(a_andar(false)), None, None));
+    assert!(f.contains(&anda) && !f.contains(&cede), "{f:?}");
+
+    let posto = tr("panel.inspector.nav.started_by_an_action");
+    let parado = tr("panel.inspector.nav.stopped_by_an_action");
+    let desligado = tr("panel.inspector.nav.switched_off");
+    let mut a = agente(true, true);
+    a.active = false;
+    assert!(frases(info(Some(a.clone()), None, None)).contains(&desligado.into()));
+    a.ordem = Some(true);
+    let f = frases(info(Some(a), None, None));
+    assert!(f.contains(&posto.into()) && !f.contains(&desligado.into()), "{f:?}");
+    let mut b = agente(true, true);
+    b.ordem = Some(false);
+    assert!(frases(info(Some(b), None, None)).contains(&parado.into()));
+    let mut c = agente(true, true);
+    c.ordem = Some(true);
+    c.alvo_da_ordem = "Hero".to_string();
+    let depois = tr_with("panel.inspector.nav.started_by_an_action_after_x", &[("name", &"Hero")]);
+    assert!(frases(info(Some(c), None, None)).contains(&depois));
+}
+

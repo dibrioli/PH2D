@@ -94,3 +94,54 @@ fn a_cena_contem_o_fenomeno() {
         baixo.no_fim
     );
 }
+
+/// Quantos tiques, a andar, o painel diz *«Giving way»* de um destes agentes.
+fn tiques_a_dar_passagem(sim: &mut SimWorld, agentes: &[Entity], tiques: u64) -> (u32, u32) {
+    let mut bridge = PhysicsBridge::new();
+    let (mut andar, mut passagem) = (0, 0);
+    for t in 1..=tiques {
+        bridge.dispatch(sim, true, t);
+        for &e in agentes {
+            let Some(agora) = crate::nav_inspector::build_info(sim.world(), e.to_bits(), 1, true)
+                .and_then(|i| i.agent)
+                .and_then(|a| a.agora)
+            else {
+                continue;
+            };
+            if agora.estado == ph2d_editor_core::nav_edits::NavEstado::AAndar {
+                andar += 1;
+                passagem += u32::from(agora.dando_passagem);
+            }
+        }
+    }
+    (andar, passagem)
+}
+
+/// ⭐⭐ **Quem DÁ PASSAGEM na porta diz que dá** — e o agente SOZINHO no labirinto nunca o diz (a
+/// quina também o trava, mas não é passagem a ninguém: o CONTROLO que acusava 58 de 369 tiques).
+///
+/// **Mutações que devem sangrar:** o avanço sem a pergunta «foi OUTRO corpo?»; a leitura sem o
+/// `dando_passagem`.
+#[test]
+fn quem_da_passagem_na_porta_diz_que_da() {
+    let mut sim = SimWorld::new();
+    let p = crate::nav_smoke::montar(sim.world_mut(), 2)
+        .porta
+        .expect("a cena =2 é a porta");
+    let (andar, passagem) = tiques_a_dar_passagem(&mut sim, &p.vermelhos, 900);
+    assert!(
+        passagem > 0 && passagem < andar,
+        "na porta, {passagem} de {andar} tiques a dar passagem"
+    );
+
+    let mut sim = SimWorld::new();
+    let l = crate::nav_smoke::montar(sim.world_mut(), 1)
+        .labirinto
+        .expect("a cena =1 é o labirinto");
+    sim.world_mut().despawn(l.roxo);
+    sim.world_mut().despawn(l.controlo);
+    let (andar, passagem) = tiques_a_dar_passagem(&mut sim, &[l.vermelho], 900);
+    assert!(andar > 100, "o vermelho sozinho andou {andar} tiques");
+    assert_eq!(passagem, 0, "sozinho, ele diz que dá passagem a ninguém");
+}
+

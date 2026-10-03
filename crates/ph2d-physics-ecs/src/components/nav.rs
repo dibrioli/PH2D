@@ -224,4 +224,8 @@ pub struct NavNow {
     pub ordem: Option<bool>,
     /// O alvo que um `Start` com nome lhe deu (`stable_name_id`; `0` = o autorado).
     pub alvo_da_ordem: u64,
+    /// A fracção da rapidez que o DESVIO deixou ir pelo caminho no último tique, quando OUTRO corpo
+    /// lhe cortou o pedido (`1` = ninguém o travou — as paredes sozinhas não contam; `≤ 0` = parado,
+    /// ou a recuar, para dar passagem).
+    pub avanco: f32,
 }

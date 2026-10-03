@@ -211,7 +211,8 @@ seção <b><code class="ui">Nav Agent</code></b>.</p>
   </div>
   <ul class="cal">
     <li>A primeira linha diz o que ele está fazendo <b>agora</b>: <code class="ui">Moving</code>,
-        <code class="ui">going to the nearest point</code> (o herói está onde ele não pode ir — na
+        <code class="ui">Giving way</code> (outro inimigo o travou e ele cede — numa porta, por
+        exemplo), <code class="ui">going to the nearest point</code> (o herói está onde ele não pode ir — na
         lava, por exemplo), <code class="ui">Arrived.</code></li>
     <li><b><code class="ui">Target</code></b>: atrás de quem vai. <code class="ui">Object</code> é um
         objeto pelo <b>nome</b>; <code class="ui">Point</code> um ponto fixo; <code class="ui">Tag</code>
@@ -301,6 +302,12 @@ quer ver. Troque o número no fim do comando: <code>PH2D_NAV_SMOKE=1</code> a <c
   <tr><td><code class="ui">also reads the keys</code></td>
       <td>o Top-Down Player ainda obedece às setas</td>
       <td>desligue o <code class="ui">Default Controls</code> dele</td></tr>
+  <tr><td><code class="ui">Stopped by an action</code></td>
+      <td>um <code class="ui">Stop Navigation</code> de uma tabela de ações o parou</td>
+      <td>um <code class="ui">Start Navigation</code>, ou recomeçar</td></tr>
+  <tr><td><code class="ui">Started by an action</code></td>
+      <td>um <code class="ui">Start Navigation</code> o pôs a andar, mesmo com o <code class="ui">Active</code> desmarcado</td>
+      <td>nada — a caixa é como ele começa</td></tr>
   <tr><td><code class="ui">The clock is stopped</code></td><td>o relógio está parado</td>
       <td>aperte <kbd>Espaço</kbd></td></tr>
   <tr><td><code class="ui">nothing hurts it, so it avoids nothing</code></td>

@@ -231,11 +231,25 @@ impl Crowd {
         walls: impl Fn(usize) -> Option<(&'w Walls, f64)>,
         dt: f64,
     ) -> Vec<V2> {
+        self.solve_all_why(walls, dt)
+            .into_iter()
+            .map(|(v, _)| v)
+            .collect()
+    }
+
+    /// [`Self::solve_all`], e para cada agente se foi OUTRO corpo a cortar-lhe a velocidade pedida
+    /// (o semi-plano de um vizinho a excluí-la) — as paredes sozinhas não contam. É a pergunta da
+    /// leitura *«a dar passagem»*: só a velocidade não a responde (sozinho, a quina também trava).
+    pub fn solve_all_why<'w>(
+        &mut self,
+        walls: impl Fn(usize) -> Option<(&'w Walls, f64)>,
+        dt: f64,
+    ) -> Vec<(V2, bool)> {
         let mut out = Vec::with_capacity(self.agents.len());
         for i in 0..self.agents.len() {
-            let v = self.velocity(i, walls(i), dt);
+            let (v, _, outros) = self.resolve(i, walls(i), dt);
             self.agents[i].vel = v;
-            out.push(v);
+            out.push((v, outros));
         }
         out
     }
@@ -251,9 +265,15 @@ impl Crowd {
     /// [`Self::velocity`], e por onde ela saiu.
     #[must_use]
     pub fn solve(&self, i: usize, walls: Option<(&Walls, f64)>, dt: f64) -> (V2, Regime) {
+        let (v, r, _) = self.resolve(i, walls, dt);
+        (v, r)
+    }
+
+    /// [`Self::solve`], e se um semi-plano de VIZINHO exclui a velocidade pedida.
+    fn resolve(&self, i: usize, walls: Option<(&Walls, f64)>, dt: f64) -> (V2, Regime, bool) {
         let a = self.agents[i];
         if !a.avoids {
-            return (a.vel, Regime::Free);
+            return (a.vel, Regime::Free, false);
         }
         let me = Me {
             pos: a.pos,
@@ -288,9 +308,10 @@ impl Crowd {
                 dt,
             ));
         }
+        let outros = lines[n_walls..].iter().any(|l| lp::violates(l, a.pref));
         let (v, regime) = lp::solve(&lines, n_walls, a.max_speed, a.pref);
         if regime == Regime::Free || self.params.side_bias <= 0.0 {
-            return (v, regime);
+            return (v, regime, outros);
         }
         // ⭐ **O empate SIMÉTRICO** (Q7, medido no Godot: dois frente a frente no MESMO eixo param a
         // `25 px` um do outro e ficam): o semi-plano de um vizinho alinhado é perpendicular ao
@@ -302,14 +323,15 @@ impl Crowd {
         let tirado = len(sub(a.pref, v));
         let p = len(a.pref);
         if p <= 0.0 {
-            return (v, regime);
+            return (v, regime, outros);
         }
         let direita = [a.pref[1] / p, -a.pref[0] / p];
         let pedido = [
             a.pref[0] + direita[0] * tirado * self.params.side_bias,
             a.pref[1] + direita[1] * tirado * self.params.side_bias,
         ];
-        lp::solve(&lines, n_walls, a.max_speed, pedido)
+        let (v, regime) = lp::solve(&lines, n_walls, a.max_speed, pedido);
+        (v, regime, outros)
     }
 }
 

@@ -188,6 +188,9 @@ fn leitura(
     let dist = format!("{:.2}", agora.restante);
     let texto = match agora.estado {
         NavEstado::Parado => tr("panel.inspector.nav.idle").to_string(),
+        NavEstado::AAndar if agora.dando_passagem => {
+            tr_with("panel.inspector.nav.giving_way_x_m_to_go", &[("dist", &dist)])
+        }
         NavEstado::AAndar => tr_with("panel.inspector.nav.moving_x_m_to_go", &[("dist", &dist)]),
         NavEstado::Parcial => tr_with("panel.inspector.nav.cant_reach_x_m", &[("dist", &dist)]),
         NavEstado::Chegou => tr("panel.inspector.nav.arrived").to_string(),
@@ -242,7 +245,7 @@ fn avisos(
         let frase = if nome.is_empty() {
             tr("panel.inspector.nav.started_by_an_action").to_owned()
         } else {
-            tr("panel.inspector.nav.started_by_an_action_after_x").replace("{name}", nome)
+            tr_with("panel.inspector.nav.started_by_an_action_after_x", &[("name", &nome)])
         };
         cur_y = super::rows::aviso(scene, text_system, theme, x, w, cur_y, &frase, ColorToken::Text3);
     }

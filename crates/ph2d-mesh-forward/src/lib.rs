@@ -179,6 +179,8 @@ mod tests_chao;
 #[cfg(test)]
 mod tests_chao_tapa;
 #[cfg(test)]
+mod tests_chao_tapa_baixo;
+#[cfg(test)]
 mod tests_contacto;
 #[cfg(test)]
 mod tests_custo_chao;

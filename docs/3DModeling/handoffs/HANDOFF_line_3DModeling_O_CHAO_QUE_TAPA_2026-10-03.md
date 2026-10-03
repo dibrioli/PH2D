@@ -98,13 +98,17 @@ o resíduo da cena de 3 peças vem dos vizinhos).
 | 3.º anel nos quantis `1/6, 1/2, 5/6` | mais perto do lóbulo denso na CPU, NADA contra o Cycles na placa (`0,0236 → 0,0235`): o resíduo é o pré-filtro `n=v=r`, não a amostragem |
 | Direcções desenroladas | mesmo custo do laço, shader maior |
 | O cinzento por omissão no gate difuso | o especular dele lê o chão escuro; o Cycles do oráculo é difuso |
-| Texels inválidos do céu do chão lidos como `0` | ficam `1` (como a leitura do próprio chão); sob uma peça pousada essas direcções atravessam a peça, e o contacto já as conta |
+| ⛔⛔ Texels inválidos (DENTRO de uma peça pousada) lidos como `1` pela lei | **REVOGADO pelo report do dono**: o reflexo do cromo via a base das vizinhas ACESA e a base de cada peça (que só vê o chão debaixo dela) não escurecia — vista de baixo, base `0,3701` (máx `1,0`) contra o Cycles. A lei lê agora `ceu_do_chao_tapado` (`V × validade` cru: dentro = `0`, às escuras); a sombra do chão continua a ler `1` dentro (`ceu_do_chao`). Base `0,0107` |
+| A régua ABSOLUTA (`com/solo`) a afirmar o reflexo de cima | dominada pelo contacto suave, que não faz reflexos nítidos das vizinhas (áspero `0,060` contra `0,021` na razão); imprime-se, não afirma |
+| Não pintar o chão visto de baixo (guarda em `escuro_do_chao`) | código morto: o chão desenha-se PRIMEIRO sem escrever profundidade e as peças pintam por cima — a mutação sobreviveu; saiu |
 
 ## §4 — Gates e mutações
 
 Todos verdes com `PH2D_GPU=1`. `ph2d-mesh-forward`: `a_lei_do_chao_que_tapa_e_o_integral` (CPU) ·
 `o_reflexo_e_o_lobo` (CPU, `--release` recomendado) · `o_chao_tapa_as_pecas_como_no_cycles` ·
-`o_reflexo_do_chao_e_o_do_cycles` (3 materiais) · `a_memoria_do_pixel_nao_troca_respostas`
+`o_reflexo_do_chao_e_o_do_cycles` (3 materiais; a razão afirma, a absoluta imprime-se) ·
+`o_chao_visto_de_baixo_e_o_do_cycles` (`tests_chao_tapa_baixo.rs`, fixtura `oraculo_chao_tapa_baixo.csv`) ·
+`a_memoria_do_pixel_nao_troca_respostas`
 (`tests_passe_chao_tapa.rs`, `65 536` px) · instrumento `instrumento_custo_chao_tapa`. `ph2d-app-field3d`:
 `o_chao_que_tapa_chega_ao_quadro_do_render`.
 
@@ -123,9 +127,20 @@ do Render (desenhista GLOBAL; o handoff anterior dizia três) e
 `layout::every_still_viewport_settles_not_only_the_active_one` (relógio de `3 s` sob load `8`) · clippy
 `-D warnings` limpo · fmt limpo.
 
+**Depois do report do dono** (`ceu_do_chao_tapado`; load `~2`): de baixo difusa `0,0133` (máx `0,098`), na
+base `0,0107` (máx `0,074`; sem a lei `0,6748`), espelho `0,0027` / base `0,0055` — com o chão debaixo das
+peças lido aceso `0,1306` / base `0,3701` (VERMELHO). De cima: difusa `0,0095` / `0,0125` / máx `0,066` (era
+`0,0098` / `0,0130` / `0,074`), viés da barriga `+0,0064`; reflexo (razão) nítido `0,0030` / `0,0083`, áspero
+`0,0206` / `0,0304` (era `0,0155` / `0,0268`: a direcção que vai à base de uma vizinha conta duas vezes na
+nossa razão e uma no Cycles), verniz `0,0195` / `0,0298`. Suíte `ph2d-mesh-forward` `33/33` com placa;
+costura do app `3 460` px `> 5 %`, `× 0,472`, nenhum clareia.
+
 ## §5 — ABERTO
 
-- **Contagem dupla** onde um vizinho está sobre o seu próprio chão escuro (máx `0,074`).
+- **Contagem dupla** onde um vizinho está sobre o seu próprio chão escuro (máx `0,066`).
+- ⚠️ **O cromo não reflete as OUTRAS peças**, só céu e chão: onde ele devia ver a bola pequena vê a sombra
+  dela no chão — uma faixa escura estreita junto ao horizonte do reflexo (era cinzenta clara antes do report).
+  É o limite de todo reflexo por sonda sem reflexos em espaço de ecrã; candidato a item próprio.
 - O resíduo do reflexo áspero é o pré-filtro `n=v=r` (o alongamento rasante não está modelado).
 - A direcção de `ceu_de_baixo` é INVISÍVEL ao oráculo de céu uniforme (`L_baixo = L` em todo o lado) —
   declarado; um oráculo de céu em rampa a gateava.
@@ -157,7 +172,13 @@ dele e das vizinhas, e a bola grande fecha escura onde encosta.
 
 ## §7 — Reports do dono
 
-- pendente (smoke enviado ao dono 03/10).
+- ⛔ **Report 1 (03/10)**, 3 fotos de cima e de baixo: *«de forma muito bizarra o reflexo da esfera reflete a
+  base oculta dos outros objetos (a parte colada ao chão)»* — manchas cinzentas no cromo, uma cruz clara na base
+  da bola branca vista de baixo, um retângulo claro na base da caixa. Mecanismo: a lei lia o chão DENTRO da
+  pegada de uma peça pousada como aceso (§3). Gate red-first `o_chao_visto_de_baixo_e_o_do_cycles` (base
+  `0,3701 → 0,0107`). Fotos da sonda de cima (`PITCH 0.25`) e de baixo (`−0.35`): base da caixa preta inteira,
+  sem cruz; no cromo a mancha virou a sombra escura da bola pequena (§5).
+- pendente: o smoke do dono depois da cura.
 
 ## §8 — A PRÓXIMA ONDA
 

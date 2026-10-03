@@ -14,13 +14,21 @@
 #             exactamente `(1 + n.y)/2` do céu (o semi-espaço de baixo apagado).
 # E o REFLEXO: as peças, para a câmara, passam a um metal branco (Glossy GGX) — `espelho` (rugosidade
 # 0) e `aspero` (rugosidade 0,5, α = 0,25), cada um sem e com o chão branco: o reflexo do chão escuro
-# do contacto. E o VERNIZ: Principled metal branco de rugosidade 0,5 com verniz (Coat) nítido de
+# do contacto. `*_solo`: o mesmo metal com as peças invisíveis a todo raio que não seja da câmara e sem
+# chão — cada uma vê só o céu: a resposta SOZINHA que normaliza a régua absoluta. E o VERNIZ: Principled metal branco de rugosidade 0,5 com verniz (Coat) nítido de
 # índice 1,5 — duas perguntas de reflexo com rugosidades diferentes no MESMO pixel.
 #
 # Corra (o arnês põe o Cycles na fatia da linha):
 #   cd <worktree> && bash scripts/ph2d-run.sh blender -b -X --python \
 #       docs/3DModeling/ferramentas/oraculo_chao_tapa_blender.py -- \
 #       crates/ph2d-mesh-forward/fixtures/oraculo_chao_tapa.csv
+#
+# `-- <saida.csv> baixo`: a câmara POR BAIXO do chão (ele é invisível à câmara), a ver a base das peças
+# — o report do dono de 03/10 (o reflexo via a base oculta das vizinhas; o chão pintava-se por cima delas
+# vistas de baixo). Só as corridas `sem`, `com`, `espelho_sem` e `espelho_com`.
+#   cd <worktree> && bash scripts/ph2d-run.sh blender -b -X --python \
+#       docs/3DModeling/ferramentas/oraculo_chao_tapa_blender.py -- \
+#       crates/ph2d-mesh-forward/fixtures/oraculo_chao_tapa_baixo.csv baixo
 #
 # Convenção: o Blender é Z-para-cima; o produto é Y-para-cima. (x, y, z)_nosso = (x, z, -y)_blender.
 import os
@@ -45,6 +53,10 @@ MEIA = 0.8
 
 argv = sys.argv[sys.argv.index("--") + 1 :]
 saida = argv[0]
+BAIXO = len(argv) > 1 and argv[1] == "baixo"
+if BAIXO:
+    DE = (0.5, -0.5, 0.8)
+    ALVO = (0.0, 0.1, 0.15)
 
 
 def b(p):
@@ -186,30 +198,52 @@ p_sem = corre("sem", AMOSTRAS)
 chao.hide_render = False
 p_com = corre("com", AMOSTRAS)
 chao_dif.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1.0)
-p_preto = corre("preto", AMOSTRAS_PRETO)
+p_preto = p_com if BAIXO else corre("preto", AMOSTRAS_PRETO)
 chao_dif.inputs["Color"].default_value = (1.0, 1.0, 1.0, 1.0)
 nt.links.new(metal.outputs["BSDF"], mix.inputs[2])
 s.cycles.glossy_bounces = 1
 brilho = {}
-for nome, rug in (("espelho", 0.0), ("aspero", 0.5)):
+pecas_obj = [o for o in s.objects if o.pass_index >= 1]
+
+
+def solo(nome):
+    """O metal com as peças invisíveis aos ricochetes e às sombras, e sem chão: só o céu."""
+    for o in pecas_obj:
+        o.visible_glossy = o.visible_diffuse = o.visible_shadow = o.visible_transmission = False
+    chao.hide_render = True
+    brilho[nome + "_solo"] = canal(corre(nome + "_solo", AMOSTRAS_PRETO), "Combined.R")
+    chao.hide_render = False
+    for o in pecas_obj:
+        o.visible_glossy = o.visible_diffuse = o.visible_shadow = o.visible_transmission = True
+
+
+for nome, rug in (("espelho", 0.0),) if BAIXO else (("espelho", 0.0), ("aspero", 0.5)):
     metal.inputs["Roughness"].default_value = rug
     chao.hide_render = True
     brilho[nome + "_sem"] = canal(corre(nome + "_sem", AMOSTRAS_PRETO), "Combined.R")
     chao.hide_render = False
     brilho[nome + "_com"] = canal(corre(nome + "_com", AMOSTRAS_PRETO), "Combined.R")
-verniz = nt.nodes.new("ShaderNodeBsdfPrincipled")
-verniz.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
-verniz.inputs["Metallic"].default_value = 1.0
-verniz.inputs["Roughness"].default_value = 0.5
-verniz.inputs["Coat Weight"].default_value = 1.0
-verniz.inputs["Coat Roughness"].default_value = 0.0
-verniz.inputs["Coat IOR"].default_value = 1.5
-nt.links.new(verniz.outputs["BSDF"], mix.inputs[2])
-chao.hide_render = True
-brilho["verniz_sem"] = canal(corre("verniz_sem", AMOSTRAS_PRETO), "Combined.R")
-chao.hide_render = False
-brilho["verniz_com"] = canal(corre("verniz_com", AMOSTRAS_PRETO), "Combined.R")
-BRILHO = ("espelho_sem", "espelho_com", "aspero_sem", "aspero_com", "verniz_sem", "verniz_com")
+    solo(nome)
+if BAIXO:
+    # Em baixo só o difuso e o espelho: as colunas do áspero e do verniz repetem o `espelho_sem`.
+    for k in ("aspero_sem", "aspero_com", "verniz_sem", "verniz_com", "aspero_solo", "verniz_solo"):
+        brilho[k] = brilho["espelho_sem"]
+else:
+    verniz = nt.nodes.new("ShaderNodeBsdfPrincipled")
+    verniz.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+    verniz.inputs["Metallic"].default_value = 1.0
+    verniz.inputs["Roughness"].default_value = 0.5
+    verniz.inputs["Coat Weight"].default_value = 1.0
+    verniz.inputs["Coat Roughness"].default_value = 0.0
+    verniz.inputs["Coat IOR"].default_value = 1.5
+    nt.links.new(verniz.outputs["BSDF"], mix.inputs[2])
+    chao.hide_render = True
+    brilho["verniz_sem"] = canal(corre("verniz_sem", AMOSTRAS_PRETO), "Combined.R")
+    chao.hide_render = False
+    brilho["verniz_com"] = canal(corre("verniz_com", AMOSTRAS_PRETO), "Combined.R")
+    solo("verniz")
+BRILHO = ("espelho_sem", "espelho_com", "aspero_sem", "aspero_com", "verniz_sem", "verniz_com",
+          "espelho_solo", "aspero_solo", "verniz_solo")
 
 sem = canal(p_sem, "Combined.R")
 com = canal(p_com, "Combined.R")
@@ -228,7 +262,7 @@ for j in range(LADO):
         p = nosso(tuple(le(c, i, j) for c in pos))
         n = nosso(tuple(le(c, i, j) for c in nrm))
         o = int(round(le(idx, i, j)))
-        if vs > 0.995:
+        if vs > 0.995 and not BAIXO:
             controlo.append(abs(vp - (1.0 + n[1]) / 2.0))
         linhas.append(
             f"{i},{j},{o},{p[0]:.5f},{p[1]:.5f},{p[2]:.5f},{n[0]:.5f},{n[1]:.5f},{n[2]:.5f},"
@@ -242,11 +276,15 @@ with open(saida, "w") as f:
             f"em y = 0 invisível à câmara; peças brancas à câmara e pretas aos ricochetes.\n")
     f.write("# Gerado por docs/3DModeling/ferramentas/oraculo_chao_tapa_blender.py — NÃO editar à mão.\n")
     f.write(f"# CENA lado={LADO} caixa={CAIXA} esferas={ESFERAS} de={DE} alvo={ALVO} meia={MEIA}\n")
-    f.write(f"# CONTROLO da forma fechada: nos {len(controlo)} px que nada tapa, |preto − (1 + n.y)/2| médio "
-            f"{ctl:.4f}.\n")
+    if BAIXO:
+        f.write("# VISTA DE BAIXO (o chão invisível à câmara): sem corrida `preto` — a coluna repete `com`; "
+                "as do áspero e do verniz repetem `espelho_sem`.\n")
+    else:
+        f.write(f"# CONTROLO da forma fechada: nos {len(controlo)} px que nada tapa, |preto − (1 + n.y)/2| "
+                f"médio {ctl:.4f}.\n")
     f.write("# obj: 1 = caixa, 2.. = as esferas pela ordem; p e n no MUNDO nosso; sem/com/preto = E/π da "
             "difusa; espelho_*/aspero_* = o metal branco de rugosidade 0 / 0,5, sem e com o chão; verniz_* = o "
-            "metal 0,5 com verniz nítido.\n")
+            "metal 0,5 com verniz nítido; *_solo = o metal com as peças a ver só o céu.\n")
     f.write("i,j,obj,x,y,z,nx,ny,nz,sem,com,preto," + ",".join(BRILHO) + "\n")
     f.write("\n".join(linhas) + "\n")
 print(f"ORACULO: {len(linhas)} linhas em {saida} · controlo {ctl:.4f} sobre {len(controlo)} px")

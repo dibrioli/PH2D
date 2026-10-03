@@ -216,7 +216,7 @@ const TAP: &str = r"fn reflexo_tap(p: vec3<f32>, r: vec3<f32>, h: f32, phi: f32,
         return vec2<f32>(0.0, cf);
     }
     let x = p + d * (h / -d.y);
-    return vec2<f32>(cf * (1.0 - ceu_do_chao(vec3<f32>(x.x, quadro.chao.x, x.z))), cf);
+    return vec2<f32>(cf * (1.0 - ceu_do_chao_tapado(vec3<f32>(x.x, quadro.chao.x, x.z))), cf);
 }
 ";
 
@@ -226,19 +226,30 @@ const FECHA_REFLEXO: &str = "    if (b.y <= 0.0) {
     return b.x / b.y;
 ";
 
-/// A porta da visibilidade do céu do chão (`ceu_chao.wgsl`, pré-multiplicada pela validade): `1` sem
-/// chão, fora do quadro ou dentro de uma peça pousada. Lê-a também a sombra do chão.
-const CEU_DO_CHAO: &str = r"fn ceu_do_chao(p: vec3<f32>) -> f32 {
+/// A porta da visibilidade do céu do chão (`ceu_chao.wgsl`): `(V × validade, validade)` filtradas,
+/// `(1, 1)` sem chão ou fora do quadro. Dois leitores, duas leituras do DENTRO de uma peça pousada:
+/// - `ceu_do_chao` (a sombra do chão): `V` das vizinhas válidas, `1` dentro — a peça tapa esse chão;
+/// - `ceu_do_chao_tapado` (esta lei): o chão debaixo de uma peça encostada está ÀS ESCURAS, `0`.
+///   ⛔ Lido como `1`, o reflexo do cromo via a base das vizinhas ACESA (report do dono, 03/10).
+const CEU_DO_CHAO: &str = r"fn ceu_do_chao_cru(p: vec3<f32>) -> vec2<f32> {
     if (quadro.sombra.w < 0.5) {
-        return 1.0;
+        return vec2<f32>(1.0);
     }
     let c = quadro.ceu_vp * vec4<f32>(p, 1.0);
     let uv = vec2<f32>(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);
     if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
-        return 1.0;
+        return vec2<f32>(1.0);
     }
-    let s = textureSampleLevel(ceu_chao, liso, uv, 0.0);
-    return select(1.0, s.r / s.g, s.g > 1.0e-3);
+    return textureSampleLevel(ceu_chao, liso, uv, 0.0).rg;
+}
+
+fn ceu_do_chao(p: vec3<f32>) -> f32 {
+    let s = ceu_do_chao_cru(p);
+    return select(1.0, s.x / s.y, s.y > 1.0e-3);
+}
+
+fn ceu_do_chao_tapado(p: vec3<f32>) -> f32 {
+    return ceu_do_chao_cru(p).x;
 }
 ";
 
@@ -248,7 +259,7 @@ const RAIO: &str = r"fn chao_raio(p: vec3<f32>, n: vec3<f32>, h: f32, d: vec3<f3
         return vec2<f32>(0.0);
     }
     let x = p + d * (h / -d.y);
-    return vec2<f32>(w * (1.0 - ceu_do_chao(vec3<f32>(x.x, quadro.chao.x, x.z))), w);
+    return vec2<f32>(w * (1.0 - ceu_do_chao_tapado(vec3<f32>(x.x, quadro.chao.x, x.z))), w);
 }
 ";
 

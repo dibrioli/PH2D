@@ -18,7 +18,7 @@ const DE: [f32; 3] = [0.6, 0.15, 1.0];
 const ALVO: [f32; 3] = [0.0, 0.2, 0.15];
 const MEIA: f32 = 0.8;
 /// As peças do oráculo, pela ordem do índice dele (`1` = a caixa).
-const PECAS: [Peca; 3] = [
+pub(crate) const PECAS: [Peca; 3] = [
     ([0.4, 0.2, -0.05], 0.2, true),
     ([-0.45, 0.3, 0.0], 0.3, false),
     ([0.05, 0.21, 0.5], 0.15, false),
@@ -114,10 +114,10 @@ fn a_lei_do_chao_que_tapa_e_o_integral() {
 }
 
 /// O resto de uma linha do oráculo: a difusa com o chão e o metal (`espelho_sem`, `espelho_com`,
-/// `aspero_sem`, `aspero_com`, `verniz_sem`, `verniz_com`).
-struct Linha {
-    com: f32,
-    brilho: [f32; 6],
+/// `aspero_sem`, `aspero_com`, `verniz_sem`, `verniz_com`, e os `*_solo` — cada peça a ver só o céu).
+pub(crate) struct Linha {
+    pub(crate) com: f32,
+    pub(crate) brilho: [f32; 9],
 }
 
 /// O lobo do pré-filtro com `n = v = r`, denso: `∫ (1 − V) D(h) (r·l) dl / ∫ D(h) (r·l) dl`.
@@ -189,7 +189,12 @@ fn o_reflexo_e_o_lobo() {
 }
 
 fn oraculo() -> (Vec<Ponto>, Vec<Linha>) {
-    ORACULO
+    oraculo_de(ORACULO)
+}
+
+/// As linhas de um oráculo do chão que tapa (o de cima ou o de baixo — as mesmas colunas).
+pub(crate) fn oraculo_de(texto: &'static str) -> (Vec<Ponto>, Vec<Linha>) {
+    texto
         .lines()
         .filter(|l| !l.starts_with('#'))
         .skip(1)
@@ -203,7 +208,7 @@ fn oraculo() -> (Vec<Ponto>, Vec<Linha>) {
                 n: norm([c[6], c[7], c[8]]),
                 vis: c[9],
             };
-            let brilho = [c[12], c[13], c[14], c[15], c[16], c[17]];
+            let brilho: [f32; 9] = std::array::from_fn(|k| c[12 + k]);
             (p, Linha { com: c[10], brilho })
         })
         .unzip()
@@ -212,7 +217,7 @@ fn oraculo() -> (Vec<Ponto>, Vec<Linha>) {
 /// A difusa SÓ — a do oráculo. ⚠️ Com o realce do cinzento de omissão a barriga lia `−0,05`: de
 /// raspão o realce pesa, e o reflexo nítido lê o chão escuro do contacto — física nossa que o Cycles
 /// (difusa branca) não tem.
-fn difusa() -> [f32; ph2d_material::wgsl::PACKED] {
+pub(crate) fn difusa() -> [f32; ph2d_material::wgsl::PACKED] {
     empacota(ph2d_material::OpenPbr {
         specular_weight: 0.0,
         ..ph2d_material::OpenPbr::default()
@@ -220,7 +225,7 @@ fn difusa() -> [f32; ph2d_material::wgsl::PACKED] {
 }
 
 /// O metal branco do oráculo, de rugosidade `r`.
-fn metal(r: f32) -> [f32; ph2d_material::wgsl::PACKED] {
+pub(crate) fn metal(r: f32) -> [f32; ph2d_material::wgsl::PACKED] {
     empacota(ph2d_material::OpenPbr {
         base_color: [1.0; 3],
         base_metalness: 1.0,
@@ -253,6 +258,16 @@ fn desenha(fw: &mut Forward, chao: bool) -> Vec<u8> {
 }
 
 fn desenha_de(fw: &mut Forward, chao: bool, mat: [f32; ph2d_material::wgsl::PACKED]) -> Vec<u8> {
+    desenha_em(fw, chao, mat, camera_do_blender(DE, ALVO, MEIA))
+}
+
+/// As peças do oráculo com `mat`, da câmara `cam`, com o chão (e a caixa de sombra) ou sem nada.
+pub(crate) fn desenha_em(
+    fw: &mut Forward,
+    chao: bool,
+    mat: [f32; ph2d_material::wgsl::PACKED],
+    cam: crate::Camera,
+) -> Vec<u8> {
     let objs: Vec<Instancia> = PECAS
         .iter()
         .enumerate()
@@ -266,7 +281,7 @@ fn desenha_de(fw: &mut Forward, chao: bool, mat: [f32; ph2d_material::wgsl::PACK
         })
         .collect();
     let mats = [mat];
-    let mut c = cena(&objs, &mats, camera_do_blender(DE, ALVO, MEIA));
+    let mut c = cena(&objs, &mats, cam);
     c.tamanho = (LADO, LADO);
     if chao {
         c.chao = Some(0.0);
@@ -359,55 +374,73 @@ fn o_chao_tapa_as_pecas_como_no_cycles() {
 }
 
 /// ⭐⭐ **O reflexo do chão é o do Cycles** — as peças num metal branco: o reflexo nítido lê o chão
-/// onde o raio o acerta, o áspero a média de cosseno à volta (`chao_tapa.rs`). Compara-se a RAZÃO
-/// com/sem chão (a mesma câmara, as grelhas nas duas), que tira o albedo direccional do metal.
-/// Controlo: a razão sem a lei é `1`, e o erro é o escurecimento.
+/// onde o raio o acerta, o áspero o lobo à volta (`chao_tapa.rs`). A régua que AFIRMA é a razão
+/// com/sem chão (a mesma câmara, as grelhas nas duas): isola a lei do chão. ⚠️ Ela conta a direcção
+/// que vai à base de uma VIZINHA duas vezes no nosso lado (o contacto suave nas duas, o chão escuro só
+/// no `com`) e uma no Cycles (a vizinha tapa nas duas): ler essa base escura — o certo, e o report do
+/// dono — custa `+0,005` aqui. A régua ABSOLUTA (tudo sobre nada, contra o `solo` do Cycles) imprime-se
+/// ao lado e não afirma: é dominada pelo contacto suave, que não faz reflexos nítidos das vizinhas
+/// (áspero `0,060` contra `0,021` na razão). Controlo: sem a lei a razão é `1`, e o erro é o escurecimento.
 #[test]
 #[ignore = "precisa de aparelho"]
 fn o_reflexo_do_chao_e_o_do_cycles() {
-    let Some(mut fw) = desenhista_de(&PECAS, true) else {
+    let (Some(mut fw), Some(mut nua)) = (desenhista_de(&PECAS, true), desenhista_de(&PECAS, false))
+    else {
         eprintln!("sem aparelho — o gate não corre aqui");
         return;
     };
     let (pontos, linhas) = oraculo();
     let base = desenha(&mut fw, false);
     let borda = bordas(&pontos, &base);
-    // Medido (03/10): nítido médio `0,0030`, onde o chão escurece `0,0082` (sem a lei `0,0801`); áspero
-    // `0,0155` / `0,0268` (sem a lei `0,0883`); com verniz nítido `0,0147` / `0,0265` (sem a lei `0,0881`).
+    // Medido (03/10, a razão): nítido `0,0030` / onde o chão escurece `0,0083` (sem a lei `0,0801`);
+    // áspero `0,0206` / `0,0304` (sem `0,0883`); com verniz `0,0195` / `0,0298` (sem `0,0881`). Com a base
+    // das vizinhas lida ACESA (antes do report) o áspero dava `0,0155` / `0,0268` — ver o doc do gate.
     for (k, nome, mat, barra) in [
         (0usize, "metal nítido", metal(0.0), (0.005f32, 0.012f32)),
-        (1, "metal áspero", metal(0.5), (0.02, 0.035)),
-        (2, "metal áspero com verniz", envernizado(), (0.02, 0.035)),
+        (1, "metal áspero", metal(0.5), (0.025, 0.038)),
+        (2, "metal áspero com verniz", envernizado(), (0.025, 0.038)),
     ] {
-        let (com, sem) = (
+        let (com, sem, so) = (
             desenha_de(&mut fw, true, mat),
             desenha_de(&mut fw, false, mat),
+            desenha_de(&mut nua, false, mat),
         );
         let (mut n, mut s, mut s_ctl, mut nb, mut sb) = (0usize, 0.0f32, 0.0f32, 0usize, 0.0f32);
+        let (mut sa, mut sba) = (0.0f32, 0.0f32);
         for (p, l) in pontos.iter().zip(&linhas) {
-            let (cs, cc) = (l.brilho[2 * k], l.brilho[2 * k + 1]);
+            let (cs, cc, solo) = (l.brilho[2 * k], l.brilho[2 * k + 1], l.brilho[6 + k]);
             let i = ((p.j * LADO + p.i) * 4 + 1) as usize;
-            let lb = linear(sem[i]);
-            if borda[(p.j * LADO + p.i) as usize] || lb < 0.05 || cs < 0.05 {
+            let (lc, ls, lo) = (linear(com[i]), linear(sem[i]), linear(so[i]));
+            if borda[(p.j * LADO + p.i) as usize]
+                || ls < 0.05
+                || lo < 0.05
+                || cs < 0.05
+                || solo < 0.05
+            {
                 continue;
             }
-            let (nosso, ciclos) = (linear(com[i]) / lb, cc / cs);
-            let e = (nosso - ciclos).abs();
+            let ciclos = cc / cs;
+            let e = (lc / ls - ciclos).abs();
+            let ea = (lc / lo - cc / solo).abs();
             s += e;
+            sa += ea;
             s_ctl += (1.0 - ciclos).abs();
             n += 1;
             if ciclos < 0.9 {
                 sb += e;
+                sba += ea;
                 nb += 1;
             }
         }
         let (nf, nbf) = (n as f32, nb as f32);
         eprintln!(
-            "{nome}: {n} px · |Δ| da razão médio {:.4} · onde o chão escurece ({nb} px) {:.4} · \
-             SEM a lei {:.4}",
+            "{nome}: {n} px · razão com/sem |Δ| médio {:.4} · onde o chão escurece ({nb} px) {:.4} · SEM a lei \
+             {:.4} · (absoluta, contra o `solo`: {:.4} / {:.4})",
             s / nf,
             sb / nbf,
-            s_ctl / nf
+            s_ctl / nf,
+            sa / nf,
+            sba / nbf
         );
         assert!(n > 4000 && nb > 300, "a fixtura encolheu: {n} / {nb} px");
         assert!(

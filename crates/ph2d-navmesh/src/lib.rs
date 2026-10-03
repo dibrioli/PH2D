@@ -135,21 +135,50 @@ pub fn build_with_areas(
         let merged = union_subjects_64(&holes, FillRule::NonZero);
         difference_64(&vec![to_path(&reg)], &merged, FillRule::NonZero)
     };
-    // Os PEDAÇOS: o chão comum e, por área, o que dela cai no chão e nenhuma anterior reclamou.
+    let aneis_das_areas: Vec<(Vec<lattice::P>, u16)> = areas
+        .iter()
+        .map(|a| (inflate::inflate(&a.shape, r, params.corner, n), a.id))
+        .collect();
+    let feito =
+        poligonos(walk, &aneis_das_areas, params.merge).map_err(BuildError::Triangulation)?;
+    stats.rings = feito.rings;
+    stats.ring_verts = feito.ring_verts;
+    stats.triangles = feito.triangles;
+    finish(feito.pts, feito.polys, feito.ids, stats)
+}
+
+/// O que [`poligonos`] devolve: os vértices na grelha, os polígonos, a área de cada um e as contas.
+pub(crate) struct Poligonos {
+    pub(crate) pts: Vec<lattice::P>,
+    pub(crate) polys: Vec<Vec<u32>>,
+    pub(crate) ids: Vec<u16>,
+    pub(crate) rings: usize,
+    pub(crate) ring_verts: usize,
+    pub(crate) triangles: usize,
+}
+
+/// ⭐ (W7) **O chão andável `walk` partido pelas áreas → polígonos**, a porta ÚNICA da construção
+/// inteira e de cada mosaico. Os PEDAÇOS: o chão comum e, por área (pela ordem: manda a primeira),
+/// o que dela cai no chão e nenhuma anterior reclamou; uma só triangulação; a fusão em convexos só
+/// dentro do mesmo pedaço. Sem áreas é o caminho de sempre, ao bit.
+pub(crate) fn poligonos(
+    walk: Paths64,
+    areas: &[(Vec<lattice::P>, u16)],
+    merge: bool,
+) -> Result<Poligonos, TriError> {
     let mut pieces: Vec<(Paths64, u16)> = Vec::new();
     let mut reclamado: Paths64 = Vec::new();
-    for a in areas {
-        let ring = inflate::inflate(&a.shape, r, params.corner, n);
+    for (ring, id) in areas {
         if ring.len() < 3 {
             continue;
         }
-        let forma = vec![to_path(&ring)];
+        let forma = vec![to_path(ring)];
         let mut piece = intersect_64(&walk, &forma, FillRule::NonZero);
         if !reclamado.is_empty() {
             piece = difference_64(&piece, &reclamado, FillRule::NonZero);
         }
         reclamado = union_64(&reclamado, &forma, FillRule::NonZero);
-        pieces.push((piece, a.id));
+        pieces.push((piece, *id));
     }
     let chao = if reclamado.is_empty() {
         walk
@@ -166,19 +195,21 @@ pub fn build_with_areas(
                 .collect()
         })
         .collect();
-    stats.rings = aneis.iter().map(Vec::len).sum();
-    stats.ring_verts = aneis.iter().flatten().map(Vec::len).sum();
-
-    let (pts, tris, pedaco) =
-        triangulate::triangulate_pieces(&aneis).map_err(BuildError::Triangulation)?;
-    stats.triangles = tris.len();
-    let (polys, pedaco) = if params.merge {
+    let (pts, tris, pedaco) = triangulate::triangulate_pieces(&aneis)?;
+    let triangles = tris.len();
+    let (polys, pedaco) = if merge {
         triangulate::merge_convex_labeled(&pts, &tris, &pedaco)
     } else {
         (tris.iter().map(|t| t.to_vec()).collect(), pedaco)
     };
-    let ids = pedaco.iter().map(|&k| pieces[k as usize].1).collect();
-    finish(pts, polys, ids, stats)
+    Ok(Poligonos {
+        ids: pedaco.iter().map(|&k| pieces[k as usize].1).collect(),
+        pts,
+        polys,
+        rings: aneis.iter().map(Vec::len).sum(),
+        ring_verts: aneis.iter().flatten().map(Vec::len).sum(),
+        triangles,
+    })
 }
 
 fn finish(

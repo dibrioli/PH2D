@@ -216,3 +216,118 @@ fn a_juncao_em_t_da_costura_e_reparada() {
     // O CONTROLO: a fixtura tem MESMO o vértice na costura (a ponta do losango).
     assert!(m.verts().contains(&[4.0, 5.0]));
 }
+
+/// (W7) Os m² de cada área numa malha.
+fn area_por_id(m: &NavMesh, id: u16) -> f64 {
+    (0..m.polys().len() as u32)
+        .filter(|&p| m.area_id(p) == id)
+        .map(|p| {
+            let v = &m.polys()[p as usize].verts;
+            let n = v.len();
+            (0..n)
+                .map(|i| {
+                    let (a, b) = (m.vert(v[i]), m.vert(v[(i + 1) % n]));
+                    a[0] * b[1] - b[0] * a[1]
+                })
+                .sum::<f64>()
+                * 0.5
+        })
+        .sum()
+}
+
+#[test]
+fn com_areas_por_mosaicos_e_a_mesma_malha_que_inteira() {
+    let mut s = Polyanya::new();
+    let mut comparados = 0usize;
+    let mut refractaram = 0usize;
+    for seed in 1..=16u64 {
+        let mut rng = Lcg(seed * 3 + 11);
+        let obs = obstaculos(&mut rng, 3 + (seed as usize % 5), 16.0, 12.0);
+        let ars = crate::areas::areas(&mut rng, 1 + (seed % 4) as usize, 16.0, 12.0);
+        let p = params(seed);
+        let inteira = ph2d_navmesh::build_with_areas(&retangulo(16.0, 12.0), &obs, &ars, &p)
+            .expect("constrói")
+            .mesh;
+        let lado = if seed % 2 == 0 { 3.0 } else { 5.0 };
+        let mut t = TiledMesh::new(p, lado);
+        assert!(t.update_with_areas(&retangulo(16.0, 12.0), &obs, &ars));
+        assert_eq!(t.stats().failed, 0, "semente {seed}: um mosaico recusou");
+        let m = t.mesh();
+        // A régua: a faixa de UMA unidade ao longo das costuras (a lei da área andável, acima),
+        // agora por área — a fronteira de uma área cortada por uma costura mexe igual.
+        let costura =
+            ((16.0f64 / lado).ceil() - 1.0) * 12.0 + ((12.0f64 / lado).ceil() - 1.0) * 16.0;
+        for id in std::iter::once(0).chain(ars.iter().map(|a| a.id)) {
+            let da = (area_por_id(m, id) - area_por_id(&inteira, id)).abs();
+            assert!(
+                da <= costura / ph2d_navmesh::lattice::SCALE,
+                "semente {seed}: a área {id} mudou {da} m²"
+            );
+        }
+        let costs: Vec<f64> = (0..=ars.len())
+            .map(|i| if i == 0 { 1.0 } else { 3.0 })
+            .collect();
+        for (i, a) in pontos(&mut rng, &inteira, m, 6).iter().enumerate() {
+            for b in pontos(&mut Lcg(seed * 977 + i as u64), &inteira, m, 3) {
+                let (Ok(pi), Ok(pm)) = (
+                    s.find_path_costs(&inteira, &costs, *a, b),
+                    s.find_path_costs(m, &costs, *a, b),
+                ) else {
+                    continue;
+                };
+                // As malhas diferem nas costuras, logo a grelha das fronteiras também: a régua é o
+                // erro da procura medido contra o oráculo (§3 da sonda), não o bit.
+                assert!(
+                    (pi.cost - pm.cost).abs() <= 2e-2 * pi.cost.max(1.0),
+                    "semente {seed}: {a:?} → {b:?}: inteira {} contra mosaicos {}",
+                    pi.cost,
+                    pm.cost
+                );
+                refractaram += usize::from(pi.cost > pi.length * (1.0 + 1e-9));
+                comparados += 1;
+            }
+        }
+    }
+    assert!(comparados >= 200, "só {comparados} pares");
+    assert!(
+        refractaram >= 40,
+        "só {refractaram} caminhos pagaram custo — as áreas não estorvam"
+    );
+}
+
+#[test]
+fn com_areas_incremental_e_a_frio_dao_o_mesmo() {
+    for seed in 1..=8u64 {
+        let mut rng = Lcg(seed * 5 + 2);
+        let obs = obstaculos(&mut rng, 5, 16.0, 12.0);
+        let mut ars = crate::areas::areas(&mut rng, 3, 16.0, 12.0);
+        let p = params(seed);
+        let mut t = TiledMesh::new(p, 4.0);
+        t.update_with_areas(&retangulo(16.0, 12.0), &obs, &ars);
+        let total = t.stats().tiles;
+        // Mexe UMA área (a 2.ª), e troca o número de outra: só os mosaicos delas se refazem.
+        if let Shape::Circle { center, .. } | Shape::Capsule { a: center, .. } = &mut ars[1].shape {
+            center[0] += 0.37;
+        } else if let Shape::Convex(v) = &mut ars[1].shape {
+            v.iter_mut().for_each(|q| q[0] += 0.37);
+        }
+        assert!(t.update_with_areas(&retangulo(16.0, 12.0), &obs, &ars));
+        let refeitos = t.stats().rebuilt;
+        assert!(
+            refeitos < total,
+            "semente {seed}: refez {refeitos} de {total} mosaicos"
+        );
+        let mut frio = TiledMesh::new(p, 4.0);
+        frio.update_with_areas(&retangulo(16.0, 12.0), &obs, &ars);
+        let (a, b) = (t.mesh(), frio.mesh());
+        assert_eq!(a.verts(), b.verts(), "semente {seed}: os vértices");
+        assert_eq!(a.polys(), b.polys(), "semente {seed}: os polígonos");
+        assert!(
+            (0..a.polys().len() as u32).all(|q| a.area_id(q) == b.area_id(q)),
+            "semente {seed}: as áreas"
+        );
+        // CONTROLO: sem mudança, nada se refaz.
+        assert!(!t.update_with_areas(&retangulo(16.0, 12.0), &obs, &ars));
+        assert_eq!(t.stats().rebuilt, 0);
+    }
+}

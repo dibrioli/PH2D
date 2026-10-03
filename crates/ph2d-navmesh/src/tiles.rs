@@ -36,7 +36,7 @@ use clipper2_rust::{FillRule, Path64, Paths64, Point64, difference_64, union_sub
 use ph2d_nav::{NavMesh, V2};
 
 use crate::lattice::{P, SCALE, to_lattice, to_world};
-use crate::{Params, Shape, inflate, triangulate};
+use crate::{Area, Params, Shape, inflate};
 
 /// ⭐ **O lado de um mosaico, em metros** — o MEDIDO (plano 30 §14.1, `examples/medir_mudanca.rs`,
 /// `1 000` obstáculos em `100 × 100 m`, em duas posições da cena contra a grelha): uma porta custa os
@@ -51,6 +51,8 @@ struct Mosaico {
     sig: u64,
     pts: Vec<P>,
     polys: Vec<Vec<u32>>,
+    /// (W7) A área de cada polígono.
+    ids: Vec<u16>,
 }
 
 /// O que a última actualização fez (os gates e a sonda de custo lêem daqui).
@@ -108,6 +110,18 @@ impl TiledMesh {
     /// malha MUDOU (quem a usa esquece os caminhos), `false` se nenhum mosaico mudou — ⚠️ um
     /// obstáculo que mexe FORA da região muda a entrada e não a malha, e não acorda ninguém.
     pub fn update<S: Borrow<Shape>>(&mut self, region: &[V2], obstacles: &[S]) -> bool {
+        self.update_with_areas(region, obstacles, &[])
+    }
+
+    /// ⭐ (W7) [`Self::update`] com ÁREAS DE CUSTO (ver [`crate::build_with_areas`]): cada mosaico
+    /// corta o anel recuado de cada área que lhe toca pelo MESMO corte canónico dos obstáculos (as
+    /// costuras ficam exactas), e a assinatura dele inclui essas áreas, pela ordem.
+    pub fn update_with_areas<S: Borrow<Shape>>(
+        &mut self,
+        region: &[V2],
+        obstacles: &[S],
+        areas: &[Area],
+    ) -> bool {
         let r = self.params.agent_radius.max(0.0);
         let anel = inflate::inset_region(region, r);
         let mut h = Fnv::new();
@@ -115,6 +129,14 @@ impl TiledMesh {
         let sig_regiao = h.0;
         let assin: Vec<u64> = obstacles.iter().map(|o| assinatura(o.borrow())).collect();
         assin.iter().for_each(|&a| h.u64(a));
+        let assin_areas: Vec<u64> = areas
+            .iter()
+            .map(|a| assinatura(&a.shape) ^ u64::from(a.id).rotate_left(17))
+            .collect();
+        if !areas.is_empty() {
+            h.byte(0xA7);
+            assin_areas.iter().for_each(|&a| h.u64(a));
+        }
         if self.sig == Some(h.0) {
             self.stats.rebuilt = 0;
             return false;
@@ -133,24 +155,39 @@ impl TiledMesh {
             // (`1/cos(π/n)`, `1,41` a `n = 4`) — com `r` um obstáculo ficava fora de um mosaico que
             // ele tapa (medido: `6e-4 m²` de área a mais).
             let mut por_mosaico: BTreeMap<(i64, i64), Vec<usize>> = BTreeMap::new();
+            let mut areas_por: BTreeMap<(i64, i64), Vec<usize>> = BTreeMap::new();
             let folga = (2.0 * r * SCALE).ceil() as i64 + 4;
-            for (i, o) in obstacles.iter().enumerate() {
-                let (a, b) = caixa(o.borrow());
+            let formas = obstacles
+                .iter()
+                .map(|o| (o.borrow(), false))
+                .chain(areas.iter().map(|a| (&a.shape, true)));
+            let n_obs = obstacles.len();
+            for (i, (o, e_area)) in formas.enumerate() {
+                let (a, b) = caixa(o);
                 let (ax, ay) = self.indice(a.0 - folga, a.1 - folga);
                 let (bx, by) = self.indice(b.0 + folga, b.1 + folga);
                 // Só os mosaicos da REGIÃO (um chão de 1 km não enche a tabela de vazios).
                 for x in ax.max(ix)..=bx.min(jx) {
                     for y in ay.max(iy)..=by.min(jy) {
-                        por_mosaico.entry((x, y)).or_default().push(i);
+                        if e_area {
+                            areas_por.entry((x, y)).or_default().push(i - n_obs);
+                        } else {
+                            por_mosaico.entry((x, y)).or_default().push(i);
+                        }
                     }
                 }
             }
             for x in ix..=jx {
                 for y in iy..=jy {
                     let quem = por_mosaico.get(&(x, y)).map_or(&[][..], Vec::as_slice);
+                    let quais = areas_por.get(&(x, y)).map_or(&[][..], Vec::as_slice);
                     let mut h = Fnv::new();
                     h.u64(sig_regiao);
                     quem.iter().for_each(|&i| h.u64(assin[i]));
+                    if !quais.is_empty() {
+                        h.byte(0xA7);
+                        quais.iter().for_each(|&i| h.u64(assin_areas[i]));
+                    }
                     let sig = h.0;
                     stats.tiles += 1;
                     let m = match self.mosaicos.remove(&(x, y)) {
@@ -159,7 +196,8 @@ impl TiledMesh {
                             stats.rebuilt += 1;
                             let obs: Vec<&Shape> =
                                 quem.iter().map(|&i| obstacles[i].borrow()).collect();
-                            let (m, falhou) = self.constroi(sig, &anel, (x, y), &obs);
+                            let ars: Vec<&Area> = quais.iter().map(|&i| &areas[i]).collect();
+                            let (m, falhou) = self.constroi(sig, &anel, (x, y), &obs, &ars);
                             stats.failed += usize::from(falhou);
                             m
                         }
@@ -190,6 +228,7 @@ impl TiledMesh {
         anel: &[P],
         (x, y): (i64, i64),
         obs: &[&Shape],
+        areas: &[&Area],
     ) -> (Mosaico, bool) {
         let lo = (x * self.lado, y * self.lado);
         let hi = (lo.0 + self.lado, lo.1 + self.lado);
@@ -217,19 +256,23 @@ impl TiledMesh {
             let unidos = union_subjects_64(&buracos, FillRule::NonZero);
             difference_64(&vec![caminho(&parte)], &unidos, FillRule::NonZero)
         };
-        let aneis: Vec<Vec<P>> = anda
+        let aneis_das_areas: Vec<(Vec<P>, u16)> = areas
             .iter()
-            .map(|p| p.iter().map(|q| (q.x, q.y)).collect())
+            .map(|a| {
+                let anel = inflate::inflate(&a.shape, r, self.params.corner, n);
+                (corta(&anel, lo, hi), a.id)
+            })
             .collect();
-        match triangulate::triangulate(&aneis) {
-            Ok((pts, tris)) => {
-                let polys = if self.params.merge {
-                    triangulate::merge_convex(&pts, &tris)
-                } else {
-                    tris.iter().map(|t| t.to_vec()).collect()
-                };
-                (Mosaico { sig, pts, polys }, false)
-            }
+        match crate::poligonos(anda, &aneis_das_areas, self.params.merge) {
+            Ok(f) => (
+                Mosaico {
+                    sig,
+                    pts: f.pts,
+                    polys: f.polys,
+                    ids: f.ids,
+                },
+                false,
+            ),
             Err(_) => (
                 Mosaico {
                     sig,
@@ -252,7 +295,9 @@ fn monta(mosaicos: &BTreeMap<(i64, i64), Mosaico>, lado: i64) -> NavMesh {
     let mut horizontais: BTreeMap<i64, BTreeSet<i64>> = BTreeMap::new();
     let mut pts: Vec<P> = Vec::new();
     let mut polys: Vec<Vec<u32>> = Vec::new();
+    let mut ids: Vec<u16> = Vec::new();
     for m in mosaicos.values() {
+        ids.extend_from_slice(&m.ids);
         let mapa: Vec<u32> = m
             .pts
             .iter()
@@ -305,7 +350,7 @@ fn monta(mosaicos: &BTreeMap<(i64, i64), Mosaico>, lado: i64) -> NavMesh {
         })
         .collect();
     let verts: Vec<V2> = pts.iter().map(|&p| to_world(p)).collect();
-    NavMesh::from_polygons(verts, polys).unwrap_or_else(|_| vazia())
+    NavMesh::from_polygons_with_areas(verts, polys, ids).unwrap_or_else(|_| vazia())
 }
 
 /// Os valores de `linha` estritamente entre `de` e `para`, pela ordem de `de` para `para`.

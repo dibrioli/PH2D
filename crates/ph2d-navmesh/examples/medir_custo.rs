@@ -449,6 +449,37 @@ fn main() {
         i0.elapsed().as_secs_f64() * 1e3,
         b.mesh.polys().len()
     );
+    // A ponte usa MOSAICOS: a frio, e uma lama que se mexe (o mínimo de 5).
+    for com_areas in [false, true] {
+        let ars: &[Area] = if com_areas { &areas } else { &[] };
+        let mut frio = f64::INFINITY;
+        let mut mexe = f64::INFINITY;
+        for k in 0..5 {
+            let mut tm = ph2d_navmesh::TiledMesh::new(params, ph2d_navmesh::TILE_M);
+            let i0 = Instant::now();
+            tm.update_with_areas(&big, &obs, ars);
+            frio = frio.min(i0.elapsed().as_secs_f64() * 1e3);
+            let mut a2 = ars.to_vec();
+            if let Some(Area {
+                shape: Shape::Circle { center, .. },
+                ..
+            }) = a2.get_mut(1)
+            {
+                center[0] += 0.3 + 0.01 * f64::from(k);
+            }
+            let i0 = Instant::now();
+            tm.update_with_areas(&big, &obs, &a2);
+            mexe = mexe.min(i0.elapsed().as_secs_f64() * 1e3);
+        }
+        println!(
+            "   mosaicos {}: a frio {frio:.1} ms · uma lama a mexer {mexe:.2} ms",
+            if com_areas {
+                "com 100 lamas"
+            } else {
+                "sem lamas    "
+            }
+        );
+    }
     let m = &b.mesh;
     let mut costs = vec![1.0; 101];
     costs[1..].iter_mut().for_each(|c| *c = 4.0);

@@ -99,7 +99,7 @@ fn the_spatial_slots_are_the_ones_the_units_move() {
         let declared: Vec<usize> = spatial_extent_slots(&p)
             .iter()
             .copied()
-            .filter(|&s| !p.kind().reads_the_image_plane())
+            .filter(|_| !p.kind().reads_the_image_plane())
             .collect();
         assert_eq!(moved, declared, "{:?}", p.kind());
     }

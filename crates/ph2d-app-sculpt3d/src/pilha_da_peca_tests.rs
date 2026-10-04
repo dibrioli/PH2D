@@ -123,7 +123,9 @@ fn a_composicao_da_peca_e_a_do_painter_ao_bit() {
     {
         g.radius = 6.0;
     }
-    assert!(!borrada.sincronizada(), "a porta não a aceitaria");
+    // Desde a W6 a porta aceita-o: a peça compõe-o na RETÍCULA (`docs/3D/30` §14), e
+    // é por causa do controlo abaixo que ela não o compõe na dobra.
+    assert!(borrada.sincronizada(), "o desfoque serve na peça");
     assert_ne!(
         composto_2d(&borrada, l, h),
         composto_2d(&borrada, n as u32, 1),

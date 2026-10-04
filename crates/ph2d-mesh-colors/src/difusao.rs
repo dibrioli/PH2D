@@ -153,7 +153,7 @@ fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
 /// Vazio para `t ≤ 0`.
 #[must_use]
 pub fn coeficientes(t: f64, lambda_sup: f64) -> Vec<f32> {
-    if !(t > 0.0 && lambda_sup > 0.0 && lambda_sup.is_finite()) {
+    if t.is_nan() || t <= 0.0 || !lambda_sup.is_finite() || lambda_sup <= 0.0 {
         return Vec::new();
     }
     let alfa = 0.5 * t * lambda_sup;
@@ -400,7 +400,7 @@ impl Difusao {
     /// o que a CPU e a placa aplicam. Vazio para `sigma ≤ 0` (no-op).
     #[must_use]
     pub fn polinomio(&self, sigma: f32) -> Vec<f32> {
-        if !(sigma > 0.0) {
+        if sigma.is_nan() || sigma <= 0.0 {
             return Vec::new();
         }
         let s = f64::from(sigma);

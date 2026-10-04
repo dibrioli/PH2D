@@ -72,6 +72,38 @@ pub fn ossos_desde(sim: &SimWorld, raiz: Entity) -> Vec<Entity> {
     out
 }
 
+/// ⭐⭐⭐ **A PROFUNDIDADE de cada tendão do bind** (a raiz é `0`), pela ordem das COLUNAS — a chave
+/// de quem pinta por cima numa dobra ([`crate::skin_image_fecho::chave_de_osso`]: o osso mais fundo
+/// fica por cima, ordem do dono de 2026-10-02 *«as faces do último osso por cima»*).
+///
+/// ⛔ A coluna não a diz: a ordem dos tendões é a de `to_bits`, e o `bevy_ecs` 0.19 aloca índices
+/// DECRESCENTES — MEDIDO na fixtura (raiz `0x…fd`, ponta `0x…fc`), a ponta vinha antes da raiz e a
+/// chave por coluna punha a RAIZ por cima. Lida da hierarquia VIVA, serve também aos binds já
+/// guardados. Um tendão cujo osso não resolve fica em `0`.
+#[must_use]
+pub fn profundidades(
+    sim: &SimWorld,
+    skin: &ph2d_skeleton_ecs::SkinBind,
+    index: &crate::skin_live::BoneIndex,
+) -> Vec<f64> {
+    skin.tendons
+        .iter()
+        .map(|t| {
+            let mut n = 0_u32;
+            let mut e = index.get(&t.bone).copied();
+            while let Some(p) = e
+                .and_then(|o| sim.world().get::<ChildOf>(o))
+                .map(ChildOf::parent)
+                .filter(|&p| sim.world().get::<Bone>(p).is_some())
+            {
+                n += 1;
+                e = Some(p);
+            }
+            f64::from(n)
+        })
+        .collect()
+}
+
 #[cfg(test)]
 #[path = "esqueletos_tests.rs"]
 mod tests;

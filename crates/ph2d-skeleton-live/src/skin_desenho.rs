@@ -260,6 +260,8 @@ struct Ultimo {
     pele: Skin,
     leis: Leis,
     estilo: Estilo,
+    /// A profundidade dos tendões ([`crate::esqueletos::profundidades`]) — quem pinta por cima.
+    ordem: Vec<f64>,
     /// O cozido com que este quadro foi calculado — a chegada de um campo novo muda-o sem mudar
     /// pose, leis nem estilo.
     fx: Option<Rc<CozidoFx>>,
@@ -312,6 +314,7 @@ pub fn quadro(
     leis: Leis,
     estilo: &Estilo,
     eixos: &dyn Fn() -> Vec<Handle>,
+    ordem: &[f64],
 ) -> Option<Quadro> {
     com_a_gaveta(bits, skin, |g| {
         let prep = Rc::clone(g.preparado.as_ref()?);
@@ -325,6 +328,7 @@ pub fn quadro(
             && u.pele == *pele
             && u.leis == leis
             && u.estilo == *estilo
+            && u.ordem == ordem
             && match (&u.fx, &fx) {
                 (None, None) => true,
                 (Some(a), Some(b)) => Rc::ptr_eq(a, b),
@@ -340,11 +344,12 @@ pub fn quadro(
             Estilo::Efeitos(_) => fx.is_some(),
             Estilo::NaoServe => false,
         };
-        let q = calcula(&prep, skin, pele, leis, serve, fx.as_deref());
+        let q = calcula(&prep, skin, pele, leis, serve, fx.as_deref(), ordem);
         g.ultimo = Some(Ultimo {
             pele: pele.clone(),
             leis,
             estilo: estilo.clone(),
+            ordem: ordem.to_vec(),
             fx,
             quadro: q.clone(),
         });
@@ -485,6 +490,7 @@ fn calcula(
     leis: Leis,
     estilo_serve: bool,
     fx: Option<&CozidoFx>,
+    ordem: &[f64],
 ) -> Quadro {
     #[cfg(test)]
     DERIVADOS.with(|d| {
@@ -555,7 +561,8 @@ fn calcula(
     // ⭐⭐⭐ O que é ABERTO e fica atrás de outra parte não se percorre (A2, [`frente`]).
     let visivel = percurso.filter(|_| leis.contacto && leis.desenho).and_then(|(f, t)| {
         let campo = lido_do_bake.campo?;
-        frente::so_o_que_se_ve(f, t, campo, lido_do_bake.indice, pele, &correcoes, leis.rigido)
+        let i = lido_do_bake.indice;
+        frente::so_o_que_se_ve(f, t, campo, i, pele, &correcoes, leis.rigido, ordem)
     });
     let percurso = visivel.as_ref().map(|(f, t)| (f, t.as_slice())).or(percurso);
     let desenhado = percurso
@@ -585,14 +592,9 @@ fn calcula(
         // encosto; sem vinco apertado a forma sai ao bit. ⛔ Só no DESENHADO — o
         // `cru` são os nós que o artista edita, e trocá-los pela silhueta mudar-lhe-ia a malha.
         .map(|(d, quinas)| {
-            // ⭐⭐ **Numa forma com EFEITO, só a UNIÃO** — e só quando ela é neutra no repouso. A
-            // bola arredonda o vinco do contorno do ARTISTA, e as cristas e pontas de um efeito
-            // não o são (`3,5`–`7 ms` no *Zig Zag*). ⚠️ A F50-d tirou-a de todo (report do dono
-            // de 2026-10-03: pedaços de traço soltos, serrilha): a serrilha era a laçada do ajuste
-            // (F50-e) e os riscos soltos as LASCAS da união (F50-f) — curadas as duas, a união
-            // volta, e o traço deixa de se cruzar por dentro de uma dobra forte.
-            // ⭐⭐ E o mesmo numa fonte de efeitos COZIDOS no Bind (2026-10-03): a bola comia os
-            // dentes de um *Zig Zag* do lado de dentro da junta (FOTOGRAFADO a `60°`).
+            // ⭐⭐ **Numa forma com EFEITO (viva ou cozida no Bind), só a UNIÃO**, e só neutra em
+            // repouso: a bola arredonda o vinco do ARTISTA e comia os dentes de um *Zig Zag*
+            // (fila §F50-d/e/f e §F51).
             let neutra = fx.map(|c| c.contacto).or(prep.uniao_neutra);
             if !leis.contacto {
                 d

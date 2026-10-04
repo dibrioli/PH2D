@@ -136,7 +136,9 @@ pub(crate) fn ossos_da_cena(sim: &SimWorld) -> Vec<(Entity, ph2d_skeleton::bend:
 /// `f64`, logo o último ULP. Ordenar por `to_bits` (id de alocação) resolve isso *dentro de uma
 /// sessão*, e depois do bind quem fixa a ordem é a lista **guardada** no componente. ⛔ Isto **não**
 /// é o `canonicalize` que o `CLAUDE.md` §5 proíbe: ali os bits decidiam o CONTEÚDO de um snapshot;
-/// aqui decidem só em que ordem se somam parcelas que já foram escolhidas.
+/// aqui decidem só em que ordem se somam parcelas que já foram escolhidas. ⛔ Por isso a COLUNA não
+/// diz a profundidade (o `bevy_ecs` 0.19 aloca índices DECRESCENTES: a ponta vem antes da raiz) —
+/// quem precisa dela lê [`profundidades`].
 pub fn skeleton_of(sim: &SimWorld, seed: Option<Entity>) -> Vec<Entity> {
     let todos: Vec<Entity> = ossos_da_cena(sim).into_iter().map(|(e, _)| e).collect();
     let Some(seed) = seed.filter(|e| todos.contains(e)) else {
@@ -411,7 +413,9 @@ pub fn recook_leis(
             crate::skin_desenho::estilo_de,
         );
         let eixos = || eixos_do_bind(sim, &skin, &index);
-        let Some(q) = crate::skin_desenho::quadro(e.to_bits(), &skin, &pele, leis, &estilo, &eixos)
+        let ordem = crate::esqueletos::profundidades(sim, &skin, &index);
+        let Some(q) =
+            crate::skin_desenho::quadro(e.to_bits(), &skin, &pele, leis, &estilo, &eixos, &ordem)
         else {
             continue;
         };

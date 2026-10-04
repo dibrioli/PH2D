@@ -179,3 +179,15 @@ fn as_riscas_de_tras_nao_pintam_por_cima_da_frente() {
         assert!(vis > 0.98, "a {graus}° a trás à vista perdeu riscas ({vis:.3})");
     }
 }
+
+#[test]
+fn sonda_bits() {
+    let (sim, _s, _m, _id, [raiz, ponta]) = palco();
+    println!("raiz {:#x} ponta {:#x}", raiz.to_bits(), ponta.to_bits());
+    let mut sim2 = ph2d_ecs::SimWorld::default();
+    let a = crate::skin_live::tests::osso(&mut sim2, "a", [0.0, 0.0], 1.0, None);
+    let b = crate::skin_live::tests::osso(&mut sim2, "b", [1.0, 0.0], 1.0, Some(a));
+    let c = crate::skin_live::tests::osso(&mut sim2, "c", [1.0, 0.0], 1.0, Some(b));
+    println!("a {:#x} b {:#x} c {:#x}", a.to_bits(), b.to_bits(), c.to_bits());
+    println!("skeleton_of {:?}", crate::skin_live::skeleton_of(&sim, None).iter().map(|e| e.to_bits()).collect::<Vec<_>>());
+}

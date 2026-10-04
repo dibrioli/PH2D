@@ -2,8 +2,8 @@
 //! as riscas de um *Hatch* (subcontornos ABERTOS) da parte de trás pintavam por cima da da frente.
 //!
 //! A ordem é a da imagem presa ([`crate::skin_image_fecho::ordena_pelo_osso`]): cada triângulo da
-//! malha do campo tem a chave `Σwⱼ·j/Σwⱼ` (média dos três vértices) e o de chave maior fica por
-//! cima. Uma amostra de um contorno aberto mora, em REPOUSO, num triângulo; posada, está TAPADA
+//! malha do campo tem a [`crate::skin_image_fecho::chave_de_osso`] (média dos três vértices; o osso
+//! mais FUNDO na corrente) e o de chave maior fica por cima. Uma amostra de um contorno aberto mora, em REPOUSO, num triângulo; posada, está TAPADA
 //! quando cai dentro de um triângulo posado de chave maior que não toca o dela. O contorno parte-se
 //! no REPOUSO (de Casteljau, exacto) e o bake só percorre os pedaços à vista. Os FECHADOS não se
 //! tocam: o contacto deles é a união ([`super::uniao_dos_fechados`]).
@@ -36,14 +36,6 @@ struct Grelha {
     lado: f64,
     dim: [usize; 2],
     baldes: Vec<Vec<u32>>,
-}
-
-/// `Σwⱼ·j/Σwⱼ` — a chave de osso da imagem presa.
-fn chave(w: &[f64]) -> f64 {
-    let soma: f64 = w.iter().sum();
-    #[expect(clippy::cast_precision_loss, reason = "índice de osso")]
-    let pos: f64 = w.iter().enumerate().map(|(j, p)| p * j as f64).sum();
-    if soma > 0.0 { pos / soma } else { 0.0 }
 }
 
 /// Coordenadas baricêntricas `(u, v)` de `p` em `abc` (sinal livre); `None` num triângulo nulo.
@@ -125,8 +117,9 @@ impl<'a> Posada<'a> {
         pele: &'a Skin,
         correcoes: &'a [Correccao],
         rigido: bool,
+        prof: &[f64],
     ) -> Option<Self> {
-        if campo.ossos() < 2 || campo.ossos() != pele.len() || !campo.valida() {
+        if campo.ossos() < 2 || !campo.valida() {
             return None;
         }
         let mut w = pele.scratch();
@@ -134,9 +127,10 @@ impl<'a> Posada<'a> {
         let mut chave_v = Vec::with_capacity(campo.malha.rest.len());
         for i in 0..campo.malha.rest.len() {
             let p = campo.local_do_vertice(i)?;
-            pele.weights_corrected(p, campo.linha_do_vertice(i), &mut w, correcoes);
+            let linha = campo.linha_do_vertice(i)?;
+            pele.weights_corrected(p, Some(linha), &mut w, correcoes);
             pos.push(if rigido { pele.blend(p, &w) } else { pele.blend_linear(p, &w) });
-            chave_v.push(chave(&w));
+            chave_v.push(crate::skin_image_fecho::chave_de_osso(linha, prof));
         }
         let tris = &campo.malha.tris;
         let chave_tri = tris
@@ -351,6 +345,7 @@ pub(super) fn so_o_que_se_ve(
     pele: &Skin,
     correcoes: &[Correccao],
     rigido: bool,
+    prof: &[f64],
 ) -> Option<(VecPath, Vec<f64>)> {
     let contornos: Vec<(&[VecVertex], bool)> = (0..fonte.contour_count())
         .filter_map(|c| fonte.contour(c))
@@ -358,7 +353,7 @@ pub(super) fn so_o_que_se_ve(
     if !contornos.iter().any(|(_, f)| *f) || !contornos.iter().any(|(v, f)| !*f && v.len() > 1) {
         return None;
     }
-    let f = Posada::nova(campo, indice, pele, correcoes, rigido)?;
+    let f = Posada::nova(campo, indice, pele, correcoes, rigido, prof)?;
     let cortes: Vec<Option<Vec<(f64, f64)>>> = contornos
         .iter()
         .map(|(v, fechado)| (!*fechado && v.len() > 1).then(|| a_vista(v, &f)).flatten())

@@ -166,7 +166,9 @@ pub fn desenhada_da_arte(
     assada_do_bind(e.to_bits(), &skin.source, crua, |m| {
         let mut d = crate::skin_bake::assar_no_bind(&m.mesh, &m.pesos, m.ossos())
             .map_or_else(|| m.clone(), |(mesh, pesos)| SkinnedMesh { mesh, pesos });
-        crate::skin_image_fecho::ordena_pelo_osso(&mut d.mesh.tris, &d.pesos, d.mesh.rest.len());
+        let prof = crate::esqueletos::profundidades(sim, skin, &crate::skin_live::bone_index(sim));
+        let v = d.mesh.rest.len();
+        crate::skin_image_fecho::ordena_pelo_osso(&mut d.mesh.tris, &d.pesos, v, &prof);
         Some(d)
     })
 }

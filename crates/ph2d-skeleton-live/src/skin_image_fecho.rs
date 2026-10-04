@@ -113,28 +113,33 @@ pub fn costura_de(valor: Option<&str>) -> bool {
     valor != Some("0")
 }
 
-/// ⭐⭐ **Ordena os triângulos pelo OSSO que os move** — cada face desenha-se depois das de um osso
-/// anterior da corrente.
+/// ⭐⭐⭐ **A CHAVE DE OSSO de uma linha de pesos** — a profundidade MÉDIA, pesada, dos ossos que a
+/// movem (`Σ wⱼ·pⱼ / Σ wⱼ`, `pⱼ` de [`crate::esqueletos::profundidades`]): quem tem chave maior pinta
+/// por cima. ⚠️ Uma média e não o osso dominante: uma zona de mistura fica ENTRE os dois membros, e
+/// a ordem não dá um salto onde o peso cruza `0,5`. `prof` que não fecha com a linha cai no índice
+/// da coluna (o que a chave era até 2026-10-04 — ⛔ errado na ordem `to_bits`, ver a porta).
+#[must_use]
+pub fn chave_de_osso(w: &[f64], prof: &[f64]) -> f64 {
+    let soma: f64 = w.iter().sum();
+    #[expect(clippy::cast_precision_loss, reason = "índice de osso")]
+    let pos: f64 = w
+        .iter()
+        .enumerate()
+        .map(|(j, p)| p * prof.get(j).copied().filter(|_| prof.len() == w.len()).unwrap_or(j as f64))
+        .sum();
+    if soma > 0.0 { pos / soma } else { 0.0 }
+}
+
+/// ⭐⭐ **Ordena os triângulos pelo OSSO que os move** — o mais FUNDO na corrente desenha-se depois.
 ///
-/// A chave de um vértice é a posição MÉDIA, pesada, dos ossos da tabela (`Σ wⱼ·j / Σ wⱼ`; as colunas
-/// vêm na ordem do [`crate::skin_live::skeleton_of`], que desce da raiz) e a de um triângulo é a média
-/// dos três. ⚠️ Uma média e não o osso dominante: a face de uma zona de mistura fica ENTRE os dois
-/// membros, e a ordem não dá um salto onde o peso cruza `0,5`. A ordenação é ESTÁVEL — faces do
-/// mesmo osso mantêm a ordem da grelha. Sem tabela (a lei derivada) a ordem fica como está.
-pub fn ordena_pelo_osso(tris: &mut [[u32; 3]], pesos: &[f64], vertices: usize) {
+/// A chave de um triângulo é a média da [`chave_de_osso`] dos três vértices. A ordenação é ESTÁVEL —
+/// faces do mesmo osso mantêm a ordem da grelha. Sem tabela (a lei derivada) a ordem fica como está.
+pub fn ordena_pelo_osso(tris: &mut [[u32; 3]], pesos: &[f64], vertices: usize, prof: &[f64]) {
     let ossos = pesos.len() / vertices.max(1);
     if ossos < 2 || pesos.len() != ossos * vertices {
         return;
     }
-    let chave: Vec<f64> = pesos
-        .chunks_exact(ossos)
-        .map(|w| {
-            let soma: f64 = w.iter().sum();
-            #[expect(clippy::cast_precision_loss, reason = "índice de osso")]
-            let pos: f64 = w.iter().enumerate().map(|(j, p)| p * j as f64).sum();
-            if soma > 0.0 { pos / soma } else { 0.0 }
-        })
-        .collect();
+    let chave: Vec<f64> = pesos.chunks_exact(ossos).map(|w| chave_de_osso(w, prof)).collect();
     let de = |t: &[u32; 3]| {
         t.iter()
             .map(|&v| chave.get(v as usize).copied().unwrap_or(0.0))

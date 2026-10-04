@@ -57,6 +57,10 @@ pub(in crate::tool::paint) struct WetSession {
     /// `pub(super)` so [`PainterTool::wet_splat_gates`] can serve it as the
     /// alpha-lock's α reference (the frozen base the composite reads).
     pub(in crate::tool::paint) base: Arc<Vec<u8>>,
+    /// O modo de **Blend** com que esta tinta molhada se compõe sobre a [`Self::base`] — o da SESSÃO,
+    /// congelado quando ela nasce ([`super::modo_da_sessao`]); trocá-lo com tinta na tela fecha a
+    /// sessão (`set_brush_blend`).
+    pub(in crate::tool::paint) blend: ph2d_painter_brush::BrushBlend,
     /// The exact `canvas_rgba` allocation OUR last composite produced (or the
     /// one the session started from). A mismatch = foreign mutation = session
     /// over. `pub(super)` so the doc-21 commit door can re-arm it after an
@@ -131,6 +135,12 @@ pub(super) struct PaperKey {
 }
 
 impl WetSession {
+    /// Há tinta molhada na tela? (algum pixel do plano de pigmento com alfa) — o que decide se trocar
+    /// o modo de Blend fixa a sessão ou só lhe troca o modo (`set_brush_blend`).
+    pub(in crate::tool::paint) fn ha_tinta(&self) -> bool {
+        self.pigment.chunks_exact(4).any(|p| p[3] > 0)
+    }
+
     /// Push the authored FACTS into the engine when they moved (W3, grown by
     /// doc 22). ONE door for the stamp AND the tick — Dry Speed and Gravity
     /// act on water already sitting on the canvas, so a knob must land while

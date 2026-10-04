@@ -163,6 +163,7 @@ impl PainterTool {
         // A metade da SIM continua serial e assim fica: o engine é port 1:1 com fingerprint pinado e o
         // ADR-0134 declara o solver serial POR SEMÂNTICA — o ADR-0109 é inaplicável lá, de propósito.
         let (pigment, base) = (&sess.pigment, &sess.base);
+        let modo = sess.blend;
         // O amostrador do upsample. ⚠️ A pergunta *"um pixel É uma célula?"* é
         // feita UMA vez, fora do laço: na razão 1 o corpo abaixo lê os quatro
         // bytes no MESMO offset que sempre leu, com a MESMA aritmética de
@@ -214,13 +215,30 @@ impl PainterTool {
                         row[lo..lo + 4].copy_from_slice(&base[o..o + 4]);
                         continue;
                     }
-                    let ba = base[o + 3] as f32 / 255.0;
-                    let oa = pa + ba * (1.0 - pa);
-                    for ch in 0..3 {
-                        let bc = base[o + ch] as f32;
-                        row[lo + ch] = ((premul[ch] + bc * ba * (1.0 - pa)) / oa).round() as u8;
+                    if modo == ph2d_painter_brush::BrushBlend::Mix {
+                        let ba = base[o + 3] as f32 / 255.0;
+                        let oa = pa + ba * (1.0 - pa);
+                        for ch in 0..3 {
+                            let bc = base[o + ch] as f32;
+                            row[lo + ch] = ((premul[ch] + bc * ba * (1.0 - pa)) / oa).round() as u8;
+                        }
+                        row[lo + 3] = (oa * 255.0).round() as u8;
+                    } else {
+                        // O modo da SESSÃO pela lei do traço digital (`blend_over`, sRGB straight):
+                        // a cor straight do pigmento sobre a base, pela cobertura `pa`.
+                        let inv = 1.0 / (pa * 255.0);
+                        let cor = [premul[0] * inv, premul[1] * inv, premul[2] * inv];
+                        let dst = [
+                            f32::from(base[o]) / 255.0,
+                            f32::from(base[o + 1]) / 255.0,
+                            f32::from(base[o + 2]) / 255.0,
+                            f32::from(base[o + 3]) / 255.0,
+                        ];
+                        let out = ph2d_painter_brush::blend_over(modo, dst, cor, pa);
+                        for c in 0..4 {
+                            row[lo + c] = (out[c] * 255.0).round().clamp(0.0, 255.0) as u8;
+                        }
                     }
-                    row[lo + 3] = (oa * 255.0).round() as u8;
                     if gate_on {
                         let keep = super::watercolor_accum::splat_keep(gsel, gprot, None, o / 4);
                         if keep < 1.0 {

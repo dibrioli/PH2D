@@ -110,11 +110,14 @@ fn inertes_com_motivo() -> Vec<Inerte> {
         PAINTER_SHAPE_RAMP_ENABLE,
         "a fazer: a Shape Color Ramp na aquarela (doc 46 §2-7)",
     ));
-    v.push((
-        WetPaint,
-        PAINTER_BRUSH_BLEND,
-        "a fazer: o Blend no Wet Paint (doc 46 §2-6)",
-    ));
+    for modo in [6u8, 7] {
+        v.push((
+            WetPaint,
+            painter_brush_blend_option_id(modo),
+            "Erase Alpha / Add Alpha mexem no ALFA da camada por baixo, e a água não a apaga: a borracha \
+             dela é a ferramenta Erase, que tira tinta do fluido (`wetpaint::modo_da_sessao` → Mix)",
+        ));
+    }
     v.push((
         WetPaint,
         PAINTER_BRUSH_COMPOSITE_ENABLE,

@@ -402,6 +402,23 @@ mod tests; // the W1/W2 gates — child file (workspace file-LOC cap)
 #[cfg(test)]
 mod tests_doc22; // the doc-22 gates (tuning/tilt/tools/actions/flags)
 
+/// O modo de Blend de uma sessão molhada que nasce com o pincel em `blend`: o modo dele, salvo os dois
+/// que mexem no ALFA da camada por baixo (`EraseAlpha`/`AddAlpha`) — a água não apaga a tela: a
+/// borracha dela é a ferramenta Erase, que tira tinta do fluido.
+pub(in crate::tool::paint) fn modo_da_sessao(
+    blend: ph2d_painter_brush::BrushBlend,
+) -> ph2d_painter_brush::BrushBlend {
+    if blend.lays_pigment() {
+        blend
+    } else {
+        ph2d_painter_brush::BrushBlend::Mix
+    }
+}
+
+#[cfg(test)]
+#[path = "wetpaint/blend_tests.rs"]
+mod blend_tests; // o Blend chega à água: o modo é da sessão (doc 46 §2-6)
+
 #[cfg(test)]
 #[path = "wetpaint/birth_tests.rs"]
 mod birth_tests; // o nascimento da sessao nao pinta a tela inteira

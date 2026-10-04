@@ -165,8 +165,27 @@ impl PainterTool {
     }
 
     /// Set the brush blend mode from a wire discriminant (out-of-range → Mix).
+    ///
+    /// No Wet Paint a tinta molhada é uma camada no modo da SESSÃO: com tinta já na tela, trocar o
+    /// modo fixa a sessão antes do próximo traço (a tinta fica como está); sem tinta (o botão Wet), a
+    /// sessão só troca de modo.
     pub fn set_brush_blend(&mut self, mode: u8) {
-        self.paint.brush.blend = BrushBlend::from_u8(mode);
+        let novo = BrushBlend::from_u8(mode);
+        let modo = crate::tool::paint::wetpaint::modo_da_sessao(novo);
+        let fixa = match self.paint.wetpaint.session.as_mut() {
+            Some(sess) if sess.blend != modo => {
+                let ha_tinta = sess.ha_tinta();
+                if !ha_tinta {
+                    sess.blend = modo;
+                }
+                ha_tinta
+            }
+            _ => false,
+        };
+        if fixa {
+            self.wetpaint_end_session();
+        }
+        self.paint.brush.blend = novo;
     }
 
     // ── Stroke section setters (the single clamp source; the panel forwards raw UI values) ──

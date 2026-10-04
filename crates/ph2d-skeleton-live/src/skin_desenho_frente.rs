@@ -563,9 +563,13 @@ pub(super) fn so_o_que_se_ve(
     Some((saida, nova_tabela))
 }
 
-/// Um trecho À VISTA de um contorno FECHADO: o parâmetro `k + t` de cada ponta na fonte (o início
-/// fica NEGATIVO quando o trecho passa pela emenda) e a ponta POSADA.
-pub(super) type Trecho = ((f64, [f64; 2]), (f64, [f64; 2]));
+/// Uma ponta de um trecho: o parâmetro `k + t` na fonte, o ponto POSADO e a fracção do comprimento
+/// posado do segmento `k` até ele (é por ela que a ponta se acha no assado: numa dobra forte o
+/// pedaço do segmento passa perto de si mesmo, e o ponto mais perto agarrava o lado errado — MEDIDO).
+pub(super) type Ponta = (f64, [f64; 2], f64);
+
+/// Um trecho À VISTA de um contorno FECHADO (o início fica NEGATIVO quando passa pela emenda).
+pub(super) type Trecho = (Ponta, Ponta);
 
 /// ⭐⭐ **Os trechos à vista de cada contorno FECHADO** (A6) — `None` num contorno inteiro à vista
 /// ou aberto; `None` de todo quando nenhum fechado está tapado. Quem os corta no ASSADO é a
@@ -603,14 +607,26 @@ pub(super) fn cortes_dos_fechados(
                 let (a, _) = vis.pop().expect("mais de um trecho");
                 vis[0].0 = a - m;
             }
-            let posado = |u: f64| {
-                let u = u.rem_euclid(m);
+            let ponta = |u: f64| -> Ponta {
+                let um = u.rem_euclid(m);
                 #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "segmento")]
-                let k = (u.floor() as usize).min(v.len() - 1);
+                let k = (um.floor() as usize).min(v.len() - 1);
                 #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
-                f.posado(avalia(&cubica(&w, k), u - k as f64))
+                let t = um - k as f64;
+                let c = cubica(&w, k);
+                let p: Vec<[f64; 2]> =
+                    (0..=64).map(|i| f.posado(avalia(&c, f64::from(i) / 64.0))).collect();
+                let mut acc = vec![0.0];
+                for j in 1..p.len() {
+                    acc.push(acc[j - 1] + (p[j][0] - p[j - 1][0]).hypot(p[j][1] - p[j - 1][1]));
+                }
+                #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "amostra")]
+                let i = ((t * 64.0).floor() as usize).min(63);
+                #[expect(clippy::cast_precision_loss, reason = "amostra")]
+                let s = acc[i] + (acc[i + 1] - acc[i]) * (t * 64.0 - i as f64);
+                (u, f.posado(avalia(&c, t)), s / acc[64].max(1e-18))
             };
-            Some(vis.into_iter().map(|(a, b)| ((a, posado(a)), (b, posado(b)))).collect())
+            Some(vis.into_iter().map(|(a, b)| (ponta(a), ponta(b))).collect())
         })
         .collect();
     algum.then_some(cortes)

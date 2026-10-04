@@ -75,29 +75,38 @@ pub(super) fn traco_sobre_o_assado(
         let n = ov.len();
         let mut w = ov.to_vec();
         w.push(ov[0]);
-        let projeta = |(u, q): (f64, [f64; 2])| -> f64 {
+        let projeta = |(u, q, frac): super::frente::Ponta| -> f64 {
             #[expect(clippy::cast_precision_loss, reason = "contagem de nós")]
             let um = u.rem_euclid(m as f64);
             #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "segmento")]
             let k = (um.floor() as usize).min(m - 1);
-            let fim = if k + 1 < m { idx[k + 1] } else { n };
-            let dist = |j: usize, t: f64| {
-                let p = avalia(&cubica(&w, j), t);
-                (p[0] - q[0]).hypot(p[1] - q[1])
-            };
-            let (mut bj, mut bt) = (idx[k], 0.0);
-            for j in idx[k]..fim.max(idx[k] + 1) {
-                for i in 0..=32 {
-                    let t = f64::from(i) / 32.0;
-                    if dist(j, t) < dist(bj, bt) {
-                        (bj, bt) = (j, t);
-                    }
-                }
+            let fim = (if k + 1 < m { idx[k + 1] } else { n }).max(idx[k] + 1);
+            // O pedaço do assado que vem do segmento `k`, amostrado com o comprimento acumulado.
+            let mut pts: Vec<(usize, f64, [f64; 2])> = Vec::new();
+            for j in idx[k]..fim {
+                let c = cubica(&w, j);
+                pts.extend((0..32).map(|i| (j, f64::from(i) / 32.0, avalia(&c, f64::from(i) / 32.0))));
             }
+            pts.push((fim - 1, 1.0, w[fim].anchor));
+            let mut acc = vec![0.0];
+            for i in 1..pts.len() {
+                let (a, b) = (pts[i - 1].2, pts[i].2);
+                acc.push(acc[i - 1] + (b[0] - a[0]).hypot(b[1] - a[1]));
+            }
+            let total = acc[acc.len() - 1].max(1e-18);
+            // ⭐ A fracção escolhe a VIZINHANÇA (`±5 %` do comprimento); o ponto mais perto, dentro dela.
+            let dist = |p: [f64; 2]| (p[0] - q[0]).hypot(p[1] - q[1]);
+            let (bi, _) = (0..pts.len())
+                .filter(|&i| (acc[i] / total - frac).abs() <= 0.05)
+                .map(|i| (i, dist(pts[i].2)))
+                .min_by(|x, y| x.1.total_cmp(&y.1))
+                .unwrap_or((0, 0.0));
+            let (bj, bt) = (pts[bi].0, pts[bi].1);
+            let d_em = |t: f64| dist(avalia(&cubica(&w, bj), t));
             let (mut a, mut b) = ((bt - 1.0 / 32.0).max(0.0), (bt + 1.0 / 32.0).min(1.0));
             for _ in 0..40 {
                 let (x, y) = ((2.0 * a + b) / 3.0, (a + 2.0 * b) / 3.0);
-                if dist(bj, x) < dist(bj, y) {
+                if d_em(x) < d_em(y) {
                     b = y;
                 } else {
                     a = x;

@@ -575,9 +575,9 @@ fn o_trecho_que_passa_pela_emenda_e_um_so() {
         let Some(t) = trechos else { continue };
         #[expect(clippy::cast_precision_loss, reason = "contagem de nós")]
         let m = fonte.contour(c).expect("contorno").0.len() as f64;
-        pela_emenda += t.iter().filter(|((a, _), _)| *a < 0.0).count();
-        let comeca = t.iter().any(|((a, _), _)| *a == 0.0);
-        let acaba = t.iter().any(|(_, (b, _))| *b >= m);
+        pela_emenda += t.iter().filter(|((a, ..), _)| *a < 0.0).count();
+        let comeca = t.iter().any(|((a, ..), _)| *a == 0.0);
+        let acaba = t.iter().any(|(_, (b, ..))| *b >= m);
         assert!(!(comeca && acaba), "o contorno {c} partiu na emenda um trecho que é um só");
     }
     assert!(pela_emenda > 0, "o CONTROLO: nenhum trecho passa pela emenda");
@@ -615,7 +615,7 @@ fn o_avesso_nao_tapa_o_traco_de_um_contorno_fechado() {
             f.avesso = false;
             if com && !f.tapado(q) {
                 so_dele += 1;
-                let dentro_ = t.iter().any(|((a, _), (b, _))| (u > *a && u < *b) || (u - m > *a && u - m < *b));
+                let dentro_ = t.iter().any(|((a, ..), (b, ..))| (u > *a && u < *b) || (u - m > *a && u - m < *b));
                 faltam += usize::from(!dentro_);
             }
         }

@@ -115,7 +115,7 @@ Bateria verde no fim: `ph2d-skeleton-live` 276 · `ph2d-vec-skin` 48 · `ph2d-ap
 - No *Zig Zag* muito dobrado (`~110°`) os dentes de dentro encavalam-se e fecham buraquinhos REAIS (a
   imagem também os mostra).
 
-### A6 — ✅ FEITO (F55 + F55-b `9dc1a0434`…; pedido pelo dono 04/10; o 1.º smoke do dono achou o traço DESCOLADO numa dobra agressiva — curado na F55-b; smoke de novo pendente): o traço dos fechados de trás não pinta por cima da frente
+### A6 — ✅ FEITO (F55 + F55-b `9dc1a0434`…; pedido pelo dono 04/10; o 1.º smoke do dono achou o traço DESCOLADO numa dobra agressiva — curado na F55-b; 2.º smoke APROVADO 2026-10-04: «smoke ok»): o traço dos fechados de trás não pinta por cima da frente
 
 > Sem união, a forma sai em duas camadas (preenchimento + traço à vista). Causa de fundo curada: o
 > domínio do campo segue a regra de preenchimento (a sobreposição `NonZero` era furo). Só a ARTE

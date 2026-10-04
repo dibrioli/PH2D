@@ -1456,7 +1456,12 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
         falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
     };
     let publish = || {
-        ph2d_panel_vector::set_current_effects(true, false, KINDS, vec![row("Trim Path"), row("Zig Zag")]);
+        ph2d_panel_vector::set_current_effects(
+            true,
+            false,
+            KINDS,
+            vec![row("Trim Path"), row("Zig Zag")],
+        );
     };
 
     let mut targets: Vec<(ph2d_a11y::NodeId, String)> = Vec::new();
@@ -1595,8 +1600,16 @@ fn a_bound_shape_is_offered_no_effect() {
                 .is_some()
         })
     };
-    assert_eq!(oferece(false), [true, true, true], "solta: Add, Apply e o cartão");
-    assert_eq!(oferece(true), [false, false, false], "presa: nenhum efeito é oferecido");
+    assert_eq!(
+        oferece(false),
+        [true, true, true],
+        "solta: Add, Apply e o cartão"
+    );
+    assert_eq!(
+        oferece(true),
+        [false, false, false],
+        "presa: nenhum efeito é oferecido"
+    );
     ph2d_panel_vector::set_current_effects(false, false, &[], Vec::new());
 }
 
@@ -1642,7 +1655,8 @@ fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
         },
     ];
     ph2d_panel_vector::set_current_effects(
-        true, false,
+        true,
+        false,
         &["Zig Zag"],
         vec![ph2d_panel_vector::FxRowView {
             label: "Zig Zag",

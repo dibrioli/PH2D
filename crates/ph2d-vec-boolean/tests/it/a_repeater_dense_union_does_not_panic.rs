@@ -30,5 +30,8 @@ fn a_dense_spinning_repeater_union_answers_instead_of_panicking() {
     so.subpaths.retain(|c| c.closed);
     let r = std::panic::catch_unwind(|| ph2d_vec_boolean::resolve_overlap(&so).is_some());
     println!("  {} contornos: {r:?}", so.contour_count());
-    assert!(r.is_ok(), "a união PANICOU — o pânico do linesweeper voltou a atravessar a porta");
+    assert!(
+        r.is_ok(),
+        "a união PANICOU — o pânico do linesweeper voltou a atravessar a porta"
+    );
 }

@@ -9,16 +9,24 @@ use ph2d_vec_scene::{ShapeKind, cook_tinted};
 use std::time::Instant;
 
 fn barra(copias: f64) -> ph2d_vec_scene::VecPath {
-    let mut b = cook_tinted(ShapeKind::RoundRect, [-8.5, 2.0], [-1.5, 3.0], &[0.5], [200, 140, 60]);
+    let mut b = cook_tinted(
+        ShapeKind::RoundRect,
+        [-8.5, 2.0],
+        [-1.5, 3.0],
+        &[0.5],
+        [200, 140, 60],
+    );
     if copias > 1.0 {
-        b.effects = vec![FxEntry::new(PathEffect::Repeat(ph2d_vec_scene::fx_repeat::RepeatSpec {
-            copies_x: copias,
-            move_x: -80.0,
-            copies_y: copias,
-            move_y: -80.0,
-            spin: -72.0,
-            orbit: -72.0,
-        }))];
+        b.effects = vec![FxEntry::new(PathEffect::Repeat(
+            ph2d_vec_scene::fx_repeat::RepeatSpec {
+                copies_x: copias,
+                move_x: -80.0,
+                copies_y: copias,
+                move_y: -80.0,
+                spin: -72.0,
+                orbit: -72.0,
+            },
+        ))];
     }
     b.cooked().into_owned()
 }
@@ -39,13 +47,19 @@ fn diag_o_preco_do_campo_por_etapa() {
         let aneis = contornos_fechados(&p);
         let t_aneis = t.elapsed();
         let t = Instant::now();
-        let Some((malha, _)) = malha_do_dominio_com_regua(&aneis, &ossos, ph2d_vec_scene::FillRule::NonZero) else {
+        let Some((malha, _)) =
+            malha_do_dominio_com_regua(&aneis, &ossos, ph2d_vec_scene::FillRule::NonZero)
+        else {
             println!("  {copias}²: sem malha");
             continue;
         };
         let t_malha = t.elapsed();
         let t = Instant::now();
-        let w = ph2d_skin_weights::bounded_biharmonic(&malha, &ossos, ph2d_skin_weights::Options::default());
+        let w = ph2d_skin_weights::bounded_biharmonic(
+            &malha,
+            &ossos,
+            ph2d_skin_weights::Options::default(),
+        );
         let t_solver = t.elapsed();
         let t = Instant::now();
         let campo = super::campo_do_caminho(&p, &ossos);
@@ -66,7 +80,9 @@ fn diag_o_preco_do_campo_por_etapa() {
             if w.is_some() { "ok" } else { "None" },
             t_campo.as_secs_f64() * 1e3,
             t_tabela.as_secs_f64() * 1e3,
-            std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+            std::fs::read_to_string("/proc/loadavg")
+                .unwrap_or_default()
+                .trim()
         );
     }
 }
@@ -90,7 +106,11 @@ fn o_indice_dos_aneis_responde_como_a_varredura() {
         let s = 512.0 / (mx - cx).max(my - cy);
         let am: Vec<Vec<[f64; 2]>> = aneis
             .iter()
-            .map(|a| a.iter().map(|q| [(q[0] - cx) * s, (q[1] - cy) * s]).collect())
+            .map(|a| {
+                a.iter()
+                    .map(|q| [(q[0] - cx) * s, (q[1] - cy) * s])
+                    .collect()
+            })
             .collect();
         let ix = super::aneis::IndiceDosAneis::novo(&am);
         let (mut dentro, mut toca, mut n) = (0, 0, 0);
@@ -99,21 +119,44 @@ fn o_indice_dos_aneis_responde_como_a_varredura() {
                 let (x0, y0) = (f64::from(i) * 4.0 + 0.37, f64::from(j) * 4.0 + 0.61);
                 let q = [x0 + 1.3, y0 + 2.1];
                 let d = super::dentro(&am, q, ph2d_vec_scene::FillRule::EvenOdd);
-                for regra in [ph2d_vec_scene::FillRule::EvenOdd, ph2d_vec_scene::FillRule::NonZero] {
+                for regra in [
+                    ph2d_vec_scene::FillRule::EvenOdd,
+                    ph2d_vec_scene::FillRule::NonZero,
+                ] {
                     let v = super::dentro(&am, q, regra);
-                    assert_eq!(ix.dentro(&am, q, regra), v, "{copias}² {regra:?}: dentro difere em {q:?}");
+                    assert_eq!(
+                        ix.dentro(&am, q, regra),
+                        v,
+                        "{copias}² {regra:?}: dentro difere em {q:?}"
+                    );
                 }
                 let t = am.iter().any(|a| {
-                    (0..a.len()).any(|k| super::cruza_a_celula(a[k], a[(k + 1) % a.len()], x0, y0, x0 + 4.0, y0 + 4.0))
+                    (0..a.len()).any(|k| {
+                        super::cruza_a_celula(
+                            a[k],
+                            a[(k + 1) % a.len()],
+                            x0,
+                            y0,
+                            x0 + 4.0,
+                            y0 + 4.0,
+                        )
+                    })
                 });
-                assert_eq!(ix.toca(&am, x0, y0, x0 + 4.0, y0 + 4.0), t, "{copias}²: toca difere em {x0},{y0}");
+                assert_eq!(
+                    ix.toca(&am, x0, y0, x0 + 4.0, y0 + 4.0),
+                    t,
+                    "{copias}²: toca difere em {x0},{y0}"
+                );
                 dentro += usize::from(d);
                 toca += usize::from(t);
                 n += 1;
             }
         }
         println!("  {copias}²: {n} células · dentro {dentro} · toca {toca}");
-        assert!(dentro > 0 && dentro < n && toca > 0 && toca < n, "o CONTROLO: uma resposta só");
+        assert!(
+            dentro > 0 && dentro < n && toca > 0 && toca < n,
+            "o CONTROLO: uma resposta só"
+        );
     }
 }
 
@@ -131,8 +174,15 @@ fn a_fronteira_do_par_impar_e_semi_aberta() {
         ([5.0, 10.0], false),
         ([5.0, 5.0], true),
     ] {
-        for regra in [ph2d_vec_scene::FillRule::EvenOdd, ph2d_vec_scene::FillRule::NonZero] {
-            assert_eq!(super::dentro(&quadrado, p, regra), esperado, "varredura em {p:?}");
+        for regra in [
+            ph2d_vec_scene::FillRule::EvenOdd,
+            ph2d_vec_scene::FillRule::NonZero,
+        ] {
+            assert_eq!(
+                super::dentro(&quadrado, p, regra),
+                esperado,
+                "varredura em {p:?}"
+            );
             assert_eq!(ix.dentro(&quadrado, p, regra), esperado, "índice em {p:?}");
         }
     }
@@ -143,27 +193,47 @@ fn a_fronteira_do_par_impar_e_semi_aberta() {
 /// pinta como furo) não. ⛔ **O CONTROLO** é a segunda metade: a regra muda mesmo a resposta.
 #[test]
 fn o_dominio_segue_a_regra_de_preenchimento_da_forma() {
-    let mut b = cook_tinted(ShapeKind::RoundRect, [0.0, 0.0], [40.0, 10.0], &[0.0], [200, 140, 60]);
-    b.effects = vec![FxEntry::new(PathEffect::Repeat(ph2d_vec_scene::fx_repeat::RepeatSpec {
-        copies_x: 1.0,
-        move_x: 0.0,
-        copies_y: 2.0,
-        move_y: 60.0,
-        spin: 0.0,
-        orbit: 0.0,
-    }))];
+    let mut b = cook_tinted(
+        ShapeKind::RoundRect,
+        [0.0, 0.0],
+        [40.0, 10.0],
+        &[0.0],
+        [200, 140, 60],
+    );
+    b.effects = vec![FxEntry::new(PathEffect::Repeat(
+        ph2d_vec_scene::fx_repeat::RepeatSpec {
+            copies_x: 1.0,
+            move_x: 0.0,
+            copies_y: 2.0,
+            move_y: 60.0,
+            spin: 0.0,
+            orbit: 0.0,
+        },
+    ))];
     let mut p = b.cooked().into_owned();
     let ossos = [
-        Handle { a: [0.0, 8.0], b: [20.0, 8.0] },
-        Handle { a: [20.0, 8.0], b: [40.0, 8.0] },
+        Handle {
+            a: [0.0, 8.0],
+            b: [20.0, 8.0],
+        },
+        Handle {
+            a: [20.0, 8.0],
+            b: [40.0, 8.0],
+        },
     ];
-    let (y0, y1) = p
-        .verts_all()
-        .fold((f64::MAX, f64::MIN), |(a, z), v| (a.min(v.anchor[1]), z.max(v.anchor[1])));
+    let (y0, y1) = p.verts_all().fold((f64::MAX, f64::MIN), |(a, z), v| {
+        (a.min(v.anchor[1]), z.max(v.anchor[1]))
+    });
     let meio = [10.0, (y0 + y1) / 2.0];
     let campo = super::campo_do_caminho(&p, &ossos).expect("campo");
-    assert!(campo.linha(meio).is_some(), "NonZero: a sobreposição das cópias ficou fora do campo");
+    assert!(
+        campo.linha(meio).is_some(),
+        "NonZero: a sobreposição das cópias ficou fora do campo"
+    );
     p.fill_rule = ph2d_vec_scene::FillRule::EvenOdd;
     let campo = super::campo_do_caminho(&p, &ossos).expect("campo");
-    assert!(campo.linha(meio).is_none(), "o CONTROLO: EvenOdd também cobre a sobreposição");
+    assert!(
+        campo.linha(meio).is_none(),
+        "o CONTROLO: EvenOdd também cobre a sobreposição"
+    );
 }

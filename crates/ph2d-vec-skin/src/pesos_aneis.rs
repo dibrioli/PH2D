@@ -63,7 +63,10 @@ impl IndiceDosAneis {
                     ix.celula([a[0].min(b[0]), a[1].min(b[1])]),
                     ix.celula([a[0].max(b[0]), a[1].max(b[1])]),
                 );
-                #[expect(clippy::cast_possible_truncation, reason = "índices de anel e de ponto")]
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "índices de anel e de ponto"
+                )]
                 let id = (r as u32, i as u32);
                 for y in c0[1]..=c1[1] {
                     ix.faixas[y].push(id);

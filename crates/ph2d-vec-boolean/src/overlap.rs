@@ -67,9 +67,7 @@ pub const FECHO_EXACTO: f64 = 1e-12;
 /// (cara, e capaz de falhar). É a pergunta de quem só quer saber se a união seria NEUTRA.
 #[must_use]
 pub fn overlaps_itself(path: &VecPath) -> bool {
-    path.closed
-        && path.subpaths.iter().all(|c| c.closed)
-        && crosses_itself(&crate::to_bez(path))
+    path.closed && path.subpaths.iter().all(|c| c.closed) && crosses_itself(&crate::to_bez(path))
 }
 
 /// ⭐⭐⭐ **A silhueta de `path`** quando ele se sobrepõe a si mesmo; `None` quando não se

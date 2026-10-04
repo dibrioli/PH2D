@@ -184,7 +184,7 @@ sozinho (§6.5).
 | qualquer | **Object** (mover · rodar · escalar) | gizmo de transformação |
 | Sculpt (malha) | Object · **Sculpt** · **Paint** (Edit quando existir) | `ph2d-app-sculpt3d` + Painter na peça |
 | Model (SDF) | Object · **Edit** | `ph2d-app-field3d` |
-| Vector | Object · **Edit** (nós e alças) ✅ | `ph2d-app-vec` (o `DrawMode` partido em modo + ferramentas; criar é do Object, pelo menu Add) |
+| Vector | Object · **Edit** (as formas dentro dele) ✅ | `ph2d-app-vec` (o `VecObject` é o contentor; o Edit tem o painel inteiro; criar = *Add ▸ Vector Object*) |
 | Flip | Object · **Draw** · **Edit** | `ph2d-app-flip` |
 | Image | Object · **Paint** · **Mask** (⏳ §6.1) | `ph2d-app-painter` |
 | Câmara, corpo de física, áudio, HUD… | **só Object** | Inspector |
@@ -317,39 +317,34 @@ sozinho (§6.5).
     - ⏳ **Fica de fora, nomeado:** em Object a peça não se desenha no canvas 2D (D9: o 3D como
       camada entre camadas é outra obra), e o gizmo do objecto move um `Transform` que o traçado não
       lê.
-  - **Vector** — ✅ **entregue em 03–04/10** (handoff `HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md`):
-    `ph2d_app_vec::vector_mode::Family` — `(Vector, Edit)`. Edit = a ferramenta `vector` na mão com
-    uma das que mexem na forma no lugar (`DrawMode::EDIT_TOOLS`: Node · Fillet · Chamfer · Width ·
-    Trim), presa às formas do modo; Object = o resto.
-    - **Medido antes (as três perguntas do briefing):** o pill VECTOR tinha 5 portas (pill,
-      *Window*, a aba Vector, o layout gravado, ~50 cenas que fazem `set_active("vector")`; 9 delas
-      pedem uma ferramenta do Edit) e não criava objecto ao activar; o `DrawMode` tem **17**
-      variantes, não 14 — 5 mexem na forma no lugar, 12 criam ou trabalham sobre várias; cada forma
-      já é uma linha da Hierarquia (`VecEntityMap`) e os nós são índices dentro dela (⇒ nada de
-      `parts` à moda do Model); o alvo vive fora da `VecScene` (`VecState::edit`); e TODAS as
-      ferramentas do Edit agarram pela mesma porta, `VecViewState::is_pickable`.
-    - **A partição D3** (`DrawMode::object_mode`): criar uma forma é criar um OBJECTO, então a
-      caneta, o lápis, as formas, o texto, a moldura e o balde são do Object, com as que trabalham
-      sobre várias (Build, Connect, Cut, Blend, Bone). É a divisão do Blender (criar é o *Add* do
-      modo Object) e não a do Figma (a caneta dentro do Edit acrescenta à rede da forma
-      — aqui cada traço é uma linha da Hierarquia).
-    - **Desvio da fundação — o multi-objecto:** editar nós de VÁRIAS formas (plano 25 §6, o laço,
-      o soldar) já era do módulo, e um Edit de uma forma só tirava-o. ⇒ `ModeFamily::joins` /
-      `enter_with`: o `Tab` com várias formas seleccionadas leva todas ao Edit (as do mesmo tipo),
-      elas voltam como `parts` (o cadeado) e sair devolve-as à selecção — o Edit multi-objecto do
-      Blender.
-    - **O Edit tranca o clique E o desenho** (`VecViewState::editing` / `in_edit`): só as formas do
-      modo se agarram e mostram nós. A foto apanhou a 2.ª metade (âncoras desenhadas fora do modo).
-    - **Escolhas do dono (03/10):** o pill VECTOR **saiu** (e *Window ▸ Vector*); a forma nova do
-      Add **nasce em Object** (vê-se em Object, ao contrário do Flip e do Model); e as ferramentas
-      de criar vão para o **menu Add** (Caneta · Lápis · Texto, ao lado das formas), com o painel do
-      vetor a dar as restantes. ⛔ A 1.ª escolha foi a fila de cima (4 chips): medida, ela passa de
-      ~490 a ~650 px e não cabe no iPad 11 (582) nem no mini (521) — o menu da vista do 3D caía no
-      `⋯` (gate `the_area_hands_its_commands_to_the_bar_and_the_app_menu`). Perguntado de novo com o
-      número, o dono escolheu o Add (04/10). A aba Vector de cima continua a pôr a ferramenta na mão em
-      Object — com `Mode(Edit)` seria idêntica à do Model (gate
-      `no_two_layouts_hand_the_canvas_to_the_same_owner`).
-    - O painel do vetor só mostra as ferramentas do modo em curso. Smoke `PH2D_OBJECT_MODE_SMOKE=6`.
+  - **Vector** — ✅ **entregue em 04/10 como OBJECTO-CONTENTOR** (handoff
+    `HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md`). Escolha do dono depois do smoke:
+    *«apenas uma opção no modal: objeto vetorial. Ao clicar nele cria-se um objeto vazio e entra-se no
+    modo edit do vector com o menu exatamente como era antigamente […] as shapes são filhas do objeto
+    vetorial vazio»*.
+    - **O tipo** é o marcador `ph2d_ecs::VecObject` (uma entidade sem geometria cujas filhas são as
+      formas); as formas deixam de ser objectos (`kind_of` = Empty) e passam a PARTES dele.
+    - **Add ▸ Vector Object** cria-o vazio no centro da vista e ele **nasce em Edit** (`born`, como o
+      Flip e o Model). **Edit** = a ferramenta `vector` na mão com QUALQUER `DrawMode` (o painel
+      inteiro) e o objecto como alvo (`VecState::edit`); o que nasce no Edit é filho dele; só as formas
+      dele se agarram e mostram nós (`VecViewState::editing`, agora `Option`: `Some(vazio)` = um
+      objecto ainda sem formas). **Object** = a ferramenta sai da mão; o clique, o laço e o realce sobem
+      ao objecto (`vector_mode::lift_to_objects`) e o gizmo é a caixa-união das formas
+      (`vec_gizmo_view::object_view`). `Tab` sobre o objecto ou uma forma dele = Edit; vários = Edit
+      de todos (`joins`).
+    - **A regra das SOLTAS** (escolha do dono: *«cada uma ganha o seu objecto»*):
+      `ph2d_vec_entities::entities::object::adopt_loose`, no passe do desenho e na rede da captura —
+      a forma sem objecto entra no do Edit aberto, ou ganha um novo no lugar dela (projecto antigo,
+      cenas de teste, colar/duplicar fora de um Edit). A «cabeça» sobe por todo pai só-vetor (moldura,
+      envelope, grupo de formas). Um SVG importado de uma vez entra num só objecto (`enclose`).
+    - **A fronteira do objecto:** agrupar (logo a booleana viva) e o clique param no objecto
+      (`top_within_object`, `selection_root`); desagrupar nunca o dissolve.
+    - **Mantém-se da onda anterior:** o pill VECTOR fora; `ModeFamily::joins`/`enter_with`; o
+      `in_edit` como porta única do clique e das âncoras. Smoke `PH2D_OBJECT_MODE_SMOKE=6`.
+    - ⛔ **RECUSADO pelo dono no smoke (04/10), não reconstruir:** a forma como objecto com a partição
+      `DrawMode::EDIT_TOOLS`/`object_mode` (Edit = Node·Fillet·Chamfer·Width·Trim; criar em Object) e
+      o painel a filtrar a fileira pelo modo; as entradas Rectangle·Ellipse·Polygon·Star·Pen·Pencil·Text
+      no Add. Histórico em `HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md`.
 - **F4 — Layouts:** o campo opcional *«modo ao abrir»* (§3.3) e a limpeza dos toggles de módulo
   que viraram modos.
 

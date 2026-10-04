@@ -305,7 +305,7 @@ fn in_edit_only_the_shapes_of_the_mode_are_reached() {
     let (mut scene, mut pen, a2, b2) = two_squares();
     assert_eq!((a2, b2), (a, b));
     pen.set_view(VecViewState {
-        editing: vec![a],
+        editing: Some(vec![a]),
         ..Default::default()
     });
     let before = scene.clone();

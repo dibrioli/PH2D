@@ -424,7 +424,13 @@ fn publish_gizmo(
             }
             // spec/06 F3: o OBJECTO vetorial com formas — a caixa-união delas.
             let object = ph2d_app_vec::vec_gizmo_view::object_view(
-                sim, vec_scene, sim_entity, camera, window_size, last_pointer, pivot_tool_active,
+                sim,
+                vec_scene,
+                sim_entity,
+                camera,
+                window_size,
+                last_pointer,
+                pivot_tool_active,
             );
             if object.is_some() {
                 return object;

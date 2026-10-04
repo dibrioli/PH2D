@@ -301,3 +301,33 @@ fn an_envelope_made_in_the_edit_stays_whole_in_the_object() {
         assert_eq!(parent(Entity::from_bits(bits(&c, p))), Some(container));
     }
 }
+
+/// ⭐⭐ GATE — **a selecção VELHA da caneta não junta objectos a um Edit que ela não abriu**: depois
+/// de um Edit de A, a caneta ainda tem a forma de A; o `Tab` (ou o nascimento) de B entra SÓ em B.
+/// Só a porta antiga — a ferramenta que chegou à mão com formas seleccionadas — junta pela caneta.
+#[test]
+fn a_stale_pen_selection_never_joins_an_edit_it_did_not_open() {
+    let mut c = dois_objectos();
+    let [oa, ob] = c.obj;
+    let [a, b] = c.path;
+    c.vec.pen.select(Some(a));
+    let mut fam = Family::new(&mut c.vec, &mut c.sim);
+    assert!(fam.enter_with(ObjectMode::Edit, ob, &[], &mut c.tools));
+    assert_eq!(
+        c.vec.edit.objects,
+        vec![ob],
+        "a forma velha de A entrou no Edit de B"
+    );
+    c.tools.activate_default();
+    c.vec.edit.objects.clear();
+    c.vec.pen.select_many(&[a, b]);
+    c.tools.set_active(&ToolId::new(VECTOR));
+    let mut fam = Family::new(&mut c.vec, &mut c.sim);
+    let (bits, mode) = fam.wants(&mut c.tools).expect("a porta antiga pede o Edit");
+    assert!(fam.enter_with(mode, bits, &[], &mut c.tools));
+    assert_eq!(
+        c.vec.edit.objects,
+        vec![ob, oa],
+        "a porta antiga não juntou pela caneta"
+    );
+}

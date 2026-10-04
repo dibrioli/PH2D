@@ -154,7 +154,10 @@ fn object_mode_picks_and_boxes_the_whole_vector_object() {
             "src/input_dispatch/despacho_clique_largar.rs",
             "vector_mode::lift_to_objects(",
         ),
-        ("src/render_loop/snapshots.rs", "vec_gizmo_view::object_view("),
+        (
+            "src/render_loop/snapshots.rs",
+            "vec_gizmo_view::object_view(",
+        ),
     ] {
         let src = std::fs::read_to_string(f).expect("o ficheiro existe");
         assert!(src.contains(call), "{f} não chama {call}");

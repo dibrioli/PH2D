@@ -209,10 +209,18 @@ fn a_vector_object_publishes_the_union_of_its_shapes() {
     };
     let o = object::spawn_object(&mut sim, "Vector", ph2d_core::Vec2::new(5.0, 0.0));
     assert!(object_view(&sim, &scene, o, &cam, ws, (0.0, 0.0), false).is_none());
+    assert!(
+        crate::group_gizmo_view::is_empty_object(&sim, o),
+        "o objecto vazio perdeu o anel (e com ele o gizmo e o clique)"
+    );
     scene.push_path(rectangle([-4.0, -1.0], [-2.0, 1.0]));
     scene.push_path(rectangle([2.0, -1.0], [4.0, 1.0]));
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     object::adopt_loose(&mut sim, &map, Some(o), &[], "Vector");
+    assert!(
+        !crate::group_gizmo_view::is_empty_object(&sim, o),
+        "o objecto COM formas desenha o anel de vazio por cima delas"
+    );
     let v = object_view(&sim, &scene, o, &cam, ws, (0.0, 0.0), false)
         .expect("o objecto devia publicar um gizmo");
     let near = |a: f32, b: f32| (a - b).abs() < 1e-3;

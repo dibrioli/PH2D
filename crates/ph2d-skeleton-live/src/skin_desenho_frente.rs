@@ -37,7 +37,69 @@ struct Posada<'a> {
     /// traço de um contorno fechado, que ali É a borda da dobra (sem ele a frente abria um vão no
     /// traço de trás sem desenhar a própria borda — FOTOGRAFADO em SVG a `130°`, A6).
     avesso: bool,
+    /// Os vértices da malha em REPOUSO, no espaço local — para levar o ponto que um triângulo põe
+    /// em `q` de volta ao repouso.
+    repouso: Vec<[f64; 2]>,
+    /// A ARTE em repouso ([`Arte`]); vazia = sem filtro.
+    arte: Arte,
     grelha: Grelha,
+}
+
+/// ⭐⭐ **A ARTE em repouso** — os contornos fechados achatados e a regra de preenchimento da forma.
+/// ⛔ A malha do campo passa um pouco ALÉM do desenho (as células da borda), e na dobra essa margem
+/// caía sobre o traço de trás e apagava-o (MEDIDO, A6: a `110°` o traço de cima da cópia de baixo
+/// sumia sob a margem da cópia da frente, triângulos de centro `(28,2; 17,5)`). Um triângulo só
+/// tapa onde o que ele lá põe é ARTE.
+#[derive(Default)]
+struct Arte {
+    aneis: Vec<Vec<[f64; 2]>>,
+    regra: ph2d_vec_scene::FillRule,
+}
+
+impl Arte {
+    fn de(fonte: &VecPath) -> Self {
+        let aneis = (0..fonte.contour_count())
+            .filter_map(|c| fonte.contour(c))
+            .filter(|(v, fechado)| *fechado && v.len() > 1)
+            .map(|(v, _)| {
+                (0..v.len())
+                    .flat_map(|k| {
+                        let c = [v[k].anchor, v[k].out_handle, v[(k + 1) % v.len()].in_handle, v[(k + 1) % v.len()].anchor];
+                        (0..16).map(move |i| avalia(&c, f64::from(i) / 16.0))
+                    })
+                    .collect()
+            })
+            .collect();
+        Self {
+            aneis,
+            regra: fonte.fill_rule,
+        }
+    }
+
+    /// `p` é arte? — o número de voltas pela regra da forma; sem anéis, sim.
+    fn tem(&self, p: [f64; 2]) -> bool {
+        if self.aneis.is_empty() {
+            return true;
+        }
+        let voltas: i32 = self
+            .aneis
+            .iter()
+            .flat_map(|a| (0..a.len()).map(move |i| (a[i], a[(i + 1) % a.len()])))
+            .map(|(a, b)| {
+                let corta = (a[1] > p[1]) != (b[1] > p[1])
+                    && (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0] > p[0];
+                match (corta, b[1] > a[1]) {
+                    (false, _) => 0,
+                    (true, true) => 1,
+                    (true, false) => -1,
+                }
+            })
+            .sum();
+        match self.regra {
+            ph2d_vec_scene::FillRule::EvenOdd => voltas % 2 != 0,
+            ph2d_vec_scene::FillRule::NonZero => voltas != 0,
+        }
+    }
 }
 
 /// Baldes de triângulos posados por célula — a consulta de um ponto só vê os do balde dele.
@@ -134,9 +196,11 @@ impl<'a> Posada<'a> {
         }
         let mut w = pele.scratch();
         let mut pos = Vec::with_capacity(campo.malha.rest.len());
+        let mut repouso = Vec::with_capacity(campo.malha.rest.len());
         let mut chave_v = Vec::with_capacity(campo.malha.rest.len());
         for i in 0..campo.malha.rest.len() {
             let p = campo.local_do_vertice(i)?;
+            repouso.push(p);
             let linha = campo.linha_do_vertice(i)?;
             pele.weights_corrected(p, Some(linha), &mut w, correcoes);
             pos.push(if rigido { pele.blend(p, &w) } else { pele.blend_linear(p, &w) });
@@ -179,6 +243,8 @@ impl<'a> Posada<'a> {
             virado,
             passo,
             avesso: true,
+            repouso,
+            arte: Arte::default(),
             grelha,
         })
     }
@@ -197,15 +263,25 @@ impl<'a> Posada<'a> {
         let minha = self.chave_tri[dono];
         self.grelha.balde(q).iter().any(|&k| {
             let o = m.tris[k as usize];
-            self.chave_tri[k as usize] > minha
-                && !o.iter().any(|v| t.contains(v))
-                && dentro(bari(
-                    q,
-                    self.pos[o[0] as usize],
-                    self.pos[o[1] as usize],
-                    self.pos[o[2] as usize],
-                ))
+            if self.chave_tri[k as usize] <= minha || o.iter().any(|v| t.contains(v)) {
+                return false;
+            }
+            let [a, b, c] = o.map(|v| v as usize);
+            let uv = bari(q, self.pos[a], self.pos[b], self.pos[c]);
+            dentro(uv)
+                && uv.is_some_and(|(u, v)| {
+                    let r = [0, 1].map(|j| {
+                        (1.0 - u - v) * self.repouso[a][j] + u * self.repouso[b][j] + v * self.repouso[c][j]
+                    });
+                    self.arte.tem(r)
+                })
         })
+    }
+
+    /// Esta posada com a ARTE de `fonte` (ver [`Arte`]).
+    fn com_a_arte(mut self, fonte: &VecPath) -> Self {
+        self.arte = Arte::de(fonte);
+        self
     }
 
     /// O ponto `p` posado (a lei do bake: o campo na posição dele), sem a malha a pele derivada.
@@ -466,7 +542,7 @@ fn recorta_a_fonte(
     if !contornos.iter().any(|(_, f)| *f) || !contornos.iter().any(|(v, f)| julga(v, *f)) {
         return None;
     }
-    let mut f = Posada::nova(campo, indice, pele, correcoes, rigido, prof)?;
+    let mut f = Posada::nova(campo, indice, pele, correcoes, rigido, prof)?.com_a_arte(fonte);
     f.avesso = !fechados;
     // ⭐ Um pedaço CORTADO mais curto que a largura do próprio traço é um borrão, não uma risca
     // (FOTOGRAFADO a `110°`: tiques soltos junto às juntas) — sai.

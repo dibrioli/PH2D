@@ -380,7 +380,9 @@ fn nenhum_pedaco_cortado_e_mais_curto_que_o_traco() {
     let mut no_controlo = 0;
     for graus in [100f32, 110.0, 120.0] {
         let (fonte, pesos, campo, pele, prof) = barra_em_s(graus);
-        let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof).expect("posada");
+        let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof)
+        .expect("posada")
+        .com_a_arte(&fonte);
         let curtos = |p: &VecPath, so_cortados: bool| -> usize {
             (0..p.contour_count())
                 .filter_map(|c| p.contour(c))
@@ -415,7 +417,9 @@ fn nenhum_pedaco_cortado_e_mais_curto_que_o_traco() {
 #[test]
 fn cada_corte_cai_na_fronteira_do_que_se_ve() {
     let (fonte, _, campo, pele, prof) = barra_em_s(110.0);
-    let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof).expect("posada");
+    let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof)
+        .expect("posada")
+        .com_a_arte(&fonte);
     let mut cortes = 0;
     for c in 0..fonte.contour_count() {
         let Some((v, false)) = fonte.contour(c) else { continue };
@@ -493,7 +497,9 @@ fn o_recorte_e_a_curva_da_fonte() {
 #[test]
 fn uma_risca_sobre_o_avesso_da_dobra_nao_se_ve() {
     let (fonte, pesos, campo, pele, prof) = barra_em_s(120.0);
-    let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof).expect("posada");
+    let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof)
+        .expect("posada")
+        .com_a_arte(&fonte);
     let no_avesso = |p: &VecPath| -> usize {
         amostras(p, false, 200)
             .into_iter()

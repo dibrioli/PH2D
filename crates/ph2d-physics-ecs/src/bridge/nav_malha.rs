@@ -92,9 +92,6 @@ impl PhysicsBridge {
                 )
             });
             if malha.update_with_areas(&poligono, &dela, &custos.areas) {
-                if let Some(p) = self.nav.walls.get_mut(&chave) {
-                    p.montadas = None;
-                }
                 mudou.insert(chave);
             }
         }

@@ -114,7 +114,7 @@ fn as_paredes_da_ponte_por_mosaicos_sao_as_da_malha_inteira() {
             sairam += 1;
         }
         t.update(&reg, &obs);
-        let w = pm.monta(&t);
+        let w = pm.paredes(&t).clone();
         let o = ph2d_orca::Walls::from_walkable_walls(t.mesh().verts(), t.mesh().walls());
         let b = |p: ph2d_nav::V2| [p[0].to_bits(), p[1].to_bits()];
         let faixas = t.paredes_por_mosaico();

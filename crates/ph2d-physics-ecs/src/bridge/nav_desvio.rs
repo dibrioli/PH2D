@@ -15,17 +15,32 @@ use crate::PlayerInput;
 use crate::bridge::PhysicsBridge;
 use crate::components::BodyKind;
 
-/// ⭐ (W11) **As paredes de uma malha** como o desvio as lê: por mosaicos, e as montadas (`None` = a
-/// malha mudou e ainda ninguém as pediu). Uma mudança refaz só os mosaicos cujas paredes mudaram — as
-/// mesmas [`ph2d_orca::Walls`], ao bit, que `from_walkable_walls(m.verts(), m.walls())` (plano 30 §19).
+/// ⭐ (W11) **As paredes de uma malha** como o desvio as lê: por mosaicos, e as montadas com a versão da
+/// malha de onde vieram. Uma mudança refaz só os mosaicos cujas paredes mudaram — as mesmas
+/// [`ph2d_orca::Walls`], ao bit, que `from_walkable_walls(m.verts(), m.walls())` (plano 30 §19).
 #[derive(Default)]
 pub(super) struct ParedesDaMalha {
     blocos: ph2d_orca::ParedesPorBlocos,
-    pub(super) montadas: Option<ph2d_orca::Walls>,
+    montadas: ph2d_orca::Walls,
+    versao: Option<u64>,
 }
 
 impl ParedesDaMalha {
-    pub(super) fn monta(&mut self, tm: &ph2d_navmesh::TiledMesh) -> ph2d_orca::Walls {
+    /// As paredes da malha de AGORA (refeitas se ela mudou desde a última vez).
+    pub(super) fn paredes(&mut self, tm: &ph2d_navmesh::TiledMesh) -> &ph2d_orca::Walls {
+        if self.versao != Some(tm.versao()) {
+            self.montadas = self.monta(tm);
+            self.versao = Some(tm.versao());
+        }
+        &self.montadas
+    }
+
+    /// As da última [`Self::paredes`].
+    pub(super) fn montadas(&self) -> &ph2d_orca::Walls {
+        &self.montadas
+    }
+
+    fn monta(&mut self, tm: &ph2d_navmesh::TiledMesh) -> ph2d_orca::Walls {
         let (m, faixas) = (tm.mesh(), tm.paredes_por_mosaico());
         let (verts, walls) = (m.verts(), m.walls());
         self.blocos
@@ -118,10 +133,7 @@ impl PhysicsBridge {
             if let Some(chave) = p.malha
                 && let Some(tm) = self.nav.meshes.get(&chave)
             {
-                let pm = self.nav.walls.entry(chave).or_default();
-                if pm.montadas.is_none() {
-                    pm.montadas = Some(pm.monta(tm));
-                }
+                self.nav.walls.entry(chave).or_default().paredes(tm);
             }
         }
         let paredes: Vec<Option<&ph2d_orca::Walls>> = pedidas
@@ -129,7 +141,7 @@ impl PhysicsBridge {
             .map(|p| {
                 p.malha
                     .and_then(|k| self.nav.walls.get(&k))
-                    .and_then(|w| w.montadas.as_ref())
+                    .map(ParedesDaMalha::montadas)
             })
             .collect();
         let mut multidao = ph2d_orca::Crowd::new(corpos, ph2d_orca::Params::PRODUCT);

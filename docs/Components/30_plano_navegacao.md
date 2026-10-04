@@ -1102,3 +1102,65 @@ O PISO de um desenho por blocos (o que fica O(malha)): concatenar os cinco vecto
    blocos NÃO existe nesta forma e fica a grelha linear rápida (`~0,4 ms`).
 3. **K3 — a consulta não piora:** o pior tique de `medir_replaneio` a 200 agentes não sobe acima do ruído
    (alternado antes/depois), e as procuras e a fila ficam IGUAIS.
+
+### §19.3 — As perguntas medidas antes do desenho
+
+| pergunta | resposta (medida / lida no código) |
+|---|---|
+| o índice de uma parede é observável além da ORDEM? | não: o desvio só o usa como etiqueta (`point`/`next`/`prev`/`dir`/`convex` de `i`) e como desempate em `near` — logo as paredes podem viver por bloco, com o índice = base do bloco + local |
+| dois vértices distintos da malha podem ter o mesmo ponto? | não (a triangulação funde por ponto; a junção dos blocos numera um ponto uma vez) ⇒ **um vértice é o seu ponto, ao bit**, e os blocos reconhecem-se pelas coordenadas — sem a numeração global, que muda a cada mudança |
+| um ponto de dentro de um mosaico pode aparecer noutro? | não (a peça é um `assert!` dentro do rectângulo; os rectângulos só se tocam na borda, que coincide ao bit com `lo`/`hi`) ⇒ só os pontos da BORDA ligam blocos |
+| a grelha das paredes é observável? | não: `near` = a varredura inteira (gate W9), qualquer grelha serve ⇒ uma grelha por bloco, com índices locais |
+
+### §19.4 — O desenho: `ph2d_orca::ParedesPorBlocos`
+
+A `ph2d-orca` continua com ZERO dependências: recebe, por bloco (a chave inteira da grelha regular, o
+rectângulo, e as paredes `(de, para)` em COORDENADAS), o que a ponte lê de `TiledMesh::paredes_por_mosaico`
+(uma `ph2d_nav::FaixaDeParedes` por bloco: `walls()[faixa]`, gravada pela junção da W10).
+
+| camada | depende de | o quê |
+|---|---|---|
+| L1 | as paredes do bloco | o seguinte/anterior pelos pontos de DENTRO (duas listas ordenadas + duas junções lineares), `dir`/`convex` das entradas de dentro, os pontos da borda (a 1.ª que lá começa / acaba), a grelha do bloco |
+| L2 | L1 dele e dos vizinhos que têm o ponto | só as entradas PENDENTES (o `de` ou o `para` na borda): a 1.ª entrada, pela ordem das chaves, entre os blocos cujo rectângulo tem o ponto |
+
+`poe` compara as paredes com as de antes, ao bit: iguais = nada (é o que faz uma porta refazer 2 blocos e não
+49). `monta` recose os blocos sujos (o mudado e os 8 vizinhos) e concatena. `Walls::near` lê os blocos cujo
+rectângulo toca a caixa do alcance; uma construção inteira (`from_polygons`, `from_walkable_walls`) é UM bloco,
+a caixa — a mesma porta de busca.
+
+### §19.5 — As medições (`--release`, a sonda e `medir_replaneio`)
+
+`sonda_paredes_w11` (a cena do §19.1, o mínimo de 10–20, load `3–5`):
+
+| | antes | **W11** |
+|---|---|---|
+| as paredes depois de uma porta | `0,557 ms` (inteiras) | **`0,149 ms`** (pôr `0,098` · montar `0,050`; 2 blocos refeitos, 12 recosidos) |
+| nada mudou (o piso O(malha): comparar + concatenar) | — | `0,056 ms` (`0,032` + `0,023`) |
+| a frio (a 1.ª vez de uma malha) | `0,557` | `1,67 ms` — só quando a malha inteira nasce (`~57 ms`) |
+| `near` × 20 000 | `26,3–27,7 ms` | `26,9–28,5 ms` (`+2–3 %`: as `partition_point` da grelha dos blocos) |
+
+As três tentativas até ao K2: a 1.ª L2 recalculava `dir`/`convex` de TODAS as entradas dos 12 blocos recosidos
+(`0,306 ms`); a 2.ª deixou à L2 só as pendentes (`0,229`); a 3.ª trocou, na L1, uma busca binária por entrada
+por duas junções lineares (`0,149`).
+
+`medir_replaneio` (antes = `cd7a87e94`, alternado 2×, load `4,5–6,6`): **as procuras e a fila IGUAIS nas 12
+linhas**; o pior tique depois de uma porta a 200 agentes (fila a `20 000`) `7,23 · 7,73 → 7,01 · 7,04 ms`; o
+CONTROLO (nada a mudar) sem subida.
+
+### §19.6 — As decisões
+
+| decisão | porquê (medido) |
+|---|---|
+| um vértice pelo PONTO ao bit (e não pelo índice da malha) | a numeração global muda a cada mudança; o ponto não — e é a mesma identidade (§19.3) |
+| a chave do bloco = a do mosaico, os vizinhos pelas chaves `±1` | é a ordem das paredes da malha (a da junção da W10) e a do desempate |
+| `poe` compara ao bit em vez de a malha dizer quem mudou | `0,032 ms` por toda a malha e nenhuma contabilidade partilhada entre as duas crates a errar |
+| a grelha da busca por bloco também na construção inteira (um bloco) | uma só porta de `near`; o oráculo da W9 (`near` = varredura) guarda-a |
+| a concatenação O(malha) fica | `0,023 ms`; tirá-la pediria índices por bloco no caminho quente do desvio |
+
+### §19.7 — ⛔ Recusas MEDIDAS
+
+| recusado | medição |
+|---|---|
+| só acelerar a construção inteira | a grelha AO BIT mais depressa dá `0,285 → 0,236 ms`; o todo ficaria em `~0,4` |
+| a L2 refazer `dir`/`convex` de todas as entradas dos blocos recosidos | `0,116 ms` contra `0,050` (só as pendentes) |
+| uma busca binária por entrada na L1 | `~70 µs` por bloco contra `~33` (duas junções lineares) |

@@ -83,6 +83,8 @@ pub struct TiledMesh {
     stats: TileStats,
     /// (W9) Os mosaicos refeitos na última actualização (`None` = a malha inteira pode ter mudado).
     refeitos: Option<Vec<(i64, i64)>>,
+    /// (W11) Sobe a cada mudança da malha — ver [`Self::versao`].
+    versao: u64,
 }
 
 impl TiledMesh {
@@ -99,6 +101,7 @@ impl TiledMesh {
             mesh: vazia(),
             stats: TileStats::default(),
             refeitos: None,
+            versao: 0,
         }
     }
 
@@ -113,6 +116,12 @@ impl TiledMesh {
     #[must_use]
     pub fn paredes_por_mosaico(&self) -> &[FaixaDeParedes] {
         self.blocos.faixas_de_paredes()
+    }
+
+    /// (W11) A versão da malha: muda sempre que [`Self::mesh`] muda (quem deriva dela compara-a).
+    #[must_use]
+    pub fn versao(&self) -> u64 {
+        self.versao
     }
 
     /// O que a última actualização fez.
@@ -254,6 +263,7 @@ impl TiledMesh {
         self.mosaicos = novos;
         if mudou {
             self.mesh = self.blocos.monta().unwrap_or_else(|_| vazia());
+            self.versao += 1;
         }
         self.stats = stats;
         mudou

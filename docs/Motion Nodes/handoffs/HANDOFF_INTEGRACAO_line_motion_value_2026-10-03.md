@@ -17,7 +17,7 @@
 |---|---|
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` |
 | ramo | `line/motion-value` |
-| HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1; e `9d1058a40` · `650128529` · os docs (a memória das células `66 → 43 MB`) — ver §6.2; e `a6e067f45` · `1c8f25d1e` · `757c5356a` · `64120d51a` · `2062db7d8` + docs (o Number no Strength do Vortex) — ver §6.3; e `82f9623e2` (o grafo, §6.4); e `133e306af` · `b723b02d1` · `40a2cbc1a` · `018218976` · `62929e077` + o commit da §6.5 (os itens 3 e 4) — ver §6.5; e o bloco de 04/10 (`4f0dcce34` … o commit da §6.6) — ver §6.6 |
+| HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1; e `9d1058a40` · `650128529` · os docs (a memória das células `66 → 43 MB`) — ver §6.2; e `a6e067f45` · `1c8f25d1e` · `757c5356a` · `64120d51a` · `2062db7d8` + docs (o Number no Strength do Vortex) — ver §6.3; e `82f9623e2` (o grafo, §6.4); e `133e306af` · `b723b02d1` · `40a2cbc1a` · `018218976` · `62929e077` + o commit da §6.5 (os itens 3 e 4) — ver §6.5; e o bloco de 04/10 (`4f0dcce34` … o commit da §6.6) — ver §6.6; e o bloco §9.15 (`79e680c21` … o commit da §6.7, ⚠️ FECHO PARCIAL) — ver §6.7 |
 | base / merge-base | `main` @ `1ad60a1ce` — **0** commits do `main` por trazer; `--ff-only` possível |
 | commits | **18** (2026-10-02 → 03) · `36` ficheiros (+3 621 / −685) |
 
@@ -162,7 +162,7 @@ integrador — releia a ORDEM das fases do quadro só se outra linha mexer em `f
 | ✅ memória no app MEDIDA (§6.1) e CORTADA (§6.2) — `66 → 43 MB` na `=127` densa | fechado |
 | ⛔ **variante ESPARSA** — RECUSADA com a tabela (§6.5) | `60 %` das células tocadas nas densas; líquido `≤ 10 %` no melhor caso, conformes piores, `+4 B`/célula |
 | ⛔ o `cs_varre` — D1 (as famílias presentes) e D2 (`4` px por fio) RECUSADOS (§6.6) | o prefixo vale no MÁXIMO `0,10` ms nas densas da iGPU (ablação `V0`); o resto é memória. Sobra o prefixo por SUBGRUPO, tecto `0,10` ms, não construído |
-| ✅ a variante COMPLETA (com tracejado) — no regime corre a ENXUTA (§6.5) | ⏳ as tracejadas GRANDES esticadas ainda perdem para o Vello na sonda da iGPU (parede `1,58`–`1,76` contra `0,90`–`1,15` ms, com o Vello a receber o tracejado já cortado); no produto `60 fps`, e a alternativa é `5×` mais lenta. ⛔ A topologia por troço (um GRUPO por cópia) foi RECUSADA (§6.6: RTX `−49 %`, iGPU `+6 %`); a pergunta seguinte é a emissão dupla × a fase em série, por ablação |
+| ✅ a variante COMPLETA (com tracejado) — no regime corre a ENXUTA (§6.5) | ✅→⏳ as tracejadas grandes esticadas na iGPU: soma `1,17 → 0,95` e parede mediana `1,27 → 1,03` contra o Vello `0,95` (§6.7); o 1.º quadro de uma cena tracejada `78 → 1,6` ms. ⏳ a rodada foi PARADA: densas, RTX e app por medir; gate de fecho e mutações por correr (§6.7) |
 | a mordida do traço rente depois de uma quina | divergência DECLARADA (§9.9), sem acção |
 | ✅ `M6` / `S6` / `S8` e o `fx.glow` que lê o `pump` anterior | fechados (§6.6): `M6` sem código desde §9.8; `S6`/`S8` equivalentes, com número e gate de CPU; o halo pela rota do quadro — e o halo que sumia em TODO quadro por faixas |
 | `fk.rs` duplicado em seis crates (bug #11) | wave própria |
@@ -390,6 +390,84 @@ cura). **Ids/consts novos:** nenhum (sai a `RECUSA_FORMA_COM_BRILHO`). **Contrat
   B3 sobreviveu à 1.ª corrida (fixtura com halo forte de mais) e sangra depois da cura da fixtura.
 - Perfil do loop (`agent-loop-profile.sh`, 20 sessões): paralelismo `1,14` · `test:check` `2,2:1` · Edit `35 %`
   · contexto relido `492 mil` · respostas por sessão `233` ✓ · contexto inicial `63 mil` ✓.
+
+### §6.7 — O bloco §9.15 (04/10): onde está o custo das tracejadas grandes esticadas — ⚠️ FECHO PARCIAL
+
+Plano, kill-criteria, tabelas e veredictos: [doc 121 §9.15](../121_as_formas_na_placa.md). ⚠️ **A rodada de
+medição foi PARADA por ordem do dono (`19:26`)** depois de `94` de `360` células: das `16:45` às `19:00`
+três outras linhas seguraram a carga em `16`–`30` (`journalctl`: `components` `216` comandos pesados,
+`vector` `148`, `sculpt3d` `96`). Medido só na iGPU (o proxy de telemóvel): as esticadas contínuas e
+tracejadas e as conformes contínuas.
+
+| commit | o quê |
+|---|---|
+| `79e680c21` | instrumentos sem relógio: `arestas_do_ultimo_quadro` (reservadas · escritas · do contorno), CPU por fase, parede por quadro e a do 1.º; `mede_sonda_das_estrelas.sh` com `TRACEJADOS="0 1"`; `tabela_da_sonda.py` |
+| `1ebba057c` | plano + kill-criteria (doc 121 §9.15), escrito antes de construir |
+| `e6daad1fa` | os pedaços, cada um atrás de uma constante `true` (o código = o binário `F` medido) + 2 gates novos |
+| `e00efb99d` | `troca_os_pedacos_9_15.py` (os 15 binários da rodada) |
+| o desta secção | resultados (doc 121 §9.15) e este handoff |
+
+**O que o código entrega (todos os pedaços LIGADOS):**
+
+- **(c) explicado:** a «parede − soma» nunca explicada era o 1.º quadro cronometrado, ainda pixel a pixel
+  pela variante completa (`76`–`78` ms na média de `250`). **c2** (`contorno_capacidade.rs`): uma cena NOVA
+  (1.º desenho, ou as geometrias carregadas mudam) MEDE a capacidade bloqueando antes do 1.º quadro — o 1.º
+  quadro de uma cena tracejada `78 → 1,6` ms na iGPU.
+- **(b) a premissa caiu:** as tracejadas escrevem MENOS arestas; o `cs_deposita` corria um fio por aresta
+  RESERVADA (`15,5×` as escritas). **B1** `cs_soma_escritas` + o `cs_deposita` por aresta ESCRITA (células
+  `0,62 → 0,47`); **B2** a reserva conta a junta uma vez por troço (prova no doc): reservadas `561 600 →
+  285 120` — e o buffer de arestas, que cresce à potência de dois da reserva, deixa de pedir o dobro.
+- **(a) A1a** o ajuste do tracejado sai da contagem (o acumulador `Ajuste` em `shape.wgsl` é UMA porta para
+  a contagem e o pixel a pixel); **A1b** o total de um fechado sai do próprio percurso (o 1.º traço, o da
+  emenda, emite-se no fim). ⚠️ O critério combinado FALHOU (`0,34` contra `≤ 0,30`); fica pela imagem igual
+  e o ganho sem regressão — ver «decisões» abaixo. A ablação `E1` mostra onde está o resto: a EMISSÃO.
+- **(d) D** o `cs_varre` por subgrupo (`contorno_subgrupo.wgsl`, módulo à parte só com `Features::SUBGROUP`),
+  a imagem igual byte a byte nas duas placas.
+- **`F` (iGPU):** esticadas tracejadas `1,17 → 0,95` ms (`−19 %`), parede mediana `1,27 → 1,03` contra o Vello
+  `0,95`; esticadas contínuas `0,90 → 0,85`; conformes `0,61 → 0,60`.
+
+**Foundational tocado (aditivo):** `ph2d-gpu` (`context.rs`) — o dispositivo pede `Features::SUBGROUP`
+quando o adaptador a anuncia (a mesma interseção das outras; onde falta, o passe usa o prefixo de memória
+de grupo). **Ids/consts novos:** em `ph2d-shape-gpu` (privados): `AJUSTE_NA_CONTAGEM`, `TOTAL_NO_PERCURSO`,
+`ARESTAS_COMPACTAS` (WGSL e Rust — mudam juntos), `JUNTA_UMA_POR_TROCO`, `MEDE_NO_INICIO`,
+`PREFIXO_POR_SUBGRUPO`, `QUINTOS = 5` (a `contagem` passa de três a cinco contagens por cópia). **API
+pública nova** (`ShapePass`): `com_subgrupo`, `tem_subgrupo`, `mede_a_capacidade_no_inicio`,
+`arestas_do_ultimo_quadro`. **Contratos congelados:** nenhum. **Shell:** não tocada. **LOC:**
+`contorno.rs` `627 → 684` (tecto `700`).
+
+**⚠️ Para quem lê o diff:** os gates que mediam a MISTURA do 1.º quadro (o pixel a pixel ao lado das
+células) desligam o c2 no ajudante (`pelo_passe_observado` → `mede_a_capacidade_no_inicio(false)`): a régua
+deles continua a mesma; o c2 tem gate próprio (`a_cena_nova_mede_a_capacidade_antes_do_primeiro_quadro`,
+com o CONTROLO do 1.º quadro sem a medida e uma segunda cena com `4×` as cópias).
+
+**O fecho que CORREU:** `cargo check` das três crates e dos testes · `ph2d-shape-gpu --test it --ignored`
+**`14/14` nas duas placas** (RTX e iGPU — o `D` com subgrupos de `32` e de `64`), com os dois gates novos
+(`a_cena_nova_mede_a_capacidade_antes_do_primeiro_quadro`, `o_prefixo_por_subgrupo_e_o_mesmo_que_o_de_memoria_de_grupo`).
+
+**⏳ O que NÃO correu (parado por ordem do dono) — o integrador corre antes de fundir:**
+
+1. o gate batched: `BASE=1ad60a1ce bash scripts/nextest-impacted.sh` · `CARGO_BUILD_WARNINGS=deny cargo check
+   --workspace --all-targets` (o `ph2d-gpu` é foundational: toda a árvore recompila) · clippy `-D warnings`
+   de `ph2d-shape-gpu`, `ph2d-gpu` e `ph2d-app-motion` · `fmt --check` · `censos-da-arvore-combinada.sh` ·
+   machete · `motion_shape_placa::gpu_tests --ignored` · `cargo test -p ph2d-gpu-cook formas -- --ignored` ·
+   `ph2d-render --lib motion_fx`;
+2. as mutações dos pedaços (arnês por escrever; as previstas no doc 121 §9.15 — o ajuste da contagem a `1`,
+   o traço adiado nunca emitido, o prefixo das escritas deslocado, a reserva sem as pontas, o c2 desligado e
+   a cena nova sem `medir_ja`, a correção da fronteira da célula no subgrupo, esta só na iGPU);
+3. a medição que faltou: densas da iGPU (o critério do B1 e do D), a RTX inteira (nenhum arranjo pode
+   piorar `+10 %`), o app (`mede_formas_na_placa.sh`, `=127` densa contínua e tracejada — e a memória das
+   arestas, que o B2 corta), os registos (`registos_dos_shaders.sh`);
+4. o smoke ao dono: NÃO compilado nem fotografado.
+
+**Decisões técnicas registadas:** (i) o **A1 fica** apesar do critério combinado: imagem igual, `−0,06` ms
+sem regressão em arranjo nenhum medido; a régua dele pressupunha que as voltas eram o custo, e a ablação
+`E1` provou que é a emissão. (ii) As **constantes dos pedaços NÃO foram dobradas** (o código é o `F` medido;
+dobrá-las pede os gates outra vez) — o próximo a mexer aqui apaga os ramos `false`. (iii) ⛔ **pontas
+partilhadas RECUSADAS por construção** (a ponta fecha cada traço). (iv) ⛔ continuam recusados: o GRUPO
+por cópia tracejada, o D1/D2, a esparsa (§6.6, §6.5).
+
+Perfil do loop (`agent-loop-profile.sh`, 20 sessões): paralelismo `1,13` · `test:check` `3,0:1` · Edit `33 %` ·
+contexto relido `487 mil` · respostas por sessão `248` ✓ · contexto inicial `63 mil` ✓.
 
 ## §7 — OS SMOKES
 

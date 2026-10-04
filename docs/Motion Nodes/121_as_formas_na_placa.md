@@ -1727,3 +1727,55 @@ medidos intercalados por `mede_sonda_das_estrelas.sh` (`PERFIL=1`, `PLACAS="igpu
 `SEGUIDAS=2`, `TRACEJADOS="0 1"`) e lidos por `tabela_da_sonda.py`; `registos_dos_shaders.sh` sobre `base` e
 `F`; no app, `mede_formas_na_placa.sh` com o `F` (`=127` densa contínua e tracejada, as duas placas).
 Depois da tabela: as constantes dos pedaços recusados saem com o código deles, as dos aceites dobram-se.
+
+**O resultado da rodada (2026-10-04) — PARCIAL, parada por ordem do dono às `19:26`.** Os `15` binários
+compilados de seguida (`troca_os_pedacos_9_15.py`, `e00efb99d`; código em `e6daad1fa`, todos os pedaços
+ligados = `F`), intercalados por `mede_sonda_das_estrelas.sh` (`PERFIL=1`, `2` corridas por célula, a soma
+da 2.ª janela, ms; `tabela_da_sonda.py`). ⚠️ Das `16:45` às `19:00` três outras linhas (`components` `216`
+comandos pesados, `vector` `148`, `sculpt3d` `96`, lidos no `journalctl`) seguraram a carga em `16`–`30`:
+em `2 h 35` só `94` das `360` células. **Medido: a iGPU nas esticadas (contínuas e tracejadas) e nas
+conformes contínuas. NÃO medido: as densas da iGPU, as conformes tracejadas (só `base`/`E1`–`E3`), a RTX
+inteira, o app, os registos.** Onde uma das duas corridas saiu alta (carga) lê-se a outra, que repete o
+`base` ao `0,01`.
+
+| iGPU, soma | `base` | `A1a` | `A1b` | `A1` | `B1` | `B2` | `D` | `c2` | **`F`** | `V0` |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| esticadas TRACEJADAS | `1,17`·`1,18` | `1,15` | `1,15` | `1,11`·`1,12` | `1,04`·`1,06` | `1,08`·`1,09` | `1,15` | `1,20` | **`0,95`** (`−19 %`) | `1,12` |
+| — `conta + escreve` | `0,40` | `0,37` | `0,37` | `0,34` | `0,42` | `0,40` | `0,40` | `0,40` | `0,36` | `0,40` |
+| — células | `0,62`·`0,63` | `0,63` | `0,63` | `0,62` | **`0,47`** | `0,53` | `0,60` | `0,64` | **`0,44`** | `0,57` |
+| esticadas contínuas | `0,90` | `0,90` | `0,90` | `0,90` | `0,88` | `0,90` | `0,86` | `0,90` | **`0,85`** (`−6 %`) | `0,85` |
+| conformes contínuas | `0,61` | `0,60` | `0,60` | `0,60` | `0,62` (`+2 %`) | `0,60` | `0,58` | `0,60` | `0,60` | `0,56` |
+
+| iGPU, esticadas tracejadas | `base` | `c2` | `F` |
+|---|---:|---:|---:|
+| parede MEDIANA (Vello `0,90`–`0,95`) | `1,27`·`1,28` | `1,28` | **`1,03`** |
+| 1.º quadro cronometrado | **`77,8`**·`78,5` | **`1,6`**·`1,7` | `1,2` |
+| o quadro da cena nova (com a criação dos pipelines) | `93`–`95` | `16`–`22` | `22` |
+| arestas reservadas · escritas | `561 600` · `36 288` | — | **`285 120`** · `36 288` (B2) |
+
+**As ablações (sobre o `base`, iGPU, esticadas tracejadas):** `E1` sem emitir pedaços `conta + escreve
+0,40 → 0,21` (soma `0,82`) — **a EMISSÃO é o custo da escrita**; `E2` ajuste `= 1` `→ 0,35`; `E3` sem gravar
+arestas `→ 0,39` (a escrita na memória não custa nada); `C1` contagem pela corda `0,40` (o `arco` é grátis);
+`P0` sem as pontas das peças: células `0,62 → 0,56`; `V0` (o tecto do (d)) `1,12`.
+
+**Os veredictos, contra os critérios escritos antes:**
+
+- **(c) c1 ✅** a mediana fica a `0,06`–`0,09` do `span` em todos os binários. **c2 ✅** o 1.º quadro
+  cronometrado `77,8 → 1,6` ms (critério `≤ 5`); o regime igual (`1,26`–`1,28` contra `1,28`).
+- **(b) B1 ✅** células das esticadas tracejadas `0,62 → 0,47` (critério `≤ 0,52`); contínuas não pioram
+  (`0,51 → 0,47`); conformes `+2 %` na soma (dentro dos `5 %`, é o `cs_soma_escritas`). ⏳ o critério das
+  densas (`≤ 0,90`) NÃO foi medido. **B2 ✅** reservadas `561 600 → 285 120` (critério `≤ 300 000`), as
+  escritas iguais (nenhuma cópia recusada). ⛔ **As pontas partilhadas: RECUSADAS por construção** — `P0`
+  vale `0,06` no `base` (acima dos `0,05`), mas a ponta é a aresta que FECHA cada traço: não há traço sem
+  ela, e não se partilha com o vizinho, que fica do outro lado de um vão.
+- **(a) A1 ⚠️ o critério combinado FALHOU:** `conta + escreve 0,40 → 0,34` (pedia `≤ 0,30`); cada pedaço
+  sozinho tira `0,03` (o mínimo pedido). **A previsão confirmou-se e explica o falhanço:** `E1` mostra que a
+  emissão é `0,19` dos `0,40`, e o A1 só tira as voltas. O A1 fica no código (o `F` medido) porque a imagem
+  é a mesma e nada piora, e retirá-lo pedia outra corrida dos gates, que o dono mandou parar — ⏳ decisão
+  registada no handoff §6.7. A alavanca que sobra é a EMISSÃO por peça (a geometria de `emite_pedaco`), não
+  a topologia (o GRUPO por cópia continua recusado).
+- **(d) D ⚠️ medido só fora das densas:** esticadas contínuas `0,90 → 0,86`, conformes `0,61 → 0,58`
+  (`−5 %`), tracejadas `−0,02` — `60`–`80 %` do tecto `V0` em cada arranjo, a imagem igual byte a byte nas
+  duas placas (gate). ⏳ o critério (densas `−5 %`) NÃO foi medido.
+- **`F`:** a soma das esticadas tracejadas `1,17 → 0,95` (`−19 %`) e a parede mediana `1,27 → 1,03` contra o
+  Vello `0,95` (que recebe o tracejado cortado fora do relógio) — quase empatados; contínuas `−6 %`.

@@ -166,6 +166,46 @@ impl<'a> Posada<'a> {
     /// O ponto `p` (LOCAL, em repouso) está tapado por um triângulo de chave maior? `false` fora
     /// da malha.
     fn tapado(&self, p: [f64; 2]) -> bool {
+        let Some((dono, q)) = self.onde(p) else {
+            return false;
+        };
+        if self.virado[dono] {
+            return true;
+        }
+        let m = &self.campo.malha;
+        let t = m.tris[dono];
+        let minha = self.chave_tri[dono];
+        self.grelha.balde(q).iter().any(|&k| {
+            let o = m.tris[k as usize];
+            self.chave_tri[k as usize] > minha
+                && !o.iter().any(|v| t.contains(v))
+                && dentro(bari(
+                    q,
+                    self.pos[o[0] as usize],
+                    self.pos[o[1] as usize],
+                    self.pos[o[2] as usize],
+                ))
+        })
+    }
+
+    /// O ponto `p` posado (a lei do bake: o campo na posição dele), sem a malha a pele derivada.
+    fn posado(&self, p: [f64; 2]) -> [f64; 2] {
+        self.onde(p).map_or_else(
+            || {
+                let mut w = self.pele.scratch();
+                self.pele.weights_corrected(p, None, &mut w, self.correcoes);
+                if self.rigido {
+                    self.pele.blend(p, &w)
+                } else {
+                    self.pele.blend_linear(p, &w)
+                }
+            },
+            |(_, q)| q,
+        )
+    }
+
+    /// O triângulo onde `p` (LOCAL, em repouso) mora, e `p` posado. `None` fora da malha.
+    fn onde(&self, p: [f64; 2]) -> Option<(usize, [f64; 2])> {
         let m = &self.campo.malha;
         let pm = self.campo.para_malha_pub(p);
         let todos: Vec<u32>;
@@ -179,16 +219,11 @@ impl<'a> Posada<'a> {
             &todos
         };
         let n = self.campo.ossos();
-        let Some((dono, (u, v))) = cand.iter().find_map(|&k| {
+        let (dono, (u, v)) = cand.iter().find_map(|&k| {
             let t = m.tris[k as usize];
             let uv = bari(pm, m.rest[t[0] as usize], m.rest[t[1] as usize], m.rest[t[2] as usize]);
             dentro(uv).then(|| (k as usize, uv.unwrap_or_default()))
-        }) else {
-            return false;
-        };
-        if self.virado[dono] {
-            return true;
-        }
+        })?;
         let t = m.tris[dono];
         let linha: Vec<f64> = (0..n)
             .map(|j| {
@@ -204,18 +239,27 @@ impl<'a> Posada<'a> {
         } else {
             self.pele.blend_linear(p, &w)
         };
-        let minha = self.chave_tri[dono];
-        self.grelha.balde(q).iter().any(|&k| {
-            let o = m.tris[k as usize];
-            self.chave_tri[k as usize] > minha
-                && !o.iter().any(|v| t.contains(v))
-                && dentro(bari(
-                    q,
-                    self.pos[o[0] as usize],
-                    self.pos[o[1] as usize],
-                    self.pos[o[2] as usize],
-                ))
-        })
+        Some((dono, q))
+    }
+
+    /// O comprimento POSADO do contorno aberto `vs` entre `u0` e `u1` (polilinha de 16 troços).
+    fn comprimento(&self, vs: &[VecVertex], u0: f64, u1: f64) -> f64 {
+        let ponto = |u: f64| {
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "parâmetro no intervalo do contorno"
+            )]
+            let k = (u.floor() as usize).min(vs.len() - 2);
+            #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
+            self.posado(avalia(&cubica(vs, k), u - k as f64))
+        };
+        let pts: Vec<[f64; 2]> = (0..=16)
+            .map(|i| ponto((u1 - u0).mul_add(f64::from(i) / 16.0, u0)))
+            .collect();
+        pts.windows(2)
+            .map(|w| (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]))
+            .sum()
     }
 }
 
@@ -367,9 +411,21 @@ pub(super) fn so_o_que_se_ve(
         return None;
     }
     let f = Posada::nova(campo, indice, pele, correcoes, rigido, prof)?;
+    // ⭐ Um pedaço CORTADO mais curto que a largura do próprio traço é um borrão, não uma risca
+    // (FOTOGRAFADO a `110°`: tiques soltos junto às juntas) — sai.
+    let largura = fonte.stroke.as_ref().map_or(0.0, |s| s.width);
     let cortes: Vec<Option<Vec<(f64, f64)>>> = contornos
         .iter()
-        .map(|(v, fechado)| (!*fechado && v.len() > 1).then(|| a_vista(v, &f)).flatten())
+        .map(|(v, fechado)| {
+            let vis = (!*fechado && v.len() > 1).then(|| a_vista(v, &f)).flatten()?;
+            #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
+            let fim = (v.len() - 1) as f64;
+            Some(
+                vis.into_iter()
+                    .filter(|&(a, b)| (a <= 0.0 && b >= fim) || f.comprimento(v, a, b) >= largura)
+                    .collect(),
+            )
+        })
         .collect();
     if cortes.iter().all(Option::is_none) {
         return None;

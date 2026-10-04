@@ -319,53 +319,86 @@ fn o_que_nao_se_corta_sai_ao_bit() {
     // As riscas inteiras à vista: as da fonte cujo desenho não perdeu nenhum ponto.
     assert!(iguais > antes.len() / 2, "o recorte tocou riscas que não cortou ({iguais})");
 }
+/// ⭐⭐ **GATE — nenhum pedaço cortado fica mais curto que a largura do traço** (FOTOGRAFADO na `=5`
+/// a `110°`: tiques soltos junto às juntas). A barra é a da cena (`4,5 × 0,75`, três ossos em S,
+/// traço `0,75 · 0,06`).
+///
+/// ⛔ **O CONTROLO:** os intervalos à vista ANTES do filtro têm pedaços assim (`0,036`–`0,042` a
+/// `100°`/`120°`, MEDIDO).
 #[test]
-fn sonda_ilhas() {
+fn nenhum_pedaco_cortado_e_mais_curto_que_o_traco() {
     use crate::barra_da_cena_tests_support::osso;
+    let mut no_controlo = 0;
     for graus in [100f32, 110.0, 120.0] {
         let mut sim = ph2d_ecs::SimWorld::default();
         let mut scene = ph2d_vec_scene::VecScene::new();
         let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
-        let id = scene.push_path(ph2d_vec_scene::cook(ph2d_vec_scene::ShapeKind::RoundRect, [-2.25, -0.375], [2.25, 0.375], &[0.375]));
-        scene.path_mut(id).expect("path").effects = vec![FxEntry::new(PathEffect::Hatch(
-            ph2d_vec_scene::fx_hatch::HatchSpec { angle: 45.0, spacing: 8.0, cross: false },
+        let mut barra = ph2d_vec_scene::cook(
+            ph2d_vec_scene::ShapeKind::RoundRect,
+            [-2.25, -0.375],
+            [2.25, 0.375],
+            &[0.375],
+        );
+        barra.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+            ph2d_vec_scene::Rgba8::new(0, 0, 0, 255),
+            0.75 * 0.06,
+        ));
+        barra.effects = vec![FxEntry::new(PathEffect::Hatch(
+            ph2d_vec_scene::fx_hatch::HatchSpec {
+                angle: 45.0,
+                spacing: 8.0,
+                cross: false,
+            },
         ))];
+        let id = scene.push_path(barra);
         ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
         let passo = (4.5 - 0.75) / 3.0;
+        #[expect(clippy::cast_possible_truncation, reason = "metros de uma cena")]
+        let p32 = passo as f32;
         let b1 = osso(&mut sim, "b1", [-1.875, 0.0], passo, None);
-        let b2 = osso(&mut sim, "b2", [passo as f32, 0.0], passo, Some(b1));
-        let b3 = osso(&mut sim, "b3", [passo as f32, 0.0], passo, Some(b2));
-        crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(b1));
-        sim.world_mut().get_mut::<ph2d_ecs::Transform>(b2).expect("T").rotation = graus.to_radians();
-        sim.world_mut().get_mut::<ph2d_ecs::Transform>(b3).expect("T").rotation = -graus.to_radians();
+        let b2 = osso(&mut sim, "b2", [p32, 0.0], passo, Some(b1));
+        let b3 = osso(&mut sim, "b3", [p32, 0.0], passo, Some(b2));
+        assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(b1)), 1);
+        for (b, g) in [(b2, graus), (b3, -graus)] {
+            sim.world_mut()
+                .get_mut::<ph2d_ecs::Transform>(b)
+                .expect("Transform")
+                .rotation = g.to_radians();
+        }
         let e = ph2d_ecs::Entity::from_bits(map[&id]);
-        let skin = sim.world().get::<SkinBind>(e).expect("p").clone();
-        let g = crate::skinned_mesh::le(&skin.source).expect("f");
-        let campo = g.campo.clone().expect("c");
+        let skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
+        let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
+        let campo = g.campo.clone().expect("campo");
         let index = crate::skin_live::bone_index(&sim);
         let pele = crate::skin_live::resolve(&sim, &skin, e, &index).expect("pele");
         let prof = crate::esqueletos::profundidades(&sim, &skin, &index);
-        let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof).expect("p");
-        let mut curtas = Vec::new();
-        let mut n = 0;
-        for c in 0..g.path.contour_count() {
-            let (v, fechado) = g.path.contour(c).expect("c");
-            if fechado { continue; }
-            if let Some(vis) = super::a_vista(v, &f) {
-                let segs = (v.len() - 1) as f64;
-                let cb = super::cubica(v, 0);
-                let total = (cb[3][0]-cb[0][0]).hypot(cb[3][1]-cb[0][1]);
-                for (a, b) in vis {
-                    n += 1;
-                    let pa = super::avalia(&cb, a / segs);
-                    let posa = |p: [f64; 2]| { let mut w = pele.scratch(); pele.weights_corrected(p, campo.linha(p).as_deref(), &mut w, &[]); pele.blend(p, &w) };
-                    let pts: Vec<[f64; 2]> = (0..=40).map(|i| posa(super::avalia(&cb, (a + (b - a) * f64::from(i) / 40.0) / segs))).collect();
-                    let l: f64 = pts.windows(2).map(|w| (w[1][0]-w[0][0]).hypot(w[1][1]-w[0][1])).sum();
-                    let tipo = match (a > 0.0, b < segs) { (true, true) => "ilha", (false, true) => "inicio", (true, false) => "fim", _ => "inteira" };
-                    if l < 0.4 { curtas.push(format!("{tipo} ({:.2},{:.2}) l={l:.3} de {total:.2}", pa[0], pa[1])); }
-                }
-            }
-        }
-        println!("{graus}°: {n} pedaços cortados, curtos (<0.4): {curtas:?}");
+        let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof).expect("posada");
+        let largura = 0.75 * 0.06;
+        let curtos = |p: &VecPath, so_cortados: bool| -> usize {
+            (0..p.contour_count())
+                .filter_map(|c| p.contour(c))
+                .filter(|(v, fechado)| !*fechado && v.len() > 1)
+                .map(|(v, _)| {
+                    #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
+                    let fim = (v.len() - 1) as f64;
+                    let vis = if so_cortados {
+                        super::a_vista(v, &f).unwrap_or_default()
+                    } else {
+                        vec![(0.0, fim)]
+                    };
+                    vis.iter()
+                        .filter(|&&(a, b)| !(a <= 0.0 && b >= fim) || !so_cortados)
+                        .filter(|&&(a, b)| f.comprimento(v, a, b) < largura)
+                        .count()
+                })
+                .sum()
+        };
+        no_controlo += curtos(&g.path, true);
+        let (cortada, _) =
+            super::so_o_que_se_ve(&g.path, &g.pesos, (&campo, None), (&pele, &[], true), &prof)
+                .expect("a dobra corta");
+        let n = curtos(&cortada, false);
+        assert_eq!(n, 0, "a {graus}° ficaram {n} pedaços mais curtos que o traço");
     }
+    assert!(no_controlo > 0, "o CONTROLO: antes do filtro não há pedaço curto");
 }

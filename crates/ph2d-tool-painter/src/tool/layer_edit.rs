@@ -220,12 +220,17 @@ fn decode_option(
 }
 
 /// ⭐⭐ **Um pedido de parâmetros sobre os parâmetros NUS de um ajuste** — as mesmas funções puras que
-/// os métodos da ferramenta chamam. `false` = nada mudou (outro tipo de ajuste, índice fora).
-pub(crate) fn apply_param_edit(params: &mut AdjustmentParams, e: &ParamEdit) -> bool {
+/// os métodos da ferramenta chamam, com os raios em `units` (a peça: as unidades dela). `false` =
+/// nada mudou (outro tipo de ajuste, índice fora).
+pub(crate) fn apply_param_edit(
+    params: &mut AdjustmentParams,
+    e: &ParamEdit,
+    units: ph2d_painter_effects::adjustments::SpatialUnits,
+) -> bool {
     use ph2d_painter_effects::adjustments as fx;
     match *e {
         ParamEdit::Slider(slot, v) => {
-            fx::set_adjustment_slider_param(params, slot, v);
+            fx::set_adjustment_slider_param_in(params, slot, v, units);
             true
         }
         ParamEdit::Toggle(slot) => {

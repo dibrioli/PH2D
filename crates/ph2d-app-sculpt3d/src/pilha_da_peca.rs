@@ -25,7 +25,7 @@
 use std::collections::BTreeMap;
 
 use ph2d_mesh_colors::Tinta;
-use ph2d_tool_painter::AdjustmentKind;
+use ph2d_tool_painter::{AdjustmentKind, SpatialUnits, rescale_spatial_params};
 #[cfg(test)]
 use ph2d_tool_painter::{AdjustmentParams, BlendMode};
 use ph2d_tool_painter::{
@@ -189,13 +189,16 @@ pub(crate) enum RecusaDaPilha {
     Tecto,
     /// A camada não existe (ou não é do tipo que a operação pede).
     Desconhecida,
-    /// ⛔ Um ajuste que lê a VIZINHANÇA da imagem (desfoque, nitidez, brilho…):
-    /// na peça a «imagem» é a ordem das amostras, e ele borraria ao longo dela
-    /// e não da superfície. Entra com o gancho de vizinhança (W6, doc 30 §2).
-    LeAVizinhanca(AdjustmentKind),
+    /// ⛔ Um ajuste que lê o PLANO da imagem (uma direcção, um centro, uma
+    /// trama de pontos — `reads_the_image_plane`): a superfície não tem nenhum
+    /// dos três. Os de vizinhança borram na retícula (`docs/3D/30` §14).
+    LeOPlanoDaImagem(AdjustmentKind),
     /// ⛔ A camada de BASE não se apaga nem sai do fundo: é onde o relevo da
     /// peça mora até à W4 (`relevo_composto`).
     ABase,
+    /// ⛔ Um efeito de vizinhança acima de `64x`
+    /// (`vizinhanca_da_peca::NIVEL_MAX_DA_VIZINHANCA`): um passo levaria segundos.
+    DegrauAlto,
     /// Um traço está a pintar a pilha (a cópia de trabalho é de uma camada
     /// dela): mudar a estrutura por baixo dele perderia o traço.
     TracoAberto,
@@ -222,6 +225,8 @@ pub(crate) struct PilhaDaPeca {
     fundo: Vec<[f32; 3]>,
     /// O plano de tinta da CPU ficou atrás da pilha (a placa compôs) — sessão.
     cpu: fundo::Atraso,
+    /// A retícula como vizinhança dos efeitos de vizinhança — sessão.
+    vizinhanca: crate::vizinhanca_da_peca::NaPilha,
 }
 
 impl LayerPixelSource for PilhaDaPeca {
@@ -279,6 +284,7 @@ impl PilhaDaPeca {
             em_traco: None,
             fundo: t.plano_por_vertice().to_vec(),
             cpu: fundo::Atraso::default(),
+            vizinhanca: Default::default(),
         }
     }
 
@@ -297,6 +303,7 @@ impl PilhaDaPeca {
             em_traco: None,
             fundo,
             cpu: fundo::Atraso::default(),
+            vizinhanca: Default::default(),
         }
     }
 
@@ -351,7 +358,7 @@ impl PilhaDaPeca {
 
     /// ⭐⭐⭐ **O INVARIANTE**: todo raster e toda máscara da pilha têm plano,
     /// todo plano tem a sua camada, cada plano tem o tamanho da dobra e cada
-    /// relevo `N` amostras — e nenhuma camada lê a disposição da imagem.
+    /// relevo `N` amostras — e nenhuma camada lê o plano da imagem.
     #[must_use]
     pub(crate) fn sincronizada(&self) -> bool {
         let (l, h) = dobra(self.amostras);
@@ -368,7 +375,7 @@ impl PilhaDaPeca {
                     Some(LayerKind::Raster(r)) => (r.width, r.height) == (l, h),
                     Some(LayerKind::Mask(m)) => (m.width, m.height) == (l, h),
                     Some(LayerKind::Texture(_)) => false,
-                    Some(LayerKind::Adjustment(a)) => !a.kind.reads_the_image_layout(),
+                    Some(LayerKind::Adjustment(a)) => !a.kind.reads_the_image_plane(),
                     _ => true,
                 });
         dims_certas
@@ -408,13 +415,18 @@ impl PilhaDaPeca {
         Ok(id)
     }
 
-    /// ⭐ **Um ajuste novo no topo** — recusado se ele lê a vizinhança. Nasce
-    /// como o do 2D (`seed_user_adjustment`), e a activa continua a camada de
-    /// pintura que era: um ajuste não se pinta.
-    pub(crate) fn novo_ajuste(&mut self, kind: AdjustmentKind) -> Result<LayerId, RecusaDaPilha> {
+    /// ⭐ **Um ajuste novo no topo** — recusado se ele lê o plano da imagem. Nasce
+    /// como o do 2D (`seed_user_adjustment`, os raios na unidade da peça com o
+    /// slider no mesmo sítio), e a activa continua a camada de pintura que era:
+    /// um ajuste não se pinta.
+    pub(crate) fn novo_ajuste(
+        &mut self,
+        kind: AdjustmentKind,
+        unidades: SpatialUnits,
+    ) -> Result<LayerId, RecusaDaPilha> {
         self.livre()?;
-        if kind.reads_the_image_layout() {
-            return Err(RecusaDaPilha::LeAVizinhanca(kind));
+        if kind.reads_the_image_plane() {
+            return Err(RecusaDaPilha::LeOPlanoDaImagem(kind));
         }
         let antes = self.pilha.active();
         let id = self
@@ -423,6 +435,7 @@ impl PilhaDaPeca {
             .ok_or(RecusaDaPilha::Tecto)?;
         if let Some(a) = self.pilha.adjustment_mut(id) {
             ph2d_tool_painter::seed_user_adjustment(&mut a.params);
+            rescale_spatial_params(&mut a.params, SpatialUnits::Pixels, unidades);
         }
         if let Some(a) = antes {
             self.pilha.set_active(a);
@@ -536,11 +549,15 @@ impl PilhaDaPeca {
     /// ⭐⭐⭐ **A cor das amostras `inicio..fim`** — ao bit igual ao mesmo
     /// pedaço de [`Self::compor`] (a composição é ponto a ponto). Corta a
     /// faixa nas linhas da dobra: cabeça parcial, linhas inteiras, cauda.
+    /// Com um efeito de vizinhança a peça compõe-se INTEIRA (`vizinhanca`).
     #[must_use]
     pub(crate) fn compor_faixa(&self, inicio: usize, fim: usize) -> Vec<u8> {
         let fim = fim.min(self.amostras);
         if inicio >= fim {
             return Vec::new();
+        }
+        if self.le_a_vizinhanca() {
+            return self.faixa_da_superficie(inicio, fim);
         }
         let (l, h) = dobra(self.amostras);
         let lu = l as usize;
@@ -666,6 +683,10 @@ mod fundo;
 #[path = "pilha_da_peca_porta.rs"]
 mod porta;
 pub(crate) use porta::TrocaDaPilha;
+
+/// ⭐ **Os efeitos de vizinhança na peça** (W6) — a retícula como vizinhança.
+#[path = "pilha_da_peca_vizinhanca.rs"]
+mod vizinhanca;
 
 #[cfg(test)]
 #[path = "pilha_da_peca_tests.rs"]

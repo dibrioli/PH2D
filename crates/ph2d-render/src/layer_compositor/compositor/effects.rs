@@ -1,35 +1,21 @@
+use super::super::surface::WorkSel;
 use super::super::*;
 use super::ShTonal;
 
 impl LayerCompositor {
-    /// Bloom — RADIUS-INDEPENDENT (O(1)) glow, leaving the result in `blur[1]` for
-    /// `run_combine`'s `COMBINE_BLOOM` (additive) step. All premultiplied. The passes:
-    /// `cs_bloom_bright` (`base[base_idx]` → `blur[1]`, full-res glow); `cs_bloom_down`
-    /// (box-downsample `blur[1]` full → `blur[0]` low = work/factor); a separable blur
-    /// of the LOW-res glow (`low_half`, premul_read 0: `blur[0]` → `blur[1]` H →
-    /// `blur[0]` V, at the low dims); then `cs_bloom_up` (bilinear-upsample `blur[0]`
-    /// low → `blur[1]` full). The only kernel work is the bounded low-res blur, so the
-    /// cost is ~constant at any radius. For `factor == 1` the down/up are 1:1 (the
-    /// direct blur for small radii — the parity gate's degenerate case).
-    #[allow(clippy::too_many_arguments)]
-    pub(super) fn run_bloom(
+    /// Bloom's bright-pass: `base[base_idx]` → `blur[1]`, the full-res premultiplied glow
+    /// (`cs_bloom_bright`) — the grid pyramid and the surface heat both low-pass it.
+    pub(super) fn run_bloom_bright(
         &self,
         gpu: &GpuContext,
         base_idx: usize,
         threshold: f32,
         falloff: f32,
-        factor: u32,
-        low_half: u32,
         work: Region,
     ) {
-        let (Some(work_tex), Some((weights_buffer, _))) = (&self.work, &self.blur_weights_buffer)
-        else {
+        let Some(work_tex) = &self.work else {
             return;
         };
-        let low_w = work.w.div_ceil(factor);
-        let low_h = work.h.div_ceil(factor);
-
-        // (1) bright-pass → blur[1] (full-res premultiplied glow).
         let g = BloomGlobals {
             width: work.w,
             height: work.h,
@@ -64,6 +50,36 @@ impl LayerCompositor {
             work.h,
             "ph2d-render layer_composite bloom bright pass",
         );
+    }
+
+    /// Bloom — RADIUS-INDEPENDENT (O(1)) glow, leaving the result in `blur[1]` for
+    /// `run_combine`'s `COMBINE_BLOOM` (additive) step. All premultiplied. The passes:
+    /// `cs_bloom_bright` (`base[base_idx]` → `blur[1]`, full-res glow); `cs_bloom_down`
+    /// (box-downsample `blur[1]` full → `blur[0]` low = work/factor); a separable blur
+    /// of the LOW-res glow (`low_half`, premul_read 0: `blur[0]` → `blur[1]` H →
+    /// `blur[0]` V, at the low dims); then `cs_bloom_up` (bilinear-upsample `blur[0]`
+    /// low → `blur[1]` full). The only kernel work is the bounded low-res blur, so the
+    /// cost is ~constant at any radius. For `factor == 1` the down/up are 1:1 (the
+    /// direct blur for small radii — the parity gate's degenerate case).
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn run_bloom(
+        &self,
+        gpu: &GpuContext,
+        base_idx: usize,
+        threshold: f32,
+        falloff: f32,
+        factor: u32,
+        low_half: u32,
+        work: Region,
+    ) {
+        // (1) bright-pass → blur[1] (full-res premultiplied glow).
+        self.run_bloom_bright(gpu, base_idx, threshold, falloff, work);
+        let (Some(work_tex), Some((weights_buffer, _))) = (&self.work, &self.blur_weights_buffer)
+        else {
+            return;
+        };
+        let low_w = work.w.div_ceil(factor);
+        let low_h = work.h.div_ceil(factor);
 
         // (2) box-downsample blur[1] (full) → blur[0] (low).
         let mip_bg = |src: &wgpu::TextureView, dst: &wgpu::TextureView| {
@@ -193,10 +209,9 @@ impl LayerCompositor {
         gpu: &GpuContext,
         base_idx: usize,
         dst_idx: usize,
-        lo_weights: &[f32],
-        lo_half: u32,
-        hi_weights: &[f32],
-        hi_half: u32,
+        (lo_weights, lo_half): (&[f32], u32),
+        (hi_weights, hi_half): (&[f32], u32),
+        surface_sigmas: Option<[f32; 2]>,
         tonal: ShTonal,
         blend: u8,
         opacity: f32,
@@ -248,12 +263,18 @@ impl LayerCompositor {
                 "ph2d-render layer_composite sh luma pass",
             );
         }
-        // (2) shadows tone map: blur sh[0] → sh[1].
-        self.upload_blur_weights(gpu, lo_weights);
-        self.sh_scalar_blur(gpu, lo_half, true, work);
-        // (3) highlights tone map: blur sh[0] → blur[1].
-        self.upload_blur_weights(gpu, hi_weights);
-        self.sh_scalar_blur(gpu, hi_half, false, work);
+        if let Some([lo, hi]) = surface_sigmas {
+            // (2)+(3) on a SURFACE: the two tone maps are the surface heat of the luma.
+            self.run_surface_heat(gpu, WorkSel::Sh(0), WorkSel::Sh(1), lo, false);
+            self.run_surface_heat(gpu, WorkSel::Sh(0), WorkSel::Blur(1), hi, false);
+        } else {
+            // (2) shadows tone map: blur sh[0] → sh[1].
+            self.upload_blur_weights(gpu, lo_weights);
+            self.sh_scalar_blur(gpu, lo_half, true, work);
+            // (3) highlights tone map: blur sh[0] → blur[1].
+            self.upload_blur_weights(gpu, hi_weights);
+            self.sh_scalar_blur(gpu, hi_half, false, work);
+        }
         // (4) tonal combine: base[base_idx] + sh[1] (lo) + blur[1] (hi) → base[dst_idx].
         if let Some(work_tex) = &self.work {
             let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {

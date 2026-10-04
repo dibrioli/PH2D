@@ -54,6 +54,12 @@ use super::*;
 #[path = "spatial_tonal.rs"]
 mod tonal; // Bloom + Shadows/Highlights (LOC cap: sibling module)
 pub use tonal::{apply_bloom, apply_shadows_highlights};
+#[path = "spatial_neighbourhood.rs"]
+mod neighbourhood; // the neighbourhood hook: the grid and a surface (W6)
+pub use neighbourhood::{
+    Neighbourhood, apply_adjustment_on, apply_gaussian_on, apply_sharpen_on, gaussian_sigma,
+};
+pub use tonal::{apply_bloom_on, apply_shadows_highlights_on};
 /// Largest separable-blur half-width (kernel reaches `±MAX_BLUR_HALF` texels).
 /// Bounds the weights buffer + per-pixel tap count. **Mirrors
 /// `ph2d_render::layer_compositor::MAX_BLUR_HALF`** (kept in lock-step; a 256-px
@@ -117,36 +123,8 @@ pub fn apply_adjustment_windowed(
     acc: &mut [[f32; 4]],
     win: AdjustWindow,
 ) {
-    debug_assert_eq!(
-        params.kind(),
-        *kind,
-        "apply_adjustment_windowed: kind/params variant mismatch"
-    );
-    debug_assert_eq!(
-        acc.len(),
-        (win.width as usize) * (win.height as usize),
-        "apply_adjustment_windowed: acc length must equal win.width * win.height"
-    );
-    match (kind, params) {
-        (AdjustmentKind::GaussianBlur, AdjustmentParams::GaussianBlur(p)) => {
-            apply_gaussian(p, acc, win)
-        }
-        (AdjustmentKind::Sharpen, AdjustmentParams::Sharpen(p)) => apply_sharpen(p, acc, win),
-        (AdjustmentKind::MotionBlur, AdjustmentParams::MotionBlur(p)) => {
-            apply_motion_blur(p, acc, win)
-        }
-        (AdjustmentKind::ChromaticAberration, AdjustmentParams::ChromaticAberration(p)) => {
-            apply_chromatic_aberration(p, acc, win)
-        }
-        (AdjustmentKind::Noise, AdjustmentParams::Noise(p)) => apply_noise(p, acc, win),
-        (AdjustmentKind::Halftone, AdjustmentParams::Halftone(p)) => apply_halftone(p, acc, win),
-        (AdjustmentKind::Bloom, AdjustmentParams::Bloom(p)) => apply_bloom(p, acc, win),
-        (AdjustmentKind::ShadowsHighlights, AdjustmentParams::ShadowsHighlights(p)) => {
-            apply_shadows_highlights(p, acc, win)
-        }
-        // Every other kind is per-pixel and position-independent.
-        _ => super::compute::apply_adjustment(kind, params, acc),
-    }
+    // The grid is one neighbourhood among two: the one dispatch lives with the hook.
+    apply_adjustment_on(kind, params, acc, &win);
 }
 
 // ───────────────────────────── canonical kernels ─────────────────────────────
@@ -164,7 +142,7 @@ pub fn apply_adjustment_windowed(
 pub fn gaussian_weights(radius: f32) -> (Vec<f32>, u32) {
     let r = radius.max(0.0);
     let half = (r.ceil() as u32).clamp(1, MAX_BLUR_HALF);
-    let sigma = (r / 3.0).max(1e-3);
+    let sigma = gaussian_sigma(radius).max(1e-3);
     let two_sigma_sq = 2.0 * sigma * sigma;
     let mut weights = Vec::with_capacity(half as usize + 1);
     let mut sum = 0.0f32;
@@ -263,12 +241,7 @@ fn unpremultiply_with(buf: &mut [[f32; 4]], encode: impl Fn(f32) -> f32) {
 /// edges) instead of staying clipped to the opaque silhouette. The canonical CPU
 /// reference + the CPU-fallback production kernel.
 pub fn apply_gaussian(p: &GaussianBlurParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
-    if p.radius <= 0.0 {
-        return;
-    }
-    premultiply(acc);
-    separable_blur_premul(p.radius, acc, win);
-    unpremultiply(acc);
+    apply_gaussian_on(p, acc, &win);
 }
 
 /// Separable Gaussian blur of ALL 4 channels in place. The buffer MUST already be
@@ -386,19 +359,7 @@ fn separable_blur_premul(radius: f32, acc: &mut [[f32; 4]], win: AdjustWindow) {
 /// (and stays alpha-correct). `mask_edges` is DEFERRED (a future high-gradient
 /// gate — semantics noted to the Coord). Negatives clamp at 0; encode clamps top.
 pub fn apply_sharpen(p: &SharpenParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
-    if p.amount == 0.0 || p.radius <= 0.0 {
-        return;
-    }
-    premultiply(acc);
-    let base = acc.to_vec(); // premultiplied base
-    separable_blur_premul(p.radius, acc, win); // acc = blur(base), premultiplied
-    for (out, b) in acc.iter_mut().zip(base.iter()) {
-        for c in 0..4 {
-            out[c] = (b[c] + p.amount * (b[c] - out[c])).max(0.0);
-        }
-        out[3] = out[3].min(1.0); // coverage stays in [0, 1] after the overshoot
-    }
-    unpremultiply(acc);
+    apply_sharpen_on(p, acc, &win);
 }
 
 /// Directional (motion) blur — a uniform box of `2·half+1` nearest taps along

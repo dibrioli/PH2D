@@ -149,7 +149,10 @@ fn diag_o_preco_do_traco_na_camada() {
             p.plano_mut(id).expect("plano").escreve(&px, None);
         }
         let hsb = p
-            .novo_ajuste(ph2d_tool_painter::AdjustmentKind::HueSaturationBrightness)
+            .novo_ajuste(
+                ph2d_tool_painter::AdjustmentKind::HueSaturationBrightness,
+                ph2d_tool_painter::SpatialUnits::Pixels,
+            )
             .expect("ajuste");
         p.define_parametros(
             hsb,
@@ -222,8 +225,11 @@ fn diag_o_preco_de_arrastar_a_opacidade() {
             cima = Some(id);
         }
         let cima = cima.expect("cima");
-        p.novo_ajuste(ph2d_tool_painter::AdjustmentKind::HueSaturationBrightness)
-            .expect("ajuste");
+        p.novo_ajuste(
+            ph2d_tool_painter::AdjustmentKind::HueSaturationBrightness,
+            ph2d_tool_painter::SpatialUnits::Pixels,
+        )
+        .expect("ajuste");
         p.pinta_tinta(&mut peca, Vec::new);
         let mut passos = Vec::new();
         for q in 0..20u32 {

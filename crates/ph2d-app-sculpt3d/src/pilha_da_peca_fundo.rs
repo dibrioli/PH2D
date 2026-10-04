@@ -68,7 +68,15 @@ impl PilhaDaPeca {
     /// ⚠️ O RELEVO não se toca: até à W4 só a base o leva, e nenhuma operação
     /// que chega aqui (painel, balde, desfazer deles) o muda — copiá-lo era
     /// `24 MB` por passo a `64x`.
+    ///
+    /// ⚠️ Com um efeito de VIZINHANÇA na pilha o prefixo dos vértices só existe
+    /// com a peça inteira composta: ele fica atrás COM o resto (e igual à cor
+    /// por vértice, que só o acompanha — `tinta_da_peca::pilha::em_dia`).
     pub(crate) fn atrasa(&mut self, tinta: &mut Tinta) {
+        if self.le_a_vizinhanca() {
+            self.cpu = Atraso(true);
+            return;
+        }
         let v = self.por_vertice();
         tinta.amostras_mut()[..v.len()].copy_from_slice(&v);
         self.cpu = Atraso(true);
@@ -87,6 +95,7 @@ impl PilhaDaPeca {
             return;
         }
         let nivel = tinta.nivel();
+        self.garante_vizinhanca(tinta, mesh);
         self.pinta_tinta(tinta, || self.fundo_semeado(mesh, nivel));
         self.cpu = Atraso(false);
     }

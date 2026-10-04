@@ -104,7 +104,10 @@ fn pilha_rica(t: &Tinta) -> PilhaDaPeca {
     let cinza: Vec<[u8; 4]> = (0..n).map(|i| [(i * 3) as u8; 4]).collect();
     p.plano_mut(mascara).expect("plano").escreve(&cinza, None);
     let hsb = p
-        .novo_ajuste(AdjustmentKind::HueSaturationBrightness)
+        .novo_ajuste(
+            AdjustmentKind::HueSaturationBrightness,
+            ph2d_tool_painter::SpatialUnits::Pixels,
+        )
         .expect("ajuste");
     p.define_parametros(
         hsb,

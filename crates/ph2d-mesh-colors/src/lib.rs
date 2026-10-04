@@ -87,6 +87,8 @@
 pub mod alfa;
 pub mod amostragem;
 pub mod assar;
+/// O desfoque na superfície — o calor sobre a retícula (`docs/3D/30` §14).
+pub mod difusao;
 pub mod enderecos;
 pub mod inclinacao;
 pub mod relevo;
@@ -98,6 +100,9 @@ pub mod vizinhanca;
 #[path = "assar_tests.rs"]
 mod assar_tests;
 
+#[cfg(test)]
+#[path = "difusao_tests.rs"]
+mod difusao_tests;
 #[cfg(test)]
 #[path = "enderecos_tests.rs"]
 mod enderecos_tests;

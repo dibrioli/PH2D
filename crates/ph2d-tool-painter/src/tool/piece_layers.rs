@@ -71,6 +71,22 @@ impl PainterTool {
         }
     }
 
+    /// ⭐ **Onde vive o raio de um efeito de vizinhança na peça** — a escultura publica-o com o
+    /// espelho: as unidades da peça e o tamanho dela (`docs/3D/30` §14).
+    pub fn sync_piece_units(&mut self, units: ph2d_painter_effects::adjustments::SpatialUnits) {
+        self.piece_units = units;
+    }
+
+    /// ⭐ **As unidades dos raios que o painel mostra** — as da peça com a tela presa, px fora dela.
+    #[must_use]
+    pub fn panel_spatial_units(&self) -> ph2d_painter_effects::adjustments::SpatialUnits {
+        if self.panel_shows_the_piece() {
+            self.piece_units
+        } else {
+            ph2d_painter_effects::adjustments::SpatialUnits::Pixels
+        }
+    }
+
     /// ⭐ **A pilha que o painel de camadas mostra** — a da peça com a tela presa (`None` se ela não
     /// tem plano), a do documento fora dela.
     #[must_use]
@@ -218,7 +234,7 @@ impl PainterTool {
             }
             E::Param(l, p) => {
                 if let Some(adj) = m.adjustment_mut(l) {
-                    apply_param_edit(&mut adj.params, &p);
+                    apply_param_edit(&mut adj.params, &p, self.piece_units);
                 }
                 None
             }

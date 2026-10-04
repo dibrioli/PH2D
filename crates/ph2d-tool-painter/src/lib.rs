@@ -42,8 +42,8 @@ pub mod wet_diag; // o split do tick da agua para o log do produto (PH2D_FLUID_P
 pub use tool::paint::stamp_device::{DeviceDab, DeviceStamp, DeviceStampJob};
 
 pub use compositor::{
-    LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,
-    flatten_for_gpu,
+    LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_over,
+    composite_region, flatten_for_gpu,
 };
 pub use layers::{
     DEPTH_NEUTRAL, GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerModifiers,
@@ -57,6 +57,11 @@ pub use tool::paint::stamp_banded::diag as band_diag;
 pub use tool::persist::PaintedDocument;
 // Re-export the effects surface so the layers panel can name adjustment params /
 // blend modes without a direct `ph2d-painter-effects` import.
+/// The neighbourhood hook (`docs/3D/30` §14): a surface that composes its layers implements it.
+pub use ph2d_painter_effects::adjustments::{
+    AdjustWindow, BloomParams, GaussianBlurParams, Neighbourhood, ShadowsHighlightsParams,
+    SharpenParams, gaussian_sigma,
+};
 pub use ph2d_painter_effects::adjustments::{
     AdjustmentKind, AdjustmentLayer, AdjustmentParams, CurvesParams, HsbParams, SELCOLOR_BUCKETS,
     adjustment_segment_params, adjustment_slider_params, adjustment_toggle_params,
@@ -64,6 +69,11 @@ pub use ph2d_painter_effects::adjustments::{
     gradient_map_lut, gradient_stop_color_params, selective_color_slider_params,
     set_adjustment_segment_param, set_adjustment_slider_param, set_adjustment_toggle_param,
     set_channel_mixer_param, set_selective_color_param,
+};
+/// Where a spatial slider's extent lives — px, or a surface's units shown as % of its size.
+pub use ph2d_painter_effects::adjustments::{
+    SURFACE_RADIUS_MAX, SpatialUnits, adjustment_slider_numbers_in, adjustment_slider_params_in,
+    rescale_spatial_params,
 };
 pub use ph2d_painter_effects::adjustments::{
     SliderNumber, adjustment_slider_numbers, channel_mixer_slider_numbers,

@@ -422,6 +422,7 @@ pub fn dispatch(
                 ph2d_panel_painter_layers::set_current_layers(painter.panel_layers().cloned());
             }
             ph2d_panel_painter_layers::set_current_layers_on_piece(painter.panel_shows_the_piece());
+            ph2d_panel_painter_layers::set_current_spatial_units(painter.panel_spatial_units());
             ph2d_panel_painter_layers::set_current_piece_refusal(
                 painter.piece_layer_refusal().map(str::to_owned),
             );

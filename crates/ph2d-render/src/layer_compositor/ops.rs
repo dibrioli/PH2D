@@ -71,6 +71,14 @@ pub(super) const COMBINE_BLOOM: u32 = 2;
 /// A 256-radius blur is already far past any interactive use.
 pub const MAX_BLUR_HALF: u32 = 256;
 
+/// σ of the Gaussian a blur of `radius` is (the 3σ truncation) — the grid weights and the
+/// surface heat (`docs/3D/30` §14) read it. Self-contained copy of
+/// `ph2d_painter_effects::adjustments::gaussian_sigma`, pinned by `spatial_weights_parity`.
+#[must_use]
+pub fn gaussian_sigma(radius: f32) -> f32 {
+    radius.max(0.0) / 3.0
+}
+
 /// Separable-Gaussian half-kernel. Returns `(weights, half_width)` where
 /// `weights[i]` is the symmetric weight for offset `±i` (`weights[0]` = centre
 /// tap), normalised so the full kernel sums to 1. σ = radius/3 (radius ≈ 3σ,
@@ -86,7 +94,7 @@ pub const MAX_BLUR_HALF: u32 = 256;
 pub fn gaussian_weights(radius: f32) -> (Vec<f32>, u32) {
     let r = radius.max(0.0);
     let half = (r.ceil() as u32).clamp(1, MAX_BLUR_HALF);
-    let sigma = (r / 3.0).max(1e-3);
+    let sigma = gaussian_sigma(radius).max(1e-3);
     let two_sigma_sq = 2.0 * sigma * sigma;
     let mut weights = Vec::with_capacity(half as usize + 1);
     let mut sum = 0.0f32;

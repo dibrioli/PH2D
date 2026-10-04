@@ -186,9 +186,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.sculpt3d.camadas.recusa.desconhecida" => {
             "That layer is not there any more -- pick one in the list"
         }
-        "app.sculpt3d.camadas.recusa.le_a_vizinhanca" => {
-            "Blur, Sharpen, Bloom and the other effects that read neighbouring pixels are not on \
-             the 3D piece yet: on a surface they have to follow the shape, not the image"
+        "app.sculpt3d.camadas.recusa.le_o_plano_da_imagem" => {
+            "Motion Blur, Chromatic Aberration and Halftone are not on the 3D piece: they follow a \
+             direction, a centre or a dot screen of a flat image, and a surface has none of these"
+        }
+        "app.sculpt3d.camadas.recusa.degrau_alto" => {
+            "Blur, Sharpen, Bloom and Shadows/Highlights follow the piece live up to 64x Paint \
+             Detail -- finer, one change would take seconds. Set Paint Detail to 64x or lower"
         }
         "app.sculpt3d.camadas.recusa.a_base" => {
             "The bottom layer stays where it is: it holds the relief of the piece"

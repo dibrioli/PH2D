@@ -47,7 +47,10 @@ pub(super) fn pilha_rica(n: usize) -> (PilhaDaPeca, [LayerId; 4]) {
     let mascara = p.nova_mascara(over).expect("máscara");
     pinta(&mut p, mascara, &plano(n, 4));
     let hsb = p
-        .novo_ajuste(AdjustmentKind::HueSaturationBrightness)
+        .novo_ajuste(
+            AdjustmentKind::HueSaturationBrightness,
+            ph2d_tool_painter::SpatialUnits::Pixels,
+        )
         .expect("HSB");
     p.define_parametros(
         hsb,
@@ -169,11 +172,18 @@ fn a_pilha_e_os_planos_andam_juntos() {
     assert_eq!(p.plano(copia), p.plano(mult), "a cópia leva o plano");
 
     assert_eq!(
-        p.novo_ajuste(AdjustmentKind::GaussianBlur),
-        Err(RecusaDaPilha::LeAVizinhanca(AdjustmentKind::GaussianBlur))
+        p.novo_ajuste(
+            AdjustmentKind::Halftone,
+            ph2d_tool_painter::SpatialUnits::Pixels
+        ),
+        Err(RecusaDaPilha::LeOPlanoDaImagem(AdjustmentKind::Halftone))
     );
     assert!(
-        p.novo_ajuste(AdjustmentKind::Noise).is_ok(),
+        p.novo_ajuste(
+            AdjustmentKind::Noise,
+            ph2d_tool_painter::SpatialUnits::Pixels
+        )
+        .is_ok(),
         "o ruído não lê vizinhos"
     );
     assert!(p.sincronizada());

@@ -64,7 +64,10 @@ fn pilha_rica(k: u8) -> (PilhaDaPeca, LayerId) {
         pinta(&mut p, id, s);
     }
     let hsb = p
-        .novo_ajuste(AdjustmentKind::HueSaturationBrightness)
+        .novo_ajuste(
+            AdjustmentKind::HueSaturationBrightness,
+            ph2d_tool_painter::SpatialUnits::Pixels,
+        )
         .expect("ajuste");
     p.define_parametros(
         hsb,
@@ -75,9 +78,18 @@ fn pilha_rica(k: u8) -> (PilhaDaPeca, LayerId) {
         }),
     )
     .expect("parâmetros");
-    let inv = p.novo_ajuste(AdjustmentKind::Invert).expect("ajuste");
+    let inv = p
+        .novo_ajuste(
+            AdjustmentKind::Invert,
+            ph2d_tool_painter::SpatialUnits::Pixels,
+        )
+        .expect("ajuste");
     p.define_opacidade(inv, 0.4);
-    p.novo_ajuste(AdjustmentKind::Curves).expect("ajuste");
+    p.novo_ajuste(
+        AdjustmentKind::Curves,
+        ph2d_tool_painter::SpatialUnits::Pixels,
+    )
+    .expect("ajuste");
     assert!(p.sincronizada());
     (p, mult)
 }
@@ -174,7 +186,10 @@ fn diag_que_ingrediente_difere_da_cpu() {
         }),
         ("hsb", |p| {
             let h = p
-                .novo_ajuste(AdjustmentKind::HueSaturationBrightness)
+                .novo_ajuste(
+                    AdjustmentKind::HueSaturationBrightness,
+                    ph2d_tool_painter::SpatialUnits::Pixels,
+                )
                 .expect("ajuste");
             p.define_parametros(
                 h,
@@ -187,18 +202,36 @@ fn diag_que_ingrediente_difere_da_cpu() {
             .expect("parâmetros");
         }),
         ("hsb neutro", |p| {
-            p.novo_ajuste(AdjustmentKind::HueSaturationBrightness)
-                .expect("ajuste");
+            p.novo_ajuste(
+                AdjustmentKind::HueSaturationBrightness,
+                ph2d_tool_painter::SpatialUnits::Pixels,
+            )
+            .expect("ajuste");
         }),
         ("invert 0.4", |p| {
-            let i = p.novo_ajuste(AdjustmentKind::Invert).expect("ajuste");
+            let i = p
+                .novo_ajuste(
+                    AdjustmentKind::Invert,
+                    ph2d_tool_painter::SpatialUnits::Pixels,
+                )
+                .expect("ajuste");
             p.define_opacidade(i, 0.4);
         }),
         ("invert 1.0", |p| {
-            let _ = p.novo_ajuste(AdjustmentKind::Invert).expect("ajuste");
+            let _ = p
+                .novo_ajuste(
+                    AdjustmentKind::Invert,
+                    ph2d_tool_painter::SpatialUnits::Pixels,
+                )
+                .expect("ajuste");
         }),
         ("curves", |p| {
-            let _ = p.novo_ajuste(AdjustmentKind::Curves).expect("ajuste");
+            let _ = p
+                .novo_ajuste(
+                    AdjustmentKind::Curves,
+                    ph2d_tool_painter::SpatialUnits::Pixels,
+                )
+                .expect("ajuste");
         }),
     ];
     for base_op in [1.0f32, 0.85] {
@@ -244,8 +277,11 @@ fn diag_o_preco_de_compor_na_placa() {
             cima = Some(id);
         }
         let cima = cima.expect("cima");
-        p.novo_ajuste(AdjustmentKind::HueSaturationBrightness)
-            .expect("ajuste");
+        p.novo_ajuste(
+            AdjustmentKind::HueSaturationBrightness,
+            ph2d_tool_painter::SpatialUnits::Pixels,
+        )
+        .expect("ajuste");
         let mut placa = CompostoNaPlaca::novo(&gpu);
         let t = Instant::now();
         placa.compoe(&gpu, &mut p).expect("compõe");
@@ -394,8 +430,11 @@ fn o_painel_muda_a_pilha_e_a_placa_tem_a_peca() {
 fn uma_pilha_que_a_placa_recusa_compoe_na_cpu() {
     let gpu = gpu_or_skip!();
     let mut s = cena_com_camada(&gpu, |p| {
-        p.novo_ajuste(AdjustmentKind::ColorBalance)
-            .expect("ajuste de ponto");
+        p.novo_ajuste(
+            AdjustmentKind::ColorBalance,
+            ph2d_tool_painter::SpatialUnits::Pixels,
+        )
+        .expect("ajuste de ponto");
     });
     let a = s.active;
     assert!(

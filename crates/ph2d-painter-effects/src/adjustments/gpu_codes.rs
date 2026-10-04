@@ -117,4 +117,17 @@ impl AdjustmentKind {
     pub fn reads_the_image_layout(self) -> bool {
         self.gpu_spatial_code().is_some() || matches!(self, Self::Halftone)
     }
+
+    /// Does this kind read the image PLANE — a direction (Motion), a centre (Chroma), a
+    /// screen of dots on the image axes (Halftone)? A surface has none of the three, so
+    /// these exist on the image grid only; every other layout reader is a low-pass over
+    /// the neighbours and runs on any [`Neighbourhood`](super::Neighbourhood)
+    /// (`docs/3D/30` §14).
+    #[must_use]
+    pub fn reads_the_image_plane(self) -> bool {
+        matches!(
+            self,
+            Self::MotionBlur | Self::ChromaticAberration | Self::Halftone
+        )
+    }
 }

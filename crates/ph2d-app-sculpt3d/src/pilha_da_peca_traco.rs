@@ -133,6 +133,10 @@ impl PilhaDaPeca {
     /// corridas de índices consecutivos: as amostras de uma face são
     /// contíguas) e o relevo da base. Ao bit igual à [`Self::pinta_tinta`]
     /// nessas amostras (gate `recompor_amostras_e_o_pedaco_da_peca_inteira`).
+    ///
+    /// ⚠️ Com um efeito de VIZINHANÇA na pilha a cor de uma amostra depende das
+    /// vizinhas: só o relevo desce, e quem chama recompõe a peça inteira
+    /// (`tinta_da_peca::pilha::recompoe_sujas`).
     pub(crate) fn compoe_amostras(
         &self,
         idx: &[u32],
@@ -145,7 +149,12 @@ impl PilhaDaPeca {
         ord.dedup();
         let mut fundo = Some(fundo);
         let mut semente: Vec<[f32; 3]> = Vec::new();
-        for (a, b) in corridas(&ord) {
+        let corridas_da_cor = if self.le_a_vizinhanca() {
+            Vec::new()
+        } else {
+            corridas(&ord)
+        };
+        for (a, b) in corridas_da_cor {
             let composto = self.compor_faixa(a, b);
             if precisa_de_fundo(&composto)
                 && let Some(f) = fundo.take()

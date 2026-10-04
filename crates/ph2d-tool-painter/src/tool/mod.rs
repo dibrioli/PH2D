@@ -323,6 +323,9 @@ pub struct PainterTool {
     piece_ops: Vec<PieceLayerOp>,
     /// A frase da última recusa da pilha da peça, que o painel mostra (`None` = nenhuma).
     piece_refusal: Option<String>,
+    /// Onde vive o raio de um efeito de vizinhança na peça (as unidades dela, mostradas em % do
+    /// tamanho) — publicado pela escultura com o espelho (`docs/3D/30` §14).
+    piece_units: ph2d_painter_effects::adjustments::SpatialUnits,
     /// Stashed multi-layer documents by sprite id — switching sprites preserves each sprite's layer stack
     /// instead of flattening it. See [`crate::tool::documents`].
     doc_cache: BTreeMap<u64, documents::StashedDoc>,
@@ -424,6 +427,7 @@ impl Default for PainterTool {
             piece_layers: None,
             piece_ops: Vec::new(),
             piece_refusal: None,
+            piece_units: ph2d_painter_effects::adjustments::SpatialUnits::Pixels,
             doc_cache: BTreeMap::new(),
             shape_source_doc: None,
             shape_source_revision: 0,

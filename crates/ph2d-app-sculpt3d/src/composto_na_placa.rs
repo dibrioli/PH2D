@@ -21,6 +21,7 @@ use ph2d_mesh_render::{AchataDaTinta, MeshRenderer};
 use crate::objects::ObjectId;
 use ph2d_render::layer_compositor::{
     LayerCompositeError, LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
+    SurfaceGraph, SurfaceNeighbourhood,
 };
 use ph2d_tool_painter::{LayerId, flatten_for_gpu};
 
@@ -36,6 +37,10 @@ pub(crate) enum NaoCompos {
     Compositor(LayerCompositeError),
     /// O slot da peça não tem o plano armado com estas amostras.
     SemPlano,
+    /// A pilha lê vizinhos e a placa não leva a vizinhança da peça.
+    Superficie(ph2d_render::layer_compositor::SurfaceRefusal),
+    /// A pilha lê vizinhos e ainda não tem a vizinhança desta malha.
+    SemVizinhanca,
 }
 
 /// Os píxeis das camadas da pilha, pela versão de cada uma.
@@ -173,11 +178,55 @@ impl CompostoNaPlaca {
         pilha: &mut PilhaDaPeca,
     ) -> Result<(), NaoCompos> {
         let (ops, luts) = flatten_for_gpu(pilha.pilha()).ok_or(NaoCompos::NaoRepresentavel)?;
+        self.garante_superficie(gpu, pilha)?;
         let (l, h) = dobra(pilha.amostras());
         self.compositor
             .composite_with_luts(gpu, &ops, &luts, &Fonte(pilha), l, h, Region::full(l, h))
             .map_err(NaoCompos::Compositor)?;
         pilha.subiu_a_placa(chaves(&ops).map(LayerId));
+        Ok(())
+    }
+
+    /// ⭐⭐⭐ **A vizinhança da peça no compositor** (`docs/3D/30` §14): com um efeito
+    /// de vizinhança na pilha, os desfoques da placa correm o calor da retícula (o
+    /// grafo sobe uma vez por geometria) com o MESMO polinómio da CPU; sem ele, a
+    /// grelha de sempre.
+    fn garante_superficie(
+        &mut self,
+        gpu: &GpuContext,
+        pilha: &PilhaDaPeca,
+    ) -> Result<(), NaoCompos> {
+        if !pilha.le_a_vizinhanca() {
+            if self.compositor.surface_key().is_some() {
+                self.compositor.set_surface(gpu, None);
+            }
+            return Ok(());
+        }
+        let v = pilha
+            .vizinhanca_partilhada()
+            .ok_or(NaoCompos::SemVizinhanca)?;
+        if self.compositor.surface_key() == Some(v.chave()) {
+            return Ok(());
+        }
+        let d = v.difusao();
+        let (ini, viz, peso, inv_massa) = d.csr();
+        let grafo = SurfaceGraph {
+            ini,
+            viz,
+            peso,
+            inv_massa,
+            lambda_sup: d.lambda_sup(),
+        };
+        let lei = std::sync::Arc::clone(&v);
+        let superficie = SurfaceNeighbourhood::new(
+            gpu,
+            v.chave(),
+            dobra(pilha.amostras()),
+            &grafo,
+            Box::new(move |sigma| lei.difusao().polinomio(sigma)),
+        )
+        .map_err(NaoCompos::Superficie)?;
+        self.compositor.set_surface(gpu, Some(superficie));
         Ok(())
     }
 

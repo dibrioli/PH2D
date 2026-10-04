@@ -134,12 +134,7 @@ impl JanelaFina {
         let Some((id, rgba)) = self.camada else {
             return self.troca(obj.tinta.as_mut());
         };
-        let crate::objects::SceneObject {
-            stack,
-            tinta,
-            pilha,
-            ..
-        } = obj;
+        let crate::objects::SceneObject { tinta, pilha, .. } = obj;
         let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
             return None;
         };
@@ -151,9 +146,7 @@ impl JanelaFina {
             Some(r) => Some(pilha.troca_relevo(&self.amostras, r)?),
             None => None,
         };
-        let (mesh, k) = (stack.mesh(), peca.nivel());
-        let p = &*pilha;
-        p.compoe_amostras(&self.amostras, peca, || p.fundo_semeado(mesh, k));
+        crate::tinta_da_peca::pilha::recompoe_sujas(obj, &self.amostras);
         Some(Self {
             relevo,
             camada: Some((id, rgba)),

@@ -21,8 +21,9 @@ pub(crate) fn frase(r: RecusaDaPilha) -> String {
     let chave = match r {
         RecusaDaPilha::Tecto => "app.sculpt3d.camadas.recusa.tecto",
         RecusaDaPilha::Desconhecida => "app.sculpt3d.camadas.recusa.desconhecida",
-        RecusaDaPilha::LeAVizinhanca(_) => "app.sculpt3d.camadas.recusa.le_a_vizinhanca",
+        RecusaDaPilha::LeOPlanoDaImagem(_) => "app.sculpt3d.camadas.recusa.le_o_plano_da_imagem",
         RecusaDaPilha::ABase => "app.sculpt3d.camadas.recusa.a_base",
+        RecusaDaPilha::DegrauAlto => "app.sculpt3d.camadas.recusa.degrau_alto",
         RecusaDaPilha::TracoAberto => "app.sculpt3d.camadas.recusa.traco_aberto",
         RecusaDaPilha::MudaAEstrutura => "app.sculpt3d.camadas.recusa.muda_a_estrutura",
         RecusaDaPilha::ActivaNaoPinta => "app.sculpt3d.camadas.recusa.activa_nao_pinta",
@@ -59,6 +60,9 @@ impl Sculpt3dScene {
                 .and_then(|o| o.pilha.as_ref())
                 .map(PilhaDaPeca::pilha),
         );
+        if let Some(o) = self.obj() {
+            painter.sync_piece_units(crate::vizinhanca_da_peca::unidades(o.stack.mesh()));
+        }
     }
 
     /// ⭐⭐⭐ **Os pedidos do painel, por ordem**, cada um com o seu passo de
@@ -90,6 +94,7 @@ impl Sculpt3dScene {
         }
         let level = self.level();
         let o = self.obj_mut().ok_or(RecusaDaPilha::Desconhecida)?;
+        let unidades = crate::vizinhanca_da_peca::unidades(o.stack.mesh());
         let (Some(peca), Some(p)) = (o.tinta.as_ref(), o.pilha.as_mut()) else {
             return Err(RecusaDaPilha::Desconhecida);
         };
@@ -109,7 +114,12 @@ impl Sculpt3dScene {
                 (TrocaDaPilha::de(antes, nada()), None)
             }
             PieceLayerOp::NewAdjustment(k) => {
-                p.novo_ajuste(k)?;
+                if k.reads_the_image_layout()
+                    && peca.nivel() > crate::vizinhanca_da_peca::NIVEL_MAX_DA_VIZINHANCA
+                {
+                    return Err(RecusaDaPilha::DegrauAlto);
+                }
+                p.novo_ajuste(k, unidades)?;
                 (TrocaDaPilha::de(antes, nada()), None)
             }
             PieceLayerOp::Duplicate(id) => {

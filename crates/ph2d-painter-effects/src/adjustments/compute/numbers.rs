@@ -84,6 +84,17 @@ const LEVEL_8BIT: SliderNumber = whole(BYTE_MAX, 0.0);
 /// The numbers of [`super::adjustment_slider_params`], slot for slot (same length, same order).
 #[must_use]
 pub fn adjustment_slider_numbers(params: &AdjustmentParams) -> Vec<SliderNumber> {
+    adjustment_slider_numbers_in(params, SpatialUnits::Pixels)
+}
+
+/// [`adjustment_slider_numbers`] with the spatial extents in `units` — a surface's radii read as
+/// % of its size.
+#[must_use]
+pub fn adjustment_slider_numbers_in(
+    params: &AdjustmentParams,
+    units: SpatialUnits,
+) -> Vec<SliderNumber> {
+    let spatial = units.number(SPATIAL_PX_MAX);
     match params {
         AdjustmentParams::HueSaturationBrightness(_) => {
             vec![DEGREES, SIGNED_PERCENT, SIGNED_PERCENT]
@@ -116,11 +127,11 @@ pub fn adjustment_slider_numbers(params: &AdjustmentParams) -> Vec<SliderNumber>
             LEVEL_8BIT,
             LEVEL_8BIT,
         ],
-        AdjustmentParams::GaussianBlur(_) => vec![SPATIAL_PX],
+        AdjustmentParams::GaussianBlur(_) => vec![spatial],
         AdjustmentParams::MotionBlur(_) => vec![SPATIAL_PX, DEGREES],
         AdjustmentParams::Sharpen(_) => vec![
             affine(SHARPEN_AMOUNT_MAX * PCT, 0.0),
-            affine(SHARPEN_RADIUS_MAX, 0.0),
+            units.number(SHARPEN_RADIUS_MAX),
         ],
         AdjustmentParams::ChromaticAberration(_) => {
             vec![affine(2.0 * CHROMA_SHIFT_MAX, -CHROMA_SHIFT_MAX); 3]
@@ -137,16 +148,16 @@ pub fn adjustment_slider_numbers(params: &AdjustmentParams) -> Vec<SliderNumber>
         AdjustmentParams::Bloom(_) => vec![
             PERCENT,
             affine(BLOOM_INTENSITY_MAX * PCT, 0.0),
-            SPATIAL_PX,
+            spatial,
             PERCENT,
         ],
         AdjustmentParams::ShadowsHighlights(_) => vec![
             PERCENT,
             PERCENT,
-            SPATIAL_PX,
+            spatial,
             PERCENT,
             PERCENT,
-            SPATIAL_PX,
+            spatial,
             SIGNED_PERCENT,
             SIGNED_PERCENT,
         ],

@@ -116,13 +116,7 @@ pub(crate) fn desce_do_traco(
     fina: &mut TintaDoTraco,
     sujas: &mut Vec<u32>,
 ) -> bool {
-    let crate::objects::SceneObject {
-        stack,
-        tinta,
-        pilha,
-        ..
-    } = obj;
-    let (Some(pilha), Some(peca)) = (pilha.as_mut(), tinta.as_mut()) else {
+    let Some(pilha) = obj.pilha.as_mut().filter(|_| obj.tinta.is_some()) else {
         return false;
     };
     let Some(id) = pilha.em_traco() else {
@@ -130,10 +124,82 @@ pub(crate) fn desce_do_traco(
     };
     fina.drena_sujas(sujas);
     pilha.recebe_do_traco(id, fina.tinta(), sujas);
+    recompoe_sujas(obj, sujas);
+    true
+}
+
+/// ⭐⭐⭐⭐ **As amostras `sujas` de uma camada mudaram: a peça segue-as** — só
+/// elas, na CPU (a composição é ponto a ponto); ou, se a pilha lê VIZINHOS
+/// (`docs/3D/30` §14), a peça inteira na PLACA — a vizinha de uma suja também
+/// muda — com o plano da CPU atrasado. O relevo das sujas desce sempre.
+pub(crate) fn recompoe_sujas(obj: &mut crate::SceneObject, sujas: &[u32]) {
+    let crate::objects::SceneObject {
+        stack,
+        tinta,
+        pilha,
+        compor_na_placa,
+        ..
+    } = obj;
+    let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
+        return;
+    };
     let (mesh, k) = (stack.mesh(), peca.nivel());
+    let vizinhos = pilha.le_a_vizinhanca();
+    if vizinhos {
+        pilha.garante_vizinhanca(peca, mesh);
+    }
     let p = &*pilha;
     p.compoe_amostras(sujas, peca, || p.fundo_semeado(mesh, k));
-    true
+    if vizinhos {
+        pilha.atrasa(peca);
+        *compor_na_placa = true;
+    }
+}
+
+/// ⭐⭐ **A cor por vértice da peça composta** — com uma pilha que lê vizinhos a
+/// cor gravada pode ser de um gesto antes (ela acompanhou o prefixo atrasado);
+/// o plano aberto é a composição exacta, e as duas têm de ser iguais.
+pub(crate) fn cor_por_vertice_da_composta(obj: &mut crate::SceneObject) {
+    let crate::objects::SceneObject {
+        stack,
+        tinta,
+        pilha,
+        ..
+    } = obj;
+    if let (Some(peca), Some(p)) = (tinta.as_ref(), pilha.as_ref())
+        && p.le_a_vizinhanca()
+        && !p.atrasada()
+        && concorda_com(peca, stack.mesh())
+    {
+        let por_vertice = peca.plano_por_vertice().to_vec();
+        stack.mesh_mut().colors_mut().copy_from_slice(&por_vertice);
+    }
+}
+
+/// ⭐⭐⭐ **O plano da CPU em dia com a pilha** — a composição inteira (a
+/// referência) — e, se a pilha lê vizinhos, a cor por vértice com ele: o
+/// prefixo dos vértices também estava atrasado, e as duas têm de continuar
+/// iguais (o estacionamento compara-as, `desparqueia`).
+pub(crate) fn em_dia(obj: &mut crate::SceneObject) {
+    let crate::objects::SceneObject {
+        stack,
+        tinta,
+        pilha,
+        cores_sujas,
+        ..
+    } = obj;
+    let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
+        return;
+    };
+    if !pilha.atrasada() {
+        return;
+    }
+    pilha.em_dia(peca, stack.mesh());
+    if pilha.le_a_vizinhanca() && concorda_com(peca, stack.mesh()) {
+        let por_vertice = peca.plano_por_vertice().to_vec();
+        stack.mesh_mut().colors_mut().copy_from_slice(&por_vertice);
+        *cores_sujas = true;
+    }
 }
 
 /// ⭐⭐⭐ **O pen-up de um traço sobre uma camada**: a última descida, a cor por
@@ -199,6 +265,7 @@ pub(crate) fn recompoe(obj: &mut crate::SceneObject) {
 /// balde repõe-na ele mesmo, ao bit. `false` se a peça não tem pilha.
 pub(crate) fn recompoe_o_plano(obj: &mut crate::SceneObject) -> bool {
     let crate::objects::SceneObject {
+        stack,
         tinta,
         pilha,
         compor_na_placa,
@@ -207,6 +274,7 @@ pub(crate) fn recompoe_o_plano(obj: &mut crate::SceneObject) -> bool {
     let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
         return false;
     };
+    pilha.garante_vizinhanca(peca, stack.mesh());
     pilha.atrasa(peca);
     *compor_na_placa = true;
     true
@@ -223,6 +291,16 @@ pub(crate) fn para_ler<'a>(
         Some(p) if p.atrasada() && p.amostras() == plano.amostras().len() => {
             let mut fresco = plano.clone();
             let (mesh, k) = (obj.stack.mesh(), plano.nivel());
+            // Com vizinhos a pilha precisa da vizinhança DESTA malha — uma
+            // cópia ganha-a se a da peça não serve (ler não muda a peça).
+            let mut copia = None;
+            let p = if p.le_a_vizinhanca() {
+                let mut c = p.clone();
+                c.garante_vizinhanca(plano, mesh);
+                &*copia.insert(c)
+            } else {
+                p
+            };
             p.pinta_tinta(&mut fresco, || p.fundo_semeado(mesh, k));
             std::borrow::Cow::Owned(fresco)
         }

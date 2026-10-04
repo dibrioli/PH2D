@@ -258,10 +258,11 @@ fn tinta_das_camadas(
     if fundo_por_vertice.len() != mesh.vert_count() {
         return Err(SculptDocError::Tinta { peca, esperadas });
     }
-    let pilha = doc
+    let mut pilha = doc
         .camadas
         .pilha(esperadas, fundo_por_vertice.clone())
         .ok_or(SculptDocError::Tinta { peca, esperadas })?;
+    pilha.garante_vizinhanca(&t, mesh);
     let fundo = || {
         let faces = || mesh.faces().iter().map(ph2d_mesh::Face::verts);
         let semente = if doc.niveis.is_empty() {
@@ -400,6 +401,7 @@ impl Sculpt3dScene {
             obj.tinta = peca.tinta;
             obj.pilha = peca.pilha;
             obj.tinta_suja = true;
+            crate::tinta_da_peca::pilha::cor_por_vertice_da_composta(&mut obj);
             self.objects.push(obj);
         }
         self.active = active.min(self.objects.len() - 1);

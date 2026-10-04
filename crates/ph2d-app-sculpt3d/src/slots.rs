@@ -109,13 +109,21 @@ impl Sculpt3dScene {
             return;
         };
         let mesh = stack.mesh();
+        // A placa compõe os efeitos de vizinhança sobre a retícula (`docs/3D/30` §14).
+        pilha.garante_vizinhanca(peca, mesh);
         let feito =
             self.na_placa
                 .compoe_e_achata(gpu, &self.renderer, k, *id, pilha, mesh, peca.nivel());
         if feito.is_err() {
-            pilha.em_dia(peca, mesh);
-            self.renderer
-                .upload_tinta_at(&gpu.device, &gpu.queue, k, mesh, Some(peca));
+            crate::tinta_da_peca::pilha::em_dia(&mut self.objects[i]);
+            let o = &self.objects[i];
+            self.renderer.upload_tinta_at(
+                &gpu.device,
+                &gpu.queue,
+                k,
+                o.stack.mesh(),
+                o.tinta.as_ref(),
+            );
         }
     }
 

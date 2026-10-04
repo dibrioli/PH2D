@@ -330,6 +330,8 @@ mod slots;
 
 #[cfg(test)]
 mod sonda_camadas;
+#[cfg(test)]
+mod sonda_vizinhanca;
 /// ⭐⭐⭐ **QUEM É DONO DO PLANO DE TINTA FINA** — a peça, e só ela: quando o
 /// plano nasce, quem o segura durante um traço, e quando ele morre. Irmão do
 /// [`slots`] porque a terceira pergunta é a que decide o quadro (a topologia
@@ -338,6 +340,8 @@ mod tinta_da_peca;
 #[cfg(test)]
 #[path = "tinta_no_produto_tests.rs"]
 mod tinta_no_produto_tests;
+/// ⭐ A retícula da peça como vizinhança dos efeitos de vizinhança (`docs/3D/30` §14).
+mod vizinhanca_da_peca;
 
 /// **A PILHA DE CAMADAS DA PEÇA** — o `LayerStack` do Painter sobre os planos
 /// de tinta fina, composta pelo compositor dele (`docs/3D/30`).

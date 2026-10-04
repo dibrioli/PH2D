@@ -109,7 +109,7 @@ mod state_dropdowns;
 mod state_ramp;
 pub mod stroke_method_offer; // the Method dropdown's narrowing law — pure, gate-tested from `tests/`
 
-pub use peca::{set_current_layers_on_piece, set_current_piece_refusal};
+pub use peca::{set_current_layers_on_piece, set_current_piece_refusal, set_current_spatial_units};
 pub use state::{
     FalloffHit, PainterLayersPanelState, falloff_canvas_norm, falloff_hit_test, last_content_h,
     last_visible_h, selected_falloff_point, set_current_brush, set_current_brush_flow_image,

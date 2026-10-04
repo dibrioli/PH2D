@@ -558,9 +558,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              one in the list"
         }
         "panel.painter_layers.piece.off_here" => {
-            "Layers of the 3D piece. Not here yet: groups, texture layers, Lock, Ref, relief per \
-             layer, and the effects that read neighbouring pixels (Blur, Sharpen, Bloom...) -- \
-             on a surface those must follow the shape, not the image"
+            "Layers of the 3D piece. Blur, Sharpen, Bloom and Shadows/Highlights follow the \
+             surface (up to 64x Paint Detail), the radius in % of the piece's size. Not here: \
+             groups, texture layers, Lock, Ref, \
+             relief per layer, and Motion Blur, Chromatic Aberration and Halftone -- a surface has \
+             no direction, centre or dot screen of its own"
         }
         _ => return None,
     })

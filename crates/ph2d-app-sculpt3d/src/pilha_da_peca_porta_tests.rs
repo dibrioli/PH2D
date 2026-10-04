@@ -49,7 +49,11 @@ fn cada_passo_do_painel_desfaz_e_refaz_ao_bit() {
     });
     ida_e_volta(&mut p, "ajuste", |p| {
         let a = p.pilha().clone();
-        p.novo_ajuste(AdjustmentKind::Invert).expect("ajuste");
+        p.novo_ajuste(
+            AdjustmentKind::Invert,
+            ph2d_tool_painter::SpatialUnits::Pixels,
+        )
+        .expect("ajuste");
         TrocaDaPilha::de(a, nada())
     });
     ida_e_volta(&mut p, "duplica", |p| {
@@ -139,7 +143,12 @@ fn a_base_fica_e_a_copia_nao_leva_o_relevo() {
 fn um_ajuste_novo_nasce_como_o_do_2d_e_nao_rouba_a_activa() {
     let (mut p, _) = pilha_rica(N);
     let activa = p.pilha().active();
-    let curvas = p.novo_ajuste(AdjustmentKind::Curves).expect("curvas");
+    let curvas = p
+        .novo_ajuste(
+            AdjustmentKind::Curves,
+            ph2d_tool_painter::SpatialUnits::Pixels,
+        )
+        .expect("curvas");
     assert_eq!(p.pilha().active(), activa);
     let mut esperado = AdjustmentParams::Curves(Default::default());
     ph2d_tool_painter::seed_user_adjustment(&mut esperado);

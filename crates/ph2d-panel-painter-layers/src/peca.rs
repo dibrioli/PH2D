@@ -13,11 +13,24 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, TypeToken};
 use ph2d_tool_painter::ids as tids;
-use ph2d_tool_painter::{AdjustmentKind, LayerKind, LayerStack};
+use ph2d_tool_painter::{AdjustmentKind, LayerKind, LayerStack, SpatialUnits};
 
 thread_local! {
     static ON_PIECE: Cell<bool> = const { Cell::new(false) };
     static REFUSAL: RefCell<Option<String>> = const { RefCell::new(None) };
+    static UNITS: Cell<SpatialUnits> = const { Cell::new(SpatialUnits::Pixels) };
+}
+
+/// Publica (ponte, por quadro) onde vive o raio de um efeito de vizinhança: px no 2D, as unidades
+/// da peça 3D (mostradas em % do tamanho dela) — `PainterTool::panel_spatial_units`.
+pub fn set_current_spatial_units(units: SpatialUnits) {
+    UNITS.with(|c| c.set(units));
+}
+
+/// As unidades dos raios que o painel mostra.
+#[must_use]
+pub(crate) fn spatial_units() -> SpatialUnits {
+    UNITS.with(Cell::get)
 }
 
 /// Publica (ponte, por quadro) se a lista é a pilha da peça 3D.
@@ -60,10 +73,11 @@ pub(crate) fn offered(id: NodeId, stack: Option<&LayerStack>) -> bool {
     }
 }
 
-/// ⭐ **Este ajuste serve na peça?** — os que leem a vizinhança da imagem ainda não (W6).
+/// ⭐ **Este ajuste serve na peça?** — todos menos os que leem o PLANO da imagem (Motion,
+/// Chromatic Aberration, Halftone): os de vizinhança borram na superfície (`docs/3D/30` §14).
 #[must_use]
 pub(crate) fn adjustment_offered(kind: AdjustmentKind) -> bool {
-    !on_piece() || !kind.reads_the_image_layout()
+    !on_piece() || !kind.reads_the_image_plane()
 }
 
 /// ⭐⭐ **As frases da peça**, por baixo da lista: a última recusa, a activa que não é de pintura, e

@@ -224,13 +224,15 @@ pub(crate) fn paint_adjustment_params(
     if matches!(params, AdjustmentParams::GradientMap(_)) {
         return paint_gradient_map(ctx, theme, layer_id, params, x, w, y);
     }
-    let sliders = ph2d_tool_painter::adjustment_slider_params(params);
+    // Na peça 3D os raios são das unidades dela, e o número lê-se em % do tamanho (`docs/3D/30` §14).
+    let units = crate::peca::spatial_units();
+    let sliders = ph2d_tool_painter::adjustment_slider_params_in(params, units);
     y = paint_barras(
         ctx,
         theme,
         layer_id,
         &sliders,
-        &ph2d_tool_painter::adjustment_slider_numbers(params),
+        &ph2d_tool_painter::adjustment_slider_numbers_in(params, units),
         &|f| adjust_nomes::chave_da_barra(params, f),
         0..sliders.len(),
         (x, w, y),

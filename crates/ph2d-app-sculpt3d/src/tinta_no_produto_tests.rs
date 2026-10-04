@@ -676,3 +676,5 @@ mod painel;
 /// ⭐ A pilha COMPOSTA NA PLACA (`docs/3D/30` §13, W1b) — a paridade com a CPU e o preço.
 #[path = "composto_na_placa_no_produto_tests.rs"]
 mod placa;
+#[path = "vizinhanca_no_produto_tests.rs"]
+mod placa_vizinhanca;

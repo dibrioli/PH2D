@@ -688,3 +688,40 @@ altura, na placa: a CPU da peça não é caminho vivo, §14). O desenho por deci
 «o relevo por baixo de um ajuste» (a dobra até ali), o que o Bloom/Sombras-Realces fazem a uma altura
 (talvez só o Gaussiano/Nitidez tenham sentido físico — medir e escrever o porquê), e o custo (critério
 §7 da W6: `100 ms` a `32x`).
+
+## 18. A 2.ª foto do dono (04/10): «a tinta ficou com um offset em relação ao relevo»
+
+A foto: uma pincelada vermelha de impasto numa camada nova sobre as riscas da cena `=55`, com uma orla
+cinzenta lisa à volta. **Não é um deslocamento** — medido (`relevo_painel::diag_onde_cai_a_cor_e_onde_cai_o_relevo`):
+o centro da cor e o do relevo distam `0,005` (o mesmo na base, `0,004`). O relevo é mais LARGO que a cor
+(`427` contra `319` amostras). Três achados, por ordem de peso:
+
+1. **O fantasma (o que mudava a imagem):** a assinatura da dobra (§15) ficava velha quando um TRAÇO dava
+   o 1.º relevo a uma camada (o traço escreve a peça aos bocados e não a renovava); esconder essa camada
+   voltava à assinatura guardada e a redobra dizia «nada mudou» — a peça ficava com o relevo da camada
+   escondida (`941` amostras; foto com a camada escondida: um fantasma liso sobre as riscas). ⇒ a
+   assinatura renova-se em `relevo_nas`, onde a peça é escrita aos bocados. ⚠️ A 1.ª redacção renovava-a
+   onde a CAMADA muda (`recebe_do_traco`/`troca_relevo`): contrato frágil — um gate que escreve o relevo e
+   recompõe a peça inteira apanhou-a (`a_profundidade_de_uma_camada_que_cobre…`).
+2. **A encosta fora da tinta de uma camada de cima:** o alisamento do impasto espalha relevo para fora da
+   tinta (`293` amostras com relevo e corpo `0` — a «encosta» do anel de 01/10). Numa camada só, o corpo
+   `0` apaga-a na luz; com camadas, o corpo da peça é o MÁXIMO, e a tinta cheia da de baixo acendia-a. ⇒ a
+   dobra única pesa o relevo de cada camada pela SUA tinta: `relief_share = min(1, c / min(W_SOLID,
+   c_max))` (`W_SOLID = 0,75`, o filme cheio do pincel, `ph2d-painter-brush`). Numa camada só é `1` ao
+   bit; sem tinta dela sobre tinta de outra é `0`. Vale para o 2D (mesma dobra): duas camadas de impasto no
+   2D tinham o mesmo defeito. ⛔ **Recusa MEDIDA:** a razão crua `c / c_max` desenhava uma MOLDURA onde a
+   tinta de baixo começa debaixo de uma tinta de cima parcial (foto do cruzamento de duas pinceladas).
+3. **O que fica e é o desenho:** um fio de luz à volta da tinta — a parede do impasto sobe dentro do
+   pigmento meio-transparente (alfa `64–191`: corpo médio `0,50`, altura `0,08`), como no 2D
+   (`W_TAIL..W_SOLID`). Medido: a opacidade da tinta é a mesma sobre a azul e fora dela (`221` contra
+   `225`); a «moldura» que se vê no cruzamento de duas pinceladas é a luz do tubo de baixo vista através
+   da tinta de cima somada (`Add`) — físico.
+
+⚠️ **Consequência nomeada da lei 2:** uma camada de profundidade `0` deixa de mudar a altura ao bit quando
+a tinta dela é mais forte que a de baixo (a parte da de baixo é a sua tinta sobre a maior); o gate passou a
+afirmar a propriedade honesta — profundidade `0` = a mesma peça que o relevo dela a ZERO, ao bit.
+
+Gates: `relief_fold::tests::a_parte_do_relevo_de_uma_camada_e_a_sua_tinta_sobre_a_maior` (2D) ·
+`pilha_da_peca::relevo::tests::{a_encosta_fora_da_tinta_de_uma_camada_de_cima_nao_conta,
+esconder_uma_camada_que_ganhou_relevo_num_traco_tira_o_relevo_dela}` · o neutro re-escrito. Sondas com
+foto: `relevo_painel::{diag_a_orla_da_camada_de_cima, diag_a_orla_sobre_as_riscas}`. Mutação: R24, R25.

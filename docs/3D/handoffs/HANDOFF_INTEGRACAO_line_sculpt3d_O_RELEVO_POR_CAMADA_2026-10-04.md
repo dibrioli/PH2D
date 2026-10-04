@@ -48,12 +48,13 @@ camada activa; duplicar leva o relevo; a base continua permanente e no fundo (a 
 | a 1.ª redobra da sessão só sinaliza se o relevo mudou (a P10 que sobreviveu no fecho) | `dce8d150c` |
 | o que o fecho apanhou (1 `type_complexity`, 1 literal lido como π) | `fa9a7e224` |
 | **report do smoke:** o impasto (toda tela semeada) pinta a COR numa camada nova — `Mistura::Camada` (diferença em cor pré-multiplicada e opacidade), doc 30 §16 | `efd72c67a` |
+| **2.ª foto do dono:** a encosta fora da tinta de uma camada de cima não acende (`relief_share`, na dobra única — 2D e peça) e o fantasma ao esconder uma camada (a assinatura renova-se em `relevo_nas`), doc 30 §18 | `6da772700` |
 
 ## §2. Foundational tocado e a superfície de API (o que um merge pode partir)
 
 | item | mudança | quem parte |
 |---|---|---|
-| `ph2d_tool_painter::layers` | ficheiro NOVO `relief_fold.rs`: `pub fn fold_relief_step` · `pub const RELIEF_FOLD_SEED = -0.0` · `LayerStack::{effectively_visible, relief_layers_bottom_up, set_impasto_depth_norm, toggle_impasto_composite}` (reexportados no `lib.rs`) | — (aditivo) |
+| `ph2d_tool_painter::layers` | ficheiro NOVO `relief_fold.rs`: `pub fn fold_relief_step(h, own, depth, composite, cover, cover_max)` (a cobertura deixou de ser um fecho) · `pub fn relief_share` (lê `ph2d_painter_brush::height_film::W_SOLID`) · `pub const RELIEF_FOLD_SEED = -0.0` · `LayerStack::{effectively_visible, relief_layers_bottom_up, set_impasto_depth_norm, toggle_impasto_composite}` (reexportados no `lib.rs`) | — (aditivo) |
 | `ph2d_tool_painter` `tool/paint/relief_fields.rs` · `impasto_light.rs` | `height_at` chama `fold_relief_step` e começa em `RELIEF_FOLD_SEED`; o `layer_effectively_visible` privado SAIU (é o da `LayerStack`); `impasto_fields` itera `relief_layers_bottom_up` | uma linha que edite o corpo do `height_at` ou do `impasto_fields` — **a `line/PainterWatercolor` (aberta) mexe no impasto 2D** |
 | `ph2d_tool_painter` `tool/layers/mutate.rs` · `layer_edit.rs` | `set_layer_impasto_depth_norm` delega na `LayerStack`; `toggle_layer_impasto_composite` NOVO; o braço `ImpastoLevel` do `apply_layer_edit` chama-o (o `use ReliefComposite` saiu de `layer_edit.rs`) | idem |
 | `ph2d_tool_painter` `tool/piece_layers.rs` | `ImpastoDepth`/`ImpastoLevel` deixam de ser «não oferecidos» e pedem `Metadata` | — |
@@ -88,9 +89,10 @@ camada activa; duplicar leva o relevo; a base continua permanente e no fundo (a 
 | pilha | `pilha_da_peca::relevo::tests` (5): **a dobra da peça = a do 2D ao bit** (`Add`, `Level`, profundidade negativa, uma escondida; CONTROLO de ordem) · o neutro e a profundidade `0` (a altura ao bit; o corpo pela lei do 2D) · o traço só na activa e o desfazer · duplicar leva o relevo · só a forma da dobra redobra |
 | re-escritos | `o_traco_desce_a_camada_activa_e_so_a_ela` · `a_base_fica_e_a_copia_leva_o_relevo` · `as_trocas_do_desfazer_sao_involucoes` (afirmavam «o relevo é da base») |
 | cena | `scenes::relevo_camadas::tests` (1) |
+| 2.ª foto | `relief_fold::tests::a_parte_do_relevo_de_uma_camada_e_a_sua_tinta_sobre_a_maior` · `pilha_da_peca::relevo::tests::{a_encosta_fora_da_tinta_de_uma_camada_de_cima_nao_conta, esconder_uma_camada_que_ganhou_relevo_num_traco_tira_o_relevo_dela}` · o neutro re-escrito (profundidade `0` = o relevo dela a zero) · R24/R25 |
 | report do smoke | núcleo `tela_na_malha::pousa::alfa_tests::a_tela_semeada_com_uma_camada_poe_e_tira_opacidade` · com placa `relevo_painel::o_impasto_numa_camada_nova_pinta_a_cor_e_o_relevo` (CONTROLO a base) · R22/R23 no arnês (sangram, corridas dirigidas) |
 | com placa | `tinta_no_produto_tests::relevo_painel` (3): **o seam test do DoD** — o arrasto REAL da profundidade muda o relevo só onde a de cima pinta, a placa tem os bits da peça, as inclinações da placa são as da CPU, o `Ctrl+Z` devolve ao bit (peça e placa), o `Level` enterra · a camada que cobre a peça refaz TODAS as inclinações |
-| mutação | `docs/3D/ferramentas/muta_o_relevo_por_camada.sh` NOVO: **21/21** (1.ª corrida 20/20; a R21 entrou com o ramo «refaz todas») · `muta_a_pilha_da_peca.sh` **43/43** (M5 e P10 re-ancorados: o relevo é a dobra; a cópia LEVA o relevo) · `muta_a_pilha_na_placa.sh` **19/19** (P10 re-ancorada; **sobreviveu na corrida de fecho** — a 1.ª redobra da sessão sinalizava sempre e a subida inteira compunha a placa por ela; curada em `dce8d150c`, sangra numa corrida dirigida: 2 gates de placa) · `muta_os_efeitos_de_vizinhanca.sh` **49/49** · `muta_as_camadas_em_ecra.sh` **50/50** · `muta_o_relevo_na_peca.sh` **16/16** + o controlo inerte C1 · `muta_a_normal_do_relevo.sh` **12/12** + C1 |
+| mutação | `docs/3D/ferramentas/muta_o_relevo_por_camada.sh` NOVO: **25/25** na corrida inteira depois da 2.ª foto (1.ª corrida 20/20; R21 o ramo «refaz todas»; R22–R25 as curas dos reports do smoke) · `muta_a_pilha_da_peca.sh` **43/43** (M5 e P10 re-ancorados: o relevo é a dobra; a cópia LEVA o relevo) · `muta_a_pilha_na_placa.sh` **19/19** (P10 re-ancorada; **sobreviveu na corrida de fecho** — a 1.ª redobra da sessão sinalizava sempre e a subida inteira compunha a placa por ela; curada em `dce8d150c`, sangra numa corrida dirigida: 2 gates de placa) · `muta_os_efeitos_de_vizinhanca.sh` **49/49** · `muta_as_camadas_em_ecra.sh` **50/50** · `muta_o_relevo_na_peca.sh` **16/16** + o controlo inerte C1 · `muta_a_normal_do_relevo.sh` **12/12** + C1 |
 
 ## §5. Prova de fecho (batched sobre o diff acumulado)
 
@@ -103,6 +105,8 @@ camada activa; duplicar leva o relevo; a base continua permanente e no fundo (a 
 | `architecture_*` + memória `o_indice_da_memoria_conta_o_que_aponta` + `claude_md` | **105 / 105** |
 | placa | `ph2d-render` **52/52** (`layer_compositor` + `fx_stack_adjust` + `blend_mode_regression` + `layers_no_alloc`) · a luz do impasto 2D (`ph2d-render --ignored impasto`) **6/6** · `ph2d-flip-render composite_` **19/19** · o preview de placa do Painter (`ph2d-app-painter painter_preview_handoff_tests`) **3/3** · sculpt3d `--ignored tinta_no_produto --skip diag_` **40/40** (+2); depois da cura da cor **41/41** |
 | CPU das crates tocadas | `ph2d-tool-painter` (os dois de custo do `mask` — família de carga — passam sozinhos) · `ph2d-panel-painter-layers` · `ph2d-mesh-render` · `ph2d-mesh-colors` (72) · `ph2d-sculpt3d` · `ph2d-app-sculpt3d` ✓ |
+
+⚠️ A 2.ª foto (`6da772700`): `ph2d-tool-painter` **1 452** · `ph2d-app-sculpt3d` **418** · placa: `ph2d-render` 52/52, impasto 2D 6/6, Flip 19/19, preview 3/3, peça **41/41** · `fmt` ✓.
 
 ⚠️ A cura da cor (`efd72c67a`, depois do fecho): `ph2d-sculpt3d` **563** · `ph2d-app-sculpt3d` **416** · placa **41/41** · `clippy -D warnings` e `deny warnings` das duas crates · `fmt --all --check` ✓; o `nextest-impacted` não foi repetido sobre ela.
 
@@ -146,7 +150,8 @@ direita), `16x` aceso. O clique prova-se no seam test (§4), não na foto.
 5. Carregue no `Add` da `Layer 2` (passa a `Level`): **dentro da faixa as riscas somem** — a lomba lisa
    enterra a textura de baixo. Fora da faixa as riscas ficam.
 6. (A cura do report) Carregue no `+` das camadas (nasce a `Layer 3`), escolha no Painter o meio
-   `Impasto` e pinte na bola: **a pincelada tem a cor do pincel E o relevo** (antes só entrava o relevo).
+   `Impasto` e pinte na bola: **a pincelada tem a cor do pincel E o relevo**, e as riscas chegam até à
+   borda da tinta (sem a orla lisa à volta). Esconda a `Layer 3` (o olho): **o relevo dela sai todo**.
 7. Na linha da `Layer 1`, baixe a profundidade: as riscas achatam fora da faixa; dentro dela (com
    `Level`) nada muda. `Ctrl+Z` várias vezes: tudo volta ao que abriu.
 8. **Deu errado se:** a pincelada na `Layer 3` sai sem cor; a lomba não achata ao arrastar; mexer na `Layer 2` muda as riscas fora da faixa; o

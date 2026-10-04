@@ -191,6 +191,8 @@ mod tests_custo_textura;
 #[cfg(test)]
 mod tests_passe_chao_tapa;
 #[cfg(test)]
+mod tests_reflexo;
+#[cfg(test)]
 mod tests_sol;
 #[cfg(test)]
 mod tests_textura;

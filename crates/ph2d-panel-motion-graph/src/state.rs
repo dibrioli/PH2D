@@ -219,6 +219,10 @@ pub struct MotionGraphPanelState {
     pub(crate) preview_pos: BTreeMap<u32, PreviewPos>,
     /// `false` until the first paint auto-fits the graph (then user-controlled).
     pub(crate) fitted: bool,
+    /// **O painel e a vista do último enquadramento do grafo INTEIRO** — ver
+    /// [`Self::refit_if_the_panel_moved_under_an_untouched_view`]. `None` depois de um enquadramento
+    /// da selecção (esse é um pedido do artista, não uma vista automática).
+    pub(crate) enquadrado_em: Option<(ph2d_editor_core::zones::Rect, ViewState)>,
     /// A MANUAL fit (the chip or `F`) asked to frame the SELECTION, not the whole
     /// graph. Set only by [`Self::request_fit`] when there is a selection; the
     /// auto-fits (first sight, level change) leave it `false`, so they always frame
@@ -332,6 +336,23 @@ impl MotionGraphPanelState {
     /// graph otherwise: the universal node-editor `F` (Blender/Nuke/Houdini frame the
     /// selection), and the same "one gesture, two behaviours" the Backdrop chip uses.
     /// ONE door, so the chip and the key can never diverge on the rule.
+    /// ⛔⛔ **O painel mudou de tamanho debaixo de uma vista que ninguém tocou ⇒ re-enquadra**
+    /// (report do Enio, 2026-10-03: *«o grafo abre com a parte de cima escondida»*). Medido no app:
+    /// o quadro 0 pinta o painel com `1918` px de largura e o quadro 1 já com `1310` (os painéis
+    /// laterais chegam depois) — o enquadramento do quadro 0 deixava os cartões `304` px à direita.
+    /// ⚠️ A vista que o artista mexeu (pan, zoom) é dele: aí nada muda.
+    pub(crate) fn refit_if_the_panel_moved_under_an_untouched_view(
+        &mut self,
+        rect: ph2d_editor_core::zones::Rect,
+    ) {
+        if let Some((painel, vista)) = self.enquadrado_em
+            && painel != rect
+            && vista == self.view
+        {
+            self.fitted = false;
+        }
+    }
+
     pub(crate) fn request_fit(&mut self) {
         self.fitted = false;
         self.fit_selection = !self.selected.is_empty();

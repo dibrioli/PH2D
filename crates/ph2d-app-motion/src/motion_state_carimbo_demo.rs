@@ -558,7 +558,9 @@ pub(super) fn simulacao_com(
     let cadeia = [nucleo, vortex, im, curl];
     for (i, n) in cadeia.iter().enumerate() {
         #[expect(clippy::cast_precision_loss, reason = "cinco nós")]
-        let x = i as f32 * 160.0;
+        // `220`, o passo das outras filas: a `160` as pílulas («Attractor», «Curl Noise») sobrepunham-se
+        // (foto de 2026-10-03).
+        let x = i as f32 * 220.0;
         g.set_pos(*n, Pos { x, y: -220.0 });
     }
     let liga =

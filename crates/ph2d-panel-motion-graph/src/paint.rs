@@ -34,6 +34,9 @@ mod paint_inert_badge;
 #[path = "paint_port_label.rs"]
 mod paint_port_label;
 
+#[cfg(test)]
+#[path = "paint_fit_tests.rs"]
+mod fit_tests;
 /// O gate de PIXEL da faixa de params — o que os seis de geometria não podiam ver.
 #[cfg(test)]
 #[path = "paint_card_params_tests.rs"]
@@ -90,7 +93,7 @@ pub(crate) use paint_wire::{
 };
 use paint_wires::{WirePass, draw_wires};
 
-use crate::geom::{self, View, card_h, socket_center};
+use crate::geom::{self, View, socket_center};
 use crate::hits::{bg_hit_id, push_backdrop_hits, register_hits, register_hot_tip};
 use crate::snapshot::{
     GraphNodeView, GraphViewSnapshot, PortView, SocketGlyph, current_snapshot, socket_glyph,
@@ -180,9 +183,11 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // Fit on first sight (then the user owns pan/zoom; F re-fits). A MANUAL fit with
     // a selection frames it, not the whole graph (`fit_selection`); every auto-fit
     // (first sight, level change) leaves that flag false and so frames everything.
+    state.refit_if_the_panel_moved_under_an_untouched_view(rect);
     if !state.fitted && !snap.nodes.is_empty() {
         let scope = state.fit_selection.then_some(&state.selected);
         state.view = fit(&snap, rect, scope);
+        state.enquadrado_em = scope.is_none().then_some((rect, state.view));
         state.fitted = true;
         state.fit_selection = false;
     }
@@ -349,7 +354,54 @@ pub(crate) fn fit(
     rect: Rect,
     selection: Option<&std::collections::BTreeSet<u32>>,
 ) -> ViewState {
-    let (mut min_x, mut min_y, mut max_x, mut max_y) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+    // ⛔⛔ **Mede-se no REGIME em que se vai desenhar** (report do Enio, 2026-10-03: *«o grafo abre
+    // com a parte de cima escondida»*). Abaixo de `ZOOM_DA_CAPSULA` o cartão é uma pílula, e o
+    // enquadramento media-o ABERTO: centrava a caixa dos cartões abertos e as pílulas ficavam no
+    // topo dela, cortadas. A geometria é a da pintura (`card_x_w_at`/`card_h_at`); no regime aberto
+    // ela é a de sempre, ao bit.
+    let aberto = View::new(
+        rect,
+        ViewState {
+            zoom: geom::ZOOM_DA_CAPSULA,
+            ..ViewState::default()
+        },
+    );
+    let Some(caixa_aberta) = caixa(snap, selection, &aberto) else {
+        // The selection named nothing on this level: frame the whole graph instead of a
+        // degenerate empty box.
+        return match selection {
+            Some(_) => fit(snap, rect, None),
+            None => ViewState::default(),
+        };
+    };
+    let vista = enquadra(rect, caixa_aberta, ZOOM_FIT_MAX);
+    if vista.zoom >= geom::ZOOM_DA_CAPSULA {
+        return vista;
+    }
+    // Pílulas — e nunca acima do limiar, onde elas voltariam a abrir e deixariam de caber.
+    let teto = geom::ZOOM_DA_CAPSULA.next_down().min(ZOOM_FIT_MAX);
+    let pilula = View::new(
+        rect,
+        ViewState {
+            zoom: teto,
+            ..ViewState::default()
+        },
+    );
+    enquadra(
+        rect,
+        caixa(snap, selection, &pilula).unwrap_or(caixa_aberta),
+        teto,
+    )
+}
+
+/// A caixa `[min_x, min_y, max_x, max_y]`, em unidades do grafo, dos cartões do `selection` (ou de
+/// todos) TAL COMO o regime de `regime` os desenha. `None` se ela não contém nenhum.
+fn caixa(
+    snap: &GraphViewSnapshot,
+    selection: Option<&std::collections::BTreeSet<u32>>,
+    regime: &View,
+) -> Option<[f32; 4]> {
+    let mut c = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
     let mut framed = 0usize;
     for n in &snap.nodes {
         if let Some(sel) = selection
@@ -357,25 +409,39 @@ pub(crate) fn fit(
         {
             continue;
         }
-        min_x = min_x.min(n.x);
-        min_y = min_y.min(n.y);
-        max_x = max_x.max(n.x + geom::CARD_W);
-        max_y = max_y.max(n.y + card_h(n));
+        let (x, w) = geom::card_x_w_at(n, regime);
+        c[0] = c[0].min(x);
+        c[1] = c[1].min(n.y);
+        c[2] = c[2].max(x + w);
+        c[3] = c[3].max(n.y + geom::card_h_at(n, regime));
         framed += 1;
     }
-    // The selection named nothing on this level: frame the whole graph instead of a
-    // degenerate empty box.
-    if framed == 0 && selection.is_some() {
-        return fit(snap, rect, None);
-    }
+    (framed > 0).then_some(c)
+}
+
+/// A vista que centra `caixa` em `rect`, com o zoom entre o piso do enquadramento e `teto`.
+fn enquadra(rect: Rect, [min_x, min_y, max_x, max_y]: [f32; 4], teto: f32) -> ViewState {
     let bw = (max_x - min_x).max(1.0);
     let bh = (max_y - min_y).max(1.0);
-    let zoom = ((rect.w - 2.0 * FIT_PAD) / bw)
-        .min((rect.h - 2.0 * FIT_PAD) / bh)
-        .clamp(ZOOM_FIT_MIN, ZOOM_FIT_MAX); // CLAMP-OK: const bounds, min<max, non-NaN
+    let zoom = ph2d_editor_core::math::safe_clamp(
+        ((rect.w - 2.0 * FIT_PAD) / bw).min((rect.h - 2.0 * FIT_PAD) / bh),
+        ZOOM_FIT_MIN,
+        teto,
+    );
+    // ⛔ **O que não cabe ao piso alinha pelo INÍCIO, nunca pelo centro** (report de 2026-10-03):
+    // o piso é o da LEITURA do nome na pílula, e um grafo mais alto que o painel a esse zoom,
+    // centrado, perde o TOPO — o primeiro sítio para onde o artista olha. Alinhado em cima, o que
+    // sobra vai para baixo, para onde se rola.
+    let eixo = |lado: f32, b: f32, min: f32| {
+        if b * zoom <= lado - 2.0 * FIT_PAD {
+            (lado - b * zoom) * 0.5 - min * zoom
+        } else {
+            FIT_PAD - min * zoom
+        }
+    };
     ViewState {
-        pan_x: (rect.w - bw * zoom) * 0.5 - min_x * zoom,
-        pan_y: (rect.h - bh * zoom) * 0.5 - min_y * zoom,
+        pan_x: eixo(rect.w, bw, min_x),
+        pan_y: eixo(rect.h, bh, min_y),
         zoom,
     }
 }

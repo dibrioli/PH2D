@@ -89,10 +89,9 @@ pub(crate) fn monta(
     let numero = no(g, "value.number", 160.0, -400.0);
     g.set_param(numero, "value", FIO_INICIAL);
     g.drive_param(vortex, "strength", (numero, 0)).ok()?;
-    // ── O DESENHO: o Number e o Vortex na fila de BAIXO. O enquadramento automático do grafo tem
-    // zoom mínimo (`ZOOM_FIT_MIN`) e o topo do retângulo dele fica tapado pela tela no 1.º quadro:
-    // com a cadeia a `y = −220` e o Number a `−400` (o desenho da `=127`) os dois abriam FORA de
-    // vista, e com a fila das forças em cima também — as duas fotos apanharam-no.
+    // ── O DESENHO: duas filas baixas, o Number e o Vortex na de baixo — o grafo inteiro cabe no
+    // painel ao abrir (o enquadramento mede as pílulas que desenha desde 2026-10-03; antes dessa
+    // cura o Number e o Vortex abriam FORA de vista, e foram as fotos desta cena que o mostraram).
     for (tipo, x, y) in [
         ("motion.grid", 0.0, 0.0),
         ("motion.integrate", 220.0, 0.0),

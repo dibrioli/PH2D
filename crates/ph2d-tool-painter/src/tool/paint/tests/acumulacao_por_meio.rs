@@ -44,8 +44,10 @@ fn os_meios_sem_accumulate_ignoram_os_dois_interruptores() {
         let limpo = traco(media, false);
         let vindo = traco(media, true);
         let diferentes = limpo
-            .chunks_exact(4)
-            .zip(vindo.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(vindo.as_chunks::<4>().0)
             .filter(|(a, b)| a != b)
             .count();
         assert_eq!(

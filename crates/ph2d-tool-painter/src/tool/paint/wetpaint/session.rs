@@ -138,7 +138,7 @@ impl WetSession {
     /// Há tinta molhada na tela? (algum pixel do plano de pigmento com alfa) — o que decide se trocar
     /// o modo de Blend fixa a sessão ou só lhe troca o modo (`set_brush_blend`).
     pub(in crate::tool::paint) fn ha_tinta(&self) -> bool {
-        self.pigment.chunks_exact(4).any(|p| p[3] > 0)
+        self.pigment.as_chunks::<4>().0.iter().any(|p| p[3] > 0)
     }
 
     /// Push the authored FACTS into the engine when they moved (W3, grown by

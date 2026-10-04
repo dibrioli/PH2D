@@ -533,7 +533,7 @@ impl Recorte {
             return Self::Intocado;
         };
         debug_assert!(
-            texels > 0 && plano.len() % texels == 0,
+            texels > 0 && plano.len().is_multiple_of(texels),
             "um acumulador do traço que não é por texel"
         );
         let bpp = plano.len() / texels.max(1);

@@ -462,7 +462,7 @@ pub(crate) fn diferenca(a: &[u8], b: &[u8]) -> (usize, u64, u8) {
     let mut n = 0;
     let mut soma = 0u64;
     let mut max = 0u8;
-    for (pa, pb) in a.chunks_exact(4).zip(b.chunks_exact(4)) {
+    for (pa, pb) in a.as_chunks::<4>().0.iter().zip(b.as_chunks::<4>().0) {
         let mut mudou = false;
         for c in 0..4 {
             let d = pa[c].abs_diff(pb[c]);

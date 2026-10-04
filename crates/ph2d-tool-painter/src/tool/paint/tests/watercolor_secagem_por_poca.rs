@@ -225,7 +225,7 @@ fn grava_ppm(t: &PainterTool, nome: &str) {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/prova/secagem");
     std::fs::create_dir_all(&dir).expect("a pasta da prova");
     let mut bytes = format!("P6\n{LADO} {LADO}\n255\n").into_bytes();
-    for px in t.canvas_rgba.chunks_exact(4) {
+    for px in t.canvas_rgba.as_chunks::<4>().0 {
         bytes.extend_from_slice(&px[..3]);
     }
     std::fs::write(dir.join(nome), bytes).expect("gravar a prova");

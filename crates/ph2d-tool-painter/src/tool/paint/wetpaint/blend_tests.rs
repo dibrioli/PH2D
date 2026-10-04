@@ -20,7 +20,7 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 fn tela_vermelha(cor: [f32; 3], blend: BrushBlend) -> PainterTool {
     let mut t = PainterTool::default();
     let mut px = vec![0u8; 200 * 120 * 4];
-    for p in px.chunks_exact_mut(4) {
+    for p in px.as_chunks_mut::<4>().0 {
         p.copy_from_slice(&[200, 60, 40, 255]);
     }
     t.set_source(px, 200, 120);
@@ -55,7 +55,7 @@ fn risca(t: &mut PainterTool, y: f32) {
 fn mudanca(t: &PainterTool) -> (usize, u8) {
     let mut n = 0;
     let mut max = 0u8;
-    for p in t.canvas_rgba.chunks_exact(4) {
+    for p in t.canvas_rgba.as_chunks::<4>().0 {
         let d = [
             p[0].abs_diff(200),
             p[1].abs_diff(60),

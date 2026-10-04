@@ -34,6 +34,7 @@ const PRODUTO: Leis = Leis {
     c1: false,
     desenho: true,
     contacto: true,
+    frente: true,
     efeitos: true,
 };
 

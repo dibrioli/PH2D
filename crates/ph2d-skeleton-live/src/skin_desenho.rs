@@ -166,6 +166,9 @@ pub struct Leis {
     /// SILHUETA dos membros ([`ph2d_vec_boolean::resolve_overlap`]). `PH2D_SKIN_CONTACTO=0` volta ao
     /// contorno com o «olho» por dentro, e é por onde se bissecta um report.
     pub contacto: bool,
+    /// ⭐⭐ O que é ABERTO e fica atrás de outra parte não se desenha ([`frente`], A2) —
+    /// `PH2D_SKIN_FRENTE=0` desliga.
+    pub frente: bool,
     /// ⭐⭐⭐ **Os EFEITOS correm no repouso e o desenho deles dobra** — ver o cabeçalho.
     /// `PH2D_SKIN_EFEITOS=0` volta à lei antiga (a pele nos nós e o efeito sobre a forma dobrada).
     pub efeitos: bool,
@@ -182,6 +185,7 @@ impl Leis {
             c1: ph2d_vec_skin::curva::lei_c1_activa(),
             desenho: lei_do_desenho_activa(),
             contacto: lei_do_contacto_activa(),
+            frente: std::env::var("PH2D_SKIN_FRENTE").as_deref() != Ok("0"),
             efeitos: std::env::var("PH2D_SKIN_EFEITOS").as_deref() != Ok("0"),
         }
     }
@@ -278,10 +282,8 @@ struct Gaveta {
     visto: u64,
 }
 
-/// ⚠️ **Quantas formas presas o memo guarda** — o recurso é MEMÓRIA: uma gaveta leva os bytes do
-/// bind (a fonte e o campo, `~16 KB` na barra) mais dois caminhos. `256` gavetas são `~5 MiB` no
-/// pior caso. ⛔ Não é um tecto de quantas formas o produto prende: passar dele custa refazer a
-/// menos usada, nunca um desenho errado.
+/// ⚠️ **Quantas formas presas o memo guarda** — o recurso é MEMÓRIA (`~16 KB` por gaveta na barra,
+/// `~5 MiB` no pior caso). Não é um tecto do produto: passar dele refaz a menos usada.
 const GAVETAS_MAX: usize = 256;
 
 thread_local! {
@@ -559,10 +561,9 @@ fn calcula(
             .map(|(c, t)| (c, skin.pesos_do_quadro(t)))
     };
     // ⭐⭐⭐ O que é ABERTO e fica atrás de outra parte não se percorre (A2, [`frente`]).
-    let visivel = percurso.filter(|_| leis.contacto && leis.desenho).and_then(|(f, t)| {
-        let campo = lido_do_bake.campo?;
-        let i = lido_do_bake.indice;
-        frente::so_o_que_se_ve(f, t, campo, i, pele, &correcoes, leis.rigido, ordem)
+    let visivel = percurso.filter(|_| leis.frente && leis.desenho).and_then(|(f, t)| {
+        let campo = (lido_do_bake.campo?, lido_do_bake.indice);
+        frente::so_o_que_se_ve(f, t, campo, (pele, &correcoes, leis.rigido), ordem)
     });
     let percurso = visivel.as_ref().map(|(f, t)| (f, t.as_slice())).or(percurso);
     let desenhado = percurso
@@ -614,10 +615,8 @@ fn calcula(
 /// ⭐⭐ **As QUINAS DO ARTISTA do assado** — cada nó da `fonte` onde o assado o pousou, com a viragem
 /// que ele tem EM REPOUSO (F42, report do dono de 2026-09-30).
 ///
-/// ⛔ A viragem lida no desenho DEFORMADO não serve: na dobra do mapa um nó do assado vira `180°` sem
-/// que ninguém tenha desenhado quina nenhuma, a bola protegia-o como parede, e o traço sobre a
-/// meia-volta abria fatias de cinzento e laranja no vinco. Um nó que a fonte não tem (os do ajuste)
-/// fica fora da lista e é da bola.
+/// ⛔ A viragem lida no desenho DEFORMADO não serve (na dobra um nó vira `180°` sem quina nenhuma, e
+/// a bola protegia-o como parede). Um nó que a fonte não tem (os do ajuste) fica fora e é da bola.
 fn quinas_do_artista(fonte: &VecPath, nos: Vec<[f64; 2]>) -> Vec<([f64; 2], f64)> {
     let repouso = ph2d_vec_boolean::quinas_de(fonte);
     debug_assert_eq!(repouso.len(), nos.len(), "um nó assado por nó da fonte");

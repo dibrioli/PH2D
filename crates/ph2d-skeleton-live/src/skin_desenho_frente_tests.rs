@@ -95,8 +95,8 @@ fn dist_pol(pol: &[[f64; 2]], q: [f64; 2]) -> f64 {
 }
 
 /// `(tapadas pintadas / tapadas, frente pintada / frente, trás à vista pintada / trás à vista,
-/// tapadas)` — o desenho com e sem a lei do contacto.
-fn mede(graus: f32, contacto: bool) -> (f64, f64, f64, usize) {
+/// tapadas)` — o desenho com e sem a lei da frente (a do contacto ligada nos dois).
+fn mede(graus: f32, frente: bool) -> (f64, f64, f64, usize) {
     let (mut sim, mut scene, map, id, [_, ponta]) = palco();
     scene.path_mut(id).expect("path").effects = vec![FxEntry::new(PathEffect::Hatch(
         ph2d_vec_scene::fx_hatch::HatchSpec {
@@ -122,7 +122,7 @@ fn mede(graus: f32, contacto: bool) -> (f64, f64, f64, usize) {
         pele.blend(p, &w)
     };
     let leis = Leis {
-        contacto,
+        frente,
         ..Leis::do_ambiente()
     };
     let d = crate::skin_live::recook_leis(&sim, &mut scene.clone(), leis)
@@ -181,7 +181,7 @@ fn mede(graus: f32, contacto: bool) -> (f64, f64, f64, usize) {
 /// ⭐⭐⭐ **GATE — numa dobra forte as riscas de TRÁS não pintam por cima da FRENTE, e nada mais se
 /// apaga.** Varrida a `110°`, `130°`, `150°`.
 ///
-/// ⛔ **O CONTROLO:** sem a lei do contacto as mesmas riscas tapadas pintam-se (o defeito
+/// ⛔ **O CONTROLO:** sem a lei da frente as mesmas riscas tapadas pintam-se (o defeito
 /// FOTOGRAFADO na `=5` a `110°`).
 #[test]
 fn as_riscas_de_tras_nao_pintam_por_cima_da_frente() {
@@ -205,8 +205,8 @@ fn as_riscas_de_tras_nao_pintam_por_cima_da_frente() {
     }
 }
 
-/// ⭐ **SONDA — O PREÇO por quadro** do recorte (só a porta) e do quadro inteiro com e sem a lei do
-/// contacto, a pose a MUDAR a cada chamada (`110°` ↔ `150°`). Imprime; corra em `--release` com a
+/// ⭐ **SONDA — O PREÇO por quadro** do recorte (só a porta) e do quadro inteiro com e sem a lei da
+/// frente, a pose a MUDAR a cada chamada (`110°` ↔ `150°`). Imprime; corra em `--release` com a
 /// máquina calma.
 #[test]
 fn diag_o_preco_do_recorte_por_quadro() {
@@ -240,13 +240,13 @@ fn diag_o_preco_do_recorte_por_quadro() {
         let index = crate::skin_live::bone_index(&sim);
         let pele = crate::skin_live::resolve(&sim, &skin, e, &index).expect("pele");
         let prof = crate::esqueletos::profundidades(&sim, &skin, &index);
-        let _ = super::so_o_que_se_ve(&g.path, &g.pesos, &campo, indice.as_ref(), &pele, &[], true, &prof);
+        let _ = super::so_o_que_se_ve(&g.path, &g.pesos, (&campo, indice.as_ref()), (&pele, &[], true), &prof);
         k += 1;
     }
     let porta = t.elapsed().as_secs_f64() * 1e6 / f64::from(k);
-    let mut quadro = |contacto: bool| {
+    let mut quadro = |frente: bool| {
         let leis = Leis {
-            contacto,
+            frente,
             ..Leis::do_ambiente()
         };
         let mut sc = scene.clone();
@@ -295,7 +295,7 @@ fn o_que_nao_se_corta_sai_ao_bit() {
     let index = crate::skin_live::bone_index(&sim);
     let pele = crate::skin_live::resolve(&sim, &skin, e, &index).expect("pele");
     let prof = crate::esqueletos::profundidades(&sim, &skin, &index);
-    let (p, t) = super::so_o_que_se_ve(&g.path, &g.pesos, &campo, None, &pele, &[], true, &prof)
+    let (p, t) = super::so_o_que_se_ve(&g.path, &g.pesos, (&campo, None), (&pele, &[], true), &prof)
         .expect("o CONTROLO: nada foi cortado a 150°");
     let n = g.pesos.len() / (3 * g.path.verts_all().count());
     let linhas = |q: &VecPath, tab: &[f64]| -> Vec<(Vec<ph2d_vec_scene::VecVertex>, bool, Vec<f64>)> {

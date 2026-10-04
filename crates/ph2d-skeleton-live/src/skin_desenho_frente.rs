@@ -340,11 +340,8 @@ fn recorta(vs: &[VecVertex], u0: f64, u1: f64) -> Vec<(VecVertex, Origem)> {
 pub(super) fn so_o_que_se_ve(
     fonte: &VecPath,
     tabela: &[f64],
-    campo: &CampoDoDominio,
-    indice: Option<&IndiceDoCampo>,
-    pele: &Skin,
-    correcoes: &[Correccao],
-    rigido: bool,
+    (campo, indice): (&CampoDoDominio, Option<&IndiceDoCampo>),
+    (pele, correcoes, rigido): (&Skin, &[Correccao], bool),
     prof: &[f64],
 ) -> Option<(VecPath, Vec<f64>)> {
     let contornos: Vec<(&[VecVertex], bool)> = (0..fonte.contour_count())

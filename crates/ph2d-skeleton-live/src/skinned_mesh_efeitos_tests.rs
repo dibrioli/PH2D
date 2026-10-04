@@ -105,11 +105,13 @@ fn efeitos_fortes() -> Vec<(&'static str, PathEffect)> {
     ]
 }
 
-/// As leis do produto SEM o contacto — o que o bake desenha, antes da união que a
-/// [`a_uniao_numa_forma_com_efeito_nao_deixa_lascas_nem_mexe_no_repouso`] julga à parte.
+/// As leis do produto SEM o contacto nem a frente — o que o bake desenha, antes da união que a
+/// [`a_uniao_numa_forma_com_efeito_nao_deixa_lascas_nem_mexe_no_repouso`] julga à parte e do recorte
+/// das riscas tapadas (A2: as pontas cortadas ficam DENTRO da forma de propósito).
 fn so_o_bake() -> Leis {
     Leis {
         contacto: false,
+        frente: false,
         ..Leis::do_ambiente()
     }
 }
@@ -564,7 +566,12 @@ fn o_contorno_de_um_hatch_tambem_se_une_e_as_riscas_ficam() {
             .remove(&p.id)
             .expect("desenho")
     };
-    let (com, sem) = (desenho(Leis::do_ambiente()), desenho(so_o_bake()));
+    // ⚠️ Sem a lei da FRENTE (A2), que corta as riscas tapadas: aqui mede-se só a união.
+    let com = desenho(Leis {
+        frente: false,
+        ..Leis::do_ambiente()
+    });
+    let sem = desenho(so_o_bake());
     assert!(abertos(&sem) > 0, "o CONTROLO: o Hatch tem riscas");
     assert_ne!(
         com.verts, sem.verts,

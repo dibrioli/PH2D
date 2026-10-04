@@ -149,9 +149,9 @@ fn diag_o_custo_da_malha_desenhada() {
     ] {
         let p = palco(pose);
         // ⚠️ Os anéis fora do relógio: o produto guarda-os por malha (`bordas_da`).
-        let (todos, nenhuma) = (bordas(&p, true, true), bordas(&p, false, false));
+        let todos = ph2d_skeleton_live::skin_image_fecho::aneis_da_borda(&p.mesh.tris);
         for (costura, placa) in [(false, true), (true, true), (false, false), (true, false)] {
-            let aneis = if costura { &todos } else { &nenhuma };
+            let aneis: &[Vec<u32>] = if costura { &todos } else { &[] };
             let mut melhor = std::time::Duration::MAX;
             let mut cosidos = 0;
             for _ in 0..7 {
@@ -385,20 +385,6 @@ fn diag_o_que_se_ve_no_vao() {
         let g2 = de + (ate - de).signum() * passo * k as f32;
         let p = palco((g1, g2));
         let (sem, com) = (desenhada(&p, false, false), desenhada(&p, true, false));
-        let malha = desenhada_com(&p, &bordas(&p, true, false), false);
-        // A PROVA DO MODELO (A5-a): os triângulos cosidos com tinta CHEIA (a UV no meio da peça) —
-        // a costura fecha a cúspide na GEOMETRIA?
-        let cheia = |mut m: SpriteMesh| {
-            let n0 = p.mesh.rest.len();
-            for uv in m.uv.iter_mut().skip(n0) {
-                *uv = [0.5, 0.5];
-            }
-            m
-        };
-        let (geo_arte, geo_malha) = (
-            cheia(com.clone()),
-            cheia(desenhada_com(&p, &bordas(&p, true, false), false)),
-        );
         let j = [
             g("SONDA_X0", -1.8).into(),
             g("SONDA_Y0", 0.3).into(),
@@ -406,12 +392,9 @@ fn diag_o_que_se_ve_no_vao() {
             g("SONDA_Y1", 0.75).into(),
         ];
         eprintln!(
-            "({g1}, {g2:.2}) fio {}->{} (malha {}) geometria arte {} malha {} baia {}->{}",
+            "({g1}, {g2:.2}) fio {}->{} baia {}->{}",
             buracos_de(&sem, j, 1.0, true),
             buracos_de(&com, j, 1.0, true),
-            buracos_de(&malha, j, 1.0, true),
-            buracos_de(&geo_arte, j, 1.0, true),
-            buracos_de(&geo_malha, j, 1.0, true),
             buracos_de(&sem, j, 4.0, true),
             buracos_de(&com, j, 4.0, true)
         );
@@ -506,8 +489,7 @@ fn diag_a_foto_da_imagem() {
             ((j[3] - j[1]) / passo) as usize,
         );
         let mut img = vec![[255.0_f64; 3]; w * h];
-        let n_malha = p.mesh.tris.len();
-        for (it, t) in m.tris.iter().enumerate() {
+        for t in &m.tris {
             let q = t.map(|i| m.local[i as usize].map(f64::from));
             let uv = t.map(|i| m.uv[i as usize].map(f64::from));
             let area = (q[1][0] - q[0][0]) * (q[2][1] - q[0][1])
@@ -566,63 +548,8 @@ fn diag_a_foto_da_imagem() {
                     let k = ((ty * IMG_W + tx) * 4) as usize;
                     let a = f64::from(px[k + 3]) / 255.0;
                     let o = &mut img[yy * w + xx];
-                    if it >= n_malha && std::env::var("SONDA_COSIDOS").is_ok() {
-                        *o = [220.0, 0.0, 0.0];
-                        continue;
-                    }
                     for c in 0..3 {
                         o[c] = f64::from(px[k + c]).mul_add(a, o[c] * (1.0 - a));
-                    }
-                }
-            }
-        }
-        // Os pontos do ANEL DA ARTE, posados pelos vértices do seu triângulo (A5-a), a azul.
-        if let (Some(mascara), true) = (&p.mascara, std::env::var("SONDA_ARTE").is_ok()) {
-            let sem = desenhada(&p, false, false);
-            let aneis = ph2d_skeleton_live::skin_image_fecho::aneis_da_borda(&p.mesh.tris);
-            for pt in ph2d_skeleton_live::skin_image_arte::anel_da_arte(&p.mesh, mascara, &aneis)
-                .iter()
-                .flatten()
-            {
-                let t = p.mesh.tris[pt.tri as usize].map(|i| sem.local[i as usize].map(f64::from));
-                let wb = [1.0 - pt.uv[0] - pt.uv[1], pt.uv[0], pt.uv[1]];
-                let q = [0, 1].map(|c| (0..3).map(|k| wb[k] * t[k][c]).sum::<f64>());
-                // A chave pela coluna (a da costura): `Σ wⱼ·j / Σ wⱼ`, na cor (0 vermelho, 1 verde, 2 azul).
-                let ossos = p.pesos.len() / p.mesh.rest.len().max(1);
-                let tv = p.mesh.tris[pt.tri as usize];
-                let row: Vec<f64> = (0..ossos)
-                    .map(|o| {
-                        (0..3)
-                            .map(|k| wb[k] * p.pesos[tv[k] as usize * ossos + o])
-                            .sum()
-                    })
-                    .collect();
-                let soma: f64 = row.iter().sum();
-                #[expect(clippy::cast_precision_loss, reason = "coluna")]
-                let chave = row
-                    .iter()
-                    .enumerate()
-                    .map(|(j, x)| x * j as f64)
-                    .sum::<f64>()
-                    / soma.max(1e-12);
-                let cor = [
-                    255.0 * (1.0 - chave).clamp(0.0, 1.0),
-                    255.0 * (1.0 - (chave - 1.0).abs()).clamp(0.0, 1.0),
-                    255.0 * (chave - 1.0).clamp(0.0, 1.0),
-                ];
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "pixels"
-                )]
-                let (xx, yy) = (
-                    ((q[0] - j[0]) / passo) as i64,
-                    ((j[3] - q[1]) / passo) as i64,
-                );
-                for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
-                    let (x, y) = (xx + dx, yy + dy);
-                    if x >= 0 && y >= 0 && (x as usize) < w && (y as usize) < h {
-                        img[y as usize * w + x as usize] = cor;
                     }
                 }
             }

@@ -19,7 +19,6 @@ fn malha(verts: usize) -> Mesh2d {
 #[test]
 fn a_contagem_de_ossos_deriva_se_e_cada_vertice_le_a_fatia_dele() {
     let s = SkinnedMesh {
-        mascara: None,
         mesh: malha(4),
         pesos: vec![
             1.0, 0.0, 0.0, // v0
@@ -45,7 +44,6 @@ fn a_contagem_de_ossos_deriva_se_e_cada_vertice_le_a_fatia_dele() {
 #[test]
 fn uma_tabela_que_nao_fecha_e_recusada() {
     let s = SkinnedMesh {
-        mascara: None,
         mesh: malha(4),
         // 11 pesos para 4 vértices — não é múltiplo de nada.
         pesos: vec![0.25; 11],
@@ -72,7 +70,6 @@ fn sem_pesos_e_um_estado_legal_e_diz_zero_ossos() {
 #[test]
 fn a_malha_e_os_pesos_atravessam_o_arquivo_juntos() {
     let s = SkinnedMesh {
-        mascara: None,
         mesh: malha(3),
         pesos: vec![1.0, 0.0, 0.25, 0.75, 0.5, 0.5],
     };

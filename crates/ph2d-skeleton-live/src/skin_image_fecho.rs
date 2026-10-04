@@ -41,7 +41,6 @@ use ph2d_poly2d::Mesh2d;
 use ph2d_render::SpriteMesh;
 use ph2d_skeleton::{Correccao, Skin, Xform};
 
-use crate::skin_image_arte::{BordasDaMalha, PontoDaArte};
 use crate::skinned_mesh::SkinnedMesh;
 
 /// ⭐⭐⭐ **O vão mais largo que se cose: `2` texels.**
@@ -73,8 +72,8 @@ pub const OSSOS_DE_DISTANCIA: f64 = 1.25;
 
 /// ⭐⭐⭐ **A malha que o quadro desenha** — a porta do [`crate::skin_image::attach_skin_meshes`].
 ///
-/// `bordas` são as desta malha ([`bordas_da`]); vazias, não há costura (um pedaço de 9-slice tem
-/// outra numeração).
+/// `aneis` são os da borda desta malha ([`bordas_da`]); vazios, não há costura (um pedaço de
+/// 9-slice tem outra numeração).
 #[must_use]
 #[expect(
     clippy::too_many_arguments,
@@ -88,9 +87,8 @@ pub fn malha_desenhada(
     anchor: [f32; 2],
     size: [f32; 2],
     correcoes: &[Correccao],
-    bordas: &BordasDaMalha,
+    aneis: &[Vec<u32>],
 ) -> Option<SpriteMesh> {
-    let vazias = BordasDaMalha::default();
     malha_desenhada_com(
         mesh,
         p2l,
@@ -98,11 +96,7 @@ pub fn malha_desenhada(
         pesos,
         [anchor, size],
         correcoes,
-        if lei_da_costura_activa() {
-            bordas
-        } else {
-            &vazias
-        },
+        if lei_da_costura_activa() { aneis } else { &[] },
         crate::skin_image_gpu::a_placa_posa(),
     )
 }
@@ -163,7 +157,7 @@ pub fn ordena_pelo_osso(tris: &mut [[u32; 3]], pesos: &[f64], vertices: usize, p
     tris.sort_by(|a, b| de(a).total_cmp(&de(b)));
 }
 
-/// A [`malha_desenhada`] com as portas do ambiente escolhidas — a dos gates. `bordas` vazias = sem
+/// A [`malha_desenhada`] com as portas do ambiente escolhidas — a dos gates. `aneis` vazios = sem
 /// costura.
 #[must_use]
 #[expect(
@@ -177,10 +171,10 @@ pub fn malha_desenhada_com(
     pesos: &[f64],
     [anchor, size]: [[f32; 2]; 2],
     correcoes: &[Correccao],
-    bordas: &BordasDaMalha,
+    aneis: &[Vec<u32>],
     placa: bool,
 ) -> Option<SpriteMesh> {
-    let costura = costura(&mesh, bordas, p2l, pele, pesos, [anchor, size], correcoes);
+    let costura = costura(&mesh, aneis, p2l, pele, pesos, [anchor, size], correcoes);
     // ⭐⭐⭐ **QUEM POSA: a PLACA, por omissão** (F9 W2, 2026-09-20). Os dois caminhos entregam um
     // `SpriteMesh`; a diferença é se o `local` traz o POSADO (a CPU, a referência) ou o REPOUSO mais
     // a tabela que o `vs_main` lê. ⚠️ `PH2D_SKIN_GPU=0` bissecta. ⛔ A lei que decide (a medição do
@@ -240,7 +234,7 @@ pub fn aneis_da_borda(tris: &[[u32; 3]]) -> Vec<Vec<u32>> {
 }
 
 /// A gaveta dos anéis: o endereço da malha → a prova (`Weak`) e os anéis.
-type Bordas = BTreeMap<usize, (Weak<SkinnedMesh>, Rc<BordasDaMalha>)>;
+type Bordas = BTreeMap<usize, (Weak<SkinnedMesh>, Rc<Vec<Vec<u32>>>)>;
 
 /// Um encontro da borda com a outra parte: `(segmento, t nele, distância)`.
 type Encontro = (usize, f64, f64);
@@ -256,7 +250,7 @@ thread_local! {
 /// ⚠️ A identidade é o `Rc` da gaveta ([`crate::skin_bake_cache::desenhada_da_arte`]) e o `Weak`
 /// prova-a: um endereço reaproveitado por outra malha não casa, e as entradas mortas saem.
 #[must_use]
-pub fn bordas_da(malha: &Rc<SkinnedMesh>) -> Rc<BordasDaMalha> {
+pub fn bordas_da(malha: &Rc<SkinnedMesh>) -> Rc<Vec<Vec<u32>>> {
     let chave = Rc::as_ptr(malha) as usize;
     BORDAS.with(|b| {
         let mut b = b.borrow_mut();
@@ -266,13 +260,9 @@ pub fn bordas_da(malha: &Rc<SkinnedMesh>) -> Rc<BordasDaMalha> {
             return Rc::clone(aneis);
         }
         b.retain(|_, (w, _)| w.strong_count() > 0);
-        let aneis = aneis_da_borda(&malha.mesh.tris);
-        let arte = malha.mascara.as_ref().map_or_else(Vec::new, |m| {
-            crate::skin_image_arte::anel_da_arte(&malha.mesh, m, &aneis)
-        });
-        let bordas = Rc::new(BordasDaMalha { aneis, arte });
-        b.insert(chave, (Rc::downgrade(malha), Rc::clone(&bordas)));
-        bordas
+        let aneis = Rc::new(aneis_da_borda(&malha.mesh.tris));
+        b.insert(chave, (Rc::downgrade(malha), Rc::clone(&aneis)));
+        aneis
     })
 }
 
@@ -296,7 +286,7 @@ struct Seg {
 /// ⭐⭐⭐ **O que a costura acrescenta nesta pose** — vazia quando nada encara nada.
 fn costura(
     mesh: &Mesh2d,
-    bordas: &BordasDaMalha,
+    aneis: &[Vec<u32>],
     p2l: Xform,
     pele: &Skin,
     pesos: &[f64],
@@ -304,7 +294,6 @@ fn costura(
     correcoes: &[Correccao],
 ) -> Costura {
     let mut out = Costura::default();
-    let aneis = &bordas.aneis;
     let ids: Vec<u32> = aneis.iter().flatten().copied().collect();
     if ids.is_empty() || mesh.rest.is_empty() {
         return out;
@@ -333,12 +322,11 @@ fn costura(
     ) else {
         return out;
     };
-    let mut pos: Vec<[f64; 2]> = borda
+    let pos: Vec<[f64; 2]> = borda
         .local
         .iter()
         .map(|p| [f64::from(p[0]), f64::from(p[1])])
         .collect();
-    let mut uv = borda.uv;
     let mut segs = Vec::with_capacity(pos.len());
     let mut k0 = 0;
     for anel in aneis {
@@ -355,70 +343,29 @@ fn costura(
         k0 += n;
     }
     // O lado de FORA: o do anel de maior área (o de fora) diz o sentido de todos.
-    let mut sinal = sinal_dos_aneis(&pos, aneis.iter().map(Vec::len));
+    let sinal = {
+        let mut k = 0;
+        let mut maior = 0.0_f64;
+        for anel in aneis {
+            let n = anel.len();
+            let area: f64 = (0..n)
+                .map(|i| {
+                    let (p, q) = (pos[k + i], pos[k + (i + 1) % n]);
+                    p[0] * q[1] - q[0] * p[1]
+                })
+                .sum();
+            if area.abs() > maior.abs() {
+                maior = area;
+            }
+            k += n;
+        }
+        maior.signum()
+    };
     let [a, b, c, d, _, _] = p2l.0;
     let texel = (a * d - b * c).abs().sqrt();
     let vao = VAO_MAXIMO_EM_TEXELS * texel;
     if !(vao > 0.0 && vao.is_finite()) || sinal == 0.0 {
         return out;
-    }
-    // ⭐⭐ **Só se cose entre partes a mais de [`OSSOS_DE_DISTANCIA`]** — a chave de cada nó é a da
-    // ordem das faces (`Σ wⱼ·j / Σ wⱼ`).
-    if ossos < 2 {
-        return out;
-    }
-    let mut chave: Vec<f64> = linhas.chunks_exact(ossos).map(chave_da_coluna).collect();
-    // ⭐ **A saída rápida**: os segmentos por faixa de `1/4` de osso, a caixa de cada faixa, e só se
-    // segue quando duas faixas que PODEM estar a mais de `OSSOS_DE_DISTANCIA` (os índices a `≥ 5`
-    // faixas: a diferença entre membros delas chega a `(|i − j| + 1)/4`) têm as caixas a menos de
-    // `2·vão`. Na pose recta e nas dobras sem contacto a costura custa a borda posada e isto.
-    {
-        let chave_do = |s: &Seg| 0.5 * (chave[s.a] + chave[s.b]);
-        let mut faixas: BTreeMap<i64, [f64; 4]> = BTreeMap::new();
-        for sg in &segs {
-            #[expect(clippy::cast_possible_truncation, reason = "faixa de osso")]
-            let f = (chave_do(sg) * 4.0).floor() as i64;
-            let c = faixas
-                .entry(f)
-                .or_insert([f64::MAX, f64::MAX, f64::MIN, f64::MIN]);
-            for q in [pos[sg.a], pos[sg.b]] {
-                *c = [
-                    c[0].min(q[0]),
-                    c[1].min(q[1]),
-                    c[2].max(q[0]),
-                    c[3].max(q[1]),
-                ];
-            }
-        }
-        let perto = |a: &[f64; 4], b: &[f64; 4]| {
-            a[0] - 2.0 * vao <= b[2]
-                && b[0] - 2.0 * vao <= a[2]
-                && a[1] - 2.0 * vao <= b[3]
-                && b[1] - 2.0 * vao <= a[3]
-        };
-        let ha_par = faixas
-            .iter()
-            .any(|(i, a)| faixas.range(i + 5..).any(|(_, b)| perto(a, b)));
-        if !ha_par {
-            return out;
-        }
-    }
-    // ⭐⭐⭐ A5-a: com a máscara da tinta, o vão mede-se e cose-se sobre o ANEL DA ARTE (a malha passa
-    // da tinta; na cúspide de uma tampa ela dizia «sem vão»). A saída rápida acima fica na malha:
-    // ela passa da arte, logo se a malha não encara nada a arte também não.
-    if !bordas.arte.is_empty()
-        && let Some(b) = borda_da_arte(
-            mesh,
-            &bordas.arte,
-            p2l,
-            pele,
-            pesos,
-            [anchor, size],
-            correcoes,
-            ossos,
-        )
-    {
-        (pos, uv, chave, segs, sinal) = b;
     }
     let normal = |s: &Seg| {
         let (p, q) = (pos[s.a], pos[s.b]);
@@ -426,6 +373,20 @@ fn costura(
         let l = tx.hypot(ty).max(f64::MIN_POSITIVE);
         [ty / l * sinal, -tx / l * sinal]
     };
+    // ⭐⭐ **Só se cose entre partes a mais de [`OSSOS_DE_DISTANCIA`]** — a chave de cada nó é a da
+    // ordem das faces (`Σ wⱼ·j / Σ wⱼ`).
+    if ossos < 2 {
+        return out;
+    }
+    let chave: Vec<f64> = linhas
+        .chunks_exact(ossos)
+        .map(|w| {
+            let soma: f64 = w.iter().sum();
+            #[expect(clippy::cast_precision_loss, reason = "índice de osso")]
+            let pos: f64 = w.iter().enumerate().map(|(j, p)| p * j as f64).sum();
+            if soma > 0.0 { pos / soma } else { 0.0 }
+        })
+        .collect();
     let chave_do = |s: &Seg| 0.5 * (chave[s.a] + chave[s.b]);
     let longe = |si: usize, sj: usize| {
         let (a, b) = (&segs[si], &segs[sj]);
@@ -434,6 +395,38 @@ fn costura(
             && sj != a.depois
             && (chave_do(a) - chave_do(b)).abs() > OSSOS_DE_DISTANCIA
     };
+    // ⭐ **A saída rápida**: os segmentos por faixa de `1/4` de osso, a caixa de cada faixa, e só se
+    // segue quando duas faixas que PODEM estar a mais de `OSSOS_DE_DISTANCIA` (os índices a `≥ 5`
+    // faixas: a diferença entre membros delas chega a `(|i − j| + 1)/4`) têm as caixas a menos de
+    // `2·vão`. Na pose recta e nas dobras sem contacto a costura custa a borda posada e isto.
+    let mut faixas: BTreeMap<i64, [f64; 4]> = BTreeMap::new();
+    for sg in &segs {
+        #[expect(clippy::cast_possible_truncation, reason = "faixa de osso")]
+        let f = (chave_do(sg) * 4.0).floor() as i64;
+        let c = faixas
+            .entry(f)
+            .or_insert([f64::MAX, f64::MAX, f64::MIN, f64::MIN]);
+        for q in [pos[sg.a], pos[sg.b]] {
+            *c = [
+                c[0].min(q[0]),
+                c[1].min(q[1]),
+                c[2].max(q[0]),
+                c[3].max(q[1]),
+            ];
+        }
+    }
+    let perto = |a: &[f64; 4], b: &[f64; 4]| {
+        a[0] - 2.0 * vao <= b[2]
+            && b[0] - 2.0 * vao <= a[2]
+            && a[1] - 2.0 * vao <= b[3]
+            && b[1] - 2.0 * vao <= a[3]
+    };
+    let ha_par = faixas
+        .iter()
+        .any(|(i, a)| faixas.range(i + 5..).any(|(_, b)| perto(a, b)));
+    if !ha_par {
+        return out;
+    }
     // A grelha dos segmentos, com células de `2·vão`: um ponto encontra numa vizinhança 3×3 todo
     // segmento a menos de `2·vão` dele — o dobro do que se cose, para as pontas se interpolarem.
     // ⚠️ Um vector ORDENADO por célula e não um mapa: é refeita a cada quadro.
@@ -500,7 +493,7 @@ fn costura(
         })
     };
     let uv_em = |s: &Seg, t: f64| {
-        let (u0, u1) = (uv[s.a], uv[s.b]);
+        let (u0, u1) = (borda.uv[s.a], borda.uv[s.b]);
         #[expect(clippy::cast_possible_truncation, reason = "t em [0, 1]")]
         let t = t as f32;
         [u0[0] + t * (u1[0] - u0[0]), u0[1] + t * (u1[1] - u0[1])]
@@ -561,24 +554,12 @@ fn costura(
             let (Some(fa), Some(fb)) = (encara(pa, si), encara(pb, si)) else {
                 continue;
             };
-            // ⭐⭐ A5-a: cada METADE do vão estica a cor da SUA beira até ao meio — um quadrilátero
-            // só misturava a UV de um membro com a do outro e apanhava a textura entre as duas (uma
-            // risca castanha das pintas na cúspide, FOTOGRAFADA).
-            let (qa, qb) = (ponto(&segs[fa.0], fa.1), ponto(&segs[fb.0], fb.1));
-            let meio = |a: [f64; 2], b: [f64; 2]| [0.5 * (a[0] + b[0]), 0.5 * (a[1] + b[1])];
-            let (ma, mb) = (meio(pa, qa), meio(pb, qb));
-            let (ua, ub) = (uv_em(s, ta), uv_em(s, tb));
-            let (va, vb) = (uv_em(&segs[fa.0], fa.1), uv_em(&segs[fb.0], fb.1));
             let base = out.local.len() as u32;
             for (pt, uv) in [
-                (pa, ua),
-                (pb, ub),
-                (mb, ub),
-                (ma, ua),
-                (ma, va),
-                (mb, vb),
-                (qb, vb),
-                (qa, va),
+                (pa, uv_em(s, ta)),
+                (pb, uv_em(s, tb)),
+                (ponto(&segs[fb.0], fb.1), uv_em(&segs[fb.0], fb.1)),
+                (ponto(&segs[fa.0], fa.1), uv_em(&segs[fa.0], fa.1)),
             ] {
                 #[expect(
                     clippy::cast_possible_truncation,
@@ -587,117 +568,11 @@ fn costura(
                 out.local.push([pt[0] as f32, pt[1] as f32]);
                 out.uv.push(uv);
             }
-            for b in [base, base + 4] {
-                out.tris.push([b, b + 1, b + 2]);
-                out.tris.push([b, b + 2, b + 3]);
-            }
+            out.tris.push([base, base + 1, base + 2]);
+            out.tris.push([base, base + 2, base + 3]);
         }
     }
     out
-}
-
-/// A chave de uma linha de pesos pela COLUNA (`Σ wⱼ·j / Σ wⱼ`) — a da costura.
-fn chave_da_coluna(w: &[f64]) -> f64 {
-    let soma: f64 = w.iter().sum();
-    #[expect(clippy::cast_precision_loss, reason = "índice de osso")]
-    let pos: f64 = w.iter().enumerate().map(|(j, p)| p * j as f64).sum();
-    if soma > 0.0 { pos / soma } else { 0.0 }
-}
-
-/// O sentido de fora: o do anel de maior área diz o de todos (`pos` são os anéis em sequência).
-fn sinal_dos_aneis(pos: &[[f64; 2]], tamanhos: impl Iterator<Item = usize>) -> f64 {
-    let mut k = 0;
-    let mut maior = 0.0_f64;
-    for n in tamanhos {
-        let area: f64 = (0..n)
-            .map(|i| {
-                let (p, q) = (pos[k + i], pos[k + (i + 1) % n]);
-                p[0] * q[1] - q[0] * p[1]
-            })
-            .sum();
-        if area.abs() > maior.abs() {
-            maior = area;
-        }
-        k += n;
-    }
-    maior.signum()
-}
-
-/// A borda que a costura mede: posições POSADAS, UV, chave e segmentos, e o sentido de fora.
-type Borda = (Vec<[f64; 2]>, Vec<[f32; 2]>, Vec<f64>, Vec<Seg>, f64);
-
-/// ⭐⭐⭐ **A borda posada sobre o ANEL DA ARTE** (A5-a) — cada ponto é a mistura baricêntrica dos
-/// vértices POSADOS do seu triângulo, posados pela MESMA porta da malha: ele está onde a imagem
-/// desenha aquele texel, com a UV dele.
-#[expect(clippy::too_many_arguments, reason = "a porta da malha mais o anel")]
-fn borda_da_arte(
-    mesh: &Mesh2d,
-    arte: &[Vec<PontoDaArte>],
-    p2l: Xform,
-    pele: &Skin,
-    pesos: &[f64],
-    [anchor, size]: [[f32; 2]; 2],
-    correcoes: &[Correccao],
-    ossos: usize,
-) -> Option<Borda> {
-    let mut ids: Vec<u32> = arte
-        .iter()
-        .flatten()
-        .flat_map(|p| mesh.tris[p.tri as usize])
-        .collect();
-    ids.sort_unstable();
-    ids.dedup();
-    let linha = |v: u32| {
-        pesos
-            .get(v as usize * ossos..(v as usize + 1) * ossos)
-            .unwrap_or(&[])
-    };
-    let linhas: Vec<f64> = ids.iter().flat_map(|&v| linha(v).iter().copied()).collect();
-    let so = Mesh2d {
-        rest: ids.iter().map(|&v| mesh.rest[v as usize]).collect(),
-        tris: Vec::new(),
-        size: mesh.size,
-    };
-    let posada = crate::skin_image::posed_sprite_mesh_corrigida(
-        so, p2l, pele, &linhas, anchor, size, correcoes,
-    )?;
-    let (mut pos, mut uv, mut chave, mut segs) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
-    for anel in arte {
-        let (base, n) = (pos.len(), anel.len());
-        for (i, p) in anel.iter().enumerate() {
-            let t = mesh.tris[p.tri as usize];
-            let w = [1.0 - p.uv[0] - p.uv[1], p.uv[0], p.uv[1]];
-            let k = [0, 1, 2].map(|j| ids.binary_search(&t[j]).ok());
-            let [Some(k0), Some(k1), Some(k2)] = k else {
-                return None;
-            };
-            let ks = [k0, k1, k2];
-            pos.push([0, 1].map(|c| {
-                (0..3)
-                    .map(|j| w[j] * f64::from(posada.local[ks[j]][c]))
-                    .sum()
-            }));
-            // A COR: o ponto mais para dentro da tinta ([`PontoDaArte::cor`]).
-            #[expect(clippy::cast_possible_truncation, reason = "UV em f32 como a da malha")]
-            uv.push([0, 1].map(|c| (p.cor[c] / f64::from(mesh.size[c])) as f32));
-            let row: Vec<f64> = (0..ossos)
-                .map(|o| {
-                    (0..3)
-                        .map(|j| w[j] * linha(t[j]).get(o).copied().unwrap_or(0.0))
-                        .sum()
-                })
-                .collect();
-            chave.push(chave_da_coluna(&row));
-            segs.push(Seg {
-                a: base + i,
-                b: base + (i + 1) % n,
-                antes: base + (i + n - 1) % n,
-                depois: base + (i + 1) % n,
-            });
-        }
-    }
-    let sinal = sinal_dos_aneis(&pos, arte.iter().map(Vec::len));
-    Some((pos, uv, chave, segs, sinal))
 }
 
 #[cfg(test)]

@@ -98,7 +98,6 @@ fn os_aneis_guardados_sao_os_calculados_e_ficam_por_malha() {
     let malha = |fora: &[(u32, u32)]| {
         let (rest, tris) = grelha(3, 3, fora);
         std::rc::Rc::new(crate::skinned_mesh::SkinnedMesh {
-            mascara: None,
             mesh: ph2d_poly2d::Mesh2d {
                 rest,
                 tris,
@@ -114,12 +113,8 @@ fn os_aneis_guardados_sao_os_calculados_e_ficam_por_malha() {
         std::rc::Rc::ptr_eq(&primeira, &segunda),
         "o acerto não veio da gaveta"
     );
-    assert_eq!(segunda.aneis, aneis_da_borda(&a.mesh.tris));
+    assert_eq!(*segunda, aneis_da_borda(&a.mesh.tris));
     let b = malha(&[(1, 1)]);
-    assert_eq!(bordas_da(&b).aneis, aneis_da_borda(&b.mesh.tris));
-    assert_eq!(
-        bordas_da(&b).aneis.len(),
-        2,
-        "a malha com buraco tem dois anéis"
-    );
+    assert_eq!(*bordas_da(&b), aneis_da_borda(&b.mesh.tris));
+    assert_eq!(bordas_da(&b).len(), 2, "a malha com buraco tem dois anéis");
 }

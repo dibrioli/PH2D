@@ -15,6 +15,9 @@ pub(crate) const DOBRA: f32 = 110.0;
 /// O centro (recto) de cada barra.
 pub(crate) const ORIGENS: [[f64; 2]; 2] = [[-2.6, -0.6], [2.6, -0.6]];
 
+/// O nome de cada barra (e dos ossos dela) na lista Hierarchy.
+const NOMES: [&str; 2] = ["Copias", "Copias com Hatch"];
+
 /// As duas pilhas: só as cópias, e as cópias com *Hatch*.
 fn pilha(com_hatch: bool) -> Vec<FxEntry> {
     let mut p = vec![FxEntry::new(PathEffect::Repeat(
@@ -58,8 +61,7 @@ pub(crate) fn build(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::st
         ));
         p.effects = pilha(k == 1);
         let id = scene.push_path(p);
-        let nome = if k == 0 { "Copias" } else { "Copias com Hatch" };
-        pend.push((id, crate::smoke_bone_efeitos::esqueleto(sim, *o, nome)));
+        pend.push((id, crate::smoke_bone_efeitos::esqueleto(sim, *o, NOMES[k])));
     }
     st.bone_smoke_pend = Some(pend);
     st.bone_smoke_step = 1;
@@ -72,8 +74,13 @@ pub(crate) fn bind(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::sta
         return;
     };
     let mut presas = 0;
-    for (id, raiz) in &pecas {
+    for ((id, raiz), nome) in pecas.iter().zip(NOMES) {
         presas += ph2d_skeleton_live::skin_live::bind(sim, scene, &st.entities, &[*id], *raiz);
+        if let Some(e) = st.entities.get(id).and_then(|b| Entity::try_from_bits(*b)) {
+            sim.world_mut()
+                .entity_mut(e)
+                .insert(ph2d_ecs::Name::new(nome));
+        }
         if let Some(r) = raiz {
             crate::smoke_bone_par::dobra_duas(sim, *r, DOBRA, DOBRA);
         }

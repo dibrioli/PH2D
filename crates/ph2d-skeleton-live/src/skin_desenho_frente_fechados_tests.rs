@@ -8,7 +8,7 @@ use ph2d_vec_scene::effect::{FxEntry, PathEffect};
 
 /// Duas cópias da barra `40 × 10` sobrepostas (a 2.ª girada `5°`), presas a dois ossos e a ponta a
 /// `graus`: a fonte guardada, a tabela, o campo, a pele e a profundidade.
-fn copias_dobradas(
+pub(super) fn copias_dobradas(
     graus: f32,
 ) -> (
     VecPath,

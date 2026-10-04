@@ -648,3 +648,5 @@ fn uma_risca_sobre_o_avesso_da_dobra_nao_se_ve() {
 
 #[path = "skin_desenho_frente_fechados_tests.rs"]
 mod fechados;
+#[path = "skin_desenho_frente_rapida_tests.rs"]
+mod rapida;

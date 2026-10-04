@@ -86,7 +86,10 @@ pub(crate) fn bind(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::sta
         }
     }
     if presas != pecas.len() {
-        eprintln!("[vec-bone-smoke] PARE: so' {presas} de {} barras prenderam", pecas.len());
+        eprintln!(
+            "[vec-bone-smoke] PARE: so' {presas} de {} barras prenderam",
+            pecas.len()
+        );
     }
     println!(
         "[vec-bone-smoke] AS COPIAS NA DOBRA FORTE: duas barras feitas de duas copias que se \
@@ -97,6 +100,9 @@ pub(crate) fn bind(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::sta
     );
 }
 
+#[cfg(test)]
+#[path = "smoke_bone_copias_sondas.rs"]
+mod sondas;
 #[cfg(test)]
 #[path = "smoke_bone_copias_tests.rs"]
 mod tests;

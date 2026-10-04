@@ -9,8 +9,8 @@
 //! arquivo — é a mesma propriedade que o `paint_effects` ganhou, do outro lado da fronteira.
 
 use ph2d_panel_vector::{FalloffRole, FxParamView, FxRowView};
-use ph2d_vec_scene::effect::{FxEntry, MAX_PATH_EFFECTS, PathEffect};
 use ph2d_vec_entities::entities::VecEntityMap;
+use ph2d_vec_scene::effect::{FxEntry, MAX_PATH_EFFECTS, PathEffect};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
 /// **O caminho que a seção Effects governa** — exatamente UM selecionado, ou nada.

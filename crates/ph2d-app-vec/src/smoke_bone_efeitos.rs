@@ -275,12 +275,24 @@ mod tests {
                 .map(|id| !scene.path(*id).expect("path").effects.is_empty())
                 .collect::<Vec<_>>()
         };
-        assert_eq!(com_efeito(&scene), [false, true, true, true, true, true], "o CONTROLO");
-        assert!(ids.iter().all(|id| !crate::fx_bridge::is_bound(&sim, &st.entities, *id)));
-        bind(&mut scene, &mut sim, &mut st);
-        assert_eq!(com_efeito(&scene), [false; 6], "presas, a pilha tem de sair vazia");
+        assert_eq!(
+            com_efeito(&scene),
+            [false, true, true, true, true, true],
+            "o CONTROLO"
+        );
         assert!(
-            ids.iter().all(|id| crate::fx_bridge::is_bound(&sim, &st.entities, *id)),
+            ids.iter()
+                .all(|id| !crate::fx_bridge::is_bound(&sim, &st.entities, *id))
+        );
+        bind(&mut scene, &mut sim, &mut st);
+        assert_eq!(
+            com_efeito(&scene),
+            [false; 6],
+            "presas, a pilha tem de sair vazia"
+        );
+        assert!(
+            ids.iter()
+                .all(|id| crate::fx_bridge::is_bound(&sim, &st.entities, *id)),
             "as seis prenderam e o painel tem de as ver presas"
         );
     }

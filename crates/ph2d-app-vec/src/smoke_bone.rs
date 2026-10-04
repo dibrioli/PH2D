@@ -684,7 +684,6 @@ fn arm_pixels() -> Vec<u8> {
 mod corrente;
 use corrente::{cadeia_em_ordem, osso_do_meio};
 
-
 #[cfg(test)]
 #[path = "smoke_bone_despacho_tests.rs"]
 mod smoke_bone_despacho_tests;

@@ -74,7 +74,8 @@ tipo, com presets), e não a árvore da Godot: a nossa lista tem ~10 tipos, não
 - **Os módulos editam um documento do MÓDULO, não «o objecto seleccionado»** — medido na F0
   (03/10), módulo a módulo, no §2.1.
 - **O `DrawMode` do vetor mistura os eixos:** 14 variantes, que são 2 modos (`Select` = Object,
-  `Node` = Edit) e 12 ferramentas (D3, medido em 30/08).
+  `Node` = Edit) e 12 ferramentas (D3, medido em 30/08). ⚠️ Eram **17** quando a F3 do Vector as
+  partiu (04/10): ver §4.
 - **Já existe o sítio do selector de modo:** os pulldowns do cabeçalho da área (`AreaMenu`,
   `set_area_commands`). O 3D Model publica ali a vista e o sombreamento, e desde 02/10 o pulldown
   é tão largo quanto a face mais larga que pode mostrar. ⇒ o selector *«Object Mode ▾»* é **um
@@ -183,7 +184,7 @@ sozinho (§6.5).
 | qualquer | **Object** (mover · rodar · escalar) | gizmo de transformação |
 | Sculpt (malha) | Object · **Sculpt** · **Paint** (Edit quando existir) | `ph2d-app-sculpt3d` + Painter na peça |
 | Model (SDF) | Object · **Edit** | `ph2d-app-field3d` |
-| Vector | Object · **Edit** (nós e alças) | `ph2d-app-vec` (o `DrawMode` partido em modo + ferramentas) |
+| Vector | Object · **Edit** (nós e alças) ✅ | `ph2d-app-vec` (o `DrawMode` partido em modo + ferramentas; criar é do Object, no trilho) |
 | Flip | Object · **Draw** · **Edit** | `ph2d-app-flip` |
 | Image | Object · **Paint** · **Mask** (⏳ §6.1) | `ph2d-app-painter` |
 | Câmara, corpo de física, áudio, HUD… | **só Object** | Inspector |
@@ -316,6 +317,36 @@ sozinho (§6.5).
     - ⏳ **Fica de fora, nomeado:** em Object a peça não se desenha no canvas 2D (D9: o 3D como
       camada entre camadas é outra obra), e o gizmo do objecto move um `Transform` que o traçado não
       lê.
+  - **Vector** — ✅ **entregue em 03–04/10** (handoff `HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md`):
+    `ph2d_app_vec::vector_mode::Family` — `(Vector, Edit)`. Edit = a ferramenta `vector` na mão com
+    uma das que mexem na forma no lugar (`DrawMode::EDIT_TOOLS`: Node · Fillet · Chamfer · Width ·
+    Trim), presa às formas do modo; Object = o resto.
+    - **Medido antes (as três perguntas do briefing):** o pill VECTOR tinha 5 portas (pill,
+      *Window*, a aba Vector, o layout gravado, ~50 cenas que fazem `set_active("vector")`; 9 delas
+      pedem uma ferramenta do Edit) e não criava objecto ao activar; o `DrawMode` tem **17**
+      variantes, não 14 — 5 mexem na forma no lugar, 12 criam ou trabalham sobre várias; cada forma
+      já é uma linha da Hierarquia (`VecEntityMap`) e os nós são índices dentro dela (⇒ nada de
+      `parts` à moda do Model); o alvo vive fora da `VecScene` (`VecState::edit`); e TODAS as
+      ferramentas do Edit agarram pela mesma porta, `VecViewState::is_pickable`.
+    - **A partição D3** (`DrawMode::object_mode`): criar uma forma é criar um OBJECTO, então a
+      caneta, o lápis, as formas, o texto, a moldura e o balde são do Object, com as que trabalham
+      sobre várias (Build, Connect, Cut, Blend, Bone). É a divisão do Blender (as ferramentas *Add*
+      da barra do modo Object) e não a do Figma (a caneta dentro do Edit acrescenta à rede da forma
+      — aqui cada traço é uma linha da Hierarquia).
+    - **Desvio da fundação — o multi-objecto:** editar nós de VÁRIAS formas (plano 25 §6, o laço,
+      o soldar) já era do módulo, e um Edit de uma forma só tirava-o. ⇒ `ModeFamily::joins` /
+      `enter_with`: o `Tab` com várias formas seleccionadas leva todas ao Edit (as do mesmo tipo),
+      elas voltam como `parts` (o cadeado) e sair devolve-as à selecção — o Edit multi-objecto do
+      Blender.
+    - **O Edit tranca o clique E o desenho** (`VecViewState::editing` / `in_edit`): só as formas do
+      modo se agarram e mostram nós. A foto apanhou a 2.ª metade (âncoras desenhadas fora do modo).
+    - **Escolhas do dono (03/10):** o pill VECTOR **saiu** (e *Window ▸ Vector*); a forma nova do
+      Add **nasce em Object** (vê-se em Object, ao contrário do Flip e do Model); e as ferramentas
+      de criar vão para o **trilho da esquerda** em Object (Caneta · Lápis · Formas · Texto), com o
+      painel do vetor a dar as restantes. A aba Vector de cima continua a pôr a ferramenta na mão em
+      Object — com `Mode(Edit)` seria idêntica à do Model (gate
+      `no_two_layouts_hand_the_canvas_to_the_same_owner`).
+    - O painel do vetor só mostra as ferramentas do modo em curso. Smoke `PH2D_OBJECT_MODE_SMOKE=6`.
 - **F4 — Layouts:** o campo opcional *«modo ao abrir»* (§3.3) e a limpeza dos toggles de módulo
   que viraram modos.
 

@@ -10,6 +10,7 @@ metadata:
 
 # Ofício de gate (índice de família — detalhe em cada arquivo; irmãos: mutation_proofs · oracle_discipline · fixture_discipline)
 
+- ⛔⛔ [Uma cache derivada invalidada NOUTRO ficheiro é um ramo que o oráculo dela nunca exerce — a frescura vive dentro dela, pela versão da fonte (W11, 29/30 → 31/31)](feedback_a_cache_invalidated_in_another_file_is_a_branch_no_oracle_sees.md)
 - ⛔⛔ **Um gate que só corre o caminho FELIZ nada diz sobre a cara de uma FALHA** — e a cara de uma
   falha é o que o dono fotografa. Medido 21/09: a mutação que faz uma recusa declarar-se sucesso
   sobreviveu aos **dois** gates ponta-a-ponta do gesto e à suíte inteira, porque os dois montam o

@@ -1164,3 +1164,35 @@ CONTROLO (nada a mudar) sem subida.
 | só acelerar a construção inteira | a grelha AO BIT mais depressa dá `0,285 → 0,236 ms`; o todo ficaria em `~0,4` |
 | a L2 refazer `dir`/`convex` de todas as entradas dos blocos recosidos | `0,116 ms` contra `0,050` (só as pendentes) |
 | uma busca binária por entrada na L1 | `~70 µs` por bloco contra `~33` (duas junções lineares) |
+
+### §19.8 — A prova
+
+Gates novos:
+- `as_paredes_por_blocos_sao_a_construcao_inteira_ao_bit` (`ph2d-orca`): blocos sintéticos numa grelha grossa,
+  120 passos (blocos que mudam, saem, voltam, ou são postos iguais), campo a campo + `near` = varredura.
+  CONTROLOS medidos: `663` entradas que seguem para outro bloco · `1 656` pontos onde começam várias · `1 908`
+  sem seguinte · `36` postos iguais · `32` tirados.
+- `so_se_refaz_o_bloco_que_mudou_e_os_vizinhos` (as `Contas`: igual = `0/0`; um do meio = `1/9`; um canto que
+  sai = `0/3`) · a parede fora do rectângulo e o bloco fora da grelha são `panic`.
+- No oráculo da W10 (`ph2d-navmesh`, as malhas reais com junções em T): as paredes por mosaicos que VIVEM entre
+  actualizações = `from_walkable_walls`. ⚠️ O CONTROLO acusou **zero** pontos onde a fronteira se toca: a
+  fixtura ganhou dois quadrados encostados por uma quina em cima de um canto de quatro mosaicos (`24`); e
+  `3 200` entradas atravessam costuras.
+- `as_paredes_da_ponte_por_mosaicos_sao_as_da_malha_inteira` (a ponte, pela porta que o desvio usa — a região
+  encolhe a meio; `1 116` atravessam) · as faixas vazias numa malha recusada (`ph2d-nav`).
+
+Mutação **31 / 31** a sangrar, zero defeitos de arnês
+([`mutacao_navegacao_w11_2026-10-04.py`](ferramentas/mutacao_navegacao_w11_2026-10-04.py)). ⛔ A 1.ª corrida deu
+**29/30**: apagar a invalidação das paredes montadas (`nav_malha.rs`) SOBREVIVIA — nenhum gate olhava as
+paredes depois de a malha mudar. A cura foi no desenho, não numa fixtura: `TiledMesh::versao` sobe a cada
+mudança e `ParedesDaMalha::paredes` compara-a, logo a frescura vive na porta que o gate da ponte exerce (e o
+descarte noutro ficheiro deixou de existir). E o controlo (b) do arnês apanhou na 1.ª tentativa um filtro por
+PREFIXO (`nav_desvio::`) que nunca casa um nome inteiro.
+
+### §19.9 — ⏳ O que fica
+
+- **O mosaico refeito** (`0,70 ms`: o corte, a união, a triangulação de um mosaico com `~20` obstáculos) — o
+  maior pedaço de uma porta.
+- O que resta O(malha) a cada mudança: a junção da malha (`0,37 ms`, §18.8) e, nas paredes, comparar
+  (`0,032`) + concatenar (`0,023`).
+- A construção a frio das paredes (`1,67 ms` contra `0,56`): só quando a malha inteira nasce.

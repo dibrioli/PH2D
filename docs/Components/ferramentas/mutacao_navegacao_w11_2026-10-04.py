@@ -9,7 +9,7 @@ O motor e os quatro controlos são os da W10 (mutacao_navegacao_w10_2026-10-03.p
   (c) o pré-voo das âncoras casa cada uma exactamente 1x (`MUTA_SO_ANCORAS=1` pára aí);
   (d) checksums dos ficheiros tocados iguais antes/depois (senão sai com 2).
 
-Selectores: `MUTA_SO=B1,B3` · `MUTA_G=ESCRITA` (ESCRITA | JUNTA | COSE | L1 | BUSCA | NAV | PONTE).
+Selectores: `MUTA_SO=B1,B3` · `MUTA_G=ESCRITA` (ESCRITA | JUNTA | BORDA | L1 | BUSCA | NAV | PONTE).
 Todo comando passa por `bash scripts/ph2d-run.sh`.
 """
 import hashlib, os, re, subprocess, sys
@@ -94,20 +94,20 @@ M = [
     ('B12 um bloco fora da grelha passa', 'JUNTA', BO,
      '                xs.get(ix + 1) == Some(&b.hi[0]) && ys.get(iy + 1) == Some(&b.hi[1]),',
      '                xs.get(ix).is_some() && ys.get(iy).is_some(),'),
-    # ── COSE: a L2 (a borda com os vizinhos) ──
-    ('B13 os vizinhos pela ordem inversa', 'COSE', BO,
+    # ── BORDA: a L2 (a borda com os vizinhos) ──
+    ('B13 os vizinhos pela ordem inversa', 'BORDA', BO,
      '            (x0..=x1)\n                .flat_map(|x| (y0..=y1).map(move |y| (x * 3 + y) as u8))',
      '            (x0..=x1)\n                .rev()\n                .flat_map(|x| (y0..=y1).rev().map(move |y| (x * 3 + y) as u8))'),
-    ('B14 lados: só o próprio bloco', 'COSE', BO,
+    ('B14 lados: só o próprio bloco', 'BORDA', BO,
      '(if v == lo { 0 } else { 1 }, if v == hi { 2 } else { 1 })',
      '(1 + 0 * usize::from(v == lo && lo == hi), 1)'),
-    ('B15 sem seguinte na borda = a entrada 0', 'COSE', BO,
+    ('B15 sem seguinte na borda = a entrada 0', 'BORDA', BO,
      '                    acha(de, true).unwrap_or(eu)',
      '                    acha(de, true).unwrap_or(Ref::Local(0))'),
-    ('B16 o anterior na borda procura quem COMEÇA', 'COSE', BO,
+    ('B16 o anterior na borda procura quem COMEÇA', 'BORDA', BO,
      '                    acha(para, false).unwrap_or(eu)',
      '                    acha(para, true).unwrap_or(eu)'),
-    ('B17 o seguinte de dentro de um pendente = ele próprio', 'COSE', BO,
+    ('B17 o seguinte de dentro de um pendente = ele próprio', 'BORDA', BO,
      '                    Ref::Local(b.l1.next[j as usize])',
      '                    Ref::Local(j)'),
     # ── L1: os pontos de dentro, a borda, a grelha ──

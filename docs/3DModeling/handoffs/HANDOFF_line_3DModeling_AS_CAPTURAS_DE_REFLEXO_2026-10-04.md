@@ -133,3 +133,38 @@ ids/consts: `smoke::scenes::CENAS 41 → 42` (reconte), `QUEM_SEMEIA` 8 entradas
 
 Sem ordem do dono (03/10): (c) mobile real · (d) dentes de 2–3 px na quina côncava · (e) LOD — que é
 também a alavanca do custo de arrastar com capturas · o gate da lâmpada pontual da malha.
+
+## §9 — ⛔ REPORT DO DONO (04/10) e a resposta
+
+*«Funciona mas com qualidade muito questionável»* — 2 fotos com o cromo a encher o ecrã: o reflexo da
+bola amarela com a borda em DEGRAUS, a vermelha com uma MORDIDA, a caixa verde borrada com uma CUNHA
+escura. ⛔ **A régua de longe não o via** (o cromo tinha ~100 px; o contorno de cada vizinha refletida, 1 px).
+
+**A régua de perto** (red-first): `oraculo_reflexo_perto_blender.py` → `fixtures/oraculo_reflexo_perto.csv.gz`
+(a arrumação da cena 42, o cromo a 512 px, nítido e a `0,05`; só os px do cromo, gzip `0,7 MB`; o ponto e a
+normal tiram-se da esfera e da câmara) e o gate `de_perto_o_cromo_mostra_as_vizinhas_como_no_cycles`, com a
+foto `nossa | Cycles | 4×|Δ|` (`PH2D_REFLEXO_FOTOS`). A sonda do app ganhou `PH2D_SONDA_YAW`, `_ALVO`,
+`_MEIA` (a vista do dono pelo caminho do produto).
+
+| causa (medida) | cura |
+|---|---|
+| o PONTO FIXO da paralaxe decidia acertar/falhar pixel a pixel na borda (os degraus e os riscos) | o reflexo NÍTIDO (`lod < 1`) pela BUSCA ao longo do raio (Szirmay-Kalos 2005): passos iguais no arco que a recta projecta do centro (`8–48`, um a cada 2 texels), bissecção, o cruzamento tem de ser NA superfície (coberta dos dois lados, espessura `5 %`) e perto do contorno um PESO contínuo (franja `10 %`) em vez de sim/não |
+| borrão e dentes na face de raspão: a resolução | octaedro `256 → 512`, faces `128 → 256` (`MAX 128 → 32` pela memória: `5,6 MB` por captura) |
+| a paralaxe do áspero a 512: o nível mais largo (16 px) já não sente a vizinha (`19,1°`) | o 1.º passo é a ESFERA das vizinhas (`sonda_esfera`: a distância média nos 6 eixos e em `r`); `PARALAXE [5, 3, 1, 0]` |
+| — | MSAA `4×` nas faces (barato; sozinho não mexeu nos degraus) |
+
+Números: perto, miolo `0,0185 → 0,0126` (nítido) e `0,0271 → 0,0220` (`0,05`), grosseiros `1 237 → 919`;
+longe, caixa `0,036 → 0,021`, esfera nítida contorno `0,056 → 0,026`. ⚠️ Os grosseiros são sobretudo a
+faixa de 1–2 px de todo contorno (Cycles pontual): a FOTO é o juiz da borda serrilhada × lisa.
+
+⛔ **Recusas medidas desta resposta:** a busca sem espessura (`~10 000` falsos acertos: o raio que passa POR
+TRÁS de uma vizinha vista do centro); o FUNDO das vizinhas (2.º passe com a face mais longe) para decidir
+«dentro do volume» — fiapos no contorno, onde o fundo é instável; a busca HIERÁRQUICA sobre o mínimo da
+distância por nível (Hi-Z) — o mínimo filtrado não é conservador, saltava partes finas, bordas PIORES; `24`
+passos fixos (dentes no topo da caixa); `96` fixos limpam a `+0,3–0,4 ms` por quadro.
+
+**Aberto por esta resposta:** arrastar com 16 peças de metal a 512 passa os 8 ms (`~+8 ms`, load `~15` —
+re-medir calmo); as alavancas medidas: amostras do pré-filtro `64 → 16` (`~−1 ms` a 256) e capturas só das
+peças brilhantes. A franja da região que o centro da captura não vê (o lado escondido da vizinha) continua:
+é o limite de UMA captura por peça. Smoke do dono desta resposta: PENDENTE.
+

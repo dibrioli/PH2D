@@ -260,7 +260,7 @@ fn de_perto_o_cromo_mostra_as_vizinhas_como_no_cycles() {
             m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]
         );
         assert!(m[0] > 50_000.0 && m[2] > 3000.0, "a fixtura encolheu");
-        if !(m[1] < BARRAS.0 && m[3] < BARRAS.1) {
+        if !(m[1] < BARRAS.0 && m[3] < BARRAS.1 && m[7] < BARRAS.2) {
             falhas.push(nome);
         }
     }
@@ -270,5 +270,9 @@ fn de_perto_o_cromo_mostra_as_vizinhas_como_no_cycles() {
     );
 }
 
-/// As barras: `(|Δ| médio, |Δ| médio no miolo do reflexo de uma vizinha)`.
-const BARRAS: (f32, f32) = (0.02, 0.03);
+/// As barras: `(|Δ| médio, |Δ| médio no miolo do reflexo de uma vizinha, px GROSSEIROS)`. Medido
+/// (04/10): a lei de 03/10 (ponto fixo, octaedro 256) `0,0080 / 0,0185 / 1 237` e `0,0089 / 0,0271 /
+/// 1 141`; a busca a 256 `… / 0,0162 / 1 114`; a busca a 512 `0,0072 / 0,0126 / 919` e `0,0078 / 0,0220
+/// / 831`. ⚠️ Os grosseiros são sobretudo a faixa de `1–2 px` de TODO contorno (o Cycles pontual): a
+/// régua não separa uma borda serrilhada de uma lisa — a FOTO (`PH2D_REFLEXO_FOTOS`) é o juiz disso.
+const BARRAS: (f32, f32, f32) = (0.012, 0.025, 1000.0);

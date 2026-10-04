@@ -15,23 +15,6 @@ fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 
-/// O ponto fixo de produção (o de `sonda_le.wgsl`): devolve a direcção.
-fn ponto_fixo(dist: &[Nivel], c: [f32; 3], p: [f32; 3], r: [f32; 3]) -> [f32; 3] {
-    let q = [0, 1, 2].map(|e| p[e] - c[e]);
-    let mut d = r;
-    for &lod in &PARALAXE {
-        let g = le(dist, d, lod);
-        let dd = g[0] / g[1].max(1.0e-6);
-        let b = dot(q, r);
-        let disc = b * b - (dot(q, q) - dd * dd);
-        let t = disc.max(0.0).sqrt() - b;
-        if g[1] >= 1.0e-3 && disc >= 0.0 && t > 0.0 {
-            d = norm([0, 1, 2].map(|e| q[e] + t * r[e]));
-        }
-    }
-    d
-}
-
 /// A busca: `passos` iguais em ângulo e `refino` bissecções; `None` = o raio não acerta nada.
 pub(crate) fn marcha(
     dist: &[Nivel],
@@ -138,7 +121,7 @@ fn sonda_da_paralaxe_de_perto() {
         );
     };
     relata("ponto fixo de produção", &|p, r| {
-        Some(ponto_fixo(&dist, c, p, r))
+        Some(crate::tests_sonda_cpu::paralaxe(&dist, c, p, r, &PARALAXE))
     });
     for (passos, refino, esp) in [
         (16u32, 6u32, 0.02f32),

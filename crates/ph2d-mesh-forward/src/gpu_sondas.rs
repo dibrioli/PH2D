@@ -24,32 +24,24 @@ use super::QUADRO;
 /// | octaedro / face | esfera nítida (miolo / contorno) | esfera áspera | caixa nítida (miolo) | arrastar, 16 peças |
 /// |---|---|---|---|---|
 /// | `128 / 128` | `0,0050 / 0,103` | `0,027` | `0,060` | `+3,84 ms` |
-/// | **`256 / 128`** | `0,0051 / 0,056` | `0,033` | **`0,036`** | `+3,92 ms` |
+/// | `256 / 128` | `0,0051 / 0,056` | `0,033` | `0,036` | `+3,92 ms` |
 /// | `128 / 256` | `0,0050 / 0,097` | `0,027` | `0,059` | `+4,34 ms` |
 /// | `256 / 256` | `0,0051 / 0,053` | `0,033` | `0,034` | `+4,78 ms` |
+/// | **`512 / 256`** (com a busca do nítido) | `0,0052 / 0,026` | `0,034` | **`0,021`** | `~+8 ms` (load `~15`) |
+///
+/// ⭐ O report do dono (04/10, o cromo a encher o ecrã): a `256` o reflexo ampliado era BORRADO e a face
+/// de cima da caixa refletida saía em dentes; a `512 / 256` limpa-os (foto da sonda de perto). O preço é
+/// arrastar: com 16 peças de metal o quadro passa os `8 ms` — aberto no handoff.
 ///
 /// O espelho PLANO perto da vizinha (a caixa) é quem pede o octaedro fino; as faces finas não lhe dão
 /// nada. Memória: `~1,4 MB` por captura (as duas camadas com os níveis, meia precisão).
-pub(crate) const LADO: u32 = 256;
-pub(crate) const FACE: u32 = 128;
+pub(crate) const LADO: u32 = 512;
+pub(crate) const FACE: u32 = 256;
 /// Os níveis: `α = (k / (NIVEIS − 1))²`, do espelho (`256`) ao mais largo (`8`).
 pub(crate) const NIVEIS: u32 = 6;
 /// As amostras do lóbulo por texel nos níveis `> 0` (filtradas: cada uma lê o nível do ângulo dela).
 /// Medido (04/10, 16 peças a arrastar): `64` → `16` amostras tira `~1 ms` dos `2,5 ms` do pós-processamento.
 const TAPS: u32 = 64;
-/// ⭐ **A paralaxe**: um passo por nível onde se lê a distância, do GROSSO ao fino. O primeiro, grosso,
-/// sente a vizinha mais perto mesmo quando a direcção crua não a vê. Medido (04/10, octaedro `256`,
-/// `a_paralaxe_acerta_onde_o_raio_bate`: os raios do oráculo que acertam uma vizinha, contra o ponto
-/// acertado visto do centro, médio / máx):
-///
-/// | níveis | esfera | caixa |
-/// |---|---|---|
-/// | nenhum | `11,2° / 19,1°` | `12,0° / 21,6°` |
-/// | `[1, 1]` (a `128`) | `3,6° / 19,1°` — a direcção crua não via nada e o passo desistia | `0,24° / 2,9°` |
-/// | `[4, 2, 1, 0]` | `0,09° / 19,1°` — o grosso já não é grosso a `256` | `0,10° / 2,45°` |
-/// | `[5, 3, 1, 0]` | `0,01° / 0,10°` | `0,12° / 4,66°` |
-/// | **`[5, 2, 1, 0]`** | `0,01° / 0,10°` | `0,09° / 2,45°` |
-/// | `[5, 3, 2, 1, 0]` | `0,01° / 0,11°` | `0,09° / 2,45°` |
 /// ⭐ **A busca do reflexo nítido** (`sonda_le.wgsl`): passos iguais em ângulo, um a cada [`PASSO`]
 /// texels do nível `0` do arco do raio, entre [`MARCHA_MIN`] e [`MARCHA_MAX`]; as bissecções e a
 /// espessura relativa. ⛔ Medido (04/10, a câmara de perto da cena 42): `24` passos fixos deixavam
@@ -63,9 +55,23 @@ pub(crate) const REFINO: u32 = 6;
 pub(crate) const ESPESSURA: f32 = 0.05;
 /// A franja do contorno (relativa): o peso cai a `0` a esta distância por trás da vizinha.
 pub(crate) const FRANJA: f32 = 0.1;
-pub(crate) const PARALAXE: [f32; 4] = [5.0, 2.0, 1.0, 0.0];
-/// ⭐ O máximo de capturas: duas camadas por captura nos `256` do `max_texture_array_layers` do WebGL2.
-pub(crate) const MAX: usize = 128;
+/// ⭐ **A paralaxe do reflexo ÁSPERO** (o nítido é a busca, [`MARCHA_MAX`]): a esfera das vizinhas (a
+/// distância média em toda a volta, `sonda_esfera`) e um passo por nível onde se lê a distância, do
+/// GROSSO ao fino. Medido (04/10, octaedro `512`, `a_paralaxe_acerta_onde_o_raio_bate`: os raios do
+/// oráculo que acertam uma vizinha, contra o ponto acertado visto do centro, médio / máx):
+///
+/// | passos | esfera | caixa |
+/// |---|---|---|
+/// | nenhum | `11,2° / 19,1°` | `12,0° / 21,6°` |
+/// | `[5, 2, 1, 0]` sem a esfera das vizinhas | `0,09° / 19,1°` — o nível mais largo a `512` (16 px) já não sente a vizinha | `0,25° / 5,8°` |
+/// | `[5, 2, 1, 0]` | `0,01° / 0,07°` | `0,18° / 5,48°` |
+/// | **`[5, 3, 1, 0]`** | `0,01° / 0,07°` | `0,10° / 2,97°` |
+///
+/// (A `256`, sem a esfera, `[5, 2, 1, 0]` dava `0,01° / 0,10°` e `0,09° / 2,45°`; `[4, 2, 1, 0]` `19,1°`.)
+pub(crate) const PARALAXE: [f32; 4] = [5.0, 3.0, 1.0, 0.0];
+/// ⭐ O máximo de capturas — pela MEMÓRIA da placa: `~5,6 MB` cada uma a 512 (as duas camadas com os
+/// níveis, meia precisão), `32` são `~180 MB`. (O WebGL2 deixaria `128`: `256` camadas ÷ 2.)
+pub(crate) const MAX: usize = 32;
 pub(crate) const FORMATO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 /// As faces: `(para onde olha, cima)`; a direita é `olha × cima`. A MESMA tabela no WGSL ([`constantes`]).

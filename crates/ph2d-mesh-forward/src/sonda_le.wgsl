@@ -23,12 +23,28 @@ fn sonda_le(camada: i32, d: vec3<f32>, lod: f32) -> vec4<f32> {
 // do raio que a captura mediu na direccao corrente, um passo por nivel (do grosso ao fino). Em `w`, a
 // razao das distancias ao ponto acertado (do pixel / do centro): o lobo visto do centro e' essa fraccao
 // do lobo do pixel (Lagarde e Zanuttini 2012, os cubos com paralaxe).
+// O PRIMEIRO passo le a distancia media das vizinhas em toda a volta (o nivel mais largo nos seis eixos e
+// em `r`): a esfera das vizinhas, que nenhum nivel sozinho da' a 512.
+fn sonda_esfera(r: vec3<f32>) -> vec2<f32> {
+    let k = f32(SONDA_NIVEIS - 1u);
+    var g = sonda_le(sonda_camada + 1, r, k).rg;
+    for (var e = 0u; e < 6u; e = e + 1u) {
+        g = g + sonda_le(sonda_camada + 1, SONDA_FACE_W[e], k).rg;
+    }
+    return g;
+}
+
 fn sonda_direcao(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
     let q = p - objeto.sonda.yzw;
     var d = r;
     var razao = 1.0;
-    for (var i = 0u; i < SONDA_PASSOS; i = i + 1u) {
-        let g = sonda_le(sonda_camada + 1, d, SONDA_PARALAXE[i]);
+    for (var i = 0u; i <= SONDA_PASSOS; i = i + 1u) {
+        var g = vec4<f32>(0.0);
+        if (i == 0u) {
+            g = vec4<f32>(sonda_esfera(r), 0.0, 0.0);
+        } else {
+            g = sonda_le(sonda_camada + 1, d, SONDA_PARALAXE[i - 1u]);
+        }
         let dist = g.r / max(g.g, 1.0e-6);
         let b = dot(q, r);
         let disc = b * b - (dot(q, q) - dist * dist);

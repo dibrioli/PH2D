@@ -169,22 +169,46 @@ fn a_captura_ve_as_vizinhas() {
 
 /// A paralaxe com um passo por nível em `lods` (do grosso ao fino) — a de `sonda_le.wgsl` quando
 /// `lods` é a dela.
-fn paralaxe(dist: &[Nivel], c: [f32; 3], p: [f32; 3], r: [f32; 3], lods: &[f32]) -> [f32; 3] {
+pub(crate) fn paralaxe(
+    dist: &[Nivel],
+    c: [f32; 3],
+    p: [f32; 3],
+    r: [f32; 3],
+    lods: &[f32],
+) -> [f32; 3] {
     let q = [0, 1, 2].map(|e| p[e] - c[e]);
     let mut d = r;
-    for &lod in lods {
-        let g = le(dist, d, lod);
+    // O primeiro passo: a distância média em toda a volta (`sonda_esfera`: o nível mais largo nos seis
+    // eixos e em `r`).
+    let topo = (NIVEIS - 1) as f32;
+    let eixos = [
+        [1.0, 0.0, 0.0],
+        [-1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, -1.0],
+    ];
+    let esfera = eixos.iter().fold(le(dist, r, topo), |a, e| {
+        let g = le(dist, *e, topo);
+        [a[0] + g[0], a[1] + g[1], 0.0, 0.0]
+    });
+    let passo = |g: [f32; 4], d: &mut [f32; 3]| {
         if g[1] < 1.0e-3 {
-            continue;
+            return;
         }
         let dd = g[0] / g[1];
         let b = dot(q, r);
         let disc = b * b - (dot(q, q) - dd * dd);
         let t = disc.max(0.0).sqrt() - b;
-        if disc < 0.0 || t <= 0.0 {
-            continue;
+        if disc >= 0.0 && t > 0.0 {
+            *d = norm([0, 1, 2].map(|e| q[e] + t * r[e]));
         }
-        d = norm([0, 1, 2].map(|e| q[e] + t * r[e]));
+    };
+    passo(esfera, &mut d);
+    for &lod in lods {
+        let g = le(dist, d, lod);
+        passo(g, &mut d);
     }
     d
 }

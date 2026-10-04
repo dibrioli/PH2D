@@ -33,7 +33,9 @@ fn tinta(d: &crate::skin_desenho::Desenhado) -> Vec<[[f64; 2]; 2]> {
 }
 
 /// `(tapadas pintadas, frente pintada, trás à vista pintada, tapadas, há camada?)` — duas cópias
-/// da barra sobrepostas `40 %` (a união não corre), a ponta a `graus`.
+/// da barra sobrepostas `40 %`, a 2.ª girada `5°` (os contornos CRUZAM-se em repouso ⇒ a união não
+/// corre; ⚠️ sem o giro os lados ficam colineares, a pergunta `overlaps_itself` diz «não» e a união
+/// funde as cópias — MEDIDO), a ponta a `graus`.
 fn mede(graus: f32, frente: bool) -> (f64, f64, f64, usize, bool) {
     let (mut sim, mut scene, map, id, [_, ponta]) = palco();
     {
@@ -48,7 +50,7 @@ fn mede(graus: f32, frente: bool) -> (f64, f64, f64, usize, bool) {
                 move_x: 0.0,
                 copies_y: 2.0,
                 move_y: 60.0,
-                spin: 0.0,
+                spin: 5.0,
                 orbit: 0.0,
             },
         ))];
@@ -90,17 +92,34 @@ fn mede(graus: f32, frente: bool) -> (f64, f64, f64, usize, bool) {
                 && ((dir[0] * u[0] + dir[1] * u[1]) / (nd * nu)).abs() > 8f64.to_radians().cos()
         })
     };
-    let (y0, y1) = (0.0, 16.0);
-    let posado_desde = |x0: f64| -> Vec<[f64; 2]> {
-        (0..=100)
-            .map(|i| [x0 + (40.0 - x0) * f64::from(i) / 100.0, y0])
-            .chain((0..=100).map(|i| [40.0, (y1 - y0).mul_add(f64::from(i) / 100.0, y0)]))
-            .chain((0..=100).map(|i| [40.0 - (40.0 - x0) * f64::from(i) / 100.0, y1]))
-            .chain((0..=100).map(|i| [x0, (y0 - y1).mul_add(f64::from(i) / 100.0, y1)]))
+    // ⚠️ A região posada é uma NUVEM (cada ponto do interior em repouso, posado), não o polígono do
+    // contorno posado: na dobra esse polígono cruza-se a si mesmo e o par-ímpar erra (MEDIDO: `6,7 %`
+    // da trás «à vista» estava debaixo da borda da frente).
+    let aneis: Vec<Vec<[f64; 2]>> = (0..g.path.contour_count())
+        .filter_map(|c| g.path.contour(c))
+        .filter(|(_, f)| *f)
+        .map(|(v, _)| {
+            let mut w = v.to_vec();
+            w.push(v[0]);
+            (0..w.len() - 1)
+                .flat_map(|k| {
+                    let cb = cubica(&w, k);
+                    (0..16).map(move |i| em(&cb, f64::from(i) / 16.0).0)
+                })
+                .collect()
+        })
+        .collect();
+    let na_forma = |p: [f64; 2]| aneis.iter().any(|a| dentro(a, p));
+    let nuvem = |x0: f64| -> Vec<[f64; 2]> {
+        (0..=200)
+            .flat_map(|i| (-40..=120).map(move |j| [f64::from(i) * 0.2, f64::from(j) * 0.2]))
+            .filter(|p| p[0] > x0 && na_forma(*p))
             .map(&posa)
             .collect()
     };
-    let (frente_pol, adiante) = (posado_desde(JUNTA + M), posado_desde(JUNTA - M));
+    let (frente_n, adiante_n) = (nuvem(JUNTA + M), nuvem(JUNTA - M));
+    let coberto =
+        |n: &[[f64; 2]], q: [f64; 2], r: f64| n.iter().any(|p| (p[0] - q[0]).hypot(p[1] - q[1]) < r);
     let (mut tap, mut tap_p, mut fr, mut fr_p, mut vis, mut vis_p) = (0, 0, 0, 0, 0, 0);
     for s in amostras(&g.path, true, 200) {
         let x = s.0[0];
@@ -112,10 +131,10 @@ fn mede(graus: f32, frente: bool) -> (f64, f64, f64, usize, bool) {
             fr_p += usize::from(pintada(s));
         } else if x < JUNTA - M {
             let q = posa(s.0);
-            if dentro(&frente_pol, q) && dist_pol(&frente_pol, q) > FOLGA {
+            if coberto(&frente_n, q, 0.15) {
                 tap += 1;
                 tap_p += usize::from(pintada(s));
-            } else if x < JUNTA - 2.0 * M && !dentro(&adiante, q) && dist_pol(&adiante, q) > FOLGA {
+            } else if x < JUNTA - 2.0 * M && !coberto(&adiante_n, q, FOLGA + 0.2) {
                 vis += 1;
                 vis_p += usize::from(pintada(s));
             }

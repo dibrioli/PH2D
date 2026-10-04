@@ -258,3 +258,22 @@ fn a_mancha_e_a_alca_passam_pela_mesma_porta() {
          exactamente onde ele decide a deformacao"
     );
 }
+
+/// ⭐⭐⭐ **GATE — a profundidade de cada coluna é a da CORRENTE, não a da ordem das colunas** (A2,
+/// 2026-10-04). Na fixtura a ponta nasce depois da raiz e o `bevy_ecs` 0.19 dá-lhe o índice MENOR
+/// (`0x…fc` contra `0x…fd`, MEDIDO): a coluna `0` é a ponta.
+///
+/// ⛔ **O CONTROLO** é a própria ordem das colunas: se ela já descesse da raiz o gate não distinguia
+/// a profundidade do índice.
+#[test]
+fn a_profundidade_de_cada_coluna_e_a_da_corrente() {
+    let (mut sim, mut scene, map, id, [raiz, ponta]) = crate::skin_live::tests::palco();
+    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
+    let e = ph2d_ecs::Entity::from_bits(map[&id]);
+    let skin = sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e).expect("pele").clone();
+    let id_de = |o| ph2d_ecs::stable_id_of(sim.world(), o).expect("id");
+    let colunas: Vec<_> = skin.tendons.iter().map(|t| t.bone).collect();
+    assert_eq!(colunas, [id_de(ponta), id_de(raiz)], "o CONTROLO: a coluna 0 já é a raiz");
+    let prof = super::profundidades(&sim, &skin, &crate::skin_live::bone_index(&sim));
+    assert_eq!(prof, [1.0, 0.0], "a ponta é a coluna 0 e está a um osso da raiz");
+}

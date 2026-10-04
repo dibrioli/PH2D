@@ -26,6 +26,8 @@ struct Palco {
     correcoes: Vec<ph2d_skeleton::Correccao>,
     /// A malha do BIND, na ordem da grelha — o controlo da ordem dos ossos.
     crua: ph2d_skeleton_live::skinned_mesh::SkinnedMesh,
+    /// A profundidade de cada coluna na corrente (a coluna vem por `to_bits`, não pela corrente).
+    prof: Vec<f64>,
 }
 
 fn palco((g1, g2): (f32, f32)) -> Palco {
@@ -74,6 +76,11 @@ fn palco((g1, g2): (f32, f32)) -> Palco {
         pesos: skin.pesos_do_quadro(&m.pesos).to_vec(),
         quad: [anchor, sprite.size],
         correcoes: skin.correcoes_resolvidas(),
+        prof: ph2d_skeleton_live::esqueletos::profundidades(
+            &sim,
+            skin,
+            &ph2d_skeleton_live::skin_live::bone_index(&sim),
+        ),
         mesh: m.mesh,
         crua,
     }
@@ -368,13 +375,12 @@ fn os_v_das_juntas_ficam_como_a_arte() {
 
 /// As violações da ordem dos ossos em `m`: pontos (a `5 px`) cobertos por faces de chaves que
 /// diferem mais de `0,5` osso, onde a ÚLTIMA face desenhada não é a de chave máxima.
-fn ordem_violada(m: &SpriteMesh, pesos: &[f64]) -> usize {
+fn ordem_violada(m: &SpriteMesh, pesos: &[f64], prof: &[f64]) -> usize {
     let ossos = pesos.len() / m.local.len();
+    assert_eq!(prof.len(), ossos, "uma profundidade por coluna");
     let chave_v: Vec<f64> = pesos
         .chunks_exact(ossos)
-        .map(|w| {
-            w.iter().enumerate().map(|(j, p)| p * j as f64).sum::<f64>() / w.iter().sum::<f64>()
-        })
+        .map(|w| w.iter().zip(prof).map(|(p, d)| p * d).sum::<f64>() / w.iter().sum::<f64>())
         .collect();
     let pos = |i: u32| {
         [
@@ -460,9 +466,9 @@ fn onde_os_membros_se_sobrepoem_o_osso_de_fora_pinta_por_cima() {
             &p.correcoes,
         )
         .expect("posa");
-        let antes = ordem_violada(&grelha, &p.crua.pesos);
+        let antes = ordem_violada(&grelha, &p.crua.pesos, &p.prof);
         assert!(antes > 0, "{pose:?}: o controlo não sobrepõe membros");
-        let depois = ordem_violada(&desenhada(&p, false, false), &p.pesos);
+        let depois = ordem_violada(&desenhada(&p, false, false), &p.pesos, &p.prof);
         assert_eq!(
             depois, 0,
             "{pose:?}: {depois} pontos com o osso de trás por cima ({antes} na grelha)"

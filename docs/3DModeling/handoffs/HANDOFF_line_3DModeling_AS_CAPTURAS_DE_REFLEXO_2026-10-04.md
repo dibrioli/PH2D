@@ -200,3 +200,22 @@ era aresta no borrão).
 **Aberto por esta resposta:** o chão DENTRO da captura (o borrão filtra o produto, como o Cycles); a junta do
 report (reproduzir com a posição do dono); o custo das `16` direcções do chão (não medido calmo).
 
+## §11 — REPORT 3 DO DONO (04/10): o áspero OK; a JUNTA continua
+
+✅ *«a qualidade do reflexo com Roughness maior que 0 melhorou muito! Smoke OK.»*
+
+⛔ *«o bug de um tipo de joint no reflexo (quando dois reflexos estão próximos mesmo quando os objetos estão
+separados) ainda acontece. é como se o reflexo fizesse operação booleana.»* — 2 fotos, cena 42 com a caixa
+AZUL arrastada para perto da câmara e a VERDE ao meio: na bola de metal da direita o reflexo da verde (perto
+do centro dela) e o da azul (longe) ficam COLADOS, com uma ponte/cunha escura entre eles.
+
+**Hipótese principal (NÃO medida — para a próxima janela): a «pele de borracha» da distância.** A captura
+guarda, por direcção, a distância às vizinhas (`r = d·a`, `g = a`); ela é MÉDIA em `fs_octa` (4 amostras
+por texel, `sondas.wgsl`), média nos níveis (`fs_desce`) e lida com filtro LINEAR na busca
+(`sonda_dist0`, amostrador `liso`). Onde duas vizinhas de distâncias muito diferentes ficam lado a lado
+vistas do centro, a cobertura é `~1` dos dois lados e a distância interpolada cria uma superfície
+FANTASMA inclinada a ligar uma à outra — o artefacto clássico de interpolar profundidade através de uma
+descontinuidade. A busca aceita-a (cobertura dos dois lados, espessura `5 %`) e lê a cor também
+interpolada: a junta. Outras suspeitas a separar: a franja (`FRANJA 0,1`, o peso contínuo junto do
+contorno) e o MSAA das faces (a resolução também faz média de distâncias).
+

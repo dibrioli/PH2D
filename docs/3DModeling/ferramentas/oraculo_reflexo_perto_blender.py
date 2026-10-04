@@ -8,8 +8,8 @@
 # arrumação da cena 42, sem o alumínio). Céu uniforme 1, chão branco difuso infinito; as peças pretas aos
 # raios difusos (a nossa lei não tem inter-reflexo difuso). Um reflexo e dois ricochetes difusos.
 #
-# Corridas da MESMA câmara: `viz` (o cromo metal branco de rugosidade 0), `viz05` (0,05, o da cena 42),
-# `solo` / `solo05` (o cromo sozinho, sem chão: só o céu — a normalização).
+# Corridas da MESMA câmara: `viz` (o cromo metal branco de rugosidade 0), `viz2` (`RUG2`: 0,05, o da cena
+# 42; `0,3` no modo `par`), `solo` / `solo2` (o cromo sozinho, sem chão: só o céu — a normalização).
 #
 # Corra (o arnês põe o Cycles na fatia da linha):
 #   cd <worktree> && bash scripts/ph2d-run.sh blender -b -X --python \
@@ -38,7 +38,20 @@ DE = (1.0, 0.45, 0.3)
 ALVO = (0.0, 0.3, 0.0)
 MEIA = 0.34
 
-saida = sys.argv[sys.argv.index("--") + 1 :][0]
+argv = sys.argv[sys.argv.index("--") + 1 :]
+saida = argv[0]
+# A 2.ª rugosidade do cromo (a coluna `viz2`/`solo2`).
+RUG2 = 0.05
+# `-- <saida> par`: o report do dono de 04/10 (a «junta»): a caixa AZUL atrás da VERDE vista do centro do
+# cromo, e o cromo áspero (`0,3`) — a parte da azul que a captura não vê, e o áspero.
+if len(argv) > 1 and argv[1] == "par":
+    PECAS = [
+        ("cromo", (0.0, 0.3, 0.0), 0.3, False, 1.0),
+        ("caixa_verde", (0.0, 0.18, 0.72), 0.18, True, 0.15),
+        ("caixa_azul", (-0.5, 0.15, 1.0), 0.15, True, 0.5),
+    ]
+    DE = (1.0, 0.45, 0.6)
+    RUG2 = 0.3
 
 
 def b(p):
@@ -189,7 +202,7 @@ def espelho(k, rug):
 
 res = {}
 p_base = None
-for nome, rug in (("viz", 0.0), ("viz05", 0.05)):
+for nome, rug in (("viz", 0.0), ("viz2", RUG2)):
     espelho(0, rug)
     p = corre(nome, AMOSTRAS)
     res[nome] = canal(p, "Combined.R")
@@ -199,11 +212,11 @@ for nome, rug in (("viz", 0.0), ("viz05", 0.05)):
 for o in pecas[1:]:
     o.hide_render = True
 chao.hide_render = True
-for nome, rug in (("solo", 0.0), ("solo05", 0.05)):
+for nome, rug in (("solo", 0.0), ("solo2", RUG2)):
     espelho(0, rug)
     res[nome] = canal(corre(nome, AMOSTRAS_SOLO), "Combined.R")
 
-COLUNAS = ("viz", "viz05", "solo", "solo05")
+COLUNAS = ("viz", "viz2", "solo", "solo2")
 alfa = canal(p_base, "Combined.A")
 pos = [canal(p_base, f"Position.{e}") for e in "XYZ"]
 nrm = [canal(p_base, f"Normal.{e}") for e in "XYZ"]
@@ -231,8 +244,8 @@ with gzip.open(saida, "wt", encoding="utf-8") as f:
             f"difuso branco infinito em y = 0 invisível à câmara; as peças pretas aos raios difusos.\n")
     f.write("# Gerado por docs/3DModeling/ferramentas/oraculo_reflexo_perto_blender.py — NÃO editar à mão.\n")
     f.write(f"# CENA lado={LADO} pecas={PECAS} de={DE} alvo={ALVO} meia={MEIA}\n")
-    f.write("# Só os pixels do cromo, com gzip; o ponto e a normal de cada um tiram-se da esfera e da câmara; viz/viz05 = o cromo metal "
-            "branco de rugosidade 0 / 0,05 com as vizinhas e o chão; solo/solo05 = o cromo sozinho a ver o céu.\n")
+    f.write("# Só os pixels do cromo, com gzip; o ponto e a normal de cada um tiram-se da esfera e da câmara; viz/viz2 = o cromo metal "
+            f"branco de rugosidade 0 / {RUG2} com as vizinhas e o chão; solo/solo2 = o cromo sozinho a ver o céu.\n")
     f.write("i,j," + ",".join(COLUNAS) + "\n")
     f.write("\n".join(linhas) + "\n")
 print(f"ORACULO: {len(linhas)} linhas em {saida}")

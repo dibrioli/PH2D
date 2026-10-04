@@ -55,6 +55,13 @@ pub(crate) const REFINO: u32 = 6;
 pub(crate) const ESPESSURA: f32 = 0.05;
 /// A franja do contorno (relativa): o peso cai a `0` a esta distância por trás da vizinha.
 pub(crate) const FRANJA: f32 = 0.1;
+/// Até quantos níveis de borrão o reflexo usa a BUSCA (passando ao ponto fixo no último). ⛔ Medido
+/// (04/10, o par a `0,3`): a `3` o lobo áspero via a fronteira acerta/falha da busca como uma aresta dura.
+pub(crate) const LOD_BUSCA: f32 = 1.0;
+/// A cobertura a que um passo do ponto fixo pesa por inteiro (abaixo, mistura-se: sem aresta).
+pub(crate) const COBERTURA_PLENA: f32 = 0.05;
+/// No reflexo ÁSPERO a paralaxe só lê distâncias tão borradas como o lobo e mais estes níveis.
+pub(crate) const ACIMA: f32 = 3.0;
 /// ⭐ **A paralaxe do reflexo ÁSPERO** (o nítido é a busca, [`MARCHA_MAX`]): a esfera das vizinhas (a
 /// distância média em toda a volta, `sonda_esfera`) e um passo por nível onde se lê a distância, do
 /// GROSSO ao fino. Medido (04/10, octaedro `512`, `a_paralaxe_acerta_onde_o_raio_bate`: os raios do
@@ -121,6 +128,8 @@ pub(crate) fn constantes() -> String {
          const SONDA_PASSO: f32 = {PASSO:?};\nconst SONDA_TEXEL: f32 = {texel:?};\n\
          const SONDA_REFINO: u32 = {REFINO}u;\n\
          const SONDA_ESPESSURA: f32 = {ESPESSURA:?};\nconst SONDA_FRANJA: f32 = {FRANJA:?};\n\
+         const SONDA_LOD_BUSCA: f32 = {LOD_BUSCA:?};\nconst SONDA_COBERTURA_PLENA: f32 = {COBERTURA_PLENA:?};\n\
+         const SONDA_ACIMA: f32 = {ACIMA:?};\n\
          const SONDA_PARALAXE: array<f32, {np}> = array<f32, {np}>({});\n\
          const SONDA_FACE_W: array<vec3<f32>, 6> = array<vec3<f32>, 6>({});\n\
          const SONDA_FACE_UP: array<vec3<f32>, 6> = array<vec3<f32>, 6>({});\n\
@@ -208,9 +217,12 @@ pub(crate) struct Plano {
 pub(crate) struct Sondas {
     pub(super) faces: wgpu::RenderPipeline,
     pub(super) octa: wgpu::RenderPipeline,
-    pub(super) nivel: wgpu::RenderPipeline,
-    /// O grupo de cada nível `k` (a cadeia `0..k` ligada, o resto a textura vazia).
+    pub(super) desce: wgpu::RenderPipeline,
+    pub(super) prefiltro: wgpu::RenderPipeline,
+    /// O grupo de DESCER ao nível `k` (a cadeia `0..k` ligada, o resto a textura vazia).
     pub(super) binds: Vec<wgpu::BindGroup>,
+    /// O grupo do PRÉ-FILTRO do nível `k` (a cadeia inteira).
+    pub(super) binds_pre: Vec<wgpu::BindGroup>,
     pub(super) faces_cor: wgpu::TextureView,
     pub(super) faces_dist: wgpu::TextureView,
     pub(super) faces_prof: wgpu::TextureView,
@@ -352,10 +364,12 @@ const LIG_AMOSTRA: u32 = LIG_DIST + 1;
 const LIG_PASSO: u32 = LIG_DIST + 2;
 
 impl Sondas {
-    /// ⭐ Os TRÊS pipelines das capturas (as faces; o octaedro; e cada nível — a cadeia e o pré-filtro
-    /// no MESMO passe) e as texturas fixas — compilados UMA vez, com o desenhista. ⛔ Medido (04/10,
-    /// `instrumento_custo_sondas`, 16 peças a arrastar): com um passe por etapa e cópias para a cadeia
-    /// (`25` operações por captura) o pós-processamento custava `4,3 ms` e as faces `1,2 ms`.
+    /// ⭐ Os QUATRO pipelines das capturas (as faces; o octaedro; descer a cadeia; o pré-filtro) e as
+    /// texturas fixas — compilados UMA vez, com o desenhista. ⛔ Medido (04/10,
+    /// `instrumento_custo_sondas`, 16 peças a arrastar): com cópias para a cadeia (`25` operações por
+    /// captura) o pós-processamento custava `4,3 ms`; a cadeia é uma textura por nível (sem cópias). ⛔ E
+    /// a cadeia com o pré-filtro no MESMO passe só deixava este ler até ao nível `k − 1`: a 512 o áspero
+    /// saía aos blocos (report do dono, 04/10) — passes separados.
     #[allow(clippy::too_many_lines)]
     pub(crate) fn nova(
         device: &wgpu::Device,
@@ -424,7 +438,7 @@ impl Sondas {
             source: wgpu::ShaderSource::Wgsl(fonte().into()),
         });
         let quatro = alvos(4);
-        let tela = |entrada: &str| {
+        let tela = |entrada: &str, alvos: &[Option<wgpu::ColorTargetState>]| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("ph2d-mesh-forward sondas tela"),
                 layout: Some(&pl),
@@ -438,7 +452,7 @@ impl Sondas {
                     module: &m2,
                     entry_point: Some(entrada),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    targets: &quatro,
+                    targets: alvos,
                 }),
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: None,
@@ -447,7 +461,12 @@ impl Sondas {
                 cache: None,
             })
         };
-        let (octa, nivel) = (tela("fs_octa"), tela("fs_nivel"));
+        let dois = alvos(2);
+        let (octa, desce, prefiltro) = (
+            tela("fs_octa", &quatro),
+            tela("fs_desce", &dois),
+            tela("fs_prefiltro", &dois),
+        );
         let rt = wgpu::TextureUsages::RENDER_ATTACHMENT;
         let tb = wgpu::TextureUsages::TEXTURE_BINDING;
         let vista = |t: &wgpu::Texture| t.create_view(&wgpu::TextureViewDescriptor::default());
@@ -504,65 +523,64 @@ impl Sondas {
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
-        // ⚠️ O passe do nível `k` ESCREVE a cadeia `k`: só os níveis `< k` ficam ligados (uma textura
-        // lida e escrita no mesmo passe é o que o WebGPU recusa e o GLES não garante).
-        let binds = (0..NIVEIS)
-            .map(|k| {
-                fn tv(v: &wgpu::TextureView) -> wgpu::BindingResource<'_> {
-                    wgpu::BindingResource::TextureView(v)
-                }
-                let mut e = vec![
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: tv(&faces_cor),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: tv(&faces_dist),
-                    },
-                ];
-                for i in 0..NIVEIS {
-                    e.push(wgpu::BindGroupEntry {
-                        binding: 2 + i,
-                        resource: tv(if i < k {
-                            &cadeia[i as usize][0]
-                        } else {
-                            &vazia
-                        }),
-                    });
-                }
+        // ⚠️ O passe que DESCE ao nível `k` escreve a cadeia `k`: só os níveis `< k` ficam ligados (uma
+        // textura lida e escrita no mesmo passe é o que o WebGPU recusa e o GLES não garante); o
+        // pré-filtro do nível `k` lê a cadeia inteira (escreve a captura) e a distância da cadeia `k`.
+        let grupo = |ate: u32, dist: Option<u32>| {
+            fn tv(v: &wgpu::TextureView) -> wgpu::BindingResource<'_> {
+                wgpu::BindingResource::TextureView(v)
+            }
+            let mut e = vec![
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: tv(&faces_cor),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: tv(&faces_dist),
+                },
+            ];
+            for i in 0..NIVEIS {
                 e.push(wgpu::BindGroupEntry {
-                    binding: LIG_DIST,
-                    resource: tv(if k > 0 {
-                        &cadeia[k as usize - 1][1]
+                    binding: 2 + i,
+                    resource: tv(if i < ate {
+                        &cadeia[i as usize][0]
                     } else {
                         &vazia
                     }),
                 });
-                e.push(wgpu::BindGroupEntry {
-                    binding: LIG_AMOSTRA,
-                    resource: wgpu::BindingResource::Sampler(&amostra),
-                });
-                e.push(wgpu::BindGroupEntry {
-                    binding: LIG_PASSO,
-                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                        buffer: &passo,
-                        offset: 0,
-                        size: std::num::NonZeroU64::new(16),
-                    }),
-                });
-                device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("ph2d-mesh-forward sondas"),
-                    layout: &bgl,
-                    entries: &e,
-                })
+            }
+            e.push(wgpu::BindGroupEntry {
+                binding: LIG_DIST,
+                resource: tv(dist.map_or(&vazia, |d| &cadeia[d as usize][1])),
+            });
+            e.push(wgpu::BindGroupEntry {
+                binding: LIG_AMOSTRA,
+                resource: wgpu::BindingResource::Sampler(&amostra),
+            });
+            e.push(wgpu::BindGroupEntry {
+                binding: LIG_PASSO,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &passo,
+                    offset: 0,
+                    size: std::num::NonZeroU64::new(16),
+                }),
+            });
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-mesh-forward sondas"),
+                layout: &bgl,
+                entries: &e,
             })
-            .collect();
+        };
+        let binds = (0..NIVEIS).map(|k| grupo(k, k.checked_sub(1))).collect();
+        let binds_pre = (0..NIVEIS).map(|k| grupo(NIVEIS, Some(k))).collect();
         Self {
             faces,
             octa,
-            nivel,
+            desce,
+            prefiltro,
             binds,
+            binds_pre,
             faces_cor,
             faces_dist,
             faces_prof,

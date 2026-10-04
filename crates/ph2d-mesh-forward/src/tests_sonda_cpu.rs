@@ -194,15 +194,16 @@ pub(crate) fn paralaxe(
         [a[0] + g[0], a[1] + g[1], 0.0, 0.0]
     });
     let passo = |g: [f32; 4], d: &mut [f32; 3]| {
-        if g[1] < 1.0e-3 {
-            return;
-        }
-        let dd = g[0] / g[1];
+        let dd = g[0] / g[1].max(1.0e-6);
         let b = dot(q, r);
         let disc = b * b - (dot(q, q) - dd * dd);
         let t = disc.max(0.0).sqrt() - b;
         if disc >= 0.0 && t > 0.0 {
-            *d = norm([0, 1, 2].map(|e| q[e] + t * r[e]));
+            // `smoothstep(0, COBERTURA_PLENA, cobertura)` — o peso do passo (o de `sonda_le.wgsl`).
+            let x = (g[1] / crate::gpu::sondas_impl::COBERTURA_PLENA).clamp(0.0, 1.0);
+            let w = x * x * (3.0 - 2.0 * x);
+            let novo = norm([0, 1, 2].map(|e| q[e] + t * r[e]));
+            *d = norm([0, 1, 2].map(|e| d[e] + (novo[e] - d[e]) * w));
         }
     };
     passo(esfera, &mut d);

@@ -112,6 +112,17 @@ pub fn pegada(modelo: &[[f32; 4]; 4], (lo, hi): ([f32; 3], [f32; 3])) -> [f32; 3
 /// (`+0,166 → +0,075 ms` em ecrã cheio a 1080p, RTX 5060 Ti). Na difusa a mesma troca custava `+50 %`
 /// de erro (`0,0098 → 0,0149`): lá ficam as [`RAIOS_CHAO`] `16`.
 pub const TAPS_ANEL: usize = 4;
+/// As direcções por anel crescem com a rugosidade até este máximo: `4 + 24 √α` ([`taps_anel`]). ⛔ Medido
+/// (04/10, o reflexo de perto do cromo a `0,3`, report do dono): com `4` o chão escuro debaixo de uma
+/// vizinha refletia-se aos RASTROS; `16` alisam-nos. Só o áspero paga.
+pub const TAPS_ANEL_MAX: usize = 16;
+
+/// As direcções por anel para `α` (o mesmo arredondamento no WGSL).
+#[must_use]
+pub fn taps_anel(alpha: f32) -> usize {
+    ((TAPS_ANEL as f32 + 24.0 * alpha.max(0.0).sqrt()).round() as usize)
+        .clamp(TAPS_ANEL, TAPS_ANEL_MAX)
+}
 
 /// Os quantis dos dois anéis na distribuição das meias-direcções do GGX.
 const QUANTIS: [f32; 2] = [0.25, 0.75];
@@ -156,8 +167,9 @@ pub fn reflexo(
         if cf <= 0.0 {
             continue;
         }
-        for j in 0..TAPS_ANEL {
-            let psi = (j as f32 + 0.5 * a as f32) * std::f32::consts::TAU / TAPS_ANEL as f32;
+        let n = taps_anel(alpha);
+        for j in 0..n {
+            let psi = (j as f32 + 0.5 * a as f32) * std::f32::consts::TAU / n as f32;
             let (cp, sp) = (psi.cos(), psi.sin());
             let d: [f32; 3] = std::array::from_fn(|e| cf * r[e] + sf * (cp * t1[e] + sp * t2[e]));
             pesos += cf;
@@ -189,16 +201,17 @@ pub fn wgsl() -> String {
          \x20   let h = max(p.y - quadro.chao.x, 0.0);\n\
          \x20   let c0 = 2.0 * atan(alpha * {q0});\n\
          \x20   let c1 = 2.0 * atan(alpha * {q1});\n{BASE}    var b = vec2<f32>(0.0);\n\
-         \x20   for (var j = 0u; j < {t2}u; j = j + 1u) {{\n\
-         \x20       let anel = j / {t}u;\n\
-         \x20       let psi = (f32(j % {t}u) + 0.5 * f32(anel)) * {passo:?};\n\
+         \x20   let n = u32(clamp(round({t:?} + 24.0 * sqrt(max(alpha, 0.0))), {t:?}, {tmax:?}));\n\
+         \x20   for (var j = 0u; j < 2u * n; j = j + 1u) {{\n\
+         \x20       let anel = j / n;\n\
+         \x20       let psi = (f32(j % n) + 0.5 * f32(anel)) * {tau:?} / f32(n);\n\
          \x20       b = b + reflexo_tap(p, r, h, select(c0, c1, anel == 1u), cos(psi) * t1 + sin(psi) * t2);\n\
          \x20   }}\n{FECHA_REFLEXO}}}\n",
         k = RAIOS_CHAO,
         kf = RAIOS_CHAO as f32,
-        t = TAPS_ANEL,
-        t2 = 2 * TAPS_ANEL,
-        passo = std::f32::consts::TAU / TAPS_ANEL as f32,
+        t = TAPS_ANEL as f32,
+        tmax = TAPS_ANEL_MAX as f32,
+        tau = std::f32::consts::TAU,
         q0 = q[0],
         q1 = q[1],
     )

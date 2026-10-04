@@ -168,3 +168,35 @@ re-medir calmo); as alavancas medidas: amostras do pré-filtro `64 → 16` (`~�
 peças brilhantes. A franja da região que o centro da captura não vê (o lado escondido da vizinha) continua:
 é o limite de UMA captura por peça. Smoke do dono desta resposta: PENDENTE.
 
+## §10 — ⛔ REPORT 2 DO DONO (04/10) e a resposta
+
+*«Bem melhor! O reflexo da esfera lateral sofre um tipo de JUNTA; se aumento a roughness, a qualidade
+fica ruim»* — 4 fotos: a caixa azul refletida colada à verde com riscos/ponte; o cromo áspero com uma
+lasca clara e o borrão aos blocos.
+
+**Régua:** o oráculo `par` (`oraculo_reflexo_perto_blender.py -- … par` → `fixtures/oraculo_reflexo_par.csv.gz`:
+a caixa azul meio escondida pela verde vista do centro do cromo; o cromo nítido e a `0,3`), no MESMO gate
+de perto (`Vista` `PERTO` e `PAR`). ⚠️ A junta do report NÃO se reproduziu no par (a borda nítida lá está
+limpa): falta a posição exacta das peças do dono.
+
+**O áspero — as causas medidas (isoladas por testes temporários na placa e pelo gémeo da CPU):**
+
+| sintoma | causa | cura |
+|---|---|---|
+| a LASCA | a troca seca busca → ponto fixo em `lod 1` | a busca só no nítido (`LOD_BUSCA 1`) com passagem suave (`smoothstep`) |
+| a ARESTA dura à esquerda da mancha | a RAZÃO das distâncias (Lagarde) mudava só onde os passos finos tinham cobertura: o nível de borrão saltava (visto pintando o `lod` no cromo) | a razão vem só da esfera das vizinhas; os passos do ponto fixo pesam pela cobertura (`COBERTURA_PLENA 0,05`) e no áspero só leem `lod0 + ACIMA` níveis |
+| os RASTROS | o reflexo áspero do CHÃO com `4` direcções por anel (sem o chão no reflexo sumiam) | `taps_anel(α) = 4 + 24 √α`, até `16` (CPU e WGSL); só o áspero paga |
+| (suspeita) blocos | o pré-filtro no passe da cadeia só lia até `k − 1` | passes separados (descer · pré-filtro), `+1` pipeline (`19`) |
+
+Números: longe, esfera áspera miolo `0,0333 → 0,0163`; o reflexo áspero do chão `0,0198 → 0,0164`; par
+nítido `0,0069`; par áspero `0,041 → 0,042` — a régua não vê a melhoria (a FOTO vê): o erro que fica é a
+faixa da SOMBRA DA CAIXA no chão, filtrada à parte da caixa e multiplicada (conta duas vezes no borrão).
+
+⛔ **Recusas medidas desta resposta:** `256` amostras no pré-filtro (nada muda: não era o pré-filtro); a
+direcção dos que falham pelo ponto de maior aproximação (puxava a vizinha para o céu: grosseiros `0 → 7 328`);
+`COBERTURA_PLENA 1` (a paralaxe de longe pior: `4,57°`); a busca até `lod 3` (a fronteira acerta/falha
+era aresta no borrão).
+
+**Aberto por esta resposta:** o chão DENTRO da captura (o borrão filtra o produto, como o Cycles); a junta do
+report (reproduzir com a posição do dono); o custo das `16` direcções do chão (não medido calmo).
+

@@ -15,20 +15,48 @@ use crate::tests_contacto::{Peca, camera_do_blender, grades_de, linear, norm};
 use crate::tests_sol::cubo;
 use crate::{Forward, Instancia, Malha};
 
-const ORACULO: &[u8] = include_bytes!("../fixtures/oraculo_reflexo_perto.csv.gz");
 const LADO: u32 = 512;
-pub(crate) const DE: [f32; 3] = [1.0, 0.45, 0.3];
 const ALVO: [f32; 3] = [0.0, 0.3, 0.0];
 const MEIA: f32 = 0.34;
-/// As peças (o cromo primeiro) e o albedo das foscas.
-pub(crate) const PECAS: [Peca; 5] = [
-    ([0.0, 0.3, 0.0], 0.3, false),
-    ([0.0, 0.2, -0.7], 0.2, false),
-    ([0.0, 0.18, 0.72], 0.18, true),
-    ([0.55, 0.17, -0.25], 0.17, false),
-    ([-0.6, 0.15, 0.2], 0.15, true),
-];
-const ALBEDOS: [f32; 4] = [0.8, 0.15, 0.5, 0.3];
+
+/// Uma vista de perto: o oráculo, as peças (o cromo primeiro), o albedo das foscas, de onde a câmara
+/// olha, e a 2.ª rugosidade do cromo (a coluna `viz2`).
+pub(crate) struct Vista {
+    oraculo: &'static [u8],
+    pub(crate) pecas: &'static [Peca],
+    albedos: &'static [f32],
+    pub(crate) de: [f32; 3],
+    rug2: f32,
+}
+
+/// A arrumação da cena 42 (o report de 04/10: degraus, mordidas, borrão).
+pub(crate) const PERTO: Vista = Vista {
+    oraculo: include_bytes!("../fixtures/oraculo_reflexo_perto.csv.gz"),
+    pecas: &[
+        ([0.0, 0.3, 0.0], 0.3, false),
+        ([0.0, 0.2, -0.7], 0.2, false),
+        ([0.0, 0.18, 0.72], 0.18, true),
+        ([0.55, 0.17, -0.25], 0.17, false),
+        ([-0.6, 0.15, 0.2], 0.15, true),
+    ],
+    albedos: &[0.8, 0.15, 0.5, 0.3],
+    de: [1.0, 0.45, 0.3],
+    rug2: 0.05,
+};
+
+/// A caixa AZUL atrás da VERDE vista do centro do cromo, e o cromo áspero (o 2.º report de 04/10: a
+/// «junta» e o áspero).
+pub(crate) const PAR: Vista = Vista {
+    oraculo: include_bytes!("../fixtures/oraculo_reflexo_par.csv.gz"),
+    pecas: &[
+        ([0.0, 0.3, 0.0], 0.3, false),
+        ([0.0, 0.18, 0.72], 0.18, true),
+        ([-0.5, 0.15, 1.0], 0.15, true),
+    ],
+    albedos: &[0.15, 0.5],
+    de: [1.0, 0.45, 0.6],
+    rug2: 0.3,
+};
 
 /// Um pixel do cromo: `(i, j)`, o ponto, a normal e `[viz, viz05, solo, solo05]` do Cycles.
 pub(crate) struct Px {
@@ -44,8 +72,8 @@ fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
 }
 
 /// O raio da câmara do oráculo no centro do pixel `(i, j)`: origem e direcção.
-fn raio(i: u32, j: u32) -> ([f32; 3], [f32; 3]) {
-    let f = norm(DE.map(|c| -c));
+fn raio(v: &Vista, i: u32, j: u32) -> ([f32; 3], [f32; 3]) {
+    let f = norm(v.de.map(|c| -c));
     let up0 = [0.0, 1.0, 0.0];
     let up = norm([0, 1, 2].map(|e| up0[e] - dot(up0, f) * f[e]));
     let r = [
@@ -59,20 +87,20 @@ fn raio(i: u32, j: u32) -> ([f32; 3], [f32; 3]) {
     (o, f)
 }
 
-pub(crate) fn oraculo() -> Vec<Px> {
+pub(crate) fn oraculo(v: &Vista) -> Vec<Px> {
     let mut texto = String::new();
-    flate2::read::GzDecoder::new(ORACULO)
+    flate2::read::GzDecoder::new(v.oraculo)
         .read_to_string(&mut texto)
         .expect("o oráculo descomprime");
-    let (c, r0, _) = PECAS[0];
+    let (c, r0, _) = v.pecas[0];
     texto
         .lines()
         .filter(|l| !l.starts_with('#'))
         .skip(1)
         .map(|l| {
-            let v: Vec<f32> = l.split(',').map(|x| x.parse().expect("número")).collect();
-            let (i, j) = (v[0] as u32, v[1] as u32);
-            let (o, d) = raio(i, j);
+            let c_: Vec<f32> = l.split(',').map(|x| x.parse().expect("número")).collect();
+            let (i, j) = (c_[0] as u32, c_[1] as u32);
+            let (o, d) = raio(v, i, j);
             let q = [0, 1, 2].map(|e| o[e] - c[e]);
             let b = dot(q, d);
             let t = -b - (b * b - (dot(q, q) - r0 * r0)).max(0.0).sqrt();
@@ -83,7 +111,7 @@ pub(crate) fn oraculo() -> Vec<Px> {
                 j,
                 p,
                 n,
-                col: [v[2], v[3], v[4], v[5]],
+                col: [c_[2], c_[3], c_[4], c_[5]],
             }
         })
         .collect()
@@ -99,10 +127,10 @@ fn fosca(a: f32) -> [f32; ph2d_material::wgsl::PACKED] {
     ph2d_material::wgsl::pack(&s, ph2d_material::wgsl::EnvLobe::of(&s))
 }
 
-pub(crate) fn desenhista() -> Option<Forward> {
+pub(crate) fn desenhista(v: &Vista) -> Option<Forward> {
     let mut fw = Forward::no_aparelho(&ambiente())?;
-    let g = grades_de(&PECAS);
-    for (k, (_, r, caixa)) in PECAS.iter().enumerate() {
+    let g = grades_de(v.pecas);
+    for (k, (_, r, caixa)) in v.pecas.iter().enumerate() {
         let (p, n, idx) = if *caixa { cubo(2.0 * r) } else { esfera(*r) };
         let ao = vec![1.0; p.len()];
         let mat = vec![k as u32; p.len()];
@@ -122,30 +150,26 @@ pub(crate) fn desenhista() -> Option<Forward> {
 }
 
 pub(crate) fn desenha(
+    v: &Vista,
     fw: &mut Forward,
     cromo: [f32; ph2d_material::wgsl::PACKED],
     todas: bool,
 ) -> Vec<u8> {
-    let quais: &[usize] = if todas { &[0, 1, 2, 3, 4] } else { &[0] };
-    let objs: Vec<Instancia> = quais
-        .iter()
-        .map(|&k| {
+    let n = if todas { v.pecas.len() } else { 1 };
+    let objs: Vec<Instancia> = (0..n)
+        .map(|k| {
             let mut m = ID;
-            m[3][..3].copy_from_slice(&PECAS[k].0);
+            m[3][..3].copy_from_slice(&v.pecas[k].0);
             Instancia {
                 malha: k as u64 + 1,
                 modelo: m,
             }
         })
         .collect();
-    let mats = [
-        cromo,
-        fosca(ALBEDOS[0]),
-        fosca(ALBEDOS[1]),
-        fosca(ALBEDOS[2]),
-        fosca(ALBEDOS[3]),
-    ];
-    let mut c = cena(&objs, &mats, camera_do_blender(DE, ALVO, MEIA));
+    let mats: Vec<[f32; ph2d_material::wgsl::PACKED]> = std::iter::once(cromo)
+        .chain(v.albedos.iter().map(|a| fosca(*a)))
+        .collect();
+    let mut c = cena(&objs, &mats, camera_do_blender(v.de, ALVO, MEIA));
     c.tamanho = (LADO, LADO);
     if todas {
         c.chao = Some(0.0);
@@ -155,11 +179,11 @@ pub(crate) fn desenha(
 }
 
 /// O raio reflectido em `p` acerta uma vizinha? (conta analítica sobre a geometria do oráculo)
-fn reflete_vizinha(p: &Px) -> bool {
-    let f = norm(DE.map(|c| -c));
+fn reflete_vizinha(v: &Vista, p: &Px) -> bool {
+    let f = norm(v.de.map(|c| -c));
     let fn_ = dot(f, p.n);
     let r: [f32; 3] = std::array::from_fn(|e| f[e] - 2.0 * fn_ * p.n[e]);
-    PECAS[1..]
+    v.pecas[1..]
         .iter()
         .any(|q| crate::tests_sonda_cpu::acerta_em(*q, p.p, r).is_some())
 }
@@ -167,6 +191,7 @@ fn reflete_vizinha(p: &Px) -> bool {
 /// `(px, |Δ| médio, px no miolo do reflexo de uma vizinha, |Δ| ali, máx ali, px na faixa do contorno,
 /// |Δ| ali)` — a razão `viz/solo` contra a do Cycles; e a foto `nossa | Cycles | 4×|Δ|` se pedida.
 fn mede(
+    v: &Vista,
     px: &[Px],
     (viz, solo): (&[u8], &[u8]),
     (cv, cs): (usize, usize),
@@ -175,7 +200,7 @@ fn mede(
     let l = LADO as usize;
     let mut cromo = vec![None; l * l];
     for p in px {
-        cromo[p.j as usize * l + p.i as usize] = Some(reflete_vizinha(p));
+        cromo[p.j as usize * l + p.i as usize] = Some(reflete_vizinha(v, p));
     }
     let vizinho = |p: &Px, raio: i32, f: &dyn Fn(Option<bool>) -> bool| {
         (-raio..=raio).any(|dy| {
@@ -238,32 +263,48 @@ fn mede(
     ]
 }
 
-/// ⭐⭐⭐ **De perto, o cromo mostra as vizinhas como no Cycles** — nítido e a `0,05`. No miolo do
-/// reflexo de uma vizinha (a mais de `2 px` do contorno dela) os degraus e as mordidas do report são
-/// erro; a faixa do contorno imprime-se (o Cycles do oráculo é pontual).
-#[test]
-#[ignore = "precisa de aparelho"]
-fn de_perto_o_cromo_mostra_as_vizinhas_como_no_cycles() {
-    let Some(mut fw) = desenhista() else {
+/// A régua de uma vista: o cromo nítido e o da 2.ª rugosidade, cada um contra o Cycles; devolve os que
+/// não passam as `barras` (`|Δ| médio`, no miolo, grosseiros), uma por rugosidade.
+fn corre(v: &Vista, nome: &str, barras: [(f32, f32, f32); 2]) -> Vec<String> {
+    let Some(mut fw) = desenhista(v) else {
         eprintln!("sem aparelho — o gate não corre aqui");
-        return;
+        return Vec::new();
     };
-    let px = oraculo();
+    let px = oraculo(v);
     let mut falhas = Vec::new();
-    for (nome, rug, cols) in [("nítido", 0.0f32, (0usize, 2usize)), ("0,05", 0.05, (1, 3))] {
-        let viz = desenha(&mut fw, metal(rug), true);
-        let solo = desenha(&mut fw, metal(rug), false);
-        let m = mede(&px, (&viz, &solo), cols, Some(&format!("perto_{rug}")));
+    for (k, (rug, cols)) in [(0.0f32, (0usize, 2usize)), (v.rug2, (1, 3))]
+        .into_iter()
+        .enumerate()
+    {
+        let viz = desenha(v, &mut fw, metal(rug), true);
+        let solo = desenha(v, &mut fw, metal(rug), false);
+        let m = mede(v, &px, (&viz, &solo), cols, Some(&format!("{nome}_{rug}")));
         eprintln!(
-            "cromo {nome}: {} px · |Δ| médio {:.4} · no miolo do reflexo de uma vizinha ({} px) {:.4} · máx \
-             ali {:.3} · na faixa do contorno ({} px) {:.4} · GROSSEIROS (|Δ| > 0,2) {}",
+            "{nome}, cromo {rug}: {} px · |Δ| médio {:.4} · no miolo do reflexo de uma vizinha ({} px) {:.4} · \
+             máx ali {:.3} · na faixa do contorno ({} px) {:.4} · GROSSEIROS (|Δ| > 0,2) {}",
             m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]
         );
         assert!(m[0] > 50_000.0 && m[2] > 3000.0, "a fixtura encolheu");
-        if !(m[1] < BARRAS.0 && m[3] < BARRAS.1 && m[7] < BARRAS.2) {
-            falhas.push(nome);
+        let b = barras[k];
+        if !(m[1] < b.0 && m[3] < b.1 && m[7] < b.2) {
+            falhas.push(format!("{nome} {rug}"));
         }
     }
+    falhas
+}
+
+/// ⭐⭐⭐ **De perto, o cromo mostra as vizinhas como no Cycles** — a cena 42 (nítido e `0,05`) e o PAR
+/// (a caixa azul atrás da verde vista do centro; nítido e `0,3`). No miolo do reflexo de uma vizinha (a
+/// mais de `2 px` do contorno dela) os degraus, as mordidas e a «junta» dos reports são erro.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn de_perto_o_cromo_mostra_as_vizinhas_como_no_cycles() {
+    let mut falhas = corre(&PERTO, "perto", [BARRAS, BARRAS]);
+    // ⚠️ O par ÁSPERO (`0,3`): o miolo lê `0,042` — sobretudo a faixa escura à esquerda da caixa refletida:
+    // a sombra dela no chão e ela própria, filtradas À PARTE (a captura e a lei do chão) e multiplicadas,
+    // contam duas vezes no borrão (o Cycles filtra o produto). Aberto: o chão DENTRO da captura. Antes desta
+    // resposta (o ponto fixo, o pré-filtro no passe da cadeia) `0,041` com a aresta dura e os rastros.
+    falhas.extend(corre(&PAR, "par", [BARRAS, (BARRAS.0, 0.045, BARRAS.2)]));
     assert!(
         falhas.is_empty(),
         "de perto o reflexo afastou-se do Cycles: {falhas:?}"

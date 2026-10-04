@@ -1,7 +1,7 @@
 // AS CAPTURAS DE REFLEXO, do atlas das faces ao octaedro pre-filtrado (`gpu_sondas.rs`). Passes de ecra
 // cheio que leem texturas que o passe NAO escreve (o GLES do WebGL2 nao garante ler e escrever a mesma
-// textura no mesmo passe, nem noutro nivel): a CADEIA tem uma textura por nivel, e o passe do nivel k
-// escreve a cadeia k e o nivel k da captura, lendo os niveis < k.
+// textura no mesmo passe, nem noutro nivel): a CADEIA tem uma textura por nivel — o passe que desce
+// escreve a cadeia k lendo a k - 1, e o pre-filtro escreve o nivel k da captura lendo a cadeia inteira.
 //
 // O octaedro de cada nivel `k` tem lado `LADO >> k` com UMA linha de borda a toda a volta (o texel de
 // borda guarda a direccao da DOBRA): a leitura bilinear nao tem costura.
@@ -118,22 +118,38 @@ fn le_cadeia(d: vec3<f32>, lod: f32, topo: u32) -> vec4<f32> {
     return mix(a, b, l - f32(k0));
 }
 
-// O nivel k > 0: a cadeia k a partir da k - 1 (quatro direccoes por texel), e o nivel k da captura — a
-// media sob o lobulo GGX de alfa = (k / (niveis - 1))^2 com N = V = R, pesada por N.L (a pergunta do
-// pre-filtro do ceu, `ph2d_sky::prefiltro`), por amostragem de Hammersley FILTRADA: cada amostra le o
-// nivel da cadeia cujo texel tem o angulo solido dela (sem o vies +1, que o ceu mediu a dobrar o erro),
-// ate' ao k - 1 (o k nasce neste passe).
+struct Duas {
+    @location(0) cor: vec4<f32>,
+    @location(1) dist: vec4<f32>,
+};
+
+// A cadeia k > 0 a partir da k - 1: quatro direccoes por texel.
 @fragment
-fn fs_nivel(@builtin(position) q: vec4<f32>) -> Quatro {
+fn fs_desce(@builtin(position) q: vec4<f32>) -> Duas {
     let k = passo.k.x;
-    var cc = vec4<f32>(0.0);
-    var cd = vec4<f32>(0.0);
+    var o: Duas;
+    o.cor = vec4<f32>(0.0);
+    o.dist = vec4<f32>(0.0);
     for (var i = 0u; i < 4u; i = i + 1u) {
         let uv = uv_no_nivel(dir_do_texel(floor(q.xy) + SUB[i], k), k - 1u);
-        cc = cc + le_nivel(k - 1u, uv) * 0.25;
-        cd = cd + textureSampleLevel(cadeia_dist, amostra, uv, 0.0) * 0.25;
+        o.cor = o.cor + le_nivel(k - 1u, uv) * 0.25;
+        o.dist = o.dist + textureSampleLevel(cadeia_dist, amostra, uv, 0.0) * 0.25;
     }
+    return o;
+}
+
+// O nivel k > 0 da captura — a media sob o lobulo GGX de alfa = (k / (niveis - 1))^2 com N = V = R,
+// pesada por N.L (a pergunta do pre-filtro do ceu, `ph2d_sky::prefiltro`), por amostragem de Hammersley
+// FILTRADA: cada amostra le o nivel da cadeia (INTEIRA) cujo texel tem o angulo solido dela (sem o vies
+// +1, que o ceu mediu a dobrar o erro). A distancia e' a da cadeia k. ⛔ Com a cadeia e o pre-filtro no
+// mesmo passe a leitura so' chegava ao nivel k - 1: a 512 o lobo largo lia niveis finos demais com 64
+// amostras — o aspero aos blocos e com rastros (report do dono, 04/10).
+@fragment
+fn fs_prefiltro(@builtin(position) q: vec4<f32>) -> Duas {
+    let k = passo.k.x;
     let n = dir_do_texel(q.xy, k);
+    var o: Duas;
+    o.dist = textureSampleLevel(cadeia_dist, amostra, uv_no_nivel(n, k), 0.0);
     let r = f32(k) / f32(SONDA_NIVEIS - 1u);
     let a2 = r * r * r * r;
     let s = select(-1.0, 1.0, n.z >= 0.0);
@@ -161,8 +177,9 @@ fn fs_nivel(@builtin(position) q: vec4<f32>) -> Quatro {
         let pdf = a2 / (3.14159265 * den * den) * 0.25;
         let omega_s = 1.0 / (f32(SONDA_TAPS) * pdf);
         let lod = max(0.5 * log2(omega_s / omega_p), 0.0);
-        soma = soma + le_cadeia(l, lod, k - 1u) * nl;
+        soma = soma + le_cadeia(l, lod, SONDA_NIVEIS - 1u) * nl;
         pesos = pesos + nl;
     }
-    return Quatro(cc, cd, soma / max(pesos, 1.0e-6), cd);
+    o.cor = soma / max(pesos, 1.0e-6);
+    return o;
 }

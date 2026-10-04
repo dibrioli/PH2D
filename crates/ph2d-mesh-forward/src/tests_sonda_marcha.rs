@@ -8,7 +8,7 @@
 use crate::gpu::sondas_impl::PARALAXE;
 use crate::tests_chao_tapa::metal;
 use crate::tests_contacto::norm;
-use crate::tests_reflexo_perto::{DE, PECAS, desenha, desenhista, oraculo};
+use crate::tests_reflexo_perto::{PERTO, desenha, desenhista, oraculo};
 use crate::tests_sonda_cpu::{Nivel, acerta_em, camada, le};
 
 fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
@@ -70,19 +70,19 @@ pub(crate) fn marcha(
 #[test]
 #[ignore = "precisa de aparelho"]
 fn sonda_da_paralaxe_de_perto() {
-    let Some(mut fw) = desenhista() else {
+    let Some(mut fw) = desenhista(&PERTO) else {
         return;
     };
-    let _ = desenha(&mut fw, metal(0.0), true);
+    let _ = desenha(&PERTO, &mut fw, metal(0.0), true);
     let dist = camada(&fw, 1);
-    let c = PECAS[0].0;
-    let vista = norm(DE.map(|x| -x));
-    let casos: Vec<_> = oraculo()
+    let c = PERTO.pecas[0].0;
+    let vista = norm(PERTO.de.map(|x| -x));
+    let casos: Vec<_> = oraculo(&PERTO)
         .iter()
         .map(|p| {
             let fn_ = dot(vista, p.n);
             let r: [f32; 3] = std::array::from_fn(|e| vista[e] - 2.0 * fn_ * p.n[e]);
-            let alvo = PECAS[1..]
+            let alvo = PERTO.pecas[1..]
                 .iter()
                 .filter_map(|q| acerta_em(*q, p.p, r))
                 .min_by(f32::total_cmp)
@@ -135,4 +135,55 @@ fn sonda_da_paralaxe_de_perto() {
             &|p, r| marcha(&dist, c, p, r, passos, refino, esp),
         );
     }
+}
+
+/// Sonda (imprime): com `PH2D_REFLEXO_FOTOS=<pasta>`, os níveis da cor da captura do cromo do PAR
+/// (`nivel_k.pgm`, a cobertura) — o pré-filtro à vista.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn sonda_niveis_da_captura() {
+    let Ok(pasta) = std::env::var("PH2D_REFLEXO_FOTOS") else {
+        return;
+    };
+    let v = &crate::tests_reflexo_perto::PAR;
+    let Some(mut fw) = desenhista(v) else {
+        return;
+    };
+    let _ = desenha(v, &mut fw, metal(0.3), true);
+    for k in 0..crate::gpu::sondas_impl::NIVEIS {
+        let t = fw.le_sonda(0, k).expect("a captura lê-se");
+        let w = crate::gpu::sondas_impl::LADO >> k;
+        let mut f = format!("P5 {w} {w} 255\n").into_bytes();
+        // A COBERTURA (`a`): onde a captura vê vizinha.
+        f.extend(t.iter().map(|c| (c[3].clamp(0.0, 1.0) * 255.0) as u8));
+        let _ = std::fs::write(format!("{pasta}/nivel_{k}.pgm"), f);
+    }
+}
+
+/// Sonda (imprime): com `PH2D_REFLEXO_FOTOS=<pasta>`, a cobertura que a leitura da CPU (o gémeo de
+/// `sonda_le`) dá a cada pixel do cromo do PAR a `0,3`, na direcção reflectida crua (`par_cpu.pgm`) — a
+/// leitura e os dados, sem a paralaxe.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn sonda_leitura_cpu_do_par() {
+    let Ok(pasta) = std::env::var("PH2D_REFLEXO_FOTOS") else {
+        return;
+    };
+    let v = &crate::tests_reflexo_perto::PAR;
+    let Some(mut fw) = desenhista(v) else {
+        return;
+    };
+    let _ = desenha(v, &mut fw, metal(0.3), true);
+    let cor = camada(&fw, 0);
+    let vista = norm(v.de.map(|x| -x));
+    let lod = 0.3 * (crate::gpu::sondas_impl::NIVEIS - 1) as f32;
+    let mut img = vec![0u8; 512 * 512];
+    for p in oraculo(v) {
+        let fn_ = dot(vista, p.n);
+        let r: [f32; 3] = std::array::from_fn(|e| vista[e] - 2.0 * fn_ * p.n[e]);
+        img[(p.j * 512 + p.i) as usize] = (le(&cor, r, lod)[3].clamp(0.0, 1.0) * 255.0) as u8;
+    }
+    let mut f = b"P5 512 512 255\n".to_vec();
+    f.extend_from_slice(&img);
+    let _ = std::fs::write(format!("{pasta}/par_cpu.pgm"), f);
 }

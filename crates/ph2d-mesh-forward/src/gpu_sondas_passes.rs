@@ -2,8 +2,7 @@
 //! mudou.
 
 use super::sondas_impl::{
-    FACE, FACES, MAX, NIVEIS, PASSO_QUADRO, Plano, arranjo, caixa_no_mundo, face_vp, ladrilho,
-    na_face,
+    FACE, FACES, MAX, PASSO_QUADRO, Plano, arranjo, caixa_no_mundo, face_vp, ladrilho, na_face,
 };
 use super::{Forward, QUADRO, quadro_impl};
 use crate::{Cena, Instancia};
@@ -123,18 +122,19 @@ impl Forward {
         }
         let tela = |enc: &mut wgpu::CommandEncoder,
                     pipeline: &wgpu::RenderPipeline,
-                    k: u32,
-                    alvos: [&wgpu::TextureView; 4]| {
+                    (grupo, k): (&wgpu::BindGroup, u32),
+                    alvos: &[&wgpu::TextureView]| {
+            let cores: Vec<_> = alvos.iter().map(|v| limpa(v)).collect();
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("ph2d-mesh-forward sondas tela"),
-                color_attachments: &alvos.map(limpa),
+                color_attachments: &cores,
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
             pass.set_pipeline(pipeline);
-            pass.set_bind_group(0, &sondas.binds[k as usize], &[256 * k]);
+            pass.set_bind_group(0, grupo, &[256 * k]);
             pass.draw(0..3, 0..1);
         };
         // A caixa de cada instância no mundo: a face só desenha as vizinhas que lhe caem dentro.
@@ -192,16 +192,14 @@ impl Forward {
             tela(
                 enc,
                 &sondas.octa,
-                0,
-                [&ch[0][0], &ch[0][1], &al[0][0], &al[0][1]],
+                (&sondas.binds[0], 0),
+                &[&ch[0][0], &ch[0][1], &al[0][0], &al[0][1]],
             );
-            for k in 1..NIVEIS as usize {
-                tela(
-                    enc,
-                    &sondas.nivel,
-                    k as u32,
-                    [&ch[k][0], &ch[k][1], &al[k][0], &al[k][1]],
-                );
+            for (k, (c, g)) in ch.iter().zip(&sondas.binds).enumerate().skip(1) {
+                tela(enc, &sondas.desce, (g, k as u32), &[&c[0], &c[1]]);
+            }
+            for (k, (a, g)) in al.iter().zip(&sondas.binds_pre).enumerate().skip(1) {
+                tela(enc, &sondas.prefiltro, (g, k as u32), &[&a[0], &a[1]]);
             }
         }
     }

@@ -34,7 +34,9 @@ fn sonda_esfera(r: vec3<f32>) -> vec2<f32> {
     return g;
 }
 
-fn sonda_direcao(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
+// `fino`: o nivel mais fino onde ainda se refina — o do borrao do lobo (num reflexo aspero refinar abaixo
+// dele so' traz os saltos do nivel fino: a aresta dura e os rastros no aspero, report do dono 04/10).
+fn sonda_direcao(p: vec3<f32>, r: vec3<f32>, fino: f32) -> vec4<f32> {
     let q = p - objeto.sonda.yzw;
     var d = r;
     var razao = 1.0;
@@ -43,15 +45,21 @@ fn sonda_direcao(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
         if (i == 0u) {
             g = vec4<f32>(sonda_esfera(r), 0.0, 0.0);
         } else {
-            g = sonda_le(sonda_camada + 1, d, SONDA_PARALAXE[i - 1u]);
+            g = sonda_le(sonda_camada + 1, d, max(SONDA_PARALAXE[i - 1u], fino));
         }
         let dist = g.r / max(g.g, 1.0e-6);
         let b = dot(q, r);
         let disc = b * b - (dot(q, q) - dist * dist);
         let t = sqrt(max(disc, 0.0)) - b;
-        if (g.g >= 1.0e-3 && disc >= 0.0 && t > 0.0) {
-            d = normalize(q + t * r);
-            razao = t / max(dist, 1.0e-6);
+        // O passo pesa pela cobertura (sem limiar: um limiar e' uma aresta no reflexo aspero).
+        if (disc >= 0.0 && t > 0.0) {
+            let w = smoothstep(0.0, SONDA_COBERTURA_PLENA, g.g);
+            d = normalize(mix(d, normalize(q + t * r), w));
+            // A razao das distancias (o lobo visto do centro) so' da esfera das vizinhas: os passos finos
+            // mudavam-na so' onde havia cobertura, e o borrao saltava de nivel (a aresta dura no aspero).
+            if (i == 0u) {
+                razao = mix(razao, t / max(dist, 1.0e-6), w);
+            }
         }
     }
     return vec4<f32>(d, razao);
@@ -132,7 +140,7 @@ fn sonda_marcha(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
 // A MESMA pergunta no mesmo pixel tem a mesma resposta: a direccao da paralaxe nao depende da rugosidade
 // (o lobo dieletrico, o metalico e o verniz partilham-na), a leitura sim.
 var<private> memo_d: vec4<f32> = vec4<f32>(0.0);
-var<private> memo_dr: vec3<f32> = vec3<f32>(0.0);
+var<private> memo_dr: vec4<f32> = vec4<f32>(0.0);
 var<private> memo_dv: bool = false;
 var<private> memo_m: vec4<f32> = vec4<f32>(0.0);
 var<private> memo_mr: vec3<f32> = vec3<f32>(0.0);
@@ -144,30 +152,37 @@ var<private> memo_sd: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
 fn sonda_no_pixel(p: vec3<f32>, r: vec3<f32>, alpha: f32) -> vec4<f32> {
     if (memo_sd.w != alpha || any(memo_sd.xyz != r)) {
         let lod0 = sqrt(clamp(alpha, 0.0, 1.0)) * f32(SONDA_NIVEIS - 1u);
-        // O reflexo NITIDO (menos de um nivel de borrao) pela busca: a borda e' a do raio.
-        if (lod0 < 1.0) {
+        // Um nivel ACIMA do borrao do lobo: no nivel dele a cobertura ainda muda em 2 texels e a direccao
+        // saltava (a aresta dura no aspero).
+        let fino = select(0.0, lod0 + SONDA_ACIMA, lod0 >= 1.0);
+        if (!memo_dv || any(memo_dr != vec4<f32>(r, fino))) {
+            memo_dv = true;
+            memo_d = sonda_direcao(p, r, fino);
+            memo_dr = vec4<f32>(r, fino);
+        }
+        // O ponto fixo: o lobo largo (e, quando a busca falha, o que sobra dele: nada no nitido, a crescer
+        // com o borrao).
+        let lod_f = sqrt(clamp(alpha * memo_d.w, 0.0, 1.0)) * f32(SONDA_NIVEIS - 1u);
+        let fixo = sonda_le(sonda_camada, memo_d.xyz, lod_f);
+        // A BUSCA ate' `SONDA_LOD_BUSCA` niveis de borrao, a passar ao ponto fixo no ultimo nivel (sem
+        // degrau: o report do dono de 04/10 — uma lasca clara onde a troca era seca).
+        let busca = 1.0 - smoothstep(SONDA_LOD_BUSCA - 1.0, SONDA_LOD_BUSCA, lod0);
+        var s = fixo;
+        if (busca > 0.0) {
             if (!memo_mv || any(memo_mr != r)) {
                 memo_mv = true;
                 memo_m = sonda_marcha(p, r);
                 memo_mp = marcha_peso;
                 memo_mr = r;
             }
+            var m = fixo * clamp(lod0, 0.0, 1.0);
             if (memo_m.w >= 0.0) {
                 let lod = sqrt(clamp(alpha * memo_m.w, 0.0, 1.0)) * f32(SONDA_NIVEIS - 1u);
-                memo_s = sonda_le(sonda_camada, memo_m.xyz, lod) * memo_mp;
-                memo_sd = vec4<f32>(r, alpha);
-                return memo_s;
+                m = mix(m, sonda_le(sonda_camada, memo_m.xyz, lod), memo_mp);
             }
+            s = mix(fixo, m, busca);
         }
-        if (!memo_dv || any(memo_dr != r)) {
-            memo_dv = true;
-            memo_d = sonda_direcao(p, r);
-            memo_dr = r;
-        }
-        let lod = sqrt(clamp(alpha * memo_d.w, 0.0, 1.0)) * f32(SONDA_NIVEIS - 1u);
-        // A busca falhou (o raio nao acerta nada): no nitido, nada; a caminho do aspero, o lobo largo
-        // pelo ponto fixo, a crescer com o borrao.
-        memo_s = sonda_le(sonda_camada, memo_d.xyz, lod) * clamp(lod0, 0.0, 1.0);
+        memo_s = s;
         memo_sd = vec4<f32>(r, alpha);
     }
     return memo_s;

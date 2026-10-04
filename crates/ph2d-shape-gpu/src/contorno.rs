@@ -432,7 +432,7 @@ impl Contorno {
                 gpu,
                 "ph2d-shape-gpu acumulacao das celulas",
                 cap * ACUMULA,
-                armazens,
+                armazens | wgpu::BufferUsages::COPY_SRC,
             );
             self.cap_celulas = cap;
             if self.relata {
@@ -632,6 +632,39 @@ impl Contorno {
         let dados = leitura.slice(..).get_mapped_range();
         let pedido: u32 = bytemuck::pod_read_unaligned(&dados[..4]);
         (u64::from(pedido), self.cap_celulas)
+    }
+
+    /// doc 121 §9.13 — **quantas das células em uso o último quadro TOCOU** (a alavanca da variante
+    /// esparsa): uma célula tocada tem um depósito das marcas ou do contorno por apagar, ou a
+    /// cobertura que o `cs_varre` gravou não é a mesma nos `PIXELS_DA_CELULA` pixels. ⚠️ Cota por
+    /// BAIXO: depósitos do preenchimento que se anulam numa célula não se vêem. Lido de volta (bloqueia).
+    pub(crate) fn celulas_tocadas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64) {
+        let (pedido, cap) = self.celulas_do_ultimo_quadro(gpu);
+        let usadas = pedido.min(cap);
+        if usadas == 0 {
+            return (0, 0);
+        }
+        let leitura = buffer(
+            gpu,
+            "ph2d-shape-gpu celulas tocadas (sonda)",
+            usadas * ACUMULA,
+            wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        );
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        enc.copy_buffer_to_buffer(&self.acumula, 0, &leitura, 0, usadas * ACUMULA);
+        gpu.queue.submit([enc.finish()]);
+        leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        let dados = leitura.slice(..).get_mapped_range();
+        let palavras: &[u32] = bytemuck::cast_slice(&dados);
+        let px = usize::try_from(PIXELS_DA_CELULA).unwrap_or(32);
+        let tocadas = palavras
+            .chunks_exact(3 * px)
+            .filter(|c| c[px..].iter().any(|&w| w != 0) || c[..px].iter().any(|&w| w != c[0]))
+            .count();
+        (tocadas as u64, usadas)
     }
 
     /// O grupo `1` do desenho: as leituras do que os passes escreveram.

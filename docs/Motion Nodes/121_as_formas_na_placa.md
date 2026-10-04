@@ -1343,3 +1343,44 @@ capacidade, produto `5/5` + sonda, `ph2d-gpu-cook` formas `2/2`. **Mutação `19
 [arnês](ferramentas/mutacao_o_buffer_de_acumulacao_2026-10-03.py) com a A13 re-ancorada e duas novas: A18 a
 cobertura gravada na palavra das marcas · A19 a coluna sem a partição; pré-voo `19/19`, corrida limpa `10`
 verdes, nenhuma por shader inválido) e a do tracejado `21/21`.
+
+### §9.13 — A VARIANTE COMPLETA ENCOLHIDA e a variante ESPARSA medida (2026-10-03, escrito ANTES de construir)
+
+Ordem do dono (03/10, antes de integrar): os itens 3 e 4 do §6 do
+[handoff de 03/10](handoffs/HANDOFF_INTEGRACAO_line_motion_value_2026-10-03.md). Comparação: o binário da
+sonda de `ed23a77b1` (`antes`), com a sonda nova `PH2D_SONDA_TRACEJADO=1` (o `Dash 2` · `Dash Gap 1,5` da
+`=127` tracejada, no contorno de cada arranjo) e o instrumento `celulas_tocadas_do_ultimo_quadro`.
+
+**A régua reproduzida, sem relógio** (`registos_dos_shaders.sh`, iGPU, `antes`): fragmento enxuta `56`
+VGPRs · `18` ondas · `15 336 B`, completa **`128` · `8`** · `34 428 B`; `cs_escreve` enxuta `64` · `16`,
+completa **`128` · `8`** · `28 136 B`; `cs_conta` `40` · `24` e `48` · `20`. Nada em scratch.
+
+**O relógio de partida** (iGPU, `PH2D_FLUID_PROFILE=1`, o regime — a 2.ª janela de `120` quadros; a 1.ª
+inclui os dois quadros pixel a pixel de antes da capacidade medida; ms):
+
+| arranjo | conta | escreve | células | desenho | soma | Vello (parede) |
+|---|---:|---:|---:|---:|---:|---:|
+| `72` esticadas, TRACEJADAS | `0,17` | `0,32` | `0,63` | `0,22` | `1,34` | `0,95` |
+| `72` esticadas, contínuas (§9.12) | `0,07` | `0,17` | `0,50` | `0,14` | `0,88` | `0,94` |
+
+⇒ o tracejado não cobra só no desenho: a contagem e a escrita correm UM fio por cópia, e com `72`
+cópias são duas ondas na placa inteira — ali a ocupação não decide nada, decide o trabalho EM SÉRIE de
+cada fio. A contagem percorre o eixo três vezes (o `ajuste_do_tracejado` com o seu laço interior e o
+`arco` de cada troço) e a escrita quatro (o ajuste outra vez, o `sub_tracejado` de cada fechado, o
+percurso). O desenho (`0,22` contra `0,14`) é o único dos quatro que é a ocupação: no regime nenhuma
+cópia passa pelo pixel a pixel, e mesmo assim o fragmento corre com os registos dele.
+
+**(3a) O fragmento — a placa escolhe a variante por quadro.** O `cs_escreve` é o único que sabe se uma
+cópia TRACEJADA vai pelo pixel a pixel (os dois primeiros quadros, a capacidade, a escrita recusada). O
+desenho passa a dois `draw_indirect` com os mesmos argumentos — o da ENXUTA e o da COMPLETA — e só um
+deles tem cópias: o `cs_soma` põe `n` cópias na enxuta e `0` na completa; uma cópia tracejada, VISÍVEL,
+que fica sem células troca-os (atómicos, o mesmo valor de todos os fios: a ordem não importa). Uma só
+chamada desenha todas as cópias, logo a ordem da mistura é a de sempre. Os argumentos vivem no buffer do
+`despacho` (palavras `[9, 17)`), que já é `INDIRECT`. Sem tracejado carregado, o desenho de hoje.
+
+**Kill-criterion (3a):** (i) sem relógio — no regime da cena tracejada o fragmento que corre é o da
+enxuta (`56` · `18`); um instrumento lê os argumentos e um gate o prova, com CONTROLO (o 1.º quadro, sem
+capacidade, desenha pela completa); (ii) a imagem igual: os `10` gates GPU da crate, os `5` do produto e
+as mutações do tracejado (`21/21`) e da acumulação (`19/19`); (iii) o relógio — sonda intercalada,
+`load < 4`, iGPU e RTX: o desenho das tracejadas a `≤ +10 %` do das contínuas do mesmo arranjo, e
+nenhum arranjo pior que `+5 %` (iGPU) / `+10 %` (RTX) na soma dos passes. Falhou ⇒ recusa medida aqui.

@@ -208,6 +208,13 @@ impl ShapePass {
         self.contorno.copias_com_contorno(gpu, n)
     }
 
+    /// **Quantas das células em uso o último desenho TOCOU, e quantas usou** (doc 121 §9.13, a
+    /// alavanca da variante esparsa) — lido de volta da placa (bloqueia). Instrumento de sondas.
+    #[must_use]
+    pub fn celulas_tocadas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64) {
+        self.contorno.celulas_tocadas_do_ultimo_quadro(gpu)
+    }
+
     /// **Quantas células o último desenho pediu, e a capacidade delas** (doc 121 §9.12) — lido de
     /// volta da placa (bloqueia). Pedido acima da capacidade ⇒ alguma cópia foi desenhada pelo
     /// caminho de sempre. Instrumento de gates e sondas.

@@ -425,6 +425,14 @@ fn sonda_relogio_das_estrelas_grandes() {
     } else {
         1.0
     };
+    // `PH2D_SONDA_TRACEJADO=1`: o contorno com o `Dash` e o `Dash Gap` da `=127` tracejada — a
+    // variante COMPLETA do shader (doc 121 §9.13).
+    if std::env::var("PH2D_SONDA_TRACEJADO").is_ok_and(|v| v == "1") {
+        use crate::motion_state::traco_esticado_demo::TRACEJADO;
+        if let Some(s) = f.stroke.as_mut() {
+            s.dash = Some((f64::from(TRACEJADO.0), f64::from(TRACEJADO.1)));
+        }
+    }
     let (ex, ey) = if modo == "conforme" {
         (1.04, 1.04)
     } else {
@@ -504,8 +512,9 @@ fn sonda_relogio_das_estrelas_grandes() {
     let placa = t.elapsed().as_secs_f64() * 1e3 / f64::from(n);
     let (com_contorno, cap) = p.copias_com_contorno(&gpu, u32::try_from(insts.len()).unwrap_or(0));
     let (pediram, cap_celulas) = p.celulas_do_ultimo_quadro(&gpu);
+    let (tocadas, usadas) = p.celulas_tocadas_do_ultimo_quadro(&gpu);
     eprintln!(
-        "  contorno calculado em {com_contorno} de {} copias (capacidade {cap} arestas) · celulas {pediram} de {cap_celulas}",
+        "  contorno calculado em {com_contorno} de {} copias (capacidade {cap} arestas) · celulas {pediram} de {cap_celulas} · tocadas {tocadas} de {usadas}",
         insts.len()
     );
     // ⛔ doc 121 §9.3 — **um relógio sobre um passe que não desenhou é um número de NADA.** Com o

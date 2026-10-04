@@ -467,6 +467,14 @@ impl PlacaDeFormas {
             .map_or((0, 0), |g| g.passe.celulas_do_ultimo_quadro(gpu))
     }
 
+    /// As células que o último desenho tocou, e as que usou (doc 121 §9.13).
+    #[cfg(test)]
+    pub(crate) fn celulas_tocadas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64) {
+        self.gpu
+            .as_ref()
+            .map_or((0, 0), |g| g.passe.celulas_tocadas_do_ultimo_quadro(gpu))
+    }
+
     /// A textura da camada — para o gate de paridade a ler de volta.
     #[cfg(test)]
     pub(crate) fn textura_da_camada(&self) -> Option<&wgpu::Texture> {

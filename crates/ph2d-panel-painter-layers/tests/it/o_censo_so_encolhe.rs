@@ -107,11 +107,6 @@ fn inertes_com_motivo() -> Vec<Inerte> {
         painter_line_type_option_id(3),
         "a fazer: os fios (Wire) na aquarela (doc 46 §2-7)",
     ));
-    v.push((
-        Watercolor,
-        PAINTER_SHAPE_RAMP_ENABLE,
-        "a fazer: a Shape Color Ramp na aquarela (doc 46 §2-7)",
-    ));
     for modo in [6u8, 7] {
         v.push((
             WetPaint,

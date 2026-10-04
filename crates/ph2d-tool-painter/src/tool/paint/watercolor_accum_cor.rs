@@ -29,6 +29,7 @@ impl PainterTool {
         // Shape "Automatic" OFF: REPLAY the coverage pass's rng stream from the same seed (identical
         // per-dab Random bases ⇒ colour and coverage agree pixel-wise), then ADVANCE the stroke
         // stream here — net one advance per batch, like every other stamp route.
+        let rampa = self.rampa_da_aguada();
         let stamp = self.wet_shape_stamp();
         let groups = self.paint.dab_groups.clone(); // same group map ⇒ the two passes stay in lock-step
         let mut rng = super::tiling::DabRng::new(self.paint.tex_rng);
@@ -169,6 +170,19 @@ impl PainterTool {
                         }
                         _ => feather(dn),
                     };
+                    // A Shape Color Ramp ([`RampaDaAguada`]): a cor do dab troca-se pela da rampa
+                    // NESTE texel.
+                    let (col, wgt) = match &rampa {
+                        Some(RampaDaAguada { lut, alfa_pesa }) if wgt > 0.0 => {
+                            let c = lut[(wgt.clamp(0.0, 1.0) * 255.0 + 0.5) as usize];
+                            let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                            (
+                                [byte(c[0]), byte(c[1]), byte(c[2])],
+                                if *alfa_pesa { wgt * c[3] } else { wgt },
+                            )
+                        }
+                        _ => (col, wgt),
+                    };
                     let idx = (base + x) * 4;
                     if mistura > 0.0 {
                         // ⚠️ O `Pigment` deposita a tinta que a brocha LARGA (`depl`), SEM a prioridade
@@ -224,5 +238,38 @@ impl PainterTool {
         // no-op (the historical stream stays byte-identical).
         self.paint.tex_rng = rng.finish();
         self.paint.wet_mistura.arrasto = arrasto_de;
+    }
+}
+
+/// **A Shape Color Ramp na aguada, no modo COR** (B&W desligado) — a mesma lei do traço digital
+/// (`stamp_ramped`): o peso do carimbo (a silhueta com o falloff, o `wgt` do splat) indexa a rampa, e
+/// a rampa é a DONA da cor — cada texel deposita `lut[wgt]`. No `Alpha Mode` Strength (e no Texture
+/// Alpha, que numa aguada não tem alfa de camada a baixar) o alfa da rampa pesa o depósito. O modo
+/// TOM (B&W) não mora aqui: remapeia a silhueta da Shape dentro do `WetShapeStamp`, como no digital.
+pub(super) struct RampaDaAguada {
+    lut: Vec<[f32; 4]>,
+    alfa_pesa: bool,
+}
+
+impl PainterTool {
+    /// A rampa da Shape no modo cor que este lote lê — `None` com ela desligada ou no modo B&W (o
+    /// caminho de sempre, ao byte).
+    pub(super) fn rampa_da_aguada(&mut self) -> Option<RampaDaAguada> {
+        if !self.paint.shape_color_ramp_enabled {
+            return None;
+        }
+        if self.paint.shape_color_ramp_bw {
+            self.ensure_shape_ramp_lut(); // o tom do `wet_shape_stamp` lê-a
+            return None;
+        }
+        let dona = super::ramp_lut::RampLutOwner::Shape;
+        self.ensure_ramp_lut(dona);
+        Some(RampaDaAguada {
+            lut: self.paint.texture_ramp_lut.clone(),
+            alfa_pesa: !matches!(
+                self.active_ramp_alpha_mode(dona),
+                ph2d_painter_brush::RampAlphaMode::None
+            ),
+        })
     }
 }

@@ -103,6 +103,9 @@ pub(super) struct WetShapeStamp {
     /// Tip-luminance normaliser (`1/max`, from [`PainterTool`]'s per-stroke scan): the coverage is
     /// wetness geometry and must saturate in the tip core — see `PaintState::wet_shape_norm`.
     img_norm: f32,
+    /// O TOM da Shape Color Ramp (B&W ligado): remapeia o valor CRU da silhueta antes de tudo, a lei
+    /// do traço digital (`stamp.rs`, `remap_shape_value`). `None` = desligado.
+    tom: Option<Vec<f32>>,
 }
 
 /// A textured tip's WETNESS ramp: a normalised tip sample at/below `TIP_WET_LO` is a true hole
@@ -119,7 +122,8 @@ impl WetShapeStamp {
     ///   the image still REPLACES the falloff, mirroring `compose_shape_silhouette`'s Image rule, so
     ///   the tip's outline shapes the wash); density = the normalised sample (the tip's texture).
     /// - PROCEDURAL tip ⇒ wet = the falloff envelope alone (the pattern must not hole the water);
-    ///   density = the pattern value. (Shape Tone ramp deliberately not applied — queued, doc 13 #7.)
+    ///   density = the pattern value.
+    /// - O tom da Shape Color Ramp remapeia o `raw` antes dos dois ramos (doc 46 §2-7).
     #[inline]
     pub(super) fn sample(
         &self,
@@ -142,6 +146,7 @@ impl WetShapeStamp {
                     radius,
                     img,
                 );
+                let raw = ph2d_painter_brush::texture::remap_shape_value(raw, self.tom.as_deref());
                 if self.is_image {
                     // Normalise by the tip's max luminance (per-stroke scan): coverage is wetness
                     // geometry that must SATURATE in the wash core; the RELATIVE texture survives
@@ -252,6 +257,8 @@ impl PainterTool {
             shape_active,
             is_image,
             img_norm: self.paint.wet_shape_norm,
+            tom: (self.paint.shape_color_ramp_enabled && self.paint.shape_color_ramp_bw)
+                .then(|| self.paint.shape_ramp_lut.clone()),
         })
     }
     /// Zero the per-stroke coverage (retain capacity). Shape-preview methods (Drag Dot / Anchored / Line)
@@ -350,6 +357,7 @@ impl PainterTool {
         // (default) = the built-in feather (byte-identical historical path). The colour splat REPLAYS
         // the same rng stream (it re-reads `tex_rng` and is the one that advances it), so both passes
         // draw identical per-dab Random bases — coverage and colour always agree pixel-wise.
+        self.ensure_shape_ramp_lut(); // o tom do `wet_shape_stamp` lê-a
         let stamp = self.wet_shape_stamp();
         // Wrapped Tiling copies are the SAME dab across the seam → one random frame each (`tiling::DabRng`).
         let groups = self.paint.dab_groups.clone();

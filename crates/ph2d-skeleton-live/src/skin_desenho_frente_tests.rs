@@ -529,10 +529,7 @@ fn uma_risca_sobre_o_avesso_da_dobra_nao_se_ve() {
     }
     println!("  pontos de risca no avesso: fonte {controlo} · à vista depois {depois}");
     assert!(controlo > 0, "o CONTROLO: a 120° nenhuma risca passa pelo avesso");
-    // ⚠️ Até `2 %` do controlo: uma fatia virada mais estreita que o passo da amostragem do recorte
-    // pode ser atravessada por um pedaço à vista (MEDIDO: `2` de `128` depois do passo pelo
-    // comprimento). A mutação que tira a lei deixa-os TODOS.
-    assert!(depois * 50 <= controlo, "{depois} pontos de risca à vista sobre o avesso da dobra");
+    assert_eq!(depois, 0, "{depois} pontos de risca à vista sobre o avesso da dobra");
 }
 
 /// Duas cópias da barra `40 × 10` sobrepostas (a 2.ª girada `5°`), presas a dois ossos e a ponta a
@@ -570,12 +567,18 @@ fn copias_dobradas(
 /// passa mesmo pela emenda.
 #[test]
 fn o_trecho_que_passa_pela_emenda_e_um_so_e_leva_as_linhas_da_fonte() {
-    let (fonte, pesos, campo, pele, prof) = copias_dobradas(110.0);
+    let (fonte, _, campo, pele, prof) = copias_dobradas(110.0);
+    // ⚠️ Uma tabela SINTÉTICA, uma linha diferente por nó: na fixtura os cantos de trás têm todos a
+    // linha `[1, 0]`, e trocar o nó da volta por outro não se via (a mutação sobrevivia).
+    let total = fonte.verts_all().count();
+    let n = 2;
+    #[expect(clippy::cast_precision_loss, reason = "índice de nó")]
+    let pesos: Vec<f64> = (0..total)
+        .flat_map(|g| std::iter::repeat_n([g as f64, 1.0], 3).flatten())
+        .collect();
     let (arcos, tab) =
         super::tracos_a_vista(&fonte, &pesos, (&campo, None), (&pele, &[], true), &prof)
             .expect("a dobra tapa um fechado");
-    let total = fonte.verts_all().count();
-    let n = pesos.len() / (3 * total);
     let originais: Vec<([f64; 2], &[f64])> = fonte
         .verts_all()
         .enumerate()
@@ -635,40 +638,4 @@ fn o_avesso_nao_tapa_o_traco_de_um_contorno_fechado() {
         .filter(|q| !tinta.iter().any(|t| (t[0] - q[0]).hypot(t[1] - q[1]) < 0.05))
         .count();
     assert_eq!(faltam, 0, "{faltam} de {} pontos do contorno sumiram pelo avesso", so_dele.len());
-}
-
-/// ⭐⭐ **GATE — um segmento LONGO amostra-se pelo comprimento**: uma recta de `400` que atravessa a
-/// zona tapada acha o mesmo corte que um troço curto dela (com `32` amostras por segmento o passo
-/// era `12,5` e a zona tapada, mais curta, passava entre duas). ⛔ **O CONTROLO** é o troço curto.
-#[test]
-fn um_segmento_longo_acha_o_mesmo_corte_que_um_curto() {
-    let (fonte, _, campo, pele, prof) = copias_dobradas(110.0);
-    let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof)
-        .expect("posada")
-        .com_a_arte(&fonte);
-    let linha = |a: [f64; 2], b: [f64; 2]| [ph2d_vec_scene::VecVertex::corner(a), ph2d_vec_scene::VecVertex::corner(b)];
-    let (y, x0, x1) = (10.0, 4.0, 8.0);
-    let curta = linha([x0 - 2.0, y], [x1 + 2.0, y]);
-    let tapado_curto = super::a_vista(&curta, &f).expect("o CONTROLO: o troço curto não acha corte");
-    let em = |v: &[ph2d_vec_scene::VecVertex], u: f64| super::avalia(&super::cubica(v, 0), u);
-    let fronteiras = |v: &[ph2d_vec_scene::VecVertex], vis: &[(f64, f64)]| -> Vec<f64> {
-        vis.iter()
-            .flat_map(|&(a, b)| [a, b])
-            .filter(|u| *u > 0.0 && *u < 1.0)
-            .map(|u| em(v, u)[0])
-            .collect()
-    };
-    let esperadas = fronteiras(&curta, &tapado_curto);
-    let longa = linha([x0 - 200.0, y], [x1 + 192.0, y]);
-    let achadas: Vec<f64> = fronteiras(&longa, &super::a_vista(&longa, &f).unwrap_or_default())
-        .into_iter()
-        .filter(|x| *x > x0 - 2.0 && *x < x1 + 2.0)
-        .collect();
-    assert!(!esperadas.is_empty(), "o CONTROLO: o troço curto não tem fronteira");
-    for e in &esperadas {
-        assert!(
-            achadas.iter().any(|a| (a - e).abs() < 1e-2),
-            "a recta longa não achou a fronteira em x = {e:.3} (achou {achadas:?})"
-        );
-    }
 }

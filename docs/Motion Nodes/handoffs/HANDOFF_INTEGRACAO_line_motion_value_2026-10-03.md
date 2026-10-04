@@ -17,7 +17,7 @@
 |---|---|
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` |
 | ramo | `line/motion-value` |
-| HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1; e `9d1058a40` · `650128529` · os docs (a memória das células `66 → 43 MB`) — ver §6.2; e `a6e067f45` · `1c8f25d1e` · `757c5356a` · `64120d51a` · `2062db7d8` + docs (o Number no Strength do Vortex) — ver §6.3; e `82f9623e2` (o grafo, §6.4); e `133e306af` · `b723b02d1` · `40a2cbc1a` · `018218976` · `62929e077` + o commit da §6.5 (os itens 3 e 4) — ver §6.5 |
+| HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1; e `9d1058a40` · `650128529` · os docs (a memória das células `66 → 43 MB`) — ver §6.2; e `a6e067f45` · `1c8f25d1e` · `757c5356a` · `64120d51a` · `2062db7d8` + docs (o Number no Strength do Vortex) — ver §6.3; e `82f9623e2` (o grafo, §6.4); e `133e306af` · `b723b02d1` · `40a2cbc1a` · `018218976` · `62929e077` + o commit da §6.5 (os itens 3 e 4) — ver §6.5; e o bloco de 04/10 (`4f0dcce34` … o commit da §6.6) — ver §6.6 |
 | base / merge-base | `main` @ `1ad60a1ce` — **0** commits do `main` por trazer; `--ff-only` possível |
 | commits | **18** (2026-10-02 → 03) · `36` ficheiros (+3 621 / −685) |
 
@@ -160,10 +160,11 @@ integrador — releia a ORDEM das fases do quadro só se outra linha mexer em `f
 | item | o endereço |
 |---|---|
 | ✅ memória no app MEDIDA (§6.1) e CORTADA (§6.2) — `66 → 43 MB` na `=127` densa | fechado |
-| ⛔ **variante ESPARSA** — RECUSADA com a tabela (§6.5) | `60 %` das células tocadas nas densas; líquido `≤ 10 %` no melhor caso, conformes piores, `+4 B`/célula. A alavanca que sobra nas células é o `cs_varre` |
-| ✅ a variante COMPLETA (com tracejado) — no regime corre a ENXUTA (§6.5) | ⏳ as tracejadas GRANDES esticadas ainda perdem para o Vello na sonda da iGPU (`1,57` contra `0,90` ms, com o Vello a receber o tracejado já cortado); no produto a alternativa é `5×` mais lenta. A alavanca é a topologia da escrita (um fio por troço), item próprio |
+| ⛔ **variante ESPARSA** — RECUSADA com a tabela (§6.5) | `60 %` das células tocadas nas densas; líquido `≤ 10 %` no melhor caso, conformes piores, `+4 B`/célula |
+| ⛔ o `cs_varre` — D1 (as famílias presentes) e D2 (`4` px por fio) RECUSADOS (§6.6) | o prefixo vale no MÁXIMO `0,10` ms nas densas da iGPU (ablação `V0`); o resto é memória. Sobra o prefixo por SUBGRUPO, tecto `0,10` ms, não construído |
+| ✅ a variante COMPLETA (com tracejado) — no regime corre a ENXUTA (§6.5) | ⏳ as tracejadas GRANDES esticadas ainda perdem para o Vello na sonda da iGPU (parede `1,58`–`1,76` contra `0,90`–`1,15` ms, com o Vello a receber o tracejado já cortado); no produto `60 fps`, e a alternativa é `5×` mais lenta. ⛔ A topologia por troço (um GRUPO por cópia) foi RECUSADA (§6.6: RTX `−49 %`, iGPU `+6 %`); a pergunta seguinte é a emissão dupla × a fase em série, por ablação |
 | a mordida do traço rente depois de uma quina | divergência DECLARADA (§9.9), sem acção |
-| `M6` / `S6` / `S8` (§9.4–§9.5) e o `fx.glow` que lê o `pump` anterior | nomeados desde 01/10, sem mudança |
+| ✅ `M6` / `S6` / `S8` e o `fx.glow` que lê o `pump` anterior | fechados (§6.6): `M6` sem código desde §9.8; `S6`/`S8` equivalentes, com número e gate de CPU; o halo pela rota do quadro — e o halo que sumia em TODO quadro por faixas |
 | `fk.rs` duplicado em seis crates (bug #11) | wave própria |
 
 ### §6.1 — Depois deste handoff (03/10, mesma linha, após o smoke aprovado)
@@ -330,6 +331,66 @@ Contratos congelados: nenhum.
 
 **Smoke:** §7.2.
 
+### §6.6 — O bloco de 04/10 (`CLAUDE.md` §0.10): o tracejado por troço, `M6`/`S6`/`S8`, o brilho, o `cs_varre`
+
+Plano e kill-criteria ANTES de construir, tabelas e recusas: [doc 121 §9.14](../121_as_formas_na_placa.md).
+Uma rodada intercalada, partida em três por motivos medidos: a placa presa `25` min por outra linha deixou
+células vazias (as duas ferramentas passaram a repetir a célula) e as densas da iGPU decidiram o (d) e
+encurtaram o resto.
+
+| commit | o quê |
+|---|---|
+| `4f0dcce34` | plano + kill-criteria dos quatro itens (§9.14) |
+| `90672dcb2` → `f76f0212b` | (a) o passe de GRUPO por cópia tracejada — construído, medido e ⛔ RECUSADO (o contorno volta ao texto de antes) |
+| `90672dcb2` → `d770fcfd9` | (d) D1 e D2 no `cs_varre` — construídos, medidos e ⛔ RECUSADOS |
+| `90672dcb2` (parte que fica) | (b) gate de CPU `a_esquadria_de_um_vertice_liso_nunca_passa_da_flecha_do_nivel`; (c) `ShapePass::redesenha` |
+| `5b88822fe` | (c) o halo do `fx.glow` pela rota do quadro (`motion_glow_layer::halo_do_quadro`); sai a `RECUSA_FORMA_COM_BRILHO` |
+| `2c16ead81` | (c) ⭐ o halo COBRE onde o destino é transparente — o brilho voltava a zero em todo quadro por faixas |
+| `e2340ad18` · `879e471b7` · o da shell | gates (o redesenho, a costura do halo), arneses, fecho (fmt, clippy, a contagem herdada da família de comunicação `64 → 65`), `present_chrome` sem o `motion` |
+| `556e2f261` · `97790b57f` | as duas ferramentas de medição repetem a célula que a placa ocupada deixou vazia |
+| `51ff6fee4` | memória: o censo de rota conta o cozimento; uma cerca implicada por outra nunca decide |
+
+- **(a) ⛔** iGPU tracejadas esticadas `1,18`–`1,20 → 1,27` ms (`+6 %`; `conta + escreve 0,41 → 0,49`, o
+  critério pedia `≤ 0,22`); RTX `0,37 → 0,19` (`−49 %`); `A0` (todas pelo grupo) densas iGPU `2,89`. A
+  imagem era a mesma (gate pelas duas escritas: `6` famílias `40/40` pelo grupo, alfa `≤ 1`).
+- **(d) ⛔** densas iGPU base `1,01`–`1,03` · D1 `0,98`–`0,99` (conformes `+8`–`20 %`) · D2 `1,03`–`1,05`
+  (esticadas `+0,13`–`0,18`) · `V0` sem o prefixo `0,93` (o tecto da alavanca).
+- **(b) ✅** `126 870` vértices lisos, ZERO esquadrias acima da cerca, a pior `0,086` px.
+- **(c) ✅** as `4` cenas já desenhavam as formas pela placa (o censo media o COZIMENTO); o defeito real
+  era o halo, e a foto da `=70` achou um segundo, anterior a esta linha: **com o passe de formas ligado o
+  brilho não aparecia em rota nenhuma** (o quadro por faixas tem o `game_rt` transparente e o tonemap
+  divide pelo alfa). Depois das duas curas a `=70` vai ao dispositivo (`device: HIBRIDO`, formas «do
+  dispositivo») com o halo verde à volta da forma, a `60 fps`. Censo de rota: dispositivo `116` de `128`.
+- **No produto** (`mede_formas_na_placa.sh`, `=127` densa, `16 384` cópias, `1930 × 1040`): contínua e
+  tracejada `16,6`–`16,8 ms` (`60 fps`) nas duas placas, formas «do dispositivo», células `114 688` =
+  `43 MB` — o mesmo de antes do bloco.
+
+**Foundational tocado (aditivo):** `ph2d-render` — `render_instances_only` ganha `gpu_extra`; o composite
+do brilho escreve cobertura (byte a byte igual sobre destino opaco; o emissivo das sprites ganha a mesma
+cura). **Ids/consts novos:** nenhum (sai a `RECUSA_FORMA_COM_BRILHO`). **Contratos congelados:** nenhum.
+**Shell:** a camada das formas desenha-se antes dos passes de luz (`present.rs`) e cola-se onde sempre
+(`present_chrome.rs`); o `present_fx` recebe a placa das formas.
+
+**⚠️ Para quem lê o diff:** o `cs_escreve_grande` e o D1/D2 entraram e saíram na mesma jornada — o
+`contorno.wgsl`, o `contorno.rs`, o `contorno_sondas.rs` e o `tests/it/tracejado.rs` estão IGUAIS aos de
+`4a1c99644`; as tabelas vivem no doc 121.
+
+**Smoke:** §7.3.
+
+#### §6.6.1 — O fecho do bloco (corrido nesta árvore, sobre o diff desde `1ad60a1ce`)
+
+- nextest-impacted **`17 549/17 549`** · `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` ✓ ·
+  clippy `--all-targets --all-features -D warnings` de `ph2d-shape-gpu`, `ph2d-app-motion`, `ph2d-render` e
+  `ph2d-host-desktop` ✓ (dois achados no gate novo do brilho, curados em `fecho: clippy …`) · `fmt --check` ✓ ·
+  censos **`127/127`** (`12/12`) · machete ✓.
+- GPU: `ph2d-shape-gpu --test it --ignored` **`12/12`** · `motion_shape_placa::gpu_tests --ignored` **`6/6`** ·
+  `ph2d-gpu-cook formas --ignored` **`2/2`** · `ph2d-render --lib motion_fx` **`26/26`** · costura da shell
+  `placa_tests` **`3/3`** · gate de CPU da esquadria dos lisos ✓.
+- **Mutação `9/9`** ([arnês](../ferramentas/mutacao_o_bloco_do_9_14_2026-10-04.py)): R1 · B1–B3 · H1–H5 — a
+  B3 sobreviveu à 1.ª corrida (fixtura com halo forte de mais) e sangra depois da cura da fixtura.
+- Perfil do loop (`agent-loop-profile.sh`, 20 sessões): paralelismo `1,14` · `test:check` `2,2:1` · Edit `35 %`
+  · contexto relido `492 mil` · respostas por sessão `233` ✓ · contexto inicial `63 mil` ✓.
+
 ## §7 — OS SMOKES
 
 ✅ **Smoke do dono APROVADO em 03/10** (a `=127` pelo comando abaixo); e de novo depois da §6.2, a memória das células).
@@ -399,6 +460,21 @@ zero `Compiling`. As duas cenas fotografadas na tela virtual (`fotografa_cena.sh
 4. Deu errado se: os traços faltarem, ficarem tortos ou piscarem, o contorno contínuo aparecer partido, ou a
    barra cair muito abaixo de 60. Para comparar com o desenho antigo, ponha `PH2D_FORMAS_NA_PLACA=0`
    antes de `cargo` (fica bem mais lento na versão tracejada — é o esperado).
+
+### §7.3 — Smoke da §6.6 (a `=70`: o brilho com a forma, agora pela placa)
+
+1. No terminal:
+   ```
+   cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=70 cargo run -p ph2d-host-desktop --profile smoke
+   ```
+2. Espere a janela abrir; não precisa clicar em nada. É a cena dos efeitos de luz: em cima, as sombras; no
+   meio, um halo esticado; em baixo à esquerda, uma FORMA branca grande (fotografada a 1930×2000: ela
+   aparece no canto de baixo da vista — numa janela mais baixa, role a vista para baixo).
+3. Tem de acontecer: a forma branca de baixo tem um BRILHO verde à volta, que se espalha para fora da
+   borda; a barra de baixo mostra cerca de 60 fps.
+4. Deu errado se: a forma aparecer sem brilho nenhum (era o que acontecia antes), ou se o brilho aparecer
+   deslocado da forma (ao lado em vez de à volta). Para comparar com o desenho antigo, ponha
+   `PH2D_FORMAS_NA_PLACA=0` antes de `cargo`: o brilho tem de ser parecido.
 
 ## §8 — A UMA LINHA proposta para o `CLAUDE.md` §5 (o integrador aplica; ≤ 700 B)
 

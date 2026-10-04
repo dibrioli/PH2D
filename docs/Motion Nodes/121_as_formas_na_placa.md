@@ -1552,3 +1552,102 @@ compilados de seguida e medidos intercalados por `mede_sonda_das_estrelas.sh` (`
 `PLACAS="igpu rtx"`, `CORRIDAS=2`) com `PH2D_SONDA_TRACEJADO=0` e `=1`; `registos_dos_shaders.sh` sobre
 `base` e `F`; no app, `mede_formas_na_placa.sh` com o `F` (`=127` densa contínua e tracejada, as duas
 placas). Os binários das ablações (`V0`) e dos pedaços sozinhos não vão a commit.
+
+**O resultado da rodada (2026-10-04)** — `mede_sonda_das_estrelas.sh`, `PERFIL=1`, `2` corridas por célula
+(lidas lado a lado, iguais ao `0,01` salvo nota), a SOMA dos passes da 2.ª janela do perfilador (o
+regime), ms; a carga `ANTES` de cada corrida `≤ 4` (a maioria `0,2`–`3,5`). A rodada partiu-se em
+três por dois motivos MEDIDOS: (1) a placa presa `25` min por um arnês de outra linha deixou células
+VAZIAS e a 1.ª rodada seguiu com buracos — as duas ferramentas passaram a repetir a célula vazia
+(`REPETE`, `556e2f261` · `97790b57f`); (2) as densas da iGPU decidiram o (d) e tiraram o D1/D2/F do
+resto (a série que o resultado de um passo justifica, §0.10).
+
+**(a) ⛔ RECUSADO — o passe de GRUPO por cópia tracejada** (`cs_escreve_grande`, construído e medido em
+`90672dcb2`, retirado em `f76f0212b`):
+
+| tracejado, soma | base | `A` (grupo, `≥ 24` itens) | `A0` (todas pelo grupo) |
+|---|---:|---:|---:|
+| iGPU `72` esticadas | `1,20` · `1,18` | **`1,27` · `1,27`** (`+6 %`) | `1,27` · `1,27` |
+| — `conta + escreve` | `0,42` · `0,40` | **`0,49`** | `0,49` |
+| iGPU `72` conformes | `0,55` · `0,55` | `0,56` · `0,56` | `0,56` |
+| iGPU `1 225` densas | `1,33` · `1,33` | `1,33` (nenhuma chega ao limiar) | **`2,89`** |
+| RTX `72` esticadas | `0,37` · `0,37` | **`0,19` · `0,19`** (`−49 %`) | `0,19` |
+| RTX `72` conformes | `0,09` | `0,09` | `0,09` |
+| RTX `1 225` densas | `0,12` · `0,12` | `0,14` · `0,14` | `0,17` |
+
+A imagem era a MESMA (o gate do tracejado pelas duas escritas: as `6` famílias esticadas `40/40` pelo
+grupo, alfa `≤ 1`, `0` px `> 1`). Mas o critério era o do proxy de telemóvel, e lá o grupo PERDE: a
+escrita em série de `72` fios não é o que custa na iGPU — `64` fios por cópia, a contagem e a escrita
+pela emissão duas vezes, a fase em série do fio `0` sobre a memória de grupo e `13 KB` de memória de
+grupo por grupo (`128` VGPRs da variante completa) custam mais do que a série que tiram. Na RTX, onde
+`72` fios deixavam a placa vazia, o mesmo código corta metade. ⇒ **a alavanca da escrita tracejada no
+proxy de telemóvel NÃO é a topologia por troço**; quem voltar a isto mede primeiro, por ablação, a
+emissão dupla contra a fase em série (as duas perguntas que esta rodada não separou), e não reconstrói
+o grupo. Parede da sonda (iGPU, esticadas tracejadas): placa `1,58`–`1,76` contra Vello `0,90`–`1,15`
+— a perda para o Vello com o tracejado já cortado fora do relógio continua; no produto a alternativa é
+`5×` mais lenta (§9.13).
+
+**(d) ⛔ RECUSADOS — D1 (as famílias presentes) e D2 (`4` pixels por fio)** (`90672dcb2`, retirados em
+`d770fcfd9`); e a ablação que mede a alavanca (iGPU, contínuo):
+
+| soma | base | D1 | D2 | F (`A + D1 + D2`) | `V0` (sem o prefixo) |
+|---|---:|---:|---:|---:|---:|
+| `72` esticadas | `0,88` · `0,90` | `0,92` · `0,93` | **`1,08` · `1,04`** | `1,07` · `1,06` | `0,88` · `0,87` |
+| `72` conformes | `0,63` · `0,61` | **`0,75` · `0,68`** | `0,76` · `0,76` | `0,76` | `0,58` · `0,65` |
+| `1 225` densas | `1,03` · `1,01` | `0,98` · `0,99` (`−4 %`) | `1,03` · `1,05` | `1,11` · `1,10` | **`0,93` · `0,93`** |
+
+⇒ o prefixo do `cs_varre` vale no MÁXIMO `0,10` ms nas densas (`10 %`, o tecto `V0`) e nada nas
+esticadas; o D1 tira `0,04` nas densas (o critério pedia `0,05`) e põe `+0,05`–`0,12` nas conformes; o D2
+não ganha nas densas e perde `+0,13`–`0,18` nas outras (menos fios, mais trabalho em série por fio e a
+mesma memória). O que sobra no `cs_varre` é a memória (as `3` leituras e a escrita por pixel), não o
+prefixo. A alavanca restante, com tecto medido de `0,10` ms: o prefixo por operações de SUBGRUPO
+(`Features::SUBGROUP`, que o `ph2d-gpu` não pede hoje) — não construída: `≤ 10 %` de um passe de `1 ms`
+numa cena que já corre a `60 fps`.
+
+**RTX, contínuo** (`A` só acrescenta o 4.º prefixo e um despacho vazio): esticadas `0,22` = `0,22`,
+conformes `0,09`–`0,10` iguais, densas `0,10` = `0,10` (uma corrida do `A` leu `0,12` com a parede a
+`2,45` ms — outlier de carga).
+
+**(b) ✅ `M6` · `S6` · `S8` fechadas.** `M6`: o código que ela mutava saiu em `5febba023` (§9.8). `S6` e
+`S8`: **equivalentes, com número** — gate de CPU
+[`a_esquadria_de_um_vertice_liso_nunca_passa_da_flecha_do_nivel`](../../crates/ph2d-shape-gpu/src/eixo_tests.rs):
+`126 870` vértices lisos (círculo, elipse, anel × `5` larguras × `45` afins, pelo nível que o shader
+escolhe), ZERO esquadrias acima da cerca, a pior a `0,086` px (`0,853` da flecha do nível). A cerca do
+recuo e o nível de detalhe já implicam a da folga; a `S8` corta no máximo esse excesso, e só no pixel a
+pixel.
+
+**(c) ✅ O brilho no dispositivo** (`5b88822fe`). As formas das `4` cenas já iam à placa (o censo media
+o COZIMENTO); o defeito real era o halo: num quadro do dispositivo ele lia as listas da CPU, de um quadro
+VELHO. `motion_glow_layer::halo_do_quadro` — as sprites do buffer do cozimento, as formas pela camada do
+passe de formas REDESENHADA no RT do halo (`ShapePass::redesenha`, gate `o_redesenho_e_o_mesmo_desenho`:
+`0` px diferentes em `3` quadros) — e sai a `RECUSA_FORMA_COM_BRILHO`. Censo de rota: a `=70` passa a
+«híbrido» (dispositivo `116` de `128` cenas com saída). Gates puros: `a_device_frame_halo_never_reads_the_stale_cpu_lists`
+e `shapes_drawn_by_the_shape_pass_leave_the_tile_path` (cada um com o CONTROLO da rota da CPU); costura da
+shell `o_halo_recebe_o_buffer_da_placa_e_a_camada_das_formas` e a ordem «desenha antes do halo».
+
+⛔→✅ **E a foto achou o defeito que nenhum gate via: com o passe de formas ligado o `fx.glow` NÃO
+BRILHAVA, em rota nenhuma** (`2c16ead81`). Fotos da `=70` a `1930 × 2000` na tela virtual: com
+`PH2D_FORMAS_NA_PLACA=0 PH2D_GPU_COOK=0` (a lei antiga inteira) a forma verde tem um halo largo; com a
+placa ligada, NENHUM — pelo redesenho novo E pelo tile antigo (diagnóstico fora de commit que forçava o
+tile: a mesma imagem sem halo). Um 2.º diagnóstico (o redesenho limpava o RT do halo a vermelho `4,0`)
+provou que o halo era escrito e se perdia depois. **Mecanismo:** o passe de formas força o quadro por
+FAIXAS (ADR-0154, `plan.banded |= placa.ativa()`), em que o `game_rt` começa TRANSPARENTE para a faixa
+de sprites se colar sobre as de baixo; o `fs_composite` do brilho soma luz com alfa `0` e o tonemap
+divide a cor pelo alfa (`tonemap.wgsl`, `straight = rgb / max(a, 1e-6)`, e volta a multiplicar) — a luz
+fora das peças saía a ZERO. Sem faixas o `game_rt` é opaco e a luz sobrevivia: por isso o defeito só
+existe desde que as formas foram à placa (W2), e é anterior a esta linha. **Cura:** o `fs_composite`
+escreve a cobertura `a = min(máx(rgb), 1)` e o composite mistura o alfa `src·(1 − dst) + dst` — sobre o
+opaco dá `1` (o quadro de sempre, byte a byte), sobre o transparente a divisão do tonemap devolve a
+mesma luz, e a colagem pré-multiplicada da faixa compõe-na como *screen* (nunca escurece). Gate de placa
+`the_halo_carries_its_coverage_over_a_transparent_target` (`alfa ≥ máx(rgb)` em todo pixel do halo, com
+o CONTROLO do destino opaco: alfa `1` e a cor = o destino + o MESMO halo). O emissivo das sprites, que
+usa o mesmo composite, ganha a mesma cura.
+
+**Mutação `9` de `9`** ([arnês](ferramentas/mutacao_o_bloco_do_9_14_2026-10-04.py), pré-voo `9/9`, corridas
+LIMPAS verdes dos quatro comandos): o redesenho mudo (R1, no gate do redesenho) · o halo sem cobertura,
+o composite que guarda o alfa do destino, e o que cobre também o opaco (B1–B3, no gate do brilho — a B3
+SOBREVIVEU à 1.ª corrida: com a intensidade de fábrica a cobertura dava `1` em todo o lado; a fixtura
+passou a um halo FRACO, com o controlo de que há pixels abaixo de `1`) · o halo do dispositivo que lê as
+listas da CPU e as formas da placa pelo tile (H1–H2, gates puros) · a camada que deixa de se desenhar
+antes do halo, o halo sem o buffer do dispositivo e sem o redesenho (H3–H5, costura da shell). As
+mutações do passe de grupo e do D1/D2 saíram com o código deles; os arneses da acumulação e do tracejado
+voltaram às âncoras de antes (o código que mutam é o de `4a1c99644`).

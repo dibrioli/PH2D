@@ -48,7 +48,7 @@ pub(crate) fn faixa(v: &Vista, px: &[Px]) -> Vec<usize> {
 }
 
 /// `(px, |Δ| médio, px com |Δ| > 0,2)` da razão `viz/solo` contra a do Cycles nos px `quais`.
-fn mede(
+pub(crate) fn mede(
     px: &[Px],
     quais: &[usize],
     (viz, solo): (&[u8], &[u8]),
@@ -72,7 +72,7 @@ fn mede(
 
 /// Com `PH2D_REFLEXO_FOTOS=<pasta>`: `nossa | Cycles | o erro na zona medida` (a razão `viz/solo`; a zona a
 /// cinzento-escuro, mais claro onde erra).
-fn foto(
+pub(crate) fn foto(
     px: &[Px],
     quais: &[usize],
     (viz, solo): (&[u8], &[u8]),

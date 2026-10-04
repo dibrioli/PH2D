@@ -29,6 +29,8 @@ pub(crate) struct Vista {
     pub(crate) rug2: f32,
     alvo: [f32; 3],
     meia: f32,
+    /// `None` = ortográfica; senão o olho a `dist` do alvo, na direcção `de` (perspectiva, `meia` no alvo).
+    pub(crate) dist: Option<f32>,
 }
 
 /// A arrumação da cena 42 (o report de 04/10: degraus, mordidas, borrão).
@@ -46,6 +48,7 @@ pub(crate) const PERTO: Vista = Vista {
     rug2: 0.05,
     alvo: ALVO,
     meia: MEIA,
+    dist: None,
 };
 
 /// A caixa AZUL atrás da VERDE vista do centro do cromo, e o cromo áspero (o 2.º report de 04/10: a
@@ -62,6 +65,7 @@ pub(crate) const PAR: Vista = Vista {
     rug2: 0.3,
     alvo: ALVO,
     meia: MEIA,
+    dist: None,
 };
 
 /// A caixa AZUL longe meio atrás da VERDE perto vistas do centro do cromo (a borda delas partilhada na
@@ -79,6 +83,7 @@ pub(crate) const JUNTA: Vista = Vista {
     rug2: 0.05,
     alvo: [-0.0562, 0.2449, 0.1013],
     meia: 0.14,
+    dist: None,
 };
 
 /// A azul meio atrás da verde vista do centro do cromo, e a câmara do app (de lado, junto ao limbo) — o 4.º
@@ -95,6 +100,49 @@ pub(crate) const SOBREPOSTA: Vista = Vista {
     rug2: 0.05,
     alvo: [-0.0023, 0.2549, 0.2350],
     meia: 0.12,
+    dist: None,
+};
+
+/// O 5.º report do dono (04/10): o ALUMÍNIO da cena 42 a `0` (o espelho, a 1.ª peça) vê a azul ATRÁS da verde
+/// vista do centro dele e meio à vista de cada ponto — o reflexo mostrava a verde, um VAZIO e só depois a azul.
+/// A cena 42 inteira (as outras foscas), a azul onde o dono a pôs, a câmara do app ampliada.
+pub(crate) const VAZIO: Vista = Vista {
+    oraculo: include_bytes!("../fixtures/oraculo_reflexo_vazio.csv.gz"),
+    pecas: &[
+        ([0.0, 0.2, 1.35], 0.2, false),
+        ([0.0, 0.18, 0.72], 0.18, true),
+        ([-0.5, 0.15, 0.6], 0.15, true),
+        ([0.0, 0.3, 0.0], 0.3, false),
+        ([0.0, 0.2, -0.7], 0.2, false),
+        ([0.55, 0.17, -0.25], 0.17, false),
+    ],
+    albedos: &[0.15, 0.5, 0.8, 0.3, 0.65],
+    // O olho do app (perspectiva de fábrica, meia altura `0,16` no alvo `(0, 0,2, 1,35)`) apontado ao par.
+    de: [-0.83658, 0.54309, -0.07195],
+    rug2: 0.05,
+    alvo: [0.48328, -0.12219, 1.26725],
+    meia: 0.2073,
+    dist: Some(1.0),
+};
+
+/// A pose da 2.ª foto do dono (report 5): a azul logo À FRENTE da verde vista da câmara, o olho de fábrica do
+/// app (`PH2D_SONDA_YAW=4.6`) apontado ao alumínio.
+pub(crate) const FOTO2: Vista = Vista {
+    oraculo: include_bytes!("../fixtures/oraculo_reflexo_foto2.csv.gz"),
+    pecas: &[
+        ([0.0, 0.2, 1.35], 0.2, false),
+        ([0.0, 0.18, 0.72], 0.18, true),
+        ([-0.55, 0.15, 0.75], 0.15, true),
+        ([0.0, 0.3, 0.0], 0.3, false),
+        ([0.0, 0.2, -0.7], 0.2, false),
+        ([0.55, 0.17, -0.25], 0.17, false),
+    ],
+    albedos: &[0.15, 0.5, 0.8, 0.3, 0.65],
+    de: [-0.7272, 0.3431, -0.5945],
+    rug2: 0.05,
+    alvo: [0.0, 0.2, 1.35],
+    meia: 0.22,
+    dist: Some(2.635),
 };
 
 /// Um pixel do cromo: `(i, j)`, o ponto, a normal e `[viz, viz05, solo, solo05]` do Cycles.
@@ -122,8 +170,69 @@ fn raio(v: &Vista, i: u32, j: u32) -> ([f32; 3], [f32; 3]) {
     ];
     let x = (i as f32 + 0.5) / LADO as f32 * 2.0 - 1.0;
     let y = 1.0 - (j as f32 + 0.5) / LADO as f32 * 2.0;
+    if let Some(dist) = v.dist {
+        let k = v.meia / dist;
+        return (
+            v.olho(),
+            norm([0, 1, 2].map(|e| f[e] + k * (x * r[e] + y * up[e]))),
+        );
+    }
     let o = [0, 1, 2].map(|e| v.alvo[e] + v.meia * (x * r[e] + y * up[e]) - 10.0 * f[e]);
     (o, f)
+}
+
+impl Vista {
+    /// O olho (só na perspectiva).
+    fn olho(&self) -> [f32; 3] {
+        let d = norm(self.de);
+        std::array::from_fn(|e| self.alvo[e] + self.dist.unwrap_or(10.0) * d[e])
+    }
+
+    /// A direcção da vista que chega ao ponto `p`.
+    pub(crate) fn vista_em(&self, p: [f32; 3]) -> [f32; 3] {
+        match self.dist {
+            None => norm(self.de.map(|c| -c)),
+            Some(_) => {
+                let o = self.olho();
+                norm(std::array::from_fn(|e| p[e] - o[e]))
+            }
+        }
+    }
+
+    /// A câmara do desenhista: a do oráculo (ortográfica ou em perspectiva).
+    pub(crate) fn camera(&self) -> crate::Camera {
+        let Some(dist) = self.dist else {
+            return camera_do_blender(self.de, self.alvo, self.meia);
+        };
+        let f = norm(self.de.map(|c| -c));
+        let up0 = [0.0, 1.0, 0.0];
+        let up = norm([0, 1, 2].map(|e| up0[e] - dot(up0, f) * f[e]));
+        let r = [
+            f[1] * up[2] - f[2] * up[1],
+            f[2] * up[0] - f[0] * up[2],
+            f[0] * up[1] - f[1] * up[0],
+        ];
+        let o = self.olho();
+        let k = dist / self.meia;
+        let (n, l) = (1.0e-3, 20.0);
+        let a = l / (l - n);
+        let mut vp = [[0.0f32; 4]; 4];
+        for c in 0..3 {
+            vp[c] = [k * r[c], k * up[c], a * f[c], f[c]];
+        }
+        vp[3] = [
+            -k * dot(r, o),
+            -k * dot(up, o),
+            -a * dot(f, o) - a * n,
+            -dot(f, o),
+        ];
+        crate::Camera {
+            view_proj: vp,
+            olho: o,
+            perspectiva: true,
+            dir_vista: f,
+        }
+    }
 }
 
 pub(crate) fn oraculo(v: &Vista) -> Vec<Px> {
@@ -218,7 +327,7 @@ pub(crate) fn desenha_ate(
     let mats: Vec<[f32; ph2d_material::wgsl::PACKED]> = std::iter::once(cromo)
         .chain(v.albedos.iter().map(|a| fosca(*a)))
         .collect();
-    let mut c = cena(&objs, &mats, camera_do_blender(v.de, v.alvo, v.meia));
+    let mut c = cena(&objs, &mats, v.camera());
     c.tamanho = (LADO, LADO);
     if chao {
         c.chao = Some(0.0);
@@ -235,7 +344,7 @@ fn reflete_vizinha(v: &Vista, p: &Px) -> bool {
 /// O ponto que o raio reflectido em `p` acerta é VISTO do centro do cromo (onde a captura dele está)? A face
 /// virada para o centro e nenhuma outra vizinha no caminho.
 pub(crate) fn visto_do_centro(v: &Vista, p: &Px) -> bool {
-    let f = norm(v.de.map(|c| -c));
+    let f = v.vista_em(p.p);
     let fn_ = dot(f, p.n);
     let r: [f32; 3] = std::array::from_fn(|e| f[e] - 2.0 * fn_ * p.n[e]);
     let Some((t, k)) = v.pecas[1..]
@@ -268,7 +377,7 @@ pub(crate) fn visto_do_centro(v: &Vista, p: &Px) -> bool {
 
 /// A vizinha que o raio reflectido em `p` acerta primeiro (conta analítica).
 pub(crate) fn vizinha_refletida(v: &Vista, p: &Px) -> Option<usize> {
-    let f = norm(v.de.map(|c| -c));
+    let f = v.vista_em(p.p);
     let fn_ = dot(f, p.n);
     let r: [f32; 3] = std::array::from_fn(|e| f[e] - 2.0 * fn_ * p.n[e]);
     v.pecas[1..]

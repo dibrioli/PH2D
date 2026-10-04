@@ -199,6 +199,8 @@ mod tests_reflexo_junta;
 #[cfg(test)]
 mod tests_reflexo_perto;
 #[cfg(test)]
+mod tests_reflexo_tela;
+#[cfg(test)]
 mod tests_sol;
 #[cfg(test)]
 mod tests_sonda_cpu;

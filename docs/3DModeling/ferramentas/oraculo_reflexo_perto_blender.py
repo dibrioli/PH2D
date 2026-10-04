@@ -39,6 +39,8 @@ PECAS = [
 DE = (1.0, 0.45, 0.3)
 ALVO = (0.0, 0.3, 0.0)
 MEIA = 0.34
+# `None` = ortográfica; senão o olho fica a `DIST` do alvo, na direcção `DE` (perspectiva).
+DIST = None
 
 argv = sys.argv[sys.argv.index("--") + 1 :]
 saida = argv[0]
@@ -78,6 +80,41 @@ if len(argv) > 1 and argv[1] == "sobreposta":
     DE = (0.861, 0.497, 0.104)
     ALVO = (-0.0023, 0.2549, 0.2350)
     MEIA = 0.12
+# `-- <saida> vazio`: o report 5 do dono (04/10): a bola de ALUMÍNIO (o espelho: o dono pô-la a `0`) vê a azul
+# ATRÁS da verde vista do centro dela e meio à vista de cada ponto — o reflexo mostrava a verde, um VAZIO e só
+# depois a azul. A cena 42 inteira (as outras foscas), a azul onde o dono a pôs, a câmara do app
+# (`PH2D_SONDA_YAW=4.3`, pitch `0,52`) ampliada sobre o par refletido.
+if len(argv) > 1 and argv[1] == "vazio":
+    PECAS = [
+        ("aluminio", (0.0, 0.2, 1.35), 0.2, False, 1.0),
+        ("caixa_verde", (0.0, 0.18, 0.72), 0.18, True, 0.15),
+        ("caixa_azul", (-0.5, 0.15, 0.6), 0.15, True, 0.5),
+        ("cromo", (0.0, 0.3, 0.0), 0.3, False, 0.8),
+        ("bola_vermelha", (0.0, 0.2, -0.7), 0.2, False, 0.3),
+        ("bola_amarela", (0.55, 0.17, -0.25), 0.17, False, 0.65),
+    ]
+    # ⚠️ A câmara do app é em PERSPECTIVA (a lente de fábrica do `Orbit`, meio campo `atan(18/50)`): com a meia
+    # altura `0,16` o olho fica a `0,444` do alvo `(0, 0,2, 1,35)`, em `(−0,3533, 0,4209, 1,1953)`. Aqui o MESMO
+    # olho aponta ao par refletido (`DIST` à frente dele, meia altura `MEIA` ali). Ortográfica, não havia vazio.
+    DE = (-0.83658, 0.54309, -0.07195)
+    ALVO = (0.48328, -0.12219, 1.26725)
+    MEIA = 0.2073
+    DIST = 1.0
+# `-- <saida> foto2`: a pose da 2.ª foto do dono (report 5): a azul logo À FRENTE da verde vista da câmara, o
+# olho de fábrica do app (`PH2D_SONDA_YAW=4.6`, alvo `0`, meia `0,8`: `(−1,916, 1,104, −0,2164)`) apontado ao alumínio.
+if len(argv) > 1 and argv[1] == "foto2":
+    PECAS = [
+        ("aluminio", (0.0, 0.2, 1.35), 0.2, False, 1.0),
+        ("caixa_verde", (0.0, 0.18, 0.72), 0.18, True, 0.15),
+        ("caixa_azul", (-0.55, 0.15, 0.75), 0.15, True, 0.5),
+        ("cromo", (0.0, 0.3, 0.0), 0.3, False, 0.8),
+        ("bola_vermelha", (0.0, 0.2, -0.7), 0.2, False, 0.3),
+        ("bola_amarela", (0.55, 0.17, -0.25), 0.17, False, 0.65),
+    ]
+    DE = (-0.7272, 0.3431, -0.5945)
+    ALVO = (0.0, 0.2, 1.35)
+    MEIA = 0.22
+    DIST = 2.635
 
 
 def b(p):
@@ -175,11 +212,20 @@ chao.data.materials.append(chao_mat)
 chao.visible_camera = False
 
 cam_d = bpy.data.cameras.new("cam")
-cam_d.type = "ORTHO"
-cam_d.ortho_scale = 2.0 * MEIA
 cam = bpy.data.objects.new("cam", cam_d)
 dv = Vector(DE).normalized()
-cam.location = Vector(b(ALVO)) + Vector(b(tuple(dv * 6.0)))
+if DIST is None:
+    cam_d.type = "ORTHO"
+    cam_d.ortho_scale = 2.0 * MEIA
+    cam.location = Vector(b(ALVO)) + Vector(b(tuple(dv * 6.0)))
+else:
+    import math
+
+    cam_d.type = "PERSP"
+    cam_d.sensor_fit = "AUTO"
+    cam_d.angle = 2.0 * math.atan(MEIA / DIST)
+    cam_d.clip_start = 1.0e-3
+    cam.location = Vector(b(ALVO)) + Vector(b(tuple(dv * DIST)))
 cam.rotation_euler = (-Vector(b(tuple(dv)))).to_track_quat("-Z", "Y").to_euler()
 s.collection.objects.link(cam)
 s.camera = cam
@@ -269,7 +315,7 @@ with gzip.open(saida, "wt", encoding="utf-8") as f:
             f"`solo*`), sem denoise, 1 reflexo + 2 ricochetes difusos, filtro 0,01 px, céu uniforme 1, chão "
             f"difuso branco infinito em y = 0 invisível à câmara; as peças pretas aos raios difusos.\n")
     f.write("# Gerado por docs/3DModeling/ferramentas/oraculo_reflexo_perto_blender.py — NÃO editar à mão.\n")
-    f.write(f"# CENA lado={LADO} pecas={PECAS} de={DE} alvo={ALVO} meia={MEIA}\n")
+    f.write(f"# CENA lado={LADO} pecas={PECAS} de={DE} alvo={ALVO} meia={MEIA} dist={DIST}\n")
     f.write("# Só os pixels do cromo, com gzip; o ponto e a normal de cada um tiram-se da esfera e da câmara; viz/viz2 = o cromo metal "
             f"branco de rugosidade 0 / {RUG2} com as vizinhas e o chão; solo/solo2 = o cromo sozinho a ver o céu.\n")
     f.write("i,j," + ",".join(COLUNAS) + "\n")

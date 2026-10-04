@@ -132,6 +132,15 @@ fn sonda_do_render_por_malha() {
                 if let Some(m) = num("PH2D_SONDA_MEIA") {
                     s.vp_mut().cam.half_extent = m;
                 }
+                // A câmara do quadro, para um oráculo a reproduzir (`oraculo_reflexo_perto_blender.py`).
+                let c = &s.vp_mut().cam;
+                println!(
+                    "SONDA cena {n}: câmara alvo {:?} · meia {} · olho {:?} · base {:?}",
+                    c.target,
+                    c.half_extent,
+                    c.eye(),
+                    c.basis()
+                );
                 if estilo {
                     let mut st = s.style;
                     st.curvature.convex = [1.0, 0.55, 0.25];

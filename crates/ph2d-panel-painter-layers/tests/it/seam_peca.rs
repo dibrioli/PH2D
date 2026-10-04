@@ -1,6 +1,6 @@
 //! ⭐⭐⭐ **O PAINEL EM MODO PEÇA 3D** (`docs/3D/30` §4, W3): o que a peça ainda não oferece é
-//! pintado APAGADO e não fica registado — não há clique mudo —, o menu de ajustes apaga os que leem a
-//! vizinhança, e fora da peça tudo volta (o CONTROLO de cada gate).
+//! pintado APAGADO e não fica registado — não há clique mudo —, o menu de ajustes apaga os que leem o
+//! plano da imagem, e fora da peça tudo volta (o CONTROLO de cada gate).
 //!
 //! ⚠️ Lê o que a PINTURA registou (`MockPanelHost::paint`), que é o que o rato pode alcançar.
 
@@ -86,10 +86,11 @@ fn na_peca_o_que_ela_nao_oferece_nao_e_clicavel() {
     }
 }
 
-/// ⭐⭐⭐ **GATE — na peça o menu de ajustes APAGA os que leem a vizinhança** (o desfoque não se
-/// clica; o Inverter sim). CONTROLO: fora da peça o desfoque clica-se.
+/// ⭐⭐⭐ **GATE — na peça o menu de ajustes APAGA só os que leem o PLANO da imagem** (o Halftone
+/// não se clica; o desfoque e o Inverter sim — `docs/3D/30` §14). CONTROLO: fora da peça o
+/// Halftone clica-se.
 #[test]
-fn na_peca_o_menu_de_ajustes_apaga_os_que_leem_a_vizinhanca() {
+fn na_peca_o_menu_de_ajustes_apaga_os_que_leem_o_plano_da_imagem() {
     let opcao = |k: AdjustmentKind| {
         let i = AdjustmentKind::ALL
             .iter()
@@ -97,13 +98,21 @@ fn na_peca_o_menu_de_ajustes_apaga_os_que_leem_a_vizinhanca() {
             .expect("o tipo está no menu");
         painter_adjustment_kind_option_id(i as u8)
     };
-    let (blur, invert) = (
+    let (blur, invert, trama) = (
         opcao(AdjustmentKind::GaussianBlur),
         opcao(AdjustmentKind::Invert),
+        opcao(AdjustmentKind::Halftone),
     );
     let peca = registados(true, pilha(true).0, true);
     assert!(peca.contains(&invert), "o Inverter serve na peça");
-    assert!(!peca.contains(&blur), "o desfoque está apagado na peça");
+    assert!(
+        peca.contains(&blur),
+        "o desfoque serve na peça (borra na superfície)"
+    );
+    assert!(!peca.contains(&trama), "o Halftone está apagado na peça");
     let doc = registados(false, pilha(true).0, true);
-    assert!(doc.contains(&blur), "o CONTROLO: no 2D o desfoque clica-se");
+    assert!(
+        doc.contains(&trama),
+        "o CONTROLO: no 2D o Halftone clica-se"
+    );
 }

@@ -40,6 +40,7 @@ impl Painel {
         pl::set_current_dock_shows_layers(true);
         pl::set_current_layers(p.panel_layers().cloned());
         pl::set_current_layers_on_piece(p.panel_shows_the_piece());
+        pl::set_current_spatial_units(p.panel_spatial_units());
         pl::set_current_piece_refusal(p.piece_layer_refusal().map(str::to_owned));
         pl::set_current_selection(p.panel_selection());
         self.host
@@ -70,6 +71,19 @@ impl Painel {
             }
         }
         assert!(chegou, "o painel não pôs nada no barramento");
+    }
+
+    /// Um clique que só muda o painel (abrir um menu): nada vai ao barramento.
+    fn abre(&mut self, p: &PainterTool, id: NodeId) {
+        let r = self.onde(p, id);
+        for ev in self.host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+            self.host
+                .apply_panel_event::<PainterLayersPanel>(&mut self.st, ev);
+        }
+        assert!(
+            self.host.drained_actions().is_empty(),
+            "abrir o menu não fala com a ferramenta"
+        );
     }
 
     fn clica(&mut self, p: &mut PainterTool, id: NodeId) {
@@ -467,4 +481,116 @@ fn o_traco_numa_camada_nova_e_o_traco_na_base() {
         "o traço numa camada nova difere do traço na base em {:.1} degraus",
         pior * 255.0
     );
+}
+
+/// ⭐⭐⭐⭐ **GATE (seam, W6) — o menu «+» põe um DESFOQUE na peça e ela borra NA SUPERFÍCIE**
+/// (`docs/3D/30` §14): o rato abre o menu, escolhe Desfoque Gaussiano (servido na peça), arrasta o
+/// raio — a cor do traço espalha-se para amostras que ele não tocou, o raio grava-se nas unidades da
+/// peça e o número lê-se em `%` do tamanho dela — e os dois `Ctrl+Z` (o arrasto, o ajuste) devolvem a
+/// peça ao bit.
+///
+/// ⛔ CONTROLO: com o raio a zero (como o ajuste nasce) a peça não muda um bit.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn o_desfoque_pelo_menu_borra_a_peca_e_o_ctrl_z_o_tira() {
+    use ph2d_tool_painter::ids::{
+        PAINTER_LAYERS_ADD_ADJUSTMENT, painter_adjustment_kind_option_id,
+    };
+    use ph2d_tool_painter::{AdjustmentKind, AdjustmentParams, LayerKind, SliderNumber};
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu);
+    let mut p = painter_vermelho();
+    let mut painel = Painel::novo();
+    quadro(Some(&mut s), Some(&mut p));
+    let virgem = amostras(&s);
+    traco(&mut s, &mut p, 420.0);
+    quadro(Some(&mut s), Some(&mut p));
+    let pintada = amostras(&s);
+    let tocadas: Vec<usize> = (0..pintada.len())
+        .filter(|&i| pintada[i] != virgem[i])
+        .collect();
+    assert!(!tocadas.is_empty(), "o traço pintou a base");
+
+    // O menu «+», aberto e escolhido pelo rato.
+    painel.abre(&p, PAINTER_LAYERS_ADD_ADJUSTMENT);
+    let i = AdjustmentKind::ALL
+        .iter()
+        .position(|k| *k == AdjustmentKind::GaussianBlur)
+        .expect("o desfoque está no menu");
+    painel.clica(&mut p, painter_adjustment_kind_option_id(i as u8));
+    quadro(Some(&mut s), Some(&mut p));
+    let pilha = |s: &crate::Sculpt3dScene| {
+        s.objects[s.active]
+            .pilha
+            .as_ref()
+            .expect("pilha")
+            .pilha()
+            .clone()
+    };
+    let desfoque = pilha(&s).root()[0];
+    let params = |s: &crate::Sculpt3dScene| match pilha(s).get(desfoque).map(|c| c.kind.clone()) {
+        Some(LayerKind::Adjustment(a)) => a.params,
+        _ => panic!("o topo é o ajuste"),
+    };
+    assert!(
+        matches!(params(&s), AdjustmentParams::GaussianBlur(_)),
+        "nasceu um desfoque"
+    );
+    assert_eq!(
+        bits(&amostras(&s)),
+        bits(&pintada),
+        "CONTROLO: raio zero não muda um bit"
+    );
+    assert!(
+        p.piece_layer_refusal().is_none(),
+        "a peça não recusou o desfoque"
+    );
+
+    // O raio, arrastado a ~60 % do curso.
+    painel.arrasta(
+        &mut p,
+        painter_layer_widget_id(desfoque.0, PainterLayerWidget::AdjParam0),
+        0.02,
+        0.6,
+    );
+    quadro(Some(&mut s), Some(&mut p));
+    s.sync_mesh(&gpu);
+    let borrada = amostras(&s);
+    let AdjustmentParams::GaussianBlur(g) = params(&s) else {
+        panic!("desfoque")
+    };
+    let ph2d_tool_painter::SpatialUnits::Surface { size } = p.panel_spatial_units() else {
+        panic!("na peça o raio é das unidades dela")
+    };
+    let curso = ph2d_tool_painter::SURFACE_RADIUS_MAX * size;
+    assert!(
+        g.radius > 0.3 * curso && g.radius < 0.8 * curso,
+        "o raio {} não está a ~60 % do curso ({curso}) nas unidades da peça",
+        g.radius
+    );
+    assert_eq!(
+        ph2d_tool_painter::adjustment_slider_numbers_in(&params(&s), p.panel_spatial_units())[0],
+        SliderNumber::Affine {
+            scale: ph2d_tool_painter::SURFACE_RADIUS_MAX * 100.0,
+            offset: 0.0,
+            integer: false
+        },
+        "o número do raio lê-se em % da peça"
+    );
+    let fora = (0..borrada.len())
+        .filter(|&i| borrada[i] != pintada[i] && !tocadas.contains(&i))
+        .count();
+    assert!(
+        fora > 0,
+        "o desfoque não espalhou a cor para amostras que o traço não tocou"
+    );
+
+    // `Ctrl+Z` ×2: o arrasto, depois o ajuste — a peça pintada, ao bit.
+    assert!(tecla(&mut s, false), "o 1.º Ctrl+Z");
+    quadro(Some(&mut s), Some(&mut p));
+    assert!(tecla(&mut s, false), "o 2.º Ctrl+Z");
+    quadro(Some(&mut s), Some(&mut p));
+    assert_eq!(pilha(&s).len(), 1, "o ajuste saiu");
+    assert_eq!(bits(&amostras(&s)), bits(&pintada), "a peça voltou ao bit");
 }

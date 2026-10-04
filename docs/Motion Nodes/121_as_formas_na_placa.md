@@ -1502,3 +1502,53 @@ esticadas abaixo e as conformes PIORAM — e a lista das tocadas custa `4 B` por
 `=127` densa do app), o que viola o critério (ii) por construção. **Fica a densa.** Para quem voltar a
 isto: a alavanca que sobra nas células é o `cs_varre` (`0,24 ms` nas densas, um fio por pixel com os cinco
 passos do prefixo em memória de grupo), não o apagar.
+
+### §9.14 — UM BLOCO: o tracejado por troço, as mutações nomeadas, o brilho no dispositivo e o `cs_varre` (2026-10-04, escrito ANTES de construir)
+
+Ordem do dono (`CLAUDE.md` §0.10): os quatro itens abertos da família do passe de formas num só plano, um
+lote de binários e UMA rodada de medição intercalada. Comparação: o binário da sonda de `4a1c99644`
+(`base`). As recusas medidas do §9.4–§9.13 (herdar a bissectriz, costurar as correntes, estreitar a
+célula, a variante esparsa) NÃO se reconstroem.
+
+**O inventário (código lido; o (c) medido no app, tela virtual `1930 × 1040`, `PH2D_MOTION_ROUTE_LOG=1`):**
+
+| item | causa | cura | régua |
+|---|---|---|---|
+| (a) tracejadas grandes esticadas: soma `1,17` ms, parede `1,57` contra `0,90` do Vello (iGPU) | o `cs_escreve` é UM fio por cópia; numa cópia tracejada grande o fio anda os `N` troços × `P` pedaços em série (`72` fios = `2` ondas na placa inteira) | `cs_escreve_grande`: um GRUPO de `64` por cópia tracejada — o arco de cada item em paralelo, o prefixo do arco por sub-caminho e o ajuste numa volta em memória de grupo (a MESMA ordem de soma do pixel a pixel ⇒ os mesmos bits), cada fio conta as arestas dos seus troços, prefixo no grupo, e escreve; a caixa reduz-se no grupo. As cópias vão a ele por um 4.º terço da `contagem` (a marca) com o prefixo no `cs_soma` e um despacho indirecto `[17, 20)` | sonda intercalada, a soma dos passes |
+| (b) `M6` | o código que ela mutava (as duas correntes do contorno, `aresta_em`) SAIU em `5febba023` (§9.8); a única corrente que sobra é a dos blocos LOCAIS do preenchimento (`blocos.rs`, `area`), com gate próprio | fecha: o arnês marca-a obsoleta | `git log -S` |
+| (b) `S6` | NÃO é «`0,1` px»: sem a cerca, um vértice LISO toma a esquadria INTEIRA, excesso `r·(1/cos(θ/2) − 1) ≈ r·tol/R` — até `~tol` (`0,25` px) quando a meia largura `r` chega ao raio `R` da curva; sobreviveu porque nenhuma fixtura tem `r ≈ R` | gate novo `o_vertice_liso_e_a_junta_redonda`: uma curva esticada com `r ≈ 0,9 R` no ecrã, contra a ÁREA VERDADEIRA (supersamostragem `32²` da união dos troços com discos nos vértices lisos — a lei da casa, «a redonda num ponto liso»), pelos pontos do PRÓPRIO eixo | o gate novo e o arnês da faixa |
+| (b) `S8` | a folga da caixa da peça só existe no pixel a pixel (`peca_do_eixo`; o contorno calculado não tem caixa); sem ela a caixa encurta até `0,1` px onde a esquadria de um liso passa de `r` | mede-se no gate da `S6` (mesma fixtura, pixel a pixel) | a diferença máxima de cobertura |
+| (c) `=114`, `=115`, `=120` | ⛔ **a premissa caiu:** as formas das QUATRO cenas já são desenhadas pela placa (`[formas] … pela PLACA`, rota da CPU). O que fica na CPU é o COZIMENTO: o contacto do colisor (doc 109, outra família) e uma cena sem estágio que despache (`=120`, por desenho) | fecha por medição | o `[formas]` do app |
+| (c) `=70` e o brilho que lê o `pump` anterior | num quadro do dispositivo a bomba da CPU não corre (`motion_state.rs`, `gpu_live`), mas a camada do halo é montada das listas da CPU (`present_fx.rs`, `layer_instances(&pump.instances, &pump.vector_instances, …)`): as sprites são de um quadro VELHO e as formas não existem — por isso a `=70` recusa a placa (`RECUSA_FORMA_COM_BRILHO`). Alcançável hoje: um `fx.glow` com sprites e sem forma vai ao dispositivo e o halo fica congelado | **c1** as sprites do halo saem do buffer do dispositivo (o `draw_scratch` já aceita `gpu_extra`); **c2** as formas do halo saem da CAMADA do passe de formas (já `Rgba16Float`: o HDR do `tint` sobrevive, que era o porquê do tile), desenhada ANTES do passe do brilho e colada depois no mundo como hoje; sai a `RECUSA_FORMA_COM_BRILHO` | gate puro da fonte do halo + a `=70` no app |
+| (d) `cs_varre` `0,24` ms nas densas da iGPU | um fio por pixel: `3` leituras atómicas, `5` passos do prefixo com `10` barreiras, as `4` palavras do registo; o `cs_zera` apaga `3` palavras por pixel | **D1** — as famílias PRESENTES na cópia (bits no registo): o `cs_varre` só lê essas e devolve-as a zero depois de as ler, e o `cs_zera` passa a apagar UMA palavra (a cobertura) e o registo; **D2** — `4` pixels por fio (`8` fios por célula): o prefixo de `4` em registos e `3` passos em memória de grupo | ablação `V0` (sem o prefixo) + D1 + D2 |
+
+**Kill-criteria (DIRETIVA §5), um por item:**
+
+- **(a)** iGPU, `load < 4`, `PH2D_FLUID_PROFILE=1`, a SOMA dos passes: nas `72` esticadas tracejadas
+  `conta + escreve ≤ 0,22` ms (de `0,40`) e a soma `≤ 1,00` (de `1,17`); nenhum arranjo pior que `+5 %`
+  (iGPU) / `+10 %` (RTX), tracejado e contínuo; a imagem igual (os `11` gates GPU da crate, os `5` do
+  produto, `gpu-cook formas` `2/2`, as mutações do tracejado `21/21` e da acumulação `19/19`, e uma
+  mutação nova do caminho de grupo a sangrar). O limiar de itens decide-se pela ablação `A0` (TODA cópia
+  tracejada pelo grupo): se ela não perde para `A` nas densas, o limiar é zero (uma porta só). ⚠️
+  **Previsão escrita antes:** o (a) sozinho NÃO põe a parede das tracejadas esticadas abaixo da do Vello
+  — as células delas pedem `0,62` ms (as arestas dos traços), e o Vello corta o tracejado na CPU, fora do
+  relógio. Se a parede ficar acima, a tabela diz quanto.
+- **(b)** `S6`: o gate novo lê o pior desvio da área verdadeira `≤ 0,05` no binário de hoje, com o
+  CONTROLO de que a fixtura tem esquadrias de lisos `≥ 0,15` px fora do arco, e a mutação `S6` lê
+  `≥ 0,10` (sangra). `S8`: a diferença de cobertura com e sem a folga no pixel a pixel `≤ 1/255` ⇒
+  EQUIVALENTE, recusa medida; acima, o gate mata-a. `M6`: fecha pelo `git log`.
+- **(c)** a `=70` vai ao dispositivo (`[motion-route]`) com as formas pelo dispositivo (`[formas] … do
+  dispositivo`) e o halo das formas e das sprites presente na foto (`PH2D_GLOW_DIAG=1`); um gate puro da
+  fonte do halo vermelho antes (num quadro do dispositivo ela lê o `pump`); o censo de rota sobe `19 → 20`
+  das `23` cenas com forma; a shell não cresce (`the_shell_only_shrinks`); sem `fx.glow` o quadro é o de
+  sempre (o passe não corre).
+- **(d)** densas iGPU: a soma `−5 %` (`≥ 0,05` ms de `1,01`); nenhum arranjo pior que `+5 %` (iGPU) /
+  `+10 %` (RTX); a imagem igual (os gates e a mutação da acumulação) e, para o D1, uma mutação nova
+  (o `cs_varre` que não devolve a zero) a sangrar no gate da cena que muda. Pedaço que não mexe o relógio
+  sai (recusa medida aqui).
+
+**A rodada (uma só):** os binários `base` · `A` · `A0` · `D1` · `D2` · `V0` · `F` (`A + D1 + D2`),
+compilados de seguida e medidos intercalados por `mede_sonda_das_estrelas.sh` (`PERFIL=1`,
+`PLACAS="igpu rtx"`, `CORRIDAS=2`) com `PH2D_SONDA_TRACEJADO=0` e `=1`; `registos_dos_shaders.sh` sobre
+`base` e `F`; no app, `mede_formas_na_placa.sh` com o `F` (`=127` densa contínua e tracejada, as duas
+placas). Os binários das ablações (`V0`) e dos pedaços sozinhos não vão a commit.

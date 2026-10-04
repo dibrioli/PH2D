@@ -447,3 +447,120 @@ fn diag_o_maior_vao_cosido() {
     }
     eprintln!("maior vao cosido: {:.4} texel em (36, {})", pior.0, pior.1);
 }
+
+/// ⏱️ **SONDA — a FOTO na CPU da malha desenhada** (A5-a: a cúspide junto à tampa), sem a placa:
+/// rasteriza os triângulos POR ORDEM (o último por cima), textura ao texel mais perto, sobre branco,
+/// `SONDA_ESCALA` amostras por px de ecrã na janela `SONDA_X0..Y1`; com e sem costura, em
+/// `target/prova/imagem_<g2>_{sem,com}.ppm`.
+#[test]
+#[ignore = "SONDA, nao gate"]
+fn diag_a_foto_da_imagem() {
+    let g = |k: &str, d: f32| {
+        std::env::var(k)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(d)
+    };
+    let (g1, g2, escala) = (
+        g("SONDA_G1", 36.0),
+        g("SONDA_G2", -144.0),
+        g("SONDA_ESCALA", 8.0),
+    );
+    let j = [
+        g("SONDA_X0", -1.8),
+        g("SONDA_Y0", 0.3),
+        g("SONDA_X1", -0.5),
+        g("SONDA_Y1", 0.75),
+    ]
+    .map(f64::from);
+    let p = palco((g1, g2));
+    let px = pixels();
+    std::fs::create_dir_all("target/prova").expect("pasta");
+    for (nome, costura) in [("sem", false), ("com", true)] {
+        let m = desenhada(&p, costura, false);
+        let passo = 1.0 / (f64::from(PPM) * f64::from(escala));
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "pixels"
+        )]
+        let (w, h) = (
+            ((j[2] - j[0]) / passo) as usize,
+            ((j[3] - j[1]) / passo) as usize,
+        );
+        let mut img = vec![[255.0_f64; 3]; w * h];
+        for t in &m.tris {
+            let q = t.map(|i| m.local[i as usize].map(f64::from));
+            let uv = t.map(|i| m.uv[i as usize].map(f64::from));
+            let area = (q[1][0] - q[0][0]) * (q[2][1] - q[0][1])
+                - (q[2][0] - q[0][0]) * (q[1][1] - q[0][1]);
+            if area == 0.0 {
+                continue;
+            }
+            let lo = [
+                q[0][0].min(q[1][0]).min(q[2][0]),
+                q[0][1].min(q[1][1]).min(q[2][1]),
+            ];
+            let hi = [
+                q[0][0].max(q[1][0]).max(q[2][0]),
+                q[0][1].max(q[1][1]).max(q[2][1]),
+            ];
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "pixels"
+            )]
+            let ix = |x: f64| (((x - j[0]) / passo).max(0.0) as usize).min(w);
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "pixels"
+            )]
+            let iy = |y: f64| (((j[3] - y) / passo).max(0.0) as usize).min(h);
+            for yy in iy(hi[1])..(iy(lo[1]) + 1).min(h) {
+                for xx in ix(lo[0])..(ix(hi[0]) + 1).min(w) {
+                    #[expect(clippy::cast_precision_loss, reason = "pixels")]
+                    let s = [
+                        j[0] + (xx as f64 + 0.5) * passo,
+                        j[3] - (yy as f64 + 0.5) * passo,
+                    ];
+                    let b1 = ((s[0] - q[0][0]) * (q[2][1] - q[0][1])
+                        - (q[2][0] - q[0][0]) * (s[1] - q[0][1]))
+                        / area;
+                    let b2 = ((q[1][0] - q[0][0]) * (s[1] - q[0][1])
+                        - (s[0] - q[0][0]) * (q[1][1] - q[0][1]))
+                        / area;
+                    let b0 = 1.0 - b1 - b2;
+                    if b0 < 0.0 || b1 < 0.0 || b2 < 0.0 {
+                        continue;
+                    }
+                    let u = b0 * uv[0][0] + b1 * uv[1][0] + b2 * uv[2][0];
+                    let v = b0 * uv[0][1] + b1 * uv[1][1] + b2 * uv[2][1];
+                    #[expect(
+                        clippy::cast_possible_truncation,
+                        clippy::cast_sign_loss,
+                        reason = "texel"
+                    )]
+                    let (tx, ty) = (
+                        ((u * f64::from(IMG_W)) as u32).min(IMG_W - 1),
+                        ((v * f64::from(IMG_H)) as u32).min(IMG_H - 1),
+                    );
+                    let k = ((ty * IMG_W + tx) * 4) as usize;
+                    let a = f64::from(px[k + 3]) / 255.0;
+                    let o = &mut img[yy * w + xx];
+                    for c in 0..3 {
+                        o[c] = f64::from(px[k + c]).mul_add(a, o[c] * (1.0 - a));
+                    }
+                }
+            }
+        }
+        let mut f = format!("P6\n{w} {h}\n255\n").into_bytes();
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "um canal"
+        )]
+        f.extend(img.iter().flat_map(|c| c.map(|x| x.round() as u8)));
+        std::fs::write(format!("target/prova/imagem_{g2}_{nome}.ppm"), f).expect("ppm");
+    }
+}

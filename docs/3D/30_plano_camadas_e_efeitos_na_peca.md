@@ -733,8 +733,14 @@ pincelada na BASE, sem camada nenhuma** (`relevo_painel::diag_a_orla_sobre_as_ri
 e com a profundidade da camada de cima a `0` a cor vermelha ocupa exactamente a zona da orla. ⇒ a orla
 **não é das camadas**: é a parede do impasto DENTRO da tinta, alta demais — altura média `0,32` do raio da
 bola na tinta cheia (`0,19` onde o alfa é `192–254`), quase de lado para a luz, e a borda vermelha
-fica cinzenta. O 2D comprime essas alturas com o tecto de vidro (`soft_ceiling`, joelho `24 px`); na
-peça o relevo chega cru (`docs/3D/29`). Decisão de aparência pedida ao dono (ver o handoff).
+fica cinzenta. O dono escolheu «comprimir como no 2D» — e a medição seguinte derrubou essa cura: o joelho do
+tecto do 2D é **`24` cargas = `384 px`** de relevo (`impasto_ceiling::H_KNEE`, fora de alcance de
+propósito), e a pincelada da foto tem `~60 px` no ecrã; o tecto **não actuaria**. A inclinação da parede
+na peça é a do 2D (a altura em píxeis de ecrã sobre a largura em píxeis: o bisel de `~45°` que o
+`DEPTH_UNIT_PX = 16` desenha). ⇒ a diferença está em COMO a luz física da cena desenha uma parede de 45°+
+(difusa, brilho, o horizonte de `docs/3D/29` §8) contra o sombreado RELATIVO do 2D (`Rig::shade_over`).
+⛔ **Não aplicado** (não mudaria a imagem). É a 2.ª tarefa da próxima janela: pôr o 2D e a peça lado a
+lado sobre a MESMA pincelada (o 2D como oráculo) antes de mexer na luz.
 
 A lei da parte (§18, lei 2) passou da cobertura linear à `body_profile` do pincel: sobre tinta sólida de
 outra camada, o relevo da de cima só existe onde a tinta dela tem CORPO (nenhum sobre a mancha

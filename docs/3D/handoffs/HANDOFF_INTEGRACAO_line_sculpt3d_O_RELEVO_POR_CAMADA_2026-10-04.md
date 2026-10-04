@@ -181,8 +181,19 @@ mudou).
 ## §10. ABERTO (nomeado)
 
 - ⏳ **A parede do impasto na peça com pincéis grossos** (3.ª foto do dono, 04/10, doc 30 §18.1): uma orla
-  cinzenta à volta da tinta — também numa camada só. É a altura crua (`0,32` do raio a `48 px`), sem o
-  tecto de vidro do 2D. Pergunta de aparência feita ao dono; não é das camadas.
+  cinzenta à volta da tinta — também numa camada só (medido: igual na base). NÃO é das camadas nem da
+  altura: o tecto do 2D não actuaria (joelho `384 px` contra `~60 px`), e a inclinação é a do 2D (bisel
+  `~45°`). É a luz física da peça a desenhar a parede. O dono escolheu «parecer como no 2D».
+
+## §11. A PRÓXIMA JANELA (decidido pelo dono a 04/10)
+
+1. **Os efeitos de vizinhança borram também o relevo** (Gaussiano, Nitidez, Bloom, Sombras/Realces), no 2D
+   e na peça, a mesma regra — doc 30 §17 (o desenho técnico por decidir, o critério `100 ms` a `32x`).
+2. **A parede do impasto na peça a parecer a do 2D**: primeiro o ORÁCULO — a mesma pincelada (pincel
+   `48 px`, `Impasto`) renderizada pelo Painter 2D e pela peça, lado a lado, com as sondas
+   `relevo_painel::diag_a_orla_sobre_as_riscas` (`PH2D_SONDA_PINCEL`, `PH2D_SONDA_NA_BASE`,
+   `PH2D_SONDA_DIR`) — e só depois mexer na luz da peça (`tinta_inclina`, horizonte, brilho). ⛔ O tecto
+   de vidro do 2D já foi medido e não é a alavanca (doc 30 §18.1).
 - ✅ **Decisão do dono (04/10): os efeitos de vizinhança borram TAMBÉM o relevo** (Gaussiano, Nitidez,
   Bloom, Sombras/Realces), no 2D e na peça, com a mesma regra — é a PRÓXIMA onda, janela nova (doc 30
   §17: o desenho técnico por decidir e o critério de custo).

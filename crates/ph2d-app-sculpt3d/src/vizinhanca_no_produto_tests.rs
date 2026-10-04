@@ -140,10 +140,13 @@ fn pilha_translucida(k: u8) -> PilhaDaPeca {
 /// Quantos bytes diferem e a maior diferença — o alfa sempre, a cor só onde o
 /// alfa da CPU é visível (`> 0`).
 ///
-/// ⚠️ Debaixo de alfa nulo a cor direita é a de um resto do calor dividido por
-/// `~1e-6` — ruído de `f32` amplificado (`282` bytes, pior `200`, na pilha
-/// translúcida a `8x`, todos de alfa `0`) — e ninguém a lê: o achatamento no
-/// plano da peça usa o fundo quando o alfa é `0` (`pilha_da_peca::achata`).
+/// ⚠️ Debaixo de alfa nulo a cor direita é a de um resto da cauda do calor
+/// (`~1e-7`) dividido por ele — ruído de `f32` amplificado, e a CPU e a placa
+/// despré-multiplicam em limiares diferentes (`1e-6` contra `f32::EPSILON`):
+/// `2 560` bytes, pior `200`, na pilha translúcida a `8x`, TODOS de alfa `0`.
+/// Ninguém lê essa cor: o achatamento no plano da peça usa o fundo quando o
+/// alfa é `0` (`pilha_da_peca::achata`). Limpar o resto na lei foi escrito,
+/// medido COSMÉTICO (a CPU já devolve `(0,0,0,0)` com alfa `≤ 1e-6`) e retirado.
 fn compara(cpu: &[u8], placa: &[u8]) -> (usize, u8) {
     cpu.chunks(4)
         .zip(placa.chunks(4))

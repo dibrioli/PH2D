@@ -15,7 +15,7 @@ struct HeatPass {
     n: u32,      // the graph's rows (samples)
     total: u32,  // width · height (the buffers, with the fold's tail)
     width: u32,  // fold width
-    mode: u32,   // load: 1 = premultiply; step: 0 = T₀, 1 = T₁, 2 = recurrence; store: 1 = scalar
+    mode: u32,   // load: 1 = premultiply on read; step: 0 = T₀, 1 = T₁, 2 = recurrence
     coef: f32,   // d_k
     escala: f32, // 2 / λ_sup
     _pad0: u32,
@@ -88,10 +88,6 @@ fn cs_heat_step(
     y_buf[i] = y_buf[i] - hp.coef * v;
 }
 
-// Below the polynomial's error the heat is ZERO (`RESTO` of `difusao.rs`, the same rule): a
-// colour whose coverage is below it is zero entirely; a scalar field (the S/H luma) stays.
-const RESTO: f32 = 1e-6;
-
 // y → the destination work texture (still premultiplied: the combine un-premultiplies).
 @compute @workgroup_size(8, 8, 1)
 fn cs_heat_store(@builtin(global_invocation_id) g: vec3<u32>) {
@@ -99,9 +95,5 @@ fn cs_heat_store(@builtin(global_invocation_id) g: vec3<u32>) {
     if g.x >= hp.width || i >= hp.total {
         return;
     }
-    var o = y_buf[i];
-    if hp.mode == 0u && abs(o.a) < RESTO {
-        o = vec4<f32>(0.0);
-    }
-    textureStore(heat_dst, vec2<i32>(g.xy), o);
+    textureStore(heat_dst, vec2<i32>(g.xy), y_buf[i]);
 }

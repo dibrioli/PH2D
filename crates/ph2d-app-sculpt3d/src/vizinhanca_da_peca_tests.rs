@@ -449,12 +449,3 @@ fn a_cor_por_vertice_segue_o_prefixo_com_vizinhos() {
     crate::tinta_da_peca::pilha::cor_por_vertice_da_composta(&mut obj);
     assert!(iguais(&obj), "abrir o ficheiro deixou a cor gravada velha");
 }
-
-/// ⭐ **O resto que a placa limpa é o MESMO que a CPU limpa** — duas cópias de
-/// uma constante divergem em silêncio (a placa não depende da `ph2d-mesh-colors`).
-#[test]
-fn o_resto_do_shader_e_o_da_cpu() {
-    let wgsl = include_str!("../../ph2d-render/src/shaders/surface_heat.wgsl");
-    let linha = format!("const RESTO: f32 = {:e};", ph2d_mesh_colors::difusao::RESTO);
-    assert!(wgsl.contains(&linha), "o shader não declara `{linha}`");
-}

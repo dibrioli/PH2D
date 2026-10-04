@@ -43,24 +43,11 @@ use crate::{Tinta, cantos, sitio_quad, sitio_tri};
 /// O erro máximo do polinómio sobre `e^{−tλ}` em `[0, λ_sup]` (na cor `0..1`).
 const ERRO_DO_POLINOMIO: f64 = 1e-6;
 
-/// Abaixo disto o calor é ZERO — o erro do polinómio ([`ERRO_DO_POLINOMIO`]).
-/// A cauda de `e^{−tA}` longe de uma mancha deixa restos de `~1e-7`, e quem
-/// despré-multiplica corta-os num limiar dele: a CPU em `1e-6`, a placa em
-/// `f32::EPSILON` — uma amostra de alfa nulo saía `(0,0,0,0)` numa e com a cor
-/// da mancha na outra (`2 560` bytes a `8x`, medido). Limpos aqui, os dois lados
-/// leem o mesmo zero.
-pub const RESTO: f32 = ERRO_DO_POLINOMIO as f32;
-
 /// O que o calor sabe somar: uma cor `[f32; 4]` (pré-multiplicada, quem chama
 /// decide) ou um escalar.
 pub trait Canal: Copy + Send + Sync {
     /// O zero.
     const ZERO: Self;
-    /// Sem o [`RESTO`]: uma cor de cobertura abaixo dele é zero (a cor inteira —
-    /// a cor direita de um alfa minúsculo é qualquer coisa). Um escalar fica: ali
-    /// ninguém divide pelo alfa, e limpar a cauda de um impulso tirava-lhe `0,9 %`
-    /// da variância (medido, `σ = 16` amostras).
-    fn limpo(self) -> Self;
     /// `b − a`.
     fn menos(b: Self, a: Self) -> Self;
     /// `self += k · v`.
@@ -69,10 +56,6 @@ pub trait Canal: Copy + Send + Sync {
 
 impl Canal for f32 {
     const ZERO: Self = 0.0;
-    #[inline]
-    fn limpo(self) -> Self {
-        self
-    }
     #[inline]
     fn menos(b: Self, a: Self) -> Self {
         b - a
@@ -85,14 +68,6 @@ impl Canal for f32 {
 
 impl Canal for [f32; 4] {
     const ZERO: Self = [0.0; 4];
-    #[inline]
-    fn limpo(self) -> Self {
-        if self[3].abs() < RESTO {
-            [0.0; 4]
-        } else {
-            self
-        }
-    }
     #[inline]
     fn menos(b: Self, a: Self) -> Self {
         [b[0] - a[0], b[1] - a[1], b[2] - a[2], b[3] - a[3]]
@@ -475,9 +450,6 @@ impl Difusao {
             });
             std::mem::swap(&mut anterior, &mut atual);
             std::mem::swap(&mut atual, &mut seguinte);
-        }
-        for y in u.iter_mut() {
-            *y = y.limpo();
         }
     }
 

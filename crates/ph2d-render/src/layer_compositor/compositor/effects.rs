@@ -265,8 +265,8 @@ impl LayerCompositor {
         }
         if let Some([lo, hi]) = surface_sigmas {
             // (2)+(3) on a SURFACE: the two tone maps are the surface heat of the luma.
-            self.run_surface_heat(gpu, (WorkSel::Sh(0), WorkSel::Sh(1)), lo, false, true);
-            self.run_surface_heat(gpu, (WorkSel::Sh(0), WorkSel::Blur(1)), hi, false, true);
+            self.run_surface_heat(gpu, (WorkSel::Sh(0), WorkSel::Sh(1)), lo, false);
+            self.run_surface_heat(gpu, (WorkSel::Sh(0), WorkSel::Blur(1)), hi, false);
         } else {
             // (2) shadows tone map: blur sh[0] → sh[1].
             self.upload_blur_weights(gpu, lo_weights);

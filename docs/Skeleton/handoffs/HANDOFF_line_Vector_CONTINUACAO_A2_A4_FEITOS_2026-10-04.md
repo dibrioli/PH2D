@@ -177,3 +177,9 @@ precisam do campo); `skin_image_fecho::ordena_pelo_osso` ganhou `prof` — a ord
 mudou (agora o último osso por cima, como o dono pediu) e isso é visível nas cenas `=3`/`=4`; a shell
 chama `skeleton_live::coze_os_efeitos_presos` na `fase_vector_view_and_drives` (+2 linhas; a catraca
 `the_shell_only_shrinks` tinha `378` de folga).
+
+⚠️ **E o A6 (F55) acrescenta:** `SkinDesenhado` é `BTreeMap<_, Desenhado>` (`Desenhado { forma,
+traco }`, com `Deref` para a forma) e `Quadro` ganhou `traco`; o domínio do campo de pesos
+(`ph2d-vec-skin::pesos`) segue agora a regra de preenchimento da forma — o campo de binds NOVOS de formas
+com contornos sobrepostos `NonZero` muda; `smoke_bone::NIVEIS` passou a `6` (cena `=6`, `smoke_bone_copias`).
+

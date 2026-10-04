@@ -11,6 +11,13 @@
 > leitor do diff entende ao contrário») continua válido** — leia-o (com a ressalva do §3 abaixo: o item 1
 > dele, `QUADROS` 3→5 / 4→6, foi revertido por este fecho).
 
+> ⭐ **ESTADO PARA FUNDIR (04/10, depois do smoke da §7.4 aprovado):** HEAD = o commit deste parágrafo (sobre
+> `3ec9abc47`), **`71` commits** sobre `main` @ `1ad60a1ce` — o `main` não andou: **`--ff-only` possível**. Gate batched
+> de fecho VERDE sobre o diff inteiro (§6.7: nextest-impacted `17 580/17 580`, GPU `14/14` nas duas placas). Smokes
+> §7.1–§7.4 aprovados pelo dono. Foundational tocado nesta última onda: só `ph2d-gpu` (pede `Features::SUBGROUP` quando o
+> adaptador a anuncia, §6.7). ⏳ Pendente e NÃO bloqueante (§6.7): as mutações dos pedaços do §9.15 e a medição das
+> densas/RTX/app que o dono mandou parar.
+
 ## §0 — IDENTIDADE
 
 | | |
@@ -19,7 +26,7 @@
 | ramo | `line/motion-value` |
 | HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1; e `9d1058a40` · `650128529` · os docs (a memória das células `66 → 43 MB`) — ver §6.2; e `a6e067f45` · `1c8f25d1e` · `757c5356a` · `64120d51a` · `2062db7d8` + docs (o Number no Strength do Vortex) — ver §6.3; e `82f9623e2` (o grafo, §6.4); e `133e306af` · `b723b02d1` · `40a2cbc1a` · `018218976` · `62929e077` + o commit da §6.5 (os itens 3 e 4) — ver §6.5; e o bloco de 04/10 (`4f0dcce34` … o commit da §6.6) — ver §6.6; e o bloco §9.15 (`79e680c21` … o commit da §6.7, ⚠️ FECHO PARCIAL) — ver §6.7 |
 | base / merge-base | `main` @ `1ad60a1ce` — **0** commits do `main` por trazer; `--ff-only` possível |
-| commits | **18** (2026-10-02 → 03) · `36` ficheiros (+3 621 / −685) |
+| commits | **18** (2026-10-02 → 03) · `36` ficheiros (+3 621 / −685) — ⭐ hoje **`71`** no total, `96` ficheiros (+8 964 / −933) sobre `1ad60a1ce` |
 
 Commits por grupo:
 
@@ -565,6 +572,8 @@ halo é o mesmo de antes.
    `PH2D_FORMAS_NA_PLACA=0` antes de `cargo`: o brilho tem de ser parecido.
 
 ### §7.4 — Smoke da §6.7 (a `=127` tracejada, pela placa)
+
+✅ **Smoke do dono APROVADO em 04/10.**
 
 Binário já compilado: `rm -rf target/*/incremental` e `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`
 2× sobre `518fda62b`; a 2.ª saída: `Finished smoke profile [optimized] target(s) in 0.20s`, zero `Compiling`. Fotografada a

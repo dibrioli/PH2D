@@ -10,7 +10,8 @@ use ph2d_shape_gpu::{EixoItem, FillRule, ShapeGeometry, ShapeInput, ShapePass, S
 use ph2d_vector::{BezPath, Cap, Join, Stroke};
 
 use super::paridade_com_o_vello::{
-    Copia, Forma, circulo, copias, corre, esticadas, estrela, gpu, pelo_passe_com, zigue_zague,
+    Copia, Forma, circulo, copias, corre, esticadas, estrela, gpu, pelo_passe_com,
+    pelo_passe_observado, zigue_zague,
 };
 
 /// ⭐ **A barra, do VALE medido** (2026-10-02, RTX, meio-float; arnês
@@ -273,4 +274,73 @@ fn so_um_eixo_tracejado_pede_a_variante_completa() {
     );
     p.set_geometries(&gpu, [(1u32, &continua)]);
     assert!(!p.usa_o_tracejado(), "sem ela, volta à ENXUTA");
+}
+
+/// ⭐ doc 121 §9.13 — **numa cena tracejada a PLACA escolhe a variante do desenho por quadro**: a
+/// completa (o fragmento a `128` VGPRs na iGPU) só quando uma cópia tracejada vai pixel a pixel — o 1.º
+/// quadro, antes da capacidade medida, e as cópias que não cabem nas células; no regime, a ENXUTA. Os
+/// gates de pixel não vêem «completa sempre» (a mesma imagem, mais devagar): esta régua é a que vê. E
+/// a metade das células desenha o MESMO que todas (a completa a tracejar as que ficaram de fora).
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn a_placa_escolhe_a_variante_completa_so_quando_um_tracejado_vai_pixel_a_pixel() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adaptador — nada a medir");
+        return;
+    };
+    let (est, circ, zz, furo) = (estrela(), circulo(), zigue_zague(), estrela_com_furo());
+    let todos = casos(&est, &circ, &zz, &furo);
+    let (nome, forma, cs) = &todos[0];
+    let n = u32::try_from(cs.len()).expect("cabem");
+    let fmt = wgpu::TextureFormat::Rgba16Float;
+    let corre = |celulas_no_maximo: u64| {
+        let mut por_quadro = Vec::new();
+        let quadros = pelo_passe_observado(
+            &gpu,
+            forma,
+            &[(cs.as_slice(), 4)],
+            fmt,
+            (true, 0.0, celulas_no_maximo),
+            &mut |g, p| por_quadro.push(p.copias_por_variante(g)),
+        );
+        (quadros, por_quadro)
+    };
+    let (livre, v_livre) = corre(u64::MAX);
+    eprintln!("  {nome}: (enxuta, completa) por quadro {v_livre:?}");
+    // CONTROLO: o 1.º quadro, sem capacidade, desenha tudo pixel a pixel — pela completa.
+    assert_eq!(v_livre[0], (0, n), "{nome}: o 1.º quadro pede a COMPLETA");
+    let (_, com, _) = livre.last().expect("quadros");
+    assert_eq!(*com, n, "{nome}: no regime toda cópia tem contorno");
+    assert_eq!(
+        *v_livre.last().expect("quadros"),
+        (n, 0),
+        "{nome}: no regime, a ENXUTA"
+    );
+    let (_, _, (pedido, _)) = livre.last().expect("quadros");
+    let (metade, v_metade) = corre(pedido / 2);
+    let (img_metade, com_metade, _) = metade.last().expect("quadros");
+    assert!(
+        *com_metade > 0 && *com_metade < n,
+        "{nome}: CONTROLO — o tecto morde e alguma cópia continua nas células ({com_metade}/{n})"
+    );
+    assert_eq!(
+        *v_metade.last().expect("quadros"),
+        (0, n),
+        "{nome}: uma cópia tracejada sem células pede a COMPLETA"
+    );
+    let pior = livre
+        .last()
+        .expect("quadros")
+        .0
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(img_metade.as_chunks::<4>().0)
+        .map(|(a, b)| a[3].abs_diff(b[3]))
+        .max()
+        .unwrap_or(0);
+    assert!(
+        pior <= 2,
+        "{nome}: metade das células desenha outra coisa (alfa {pior})"
+    );
 }

@@ -50,8 +50,12 @@ struct Contas {
 @group(2) @binding(6) var<storage, read_write> ccelulas_rw: array<atomic<u32>>;
 // ⭐ doc 121 §9.7–§9.12 — os argumentos dos despachos INDIRECTOS (`x, y, z` grupos), escritos pelo
 // `cs_soma`: `[0, 3)` um fio por LINHA de ecrã, `[3, 6)` um fio por ARESTA, `[6, 9)` um fio por PIXEL
-// de célula. Os totais só existem na placa, e lê-los no CPU custaria dois quadros.
-@group(2) @binding(7) var<storage, read_write> despacho_rw: array<u32>;
+// de célula. Os totais só existem na placa, e lê-los no CPU custaria dois quadros. E (doc 121 §9.13)
+// os dois DESENHOS indirectos: `[9, 13)` o da variante enxuta, `[13, 17)` o da completa — atómicos,
+// porque muitos fios do `cs_escreve` podem pedir a completa (todos o mesmo valor).
+@group(2) @binding(7) var<storage, read_write> despacho_rw: array<atomic<u32>>;
+const DESENHO_ENXUTA: u32 = 9u;
+const DESENHO_COMPLETO: u32 = 13u;
 // ⭐ doc 121 §9.12 — o buffer de ACUMULAÇÃO (`ACUMULA` palavras por célula: as três famílias, cada uma
 // com os `PIXELS_DA_CELULA` depósitos em ponto fixo). O `cs_varre` grava a COBERTURA acabada de cada
 // pixel NO LUGAR do depósito do preenchimento dele, que já leu: é a palavra que o desenho lê.
@@ -365,6 +369,15 @@ struct Plano {
     regra: u32,
 }
 
+// A caixa ESTIMADA da cópia arredondada para fora, com um pixel de folga de cada lado.
+fn caixa_das_celulas(cx: vec4<f32>) -> vec4<f32> {
+    return vec4<f32>(floor(cx.xy) - vec2<f32>(1.0), ceil(cx.zw) + vec2<f32>(1.0));
+}
+
+fn fora_do_ecra(c: vec4<f32>) -> bool {
+    return c.z <= 0.0 || c.x >= view.alvo.x || c.w <= 0.0 || c.y >= view.alvo.y;
+}
+
 fn plano_de(ii: u32) -> Plano {
     var p: Plano;
     p.valido = false;
@@ -386,10 +399,11 @@ fn plano_de(ii: u32) -> Plano {
     // ⚠️ Um pixel de folga de cada lado: a caixa estimada é a mesma que o quad do caminho de sempre
     // usa, e as células não podem ficar curtas da exacta por um arredondamento.
     let cx = caixa_estimada(p.cp, rec);
-    let lo = floor(cx.xy) - vec2<f32>(1.0);
-    let hi = ceil(cx.zw) + vec2<f32>(1.0);
+    let c = caixa_das_celulas(cx);
+    let lo = c.xy;
+    let hi = c.zw;
     // Fora do ecrã nenhum pixel corre: a cópia não paga cálculo nenhum.
-    if hi.x <= 0.0 || lo.x >= view.alvo.x || hi.y <= 0.0 || lo.y >= view.alvo.y {
+    if fora_do_ecra(c) {
         return p;
     }
     // ⭐ Uma cópia CONFORME só paga o cálculo quando é GRANDE: o caminho de sempre já a desenha bem
@@ -432,19 +446,16 @@ fn arestas_da_tampa(tampa: u32, r: f32) -> u32 {
 fn limite_de_arestas(cp: Copia) -> u32 {
     let caneta = bitcast<f32>(cp.eixo_rg.w);
     var n = 0u;
-    var ajuste = 0.0;
     for (var i = cp.eixo_rg.x; i < cp.eixo_rg.x + cp.eixo_rg.y; i += 1u) {
         let it = eixo[i];
         let r = it.meia * caneta;
         if it.tipo == 0u && tracejado(it) {
             // doc 121 §9.9 — cada traço que toca o troço: o quadrilátero, as duas pontas e a junta.
-            if ajuste == 0.0 {
-                ajuste = ajuste_do_tracejado(cp.eixo_rg.x, cp.eixo_rg.y, cp.lin, cp.t, caneta);
-            }
-            // ⚠️ `0,99`: o período ajustado é o que o percurso usa; a folga cobre o arredondamento.
-            let per = (it.traco + it.vao) * caneta * ajuste * 0.99;
+            // ⭐ §9.13: sem o ajuste — ele nunca encurta o período mais que MEIA peça por troço.
+            // ⚠️ `0,99`: a folga cobre o arredondamento do arco.
+            let per = (it.traco + it.vao) * caneta;
             let len = arco(it, cp.lin, cp.t);
-            let pecas = u32(min(ceil(len / max(per, 1.0e-30)), TRACOS_POR_TROCO_MAX)) + 2u;
+            let pecas = u32(min(ceil((len / max(per, 1.0e-30) + 0.5) / 0.99), TRACOS_POR_TROCO_MAX)) + 2u;
             let tampa = max(arestas_da_tampa((it.ponta >> 6u) & 3u, r), arestas_da_tampa((it.ponta >> 8u) & 3u, r));
             n = min(n + pecas * (4u + 2u * tampa + max(4u, arestas_do_leque(r))), 0x3fffffffu);
         } else if it.tipo == 0u {
@@ -503,9 +514,17 @@ var<workgroup> parcial: array<u32, 256>;
 fn despacha(em: u32, fios: u32) {
     let grupos = (fios + 63u) / 64u;
     let gx = min(grupos, 65535u);
-    despacho_rw[em] = gx;
-    despacho_rw[em + 1u] = select(1u, (grupos + gx - 1u) / max(gx, 1u), gx > 0u);
-    despacho_rw[em + 2u] = 1u;
+    atomicStore(&despacho_rw[em], gx);
+    atomicStore(&despacho_rw[em + 1u], select(1u, (grupos + gx - 1u) / max(gx, 1u), gx > 0u));
+    atomicStore(&despacho_rw[em + 2u], 1u);
+}
+
+// Os argumentos de um desenho indirecto do quad (`6` vértices) com `copias` instâncias.
+fn desenho(em: u32, copias: u32) {
+    atomicStore(&despacho_rw[em], 6u);
+    atomicStore(&despacho_rw[em + 1u], copias);
+    atomicStore(&despacho_rw[em + 2u], 0u);
+    atomicStore(&despacho_rw[em + 3u], 0u);
 }
 var<workgroup> parcial_m: array<u32, 256>;
 var<workgroup> parcial_l: array<u32, 256>;
@@ -553,6 +572,9 @@ fn cs_soma(@builtin(local_invocation_index) li: u32) {
         despacha(0u, acc_l);
         despacha(3u, acc);
         despacha(6u, min(acc_m, contas.cap_celulas) * PIXELS_DA_CELULA);
+        // doc 121 §9.13 — todas as cópias pela ENXUTA, até o `cs_escreve` pedir a completa.
+        desenho(DESENHO_ENXUTA, n);
+        desenho(DESENHO_COMPLETO, 0u);
     }
     workgroupBarrier();
     var acc = parcial[li];
@@ -589,6 +611,30 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
     if ii >= contas.n {
         return;
     }
+    if !escreve(ii) {
+        pede_a_completa(ii);
+    }
+}
+
+// ⭐ doc 121 §9.13 — uma cópia TRACEJADA e VISÍVEL que fica sem células vai pelo pixel a pixel, que só
+// o fragmento da variante COMPLETA traceja: este quadro desenha todas as cópias por ela. No regime
+// (todas nas células) o desenho corre a ENXUTA (iGPU: `56` VGPRs · `18` ondas contra `128` · `8`).
+fn pede_a_completa(ii: u32) {
+    let cp = copia_de(ii);
+    if cp.r == 0xffffffffu || cp.eixo_rg.y == 0u || fora_do_ecra(caixa_das_celulas(caixa_estimada(cp, records[cp.r]))) {
+        return;
+    }
+    for (var i = cp.eixo_rg.x; i < cp.eixo_rg.x + cp.eixo_rg.y; i += 1u) {
+        if tracejado(eixo[i]) {
+            atomicStore(&despacho_rw[DESENHO_ENXUTA + 1u], 0u);
+            atomicStore(&despacho_rw[DESENHO_COMPLETO + 1u], contas.n);
+            return;
+        }
+    }
+}
+
+// As arestas e o registo de célula de uma cópia; `false` ⇒ ela fica com o caminho de sempre.
+fn escreve(ii: u32) -> bool {
     ccopias_rw[3u * ii] = vec4<u32>(0u);
     ccopias_rw[3u * ii + 1u] = vec4<u32>(0u);
     ccopias_rw[3u * ii + 2u] = vec4<u32>(0u);
@@ -601,12 +647,12 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
     // ⚠️ Fora da capacidade, a cópia fica com o caminho de sempre — nunca um contorno truncado.
     if reservado == 0u || base + reservado > contas.cap
         || mbase + nmask_reservado > contas.cap_celulas {
-        return;
+        return false;
     }
     let p = plano_de(ii);
     if !p.valido || p.nf + p.nm > reservado
         || p.linhas * p.celulas != nmask_reservado {
-        return;
+        return false;
     }
     cmin = vec2<f32>(3.0e38);
     cmax = vec2<f32>(-3.0e38);
@@ -622,7 +668,7 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
         // ⚠️ O limite da contagem é um pior caso: uma escrita que o passasse seria um contorno
         // truncado. ⇒ é deitada fora e a cópia segue pelo caminho de sempre.
         if cursor > nc_reservado {
-            return;
+            return false;
         }
         nc = (cursor + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
         // O enchimento até ao bloco inteiro: arestas de comprimento zero (`dy = 0` em toda a fileira —
@@ -637,6 +683,8 @@ fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgr
     ccopias_rw[3u * ii] = vec4<u32>(base / SEGS_POR_BLOCO, p.nf / SEGS_POR_BLOCO, p.nm / SEGS_POR_BLOCO, nc / SEGS_POR_BLOCO);
     ccopias_rw[3u * ii + 1u] = vec4<u32>(mbase, p.linhas, 0u, bitcast<u32>(p.y0));
     ccopias_rw[3u * ii + 2u] = vec4<u32>(bitcast<u32>(p.x0), p.celulas, p.regra, 0u);
+    // O desenho só lê as células com algum bloco (`tela` no `vs_main`).
+    return ne > 0u;
 }
 
 // ⭐⭐ doc 121 §9.12 — **AS CÉLULAS POR ACUMULAÇÃO, EM QUATRO PASSES LARGOS.** Cada fileira de pixels de

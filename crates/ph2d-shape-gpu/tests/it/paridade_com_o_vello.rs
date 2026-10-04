@@ -430,6 +430,25 @@ pub(super) fn pelo_passe_em_etapas(
     area_minima_conforme: f32,
     celulas_no_maximo: u64,
 ) -> Vec<(Vec<u8>, u32, (u64, u64))> {
+    pelo_passe_observado(
+        gpu,
+        forma,
+        etapas,
+        format,
+        (contorno, area_minima_conforme, celulas_no_maximo),
+        &mut |_, _| {},
+    )
+}
+
+/// O mesmo, com `observa` chamado sobre o passe depois de cada quadro (os instrumentos dele).
+pub(super) fn pelo_passe_observado(
+    gpu: &GpuContext,
+    forma: &Forma<'_>,
+    etapas: &[(&[Copia], usize)],
+    format: wgpu::TextureFormat,
+    (contorno, area_minima_conforme, celulas_no_maximo): (bool, f32, u64),
+    observa: &mut dyn FnMut(&GpuContext, &ShapePass),
+) -> Vec<(Vec<u8>, u32, (u64, u64))> {
     let traco = forma.traco.as_ref().map(|(s, cor)| StrokeInput {
         path: forma.linha.unwrap_or(forma.bp),
         style: s,
@@ -491,6 +510,7 @@ pub(super) fn pelo_passe_em_etapas(
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
             let (com, _) = p.copias_com_contorno(gpu, n);
             let celulas = p.celulas_do_ultimo_quadro(gpu);
+            observa(gpu, &p);
             let px = if format == wgpu::TextureFormat::Rgba16Float {
                 let b = bytes_de_textura(gpu, &tex, 8);
                 b.as_chunks::<8>()

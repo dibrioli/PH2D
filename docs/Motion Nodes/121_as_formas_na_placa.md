@@ -1384,3 +1384,25 @@ capacidade, desenha pela completa); (ii) a imagem igual: os `10` gates GPU da cr
 as mutações do tracejado (`21/21`) e da acumulação (`19/19`); (iii) o relógio — sonda intercalada,
 `load < 4`, iGPU e RTX: o desenho das tracejadas a `≤ +10 %` do das contínuas do mesmo arranjo, e
 nenhum arranjo pior que `+5 %` (iGPU) / `+10 %` (RTX) na soma dos passes. Falhou ⇒ recusa medida aqui.
+
+**(3b) A contagem e a escrita — menos voltas ao eixo por fio.** Dois pedaços, medidos um a um:
+
+1. **o limite da contagem sem o ajuste.** O `limite_de_arestas` só precisa de um TECTO de peças por
+   troço, e o ajuste nunca encurta o período mais que meia peça por troço: com `L` o sub-caminho mais
+   longo (o que o ajuste fecha), `per` o período da caneta e `len ≤ L` o arco do troço, o período
+   ajustado é `per · L / d` com `d ≤ L + per/2` (o arredondamento de `L/per`, fechado ou aberto) — ou,
+   quando o arredondamento dá zero, `≥ L ≥ len` (uma peça). ⇒ `len / per_ajustado ≤ len/per + 1/2`,
+   e o tecto passa a `⌈len/per + 1/2⌉ + 2` sem o ajuste: a contagem percorre o eixo UMA vez (era
+   três). A escrita continua a usar o ajuste exacto; o tecto só reserva;
+2. **o ajuste numa volta só.** O `ajuste_do_tracejado` andava cada sub-caminho a partir do seu troço de
+   início (o laço interior com o `proximo_troco`), por cima do laço de todos os itens: cada troço lido
+   duas vezes. Os troços de um sub-caminho são contíguos (só cabeçalhos de bloco no meio), logo uma
+   volta acumula o arco e fecha o sub-caminho quando chega o seguinte.
+
+**Kill-criterion (3b):** (i) a imagem igual — os mesmos gates e mutações do (3a); (ii) o relógio, sonda
+intercalada contra o binário do (3a), iGPU, `load < 4`: nas `72` esticadas tracejadas `conta + escreve`
+`≤ 0,40 ms` (de `0,49`, `−18 %`), e nenhum arranjo pior que `+5 %` (iGPU) / `+10 %` (RTX) na soma dos
+passes; (iii) sem relógio — o `cs_conta` da completa não sobe dos `48` VGPRs nem o `cs_escreve` dos
+`128`. ⚠️ Os registos do `cs_escreve` NÃO são alvo deste item: com `72` cópias ele é DUAS ondas na
+placa inteira, com `1 225` são `20` para `24` SIMDs — a ocupação não tem o que esconder, e o que conta é
+a cadeia em série de cada fio. Pedaço que não mexe o relógio sai (recusa medida aqui).

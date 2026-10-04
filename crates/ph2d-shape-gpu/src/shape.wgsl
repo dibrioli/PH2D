@@ -719,23 +719,35 @@ fn ajuste_do_tracejado(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta
     var fechado = false;
     var tr = 0.0;
     var per = 0.0;
+    // ⭐ doc 121 §9.13 — UMA volta: um sub-caminho são os `_pad` troços a partir do de início (só
+    // cabeçalhos de bloco no meio), somados pela mesma ordem de sempre.
+    var tot = 0.0;
+    var restantes = 0u;
+    var sub_fechado = false;
+    var sub_tr = 0.0;
+    var sub_per = 0.0;
     for (var i = inicio; i < inicio + n; i += 1u) {
         let it = eixo[i];
-        if it.tipo != 0u || !tracejado(it) || (it.ponta & SUB_INICIO) == 0u {
+        if it.tipo != 0u {
             continue;
         }
-        var tot = 0.0;
-        var j = i;
-        for (var k = 0u; k < it._pad; k += 1u) {
-            j = proximo_troco(j);
-            tot = tot + arco(eixo[j], lin, t);
-            j += 1u;
+        if restantes == 0u {
+            if !tracejado(it) || (it.ponta & SUB_INICIO) == 0u || it._pad == 0u {
+                continue;
+            }
+            restantes = it._pad;
+            tot = 0.0;
+            sub_fechado = (it.ponta & SUB_FECHADO) != 0u;
+            sub_tr = it.traco * caneta;
+            sub_per = (it.traco + it.vao) * caneta;
         }
-        if tot > melhor {
+        tot = tot + arco(it, lin, t);
+        restantes -= 1u;
+        if restantes == 0u && tot > melhor {
             melhor = tot;
-            fechado = (it.ponta & SUB_FECHADO) != 0u;
-            tr = it.traco * caneta;
-            per = (it.traco + it.vao) * caneta;
+            fechado = sub_fechado;
+            tr = sub_tr;
+            per = sub_per;
         }
     }
     if melhor <= 0.0 || per <= 0.0 {

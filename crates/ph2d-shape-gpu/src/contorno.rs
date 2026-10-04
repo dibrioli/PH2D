@@ -69,6 +69,10 @@ fn ao_oitavo_do_degrau(n: u64) -> u64 {
 const POR_LINHA: u64 = 0;
 const POR_ARESTA: u64 = 12;
 const POR_PIXEL: u64 = 24;
+/// doc 121 §9.13 — e os dos dois DESENHOS (`desenho` no WGSL): a variante enxuta e a completa.
+const DESENHO_ENXUTA: u64 = 36;
+const DESENHO_COMPLETO: u64 = 52;
+const DESPACHO: u64 = 68;
 
 // Os estados da leitura do total (um `AtomicU8`, porque o fecho do `map_async` corre noutro sítio).
 const LIVRE: u8 = 0;
@@ -108,7 +112,8 @@ pub(crate) struct Contorno {
     /// que o desenho lê.
     acumula: wgpu::Buffer,
     /// Os argumentos dos despachos indirectos das células (escritos pelo `cs_soma`): `[0, 3)` por
-    /// linha, `[3, 6)` por aresta, `[6, 9)` por pixel de célula.
+    /// linha, `[3, 6)` por aresta, `[6, 9)` por pixel de célula; e os dois desenhos de uma cena com
+    /// tracejado (`[9, 17)`, doc 121 §9.13).
     despacho: wgpu::Buffer,
     cap_copias: u64,
     cap_arestas: u64,
@@ -322,8 +327,8 @@ impl Contorno {
             despacho: buffer(
                 gpu,
                 "ph2d-shape-gpu despacho das celulas",
-                36,
-                armazens | wgpu::BufferUsages::INDIRECT,
+                DESPACHO,
+                armazens | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_SRC,
             ),
             cap_copias: 0,
             cap_arestas: 0,
@@ -632,6 +637,47 @@ impl Contorno {
         let dados = leitura.slice(..).get_mapped_range();
         let pedido: u32 = bytemuck::pod_read_unaligned(&dados[..4]);
         (u64::from(pedido), self.cap_celulas)
+    }
+
+    /// doc 121 §9.13 — **o desenho de uma cena com tracejado**: as duas variantes, cada uma com as
+    /// cópias que o `cs_escreve` lhe deu (todas numa, nenhuma na outra) — uma só desenha, e a ordem da
+    /// mistura é a de uma chamada. Os grupos de ligação já postos servem às duas.
+    pub(crate) fn desenha_pela_variante_da_placa(
+        &self,
+        pass: &mut wgpu::RenderPass<'_>,
+        pipeline: &Variantes<wgpu::RenderPipeline>,
+    ) {
+        pass.set_pipeline(pipeline.de(false));
+        pass.draw_indirect(&self.despacho, DESENHO_ENXUTA);
+        pass.set_pipeline(pipeline.de(true));
+        pass.draw_indirect(&self.despacho, DESENHO_COMPLETO);
+    }
+
+    /// As cópias do último desenho de uma cena com tracejado, por variante `(enxuta, completa)` —
+    /// lido de volta da placa (bloqueia).
+    pub(crate) fn copias_por_variante(&self, gpu: &GpuContext) -> (u32, u32) {
+        let leitura = buffer(
+            gpu,
+            "ph2d-shape-gpu desenhos (sonda)",
+            DESPACHO - DESENHO_ENXUTA,
+            wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        );
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        enc.copy_buffer_to_buffer(
+            &self.despacho,
+            DESENHO_ENXUTA,
+            &leitura,
+            0,
+            DESPACHO - DESENHO_ENXUTA,
+        );
+        gpu.queue.submit([enc.finish()]);
+        leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        let dados = leitura.slice(..).get_mapped_range();
+        let w: &[u32] = bytemuck::cast_slice(&dados);
+        (w[1], w[5])
     }
 
     /// doc 121 §9.13 — **quantas das células em uso o último quadro TOCOU** (a alavanca da variante

@@ -1,42 +1,44 @@
 #!/usr/bin/env python3
-"""Prova de mutação da VARIANTE ENXUTA (doc 121 §9.10) sobre os gates de GPU de ph2d-shape-gpu (`--test
-it`) e os de paridade do PRODUTO em ph2d-app-motion (`motion_shape_placa::gpu_tests`).
+"""Prova de mutação da VARIANTE ESCOLHIDA PELA PLACA e da contagem/escrita com menos voltas ao eixo (doc
+121 §9.13) sobre os gates de GPU de ph2d-shape-gpu (`--test it`) e os de paridade do PRODUTO em
+ph2d-app-motion (`motion_shape_placa::gpu_tests`).
 Controlos: pré-voo das âncoras · corrida LIMPA verde · não compila = defeito do arnês · restauro por
-cópia + touch. Uso: MUTA_SO=V1,V5 filtra; MUTA_SO_ANCORAS=1 só o pré-voo.
-
-⚠️ A V9 (o `override` fora do predicado do WGSL) é SOBREVIVENTE ESPERADA: não muda um pixel nem a escolha
-da variante — só a `registos_dos_shaders.sh` a vê (os VGPRs da enxuta voltam a `128`)."""
+cópia + touch. Uso: MUTA_SO=W1,W5 filtra; MUTA_SO_ANCORAS=1 só o pré-voo."""
 import os, re, shutil, subprocess, sys, time
 
 R = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 P = R + "/crates/ph2d-shape-gpu/src/pass.rs"
 C = R + "/crates/ph2d-shape-gpu/src/contorno.rs"
-E = R + "/crates/ph2d-shape-gpu/src/eixo.rs"
+W = R + "/crates/ph2d-shape-gpu/src/contorno.wgsl"
 S = R + "/crates/ph2d-shape-gpu/src/shape.wgsl"
+E = W
 
-ESCOLHA = "self.tracejado = eixo.iter().any(crate::EixoItem::tracejado);"
 MUTS = [
-    ("V1 escolhe sempre a COMPLETA", [(P, ESCOLHA, "self.tracejado = true;", 1)]),
-    ("V2 escolhe sempre a ENXUTA", [(P, ESCOLHA, "self.tracejado = false;", 1)]),
-    ("V3 Variantes::de trocada", [
-        (C, "            &self.completa\n", "            &self.QQ\n", 1),
-        (C, "            &self.enxuta\n", "            &self.completa\n", 1),
-        (C, "            &self.QQ\n", "            &self.enxuta\n", 1)]),
-    ("V4 as opcoes de compilacao trocadas", [(C,
-        "constants: if tracejado { COMPLETA } else { ENXUTA },",
-        "constants: if tracejado { ENXUTA } else { COMPLETA },", 1)]),
-    ("V5 a contagem sempre na enxuta", [(C,
-        "self.conta.de(tracejado)", "self.conta.de(false)", 1)]),
-    ("V6 a escrita sempre na enxuta", [(C,
-        "self.escreve.de(tracejado)", "self.escreve.de(false)", 1)]),
-    # re-ancorada no §9.13: o desenho de uma cena tracejada passou a escolher na placa.
-    ("V7 o desenho sempre na enxuta", [(P,
-        "        if self.tracejado {\n            // doc 121 §9.13",
-        "        if false {\n            // doc 121 §9.13", 1)]),
-    ("V8 o predicado do Rust aceita todo troco", [(E,
-        "self.traco + self.vao > 0.0", "self.traco + self.vao >= 0.0", 1)]),
-    ("V9 o override fora do predicado do WGSL (sobrevivente ESPERADA)", [(S,
-        "return TRACEJADO && it.traco + it.vao > 0.0;", "return it.traco + it.vao > 0.0;", 1)]),
+    ("W1 nenhuma copia pede a completa", [(W,
+        "        if tracejado(eixo[i]) {\n            atomicStore(",
+        "        if false {\n            atomicStore(", 1)]),
+    ("W2 a completa sempre", [(W,
+        "desenho(DESENHO_ENXUTA, n);\n        desenho(DESENHO_COMPLETO, 0u);",
+        "desenho(DESENHO_ENXUTA, 0u);\n        desenho(DESENHO_COMPLETO, n);", 1)]),
+    ("W3 o teste de fora do ecra invertido", [(W,
+        "|| fora_do_ecra(caixa_das_celulas(caixa_estimada(cp, records[cp.r])))",
+        "|| !fora_do_ecra(caixa_das_celulas(caixa_estimada(cp, records[cp.r])))", 1)]),
+    ("W4 os dois desenhos trocados", [
+        (C, "pass.draw_indirect(&self.despacho, DESENHO_ENXUTA);", "pass.draw_indirect(&self.despacho, QQ);", 1),
+        (C, "pass.draw_indirect(&self.despacho, DESENHO_COMPLETO);", "pass.draw_indirect(&self.despacho, DESENHO_ENXUTA);", 1),
+        (C, "pass.draw_indirect(&self.despacho, QQ);", "pass.draw_indirect(&self.despacho, DESENHO_COMPLETO);", 1)]),
+    ("W6 o tecto da contagem sem a meia peca", [(W,
+        "ceil((len / max(per, 1.0e-30) + 0.5) / 0.99)",
+        "ceil((len / max(per, 1.0e-30)) / 0.99)", 1)]),
+    ("W7 o tecto da contagem com metade das pecas", [(W,
+        "ceil((len / max(per, 1.0e-30) + 0.5) / 0.99)",
+        "ceil((len / max(per, 1.0e-30) + 0.5) / 1.98)", 1)]),
+    ("W8 o ajuste nao recomeca a soma em cada sub-caminho", [(S,
+        "            restantes = it._pad;\n            tot = 0.0;\n",
+        "            restantes = it._pad;\n", 1)]),
+    ("W9 o ajuste conta um troco a menos", [(S,
+        "            restantes = it._pad;\n",
+        "            restantes = it._pad - 1u;\n", 1)]),
 ]
 
 CMD = ["bash", "scripts/ph2d-run.sh", "cargo", "test", "-p", "ph2d-shape-gpu", "--release", "--test", "it",
@@ -108,7 +110,7 @@ def main():
             v = "SOBREVIVEU"
         falhos = re.findall(r"^test (\S+) \.\.\. FAILED", out, re.M)
         print(f"{nome}: {v} ({p} passed, {fl} failed) reprovou: {falhos}", flush=True)
-    for f in (P, C, E, S):
+    for f in (P, C, W, S):
         assert not os.path.exists(f + ".muta_bk"), "restauro falhou"
     print(f"placar: {sangrou} de {len(muts)} sangraram")
 

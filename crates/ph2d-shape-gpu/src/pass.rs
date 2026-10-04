@@ -208,6 +208,14 @@ impl ShapePass {
         self.contorno.copias_com_contorno(gpu, n)
     }
 
+    /// **As cópias do último desenho por variante `(enxuta, completa)`** numa cena com tracejado (doc
+    /// 121 §9.13): a placa põe-nas todas na enxuta e passa-as à completa quando uma cópia tracejada e
+    /// visível fica sem células. Lido de volta (bloqueia). Instrumento de gates.
+    #[must_use]
+    pub fn copias_por_variante(&self, gpu: &GpuContext) -> (u32, u32) {
+        self.contorno.copias_por_variante(gpu)
+    }
+
     /// **Quantas das células em uso o último desenho TOCOU, e quantas usou** (doc 121 §9.13, a
     /// alavanca da variante esparsa) — lido de volta da placa (bloqueia). Instrumento de sondas.
     #[must_use]
@@ -441,9 +449,16 @@ impl ShapePass {
         if !desenha {
             return;
         }
-        pass.set_pipeline(self.pipeline.de(self.tracejado));
         pass.set_bind_group(0, &bg, &[]);
         pass.set_bind_group(1, &leitura, &[]);
-        pass.draw(0..6, 0..count);
+        if self.tracejado {
+            // doc 121 §9.13 — a placa escolhe: a completa só num quadro com uma cópia tracejada
+            // desenhada pixel a pixel.
+            self.contorno
+                .desenha_pela_variante_da_placa(&mut pass, &self.pipeline);
+        } else {
+            pass.set_pipeline(self.pipeline.de(false));
+            pass.draw(0..6, 0..count);
+        }
     }
 }

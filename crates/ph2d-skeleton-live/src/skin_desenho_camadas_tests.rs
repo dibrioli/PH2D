@@ -13,10 +13,17 @@ const M: f64 = 4.0;
 const PERTO: f64 = 0.1;
 const FOLGA: f64 = 0.25;
 
-/// O que pinta TRAÇO: a camada do traço quando a há, senão a forma inteira (com traço).
+/// O que pinta TRAÇO: a camada do traço e a forma quando ELA tem traço (as duas, se as duas o
+/// tiverem — um traço que ficasse na forma pintaria por cima do recorte).
 fn tinta(d: &crate::skin_desenho::Desenhado) -> Vec<[[f64; 2]; 2]> {
-    let p = d.traco.as_ref().unwrap_or(&d.forma);
     let mut out = Vec::new();
+    for p in d.traco.iter().chain(Some(&d.forma).filter(|f| f.stroke.is_some())) {
+        tinta_de(p, &mut out);
+    }
+    out
+}
+
+fn tinta_de(p: &ph2d_vec_scene::VecPath, out: &mut Vec<[[f64; 2]; 2]>) {
     for c in 0..p.contour_count() {
         let Some((vs, fechado)) = p.contour(c) else { continue };
         let mut w = vs.to_vec();
@@ -29,7 +36,6 @@ fn tinta(d: &crate::skin_desenho::Desenhado) -> Vec<[[f64; 2]; 2]> {
             out.extend(pts.windows(2).map(|q| [q[0], q[1]]));
         }
     }
-    out
 }
 
 /// `(tapadas pintadas, frente pintada, trás à vista pintada, tapadas, há camada?)` — duas cópias
@@ -237,4 +243,77 @@ fn diag_o_preco_da_camada_do_traco() {
         "  µs/forma/quadro: com a lei {com:.1} · sem ela {sem:.1} · loadavg {}",
         std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
     );
+}
+
+/// ⭐⭐ **GATE — as riscas ABERTAS vão para a camada do traço** (a forma vai sem traço: sem elas na
+/// camada, sumiam). Duas cópias com *Hatch* por cima, a `110°`. ⛔ **O CONTROLO:** há riscas e há
+/// camada.
+#[test]
+fn as_riscas_abertas_vao_para_a_camada_do_traco() {
+    let (mut sim, mut scene, map, id, [_, ponta]) = palco();
+    {
+        let p = scene.path_mut(id).expect("path");
+        p.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+            ph2d_vec_scene::Rgba8::new(0, 0, 0, 255),
+            0.5,
+        ));
+        p.effects = vec![
+            FxEntry::new(PathEffect::Repeat(ph2d_vec_scene::fx_repeat::RepeatSpec {
+                copies_x: 1.0,
+                move_x: 0.0,
+                copies_y: 2.0,
+                move_y: 60.0,
+                spin: 5.0,
+                orbit: 0.0,
+            })),
+            FxEntry::new(PathEffect::Hatch(ph2d_vec_scene::fx_hatch::HatchSpec {
+                angle: 45.0,
+                spacing: 8.0,
+                cross: false,
+            })),
+        ];
+    }
+    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
+    sim.world_mut()
+        .get_mut::<ph2d_ecs::Transform>(ponta)
+        .expect("Transform")
+        .rotation = 110f32.to_radians();
+    let d = crate::skin_live::recook_leis(&sim, &mut scene.clone(), Leis::do_ambiente())
+        .remove(&id)
+        .expect("desenho");
+    let abertos = |p: &ph2d_vec_scene::VecPath| {
+        (0..p.contour_count())
+            .filter_map(|c| p.contour(c))
+            .filter(|(v, f)| !f && v.len() > 1)
+            .count()
+    };
+    let traco = d.traco.as_ref().expect("o CONTROLO: a 110° não saiu camada");
+    assert!(abertos(&d.forma) > 0, "o CONTROLO: a forma não tem riscas");
+    assert!(d.forma.stroke.is_none(), "a forma levou o traço com a camada");
+    assert!(
+        abertos(traco) >= abertos(&d.forma),
+        "as riscas não foram para a camada ({} de {})",
+        abertos(traco),
+        abertos(&d.forma)
+    );
+}
+
+/// ⭐⭐ **GATE — a camada do traço chega à geometria viva, DEPOIS da forma** (o traço por cima do
+/// preenchimento). ⛔ **O CONTROLO:** sem camada, um caminho só.
+#[test]
+fn a_camada_do_traco_chega_ao_mundo_depois_da_forma() {
+    let mut forma = ph2d_vec_scene::VecPath::default();
+    forma.verts.push(ph2d_vec_scene::VecVertex::corner([1.0, 0.0]));
+    let mut traco = ph2d_vec_scene::VecPath::default();
+    traco.verts.push(ph2d_vec_scene::VecVertex::corner([2.0, 0.0]));
+    let xf = ph2d_vec_scene::VecXforms::default();
+    for (camada, esperado) in [(None, 1), (Some(traco.clone()), 2)] {
+        let mut d = crate::skin_desenho::SkinDesenhado::new();
+        d.insert(7, crate::skin_desenho::Desenhado { forma: forma.clone(), traco: camada });
+        let mut vivo = std::collections::BTreeMap::new();
+        crate::skin_desenho::funde(&d, &xf, &mut vivo);
+        let v = &vivo[&7];
+        assert_eq!(v.len(), esperado, "caminhos no mundo");
+        assert_eq!(v[0].verts[0].anchor, [1.0, 0.0], "a forma vem primeiro");
+    }
 }

@@ -47,6 +47,8 @@ pub(super) fn traco_sobre_o_assado(
     }
     let mut pecas: Vec<ph2d_vec_scene::Contour> = Vec::new();
     let mut base = 0;
+    let largura = d.stroke.as_ref().map_or(0.0, |s| s.width);
+    let bordas = (largura > 0.0).then(|| cruza::Bordas::de(d, largura));
     for c in 0..fonte.contour_count() {
         let ((fv, fechado), (ov, _)) = (fonte.contour(c)?, d.contour(c)?);
         let m = fv.len();
@@ -125,7 +127,19 @@ pub(super) fn traco_sobre_o_assado(
         #[expect(clippy::cast_precision_loss, reason = "contagem de nós")]
         let fim = n as f64;
         for &(a, b) in trechos {
-            let (u0, u1) = (projeta(a), projeta(b));
+            let (mut u0, mut u1) = (projeta(a), projeta(b));
+            // ⭐⭐ A9: cada ponta acerta no cruzamento desenhado a menos de uma largura do traço
+            // ([`cruza`]), sem dar a volta; um trecho que isso inverta era todo tique e sai.
+            if let Some(br) = &bordas {
+                if u1 <= u0 {
+                    u1 += fim;
+                }
+                let (e0, e1) = (br.encaixa(c, u0, largura), br.encaixa(c, u1, largura));
+                if e1 <= e0 {
+                    continue;
+                }
+                (u0, u1) = (e0.rem_euclid(fim), e1.rem_euclid(fim));
+            }
             let verts: Vec<VecVertex> = if u0 < u1 {
                 recorta(&w, u0, u1).into_iter().map(|(v, _)| v).collect()
             } else {
@@ -182,6 +196,9 @@ pub fn funde(
         });
     }
 }
+
+#[path = "skin_desenho_camadas_cruza.rs"]
+mod cruza;
 
 #[cfg(test)]
 #[path = "skin_desenho_camadas_tests.rs"]

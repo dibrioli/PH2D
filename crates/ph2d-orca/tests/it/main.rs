@@ -3,3 +3,4 @@
 mod banco_de_cenarios;
 mod custo;
 mod oraculo_do_godot;
+mod oraculo_do_godot_largo;

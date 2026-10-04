@@ -1,0 +1,97 @@
+# PH2D oraculo do corpo largo — Godot 4.7.2-stable (arch_linux)
+# fonte: docs/Components/ferramentas/godot_nav_oraculo/largo.gd · cd desvio_projeto && godot --headless --fixed-fps 60 --path . --script ../largo.gd | grep -E '^#|^CENA|^FIM|^  q'
+# agente R=10 px, 100 px/s, de (50, y0) para (550, 150); barreira 10 x 100 px em x=300 a andar a vb px/s; malha fechada, uma linha de execucao
+CENA poligono
+  q 60 agente (148.3, 150.0) barreira x 290.0
+  q 120 agente (221.6, 150.0) barreira x 280.0
+  q 180 agente (242.6, 150.0) barreira x 270.0
+  q 240 agente (243.6, 150.0) barreira x 260.0
+  q 300 agente (237.6, 150.0) barreira x 250.0
+  q 360 agente (229.0, 150.0) barreira x 240.0
+  q 420 agente (219.5, 150.0) barreira x 230.0
+  q 480 agente (209.7, 150.0) barreira x 220.0
+  q 540 agente (199.8, 150.0) barreira x 210.0
+  q 600 agente (189.8, 150.0) barreira x 200.0
+  q 660 agente (179.8, 150.0) barreira x 190.0
+  q 720 agente (169.8, 150.0) barreira x 180.0
+  q 780 agente (159.8, 150.0) barreira x 170.0
+  q 840 agente (149.8, 150.0) barreira x 160.0
+  q 900 agente (139.8, 150.0) barreira x 150.0
+FIM poligono quadro 900 agente (139.8, 150.0) chegou false
+CENA poligono_assimetrico
+  q 60 agente (148.3, 152.4) barreira x 290.0
+  q 120 agente (223.7, 155.4) barreira x 280.0
+  q 180 agente (246.3, 157.4) barreira x 270.0
+  q 240 agente (248.8, 158.4) barreira x 260.0
+  q 300 agente (285.3, 159.1) barreira x 250.0
+  q 360 agente (385.2, 155.6) barreira x 240.0
+  q 420 agente (485.2, 152.2) barreira x 230.0
+FIM poligono_assimetrico quadro 458 agente (548.5, 150.1) chegou true
+CENA poligono_parado
+  q 60 agente (148.3, 150.0) barreira x 300.0
+  q 120 agente (232.2, 150.0) barreira x 300.0
+  q 180 agente (265.7, 150.0) barreira x 300.0
+  q 240 agente (278.0, 150.0) barreira x 300.0
+  q 300 agente (282.4, 150.0) barreira x 300.0
+  q 360 agente (284.1, 150.0) barreira x 300.0
+  q 420 agente (284.7, 150.0) barreira x 300.0
+  q 480 agente (284.9, 150.0) barreira x 300.0
+  q 540 agente (285.0, 150.0) barreira x 300.0
+  q 600 agente (285.0, 150.0) barreira x 300.0
+  q 660 agente (285.0, 150.0) barreira x 300.0
+  q 720 agente (285.0, 150.0) barreira x 300.0
+  q 780 agente (285.0, 150.0) barreira x 300.0
+  q 840 agente (285.0, 150.0) barreira x 300.0
+  q 900 agente (285.0, 150.0) barreira x 300.0
+FIM poligono_parado quadro 900 agente (285.0, 150.0) chegou false
+CENA disco
+  q 60 agente (145.3, 150.0) barreira x 290.0
+  q 120 agente (189.6, 150.0) barreira x 280.0
+  q 180 agente (199.0, 150.0) barreira x 270.0
+  q 240 agente (195.9, 150.0) barreira x 260.0
+  q 300 agente (188.4, 150.0) barreira x 250.0
+  q 360 agente (179.3, 150.0) barreira x 240.0
+  q 420 agente (169.7, 150.0) barreira x 230.0
+  q 480 agente (159.8, 150.0) barreira x 220.0
+  q 540 agente (149.8, 150.0) barreira x 210.0
+  q 600 agente (139.8, 150.0) barreira x 200.0
+  q 660 agente (129.8, 150.0) barreira x 190.0
+  q 720 agente (119.8, 150.0) barreira x 180.0
+  q 780 agente (109.8, 150.0) barreira x 170.0
+  q 840 agente (99.8, 150.0) barreira x 160.0
+  q 900 agente (89.8, 150.0) barreira x 150.0
+FIM disco quadro 900 agente (89.8, 150.0) chegou false
+CENA discos
+  q 60 agente (148.3, 150.0) barreira x 290.0
+  q 120 agente (218.0, 150.0) barreira x 280.0
+  q 180 agente (237.2, 150.0) barreira x 270.0
+  q 240 agente (237.6, 150.0) barreira x 260.0
+  q 300 agente (231.4, 150.0) barreira x 250.0
+  q 360 agente (222.7, 150.0) barreira x 240.0
+  q 420 agente (213.2, 150.0) barreira x 230.0
+  q 480 agente (203.4, 150.0) barreira x 220.0
+  q 540 agente (193.4, 150.0) barreira x 210.0
+  q 600 agente (183.5, 150.0) barreira x 200.0
+  q 660 agente (173.5, 150.0) barreira x 190.0
+  q 720 agente (163.5, 150.0) barreira x 180.0
+  q 780 agente (153.5, 150.0) barreira x 170.0
+  q 840 agente (143.5, 150.0) barreira x 160.0
+  q 900 agente (133.5, 150.0) barreira x 150.0
+FIM discos quadro 900 agente (133.5, 150.0) chegou false
+CENA discos_assimetrico
+  q 60 agente (148.3, 152.4) barreira x 290.0
+  q 120 agente (218.0, 151.0) barreira x 280.0
+  q 180 agente (237.2, 150.4) barreira x 270.0
+  q 240 agente (237.6, 150.1) barreira x 260.0
+  q 300 agente (231.4, 150.0) barreira x 250.0
+  q 360 agente (222.7, 150.0) barreira x 240.0
+  q 420 agente (213.2, 150.0) barreira x 230.0
+  q 480 agente (203.4, 150.0) barreira x 220.0
+  q 540 agente (193.4, 150.0) barreira x 210.0
+  q 600 agente (183.5, 150.0) barreira x 200.0
+  q 660 agente (173.5, 150.0) barreira x 190.0
+  q 720 agente (163.5, 150.0) barreira x 180.0
+  q 780 agente (153.5, 150.0) barreira x 170.0
+  q 840 agente (143.5, 150.0) barreira x 160.0
+  q 900 agente (133.5, 150.0) barreira x 150.0
+FIM discos_assimetrico quadro 900 agente (133.5, 150.0) chegou false

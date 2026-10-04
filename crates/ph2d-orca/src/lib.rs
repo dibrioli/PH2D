@@ -33,7 +33,7 @@ mod vizinhos;
 pub mod walls;
 
 pub use blocos::ParedesPorBlocos;
-pub use crowd::{Agent, Crowd, MAX_NEIGHBORS, Params, SIDE_BIAS};
+pub use crowd::{Agent, Crowd, MAX_NEIGHBORS, Movel, Params, SIDE_BIAS};
 pub use lines::Line;
 pub use lp::Regime;
 pub use v2::V2;

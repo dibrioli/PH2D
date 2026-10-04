@@ -91,8 +91,9 @@ impl PhysicsBridge {
             });
         }
         // Todo corpo SÓLIDO que anda e não é agente: um obstáculo que se move, que não desvia — pela
-        // FORMA, em discos (ver [`discos`]). ⚠️ O ALVO de alguém fica um disco só: quem o persegue
-        // ignora-o por um índice, e um disco é o que esse índice nomeia.
+        // FORMA, em polígonos com velocidade (ver [`forma`]; a bola é um disco). ⚠️ O ALVO de alguém
+        // fica um disco só: quem o persegue ignora-o por um índice, e um disco é o que esse índice nomeia.
+        let mut moveis: Vec<ph2d_orca::Movel> = Vec::new();
         let alvos: BTreeSet<Entity> = pedidas.iter().filter_map(|p| p.alvo).collect();
         // (o aberto da W5) As PEÇAS de cada corpo (um filho só com `Collider`): fazem parte da forma.
         let mut pecas: BTreeMap<Entity, Vec<&super::super::parts::PartRef>> = BTreeMap::new();
@@ -125,18 +126,38 @@ impl PhysicsBridge {
                     });
                 vec![([0.0, 0.0], r)]
             } else {
-                let mut f = discos(&b.rest);
+                // As formas do corpo e das peças, no referencial do corpo.
+                let mut f = vec![forma(&b.rest)];
                 for p in minhas {
-                    // Os discos da peça, do referencial dela para o do corpo (`local` = onde ela está).
+                    // Da peça para o corpo (`local` = onde ela está).
                     let [lx, ly, lr] = p.local.map(f64::from);
                     let (s, c) = libm::sincos(lr);
-                    f.extend(
-                        discos(&p.rest)
-                            .into_iter()
-                            .map(|([x, y], r)| ([lx + c * x - s * y, ly + s * x + c * y], r)),
-                    );
+                    let poe = |[x, y]: V2| [lx + c * x - s * y, ly + s * x + c * y];
+                    f.push(match forma(&p.rest) {
+                        Forma::Disco(o, r) => Forma::Disco(poe(o), r),
+                        Forma::Poligono(pts) => Forma::Poligono(pts.into_iter().map(poe).collect()),
+                    });
                 }
-                f
+                let mundo = |[lx, ly]: V2| [c[0] + cos * lx - sin * ly, c[1] + sin * lx + cos * ly];
+                let mut poligonos = Vec::new();
+                let mut discos = Vec::new();
+                for x in f {
+                    match x {
+                        Forma::Disco(o, r) => discos.push((o, r)),
+                        Forma::Poligono(pts) => {
+                            poligonos.push(pts.into_iter().map(mundo).collect())
+                        }
+                    }
+                }
+                if !poligonos.is_empty() {
+                    moveis.push(ph2d_orca::Movel {
+                        walls: ph2d_orca::Walls::from_polygons(&poligonos),
+                        vel,
+                        centro: c,
+                        omega: w,
+                    });
+                }
+                discos
             };
             for ([lx, ly], raio) in forma {
                 let r = [cos * lx - sin * ly, sin * lx + cos * ly];
@@ -170,7 +191,8 @@ impl PhysicsBridge {
                     .map(ParedesDaMalha::montadas)
             })
             .collect();
-        let mut multidao = ph2d_orca::Crowd::new(corpos, ph2d_orca::Params::PRODUCT);
+        let mut multidao =
+            ph2d_orca::Crowd::new(corpos, ph2d_orca::Params::PRODUCT).with_moving(moveis);
         let seguras =
             multidao.solve_all_why(|i| paredes.get(i).copied().flatten().map(|w| (w, 0.0)), dt);
         self.nav.avanco.clear();
@@ -216,51 +238,60 @@ impl PhysicsBridge {
     }
 }
 
-/// ⭐ (o aberto da W6) **Um corpo que ANDA como o desvio o vê: discos ao longo da forma**, no
-/// referencial dele — `(centro, raio)`. Um disco só, o que envolve a forma, fazia de uma porta de
-/// `4 m` um círculo de `2 m` de raio, e ela desviava os agentes de longe (gate
-/// `uma_porta_comprida_a_andar_desvia_se_pela_forma`: `1,55 m` fora do caminho).
-///
-/// A forma alongada (meio-comprimento `a`, meia-espessura `b`) parte-se em `n = ⌈a/b⌉` células de
-/// `s = 2a/n` ≤ `2b`, e cada disco é o CIRCUNSCRITO da sua célula (`√(b² + (s/2)²)` ≤ `b·√2`) —
-/// a união cobre a forma sem a encolher. A cápsula e o estádio deitam-se em `y` (o de fábrica).
-fn discos(d: &BodyDesc) -> Vec<([f64; 2], f64)> {
-    let (a, b, em_x) = match d.shape {
+/// Uma forma como o desvio a vê, no referencial do corpo.
+enum Forma {
+    Disco(V2, f64),
+    Poligono(Vec<V2>),
+}
+
+/// ⭐ (W14) **Um corpo que ANDA como o desvio o vê** (plano 30 §22.5): a bola é um disco (exacto); o
+/// resto, um POLÍGONO anti-horário que o contém — a caixa exacta; a elipse, a cápsula e o estádio pelo
+/// octógono circunscrito de cada ponta (só `sqrt`). ⛔ Medido e recusado: a fileira de discos da W6 ao
+/// longo de uma forma comprida — os discos fazem uma serra, e um corpo largo que vem de frente PRENDIA
+/// o agente (o Godot também: preso com discos, contorna com vértices).
+fn forma(d: &BodyDesc) -> Forma {
+    let o = [f64::from(d.offset[0]), f64::from(d.offset[1])];
+    let (meia, ax, ay) = match d.shape {
+        ShapeDesc::Ball { radius } => return Forma::Disco(o, f64::from(radius.abs())),
         ShapeDesc::Cuboid { half_x, half_y } => {
-            (half_x.max(half_y), half_x.min(half_y), half_x >= half_y)
+            let (x, y) = (f64::from(half_x.abs()), f64::from(half_y.abs()));
+            return Forma::Poligono(
+                [[-x, -y], [x, -y], [x, y], [-x, y]]
+                    .map(|[px, py]| [o[0] + px, o[1] + py])
+                    .to_vec(),
+            );
         }
-        ShapeDesc::Ellipse { rx, ry } => (rx.max(ry), rx.min(ry), rx >= ry),
+        ShapeDesc::Ellipse { rx, ry } => (0.0, rx, ry),
         ShapeDesc::Capsule {
             half_height,
             radius,
-        } => (half_height + radius, radius, false),
+        } => (half_height, radius, radius),
         ShapeDesc::Stadium {
             half_height,
             rx,
             ry,
-        } => (half_height + ry, rx, false),
-        ShapeDesc::Ball { radius } => (radius, radius, true),
+        } => (half_height, rx, ry),
     };
-    let (a, b) = (f64::from(a.abs()), f64::from(b.abs()));
-    let o = [f64::from(d.offset[0]), f64::from(d.offset[1])];
-    if b <= 0.0 || a <= b {
-        return vec![(
-            o,
-            f64::from(raio_que_envolve(d)) - (o[0] * o[0] + o[1] * o[1]).sqrt(),
-        )];
-    }
-    let n = (a / b).ceil();
-    let s = 2.0 * a / n;
-    let raio = (b * b + s * s / 4.0).sqrt();
-    (0..n as u32)
-        .map(|k| {
-            let t = -a + s * (f64::from(k) + 0.5);
-            let c = if em_x {
-                [o[0] + t, o[1]]
-            } else {
-                [o[0], o[1] + t]
-            };
-            (c, raio)
-        })
-        .collect()
+    let (h, ax, ay) = (
+        f64::from(meia.abs()),
+        f64::from(ax.abs()),
+        f64::from(ay.abs()),
+    );
+    // O octógono circunscrito ao círculo unitário (`t = tan 22,5° = √2 − 1`), escalado por ponta e
+    // esticado em `y` pela meia-altura: o casco das duas pontas.
+    let t = 2.0_f64.sqrt() - 1.0;
+    Forma::Poligono(
+        [
+            [1.0, -t],
+            [1.0, t],
+            [t, 1.0],
+            [-t, 1.0],
+            [-1.0, t],
+            [-1.0, -t],
+            [-t, -1.0],
+            [t, -1.0],
+        ]
+        .map(|[x, y]| [o[0] + ax * x, o[1] + ay * y + h * y.signum()])
+        .to_vec(),
+    )
 }

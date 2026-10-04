@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use crate::lines::{Line, Me, agent_line, wall_lines};
 use crate::lp::{self, Regime};
-use crate::v2::{V2, abs_sq, len, sub};
+use crate::v2::{V2, abs_sq, add, dot, len, scale, sub};
 use crate::vizinhos::GrelhaFina;
 use crate::walls::Walls;
 
@@ -26,6 +26,30 @@ pub struct Agent {
     /// O corpo (índice na fotografia) de que ele NÃO se desvia: o ALVO de um perseguidor — desviar
     /// dele seria nunca lhe tocar.
     pub ignores: Option<u32>,
+}
+
+/// ⭐ (W14) **Um corpo que ANDA e não desvia, como POLÍGONOS** (plano 30 §22.5): as arestas dão
+/// semi-planos por onde o agente DESLIZA — uma fileira de discos ao longo de um corpo largo era uma
+/// serra que o prendia (medido, e o Godot faz o mesmo: preso com discos, contorna com vértices).
+#[derive(Clone, Debug)]
+pub struct Movel {
+    /// Os polígonos anti-horários do corpo, onde ele está agora.
+    pub walls: Walls,
+    /// A velocidade de translação, o centro de rotação e a velocidade angular: a velocidade do ponto
+    /// `p` do corpo é `vel + ω × (p − centro)`.
+    pub vel: V2,
+    pub centro: V2,
+    pub omega: f64,
+}
+
+impl Movel {
+    fn vel_em(&self, p: V2) -> V2 {
+        let r = sub(p, self.centro);
+        [
+            self.vel[0] - self.omega * r[1],
+            self.vel[1] + self.omega * r[0],
+        ]
+    }
 }
 
 /// Os números do desvio — em segundos e metros.
@@ -122,6 +146,8 @@ pub struct Crowd {
     grid: BTreeMap<(i64, i64), Vec<u32>>,
     /// (W14) No modo do produto (os `n` mais perto ao alcance sem perda): a grelha FINA, por anéis.
     fina: Option<GrelhaFina>,
+    /// (W14) Os corpos que andam como polígonos ([`Movel`]).
+    moveis: Vec<Movel>,
     /// O buffer da vizinhança (reaproveitado; nenhum estado entre consultas).
     scratch: std::cell::RefCell<Vec<(f64, u32)>>,
 }
@@ -162,8 +188,16 @@ impl Crowd {
             cell,
             grid,
             fina,
+            moveis: Vec::new(),
             scratch: std::cell::RefCell::new(Vec::new()),
         }
+    }
+
+    /// (W14) Os corpos que andam como polígonos — ver [`Movel`].
+    #[must_use]
+    pub fn with_moving(mut self, moveis: Vec<Movel>) -> Self {
+        self.moveis = moveis;
+        self
     }
 
     #[must_use]
@@ -319,6 +353,47 @@ impl Crowd {
             wall_lines(&me, r, w, &near, self.params.time_horizon_walls, &mut lines);
         }
         let n_walls = lines.len();
+        // (W14) Os móveis: as linhas no referencial de cada um (a velocidade relativa à do ponto dele
+        // mais perto), deslocadas pela velocidade desse ponto. São do AGENTE, não das paredes: o 3D
+        // pode violá-las (um corpo a empurrar contra uma parede não torna o programa impossível).
+        let tau_m = self.params.time_horizon_walls;
+        if tau_m > 0.0 {
+            let (mut near, mut tmp) = (Vec::new(), Vec::new());
+            for m in &self.moveis {
+                // A folga é o que ele anda num horizonte (`|u|·τ`), logo o alcance conta-a duas vezes.
+                let vmax = (0..m.walls.len())
+                    .map(|k| len(m.vel_em(m.walls.point(k))))
+                    .fold(0.0, f64::max);
+                let alcance = tau_m * (a.max_speed + 2.0 * vmax) + a.radius;
+                m.walls.near(a.pos, alcance, &mut near);
+                let Some(&k) = near.first() else {
+                    continue;
+                };
+                let (p, q) = (
+                    m.walls.point(k as usize),
+                    m.walls.point(m.walls.next(k as usize)),
+                );
+                let pq = sub(q, p);
+                let t =
+                    (dot(sub(a.pos, p), pq) / abs_sq(pq).max(f64::MIN_POSITIVE)).clamp(0.0, 1.0);
+                let u = m.vel_em(add(p, scale(pq, t)));
+                let rel = Me {
+                    pos: a.pos,
+                    vel: sub(a.vel, u),
+                    radius: a.radius,
+                };
+                tmp.clear();
+                // ⭐ A FOLGA contra um corpo que anda é o que ele anda num horizonte: parado é zero (já é
+                // parede da malha), e a andar o agente não o roça ao contorná-lo (medido, plano 30 §22.5:
+                // sem ela a folga ao braço do carrinho era `5 mm`).
+                let folga = len(u) * tau_m;
+                wall_lines(&rel, a.radius + folga, &m.walls, &near, tau_m, &mut tmp);
+                lines.extend(tmp.iter().map(|l| Line {
+                    point: add(l.point, u),
+                    dir: l.dir,
+                }));
+            }
+        }
         let mut nb = Vec::new();
         self.neighbors(i, &mut nb);
         for j in nb {

@@ -1437,3 +1437,121 @@ mais perto ao alcance sem perda); o da paridade com o Godot (`neighbor_dist`) fi
    `entalado_entre_duas_paredes_o_3d_nao_parte` passam sem mudança.
 2. A `1 000` agentes densos a vizinhança desce de `2,4` para `≤ 0,6 ms` (load `≤ 5`), e a `100` não fica
    mais lenta. Senão a varrida fica (recusa medida).
+
+### §22.4 — A procura ponderada com muita lama: ⛔ recusa MEDIDA
+
+**Kill-criterion (escrito antes de qualquer código):** uma alavanca entra só se cortar o tempo da procura
+ponderada na cena grande (`100` lamas, pesos `4` e `10`) a METADE ou menos, com o custo contra o oráculo
+ao dígito de hoje (§17.1: `1,0000 · 1,0000 · 1,0045–1,0107` por peso, a `0,25 m`).
+
+**As medições** (sonda provisória `sonda_steiner_w14`: a cena grande, `60` pares, o mínimo de 3, load
+`~83` — só as razões valem; o custo contra o passo fino `0,1 m`):
+
+| peso · passo da grelha | nós / consulta | trabalho / consulta | mediana | custo / ref. p95 · máx |
+|---|---|---|---|---|
+| 4 · **`0,25`** (o produto) | `25 692` | `48 135` | `4,0 ms` | `1,0001 · 1,0008` |
+| 4 · `0,5` | `23 017` | `37 586` | `3,2` | `1,0001 · 1,0003` |
+| 4 · `1,0` | `21 867` | `33 632` | `2,8` | `1,0002 · 1,0012` |
+| 10 · **`0,25`** | `30 898` | `58 601` | `6,0` | `1,0001 · 1,0019` |
+| 10 · `0,5` | `27 352` | `45 264` | `4,5` | `1,0007 · 1,0020` |
+| 10 · `1,0` | `25 838` | `40 258` | `3,9` | `1,0019 · 1,0020` |
+
+⇒ **a grelha das fronteiras NÃO é a fonte do excesso** (o «`4,4×` nós é a grelha» do §17.3 era a leitura
+de uma cena): com `4×` menos raízes os nós descem só `15 %`. O que fica é a REGIÃO que uma procura exacta
+tem de cobrir — o A\* expande todo o nó com `f < C*`, e a lama sobe o `C*` acima do comprimento (a elipse
+`g + w_min·|x − t| < C*` alarga-se) e parte o chão em mais polígonos.
+
+O perfil (`docs/Painter/ferramentas/amostra_gdb.py`, `1 331` amostras, peso 4, o produto): a dominância
+`37,6 %` (o corte `25,4 %`), o heap `17,2 %`, a expansão e as raízes o resto. Mesmo a custo ZERO a
+dominância dava `1,6×` — e sem ela os nós sobem `2,6×` (§17.1).
+
+| recusado | medição |
+|---|---|
+| a grelha mais grossa (`0,5`–`1,0 m`) | `−20–35 %` de tempo na cena grande, mas a `0,5 m` a grelha escolhe o corredor errado nas cenas pequenas (`9 %` a peso 10, §15.1) — e não chega a metade |
+| o custo do caminho uniforme como tecto (com folga) | o A\* nunca expande um nó acima de `C*`: o tecto só poupa INSERÇÕES (`gerados / expandidos ≈ 1,2`), e sem folga piorava a precisão (§15.4) |
+| um heurístico mais forte que `w_min·|x − t|` (marcos ALT) | pede uma procura ponderada da malha inteira por marco a cada porta que muda e a cada tabela de custos — a malha muda em tempo de jogo |
+| o A\* ponderado (heurístico inflacionado) | sub-óptimo por construção: parte o `1,0000` contra o oráculo, que é a régua da W7 |
+
+O que a W14 já tirou a esta procura: a fila passa a contá-la pelo que custa (§22.1), e uma tabela sem lama
+deixou de varrer a malha a cada procura.
+
+### §22.5 — Um corpo LARGO que anda prende o agente
+
+**A reprodução** (sonda `nav_desvio_largo::sonda_o_corpo_largo_que_anda`, `#[ignore]`: o agente de
+`(−6, 0)` para `(6, 0)`, uma barreira cinemática `0,3 m` de espessura, a andar por `Transform`, 900
+tiques):
+
+| a barreira | resultado |
+|---|---|
+| de frente, `1,2 m`, a `0,3 m/s` | NÃO chega — fica colada à frente dela, em `y = 0,00`, e recua com ela |
+| de frente, `3 m`, a `0,3 m/s` | igual, ao centímetro (os dois casos são o MESMO para o desvio) |
+| de frente, `3 m`, a `1 m/s` | empurrado `6 m` para trás |
+| à frente, `3 m`, no mesmo sentido, a `0,3 m/s` | chega no tique `210` (o CONTROLO parado: `200`) — não é armadilha |
+
+O desvio vê a barreira como uma FILEIRA de discos de `0,21 m` (`discos()`, a cura da W6 contra o disco
+único): os dois do meio estão simétricos em `y = ±0,15` e a fileira faz uma reentrância — a melhor
+velocidade é travar, e o peso de lado (`SIDE_BIAS`) não tira ninguém de lá.
+
+**O ORÁCULO CORRIDO** (`ferramentas/godot_nav_oraculo/largo.gd`, Godot 4.7.2, MIT, malha fechada, uma
+linha de execução; o agente `R = 10 px`, `100 px/s`, a barreira `10 × 100 px` a `10 px/s`):
+
+| a barreira no Godot | resultado |
+|---|---|
+| obstáculo de VÉRTICES que se muda de sítio, agente no eixo | preso (o empate simétrico — o Godot não tem peso de lado) |
+| **obstáculo de VÉRTICES, agente `3 px` fora do eixo** | **contorna e chega (quadro `458`)** |
+| obstáculo de vértices PARADO, no eixo | preso |
+| um obstáculo de RAIO (o disco que a envolve) | preso, recua com ela |
+| **dez discos ao longo dela (o que a ponte faz)** | **preso, mesmo fora do eixo** |
+
+⇒ **a resposta da indústria é o POLÍGONO**: as arestas de um obstáculo são semi-planos por onde o agente
+DESLIZA (o RVO2, o Godot); uma fileira de discos é uma serra. O peso de lado desfaz o empate do eixo.
+
+**A decisão:** um corpo sólido que anda e não é agente (nem o alvo de quem o persegue — esse continua UM
+disco, que o índice nomeia) entra no desvio como POLÍGONOS COM VELOCIDADE (`ph2d_orca::Movel`): as
+linhas de cada polígono calculam-se no referencial dele (a velocidade relativa) e deslocam-se pela
+velocidade do ponto mais perto do agente (a translação mais `ω ×` o braço — um torniquete roda). O disco
+fica para a bola (é exacto). As linhas dos móveis são do agente, não das paredes: o 3D pode violá-las
+(um corpo que empurra contra uma parede não torna o programa impossível).
+
+**Kill-criterion (escrito antes do código):**
+1. Os dois casos de frente (`1,2` e `3 m`) CHEGAM, sem tocar na barreira (folga `> 0`), em `≤ 2×` os
+   tiques do CONTROLO parado; o caso «à frente» não piora.
+2. Os gates do desvio passam sem mudar um número: o banco de cenários, o oráculo do Godot, `nav_desvio*`
+   (a porta comprida, o torniquete, o corpo composto e o golpe), o scrub e o hash/replay.
+3. Senão, a fileira de discos fica e o achado vira recusa medida.
+
+**O que mudou e o que mediu** (`nav_desvio_largo::um_corpo_largo_que_vem_de_frente_e_contornado`):
+
+| a barreira | antes (a fileira de discos) | **depois (polígono com velocidade + folga `|u|·τ`)** |
+|---|---|---|
+| de frente, `1,2 m`, `0,3 m/s` | nunca chega | **tique `213`**, folga `0,30 m` |
+| de frente, `3 m`, `0,3 m/s` | nunca chega | **tique `578`**, folga `0,30 m` |
+| de frente, `3 m`, `1 m/s` | empurrado `6 m` para trás | **tique `311`**, folga `1,00 m` |
+| à frente, no mesmo sentido | `210` | `216` |
+| CONTROLO parado (é parede da malha) | `200` | `199` |
+
+- **A FOLGA** (`|u|·τ`, o que o corpo anda num horizonte): o ORCA desliza RENTE a uma parede — contra a da
+  malha é o caminho mais curto, contra um corpo que anda é um roçar. Medido sem ela: `5 mm` ao braço do
+  carrinho (o gate da W13 pede `> 0,2 m`); uma folga FIXA atrasava o CONTROLO parado (`199 → 322–335`
+  tiques: lutava com o caminho rente à quina recortada); a da velocidade é zero parado.
+- **O Godot tratado como parado** (o polígono sem a velocidade dele, à maneira do servidor do Godot) foi
+  medido e é PIOR aqui: `705` tiques, e o caso rápido volta a falhar.
+- **O oráculo, desfecho a desfecho** (`ph2d-orca/tests/it/oraculo_do_godot_largo.rs`, a cena do
+  `largo.gd`): o polígono fora do eixo chega no quadro **`461`** (o Godot: **`458`**); a fileira de discos
+  prende nos dois; no eixo exacto o Godot prende-se e o peso de lado tira-nos de lá (`456`).
+
+⚠️ **O kill-criterion, contra o que mediu:** chegar e não tocar — cumprido nos três; «`≤ 2×` o CONTROLO»
+— cumprido a `1,2 m` (`1,07×`) e a `1 m/s` (`1,56×`), **NÃO a `3 m` lenta (`2,9×`)**. A alternativa que o
+critério previa (a fileira de discos) não chega em NENHUM — o polígono entra porque domina em todos os
+casos medidos, e o resto fica aberto com o mecanismo (§22.6). Escrevi o critério contra «nada muda» e o
+«nada» era a armadilha.
+
+### §22.6 — ⏳ O que fica
+
+- **A barreira larga e LENTA** (`3 m` a `0,3 m/s`): o agente contorna a `2,9×` o tempo do CONTROLO. O
+  mecanismo, medido no traço: o caminho aponta para o alvo, no EIXO, através da barreira (ela anda, logo
+  não é parede da malha), e puxa o agente de volta contra o peso de lado — equilibram-se quando o ângulo
+  até ao alvo passa `asin(SIDE_BIAS) ≈ 14,5°`, e ele rasteja em `y ≈ −1,3` até a barreira o deixar
+  passar. A cura é do CAMINHO (contornar o polígono pela tangente do lado escolhido), não do desvio.
+- A dominância da procura ponderada (§22.4): o maior pedaço que sobra; nenhuma alavanca medida chega a
+  metade.

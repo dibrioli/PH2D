@@ -310,3 +310,8 @@ mod desenho_tests;
 #[cfg(test)]
 #[path = "skinned_mesh_efeitos_tests.rs"]
 mod efeitos_tests;
+
+/// ⭐⭐⭐ **O solver em fundo** da forma presa com efeito (F50-j), num irmão pelo tecto de LOC.
+#[cfg(test)]
+#[path = "skinned_mesh_efeitos_solver_tests.rs"]
+mod efeitos_solver_tests;

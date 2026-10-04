@@ -177,7 +177,9 @@ fn um_campo_linear_devolve_none_em_vez_de_uma_copia() {
 /// [`include_str!`], que deixa de **compilar** se um dos dois ficheiros mudar de sítio.
 #[test]
 fn o_assador_tem_um_chamador_e_ele_nao_e_o_bind() {
-    const BIND: &str = include_str!("skin_live.rs");
+    // ⚠️ O bind mudou-se para o irmão `skin_live_prender.rs` (2026-10-03, tecto de LOC) — o controlo
+    // positivo abaixo é que o apanhou.
+    const BIND: &str = include_str!("skin_live_prender.rs");
     const MEMO: &str = include_str!("skin_bake_cache.rs");
     assert!(
         MEMO.contains("skin_bake::assar_no_bind("),

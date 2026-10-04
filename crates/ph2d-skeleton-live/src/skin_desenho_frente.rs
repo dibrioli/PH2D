@@ -27,6 +27,8 @@ struct Posada<'a> {
     rigido: bool,
     pos: Vec<[f64; 2]>,
     chave_tri: Vec<f64>,
+    /// O triângulo posado está do AVESSO (a dobra virou-o): o lado de baixo de um papel dobrado.
+    virado: Vec<bool>,
     grelha: Grelha,
 }
 
@@ -137,6 +139,16 @@ impl<'a> Posada<'a> {
             .iter()
             .map(|t| t.iter().map(|&v| chave_v[v as usize]).sum::<f64>() / 3.0)
             .collect();
+        let area = |q: [[f64; 2]; 3]| {
+            (q[1][0] - q[0][0]) * (q[2][1] - q[0][1]) - (q[2][0] - q[0][0]) * (q[1][1] - q[0][1])
+        };
+        let virado = tris
+            .iter()
+            .map(|t| {
+                let (r, p) = (t.map(|v| campo.malha.rest[v as usize]), t.map(|v| pos[v as usize]));
+                area(r) * area(p) < 0.0
+            })
+            .collect();
         let grelha = Grelha::nova(&pos, tris);
         Some(Self {
             campo,
@@ -146,6 +158,7 @@ impl<'a> Posada<'a> {
             rigido,
             pos,
             chave_tri,
+            virado,
             grelha,
         })
     }
@@ -173,6 +186,9 @@ impl<'a> Posada<'a> {
         }) else {
             return false;
         };
+        if self.virado[dono] {
+            return true;
+        }
         let t = m.tris[dono];
         let linha: Vec<f64> = (0..n)
             .map(|j| {

@@ -83,6 +83,23 @@ fn sonda_do_render_por_malha() {
                         .translation = [c[0], c[1], c[2]];
                 }
             }
+            // `PH2D_SONDA_RUG=<folha>:<rugosidade>;…`: o material da folha com essa rugosidade (o dono pôs
+            // o alumínio a `0` no report 5, 04/10).
+            if let Ok(v) = std::env::var("PH2D_SONDA_RUG") {
+                let world = sim.world_mut();
+                let mut q =
+                    world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
+                let root = q.iter(world).next().map(|(e, _)| e).expect("a peça");
+                let folhas = crate::materials::folhas(world, root);
+                for item in v.split(';').filter(|x| !x.trim().is_empty()) {
+                    let (k, r) = item.split_once(':').expect("<folha>:<rugosidade>");
+                    let e = folhas[k.trim().parse::<usize>().expect("folha")].0;
+                    world
+                        .get_mut::<ph2d_field_ecs::FieldMaterial>(e)
+                        .expect("a folha tem material")
+                        .roughness = r.trim().parse().expect("rugosidade");
+                }
+            }
             // `PH2D_SONDA_BRILHO=1` liga o brilho de fábrica — o que o artista tem ao clicar «On».
             let brilho = std::env::var("PH2D_SONDA_BRILHO").is_ok_and(|v| v == "1");
             // `PH2D_SONDA_ESTILO=1`: tinta quente nas ARESTAS e fria nas COVAS (o roteiro da `=35`).
@@ -205,6 +222,13 @@ fn sonda_do_render_por_malha() {
                 } else {
                     ""
                 }
+            );
+            // `PH2D_SONDA_NOME=<x>`: um sufixo à escolha (várias poses na mesma pasta).
+            let sufixo = format!(
+                "{sufixo}{}",
+                std::env::var("PH2D_SONDA_NOME")
+                    .map(|x| format!("_{x}"))
+                    .unwrap_or_default()
             );
             let caminho =
                 std::path::Path::new(&dir).join(format!("render_malha_cena_{n}{sufixo}.ppm"));

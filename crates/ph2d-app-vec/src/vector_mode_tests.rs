@@ -160,6 +160,10 @@ fn the_joined_objects_enter_together() {
     let (ba, bb) = (bits(&c, a), bits(&c, b));
     let mut fam = Family::new(&mut c.vec, &mut c.sim);
     assert!(fam.joins(ObjectMode::Edit));
+    assert!(
+        fam.parts_take_the_object_gizmo(ObjectMode::Edit),
+        "o Select do Edit transforma as formas pelo gizmo"
+    );
     assert!(fam.enter_with(ObjectMode::Edit, ob, &[oa], &mut c.tools));
     let parts = fam.parts(ob).expect("partes");
     for p in [oa, ba, bb] {

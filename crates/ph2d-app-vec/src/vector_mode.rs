@@ -195,6 +195,10 @@ impl ModeFamily for Family<'_> {
         mode == ObjectMode::Edit
     }
 
+    fn parts_take_the_object_gizmo(&self, mode: ObjectMode) -> bool {
+        mode == ObjectMode::Edit
+    }
+
     fn enter_with(
         &mut self,
         mode: ObjectMode,

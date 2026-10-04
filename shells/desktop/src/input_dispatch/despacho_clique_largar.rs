@@ -152,10 +152,9 @@ impl crate::App {
                     // entra, e o Enio nomeou-a: *"não permita a seleção de múltiplas
                     // imagens se o painter está ativo"*. Uma trava que só cobre o gesto
                     // óbvio ensina o artista a usar o outro.
-                    if ph2d_editor_core::screens::hero::mode_drive::refused(
+                    if !ph2d_editor_core::screens::hero::mode_drive::lasso_admits(
                         hero,
-                        None,
-                        true,
+                        &mut bits,
                         &mut gfx.toasts,
                     ) {
                         self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);

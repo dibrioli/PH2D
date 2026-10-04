@@ -124,6 +124,8 @@ pub struct ModeState {
     /// `None` = o modo edita o objecto inteiro (Paint, Sculpt, Draw); `Some` = o modo edita o que
     /// está DENTRO dele, e a selecção pode ser qualquer parte (o Edit do Model: as formas da peça).
     parts: Option<Vec<u64>>,
+    /// As partes transformam-se pelo gizmo de objecto ([`crate::screens::hero::mode_drive::ModeFamily::parts_take_the_object_gizmo`]).
+    part_gizmo: bool,
 }
 
 impl ModeState {
@@ -181,6 +183,17 @@ impl ModeState {
     /// ⭐ A família do modo em curso publica as partes da entidade dele (ver o campo).
     pub fn publish_parts(&mut self, parts: Option<Vec<u64>>) {
         self.parts = parts;
+    }
+
+    /// Publica se as partes do modo em curso usam o gizmo de objecto.
+    pub fn publish_part_gizmo(&mut self, on: bool) {
+        self.part_gizmo = on;
+    }
+
+    /// As partes do modo em curso usam o gizmo de objecto.
+    #[must_use]
+    pub fn part_gizmo(&self) -> bool {
+        self.part_gizmo
     }
 
     /// As partes publicadas da entidade trancada.

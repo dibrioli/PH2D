@@ -533,6 +533,9 @@ impl ModeFamily for JoinFamily {
     fn joins(&self, _: ObjectMode) -> bool {
         true
     }
+    fn parts_take_the_object_gizmo(&self, _: ObjectMode) -> bool {
+        true
+    }
     fn enter_with(&mut self, _: ObjectMode, e: u64, joined: &[u64], _: &mut ToolRegistry) -> bool {
         self.held = [e].into_iter().chain(joined.iter().copied()).collect();
         true
@@ -638,4 +641,56 @@ fn a_mode_that_joins_takes_the_selected_of_the_same_kind() {
         vec![VEC_B, VEC_A],
         "o Tab seguinte não as juntou de novo"
     );
+}
+
+/// ⭐⭐ GATE (spec/06 F3 ▸ Vector; report do dono 04/10: *«o gizmo não aparece e não consigo a
+/// multiseleção»*) — **num modo de PARTES que o declara, a parte seleccionada tem o gizmo** (o
+/// Select do Edit do vetor transforma as formas por ele), o objecto trancado não; e **o laço fica só
+/// com as partes** em vez de recusar. Num modo de objecto inteiro (Sculpt) o gizmo some e o laço é
+/// recusado, como antes.
+#[test]
+fn a_parts_mode_gives_the_part_its_gizmo_and_the_lasso_its_parts() {
+    let mut c = cena();
+    let mut fam = JoinFamily::default();
+    let quadro = |c: &mut Cena, fam: &mut JoinFamily, req| {
+        drive(
+            &mut [fam],
+            &vec_kind,
+            &|_| "Obj".to_string(),
+            &mut c.tools,
+            &mut c.hero,
+            &mut c.toasts,
+            req,
+        );
+    };
+    c.hero.gizmo.replace_selection(Some(VEC_A));
+    quadro(&mut c, &mut fam, Some(ModeRequest::Toggle));
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Edit);
+    assert!(
+        !object_gizmo_shows(&c.hero),
+        "o objecto trancado ganhou o gizmo em Edit"
+    );
+    c.hero.gizmo.replace_selection(Some(VEC_SHAPE));
+    quadro(&mut c, &mut fam, None);
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Edit);
+    assert!(
+        object_gizmo_shows(&c.hero),
+        "a forma seleccionada em Edit não tem gizmo"
+    );
+    let mut bits = vec![VEC_SHAPE, IMG, VEC_C];
+    assert!(
+        lasso_admits(&c.hero, &mut bits, &mut c.toasts),
+        "o laço foi recusado em Edit"
+    );
+    assert_eq!(bits, vec![VEC_SHAPE], "o laço levou o que não é parte");
+
+    let mut s = cena();
+    s.hero.gizmo.replace_selection(Some(PIECE));
+    s.quadro(Some(ModeRequest::Enter(ObjectMode::Sculpt)));
+    let mut bits = vec![PIECE, PIECE2];
+    assert!(
+        !lasso_admits(&s.hero, &mut bits, &mut s.toasts),
+        "o laço passou num modo inteiro"
+    );
+    assert!(!object_gizmo_shows(&s.hero));
 }

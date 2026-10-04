@@ -49,6 +49,12 @@ pub trait ModeFamily {
     fn owner_of(&mut self, _bits: u64) -> Option<u64> {
         None
     }
+    /// ⭐ **As PARTES transformam-se pelo gizmo de objecto** neste modo (o Select do Edit do vetor:
+    /// mover, girar e escalar uma forma dentro do objecto). `false` = o gizmo só existe em Object
+    /// (D6: num modo de criação seria um controlo por cima do módulo).
+    fn parts_take_the_object_gizmo(&self, _mode: ObjectMode) -> bool {
+        false
+    }
     /// ⭐ **Multi-objecto** (o Edit do Blender): `true` = entrar em `mode` leva junto os objectos
     /// do MESMO tipo seleccionados — chegam a [`Self::enter_with`], voltam como [`Self::parts`], e
     /// sair devolve-os à selecção. `false` = a selecção colapsa no activo.
@@ -260,6 +266,11 @@ pub fn drive(
     }
     // 4. Cada módulo segue o modo que ficou.
     let current = hero.gizmo.mode.active();
+    let part_gizmo = current.is_some_and(|a| {
+        family(families, kind_of(a.entity), a.mode)
+            .is_some_and(|f| f.parts_take_the_object_gizmo(a.mode))
+    });
+    hero.gizmo.mode.publish_part_gizmo(part_gizmo);
     for f in families.iter_mut() {
         f.follow(current, tools);
     }
@@ -288,10 +299,32 @@ pub fn refused(
 
 /// ⭐ **O gizmo de transformação É o modo Object** (D6): num modo de criação (Paint, Sculpt) ele
 /// seria um controlo que não responde por cima do módulo. A shell pergunta aqui ao decidir se o
-/// pinta; a selecção fica armada.
+/// pinta; a selecção fica armada. ⭐ A excepção é uma PARTE seleccionada num modo cuja família o
+/// declara ([`ModeFamily::parts_take_the_object_gizmo`]) — nunca o objecto trancado inteiro.
 #[must_use]
 pub fn object_gizmo_shows(hero: &HeroScreen) -> bool {
-    hero.gizmo.mode.active().is_none()
+    let mode = &hero.gizmo.mode;
+    mode.active().is_none()
+        || (mode.part_gizmo()
+            && hero
+                .gizmo
+                .selection
+                .is_some_and(|s| Some(s) != mode.locked_entity()))
+}
+
+/// ⭐ **O cadeado na porta do LAÇO** — num modo de objecto inteiro a multi-selecção é recusada (com
+/// o aviso; `false`); num modo de PARTES o laço fica só com as partes e o objecto trancado (o laço
+/// do Edit do vetor apanha as formas dele).
+pub fn lasso_admits(hero: &HeroScreen, bits: &mut Vec<u64>, toasts: &mut ToastQueue) -> bool {
+    let (Some(locked), parts) = (hero.gizmo.mode.locked_entity(), hero.gizmo.mode.parts()) else {
+        return true;
+    };
+    let Some(parts) = parts else {
+        toasts.push(Toast::warning(object_mode::refusal(&hero.gizmo.mode)));
+        return false;
+    };
+    bits.retain(|b| *b == locked || parts.contains(b));
+    true
 }
 
 /// ⭐ **O botão direito no canvas livre** (spec/06 escolha 3): em Object abre o menu Add — o mesmo

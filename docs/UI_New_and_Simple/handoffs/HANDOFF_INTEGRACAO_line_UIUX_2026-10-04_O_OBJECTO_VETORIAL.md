@@ -205,6 +205,17 @@ junta em `mode_drive_tests.rs` (M20, o filtro do mesmo tipo ao sair), a REAL em
   `view_derived.editing` ao lado de `clips`/`poses`/`absorbed`; gate
   `the_vector_edit_reaches_the_frame_view` estendido ao escritor — sangra sem a linha (mutação
   conferida, com controlo verde). Também cura o laço e o realce em Edit.
+- 2.º report (foto): *«o gizmo não aparece e não consigo a multiseleção»*. **Dois mecanismos:**
+  (1) `mode_drive::object_gizmo_shows` = «só em Object» (D6) — certo para Sculpt/Paint, mas o
+  Select do Edit do vetor transforma as formas PELO gizmo. ⇒ fundação: `ModeFamily::
+  parts_take_the_object_gizmo` (omissão `false`; o vetor diz `true` em Edit), publicado em
+  `ModeState::part_gizmo`; o gizmo aparece sobre uma PARTE seleccionada, nunca sobre o objecto
+  trancado. (2) O laço chamava `refused(hero, None, additive=true)`, que a lei recusa SEMPRE — o
+  aviso *«Leave Edit Mode (Tab)…»* da foto. ⇒ `mode_drive::lasso_admits`: num modo de partes o laço
+  fica só com as partes (e o trancado); num modo inteiro recusa como antes. Gate
+  `a_parts_mode_gives_the_part_its_gizmo_and_the_lasso_its_parts` (família FALSA; Sculpt como
+  controlo) + a declaração na família REAL; 4/4 mutações sangram. ⚠️ Superfície nova para o
+  integrador: um método com omissão no trait `ModeFamily` e um campo no `ModeState` (aditivos).
 
 ## §6 — Premissas derrubadas
 

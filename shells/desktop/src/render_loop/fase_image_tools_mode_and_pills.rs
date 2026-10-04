@@ -30,10 +30,8 @@ impl crate::App {
         // single invariant that makes "Image Tools off ⟹ every image
         // tool off & inaccessible" hold no matter how the tool became
         // active (toggle-off, a stale path, the Digit3 shortcut).
-        // ⚠️ **Menos no modo Paint** (spec/06 F2): ali o Painter entra pelo MODO, sem o IMG.
-        if !hero.image_edit.mode_on
-            && hero.gizmo.mode.current() != ph2d_editor_core::object_mode::ObjectMode::Paint
-        {
+        // ⚠️ **Menos nos modos do Painter** (Paint · Mask, spec/06): ali ele entra pelo MODO.
+        if !hero.image_edit.mode_on && !hero.gizmo.mode.current().uses_the_painter() {
             let active_is_image_tool = tools
                 .active()
                 .map(|t| crate::is_image_edit_tool(&t.id()))

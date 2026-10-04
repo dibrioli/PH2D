@@ -73,6 +73,13 @@ impl ObjectMode {
         }
     }
 
+    /// ⭐ **O modo põe o Painter em mãos** — Paint e Mask são o MESMO Painter com outro alvo (e o
+    /// Paint da escultura também). ⛔ Pergunte AQUI: um `== Paint` à mão largava o Painter do Mask.
+    #[must_use]
+    pub const fn uses_the_painter(self) -> bool {
+        matches!(self, ObjectMode::Paint | ObjectMode::Mask)
+    }
+
     /// O inverso de [`Self::row_id`].
     #[must_use]
     pub fn of_row(id: NodeId) -> Option<ObjectMode> {

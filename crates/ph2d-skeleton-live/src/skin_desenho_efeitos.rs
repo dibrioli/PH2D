@@ -146,3 +146,24 @@ pub(super) fn so_os_fechados(d: &VecPath) -> VecPath {
     so.subpaths.retain(|c| c.closed);
     so
 }
+
+/// ⭐⭐ **A4 — a fonte GUARDADA que o Bind de hoje teria feito** de uma forma presa com efeitos vivos
+/// (um projecto anterior à F51): o MESMO cozido que esta folha desenha (geometria, campo do contorno
+/// cozido resolvido no repouso dos tendões guardados, tabela dele), marcado `efeitos_cozidos`. A lei
+/// da F51 sobre ela dá o desenho de antes ao bit. `None` sem campo (um bind anterior a 2026-09-20).
+pub(crate) fn coze_para_guardar(
+    g: &SkinnedPath,
+    pilha: &[FxEntry],
+    eixos: &[Handle],
+) -> Option<SkinnedPath> {
+    let ossos = g.campo.as_ref()?.ossos();
+    let campo = resolve_o_campo(&geometria_cozida(g, pilha), eixos, ossos).map(Rc::new);
+    let c = cozido_com_efeitos(g, pilha, campo)?;
+    let campo = c.campo.as_ref().map_or_else(|| g.campo.clone(), |c| Some(c.0.clone()));
+    Some(SkinnedPath {
+        path: c.caminho,
+        pesos: c.tabela,
+        campo,
+        efeitos_cozidos: true,
+    })
+}

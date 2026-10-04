@@ -481,6 +481,7 @@ fn cozido_para_o_bake(g: &SkinnedPath) -> Option<(VecPath, Vec<f64>)> {
 mod efeitos;
 #[cfg(test)]
 pub(crate) use efeitos::solver_em_fundo_no_teste;
+pub(crate) use efeitos::coze_para_guardar;
 use efeitos::{efeitos_da_gaveta, so_os_fechados, uniao_dos_fechados};
 #[path = "skin_desenho_frente.rs"]
 mod frente;

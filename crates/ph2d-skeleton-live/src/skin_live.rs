@@ -483,6 +483,10 @@ pub fn release(
 mod navega;
 pub use navega::{chain_ends, chain_to, skinned_images_of_skeleton};
 
+#[path = "skin_live_carrega.rs"]
+mod carrega;
+pub use carrega::coze_os_efeitos_presos;
+
 #[cfg(test)]
 #[path = "skin_live_tests.rs"]
 pub(crate) mod tests;

@@ -39,7 +39,9 @@ pub fn coze_os_efeitos_presos(sim: &mut SimWorld, scene: &mut VecScene) -> usize
             }
             crate::skin_desenho::Estilo::NaoServe => continue,
         };
-        let Some(g) = crate::skinned_mesh::le(&skin.source).filter(|g| !g.efeitos_cozidos) else {
+        // ⚠️ Uma fonte JÁ cozida que voltou a ter pilha (colar, desfazer) coze outra vez: o desenho
+        // da F50 sobre ela é o mesmo, e a lei é «presa não tem efeitos» (mutação: a guarda sobrevivia).
+        let Some(g) = crate::skinned_mesh::le(&skin.source) else {
             continue;
         };
         let eixos = eixos_do_bind(sim, &skin, &index);

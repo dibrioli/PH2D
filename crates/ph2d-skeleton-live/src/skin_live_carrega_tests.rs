@@ -100,6 +100,33 @@ fn cozer_no_carregamento_nao_move_um_pixel() {
     }
 }
 
+/// ⭐⭐ **GATE — uma forma JÁ cozida que volta a ter pilha (colar, desfazer) também coze, sem mover
+/// um pixel.** ⛔ **O CONTROLO:** a pilha nova muda mesmo o desenho.
+#[test]
+fn uma_forma_ja_cozida_com_pilha_nova_coze_outra_vez() {
+    let (mut sim, mut scene, bits, id) = projecto_antigo(
+        cook(ShapeKind::Rectangle, [0.0, 0.0], [40.0, 10.0], &[]),
+        PathEffect::Twist(ph2d_vec_scene::fx_twist::TwistSpec { angle: 40.0 }),
+    );
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    assert_eq!(crate::skin_live::coze_os_efeitos_presos(&mut sim, &mut scene), 1);
+    let cozida = desenho(&sim, &scene, id);
+    scene.path_mut(id).expect("path").effects = vec![FxEntry::new(PathEffect::Bloat(
+        ph2d_vec_scene::fx_warp::BloatSpec { amount: -20.0 },
+    ))];
+    let antes = desenho(&sim, &scene, id);
+    assert!(
+        pior_desvio_do_desenho(&cozida, &antes) > 1e-3,
+        "o CONTROLO: a pilha nova não muda o desenho"
+    );
+    assert_eq!(crate::skin_live::coze_os_efeitos_presos(&mut sim, &mut scene), 1, "não coze");
+    let pior = pior_desvio_do_desenho(&antes, &desenho(&sim, &scene, id));
+    assert!(pior < 1e-9, "cozer outra vez moveu o desenho em {pior}");
+    assert!(scene.path(id).expect("path").effects.is_empty(), "a pilha ficou");
+    let g = crate::skinned_mesh::le(&sim.world().get::<SkinBind>(e).expect("pele").source);
+    assert!(g.is_some_and(|g| g.efeitos_cozidos), "a fonte não ficou marcada");
+}
+
 /// ⭐ **GATE de costura — a shell coze ANTES de desenhar a pele**, no quadro (se viesse depois, o 1.º
 /// quadro desenhava a fonte velha com a pilha já vazia: o efeito sumia por um quadro).
 #[test]

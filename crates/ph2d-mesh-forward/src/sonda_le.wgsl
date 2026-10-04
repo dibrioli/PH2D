@@ -105,7 +105,7 @@ fn sonda_fora_na_aresta(qh: vec3<f32>, w: vec3<f32>, th: f32, k: f32, hi: f32) -
         return 1.0e9;
     }
     // So' duas superficies: com ceu no texel (tres) a conta nao vale — um fiapo onde a de tras acaba.
-    if (g0.y < SONDA_CHEIA) {
+    if (g0.y < SONDA_DUAS) {
         return 1.0e9;
     }
     let dn = gf.x / gf.y;
@@ -175,17 +175,12 @@ fn sonda_marcha(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
             if (sonda_aresta(gh)) {
                 fora = sonda_fora_na_aresta(qh, w, th, ql * st, hi);
             }
-            // A cor le-se adiante, onde a vizinha ja' cobre o texel inteiro: na silhueta (a meia cobertura
-            // do cruzamento) ela e' meio ceu, e de raspao essa meia cor fazia uma borda mole e roida de varios
-            // pixels (report do dono 04/10). Para se a cobertura cair (uma vizinha fina).
-            for (var s = 1u; s <= SONDA_ARESTA_PASSOS && (sonda_aresta(gh) || gh.y < SONDA_CHEIA); s = s + 1u) {
+            // Numa aresta a cor le-se adiante, na vizinha da frente pura (no texel misturado ela e' meio a de
+            // tras).
+            for (var s = 1u; s <= SONDA_ARESTA_PASSOS && sonda_aresta(gh); s = s + 1u) {
                 let av = hi + f32(s) * SONDA_TEXEL;
-                let g = sonda_dist0(cos(av) * qh + sin(av) * w);
-                if (!sonda_aresta(g) && g.y < gh.y) {
-                    break;
-                }
                 u = cos(av) * qh + sin(av) * w;
-                gh = g;
+                gh = sonda_dist0(u);
             }
             if (!sonda_aresta(gh)) {
                 if (gl.y > 0.5 && fora <= SONDA_ESPESSURA * lam) {
@@ -248,7 +243,12 @@ fn sonda_no_pixel(p: vec3<f32>, r: vec3<f32>, alpha: f32) -> vec4<f32> {
             var m = fixo * passa;
             if (memo_m.w >= 0.0) {
                 let lod = sqrt(clamp(alpha * memo_m.w, 0.0, 1.0)) * f32(SONDA_NIVEIS - 1u);
-                m = mix(m, sonda_le(sonda_camada, memo_m.xyz, lod), memo_mp);
+                // O raio ACERTOU: a cor e' opaca. Na silhueta a captura guarda-a meio ceu (a cobertura do
+                // texel): de raspao essa meia cor fazia uma borda mole e roida de varios pixels (report do
+                // dono 04/10); sem a mistura, no proprio cruzamento (ler adiante saltava o bisel: pontos claros).
+                let c = sonda_le(sonda_camada, memo_m.xyz, lod);
+                // (O acerto exige meia cobertura — o teste de «atras» da busca.)
+                m = mix(m, vec4<f32>(c.rgb / max(c.a, 0.5), min(2.0 * c.a, 1.0)), memo_mp);
             }
             s = mix(fixo, m, busca);
         }

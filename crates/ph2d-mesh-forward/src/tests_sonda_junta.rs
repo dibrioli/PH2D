@@ -4,7 +4,7 @@
 //! causa isolada sem tocar no WGSL.
 
 use crate::gpu::sondas_impl::{
-    ARESTA, ARESTA_PASSOS, CHEIA, ESPESSURA, FRANJA, LADO, MARCHA_MAX, MARCHA_MIN, PASSO, REFINO,
+    ARESTA, ARESTA_PASSOS, DUAS, ESPESSURA, FRANJA, LADO, MARCHA_MAX, MARCHA_MIN, PASSO, REFINO,
 };
 use crate::tests_chao_tapa::metal;
 use crate::tests_contacto::norm;
@@ -49,7 +49,7 @@ fn fora_na_aresta(
     if aresta(gf, k) || gf[1] < 0.5 {
         return 1.0e9;
     }
-    if g0[1] < CHEIA {
+    if g0[1] < DUAS {
         return 1.0e9;
     }
     let dn = gf[0] / gf[1];
@@ -121,13 +121,9 @@ pub(crate) fn marcha(
             if aresta(gh, k_aresta) {
                 fora = fora_na_aresta(ler, &u, &lam, hi, texel, k_aresta);
             }
-            while s <= ARESTA_PASSOS && (aresta(gh, k_aresta) || gh[1] < CHEIA) {
-                let g = ler(u(hi + s as f32 * texel));
-                if !aresta(g, k_aresta) && g[1] < gh[1] {
-                    break;
-                }
+            while s <= ARESTA_PASSOS && aresta(gh, k_aresta) {
                 uh = u(hi + s as f32 * texel);
-                gh = g;
+                gh = ler(uh);
                 s += 1;
             }
             if let Some(t) = traco.as_mut() {

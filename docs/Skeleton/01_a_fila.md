@@ -66,6 +66,45 @@ diz onde ler o mecanismo:
 
 ---
 
+### F59 — A5: OS DOIS DETALHES (2026-10-04) — ⏳ medidos, à espera do dono
+
+- **(a) A cúspide da imagem presa junto à tampa redonda** (`=4`, `(36°, −144°)`): FOTOGRAFADA na CPU (sonda nova `smoke_bone_par_fresta_sondas::diag_a_foto_da_imagem`, rasteriza a malha desenhada por ordem; `SONDA_ESCALA`; saída `target/prova/imagem_<g2>_{sem,com}.ppm`). É a tangência da tampa da ponta dobrada com a borda de cima do membro de baixo: o fundo afina até um fio com `< 2` texels (`< 1 px` a 100 %) e `~16 px` de comprimento. `diag_o_que_se_ve_no_vao` (passo `0,5°`, `−147…−142`): fio a 1 px com costura de 17–104 amostras de ¼ px (1–6,5 px²). A lei da F49 fecharia esse rabo (mais fino que 2 texels, partes a `> 1,25` osso) mas mede as bordas da MALHA, e ali a malha passa da arte em degraus (margem transparente).
+- **Cura desenhada, NÃO construída:** levar à costura o deslocamento de cada nó da borda até ao início da arte (alfa `> 0`, só onde passa de `~½` texel — nas bordas alinhadas à grelha fica 0 e a const de 2 texels continua válida), calculado uma vez quando a malha é construída a partir da arte (`skin_bake_cache::desenhada_da_arte`) e guardado com os anéis (`bordas_da`). Hoje a costura só recebe a malha (o `SkinnedMesh` não traz o alfa) ⇒ mexe na cache da malha assada e talvez no formato guardado. **Pergunta ao dono se quer essa onda.**
+- **(b) Os dentes do Zig Zag a `~110°`** (`=5`): FOTOGRAFADOS em SVG (sonda nova `smoke_bone_efeitos::sondas::diag_a_foto_dos_efeitos`; mede cada contorno: área e raio inscrito `≈ 2·área/perímetro` em larguras do traço). Os buracos são REAIS (os dentes dos dois membros cruzam-se e deixam o fundo à vista, como na imagem presa) e a composição (união + lei da frente) já os exprime. Raios: 100° — 0,14 · 0,55 · 0,15; 110° — 1,29 · 1,32 · 0,26 · 0,43; 120° — 0,65 · 0,65. Um buraco de raio `< ½` largura fica todo tapado pela linha e lê-se como mancha preta (2 por pose).
+- **Decisão de produto perguntada ao dono:** manter (fiel) ou fechar os buracos que a linha engoliria (raio `< ½` largura).
+
+---
+
+### F58 — A JANELA TAPADA ENTRE AMOSTRAS (A8, 2026-10-04) — ✅ fechado SEM cura de lei
+
+O defeito existe mas fica abaixo da resolução do traço. Sonda `amostras::diag_as_janelas_que_passam_entre_amostras` (a pergunta `tapado` amostrada a 2 048 por segmento contra os intervalos do recorte), `60°…170°` de 0,5 em 0,5°: riscas 40×10 — 31 janelas perdidas, a maior `0,18` (0,36 do traço 0,5 das fixturas do A6) a 97°; barra em S da `=5` — 3, a maior `0,0203` (0,45 da largura 0,045) a 121°. Pela régua da F52 um pedaço mais curto que o traço é borrão ⇒ a amostragem pelo comprimento (construída e retirada na F55) continua sem caso. Gate `nenhuma_janela_perdida_chega_a_largura_do_traco` (as poses onde a maior apareceu e vizinhas; controlo: há janelas perdidas). Mutação `AMOSTRAS` 32→8 sangra (janela de 0,62 `>` 0,5 a 100°). O dono é informado no relatório.
+
+---
+
+### F57 — ⭐⭐⭐ **A PONTA DE UM CORTE DO TRAÇO ACERTA NO CRUZAMENTO DESENHADO** (A9, 2026-10-04) — `4384189db`, `a3dc835f8`, `a93bfdcf0`
+
+- **FOTOGRAFADO** em SVG (sonda versionada `ph2d-app-vec::smoke_bone_copias::sondas::diag_a_foto_das_copias`, `SONDA_G1/G2`; `SONDA_CONTORNO=1` põe o contorno inteiro a azul fino; `magick` para PNG) na `=6` a `170°/−110°`: o traço vertical de trás passava `~0,7` largura do cruzamento com a borda da frente; e nas pontas do VINCO o traço contorna a dobra do papel e volta 0,4–3 larguras (outra família → A10).
+- **Causa:** quem decide «tapado» é a malha posada em triângulos RECTOS e o desenho segue a pele exacta (o mesmo desvio medido na F56).
+- **Régua** (sem malha nem chave de osso): distância AO LONGO do contorno fechado desenhado de cada ponta de trecho ao cruzamento mais perto dos contornos FECHADOS (sonda `diag_as_pontas_dos_cortes` na `=6`; gate na barra 40×10). ⛔ Duas réguas mentiram: a distância em linha recta (num grampo o cruzamento do OUTRO braço fica perto pelo ar) e a que contava cruzamentos com as riscas (uma risca toca o contorno de propósito).
+- **Lei** (`skin_desenho_camadas_cruza.rs`, `Bordas`): polilinha (16/segmento) dos contornos do assado que a FONTE diz fechados, grelha de troços; `encaixa` leva cada ponta ao cruzamento mais perto ao longo do contorno até UMA largura do traço (a régua da F52: mais curto que o traço é borrão); `encaixa_trecho`: um trecho que o encaixe inverte sai. Chamada em `traco_sobre_o_assado`.
+- **Medido** na `=6` (110…170°): pontas junto a cruzamentos 0,13…0,98 largura → 0,00…0,02. Gate `nenhuma_ponta_de_corte_fica_a_um_tique_do_cruzamento` (110/130/150/170 na barra 40×10 em cópias, traço 0,5: sem o encaixe 6 tiques, com 0; as pontas a mais de 1 largura — as do vinco — não se mexem). Gates unitários (barra e tiras sintéticas): `a_ponta_vai_ao_cruzamento_mais_perto`, `o_fecho_das_bordas_e_o_da_fonte`, `um_trecho_que_o_encaixe_inverte_sai`.
+- ⛔ **Lição:** o memo do quadro (`skin_desenho::MEMO`) é por THREAD e guarda o desenho por forma — o 2.º desenho na mesma thread era o do 1.º; o gate desenha cada lado numa thread nova.
+- **Mutação:** M9 (lei desligada), M10 (janela 3×), M12 (vizinhos contam) sangram; M11 (o mais longe), M13 (fecho do assado), M14 (trecho invertido fica) sobreviviam → ganharam os três gates unitários e sangram.
+
+---
+
+### F56 — ⭐⭐ **A SAÍDA RÁPIDA DO RECORTE** (A7, 2026-10-04) — `c9786bbd3`, `a93bfdcf0` (+ `4797b103b`: arte/grelha movidas para o irmão `skin_desenho_frente_malha.rs` pelo tecto de LOC; `4d91679e9`: fmt da `ph2d-skeleton-live` — dívida da linha — e os testes dos fechados no irmão `skin_desenho_frente_fechados_tests.rs`)
+
+- **Medido antes de construir** (sonda `rapida::diag_o_desvio_e_a_folga_da_malha_posada`, release): o ponto posado pela pele (`onde`) afasta-se do triângulo posado LINEAR do dono até `0,19` aresta a 45–75° (0,6–2,1 arestas na dobra) e a folga mínima entre triângulos que não se tocam é 0,16–0,40 aresta — da mesma ordem: uma saída pela malha não é «ao bit» por construção. `rapida::diag_a_lei_corta_sem_sobreposicao`: em 0°…90° de 2,5 em 2,5° (riscas 40×10, barra em S da `=5`, cópias da `=6`) a lei NUNCA cortou numa pose sem par sobreposto nem virado.
+- **Lei:** `malha::ha_sobreposicao` (pára no 1.º par de triângulos posados que se sobrepõem — eixos separadores `se_sobrepoem`, chave maior, sem vértice comum, caixa antes) e `Posada::nada_tapa` = nenhum par e (com o avesso a tapar) nenhum virado ⇒ `so_o_que_se_ve`/`cortes_dos_fechados` devolvem `None` sem amostrar (e sem construir a Arte).
+- A exigência «o cobridor sobrepõe-se ao dono» em `tapado` foi construída e SAIU (mutação M3 sobrevivia: nenhuma fixtura a via) ⇒ a igualdade é MEDIDA (gate), não de construção.
+- **Preço** (release, load `~5`, 3 corridas): o recorte de uma forma com 36 riscas sem dobra 174–216 → 77 µs (o resto é posar a malha, ~44–74 µs); na forma de cópias sem riscas fica igual (~120 µs: posar a malha ~50 + pares ~30). Ganho futuro possível: uma `Posada` só para as duas portas (hoje cada uma posa a sua).
+- **Gates:** `a_saida_rapida_nao_muda_o_recorte_ao_bit` (0°…150°, 3 fixturas, Debug ao bit; controlo: dispara em 17/30, corta em 13; quando dispara nenhum contorno é amostrado — contador `AMOSTRAGENS`), `a_saida_rapida_so_sai_sem_par_nem_virado` (função pura).
+- **Mutação** (agente, 14 corridas, 6 sangraram) e depois: M1/M2/M4 sangram; M8 (a saída nunca usada) ganhou a metade do contador e sangra; M3 a lei saiu; M5 (`<=`→`<` na chave), M6 (`>`→`>=` no SAT), M7 (a caixa) equivalentes — só tornam a saída mais conservadora ou são poda.
+- **FOTO:** não se aplica (por desenho nada muda na tela; o gate ao bit é o juiz).
+
+---
+
 ### F55 — ⭐⭐⭐ **SEM UNIÃO, O TRAÇO DOS CONTORNOS FECHADOS DE TRÁS NÃO PINTA POR CIMA DA FRENTE** (A6 da lista viva, 2026-10-04, pedido pelo dono)
 
 - **Reproduzido** (SVG da forma desenhada, a placa estava ocupada por outra linha): duas cópias sobrepostas (*Repeater*, a 2.ª girada) presas e dobradas a `110°`/`130°`/`150°` — os contornos da parte de trás riscavam a frente em laços nas duas juntas. A união do contacto não corre ali (os contornos cruzam-se em repouso ⇒ `uniao_neutra = false`).

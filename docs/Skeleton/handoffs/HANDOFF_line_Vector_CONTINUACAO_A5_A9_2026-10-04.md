@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector` |
-| ramo | `line/Vector`, base `main` `1ad60a1ce`, HEAD `5159d77eb` (ou depois), nenhum commit integrado |
+| ramo | `line/Vector`, base `main` `1ad60a1ce`, HEAD `34a696511` (ou depois), nenhum commit integrado |
 | o dono | aprovou os smokes do A2 e do A6 (`=5` e `=6`, *«smoke ok»*); mandou corrigir **A5, A7, A8 e A9 JUNTOS, num turno só**; **não fechar** a linha |
 
 Entregue até aqui (fila `docs/Skeleton/01_a_fila.md`): §F52 (A2 — a frente tapa as riscas; chave de
@@ -117,7 +117,11 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
   `efeitos_cozidos = true`), e a pilha esvazia. Meça que não move um pixel (gate com controlo). ⚠️ Se
   isto tocar no formato do ficheiro, conte o degrau com `python3 scripts/schema-recount.py`.
 
-### A5 — Dois detalhes pequenos (do dono — só se ele reparar; registados para não se perderem)
+### A5 — ⏳ MEDIDOS (F59), à espera do dono: (a) a cúspide da imagem — cura desenhada, não construída; (b) os buracos do Zig Zag são reais — manter ou fechar os menores que a linha?
+
+> (a) é um fio `< 2` texels de `~16 px` que a lei da F49 não vê (mede a malha, não a arte): cura =
+> deslocamento das bordas até à arte na cache da malha. (b) 2 buracos por pose com raio `< ½` largura
+> viram mancha preta. Números e a pergunta ao dono: fila §F59. Registo de antes:
 
 - A **cúspide da ARTE** de uma imagem presa junto a uma tampa redonda (limite da F49): pede o fecho
   sobre o contorno da ARTE (pixels, na `attach_skin_meshes`). Ver fila §F49 «LIMITE CONHECIDO».
@@ -138,13 +142,19 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
   a mesma `Posada` com a lei aplicada ao TRAÇO dos fechados (o preenchimento não se corta), ou
   partir a forma em camadas por chave. Medir antes (CLAUDE.md §5.0).
 
-### A7 — (novo, 04/10, pequeno) O recorte da F52 paga `0,25 ms` por forma com riscas mesmo SEM dobra
+### A7 — ✅ FEITO (F56, `c9786bbd3` + `a93bfdcf0`): a saída rápida do recorte
+
+> Sem par sobreposto nem virado o recorte nem amostra: forma com 36 riscas sem dobra 174–216 → 77 µs,
+> igual ao bit (gate `a_saida_rapida_nao_muda_o_recorte_ao_bit`), mutação feita. Fila §F56. Registo de antes:
 
 - `so_o_que_se_ve` posa a malha e amostra as riscas em toda pose (`diag_o_preco_do_recorte_por_quadro`,
   release). Uma saída rápida (nenhum triângulo virado e nenhuma caixa de triângulos de chave maior a
   sobrepor-se a outra não vizinha) pouparia o caso comum. Só se o preço aparecer numa cena cheia.
 
-### A8 — (novo, 04/10) Uma janela tapada mais curta que `1/32` de um segmento LONGO pode passar entre duas amostras
+### A8 — ✅ FECHADO sem cura (F58): as janelas perdidas existem mas ficam abaixo da largura do traço (máx 0,45)
+
+> Medido a 2 048 amostras/segmento (60°…170°): a maior janela perdida é 0,45 da largura do traço ⇒
+> borrão pela régua da F52. Gate `nenhuma_janela_perdida_chega_a_largura_do_traco`. Fila §F58. Registo de antes:
 
 - O recorte (F52/F55) amostra `32` pontos por segmento e bissecta onde o estado muda. Numa aresta
   recta muito longa uma janela curta pode cair entre duas amostras. A amostragem pelo comprimento
@@ -152,10 +162,27 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
   `400 × 2` tem a malha grossa demais), e a hipótese que a trouxe estava errada. Só com um caso
   FOTOGRAFADO.
 
-### A9 — (novo, 04/10, pequeno) Tiques curtos nas pontas de alguns cortes do traço numa dobra extrema
+### A9 — ✅ FEITO (F57, `4384189db` + `a3dc835f8` + `a93bfdcf0`): a ponta do corte acerta no cruzamento desenhado
+
+> Cada ponta de trecho vai ao cruzamento mais perto ao longo do contorno fechado, até 1 largura:
+> 0,13…0,98 → 0,00…0,02 na `=6`. Gate `nenhuma_ponta_de_corte_fica_a_um_tique_do_cruzamento`. Fila §F57. Registo de antes:
 
 - Em SVG a `170°/−110°` (cena `=6` com o osso do meio quase dobrado sobre si) sobram dois ou três
   tiques de `~0,1` nas pontas de cortes do traço, junto ao vinco. Não medido nem fotografado no app.
+
+### A10 — (novo, 04/10) A ponta do traço na ponta do VINCO passa 0,4–3 larguras
+
+- O traço de um fechado contorna a dobra do papel (o grampo) e volta um pedaço antes de acabar
+  (FOTOGRAFADO em SVG na `=6` a `170°/−110°`, barra sem riscas). Não há cruzamento ali ⇒ o encaixe da F57
+  não o alcança (de propósito: o gate prova que pontas a `> 1` largura não se mexem). Causa provável: a
+  mesma (a malha recta decide, a pele exacta desenha). Cura de fundo: decidir «tapado» pela pele EXACTA
+  do cobridor (inverter o mapa no triângulo por Newton, ou triângulos quadráticos com o ponto médio de
+  cada aresta posado) — medir o preço antes (a dobra já custa `0,3 ms` no recorte).
+
+### A11 — (novo, 04/10, fecho) fmt pendente noutras crates da linha
+
+- `cargo fmt --check`: `ph2d-app-vec` 9 diffs, `ph2d-vec-skin` 14, `ph2d-vec-boolean` 2 (a
+  `ph2d-skeleton-live` ficou formatada nesta janela, `4d91679e9`); o ship corre `cargo fmt --all -- --check`.
 
 ## 2. Lições da 2.ª onda de 04/10 (morderam)
 
@@ -170,6 +197,11 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
   cozida» (A4) estava errada — tirá-la tornou a lei mais geral e o gate novo apanha-a reposta.
 - ⛔ A mutação `>` → `>=` num predicado que a RÉGUA partilha sobrevive sempre ao gate de igualdade:
   fixe a convenção da fronteira num gate próprio.
+- ⛔ O memo do quadro (`skin_desenho::MEMO`) é por thread e guarda o desenho por forma: um gate que
+  compara a lei ligada e desligada na MESMA thread lê o 1.º desenho dos dois lados — desenhe cada lado
+  numa thread nova (o gate do A9 foi verde-vazio assim até se ver).
+- ⛔ Um nó de canto (alças sobre as âncoras) não tem o parâmetro linear no comprimento: um gate que
+  espera `u = 0,52` para `x = 5,2` reprova uma lei certa — confira o PONTO.
 - ⚠️ O `smoke` HERDA o `release`: os «10 min em debug» do A3 eram da crate a `opt-level 0` nos testes;
   o que o dono sentiria eram `0,3`–`0,8 s` — meça em release antes de chamar algo de lento.
 

@@ -3,7 +3,8 @@
 > **O que este doc é:** o registro dos bugs do Painter cuja **causa enganava** — aqueles em que a
 > aparência levou a vários rounds na pista errada. Não é o log de todo fix (isso o git já faz).
 >
-> **O que está VIVO aqui:** só o que ainda está **ABERTO** — os Bugs **#15**, **#11**, a **tinta
+> **O que está VIVO aqui:** só o que ainda está **ABERTO** — o Bug **#11** (o **#15** fechou, medido em
+> 2026-10-03, e o texto dele fica como registo), a **tinta
 > EMPURRADA** do #14, os dois achados abertos da varredura do #13, a **cegueira do #25** sob Simetria/Spray/Rough,
 > as **⛔ RECUSAS MEDIDAS do esfregão** (com a decisão do dono em aberto), e o **#24**, cujas duas causas
 > fecharam e cujo **resíduo do esfregão** continua atribuído e por curar, e o **#29** (o impasto
@@ -386,7 +387,13 @@ duas estão **gateadas de cada lado** para que nenhuma possa ser adoptada em sil
 
 ---
 
-## Bug #15 — Impasto: os chips do rig de luzes pintam e não clicam (ABERTO)
+## Bug #15 — Impasto: os chips do rig de luzes pintam e não clicam (FECHADO — medido 2026-10-03)
+
+> **Medido curado** pelo censo dos controlos ([doc 45](45_censo_dos_controlos.md) §2.3): um clique de
+> PONTEIRO no chip da luz 2 escolhe-a, o Enable aparece, e ligá-la muda a imagem iluminada em
+> `3 769` texels. O gate de costura que a «ordem de amanhã» pedia existe
+> (`crates/ph2d-panel-painter-layers/tests/it/seam_impasto_rig.rs:214`). O texto abaixo fica como o
+> registo do sintoma.
 
 **Área:** seam da UI (painel `ph2d-panel-painter-layers` ↔ `ph2d-tool-painter`). **Não** é a matemática
 do rig — essa tem 6 gates e 3 mutações vermelhas (`16_impasto_plano_implementacao.md` §18).

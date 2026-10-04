@@ -37,8 +37,8 @@ recusas medidas.
 | # | o quê | estado |
 |---|---|---|
 | 1 | **Reset** de cada meio guarda o meio e repõe os valores DELE (todas as secções; a porta `spec_de_fabrica`) | **feito** (`9c35b6792`) |
-| 2 | Wet Paint: esconder **Accumulate** e **Space Attenuation**; Space Attenuation escondido onde o Accumulate não aparece (A · I); o fator de sobreposição só entra onde o Accumulate existe | a fazer |
-| 3 | **Esmaecer** os controlos que dependem de outro (§2.3 do doc 45): a linha pinta-se no tom desabilitado e **continua editável** (o `active = False` do Blender — o artista prepara o valor antes de ligar a pré-condição); o predicado de cada um vive numa tabela única, e o gate é o próprio censo: esmaecido ⇔ a sonda mede inerte | a fazer |
+| 2 | Wet Paint: esconder **Accumulate** e **Space Attenuation**; Space Attenuation escondido onde o Accumulate não aparece (A · I); o fator de sobreposição só entra onde o Accumulate existe | **feito** (`fedbb192f`) |
+| 3 | **Esmaecer** os controlos que dependem de outro (§2.3 do doc 45): a linha pinta-se no tom desabilitado e **continua editável** (o `active = False` do Blender — o artista prepara o valor antes de ligar a pré-condição); o predicado de cada um vive numa tabela única, e o gate é o próprio censo: esmaecido ⇔ a sonda mede inerte | **feito** (`d2e9f7c5d`) — fora dele, por falta de lei exacta: o Spread da aquarela; o Offset e as ferramentas de esculpir dependem de TINTA na tela, não de outro controlo |
 | 4 | O **gate permanente** do censo (a sonda vira teste, com a lista do doc 45 §2 escrita e a encolher) | a fazer |
 | 5 | **Dry Time**: a aquarela SECA com o tempo, pixel a pixel — a humidade por texel (`canvas_wet`, que hoje só o brilho lê) decide molhado-sobre-molhado contra veladura; o desenho padrão-ouro estava escrito e adiado (doc 12, EDGE-1; doc 14 #12b) | a fazer |
 | 6 | **Blend** no Wet Paint | a fazer |

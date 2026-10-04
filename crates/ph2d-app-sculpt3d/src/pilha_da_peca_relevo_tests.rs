@@ -147,10 +147,10 @@ fn a_dobra_do_relevo_da_peca_e_a_do_2d_ao_bit() {
 }
 
 /// ⭐⭐⭐ **GATE — O neutro é um no-op ao bit**: uma camada só, `Add` a `1`, é o
-/// relevo dela (o `-0,0` incluído); mais uma camada a profundidade `0`, ou em
-/// `Level` sem corpo, não muda um bit da ALTURA. CONTROLO: a profundidade `0,5`
-/// muda. ⚠️ O CORPO continua o máximo dos corpos (a cobertura do 2D não escala
-/// com a profundidade: tinta de relevo mudo continua a ser tinta).
+/// relevo dela (o `-0,0` incluído); uma camada a profundidade `0` dá, ao bit, a
+/// peça em que o relevo dela é ZERO (o relevo não conta; a tinta dela continua a
+/// ser tinta — o corpo, e a parte que ela tira à de baixo, §18); `Level` sem
+/// corpo não enterra nada. CONTROLO: a profundidade `0,5` muda.
 #[test]
 fn profundidade_zero_e_o_neutro_nao_mudam_um_bit() {
     use ReliefComposite::{Add, Level};
@@ -167,22 +167,21 @@ fn profundidade_zero_e_o_neutro_nao_mudam_um_bit() {
     assert_eq!(bits(&uma), bits(plano), "uma camada neutra é o relevo dela");
 
     let mut muda = camada(5, 5.0, 0.0, Add, true);
-    let corpo_dela = muda.corpo.clone();
+    let mut zerada = camada(5, 5.0, 1.0, Add, true);
+    zerada.altura.fill(0.0);
     let (p0, _) = pilha_de(&[camada(1, 6.0, 1.0, Add, true), muda]);
+    let (pz, _) = pilha_de(&[camada(1, 6.0, 1.0, Add, true), zerada]);
     let r0 = p0.relevo_composto().expect("r");
+    assert_eq!(
+        bits(&r0),
+        bits(&pz.relevo_composto().expect("r")),
+        "profundidade 0 = o relevo dela a zero, ao bit"
+    );
     let alturas = |r: &[[f32; 2]]| r.iter().map(|x| x[0].to_bits()).collect::<Vec<_>>();
     let base_so = pilha_de(&[camada(1, 6.0, 1.0, Add, true)])
         .0
         .relevo_composto()
         .expect("r");
-    assert_eq!(alturas(&r0), alturas(&base_so), "profundidade 0: a altura");
-    assert!(
-        r0.iter()
-            .zip(&base_so)
-            .zip(&corpo_dela)
-            .all(|((a, b), &c)| a[1] == b[1].max(f32::from(c) / 255.0)),
-        "profundidade 0: o corpo é o máximo (a lei do 2D)"
-    );
     let mut sem_corpo = camada(5, 5.0, 1.0, Level, true);
     sem_corpo.corpo.fill(0);
     let (pl, _) = pilha_de(&[camada(1, 6.0, 1.0, Add, true), sem_corpo]);
@@ -197,8 +196,8 @@ fn profundidade_zero_e_o_neutro_nao_mudam_um_bit() {
     let (ph, _) = pilha_de(&[camada(1, 6.0, 1.0, Add, true), muda]);
     assert_ne!(
         alturas(&ph.relevo_composto().expect("r")),
-        alturas(&base_so),
-        "CONTROLO"
+        alturas(&r0),
+        "CONTROLO: a 0,5 o relevo dela conta"
     );
 }
 
@@ -306,4 +305,100 @@ fn so_a_forma_da_dobra_redobra_o_relevo() {
         assert!(p.redobra_o_relevo(&mut peca));
         assert_eq!(peca.relevo().map(<[_]>::to_vec), p.relevo_composto());
     }
+}
+
+/// ⭐⭐⭐ **GATE (report do dono, 04/10: a tinta vermelha com uma orla de relevo à volta) — a encosta
+/// que uma camada de cima tem FORA da sua tinta não conta sobre a tinta da de baixo**; dentro da tinta
+/// dela conta inteira; e numa camada SÓ a encosta fica, ao bit (a luz da peça já a apaga pelo corpo).
+#[test]
+fn a_encosta_fora_da_tinta_de_uma_camada_de_cima_nao_conta() {
+    use ReliefComposite::Add;
+    let mut base = camada(1, 6.0, 1.0, Add, true);
+    base.corpo.fill(255);
+    let mut cima = camada(2, 4.0, 1.0, Add, true);
+    for (i, c) in cima.corpo.iter_mut().enumerate() {
+        *c = if i % 2 == 0 { 0 } else { 255 };
+    }
+    let (p, _) = pilha_de(&[base, cima]);
+    let r = p.relevo_composto().expect("relevo");
+    let base_so = {
+        let mut b = camada(1, 6.0, 1.0, Add, true);
+        b.corpo.fill(255);
+        pilha_de(&[b]).0.relevo_composto().expect("r")
+    };
+    let cima_altura = camada(2, 4.0, 1.0, Add, true).altura;
+    for i in 0..N {
+        if i % 2 == 0 {
+            assert_eq!(
+                r[i][0].to_bits(),
+                base_so[i][0].to_bits(),
+                "{i}: fora da tinta de cima, só a base"
+            );
+        } else {
+            assert_eq!(
+                r[i][0],
+                base_so[i][0] + cima_altura[i],
+                "{i}: dentro, as duas somam"
+            );
+        }
+    }
+    let mut so = camada(2, 4.0, 1.0, Add, true);
+    for (i, c) in so.corpo.iter_mut().enumerate() {
+        *c = if i % 2 == 0 { 0 } else { 255 };
+    }
+    let alturas = so.altura.clone();
+    let (q, _) = pilha_de(&[so]);
+    let rs = q.relevo_composto().expect("r");
+    assert!(
+        rs.iter()
+            .zip(&alturas)
+            .all(|(a, b)| a[0].to_bits() == b.to_bits()),
+        "CONTROLO: numa camada só a encosta fica"
+    );
+}
+
+/// ⭐⭐⭐ **GATE (a foto de 04/10: o «fantasma») — esconder uma camada que ganhou relevo por um TRAÇO
+/// tira o relevo dela da peça.** O traço actualiza a peça aos bocados; sem renovar a assinatura da
+/// dobra, esconder a camada voltava à assinatura guardada antes do traço e a redobra dizia «nada
+/// mudou». CONTROLO: com ela visível o relevo dela está na peça.
+#[test]
+fn esconder_uma_camada_que_ganhou_relevo_num_traco_tira_o_relevo_dela() {
+    use ReliefComposite::Add;
+    let mut base = camada(1, 6.0, 1.0, Add, true);
+    base.corpo.fill(255);
+    let (mut p, ids) = pilha_de(&[base]);
+    let mut peca = peca_de_n();
+    p.pinta_tinta(&mut peca, || vec![[1.0; 3]; N]);
+    assert!(!p.redobra_o_relevo(&mut peca), "a peça já é a dobra");
+    let cima = p.nova_camada("cima").expect("cima");
+    let (id, mut w) = p.trabalho_da_activa(&peca).expect("activa");
+    let idx: Vec<u32> = (10..40).collect();
+    for &i in &idx {
+        w.relevo_mut()[i as usize] = [0.05, 1.0];
+    }
+    p.recebe_do_traco(id, &w, &idx);
+    p.compoe_amostras(&idx, &mut peca, || vec![[1.0; 3]; N]);
+    p.fim_do_traco();
+    let so_base = p
+        .plano(ids[0])
+        .and_then(|b| b.relevo().map(<[_]>::to_vec))
+        .expect("base");
+    assert_ne!(
+        peca.relevo().map(<[_]>::to_vec),
+        Some(so_base.clone()),
+        "CONTROLO: visível conta"
+    );
+    let mut escondida = p.pilha().clone();
+    escondida.set_visible(cima, false);
+    p.troca_metadado(escondida).expect("esconde");
+    assert!(
+        p.redobra_o_relevo(&mut peca),
+        "esconder mudou a forma da dobra"
+    );
+    let bits = |r: &[[f32; 2]]| r.iter().map(|x| x.map(f32::to_bits)).collect::<Vec<_>>();
+    assert_eq!(
+        bits(peca.relevo().expect("r")),
+        bits(&so_base),
+        "escondida, a peça é a base"
+    );
 }

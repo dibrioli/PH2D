@@ -224,5 +224,5 @@ mod stack;
 #[cfg(test)]
 mod tests;
 
-pub use relief_fold::{RELIEF_FOLD_SEED, fold_relief_step};
+pub use relief_fold::{RELIEF_FOLD_SEED, fold_relief_step, relief_share};
 mod texture;

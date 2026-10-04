@@ -27,11 +27,15 @@ pub(crate) type AssinaturaDoRelevo = Vec<(LayerId, u32, ReliefComposite)>;
 /// ⭐⭐⭐ **O relevo da amostra `i`** pela dobra das `camadas`.
 #[inline]
 fn relevo_em(camadas: &[CamadaDoRelevo<'_>], i: usize) -> [f32; 2] {
-    let (mut h, mut corpo) = (RELIEF_FOLD_SEED, f32::NEG_INFINITY);
+    let corpo = camadas
+        .iter()
+        .map(|&(r, ..)| r[i][1])
+        .fold(f32::NEG_INFINITY, f32::max);
+    let cover_max = corpo.clamp(0.0, 1.0);
+    let mut h = RELIEF_FOLD_SEED;
     for &(r, depth, modo) in camadas {
         let [a, c] = r[i];
-        h = fold_relief_step(h, a, depth, modo, || c.clamp(0.0, 1.0));
-        corpo = corpo.max(c);
+        h = fold_relief_step(h, a, depth, modo, c.clamp(0.0, 1.0), cover_max);
     }
     [h, corpo]
 }
@@ -85,7 +89,14 @@ impl PilhaDaPeca {
     /// ⭐⭐⭐ **O relevo da peça só nas amostras `ord`** — o pedaço da
     /// [`Self::relevo_composto`], ao bit. Sem camada nenhuma a dobrar, a peça
     /// que tem relevo lê zero ali (o relevo dela fica, a camada saiu).
+    ///
+    /// ⭐ Depois dela a peça está dobrada com a forma de AGORA (nas outras
+    /// amostras nenhuma camada mudou): a assinatura renova-se aqui. Sem isso, a
+    /// 1.ª camada a ganhar relevo por um traço deixava a assinatura velha, e
+    /// esconder essa camada parecia «nada mudou» — o fantasma da foto de 04/10
+    /// (`docs/3D/30` §18).
     pub(crate) fn relevo_nas(&self, ord: &[u32], peca: &mut Tinta) {
+        self.relevo_dobrado.poe(self.assinatura_do_relevo());
         let camadas = self.camadas_do_relevo();
         if camadas.is_empty() && !peca.tem_relevo() {
             return;
@@ -111,11 +122,11 @@ impl PilhaDaPeca {
     /// dizer «mudou» sem mudar manda subir o plano inteiro por nada.
     pub(crate) fn redobra_o_relevo(&mut self, peca: &mut Tinta) -> bool {
         let agora = self.assinatura_do_relevo();
-        if self.relevo_dobrado.0.as_ref() == Some(&agora) {
+        if self.relevo_dobrado.le().as_ref() == Some(&agora) {
             return false;
         }
         let novo = self.relevo_composto();
-        self.relevo_dobrado = Dobrado(Some(agora));
+        self.relevo_dobrado.poe(agora);
         let bits = |r: Option<&[[f32; 2]]>| {
             r.map(|r| r.iter().map(|x| x.map(f32::to_bits)).collect::<Vec<_>>())
         };
@@ -181,10 +192,29 @@ impl PilhaDaPeca {
 }
 
 /// A assinatura da dobra que está no plano da peça — estado da SESSÃO (`None` =
-/// por saber: a próxima recomposição dobra). Duas pilhas iguais são iguais com
-/// ou sem ela (`PartialEq`).
-#[derive(Clone, Debug, Default)]
-pub(crate) struct Dobrado(Option<AssinaturaDoRelevo>);
+/// por saber: a próxima recomposição dobra e compara). Interior-mutável porque
+/// quem escreve a peça aos bocados ([`PilhaDaPeca::relevo_nas`]) a lê por
+/// `&self`. Duas pilhas iguais são iguais com ou sem ela (`PartialEq`).
+#[derive(Debug, Default)]
+pub(crate) struct Dobrado(std::sync::Mutex<Option<AssinaturaDoRelevo>>);
+
+impl Dobrado {
+    fn le(&self) -> Option<AssinaturaDoRelevo> {
+        self.0.lock().map(|g| g.clone()).unwrap_or(None)
+    }
+
+    fn poe(&self, a: AssinaturaDoRelevo) {
+        if let Ok(mut g) = self.0.lock() {
+            *g = Some(a);
+        }
+    }
+}
+
+impl Clone for Dobrado {
+    fn clone(&self) -> Self {
+        Self(std::sync::Mutex::new(self.le()))
+    }
+}
 
 impl PartialEq for Dobrado {
     fn eq(&self, _: &Self) -> bool {

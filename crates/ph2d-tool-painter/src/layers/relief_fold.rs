@@ -18,7 +18,13 @@ use super::{LayerId, LayerStack, ReliefComposite};
 pub const RELIEF_FOLD_SEED: f32 = -0.0;
 
 /// ⭐⭐⭐ **Um passo da dobra**: a pilha `h` por baixo, a camada por cima com o relevo `own`, a sua
-/// profundidade e o seu modo. `cover` (a cobertura da camada, `0..=1`) só é lida por `Level`.
+/// profundidade, o seu modo, a sua cobertura `cover` e a MAIOR cobertura naquele ponto `cover_max`
+/// (`0..=1`, a que a luz lê — *relevo sem tinta não acende*).
+///
+/// ⭐ A camada conta o seu relevo na proporção da SUA tinta face à mais forte ali
+/// ([`relief_share`]): numa camada só é `1`, ao bit; a encosta que o alisamento espalha para fora da
+/// tinta de uma camada de cima não acende sobre a tinta da de baixo (report do dono, 04/10 — o anel
+/// de 01/10 a voltar pelas camadas, `docs/3D/30` §18).
 #[inline]
 #[must_use]
 pub fn fold_relief_step(
@@ -26,17 +32,31 @@ pub fn fold_relief_step(
     own: f32,
     depth: f32,
     composite: ReliefComposite,
-    cover: impl FnOnce() -> f32,
+    cover: f32,
+    cover_max: f32,
 ) -> f32 {
-    let own = own * depth;
+    let own = own * depth * relief_share(cover, cover_max);
     match composite {
         ReliefComposite::Add => h + own,
         // Solid paint IS the surface; bare paint shows the pile below untouched — otherwise an empty
         // region of a `Level` layer would flatten the whole painting.
-        ReliefComposite::Level => {
-            let c = cover();
-            h * (1.0 - c) + own * c
-        }
+        ReliefComposite::Level => h * (1.0 - cover) + own * cover,
+    }
+}
+
+/// A parte do relevo de uma camada que conta: `min(1, cover / min(W_SOLID, cover_max))` — `1` sem
+/// tinta nenhuma ali, `1` exacto quando ela É a maior (uma camada só não muda), `0` para relevo sem
+/// tinta dela sobre tinta de outra. Com a tinta de baixo SÓLIDA (`≥ W_SOLID`, o filme cheio do
+/// pincel) só a tinta da própria camada decide: a razão crua `cover / cover_max` desenhava um degrau
+/// onde a de baixo começa debaixo de uma tinta de cima parcial (a moldura medida na foto de 04/10).
+#[inline]
+#[must_use]
+pub fn relief_share(cover: f32, cover_max: f32) -> f32 {
+    let ref_ = cover_max.min(ph2d_painter_brush::height_film::W_SOLID);
+    if ref_ <= 0.0 {
+        1.0
+    } else {
+        (cover / ref_).min(1.0)
     }
 }
 

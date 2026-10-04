@@ -87,14 +87,18 @@ impl ReliefFields<'_> {
     pub(super) fn height_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
         let mut h = crate::layers::RELIEF_FOLD_SEED;
+        let cover_max = self
+            .layers
+            .iter()
+            .map(|l| self.layer_cover_at(l, i))
+            .fold(0.0f32, f32::max);
         for l in &self.layers {
             let mut own = l.height.map_or(0.0, |f| f[i]);
             if l.active {
                 own += self.live_h.map_or(0.0, |s| s[i]);
             }
-            h = crate::layers::fold_relief_step(h, own, l.depth, l.composite, || {
-                self.layer_cover_at(l, i)
-            });
+            let cover = self.layer_cover_at(l, i);
+            h = crate::layers::fold_relief_step(h, own, l.depth, l.composite, cover, cover_max);
         }
         let h = super::impasto_ceiling::soft_ceiling(h);
         // ⚠️ **O dente do papel SOMA à altura da tinta, e entra DEPOIS do teto de vidro.** Depois,

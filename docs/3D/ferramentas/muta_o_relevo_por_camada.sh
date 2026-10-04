@@ -81,9 +81,9 @@ R=crates/ph2d-mesh-render/src
 P=crates/ph2d-panel-painter-layers/src
 
 # ── W4a: a dobra única (o 2D e a peça) ──────────────────────────────────────
-muta $T/layers/relief_fold.rs '            h * (1.0 - c) + own * c' '            h + own * c' \
+muta $T/layers/relief_fold.rs '        ReliefComposite::Level => h * (1.0 - cover) + own * cover,' '        ReliefComposite::Level => h + own * cover,' \
   'R1 o Level deixa de enterrar' app
-muta $T/layers/relief_fold.rs '    let own = own * depth;' '    let (own, _) = (own, depth);' \
+muta $T/layers/relief_fold.rs '    let own = own * depth * relief_share(cover, cover_max);' '    let own = own * relief_share(cover, cover_max) + 0.0 * depth;' \
   'R2 a profundidade é ignorada' app
 muta $T/layers/relief_fold.rs '        ids.retain(|&id| self.effectively_visible(id));' '' \
   'R3 a camada escondida entra na dobra' app
@@ -93,7 +93,7 @@ muta $T/layers/relief_fold.rs '        let depth = norm.clamp(0.0, 1.0).mul_add(
   'R5 o curso do arrasto deixa de ter o zero no meio' tool
 
 # ── W4b: a pilha da peça ─────────────────────────────────────────────────────
-muta $A/pilha_da_peca_relevo.rs '        corpo = corpo.max(c);' '        corpo = c;' \
+muta $A/pilha_da_peca_relevo.rs '        .fold(f32::NEG_INFINITY, f32::max);' '        .fold(f32::NEG_INFINITY, |_, c| c);' \
   'R6 o corpo é o da última camada, não o máximo' app
 muta $A/pilha_da_peca_relevo.rs $'            .relief_layers_bottom_up()\n            .into_iter()\n            .filter_map(|id| {\n                let c = self.pilha.get(id)?;\n                let r' $'            .relief_layers_bottom_up()\n            .into_iter()\n            .rev()\n            .filter_map(|id| {\n                let c = self.pilha.get(id)?;\n                let r' \
   'R7 a peça dobra de cima para baixo' app
@@ -131,6 +131,13 @@ muta $S/tela_na_malha.rs '        if camada {' '        if false && camada {' \
   'R22 a camada volta a ler-se «sem cor» (a cor não entra numa camada nova)' gpu
 muta $S/tela_na_malha_pousa.rs '            let a = (alfa + da * k).clamp(0.0, 1.0);' '            let a = (alfa + 0.0 * da * k).clamp(0.0, 1.0);' \
   'R23 a diferença de opacidade da camada é ignorada' core
+
+# ── §18: a orla e o fantasma (a 2.ª foto do dono, 04/10) ──
+muta $A/pilha_da_peca_relevo.rs '        self.relevo_dobrado.poe(self.assinatura_do_relevo());
+        let camadas' '        let camadas' \
+  'R24 o traço não renova a assinatura (esconder deixa o fantasma)' app
+muta $T/layers/relief_fold.rs '    let ref_ = cover_max.min(ph2d_painter_brush::height_film::W_SOLID);' '    let ref_ = cover_max.min(ph2d_painter_brush::height_film::W_SOLID) * 0.0;' \
+  'R25 a encosta sem tinta conta sobre a tinta de outra' app
 
 # ── W4c: o painel ────────────────────────────────────────────────────────────
 muta $T/tool/piece_layers.rs '                m.set_impasto_depth_norm(l, v);' '                let _ = (l, v);' \

@@ -139,7 +139,11 @@ fn sem_cena_a_tela_solta_se() {
 }
 
 /// Um traço por uma lista de pontos de janela, pelo caminho da shell.
-fn traco_por(s: &mut crate::Sculpt3dScene, p: &mut PainterTool, pontos: &[(f32, f32)]) -> bool {
+pub(super) fn traco_por(
+    s: &mut crate::Sculpt3dScene,
+    p: &mut PainterTool,
+    pontos: &[(f32, f32)],
+) -> bool {
     quadro(Some(&mut *s), Some(&mut *p));
     let (x0, y0) = pontos[0];
     let ok = entrega(s, p, x0, y0, 1.0, PointerPhase::Down);
@@ -329,7 +333,11 @@ fn diag_fotografa_a_pincelada_do_painter() {
 }
 
 /// Desenha a cena num alvo de `900×700` e grava-a em PNG em `caminho`.
-fn fotografa(gpu: &ph2d_gpu::GpuContext, s: &mut crate::Sculpt3dScene, caminho: &std::ffi::OsStr) {
+pub(super) fn fotografa(
+    gpu: &ph2d_gpu::GpuContext,
+    s: &mut crate::Sculpt3dScene,
+    caminho: &std::ffi::OsStr,
+) {
     let (w, h) = (900u32, 700u32);
     let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("sonda painter"),

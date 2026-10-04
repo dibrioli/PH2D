@@ -26,7 +26,10 @@ use crate::bridge::PhysicsBridge;
 /// | `10 000` | `5,7 · 8,0 · 9,5` | `97` | `6` |
 ///
 /// (Com a grelha das paredes do desvio e o caminho só percorrido onde a malha mudou; load `5–8`.)
-/// ⇒ abaixo de `20 000` o tique quase não desce e a espera dobra.
+/// ⇒ abaixo de `20 000` o tique quase não desce e a espera dobra. (W14, load `~2`) Uma unidade de trabalho
+/// vale `85–123 ns` em todas as procuras (`~114`) ⇒ `20 000` é `~2,3 ms` de procura por tique; com muita lama
+/// o tique continua acima — UMA procura passa o orçamento sozinha, e os replaneios fora da fila não contam
+/// (plano 30 §22.8).
 pub(super) const ORCAMENTO_DE_TRABALHO_POR_TIQUE: u64 = 20_000;
 
 impl PhysicsBridge {

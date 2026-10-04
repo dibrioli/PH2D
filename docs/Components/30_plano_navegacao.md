@@ -1573,3 +1573,28 @@ UMA mudança declarada — cada grupo corre só os seus observadores). A 1.ª co
 com a velocidade ABSOLUTA, não a relativa ao corpo) sobrevivia — chegar e a folga não mudam; o gate da
 invariância de referencial nasceu disso. E antes da prova, a cápsula (o octógono) e a rotação (`ω ×` o braço) não
 tinham régua nenhuma — os dois gates nasceram antes de a mutação os acusar.
+
+### §22.8 — A re-medida CALMA do §22.1 (load `1,2–3,5`, no fecho)
+
+**Os pesos do trabalho** (a mesma sonda, `2 880` consultas): o ajuste livre dá nó `129 ns` · raiz materializada
+`464` · frente `13` (pesos `3,6` e `0,10` nós; o produto usa `37/8 = 4,6` e `1/8`). Com os pesos do PRODUTO, o
+tempo por unidade de trabalho é `85–123 ns` em todos os grupos (`~114` de média ⇒ o orçamento de `20 000` vale
+`~2,3 ms`); com os do ajuste calmo, real/modelo `0,71–1,07`, e com os do produto `0,74–1,07` — ficam os do
+produto. Contar NÓS dava `85–321 ns` por nó. ⚠️ O canto que fica abaixo de `0,75` (`0,74`) é a procura UNIFORME
+curta de `30` lamas: o trabalho sobrestima-a um pouco (é o lado seguro).
+
+**O critério 3, na ponte** (`medir_replaneio`, orçamento `20 000`, o pior tique da janela depois da porta,
+mediana de seis; 10 · 50 · 200 agentes): sem lama `3,1 · 3,9 · 6,8 ms`; com `150` lamas a peso 4 `38,7 · 46,9 ·
+88,0 ms`; o CONTROLO com lama (a porta parada) `0,9 · 32,9 · 61,1 ms` com `1–7` procuras no tique. ⛔ **NÃO
+cumprido**, e a medição separa os dois mecanismos — nenhum deles é a unidade da fila:
+1. UMA procura nesta lama (`150` caixas de `2–8 m`, `~40 %` do chão) custa `~10 ms` ou mais, e a fila não parte
+   uma procura ao meio — é o §22.4 (recusa medida).
+2. Os replaneios que NÃO passam pela fila (o alvo que se mexeu, o corredor perdido, o preso): o CONTROLO, sem
+   porta nenhuma, faz `1–7` procuras num tique. ⏳ Pô-los também no orçamento (quem já tem caminho continua a
+   andá-lo enquanto espera, como na fila) é o aberto que fica — muda o momento de cada replaneio em todos os
+   gates da condução, uma wave própria.
+
+**Os itens 2 e 3, re-medidos calmos** (load `0,8`): a montagem a frio da cena grande `5,2 ms` sem lama e
+**`7,5 ms`** com `100` (critério `≤ 16` ✓); uma porta `1,06` · `1,69 ms`; uma lama a mexer `2,24`. O desvio a
+`1 000` agentes **`0,659 ms`** por tique, a vizinhança **`0,477 ms`** (critério `≤ 0,6` ✓); a `100`, `0,057` (era
+`0,067` na W5 ✓).

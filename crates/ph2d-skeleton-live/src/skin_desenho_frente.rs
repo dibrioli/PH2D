@@ -33,6 +33,10 @@ struct Posada<'a> {
     /// Um trecho à vista mais curto que um triângulo cabia entre duas amostras de passo fixo
     /// (`32` por segmento: `1,25` numa aresta de `40`) e sumia com o traço (A6, MEDIDO).
     passo: f64,
+    /// O AVESSO tapa? — sim para as riscas abertas (o lado de baixo da dobra não se vê); não para o
+    /// traço de um contorno fechado, que ali É a borda da dobra (sem ele a frente abria um vão no
+    /// traço de trás sem desenhar a própria borda — FOTOGRAFADO em SVG a `130°`, A6).
+    avesso: bool,
     grelha: Grelha,
 }
 
@@ -174,6 +178,7 @@ impl<'a> Posada<'a> {
             chave_tri,
             virado,
             passo,
+            avesso: true,
             grelha,
         })
     }
@@ -184,7 +189,7 @@ impl<'a> Posada<'a> {
         let Some((dono, q)) = self.onde(p) else {
             return false;
         };
-        if self.virado[dono] {
+        if self.avesso && self.virado[dono] {
             return true;
         }
         let m = &self.campo.malha;
@@ -461,7 +466,8 @@ fn recorta_a_fonte(
     if !contornos.iter().any(|(_, f)| *f) || !contornos.iter().any(|(v, f)| julga(v, *f)) {
         return None;
     }
-    let f = Posada::nova(campo, indice, pele, correcoes, rigido, prof)?;
+    let mut f = Posada::nova(campo, indice, pele, correcoes, rigido, prof)?;
+    f.avesso = !fechados;
     // ⭐ Um pedaço CORTADO mais curto que a largura do próprio traço é um borrão, não uma risca
     // (FOTOGRAFADO a `110°`: tiques soltos junto às juntas) — sai.
     let largura = fonte.stroke.as_ref().map_or(0.0, |s| s.width);

@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**20 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **20** são handoffs (registro **morto**).
+**31 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **31** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -35,6 +35,17 @@
 | 2026-10-02 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-02.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-02.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-02 (a linha NÃO fechou) |
 | 2026-10-02 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-02_A_ESCALA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-02_A_ESCALA.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-02 — a escala da interface (e o HiDPI) |
 | 2026-10-03 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-03.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-03 (a linha segue; NÃO integrar agora) |
+| 2026-10-03 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F2.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F2.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-03 — a F2 do spec/06 (os modos), NESTA linha, sem integrar |
+| 2026-10-03 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_FLIP.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_FLIP.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-03 — a F3 do Flip (spec/06), NESTA linha, sem integrar |
+| 2026-10-03 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_MODEL.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_MODEL.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-03 — a F3 do Model (spec/06), NESTA linha, sem integrar |
+| 2026-10-03 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_SCULPT.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_SCULPT.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-03 — a F3 do Sculpt (spec/06), NESTA linha, sem integrar |
+| 2026-10-03 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_VECTOR.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_VECTOR.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-03 — a F3 do Vector (spec/06), NESTA linha, sem integrar |
+| 2026-10-03 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_FLIP.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_FLIP.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-03 — a F3 do Flip (Flip ▸ Object · Draw · Edit) |
+| 2026-10-03 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_MENU_ADD.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_MENU_ADD.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-03 — o menu Add de objectos (spec/06 F0 + F1) |
+| 2026-10-03 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_MODEL.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_MODEL.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-03 — a F3 do Model (Model ▸ Object · Edit) |
+| 2026-10-03 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_SCULPT.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_SCULPT.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-03 — a F3 do Sculpt (Sculpt ▸ Object · Sculpt · Paint) |
+| 2026-10-03 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_OS_MODOS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_OS_MODOS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-03 — os modos de edição por objecto (spec/06 F2 + a F3 da Imagem) |
+| 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — a F3 do Vector (Vector ▸ Object · Edit) |
 
 ---
 

@@ -112,16 +112,34 @@ pub fn build_with_areas(
     areas: &[Area],
     params: &Params,
 ) -> Result<Built, BuildError> {
-    let n = params.disk_sides.max(4).next_power_of_two();
-    let r = params.agent_radius.max(0.0);
     let mut stats = BuildStats {
         obstacles_in: obstacles.len(),
         ..BuildStats::default()
     };
+    let Some((walk, aneis_das_areas)) = chao_e_areas(region, obstacles, areas, params) else {
+        return finish(Vec::new(), Vec::new(), Vec::new(), stats);
+    };
+    let feito =
+        poligonos(walk, &aneis_das_areas, params.merge).map_err(BuildError::Triangulation)?;
+    stats.rings = feito.rings;
+    stats.ring_verts = feito.ring_verts;
+    stats.triangles = feito.triangles;
+    finish(feito.pts, feito.polys, feito.ids, stats)
+}
 
+/// O chão andável da construção inteira e os anéis das áreas (`None` = a região recuada não sobra).
+#[allow(clippy::type_complexity)]
+pub(crate) fn chao_e_areas(
+    region: &[V2],
+    obstacles: &[Shape],
+    areas: &[Area],
+    params: &Params,
+) -> Option<(Paths64, Vec<(Vec<lattice::P>, u16)>)> {
+    let n = params.disk_sides.max(4).next_power_of_two();
+    let r = params.agent_radius.max(0.0);
     let reg = inflate::inset_region(region, r);
     if reg.len() < 3 {
-        return finish(Vec::new(), Vec::new(), Vec::new(), stats);
+        return None;
     }
     let holes: Paths64 = obstacles
         .iter()
@@ -139,12 +157,7 @@ pub fn build_with_areas(
         .iter()
         .map(|a| (inflate::inflate(&a.shape, r, params.corner, n), a.id))
         .collect();
-    let feito =
-        poligonos(walk, &aneis_das_areas, params.merge).map_err(BuildError::Triangulation)?;
-    stats.rings = feito.rings;
-    stats.ring_verts = feito.ring_verts;
-    stats.triangles = feito.triangles;
-    finish(feito.pts, feito.polys, feito.ids, stats)
+    Some((walk, aneis_das_areas))
 }
 
 /// O que [`poligonos`] devolve: os vértices na grelha, os polígonos, a área de cada um e as contas.
@@ -166,6 +179,30 @@ pub(crate) fn poligonos(
     areas: &[(Vec<lattice::P>, u16)],
     merge: bool,
 ) -> Result<Poligonos, TriError> {
+    let (ids, aneis) = pedacos(walk, areas);
+    let (pts, tris, pedaco) = triangulate::triangulate_pieces(&aneis)?;
+    let triangles = tris.len();
+    let (polys, pedaco) = if merge {
+        triangulate::merge_convex_labeled(&pts, &tris, &pedaco)
+    } else {
+        (tris.iter().map(|t| t.to_vec()).collect(), pedaco)
+    };
+    Ok(Poligonos {
+        ids: pedaco.iter().map(|&k| ids[k as usize]).collect(),
+        pts,
+        polys,
+        rings: aneis.iter().map(Vec::len).sum(),
+        ring_verts: aneis.iter().flatten().map(Vec::len).sum(),
+        triangles,
+    })
+}
+
+/// Os PEDAÇOS do chão: o comum e um por área (a área de cada um, e os anéis de cada um).
+#[allow(clippy::type_complexity)]
+pub(crate) fn pedacos(
+    walk: Paths64,
+    areas: &[(Vec<lattice::P>, u16)],
+) -> (Vec<u16>, Vec<Vec<Vec<lattice::P>>>) {
     let mut pieces: Vec<(Paths64, u16)> = Vec::new();
     let mut reclamado: Paths64 = Vec::new();
     for (ring, id) in areas {
@@ -195,21 +232,7 @@ pub(crate) fn poligonos(
                 .collect()
         })
         .collect();
-    let (pts, tris, pedaco) = triangulate::triangulate_pieces(&aneis)?;
-    let triangles = tris.len();
-    let (polys, pedaco) = if merge {
-        triangulate::merge_convex_labeled(&pts, &tris, &pedaco)
-    } else {
-        (tris.iter().map(|t| t.to_vec()).collect(), pedaco)
-    };
-    Ok(Poligonos {
-        ids: pedaco.iter().map(|&k| pieces[k as usize].1).collect(),
-        pts,
-        polys,
-        rings: aneis.iter().map(Vec::len).sum(),
-        ring_verts: aneis.iter().flatten().map(Vec::len).sum(),
-        triangles,
-    })
+    (pieces.iter().map(|p| p.1).collect(), aneis)
 }
 
 fn finish(

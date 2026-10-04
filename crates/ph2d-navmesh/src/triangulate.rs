@@ -1,8 +1,6 @@
 //! Dos anéis à malha: triangulação de Delaunay COM RESTRIÇÕES (as arestas dos anéis), a classificação
 //! dentro/fora por PARIDADE, e a fusão gulosa em convexos (Hertel–Mehlhorn).
 
-use std::collections::BTreeMap;
-
 use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
 
 use crate::lattice::{P, len2, orient, to_world};
@@ -61,41 +59,72 @@ pub fn triangulate_pieces(
     } else {
         &limpos[..]
     };
-    // Os vértices únicos, pela ordem em que aparecem (BTreeMap: o índice não depende de hash).
-    let mut index: BTreeMap<P, u32> = BTreeMap::new();
-    let mut pts: Vec<P> = Vec::new();
-    let mut edges: Vec<[usize; 2]> = Vec::new();
-    // Os pedaços de cada restrição (uma fronteira comum aparece nos dois, em sentidos opostos, e
-    // entra UMA vez na triangulação — pela ordem da 1.ª aparição).
-    let mut owners: BTreeMap<(u32, u32), Vec<u16>> = BTreeMap::new();
-    for (k, rings) in pieces.iter().enumerate() {
-        for ring in rings {
-            let n = ring.len();
-            if n < 3 {
-                continue;
-            }
-            let ids: Vec<u32> = ring
-                .iter()
-                .map(|&p| {
-                    *index.entry(p).or_insert_with(|| {
-                        pts.push(p);
-                        (pts.len() - 1) as u32
-                    })
-                })
-                .collect();
-            for i in 0..n {
-                let (a, b) = (ids[i], ids[(i + 1) % n]);
-                if a == b {
-                    continue;
-                }
-                let quem = owners.entry((a.min(b), a.max(b))).or_default();
-                if quem.is_empty() {
-                    edges.push([a as usize, b as usize]);
-                }
-                quem.push(k as u16);
-            }
+    // Os vértices únicos, pela ordem em que aparecem: cada ponto pela 1.ª aparição (W12: duas ordenações
+    // em vez de um `BTreeMap` — o oráculo em `triangulate_oraculo.rs`).
+    let todos: Vec<P> = pieces
+        .iter()
+        .flatten()
+        .filter(|r| r.len() >= 3)
+        .flatten()
+        .copied()
+        .collect();
+    let mut ord: Vec<(P, u32)> = todos
+        .iter()
+        .enumerate()
+        .map(|(i, &p)| (p, i as u32))
+        .collect();
+    ord.sort_unstable();
+    let mut grupos: Vec<(u32, u32)> = Vec::new(); // (1.ª aparição, início do grupo em `ord`)
+    for (g, w) in ord.iter().enumerate() {
+        if g == 0 || ord[g - 1].0 != w.0 {
+            grupos.push((w.1, g as u32));
         }
     }
+    grupos.sort_unstable();
+    let mut id_de = vec![0u32; todos.len()];
+    let mut pts: Vec<P> = Vec::with_capacity(grupos.len());
+    for (id, &(_, g)) in grupos.iter().enumerate() {
+        let p = ord[g as usize].0;
+        pts.push(p);
+        for w in ord[g as usize..].iter().take_while(|w| w.0 == p) {
+            id_de[w.1 as usize] = id as u32;
+        }
+    }
+    // Os pedaços de cada restrição (uma fronteira comum aparece nos dois, em sentidos opostos, e
+    // entra UMA vez na triangulação — pela ordem da 1.ª aparição): `(chave, ordem, pedaço)` ordenado.
+    let mut arestas: Vec<((u32, u32), u32, u16)> = Vec::new();
+    // O sentido de cada aparição (a restrição entra pelo da 1.ª).
+    let mut sentido: Vec<[usize; 2]> = Vec::new();
+    let mut s = 0;
+    for (k, rings) in pieces.iter().enumerate() {
+        for ring in rings.iter().filter(|r| r.len() >= 3) {
+            let n = ring.len();
+            for i in 0..n {
+                let (a, b) = (id_de[s + i], id_de[s + (i + 1) % n]);
+                if a != b {
+                    arestas.push(((a.min(b), a.max(b)), sentido.len() as u32, k as u16));
+                    sentido.push([a as usize, b as usize]);
+                }
+            }
+            s += n;
+        }
+    }
+    arestas.sort_unstable();
+    let mut primeiras: Vec<u32> = Vec::new();
+    for (g, w) in arestas.iter().enumerate() {
+        if g == 0 || arestas[g - 1].0 != w.0 {
+            primeiras.push(w.1);
+        }
+    }
+    primeiras.sort_unstable();
+    let edges: Vec<[usize; 2]> = primeiras.iter().map(|&o| sentido[o as usize]).collect();
+    let donos: Vec<u16> = arestas.iter().map(|w| w.2).collect();
+    let owners = |a: u32, b: u32| {
+        let c = (a.min(b), a.max(b));
+        let i = arestas.partition_point(|w| w.0 < c);
+        let f = arestas.partition_point(|w| w.0 <= c);
+        &donos[i..f]
+    };
     if pts.len() < 3 {
         return Ok((pts, Vec::new(), Vec::new()));
     }
@@ -137,12 +166,11 @@ pub fn triangulate_pieces(
         if um_so {
             return Some(if estado == 0 { FORA } else { 0 });
         }
-        let (a, b) = (a as u32, b as u32);
-        match owners.get(&(a.min(b), a.max(b))).map(Vec::as_slice) {
-            Some(&[k]) if estado == k => Some(FORA),
-            Some(&[k]) if estado == FORA => Some(k),
-            Some(&[k, j]) if k != j && estado == k => Some(j),
-            Some(&[k, j]) if k != j && estado == j => Some(k),
+        match owners(a as u32, b as u32) {
+            &[k] if estado == k => Some(FORA),
+            &[k] if estado == FORA => Some(k),
+            &[k, j] if k != j && estado == k => Some(j),
+            &[k, j] if k != j && estado == j => Some(k),
             _ => None,
         }
     };
@@ -302,13 +330,34 @@ fn repair_t_junctions(pieces: &[Vec<Vec<P>>]) -> Vec<Vec<Vec<P>>> {
     let por_eixo = ((todos.len() as f64).sqrt().ceil() as i64).max(1);
     let lado = (ext / por_eixo).max(1);
     let balde = |p: P| ((p.0 - lo.0) / lado, (p.1 - lo.1) / lado);
-    let mut baldes: BTreeMap<(i64, i64), Vec<P>> = BTreeMap::new();
-    for &p in &todos {
-        let lista = baldes.entry(balde(p)).or_default();
-        if !lista.contains(&p) {
-            lista.push(p);
-        }
+    // (W12) Os baldes numa grelha contígua (era um `BTreeMap` de listas): os pontos únicos, por balde.
+    // A ordem dentro de um balde não conta — os candidatos de uma aresta ordenam-se por `(t, p)`.
+    let (nbx, nby) = (balde(hi).0 + 1, balde(hi).1 + 1);
+    let mut unicos = todos.clone();
+    unicos.sort_unstable();
+    unicos.dedup();
+    let celula = |b: (i64, i64)| (b.1 * nbx + b.0) as usize;
+    let mut off = vec![0u32; (nbx * nby) as usize + 1];
+    for &p in &unicos {
+        off[celula(balde(p)) + 1] += 1;
     }
+    for c in 0..(nbx * nby) as usize {
+        off[c + 1] += off[c];
+    }
+    let mut cursor = off.clone();
+    let mut itens = vec![(0i64, 0i64); unicos.len()];
+    for &p in &unicos {
+        let c = celula(balde(p));
+        itens[cursor[c] as usize] = p;
+        cursor[c] += 1;
+    }
+    let no_balde = |bx: i64, by: i64| -> &[P] {
+        if bx < 0 || by < 0 || bx >= nbx || by >= nby {
+            return &[];
+        }
+        let c = celula((bx, by));
+        &itens[off[c] as usize..off[c + 1] as usize]
+    };
     pieces
         .iter()
         .map(|rings| {
@@ -325,7 +374,7 @@ fn repair_t_junctions(pieces: &[Vec<Vec<P>>]) -> Vec<Vec<Vec<P>>> {
                         let mut meio: Vec<(i128, P)> = Vec::new();
                         for bx in ba.0.min(bb.0)..=ba.0.max(bb.0) {
                             for by in ba.1.min(bb.1)..=ba.1.max(bb.1) {
-                                for &p in baldes.get(&(bx, by)).into_iter().flatten() {
+                                for &p in no_balde(bx, by) {
                                     let o = orient(a, b, p);
                                     if p == a || p == b || o * o >= 4 * len2(a, b) {
                                         continue;
@@ -363,19 +412,34 @@ pub fn merge_convex_labeled(
     tris: &[[u32; 3]],
     labels: &[u16],
 ) -> (Vec<Vec<u32>>, Vec<u16>) {
-    let mut rings: Vec<Vec<u32>> = tris.iter().map(|t| t.to_vec()).collect();
-    let mut owner: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+    // (W12) Um anel só ganha memória própria quando funde; até lá é o triângulo (`vivo` e vazio).
+    let mut rings: Vec<Vec<u32>> = vec![Vec::new(); tris.len()];
+    let mut vivo = vec![true; tris.len()];
+    // As semi-arestas `(u, w, triângulo)`, ordenadas; numa repetida vale a do ÚLTIMO triângulo (W12: era
+    // um `BTreeMap` com `insert`, `0,053 ms` da fusão — o oráculo em `triangulate_oraculo.rs`).
+    let mut semi: Vec<(u32, u32, u32)> = Vec::with_capacity(3 * tris.len());
     for (ti, t) in tris.iter().enumerate() {
         for i in 0..3 {
-            owner.insert((t[i], t[(i + 1) % 3]), ti);
+            semi.push((t[i], t[(i + 1) % 3], ti as u32));
         }
     }
+    semi.sort_unstable();
+    let ultima =
+        |k: usize| k + 1 == semi.len() || (semi[k + 1].0, semi[k + 1].1) != (semi[k].0, semi[k].1);
     let mut diags: Vec<(i128, u32, u32, usize, usize)> = Vec::new();
-    for (&(u, w), &ta) in &owner {
-        if u < w
-            && let Some(&tb) = owner.get(&(w, u))
-        {
-            diags.push((len2(pts[u as usize], pts[w as usize]), u, w, ta, tb));
+    for (k, &(u, w, ta)) in semi.iter().enumerate() {
+        if u < w && ultima(k) {
+            let fim = semi.partition_point(|x| (x.0, x.1) <= (w, u));
+            if fim > 0 && (semi[fim - 1].0, semi[fim - 1].1) == (w, u) {
+                let tb = semi[fim - 1].2;
+                diags.push((
+                    len2(pts[u as usize], pts[w as usize]),
+                    u,
+                    w,
+                    ta as usize,
+                    tb as usize,
+                ));
+            }
         }
     }
     diags.sort_unstable_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2)));
@@ -393,16 +457,26 @@ pub fn merge_convex_labeled(
         if a == b || labels[a] != labels[b] {
             continue;
         }
-        if let Some(m) = try_merge(pts, &rings[a], &rings[b], u, w) {
+        let anel = |i: usize| -> &[u32] {
+            if rings[i].is_empty() {
+                &tris[i]
+            } else {
+                &rings[i]
+            }
+        };
+        if let Some(m) = try_merge(pts, anel(a), anel(b), u, w) {
             rings[a] = m;
-            rings[b].clear();
+            rings[b] = Vec::new();
+            vivo[b] = false;
             parent[b] = a;
         }
     }
     rings
         .into_iter()
+        .enumerate()
         .zip(labels.iter().copied())
-        .filter(|(r, _)| !r.is_empty())
+        .filter(|((i, _), _)| vivo[*i])
+        .map(|((i, r), l)| (if r.is_empty() { tris[i].to_vec() } else { r }, l))
         .unzip()
 }
 
@@ -418,23 +492,32 @@ fn try_merge(pts: &[P], ra: &[u32], rb: &[u32], u: u32, w: u32) -> Option<Vec<u3
     })?;
     let (x, y) = (ra[i], ra[(i + 1) % na]);
     let j = (0..nb).find(|&j| rb[j] == y && rb[(j + 1) % nb] == x)?;
-    // ra a partir de y, até x (inclusive): y, a1, …, x
-    let mut m: Vec<u32> = (0..na).map(|k| ra[(i + 1 + k) % na]).collect();
-    // rb a partir de x: x, b1, …, y — entra só o interior b1..bk.
-    let interior: Vec<u32> = (1..nb - 1).map(|k| rb[(j + 1 + k) % nb]).collect();
+    // m = ra a partir de y, até x (inclusive): y, a1, …, x; e o interior de rb a partir de x: b1..bk.
+    // (W12) Decide-se ANTES de copiar: a maioria das tentativas é recusada.
+    let m_k = |k: usize| ra[(i + 1 + k) % na];
+    let interior = |k: usize| rb[(j + 1 + k) % nb];
     // Convexidade em x: anterior = o que vem antes de x em m (m[na-2]), seguinte = b1 (ou y).
-    let after_x = interior.first().copied().unwrap_or(y);
-    let before_y = interior.last().copied().unwrap_or(x);
+    let (after_x, before_y) = if nb > 2 {
+        (interior(1), interior(nb - 2))
+    } else {
+        (y, x)
+    };
     let px = pts[x as usize];
     let py = pts[y as usize];
-    let prev_x = pts[m[na - 2] as usize];
-    let next_y = pts[m[1 % na] as usize];
+    let prev_x = pts[m_k(na - 2) as usize];
+    let next_y = pts[m_k(1 % na) as usize];
     if orient(prev_x, px, pts[after_x as usize]) <= 0 {
         return None;
     }
     if orient(pts[before_y as usize], py, next_y) <= 0 {
         return None;
     }
-    m.extend(interior);
+    let mut m: Vec<u32> = Vec::with_capacity(na + nb - 2);
+    m.extend((0..na).map(m_k));
+    m.extend((1..nb - 1).map(interior));
     Some(m)
 }
+
+#[cfg(test)]
+#[path = "triangulate_oraculo.rs"]
+mod oraculo;

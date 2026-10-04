@@ -453,26 +453,36 @@ fn divide_ao_mais_perto(n: i128, d: i128) -> i128 {
 
 /// A caixa de um obstáculo na grelha (antes do recuo).
 fn caixa(o: &Shape) -> (P, P) {
-    let pontos: Vec<V2> = match o {
-        Shape::Convex(p) => p.clone(),
-        Shape::Circle { center, radius } => vec![
-            [center[0] - radius, center[1] - radius],
-            [center[0] + radius, center[1] + radius],
-        ],
-        Shape::Capsule { a, b, radius } => vec![
-            [a[0] - radius, a[1] - radius],
-            [a[0] + radius, a[1] + radius],
-            [b[0] - radius, b[1] - radius],
-            [b[0] + radius, b[1] + radius],
-        ],
+    // (W12) Sem uma lista por obstáculo a cada actualização: os pontos que a caixa lê, em fila.
+    let mut circ = [[0.0; 2]; 4];
+    let pontos: &[V2] = match o {
+        Shape::Convex(p) => p,
+        Shape::Circle { center, radius } => {
+            circ[0] = [center[0] - radius, center[1] - radius];
+            circ[1] = [center[0] + radius, center[1] + radius];
+            &circ[..2]
+        }
+        Shape::Capsule { a, b, radius } => {
+            circ = [
+                [a[0] - radius, a[1] - radius],
+                [a[0] + radius, a[1] + radius],
+                [b[0] - radius, b[1] - radius],
+                [b[0] + radius, b[1] + radius],
+            ];
+            &circ
+        }
     };
-    caixa_de(&pontos.into_iter().map(to_lattice).collect::<Vec<_>>())
+    caixa_de_iter(pontos.iter().map(|&p| to_lattice(p)))
 }
 
 fn caixa_de(pts: &[P]) -> (P, P) {
-    pts.iter().fold(
+    caixa_de_iter(pts.iter().copied())
+}
+
+fn caixa_de_iter(pts: impl Iterator<Item = P>) -> (P, P) {
+    pts.fold(
         ((i64::MAX, i64::MAX), (i64::MIN, i64::MIN)),
-        |(lo, hi), &(x, y)| ((lo.0.min(x), lo.1.min(y)), (hi.0.max(x), hi.1.max(y))),
+        |(lo, hi), (x, y)| ((lo.0.min(x), lo.1.min(y)), (hi.0.max(x), hi.1.max(y))),
     )
 }
 
@@ -509,7 +519,9 @@ fn vazia() -> NavMesh {
         .unwrap_or_else(|_| unreachable!("uma malha sem polígonos é sempre válida"))
 }
 
-/// FNV-1a de 64 bits — a assinatura só precisa de distinguir.
+/// FNV-1a de 64 bits — a assinatura só precisa de distinguir. (W12) Por PALAVRA, cada uma passada pelo
+/// finalizador do `splitmix64` antes: sem ele, a diferença de um bit alto (o SINAL de um `f64`) ficava
+/// nesse bit, e duas palavras com o sinal trocado anulavam-se (`(1, 2)` e `(−1, −2)` davam a mesma).
 struct Fnv(u64);
 
 impl Fnv {
@@ -521,7 +533,11 @@ impl Fnv {
         self.0 = self.0.wrapping_mul(0x0100_0000_01b3);
     }
     fn u64(&mut self, v: u64) {
-        v.to_le_bytes().into_iter().for_each(|b| self.byte(b));
+        let mut z = v.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        self.0 ^= z ^ (z >> 31);
+        self.0 = self.0.wrapping_mul(0x0100_0000_01b3);
     }
     fn p(&mut self, p: P) {
         self.u64(p.0 as u64);

@@ -1196,3 +1196,37 @@ PREFIXO (`nav_desvio::`) que nunca casa um nome inteiro.
 - O que resta O(malha) a cada mudança: a junção da malha (`0,37 ms`, §18.8) e, nas paredes, comparar
   (`0,032`) + concatenar (`0,023`).
 - A construção a frio das paredes (`1,67 ms` contra `0,56`): só quando a malha inteira nasce.
+
+## §20 — W12 (2026-10-04): o mosaico refeito mais depressa
+
+### §20.1 — A medição que abre (sonda `sonda_mosaico_w12`, `--release`, load `1,6`, a mediana de 20 portas)
+
+A cena GRANDE de `medir_custo` §4 (`100 × 100 m`, `1 000` obstáculos, LCG `77`; a porta = o obstáculo 3), `TILE_M`.
+Uma porta refaz **1** mosaico. Por fase (cronómetros provisórios, ms):
+
+| fase | sem lamas | com 100 lamas |
+|---|---|---|
+| **o mosaico refeito (`constroi`)** | **`0,230`** | **`0,521`** |
+| — corte da região + inflar e cortar os obstáculos | `0,012` | `0,012` |
+| — união dos furos (Clipper) | `0,034` | `0,037` |
+| — diferença região − furos (Clipper) | `0,029` | `0,029` |
+| — as lamas (interseção/diferença/união por área, Clipper) | `0` | `0,160` |
+| — limpar os anéis, as junções em T, numerar, as restrições | `0,015` | `0,067` |
+| — a triangulação com restrições (`spade`) | `0,073` | `0,102` |
+| — dentro/fora (paridade) | `0,010` | `0,020` |
+| — a fusão em convexos (Hertel–Mehlhorn) | `0,053` | `0,085` |
+| a montagem (`MalhaPorBlocos::monta`) | `0,245` | `0,317` |
+| as assinaturas e os baldes de TODOS os obstáculos | `0,074` | `0,087` |
+| **uma porta** | **`0,569`** | **`0,951`** |
+
+⚠️ **A premissa do briefing caiu em parte:** o «`0,70 ms` do mosaico refeito» (§18.4) foi medido a load `1,7–9`;
+a frio de carga é **`0,23`**, e a montagem (`0,245`) já pesa o mesmo. O tamanho do mosaico NÃO é alavanca: é a
+recusa medida do §14.1 (a procura paga as costuras até `1,8×` fora de `15`/`20 m`).
+
+### §20.2 — O kill-criterion (escrito ANTES do código)
+
+1. **A mesma malha, ao bit:** a impressão digital da sonda (`IMPRESSAO=1`: 3 cenas × 4 combinações de raio, lamas
+   e fusão × 4 mudanças — vértices, anéis, áreas) é `71c5f70e3d312ee3` antes e depois; e as funções antigas ficam
+   como ORÁCULO dos gates. A triangulação (`spade`) e o Clipper NÃO mudam: trocar um deles muda a malha.
+2. **O custo:** o mosaico refeito **≤ `0,17 ms`** sem lamas e **≤ `0,40`** com lamas. Se depois da 2.ª tentativa
+   ficar acima de `0,20` / `0,45`, o que não chegou fica escrito como o piso das duas bibliotecas.

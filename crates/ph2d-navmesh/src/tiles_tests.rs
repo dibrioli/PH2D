@@ -401,3 +401,26 @@ impl OraculoDasParedes {
         assert!(perguntas >= 5_000, "só {perguntas} (medido: 6 546)");
     }
 }
+
+/// (W12) A assinatura de um obstáculo distingue formas que só diferem no SINAL de dois números: por
+/// palavra sem mistura, a diferença do bit do sinal ficava nesse bit e duas anulavam-se — o mosaico
+/// não se refazia.
+#[test]
+fn a_assinatura_distingue_os_sinais_trocados() {
+    let c = |x: f64, y: f64, r: f64| Shape::Circle {
+        center: [x, y],
+        radius: r,
+    };
+    let pares = [
+        (c(1.0, 2.0, 0.5), c(-1.0, -2.0, 0.5)),
+        (c(1.0, 2.0, 0.5), c(-1.0, 2.0, -0.5)),
+        (c(3.0, 4.0, 0.5), c(3.0, -4.0, -0.5)),
+        (
+            Shape::Convex(vec![[1.0, 1.0], [2.0, 1.0], [2.0, 2.0]]),
+            Shape::Convex(vec![[-1.0, -1.0], [2.0, 1.0], [2.0, 2.0]]),
+        ),
+    ];
+    for (a, b) in &pares {
+        assert_ne!(assinatura(a), assinatura(b), "{a:?} e {b:?}");
+    }
+}

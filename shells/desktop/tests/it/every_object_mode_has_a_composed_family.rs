@@ -156,7 +156,7 @@ fn object_mode_picks_and_boxes_the_whole_vector_object() {
         ),
         (
             "src/render_loop/snapshots.rs",
-            "vec_gizmo_view::object_view(",
+            "vec_gizmo_view::container_or_object_view(",
         ),
     ] {
         let src = std::fs::read_to_string(f).expect("o ficheiro existe");

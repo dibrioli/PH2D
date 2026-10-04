@@ -256,6 +256,23 @@ pub fn container_view(
     ))
 }
 
+/// A caixa-união de um contentor: o de um Envelope ([`container_view`]) ou o OBJECTO vetorial
+/// ([`object_view`]). `None` para tudo o resto — uma porta só para a shell.
+#[must_use]
+pub fn container_or_object_view(
+    sim: &SimWorld,
+    scene: &VecScene,
+    entity: Entity,
+    camera: &Camera2d,
+    window_size: WindowSize,
+    last_pointer: (f32, f32),
+    pivot_tool_active: bool,
+) -> Option<GizmoView> {
+    let (c, w, p, t) = (camera, window_size, last_pointer, pivot_tool_active);
+    container_view(sim, scene, entity, c, w, p, t)
+        .or_else(|| object_view(sim, scene, entity, c, w, p, t))
+}
+
 /// ⭐ **O gizmo do OBJECTO vetorial** (spec/06 F3 ▸ Vector) — a caixa-união das formas dele, no
 /// espaço do objecto: o desenho do objecto SÃO as formas (a lei do [`container_view`], não a do
 /// vazio, cuja caixa é o marcador). `None` se `entity` não é um objecto vetorial ou ainda não tem

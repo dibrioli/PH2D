@@ -403,27 +403,9 @@ fn publish_gizmo(
                     pivot_tool_active,
                 );
             }
-            // ADR-0129 Fatia 3: o container de um Envelope é um grupo SEM path próprio, mas TEM
-            // gizmo — a caixa-união dos filhos, para o gizmo de sprite mover/girar/escalar o
-            // envelope inteiro (Fatia 2). A porta acima já o gateia (Select; no Node aparece a
-            // gaiola, não a caixa).
-            if sim
-                .world()
-                .get::<ph2d_ecs::VecEnvelope>(sim_entity)
-                .is_some()
-            {
-                return ph2d_app_vec::vec_gizmo_view::container_view(
-                    sim,
-                    vec_scene,
-                    sim_entity,
-                    camera,
-                    window_size,
-                    last_pointer,
-                    pivot_tool_active,
-                );
-            }
-            // spec/06 F3: o OBJECTO vetorial com formas — a caixa-união delas.
-            let object = ph2d_app_vec::vec_gizmo_view::object_view(
+            // ADR-0129 Fatia 3 + spec/06 F3: o contentor de um Envelope e o OBJECTO vetorial têm a
+            // caixa-união dos filhos (a porta acima gateia o Envelope: no Node aparece a gaiola).
+            let union = ph2d_app_vec::vec_gizmo_view::container_or_object_view(
                 sim,
                 vec_scene,
                 sim_entity,
@@ -432,8 +414,8 @@ fn publish_gizmo(
                 last_pointer,
                 pivot_tool_active,
             );
-            if object.is_some() {
-                return object;
+            if union.is_some() {
+                return union;
             }
             // ⭐ **O GRUPO e o VAZIO** (Enio, 2026-08-26) — até aqui isto era `None`, e um
             // objeto sem gizmo não é agarrável por gesto nenhum: o objeto que o botão `Add` da

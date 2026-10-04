@@ -94,7 +94,8 @@ muta $R/shaders/tinta_achata.wgsl '+ f * (1.0 - al);' '+ f * al;' \
   'P8 o mix translúcido invertido' placa
 muta $A/slots.rs '|| (subiu_inteiro && atrasada)' '|| false' \
   'P9 o plano velho subido inteiro não recompõe' placa
-muta $A/tinta_da_peca_pilha.rs '*compor_na_placa = true;' '' \
+# (W6: há um 2.º `compor_na_placa` — o do traço por baixo de um desfoque, no `muta_os_efeitos_de_vizinhanca.sh`.)
+muta $A/tinta_da_peca_pilha.rs $'    pilha.atrasa(peca);\n    *compor_na_placa = true;\n    true' $'    pilha.atrasa(peca);\n    true' \
   'P10 recompor o plano não pede a placa' placa
 muta $A/pilha_da_peca_fundo.rs 'tinta.amostras_mut()[..v.len()].copy_from_slice(&v);' '' \
   'P11 o prefixo de vértices não refresca' placa
@@ -102,7 +103,8 @@ muta $A/pilha_da_peca_fundo.rs 'Tinta::semeada(&self.fundo, faces(), nivel)' 'Ti
   'P12 o fundo volta à cor viva (a deriva)' cpu
 muta $A/tinta_da_peca_pilha.rs 'Some(p) if p.atrasada() && p.amostras() == plano.amostras().len() =>' 'Some(p) if false && p.atrasada() && p.amostras() == plano.amostras().len() =>' \
   'P13 para_ler não usa o plano atrasado' placa
-muta $A/slots.rs 'pilha.em_dia(peca, mesh);' 'let _ = (&pilha, &peca);' \
+# (W6: a recusa da placa passa pela porta `em_dia`, que também acerta a cor por vértice.)
+muta $A/slots.rs 'crate::tinta_da_peca::pilha::em_dia(&mut self.objects[i]);' '' \
   'P14 a recusa sobe o plano velho' placa
 muta $A/doc.rs 'doc.camadas.fundo.clone()' 'vec![ph2d_mesh_colors::BRANCO; mesh.vert_count()]' \
   'P15 o v7 ignora o fundo gravado' cpu

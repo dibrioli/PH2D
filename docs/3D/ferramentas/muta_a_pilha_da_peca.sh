@@ -107,8 +107,9 @@ muta $A/pilha_da_peca.rs '        plano.rgba8[..self.amostras * 4].fill(255);' '
   'M7 a máscara nova pinta a cauda da dobra' app
 muta $A/pilha_da_peca.rs '    (c.clamp(0.0, 1.0) * 255.0).round() as u8' '    (c.clamp(0.0, 1.0) * 255.0) as u8' \
   'M8 o byte trunca em vez de arredondar' app
-muta $A/pilha_da_peca.rs '                    Some(LayerKind::Adjustment(a)) => !a.kind.reads_the_image_layout(),' \
-  '                    Some(LayerKind::Adjustment(_)) => true,' 'M9 a pilha aceita um ajuste que lê a vizinhança' app
+# (W6, `docs/3D/30` §14: os de vizinhança borram na retícula — o que fica de fora é o PLANO da imagem.)
+muta $A/pilha_da_peca.rs '                    Some(LayerKind::Adjustment(a)) => !a.kind.reads_the_image_plane(),' \
+  '                    Some(LayerKind::Adjustment(_)) => true,' 'M9 a pilha aceita um ajuste que lê o plano da imagem' app
 muta $A/doc_camadas.rs '            if planos.insert(p.id, plano).is_some() {' '            if planos.insert(p.id, plano).is_some() && false {' \
   'M10 o leitor aceita um plano repetido' app
 

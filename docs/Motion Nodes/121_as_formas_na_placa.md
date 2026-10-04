@@ -1406,3 +1406,93 @@ passes; (iii) sem relógio — o `cs_conta` da completa não sobe dos `48` VGPRs
 `128`. ⚠️ Os registos do `cs_escreve` NÃO são alvo deste item: com `72` cópias ele é DUAS ondas na
 placa inteira, com `1 225` são `20` para `24` SIMDs — a ocupação não tem o que esconder, e o que conta é
 a cadeia em série de cada fio. Pedaço que não mexe o relógio sai (recusa medida aqui).
+
+**✅ O resultado do (3) — os dois kill-criteria PASSAM** (commit `b723b02d1`; os quatro binários
+intercalados na MESMA janela — `antes` · `3a` · `3b1` · `3b2` —, `PH2D_FLUID_PROFILE=1`, `2` corridas por
+célula, o regime, a soma dos passes, ms; as duas corridas de cada célula iguais ao `0,01` salvo nota):
+
+| arranjo TRACEJADO | iGPU antes | 3a | 3b1 | **3b2** | RTX antes | **3b2** |
+|---|---:|---:|---:|---:|---:|---:|
+| `72` esticadas | `1,33` | `1,27`–`1,30` | `1,20` | **`1,17`** (`−12 %`) | `0,42`–`0,43` | **`0,37`** (`−13 %`) |
+| `72` conformes | `0,61` | `0,55` | `0,55`¹ | **`0,55`** (`−10 %`) | `0,09` | **`0,09`** |
+| `1 225` densas | `1,45` | `1,42` | `1,33` | **`1,32`** (`−9 %`) | `0,12` | **`0,12`** |
+
+¹ a 2.ª corrida leu `0,63` numa janela com a média de 1 min a `1,3` e a de 5 a subir (outra linha).
+
+- **(3a)** o desenho das tracejadas `0,22 → 0,15` (esticadas) · `0,21 → 0,15` (conformes — o eixo delas é
+  tracejado mesmo sem o usarem, e pagavam a completa) · `0,15 → 0,11` (densas); as MESMAS cenas sem
+  tracejado, na mesma janela: `0,15` · `0,15` · `0,11` ⇒ o critério «`≤ +10 %` das contínuas» passa a
+  zero. O 1.º e o 2.º quadro de uma cena nova desenham pela completa (o gate), o resto pela enxuta.
+- **(3b)** `conta + escreve` nas esticadas `0,49 → 0,40` (o critério: `≤ 0,40`); o `cs_conta` da completa
+  `48 · 20 → 40 · 24` (`4 716 → 3 940 B`). ⚠️ **Os relógios POR passe mentem na fronteira:** nas densas a
+  «escrita» caiu `0,31 → 0,17` com o (3b1), que só mexeu na contagem — e o `cs_escreve` dos dois
+  binários é o MESMO (`128` · `8`, `30 204 B`). O carimbo de início de um passe sai antes da barreira
+  que o separa do anterior, e a cauda da contagem caía na conta da escrita. ⇒ a régua é a SOMA; os
+  relógios de dois passes vizinhos só valem somados.
+- **Sem tracejado** (o controlo, `antes` contra `3b2`, iGPU): `0,89 → 0,88` · `0,59 = 0,59` · `1,01 = 1,01`.
+- **Parede da sonda (iGPU)** — as tracejadas esticadas continuam atrás do Vello (`1,57` contra `0,90`):
+  as `0,62 ms` de células são as arestas dos traços (as mesmas estrelas contínuas pedem `0,49`) e a
+  escrita é UM fio por cópia (`72` fios). O que fica é a topologia da escrita (um fio por troço, com o
+  prefixo do arco), não os registos — item próprio, não deste fecho. As densas `1,48` contra `3,25`
+  (`2,2×`) e as conformes `0,66` contra `0,85` ganham.
+
+**Mutação `6` de `8`** ([arnês](ferramentas/mutacao_a_variante_da_placa_2026-10-03.py), pré-voo `8/8`,
+corrida LIMPA `17` verdes): nenhuma cópia pede a completa · a completa sempre (só o gate novo a vê) · o
+teste de fora do ecrã invertido · os dois desenhos trocados · o ajuste que não recomeça a soma em cada
+sub-caminho (o gate contra o Vello; a estrela com FURO é a única fixtura com dois sub-caminhos) · o
+ajuste com um troço a menos —
+SANGRAM. ⚠️ **Sobrevivem, e é medido porquê:** o tecto da contagem sem a meia peça (W6) e com METADE das
+peças (W7). O orçamento de arestas por peça (`4 + 2 · ponta + junta`) é tão folgado que nem metade das
+peças falta em fixtura nenhuma: o tecto exacto fica guardado pela PROVA acima, e um tecto curto não pinta
+mal — a escrita recusa a cópia, ela vai pixel a pixel e a placa desenha pela completa (a mesma imagem;
+o gate novo veria a completa no regime). A V7 do arnês da variante enxuta (§9.10) foi re-ancorada no
+desenho novo.
+
+**O ajuste numa volta é o MESMO ao bit:** as imagens do passe nas `7` famílias do gate do tracejado contra
+o Vello, com o `shape.wgsl` de antes e o de depois (o resto igual), são iguais byte a byte.
+
+**(4) A variante ESPARSA — a fracção de células TOCADAS, medida** (instrumento
+`celulas_tocadas_do_ultimo_quadro`, o binário do (3b), o último quadro da sonda; cota por baixo):
+
+| arranjo | células em uso | tocadas, contínuo | tocadas, tracejado |
+|---|---:|---:|---:|
+| `72` grandes esticadas | `10 362` | `6 243` (**`60 %`**) | `5 962` (`58 %`) |
+| `72` grandes conformes | `8 916` | `8 640` (`97 %`) | `8 629` (`97 %`) |
+| `1 225` densas da `=127` | `14 700` | `8 820` (**`60 %`**) | `8 330` (`57 %`) |
+| escada de `32 768` (app, `=17`) | `0` — as conformes pequenas não vão às células (§9.12) | — | — |
+
+⛔ **A premissa do handoff caiu:** nas densas NÃO é «quase toda célula tocada» — `40 %` das células de uma
+estrela de `~14 px` numa grelha de `32 px` só têm fundo (a caixa com a folga e a borda da estrela não
+enchem a célula). A alavanca existe nas densas e nas esticadas; nas conformes grandes não.
+
+**Kill-criterion (4), escrito ANTES de construir.** A esparsa poupa, no MÁXIMO, o `cs_zera` inteiro e o
+`cs_varre` das células não tocadas — `teto = t_zera + (1 − f) · t_varre` — e paga as marcas no
+`cs_deposita` (um atómico por célula cruzada), a lista compacta das tocadas, o apagar das tocadas do
+quadro ANTERIOR (a cobertura vive no lugar do 1.º acumulador) e, no fragmento, uma leitura encadeada a
+mais nas tocadas e as regras aplicadas ao fundo nas outras. ⇒ (i) **sem construir:** mede-se `t_zera` e
+`t_varre` por ablação (binários mutilados, fora de commit, como no §9.11 — a soma dos passes com e sem o
+despacho; os relógios POR passe não servem, ver abaixo); se o teto nas densas da iGPU for `< 10 %` da
+soma dos passes, a variante é RECUSADA aqui com a tabela; (ii) se construída: densas iGPU `−10 %` na
+soma dos passes, nenhum arranjo pior que `+5 %` (iGPU) / `+10 %` (RTX), a memória da `=127` densa no app
+`≤ 43 MB`, a imagem igual (os gates e as duas mutações) e uma mutação nova a sangrar.
+
+⛔ **RECUSA MEDIDA — a variante ESPARSA das células** (2026-10-04; binários mutilados fora de commit, o
+de `b723b02d1` como base, intercalados na MESMA janela, iGPU, `PH2D_FLUID_PROFILE=1`, `2` corridas
+iguais ao `0,01`, cargas `0,0`–`2,8`; a soma dos passes, ms):
+
+| arranjo (contínuo) | base | sem `cs_zera` | sem `cs_varre` | `f` tocadas | teto `t_z + (1−f)·t_v` | + marcas e lista | + fragmento marca/fundo | líquido esperado |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `1 225` densas | `1,01` | `0,91` | `0,77` | `60 %` | `0,20` (`19 %`) | `+0,05` | `+0,02` | **`~0,10` (`≤ 10 %`)** |
+| `72` esticadas | `0,88` | `0,82` | `0,71` | `60 %` | `0,13` (`15 %`) | `+0,04` | `+0,02` | `~0,05` (`6 %`) |
+| `72` conformes | `0,59` | `0,54` | `0,44` | `97 %` | `0,05` (`9 %`) | `+0,05` | `+0,01` | **`−0,02` (pior)** |
+
+O teto passa o filtro (i), por isso os custos fixos foram medidos antes de construir: «+ marcas e lista» =
+um `atomicOr` na palavra da regra por célula que a aresta cruza e um `atomicAdd` de compactação na 1.ª
+marca; «+ fragmento» = a leitura encadeada da marca e, nas não tocadas, as três palavras do fundo com as
+regras. O líquido esperado conta só `77 %` do `cs_zera` (o apagar não sai inteiro: a cobertura do quadro
+anterior vive no 1.º acumulador das tocadas e o registo de toda célula continua a apagar-se) e não conta
+o despacho que lê o total da lista. ⇒ no MELHOR caso as densas ficam na fronteira dos `10 %`, as
+esticadas abaixo e as conformes PIORAM — e a lista das tocadas custa `4 B` por célula (`43 → 44 MB` na
+`=127` densa do app), o que viola o critério (ii) por construção. **Fica a densa.** Para quem voltar a
+isto: a alavanca que sobra nas células é o `cs_varre` (`0,24 ms` nas densas, um fio por pixel com os cinco
+passos do prefixo em memória de grupo), não o apagar.

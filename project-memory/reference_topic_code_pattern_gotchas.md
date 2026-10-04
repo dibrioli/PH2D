@@ -110,3 +110,4 @@ torna a morte visível depois. ⭐ Aqui o defeito foi apanhado por uma régua no
 - ⛔⛔ [Uma camada de ajuste muda a COR, nunca a cobertura — `over` com o alfa da base aplicava só parte de um ajuste a 100 % num píxel translúcido (79 degraus do GIMP; toda base opaca o escondia)](feedback_an_adjustment_changes_the_colour_never_the_coverage.md)
 - ⛔ [Renomear um símbolo por NOME destrói a PROSA que o cita — num repo onde o porquê vive em doc-comments, a memória histórica é a vítima mais comum](feedback_a_rename_by_name_cannot_tell_an_address_from_a_memory.md)
 - ⛔⛔ [Apagar um item deixa o `#[cfg]` dele a gatear o VIZINHO — e com a feature ligada por omissão nenhuma build da CI o vê](feedback_an_orphaned_cfg_attaches_to_the_next_item_and_the_default_build_is_blind.md)
+- ⛔⛔ [Luz com alfa 0 morre num tonemap que divide pela cobertura — o `fx.glow` com formas na placa não brilhava desde a W2](feedback_light_with_zero_alpha_dies_in_a_divide_by_alpha_tonemap.md)

@@ -149,7 +149,9 @@ ObjectTypeDecl {
 ObjectMode = Object | Edit | Sculpt | Paint | Mask | Draw | Pose
 ```
 
-O vocabulário fecha-se só com o que algum tipo declara hoje.
+O vocabulário fecha-se só com o que algum tipo declara hoje. ⛔ O `Mask` foi construído e
+**RETIRADO pelo dono no smoke (04/10)** — ver F3 ▸ Image ▸ Mask; hoje o enum tem Object · Paint ·
+Sculpt · Draw · Edit.
 
 - **Um recurso só: `ModoActivo { entidade, modo }`.** O cadeado vem ligado (§6.4), por isso só
   há um objecto em modo de criação de cada vez. Multi-objecto fica para depois, e só no Edit,
@@ -186,7 +188,7 @@ sozinho (§6.5).
 | Model (SDF) | Object · **Edit** | `ph2d-app-field3d` |
 | Vector | Object · **Edit** (as formas dentro dele) ✅ | `ph2d-app-vec` (o `VecObject` é o contentor; o Edit tem o painel inteiro; criar = *Add ▸ Vector Object*) |
 | Flip | Object · **Draw** · **Edit** | `ph2d-app-flip` |
-| Image | Object · **Paint** · **Mask** ✅ (04/10) | `ph2d-app-painter` |
+| Image | Object · **Paint** (⛔ o Mask foi retirado pelo dono, 04/10) | `ph2d-app-painter` |
 | Câmara, corpo de física, áudio, HUD… | **só Object** | Inspector |
 
 ⛔ O `Paint` do vetor fica FORA: a feature não existe (D6, correcção 2).
@@ -349,20 +351,15 @@ sozinho (§6.5).
       `DrawMode::EDIT_TOOLS`/`object_mode` (Edit = Node·Fillet·Chamfer·Width·Trim; criar em Object) e
       o painel a filtrar a fileira pelo modo; as entradas Rectangle·Ellipse·Polygon·Star·Pen·Pencil·Text
       no Add. Histórico em `HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md`.
-  - **Image ▸ Mask** — ✅ **entregue em 04/10**. Medido antes: o Painter tem DUAS máscaras — a da
-    CAMADA (`LayerKind::Mask`, presa à camada-mãe, guardada no projecto, preto esconde) e o pincel de
-    PROTECÇÃO (`tool/paint/mask.rs`, congela pixels, não é guardado). **Escolha do dono: a da camada.**
-    - `ObjectMode::Mask` e a [`paint_mode::Family`] passa a declarar `(Image, Paint)` e `(Image, Mask)`:
-      o MESMO Painter com outro alvo — Mask = a máscara da camada activa (`add_mask_to_active` se
-      faltar), Paint = a camada dona (`LayerStack::owner_of_mask`, agora a porta única).
-    - **Desvio:** o `leave` da família já não larga o Painter (largá-lo assa e desmonta a tela, e
-      Paint↔Mask é a mesma ferramenta); larga-o o `follow` quando nenhum dos dois ficou. O alvo põe-se
-      no `follow`, não no `enter`: ao entrar o Painter ainda não tem a imagem.
-    - A linha *Mask* do painel de camadas em Paint passa o modo a Mask (e a de cor devolve-o a Paint)
-      — `wants`. Smoke `PH2D_OBJECT_MODE_SMOKE=7`.
-    - Mask sem máscara possível (medido: só no tecto de 999 camadas — um ajuste nunca fica como alvo,
-      o Painter devolve o alvo à camada de cor) volta a Paint COM o aviso (`ModeFamily::refusal`, a
-      porta nova do quadro para a recusa que o artista lê).
+  - **Image ▸ Mask** — ⛔ **RETIRADO pelo dono no smoke (04/10):** *«não armou a máscara
+    imediatamente. vamos retirar esse modo mask»*. Não reconstruir sem ler o porquê. O que se
+    construiu (`1d87241aa`, desfeito por revert com `f796202ff` e `94156f3e4`): `ObjectMode::Mask` =
+    o Painter com a MÁSCARA DA CAMADA como alvo (criada branca se faltar), escolhida pelo dono entre
+    as duas máscaras medidas (a da camada, gravada; o pincel de protecção, transitório). O alvo
+    punha-se no quadro SEGUINTE ao de entrar (o Painter só recebe a imagem mais tarde no quadro) e a
+    máscara nascia BRANCA — nada mudava no ecrã até pintar. A causa exacta do «não armou» não foi
+    investigada (o dono retirou o modo). Histórico:
+    `HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_CTRL_TAB_E_O_MASK.md`.
 - **F4 — Layouts:** o campo opcional *«modo ao abrir»* (§3.3) e a limpeza dos toggles de módulo
   que viraram modos.
 

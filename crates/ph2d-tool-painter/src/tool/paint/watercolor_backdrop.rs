@@ -125,7 +125,9 @@ impl PainterTool {
         let anchor = self.layers.active().and_then(|id| {
             if self.layers.is_mask(id) {
                 // The mask isn't in the z-order — resolve the raster that owns it.
-                self.layers.owner_of_mask(id)
+                self.layers
+                    .all_ids()
+                    .find(|&pid| self.layers.get(pid).is_some_and(|l| l.mask == Some(id)))
             } else {
                 Some(id)
             }

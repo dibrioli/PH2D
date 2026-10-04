@@ -24,12 +24,13 @@ impl HeroScreen {
     /// oferecer ferramentas que a coluna não mostra.
     ///
     /// ⭐ **Desde a F2 do spec/06 o Painter entra pelo MODO Paint da imagem**, sem o IMG: o 3.º
-    /// termo é `ou um modo do Painter` ([`crate::object_mode::ObjectMode::uses_the_painter`]). (Com o IMG ligado ele continua a chegar pela aba do Painter ao lado
+    /// termo é `ou o modo Paint`. (Com o IMG ligado ele continua a chegar pela aba do Painter ao lado
     /// da escultura — a pintura da peça 3D, que vira o Paint do Sculpt na F3.)
     #[must_use]
     pub fn rail_shows_painter_tools(&self) -> bool {
         self.image_edit.active_tool_id == Some("painter")
-            && (self.image_edit.mode_on || self.gizmo.mode.current().uses_the_painter())
+            && (self.image_edit.mode_on
+                || self.gizmo.mode.current() == crate::object_mode::ObjectMode::Paint)
     }
 
     /// **As réguas estão vivas neste frame?** — a PORTA ÚNICA da W6.2, perguntada pelo paint

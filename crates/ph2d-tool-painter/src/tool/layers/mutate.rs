@@ -383,7 +383,11 @@ impl PainterTool {
             Some(LayerKind::Mask(m)) => m.inverted,
             _ => return false,
         };
-        let Some(parent) = self.layers.owner_of_mask(mask_id) else {
+        let Some(parent) = self
+            .layers
+            .all_ids()
+            .find(|&p| self.layers.get(p).and_then(|l| l.mask) == Some(mask_id))
+        else {
             return false;
         };
         // Flush the live active buffer so BOTH parent + mask pixels are in

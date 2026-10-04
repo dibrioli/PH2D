@@ -87,7 +87,7 @@ impl FlipMode {
         match mode {
             ObjectMode::Draw => &Self::DRAW_TOOLS,
             ObjectMode::Edit => &Self::EDIT_TOOLS,
-            ObjectMode::Object | ObjectMode::Paint | ObjectMode::Sculpt | ObjectMode::Mask => &[],
+            ObjectMode::Object | ObjectMode::Paint | ObjectMode::Sculpt => &[],
         }
     }
 }

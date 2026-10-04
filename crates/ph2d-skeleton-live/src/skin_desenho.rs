@@ -475,8 +475,8 @@ mod efeitos;
 #[cfg(test)]
 pub(crate) use efeitos::solver_em_fundo_no_teste;
 use efeitos::{efeitos_da_gaveta, so_os_fechados, uniao_dos_fechados};
-
-
+#[path = "skin_desenho_frente.rs"]
+mod frente;
 /// A lei sobre a fonte preparada — o corpo que o [`crate::skin_live`] corria por forma.
 fn calcula(
     prep: &Preparado,
@@ -552,6 +552,12 @@ fn calcula(
             .as_ref()
             .map(|(c, t)| (c, skin.pesos_do_quadro(t)))
     };
+    // ⭐⭐⭐ O que é ABERTO e fica atrás de outra parte não se percorre (A2, [`frente`]).
+    let visivel = percurso.filter(|_| leis.contacto && leis.desenho).and_then(|(f, t)| {
+        let campo = lido_do_bake.campo?;
+        frente::so_o_que_se_ve(f, t, campo, lido_do_bake.indice, pele, &correcoes, leis.rigido)
+    });
+    let percurso = visivel.as_ref().map(|(f, t)| (f, t.as_slice())).or(percurso);
     let desenhado = percurso
         .filter(|_| leis.desenho && estilo_serve)
         .map(|(fonte, tabela)| {

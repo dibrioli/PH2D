@@ -480,7 +480,7 @@ pub use navega::{chain_ends, chain_to, skinned_images_of_skeleton};
 
 #[cfg(test)]
 #[path = "skin_live_tests.rs"]
-mod tests;
+pub(crate) mod tests;
 
 /// ⭐ **O gate do FIO do campo**, num irmão — ver o cabeçalho dele.
 #[cfg(test)]

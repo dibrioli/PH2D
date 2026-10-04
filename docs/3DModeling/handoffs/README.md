@@ -13,7 +13,7 @@
 [`06_resultados_cena_e_gizmo.md`](../06_resultados_cena_e_gizmo.md) são uma wave cada, com a tabela
 medida e as provas de mutação ao lado. Esta pasta guarda o que atravessa a **fronteira da linha**.
 
-**28 handoffs.** ⚠️ *Esta contagem dizia «10» e a tabela não tinha o de 10/09 — um índice escrito à
+**31 handoffs.** ⚠️ *Esta contagem dizia «10» e a tabela não tinha o de 10/09 — um índice escrito à
 mão envelhece no dia do primeiro esquecimento.*
 
 | Data | Arquivo | Papel | Assunto |
@@ -49,6 +49,7 @@ mão envelhece no dia do primeiro esquecimento.*
 | 2026-10-03 | [HANDOFF_line_3DModeling_O_CHAO_QUE_TAPA_2026-10-03.md](HANDOFF_line_3DModeling_O_CHAO_QUE_TAPA_2026-10-03.md) | wave | **O CHÃO QUE TAPA as peças no render por malha**: a barriga de uma peça pousada deixa de ver o céu de baixo do estúdio — lei difusa (`16` direcções) e reflexo (`2` anéis × `4` taps) contra o **Cycles** (difuso médio `0,0098`, sem a lei `0,0721`); o céu do chão passa a até `2` intervalos por fatia (viés da barriga `−0,052 → +0,0075`); cena 41, `+0,30 ms` a 1080p (celular não medido) · ⛔ o traçado também nunca deixou o chão tapar: é física nova |
 | 2026-10-03 | [HANDOFF_line_3DModeling_O_RENDER_ANTIGO_SAI_2026-10-03.md](HANDOFF_line_3DModeling_O_RENDER_ANTIGO_SAI_2026-10-03.md) | wave | **O RENDER ANTIGO SAI** (ordem do dono): o Render traçado (CPU, pintor da placa, luz/céu/chão da marcha, 49 ficheiros de teste) foi apagado — `−40 589` linhas; sem placa o Render mostra o Matcap; gate red-first (`57 995` px → `0`) e **Matcap igual ao byte** (54 impressões, CPU + placa) · ⛔ os mapas «só o Render usa» de explorador erraram — corte guiado pelo compilador |
 | 2026-10-04 | [HANDOFF_line_3DModeling_AS_CAPTURAS_DE_REFLEXO_2026-10-04.md](HANDOFF_line_3DModeling_AS_CAPTURAS_DE_REFLEXO_2026-10-04.md) | wave | **AS CAPTURAS DE REFLEXO**: a peça brilhante mostra as vizinhas e as sombras delas — um cubo 360° por peça com o mesmo desenhista, pré-filtrado por rugosidade, refeito só quando a cena muda; contra o **Cycles** (miolo do reflexo: esfera `0,619 → 0,005`, caixa `0,684 → 0,036`); girar `+0,02–0,09 ms`, arrastar 16 metal `+3,8 ms` a 1080p; cena 42; 11/11 mutações · ⛔ o mapa de sombra da vista faria as capturas depender da câmara |
+| 2026-10-04 | [HANDOFF_line_3DModeling_A_JUNTA_DOS_REFLEXOS_2026-10-04.md](HANDOFF_line_3DModeling_A_JUNTA_DOS_REFLEXOS_2026-10-04.md) | continuação | **A JUNTA DOS REFLEXOS** (report 3 do dono): dois reflexos de vizinhas separadas colados por uma ponte — a distância FANTASMA entre duas vizinhas na captura. O 2.º momento da distância marca a ARESTA; a busca não cruza ali; o ponto fixo fora do quase nítido · faixa entre os reflexos contra o **Cycles** `0,597 → 0,017` (nítido), `0,550 → 0,019` (`0,05`) |
 
 ---
 

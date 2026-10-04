@@ -84,8 +84,10 @@ fn o_render_sem_aparelho_mostra_o_matcap_e_nao_o_tracado() {
         escolhe(sim, Shading::Matcap);
         assert_eq!(matcap.len(), render.len(), "o mesmo tamanho de quadro");
         let diferentes = matcap
-            .chunks_exact(4)
-            .zip(render.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(render.as_chunks::<4>().0)
             .filter(|(a, b)| a != b)
             .count();
         assert_eq!(

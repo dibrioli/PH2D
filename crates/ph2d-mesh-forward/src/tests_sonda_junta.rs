@@ -3,7 +3,9 @@
 //! reflexos (onde o raio, pela geometria, não acerta nada), por leitor da distância e por franja — a
 //! causa isolada sem tocar no WGSL.
 
-use crate::gpu::sondas_impl::{ARESTA, ESPESSURA, FRANJA, LADO, MARCHA_MAX, MARCHA_MIN, PASSO, REFINO};
+use crate::gpu::sondas_impl::{
+    ARESTA, ESPESSURA, FRANJA, LADO, MARCHA_MAX, MARCHA_MIN, PASSO, REFINO,
+};
 use crate::tests_chao_tapa::metal;
 use crate::tests_contacto::norm;
 use crate::tests_reflexo_junta::faixa;

@@ -70,7 +70,13 @@ fn mede(
 }
 
 /// Com `PH2D_REFLEXO_FOTOS=<pasta>`: `nossa | Cycles | a faixa` (a razão `viz/solo`; a faixa a cinzento).
-fn foto(px: &[Px], quais: &[usize], (viz, solo): (&[u8], &[u8]), (cv, cs): (usize, usize), nome: &str) {
+fn foto(
+    px: &[Px],
+    quais: &[usize],
+    (viz, solo): (&[u8], &[u8]),
+    (cv, cs): (usize, usize),
+    nome: &str,
+) {
     let Ok(pasta) = std::env::var("PH2D_REFLEXO_FOTOS") else {
         return;
     };
@@ -112,7 +118,13 @@ fn entre_dois_reflexos_o_cromo_mostra_o_fundo() {
         // Sem a azul (só imprime): o que a franja e a espessura alargam a verde na faixa.
         let sem_azul = desenha_ate(v, &mut fw, metal(rug), 2, true);
         let a = mede(&px, &f, (&sem_azul, &solo), cols);
-        foto(&px, &f, (&sem_azul, &solo), cols, &format!("junta_sem_azul_{rug}"));
+        foto(
+            &px,
+            &f,
+            (&sem_azul, &solo),
+            cols,
+            &format!("junta_sem_azul_{rug}"),
+        );
         // CONTROLO: sem as capturas não há vizinha no reflexo, nem ponte.
         fw.liga_reflexos(false);
         let sem = desenha(v, &mut fw, metal(rug), true);

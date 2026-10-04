@@ -70,7 +70,10 @@ fn sonda_do_render_por_malha() {
                 let folhas = crate::materials::folhas(world, root);
                 for item in v.split(';').filter(|x| !x.trim().is_empty()) {
                     let (k, xyz) = item.split_once(':').expect("<folha>:x,y,z");
-                    let c: Vec<f32> = xyz.split(',').map(|x| x.trim().parse().expect("número")).collect();
+                    let c: Vec<f32> = xyz
+                        .split(',')
+                        .map(|x| x.trim().parse().expect("número"))
+                        .collect();
                     assert_eq!(c.len(), 3, "<folha>:x,y,z");
                     let e = folhas[k.trim().parse::<usize>().expect("folha")].0;
                     world
@@ -197,7 +200,11 @@ fn sonda_do_render_por_malha() {
                 "{}{}{ceu}{}",
                 if brilho { "_brilho" } else { "" },
                 if estilo { "_estilo" } else { "" },
-                if std::env::var("PH2D_SONDA_MOVE").is_ok() { "_move" } else { "" }
+                if std::env::var("PH2D_SONDA_MOVE").is_ok() {
+                    "_move"
+                } else {
+                    ""
+                }
             );
             let caminho =
                 std::path::Path::new(&dir).join(format!("render_malha_cena_{n}{sufixo}.ppm"));

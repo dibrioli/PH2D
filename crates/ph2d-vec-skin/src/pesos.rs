@@ -383,21 +383,19 @@ fn cubica(p0: [f64; 2], p1: [f64; 2], p2: [f64; 2], p3: [f64; 2], t: f64) -> [f6
 /// ⭐ **Par-ímpar e não *nonzero*, e a diferença é um FURO:** um caminho composto escreve o anel de
 /// dentro com a mesma orientação do de fora tantas vezes quanto o artista quiser, e é a paridade que
 /// faz o furo ser furo. *Um domínio que tape o furo dá peso a uma região que não é arte.*
+/// ⚠️ A VARREDURA de todas as arestas — a régua do [`aneis::IndiceDosAneis`], que a grelha usa.
+#[cfg(test)]
 fn dentro(aneis: &[Vec<[f64; 2]>], p: [f64; 2]) -> bool {
-    let mut cruz = 0usize;
-    for anel in aneis {
-        for i in 0..anel.len() {
-            let (a, b) = (anel[i], anel[(i + 1) % anel.len()]);
-            if (a[1] > p[1]) != (b[1] > p[1]) {
-                let x = (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0];
-                if x > p[0] {
-                    cruz += 1;
-                }
-            }
-        }
-    }
+    let cruz = aneis
+        .iter()
+        .flat_map(|anel| (0..anel.len()).map(move |i| (anel[i], anel[(i + 1) % anel.len()])))
+        .filter(|&(a, b)| aneis::cruza_o_raio(a, b, p))
+        .count();
     cruz % 2 == 1
 }
+
+#[path = "pesos_aneis.rs"]
+mod aneis;
 
 /// ⭐⭐ **O segmento `p→q` toca o rectângulo `[x0,y0]..[x1,y1]`?** — a segunda metade da cerca de
 /// cobertura da célula.
@@ -476,6 +474,7 @@ fn malha_do_dominio_com_regua(
         (larg * escala).ceil() as u32 + 1,
         (alt * escala).ceil() as u32 + 1,
     );
+    let indice = aneis::IndiceDosAneis::novo(&aneis_malha);
     let malha = ph2d_poly2d::grid_mesh_com(
         &|x0, y0, x1, y1, folga| {
             let (a, b) = (x0 - folga, y0 - folga);
@@ -489,7 +488,7 @@ fn malha_do_dominio_com_regua(
                 [a, d],
             ]
             .iter()
-            .any(|&p| dentro(&aneis_malha, p));
+            .any(|&p| indice.dentro(&aneis_malha, p));
             // ⭐⭐⭐ **OU a FRONTEIRA atravessa a célula** — e esta segunda metade é a que faz a
             // malha cobrir a ARTE, medida em 2026-09-20.
             //
@@ -505,11 +504,7 @@ fn malha_do_dominio_com_regua(
             // ⚠️ Isto corrige um defeito que já existia **antes** de alguém amostrar a curva: o
             // [`pesos_do_caminho`] já resolve os pontos de controlo contra esta malha, e um que
             // caia fora herda o vértice mais próximo — é a queixa que ele imprime.
-            cinco
-                || aneis_malha.iter().any(|anel| {
-                    let n = anel.len();
-                    (0..n).any(|i| cruza_a_celula(anel[i], anel[(i + 1) % n], a, b, c, d))
-                })
+            cinco || indice.toca(&aneis_malha, a, b, c, d)
         },
         w,
         h,

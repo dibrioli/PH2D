@@ -4,7 +4,7 @@
 //! caixa, a razão entre as duas é a visibilidade que o contacto dá a cada pixel; compara-se com o
 //! Cycles e com a lei da CPU ([`ph2d_contacto::Grade::oclusao`]) nos pontos e normais do Cycles.
 
-use crate::tests::{ID, ambiente, cena, esfera, material_cinza};
+use crate::tests::{ID, ambiente, cena, esfera};
 use crate::tests_sol::cubo;
 use crate::{Camera, Forward, Instancia, Malha};
 use ph2d_contacto::{Grade, Volume};
@@ -138,7 +138,10 @@ fn desenha_com(fw: &mut Forward, poe: impl Fn(usize, [f32; 3]) -> [[f32; 4]; 4])
             modelo: poe(k, *c),
         })
         .collect();
-    let mats = [material_cinza()];
+    // ⚠️ A difusa SÓ — a do oráculo (o Cycles é difuso). O realce vê as vizinhas pela captura de
+    // reflexo (`gpu_sondas.rs`), não pelo contacto: com o cinzento de omissão a razão com/sem grelhas
+    // deixava de ser a visibilidade (`0,0088 → 0,0138` contra o Cycles, 04/10).
+    let mats = [crate::tests_chao_tapa::difusa()];
     let mut c = cena(&objs, &mats, camera());
     c.tamanho = (LADO, LADO);
     fw.quadro(&c).expect("quadro")

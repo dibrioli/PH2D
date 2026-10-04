@@ -2,7 +2,7 @@
 //! a placa escreveu: a captura vê as vizinhas na direcção e à distância certas (contra a geometria do
 //! oráculo), e a paralaxe põe o reflexo onde o raio as acerta.
 
-use crate::gpu::sondas_impl::{LADO, NIVEIS};
+use crate::gpu::sondas_impl::{LADO, NIVEIS, PARALAXE};
 use crate::tests_chao_tapa::PECAS;
 use crate::tests_contacto::{Peca, norm};
 use crate::tests_reflexo::{DE, desenha, desenhista, fosca, oraculo};
@@ -189,12 +189,13 @@ fn paralaxe(dist: &[Nivel], c: [f32; 3], p: [f32; 3], r: [f32; 3], lods: &[f32])
     d
 }
 
-/// ⭐ **Sonda da paralaxe** (imprime, não afirma): nos pixels do espelho do oráculo, o ângulo entre a
+/// ⭐⭐ **A paralaxe acerta onde o raio bate** — nos pixels do espelho do oráculo, o ângulo entre a
 /// direcção que a leitura usa e a do ponto acertado visto do centro da captura (raios que acertam uma
-/// vizinha), e a cobertura lida no fim: os que acertam e leem nada, os que falham e leem vizinha.
+/// vizinha), e a cobertura lida no fim: os que acertam e leem nada, os que falham e leem vizinha. Os
+/// outros esquemas imprimem-se ao lado (a tabela da escolha, em [`PARALAXE`]); o de produção afirma.
 #[test]
 #[ignore = "precisa de aparelho"]
-fn sonda_da_paralaxe() {
+fn a_paralaxe_acerta_onde_o_raio_bate() {
     let Some(mut fw) = desenhista() else {
         return;
     };
@@ -203,14 +204,14 @@ fn sonda_da_paralaxe() {
     let (pontos, _) = oraculo();
     let vista = norm(DE.map(|x| -x));
     let esquemas: &[&[f32]] = &[
+        &PARALAXE,
         &[],
-        &[4.0, 2.0, 1.0],
         &[4.0, 2.0, 1.0, 0.0],
-        &[4.0, 2.0, 1.0, 0.0, 0.0],
-        &[4.0, 2.0, 0.0, 0.0],
         &[5.0, 3.0, 1.0, 0.0],
-        &[4.0, 2.0, 1.0, 1.0, 0.0, 0.0],
+        &[5.0, 3.0, 2.0, 1.0, 0.0],
+        &[5.0, 4.0, 2.0, 1.0, 0.0],
     ];
+    let mut producao = Vec::new();
     for (espelho, camada_d) in [(1usize, 3u32), (0, 1)] {
         let dist = camada(&fw, camada_d);
         let c = PECAS[espelho].0;
@@ -250,12 +251,33 @@ fn sonda_da_paralaxe() {
                     }
                 }
             }
+            let media = s / n.max(1) as f32;
             eprintln!(
                 "espelho {espelho} lods {lods:?}: {n} acertam ({escondidos} num ponto que o centro não vê) · \
                  ângulo médio {:.2}°, máx {pior:.2}° · leem nada {sem_viz} (dos vistos {sem_viz_visto}) · \
                  {nf} falham, leem vizinha {falsas}",
-                s / n.max(1) as f32
+                media
             );
+            if std::ptr::eq(*lods, &PARALAXE[..]) {
+                producao.push((espelho, n, nf, media, pior, sem_viz_visto, falsas));
+            }
         }
+    }
+    for (espelho, n, nf, media, pior, sem_viz_visto, falsas) in producao {
+        // Medido (04/10, octaedro `256`): ver a tabela em [`PARALAXE`].
+        let (barra_media, barra_pior, sem_viz_max) = if espelho == 1 {
+            (0.1, 1.0, 0)
+        } else {
+            (0.3, 4.0, 200)
+        };
+        assert!(n > 200 && nf > 4000, "o oráculo mudou: {n} / {nf} raios");
+        assert!(
+            media < barra_media && pior < barra_pior,
+            "a paralaxe do espelho {espelho} afastou-se: {media:.3}° / {pior:.2}°"
+        );
+        assert!(
+            sem_viz_visto <= sem_viz_max && falsas * 100 < nf,
+            "o espelho {espelho} lê o que não está lá: {sem_viz_visto} sem vizinha, {falsas} falsas"
+        );
     }
 }

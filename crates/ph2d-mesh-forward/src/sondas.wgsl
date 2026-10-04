@@ -1,27 +1,35 @@
-// AS CAPTURAS DE REFLEXO, do atlas das faces ao octaedro pre-filtrado (`gpu_sondas.rs`). Tres passes de
-// ecra cheio, todos a ler texturas que o passe NAO escreve (o GLES do WebGL2 nao garante ler e escrever a
-// mesma textura no mesmo passe, nem noutro nivel): cada nivel da cadeia nasce numa textura de passagem e
-// e' copiado para o nivel dele.
+// AS CAPTURAS DE REFLEXO, do atlas das faces ao octaedro pre-filtrado (`gpu_sondas.rs`). Passes de ecra
+// cheio que leem texturas que o passe NAO escreve (o GLES do WebGL2 nao garante ler e escrever a mesma
+// textura no mesmo passe, nem noutro nivel): a CADEIA tem uma textura por nivel, e o passe do nivel k
+// escreve a cadeia k e o nivel k da captura, lendo os niveis < k.
 //
 // O octaedro de cada nivel `k` tem lado `LADO >> k` com UMA linha de borda a toda a volta (o texel de
 // borda guarda a direccao da DOBRA): a leitura bilinear nao tem costura.
 
 @group(0) @binding(0) var faces_cor: texture_2d<f32>;
 @group(0) @binding(1) var faces_dist: texture_2d<f32>;
-@group(0) @binding(2) var cadeia_cor: texture_2d<f32>;
-@group(0) @binding(3) var cadeia_dist: texture_2d<f32>;
-@group(0) @binding(4) var amostra: sampler;
+@group(0) @binding(2) var cadeia_0: texture_2d<f32>;
+@group(0) @binding(3) var cadeia_1: texture_2d<f32>;
+@group(0) @binding(4) var cadeia_2: texture_2d<f32>;
+@group(0) @binding(5) var cadeia_3: texture_2d<f32>;
+@group(0) @binding(6) var cadeia_4: texture_2d<f32>;
+@group(0) @binding(7) var cadeia_5: texture_2d<f32>;
+// A distancia do nivel anterior.
+@group(0) @binding(8) var cadeia_dist: texture_2d<f32>;
+@group(0) @binding(9) var amostra: sampler;
 struct Passo {
     // x = o nivel que o passe escreve
     k: vec4<u32>,
 };
-@group(0) @binding(5) var<uniform> passo: Passo;
+@group(0) @binding(10) var<uniform> passo: Passo;
 
-// O centro do texel do quadrado de ecra cheio e as duas saidas (a cor pre-multiplicada com a cobertura,
-// e a distancia ao centro da captura vezes a cobertura).
-struct Duas {
-    @location(0) cor: vec4<f32>,
-    @location(1) dist: vec4<f32>,
+// As quatro saidas: a cadeia do nivel (cor, distancia) e o nivel da captura (cor, distancia) — a cor
+// pre-multiplicada com a cobertura, a distancia ao centro da captura vezes a cobertura.
+struct Quatro {
+    @location(0) cadeia_cor: vec4<f32>,
+    @location(1) cadeia_dist: vec4<f32>,
+    @location(2) cor: vec4<f32>,
+    @location(3) dist: vec4<f32>,
 };
 
 @vertex
@@ -64,58 +72,68 @@ const SUB: array<vec2<f32>, 4> = array<vec2<f32>, 4>(
     vec2<f32>(0.25, 0.25), vec2<f32>(0.75, 0.25), vec2<f32>(0.25, 0.75), vec2<f32>(0.75, 0.75),
 );
 
-// O nivel 0: quatro direccoes por texel lidas no atlas das faces.
+// O nivel 0: quatro direccoes por texel lidas no atlas das faces — a cadeia 0 e o nivel 0 da captura
+// (o espelho) sao o mesmo.
 @fragment
-fn fs_octa(@builtin(position) q: vec4<f32>) -> Duas {
-    var o: Duas;
-    o.cor = vec4<f32>(0.0);
-    o.dist = vec4<f32>(0.0);
+fn fs_octa(@builtin(position) q: vec4<f32>) -> Quatro {
+    var cor = vec4<f32>(0.0);
+    var dist = vec4<f32>(0.0);
     for (var i = 0u; i < 4u; i = i + 1u) {
         let uv = uv_da_face(dir_do_texel(floor(q.xy) + SUB[i], 0u));
-        o.cor = o.cor + textureSampleLevel(faces_cor, amostra, uv, 0.0) * 0.25;
-        o.dist = o.dist + textureSampleLevel(faces_dist, amostra, uv, 0.0) * 0.25;
+        cor = cor + textureSampleLevel(faces_cor, amostra, uv, 0.0) * 0.25;
+        dist = dist + textureSampleLevel(faces_dist, amostra, uv, 0.0) * 0.25;
     }
-    return o;
+    return Quatro(cor, dist, cor, dist);
 }
 
-// O nivel k da cadeia a partir do k - 1: quatro direccoes por texel.
-@fragment
-fn fs_desce(@builtin(position) q: vec4<f32>) -> Duas {
-    let k = passo.k.x;
-    var o: Duas;
-    o.cor = vec4<f32>(0.0);
-    o.dist = vec4<f32>(0.0);
-    for (var i = 0u; i < 4u; i = i + 1u) {
-        let uv = uv_no_nivel(dir_do_texel(floor(q.xy) + SUB[i], k), k - 1u);
-        o.cor = o.cor + textureSampleLevel(cadeia_cor, amostra, uv, f32(k - 1u)) * 0.25;
-        o.dist = o.dist + textureSampleLevel(cadeia_dist, amostra, uv, f32(k - 1u)) * 0.25;
+// O nivel i da cadeia (uma textura por nivel).
+fn le_nivel(i: u32, uv: vec2<f32>) -> vec4<f32> {
+    if (i == 0u) {
+        return textureSampleLevel(cadeia_0, amostra, uv, 0.0);
     }
-    return o;
+    if (i == 1u) {
+        return textureSampleLevel(cadeia_1, amostra, uv, 0.0);
+    }
+    if (i == 2u) {
+        return textureSampleLevel(cadeia_2, amostra, uv, 0.0);
+    }
+    if (i == 3u) {
+        return textureSampleLevel(cadeia_3, amostra, uv, 0.0);
+    }
+    if (i == 4u) {
+        return textureSampleLevel(cadeia_4, amostra, uv, 0.0);
+    }
+    return textureSampleLevel(cadeia_5, amostra, uv, 0.0);
 }
 
-// A cadeia lida num nivel continuo: os dois niveis vizinhos, cada um na coordenada dele.
-fn le_cadeia(d: vec3<f32>, lod: f32) -> vec4<f32> {
-    let l = clamp(lod, 0.0, f32(SONDA_NIVEIS - 1u));
-    let k0 = min(u32(l), SONDA_NIVEIS - 2u);
-    let a = textureSampleLevel(cadeia_cor, amostra, uv_no_nivel(d, k0), f32(k0));
-    let b = textureSampleLevel(cadeia_cor, amostra, uv_no_nivel(d, k0 + 1u), f32(k0 + 1u));
+// A cadeia num nivel continuo ate' `topo`: os dois niveis vizinhos, cada um na coordenada dele.
+fn le_cadeia(d: vec3<f32>, lod: f32, topo: u32) -> vec4<f32> {
+    let l = clamp(lod, 0.0, f32(topo));
+    let k0 = min(u32(l), topo);
+    let a = le_nivel(k0, uv_no_nivel(d, k0));
+    if (k0 >= topo) {
+        return a;
+    }
+    let b = le_nivel(k0 + 1u, uv_no_nivel(d, k0 + 1u));
     return mix(a, b, l - f32(k0));
 }
 
-// O nivel k do octaedro final: a media sob o lobulo GGX de alfa = (k / (niveis - 1))^2 com N = V = R,
-// pesada por N.L — a pergunta do pre-filtro do ceu (`ph2d_sky::prefiltro`) — por amostragem de
-// Hammersley FILTRADA: cada amostra le o nivel da cadeia cujo texel tem o angulo solido dela (sem o
-// vies +1, que o ceu mediu a dobrar o erro). A distancia e' a da cadeia no mesmo nivel.
+// O nivel k > 0: a cadeia k a partir da k - 1 (quatro direccoes por texel), e o nivel k da captura — a
+// media sob o lobulo GGX de alfa = (k / (niveis - 1))^2 com N = V = R, pesada por N.L (a pergunta do
+// pre-filtro do ceu, `ph2d_sky::prefiltro`), por amostragem de Hammersley FILTRADA: cada amostra le o
+// nivel da cadeia cujo texel tem o angulo solido dela (sem o vies +1, que o ceu mediu a dobrar o erro),
+// ate' ao k - 1 (o k nasce neste passe).
 @fragment
-fn fs_prefiltro(@builtin(position) q: vec4<f32>) -> Duas {
+fn fs_nivel(@builtin(position) q: vec4<f32>) -> Quatro {
     let k = passo.k.x;
-    let n = dir_do_texel(q.xy, k);
-    var o: Duas;
-    o.dist = textureSampleLevel(cadeia_dist, amostra, uv_no_nivel(n, k), f32(k));
-    if (k == 0u) {
-        o.cor = textureSampleLevel(cadeia_cor, amostra, uv_no_nivel(n, 0u), 0.0);
-        return o;
+    var cc = vec4<f32>(0.0);
+    var cd = vec4<f32>(0.0);
+    for (var i = 0u; i < 4u; i = i + 1u) {
+        let uv = uv_no_nivel(dir_do_texel(floor(q.xy) + SUB[i], k), k - 1u);
+        cc = cc + le_nivel(k - 1u, uv) * 0.25;
+        cd = cd + textureSampleLevel(cadeia_dist, amostra, uv, 0.0) * 0.25;
     }
+    let n = dir_do_texel(q.xy, k);
     let r = f32(k) / f32(SONDA_NIVEIS - 1u);
     let a2 = r * r * r * r;
     let s = select(-1.0, 1.0, n.z >= 0.0);
@@ -143,9 +161,8 @@ fn fs_prefiltro(@builtin(position) q: vec4<f32>) -> Duas {
         let pdf = a2 / (3.14159265 * den * den) * 0.25;
         let omega_s = 1.0 / (f32(SONDA_TAPS) * pdf);
         let lod = max(0.5 * log2(omega_s / omega_p), 0.0);
-        soma = soma + le_cadeia(l, lod) * nl;
+        soma = soma + le_cadeia(l, lod, k - 1u) * nl;
         pesos = pesos + nl;
     }
-    o.cor = soma / max(pesos, 1.0e-6);
-    return o;
+    return Quatro(cc, cd, soma / max(pesos, 1.0e-6), cd);
 }

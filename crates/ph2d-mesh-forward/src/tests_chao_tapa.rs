@@ -390,6 +390,11 @@ fn o_chao_tapa_as_pecas_como_no_cycles() {
     );
 }
 
+/// A barra do erro da razão com/sem chão FORA da zona da peça (onde o reflexo mostra as vizinhas e as
+/// sombras delas, pelas capturas). Medido (04/10): `0,0039` (o Cycles escurece `1 042` px, nós `925`);
+/// antes das capturas a máscara da zona não escurecia NENHUM (`0` — a sombra órfã recusada).
+const BARRA_FORA: f32 = 0.01;
+
 /// ⭐⭐ **O reflexo do chão é o do Cycles** — as peças num metal branco: o reflexo nítido lê o chão
 /// onde o raio o acerta, o áspero o lobo à volta (`chao_tapa.rs`). A régua que AFIRMA é a razão
 /// com/sem chão (a mesma câmara, as grelhas nas duas): isola a lei do chão. ⚠️ Ela conta a direcção
@@ -426,9 +431,10 @@ fn o_reflexo_do_chao_e_o_do_cycles() {
         );
         let (mut n, mut s, mut s_ctl, mut nb, mut sb) = (0usize, 0.0f32, 0.0f32, 0usize, 0.0f32);
         let (mut sa, mut sba) = (0.0f32, 0.0f32);
-        // Fora da zona da peça: quantos px, onde o Cycles escurece (as sombras alheias), e os nossos que
-        // escurecem (a sombra órfã).
-        let (mut n_fora, mut alheias, mut orfaos) = (0usize, 0usize, 0usize);
+        // Fora da zona da peça: quantos px, onde o Cycles escurece (as sombras alheias), os nossos que
+        // escurecem, e o erro ali. ⭐ Com as capturas de reflexo (`gpu_sondas.rs`) a vizinha vem com a
+        // sombra dela: o reflexo lê o chão todo, e ali a régua é a do resto.
+        let (mut n_fora, mut alheias, mut orfaos, mut s_fora) = (0usize, 0usize, 0usize, 0.0f32);
         for (p, l) in pontos.iter().zip(&linhas) {
             let (cs, cc, solo) = (l.brilho[2 * k], l.brilho[2 * k + 1], l.brilho[6 + k]);
             let i = ((p.j * LADO + p.i) * 4 + 1) as usize;
@@ -445,6 +451,7 @@ fn o_reflexo_do_chao_e_o_do_cycles() {
                 n_fora += 1;
                 alheias += usize::from(cc / cs < 0.97);
                 orfaos += usize::from(lc / ls < 0.97);
+                s_fora += (lc / ls - cc / cs).abs();
                 continue;
             }
             let ciclos = cc / cs;
@@ -464,12 +471,13 @@ fn o_reflexo_do_chao_e_o_do_cycles() {
         eprintln!(
             "{nome}: {n} px · razão com/sem |Δ| médio {:.4} · onde o chão escurece ({nb} px) {:.4} · SEM a lei \
              {:.4} · (absoluta, contra o `solo`: {:.4} / {:.4}) · fora da zona da peça {n_fora} px: o Cycles \
-             escurece {alheias}, nós {orfaos}",
+             escurece {alheias}, nós {orfaos}, |Δ| médio ali {:.4}",
             s / nf,
             sb / nbf,
             s_ctl / nf,
             sa / nf,
-            sba / nbf
+            sba / nbf,
+            s_fora / n_fora.max(1) as f32
         );
         assert!(n > 4000 && nb > 300, "a fixtura encolheu: {n} / {nb} px");
         if k == 0 {
@@ -478,8 +486,9 @@ fn o_reflexo_do_chao_e_o_do_cycles() {
                 "CONTROLO: o Cycles tem de mostrar sombras alheias no reflexo"
             );
             assert!(
-                orfaos * 50 < n_fora,
-                "o reflexo mostra a sombra de uma vizinha sem a vizinha: {orfaos} de {n_fora} px"
+                s_fora / (n_fora as f32) < BARRA_FORA,
+                "fora da zona da peça o reflexo do chão afastou-se do Cycles: {orfaos} px escurecem \
+                 contra {alheias}"
             );
         }
         assert!(

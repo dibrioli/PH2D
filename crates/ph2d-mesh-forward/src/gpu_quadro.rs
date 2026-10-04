@@ -292,10 +292,11 @@ impl Forward {
         true
     }
 
-    /// ⭐ O grupo `0` do desenhista com o uniforme `quadro` (o do quadro, ou o de uma face de captura).
+    /// ⭐ O grupo `0` do desenhista sobre o buffer `quadro` (o do quadro, ou o das faces das capturas,
+    /// uma por deslocamento dinâmico).
     pub(super) fn g0_com(
         &self,
-        quadro: wgpu::BindingResource<'_>,
+        quadro: &wgpu::Buffer,
         mat_view: &wgpu::TextureView,
     ) -> wgpu::BindGroup {
         self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -304,7 +305,11 @@ impl Forward {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: quadro,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: quadro,
+                        offset: 0,
+                        size: std::num::NonZeroU64::new((QUADRO * 4) as u64),
+                    }),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -391,7 +396,7 @@ impl Forward {
                     resource: wgpu::BindingResource::TextureView(
                         self.sondas
                             .as_ref()
-                            .map_or(&self.sondas_vazia, |s| &s.arranjo.2),
+                            .map_or(&self.sondas_vazia, |s| &s.arranjo.vista),
                     ),
                 },
             ],
@@ -411,7 +416,7 @@ impl Forward {
         else {
             return;
         };
-        let g0 = self.g0_com(self.quadro.as_entire_binding(), mat_view);
+        let g0 = self.g0_com(&self.quadro, mat_view);
         let mut enc = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -510,7 +515,7 @@ impl Forward {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_bind_group(0, &g0, &[]);
+            pass.set_bind_group(0, &g0, &[0]);
             let (chao, objeto, fundo) = match com_brilho {
                 Some((b, _)) => (&b.chao, &b.objeto, &b.fundo),
                 None => (&self.chao, &self.objeto, &self.fundo),

@@ -15,30 +15,48 @@
 //! - **Sem cena-linear em `Rgba16Float`** (a placa sem o brilho) não há capturas, e vale a lei sem elas.
 //! - **Uma peça sozinha** não tem vizinhas: não há capturas, e o quadro é o de sempre ao byte.
 
-use super::{Forward, QUADRO, quadro_impl};
-use crate::{Cena, Instancia};
+use super::QUADRO;
 
-/// O lado do octaedro de uma captura no nível `0`, com a borda (`1` texel a toda a volta).
-pub(crate) const LADO: u32 = 128;
-/// Os níveis: `α = (k / (NIVEIS − 1))²`, do espelho (`128`) ao mais largo (`4`).
-pub(crate) const NIVEIS: u32 = 6;
-/// O lado de uma face do cubo.
+/// O lado do octaedro de uma captura no nível `0`, com a borda (`1` texel a toda a volta), e o de uma
+/// face do cubo. ⭐ Medido (04/10, `o_espelho_mostra_as_vizinhas_como_no_cycles` e
+/// `instrumento_custo_sondas`, 1080p, RTX 5060 Ti, load `< 4`):
+///
+/// | octaedro / face | esfera nítida (miolo / contorno) | esfera áspera | caixa nítida (miolo) | arrastar, 16 peças |
+/// |---|---|---|---|---|
+/// | `128 / 128` | `0,0050 / 0,103` | `0,027` | `0,060` | `+3,84 ms` |
+/// | **`256 / 128`** | `0,0051 / 0,056` | `0,033` | **`0,036`** | `+3,92 ms` |
+/// | `128 / 256` | `0,0050 / 0,097` | `0,027` | `0,059` | `+4,34 ms` |
+/// | `256 / 256` | `0,0051 / 0,053` | `0,033` | `0,034` | `+4,78 ms` |
+///
+/// O espelho PLANO perto da vizinha (a caixa) é quem pede o octaedro fino; as faces finas não lhe dão
+/// nada. Memória: `~1,4 MB` por captura (as duas camadas com os níveis, meia precisão).
+pub(crate) const LADO: u32 = 256;
 pub(crate) const FACE: u32 = 128;
+/// Os níveis: `α = (k / (NIVEIS − 1))²`, do espelho (`256`) ao mais largo (`8`).
+pub(crate) const NIVEIS: u32 = 6;
 /// As amostras do lóbulo por texel nos níveis `> 0` (filtradas: cada uma lê o nível do ângulo dela).
+/// Medido (04/10, 16 peças a arrastar): `64` → `16` amostras tira `~1 ms` dos `2,5 ms` do pós-processamento.
 const TAPS: u32 = 64;
 /// ⭐ **A paralaxe**: um passo por nível onde se lê a distância, do GROSSO ao fino. O primeiro, grosso,
-/// sente a vizinha mais perto mesmo quando a direcção crua não a vê. Medido (03/10, `sonda_da_paralaxe`,
-/// os raios do oráculo que acertam uma vizinha, contra o ponto acertado visto do centro): a esfera
-/// `[1, 1]` `3,60°` médio / `19,1°` máx (a direcção crua não via nada e o passo desistia), `[4, 2, 1]`
-/// `0,05°` / `0,44°`, `[4, 2, 1, 0]` `0,02°` / `0,22°`; a caixa `[1, 1]` `0,24°` / `2,9°`, `[4, 2, 1, 0]`
-/// `0,13°` / `2,9°`. Mais passos não ganham nada.
-const PARALAXE: [f32; 4] = [4.0, 2.0, 1.0, 0.0];
+/// sente a vizinha mais perto mesmo quando a direcção crua não a vê. Medido (04/10, octaedro `256`,
+/// `a_paralaxe_acerta_onde_o_raio_bate`: os raios do oráculo que acertam uma vizinha, contra o ponto
+/// acertado visto do centro, médio / máx):
+///
+/// | níveis | esfera | caixa |
+/// |---|---|---|
+/// | nenhum | `11,2° / 19,1°` | `12,0° / 21,6°` |
+/// | `[1, 1]` (a `128`) | `3,6° / 19,1°` — a direcção crua não via nada e o passo desistia | `0,24° / 2,9°` |
+/// | `[4, 2, 1, 0]` | `0,09° / 19,1°` — o grosso já não é grosso a `256` | `0,10° / 2,45°` |
+/// | `[5, 3, 1, 0]` | `0,01° / 0,10°` | `0,12° / 4,66°` |
+/// | **`[5, 2, 1, 0]`** | `0,01° / 0,10°` | `0,09° / 2,45°` |
+/// | `[5, 3, 2, 1, 0]` | `0,01° / 0,11°` | `0,09° / 2,45°` |
+pub(crate) const PARALAXE: [f32; 4] = [5.0, 2.0, 1.0, 0.0];
 /// ⭐ O máximo de capturas: duas camadas por captura nos `256` do `max_texture_array_layers` do WebGL2.
 pub(crate) const MAX: usize = 128;
 pub(crate) const FORMATO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 /// As faces: `(para onde olha, cima)`; a direita é `olha × cima`. A MESMA tabela no WGSL ([`constantes`]).
-const FACES: [([f32; 3], [f32; 3]); 6] = [
+pub(super) const FACES: [([f32; 3], [f32; 3]); 6] = [
     ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
     ([-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
     ([0.0, 1.0, 0.0], [0.0, 0.0, 1.0]),
@@ -126,10 +144,35 @@ pub(super) fn ladrilho(f: usize) -> (u32, u32) {
     ((f as u32 % 3) * FACE, (f as u32 / 3) * FACE)
 }
 
+/// A caixa `(lo, hi)` do mundo cai (em parte) na face `f` da captura em `c`? — os quatro planos do
+/// tronco de `90°` pelo centro; fora se os `8` cantos ficam todos do lado de fora de um deles.
+pub(super) fn na_face(f: usize, c: [f32; 3], (lo, hi): ([f32; 3], [f32; 3])) -> bool {
+    let (w, up) = FACES[f];
+    let dir = cruz(w, up);
+    let planos = [-1.0f32, 1.0].into_iter().flat_map(|sg| {
+        [
+            [0, 1, 2].map(|e| w[e] + sg * dir[e]),
+            [0, 1, 2].map(|e| w[e] + sg * up[e]),
+        ]
+    });
+    let cantos: Vec<[f32; 3]> = (0..8)
+        .map(|k| {
+            [
+                if k & 1 == 0 { lo[0] } else { hi[0] } - c[0],
+                if k & 2 == 0 { lo[1] } else { hi[1] } - c[1],
+                if k & 4 == 0 { lo[2] } else { hi[2] } - c[2],
+            ]
+        })
+        .collect();
+    planos
+        .into_iter()
+        .all(|n| cantos.iter().any(|q| dot(*q, n) >= 0.0))
+}
+
 /// ⭐ **As capturas deste quadro.**
 pub(crate) struct Plano {
-    /// Quantas capturas (a captura `s` é a da instância `s` da lista do quadro).
-    pub n: usize,
+    /// O centro de cada captura (a captura `s` é a da instância `s` da lista do quadro).
+    pub centros: Vec<[f32; 3]>,
     /// A chave mudou: as capturas refazem-se neste quadro.
     pub refaz: bool,
     /// O enquadramento das sombras das capturas (a cena inteira, não a vista).
@@ -140,22 +183,32 @@ pub(crate) struct Plano {
 pub(crate) struct Sondas {
     pub(super) faces: wgpu::RenderPipeline,
     pub(super) octa: wgpu::RenderPipeline,
-    pub(super) desce: wgpu::RenderPipeline,
-    pub(super) prefiltro: wgpu::RenderPipeline,
-    pub(super) bind: wgpu::BindGroup,
+    pub(super) nivel: wgpu::RenderPipeline,
+    /// O grupo de cada nível `k` (a cadeia `0..k` ligada, o resto a textura vazia).
+    pub(super) binds: Vec<wgpu::BindGroup>,
     pub(super) faces_cor: wgpu::TextureView,
     pub(super) faces_dist: wgpu::TextureView,
     pub(super) faces_prof: wgpu::TextureView,
-    pub(super) cadeia: [wgpu::Texture; 2],
-    /// A passagem de cada nível: `[cor, distância]` (textura e vista).
-    pub(super) tmp: Vec<[(wgpu::Texture, wgpu::TextureView); 2]>,
-    /// As capturas: `(capacidade, textura, vista de todas as camadas)`.
-    pub arranjo: (usize, wgpu::Texture, wgpu::TextureView),
+    /// A CADEIA: um nível por textura (`[cor, distância]`) — lida directamente, sem cópias.
+    pub(super) cadeia: Vec<[wgpu::TextureView; 2]>,
+    /// As capturas: `(capacidade, textura, vista de todas as camadas, [por captura][nível] = [cor,
+    /// distância])`.
+    pub arranjo: Arranjo,
     /// Os uniformes das faces: `(capacidade em faces, buffer)`.
     pub(super) quadros: Option<(usize, wgpu::Buffer)>,
-    chave: Vec<u8>,
+    pub(super) chave: Vec<u8>,
     /// Quantas vezes as capturas foram refeitas (os gates do «refaz só quando muda»).
     pub refeitas: u64,
+}
+
+/// A matriz das capturas e as vistas de escrita de cada uma.
+pub(crate) struct Arranjo {
+    pub cap: usize,
+    /// Só os gates a leem de volta (as vistas seguram a textura).
+    #[cfg(test)]
+    pub textura: wgpu::Texture,
+    pub vista: wgpu::TextureView,
+    pub alvos: Vec<Vec<[wgpu::TextureView; 2]>>,
 }
 
 /// O passo de um uniforme de face (o deslocamento mínimo de um uniforme é `256`).
@@ -184,10 +237,10 @@ fn textura(
     })
 }
 
-fn arranjo(device: &wgpu::Device, cap: usize) -> (usize, wgpu::Texture, wgpu::TextureView) {
+pub(super) fn arranjo(device: &wgpu::Device, cap: usize) -> Arranjo {
     // ⚠️ `2 · cap` com `cap` potência de 2: nunca múltiplo de 6 (o GLES faria cubos).
     debug_assert!(cap.is_power_of_two());
-    let t = textura(
+    let textura = textura(
         device,
         (LADO, LADO, 2 * cap as u32),
         NIVEIS,
@@ -196,11 +249,35 @@ fn arranjo(device: &wgpu::Device, cap: usize) -> (usize, wgpu::Texture, wgpu::Te
             | wgpu::TextureUsages::TEXTURE_BINDING
             | wgpu::TextureUsages::COPY_SRC,
     );
-    let v = t.create_view(&wgpu::TextureViewDescriptor {
+    let vista = textura.create_view(&wgpu::TextureViewDescriptor {
         dimension: Some(wgpu::TextureViewDimension::D2Array),
         ..Default::default()
     });
-    (cap, t, v)
+    let alvos = (0..cap as u32)
+        .map(|s| {
+            (0..NIVEIS)
+                .map(|k| {
+                    [2 * s, 2 * s + 1].map(|c| {
+                        textura.create_view(&wgpu::TextureViewDescriptor {
+                            dimension: Some(wgpu::TextureViewDimension::D2),
+                            base_mip_level: k,
+                            mip_level_count: Some(1),
+                            base_array_layer: c,
+                            array_layer_count: Some(1),
+                            ..Default::default()
+                        })
+                    })
+                })
+                .collect()
+        })
+        .collect();
+    Arranjo {
+        cap,
+        #[cfg(test)]
+        textura,
+        vista,
+        alvos,
+    }
 }
 
 fn entrada_textura(binding: u32) -> wgpu::BindGroupLayoutEntry {
@@ -230,18 +307,28 @@ pub(crate) fn entrada(binding: u32) -> wgpu::BindGroupLayoutEntry {
     }
 }
 
-fn alvos_duplos() -> [Option<wgpu::ColorTargetState>; 2] {
-    let a = Some(wgpu::ColorTargetState {
-        format: FORMATO,
-        blend: None,
-        write_mask: wgpu::ColorWrites::ALL,
-    });
-    [a.clone(), a]
+fn alvos(n: usize) -> Vec<Option<wgpu::ColorTargetState>> {
+    vec![
+        Some(wgpu::ColorTargetState {
+            format: FORMATO,
+            blend: None,
+            write_mask: wgpu::ColorWrites::ALL,
+        });
+        n
+    ]
 }
 
+/// As ligações dos passes da captura: o atlas das faces (`0`, `1`), a cadeia da cor nível a nível
+/// (`2..2 + NIVEIS`), a distância do nível anterior, o amostrador e o passo.
+const LIG_DIST: u32 = 2 + NIVEIS;
+const LIG_AMOSTRA: u32 = LIG_DIST + 1;
+const LIG_PASSO: u32 = LIG_DIST + 2;
+
 impl Sondas {
-    /// ⭐ Os QUATRO pipelines das capturas (as faces, o octaedro, a cadeia, o pré-filtro) e as texturas
-    /// fixas — compilados UMA vez, com o desenhista.
+    /// ⭐ Os TRÊS pipelines das capturas (as faces; o octaedro; e cada nível — a cadeia e o pré-filtro
+    /// no MESMO passe) e as texturas fixas — compilados UMA vez, com o desenhista. ⛔ Medido (04/10,
+    /// `instrumento_custo_sondas`, 16 peças a arrastar): com um passe por etapa e cópias para a cadeia
+    /// (`25` operações por captura) o pós-processamento custava `4,3 ms` e as faces `1,2 ms`.
     #[allow(clippy::too_many_lines)]
     pub(crate) fn nova(
         device: &wgpu::Device,
@@ -250,7 +337,6 @@ impl Sondas {
         pl_g0g1: &wgpu::PipelineLayout,
         vertice: &[wgpu::VertexBufferLayout<'_>],
     ) -> Self {
-        let alvos = alvos_duplos();
         let faces = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("ph2d-mesh-forward sonda faces"),
             layout: Some(pl_g0g1),
@@ -264,7 +350,7 @@ impl Sondas {
                 module: modulo,
                 entry_point: Some("fs_sonda"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-                targets: &alvos,
+                targets: &alvos(2),
             }),
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: Some(wgpu::DepthStencilState {
@@ -278,21 +364,22 @@ impl Sondas {
             multiview_mask: None,
             cache: None,
         });
+        let mut entradas: Vec<wgpu::BindGroupLayoutEntry> =
+            (0..LIG_AMOSTRA).map(entrada_textura).collect();
+        entradas.push(wgpu::BindGroupLayoutEntry {
+            binding: LIG_AMOSTRA,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+            count: None,
+        });
+        entradas.push(crate::gpu_ligacoes::uniforme(
+            LIG_PASSO,
+            true,
+            wgpu::ShaderStages::FRAGMENT,
+        ));
         let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-mesh-forward sondas"),
-            entries: &[
-                entrada_textura(0),
-                entrada_textura(1),
-                entrada_textura(2),
-                entrada_textura(3),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-                crate::gpu_ligacoes::uniforme(5, true, wgpu::ShaderStages::FRAGMENT),
-            ],
+            entries: &entradas,
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-mesh-forward sondas"),
@@ -303,6 +390,7 @@ impl Sondas {
             label: Some("ph2d-mesh-forward sondas"),
             source: wgpu::ShaderSource::Wgsl(fonte().into()),
         });
+        let quatro = alvos(4);
         let tela = |entrada: &str| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("ph2d-mesh-forward sondas tela"),
@@ -317,7 +405,7 @@ impl Sondas {
                     module: &m2,
                     entry_point: Some(entrada),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    targets: &alvos,
+                    targets: &quatro,
                 }),
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: None,
@@ -326,7 +414,7 @@ impl Sondas {
                 cache: None,
             })
         };
-        let (octa, desce, prefiltro) = (tela("fs_octa"), tela("fs_desce"), tela("fs_prefiltro"));
+        let (octa, nivel) = (tela("fs_octa"), tela("fs_nivel"));
         let rt = wgpu::TextureUsages::RENDER_ATTACHMENT;
         let tb = wgpu::TextureUsages::TEXTURE_BINDING;
         let vista = |t: &wgpu::Texture| t.create_view(&wgpu::TextureViewDescriptor::default());
@@ -340,30 +428,20 @@ impl Sondas {
             crate::gpu_alvo::PROFUNDIDADE,
             rt,
         ));
-        let cadeia = [0, 1].map(|_| {
-            textura(
-                device,
-                (LADO, LADO, 1),
-                NIVEIS,
-                FORMATO,
-                tb | wgpu::TextureUsages::COPY_DST,
-            )
-        });
-        let tmp = (0..NIVEIS)
+        let cadeia: Vec<[wgpu::TextureView; 2]> = (0..NIVEIS)
             .map(|k| {
                 [0, 1].map(|_| {
-                    let t = textura(
+                    vista(&textura(
                         device,
                         (LADO >> k, LADO >> k, 1),
                         1,
                         FORMATO,
-                        rt | wgpu::TextureUsages::COPY_SRC,
-                    );
-                    let v = vista(&t);
-                    (t, v)
+                        rt | tb,
+                    ))
                 })
             })
             .collect();
+        let vazia = vista(&textura(device, (1, 1, 1), 1, FORMATO, tb));
         let passo = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("ph2d-mesh-forward sondas passo"),
             size: 256 * u64::from(NIVEIS),
@@ -382,52 +460,69 @@ impl Sondas {
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
-        let (vc0, vc1) = (vista(&cadeia[0]), vista(&cadeia[1]));
-        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-mesh-forward sondas"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&faces_cor),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&faces_dist),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&vc0),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&vc1),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
+        // ⚠️ O passe do nível `k` ESCREVE a cadeia `k`: só os níveis `< k` ficam ligados (uma textura
+        // lida e escrita no mesmo passe é o que o WebGPU recusa e o GLES não garante).
+        let binds = (0..NIVEIS)
+            .map(|k| {
+                fn tv(v: &wgpu::TextureView) -> wgpu::BindingResource<'_> {
+                    wgpu::BindingResource::TextureView(v)
+                }
+                let mut e = vec![
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: tv(&faces_cor),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: tv(&faces_dist),
+                    },
+                ];
+                for i in 0..NIVEIS {
+                    e.push(wgpu::BindGroupEntry {
+                        binding: 2 + i,
+                        resource: tv(if i < k {
+                            &cadeia[i as usize][0]
+                        } else {
+                            &vazia
+                        }),
+                    });
+                }
+                e.push(wgpu::BindGroupEntry {
+                    binding: LIG_DIST,
+                    resource: tv(if k > 0 {
+                        &cadeia[k as usize - 1][1]
+                    } else {
+                        &vazia
+                    }),
+                });
+                e.push(wgpu::BindGroupEntry {
+                    binding: LIG_AMOSTRA,
                     resource: wgpu::BindingResource::Sampler(&amostra),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
+                });
+                e.push(wgpu::BindGroupEntry {
+                    binding: LIG_PASSO,
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                         buffer: &passo,
                         offset: 0,
                         size: std::num::NonZeroU64::new(16),
                     }),
-                },
-            ],
-        });
+                });
+                device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("ph2d-mesh-forward sondas"),
+                    layout: &bgl,
+                    entries: &e,
+                })
+            })
+            .collect();
         Self {
             faces,
             octa,
-            desce,
-            prefiltro,
-            bind,
+            nivel,
+            binds,
             faces_cor,
             faces_dist,
             faces_prof,
             cadeia,
-            tmp,
             arranjo: arranjo(device, 1),
             quadros: None,
             chave: Vec::new(),
@@ -437,7 +532,10 @@ impl Sondas {
 }
 
 /// O centro da caixa local `(lo, hi)` posta no mundo por `modelo`, e os cantos dela no mundo.
-fn caixa_no_mundo(modelo: &[[f32; 4]; 4], (lo, hi): ([f32; 3], [f32; 3])) -> ([f32; 3], [f32; 3]) {
+pub(super) fn caixa_no_mundo(
+    modelo: &[[f32; 4]; 4],
+    (lo, hi): ([f32; 3], [f32; 3]),
+) -> ([f32; 3], [f32; 3]) {
     let (mut a, mut b) = ([f32::INFINITY; 3], [f32::NEG_INFINITY; 3]);
     for k in 0..8 {
         let c = [
@@ -452,187 +550,4 @@ fn caixa_no_mundo(modelo: &[[f32; 4]; 4], (lo, hi): ([f32; 3], [f32; 3])) -> ([f
         }
     }
     (a, b)
-}
-
-impl Forward {
-    /// Os gates ligam e desligam as capturas (a régua de controlo).
-    #[cfg(test)]
-    pub(crate) fn liga_reflexos(&mut self, liga: bool) {
-        self.reflexos = liga;
-    }
-
-    /// A camada `camada` das capturas no nível `k`, lida de volta (`lado × lado` texels RGBA, linha a linha).
-    #[cfg(test)]
-    pub(crate) fn le_sonda(&self, camada: u32, k: u32) -> Option<Vec<[f32; 4]>> {
-        let s = self.sondas.as_ref()?;
-        let w = LADO >> k;
-        let bpr = (w * 8).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
-        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-mesh-forward sonda lida"),
-            size: u64::from(bpr * w),
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-        let mut enc = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        enc.copy_texture_to_buffer(
-            wgpu::TexelCopyTextureInfo {
-                texture: &s.arranjo.1,
-                mip_level: k,
-                origin: wgpu::Origin3d {
-                    x: 0,
-                    y: 0,
-                    z: camada,
-                },
-                aspect: wgpu::TextureAspect::All,
-            },
-            wgpu::TexelCopyBufferInfo {
-                buffer: &buffer,
-                layout: wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(bpr),
-                    rows_per_image: Some(w),
-                },
-            },
-            wgpu::Extent3d {
-                width: w,
-                height: w,
-                depth_or_array_layers: 1,
-            },
-        );
-        self.queue.submit([enc.finish()]);
-        let fatia = buffer.slice(..);
-        fatia.map_async(wgpu::MapMode::Read, |_| {});
-        self.device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
-        let dados = fatia.get_mapped_range();
-        let mut out = Vec::with_capacity((w * w) as usize);
-        for y in 0..w as usize {
-            let linha: &[half::f16] =
-                bytemuck::cast_slice(&dados[y * bpr as usize..y * bpr as usize + w as usize * 8]);
-            out.extend(linha.chunks(4).map(|c| [0, 1, 2, 3].map(|e| c[e].to_f32())));
-        }
-        Some(out)
-    }
-
-    /// Quantas vezes as capturas foram refeitas.
-    #[cfg(test)]
-    pub(crate) fn sondas_refeitas(&self) -> u64 {
-        self.sondas.as_ref().map_or(0, |s| s.refeitas)
-    }
-
-    /// ⭐ **Quem tem captura**: o campo `sonda` do `Objeto` de cada instância do quadro — `(camada, centro)`
-    /// ou `−1`. Só com vizinhas (duas peças ou mais), com a placa que as desenha, até [`MAX`].
-    pub(super) fn atribui_sondas(&self, objs: &[&Instancia]) -> Vec<[f32; 4]> {
-        let liga = self.reflexos && self.sondas.is_some() && objs.len() >= 2;
-        objs.iter()
-            .enumerate()
-            .map(|(i, o)| match self.malhas.get(&o.malha) {
-                Some(m) if liga && i < MAX => {
-                    let (a, b) = caixa_no_mundo(&o.modelo, m.caixa);
-                    [
-                        2.0 * i as f32,
-                        0.5 * (a[0] + b[0]),
-                        0.5 * (a[1] + b[1]),
-                        0.5 * (a[2] + b[2]),
-                    ]
-                }
-                _ => [-1.0, 0.0, 0.0, 0.0],
-            })
-            .collect()
-    }
-
-    /// ⭐⭐ **O plano das capturas**: os uniformes das faces (o enquadramento das sombras da cena INTEIRA
-    /// — a da vista mudaria com a câmara) e a CHAVE: tudo o que as faces leem. Igual à do quadro anterior
-    /// ⇒ as capturas ficam como estão.
-    pub(super) fn planeia_sondas(
-        &mut self,
-        cena: &Cena<'_>,
-        objs: &[&Instancia],
-        atrib: &[[f32; 4]],
-        extra: (&[u8], &[f32]),
-    ) -> Option<Plano> {
-        let n = atrib.iter().filter(|a| a[0] >= 0.0).count();
-        if n == 0 {
-            return None;
-        }
-        let chave_luz = super::sombra_impl::chave(cena, self.foto.is_some(), self.sol.as_ref());
-        let e = super::sombra_impl::enquadra(
-            cena,
-            chave_luz,
-            |id| self.malhas.get(&id).map(|m| m.caixa),
-            false,
-        );
-        let (mut lo, mut hi) = ([f32::INFINITY; 3], [f32::NEG_INFINITY; 3]);
-        for o in objs {
-            if let Some(m) = self.malhas.get(&o.malha) {
-                let (a, b) = caixa_no_mundo(&o.modelo, m.caixa);
-                for k in 0..3 {
-                    lo[k] = lo[k].min(a[k]);
-                    hi[k] = hi[k].max(b[k]);
-                }
-            }
-        }
-        let diag = (0..3).map(|k| (hi[k] - lo[k]).powi(2)).sum::<f32>().sqrt();
-        let longe = 2.0 * diag + 1.0e-3;
-        let perto = longe * 1.0e-4;
-        let passo = PASSO_QUADRO as usize;
-        let mut dados = vec![0u8; 6 * n * passo];
-        for (s, a) in atrib.iter().take(n).enumerate() {
-            let c = [a[1], a[2], a[3]];
-            for f in 0..6 {
-                let cam = crate::Camera {
-                    view_proj: face_vp(f, c, perto, longe),
-                    olho: c,
-                    perspectiva: true,
-                    dir_vista: FACES[f].0,
-                };
-                let u = quadro_impl::uniforme_do_quadro(
-                    &Cena {
-                        camera: cam,
-                        ..*cena
-                    },
-                    &e,
-                    self.foto.is_some(),
-                    self.sol.as_ref(),
-                    true,
-                );
-                let at = (6 * s + f) * passo;
-                dados[at..at + QUADRO * 4].copy_from_slice(bytemuck::cast_slice(&u));
-            }
-        }
-        let mut chave = dados.clone();
-        chave.extend_from_slice(extra.0);
-        chave.extend_from_slice(bytemuck::cast_slice(extra.1));
-        chave.extend_from_slice(&self.geracao.to_le_bytes());
-        let sondas = self.sondas.as_mut()?;
-        let cap = n.next_power_of_two();
-        if sondas.arranjo.0 < cap {
-            sondas.arranjo = arranjo(&self.device, cap);
-            sondas.chave.clear();
-        }
-        if sondas.quadros.as_ref().is_none_or(|(c, _)| *c < 6 * cap) {
-            let b = self.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("ph2d-mesh-forward sondas quadros"),
-                size: (6 * cap) as u64 * PASSO_QUADRO,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-            sondas.quadros = Some((6 * cap, b));
-        }
-        let refaz = sondas.chave != chave;
-        if refaz {
-            if let Some((_, b)) = &sondas.quadros {
-                self.queue.write_buffer(b, 0, &dados);
-            }
-            sondas.chave = chave;
-            sondas.refeitas += 1;
-        }
-        Some(Plano {
-            n,
-            refaz,
-            ha_sombra: e.ha_sombra,
-            ha_chao: e.ha_chao,
-        })
-    }
 }

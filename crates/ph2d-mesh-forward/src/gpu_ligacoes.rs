@@ -52,7 +52,8 @@ pub(crate) fn g0(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("ph2d-mesh-forward g0"),
         entries: &[
-            uniforme(0, false, vf),
+            // ⭐ Dinâmico: as faces das capturas de reflexo usam o MESMO grupo com o uniforme de cada uma.
+            uniforme(0, true, vf),
             uniforme(1, false, wgpu::ShaderStages::FRAGMENT),
             textura_float(2),
             textura_float(3),

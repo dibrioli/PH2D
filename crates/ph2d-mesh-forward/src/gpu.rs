@@ -16,7 +16,7 @@ mod sombra_impl;
 #[path = "gpu_sondas.rs"]
 pub(crate) mod sondas_impl;
 #[path = "gpu_sondas_passes.rs"]
-mod sondas_passes;
+pub(crate) mod sondas_passes;
 #[path = "gpu_texturas.rs"]
 mod texturas;
 

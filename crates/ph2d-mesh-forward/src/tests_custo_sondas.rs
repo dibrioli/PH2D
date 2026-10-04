@@ -100,8 +100,25 @@ fn instrumento_custo_sondas() {
                 v[v.len() / 2]
             };
             let (s, c) = (med(&mut sem), med(&mut com));
+            // Ao arrastar, a parte de cada passe: sem as vizinhas nas faces, e sem o pós-processamento.
+            let mut partes = String::new();
+            if arrasta {
+                for (bit, nome) in [
+                    (1u8, "sem desenhar as faces"),
+                    (2, "sem o octaedro e o pré-filtro"),
+                ] {
+                    crate::gpu::sondas_passes::PULA
+                        .store(bit, std::sync::atomic::Ordering::Relaxed);
+                    let mut v: Vec<f64> = (0..RODADAS)
+                        .map(|_| mede(&mut fw, &mut objs, true))
+                        .collect();
+                    crate::gpu::sondas_passes::PULA.store(0, std::sync::atomic::Ordering::Relaxed);
+                    let x = med(&mut v);
+                    partes.push_str(&format!(" · {nome} {x:.2} ms"));
+                }
+            }
             eprintln!(
-                "{n:>2} peças · {}: sem capturas {s:.2} ms · com {c:.2} ms · {:+.2} ms",
+                "{n:>2} peças · {}: sem capturas {s:.2} ms · com {c:.2} ms · {:+.2} ms{partes}",
                 if arrasta {
                     "arrastar (refaz todas)"
                 } else {

@@ -266,6 +266,11 @@ fn fotografa(
     let _ = std::fs::write(format!("{pasta}/{nome}.pgm"), f);
 }
 
+/// As barras: `(|Δ| médio, |Δ| médio no miolo do reflexo de uma vizinha)`. Medido (04/10, octaedro
+/// `256`): esfera nítida `0,0029 / 0,0051`, áspera `0,0123 / 0,0333`, caixa `0,0204 / 0,0364`; sem as
+/// capturas `0,0632 / 0,628`, `0,0347 / 0,186`, `0,1934 / 0,684` (o controlo).
+const BARRAS: (f32, f32) = (0.03, 0.05);
+
 /// ⭐⭐⭐ **O espelho mostra as vizinhas como no Cycles** — a esfera pousada (nítida e áspera) e a caixa
 /// (faces planas: a paralaxe), cada uma contra o Cycles nos pixels dela; à parte, os que refletem uma
 /// vizinha (o raio reflectido acerta-a, conta analítica sobre a geometria do oráculo).
@@ -304,7 +309,20 @@ fn o_espelho_mostra_as_vizinhas_como_no_cycles() {
             m.nv,
             m.nb
         );
-        if !(m.media < 0.03 && m.media_viz < 0.05) {
+        // CONTROLO: sem as capturas as vizinhas somem do reflexo, e o miolo erra.
+        fw.liga_reflexos(false);
+        let viz_sem = desenha(&mut fw, &[0, 1, 2], &mats, true);
+        fw.liga_reflexos(true);
+        let c = mede(&pontos, &linhas, &borda, espelho, (&viz_sem, &solo), cols);
+        eprintln!(
+            "    CONTROLO sem capturas: |Δ| médio {:.4} · no miolo {:.4}",
+            c.media, c.media_viz
+        );
+        assert!(
+            c.media_viz > 3.0 * m.media_viz.max(0.02),
+            "{nome}: CONTROLO — sem as capturas o miolo tinha de errar"
+        );
+        if !(m.media < BARRAS.0 && m.media_viz < BARRAS.1) {
             falhas.push(nome);
         }
     }

@@ -1199,6 +1199,13 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-painter-layers/src/paint_wetpaint_tilt.rs",
         "tilt pad is a CurvePoint dispatched in editor-core; toggle delegates to paint_checkbox_row",
     ),
+    // The relief note under an adjustment's params (`docs/3D/30` §20) — a `#[path]` sibling cut from
+    // `paint_adjust.rs` for the panel LOC cap. One static sentence (no control, no id); the card it sits
+    // in is wired in `paint_adjust.rs`.
+    (
+        "ph2d-panel-painter-layers/src/paint_adjust_nota.rs",
+        "one static note sentence under the adjustment card (wired in paint_adjust.rs); no control, no id",
+    ),
     // Watercolor section — its Wet-edges / Pigment checkboxes delegate to `paint_checkbox_row`
     // (the a11y-wired Checkbox) and the Edge / Spread / Granulation / Mix sliders to `number_field`
     // (the a11y-wired NumberInput); the collapsible header + labels are decorative chrome. Same

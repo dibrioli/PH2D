@@ -92,13 +92,16 @@ fn o_classic_e_o_paper_edge_zero_sao_o_byte_de_hoje() {
     }
 }
 
+/// Re-gravada na integração da `line/sculpt3d` (04/10): a orla do AA junta-se em tons de ecrã
+/// (ADR-0177). Ablação: sem esse bloco do `watercolor_render.rs` os seis voltam aos de antes ao bit, e
+/// o único sem AA não mudou.
 const BASE: [(&str, u64); 6] = [
-    ("fábrica", 0xa571_f120_d9eb_f288),
-    ("ragged 24", 0x1860_91ef_4ed9_b617),
+    ("fábrica", 0x7bed_ec6a_ace2_930e),
+    ("ragged 24", 0x832d_f815_e692_6d34),
     ("ragged 48 sem AA", 0xac14_b804_34ed_b932),
-    ("ragged 24 Paper Rough", 0x321f_923b_7fd3_b060),
-    ("ladrilho", 0x8b25_8d8a_18ec_fef2),
-    ("dois donos", 0xb52d_61bf_7582_3c3b),
+    ("ragged 24 Paper Rough", 0xdf19_5034_0dc2_4fb6),
+    ("ladrilho", 0xbde2_bb32_3820_811b),
+    ("dois donos", 0xb9d3_7b8e_bc3a_a991),
 ];
 
 /// Uma faixa larga (r = 30) num canvas de 256² — a régua das bordas.

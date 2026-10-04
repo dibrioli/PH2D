@@ -513,11 +513,9 @@ impl PainterTool {
                         lut,
                     );
 
-                    // Effective base: the layer's own pixels composited over the REAL ground (the
-                    // backdrop under the active layer — so a transparent layer attenuates what is
-                    // actually beneath it, not a virtual cream; an opaque base uses only itself). The
-                    // compositor joins layers in TONES OF THE SCREEN (ADR-0177), so the appearance is
-                    // the encoded lerp; the optics below run on it in linear light.
+                    // Effective base: the layer over the REAL ground (a transparent layer attenuates what
+                    // is beneath it; an opaque base uses only itself), joined in TONES OF THE SCREEN like
+                    // the compositor (ADR-0177); the optics below run on it in linear light.
                     let ab = f32::from(base[gi + 3]) / 255.0;
                     let ground_lin = [
                         lut.s2l[ground[gi] as usize],
@@ -644,13 +642,12 @@ impl PainterTool {
                     // so a transparent layer's silhouette fades with its fractional coverage too.
                     let cov_a = ((1.0 - t_min).max(a_body) * aa_alpha).clamp(0.0, 1.0);
                     let out_a = (ab + (1.0 - ab) * cov_a).clamp(0.0, 1.0);
-                    // `rgb` is the target APPEARANCE over the ground. The layer stores straight RGBA
-                    // that the compositor will blend over that same ground — so solve the un-premultiply
-                    // `L = (appearance − ground·(1−a)) / a` in the compositor's space (tones of the
-                    // screen, ADR-0177). Baking the appearance
-                    // directly (the old path) baked the ground INTO the pixels: over a white backdrop
-                    // the wash carried a permanent cream cast ("puxa para o bege", Enio 2026-07-06).
-                    // Opaque base ⇒ a = 1 ⇒ L = appearance, byte-identical to the old path.
+                    // `rgb` is the target APPEARANCE over the ground. The layer stores straight RGBA that
+                    // the compositor blends over that same ground — so solve `L = (appearance −
+                    // ground·(1−a)) / a` in tones of the screen (ADR-0177). Baking the appearance directly
+                    // (the old path) baked the ground INTO the pixels: over a white backdrop the wash
+                    // carried a permanent cream cast ("puxa para o bege", Enio 2026-07-06). Opaque base
+                    // ⇒ a = 1 ⇒ L = appearance.
                     if out_a <= f32::EPSILON {
                         // No film and no base: the layer stays untouched (appearance == ground).
                         row[gx * 4] = base[gi];

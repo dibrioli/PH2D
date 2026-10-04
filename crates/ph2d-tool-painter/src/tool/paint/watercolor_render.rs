@@ -23,6 +23,7 @@
 mod diag; // o envelope de diagnóstico do composite (LOC split)
 mod pigment; // a COR do pigmento por pixel (LOC split, por assunto)
 mod window;
+pub(in crate::tool::paint) use window::Alcance;
 
 use super::watercolor_field::*;
 use super::watercolor_rewet_px::{

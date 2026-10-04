@@ -103,7 +103,8 @@ impl PainterTool {
             soaked,
             watered,
             pad,
-            pad_maximo: _,
+            reach: _,
+            desloca: _,
         } = self.alcance_da_janela();
         let x0 = (dirty.x as usize).saturating_sub(pad);
         let y0 = (dirty.y as usize).saturating_sub(pad);
@@ -223,9 +224,8 @@ impl PainterTool {
         } else {
             0.0
         };
-        let pad = reach + (warp_any + papel).ceil() as usize + 2;
-        // O tecto do `pad` nesta sessão: a água e o soak dobram o alcance assim que nascem.
-        let pad_maximo = pad.max(spread_any * 2 + (warp_any + papel).ceil() as usize + 2);
+        let desloca = (warp_any + papel).ceil() as usize;
+        let pad = reach + desloca + 2;
         Alcance {
             spread,
             warp_amp,
@@ -236,7 +236,8 @@ impl PainterTool {
             soaked,
             watered,
             pad,
-            pad_maximo,
+            reach,
+            desloca,
         }
     }
 }
@@ -253,6 +254,9 @@ pub(in crate::tool::paint) struct Alcance {
     pub soaked: bool,
     pub watered: bool,
     pub pad: usize,
-    /// O `pad` com a água/soak já nascidos — o que um traço seguinte da MESMA sessão pode alcançar.
-    pub pad_maximo: usize,
+    /// O raio dos CAMPOS em volta do ponto amostrado (aro, dissolução, reserva) — o `pad` sem o
+    /// deslocamento nem a folga.
+    pub reach: usize,
+    /// Quanto o Ragged Edge e o Paper Edge deslocam o ponto amostrado (px, arredondado para cima).
+    pub desloca: usize,
 }

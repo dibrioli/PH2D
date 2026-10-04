@@ -295,3 +295,86 @@ fn sonda_o_custo_de_assar_a_4096() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O gesto do dono (smoke de 2026-10-04): Dry Time 2 s, cinco traços SEPARADOS, um por
+/// segundo — o 1.º tem de estar seco (assado) quando o 5.º começa.** Com o pincel de FÁBRICA da
+/// aquarela (raio 10). A 1.ª versão do assar exigia ~65 px entre poças (células de 16 px e um elo de
+/// quatro células), e traços a 40 px uns dos outros eram «uma poça só» — nada secava enquanto se
+/// pintava ao lado.
+#[test]
+fn cinco_tracos_separados_cada_um_seca_no_seu_tempo() {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (LADO * LADO * 4) as usize], LADO, LADO);
+    t.set_paint_media(crate::PaintMedia::Watercolor);
+    t.set_dry_time_s(2.0);
+    let fw = LADO as usize;
+    for (k, x) in [40.0f32, 80.0, 120.0, 160.0, 200.0].into_iter().enumerate() {
+        if k == 4 {
+            assert_eq!(
+                t.paint.canvas_wet[90 * fw + 40],
+                0,
+                "a régua: 4 s depois, o papel sob o 1.º traço secou"
+            );
+        }
+        vertical(&mut t, x);
+        espera(&mut t, 1.0);
+    }
+    assert_eq!(
+        t.paint.stroke_coverage[90 * fw + 40],
+        0,
+        "o 1.º traço continuou na sessão molhada (fundiria com um traço por cima) — ele secou há 2 s"
+    );
+    assert!(
+        t.paint.stroke_coverage[90 * fw + 200] > 0,
+        "a régua: o 5.º traço, molhado, continua na sessão"
+    );
+}
+
+/// ⭐⭐⭐ **A [`separacao`](super::super::watercolor_secagem) é EXACTA na fronteira** — a varredura da
+/// distância entre duas poças, píxel a píxel, com o pincel de fábrica (Ragged Edge 6 px), com Rewet
+/// (a dissolução lê a base) e com Dilution (a água serrilhada). Em CADA distância: se a poça seca
+/// assou, o pen-up do traço longe (que re-renderiza a união inteira) não muda um byte fora dele. E a
+/// varredura tem de chegar a assar perto (a régua de que mede alguma coisa).
+///
+/// **Mutação que sangra:** a separação a `reach` só (sem a zona da base nem o deslocamento).
+#[test]
+fn a_separacao_das_pocas_e_exacta_na_fronteira() {
+    type Ajuste = fn(&mut BrushSpec);
+    let casos: [(&str, Ajuste); 3] = [
+        ("fábrica", |_| {}),
+        ("Rewet 0,6", |b| b.wet_rewet = 0.6),
+        ("Dilution 0,5", |b| b.wet_dilution = 0.5),
+    ];
+    let fw = LADO as usize;
+    for (nome, ajusta) in casos {
+        let mut assou_mais_perto = None;
+        for xc in 56..=120u32 {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (LADO * LADO * 4) as usize], LADO, LADO);
+            t.set_paint_media(crate::PaintMedia::Watercolor);
+            ajusta(&mut t.paint.brush);
+            t.set_dry_time_s(2.0);
+            vertical(&mut t, 40.0);
+            espera(&mut t, 1.0);
+            vertical(&mut t, xc as f32);
+            espera(&mut t, 1.25);
+            if !t.wet_session_continues() || t.paint.stroke_coverage[90 * fw + 40] == 0 {
+                continue;
+            }
+            let antes = t.canvas_rgba.as_ref().clone();
+            vertical(&mut t, 224.0);
+            let assou = t.paint.stroke_coverage[90 * fw + 40] == 0;
+            let mudou = mudou_fora(&antes, &t.canvas_rgba, 196..=255);
+            assert!(
+                !assou || mudou == 0,
+                "[{nome}] a poça seca a {xc} px assou e o re-render mudou {mudou} texels — a separação é curta"
+            );
+            if assou && assou_mais_perto.is_none() {
+                assou_mais_perto = Some(xc);
+            }
+        }
+        let perto =
+            assou_mais_perto.unwrap_or_else(|| panic!("[{nome}] a régua: nada assou na varredura"));
+        eprintln!("SEPARACAO [{nome}] o 2.º traço mais perto que deixou o 1.º assar: x = {perto}");
+    }
+}

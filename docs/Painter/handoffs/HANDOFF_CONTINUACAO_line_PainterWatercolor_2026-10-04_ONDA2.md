@@ -26,6 +26,19 @@
 | `7002dbe11` | **Blend no Wet Paint**: `WetSession::blend` (congelado no nascimento, `wetpaint::modo_da_sessao`), `composite.rs` por `blend_over` (Mix ao byte); trocar o modo com tinta molhada fixa a sessão (`set_brush_blend`). Erase/Add Alpha = Mix na água. Gates `wetpaint/blend_tests.rs` (2) |
 | este | este handoff |
 
+## §2b — O smoke do dono voltou (2026-10-04) e reprovou o Dry Time — curado
+
+*«se eu coloco o tempo de secagem em 2 seg e faço 5 traços separados a cada segundo, o primeiro traço
+continua molhado ao traçar o último»*. Medido: com o pincel de FÁBRICA (raio 10, Ragged Edge 6 px) o
+papel sob o 1.º traço secava, mas ele ficava na união — a separação entre poças era `2·pad + 2` em
+células de 16 px (~65 px) e os traços estavam a 40 px (21 px de papel). A cura (`separacao` em
+`watercolor_secagem.rs`): poças por troços de linha ao TEXEL (union-find), e a distância conta o
+deslocamento do Ragged/Paper Edge UMA vez — cada texel lê a união em volta de UM ponto amostrado.
+Gates novos: `cinco_tracos_separados_cada_um_seca_no_seu_tempo` (o gesto do dono, vermelho antes) e
+`a_separacao_das_pocas_e_exacta_na_fronteira` (a varredura 56–120 px em fábrica/Rewet/Dilution: assou ⇒
+zero bytes; a mutação «só `reach`» muda 294 texels a 65 px). Assa a partir de 36 px (fábrica), 46
+(Rewet 0,6), 48 (Dilution 0,5) de centro a centro.
+
 ## §3 — Medido e RECUSADO nesta onda (não reconstruir)
 
 | proposta | o que a medição disse |

@@ -8,6 +8,9 @@ use ph2d_mesh_colors::Tinta;
 use super::corridas_das_sujas;
 use crate::MeshRenderer;
 
+/// O relevo `[altura, corpo]` e as inclinações de um slot, lidos da placa.
+pub type RelevoLido = (Vec<[f32; 2]>, Vec<[f32; 3]>);
+
 impl MeshRenderer {
     /// ⭐⭐ **Sobe o relevo `[altura, corpo]` inteiro e refaz as inclinações
     /// das amostras cuja altura mudou desde a foto** — sem tocar nas amostras
@@ -66,7 +69,7 @@ impl MeshRenderer {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         k: usize,
-    ) -> Option<(Vec<[f32; 2]>, Vec<[f32; 3]>)> {
+    ) -> Option<RelevoLido> {
         let g = &self.slots.get(k)?.gpu.tinta;
         if !g.armado || !g.relevo {
             return None;

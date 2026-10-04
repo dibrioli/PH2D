@@ -8,7 +8,7 @@ const CAP: u32 = 4;
 /// pilha AO BIT, nem em `Level` com cobertura nula. CONTROLO: profundidade `0,5` mexe.
 #[test]
 fn o_neutro_da_dobra_e_ao_bit() {
-    let h = 3.141_592_7_f32;
+    let h = 1.234_567_f32;
     let nunca = || -> f32 { panic!("Add não lê a cobertura") };
     assert_eq!(
         fold_relief_step(0.0, 2.5, 1.0, ReliefComposite::Add, nunca),

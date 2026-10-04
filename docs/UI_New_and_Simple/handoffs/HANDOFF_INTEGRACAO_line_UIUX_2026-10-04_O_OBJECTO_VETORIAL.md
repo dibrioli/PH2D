@@ -259,8 +259,10 @@ junta em `mode_drive_tests.rs` (M20, o filtro do mesmo tipo ao sair), a REAL em
   objecto); só o canvas sobe ao objecto. Nomeado, não pedido.
 - (b) Uma forma arrastada na Hierarquia para fora do objecto ganha um objecto novo (a regra das
   soltas) — coerente com a escolha do dono, a confirmar no smoke.
-- (c) Duplicar a LINHA de uma forma (Hierarquia) em Object dá-lhe um objecto novo; duplicar o
-  OBJECTO copia-o inteiro (`duplicate_subtree`).
+- (c) ✅ **Decidido pelo dono (04/10):** (a) e (b) ficam como estão. Duplicar a LINHA de uma forma
+  deixa a cópia no MESMO pai, logo a seguir à original (`entities::object::place_beside`, chamado
+  em `hierarchy_duplicate.rs`; gate `a_duplicated_shape_stays_beside_its_source`, mutação sangra);
+  duplicar o OBJECTO copia-o inteiro (`duplicate_subtree`).
 - (d) `Ctrl+Tab`; Image ▸ Mask; F4 (layouts); Model em Object não desenha (dos handoffs anteriores).
 
 ## §9 — Perfil do loop (`bash scripts/agent-loop-profile.sh`)

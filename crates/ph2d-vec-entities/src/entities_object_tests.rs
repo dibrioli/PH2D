@@ -249,3 +249,33 @@ fn a_head_with_a_shape_in_gesture_under_it_waits() {
     );
     assert_eq!(adopt_loose(&mut sim, &map, Some(o), &[], "Vector"), 1);
 }
+
+/// ⭐⭐ GATE (escolha do dono, 04/10: *«duplicar e permanecer como filho do mesmo pai»*) — **a cópia
+/// de uma forma nasce IRMÃ da original**, logo a seguir a ela entre as irmãs, e não solta (onde a
+/// regra das soltas lhe daria um objecto próprio).
+#[test]
+fn a_duplicated_shape_stays_beside_its_source() {
+    let (mut sim, mut scene, mut map) = setup();
+    let o = spawn_object(&mut sim, "Vector", ph2d_core::Vec2::new(1.0, 1.0));
+    let a = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+    let b = scene.push_path(rectangle([3.0, 0.0], [4.0, 1.0]));
+    sync(&mut sim, &mut scene, &mut map);
+    adopt_loose(&mut sim, &map, Some(o), &[], "Vector");
+    ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
+    let (ea, eb) = (bits(&map, a), bits(&map, b));
+    let clip = scene.copy_paths(&[a]);
+    let copies = scene.paste_clip(&clip, 0.5, 0.0);
+    place_beside(&mut sim, &mut scene, &mut map, &copies, ea);
+    let ec = bits(&map, copies[0]);
+    assert_eq!(parent(&sim, ec), Some(o), "a cópia saiu do pai da original");
+    let order = |e| sim.world().get::<SiblingOrder>(e).expect("ordem").0;
+    assert!(
+        order(ea) < order(ec) && order(ec) < order(eb),
+        "a cópia não ficou ao lado"
+    );
+    assert_eq!(
+        adopt_loose(&mut sim, &map, None, &[], "Vector"),
+        0,
+        "a cópia ficou solta"
+    );
+}

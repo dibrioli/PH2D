@@ -167,6 +167,11 @@ fn object_mode_picks_and_boxes_the_whole_vector_object() {
             "src/render_loop/snapshots.rs",
             "vec_gizmo_view::container_or_object_view(",
         ),
+        // A cópia de uma forma na Hierarquia fica no pai da original (escolha do dono, 04/10).
+        (
+            "src/render_loop/hierarchy_duplicate.rs",
+            "object::place_beside(",
+        ),
     ] {
         let src = std::fs::read_to_string(f).expect("o ficheiro existe");
         assert!(src.contains(call), "{f} não chama {call}");

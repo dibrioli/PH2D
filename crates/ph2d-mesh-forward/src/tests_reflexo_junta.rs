@@ -143,7 +143,7 @@ fn entre_dois_reflexos_o_cromo_mostra_o_fundo() {
         );
         assert!(m.0 > 300, "a faixa encolheu: {} px", m.0);
         assert!(
-            c.2 <= BARRA.1,
+            c.2 <= CONTROLO,
             "CONTROLO — sem capturas não há ponte: a régua tinha de passar"
         );
         if !(m.1 < BARRA.0 && m.2 <= BARRA.1) {
@@ -206,7 +206,10 @@ const ORLA: i32 = 16;
 #[ignore = "precisa de aparelho"]
 fn o_reflexo_nao_alarga_alem_da_vizinha() {
     let mut falhas = Vec::new();
-    for (v, nome) in [(&SOBREPOSTA, "sobreposta"), (&JUNTA, "junta")] {
+    for (v, nome, barra_fora) in [
+        (&SOBREPOSTA, "sobreposta", BARRA_ORLA),
+        (&JUNTA, "junta", BARRA_ORLA_JUNTA),
+    ] {
         let Some(mut fw) = desenhista(v) else {
             eprintln!("sem aparelho — o gate não corre aqui");
             return;
@@ -217,7 +220,7 @@ fn o_reflexo_nao_alarga_alem_da_vizinha() {
             let viz = desenha(v, &mut fw, metal(rug), true);
             let solo = desenha(v, &mut fw, metal(rug), false);
             for (lado, o, barra) in [
-                ("fora", &fora, BARRA_ORLA),
+                ("fora", &fora, barra_fora),
                 ("dentro", &dentro, BARRA_DENTRO),
             ] {
                 let m = mede(&px, o, (&viz, &solo), cols);
@@ -247,8 +250,12 @@ fn o_reflexo_nao_alarga_alem_da_vizinha() {
 
 /// `(|Δ| médio na orla, px com |Δ| > 0,2)`. Medido (04/10): a espessura e a franja de `0,05 / 0,1` liam
 /// `0,0255 / 775` (sobreposta, nítido); a `0,01`, `0,0166 / 169` e `0,0195 / 83` (a `0,05`), a junta
-/// `0,0153 / 0` — o resto é a face LATERAL da caixa, que o centro do cromo não vê.
+/// `0,0153 / 0` — o resto é a face LATERAL da caixa, que o centro do cromo não vê. Com a silhueta a meio da
+/// mistura, `0,0169 / 177` e `0,0157 / 8` (junta).
 const BARRA_ORLA: (f32, usize) = (0.022, 200);
+
+/// A orla de fora na vista da junta (sem face lateral à vista): `8`; a mutação de `DUAS`, `26`.
+const BARRA_ORLA_JUNTA: (f32, usize) = (0.022, 15);
 
 /// A orla de DENTRO (só onde o centro do cromo VÊ o ponto refletido). Medido (04/10): antes desta resposta
 /// `0,0423 / 822` e `0,0647 / 896` (sobreposta, nítido e `0,05`), `0,0351 / 605` (junta); com a silhueta a
@@ -281,6 +288,10 @@ pub(crate) fn em_volta_da_verde(v: &Vista, px: &[Px]) -> Vec<usize> {
 /// A vizinhança da verde, em px (a sonda da tira, `tests_sonda_junta`).
 const PERTO_DA: i32 = 12;
 
-/// `(|Δ| médio na faixa, px com |Δ| > 0,2)`. O CONTROLO só afirma os grosseiros: a média dele é a da
-/// lei sem capturas (a máscara da zona escurece a faixa, `0,107`).
-const BARRA: (f32, usize) = (0.03, 50);
+/// `(|Δ| médio na faixa, px com |Δ| > 0,2)`. Medido (04/10): a ponte `0,597 / 1 268`; curada `0,0076 / 2`
+/// (`0,0121 / 2` a `0,05`); a de trás pelos momentos COM céu no texel (a mutação de `DUAS`) `0,0135 / 12`.
+const BARRA: (f32, usize) = (0.03, 6);
+
+/// O CONTROLO (sem capturas, sem ponte) só afirma os grosseiros (`35`): a média dele é a da lei sem capturas
+/// (a máscara da zona escurece a faixa, `0,107`).
+const CONTROLO: usize = 50;

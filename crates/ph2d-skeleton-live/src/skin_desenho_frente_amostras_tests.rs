@@ -82,3 +82,47 @@ fn diag_as_janelas_que_passam_entre_amostras() {
         );
     }
 }
+
+/// ⭐⭐ **GATE — nenhuma janela tapada que a amostragem deixa passar chega à largura do traço** (A8).
+/// As poses são as da varredura onde a maior apareceu (`97°` nas riscas, `121°` na barra em S) e
+/// vizinhas. A barra `40 × 10` das riscas julga-se com o traço de `0,5` das fixturas do A6.
+///
+/// ⛔ **O CONTROLO:** há janelas perdidas (MEDIDO de `60°` a `170°` de `0,5` em `0,5°`: `31` e `3`,
+/// a maior `0,36` e `0,45` da largura) — a régua não é vácua; e com `8` amostras em vez de `32`
+/// passa da largura (a mutação o prova).
+#[test]
+fn nenhuma_janela_perdida_chega_a_largura_do_traco() {
+    let mut perdidas = 0;
+    for (nome, fixtura, largura, poses) in [
+        (
+            "riscas",
+            super::rapida::riscas_dobradas as fn(f32) -> super::rapida::Fixtura,
+            0.5,
+            [90f32, 95.0, 97.0, 100.0],
+        ),
+        (
+            "barra em S",
+            super::barra_em_s,
+            super::LARGURA,
+            [115.0, 120.0, 121.0, 125.0],
+        ),
+    ] {
+        for graus in poses {
+            let (fonte, _, campo, pele, prof) = fixtura(graus);
+            let f = Posada::nova(&campo, None, &pele, &[], true, &prof)
+                .expect("posada")
+                .com_a_arte(&fonte);
+            for l in janelas_perdidas(&fonte, &f) {
+                perdidas += 1;
+                assert!(
+                    l < largura,
+                    "{nome} a {graus}°: uma janela de {l:.4} passou (largura {largura})"
+                );
+            }
+        }
+    }
+    assert!(
+        perdidas > 0,
+        "o CONTROLO: nenhuma janela perdida nas poses medidas"
+    );
+}

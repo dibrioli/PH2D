@@ -297,3 +297,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "smoke_bone_efeitos_sondas.rs"]
+mod sondas;

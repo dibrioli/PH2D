@@ -9,7 +9,10 @@ use super::*;
 #[ignore = "sonda: escreve SVG"]
 fn diag_a_foto_dos_efeitos() {
     let g = |nome: &str, omissao: f32| -> f32 {
-        std::env::var(nome).ok().and_then(|v| v.parse().ok()).unwrap_or(omissao)
+        std::env::var(nome)
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(omissao)
     };
     let (g1, g2) = (g("SONDA_G1", 110.0), g("SONDA_G2", 110.0));
     let saida = std::env::var("SONDA_SAIDA").unwrap_or_else(|_| "target/prova/efeitos".into());
@@ -20,7 +23,10 @@ fn diag_a_foto_dos_efeitos() {
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut st.entities);
     let pend = st.bone_smoke_pend.take().expect("pendentes");
     for (id, raiz) in &pend {
-        assert_eq!(ph2d_skeleton_live::skin_live::bind(&mut sim, &mut scene, &st.entities, &[*id], *raiz), 1);
+        assert_eq!(
+            ph2d_skeleton_live::skin_live::bind(&mut sim, &mut scene, &st.entities, &[*id], *raiz),
+            1
+        );
         crate::smoke_bone_par::dobra_duas(&mut sim, raiz.expect("raiz"), g1, g2);
     }
     let d = ph2d_skeleton_live::skin_live::recook_desenhando(&sim, &mut scene.clone());
@@ -29,12 +35,25 @@ fn diag_a_foto_dos_efeitos() {
         let Some(x) = d.get(id) else { continue };
         let mut c = [f64::MAX, f64::MAX, f64::MIN, f64::MIN];
         for v in x.forma.verts_all() {
-            c = [c[0].min(v.anchor[0]), c[1].min(v.anchor[1]), c[2].max(v.anchor[0]), c[3].max(v.anchor[1])];
+            c = [
+                c[0].min(v.anchor[0]),
+                c[1].min(v.anchor[1]),
+                c[2].max(v.anchor[0]),
+                c[3].max(v.anchor[1]),
+            ];
         }
         let so: ph2d_skeleton_live::skin_desenho::SkinDesenhado = [(*id, x.clone())].into();
         let f = format!("{saida}/efeitos_{g1}_{g2}_{}.svg", nome.replace(' ', "_"));
         let caixa = [c[0] - 0.2, c[1] - 0.2, c[2] + 0.2, c[3] + 0.2];
-        std::fs::write(&f, crate::smoke_bone_copias::sondas::svg_do_desenho(&so, caixa)).expect("svg");
-        println!("  {f} · contornos {} · camada do traço {}", x.forma.contour_count(), x.traco.is_some());
+        std::fs::write(
+            &f,
+            crate::smoke_bone_copias::sondas::svg_do_desenho(&so, caixa),
+        )
+        .expect("svg");
+        println!(
+            "  {f} · contornos {} · camada do traço {}",
+            x.forma.contour_count(),
+            x.traco.is_some()
+        );
     }
 }

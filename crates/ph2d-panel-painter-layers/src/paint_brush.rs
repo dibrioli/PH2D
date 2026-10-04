@@ -283,7 +283,9 @@ fn paint_top_basics(
     //    o brush digital — então `accumulate` volta a significar ali o que significa aqui, e esconder a
     //    row passaria a ser o controle FALTANDO em vez do morto. A frase acima ("em Eraser/Mask/Inpaint o
     //    Accumulate volta a significar algo") está correta como está.
-    if !brush.paints_no_color() && !brush.watercolor_active && !brush.impasto {
+    //    E escondido no **Wet Paint** (doc 46 §1): o fluido não tem Strength para o tecto e conserva a
+    //    massa — a porta é a `accumulate_offered`, a mesma que o traço pergunta.
+    if brush.accumulate_offered() {
         y = paint_checkbox_row(
             ctx,
             theme,

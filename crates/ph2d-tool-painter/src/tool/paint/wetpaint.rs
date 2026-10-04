@@ -140,7 +140,7 @@ pub(crate) struct WetPaintState {
     /// SINCRONAMENTE pelo [`Self::relogio_fixo`] e nunca a entrega ao worker. O worker anda ao relógio
     /// REAL, e sob carga duas corridas iguais divergiam em 1 148 texels (o censo dos controlos,
     /// 2026-10-03): um gate que pergunta «este controlo muda a tinta?» precisa da mesma tinta duas vezes.
-    #[cfg(feature = "test-support")]
+    #[cfg(any(test, feature = "test-support"))]
     pub(super) relogio_fixo: Option<f64>,
 }
 
@@ -164,13 +164,13 @@ impl Default for WetPaintState {
             tuning_open: false,
             grid_ratio: grid_map::DEFAULT_RATIO,
             flow_ratio: 1,
-            #[cfg(feature = "test-support")]
+            #[cfg(any(test, feature = "test-support"))]
             relogio_fixo: None,
         }
     }
 }
 
-#[cfg(feature = "test-support")]
+#[cfg(any(test, feature = "test-support"))]
 impl PainterTool {
     /// **Os gates correm a água num relógio FIXO** — 40 passos por segundo de `on_tick`, síncronos, pela
     /// mesma porta dos gates de física (`wet_step_sync`). O produto nunca a chama: a água dele anda ao
@@ -275,7 +275,7 @@ impl PainterTool {
             }
             return;
         }
-        #[cfg(feature = "test-support")]
+        #[cfg(any(test, feature = "test-support"))]
         if let Some(divida) = self.paint.wetpaint.relogio_fixo.as_mut() {
             *divida += f64::from(_dt_s) / offthread::STEP_S;
             let passos = divida.floor();

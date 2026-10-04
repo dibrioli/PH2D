@@ -32,6 +32,19 @@ impl BrushSettings {
             || ((self.is_smear || self.is_blur || self.is_clone || self.is_inpaint)
                 && !self.composite_enabled)
     }
+
+    /// **O meio OFERECE o Accumulate (e com ele o Space Attenuation)?** — a porta única da linha do
+    /// painel e do traço ([`crate::tool::PainterTool::authored_spec`]).
+    ///
+    /// Não na aquarela (a cobertura é um ENVELOPE por traço, já sem acúmulo), não no impasto (o
+    /// relevo é um envelope e o acúmulo só mexeria na cor — reprovado no smoke de 2026-07-18) e não
+    /// no Wet Paint: o fluido não tem Strength para o tecto e conserva a massa que deposita, e a lei
+    /// de alfa do Blender (`space_overlap_factor`) entrava como intensidade da água — o traço caía de
+    /// `2 428` para `26` texels (doc 45 §2.1, doc 46 §1).
+    #[must_use]
+    pub fn accumulate_offered(&self) -> bool {
+        !self.paints_no_color() && !self.watercolor_active && !self.impasto && !self.wetpaint
+    }
 }
 
 /// Strength of the brush's active falloff at normalized distance `t` (`0` = centre, `1` = rim), for

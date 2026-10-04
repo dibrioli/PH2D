@@ -461,6 +461,11 @@ fn paint_spacing_rows(
         ph2d_tool_painter::ids::PAINTER_BRUSH_SPACING_CHIP,
         brush.spacing,
     );
+    // O Space Attenuation só existe com o Accumulate (`space_overlap_factor` exige os dois): onde o
+    // meio não oferece o Accumulate, a linha não aparece (doc 46 §1).
+    if !brush.accumulate_offered() {
+        return y;
+    }
     paint_checkbox_row(
         ctx,
         theme,

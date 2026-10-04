@@ -37,7 +37,13 @@ impl PainterTool {
     /// O spec do artista, **sem** a deformação da arte — o que um traço congela no pen-down.
     #[must_use]
     pub(crate) fn authored_spec(&self) -> ph2d_painter_brush::BrushSpec {
-        let brush = self.paint.brush;
+        let mut brush = self.paint.brush;
+        // Onde o meio não oferece o Accumulate, os dois interruptores saem na FÁBRICA (desligados): o
+        // *Sync with other tools* leva-os de um slot para outro, e o painel já não os mostra ali.
+        if !self.brush_settings().accumulate_offered() {
+            brush.accumulate = false;
+            brush.space_attenuation = false;
+        }
         if brush.stroke_method == ph2d_painter_brush::StrokeMethod::GridStamp {
             brush.as_grid_stamp(self.shape_silhouette_active())
         } else {

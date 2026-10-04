@@ -159,6 +159,7 @@ mod undo_live_base_tests;
 #[path = "watercolor_smudge_gate_tests.rs"]
 mod watercolor_smudge_gate_tests; // o smudge não forka o canvas (doc 28 §5.73) // a premissa do S3, MEDIDA: o vivo serve de base p/ o delta? (doc 28 §5.20)
 
+mod acumulacao_por_meio; // Accumulate e Space Attenuation só onde o meio os oferece (doc 46)
 mod brush_panel;
 mod curve_editor;
 mod deform;

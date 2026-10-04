@@ -15,6 +15,7 @@ mod every_word_this_panel_shows_comes_from_the_string_table;
 mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
 mod seam;
+mod seam_accumulate_por_meio; // o Accumulate e o Space Attenuation só onde o meio os oferece
 mod seam_composite_escopo; // o chip do escopo da borracha: pintado, registado, alcançável
 mod seam_composite_montagem; // o `+`, o menu e o `x` da pilha: pintados, registados, alcançáveis
 mod seam_curve_drag_ownership;

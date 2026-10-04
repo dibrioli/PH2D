@@ -135,6 +135,11 @@ impl Grelha {
         g
     }
 
+    pub(super) fn balde(&self, p: [f64; 2]) -> &[u32] {
+        let c = self.celula(p);
+        &self.baldes[c[1] * self.dim[0] + c[0]]
+    }
+
     pub(super) fn celula(&self, p: [f64; 2]) -> [usize; 2] {
         [0, 1].map(|k| {
             #[expect(
@@ -146,9 +151,79 @@ impl Grelha {
             c.min(self.dim[k] - 1)
         })
     }
+}
 
-    pub(super) fn balde(&self, p: [f64; 2]) -> &[u32] {
-        let c = self.celula(p);
-        &self.baldes[c[1] * self.dim[0] + c[0]]
+/// Os triângulos `a` e `b` sobrepõem-se ou tocam-se? — nenhuma das seis arestas os separa com
+/// folga positiva (o teste dos eixos separadores; num triângulo nulo a aresta não separa).
+pub(super) fn se_sobrepoem(a: [[f64; 2]; 3], b: [[f64; 2]; 3]) -> bool {
+    for (p, q) in [(a, b), (b, a)] {
+        for e in 0..3 {
+            let (u, v, w) = (p[e], p[(e + 1) % 3], p[(e + 2) % 3]);
+            let mut n = [v[1] - u[1], u[0] - v[0]];
+            if n[0] * (w[0] - u[0]) + n[1] * (w[1] - u[1]) > 0.0 {
+                n = [-n[0], -n[1]];
+            }
+            if n != [0.0, 0.0]
+                && q.iter()
+                    .all(|x| n[0] * (x[0] - u[0]) + n[1] * (x[1] - u[1]) > 0.0)
+            {
+                return false;
+            }
+        }
     }
+    true
+}
+
+/// ⭐⭐ **Pode alguém TAPAR alguém?** (A7) — há um par de triângulos POSADOS que se sobrepõem, um
+/// de chave maior que o outro e sem vértice comum? Pára no primeiro. Sem nenhum (o caso comum, sem
+/// dobra) nada há a cortar: um cobridor só tapa o dono a que se sobrepõe ([`super::Posada::tapado`]).
+pub(super) fn ha_sobreposicao(
+    pos: &[[f64; 2]],
+    tris: &[[u32; 3]],
+    chave: &[f64],
+    g: &Grelha,
+) -> bool {
+    let tri = |i: usize| tris[i].map(|v| pos[v as usize]);
+    let caixa = |t: [[f64; 2]; 3]| -> [f64; 4] {
+        let x = t.map(|p| p[0]);
+        let y = t.map(|p| p[1]);
+        [
+            x[0].min(x[1]).min(x[2]),
+            y[0].min(y[1]).min(y[2]),
+            x[0].max(x[1]).max(x[2]),
+            y[0].max(y[1]).max(y[2]),
+        ]
+    };
+    let caixas: Vec<[f64; 4]> = (0..tris.len()).map(|i| caixa(tri(i))).collect();
+    let mut visto = vec![u32::MAX; tris.len()];
+    for (i, t) in tris.iter().enumerate() {
+        let ci = caixas[i];
+        let (c0, c1) = (g.celula([ci[0], ci[1]]), g.celula([ci[2], ci[3]]));
+        #[expect(clippy::cast_possible_truncation, reason = "índice de triângulo u32")]
+        let iu = i as u32;
+        for y in c0[1]..=c1[1] {
+            for x in c0[0]..=c1[0] {
+                for &k in &g.baldes[y * g.dim[0] + x] {
+                    let ku = k as usize;
+                    if visto[ku] == iu || chave[ku] <= chave[i] {
+                        continue;
+                    }
+                    visto[ku] = iu;
+                    let ck = caixas[ku];
+                    if ck[0] > ci[2] || ck[2] < ci[0] || ck[1] > ci[3] || ck[3] < ci[1] {
+                        continue;
+                    }
+                    if !tris[ku].iter().any(|v| t.contains(v)) && se_sobrepoem(tri(i), tri(ku)) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Nada pode ficar tapado: nenhum par sobreposto e, se o avesso tapa, nenhum triângulo virado.
+pub(super) fn nada_tapa(algum_par: bool, avesso: bool, virado: &[bool]) -> bool {
+    !algum_par && !(avesso && virado.contains(&true))
 }

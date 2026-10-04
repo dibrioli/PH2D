@@ -50,8 +50,8 @@ fn fixturas(graus: f32) -> [(&'static str, Fixtura); 3] {
     ]
 }
 
-/// A maior folga entre `a` e `b` ao longo das normais das seis arestas (positiva = separados por
-/// ela; é um MÍNIMO da distância).
+/// A maior folga entre os triângulos `a` e `b` ao longo das normais das seis arestas: positiva =
+/// separados (é um MÍNIMO da distância); `≤ 0` = sobrepõem-se ou tocam-se.
 fn folga(a: [[f64; 2]; 3], b: [[f64; 2]; 3]) -> f64 {
     let mut melhor = f64::MIN;
     for (p, q) in [(a, b), (b, a)] {
@@ -207,4 +207,66 @@ fn diag_a_lei_corta_sem_sobreposicao() {
         }
         graus += 2.5;
     }
+}
+
+/// O que as duas portas do recorte devolvem, escrito AO BIT (o `Debug` de um `f64` é o menor texto
+/// que o relê igual).
+fn recorte(fx: &Fixtura, sem_saida: bool) -> String {
+    let (fonte, pesos, campo, pele, prof) = fx;
+    super::super::SEM_SAIDA_RAPIDA.with(|c| c.set(sem_saida));
+    let riscas = super::super::so_o_que_se_ve(fonte, pesos, (campo, None), (pele, &[], true), prof);
+    let fechados = super::super::cortes_dos_fechados(fonte, (campo, None), (pele, &[], true), prof);
+    super::super::SEM_SAIDA_RAPIDA.with(|c| c.set(false));
+    format!("{riscas:?} {fechados:?}")
+}
+
+/// ⭐⭐⭐ **GATE — a SAÍDA RÁPIDA não muda o recorte AO BIT** (A7), de `0°` a `150°` nas três fixturas
+/// (riscas, a barra em S da `=5`, as cópias da `=6`).
+///
+/// ⛔ **O CONTROLO:** a saída dispara (sem dobra) e não dispara (na dobra) dentro da varredura — e
+/// onde não dispara há mesmo um corte.
+#[test]
+fn a_saida_rapida_nao_muda_o_recorte_ao_bit() {
+    let (mut saiu, mut cortou) = (0, 0);
+    for graus in [
+        0f32, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0, 110.0, 130.0, 150.0,
+    ] {
+        for (nome, fx) in fixturas(graus) {
+            let (com, sem) = (recorte(&fx, false), recorte(&fx, true));
+            assert_eq!(
+                com, sem,
+                "{nome} a {graus}°: a saída rápida mudou o recorte"
+            );
+            let (_, _, campo, pele, prof) = &fx;
+            let f = Posada::nova(campo, None, pele, &[], true, prof).expect("posada");
+            saiu += usize::from(f.nada_tapa());
+            cortou += usize::from(!f.nada_tapa() && com != "None None");
+        }
+    }
+    println!("  a saída rápida disparou em {saiu} de 30; cortou em {cortou}");
+    assert!(
+        saiu >= 10,
+        "o CONTROLO: a saída rápida quase não disparou ({saiu})"
+    );
+    assert!(
+        cortou >= 8,
+        "o CONTROLO: a varredura não corta na dobra ({cortou})"
+    );
+}
+
+/// ⭐⭐ **GATE — a saída rápida é a lei: sem um par sobreposto nada fica tapado**, e um par ou (com
+/// o avesso a tapar) um triângulo virado chega para não sair. Sobre a função pura.
+#[test]
+fn a_saida_rapida_so_sai_sem_par_nem_virado() {
+    use super::super::malha::nada_tapa;
+    assert!(nada_tapa(false, true, &[false, false]));
+    assert!(!nada_tapa(true, true, &[false, false]), "um par sobreposto");
+    assert!(
+        !nada_tapa(false, true, &[false, true]),
+        "um virado com o avesso a tapar"
+    );
+    assert!(
+        nada_tapa(false, false, &[false, true]),
+        "o virado sem o avesso a tapar (o traço dos fechados)"
+    );
 }

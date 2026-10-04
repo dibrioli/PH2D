@@ -19,6 +19,12 @@ const AMOSTRAS: usize = 32;
 /// Passos da bissecção da fronteira: `1/32 · 2⁻¹²` do segmento.
 const BISSECCOES: usize = 12;
 
+#[cfg(test)]
+thread_local! {
+    /// Os gates desligam a [`Posada::nada_tapa`] para comparar o desenho com e sem ela.
+    static SEM_SAIDA_RAPIDA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// A malha do campo POSADA neste quadro, com a chave de cada triângulo e uma grelha por caixa.
 struct Posada<'a> {
     campo: &'a CampoDoDominio,
@@ -40,11 +46,13 @@ struct Posada<'a> {
     /// A ARTE em repouso ([`Arte`]); vazia = sem filtro.
     arte: Arte,
     grelha: Grelha,
+    /// Algum par de triângulos posados se sobrepõe ([`malha::ha_sobreposicao`])?
+    algum_par: bool,
 }
 
 #[path = "skin_desenho_frente_malha.rs"]
 mod malha;
-use malha::{Arte, Grelha, bari, dentro};
+use malha::{Arte, Grelha, bari, dentro, ha_sobreposicao, se_sobrepoem};
 
 impl<'a> Posada<'a> {
     fn nova(
@@ -78,7 +86,7 @@ impl<'a> Posada<'a> {
         let chave_tri = tris
             .iter()
             .map(|t| t.iter().map(|&v| chave_v[v as usize]).sum::<f64>() / 3.0)
-            .collect();
+            .collect::<Vec<f64>>();
         let area = |q: [[f64; 2]; 3]| {
             (q[1][0] - q[0][0]) * (q[2][1] - q[0][1]) - (q[2][0] - q[0][0]) * (q[1][1] - q[0][1])
         };
@@ -93,6 +101,7 @@ impl<'a> Posada<'a> {
             })
             .collect();
         let grelha = Grelha::nova(&pos, tris);
+        let algum_par = ha_sobreposicao(&pos, tris, &chave_tri, &grelha);
         Some(Self {
             campo,
             indice,
@@ -106,6 +115,7 @@ impl<'a> Posada<'a> {
             repouso,
             arte: Arte::default(),
             grelha,
+            algum_par,
         })
     }
 
@@ -121,6 +131,7 @@ impl<'a> Posada<'a> {
         let m = &self.campo.malha;
         let t = m.tris[dono];
         let minha = self.chave_tri[dono];
+        let posado = |t: [u32; 3]| t.map(|v| self.pos[v as usize]);
         self.grelha.balde(q).iter().any(|&k| {
             let o = m.tris[k as usize];
             if self.chave_tri[k as usize] <= minha || o.iter().any(|v| t.contains(v)) {
@@ -129,6 +140,7 @@ impl<'a> Posada<'a> {
             let [a, b, c] = o.map(|v| v as usize);
             let uv = bari(q, self.pos[a], self.pos[b], self.pos[c]);
             dentro(uv)
+                && se_sobrepoem(posado(t), posado(o))
                 && uv.is_some_and(|(u, v)| {
                     let r = [0, 1].map(|j| {
                         (1.0 - u - v) * self.repouso[a][j]
@@ -138,6 +150,17 @@ impl<'a> Posada<'a> {
                     self.arte.tem(r)
                 })
         })
+    }
+
+    /// ⭐⭐ **A SAÍDA RÁPIDA** (A7): nenhum par sobreposto e, se o avesso tapa, nenhum triângulo
+    /// virado ⇒ nada está tapado — sem amostrar um contorno (`0,13 ms` por forma com riscas sem
+    /// dobra, MEDIDO). Exacta por construção: [`Self::tapado`] só aceita um cobridor que SE SOBREPÕE ao dono.
+    fn nada_tapa(&self) -> bool {
+        #[cfg(test)]
+        if SEM_SAIDA_RAPIDA.with(std::cell::Cell::get) {
+            return false;
+        }
+        malha::nada_tapa(self.algum_par, self.avesso, &self.virado)
     }
 
     /// Esta posada com a ARTE de `fonte` (ver [`Arte`]).
@@ -392,7 +415,11 @@ pub(super) fn so_o_que_se_ve(
     if !contornos.iter().any(|(_, f)| *f) || !contornos.iter().any(|(v, f)| !*f && v.len() > 1) {
         return None;
     }
-    let f = Posada::nova(campo, indice, pele, correcoes, rigido, prof)?.com_a_arte(fonte);
+    let f = Posada::nova(campo, indice, pele, correcoes, rigido, prof)?;
+    if f.nada_tapa() {
+        return None;
+    }
+    let f = f.com_a_arte(fonte);
     // ⭐ Um pedaço CORTADO mais curto que a largura do próprio traço é um borrão, não uma risca
     // (FOTOGRAFADO a `110°`: tiques soltos junto às juntas) — sai.
     let largura = fonte.stroke.as_ref().map_or(0.0, |s| s.width);
@@ -491,8 +518,12 @@ pub(super) fn cortes_dos_fechados(
     (pele, correcoes, rigido): (&Skin, &[Correccao], bool),
     prof: &[f64],
 ) -> Option<Vec<Option<Vec<Trecho>>>> {
-    let mut f = Posada::nova(campo, indice, pele, correcoes, rigido, prof)?.com_a_arte(fonte);
+    let mut f = Posada::nova(campo, indice, pele, correcoes, rigido, prof)?;
     f.avesso = false;
+    if f.nada_tapa() {
+        return None;
+    }
+    let f = f.com_a_arte(fonte);
     let largura = fonte.stroke.as_ref().map_or(0.0, |s| s.width);
     let mut algum = false;
     let cortes: Vec<Option<Vec<Trecho>>> = (0..fonte.contour_count())

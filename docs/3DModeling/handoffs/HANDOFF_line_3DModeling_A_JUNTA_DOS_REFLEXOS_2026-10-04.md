@@ -179,3 +179,21 @@ régua — as minhas não viam o que ele vê); (2) oráculo = os mesmos Cycles (
 com a câmara do app, e réguas da faixa/orla já existentes; (3) custo medido inclusive no caminho GLES/WebGL2
 (o tecto do celular), com o passe em meia resolução como alavanca. Candidato a medir depois, também sem placa
 especial: marcha contra o CAMPO de distância da cena (o que o Lumen faz em software) — o módulo já é um campo.
+
+## §11 — REPORT 5 DO DONO (04/10): o GAP é a vizinha escondida do centro
+
+2 fotos (sessão `0bbd8ca2…`, `images/2.png`, `3.png`): o ALUMÍNIO (cena 42, folha 5) com a rugosidade a `0` pelo
+dono; a azul arrastada para trás da verde. No reflexo: a verde, um VAZIO, e só depois um pedaço da azul.
+*«Curiosamente para a sombra da caixa azul o gap não acontece.»*
+
+Leitura (coerente com toda a medição desta janela, não reproduzida nesta pose): o vazio é a parte da azul que o
+ponto do metal vê e o CENTRO da captura não vê (tapada pela verde) — o limite de UMA captura, que a ponte de
+antes «enchia» por acaso. A sombra não tem o vazio porque não vem da captura (é a lei do chão, da luz). Duas
+curas, ambas em qualquer placa: (a) o reflexo PELA TELA (§10) — a azul está à vista nas fotos do dono, logo
+fica exacta; (b) uma 2.ª CAMADA na captura (a próxima superfície VIRADA para o centro atrás da primeira:
+faces de novo com a profundidade da 1.ª como teste, as de trás descartadas — Shade et al. 1998, *layered depth
+images*), que cobre também o que está fora da tela; custo: um passe de faces a mais só quando a cena muda e
+`~+50 %` de memória por captura. Ordem proposta: (a) primeiro (o caso do dono), (b) medido depois.
+
+Também na 2.ª foto (sem seta do dono): DENTES no contorno onde a azul entra no cromo grande — é o item (d) já
+aberto do O_CHAO_QUE_TAPA (*«dentes de 2–3 px na quina côncava»*), não as capturas.

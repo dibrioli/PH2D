@@ -187,7 +187,7 @@ pub(super) struct Forma<'a> {
 }
 
 /// Os bytes crus de uma textura (`px` bytes por pixel).
-fn bytes_de_textura(gpu: &GpuContext, tex: &wgpu::Texture, px: u32) -> Vec<u8> {
+pub(super) fn bytes_de_textura(gpu: &GpuContext, tex: &wgpu::Texture, px: u32) -> Vec<u8> {
     let bpr = LADO * px;
     let buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("leitura"),
@@ -222,7 +222,7 @@ fn bytes_de_textura(gpu: &GpuContext, tex: &wgpu::Texture, px: u32) -> Vec<u8> {
     v
 }
 
-fn textura(
+pub(super) fn textura(
     gpu: &GpuContext,
     usage: wgpu::TextureUsages,
     format: wgpu::TextureFormat,
@@ -292,7 +292,7 @@ fn f16(b: u16) -> f32 {
 }
 
 /// A cor SEPARADA de um pixel pré-multiplicado, quantizada como o Vello a quantiza.
-fn separa(c: [f32; 4]) -> [u8; 4] {
+pub(super) fn separa(c: [f32; 4]) -> [u8; 4] {
     let q = |v: f32| {
         #[expect(clippy::cast_possible_truncation, reason = "já limitado a um byte")]
         let b = (v.clamp(0.0, 1.0) * 255.0).round() as u8;

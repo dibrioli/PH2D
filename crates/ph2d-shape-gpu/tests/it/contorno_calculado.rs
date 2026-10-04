@@ -24,8 +24,9 @@ use ph2d_shape_gpu::FillRule;
 use ph2d_vector::{BezPath, Cap, Circle, Join, Shape, Stroke};
 
 use super::paridade_com_o_vello::{
-    Copia, Forma, anel, circulo, copias, esticadas, estrela, gpu, pelo_passe_celulas,
-    pelo_passe_com, pelo_passe_em_etapas, pelo_passe_rota, zigue_zague,
+    Copia, Forma, anel, bytes_de_textura, circulo, copias, esticadas, estrela, gpu,
+    pelo_passe_celulas, pelo_passe_com, pelo_passe_em_etapas, pelo_passe_observado, pelo_passe_rota,
+    separa, textura, zigue_zague,
 };
 
 /// As MARCAS de um traço: um disco pequeno pintado com a cor dele, fora do contorno da estrela.
@@ -497,5 +498,87 @@ fn uma_cena_que_muda_nao_le_as_arestas_do_quadro_anterior() {
             pior <= ALFA_MAX && acima <= tinta / 1000,
             "quadro {q}: depois de outra cena o desenho e outro (alfa {pior}, {acima} px > 1)"
         );
+    }
+}
+
+/// ⭐ doc 121 §9.14 (c) — **o REDESENHO é o mesmo desenho**: o halo do `fx.glow` repete o último
+/// desenho no RT dele (`ShapePass::redesenha`), sem recalcular as células, e é dele que sai a forma
+/// que brilha num quadro do dispositivo. Byte a byte, em cada quadro (o 1.º com a mistura dos dois
+/// caminhos, os seguintes pelas células). CONTROLO: o alvo do redesenho começa transparente, logo um
+/// redesenho mudo lê zero de tinta.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn o_redesenho_e_o_mesmo_desenho() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adaptador — nada a medir");
+        return;
+    };
+    let est = estrela();
+    let forma = Forma {
+        bp: &est,
+        linha: None,
+        regra: FillRule::NonZero,
+        marcas: None,
+        traco: Some((
+            Stroke::new(0.06).with_join(Join::Miter),
+            [0.1, 0.2, 0.9, 1.0],
+        )),
+    };
+    let cs = esticadas(40, 40.0, 220.0, 6);
+    let fmt = wgpu::TextureFormat::Rgba8Unorm;
+    let le = |b: Vec<u8>| -> Vec<u8> {
+        b.as_chunks::<4>()
+            .0
+            .iter()
+            .flat_map(|px| separa(px.map(|c| f32::from(c) / 255.0)))
+            .collect()
+    };
+    let mut redesenhos = Vec::new();
+    let quadros = pelo_passe_observado(
+        &gpu,
+        &forma,
+        &[(&cs, 3)],
+        fmt,
+        (true, 0.0, u64::MAX, ph2d_shape_gpu::ITENS_DO_GRUPO),
+        &mut |g, p| {
+            let tex = textura(g, wgpu::TextureUsages::RENDER_ATTACHMENT, fmt);
+            let vista = tex.create_view(&wgpu::TextureViewDescriptor::default());
+            let mut enc = g
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            drop(enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("limpa"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &vista,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            }));
+            p.redesenha(g, &mut enc, &vista);
+            g.queue.submit(Some(enc.finish()));
+            redesenhos.push(le(bytes_de_textura(g, &tex, 4)));
+        },
+    );
+    assert_eq!(quadros.len(), redesenhos.len());
+    for (k, ((img, _, _), red)) in quadros.iter().zip(&redesenhos).enumerate() {
+        let tinta = red.as_chunks::<4>().0.iter().filter(|px| px[3] > 0).count();
+        let difere = img
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(red.as_chunks::<4>().0)
+            .filter(|(a, b)| a != b)
+            .count();
+        eprintln!("  quadro {k}: {tinta} px de tinta no redesenho · {difere} px diferentes");
+        assert!(tinta > 10_000, "quadro {k}: o redesenho nao desenhou ({tinta} px)");
+        assert_eq!(difere, 0, "quadro {k}: o redesenho difere do desenho");
     }
 }

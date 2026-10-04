@@ -1003,3 +1003,71 @@ e a montagem final são só passagens lineares (numerar, traduzir, paredes, cant
 união das componentes). A localização passa a uma grelha POR MOSAICO (a resposta de `locate_all` é a mesma — a
 grelha nunca foi observável). O `monta` antigo fica como ORÁCULO dos gates: montagem por blocos = montagem
 inteira, campo a campo.
+
+### §18.4 — As medições (`--release`, antes/depois ALTERNADOS na mesma máquina, load `5–9`)
+
+O «antes» é o fecho da W9 (`de2d23cae`) num worktree temporário com o seu `CARGO_TARGET_DIR`.
+
+| `medir_custo` §4 (o mínimo de 5) | antes | **W10** |
+|---|---|---|
+| uma porta (sem lamas) | `2,66 · 2,67 ms` | **`1,14 · 1,20 ms`** |
+| uma porta (com 100 lamas) | `3,77 · 3,78` | **`1,82 · 1,89`** |
+| uma lama a mexer | `5,23 · 5,27` | **`3,62 · 3,73`** |
+| a frio (com 100 lamas) | `57,1 · 57,2` | `59,4 · 61,5` (o cache das camadas; ruído da carga) |
+
+Por fase (cronómetros provisórios, load `1,7`, uma porta sem lamas = `1,13 ms`): o mosaico refeito `0,70` ·
+L2 (só o mosaico) `0,025` · L3 `0,005` · numerar `0,044` · anéis + paredes + cantos `0,25` · vértice→polígonos
+`0,075` · ilhas `0,005` · grelhas `0,003`. ⇒ a montagem passou de **`1,95` a `0,41 ms`**; o que resta O(malha)
+são passagens lineares de cópia e tradução.
+
+`medir_replaneio` (a fila a `20 000`, o pior tique depois de uma porta, mediana de seis), 10 · 50 · 200 agentes:
+
+| | antes | **W10** |
+|---|---|---|
+| pior tique | `5,17–5,35 · 5,92–5,96 · 8,44–8,47 ms` | **`3,63–3,73 · 4,39–4,44 · 6,95–7,12`** |
+| procuras num tique · tiques até a fila esvaziar · até o último partido | `9 · 11 · 13` · `6 · 19 · 56` · `0 · 4 · 4` | **iguais** (a mesma malha ⇒ a mesma corrida) |
+
+### §18.5 — As decisões
+
+| decisão | porquê (medido) |
+|---|---|
+| a numeração densa e canónica de hoje, montada por blocos com cache (e NÃO ids fixos com folga) | ninguém guarda um id através de uma mudança (§18.2); a malha montada fica a MESMA ao bit, logo todos os consumidores, o hash e o replay ficam intactos — e o que sobra O(malha) são `0,37 ms` de cópia |
+| um vizinho referido pela POSIÇÃO no lado (o `k`-ésimo ponto do lado), não pelo índice local | um mosaico refeito renumera os seus pontos; pelo índice, os 8 vizinhos recosiam-se SEMPRE (`0,27 ms`); pela posição, só quando os pontos do lado mudam (`0,025`) |
+| as paredes e os cantos na passagem dos anéis | uma passagem a menos sobre a malha (`0,12 ms`) |
+| a peça DENTRO do rectângulo é um `assert!` (era `debug_assert!`) | é o que torna impossível a mesma aresta orientada em dois blocos (num polígono anti-horário convexo, as arestas do lado direito sobem e as do vizinho descem) — e por isso a sobreposição só se confere DENTRO de cada bloco |
+| o `monta` inteiro de antes fica como ORÁCULO dos gates | `a_montagem_por_blocos_e_a_montagem_inteira_ao_bit`: campo a campo + `locate_all`, a frio, incremental, com lamas e com a região a encolher |
+
+### §18.6 — ⛔ Recusas MEDIDAS
+
+| recusado | medição |
+|---|---|
+| a porta mudar a malha só UMA vez | é a lei do §14.2 (um cinemático só é obstáculo PARADO) |
+| ids FIXOS por mosaico (Detour, com folga) | nenhum consumidor os usaria (§18.2); os buracos na numeração chegariam a todos os que varrem `0..poly_count` — e o ganho sobre a numeração densa seria só a cópia (`≤ 0,37 ms`) |
+| recoser os 8 vizinhos a cada mosaico refeito | `0,27 ms` contra `0,025` (a referência pela posição no lado) |
+
+### §18.7 — A prova
+
+Gates novos: `a_montagem_por_blocos_e_a_montagem_inteira_ao_bit` (CONTROLOS de população: `115` vértices
+cosidos — as junções em T só nascem de um obstáculo que ENCOSTA a uma costura de um lado só, e a fixtura
+põe-nos de propósito —, `72` actualizações parciais, `12` regiões que encolhem, `16 078` pontos localizados) ·
+na `ph2d-nav`: as recusas com o índice da malha montada (e a recusa que NÃO fica), o índice fora e as áreas,
+a peça fora do rectângulo, o ponto de costura repetido, tirar um bloco, o vizinho com os mesmos pontos de
+lado que deixa de ligar, dois pontos cosidos numa aresta que desce, o ponto a EPS da fronteira dos blocos.
+Os de sempre (incremental = a frio, por mosaicos = inteira, a junção em T, o oráculo exacto, o hash e o
+replay da ponte) verdes sobre a montagem nova.
+Mutação **21 / 21** a sangrar, zero defeitos de arnês
+([`mutacao_navegacao_w10_2026-10-03.py`](ferramentas/mutacao_navegacao_w10_2026-10-03.py)); a 1.ª corrida deu
+17/22 — quatro ramos sem fixtura (tirar um bloco, o vizinho que deixa de ligar, a ordem descendente, a
+fronteira exacta da grelha dos blocos), curados com as quatro fixturas acima, e uma EQUIVALENTE (a parede que
+só marca o canto `u`: a ponta `v` é a `u` da parede seguinte), que saiu do arnês com o porquê.
+
+### §18.8 — ⏳ O que fica
+
+- **A grelha das paredes do desvio** (`ph2d_orca::Walls::from_walkable_walls`) refaz-se inteira a cada
+  mudança: **`0,53 ms`** (`24 462` paredes) — agora UM TERÇO do custo de uma porta na ponte. A ordem das
+  paredes desempata distâncias iguais (um canto partilhado) e entra no hash: uma versão incremental tem de dar
+  os MESMOS índices — o molde é este (blocos + oráculo).
+- **O mosaico refeito** (`0,70 ms`: o corte, a união, a triangulação de um mosaico com `~20` obstáculos) é
+  agora o maior pedaço de uma porta.
+- O que resta O(malha) na junção (`0,37 ms`: anéis, vértice→polígonos, numerar) — só desce com ids fixos,
+  recusados acima enquanto ninguém os consumir.

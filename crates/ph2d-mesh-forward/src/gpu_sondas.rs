@@ -65,6 +65,10 @@ pub(crate) const ARESTA_PASSOS: u32 = 3;
 /// Até quantos níveis de borrão o reflexo usa a BUSCA (passando ao ponto fixo no último). ⛔ Medido
 /// (04/10, o par a `0,3`): a `3` o lobo áspero via a fronteira acerta/falha da busca como uma aresta dura.
 pub(crate) const LOD_BUSCA: f32 = 1.0;
+/// Os níveis de borrão (abaixo de [`LOD_BUSCA`]) em que a busca passa ao ponto fixo. ⛔ Medido (04/10, a
+/// junta a `0,05`): com a passagem em `1` nível o ponto fixo pesava `~37 %` no quase nítido e punha uma
+/// ponte translúcida entre duas vizinhas (faixa `0,170`); só com a busca, `0,0185`.
+pub(crate) const PASSAGEM: f32 = 0.5;
 /// A cobertura a que um passo do ponto fixo pesa por inteiro (abaixo, mistura-se: sem aresta).
 pub(crate) const COBERTURA_PLENA: f32 = 0.05;
 /// No reflexo ÁSPERO a paralaxe só lê distâncias tão borradas como o lobo e mais estes níveis.
@@ -136,7 +140,7 @@ pub(crate) fn constantes() -> String {
          const SONDA_REFINO: u32 = {REFINO}u;\n\
          const SONDA_ESPESSURA: f32 = {ESPESSURA:?};\nconst SONDA_FRANJA: f32 = {FRANJA:?};\n\
          const SONDA_ARESTA: f32 = {ARESTA:?};\nconst SONDA_ARESTA_PASSOS: u32 = {ARESTA_PASSOS}u;\n\
-         const SONDA_LOD_BUSCA: f32 = {LOD_BUSCA:?};\nconst SONDA_COBERTURA_PLENA: f32 = {COBERTURA_PLENA:?};\n\
+         const SONDA_LOD_BUSCA: f32 = {LOD_BUSCA:?};\nconst SONDA_PASSAGEM: f32 = {PASSAGEM:?};\nconst SONDA_COBERTURA_PLENA: f32 = {COBERTURA_PLENA:?};\n\
          const SONDA_ACIMA: f32 = {ACIMA:?};\n\
          const SONDA_PARALAXE: array<f32, {np}> = array<f32, {np}>({});\n\
          const SONDA_FACE_W: array<vec3<f32>, 6> = array<vec3<f32>, 6>({});\n\

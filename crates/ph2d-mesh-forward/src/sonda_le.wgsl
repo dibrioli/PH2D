@@ -177,12 +177,14 @@ fn sonda_no_pixel(p: vec3<f32>, r: vec3<f32>, alpha: f32) -> vec4<f32> {
             memo_dr = vec4<f32>(r, fino);
         }
         // O ponto fixo: o lobo largo (e, quando a busca falha, o que sobra dele: nada no nitido, a crescer
-        // com o borrao).
+        // com o borrao na passagem).
         let lod_f = sqrt(clamp(alpha * memo_d.w, 0.0, 1.0)) * f32(SONDA_NIVEIS - 1u);
         let fixo = sonda_le(sonda_camada, memo_d.xyz, lod_f);
-        // A BUSCA ate' `SONDA_LOD_BUSCA` niveis de borrao, a passar ao ponto fixo no ultimo nivel (sem
-        // degrau: o report do dono de 04/10 — uma lasca clara onde a troca era seca).
-        let busca = 1.0 - smoothstep(SONDA_LOD_BUSCA - 1.0, SONDA_LOD_BUSCA, lod0);
+        // A BUSCA ate' `SONDA_LOD_BUSCA` niveis de borrao, a passar ao ponto fixo nos ultimos
+        // `SONDA_PASSAGEM` (sem degrau: uma lasca clara onde a troca era seca; e so' na passagem: o ponto fixo
+        // misturado no quase nitido punha a junta translucida a 0,05 — reports do dono de 04/10).
+        let passa = smoothstep(SONDA_LOD_BUSCA - SONDA_PASSAGEM, SONDA_LOD_BUSCA, lod0);
+        let busca = 1.0 - passa;
         var s = fixo;
         if (busca > 0.0) {
             if (!memo_mv || any(memo_mr != r)) {
@@ -191,15 +193,12 @@ fn sonda_no_pixel(p: vec3<f32>, r: vec3<f32>, alpha: f32) -> vec4<f32> {
                 memo_mp = marcha_peso;
                 memo_mr = r;
             }
-            // O ponto fixo que pousa numa ARESTA (a distancia fantasma entre duas vizinhas) nao responde,
-            // tanto menos quanto mais a busca manda: a junta translucida a 0,05 (report do dono 04/10).
-            let fx = fixo * (1.0 - busca * select(0.0, 1.0, sonda_aresta(sonda_dist0(memo_d.xyz))));
-            var m = fx * clamp(lod0, 0.0, 1.0);
+            var m = fixo * passa;
             if (memo_m.w >= 0.0) {
                 let lod = sqrt(clamp(alpha * memo_m.w, 0.0, 1.0)) * f32(SONDA_NIVEIS - 1u);
                 m = mix(m, sonda_le(sonda_camada, memo_m.xyz, lod), memo_mp);
             }
-            s = mix(fx, m, busca);
+            s = mix(fixo, m, busca);
         }
         memo_s = s;
         memo_sd = vec4<f32>(r, alpha);

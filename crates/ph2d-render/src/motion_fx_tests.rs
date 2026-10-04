@@ -591,13 +591,27 @@ fn the_halo_carries_its_coverage_over_a_transparent_target() {
                 a: 1.0,
             },
         );
-        fx.bloom_over(&gpu, alvo.view(), &BloomParams::default(), None, None);
+        // ⚠️ Um halo FRACO (`máx(rgb) < 1`): com a intensidade de fábrica a cobertura dava `1` em todo
+        // o lado e um alfa errado sobre o destino opaco não se via (a mutação B3 sobreviveu).
+        let fraco = BloomParams {
+            intensity: 0.1,
+            ..BloomParams::default()
+        };
+        fx.bloom_over(&gpu, alvo.view(), &fraco, None, None);
         gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
         meio(&read_rt(&gpu, &alvo, SIZE))
     };
     let transparente = corre(wgpu::Color::TRANSPARENT, &mut fx);
     let luz = transparente.iter().filter(|p| p[0] > 1.0e-3).count();
     assert!(luz > 100, "controlo: o halo tem de pintar ({luz} px)");
+    let fracos = transparente
+        .iter()
+        .filter(|p| p[0] > 1.0e-3 && p[3] < 0.99)
+        .count();
+    assert!(
+        fracos > 100,
+        "controlo: o halo tem de ser FRACO em parte ({fracos} px abaixo de 1)"
+    );
     for p in &transparente {
         let maior = p[0].max(p[1]).max(p[2]).min(1.0);
         assert!(

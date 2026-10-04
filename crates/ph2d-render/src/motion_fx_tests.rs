@@ -530,6 +530,110 @@ fn without_a_mask_the_dirt_knob_cannot_move_a_single_bit() {
     );
 }
 
+/// ⭐ doc 121 §9.14 do Motion — **O HALO SOBREVIVE A UM DESTINO TRANSPARENTE.** No quadro por FAIXAS
+/// (ADR-0154; o passe de formas força-o) o `game_rt` começa transparente, e o tonemap divide a cor
+/// pelo alfa: um halo de alfa `0` saía a ZERO — o `fx.glow` com formas na placa não brilhava (medido
+/// na `=70`: halo com `PH2D_FORMAS_NA_PLACA=0`, nenhum com a placa). ⇒ em todo pixel do halo sobre o
+/// transparente, `alfa ≥ máx(rgb)` (a divisão devolve a mesma luz). CONTROLO: sobre um destino OPACO
+/// o alfa fica `1` e a cor é o destino mais o MESMO halo — o quadro de sempre.
+#[test]
+fn the_halo_carries_its_coverage_over_a_transparent_target() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[motion_fx] SEM ADAPTER -- este gate NAO correu");
+        return;
+    };
+    const SIZE: (u32, u32) = (64, 64);
+    let mut fx = MotionFx::new(&gpu, SIZE);
+    let limpa = |view: &wgpu::TextureView, c: wgpu::Color| {
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("limpa"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(c),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        gpu.queue.submit([enc.finish()]);
+    };
+    let meio = |b: &[u8]| -> Vec<[f32; 4]> {
+        let h = |lo: u8, hi: u8| {
+            let v = u16::from_le_bytes([lo, hi]);
+            let (s, e, m) = (v >> 15, (v >> 10) & 0x1f, f32::from(v & 0x3ff));
+            #[expect(clippy::cast_possible_wrap, reason = "o expoente de um meio-float")]
+            let x = if e == 0 {
+                m * 2f32.powi(-24)
+            } else {
+                (1.0 + m / 1024.0) * 2f32.powi(e as i32 - 15)
+            };
+            if s == 1 { -x } else { x }
+        };
+        b.chunks_exact(8)
+            .map(|p| [h(p[0], p[1]), h(p[2], p[3]), h(p[4], p[5]), h(p[6], p[7])])
+            .collect()
+    };
+    let corre = |fundo: wgpu::Color, fx: &mut MotionFx| {
+        let alvo = crate::GameRt::new(&gpu, SIZE);
+        limpa(alvo.view(), fundo);
+        limpa(
+            fx.rt_view(),
+            wgpu::Color {
+                r: 2.0,
+                g: 1.0,
+                b: 0.25,
+                a: 1.0,
+            },
+        );
+        fx.bloom_over(&gpu, alvo.view(), &BloomParams::default(), None, None);
+        gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
+        meio(&read_rt(&gpu, &alvo, SIZE))
+    };
+    let transparente = corre(wgpu::Color::TRANSPARENT, &mut fx);
+    let luz = transparente.iter().filter(|p| p[0] > 1.0e-3).count();
+    assert!(luz > 100, "controlo: o halo tem de pintar ({luz} px)");
+    for p in &transparente {
+        let maior = p[0].max(p[1]).max(p[2]).min(1.0);
+        assert!(
+            p[3] >= maior - 2.0e-3,
+            "um pixel de halo sem cobertura (rgb {:?}, alfa {}) — o tonemap apaga-o",
+            &p[..3],
+            p[3]
+        );
+    }
+    let cinza = 0.2;
+    let opaco = corre(
+        wgpu::Color {
+            r: cinza,
+            g: cinza,
+            b: cinza,
+            a: 1.0,
+        },
+        &mut fx,
+    );
+    for (o, t) in opaco.iter().zip(&transparente) {
+        assert!(
+            (o[3] - 1.0).abs() < 1.0e-3,
+            "o destino opaco deixou de ser opaco ({})",
+            o[3]
+        );
+        for c in 0..3 {
+            let esperado = cinza as f32 + t[c];
+            assert!(
+                (o[c] - esperado).abs() <= 2.0e-3 * esperado.max(1.0),
+                "sobre o opaco a cor mudou: {} contra {esperado}",
+                o[c]
+            );
+        }
+    }
+}
+
 /// Os gates que precisam de um adapter — cortados pelo teto de LOC; ver o cabeçalho deles.
 #[path = "motion_fx_dirt_device_tests.rs"]
 mod dirt_device;

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Prova de mutação do bloco do doc 121 §9.14: a porta `redesenha` e o halo do `fx.glow` pela rota do quadro. Cada mutação tem de SANGRAR
+"""Prova de mutação do bloco do doc 121 §9.14: a porta `redesenha` o halo do `fx.glow` pela rota do quadro e a
+cobertura do halo no quadro por faixas (`ph2d-render --lib motion_fx`). Cada mutação tem de SANGRAR
 nos gates que a nomeiam — a GPU de `ph2d-shape-gpu` (`--ignored`), os gates puros do halo
 (`ph2d-app-motion --lib motion_glow_layer`) ou os de costura da shell (`present_placa`).
 
@@ -16,9 +17,12 @@ P = R + "/crates/ph2d-shape-gpu/src/pass.rs"
 H = R + "/crates/ph2d-app-motion/src/motion_glow_layer.rs"
 PR = R + "/shells/desktop/src/render_loop/present.rs"
 FX = R + "/shells/desktop/src/render_loop/present_fx.rs"
+BL = R + "/crates/ph2d-render/src/shaders/bloom.wgsl"
+MF = R + "/crates/ph2d-render/src/motion_fx.rs"
 
 GPU = ["cargo", "test", "-p", "ph2d-shape-gpu", "--release", "--", "--ignored"]
 HALO = ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "motion_glow_layer"]
+BRILHO = ["cargo", "test", "-p", "ph2d-render", "--lib", "motion_fx"]
 SHELL = ["cargo", "test", "-p", "ph2d-host-desktop", "--bin", "ph2d-host-desktop", "placa_tests"]
 
 # (nome, comando, [(ficheiro, âncora, substituição, nº de ocorrências)])
@@ -26,6 +30,14 @@ MUTS = [
     ("R1 o redesenho mudo", GPU, [(P,
         "self.passe_de_desenho(gpu, encoder, target, wgpu::LoadOp::Load, Some((bg, *count)));",
         "self.passe_de_desenho(gpu, encoder, target, wgpu::LoadOp::Load, None);", 1)]),
+    ("B1 o halo sem cobertura (alfa 0)", BRILHO, [(BL,
+        "return vec4<f32>(glow, clamp(max(max(glow.r, glow.g), glow.b), 0.0, 1.0));",
+        "return vec4<f32>(glow, 0.0);", 1)]),
+    ("B2 o composite guarda o alfa do destino", BRILHO, [(MF,
+        "            src_factor: wgpu::BlendFactor::OneMinusDstAlpha,", "            src_factor: wgpu::BlendFactor::Zero,", 1)]),
+    ("B3 o halo cobre tambem o destino opaco (alfa da fonte)", BRILHO, [(MF,
+        "            src_factor: wgpu::BlendFactor::OneMinusDstAlpha,\n            dst_factor: wgpu::BlendFactor::One,",
+        "            src_factor: wgpu::BlendFactor::One,\n            dst_factor: wgpu::BlendFactor::Zero,", 1)]),
     ("H1 o halo do dispositivo le as listas da CPU", HALO, [(H,
         "    if motion.gpu_live {\n        // A MESMA pergunta", "    if false {\n        // A MESMA pergunta", 1)]),
     ("H2 as formas da placa tambem pelo tile", HALO, [(H,
@@ -102,7 +114,7 @@ def main():
         falhos = re.findall(r"^test (\S+) \.\.\. FAILED", out, re.M)
         extra = "" if validou else " [shader nao validou]"
         print(f"{nome}: {v} ({p} passed, {fl} failed) reprovou: {falhos}{extra}", flush=True)
-    for f in (P, H, PR, FX):
+    for f in (P, H, PR, FX, BL, MF):
         assert not os.path.exists(f + ".muta_bk"), "restauro falhou"
     print(f"placar: {sangrou} de {len(muts)} sangraram")
 

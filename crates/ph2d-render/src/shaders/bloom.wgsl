@@ -178,5 +178,8 @@ fn fs_composite(in: VsOut) -> @location(0) vec4<f32> {
     let dirt_uv = in.uv * P.v3.xy + P.v3.zw;
     colour = colour + textureSample(dirt, samp, dirt_uv).rgb * P.v.w;
     glow = glow * colour * (intensity * tint.a);
-    return vec4<f32>(glow, 0.0);
+    // doc 121 §9.14 do Motion — a COBERTURA da luz: sobre um destino transparente (o quadro por faixas,
+    // ADR-0154) o tonemap divide pelo alfa e um halo de alfa `0` saía a zero. Com `a ≥ máx(rgb)` a
+    // divisão devolve a mesma luz; sobre um destino opaco a mistura mantém o alfa `1` (ver o pipeline).
+    return vec4<f32>(glow, clamp(max(max(glow.r, glow.g), glow.b), 0.0, 1.0));
 }

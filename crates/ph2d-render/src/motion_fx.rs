@@ -281,6 +281,15 @@ impl MotionFx {
             "fs_upsample",
             Some(additive),
         );
+        // ⭐ doc 121 §9.14 do Motion — o alfa do COMPOSITE: `src·(1 − dst) + dst`. Sobre o `game_rt`
+        // opaco (o quadro de sempre) dá `1`, byte a byte o de antes; sobre o transparente do quadro
+        // por FAIXAS dá a cobertura da luz (`bloom.wgsl`, `fs_composite`), e o tonemap — que divide
+        // pelo alfa — deixa de a apagar. O `upsample` continua com o alfa do destino.
+        let cobre = wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::OneMinusDstAlpha,
+            dst_factor: wgpu::BlendFactor::One,
+            operation: wgpu::BlendOperation::Add,
+        };
         // **SCREEN** — `a + b − ab` (doc 89 folha 11, o *Glow Operation* do AE).
         //
         // ⚠️ **Ele é um par de FATORES, não um shader**: `src·(1−dst) + dst·1` é exactamente
@@ -297,8 +306,8 @@ impl MotionFx {
                 dst_factor: wgpu::BlendFactor::One,
                 operation: wgpu::BlendOperation::Add,
             },
-            // O alfa é o do aditivo, verbatim: a cena opaca continua opaca para o compositor.
-            alpha: additive.alpha,
+            // A cena opaca continua opaca para o compositor (`cobre` sobre `dst = 1` dá `1`).
+            alpha: cobre,
         };
         // ⚠️ **A ORDEM É A DAS TAGS** (`0 = Add`, `1 = Screen`) e o gate da shell liga esta
         // contagem à lista de rótulos do nó — um pipeline a menos aqui faria o último modo do
@@ -307,7 +316,10 @@ impl MotionFx {
             pipeline(
                 "ph2d-render motion-fx composite (add)",
                 "fs_composite",
-                Some(additive),
+                Some(wgpu::BlendState {
+                    color: additive.color,
+                    alpha: cobre,
+                }),
             ),
             pipeline(
                 "ph2d-render motion-fx composite (screen)",

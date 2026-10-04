@@ -216,6 +216,7 @@ junta em `mode_drive_tests.rs` (M20, o filtro do mesmo tipo ao sair), a REAL em
   `a_parts_mode_gives_the_part_its_gizmo_and_the_lasso_its_parts` (família FALSA; Sculpt como
   controlo) + a declaração na família REAL; 4/4 mutações sangram. ⚠️ Superfície nova para o
   integrador: um método com omissão no trait `ModeFamily` e um campo no `ModeState` (aditivos).
+- **Smoke do dono: APROVADO (04/10)**, sobre o HEAD `798c8e97c` (Select, gizmo da forma, laço, Union, `Tab`).
 
 ## §6 — Premissas derrubadas
 

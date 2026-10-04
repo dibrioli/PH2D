@@ -349,14 +349,16 @@ impl LayerCompositor {
     }
 
     /// ⭐⭐⭐ **The surface low-pass `src → dst`**: `e^{−tA}` with `t = σ²/2`, premultiplied
-    /// on read when `premul` (the grid's first blur pass does the same). `sigma ≤ 0` copies.
+    /// on read when `premul` (the grid's first blur pass does the same); `scalar` for a field
+    /// that is not a colour (the S/H luma — the rest below the polynomial's error is cleaned
+    /// per channel, not by coverage). `sigma ≤ 0` copies.
     pub(super) fn run_surface_heat(
         &mut self,
         gpu: &GpuContext,
-        src: WorkSel,
-        dst: WorkSel,
+        (src, dst): (WorkSel, WorkSel),
         sigma: f32,
         premul: bool,
+        scalar: bool,
     ) {
         let Self {
             surface,
@@ -389,7 +391,7 @@ impl LayerCompositor {
         for (k, &d) in coefs.iter().enumerate() {
             uniforms.push(pass(k.min(2) as u32, d));
         }
-        uniforms.push(pass(0, 0.0));
+        uniforms.push(pass(u32::from(scalar), 0.0));
         h.ensure(gpu, s.total, uniforms.len());
         let (Some((pass_buf, _)), Some((_, [u, t0, t1, t2, y]))) = (&h.passes, &h.scratch) else {
             return;

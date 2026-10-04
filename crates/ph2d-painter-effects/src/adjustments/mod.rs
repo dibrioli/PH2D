@@ -597,7 +597,9 @@ mod spatial;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
-mod vizinhanca_tests; // ADR-0177 P4: the space of each neighbourhood kernel (LOC cap: sibling)
+mod units_tests;
+#[cfg(test)]
+mod vizinhanca_tests; // ADR-0177 P4: the space of each neighbourhood kernel (LOC cap: sibling) // docs/3D/30 §14: where a spatial slider's extent lives
 pub use compute::{
     DISPLAY_LUT_N, SELCOLOR_BUCKETS, add_gradient_stop, adjustment_segment_params,
     adjustment_slider_params, adjustment_toggle_params, apply_adjustment,

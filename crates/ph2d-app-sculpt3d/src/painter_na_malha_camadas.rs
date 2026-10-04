@@ -114,10 +114,8 @@ impl Sculpt3dScene {
                 (TrocaDaPilha::de(antes, nada()), None)
             }
             PieceLayerOp::NewAdjustment(k) => {
-                if k.reads_the_image_layout()
-                    && peca.nivel() > crate::vizinhanca_da_peca::NIVEL_MAX_DA_VIZINHANCA
-                {
-                    return Err(RecusaDaPilha::DegrauAlto);
+                if let Some(r) = crate::vizinhanca_da_peca::recusa_do_degrau(k, peca.nivel()) {
+                    return Err(r);
                 }
                 p.novo_ajuste(k, unidades)?;
                 (TrocaDaPilha::de(antes, nada()), None)

@@ -33,6 +33,16 @@ use ph2d_tool_painter::{AdjustWindow, Neighbourhood, SpatialUnits, gaussian_sigm
 /// ⇒ acima de `64x` um único passo leva segundos: a porta recusa com a frase.
 pub(crate) const NIVEL_MAX_DA_VIZINHANCA: u8 = 6;
 
+/// ⭐ **Um ajuste de `kind` serve num plano de `nivel`?** — os que leem os
+/// vizinhos só até [`NIVEL_MAX_DA_VIZINHANCA`]; os outros em qualquer degrau.
+pub(crate) fn recusa_do_degrau(
+    kind: ph2d_tool_painter::AdjustmentKind,
+    nivel: u8,
+) -> Option<crate::pilha_da_peca::RecusaDaPilha> {
+    (kind.reads_the_image_layout() && nivel > NIVEL_MAX_DA_VIZINHANCA)
+        .then_some(crate::pilha_da_peca::RecusaDaPilha::DegrauAlto)
+}
+
 /// Onde cada amostra do plano cai na peça (as unidades dela).
 pub(crate) fn posicoes(t: &Tinta, mesh: &Mesh) -> Vec<[f32; 3]> {
     use ph2d_mesh_colors::amostragem::{posicao_quad, posicao_tri};

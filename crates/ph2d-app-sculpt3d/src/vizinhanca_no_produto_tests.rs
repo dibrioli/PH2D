@@ -83,10 +83,10 @@ fn pilha_de_vizinhanca(k: u8) -> (ph2d_mesh::Mesh, ph2d_mesh_colors::Tinta, Pilh
         AdjustmentParams::ShadowsHighlights(ShadowsHighlightsParams {
             shadows_amount: 0.3,
             shadows_tonal_width: 0.5,
-            shadows_radius: 0.07,
+            shadows_radius: 0.05,
             highlights_amount: 0.2,
             highlights_tonal_width: 0.5,
-            highlights_radius: 0.07,
+            highlights_radius: 0.09,
             color_correction: 0.1,
             midtone_contrast: 0.05,
         }),
@@ -96,12 +96,63 @@ fn pilha_de_vizinhanca(k: u8) -> (ph2d_mesh::Mesh, ph2d_mesh_colors::Tinta, Pilh
     (mesh, tinta, p)
 }
 
-/// Quantos bytes diferem e a maior diferença.
+/// ⭐ **A pilha TRANSLÚCIDA**: a base escondida e uma mancha meio transparente
+/// sobre nada — o desfoque e o brilho espalham a COBERTURA (a pré-multiplicação
+/// da placa só se vê aqui; numa peça opaca ela é a identidade).
+fn pilha_translucida(k: u8) -> PilhaDaPeca {
+    let (mesh, tinta, mut p, xs) = fx::peca(k, |_| fx::CLARO);
+    let base = p.base().expect("base");
+    p.define_visivel(base, false);
+    let mancha = p.nova_camada("mancha").expect("camada");
+    let px: Vec<[u8; 4]> = xs
+        .iter()
+        .map(|&x| {
+            if fx::dist(x) < 0.3 {
+                [200, 60, 40, 150]
+            } else {
+                [0; 4]
+            }
+        })
+        .collect();
+    p.plano_mut(mancha).expect("plano").escreve(&px, None);
+    let u = unidades(&mesh);
+    ajuste(
+        &mut p,
+        u,
+        AdjustmentKind::GaussianBlur,
+        AdjustmentParams::GaussianBlur(GaussianBlurParams { radius: 0.06 }),
+    );
+    ajuste(
+        &mut p,
+        u,
+        AdjustmentKind::Bloom,
+        AdjustmentParams::Bloom(BloomParams {
+            threshold: 0.3,
+            intensity: 0.8,
+            radius: 0.08,
+            falloff: 0.2,
+        }),
+    );
+    p.garante_vizinhanca(&tinta, &mesh);
+    p
+}
+
+/// Quantos bytes diferem e a maior diferença — o alfa sempre, a cor só onde o
+/// alfa da CPU é visível (`> 0`).
+///
+/// ⚠️ Debaixo de alfa nulo a cor direita é a de um resto do calor dividido por
+/// `~1e-6` — ruído de `f32` amplificado (`282` bytes, pior `200`, na pilha
+/// translúcida a `8x`, todos de alfa `0`) — e ninguém a lê: o achatamento no
+/// plano da peça usa o fundo quando o alfa é `0` (`pilha_da_peca::achata`).
 fn compara(cpu: &[u8], placa: &[u8]) -> (usize, u8) {
-    cpu.iter()
-        .zip(placa)
+    cpu.chunks(4)
+        .zip(placa.chunks(4))
+        .flat_map(|(c, g)| {
+            let canais = if c[3] == 0 { 3..4 } else { 0..4 };
+            canais.map(move |k| (c[k], g[k]))
+        })
         .filter(|(a, b)| a != b)
-        .fold((0, 0), |(n, m), (a, b)| (n + 1, m.max(a.abs_diff(*b))))
+        .fold((0, 0), |(n, m), (a, b)| (n + 1, m.max(a.abs_diff(b))))
 }
 
 /// O contrato placa↔CPU dos efeitos de vizinhança: nenhum byte a mais de UM
@@ -115,8 +166,12 @@ const FRACCAO_A_UM_DEGRAU: f64 = 0.01;
 #[ignore = "precisa de placa"]
 fn a_placa_desfoca_a_peca_como_a_cpu() {
     let gpu = gpu_or_skip!();
-    for k in [3u8, 4, 5] {
-        let (_, _, mut p) = pilha_de_vizinhanca(k);
+    for (k, translucida) in [(3u8, false), (4, false), (5, false), (3, true), (4, true)] {
+        let mut p = if translucida {
+            pilha_translucida(k)
+        } else {
+            pilha_de_vizinhanca(k).2
+        };
         let n = p.amostras();
         let mut placa = CompostoNaPlaca::novo(&gpu);
         placa
@@ -126,8 +181,9 @@ fn a_placa_desfoca_a_peca_como_a_cpu() {
         let cpu = p.compor();
         let (difs, pior) = compara(&cpu, &lida[..n * 4]);
         eprintln!(
-            "{}x: {difs} de {} bytes a um degrau (pior {pior})",
+            "{}x{}: {difs} de {} bytes a um degrau (pior {pior})",
             1u32 << k,
+            if translucida { " translúcida" } else { "" },
             n * 4
         );
         assert!(
@@ -250,4 +306,93 @@ fn diag_o_preco_do_desfoque_na_placa() {
             );
         }
     }
+}
+
+/// ⭐⭐⭐⭐ **O TRAÇO por baixo de um desfoque borra AO VIVO na placa** (o
+/// caminho do produto: a cena `52`, um desfoque pela porta, um traço do Painter
+/// na base com quadros a meio): a vizinha de uma amostra pintada também muda,
+/// logo a peça inteira recompõe-se na PLACA — e o plano LIDO DA PLACA é a
+/// referência da CPU (`para_ler`) a um degrau. A cor por vértice segue o
+/// prefixo do plano da CPU (o estacionamento compara-os).
+#[test]
+#[ignore = "precisa de placa"]
+fn o_traco_por_baixo_de_um_desfoque_borra_na_placa() {
+    use crate::painter_na_malha::{entrega, quadro};
+    use ph2d_editor_core::tool::PointerPhase;
+    let gpu = gpu_or_skip!();
+    let mut s = super::cena_52(&gpu.device);
+    s.sync_mesh(&gpu);
+    let mut p = ph2d_tool_painter::PainterTool::default();
+    p.set_brush_color_srgb8([255, 0, 0]);
+    p.set_brush_strength(1.0);
+    p.set_brush_size_px(24.0);
+    quadro(Some(&mut s), Some(&mut p));
+    let a = s.active;
+    {
+        let o = &mut s.objects[a];
+        let u = unidades(o.stack.mesh());
+        let pilha = o.pilha.as_mut().expect("pilha");
+        ajuste(
+            pilha,
+            u,
+            AdjustmentKind::GaussianBlur,
+            AdjustmentParams::GaussianBlur(GaussianBlurParams { radius: 0.06 }),
+        );
+    }
+    crate::tinta_da_peca::pilha::recompoe(&mut s.objects[a]);
+    s.sync_mesh(&gpu);
+    let le = |s: &crate::Sculpt3dScene| {
+        let o = &s.objects[s.active];
+        crate::tinta_da_peca::pilha::para_ler(o, o.tinta.as_ref().expect("plano"))
+            .amostras()
+            .to_vec()
+    };
+    let antes = le(&s);
+    assert!(
+        entrega(&mut s, &mut p, 420.0, 350.0, 1.0, PointerPhase::Down),
+        "o pen-down"
+    );
+    for k in 1..=8u8 {
+        entrega(
+            &mut s,
+            &mut p,
+            420.0 + 6.0 * f32::from(k),
+            350.0,
+            1.0,
+            PointerPhase::Move,
+        );
+        quadro(Some(&mut s), Some(&mut p));
+        s.sync_mesh(&gpu);
+    }
+    entrega(&mut s, &mut p, 474.0, 350.0, 1.0, PointerPhase::Up);
+    quadro(Some(&mut s), Some(&mut p));
+    s.sync_mesh(&gpu);
+    let referencia = le(&s);
+    let slot = s
+        .slots
+        .iter()
+        .position(|&o| o == s.objects[a].id)
+        .expect("a peça está à vista");
+    let placa = s
+        .renderer
+        .le_tinta_at(&gpu.device, &gpu.queue, slot)
+        .expect("o plano está armado na placa");
+    let degrau = 1.0 / 255.0 + 1e-5;
+    let pior = placa
+        .iter()
+        .zip(&referencia)
+        .flat_map(|(g, c)| (0..3).map(move |j| (g[j] - c[j]).abs()))
+        .fold(0.0f32, f32::max);
+    assert!(pior <= degrau, "a placa afasta-se da referência em {pior}");
+    let mudaram = (0..antes.len())
+        .filter(|&i| antes[i] != referencia[i])
+        .count();
+    assert!(mudaram > 0, "o traço não mudou a peça");
+    let o = &s.objects[a];
+    let v = o.stack.mesh().vert_count();
+    assert_eq!(
+        o.stack.mesh().colors().expect("cor"),
+        &o.tinta.as_ref().expect("plano").amostras()[..v],
+        "a cor por vértice separou-se do prefixo do plano da CPU"
+    );
 }

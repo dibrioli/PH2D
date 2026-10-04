@@ -367,10 +367,10 @@ impl LayerCompositor {
                 BlurStage::Separable if on_surface => {
                     self.run_surface_heat(
                         gpu,
-                        WorkSel::Base(cur),
-                        WorkSel::Blur(1),
+                        (WorkSel::Base(cur), WorkSel::Blur(1)),
                         b.sigma[0],
                         true,
+                        false,
                     );
                     true
                 }
@@ -378,7 +378,13 @@ impl LayerCompositor {
                     // ⛔ The image-plane kinds never reach a surface; if one does, its
                     //    low-pass is the identity (the caller refuses them at its door).
                     debug_assert!(false, "an image-plane kind on a surface");
-                    self.run_surface_heat(gpu, WorkSel::Base(cur), WorkSel::Blur(1), 0.0, true);
+                    self.run_surface_heat(
+                        gpu,
+                        (WorkSel::Base(cur), WorkSel::Blur(1)),
+                        0.0,
+                        true,
+                        false,
+                    );
                     true
                 }
                 BlurStage::Bloom {
@@ -387,9 +393,9 @@ impl LayerCompositor {
                     self.run_bloom_bright(gpu, cur, *threshold, *falloff, work);
                     self.run_surface_heat(
                         gpu,
-                        WorkSel::Blur(1),
-                        WorkSel::Blur(1),
+                        (WorkSel::Blur(1), WorkSel::Blur(1)),
                         b.sigma[0],
+                        false,
                         false,
                     );
                     true

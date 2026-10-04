@@ -116,3 +116,44 @@ fn na_peca_o_menu_de_ajustes_apaga_os_que_leem_o_plano_da_imagem() {
         "o CONTROLO: no 2D o Halftone clica-se"
     );
 }
+
+/// ⭐⭐⭐ **GATE — na peça o número do RAIO lê-se em % do tamanho dela** (`docs/3D/30` §14): o chip
+/// do raio de um desfoque, pintado com as unidades da peça publicadas, vai de `0` a
+/// `SURFACE_RADIUS_MAX · 100`. CONTROLO: fora da peça, em px, de `0` a `100`.
+#[test]
+fn na_peca_o_raio_le_se_em_percentagem_da_peca() {
+    use ph2d_panel_painter_layers::set_current_spatial_units;
+    use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
+    use ph2d_tool_painter::{SURFACE_RADIUS_MAX, SpatialUnits};
+    let alcance = |na_peca: bool, units: SpatialUnits| {
+        let (mut s, _) = pilha(true);
+        let blur = s
+            .add_adjustment(AdjustmentKind::GaussianBlur)
+            .expect("ajuste");
+        set_current_dock_shows_layers(true);
+        set_current_selection([blur].into_iter().collect());
+        set_current_layers(Some(s));
+        set_current_layers_on_piece(na_peca);
+        set_current_spatial_units(units);
+        let mut host = MockPanelHost::with_panel_and_shared_chrome::<PainterLayersPanel>();
+        host.paint::<PainterLayersPanel>(
+            &mut PainterLayersPanelState,
+            Rect::new(0.0, 0.0, 1600.0, 900.0),
+        );
+        set_current_layers_on_piece(false);
+        set_current_spatial_units(SpatialUnits::Pixels);
+        let chip = painter_layer_widget_id(blur.0, PainterLayerWidget::AdjChip0);
+        host.store().number_range(chip).expect("o raio tem número")
+    };
+    let (lo, hi, _) = alcance(true, SpatialUnits::Surface { size: 4.0 });
+    assert_eq!(lo, 0.0);
+    assert!(
+        (hi - f64::from(SURFACE_RADIUS_MAX * 100.0)).abs() < 1e-6,
+        "na peça o raio vai a {hi}"
+    );
+    let (_, hi_px, _) = alcance(false, SpatialUnits::Pixels);
+    assert!(
+        (hi_px - 100.0).abs() < 1e-6,
+        "CONTROLO: no 2D o raio vai a {hi_px} px"
+    );
+}

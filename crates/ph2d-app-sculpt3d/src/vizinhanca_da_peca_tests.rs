@@ -338,6 +338,10 @@ fn o_raio_novo_nasce_em_percentagem_da_peca() {
     let SpatialUnits::Surface { size } = u else {
         panic!("a peça mede-se em unidades dela")
     };
+    assert!(
+        (size - 2.0 * 3f32.sqrt()).abs() < 1e-4,
+        "a esfera de raio 1 tem diagonal 2√3 (lido {size})"
+    );
     let id = p.novo_ajuste(AdjustmentKind::Bloom, u).expect("bloom");
     let Some(ph2d_tool_painter::LayerKind::Adjustment(a)) = p.pilha().get(id).map(|c| &c.kind)
     else {
@@ -351,4 +355,106 @@ fn o_raio_novo_nasce_em_percentagem_da_peca() {
         "raio {radius}"
     );
     assert!((adjustment_slider_params_in(&a.params, u)[2].1 - 0.2).abs() < 1e-6);
+}
+
+/// ⭐ **Acima de `64x` os de vizinhança recusam com a frase; os de ponto servem
+/// em qualquer degrau** (`NIVEL_MAX_DA_VIZINHANCA`, a tabela medida ao lado).
+#[test]
+fn acima_de_64x_os_de_vizinhanca_recusam() {
+    use crate::vizinhanca_da_peca::recusa_do_degrau;
+    for k in [AdjustmentKind::GaussianBlur, AdjustmentKind::Bloom] {
+        assert_eq!(recusa_do_degrau(k, 6), None, "{k:?} a 64x");
+        assert_eq!(
+            recusa_do_degrau(k, 7),
+            Some(RecusaDaPilha::DegrauAlto),
+            "{k:?} a 128x"
+        );
+    }
+    assert_eq!(
+        recusa_do_degrau(AdjustmentKind::Invert, 8),
+        None,
+        "o de ponto a 256x"
+    );
+}
+
+/// ⭐⭐ **Esculpir refaz a vizinhança** — o laplaciano é das POSIÇÕES: a mesma
+/// pilha sobre a peça com o dobro do tamanho ganha outro (o espectro cai a um
+/// quarto), e sobre a mesma geometria fica o MESMO (nada se refaz à toa).
+#[test]
+fn mudar_as_posicoes_refaz_a_vizinhanca() {
+    let (mut mesh, tinta, mut p, _) = peca(3, risca(0.05));
+    desfoque(&mut p, 0.1, &tinta, &mesh);
+    let antes = p.vizinhanca_partilhada().expect("vizinhança");
+    p.garante_vizinhanca(&tinta, &mesh);
+    assert!(
+        std::sync::Arc::ptr_eq(&antes, &p.vizinhanca_partilhada().expect("vizinhança")),
+        "a mesma geometria refez o laplaciano"
+    );
+    for x in mesh.positions_mut() {
+        *x = x.map(|c| 2.0 * c);
+    }
+    p.garante_vizinhanca(&tinta, &mesh);
+    let depois = p.vizinhanca_partilhada().expect("vizinhança");
+    let razao = antes.difusao().lambda_sup() / depois.difusao().lambda_sup();
+    assert!(
+        (razao - 4.0).abs() < 1e-3,
+        "o espectro da peça ao dobro não caiu a 1/4 ({razao})"
+    );
+}
+
+/// ⭐⭐⭐ **A cor por vértice continua IGUAL ao prefixo do plano** com uma pilha
+/// que lê vizinhos — é o que o estacionamento compara (`desparqueia`): depois
+/// de recompor (a placa compõe, o prefixo fica atrás COM ela), depois do
+/// `em_dia` (as duas na composição exacta, que borrou) e ao abrir um ficheiro
+/// (`cor_por_vertice_da_composta`).
+#[test]
+fn a_cor_por_vertice_segue_o_prefixo_com_vizinhos() {
+    let (mut mesh, tinta, mut p, _) = peca(3, risca(0.05));
+    desfoque(&mut p, 0.15, &tinta, &mesh);
+    let v = mesh.vert_count();
+    mesh.colors_mut()
+        .copy_from_slice(&tinta.plano_por_vertice()[..v]);
+    let antes = tinta.plano_por_vertice()[..v].to_vec();
+    let mut obj = crate::SceneObject::from_stack(
+        crate::objects::ObjectId(1),
+        ph2d_mesh::Multires::new(mesh),
+        ph2d_mesh::Pose::new([0.0; 3], 1.0),
+    );
+    obj.tinta = Some(tinta);
+    obj.pilha = Some(p);
+    let iguais = |o: &crate::SceneObject| {
+        o.stack.mesh().colors().expect("cor")
+            == o.tinta.as_ref().expect("plano").plano_por_vertice()
+    };
+    crate::tinta_da_peca::pilha::recompoe(&mut obj);
+    assert!(
+        obj.pilha.as_ref().expect("pilha").atrasada(),
+        "a placa compõe"
+    );
+    assert!(
+        iguais(&obj),
+        "recompor separou a cor por vértice do prefixo"
+    );
+    crate::tinta_da_peca::pilha::em_dia(&mut obj);
+    assert!(
+        iguais(&obj),
+        "o em_dia separou a cor por vértice do prefixo"
+    );
+    assert_ne!(
+        obj.stack.mesh().colors().expect("cor"),
+        &antes[..],
+        "o em_dia trouxe a composição que BORROU"
+    );
+    obj.stack.mesh_mut().colors_mut().fill([0.5; 3]);
+    crate::tinta_da_peca::pilha::cor_por_vertice_da_composta(&mut obj);
+    assert!(iguais(&obj), "abrir o ficheiro deixou a cor gravada velha");
+}
+
+/// ⭐ **O resto que a placa limpa é o MESMO que a CPU limpa** — duas cópias de
+/// uma constante divergem em silêncio (a placa não depende da `ph2d-mesh-colors`).
+#[test]
+fn o_resto_do_shader_e_o_da_cpu() {
+    let wgsl = include_str!("../../ph2d-render/src/shaders/surface_heat.wgsl");
+    let linha = format!("const RESTO: f32 = {:e};", ph2d_mesh_colors::difusao::RESTO);
+    assert!(wgsl.contains(&linha), "o shader não declara `{linha}`");
 }

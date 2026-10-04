@@ -219,7 +219,15 @@ impl VecViewState {
         !self.hidden.contains(&id)
             && !self.locked.contains(&id)
             && !self.is_derived(id)
-            && (self.editing.is_empty() || self.editing.contains(&id))
+            && self.in_edit(id)
+    }
+
+    /// ⭐ A forma é do modo em curso: em Object todas; em Edit só as [`Self::editing`]. A porta
+    /// única do clique ([`Self::is_pickable`]) E do desenho das âncoras — uma âncora desenhada que
+    /// não se agarra é uma pista falsa.
+    #[must_use]
+    pub fn in_edit(&self, id: VecPathId) -> bool {
+        self.editing.is_empty() || self.editing.contains(&id)
     }
 
     /// A geometria deste path é escrita por um motor — ela não tem nós próprios ([`Self::derived`]).

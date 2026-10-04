@@ -75,6 +75,10 @@ pub fn draw_overlays(
         if view.is_derived(path.id) {
             continue;
         }
+        // Em Edit só as formas do modo mostram nós (spec/06 F3 ▸ Vector).
+        if !view.in_edit(path.id) {
+            continue;
+        }
         let transform = overlay_transform(view, xforms, path.id, camera);
         let is_sel = Some(path.id) == selected;
         // Any path in the OBJECT selection set is highlighted; the primary also shows

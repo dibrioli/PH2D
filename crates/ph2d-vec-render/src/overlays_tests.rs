@@ -122,3 +122,41 @@ fn a_derived_shape_draws_no_nodes() {
         "a forma derivada desenhou nos — eles empilham-se sobre os do traco que a produz"
     );
 }
+
+/// ⭐⭐ GATE (spec/06 F3 ▸ Vector) — **em Edit, a forma fora do modo não desenha nós**: ela não se
+/// agarra (`VecViewState::is_pickable`), e uma âncora desenhada que não se agarra é uma pista falsa.
+/// CONTROLE: a mesma forma, dentro do Edit, desenha-os.
+#[test]
+fn in_edit_a_shape_outside_the_mode_draws_no_nodes() {
+    let mut scene = ph2d_vec_scene::VecScene::new();
+    let id = scene.push_path(ph2d_vec_scene::rectangle([0.0, 0.0], [10.0, 10.0]));
+    let other = scene.push_path(ph2d_vec_scene::rectangle([20.0, 0.0], [30.0, 10.0]));
+    let contados = |view: &ph2d_vec_scene::VecViewState| {
+        PICKED_DRAWN.with(|c| c.set(0));
+        let mut alvo = ph2d_vector::VectorScene::new();
+        super::draw_overlays(
+            &scene,
+            view,
+            Some(id),
+            &[id],
+            &[(id, 0)],
+            &ph2d_vec_scene::VecXforms::new(),
+            ph2d_vector::Affine::IDENTITY,
+            &mut alvo,
+        );
+        PICKED_DRAWN.with(std::cell::Cell::get)
+    };
+    let dentro = ph2d_vec_scene::VecViewState {
+        editing: vec![id],
+        ..Default::default()
+    };
+    assert!(
+        contados(&dentro) > 0,
+        "controle: a forma do Edit desenha nos"
+    );
+    let fora = ph2d_vec_scene::VecViewState {
+        editing: vec![other],
+        ..Default::default()
+    };
+    assert_eq!(contados(&fora), 0, "a forma fora do Edit desenhou nos");
+}

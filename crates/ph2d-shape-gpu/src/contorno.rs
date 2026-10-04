@@ -26,8 +26,7 @@ struct Contas {
     sem_contorno: u32,
     cap_celulas: u32,
     area_minima_conforme: f32,
-    itens_do_grupo: u32,
-    _p: [u32; 2],
+    _p: [u32; 3],
 }
 
 /// ⭐ doc 121 §9.6 — **a área no ecrã (px², da caixa estimada) a partir da qual uma cópia CONFORME vai
@@ -36,10 +35,6 @@ struct Contas {
 /// pago POR CÓPIA — na escada de `32 768` estrelas pequenas ele custava `+3,9 ms` por zero ganho.
 /// ⚠️ O número sai da varredura do doc 121 §9.6.
 pub const AREA_MINIMA_CONFORME: f32 = 1024.0;
-
-/// ⭐ doc 121 §9.14 (a) — **os itens do eixo a partir dos quais uma cópia TRACEJADA se escreve por um
-/// GRUPO de `64` fios** (`cs_escreve_grande`) e não por um fio. ⚠️ O número sai da rodada do §9.14.
-pub const ITENS_DO_GRUPO: u32 = 24;
 
 /// Bytes de UMA aresta (`vec4<f32>`: os dois pontos no ecrã).
 const ARESTA: u64 = 16;
@@ -91,8 +86,6 @@ pub(crate) struct Contorno {
     conta: Variantes<wgpu::ComputePipeline>,
     soma: wgpu::ComputePipeline,
     escreve: Variantes<wgpu::ComputePipeline>,
-    /// doc 121 §9.14 (a) — um GRUPO por cópia tracejada grande (só na variante completa).
-    escreve_grande: wgpu::ComputePipeline,
     /// doc 121 §9.12 — as células por acumulação, por despachos indirectos: um fio por PIXEL apaga,
     /// um por ARESTA deposita, um por LINHA faz o prefixo do fundo, um por PIXEL varre a célula.
     zera: wgpu::ComputePipeline,
@@ -103,9 +96,7 @@ pub(crate) struct Contorno {
     pub(crate) leitura: wgpu::BindGroupLayout,
     /// O grupo `2` do CÁLCULO (o uniforme e as cinco escritas).
     escrita: wgpu::BindGroupLayout,
-    /// O mesmo grupo SEM o `despacho_grande` (o passe de grupo, que o lê como argumento indirecto).
-    escrita_grande: wgpu::BindGroupLayout,
-    /// O mesmo grupo SEM os dois despachos (os passes das células, que lêem o `despacho`).
+    /// O mesmo grupo SEM o `despacho` (os passes das células, que o lêem como argumento indirecto).
     escrita_celulas: wgpu::BindGroupLayout,
     /// O grupo `1` do CÁLCULO, vazio (ver `new`).
     vazio: wgpu::BindGroup,
@@ -124,8 +115,6 @@ pub(crate) struct Contorno {
     /// linha, `[3, 6)` por aresta, `[6, 9)` por pixel de célula; e os dois desenhos de uma cena com
     /// tracejado (`[9, 17)`, doc 121 §9.13).
     despacho: wgpu::Buffer,
-    /// Os argumentos do passe de grupo (doc 121 §9.14), escritos pelo `cs_soma`.
-    despacho_grande: wgpu::Buffer,
     cap_copias: u64,
     cap_arestas: u64,
     cap_celulas: u64,
@@ -147,8 +136,6 @@ pub(crate) struct Contorno {
     pub(crate) ligado: bool,
     /// [`AREA_MINIMA_CONFORME`], ou o que um gate pediu.
     pub(crate) area_minima_conforme: f32,
-    /// [`ITENS_DO_GRUPO`], ou o que um gate pediu.
-    pub(crate) itens_do_grupo: u32,
     /// `PH2D_FLUID_PROFILE=1` ⇒ cada crescimento das células diz quanto passaram a ocupar (doc 121
     /// §9.12: a memória delas na cena do app é medida, não estimada).
     relata: bool,
@@ -254,23 +241,17 @@ impl Contorno {
             entrada(6, armazem(false), c),
             entrada(8, armazem(false), c),
             entrada(7, armazem(false), c),
-            entrada(9, armazem(false), c),
         ];
         let escrita = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-shape-gpu contorno (escrita)"),
             entries: &escritas,
         });
-        // ⚠️ doc 121 §9.7 e §9.14 — um passe de despacho INDIRECTO tem o grupo SEM o buffer dos argumentos
-        // dele (as ÚLTIMAS ligações da lista): o wgpu recusa o mesmo buffer como escrita e como argumento
-        // no mesmo despacho (usos exclusivos no mesmo âmbito). O de grupo lê o `despacho_grande` (`9`) e
-        // escreve no `despacho` (`7`); os das células lêem o `despacho`.
-        let escrita_grande = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("ph2d-shape-gpu contorno (escrita, grupo)"),
-            entries: &escritas[..escritas.len() - 1],
-        });
+        // ⚠️ doc 121 §9.7 — os passes das células têm o grupo SEM o `despacho` (ligação `7`, a ÚLTIMA
+        // da lista): ele é o argumento do despacho indirecto deles, e o wgpu recusa o mesmo buffer como
+        // escrita e como argumento no mesmo despacho (usos exclusivos no mesmo âmbito).
         let escrita_celulas = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-shape-gpu contorno (escrita, celulas)"),
-            entries: &escritas[..escritas.len() - 2],
+            entries: &escritas[..escritas.len() - 1],
         });
         // O grupo `1` do cálculo é o do DESENHO e fica vazio: um pipeline só tem de declarar o que
         // os pontos de entrada dele lêem, e os de cálculo não lêem as leituras.
@@ -286,11 +267,6 @@ impl Contorno {
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-shape-gpu contorno"),
             bind_group_layouts: &[Some(grupo0), Some(&vazio), Some(&escrita)],
-            immediate_size: 0,
-        });
-        let pl_grande = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("ph2d-shape-gpu contorno (grupo)"),
-            bind_group_layouts: &[Some(grupo0), Some(&vazio), Some(&escrita_grande)],
             immediate_size: 0,
         });
         let pl_celulas = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -323,14 +299,12 @@ impl Contorno {
             conta: variantes("cs_conta"),
             soma: pipeline("cs_soma"),
             escreve: variantes("cs_escreve"),
-            escreve_grande: compila("cs_escreve_grande", &pl_grande, opcoes(true)),
             zera: pipeline_em("cs_zera", &pl_celulas),
             deposita: pipeline_em("cs_deposita", &pl_celulas),
             fundo: pipeline_em("cs_fundo", &pl_celulas),
             varre: pipeline_em("cs_varre", &pl_celulas),
             leitura,
             escrita,
-            escrita_grande,
             escrita_celulas,
             vazio: vazio_grupo,
             contas: buffer(
@@ -356,12 +330,6 @@ impl Contorno {
                 DESPACHO,
                 armazens | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_SRC,
             ),
-            despacho_grande: buffer(
-                gpu,
-                "ph2d-shape-gpu despacho do passe de grupo",
-                12,
-                armazens | wgpu::BufferUsages::INDIRECT,
-            ),
             cap_copias: 0,
             cap_arestas: 0,
             cap_celulas: 0,
@@ -383,7 +351,6 @@ impl Contorno {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(AREA_MINIMA_CONFORME),
-            itens_do_grupo: ITENS_DO_GRUPO,
             relata: std::env::var("PH2D_FLUID_PROFILE").is_ok_and(|v| v != "0"),
         }
     }
@@ -425,11 +392,11 @@ impl Contorno {
         if n > self.cap_copias {
             let cap = n.next_power_of_two();
             let armazens = wgpu::BufferUsages::STORAGE;
-            // Quatro quartos de `n + 1`: as arestas, as células, as linhas de ecrã e a marca do grupo.
+            // Três terços de `n + 1`: as arestas, as células e as linhas de ecrã.
             self.contagem = buffer(
                 gpu,
                 "ph2d-shape-gpu contagem",
-                4 * (cap + 1) * 4,
+                3 * (cap + 1) * 4,
                 armazens | wgpu::BufferUsages::COPY_SRC,
             );
             // Três `vec4<u32>` por cópia. `COPY_SRC`: o instrumento `copias_com_contorno` lê-o.
@@ -500,8 +467,7 @@ impl Contorno {
             sem_contorno: u32::from(!self.ligado),
             cap_celulas: u32::try_from(self.cap_celulas).unwrap_or(u32::MAX),
             area_minima_conforme: self.area_minima_conforme,
-            itens_do_grupo: self.itens_do_grupo,
-            _p: [0; 2],
+            _p: [0; 3],
         };
         self.ultimo_n = count;
         gpu.queue
@@ -536,8 +502,7 @@ impl Contorno {
                 resource: self.acumula.as_entire_binding(),
             },
         ];
-        // O grupo do passe das células: as mesmas ligações SEM os despachos; o do passe de grupo, sem
-        // o `despacho_grande`.
+        // O grupo do passe das células: as mesmas ligações SEM o `despacho`.
         let celulas = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-shape-gpu contorno (escrita, celulas)"),
             layout: &self.escrita_celulas,
@@ -546,15 +511,6 @@ impl Contorno {
         entradas.push(wgpu::BindGroupEntry {
             binding: 7,
             resource: self.despacho.as_entire_binding(),
-        });
-        let grande = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-shape-gpu contorno (escrita, grupo)"),
-            layout: &self.escrita_grande,
-            entries: &entradas,
-        });
-        entradas.push(wgpu::BindGroupEntry {
-            binding: 9,
-            resource: self.despacho_grande.as_entire_binding(),
         });
         let escrita = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-shape-gpu contorno (escrita)"),
@@ -589,12 +545,6 @@ impl Contorno {
             let mut pass = passe(encoder, "render.contorno.escreve");
             pass.set_pipeline(self.escreve.de(tracejado));
             pass.dispatch_workgroups(x, y, 1);
-            // doc 121 §9.14 (a) — as cópias tracejadas grandes, um grupo cada (só uma cena com tracejado).
-            if tracejado {
-                pass.set_bind_group(2, &grande, &[]);
-                pass.set_pipeline(&self.escreve_grande);
-                pass.dispatch_workgroups_indirect(&self.despacho_grande, 0);
-            }
         }
         {
             let mut pass = passe(encoder, "render.contorno.celulas");

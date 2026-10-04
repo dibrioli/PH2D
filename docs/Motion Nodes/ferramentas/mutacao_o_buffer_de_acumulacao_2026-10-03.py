@@ -6,8 +6,6 @@ cópias que não cabem nas células, cena que muda, quina exacta, NaN vertical, 
 Substitui a das listas (`mutacao_as_listas_das_celulas_2026-10-02.py`, 14/14): o código que ela mutava
 saiu com as listas. Cada mutação dela tem aqui o análogo que ainda faz sentido.
 
-⚠️ doc 121 §9.14: a A12 re-ancorada na `reserva_de` partilhada pelo fio e pelo grupo (a mesma lei).
-
 Controlos: pré-voo (cada âncora casa o nº esperado de vezes) · corrida LIMPA verde com população > 0
 (lida do `test result:`) · mutação que não compila é defeito do arnês · zero testes aborta · um shader
 que não valida é marcado (sangrar por não compilar o WGSL não prova a lei). Restaura por cópia + touch
@@ -45,7 +43,7 @@ MUTS = [
     ("A11 o recorte a fileira com o minimo trocado pelo maximo", [(C,
         "let lo = clamp(min(xa, xb), f.y, f.z);", "let lo = clamp(max(xa, xb), f.y, f.z);", 1)]),
     ("A12 sem a verificacao da capacidade das celulas", [(C,
-        "        || r.mbase + nmask_reservado > contas.cap_celulas {", "        {", 1)]),
+        "        || mbase + nmask_reservado > contas.cap_celulas {", "        {", 1)]),
     ("A13 o fragmento le a fileira com o passo errado", [(S,
         "let cel = c1.x + u32(r) * c2.y + xi", "let cel = c1.x + u32(r) * (c2.y + 1u) + xi", 1)]),
     ("A14 preenchimento e contorno trocados na familia da aresta", [(C,

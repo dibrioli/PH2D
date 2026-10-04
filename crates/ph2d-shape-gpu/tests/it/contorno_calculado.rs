@@ -539,7 +539,7 @@ fn o_redesenho_e_o_mesmo_desenho() {
         &forma,
         &[(&cs, 3)],
         fmt,
-        (true, 0.0, u64::MAX, ph2d_shape_gpu::ITENS_DO_GRUPO),
+        (true, 0.0, u64::MAX),
         &mut |g, p| {
             let tex = textura(g, wgpu::TextureUsages::RENDER_ATTACHMENT, fmt);
             let vista = tex.create_view(&wgpu::TextureViewDescriptor::default());

@@ -226,13 +226,6 @@ impl ShapePass {
         self.contorno.celulas_tocadas_do_ultimo_quadro(gpu)
     }
 
-    /// **Quantas cópias o último desenho escreveu pelo passe de GRUPO** (doc 121 §9.14, o tracejado por
-    /// troço) — lido de volta da placa (bloqueia). Instrumento de gates e sondas.
-    #[must_use]
-    pub fn copias_do_grupo_do_ultimo_quadro(&self, gpu: &GpuContext) -> u32 {
-        self.contorno.copias_do_grupo_do_ultimo_quadro(gpu)
-    }
-
     /// **Quantas células o último desenho pediu, e a capacidade delas** (doc 121 §9.12) — lido de
     /// volta da placa (bloqueia). Pedido acima da capacidade ⇒ alguma cópia foi desenhada pelo
     /// caminho de sempre. Instrumento de gates e sondas.
@@ -251,12 +244,6 @@ impl ShapePass {
     /// antes do doc 121 §9.5 — a porta pela qual os gates comparam os dois caminhos.
     pub fn com_contorno(&mut self, ligado: bool) {
         self.contorno.ligado = ligado;
-    }
-
-    /// Os itens do eixo a partir dos quais uma cópia TRACEJADA se escreve por um GRUPO (doc 121 §9.14,
-    /// [`crate::ITENS_DO_GRUPO`]). `0` ⇒ todas; `u32::MAX` ⇒ nenhuma — as portas dos gates.
-    pub fn itens_do_grupo(&mut self, itens: u32) {
-        self.contorno.itens_do_grupo = itens;
     }
 
     /// A área no ecrã (px²) a partir da qual uma cópia CONFORME vai pelas arestas no ecrã (doc 121

@@ -193,10 +193,6 @@ fn o_tracejado_esticado_desenha_o_que_o_vello_desenha() {
 /// ⭐⭐ **O contorno calculado traceja o que o caminho pixel a pixel traceja** — uma régua de PAR: as
 /// duas rotas são a mesma lei, e o que sobra é arredondamento. E todas as cópias têm de ter ganho o
 /// contorno (senão a imagem igual não prova que ele correu).
-///
-/// ⭐ doc 121 §9.14 (a) — pelas DUAS escritas: um fio por cópia e um GRUPO por cópia (a porta
-/// `itens_do_grupo` manda todas as cópias tracejadas a uma e a outra). As duas desenham a mesma imagem,
-/// logo o gate lê de volta quantas foram pelo grupo — todas as esticadas num caso, nenhuma no outro.
 #[test]
 #[ignore = "precisa de adapter de GPU"]
 fn o_tracejado_calculado_desenha_o_que_o_pixel_desenha() {
@@ -208,47 +204,34 @@ fn o_tracejado_calculado_desenha_o_que_o_pixel_desenha() {
     let mut falhas = Vec::new();
     for (nome, forma, cs) in &casos(&est, &circ, &zz, &furo) {
         let fmt = wgpu::TextureFormat::Rgba16Float;
-        let n = u32::try_from(cs.len()).expect("cabem");
+        let (calc, com) = pelo_passe_com(&gpu, forma, cs, fmt, true, 4)
+            .pop()
+            .expect("um quadro");
         let (pixel, sem) = pelo_passe_com(&gpu, forma, cs, fmt, false, 1)
             .pop()
             .expect("um quadro");
+        let n = u32::try_from(cs.len()).expect("cabem");
         assert_eq!(sem, 0, "{nome}: CONTROLO — desligado, nenhuma o ganha");
-        let conforme = nome.contains("conforme");
-        for (escrita, itens) in [("grupo", 0), ("fio", u32::MAX)] {
-            let mut grupo = 0;
-            let (calc, com, _) = pelo_passe_observado(
-                &gpu,
-                forma,
-                &[(cs, 4)],
-                fmt,
-                (true, 0.0, u64::MAX, itens),
-                &mut |g, p| grupo = p.copias_do_grupo_do_ultimo_quadro(g),
-            )
-            .pop()
-            .expect("um quadro");
-            let (mut pior, mut acima, mut tinta) = (0u8, 0usize, 0usize);
-            for (x, y) in calc.as_chunks::<4>().0.iter().zip(pixel.as_chunks::<4>().0) {
-                let d = x[3].abs_diff(y[3]);
-                pior = pior.max(d);
-                acima += usize::from(d > 1);
-                tinta += usize::from(x[3] > 0 || y[3] > 0);
-            }
-            eprintln!(
-                "  PAR {nome} ({escrita}): alfa max {pior} · {acima} px > 1 · {tinta} px · {com}/{n} com contorno · {grupo} pelo grupo"
-            );
-            assert!(tinta > 1000, "{nome}: a fixtura quase nao desenha");
-            // A conforme não tem eixo: nunca vai ao grupo (o controlo da porta).
-            let esperado = if itens == 0 && !conforme { n } else { 0 };
-            if com != n || pior > 2 || grupo != esperado {
-                falhas.push(format!(
-                    "{nome} ({escrita}): alfa {pior}, {acima} px, {com}/{n} com contorno, {grupo}/{esperado} pelo grupo"
-                ));
-            }
+        let (mut pior, mut acima, mut tinta) = (0u8, 0usize, 0usize);
+        for (x, y) in calc.as_chunks::<4>().0.iter().zip(pixel.as_chunks::<4>().0) {
+            let d = x[3].abs_diff(y[3]);
+            pior = pior.max(d);
+            acima += usize::from(d > 1);
+            tinta += usize::from(x[3] > 0 || y[3] > 0);
+        }
+        eprintln!(
+            "  PAR {nome}: alfa max {pior} · {acima} px > 1 · {tinta} px · {com}/{n} com contorno"
+        );
+        assert!(tinta > 1000, "{nome}: a fixtura quase nao desenha");
+        if com != n || pior > 2 {
+            falhas.push(format!(
+                "{nome}: alfa {pior}, {acima} px, {com}/{n} com contorno"
+            ));
         }
     }
     assert!(
         falhas.is_empty(),
-        "as escritas tracejam diferente do pixel a pixel: {falhas:#?}"
+        "os dois caminhos tracejam diferente: {falhas:#?}"
     );
 }
 
@@ -317,7 +300,7 @@ fn a_placa_escolhe_a_variante_completa_so_quando_um_tracejado_vai_pixel_a_pixel(
             forma,
             &[(cs.as_slice(), 4)],
             fmt,
-            (true, 0.0, celulas_no_maximo, ph2d_shape_gpu::ITENS_DO_GRUPO),
+            (true, 0.0, celulas_no_maximo),
             &mut |g, p| por_quadro.push(p.copias_por_variante(g)),
         );
         (quadros, por_quadro)

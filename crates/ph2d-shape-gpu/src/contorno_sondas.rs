@@ -33,38 +33,32 @@ impl Contorno {
         (u32::try_from(com).unwrap_or(u32::MAX), self.cap_arestas)
     }
 
-    /// Uma palavra da `contagem` do último cálculo, lida de volta (bloqueia).
-    fn palavra_da_contagem(&self, gpu: &GpuContext, indice: u64) -> u32 {
+    /// **Quantas células o último cálculo PEDIU**, e a capacidade delas — lido de volta, bloqueando
+    /// (doc 121 §9.12). Pedido acima da capacidade ⇒ alguma cópia não coube e foi desenhada pelo
+    /// caminho de sempre. Instrumento de gates e sondas.
+    pub(crate) fn celulas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64) {
         let leitura = buffer(
             gpu,
-            "ph2d-shape-gpu contagem (sonda)",
+            "ph2d-shape-gpu celulas (sonda)",
             16,
             wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         );
         let mut enc = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        enc.copy_buffer_to_buffer(&self.contagem, indice * 4, &leitura, 0, 4);
+        enc.copy_buffer_to_buffer(
+            &self.contagem,
+            (2 * u64::from(self.ultimo_n) + 1) * 4,
+            &leitura,
+            0,
+            4,
+        );
         gpu.queue.submit([enc.finish()]);
         leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
         let dados = leitura.slice(..).get_mapped_range();
-        bytemuck::pod_read_unaligned(&dados[..4])
-    }
-
-    /// **Quantas células o último cálculo PEDIU**, e a capacidade delas — lido de volta, bloqueando
-    /// (doc 121 §9.12). Pedido acima da capacidade ⇒ alguma cópia não coube e foi desenhada pelo
-    /// caminho de sempre. Instrumento de gates e sondas.
-    pub(crate) fn celulas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64) {
-        let pedido = self.palavra_da_contagem(gpu, 2 * u64::from(self.ultimo_n) + 1);
+        let pedido: u32 = bytemuck::pod_read_unaligned(&dados[..4]);
         (u64::from(pedido), self.cap_celulas)
-    }
-
-    /// **Quantas cópias o último cálculo mandou ao passe de GRUPO** (doc 121 §9.14) — o total do 4.º
-    /// quarto da contagem, lido de volta (bloqueia). Instrumento de gates e sondas: as duas escritas
-    /// desenham a mesma imagem, logo só ele diz qual correu.
-    pub(crate) fn copias_do_grupo_do_ultimo_quadro(&self, gpu: &GpuContext) -> u32 {
-        self.palavra_da_contagem(gpu, 4 * u64::from(self.ultimo_n) + 3)
     }
 
     /// As cópias do último desenho de uma cena com tracejado, por variante `(enxuta, completa)` —

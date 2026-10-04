@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
-"""Prova de mutação do bloco do doc 121 §9.14: o tracejado por troço (o passe de GRUPO), a porta
-`redesenha` e o halo do `fx.glow` pela rota do quadro. Cada mutação tem de SANGRAR
+"""Prova de mutação do bloco do doc 121 §9.14: a porta `redesenha` e o halo do `fx.glow` pela rota do quadro. Cada mutação tem de SANGRAR
 nos gates que a nomeiam — a GPU de `ph2d-shape-gpu` (`--ignored`), os gates puros do halo
 (`ph2d-app-motion --lib motion_glow_layer`) ou os de costura da shell (`present_placa`).
 
 Controlos: pré-voo (cada âncora casa o nº esperado de vezes) · corrida LIMPA verde de cada comando com
 população > 0 · mutação que não compila é defeito do arnês · zero testes aborta · shader que não valida
 é marcado. Restaura por cópia + touch (o cargo guarda o build da mutação pelo mtime).
-Uso: MUTA_SO_ANCORAS=1 só o pré-voo; MUTA_SO=G1,H2 filtra. (O D1/D2 do `cs_varre` foi RECUSADO
-pela rodada do §9.14 e saiu do código com as mutações dele.)
+Uso: MUTA_SO_ANCORAS=1 só o pré-voo; MUTA_SO=R1,H2 filtra. (O passe de GRUPO e o D1/D2 do
+`cs_varre` foram RECUSADOS pela rodada do §9.14 e saíram do código com as mutações deles.)
 """
 import os, re, shutil, subprocess, sys, time
 
 R = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-C = R + "/crates/ph2d-shape-gpu/src/contorno.wgsl"
 P = R + "/crates/ph2d-shape-gpu/src/pass.rs"
 H = R + "/crates/ph2d-app-motion/src/motion_glow_layer.rs"
 PR = R + "/shells/desktop/src/render_loop/present.rs"
@@ -25,19 +23,6 @@ SHELL = ["cargo", "test", "-p", "ph2d-host-desktop", "--bin", "ph2d-host-desktop
 
 # (nome, comando, [(ficheiro, âncora, substituição, nº de ocorrências)])
 MUTS = [
-    ("G1 o prefixo do arco nao recomeca em cada sub-caminho", GPU, [(C,
-        "            tot = 0.0;\n            inicio = i;", "            inicio = i;", 1)]),
-    ("G2 cada item escreve no inicio do contorno (sem o prefixo)", GPU, [(C,
-        "            base_saida = bc + g_cnt[i];", "            base_saida = bc;", 1)]),
-    ("G4 a contagem do grupo sem a emissao", GPU, [(C,
-        "        g_cnt[i] = cursor;", "        g_cnt[i] = 0u;", 1)]),
-    ("G5 o grupo sem o ajuste do tracejado", GPU, [(C,
-        "        g_ajuste = arruma_o_eixo(cp, caneta);", "        g_ajuste = 1.0 + 0.0 * arruma_o_eixo(cp, caneta);", 1)]),
-    ("G6 o prefixo do grupo inclusivo", GPU, [(C,
-        "    var acc = g_parcial[li] - soma;", "    var acc = g_parcial[li];", 1)]),
-    ("G7 todo troco e o primeiro do sub-caminho", GPU, [(C,
-        "let tr = troco_tracejado(it, sub, s >> 16u, g_s0[i], cp.lin, cp.t);",
-        "let tr = troco_tracejado(it, sub, 0u, g_s0[i], cp.lin, cp.t);", 1)]),
     ("R1 o redesenho mudo", GPU, [(P,
         "self.passe_de_desenho(gpu, encoder, target, wgpu::LoadOp::Load, Some((bg, *count)));",
         "self.passe_de_desenho(gpu, encoder, target, wgpu::LoadOp::Load, None);", 1)]),
@@ -117,7 +102,7 @@ def main():
         falhos = re.findall(r"^test (\S+) \.\.\. FAILED", out, re.M)
         extra = "" if validou else " [shader nao validou]"
         print(f"{nome}: {v} ({p} passed, {fl} failed) reprovou: {falhos}{extra}", flush=True)
-    for f in (C, P, H, PR, FX):
+    for f in (P, H, PR, FX):
         assert not os.path.exists(f + ".muta_bk"), "restauro falhou"
     print(f"placar: {sangrou} de {len(muts)} sangraram")
 

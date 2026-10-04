@@ -714,53 +714,70 @@ fn arredonda(x: f32) -> f32 {
     return floor(x + 0.5);
 }
 
-fn ajuste_do_tracejado(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32) -> f32 {
-    var melhor = 0.0;
-    var fechado = false;
-    var tr = 0.0;
-    var per = 0.0;
-    // ⭐ doc 121 §9.13 — UMA volta: um sub-caminho são os `_pad` troços a partir do de início (só
-    // cabeçalhos de bloco no meio), somados pela mesma ordem de sempre.
-    var tot = 0.0;
-    var restantes = 0u;
-    var sub_fechado = false;
-    var sub_tr = 0.0;
-    var sub_per = 0.0;
-    for (var i = inicio; i < inicio + n; i += 1u) {
-        let it = eixo[i];
-        if it.tipo != 0u {
-            continue;
+// ⭐ doc 121 §9.13 — UMA volta: um sub-caminho são os `_pad` troços a partir do de início (só
+// cabeçalhos de bloco no meio), somados pela mesma ordem de sempre. ⭐ §9.15 — a volta é um
+// ACUMULADOR, para a contagem (que já anda o eixo com o `arco` de cada troço) o levar consigo.
+struct Ajuste {
+    melhor: f32,
+    fechado: bool,
+    tr: f32,
+    per: f32,
+    tot: f32,
+    restantes: u32,
+    sub_fechado: bool,
+    sub_tr: f32,
+    sub_per: f32,
+}
+
+fn ajuste_novo() -> Ajuste {
+    return Ajuste(0.0, false, 0.0, 0.0, 0.0, 0u, false, 0.0, 0.0);
+}
+
+// Um TROÇO tracejado (`tipo 0`) de arco `len`, na ordem do eixo.
+fn ajuste_passo(a: ptr<function, Ajuste>, it: Eixo, len: f32, caneta: f32) {
+    if (*a).restantes == 0u {
+        if (it.ponta & SUB_INICIO) == 0u || it._pad == 0u {
+            return;
         }
-        if restantes == 0u {
-            if !tracejado(it) || (it.ponta & SUB_INICIO) == 0u || it._pad == 0u {
-                continue;
-            }
-            restantes = it._pad;
-            tot = 0.0;
-            sub_fechado = (it.ponta & SUB_FECHADO) != 0u;
-            sub_tr = it.traco * caneta;
-            sub_per = (it.traco + it.vao) * caneta;
-        }
-        tot = tot + arco(it, lin, t);
-        restantes -= 1u;
-        if restantes == 0u && tot > melhor {
-            melhor = tot;
-            fechado = sub_fechado;
-            tr = sub_tr;
-            per = sub_per;
-        }
+        (*a).restantes = it._pad;
+        (*a).tot = 0.0;
+        (*a).sub_fechado = (it.ponta & SUB_FECHADO) != 0u;
+        (*a).sub_tr = it.traco * caneta;
+        (*a).sub_per = (it.traco + it.vao) * caneta;
     }
-    if melhor <= 0.0 || per <= 0.0 {
+    (*a).tot = (*a).tot + len;
+    (*a).restantes -= 1u;
+    if (*a).restantes == 0u && (*a).tot > (*a).melhor {
+        (*a).melhor = (*a).tot;
+        (*a).fechado = (*a).sub_fechado;
+        (*a).tr = (*a).sub_tr;
+        (*a).per = (*a).sub_per;
+    }
+}
+
+fn ajuste_fim(a: Ajuste) -> f32 {
+    if a.melhor <= 0.0 || a.per <= 0.0 {
         return 1.0;
     }
-    var denom = max(arredonda(melhor / per), 1.0) * per;
-    if !fechado {
-        denom = max(arredonda((melhor - tr) / per), 0.0) * per + tr;
+    var denom = max(arredonda(a.melhor / a.per), 1.0) * a.per;
+    if !a.fechado {
+        denom = max(arredonda((a.melhor - a.tr) / a.per), 0.0) * a.per + a.tr;
     }
     if denom <= 0.0 {
         return 1.0;
     }
-    return melhor / denom * select(1.0, 1.0 + FOLGA_DO_AJUSTE, fechado);
+    return a.melhor / denom * select(1.0, 1.0 + FOLGA_DO_AJUSTE, a.fechado);
+}
+
+fn ajuste_do_tracejado(inicio: u32, n: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32) -> f32 {
+    var a = ajuste_novo();
+    for (var i = inicio; i < inicio + n; i += 1u) {
+        let it = eixo[i];
+        if it.tipo == 0u && tracejado(it) {
+            ajuste_passo(&a, it, arco(it, lin, t), caneta);
+        }
+    }
+    return ajuste_fim(a);
 }
 
 struct SubTracejado {
@@ -775,7 +792,8 @@ struct SubTracejado {
     emenda: bool,
 }
 
-fn sub_tracejado(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, ajuste: f32) -> SubTracejado {
+// O sub-caminho sem o total (`tot`, `a_fim`, `emenda` a zero) — o que [`sub_tracejado`] sabe sem andar.
+fn cabeca_do_tracejado(i0: u32, caneta: f32, ajuste: f32) -> SubTracejado {
     let it = eixo[i0];
     var s: SubTracejado;
     s.n = it._pad;
@@ -784,16 +802,28 @@ fn sub_tracejado(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, ajuste: f32
     s.per = (it.traco + it.vao) * caneta * ajuste;
     s.tot = 0.0;
     s.emenda = false;
+    return s;
+}
+
+// A emenda de um FECHADO de comprimento `tot`.
+fn fecha_o_tracejado(s: ptr<function, SubTracejado>, tot: f32) {
+    (*s).tot = tot;
+    (*s).a_fim = floor(tot / (*s).per) * (*s).per;
+    (*s).emenda = (*s).a_fim < tot && tot < (*s).a_fim + (*s).tr;
+}
+
+fn sub_tracejado(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, ajuste: f32) -> SubTracejado {
+    var s = cabeca_do_tracejado(i0, caneta, ajuste);
     if s.fechado && s.per > 0.0 {
         var i = i0;
+        var tot = 0.0;
         for (var k = 0u; k < s.n; k += 1u) {
             i = proximo_troco(i);
             let e = eixo[i];
-            s.tot = s.tot + arco(e, lin, t);
+            tot = tot + arco(e, lin, t);
             i += 1u;
         }
-        s.a_fim = floor(s.tot / s.per) * s.per;
-        s.emenda = s.a_fim < s.tot && s.tot < s.a_fim + s.tr;
+        fecha_o_tracejado(&s, tot);
     }
     return s;
 }

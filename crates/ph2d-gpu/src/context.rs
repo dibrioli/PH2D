@@ -84,6 +84,11 @@ impl GpuContext {
                 // peca desenha com a cor por-vertice de sempre — a validacao de
                 // um modulo WGSL e' tudo-ou-nada.
                 | wgpu::Features::PRIMITIVE_INDEX
+                // doc 121 §9.15 (d): o prefixo das células do passe de formas por
+                // SUBGRUPO (`ph2d-shape-gpu`, `contorno_subgrupo.wgsl`). A mesma
+                // regra: onde falta, o módulo sai sem ele e o passe usa o de
+                // memória de grupo (a mesma cobertura, bit a bit).
+                | wgpu::Features::SUBGROUP
                 | wgpu::Features::TIMESTAMP_QUERY);
 
         // Limits::default() (desktop tier) is required by Vello's

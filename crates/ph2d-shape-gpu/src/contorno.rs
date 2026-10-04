@@ -73,6 +73,12 @@ const POR_PIXEL: u64 = 24;
 const DESENHO_ENXUTA: u64 = 36;
 const DESENHO_COMPLETO: u64 = 52;
 const DESPACHO: u64 = 68;
+/// As contagens por cópia na `contagem` (`quinto` no WGSL).
+const QUINTOS: u64 = 5;
+/// doc 121 §9.15 — o `cs_deposita` por aresta ESCRITA (`ARESTAS_COMPACTAS` no WGSL: as duas mudam juntas).
+const ARESTAS_COMPACTAS: bool = true;
+/// doc 121 §9.15 (c2) — uma cena nova mede a capacidade antes do 1.º quadro (`contorno_capacidade.rs`).
+const MEDE_NO_INICIO: bool = true;
 
 // Os estados da leitura do total (um `AtomicU8`, porque o fecho do `map_async` corre noutro sítio).
 const LIVRE: u8 = 0;
@@ -86,12 +92,22 @@ pub(crate) struct Contorno {
     conta: Variantes<wgpu::ComputePipeline>,
     soma: wgpu::ComputePipeline,
     escreve: Variantes<wgpu::ComputePipeline>,
+    /// doc 121 §9.15 — o prefixo das arestas ESCRITAS (o despacho do `cs_deposita`).
+    soma_escritas: wgpu::ComputePipeline,
     /// doc 121 §9.12 — as células por acumulação, por despachos indirectos: um fio por PIXEL apaga,
     /// um por ARESTA deposita, um por LINHA faz o prefixo do fundo, um por PIXEL varre a célula.
     zera: wgpu::ComputePipeline,
     deposita: wgpu::ComputePipeline,
     fundo: wgpu::ComputePipeline,
     varre: wgpu::ComputePipeline,
+    /// doc 121 §9.15 (d) — o `cs_varre` por subgrupo, onde o dispositivo tem `Features::SUBGROUP`.
+    varre_sg: Option<wgpu::ComputePipeline>,
+    /// `false` ⇒ o `cs_varre` de memória de grupo mesmo com o de subgrupo (os gates comparam os dois).
+    pub(crate) subgrupo: bool,
+    /// doc 121 §9.15 (c2) — o próximo cálculo MEDE a capacidade antes de desenhar (cena nova).
+    pub(crate) medir_ja: bool,
+    /// `false` ⇒ só a leitura assíncrona (os gates que medem a mistura do 1.º quadro).
+    pub(crate) mede_no_inicio: bool,
     /// O grupo `1` do DESENHO (as três leituras).
     pub(crate) leitura: wgpu::BindGroupLayout,
     /// O grupo `2` do CÁLCULO (o uniforme e as cinco escritas).
@@ -211,6 +227,7 @@ impl Contorno {
     pub(crate) fn new(
         gpu: &GpuContext,
         module: &wgpu::ShaderModule,
+        modulo_subgrupo: Option<&wgpu::ShaderModule>,
         grupo0: &wgpu::BindGroupLayout,
     ) -> Self {
         let device = &gpu.device;
@@ -299,10 +316,24 @@ impl Contorno {
             conta: variantes("cs_conta"),
             soma: pipeline("cs_soma"),
             escreve: variantes("cs_escreve"),
+            soma_escritas: pipeline("cs_soma_escritas"),
             zera: pipeline_em("cs_zera", &pl_celulas),
             deposita: pipeline_em("cs_deposita", &pl_celulas),
             fundo: pipeline_em("cs_fundo", &pl_celulas),
             varre: pipeline_em("cs_varre", &pl_celulas),
+            varre_sg: modulo_subgrupo.map(|m| {
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("ph2d-shape-gpu contorno (subgrupo)"),
+                    layout: Some(&pl_celulas),
+                    module: m,
+                    entry_point: Some("cs_varre_sg"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    cache: None,
+                })
+            }),
+            subgrupo: true,
+            medir_ja: true,
+            mede_no_inicio: MEDE_NO_INICIO,
             leitura,
             escrita,
             escrita_celulas,
@@ -392,11 +423,12 @@ impl Contorno {
         if n > self.cap_copias {
             let cap = n.next_power_of_two();
             let armazens = wgpu::BufferUsages::STORAGE;
-            // Três terços de `n + 1`: as arestas, as células e as linhas de ecrã.
+            // Cinco quintos de `n + 1`: as arestas reservadas, as células, as linhas de ecrã, as
+            // arestas escritas e o ajuste do tracejado (§9.15).
             self.contagem = buffer(
                 gpu,
                 "ph2d-shape-gpu contagem",
-                3 * (cap + 1) * 4,
+                QUINTOS * (cap + 1) * 4,
                 armazens | wgpu::BufferUsages::COPY_SRC,
             );
             // Três `vec4<u32>` por cópia. `COPY_SRC`: o instrumento `copias_com_contorno` lê-o.
@@ -449,18 +481,16 @@ impl Contorno {
         }
     }
 
-    /// Codifica os quatro passes para `count` cópias (o grupo `0` é o do desenho), na variante do
-    /// eixo carregado (`tracejado`, [`Variantes`]).
-    pub(crate) fn calcula(
-        &mut self,
-        gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
-        grupo0: &wgpu::BindGroup,
-        count: u32,
-        tracejado: bool,
-    ) {
-        self.colhe();
-        self.garante(gpu, u64::from(count));
+    /// O `cs_varre` deste quadro: o de subgrupo, se existe e nenhum gate o desligou (§9.15 d).
+    fn varre_do_quadro(&self) -> &wgpu::ComputePipeline {
+        self.varre_sg
+            .as_ref()
+            .filter(|_| self.subgrupo)
+            .unwrap_or(&self.varre)
+    }
+
+    /// O uniforme deste cálculo e os dois grupos `2` — o da escrita e o das células (sem o `despacho`).
+    fn prepara(&mut self, gpu: &GpuContext, count: u32) -> (wgpu::BindGroup, wgpu::BindGroup) {
         let contas = Contas {
             n: count,
             cap: u32::try_from(self.cap_arestas).unwrap_or(u32::MAX),
@@ -517,6 +547,26 @@ impl Contorno {
             layout: &self.escrita,
             entries: &entradas,
         });
+        (escrita, celulas)
+    }
+
+    /// Codifica os quatro passes para `count` cópias (o grupo `0` é o do desenho), na variante do
+    /// eixo carregado (`tracejado`, [`Variantes`]).
+    pub(crate) fn calcula(
+        &mut self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        grupo0: &wgpu::BindGroup,
+        count: u32,
+        tracejado: bool,
+    ) {
+        self.colhe();
+        self.garante(gpu, u64::from(count));
+        if std::mem::take(&mut self.medir_ja) && self.ligado && self.mede_no_inicio {
+            self.mede_a_capacidade(gpu, grupo0, count, tracejado);
+            self.garante(gpu, u64::from(count));
+        }
+        let (escrita, celulas) = self.prepara(gpu, count);
         let grupos = count.div_ceil(64);
         let x = grupos.min(65_535);
         let y = grupos.div_ceil(x.max(1));
@@ -545,6 +595,10 @@ impl Contorno {
             let mut pass = passe(encoder, "render.contorno.escreve");
             pass.set_pipeline(self.escreve.de(tracejado));
             pass.dispatch_workgroups(x, y, 1);
+            if ARESTAS_COMPACTAS {
+                pass.set_pipeline(&self.soma_escritas);
+                pass.dispatch_workgroups(1, 1, 1);
+            }
         }
         {
             let mut pass = passe(encoder, "render.contorno.celulas");
@@ -556,7 +610,7 @@ impl Contorno {
                 (&self.zera, POR_PIXEL),
                 (&self.deposita, POR_ARESTA),
                 (&self.fundo, POR_LINHA),
-                (&self.varre, POR_PIXEL),
+                (self.varre_do_quadro(), POR_PIXEL),
             ] {
                 pass.set_pipeline(pipeline);
                 pass.dispatch_workgroups_indirect(&self.despacho, args);
@@ -621,6 +675,9 @@ impl Contorno {
 
 #[path = "contorno_sondas.rs"]
 mod sondas;
+
+#[path = "contorno_capacidade.rs"]
+mod capacidade;
 
 #[cfg(test)]
 #[path = "contorno_tests.rs"]

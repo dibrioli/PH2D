@@ -515,7 +515,10 @@ fn sonda_relogio_das_estrelas_grandes() {
         cpu[2] += (t3 - t2).as_secs_f64();
         cpu[3] += t3.elapsed().as_secs_f64();
     };
+    // O 1.º quadro de todos (fora da média): o da cena NOVA, que mede a capacidade (doc 121 §9.15 c2).
+    let t_aquece = std::time::Instant::now();
     quadro(&mut p, &mut geo, &mut cpu);
+    let aquece = t_aquece.elapsed().as_secs_f64() * 1e3;
     cpu = [0.0; 4];
     // A parede de CADA quadro: a média esconde os primeiros, que vão pixel a pixel até a capacidade
     // medida chegar (dois quadros depois — `Contorno::colhe`).
@@ -539,7 +542,7 @@ fn sonda_relogio_das_estrelas_grandes() {
     let mut ordenadas = paredes.clone();
     ordenadas.sort_by(f64::total_cmp);
     eprintln!(
-        "  parede por quadro: mediana {:.3} ms · primeiros {} ms",
+        "  parede por quadro: mediana {:.3} ms · primeiros {} ms · o da cena nova {aquece:.2} ms",
         ordenadas[ordenadas.len() / 2],
         primeiros.join(" ")
     );

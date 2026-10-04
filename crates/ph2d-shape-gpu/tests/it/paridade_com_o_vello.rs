@@ -90,6 +90,7 @@ pub(super) fn anel() -> BezPath {
 
 /// Uma cópia: posição, lado, ângulo e cor — e o ASPECTO (`altura / largura`), que é `1` numa cópia
 /// conforme e outra coisa sob escala NÃO uniforme (doc 121 W4).
+#[derive(Clone)]
 pub(super) struct Copia {
     pub(super) pos: [f32; 2],
     pub(super) lado: f32,
@@ -449,6 +450,32 @@ pub(super) fn pelo_passe_observado(
     (contorno, area_minima_conforme, celulas_no_maximo): (bool, f32, u64),
     observa: &mut dyn FnMut(&GpuContext, &ShapePass),
 ) -> Vec<(Vec<u8>, u32, (u64, u64))> {
+    pelo_passe_ajustado(
+        gpu,
+        forma,
+        etapas,
+        format,
+        &mut |p| {
+            p.com_contorno(contorno);
+            p.area_minima_conforme(area_minima_conforme);
+            p.limita_as_celulas(celulas_no_maximo);
+            // ⚠️ doc 121 §9.15 (c2): estes gates medem o 1.º quadro SEM capacidade (a mistura dos
+            // dois caminhos); a medida no início tem gate próprio (`tracejado.rs`).
+            p.mede_a_capacidade_no_inicio(false);
+        },
+        observa,
+    )
+}
+
+/// O mesmo, com as portas do passe postas por `ajusta` antes do 1.º quadro.
+pub(super) fn pelo_passe_ajustado(
+    gpu: &GpuContext,
+    forma: &Forma<'_>,
+    etapas: &[(&[Copia], usize)],
+    format: wgpu::TextureFormat,
+    ajusta: &mut dyn FnMut(&mut ShapePass),
+    observa: &mut dyn FnMut(&GpuContext, &ShapePass),
+) -> Vec<(Vec<u8>, u32, (u64, u64))> {
     let traco = forma.traco.as_ref().map(|(s, cor)| StrokeInput {
         path: forma.linha.unwrap_or(forma.bp),
         style: s,
@@ -461,9 +488,7 @@ pub(super) fn pelo_passe_observado(
     })
     .expect("a forma prepara");
     let mut p = ShapePass::new(gpu, format);
-    p.com_contorno(contorno);
-    p.area_minima_conforme(area_minima_conforme);
-    p.limita_as_celulas(celulas_no_maximo);
+    ajusta(&mut p);
     p.set_geometries(gpu, [(7u32, &g)]);
     let tex = textura(gpu, wgpu::TextureUsages::RENDER_ATTACHMENT, format);
     let vista = tex.create_view(&wgpu::TextureViewDescriptor::default());

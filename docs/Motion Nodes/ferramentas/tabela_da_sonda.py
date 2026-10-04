@@ -27,6 +27,7 @@ def le(f: Path):
     cpu = re.search(r"decide ([\d.]+) ms · desenha ([\d.]+) ms · espera ([\d.]+) ms", t)
     ar = re.search(r"reservadas (\d+) · escritas (\d+) \(do contorno (\d+)\)", t)
     carga = re.search(r"ANTES: ([\d.]+)", t)
+    med = re.search(r"mediana ([\d.]+) ms · primeiros ([\d. ]+) ms(?: · o da cena nova ([\d.]+) ms)?", t)
     linha = {p: float(por.get(p, 0.0)) for p in PASSES}
     linha["soma"] = sum(linha[p] for p in PASSES)
     linha["span"] = float(span)
@@ -35,6 +36,9 @@ def le(f: Path):
     linha["cpu"] = tuple(float(x) for x in cpu.groups()) if cpu else None
     linha["arestas"] = tuple(int(x) for x in ar.groups()) if ar else None
     linha["carga"] = float(carga.group(1)) if carga else float("nan")
+    linha["mediana"] = float(med.group(1)) if med else float("nan")
+    linha["primeiro"] = float(med.group(2).split()[0]) if med else float("nan")
+    linha["cena_nova"] = float(med.group(3)) if med and med.group(3) else float("nan")
     return linha
 
 
@@ -55,7 +59,7 @@ def main():
             continue
         celulas[(placa, arranjo, tr or "-", rotulo or "-")].append(l)
     cab = ["placa", "arranjo", "tr", "binario", "soma", "conta+escreve", "celulas", "formas", "span",
-           "placa(parede)", "vello", "parede-soma", "cpu decide/desenha/espera", "arestas res/escr/contorno", "carga"]
+           "parede mediana", "vello", "mediana-span", "1.º cronometrado", "cena nova", "cpu decide/desenha/espera", "arestas res/escr/contorno", "carga"]
     sep = " | " if md else "\t"
     if md:
         print("| " + " | ".join(cab) + " |")
@@ -74,9 +78,11 @@ def main():
                col(lambda l: l["render.contorno.celulas"]),
                col(lambda l: l["render.formas"]),
                col(lambda l: l["span"]),
-               col(lambda l: l["placa"]),
+               col(lambda l: l["mediana"]),
                col(lambda l: l["vello"]),
-               col(lambda l: l["placa"] - l["soma"]),
+               col(lambda l: l["mediana"] - l["span"]),
+               col(lambda l: l["primeiro"]),
+               col(lambda l: l["cena_nova"]),
                cpu, ar,
                col(lambda l: l["carga"], "{:.1f}")]
         print(("| " + " | ".join(row) + " |") if md else sep.join(row))

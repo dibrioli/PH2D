@@ -70,6 +70,11 @@ pub struct ShapePass {
 /// O shader: o desenho e os passes de cálculo do contorno num MÓDULO só — os dois lêem a mesma
 /// `copia_de` e a mesma geometria do traço (`bissectriz`), e escritas duas vezes elas divergiriam.
 const SHADER: &str = concat!(include_str!("shape.wgsl"), include_str!("contorno.wgsl"));
+/// doc 121 §9.15 (d) — o `cs_varre` por subgrupo, num módulo à parte: um módulo com operações de
+/// subgrupo não valida num dispositivo sem `Features::SUBGROUP`.
+const SUBGRUPO: &str = include_str!("contorno_subgrupo.wgsl");
+/// O roteiro de troca da rodada desliga o pedaço (d) aqui.
+const PREFIXO_POR_SUBGRUPO: bool = true;
 
 fn storage_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
@@ -140,7 +145,16 @@ impl ShapePass {
                 storage_entry(6),
             ],
         });
-        let contorno = crate::contorno::Contorno::new(gpu, &module, &layout);
+        let modulo_subgrupo = (PREFIXO_POR_SUBGRUPO
+            && device.features().contains(wgpu::Features::SUBGROUP))
+        .then(|| {
+            device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("ph2d-shape-gpu (subgrupo)"),
+                source: wgpu::ShaderSource::Wgsl(format!("{SHADER}{SUBGRUPO}").into()),
+            })
+        });
+        let contorno =
+            crate::contorno::Contorno::new(gpu, &module, modulo_subgrupo.as_ref(), &layout);
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-shape-gpu"),
             bind_group_layouts: &[Some(&layout), Some(&contorno.leitura)],
@@ -253,6 +267,25 @@ impl ShapePass {
         self.contorno.ligado = ligado;
     }
 
+    /// `false` ⇒ o prefixo das células pela memória de grupo mesmo onde há o de subgrupo (doc 121
+    /// §9.15 d) — a porta pela qual um gate compara os dois, byte a byte.
+    pub fn com_subgrupo(&mut self, ligado: bool) {
+        self.contorno.subgrupo = ligado;
+    }
+
+    /// `false` ⇒ uma cena nova espera dois quadros pela capacidade medida, pixel a pixel (doc 121
+    /// §9.15 c2) — a porta dos gates que medem a mistura dos dois caminhos no 1.º quadro.
+    pub fn mede_a_capacidade_no_inicio(&mut self, ligado: bool) {
+        self.contorno.mede_no_inicio = ligado;
+    }
+
+    /// O dispositivo tem o prefixo por subgrupo (instrumento de gates: o controlo de que os dois
+    /// caminhos existem).
+    #[must_use]
+    pub fn tem_subgrupo(&self) -> bool {
+        self.contorno.tem_subgrupo()
+    }
+
     /// A área no ecrã (px²) a partir da qual uma cópia CONFORME vai pelas arestas no ecrã (doc 121
     /// §9.6). `0` ⇒ TODAS as cópias — é como os gates medem o caminho novo nas formas pequenas.
     pub fn area_minima_conforme(&mut self, px2: f32) {
@@ -274,6 +307,8 @@ impl ShapePass {
         if chaves == self.carregadas {
             return;
         }
+        // doc 121 §9.15 (c2) — outra cena: o próximo cálculo mede a capacidade antes de desenhar.
+        self.contorno.medir_ja = true;
         let mut records: Vec<GeometryRecord> = Vec::with_capacity(v.len());
         let mut segs: Vec<[f32; 4]> = Vec::new();
         let mut eixo: Vec<crate::EixoItem> = Vec::new();

@@ -6,12 +6,16 @@
 //! cargo test -p ph2d-shape-gpu --test it -- --ignored --nocapture tracejado
 //! ```
 
-use ph2d_shape_gpu::{EixoItem, FillRule, ShapeGeometry, ShapeInput, ShapePass, StrokeInput};
+use ph2d_gpu::GpuContext;
+use ph2d_shape_gpu::{
+    Copias, EixoItem, FillRule, ShapeGeometry, ShapeInput, ShapeInstance, ShapePass, ShapeView,
+    StrokeInput,
+};
 use ph2d_vector::{BezPath, Cap, Join, Stroke};
 
 use super::paridade_com_o_vello::{
-    Copia, Forma, circulo, copias, corre, esticadas, estrela, gpu, pelo_passe_com,
-    pelo_passe_observado, zigue_zague,
+    Copia, Forma, LADO, basis, bytes_de_textura, circulo, copias, corre, esticadas, estrela, gpu,
+    pelo_passe_ajustado, pelo_passe_com, pelo_passe_observado, textura, zigue_zague,
 };
 
 /// ⭐ **A barra, do VALE medido** (2026-10-02, RTX, meio-float; arnês
@@ -343,4 +347,199 @@ fn a_placa_escolhe_a_variante_completa_so_quando_um_tracejado_vai_pixel_a_pixel(
         pior <= 2,
         "{nome}: metade das células desenha outra coisa (alfa {pior})"
     );
+}
+
+/// A geometria de uma fixtura, como o passe a recebe.
+fn geometria(forma: &Forma<'_>) -> ShapeGeometry {
+    let traco = forma.traco.as_ref().map(|(s, cor)| StrokeInput {
+        path: forma.linha.unwrap_or(forma.bp),
+        style: s,
+        color: *cor,
+    });
+    ShapeGeometry::prepare(&ShapeInput {
+        fill: Some((forma.bp, forma.regra)),
+        strokes: traco.into_iter().collect(),
+        stroke_fills: forma.marcas.into_iter().collect(),
+    })
+    .expect("a forma prepara")
+}
+
+/// Um quadro de `cs` cópias da geometria `h`, submetido e esperado; devolve os bytes da camada.
+fn um_quadro(
+    gpu: &GpuContext,
+    p: &mut ShapePass,
+    tex: &wgpu::Texture,
+    h: u32,
+    cs: &[Copia],
+) -> Vec<u8> {
+    let insts: Vec<ShapeInstance> = cs
+        .iter()
+        .map(|c| ShapeInstance {
+            pos: c.pos,
+            size: [c.lado, c.lado * c.aspecto],
+            basis: basis(c.ang),
+            anchor: [0.0, 0.0],
+            geometry: h,
+            _pad: 0,
+            tint: c.tint,
+        })
+        .collect();
+    p.upload_instances(gpu, &insts);
+    let copias = p.uploaded().expect("carregou").clone();
+    let vista = tex.create_view(&wgpu::TextureViewDescriptor::default());
+    #[expect(clippy::cast_precision_loss, reason = "LADO é 512")]
+    let alvo = [LADO as f32, LADO as f32];
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    p.draw(
+        gpu,
+        &mut enc,
+        &vista,
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        ShapeView {
+            lin: [1.0, 0.0, 0.0, 1.0],
+            t: [0.0, 0.0],
+            alvo,
+        },
+        Copias {
+            buffer: &copias,
+            count: u32::try_from(insts.len()).expect("cabem"),
+        },
+    );
+    gpu.queue.submit(Some(enc.finish()));
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    bytes_de_textura(gpu, tex, 8)
+}
+
+/// ⭐ doc 121 §9.15 (c2) — **uma cena NOVA mede a capacidade antes do 1.º quadro dela.** A leitura do
+/// total é assíncrona e chega dois quadros depois; até lá cada cópia ia pixel a pixel — numa cena
+/// tracejada pela variante COMPLETA (`76` ms por quadro na sonda da iGPU, contra `1,27` no regime). Com
+/// a medida no início o 1.º quadro já é o do regime: todas as cópias nas células, a ENXUTA, e a MESMA
+/// imagem byte a byte. E outra cena (as geometrias carregadas mudam, com `4×` as cópias — o que passa
+/// de qualquer capacidade medida) mede outra vez. CONTROLO: sem a medida, o 1.º quadro é o pixel a pixel.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn a_cena_nova_mede_a_capacidade_antes_do_primeiro_quadro() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adaptador — nada a medir");
+        return;
+    };
+    let (est, circ, zz, furo) = (estrela(), circulo(), zigue_zague(), estrela_com_furo());
+    let todos = casos(&est, &circ, &zz, &furo);
+    let (nome, forma, cs) = &todos[0];
+    let g = geometria(forma);
+    let n = u32::try_from(cs.len()).expect("cabem");
+    let fmt = wgpu::TextureFormat::Rgba16Float;
+    let tex = textura(&gpu, wgpu::TextureUsages::RENDER_ATTACHMENT, fmt);
+    let novo = |mede: bool| {
+        let mut p = ShapePass::new(&gpu, fmt);
+        p.area_minima_conforme(0.0);
+        p.mede_a_capacidade_no_inicio(mede);
+        p.set_geometries(&gpu, [(7u32, &g)]);
+        p
+    };
+    // CONTROLO: sem a medida no início, o 1.º quadro vai pixel a pixel, pela completa.
+    let mut sem = novo(false);
+    let _ = um_quadro(&gpu, &mut sem, &tex, 7, cs);
+    assert_eq!(
+        sem.copias_por_variante(&gpu),
+        (0, n),
+        "{nome}: CONTROLO — o 1.º quadro sem a medida"
+    );
+    let mut p = novo(true);
+    let primeiro = um_quadro(&gpu, &mut p, &tex, 7, cs);
+    assert_eq!(
+        p.copias_com_contorno(&gpu, n).0,
+        n,
+        "{nome}: o 1.º quadro tem todas nas células"
+    );
+    assert_eq!(
+        p.copias_por_variante(&gpu),
+        (n, 0),
+        "{nome}: o 1.º quadro desenha pela ENXUTA"
+    );
+    let (pedido, cap) = p.celulas_do_ultimo_quadro(&gpu);
+    assert!(
+        pedido > 0 && pedido <= cap,
+        "{nome}: celulas {pedido} de {cap} no 1.º quadro"
+    );
+    let mut regime = Vec::new();
+    for _ in 0..3 {
+        regime = um_quadro(&gpu, &mut p, &tex, 7, cs);
+    }
+    assert!(
+        primeiro.iter().any(|&b| b != 0),
+        "{nome}: a fixtura nao desenha"
+    );
+    assert!(
+        primeiro == regime,
+        "{nome}: o 1.º quadro desenha outra coisa que o regime"
+    );
+    // Outra cena: outra chave e `4×` as cópias.
+    let muitas: Vec<Copia> = (0..4).flat_map(|_| cs.iter().cloned()).collect();
+    let m = u32::try_from(muitas.len()).expect("cabem");
+    p.set_geometries(&gpu, [(8u32, &g)]);
+    let _ = um_quadro(&gpu, &mut p, &tex, 8, &muitas);
+    assert_eq!(
+        p.copias_com_contorno(&gpu, m).0,
+        m,
+        "{nome}: a cena nova mediu outra vez"
+    );
+    assert_eq!(
+        p.copias_por_variante(&gpu),
+        (m, 0),
+        "{nome}: a cena nova pela ENXUTA"
+    );
+}
+
+/// ⭐ doc 121 §9.15 (d) — **o prefixo das células por SUBGRUPO é o MESMO que o de memória de grupo**, byte
+/// a byte: a soma é de inteiros, por outra ordem. Nas sete famílias do tracejado, no regime. Sem
+/// `Features::SUBGROUP` o passe só tem um caminho e o gate diz que não mediu nada.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn o_prefixo_por_subgrupo_e_o_mesmo_que_o_de_memoria_de_grupo() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adaptador — nada a medir");
+        return;
+    };
+    if !ShapePass::new(&gpu, wgpu::TextureFormat::Rgba16Float).tem_subgrupo() {
+        eprintln!("sem Features::SUBGROUP — um caminho só, nada a comparar");
+        return;
+    }
+    let (est, circ, zz, furo) = (estrela(), circulo(), zigue_zague(), estrela_com_furo());
+    let fmt = wgpu::TextureFormat::Rgba16Float;
+    for (nome, forma, cs) in &casos(&est, &circ, &zz, &furo) {
+        let n = u32::try_from(cs.len()).expect("cabem");
+        let corre = |subgrupo: bool| {
+            pelo_passe_ajustado(
+                &gpu,
+                forma,
+                &[(cs.as_slice(), 4)],
+                fmt,
+                &mut |p| {
+                    p.area_minima_conforme(0.0);
+                    p.com_subgrupo(subgrupo);
+                },
+                &mut |_, _| {},
+            )
+            .pop()
+            .expect("um quadro")
+        };
+        let (com_sg, com, _) = corre(true);
+        let (sem_sg, com2, _) = corre(false);
+        eprintln!("  {nome}: {com}/{n} e {com2}/{n} nas celulas");
+        assert!(
+            com == n && com2 == n,
+            "{nome}: CONTROLO — todas nas células ({com}, {com2} de {n})"
+        );
+        assert!(
+            com_sg.iter().any(|&b| b != 0),
+            "{nome}: a fixtura nao desenha"
+        );
+        assert!(
+            com_sg == sem_sg,
+            "{nome}: o prefixo por subgrupo desenha outra coisa"
+        );
+    }
 }

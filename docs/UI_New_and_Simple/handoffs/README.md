@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**35 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **35** são handoffs (registro **morto**).
+**36 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **36** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -50,6 +50,7 @@
 | 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_CTRL_TAB_E_O_MASK.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_CTRL_TAB_E_O_MASK.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — o Ctrl+Tab e o Mask (os três abertos dos modos) |
 | 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — o OBJECTO VETORIAL (contentor das formas) |
 | 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — a F3 do Vector (Vector ▸ Object · Edit) |
+| 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — PARA O `main` (o ponto de entrada único) |
 
 ---
 

@@ -150,3 +150,50 @@ fn a_quina_da_lama_nao_prende_o_polimento() {
     let (c, _) = procura(&mut Polyanya::new(), &m, &costs, a, z);
     assert!(c / o <= 1.0001, "custo / oráculo = {}", c / o);
 }
+
+/// (W14) **O trabalho de uma procura** ([`ph2d_nav::Stats::work`], a unidade do orçamento da fila):
+/// sem lama é o número de nós AO BIT (as cenas sem lama ficam com a mesma fila); na lama pesa as
+/// raízes de fronteira e as frentes comparadas — medido (plano 30 §22.1): o nó da ponderada custa
+/// `1,7–3,2×` o da uniforme conforme a densidade da lama. Aqui: `16 837` de trabalho sobre `9 290` nós,
+/// `1,81×` — a faixa `1,5–2,5` apanha um peso dobrado ou a metade.
+#[test]
+fn o_trabalho_sem_lama_sao_os_nos_e_na_lama_pesa_o_que_custa() {
+    let mut s = Polyanya::new();
+    let (mut nos, mut trabalho, mut pend, mut frentes) = (0u64, 0u64, 0u64, 0u64);
+    for seed in 1..=4u64 {
+        let m = cena(seed);
+        let mut r = Lcg(seed * 31 + 7);
+        let mut n = 0;
+        while n < 8 {
+            let (a, z) = (
+                [r.next() * 30.0, r.next() * 20.0],
+                [r.next() * 30.0, r.next() * 20.0],
+            );
+            if m.locate(a).is_none() || s.find_path(&m, a, z).is_err() {
+                continue;
+            }
+            n += 1;
+            let antes = s.stats;
+            s.find_path_costs(&m, &[1.0], a, z).expect("mesma ilha");
+            assert_eq!(
+                s.stats.work() - antes.work(),
+                s.stats.expanded - antes.expanded,
+                "sem lama, semente {seed}, {a:?} → {z:?}"
+            );
+            let antes = s.stats;
+            s.find_path_costs(&m, &[1.0, 4.0, 4.0, 4.0, 4.0], a, z)
+                .expect("mesma ilha");
+            nos += s.stats.expanded - antes.expanded;
+            trabalho += s.stats.work() - antes.work();
+            pend += s.stats.pending - antes.pending;
+            frentes += s.stats.compared - antes.compared;
+        }
+    }
+    // A população: a lama refracta e a dominância compara (os dois termos mordem).
+    assert!(pend > 0 && frentes > 0, "{pend} raízes, {frentes} frentes");
+    let k = trabalho as f64 / nos as f64;
+    assert!(
+        (1.5..=2.5).contains(&k),
+        "trabalho / nós = {k:.2} ({trabalho} / {nos})"
+    );
+}

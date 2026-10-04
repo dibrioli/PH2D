@@ -59,6 +59,8 @@ use crate::mesh::NavMesh;
 mod custo;
 #[path = "polyanya_dominancia.rs"]
 mod dominancia;
+#[path = "polyanya_trabalho.rs"]
+mod trabalho;
 
 /// Um caminho: os pontos por onde ele passa (o primeiro é a partida, o último o alvo, os do meio são
 /// CANTOS da malha — e, com áreas de custo, os pontos onde ele atravessa uma fronteira), o
@@ -98,6 +100,10 @@ pub struct Stats {
     pub dominated: u64,
     /// (W9) Nós cortados nas pontas por outra frente.
     pub trimmed: u64,
+    /// (W14) Raízes de fronteira PROMETIDAS que saíram do heap (`Kind::Pending`).
+    pub pending: u64,
+    /// (W14) Frentes já expandidas que a dominância percorreu.
+    pub compared: u64,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -283,7 +289,10 @@ impl Polyanya {
                     self.stats.expanded += 1;
                     self.expand(mesh, node.root, poly, entry, left, right, node.w, t);
                 }
-                Kind::Pending { idx } => self.materialize(mesh, idx, t),
+                Kind::Pending { idx } => {
+                    self.stats.pending += 1;
+                    self.materialize(mesh, idx, t);
+                }
             }
         }
         Err(NoPath::Unreachable)

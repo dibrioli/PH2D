@@ -10,14 +10,17 @@
 //! régua é o PIOR tique (e o maior número de procuras num tique) da janela de oito que se segue a cada
 //! movimento, e o CONTROLO é a mesma janela sem a porta mexer.
 //! ⛔ Nenhum número de tempo desta saída vale acima de `load ~5`; as procuras não dependem da carga.
+//!
+//! (W14) `LAMAS=<n>` põe `n` áreas de lama (caixas sensoras, `LAMA_PESO`, por omissão `4`) com outra
+//! semente — as caixas e os agentes ficam os mesmos: a régua do orçamento quando a procura é a PONDERADA.
 
 use std::time::Instant;
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, NavAgent, NavRegion, NavTarget, PhysicsBridge, RigidBody,
-    TopDownPlayer,
+    BodyKind, Collider, ColliderShape, NavAgent, NavCostArea, NavRegion, NavTarget, PhysicsBridge,
+    RigidBody, TopDownPlayer,
 };
 use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
 
@@ -67,6 +70,31 @@ fn cena(agentes: usize) -> (SimWorld, Entity, Vec<Entity>) {
         caixa(w, BodyKind::Static, Vec2::new(x, y), hx, hy);
     }
     let porta = caixa(w, BodyKind::Kinematic, Vec2::new(50.3, 50.3), 0.5, 0.2);
+    let env = |k: &str| std::env::var(k).ok().and_then(|v| v.parse::<f32>().ok());
+    let peso = env("LAMA_PESO").unwrap_or(4.0);
+    let mut l = Lcg(99);
+    for _ in 0..env("LAMAS").map_or(0, |n| n as usize) {
+        let (x, y) = (l.next() * 100.0, l.next() * 100.0);
+        let (hx, hy) = (1.0 + l.next() * 3.0, 1.0 + l.next() * 3.0);
+        w.spawn((
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: hx,
+                    half_y: hy,
+                },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            NavCostArea {
+                cost: peso,
+                forbidden: false,
+            },
+            Transform::from_translation(Vec2::new(x, y)),
+        ));
+    }
     let livre = |x: f32, y: f32| {
         caixas
             .iter()

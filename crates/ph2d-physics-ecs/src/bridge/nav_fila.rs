@@ -2,7 +2,7 @@
 //! condução do tique, quem procura um caminho novo porque a malha mudou (plano 30 §17).
 //!
 //! ⚠️ Só se lê estado que entra no anel (o [`ph2d_nav::AgentRuntime`] de cada agente: `owed`,
-//! `broken`, `last_nodes`) e a ordem das entidades: um replay serve a MESMA fila no mesmo tique.
+//! `broken`, `last_work`) e a ordem das entidades: um replay serve a MESMA fila no mesmo tique.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -12,8 +12,9 @@ use ph2d_nav::refresh::{Owed, path_still_walkable, serve};
 use super::{ChaveMalha, Vez};
 use crate::bridge::PhysicsBridge;
 
-/// ⭐ **O orçamento de nós da procura por tique** para os caminhos que a fila deve — o recurso é o
-/// TEMPO do tique (`~110 ns` por nó na procura uniforme, `~330` na ponderada ⇒ `~2–7 ms`). Medido
+/// ⭐ **O orçamento de trabalho da procura por tique** para os caminhos que a fila deve, em nós
+/// uniformes ([`ph2d_nav::Stats::work`], W14 — um nó da ponderada pesa o que custa) — o recurso é o
+/// TEMPO do tique (`~110 ns` por nó uniforme ⇒ `~2 ms`). Medido
 /// (`examples/medir_replaneio.rs`, `--release`, load `~3`, `100 × 100 m`, `1 000` caixas, a porta a
 /// alternar seis vezes; o pior tique da janela que se segue, mediana):
 ///
@@ -26,12 +27,12 @@ use crate::bridge::PhysicsBridge;
 ///
 /// (Com a grelha das paredes do desvio e o caminho só percorrido onde a malha mudou; load `5–8`.)
 /// ⇒ abaixo de `20 000` o tique quase não desce e a espera dobra.
-pub(super) const ORCAMENTO_DE_NOS_POR_TIQUE: u64 = 20_000;
+pub(super) const ORCAMENTO_DE_TRABALHO_POR_TIQUE: u64 = 20_000;
 
 impl PhysicsBridge {
     /// Marca na fila os agentes cuja malha MUDOU (o caminho que ainda se anda fica; o partido passa à
     /// frente), envelhece quem lá está, e devolve quem a fila serve neste tique — a quem a condução
-    /// esquece o caminho antes do passo — e os nós que essas procuras devem gastar (a estimativa de
+    /// esquece o caminho antes do passo — e o trabalho que essas procuras devem gastar (a estimativa de
     /// cada um: a última procura dele).
     pub(super) fn fila_do_replaneio(
         &mut self,
@@ -61,7 +62,7 @@ impl PhysicsBridge {
                     id: i as u64,
                     broken: rt.broken,
                     ticks: rt.owed,
-                    nodes: rt.last_nodes,
+                    work: rt.last_work,
                 });
                 quem.insert(i as u64, e);
             }
@@ -73,7 +74,7 @@ impl PhysicsBridge {
             let e = quem[&o.id];
             if k < n {
                 servir.insert(e);
-                gasto = gasto.saturating_add(o.nodes);
+                gasto = gasto.saturating_add(o.work);
             } else if let Some(rt) = self.nav.agents.get_mut(&e) {
                 rt.owed = rt.owed.saturating_add(1);
             }
@@ -81,7 +82,7 @@ impl PhysicsBridge {
         (servir, gasto)
     }
 
-    /// A sonda e o CONTROLO dos gates: outro orçamento de nós por tique (`u64::MAX` = todos no tique,
+    /// A sonda e o CONTROLO dos gates: outro orçamento de trabalho por tique (`u64::MAX` = todos no tique,
     /// o comportamento antes da fila).
     pub fn set_nav_replan_budget(&mut self, nos: u64) {
         self.nav.orcamento = nos;

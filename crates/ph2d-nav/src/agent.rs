@@ -96,8 +96,9 @@ pub struct AgentRuntime {
     pub owed: u32,
     /// (W9) O caminho em curso já não se anda na malha nova: passa à frente na fila.
     pub broken: bool,
-    /// (W9) Os nós que a última procura expandiu — a estimativa do que a próxima custa.
-    pub last_nodes: u64,
+    /// (W9) O trabalho da última procura ([`crate::Stats::work`], W14) — a estimativa do que a próxima
+    /// custa.
+    pub last_work: u64,
 }
 
 /// A resposta de um tique.
@@ -216,9 +217,9 @@ pub fn step_with(
         rt.planned_for = Some(t);
         // (W9) Um caminho novo, por qualquer motivo, salda a dívida da fila.
         (rt.owed, rt.broken) = (0, false);
-        let nos = search.stats.expanded;
+        let antes = search.stats.work();
         let planeado = plan(mesh, search, q, pos, t);
-        rt.last_nodes = search.stats.expanded - nos;
+        rt.last_work = search.stats.work() - antes;
         match planeado {
             Some((path, hops, partial)) => {
                 rt.path = path;

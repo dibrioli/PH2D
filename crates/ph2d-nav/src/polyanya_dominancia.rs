@@ -101,6 +101,7 @@ impl Polyanya {
         while i != NONE {
             let a = f.pool[i as usize];
             i = a.next;
+            self.stats.compared += 1;
             if a.entry != entry || a.w != w {
                 continue;
             }

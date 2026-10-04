@@ -106,7 +106,7 @@ impl Default for NavWorld {
             search: Polyanya::new(),
             tick_events: Vec::new(),
             events: Vec::new(),
-            orcamento: fila::ORCAMENTO_DE_NOS_POR_TIQUE,
+            orcamento: fila::ORCAMENTO_DE_TRABALHO_POR_TIQUE,
         }
     }
 }
@@ -317,12 +317,12 @@ impl PhysicsBridge {
                 continue;
             }
             sem_caminho += usize::from(sem);
-            let nos = search.stats.expanded;
+            let antes = search.stats.work();
             let steer =
                 ph2d_nav::agent::step_with(&mut rt, malha, search, &q, v.pos, alvo, &cfg, dt);
             if !servir.contains(&p.entity) {
                 // (Os servidos pela fila já entraram pela estimativa dela.)
-                gasto = gasto.saturating_add(search.stats.expanded - nos);
+                gasto = gasto.saturating_add(search.stats.work() - antes);
             }
             // (W7) Um TELEPORTE: o corpo vai já para a saída (velocidade a zero), dentro do tique —
             // o replay corre a mesma lei e salta no mesmo tique.

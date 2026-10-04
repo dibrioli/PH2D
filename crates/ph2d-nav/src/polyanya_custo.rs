@@ -432,8 +432,9 @@ impl Polyanya {
     ) -> Result<Path, NoPath> {
         self.stats.searches += 1;
         let wmin = costs.iter().copied().fold(1.0, f64::min);
-        let uniforme =
-            (0..mesh.poly_count() as u32).all(|p| cost_of(costs, mesh.area_id(p)) == wmin);
+        // (W14) Uma tabela toda a `1` (a da ponte sem lama é `[1.0]`) é uniforme sem varrer a malha.
+        let uniforme = costs.iter().all(|&c| c == 1.0)
+            || (0..mesh.poly_count() as u32).all(|p| cost_of(costs, mesh.area_id(p)) == wmin);
         if uniforme {
             return self.search(mesh, costs, s, t);
         }

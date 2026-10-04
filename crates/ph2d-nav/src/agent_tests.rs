@@ -287,3 +287,56 @@ fn um_agente_empurrado_para_fora_da_malha_volta_pelo_ponto_mais_perto() {
         st.dir
     );
 }
+
+/// (W14) A estimativa da fila é o TRABALHO da última procura ([`crate::Stats::work`]): na lama, mais
+/// do que os nós expandidos (as raízes de fronteira pesam o que custam); sem lama, os nós ao bit.
+#[test]
+fn a_ultima_procura_guarda_o_trabalho_e_nao_os_nos() {
+    // Três faixas `[0,1] · [1,3] · [3,4] × [0,4]`, a do meio é a área `1`.
+    let v = vec![
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [3.0, 0.0],
+        [4.0, 0.0],
+        [4.0, 4.0],
+        [3.0, 4.0],
+        [1.0, 4.0],
+        [0.0, 4.0],
+    ];
+    let p = vec![vec![0, 1, 6, 7], vec![1, 2, 5, 6], vec![2, 3, 4, 5]];
+    let m = NavMesh::from_polygons_with_areas(v, p, vec![0, 1, 0]).expect("malha válida");
+    for (costs, lama) in [([1.0, 4.0], true), ([1.0, 1.0], false)] {
+        let q = Query {
+            costs: &costs,
+            links: &[],
+        };
+        let (mut rt, mut s) = (AgentRuntime::default(), Polyanya::new());
+        let antes = s.stats;
+        step_with(
+            &mut rt,
+            Some(&m),
+            &mut s,
+            &q,
+            [0.5, 0.5],
+            Some([3.5, 3.5]),
+            &CFG,
+            DT,
+        );
+        let (nos, pend) = (
+            s.stats.expanded - antes.expanded,
+            s.stats.pending - antes.pending,
+        );
+        assert_eq!(rt.last_work, s.stats.work() - antes.work());
+        if lama {
+            assert!(pend > 0, "a fixtura refracta: {pend} raízes de fronteira");
+            assert!(
+                rt.last_work > nos,
+                "trabalho {} contra {nos} nós",
+                rt.last_work
+            );
+        } else {
+            // O CONTROLO: a mesma malha com a área a `1` é a procura uniforme.
+            assert_eq!((rt.last_work, pend), (nos, 0));
+        }
+    }
+}

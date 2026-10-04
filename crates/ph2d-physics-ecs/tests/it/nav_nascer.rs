@@ -3,8 +3,11 @@
 //! enquanto houver folga (e há sempre pelo menos uma), senão espera parado pelo tique seguinte.
 //! Os ajudantes são os de [`super::nav_desvio`].
 
-use ph2d_ecs::{Entity, SimWorld};
-use ph2d_physics_ecs::{NavTarget, PhysicsBridge};
+use ph2d_core::Vec2;
+use ph2d_ecs::{Entity, SimWorld, Transform};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, NavCostArea, NavTarget, PhysicsBridge, RigidBody,
+};
 
 use super::nav_desvio::{agente, pos, regiao};
 
@@ -63,7 +66,7 @@ fn os_que_nascem_juntos_procuram_pela_fila() {
     }
     // A fixtura contém o fenómeno: cada procura gasta pelo menos o orçamento (um nó) — ele morde.
     for &e in &quem {
-        let nos = b.nav_agent(e).map_or(0, |r| r.last_nodes);
+        let nos = b.nav_agent(e).map_or(0, |r| r.last_work);
         assert!(nos >= 1, "a procura de {e:?} gastou {nos} nós");
     }
     let mut c = PhysicsBridge::new();
@@ -134,4 +137,49 @@ fn um_scrub_a_meio_dos_nascimentos_devolve_a_mesma_corrida() {
             "o resto depois de {meio}"
         );
     }
+}
+
+/// (W14) **Na lama, a vez conta o TRABALHO, não os nós** — com o orçamento igual ao trabalho da 1.ª
+/// procura, só ela cabe no 1.º tique (contados em nós, a 1.ª gastava menos e o 2.º entrava).
+/// CONTROLO: com o orçamento de fábrica procuram todos.
+#[test]
+fn na_lama_a_vez_de_quem_nasce_conta_o_trabalho() {
+    let nascem_na_lama = || {
+        let (mut sim, quem) = nascem();
+        // Uma faixa de lama de alto a baixo: todo o caminho a atravessa (a procura é a ponderada).
+        sim.world_mut().spawn((
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 1.5,
+                    half_y: 7.0,
+                },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            NavCostArea {
+                cost: 4.0,
+                forbidden: false,
+            },
+            Transform::from_translation(Vec2::new(0.5, 0.0)),
+        ));
+        let quem = pela_ordem(&quem);
+        (sim, quem)
+    };
+    let (mut sim, quem) = nascem_na_lama();
+    let mut c = PhysicsBridge::new();
+    c.dispatch(&mut sim, true, 1);
+    assert!(procuraram(&c, &quem).iter().all(|&p| p), "o CONTROLO");
+    let w0 = c.nav_agent(quem[0]).map_or(0, |r| r.last_work);
+    let (mut sim, quem) = nascem_na_lama();
+    let mut b = PhysicsBridge::new();
+    b.set_nav_replan_budget(w0);
+    b.dispatch(&mut sim, true, 1);
+    assert_eq!(
+        procuraram(&b, &quem),
+        (0..N).map(|i| i == 0).collect::<Vec<_>>(),
+        "com o orçamento = o trabalho da 1.ª procura ({w0})"
+    );
 }

@@ -9,12 +9,13 @@
 //!   não atravessa nada);
 //! - quem o tem PARTIDO entra à frente (continua a andar o que tem enquanto espera — um ou dois
 //!   tiques —, e o corpo não atravessa a parede: é a física);
-//! - cada tique serve a fila por ordem ([`serve`]) até um ORÇAMENTO em nós da procura (a estimativa
-//!   de cada um é a última procura dele) — sempre pelo menos um.
+//! - cada tique serve a fila por ordem ([`serve`]) até um ORÇAMENTO de trabalho da procura (em nós
+//!   uniformes, [`crate::Stats::work`], W14; a estimativa de cada um é a última procura dele) — sempre
+//!   pelo menos um.
 //!
 //! ⚠️ **Determinismo:** nada aqui lê um relógio. A ordem é a da fila (partidos, quem espera há mais
-//! tiques, a ordem das entidades), a estimativa é uma contagem de nós, e o estado (`owed`, `broken`,
-//! `last_nodes`) vive no [`crate::AgentRuntime`], que entra no anel de checkpoints — o replay serve a
+//! tiques, a ordem das entidades), a estimativa é uma contagem, e o estado (`owed`, `broken`,
+//! `last_work`) vive no [`crate::AgentRuntime`], que entra no anel de checkpoints — o replay serve a
 //! mesma fila no mesmo tique.
 
 use crate::agent::AgentRuntime;
@@ -62,17 +63,17 @@ pub fn path_still_walkable(
 }
 
 /// Um agente na fila: a ordem dele entre as entidades (`id`), se o caminho está PARTIDO, há quantos
-/// tiques espera, e quantos nós a última procura dele expandiu.
+/// tiques espera, e o trabalho da última procura dele.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Owed {
     pub id: u64,
     pub broken: bool,
     pub ticks: u32,
-    pub nodes: u64,
+    pub work: u64,
 }
 
 /// Ordena a fila (os partidos primeiro, depois quem espera há mais tiques, depois o `id`) e devolve
-/// quantos da frente se servem neste tique com `budget` nós — sempre pelo menos um, e nunca se salta
+/// quantos da frente se servem neste tique com `budget` de trabalho — sempre pelo menos um, e nunca se salta
 /// à frente de quem não coube (um barato atrás de um caro esperaria para sempre se o caro cedesse).
 pub fn serve(fila: &mut [Owed], budget: u64) -> usize {
     fila.sort_by(|a, b| {
@@ -84,10 +85,10 @@ pub fn serve(fila: &mut [Owed], budget: u64) -> usize {
     let mut gasto = 0u64;
     let mut n = 0;
     for o in fila.iter() {
-        if n > 0 && gasto.saturating_add(o.nodes) > budget {
+        if n > 0 && gasto.saturating_add(o.work) > budget {
             break;
         }
-        gasto = gasto.saturating_add(o.nodes);
+        gasto = gasto.saturating_add(o.work);
         n += 1;
     }
     n
@@ -136,12 +137,12 @@ mod tests {
         );
     }
 
-    fn o(id: u64, broken: bool, ticks: u32, nodes: u64) -> Owed {
+    fn o(id: u64, broken: bool, ticks: u32, work: u64) -> Owed {
         Owed {
             id,
             broken,
             ticks,
-            nodes,
+            work,
         }
     }
 

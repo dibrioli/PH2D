@@ -646,7 +646,7 @@ fn quem_nasce_com_a_fila_cheia_procura_um_e_o_outro_espera() {
     let antes = procuras_de(&b, &quem);
     let gasto: u64 = quem
         .iter()
-        .map(|&e| b.nav_agent(e).map_or(0, |r| r.last_nodes))
+        .map(|&e| b.nav_agent(e).map_or(0, |r| r.last_work))
         .sum();
     b.set_nav_replan_budget(gasto);
     let mut novos: Vec<Entity> = (0..2)

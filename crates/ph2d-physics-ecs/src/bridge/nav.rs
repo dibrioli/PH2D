@@ -67,8 +67,8 @@ pub(super) struct NavWorld {
     /// As malhas, por `(região, raio em 1/256 m, zonas evitadas)`.
     meshes: BTreeMap<ChaveMalha, TiledMesh>,
     /// As paredes de cada malha, como o desvio as lê — derivadas dela, com a mesma chave e a mesma
-    /// vida (esquecidas quando ela é).
-    walls: BTreeMap<ChaveMalha, ph2d_orca::Walls>,
+    /// vida (esquecidas quando ela é); (W11) por mosaicos, ver [`desvio::ParedesDaMalha`].
+    walls: BTreeMap<ChaveMalha, desvio::ParedesDaMalha>,
     /// ⚠️ **A memória de cada agente** — entra no anel pelo [`super::tape::ControllerMemory`].
     pub(super) agents: BTreeMap<Entity, AgentRuntime>,
     /// ⭐ As ORDENS dos verbos `Start/Stop Navigation` (W6) — ver [`ordens`].

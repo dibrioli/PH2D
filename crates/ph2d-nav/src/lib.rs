@@ -32,7 +32,7 @@ pub mod refresh;
 pub mod oracle;
 
 pub use agent::{AgentConfig, AgentRuntime, Event, Status, Steer};
-pub use blocos::{MalhaPorBlocos, Peca};
+pub use blocos::{FaixaDeParedes, MalhaPorBlocos, Peca};
 pub use geom::V2;
 pub use link::{Hop, Link, Query};
 pub use mesh::{MeshError, NavMesh, Poly};

@@ -57,13 +57,22 @@ fn as_recusas_sao_as_da_porta_inteira_com_o_indice_da_malha_montada() {
     for (i, (verts, polys, esperado)) in casos.into_iter().enumerate() {
         let mut m = MalhaPorBlocos::new();
         m.poe((0, 0), dois_triangulos((0, 0)));
+        m.poe((1, 0), dois_triangulos((1, 0)));
+        assert!(m.monta().is_ok() && !m.faixas_de_paredes().is_empty());
         m.poe((1, 0), peca((1, 0), verts, polys));
         let e = m.monta().expect_err("a peça má passou");
         assert!(esperado(&e), "caso {i}: {e:?}");
+        // (W11) As faixas das paredes são as da malha montada: recusada, nenhuma.
+        assert!(m.faixas_de_paredes().is_empty(), "caso {i}");
         // E a recusa NÃO fica: trocada a peça, a malha monta (o erro era do bloco, não da malha).
         m.poe((1, 0), dois_triangulos((1, 0)));
         let ok = m.monta().expect("a peça boa monta");
         assert_eq!(ok.poly_count(), 4);
+        let f = m.faixas_de_paredes();
+        assert_eq!(
+            (f.len(), f.last().map(|f| f.paredes.end)),
+            (2, Some(ok.walls().len()))
+        );
         assert_eq!(
             ok.island_count(),
             1,

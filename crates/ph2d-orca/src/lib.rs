@@ -24,12 +24,14 @@
 //! malha do raio do agente entram como obstáculos ([`Walls`]) — e como essa malha já está recuada pelo
 //! raio do CORPO, o agente é um PONTO contra elas (raio `0`): a mesma folga não se conta duas vezes.
 
+pub mod blocos;
 pub mod crowd;
 pub mod lines;
 pub mod lp;
 pub mod v2;
 pub mod walls;
 
+pub use blocos::ParedesPorBlocos;
 pub use crowd::{Agent, Crowd, MAX_NEIGHBORS, Params, SIDE_BIAS};
 pub use lines::Line;
 pub use lp::Regime;

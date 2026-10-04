@@ -1071,3 +1071,34 @@ só marca o canto `u`: a ponta `v` é a `u` da parede seguinte), que saiu do arn
   agora o maior pedaço de uma porta.
 - O que resta O(malha) na junção (`0,37 ms`: anéis, vértice→polígonos, numerar) — só desce com ids fixos,
   recusados acima enquanto ninguém os consumir.
+
+## §19 — W11 (2026-10-04): as paredes do desvio proporcionais ao mosaico tocado
+
+### §19.1 — A medição que abre (sonda `sonda_paredes_w11`, `--release`, load `4–5`, o mínimo de 20)
+
+Cena: `100 × 100 m`, `1 000` círculos de raio `0,3–1,5` (LCG `77`), `TiledMesh::new(Params::default(),
+TILE_M)` ⇒ `13 671` polígonos, `24 462` paredes, `24 489` vértices. `Walls::from_walkable_walls` real =
+**`0,557 ms`**; uma CÓPIA do algoritmo, fase a fase:
+
+| índices por vértice | `point` | `next`/`prev` | `dir` (sqrt) | `convex` | grelha: caixas | grelha: 2 passagens |
+|---|---|---|---|---|---|---|
+| `0,022` | `0,014` | `0,026` | `0,073` | `0,024` | **`0,203`** | **`0,147`** |
+
+A grelha é `70 %`. A pergunta do briefing — **uma construção linear mais rápida basta?** — mediu-se: a mesma
+grelha AO BIT (a célula por `as usize`, caixas em `u32`, a aresta de uma só célula sem laço) dá `0,285 → 0,236
+ms`. ⛔ Não basta: o todo ficaria em `~0,4 ms`.
+
+O PISO de um desenho por blocos (o que fica O(malha)): concatenar os cinco vectores finais em 49 blocos
+**`0,013 ms`**; reler as coordenadas de TODAS as paredes e compará-las com as de antes **`0,020 ms`**.
+
+### §19.2 — O kill-criterion (escrito ANTES do código)
+
+1. **K1 — a mesma resposta, ao bit:** as paredes por blocos dão os MESMOS `point`/`next`/`prev`/`dir`/`convex`
+   que `from_walkable_walls(m.verts(), m.walls())`, e `near` = a varredura inteira, sobre fixturas com
+   população AFIRMADA (cadeias que atravessam costuras, junções em T, a borda da região, um vértice onde a
+   fronteira se toca, mosaicos que entram e saem). Inegociável.
+2. **K2 — o custo:** as paredes depois de uma porta (reler + comparar + refazer os blocos mudados + concatenar)
+   **≤ `0,15 ms`** na cena acima (era `0,557`). Se passar de `0,25 ms` depois da 2.ª tentativa, o desenho por
+   blocos NÃO existe nesta forma e fica a grelha linear rápida (`~0,4 ms`).
+3. **K3 — a consulta não piora:** o pior tique de `medir_replaneio` a 200 agentes não sobe acima do ruído
+   (alternado antes/depois), e as procuras e a fila ficam IGUAIS.

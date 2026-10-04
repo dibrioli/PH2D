@@ -15,6 +15,35 @@ use crate::PlayerInput;
 use crate::bridge::PhysicsBridge;
 use crate::components::BodyKind;
 
+/// ⭐ (W11) **As paredes de uma malha** como o desvio as lê: por mosaicos, e as montadas (`None` = a
+/// malha mudou e ainda ninguém as pediu). Uma mudança refaz só os mosaicos cujas paredes mudaram — as
+/// mesmas [`ph2d_orca::Walls`], ao bit, que `from_walkable_walls(m.verts(), m.walls())` (plano 30 §19).
+#[derive(Default)]
+pub(super) struct ParedesDaMalha {
+    blocos: ph2d_orca::ParedesPorBlocos,
+    pub(super) montadas: Option<ph2d_orca::Walls>,
+}
+
+impl ParedesDaMalha {
+    pub(super) fn monta(&mut self, tm: &ph2d_navmesh::TiledMesh) -> ph2d_orca::Walls {
+        let (m, faixas) = (tm.mesh(), tm.paredes_por_mosaico());
+        let (verts, walls) = (m.verts(), m.walls());
+        self.blocos
+            .retem(|k| faixas.binary_search_by(|f| f.chave.cmp(&k)).is_ok());
+        for f in faixas {
+            self.blocos.poe(
+                f.chave,
+                f.lo,
+                f.hi,
+                walls[f.paredes.clone()]
+                    .iter()
+                    .map(|&(de, para)| (verts[de as usize], verts[para as usize])),
+            );
+        }
+        self.blocos.monta()
+    }
+}
+
 /// O que a condução pediu a um agente neste tique — a entrada do desvio.
 pub(super) struct Pedida {
     pub(super) entity: Entity,
@@ -87,20 +116,21 @@ impl PhysicsBridge {
         }
         for p in &pedidas {
             if let Some(chave) = p.malha
-                && !self.nav.walls.contains_key(&chave)
-                && let Some(m) = self
-                    .nav
-                    .meshes
-                    .get(&chave)
-                    .map(ph2d_navmesh::TiledMesh::mesh)
+                && let Some(tm) = self.nav.meshes.get(&chave)
             {
-                let w = ph2d_orca::Walls::from_walkable_walls(m.verts(), m.walls());
-                self.nav.walls.insert(chave, w);
+                let pm = self.nav.walls.entry(chave).or_default();
+                if pm.montadas.is_none() {
+                    pm.montadas = Some(pm.monta(tm));
+                }
             }
         }
         let paredes: Vec<Option<&ph2d_orca::Walls>> = pedidas
             .iter()
-            .map(|p| p.malha.and_then(|k| self.nav.walls.get(&k)))
+            .map(|p| {
+                p.malha
+                    .and_then(|k| self.nav.walls.get(&k))
+                    .and_then(|w| w.montadas.as_ref())
+            })
             .collect();
         let mut multidao = ph2d_orca::Crowd::new(corpos, ph2d_orca::Params::PRODUCT);
         let seguras =

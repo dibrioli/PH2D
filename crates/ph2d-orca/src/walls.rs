@@ -5,16 +5,42 @@
 //! CONVEXO quando a cadeia vira à esquerda nele (visto do espaço livre, é uma quina que se contorna);
 //! num CÔNCAVO (o canto de uma sala) a perna do cone prolonga a parede.
 
+use std::sync::Arc;
+
 use crate::v2::{V2, abs_sq, dist_sq_to_segment, left_of, normalize, sub};
 
 #[derive(Clone, Debug, Default)]
 pub struct Walls {
-    point: Vec<V2>,
-    next: Vec<u32>,
-    prev: Vec<u32>,
-    dir: Vec<V2>,
-    convex: Vec<bool>,
-    grade: Grade,
+    pub(crate) point: Vec<V2>,
+    pub(crate) next: Vec<u32>,
+    pub(crate) prev: Vec<u32>,
+    pub(crate) dir: Vec<V2>,
+    pub(crate) convex: Vec<bool>,
+    pub(crate) busca: Busca,
+}
+
+/// (W11) **A busca de [`Walls::near`]: uma [`Grade`] por BLOCO**, numa grelha regular de blocos
+/// (`xs` × `ys`, os lados de todos os blocos). As paredes de um bloco estão DENTRO do rectângulo dele, e
+/// a grelha de cada um tem índices LOCAIS (`base` + local = o da parede): um bloco mudado não toca nas
+/// grelhas dos outros ([`crate::ParedesPorBlocos`]). Uma construção inteira é UM bloco, a caixa.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Busca {
+    pub(crate) xs: Vec<f64>,
+    pub(crate) ys: Vec<f64>,
+    pub(crate) blocos: Vec<Option<(u32, Arc<Grade>)>>,
+}
+
+impl Busca {
+    fn um_bloco(g: Grade) -> Self {
+        if g.nx == 0 {
+            return Self::default();
+        }
+        Self {
+            xs: vec![g.min[0], g.max[0]],
+            ys: vec![g.min[1], g.max[1]],
+            blocos: vec![Some((0, Arc::new(g)))],
+        }
+    }
 }
 
 /// ⭐ (W9) **A grelha das arestas** — [`Walls::near`] lê só as células ao alcance, e não todas as
@@ -26,8 +52,9 @@ pub struct Walls {
 /// O lado da célula sai da CONTAGEM (`~1` aresta por célula, `√n` células por eixo sobre a maior
 /// dimensão — a regra da grelha da `NavMesh`).
 #[derive(Clone, Debug, Default)]
-struct Grade {
+pub(crate) struct Grade {
     min: V2,
+    max: V2,
     cell: f64,
     nx: usize,
     ny: usize,
@@ -37,15 +64,16 @@ struct Grade {
 }
 
 impl Grade {
-    fn new(point: &[V2], next: &[u32]) -> Self {
-        let n = point.len();
+    /// A grelha das arestas `seg(0..n)` (índices `0..n`).
+    pub(crate) fn new(n: usize, seg: impl Fn(usize) -> (V2, V2)) -> Self {
         if n == 0 {
             return Self::default();
         }
         let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
-        for p in point {
-            lo = [lo[0].min(p[0]), lo[1].min(p[1])];
-            hi = [hi[0].max(p[0]), hi[1].max(p[1])];
+        for i in 0..n {
+            let (a, b) = seg(i);
+            lo = [lo[0].min(a[0]).min(b[0]), lo[1].min(a[1]).min(b[1])];
+            hi = [hi[0].max(a[0]).max(b[0]), hi[1].max(a[1]).max(b[1])];
         }
         let ext = (hi[0] - lo[0]).max(hi[1] - lo[1]).max(1e-9);
         let cell = ext / (n as f64).sqrt().ceil().max(1.0);
@@ -53,6 +81,7 @@ impl Grade {
         let ny = (((hi[1] - lo[1]) / cell).floor() as usize + 1).max(1);
         let mut g = Self {
             min: lo,
+            max: hi,
             cell,
             nx,
             ny,
@@ -61,7 +90,7 @@ impl Grade {
         };
         let caixas: Vec<_> = (0..n)
             .map(|i| {
-                let (a, b) = (point[i], point[next[i] as usize]);
+                let (a, b) = seg(i);
                 (
                     g.celula([a[0].min(b[0]), a[1].min(b[1])]),
                     g.celula([a[0].max(b[0]), a[1].max(b[1])]),
@@ -178,7 +207,8 @@ impl Walls {
                 p == q || left_of(self.point[p], self.point[i], self.point[q]) >= 0.0
             })
             .collect();
-        self.grade = Grade::new(&self.point, &self.next);
+        let (point, next) = (&self.point, &self.next);
+        self.busca = Busca::um_bloco(Grade::new(n, |i| (point[i], point[next[i] as usize])));
     }
 
     #[must_use]
@@ -227,20 +257,45 @@ impl Walls {
     /// importa: uma parede cujo cone já está coberto pelas anteriores não dá semi-plano.
     pub fn near(&self, pos: V2, range: f64, out: &mut Vec<u32>) {
         out.clear();
-        let g = &self.grade;
         if self.point.is_empty() || range.is_nan() || range <= 0.0 {
             return;
         }
         let range_sq = range * range;
         let mut found: Vec<(f64, u32)> = Vec::new();
-        let (ax, ay) = g.celula([pos[0] - range, pos[1] - range]);
-        let (bx, by) = g.celula([pos[0] + range, pos[1] + range]);
-        for y in ay..=by {
-            for x in ax..=bx {
-                let c = y * g.nx + x;
-                for &i in &g.items[g.off[c] as usize..g.off[c + 1] as usize] {
-                    if let Some(d) = self.candidata(i as usize, pos, range_sq) {
-                        found.push((d, i));
+        let (lo, hi) = (
+            [pos[0] - range, pos[1] - range],
+            [pos[0] + range, pos[1] + range],
+        );
+        let b = &self.busca;
+        let (nx, ny) = (b.xs.len().saturating_sub(1), b.ys.len().saturating_sub(1));
+        if nx == 0 || ny == 0 {
+            return;
+        }
+        // Os blocos cujo rectângulo (fechado) toca a caixa do alcance.
+        let (ix0, ix1) = (
+            b.xs[1..].partition_point(|&x| x < lo[0]),
+            b.xs[..nx].partition_point(|&x| x <= hi[0]),
+        );
+        let (iy0, iy1) = (
+            b.ys[1..].partition_point(|&y| y < lo[1]),
+            b.ys[..ny].partition_point(|&y| y <= hi[1]),
+        );
+        for by in iy0..iy1 {
+            for bx in ix0..ix1 {
+                let Some((base, g)) = &b.blocos[by * nx + bx] else {
+                    continue;
+                };
+                let (ax, ay) = g.celula(lo);
+                let (cx, cy) = g.celula(hi);
+                for y in ay..=cy {
+                    for x in ax..=cx {
+                        let c = y * g.nx + x;
+                        for &i in &g.items[g.off[c] as usize..g.off[c + 1] as usize] {
+                            let i = base + i;
+                            if let Some(d) = self.candidata(i as usize, pos, range_sq) {
+                                found.push((d, i));
+                            }
+                        }
                     }
                 }
             }

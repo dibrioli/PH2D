@@ -235,6 +235,8 @@ struct Bloco {
 pub struct MalhaPorBlocos {
     blocos: BTreeMap<Chave, Bloco>,
     sujos: BTreeSet<Chave>,
+    /// (W11) As paredes de cada bloco na última malha montada (vazio se ela foi recusada).
+    faixas: Vec<FaixaDeParedes>,
 }
 
 impl MalhaPorBlocos {
@@ -313,7 +315,16 @@ impl MalhaPorBlocos {
         for (k, lado) in l3 {
             self.liga(k, lado);
         }
-        junta::junta(self)
+        self.faixas.clear();
+        let (malha, faixas) = junta::junta(self)?;
+        self.faixas = faixas;
+        Ok(malha)
+    }
+
+    /// (W11) As paredes de cada bloco na última malha que [`Self::monta`] devolveu, pela ordem da chave.
+    #[must_use]
+    pub fn faixas_de_paredes(&self) -> &[FaixaDeParedes] {
+        &self.faixas
     }
 
     /// L2 do bloco `k`, lido dos vizinhos como estão.
@@ -610,6 +621,8 @@ fn liga_dentro(l: &mut L2, p: &Peca) {
 
 #[path = "blocos_junta.rs"]
 mod junta;
+
+pub use junta::FaixaDeParedes;
 
 #[cfg(test)]
 #[path = "blocos_tests.rs"]

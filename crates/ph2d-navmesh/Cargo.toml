@@ -27,6 +27,8 @@ spade = "2.15.1"
 
 [dev-dependencies]
 ph2d-nav = { path = "../ph2d-nav", features = ["test-support"] }
+# (W11) O oráculo das paredes do desvio por mosaicos (`tiles_tests.rs`); a `ph2d-orca` não tem dependências.
+ph2d-orca = { path = "../ph2d-orca" }
 miniz_oxide = "0.8"
 
 [lints]

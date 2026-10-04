@@ -211,6 +211,7 @@ fn forma(r: &mut Lcg) -> Shape {
 #[test]
 fn a_montagem_por_blocos_e_a_montagem_inteira_ao_bit() {
     let (mut cosidos, mut parciais, mut comparados, mut saidas) = (0usize, 0, 0, 0);
+    let mut paredes = OraculoDasParedes::default();
     for seed in 1..=12u64 {
         let mut r = Lcg(seed);
         let p = Params {
@@ -242,12 +243,25 @@ fn a_montagem_por_blocos_e_a_montagem_inteira_ao_bit() {
                 [z + 2.0, 7.3],
                 [z + 1.0, 8.1],
             ]));
+            // (W11) A FRONTEIRA QUE SE TOCA: dois quadrados encostados por uma quina, em cima de uma
+            // costura — o vértice da quina tem duas continuações.
+            let c = [lado, 2.0 * lado];
+            for (sx, sy) in [(-1.0, -1.0), (1.0, 1.0)] {
+                let o = [c[0] + sx, c[1] + sy];
+                obs.push(Shape::Convex(vec![
+                    [c[0].min(o[0]), c[1].min(o[1])],
+                    [c[0].max(o[0]), c[1].min(o[1])],
+                    [c[0].max(o[0]), c[1].max(o[1])],
+                    [c[0].min(o[0]), c[1].max(o[1])],
+                ]));
+            }
         }
         let areas = vec![Area {
             shape: forma(&mut r),
             id: 1,
         }];
         let mut t = TiledMesh::new(p, lado);
+        let mut pb = ph2d_orca::ParedesPorBlocos::new();
         for passo in 0..8 {
             if passo > 0 {
                 let i = passo % obs.len();
@@ -264,6 +278,7 @@ fn a_montagem_por_blocos_e_a_montagem_inteira_ao_bit() {
             let inteira = monta(&t.mosaicos, t.lado);
             let m = t.mesh();
             assert_eq!(m.diferenca(&inteira), None, "semente {seed}, passo {passo}");
+            paredes.confere(&t, &mut pb, &mut r);
             let crus: usize = t
                 .mosaicos
                 .values()
@@ -303,4 +318,86 @@ fn a_montagem_por_blocos_e_a_montagem_inteira_ao_bit() {
         comparados >= 15_000,
         "só {comparados} pontos localizados (medido: 16 078)"
     );
+    paredes.populacao();
+}
+
+/// ⭐ (W11, plano 30 §19) **As paredes do desvio por mosaicos são as da malha inteira, ao bit**: as
+/// faixas de [`TiledMesh::paredes_por_mosaico`] dadas a uma `ParedesPorBlocos` que VIVE entre as
+/// actualizações (como na ponte) = `Walls::from_walkable_walls(m.verts(), m.walls())`, campo a campo, e
+/// a mesma resposta de `near`.
+#[derive(Clone, Copy, Default)]
+struct OraculoDasParedes {
+    /// Entradas cujo seguinte é de OUTRO mosaico (a cadeia atravessa a costura).
+    atravessam: usize,
+    /// Pontos onde começam várias entradas (a fronteira toca-se).
+    tocam: usize,
+    perguntas: usize,
+}
+
+impl OraculoDasParedes {
+    fn confere(&mut self, t: &TiledMesh, pb: &mut ph2d_orca::ParedesPorBlocos, r: &mut Lcg) {
+        let (m, faixas) = (t.mesh(), t.paredes_por_mosaico());
+        let (verts, walls) = (m.verts(), m.walls());
+        // As faixas cobrem as paredes, por ordem e sem buracos.
+        let mut fim = 0;
+        for f in faixas {
+            assert_eq!(f.paredes.start, fim);
+            fim = f.paredes.end;
+        }
+        assert_eq!(fim, walls.len());
+        pb.retem(|k| faixas.iter().any(|f| f.chave == k));
+        for f in faixas {
+            pb.poe(
+                f.chave,
+                f.lo,
+                f.hi,
+                walls[f.paredes.clone()]
+                    .iter()
+                    .map(|&(de, para)| (verts[de as usize], verts[para as usize])),
+            );
+        }
+        let w = pb.monta();
+        let o = ph2d_orca::Walls::from_walkable_walls(verts, walls);
+        let b = |p: V2| [p[0].to_bits(), p[1].to_bits()];
+        assert_eq!(w.len(), o.len());
+        let mosaico_de = |i: usize| faixas.partition_point(|f| f.paredes.end <= i);
+        let mut comecos = vec![0u32; verts.len()];
+        for &(_, para) in walls {
+            comecos[para as usize] += 1;
+        }
+        self.tocam += comecos.iter().filter(|&&c| c > 1).count();
+        for i in 0..o.len() {
+            assert_eq!(b(w.point(i)), b(o.point(i)), "point {i}");
+            assert_eq!(w.next(i), o.next(i), "next {i}");
+            assert_eq!(w.prev(i), o.prev(i), "prev {i}");
+            assert_eq!(b(w.dir(i)), b(o.dir(i)), "dir {i}");
+            assert_eq!(w.convex(i), o.convex(i), "convex {i}");
+            self.atravessam += usize::from(mosaico_de(i) != mosaico_de(o.next(i)));
+        }
+        let (mut x, mut y) = (Vec::new(), Vec::new());
+        for k in 0..100 {
+            let q = [r.f(-0.5, 16.5), r.f(-0.5, 12.5)];
+            let alcance = if k % 10 == 0 {
+                f64::INFINITY
+            } else {
+                r.f(0.0, 4.0)
+            };
+            w.near(q, alcance, &mut x);
+            o.near(q, alcance, &mut y);
+            assert_eq!(x, y, "near {q:?} {alcance}");
+            self.perguntas += usize::from(!x.is_empty());
+        }
+    }
+
+    /// Os CONTROLOS de população. ⚠️ Sem os dois quadrados encostados, `tocam` era ZERO.
+    fn populacao(&self) {
+        let OraculoDasParedes {
+            atravessam,
+            tocam,
+            perguntas,
+        } = *self;
+        assert!(atravessam >= 2_500, "só {atravessam} (medido: 3 200)");
+        assert!(tocam >= 16, "só {tocam} pontos que se tocam (medido: 24)");
+        assert!(perguntas >= 5_000, "só {perguntas} (medido: 6 546)");
+    }
 }

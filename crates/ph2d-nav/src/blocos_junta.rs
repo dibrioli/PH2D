@@ -17,7 +17,17 @@ fn raiz(pai: &mut [u32], mut c: u32) -> u32 {
     c
 }
 
-pub(super) fn junta(m: &MalhaPorBlocos) -> Result<NavMesh, MeshError> {
+/// (W11) As paredes de UM bloco na malha montada: `walls()[paredes]`, todas dentro de `[lo, hi]` — o
+/// que as paredes do desvio por blocos (`ph2d_orca::ParedesPorBlocos`) recebem.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FaixaDeParedes {
+    pub chave: Chave,
+    pub lo: V2,
+    pub hi: V2,
+    pub paredes: std::ops::Range<usize>,
+}
+
+pub(super) fn junta(m: &MalhaPorBlocos) -> Result<(NavMesh, Vec<FaixaDeParedes>), MeshError> {
     let ordem: Vec<(Chave, &super::Bloco)> = m.blocos.iter().map(|(&k, b)| (k, b)).collect();
     let n = ordem.len();
     let idx: BTreeMap<Chave, usize> = ordem
@@ -109,7 +119,9 @@ pub(super) fn junta(m: &MalhaPorBlocos) -> Result<NavMesh, MeshError> {
     let mut area: Vec<u16> = Vec::with_capacity(tp);
     let mut pai: Vec<u32> = (0..cbase[n]).collect();
     let mut gslot: Vec<u32> = Vec::new();
-    for (b, (_, bl)) in ordem.iter().enumerate() {
+    let mut faixas = Vec::with_capacity(n);
+    for (b, &(k, bl)) in ordem.iter().enumerate() {
+        let inicio = walls.len();
         let l = &bl.l2;
         let nl = bl.peca.verts.len();
         gslot.clear();
@@ -150,6 +162,12 @@ pub(super) fn junta(m: &MalhaPorBlocos) -> Result<NavMesh, MeshError> {
             ring_off.push(ring.len() as u32);
         }
         area.extend_from_slice(&bl.peca.area);
+        faixas.push(FaixaDeParedes {
+            chave: k,
+            lo: bl.peca.lo,
+            hi: bl.peca.hi,
+            paredes: inicio..walls.len(),
+        });
     }
 
     let (vp_off, vert_polys) = polys_de_cada_vertice(nv, &ring_off, &ring);
@@ -208,7 +226,7 @@ pub(super) fn junta(m: &MalhaPorBlocos) -> Result<NavMesh, MeshError> {
             });
         }
     }
-    Ok(NavMesh {
+    let malha = NavMesh {
         verts,
         ring_off,
         ring,
@@ -228,7 +246,8 @@ pub(super) fn junta(m: &MalhaPorBlocos) -> Result<NavMesh, MeshError> {
         },
         min,
         max,
-    })
+    };
+    Ok((malha, faixas))
 }
 
 /// O erro de um bloco com o índice do polígono na malha montada.

@@ -35,7 +35,7 @@ use std::borrow::Borrow;
 use std::collections::BTreeMap;
 
 use clipper2_rust::{FillRule, Path64, Paths64, Point64, difference_64, union_subjects_64};
-use ph2d_nav::{MalhaPorBlocos, NavMesh, Peca, V2};
+use ph2d_nav::{FaixaDeParedes, MalhaPorBlocos, NavMesh, Peca, V2};
 
 use crate::lattice::{P, SCALE, to_lattice, to_world};
 use crate::{Area, Params, Shape, inflate};
@@ -106,6 +106,13 @@ impl TiledMesh {
     #[must_use]
     pub fn mesh(&self) -> &NavMesh {
         &self.mesh
+    }
+
+    /// (W11) As paredes de cada mosaico em [`Self::mesh`] (`mesh().walls()[f.paredes]`), pela ordem da
+    /// chave — a entrada das paredes do desvio por blocos.
+    #[must_use]
+    pub fn paredes_por_mosaico(&self) -> &[FaixaDeParedes] {
+        self.blocos.faixas_de_paredes()
     }
 
     /// O que a última actualização fez.

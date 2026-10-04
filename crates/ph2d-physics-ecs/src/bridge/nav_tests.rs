@@ -77,3 +77,70 @@ fn o_raio_derivado_envolve_o_colisor_e_o_offset() {
     );
     assert!((raio_que_envolve(&caixa) - 0.5).abs() < 1e-6);
 }
+
+/// ⭐ (W11, plano 30 §19) **As paredes da ponte, por mosaicos, são as da malha inteira, ao bit** — pela
+/// porta que o desvio usa ([`desvio::ParedesDaMalha::monta`]), com a mesma `ParedesDaMalha` a VIVER
+/// entre mudanças: obstáculos que andam, que entram e saem, e a região que encolhe (mosaicos que saem).
+#[test]
+fn as_paredes_da_ponte_por_mosaicos_sao_as_da_malha_inteira() {
+    use ph2d_navmesh::{Params, Shape, TiledMesh};
+    let mut s = 0x0011_5EEDu64;
+    let mut r = move || {
+        s = s
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        (s >> 11) as f64 / (1u64 << 53) as f64
+    };
+    let mut obs: Vec<Shape> = (0..60)
+        .map(|_| Shape::Circle {
+            center: [r() * 45.0, r() * 30.0],
+            radius: 0.3 + r() * 1.5,
+        })
+        .collect();
+    let mut reg = vec![[0.0, 0.0], [45.0, 0.0], [45.0, 30.0], [0.0, 30.0]];
+    let mut t = TiledMesh::new(Params::default(), 10.0);
+    let mut pm = desvio::ParedesDaMalha::default();
+    let (mut atravessam, mut sairam) = (0usize, 0usize);
+    for passo in 0..24 {
+        if passo > 0 {
+            let i = (r() * obs.len() as f64) as usize % obs.len();
+            obs[i] = Shape::Circle {
+                center: [r() * 45.0, r() * 30.0],
+                radius: 0.3 + r() * 1.5,
+            };
+        }
+        if passo == 16 {
+            reg = vec![[0.0, 0.0], [28.0, 0.0], [28.0, 19.0], [0.0, 19.0]];
+            sairam += 1;
+        }
+        t.update(&reg, &obs);
+        let w = pm.monta(&t);
+        let o = ph2d_orca::Walls::from_walkable_walls(t.mesh().verts(), t.mesh().walls());
+        let b = |p: ph2d_nav::V2| [p[0].to_bits(), p[1].to_bits()];
+        let faixas = t.paredes_por_mosaico();
+        let mosaico_de = |i: usize| faixas.partition_point(|f| f.paredes.end <= i);
+        assert_eq!(w.len(), o.len(), "passo {passo}");
+        for i in 0..o.len() {
+            assert_eq!(b(w.point(i)), b(o.point(i)), "passo {passo}: point {i}");
+            assert_eq!(w.next(i), o.next(i), "passo {passo}: next {i}");
+            assert_eq!(w.prev(i), o.prev(i), "passo {passo}: prev {i}");
+            assert_eq!(b(w.dir(i)), b(o.dir(i)), "passo {passo}: dir {i}");
+            assert_eq!(w.convex(i), o.convex(i), "passo {passo}: convex {i}");
+            atravessam += usize::from(mosaico_de(i) != mosaico_de(o.next(i)));
+        }
+        let (mut x, mut y) = (Vec::new(), Vec::new());
+        for _ in 0..200 {
+            let q = [r() * 46.0 - 0.5, r() * 31.0 - 0.5];
+            let a = r() * 5.0;
+            w.near(q, a, &mut x);
+            o.near(q, a, &mut y);
+            assert_eq!(x, y, "passo {passo}: near {q:?} {a}");
+        }
+    }
+    // CONTROLOS de população: cadeias que atravessam costuras e mosaicos que saíram.
+    assert!(
+        atravessam >= 900,
+        "só {atravessam} entradas seguem para outro mosaico (medido: 1 116)"
+    );
+    assert_eq!(sairam, 1);
+}

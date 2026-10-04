@@ -115,7 +115,12 @@ Bateria verde no fim: `ph2d-skeleton-live` 276 · `ph2d-vec-skin` 48 · `ph2d-ap
 - No *Zig Zag* muito dobrado (`~110°`) os dentes de dentro encavalam-se e fecham buraquinhos REAIS (a
   imagem também os mostra).
 
-### A6 — ⏳ (novo, 04/10) Contornos FECHADOS da parte de trás quando a união NÃO corre
+### A6 — ✅ FEITO (F55, `57900aac8`; pedido pelo dono 04/10; smoke ao dono pendente): o traço dos fechados de trás não pinta por cima da frente
+
+> Sem união, a forma sai em duas camadas (preenchimento + traço à vista). Causa de fundo curada: o
+> domínio do campo segue a regra de preenchimento (a sobreposição `NonZero` era furo). Só a ARTE
+> tapa; o avesso não tapa o traço de um fechado. Cena `=6`. Detalhe: fila §F55. Registo de antes:
+
 
 - A F52 corta só os ABERTOS: o contorno fechado é da união do contacto. Mas a união só corre quando
   é neutra em repouso (`Preparado::uniao_neutra`); numa forma cujos contornos se sobrepõem já em
@@ -129,6 +134,14 @@ Bateria verde no fim: `ph2d-skeleton-live` 276 · `ph2d-vec-skin` 48 · `ph2d-ap
 - `so_o_que_se_ve` posa a malha e amostra as riscas em toda pose (`diag_o_preco_do_recorte_por_quadro`,
   release). Uma saída rápida (nenhum triângulo virado e nenhuma caixa de triângulos de chave maior a
   sobrepor-se a outra não vizinha) pouparia o caso comum. Só se o preço aparecer numa cena cheia.
+
+### A8 — (novo, 04/10) Uma janela tapada mais curta que `1/32` de um segmento LONGO pode passar entre duas amostras
+
+- O recorte (F52/F55) amostra `32` pontos por segmento e bissecta onde o estado muda. Numa aresta
+  recta muito longa uma janela curta pode cair entre duas amostras. A amostragem pelo comprimento
+  (passo ¼ da aresta da malha) foi construída e RETIRADA na F55: nenhuma fixtura a exprimiu (a barra
+  `400 × 2` tem a malha grossa demais), e a hipótese que a trouxe estava errada. Só com um caso
+  FOTOGRAFADO.
 
 ## 2. Lições da 2.ª onda de 04/10 (morderam)
 

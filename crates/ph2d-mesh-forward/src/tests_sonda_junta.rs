@@ -104,7 +104,7 @@ pub(crate) fn marcha(
         let uf: [f32; 3] = std::array::from_fn(|e| q[e] - h / r[1] * r[e]);
         dot(uf, w).atan2(dot(uf, qh))
     });
-    let n = ((fim / (PASSO * texel)).ceil() as u32).clamp(MARCHA_MIN, MARCHA_MAX);
+    let n = ((th / (PASSO * texel)).ceil() as u32).clamp(MARCHA_MIN, MARCHA_MAX);
     let (mut ant, mut frente) = (0.0f32, true);
     let mut melhor = (r, 0.0f32);
     for k in 1..=n {
@@ -435,7 +435,7 @@ fn sonda_da_escada() {
         let g = le(&d, x, 0.0);
         [g[0], g[1], g[2]]
     };
-    let mut onde = std::collections::HashMap::new();
+    let mut onde = std::collections::BTreeMap::new();
     for (k, p) in px.iter().enumerate() {
         onde.insert((p.i, p.j), k);
     }

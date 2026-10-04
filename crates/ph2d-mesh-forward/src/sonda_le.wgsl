@@ -148,7 +148,7 @@ fn sonda_marcha(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
         fim = atan2(dot(uf, w), dot(uf, qh));
     }
     // Os passos acompanham o arco: um a cada `SONDA_PASSO` texels do nivel 0, entre o minimo e o maximo.
-    let n = clamp(u32(ceil(fim / (SONDA_PASSO * SONDA_TEXEL))), SONDA_MARCHA_MIN, SONDA_MARCHA_MAX);
+    let n = clamp(u32(ceil(th / (SONDA_PASSO * SONDA_TEXEL))), SONDA_MARCHA_MIN, SONDA_MARCHA_MAX);
     var ant = 0.0;
     var frente = true;
     var melhor = vec4<f32>(r, -1.0);

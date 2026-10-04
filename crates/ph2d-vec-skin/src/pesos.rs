@@ -594,3 +594,8 @@ fn mais_proximo_achatado(
 #[cfg(test)]
 #[path = "pesos_tests.rs"]
 mod tests;
+
+/// A sonda do preço do campo por etapa (A3).
+#[cfg(test)]
+#[path = "pesos_preco_tests.rs"]
+mod preco_tests;

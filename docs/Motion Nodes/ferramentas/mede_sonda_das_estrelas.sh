@@ -10,7 +10,7 @@
 #   bash "docs/Motion Nodes/ferramentas/mede_sonda_das_estrelas.sh" <copia> <dir-de-saida> [<outra-copia>…]
 # Com mais de uma cópia (o binário de ANTES e o de DEPOIS), cada célula corre-as INTERCALADAS na mesma
 # janela calma — o rótulo de cada ficheiro é o nome da cópia.
-# Ambiente: PLACAS="igpu rtx" · CORRIDAS=2 · BARRA=4 · SEGUIDAS=3 · HORAS=6 ·
+# Ambiente: PLACAS="igpu rtx" · CORRIDAS=2 · BARRA=4 · SEGUIDAS=3 · HORAS=6 · REPETE=6 ·
 #           PERFIL=1 (`PH2D_FLUID_PROFILE=1`: 250 quadros e o relógio da placa por passe)
 set -u
 BIN="${1:?binario-da-sonda}"
@@ -52,13 +52,23 @@ for placa in $PLACAS; do
         rotulo=""
         [ "${#BINS[@]}" -gt 1 ] && rotulo="$(basename "$b")_"
         f="$OUT/${rotulo}${placa}_${arranjo}_${corrida}.txt"
-        calma
-        {
-          echo "ANTES: $(cat /proc/loadavg)"
-          PH2D_GPU=1 PH2D_GPU_ESPERA=1500 PH2D_PRAZO=600 bash "$RAIZ/scripts/ph2d-run.sh" \
-            env "${kv[@]}" "$b" --ignored --nocapture --test-threads=1 "$FILTRO" 2>&1
-          echo "DEPOIS: $(cat /proc/loadavg)"
-        } > "$f"
+        # ⛔ 04/10 (doc 121 §9.14): a placa presa por OUTRA linha (um arnês de mutação, 25 min) fazia a
+        # porta desistir e a célula saía VAZIA — a rodada seguia com um buraco na intercalação. ⇒ uma
+        # célula sem a linha da sonda repete-se (com nova calma), até `REPETE` vezes.
+        tentativa=0
+        while :; do
+          calma
+          {
+            echo "ANTES: $(cat /proc/loadavg)"
+            PH2D_GPU=1 PH2D_GPU_ESPERA=1500 PH2D_PRAZO=600 bash "$RAIZ/scripts/ph2d-run.sh" \
+              env "${kv[@]}" "$b" --ignored --nocapture --test-threads=1 "$FILTRO" 2>&1
+            echo "DEPOIS: $(cat /proc/loadavg)"
+          } > "$f"
+          grep -q 'copias: placa' "$f" && break
+          tentativa=$((tentativa + 1))
+          echo "$(date +%H:%M:%S) ${rotulo}$placa $arranjo $corrida VAZIA (tentativa $tentativa)" >> "$OUT/progresso.log"
+          [ "$tentativa" -ge "${REPETE:-6}" ] && break
+        done
         echo "$(date +%H:%M:%S) ${rotulo}$placa $arranjo $corrida" >> "$OUT/progresso.log"
       done
       corrida=$((corrida + 1))

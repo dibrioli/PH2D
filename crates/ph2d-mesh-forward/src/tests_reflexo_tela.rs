@@ -273,7 +273,14 @@ const BASE: f32 = 0.03;
 #[ignore = "precisa de aparelho"]
 fn a_base_de_uma_vizinha_pousada_nao_se_salta() {
     let mut falhas = Vec::new();
-    for (v, nome) in [(&VAZIO, "vazio"), (&crate::tests_reflexo_perto::PERTO, "perto")] {
+    for (v, nome, barra) in [
+        (&VAZIO, "vazio", BARRA_BASE),
+        (
+            &crate::tests_reflexo_perto::PERTO,
+            "perto",
+            BARRA_BASE_PERTO,
+        ),
+    ] {
         let Some(mut fw) = desenhista(v) else {
             eprintln!("sem aparelho — o gate não corre aqui");
             return;
@@ -290,7 +297,7 @@ fn a_base_de_uma_vizinha_pousada_nao_se_salta() {
                 m.0, m.1, m.2
             );
             assert!(m.0 > 300, "a base encolheu: {} px", m.0);
-            if !(m.1 < BARRA_BASE.0 && m.2 <= BARRA_BASE.1) {
+            if !(m.1 < barra.0 && m.2 <= barra.1) {
                 falhas.push(format!("{nome} {rug}"));
             }
         }
@@ -326,5 +333,10 @@ fn mede_em(
     (n, s / n.max(1) as f32, g)
 }
 
-/// `(|Δ| médio na base, px com |Δ| > 0,1)`.
-const BARRA_BASE: (f32, usize) = (0.03, 50);
+/// `(|Δ| médio na base, px com |Δ| > 0,1)` na vista do dono. Medido (04/10): a busca a saltar a base
+/// `0,0266 / 363` e `0,0244 / 290` (nítido, `0,05`); com o chão a acabar o arco `0,0158 / 110` e `0,0191 / 125`
+/// — o resto é a LUZ da face da azul virada para a verde (o Cycles escurece-a mais), sem salto nenhum.
+const BARRA_BASE: (f32, usize) = (0.022, 160);
+
+/// A mesma na vista de perto da cena 42: antes `0,0279 / 38` e `0,0227 / 31`; depois `0,0186 / 18` e `0,0157 / 11`.
+const BARRA_BASE_PERTO: (f32, usize) = (0.022, 25);

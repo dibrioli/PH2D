@@ -218,7 +218,15 @@ fn sonda_da_junta_na_cpu() {
                         let r: [f32; 3] =
                             std::array::from_fn(|e| vista[e] - 2.0 * dot(vista, p.n) * p.n[e]);
                         let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
-                        let (_, w) = marcha(ler, q, r, Some(p.p[1]), franja.max(1.0e-6), k_aresta, &mut None);
+                        let (_, w) = marcha(
+                            ler,
+                            q,
+                            r,
+                            Some(p.p[1]),
+                            franja.max(1.0e-6),
+                            k_aresta,
+                            &mut None,
+                        );
                         aceita += usize::from(w >= 1.0);
                         peso += w;
                     }
@@ -364,8 +372,16 @@ fn sonda_das_bordas_do_dono() {
         lin(viz[i]) / lin(solo[i]).max(1.0e-3) - p.col[0] / p.col[2].max(1.0e-3)
     };
     let zona = crate::tests_reflexo_tela::zona(v, &px, false);
-    let maus: Vec<usize> = zona.iter().copied().filter(|&k| erro(k).abs() > 0.1).collect();
-    eprintln!("{} de {} px vistos do centro erram > 0,1", maus.len(), zona.len());
+    let maus: Vec<usize> = zona
+        .iter()
+        .copied()
+        .filter(|&k| erro(k).abs() > 0.1)
+        .collect();
+    eprintln!(
+        "{} de {} px vistos do centro erram > 0,1",
+        maus.len(),
+        zona.len()
+    );
     let mut mapa = std::collections::BTreeMap::new();
     for &k in &maus {
         *mapa.entry((px[k].j / 16, px[k].i / 16)).or_insert(0usize) += 1;
@@ -434,18 +450,30 @@ fn sonda_da_escada() {
             let r: [f32; 3] = std::array::from_fn(|e| f[e] - 2.0 * dot(f, p.n) * p.n[e]);
             let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
             let (_, w) = marcha(&ler, q, r, Some(p.p[1]), FRANJA, ARESTA, &mut None);
-            let g = crate::tests_reflexo_perto::vizinha_refletida(v, p).map_or('.', |n| {
-                char::from_digit(n as u32, 10).unwrap_or('?')
-            });
+            let g = crate::tests_reflexo_perto::vizinha_refletida(v, p)
+                .map_or('.', |n| char::from_digit(n as u32, 10).unwrap_or('?'));
             let ix = (p.j * LADO + p.i) as usize * 4 + 1;
             let nosso = lin(viz[ix]) / lin(solo[ix]).max(1.0e-3);
             let ciclos = p.col[0] / p.col[2].max(1.0e-3);
-            linha += &format!(" {i}:{g}{}{:.0}/{:.0}", if w >= 1.0 { 'A' } else { '-' }, 10.0 * nosso, 10.0 * ciclos);
+            linha += &format!(
+                " {i}:{g}{}{:.0}/{:.0}",
+                if w >= 1.0 { 'A' } else { '-' },
+                10.0 * nosso,
+                10.0 * ciclos
+            );
         }
         eprintln!("{linha}");
     }
     // A faixa: a geometria acerta a azul e a busca não aceita — a busca cruzamento a cruzamento.
-    for (i, j) in [(272u32, 416u32), (275, 420), (277, 420), (277, 424), (279, 424), (284, 436), (287, 440)] {
+    for (i, j) in [
+        (272u32, 416u32),
+        (275, 420),
+        (277, 420),
+        (277, 424),
+        (279, 424),
+        (284, 436),
+        (287, 440),
+    ] {
         let Some(&k) = onde.get(&(i, j)) else {
             continue;
         };
@@ -455,10 +483,18 @@ fn sonda_da_escada() {
         let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
         let t = crate::tests_sonda_cpu::acerta_em(v.pecas[2], p.p, r);
         let x = t.map(|t| [0, 1, 2].map(|e| p.p[e] + t * r[e]));
-        let lam = x.map(|x| dot([0, 1, 2].map(|e| x[e] - c[e]), [0, 1, 2].map(|e| x[e] - c[e])).sqrt());
+        let lam = x.map(|x| {
+            dot(
+                [0, 1, 2].map(|e| x[e] - c[e]),
+                [0, 1, 2].map(|e| x[e] - c[e]),
+            )
+            .sqrt()
+        });
         let mut tr = Some(Vec::new());
         let (_, w) = marcha(&ler, q, r, Some(p.p[1]), FRANJA, ARESTA, &mut tr);
-        eprintln!("px ({i}, {j}): t até a azul {t:?} · ponto {x:?} · λ do ponto {lam:?} · peso {w:.3}");
+        eprintln!(
+            "px ({i}, {j}): t até a azul {t:?} · ponto {x:?} · λ do ponto {lam:?} · peso {w:.3}"
+        );
         for l in tr.unwrap_or_default() {
             eprintln!("{l}");
         }

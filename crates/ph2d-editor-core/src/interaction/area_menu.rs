@@ -66,6 +66,12 @@ impl AreaMenus {
         &self.list
     }
 
+    /// O 1.º pulldown (`slot` 0) é o seletor de modo?
+    #[must_use]
+    pub fn has_leading(&self) -> bool {
+        self.leading == 1
+    }
+
     /// Reescreve a parte do MÓDULO, e deixa a do seletor.
     pub fn set_module(&mut self, menus: Vec<AreaMenu>) {
         self.list.truncate(self.leading);

@@ -372,6 +372,12 @@ impl WidgetStore {
         self.area_menus.set_leading(menu);
     }
 
+    /// Há seletor de modo neste quadro? (Ele é então o `slot` 0.)
+    #[must_use]
+    pub fn has_mode_selector(&self) -> bool {
+        self.area_menus.has_leading()
+    }
+
     /// Os pulldowns que a área contribui neste quadro — um chip por cada, na ordem.
     #[must_use]
     pub fn area_menus(&self) -> &[crate::interaction::AreaMenu] {

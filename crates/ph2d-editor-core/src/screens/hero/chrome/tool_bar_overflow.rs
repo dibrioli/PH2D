@@ -87,10 +87,12 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             return true;
         }
         // Ancorado por BAIXO do próprio chip, como os menus da barra: o rect vem do índice de
-        // acerto do quadro anterior, que é onde o chip de facto ficou.
+        // acerto do quadro anterior, que é onde o chip de facto ficou. ⚠️ Um chip TRANSBORDADO não
+        // tem rect, e quem o abre sem o ponteiro (a paleta, o `Ctrl+Tab`) ancora sob o `⋯` dele.
         let (x, y) = hero
             .hit_index
             .rect_for(chip)
+            .or_else(|| hero.hit_index.rect_for(ids::TOOL_BAR_OVERFLOW))
             .map_or((0.0, hero.last_viewport.y), |r| (r.x, r.y + r.h));
         hero.store
             .open_context_menu(ContextMenuRequest { x, y, kind });

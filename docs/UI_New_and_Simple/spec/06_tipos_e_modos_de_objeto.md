@@ -159,7 +159,7 @@ O vocabulário fecha-se só com o que algum tipo declara hoje.
   (D6).
 - **Atalhos:**
   - **Tab** alterna Object ↔ o último modo de criação daquele objecto;
-  - **Ctrl+Tab** abre a lista;
+  - **Ctrl+Tab** abre a lista ✅ (04/10);
   - o atalho de cada modo vem depois (Blender: `Tab`, e um menu circular com `Ctrl+Tab`).
 - **Entrar num modo = abrir o módulo SOBRE aquela entidade:** as ferramentas, os painéis e a
   vista do módulo. **Sair** volta a Object e o módulo larga a entidade.
@@ -231,7 +231,9 @@ sozinho (§6.5).
   - O seletor *«Object Mode ▾»* é o 1.º pulldown da área (`AreaMenus`: o seletor à frente, os do
     módulo atrás, cada escritor só reescreve a sua parte).
   - **Tab** = Object ↔ o último modo do objecto; o **zen** passou ao `Ctrl+Space` (escolha do dono,
-    03/10). ⏳ O `Ctrl+Tab` (a lista) não entrou.
+    03/10). ✅ O `Ctrl+Tab` (a lista) entrou em 04/10: é o clique do seletor
+    (`mode_drive::mode_key`), o 2.º toque fecha, sem activo não faz nada; o chip transbordado abre
+    sob o `⋯`.
   - **O cadeado** já existia para o Painter (3 portas: clique, laço, linha da Hierarquia); passou a
     ser do MODO (`mode_drive::refused`). As outras ~60 portas que trocam a selecção (criar,
     duplicar, apagar, desfazer, largar ficheiro) não se ensinam uma a uma: a rede

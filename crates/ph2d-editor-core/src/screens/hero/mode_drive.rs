@@ -338,6 +338,20 @@ pub fn right_click_on_canvas(hero: &mut HeroScreen) -> bool {
     true
 }
 
+/// ⭐ **A tecla do modo** (spec/06 §3.2): `Tab` alterna Object ↔ o último modo do objecto;
+/// `Ctrl+Tab` (`list`) abre a LISTA — o seletor do cabeçalho pelo clique DELE, logo o 2.º toque
+/// fecha. Sem seletor (nenhum activo) nenhuma das duas faz nada, como no Blender.
+pub fn mode_key(hero: &mut HeroScreen, list: bool) {
+    use crate::action_bus::EditorAction;
+    if !list {
+        hero.bus.push(EditorAction::ObjectMode(ModeRequest::Toggle));
+    } else if hero.store.has_mode_selector() {
+        hero.apply_event(crate::interaction::WidgetEvent::Click(
+            crate::ids::area_menu_button(0),
+        ));
+    }
+}
+
 #[cfg(test)]
 #[path = "mode_drive_tests.rs"]
 mod tests;

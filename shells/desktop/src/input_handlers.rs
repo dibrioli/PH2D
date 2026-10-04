@@ -118,11 +118,10 @@ impl App {
         }
 
         match code {
-            // ⭐ `Tab` = o modo, como no Blender; o zen é `Ctrl+Space` (escolha do dono, 03/10).
-            KeyCode::Tab if !cmd_chord => {
+            // ⭐ `Tab` = o modo e `Ctrl+Tab` a lista, como no Blender; o zen é `Ctrl+Space` (03/10).
+            KeyCode::Tab => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
-                    use ph2d_editor_core::{action_bus::EditorAction, object_mode::ModeRequest};
-                    hero.bus.push(EditorAction::ObjectMode(ModeRequest::Toggle));
+                    ph2d_editor_core::screens::hero::mode_drive::mode_key(hero, cmd_chord);
                 }
             }
             // ⚠️ Consumido mesmo no intervalo do zen: cair adiante tocaria a linha do tempo.

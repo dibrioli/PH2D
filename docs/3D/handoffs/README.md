@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**58 handoffs** (= ficheiros na pasta, **re-derivado** em 2026-10-02 com o do integrador desta data dentro; em 2026-10-01 dizia `57`; em 2026-09-25 dizia `55`; em 2026-09-24 — a contagem dizia `48` com `51` na pasta, e TRÊS linhas faltavam à tabela abaixo: *um índice escrito à mão envelhece no dia em que alguém acrescenta um ficheiro e não o lê*) · **20** marcados **◆** — mas
+**66 handoffs** (= ficheiros na pasta, **re-derivado** em 2026-10-03 com o da W6 dentro; em 2026-10-02 dizia `58`; em 2026-10-01 dizia `57`; em 2026-09-25 dizia `55`; em 2026-09-24 — a contagem dizia `48` com `51` na pasta, e TRÊS linhas faltavam à tabela abaixo: *um índice escrito à mão envelhece no dia em que alguém acrescenta um ficheiro e não o lê*) · **20** marcados **◆** — mas
 ⚠️ **só `25` são de facto citados pelo `CLAUDE.md`**, re-derivado em 2026-09-20
 (ele dizia `37 · 18 · 14`, medido em 2026-09-07: *sete* handoffs entraram entre as
 duas datas e ninguém reconciliou a conta — ⛔ **é exactamente o que o parágrafo
@@ -86,6 +86,7 @@ linhas marcadas, não desta).
 | 2026-10-01 | ★ | [HANDOFF_INTEGRACAO_line_sculpt3d_O_RELEVO_2026-10-01.md](HANDOFF_INTEGRACAO_line_sculpt3d_O_RELEVO_2026-10-01.md) | **INTEGRADOR** | ⭐⭐⭐ **O documento do INTEGRADOR, 3.ª rodada** — a tinta molhada sobrevive a rodar a vista (a CADEIA) e o IMPASTO pinta RELEVO de luz na peça (`[altura, corpo]`, gradiente EXACTO, a normal contra o HORIZONTE): 16 commits sobre o `main` de agora, zero contador partilhado (`SCULPT_DOC_VERSION 3 → 5` dentro do blob, com degraus), zero contrato, zero ADR, zero pacote externo, `+20` na shell. ⚠️ O §4 tem as sete leituras que o diff inverte |
 | 2026-10-02 | ★ | [HANDOFF_INTEGRACAO_line_sculpt3d_A_INCLINACAO_2026-10-02.md](HANDOFF_INTEGRACAO_line_sculpt3d_A_INCLINACAO_2026-10-02.md) | integração | A INCLINAÇÃO por amostra — a encosta do relevo deixa de ler-se em degraus da retícula; `SCULPT_DOC_VERSION` intacto (5), zero contador partilhado, shell intocada; `upload_tinta_amostras_at` ganha `mesh: &Mesh` |
 | 2026-10-03 | ★ | [HANDOFF_INTEGRACAO_line_sculpt3d_CAMADAS_EM_ECRA_2026-10-03.md](HANDOFF_INTEGRACAO_line_sculpt3d_CAMADAS_EM_ECRA_2026-10-03.md) | **INTEGRADOR** | As CAMADAS em tons de ecrã (ADR-0177) + a pilha de camadas na peça 3D; SUPERSEDE o A_INCLINACAO (ainda fora do `main`, vem na mesma série); `SCULPT_DOC_VERSION` 5→7, crate nova `ph2d-layer-ops`, variante nova `LayerCompositeError::AdjustmentInLightSpace`, o Flip ganha porta própria, shell intocada; smoke 2D antes × depois pendente |
+| 2026-10-03 | ★ | [HANDOFF_INTEGRACAO_line_sculpt3d_OS_EFEITOS_DE_VIZINHANCA_2026-10-03.md](HANDOFF_INTEGRACAO_line_sculpt3d_OS_EFEITOS_DE_VIZINHANCA_2026-10-03.md) | **INTEGRADOR** | A W6: desfoque, nitidez, brilho e sombras/realces borram NA SUPERFÍCIE da peça (o calor da retícula, CPU e placa, raio no mundo em % da peça, até `64x`); SUPERSEDE o CAMADAS_EM_ECRA (ainda fora do `main`, vem na mesma série); `SCULPT_DOC_VERSION` intacto (7), cena `=54`, zero dependência, shell intocada; smoke `=54` pendente |
 
 ---
 

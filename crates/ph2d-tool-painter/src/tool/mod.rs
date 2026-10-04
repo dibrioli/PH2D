@@ -441,6 +441,7 @@ pub use paint::{
     StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, UsoDaCamada,
     WetKnobs, WetTool, brush_falloff_weight_at, render_classic_flow_preview,
 };
+pub use paint::{DICA_DO_PARAMETRO, Dependente, Inercias};
 mod runtime;
 mod screen_canvas;
 pub use screen_canvas::{SCREEN_CANVAS_DOC, ScreenCanvasFrame, ScreenCanvasRelief};

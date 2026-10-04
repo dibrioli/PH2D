@@ -50,21 +50,24 @@ pub(crate) fn paint_slider_chip_row(
     chip_id: ph2d_a11y::NodeId,
     value: f32,
 ) -> f32 {
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let used = paint_slider_with_chip(
-        Rect::new(x, y, content_w, ROW_H_PX),
-        label,
-        value,
-        slider_id,
-        chip_id,
-        store,
-        hit_index,
-        scene,
-        text_system,
-        theme,
-    );
+    let area = Rect::new(x, y, content_w, ROW_H_PX);
+    let used = crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[slider_id, chip_id], |ctx| {
+        let scene = &mut *ctx.scene;
+        let text_system = &mut *ctx.text_system;
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        paint_slider_with_chip(
+            area,
+            label,
+            value,
+            slider_id,
+            chip_id,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        )
+    });
     y + used + ph2d_tokens::control_gap_px()
 }
 
@@ -103,7 +106,9 @@ pub(crate) fn paint_checkbox_row(
         .value(value)
         .seccao(seccao);
     let rect = Rect::new(x, y, content_w, ROW_H_PX);
-    paint_checkbox(&cb, rect, ctx.scene, ctx.text_system, theme);
+    crate::esmaecer::talvez_esmaecido(ctx, theme, rect, &[id], |ctx| {
+        paint_checkbox(&cb, rect, ctx.scene, ctx.text_system, theme);
+    });
     ctx.host.hit_index_mut().register(id, rect);
     y + ph2d_tokens::row_pitch_px()
 }

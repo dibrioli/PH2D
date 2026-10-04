@@ -46,6 +46,24 @@ const SOFTNESS: ParamSpec = ParamSpec {
     default: 0.3,
 };
 
+/// **O parâmetro `slot` de `kind` está INERTE com estes `params`?** — uma lei por agora: o *Roughness*
+/// é a persistência ENTRE oitavas, e com o *Detail* numa oitava só (`octaves_from`) não há entre. O
+/// Noise nasce assim (Detail `0`). O painel esmaece a linha quando ela responde `true` (doc 46 §2-3).
+#[must_use]
+pub fn param_inerte(kind: TextureKind, params: &[f32], slot: usize) -> bool {
+    let specs = param_specs(kind);
+    let Some(s) = specs.get(slot) else {
+        return false;
+    };
+    let Some(detail) = specs.iter().position(|p| p.label == DETAIL.label) else {
+        return false;
+    };
+    s.label == ROUGHNESS.label
+        && params
+            .get(detail)
+            .is_some_and(|&d| super::octaves_from(d) == 1)
+}
+
 /// The parameters a `kind` exposes, in slot order (see the module note). `None` exposes nothing.
 #[must_use]
 pub fn param_specs(kind: TextureKind) -> &'static [ParamSpec] {

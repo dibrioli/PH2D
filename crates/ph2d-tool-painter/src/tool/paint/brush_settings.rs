@@ -638,6 +638,9 @@ pub struct BrushSettings {
     pub impasto_wax: f32,
     /// **Wax Colour** — the filter on the scattered light. White = the paint scatters its own colour.
     pub impasto_wax_color: [f32; 3],
+    /// **O que está inerte AGORA** — os controlos que dependem de outro, e a dica do que os liga
+    /// ([`super::inercia`]). O painel esmaece a linha e mostra a dica (doc 46 §2-3).
+    pub inercias: super::inercia::Inercias,
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor

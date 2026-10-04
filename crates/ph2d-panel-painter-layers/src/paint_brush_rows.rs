@@ -141,9 +141,12 @@ pub(crate) fn paint_dropdown_row(
     cur_label: &str,
 ) -> (f32, Option<Rect>) {
     let row = linha_da_chave(ctx, x, content_w, y, chave);
-    label(ctx, theme, tr(chave), &row, TypeToken::Sm.px());
     let rect = row.control;
-    let open = paint_dropdown_chip(ctx, theme, id, cur_value, cur_label, rect);
+    let area = Rect::new(x, y, content_w, ph2d_tokens::row_pitch_px());
+    let open = crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[id], |ctx| {
+        label(ctx, theme, tr(chave), &row, TypeToken::Sm.px());
+        paint_dropdown_chip(ctx, theme, id, cur_value, cur_label, rect)
+    });
     (y + ph2d_tokens::row_pitch_px(), open.then_some(rect))
 }
 

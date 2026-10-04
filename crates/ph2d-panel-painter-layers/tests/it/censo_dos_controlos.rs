@@ -863,6 +863,38 @@ fn pre_condicoes() -> Vec<Linha> {
             false,
         ));
     }
+    v.push((
+        Digital,
+        "Strength 0,4 (o Accumulate tem tecto a ultrapassar)",
+        vec![Gesto::Slider(PAINTER_BRUSH_STRENGTH_SLIDER, 0.4)],
+        vec![Alvo::Id(PAINTER_BRUSH_ACCUMULATE)],
+        false,
+    ));
+    for m in [Digital, Watercolor, Impasto, WetPaint] {
+        v.push((
+            m,
+            "Grain Noise (Detail de fábrica: uma oitava)",
+            vec![opcao(
+                PAINTER_BRUSH_TEXTURE_KIND,
+                painter_brush_texture_kind_option_id(1),
+            )],
+            vec![Alvo::Id(PAINTER_BRUSH_TEXTURE_PARAMS[3])],
+            false,
+        ));
+        v.push((
+            m,
+            "Grain Noise com Detail 0,6",
+            vec![
+                opcao(
+                    PAINTER_BRUSH_TEXTURE_KIND,
+                    painter_brush_texture_kind_option_id(1),
+                ),
+                Gesto::Numero(PAINTER_BRUSH_TEXTURE_PARAMS[2], 0.6),
+            ],
+            vec![Alvo::Id(PAINTER_BRUSH_TEXTURE_PARAMS[3])],
+            false,
+        ));
+    }
     for m in [Digital, Watercolor, Impasto, WetPaint] {
         v.push((
             m,
@@ -1037,11 +1069,14 @@ fn pre_condicoes() -> Vec<Linha> {
         vec![Alvo::Id(PAINTER_WETPAINT_ERASE)],
         false,
     ));
-    for (k, nome) in [(2, "a ferramenta Smear"), (3, "a ferramenta Blend")] {
+    for (k, nome) in [
+        (2, "tinta molhada na tela e a ferramenta Smear"),
+        (3, "tinta molhada na tela e a ferramenta Blend"),
+    ] {
         v.push((
             WetPaint,
             nome,
-            vec![Gesto::Clique(ferramenta_wet(k))],
+            vec![Gesto::Traco, Gesto::Clique(ferramenta_wet(k))],
             vec![Alvo::Id(PAINTER_WETPAINT_PICKUP)],
             false,
         ));
@@ -1135,4 +1170,97 @@ fn sonda_o_ruido_do_wet_paint() {
             .collect();
         eprintln!("RUIDO-WET armar={armar:?} texels diferentes da 1.ª: {piores:?}");
     }
+}
+
+/// Os ids que a ferramenta pode declarar inertes ([`ph2d_tool_painter::Dependente`] e os parâmetros
+/// dos padrões) — a população do gate do esmaecido.
+fn ids_dependentes() -> Vec<NodeId> {
+    let mut v: Vec<NodeId> = ph2d_tool_painter::Dependente::TODOS
+        .iter()
+        .flat_map(|d| d.ids().iter().copied())
+        .collect();
+    v.extend(ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_PARAMS);
+    v.extend(ph2d_tool_painter::ids::PAINTER_SHAPE_PARAMS);
+    v
+}
+
+/// ⭐⭐⭐ **A LINHA ESMAECIDA É A QUE NÃO AGE — e só ela** (decisão do dono, 2026-10-04; doc 46 §2-3).
+///
+/// Em cada estado da tabela das pré-condições (e na fábrica do meio), cada controlo dependente que a
+/// tela oferece é conduzido pela porta do ponteiro: a linha tem de estar esmaecida (a dica no id) SE E
+/// SÓ SE a tinta não mudou. Esmaecida e viva = a tela mente que não age; viva e inerte sem esmaecer =
+/// o controlo morto que esta decisão existe para mostrar.
+///
+/// **Mutações que sangram:** inverter a lei do Space Attenuation (`space_attenuation_reaches`); tirar
+/// o `talvez_esmaecido` da linha de número; o Taper esmaecer com comprimento.
+#[test]
+fn a_linha_esmaecida_e_a_que_nao_age() {
+    let nomes = nomes();
+    let dependentes = ids_dependentes();
+    let mut estados: Vec<(PaintMedia, Vec<Gesto>)> = Vec::new();
+    for (media, _, armar, _, depois) in pre_condicoes() {
+        if depois {
+            continue;
+        }
+        for e in [Vec::new(), armar] {
+            if !estados
+                .iter()
+                .any(|(m, a)| *m == media && format!("{a:?}") == format!("{e:?}"))
+            {
+                estados.push((media, e));
+            }
+        }
+    }
+    let falhas: Vec<Vec<String>> = em_paralelo(&estados, |(media, armar)| {
+        let media = *media;
+        let Ok(bancada) =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Bancada::nova(media, armar)))
+        else {
+            return Vec::new();
+        };
+        let esmaecida = |id: NodeId| bancada.host.store().tooltip_for(id).is_some();
+        let (base, _) = ensaio(media, armar, &Gesto::Nenhum);
+        let mut out = Vec::new();
+        let mut vistos: Vec<NodeId> = Vec::new();
+        for g in gestos(media, armar) {
+            let alvo = match &g {
+                Gesto::Opcao(menu, _, k, _) if *k > 0 => *menu,
+                Gesto::Opcao(..) => continue,
+                _ => match g.id() {
+                    Some(id) => id,
+                    None => continue,
+                },
+            };
+            if !dependentes.contains(&alvo) || vistos.contains(&alvo) {
+                continue;
+            }
+            let (px, entrega) = ensaio(media, armar, &g);
+            if !entrega.ajuste_mudou {
+                continue;
+            }
+            vistos.push(alvo);
+            let inerte = diferenca(&base, &px).0 == 0;
+            if esmaecida(alvo) != inerte {
+                out.push(format!(
+                    "{media:?} [{}] {}: esmaecida={} mas a tinta {}",
+                    armar
+                        .iter()
+                        .map(|a| format!("{a:?}"))
+                        .collect::<Vec<_>>()
+                        .join(" + "),
+                    nome(&nomes, alvo),
+                    esmaecida(alvo),
+                    if inerte { "NÃO mudou" } else { "mudou" }
+                ));
+            }
+        }
+        out
+    });
+    let falhas: Vec<String> = falhas.into_iter().flatten().collect();
+    assert!(
+        falhas.is_empty(),
+        "{} linha(s) dependente(s) mentem sobre agir:\n{}",
+        falhas.len(),
+        falhas.join("\n")
+    );
 }

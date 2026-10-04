@@ -28,6 +28,25 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // A unidade de um leitor de chip: o marcador sai e sobra `px`, que a régua lê como
         // identificador. Irmã do `panel.audio_mixer.strip.db_value`.
         "panel.painter_layers.sculpt.px_value" => "{px} px",
+        // ── A dica da linha ESMAECIDA: o que liga o controlo (doc 46 §2-3; a lei de cada uma é a
+        // `ph2d_tool_painter::Dependente`, e o painel a mostra ao passar o rato) ───────────────────
+        "panel.painter_layers.inerte.taper_length" => "Acts when the Taper has a length",
+        "panel.painter_layers.inerte.strength_below_full" => "Acts when Strength is below 100%",
+        "panel.painter_layers.inerte.accumulate_on" => "Acts when Accumulate is on",
+        "panel.painter_layers.inerte.jitter_above_zero" => "Acts when Jitter is above 0",
+        "panel.painter_layers.inerte.dash_ratio_below_full" => "Acts when Dash Ratio is below 100%",
+        "panel.painter_layers.inerte.paper_and_relief" => {
+            "Acts when a Paper is chosen and Relief is above 0"
+        }
+        "panel.painter_layers.inerte.relief_above_zero" => "Acts when Relief is above 0",
+        "panel.painter_layers.inerte.same_as_paper_off" => "Acts when Same as Paper is off",
+        "panel.painter_layers.inerte.charge_below_full" => "Acts when Charge is below 100%",
+        "panel.painter_layers.inerte.grain_chosen" => "Acts when a Grain is chosen",
+        "panel.painter_layers.inerte.eraser_on" => "Acts with the Eraser",
+        "panel.painter_layers.inerte.wet_paint_tool" => "Acts with the Paint tool and the Eraser",
+        "panel.painter_layers.inerte.detail_above_minimum" => {
+            "Acts when Detail is above its minimum"
+        }
         // ⭐⭐ **O NOME DO PAINEL** (2026-09-17) — o `Panel::TITLE` é um `TextKey`, e esta chave é o
         //    que a ABA do encaixe lê. ⚠️ O painel chama-se *"Painter"* e a crate `painter_layers`:
         //    a chave segue o **id do painel**, que é o que a aba e o registo conhecem; o TEXTO é

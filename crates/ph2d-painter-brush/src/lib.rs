@@ -194,6 +194,6 @@ pub use texture::patterns::{render_texture_layer, render_texture_preview};
 pub use texture::{
     DEG_STEP, ImageMask, ImageRgb, MAX_TEX_PARAMS, ParamSpec, TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX,
     TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN, TEX_TILE_BASE_PX, TexDabBasis, TextureKind,
-    TextureMapping, TextureSettings, compose_shape_silhouette_kind, param_specs,
+    TextureMapping, TextureSettings, compose_shape_silhouette_kind, param_inerte, param_specs,
     render_shape_preview, render_stencil_preview, stencil_frame,
 };

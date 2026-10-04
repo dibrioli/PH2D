@@ -42,6 +42,8 @@ pub(crate) fn seg_row_owned(
         store,
         hit_index,
     );
+    let ids: Vec<ph2d_a11y::NodeId> = options.iter().map(|(id, _)| *id).collect();
+    crate::esmaecer::opcoes_esmaecidas(ctx, theme, &ids);
     y + used + ph2d_tokens::control_gap_px()
 }
 
@@ -75,5 +77,7 @@ pub(crate) fn seg_row(
         store,
         hit_index,
     );
+    let ids: Vec<ph2d_a11y::NodeId> = options.iter().map(|(id, _)| *id).collect();
+    crate::esmaecer::opcoes_esmaecidas(ctx, theme, &ids);
     y + used + ph2d_tokens::control_gap_px()
 }

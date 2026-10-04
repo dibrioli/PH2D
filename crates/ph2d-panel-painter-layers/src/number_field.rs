@@ -176,22 +176,25 @@ pub(crate) fn paint_num_row(
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     arm_field(ctx.host.store_mut(), id, value, min, max, step, decimals);
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    ph2d_editor_core::property_row::paint_fields_row(
-        ctx.scene,
-        ctx.text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        content_w,
-        y,
-        label_txt,
-        &[id],
-        step,
-        None,
-        sec,
-    )
+    let area = Rect::new(x, y, content_w, ph2d_tokens::row_pitch_px());
+    crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[id], |ctx| {
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        ph2d_editor_core::property_row::paint_fields_row(
+            ctx.scene,
+            ctx.text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            content_w,
+            y,
+            label_txt,
+            &[id],
+            step,
+            None,
+            sec,
+        )
+    })
 }
 
 /// Label + TWO number boxes on one line, with red **X** / green **Y** axis tags (Size / Offset), like the
@@ -344,20 +347,23 @@ fn half_param(
     // campo»* fala de uma propriedade com várias componentes; aqui são **duas propriedades
     // diferentes** lado a lado, e um ponto só diria que são uma.
     arm_field(ctx.host.store_mut(), id, v, 0.0, 1.0, FINE_STEP, 2);
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    ph2d_editor_core::property_row::paint_fields_row(
-        ctx.scene,
-        ctx.text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        y,
-        label_txt,
-        &[id],
-        FINE_STEP,
-        None,
-        sec,
-    );
+    let area = Rect::new(x, y, w, ph2d_tokens::row_pitch_px());
+    crate::esmaecer::talvez_esmaecido(ctx, theme, area, &[id], |ctx| {
+        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+        ph2d_editor_core::property_row::paint_fields_row(
+            ctx.scene,
+            ctx.text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            y,
+            label_txt,
+            &[id],
+            FINE_STEP,
+            None,
+            sec,
+        );
+    });
 }

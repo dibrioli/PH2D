@@ -21,7 +21,7 @@ mod specs;
 mod tileable;
 pub use layer::render_texture_layer;
 use math::*;
-pub use specs::{ParamSpec, param_specs};
+pub use specs::{ParamSpec, param_inerte, param_specs};
 pub use tileable::{analytic_needs_hash_wrap, analytic_tile_period, lattice_tileable};
 
 /// Evaluate `kind` at texture coords `tex` (after the mapping resolved them), shaped by the kind's

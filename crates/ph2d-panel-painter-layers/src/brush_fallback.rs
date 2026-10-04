@@ -351,4 +351,5 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     impasto_wax: 0.0,       // LITERAL-PX-OK: no wrap — the old Lambert, to the float
     // LITERAL-PX-OK: white = the filter is open = the paint scatters its own colour (the physics)
     impasto_wax_color: [1.0, 1.0, 1.0],
+    inercias: ph2d_tool_painter::Inercias::NENHUMA,
 };

@@ -192,7 +192,8 @@ impl Default for TextureSettings {
 }
 
 pub use patterns::{
-    ParamSpec, analytic_needs_hash_wrap, analytic_tile_period, lattice_tileable, param_specs,
+    ParamSpec, analytic_needs_hash_wrap, analytic_tile_period, lattice_tileable, param_inerte,
+    param_specs,
 };
 
 impl TextureSettings {

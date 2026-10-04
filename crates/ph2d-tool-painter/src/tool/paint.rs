@@ -270,7 +270,11 @@ mod selection_verbs_tests; // Cut / Select All / Intersect (report do Enio, 2026
 /// O **Paste FLUTUANTE**: a peça colada transformável antes de pousar (Enio, 2026-08-07).
 mod paste_patch;
 
+/// O pincel com que o modo na mão nasce — a régua dos Resets (doc 45 §2.1).
 mod fabrica;
+/// Os controlos que dependem de outro — o painel esmaece-os (doc 46 §2-3).
+mod inercia;
+pub use inercia::{DICA_DO_PARAMETRO, Dependente, Inercias};
 pub(super) mod selection_shapes; // SelectionEntry is re-exported at `crate::tool` for the undo snapshot
 /// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
 mod selection_trace;
@@ -284,7 +288,7 @@ pub mod stamp_device; // o lote publicado para um dispositivo (doc 33 S3); a pon
 mod stamp_preview; // interactive drag-preview stamping (restore+re-stamp, dirty-rect); split for the LOC cap
 mod stamp_route;
 /// `PaintState::default` body — split out for the workspace file-LOC cap (struct stays in `paint.rs`).
-mod state_default; // o pincel com que o modo na mão nasce — a régua dos Resets (doc 45)
+mod state_default;
 
 mod brush_ranges; // Stroke-slider UI range consts (BRUSH_*_MAX / airbrush rate) + shape grab tol; split for the LOC cap
 pub use brush_ranges::*;

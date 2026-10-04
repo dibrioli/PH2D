@@ -285,6 +285,29 @@ impl BrushSpec {
         dash <= self.dash_ratio.clamp(0.0, 1.0)
     }
 
+    /// **O Space Attenuation chega ao carimbo?** — só com o Accumulate ligado e o espaçamento abaixo
+    /// de um diâmetro (a condição do [`Self::space_overlap_factor`], que a pergunta a ESTA porta). O
+    /// painel esmaece a linha quando ela responde `false` (doc 46 §2-3).
+    #[must_use]
+    pub fn space_attenuation_reaches(&self) -> bool {
+        self.accumulate && self.spacing * 100.0 < 100.0
+    }
+
+    /// **A unidade do Jitter muda alguma coisa?** — só se o método deixa o jitter agir e algum dos
+    /// dois raios (`jitter × diâmetro` · `2 × jitter_absolute_px`) é positivo: com os dois a zero, as
+    /// duas unidades dão o MESMO deslocamento nulo (`stroke::dab_build::apply_jitter`).
+    #[must_use]
+    pub fn jitter_unit_matters(&self) -> bool {
+        self.stroke_method.allows_jitter() && (self.jitter > 0.0 || self.jitter_absolute_px > 0.0)
+    }
+
+    /// **O comprimento do traço-ponto muda alguma coisa?** — só com o Dash Ratio abaixo de `1`: com
+    /// ele a `1`, o [`Self::dash_on`] liga todo carimbo, qualquer que seja o comprimento.
+    #[must_use]
+    pub fn dash_length_matters(&self) -> bool {
+        self.dash_ratio < 1.0
+    }
+
     /// "Adjust Strength for Spacing" multiplier applied to each dab's coverage, in `(0, 1]`.
     ///
     /// Behavioural reference (clean-room): Blender's overlap integral over the falloff curve.
@@ -321,7 +344,7 @@ impl BrushSpec {
     pub fn space_overlap_factor(&self) -> f32 {
         // Blender stores spacing as an integer percent; this engine stores a 0..1 fraction.
         let spacing_pct = (self.spacing * 100.0).max(0.0);
-        if !(self.space_attenuation && self.accumulate && spacing_pct < 100.0) {
+        if !(self.space_attenuation && self.space_attenuation_reaches()) {
             return 1.0;
         }
         // Sample the overlap sum at M phases across one period; the factor cancels the peak.

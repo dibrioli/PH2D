@@ -42,6 +42,7 @@ pub use crate::brush_fallback::FALLBACK_BRUSH;
 mod card; // the titled row-box shared by the brush panel technique sections
 mod composite_picker;
 mod dropdown_popover;
+mod esmaecer; // a linha esmaecida: o controlo que depende de outro e agora não age (doc 46)
 mod event;
 mod event_brush_forward;
 /// As barras do card Line: a tabela que o pintor, o registo e o encaminhamento leem.

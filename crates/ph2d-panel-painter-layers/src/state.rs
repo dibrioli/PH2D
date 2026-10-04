@@ -40,6 +40,10 @@ thread_local! {
     /// de [`CURRENT_LAYERS`]). `None` até o primeiro push (Brush section usa o
     /// default). `Copy`, então o clone é trivial.
     static CURRENT_BRUSH: Cell<Option<BrushSettings>> = const { Cell::new(None) };
+    /// As inércias do instantâneo publicado ([`crate::esmaecer`]) — numa célula PRÓPRIA porque cada
+    /// linha do painel as lê, e o instantâneo inteiro copiado por linha seria cem cópias por quadro.
+    static CURRENT_INERCIAS: Cell<ph2d_tool_painter::Inercias> =
+        const { Cell::new(ph2d_tool_painter::Inercias::NENHUMA) };
 
     /// The brush's Image texture `(luminance, w, h)` — published gated on the tool's version. The Texture
     /// preview renders it for the `Image` kind (pixels can't live in the `Copy` snapshot); `None` → black.
@@ -456,6 +460,13 @@ pub(crate) fn current_layers() -> Option<LayerStack> {
 /// `None` pra limpar.
 pub fn set_current_brush(brush: Option<BrushSettings>) {
     CURRENT_BRUSH.with(|c| c.set(brush));
+    let inercias = brush.map_or(ph2d_tool_painter::Inercias::NENHUMA, |b| b.inercias);
+    CURRENT_INERCIAS.with(|c| c.set(inercias));
+}
+
+/// As inércias do pincel publicado AGORA — o que a [`crate::esmaecer`] pergunta por linha.
+pub(crate) fn current_inercias() -> ph2d_tool_painter::Inercias {
+    CURRENT_INERCIAS.with(Cell::get)
 }
 
 /// Lê o snapshot do brush publicado neste frame (`None` antes do 1º push — a

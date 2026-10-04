@@ -46,7 +46,7 @@ const FICHEIROS_DE_IDS: [&str; 17] = [
 ];
 
 /// `NodeId → "CONST (slug)"` a partir dos literais `pub const X: NodeId = hash_node_id("slug")`.
-fn nomes() -> BTreeMap<NodeId, String> {
+pub(crate) fn nomes() -> BTreeMap<NodeId, String> {
     let mut m = BTreeMap::new();
     for fonte in FICHEIROS_DE_IDS {
         for linha in fonte.lines() {
@@ -71,7 +71,7 @@ fn nomes() -> BTreeMap<NodeId, String> {
     m
 }
 
-fn nome(nomes: &BTreeMap<NodeId, String>, id: NodeId) -> String {
+pub(crate) fn nome(nomes: &BTreeMap<NodeId, String>, id: NodeId) -> String {
     nomes
         .get(&id)
         .cloned()
@@ -129,7 +129,7 @@ fn vivos(rects: Vec<(NodeId, Rect)>) -> Vec<(NodeId, Rect)> {
 
 /// O gesto do artista sobre UM controlo.
 #[derive(Clone, Debug)]
-enum Gesto {
+pub(crate) enum Gesto {
     /// Nada — a base, e o CONTROLO do ruído (a base corrida duas vezes).
     Nenhum,
     /// Digitar um número no chip, com Enter.
@@ -148,7 +148,7 @@ enum Gesto {
 }
 
 impl Gesto {
-    fn id(&self) -> Option<NodeId> {
+    pub(crate) fn id(&self) -> Option<NodeId> {
         match self {
             Gesto::Nenhum | Gesto::Traco => None,
             Gesto::Numero(id, _)
@@ -183,10 +183,10 @@ fn alvo(valor: f64, faixa: Option<(f64, f64, f64)>) -> f64 {
 
 /// O que o barramento levou: os `PanelEvent` à ferramenta e o nome das OUTRAS ações (que são da shell).
 #[derive(Default)]
-struct Entrega {
-    ao_tool: usize,
+pub(crate) struct Entrega {
+    pub(crate) ao_tool: usize,
     /// O instantâneo do pincel (`BrushSettings`) mudou com o gesto.
-    ajuste_mudou: bool,
+    pub(crate) ajuste_mudou: bool,
     /// Os ids que o gesto fez APARECER no painel — um estado novo que o censo visita a seguir.
     revelados: Vec<NodeId>,
     outras: Vec<String>,
@@ -365,7 +365,7 @@ fn risca(t: &mut PainterTool) -> Vec<u8> {
 
 /// Um ENSAIO: ferramenta nova no meio, painel novo, o gesto pela porta do ponteiro, dois quadros, os
 /// dois traços. Devolve os pixels e o que o barramento levou.
-fn ensaio(media: PaintMedia, armar: &[Gesto], gesto: &Gesto) -> (Vec<u8>, Entrega) {
+pub(crate) fn ensaio(media: PaintMedia, armar: &[Gesto], gesto: &Gesto) -> (Vec<u8>, Entrega) {
     let mut bancada = Bancada::nova(media, armar);
     let antes = format!("{:?}", bancada.tool.brush_settings());
     let pintados: Vec<NodeId> = bancada.rects.iter().map(|(i, _)| *i).collect();
@@ -406,15 +406,15 @@ fn mede(media: PaintMedia, armar: &[Gesto], gesto: &Gesto) -> (Vec<u8>, Entrega)
 }
 
 /// A ferramenta e o painel de UM ensaio, depois das PRÉ-CONDIÇÕES (`armar`) aplicadas pela mesma porta.
-struct Bancada {
+pub(crate) struct Bancada {
     tool: PainterTool,
-    host: MockPanelHost,
+    pub(crate) host: MockPanelHost,
     st: PainterLayersPanelState,
     rects: Vec<(NodeId, Rect)>,
 }
 
 impl Bancada {
-    fn nova(media: PaintMedia, armar: &[Gesto]) -> Self {
+    pub(crate) fn nova(media: PaintMedia, armar: &[Gesto]) -> Self {
         let tool = ferramenta(media);
         let (host, st, rects) = pinta(&tool);
         let mut b = Bancada {
@@ -458,7 +458,7 @@ impl Bancada {
 }
 
 /// `(texels diferentes, soma |Δ| sobre os canais, |Δ| máximo)`.
-fn diferenca(a: &[u8], b: &[u8]) -> (usize, u64, u8) {
+pub(crate) fn diferenca(a: &[u8], b: &[u8]) -> (usize, u64, u8) {
     let mut n = 0;
     let mut soma = 0u64;
     let mut max = 0u8;
@@ -477,7 +477,7 @@ fn diferenca(a: &[u8], b: &[u8]) -> (usize, u64, u8) {
 
 /// Os gestos que a tela oferece: um por número/slider, um clique por botão/cabeçalho, e uma opção de
 /// cada menu (o menu aberto pinta as opções, que viram gestos próprios).
-fn gestos(media: PaintMedia, armar: &[Gesto]) -> Vec<Gesto> {
+pub(crate) fn gestos(media: PaintMedia, armar: &[Gesto]) -> Vec<Gesto> {
     let Bancada {
         mut host,
         mut st,
@@ -525,7 +525,7 @@ fn gestos(media: PaintMedia, armar: &[Gesto]) -> Vec<Gesto> {
 /// ⚠️ Os ensaios são independentes por construção — cada um faz a sua ferramenta e o seu painel, e o
 /// instantâneo publicado ao painel (`set_current_brush`) é por THREAD. O paralelo existe pelo Wet
 /// Paint: o ensaio dele DORME (a água anda ao relógio), e em série a exploração não cabia no prazo.
-fn em_paralelo<I: Sync, T: Send>(gestos: &[I], f: impl Fn(&I) -> T + Sync) -> Vec<T> {
+pub(crate) fn em_paralelo<I: Sync, T: Send>(gestos: &[I], f: impl Fn(&I) -> T + Sync) -> Vec<T> {
     use std::sync::atomic::{AtomicUsize, Ordering};
     let proximo = AtomicUsize::new(0);
     let saidas: Vec<std::sync::Mutex<Option<T>>> =

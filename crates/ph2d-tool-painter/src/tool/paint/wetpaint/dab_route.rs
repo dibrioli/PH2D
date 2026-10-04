@@ -154,7 +154,8 @@ impl PainterTool {
         // texture. The per-pixel law is `dab::grain_at`, the same single
         // door the colour route and the impasto height kernel call.
         let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-        let grain_active = brush.texture.is_active();
+        // Só o Grain que AMOSTRA alguma coisa toma o lugar das cerdas (um Image sem imagem não).
+        let grain_active = brush.grain_samples(grain_image.is_some());
         let groups = self.paint.dab_groups.clone();
         let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
         let canvas_wh = [w as f32, h as f32];

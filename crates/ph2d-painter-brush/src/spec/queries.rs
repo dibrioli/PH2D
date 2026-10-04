@@ -49,6 +49,16 @@ impl BrushSpec {
                 || (self.texture.is_active() && self.texture.mapping.uses_dab_rotation()))
     }
 
+    /// Whether the **Grain** slot samples a texture — the twin of [`Self::shape_silhouette_active`]: an
+    /// `Image` grain with no pixels loaded samples `1.0` everywhere. Where the Grain MULTIPLIES that is
+    /// inert by itself; where an armed Grain REPLACES another texture (the Wet Paint bristle) it must
+    /// not count as armed, or choosing *Image* before loading one swaps the bristle for a flat sheet.
+    #[must_use]
+    pub fn grain_samples(&self, has_grain_image: bool) -> bool {
+        self.texture.is_active()
+            && (self.texture.kind != crate::texture::TextureKind::Image || has_grain_image)
+    }
+
     /// Whether the **Shape** slot supplies the silhouette (else the [`Self::falloff`] does). True when
     /// a shape kind is assigned AND — for the `Image` kind — the pixels are present: an Image shape with
     /// no image falls back to the falloff, so the brush never paints a blank silhouette. `has_shape_image`

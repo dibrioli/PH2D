@@ -275,6 +275,25 @@ fn a_vizinha_de_tras_nao_muda_a_da_frente() {
             g += usize::from(e > 0.1);
         }
         let m = s / q.len().max(1) as f32;
+        if let Ok(pasta) = std::env::var("PH2D_REFLEXO_FOTOS") {
+            // `com | sem a azul | 4×|Δ| na régua`
+            let l = LADO as usize;
+            let mut img = vec![0u8; 3 * l * l];
+            let b = |x: f32| (x.clamp(0.0, 1.0) * 255.0) as u8;
+            for p in &px {
+                let k = p.j as usize * l + p.i as usize;
+                img[p.j as usize * 3 * l + p.i as usize] = b(linear(com[k * 4 + 1]));
+                img[p.j as usize * 3 * l + l + p.i as usize] = b(linear(sem[k * 4 + 1]));
+            }
+            for &k in &q {
+                let (i, j) = (px[k].i as usize, px[k].j as usize);
+                let e = (linear(com[(j * l + i) * 4 + 1]) - linear(sem[(j * l + i) * 4 + 1])).abs();
+                img[j * 3 * l + 2 * l + i] = b(0.15 + 4.0 * e);
+            }
+            let mut f = format!("P5 {} {l} 255\n", 3 * l).into_bytes();
+            f.extend_from_slice(&img);
+            let _ = std::fs::write(format!("{pasta}/frente_{rug}.pgm"), f);
+        }
         eprintln!(
             "frente, cromo {rug}: {} px em volta da verde · |com − sem a azul| médio {m:.4} · > 0,1: {g}",
             q.len()

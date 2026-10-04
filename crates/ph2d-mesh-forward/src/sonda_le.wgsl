@@ -125,11 +125,18 @@ fn sonda_marcha(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
             // O cruzamento tem de ser NA superficie: coberta dos dois lados e o raio a espessura dela. No
             // contorno (vista do centro) o raio passa POR TRAS da vizinha, e a busca continua; o peso cai
             // com a distancia a ela (a borda continua de pixel a pixel).
-            let u = cos(hi) * qh + sin(hi) * w;
             let gl = sonda_dist0(cos(lo) * qh + sin(lo) * w);
             let lam = ql * st / sin(th - hi);
-            // Numa ARESTA a distancia lida e' fantasma (a junta): ali nao ha cruzamento, nem franja.
-            let gh = sonda_dist0(u);
+            // Numa ARESTA a distancia lida e' fantasma (a junta): decide-se contra a vizinha da FRENTE, lida
+            // pura uns texels adiante (o lado de la' do cruzamento) — a de tras nao muda a da frente (o
+            // buraco, report do dono 04/10); sem leitura pura, nada.
+            var u = cos(hi) * qh + sin(hi) * w;
+            var gh = sonda_dist0(u);
+            for (var s = 1u; s <= SONDA_ARESTA_PASSOS && sonda_aresta(gh); s = s + 1u) {
+                let av = hi + f32(s) * SONDA_TEXEL;
+                u = cos(av) * qh + sin(av) * w;
+                gh = sonda_dist0(u);
+            }
             let fora = lam - gh.x / max(gh.y, 1.0e-6);
             if (!sonda_aresta(gh)) {
                 if (gl.y > 0.5 && fora <= SONDA_ESPESSURA * lam) {

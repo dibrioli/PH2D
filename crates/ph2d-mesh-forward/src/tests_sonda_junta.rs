@@ -4,7 +4,7 @@
 //! causa isolada sem tocar no WGSL.
 
 use crate::gpu::sondas_impl::{
-    ARESTA, ESPESSURA, FRANJA, LADO, MARCHA_MAX, MARCHA_MIN, PASSO, REFINO,
+    ARESTA, ARESTA_PASSOS, ESPESSURA, FRANJA, LADO, MARCHA_MAX, MARCHA_MIN, PASSO, REFINO,
 };
 use crate::tests_chao_tapa::metal;
 use crate::tests_contacto::norm;
@@ -35,6 +35,7 @@ pub(crate) fn marcha(
     r: [f32; 3],
     franja: f32,
     k_aresta: f32,
+    traco: &mut Option<Vec<String>>,
 ) -> ([f32; 3], f32) {
     let ql = dot(q, q).sqrt();
     let qh = q.map(|x| x / ql.max(1.0e-6));
@@ -68,20 +69,43 @@ pub(crate) fn marcha(
                     lo = m;
                 }
             }
-            let (gh, gl) = (ler(u(hi)), ler(u(lo)));
+            let gl = ler(u(lo));
+            let (mut uh, mut gh) = (u(hi), ler(u(hi)));
+            let mut s = 1;
+            while s <= ARESTA_PASSOS && aresta(gh, k_aresta) {
+                uh = u(hi + s as f32 * texel);
+                gh = ler(uh);
+                s += 1;
+            }
             let l = lam(hi);
             let fora = l - gh[0] / gh[1].max(1.0e-6);
+            if let Some(t) = traco.as_mut() {
+                let g0 = ler(u(hi));
+                let m0 = g0[0] / g0[1].max(1.0e-6);
+                t.push(format!(
+                    "  passo {k}/{n} hi {:.3}° · λ {l:.3} · lida {m0:.3} (cob {:.2}, desvio/média {:.3}) · {} passos → \
+                     pura {:.3} (cob {:.2}) · fora/λ {:.3} · cob lo {:.2}",
+                    hi.to_degrees(),
+                    g0[1],
+                    (g0[2] / g0[1].max(1.0e-6) - m0 * m0).max(0.0).sqrt() / m0.max(1.0e-6),
+                    s - 1,
+                    gh[0] / gh[1].max(1.0e-6),
+                    gh[1],
+                    fora / l,
+                    gl[1]
+                ));
+            }
             if aresta(gh, k_aresta) {
                 frente = false;
                 ant = a;
                 continue;
             }
             if gl[1] > 0.5 && fora <= ESPESSURA * l {
-                return (u(hi), 1.0);
+                return (uh, 1.0);
             }
             let peso = 1.0 - smoothstep(0.0, franja * l, fora);
             if peso > melhor.1 {
-                melhor = (u(hi), peso);
+                melhor = (uh, peso);
             }
         }
         frente = !at;
@@ -136,7 +160,7 @@ fn sonda_da_junta_na_cpu() {
                         let r: [f32; 3] =
                             std::array::from_fn(|e| vista[e] - 2.0 * dot(vista, p.n) * p.n[e]);
                         let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
-                        let (_, w) = marcha(ler, q, r, franja.max(1.0e-6), k_aresta);
+                        let (_, w) = marcha(ler, q, r, franja.max(1.0e-6), k_aresta, &mut None);
                         aceita += usize::from(w >= 1.0);
                         peso += w;
                     }
@@ -154,4 +178,56 @@ fn sonda_da_junta_na_cpu() {
         }
     }
     let _ = desenha(v, &mut fw, metal(0.0), true);
+}
+
+/// Sonda (imprime): os px em volta da verde que a azul atrás MUDA (`> 0,1`) sem acertar nada pela geometria,
+/// e a busca de alguns deles com e sem a azul, cruzamento a cruzamento.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn sonda_da_tira() {
+    let v = &JUNTA;
+    let Some(mut fw) = desenhista(v) else {
+        return;
+    };
+    let px = oraculo(v);
+    let c = v.pecas[0].0;
+    let vista = norm(v.de.map(|x| -x));
+    let com = desenha(v, &mut fw, metal(0.0), true);
+    let dcom = camada(&fw, 1);
+    let sem = desenha_ate(v, &mut fw, metal(0.0), 2, true);
+    let dsem = camada(&fw, 1);
+    let lin = crate::tests_contacto::linear;
+    let tira: Vec<usize> = (0..px.len())
+        .filter(|&k| {
+            let i = (px[k].j * LADO + px[k].i) as usize * 4 + 1;
+            (lin(com[i]) - lin(sem[i])).abs() > 0.1
+        })
+        .collect();
+    eprintln!("{} px mudam", tira.len());
+    for &k in tira.iter().step_by((tira.len() / 6).max(1)) {
+        let p = &px[k];
+        let r: [f32; 3] = std::array::from_fn(|e| vista[e] - 2.0 * dot(vista, p.n) * p.n[e]);
+        let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
+        let i = (p.j * LADO + p.i) as usize * 4 + 1;
+        eprintln!(
+            "px ({}, {}): com {:.3} · sem {:.3} · acerta {:?}",
+            p.i,
+            p.j,
+            lin(com[i]),
+            lin(sem[i]),
+            crate::tests_reflexo_perto::vizinha_refletida(v, p)
+        );
+        for (nome, d) in [("com", &dcom), ("sem", &dsem)] {
+            let ler = |x: [f32; 3]| {
+                let g = le(d, x, 0.0);
+                [g[0], g[1], g[2]]
+            };
+            let mut t = Some(Vec::new());
+            let (_, w) = marcha(&ler, q, r, FRANJA, ARESTA, &mut t);
+            eprintln!(" {nome}: peso {w:.3}");
+            for l in t.unwrap_or_default() {
+                eprintln!("{l}");
+            }
+        }
+    }
 }

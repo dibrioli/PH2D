@@ -192,6 +192,16 @@ fn so_o_buraco_novo_que_o_traco_cobre_sai() {
         1,
         "o CONTROLO: o buraco novo e pequeno ficou"
     );
+    // Uma ILHOTA nova e pequena (o sentido do contorno de fora) não é buraco: fica.
+    let mut u = quadrado_com_buraco(Some(pequeno));
+    let ilhota = u.subpaths[0].verts.iter().rev().copied().collect();
+    u.subpaths[0].verts = ilhota;
+    super::fecha_os_buracos_que_o_traco_engole(&mut u, &quadrado_com_buraco(None));
+    assert_eq!(
+        u.contour_count(),
+        2,
+        "uma ilhota pequena saiu como se fosse buraco"
+    );
     let mut u = quadrado_com_buraco(Some(0.05));
     super::fecha_os_buracos_que_o_traco_engole(&mut u, &quadrado_com_buraco(None));
     assert_eq!(u.contour_count(), 2, "um buraco novo que se vê saiu");

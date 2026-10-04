@@ -19,6 +19,7 @@ impl Forward {
     /// ⭐⭐ **Sobe (ou troca) o céu fotográfico** — o atlas `f16` do [`ph2d_sky::Ceu`] numa textura
     /// `Rgba16Float` (só da 1.ª vez se cria; trocar de céu só escreve). Nada compila.
     pub fn sobe_ceu(&mut self, ceu: &ph2d_sky::Ceu) {
+        self.geracao += 1;
         let (w, h) = (ph2d_sky::ATLAS_W, ph2d_sky::ATLAS_H);
         let (t, _) = self.foto.get_or_insert_with(|| {
             let t = self
@@ -60,6 +61,7 @@ impl Forward {
     /// ⭐⭐ **Sobe (ou troca) a textura da `camada`** ([`ph2d_triplanar::Mapas`]). Nada compila; crescer
     /// a matriz copia as camadas que já lá estavam.
     pub fn sobe_textura(&mut self, camada: u32, mapas: &ph2d_triplanar::Mapas) {
+        self.geracao += 1;
         self.triplanar
             .sobe(&self.device, &self.queue, camada, mapas);
     }

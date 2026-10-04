@@ -91,6 +91,7 @@ pub(crate) fn g0(device: &wgpu::Device) -> wgpu::BindGroupLayout {
             ct[0],
             ct[1],
             ct[2],
+            crate::gpu::sondas_impl::entrada(20),
         ],
     })
 }

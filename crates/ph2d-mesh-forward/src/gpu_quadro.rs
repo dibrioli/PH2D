@@ -56,6 +56,7 @@ pub(super) fn uniforme_do_quadro(
     e: &Enquadra,
     tem_ceu: bool,
     sol: Option<&super::texturas::SolGpu>,
+    em_sonda: bool,
 ) -> Vec<f32> {
     let mut u = Vec::with_capacity(QUADRO);
     for col in cena.camera.view_proj.iter().chain(e.sombra_vp.iter()) {
@@ -83,17 +84,24 @@ pub(super) fn uniforme_do_quadro(
         f32::from(u8::from(e.ha_chao)),
     ]);
     let n = cena.luzes.len().min(crate::MAX_LUZES);
-    u.extend_from_slice(&[cena.exposicao, cena.vista as f32, n as f32, 0.0]);
+    // ⭐ Dentro de uma captura de reflexo (`olhar.w = 1`) nada lê capturas, e o que só o OLHAR usa
+    // (exposição, vista, fundo) fica a zero: a chave das capturas não muda com ele.
+    if em_sonda {
+        u.extend_from_slice(&[0.0, 0.0, n as f32, 1.0]);
+    } else {
+        u.extend_from_slice(&[cena.exposicao, cena.vista as f32, n as f32, 0.0]);
+    }
     u.extend_from_slice(&ph2d_style::wgsl::pack(&cena.estilo));
     u.extend_from_slice(&[cena.raio_da_peca, 0.0, 0.0, 0.0]);
     let foto = cena.foto.filter(|_| tem_ceu);
     match foto {
         Some(f) => {
+            let fundo = f.fundo.filter(|_| !em_sonda);
             u.extend_from_slice(&[f.giro[0], f.giro[1], f.forca, 1.0]);
             u.extend_from_slice(&[
                 0.0,
-                f.fundo.unwrap_or(0.0),
-                f32::from(u8::from(f.fundo.is_some())),
+                fundo.unwrap_or(0.0),
+                f32::from(u8::from(fundo.is_some())),
                 0.0,
             ]);
         }
@@ -141,7 +149,7 @@ impl Forward {
         &mut self,
         mats: &[[f32; ph2d_material::wgsl::PACKED]],
         texs: &[Option<crate::TexturaMaterial>],
-    ) {
+    ) -> Vec<f32> {
         let n = (mats.len() as u32).max(1);
         if self.materiais.as_ref().is_none_or(|(k, _, _)| *k != n) {
             let t = self.device.create_texture(&wgpu::TextureDescriptor {
@@ -194,9 +202,15 @@ impl Forward {
                 },
             );
         }
+        dados
     }
 
-    pub(super) fn sobe_objetos(&mut self, objs: &[&crate::Instancia]) {
+    /// Os objetos do quadro (a matriz, o índice, a pegada e a captura de cada um); devolve os bytes.
+    pub(super) fn sobe_objetos(
+        &mut self,
+        objs: &[&crate::Instancia],
+        sondas: &[[f32; 4]],
+    ) -> Vec<u8> {
         let precisa = (objs.len() as u64).max(1);
         if self
             .objetos
@@ -218,7 +232,7 @@ impl Forward {
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                         buffer: &b,
                         offset: 0,
-                        size: std::num::NonZeroU64::new(80),
+                        size: std::num::NonZeroU64::new(96),
                     }),
                 }],
             });
@@ -236,12 +250,14 @@ impl Forward {
                 .get(&o.malha)
                 .map_or([0.0; 3], |m| crate::chao_tapa::pegada(&o.modelo, m.caixa));
             dados[at + 68..at + 80].copy_from_slice(bytemuck::cast_slice(&pegada));
+            dados[at + 80..at + 96].copy_from_slice(bytemuck::cast_slice(&sondas[i]));
         }
         if let Some((_, b, _)) = &self.objetos
             && !dados.is_empty()
         {
             self.queue.write_buffer(b, 0, &dados);
         }
+        dados
     }
 
     /// ⭐ **Prepara o brilho do quadro**: a cadeia deste tamanho (só da 1.ª vez) e os uniformes —
@@ -276,25 +292,19 @@ impl Forward {
         true
     }
 
-    pub(super) fn desenha(
+    /// ⭐ O grupo `0` do desenhista com o uniforme `quadro` (o do quadro, ou o de uma face de captura).
+    pub(super) fn g0_com(
         &self,
-        cena: &Cena<'_>,
-        objs: &[&crate::Instancia],
-        (ha_sombra, ha_chao): (bool, bool),
-        brilho: bool,
-    ) {
-        let (Some(alvos), Some((_, _, mat_view)), Some((_, _, g1))) =
-            (&self.alvos, &self.materiais, &self.objetos)
-        else {
-            return;
-        };
-        let g0 = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        quadro: wgpu::BindingResource<'_>,
+        mat_view: &wgpu::TextureView,
+    ) -> wgpu::BindGroup {
+        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-mesh-forward g0"),
             layout: &self.g0_bgl,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: self.quadro.as_entire_binding(),
+                    resource: quadro,
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -376,8 +386,32 @@ impl Forward {
                         self.sol.as_ref().map_or(&self.sol_vazia, |s| &s.vista),
                     ),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 20,
+                    resource: wgpu::BindingResource::TextureView(
+                        self.sondas
+                            .as_ref()
+                            .map_or(&self.sondas_vazia, |s| &s.arranjo.2),
+                    ),
+                },
             ],
-        });
+        })
+    }
+
+    pub(super) fn desenha(
+        &self,
+        cena: &Cena<'_>,
+        objs: &[&crate::Instancia],
+        (ha_sombra, ha_chao): (bool, bool),
+        brilho: bool,
+        plano: Option<&super::sondas_impl::Plano>,
+    ) {
+        let (Some(alvos), Some((_, _, mat_view)), Some((_, _, g1))) =
+            (&self.alvos, &self.materiais, &self.objetos)
+        else {
+            return;
+        };
+        let g0 = self.g0_com(self.quadro.as_entire_binding(), mat_view);
         let mut enc = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -395,15 +429,23 @@ impl Forward {
                 pass.draw_indexed(0..m.n, 0, 0..1);
             }
         };
+        let g0s = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-mesh-forward g0 sombra"),
+            layout: &self.g0_sombra_bgl,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: self.quadro.as_entire_binding(),
+            }],
+        });
+        // ⭐ A cobertura e o céu do chão primeiro (as faces das capturas leem-nos), depois as capturas
+        // (com os mapas de sombra da cena inteira), e só então os mapas da VISTA.
+        if ha_chao && cena.chao.is_some() {
+            self.cobertura.grava(&mut enc, &g0s, desenha_objetos);
+        }
+        if let Some(p) = plano.filter(|p| p.refaz) {
+            self.grava_sondas(&mut enc, p, objs, mat_view, g1);
+        }
         if ha_chao {
-            let g0s = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("ph2d-mesh-forward g0 sombra"),
-                layout: &self.g0_sombra_bgl,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.quadro.as_entire_binding(),
-                }],
-            });
             // ⭐ O mesmo enquadramento em cada nível (ver `gpu_sombra::NIVEIS`).
             for mapa in &self.mapas_sombra {
                 let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -426,9 +468,6 @@ impl Forward {
                     pass.set_bind_group(0, &g0s, &[]);
                     desenha_objetos(&mut pass);
                 }
-            }
-            if cena.chao.is_some() {
-                self.cobertura.grava(&mut enc, &g0s, desenha_objetos);
             }
         }
         // ⭐ Com o brilho, o MESMO passe escreve a cena-linear num 2.º alvo (o que a cadeia lê).

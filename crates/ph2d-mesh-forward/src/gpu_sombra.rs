@@ -231,11 +231,13 @@ fn vista_da_camera(cena: &Cena<'_>, pontos: &[[f32; 3]]) -> Vec<[f32; 3]> {
 /// (`gpu_ceu_chao::Parametros::borda`).
 const MARGEM_CEU: f32 = 4.0;
 
-/// ⭐⭐ **Os dois mapas do quadro.**
+/// ⭐⭐ **Os dois mapas do quadro.** `pela_camera = false` enquadra a cena INTEIRA (as capturas de
+/// reflexo: o que elas veem não depende da câmara, e o que se enquadrasse pela vista mudaria com ela).
 pub(super) fn enquadra(
     cena: &Cena<'_>,
     chave: Option<Chave>,
     caixa_de: impl Fn(u64) -> Option<([f32; 3], [f32; 3])>,
+    pela_camera: bool,
 ) -> Enquadra {
     let mut cantos = Vec::new();
     for o in cena.objetos {
@@ -270,8 +272,9 @@ pub(super) fn enquadra(
     let Some(k) = chave.filter(|_| !vertical) else {
         let mut cena_pts = cantos.clone();
         cena_pts.extend(cantos.iter().map(|p| [p[0], chao, p[2]]));
-        let vis = vista_da_camera(cena, &cena_pts);
-        let (sombra_vp, _, meia, fundo) = mapa(&cantos, [0.0, 1.0, 0.0], tan_ceu, chao, Some(&vis));
+        let vis = pela_camera.then(|| vista_da_camera(cena, &cena_pts));
+        let (sombra_vp, _, meia, fundo) =
+            mapa(&cantos, [0.0, 1.0, 0.0], tan_ceu, chao, vis.as_deref());
         return Enquadra {
             ha_sombra: tem && chave.is_some(),
             ha_chao: tem && cena.caixa_tan.is_some(),
@@ -319,8 +322,8 @@ pub(super) fn enquadra(
     };
     let mut cena_pts = cantos.clone();
     cena_pts.extend_from_slice(&no_chao);
-    let vis = vista_da_camera(cena, &cena_pts);
-    let (sombra_vp, _, meia, fundo) = mapa(&cantos, k.l, k.tan, fundo_min, Some(&vis));
+    let vis = pela_camera.then(|| vista_da_camera(cena, &cena_pts));
+    let (sombra_vp, _, meia, fundo) = mapa(&cantos, k.l, k.tan, fundo_min, vis.as_deref());
     // O chão: a cobertura e as sombras do sol (com a penumbra delas).
     let (mut lx, mut hx) = (cx - meia_ceu, cx + meia_ceu);
     let (mut lz, mut hz) = (cz - meia_ceu, cz + meia_ceu);

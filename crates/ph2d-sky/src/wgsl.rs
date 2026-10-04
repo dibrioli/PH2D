@@ -14,11 +14,9 @@
 
 use crate::{LADOS, NIVEIS, X0, Y0};
 
-const CORPO: &str = r"
-fn sky_gira(d: vec3<f32>, giro: vec2<f32>) -> vec3<f32> {
-    return vec3<f32>(giro.x * d.x - giro.y * d.z, d.y, giro.y * d.x + giro.x * d.z);
-}
-
+/// ⭐ **O MAPA OCTAÉDRICO** ([`crate::oct`] e [`crate::de_oct`], conta a conta) — também de quem guarda
+/// outras direcções no mesmo mapa (as capturas de reflexo do `ph2d-mesh-forward`): uma porta só.
+pub const OCT: &str = r"
 fn sky_oct(d: vec3<f32>) -> vec2<f32> {
     var s = abs(d.x) + abs(d.y) + abs(d.z);
     if (!(s > 0.0)) {
@@ -32,6 +30,34 @@ fn sky_oct(d: vec3<f32>) -> vec2<f32> {
         return vec2<f32>((1.0 - abs(b)) * sa, (1.0 - abs(a)) * sb);
     }
     return vec2<f32>(a, b);
+}
+
+// O inverso, e fora do quadrado a DOBRA: o ponto (1 + e, t) e' (1 - e, -t).
+fn sky_de_oct(ab: vec2<f32>) -> vec3<f32> {
+    var a = ab.x;
+    var b = ab.y;
+    if (abs(a) > 1.0) {
+        a = sign(a) * 2.0 - a;
+        b = -b;
+    }
+    if (abs(b) > 1.0) {
+        b = sign(b) * 2.0 - b;
+        a = -a;
+    }
+    let y = 1.0 - abs(a) - abs(b);
+    var x = a;
+    var z = b;
+    if (y < 0.0) {
+        x = (1.0 - abs(b)) * select(-1.0, 1.0, a >= 0.0);
+        z = (1.0 - abs(a)) * select(-1.0, 1.0, b >= 0.0);
+    }
+    return normalize(vec3<f32>(x, y, z));
+}
+";
+
+const CORPO: &str = r"
+fn sky_gira(d: vec3<f32>, giro: vec2<f32>) -> vec3<f32> {
+    return vec3<f32>(giro.x * d.x - giro.y * d.z, d.y, giro.y * d.x + giro.x * d.z);
 }
 
 fn sky_bilinear(k: u32, ab: vec2<f32>) -> vec3<f32> {
@@ -104,7 +130,7 @@ pub fn fonte() -> String {
          const SKY_SOL_ANG: u32 = {}u;\n\
          const SKY_LADOS: array<u32, {m}> = array<u32, {m}>({});\n\
          const SKY_X0: array<u32, {m}> = array<u32, {m}>({});\n\
-         const SKY_Y0: array<u32, {m}> = array<u32, {m}>({});\n{CORPO}",
+         const SKY_Y0: array<u32, {m}> = array<u32, {m}>({});\n{OCT}{CORPO}",
         crate::sol::RUGOSIDADES,
         crate::sol::ANGULOS,
         lista(&LADOS),

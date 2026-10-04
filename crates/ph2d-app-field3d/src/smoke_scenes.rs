@@ -132,7 +132,7 @@ pub fn leaf(p: Primitive, x: Xform) -> Node {
 /// ⚠️ Ele **conta-se lendo o `match` abaixo**, nunca de memória: o gate
 /// `the_router_answers_for_every_level_it_claims` mede-o pelas DUAS pontas — a cena `CENAS` tem de
 /// ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-pub const CENAS: u32 = 41;
+pub const CENAS: u32 = 42;
 
 /// **As cenas PODADAS em 2026-09-11** — nenhum doc as citava pelo número e nenhum código as usava
 /// (ordem do Enio, briefing W2 §3.2). `952` linhas.
@@ -190,6 +190,9 @@ pub fn materiais_da_cena(n: u32) -> Option<Vec<ph2d_field_ecs::FieldMaterial>> {
     }
     if n == 41 {
         return Some(chao::materiais_41());
+    }
+    if n == 42 {
+        return Some(reflexos::materiais_42());
     }
     if n == 36 {
         // ⛔⛔ **A BARRA LEVA MATERIAL PRÓPRIO, e a FOTO é que o exigiu:** sem ele ela herdava a
@@ -507,6 +510,8 @@ pub fn scene(n: u32) -> FieldDoc {
         40 => contacto::cena_40(),
         // ⭐⭐⭐ O CHÃO QUE TAPA (03/10) — ver [`chao::cena_41`].
         41 => chao::cena_41(),
+        // ⭐⭐⭐ OS REFLEXOS (04/10) — ver [`reflexos::cena_42`].
+        42 => reflexos::cena_42(),
         _ => {
             // ⛔⛔ **O ROTEADOR DIZ QUANDO O NÚMERO NÃO EXISTE** (W2).
             //
@@ -580,6 +585,10 @@ mod contacto;
 /// ⭐ A cena do chão que tapa as peças — ver [`chao::cena_41`].
 #[path = "smoke_scenes_chao.rs"]
 mod chao;
+
+/// ⭐ A cena das capturas de reflexo — ver [`reflexos::cena_42`].
+#[path = "smoke_scenes_reflexos.rs"]
+mod reflexos;
 
 /// ⭐ As cenas dos dois recuos de uma aresta — ver [`edge`].
 #[path = "smoke_scenes_edge.rs"]

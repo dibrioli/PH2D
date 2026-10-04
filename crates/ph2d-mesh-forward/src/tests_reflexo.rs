@@ -16,18 +16,18 @@ use crate::tests_sol::cubo;
 use crate::{Forward, Instancia, Malha};
 
 const ORACULO: &str = include_str!("../fixtures/oraculo_reflexo_vizinhas.csv");
-const DE: [f32; 3] = [0.6, 0.15, 1.0];
+pub(crate) const DE: [f32; 3] = [0.6, 0.15, 1.0];
 const ALVO: [f32; 3] = [0.0, 0.2, 0.15];
 const MEIA: f32 = 0.8;
 /// O albedo das peças foscas do oráculo.
 const ALBEDO: f32 = 0.3;
 
 /// Uma linha do oráculo: `viz_espelho`, `viz_aspero`, `viz_caixa`, `solo_espelho`, `solo_aspero`.
-struct Linha {
-    col: [f32; 5],
+pub(crate) struct Linha {
+    pub(crate) col: [f32; 5],
 }
 
-fn oraculo() -> (Vec<Ponto>, Vec<Linha>) {
+pub(crate) fn oraculo() -> (Vec<Ponto>, Vec<Linha>) {
     ORACULO
         .lines()
         .filter(|l| !l.starts_with('#'))
@@ -42,15 +42,18 @@ fn oraculo() -> (Vec<Ponto>, Vec<Linha>) {
                 n: norm([c[6], c[7], c[8]]),
                 vis: 1.0,
             };
-            (p, Linha {
-                col: std::array::from_fn(|k| c[9 + k]),
-            })
+            (
+                p,
+                Linha {
+                    col: std::array::from_fn(|k| c[9 + k]),
+                },
+            )
         })
         .unzip()
 }
 
 /// A fosca do oráculo: difusa SÓ, de albedo [`ALBEDO`].
-fn fosca() -> [f32; ph2d_material::wgsl::PACKED] {
+pub(crate) fn fosca() -> [f32; ph2d_material::wgsl::PACKED] {
     let s = ph2d_material::OpenPbr {
         base_color: [ALBEDO; 3],
         specular_weight: 0.0,
@@ -61,8 +64,13 @@ fn fosca() -> [f32; ph2d_material::wgsl::PACKED] {
 }
 
 /// O desenhista com as peças do oráculo: a malha `k + 1` usa o material `k` e tem a grelha do contacto.
-fn desenhista() -> Option<Forward> {
-    let mut fw = Forward::no_aparelho(&ambiente())?;
+pub(crate) fn desenhista() -> Option<Forward> {
+    desenhista_em(wgpu::Backends::all())
+}
+
+/// O mesmo, num backend escolhido.
+pub(crate) fn desenhista_em(backends: wgpu::Backends) -> Option<Forward> {
+    let mut fw = Forward::no_backend(backends, &ambiente())?;
     let g = grades_de(&PECAS);
     for (k, (_, r, caixa)) in PECAS.iter().enumerate() {
         let (p, n, idx) = if *caixa {
@@ -89,7 +97,7 @@ fn desenhista() -> Option<Forward> {
 
 /// As peças `quais` do oráculo com os materiais `mats` (um por peça), da câmara do oráculo; com o
 /// chão (e a caixa de sombra) ou sem nada.
-fn desenha(
+pub(crate) fn desenha(
     fw: &mut Forward,
     quais: &[usize],
     mats: &[[f32; ph2d_material::wgsl::PACKED]],
@@ -150,13 +158,19 @@ fn reflete_vizinha(p: &Ponto) -> bool {
         .any(|(k, q)| k != p.obj && acerta(*q, p.p, r))
 }
 
-/// O que a régua de um espelho mede: `(px, |Δ| médio, px a refletir vizinha, |Δ| médio ali, máx ali)`.
+/// O que a régua de um espelho mede: todos os pixels; os do MIOLO do reflexo de uma vizinha; e a FAIXA
+/// do contorno dela (um pixel cujo vizinho de `3 × 3` cai do outro lado). ⚠️ No contorno o Cycles do
+/// oráculo é PONTUAL (filtro `0,01 px`) e o nosso quadro filtrado: um anel de `1 px` lê até `0,8` sem
+/// nada fora do sítio — a faixa imprime-se e só a média dela tem barra (o reflexo no sítio errado
+/// leva-a; sem a paralaxe a média geral da caixa vai a `0,27`).
 struct Medida {
     n: usize,
     media: f32,
     nv: usize,
     media_viz: f32,
     pior_viz: f32,
+    nb: usize,
+    media_borda: f32,
 }
 
 /// A régua sobre os pixels da peça `espelho`: a razão `viz/solo` contra a do Cycles (colunas `cv`, `cs`).
@@ -168,7 +182,24 @@ fn mede(
     (viz, solo): (&[u8], &[u8]),
     (cv, cs): (usize, usize),
 ) -> Medida {
+    let l = LADO as usize;
+    let mut reflete = vec![None; l * l];
+    for p in pontos.iter().filter(|p| p.obj == espelho) {
+        reflete[(p.j * LADO + p.i) as usize] = Some(reflete_vizinha(p));
+    }
+    let contorno = |p: &Ponto| {
+        let c = reflete[(p.j * LADO + p.i) as usize];
+        (-1i32..=1).any(|dy| {
+            (-1i32..=1).any(|dx| {
+                let (x, y) = (p.i as i32 + dx, p.j as i32 + dy);
+                (0..LADO as i32).contains(&x)
+                    && (0..LADO as i32).contains(&y)
+                    && reflete[y as usize * l + x as usize].is_some_and(|o| Some(o) != c)
+            })
+        })
+    };
     let (mut n, mut s, mut nv, mut sv, mut pior) = (0usize, 0.0f32, 0usize, 0.0f32, 0.0f32);
+    let (mut nb, mut sb) = (0usize, 0.0f32);
     for (p, l) in pontos.iter().zip(linhas) {
         let k = (p.j * LADO + p.i) as usize;
         if p.obj != espelho || borda[k] {
@@ -181,7 +212,10 @@ fn mede(
         let e = (lv / ls - l.col[cv] / l.col[cs]).abs();
         s += e;
         n += 1;
-        if reflete_vizinha(p) {
+        if contorno(p) {
+            sb += e;
+            nb += 1;
+        } else if reflete_vizinha(p) {
             sv += e;
             nv += 1;
             pior = pior.max(e);
@@ -193,7 +227,43 @@ fn mede(
         nv,
         media_viz: sv / nv.max(1) as f32,
         pior_viz: pior,
+        nb,
+        media_borda: sb / nb.max(1) as f32,
     }
+}
+
+/// A sonda: com `PH2D_REFLEXO_FOTOS=<pasta>`, grava `<nome>.pgm` — a razão nossa, a do Cycles e
+/// `4 ×` a diferença, lado a lado, nos pixels do espelho.
+fn fotografa(
+    nome: &str,
+    pontos: &[Ponto],
+    linhas: &[Linha],
+    espelho: usize,
+    (viz, solo): (&[u8], &[u8]),
+    (cv, cs): (usize, usize),
+) {
+    let Ok(pasta) = std::env::var("PH2D_REFLEXO_FOTOS") else {
+        return;
+    };
+    let l = LADO as usize;
+    let mut img = vec![0u8; 3 * l * l];
+    for (p, li) in pontos.iter().zip(linhas) {
+        if p.obj != espelho {
+            continue;
+        }
+        let k = (p.j * LADO + p.i) as usize;
+        let (lv, ls) = (linear(viz[k * 4 + 1]), linear(solo[k * 4 + 1]));
+        let nosso = lv / ls.max(1.0e-3);
+        let ciclos = li.col[cv] / li.col[cs].max(1.0e-3);
+        let y = p.j as usize * 3 * l;
+        let b = |x: f32| (x.clamp(0.0, 1.0) * 255.0) as u8;
+        img[y + p.i as usize] = b(nosso);
+        img[y + l + p.i as usize] = b(ciclos);
+        img[y + 2 * l + p.i as usize] = b(4.0 * (nosso - ciclos).abs());
+    }
+    let mut f = format!("P5 {} {l} 255\n", 3 * l).into_bytes();
+    f.extend_from_slice(&img);
+    let _ = std::fs::write(format!("{pasta}/{nome}.pgm"), f);
 }
 
 /// ⭐⭐⭐ **O espelho mostra as vizinhas como no Cycles** — a esfera pousada (nítida e áspera) e a caixa
@@ -221,15 +291,18 @@ fn o_espelho_mostra_as_vizinhas_como_no_cycles() {
         so[espelho] = m_solo;
         let solo = desenha(&mut fw, &[espelho], &so, false);
         let m = mede(&pontos, &linhas, &borda, espelho, (&viz, &solo), cols);
+        fotografa(nome, &pontos, &linhas, espelho, (&viz, &solo), cols);
         eprintln!(
-            "{nome}: {} px · |Δ| médio {:.4} · a refletir uma vizinha ({} px) {:.4} · máx ali {:.3}",
-            m.n, m.media, m.nv, m.media_viz, m.pior_viz
+            "{nome}: {} px · |Δ| médio {:.4} · no miolo do reflexo de uma vizinha ({} px) {:.4} · máx \
+             ali {:.3} · na faixa do contorno ({} px) {:.4}",
+            m.n, m.media, m.nv, m.media_viz, m.pior_viz, m.nb, m.media_borda
         );
         assert!(
-            m.n > 1500 && m.nv > 100,
-            "a fixtura encolheu: {} / {} px",
+            m.n > 1500 && m.nv > 50 && m.nb > 50,
+            "a fixtura encolheu: {} / {} / {} px",
             m.n,
-            m.nv
+            m.nv,
+            m.nb
         );
         if !(m.media < 0.03 && m.media_viz < 0.05) {
             falhas.push(nome);

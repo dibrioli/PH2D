@@ -13,6 +13,10 @@ use crate::{Ambiente, Cena, Malha};
 mod quadro_impl;
 #[path = "gpu_sombra.rs"]
 mod sombra_impl;
+#[path = "gpu_sondas.rs"]
+pub(crate) mod sondas_impl;
+#[path = "gpu_sondas_passes.rs"]
+mod sondas_passes;
 #[path = "gpu_texturas.rs"]
 mod texturas;
 
@@ -86,6 +90,14 @@ pub struct Forward {
     malhas: BTreeMap<u64, MalhaGpu>,
     alvos: Option<Alvos>,
     pipelines: usize,
+    /// ⭐ As capturas de reflexo — `None` onde a placa não desenha `Rgba16Float` (como o brilho).
+    sondas: Option<sondas_impl::Sondas>,
+    /// O que o grupo `0` liga no lugar delas quando não há.
+    sondas_vazia: wgpu::TextureView,
+    /// Os gates ligam e desligam as capturas (a régua de controlo).
+    reflexos: bool,
+    /// Sobe a cada envio que muda o que as capturas veem (malhas, curvaturas, grelhas, céu, texturas).
+    geracao: u64,
 }
 
 fn atributos() -> [wgpu::VertexAttribute; 4] {
@@ -142,9 +154,10 @@ impl Forward {
 
     /// ⭐ **Quantos pipelines este desenhista já compilou** — fixo desde que nasce: `10` (objeto,
     /// chão, fundo, sombra, cobertura de cima e de baixo, redução, céu do chão e o borrão dele,
-    /// codificação) e `+5` do brilho onde a placa o tem
-    /// (objeto, chão e fundo com a cena-linear, descer, subir). Ligar, desligar ou mexer no brilho,
-    /// ou trocar de céu, não compila nada.
+    /// codificação) e, onde a placa desenha `Rgba16Float`, `+5` do brilho (objeto, chão e fundo com
+    /// a cena-linear, descer, subir) e `+4` das capturas de reflexo (faces, octaedro, cadeia,
+    /// pré-filtro). Ligar, desligar ou mexer no brilho, trocar de céu, ou refazer capturas, não
+    /// compila nada.
     #[must_use]
     pub fn pipelines_compilados(&self) -> usize {
         self.pipelines
@@ -447,7 +460,29 @@ impl Forward {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let pipelines = if brilho.is_some() { 15 } else { 10 };
+        let sondas = brilho
+            .is_some()
+            .then(|| sondas_impl::Sondas::nova(&device, &queue, &modulo, &pl_g0g1, &vertice));
+        let pipelines = if brilho.is_some() { 19 } else { 10 };
+        let sondas_vazia = device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("ph2d-mesh-forward sondas vazias"),
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 2,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: sondas_impl::FORMATO,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&wgpu::TextureViewDescriptor {
+                dimension: Some(wgpu::TextureViewDimension::D2Array),
+                ..Default::default()
+            });
         let contacto = crate::gpu_contacto::Contacto::novo(&device);
         let cobertura =
             crate::gpu_cobertura::Cobertura::nova(&device, &modulo, &pl_sombra, &so_posicao);
@@ -484,11 +519,16 @@ impl Forward {
             malhas: BTreeMap::new(),
             alvos: None,
             pipelines,
+            sondas,
+            sondas_vazia,
+            reflexos: true,
+            geracao: 0,
         }
     }
 
     /// ⭐ **Sobe (ou substitui) a malha `id`.**
     pub fn sobe(&mut self, id: u64, m: &Malha<'_>) {
+        self.geracao += 1;
         let mut bytes: Vec<u8> = Vec::with_capacity(m.posicoes.len() * VERTICE as usize);
         let (mut lo, mut hi) = ([f32::INFINITY; 3], [f32::NEG_INFINITY; 3]);
         for (i, p) in m.posicoes.iter().enumerate() {
@@ -554,6 +594,7 @@ impl Forward {
         if k.len() != m.n_vertices {
             return false;
         }
+        self.geracao += 1;
         if !k.is_empty() {
             self.queue
                 .write_buffer(&m.curvatura, 0, bytemuck::cast_slice(k));
@@ -565,10 +606,12 @@ impl Forward {
     /// ⭐ **Sobe a grelha do contacto da malha `id`** ([`ph2d_contacto::Grade`], no referencial
     /// da malha): o céu que ela tapa às outras peças. Uma malha sem grelha não tapa ninguém.
     pub fn sobe_contacto(&mut self, id: u64, g: &ph2d_contacto::Grade) {
+        self.geracao += 1;
         (self.contacto).sobe(&self.device, &self.queue, id, g);
     }
 
     pub fn esquece(&mut self, id: u64) {
+        self.geracao += 1;
         self.contacto.esquece(id);
         self.cobertura.ceu.malha_mudou();
         self.malhas.remove(&id);
@@ -599,10 +642,14 @@ impl Forward {
         }
         let brilho =
             self.prepara_brilho(&cena.brilho.sanitized(), (w, h), cena.exposicao, cena.vista);
-        self.sobe_materiais(cena.materiais, cena.texturas);
+        let mat_dados = self.sobe_materiais(cena.materiais, cena.texturas);
         let chave = sombra_impl::chave(cena, self.foto.is_some(), self.sol.as_ref());
-        let enquadra =
-            sombra_impl::enquadra(cena, chave, |id| self.malhas.get(&id).map(|m| m.caixa));
+        let enquadra = sombra_impl::enquadra(
+            cena,
+            chave,
+            |id| self.malhas.get(&id).map(|m| m.caixa),
+            true,
+        );
         let chao = cena.chao.unwrap_or(0.0);
         let (ceu, vp, objs) = (enquadra.ceu, &enquadra.ceu_vp, cena.objetos);
         (self.cobertura.ceu).prepara(&self.queue, ceu, vp, chao, objs);
@@ -611,6 +658,7 @@ impl Forward {
             &enquadra,
             self.foto.is_some(),
             self.sol.as_ref(),
+            false,
         );
         self.queue
             .write_buffer(&self.quadro, 0, bytemuck::cast_slice(&dados));
@@ -619,13 +667,16 @@ impl Forward {
             .iter()
             .filter(|o| self.malhas.contains_key(&o.malha))
             .collect();
-        self.sobe_objetos(&visiveis);
+        let atrib = self.atribui_sondas(&visiveis);
+        let obj_dados = self.sobe_objetos(&visiveis, &atrib);
+        let plano = self.planeia_sondas(cena, &visiveis, &atrib, (&obj_dados, &mat_dados));
         self.contacto.prepara(&self.queue, &visiveis);
         self.desenha(
             cena,
             &visiveis,
             (enquadra.ha_sombra, enquadra.ha_chao),
             brilho,
+            plano.as_ref(),
         );
         self.le((w, h))
     }

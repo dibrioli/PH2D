@@ -52,7 +52,15 @@ união); quatro ficheiros cortados abaixo do tecto de LOC.
   da fonte, em toda a varredura do *Twist* `0°`…`360°`.
 - **Se ele escolher «o mais perto»:** feche a F50-k/§2-b na fila como decidido e siga.
 
-### A2 — ⭐ Numa dobra muito forte, a parte de TRÁS pinta por cima da da FRENTE (o próximo trabalho)
+### A2 — ✅ FEITO (F52, `3caa88daa` + docs; smoke ao dono pendente): a parte da FRENTE tapa o que é aberto na de trás
+
+> As riscas abertas cortam-se no repouso onde a malha posada as tapa (chave de osso pela
+> PROFUNDIDADE na hierarquia, triângulos do avesso, pedaços mais curtos que o traço saem); mutação
+> 12/12. ⭐ Achado no caminho: a ordem das faces da IMAGEM (F48-c) punha a RAIZ por cima (a coluna
+> vem por `to_bits`, decrescente no `bevy_ecs` 0.19) — curada pela mesma chave. Os dentes do *Zig
+> Zag* que se encavalam são o A5 (buraquinhos reais). Detalhe: fila §F52. O texto abaixo é o
+> registo de antes.
+
 
 - **O que o artista vê** (FOTOGRAFADO a `100°`–`110°` na `PH2D_VEC_BONE_SMOKE=5`): o contorno já se
   une, mas o que é ABERTO ou fica DENTRO — as riscas do *Hatch*, os dentes do *Zig Zag* — da parte de

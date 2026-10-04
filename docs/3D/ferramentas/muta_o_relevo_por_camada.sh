@@ -121,6 +121,8 @@ muta $R/tinta_gpu_relevo.rs '        queue.write_buffer(&g.alturas, 0, bytemuck:
   'R17 a subida só do relevo não escreve as alturas' gpu
 muta $R/tinta_gpu_relevo.rs $'            queue.write_buffer(&g.inclinacoes, de as u64, &gb[de..ate]);\n        }\n        true' $'            let _ = (de, ate, &gb);\n        }\n        true' \
   'R18 a subida só do relevo não refaz as inclinações' gpu
+muta $R/tinta_gpu_relevo.rs $'            queue.write_buffer(&g.inclinacoes, 0, gb);\n            return true;' $'            let _ = &gb;\n            return true;' \
+  'R21 refazer TODAS as inclinações não as sobe' gpu
 
 # ── W4c: o painel ────────────────────────────────────────────────────────────
 muta $T/tool/piece_layers.rs '                m.set_impasto_depth_norm(l, v);' '                let _ = (l, v);' \

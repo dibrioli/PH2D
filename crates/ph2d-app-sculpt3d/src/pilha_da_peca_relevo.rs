@@ -68,11 +68,18 @@ impl PilhaDaPeca {
     /// que entra tem relevo.
     #[must_use]
     pub(crate) fn relevo_composto(&self) -> Option<Vec<[f32; 2]>> {
+        use rayon::prelude::*;
         let camadas = self.camadas_do_relevo();
         if camadas.is_empty() {
             return None;
         }
-        Some((0..self.amostras).map(|i| relevo_em(&camadas, i)).collect())
+        // Ponto a ponto: em paralelo dá o mesmo ao bit (`5,2 → 1,1 ms` a `64x`, doc 30 §15).
+        Some(
+            (0..self.amostras)
+                .into_par_iter()
+                .map(|i| relevo_em(&camadas, i))
+                .collect(),
+        )
     }
 
     /// ⭐⭐⭐ **O relevo da peça só nas amostras `ord`** — o pedaço da

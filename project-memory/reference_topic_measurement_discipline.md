@@ -1723,3 +1723,16 @@ sobre uma estatística de imagem, pergunte **que fracção dela vem de fora do s
 entra na conta, a régua mede o enquadramento. É a mesma família do `edge_max` global cego ao quad
 de `0,02 × 0,30` e do `χ` cego à almofada — *a régua agrega sobre uma população mais larga do que
 a propriedade*. Ver [[reference_topic_mutation_proofs]] · [[reference_topic_gate_discipline]].
+- ⛔⛔ **UMA LEITURA DE VOLTA DA PLACA SEM `COPY_SRC` NO BUFFER DEVOLVE ZEROS EM SILÊNCIO — e o
+  vermelho acusa o PRODUTO.** Medido em 04/10 (`line/sculpt3d`, W4, `docs/3D/30` §15 premissa 8): o
+  seam test do relevo por camada leu as alturas da placa (`le_relevo_at`, um `copy_buffer_to_buffer`
+  para um buffer `MAP_READ`) e acusou **439 de 47 106** amostras diferentes da peça — exactamente as
+  que tinham relevo. Três hipóteses do produto (subida em falta, sinal `tinta_suja`, composição na
+  placa a escrever por cima) custaram três corridas; a sentinela (escrever `123` na CPU, subir
+  inteiro, ler `0`) é que provou que a subida CHEGAVA e a leitura não. O buffer tinha
+  `STORAGE | COPY_DST`; a cópia de um buffer sem `COPY_SRC` é um erro de validação que o `wgpu` não
+  devolve a quem chama, e o destino fica no zero com que nasceu. **How to apply:** antes de culpar o
+  produto por um vermelho lido da placa, confira o USO do buffer de origem (o irmão `amostras` já
+  tinha `COPY_SRC` «pela mesma razão») e ponha uma SENTINELA: um valor impossível escrito na CPU que a
+  leitura tem de devolver. Uma régua que lê zeros concorda com tudo o que é zero — a metade da
+  fixtura sem fenómeno passa, e só a metade COM fenómeno reprova. Ver [[reference_topic_gate_discipline]].

@@ -254,7 +254,7 @@ fn diag_o_preco_de_arrastar_a_profundidade() {
         let (mut cpu, mut placa, mut dobra) = (Vec::new(), Vec::new(), Vec::new());
         for q in 0..20u32 {
             let mut nova = p.panel_layers().expect("pilha").clone();
-            nova.set_impasto_depth(cima, 1.0 - q as f32 * 0.04);
+            nova.set_impasto_depth(cima, 0.98 - q as f32 * 0.04);
             let t = Instant::now();
             let recusa = s.aplica_pedidos_da_pilha(vec![PieceLayerOp::Metadata {
                 stack: nova,
@@ -287,4 +287,55 @@ fn diag_o_preco_de_arrastar_a_profundidade() {
             placa[19]
         );
     }
+}
+
+/// ⭐⭐ **GATE — com a camada de cima a cobrir a peça inteira, um passo da profundidade refaz TODAS
+/// as inclinações na placa** (o ramo do `Inclinacoes::refaz` que recalcula do zero e sobe o buffer
+/// inteiro): a placa tem os bits do relevo novo e as inclinações que a CPU calcula do zero para eles.
+/// CONTROLO: as inclinações mudaram em mais de metade das amostras.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn a_profundidade_de_uma_camada_que_cobre_a_peca_refaz_as_inclinacoes_todas() {
+    use ph2d_tool_painter::PieceLayerOp;
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu);
+    let mut p = painter_impasto();
+    let mut painel = Painel::novo();
+    quadro(Some(&mut s), Some(&mut p));
+    painel.clica(&mut p, PAINTER_LAYERS_ADD);
+    quadro(Some(&mut s), Some(&mut p));
+    let cima = pilha(&s).pilha().active().expect("cima");
+    let n = pilha(&s).amostras();
+    let todas: Vec<u32> = (0..n as u32).collect();
+    let r: Vec<[f32; 2]> = (0..n).map(|i| [(i % 13) as f32 * 1e-3, 1.0]).collect();
+    let o = &mut s.objects[s.active];
+    o.pilha
+        .as_mut()
+        .and_then(|pl| pl.troca_relevo(cima, &todas, &r))
+        .expect("relevo em todas");
+    crate::tinta_da_peca::pilha::recompoe(o);
+    let (_, antes) = da_placa(&mut s, &gpu);
+    let mut nova = pilha(&s).pilha().clone();
+    nova.set_impasto_depth(cima, -0.5);
+    assert!(
+        s.aplica_pedidos_da_pilha(vec![PieceLayerOp::Metadata {
+            stack: nova,
+            gesture: None,
+        }])
+        .is_none()
+    );
+    let novo = relevo(&s);
+    let (alt, inc) = da_placa(&mut s, &gpu);
+    iguais(&alt, &novo, "a placa tem o relevo novo");
+    let cpu = inclinacoes_de(&s, &novo);
+    assert!(
+        pior(&inc, &cpu) <= pior(&antes, &cpu) * 1e-4,
+        "as inclinações da placa são as da CPU"
+    );
+    let mudaram = antes.iter().zip(&cpu).filter(|(a, b)| a != b).count();
+    assert!(
+        mudaram * 2 > n,
+        "CONTROLO: mudaram {mudaram} de {n} — o ramo de recalcular tudo"
+    );
 }

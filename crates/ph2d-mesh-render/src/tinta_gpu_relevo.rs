@@ -38,16 +38,20 @@ impl MeshRenderer {
         queue.write_buffer(&g.alturas, 0, bytemuck::cast_slice(alt));
         let sujas = g.inc_foto.o_que_mudou(mesh.positions(), alt);
         let mut mudadas = Vec::new();
-        inc.atualiza(
+        let todas = inc.refaz(
             tinta,
             &|f| mesh.faces()[f].verts(),
             mesh.positions(),
             &sujas,
             &mut mudadas,
         );
+        let gb: &[u8] = bytemuck::cast_slice(inc.por_amostra());
+        if todas {
+            queue.write_buffer(&g.inclinacoes, 0, gb);
+            return true;
+        }
         let mut corridas = Vec::new();
         corridas_das_sujas(&mut mudadas, &mut corridas);
-        let gb: &[u8] = bytemuck::cast_slice(inc.por_amostra());
         for &(de, ate) in &corridas {
             queue.write_buffer(&g.inclinacoes, de as u64, &gb[de..ate]);
         }

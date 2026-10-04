@@ -557,3 +557,95 @@ Mutação: `docs/3D/ferramentas/muta_os_efeitos_de_vizinhanca.sh` (49).
   desarmado mostra a peça sem o último efeito. Uma composição exacta em segundo plano é a cura.
 - O limiar do despré-multiplicar da CPU (`1e-6`) e da placa (`f32::EPSILON`) diverge também no 2D (só se
   vê em cor debaixo de alfa nulo) — anterior à W6.
+
+## 15. W4 — o relevo por camada na peça (04/10)
+
+**O desenho (o que o código derrubou do §2):** a «função pura extraída» são DUAS portas na
+`LayerStack` (`ph2d-tool-painter/src/layers/relief_fold.rs`), não uma: *quem entra*
+(`relief_layers_bottom_up`: visível com os grupos acima, de baixo para cima) e *como entra*
+(`fold_relief_step`: `own · depth`, `Add` soma, `Level` enterra pela cobertura da PRÓPRIA camada).
+O 2D (`ReliefFields::height_at`) e a peça (`PilhaDaPeca::relevo_composto`) chamam as duas, cada um
+sobre os seus planos. A lei do curso do arrasto (`set_impasto_depth_norm`, `0,5` = zero) e o chip
+(`toggle_impasto_composite`) foram para a mesma casa: o painel 2D e o espelho da peça leem-nas.
+
+| porta | onde |
+|---|---|
+| a dobra (2D e peça) | `LayerStack::relief_layers_bottom_up` · `fold_relief_step` · `RELIEF_FOLD_SEED` |
+| o relevo da peça | `pilha_da_peca_relevo.rs`: `relevo_composto` (inteiro) · `relevo_nas` (as sujas, ao bit) · `AssinaturaDoRelevo` / `redobra_o_relevo` · `marca_relevo` (`has_relief` = projecção dos planos) · `troca_relevo(id, …)` (o desfazer, por camada) · `pinta_camada` (fixtura das cenas) |
+| o traço | `trabalho_da_activa` (a cópia leva o relevo DA activa: é sobre ele que o impasto empilha, alisa e corta) · `recebe_do_traco` (o relevo desce à activa) |
+| a recomposição do painel | `tinta_da_peca::pilha::recompoe_o_plano`: a cor na placa como antes; o relevo redobrado na CPU só se a assinatura mudou → `SceneObject::relevo_sujo` |
+| a subida | `slots::sync_mesh` → `MeshRenderer::upload_tinta_relevo_at` (`tinta_gpu_relevo.rs`: o relevo inteiro, as inclinações das amostras de altura mudada; recusa → o plano inteiro) |
+| as inclinações a refazer | `Inclinacoes::refaz` (`ph2d-mesh-colors`): o incremental, ou — com mais de metade do plano sujo — do zero em paralelo; a MESMA escolha da `Inclinacoes::nova` (que era dela só) |
+| o painel | a linha 3 (`paint_relief_line`) pinta-se também na peça; `piece_edit` pede `Metadata` com a lei do 2D; `mesma_estrutura` aceita profundidade e modo (recusa `has_relief`) |
+| o gate cruzado | `PainterTool::composed_relief_of_planes` (`#[doc(hidden)]`, `relief_fold_probe.rs`): uma tela nova com estes planos, lida pelo amostrador da luz do 2D |
+
+**Premissas que o código derrubou (técnicas, delegadas):**
+
+1. **O tecto de vidro do 2D NÃO entra na dobra partilhada.** É a aparência da tinta numa tela em
+   PÍXEIS (`H_KNEE = 24 px`) e a peça nunca o teve (o relevo da peça está nas unidades do objecto,
+   `docs/3D/29`); metê-lo na porta mudaria a peça de uma camada só. Fica no `height_at` do 2D, depois
+   da dobra. O gate cruzado mede abaixo do joelho (identidade).
+2. **A dobra começa em `-0,0`** (`RELIEF_FOLD_SEED`): é a identidade exacta da soma em IEEE
+   (`+0 + -0 = +0`). Com `+0` o `-0` gravado deixava de atravessar o ficheiro
+   (`o_relevo_atravessa_o_ficheiro_ao_bit` reprovou na 1.ª corrida). No 2D só troca o sinal de um
+   zero: a luz lê gradientes — nenhum byte muda (197 gates `impasto`/`relief` do 2D).
+3. **O corpo da peça é o MÁXIMO dos corpos** — a cobertura do 2D (`cover_at`), que de propósito não
+   escala com a profundidade (tinta de relevo mudo continua a ser tinta) e pesa a inclinação no shader
+   (`tinta_relevo_n`). ⇒ «profundidade `0` = no-op ao bit» vale para a ALTURA; o gate di-lo.
+4. **A BASE perde o papel de dona do relevo e fica permanente e no fundo — pela lei do 2D**
+   (`PainterTool::delete_layer`: *«the base sprite is permanent — Apply bakes into it»*). A recusa
+   `ABase` continua; mudou o porquê (e a frase: `app.sculpt3d.camadas.recusa.a_base`).
+5. **`SCULPT_DOC_VERSION` fica em `7`.** O v7 já grava o relevo POR CAMADA (W1, premissa 6) e a
+   `LayerStack` serializada já leva `impasto_depth`/`impasto_composite`/`has_relief`; o
+   `de_partes` re-projecta o `has_relief` dos planos (um ficheiro não mente ao painel).
+6. **O relevo não se compõe na placa:** na CPU está sempre em dia (o traço dobra as sujas, `0,04 ms`),
+   e só uma mudança da FORMA da dobra (assinatura) o redobra inteiro — o arrasto da opacidade não paga
+   nada a mais. A subida é só do relevo: a cor da CPU pode estar atrás da placa (§13.1) e uma subida
+   inteira apagaria a composição dela.
+7. **Os efeitos de vizinhança (W6) não mexem no relevo** — no 2D a dobra lê só as camadas com relevo,
+   nunca os ajustes. Opacidade e máscara também não entram (no 2D a «opacidade da espessura» é a
+   profundidade).
+8. **A leitura do relevo da placa pedia `COPY_SRC`** nos buffers das alturas e das inclinações: sem
+   ele a cópia falha em silêncio e o destino lê zeros (o 1.º vermelho do seam test eram 439
+   «diferenças» = as amostras com relevo). Só os gates leem; o `amostras` já o tinha pela mesma razão.
+
+**Medido** (sonda `relevo_painel::diag_o_preco_de_arrastar_a_profundidade`, perfil `smoke`, peça da
+lição; PIOR caso: a camada de cima com relevo em TODAS as amostras, logo cada passo muda o relevo e as
+inclinações da peça inteira; 20 passos). ⚠️ **A carga não desceu de `7–10`** (as linhas Skeleton e UIUX
+compilavam): é um tecto por cima do número calmo, não o número calmo.
+
+| degrau | amostras | 1.ª redacção: porta+redobra · `sync_mesh` (medianas) | depois: porta+redobra · `sync_mesh` (medianas · pior) |
+|---|---|---|---|
+| `8x` | 47 k | `0,08` · `1,83 ms` | `0,11` · `0,64` · `1,70 ms` |
+| `16x` | 188 k | `0,27` · `6,33 ms` | `0,16` · `1,36` · `2,51 ms` |
+| `32x` | 754 k | `1,86` · **`34,9 ms`** | `0,34` · **`4,65`** · `6,17 ms` |
+| `64x` | 3,0 M | `4,36` · `118,6 ms` | `1,04` · `17,9` · `18,9 ms` |
+
+⇒ a 1.ª redacção passava do critério (um quadro, `16 ms`, a `32x`) **2,2×**: o `sync_mesh` refazia as
+inclinações pelo INCREMENTAL com todas as amostras sujas (épocas e anel por amostra), quando a
+`Inclinacoes::nova` já sabia que acima de metade se recalcula do zero, em paralelo (`7,5 ms` a `32x`,
+`diag_o_preco_de_refazer_as_inclinacoes`). A escolha passou a uma porta (`Inclinacoes::refaz`), e a
+dobra inteira a `rayon` (ponto a ponto: o mesmo ao bit). **A `32x` um passo cabe num quadro com `3×` de
+folga; a `64x` é `~19 ms`** (um quadro e um pouco), quase tudo as inclinações na CPU e a subida de
+`24 + 36 MB`. ⇒ **CPU incremental** (a dobra e as inclinações), decidido pela medição; as inclinações
+num passe de compute na placa são a cura medida possível para `64x`+ (nomeada abaixo). Um arrasto de
+OPACIDADE não paga nada disto (a assinatura não muda: gate `so_a_forma_da_dobra_redobra_o_relevo`).
+
+**Fica para depois (nomeado):**
+- `64x`+ com uma camada de relevo que cobre a peça: `~19 ms` por passo da profundidade (as inclinações
+  refeitas na CPU). Cura: as inclinações num compute da placa a partir das alturas que já lá estão.
+- `128x`/`256x` não foram medidos neste gesto (a sonda vai até `64x`, o tecto dos efeitos de vizinhança).
+
+**Gates** (W4): dobra `relief_fold_tests` (3) · ferramenta `piece_layers_tests::a_profundidade_e_o_level_na_peca_sao_os_do_2d`
+(e o «não oferecido» sem a profundidade) · pilha `pilha_da_peca_relevo_tests` (5: **a dobra da peça = a
+do 2D ao bit** com `Add`, `Level`, profundidade negativa e uma escondida, CONTROLO de ordem · o neutro e
+a profundidade `0` · o traço só na activa e o desfazer · duplicar leva o relevo · só a forma da dobra
+redobra) · os gates antigos que afirmavam «o relevo é da base» re-escritos
+(`o_traco_desce_a_camada_activa_e_so_a_ela`, `a_base_fica_e_a_copia_leva_o_relevo`,
+`as_trocas_do_desfazer_sao_involucoes`) · cena `scenes_relevo_camadas_tests` (1) · produto, com placa e
+o painel REAL: `relevo_painel::a_profundidade_pelo_painel_achata_a_camada_de_cima_e_o_ctrl_z_a_devolve_ao_bit`
+(o arrasto muda o relevo só onde a de cima pinta; a placa tem os bits da peça; as inclinações da placa
+são as da CPU; o `Ctrl+Z` devolve ao bit na peça e na placa; o `Level` enterra).
+
+**Supersede:** §10 premissa 6 e §11 («o relevo desce à BASE»), §12 premissa 2 (o porquê da base),
+§13.1 premissa 3 (o relevo e a recomposição do painel).

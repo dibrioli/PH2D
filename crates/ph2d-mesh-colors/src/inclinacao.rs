@@ -304,11 +304,7 @@ impl Inclinacoes {
             let sujas: Vec<u32> = (0..n as u32)
                 .filter(|&i| alt[i as usize][ALTURA] != 0.0)
                 .collect();
-            if sujas.len() * 2 > n {
-                me.recalcula(tinta, &cantos_de, pos);
-            } else {
-                me.atualiza(tinta, &cantos_de, pos, &sujas, &mut Vec::new());
-            }
+            me.refaz(tinta, &cantos_de, pos, &sujas, &mut Vec::new());
         }
         me
     }
@@ -351,6 +347,29 @@ impl Inclinacoes {
     /// receber). As sujas podem vir com repetidos e por qualquer ordem — e o
     /// índice da amostra de um VÉRTICE é o dele, logo uma peça que mudou de
     /// forma atualiza-se pelos vértices que se moveram.
+    /// ⭐ **Refaz as inclinações das amostras `sujas`** — pelo incremental
+    /// ([`Self::atualiza`]) ou, com mais de metade do plano sujo, do zero
+    /// ([`Self::recalcula`], em paralelo): a mesma escolha para quem nasce e
+    /// para quem sobe um relevo inteiro novo. Devolve `true` se refez TODAS
+    /// (`mudadas` fica vazia: são todas).
+    pub fn refaz<'a>(
+        &mut self,
+        tinta: &Tinta,
+        cantos_de: &(impl Fn(usize) -> &'a [u32] + Sync),
+        pos: &[[f32; 3]],
+        sujas: &[u32],
+        mudadas: &mut Vec<u32>,
+    ) -> bool {
+        if sujas.len() * 2 > self.g.len() {
+            mudadas.clear();
+            self.recalcula(tinta, cantos_de, pos);
+            true
+        } else {
+            self.atualiza(tinta, cantos_de, pos, sujas, mudadas);
+            false
+        }
+    }
+
     pub fn atualiza<'a>(
         &mut self,
         tinta: &Tinta,

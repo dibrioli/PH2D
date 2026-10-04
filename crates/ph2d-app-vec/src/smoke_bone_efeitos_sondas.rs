@@ -50,6 +50,20 @@ fn diag_a_foto_dos_efeitos() {
             crate::smoke_bone_copias::sondas::svg_do_desenho(&so, caixa),
         )
         .expect("svg");
+        // Cada contorno: a área e a largura média (`2·área/perímetro`), em larguras do traço.
+        let w = x.forma.stroke.as_ref().map_or(1.0, |s| s.width);
+        for l in crate::smoke_bone_copias::sondas::polilinhas(&x.forma, 16) {
+            let (mut a, mut per) = (0.0, 0.0);
+            for s in l.windows(2) {
+                a += s[0][0] * s[1][1] - s[1][0] * s[0][1];
+                per += (s[1][0] - s[0][0]).hypot(s[1][1] - s[0][1]);
+            }
+            println!(
+                "    contorno: área {:.5} · largura média {:.2} traços",
+                a / 2.0,
+                (a.abs() / per) / w
+            );
+        }
         println!(
             "  {f} · contornos {} · camada do traço {}",
             x.forma.contour_count(),

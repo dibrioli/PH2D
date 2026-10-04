@@ -77,7 +77,12 @@ união); quatro ficheiros cortados abaixo do tecto de LOC.
   noutras mídias: a COSTURA entre pedaços (F48/F49), o PREÇO (régua `diag_o_preco_do_efeito_por_quadro`,
   hoje `0,9`–`2,7 ms`), o recorte de abertos.
 
-### A3 — ⏳ Prender uma forma com um *Repeater* de muitas cópias é LENTO
+### A3 — ✅ FEITO (F53, `8d1a3def8`): prender um *Repeater* denso deixa de parar a tela
+
+> Medido em release: o custo era a cerca de cobertura da grelha (varria todos os anéis por
+> pergunta), não o solver — malha `743 → 21 ms`, Bind `343 → 64 ms` a `39²`. Índice dos anéis por
+> faixa/célula, mesma resposta ao bit (gate contra a varredura); nenhum tecto. Detalhe: fila §F53.
+
 
 - Medido em 03/10: um *Repeater* `39 × 39` que gira (`~1 000` contornos) — em DEBUG o Bind não acabou
   em 10 min (o solver `campo_do_caminho` sobre o cozido inteiro, síncrono no Bind). O pânico do

@@ -113,3 +113,22 @@ fn o_indice_dos_aneis_responde_como_a_varredura() {
         assert!(dentro > 0 && dentro < n && toca > 0 && toca < n, "o CONTROLO: uma resposta só");
     }
 }
+
+/// ⭐ **GATE — a convenção da FRONTEIRA do par-ímpar** (semi-aberta: o lado esquerdo e o de baixo
+/// são de dentro, o direito e o de cima de fora), pelo índice e pela varredura. É a única pergunta
+/// em que `>` e `>=` divergem — a mutação dela sobrevivia ao gate de igualdade, que partilha a conta.
+#[test]
+fn a_fronteira_do_par_impar_e_semi_aberta() {
+    let quadrado = vec![vec![[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]];
+    let ix = super::aneis::IndiceDosAneis::novo(&quadrado);
+    for (p, esperado) in [
+        ([0.0, 5.0], true),
+        ([10.0, 5.0], false),
+        ([5.0, 0.0], true),
+        ([5.0, 10.0], false),
+        ([5.0, 5.0], true),
+    ] {
+        assert_eq!(super::dentro(&quadrado, p), esperado, "varredura em {p:?}");
+        assert_eq!(ix.dentro(&quadrado, p), esperado, "índice em {p:?}");
+    }
+}

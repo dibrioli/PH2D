@@ -76,3 +76,11 @@ Decisões do dono (a ordem é dele, não derivada):
   Sem placa, o modo Render mostra o **Matcap**; nenhum caminho de produto chega ao traçado (gate
   `render_sem_tracado_tests`). O Matcap continua **traçado** (ADR-0161). Ver o
   [handoff O_RENDER_ANTIGO_SAI](../../3DModeling/handoffs/HANDOFF_line_3DModeling_O_RENDER_ANTIGO_SAI_2026-10-03.md).
+- ⭐ **As CAPTURAS DE REFLEXO entraram em 2026-10-04** (ordem do dono: *«não temos reflexo dos objetos
+  ao lado»*): o idioma do Fortnite móvel — um cubo 360° por peça, desenhado do centro dela com o MESMO
+  desenhista, pré-filtrado por rugosidade, refeito só quando a chave muda (girar a câmara não refaz
+  nada; um quadro depois de qualquer caminho de edições é, ao byte, o de um desenhista novo). Cabe no
+  WebGL2 (texturas, atlas `3 × 2` das faces, octaedro com borda numa matriz de texturas). Medido contra
+  o Cycles; o reflexo lê o chão TODO e as vizinhas tapam pela cobertura da captura (a máscara da zona da
+  peça fica só para a placa sem `Rgba16Float` e acima de `128` peças). Ver o
+  [handoff AS_CAPTURAS_DE_REFLEXO](../../3DModeling/handoffs/HANDOFF_line_3DModeling_AS_CAPTURAS_DE_REFLEXO_2026-10-04.md).

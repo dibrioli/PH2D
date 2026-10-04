@@ -111,7 +111,7 @@ muta $M/difusao.rs 'T::menos(za, z[self.viz[e] as usize])' 'T::menos(z[self.viz[
 # ── A PEÇA: a vizinhança, a pilha, as portas ────────────────────────────────────────────────────
 muta $A/vizinhanca_da_peca.rs $'fn blur4(&self, radius: f32, buf: &mut [[f32; 4]]) {\n        self.difusao.desfoca(gaussian_sigma(radius), buf);' $'fn blur4(&self, radius: f32, buf: &mut [[f32; 4]]) {\n        self.difusao.desfoca(radius, buf);' \
   'P1 σ = o raio (sem o /3)' peca
-muta $A/pilha_da_peca_vizinhanca.rs 'Some(v) => composite_over(&self.pilha, self, v),' 'Some(_) => ph2d_tool_painter::composite(&self.pilha, self, dobra(self.amostras).0, dobra(self.amostras).1),' \
+muta $A/pilha_da_peca_vizinhanca.rs 'let todo = self.com_vizinhos(|nb| composite_over(&self.pilha, self, nb));' 'let todo = ph2d_tool_painter::composite(&self.pilha, self, dobra(self.amostras).0, dobra(self.amostras).1);' \
   'P2 a peça borra pela ordem das amostras (a grelha da dobra)' peca
 muta $A/pilha_da_peca_vizinhanca.rs 'Some(LayerKind::Adjustment(a)) if a.kind.reads_the_image_layout()' 'Some(LayerKind::Adjustment(a)) if false && a.kind.reads_the_image_layout()' \
   'P3 a pilha nunca lê vizinhos' peca

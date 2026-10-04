@@ -107,7 +107,9 @@ muta $A/pilha_da_peca_relevo.rs '            c.has_relief = tem;' '            c
   'R11 o painel nunca sabe que a camada tem relevo' app
 muta $A/pilha_da_peca_relevo.rs $'        let plano = self.planos.get_mut(&id)?;\n        let alvo = plano.relevo.get_or_insert_with' $'        let plano = self.base().and_then(|b| self.planos.get_mut(&b))?;\n        let alvo = plano.relevo.get_or_insert_with' \
   'R12 o desfazer do relevo vai à base' app
-muta $A/pilha_da_peca_relevo.rs '                Some((id, c.impasto_depth.to_bits(), c.impasto_composite))' '                Some((id, 0, c.impasto_composite))' \
+# ⚠️ R13/R24 re-ancoradas a 04/10 (doc 30 §20): a assinatura É o plano (`ReliefStep`, igualdade
+#    ao bit na ph2d-tool-painter) e o `relevo_nas` ganhou o ramo dos ajustes que agem.
+muta crates/ph2d-tool-painter/src/layers/relief_through.rs '            ) => a == b && da.to_bits() == db.to_bits() && ca == cb,' '            ) => a == b && ca == cb,' \
   'R13 a assinatura não vê a profundidade' app
 muta $A/pilha_da_peca.rs $'        if let Some(p) = self.planos.get(&id).cloned() {\n            self.planos.insert(copia, p);' $'        if let Some(mut p) = self.planos.get(&id).cloned() {\n            p.relevo = None;\n            self.planos.insert(copia, p);' \
   'R14 a cópia perde o relevo' app
@@ -134,7 +136,7 @@ muta $S/tela_na_malha_pousa.rs '            let a = (alfa + da * k).clamp(0.0, 1
 
 # ── §18: a orla e o fantasma (a 2.ª foto do dono, 04/10) ──
 muta $A/pilha_da_peca_relevo.rs '        self.relevo_dobrado.poe(self.assinatura_do_relevo());
-        let camadas' '        let camadas' \
+        if self.relevo_atraves() {' '        if self.relevo_atraves() {' \
   'R24 o traço não renova a assinatura (esconder deixa o fantasma)' app
 muta $T/layers/relief_fold.rs '    let ref_ = body_profile(cover_max.min(W_SOLID));' '    let ref_ = body_profile(cover_max.min(W_SOLID)) * 0.0;' \
   'R25 a encosta sem tinta conta sobre a tinta de outra' app

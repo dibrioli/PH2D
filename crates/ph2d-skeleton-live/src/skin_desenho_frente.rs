@@ -61,7 +61,12 @@ impl Arte {
             .map(|(v, _)| {
                 (0..v.len())
                     .flat_map(|k| {
-                        let c = [v[k].anchor, v[k].out_handle, v[(k + 1) % v.len()].in_handle, v[(k + 1) % v.len()].anchor];
+                        let c = [
+                            v[k].anchor,
+                            v[k].out_handle,
+                            v[(k + 1) % v.len()].in_handle,
+                            v[(k + 1) % v.len()].anchor,
+                        ];
                         (0..16).map(move |i| avalia(&c, f64::from(i) / 16.0))
                     })
                     .collect()
@@ -149,8 +154,14 @@ impl Grelha {
         };
         for (i, t) in tris.iter().enumerate() {
             let ps = t.map(|v| pos[v as usize]);
-            let c0 = g.celula([ps[0][0].min(ps[1][0]).min(ps[2][0]), ps[0][1].min(ps[1][1]).min(ps[2][1])]);
-            let c1 = g.celula([ps[0][0].max(ps[1][0]).max(ps[2][0]), ps[0][1].max(ps[1][1]).max(ps[2][1])]);
+            let c0 = g.celula([
+                ps[0][0].min(ps[1][0]).min(ps[2][0]),
+                ps[0][1].min(ps[1][1]).min(ps[2][1]),
+            ]);
+            let c1 = g.celula([
+                ps[0][0].max(ps[1][0]).max(ps[2][0]),
+                ps[0][1].max(ps[1][1]).max(ps[2][1]),
+            ]);
             for y in c0[1]..=c1[1] {
                 for x in c0[0]..=c1[0] {
                     #[expect(clippy::cast_possible_truncation, reason = "índice de triângulo u32")]
@@ -200,7 +211,11 @@ impl<'a> Posada<'a> {
             repouso.push(p);
             let linha = campo.linha_do_vertice(i)?;
             pele.weights_corrected(p, Some(linha), &mut w, correcoes);
-            pos.push(if rigido { pele.blend(p, &w) } else { pele.blend_linear(p, &w) });
+            pos.push(if rigido {
+                pele.blend(p, &w)
+            } else {
+                pele.blend_linear(p, &w)
+            });
             chave_v.push(crate::skin_image_fecho::chave_de_osso(linha, prof));
         }
         let tris = &campo.malha.tris;
@@ -214,7 +229,10 @@ impl<'a> Posada<'a> {
         let virado = tris
             .iter()
             .map(|t| {
-                let (r, p) = (t.map(|v| campo.malha.rest[v as usize]), t.map(|v| pos[v as usize]));
+                let (r, p) = (
+                    t.map(|v| campo.malha.rest[v as usize]),
+                    t.map(|v| pos[v as usize]),
+                );
                 area(r) * area(p) < 0.0
             })
             .collect();
@@ -257,7 +275,9 @@ impl<'a> Posada<'a> {
             dentro(uv)
                 && uv.is_some_and(|(u, v)| {
                     let r = [0, 1].map(|j| {
-                        (1.0 - u - v) * self.repouso[a][j] + u * self.repouso[b][j] + v * self.repouso[c][j]
+                        (1.0 - u - v) * self.repouso[a][j]
+                            + u * self.repouso[b][j]
+                            + v * self.repouso[c][j]
                     });
                     self.arte.tem(r)
                 })
@@ -303,7 +323,12 @@ impl<'a> Posada<'a> {
         let n = self.campo.ossos();
         let (dono, (u, v)) = cand.iter().find_map(|&k| {
             let t = m.tris[k as usize];
-            let uv = bari(pm, m.rest[t[0] as usize], m.rest[t[1] as usize], m.rest[t[2] as usize]);
+            let uv = bari(
+                pm,
+                m.rest[t[0] as usize],
+                m.rest[t[1] as usize],
+                m.rest[t[2] as usize],
+            );
             dentro(uv).then(|| (k as usize, uv.unwrap_or_default()))
         })?;
         let t = m.tris[dono];
@@ -356,18 +381,29 @@ pub(super) fn cubica(vs: &[VecVertex], k: usize) -> [[f64; 2]; 4] {
 }
 
 fn lerp(a: [f64; 2], b: [f64; 2], t: f64) -> [f64; 2] {
-    [(b[0] - a[0]).mul_add(t, a[0]), (b[1] - a[1]).mul_add(t, a[1])]
+    [
+        (b[0] - a[0]).mul_add(t, a[0]),
+        (b[1] - a[1]).mul_add(t, a[1]),
+    ]
 }
 
 pub(super) fn avalia(c: &[[f64; 2]; 4], t: f64) -> [f64; 2] {
-    let (ab, bc, cd) = (lerp(c[0], c[1], t), lerp(c[1], c[2], t), lerp(c[2], c[3], t));
+    let (ab, bc, cd) = (
+        lerp(c[0], c[1], t),
+        lerp(c[1], c[2], t),
+        lerp(c[2], c[3], t),
+    );
     lerp(lerp(ab, bc, t), lerp(bc, cd, t), t)
 }
 
 /// O pedaço `[t0, t1]` da cúbica (de Casteljau, exacto).
 fn pedaco(c: &[[f64; 2]; 4], t0: f64, t1: f64) -> [[f64; 2]; 4] {
     let parte = |c: &[[f64; 2]; 4], t: f64| -> ([[f64; 2]; 4], [[f64; 2]; 4]) {
-        let (ab, bc, cd) = (lerp(c[0], c[1], t), lerp(c[1], c[2], t), lerp(c[2], c[3], t));
+        let (ab, bc, cd) = (
+            lerp(c[0], c[1], t),
+            lerp(c[1], c[2], t),
+            lerp(c[2], c[3], t),
+        );
         let (abc, bcd) = (lerp(ab, bc, t), lerp(bc, cd, t));
         let m = lerp(abc, bcd, t);
         ([c[0], ab, abc, m], [m, bcd, cd, c[3]])
@@ -376,7 +412,11 @@ fn pedaco(c: &[[f64; 2]; 4], t0: f64, t1: f64) -> [[f64; 2]; 4] {
     if t1 >= 1.0 {
         return direita;
     }
-    let s = if t0 < 1.0 { (t1 - t0) / (1.0 - t0) } else { 1.0 };
+    let s = if t0 < 1.0 {
+        (t1 - t0) / (1.0 - t0)
+    } else {
+        1.0
+    };
     parte(&direita, s).0
 }
 
@@ -453,7 +493,10 @@ pub(super) fn recorta(vs: &[VecVertex], u0: f64, u1: f64) -> Vec<(VecVertex, Ori
     let (t0, t1) = (u0 - k0 as f64, u1 - k1 as f64);
     let mut out: Vec<(VecVertex, Origem)> = Vec::new();
     for k in k0..=k1 {
-        let (a, b) = (if k == k0 { t0 } else { 0.0 }, if k == k1 { t1 } else { 1.0 });
+        let (a, b) = (
+            if k == k0 { t0 } else { 0.0 },
+            if k == k1 { t1 } else { 1.0 },
+        );
         let c = pedaco(&cubica(vs, k), a, b);
         match out.last_mut() {
             Some((v, _)) => v.out_handle = c[1],
@@ -500,7 +543,9 @@ pub(super) fn so_o_que_se_ve(
     let cortes: Vec<Option<Vec<(f64, f64)>>> = contornos
         .iter()
         .map(|(v, fechado)| {
-            let vis = (!*fechado && v.len() > 1).then(|| a_vista(v, &f)).flatten()?;
+            let vis = (!*fechado && v.len() > 1)
+                .then(|| a_vista(v, &f))
+                .flatten()?;
             #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
             let fim = (v.len() - 1) as f64;
             Some(
@@ -522,7 +567,12 @@ pub(super) fn so_o_que_se_ve(
     let mut base = 0;
     for ((vs, fechado), corte) in contornos.iter().zip(&cortes) {
         let pecas: Vec<Vec<(VecVertex, Origem)>> = match corte {
-            None => vec![vs.iter().enumerate().map(|(i, v)| (*v, Origem::Fonte(i))).collect()],
+            None => vec![
+                vs.iter()
+                    .enumerate()
+                    .map(|(i, v)| (*v, Origem::Fonte(i)))
+                    .collect(),
+            ],
             Some(vis) => vis
                 .iter()
                 .filter(|(a, b)| b > a)
@@ -534,13 +584,15 @@ pub(super) fn so_o_que_se_ve(
                 for (v, o) in &peca {
                     let linha: Vec<f64> = match *o {
                         Origem::Fonte(i) => linha_de(base + i).to_vec(),
-                        Origem::Novo(k, t) => campo.linha_com(v.anchor, indice).unwrap_or_else(|| {
-                            linha_de(base + k)
-                                .iter()
-                                .zip(linha_de(base + k + 1))
-                                .map(|(x, y)| (y - x).mul_add(t, *x))
-                                .collect()
-                        }),
+                        Origem::Novo(k, t) => {
+                            campo.linha_com(v.anchor, indice).unwrap_or_else(|| {
+                                linha_de(base + k)
+                                    .iter()
+                                    .zip(linha_de(base + k + 1))
+                                    .map(|(x, y)| (y - x).mul_add(t, *x))
+                                    .collect()
+                            })
+                        }
                     };
                     for _ in 0..3 {
                         nova_tabela.extend_from_slice(&linha);
@@ -609,18 +661,27 @@ pub(super) fn cortes_dos_fechados(
             }
             let ponta = |u: f64| -> Ponta {
                 let um = u.rem_euclid(m);
-                #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "segmento")]
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "segmento"
+                )]
                 let k = (um.floor() as usize).min(v.len() - 1);
                 #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
                 let t = um - k as f64;
                 let c = cubica(&w, k);
-                let p: Vec<[f64; 2]> =
-                    (0..=64).map(|i| f.posado(avalia(&c, f64::from(i) / 64.0))).collect();
+                let p: Vec<[f64; 2]> = (0..=64)
+                    .map(|i| f.posado(avalia(&c, f64::from(i) / 64.0)))
+                    .collect();
                 let mut acc = vec![0.0];
                 for j in 1..p.len() {
                     acc.push(acc[j - 1] + (p[j][0] - p[j - 1][0]).hypot(p[j][1] - p[j - 1][1]));
                 }
-                #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "amostra")]
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "amostra"
+                )]
                 let i = ((t * 64.0).floor() as usize).min(63);
                 #[expect(clippy::cast_precision_loss, reason = "amostra")]
                 let s = acc[i] + (acc[i + 1] - acc[i]) * (t * 64.0 - i as f64);

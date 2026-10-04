@@ -78,14 +78,20 @@ pub(super) fn traco_sobre_o_assado(
         let projeta = |(u, q, frac): super::frente::Ponta| -> f64 {
             #[expect(clippy::cast_precision_loss, reason = "contagem de nós")]
             let um = u.rem_euclid(m as f64);
-            #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "segmento")]
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "segmento"
+            )]
             let k = (um.floor() as usize).min(m - 1);
             let fim = (if k + 1 < m { idx[k + 1] } else { n }).max(idx[k] + 1);
             // O pedaço do assado que vem do segmento `k`, amostrado com o comprimento acumulado.
             let mut pts: Vec<(usize, f64, [f64; 2])> = Vec::new();
             for j in idx[k]..fim {
                 let c = cubica(&w, j);
-                pts.extend((0..32).map(|i| (j, f64::from(i) / 32.0, avalia(&c, f64::from(i) / 32.0))));
+                pts.extend(
+                    (0..32).map(|i| (j, f64::from(i) / 32.0, avalia(&c, f64::from(i) / 32.0))),
+                );
             }
             pts.push((fim - 1, 1.0, w[fim].anchor));
             let mut acc = vec![0.0];
@@ -123,8 +129,10 @@ pub(super) fn traco_sobre_o_assado(
             let verts: Vec<VecVertex> = if u0 < u1 {
                 recorta(&w, u0, u1).into_iter().map(|(v, _)| v).collect()
             } else {
-                let mut p: Vec<VecVertex> = recorta(&w, u0, fim).into_iter().map(|(v, _)| v).collect();
-                let resto: Vec<VecVertex> = recorta(&w, 0.0, u1).into_iter().map(|(v, _)| v).collect();
+                let mut p: Vec<VecVertex> =
+                    recorta(&w, u0, fim).into_iter().map(|(v, _)| v).collect();
+                let resto: Vec<VecVertex> =
+                    recorta(&w, 0.0, u1).into_iter().map(|(v, _)| v).collect();
                 if let (Some(j), Some(r)) = (p.last_mut(), resto.first()) {
                     j.out_handle = r.out_handle;
                 }

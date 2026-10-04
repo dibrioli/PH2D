@@ -11,8 +11,8 @@
 use crate::skin_desenho::Leis;
 use crate::skin_live::tests::palco;
 use ph2d_skeleton_ecs::SkinBind;
-use ph2d_vec_scene::effect::{FxEntry, PathEffect};
 use ph2d_vec_scene::VecPath;
+use ph2d_vec_scene::effect::{FxEntry, PathEffect};
 
 /// A junta da fixtura (`palco`: barra `40 × 10`, dois ossos de `20`).
 const JUNTA: f64 = 20.0;
@@ -24,16 +24,26 @@ const PERTO: f64 = 0.1;
 const FOLGA: f64 = 0.25;
 
 pub(crate) fn cubica(vs: &[ph2d_vec_scene::VecVertex], k: usize) -> [[f64; 2]; 4] {
-    [vs[k].anchor, vs[k].out_handle, vs[k + 1].in_handle, vs[k + 1].anchor]
+    [
+        vs[k].anchor,
+        vs[k].out_handle,
+        vs[k + 1].in_handle,
+        vs[k + 1].anchor,
+    ]
 }
 
 pub(crate) fn em(c: &[[f64; 2]; 4], t: f64) -> ([f64; 2], [f64; 2]) {
     let s = 1.0 - t;
     let p = |k: usize| {
-        s * s * s * c[0][k] + 3.0 * s * s * t * c[1][k] + 3.0 * s * t * t * c[2][k] + t * t * t * c[3][k]
+        s * s * s * c[0][k]
+            + 3.0 * s * s * t * c[1][k]
+            + 3.0 * s * t * t * c[2][k]
+            + t * t * t * c[3][k]
     };
     let d = |k: usize| {
-        3.0 * s * s * (c[1][k] - c[0][k]) + 6.0 * s * t * (c[2][k] - c[1][k]) + 3.0 * t * t * (c[3][k] - c[2][k])
+        3.0 * s * s * (c[1][k] - c[0][k])
+            + 6.0 * s * t * (c[2][k] - c[1][k])
+            + 3.0 * t * t * (c[3][k] - c[2][k])
     };
     ([p(0), p(1)], [d(0), d(1)])
 }
@@ -42,7 +52,9 @@ pub(crate) fn em(c: &[[f64; 2]; 4], t: f64) -> ([f64; 2], [f64; 2]) {
 pub(crate) fn amostras(p: &VecPath, fechados: bool, por_seg: usize) -> Vec<([f64; 2], [f64; 2])> {
     let mut out = Vec::new();
     for c in 0..p.contour_count() {
-        let Some((vs, fechado)) = p.contour(c) else { continue };
+        let Some((vs, fechado)) = p.contour(c) else {
+            continue;
+        };
         if fechado != fechados || vs.len() < 2 {
             continue;
         }
@@ -61,7 +73,9 @@ pub(crate) fn amostras(p: &VecPath, fechados: bool, por_seg: usize) -> Vec<([f64
 fn amostras_em_troco(p: &VecPath) -> Vec<[[f64; 2]; 2]> {
     let mut out = Vec::new();
     for c in 0..p.contour_count() {
-        let Some((vs, false)) = p.contour(c) else { continue };
+        let Some((vs, false)) = p.contour(c) else {
+            continue;
+        };
         for k in 0..vs.len().saturating_sub(1) {
             let cb = cubica(vs, k);
             let pts: Vec<[f64; 2]> = (0..=64).map(|i| em(&cb, f64::from(i) / 64.0).0).collect();
@@ -75,7 +89,9 @@ pub(crate) fn dentro(pol: &[[f64; 2]], q: [f64; 2]) -> bool {
     let mut d = false;
     for i in 0..pol.len() {
         let (a, b) = (pol[i], pol[(i + 1) % pol.len()]);
-        if (a[1] > q[1]) != (b[1] > q[1]) && q[0] < (b[0] - a[0]) * (q[1] - a[1]) / (b[1] - a[1]) + a[0] {
+        if (a[1] > q[1]) != (b[1] > q[1])
+            && q[0] < (b[0] - a[0]) * (q[1] - a[1]) / (b[1] - a[1]) + a[0]
+        {
             d = !d;
         }
     }
@@ -105,7 +121,10 @@ fn mede(graus: f32, frente: bool) -> (f64, f64, f64, usize) {
             cross: false,
         },
     ))];
-    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
+    assert_eq!(
+        crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None),
+        1
+    );
     let e = ph2d_ecs::Entity::from_bits(map[&id]);
     let skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
     let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
@@ -193,11 +212,20 @@ fn as_riscas_de_tras_nao_pintam_por_cima_da_frente() {
              ({fr0:.3}) · trás à vista {vis:.3} ({vis0:.3})"
         );
         assert!(n > 20, "a {graus}° a fixtura não tem riscas tapadas ({n})");
-        assert!(tap0 > 0.9, "o CONTROLO: sem a lei as tapadas não se pintam ({tap0:.3})");
-        assert!(tap < 0.02, "a {graus}° as riscas de trás pintam a frente ({tap:.3})");
+        assert!(
+            tap0 > 0.9,
+            "o CONTROLO: sem a lei as tapadas não se pintam ({tap0:.3})"
+        );
+        assert!(
+            tap < 0.02,
+            "a {graus}° as riscas de trás pintam a frente ({tap:.3})"
+        );
         // ⚠️ A régua lê `~2 %` das amostras sem tinta TAMBÉM sem a lei (as pontas das riscas) ⇒
         // «nada mais se apaga» compara com o controlo.
-        assert!(fr > 0.95 && fr >= fr0 - 1e-3, "a {graus}° a frente perdeu riscas ({fr:.3} × {fr0:.3})");
+        assert!(
+            fr > 0.95 && fr >= fr0 - 1e-3,
+            "a {graus}° a frente perdeu riscas ({fr:.3} × {fr0:.3})"
+        );
         assert!(
             vis > 0.95 && vis >= vis0 - 1e-3,
             "a {graus}° a trás à vista perdeu riscas ({vis:.3} × {vis0:.3})"
@@ -205,11 +233,17 @@ fn as_riscas_de_tras_nao_pintam_por_cima_da_frente() {
     }
 }
 
-/// ⭐ **SONDA — O PREÇO por quadro** do recorte (só a porta) e do quadro inteiro com e sem a lei da
-/// frente, a pose a MUDAR a cada chamada (`110°` ↔ `150°`). Imprime; corra em `--release` com a
-/// máquina calma.
+/// ⭐ **SONDA — O PREÇO por quadro** do recorte (só a porta, e dela só a malha posada) e do quadro
+/// inteiro com e sem a lei da frente, a pose a MUDAR a cada chamada: na dobra (`110°` ↔ `150°`) e
+/// SEM dobra que tape (`0°` ↔ `30°`, A7). Imprime; corra em `--release` com a máquina calma.
 #[test]
 fn diag_o_preco_do_recorte_por_quadro() {
+    for poses in [(110f32, 150f32), (0.0, 30.0)] {
+        preco_do_recorte(poses);
+    }
+}
+
+fn preco_do_recorte((pa, pb): (f32, f32)) {
     use std::time::Instant;
     let (mut sim, mut scene, map, id, [_, ponta]) = palco();
     scene.path_mut(id).expect("path").effects = vec![FxEntry::new(PathEffect::Hatch(
@@ -219,7 +253,10 @@ fn diag_o_preco_do_recorte_por_quadro() {
             cross: false,
         },
     ))];
-    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
+    assert_eq!(
+        crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None),
+        1
+    );
     let e = ph2d_ecs::Entity::from_bits(map[&id]);
     let skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
     let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
@@ -231,19 +268,32 @@ fn diag_o_preco_do_recorte_por_quadro() {
         sim.world_mut()
             .get_mut::<ph2d_ecs::Transform>(ponta)
             .expect("Transform")
-            .rotation = if n.is_multiple_of(2) { 110f32 } else { 150f32 }.to_radians();
+            .rotation = if n.is_multiple_of(2) { pa } else { pb }.to_radians();
     };
-    let t = Instant::now();
-    let mut k = 0_u32;
-    while t.elapsed().as_millis() < 300 {
-        dobra(&mut sim);
-        let index = crate::skin_live::bone_index(&sim);
-        let pele = crate::skin_live::resolve(&sim, &skin, e, &index).expect("pele");
-        let prof = crate::esqueletos::profundidades(&sim, &skin, &index);
-        let _ = super::so_o_que_se_ve(&g.path, &g.pesos, (&campo, indice.as_ref()), (&pele, &[], true), &prof);
-        k += 1;
-    }
-    let porta = t.elapsed().as_secs_f64() * 1e6 / f64::from(k);
+    let mut porta_e_malha = |so_a_malha: bool| {
+        let t = Instant::now();
+        let mut k = 0_u32;
+        while t.elapsed().as_millis() < 300 {
+            dobra(&mut sim);
+            let index = crate::skin_live::bone_index(&sim);
+            let pele = crate::skin_live::resolve(&sim, &skin, e, &index).expect("pele");
+            let prof = crate::esqueletos::profundidades(&sim, &skin, &index);
+            if so_a_malha {
+                let _ = super::Posada::nova(&campo, indice.as_ref(), &pele, &[], true, &prof);
+            } else {
+                let _ = super::so_o_que_se_ve(
+                    &g.path,
+                    &g.pesos,
+                    (&campo, indice.as_ref()),
+                    (&pele, &[], true),
+                    &prof,
+                );
+            }
+            k += 1;
+        }
+        t.elapsed().as_secs_f64() * 1e6 / f64::from(k)
+    };
+    let (porta, malha) = (porta_e_malha(false), porta_e_malha(true));
     let mut quadro = |frente: bool| {
         let leis = Leis {
             frente,
@@ -261,11 +311,13 @@ fn diag_o_preco_do_recorte_por_quadro() {
     };
     let (com, sem) = (quadro(true), quadro(false));
     println!(
-        "  riscas {} · malha {} triângulos · µs: o recorte {porta:.1} · o quadro com a lei {com:.1} \
-         · sem ela {sem:.1} · loadavg {}",
+        "  {pa}°↔{pb}°: riscas {} · malha {} triângulos · µs: o recorte {porta:.1} (a malha posada \
+         {malha:.1}) · o quadro com a lei {com:.1} · sem ela {sem:.1} · loadavg {}",
         g.path.contour_count() - 1,
         campo.malha.tris.len(),
-        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
     );
 }
 
@@ -283,7 +335,10 @@ fn o_que_nao_se_corta_sai_ao_bit() {
             cross: false,
         },
     ))];
-    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
+    assert_eq!(
+        crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None),
+        1
+    );
     let e = ph2d_ecs::Entity::from_bits(map[&id]);
     let skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
     let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
@@ -295,36 +350,55 @@ fn o_que_nao_se_corta_sai_ao_bit() {
     let index = crate::skin_live::bone_index(&sim);
     let pele = crate::skin_live::resolve(&sim, &skin, e, &index).expect("pele");
     let prof = crate::esqueletos::profundidades(&sim, &skin, &index);
-    let (p, t) = super::so_o_que_se_ve(&g.path, &g.pesos, (&campo, None), (&pele, &[], true), &prof)
-        .expect("o CONTROLO: nada foi cortado a 150°");
+    let (p, t) =
+        super::so_o_que_se_ve(&g.path, &g.pesos, (&campo, None), (&pele, &[], true), &prof)
+            .expect("o CONTROLO: nada foi cortado a 150°");
     let n = g.pesos.len() / (3 * g.path.verts_all().count());
-    let linhas = |q: &VecPath, tab: &[f64]| -> Vec<(Vec<ph2d_vec_scene::VecVertex>, bool, Vec<f64>)> {
-        let mut base = 0;
-        (0..q.contour_count())
-            .filter_map(|c| q.contour(c))
-            .map(|(v, f)| {
-                let r = tab[3 * base * n..3 * (base + v.len()) * n].to_vec();
-                base += v.len();
-                (v.to_vec(), f, r)
-            })
-            .collect()
-    };
+    let linhas =
+        |q: &VecPath, tab: &[f64]| -> Vec<(Vec<ph2d_vec_scene::VecVertex>, bool, Vec<f64>)> {
+            let mut base = 0;
+            (0..q.contour_count())
+                .filter_map(|c| q.contour(c))
+                .map(|(v, f)| {
+                    let r = tab[3 * base * n..3 * (base + v.len()) * n].to_vec();
+                    base += v.len();
+                    (v.to_vec(), f, r)
+                })
+                .collect()
+        };
     let (antes, depois) = (linhas(&g.path, &g.pesos), linhas(&p, &t));
     assert_eq!(t.len() / 3 / n, p.verts_all().count(), "três linhas por nó");
     let iguais = antes.iter().filter(|a| depois.contains(a)).count();
     let fechado = antes.iter().find(|a| a.1).expect("o fechado");
-    assert!(depois.contains(fechado), "o contorno fechado mudou (nós ou linhas)");
-    assert!(iguais < antes.len(), "o CONTROLO: nenhuma risca foi cortada");
+    assert!(
+        depois.contains(fechado),
+        "o contorno fechado mudou (nós ou linhas)"
+    );
+    assert!(
+        iguais < antes.len(),
+        "o CONTROLO: nenhuma risca foi cortada"
+    );
     println!("  contornos iguais ao bit {iguais} de {}", antes.len());
     // As riscas inteiras à vista: as da fonte cujo desenho não perdeu nenhum ponto.
-    assert!(iguais > antes.len() / 2, "o recorte tocou riscas que não cortou ({iguais})");
+    assert!(
+        iguais > antes.len() / 2,
+        "o recorte tocou riscas que não cortou ({iguais})"
+    );
 }
 /// A largura do traço da barra da cena (`0,75 · 0,06`).
 const LARGURA: f64 = 0.75 * 0.06;
 
 /// A barra da cena `=5` com *Hatch* (`4,5 × 0,75`, três ossos), presa recta e dobrada em S a `graus`:
 /// a fonte guardada, a tabela, o campo, a pele e a profundidade.
-fn barra_em_s(graus: f32) -> (VecPath, Vec<f64>, ph2d_vec_skin::pesos::CampoDoDominio, ph2d_skeleton::Skin, Vec<f64>) {
+fn barra_em_s(
+    graus: f32,
+) -> (
+    VecPath,
+    Vec<f64>,
+    ph2d_vec_skin::pesos::CampoDoDominio,
+    ph2d_skeleton::Skin,
+    Vec<f64>,
+) {
     use crate::barra_da_cena_tests_support::osso;
     let mut sim = ph2d_ecs::SimWorld::default();
     let mut scene = ph2d_vec_scene::VecScene::new();
@@ -354,7 +428,10 @@ fn barra_em_s(graus: f32) -> (VecPath, Vec<f64>, ph2d_vec_skin::pesos::CampoDoDo
     let b1 = osso(&mut sim, "b1", [-1.875, 0.0], passo, None);
     let b2 = osso(&mut sim, "b2", [p32, 0.0], passo, Some(b1));
     let b3 = osso(&mut sim, "b3", [p32, 0.0], passo, Some(b2));
-    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(b1)), 1);
+    assert_eq!(
+        crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(b1)),
+        1
+    );
     for (b, g) in [(b2, graus), (b3, -graus)] {
         sim.world_mut()
             .get_mut::<ph2d_ecs::Transform>(b)
@@ -381,8 +458,8 @@ fn nenhum_pedaco_cortado_e_mais_curto_que_o_traco() {
     for graus in [100f32, 110.0, 120.0] {
         let (fonte, pesos, campo, pele, prof) = barra_em_s(graus);
         let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof)
-        .expect("posada")
-        .com_a_arte(&fonte);
+            .expect("posada")
+            .com_a_arte(&fonte);
         let curtos = |p: &VecPath, so_cortados: bool| -> usize {
             (0..p.contour_count())
                 .filter_map(|c| p.contour(c))
@@ -407,9 +484,15 @@ fn nenhum_pedaco_cortado_e_mais_curto_que_o_traco() {
             super::so_o_que_se_ve(&fonte, &pesos, (&campo, None), (&pele, &[], true), &prof)
                 .expect("a dobra corta");
         let n = curtos(&cortada, false);
-        assert_eq!(n, 0, "a {graus}° ficaram {n} pedaços mais curtos que o traço");
+        assert_eq!(
+            n, 0,
+            "a {graus}° ficaram {n} pedaços mais curtos que o traço"
+        );
     }
-    assert!(no_controlo > 0, "o CONTROLO: antes do filtro não há pedaço curto");
+    assert!(
+        no_controlo > 0,
+        "o CONTROLO: antes do filtro não há pedaço curto"
+    );
 }
 
 /// ⭐⭐ **GATE — cada corte cai na FRONTEIRA** entre o que se vê e o que está tapado (a bissecção):
@@ -422,11 +505,17 @@ fn cada_corte_cai_na_fronteira_do_que_se_ve() {
         .com_a_arte(&fonte);
     let mut cortes = 0;
     for c in 0..fonte.contour_count() {
-        let Some((v, false)) = fonte.contour(c) else { continue };
+        let Some((v, false)) = fonte.contour(c) else {
+            continue;
+        };
         #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
         let fim = (v.len() - 1) as f64;
         let em = |u: f64| {
-            #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "segmento")]
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "segmento"
+            )]
             let k = (u.floor() as usize).min(v.len() - 2);
             #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
             f.tapado(super::avalia(&super::cubica(v, k), u - k as f64))
@@ -460,7 +549,10 @@ fn o_recorte_e_a_curva_da_fonte() {
     c.in_handle = [6.0, 3.0];
     let vs = [a, b, c];
     for (u0, u1) in [(0.3, 0.7), (0.2, 1.6), (0.0, 1.25), (1.1, 2.0)] {
-        let p: Vec<_> = super::recorta(&vs, u0, u1).into_iter().map(|(v, _)| v).collect();
+        let p: Vec<_> = super::recorta(&vs, u0, u1)
+            .into_iter()
+            .map(|(v, _)| v)
+            .collect();
         let mut pior = 0.0_f64;
         for k in 0..p.len() - 1 {
             for i in 0..=20 {
@@ -468,7 +560,11 @@ fn o_recorte_e_a_curva_da_fonte() {
                 let perto = (0..=4000)
                     .map(|j| {
                         let u = (u1 - u0).mul_add(f64::from(j) / 4000.0, u0);
-                        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "segmento")]
+                        #[expect(
+                            clippy::cast_possible_truncation,
+                            clippy::cast_sign_loss,
+                            reason = "segmento"
+                        )]
                         let s = (u.floor() as usize).min(1);
                         #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
                         let r = super::avalia(&super::cubica(&vs, s), u - s as f64);
@@ -479,15 +575,25 @@ fn o_recorte_e_a_curva_da_fonte() {
             }
         }
         let fim = |u: f64| {
-            #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "segmento")]
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "segmento"
+            )]
             let s = (u.floor() as usize).min(1);
             #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
             super::avalia(&super::cubica(&vs, s), u - s as f64)
         };
         assert!(pior < 5e-3, "{u0}..{u1}: o pedaço sai da curva ({pior})");
-        assert_eq!(p[0].anchor.map(|x| (x * 1e9).round()), fim(u0).map(|x| (x * 1e9).round()));
+        assert_eq!(
+            p[0].anchor.map(|x| (x * 1e9).round()),
+            fim(u0).map(|x| (x * 1e9).round())
+        );
         let ultimo = p[p.len() - 1].anchor;
-        assert_eq!(ultimo.map(|x| (x * 1e9).round()), fim(u1).map(|x| (x * 1e9).round()));
+        assert_eq!(
+            ultimo.map(|x| (x * 1e9).round()),
+            fim(u1).map(|x| (x * 1e9).round())
+        );
     }
 }
 
@@ -514,7 +620,9 @@ fn uma_risca_sobre_o_avesso_da_dobra_nao_se_ve() {
     // a essa distância dentro do avesso — a régua salta o 1 % de cada ponta.
     let mut depois = 0;
     for c in 0..cortada.contour_count() {
-        let Some((v, false)) = cortada.contour(c) else { continue };
+        let Some((v, false)) = cortada.contour(c) else {
+            continue;
+        };
         let segs = v.len() - 1;
         for k in 0..segs {
             for i in 0..=200 {
@@ -528,98 +636,15 @@ fn uma_risca_sobre_o_avesso_da_dobra_nao_se_ve() {
         }
     }
     println!("  pontos de risca no avesso: fonte {controlo} · à vista depois {depois}");
-    assert!(controlo > 0, "o CONTROLO: a 120° nenhuma risca passa pelo avesso");
-    assert_eq!(depois, 0, "{depois} pontos de risca à vista sobre o avesso da dobra");
+    assert!(
+        controlo > 0,
+        "o CONTROLO: a 120° nenhuma risca passa pelo avesso"
+    );
+    assert_eq!(
+        depois, 0,
+        "{depois} pontos de risca à vista sobre o avesso da dobra"
+    );
 }
 
-/// Duas cópias da barra `40 × 10` sobrepostas (a 2.ª girada `5°`), presas a dois ossos e a ponta a
-/// `graus`: a fonte guardada, a tabela, o campo, a pele e a profundidade.
-fn copias_dobradas(
-    graus: f32,
-) -> (VecPath, Vec<f64>, ph2d_vec_skin::pesos::CampoDoDominio, ph2d_skeleton::Skin, Vec<f64>) {
-    let (mut sim, mut scene, map, id, [_, ponta]) = palco();
-    scene.path_mut(id).expect("path").effects = vec![FxEntry::new(PathEffect::Repeat(
-        ph2d_vec_scene::fx_repeat::RepeatSpec {
-            copies_x: 1.0,
-            move_x: 0.0,
-            copies_y: 2.0,
-            move_y: 60.0,
-            spin: 5.0,
-            orbit: 0.0,
-        },
-    ))];
-    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
-    sim.world_mut()
-        .get_mut::<ph2d_ecs::Transform>(ponta)
-        .expect("Transform")
-        .rotation = graus.to_radians();
-    let e = ph2d_ecs::Entity::from_bits(map[&id]);
-    let skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
-    let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
-    let index = crate::skin_live::bone_index(&sim);
-    let pele = crate::skin_live::resolve(&sim, &skin, e, &index).expect("pele");
-    let prof = crate::esqueletos::profundidades(&sim, &skin, &index);
-    (g.path, g.pesos, g.campo.expect("campo"), pele, prof)
-}
-
-/// ⭐⭐ **GATE — o trecho de um contorno FECHADO que passa pela EMENDA é um só** (o início NEGATIVO) —
-/// nenhum trecho começa no nó `0` nem acaba no fim da volta enquanto outro do mesmo contorno toca a
-/// outra ponta. ⛔ **O CONTROLO:** algum trecho passa mesmo pela emenda.
-#[test]
-fn o_trecho_que_passa_pela_emenda_e_um_so() {
-    let (fonte, _, campo, pele, prof) = copias_dobradas(110.0);
-    let cortes = super::cortes_dos_fechados(&fonte, (&campo, None), (&pele, &[], true), &prof)
-        .expect("a dobra tapa um fechado");
-    let mut pela_emenda = 0;
-    for (c, trechos) in cortes.iter().enumerate() {
-        let Some(t) = trechos else { continue };
-        #[expect(clippy::cast_precision_loss, reason = "contagem de nós")]
-        let m = fonte.contour(c).expect("contorno").0.len() as f64;
-        pela_emenda += t.iter().filter(|((a, ..), _)| *a < 0.0).count();
-        let comeca = t.iter().any(|((a, ..), _)| *a == 0.0);
-        let acaba = t.iter().any(|(_, (b, ..))| *b >= m);
-        assert!(!(comeca && acaba), "o contorno {c} partiu na emenda um trecho que é um só");
-    }
-    assert!(pela_emenda > 0, "o CONTROLO: nenhum trecho passa pela emenda");
-}
-
-/// ⭐⭐ **GATE — o AVESSO não tapa o traço de um contorno FECHADO** (ali ele É a borda da dobra; sem
-/// ele a frente abria um vão sem desenhar a própria borda — FOTOGRAFADO em SVG a `130°`). Cada ponto
-/// do contorno que SÓ o avesso taparia cai dentro de um trecho à vista. ⛔ **O CONTROLO:** há pontos
-/// assim.
-#[test]
-fn o_avesso_nao_tapa_o_traco_de_um_contorno_fechado() {
-    let (fonte, _, campo, pele, prof) = copias_dobradas(130.0);
-    let mut f = super::Posada::nova(&campo, None, &pele, &[], true, &prof)
-        .expect("posada")
-        .com_a_arte(&fonte);
-    let cortes = super::cortes_dos_fechados(&fonte, (&campo, None), (&pele, &[], true), &prof)
-        .expect("a dobra tapa um fechado");
-    let (mut so_dele, mut faltam) = (0, 0);
-    for (c, trechos) in cortes.iter().enumerate() {
-        let Some(t) = trechos else { continue };
-        let v = fonte.contour(c).expect("contorno").0;
-        let mut w = v.to_vec();
-        w.push(v[0]);
-        #[expect(clippy::cast_precision_loss, reason = "contagem de nós")]
-        let m = v.len() as f64;
-        for i in 0..(200 * v.len()) {
-            #[expect(clippy::cast_precision_loss, reason = "amostra")]
-            let u = i as f64 / 200.0;
-            #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "segmento")]
-            let k = u.floor() as usize;
-            #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
-            let q = super::avalia(&super::cubica(&w, k), u - k as f64);
-            f.avesso = true;
-            let com = f.tapado(q);
-            f.avesso = false;
-            if com && !f.tapado(q) {
-                so_dele += 1;
-                let dentro_ = t.iter().any(|((a, ..), (b, ..))| (u > *a && u < *b) || (u - m > *a && u - m < *b));
-                faltam += usize::from(!dentro_);
-            }
-        }
-    }
-    assert!(so_dele > 0, "o CONTROLO: nenhum ponto do contorno só o avesso tapa");
-    assert_eq!(faltam, 0, "{faltam} de {so_dele} pontos do contorno sumiram pelo avesso");
-}
+#[path = "skin_desenho_frente_fechados_tests.rs"]
+mod fechados;

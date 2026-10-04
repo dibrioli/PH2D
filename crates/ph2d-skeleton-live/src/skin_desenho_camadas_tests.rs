@@ -17,7 +17,11 @@ const FOLGA: f64 = 0.25;
 /// tiverem — um traço que ficasse na forma pintaria por cima do recorte).
 fn tinta(d: &crate::skin_desenho::Desenhado) -> Vec<[[f64; 2]; 2]> {
     let mut out = Vec::new();
-    for p in d.traco.iter().chain(Some(&d.forma).filter(|f| f.stroke.is_some())) {
+    for p in d
+        .traco
+        .iter()
+        .chain(Some(&d.forma).filter(|f| f.stroke.is_some()))
+    {
         tinta_de(p, &mut out);
     }
     out
@@ -25,7 +29,9 @@ fn tinta(d: &crate::skin_desenho::Desenhado) -> Vec<[[f64; 2]; 2]> {
 
 fn tinta_de(p: &ph2d_vec_scene::VecPath, out: &mut Vec<[[f64; 2]; 2]>) {
     for c in 0..p.contour_count() {
-        let Some((vs, fechado)) = p.contour(c) else { continue };
+        let Some((vs, fechado)) = p.contour(c) else {
+            continue;
+        };
         let mut w = vs.to_vec();
         if fechado && !vs.is_empty() {
             w.push(vs[0]);
@@ -61,7 +67,10 @@ fn mede(graus: f32, frente: bool) -> (f64, f64, f64, usize, bool) {
             },
         ))];
     }
-    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
+    assert_eq!(
+        crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None),
+        1
+    );
     let e = ph2d_ecs::Entity::from_bits(map[&id]);
     let skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
     let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
@@ -132,8 +141,9 @@ fn mede(graus: f32, frente: bool) -> (f64, f64, f64, usize, bool) {
             .collect()
     };
     let (frente_n, adiante_n) = (nuvem(JUNTA + M, true), nuvem(JUNTA - M, false));
-    let coberto =
-        |n: &[[f64; 2]], q: [f64; 2], r: f64| n.iter().any(|p| (p[0] - q[0]).hypot(p[1] - q[1]) < r);
+    let coberto = |n: &[[f64; 2]], q: [f64; 2], r: f64| {
+        n.iter().any(|p| (p[0] - q[0]).hypot(p[1] - q[1]) < r)
+    };
     let (mut tap, mut tap_p, mut fr, mut fr_p, mut vis, mut vis_p) = (0, 0, 0, 0, 0, 0);
     for s in amostras(&g.path, true, 200) {
         let x = s.0[0];
@@ -159,7 +169,13 @@ fn mede(graus: f32, frente: bool) -> (f64, f64, f64, usize, bool) {
     }
     #[expect(clippy::cast_precision_loss, reason = "contagens")]
     let r = |a: usize, b: usize| a as f64 / b.max(1) as f64;
-    (r(tap_p, tap), r(fr_p, fr), r(vis_p, vis), tap, d.traco.is_some())
+    (
+        r(tap_p, tap),
+        r(fr_p, fr),
+        r(vis_p, vis),
+        tap,
+        d.traco.is_some(),
+    )
 }
 
 /// ⭐⭐⭐ **GATE — sem união, o traço dos FECHADOS de trás não pinta por cima da frente, e nada mais
@@ -175,11 +191,23 @@ fn o_traco_dos_fechados_de_tras_nao_pinta_por_cima_da_frente() {
              ({fr0:.3}) · trás à vista {vis:.3} ({vis0:.3}) · camada {camada} ({camada0})"
         );
         assert!(n > 20, "a {graus}° a fixtura não tem traço tapado ({n})");
-        assert!(tap0 > 0.9 && !camada0, "o CONTROLO: sem a lei o traço tapado não se pinta ({tap0:.3})");
+        assert!(
+            tap0 > 0.9 && !camada0,
+            "o CONTROLO: sem a lei o traço tapado não se pinta ({tap0:.3})"
+        );
         assert!(camada, "a {graus}° não saiu camada de traço");
-        assert!(tap < 0.02, "a {graus}° o traço de trás pinta a frente ({tap:.3})");
-        assert!(fr > 0.95 && fr >= fr0 - 1e-3, "a {graus}° a frente perdeu traço ({fr:.3} × {fr0:.3})");
-        assert!(vis > 0.95 && vis >= vis0 - 1e-3, "a {graus}° a trás perdeu traço ({vis:.3} × {vis0:.3})");
+        assert!(
+            tap < 0.02,
+            "a {graus}° o traço de trás pinta a frente ({tap:.3})"
+        );
+        assert!(
+            fr > 0.95 && fr >= fr0 - 1e-3,
+            "a {graus}° a frente perdeu traço ({fr:.3} × {fr0:.3})"
+        );
+        assert!(
+            vis > 0.95 && vis >= vis0 - 1e-3,
+            "a {graus}° a trás perdeu traço ({vis:.3} × {vis0:.3})"
+        );
     }
 }
 
@@ -217,32 +245,39 @@ fn diag_o_preco_da_camada_do_traco() {
             },
         ))];
     }
-    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
-    let mut n = 0_u32;
-    let mut quadro = |frente: bool| {
-        let leis = Leis {
-            frente,
-            ..Leis::do_ambiente()
-        };
-        let mut sc = scene.clone();
-        let t = Instant::now();
-        let mut k = 0_u32;
-        while t.elapsed().as_millis() < 300 {
-            n += 1;
-            sim.world_mut()
-                .get_mut::<ph2d_ecs::Transform>(ponta)
-                .expect("Transform")
-                .rotation = if n.is_multiple_of(2) { 110f32 } else { 150f32 }.to_radians();
-            let _ = crate::skin_live::recook_leis(&sim, &mut sc, leis);
-            k += 1;
-        }
-        t.elapsed().as_secs_f64() * 1e6 / f64::from(k)
-    };
-    let (com, sem) = (quadro(true), quadro(false));
-    println!(
-        "  µs/forma/quadro: com a lei {com:.1} · sem ela {sem:.1} · loadavg {}",
-        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+    assert_eq!(
+        crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None),
+        1
     );
+    let mut n = 0_u32;
+    for (pa, pb) in [(110f32, 150f32), (0.0, 30.0)] {
+        let mut quadro = |frente: bool| {
+            let leis = Leis {
+                frente,
+                ..Leis::do_ambiente()
+            };
+            let mut sc = scene.clone();
+            let t = Instant::now();
+            let mut k = 0_u32;
+            while t.elapsed().as_millis() < 300 {
+                n += 1;
+                sim.world_mut()
+                    .get_mut::<ph2d_ecs::Transform>(ponta)
+                    .expect("Transform")
+                    .rotation = if n.is_multiple_of(2) { pa } else { pb }.to_radians();
+                let _ = crate::skin_live::recook_leis(&sim, &mut sc, leis);
+                k += 1;
+            }
+            t.elapsed().as_secs_f64() * 1e6 / f64::from(k)
+        };
+        let (com, sem) = (quadro(true), quadro(false));
+        println!(
+            "  {pa}°↔{pb}°: µs/forma/quadro: com a lei {com:.1} · sem ela {sem:.1} · loadavg {}",
+            std::fs::read_to_string("/proc/loadavg")
+                .unwrap_or_default()
+                .trim()
+        );
+    }
 }
 
 /// ⭐⭐ **GATE — as riscas ABERTAS vão para a camada do traço** (a forma vai sem traço: sem elas na
@@ -273,7 +308,10 @@ fn as_riscas_abertas_vao_para_a_camada_do_traco() {
             })),
         ];
     }
-    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
+    assert_eq!(
+        crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None),
+        1
+    );
     sim.world_mut()
         .get_mut::<ph2d_ecs::Transform>(ponta)
         .expect("Transform")
@@ -287,9 +325,15 @@ fn as_riscas_abertas_vao_para_a_camada_do_traco() {
             .filter(|(v, f)| !f && v.len() > 1)
             .count()
     };
-    let traco = d.traco.as_ref().expect("o CONTROLO: a 110° não saiu camada");
+    let traco = d
+        .traco
+        .as_ref()
+        .expect("o CONTROLO: a 110° não saiu camada");
     assert!(abertos(&d.forma) > 0, "o CONTROLO: a forma não tem riscas");
-    assert!(d.forma.stroke.is_none(), "a forma levou o traço com a camada");
+    assert!(
+        d.forma.stroke.is_none(),
+        "a forma levou o traço com a camada"
+    );
     assert!(
         abertos(traco) >= abertos(&d.forma),
         "as riscas não foram para a camada ({} de {})",
@@ -303,13 +347,23 @@ fn as_riscas_abertas_vao_para_a_camada_do_traco() {
 #[test]
 fn a_camada_do_traco_chega_ao_mundo_depois_da_forma() {
     let mut forma = ph2d_vec_scene::VecPath::default();
-    forma.verts.push(ph2d_vec_scene::VecVertex::corner([1.0, 0.0]));
+    forma
+        .verts
+        .push(ph2d_vec_scene::VecVertex::corner([1.0, 0.0]));
     let mut traco = ph2d_vec_scene::VecPath::default();
-    traco.verts.push(ph2d_vec_scene::VecVertex::corner([2.0, 0.0]));
+    traco
+        .verts
+        .push(ph2d_vec_scene::VecVertex::corner([2.0, 0.0]));
     let xf = ph2d_vec_scene::VecXforms::default();
     for (camada, esperado) in [(None, 1), (Some(traco.clone()), 2)] {
         let mut d = crate::skin_desenho::SkinDesenhado::new();
-        d.insert(7, crate::skin_desenho::Desenhado { forma: forma.clone(), traco: camada });
+        d.insert(
+            7,
+            crate::skin_desenho::Desenhado {
+                forma: forma.clone(),
+                traco: camada,
+            },
+        );
         let mut vivo = std::collections::BTreeMap::new();
         crate::skin_desenho::funde(&d, &xf, &mut vivo);
         let v = &vivo[&7];
@@ -359,7 +413,10 @@ fn o_traco_fica_sobre_a_borda_do_preenchimento() {
             let b1 = osso(&mut sim, "b1", [-1.875, 0.0], passo, None);
             let b2 = osso(&mut sim, "b2", [p32, 0.0], passo, Some(b1));
             let b3 = osso(&mut sim, "b3", [p32, 0.0], passo, Some(b2));
-            assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(b1)), 1);
+            assert_eq!(
+                crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(b1)),
+                1
+            );
             for (o, g) in [(b2, a), (b3, b)] {
                 sim.world_mut()
                     .get_mut::<ph2d_ecs::Transform>(o)
@@ -373,7 +430,9 @@ fn o_traco_fica_sobre_a_borda_do_preenchimento() {
             com_camada += 1;
             let mut borda = Vec::new();
             for c in 0..d.forma.contour_count() {
-                let Some((v, true)) = d.forma.contour(c) else { continue };
+                let Some((v, true)) = d.forma.contour(c) else {
+                    continue;
+                };
                 let mut w = v.to_vec();
                 w.push(v[0]);
                 for k in 0..w.len() - 1 {
@@ -383,12 +442,17 @@ fn o_traco_fica_sobre_a_borda_do_preenchimento() {
             }
             let troco: Vec<[[f64; 2]; 2]> = borda.windows(2).map(|q| [q[0], q[1]]).collect();
             for c in 0..t.contour_count() {
-                let Some((v, false)) = t.contour(c) else { continue };
+                let Some((v, false)) = t.contour(c) else {
+                    continue;
+                };
                 for k in 0..v.len().saturating_sub(1) {
                     let cb = cubica(v, k);
                     for i in 0..=16 {
                         let q = em(&cb, f64::from(i) / 16.0).0;
-                        let dmin = troco.iter().map(|s| dist_pol(s, q)).fold(f64::MAX, f64::min);
+                        let dmin = troco
+                            .iter()
+                            .map(|s| dist_pol(s, q))
+                            .fold(f64::MAX, f64::min);
                         pior = pior.max(dmin);
                     }
                 }
@@ -396,7 +460,12 @@ fn o_traco_fica_sobre_a_borda_do_preenchimento() {
         }
     }
     println!("  {com_camada} poses com camada · o traço longe da borda até {pior:.2e}");
-    assert!(com_camada >= 8, "o CONTROLO: só {com_camada} poses de 12 com camada");
-    assert!(pior < 1e-3, "o traço descolou da borda do preenchimento ({pior})");
+    assert!(
+        com_camada >= 8,
+        "o CONTROLO: só {com_camada} poses de 12 com camada"
+    );
+    assert!(
+        pior < 1e-3,
+        "o traço descolou da borda do preenchimento ({pior})"
+    );
 }
-

@@ -34,7 +34,10 @@ fn binding_bakes_the_effects_into_the_drawing_and_moves_nothing() {
     let e = ph2d_ecs::Entity::from_bits(map[&id]);
     let fonte = crate::skinned_mesh::le(&sim.world().get::<SkinBind>(e).expect("pele").source)
         .expect("a fonte lê-se");
-    assert!(fonte.path.effects.is_empty(), "a fonte guardada leva a pilha");
+    assert!(
+        fonte.path.effects.is_empty(),
+        "a fonte guardada leva a pilha"
+    );
     let depois = quadro(&sim, &mut scene, id);
     let pior = pior_desvio_do_desenho(&visto, &depois);
     assert!(pior < 1e-9, "prender com efeito moveu o desenho em {pior}");
@@ -98,8 +101,14 @@ fn a_baked_zigzag_keeps_its_teeth_in_the_bend() {
     };
     let (marcada, controlo) = (monta(true), monta(false));
     println!("  contacto contra sem contacto: marcada {marcada:.5} · sem a marca {controlo:.5}");
-    assert!(marcada < 1e-9, "a forma cozida foi reescrita pelo contacto ({marcada})");
-    assert!(controlo > 1e-3, "o CONTROLO: a bola não mexe — a fixtura perdeu o defeito ({controlo})");
+    assert!(
+        marcada < 1e-9,
+        "a forma cozida foi reescrita pelo contacto ({marcada})"
+    );
+    assert!(
+        controlo > 1e-3,
+        "o CONTROLO: a bola não mexe — a fixtura perdeu o defeito ({controlo})"
+    );
 }
 
 /// ⭐ **SONDA — o preço do Bind e do 1.º quadro de uma forma com um *Repeater* denso** (A3). Corra em
@@ -111,15 +120,16 @@ fn diag_o_preco_do_bind_de_um_repeater_denso() {
     for copias in [1.0, 13.0, 25.0, 39.0] {
         let (mut sim, mut scene, map, id, _) = palco();
         if copias > 1.0 {
-            scene.path_mut(id).expect("path").effects =
-                vec![FxEntry::new(PathEffect::Repeat(ph2d_vec_scene::fx_repeat::RepeatSpec {
+            scene.path_mut(id).expect("path").effects = vec![FxEntry::new(PathEffect::Repeat(
+                ph2d_vec_scene::fx_repeat::RepeatSpec {
                     copies_x: copias,
                     move_x: -80.0,
                     copies_y: copias,
                     move_y: -80.0,
                     spin: -72.0,
                     orbit: -72.0,
-                }))];
+                },
+            ))];
         }
         let t = Instant::now();
         assert_eq!(bind(&mut sim, &mut scene, &map, &[id], None), 1);
@@ -135,7 +145,9 @@ fn diag_o_preco_do_bind_de_um_repeater_denso() {
             t_bind.as_secs_f64() * 1e3,
             t_q1.as_secs_f64() * 1e3,
             t_q2.as_secs_f64() * 1e3,
-            std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+            std::fs::read_to_string("/proc/loadavg")
+                .unwrap_or_default()
+                .trim()
         );
     }
 }

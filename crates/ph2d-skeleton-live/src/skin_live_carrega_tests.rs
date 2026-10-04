@@ -20,7 +20,10 @@ fn projecto_antigo(
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let raiz = osso(&mut sim, "Root", [0.0, 5.0], 20.0, None);
     let ponta = osso(&mut sim, "Tip", [20.0, 0.0], 20.0, Some(raiz));
-    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(raiz)), 1);
+    assert_eq!(
+        crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(raiz)),
+        1
+    );
     scene.path_mut(id).expect("path").effects = vec![FxEntry::new(efeito)];
     sim.world_mut()
         .get_mut::<ph2d_ecs::Transform>(ponta)
@@ -63,7 +66,10 @@ fn cozer_no_carregamento_nao_move_um_pixel() {
         let antes = desenho(&sim, &scene, id);
         let antiga = crate::skinned_mesh::le(&sim.world().get::<SkinBind>(e).expect("pele").source)
             .expect("fonte");
-        assert!(!antiga.efeitos_cozidos, "a fixtura não é um projecto antigo");
+        assert!(
+            !antiga.efeitos_cozidos,
+            "a fixtura não é um projecto antigo"
+        );
         // O CONTROLO: a geometria cozida com o campo da fonte.
         let ingenuo = {
             let mut viva = antiga.path.clone();
@@ -87,17 +93,33 @@ fn cozer_no_carregamento_nao_move_um_pixel() {
             sim.world_mut().entity_mut(e).insert(original);
             d
         };
-        assert_eq!(crate::skin_live::coze_os_efeitos_presos(&mut sim, &mut scene), 1);
+        assert_eq!(
+            crate::skin_live::coze_os_efeitos_presos(&mut sim, &mut scene),
+            1
+        );
         let depois = desenho(&sim, &scene, id);
         let pior = pior_desvio_do_desenho(&antes, &depois);
         println!("  desvio ao cozer {pior:.2e} · a cura ingénua {ingenuo:.3}");
-        assert!(ingenuo > 1e-3, "o CONTROLO: o campo da fonte não muda o desenho ({ingenuo})");
-        assert!(pior < 1e-9, "cozer no carregamento moveu o desenho em {pior}");
-        assert!(scene.path(id).expect("path").effects.is_empty(), "a pilha ficou na cena");
+        assert!(
+            ingenuo > 1e-3,
+            "o CONTROLO: o campo da fonte não muda o desenho ({ingenuo})"
+        );
+        assert!(
+            pior < 1e-9,
+            "cozer no carregamento moveu o desenho em {pior}"
+        );
+        assert!(
+            scene.path(id).expect("path").effects.is_empty(),
+            "a pilha ficou na cena"
+        );
         let nova = crate::skinned_mesh::le(&sim.world().get::<SkinBind>(e).expect("pele").source)
             .expect("fonte");
         assert!(nova.efeitos_cozidos, "a fonte não ficou marcada");
-        assert_eq!(crate::skin_live::coze_os_efeitos_presos(&mut sim, &mut scene), 0, "2.ª vez");
+        assert_eq!(
+            crate::skin_live::coze_os_efeitos_presos(&mut sim, &mut scene),
+            0,
+            "2.ª vez"
+        );
     }
 }
 
@@ -110,7 +132,10 @@ fn uma_forma_ja_cozida_com_pilha_nova_coze_outra_vez() {
         PathEffect::Twist(ph2d_vec_scene::fx_twist::TwistSpec { angle: 40.0 }),
     );
     let e = ph2d_ecs::Entity::from_bits(bits);
-    assert_eq!(crate::skin_live::coze_os_efeitos_presos(&mut sim, &mut scene), 1);
+    assert_eq!(
+        crate::skin_live::coze_os_efeitos_presos(&mut sim, &mut scene),
+        1
+    );
     let cozida = desenho(&sim, &scene, id);
     scene.path_mut(id).expect("path").effects = vec![FxEntry::new(PathEffect::Bloat(
         ph2d_vec_scene::fx_warp::BloatSpec { amount: -20.0 },
@@ -120,21 +145,38 @@ fn uma_forma_ja_cozida_com_pilha_nova_coze_outra_vez() {
         pior_desvio_do_desenho(&cozida, &antes) > 1e-3,
         "o CONTROLO: a pilha nova não muda o desenho"
     );
-    assert_eq!(crate::skin_live::coze_os_efeitos_presos(&mut sim, &mut scene), 1, "não coze");
+    assert_eq!(
+        crate::skin_live::coze_os_efeitos_presos(&mut sim, &mut scene),
+        1,
+        "não coze"
+    );
     let pior = pior_desvio_do_desenho(&antes, &desenho(&sim, &scene, id));
     assert!(pior < 1e-9, "cozer outra vez moveu o desenho em {pior}");
-    assert!(scene.path(id).expect("path").effects.is_empty(), "a pilha ficou");
+    assert!(
+        scene.path(id).expect("path").effects.is_empty(),
+        "a pilha ficou"
+    );
     let g = crate::skinned_mesh::le(&sim.world().get::<SkinBind>(e).expect("pele").source);
-    assert!(g.is_some_and(|g| g.efeitos_cozidos), "a fonte não ficou marcada");
+    assert!(
+        g.is_some_and(|g| g.efeitos_cozidos),
+        "a fonte não ficou marcada"
+    );
 }
 
 /// ⭐ **GATE de costura — a shell coze ANTES de desenhar a pele**, no quadro (se viesse depois, o 1.º
 /// quadro desenhava a fonte velha com a pilha já vazia: o efeito sumia por um quadro).
 #[test]
 fn a_shell_coze_antes_de_desenhar_a_pele() {
-    let fase = include_str!("../../../shells/desktop/src/render_loop/fase_vector_view_and_drives.rs");
+    let fase =
+        include_str!("../../../shells/desktop/src/render_loop/fase_vector_view_and_drives.rs");
     let coze = fase.find("coze_os_efeitos_presos(sim, vec_scene)");
     let pele = fase.find("recook_desenhando(sim, vec_scene)");
-    assert!(pele.is_some(), "o CONTROLO: a fase já não desenha a pele aqui");
-    assert!(coze.is_some_and(|c| Some(c) < pele), "a fase não coze antes da pele ({coze:?}, {pele:?})");
+    assert!(
+        pele.is_some(),
+        "o CONTROLO: a fase já não desenha a pele aqui"
+    );
+    assert!(
+        coze.is_some_and(|c| Some(c) < pele),
+        "a fase não coze antes da pele ({coze:?}, {pele:?})"
+    );
 }

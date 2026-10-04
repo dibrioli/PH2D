@@ -136,7 +136,8 @@ pub(super) fn efeitos_da_gaveta(
 /// forte (FOTOGRAFADO a `110°`, F50-f). `None` quando nada se cruza.
 pub(super) fn uniao_dos_fechados(d: &VecPath) -> Option<VecPath> {
     let mut u = ph2d_vec_boolean::resolve_overlap(&so_os_fechados(d))?;
-    u.subpaths.extend(d.subpaths.iter().filter(|c| !c.closed).cloned());
+    u.subpaths
+        .extend(d.subpaths.iter().filter(|c| !c.closed).cloned());
     Some(u)
 }
 
@@ -159,7 +160,10 @@ pub(crate) fn coze_para_guardar(
     let ossos = g.campo.as_ref()?.ossos();
     let campo = resolve_o_campo(&geometria_cozida(g, pilha), eixos, ossos).map(Rc::new);
     let c = cozido_com_efeitos(g, pilha, campo)?;
-    let campo = c.campo.as_ref().map_or_else(|| g.campo.clone(), |c| Some(c.0.clone()));
+    let campo = c
+        .campo
+        .as_ref()
+        .map_or_else(|| g.campo.clone(), |c| Some(c.0.clone()));
     Some(SkinnedPath {
         path: c.caminho,
         pesos: c.tabela,

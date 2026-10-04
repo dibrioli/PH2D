@@ -125,7 +125,13 @@ pub fn chave_de_osso(w: &[f64], prof: &[f64]) -> f64 {
     let pos: f64 = w
         .iter()
         .enumerate()
-        .map(|(j, p)| p * prof.get(j).copied().filter(|_| prof.len() == w.len()).unwrap_or(j as f64))
+        .map(|(j, p)| {
+            p * prof
+                .get(j)
+                .copied()
+                .filter(|_| prof.len() == w.len())
+                .unwrap_or(j as f64)
+        })
         .sum();
     if soma > 0.0 { pos / soma } else { 0.0 }
 }
@@ -139,7 +145,10 @@ pub fn ordena_pelo_osso(tris: &mut [[u32; 3]], pesos: &[f64], vertices: usize, p
     if ossos < 2 || pesos.len() != ossos * vertices {
         return;
     }
-    let chave: Vec<f64> = pesos.chunks_exact(ossos).map(|w| chave_de_osso(w, prof)).collect();
+    let chave: Vec<f64> = pesos
+        .chunks_exact(ossos)
+        .map(|w| chave_de_osso(w, prof))
+        .collect();
     let de = |t: &[u32; 3]| {
         t.iter()
             .map(|&v| chave.get(v as usize).copied().unwrap_or(0.0))

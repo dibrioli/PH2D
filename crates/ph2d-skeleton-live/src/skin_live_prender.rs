@@ -102,7 +102,10 @@ pub fn bind_com(
         // lei do ponto novo — boa para um ponto, uma aproximação para trinta.*
         // ⭐⭐⭐ Os efeitos ACTIVOS cozidos; os desligados saem com a pilha (ver o [`bind`]). As voltas
         // apertadas do efeito viram NÓS (F50-h, exacto em repouso), e a cena recebe a MESMA geometria.
-        let coze = src.effects.iter().any(ph2d_vec_scene::effect::FxEntry::is_active);
+        let coze = src
+            .effects
+            .iter()
+            .any(ph2d_vec_scene::effect::FxEntry::is_active);
         let mut src = if coze {
             crate::skin_desenho_voltas::parte_nas_voltas(src.cooked().into_owned())
         } else {

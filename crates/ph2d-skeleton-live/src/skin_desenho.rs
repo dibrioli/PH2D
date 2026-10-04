@@ -482,9 +482,9 @@ fn cozido_para_o_bake(g: &SkinnedPath) -> Option<(VecPath, Vec<f64>)> {
 /// ⭐⭐⭐ **Os EFEITOS de uma forma presa**, num irmão pelo tecto de LOC.
 #[path = "skin_desenho_efeitos.rs"]
 mod efeitos;
+pub(crate) use efeitos::coze_para_guardar;
 #[cfg(test)]
 pub(crate) use efeitos::solver_em_fundo_no_teste;
-pub(crate) use efeitos::coze_para_guardar;
 use efeitos::{efeitos_da_gaveta, so_os_fechados, uniao_dos_fechados};
 #[path = "skin_desenho_frente.rs"]
 mod frente;
@@ -565,11 +565,16 @@ fn calcula(
             .map(|(c, t)| (c, skin.pesos_do_quadro(t)))
     };
     // ⭐⭐⭐ O que é ABERTO e fica atrás de outra parte não se percorre (A2, [`frente`]).
-    let visivel = percurso.filter(|_| leis.frente && leis.desenho).and_then(|(f, t)| {
-        let campo = (lido_do_bake.campo?, lido_do_bake.indice);
-        frente::so_o_que_se_ve(f, t, campo, (pele, &correcoes, leis.rigido), ordem)
-    });
-    let percurso = visivel.as_ref().map(|(f, t)| (f, t.as_slice())).or(percurso);
+    let visivel = percurso
+        .filter(|_| leis.frente && leis.desenho)
+        .and_then(|(f, t)| {
+            let campo = (lido_do_bake.campo?, lido_do_bake.indice);
+            frente::so_o_que_se_ve(f, t, campo, (pele, &correcoes, leis.rigido), ordem)
+        });
+    let percurso = visivel
+        .as_ref()
+        .map(|(f, t)| (f, t.as_slice()))
+        .or(percurso);
     let neutra = fx.map(|c| c.contacto).or(prep.uniao_neutra);
     let bake_de = |f: &VecPath| Bake {
         amostras: amostras_por_segmento(segmentos(f)),
@@ -624,7 +629,11 @@ fn calcula(
             camadas::traco_sobre_o_assado(d, nos, f, &cortes)
         });
     let desenhado = desenhado.map(|(d, _)| d);
-    Quadro { cru, desenhado, traco }
+    Quadro {
+        cru,
+        desenhado,
+        traco,
+    }
 }
 
 /// ⭐⭐ **As QUINAS DO ARTISTA do assado** — cada nó da `fonte` onde o assado o pousou, com a viragem

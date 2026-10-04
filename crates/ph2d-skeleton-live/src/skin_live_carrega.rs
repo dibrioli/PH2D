@@ -25,7 +25,8 @@ pub fn coze_os_efeitos_presos(sim: &mut SimWorld, scene: &mut VecScene) -> usize
     let index = bone_index(sim);
     let mut feitos = 0;
     for (e, id) in alvos {
-        let (Some(viva), Some(mut skin)) = (scene.path(id), sim.world().get::<SkinBind>(e).cloned())
+        let (Some(viva), Some(mut skin)) =
+            (scene.path(id), sim.world().get::<SkinBind>(e).cloned())
         else {
             continue;
         };

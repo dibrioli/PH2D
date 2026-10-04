@@ -77,7 +77,6 @@ fn entre(linha: Option<&BTreeSet<i64>>, de: i64, para: i64) -> Box<dyn Iterator<
     }
 }
 
-
 #[test]
 fn o_cruzamento_e_o_mesmo_dos_dois_lados_da_costura() {
     // Um quadrado rodado que atravessa a linha x = 100: o mosaico da esquerda e o da direita
@@ -231,8 +230,18 @@ fn a_montagem_por_blocos_e_a_montagem_inteira_ao_bit() {
             // As JUNÇÕES EM T: um obstáculo que encosta a uma costura só de UM lado (a aresta e o
             // vértice em cima da linha) — o mosaico do outro lado não tem esses pontos na aresta dele.
             let (x, z) = (2.0 * lado, 4.0 * lado);
-            obs.push(Shape::Convex(vec![[x, 2.3], [x + 1.0, 2.3], [x + 1.0, 4.7], [x, 4.7]]));
-            obs.push(Shape::Convex(vec![[z, 7.3], [z + 1.0, 6.5], [z + 2.0, 7.3], [z + 1.0, 8.1]]));
+            obs.push(Shape::Convex(vec![
+                [x, 2.3],
+                [x + 1.0, 2.3],
+                [x + 1.0, 4.7],
+                [x, 4.7],
+            ]));
+            obs.push(Shape::Convex(vec![
+                [z, 7.3],
+                [z + 1.0, 6.5],
+                [z + 2.0, 7.3],
+                [z + 1.0, 8.1],
+            ]));
         }
         let areas = vec![Area {
             shape: forma(&mut r),
@@ -255,7 +264,12 @@ fn a_montagem_por_blocos_e_a_montagem_inteira_ao_bit() {
             let inteira = monta(&t.mosaicos, t.lado);
             let m = t.mesh();
             assert_eq!(m.diferenca(&inteira), None, "semente {seed}, passo {passo}");
-            let crus: usize = t.mosaicos.values().flat_map(|q| &q.polys).map(Vec::len).sum();
+            let crus: usize = t
+                .mosaicos
+                .values()
+                .flat_map(|q| &q.polys)
+                .map(Vec::len)
+                .sum();
             cosidos += m.polys().map(|q| q.len()).sum::<usize>() - crus;
             // A localização: pontos ao acaso e pontos EXACTAMENTE nas linhas das costuras.
             let (mut a, mut b) = (Vec::new(), Vec::new());
@@ -273,8 +287,20 @@ fn a_montagem_por_blocos_e_a_montagem_inteira_ao_bit() {
     }
     // Os CONTROLOS de população: houve junções em T, actualizações parciais, mosaicos que saíram, e
     // pontos dentro da malha.
-    assert!(cosidos >= 100, "só {cosidos} vértices cosidos (medido: 115)");
-    assert!(parciais >= 60, "só {parciais} actualizações parciais (medido: 72)");
-    assert!(saidas >= 12, "só {saidas} regiões encolheram (uma por semente)");
-    assert!(comparados >= 15_000, "só {comparados} pontos localizados (medido: 16 078)");
+    assert!(
+        cosidos >= 100,
+        "só {cosidos} vértices cosidos (medido: 115)"
+    );
+    assert!(
+        parciais >= 60,
+        "só {parciais} actualizações parciais (medido: 72)"
+    );
+    assert!(
+        saidas >= 12,
+        "só {saidas} regiões encolheram (uma por semente)"
+    );
+    assert!(
+        comparados >= 15_000,
+        "só {comparados} pontos localizados (medido: 16 078)"
+    );
 }

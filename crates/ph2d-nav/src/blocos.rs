@@ -127,7 +127,11 @@ impl L1 {
             lado.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
             for w in lado.windows(2) {
                 if w[0].0 == w[1].0 {
-                    let primeiro = l.repetidos.iter().find(|r| r.0 == w[0].1).map_or(w[0].1, |r| r.1);
+                    let primeiro = l
+                        .repetidos
+                        .iter()
+                        .find(|r| r.0 == w[0].1)
+                        .map_or(w[0].1, |r| r.1);
                     l.repetidos.push((w[1].1, primeiro));
                 }
             }
@@ -149,7 +153,13 @@ impl L1 {
                 hi = [hi[0].max(q[0]), hi[1].max(q[1])];
             }
             l.caixa = Some((lo, hi));
-            l.grid = Some(Arc::new(Grid::build(&p.verts, &p.ring_off, &p.ring, lo, hi)));
+            l.grid = Some(Arc::new(Grid::build(
+                &p.verts,
+                &p.ring_off,
+                &p.ring,
+                lo,
+                hi,
+            )));
         }
         l
     }
@@ -175,14 +185,24 @@ impl L1 {
     }
 }
 
+/// Uma aresta orientada de costura, de vértice a vértice (o bloco dono e o índice local nele).
+type Aresta = ((Chave, u32), (Chave, u32));
+
 /// O que está do outro lado de uma aresta cosida.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Lig {
     Parede,
     /// Um polígono do mesmo bloco (`q`, e a aresta `e` dele).
-    Dentro { q: u32, e: u32 },
+    Dentro {
+        q: u32,
+        e: u32,
+    },
     /// Um polígono do vizinho `d`.
-    Fora { d: u8, q: u32, e: u32 },
+    Fora {
+        d: u8,
+        q: u32,
+        e: u32,
+    },
 }
 
 /// L2 — o bloco cosido aos vizinhos.
@@ -240,7 +260,11 @@ impl MalhaPorBlocos {
                 self.sujos.insert(k);
                 for (lado, &(dx, dy, _)) in LADO.iter().enumerate() {
                     if !velho.l1.mesmo_lado(&l1, lado) {
-                        let diag = if dx == 0 { [(-1, dy), (1, dy)] } else { [(dx, -1), (dx, 1)] };
+                        let diag = if dx == 0 {
+                            [(-1, dy), (1, dy)]
+                        } else {
+                            [(dx, -1), (dx, 1)]
+                        };
                         for (ex, ey) in [(dx, dy), diag[0], diag[1]] {
                             self.sujos.insert((k.0 + ex, k.1 + ey));
                         }
@@ -336,10 +360,8 @@ impl MalhaPorBlocos {
         for pi in 0..np {
             let anel = &p.ring[p.ring_off[pi] as usize..p.ring_off[pi + 1] as usize];
             if let Some(&v) = anel.iter().find(|&&v| v as usize >= nl) {
-                l.erro.get_or_insert(MeshError::BadIndex {
-                    poly: pi,
-                    index: v,
-                });
+                l.erro
+                    .get_or_insert(MeshError::BadIndex { poly: pi, index: v });
                 l.s_off.push(l.s_ring.len() as u32);
                 continue;
             }
@@ -413,7 +435,8 @@ impl MalhaPorBlocos {
                             let n = n_frente.expect("um ponto de fora vem do vizinho");
                             *de_fora.entry((lado, c.to_bits())).or_insert_with(|| {
                                 l.slots.push(Vref::lado(d, frente, j));
-                                l.pos.push(n.peca.verts[n.l1.lados[frente][j as usize].1 as usize]);
+                                l.pos
+                                    .push(n.peca.verts[n.l1.lados[frente][j as usize].1 as usize]);
                                 (l.slots.len() - 1) as u32
                             })
                         }
@@ -445,7 +468,7 @@ impl MalhaPorBlocos {
         };
         let mut novas: Vec<(usize, Lig)> = Vec::new();
         if let Some(n) = self.blocos.get(&v) {
-            let mut deles: Vec<(((Chave, u32), (Chave, u32)), u32, u32)> = n.l2.bordas[frente]
+            let mut deles: Vec<(Aresta, u32, u32)> = n.l2.bordas[frente]
                 .iter()
                 .map(|&(q, e, u, w)| ((abs(v, &n.l2, u), abs(v, &n.l2, w)), q, e))
                 .collect();
@@ -456,7 +479,14 @@ impl MalhaPorBlocos {
                 let chave = (abs(k, &b.l2, w), abs(k, &b.l2, u));
                 if let Ok(i) = deles.binary_search_by(|x| x.0.cmp(&chave)) {
                     let pos = (b.l2.s_off[q as usize] + e) as usize;
-                    novas.push((pos, Lig::Fora { d, q: deles[i].1, e: deles[i].2 }));
+                    novas.push((
+                        pos,
+                        Lig::Fora {
+                            d,
+                            q: deles[i].1,
+                            e: deles[i].2,
+                        },
+                    ));
                 }
             }
         }

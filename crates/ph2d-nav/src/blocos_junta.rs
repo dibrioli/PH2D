@@ -20,12 +20,23 @@ fn raiz(pai: &mut [u32], mut c: u32) -> u32 {
 pub(super) fn junta(m: &MalhaPorBlocos) -> Result<NavMesh, MeshError> {
     let ordem: Vec<(Chave, &super::Bloco)> = m.blocos.iter().map(|(&k, b)| (k, b)).collect();
     let n = ordem.len();
-    let idx: BTreeMap<Chave, usize> = ordem.iter().enumerate().map(|(i, (k, _))| (*k, i)).collect();
+    let idx: BTreeMap<Chave, usize> = ordem
+        .iter()
+        .enumerate()
+        .map(|(i, (k, _))| (*k, i))
+        .collect();
     let viz: Vec<[usize; 9]> = ordem
         .iter()
-        .map(|(k, _)| std::array::from_fn(|d| idx.get(&vizinho(*k, d as u8)).copied().unwrap_or(usize::MAX)))
+        .map(|(k, _)| {
+            std::array::from_fn(|d| {
+                idx.get(&vizinho(*k, d as u8))
+                    .copied()
+                    .unwrap_or(usize::MAX)
+            })
+        })
         .collect();
-    let (mut mbase, mut pbase, mut cbase) = (vec![0usize; n + 1], vec![0u32; n + 1], vec![0u32; n + 1]);
+    let (mut mbase, mut pbase, mut cbase) =
+        (vec![0usize; n + 1], vec![0u32; n + 1], vec![0u32; n + 1]);
     for (b, (_, bl)) in ordem.iter().enumerate() {
         let np = bl.peca.ring_off.len() - 1;
         if bl.peca.area.len() != np {
@@ -84,7 +95,10 @@ pub(super) fn junta(m: &MalhaPorBlocos) -> Result<NavMesh, MeshError> {
     let mut corner = vec![false; nv];
     let mut walls = Vec::new();
     let (tr, tp) = (
-        ordem.iter().map(|(_, bl)| bl.l2.s_ring.len()).sum::<usize>(),
+        ordem
+            .iter()
+            .map(|(_, bl)| bl.l2.s_ring.len())
+            .sum::<usize>(),
         pbase[n] as usize,
     );
     let mut ring_off: Vec<u32> = Vec::with_capacity(tp + 1);
@@ -99,13 +113,13 @@ pub(super) fn junta(m: &MalhaPorBlocos) -> Result<NavMesh, MeshError> {
         let l = &bl.l2;
         let nl = bl.peca.verts.len();
         gslot.clear();
-        gslot.extend(l.slots.iter().enumerate().map(|(s, &r)| {
-            if s < nl {
-                mapa[mbase[b] + s]
-            } else {
-                gv(b, r)
-            }
-        }));
+        gslot.extend(
+            l.slots.iter().enumerate().map(
+                |(s, &r)| {
+                    if s < nl { mapa[mbase[b] + s] } else { gv(b, r) }
+                },
+            ),
+        );
         for (pi, w) in l.s_off.windows(2).enumerate() {
             let (o0, o1) = (w[0] as usize, w[1] as usize);
             for pos in o0..o1 {
@@ -155,7 +169,12 @@ pub(super) fn junta(m: &MalhaPorBlocos) -> Result<NavMesh, MeshError> {
     }
     let mut island = Vec::with_capacity(tp);
     for (b, (_, bl)) in ordem.iter().enumerate() {
-        island.extend(bl.l2.comp.iter().map(|&c| ilha_da_comp[(cbase[b] + c) as usize]));
+        island.extend(
+            bl.l2
+                .comp
+                .iter()
+                .map(|&c| ilha_da_comp[(cbase[b] + c) as usize]),
+        );
     }
 
     // A caixa e a localização: uma grelha por bloco, numa grelha regular de blocos.

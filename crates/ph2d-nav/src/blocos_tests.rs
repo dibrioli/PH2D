@@ -31,7 +31,8 @@ fn dois_triangulos((x, y): Chave) -> Peca {
 #[test]
 fn as_recusas_sao_as_da_porta_inteira_com_o_indice_da_malha_montada() {
     // O 2.º bloco recusa no seu 2.º polígono: o índice é o da malha montada (2 + 1).
-    let casos: [(&[V2], &[&[u32]], fn(&MeshError) -> bool); 4] = [
+    type Caso<'a> = (&'a [V2], &'a [&'a [u32]], fn(&MeshError) -> bool);
+    let casos: [Caso; 4] = [
         (
             &[[1.0, 0.0], [2.0, 0.0], [2.0, 1.0], [1.0, 1.0]],
             &[&[0, 1, 2], &[0, 3, 2]],
@@ -63,15 +64,25 @@ fn as_recusas_sao_as_da_porta_inteira_com_o_indice_da_malha_montada() {
         m.poe((1, 0), dois_triangulos((1, 0)));
         let ok = m.monta().expect("a peça boa monta");
         assert_eq!(ok.poly_count(), 4);
-        assert_eq!(ok.island_count(), 1, "caso {i}: a costura não ligou os dois blocos");
+        assert_eq!(
+            ok.island_count(),
+            1,
+            "caso {i}: a costura não ligou os dois blocos"
+        );
     }
 }
 
 #[test]
 fn um_indice_fora_e_as_areas_que_nao_batem_sao_recusados() {
     let mut m = MalhaPorBlocos::new();
-    m.poe((0, 0), peca((0, 0), &[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]], &[&[0, 1, 7]]));
-    assert!(matches!(m.monta(), Err(MeshError::BadIndex { poly: 0, index: 7 })));
+    m.poe(
+        (0, 0),
+        peca((0, 0), &[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]], &[&[0, 1, 7]]),
+    );
+    assert!(matches!(
+        m.monta(),
+        Err(MeshError::BadIndex { poly: 0, index: 7 })
+    ));
     let mut p = dois_triangulos((0, 0));
     p.area.pop();
     m.poe((0, 0), p);
@@ -84,7 +95,10 @@ fn um_indice_fora_e_as_areas_que_nao_batem_sao_recusados() {
 #[test]
 #[should_panic(expected = "fora do rectângulo")]
 fn uma_peca_fora_do_rectangulo_e_um_erro_de_quem_chama() {
-    MalhaPorBlocos::new().poe((0, 0), peca((0, 0), &[[0.0, 0.0], [1.5, 0.0], [1.0, 1.0]], &[&[0, 1, 2]]));
+    MalhaPorBlocos::new().poe(
+        (0, 0),
+        peca((0, 0), &[[0.0, 0.0], [1.5, 0.0], [1.0, 1.0]], &[&[0, 1, 2]]),
+    );
 }
 
 #[test]
@@ -102,11 +116,22 @@ fn um_ponto_de_costura_repetido_na_peca_e_um_vertice_so() {
     );
     m.poe(
         (1, 0),
-        peca((1, 0), &[[1.0, 0.0], [2.0, 0.0], [2.0, 1.0], [1.0, 1.0]], &[&[0, 1, 2, 3]]),
+        peca(
+            (1, 0),
+            &[[1.0, 0.0], [2.0, 0.0], [2.0, 1.0], [1.0, 1.0]],
+            &[&[0, 1, 2, 3]],
+        ),
     );
     let por_blocos = m.monta().expect("monta");
     let inteira = NavMesh::from_polygons(
-        vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [2.0, 0.0], [2.0, 1.0]],
+        vec![
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [1.0, 1.0],
+            [0.0, 1.0],
+            [2.0, 0.0],
+            [2.0, 1.0],
+        ],
         vec![vec![0, 1, 2, 3], vec![1, 4, 5, 2]],
     )
     .expect("a inteira");
@@ -141,7 +166,11 @@ fn tirar_um_bloco_desliga_o_vizinho() {
     m.tira((1, 0));
     let depois = m.monta().expect("monta");
     assert_eq!(depois.diferenca(&fresca(&[((0, 0), quadrado(0))])), None);
-    assert_eq!(depois.walls().len(), 4, "a aresta da direita voltou a ser parede");
+    assert_eq!(
+        depois.walls().len(),
+        4,
+        "a aresta da direita voltou a ser parede"
+    );
 }
 
 #[test]
@@ -159,7 +188,10 @@ fn um_vizinho_com_os_mesmos_pontos_de_lado_que_deixa_de_ligar_devolve_a_parede()
     m.monta().expect("monta");
     m.poe((1, 0), longe.clone());
     let depois = m.monta().expect("monta");
-    assert_eq!(depois.diferenca(&fresca(&[((0, 0), quadrado(0)), ((1, 0), longe)])), None);
+    assert_eq!(
+        depois.diferenca(&fresca(&[((0, 0), quadrado(0)), ((1, 0), longe)])),
+        None
+    );
     assert_eq!(depois.island_count(), 2);
 }
 
@@ -169,7 +201,14 @@ fn dois_pontos_cosidos_numa_aresta_que_desce_vao_pela_ordem_dela() {
     // DESCE de (1, 1) a (1, 0) e tem de os receber por essa ordem: 0,6 e depois 0,3.
     let esq = peca(
         (0, 0),
-        &[[0.0, 0.0], [1.0, 0.0], [1.0, 0.3], [1.0, 0.6], [1.0, 1.0], [0.0, 1.0]],
+        &[
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [1.0, 0.3],
+            [1.0, 0.6],
+            [1.0, 1.0],
+            [0.0, 1.0],
+        ],
         &[&[0, 1, 2, 3, 4, 5]],
     );
     let mut m = MalhaPorBlocos::new();

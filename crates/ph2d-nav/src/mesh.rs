@@ -481,7 +481,11 @@ impl NavMesh {
 
 /// Os polígonos de cada vértice, contíguos e por ordem de índice (contagem, depois enchimento): os do
 /// vértice `v` são `vert_polys[vp_off[v]..vp_off[v + 1]]`.
-pub(crate) fn polys_de_cada_vertice(nv: usize, ring_off: &[u32], ring: &[u32]) -> (Vec<u32>, Vec<u32>) {
+pub(crate) fn polys_de_cada_vertice(
+    nv: usize,
+    ring_off: &[u32],
+    ring: &[u32],
+) -> (Vec<u32>, Vec<u32>) {
     let mut vp_off = vec![0u32; nv + 1];
     for &v in ring {
         vp_off[v as usize + 1] += 1;

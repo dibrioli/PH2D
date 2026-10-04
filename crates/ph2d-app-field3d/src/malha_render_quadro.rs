@@ -77,6 +77,13 @@ pub(crate) fn tem_brilho() -> bool {
     desenhista().is_some() && TEM_BRILHO.get().copied().unwrap_or(false)
 }
 
+/// ⭐ **Há placa para o Render?** — sem ela o Render mostra o Matcap e as fileiras dele ficam
+/// inertes no painel (decisão do dono, 03/10).
+#[must_use]
+pub(crate) fn tem_aparelho() -> bool {
+    desenhista().is_some()
+}
+
 /// A resposta do [`tem_brilho`], escrita UMA vez quando o desenhista nasce.
 static TEM_BRILHO: OnceLock<bool> = OnceLock::new();
 
@@ -84,6 +91,11 @@ static TEM_BRILHO: OnceLock<bool> = OnceLock::new();
 #[cfg(test)]
 pub(crate) static SEM_APARELHO: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
+
+/// Nos testes: quem liga o [`SEM_APARELHO`] segura esta trava — ele é global, e dois gates que o
+/// ligam e desligam em paralelo trocariam o estado um do outro.
+#[cfg(test)]
+pub(crate) static TRAVA_SEM_APARELHO: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn desenhista() -> Option<&'static Mutex<Desenhista>> {
     #[cfg(test)]

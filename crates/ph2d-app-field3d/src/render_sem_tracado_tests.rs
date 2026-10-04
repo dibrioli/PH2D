@@ -72,6 +72,9 @@ fn escolhe(sim: &mut ph2d_ecs::SimWorld, modo: Shading) {
 /// antigo (luz, sombra, ricochete, chão), que era o recuo até 03/10.
 #[test]
 fn o_render_sem_aparelho_mostra_o_matcap_e_nao_o_tracado() {
+    let _trava = crate::malha_render_quadro::TRAVA_SEM_APARELHO
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     armed_with(&two_balls(), |sim| {
         let matcap = quadro_assente();
         crate::malha_render_quadro::SEM_APARELHO.store(true, Ordering::Relaxed);

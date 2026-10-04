@@ -124,11 +124,18 @@ um processo por teste, não se tocam; não vêm desta onda) · `ph2d-field-gpu` 
 `ph2d-app-field3d` lib `480` ✓ (+ os 2 re-ancorados, verdes), `tests/it` `4` ✓ (as duas frases de erro
 das texturas da onda AS_TEXTURAS estavam fora da tabela — corrigido), gates de placa reapontados ✓.
 
+### §4c — Decisão do dono: sem placa, as fileiras do Render ficam INERTES
+
+*«se sem placa de vídeo, controles ficam inativos mas não somem»* (03/10). `scene_panel.rs`: no
+Render sem aparelho (`malha_render_quadro::tem_aparelho()`), as fileiras `Style/Bloom/Sky/Texture`
+levam `inert = field.inert.render_needs_gpu` (o painel apaga-as, recusa o arrasto e diz a frase); o
+brilho aparece também sem placa (uma placa SEM o formato do brilho continua a escondê-lo). Gate
+red-first `render_sem_placa_painel_tests` (antes: «as fileiras do brilho sumiram»; com o laço
+mutado: 28 fileiras vivas ⇒ VERMELHO), com o controlo de que com placa nenhuma leva a razão. Os dois
+gates que ligam o gancho `SEM_APARELHO` seguram a `TRAVA_SEM_APARELHO`.
+
 ## §5 — ABERTO
 
-- **Sem placa, o painel do Render mostra estilo/textura/céu sobre um quadro que é o Matcap** —
-  controlos mortos só nesse caso (o brilho já se esconde: `tem_brilho`). A cura (esconder pelo
-  aparelho) muda o que os gates de painel veem sem placa; decidir com o dono.
 - **A lei da lâmpada pontual da malha** (`forward.wgsl`, piso `PISO_LUZ`, queda `1/r²`) não tem gate
   próprio — os que a mediam (`a_light_falls_off_with_the_square_of_the_distance`,
   `a_light_object_lights_the_side_it_is_on`) mediam o desenho traçado. Já era lacuna da malha.

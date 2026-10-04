@@ -70,6 +70,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         //
         // ⚠️ Cada uma nomeia **o gesto que a destranca**, e o gesto é sempre *outra fileira desta
         // mesma secção* — que é precisamente o que o artista não consegue adivinhar sozinho.
+        // ⚠️ Esta não tem gesto que a destranque no painel: é a MÁQUINA (decisão do dono, 03/10).
+        "field.inert.render_needs_gpu" => {
+            "Inactive: no graphics card the Render can use, so it shows the Matcap instead."
+        }
         "field.inert.rim_is_off" => {
             "Inactive: the rim light is off. Raise Rim Strength above zero to use it."
         }

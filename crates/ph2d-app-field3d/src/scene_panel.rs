@@ -13,6 +13,9 @@
 use super::acts::{ACT_ISOLATE, ISOLATE_BADGE, LINK_BADGE, acts_for};
 use super::*;
 
+/// ⭐ **A razão das fileiras do Render sem placa** — ficam à vista e inertes (decisão do dono, 03/10).
+pub(crate) const RAZAO_SEM_PLACA: &str = "field.inert.render_needs_gpu";
+
 /// **A ponte com o painel**: publica o retrato da peça.
 ///
 /// ⭐ **A ordem é load-bearing.** Drenar ANTES de publicar é o que faz a edição aparecer no mesmo
@@ -56,15 +59,35 @@ pub fn publish_snapshot(
     //
     // ⭐ **E no Render por MALHA desde 02/10** — a mesma lei em passes de desenho (o WebGL2 não tem
     // compute), onde a placa desenha a cena-linear em `Rgba16Float`; sem isso, nada de fileiras.
+    // ⚠️ **Sem placa nenhuma elas aparecem** (inertes, abaixo): a decisão do dono é que um controlo
+    // do Render sem placa fica à vista e apagado. Uma placa SEM o formato do brilho continua a
+    // escondê-las — ali o Render corre, e as fileiras não teriam leitor nunca.
+    let com_placa = crate::malha_render_quadro::tem_aparelho();
     rows.extend(crate::brilho_painel::rows(
         with_smoke(|s| s.bloom).unwrap_or_default(),
-        render && crate::malha_render_quadro::tem_brilho(),
+        render && (!com_placa || crate::malha_render_quadro::tem_brilho()),
     ));
     // ⭐⭐⭐ **E AS FILEIRAS DO CÉU** — no Render (o desenhista de jogo é quem as lê).
     rows.extend(crate::ceu_painel::rows(
         with_smoke(|s| s.ceu).unwrap_or_default(),
         render,
     ));
+    // ⭐⭐⭐ **SEM PLACA, O RENDER MOSTRA O MATCAP** — e as fileiras que só o desenhista de jogo lê
+    // (estilo, brilho, céu, textura) ficam à vista e INERTES, com a razão (decisão do dono, 03/10:
+    // *«controles ficam inativos mas não somem»*).
+    if render && !com_placa {
+        for r in &mut rows {
+            if matches!(
+                r.param,
+                ph2d_field::Param::Style(_)
+                    | ph2d_field::Param::Bloom(_)
+                    | ph2d_field::Param::Sky(_)
+                    | ph2d_field::Param::Texture(_)
+            ) {
+                r.inert = Some(RAZAO_SEM_PLACA);
+            }
+        }
+    }
     let rows = rows;
     // ⚠️ A lista de verbos é **derivada de `Mode::ALL`**, que é a fonte da contagem. O painel não
     // conhece o enum — acrescentar um verbo lá faz o seletor seguir sem uma linha de mudança.
@@ -544,3 +567,8 @@ pub fn verb_applies(
         .iter()
         .any(|e| world.get::<ph2d_field_ecs::FieldNode>(*e).is_some())
 }
+
+/// ⭐⭐⭐ Sem placa, as fileiras do Render ficam à vista e inertes (decisão do dono, 03/10).
+#[cfg(test)]
+#[path = "render_sem_placa_painel_tests.rs"]
+mod render_sem_placa_painel_tests;

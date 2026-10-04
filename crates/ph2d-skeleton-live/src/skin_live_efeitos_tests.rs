@@ -101,3 +101,41 @@ fn a_baked_zigzag_keeps_its_teeth_in_the_bend() {
     assert!(marcada < 1e-9, "a forma cozida foi reescrita pelo contacto ({marcada})");
     assert!(controlo > 1e-3, "o CONTROLO: a bola não mexe — a fixtura perdeu o defeito ({controlo})");
 }
+
+/// ⭐ **SONDA — o preço do Bind e do 1.º quadro de uma forma com um *Repeater* denso** (A3). Corra em
+/// `--release` com o `loadavg` ao lado.
+#[test]
+#[ignore = "sonda de preço: --release, máquina calma"]
+fn diag_o_preco_do_bind_de_um_repeater_denso() {
+    use std::time::Instant;
+    for copias in [1.0, 13.0, 25.0, 39.0] {
+        let (mut sim, mut scene, map, id, _) = palco();
+        if copias > 1.0 {
+            scene.path_mut(id).expect("path").effects =
+                vec![FxEntry::new(PathEffect::Repeat(ph2d_vec_scene::fx_repeat::RepeatSpec {
+                    copies_x: copias,
+                    move_x: -80.0,
+                    copies_y: copias,
+                    move_y: -80.0,
+                    spin: -72.0,
+                    orbit: -72.0,
+                }))];
+        }
+        let t = Instant::now();
+        assert_eq!(bind(&mut sim, &mut scene, &map, &[id], None), 1);
+        let t_bind = t.elapsed();
+        let t = Instant::now();
+        let _ = quadro(&sim, &mut scene, id);
+        let t_q1 = t.elapsed();
+        let t = Instant::now();
+        let _ = quadro(&sim, &mut scene, id);
+        let t_q2 = t.elapsed();
+        println!(
+            "  {copias}²: ms: bind {:.1} · 1.º quadro {:.1} · 2.º {:.2} · loadavg {}",
+            t_bind.as_secs_f64() * 1e3,
+            t_q1.as_secs_f64() * 1e3,
+            t_q2.as_secs_f64() * 1e3,
+            std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+        );
+    }
+}

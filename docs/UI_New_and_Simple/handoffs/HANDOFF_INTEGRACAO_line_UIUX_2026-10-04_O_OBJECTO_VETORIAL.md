@@ -122,8 +122,8 @@
 - i18n **NOVAS** `object_add.vector.object`, `object_add.vector.object_name`,
   `component.vec_object.name`; **APAGADAS** as sete do §2.
 - Catraca da altura do painel `vector` **1 239 → 1 262** (= a base; a grelha inteira volta).
-- **`the_shell_only_shrinks`**: HEAD do O_VETOR **196 909** → HEAD **196 963**; esta onda **+54**;
-  tecto **196 990** — folga **27**.
+- **`the_shell_only_shrinks`**: HEAD do O_VETOR **196 909** → HEAD **196 974**; esta onda **+65**;
+  tecto **196 990** — folga **16**.
 
 ## §5 — Fecho: gate batched, mutação, auditoria
 
@@ -192,6 +192,20 @@ junta em `mode_drive_tests.rs` (M20, o filtro do mesmo tipo ao sair), a REAL em
   mostrou um anel de vazio em cada uma ⇒ `is_empty_object` exclui o objecto com formas.
 - `PH2D_OBJECT_ADD_SMOKE=1` — o Add com **2D · 3**: Image…, **Vector Object**, Flip Drawing.
 
+## §5b — Depois do fecho: report do dono (04/10)
+
+- *«não consigo selecionar as formas vetoriais dentro do objeto»*. **Mecanismo:** em Edit com o
+  **Select** a ferramenta não captura o canvas (ADR-0112) — o clique vai ao pick de objectos
+  (`hover_highlight::pick_objects_at`), que monta a vista com `view_state_for_pick(…, &view_derived)`.
+  O `editing` era escrito na vista do DESENHO (`fase_vector_view_and_drives.rs`) e copiado DENTRO do
+  `view_state_for_pick`, mas **ninguém o publicava no `view_derived`** ⇒ o pick lia Object e o
+  `lift_to_objects` subia da forma ao objecto inteiro. O Node funcionava (a caneta lê a vista do
+  desenho). Defeito herdado da onda O_VETOR (a cópia tinha gate; o escritor não) e que esta onda
+  agravou (o `lift`). **Cura:** `fase_vector_layout_recook.rs` publica
+  `view_derived.editing` ao lado de `clips`/`poses`/`absorbed`; gate
+  `the_vector_edit_reaches_the_frame_view` estendido ao escritor — sangra sem a linha (mutação
+  conferida, com controlo verde). Também cura o laço e o realce em Edit.
+
 ## §6 — Premissas derrubadas
 
 - *«Uma porta só depois do `sync`»* — são DUAS (o passe do desenho e a rede da captura), e a forma
@@ -201,6 +215,8 @@ junta em `mode_drive_tests.rs` (M20, o filtro do mesmo tipo ao sair), a REAL em
   embrulhada dentro do contentor e a gaiola partia-se (gate `an_envelope_made_in_the_edit_stays_whole_in_the_object`).
 - *«O `group_entities` serve dentro do objecto»* — normalizava para o topo, que era o próprio objecto
   ⇒ a booleana viva recusava dentro dele (`top_within_object`).
+- *«A cópia do `editing` no `view_state_for_pick` leva o Edit ao clique»* — a cópia tinha gate e
+  zero escritores do lado de lá (§5b).
 - *«Lista `editing` vazia = Object»* — o objecto nasce vazio EM Edit ⇒ `Option`.
 
 ## §7 — Smoke do dono (o que ensaiar)

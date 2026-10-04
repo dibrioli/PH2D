@@ -72,6 +72,8 @@ impl crate::App {
             .view_derived
             .absorbed
             .clone_from(&vec_view.absorbed);
+        // spec/06 F3: e o EDIT — sem ele o clique do Select lia Object e subia ao objecto inteiro.
+        self.vec.view_derived.editing.clone_from(&vec_view.editing);
         // **O ALINHAMENTO roda por ÚLTIMO, e TRANSFORMA o mapa em vez de o estender.**
         // Os cinco acima são mutuamente exclusivos (um componente cada, um por vez no
         // painel), e é isso que torna o `extend` seguro. O alinhamento não é membro dessa

@@ -113,6 +113,15 @@ fn the_vector_edit_reaches_the_frame_view() {
         src.contains("vec_view.editing = self.vec.edit.editing(sim, &self.vec.entities)"),
         "a vista do quadro não recebe as formas do Edit"
     );
+    // ⛔ E a vista do CLIQUE (`view_derived`, lida pelo pick do Select, do laço e do realce) tem de
+    // a receber: sem esta linha o Select em Edit lia Object e subia da forma ao objecto inteiro —
+    // report do dono, 04/10: «não consigo selecionar as formas vetoriais dentro do objeto».
+    let recook = std::fs::read_to_string("src/render_loop/fase_vector_layout_recook.rs")
+        .expect("a fase do recook existe");
+    assert!(
+        recook.contains("view_derived.editing.clone_from(&vec_view.editing)"),
+        "a vista do clique não recebe o Edit do quadro"
+    );
 }
 
 /// ⭐⭐ GATE (spec/06 F3 ▸ Vector) — **a regra das soltas corre nas DUAS redes, com o objecto do

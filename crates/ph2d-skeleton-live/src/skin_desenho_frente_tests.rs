@@ -319,61 +319,68 @@ fn o_que_nao_se_corta_sai_ao_bit() {
     // As riscas inteiras à vista: as da fonte cujo desenho não perdeu nenhum ponto.
     assert!(iguais > antes.len() / 2, "o recorte tocou riscas que não cortou ({iguais})");
 }
+/// A largura do traço da barra da cena (`0,75 · 0,06`).
+const LARGURA: f64 = 0.75 * 0.06;
+
+/// A barra da cena `=5` com *Hatch* (`4,5 × 0,75`, três ossos), presa recta e dobrada em S a `graus`:
+/// a fonte guardada, a tabela, o campo, a pele e a profundidade.
+fn barra_em_s(graus: f32) -> (VecPath, Vec<f64>, ph2d_vec_skin::pesos::CampoDoDominio, ph2d_skeleton::Skin, Vec<f64>) {
+    use crate::barra_da_cena_tests_support::osso;
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let mut scene = ph2d_vec_scene::VecScene::new();
+    let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
+    let mut barra = ph2d_vec_scene::cook(
+        ph2d_vec_scene::ShapeKind::RoundRect,
+        [-2.25, -0.375],
+        [2.25, 0.375],
+        &[0.375],
+    );
+    barra.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+        ph2d_vec_scene::Rgba8::new(0, 0, 0, 255),
+        LARGURA,
+    ));
+    barra.effects = vec![FxEntry::new(PathEffect::Hatch(
+        ph2d_vec_scene::fx_hatch::HatchSpec {
+            angle: 45.0,
+            spacing: 8.0,
+            cross: false,
+        },
+    ))];
+    let id = scene.push_path(barra);
+    ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
+    let passo = (4.5 - 0.75) / 3.0;
+    #[expect(clippy::cast_possible_truncation, reason = "metros de uma cena")]
+    let p32 = passo as f32;
+    let b1 = osso(&mut sim, "b1", [-1.875, 0.0], passo, None);
+    let b2 = osso(&mut sim, "b2", [p32, 0.0], passo, Some(b1));
+    let b3 = osso(&mut sim, "b3", [p32, 0.0], passo, Some(b2));
+    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(b1)), 1);
+    for (b, g) in [(b2, graus), (b3, -graus)] {
+        sim.world_mut()
+            .get_mut::<ph2d_ecs::Transform>(b)
+            .expect("Transform")
+            .rotation = g.to_radians();
+    }
+    let e = ph2d_ecs::Entity::from_bits(map[&id]);
+    let skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
+    let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
+    let index = crate::skin_live::bone_index(&sim);
+    let pele = crate::skin_live::resolve(&sim, &skin, e, &index).expect("pele");
+    let prof = crate::esqueletos::profundidades(&sim, &skin, &index);
+    (g.path, g.pesos, g.campo.expect("campo"), pele, prof)
+}
+
 /// ⭐⭐ **GATE — nenhum pedaço cortado fica mais curto que a largura do traço** (FOTOGRAFADO na `=5`
-/// a `110°`: tiques soltos junto às juntas). A barra é a da cena (`4,5 × 0,75`, três ossos em S,
-/// traço `0,75 · 0,06`).
+/// a `110°`: tiques soltos junto às juntas).
 ///
 /// ⛔ **O CONTROLO:** os intervalos à vista ANTES do filtro têm pedaços assim (`0,036`–`0,042` a
 /// `100°`/`120°`, MEDIDO).
 #[test]
 fn nenhum_pedaco_cortado_e_mais_curto_que_o_traco() {
-    use crate::barra_da_cena_tests_support::osso;
     let mut no_controlo = 0;
     for graus in [100f32, 110.0, 120.0] {
-        let mut sim = ph2d_ecs::SimWorld::default();
-        let mut scene = ph2d_vec_scene::VecScene::new();
-        let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
-        let mut barra = ph2d_vec_scene::cook(
-            ph2d_vec_scene::ShapeKind::RoundRect,
-            [-2.25, -0.375],
-            [2.25, 0.375],
-            &[0.375],
-        );
-        barra.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
-            ph2d_vec_scene::Rgba8::new(0, 0, 0, 255),
-            0.75 * 0.06,
-        ));
-        barra.effects = vec![FxEntry::new(PathEffect::Hatch(
-            ph2d_vec_scene::fx_hatch::HatchSpec {
-                angle: 45.0,
-                spacing: 8.0,
-                cross: false,
-            },
-        ))];
-        let id = scene.push_path(barra);
-        ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
-        let passo = (4.5 - 0.75) / 3.0;
-        #[expect(clippy::cast_possible_truncation, reason = "metros de uma cena")]
-        let p32 = passo as f32;
-        let b1 = osso(&mut sim, "b1", [-1.875, 0.0], passo, None);
-        let b2 = osso(&mut sim, "b2", [p32, 0.0], passo, Some(b1));
-        let b3 = osso(&mut sim, "b3", [p32, 0.0], passo, Some(b2));
-        assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(b1)), 1);
-        for (b, g) in [(b2, graus), (b3, -graus)] {
-            sim.world_mut()
-                .get_mut::<ph2d_ecs::Transform>(b)
-                .expect("Transform")
-                .rotation = g.to_radians();
-        }
-        let e = ph2d_ecs::Entity::from_bits(map[&id]);
-        let skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
-        let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
-        let campo = g.campo.clone().expect("campo");
-        let index = crate::skin_live::bone_index(&sim);
-        let pele = crate::skin_live::resolve(&sim, &skin, e, &index).expect("pele");
-        let prof = crate::esqueletos::profundidades(&sim, &skin, &index);
+        let (fonte, pesos, campo, pele, prof) = barra_em_s(graus);
         let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof).expect("posada");
-        let largura = 0.75 * 0.06;
         let curtos = |p: &VecPath, so_cortados: bool| -> usize {
             (0..p.contour_count())
                 .filter_map(|c| p.contour(c))
@@ -388,17 +395,133 @@ fn nenhum_pedaco_cortado_e_mais_curto_que_o_traco() {
                     };
                     vis.iter()
                         .filter(|&&(a, b)| !(a <= 0.0 && b >= fim) || !so_cortados)
-                        .filter(|&&(a, b)| f.comprimento(v, a, b) < largura)
+                        .filter(|&&(a, b)| f.comprimento(v, a, b) < LARGURA)
                         .count()
                 })
                 .sum()
         };
-        no_controlo += curtos(&g.path, true);
+        no_controlo += curtos(&fonte, true);
         let (cortada, _) =
-            super::so_o_que_se_ve(&g.path, &g.pesos, (&campo, None), (&pele, &[], true), &prof)
+            super::so_o_que_se_ve(&fonte, &pesos, (&campo, None), (&pele, &[], true), &prof)
                 .expect("a dobra corta");
         let n = curtos(&cortada, false);
         assert_eq!(n, 0, "a {graus}° ficaram {n} pedaços mais curtos que o traço");
     }
     assert!(no_controlo > 0, "o CONTROLO: antes do filtro não há pedaço curto");
+}
+
+/// ⭐⭐ **GATE — cada corte cai na FRONTEIRA** entre o que se vê e o que está tapado (a bissecção):
+/// a `1e-3` do segmento de cada lado o estado é o oposto. ⛔ **O CONTROLO:** há cortes.
+#[test]
+fn cada_corte_cai_na_fronteira_do_que_se_ve() {
+    let (fonte, _, campo, pele, prof) = barra_em_s(110.0);
+    let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof).expect("posada");
+    let mut cortes = 0;
+    for c in 0..fonte.contour_count() {
+        let Some((v, false)) = fonte.contour(c) else { continue };
+        #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
+        let fim = (v.len() - 1) as f64;
+        let em = |u: f64| {
+            #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "segmento")]
+            let k = (u.floor() as usize).min(v.len() - 2);
+            #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
+            f.tapado(super::avalia(&super::cubica(v, k), u - k as f64))
+        };
+        for (a, b) in super::a_vista(v, &f).unwrap_or_default() {
+            for (u, dentro_vis) in [(a, 1.0_f64), (b, -1.0)] {
+                if u <= 0.0 || u >= fim {
+                    continue;
+                }
+                cortes += 1;
+                assert!(
+                    !em(dentro_vis.mul_add(1e-3, u)) && em(dentro_vis.mul_add(-1e-3, u)),
+                    "o corte em {u:.5} não está na fronteira"
+                );
+            }
+        }
+    }
+    assert!(cortes > 0, "o CONTROLO: nenhum corte a 110°");
+}
+
+/// ⭐⭐ **GATE — o pedaço recortado é a curva da fonte, EXACTA** (de Casteljau), numa risca CURVA
+/// (as do *Hatch* são rectas e aprovariam alças erradas).
+#[test]
+fn o_recorte_e_a_curva_da_fonte() {
+    let mut a = ph2d_vec_scene::VecVertex::corner([0.0, 0.0]);
+    a.out_handle = [1.0, 3.0];
+    let mut b = ph2d_vec_scene::VecVertex::corner([4.0, 0.0]);
+    b.in_handle = [3.0, -2.0];
+    b.out_handle = [5.0, 2.0];
+    let mut c = ph2d_vec_scene::VecVertex::corner([7.0, 1.0]);
+    c.in_handle = [6.0, 3.0];
+    let vs = [a, b, c];
+    for (u0, u1) in [(0.3, 0.7), (0.2, 1.6), (0.0, 1.25), (1.1, 2.0)] {
+        let p: Vec<_> = super::recorta(&vs, u0, u1).into_iter().map(|(v, _)| v).collect();
+        let mut pior = 0.0_f64;
+        for k in 0..p.len() - 1 {
+            for i in 0..=20 {
+                let q = super::avalia(&super::cubica(&p, k), f64::from(i) / 20.0);
+                let perto = (0..=4000)
+                    .map(|j| {
+                        let u = (u1 - u0).mul_add(f64::from(j) / 4000.0, u0);
+                        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "segmento")]
+                        let s = (u.floor() as usize).min(1);
+                        #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
+                        let r = super::avalia(&super::cubica(&vs, s), u - s as f64);
+                        (r[0] - q[0]).hypot(r[1] - q[1])
+                    })
+                    .fold(f64::MAX, f64::min);
+                pior = pior.max(perto);
+            }
+        }
+        let fim = |u: f64| {
+            #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "segmento")]
+            let s = (u.floor() as usize).min(1);
+            #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
+            super::avalia(&super::cubica(&vs, s), u - s as f64)
+        };
+        assert!(pior < 5e-3, "{u0}..{u1}: o pedaço sai da curva ({pior})");
+        assert_eq!(p[0].anchor.map(|x| (x * 1e9).round()), fim(u0).map(|x| (x * 1e9).round()));
+        let ultimo = p[p.len() - 1].anchor;
+        assert_eq!(ultimo.map(|x| (x * 1e9).round()), fim(u1).map(|x| (x * 1e9).round()));
+    }
+}
+
+/// ⭐⭐ **GATE — uma risca sobre um triângulo do AVESSO não se vê** (o lado de baixo da dobra; os
+/// tiques FOTOGRAFADOS a `110°` junto às juntas). Cada ponto à vista mora num triângulo de pose
+/// direita. ⛔ **O CONTROLO:** a fonte tem pontos de risca sobre triângulos virados.
+#[test]
+fn uma_risca_sobre_o_avesso_da_dobra_nao_se_ve() {
+    let (fonte, pesos, campo, pele, prof) = barra_em_s(120.0);
+    let f = super::Posada::nova(&campo, None, &pele, &[], true, &prof).expect("posada");
+    let no_avesso = |p: &VecPath| -> usize {
+        amostras(p, false, 200)
+            .into_iter()
+            .filter(|(q, _)| f.onde(*q).is_some_and(|(t, _)| f.virado[t]))
+            .count()
+    };
+    let controlo = no_avesso(&fonte);
+    let (cortada, _) =
+        super::so_o_que_se_ve(&fonte, &pesos, (&campo, None), (&pele, &[], true), &prof)
+            .expect("a dobra corta");
+    // ⚠️ A bissecção pára a `2⁻¹²` de um segmento da fronteira: as PONTAS de cada pedaço podem cair
+    // a essa distância dentro do avesso — a régua salta o 1 % de cada ponta.
+    let mut depois = 0;
+    for c in 0..cortada.contour_count() {
+        let Some((v, false)) = cortada.contour(c) else { continue };
+        let segs = v.len() - 1;
+        for k in 0..segs {
+            for i in 0..=200 {
+                let t = f64::from(i) / 200.0;
+                if (k == 0 && t < 0.01) || (k == segs - 1 && t > 0.99) {
+                    continue;
+                }
+                let q = super::avalia(&super::cubica(v, k), t);
+                depois += usize::from(f.onde(q).is_some_and(|(tri, _)| f.virado[tri]));
+            }
+        }
+    }
+    println!("  pontos de risca no avesso: fonte {controlo} · à vista depois {depois}");
+    assert!(controlo > 0, "o CONTROLO: a 120° nenhuma risca passa pelo avesso");
+    assert_eq!(depois, 0, "{depois} pontos de risca à vista sobre o avesso da dobra");
 }

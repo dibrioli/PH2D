@@ -106,14 +106,23 @@ impl PilhaDaPeca {
 
     /// ⭐⭐ **O relevo da peça volta a ser a dobra da pilha, se a FORMA dela
     /// mudou** desde a última vez (a profundidade, o modo, uma camada com relevo
-    /// que entrou, saiu ou se escondeu). Devolve se reescreveu.
+    /// que entrou, saiu ou se escondeu). Devolve se o relevo da peça MUDOU —
+    /// com a assinatura por saber (a 1.ª vez na sessão) dobra e compara, ao bit:
+    /// dizer «mudou» sem mudar manda subir o plano inteiro por nada.
     pub(crate) fn redobra_o_relevo(&mut self, peca: &mut Tinta) -> bool {
         let agora = self.assinatura_do_relevo();
         if self.relevo_dobrado.0.as_ref() == Some(&agora) {
             return false;
         }
-        peca.com_relevo(self.relevo_composto());
+        let novo = self.relevo_composto();
         self.relevo_dobrado = Dobrado(Some(agora));
+        let bits = |r: Option<&[[f32; 2]]>| {
+            r.map(|r| r.iter().map(|x| x.map(f32::to_bits)).collect::<Vec<_>>())
+        };
+        if bits(peca.relevo()) == bits(novo.as_deref()) {
+            return false;
+        }
+        peca.com_relevo(novo);
         true
     }
 

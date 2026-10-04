@@ -162,7 +162,7 @@ integrador — releia a ORDEM das fases do quadro só se outra linha mexer em `f
 | ✅ memória no app MEDIDA (§6.1) e CORTADA (§6.2) — `66 → 43 MB` na `=127` densa | fechado |
 | ⛔ **variante ESPARSA** — RECUSADA com a tabela (§6.5) | `60 %` das células tocadas nas densas; líquido `≤ 10 %` no melhor caso, conformes piores, `+4 B`/célula |
 | ⛔ o `cs_varre` — D1 (as famílias presentes) e D2 (`4` px por fio) RECUSADOS (§6.6) | o prefixo vale no MÁXIMO `0,10` ms nas densas da iGPU (ablação `V0`); o resto é memória. Sobra o prefixo por SUBGRUPO, tecto `0,10` ms, não construído |
-| ✅ a variante COMPLETA (com tracejado) — no regime corre a ENXUTA (§6.5) | ✅→⏳ as tracejadas grandes esticadas na iGPU: soma `1,17 → 0,95` e parede mediana `1,27 → 1,03` contra o Vello `0,95` (§6.7); o 1.º quadro de uma cena tracejada `78 → 1,6` ms. ⏳ a rodada foi PARADA: densas, RTX e app por medir; gate de fecho e mutações por correr (§6.7) |
+| ✅ a variante COMPLETA (com tracejado) — no regime corre a ENXUTA (§6.5) | ✅→⏳ as tracejadas grandes esticadas na iGPU: soma `1,17 → 0,95` e parede mediana `1,27 → 1,03` contra o Vello `0,95` (§6.7); o 1.º quadro de uma cena tracejada `78 → 1,6` ms. ⏳ a rodada foi PARADA: densas, RTX e app por medir; mutações por correr; gate de fecho ✅ (§6.7) |
 | a mordida do traço rente depois de uma quina | divergência DECLARADA (§9.9), sem acção |
 | ✅ `M6` / `S6` / `S8` e o `fx.glow` que lê o `pump` anterior | fechados (§6.6): `M6` sem código desde §9.8; `S6`/`S8` equivalentes, com número e gate de CPU; o halo pela rota do quadro — e o halo que sumia em TODO quadro por faixas |
 | `fk.rs` duplicado em seis crates (bug #11) | wave própria |
@@ -444,20 +444,22 @@ com o CONTROLO do 1.º quadro sem a medida e uma segunda cena com `4×` as cópi
 **`14/14` nas duas placas** (RTX e iGPU — o `D` com subgrupos de `32` e de `64`), com os dois gates novos
 (`a_cena_nova_mede_a_capacidade_antes_do_primeiro_quadro`, `o_prefixo_por_subgrupo_e_o_mesmo_que_o_de_memoria_de_grupo`).
 
-**⏳ O que NÃO correu (parado por ordem do dono) — o integrador corre antes de fundir:**
+**✅ O gate batched CORREU depois (04/10, nesta árvore, HEAD `518fda62b`, carga `3,7`–`4,7`), tudo verde:**
+nextest-impacted (`BASE=1ad60a1ce`) **`17 580/17 580`** · `CARGO_BUILD_WARNINGS=deny cargo check --workspace
+--all-targets` ✓ · clippy `-D warnings --all-targets --all-features` de `ph2d-shape-gpu`, `ph2d-gpu` e `ph2d-app-motion` ✓ ·
+`fmt --check` ✓ · censos **`127/127`** (`12/12`) · machete ✓ · `ph2d-shape-gpu --test it --ignored` **`14/14`** na RTX e
+**`14/14`** na iGPU · `motion_shape_placa::gpu_tests --ignored --skip sonda_` `5/5` · `ph2d-gpu-cook formas --ignored`
+`2/2` · `ph2d-render --lib motion_fx` `26/26` · `ph2d-gpu device_enables…` `1/1` · o tecto de LOC (`architecture_workspace_file_loc_cap`) ✓.
 
-1. o gate batched: `BASE=1ad60a1ce bash scripts/nextest-impacted.sh` · `CARGO_BUILD_WARNINGS=deny cargo check
-   --workspace --all-targets` (o `ph2d-gpu` é foundational: toda a árvore recompila) · clippy `-D warnings`
-   de `ph2d-shape-gpu`, `ph2d-gpu` e `ph2d-app-motion` · `fmt --check` · `censos-da-arvore-combinada.sh` ·
-   machete · `motion_shape_placa::gpu_tests --ignored` · `cargo test -p ph2d-gpu-cook formas -- --ignored` ·
-   `ph2d-render --lib motion_fx`;
-2. as mutações dos pedaços (arnês por escrever; as previstas no doc 121 §9.15 — o ajuste da contagem a `1`,
+**⏳ O que continua por correr:**
+
+1. as mutações dos pedaços (arnês por escrever; as previstas no doc 121 §9.15 — o ajuste da contagem a `1`,
    o traço adiado nunca emitido, o prefixo das escritas deslocado, a reserva sem as pontas, o c2 desligado e
    a cena nova sem `medir_ja`, a correção da fronteira da célula no subgrupo, esta só na iGPU);
-3. a medição que faltou: densas da iGPU (o critério do B1 e do D), a RTX inteira (nenhum arranjo pode
+2. a medição que faltou: densas da iGPU (o critério do B1 e do D), a RTX inteira (nenhum arranjo pode
    piorar `+10 %`), o app (`mede_formas_na_placa.sh`, `=127` densa contínua e tracejada — e a memória das
    arestas, que o B2 corta), os registos (`registos_dos_shaders.sh`);
-4. o smoke ao dono: NÃO compilado nem fotografado.
+(o smoke está compilado e fotografado: §7.4.)
 
 **Decisões técnicas registadas:** (i) o **A1 fica** apesar do critério combinado: imagem igual, `−0,06` ms
 sem regressão em arranjo nenhum medido; a régua dele pressupunha que as voltas eram o custo, e a ablação
@@ -561,6 +563,26 @@ halo é o mesmo de antes.
 4. Deu errado se: a forma aparecer sem brilho nenhum (era o que acontecia antes), ou se o brilho aparecer
    deslocado da forma (ao lado em vez de à volta). Para comparar com o desenho antigo, ponha
    `PH2D_FORMAS_NA_PLACA=0` antes de `cargo`: o brilho tem de ser parecido.
+
+### §7.4 — Smoke da §6.7 (a `=127` tracejada, pela placa)
+
+Binário já compilado: `rm -rf target/*/incremental` e `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`
+2× sobre `518fda62b`; a 2.ª saída: `Finished smoke profile [optimized] target(s) in 0.20s`, zero `Compiling`. Fotografada a
+`1930 × 1040` na tela virtual (RTX): com a placa `1 024` cópias «pela PLACA (do dispositivo)», `16,7 ms` (`60 fps`),
+`cpu-encode 5,3 ms`; com `PH2D_FORMAS_NA_PLACA=0` «pela cena Vello», `60 fps`, `cpu-encode 15,4 ms`. As duas imagens com o
+contorno tracejado igual.
+
+1. No terminal:
+   ```
+   cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=127 PH2D_TRACO_ESTICADO_TRACEJADO=1 cargo run -p ph2d-host-desktop --profile smoke
+   ```
+2. Espere a janela abrir; não precisa clicar em nada: são as estrelas amarelas esticadas com o contorno azul em traços, a
+   mexerem com a simulação (os cartões Vortex, Attractor e Curl Noise no grafo de baixo).
+3. Tem de acontecer: a cena aparece já certa desde o primeiro instante (sem um engasgo ao abrir), os traços certinhos, nada a
+   piscar, e a barra de baixo mostra cerca de 60 fps.
+4. Deu errado se: a janela engasgar ao abrir a cena, os traços faltarem, ficarem tortos ou piscarem, ou a barra cair muito
+   abaixo de 60. Para comparar com o desenho antigo, ponha `PH2D_FORMAS_NA_PLACA=0` antes de `cargo`: a imagem tem de ser a
+   mesma.
 
 ## §8 — A UMA LINHA proposta para o `CLAUDE.md` §5 (o integrador aplica; ≤ 700 B)
 

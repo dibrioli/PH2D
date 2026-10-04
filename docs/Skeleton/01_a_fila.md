@@ -66,6 +66,16 @@ diz onde ler o mecanismo:
 
 ---
 
+### F54 — ⭐⭐ **A FORMA PRESA DE UM PROJECTO ANTIGO COZE OS EFEITOS VIVOS, sem mover um pixel** (A4 da lista viva, 2026-10-04)
+
+- **O defeito:** uma forma presa ANTES da F51 com efeitos vivos desenhava-os (lei F50) mas o painel de uma forma presa já não os mostra ⇒ invisíveis e não editáveis — a lei do dono «presa não tem efeitos» falhava por omissão.
+- **Lei** (`skin_live_carrega::coze_os_efeitos_presos`, chamada pela shell NO QUADRO antes da pele, `fase_vector_view_and_drives`): a fonte guardada passa a ser a que o Bind de hoje faria — o MESMO cozido que a F50 desenha (`skin_desenho_efeitos::coze_para_guardar`: a geometria cozida em repouso com as voltas em nós, o campo do contorno cozido resolvido nos eixos dos TENDÕES guardados, a tabela dele), `efeitos_cozidos = true`, e a pilha sai da cena. Uma pilha só de efeitos desligados sai sem cozer. Fica como está: sem campo (bind anterior a 2026-09-20) e com offset de camada (`NaoServe`) — cozê-las mudaria o desenho. ⚠️ Por QUADRO e não só ao abrir: vale para abrir, desfazer e colar; depois da 1.ª vez custa ver uma pilha vazia por forma presa (sem clonar nada). Nenhum degrau de schema (o campo `efeitos_cozidos` já existe).
+- **Gates** (`skin_live_carrega_tests.rs`): `cozer_no_carregamento_nao_move_um_pixel` — *Twist* num rectângulo e *Zig Zag* num de quinas redondas, ponta a `60°`: desvio `0` ao bit; a pilha sai, a fonte fica marcada, uma 2.ª vez devolve `0`; ⛔ controlo = a cura ingénua (a geometria cozida com o campo da FONTE) desvia `3,83` / `0,48`. `a_shell_coze_antes_de_desenhar_a_pele` (costura: a ordem na fase do quadro).
+- **Mutação 7/7** (sem o campo do cozido · sem a marca · a pilha fica · a pele não se grava · a shell não chama · eixos vazios — e a guarda «não coze uma fonte já cozida», que SOBREVIVIA: estava errada, deixava fora da lei uma forma cozida que volta a ter pilha por colar/desfazer ⇒ saiu, gate `uma_forma_ja_cozida_com_pilha_nova_coze_outra_vez`, e a guarda reposta sangra).
+- Sem smoke ao dono: por desenho NADA muda na tela (o gate é o juiz); o dono vê-o só se abrir um projecto antigo com uma forma presa e efeitos.
+
+---
+
 ### F53 — ⭐⭐ **PRENDER UM *REPEATER* DENSO DEIXA DE PARAR A TELA** (A3 da lista viva, 2026-10-04)
 
 - **Medido** (release, `load ~10`; `pesos_preco_tests::diag_o_preco_do_campo_por_etapa`, a barra com *Repeater* `N × N` que gira): a malha do domínio custava `0,1` / `17` / `102` / `401` / `743 ms` a `1` / `5²` / `13²` / `25²` / `39²` cópias (`1 024` anéis, `131 072` pontos) — a cerca de cobertura da grelha (`dentro` e «a fronteira toca a célula») varria TODOS os anéis em cada pergunta. O solver não pesava (com as cópias espalhadas os ossos não caem no domínio e ele responde `None` ⇒ a lei derivada). O Bind inteiro (`skin_live_efeitos_tests::diag_o_preco_do_bind_de_um_repeater_denso`, a fixtura `40 × 10`): `21` / `102` / `206` / `343 ms`. O `smoke` herda o `release` ⇒ era o que o dono sentiria como tela parada; os «10 min em DEBUG» eram da `ph2d-vec-skin` a `opt-level 0` nos testes.

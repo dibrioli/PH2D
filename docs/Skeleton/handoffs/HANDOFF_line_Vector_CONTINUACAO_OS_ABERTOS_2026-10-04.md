@@ -92,7 +92,12 @@ união); quatro ficheiros cortados abaixo do tecto de LOC.
   o faz para a pilha viva), malha do campo mais grossa acima de N contornos, ou um tecto de cópias
   com a razão no painel. Nenhum número sem a tabela ao lado.
 
-### A4 — ⏳ Projectos ANTIGOS: forma presa com efeitos vivos
+### A4 — ✅ FEITO (F54, `a6c3dae04`): a forma presa de um projecto antigo coze os efeitos vivos
+
+> No quadro, antes da pele: a fonte que o Bind de hoje faria (o mesmo cozido da F50, campo do
+> contorno cozido nos eixos dos tendões guardados) — desvio `0` ao bit, controlo `3,83`/`0,48`.
+> Sem degrau de schema. Detalhe: fila §F54.
+
 
 - Uma forma presa ANTES de 03/10 que tenha efeitos continua a desenhá-los (a lei F50, agora em
   `skin_desenho_efeitos.rs`), mas o painel de uma forma presa só mostra a frase — os efeitos ficam
@@ -110,6 +115,21 @@ união); quatro ficheiros cortados abaixo do tecto de LOC.
   sobre o contorno da ARTE (pixels, na `attach_skin_meshes`). Ver fila §F49 «LIMITE CONHECIDO».
 - No *Zig Zag* muito dobrado (`~110°`) os dentes de dentro encavalam-se e fecham buraquinhos REAIS (a
   imagem também os mostra).
+
+### A6 — ⏳ (novo, 04/10) Contornos FECHADOS da parte de trás quando a união NÃO corre
+
+- A F52 corta só os ABERTOS: o contorno fechado é da união do contacto. Mas a união só corre quando
+  é neutra em repouso (`Preparado::uniao_neutra`); numa forma cujos contornos se sobrepõem já em
+  repouso (as cópias de um *Repeater*, a agulha de um *Bloat* forte) o traço de um contorno fechado
+  de trás continua a pintar por cima da frente numa dobra forte. Não fotografado. Desenho provável:
+  a mesma `Posada` com a lei aplicada ao TRAÇO dos fechados (o preenchimento não se corta), ou
+  partir a forma em camadas por chave. Medir antes (CLAUDE.md §5.0).
+
+### A7 — (novo, 04/10, pequeno) O recorte da F52 paga `0,25 ms` por forma com riscas mesmo SEM dobra
+
+- `so_o_que_se_ve` posa a malha e amostra as riscas em toda pose (`diag_o_preco_do_recorte_por_quadro`,
+  release). Uma saída rápida (nenhum triângulo virado e nenhuma caixa de triângulos de chave maior a
+  sobrepor-se a outra não vizinha) pouparia o caso comum. Só se o preço aparecer numa cena cheia.
 
 ## 2. Lições da janela de 03–04/10 (morderam)
 

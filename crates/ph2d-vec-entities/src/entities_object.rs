@@ -99,18 +99,29 @@ fn vector_only(w: &ph2d_ecs::World, p: Entity) -> bool {
 }
 
 /// As CABEÇAS soltas: o ancestral mais alto de cada forma sem objecto por cima cuja sub-árvore só
-/// tem vetor (uma moldura leva os filhos; um envelope, a gaiola), fora das que estão em gesto.
+/// tem vetor (uma moldura leva os filhos; um envelope, a gaiola). Uma cabeça com QUALQUER forma em
+/// gesto debaixo dela espera — levá-la a meio do traço deslocaria a forma de baixo do cursor.
 /// Ordem do mapa (`BTreeMap`) — determinística.
 fn loose_heads(sim: &SimWorld, map: &VecEntityMap, drawing: &[VecPathId]) -> Vec<Entity> {
     let w = sim.world();
-    let in_gesture = |e: Entity| {
-        w.get::<VecPathRef>(e)
-            .is_some_and(|r| drawing.contains(&r.0))
+    let in_gesture = |root: Entity| {
+        let mut stack = vec![root];
+        while let Some(e) = stack.pop() {
+            if w.get::<VecPathRef>(e)
+                .is_some_and(|r| drawing.contains(&r.0))
+            {
+                return true;
+            }
+            if let Some(kids) = w.get::<ph2d_ecs::Children>(e) {
+                stack.extend(kids.iter().copied());
+            }
+        }
+        false
     };
     let mut heads: Vec<Entity> = Vec::new();
     for bits in map.values() {
         let e = Entity::from_bits(*bits);
-        if w.get_entity(e).is_err() || in_gesture(e) || object_of(sim, e).is_some() {
+        if w.get_entity(e).is_err() || object_of(sim, e).is_some() {
             continue;
         }
         let mut head = e;

@@ -81,8 +81,14 @@ fn a_shape_born_behind_the_object_enters_at_its_back() {
         .entity_mut(o)
         .insert(RootOrder(below.max(1)));
     adopt_loose(&mut sim, &map, Some(o), &[], "Vector");
+    ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
     let ea = bits(&map, a);
-    let order = |e| sim.world().get::<SiblingOrder>(e).map(|s| s.0);
+    let order = |e| {
+        sim.world()
+            .get::<SiblingOrder>(e)
+            .expect("ordem entre irmãs")
+            .0
+    };
     assert!(
         order(ef) < order(ea),
         "o preenchimento não foi para o fundo"
@@ -219,4 +225,27 @@ fn the_click_stops_at_the_object_boundary() {
     assert_eq!(super::super::selection::selection_root(&sim, ea), ea);
     assert_eq!(top_within_object(&sim, ea), ea);
     assert_eq!(top_within_object(&sim, o), o);
+}
+
+/// ⭐⭐ GATE — **a moldura com um filho EM GESTO espera inteira**: a cabeça sobe do filho à
+/// moldura, e levá-la para o objecto a meio do traço mudaria o pai de quem a mão está a escrever.
+#[test]
+fn a_head_with_a_shape_in_gesture_under_it_waits() {
+    let (mut sim, mut scene, mut map) = setup();
+    let o = spawn_object(&mut sim, "Vector", ph2d_core::Vec2::new(4.0, 4.0));
+    let frame = scene.push_path(rectangle([0.0, 0.0], [9.0, 9.0]));
+    let kid = scene.push_path(rectangle([1.0, 1.0], [2.0, 2.0]));
+    sync(&mut sim, &mut scene, &mut map);
+    let (ef, ek) = (bits(&map, frame), bits(&map, kid));
+    sim.world_mut()
+        .entity_mut(ek)
+        .remove::<RootOrder>()
+        .insert(ChildOf(ef));
+    assert_eq!(adopt_loose(&mut sim, &map, Some(o), &[kid], "Vector"), 0);
+    assert_eq!(
+        parent(&sim, ef),
+        None,
+        "a moldura saiu a meio do traço do filho"
+    );
+    assert_eq!(adopt_loose(&mut sim, &map, Some(o), &[], "Vector"), 1);
 }

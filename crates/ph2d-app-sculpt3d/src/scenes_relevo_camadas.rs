@@ -75,7 +75,7 @@ pub(crate) fn arma(cena: &mut crate::Sculpt3dScene) {
 }
 
 /// O plano a `16x`, a pilha, a base com as riscas e a `Layer 2` com a faixa.
-fn pinta_as_camadas(o: &mut crate::SceneObject) {
+pub(crate) fn pinta_as_camadas(o: &mut crate::SceneObject) {
     let crate::objects::SceneObject {
         stack,
         tinta,

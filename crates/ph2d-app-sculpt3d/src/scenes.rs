@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 55;
+pub const CENAS: u32 = 56;
 
 /// ⭐⭐ **O PRÓLOGO — o que uma cena ARMA depois de a cena nascer.**
 ///
@@ -65,6 +65,7 @@ pub(crate) fn prologo(cena: &mut crate::Sculpt3dScene) {
     tinta_fina::arma(cena);
     vizinhanca::arma(cena);
     relevo_camadas::arma(cena);
+    relevo_borrado::arma(cena);
 }
 
 /// **A env do roteador, lida DENTRO da crate.**
@@ -528,6 +529,10 @@ pub(crate) mod plano;
 /// pincel é inerte **por lei** (espec §6.3.3).
 #[path = "scenes_projectar.rs"]
 pub(crate) mod projectar;
+/// **O RELEVO BORRADO** (`=56`) — ver [`relevo_borrado`]. ⚠️ A pintura da `=55` com um Gaussiano
+/// por cima, a raio `0` (`docs/3D/30` §20).
+#[path = "scenes_relevo_borrado.rs"]
+pub(crate) mod relevo_borrado;
 /// **O RELEVO POR CAMADA** (`=55`) — ver [`relevo_camadas`]. ⚠️ Ela abre na peça
 /// GROSSA da `=52`, a `16x`, com duas camadas de impasto já pintadas (`docs/3D/30` §15).
 #[path = "scenes_relevo_camadas.rs"]

@@ -226,3 +226,57 @@ fn o_brilho_por_cima_nao_mexe_no_relevo_da_peca() {
     let (depois, _) = da_placa(&mut s, &gpu);
     assert_eq!(bits(&depois), bits(&antes));
 }
+
+/// 🔎 A cena `=56` fotografada a raio `0` e com o raio a meio e no fim do curso (o que o dono vê ao
+/// arrastar), em `$PH2D_SONDA_DIR`.
+#[test]
+#[ignore = "sonda: precisa de adaptador e de PH2D_SONDA_DIR"]
+fn diag_a_cena_56_antes_e_depois_do_raio() {
+    use ph2d_tool_painter::PieceLayerOp;
+    let Some(dir) = std::env::var_os("PH2D_SONDA_DIR") else {
+        return;
+    };
+    let dir = std::path::PathBuf::from(dir);
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.tinta_nivel = Some(crate::scenes::relevo_camadas::NIVEL);
+    s.sync_mesh(&gpu);
+    let mut p = painter_impasto();
+    quadro(Some(&mut s), Some(&mut p));
+    {
+        let o = &mut s.objects[s.active];
+        crate::scenes::relevo_camadas::pinta_as_camadas(o);
+        let mesh = o.stack.mesh().clone();
+        if let Some(pl) = o.pilha.as_mut() {
+            crate::scenes::relevo_borrado::poe_o_desfoque(pl, &mesh);
+        }
+        crate::tinta_da_peca::pilha::recompoe(o);
+    }
+    s.sync_mesh(&gpu);
+    quadro(Some(&mut s), Some(&mut p));
+    let desfoque = pilha(&s).pilha().root()[0];
+    let ph2d_tool_painter::SpatialUnits::Surface { size } = p.panel_spatial_units() else {
+        panic!("unidades da peça")
+    };
+    for (nome, frac) in [("raio0", 0.0f32), ("raio50", 0.5), ("raio100", 1.0)] {
+        let mut nova = p.panel_layers().expect("pilha").clone();
+        nova.adjustment_mut(desfoque).expect("ajuste").params =
+            AdjustmentParams::GaussianBlur(GaussianBlurParams {
+                radius: frac * ph2d_tool_painter::SURFACE_RADIUS_MAX * size,
+            });
+        assert!(
+            s.aplica_pedidos_da_pilha(vec![PieceLayerOp::Metadata {
+                stack: nova,
+                gesture: None,
+            }])
+            .is_none()
+        );
+        quadro(Some(&mut s), Some(&mut p));
+        s.sync_mesh(&gpu);
+        super::painter::fotografa(
+            &gpu,
+            &mut s,
+            dir.join(format!("cena56_{nome}.png")).as_os_str(),
+        );
+    }
+}

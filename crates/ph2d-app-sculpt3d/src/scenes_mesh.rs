@@ -165,7 +165,10 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     }
     // ⭐ **A `=54` abre na MESMA peça grossa**: a aresta da malha tem de se ver
     // (o arame) para o desfoque mostrar que a atravessa sem costura.
-    if vizinhanca::vizinhanca_scene() || relevo_camadas::relevo_camadas_scene() {
+    if vizinhanca::vizinhanca_scene()
+        || relevo_camadas::relevo_camadas_scene()
+        || relevo_borrado::relevo_borrado_scene()
+    {
         return tinta_fina::peca();
     }
     // ⭐ **A `=40` abre na MESMA enrugada, e a razão é a mesma da `=34` vista de

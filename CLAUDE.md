@@ -11,7 +11,7 @@
 > Com mais de 200 mil tokens nenhum subagente de modelo menor conseguia sequer começar. A história
 > que aqui esteve vive **verbatim** em [`docs/archive/estado-2026-10-02/`](docs/archive/estado-2026-10-02/README.md).
 
-## §0 — Inegociáveis (memorize os 10)
+## §0 — Inegociáveis (memorize os 11)
 
 0. **O alvo é o EXTRAORDINÁRIO e o teto é o do HARDWARE, nunca o do caminho lento.** Antes de escrever
    qualquer limite (`MAX_*`, faixa de slider, «por ora»), **MEÇA** e escreva o número da medição com a
@@ -48,6 +48,12 @@
    **por passo**. **Passo 1 é a triagem de licença por ARTEFACTO instalado** (`pacman -Qi` em cada
    biblioteca) — há portas permissivas abertas (Godot MIT · OpenToonz BSD-3 · `libmypaint` ISC).
    Método, arsenal e recusas: [`docs/_ComoInvestigarApps/`](docs/_ComoInvestigarApps/README.md).
+10. **Problemas EQUIVALENTES resolvem-se num ÚNICO bloco** (ordem do dono, 04/10: *«acabar esse app
+    antes que a morte chegue»*). Antes de agir, junte TODOS os casos da mesma família — defeitos,
+    variantes, alternativas, medições, gates — e resolva-os de uma vez: um plano, um lote de binários,
+    UMA rodada de medição intercalada, um gate batched. Série só quando o resultado de um passo muda o
+    seguinte — e diga-o. Medido em 04/10: quatro rodadas em série custaram `~2 h` de espera
+    ([feedback](project-memory/feedback_plan_every_measurement_upfront_and_batch_it.md)).
 
 ## §1 — Roteador leia-por-tarefa (leia SÓ o que sua tarefa exige)
 

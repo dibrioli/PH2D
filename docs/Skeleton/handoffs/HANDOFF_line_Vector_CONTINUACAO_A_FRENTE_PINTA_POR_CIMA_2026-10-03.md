@@ -6,6 +6,11 @@
 > (F50…F50-k) está na [fila §F50](../01_a_fila.md) e no
 > [handoff de 02/10](HANDOFF_line_Vector_CONTINUACAO_FORMAS_COM_EFEITOS_2026-10-02.md).
 
+> ⛔⛔ **ACTUALIZADO no fim de 2026-10-03:** o §2 (o botão) foi FEITO e RETIRADO na mesma tarde — o
+> dono escolheu simplificar: **o Bind coze os efeitos e uma forma presa não recebe efeitos** (fila
+> **§F51**). O §2-b (o peso viaja com o desenho) continua por perguntar ao dono depois do smoke da
+> F51 — com os efeitos cozidos no Bind, a pergunta passa a ser sobre o desenho COZIDO. O §3 segue.
+
 ## 0. Onde está
 
 | | |

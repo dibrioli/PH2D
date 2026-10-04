@@ -174,10 +174,14 @@ impl PhysicsBridge {
     }
 
     /// A velocidade de AGORA de um corpo: a do mover de vista de cima se ele tiver um (é a que ele
-    /// vai seguir), senão a do solver.
+    /// vai seguir: o comando MAIS o empurrão de um golpe, a mesma soma do mover), senão a do solver.
     fn velocidade_de(&self, e: Entity) -> V2 {
         if let Some(st) = self.topdown_state.get(&e) {
-            return [f64::from(st.velocity[0]), f64::from(st.velocity[1])];
+            let v = [
+                st.velocity[0] + st.knockback[0],
+                st.velocity[1] + st.knockback[1],
+            ];
+            return [f64::from(v[0]), f64::from(v[1])];
         }
         self.bodies
             .get(&e)

@@ -524,3 +524,78 @@ fn uma_porta_comprida_a_andar_desvia_se_pela_forma() {
     );
     assert!(dist(fim, (4.0, y)) < 0.15, "não chegou: {fim:?}");
 }
+
+/// ⭐ (o aberto da W5) **Um corpo EMPURRADO por um golpe é visto a andar** — o desvio lê a velocidade que o
+/// mover de vista de cima vai seguir, e essa é o comando MAIS o empurrão. Um herói acima do caminho
+/// leva um golpe que o atira para baixo, ATRAVÉS do caminho do agente, e acaba longe do outro lado: o
+/// agente segue a direito. Visto parado em cada tique (sem o empurrão), o herói parecia um obstáculo
+/// no caminho. CONTROLO: o empurrão a zero (o herói fica parado fora do caminho).
+#[test]
+fn um_corpo_empurrado_por_um_golpe_e_visto_a_andar() {
+    const Y0: f32 = 1.5;
+    const K: f32 = 14.0;
+    use ph2d_physics_ecs::{Damage, Health};
+    let corrida = |k: f32| {
+        let mut sim = SimWorld::new();
+        regiao(&mut sim);
+        let (rb, _) = corpo();
+        let heroi = sim
+            .world_mut()
+            .spawn((
+                Name::new("Hero"),
+                rb,
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.4 },
+                    ..Collider::default()
+                },
+                mover(),
+                Health::default(),
+                Transform::from_translation(Vec2::new(0.0, Y0)),
+            ))
+            .id();
+        // A fonte do golpe, sensor, logo ACIMA do herói: o empurrão sai do centro dela para o dele.
+        sim.world_mut().spawn((
+            Name::new("Golpe"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.4 },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, Y0 + 0.4)),
+            Damage {
+                amount: 1.0,
+                knockback: k,
+                ..Damage::default()
+            },
+        ));
+        let quem = agente(
+            &mut sim,
+            "A",
+            (-4.0, 0.0),
+            NavTarget::Point([5.0, 0.0]),
+            true,
+        );
+        corre(&mut sim, &mut PhysicsBridge::new(), &[quem, heroi], 1, 90)
+    };
+    let (com, sem) = (corrida(K), corrida(0.0));
+    let fora = |c: &[Vec<(f32, f32)>]| c.iter().map(|ps| ps[0].1.abs()).fold(0.0f32, f32::max);
+    let (f_com, f_sem) = (fora(&com), fora(&sem));
+    eprintln!("fora do eixo: com o golpe {f_com:.4} · sem {f_sem:.4}");
+    // A fixtura contém o fenómeno: o herói CRUZA o caminho à frente do agente e acaba longe dele.
+    let cruza = com
+        .iter()
+        .position(|ps| ps[1].1 < 0.0)
+        .expect("o herói cruza o caminho");
+    assert!(
+        com[cruza][0].0 < -2.5 && com.last().expect("a corrida")[1].1 < -2.0,
+        "o herói não cruzou à frente do agente: {:?}",
+        com[cruza]
+    );
+    // Visto PARADO em cada tique, o herói que cruza parecia um obstáculo no caminho: o agente desviava
+    // `0,80 m` para nada (medido, sem o empurrão na velocidade). A andar, ele já vai a sair.
+    assert!(f_com < 0.05, "desviou-se de quem já ia a sair: {f_com}");
+    assert!(f_sem < 0.05, "o CONTROLO desviou-se: {f_sem}");
+}

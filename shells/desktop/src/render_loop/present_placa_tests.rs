@@ -26,7 +26,7 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     // ⭐ doc 121 §9.14 — a camada DESENHA-SE antes dos passes de luz (o halo redesenha-a).
     let em_present = |agulha: &str| present.find(agulha).expect(agulha);
     assert!(
-        em_present("self.motion_shell.placa.desenha(") < em_present("super::present_fx::run("),
+        em_present("let _ = placa.desenha(") < em_present("super::present_fx::run("),
         "as formas desenham-se ANTES do halo que as redesenha"
     );
     assert!(
@@ -61,5 +61,7 @@ fn o_halo_recebe_o_buffer_da_placa_e_a_camada_das_formas() {
     let fx = include_str!("present_fx.rs");
     assert!(fx.contains("halo_do_quadro(g.motion, g.formas.desenhou())"));
     assert!(fx.contains("            &halo.cpu,\n            halo.placa,"));
-    assert!(fx.contains("if halo.formas_da_placa && !g.formas.redesenha_em(gpu, g.motion_fx.rt_view(), tamanho)"));
+    assert!(fx.contains(
+        "if halo.formas_da_placa && !g.formas.redesenha_em(gpu, g.motion_fx.rt_view(), tamanho)"
+    ));
 }

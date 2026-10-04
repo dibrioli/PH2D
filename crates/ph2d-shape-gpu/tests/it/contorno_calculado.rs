@@ -25,8 +25,8 @@ use ph2d_vector::{BezPath, Cap, Circle, Join, Shape, Stroke};
 
 use super::paridade_com_o_vello::{
     Copia, Forma, anel, bytes_de_textura, circulo, copias, esticadas, estrela, gpu,
-    pelo_passe_celulas, pelo_passe_com, pelo_passe_em_etapas, pelo_passe_observado, pelo_passe_rota,
-    separa, textura, zigue_zague,
+    pelo_passe_celulas, pelo_passe_com, pelo_passe_em_etapas, pelo_passe_observado,
+    pelo_passe_rota, separa, textura, zigue_zague,
 };
 
 /// As MARCAS de um traço: um disco pequeno pintado com a cor dele, fora do contorno da estrela.
@@ -578,7 +578,10 @@ fn o_redesenho_e_o_mesmo_desenho() {
             .filter(|(a, b)| a != b)
             .count();
         eprintln!("  quadro {k}: {tinta} px de tinta no redesenho · {difere} px diferentes");
-        assert!(tinta > 10_000, "quadro {k}: o redesenho nao desenhou ({tinta} px)");
+        assert!(
+            tinta > 10_000,
+            "quadro {k}: o redesenho nao desenhou ({tinta} px)"
+        );
         assert_eq!(difere, 0, "quadro {k}: o redesenho difere do desenho");
     }
 }

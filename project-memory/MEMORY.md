@@ -50,7 +50,7 @@
 - ⛔⛔ [Um CORTE de LOC move os imports também — a lint corrida antes do corte não vale, e foi o build do dono que apanhou os órfãos](feedback_a_cut_moves_the_imports_too_relint_after_it.md)
 - ⭐⭐ [Constante cara DENTRO do construtor de uma árvore corre onde a ÁRVORE é construída — 6 → 3 852 por quadro, com a imagem perfeita](feedback_a_constant_folded_into_a_tree_is_recomputed_wherever_the_tree_is.md)
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
-- 📚 [Comunicação & decisão: mais (64) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
+- 📚 [Comunicação & decisão: mais (65) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente
 - [Perigos de git/edição (15)](reference_topic_git_hazards.md)

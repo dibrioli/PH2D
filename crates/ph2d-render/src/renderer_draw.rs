@@ -162,6 +162,7 @@ impl SpriteRenderer {
     /// this frame: the FX target has to place the Motion pixels at the SAME screen
     /// coordinates as the scene, or the glow lands where the sparks aren't
     /// ([[feedback_derived_coordinate_seed_must_match_sample]]).
+    #[allow(clippy::too_many_arguments)]
     pub fn render_instances_only(
         &mut self,
         target: &wgpu::TextureView,

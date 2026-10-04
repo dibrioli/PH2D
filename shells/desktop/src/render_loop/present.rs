@@ -464,10 +464,8 @@ impl crate::App {
         let tamanho = (window_size.width, window_size.height);
         let geos = &motion.placa_geometrias;
         let buffer = do_dispositivo.map(|f| f.buffer());
-        let _ = self
-            .motion_shell
-            .placa
-            .desenha(surface.gpu(), tamanho, geos, buffer);
+        let placa = &mut self.motion_shell.placa;
+        let _ = placa.desenha(surface.gpu(), tamanho, geos, buffer);
         // Passes 1b-bis e 1c: **OS PASSES DE LUZ** — a sprite emissiva e o glow do
         // Motion. Cortados para o irmão [`super::present_fx`] pelo tecto de LOC, e o
         // corte é por RESPONSABILIDADE: os dois somam luz sobre o `game_rt` antes do

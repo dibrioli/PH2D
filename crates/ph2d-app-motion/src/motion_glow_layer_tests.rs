@@ -210,7 +210,11 @@ fn a_device_frame_halo_never_reads_the_stale_cpu_lists() {
         },
     );
     let cpu = halo_do_quadro(&m, false);
-    assert_eq!(cpu.cpu.len(), 2, "CONTROLO: no quadro da CPU a sprite e o tile entram");
+    assert_eq!(
+        cpu.cpu.len(),
+        2,
+        "CONTROLO: no quadro da CPU a sprite e o tile entram"
+    );
     assert!(cpu.placa.is_none());
     m.gpu_live = true;
     let placa = halo_do_quadro(&m, true);
@@ -237,8 +241,15 @@ fn shapes_drawn_by_the_shape_pass_leave_the_tile_path() {
         },
     );
     let com_a_placa = halo_do_quadro(&m, true);
-    assert_eq!(com_a_placa.cpu.len(), 1, "só a sprite: a forma vem da camada");
+    assert_eq!(
+        com_a_placa.cpu.len(),
+        1,
+        "só a sprite: a forma vem da camada"
+    );
     assert!(com_a_placa.cpu.iter().all(|r| r.texture_id != 77));
     let sem = halo_do_quadro(&m, false);
-    assert!(sem.cpu.iter().any(|r| r.texture_id == 77), "CONTROLO: sem a camada, o tile");
+    assert!(
+        sem.cpu.iter().any(|r| r.texture_id == 77),
+        "CONTROLO: sem a camada, o tile"
+    );
 }

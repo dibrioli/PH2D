@@ -20,7 +20,7 @@ FX = R + "/shells/desktop/src/render_loop/present_fx.rs"
 
 GPU = ["cargo", "test", "-p", "ph2d-shape-gpu", "--release", "--", "--ignored"]
 HALO = ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "motion_glow_layer"]
-SHELL = ["cargo", "test", "-p", "ph2d-host-desktop", "--bin", "ph2d-host-desktop", "present_placa"]
+SHELL = ["cargo", "test", "-p", "ph2d-host-desktop", "--bin", "ph2d-host-desktop", "placa_tests"]
 
 # (nome, comando, [(ficheiro, âncora, substituição, nº de ocorrências)])
 MUTS = [
@@ -54,7 +54,7 @@ MUTS = [
     ("H2 as formas da placa tambem pelo tile", HALO, [(H,
         "let vetores: &[VectorInstance] = if formas_da_placa {", "let vetores: &[VectorInstance] = if false {", 1)]),
     ("H3 a camada deixa de se desenhar antes do halo", SHELL, [(PR,
-        "        let _ = self.motion_shell.placa.desenha(surface.gpu(), tamanho, geos, buffer);\n", "", 1)]),
+        "        let _ = placa.desenha(surface.gpu(), tamanho, geos, buffer);\n", "", 1)]),
     ("H4 o halo sem o buffer do dispositivo", SHELL, [(FX,
         "            &halo.cpu,\n            halo.placa,", "            &halo.cpu,\n            None,", 1)]),
     ("H5 o halo sem o redesenho das formas", SHELL, [(FX,

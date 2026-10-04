@@ -45,6 +45,14 @@ impl BrushSettings {
     pub fn accumulate_offered(&self) -> bool {
         !self.paints_no_color() && !self.watercolor_active && !self.impasto && !self.wetpaint
     }
+
+    /// **O meio OFERECE a Shape Color Ramp?** — a porta única da secção do painel e da pré-visualização
+    /// da Shape. Não no Wet Paint (recusada, doc 46 §1): a água leva UMA cor por carimbo ao fluido, e a
+    /// mistura K–M homogeneíza o carimbo no primeiro passo — a rampa seria apagada pela física.
+    #[must_use]
+    pub fn shape_ramp_offered(&self) -> bool {
+        !self.wetpaint
+    }
 }
 
 /// Strength of the brush's active falloff at normalized distance `t` (`0` = centre, `1` = rim), for

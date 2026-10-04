@@ -45,4 +45,4 @@ recusas medidas.
 | 7 | **Solid**, **Shape Color Ramp** e **fios** na Aquarela | a fazer |
 | 8 | **Composite Brush** no Wet Paint (medido contra o kill-criterion) | a fazer |
 | 9 | **Solid** e **fios** no Wet Paint (medidos contra o kill-criterion) | a fazer |
-| 10 | esconder a **Shape Color Ramp** no Wet Paint | a fazer |
+| 10 | esconder a **Shape Color Ramp** no Wet Paint — `BrushSettings::shape_ramp_offered` (a secção e a pré-visualização da Shape); gate `a_rampa_da_shape_so_onde_o_meio_a_oferece` (vermelho antes); o censo obrigou a apagar a linha da lista | **feito** |

@@ -135,11 +135,6 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     ));
     v.push((
         WetPaint,
-        PAINTER_SHAPE_RAMP_ENABLE,
-        "a fazer: esconder (a mistura K–M do fluido apaga a rampa — recusada, doc 46 §2-10)",
-    ));
-    v.push((
-        WetPaint,
         painter_brush_dab_handle_id(1),
         "o ângulo do carimbo (a pega do gizmo): o mesmo caso do Jitter Rotate — sem Shape nem Grain que \
          siga o carimbo, o carimbo redondo da água não tem ângulo para mostrar",

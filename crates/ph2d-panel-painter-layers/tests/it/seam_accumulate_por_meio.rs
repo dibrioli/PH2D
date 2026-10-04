@@ -51,3 +51,30 @@ fn o_accumulate_e_o_space_attenuation_so_onde_o_meio_os_oferece() {
         }
     }
 }
+
+/// **A Shape Color Ramp não aparece no Wet Paint** (doc 46 §1, recusada: a água leva UMA cor por
+/// carimbo ao fluido, e a mistura K–M homogeneíza-o no primeiro passo — a rampa seria apagada pela
+/// física). A lei é a `BrushSettings::shape_ramp_offered`.
+#[test]
+fn a_rampa_da_shape_so_onde_o_meio_a_oferece() {
+    use ph2d_tool_painter::ids::{PAINTER_SHAPE_RAMP_ENABLE, PAINTER_SHAPE_RAMP_SECTION};
+    for (media, oferece) in [
+        (PaintMedia::Digital, true),
+        (PaintMedia::Watercolor, true),
+        (PaintMedia::Impasto, true),
+        (PaintMedia::WetPaint, false),
+    ] {
+        let ids = pintados(media);
+        for (id, nome) in [
+            (PAINTER_SHAPE_RAMP_SECTION, "cabeçalho Shape Color"),
+            (PAINTER_SHAPE_RAMP_ENABLE, "Use Color Ramp da Shape"),
+        ] {
+            assert_eq!(
+                ids.contains(&id),
+                oferece,
+                "{media:?}: o {nome} {} pintado",
+                if oferece { "NÃO é" } else { "é" }
+            );
+        }
+    }
+}

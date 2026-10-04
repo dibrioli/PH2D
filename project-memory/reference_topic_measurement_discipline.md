@@ -1736,3 +1736,9 @@ a propriedade*. Ver [[reference_topic_mutation_proofs]] · [[reference_topic_gat
   tinha `COPY_SRC` «pela mesma razão») e ponha uma SENTINELA: um valor impossível escrito na CPU que a
   leitura tem de devolver. Uma régua que lê zeros concorda com tudo o que é zero — a metade da
   fixtura sem fenómeno passa, e só a metade COM fenómeno reprova. Ver [[reference_topic_gate_discipline]].
+- ⛔⛔ **UM CENSO DE ROTA CONTA O COZIMENTO, NÃO O DESENHO** — as 4 cenas «fora da placa» do doc 121
+  §9.9 já desenhavam as formas pela placa; leia `[motion-route]` E `[formas]` antes de curar
+  ([[feedback_a_route_census_counts_the_cook_not_the_draw]], 04/10).
+- ⛔ **UMA CERCA IMPLICADA POR OUTRA NUNCA DECIDE** — a `S6` sobreviveu 3 dias à procura de fixtura;
+  a premissa media-se em CPU (`126 870` lisos, zero acima da cerca)
+  ([[feedback_a_fence_implied_by_another_fence_never_decides]], 04/10).

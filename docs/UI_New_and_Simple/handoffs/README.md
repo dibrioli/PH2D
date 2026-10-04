@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**31 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **31** são handoffs (registro **morto**).
+**33 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **33** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -45,6 +45,8 @@
 | 2026-10-03 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_MODEL.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_MODEL.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-03 — a F3 do Model (Model ▸ Object · Edit) |
 | 2026-10-03 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_SCULPT.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_SCULPT.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-03 — a F3 do Sculpt (Sculpt ▸ Object · Sculpt · Paint) |
 | 2026-10-03 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_OS_MODOS.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_OS_MODOS.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-03 — os modos de edição por objecto (spec/06 F2 + a F3 da Imagem) |
+| 2026-10-04 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-04 — o OBJECTO VETORIAL (contentor), NESTA linha, sem integrar |
+| 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — o OBJECTO VETORIAL (contentor das formas) |
 | 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — a F3 do Vector (Vector ▸ Object · Edit) |
 
 ---

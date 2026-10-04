@@ -282,7 +282,6 @@ impl PhysicsBridge {
 
         // 2.ª passagem: a condução, contra as malhas em dia — pela ordem das ENTIDADES (a da consulta
         // é a das tabelas, que um rebuild do scrub baralha): quem tem a vez de procurar decide-se nela.
-        let mut vez = vez;
         vez.sort_by_key(|v| v.p.entity);
         let mut pedidas: Vec<desvio::Pedida> = Vec::with_capacity(vez.len());
         let mut por_tag = alvo::PorTag::new();

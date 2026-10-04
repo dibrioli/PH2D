@@ -66,18 +66,18 @@ if len(argv) > 1 and argv[1] == "junta":
     DE = (1.0, 0.45, 0.8)
     ALVO = (-0.0562, 0.2449, 0.1013)
     MEIA = 0.14
-# `-- <saida> sobreposta`: o report 4 do dono (04/10, depois da cura da junta): a azul quase toda atrás da
-# verde vista do centro do cromo e, vista de cada ponto dele, ENCOSTADA à verde e meio escondida por ela — a
-# cura recusava o cruzamento na borda e abria um BURACO onde os reflexos se sobrepõem.
+# `-- <saida> sobreposta`: o report 4 do dono (04/10, depois da cura da junta): a azul meio atrás da verde
+# vista do centro do cromo, e a câmara do app (de lado, o reflexo junto ao limbo) — a borda da verde onde a
+# azul fica atrás recuava em DEGRAU («um espaço vazio onde os reflexos deviam sobrepor-se»).
 if len(argv) > 1 and argv[1] == "sobreposta":
     PECAS = [
         ("cromo", (0.0, 0.3, 0.0), 0.3, False, 1.0),
         ("caixa_verde", (0.0, 0.18, 0.72), 0.18, True, 0.15),
-        ("caixa_azul", (0.45, 0.15, 1.9), 0.15, True, 0.5),
+        ("caixa_azul", (0.6, 0.15, 1.8), 0.15, True, 0.5),
     ]
-    DE = (1.0, 0.45, 0.5)
-    ALVO = (-0.0612, 0.2323, 0.1832)
-    MEIA = 0.14
+    DE = (0.861, 0.497, 0.104)
+    ALVO = (-0.0023, 0.2549, 0.2350)
+    MEIA = 0.12
 
 
 def b(p):

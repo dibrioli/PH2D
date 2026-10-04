@@ -185,7 +185,7 @@ fn sonda_da_junta_na_cpu() {
 #[test]
 #[ignore = "precisa de aparelho"]
 fn sonda_da_tira() {
-    let v = &JUNTA;
+    let v = &crate::tests_reflexo_perto::SOBREPOSTA;
     let Some(mut fw) = desenhista(v) else {
         return;
     };
@@ -197,7 +197,8 @@ fn sonda_da_tira() {
     let sem = desenha_ate(v, &mut fw, metal(0.0), 2, true);
     let dsem = camada(&fw, 1);
     let lin = crate::tests_contacto::linear;
-    let tira: Vec<usize> = (0..px.len())
+    let tira: Vec<usize> = crate::tests_reflexo_junta::em_volta_da_verde(v, &px)
+        .into_iter()
         .filter(|&k| {
             let i = (px[k].j * LADO + px[k].i) as usize * 4 + 1;
             (lin(com[i]) - lin(sem[i])).abs() > 0.1

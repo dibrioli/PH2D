@@ -52,9 +52,14 @@ pub(crate) const MARCHA_MIN: u32 = 8;
 pub(crate) const MARCHA_MAX: u32 = 48;
 pub(crate) const PASSO: f32 = 2.0;
 pub(crate) const REFINO: u32 = 6;
-pub(crate) const ESPESSURA: f32 = 0.05;
-/// A franja do contorno (relativa): o peso cai a `0` a esta distância por trás da vizinha.
-pub(crate) const FRANJA: f32 = 0.1;
+/// A espessura (relativa) que um cruzamento tolera por trás da vizinha, e a franja onde o peso cai a `0`.
+/// ⛔ Medido (04/10, 4.º report do dono: «um espaço vazio onde os reflexos deviam sobrepor-se»): a `0,05` /
+/// `0,1` o reflexo ALARGAVA além da vizinha (régua da orla, câmara do app: `0,0255`, `775` grosseiros) e, onde
+/// outra vizinha ficava atrás, a borda certa parecia um buraco ao lado do resto alargado. `0,02` → `0,0169 /
+/// 183`; `0,01` → `0,0166 / 169` (a junta `0,0065 / 0`, o contorno do par `465 → 344` grosseiros, o miolo de
+/// perto `0,0126 → 0,0131`); `0,005` igual a `0,01` (satura: o resto é a face lateral, que a captura não vê).
+pub(crate) const ESPESSURA: f32 = 0.01;
+pub(crate) const FRANJA: f32 = 0.01;
 /// ⭐ **A ARESTA entre duas vizinhas** (o 3.º report do dono, a «junta»): a captura guarda também a média
 /// do QUADRADO da distância, que atravessa toda média (MSAA, octaedro, níveis, filtro linear); onde o
 /// desvio passa esta fracção da distância média, o texel mistura superfícies de distâncias diferentes e a

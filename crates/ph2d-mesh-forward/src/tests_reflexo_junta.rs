@@ -150,9 +150,9 @@ fn entre_dois_reflexos_o_cromo_mostra_o_fundo() {
     );
 }
 
-/// O ENCONTRO (índices em `px`): o raio acerta uma vizinha, a até [`ENCONTRO`] px de um que acerta a OUTRA, e
-/// a mais de `1 px` de quem acerta outra coisa (a faixa de `1 px` de todo contorno é do Cycles pontual).
-pub(crate) fn encontro(v: &Vista, px: &[Px]) -> Vec<usize> {
+/// A ORLA (índices em `px`): o raio não acerta nada, a mais de `1 px` de quem acerta (a faixa do Cycles
+/// pontual) e a até [`ORLA`] px de quem acerta — onde um reflexo ALARGADO além da vizinha aparece.
+pub(crate) fn orla(v: &Vista, px: &[Px]) -> Vec<usize> {
     let l = LADO as i32;
     let mut mapa: Vec<Option<Option<usize>>> = vec![None; (l * l) as usize];
     for p in px {
@@ -163,71 +163,66 @@ pub(crate) fn encontro(v: &Vista, px: &[Px]) -> Vec<usize> {
             .then(|| mapa[(y * l + x) as usize])
             .flatten()
     };
+    let acerta_ate = |i: i32, j: i32, r: i32| {
+        (-r..=r).any(|dy| (-r..=r).any(|dx| matches!(at(i + dx, j + dy), Some(Some(_)))))
+    };
     px.iter()
         .enumerate()
         .filter(|(_, p)| {
             let (i, j) = (p.i as i32, p.j as i32);
-            let Some(Some(k)) = at(i, j) else {
-                return false;
-            };
-            let limpo = (-1..=1).all(|dy| (-1..=1).all(|dx| at(i + dx, j + dy) == Some(Some(k))));
-            let outra = (-ENCONTRO..=ENCONTRO).any(|dy| {
-                (-ENCONTRO..=ENCONTRO).any(|dx| matches!(at(i + dx, j + dy), Some(Some(q)) if q != k))
-            });
-            limpo && outra
+            let limpo = (-2..=2).all(|dy| (-2..=2).all(|dx| at(i + dx, j + dy).is_some()));
+            limpo && at(i, j) == Some(None) && !acerta_ate(i, j, 1) && acerta_ate(i, j, ORLA)
         })
         .map(|(k, _)| k)
         .collect()
 }
 
-/// O raio do ENCONTRO, em px.
-const ENCONTRO: i32 = 24;
+/// A largura da ORLA, em px.
+const ORLA: i32 = 16;
 
-/// ⭐⭐⭐ **Onde dois reflexos se sobrepõem, o da frente tapa o de trás, como no Cycles** — nítido e a
-/// `0,05`: no ENCONTRO (os px que acertam uma vizinha perto da outra) nem buraco nem ponte.
+/// ⭐⭐⭐ **O reflexo de uma vizinha não alarga além dela** — o 4.º report do dono (04/10): curada a junta, a
+/// borda da verde parecia ter um BURACO onde a azul fica atrás; medido, o troço com a azul atrás estava na
+/// posição do Cycles e era o RESTO da borda que alargava (a espessura e a franja da busca). Nítido e `0,05`,
+/// na vista da câmara do app (`SOBREPOSTA`) e na da junta.
 #[test]
 #[ignore = "precisa de aparelho"]
-fn onde_dois_reflexos_se_sobrepoem_nao_ha_buraco() {
-    let v = &SOBREPOSTA;
-    let Some(mut fw) = desenhista(v) else {
-        eprintln!("sem aparelho — o gate não corre aqui");
-        return;
-    };
-    let px = oraculo(v);
-    let e = encontro(v, &px);
+fn o_reflexo_nao_alarga_alem_da_vizinha() {
     let mut falhas = Vec::new();
-    for (rug, cols) in [(0.0f32, (0usize, 2usize)), (v.rug2, (1, 3))] {
-        let viz = desenha(v, &mut fw, metal(rug), true);
-        let solo = desenha(v, &mut fw, metal(rug), false);
-        let m = mede(&px, &e, (&viz, &solo), cols);
-        foto(&px, &e, (&viz, &solo), cols, &format!("sobreposta_{rug}"));
-        // CONTROLO: sem as capturas as vizinhas somem do reflexo — o encontro inteiro erra.
-        fw.liga_reflexos(false);
-        let sem = desenha(v, &mut fw, metal(rug), true);
-        fw.liga_reflexos(true);
-        let c = mede(&px, &e, (&sem, &solo), cols);
-        eprintln!(
-            "sobreposta, cromo {rug}: encontro {} px · |Δ| médio {:.4} · |Δ| > 0,2: {} — CONTROLO sem capturas \
-             {:.4} · {}",
-            m.0, m.1, m.2, c.1, c.2
-        );
-        assert!(m.0 > 300, "o encontro encolheu: {} px", m.0);
-        assert!(c.2 > 10 * BARRA_ENCONTRO.1, "CONTROLO — sem as capturas o encontro tinha de errar");
-        if !(m.1 < BARRA_ENCONTRO.0 && m.2 <= BARRA_ENCONTRO.1) {
-            falhas.push(rug);
+    for (v, nome) in [(&SOBREPOSTA, "sobreposta"), (&JUNTA, "junta")] {
+        let Some(mut fw) = desenhista(v) else {
+            eprintln!("sem aparelho — o gate não corre aqui");
+            return;
+        };
+        let px = oraculo(v);
+        let o = orla(v, &px);
+        for (rug, cols) in [(0.0f32, (0usize, 2usize)), (v.rug2, (1, 3))] {
+            let viz = desenha(v, &mut fw, metal(rug), true);
+            let solo = desenha(v, &mut fw, metal(rug), false);
+            let m = mede(&px, &o, (&viz, &solo), cols);
+            foto(&px, &o, (&viz, &solo), cols, &format!("orla_{nome}_{rug}"));
+            eprintln!(
+                "orla {nome}, cromo {rug}: {} px · |Δ| médio {:.4} · |Δ| > 0,2: {}",
+                m.0, m.1, m.2
+            );
+            assert!(m.0 > 2000, "a orla encolheu: {} px", m.0);
+            if !(m.1 < BARRA_ORLA.0 && m.2 <= BARRA_ORLA.1) {
+                falhas.push(format!("{nome} {rug}"));
+            }
         }
     }
     assert!(
         falhas.is_empty(),
-        "onde os reflexos se sobrepõem há um buraco que o Cycles não tem: {falhas:?}"
+        "o reflexo alargou além da vizinha: {falhas:?}"
     );
 }
 
-/// `(|Δ| médio no encontro, px com |Δ| > 0,2)` — por medir.
-const BARRA_ENCONTRO: (f32, usize) = (0.03, 50);
+/// `(|Δ| médio na orla, px com |Δ| > 0,2)`. Medido (04/10): a espessura e a franja de `0,05 / 0,1` liam
+/// `0,0255 / 775` (sobreposta, nítido); a `0,01`, `0,0166 / 169` e `0,0195 / 83` (a `0,05`), a junta
+/// `0,0153 / 0` — o resto é a face LATERAL da caixa, que o centro do cromo não vê.
+const BARRA_ORLA: (f32, usize) = (0.022, 200);
 
 /// A VERDE (índices em `px`): a até [`PERTO_DA`] px de quem acerta a verde e a mais disso de quem acerta a azul.
-fn em_volta_da_verde(v: &Vista, px: &[Px]) -> Vec<usize> {
+pub(crate) fn em_volta_da_verde(v: &Vista, px: &[Px]) -> Vec<usize> {
     let l = LADO as i32;
     let mut mapa: Vec<Option<usize>> = vec![None; (l * l) as usize];
     for p in px {
@@ -248,69 +243,9 @@ fn em_volta_da_verde(v: &Vista, px: &[Px]) -> Vec<usize> {
         .collect()
 }
 
+/// A vizinhança da verde, em px (a sonda da tira, `tests_sonda_junta`).
 const PERTO_DA: i32 = 12;
 
-/// ⭐⭐⭐ **A vizinha de TRÁS não muda a da FRENTE** — o 4.º report do dono (04/10): curada a junta, onde a
-/// azul ficava atrás da verde (vista do centro do cromo) a borda da verde perdia a faixa que tem no resto do
-/// contorno — um BURACO. Sem oráculo: a mesma vista com e sem a azul, em volta da verde e longe da azul.
-#[test]
-#[ignore = "precisa de aparelho"]
-fn a_vizinha_de_tras_nao_muda_a_da_frente() {
-    let v = &JUNTA;
-    let Some(mut fw) = desenhista(v) else {
-        eprintln!("sem aparelho — o gate não corre aqui");
-        return;
-    };
-    let px = oraculo(v);
-    let q = em_volta_da_verde(v, &px);
-    let mut falhas = Vec::new();
-    for rug in [0.0f32, v.rug2] {
-        let com = desenha(v, &mut fw, metal(rug), true);
-        let sem = desenha_ate(v, &mut fw, metal(rug), 2, true);
-        let (mut s, mut g) = (0.0f32, 0usize);
-        for &k in &q {
-            let i = (px[k].j * LADO + px[k].i) as usize * 4 + 1;
-            let e = (linear(com[i]) - linear(sem[i])).abs();
-            s += e;
-            g += usize::from(e > 0.1);
-        }
-        let m = s / q.len().max(1) as f32;
-        if let Ok(pasta) = std::env::var("PH2D_REFLEXO_FOTOS") {
-            // `com | sem a azul | 4×|Δ| na régua`
-            let l = LADO as usize;
-            let mut img = vec![0u8; 3 * l * l];
-            let b = |x: f32| (x.clamp(0.0, 1.0) * 255.0) as u8;
-            for p in &px {
-                let k = p.j as usize * l + p.i as usize;
-                img[p.j as usize * 3 * l + p.i as usize] = b(linear(com[k * 4 + 1]));
-                img[p.j as usize * 3 * l + l + p.i as usize] = b(linear(sem[k * 4 + 1]));
-            }
-            for &k in &q {
-                let (i, j) = (px[k].i as usize, px[k].j as usize);
-                let e = (linear(com[(j * l + i) * 4 + 1]) - linear(sem[(j * l + i) * 4 + 1])).abs();
-                img[j * 3 * l + 2 * l + i] = b(0.15 + 4.0 * e);
-            }
-            let mut f = format!("P5 {} {l} 255\n", 3 * l).into_bytes();
-            f.extend_from_slice(&img);
-            let _ = std::fs::write(format!("{pasta}/frente_{rug}.pgm"), f);
-        }
-        eprintln!(
-            "frente, cromo {rug}: {} px em volta da verde · |com − sem a azul| médio {m:.4} · > 0,1: {g}",
-            q.len()
-        );
-        assert!(q.len() > 5000, "a régua encolheu: {} px", q.len());
-        if !(m < BARRA_FRENTE.0 && g <= BARRA_FRENTE.1) {
-            falhas.push(rug);
-        }
-    }
-    assert!(
-        falhas.is_empty(),
-        "a vizinha de trás mudou a da frente: {falhas:?}"
-    );
-}
-
-/// `(|Δ| médio, px com |Δ| > 0,1)` — por medir.
-const BARRA_FRENTE: (f32, usize) = (0.002, 20);
 
 /// `(|Δ| médio na faixa, px com |Δ| > 0,2)`. O CONTROLO só afirma os grosseiros: a média dele é a da
 /// lei sem capturas (a máscara da zona escurece a faixa, `0,107`).

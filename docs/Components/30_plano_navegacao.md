@@ -1414,3 +1414,26 @@ para uma thread (stack §11).
    workstation; e uma porta (`1–4` mosaicos) não fica mais lenta que hoje (o paralelo só acorda com
    trabalho que o pague).
 Se (2) não se cumprir, o paralelo não entra (recusa medida, com o número).
+
+### §22.3 — O desvio a 1 000 agentes: a procura dos vizinhos
+
+**A medição que abre** (`ph2d-orca/tests/it/custo.rs`, os três `#[ignore]`, `--release`, load `~85` — os
+tempos estão inflados, a partilha não): a `1 000` agentes densos o tique é `3,2–4,0 ms`, e SÓ a vizinhança
+`2,40 ms` (`~70 %`). A célula da grelha é o alcance SEM PERDA (`2r + 6sτ` = `12,6 m` a `2 m/s`), logo as
+3 × 3 células à volta de cada agente apanham a multidão inteira (`~400` candidatos, cada um com a sua
+distância) para ficar com os `10` mais perto.
+
+**O desenho:** uma grelha FINA em listas contíguas sobre a caixa da fotografia, percorrida em ANÉIS
+quadrados à volta da célula do agente; pára quando há pelo menos `n` candidatos ao alcance e a distância
+ao 1.º anel por visitar é ESTRITAMENTE maior que a do `n`-ésimo (nenhum por visitar pode entrar, nem
+empatar), ou quando o anel passa o maior alcance possível. Os candidatos, o alcance de cada par e a
+ordem total (distância, índice) são os de hoje — a lista sai a MESMA. Só no modo do produto (os `n`
+mais perto ao alcance sem perda); o da paridade com o Godot (`neighbor_dist`) fica a varrida.
+
+**Kill-criterion (escrito antes do código):**
+1. As listas de vizinhos são as MESMAS, elemento a elemento, que as da varrida de hoje (o oráculo fica
+   verbatim nos testes) sobre multidões densas, esparsas, em grupos, com raios e velocidades mistos,
+   empates de distância e `ignores`; o oráculo do Godot, o banco de cenários e
+   `entalado_entre_duas_paredes_o_3d_nao_parte` passam sem mudança.
+2. A `1 000` agentes densos a vizinhança desce de `2,4` para `≤ 0,6 ms` (load `≤ 5`), e a `100` não fica
+   mais lenta. Senão a varrida fica (recusa medida).

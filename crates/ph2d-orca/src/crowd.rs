@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use crate::lines::{Line, Me, agent_line, wall_lines};
 use crate::lp::{self, Regime};
 use crate::v2::{V2, abs_sq, len, sub};
+use crate::vizinhos::GrelhaFina;
 use crate::walls::Walls;
 
 /// Um corpo na fotografia do tique.
@@ -71,9 +72,9 @@ impl Params {
 /// O banco de cenários dá o MESMO desfecho a `6`, `10` e `16` (nenhum aperto lá tem mais de oito). A
 /// resposta numa multidão densa muda com o tecto e não tem joelho (`0,26`/`0,29`/`0,22`/`0,14 m/s` de
 /// diferença ao «sem tecto» a `10`/`16`/`24`/`40`): ali quase todos estão no regime APERTADO, onde o
-/// 3D depende de todos os semi-planos. ⇒ `10`, o do Godot — a paridade foi medida com ele. ⏳ O custo
-/// que sobra a `1 000` é a VARRIDA dos candidatos (a célula da grelha é o alcance sem perda): uma
-/// procura dos `k` mais perto por anéis de uma grelha fina tirá-lo-ia.
+/// 3D depende de todos os semi-planos. ⇒ `10`, o do Godot — a paridade foi medida com ele. (W14) A
+/// varrida dos candidatos (`~70 %` destes números) saiu: os `n` mais perto procuram-se por anéis de uma
+/// grelha fina (`vizinhos.rs`, plano 30 §22.3), com a MESMA lista.
 pub const MAX_NEIGHBORS: usize = 10;
 
 /// ⭐ **O peso de passar pela direita**, MEDIDO no banco de cenários (em sequência; o quadro em que
@@ -119,6 +120,8 @@ pub struct Crowd {
     params: Params,
     cell: f64,
     grid: BTreeMap<(i64, i64), Vec<u32>>,
+    /// (W14) No modo do produto (os `n` mais perto ao alcance sem perda): a grelha FINA, por anéis.
+    fina: Option<GrelhaFina>,
     /// O buffer da vizinhança (reaproveitado; nenhum estado entre consultas).
     scratch: std::cell::RefCell<Vec<(f64, u32)>>,
 }
@@ -135,8 +138,11 @@ impl Crowd {
                 2.0 * r + 6.0 * s * params.time_horizon
             }
         };
+        let fina = (params.neighbor_dist.is_none() && params.max_neighbors.is_some())
+            .then(|| GrelhaFina::new(&agents.iter().map(|a| a.pos).collect::<Vec<_>>(), cell))
+            .flatten();
         let mut grid: BTreeMap<(i64, i64), Vec<u32>> = BTreeMap::new();
-        if cell.is_finite() && cell > 0.0 {
+        if fina.is_none() && cell.is_finite() && cell > 0.0 {
             for (i, a) in agents.iter().enumerate() {
                 grid.entry(cell_of(a.pos, cell)).or_default().push(i as u32);
             }
@@ -155,6 +161,7 @@ impl Crowd {
             params,
             cell,
             grid,
+            fina,
             scratch: std::cell::RefCell::new(Vec::new()),
         }
     }
@@ -175,34 +182,53 @@ impl Crowd {
         let (cx, cy) = cell_of(me.pos, self.cell);
         let mut found = self.scratch.borrow_mut();
         found.clear();
-        for gx in cx - 1..=cx + 1 {
-            for gy in cy - 1..=cy + 1 {
-                let Some(list) = self.grid.get(&(gx, gy)) else {
-                    continue;
-                };
-                for &j in list {
-                    if j as usize == i || me.ignores == Some(j) {
-                        continue;
+        let considera = |j: u32, found: &mut Vec<(f64, u32)>| {
+            if j as usize == i || me.ignores == Some(j) {
+                return;
+            }
+            let other = &self.agents[j as usize];
+            let range = match self.params.neighbor_dist {
+                Some(d) => d,
+                // = [`lossless_range`], com os termos da fotografia.
+                None => {
+                    let (rj, _, sj) = self.bounds[j as usize];
+                    ri + rj + ki + sj
+                }
+            };
+            let d = abs_sq(sub(other.pos, me.pos));
+            if d < range * range {
+                found.push((d, j));
+            }
+        };
+        let ordem = |x: &(f64, u32), y: &(f64, u32)| x.0.total_cmp(&y.0).then(x.1.cmp(&y.1));
+        if let (Some(g), Some(n)) = (&self.fina, self.params.max_neighbors) {
+            // ⭐ (W14) Por anéis: pára quando nenhum por visitar pode entrar nem empatar com o `n`-ésimo
+            // (está ESTRITAMENTE mais longe), ou já está fora de todo o alcance (a célula grossa).
+            let mut r = 0;
+            loop {
+                let (fora, tudo) = g.anel(me.pos, r, |j| considera(j, &mut found));
+                if tudo || n == 0 || fora >= self.cell {
+                    break;
+                }
+                if found.len() >= n {
+                    found.select_nth_unstable_by(n - 1, ordem);
+                    if found[n - 1].0 < fora * fora {
+                        break;
                     }
-                    let other = &self.agents[j as usize];
-                    let range = match self.params.neighbor_dist {
-                        Some(d) => d,
-                        // = [`lossless_range`], com os termos da fotografia.
-                        None => {
-                            let (rj, _, sj) = self.bounds[j as usize];
-                            ri + rj + ki + sj
-                        }
-                    };
-                    let d = abs_sq(sub(other.pos, me.pos));
-                    if d < range * range {
-                        found.push((d, j));
+                }
+                r += 1;
+            }
+        } else {
+            for gx in cx - 1..=cx + 1 {
+                for gy in cy - 1..=cy + 1 {
+                    if let Some(list) = self.grid.get(&(gx, gy)) {
+                        list.iter().for_each(|&j| considera(j, &mut found));
                     }
                 }
             }
         }
         // A ordem é TOTAL (o índice desempata), logo a ordenação instável dá a mesma lista — e com um
         // tecto, a selecção dos `n` mais perto (linear) antes de ordenar só esses.
-        let ordem = |x: &(f64, u32), y: &(f64, u32)| x.0.total_cmp(&y.0).then(x.1.cmp(&y.1));
         if let Some(n) = self.params.max_neighbors
             && found.len() > n
         {

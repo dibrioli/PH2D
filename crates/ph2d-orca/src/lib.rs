@@ -29,6 +29,7 @@ pub mod crowd;
 pub mod lines;
 pub mod lp;
 pub mod v2;
+mod vizinhos;
 pub mod walls;
 
 pub use blocos::ParedesPorBlocos;
@@ -40,3 +41,5 @@ pub use walls::Walls;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod vizinhos_tests;

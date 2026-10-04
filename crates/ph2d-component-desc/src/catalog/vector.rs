@@ -119,6 +119,12 @@ pub const DESCS: &[D] = &[
         "ph2d::ecs::VecMorphMachine",
         "component.vec_morph_machine.name",
     ),
+    // O MARCADOR de ObjectKind::Vector (spec/06 F3): nasce pelo menu Add, não pela paleta.
+    D::machinery(
+        "ph2d::ecs::VecObject",
+        "component.vec_object.name",
+        C::Vector,
+    ),
     g("ph2d::ecs::VecOffset", "component.vec_offset.name"),
     // ⇒ precisa dos DOIS lados (motivo + guia) e a porta é `pattern_live::link`, que os recebe resolvidos; o `default()` é um padrão preso a caminho nenhum — a forma do `PhysicsJoint`.
     i(

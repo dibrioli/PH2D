@@ -124,6 +124,8 @@ pub(crate) fn pick_objects_at(
         world,
         w.pixels_per_meter,
     ));
+    // ⭐ spec/06 F3: em Object a forma responde pelo objecto vetorial dela.
+    ph2d_app_vec::vector_mode::lift_to_objects(w.sim, &view, &mut hits);
     hits
 }
 

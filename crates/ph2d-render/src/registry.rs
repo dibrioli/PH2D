@@ -106,7 +106,9 @@ mod tests {
         // ⚠️ **2026-09-21: `108` -> `109`, delta +1** (renumerado na integracao de 2026-09-25) -- o `Mesh3D` (o CATAVENTO), registado no
         //   ECS. ⛔ **UM so'**: nem um `live: bool` (a PRESENCA e' a decisao) nem um `MeshShading`
         //   (o material e' GLOBAL) existem. Quem integrar conta o DELTA.
-        assert_eq!(reg.len(), 109);
+        // ⚠️ **2026-10-04: `109` -> `110`, delta +1** -- o `VecObject` (spec/06 F3 ▸ Vector, o
+        //   OBJECTO vetorial), registado no ECS. Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 110);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

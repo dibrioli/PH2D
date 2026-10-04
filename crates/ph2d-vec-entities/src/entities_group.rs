@@ -16,14 +16,30 @@ use super::{next_root_order, top_ancestor};
 /// quem lhe dá o NOME (`crate::hier_group`), que precisa de contar os membros antes de o chamar.
 /// *Dois caminhos do mesmo grupo são um membro só* — um `Group 2` sobre uma coisa só seria mentira
 /// no primeiro sítio que o artista lê, e contar os `members` crus daria exactamente isso.
+///
+/// ⭐ **Dentro de um objecto vetorial** (spec/06 F3 ▸ Vector), quando TODOS os membros vivem num, o
+/// topo é o filho directo do objecto ([`super::top_within_object`]) — senão o topo seria o próprio
+/// objecto, e agrupar (ou a booleana viva) dentro dele recusaria.
 pub fn top_members(sim: &SimWorld, members: &[u64]) -> Vec<Entity> {
+    let inside = tops_by(sim, members, super::top_within_object);
+    let scoped = !inside.is_empty()
+        && inside
+            .iter()
+            .all(|t| super::object::object_parent(sim, *t).is_some());
+    if scoped {
+        return inside;
+    }
+    tops_by(sim, members, top_ancestor)
+}
+
+fn tops_by(sim: &SimWorld, members: &[u64], top: fn(&SimWorld, Entity) -> Entity) -> Vec<Entity> {
     let mut tops: Vec<Entity> = Vec::new();
     for &bits in members {
         let e = Entity::from_bits(bits);
         if sim.world().get_entity(e).is_err() {
             continue;
         }
-        let t = top_ancestor(sim, e);
+        let t = top(sim, e);
         if !tops.contains(&t) {
             tops.push(t);
         }
@@ -42,6 +58,9 @@ pub fn group_entities(sim: &mut SimWorld, members: &[u64], name: String) -> Opti
     let tops = top_members(sim, members);
     if tops.len() < 2 {
         return None;
+    }
+    if let Some(scope) = super::object::object_parent(sim, tops[0]) {
+        return Some(group_inside(sim, &tops, scope, name));
     }
     let order = next_root_order(sim);
     // ⭐⭐⭐ **O GRUPO NASCE ENTRE OS FILHOS, e não na origem do mundo** (report do Enio,
@@ -81,6 +100,24 @@ pub fn group_entities(sim: &mut SimWorld, members: &[u64], name: String) -> Opti
         }
     }
     Some(group.to_bits())
+}
+
+/// ⭐ **O grupo DENTRO do objecto `scope`** — filho dele, na média das translações locais dos
+/// membros; cada membro entra mantendo o mundo (podem vir de objectos diferentes num Edit de vários).
+fn group_inside(sim: &mut SimWorld, tops: &[Entity], scope: Entity, name: String) -> u64 {
+    let centro = centro_dos_membros(sim, tops);
+    let pose = Transform {
+        translation: centro,
+        ..Transform::default()
+    };
+    let group = sim
+        .world_mut()
+        .spawn((pose, Name::new(name), ChildOf(scope)))
+        .id();
+    for &t in tops {
+        crate::transform::reparent_keeping_world(sim, t, group);
+    }
+    group.to_bits()
 }
 
 /// O ponto **entre** os membros: a média das poses de topo deles.
@@ -134,7 +171,7 @@ pub fn ungroup_entities(sim: &mut SimWorld, members: &[u64]) -> usize {
         let alvo = if is_plain_group(sim, e) {
             e
         } else {
-            top_ancestor(sim, e)
+            super::top_within_object(sim, e)
         };
         if !tops.contains(&alvo) && is_plain_group(sim, alvo) {
             tops.push(alvo);
@@ -185,7 +222,9 @@ pub fn ungroup_entities(sim: &mut SimWorld, members: &[u64]) -> usize {
 /// um path com filhos NÃO é um grupo — dissolvê-lo apagaria um objeto.
 fn is_plain_group(sim: &SimWorld, e: Entity) -> bool {
     let w = sim.world();
-    w.get::<VecPathRef>(e).is_none()
+    // Um objecto vetorial não é um grupo: desfazê-lo soltaria as formas (spec/06 F3).
+    w.get::<ph2d_ecs::VecObject>(e).is_none()
+        && w.get::<VecPathRef>(e).is_none()
         && w.get::<ph2d_render::Sprite>(e).is_none()
         && w.get::<ph2d_ecs::Children>(e)
             .is_some_and(|c| !c.is_empty())

@@ -147,7 +147,7 @@ fn in_edit_a_shape_outside_the_mode_draws_no_nodes() {
         PICKED_DRAWN.with(std::cell::Cell::get)
     };
     let dentro = ph2d_vec_scene::VecViewState {
-        editing: vec![id],
+        editing: Some(vec![id]),
         ..Default::default()
     };
     assert!(
@@ -155,7 +155,7 @@ fn in_edit_a_shape_outside_the_mode_draws_no_nodes() {
         "controle: a forma do Edit desenha nos"
     );
     let fora = ph2d_vec_scene::VecViewState {
-        editing: vec![other],
+        editing: Some(vec![other]),
         ..Default::default()
     };
     assert_eq!(contados(&fora), 0, "a forma fora do Edit desenhou nos");

@@ -422,6 +422,13 @@ fn publish_gizmo(
                     pivot_tool_active,
                 );
             }
+            // spec/06 F3: o OBJECTO vetorial com formas — a caixa-união delas.
+            let object = ph2d_app_vec::vec_gizmo_view::object_view(
+                sim, vec_scene, sim_entity, camera, window_size, last_pointer, pivot_tool_active,
+            );
+            if object.is_some() {
+                return object;
+            }
             // ⭐ **O GRUPO e o VAZIO** (Enio, 2026-08-26) — até aqui isto era `None`, e um
             // objeto sem gizmo não é agarrável por gesto nenhum: o objeto que o botão `Add` da
             // Hierarquia acabou de criar era o único do app que o artista não podia pegar. A caixa

@@ -104,7 +104,7 @@ fn the_menu_offers_every_compiled_family() {
     let mut wanted = vec![
         ph2d_editor_core::object_add::EMPTY,
         ph2d_editor_core::object_add::IMAGE,
-        ph2d_app_vec::object_add::RECTANGLE,
+        ph2d_app_vec::object_add::VECTOR_OBJECT,
         ph2d_app_flip::object_add::FLIP,
         ph2d_app_field3d::object_add::MODEL,
         ph2d_app_components::object_add::CAMERA,
@@ -137,8 +137,8 @@ fn capture(
     )
 }
 
-/// ⭐⭐ **Criar pelo menu e desfazer devolve o projecto ao BIT** — o vazio, um objecto de jogo, uma
-/// forma vetorial, um desenho Flip e o Model, pela porta de cada família e pelo `ProjectState`
+/// ⭐⭐ **Criar pelo menu e desfazer devolve o projecto ao BIT** — o vazio, um objecto de jogo, um
+/// objecto vetorial, um desenho Flip e o Model, pela porta de cada família e pelo `ProjectState`
 /// que o `post_frame_undo` usa (o mundo, a cena vetorial e o documento Flip juntos).
 ///
 /// ⚠️ A escultura fica de fora: a cena dela vive na placa e tem undo próprio (`StrokeUndo`).
@@ -169,17 +169,13 @@ fn creating_then_undoing_returns_the_project_to_the_bit() {
                 &[],
             )
             .expect("é de jogo"),
-            "vector" => ph2d_app_vec::object_add::add(
-                ph2d_app_vec::object_add::STAR,
+            "vector" => Ok(ph2d_app_vec::object_add::add(
+                ph2d_app_vec::object_add::VECTOR_OBJECT,
                 &mut sim,
-                &mut vec_scene,
                 &mut vec,
                 [0.0, 0.0],
-                1.0,
-                800.0,
             )
-            .expect("é do vetor")
-            .map_err(String::from),
+            .expect("é do vetor")),
             "flip" => ph2d_app_flip::object_add::add(
                 ph2d_app_flip::object_add::FLIP,
                 &mut sim,

@@ -28,7 +28,7 @@ pub fn kind_of(
     let has = |kind: ObjectKind| match kind {
         ObjectKind::Empty => false,
         ObjectKind::Image => world.get::<ph2d_render::Sprite>(entity).is_some(),
-        ObjectKind::Vector => world.get::<ph2d_ecs::VecPathRef>(entity).is_some(),
+        ObjectKind::Vector => world.get::<ph2d_ecs::VecObject>(entity).is_some(),
         ObjectKind::Flip => world.get::<ph2d_ecs::FlipObjectRef>(entity).is_some(),
         ObjectKind::Painted => world.get::<ph2d_ecs::PaintedDoc>(entity).is_some(),
         ObjectKind::Model3D => world.get::<ph2d_field_ecs::FieldObject>(entity).is_some(),

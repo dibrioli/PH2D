@@ -367,4 +367,13 @@
 /// abre sem textura. ⛔ **Sem degrau de migração**, pela decisão de sempre.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 181;
+///
+/// # `181 → 182` — **o OBJECTO VETORIAL** (spec/06 F3 ▸ Vector, 2026-10-04)
+///
+/// `VecObject` passa a REGISTADO (o ECS `+1` e os dois espelhos `+1`): o contentor das formas, o
+/// marcador do `ObjectKind::Vector`. ⛔ **Sem degrau de migração** — um v181 é recusado em voz alta;
+/// as formas soltas que um projecto antigo traria ganham cada uma o seu objecto no 1.º quadro
+/// (escolha do dono), e é essa a porta, não uma migração.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 182;

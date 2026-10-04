@@ -58,7 +58,7 @@ fn the_composed_families_declare_every_creation_mode() {
     let flip = ph2d_app_flip::flip_mode::Family::new(&mut state, &doc);
     let model = ph2d_app_field3d::model_mode::Family::new(&mut sim, false);
     let mut vec_state = ph2d_app_vec::state::VecState::default();
-    let vector = ph2d_app_vec::vector_mode::Family::new(&mut vec_state);
+    let vector = ph2d_app_vec::vector_mode::Family::new(&mut vec_state, &mut sim);
     let pairs: Vec<_> = [
         paint.modes(),
         sculpt.modes(),
@@ -110,7 +110,53 @@ fn the_vector_edit_reaches_the_frame_view() {
     let src = std::fs::read_to_string("src/render_loop/fase_vector_view_and_drives.rs")
         .expect("a fase da vista vetorial existe");
     assert!(
-        src.contains("vec_view.editing.clone_from(&self.vec.edit.paths)"),
+        src.contains("vec_view.editing = self.vec.edit.editing(sim, &self.vec.entities)"),
         "a vista do quadro não recebe as formas do Edit"
     );
+}
+
+/// ⭐⭐ GATE (spec/06 F3 ▸ Vector) — **a regra das soltas corre nas DUAS redes, com o objecto do
+/// Edit**: no passe do desenho (a forma entra no objecto no quadro seguinte ao gesto) e na rede da
+/// captura (no MESMO passo de undo). Sem o `edit.object()`, o que se desenha num Edit ganharia um
+/// objecto novo em vez de entrar no do Edit; sem a rede, nasceria um passo fantasma.
+///
+/// *Mutação que sangra:* trocar o `self.vec.edit.object()` de uma das duas por `None`.
+#[test]
+fn the_loose_shape_rule_runs_in_both_nets_with_the_edit_object() {
+    for f in [
+        "src/render_loop/fase_vector_tree_settle.rs",
+        "src/vec_tree_settle.rs",
+    ] {
+        let src = std::fs::read_to_string(f).expect("a fase existe");
+        let call = src
+            .split("entities::object::adopt_loose(")
+            .nth(1)
+            .unwrap_or_else(|| panic!("{f}: a regra das soltas não corre"));
+        let edit = src.contains("self.vec.edit.object()");
+        assert!(
+            edit && call.contains("drawing"),
+            "{f}: sem o objecto do Edit ou sem o gesto"
+        );
+    }
+}
+
+/// ⭐⭐ GATE (spec/06 F3 ▸ Vector) — **em Object o objecto vetorial é UM objecto no canvas**: o
+/// clique e o realce (a porta única `pick_objects_at`) e o laço sobem ao objecto, e o gizmo dele é
+/// a caixa-união das formas. Cada porta compila e passa os gates da crate sem ser chamada — e o
+/// clique numa forma seleccionaria a FORMA, que o gizmo moveria para fora do objecto.
+///
+/// *Mutação que sangra:* apagar qualquer uma das três chamadas.
+#[test]
+fn object_mode_picks_and_boxes_the_whole_vector_object() {
+    for (f, call) in [
+        ("src/hover_highlight.rs", "vector_mode::lift_to_objects("),
+        (
+            "src/input_dispatch/despacho_clique_largar.rs",
+            "vector_mode::lift_to_objects(",
+        ),
+        ("src/render_loop/snapshots.rs", "vec_gizmo_view::object_view("),
+    ] {
+        let src = std::fs::read_to_string(f).expect("o ficheiro existe");
+        assert!(src.contains(call), "{f} não chama {call}");
+    }
 }

@@ -53,10 +53,10 @@ pub struct VecViewState {
     /// escrever isto nas formas seria uma EDIÇÃO, com passo de undo e bytes no ficheiro, por uma
     /// coisa que só existe enquanto o artista está a olhar.
     pub isolated: Vec<VecPathId>,
-    /// ⭐ **As formas em modo EDIT** (spec/06 F3 ▸ Vector): só elas se agarram. Vazia = Object, e
-    /// tudo se lê como antes. Estado de VISTA, pela razão do [`Self::isolated`]: entrar num modo
-    /// não é uma edição.
-    pub editing: Vec<VecPathId>,
+    /// ⭐ **As formas em modo EDIT** (spec/06 F3 ▸ Vector): só elas se agarram. `None` = Object, e
+    /// tudo se lê como antes; `Some` vazio = o Edit de um objecto ainda sem formas (nada de fora se
+    /// agarra). Estado de VISTA, pela razão do [`Self::isolated`]: entrar num modo não é uma edição.
+    pub editing: Option<Vec<VecPathId>>,
     /// As MOLDURAS que recortam neste frame (`ph2d_ecs::VecFrame`), já resolvidas para o
     /// intervalo que cada uma ocupa na pilha de z. Vazio = nenhuma moldura recorta, e o desenho é
     /// **byte-idêntico** ao mundo pré-moldura.
@@ -227,7 +227,7 @@ impl VecViewState {
     /// não se agarra é uma pista falsa.
     #[must_use]
     pub fn in_edit(&self, id: VecPathId) -> bool {
-        self.editing.is_empty() || self.editing.contains(&id)
+        self.editing.as_ref().is_none_or(|e| e.contains(&id))
     }
 
     /// A geometria deste path é escrita por um motor — ela não tem nós próprios ([`Self::derived`]).

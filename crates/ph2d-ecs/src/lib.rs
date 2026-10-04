@@ -156,6 +156,7 @@ pub use camera_2d::{
 pub use camera_shake::{
     CameraShake, CameraShakeRuntime, SHAKE_EMITTERS_MAX, ShakeEmitter, ShakeSource,
 };
+pub mod vec_object;
 pub mod vec_path_ref;
 pub mod vec_shape;
 pub mod visibility;
@@ -259,6 +260,7 @@ pub use transform_versioned::{
     TransformV1, TransformVersioned, load_transform, migrate_v1_to_v2, save_transform,
 };
 pub use tween::{Escrita, TWEENS_MAX, Tweens};
+pub use vec_object::VecObject;
 pub use vec_path_ref::VecPathRef;
 pub use vec_shape::{MAX_SHAPE_VALUES, VecShape, VecTextParams};
 pub use weapon::{

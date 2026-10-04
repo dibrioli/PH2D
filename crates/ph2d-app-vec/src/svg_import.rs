@@ -40,7 +40,7 @@ pub enum SvgImportResult {
     Ok {
         name: String,
         shapes: usize,
-        /// A entidade que representa o desenho: o grupo, ou a única forma.
+        /// A entidade que representa o desenho: o OBJECTO vetorial que o leva inteiro (spec/06 F3).
         bits: u64,
         /// Quanto o desenho ocupa em mundo — é o passo da fila do próximo.
         size: [f64; 2],
@@ -135,7 +135,12 @@ pub fn import_svg(
 
     let entidades: Vec<u64> = ids.iter().filter_map(|id| map.get(id).copied()).collect();
     baptiza(sim, &desenho, &entidades, &ficheiro);
-    let bits = agrupa(sim, &desenho, &entidades, &ficheiro);
+    let bits = agrupa(sim, &desenho, &entidades, &ficheiro)
+        .or_else(|| entidades.first().copied())
+        .map(|top| {
+            let top = ph2d_ecs::Entity::from_bits(top);
+            ph2d_vec_entities::entities::object::enclose(sim, top, &ficheiro).to_bits()
+        });
 
     SvgImportResult::Ok {
         name: ficheiro,

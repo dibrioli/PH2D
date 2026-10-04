@@ -514,6 +514,8 @@ struct JoinFamily {
 const VEC_A: u64 = 50;
 const VEC_B: u64 = 51;
 const VEC_C: u64 = 52;
+/// Uma FORMA dentro do objecto vetorial — uma parte de outro tipo (spec/06 F3, o contentor).
+const VEC_SHAPE: u64 = 53;
 
 impl ModeFamily for JoinFamily {
     fn modes(&self) -> &'static [(ObjectKind, ObjectMode)] {
@@ -536,13 +538,18 @@ impl ModeFamily for JoinFamily {
         true
     }
     fn parts(&mut self, e: u64) -> Option<Vec<u64>> {
-        (self.held.first() == Some(&e)).then(|| self.held.clone())
+        (self.held.first() == Some(&e)).then(|| {
+            let mut p = self.held.clone();
+            p.push(VEC_SHAPE);
+            p
+        })
     }
 }
 
 fn vec_kind(bits: u64) -> ObjectKind {
     match bits {
         VEC_A | VEC_B | VEC_C => ObjectKind::Vector,
+        VEC_SHAPE => ObjectKind::Empty,
         _ => ObjectKind::Image,
     }
 }
@@ -550,7 +557,8 @@ fn vec_kind(bits: u64) -> ObjectKind {
 /// ⭐⭐ GATE (spec/06 F3 ▸ Vector, o multi-objecto) — **um modo que JUNTA leva os do mesmo tipo**:
 /// com duas formas e uma imagem seleccionadas, o `Tab` entra no Edit do activo COM a outra forma
 /// (a imagem sai da selecção); a selecção anda entre as duas, uma terceira forma é recusada; e o
-/// `Tab` de volta devolve as duas à selecção, para o seguinte voltar a juntá-las.
+/// `Tab` de volta devolve as duas à selecção (e NÃO as formas de dentro, que também são partes),
+/// para o seguinte voltar a juntá-las.
 #[test]
 fn a_mode_that_joins_takes_the_selected_of_the_same_kind() {
     let mut c = cena();

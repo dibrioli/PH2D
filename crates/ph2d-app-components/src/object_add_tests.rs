@@ -146,7 +146,7 @@ fn every_marker_derives_its_kind() {
                 e.insert(ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]));
             }
             ObjectKind::Vector => {
-                e.insert(ph2d_ecs::VecPathRef(1));
+                e.insert(ph2d_ecs::VecObject);
             }
             ObjectKind::Flip => {
                 e.insert(ph2d_ecs::FlipObjectRef(1));

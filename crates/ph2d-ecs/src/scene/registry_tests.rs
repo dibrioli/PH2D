@@ -231,7 +231,10 @@ fn register_ecs_components_populates_registry() {
     //   `material_da_forma()` nao recebe argumentos -- o material e' GLOBAL -- e a escolha por
     //   objecto ja' gravada e' a `Lei` do assado ⇒ seriam quatro knobs sem consumidor). Quem
     //   integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 108);
+    // ⚠️ **2026-10-04: `108` -> `109`, delta +1** -- o `VecObject` (spec/06 F3 ▸ Vector): o
+    //   OBJECTO vetorial, contentor das formas. Quem integrar conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 109);
+    assert!(reg.get_by_name("ph2d::ecs::VecObject").is_some());
     assert!(reg.get_by_name("ph2d::ecs::WeaponFire").is_some());
     assert!(reg.get_by_name("ph2d::ecs::CameraShake").is_some());
     assert!(reg.get_by_name("ph2d::ecs::ShakeEmitter").is_some());

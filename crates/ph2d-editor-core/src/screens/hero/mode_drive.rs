@@ -224,16 +224,18 @@ pub fn drive(
             Step::Leave => {
                 // Sair de um modo de partes devolve a selecção ao objecto inteiro (o `Tab` do
                 // Blender): uma parte seleccionada em Object não teria o modo de volta.
-                // Num modo que JUNTA, as partes são os objectos que entraram com ele: voltam todos.
+                // Num modo que JUNTA, os objectos que entraram com ele voltam todos — os das partes
+                // do MESMO tipo (as formas de dentro de um objecto vetorial também são partes).
                 let whole = hero.gizmo.mode.parts().and(hero.gizmo.mode.locked_entity());
                 let joined = hero.gizmo.mode.active().and_then(|a| {
                     let f = family(families, kind_of(a.entity), a.mode)?;
                     let parts = f.joins(a.mode).then(|| hero.gizmo.mode.parts())??;
+                    let kind = kind_of(a.entity);
                     Some(
                         parts
                             .iter()
                             .copied()
-                            .filter(|b| *b != a.entity)
+                            .filter(|b| *b != a.entity && kind_of(*b) == kind)
                             .collect::<Vec<_>>(),
                     )
                 });

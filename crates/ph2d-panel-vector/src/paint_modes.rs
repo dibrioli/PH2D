@@ -154,13 +154,6 @@ impl BodyCtx<'_> {
             // Blend (escolher as formas na ordem), e mora na seção BLEND, ao lado do botão que as
             // liga (ADR-0128 C2b). É um modo de tool, mas seu botão vive lá, não nesta fileira.
         ];
-        // ⭐ **Só as do modo em curso** (spec/06 F3 ▸ Vector): o Edit mostra as que mexem na forma,
-        // o Object as que criam — o modo é a verdade, e a fileira não oferece o outro.
-        let group = snap.mode.object_mode();
-        let modes: Vec<_> = modes
-            .into_iter()
-            .filter(|(_, _, m)| m.object_mode() == group)
-            .collect();
         let cols = 3usize;
         let y = self.button_grid(y, cols, modes.len(), |i| {
             let (id, label, m) = modes[i];

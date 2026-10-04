@@ -381,6 +381,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ADR-0110: a referência que faz de um path vetorial uma entidade. Sem ela um
     // save do mundo perderia o vínculo path↔entidade e o load duplicaria as formas.
     reg.register_default::<crate::VecPathRef>("ph2d::ecs::VecPathRef");
+    reg.register_default::<crate::VecObject>("ph2d::ecs::VecObject"); // spec/06 F3: o contentor
     // A identidade ESTÁVEL do documento do Painter (camadas + pixels + relevo). Sem ela
     // um save/load não teria como devolver a um sprite o documento que era dele — os bits
     // da entidade são id de alocação e morrem no restore —, e a pintura voltaria como um

@@ -289,7 +289,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // A tripla NÃO vê este degrau.
         // ⚠️ **`181` em 2026-10-03** (`line/3DModeling`) — a TEXTURA da forma: `FieldTexture`
         // REGISTADO (campo `8 → 9`). A tripla NÃO vê este degrau.
-        (181, 13, 22),
+        // ⚠️ **`182` em 2026-10-04** — o OBJECTO VETORIAL (spec/06 F3): `VecObject` REGISTADO
+        // (ECS `+1`, espelhos `+1`). A tripla NÃO vê este degrau.
+        (182, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

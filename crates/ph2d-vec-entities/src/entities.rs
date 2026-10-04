@@ -272,6 +272,10 @@ mod group;
 #[path = "entities_selection.rs"]
 mod selection;
 pub use group::{group_entities, top_members, ungroup_entities};
+/// ⭐ **O OBJECTO VETORIAL** (spec/06 F3) — o contentor das formas e a regra das soltas.
+#[path = "entities_object.rs"]
+pub mod object;
+pub use object::{object_of, top_within_object};
 pub use selection::{object_selection_for, selection_paths, subtree_paths, top_ancestor};
 
 // ⚠️ **Os GATES deste passe ficaram na shell** (HOWTO §1.2): eles atravessam o `input_dispatch`

@@ -29,27 +29,21 @@ pub(crate) const FAMILIES: &[&[AddEntry]] = &[
 ];
 
 /// O que o pick deu: um objecto já na cena, uma peça de escultura à espera da sincronia, ou nada
-/// (a imagem abre o diálogo de tamanho, que cria no quadro dele; a caneta vai à mão).
+/// (a imagem abre o diálogo de tamanho, que cria no quadro dele).
 enum Born {
     Entity(u64),
     #[cfg(feature = "sculpt3d")]
     Piece(u32),
     Dialog,
-    Tool,
 }
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_object_add(&mut self, open: bool) {
-        // ⚠️ A geometria da vista lê-se ANTES do empréstimo do `gfx`: o objecto 2D nasce no centro
-        // dela, do tamanho que ela mostra (a mesma regra do Model).
-        let px_to_world = self.vec_px_to_world();
-        let (at, view_px) = self.scene_window().map_or(([0.0; 2], 0.0), |w| {
+        // ⚠️ A geometria da vista lê-se ANTES do empréstimo do `gfx`: o objecto 2D nasce no centro.
+        let at = self.scene_window().map_or([0.0; 2], |w| {
             let centre = (w.width as f32 * 0.5, w.height as f32 * 0.5);
-            (
-                self.vec_world_at(centre).unwrap_or([0.0; 2]),
-                f64::from(w.height),
-            )
+            self.vec_world_at(centre).unwrap_or([0.0; 2])
         });
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -58,7 +52,6 @@ impl crate::App {
             sim,
             hero_screen,
             component_registry,
-            vec_scene,
             flip,
             surface,
             #[cfg(feature = "sculpt3d")]
@@ -97,21 +90,8 @@ impl crate::App {
             ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
         ) {
             r.map(Born::Entity)
-        } else if let Some(r) = ph2d_app_vec::object_add::add(
-            entry,
-            sim,
-            vec_scene,
-            &mut self.vec,
-            at,
-            px_to_world,
-            view_px,
-        ) {
-            r.map(Born::Entity).map_err(String::from)
-        } else if ph2d_app_vec::object_add::arm(entry, &mut self.vec) {
-            let tool_id = "vector";
-            hero.bus
-                .push(ph2d_editor_core::action_bus::EditorAction::ActivateTool { tool_id });
-            Ok(Born::Tool)
+        } else if let Some(bits) = ph2d_app_vec::object_add::add(entry, sim, &mut self.vec, at) {
+            Ok(Born::Entity(bits))
         } else if let Some(r) =
             ph2d_app_flip::object_add::add(entry, sim, flip, &mut self.flip_state)
         {
@@ -147,7 +127,7 @@ impl crate::App {
                     .as_mut()
                     .and_then(|g| ph2d_app_sculpt3d::object_add::entity_of_piece(&mut g.sim, piece))
             }
-            Ok(Born::Dialog | Born::Tool) => None,
+            Ok(Born::Dialog) => None,
             Err(e) => {
                 if let Some(g) = self.gfx.as_mut() {
                     g.toasts.push(Toast::error(ph2d_i18n::tr_with(

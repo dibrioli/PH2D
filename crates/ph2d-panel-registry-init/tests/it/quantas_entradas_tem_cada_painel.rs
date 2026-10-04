@@ -2380,9 +2380,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    `set_collapsed_if_unchosen` de ninguém.
     ("sculpt3d", 2196.0),
     ("tokens", 2866.0),
-    // ⬇️ `1 262 → 1 239` em 2026-10-04 (spec/06 F3 ▸ Vector): a fileira TOOL só mostra as
-    //    ferramentas do modo em curso — em Object saem as cinco do Edit, uma linha da grelha.
-    ("vector", 1239.0),
+    // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
+    //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
+    //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.
+    ("vector", 1262.0),
     // ⬆️ `1 281 → 1 317` em 2026-09-30, e NÃO é uma secção a nascer aberta: o painel passou a CARTÕES por secção (era
     //    um risco entre elas): cada fronteira à vista paga o vão entre cartões em vez do separador,
     //    e o último cartão fecha-se com a folga dele.

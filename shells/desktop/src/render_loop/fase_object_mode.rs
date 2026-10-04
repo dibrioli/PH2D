@@ -17,6 +17,7 @@ impl crate::App {
             toasts,
             hero_screen,
             flip,
+            vec_scene,
             #[cfg(feature = "sculpt3d")]
             sculpt3d,
             ..
@@ -26,7 +27,7 @@ impl crate::App {
         };
         let request = request
             .or_else(|| ph2d_app_painter::paint_mode::smoke_step(sim, hero))
-            .or_else(|| ph2d_app_vec::vector_mode::smoke_step(&self.vec, hero));
+            .or_else(|| ph2d_app_vec::vector_mode::smoke_step(&mut self.vec, vec_scene, sim, hero));
         #[cfg(feature = "sculpt3d")]
         ph2d_app_sculpt3d::sculpt_mode::smoke_step(sim, hero);
         ph2d_app_flip::flip_mode::smoke_step(&self.flip_state, hero);
@@ -38,7 +39,7 @@ impl crate::App {
         let mut flip = ph2d_app_flip::flip_mode::Family::new(&mut self.flip_state, flip);
         let model_open = hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID);
         let mut model = ph2d_app_field3d::model_mode::Family::new(sim, model_open);
-        let mut vector = ph2d_app_vec::vector_mode::Family::new(&mut self.vec);
+        let mut vector = ph2d_app_vec::vector_mode::Family::new(&mut self.vec, sim);
         let families: &mut [&mut dyn ModeFamily] = &mut [
             &mut paint,
             #[cfg(feature = "sculpt3d")]

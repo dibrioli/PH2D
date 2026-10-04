@@ -1651,3 +1651,79 @@ listas da CPU e as formas da placa pelo tile (H1–H2, gates puros) · a camada 
 antes do halo, o halo sem o buffer do dispositivo e sem o redesenho (H3–H5, costura da shell). As
 mutações do passe de grupo e do D1/D2 saíram com o código deles; os arneses da acumulação e do tracejado
 voltaram às âncoras de antes (o código que mutam é o de `4a1c99644`).
+
+### §9.15 — UM BLOCO: onde está o custo das tracejadas grandes esticadas no proxy de telemóvel (2026-10-04, escrito ANTES de construir)
+
+Ordem do dono (`CLAUDE.md` §0.10): os quatro itens abertos da família — (a) o `cs_escreve` tracejado,
+(b) as células das tracejadas, (c) a parede − soma nunca explicada, (d) o prefixo do `cs_varre` por
+subgrupo — num plano, um lote de binários e UMA rodada intercalada. Base: `402591a88`. As recusas medidas
+do §9.4–§9.14 (o GRUPO por cópia tracejada, o D1/D2 do `cs_varre`, a esparsa, estreitar a célula, herdar
+a bissectriz, costurar as correntes) NÃO se reconstroem.
+
+**Dois instrumentos SEM relógio antes do plano** (a sonda passa a imprimir as arestas `reservadas ·
+escritas · do contorno` — `arestas_do_ultimo_quadro` — e o relógio de CPU de cada fase do quadro e a
+parede de CADA quadro; binário de `402591a88` + os instrumentos, uma corrida por célula, iGPU):
+
+| arranjo | arestas reservadas | escritas | do contorno | reservadas ÷ escritas |
+|---|---:|---:|---:|---:|
+| `72` esticadas contínuas | `192 960` | `42 624` | `33 984` | `4,5×` |
+| `72` esticadas TRACEJADAS | **`561 600`** | **`36 288`** | `27 648` | **`15,5×`** |
+| `1 225` densas contínuas | `166 600` | `78 400` | `58 800` | `2,1×` |
+| `1 225` densas TRACEJADAS | `607 600` | `127 400` | `107 800` | `4,8×` |
+| `72` conformes (as duas) | `18 432` · `15 552` | iguais | `0` | `1×` |
+
+| iGPU, esticadas | parede (média) | parede (MEDIANA) | `gpu-busy(span)` | soma | 1.º quadro cronometrado | CPU `decide + desenha` |
+|---|---:|---:|---:|---:|---:|---:|
+| contínuas | `0,99` | `0,965` | `0,90` | `0,88` | `3,78` ms | `0,03` |
+| TRACEJADAS | `1,59` | **`1,27`** | `1,20` | `1,18` | **`76,1` ms** | `0,04` |
+
+(carga `6,5` na 2.ª tabela — a forma, não o terceiro algarismo; o `span` e a soma são os de sempre.)
+
+**O inventário (código lido):**
+
+| item | causa | cura proposta | régua | já RECUSADO por medição |
+|---|---|---|---|---|
+| (c) parede − soma `0,40` (tracejado) contra `0,10` | ✅ **medida, não suposta:** o `span` iguala a soma (`1,20` · `1,18`) e a CPU é `0,04` ms nos dois; a diferença é o **1.º quadro cronometrado** — ainda pixel a pixel pela variante COMPLETA (a capacidade medida chega dois quadros depois, `Contorno::colhe`): `76` ms ÷ `250` quadros = `0,30` ms. Na MEDIANA a parede é `span + 0,07` nos dois | **c1** a sonda e a tabela lêem a MEDIANA (a média continua impressa); **c2** o 1.º quadro de uma cena nova MEDE a capacidade bloqueando (a contagem, a leitura e o crescimento antes do quadro), em vez de dois quadros pixel a pixel | os primeiros quadros da sonda; a mediana | — |
+| (b) células `0,63` contra `0,49` | ⛔ **a premissa caiu:** as tracejadas ESCREVEM MENOS arestas (`36 288` contra `42 624`); o que sobe é a RESERVA — o `cs_deposita` corre UM fio por aresta RESERVADA (`despacha(3u, acc)` com o total da contagem), e cada fio morto faz a busca binária da cópia e sai. A reserva do tracejado conta, POR PEÇA, a junta inteira (`max(4, leque)`) | **B1** o `cs_deposita` só sobre as arestas ESCRITAS: um prefixo das escritas por cópia (4.º terço da `contagem`, `cs_soma_escritas` de um grupo depois do `cs_escreve`, que escreve o despacho `[3, 6)`); **B2** a reserva com a junta UMA vez por troço (só a peça que passa do fim do troço liga ao seguinte — prova abaixo) — o buffer de arestas cresce à potência de dois da RESERVA, e na `=127` densa tracejada do app ninguém a mediu | a soma; as arestas reservadas (instrumento); a capacidade de arestas no app (o `[formas]` passa a dizê-la) | emitir menos arestas por pedaço (pontas partilhadas): as tracejadas já escrevem menos — sai como RECUSA medida se a ablação `P0` não tirar `≥ 0,05` ms |
+| (a) `conta + escreve` `0,40` contra `0,24` | UM fio por cópia (`72` fios) anda o eixo TRÊS vezes na escrita: o `ajuste_do_tracejado` (todos os itens), o `sub_tracejado` de cada fechado (o total do sub-caminho, só para a emenda do 1.º traço) e o percurso que emite | **A1a** o ajuste sai da CONTAGEM, que já anda o eixo e já calcula o `arco` de cada troço (a mesma soma, na mesma ordem), guardado por cópia (5.º terço da `contagem`); **A1b** o total do fechado sai do PRÓPRIO percurso (o `s0` acumulado é a mesma soma, termo a termo) e o 1.º traço do fechado — o único que lê a emenda — emite-se no FIM do sub-caminho (a ordem das arestas não importa a ninguém, §9.8) | `conta + escreve` e a soma; ablações `E1` sem emitir pedaços · `E2` ajuste `= 1` · `E3` sem gravar arestas (só o cursor) · `C1` contagem sem o arco (a corda) | o GRUPO de `64` por cópia (iGPU `+6 %`) — não se reconstrói |
+| (d) o prefixo do `cs_varre` | `5` passos com `10` barreiras em memória de grupo; tecto medido `0,10` ms nas densas da iGPU (`V0`, §9.14) | **D** o prefixo SEGMENTADO por operações de subgrupo (`subgroupInclusiveAdd` + a correção na fronteira da célula; um `workgroupBarrier` para subgrupos `< 32`), num módulo à parte só onde o dispositivo tem `Features::SUBGROUP` — o `ph2d-gpu` passa a pedi-la quando o adaptador a anuncia (aditivo); sem ela, o passe de sempre | a soma das densas; `V0` na MESMA janela | D1 (famílias presentes) e D2 (`4` px por fio) |
+
+**A prova do B2** (o tecto da reserva continua um tecto): num troço, as peças `n ∈ [n0, n1]` têm traços
+disjuntos `[n·per, n·per + tr]`; a junta só se emite em `emite_pedaco` com `liga1`, isto é, com o fim do
+traço `b > fim` do troço. Se a peça `n` tem `b > fim`, qualquer `n' > n` começa em `n'·per ≥ (n+1)·per >
+b > fim` e não é válida ⇒ **no máximo UMA peça por troço emite junta**. As pontas continuam duas por peça
+(a de início sem `liga0`, a de fim sem `liga1`). ⇒ `pecas · (4 + 2·tampa) + max(4, leque)` por troço, em
+vez de `pecas · (4 + 2·tampa + max(4, leque))`.
+
+**Kill-criteria (DIRETIVA §5), um por pedaço; a régua é a SOMA dos passes na 2.ª janela do perfilador;
+iGPU, `load < 4`; nenhum arranjo (contínuo e tracejado) pior que `+5 %` na iGPU nem `+10 %` na RTX:**
+
+- **(a) A1a/A1b:** `conta + escreve` das `72` esticadas tracejadas `≤ 0,30` ms (de `0,40`) com os dois, e
+  cada pedaço sozinho tem de tirar `≥ 0,03` ms ou sai; as imagens iguais (os gates GPU da crate, os do
+  produto, `gpu-cook formas`, o arnês do tracejado contra o Vello) e uma mutação nova por pedaço a
+  sangrar. ⚠️ **Previsão escrita antes:** o percurso que emite é o maior dos três (`E1` dirá quanto), e a
+  parede das tracejadas esticadas continua acima da do Vello (`0,90`, que recebe o tracejado cortado fora
+  do relógio). As ablações `E1`–`E3`/`C1` não têm critério — decompõem o que fica; se apontarem uma
+  alavanca não construída, ela é o passo seguinte, com o número (série justificada, §0.10).
+- **(b) B1:** células das esticadas tracejadas `≤ 0,52` ms (de `0,63`) e das densas tracejadas `≤ 0,90`
+  (de `1,01`); as contínuas não pioram (previsão: esticadas `< 0,49`); a imagem é a MESMA por construção
+  (as mesmas arestas somadas em inteiros) — os gates de sempre e uma mutação nova (o prefixo das escritas
+  deslocado de um bloco) a sangrar. **B2:** sem relógio — as reservadas das esticadas tracejadas `≤ 300 000`
+  (de `561 600`), nenhuma cópia recusada por falta de reserva em fixtura nenhuma (o gate do tracejado nas
+  `7` famílias: `copias_com_contorno = n`), e a capacidade de arestas da `=127` densa tracejada no app
+  medida antes e depois. `P0` (o `cs_deposita` sem as pontas de cada peça) é ablação: abaixo de `0,05` ms
+  fecha (b) pela recusa das pontas partilhadas.
+- **(c) c1:** a mediana da parede fica a `≤ 0,10` ms do `span` nas duas variantes (o que já se leu acima);
+  **c2:** o 1.º quadro cronometrado da sonda tracejada na iGPU `≤ 5` ms (de `76`) e o regime igual
+  (`± 2 %` na mediana); no app, os primeiros quadros da `=127` densa tracejada medidos antes e depois.
+- **(d) D:** densas contínuas da iGPU `−5 %` na soma (`≥ 0,05` ms de `~1,01`; o tecto `V0` é `0,10`); a
+  cobertura IGUAL byte a byte à do passe de sempre (gate de placa que corre os dois caminhos sobre as
+  mesmas cenas, nas duas placas) e uma mutação nova (a correção da fronteira da célula) a sangrar.
+
+**A rodada (uma só):** os binários `base` · `E1` · `E2` · `E3` · `C1` · `P0` · `V0` (ablações, fora de
+commit) · `A1a` · `A1b` · `A1` · `B1` · `B2` · `D` · `F` (todos os pedaços), compilados de seguida a partir
+da árvore com os pedaços atrás de constantes (um roteiro de troca com contagem por âncora e reposição),
+medidos intercalados por `mede_sonda_das_estrelas.sh` (`PERFIL=1`, `PLACAS="igpu rtx"`, `CORRIDAS=2`,
+`SEGUIDAS=2`, `TRACEJADOS="0 1"`) e lidos por `tabela_da_sonda.py`; `registos_dos_shaders.sh` sobre `base` e
+`F`; no app, `mede_formas_na_placa.sh` com o `F` (`=127` densa contínua e tracejada, as duas placas).
+Depois da tabela: as constantes dos pedaços recusados saem com o código deles, as dos aceites dobram-se.

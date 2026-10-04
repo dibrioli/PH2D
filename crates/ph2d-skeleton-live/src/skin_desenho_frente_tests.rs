@@ -204,3 +204,118 @@ fn as_riscas_de_tras_nao_pintam_por_cima_da_frente() {
         );
     }
 }
+
+/// ⭐ **SONDA — O PREÇO por quadro** do recorte (só a porta) e do quadro inteiro com e sem a lei do
+/// contacto, a pose a MUDAR a cada chamada (`110°` ↔ `150°`). Imprime; corra em `--release` com a
+/// máquina calma.
+#[test]
+fn diag_o_preco_do_recorte_por_quadro() {
+    use std::time::Instant;
+    let (mut sim, mut scene, map, id, [_, ponta]) = palco();
+    scene.path_mut(id).expect("path").effects = vec![FxEntry::new(PathEffect::Hatch(
+        ph2d_vec_scene::fx_hatch::HatchSpec {
+            angle: 45.0,
+            spacing: 4.0,
+            cross: false,
+        },
+    ))];
+    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
+    let e = ph2d_ecs::Entity::from_bits(map[&id]);
+    let skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
+    let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
+    let campo = g.campo.clone().expect("campo");
+    let indice = ph2d_vec_skin::pesos::IndiceDoCampo::novo(&campo.malha);
+    let mut n = 0_u32;
+    let mut dobra = |sim: &mut ph2d_ecs::SimWorld| {
+        n += 1;
+        sim.world_mut()
+            .get_mut::<ph2d_ecs::Transform>(ponta)
+            .expect("Transform")
+            .rotation = if n.is_multiple_of(2) { 110f32 } else { 150f32 }.to_radians();
+    };
+    let t = Instant::now();
+    let mut k = 0_u32;
+    while t.elapsed().as_millis() < 300 {
+        dobra(&mut sim);
+        let index = crate::skin_live::bone_index(&sim);
+        let pele = crate::skin_live::resolve(&sim, &skin, e, &index).expect("pele");
+        let prof = crate::esqueletos::profundidades(&sim, &skin, &index);
+        let _ = super::so_o_que_se_ve(&g.path, &g.pesos, &campo, indice.as_ref(), &pele, &[], true, &prof);
+        k += 1;
+    }
+    let porta = t.elapsed().as_secs_f64() * 1e6 / f64::from(k);
+    let mut quadro = |contacto: bool| {
+        let leis = Leis {
+            contacto,
+            ..Leis::do_ambiente()
+        };
+        let mut sc = scene.clone();
+        let t = Instant::now();
+        let mut k = 0_u32;
+        while t.elapsed().as_millis() < 300 {
+            dobra(&mut sim);
+            let _ = crate::skin_live::recook_leis(&sim, &mut sc, leis);
+            k += 1;
+        }
+        t.elapsed().as_secs_f64() * 1e6 / f64::from(k)
+    };
+    let (com, sem) = (quadro(true), quadro(false));
+    println!(
+        "  riscas {} · malha {} triângulos · µs: o recorte {porta:.1} · o quadro com a lei {com:.1} \
+         · sem ela {sem:.1} · loadavg {}",
+        g.path.contour_count() - 1,
+        campo.malha.tris.len(),
+        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+    );
+}
+
+/// ⭐⭐ **GATE — o que o recorte não corta sai AO BIT**: o contorno fechado e cada risca inteira à
+/// vista, com os nós e as linhas de peso da fonte (o bake lê a tabela fora da malha; uma linha
+/// deslocada daria pesos plausíveis ao nó errado). ⛔ **O CONTROLO:** a `150°` alguma risca é
+/// mesmo cortada.
+#[test]
+fn o_que_nao_se_corta_sai_ao_bit() {
+    let (mut sim, mut scene, map, id, [_, ponta]) = palco();
+    scene.path_mut(id).expect("path").effects = vec![FxEntry::new(PathEffect::Hatch(
+        ph2d_vec_scene::fx_hatch::HatchSpec {
+            angle: 45.0,
+            spacing: 8.0,
+            cross: false,
+        },
+    ))];
+    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
+    let e = ph2d_ecs::Entity::from_bits(map[&id]);
+    let skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
+    let g = crate::skinned_mesh::le(&skin.source).expect("fonte");
+    let campo = g.campo.clone().expect("campo");
+    sim.world_mut()
+        .get_mut::<ph2d_ecs::Transform>(ponta)
+        .expect("Transform")
+        .rotation = 150f32.to_radians();
+    let index = crate::skin_live::bone_index(&sim);
+    let pele = crate::skin_live::resolve(&sim, &skin, e, &index).expect("pele");
+    let prof = crate::esqueletos::profundidades(&sim, &skin, &index);
+    let (p, t) = super::so_o_que_se_ve(&g.path, &g.pesos, &campo, None, &pele, &[], true, &prof)
+        .expect("o CONTROLO: nada foi cortado a 150°");
+    let n = g.pesos.len() / (3 * g.path.verts_all().count());
+    let linhas = |q: &VecPath, tab: &[f64]| -> Vec<(Vec<ph2d_vec_scene::VecVertex>, bool, Vec<f64>)> {
+        let mut base = 0;
+        (0..q.contour_count())
+            .filter_map(|c| q.contour(c))
+            .map(|(v, f)| {
+                let r = tab[3 * base * n..3 * (base + v.len()) * n].to_vec();
+                base += v.len();
+                (v.to_vec(), f, r)
+            })
+            .collect()
+    };
+    let (antes, depois) = (linhas(&g.path, &g.pesos), linhas(&p, &t));
+    assert_eq!(t.len() / 3 / n, p.verts_all().count(), "três linhas por nó");
+    let iguais = antes.iter().filter(|a| depois.contains(a)).count();
+    let fechado = antes.iter().find(|a| a.1).expect("o fechado");
+    assert!(depois.contains(fechado), "o contorno fechado mudou (nós ou linhas)");
+    assert!(iguais < antes.len(), "o CONTROLO: nenhuma risca foi cortada");
+    println!("  contornos iguais ao bit {iguais} de {}", antes.len());
+    // As riscas inteiras à vista: as da fonte cujo desenho não perdeu nenhum ponto.
+    assert!(iguais > antes.len() / 2, "o recorte tocou riscas que não cortou ({iguais})");
+}

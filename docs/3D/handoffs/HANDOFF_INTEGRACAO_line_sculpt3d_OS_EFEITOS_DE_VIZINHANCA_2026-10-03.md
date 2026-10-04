@@ -19,7 +19,7 @@
 | ramo · worktree | `line/sculpt3d` · `Worktrees/line-sculpt3d` |
 | merge-base | `1ad60a1ce` (= `main` a 03/10; rebase desnecessário à data) |
 | commits | **59** + o commit deste handoff (`git log --oneline 1ad60a1ce..HEAD`) — a W6 são os últimos **9** (`59fb691bc`…`e15c55880`) · a linha inteira **238** ficheiros `+20 527 −2 353`; só a W6 **65** ficheiros `+4 504 −263` |
-| smoke do dono | W6: **PENDENTE** (§7, cena `=54`) · os anteriores: ver o handoff superseded |
+| smoke do dono | W6: ✅ **aprovado a 04/10** (cena `=54`, §7: «smoke OK. Muito bom!») · os anteriores: ver o handoff superseded |
 | contratos §6 | **intocados** (`Tool=12`, `PanelEvent=4`, `NodeOp`) |
 | `shells/desktop/src` | **0** linhas (a linha inteira toca só `shells/desktop/tests/it/the_sculpt_mesh_edits_are_wired.rs`, da W1b) |
 
@@ -119,7 +119,7 @@ da diagonal); acima de `64x` a porta recusa (a frase no painel). Cena de smoke `
   ✓ contexto no inicio da sessao               63 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
 ```
 
-## §7. Smoke (do dono: a cena `=54`)
+## §7. Smoke (do dono: a cena `=54`) — ✅ aprovado a 04/10
 
 Binário compilado nesta worktree no HEAD, depois de `rm -rf target/*/incremental` (`20 G` + `8,4 G`);
 a 1.ª build foi de `28,6 s`:

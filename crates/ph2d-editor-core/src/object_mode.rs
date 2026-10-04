@@ -31,16 +31,20 @@ pub enum ObjectMode {
     Draw,
     /// Mexer no que já está desenhado: seleccionar traços e pontos, esculpir o traço (Flip ▸ Edit).
     Edit,
+    /// Pintar a MÁSCARA da camada: preto esconde, branco mostra (Image ▸ Mask, D6; escolha do dono
+    /// 04/10 — a máscara da camada, não o pincel de protecção).
+    Mask,
 }
 
 impl ObjectMode {
     /// Todos, em ordem — a fonte da iteração (⛔ nunca escreva a lista uma segunda vez).
-    pub const ALL: [ObjectMode; 5] = [
+    pub const ALL: [ObjectMode; 6] = [
         ObjectMode::Object,
         ObjectMode::Paint,
         ObjectMode::Sculpt,
         ObjectMode::Draw,
         ObjectMode::Edit,
+        ObjectMode::Mask,
     ];
 
     /// O nome que o artista lê.
@@ -52,6 +56,7 @@ impl ObjectMode {
             ObjectMode::Sculpt => "object_mode.sculpt",
             ObjectMode::Draw => "object_mode.draw",
             ObjectMode::Edit => "object_mode.edit",
+            ObjectMode::Mask => "object_mode.mask",
         })
     }
 
@@ -64,6 +69,7 @@ impl ObjectMode {
             ObjectMode::Sculpt => crate::ids::OBJECT_MODE_SCULPT,
             ObjectMode::Draw => crate::ids::OBJECT_MODE_DRAW,
             ObjectMode::Edit => crate::ids::OBJECT_MODE_EDIT,
+            ObjectMode::Mask => crate::ids::OBJECT_MODE_MASK,
         }
     }
 

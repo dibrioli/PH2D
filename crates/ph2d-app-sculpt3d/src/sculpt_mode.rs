@@ -158,7 +158,7 @@ impl ModeFamily for Family<'_> {
                 true
             }
             ObjectMode::Paint => painter_in_hand(tools) || tools.set_active(&ToolId::new(PAINTER)),
-            ObjectMode::Object | ObjectMode::Draw | ObjectMode::Edit => false,
+            ObjectMode::Object | ObjectMode::Draw | ObjectMode::Edit | ObjectMode::Mask => false,
         }
     }
 

@@ -71,6 +71,17 @@ impl LayerStack {
         matches!(self.get(id).map(|l| &l.kind), Some(LayerKind::Mask(_)))
     }
 
+    /// The raster that owns mask `id` (`parent.mask == Some(id)`) — a mask is not in the z-order, so
+    /// this is the only way back to its layer. `None` if `id` is not a mask (or is orphaned).
+    #[must_use]
+    pub fn owner_of_mask(&self, id: LayerId) -> Option<LayerId> {
+        if !self.is_mask(id) {
+            return None;
+        }
+        self.all_ids()
+            .find(|&p| self.get(p).is_some_and(|l| l.mask == Some(id)))
+    }
+
     /// Set the primary selection. No-op if `id` is unknown.
     pub fn set_active(&mut self, id: LayerId) {
         if self.index_of(id).is_some() {

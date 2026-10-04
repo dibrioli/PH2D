@@ -182,3 +182,164 @@ fn the_painter_on_the_sculpt_screen_is_not_the_image_mode() {
     assert!(painter.expect("é o Painter").bind_screen_canvas(64, 64));
     assert!(!holds_an_image(&mut c.tools));
 }
+
+impl Cena {
+    fn painter(&mut self) -> &mut PainterTool {
+        self.tools
+            .active_mut()
+            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+            .expect("o Painter em mãos")
+    }
+    /// O que a shell faz mais tarde no quadro em que o Painter chega à mão: dá-lhe a imagem.
+    fn dar_imagem(&mut self) {
+        use ph2d_editor_core::tool::RasterEditTool;
+        (self.painter() as &mut dyn RasterEditTool).set_source(vec![255u8; 4 * 4 * 4], 4, 4);
+    }
+    /// `(alvo é máscara, a camada de cor, a máscara dela)`.
+    fn alvo(
+        &mut self,
+    ) -> (
+        bool,
+        Option<ph2d_tool_painter::LayerId>,
+        Option<ph2d_tool_painter::LayerId>,
+    ) {
+        let layers = self.painter().layers();
+        let active = layers.active().expect("camada activa");
+        let cor = layers.owner_of_mask(active).unwrap_or(active);
+        (
+            layers.is_mask(active),
+            Some(cor),
+            layers.get(cor).and_then(|l| l.mask),
+        )
+    }
+}
+
+/// ⭐⭐ GATE (Image ▸ Mask, escolha do dono 04/10) — Mask pinta a MÁSCARA da camada (criada se
+/// faltar), Paint volta à camada, e a troca NÃO larga o Painter: a máscara criada continua na mesma
+/// pilha (largá-lo desmontaria a tela). Object larga-o. (Mutação: `leave` voltar a largar ⇒ RED.)
+#[test]
+fn mask_paints_the_layer_mask_and_paint_the_layer_without_dropping_the_painter() {
+    let mut c = cena();
+    let a = c.imagem();
+    c.hero.gizmo.replace_selection(Some(a));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Mask)));
+    assert!(c.painter_na_mao(), "o Mask não abriu o Painter");
+    c.dar_imagem();
+    c.quadro(None);
+    let (na_mascara, cor, mascara) = c.alvo();
+    assert!(
+        na_mascara && mascara.is_some(),
+        "o Mask não pôs a máscara como alvo"
+    );
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Mask);
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
+    assert_eq!(
+        c.alvo(),
+        (false, cor, mascara),
+        "o Paint não voltou à camada, ou o Painter caiu"
+    );
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Mask)));
+    assert_eq!(
+        c.alvo(),
+        (true, cor, mascara),
+        "o 2.º Mask criou outra máscara"
+    );
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Object);
+    assert!(!c.painter_na_mao(), "Object não largou o Painter");
+}
+
+/// ⭐⭐ GATE — o artista escolhe a linha *Mask* no painel de camadas em Paint: o modo passa a Mask; a
+/// camada de cor devolve-o a Paint. CONTROLO: sem o clique, Paint segura-se.
+#[test]
+fn choosing_the_mask_row_moves_the_mode() {
+    let mut c = cena();
+    let a = c.imagem();
+    c.hero.gizmo.replace_selection(Some(a));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
+    c.dar_imagem();
+    c.quadro(None);
+    c.quadro(None);
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Paint, "controlo");
+    let mascara = c.painter().add_mask_to_active().expect("máscara");
+    c.quadro(None);
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Mask);
+    assert!(c.painter_na_mao());
+    let cor = c.painter().layers().owner_of_mask(mascara).expect("dona");
+    c.painter().select_layer(cor);
+    c.quadro(None);
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Paint);
+}
+
+/// ⛔ GATE — entrar em Mask ANTES de a imagem chegar ao Painter (o quadro real) não o devolve a Paint:
+/// o alvo põe-se quando há camadas.
+#[test]
+fn mask_waits_for_the_image_before_aiming() {
+    let mut c = cena();
+    let a = c.imagem();
+    c.hero.gizmo.replace_selection(Some(a));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Mask)));
+    c.quadro(None);
+    c.quadro(None);
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Mask);
+    c.dar_imagem();
+    c.quadro(None);
+    c.quadro(None);
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Mask);
+    assert!(c.alvo().0, "a máscara não é o alvo");
+}
+
+/// ⭐ GATE — o Painter sobre a TELA da escultura não é largado por esta família quando o modo cai.
+/// CONTROLO: o mesmo quadro sobre a imagem larga-o (`tab_opens_the_painter_and_gives_the_canvas_back`).
+#[test]
+fn the_image_family_never_drops_the_sculpt_painter() {
+    let mut c = cena();
+    let a = c.imagem();
+    c.hero.gizmo.replace_selection(Some(a));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
+    c.quadro(None);
+    assert!(c.painter().bind_screen_canvas(64, 64));
+    c.quadro(None);
+    assert_eq!(
+        c.hero.gizmo.mode.current(),
+        ObjectMode::Object,
+        "o modo da imagem caiu"
+    );
+    assert!(
+        c.painter_na_mao(),
+        "a família da imagem largou o Painter da escultura"
+    );
+}
+
+/// ⭐ GATE — Mask sem máscara possível (o tecto de camadas) volta a Paint e DIZ porquê: a recusa
+/// chega ao ecrã como aviso, uma vez. CONTROLO: o Mask normal não avisa (o 1.º gate desta família).
+#[test]
+fn a_mask_that_cannot_be_added_falls_back_to_paint_and_says_why() {
+    let mut c = cena();
+    let a = c.imagem();
+    c.hero.gizmo.replace_selection(Some(a));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
+    c.dar_imagem();
+    while c.painter().add_raster_layer("cheia").is_some() {}
+    let n = c.painter().layers().all_ids().count();
+    assert_eq!(
+        n,
+        ph2d_tool_painter::layers::HARD_CAP_LAYERS,
+        "o tecto mudou"
+    );
+    c.quadro(None);
+    let avisos = |c: &Cena| {
+        c.toasts
+            .iter()
+            .filter(|t| t.severity == ph2d_editor_core::toast::ToastSeverity::Warning)
+            .count()
+    };
+    assert_eq!(avisos(&c), 0, "controlo: Paint não avisa");
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Mask)));
+    assert_eq!(avisos(&c), 1, "a recusa não chegou ao ecrã");
+    c.quadro(None);
+    c.quadro(None);
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Paint);
+    assert_eq!(avisos(&c), 1, "avisou mais de uma vez");
+    assert!(!c.alvo().0);
+}

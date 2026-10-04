@@ -61,6 +61,11 @@ pub trait ModeFamily {
     fn joins(&self, _mode: ObjectMode) -> bool {
         false
     }
+    /// ⭐ **Uma recusa que o artista tem de LER**, depois do [`Self::follow`] deste quadro (ex.: Mask
+    /// sobre uma camada que não aceita máscara). O quadro mostra-a como aviso.
+    fn refusal(&mut self) -> Option<String> {
+        None
+    }
     /// Abre o módulo sobre `entity` e os `joined` (só chamada quando [`Self::joins`]).
     fn enter_with(
         &mut self,
@@ -273,6 +278,9 @@ pub fn drive(
     hero.gizmo.mode.publish_part_gizmo(part_gizmo);
     for f in families.iter_mut() {
         f.follow(current, tools);
+        if let Some(why) = f.refusal() {
+            toasts.push(Toast::warning(why));
+        }
     }
     // 5. O seletor — em todo quadro, vazio incluído.
     let menu = hero.gizmo.mode.menu(&mut hero.store);

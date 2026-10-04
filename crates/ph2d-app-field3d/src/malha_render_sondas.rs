@@ -75,8 +75,23 @@ fn sonda_do_render_por_malha() {
                 std::sync::atomic::Ordering::Relaxed,
             );
             crate::smoke::with_smoke(|s| {
-                s.vp_mut().cam = ph2d_field_render::Orbit::from_yaw_pitch(0.72, pitch);
+                // `PH2D_SONDA_YAW=<rad>`, `PH2D_SONDA_ALVO=x,y,z`, `PH2D_SONDA_MEIA=<meia altura>`: a
+                // câmara de PERTO (o report do dono de 04/10 sobre os reflexos, ampliados).
+                let num = |k: &str| std::env::var(k).ok().and_then(|v| v.parse::<f32>().ok());
+                s.vp_mut().cam = ph2d_field_render::Orbit::from_yaw_pitch(
+                    num("PH2D_SONDA_YAW").unwrap_or(0.72),
+                    pitch,
+                );
                 crate::input::frame_the_part(s);
+                if let Some(alvo) = std::env::var("PH2D_SONDA_ALVO").ok().and_then(|v| {
+                    let c: Vec<f32> = v.split(',').filter_map(|x| x.trim().parse().ok()).collect();
+                    (c.len() == 3).then(|| [c[0], c[1], c[2]])
+                }) {
+                    s.vp_mut().cam.target = alvo;
+                }
+                if let Some(m) = num("PH2D_SONDA_MEIA") {
+                    s.vp_mut().cam.half_extent = m;
+                }
                 if estilo {
                     let mut st = s.style;
                     st.curvature.convex = [1.0, 0.55, 0.25];

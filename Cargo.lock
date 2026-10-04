@@ -6504,6 +6504,7 @@ name = "ph2d-mesh-forward"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
+ "flate2",
  "half",
  "naga",
  "ph2d-bloom",

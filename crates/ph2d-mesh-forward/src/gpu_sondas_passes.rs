@@ -25,6 +25,22 @@ fn pula(bit: u8) -> bool {
     }
 }
 
+fn resolve<'a>(
+    view: &'a wgpu::TextureView,
+    alvo: &'a wgpu::TextureView,
+    limpo: wgpu::Color,
+) -> Option<wgpu::RenderPassColorAttachment<'a>> {
+    Some(wgpu::RenderPassColorAttachment {
+        view,
+        depth_slice: None,
+        resolve_target: Some(alvo),
+        ops: wgpu::Operations {
+            load: wgpu::LoadOp::Clear(limpo),
+            store: wgpu::StoreOp::Discard,
+        },
+    })
+}
+
 fn limpa(view: &wgpu::TextureView) -> Option<wgpu::RenderPassColorAttachment<'_>> {
     Some(wgpu::RenderPassColorAttachment {
         view,
@@ -131,7 +147,18 @@ impl Forward {
             {
                 let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("ph2d-mesh-forward sonda faces"),
-                    color_attachments: &[limpa(&sondas.faces_cor), limpa(&sondas.faces_dist)],
+                    color_attachments: &[
+                        resolve(
+                            &sondas.faces_ms[0],
+                            &sondas.faces_cor,
+                            wgpu::Color::TRANSPARENT,
+                        ),
+                        resolve(
+                            &sondas.faces_ms[1],
+                            &sondas.faces_dist,
+                            wgpu::Color::TRANSPARENT,
+                        ),
+                    ],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: &sondas.faces_prof,
                         depth_ops: Some(wgpu::Operations {

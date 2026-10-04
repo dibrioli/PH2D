@@ -195,9 +195,13 @@ mod tests_passe_chao_tapa;
 #[cfg(test)]
 mod tests_reflexo;
 #[cfg(test)]
+mod tests_reflexo_perto;
+#[cfg(test)]
 mod tests_sol;
 #[cfg(test)]
 mod tests_sonda_cpu;
+#[cfg(test)]
+mod tests_sonda_marcha;
 #[cfg(test)]
 mod tests_sondas;
 #[cfg(test)]

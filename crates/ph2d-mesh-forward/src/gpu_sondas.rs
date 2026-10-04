@@ -50,6 +50,19 @@ const TAPS: u32 = 64;
 /// | `[5, 3, 1, 0]` | `0,01° / 0,10°` | `0,12° / 4,66°` |
 /// | **`[5, 2, 1, 0]`** | `0,01° / 0,10°` | `0,09° / 2,45°` |
 /// | `[5, 3, 2, 1, 0]` | `0,01° / 0,11°` | `0,09° / 2,45°` |
+/// ⭐ **A busca do reflexo nítido** (`sonda_le.wgsl`): passos iguais em ângulo, um a cada [`PASSO`]
+/// texels do nível `0` do arco do raio, entre [`MARCHA_MIN`] e [`MARCHA_MAX`]; as bissecções e a
+/// espessura relativa. ⛔ Medido (04/10, a câmara de perto da cena 42): `24` passos fixos deixavam
+/// DENTES no topo da caixa refletida (a face vista de raspão saltava-se ao acaso), `96` limpavam-nos a
+/// `+0,3–0,4 ms` por quadro; a busca HIERÁRQUICA sobre o mínimo da distância por nível (o Hi-Z) saltava
+/// partes finas (o mínimo filtrado não é conservador) e deixava as bordas PIORES — recusada.
+pub(crate) const MARCHA_MIN: u32 = 8;
+pub(crate) const MARCHA_MAX: u32 = 48;
+pub(crate) const PASSO: f32 = 2.0;
+pub(crate) const REFINO: u32 = 6;
+pub(crate) const ESPESSURA: f32 = 0.05;
+/// A franja do contorno (relativa): o peso cai a `0` a esta distância por trás da vizinha.
+pub(crate) const FRANJA: f32 = 0.1;
 pub(crate) const PARALAXE: [f32; 4] = [5.0, 2.0, 1.0, 0.0];
 /// ⭐ O máximo de capturas: duas camadas por captura nos `256` do `max_texture_array_layers` do WebGL2.
 pub(crate) const MAX: usize = 128;
@@ -98,6 +111,10 @@ pub(crate) fn constantes() -> String {
         "const SONDA_LADO: u32 = {LADO}u;\nconst SONDA_NIVEIS: u32 = {NIVEIS}u;\n\
          const SONDA_FACE: u32 = {FACE}u;\nconst SONDA_TAPS: u32 = {TAPS}u;\n\
          const SONDA_PASSOS: u32 = {np}u;\n\
+         const SONDA_MARCHA_MIN: u32 = {MARCHA_MIN}u;\nconst SONDA_MARCHA_MAX: u32 = {MARCHA_MAX}u;\n\
+         const SONDA_PASSO: f32 = {PASSO:?};\nconst SONDA_TEXEL: f32 = {texel:?};\n\
+         const SONDA_REFINO: u32 = {REFINO}u;\n\
+         const SONDA_ESPESSURA: f32 = {ESPESSURA:?};\nconst SONDA_FRANJA: f32 = {FRANJA:?};\n\
          const SONDA_PARALAXE: array<f32, {np}> = array<f32, {np}>({});\n\
          const SONDA_FACE_W: array<vec3<f32>, 6> = array<vec3<f32>, 6>({});\n\
          const SONDA_FACE_UP: array<vec3<f32>, 6> = array<vec3<f32>, 6>({});\n\
@@ -107,6 +124,8 @@ pub(crate) fn constantes() -> String {
         up.join(", "),
         xi.join(", "),
         np = PARALAXE.len(),
+        // O ângulo de um texel do nível `0` (90° por meia aresta do conteúdo).
+        texel = std::f32::consts::FRAC_PI_2 / ((LADO - 2) as f32 * 0.5),
     )
 }
 
@@ -189,6 +208,8 @@ pub(crate) struct Sondas {
     pub(super) faces_cor: wgpu::TextureView,
     pub(super) faces_dist: wgpu::TextureView,
     pub(super) faces_prof: wgpu::TextureView,
+    /// As faces com `MSAA` amostras (resolvidas em `faces_cor` e `faces_dist`).
+    pub(super) faces_ms: [wgpu::TextureView; 2],
     /// A CADEIA: um nível por textura (`[cor, distância]`) — lida directamente, sem cópias.
     pub(super) cadeia: Vec<[wgpu::TextureView; 2]>,
     /// As capturas: `(capacidade, textura, vista de todas as camadas, [por captura][nível] = [cor,
@@ -360,7 +381,13 @@ impl Sondas {
                 stencil: wgpu::StencilState::default(),
                 bias: wgpu::DepthBiasState::default(),
             }),
-            multisample: wgpu::MultisampleState::default(),
+            // ⭐ O contorno das vizinhas com anti-serrilhado: de perto o cromo AMPLIA a captura, e os
+            // degraus de uma face sem ele viam-se (report do dono, 04/10).
+            multisample: wgpu::MultisampleState {
+                count: crate::MSAA,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
             multiview_mask: None,
             cache: None,
         });
@@ -421,13 +448,24 @@ impl Sondas {
         let atlas = (3 * FACE, 2 * FACE, 1);
         let faces_cor = vista(&textura(device, atlas, 1, FORMATO, rt | tb));
         let faces_dist = vista(&textura(device, atlas, 1, FORMATO, rt | tb));
-        let faces_prof = vista(&textura(
-            device,
-            atlas,
-            1,
-            crate::gpu_alvo::PROFUNDIDADE,
-            rt,
-        ));
+        let msaa = |format| {
+            vista(&device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("ph2d-mesh-forward sonda msaa"),
+                size: wgpu::Extent3d {
+                    width: atlas.0,
+                    height: atlas.1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: crate::MSAA,
+                dimension: wgpu::TextureDimension::D2,
+                format,
+                usage: rt,
+                view_formats: &[],
+            }))
+        };
+        let faces_ms = [msaa(FORMATO), msaa(FORMATO)];
+        let faces_prof = msaa(crate::gpu_alvo::PROFUNDIDADE);
         let cadeia: Vec<[wgpu::TextureView; 2]> = (0..NIVEIS)
             .map(|k| {
                 [0, 1].map(|_| {
@@ -522,6 +560,7 @@ impl Sondas {
             faces_cor,
             faces_dist,
             faces_prof,
+            faces_ms,
             cadeia,
             arranjo: arranjo(device, 1),
             quadros: None,

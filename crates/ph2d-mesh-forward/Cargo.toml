@@ -41,6 +41,8 @@ naga = { version = "29.0.4", features = ["wgsl-in"] }
 # As fixturas da triplanar (PNG) no gate de paridade.
 ph2d-imageio = { path = "../ph2d-imageio" }
 ph2d-imageio-png = { path = "../ph2d-imageio-png" }
+# O oráculo dos reflexos de PERTO vem com gzip (`~0,7 MB` em vez de `~5,7 MB`).
+flate2 = "1.1.10"
 
 [lints]
 workspace = true

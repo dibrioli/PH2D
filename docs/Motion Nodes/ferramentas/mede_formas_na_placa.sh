@@ -44,14 +44,23 @@ for cel in $CELULAS; do
     fi
     [ "$placa" = igpu ] && kv="$kv $IGPU"
     nome="$OUT/${placa}_c${cena}_n${n}_formas${formas}"
-    calma
-    antes=$(cat /proc/loadavg)
-    # ⚠️ A PLACA passa pela porta da casa (exclusão + prazo) SÓ durante a foto — segurá-la durante
-    # a espera pela calma bloquearia as outras linhas horas a fio.
-    FOTO_PERFIL=release PH2D_GPU=1 PH2D_GPU_ESPERA=1500 PH2D_PRAZO=600 \
-      bash "$RAIZ/scripts/ph2d-run.sh" bash "$RAIZ/docs/Components/ferramentas/fotografa_cena.sh" \
-      "$kv" 1930 1040 "$nome.png" "$ESPERA" > "$nome.foto.txt" 2>&1
-    depois=$(cat /proc/loadavg)
+    # ⛔ doc 121 §9.14: com a placa presa por outra linha a porta desiste e a célula sai sem quadros —
+    # repete-se (com nova calma) até `REPETE` vezes.
+    tentativa=0
+    while :; do
+      calma
+      antes=$(cat /proc/loadavg)
+      # ⚠️ A PLACA passa pela porta da casa (exclusão + prazo) SÓ durante a foto — segurá-la durante
+      # a espera pela calma bloquearia as outras linhas horas a fio.
+      FOTO_PERFIL=release PH2D_GPU=1 PH2D_GPU_ESPERA=1500 PH2D_PRAZO=600 \
+        bash "$RAIZ/scripts/ph2d-run.sh" bash "$RAIZ/docs/Components/ferramentas/fotografa_cena.sh" \
+        "$kv" 1930 1040 "$nome.png" "$ESPERA" > "$nome.foto.txt" 2>&1
+      depois=$(cat /proc/loadavg)
+      grep -q '^\[frame\] total=' "$nome.log" 2>/dev/null && break
+      tentativa=$((tentativa + 1))
+      echo "$(date +%H:%M:%S) $cel formas=$formas SEM QUADROS (tentativa $tentativa)" >> "$OUT/progresso.log"
+      [ "$tentativa" -ge "${REPETE:-6}" ] && break
+    done
     {
       echo "celula=$cel formas=$formas"
       echo "ANTES: $antes"

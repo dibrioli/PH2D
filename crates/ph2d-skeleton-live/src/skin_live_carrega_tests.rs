@@ -99,3 +99,14 @@ fn cozer_no_carregamento_nao_move_um_pixel() {
         assert_eq!(crate::skin_live::coze_os_efeitos_presos(&mut sim, &mut scene), 0, "2.ª vez");
     }
 }
+
+/// ⭐ **GATE de costura — a shell coze ANTES de desenhar a pele**, no quadro (se viesse depois, o 1.º
+/// quadro desenhava a fonte velha com a pilha já vazia: o efeito sumia por um quadro).
+#[test]
+fn a_shell_coze_antes_de_desenhar_a_pele() {
+    let fase = include_str!("../../../shells/desktop/src/render_loop/fase_vector_view_and_drives.rs");
+    let coze = fase.find("coze_os_efeitos_presos(sim, vec_scene)");
+    let pele = fase.find("recook_desenhando(sim, vec_scene)");
+    assert!(pele.is_some(), "o CONTROLO: a fase já não desenha a pele aqui");
+    assert!(coze.is_some_and(|c| Some(c) < pele), "a fase não coze antes da pele ({coze:?}, {pele:?})");
+}

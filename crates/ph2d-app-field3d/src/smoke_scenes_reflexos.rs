@@ -31,16 +31,17 @@ pub fn cena_42() -> Result<FieldDoc, ph2d_field::FieldError> {
         "[field-smoke] cena 42 — OS REFLEXOS: a bola de CROMO mostra as vizinhas e as sombras delas."
     );
     println!(
-        "[field-smoke]            (1) MODEL · painel do topo, Shading · Render. Arraste um pouco para \
-         CIMA (uns 10 graus) para ver o chao."
+        "[field-smoke]            (1) MODEL · painel do topo, Shading · Render. A bola de CROMO e' a \
+         do meio."
     );
     println!(
-        "[field-smoke]            (2) no CROMO aparecem a bola VERMELHA, a caixa VERDE, a bola AMARELA e \
-         a caixa AZUL, cada uma no lado onde esta', com a sombra dela no chao refletido."
+        "[field-smoke]            (2) no CROMO aparecem a bola VERMELHA, a bola AMARELA e a caixa AZUL \
+         (e a VERDE, girando a camara), cada uma do lado onde esta'."
     );
     println!(
-        "[field-smoke]            (3) a bola de ALUMINIO ESCOVADO (a ultima da fila) mostra a caixa \
-         VERDE BORRADA. Gire a camara: os reflexos andam com a vista; mova uma bola: o reflexo segue-a."
+        "[field-smoke]            (3) a bola de ALUMINIO ESCOVADO (atras, ao lado da caixa verde) mostra \
+         as vizinhas BORRADAS. Gire a camara: os reflexos andam com a vista; mova uma bola: o reflexo \
+         segue-a."
     );
     let nodes = vec![
         // 0 — o CROMO, no meio

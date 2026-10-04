@@ -121,6 +121,12 @@ pub(super) struct ReliefState {
     /// É ablação de **ROTA**, não de peça: as duas rotas TÊM de escrever o mesmo byte, e provar isso é
     /// a razão de ela existir.
     pub(super) planes_pool_off: bool,
+    /// **O lote que está a ser carimbado é RASCUNHO — não deposita corpo.** Só a corda do `Style:
+    /// Solid` num quadro intermédio o arma (`super::solid_deposit`, `stamp_corda_em_rascunho`): ela é
+    /// refeita a cada evento e o envelope do traço não se descasca, então o corpo dela ficava como um
+    /// leque. A corda FINAL assenta o corpo uma vez, no pen-up. `false` (o `Default`) = o caminho de
+    /// sempre.
+    pub(super) corpo_suspenso: bool,
     /// **Quantas vezes o pool de facto SERVIU.** É a métrica do ADR-0120 (*o gate que conta quantas
     /// vezes o caminho rápido dispara*): sem ela, um pool que nunca acerta deixa o gate de identidade
     /// mais verde do que nunca — as duas rotas seriam a mesma — enquanto o produto segue a alocar.

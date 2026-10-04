@@ -74,8 +74,10 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     v.push((
         Impasto,
         painter_line_type_option_id(2),
-        "a fazer: os fios (Sketchy) no Impasto só aparecem com Solid ligado (doc 45 §2.2), e a porta dos \
-         fios (`threads_own_the_gesture`) não exclui o Impasto — achar o porquê",
+        "age, mas não na FÁBRICA: o Reach de fábrica (1 diâmetro) costura dentro do próprio rastro, e o \
+         rastro do Impasto é tinta OPACA da mesma cor (1 352 de 1 919 texels puros) — um fio por cima não \
+         muda um byte; com Reach 3 ele sai do rastro e pinta (208 texels). O «só com Solid» de 2026-10-03 \
+         era a corda do Solid a estragar o traço (curado: `a_corda_nao_deixa_rasto_nos_acumuladores_do_traco`)",
     ));
     v.push((
         Watercolor,

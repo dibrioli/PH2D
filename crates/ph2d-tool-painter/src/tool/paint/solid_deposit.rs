@@ -259,7 +259,8 @@ impl PainterTool {
         let Some(mut rect) = self.solid_fill_rect(loops) else {
             return;
         };
-        if let Some(chord_rect) = self.tiled_chord_region(chord) {
+        let chord_rect = self.tiled_chord_region(chord);
+        if let Some(chord_rect) = chord_rect {
             rect = super::union_region(rect, chord_rect);
         }
         if rect.w == 0 || rect.h == 0 {
@@ -268,7 +269,7 @@ impl PainterTool {
         let pixels = self.save_region(&rect);
         self.stamp_solid(loops, rect);
         if !chord.is_empty() {
-            self.stamp_dabs_dispatch(chord);
+            self.stamp_corda_em_rascunho(chord, chord_rect);
         }
         self.paint.drag_preview = Some(super::DragPreview { rect, pixels });
     }
@@ -288,6 +289,71 @@ impl PainterTool {
             self.dab_batch_region(&wrapped)
         } else {
             self.dab_batch_region(chord)
+        }
+    }
+
+    /// **A corda de um quadro intermédio é RASCUNHO em todos os canais, não só na tela.**
+    ///
+    /// O `restore` do evento seguinte desfaz os PIXELS dela, mas o carimbo escreve também os
+    /// acumuladores do TRAÇO, que nenhum restore descasca: a cobertura do cap de Accumulate
+    /// (`stroke_mask`, armada em `strength < 1` e em todo pincel de Impasto pelo AA do filme), a do
+    /// Per-Layer Color, o fluxo do `tex_rng` e o envelope do corpo. Medido no «U» de
+    /// `solid_transaction_tests`: os dabs seguintes liam a cobertura das cordas velhas e deixavam de
+    /// pintar (Digital a 0,5: **966** texels mais claros com Solid do que sem ele), e o corpo das
+    /// cordas ficava como um leque no miolo da forma (Impasto: **2 000** texels).
+    ///
+    /// ⇒ os acumuladores de cor são devolvidos no recorte que a corda escreveu
+    /// ([`Self::tiled_chord_region`], a mesma região que o `save` da tela usa), e o corpo não é
+    /// depositado ([`super::relief_state::ReliefState::corpo_suspenso`]): a corda FINAL assenta-o
+    /// uma vez, no pen-up ([`Self::assenta_o_corpo_da_corda`]).
+    fn stamp_corda_em_rascunho(&mut self, chord: &[Dab], regiao: Option<Region>) {
+        let largura = self.source_size.0 as usize;
+        let texels = largura * self.source_size.1 as usize;
+        let rng = self.paint.tex_rng;
+        let mascara = Recorte::de(&self.paint.stroke_mask, regiao, largura, texels);
+        let camadas: Vec<Recorte> = self
+            .paint
+            .per_layer_stroke
+            .cov
+            .iter()
+            .map(|c| Recorte::de(c, regiao, largura, texels))
+            .collect();
+        let tinha_camadas = !self.paint.per_layer_stroke.cov.is_empty();
+        self.paint.relief.corpo_suspenso = true;
+        self.stamp_dabs_dispatch(chord);
+        self.paint.relief.corpo_suspenso = false;
+        self.paint.tex_rng = rng;
+        mascara.repoe(&mut self.paint.stroke_mask, largura);
+        if tinha_camadas {
+            for (c, r) in self.paint.per_layer_stroke.cov.iter_mut().zip(camadas) {
+                r.repoe(c, largura);
+            }
+        } else {
+            self.paint.per_layer_stroke.reset();
+        }
+    }
+
+    /// **O corpo da corda FINAL, assentado uma vez** — o pen-up do gesto à mão livre, antes do
+    /// commit do relevo. As cordas dos quadros intermédios não depositam corpo
+    /// ([`Self::stamp_corda_em_rascunho`]); sem isto a aresta que fecha a forma ficava chata ao lado
+    /// de um contorno com corpo. A cor dela já está na tela: é o último rascunho, que o commit guarda.
+    ///
+    /// ⚠️ Só no `paint_end`, e não no `commit_drag_preview`: o envelope do traço é por `max`, mas
+    /// depois do commit do relevo ele é um envelope NOVO, e uma segunda chamada somaria o corpo.
+    pub(super) fn assenta_o_corpo_da_corda(&mut self) {
+        if !self.freehand_solid_fill_live() {
+            return;
+        }
+        let chord = self.closing_chord_dabs();
+        if chord.is_empty() {
+            return;
+        }
+        let brush = self.stroke_spec();
+        if self.paint.tiling[0] || self.paint.tiling[1] {
+            let wrapped = super::tiling::tiled_dabs(&chord, self.source_size, self.paint.tiling);
+            self.stamp_dabs_height(&wrapped, &brush);
+        } else {
+            self.stamp_dabs_height(&chord, &brush);
         }
     }
 
@@ -433,3 +499,63 @@ fn blend_solid_row(row: usize, dst: &mut [u8], b: &SolidBand<'_>) {
 /// perguntas são a mesma — *quantos texels é preciso escrever para o fork valer a pena?* — e dois
 /// números para uma pergunta divergem no dia em que alguém afinar um deles.
 const SOLID_PAR_MIN: usize = ph2d_painter_brush::PARALLEL_MIN_AREA;
+
+/// O que a corda em rascunho tem de devolver de UM acumulador por-texel do traço (a cobertura do
+/// cap, um mapa do Per-Layer Color): `bpp` bytes por texel, deduzidos do comprimento.
+enum Recorte {
+    /// O plano estava vazio (o traço ainda não o tinha armado): volta vazio, e o próximo dab real
+    /// arma-o como teria armado.
+    Vazio,
+    /// A corda não escreve nada (sem região): nada a devolver.
+    Intocado,
+    /// As linhas da região, `bpp` bytes por texel.
+    Faixa {
+        r: Region,
+        bpp: usize,
+        len: usize,
+        bytes: Vec<u8>,
+    },
+}
+
+impl Recorte {
+    fn de(plano: &[u8], regiao: Option<Region>, largura: usize, texels: usize) -> Self {
+        if plano.is_empty() {
+            return Self::Vazio;
+        }
+        let Some(r) = regiao else {
+            return Self::Intocado;
+        };
+        debug_assert!(
+            texels > 0 && plano.len() % texels == 0,
+            "um acumulador do traço que não é por texel"
+        );
+        let bpp = plano.len() / texels.max(1);
+        let linha = r.w as usize * bpp;
+        let mut bytes = Vec::with_capacity(linha * r.h as usize);
+        for y in r.y as usize..(r.y + r.h) as usize {
+            let i = (y * largura + r.x as usize) * bpp;
+            bytes.extend_from_slice(&plano[i..i + linha]);
+        }
+        Self::Faixa {
+            r,
+            bpp,
+            len: plano.len(),
+            bytes,
+        }
+    }
+
+    fn repoe(self, plano: &mut Vec<u8>, largura: usize) {
+        match self {
+            Self::Vazio => plano.clear(),
+            Self::Intocado => {}
+            Self::Faixa { r, bpp, len, bytes } => {
+                debug_assert_eq!(plano.len(), len, "a corda re-armou um acumulador do traço");
+                let linha = r.w as usize * bpp;
+                for (k, y) in (r.y as usize..(r.y + r.h) as usize).enumerate() {
+                    let i = (y * largura + r.x as usize) * bpp;
+                    plano[i..i + linha].copy_from_slice(&bytes[k * linha..(k + 1) * linha]);
+                }
+            }
+        }
+    }
+}

@@ -416,6 +416,8 @@ impl PainterTool {
         // pen-up. It is gone (Enio 2026-08-10) — the taper shapes only the head now, which every dab
         // knows from its own `arc_len` the instant it is made. Nothing is restored, nothing is replayed,
         // and a pen-up costs exactly what it cost before the taper existed. See `ph2d_painter_brush::taper`.
+        // **Style: Solid** — a corda final ganha o corpo que os rascunhos dela não depositaram.
+        self.assenta_o_corpo_da_corda();
         // Drag Dot: the dab at the release point is the commit — keep it (drop the restore record).
         self.commit_drag_preview();
         // Wet Paint: close the engine's direct stroke (the sim resumes; the session — the water —

@@ -225,3 +225,115 @@ fn both_walkers_of_the_solid_over_write_the_same_bytes() {
         "as duas rotas do `over` divergem em {diff} bytes — o pool deixou de ser so' agendamento"
     );
 }
+
+/// Um «U» aberto (o Solid fecha-o pela corda) entregue em `por_aresta` movimentos por aresta: a
+/// GEOMETRIA é a mesma em qualquer entrega — só muda quantos eventos a trazem. Devolve a tela e o
+/// relevo commitado da camada.
+fn u_entregue(
+    media: PaintMedia,
+    strength: f32,
+    grao: bool,
+    solid: bool,
+    por_aresta: usize,
+) -> (Vec<u8>, Vec<f32>) {
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = tool(128, media, 6.0);
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.paint.brush.strength = strength;
+    t.paint.brush.style_solid = solid;
+    if grao {
+        t.paint.brush.texture.kind = ph2d_painter_brush::TextureKind::Noise;
+        t.paint.brush.texture.mapping = ph2d_painter_brush::TextureMapping::Random;
+        t.paint.brush.texture.size = [0.25, 0.25];
+        t.paint.brush.grain_depth = 1.0;
+    }
+    let cantos = [[20.0f32, 30.0], [100.0, 30.0], [100.0, 90.0], [20.0, 90.0]];
+    t.on_canvas_pointer(cp(cantos[0], PointerPhase::Down));
+    for w in cantos.windows(2) {
+        for k in 1..=por_aresta {
+            #[allow(clippy::cast_precision_loss)]
+            let f = k as f32 / por_aresta as f32;
+            t.on_canvas_pointer(cp(
+                [
+                    w[0][0] + (w[1][0] - w[0][0]) * f,
+                    w[0][1] + (w[1][1] - w[0][1]) * f,
+                ],
+                PointerPhase::Move,
+            ));
+        }
+    }
+    t.on_canvas_pointer(cp(cantos[3], PointerPhase::Up));
+    let relevo = t
+        .layers
+        .active()
+        .and_then(|l| t.heights.get(&l))
+        .map(|f| f.to_vec())
+        .unwrap_or_default();
+    (t.canvas_rgba.to_vec(), relevo)
+}
+
+/// **A CORDA NÃO DEIXA RASTO** — o Solid só ACRESCENTA tinta (a mesma cor, por `over`), então
+/// nenhum texel pode sair mais CLARO com ele, e no Impasto o miolo do «U» — onde só passam as cordas
+/// de quadros intermédios, a mancha não tem corpo e a corda final está a 15 px — não ganha relevo.
+#[test]
+fn a_corda_nao_deixa_rasto_nos_acumuladores_do_traco() {
+    for (media, strength) in [(PaintMedia::Digital, 0.5f32), (PaintMedia::Impasto, 1.0)] {
+        let (c0, r0) = u_entregue(media, strength, false, false, 20);
+        let (c1, r1) = u_entregue(media, strength, false, true, 20);
+        let clareou = c0
+            .chunks(4)
+            .zip(c1.chunks(4))
+            .filter(|(sem, com)| (0..3).any(|k| com[k] > sem[k].saturating_add(1)))
+            .count();
+        let miolo = |r: &[f32]| {
+            (40..80usize)
+                .flat_map(|y| (35..85usize).map(move |x| y * 128 + x))
+                .filter(|&i| r.get(i).is_some_and(|v| *v > 1e-3))
+                .count()
+        };
+        assert_eq!(
+            clareou, 0,
+            "{media:?}: o Solid CLAREOU {clareou} texels — a corda de um quadro intermédio marcou a \
+             cobertura do traço e os dabs seguintes deixaram de pintar ali"
+        );
+        assert_eq!(
+            miolo(&r1),
+            miolo(&r0),
+            "{media:?}: o miolo do «U» ganhou relevo — o corpo das cordas intermédias ficou no traço"
+        );
+        // ⚠️ E a corda FINAL tem corpo como o resto do contorno: sem isto a cura «a corda não deposita
+        // relevo» passaria deixando a aresta que fecha a forma chata.
+        if media == PaintMedia::Impasto {
+            let na_corda = (40..80usize).filter(|y| r1[y * 128 + 20] > 1e-3).count();
+            assert!(
+                na_corda > 30,
+                "a corda final ficou sem corpo ({na_corda} de 40)"
+            );
+        }
+    }
+}
+
+/// **…e não gasta o SORTEIO do traço** — com um Grain de quadro aleatório, a metade de FORA do braço
+/// direito do «U» (longe da mancha e da corda) é a mesma tinta com e sem Solid, byte a byte: as
+/// cordas intermédias não avançam o `tex_rng` que os dabs seguintes leem.
+#[test]
+fn a_corda_nao_gasta_o_sorteio_do_grao() {
+    let (c0, _) = u_entregue(PaintMedia::Digital, 1.0, true, false, 20);
+    let (c1, _) = u_entregue(PaintMedia::Digital, 1.0, true, true, 20);
+    let fora = (40..80usize)
+        .flat_map(|y| (103..110usize).map(move |x| (y * 128 + x) * 4))
+        .filter(|&i| c0[i..i + 4] != c1[i..i + 4])
+        .count();
+    let pintado = (40..80usize)
+        .flat_map(|y| (103..110usize).map(move |x| (y * 128 + x) * 4))
+        .filter(|&i| c0[i] < 250)
+        .count();
+    assert!(
+        pintado > 40,
+        "controlo: a metade de fora do braço tem tinta ({pintado})"
+    );
+    assert_eq!(
+        fora, 0,
+        "o Solid mudou o grão do traço longe da mancha ({fora} texels)"
+    );
+}

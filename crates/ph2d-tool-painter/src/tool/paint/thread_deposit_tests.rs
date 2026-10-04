@@ -54,24 +54,34 @@ fn zigzag(t: &mut PainterTool, c: f32) {
 ///
 /// ⚠️ O oráculo é a RAZÃO contra o MESMO gesto em `None`, nunca um número absoluto: o que a feature
 /// promete é tinta ALÉM do rastro do pincel, e é isso que a razão mede.
+///
+/// ⚠️ **E no IMPASTO, sem Solid** (censo de 2026-10-03: *«só age com Solid»*). Medido em 2026-10-04: a
+/// porta dos fios nunca excluiu o Impasto; quem fazia o Sketchy «aparecer» com Solid era a corda do
+/// Solid a estragar o traço (`solid_transaction_tests`). Na fábrica do Impasto o fio cai dentro do
+/// rastro opaco da mesma cor e não muda um byte — por isso este gate usa o Reach que sai do rastro.
 #[test]
 fn the_sketchy_lays_ink_beyond_the_brushs_own_trail() {
     let side = 256u32;
-    let mut plain = tool(side, PaintMedia::Digital, 4.0);
-    plain.paint.brush.line_kind = LineKind::None;
-    zigzag(&mut plain, 128.0);
-    let bare = inked(&plain);
+    for media in [PaintMedia::Digital, PaintMedia::Impasto] {
+        let mut plain = tool(side, media, 4.0);
+        plain.paint.brush.line_kind = LineKind::None;
+        zigzag(&mut plain, 128.0);
+        let bare = inked(&plain);
 
-    let mut sewn = tool(side, PaintMedia::Digital, 4.0);
-    arm(&mut sewn, 0.4);
-    zigzag(&mut sewn, 128.0);
-    let web = inked(&sewn);
+        let mut sewn = tool(side, media, 4.0);
+        arm(&mut sewn, 0.4);
+        zigzag(&mut sewn, 128.0);
+        let web = inked(&sewn);
 
-    assert!(bare > 200, "controle: o traço nu tem de pintar ({bare})");
-    assert!(
-        web > bare + bare / 10,
-        "a teia não chegou à tela: {web} texels contra {bare} do traço nu"
-    );
+        assert!(
+            bare > 200,
+            "{media:?}: controle: o traço nu tem de pintar ({bare})"
+        );
+        assert!(
+            web > bare + bare / 10,
+            "{media:?}: a teia não chegou à tela: {web} texels contra {bare} do traço nu"
+        );
+    }
 }
 
 /// **O NEUTRO É BYTE-IDÊNTICO** — as duas portas: o tipo `None` e a densidade zero.

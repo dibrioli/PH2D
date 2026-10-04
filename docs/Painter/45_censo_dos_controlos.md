@@ -122,8 +122,9 @@ do Composite (escolhe o que o `+` acrescenta) · *Falloff Add* (o ponto novo nas
 - ~~**O gate permanente**~~ — **feito** (doc 46 §2-4): `o_censo_dos_controlos_so_encolhe`. A lista
   viva (com o motivo de cada linha) é a `inertes_com_motivo` em `tests/it/o_censo_so_encolhe.rs` — ela
   é a fonte desta tabela daqui em diante; a §2 é a medição de 2026-10-03.
-- **Sketchy no Impasto**: só age com Solid ligado, e a porta dos fios (`threads_own_the_gesture`) não
-  exclui o Impasto — o porquê está por achar.
+- ~~**Sketchy no Impasto**~~ — **resolvido** (2026-10-04, BUGS #34): o «só com Solid» era a corda do
+  Solid a estragar o traço; o Sketchy age sem Solid fora do rastro (Reach > 1 diâmetro) e, na fábrica,
+  cai dentro do rastro OPACO da mesma cor (0 bytes, por física — fica na lista com esse motivo).
 - **A procura completa** (`CENSO_ARMAR=2`) não cabe nos 30 min do `ph2d-run` sob carga no Impasto e
   no Wet Paint; ali correu só a dos vizinhos, e os mortos que sobraram leram-se à mão (§2).
 - **Composite: as pilhas atravessando os meios** não foram exploradas além da 1.ª camada.

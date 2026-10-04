@@ -59,7 +59,7 @@ impl PainterTool {
     /// route (cached / canvas-cached / per-pixel / ramped / per-layer) contributes relief through the
     /// same path, and a route added tomorrow gets it for free.
     pub(super) fn stamp_dabs_height(&mut self, dabs: &[Dab], brush: &BrushSpec) {
-        if dabs.is_empty() || !self.impasto_batch_active() {
+        if dabs.is_empty() || !self.impasto_batch_active() || self.paint.relief.corpo_suspenso {
             return;
         }
         let erasing = self.paint.eraser;

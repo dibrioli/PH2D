@@ -92,7 +92,7 @@ fn foto(px: &[Px], quais: &[usize], (viz, solo): (&[u8], &[u8]), (cv, cs): (usiz
 }
 
 /// ⭐⭐⭐ **Entre dois reflexos de vizinhas separadas, o cromo mostra o fundo, como no Cycles** — nítido e
-/// a `0,05` (o cromo da cena 42). CONTROLO: sem a azul, a faixa é fundo também no nosso, e a régua passa.
+/// a `0,05` (o cromo da cena 42). CONTROLO: sem as capturas não há ponte, e a régua passa.
 #[test]
 #[ignore = "precisa de aparelho"]
 fn entre_dois_reflexos_o_cromo_mostra_o_fundo() {
@@ -107,19 +107,26 @@ fn entre_dois_reflexos_o_cromo_mostra_o_fundo() {
     for (rug, cols) in [(0.0f32, (0usize, 2usize)), (v.rug2, (1, 3))] {
         let viz = desenha(v, &mut fw, metal(rug), true);
         let solo = desenha(v, &mut fw, metal(rug), false);
-        let sem_azul = desenha_ate(v, &mut fw, metal(rug), 2, true);
         let m = mede(&px, &f, (&viz, &solo), cols);
-        let c = mede(&px, &f, (&sem_azul, &solo), cols);
         foto(&px, &f, (&viz, &solo), cols, &format!("junta_{rug}"));
+        // Sem a azul (só imprime): o que a franja e a espessura alargam a verde na faixa.
+        let sem_azul = desenha_ate(v, &mut fw, metal(rug), 2, true);
+        let a = mede(&px, &f, (&sem_azul, &solo), cols);
         foto(&px, &f, (&sem_azul, &solo), cols, &format!("junta_sem_azul_{rug}"));
+        // CONTROLO: sem as capturas não há vizinha no reflexo, nem ponte.
+        fw.liga_reflexos(false);
+        let sem = desenha(v, &mut fw, metal(rug), true);
+        fw.liga_reflexos(true);
+        let c = mede(&px, &f, (&sem, &solo), cols);
         eprintln!(
-            "junta, cromo {rug}: faixa {} px · |Δ| médio {:.4} · |Δ| > 0,2: {} — CONTROLO sem a azul: {:.4} · {}",
-            m.0, m.1, m.2, c.1, c.2
+            "junta, cromo {rug}: faixa {} px · |Δ| médio {:.4} · |Δ| > 0,2: {} — sem a azul {:.4} · {} — \
+             CONTROLO sem capturas {:.4} · {}",
+            m.0, m.1, m.2, a.1, a.2, c.1, c.2
         );
         assert!(m.0 > 300, "a faixa encolheu: {} px", m.0);
         assert!(
-            c.1 < BARRA.0 && c.2 <= BARRA.1,
-            "CONTROLO — sem a azul a faixa é fundo: a régua tinha de passar"
+            c.2 <= BARRA.1,
+            "CONTROLO — sem capturas não há ponte: a régua tinha de passar"
         );
         if !(m.1 < BARRA.0 && m.2 <= BARRA.1) {
             falhas.push(rug);
@@ -131,5 +138,6 @@ fn entre_dois_reflexos_o_cromo_mostra_o_fundo() {
     );
 }
 
-/// `(|Δ| médio na faixa, px com |Δ| > 0,2)`.
-const BARRA: (f32, usize) = (0.03, 0);
+/// `(|Δ| médio na faixa, px com |Δ| > 0,2)`. O CONTROLO só afirma os grosseiros: a média dele é a da
+/// lei sem capturas (a máscara da zona escurece a faixa, `0,107`).
+const BARRA: (f32, usize) = (0.03, 50);

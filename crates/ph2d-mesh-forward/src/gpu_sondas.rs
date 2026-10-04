@@ -55,6 +55,13 @@ pub(crate) const REFINO: u32 = 6;
 pub(crate) const ESPESSURA: f32 = 0.05;
 /// A franja do contorno (relativa): o peso cai a `0` a esta distância por trás da vizinha.
 pub(crate) const FRANJA: f32 = 0.1;
+/// ⭐ **A ARESTA entre duas vizinhas** (o 3.º report do dono, a «junta»): a captura guarda também a média
+/// do QUADRADO da distância, que atravessa toda média (MSAA, octaedro, níveis, filtro linear); onde o
+/// desvio passa esta fracção da distância média, o texel mistura superfícies de distâncias diferentes e a
+/// distância lida é FANTASMA — a busca não aceita cruzamento ali.
+pub(crate) const ARESTA: f32 = 0.1;
+/// Numa aresta, quantos texels adiante (no arco do raio) se procura a leitura pura da vizinha de lá.
+pub(crate) const ARESTA_PASSOS: u32 = 3;
 /// Até quantos níveis de borrão o reflexo usa a BUSCA (passando ao ponto fixo no último). ⛔ Medido
 /// (04/10, o par a `0,3`): a `3` o lobo áspero via a fronteira acerta/falha da busca como uma aresta dura.
 pub(crate) const LOD_BUSCA: f32 = 1.0;
@@ -128,6 +135,7 @@ pub(crate) fn constantes() -> String {
          const SONDA_PASSO: f32 = {PASSO:?};\nconst SONDA_TEXEL: f32 = {texel:?};\n\
          const SONDA_REFINO: u32 = {REFINO}u;\n\
          const SONDA_ESPESSURA: f32 = {ESPESSURA:?};\nconst SONDA_FRANJA: f32 = {FRANJA:?};\n\
+         const SONDA_ARESTA: f32 = {ARESTA:?};\nconst SONDA_ARESTA_PASSOS: u32 = {ARESTA_PASSOS}u;\n\
          const SONDA_LOD_BUSCA: f32 = {LOD_BUSCA:?};\nconst SONDA_COBERTURA_PLENA: f32 = {COBERTURA_PLENA:?};\n\
          const SONDA_ACIMA: f32 = {ACIMA:?};\n\
          const SONDA_PARALAXE: array<f32, {np}> = array<f32, {np}>({});\n\

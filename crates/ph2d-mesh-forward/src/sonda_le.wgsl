@@ -71,8 +71,16 @@ fn sonda_direcao(p: vec3<f32>, r: vec3<f32>, fino: f32) -> vec4<f32> {
 // bisseccao; e a ESPESSURA (o raio que passa POR TRAS de uma vizinha, vista do centro, nao a acerta).
 // Devolve (direccao, t / lambda) — `w < 0` = o raio nao acerta nada. O ponto fixo, num reflexo nitido,
 // decidia acertar/falhar pixel a pixel na borda: os DEGRAUS do report do dono (04/10).
-fn sonda_dist0(d: vec3<f32>) -> vec2<f32> {
-    return textureSampleLevel(sondas, liso, sonda_uv(sky_oct(d), 0u), sonda_camada + 1, 0.0).rg;
+fn sonda_dist0(d: vec3<f32>) -> vec3<f32> {
+    return textureSampleLevel(sondas, liso, sonda_uv(sky_oct(d), 0u), sonda_camada + 1, 0.0).rgb;
+}
+
+// A leitura mistura superficies de distancias diferentes (o desvio pelo 2.o momento passa `SONDA_ARESTA`
+// da media): a distancia dela e' FANTASMA — a junta entre duas vizinhas, report do dono 04/10.
+fn sonda_aresta(g: vec3<f32>) -> bool {
+    let m = g.x / max(g.y, 1.0e-6);
+    let v = g.z / max(g.y, 1.0e-6) - m * m;
+    return g.y > 0.5 && v > SONDA_ARESTA * SONDA_ARESTA * m * m;
 }
 
 // O peso do que a busca devolve: `1` num cruzamento NA superficie; perto do contorno (o raio rente,
@@ -117,18 +125,26 @@ fn sonda_marcha(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
             // contorno (vista do centro) o raio passa POR TRAS da vizinha, e a busca continua; o peso cai
             // com a distancia a ela (a borda continua de pixel a pixel).
             let u = cos(hi) * qh + sin(hi) * w;
-            let gh = sonda_dist0(u);
             let gl = sonda_dist0(cos(lo) * qh + sin(lo) * w);
             let lam = ql * st / sin(th - hi);
-            let fora = lam - gh.x / max(gh.y, 1.0e-6);
-            if (gl.y > 0.5 && fora <= SONDA_ESPESSURA * lam) {
-                marcha_peso = 1.0;
-                return vec4<f32>(u, sin(hi) / st);
+            // Numa ARESTA a distancia lida e' fantasma (a junta): a da vizinha para onde o raio passa a ficar
+            // atras le-se uns texels adiante, onde a leitura e' pura; sem leitura pura, nada.
+            var gh = sonda_dist0(u);
+            for (var s = 1u; s <= SONDA_ARESTA_PASSOS && sonda_aresta(gh); s = s + 1u) {
+                let av = hi + f32(s) * SONDA_TEXEL;
+                gh = sonda_dist0(cos(av) * qh + sin(av) * w);
             }
-            let peso = 1.0 - smoothstep(0.0, SONDA_FRANJA * lam, fora);
-            if (peso > marcha_peso) {
-                marcha_peso = peso;
-                melhor = vec4<f32>(u, sin(hi) / st);
+            let fora = lam - gh.x / max(gh.y, 1.0e-6);
+            if (!sonda_aresta(gh)) {
+                if (gl.y > 0.5 && fora <= SONDA_ESPESSURA * lam) {
+                    marcha_peso = 1.0;
+                    return vec4<f32>(u, sin(hi) / st);
+                }
+                let peso = 1.0 - smoothstep(0.0, SONDA_FRANJA * lam, fora);
+                if (peso > marcha_peso) {
+                    marcha_peso = peso;
+                    melhor = vec4<f32>(u, sin(hi) / st);
+                }
             }
         }
         frente = !atras;
@@ -175,12 +191,15 @@ fn sonda_no_pixel(p: vec3<f32>, r: vec3<f32>, alpha: f32) -> vec4<f32> {
                 memo_mp = marcha_peso;
                 memo_mr = r;
             }
-            var m = fixo * clamp(lod0, 0.0, 1.0);
+            // O ponto fixo que pousa numa ARESTA (a distancia fantasma entre duas vizinhas) nao responde,
+            // tanto menos quanto mais a busca manda: a junta translucida a 0,05 (report do dono 04/10).
+            let fx = fixo * (1.0 - busca * select(0.0, 1.0, sonda_aresta(sonda_dist0(memo_d.xyz))));
+            var m = fx * clamp(lod0, 0.0, 1.0);
             if (memo_m.w >= 0.0) {
                 let lod = sqrt(clamp(alpha * memo_m.w, 0.0, 1.0)) * f32(SONDA_NIVEIS - 1u);
                 m = mix(m, sonda_le(sonda_camada, memo_m.xyz, lod), memo_mp);
             }
-            s = mix(fixo, m, busca);
+            s = mix(fx, m, busca);
         }
         memo_s = s;
         memo_sd = vec4<f32>(r, alpha);
@@ -199,6 +218,7 @@ struct SondaOut {
 fn fs_sonda(i: VsOut) -> SondaOut {
     var o: SondaOut;
     o.cor = vec4<f32>(luz_de_cena(i), 1.0);
-    o.dist = vec4<f32>(length(i.mundo - quadro.olho.xyz), 1.0, 0.0, 1.0);
+    let d = length(i.mundo - quadro.olho.xyz);
+    o.dist = vec4<f32>(d, 1.0, d * d, 1.0);
     return o;
 }

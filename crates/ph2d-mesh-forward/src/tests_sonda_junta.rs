@@ -19,12 +19,20 @@ fn smoothstep(a: f32, b: f32, x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
-/// `sonda_marcha` com o leitor `ler` (a distância vezes a cobertura, a cobertura): `(direcção, peso)`.
+/// `sonda_aresta`: o desvio pelo 2.º momento passa `aresta` da distância média.
+fn aresta(g: [f32; 3], k: f32) -> bool {
+    let m = g[0] / g[1].max(1.0e-6);
+    g[1] > 0.5 && g[2] / g[1].max(1.0e-6) - m * m > k * k * m * m
+}
+
+/// `sonda_marcha` com o leitor `ler` (a distância e o quadrado dela vezes a cobertura, a cobertura):
+/// `(direcção, peso)`.
 pub(crate) fn marcha(
-    ler: &dyn Fn([f32; 3]) -> [f32; 2],
+    ler: &dyn Fn([f32; 3]) -> [f32; 3],
     q: [f32; 3],
     r: [f32; 3],
     franja: f32,
+    (k_aresta, passos_aresta): (f32, u32),
 ) -> ([f32; 3], f32) {
     let ql = dot(q, q).sqrt();
     let qh = q.map(|x| x / ql.max(1.0e-6));
@@ -58,9 +66,20 @@ pub(crate) fn marcha(
                     lo = m;
                 }
             }
-            let (gh, gl) = (ler(u(hi)), ler(u(lo)));
+            let gl = ler(u(lo));
+            let mut gh = ler(u(hi));
+            let mut s = 1;
+            while s <= passos_aresta && aresta(gh, k_aresta) {
+                gh = ler(u(hi + s as f32 * texel));
+                s += 1;
+            }
             let l = lam(hi);
             let fora = l - gh[0] / gh[1].max(1.0e-6);
+            if aresta(gh, k_aresta) {
+                frente = false;
+                ant = a;
+                continue;
+            }
             if gl[1] > 0.5 && fora <= ESPESSURA * l {
                 return (u(hi), 1.0);
             }
@@ -88,36 +107,53 @@ fn sonda_da_junta_na_cpu() {
     let f = faixa(v, &px);
     let c = v.pecas[0].0;
     let vista = norm(v.de.map(|x| -x));
+    // Os px do cromo que DEVEM acertar uma vizinha (a mais de 2 px do contorno dela): os que a lei perde.
+    let acertam: Vec<usize> = (0..px.len())
+        .filter(|&k| crate::tests_reflexo_perto::vizinha_refletida(v, &px[k]).is_some())
+        .collect();
     for (nome, n) in [("com a azul", v.pecas.len()), ("sem a azul", 2)] {
         let _ = desenha_ate(v, &mut fw, metal(0.0), n, true);
         let dist: Vec<Nivel> = camada(&fw, 1);
         let bil = |d: [f32; 3]| {
             let g = le(&dist, d, 0.0);
-            [g[0], g[1]]
+            [g[0], g[1], g[2]]
         };
         let viz = |d: [f32; 3]| {
             let g = texel(&dist, d, 0);
-            [g[0], g[1]]
+            [g[0], g[1], g[2]]
         };
         for (leitor, ler) in [
-            ("bilinear", &bil as &dyn Fn([f32; 3]) -> [f32; 2]),
+            ("bilinear", &bil as &dyn Fn([f32; 3]) -> [f32; 3]),
             ("texel", &viz),
         ] {
-            for franja in [FRANJA, 0.0] {
-                let (mut aceita, mut peso) = (0usize, 0.0f32);
-                for &k in &f {
-                    let p = &px[k];
-                    let r: [f32; 3] =
-                        std::array::from_fn(|e| vista[e] - 2.0 * dot(vista, p.n) * p.n[e]);
-                    let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
-                    let (_, w) = marcha(ler, q, r, franja.max(1.0e-6));
-                    aceita += usize::from(w >= 1.0);
-                    peso += w;
-                }
+            for (franja, k_aresta, passos) in [
+                (FRANJA, f32::INFINITY, 0u32),
+                (FRANJA, 0.1, 0),
+                (FRANJA, 0.2, 3),
+                (FRANJA, 0.1, 3),
+                (FRANJA, 0.05, 3),
+                (0.0, 0.1, 3),
+            ] {
+                let corre = |quais: &[usize]| {
+                    let (mut aceita, mut peso) = (0usize, 0.0f32);
+                    for &k in quais {
+                        let p = &px[k];
+                        let r: [f32; 3] =
+                            std::array::from_fn(|e| vista[e] - 2.0 * dot(vista, p.n) * p.n[e]);
+                        let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
+                        let (_, w) = marcha(ler, q, r, franja.max(1.0e-6), (k_aresta, passos));
+                        aceita += usize::from(w >= 1.0);
+                        peso += w;
+                    }
+                    (aceita, peso / quais.len().max(1) as f32)
+                };
+                let (fa, fp) = corre(&f);
+                let (aa, ap) = corre(&acertam);
                 eprintln!(
-                    "{nome} · {leitor} · franja {franja}: {} px na faixa · ACEITES {aceita} · peso médio {:.3}",
+                    "{nome} · {leitor} · franja {franja} · aresta {k_aresta} +{passos}: faixa {} px ACEITES {fa} (peso {fp:.3}) · \
+                     dos {} que acertam, aceites {aa} (peso {ap:.3})",
                     f.len(),
-                    peso / f.len().max(1) as f32
+                    acertam.len()
                 );
             }
         }

@@ -317,3 +317,86 @@ fn a_camada_do_traco_chega_ao_mundo_depois_da_forma() {
         assert_eq!(v[0].verts[0].anchor, [1.0, 0.0], "a forma vem primeiro");
     }
 }
+
+/// ⭐⭐⭐ **GATE — o TRAÇO fica sobre a BORDA do preenchimento**, numa grelha de dobras fortes (até
+/// `170°`) — report do dono de 2026-10-04 (foto: o contorno descolado do preenchimento numa dobra
+/// agressiva; assados à parte os dois afastavam-se até `0,28`, MEDIDO). ⛔ **O CONTROLO:** a grelha
+/// tem camada em quase todas as poses.
+#[test]
+fn o_traco_fica_sobre_a_borda_do_preenchimento() {
+    use crate::barra_da_cena_tests_support::osso;
+    let (mut com_camada, mut pior) = (0, 0.0_f64);
+    for a in [110f32, 140.0, 170.0] {
+        for b in [-110f32, 110.0, 150.0, 180.0] {
+            let mut sim = ph2d_ecs::SimWorld::default();
+            let mut scene = ph2d_vec_scene::VecScene::new();
+            let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
+            let mut barra = ph2d_vec_scene::cook(
+                ph2d_vec_scene::ShapeKind::RoundRect,
+                [-2.25, -0.375],
+                [2.25, 0.375],
+                &[0.375],
+            );
+            barra.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+                ph2d_vec_scene::Rgba8::new(0, 0, 0, 255),
+                0.045,
+            ));
+            barra.effects = vec![FxEntry::new(PathEffect::Repeat(
+                ph2d_vec_scene::fx_repeat::RepeatSpec {
+                    copies_x: 1.0,
+                    move_x: 0.0,
+                    copies_y: 2.0,
+                    move_y: 60.0,
+                    spin: 5.0,
+                    orbit: 0.0,
+                },
+            ))];
+            let id = scene.push_path(barra);
+            ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
+            let passo = (4.5 - 0.75) / 3.0;
+            #[expect(clippy::cast_possible_truncation, reason = "metros de uma cena")]
+            let p32 = passo as f32;
+            let b1 = osso(&mut sim, "b1", [-1.875, 0.0], passo, None);
+            let b2 = osso(&mut sim, "b2", [p32, 0.0], passo, Some(b1));
+            let b3 = osso(&mut sim, "b3", [p32, 0.0], passo, Some(b2));
+            assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(b1)), 1);
+            for (o, g) in [(b2, a), (b3, b)] {
+                sim.world_mut()
+                    .get_mut::<ph2d_ecs::Transform>(o)
+                    .expect("Transform")
+                    .rotation = g.to_radians();
+            }
+            let d = crate::skin_live::recook_leis(&sim, &mut scene.clone(), Leis::do_ambiente())
+                .remove(&id)
+                .expect("desenho");
+            let Some(t) = d.traco.as_ref() else { continue };
+            com_camada += 1;
+            let mut borda = Vec::new();
+            for c in 0..d.forma.contour_count() {
+                let Some((v, true)) = d.forma.contour(c) else { continue };
+                let mut w = v.to_vec();
+                w.push(v[0]);
+                for k in 0..w.len() - 1 {
+                    let cb = cubica(&w, k);
+                    borda.extend((0..64).map(|i| em(&cb, f64::from(i) / 64.0).0));
+                }
+            }
+            let troco: Vec<[[f64; 2]; 2]> = borda.windows(2).map(|q| [q[0], q[1]]).collect();
+            for c in 0..t.contour_count() {
+                let Some((v, false)) = t.contour(c) else { continue };
+                for k in 0..v.len().saturating_sub(1) {
+                    let cb = cubica(v, k);
+                    for i in 0..=16 {
+                        let q = em(&cb, f64::from(i) / 16.0).0;
+                        let dmin = troco.iter().map(|s| dist_pol(s, q)).fold(f64::MAX, f64::min);
+                        pior = pior.max(dmin);
+                    }
+                }
+            }
+        }
+    }
+    println!("  {com_camada} poses com camada · o traço longe da borda até {pior:.2e}");
+    assert!(com_camada >= 8, "o CONTROLO: só {com_camada} poses de 12 com camada");
+    assert!(pior < 1e-3, "o traço descolou da borda do preenchimento ({pior})");
+}
+

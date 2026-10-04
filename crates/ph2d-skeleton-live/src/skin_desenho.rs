@@ -587,7 +587,7 @@ fn calcula(
                 lido_do_bake,
                 bake_de(fonte),
             );
-            (d, quinas_do_artista(fonte, nos))
+            (d, quinas_do_artista(fonte, nos.clone()), nos)
         })
         // ⭐⭐⭐ **O CONTACTO.** Numa dobra forte a face de DENTRO de dois membros passa uma por cima
         // da outra — é geometria de dois pedaços rígidos que rodam em torno de uma junta, não erro
@@ -598,37 +598,32 @@ fn calcula(
         // contorno se CRUZA, e a bola que arredonda o vinco em todo ângulo, antes e depois do
         // encosto; sem vinco apertado a forma sai ao bit. ⛔ Só no DESENHADO — o
         // `cru` são os nós que o artista edita, e trocá-los pela silhueta mudar-lhe-ia a malha.
-        .map(|(d, quinas)| {
+        .map(|(d, quinas, nos)| {
             // ⭐⭐ **Numa forma com EFEITO (viva ou cozida no Bind), só a UNIÃO**, e só neutra em
             // repouso: a bola arredonda o vinco do ARTISTA e comia os dentes de um *Zig Zag*
             // (fila §F50-d/e/f e §F51).
-            if !leis.contacto {
+            let d = if !leis.contacto || neutra == Some(false) {
                 d
-            } else if let Some(neutra) = neutra {
-                if neutra {
-                    uniao_dos_fechados(&d).unwrap_or(d)
-                } else {
-                    d
-                }
+            } else if neutra == Some(true) {
+                uniao_dos_fechados(&d).unwrap_or(d)
             } else {
                 ph2d_vec_boolean::silhueta_da_pele(&d, &quinas).unwrap_or(d)
-            }
+            };
+            (d, nos)
         });
-    // ⭐⭐ A6: sem a união, o traço dos FECHADOS que a dobra tapa sai numa camada própria.
+    // ⭐⭐ A6: sem a união, o traço dos FECHADOS que a dobra tapa sai numa camada própria, cortada
+    // do mesmo assado ([`camadas::traco_sobre_o_assado`]).
     let sem_uniao = !leis.contacto || neutra == Some(false);
     let traco = percurso
         .zip(desenhado.as_ref())
         .filter(|_| leis.frente && leis.desenho && estilo_serve && sem_uniao)
-        .and_then(|((f, t), d)| {
+        .and_then(|((f, _), (d, nos))| {
             let campo = (lido_do_bake.campo?, lido_do_bake.indice);
-            let (arcos, tab) =
-                frente::tracos_a_vista(f, t, campo, (pele, &correcoes, leis.rigido), ordem)?;
-            let (mut a, _) = ph2d_vec_skin::curva::assa_a_pele_com_nos(
-                pele, &arcos, &tab, &correcoes, leis.rigido, lido_do_bake, bake_de(f),
-            );
-            a.subpaths.extend(camadas::abertos(d));
-            Some(a)
+            let cortes =
+                frente::cortes_dos_fechados(f, campo, (pele, &correcoes, leis.rigido), ordem)?;
+            camadas::traco_sobre_o_assado(d, nos, f, &cortes)
         });
+    let desenhado = desenhado.map(|(d, _)| d);
     Quadro { cru, desenhado, traco }
 }
 

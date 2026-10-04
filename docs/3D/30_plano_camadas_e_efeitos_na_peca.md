@@ -672,3 +672,19 @@ COMPOSTO; a sonda mostrou que é a camada (`SemCor` em todas as amostras) — n�
 Gates: núcleo `tela_na_malha::pousa::alfa_tests::a_tela_semeada_com_uma_camada_poe_e_tira_opacidade` ·
 produto com placa `relevo_painel::o_impasto_numa_camada_nova_pinta_a_cor_e_o_relevo` (CONTROLO: a base).
 Mutação: R22, R23 no `muta_o_relevo_por_camada.sh` (sangram em corridas dirigidas).
+
+## 17. ✅ Decisão do dono (04/10): os efeitos de vizinhança borram TAMBÉM o relevo — a próxima onda
+
+Report do smoke da W4: *«Gaussian Blur borra a cor mas não borra o relevo»*. Medido no código: no
+Painter 2D é igual — a dobra do relevo lê só as camadas com relevo (`relief_fold.rs`) e a luz do
+impasto vem depois da composição; a peça seguiu a lei do 2D (§15, premissa 7). Pergunta de produto
+feita ao dono, resposta: **borrar também o relevo, no 2D e na peça, com a MESMA regra** (as outras
+opções eram «só a cor» e «um interruptor por efeito»).
+
+**A onda (por abrir, janela nova):** os quatro efeitos de vizinhança (Gaussiano, Nitidez, Bloom,
+Sombras/Realces) passam a agir também sobre o relevo das camadas por baixo deles — no 2D (a dobra do
+relevo passa pelos ajustes de vizinhança, em ordem de pilha) e na peça (o calor da retícula sobre a
+altura, na placa: a CPU da peça não é caminho vivo, §14). O desenho por decidir (técnico): o que é
+«o relevo por baixo de um ajuste» (a dobra até ali), o que o Bloom/Sombras-Realces fazem a uma altura
+(talvez só o Gaussiano/Nitidez tenham sentido físico — medir e escrever o porquê), e o custo (critério
+§7 da W6: `100 ms` a `32x`).

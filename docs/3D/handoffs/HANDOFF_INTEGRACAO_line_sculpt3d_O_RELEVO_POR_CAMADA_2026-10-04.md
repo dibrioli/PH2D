@@ -125,11 +125,11 @@ camada activa; duplicar leva o relevo; a base continua permanente e no fundo (a 
 
 ## §7. Smoke (do dono: a cena `=55`)
 
-Binário compilado nesta worktree no HEAD, depois de `rm -rf target/*/incremental` (`19 G` + `6,8 G`; e de novo depois da cura da cor, `1,8 G` + `1,9 G`); a 1.ª build foi de `20,3 s`, a 2.ª:
+Binário compilado nesta worktree no HEAD, depois de `rm -rf target/*/incremental` (`19 G` + `6,8 G`; e de novo depois da cura da cor, `1,8 G` + `1,9 G`); a última, sobre a 2.ª foto (`3b8258734`), foi de `16,9 s`, a 2.ª:
 
 ```
 $ bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke
-    Finished `smoke` profile [optimized] target(s) in 0.23s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
 ```
 
 A foto da cena tal como abre está conferida (`kwin --virtual` + `import -window`): a bola clara com

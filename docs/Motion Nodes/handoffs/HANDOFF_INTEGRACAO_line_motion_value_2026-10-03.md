@@ -294,6 +294,8 @@ do worktree, com adaptador): `cargo test -p ph2d-shape-gpu --test it -- --ignore
 
 ### §7.1 — Smoke da §6.3 (a cena `=128`: o Number no Strength do Vortex)
 
+✅ **Smoke do dono APROVADO em 03/10.**
+
 1. No terminal:
    ```
    cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=128 cargo run -p ph2d-host-desktop --profile smoke

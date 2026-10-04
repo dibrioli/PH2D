@@ -352,7 +352,7 @@ impl TelaNaMalha {
     }
 
     /// ⭐ **O que a tela pede a um ponto** — e se isso é «nada a fazer».
-    fn leitura(&self, tela: &Tela<'_>, s: [f32; 2]) -> (Mistura, bool) {
+    fn leitura(&self, tela: &Tela<'_>, s: [f32; 2], camada: bool) -> (Mistura, bool) {
         let (pm, a) = tela.amostra(s[0], s[1]);
         let Some(sem) = self.semente.as_deref() else {
             return (Mistura::Sobre { pm, a }, a <= 0.0);
@@ -363,6 +363,11 @@ impl TelaNaMalha {
             altura: tela.altura,
         };
         let (spm, sa) = retrato.amostra(s[0], s[1]);
+        if camada {
+            let dpm = [pm[0] - spm[0], pm[1] - spm[1], pm[2] - spm[2]];
+            let da = a - sa;
+            return (Mistura::Camada { dpm, da }, dpm == [0.0; 3] && da == 0.0);
+        }
         // ⚠️ Sem cobertura de um dos lados não há cor a comparar: um píxel
         // APAGADO (a borracha) e o fundo fora da silhueta não mexem na peça.
         if a <= COBERTURA_MINIMA || sa <= COBERTURA_MINIMA {
@@ -569,6 +574,10 @@ enum Mistura {
     Sobre { pm: [f32; 3], a: f32 },
     /// A tela SEMEADA: a diferença entre o que ela ficou e o retrato.
     Diferenca([f32; 3]),
+    /// ⭐ A tela SEMEADA com uma CAMADA (o retrato é a camada activa, com o
+    /// alfa dela — `docs/3D/30` §16): a diferença em cor PRÉ-MULTIPLICADA e
+    /// em opacidade. Tinta numa zona transparente entra; a borracha tira.
+    Camada { dpm: [f32; 3], da: f32 },
     /// A tela SEMEADA sem cor a comparar num dos lados (um píxel apagado, o
     /// fundo fora da silhueta): a amostra fica como estava antes do traço — e
     /// NÃO volta à base da cadeia, que seria apagar a tinta dela por falta de

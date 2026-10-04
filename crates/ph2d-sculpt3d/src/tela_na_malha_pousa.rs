@@ -27,6 +27,18 @@ fn pousa(base: [f32; 3], alfa: f32, mistura: Mistura, k: f32) -> ([f32; 3], f32)
                 alfa * fica + a * k,
             )
         }
+        // Numa camada opaca é a `Diferenca` de cima, ao bit (`a = sa = 1`).
+        Mistura::Camada { dpm, da } => {
+            let a = (alfa + da * k).clamp(0.0, 1.0);
+            (
+                [
+                    (base[0] + dpm[0] * k).clamp(0.0, a),
+                    (base[1] + dpm[1] * k).clamp(0.0, a),
+                    (base[2] + dpm[2] * k).clamp(0.0, a),
+                ],
+                a,
+            )
+        }
         Mistura::Diferenca(_) if alfa <= 0.0 => (base, alfa),
         Mistura::Diferenca(d) if alfa == 1.0 => (
             [
@@ -85,7 +97,7 @@ fn pousa_amostra(
     if !na_caixa(caixa, s) {
         return false;
     }
-    let (mistura, vazia) = sessao.leitura(tela, s);
+    let (mistura, vazia) = sessao.leitura(tela, s, fina.tinta().tem_alfa());
     // ⭐ A ESPESSURA conta como tinta: um verbo de relevo que não muda a cor
     //   (o esculpir do impasto) também tem de chegar à peça. ⭐⭐ E o que conta
     //   é o que a tela MUDOU desde a semente de relevo dela (`docs/3D/29` §6):
@@ -129,7 +141,7 @@ fn pousa_amostra(
 /// diferença: a água SAIU dali, e ela volta ao que era antes dela
 /// ([`super::BaseDaCadeia`]).
 fn na_cadeia(sessao: &TelaNaMalha, idx: u32, mistura: Mistura) -> bool {
-    matches!(mistura, Mistura::Diferenca(_)) && sessao.cadeia.contem(idx)
+    matches!(mistura, Mistura::Diferenca(_) | Mistura::Camada { .. }) && sessao.cadeia.contem(idx)
 }
 
 /// ⭐⭐ **A base da lei** — na tela semeada é a de ANTES da cadeia molhada,
@@ -142,7 +154,7 @@ fn base_de(
     p: [f32; 3],
     mistura: Mistura,
 ) -> [f32; 3] {
-    if matches!(mistura, Mistura::Diferenca(_)) {
+    if matches!(mistura, Mistura::Diferenca(_) | Mistura::Camada { .. }) {
         sessao.cadeia.base(idx, pre, p)
     } else {
         pre
@@ -313,7 +325,7 @@ impl SculptStroke {
                     if !na_caixa(caixa, s) {
                         continue;
                     }
-                    let (mistura, vazia) = sessao.leitura(tela, s);
+                    let (mistura, vazia) = sessao.leitura(tela, s, false);
                     if vazia && !self.tocou_vertice(v) && !na_cadeia(sessao, v, mistura) {
                         continue;
                     }

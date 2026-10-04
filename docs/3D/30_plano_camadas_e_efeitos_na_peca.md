@@ -649,3 +649,26 @@ são as da CPU; o `Ctrl+Z` devolve ao bit na peça e na placa; o `Level` enterra
 
 **Supersede:** §10 premissa 6 e §11 («o relevo desce à BASE»), §12 premissa 2 (o porquê da base),
 §13.1 premissa 3 (o relevo e a recomposição do painel).
+
+## 16. Report do smoke da W4 (04/10): o impasto numa camada nova não pintava a cor
+
+*«ao usar impasto e pintar numa Layer 3 a cor do pincel não apareceu, mas apenas o relevo»*. Medido
+(`relevo_painel::o_impasto_numa_camada_nova_pinta_a_cor_e_o_relevo`): a mesma pincelada de impasto muda a
+cor de `327` amostras na base e de **`0`** numa camada nova (o relevo entrava: `427`).
+
+**O mecanismo (anterior à W4, da W2):** a tela do Painter é semeada com o retrato da **camada activa**,
+com o alfa dela (`tela_semente`), e a pousada lê a diferença tela − retrato. Numa camada nova o retrato
+é transparente, e a regra «sem cor num dos lados não mexe» (`Mistura::SemCor`, pensada para a borracha e
+para o fundo fora da silhueta) descartava as `2 013` amostras da pincelada; o relevo tem caminho próprio
+e entrava. ⇒ com o destino a ter canal de opacidade (uma camada), a leitura dá `Mistura::Camada { dpm,
+da }` — a diferença em cor **pré-multiplicada e em opacidade** —, e a pousada soma as duas, pesadas pela
+máscara. Tinta numa zona transparente entra com a opacidade da tela; a borracha passa a tirar opacidade
+numa camada; numa camada opaca é a `Diferenca` de antes, ao bit (gate).
+
+⛔ **Recusa MEDIDA** (escrita, corrida e retirada na mesma tarde): compor as camadas de baixo no pen-down
+e pôr a mudança «sobre o que está por baixo» (cor → alfa). Partia da premissa de que a tela semeada é o
+COMPOSTO; a sonda mostrou que é a camada (`SemCor` em todas as amostras) — não havia o que corrigir ali.
+
+Gates: núcleo `tela_na_malha::pousa::alfa_tests::a_tela_semeada_com_uma_camada_poe_e_tira_opacidade` ·
+produto com placa `relevo_painel::o_impasto_numa_camada_nova_pinta_a_cor_e_o_relevo` (CONTROLO: a base).
+Mutação: R22, R23 no `muta_o_relevo_por_camada.sh` (sangram em corridas dirigidas).

@@ -43,3 +43,42 @@ fn a_diferenca_mexe_na_cor_direita_e_nao_na_opacidade() {
         "num transparente nada"
     );
 }
+
+/// ⭐⭐⭐ **GATE (`docs/3D/30` §16) — a tela semeada com uma CAMADA: a diferença em cor
+/// pré-multiplicada E em opacidade.** Numa amostra transparente, tinta nova entra com a opacidade da
+/// tela; a borracha tira opacidade; e numa camada opaca é a `Diferenca` de antes, ao bit.
+#[test]
+fn a_tela_semeada_com_uma_camada_poe_e_tira_opacidade() {
+    let tinta = Mistura::Camada {
+        dpm: [0.6, 0.1, 0.05],
+        da: 0.75,
+    };
+    let (c, a) = pousa([0.0; 3], 0.0, tinta, 1.0);
+    assert_eq!(
+        (c, a),
+        ([0.6, 0.1, 0.05], 0.75),
+        "num transparente a tinta entra"
+    );
+    let (c, a) = pousa([0.0; 3], 0.0, tinta, 0.5);
+    assert_eq!((c, a), ([0.3, 0.05, 0.025], 0.375), "pesada pela máscara");
+    let borracha = Mistura::Camada {
+        dpm: [-0.2, -0.2, -0.2],
+        da: -0.5,
+    };
+    let (c, a) = pousa([0.4, 0.4, 0.4], 0.8, borracha, 1.0);
+    assert!(
+        (a - 0.3).abs() < 1e-6 && c.iter().all(|&x| x <= a + 1e-6),
+        "a borracha tira: {c:?} {a}"
+    );
+    let d = [0.12, -0.3, 0.05];
+    assert_eq!(
+        pousa(
+            [0.5, 0.6, 0.2],
+            1.0,
+            Mistura::Camada { dpm: d, da: 0.0 },
+            0.7
+        ),
+        pousa([0.5, 0.6, 0.2], 1.0, Mistura::Diferenca(d), 0.7),
+        "numa camada opaca é a Diferenca, ao bit"
+    );
+}

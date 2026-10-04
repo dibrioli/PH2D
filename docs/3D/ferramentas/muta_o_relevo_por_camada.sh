@@ -13,7 +13,7 @@
 set -u
 SO_ANCORAS="${MUTA_SO_ANCORAS:-}"
 SRCS=(crates/ph2d-app-sculpt3d/src crates/ph2d-tool-painter/src crates/ph2d-mesh-render/src
-      crates/ph2d-panel-painter-layers/src)
+      crates/ph2d-panel-painter-layers/src crates/ph2d-sculpt3d/src)
 BK=$(mktemp -d)
 for s in "${SRCS[@]}"; do mkdir -p "$BK/$s"; cp -r "$s/." "$BK/$s/"; done
 restore() {
@@ -30,12 +30,13 @@ corre() {
     tool) cargo test -p ph2d-tool-painter --lib -- relief_fold piece_layers impasto 2>&1 ;;
     app) cargo test -p ph2d-app-sculpt3d --lib -- pilha_da_peca doc:: scenes::relevo_camadas tinta_da_peca 2>&1 ;;
     gpu) cargo test -p ph2d-app-sculpt3d --lib -- --ignored --test-threads=1 relevo_painel --skip diag_ 2>&1 ;;
+    core) cargo test -p ph2d-sculpt3d --lib -- tela_na_malha 2>&1 ;;
   esac
 }
 contados() { grep -oP 'test result: \w+\. \K[0-9]+(?= passed)|[0-9]+(?= failed)' | awk '{s+=$1}END{print s+0}'; }
 
 if [ -z "$SO_ANCORAS" ]; then
-  for c in tool app gpu; do
+  for c in tool app gpu core; do
     out=$(corre "$c"); rc=$?
     n=$(echo "$out" | contados)
     echo "CONTROLO [$c]: rc=$rc, $n testes"
@@ -123,6 +124,13 @@ muta $R/tinta_gpu_relevo.rs $'            queue.write_buffer(&g.inclinacoes, de 
   'R18 a subida só do relevo não refaz as inclinações' gpu
 muta $R/tinta_gpu_relevo.rs $'            queue.write_buffer(&g.inclinacoes, 0, gb);\n            return true;' $'            let _ = &gb;\n            return true;' \
   'R21 refazer TODAS as inclinações não as sobe' gpu
+
+# ── §16: a tela semeada com uma camada (o report do dono: a cor numa camada nova) ──
+S=crates/ph2d-sculpt3d/src
+muta $S/tela_na_malha.rs '        if camada {' '        if false && camada {' \
+  'R22 a camada volta a ler-se «sem cor» (a cor não entra numa camada nova)' gpu
+muta $S/tela_na_malha_pousa.rs '            let a = (alfa + da * k).clamp(0.0, 1.0);' '            let a = (alfa + 0.0 * da * k).clamp(0.0, 1.0);' \
+  'R23 a diferença de opacidade da camada é ignorada' core
 
 # ── W4c: o painel ────────────────────────────────────────────────────────────
 muta $T/tool/piece_layers.rs '                m.set_impasto_depth_norm(l, v);' '                let _ = (l, v);' \

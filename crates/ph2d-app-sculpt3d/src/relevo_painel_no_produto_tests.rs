@@ -339,3 +339,69 @@ fn a_profundidade_de_uma_camada_que_cobre_a_peca_refaz_as_inclinacoes_todas() {
         "CONTROLO: mudaram {mudaram} de {n} — o ramo de recalcular tudo"
     );
 }
+
+/// ⭐⭐⭐ **GATE (report do dono, 04/10: *«ao usar impasto e pintar numa Layer 3 a cor do pincel não
+/// apareceu, mas apenas o relevo»*) — o impasto numa camada NOVA pinta a COR dela e o relevo**, como
+/// na base. A tela do Painter é semeada com a camada activa (transparente numa camada nova) e a
+/// diferença entrava como «sem cor» (`docs/3D/30` §16). CONTROLO: a mesma pincelada na base.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn o_impasto_numa_camada_nova_pinta_a_cor_e_o_relevo() {
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu);
+    let mut p = painter_impasto();
+    let mut painel = Painel::novo();
+    quadro(Some(&mut s), Some(&mut p));
+    let conta = |s: &crate::Sculpt3dScene, id: LayerId, antes: &[u8]| {
+        let pl = pilha(s).plano(id).expect("plano");
+        let n = pilha(s).amostras();
+        let cor = pl
+            .rgba8(n)
+            .chunks(4)
+            .zip(antes.chunks(4))
+            .filter(|(a, b)| a != b)
+            .count();
+        let rel = pl
+            .relevo()
+            .map_or(0, |r| r.iter().filter(|x| x[0] != 0.0).count());
+        (cor, rel)
+    };
+    let base = pilha(&s).base().expect("base");
+    let antes = pilha(&s)
+        .plano(base)
+        .expect("p")
+        .rgba8(pilha(&s).amostras())
+        .to_vec();
+    traco(&mut s, &mut p, 400.0);
+    s.sync_mesh(&gpu);
+    quadro(Some(&mut s), Some(&mut p));
+    let (cor_base, rel_base) = conta(&s, base, &antes);
+    assert!(
+        cor_base > 100 && rel_base > 100,
+        "CONTROLO: na base ({cor_base}, {rel_base})"
+    );
+    painel.clica(&mut p, PAINTER_LAYERS_ADD);
+    quadro(Some(&mut s), Some(&mut p));
+    let cima = pilha(&s).pilha().active().expect("cima");
+    let n = pilha(&s).amostras();
+    let antes = pilha(&s).plano(cima).expect("p").rgba8(n).to_vec();
+    traco(&mut s, &mut p, 430.0);
+    s.sync_mesh(&gpu);
+    quadro(Some(&mut s), Some(&mut p));
+    let (cor, rel) = conta(&s, cima, &antes);
+    assert!(rel > 100, "o relevo entrou ({rel})");
+    assert!(
+        cor * 2 > cor_base,
+        "a COR entrou na camada nova: {cor} amostras (a base: {cor_base})"
+    );
+    let px = pilha(&s).plano(cima).expect("p").rgba8(n).to_vec();
+    let vermelhas = px
+        .chunks(4)
+        .filter(|q| q[3] > 200 && q[0] > 150 && q[1] < 80 && q[2] < 80)
+        .count();
+    assert!(
+        vermelhas > 50,
+        "a tinta é a do pincel (vermelha, opaca): {vermelhas}"
+    );
+}

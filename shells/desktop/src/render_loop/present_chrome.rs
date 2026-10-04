@@ -46,7 +46,6 @@ impl crate::App {
             frost,
             frost_doc_scene,
             frost_front_scene,
-            motion,
             ..
         } = gfx;
         // Pass 2: AgX tonemap

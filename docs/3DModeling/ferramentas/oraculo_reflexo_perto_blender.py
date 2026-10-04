@@ -15,6 +15,8 @@
 #   cd <worktree> && bash scripts/ph2d-run.sh blender -b -X --python \
 #       docs/3DModeling/ferramentas/oraculo_reflexo_perto_blender.py -- \
 #       crates/ph2d-mesh-forward/fixtures/oraculo_reflexo_perto.csv.gz
+# e, com `par` / `junta` no fim, `oraculo_reflexo_par.csv.gz` / `oraculo_reflexo_junta.csv.gz` (a junta:
+# `tests_reflexo_junta`, a faixa ENTRE dois reflexos).
 #
 # Convenção: o Blender é Z-para-cima; o produto é Y-para-cima. (x, y, z)_nosso = (x, z, -y)_blender.
 import os

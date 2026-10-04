@@ -3,7 +3,7 @@
 //! reflexos (onde o raio, pela geometria, não acerta nada), por leitor da distância e por franja — a
 //! causa isolada sem tocar no WGSL.
 
-use crate::gpu::sondas_impl::{ESPESSURA, FRANJA, LADO, MARCHA_MAX, MARCHA_MIN, PASSO, REFINO};
+use crate::gpu::sondas_impl::{ARESTA, ESPESSURA, FRANJA, LADO, MARCHA_MAX, MARCHA_MIN, PASSO, REFINO};
 use crate::tests_chao_tapa::metal;
 use crate::tests_contacto::norm;
 use crate::tests_reflexo_junta::faixa;
@@ -32,7 +32,7 @@ pub(crate) fn marcha(
     q: [f32; 3],
     r: [f32; 3],
     franja: f32,
-    (k_aresta, passos_aresta): (f32, u32),
+    k_aresta: f32,
 ) -> ([f32; 3], f32) {
     let ql = dot(q, q).sqrt();
     let qh = q.map(|x| x / ql.max(1.0e-6));
@@ -66,13 +66,7 @@ pub(crate) fn marcha(
                     lo = m;
                 }
             }
-            let gl = ler(u(lo));
-            let mut gh = ler(u(hi));
-            let mut s = 1;
-            while s <= passos_aresta && aresta(gh, k_aresta) {
-                gh = ler(u(hi + s as f32 * texel));
-                s += 1;
-            }
+            let (gh, gl) = (ler(u(hi)), ler(u(lo)));
             let l = lam(hi);
             let fora = l - gh[0] / gh[1].max(1.0e-6);
             if aresta(gh, k_aresta) {
@@ -126,13 +120,12 @@ fn sonda_da_junta_na_cpu() {
             ("bilinear", &bil as &dyn Fn([f32; 3]) -> [f32; 3]),
             ("texel", &viz),
         ] {
-            for (franja, k_aresta, passos) in [
-                (FRANJA, f32::INFINITY, 0u32),
-                (FRANJA, 0.1, 0),
-                (FRANJA, 0.2, 3),
-                (FRANJA, 0.1, 3),
-                (FRANJA, 0.05, 3),
-                (0.0, 0.1, 3),
+            for (franja, k_aresta) in [
+                (FRANJA, f32::INFINITY),
+                (FRANJA, 0.2),
+                (FRANJA, ARESTA),
+                (FRANJA, 0.05),
+                (0.0, ARESTA),
             ] {
                 let corre = |quais: &[usize]| {
                     let (mut aceita, mut peso) = (0usize, 0.0f32);
@@ -141,7 +134,7 @@ fn sonda_da_junta_na_cpu() {
                         let r: [f32; 3] =
                             std::array::from_fn(|e| vista[e] - 2.0 * dot(vista, p.n) * p.n[e]);
                         let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
-                        let (_, w) = marcha(ler, q, r, franja.max(1.0e-6), (k_aresta, passos));
+                        let (_, w) = marcha(ler, q, r, franja.max(1.0e-6), k_aresta);
                         aceita += usize::from(w >= 1.0);
                         peso += w;
                     }
@@ -150,7 +143,7 @@ fn sonda_da_junta_na_cpu() {
                 let (fa, fp) = corre(&f);
                 let (aa, ap) = corre(&acertam);
                 eprintln!(
-                    "{nome} · {leitor} · franja {franja} · aresta {k_aresta} +{passos}: faixa {} px ACEITES {fa} (peso {fp:.3}) · \
+                    "{nome} · {leitor} · franja {franja} · aresta {k_aresta}: faixa {} px ACEITES {fa} (peso {fp:.3}) · \
                      dos {} que acertam, aceites {aa} (peso {ap:.3})",
                     f.len(),
                     acertam.len()

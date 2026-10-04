@@ -127,13 +127,8 @@ fn sonda_marcha(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
             let u = cos(hi) * qh + sin(hi) * w;
             let gl = sonda_dist0(cos(lo) * qh + sin(lo) * w);
             let lam = ql * st / sin(th - hi);
-            // Numa ARESTA a distancia lida e' fantasma (a junta): a da vizinha para onde o raio passa a ficar
-            // atras le-se uns texels adiante, onde a leitura e' pura; sem leitura pura, nada.
-            var gh = sonda_dist0(u);
-            for (var s = 1u; s <= SONDA_ARESTA_PASSOS && sonda_aresta(gh); s = s + 1u) {
-                let av = hi + f32(s) * SONDA_TEXEL;
-                gh = sonda_dist0(cos(av) * qh + sin(av) * w);
-            }
+            // Numa ARESTA a distancia lida e' fantasma (a junta): ali nao ha cruzamento, nem franja.
+            let gh = sonda_dist0(u);
             let fora = lam - gh.x / max(gh.y, 1.0e-6);
             if (!sonda_aresta(gh)) {
                 if (gl.y > 0.5 && fora <= SONDA_ESPESSURA * lam) {

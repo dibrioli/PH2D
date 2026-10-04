@@ -52,10 +52,11 @@ use ph2d_skeleton_demo::{
 ///
 /// - **`=5`** — OS EFEITOS NA PELE: seis barras presas, uma sem efeito e cinco com um, dobradas
 ///   iguais (F50, 2026-10-02). Ver [`crate::smoke_bone_efeitos`].
+/// - **`=6`** — AS CÓPIAS NA DOBRA FORTE (A6, 2026-10-04). Ver [`crate::smoke_bone_copias`].
 ///
 /// ⚠️ **A env ERA de presença** (`is_some`) e passou a ter níveis: um valor ilegível cai em `1`, o
 /// caminho de omissão — *a cena que o dono já aprovou, nunca uma que ele não pediu*.
-pub const NIVEIS: u32 = 5;
+pub const NIVEIS: u32 = 6;
 
 /// ⭐ **A BARRA LARANJA da cena, num sítio só** — canto mínimo, canto máximo e o raio da quina.
 ///
@@ -133,6 +134,10 @@ pub fn build(
     }
     if nivel() == 5 {
         crate::smoke_bone_efeitos::build(scene, sim, st);
+        return;
+    }
+    if nivel() == 6 {
+        crate::smoke_bone_copias::build(scene, sim, st);
         return;
     }
     if nivel() >= 3 {
@@ -249,6 +254,10 @@ pub fn bind(
     }
     if nivel() == 5 {
         crate::smoke_bone_efeitos::bind(scene, sim, st);
+        return;
+    }
+    if nivel() == 6 {
+        crate::smoke_bone_copias::bind(scene, sim, st);
         return;
     }
     if nivel() >= 3 {

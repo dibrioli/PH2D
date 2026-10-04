@@ -121,7 +121,7 @@ pub(crate) fn origens() -> Vec<[f64; 2]> {
 }
 
 /// Um esqueleto de [`OSSOS`] ossos pelo EIXO da barra centrada em `centro`, recto.
-fn esqueleto(sim: &mut SimWorld, centro: [f64; 2], nome: &str) -> Option<Entity> {
+pub(crate) fn esqueleto(sim: &mut SimWorld, centro: [f64; 2], nome: &str) -> Option<Entity> {
     let (l, t) = PECA;
     let x0 = centro[0] - l / 2.0 + t / 2.0;
     let passo = (l - t) / f64::from(OSSOS);

@@ -127,6 +127,7 @@ mod nav_custo;
 mod nav_desvio;
 mod nav_desvio_corpos;
 mod nav_mundo;
+mod nav_nascer;
 mod nav_ordens;
 mod no_std_transcendental_on_the_hash_path;
 mod one_way;

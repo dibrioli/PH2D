@@ -408,16 +408,24 @@ impl ph2d_physics_ecs::SceneAtTick for PortaQueMuda {
 }
 
 /// Corre até `fim`, a porta muda de sítio no tique `5`; devolve as procuras de cada um em cada tique.
+///
+/// ⚠️ O orçamento `orc` da fila vale a partir do tique `2`: os agentes NASCEM no `1`, e a 1.ª procura de
+/// quem não tem caminho também é do orçamento — com `orc = 1` nasceriam um por tique, ainda a meio da
+/// mudança da porta.
 fn com_a_porta_a_mudar(
     sim: &mut SimWorld,
     b: &mut PhysicsBridge,
     cena: &mut PortaQueMuda,
     quem: &[Entity],
     fim: u64,
+    orc: u64,
 ) -> Vec<Vec<u64>> {
     (1..=fim)
         .map(|t| {
             b.dispatch_with_scene(sim, true, t, cena);
+            if t == 1 {
+                b.set_nav_replan_budget(orc);
+            }
             procuras_de(b, quem)
         })
         .collect()
@@ -439,14 +447,13 @@ fn a_porta_que_abre_um_atalho_serve_os_agentes_um_por_tique() {
     let servidos = |orc: u64| {
         let (mut sim, porta, quem) = atalho(true);
         let mut b = PhysicsBridge::new();
-        b.set_nav_replan_budget(orc);
         let mut cena = PortaQueMuda {
             porta,
             de: (0.0, 0.0),
             para: (30.0, 30.0),
             quando: 5,
         };
-        let pt = com_a_porta_a_mudar(&mut sim, &mut b, &mut cena, &quem, 30);
+        let pt = com_a_porta_a_mudar(&mut sim, &mut b, &mut cena, &quem, 30, orc);
         // E todos acabam pelo atalho.
         assert!(quem.iter().all(|&e| pela_porta(&b, e)), "orçamento {orc}");
         // O tique de cada um, pela ordem das ENTIDADES (a da ponte — a do `Ord` delas).
@@ -490,7 +497,6 @@ fn o_caminho_partido_passa_a_frente_na_fila() {
         "o vigia tem de vir antes dos guardas na ordem das entidades"
     );
     let mut b = PhysicsBridge::new();
-    b.set_nav_replan_budget(1);
     let mut quem = vec![vigia];
     quem.extend(&guardas);
     let mut cena = PortaQueMuda {
@@ -499,7 +505,7 @@ fn o_caminho_partido_passa_a_frente_na_fila() {
         para: (0.0, 0.0),
         quando: 5,
     };
-    let pt = com_a_porta_a_mudar(&mut sim, &mut b, &mut cena, &quem, 30);
+    let pt = com_a_porta_a_mudar(&mut sim, &mut b, &mut cena, &quem, 30, 1);
     let vigia_em = servido_em(&pt, 0).expect("o vigia acaba por ser servido");
     for i in 1..quem.len() {
         let g = servido_em(&pt, i).expect("cada guarda procura");

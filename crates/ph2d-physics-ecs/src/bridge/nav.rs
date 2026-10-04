@@ -272,9 +272,18 @@ impl PhysicsBridge {
         };
 
         // ⭐ (W9) Quem a malha que mudou põe a procurar NESTE tique: a fila, não todos.
-        let servir = self.fila_do_replaneio(&vez, &mudou);
+        let (servir, mut gasto) = self.fila_do_replaneio(&vez, &mudou);
+        // ⭐ (o aberto da W9) A procura de quem NÃO TEM caminho (nasceu, foi religado, ou ainda não
+        // achou nenhum) também é do orçamento do tique: cabe enquanto houver folga — e há sempre pelo
+        // menos uma —, senão espera parado pelo tique seguinte. Cinquenta agentes que nascem juntos
+        // faziam cinquenta procuras no mesmo tique.
+        let orcamento = self.nav.orcamento;
+        let mut sem_caminho = 0usize;
 
-        // 2.ª passagem: a condução, contra as malhas em dia.
+        // 2.ª passagem: a condução, contra as malhas em dia — pela ordem das ENTIDADES (a da consulta
+        // é a das tabelas, que um rebuild do scrub baralha): quem tem a vez de procurar decide-se nela.
+        let mut vez = vez;
+        vez.sort_by_key(|v| v.p.entity);
         let mut pedidas: Vec<desvio::Pedida> = Vec::with_capacity(vez.len());
         let mut por_tag = alvo::PorTag::new();
         for v in vez {
@@ -293,8 +302,29 @@ impl PhysicsBridge {
             };
             let NavWorld { meshes, search, .. } = &mut self.nav;
             let malha = v.chave.and_then(|k| meshes.get(&k)).map(TiledMesh::mesh);
+            let sem = !servir.contains(&p.entity) && rt.path.is_empty() && alvo.is_some();
+            if sem && sem_caminho > 0 && gasto >= orcamento && malha.is_some() {
+                pedidas.push(desvio::Pedida {
+                    entity: p.entity,
+                    pos: v.pos,
+                    dir: [0.0; 2],
+                    speed: cfg.speed,
+                    raio: f64::from(v.raio),
+                    malha: v.chave,
+                    avoidance: p.avoidance,
+                    alvo: quem,
+                });
+                self.nav.agents.insert(p.entity, rt);
+                continue;
+            }
+            sem_caminho += usize::from(sem);
+            let nos = search.stats.expanded;
             let steer =
                 ph2d_nav::agent::step_with(&mut rt, malha, search, &q, v.pos, alvo, &cfg, dt);
+            if !servir.contains(&p.entity) {
+                // (Os servidos pela fila já entraram pela estimativa dela.)
+                gasto = gasto.saturating_add(search.stats.expanded - nos);
+            }
             // (W7) Um TELEPORTE: o corpo vai já para a saída (velocidade a zero), dentro do tique —
             // o replay corre a mesma lei e salta no mesmo tique.
             if let Some(p2) = steer.teleport

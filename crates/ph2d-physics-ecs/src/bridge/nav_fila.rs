@@ -31,12 +31,13 @@ pub(super) const ORCAMENTO_DE_NOS_POR_TIQUE: u64 = 20_000;
 impl PhysicsBridge {
     /// Marca na fila os agentes cuja malha MUDOU (o caminho que ainda se anda fica; o partido passa à
     /// frente), envelhece quem lá está, e devolve quem a fila serve neste tique — a quem a condução
-    /// esquece o caminho antes do passo.
+    /// esquece o caminho antes do passo — e os nós que essas procuras devem gastar (a estimativa de
+    /// cada um: a última procura dele).
     pub(super) fn fila_do_replaneio(
         &mut self,
         vez: &[Vez],
         mudou: &BTreeSet<ChaveMalha>,
-    ) -> BTreeSet<Entity> {
+    ) -> (BTreeSet<Entity>, u64) {
         // Pela ordem das ENTIDADES (a do `vez` é a da consulta ao mundo): o `id` de cada um é a ordem
         // dele aqui.
         let por_entidade: BTreeMap<Entity, &Vez> = vez.iter().map(|v| (v.p.entity, v)).collect();
@@ -67,15 +68,17 @@ impl PhysicsBridge {
         }
         let n = serve(&mut fila, self.nav.orcamento);
         let mut servir = BTreeSet::new();
+        let mut gasto = 0u64;
         for (k, o) in fila.iter().enumerate() {
             let e = quem[&o.id];
             if k < n {
                 servir.insert(e);
+                gasto = gasto.saturating_add(o.nodes);
             } else if let Some(rt) = self.nav.agents.get_mut(&e) {
                 rt.owed = rt.owed.saturating_add(1);
             }
         }
-        servir
+        (servir, gasto)
     }
 
     /// A sonda e o CONTROLO dos gates: outro orçamento de nós por tique (`u64::MAX` = todos no tique,

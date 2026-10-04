@@ -119,7 +119,8 @@ impl PhysicsBridge {
                     .iter()
                     .fold(f64::from(raio_que_envolve(&b.rest)), |r, p| {
                         let [lx, ly, _] = p.local;
-                        let d = f64::from(lx).hypot(f64::from(ly));
+                        let (lx, ly) = (f64::from(lx), f64::from(ly));
+                        let d = (lx * lx + ly * ly).sqrt();
                         r.max(d + f64::from(raio_que_envolve(&p.rest)))
                     });
                 vec![([0.0, 0.0], r)]

@@ -17,7 +17,7 @@
 |---|---|
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` |
 | ramo | `line/motion-value` |
-| HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1; e `9d1058a40` · `650128529` · os docs (a memória das células `66 → 43 MB`) — ver §6.2; e `a6e067f45` · `1c8f25d1e` · `757c5356a` · `64120d51a` · `2062db7d8` + docs (o Number no Strength do Vortex) — ver §6.3 |
+| HEAD | `311413f1e` + este handoff · ⚠️ e, DEPOIS dele (03/10, após o smoke aprovado): `87e605534` (a capacidade só MEDIDA das células, código) e `9b133f887` (recusa da largura, doc) — ver §6.1; e `9d1058a40` · `650128529` · os docs (a memória das células `66 → 43 MB`) — ver §6.2; e `a6e067f45` · `1c8f25d1e` · `757c5356a` · `64120d51a` · `2062db7d8` + docs (o Number no Strength do Vortex) — ver §6.3; e `82f9623e2` (o grafo, §6.4); e `133e306af` · `b723b02d1` · `40a2cbc1a` · `018218976` · `62929e077` + o commit da §6.5 (os itens 3 e 4) — ver §6.5 |
 | base / merge-base | `main` @ `1ad60a1ce` — **0** commits do `main` por trazer; `--ff-only` possível |
 | commits | **18** (2026-10-02 → 03) · `36` ficheiros (+3 621 / −685) |
 
@@ -159,9 +159,9 @@ integrador — releia a ORDEM das fases do quadro só se outra linha mexer em `f
 
 | item | o endereço |
 |---|---|
-| ✅ memória no app MEDIDA (§6.1) e CORTADA (§6.2) — `66 → 43 MB` na `=127` densa | o resto é a variante ESPARSA (abaixo) |
-| **variante ESPARSA** (só as células tocadas; tira o `cs_zera`) | ⚠️ nas densas quase toda célula é tocada (estrelas de `~14 px`): MEÇA a fracção de células tocadas antes de a construir; a alavanca é das formas GRANDES |
-| a variante COMPLETA (com tracejado) a `128` VGPRs | encolher o ramo do tracejado; item próprio |
+| ✅ memória no app MEDIDA (§6.1) e CORTADA (§6.2) — `66 → 43 MB` na `=127` densa | fechado |
+| ⛔ **variante ESPARSA** — RECUSADA com a tabela (§6.5) | `60 %` das células tocadas nas densas; líquido `≤ 10 %` no melhor caso, conformes piores, `+4 B`/célula. A alavanca que sobra nas células é o `cs_varre` |
+| ✅ a variante COMPLETA (com tracejado) — no regime corre a ENXUTA (§6.5) | ⏳ as tracejadas GRANDES esticadas ainda perdem para o Vello na sonda da iGPU (`1,57` contra `0,90` ms, com o Vello a receber o tracejado já cortado); no produto a alternativa é `5×` mais lenta. A alavanca é a topologia da escrita (um fio por troço), item próprio |
 | a mordida do traço rente depois de uma quina | divergência DECLARADA (§9.9), sem acção |
 | `M6` / `S6` / `S8` (§9.4–§9.5) e o `fx.glow` que lê o `pump` anterior | nomeados desde 01/10, sem mudança |
 | `fk.rs` duplicado em seis crates (bug #11) | wave própria |
@@ -273,9 +273,62 @@ hipóteses que caíram e a conclusão intermédia errada: [BUGS #12](../BUGS_mot
 - Gates: `paint_fit_tests.rs` (4, pela costura) · 4 mutações a sangrar · nextest das duas crates
   `1 582` + `14` de integração do painel · clippy limpo. Fotos `=127` e `=128` a 1930×1040: a fila de cima
   inteira; a `=128` cabe e centra.
-- ⏳ **A fazer ANTES de integrar (ordem do dono, 03/10):** os itens 3 e 4 do §6 — encolher o ramo do
-  tracejado (a variante COMPLETA a `128` VGPRs, o proxy de telemóvel) e a variante ESPARSA das células
-  (medir primeiro a fracção de células tocadas, nas formas GRANDES).
+- ✅ **Feito ANTES de integrar (ordem do dono, 03/10):** os itens 3 e 4 do §6 — ver §6.5.
+
+### §6.5 — Os itens 3 e 4 do §6: a variante completa encolhida e a esparsa recusada (03–04/10)
+
+Mecanismo, tabelas, prova do tecto e recusa: [doc 121 §9.13](../121_as_formas_na_placa.md).
+
+| commit | o quê |
+|---|---|
+| `133e306af` | plano + kill-criteria ANTES de construir; sonda `PH2D_SONDA_TRACEJADO=1`; instrumento `celulas_tocadas_do_ultimo_quadro` (o `acumula` ganha `COPY_SRC`) |
+| `b723b02d1` | **(3a)** a placa escolhe a variante do desenho por quadro (dois `draw_indirect`); **(3b)** o tecto da contagem sem o ajuste e o ajuste numa volta; gate novo; arnês de mutação novo; V7 da variante enxuta re-ancorada |
+| `40a2cbc1a` · `018218976` | doc: o resultado medido, a recusa da esparsa, a cena do report no app |
+| `62929e077` | os instrumentos de leitura do contorno em `contorno_sondas.rs` (o `contorno.rs` passara o tecto de `700` LOC: `741 → 627`) |
+
+- **(3a)** Numa cena com tracejado o `cs_soma` põe as `n` cópias nos argumentos da ENXUTA (palavras
+  `[9, 13)` do buffer do `despacho`) e `0` na COMPLETA (`[13, 17)`); o `cs_escreve` troca-os quando uma
+  cópia tracejada e VISÍVEL fica sem células (pixel a pixel). O passe grava os dois `draw_indirect`; uma
+  só chamada desenha tudo, a ordem da mistura é a de sempre. No regime corre o fragmento da enxuta (iGPU
+  `56` VGPRs · `18` ondas contra `128` · `8`); os dois primeiros quadros de uma cena nova, a completa.
+- **(3b)** O tecto de arestas por troço tracejado é `⌈len/per + 1/2⌉ + 2` sem o ajuste (prova no doc: o
+  ajuste nunca encurta o período mais que meia peça por troço); o `cs_conta` da completa `48 · 20 → 40 ·
+  24` VGPRs. O ajuste soma o arco numa volta — as imagens das `7` famílias iguais BYTE A BYTE.
+- **Medido (iGPU, sonda intercalada, os 4 binários na mesma janela, soma dos passes, tracejado):**
+  esticadas `1,33 → 1,17` · conformes `0,61 → 0,55` · densas `1,45 → 1,32`; RTX esticadas `0,43 → 0,37`,
+  o resto igual. O desenho das tracejadas IGUALA o das contínuas (`0,15` · `0,15` · `0,11`). Sem tracejado,
+  antes = depois nas duas placas. **No app** (`=127` densa tracejada, rota `HIBRIDO`): `60 fps` nas duas
+  placas com a placa de formas, `12 fps` sem ela; células `43 MB`, iguais.
+- **(4) RECUSADA:** células tocadas `60 %` (densas e esticadas), `97 %` (conformes grandes) — ⛔ a premissa
+  «nas densas quase toda célula é tocada» caiu. Teto `t_zera + (1−f)·t_varre` medido por ablação:
+  `19 %` / `15 %` / `9 %`; os custos fixos (marcas e lista `+0,04`–`0,05`, fragmento `+0,01`–`0,02`)
+  deixam o MELHOR caso a `≤ 10 %` nas densas, abaixo nas esticadas, PIOR nas conformes, e a lista custa
+  `4 B` por célula (`43 → 44 MB`). Tabela no doc 121 §9.13.
+
+**⚠️ Para quem lê o diff (§3 deste handoff vale):**
+- O `despacho_rw` do WGSL passou a `array<atomic<u32>>` (os dois desenhos são escritos por muitos fios);
+  o `despacha` usa `atomicStore`. O buffer `36 → 68 B`, com `COPY_SRC` (o instrumento `copias_por_variante`).
+- ⛔ **Os relógios POR passe mentem na fronteira:** o carimbo de início de um passe sai antes da barreira, e
+  a cauda do anterior cai na conta dele (nas densas a «escrita» caiu `0,31 → 0,17` com uma mudança só na
+  contagem, com o `cs_escreve` byte a byte igual). A régua é a SOMA dos passes.
+- O `plano_de` passou a usar `caixa_das_celulas` + `fora_do_ecra` (a MESMA folga de um pixel, uma porta
+  partilhada com o `pede_a_completa`).
+
+**Gates:** `ph2d-shape-gpu` GPU **`11/11`** (os `10` + `a_placa_escolhe_a_variante_completa_so_quando_um_tracejado_vai_pixel_a_pixel`,
+com controlo no 1.º quadro e na metade das células, imagem igual) · produto `motion_shape_placa::gpu_tests` **`5/5`** · `ph2d-gpu-cook` formas `2/2` · mutações: **tracejado `21/21`**, **acumulação
+`19/19`**, **a variante da placa `6/8`** — W6/W7 (o tecto sem a meia peça, e com METADE das peças)
+SOBREVIVEM e é medido porquê: o orçamento por peça é folgado, e um tecto curto cai no pixel a pixel pela
+completa com a mesma imagem · nextest-impacted `17 543/17 544` (o vermelho era `architecture_workspace_file_loc_cap`,
+curado por `62929e077` e re-corrido verde) · `cargo check --workspace --all-targets` com `CARGO_BUILD_WARNINGS=deny` ·
+clippy `--all-targets --all-features -D warnings` das duas crates · `fmt --check` · censos `12/12` (`127`) ·
+machete · standalone-optional · workflow-packages · `cargo-test-narrow` shape-gpu `21`.
+
+**Foundational:** nenhum. **Ids/consts novos:** `DESENHO_ENXUTA = 36` · `DESENHO_COMPLETO = 52` · `DESPACHO = 68`
+(bytes, `contorno.rs`); `DESENHO_ENXUTA = 9u` · `DESENHO_COMPLETO = 13u` (palavras, `contorno.wgsl`); `pub fn`
+novas em `ShapePass`: `copias_por_variante`, `celulas_tocadas_do_ultimo_quadro` (instrumentos). Shell: `0` linhas.
+Contratos congelados: nenhum.
+
+**Smoke:** §7.2.
 
 ## §7 — OS SMOKES
 
@@ -324,6 +377,21 @@ do worktree, com adaptador): `cargo test -p ph2d-shape-gpu --test it -- --ignore
    abaixo de zero (~−4) gira AO CONTRÁRIO; clicar no número do Number, escrever `-2` e Enter deixa `-2`.
 4. Deu errado se: o `Strength` do Vortex ficar em `2`; a velocidade não mudar; o arrasto parar no `0`;
    ou o `-2` não entrar. Bissecção: repetir com `PH2D_GPU_COOK=0` antes do comando (a CPU).
+
+### §7.2 — Smoke da §6.5 (a `=127` com o contorno contínuo e tracejado)
+
+1. No terminal:
+   ```
+   cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=127 PH2D_TRACO_ESTICADO_TRACEJADO=1 cargo run -p ph2d-host-desktop --profile smoke
+   ```
+2. Espere a janela abrir; não precisa clicar em nada: são as estrelas amarelas esticadas, agora com o contorno
+   azul em TRAÇOS (fotografada a 1930×1040: `1 024` estrelas pela placa).
+3. Tem de acontecer: cada estrela com o contorno azul partido em traços certinhos, sem riscos nem buracos,
+   nada a piscar; a barra de baixo mostra cerca de 60 fps. Depois feche e repita SEM o
+   `PH2D_TRACO_ESTICADO_TRACEJADO=1`: o contorno volta a ser inteiro, também a ~60 fps.
+4. Deu errado se: os traços faltarem, ficarem tortos ou piscarem, o contorno contínuo aparecer partido, ou a
+   barra cair muito abaixo de 60. Para comparar com o desenho antigo, ponha `PH2D_FORMAS_NA_PLACA=0`
+   antes de `cargo` (fica bem mais lento na versão tracejada — é o esperado).
 
 ## §8 — A UMA LINHA proposta para o `CLAUDE.md` §5 (o integrador aplica; ≤ 700 B)
 

@@ -196,9 +196,10 @@ impl PainterTool {
     }
 
     /// The section reset — the Watercolor reset's exact semantics: restore
-    /// the section's defaults INCLUDING the enable (disarming bakes the live
-    /// water), the knob table, the tool, the tilt and the overlay flags
-    /// (the reconcile carries the values into any live session's engine).
+    /// the knob table, the tool, the tilt and the overlay flags (the reconcile
+    /// carries the values into any live session's engine). ⚠️ **The arm
+    /// STAYS** (decisão do dono, 2026-10-04: o Reset mantém o meio escolhido —
+    /// desarmar levava o pincel ao slot do Digital, doc 45 §2.1).
     pub fn reset_brush_wetpaint(&mut self) {
         let w = &mut self.paint.wetpaint;
         w.knobs = WetKnobs::default();
@@ -215,7 +216,6 @@ impl PainterTool {
         if need_recomposite {
             self.wet_recomposite_full();
         }
-        self.set_wetpaint_armed(false);
     }
 
     /// The authored knob values (the panel snapshot's source).

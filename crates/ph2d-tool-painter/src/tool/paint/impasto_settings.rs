@@ -282,7 +282,7 @@ impl PainterTool {
         // choice — Sharp for a palette-knife edge, say — is never overridden, and re-ticking keeps whatever
         // the artist last set (Sphere is no longer Smooth, so it is left alone).
         if self.paint.brush.impasto && self.paint.brush.falloff == Falloff::Smooth {
-            self.paint.brush.falloff = Falloff::Sphere;
+            self.paint.brush.falloff = super::fabrica::FALLOFF_DO_IMPASTO;
         }
         // Ticking it back ON re-derives the last stroke's body at the current Depth. Ticking it OFF does
         // NOT delete relief that is already painted — the switch governs what the BRUSH deposits, and
@@ -485,9 +485,8 @@ impl PainterTool {
     /// silently deleting the artist's sculpting because they clicked a settings reset would be a
     /// spectacular way to lose someone's afternoon.
     pub fn reset_brush_impasto(&mut self) {
-        let d = BrushSpec::default();
+        let d = self.spec_de_fabrica();
         let b = &mut self.paint.brush;
-        b.impasto = d.impasto;
         b.impasto_depth = d.impasto_depth;
         b.impasto_smooth_edges = d.impasto_smooth_edges;
         b.impasto_source = d.impasto_source;

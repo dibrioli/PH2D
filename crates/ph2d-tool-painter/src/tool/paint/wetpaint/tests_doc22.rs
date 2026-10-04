@@ -583,7 +583,8 @@ fn the_tuning_checkbox_flips_the_snapshot() {
 }
 
 /// The section reset restores EVERYTHING doc 22 added: knobs, tool, tilt,
-/// flags — and disarms.
+/// flags — and KEEPS the arm (decisão do dono, 2026-10-04: o Reset mantém o
+/// meio escolhido; doc 45 §2.1).
 #[test]
 fn the_section_reset_restores_the_whole_section() {
     let mut t = wet_tool_fixture();
@@ -595,7 +596,7 @@ fn the_section_reset_restores_the_whole_section() {
     click(&mut t, crate::ids::WET_TUNING_KM_MIXING);
     click(&mut t, crate::ids::PAINTER_WETPAINT_RESET);
     let w = &t.paint.wetpaint;
-    assert!(!w.armed);
+    assert!(w.armed, "o Reset não troca o meio");
     assert_eq!(w.knobs, WetKnobs::DEFAULT);
     assert_eq!(w.tool, WetTool::Paint);
     assert!(w.tilt_on);

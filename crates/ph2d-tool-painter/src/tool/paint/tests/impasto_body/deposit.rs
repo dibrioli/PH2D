@@ -612,8 +612,8 @@ fn impasto_panel_events_reach_the_brush() {
         t.paint.impasto_rig.lights[0].elev_deg, 5,
         "elevation floors at 5° — a grazing light divides by ~0"
     );
-    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_IMPASTO_SHINE, 0.7));
-    assert!((t.paint.brush.impasto_shine - 0.7).abs() < 1e-6);
+    t.handle_panel_event(PanelEvent::SetValue(crate::ids::PAINTER_IMPASTO_SHINE, 0.3));
+    assert!((t.paint.brush.impasto_shine - 0.3).abs() < 1e-6);
 
     // Reset restores the settings — and must NOT delete relief the artist already sculpted.
     t.paint.brush.impasto = true;
@@ -625,7 +625,10 @@ fn impasto_panel_events_reach_the_brush() {
         "there is relief on the canvas"
     );
     t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_IMPASTO_RESET));
-    assert!(!t.paint.brush.impasto, "Reset restored the defaults");
+    assert!(
+        t.paint.brush.impasto && (t.paint.brush.impasto_shine - 0.3).abs() > 1e-6,
+        "Reset restored the defaults and KEPT the medium (decisão do dono, 2026-10-04; doc 45 §2.1)"
+    );
     assert_eq!(
         relief(&t),
         sculpted,

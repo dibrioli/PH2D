@@ -4,8 +4,11 @@
 
 use super::*;
 
-impl Default for PaintState {
-    fn default() -> Self {
+impl PaintState {
+    /// **O pincel com que cada MODO nasce** — o arranque e a régua de todo Reset de secção
+    /// ([`crate::tool::PainterTool::spec_de_fabrica`]). Uma porta só: um Reset que lesse o
+    /// `BrushSpec::default()` devolvia o pincel de NENHUM modo (o censo dos controlos, doc 45 §2.1).
+    pub(super) fn pinceis_de_fabrica() -> [BrushSpec; PAINT_MODE_COUNT] {
         // Moderate black brush (10 px); the brush-settings UI drives size/colour later.
         let base = BrushSpec {
             radius_px: 10.0,
@@ -54,8 +57,15 @@ impl Default for PaintState {
             ..base
         };
         brush_by_mode[PaintMode::WetPaint.slot()] = wet;
+        brush_by_mode
+    }
+}
+
+impl Default for PaintState {
+    fn default() -> Self {
+        let brush_by_mode = Self::pinceis_de_fabrica();
         Self {
-            brush: base,
+            brush: brush_by_mode[PaintMode::default().slot()],
             brush_by_mode,
             link_shared_settings: false,
             line_show_dimensions: true, // Line CAD dimensions on by default

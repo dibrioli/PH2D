@@ -224,13 +224,19 @@ fn panel_events_drive_watercolor_state() {
     ));
     assert_eq!(t.brush_settings().edge_spread, 48.0, "Spread clamped to 48");
 
-    // Reset returns the whole section to defaults — the `watercolor`/`pigment` gates OFF (which is
-    // what makes a brush neutral); the params go back to their sensible when-enabled defaults.
+    // Reset returns the section's PARAMS to the watercolor factory — and keeps the medium (decisão
+    // do dono, 2026-10-04: o Reset mantém o meio escolhido; doc 45 §2.1). `pigment` is a section
+    // param, and it goes back to its factory value.
+    let watercolor_antes = t.brush_settings().watercolor;
     t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_WATERCOLOR_RESET));
     let b = t.brush_settings();
+    assert_eq!(
+        b.watercolor, watercolor_antes,
+        "reset must not switch the medium"
+    );
     assert!(
-        !b.watercolor && !b.pigment,
-        "reset turned the Watercolor + Pigment gates off"
+        !b.pigment,
+        "reset turned the Pigment gate back to its factory value"
     );
     assert_eq!(b.edge_gain, 1.5, "reset restored the default Edge gain");
 }

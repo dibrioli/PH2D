@@ -856,12 +856,13 @@ fn the_paint_mode_dropdown_drives_the_wet_arm() {
         matches!(t.paint.paint_mode, PaintMode::Paint),
         "picking Digital never disarmed"
     );
-    // Reset = restore defaults INCLUDING the arm.
+    // Reset = restore the section's values and KEEP the arm (decisão do dono, 2026-10-04: o Reset
+    // mantém o meio escolhido — doc 45 §2.1).
     t.handle_panel_event(wet());
     t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_WETPAINT_RESET));
     assert!(
-        !t.paint.wetpaint.armed && matches!(t.paint.paint_mode, PaintMode::Paint),
-        "the section reset must disarm"
+        t.paint.wetpaint.armed && matches!(t.paint.paint_mode, PaintMode::WetPaint),
+        "the section reset must keep the medium"
     );
 }
 

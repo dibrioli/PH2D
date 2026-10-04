@@ -495,9 +495,8 @@ impl PainterTool {
     /// Reset the **Watercolor** section to defaults (section off; all params neutral). Plain paint
     /// state — no undo / pixel touch, like the other section resets.
     pub fn reset_brush_watercolor(&mut self) {
-        let d = BrushSpec::default();
+        let d = self.spec_de_fabrica();
         let b = &mut self.paint.brush;
-        b.watercolor = d.watercolor;
         b.edge_gain = d.edge_gain;
         b.edge_spread = d.edge_spread;
         b.smooth_edges = d.smooth_edges;

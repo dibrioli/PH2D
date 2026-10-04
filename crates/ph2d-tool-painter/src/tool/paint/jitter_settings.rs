@@ -6,7 +6,7 @@
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_painter_brush::stroke::spray::{SPRAY_COUNT_MAX, SPRAY_DEFAULT_SPREAD};
-use ph2d_painter_brush::{BrushSpec, MirrorAxis, TextureSettings};
+use ph2d_painter_brush::{BrushSpec, MirrorAxis};
 
 impl PainterTool {
     /// Route the per-dab randomize controls (Randomize Color enable + Hue/Sat/Value, Jitter Scale,
@@ -386,7 +386,7 @@ impl PainterTool {
     /// state — no undo / pixel touch. The Color-Ramp reset lives in [`super::ramp`], Tiling in
     /// [`super::tiling`].
     pub fn reset_brush_randomize(&mut self) {
-        let d = BrushSpec::default();
+        let d = self.spec_de_fabrica();
         let b = &mut self.paint.brush;
         b.color_jitter_enabled = d.color_jitter_enabled;
         b.color_jitter_hue = d.color_jitter_hue;
@@ -397,7 +397,7 @@ impl PainterTool {
     /// Reset the **Texture** section to defaults — clears the assigned texture and its modulation
     /// (mapping / angle / Rake / Random / offset / size / params). The Color Ramp has its own reset.
     pub fn reset_brush_texture(&mut self) {
-        self.paint.brush.texture = BrushSpec::default().texture;
+        self.paint.brush.texture = self.spec_de_fabrica().texture;
     }
 
     /// Reset the **Shape** section: clear the Shape image (the silhouette reverts to the falloff) and
@@ -405,8 +405,8 @@ impl PainterTool {
     /// flatten/rotate gizmo to defaults.
     pub fn reset_brush_shape(&mut self) {
         self.clear_brush_shape_image();
-        self.paint.brush.shape = TextureSettings::default();
-        let d = BrushSpec::default();
+        let d = self.spec_de_fabrica();
+        self.paint.brush.shape = d.shape;
         self.paint.brush.falloff = d.falloff;
         self.paint.brush.custom_falloff = d.custom_falloff;
         self.paint.brush.hardness = d.hardness;
@@ -418,7 +418,7 @@ impl PainterTool {
     /// dash / samples / stabilizer / rate / edge-to-edge). Accumulate (a top basic) and Tiling (its
     /// own section) are left untouched.
     pub fn reset_brush_stroke(&mut self) {
-        let d = BrushSpec::default();
+        let d = self.spec_de_fabrica();
         let b = &mut self.paint.brush;
         b.stroke_method = d.stroke_method;
         b.spacing = d.spacing;

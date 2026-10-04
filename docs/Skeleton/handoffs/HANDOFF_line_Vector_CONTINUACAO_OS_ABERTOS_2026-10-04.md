@@ -28,7 +28,11 @@ união); quatro ficheiros cortados abaixo do tecto de LOC.
 > próximo número livre. O próximo handoff de continuação COPIA esta secção actualizada. *Uma lista
 > que só a janela que a escreveu conhece morre com a janela.*
 
-### A1 — ❓ PERGUNTA AO DONO (fazer PRIMEIRO): num desenho muito torcido, cada pedaço segue que osso?
+### A1 — ✅ DECIDIDO pelo dono (2026-10-04): **o osso mais PERTO** (como está hoje) — nada a construir
+
+> Perguntado com as duas opções lado a lado (*«o osso de onde o pedaço veio»* × *«o osso mais perto»*),
+> o dono escolheu a lei ESPACIAL. A lei material abaixo fica como registo; NÃO se constrói.
+
 
 - **Hoje:** os efeitos cozem no Bind, e o campo de pesos é resolvido sobre o desenho COZIDO
   (`skin_live_prender::bind_com` → `campo_do_caminho(src cozido)`) ⇒ cada pedaço segue o osso de que

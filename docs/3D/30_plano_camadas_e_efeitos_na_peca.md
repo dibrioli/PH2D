@@ -747,3 +747,77 @@ outra camada, o relevo da de cima só existe onde a tinta dela tem CORPO (nenhum
 `≤ W_TAIL`) — a regra do 2D. ⛔ **Recusa MEDIDA:** pesar o relevo pelo corpo da própria tinta também numa
 camada só (experimentado com a foto): a imagem não muda — a parede está dentro da tinta sólida, onde o
 corpo é `1`.
+
+## 19. A parede do impasto na peça contra o 2D (04/10, a 3.ª foto; decisão do dono: «parecer como no 2D»)
+
+**O oráculo** (`parede_do_impasto_tests::diag_a_parede_contra_o_2d`, perfil `smoke`): a MESMA pincelada
+(`48 px`, `Impasto`, `230,30,30`, 31 pontos horizontais pelo meio da bola, as lâmpadas de fábrica) pintada
+pelo Painter 2D numa tela `900×700` da cor da base (`214,208,196`) e pela peça (base lisa, sem riscas),
+fotografada nos quatro modos de luz. O efeito do relevo é a razão «com relevo / profundidade 0» por canal,
+no ecrã (sRGB8), no perfil transversal (média das colunas `440..460`). Fotos em `PH2D_SONDA_DIR`;
+`PH2D_SONDA_CAMADA` (camada nova) · `PH2D_SONDA_RISCAS` · `PH2D_SONDA_MEIO=digital`.
+
+**O que divergia — três defeitos, nenhum deles a altura:**
+
+| | onde | 2D | peça antes | peça depois |
+|---|---|---|---|---|
+| 1. **a cor** | o miolo da tinta no modo PLANO (sem luz) | `230,30,30` | `213,81,79` (também com o pincel `Digital`) | `201,24,23` = barro × a luz do pincel |
+| 2. **a orla** | `15 %` de tinta no 2D (borda de baixo) | `0,90` | PBR `0,60` · barro `0,69` · matcap `0,49–0,64` | `0,95` · `0,95` · `0,90` |
+| | fora da tinta (borda de baixo · de cima) | `1,00` · `1,00` | `0,90` · `1,09` (PBR) | `0,99` · `0,99` |
+| 3. **o véu do céu** | parede de sombra, PBR (já com a cor curada) | `81,11,11` | `95,59,61` (`G/R` `×3,0` do sem relevo) | `101,26,27` (`×1,26`) |
+
+1. **A cor pintada é um CÓDIGO sRGB e era multiplicada como LUZ.** A cor por vértice e a retícula guardam
+   «o byte sRGB sobre 255» (`ph2d_mesh_colors::alfa`, a pilha em tons de ecrã, ADR-0177); o `fs_core_n`
+   punha-o no `CLAY * vcolor` sem descodificar. A conta fecha ao byte: `(230,30,30)/255 × CLAY`
+   codificado dá `213,81,79`, e a base `207,199,188` (medido `…189`). Todo vermelho escuro saía claro e
+   acinzentado, em todos os modos — a mesma espécie que o `albedo_texture` (`pipeline.rs`) já pagou do
+   lado do albedo. ⇒ `cor_em_luz` (o gémeo de `ph2d_color::srgb::srgb_to_linear_unit`) na entrada do
+   `fs_core_n`, UMA porta para os dois caminhos (cor por vértice e retícula); o branco (barro por pintar)
+   sai `1` ao bit. Só a escultura alimenta cor por vértice neste shader (o 3D Modeling e a doação não).
+2. **O corpo pesava a INCLINAÇÃO; o 2D pesa a LUZ.** O 2D faz `1 + (m − 1)·corpo` sobre o RESULTADO
+   (`impasto_shade::channel`); a peça fazia `n − corpo·∇ₛh` (doc 29 §6). Numa parede íngreme (o bisel do
+   2D, `56–67°` na pincelada medida) `15 %` de corpo ainda inclina a normal `~24°`: a borda com pouca
+   tinta escurecia quase inteira — a orla escura e cinzenta, mais larga que a cor (*«a tinta desalinhada
+   do relevo»*). ⇒ o `fs_main_tinta` acende a superfície LISA e a superfície com o relevo INTEIRO e
+   mistura-as pelo corpo (a mistura por área de barro à vista e tinta); o `corpo` saiu da lei da normal
+   (`tinta_inclina`/`relevo_normal::inclina` são só a geometria).
+3. **O céu do PBR reflectia-se nas paredes íngremes.** O `mx_indirect` lia a normal com relevo: a `70°`
+   da vista o Fresnel sobe (`~0,16` num dieléctrico) e o céu cinzento-azulado somava-se ao vermelho escuro
+   das duas paredes — o contorno pálido da foto do dono (o modo de FÁBRICA é o PBR). No 2D o relevo só
+   inclina a razão às LÂMPADAS, e o ambiente é um piso constante. ⇒ o mesmo na peça: as lâmpadas
+   (`mx_direct`, o `N·L` e o realce do barro) leem a normal com relevo; o ambiente (`mx_indirect`, o
+   `ambient_floor`) lê a peça sem ele.
+
+Com as três, o modo «barro com lâmpadas» desenha o tubo do 2D (a parede iluminada com o brilho: `G/B`
+`×2,55` contra `×2,47` no 2D) e o PBR perde o contorno.
+
+**Premissas do briefing que a medição derrubou:**
+
+- *«a cura candidata: o peso da inclinação pelo corpo/cobertura como no 2D»* → o 2D NÃO pesa a
+  inclinação; pesar a inclinação ERA o defeito.
+- *«é a LUZ da peça a desenhar a parede»* → em parte: um terço do cinzento era a COR (em todos os modos,
+  até no plano), e no PBR o resto era o AMBIENTE, não as lâmpadas.
+- *«o brilho na parede»* como cura candidata → o brilho do 2D aparece sozinho no modo barro quando a
+  cor entra descodificada; não havia o que acrescentar.
+
+**Fica (nomeado):** o CONTRASTE das paredes sólidas é o da luz da cena (decisão do dono de 24/09: a luz
+da cena acende o relevo da peça): a parede de sombra desce a `0,65` (PBR e barro) contra `0,35` no 2D
+(o piso `AMBIENT` do modelo relativo) — a cena tem mais ambiente que o Painter. Dar à peça o contraste
+do 2D seria pôr a luz relativa do Painter na peça (duas leis de luz numa peça, e o relevo deixaria de
+acender como a geometria que finge); é pergunta de produto, não feita. E na borda iluminada a esfera tem
+o seu PRÓPRIO brilho, que a parede inclinada deixa (`0,96` em PBR a `49 %` de tinta, contra `1,15` no
+2D, que não tem esfera) — físico.
+
+**Gates:** sem placa `wgsl_gate_tests::{a_cor_pintada_entra_na_luz_descodificada,
+o_ambiente_le_a_peca_sem_o_relevo}` (o IR do `naga` e o corpo do `fs_core_n`, com CONTROLO) e
+`relevo_normal_tests` re-escritos sem o corpo (`sem_declive_ou_acima_do_limiar_nada_muda`) · com placa
+`parede_do_impasto_tests::a_parede_do_impasto_na_peca_le_como_no_2d` (na base E numa camada nova, PBR ·
+barro · matcap): a orla a `≤ 0,1` do 2D onde ele tem `≤ 20 %` de tinta (pior medido `0,074`; a lei velha
+`0,30`), a parede de sombra sem véu (`G/R ≤ 1,5×`), a cor no plano na razão das LUZES (`0,021` no verde;
+o código dava `0,144`), e o CONTROLO de que o relevo se vê (sombra `≤ 0,8`, luz `≥ 1,05`) · a paridade
+`o_horizonte_le_o_mesmo_na_placa_e_na_cpu` sem o corpo. Mutação: `docs/3D/ferramentas/muta_a_parede_do_impasto.sh`
+(W1–W6 + o controlo inerte C1) · `muta_a_normal_do_relevo.sh` N6/N7 e `muta_o_horizonte_do_relevo.sh`
+H1/H4 re-ancoradas (o corpo mudou de casa).
+
+**Supersede:** doc 29 §6.2 (*«o bump do shader é escalado pelo corpo»*) e §8.2 (*«`corpo = 0` devolve a
+base»* — agora *sem declive*); §18.1 (*«a orla é a parede alta demais»*).

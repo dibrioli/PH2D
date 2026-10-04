@@ -10,14 +10,13 @@ fn canvas(n: [f32; 3]) -> [f32; 3] {
 }
 
 /// A lei de ANTES do horizonte — o CONTROLO de cada gate.
-fn sem_horizonte(n_in: [f32; 3], gv: [f32; 3], corpo: f32) -> [f32; 3] {
+fn sem_horizonte(n_in: [f32; 3], gv: [f32; 3]) -> [f32; 3] {
     let n = normaliza(n_in);
     let d = n[0] * gv[0] + n[1] * gv[1] + n[2] * gv[2];
-    let c = corpo.clamp(0.0, 1.0);
     normaliza([
-        n[0] - c * (gv[0] - n[0] * d),
-        n[1] - c * (gv[1] - n[1] * d),
-        n[2] - c * (gv[2] - n[2] * d),
+        n[0] - (gv[0] - n[0] * d),
+        n[1] - (gv[1] - n[1] * d),
+        n[2] - (gv[2] - n[2] * d),
     ])
 }
 
@@ -30,8 +29,10 @@ fn base(z: f32) -> [f32; 3] {
     [(1.0 - z * z).sqrt(), 0.0, z]
 }
 
-/// Um gerador sem dependências, determinista.
-fn amostras(n: usize) -> impl Iterator<Item = ([f32; 3], [f32; 3], f32)> {
+/// Um gerador sem dependências, determinista: `(base, gradiente)`, com o
+/// gradiente escalado por um factor em `[-0,1; 1,1]` preso a `0..1` — uma parte
+/// das amostras sem declive nenhum.
+fn amostras(n: usize) -> impl Iterator<Item = ([f32; 3], [f32; 3])> {
     let mut s = 0x9e37_79b9_7f4a_7c15_u64;
     let mut r = move || {
         s ^= s << 13;
@@ -42,7 +43,8 @@ fn amostras(n: usize) -> impl Iterator<Item = ([f32; 3], [f32; 3], f32)> {
     (0..n).map(move |_| {
         let n = [r() * 2.0 - 1.0, r() * 2.0 - 1.0, r() * 2.0 - 1.0];
         let g = [(r() - 0.5) * 16.0, (r() - 0.5) * 16.0, (r() - 0.5) * 16.0];
-        (n, g, r() * 1.2 - 0.1)
+        let c = (r() * 1.2 - 0.1).clamp(0.0, 1.0);
+        (n, g.map(|x| x * c))
     })
 }
 
@@ -68,8 +70,8 @@ fn a_luz_nao_salta_na_ponta_vista_de_lado() {
             }
             pior
         };
-        let velha = passo(&|a| sem_horizonte(n, [-a, 0.0, 0.0], 1.0));
-        let nova = passo(&|a| inclina(n, [-a, 0.0, 0.0], 1.0));
+        let velha = passo(&|a| sem_horizonte(n, [-a, 0.0, 0.0]));
+        let nova = passo(&|a| inclina(n, [-a, 0.0, 0.0]));
         if z < HORIZONTE_T + 0.2 {
             assert!(
                 velha > 0.5,
@@ -89,19 +91,19 @@ fn a_luz_nao_salta_na_ponta_vista_de_lado() {
 #[test]
 fn a_normal_inclinada_nunca_passa_o_horizonte() {
     let (mut cruzou_antes, mut total) = (0usize, 0usize);
-    for (n_in, g, corpo) in amostras(200_000) {
+    for (n_in, g) in amostras(200_000) {
         let n = normaliza(n_in);
         if n[2] == 0.0 || !n[2].is_finite() {
             continue;
         }
         total += 1;
-        if sem_horizonte(n_in, g, corpo)[2] * n[2].signum() < 0.0 {
+        if sem_horizonte(n_in, g)[2] * n[2].signum() < 0.0 {
             cruzou_antes += 1;
         }
-        let r = inclina(n_in, g, corpo);
+        let r = inclina(n_in, g);
         assert!(
             r[2] * n[2].signum() > 0.0,
-            "a normal passou o horizonte: base {n:?} gradiente {g:?} corpo {corpo} ⇒ {r:?}"
+            "a normal passou o horizonte: base {n:?} gradiente {g:?} ⇒ {r:?}"
         );
         let l = (r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt();
         assert!((l - 1.0).abs() < 1e-5, "a normal saiu com comprimento {l}");
@@ -112,30 +114,29 @@ fn a_normal_inclinada_nunca_passa_o_horizonte() {
     );
 }
 
-/// ⭐⭐ **GATE — Onde não há corpo, a base sai AO BIT**, e acima do limiar a
+/// ⭐⭐ **GATE — Onde não há declive, a base sai AO BIT**, e acima do limiar a
 /// normal inclinada não é tocada: a compressão só existe perto do horizonte.
 #[test]
-fn sem_corpo_ou_acima_do_limiar_nada_muda() {
+fn sem_declive_ou_acima_do_limiar_nada_muda() {
     let mut acima = 0usize;
-    for (n_in, g, corpo) in amostras(50_000) {
+    for (n_in, g) in amostras(50_000) {
         let n = normaliza(n_in);
         if !n[2].is_finite() {
             continue;
         }
-        let r0 = inclina(n_in, g, 0.0);
+        let r0 = inclina(n_in, [0.0; 3]);
         assert_eq!(
             r0.map(f32::to_bits),
             n.map(f32::to_bits),
-            "corpo 0 mexeu na base"
+            "sem declive mexeu na base"
         );
-        let c = corpo.clamp(0.0, 1.0);
-        if c <= 0.0 {
+        if g == [0.0; 3] {
             continue;
         }
-        let nb = sem_horizonte(n_in, g, c);
+        let nb = sem_horizonte(n_in, g);
         if nb[2] * n[2].signum() >= n[2].abs().min(HORIZONTE_T) + 1e-4 {
             acima += 1;
-            let r = inclina(n_in, g, c);
+            let r = inclina(n_in, g);
             assert!(
                 dist(r, nb) < 1e-6,
                 "acima do limiar a normal foi tocada: {nb:?} ⇒ {r:?}"

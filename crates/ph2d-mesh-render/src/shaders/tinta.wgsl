@@ -339,14 +339,13 @@ fn tinta_horizonte(n: vec3<f32>, nb: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(xy, zc * s);
 }
 
-fn tinta_inclina(n_in: vec3<f32>, gv: vec3<f32>, corpo: f32) -> vec3<f32> {
+fn tinta_inclina(n_in: vec3<f32>, gv: vec3<f32>) -> vec3<f32> {
     let n = normalize(n_in);
-    let c = clamp(corpo, 0.0, 1.0);
-    if (c <= 0.0) {
+    let gs = gv - n * dot(n, gv);
+    if (all(gs == vec3<f32>(0.0))) {
         return n;
     }
-    let gs = gv - n * dot(n, gv);
-    let nb = n - c * gs;
+    let nb = n - gs;
     let l = length(nb);
     if (l <= 0.0) {
         return n;

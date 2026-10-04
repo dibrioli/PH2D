@@ -4,7 +4,7 @@
 //! 01/10, 2.ª volta: *«mesma ponta vista de frente e inclinada»*).
 //!
 //! ⚠️ As entradas são as que a lei VÊ no produto (normal de vista, gradiente
-//! em vista, corpo) e varrem as duas regiões — acima do limiar, onde a lei é o
+//! em vista) e varrem as duas regiões — acima do limiar, onde a lei é o
 //! gradiente de superfície ao bit, e abaixo, onde a compressão trabalha. O
 //! CONTROLO de que a fixtura contém a compressão vem primeiro.
 
@@ -19,11 +19,11 @@ fn cs(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (2u * i + 1u >= arrayLength(&entra)) { return; }
     let a = entra[2u * i];
     let b = entra[2u * i + 1u];
-    sai[i] = vec4<f32>(tinta_inclina(a.xyz, b.xyz, a.w), 0.0);
+    sai[i] = vec4<f32>(tinta_inclina(a.xyz, b.xyz), 0.0);
 }
 "#;
 
-fn amostras() -> Vec<([f32; 3], [f32; 3], f32)> {
+fn amostras() -> Vec<([f32; 3], [f32; 3])> {
     let mut s = 0x2545_f491_4f6c_dd1d_u64;
     let mut r = move || {
         s ^= s << 13;
@@ -35,9 +35,10 @@ fn amostras() -> Vec<([f32; 3], [f32; 3], f32)> {
         .map(|_| {
             let n = [r() * 2.0 - 1.0, r() * 2.0 - 1.0, r() * 2.0 - 1.0];
             let g = [(r() - 0.5) * 12.0, (r() - 0.5) * 12.0, (r() - 0.5) * 12.0];
-            (n, g, r() * 1.2 - 0.1)
+            let c = (r() * 1.2 - 0.1).clamp(0.0, 1.0);
+            (n, g.map(|x| x * c))
         })
-        .filter(|(n, _, _)| n.iter().map(|v| v * v).sum::<f32>() > 1e-3)
+        .filter(|(n, _)| n.iter().map(|v| v * v).sum::<f32>() > 1e-3)
         .collect()
 }
 
@@ -53,11 +54,11 @@ fn o_horizonte_le_o_mesmo_na_placa_e_na_cpu() {
     let casos = amostras();
     let comprimidos = casos
         .iter()
-        .filter(|(n, g, c)| {
-            let cpu = inclina(*n, *g, *c);
+        .filter(|(n, g)| {
+            let cpu = inclina(*n, *g);
             let l = n.iter().map(|v| v * v).sum::<f32>().sqrt();
             let t = (n[2] / l).abs().min(HORIZONTE_T);
-            *c > 0.0 && t > 0.0 && (cpu[2] * n[2].signum()) < t
+            *g != [0.0; 3] && t > 0.0 && (cpu[2] * n[2].signum()) < t
         })
         .count();
     assert!(
@@ -67,7 +68,7 @@ fn o_horizonte_le_o_mesmo_na_placa_e_na_cpu() {
 
     let entrada: Vec<f32> = casos
         .iter()
-        .flat_map(|(n, g, c)| [n[0], n[1], n[2], *c, g[0], g[1], g[2], 0.0])
+        .flat_map(|(n, g)| [n[0], n[1], n[2], 0.0, g[0], g[1], g[2], 0.0])
         .collect();
     let k = casos.len();
     let b_in = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -136,8 +137,8 @@ fn o_horizonte_le_o_mesmo_na_placa_e_na_cpu() {
     let placa: &[f32] = bytemuck::cast_slice(&dados);
 
     let mut pior = (0.0f32, String::new());
-    for (i, (n, g, c)) in casos.iter().enumerate() {
-        let cpu = inclina(*n, *g, *c);
+    for (i, (n, g)) in casos.iter().enumerate() {
+        let cpu = inclina(*n, *g);
         let gpu = &placa[4 * i..4 * i + 3];
         for e in 0..3 {
             let d = (gpu[e] - cpu[e]).abs();

@@ -1020,6 +1020,19 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     return fs_core(in, in.vcolor);
 }
 
+/// ⭐⭐⭐ **A COR PINTADA É UM CÓDIGO sRGB, e a luz multiplica LUZ** (`docs/3D/30` §19).
+///
+/// A cor por vértice e a retícula guardam «o byte sRGB sobre 255» (`ph2d_mesh_colors::alfa`, a pilha
+/// em tons de ecrã); multiplicá-los como luz mostrava a tinta mais clara e cinzenta que o pincel
+/// (`230,30,30` saía `213,81,79` no modo plano). O gémeo de `ph2d_color::srgb::srgb_to_linear_unit`;
+/// o branco (o barro por pintar) sai `1` AO BIT.
+fn cor_em_luz(c: vec3<f32>) -> vec3<f32> {
+    let baixo = c / 12.92;
+    let alto = pow((max(c, vec3<f32>(0.04045)) + 0.055) / 1.055, vec3<f32>(2.4));
+    let luz = select(alto, baixo, c <= vec3<f32>(0.04045));
+    return select(luz, c, c >= vec3<f32>(1.0));
+}
+
 /// ⭐⭐⭐ **O CORPO DO SOMBREAMENTO, com o albedo como ARGUMENTO.**
 ///
 /// ⛔ Ele existe para que a tinta fina não traga uma segunda lei de luz: o
@@ -1035,8 +1048,15 @@ fn fs_core(in: VsOut, vcolor: vec3<f32>) -> vec4<f32> {
 /// normal inclinada pela espessura, e daí para baixo é o sombreamento de
 /// sempre, nos três modos que lêem a normal. ⚠️ O `fs_core` passa o
 /// `in.n_view` tal como vem, logo quem não tem relevo desenha ao bit.
-fn fs_core_n(in: VsOut, vcolor: vec3<f32>, n_view: vec3<f32>) -> vec4<f32> {
+///
+/// ⭐⭐ **O relevo inclina a luz das LÂMPADAS; o AMBIENTE lê a peça sem ele** — a lei do passe de
+/// impasto do 2D (o oráculo, `docs/3D/30` §19), onde o piso ambiente é constante e só a razão às
+/// lâmpadas vê a inclinação. Sem isto o céu do PBR reflectia-se nas paredes íngremes da tinta (o
+/// Fresnel rasante) e desenhava a orla cinzenta à volta de cada pincelada grossa.
+fn fs_core_n(in: VsOut, codigo: vec3<f32>, n_view: vec3<f32>) -> vec4<f32> {
+    let vcolor = cor_em_luz(codigo);
     let nc = canvas_normal(n_view);
+    let na = canvas_normal(in.n_view);
 
     // A leitura de FORMA — cavidade × os dois AOs — pela porta que o G-buffer
     // também atravessa, para que a tinta acesa por esta peça escureça a fresta
@@ -1143,7 +1163,7 @@ fn fs_core_n(in: VsOut, vcolor: vec3<f32>, n_view: vec3<f32>) -> vec4<f32> {
             let l = rig.lamps[i];
             luz = luz + mx_direct(mt, nc, PBR_VIEW, l.dir.xyz, l.tint.rgb);
         }
-        let cena = luz + mx_indirect(mt, nc, PBR_VIEW) * cav_occ;
+        let cena = luz + mx_indirect(mt, na, PBR_VIEW) * cav_occ;
 
         // ⭐⭐⭐ **O OLHAR e' o ULTIMO ACTO DA LEI, e nao um acabamento do visor.** A `acende_texel`
         // do sprite recebe-o como argumento e devolve ja' display-referred; sem ele este ramo
@@ -1206,7 +1226,7 @@ fn fs_core_n(in: VsOut, vcolor: vec3<f32>, n_view: vec3<f32>) -> vec4<f32> {
     // contrato: em `ratio = 1` — uma superfície PLANA de frente para a luz — o
     // resultado é exatamente `1` para QUALQUER piso. O ambiente redistribui a
     // SOMBRA e não toca no que está aceso.
-    let floor_e = ambient_floor(nc);
+    let floor_e = ambient_floor(na);
     let m = floor_e + (vec3<f32>(1.0) - floor_e) * ratio;
 
     // **A CAVIDADE** — o canal que faz a escultura ser LIDA (`docs/3D/05.1` §4) —

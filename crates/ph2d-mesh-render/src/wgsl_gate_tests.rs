@@ -393,3 +393,89 @@ fn a_normal_do_relevo_passa_pelo_horizonte() {
         "o tinta_inclina deixou de comprimir contra o horizonte"
     );
 }
+
+/// O corpo de `fn <nome>(` no `mesh.wgsl`, sem as linhas de comentário.
+fn corpo_sem_comentarios(src: &str, nome: &str) -> String {
+    let inicio = src
+        .find(&format!("fn {nome}("))
+        .unwrap_or_else(|| panic!("o {nome} existe"));
+    let mut fundo = 0i32;
+    let mut fim = None;
+    for (i, c) in src[inicio..].char_indices() {
+        match c {
+            '{' => fundo += 1,
+            '}' => {
+                fundo -= 1;
+                if fundo == 0 {
+                    fim = Some(inicio + i);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    src[inicio..fim.unwrap_or_else(|| panic!("o {nome} fecha"))]
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// ⭐⭐ **GATE — a cor pintada entra na luz DESCODIFICADA** (`docs/3D/30` §19): a cor por vértice e
+/// a retícula guardam códigos sRGB, e o `fs_core_n` só os lê pelo `cor_em_luz` — o código cru a
+/// multiplicar a luz mostrava `230,30,30` como `213,81,79`. O CONTROLO: a régua acha a chamada ao
+/// `canvas_normal`.
+#[test]
+fn a_cor_pintada_entra_na_luz_descodificada() {
+    let src = crate::fonte::mesh_wgsl(true);
+    let module = naga::front::wgsl::parse_str(&src).expect("a fonte com tinta parsa");
+    let chama = chamadas_de(&module, "fs_core_n");
+    assert!(
+        chama.contains(&"canvas_normal".to_string()),
+        "CONTROLO: a régua não achou a chamada do fs_core_n ao canvas_normal"
+    );
+    assert!(
+        chama.contains(&"cor_em_luz".to_string()),
+        "o fs_core_n deixou de descodificar a cor pintada"
+    );
+    let corpo = corpo_sem_comentarios(include_str!("shaders/mesh.wgsl"), "fs_core_n");
+    assert_eq!(
+        corpo.matches("codigo").count(),
+        2,
+        "o código sRGB cru é lido noutro sítio além do `cor_em_luz(codigo)`:\n{corpo}"
+    );
+}
+
+/// ⭐⭐ **GATE — o relevo inclina as LÂMPADAS e o AMBIENTE lê a peça sem ele** (`docs/3D/30` §19, a
+/// lei do 2D: o piso ambiente é constante). Sem isto o céu do PBR reflectia-se nas paredes íngremes
+/// da tinta e desenhava a orla cinzenta. O CONTROLO: as lâmpadas continuam a ler a normal com relevo.
+#[test]
+fn o_ambiente_le_a_peca_sem_o_relevo() {
+    let corpo = corpo_sem_comentarios(include_str!("shaders/mesh.wgsl"), "fs_core_n");
+    for lampada in [
+        "mx_direct(mt, nc,",
+        "dot(nc, l.dir.xyz)",
+        "dot(nc, l.hlf.xyz)",
+    ] {
+        assert!(
+            corpo.contains(lampada),
+            "CONTROLO: as lâmpadas deixaram de ler a normal com relevo (`{lampada}`)"
+        );
+    }
+    assert!(
+        corpo.contains("let na = canvas_normal(in.n_view);"),
+        "a normal do ambiente deixou de ser a da peça"
+    );
+    for ambiente in ["mx_indirect(mt, na,", "ambient_floor(na)"] {
+        assert!(
+            corpo.contains(ambiente),
+            "o ambiente deixou de ler a peça sem o relevo (`{ambiente}`)"
+        );
+    }
+    for velho in ["mx_indirect(mt, nc", "ambient_floor(nc)"] {
+        assert!(
+            !corpo.contains(velho),
+            "o ambiente lê a normal com relevo (`{velho}`): o céu volta às paredes da tinta"
+        );
+    }
+}

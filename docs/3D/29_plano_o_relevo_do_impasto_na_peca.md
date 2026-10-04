@@ -155,6 +155,9 @@ borda»* (foto: um anel cinzento em degraus à volta de um traço vermelho) e
 
 ### 6.2 A lei que fica
 
+> ⚠️ **Superseded em 04/10 ([doc 30 §19](30_plano_camadas_e_efeitos_na_peca.md)):** o corpo pesa a LUZ
+> (a superfície lisa e a com relevo inteiro, misturadas pelo corpo — a lei do 2D), não a inclinação.
+
 - **O relevo é um PAR `[altura, corpo]`** por amostra (`ph2d-mesh-colors`), lido
   pelos mesmos pesos da cor. O corpo é a cobertura da tinta (`0..1`), e o
   *bump* do shader é **escalado por ele** (`clamp(corpo, 0, 1) × gradiente`):
@@ -261,6 +264,9 @@ chega ao horizonte — daí *«de frente bom, inclinado não»*. ⚠️ A cura d
 o ruído de ecrã e **deixou isto à vista**: os estilhaços de antes cobriam-no.
 
 ### 8.2 A lei que fica
+
+> ⚠️ 04/10 ([doc 30 §19](30_plano_camadas_e_efeitos_na_peca.md)): o `corpo` saiu desta lei; onde se lê
+> «`corpo = 0`», leia-se «sem declive».
 
 `tinta_inclina` (WGSL, pura) = gradiente de superfície da §7 + `tinta_horizonte`,
 com o dono da lei em CPU em `ph2d_mesh_render::relevo_normal`:

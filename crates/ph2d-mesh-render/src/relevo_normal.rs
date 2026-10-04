@@ -20,8 +20,8 @@
 //! abaixo de `t = min(|n.z|, T)` o `z` da normal inclinada desce por uma
 //! exponencial que toca `t` com derivada `1` (sem vinco na luz) e só se
 //! aproxima de `K·t` — nunca o atravessa. ⚠️ O limiar sai da BASE e não de um
-//! número fixo, e é isso que torna a cura inerte onde não há relevo: com
-//! `corpo = 0` a normal inclinada É a base, `z = |n.z| ≥ t`, e sai **ao bit**.
+//! número fixo, e é isso que torna a cura inerte onde não há relevo: sem
+//! declive a normal inclinada É a base, `z = |n.z| ≥ t`, e sai **ao bit**.
 //!
 //! ⚠️ `T` e `K` não nomeiam recurso nenhum, e dizê-lo é a forma honesta (§0.0):
 //! são a FORMA da compressão. `T = 0,25` (o relevo só é comprimido a menos de
@@ -63,23 +63,20 @@ pub fn horizonte(n: [f32; 3], nb: [f32; 3]) -> [f32; 3] {
 }
 
 /// ⭐⭐ **A normal de vista inclinada pelo gradiente `gv` da altura** (já em
-/// espaço de vista), pesada pelo `corpo` — o *gradiente de superfície* de
-/// Mikkelsen (2020) seguido do [`horizonte`].
+/// espaço de vista) — o *gradiente de superfície* de Mikkelsen (2020) seguido do
+/// [`horizonte`]. ⚠️ O CORPO não entra: ele pesa a LUZ no fragmento
+/// (`docs/3D/30` §19), e esta é só a geometria que o relevo finge.
 #[must_use]
-pub fn inclina(n_in: [f32; 3], gv: [f32; 3], corpo: f32) -> [f32; 3] {
+pub fn inclina(n_in: [f32; 3], gv: [f32; 3]) -> [f32; 3] {
     let n = normaliza(n_in);
-    let c = corpo.clamp(0.0, 1.0);
-    // ⚠️ Sem corpo a base sai INTEIRA: `nb / |nb|` com `nb = n` erra um ULP e
+    let d = n[0] * gv[0] + n[1] * gv[1] + n[2] * gv[2];
+    let gs = [gv[0] - n[0] * d, gv[1] - n[1] * d, gv[2] - n[2] * d];
+    // ⚠️ Sem declive a base sai INTEIRA: `nb / |nb|` com `nb = n` erra um ULP e
     // cairia um ULP abaixo do limiar, que a compressão então tocaria.
-    if c <= 0.0 {
+    if gs == [0.0; 3] {
         return n;
     }
-    let d = n[0] * gv[0] + n[1] * gv[1] + n[2] * gv[2];
-    let nb = [
-        n[0] - c * (gv[0] - n[0] * d),
-        n[1] - c * (gv[1] - n[1] * d),
-        n[2] - c * (gv[2] - n[2] * d),
-    ];
+    let nb = [n[0] - gs[0], n[1] - gs[1], n[2] - gs[2]];
     let l = (nb[0] * nb[0] + nb[1] * nb[1] + nb[2] * nb[2]).sqrt();
     if l <= 0.0 {
         return n;

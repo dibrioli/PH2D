@@ -78,11 +78,23 @@ fn diag_o_preco_do_desfoque_na_superficie() {
                 tempos.push(t.elapsed().as_secs_f64() * 1e3);
             }
             tempos.sort_by(f64::total_cmp);
+            // Um canal só — a ALTURA do relevo (`docs/3D/30` §20).
+            let mut alt: Vec<f32> = (0..n).map(|i| (i as f32 * 0.37).sin().abs()).collect();
+            let mut t1 = Vec::new();
+            for _ in 0..3 {
+                let t = Instant::now();
+                d.desfoca(sigma, &mut alt);
+                t1.push(t.elapsed().as_secs_f64() * 1e3);
+            }
+            t1.sort_by(f64::total_cmp);
             eprintln!(
-                "    raio {:.1} % da diagonal ({raio:.4}) · grau {grau} · desfoque {:.1} ms (pior {:.1})",
+                "    raio {:.1} % da diagonal ({raio:.4}) · grau {grau} · desfoque {:.1} ms (pior {:.1}) · \
+                 um canal {:.1} ms (pior {:.1})",
                 frac * 100.0,
                 tempos[1],
-                tempos[2]
+                tempos[2],
+                t1[1],
+                t1[2]
             );
         }
     }

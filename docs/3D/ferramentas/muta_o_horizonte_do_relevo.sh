@@ -11,10 +11,10 @@ exec python3 - "$@" <<'PY'
 import subprocess, shutil, os, sys
 R='crates/ph2d-mesh-render/src/'
 M=[
- ('H1', R+'fonte.rs', 'return tinta_inclina(in.n_view, gv, corpo);', 'let nn = normalize(in.n_view); let nb = nn - clamp(corpo,0.0,1.0)*(gv - nn*dot(nn,gv)); return normalize(nb);'),
+ ('H1', R+'fonte.rs', 'return tinta_inclina(in.n_view, gv);', 'let nn = normalize(in.n_view); return normalize(nn - (gv - nn*dot(nn,gv)));'),
  ('H2', R+'shaders/tinta.wgsl', 'return tinta_horizonte(n, nb / l);', 'return nb / l;'),
  ('H3', R+'relevo_normal.rs', 'if t <= 0.0 || z >= t {', 'if true {'),
- ('H4', R+'relevo_normal.rs', '    if c <= 0.0 {\n        return n;\n    }\n    let d', '    let d'),
+ ('H4', R+'relevo_normal.rs', '    if gs == [0.0; 3] {\n        return n;\n    }\n    let nb', '    let nb'),
  ('H5', R+'relevo_normal.rs', '((z - t) / (t - zmin)).exp()', '(2.0 * (z - t) / (t - zmin)).exp()'),
  ('H6', R+'relevo_normal.rs', 'let zmin = HORIZONTE_K * t;', 'let zmin = -HORIZONTE_K * t;'),
  ('C0', R+'relevo_normal.rs', 'pub const HORIZONTE_K: f32 = 0.1;', 'pub const HORIZONTE_K: f32 = 0.1;'),

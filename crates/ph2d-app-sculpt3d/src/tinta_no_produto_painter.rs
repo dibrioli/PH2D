@@ -338,6 +338,12 @@ pub(super) fn fotografa(
     s: &mut crate::Sculpt3dScene,
     caminho: &std::ffi::OsStr,
 ) {
+    let rgb = retrato(gpu, s);
+    image::save_buffer(caminho, &rgb, 900, 700, image::ColorType::Rgb8).expect("gravar o PNG");
+}
+
+/// A cena desenhada num alvo de `900×700`, em sRGB8 `rgb` por linhas (o que o ecrã mostra).
+pub(super) fn retrato(gpu: &ph2d_gpu::GpuContext, s: &mut crate::Sculpt3dScene) -> Vec<u8> {
     let (w, h) = (900u32, 700u32);
     let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("sonda painter"),
@@ -406,7 +412,7 @@ pub(super) fn fotografa(
             }
         }
     }
-    image::save_buffer(caminho, &rgb, w, h, image::ColorType::Rgb8).expect("gravar o PNG");
+    rgb
 }
 
 fn half(b: u16) -> f32 {

@@ -280,3 +280,47 @@ fn diag_a_cena_56_antes_e_depois_do_raio() {
         );
     }
 }
+
+/// ⭐⭐ **Um TRAÇO por baixo do desfoque chega borrado à placa** — o caminho do traço dobra a peça
+/// inteira (cada amostra lê as vizinhas) e a placa tem a dobra da CPU. CONTROLO: o traço mudou o
+/// relevo.
+#[test]
+#[ignore = "precisa de adaptador"]
+fn um_traco_por_baixo_do_desfoque_chega_borrado_a_placa() {
+    use super::relevo_painel::da_placa;
+    let gpu = gpu_or_skip!();
+    let mut s = cena_52(&gpu.device);
+    s.sync_mesh(&gpu);
+    let mut p = painter_impasto();
+    let mut painel = Painel::novo();
+    quadro(Some(&mut s), Some(&mut p));
+    let (_, desfoque) = camada_e_desfoque(&mut s, &mut p, &mut painel);
+    painel.arrasta(
+        &mut p,
+        painter_layer_widget_id(desfoque.0, PainterLayerWidget::AdjParam0),
+        0.02,
+        0.5,
+    );
+    quadro(Some(&mut s), Some(&mut p));
+    s.sync_mesh(&gpu);
+    let (antes, _) = da_placa(&mut s, &gpu);
+    let pontos: Vec<(f32, f32)> = (0..=20).map(|k| (380.0 + 6.0 * k as f32, 350.0)).collect();
+    super::painter::traco_por(&mut s, &mut p, &pontos);
+    quadro(Some(&mut s), Some(&mut p));
+    s.sync_mesh(&gpu);
+    let (depois, _) = da_placa(&mut s, &gpu);
+    let n = depois.len();
+    assert!(
+        (0..n).filter(|&i| depois[i] != antes[i]).count() > 100,
+        "CONTROLO: o traço mudou o relevo"
+    );
+    let cpu = pilha(&s).relevo_composto().expect("relevo");
+    let desvio = (0..n)
+        .flat_map(|i| (0..2).map(move |e| (i, e)))
+        .map(|(i, e)| (depois[i][e] - cpu[i][e]).abs() / (1e-3 + cpu[i][e].abs()))
+        .fold(0.0f32, f32::max);
+    assert!(
+        desvio < 1e-3,
+        "a placa não tem a dobra borrada do traço ({desvio:.2e})"
+    );
+}

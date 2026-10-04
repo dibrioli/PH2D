@@ -205,6 +205,17 @@ fn a_opacidade_e_a_mascara_pesam_o_ajuste() {
         let quer = if metade[i] > 0.0 { bh[i] } else { hb[i] };
         assert!((h[i] - quer).abs() < 1e-5, "amostra {i} com a máscara");
     }
+    if let Some(LayerKind::Mask(mk)) = s.get_mut(m).map(|l| &mut l.kind) {
+        mk.inverted = true;
+    }
+    let (h, _) = fold_relief_through(&s.relief_plan(), &p, &grelha()).expect("relevo");
+    for i in 0..N {
+        let quer = if metade[i] > 0.0 { hb[i] } else { bh[i] };
+        assert!(
+            (h[i] - quer).abs() < 1e-5,
+            "amostra {i} com a máscara invertida"
+        );
+    }
 }
 
 /// ⭐ Um ajuste dentro de um GRUPO borra o que o grupo fez ao relevo, não o de fora — como o

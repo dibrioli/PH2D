@@ -612,14 +612,21 @@ mod nota_do_relevo_tests {
     #[test]
     fn o_brilho_e_as_sombras_dizem_que_o_relevo_nao_muda() {
         for k in [AdjustmentKind::Bloom, AdjustmentKind::ShadowsHighlights] {
-            assert!(altura_da_nota(k) > 0.0, "{k:?} não diz porquê o relevo fica");
+            assert!(
+                altura_da_nota(k) > 0.0,
+                "{k:?} não diz porquê o relevo fica"
+            );
         }
         for k in [
             AdjustmentKind::GaussianBlur,
             AdjustmentKind::Sharpen,
             AdjustmentKind::BrightnessContrast,
         ] {
-            assert_eq!(altura_da_nota(k), 0.0, "{k:?} levou a frase dos efeitos de tom");
+            assert_eq!(
+                altura_da_nota(k),
+                0.0,
+                "{k:?} levou a frase dos efeitos de tom"
+            );
         }
     }
 }

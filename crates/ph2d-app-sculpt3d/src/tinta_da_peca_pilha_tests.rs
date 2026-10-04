@@ -114,3 +114,68 @@ fn uma_pilha_translucida_recomposta_fica() {
         );
     }
 }
+
+/// ⭐⭐ **Com um Gaussiano por cima de camadas com relevo, a recomposição deixa o relevo POR DOBRAR**
+/// (a CPU não paga o calor no gesto: a placa dobra-o no `sync_mesh`, `docs/3D/30` §20) — **e os
+/// leitores da CPU dobram-no**: o `para_ler` lê a dobra, e o `em_dia` põe-na na peça. CONTROLO: a
+/// dobra borrada não é a nítida.
+#[test]
+fn o_relevo_por_dobrar_chega_aos_leitores_da_cpu() {
+    use crate::objects::{ObjectId, SceneObject};
+    use ph2d_tool_painter::{AdjustmentParams, GaussianBlurParams};
+    let mesh = crate::scenes::tinta_fina::peca();
+    let mut obj = SceneObject::new(ObjectId(1), mesh, ph2d_mesh::Pose::default());
+    obj.tinta = Some(crate::tinta_da_peca::semente(obj.stack.mesh(), 3));
+    acompanha(obj.tinta.as_mut(), &mut obj.pilha);
+    let xs = crate::vizinhanca_da_peca::posicoes(obj.tinta.as_ref().expect("t"), obj.stack.mesh());
+    let riscas: Vec<[f32; 2]> = xs
+        .iter()
+        .map(|&x| crate::scenes::relevo_camadas::relevo_da_base(x))
+        .collect();
+    let p = obj.pilha.as_mut().expect("pilha");
+    let base = p.base().expect("base");
+    let n = p.amostras();
+    assert!(p.pinta_camada(base, &vec![[200, 190, 180, 255]; n], Some(riscas)));
+    crate::scenes::relevo_borrado::poe_o_desfoque(p, obj.stack.mesh());
+    recompoe(&mut obj);
+    let bits = |r: Option<&[[f32; 2]]>| {
+        r.map(|r| r.iter().map(|x| x.map(f32::to_bits)).collect::<Vec<_>>())
+    };
+    let nitido = bits(obj.tinta.as_ref().and_then(|t| t.relevo()));
+    assert!(nitido.is_some(), "a peça tem o relevo das riscas");
+    let ph2d_tool_painter::SpatialUnits::Surface { size } =
+        crate::vizinhanca_da_peca::unidades(obj.stack.mesh())
+    else {
+        panic!("unidades da peça")
+    };
+    let p = obj.pilha.as_mut().expect("pilha");
+    let topo = p.pilha().root()[0];
+    let mut m = p.pilha().clone();
+    m.adjustment_mut(topo).expect("o Gaussiano").params =
+        AdjustmentParams::GaussianBlur(GaussianBlurParams {
+            radius: ph2d_tool_painter::SURFACE_RADIUS_MAX * size,
+        });
+    p.troca_metadado(m).expect("o raio");
+    recompoe(&mut obj);
+    let p = obj.pilha.as_ref().expect("pilha");
+    assert!(p.relevo_por_dobrar(), "o raio deixou o relevo por dobrar");
+    assert_eq!(
+        bits(obj.tinta.as_ref().and_then(|t| t.relevo())),
+        nitido,
+        "a recomposição pagou o calor na CPU"
+    );
+    let referencia = bits(p.relevo_composto().as_deref());
+    assert_ne!(
+        referencia, nitido,
+        "CONTROLO: a dobra borrada não é a nítida"
+    );
+    let lida = bits(para_ler(&obj, obj.tinta.as_ref().expect("plano")).relevo());
+    assert_eq!(lida, referencia, "o para_ler não leu a dobra");
+    em_dia(&mut obj);
+    assert!(!obj.pilha.as_ref().expect("p").relevo_por_dobrar());
+    assert_eq!(
+        bits(obj.tinta.as_ref().and_then(|t| t.relevo())),
+        referencia,
+        "o em_dia não pôs a dobra na peça"
+    );
+}

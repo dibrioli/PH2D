@@ -429,7 +429,7 @@ fn a_subdivisao_aproxima_o_desenho_da_verdade() {
                 .expect("a barra");
             subdivide(p, a, VERTICES_MAX * 4);
         }
-        crate::skin_live::bind_com(&mut sim, &scene, &map, &[id], None, false);
+        crate::skin_live::bind_com(&mut sim, &mut scene, &map, &[id], None, false);
         // A pose em S da cena do dono — sem ela as três respostas coincidem ao bit.
         sim.world_mut()
             .get_mut::<Transform>(ossos[1])

@@ -38,7 +38,9 @@ impl crate::App {
             || pending_fx_apply
         {
             let sel = self.vec.pen.selected_paths().to_vec();
-            if let Some(pid) = crate::fx_bridge::sole_path(&sel) {
+            // Uma forma PRESA não recebe efeitos (o painel não os oferece; isto não depende dele).
+            let presa = |p: &_| crate::fx_bridge::is_bound(sim, &self.vec.entities, *p);
+            if let Some(pid) = crate::fx_bridge::sole_path(&sel).filter(|p| !presa(p)) {
                 crate::fx_bridge_dispatch::apply(
                     vec_scene,
                     pid,

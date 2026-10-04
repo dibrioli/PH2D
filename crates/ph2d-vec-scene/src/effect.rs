@@ -149,35 +149,15 @@ pub struct FxEntry {
     pub effect: PathEffect,
     /// Desligado = a pilha o SALTA, como se fosse neutro — mas os parâmetros ficam.
     pub enabled: bool,
-    /// Numa forma PRESA a ossos: o efeito corre antes ou depois deles. Numa forma solta não muda
-    /// nada. ⚠️ Apendado ao FIM (postcard é posicional, `VEC_SCENE` v23).
-    pub stage: FxStage,
-}
-
-/// ⭐⭐ **Onde a entrada corre numa forma PRESA a ossos** — o lugar de um modificador em relação ao
-/// `Armature` do Blender, por efeito (ordem do dono, 2026-10-03).
-///
-/// A pilha parte-se pela ordem de cada entrada: as `BeforeBones` cozem em REPOUSO e o desenho delas
-/// dobra (o *Hatch* curva com a barra); as `AfterBones` são refeitas sobre a forma JÁ DOBRADA, com
-/// o tamanho ([`FxCtx`]) do repouso (um *Twist* forte fica sempre bem formado). Cada fase guarda a
-/// ordem da pilha, e um *Falloff* modula o deformador seguinte DA SUA fase.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum FxStage {
-    /// Coze em repouso e dobra com a forma — a lei da F50, e a de toda entrada nova.
-    #[default]
-    BeforeBones,
-    /// Refeito sobre a forma dobrada.
-    AfterBones,
 }
 
 impl FxEntry {
-    /// Uma entrada nova, ligada, antes dos ossos.
+    /// Uma entrada nova, ligada.
     #[must_use]
     pub fn new(effect: PathEffect) -> Self {
         Self {
             effect,
             enabled: true,
-            stage: FxStage::BeforeBones,
         }
     }
 
@@ -185,13 +165,6 @@ impl FxEntry {
     #[must_use]
     pub fn is_active(&self) -> bool {
         self.enabled && !self.effect.is_neutral()
-    }
-
-    /// Corre depois dos ossos numa forma presa? — pedido E possível: um efeito que lê os nós
-    /// ([`PathEffect::reads_nodes`]) fica antes, diga o dado o que disser.
-    #[must_use]
-    pub fn runs_after_bones(&self) -> bool {
-        self.stage == FxStage::AfterBones && !self.effect.reads_nodes()
     }
 }
 
@@ -279,29 +252,6 @@ impl PathEffect {
             Self::Trim(_) | Self::Repeat(_) | Self::Falloff(_) | Self::Knot(_) | Self::Hatch(_) => {
                 false
             }
-        }
-    }
-
-    /// ⭐⭐ **O desenho deste efeito depende de ONDE estão os NÓS do caminho, e não só da forma?**
-    ///
-    /// O *Pucker & Bloat* puxa as âncoras e empurra as alças; o *Zig Zag* amostra também nas
-    /// âncoras que chegam. Depois dos ossos eles correriam sobre os nós do DESENHO dobrado (`15` em
-    /// repouso onde o artista pôs `8`, `40`–`45` a dobrar) — medido em repouso, trocar a ordem
-    /// mudava o desenho `0,45`–`0,48` (*Bloat*) e `0,05`–`0,21` (*Zig Zag*), e a contagem de nós
-    /// muda com a pose. ⇒ ficam ANTES dos ossos ([`FxStage`]), como o Blender recusa um modificador
-    /// que precisa dos dados originais abaixo de um que deforma. Os outros: `≤ 0,015`.
-    #[must_use]
-    pub fn reads_nodes(&self) -> bool {
-        match self {
-            Self::ZigZag(_) | Self::Bloat(_) => true,
-            Self::Trim(_)
-            | Self::Repeat(_)
-            | Self::Warp(_)
-            | Self::Falloff(_)
-            | Self::Twist(_)
-            | Self::Knot(_)
-            | Self::Sketch(_)
-            | Self::Hatch(_) => false,
         }
     }
 
@@ -517,19 +467,11 @@ fn apply_per_contour(
 /// passagem, sem erro nenhum.
 #[must_use]
 pub fn run_stack(path: &VecPath, stack: &[FxEntry]) -> Option<VecPath> {
-    // UMA vez, do caminho autorado: um parâmetro de distância tem de significar o mesmo
-    // independentemente de onde o efeito está na pilha.
-    run_stack_with(path, stack, &FxCtx::of(path))
-}
-
-/// O [`run_stack`] com a escala de referência DADA — para quem corre a pilha sobre um caminho que
-/// não é o autorado (a forma presa já dobrada, [`FxStage::AfterBones`]) e quer o tamanho do efeito
-/// do REPOUSO, que não depende da pose.
-#[must_use]
-pub fn run_stack_with(path: &VecPath, stack: &[FxEntry], ctx: &FxCtx) -> Option<VecPath> {
     let mut active = stack.iter().filter(|e| e.is_active()).peekable();
     active.peek()?;
-    let ctx = *ctx;
+    // UMA vez, do caminho autorado: um parâmetro de distância tem de significar o mesmo
+    // independentemente de onde o efeito está na pilha.
+    let ctx = FxCtx::of(path);
     let mut cur: Option<VecPath> = None;
     // O campo de força que se acumula até o próximo deformador consumi-lo. Dois Falloffs seguidos
     // COMPÕEM (produto dos pesos = interseção das influências); o deformador seguinte é modulado e

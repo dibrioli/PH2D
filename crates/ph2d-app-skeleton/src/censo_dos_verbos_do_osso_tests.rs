@@ -113,7 +113,7 @@ fn palco() -> Palco {
 fn prende(p: &mut Palco) {
     let n = ph2d_skeleton_live::skin_live::bind(
         &mut p.sim,
-        &p.cena,
+        &mut p.cena,
         &p.mapa,
         &[p.caminho],
         Some(p.ossos[0]),
@@ -218,7 +218,7 @@ fn corre(p: &mut Palco, v: VerboDoOsso) {
         VerboDoOsso::Prender => {
             ph2d_skeleton_live::skin_live::bind(
                 &mut p.sim,
-                &p.cena,
+                &mut p.cena,
                 &p.mapa,
                 &[p.caminho],
                 Some(raiz),

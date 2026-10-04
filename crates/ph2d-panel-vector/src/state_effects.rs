@@ -49,22 +49,6 @@ pub struct FxRowView {
     /// dica no card — um Falloff sozinho (sem deformador abaixo) não pode parecer quebrado, e a
     /// resposta (`takes_falloff` do efeito abaixo) é conhecida pela ponte, não pelo painel.
     pub falloff_role: FalloffRole,
-    /// Numa forma PRESA a ossos: onde o efeito entra. Decidido pela ponte (que vê o esqueleto).
-    pub bones: FxBones,
-}
-
-/// ⭐⭐ **A ordem do efeito em relação aos ossos**, como o cartão a mostra.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub enum FxBones {
-    /// A forma não está presa: a escolha não muda nada, e não é oferecida.
-    #[default]
-    Unbound,
-    /// Presa, e o efeito coze em repouso e dobra com ela.
-    Before,
-    /// Presa, e o efeito é refeito sobre a forma dobrada.
-    After,
-    /// Presa, mas o efeito lê os NÓS do desenho: só pode vir antes — o cartão diz porquê.
-    BeforeOnly,
 }
 
 /// O papel de uma linha da pilha enquanto Falloff — decidido pela ponte (que conhece o motor),
@@ -89,6 +73,9 @@ thread_local! {
     /// Há exatamente UM caminho selecionado? A seção é por-caminho: sem alvo, *"a pilha"* não
     /// tem referente, e nem os botões de Add são oferecidos.
     static HAS_TARGET: Cell<bool> = const { Cell::new(false) };
+    /// O alvo está PRESO a ossos? Então ele não recebe efeitos (ordem do dono, 2026-10-03: ao
+    /// prender os efeitos são cozidos no desenho) e a secção diz só porquê.
+    static BOUND: Cell<bool> = const { Cell::new(false) };
 }
 
 /// **Publica a seção Effects inteira** — o alvo, os tipos disponíveis e a pilha.
@@ -99,9 +86,15 @@ thread_local! {
 ///
 /// ⭐ **Os nomes entram TRADUZIDOS** (HR-15, `nomes_do_motor`): o motor publica o rótulo inglês e a
 /// escrita é o ponto único por onde todo pintor os recebe.
-pub fn set_current_effects(has_target: bool, kinds: &[&'static str], stack: Vec<FxRowView>) {
+pub fn set_current_effects(
+    has_target: bool,
+    bound: bool,
+    kinds: &[&'static str],
+    stack: Vec<FxRowView>,
+) {
     use crate::nomes_do_motor as n;
     HAS_TARGET.with(|c| c.set(has_target));
+    BOUND.with(|c| c.set(bound));
     CURRENT_KINDS.with(|c| c.borrow_mut().clear());
     CURRENT_KINDS.with(|c| c.borrow_mut().extend(kinds.iter().map(|k| n::efeito(k))));
     let stack = stack
@@ -120,6 +113,11 @@ pub fn set_current_effects(has_target: bool, kinds: &[&'static str], stack: Vec<
 /// Há um caminho único selecionado?
 pub(crate) fn has_target() -> bool {
     HAS_TARGET.with(Cell::get)
+}
+
+/// O alvo está preso a ossos (não recebe efeitos)?
+pub(crate) fn bound() -> bool {
+    BOUND.with(Cell::get)
 }
 
 /// Os tipos do menu "Add".

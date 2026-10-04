@@ -22,8 +22,6 @@ pub enum FxRowAction {
     Hide,
     /// Um parâmetro de CAIXINHA: o clique alterna, não traz valor.
     Toggle(usize),
-    /// Numa forma presa: o efeito antes ou depois dos ossos.
-    Stage(ph2d_vec_scene::effect::FxStage),
 }
 
 /// O que um clique na seção pede.
@@ -63,18 +61,6 @@ pub fn classify_click(id: ph2d_editor_core::ids::NodeId) -> Option<FxClick> {
         }
         if id == ph2d_tool_vector::ids::vector_fx_hide_id(r) {
             return Some(FxClick::Row(r, FxRowAction::Hide));
-        }
-        if id == ph2d_tool_vector::ids::vector_fx_before_bones_id(r) {
-            return Some(FxClick::Row(
-                r,
-                FxRowAction::Stage(ph2d_vec_scene::effect::FxStage::BeforeBones),
-            ));
-        }
-        if id == ph2d_tool_vector::ids::vector_fx_after_bones_id(r) {
-            return Some(FxClick::Row(
-                r,
-                FxRowAction::Stage(ph2d_vec_scene::effect::FxStage::AfterBones),
-            ));
         }
         // Uma caixinha é pintada como BOTÃO e tem id PRÓPRIO. Reusar o id do slider punha dois
         // tipos de widget num id só: o store registava um `Slider`, e um slider NÃO emite Click
@@ -121,7 +107,6 @@ pub fn apply(
             FxRowAction::Up => crate::fx_bridge::reorder(scene, id, row, true),
             FxRowAction::Down => crate::fx_bridge::reorder(scene, id, row, false),
             FxRowAction::Hide => crate::fx_bridge::toggle_enabled(scene, id, row),
-            FxRowAction::Stage(stage) => crate::fx_bridge::set_stage(scene, id, row, stage),
             // Só alterna se o parâmetro for MESMO uma caixinha: o id é partilhado com o
             // slider, e um clique perdido num slider não pode virar um toggle silencioso.
             FxRowAction::Toggle(p) => {

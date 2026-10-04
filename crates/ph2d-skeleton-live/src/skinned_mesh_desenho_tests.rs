@@ -180,7 +180,7 @@ fn palco_com_quinas_vivas() -> BPalco {
         pai = Some(e);
         ossos.push(e);
     }
-    crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
+    crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None);
     let alvo = forma(&map, id);
     sim.world_mut()
         .entity_mut(alvo)

@@ -24,8 +24,8 @@ use ph2d_skeleton_ecs::SkinBind;
 /// e entrega pesos plausíveis sobre os ossos errados.
 #[test]
 fn o_bind_guarda_o_campo_do_dominio() {
-    let (mut sim, scene, map, id, _ossos) = palco_com_vertices_na_junta();
-    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    let (mut sim, mut scene, map, id, _ossos) = palco_com_vertices_na_junta();
+    assert_eq!(bind(&mut sim, &mut scene, &map, &[id], None), 1);
     let e = Entity::from_bits(map[&id]);
     let skin = sim.world().get::<SkinBind>(e).expect("a pele").clone();
     let g = crate::skinned_mesh::le(&skin.source).expect("a fonte lê-se");

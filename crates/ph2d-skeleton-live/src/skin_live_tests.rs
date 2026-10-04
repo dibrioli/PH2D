@@ -82,7 +82,7 @@ pub(crate) fn gira(sim: &mut SimWorld, e: Entity, graus: f32) {
 fn binding_a_shape_moves_nothing_and_adds_no_point() {
     let (mut sim, mut scene, map, id, _) = palco();
     let antes = scene.paths()[0].clone();
-    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    assert_eq!(bind(&mut sim, &mut scene, &map, &[id], None), 1);
     let depois = quadro(&sim, &mut scene, id);
     // ⚠️⚠️ **A régua é a do DESENHO e não a dos VÉRTICES, e a troca foi forçada pela subdivisão do
     // bind** (2026-09-19): prender passou a acrescentar pontos de controlo de propósito, e a
@@ -109,7 +109,7 @@ fn binding_a_shape_moves_nothing_and_adds_no_point() {
     // saberia que o contrafactual dos gates da fidelidade deixou de existir.*
     let (mut s2, mut scene2, map2, id2, _) = palco();
     assert_eq!(
-        crate::skin_live::bind_com(&mut s2, &scene2, &map2, &[id2], None, true),
+        crate::skin_live::bind_com(&mut s2, &mut scene2, &map2, &[id2], None, true),
         1
     );
     let com = quadro(&s2, &mut scene2, id2);
@@ -128,7 +128,7 @@ fn binding_a_shape_moves_nothing_and_adds_no_point() {
 #[test]
 fn bending_a_bone_bends_the_drawing() {
     let (mut sim, mut scene, map, id, ossos) = palco();
-    bind(&mut sim, &scene, &map, &[id], None);
+    bind(&mut sim, &mut scene, &map, &[id], None);
     let repouso = quadro(&sim, &mut scene, id);
     gira(&mut sim, ossos[1], 60.0);
     let dobrado = quadro(&sim, &mut scene, id);
@@ -168,7 +168,7 @@ fn bending_a_bone_bends_the_drawing() {
 #[test]
 fn turning_the_parent_bone_carries_the_child_because_the_tree_is_the_kinematics() {
     let (mut sim, mut scene, map, id, ossos) = palco();
-    bind(&mut sim, &scene, &map, &[id], None);
+    bind(&mut sim, &mut scene, &map, &[id], None);
     let repouso = quadro(&sim, &mut scene, id);
     gira(&mut sim, ossos[0], 40.0);
     let posado = quadro(&sim, &mut scene, id);
@@ -191,7 +191,7 @@ fn turning_the_parent_bone_carries_the_child_because_the_tree_is_the_kinematics(
 #[test]
 fn deleting_a_bone_does_not_delete_the_drawing() {
     let (mut sim, mut scene, map, id, ossos) = palco();
-    bind(&mut sim, &scene, &map, &[id], None);
+    bind(&mut sim, &mut scene, &map, &[id], None);
     let antes = quadro(&sim, &mut scene, id);
     sim.world_mut().entity_mut(ossos[1]).despawn();
     let depois = quadro(&sim, &mut scene, id);
@@ -212,7 +212,7 @@ fn releasing_gives_back_the_drawing_and_expanding_keeps_the_pose() {
     for (keep, volta) in [(Keep::Source, true), (Keep::Deformed, false)] {
         let (mut sim, mut scene, map, id, ossos) = palco();
         let autorada = scene.paths()[0].clone();
-        bind(&mut sim, &scene, &map, &[id], None);
+        bind(&mut sim, &mut scene, &map, &[id], None);
         gira(&mut sim, ossos[1], 60.0);
         let posada = quadro(&sim, &mut scene, id);
         assert_eq!(release(&mut sim, &mut scene, &map, &[id], keep), 1);
@@ -257,7 +257,7 @@ fn releasing_gives_back_the_drawing_and_expanding_keeps_the_pose() {
 #[test]
 fn the_order_of_the_bones_in_a_skin_does_not_change_the_drawing() {
     let (mut sim, mut scene, map, id, ossos) = palco();
-    bind(&mut sim, &scene, &map, &[id], None);
+    bind(&mut sim, &mut scene, &map, &[id], None);
     gira(&mut sim, ossos[1], 55.0);
     let direita = quadro(&sim, &mut scene, id);
 
@@ -344,8 +344,8 @@ fn a_skin_survives_the_respawn_that_undo_and_save_do() {
     };
     use ph2d_ecs::{TransformPropagationState, WorklistBuf};
 
-    let (mut sim, scene, map, id, _) = palco();
-    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    let (mut sim, mut scene, map, id, _) = palco();
+    assert_eq!(bind(&mut sim, &mut scene, &map, &[id], None), 1);
 
     let mut reg = ComponentRegistry::new();
     register_ecs_components(&mut reg);
@@ -410,8 +410,8 @@ fn a_skin_survives_the_respawn_that_undo_and_save_do() {
 /// portas **coincidem**, e é o que autoriza a `resolve_with` a chamar sempre a nova.
 #[test]
 fn a_rig_authored_before_bendy_bones_resolves_to_exactly_the_same_skin() {
-    let (mut sim, scene, map, id, _) = palco();
-    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    let (mut sim, mut scene, map, id, _) = palco();
+    assert_eq!(bind(&mut sim, &mut scene, &map, &[id], None), 1);
     let forma = Entity::from_bits(map[&id]);
     let skin = sim
         .world()
@@ -460,7 +460,7 @@ fn a_rig_authored_before_bendy_bones_resolves_to_exactly_the_same_skin() {
 #[test]
 fn authoring_curvature_makes_the_producer_emit_sub_bones_and_bows_the_art() {
     let (mut sim, mut scene, map, id, ossos) = palco();
-    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    assert_eq!(bind(&mut sim, &mut scene, &map, &[id], None), 1);
     let antes = quadro(&sim, &mut scene, id);
     let forma = Entity::from_bits(map[&id]);
     let skin = sim.world().get::<SkinBind>(forma).expect("presa").clone();
@@ -516,8 +516,8 @@ fn authoring_curvature_makes_the_producer_emit_sub_bones_and_bows_the_art() {
 /// tem interior — e isso é uma resposta, não uma falha.
 #[test]
 fn as_duas_midias_respondem_a_mesma_lei() {
-    let (mut sim, scene, map, id, _) = palco();
-    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    let (mut sim, mut scene, map, id, _) = palco();
+    assert_eq!(bind(&mut sim, &mut scene, &map, &[id], None), 1);
     let e = Entity::from_bits(map[&id]);
     let skin = sim.world().get::<SkinBind>(e).expect("a pele").clone();
     let g: crate::skinned_mesh::SkinnedPath =
@@ -563,7 +563,7 @@ fn um_caminho_aberto_fica_na_lei_derivada() {
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let raiz = osso(&mut sim, "Root", [0.0, 5.0], 20.0, None);
     osso(&mut sim, "Tip", [20.0, 0.0], 20.0, Some(raiz));
-    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    assert_eq!(bind(&mut sim, &mut scene, &map, &[id], None), 1);
     let e = Entity::from_bits(map[&id]);
     let skin = sim.world().get::<SkinBind>(e).expect("a pele").clone();
     let g: crate::skinned_mesh::SkinnedPath =
@@ -634,7 +634,7 @@ pub(super) fn palco_com_vertices_na_junta()
 #[test]
 fn a_tabela_de_pesos_do_caminho_chega_ao_desenho() {
     let (mut sim, mut scene, map, id, ossos) = palco_com_vertices_na_junta();
-    assert_eq!(bind(&mut sim, &scene, &map, &[id], None), 1);
+    assert_eq!(bind(&mut sim, &mut scene, &map, &[id], None), 1);
     gira(&mut sim, ossos[1], 55.0);
     let desenhado = quadro(&sim, &mut scene, id);
 

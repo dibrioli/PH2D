@@ -63,7 +63,7 @@ fn binding_to_the_whole_scene_draws_the_same_as_binding_to_the_right_skeleton() 
         let outro = osso(&mut sim, "Far", [400.0, 0.0], 30.0, None);
         osso(&mut sim, "Far2", [30.0, 0.0], 30.0, Some(outro));
         let raiz = semente.then_some(ossos[0]);
-        assert_eq!(bind(&mut sim, &scene, &map, &[id], raiz), 1);
+        assert_eq!(bind(&mut sim, &mut scene, &map, &[id], raiz), 1);
         let e = Entity::from_bits(*map.get(&id).expect("a forma tem entidade"));
         let pele = sim
             .world()

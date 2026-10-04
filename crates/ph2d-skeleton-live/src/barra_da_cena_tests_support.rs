@@ -107,8 +107,8 @@ fn monta_a_barra(
         ids.push(e);
     }
     match subdividir {
-        None => crate::skin_live::bind(&mut sim, &scene, &map, &[id], None),
-        Some(b) => crate::skin_live::bind_com(&mut sim, &scene, &map, &[id], None, b),
+        None => crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None),
+        Some(b) => crate::skin_live::bind_com(&mut sim, &mut scene, &map, &[id], None, b),
     };
     // ⛔⛔ **A FORMA CARREGA UM `Sprite`, e sem ele esta fixtura não contém o fenómeno** — no app
     // toda arte vectorial tem um, e a 1.ª redacção da porta escolhia o ramo da mídia por
@@ -180,7 +180,7 @@ pub(crate) fn peca_presa(
         pai = Some(e);
         ids.push(e);
     }
-    crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
+    crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None);
     let alvo = forma(&map, id);
     sim.world_mut()
         .entity_mut(alvo)

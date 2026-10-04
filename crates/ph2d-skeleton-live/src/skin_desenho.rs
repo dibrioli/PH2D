@@ -65,12 +65,6 @@
 //! — o ideal esticava `17`–`191×` entre amostras vizinhas (um rasgo). Sobre o cozido, `≤ 3,6×`. É o
 //! *Puppet* do After Effects: a malha tira-se do que a camada DESENHA. Preço: um solver por pilha
 //! nova (`20`–`100 ms` medidos a `load 53`), nunca por pose.
-//!
-//! ⭐⭐⭐ **ANTES ou DEPOIS dos ossos, por efeito** (`FxEntry::stage`, ordem do dono de 2026-10-03 —
-//! o lugar do modificador em relação ao `Armature`). A pilha parte-se: as entradas «antes» seguem a
-//! lei acima; as «depois» correm sobre o DESENHADO (contacto incluído) com o `FxCtx` do REPOUSO
-//! ([`Preparado::ctx`]), para o tamanho do efeito não depender da pose. Uma pilha só de «depois»
-//! desenha-se como a forma sem efeito e corre-as no fim.
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -79,7 +73,7 @@ use std::rc::Rc;
 use ph2d_skeleton::Skin;
 use ph2d_skeleton_ecs::SkinBind;
 use ph2d_skin_weights::Handle;
-use ph2d_vec_scene::effect::{FxCtx, FxEntry};
+use ph2d_vec_scene::effect::FxEntry;
 use ph2d_vec_scene::{VecPath, VecPathId, VecXforms};
 use ph2d_vec_skin::curva::{Bake, CampoIndexado};
 use ph2d_vec_skin::pesos::{CampoDoDominio, IndiceDoCampo};
@@ -145,14 +139,6 @@ pub fn estilo_de(viva: &VecPath) -> Estilo {
     } else {
         Estilo::Efeitos(activos)
     }
-}
-
-/// ⭐⭐ **A pilha partida pela ordem de cada entrada** — `(antes dos ossos, depois)`, cada fase na
-/// ordem da pilha (um *Falloff* modula o deformador seguinte da SUA fase).
-#[must_use]
-pub fn fases(pilha: &[FxEntry]) -> (Vec<FxEntry>, Vec<FxEntry>) {
-    let (depois, antes) = pilha.iter().cloned().partition(FxEntry::runs_after_bones);
-    (antes, depois)
 }
 
 /// ⭐⭐ **Os NÓS desta forma deixam-na ser desenhada pelo bake?** — as quinas vivas moram nos nós
@@ -230,9 +216,6 @@ pub struct Preparado {
     /// percorre quando a fonte tem raio de quina. `None` sem quinas, ou sem campo para amostrar a
     /// tabela (ver [`cozido_para_o_bake`]).
     pub cozido: Option<(VecPath, Vec<f64>)>,
-    /// ⭐⭐ **A escala de referência dos efeitos «depois dos ossos»** — a do caminho autorado em
-    /// REPOUSO (quinas vivas incluídas), a mesma que o `run_stack` tiraria dele numa forma solta.
-    pub ctx: FxCtx,
 }
 
 /// O que um quadro produziu para uma forma: o caminho CRU e, quando serve, o DESENHADO.
@@ -329,15 +312,11 @@ pub fn quadro(
 ) -> Option<Quadro> {
     com_a_gaveta(bits, skin, |g| {
         let prep = Rc::clone(g.preparado.as_ref()?);
-        let (antes, depois) = match estilo {
-            Estilo::Efeitos(pilha) => fases(pilha),
-            _ => (Vec::new(), Vec::new()),
-        };
-        let lei_nova = leis.efeitos && leis.desenho;
-        let fx = if lei_nova && !antes.is_empty() {
-            efeitos_da_gaveta(g, &prep.guardado, &antes, eixos)
-        } else {
-            None
+        let fx = match estilo {
+            Estilo::Efeitos(pilha) if leis.efeitos && leis.desenho => {
+                efeitos_da_gaveta(g, &prep.guardado, pilha, eixos)
+            }
+            _ => None,
         };
         if let Some(u) = &g.ultimo
             && u.pele == *pele
@@ -352,13 +331,13 @@ pub fn quadro(
             return Some(u.quadro.clone());
         }
         // ⚠️ Uma forma com efeito e sem cozido (sem campo, ou a lei desligada) desenha-se como
-        // ontem: a pilha INTEIRA sobre os nós deformados. Só de «depois» não precisa de cozido.
+        // ontem: o efeito sobre os nós deformados.
         let serve = match estilo {
             Estilo::Serve => true,
-            Estilo::Efeitos(_) => lei_nova && (antes.is_empty() || fx.is_some()),
+            Estilo::Efeitos(_) => fx.is_some(),
             Estilo::NaoServe => false,
         };
-        let q = calcula(&prep, skin, pele, leis, serve, fx.as_deref(), &depois);
+        let q = calcula(&prep, skin, pele, leis, serve, fx.as_deref());
         g.ultimo = Some(Ultimo {
             pele: pele.clone(),
             leis,
@@ -448,14 +427,10 @@ fn prepara(fonte: &[u8]) -> Option<Preparado> {
         .as_ref()
         .and_then(|c| IndiceDoCampo::novo(&c.malha));
     let cozido = cozido_para_o_bake(&guardado);
-    let mut autorado = guardado.path.clone();
-    autorado.effects.clear();
-    let ctx = FxCtx::of(&autorado.cooked());
     Some(Preparado {
         guardado,
         indice,
         cozido,
-        ctx,
     })
 }
 
@@ -637,7 +612,6 @@ fn calcula(
     leis: Leis,
     estilo_serve: bool,
     fx: Option<&CozidoFx>,
-    depois: &[FxEntry],
 ) -> Quadro {
     #[cfg(test)]
     DERIVADOS.with(|d| {
@@ -749,23 +723,6 @@ fn calcula(
             } else {
                 ph2d_vec_boolean::silhueta_da_pele(&d, &quinas).unwrap_or(d)
             }
-        })
-        // ⭐⭐⭐ **Os efeitos DEPOIS dos ossos** — sobre a forma já dobrada (contacto incluído), com
-        // o tamanho do REPOUSO.
-        .map(|d| {
-            if depois.is_empty() {
-                return d;
-            }
-            // ⚠️ O CENTRO é levado pela pele, como um ponto do desenho: o do repouso ficaria no
-            // sítio quando o esqueleto anda, e um *Twist* rodaria a forma à volta dele.
-            let c = prep.ctx.center;
-            let linha = lido.campo.and_then(|m| m.linha_com(c, lido.indice));
-            let mut w = pele.scratch();
-            let ctx = FxCtx {
-                center: pele.point_corrected(c, linha.as_deref(), &mut w, &correcoes),
-                ..prep.ctx
-            };
-            ph2d_vec_scene::effect::run_stack_with(&d, depois, &ctx).unwrap_or(d)
         });
     Quadro { cru, desenhado }
 }

@@ -47,7 +47,7 @@ fn probe_the_smoke_sequence() {
         "[probe] ossos = {:?}",
         ph2d_skeleton_live::skin_live::bone_segments(&sim)
     );
-    let n = ph2d_skeleton_live::skin_live::bind(&mut sim, &scene, &map, &[id], raiz);
+    let n = ph2d_skeleton_live::skin_live::bind(&mut sim, &mut scene, &map, &[id], raiz);
     eprintln!("[probe] bind devolveu {n}");
     let antes = quadro(&sim, &mut scene, id);
     // Posa o ÚLTIMO osso pela porta do gesto.

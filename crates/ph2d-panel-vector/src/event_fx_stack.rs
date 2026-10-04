@@ -27,8 +27,6 @@ pub(super) fn is_button(id: ph2d_a11y::NodeId) -> bool {
                 || id == ph2d_tool_vector::ids::vector_fx_up_id(r)
                 || id == ph2d_tool_vector::ids::vector_fx_down_id(r)
                 || id == ph2d_tool_vector::ids::vector_fx_hide_id(r)
-                || id == ph2d_tool_vector::ids::vector_fx_before_bones_id(r)
-                || id == ph2d_tool_vector::ids::vector_fx_after_bones_id(r)
                 // A CAIXINHA de um parâmetro também é um botão. Ela tem id próprio desde
                 // 2026-07-18: partilhar o do slider punha dois tipos de widget num id só, e um
                 // slider não emite `Click` no Up.

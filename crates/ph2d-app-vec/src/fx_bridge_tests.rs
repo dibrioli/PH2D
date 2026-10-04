@@ -33,7 +33,7 @@ fn adding_any_effect_does_not_move_a_single_point() {
         let (mut scene, id) = scene_with_square();
         let before = scene.path(id).expect("path").cooked().into_owned();
         add(&mut scene, id, kind);
-        assert_eq!(stack_view(&scene, id, false).len(), 1, "o efeito {kind} entrou");
+        assert_eq!(stack_view(&scene, id).len(), 1, "o efeito {kind} entrou");
         let after = scene.path(id).expect("path").cooked().into_owned();
         assert_eq!(
             before.verts,
@@ -49,7 +49,7 @@ fn adding_any_effect_does_not_move_a_single_point() {
 fn an_unknown_kind_adds_nothing() {
     let (mut scene, id) = scene_with_square();
     add(&mut scene, id, PathEffect::KINDS.len() + 3);
-    assert!(stack_view(&scene, id, false).is_empty());
+    assert!(stack_view(&scene, id).is_empty());
 }
 
 /// **A pilha respeita o teto** — e o teto é o mesmo que o painel registra.
@@ -59,7 +59,7 @@ fn the_stack_stops_at_the_ceiling() {
     for _ in 0..MAX_PATH_EFFECTS + 3 {
         add(&mut scene, id, 0);
     }
-    assert_eq!(stack_view(&scene, id, false).len(), MAX_PATH_EFFECTS);
+    assert_eq!(stack_view(&scene, id).len(), MAX_PATH_EFFECTS);
 }
 
 /// **Reordenar TROCA de lugar**, e nas bordas é no-op.
@@ -69,7 +69,7 @@ fn reordering_swaps_and_the_edges_are_inert() {
     add(&mut scene, id, 0);
     add(&mut scene, id, 1);
     let labels =
-        |s: &VecScene| -> Vec<&'static str> { stack_view(s, id, false).iter().map(|r| r.label).collect() };
+        |s: &VecScene| -> Vec<&'static str> { stack_view(s, id).iter().map(|r| r.label).collect() };
     let original = labels(&scene);
     assert_eq!(original.len(), 2);
 
@@ -91,7 +91,7 @@ fn the_snapshot_mirrors_what_the_engine_declares() {
     for kind in 0..PathEffect::KINDS.len() {
         let (mut scene, id) = scene_with_square();
         add(&mut scene, id, kind);
-        let rows = stack_view(&scene, id, false);
+        let rows = stack_view(&scene, id);
         let fx = PathEffect::from_kind(kind).expect("kind");
         assert_eq!(rows[0].label, fx.label());
         assert_eq!(rows[0].params.len(), fx.params().len());
@@ -118,7 +118,7 @@ fn the_normalised_track_lands_on_the_effects_own_range() {
         let decls = PathEffect::from_kind(kind).expect("kind").params().to_vec();
         for (p, d) in decls.iter().enumerate() {
             set_param(&mut scene, id, 0, p, 1.0);
-            let top = stack_view(&scene, id, false)[0].params[p].value;
+            let top = stack_view(&scene, id)[0].params[p].value;
             assert!(
                 (top - d.max).abs() < 1e-9,
                 "track 1.0 em {}::{} devia dar {}, deu {top}",
@@ -127,7 +127,7 @@ fn the_normalised_track_lands_on_the_effects_own_range() {
                 d.max
             );
             set_param(&mut scene, id, 0, p, 0.0);
-            let bottom = stack_view(&scene, id, false)[0].params[p].value;
+            let bottom = stack_view(&scene, id)[0].params[p].value;
             assert!((bottom - d.min).abs() < 1e-9);
         }
     }
@@ -154,9 +154,9 @@ fn a_toggle_flips_and_a_slider_is_not_a_toggle() {
         !is_toggle(&scene, id, 0, usize::MAX),
         "índice fora não é toggle"
     );
-    let before = stack_view(&scene, id, false)[0].params[param].value;
+    let before = stack_view(&scene, id)[0].params[param].value;
     toggle_param(&mut scene, id, 0, param);
-    let after = stack_view(&scene, id, false)[0].params[param].value;
+    let after = stack_view(&scene, id)[0].params[param].value;
     assert!((before - after).abs() > 0.5, "a caixinha tem de alternar");
 }
 
@@ -170,15 +170,15 @@ fn the_eye_disarms_without_costing_the_parameters() {
         let (mut scene, id) = scene_with_square();
         add(&mut scene, id, kind);
         // Põe um valor distinto em cada parâmetro, para um reset silencioso não passar.
-        let n = stack_view(&scene, id, false)[0].params.len();
+        let n = stack_view(&scene, id)[0].params.len();
         for p in 0..n {
             set_param(&mut scene, id, 0, p, 0.75);
         }
-        let armed = stack_view(&scene, id, false);
+        let armed = stack_view(&scene, id);
         assert!(armed[0].enabled);
 
         toggle_enabled(&mut scene, id, 0);
-        let off = stack_view(&scene, id, false);
+        let off = stack_view(&scene, id);
         assert!(!off[0].enabled, "o olho desarmou");
         assert_eq!(
             off[0].params,
@@ -188,7 +188,7 @@ fn the_eye_disarms_without_costing_the_parameters() {
         );
 
         toggle_enabled(&mut scene, id, 0);
-        assert_eq!(stack_view(&scene, id, false), armed, "rearmar devolve tudo");
+        assert_eq!(stack_view(&scene, id), armed, "rearmar devolve tudo");
     }
 }
 

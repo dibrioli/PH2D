@@ -452,9 +452,14 @@ pub fn recook_leis(
 /// ⚠️ **O que isso custa está medido e não é pequeno** — a tabela vive no cabeçalho de
 /// [`crate::subdivisao`]. *Ela fica ali de propósito: o passo seguinte tem de a bater, e sem o
 /// número ao lado ninguém saberia por quanto.*
+///
+/// ⭐⭐⭐ **E OS EFEITOS são COZIDOS no desenho ao prender** (ordem do dono, 2026-10-03: *«ao aplicar
+/// os bones, os efeitos são cozidos antes. E uma vez com bones, o vetor não pode receber efeitos»*)
+/// — o *Expand Appearance* ([`VecScene::bake_cooked`]) na cena e na fonte guardada, e a pilha sai
+/// vazia. É por isso que a cena entra para ESCRITA.
 pub fn bind(
     sim: &mut SimWorld,
-    scene: &VecScene,
+    scene: &mut VecScene,
     map: &VecEntityMap,
     paths: &[VecPathId],
     seed: Option<Entity>,
@@ -480,7 +485,7 @@ pub fn bind(
 /// que volta sozinho.*
 pub fn bind_com(
     sim: &mut SimWorld,
-    scene: &VecScene,
+    scene: &mut VecScene,
     map: &VecEntityMap,
     paths: &[VecPathId],
     seed: Option<Entity>,
@@ -526,7 +531,14 @@ pub fn bind_com(
         // ⚠️ **Antes dos pesos, e é isso que a torna barata:** o solver do padrão-ouro corre UMA vez,
         // sobre a forma já subdividida. *Subdividir depois obrigaria a interpolar a tabela, que é a
         // lei do ponto novo — boa para um ponto, uma aproximação para trinta.*
-        let mut src = src.clone();
+        // ⭐⭐⭐ Os efeitos ACTIVOS cozidos; os desligados saem com a pilha (ver o [`bind`]).
+        let coze = src.effects.iter().any(ph2d_vec_scene::effect::FxEntry::is_active);
+        let mut src = if coze {
+            src.cooked().into_owned()
+        } else {
+            src.clone()
+        };
+        src.effects.clear();
         if let Some(alvo) = subdividir
             .then(|| crate::subdivisao::alvo_dos_eixos(&eixos))
             .flatten()
@@ -555,6 +567,12 @@ pub fn bind_com(
         sim.world_mut()
             .entity_mut(shape)
             .insert(SkinBind::new(bytes, tendoes));
+        if coze {
+            scene.bake_cooked(id);
+        }
+        if let Some(p) = scene.path_mut(id) {
+            p.effects.clear();
+        }
         feitos += 1;
     }
     feitos
@@ -693,6 +711,11 @@ mod campo_tests;
 #[cfg(test)]
 #[path = "skin_live_traco_tests.rs"]
 mod traco_tests;
+
+/// ⭐⭐⭐ **Prender COZE os efeitos**, num irmão — ver o cabeçalho dele.
+#[cfg(test)]
+#[path = "skin_live_efeitos_tests.rs"]
+mod efeitos_tests;
 
 #[cfg(test)]
 #[path = "skin_live_seleccao_tests.rs"]

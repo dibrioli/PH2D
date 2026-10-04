@@ -81,7 +81,7 @@ fn hoje_um_ponto_novo_numa_forma_presa_evapora_se() {
     let (mut sim, mut cena, mapa, caminho, raiz) = palco();
     let antes = pontos(&cena, caminho);
 
-    let n = ph2d_skeleton_live::skin_live::bind(&mut sim, &cena, &mapa, &[caminho], Some(raiz));
+    let n = ph2d_skeleton_live::skin_live::bind(&mut sim, &mut cena, &mapa, &[caminho], Some(raiz));
     assert_eq!(n, 1, "o palco tem de prender, senao nao mede nada");
     // ⚠️⚠️ **O que o quadro devolve é a FONTE, e ela voltou a ser a forma que o artista desenhou.**
     // A 1.ª redacção comparava o `depois` com o ANTES; em 2026-09-19 a subdivisão do bind matou
@@ -150,8 +150,8 @@ fn hoje_um_ponto_novo_numa_forma_presa_evapora_se() {
 /// sonda mede o que acontece a quem fizer só a primeira metade.
 #[test]
 fn a_tabela_de_pesos_nao_cobre_um_vertice_novo() {
-    let (mut sim, cena, mapa, caminho, raiz) = palco();
-    ph2d_skeleton_live::skin_live::bind(&mut sim, &cena, &mapa, &[caminho], Some(raiz));
+    let (mut sim, mut cena, mapa, caminho, raiz) = palco();
+    ph2d_skeleton_live::skin_live::bind(&mut sim, &mut cena, &mapa, &[caminho], Some(raiz));
 
     let e = ph2d_ecs::Entity::from_bits(*mapa.get(&caminho).expect("a forma tem entidade"));
     let skin = sim

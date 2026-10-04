@@ -496,7 +496,7 @@ fn a_subdivisao_do_bind_dissolve_o_salto() {
         let ponta = osso(&mut sim, "Forearm", [20.0, 0.0], 20.0, Some(raiz));
         ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
         assert_eq!(
-            crate::skin_live::bind_com(&mut sim, &cena, &mapa, &[id], Some(raiz), subdividir),
+            crate::skin_live::bind_com(&mut sim, &mut cena, &mapa, &[id], Some(raiz), subdividir),
             1
         );
         sim.world_mut()

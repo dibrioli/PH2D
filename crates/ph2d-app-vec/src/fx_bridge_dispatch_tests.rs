@@ -4,7 +4,7 @@
 //! classifica vira um botão pintado e inerte, e nenhum teste de unidade do motor o vê.
 
 use super::*;
-use ph2d_vec_scene::effect::{FxStage, PathEffect};
+use ph2d_vec_scene::effect::PathEffect;
 use ph2d_vec_scene::{VecPath, VecVertex};
 
 fn scene_with_square() -> (VecScene, VecPathId) {
@@ -81,14 +81,6 @@ fn every_id_the_panel_can_paint_is_classified() {
             classify_click(ph2d_tool_vector::ids::vector_fx_hide_id(r)),
             Some(FxClick::Row(r, FxRowAction::Hide))
         );
-        assert_eq!(
-            classify_click(ph2d_tool_vector::ids::vector_fx_before_bones_id(r)),
-            Some(FxClick::Row(r, FxRowAction::Stage(FxStage::BeforeBones)))
-        );
-        assert_eq!(
-            classify_click(ph2d_tool_vector::ids::vector_fx_after_bones_id(r)),
-            Some(FxClick::Row(r, FxRowAction::Stage(FxStage::AfterBones)))
-        );
         for p in 0..ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS {
             assert_eq!(
                 classify_param(ph2d_tool_vector::ids::vector_fx_param_id(r, p)),
@@ -130,8 +122,6 @@ fn rows_and_kinds_do_not_collide() {
         assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_down_id(r)));
         assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_hide_id(r)));
         assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_card_id(r)));
-        assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_before_bones_id(r)));
-        assert!(seen.insert(ph2d_tool_vector::ids::vector_fx_after_bones_id(r)));
         for p in 0..ph2d_tool_vector::ids::MAX_FX_ROW_PARAMS {
             assert!(
                 seen.insert(ph2d_tool_vector::ids::vector_fx_param_id(r, p)),
@@ -148,7 +138,7 @@ fn the_add_is_applied_before_the_row_actions() {
     let (mut scene, id) = scene_with_square();
     // No MESMO frame: põe um efeito e já ajusta o parâmetro 0 dele.
     apply(&mut scene, id, Some(0), None, Some((0, 0, 1.0)), false);
-    let rows = crate::fx_bridge::stack_view(&scene, id, false);
+    let rows = crate::fx_bridge::stack_view(&scene, id);
     assert_eq!(rows.len(), 1, "o efeito entrou");
     assert!(
         rows[0].params[0].value > 0.0,
@@ -162,7 +152,7 @@ fn the_add_is_applied_before_the_row_actions() {
 fn a_toggle_click_on_a_slider_parameter_is_refused() {
     let (mut scene, id) = scene_with_square();
     apply(&mut scene, id, Some(0), None, None, false);
-    let before = crate::fx_bridge::stack_view(&scene, id, false);
+    let before = crate::fx_bridge::stack_view(&scene, id);
     // O parâmetro 0 do efeito 0 é um slider (não é caixinha) — confirmado pela declaração.
     assert!(!before[0].params[0].toggle);
     apply(
@@ -174,7 +164,7 @@ fn a_toggle_click_on_a_slider_parameter_is_refused() {
         false,
     );
     assert_eq!(
-        crate::fx_bridge::stack_view(&scene, id, false),
+        crate::fx_bridge::stack_view(&scene, id),
         before,
         "um Toggle sobre um slider tem de ser inerte"
     );
@@ -186,7 +176,7 @@ fn remove_and_reorder_reach_the_scene() {
     let (mut scene, id) = scene_with_square();
     apply(&mut scene, id, Some(0), None, None, false);
     apply(&mut scene, id, Some(1), None, None, false);
-    let first = crate::fx_bridge::stack_view(&scene, id, false)[0].label;
+    let first = crate::fx_bridge::stack_view(&scene, id)[0].label;
 
     apply(
         &mut scene,
@@ -197,7 +187,7 @@ fn remove_and_reorder_reach_the_scene() {
         false,
     );
     assert_ne!(
-        crate::fx_bridge::stack_view(&scene, id, false)[0].label,
+        crate::fx_bridge::stack_view(&scene, id)[0].label,
         first,
         "o Down reordenou"
     );
@@ -210,7 +200,7 @@ fn remove_and_reorder_reach_the_scene() {
         None,
         false,
     );
-    assert_eq!(crate::fx_bridge::stack_view(&scene, id, false).len(), 1);
+    assert_eq!(crate::fx_bridge::stack_view(&scene, id).len(), 1);
 }
 
 /// **Uma caixinha ALTERNA a cada clique, mesmo clicada sempre no mesmo sítio.**
@@ -243,7 +233,7 @@ fn a_toggle_alternates_even_when_clicked_at_the_same_spot() {
     };
     crate::fx_bridge::add(&mut scene, id, kind);
 
-    let read = |s: &VecScene| crate::fx_bridge::stack_view(s, id, false)[0].params[param].value >= 0.5;
+    let read = |s: &VecScene| crate::fx_bridge::stack_view(s, id)[0].params[param].value >= 0.5;
     let start = read(&scene);
     // O MESMO clique, quatro vezes: Click (flip) + ValueChanged (o track do press). Um track
     // de 0.9 é o canto direito do botão — com o bug, ele fixava o estado em "ligado".
@@ -279,9 +269,9 @@ fn a_continuous_parameter_still_takes_the_track() {
         return;
     };
     crate::fx_bridge::add(&mut scene, id, kind);
-    let before = crate::fx_bridge::stack_view(&scene, id, false)[0].params[param].value;
+    let before = crate::fx_bridge::stack_view(&scene, id)[0].params[param].value;
     apply(&mut scene, id, None, None, Some((0, param, 0.75)), false);
-    let after = crate::fx_bridge::stack_view(&scene, id, false)[0].params[param].value;
+    let after = crate::fx_bridge::stack_view(&scene, id)[0].params[param].value;
     assert!(
         (after - before).abs() > 1e-9,
         "o slider parou de receber o track ({before} -> {after})"
@@ -298,7 +288,7 @@ fn the_apply_bakes_the_stack_through_the_dispatch() {
     // Um Zig Zag (kind 1) e um ajuste que o torna ATIVO — um efeito neutro não muda a geometria.
     apply(&mut scene, id, Some(1), None, Some((0, 0, 1.0)), false);
     assert_eq!(
-        crate::fx_bridge::stack_view(&scene, id, false).len(),
+        crate::fx_bridge::stack_view(&scene, id).len(),
         1,
         "pré-condição: o efeito entrou"
     );
@@ -306,51 +296,15 @@ fn the_apply_bakes_the_stack_through_the_dispatch() {
     // O Apply, sozinho: `bake=true`, sem add/button/param.
     apply(&mut scene, id, None, None, None, true);
     assert!(
-        crate::fx_bridge::stack_view(&scene, id, false).is_empty(),
+        crate::fx_bridge::stack_view(&scene, id).is_empty(),
         "o Apply tem de esvaziar a pilha (a geometria foi congelada no cozido)"
     );
     // E `bake=false` NÃO assa — senão o botão Apply seria indistinguível de um Add.
     apply(&mut scene, id, Some(1), None, Some((0, 0, 1.0)), false);
     apply(&mut scene, id, Some(2), None, None, false);
     assert_eq!(
-        crate::fx_bridge::stack_view(&scene, id, false).len(),
+        crate::fx_bridge::stack_view(&scene, id).len(),
         2,
         "sem bake, os efeitos ficam vivos na pilha"
     );
-}
-
-/// ⭐⭐ **O clique «After bones» chega à CENA, e o «Before bones» desfaz** — pelo `classify_click`
-/// e pelo `apply` do produto. ⛔ E um efeito que lê os NÓS recusa o «depois»: a ponte não depende
-/// de o painel o esconder.
-#[test]
-fn the_bones_choice_reaches_the_scene_and_a_node_reader_refuses_after() {
-    let stage_of = |s: &VecScene, id| s.path(id).expect("path").effects[0].stage;
-    let clica = |s: &mut VecScene, id, click: ph2d_editor_core::ids::NodeId| {
-        let Some(FxClick::Row(row, action)) = classify_click(click) else {
-            panic!("o id não é classificado");
-        };
-        apply(s, id, None, Some((row, action)), None, false);
-    };
-    let twist = PathEffect::KINDS
-        .iter()
-        .position(|k| *k == "Twist")
-        .expect("Twist");
-    let bloat = PathEffect::KINDS
-        .iter()
-        .position(|k| *k == "Pucker & Bloat")
-        .expect("Bloat");
-    for (kind, aceita) in [(twist, true), (bloat, false)] {
-        let (mut scene, id) = scene_with_square();
-        apply(&mut scene, id, Some(kind), None, None, false);
-        assert_eq!(stage_of(&scene, id), FxStage::BeforeBones, "nasce antes");
-        clica(&mut scene, id, ph2d_tool_vector::ids::vector_fx_after_bones_id(0));
-        let esperado = if aceita {
-            FxStage::AfterBones
-        } else {
-            FxStage::BeforeBones
-        };
-        assert_eq!(stage_of(&scene, id), esperado, "o clique «After bones» no tipo {kind}");
-        clica(&mut scene, id, ph2d_tool_vector::ids::vector_fx_before_bones_id(0));
-        assert_eq!(stage_of(&scene, id), FxStage::BeforeBones, "«Before bones» desfaz");
-    }
 }

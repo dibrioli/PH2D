@@ -310,8 +310,3 @@ mod desenho_tests;
 #[cfg(test)]
 #[path = "skinned_mesh_efeitos_tests.rs"]
 mod efeitos_tests;
-
-/// ⭐⭐⭐ **O efeito DEPOIS dos ossos** contra o padrão-ouro (2026-10-03).
-#[cfg(test)]
-#[path = "skinned_mesh_depois_tests.rs"]
-mod depois_tests;

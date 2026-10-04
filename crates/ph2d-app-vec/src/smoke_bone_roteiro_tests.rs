@@ -393,7 +393,7 @@ fn o_roteiro_promete_uma_grelha_e_a_barra_tem_uma() {
     )
     .expect("a cadeia da barra monta");
     assert_eq!(
-        ph2d_skeleton_live::skin_live::bind(&mut sim, &scene, &map, &[id], Some(raiz)),
+        ph2d_skeleton_live::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(raiz)),
         1,
         "a barra tem de se prender, senao nao ha' campo nenhum a guardar"
     );

@@ -206,7 +206,7 @@ fn every_body_section_declares_which_tool_it_belongs_to() {
 #[test]
 fn a_section_header_never_promises_a_body_that_is_not_there() {
     let mut hero = hero_with_vector_panel();
-    ph2d_panel_vector::set_current_effects(false, &["Blur"], Vec::new());
+    ph2d_panel_vector::set_current_effects(false, false, &["Blur"], Vec::new());
     paint_in(&mut hero, snap_of(DrawMode::Select));
     assert!(
         !painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_EFFECTS),
@@ -214,13 +214,13 @@ fn a_section_header_never_promises_a_body_that_is_not_there() {
     );
 
     // Controle: COM alvo ela aparece — senão este gate passaria por a seção estar morta.
-    ph2d_panel_vector::set_current_effects(true, &["Blur"], Vec::new());
+    ph2d_panel_vector::set_current_effects(true, false, &["Blur"], Vec::new());
     paint_in(&mut hero, snap_of(DrawMode::Select));
     assert!(painted(
         &hero,
         ph2d_tool_vector::ids::VECTOR_SECTION_EFFECTS
     ));
-    ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
+    ph2d_panel_vector::set_current_effects(false, false, &[], Vec::new());
 }
 
 /// ⭐⭐ **As CINCO seções que são comandos sobre a seleção somem quando não há o que comandar** —

@@ -71,7 +71,7 @@ pub(super) fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 
     let raiz = osso(&mut sim, "Arm", [0.0, 5.0], 20.0, None);
     let ponta = osso(&mut sim, "Forearm", [20.0, 0.0], 20.0, Some(raiz));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let n = crate::skin_live::bind_com(&mut sim, &cena, &mapa, &[id], Some(raiz), false);
+    let n = crate::skin_live::bind_com(&mut sim, &mut cena, &mapa, &[id], Some(raiz), false);
     assert_eq!(n, 1, "o palco tem de prender");
     (sim, cena, mapa, id, [raiz, ponta])
 }
@@ -95,7 +95,7 @@ pub(super) fn palco_subdividido() -> (SimWorld, VecScene, VecEntityMap, VecPathI
     let raiz = osso(&mut sim, "Arm", [0.0, 5.0], 20.0, None);
     let ponta = osso(&mut sim, "Forearm", [20.0, 0.0], 20.0, Some(raiz));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let n = crate::skin_live::bind_com(&mut sim, &cena, &mapa, &[id], Some(raiz), true);
+    let n = crate::skin_live::bind_com(&mut sim, &mut cena, &mapa, &[id], Some(raiz), true);
     assert_eq!(n, 1, "o palco subdividido tem de prender");
     (sim, cena, mapa, id, [raiz, ponta])
 }
@@ -126,7 +126,7 @@ pub(super) fn palco_desenhado(
     let raiz = osso(&mut sim, "Arm", [0.0, 5.0], 20.0, None);
     let ponta = osso(&mut sim, "Forearm", [20.0, 0.0], 20.0, Some(raiz));
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let n = crate::skin_live::bind_com(&mut sim, &cena, &mapa, &[id], Some(raiz), false);
+    let n = crate::skin_live::bind_com(&mut sim, &mut cena, &mapa, &[id], Some(raiz), false);
     assert_eq!(n, 1, "o palco desenhado tem de prender");
     (sim, cena, mapa, id, [raiz, ponta])
 }

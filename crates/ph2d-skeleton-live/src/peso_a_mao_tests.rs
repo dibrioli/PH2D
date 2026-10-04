@@ -24,7 +24,7 @@ fn palco() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2]) {
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let raiz = osso(&mut sim, "Root", [0.0, 5.0], 20.0, None);
     let ponta = osso(&mut sim, "Tip", [20.0, 0.0], 20.0, Some(raiz));
-    crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
+    crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None);
     (sim, scene, map, id, [raiz, ponta])
 }
 
@@ -41,7 +41,7 @@ fn palco_estrela() -> (SimWorld, VecScene, VecEntityMap, VecPathId, [Entity; 2])
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let raiz = osso(&mut sim, "Root", [0.0, 20.0], 20.0, None);
     let ponta = osso(&mut sim, "Tip", [20.0, 0.0], 20.0, Some(raiz));
-    crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
+    crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None);
     (sim, scene, map, id, [raiz, ponta])
 }
 
@@ -593,8 +593,8 @@ fn o_indicador_mostra_toda_a_arte_do_osso_sem_esperar_pelo_dedo() {
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let raiz = osso(&mut sim, "Root", [0.0, 5.0], 20.0, None);
     let outro = osso(&mut sim, "Outro", [600.0, 5.0], 20.0, None);
-    crate::skin_live::bind(&mut sim, &scene, &map, &[perto, longe], Some(raiz));
-    crate::skin_live::bind(&mut sim, &scene, &map, &[alheia], Some(outro));
+    crate::skin_live::bind(&mut sim, &mut scene, &map, &[perto, longe], Some(raiz));
+    crate::skin_live::bind(&mut sim, &mut scene, &map, &[alheia], Some(outro));
 
     let v = crate::peso_a_mao::pontos_do_indicador(&sim, PPM, Some(raiz));
     // ⭐ A METADE DO REPORT: as DUAS artes do osso aparecem, sem cursor nenhum na conversa.

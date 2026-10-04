@@ -8,9 +8,9 @@
 //! **Nenhuma função aqui nomeia um efeito.** Acrescentar um tipo ao motor não toca neste
 //! arquivo — é a mesma propriedade que o `paint_effects` ganhou, do outro lado da fronteira.
 
-use ph2d_panel_vector::{FalloffRole, FxBones, FxParamView, FxRowView};
+use ph2d_panel_vector::{FalloffRole, FxParamView, FxRowView};
+use ph2d_vec_scene::effect::{FxEntry, MAX_PATH_EFFECTS, PathEffect};
 use ph2d_vec_entities::entities::VecEntityMap;
-use ph2d_vec_scene::effect::{FxEntry, FxStage, MAX_PATH_EFFECTS, PathEffect};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
 /// **O caminho que a seção Effects governa** — exatamente UM selecionado, ou nada.
@@ -25,8 +25,9 @@ pub fn sole_path(selected: &[VecPathId]) -> Option<VecPathId> {
     }
 }
 
-/// **A forma `id` está PRESA a ossos?** — a pergunta que decide se a ordem em relação aos ossos
-/// existe no cartão de cada efeito (solta, ela não muda nada).
+/// **A forma `id` está PRESA a ossos?** — então ela não recebe efeitos: os que tinha foram cozidos
+/// no desenho ao prender (ordem do dono, 2026-10-03; ver `skin_live::bind`). O painel diz porquê e
+/// o dispatch recusa a edição.
 #[must_use]
 pub fn is_bound(sim: &ph2d_ecs::SimWorld, map: &VecEntityMap, id: VecPathId) -> bool {
     map.get(&id)
@@ -34,10 +35,9 @@ pub fn is_bound(sim: &ph2d_ecs::SimWorld, map: &VecEntityMap, id: VecPathId) -> 
         .is_some_and(|e| sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e).is_some())
 }
 
-/// A pilha do caminho, traduzida para o que o painel desenha. `bound` = a forma está presa
-/// ([`is_bound`]).
+/// A pilha do caminho, traduzida para o que o painel desenha.
 #[must_use]
-pub fn stack_view(scene: &VecScene, id: VecPathId, bound: bool) -> Vec<FxRowView> {
+pub fn stack_view(scene: &VecScene, id: VecPathId) -> Vec<FxRowView> {
     scene.path(id).map_or_else(Vec::new, |p| {
         p.effects
             .iter()
@@ -62,8 +62,7 @@ pub fn stack_view(scene: &VecScene, id: VecPathId, bound: bool) -> Vec<FxRowView
                 // Se este é um Falloff: para onde a força aponta. Procura o próximo efeito LIGADO
                 // que NÃO é Falloff (falloffs compõem entre si — o alvo é o deformador). É a MESMA
                 // pergunta que o `run_stack` responde ao consumir o campo; o painel só a exibe.
-                falloff_role: falloff_role(&p.effects, row, bound),
-                bones: bones_of(e, bound),
+                falloff_role: falloff_role(&p.effects, row),
             })
             .collect()
     })
@@ -75,17 +74,13 @@ pub fn stack_view(scene: &VecScene, id: VecPathId, bound: bool) -> Vec<FxRowView
 /// O alvo é o próximo efeito **ligado** que NÃO é Falloff (dois Falloffs compõem sobre o mesmo
 /// deformador, como no `run_stack`). Se esse alvo consome força (`takes_falloff`), o campo modula
 /// abaixo; senão (nada abaixo, ou só Trim/Repeater), é inerte na geometria.
-///
-/// ⚠️ Numa forma PRESA o alvo é o da MESMA fase (antes/depois dos ossos): a pilha parte-se, e um
-/// Falloff «depois» não alcança um deformador «antes».
-fn falloff_role(effects: &[FxEntry], row: usize, bound: bool) -> FalloffRole {
+fn falloff_role(effects: &[FxEntry], row: usize) -> FalloffRole {
     if effects[row].effect.as_falloff().is_none() {
         return FalloffRole::NotFalloff;
     }
-    let fase = effects[row].runs_after_bones();
-    let target = effects[row + 1..].iter().find(|n| {
-        n.enabled && n.effect.as_falloff().is_none() && (!bound || n.runs_after_bones() == fase)
-    });
+    let target = effects[row + 1..]
+        .iter()
+        .find(|n| n.enabled && n.effect.as_falloff().is_none());
     match target {
         Some(n) if n.effect.takes_falloff() => FalloffRole::ModulatesBelow,
         _ => FalloffRole::Inert,
@@ -179,31 +174,6 @@ pub fn toggle_enabled(scene: &mut VecScene, id: VecPathId, row: usize) {
     let Some(p) = scene.path_mut(id) else { return };
     if let Some(e) = p.effects.get_mut(row) {
         e.enabled = !e.enabled;
-    }
-}
-
-/// A ordem da entrada em relação aos ossos, como o cartão a mostra.
-fn bones_of(e: &FxEntry, bound: bool) -> FxBones {
-    if !bound {
-        FxBones::Unbound
-    } else if e.effect.reads_nodes() {
-        FxBones::BeforeOnly
-    } else if e.runs_after_bones() {
-        FxBones::After
-    } else {
-        FxBones::Before
-    }
-}
-
-/// **Põe o efeito da linha `row` antes ou depois dos ossos.** ⚠️ Um efeito que lê os nós
-/// ([`PathEffect::reads_nodes`]) não vai para depois: o cartão não o oferece, e a ponte não
-/// depende de o painel ter razão.
-pub fn set_stage(scene: &mut VecScene, id: VecPathId, row: usize, stage: FxStage) {
-    let Some(p) = scene.path_mut(id) else { return };
-    if let Some(e) = p.effects.get_mut(row)
-        && (stage == FxStage::BeforeBones || !e.effect.reads_nodes())
-    {
-        e.stage = stage;
     }
 }
 

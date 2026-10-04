@@ -77,8 +77,4 @@
 /// fim de `PaintEntry`**, com o mesmo modo de falha do v21: um save v21 rebenta **dentro** do `Vec`
 /// de camadas. ⭐ O neutro é `0.0` e o cozimento sai por um `is_dilated()` antes de tocar no motor
 /// ⇒ uma cena que nunca lhe toque desenha byte a byte o que desenhava.
-/// v23: [`crate::effect::FxEntry`] ganhou `stage` — **antes ou depois dos ossos**, por efeito, numa
-/// forma presa (ordem do dono, 2026-10-03: *«um botão de seleção para a ordem em que o efeito
-/// entra»*). ⚠️ Apendado ao fim da entrada: um save v22 rebenta DENTRO do `Vec` da pilha. ⭐ O
-/// neutro é `BeforeBones`, a lei de ontem ⇒ uma cena que nunca lhe toque desenha o que desenhava.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 23;
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 22;

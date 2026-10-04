@@ -50,7 +50,7 @@ fn salto_da_arte(lei_antiga: bool) -> f64 {
         pai = Some(e);
         ossos.push(e);
     }
-    crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
+    crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None);
 
     let repouso = quadro(&sim, &mut scene, id);
     // O artista experimenta uma pose: dobra a corrente a partir do osso do meio.

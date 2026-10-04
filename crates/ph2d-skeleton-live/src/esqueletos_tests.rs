@@ -91,8 +91,8 @@ fn palco_das_tres_peles() -> (SimWorld, Entity, Entity, Entity) {
     };
     let (a, b, c) = (corrente(5.0), corrente(45.0), corrente(85.0));
 
-    crate::skin_live::bind(&mut sim, &scene, &map, &[fechada], Some(a));
-    crate::skin_live::bind(&mut sim, &scene, &map, &[aberta], Some(b));
+    crate::skin_live::bind(&mut sim, &mut scene, &map, &[fechada], Some(a));
+    crate::skin_live::bind(&mut sim, &mut scene, &map, &[aberta], Some(b));
 
     // A imagem: um quadrado opaco, preso ao terceiro esqueleto.
     let px = 32_u32;
@@ -201,7 +201,7 @@ fn o_predicado_concorda_com_o_que_a_deformacao_faz() {
             ossos.push(e);
             pai = Some(e);
         }
-        crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
+        crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None);
         let repouso = quadro(&sim, &mut scene, id);
         for osso in ossos.iter().skip(1) {
             sim.world_mut()

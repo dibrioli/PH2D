@@ -28,10 +28,7 @@
 
 use super::*;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::widget::{
-    Card, IconButtonStyle, IconGlyph, SegmentedAdaptive, SegmentedOption,
-    measure_segmented_adaptive, paint_card, paint_icon_button, paint_segmented_adaptive,
-};
+use ph2d_editor_core::widget::{Card, IconButtonStyle, IconGlyph, paint_card, paint_icon_button};
 use ph2d_i18n::tr;
 
 /// Quantas casas o chip mostra.
@@ -61,6 +58,21 @@ impl BodyCtx<'_> {
         );
         if collapsed {
             return y;
+        }
+        // ⭐⭐ Uma forma PRESA a ossos não recebe efeitos — os que tinha foram cozidos no desenho ao
+        // prender (ordem do dono, 2026-10-03). A secção diz porquê em vez de sumir.
+        if state::bound() {
+            paint_text(
+                self.text_system,
+                self.scene,
+                tr("panel.vector.fx.bound"),
+                self.inner_x,
+                y + (self.row_h - self.font) * 0.5,
+                self.font,
+                self.inner_w,
+                resolve(ColorToken::Text3, self.theme),
+            );
+            return y + self.row_h + self.row_gap;
         }
         let stack = state::stack();
         for (row, fx) in stack
@@ -117,21 +129,7 @@ impl BodyCtx<'_> {
         } else {
             self.row_h
         };
-        // ⭐ Numa forma PRESA: a ordem em relação aos ossos — a escolha, ou a razão de não a haver.
-        let bones = self.bones_choice(row, fx.bones);
-        let bones_h = match (&bones, fx.bones) {
-            (Some(w), _) => {
-                measure_segmented_adaptive(
-                    w,
-                    self.inner_w - pad * 2.0,
-                    self.row_h,
-                    self.text_system,
-                ) + self.row_gap
-            }
-            (None, state::FxBones::BeforeOnly) => self.row_h,
-            (None, _) => 0.0,
-        };
-        let card_h = pad + head_h + note_h + bones_h + body_h + pad;
+        let card_h = pad + head_h + note_h + body_h + pad;
         let card_rect = Rect::new(self.inner_x, y, self.inner_w, card_h);
 
         // O card em si (moldura + fundo) — o mesmo primitivo que o painel do Painter usa, para
@@ -168,30 +166,7 @@ impl BodyCtx<'_> {
         let (keep_x, keep_w) = (self.inner_x, self.inner_w);
         self.inner_x = inner_x;
         self.inner_w = inner_w;
-        let by = y + pad + head_h + note_h;
-        if let Some(w) = &bones {
-            paint_segmented_adaptive(
-                w,
-                Rect::new(inner_x, by, inner_w, self.row_h),
-                self.scene,
-                self.text_system,
-                self.theme,
-                self.store,
-                self.hit_index,
-            );
-        } else if fx.bones == state::FxBones::BeforeOnly {
-            paint_text(
-                self.text_system,
-                self.scene,
-                tr("panel.vector.fx.bones.nodes"),
-                inner_x,
-                by + (self.row_h - self.font) * 0.5,
-                self.font,
-                inner_w,
-                resolve(ColorToken::Text3, self.theme),
-            );
-        }
-        let mut py = by + bones_h;
+        let mut py = y + pad + head_h + note_h;
         for (param, p) in fx
             .params
             .iter()
@@ -204,30 +179,6 @@ impl BodyCtx<'_> {
         self.inner_w = keep_w;
 
         y + card_h + ph2d_tokens::control_gap_px()
-    }
-
-    /// A escolha «Before bones | After bones» do cartão `row` — `None` quando não há escolha (a
-    /// forma solta, ou um efeito que lê os nós).
-    fn bones_choice(&self, row: usize, bones: state::FxBones) -> Option<SegmentedAdaptive> {
-        let after = match bones {
-            state::FxBones::Before => false,
-            state::FxBones::After => true,
-            state::FxBones::Unbound | state::FxBones::BeforeOnly => return None,
-        };
-        let opts = vec![
-            SegmentedOption::new(
-                ph2d_tool_vector::ids::vector_fx_before_bones_id(row),
-                tr("panel.vector.fx.bones.before"),
-            ),
-            SegmentedOption::new(
-                ph2d_tool_vector::ids::vector_fx_after_bones_id(row),
-                tr("panel.vector.fx.bones.after"),
-            ),
-        ];
-        Some(
-            SegmentedAdaptive::new(ph2d_tool_vector::ids::vector_fx_card_id(row), "", opts)
-                .selected(usize::from(after)),
-        )
     }
 
     /// O cabeçalho do card: o nome à esquerda, os ícones à direita.

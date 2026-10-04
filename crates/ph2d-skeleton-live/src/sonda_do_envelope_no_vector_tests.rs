@@ -62,7 +62,7 @@ fn excursao_com(kind: ShapeKind, forca: f64, graus: f32, lei: ph2d_skeleton_ecs:
         ossos.push(e);
     }
 
-    crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
+    crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None);
     // ⭐ A ESCOLHA do artista, escrita depois de prender — que é exactamente como o painel a faz:
     // a tabela do padrão-ouro fica guardada, e a lei diz se o quadro a lê.
     if let Some(e) = map.get(&id).and_then(|b| Entity::try_from_bits(*b))
@@ -226,7 +226,7 @@ fn a_mancha_segue_a_escolha_e_nao_a_forma() {
             raiz.get_or_insert(e);
             pai = Some(e);
         }
-        crate::skin_live::bind(&mut sim, &scene, &map, &[id], None);
+        crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None);
         let forma = map
             .get(&id)
             .and_then(|b| Entity::try_from_bits(*b))

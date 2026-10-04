@@ -1454,11 +1454,9 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
             },
         ],
         falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
-        // ⭐ Presa: a escolha «Before bones | After bones» é pintada e tem de chegar ao bus.
-        bones: ph2d_panel_vector::FxBones::Before,
     };
     let publish = || {
-        ph2d_panel_vector::set_current_effects(true, KINDS, vec![row("Trim Path"), row("Zig Zag")]);
+        ph2d_panel_vector::set_current_effects(true, false, KINDS, vec![row("Trim Path"), row("Zig Zag")]);
     };
 
     let mut targets: Vec<(ph2d_a11y::NodeId, String)> = Vec::new();
@@ -1483,14 +1481,6 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
     targets.push((
         ph2d_tool_vector::ids::vector_fx_hide_id(0),
         "olho linha 0".into(),
-    ));
-    targets.push((
-        ph2d_tool_vector::ids::vector_fx_before_bones_id(0),
-        "Before bones linha 0".into(),
-    ));
-    targets.push((
-        ph2d_tool_vector::ids::vector_fx_after_bones_id(1),
-        "After bones linha 1".into(),
     ));
     // O botão de SEÇÃO "Apply" — só é pintado com a pilha não-vazia (que a fixture publica).
     targets.push((
@@ -1529,7 +1519,7 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
              (o botao e clicavel e MORTO)"
         );
     }
-    ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
+    ph2d_panel_vector::set_current_effects(false, false, &[], Vec::new());
 }
 
 /// **Sem alvo, a seção NÃO oferece nada** — nem os botões de Add.
@@ -1544,7 +1534,7 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
         w: 1600.0,
         h: 4000.0,
     };
-    ph2d_panel_vector::set_current_effects(false, &["Trim Path"], Vec::new());
+    ph2d_panel_vector::set_current_effects(false, false, &["Trim Path"], Vec::new());
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     assert!(
@@ -1559,7 +1549,7 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
 
     // E COM alvo ele aparece — sem esta metade, "não oferece" ficaria verde com a seção
     // inteira apagada. [[feedback_absence_gate_needs_a_presence_sibling]]
-    ph2d_panel_vector::set_current_effects(true, &["Trim Path"], Vec::new());
+    ph2d_panel_vector::set_current_effects(true, false, &["Trim Path"], Vec::new());
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     assert!(
@@ -1571,50 +1561,43 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
         .is_some(),
         "com alvo, o Add TEM de ser oferecido"
     );
-    ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
+    ph2d_panel_vector::set_current_effects(false, false, &[], Vec::new());
 }
 
-/// ⭐⭐ **A escolha «Before bones | After bones» só existe numa forma PRESA** — solta, ela não muda
-/// nada (régua do controlo morto); num efeito que lê os nós ela não é oferecida (o cartão diz
-/// porquê). E presa ela É pintada — a metade de presença, sem a qual as duas ausências ficariam
-/// verdes com a fileira apagada.
+/// ⭐⭐ **Uma forma PRESA a ossos não recebe efeitos** (ordem do dono, 2026-10-03): com o alvo preso
+/// a secção não oferece nenhum «Add» nem o «Apply»; solta, com a MESMA pilha e os mesmos tipos,
+/// oferece — a metade de presença, sem a qual a ausência ficaria verde com a secção apagada.
 #[test]
-fn the_bones_choice_is_offered_only_on_a_bound_shape() {
+fn a_bound_shape_is_offered_no_effect() {
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
         h: 4000.0,
     };
-    let pinta = |bones: ph2d_panel_vector::FxBones| {
-        ph2d_panel_vector::set_current_effects(
-            true,
-            &["Twist"],
-            vec![ph2d_panel_vector::FxRowView {
-                label: "Twist",
-                enabled: true,
-                params: Vec::new(),
-                falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
-                bones,
-            }],
-        );
+    let oferece = |bound: bool| {
+        let row = ph2d_panel_vector::FxRowView {
+            label: "Twist",
+            enabled: true,
+            params: Vec::new(),
+            falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
+        };
+        ph2d_panel_vector::set_current_effects(true, bound, &["Twist"], vec![row]);
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut st = VectorPanelState;
         [
-            ph2d_tool_vector::ids::vector_fx_before_bones_id(0),
-            ph2d_tool_vector::ids::vector_fx_after_bones_id(0),
+            ph2d_tool_vector::ids::vector_fx_add_id(0),
+            ph2d_tool_vector::ids::VECTOR_FX_APPLY,
+            ph2d_tool_vector::ids::vector_fx_remove_id(0),
         ]
         .map(|id| {
             host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
                 .is_some()
         })
     };
-    use ph2d_panel_vector::FxBones as B;
-    assert_eq!(pinta(B::Before), [true, true], "presa: as duas ordens são oferecidas");
-    assert_eq!(pinta(B::After), [true, true], "presa e depois: as duas ordens são oferecidas");
-    assert_eq!(pinta(B::Unbound), [false, false], "solta: a escolha não muda nada");
-    assert_eq!(pinta(B::BeforeOnly), [false, false], "lê os nós: só antes");
-    ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
+    assert_eq!(oferece(false), [true, true, true], "solta: Add, Apply e o cartão");
+    assert_eq!(oferece(true), [false, false, false], "presa: nenhum efeito é oferecido");
+    ph2d_panel_vector::set_current_effects(false, false, &[], Vec::new());
 }
 
 /// **O chip mostra o número do DOCUMENTO durante o arrasto, não o track `0..1`.**
@@ -1659,14 +1642,13 @@ fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
         },
     ];
     ph2d_panel_vector::set_current_effects(
-        true,
+        true, false,
         &["Zig Zag"],
         vec![ph2d_panel_vector::FxRowView {
             label: "Zig Zag",
             enabled: true,
             params,
             falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
-            bones: ph2d_panel_vector::FxBones::Unbound,
         }],
     );
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
@@ -1699,7 +1681,7 @@ fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
             "{name}: a faixa do chip é {rmin}..{rmax} e devia ser {min}..{max}"
         );
     }
-    ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
+    ph2d_panel_vector::set_current_effects(false, false, &[], Vec::new());
 }
 
 /// **Os controles da seção Expand chegam ao seu destino quando o artista CLICA neles** —

@@ -340,12 +340,4 @@
 /// ⛔ **Sem degrau de migração**, pela mesma decisão — um v177 é recusado em voz alta.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-///
-/// # `178 → 179` — **o efeito ANTES ou DEPOIS dos ossos** (`line/Vector`, 2026-10-03)
-///
-/// `FxEntry` ganhou `stage` no FIM (`VEC_SCENE` `22 → 23`): numa forma presa, cada efeito escolhe
-/// se coze em repouso e dobra com ela, ou se é refeito sobre a forma dobrada (ordem do dono). ⚠️ A
-/// `VecScene` muda de forma ⇒ **a tripla VÊ este degrau**.
-///
-/// ⛔ **Sem degrau de migração** — um v178 é recusado em voz alta.
-pub(crate) const PROJECT_SCHEMA: u32 = 179;
+pub(crate) const PROJECT_SCHEMA: u32 = 178;

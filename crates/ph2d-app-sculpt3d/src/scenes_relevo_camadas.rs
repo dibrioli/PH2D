@@ -28,7 +28,7 @@ const RISCA_ALTURA: f32 = 0.012;
 const RISCA_PERIODO: f32 = 0.08;
 /// A faixa de cima: meia-largura e a altura da lomba no meio dela.
 const FAIXA_MEIA_LARGURA: f32 = 0.18;
-const LOMBA: f32 = 0.03;
+const LOMBA: f32 = 0.07;
 /// A normal do plano da faixa: vertical, pela frente da câmara de abertura
 /// (~`(0,68; 0,25; 0,68)`).
 const FAIXA_N: [f32; 3] = [

@@ -12,6 +12,11 @@
 
 use super::{LayerId, LayerStack, ReliefComposite};
 
+/// ⭐ **Onde a dobra começa: `-0,0`** — a identidade da soma em IEEE (`-0 + x = x` para todo `x`,
+/// o `-0` incluído; `+0 + -0 = +0`), logo uma camada só, neutra, devolve o relevo dela AO BIT: um
+/// `-0,0` gravado atravessa o ficheiro da peça (gate `o_relevo_atravessa_o_ficheiro_ao_bit`).
+pub const RELIEF_FOLD_SEED: f32 = -0.0;
+
 /// ⭐⭐⭐ **Um passo da dobra**: a pilha `h` por baixo, a camada por cima com o relevo `own`, a sua
 /// profundidade e o seu modo. `cover` (a cobertura da camada, `0..=1`) só é lida por `Level`.
 #[inline]
@@ -57,6 +62,23 @@ impl LayerStack {
         let mut ids = self.z_order_bottom_up();
         ids.retain(|&id| self.effectively_visible(id));
         ids
+    }
+
+    /// The Depth slider of a row: its bare `0..1` track maps to the `-1..1` domain, `0.5` being the
+    /// zero (the two halves mean opposite things). One law for the 2D tool and the 3D piece's panel.
+    pub fn set_impasto_depth_norm(&mut self, id: LayerId, norm: f32) {
+        let depth = norm.clamp(0.0, 1.0).mul_add(2.0, -1.0); // CLAMP-OK: 0..1 track → -1..1 domain
+        self.set_impasto_depth(id, depth);
+    }
+
+    /// The `Add`/`Level` chip of a row flips the mode. No-op if `id` unknown.
+    pub fn toggle_impasto_composite(&mut self, id: LayerId) {
+        let next = match self.get(id).map(|l| l.impasto_composite) {
+            Some(ReliefComposite::Add) => ReliefComposite::Level,
+            Some(ReliefComposite::Level) => ReliefComposite::Add,
+            None => return,
+        };
+        self.set_impasto_composite(id, next);
     }
 }
 

@@ -93,8 +93,8 @@ muta $A/pilha_da_peca.rs '            .partition(|(k, _)| vivas.contains(k));' '
   'M3 apagar uma camada deixa o plano órfão' app
 muta $A/pilha_da_peca.rs '        if px[3] == 255 {' '        if px[3] == 254 {' \
   'M4 o opaco deixa de ser byte/255 exacto' app
-muta $A/pilha_da_peca.rs '        self.planos.get(&base)?.relevo.clone()' '        None' \
-  'M5 o relevo da base não chega à peça' app
+muta $A/pilha_da_peca.rs '        tinta.com_relevo(self.relevo_composto());' '        tinta.com_relevo(None);' \
+  'M5 o relevo da pilha não chega à peça' app
 muta $A/pilha_da_peca.rs '        let fundo = if precisa_de_fundo(&composto) {
             fundo()
         } else {
@@ -166,8 +166,8 @@ muta $A/pilha_da_peca_porta.rs '        if nova.root().last() != self.pilha.root
   'P8 a base sai do fundo pelo metadado' app
 muta $A/pilha_da_peca_porta.rs '        if self.em_traco.is_some() {' '        if false {' \
   'P9 a porta mexe na pilha com um traço aberto' app
-muta $A/pilha_da_peca.rs '            p.relevo = None;' '' \
-  'P10 a cópia leva o relevo' app
+muta $A/pilha_da_peca.rs $'        if let Some(p) = self.planos.get(&id).cloned() {\n            self.planos.insert(copia, p);' $'        if let Some(mut p) = self.planos.get(&id).cloned() {\n            p.relevo = None;\n            self.planos.insert(copia, p);' \
+  'P10 a cópia perde o relevo (W4: leva-o)' app
 muta $A/pilha_da_peca.rs '            self.pilha.set_active(a);' '            let _ = a;' \
   'P11 o ajuste novo rouba a activa' app
 muta $T/trait_impls.rs '        if self.route_piece_layer_event(&event) {' '        if false && self.route_piece_layer_event(&event) {' \

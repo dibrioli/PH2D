@@ -129,6 +129,9 @@ pub(crate) struct SceneObject {
     /// A cor por VÉRTICE mudou sem a malha mudar — sobe sozinha, sem levar o
     /// plano (`sync_mesh`).
     pub(super) cores_sujas: bool,
+    /// ⭐ O RELEVO da peça foi redobrado (a profundidade ou o modo de uma
+    /// camada mudou, W4) — sobe sozinho, sem a cor (`sync_mesh`).
+    pub(super) relevo_sujo: bool,
 }
 
 impl SceneObject {
@@ -183,6 +186,7 @@ impl SceneObject {
             pilha_parqueada: None,
             compor_na_placa: false,
             cores_sujas: false,
+            relevo_sujo: false,
         }
     }
 
@@ -207,6 +211,7 @@ impl SceneObject {
             pilha_parqueada: None,
             compor_na_placa: false,
             cores_sujas: false,
+            relevo_sujo: false,
         }
     }
 }

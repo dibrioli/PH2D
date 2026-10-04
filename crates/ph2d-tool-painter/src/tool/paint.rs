@@ -334,6 +334,8 @@ mod film_probe; // sonda de ESTUDO: que amplitude o relevo do DEPOSITO quer (Eni
 mod film_tests; // o FILME de pigmento: o deposito visto como relevo
 /// O que o RELEVO É — os campos compostos que a luz lê [LOC split de `impasto_light`].
 mod relief_fields;
+/// A sonda da dobra do relevo para o gate cruzado com a peça 3D (`docs/3D/30` §5).
+pub(crate) mod relief_fold_probe;
 /// O **ganho** que o relevo impõe à aparência — a sombra do impasto como grandeza sem cor, para
 /// alcançar o que não é pixel (a silhueta do slot Shape). [LOC split de `impasto_light`].
 #[cfg(test)]

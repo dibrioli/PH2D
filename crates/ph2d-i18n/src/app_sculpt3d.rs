@@ -195,7 +195,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
              Detail -- finer, one change would take seconds. Set Paint Detail to 64x or lower"
         }
         "app.sculpt3d.camadas.recusa.a_base" => {
-            "The bottom layer stays where it is: it holds the relief of the piece"
+            "The bottom layer stays where it is: it is the piece's base, as in the 2D Painter"
         }
         "app.sculpt3d.camadas.recusa.traco_aberto" => {
             "Lift the brush first -- the layers change between strokes"

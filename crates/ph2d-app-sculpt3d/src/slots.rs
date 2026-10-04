@@ -439,6 +439,31 @@ impl Sculpt3dScene {
             //   mudou-a, ou o plano acabou de subir da CPU ATRASADA — a placa
             //   compõe-na e achata-a no plano do slot, DEPOIS da subida (que é
             //   o que ela corrige).
+            // ⭐ O RELEVO redobrado (W4): sobe sozinho; se o device não tem
+            //   este plano com relevo, o plano inteiro (e a placa recompõe).
+            if std::mem::take(&mut self.objects[i].relevo_sujo) && !subiu_inteiro {
+                let obj = &self.objects[i];
+                let so_o_relevo = obj.tinta.as_ref().is_some_and(|t| {
+                    self.renderer
+                        .upload_tinta_relevo_at(queue, k, obj.stack.mesh(), t)
+                });
+                if !so_o_relevo {
+                    let plano = crate::tinta_da_peca::plano_da_peca(
+                        &self.objects,
+                        self.stroke.tinta_fina.as_ref(),
+                        i,
+                    );
+                    self.renderer.upload_tinta_at(
+                        device,
+                        queue,
+                        k,
+                        self.objects[i].stack.mesh(),
+                        plano,
+                    );
+                    self.objects[i].tinta_suja = false;
+                    subiu_inteiro = true;
+                }
+            }
             let atrasada = self.objects[i]
                 .pilha
                 .as_ref()

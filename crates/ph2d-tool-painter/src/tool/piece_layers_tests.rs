@@ -163,7 +163,7 @@ fn o_parametro_de_um_ajuste_na_peca_e_o_do_2d() {
 /// e não cai na pilha da tela.
 #[test]
 fn o_que_a_peca_nao_oferece_nao_pede_nada() {
-    let (mut t, [base, ..]) = na_peca();
+    let (mut t, _) = na_peca();
     let tela = t.layers().clone();
     for ev in [
         PanelEvent::Click(ids::PAINTER_LAYERS_GROUP),
@@ -171,13 +171,70 @@ fn o_que_a_peca_nao_oferece_nao_pede_nada() {
         PanelEvent::Click(ids::PAINTER_LAYERS_REFERENCE),
         PanelEvent::Click(ids::PAINTER_LAYERS_ADD_TEXTURE),
         PanelEvent::Click(ids::PAINTER_APPLY),
-        PanelEvent::SetValue(
-            painter_layer_widget_id(base.0, PainterLayerWidget::ImpastoDepth),
-            0.9,
-        ),
     ] {
         t.handle_panel_event(ev);
     }
     assert!(t.take_piece_layer_ops().is_empty());
     assert_eq!(t.layers(), &tela);
+}
+
+/// ⭐⭐ **GATE (W4) — a profundidade e o `Add`/`Level` de uma camada na peça são o metadado do 2D, ao
+/// bit**: o arrasto pede-o com o id do gesto (um desfazer por arrasto), o chip sem; os valores são os
+/// que o MESMO evento dá numa camada do documento 2D. CONTROLO: a pilha da TELA não muda.
+#[test]
+fn a_profundidade_e_o_level_na_peca_sao_os_do_2d() {
+    let (mut t, [base, ..]) = na_peca();
+    let tela = t.layers().clone();
+    let fundo = painter_layer_widget_id(base.0, PainterLayerWidget::ImpastoDepth);
+    let chip = painter_layer_widget_id(base.0, PainterLayerWidget::ImpastoLevel);
+    t.handle_panel_event(PanelEvent::SetValue(fundo, 0.3));
+    t.handle_panel_event(PanelEvent::Click(chip));
+    let pedidos = t.take_piece_layer_ops();
+    let [
+        PieceLayerOp::Metadata {
+            stack: a,
+            gesture: ga,
+        },
+        PieceLayerOp::Metadata {
+            stack: b,
+            gesture: gb,
+        },
+    ] = pedidos.as_slice()
+    else {
+        panic!("dois pedidos de metadado: {pedidos:?}");
+    };
+    assert_eq!(
+        (*ga, *gb),
+        (Some(fundo), None),
+        "o arrasto leva o gesto, o chip não"
+    );
+    assert_eq!(t.layers(), &tela, "a pilha da TELA não mexeu");
+
+    let mut doc = PainterTool::default();
+    doc.set_source(vec![0; 16 * 16 * 4], 16, 16);
+    let l = doc.layers().active().expect("a camada do documento");
+    let id2 = |w| painter_layer_widget_id(l.0, w);
+    doc.handle_panel_event(PanelEvent::SetValue(
+        id2(PainterLayerWidget::ImpastoDepth),
+        0.3,
+    ));
+    let d2 = doc.layers().get(l).map(|c| c.impasto_depth);
+    doc.handle_panel_event(PanelEvent::Click(id2(PainterLayerWidget::ImpastoLevel)));
+    let m2 = doc.layers().get(l).map(|c| c.impasto_composite);
+    let d = a.get(base).map(|c| c.impasto_depth);
+    assert_eq!(
+        d.map(f32::to_bits),
+        d2.map(f32::to_bits),
+        "a profundidade é a do 2D"
+    );
+    assert!(
+        d.is_some_and(|d| (d + 0.4).abs() < 1e-6),
+        "0,3 do curso é −0,4: {d:?}"
+    );
+    assert_eq!(
+        b.get(base).map(|c| c.impasto_composite),
+        m2,
+        "o Level é o do 2D"
+    );
+    assert_eq!(m2, Some(crate::layers::ReliefComposite::Level));
 }

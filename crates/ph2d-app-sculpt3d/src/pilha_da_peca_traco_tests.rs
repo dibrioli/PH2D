@@ -47,7 +47,7 @@ fn peca() -> (Tinta, PilhaDaPeca, LayerId, LayerId) {
 
 /// ⭐⭐⭐ **GATE — O traço desce à camada ACTIVA e só a ela**: a cópia de
 /// trabalho é a camada (transparente aqui), as amostras sujas descem em
-/// RGBA8, a base fica intacta — e o relevo desce à BASE.
+/// RGBA8, a base fica intacta — e o relevo também desce à activa (W4).
 #[test]
 fn o_traco_desce_a_camada_activa_e_so_a_ela() {
     let (t, mut p, base, cima) = peca();
@@ -83,15 +83,16 @@ fn o_traco_desce_a_camada_activa_e_so_a_ela() {
     );
     let b = p.plano(base).expect("base");
     assert_eq!(b.rgba8(n), base_antes.rgba8(n), "a base fica intacta");
-    assert_eq!(
-        b.relevo().map(|r| r[5]),
-        Some([0.02, 0.5]),
-        "o relevo desce à base"
-    );
+    assert_eq!(b.relevo(), base_antes.relevo(), "e o relevo dela também");
     assert_eq!(
         b.relevo().map(|r| r[3]),
         Some([0.01, 1.0]),
-        "e o de antes fica"
+        "o de antes fica"
+    );
+    assert_eq!(
+        p.plano(cima).and_then(|c| c.relevo().map(|r| r[5])),
+        Some([0.02, 0.5]),
+        "o relevo desce à activa"
     );
 }
 
@@ -142,8 +143,10 @@ fn as_trocas_do_desfazer_sao_involucoes() {
         .expect("janela");
     assert_ne!(p, original);
     p.troca_janela(cima, &idx, &antes).expect("de volta");
-    let r = p.troca_relevo(&idx, &[[0.5, 0.5]; 3]).expect("relevo");
-    p.troca_relevo(&idx, &r).expect("de volta");
+    let r = p
+        .troca_relevo(base, &idx, &[[0.5, 0.5]; 3])
+        .expect("relevo");
+    p.troca_relevo(base, &idx, &r).expect("de volta");
     let plano = p.copia_do_plano(base).expect("plano");
     let velho = p.troca_plano(base, vec![7; plano.len()]).expect("troca");
     p.troca_plano(base, velho).expect("de volta");

@@ -10,8 +10,10 @@
 //! toque): quantizar ao byte a cada quadro não pára um traço de força
 //! pequena.
 //!
-//! ⚠️ **Até à W4 o relevo é da PEÇA e mora na camada de BASE** — o traço lê e
-//! escreve o relevo do plano da peça, e ele desce à base.
+//! ⭐ **O relevo também é da camada activa** (W4): a cópia de trabalho leva o
+//! relevo PRÓPRIO dela (é sobre ele que o impasto empilha, alisa e corta, como
+//! no 2D), ele desce à camada, e a peça lê a dobra da pilha
+//! (`pilha_da_peca_relevo`).
 
 use super::*;
 
@@ -51,14 +53,14 @@ fn corridas(ord: &[u32]) -> Vec<(usize, usize)> {
 }
 
 impl PilhaDaPeca {
-    /// A camada de BASE — a de baixo de tudo (onde o relevo mora até à W4).
+    /// A camada de BASE — a de baixo de tudo, permanente (a lei do 2D).
     #[must_use]
     pub(crate) fn base(&self) -> Option<LayerId> {
         self.pilha.root().last().copied()
     }
 
     /// ⭐⭐⭐ **A cópia de trabalho da camada ACTIVA** — o plano da peça
-    /// (topologia, relevo) com a cor e a opacidade da camada. `None` se a
+    /// (topologia) com a cor, a opacidade e o relevo da camada. `None` se a
     /// activa não é um raster com plano (um ajuste, um grupo — a W3 diz porquê).
     /// Regista a camada emprestada: o pen-up pergunta-a a
     /// [`Self::fim_do_traco`], e um painel que mude a activa a meio do traço não
@@ -88,6 +90,7 @@ impl PilhaDaPeca {
             alfa.push(a);
         }
         w.com_alfa(Some(alfa));
+        w.com_relevo(plano.relevo.clone());
         self.em_traco = Some(id);
         Some((id, w))
     }
@@ -103,8 +106,8 @@ impl PilhaDaPeca {
         self.em_traco.take()
     }
 
-    /// ⭐⭐⭐ **As amostras `idx` da cópia de trabalho descem à camada `id`** em
-    /// RGBA8, e o relevo delas à BASE.
+    /// ⭐⭐⭐ **As amostras `idx` da cópia de trabalho descem à camada `id`** —
+    /// a cor em RGBA8 e o relevo.
     pub(crate) fn recebe_do_traco(&mut self, id: LayerId, w: &Tinta, idx: &[u32]) {
         let n = self.amostras;
         if let Some(plano) = self.planos.get_mut(&id) {
@@ -118,20 +121,21 @@ impl PilhaDaPeca {
             }
         }
         if let Some(r) = w.relevo()
-            && let Some(base) = self.base().and_then(|b| self.planos.get_mut(&b))
+            && let Some(plano) = self.planos.get_mut(&id)
         {
-            let alvo = base.relevo.get_or_insert_with(|| vec![[0.0; 2]; n]);
+            let alvo = plano.relevo.get_or_insert_with(|| vec![[0.0; 2]; n]);
             for &i in idx {
                 if (i as usize) < n {
                     alvo[i as usize] = r[i as usize];
                 }
             }
+            self.marca_relevo(id);
         }
     }
 
     /// ⭐⭐⭐ **Recompõe só as amostras `idx` no plano da peça** — a cor (pelas
     /// corridas de índices consecutivos: as amostras de uma face são
-    /// contíguas) e o relevo da base. Ao bit igual à [`Self::pinta_tinta`]
+    /// contíguas) e o relevo (a dobra da pilha). Ao bit igual à [`Self::pinta_tinta`]
     /// nessas amostras (gate `recompor_amostras_e_o_pedaco_da_peca_inteira`).
     ///
     /// ⚠️ Com um efeito de VIZINHANÇA na pilha a cor de uma amostra depende das
@@ -172,16 +176,7 @@ impl PilhaDaPeca {
                 &mut peca.amostras_mut()[a..b],
             );
         }
-        if let Some(r) = self
-            .base()
-            .and_then(|b| self.planos.get(&b))
-            .and_then(|p| p.relevo.as_ref())
-        {
-            let alvo = peca.relevo_mut();
-            for &i in &ord {
-                alvo[i as usize] = r[i as usize];
-            }
-        }
+        self.relevo_nas(&ord, peca);
     }
 
     /// ⭐⭐ **Troca uma janela de píxeis da camada `id`** (o desfazer de um
@@ -213,23 +208,6 @@ impl PilhaDaPeca {
                     plano.mudou_amostra(i as usize);
                     antes
                 })
-                .collect(),
-        )
-    }
-
-    /// ⭐⭐ **Troca uma janela do relevo da BASE** (o desfazer) — devolve o que
-    /// lá estava.
-    pub(crate) fn troca_relevo(&mut self, idx: &[u32], r: &[[f32; 2]]) -> Option<Vec<[f32; 2]>> {
-        let n = self.amostras;
-        if idx.len() != r.len() || idx.iter().any(|&i| i as usize >= n) {
-            return None;
-        }
-        let base = self.base().and_then(|b| self.planos.get_mut(&b))?;
-        let alvo = base.relevo.get_or_insert_with(|| vec![[0.0; 2]; n]);
-        Some(
-            idx.iter()
-                .zip(r)
-                .map(|(&i, novo)| std::mem::replace(&mut alvo[i as usize], *novo))
                 .collect(),
         )
     }

@@ -46,8 +46,9 @@ impl TrocaDaPilha {
 }
 
 /// O que o painel da peça não pode mudar pelo metadado: a lista de camadas, o
-/// tipo de cada uma, as máscaras, o relevo, e o que a peça ainda não oferece
-/// (bloqueio de alfa, referência, a profundidade do impasto).
+/// tipo de cada uma, as máscaras, QUEM tem relevo (a projecção dos planos), e
+/// o que a peça ainda não oferece (bloqueio de alfa, referência). A
+/// profundidade e o modo do relevo são metadado (W4).
 fn mesma_estrutura(a: &LayerStack, b: &LayerStack) -> bool {
     let ids = |s: &LayerStack| {
         let mut v: Vec<LayerId> = s.all_ids().collect();
@@ -71,8 +72,6 @@ fn mesma_estrutura(a: &LayerStack, b: &LayerStack) -> bool {
                     && x.has_relief == y.has_relief
                     && x.alpha_locked == y.alpha_locked
                     && x.is_reference == y.is_reference
-                    && x.impasto_depth.to_bits() == y.impasto_depth.to_bits()
-                    && x.impasto_composite == y.impasto_composite
             }
             _ => false,
         })

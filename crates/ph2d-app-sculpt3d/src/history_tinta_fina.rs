@@ -143,7 +143,7 @@ impl JanelaFina {
         }
         let rgba = pilha.troca_janela(id, &self.amostras, &rgba)?;
         let relevo = match &self.relevo {
-            Some(r) => Some(pilha.troca_relevo(&self.amostras, r)?),
+            Some(r) => Some(pilha.troca_relevo(id, &self.amostras, r)?),
             None => None,
         };
         crate::tinta_da_peca::pilha::recompoe_sujas(obj, &self.amostras);

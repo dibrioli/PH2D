@@ -191,8 +191,17 @@ impl TintaGpu {
             origem: um("ph2d-mesh tinta origem", zero4u, st),
             idx: um("ph2d-mesh tinta idx", zero4u, st),
             pos: um("ph2d-mesh tinta pos", zero4, st),
-            alturas: um("ph2d-mesh tinta alturas", zero4, st),
-            inclinacoes: um("ph2d-mesh tinta inclinacoes", zero4, st),
+            // `COPY_SRC`: os gates leem-nos de volta (`le_relevo_at`).
+            alturas: um(
+                "ph2d-mesh tinta alturas",
+                zero4,
+                st | wgpu::BufferUsages::COPY_SRC,
+            ),
+            inclinacoes: um(
+                "ph2d-mesh tinta inclinacoes",
+                zero4,
+                st | wgpu::BufferUsages::COPY_SRC,
+            ),
             inc: None,
             inc_foto: FotoDasInclinacoes::default(),
             cfg: um(
@@ -374,7 +383,7 @@ impl MeshRenderer {
                     &mut g.cap_alturas,
                     bytemuck::cast_slice(a),
                     "alturas",
-                    st,
+                    st | wgpu::BufferUsages::COPY_SRC,
                 );
                 let cantos = |f: usize| mesh.faces()[f].verts();
                 let mesma =
@@ -404,7 +413,7 @@ impl MeshRenderer {
                             &mut g.cap_inclinacoes,
                             bytemuck::cast_slice(inc.por_amostra()),
                             "inclinacoes",
-                            st,
+                            st | wgpu::BufferUsages::COPY_SRC,
                         );
                         g.inc = Some(inc);
                         g.inc_foto.tira(&pay, mesh.positions(), a);
@@ -623,6 +632,9 @@ impl FotoDasInclinacoes {
 pub(super) fn em_alturas((de, ate): (usize, usize)) -> (usize, usize) {
     (de / 12 * 8, ate / 12 * 8)
 }
+
+#[path = "tinta_gpu_relevo.rs"]
+mod relevo;
 
 #[cfg(test)]
 #[path = "tinta_gpu_tests.rs"]

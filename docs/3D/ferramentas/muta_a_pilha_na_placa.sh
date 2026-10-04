@@ -95,7 +95,7 @@ muta $R/shaders/tinta_achata.wgsl '+ f * (1.0 - al);' '+ f * al;' \
 muta $A/slots.rs '|| (subiu_inteiro && atrasada)' '|| false' \
   'P9 o plano velho subido inteiro não recompõe' placa
 # (W6: há um 2.º `compor_na_placa` — o do traço por baixo de um desfoque, no `muta_os_efeitos_de_vizinhanca.sh`.)
-muta $A/tinta_da_peca_pilha.rs $'    pilha.atrasa(peca);\n    *compor_na_placa = true;\n    true' $'    pilha.atrasa(peca);\n    true' \
+muta $A/tinta_da_peca_pilha.rs $'    *relevo_sujo |= pilha.redobra_o_relevo(peca);\n    *compor_na_placa = true;' $'    *relevo_sujo |= pilha.redobra_o_relevo(peca);' \
   'P10 recompor o plano não pede a placa' placa
 muta $A/pilha_da_peca_fundo.rs 'tinta.amostras_mut()[..v.len()].copy_from_slice(&v);' '' \
   'P11 o prefixo de vértices não refresca' placa

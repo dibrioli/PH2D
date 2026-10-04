@@ -193,8 +193,9 @@ pub(crate) enum RecusaDaPilha {
     /// trama de pontos — `reads_the_image_plane`): a superfície não tem nenhum
     /// dos três. Os de vizinhança borram na retícula (`docs/3D/30` §14).
     LeOPlanoDaImagem(AdjustmentKind),
-    /// ⛔ A camada de BASE não se apaga nem sai do fundo: é onde o relevo da
-    /// peça mora até à W4 (`relevo_composto`).
+    /// ⛔ A camada de BASE não se apaga nem sai do fundo — a lei do Painter 2D
+    /// (`delete_layer`: a base é permanente). Desde a W4 o relevo é de cada
+    /// camada; a base já não é a dona dele.
     ABase,
     /// ⛔ Um efeito de vizinhança acima de `64x`
     /// (`vizinhanca_da_peca::NIVEL_MAX_DA_VIZINHANCA`): um passo levaria segundos.
@@ -227,6 +228,8 @@ pub(crate) struct PilhaDaPeca {
     cpu: fundo::Atraso,
     /// A retícula como vizinhança dos efeitos de vizinhança — sessão.
     vizinhanca: crate::vizinhanca_da_peca::NaPilha,
+    /// A forma da dobra que está no relevo da peça — sessão (`relevo`).
+    relevo_dobrado: relevo::Dobrado,
 }
 
 impl LayerPixelSource for PilhaDaPeca {
@@ -285,6 +288,7 @@ impl PilhaDaPeca {
             fundo: t.plano_por_vertice().to_vec(),
             cpu: fundo::Atraso::default(),
             vizinhanca: Default::default(),
+            relevo_dobrado: Default::default(),
         }
     }
 
@@ -296,7 +300,7 @@ impl PilhaDaPeca {
         amostras: usize,
         fundo: Vec<[f32; 3]>,
     ) -> Self {
-        Self {
+        let mut p = Self {
             pilha,
             planos,
             amostras,
@@ -304,7 +308,13 @@ impl PilhaDaPeca {
             fundo,
             cpu: fundo::Atraso::default(),
             vizinhanca: Default::default(),
+            relevo_dobrado: Default::default(),
+        };
+        let ids: Vec<LayerId> = p.planos.keys().copied().collect();
+        for id in ids {
+            p.marca_relevo(id);
         }
+        p
     }
 
     /// ⭐ **As camadas `ids` subiram à placa** — as linhas sujas delas ficam
@@ -445,7 +455,7 @@ impl PilhaDaPeca {
 
     /// ⭐ **Duplica uma camada de pintura** logo acima dela, com uma CÓPIA do
     /// plano — a semântica do `LayerStack::duplicate` do 2D: a máscara não vem
-    /// junto. ⚠️ A cópia não leva o RELEVO: até à W4 ele é da BASE.
+    /// junto. A cópia leva o RELEVO, com a profundidade e o modo (W4).
     pub(crate) fn duplica(&mut self, id: LayerId) -> Result<LayerId, RecusaDaPilha> {
         self.livre()?;
         if !matches!(
@@ -458,13 +468,10 @@ impl PilhaDaPeca {
             .pilha
             .duplicate(id)
             .ok_or(RecusaDaPilha::Desconhecida)?;
-        if let Some(mut p) = self.planos.get(&id).cloned() {
-            p.relevo = None;
+        if let Some(p) = self.planos.get(&id).cloned() {
             self.planos.insert(copia, p);
         }
-        if let Some(c) = self.pilha.get_mut(copia) {
-            c.has_relief = false;
-        }
+        self.marca_relevo(copia);
         Ok(copia)
     }
 
@@ -588,24 +595,6 @@ impl PilhaDaPeca {
         out
     }
 
-    /// ⭐⭐ **O relevo da peça.**
-    ///
-    /// ⚠️ **Até à W4 só a camada de BASE leva relevo** — é a única que o
-    /// produto lhe dá (a [`Self::de_tinta`] põe nela o relevo do plano). A
-    /// dobra de várias camadas (`Add`/`Level`, a profundidade de cada uma) é a
-    /// do 2D extraída para uma função pura, e é a W4 (doc 30 §2).
-    #[must_use]
-    pub(crate) fn relevo_composto(&self) -> Option<Vec<[f32; 2]>> {
-        let base = *self.pilha.root().last()?;
-        debug_assert!(
-            self.planos
-                .iter()
-                .all(|(id, p)| *id == base || p.relevo.is_none()),
-            "relevo fora da camada de base antes da W4"
-        );
-        self.planos.get(&base)?.relevo.clone()
-    }
-
     /// ⭐⭐⭐⭐ **Escreve a peça composta no plano de tinta** — o que a placa,
     /// o shader, o bake e a doação já leem, sem mudança nenhuma.
     ///
@@ -687,6 +676,10 @@ pub(crate) use porta::TrocaDaPilha;
 /// ⭐ **Os efeitos de vizinhança na peça** (W6) — a retícula como vizinhança.
 #[path = "pilha_da_peca_vizinhanca.rs"]
 mod vizinhanca;
+
+/// ⭐ **O relevo por camada** (W4) — a dobra do 2D sobre a pilha.
+#[path = "pilha_da_peca_relevo.rs"]
+mod relevo;
 
 #[cfg(test)]
 #[path = "pilha_da_peca_tests.rs"]

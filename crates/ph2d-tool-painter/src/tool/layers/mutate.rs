@@ -67,8 +67,14 @@ impl PainterTool {
     /// sliders (opacity, and now this) store normalised and the tool maps to the domain, exactly like
     /// `set_brush_size_norm`. `0.5` is the zero: the two halves of the track mean opposite things.
     pub fn set_layer_impasto_depth_norm(&mut self, id: RtLayerId, norm: f32) {
-        let depth = norm.clamp(0.0, 1.0).mul_add(2.0, -1.0); // CLAMP-OK: 0..1 track → -1..1 domain
-        self.set_layer_impasto_depth(id, depth);
+        self.layers.set_impasto_depth_norm(id, norm);
+        self.invalidate_composite();
+    }
+
+    /// Flip a layer's relief mode (`Add` ⇄ `Level`) — [`LayerStack::toggle_impasto_composite`].
+    pub fn toggle_layer_impasto_composite(&mut self, id: RtLayerId) {
+        self.layers.toggle_impasto_composite(id);
+        self.invalidate_composite();
     }
 
     /// Set how a layer's relief meets the relief below it (`Add` / `Level`). No-op if `id` unknown.

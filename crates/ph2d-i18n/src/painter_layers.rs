@@ -560,8 +560,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.piece.off_here" => {
             "Layers of the 3D piece. Blur, Sharpen, Bloom and Shadows/Highlights follow the \
              surface (up to 64x Paint Detail), the radius in % of the piece's size. Not here: \
-             groups, texture layers, Lock, Ref, \
-             relief per layer, and Motion Blur, Chromatic Aberration and Halftone -- a surface has \
+             groups, texture layers, Lock, Ref, and Motion Blur, Chromatic Aberration and Halftone -- a surface has \
              no direction, centre or dot screen of its own"
         }
         _ => return None,

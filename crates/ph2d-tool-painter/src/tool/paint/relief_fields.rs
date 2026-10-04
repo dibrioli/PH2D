@@ -86,7 +86,7 @@ impl ReliefFields<'_> {
     #[inline]
     pub(super) fn height_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
-        let mut h = 0.0f32;
+        let mut h = crate::layers::RELIEF_FOLD_SEED;
         for l in &self.layers {
             let mut own = l.height.map_or(0.0, |f| f[i]);
             if l.active {

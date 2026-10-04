@@ -263,12 +263,17 @@ pub(crate) fn recompoe(obj: &mut crate::SceneObject) {
 /// ⭐⭐ **Só o PLANO volta a ser a composição da pilha** (na placa; na CPU o
 /// prefixo dos vértices) — a cor por vértice fica como está: o desfazer do
 /// balde repõe-na ele mesmo, ao bit. `false` se a peça não tem pilha.
+///
+/// ⭐ O RELEVO não se compõe na placa: na CPU ele está sempre em dia, e é
+/// redobrado inteiro só quando a FORMA da dobra mudou (W4,
+/// `PilhaDaPeca::redobra_o_relevo`) — o arrasto da opacidade não o paga.
 pub(crate) fn recompoe_o_plano(obj: &mut crate::SceneObject) -> bool {
     let crate::objects::SceneObject {
         stack,
         tinta,
         pilha,
         compor_na_placa,
+        relevo_sujo,
         ..
     } = obj;
     let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
@@ -276,6 +281,7 @@ pub(crate) fn recompoe_o_plano(obj: &mut crate::SceneObject) -> bool {
     };
     pilha.garante_vizinhanca(peca, stack.mesh());
     pilha.atrasa(peca);
+    *relevo_sujo |= pilha.redobra_o_relevo(peca);
     *compor_na_placa = true;
     true
 }

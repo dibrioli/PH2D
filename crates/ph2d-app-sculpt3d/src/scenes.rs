@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 54;
+pub const CENAS: u32 = 55;
 
 /// ⭐⭐ **O PRÓLOGO — o que uma cena ARMA depois de a cena nascer.**
 ///
@@ -64,6 +64,7 @@ pub(crate) fn prologo(cena: &mut crate::Sculpt3dScene) {
     pintura::arma(cena);
     tinta_fina::arma(cena);
     vizinhanca::arma(cena);
+    relevo_camadas::arma(cena);
 }
 
 /// **A env do roteador, lida DENTRO da crate.**
@@ -527,6 +528,10 @@ pub(crate) mod plano;
 /// pincel é inerte **por lei** (espec §6.3.3).
 #[path = "scenes_projectar.rs"]
 pub(crate) mod projectar;
+/// **O RELEVO POR CAMADA** (`=55`) — ver [`relevo_camadas`]. ⚠️ Ela abre na peça
+/// GROSSA da `=52`, a `16x`, com duas camadas de impasto já pintadas (`docs/3D/30` §15).
+#[path = "scenes_relevo_camadas.rs"]
+pub(crate) mod relevo_camadas;
 /// **O ESFREGÃO DE DESLOCAMENTO** (`=44`) — ver [`smear`]. ⚠️ Irmã da [`erase`]
 /// e pela mesma razão: ela abre SEM pilha de propósito, e o 1.º passo do
 /// roteiro é a **recusa**.

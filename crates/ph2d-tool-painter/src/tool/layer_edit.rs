@@ -9,7 +9,6 @@ use ph2d_painter_effects::adjustments::{AdjustmentKind, AdjustmentParams};
 
 use super::*;
 use crate::ids::{self, PainterLayerWidget};
-use crate::layers::ReliefComposite;
 
 /// Um pedido do painel de camadas. Os `*Active` agem sobre a camada activa de quem o lê.
 #[derive(Clone, Debug, PartialEq)]
@@ -371,18 +370,7 @@ impl PainterTool {
             }
             E::MoveUp(layer) => self.move_layer_up(layer),
             E::MoveDown(layer) => self.move_layer_down(layer),
-            E::ImpastoLevel(layer) => {
-                let now = self
-                    .layers
-                    .get(layer)
-                    .map(|l| l.impasto_composite)
-                    .unwrap_or_default();
-                let next = match now {
-                    ReliefComposite::Add => ReliefComposite::Level,
-                    ReliefComposite::Level => ReliefComposite::Add,
-                };
-                self.set_layer_impasto_composite(layer, next);
-            }
+            E::ImpastoLevel(layer) => self.toggle_layer_impasto_composite(layer),
             E::MaskInvert(layer) => self.toggle_mask_inverted(layer),
             E::MaskApply(layer) => {
                 self.apply_mask(layer);

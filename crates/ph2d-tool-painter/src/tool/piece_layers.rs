@@ -185,8 +185,6 @@ impl PainterTool {
             E::AddGroup
             | E::ToggleAlphaLockActive
             | E::ToggleReferenceActive
-            | E::ImpastoLevel(_)
-            | E::ImpastoDepth(..)
             | E::MaskApply(_)
             | E::MaskView(_) => {
                 eprintln!("[painter] {e:?} is not offered on the 3D piece (the panel disables it)");
@@ -226,6 +224,14 @@ impl PainterTool {
             }
             E::Opacity(l, v) => {
                 m.set_opacity(l, v);
+                None
+            }
+            E::ImpastoDepth(l, v) => {
+                m.set_impasto_depth_norm(l, v);
+                None
+            }
+            E::ImpastoLevel(l) => {
+                m.toggle_impasto_composite(l);
                 None
             }
             E::Blend(l, mode) => {

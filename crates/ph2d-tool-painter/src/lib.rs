@@ -47,8 +47,8 @@ pub use compositor::{
 };
 pub use layers::{
     DEPTH_NEUTRAL, GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerModifiers,
-    LayerStack, MAX_GROUP_DEPTH, MaskLayer, RasterLayer, ReliefComposite, TextureLayer,
-    fold_relief_step,
+    LayerStack, MAX_GROUP_DEPTH, MaskLayer, RELIEF_FOLD_SEED, RasterLayer, ReliefComposite,
+    TextureLayer, fold_relief_step,
 };
 pub use params::PainterParams;
 /// **Qual rota o depósito de pigmento tomou** — o instrumento que separa *"o ramo não dispara"*
@@ -141,6 +141,9 @@ pub use ph2d_painter_brush::{
     // law, so the picture and the paint cannot drift -- see `ph2d_painter_brush::taper`.
     taper::{MAX_TAPER_DIAMETERS, Taper},
 };
+/// A sonda da dobra do relevo para o gate cruzado «a dobra é UMA» (`docs/3D/30` §5).
+#[doc(hidden)]
+pub use tool::paint::relief_fold_probe::ReliefPlaneProbe;
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,

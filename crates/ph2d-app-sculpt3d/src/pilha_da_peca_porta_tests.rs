@@ -114,10 +114,9 @@ fn o_metadado_recusa_estrutura_base_e_traco_aberto() {
     assert!(p.troca_metadado(opaca).is_ok());
 }
 
-/// ⭐⭐ **GATE — a BASE fica**: não se apaga, e a cópia dela não leva o relevo (até à W4 ele é só
-/// da base: duas camadas com relevo partiriam o `relevo_composto`).
+/// ⭐⭐ **GATE — a BASE fica**: não se apaga (a lei do 2D), e a cópia dela leva o relevo (W4).
 #[test]
-fn a_base_fica_e_a_copia_nao_leva_o_relevo() {
+fn a_base_fica_e_a_copia_leva_o_relevo() {
     let (mut p, [base, ..]) = pilha_rica(N);
     assert_eq!(p.apaga(base), Err(RecusaDaPilha::ABase));
     if let Some(pl) = p.planos.get_mut(&base) {
@@ -127,15 +126,22 @@ fn a_base_fica_e_a_copia_nao_leva_o_relevo() {
         c.has_relief = true;
     }
     let copia = p.duplica(base).expect("duplica");
-    assert!(p.plano(copia).is_some_and(|c| c.relevo().is_none()));
-    assert!(!p.pilha().get(copia).is_some_and(|c| c.has_relief));
+    assert!(
+        p.plano(copia)
+            .is_some_and(|c| c.relevo() == Some(&[[0.5, 1.0]; N][..]))
+    );
+    assert!(p.pilha().get(copia).is_some_and(|c| c.has_relief));
     assert_eq!(
         p.plano(copia).map(|c| c.rgba8(N)),
         p.plano(base).map(|c| c.rgba8(N)),
         "a cor vem"
     );
     assert!(p.sincronizada());
-    assert!(p.relevo_composto().is_some(), "o relevo continua o da base");
+    assert!(
+        p.relevo_composto()
+            .is_some_and(|r| r.iter().all(|x| *x == [1.0, 1.0])),
+        "as duas somam (Add)"
+    );
 }
 
 /// ⭐ **GATE — um ajuste novo nasce como o do 2D e não rouba a activa** (um ajuste não se pinta).

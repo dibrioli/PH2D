@@ -21,13 +21,13 @@ use ph2d_tool_painter::{LayerId, PainterTool};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// O painel de Layers, pintado e conduzido como no app.
-struct Painel {
+pub(super) struct Painel {
     host: MockPanelHost,
     st: PainterLayersPanelState,
 }
 
 impl Painel {
-    fn novo() -> Self {
+    pub(super) fn novo() -> Self {
         Self {
             host: MockPanelHost::with_panel_and_shared_chrome::<PainterLayersPanel>(),
             st: PainterLayersPanelState,
@@ -86,13 +86,13 @@ impl Painel {
         );
     }
 
-    fn clica(&mut self, p: &mut PainterTool, id: NodeId) {
+    pub(super) fn clica(&mut self, p: &mut PainterTool, id: NodeId) {
         let r = self.onde(p, id);
         let ev = self.host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
         self.entrega(p, ev);
     }
 
-    fn arrasta(&mut self, p: &mut PainterTool, id: NodeId, de: f32, para: f32) {
+    pub(super) fn arrasta(&mut self, p: &mut PainterTool, id: NodeId, de: f32, para: f32) {
         let r = self.onde(p, id);
         let y = r.y + r.h * 0.5;
         let ev = self.host.drag_at(r.x + r.w * de, y, r.x + r.w * para, y);
@@ -137,7 +137,7 @@ fn a_placa_mostra(
     );
 }
 
-fn painter_vermelho() -> PainterTool {
+pub(super) fn painter_vermelho() -> PainterTool {
     let mut p = PainterTool::default();
     p.set_brush_color_srgb8([255, 0, 0]);
     p.set_brush_strength(1.0);
@@ -146,7 +146,7 @@ fn painter_vermelho() -> PainterTool {
 }
 
 /// Um traço do Painter pelo caminho da shell, com quadros a meio.
-fn traco(s: &mut crate::Sculpt3dScene, p: &mut PainterTool, x0: f32) {
+pub(super) fn traco(s: &mut crate::Sculpt3dScene, p: &mut PainterTool, x0: f32) {
     assert!(
         entrega(s, p, x0, 350.0, 1.0, PointerPhase::Down),
         "o pen-down"

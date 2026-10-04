@@ -678,3 +678,6 @@ mod painel;
 mod placa;
 #[path = "vizinhanca_no_produto_tests.rs"]
 mod placa_vizinhanca;
+/// ⭐ O RELEVO por camada pelo painel (`docs/3D/30` §15, W4) — a costura inteira, com a placa.
+#[path = "relevo_painel_no_produto_tests.rs"]
+mod relevo_painel;

@@ -380,6 +380,10 @@ do worktree, com adaptador): `cargo test -p ph2d-shape-gpu --test it -- --ignore
 
 ### §7.2 — Smoke da §6.5 (a `=127` com o contorno contínuo e tracejado)
 
+Binário já compilado: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` corrido 2× depois de
+`ac0201c99` e do `rm -rf target/*/incremental`; a 2.ª saída: `Finished smoke profile [optimized] target(s) in 0.20s`,
+zero `Compiling`. As duas cenas fotografadas na tela virtual (`fotografa_cena.sh`, rota `HIBRIDO`, `59`–`60 fps`).
+
 1. No terminal:
    ```
    cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=127 PH2D_TRACO_ESTICADO_TRACEJADO=1 cargo run -p ph2d-host-desktop --profile smoke

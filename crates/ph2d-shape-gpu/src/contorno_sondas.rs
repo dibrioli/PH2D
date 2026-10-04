@@ -33,6 +33,41 @@ impl Contorno {
         (u32::try_from(com).unwrap_or(u32::MAX), self.cap_arestas)
     }
 
+    /// doc 121 §9.15 — **as arestas do último cálculo: `(reservadas, escritas, do contorno)`** — a
+    /// reserva é o tecto da contagem (o `cs_deposita` corre UM fio por aresta RESERVADA), as escritas
+    /// são as das cópias com contorno (em blocos inteiros) e as do contorno só as do eixo. Lido de
+    /// volta (bloqueia).
+    pub(crate) fn arestas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64, u64) {
+        let n = u64::from(self.ultimo_n);
+        let leitura = buffer(
+            gpu,
+            "ph2d-shape-gpu arestas (sonda)",
+            n * 48 + 16,
+            wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        );
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        enc.copy_buffer_to_buffer(&self.contagem, n * 4, &leitura, 0, 4);
+        if n > 0 {
+            enc.copy_buffer_to_buffer(&self.copias, 0, &leitura, 16, n * 48);
+        }
+        gpu.queue.submit([enc.finish()]);
+        leitura.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        let dados = leitura.slice(..).get_mapped_range();
+        let reservadas: u32 = bytemuck::pod_read_unaligned(&dados[..4]);
+        let copias: &[[u32; 4]] = bytemuck::cast_slice(&dados[16..]);
+        let por_bloco = crate::SEGS_POR_BLOCO as u64;
+        let (escritas, contorno) = copias.iter().step_by(3).fold((0, 0), |(e, c), b| {
+            (
+                e + u64::from(b[1] + b[2] + b[3]) * por_bloco,
+                c + u64::from(b[3]) * por_bloco,
+            )
+        });
+        (u64::from(reservadas), escritas, contorno)
+    }
+
     /// **Quantas células o último cálculo PEDIU**, e a capacidade delas — lido de volta, bloqueando
     /// (doc 121 §9.12). Pedido acima da capacidade ⇒ alguma cópia não coube e foi desenhada pelo
     /// caminho de sempre. Instrumento de gates e sondas.

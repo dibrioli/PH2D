@@ -11,7 +11,9 @@
 # Com mais de uma cópia (o binário de ANTES e o de DEPOIS), cada célula corre-as INTERCALADAS na mesma
 # janela calma — o rótulo de cada ficheiro é o nome da cópia.
 # Ambiente: PLACAS="igpu rtx" · CORRIDAS=2 · BARRA=4 · SEGUIDAS=3 · HORAS=6 · REPETE=6 ·
-#           PERFIL=1 (`PH2D_FLUID_PROFILE=1`: 250 quadros e o relógio da placa por passe)
+#           PERFIL=1 (`PH2D_FLUID_PROFILE=1`: 250 quadros e o relógio da placa por passe) ·
+#           TRACEJADOS="0 1" (doc 121 §9.15: o contínuo e o tracejado na MESMA rodada intercalada;
+#           sem a variável, o `PH2D_SONDA_TRACEJADO` herdado e o rótulo de sempre)
 set -u
 BIN="${1:?binario-da-sonda}"
 OUT="${2:?dir-de-saida}"
@@ -39,8 +41,10 @@ calma() {
     [ "$ok" -lt "$SEGUIDAS" ] && sleep 20
   done
 }
+TRS=(${TRACEJADOS:-herdado})
 for placa in $PLACAS; do
   for arranjo in esticadas conformes densas; do
+   for tr in "${TRS[@]}"; do
     corrida=1
     while [ "$corrida" -le "$CORRIDAS" ]; do
       kv=()
@@ -48,10 +52,12 @@ for placa in $PLACAS; do
       [ "$arranjo" = conformes ] && kv+=(PH2D_SONDA_MODO=conforme)
       [ "$arranjo" = densas ] && kv+=(PH2D_SONDA_DENSO=2)
       [ "${PERFIL:-0}" = 1 ] && kv+=(PH2D_FLUID_PROFILE=1)
+      sufixo=""
+      [ "$tr" != herdado ] && kv+=(PH2D_SONDA_TRACEJADO="$tr") && sufixo="_tr$tr"
       for b in "${BINS[@]}"; do
         rotulo=""
         [ "${#BINS[@]}" -gt 1 ] && rotulo="$(basename "$b")_"
-        f="$OUT/${rotulo}${placa}_${arranjo}_${corrida}.txt"
+        f="$OUT/${rotulo}${placa}_${arranjo}${sufixo}_${corrida}.txt"
         # ⛔ 04/10 (doc 121 §9.14): a placa presa por OUTRA linha (um arnês de mutação, 25 min) fazia a
         # porta desistir e a célula saía VAZIA — a rodada seguia com um buraco na intercalação. ⇒ uma
         # célula sem a linha da sonda repete-se (com nova calma), até `REPETE` vezes.
@@ -66,13 +72,14 @@ for placa in $PLACAS; do
           } > "$f"
           grep -q 'copias: placa' "$f" && break
           tentativa=$((tentativa + 1))
-          echo "$(date +%H:%M:%S) ${rotulo}$placa $arranjo $corrida VAZIA (tentativa $tentativa)" >> "$OUT/progresso.log"
+          echo "$(date +%H:%M:%S) ${rotulo}$placa $arranjo$sufixo $corrida VAZIA (tentativa $tentativa)" >> "$OUT/progresso.log"
           [ "$tentativa" -ge "${REPETE:-6}" ] && break
         done
-        echo "$(date +%H:%M:%S) ${rotulo}$placa $arranjo $corrida" >> "$OUT/progresso.log"
+        echo "$(date +%H:%M:%S) ${rotulo}$placa $arranjo$sufixo $corrida" >> "$OUT/progresso.log"
       done
       corrida=$((corrida + 1))
     done
+   done
   done
 done
 # A tabela: a linha da sonda de cada corrida.

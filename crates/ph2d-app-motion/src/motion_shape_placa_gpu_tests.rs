@@ -498,18 +498,55 @@ fn sonda_relogio_das_estrelas_grandes() {
         p.sem_contorno();
     }
     let mut geo = GeometriasDaPlaca::default();
-    let quadro = |p: &mut PlacaDeFormas, geo: &mut GeometriasDaPlaca| {
+    // doc 121 §9.15 (c) — o relógio de CPU de cada fase do quadro, `[decide, desenha, espera]`: a
+    // parede menos a soma dos passes nunca foi explicada, e o `gpu-busy(span)` já iguala a soma.
+    let mut cpu = [0.0_f64; 4];
+    let quadro = |p: &mut PlacaDeFormas, geo: &mut GeometriasDaPlaca, cpu: &mut [f64; 4]| {
+        let t0 = std::time::Instant::now();
         assert!(p.decide(true, &insts, &store, geo, camara()));
+        let t1 = std::time::Instant::now();
         let _ = p.desenha(&gpu, (LADO, LADO), geo, None);
+        let t2 = std::time::Instant::now();
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        let t3 = std::time::Instant::now();
         ph2d_gpu::pass_profiler::end_frame(&gpu.device, &gpu.queue);
+        cpu[0] += (t1 - t0).as_secs_f64();
+        cpu[1] += (t2 - t1).as_secs_f64();
+        cpu[2] += (t3 - t2).as_secs_f64();
+        cpu[3] += t3.elapsed().as_secs_f64();
     };
-    quadro(&mut p, &mut geo);
+    quadro(&mut p, &mut geo, &mut cpu);
+    cpu = [0.0; 4];
+    // A parede de CADA quadro: a média esconde os primeiros, que vão pixel a pixel até a capacidade
+    // medida chegar (dois quadros depois — `Contorno::colhe`).
+    let mut paredes = Vec::with_capacity(n as usize);
     let t = std::time::Instant::now();
     for _ in 0..n {
-        quadro(&mut p, &mut geo);
+        let tq = std::time::Instant::now();
+        quadro(&mut p, &mut geo, &mut cpu);
+        paredes.push(tq.elapsed().as_secs_f64() * 1e3);
     }
     let placa = t.elapsed().as_secs_f64() * 1e3 / f64::from(n);
+    let [decide, desenha, espera, perfil_ms] = cpu.map(|s| s * 1e3 / f64::from(n));
+    eprintln!(
+        "  cpu por quadro: decide {decide:.3} ms · desenha {desenha:.3} ms · espera {espera:.3} ms · perfilador {perfil_ms:.3} ms"
+    );
+    let primeiros: Vec<String> = paredes
+        .iter()
+        .take(4)
+        .map(|ms| format!("{ms:.2}"))
+        .collect();
+    let mut ordenadas = paredes.clone();
+    ordenadas.sort_by(f64::total_cmp);
+    eprintln!(
+        "  parede por quadro: mediana {:.3} ms · primeiros {} ms",
+        ordenadas[ordenadas.len() / 2],
+        primeiros.join(" ")
+    );
+    let (reservadas, escritas, do_contorno) = p.arestas_do_ultimo_quadro(&gpu);
+    eprintln!(
+        "  arestas: reservadas {reservadas} · escritas {escritas} (do contorno {do_contorno})"
+    );
     let (com_contorno, cap) = p.copias_com_contorno(&gpu, u32::try_from(insts.len()).unwrap_or(0));
     let (pediram, cap_celulas) = p.celulas_do_ultimo_quadro(&gpu);
     let (tocadas, usadas) = p.celulas_tocadas_do_ultimo_quadro(&gpu);

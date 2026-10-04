@@ -512,6 +512,14 @@ impl PlacaDeFormas {
             .map_or((0, 0), |g| g.passe.celulas_do_ultimo_quadro(gpu))
     }
 
+    /// As arestas do último desenho: reservadas, escritas e do contorno (doc 121 §9.15).
+    #[cfg(test)]
+    pub(crate) fn arestas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64, u64) {
+        self.gpu
+            .as_ref()
+            .map_or((0, 0, 0), |g| g.passe.arestas_do_ultimo_quadro(gpu))
+    }
+
     /// As células que o último desenho tocou, e as que usou (doc 121 §9.13).
     #[cfg(test)]
     pub(crate) fn celulas_tocadas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64) {

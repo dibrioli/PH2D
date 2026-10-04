@@ -211,6 +211,13 @@ impl ShapePass {
         self.contorno.copias_com_contorno(gpu, n)
     }
 
+    /// **As arestas do último desenho: `(reservadas, escritas, do contorno)`** (doc 121 §9.15) — lido
+    /// de volta da placa (bloqueia). Instrumento de sondas.
+    #[must_use]
+    pub fn arestas_do_ultimo_quadro(&self, gpu: &GpuContext) -> (u64, u64, u64) {
+        self.contorno.arestas_do_ultimo_quadro(gpu)
+    }
+
     /// **As cópias do último desenho por variante `(enxuta, completa)`** numa cena com tracejado (doc
     /// 121 §9.13): a placa põe-nas todas na enxuta e passa-as à completa quando uma cópia tracejada e
     /// visível fica sem células. Lido de volta (bloqueia). Instrumento de gates.

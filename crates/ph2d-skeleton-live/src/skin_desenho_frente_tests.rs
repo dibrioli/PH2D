@@ -2,7 +2,9 @@
 //!
 //! ⚠️ **A régua não usa a chave de osso da lei:** a frente é o MEMBRO da ponta (repouso `x > 20 + M`)
 //! posado pela pele, e uma risca de trás é a do membro da raiz (`x < 20 − M`); entre os dois fica a
-//! zona da junta, que a régua não julga. Uma amostra conta como TINTA quando o desenho tem um
+//! zona da junta, que a régua não julga — uma risca de trás por baixo DELA não conta como à vista,
+//! e a trás «à vista» começa a `2M` da junta: a `150°` a dobra comprime o membro de trás sobre si
+//! mesmo até `x ≈ 15,3`, onde a ordem dos pedaços é a da lei e não da régua (MEDIDO). Uma amostra conta como TINTA quando o desenho tem um
 //! contorno ABERTO a menos de [`PERTO`] dela e PARALELO a ela (uma risca da frente que a cruza não
 //! a pinta).
 
@@ -50,6 +52,20 @@ fn amostras(p: &VecPath, fechados: bool, por_seg: usize) -> Vec<([f64; 2], [f64;
                 #[expect(clippy::cast_precision_loss, reason = "amostra")]
                 out.push(em(&cb, i as f64 / por_seg as f64));
             }
+        }
+    }
+    out
+}
+
+/// Os troços entre amostras consecutivas dos contornos ABERTOS.
+fn amostras_em_troco(p: &VecPath) -> Vec<[[f64; 2]; 2]> {
+    let mut out = Vec::new();
+    for c in 0..p.contour_count() {
+        let Some((vs, false)) = p.contour(c) else { continue };
+        for k in 0..vs.len().saturating_sub(1) {
+            let cb = cubica(vs, k);
+            let pts: Vec<[f64; 2]> = (0..=64).map(|i| em(&cb, f64::from(i) / 64.0).0).collect();
+            out.extend(pts.windows(2).map(|w| [w[0], w[1]]));
         }
     }
     out
@@ -112,26 +128,33 @@ fn mede(graus: f32, contacto: bool) -> (f64, f64, f64, usize) {
     let d = crate::skin_live::recook_leis(&sim, &mut scene.clone(), leis)
         .remove(&id)
         .expect("desenho");
-    let tinta = amostras(&d, false, 64);
+    // ⚠️ A tinta é a POLILINHA das amostras, e não os pontos: uma cúbica com uma alça só corre
+    // depressa numa ponta, e entre duas amostras o vão passava da régua (`0,39`, MEDIDO).
+    let tinta: Vec<[[f64; 2]; 2]> = amostras_em_troco(&d);
     let pintada = |(p, t): ([f64; 2], [f64; 2])| {
         let q = posa(p);
         let q2 = posa([p[0] + 1e-4 * t[0], p[1] + 1e-4 * t[1]]);
         let dir = [q2[0] - q[0], q2[1] - q[1]];
         let nd = dir[0].hypot(dir[1]).max(1e-18);
-        tinta.iter().any(|(r, u)| {
+        tinta.iter().any(|&[a, b]| {
+            let u = [b[0] - a[0], b[1] - a[1]];
             let nu = u[0].hypot(u[1]).max(1e-18);
-            (r[0] - q[0]).hypot(r[1] - q[1]) < PERTO
+            dist_pol(&[a, b], q) < PERTO
                 && ((dir[0] * u[0] + dir[1] * u[1]) / (nd * nu)).abs() > 8f64.to_radians().cos()
         })
     };
-    // A frente posada: o contorno do repouso `x > JUNTA + M` pela pele.
-    let lado: Vec<[f64; 2]> = (0..=100)
-        .map(|i| [JUNTA + M + (40.0 - JUNTA - M) * f64::from(i) / 100.0, 0.0])
-        .chain((0..=100).map(|i| [40.0, 10.0 * f64::from(i) / 100.0]))
-        .chain((0..=100).map(|i| [40.0 - (40.0 - JUNTA - M) * f64::from(i) / 100.0, 10.0]))
-        .chain((0..=100).map(|i| [JUNTA + M, 10.0 - 10.0 * f64::from(i) / 100.0]))
-        .collect();
-    let frente: Vec<[f64; 2]> = lado.iter().map(|&p| posa(p)).collect();
+    // O repouso `x > x0` da barra, posado pela pele: a FRENTE (`x0 = JUNTA + M`) e tudo o que está
+    // adiante da parte de trás (`x0 = JUNTA − M`, a zona da junta incluída).
+    let posado_desde = |x0: f64| -> Vec<[f64; 2]> {
+        (0..=100)
+            .map(|i| [x0 + (40.0 - x0) * f64::from(i) / 100.0, 0.0])
+            .chain((0..=100).map(|i| [40.0, 10.0 * f64::from(i) / 100.0]))
+            .chain((0..=100).map(|i| [40.0 - (40.0 - x0) * f64::from(i) / 100.0, 10.0]))
+            .chain((0..=100).map(|i| [x0, 10.0 - 10.0 * f64::from(i) / 100.0]))
+            .map(&posa)
+            .collect()
+    };
+    let (frente, adiante) = (posado_desde(JUNTA + M), posado_desde(JUNTA - M));
     let riscas = amostras(&g.path, false, 400);
     let (mut tap, mut tap_p, mut fr, mut fr_p, mut vis, mut vis_p) = (0, 0, 0, 0, 0, 0);
     for s in riscas {
@@ -141,13 +164,10 @@ fn mede(graus: f32, contacto: bool) -> (f64, f64, f64, usize) {
             fr_p += usize::from(pintada(s));
         } else if x < JUNTA - M {
             let q = posa(s.0);
-            if dist_pol(&frente, q) < FOLGA {
-                continue;
-            }
-            if dentro(&frente, q) {
+            if dentro(&frente, q) && dist_pol(&frente, q) > FOLGA {
                 tap += 1;
                 tap_p += usize::from(pintada(s));
-            } else {
+            } else if x < JUNTA - 2.0 * M && !dentro(&adiante, q) && dist_pol(&adiante, q) > FOLGA {
                 vis += 1;
                 vis_p += usize::from(pintada(s));
             }
@@ -175,19 +195,12 @@ fn as_riscas_de_tras_nao_pintam_por_cima_da_frente() {
         assert!(n > 20, "a {graus}° a fixtura não tem riscas tapadas ({n})");
         assert!(tap0 > 0.9, "o CONTROLO: sem a lei as tapadas não se pintam ({tap0:.3})");
         assert!(tap < 0.02, "a {graus}° as riscas de trás pintam a frente ({tap:.3})");
-        assert!(fr > 0.98, "a {graus}° a frente perdeu riscas ({fr:.3})");
-        assert!(vis > 0.98, "a {graus}° a trás à vista perdeu riscas ({vis:.3})");
+        // ⚠️ A régua lê `~2 %` das amostras sem tinta TAMBÉM sem a lei (as pontas das riscas) ⇒
+        // «nada mais se apaga» compara com o controlo.
+        assert!(fr > 0.95 && fr >= fr0 - 1e-3, "a {graus}° a frente perdeu riscas ({fr:.3} × {fr0:.3})");
+        assert!(
+            vis > 0.95 && vis >= vis0 - 1e-3,
+            "a {graus}° a trás à vista perdeu riscas ({vis:.3} × {vis0:.3})"
+        );
     }
-}
-
-#[test]
-fn sonda_bits() {
-    let (sim, _s, _m, _id, [raiz, ponta]) = palco();
-    println!("raiz {:#x} ponta {:#x}", raiz.to_bits(), ponta.to_bits());
-    let mut sim2 = ph2d_ecs::SimWorld::default();
-    let a = crate::skin_live::tests::osso(&mut sim2, "a", [0.0, 0.0], 1.0, None);
-    let b = crate::skin_live::tests::osso(&mut sim2, "b", [1.0, 0.0], 1.0, Some(a));
-    let c = crate::skin_live::tests::osso(&mut sim2, "c", [1.0, 0.0], 1.0, Some(b));
-    println!("a {:#x} b {:#x} c {:#x}", a.to_bits(), b.to_bits(), c.to_bits());
-    println!("skeleton_of {:?}", crate::skin_live::skeleton_of(&sim, None).iter().map(|e| e.to_bits()).collect::<Vec<_>>());
 }

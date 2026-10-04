@@ -11,7 +11,6 @@
 
 use super::impasto_light::ReliefLayer;
 use super::*;
-use crate::layers::ReliefComposite;
 
 /// The relief + coverage the light reads, sampled straight out of the layer store — no composed buffer,
 /// no per-frame allocation. See [`PainterTool::impasto_fields`].
@@ -82,8 +81,8 @@ impl ReliefFields<'_> {
     /// ([`super::impasto_ceiling::soft_ceiling`], which also records why the hard clamp that used to live here was
     /// not a ceiling but an eraser).
     ///
-    /// The fold walks the layers bottom-up, each one scaled by its own depth and joined to the pile
-    /// under it by its own composite mode.
+    /// The fold walks the layers bottom-up, each one joined to the pile under it by
+    /// [`crate::layers::fold_relief_step`] — the ONE fold the 3D piece calls too (`docs/3D/30` §2).
     #[inline]
     pub(super) fn height_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
@@ -93,17 +92,9 @@ impl ReliefFields<'_> {
             if l.active {
                 own += self.live_h.map_or(0.0, |s| s[i]);
             }
-            own *= l.depth;
-            match l.composite {
-                ReliefComposite::Add => h += own,
-                // Bury, in proportion to this layer's own paint: solid paint IS the surface, bare paint
-                // shows the pile below untouched. Anything else would make an empty region of a `Level`
-                // layer flatten the whole painting.
-                ReliefComposite::Level => {
-                    let c = self.layer_cover_at(l, i);
-                    h = h * (1.0 - c) + own * c;
-                }
-            }
+            h = crate::layers::fold_relief_step(h, own, l.depth, l.composite, || {
+                self.layer_cover_at(l, i)
+            });
         }
         let h = super::impasto_ceiling::soft_ceiling(h);
         // ⚠️ **O dente do papel SOMA à altura da tinta, e entra DEPOIS do teto de vidro.** Depois,

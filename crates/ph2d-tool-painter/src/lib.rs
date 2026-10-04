@@ -48,6 +48,7 @@ pub use compositor::{
 pub use layers::{
     DEPTH_NEUTRAL, GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerModifiers,
     LayerStack, MAX_GROUP_DEPTH, MaskLayer, RasterLayer, ReliefComposite, TextureLayer,
+    fold_relief_step,
 };
 pub use params::PainterParams;
 /// **Qual rota o depósito de pigmento tomou** — o instrumento que separa *"o ramo não dispara"*

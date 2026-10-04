@@ -163,20 +163,6 @@ impl PainterTool {
                 && (!self.heights.is_empty() || !self.paint.relief.stroke_height.is_empty()))
     }
 
-    /// Whether `id` is visible *and every group above it is too*. Hiding a GROUP has to put out the
-    /// light on everything inside it — checking only the layer's own flag would leave the relief of a
-    /// hidden group's paint still catching the light, over pixels that are no longer there.
-    fn layer_effectively_visible(&self, id: crate::tool::RtLayerId) -> bool {
-        let mut cur = Some(id);
-        while let Some(c) = cur {
-            match self.layers.get(c) {
-                Some(l) if l.visible => cur = self.layers.parent_of(c),
-                _ => return false,
-            }
-        }
-        true
-    }
-
     /// The relief and the paint coverage the light must read, as BORROWED slices — never materialised.
     ///
     /// Building the composed fields into two canvas-sized buffers is the obvious thing, and it is what
@@ -196,7 +182,7 @@ impl PainterTool {
         }
         let active = self.layers.active();
         // The open stroke rides on the active layer — which may not have a committed entry yet.
-        let live_visible = active.is_some_and(|a| self.layer_effectively_visible(a));
+        let live_visible = active.is_some_and(|a| self.layers.effectively_visible(a));
         let live_h =
             (live_visible && self.paint.relief.stroke_height.len() == n && !self.paint.eraser)
                 .then_some(self.paint.relief.stroke_height.as_slice());
@@ -208,10 +194,7 @@ impl PainterTool {
         // an entry — the map is lazy, so this is empty for every document nobody has used Impasto on
         // (plus the active layer, when a live stroke is in flight on a layer that has none yet).
         let mut layers: Vec<ReliefLayer<'_>> = Vec::new();
-        for id in self.layers.z_order_bottom_up() {
-            if !self.layer_effectively_visible(id) {
-                continue;
-            }
+        for id in self.layers.relief_layers_bottom_up() {
             let is_active = active == Some(id);
             let height = self
                 .heights

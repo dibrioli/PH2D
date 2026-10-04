@@ -219,7 +219,10 @@ impl Default for LayerStack {
 }
 
 // ── Submodules (god-object split, 2026-06-04; pure move) ──
+mod relief_fold;
 mod stack;
 #[cfg(test)]
 mod tests;
+
+pub use relief_fold::fold_relief_step;
 mod texture;

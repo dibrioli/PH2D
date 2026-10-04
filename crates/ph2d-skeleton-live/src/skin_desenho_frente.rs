@@ -12,8 +12,8 @@ use ph2d_skeleton::{Correccao, Skin};
 use ph2d_vec_scene::{VecPath, VecVertex};
 use ph2d_vec_skin::pesos::{CampoDoDominio, IndiceDoCampo};
 
-/// Amostras por segmento de um contorno aberto — onde o estado muda entre duas, a fronteira é
-/// bissectada ([`BISSECCOES`]).
+/// Amostras MÍNIMAS por segmento de um contorno (mais num segmento longo, ver `Posada::passo`) —
+/// onde o estado muda entre duas, a fronteira é bissectada ([`BISSECCOES`]).
 const AMOSTRAS: usize = 32;
 /// Passos da bissecção da fronteira: `1/32 · 2⁻¹²` do segmento.
 const BISSECCOES: usize = 12;
@@ -29,6 +29,10 @@ struct Posada<'a> {
     chave_tri: Vec<f64>,
     /// O triângulo posado está do AVESSO (a dobra virou-o): o lado de baixo de um papel dobrado.
     virado: Vec<bool>,
+    /// O passo MÁXIMO da amostragem de um contorno, em unidades locais: ¼ da aresta média da malha.
+    /// Um trecho à vista mais curto que um triângulo cabia entre duas amostras de passo fixo
+    /// (`32` por segmento: `1,25` numa aresta de `40`) e sumia com o traço (A6, MEDIDO).
+    passo: f64,
     grelha: Grelha,
 }
 
@@ -150,6 +154,16 @@ impl<'a> Posada<'a> {
             })
             .collect();
         let grelha = Grelha::nova(&pos, tris);
+        #[expect(clippy::cast_precision_loss, reason = "contagem de arestas")]
+        let aresta = tris
+            .iter()
+            .map(|t| {
+                let r = t.map(|v| campo.malha.rest[v as usize]);
+                (r[1][0] - r[0][0]).hypot(r[1][1] - r[0][1])
+            })
+            .sum::<f64>()
+            / tris.len().max(1) as f64;
+        let passo = aresta / campo.regua[2].abs().max(1e-12) / 4.0;
         Some(Self {
             campo,
             indice,
@@ -159,6 +173,7 @@ impl<'a> Posada<'a> {
             pos,
             chave_tri,
             virado,
+            passo,
             grelha,
         })
     }
@@ -307,6 +322,13 @@ fn a_vista(vs: &[VecVertex], f: &Posada<'_>) -> Option<Vec<(f64, f64)>> {
     let mut algum = false;
     for k in 0..segs {
         let c = cubica(vs, k);
+        let poligono: f64 = (0..3).map(|j| (c[j + 1][0] - c[j][0]).hypot(c[j + 1][1] - c[j][1])).sum();
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "contagem de amostras, finita e positiva"
+        )]
+        let amostras = ((poligono / f.passo).ceil() as usize).clamp(AMOSTRAS, 4096);
         let mut antes = f.tapado(c[0]);
         if k == 0 {
             algum = antes;
@@ -314,13 +336,13 @@ fn a_vista(vs: &[VecVertex], f: &Posada<'_>) -> Option<Vec<(f64, f64)>> {
                 aberto = Some(0.0);
             }
         }
-        for i in 1..=AMOSTRAS {
+        for i in 1..=amostras {
             #[expect(clippy::cast_precision_loss, reason = "amostra")]
-            let t = i as f64 / AMOSTRAS as f64;
+            let t = i as f64 / amostras as f64;
             let agora = f.tapado(avalia(&c, t));
             if agora != antes {
                 #[expect(clippy::cast_precision_loss, reason = "amostra")]
-                let (mut a, mut b) = ((i - 1) as f64 / AMOSTRAS as f64, t);
+                let (mut a, mut b) = ((i - 1) as f64 / amostras as f64, t);
                 for _ in 0..BISSECCOES {
                     let m = 0.5 * (a + b);
                     if f.tapado(avalia(&c, m)) == antes {

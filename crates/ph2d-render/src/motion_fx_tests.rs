@@ -567,15 +567,16 @@ fn the_halo_carries_its_coverage_over_a_transparent_target() {
         let h = |lo: u8, hi: u8| {
             let v = u16::from_le_bytes([lo, hi]);
             let (s, e, m) = (v >> 15, (v >> 10) & 0x1f, f32::from(v & 0x3ff));
-            #[expect(clippy::cast_possible_wrap, reason = "o expoente de um meio-float")]
             let x = if e == 0 {
                 m * 2f32.powi(-24)
             } else {
-                (1.0 + m / 1024.0) * 2f32.powi(e as i32 - 15)
+                (1.0 + m / 1024.0) * 2f32.powi(i32::from(e) - 15)
             };
             if s == 1 { -x } else { x }
         };
-        b.chunks_exact(8)
+        b.as_chunks::<8>()
+            .0
+            .iter()
             .map(|p| [h(p[0], p[1]), h(p[2], p[3]), h(p[4], p[5]), h(p[6], p[7])])
             .collect()
     };

@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector` |
-| ramo | `line/Vector`, base `main` `1ad60a1ce`, HEAD `34a696511` (ou depois), nenhum commit integrado |
+| ramo | `line/Vector`, base `main` `1ad60a1ce`, HEAD `5d3375f04` (ou depois), nenhum commit integrado |
 | o dono | aprovou os smokes do A2 e do A6 (`=5` e `=6`, *«smoke ok»*); mandou corrigir **A5, A7, A8 e A9 JUNTOS, num turno só**; **não fechar** a linha |
 
 Entregue até aqui (fila `docs/Skeleton/01_a_fila.md`): §F52 (A2 — a frente tapa as riscas; chave de
@@ -117,11 +117,12 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
   `efeitos_cozidos = true`), e a pilha esvazia. Meça que não move um pixel (gate com controlo). ⚠️ Se
   isto tocar no formato do ficheiro, conte o degrau com `python3 scripts/schema-recount.py`.
 
-### A5 — ⏳ MEDIDOS (F59), à espera do dono: (a) a cúspide da imagem — cura desenhada, não construída; (b) os buracos do Zig Zag são reais — manter ou fechar os menores que a linha?
+### A5 — (b) ✅ FEITO (F59, `f1481cd7d`): os buracos que a linha cobre fecham-se · (a) ⏳ TENTADO E REVERTIDO (F59, `ac8246764` → `9e39c48a5`): a cúspide da imagem
 
-> (a) é um fio `< 2` texels de `~16 px` que a lei da F49 não vê (mede a malha, não a arte): cura =
-> deslocamento das bordas até à arte na cache da malha. (b) 2 buracos por pose com raio `< ½` largura
-> viram mancha preta. Números e a pergunta ao dono: fila §F59. Registo de antes:
+> O dono escolheu (04/10) «fechar os buracos tão pequenos que a linha os cobre» e «corrigir» a cúspide.
+> (b) feito: 100° `[0,13 0,54 0,12]→[0,54]`, 110° `[1,24 0,25 1,25 0,42]→[1,24 1,25]`, mutação 5/5. (a) a tentativa
+> melhorou a pose do relatório (104→48) mas regrediu −149,5° e −160° nos gates da F49 ⇒ revertida após 3
+> reconstruções; próximo passo = o contorno da arte por marching squares (fila F59). Registo de antes:
 
 - A **cúspide da ARTE** de uma imagem presa junto a uma tampa redonda (limite da F49): pede o fecho
   sobre o contorno da ARTE (pixels, na `attach_skin_meshes`). Ver fila §F49 «LIMITE CONHECIDO».
@@ -184,6 +185,10 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
 - `cargo fmt --check`: `ph2d-app-vec` 9 diffs, `ph2d-vec-skin` 14, `ph2d-vec-boolean` 2 (a
   `ph2d-skeleton-live` ficou formatada nesta janela, `4d91679e9`); o ship corre `cargo fmt --all -- --check`.
 
+### A12 — (novo, 04/10) Reentrâncias ABERTAS mais estreitas que a linha leem-se como manchas escuras
+
+- No Zig Zag a 100° (FOTOGRAFADO em SVG, `=5`) duas marquinhas escuras onde o contorno entra numa reentrância mais estreita que o traço; não são buracos (a lei da F59-b não as toca). Medir (largura da reentrância vs largura do traço) e perguntar ao dono se as quer fechadas como os buracos.
+
 ## 2. Lições da 2.ª onda de 04/10 (morderam)
 
 - ⛔⛔ **A COLUNA de pesos não é a profundidade do osso** — os tendões vêm por `to_bits` e o `bevy_ecs`
@@ -228,4 +233,5 @@ chama `skeleton_live::coze_os_efeitos_presos` na `fase_vector_view_and_drives` (
 traco }`, com `Deref` para a forma) e `Quadro` ganhou `traco`; o domínio do campo de pesos
 (`ph2d-vec-skin::pesos`) segue agora a regra de preenchimento da forma — o campo de binds NOVOS de formas
 com contornos sobrepostos `NonZero` muda; `smoke_bone::NIVEIS` passou a `6` (cena `=6`, `smoke_bone_copias`).
-
+- ⛔ `git revert -q` não existe (o revert falha e um `--amend` a seguir renomeia o commit ERRADO) — confira `git log` antes de emendar.
+- ⛔ `Write` num nome que já existe escreve por cima sem aviso — `ls` antes de criar um ficheiro novo (apanhou o `skin_image_tinta.rs` do 9-slice; reposto do git).

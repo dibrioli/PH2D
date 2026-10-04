@@ -19,7 +19,7 @@
 |---|---|
 | ramo · worktree | `line/sculpt3d` · `Worktrees/line-sculpt3d` |
 | merge-base | `1ad60a1ce` (= `main` a 04/10; rebase desnecessário à data) |
-| commits | **87** por integrar (`git log --oneline 1ad60a1ce..HEAD`) + o deste handoff; esta janela são os **12** de `6c62a8a70` até ele · a linha inteira `275` ficheiros `+26 596 −2 483` · esta janela `49` ficheiros `+2 988 −177` |
+| commits | **87** por integrar, o deste handoff incluído (`git log --oneline 1ad60a1ce..HEAD`); esta janela são os **12** de `6c62a8a70` até ele · a linha inteira `275` ficheiros `+26 596 −2 483` · esta janela `49` ficheiros `+2 988 −177` |
 | smoke do dono | **não feito** (o 3D foi parado): (A) a pincelada grossa sem a orla, (B) a cena `=56` — os passos no §7 para quem retomar |
 | contratos §6 | **intocados** (`Tool=12`, `PanelEvent=4`, `NodeOp`) |
 | `shells/desktop/src` | **0** linhas nesta janela |

@@ -118,3 +118,22 @@ inimigo entra na lava ou não usa o portal; na arena um morcego preso no muro.
 Fotografadas no ecrã virtual antes de ir ao dono (`target/prova/w10/nav3.png`, `nav4.png`, `vida4.png`, 59–60
 fps): na `=3` o guarda patrulha (*«Moving · 2.14 m to go»*, o mesmo da foto da W9); na `=4` o vermelho deu a
 volta à lava e *«Arrived»* ao herói; na arena os morcegos e o herói andam.
+
+### O smoke compilado (a 2.ª corrida, colada)
+
+Depois de `rm -rf target/*/incremental` (`5,4 G` do `debug` + `1,5 G` do `smoke`), a 2.ª corrida de
+`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` — zero linhas `Compiling`:
+
+```
+▸ linha line_components · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
+```
+
+O perfil do laço do agente (`bash scripts/agent-loop-profile.sh`), no fecho:
+
+```
+  ✗ cargo test : cargo check                481 : 233   alvo: <= 1,0  razao 2.1x (baseline: 4,3x)
+  ✗ edicoes pela ferramenta Edit                  37%   alvo: >= 80%  (763 por script; baseline: 48%)
+  ✗ contexto relido por passo (media)         348 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
+  ✓ contexto no inicio da sessao               63 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
+```

@@ -557,6 +557,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The selected layer is an adjustment or a mask: strokes need a paint layer -- pick \
              one in the list"
         }
+        "panel.painter_layers.adjust.tone_not_relief" => {
+            "The paint's relief stays as it is: this effect works on tones. Blur and Sharpen \
+             soften and crisp the relief too"
+        }
         "panel.painter_layers.piece.off_here" => {
             "Layers of the 3D piece. Blur, Sharpen, Bloom and Shadows/Highlights follow the \
              surface (up to 64x Paint Detail), the radius in % of the piece's size. Not here: \

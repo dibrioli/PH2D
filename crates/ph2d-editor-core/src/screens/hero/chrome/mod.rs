@@ -75,7 +75,6 @@ mod rail_painter_tools;
 mod rail_panels;
 mod rail_size;
 mod rail_tools;
-mod rail_vector_tools;
 mod scene_picker;
 mod settings_angle;
 mod settings_filter;
@@ -121,12 +120,6 @@ pub use onion_modal::paint_onion_modal;
 /// Re-exported so the hero paint pass renders it over the whole app, above the floating dialogs.
 pub use command_palette::paint_command_palette;
 
-/// ⭐ Os botões de criar forma vetorial no trilho (spec/06 F3 ▸ Vector): o trilho pinta a tabela, e
-/// a família do vetor acende o da ferramenta na mão. ⚠️ Fora dos marcadores do `ph2d-chrome-sync`:
-/// o bloco entre eles é gerado.
-pub(crate) use rail_vector_tools::TOOLS as RAIL_VECTOR_TOOLS;
-pub use rail_vector_tools::sync as rail_vector_sync;
-
 /// ⭐⭐⭐ **O PONTEIRO DE UM MODAL DE ECRÃ INTEIRO, hoistado para ANTES dos painéis.**
 ///
 /// ⛔ Ele **também** está na lista gerada do [`dispatch_all`], e ali é inerte: o `apply_event`
@@ -162,7 +155,6 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || object_mode_menu::apply(hero, event)
         || rail_tools::apply(hero, event)
         || rail_painter_tools::apply(hero, event)
-        || rail_vector_tools::apply(hero, event)
         || rail_panels::apply(hero, event)
         || physics_toggle::apply(hero, event)
         || skeleton_toggle::apply(hero, event)

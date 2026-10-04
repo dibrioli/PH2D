@@ -6,7 +6,8 @@
 //!   ([`ph2d_vec_scene::VecViewState::editing`], a porta única do clique). O painel só mostra as do
 //!   modo em curso.
 //! - **Object** = tudo o resto: as ferramentas que CRIAM (cada forma nova é um objecto) e as que
-//!   trabalham sobre várias. Elas chegam pelo trilho da esquerda ([`crate::rail`]).
+//!   trabalham sobre várias. Caneta, Lápis e Texto chegam pelo menu Add
+//!   ([`crate::object_add::TOOLS`]), e o painel do vetor dá as restantes.
 //! - ⭐ **Multi-objecto** ([`ModeFamily::joins`]): `Tab` com várias formas seleccionadas leva todas
 //!   ao Edit — editar nós de várias formas (plano 25 §6, o laço, o soldar) já era do módulo.
 //! - ⭐ **O ALVO** ([`EditTarget`]) mora no [`crate::state::VecState`], fora da `VecScene`: a cena
@@ -38,6 +39,9 @@ pub struct EditTarget {
     following: bool,
     /// A última ferramenta do Edit (o `Tab` volta a ela).
     last_tool: Option<DrawMode>,
+    /// A ferramenta de criar que o menu Add pediu ([`crate::object_add::arm`]) — entra na mão
+    /// quando a ferramenta `vector` lá chegar.
+    pub armed: Option<DrawMode>,
 }
 
 /// ⭐ **A família**, construída em cada quadro com o estado do vetor que ela empresta.
@@ -144,6 +148,11 @@ impl ModeFamily for Family<'_> {
     }
 
     fn follow(&mut self, current: Option<ActiveMode>, tools: &mut ToolRegistry) {
+        if let Some(tool) = tool_mut(tools)
+            && let Some(m) = self.vec.edit.armed.take()
+        {
+            tool.set_mode(m);
+        }
         let ours = current
             .filter(|a| a.mode == ObjectMode::Edit)
             .and_then(|a| self.path_of(a.entity));

@@ -184,7 +184,7 @@ sozinho (§6.5).
 | qualquer | **Object** (mover · rodar · escalar) | gizmo de transformação |
 | Sculpt (malha) | Object · **Sculpt** · **Paint** (Edit quando existir) | `ph2d-app-sculpt3d` + Painter na peça |
 | Model (SDF) | Object · **Edit** | `ph2d-app-field3d` |
-| Vector | Object · **Edit** (nós e alças) ✅ | `ph2d-app-vec` (o `DrawMode` partido em modo + ferramentas; criar é do Object, no trilho) |
+| Vector | Object · **Edit** (nós e alças) ✅ | `ph2d-app-vec` (o `DrawMode` partido em modo + ferramentas; criar é do Object, pelo menu Add) |
 | Flip | Object · **Draw** · **Edit** | `ph2d-app-flip` |
 | Image | Object · **Paint** · **Mask** (⏳ §6.1) | `ph2d-app-painter` |
 | Câmara, corpo de física, áudio, HUD… | **só Object** | Inspector |
@@ -330,8 +330,8 @@ sozinho (§6.5).
       ferramentas do Edit agarram pela mesma porta, `VecViewState::is_pickable`.
     - **A partição D3** (`DrawMode::object_mode`): criar uma forma é criar um OBJECTO, então a
       caneta, o lápis, as formas, o texto, a moldura e o balde são do Object, com as que trabalham
-      sobre várias (Build, Connect, Cut, Blend, Bone). É a divisão do Blender (as ferramentas *Add*
-      da barra do modo Object) e não a do Figma (a caneta dentro do Edit acrescenta à rede da forma
+      sobre várias (Build, Connect, Cut, Blend, Bone). É a divisão do Blender (criar é o *Add* do
+      modo Object) e não a do Figma (a caneta dentro do Edit acrescenta à rede da forma
       — aqui cada traço é uma linha da Hierarquia).
     - **Desvio da fundação — o multi-objecto:** editar nós de VÁRIAS formas (plano 25 §6, o laço,
       o soldar) já era do módulo, e um Edit de uma forma só tirava-o. ⇒ `ModeFamily::joins` /
@@ -342,8 +342,11 @@ sozinho (§6.5).
       modo se agarram e mostram nós. A foto apanhou a 2.ª metade (âncoras desenhadas fora do modo).
     - **Escolhas do dono (03/10):** o pill VECTOR **saiu** (e *Window ▸ Vector*); a forma nova do
       Add **nasce em Object** (vê-se em Object, ao contrário do Flip e do Model); e as ferramentas
-      de criar vão para o **trilho da esquerda** em Object (Caneta · Lápis · Formas · Texto), com o
-      painel do vetor a dar as restantes. A aba Vector de cima continua a pôr a ferramenta na mão em
+      de criar vão para o **menu Add** (Caneta · Lápis · Texto, ao lado das formas), com o painel do
+      vetor a dar as restantes. ⛔ A 1.ª escolha foi a fila de cima (4 chips): medida, ela passa de
+      ~490 a ~650 px e não cabe no iPad 11 (582) nem no mini (521) — o menu da vista do 3D caía no
+      `⋯` (gate `the_area_hands_its_commands_to_the_bar_and_the_app_menu`). Perguntado de novo com o
+      número, o dono escolheu o Add (04/10). A aba Vector de cima continua a pôr a ferramenta na mão em
       Object — com `Mode(Edit)` seria idêntica à do Model (gate
       `no_two_layouts_hand_the_canvas_to_the_same_owner`).
     - O painel do vetor só mostra as ferramentas do modo em curso. Smoke `PH2D_OBJECT_MODE_SMOKE=6`.

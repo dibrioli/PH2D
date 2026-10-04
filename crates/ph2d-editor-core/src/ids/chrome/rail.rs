@@ -8,23 +8,6 @@ pub const TOOL_TRANSLATE: NodeId = hash_node_id("tool_translate");
 pub const TOOL_ROTATE: NodeId = hash_node_id("tool_rotate");
 pub const TOOL_SCALE: NodeId = hash_node_id("tool_scale");
 pub const TOOL_PIVOT: NodeId = hash_node_id("tool_pivot");
-/// ⭐ **As ferramentas de CRIAR forma vetorial** na face Object do trilho (spec/06 F3 ▸ Vector: o
-/// pill VECTOR saiu). Quem as despacha é o `chrome::rail_vector_tools`; quem as lê é o
-/// `ph2d_app_vec::rail`.
-pub const VECTOR_RAIL_PEN: NodeId = hash_node_id("vector_rail.pen");
-/// Ver [`VECTOR_RAIL_PEN`].
-pub const VECTOR_RAIL_PENCIL: NodeId = hash_node_id("vector_rail.pencil");
-/// Ver [`VECTOR_RAIL_PEN`].
-pub const VECTOR_RAIL_SHAPE: NodeId = hash_node_id("vector_rail.shape");
-/// Ver [`VECTOR_RAIL_PEN`].
-pub const VECTOR_RAIL_TEXT: NodeId = hash_node_id("vector_rail.text");
-/// Os quatro, na ordem do trilho — o grupo de rádio.
-pub const VECTOR_RAIL_TOOL_IDS: [NodeId; 4] = [
-    VECTOR_RAIL_PEN,
-    VECTOR_RAIL_PENCIL,
-    VECTOR_RAIL_SHAPE,
-    VECTOR_RAIL_TEXT,
-];
 pub const TOOL_SPACE: NodeId = hash_node_id("tool_space");
 pub const TOOL_PROJECTION: NodeId = hash_node_id("tool_projection");
 pub const TOOL_HOME: NodeId = hash_node_id("tool_home");

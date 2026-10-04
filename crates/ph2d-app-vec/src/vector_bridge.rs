@@ -189,8 +189,6 @@ pub fn dispatch(
     // onde ele já existe.
     texpat_tiles: &ph2d_vec_render::PatternTiles,
 ) -> VectorDrawConfig {
-    // ⭐ Os botões de criar do trilho: o clique pendente vira o modo, e o aceso segue a mão.
-    crate::rail::drive(hero, tools);
     let vector_active = tools
         .active()
         .is_some_and(|t| t.id() == ToolId::new("vector"));

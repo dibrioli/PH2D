@@ -99,3 +99,18 @@ fn the_composed_families_declare_every_creation_mode() {
         );
     }
 }
+
+/// ⭐⭐ GATE (spec/06 F3 ▸ Vector) — **as formas do Edit chegam à vista do quadro**: é a vista que
+/// as ferramentas lêem (`is_pickable`) e que desenha os nós (`in_edit`). Sem esta linha o Edit do
+/// vetor abre, o seletor diz Edit — e toda forma continua a agarrar-se e a mostrar nós.
+///
+/// *Mutação que sangra:* apagar a linha da fase.
+#[test]
+fn the_vector_edit_reaches_the_frame_view() {
+    let src = std::fs::read_to_string("src/render_loop/fase_vector_view_and_drives.rs")
+        .expect("a fase da vista vetorial existe");
+    assert!(
+        src.contains("vec_view.editing.clone_from(&self.vec.edit.paths)"),
+        "a vista do quadro não recebe as formas do Edit"
+    );
+}

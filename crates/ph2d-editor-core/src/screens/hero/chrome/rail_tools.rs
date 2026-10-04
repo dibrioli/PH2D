@@ -43,10 +43,6 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         ids::TOOL_PIVOT,
     ];
     if TRANSFORM_TOOLS.contains(&id) {
-        // Mover/rodar/escalar com a caneta do trilho na mão LARGA-A: o botão diz o que faz.
-        if super::rail_vector_tools::any_pressed(&hero.store) {
-            hero.bus.push(EditorAction::CancelActiveTool);
-        }
         for tool_id in TRANSFORM_TOOLS {
             if let Some(InteractiveState::Button { state }) = hero.store.get_mut(tool_id) {
                 *state = if tool_id == id {

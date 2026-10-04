@@ -131,7 +131,6 @@ pub mod paint_dilate;
 pub mod pattern_live;
 pub mod pencil_input;
 pub mod profile_live;
-pub mod rail;
 pub mod resize_box_edit;
 pub mod selection_sync;
 pub mod shape_build;

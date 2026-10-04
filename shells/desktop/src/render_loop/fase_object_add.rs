@@ -29,12 +29,13 @@ pub(crate) const FAMILIES: &[&[AddEntry]] = &[
 ];
 
 /// O que o pick deu: um objecto já na cena, uma peça de escultura à espera da sincronia, ou nada
-/// (a imagem abre o diálogo de tamanho, que cria no quadro dele).
+/// (a imagem abre o diálogo de tamanho, que cria no quadro dele; a caneta vai à mão).
 enum Born {
     Entity(u64),
     #[cfg(feature = "sculpt3d")]
     Piece(u32),
     Dialog,
+    Tool,
 }
 
 impl crate::App {
@@ -106,6 +107,11 @@ impl crate::App {
             view_px,
         ) {
             r.map(Born::Entity).map_err(String::from)
+        } else if ph2d_app_vec::object_add::arm(entry, &mut self.vec) {
+            let tool_id = "vector";
+            hero.bus
+                .push(ph2d_editor_core::action_bus::EditorAction::ActivateTool { tool_id });
+            Ok(Born::Tool)
         } else if let Some(r) =
             ph2d_app_flip::object_add::add(entry, sim, flip, &mut self.flip_state)
         {
@@ -141,7 +147,7 @@ impl crate::App {
                     .as_mut()
                     .and_then(|g| ph2d_app_sculpt3d::object_add::entity_of_piece(&mut g.sim, piece))
             }
-            Ok(Born::Dialog) => None,
+            Ok(Born::Dialog | Born::Tool) => None,
             Err(e) => {
                 if let Some(g) = self.gfx.as_mut() {
                     g.toasts.push(Toast::error(ph2d_i18n::tr_with(

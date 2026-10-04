@@ -296,3 +296,7 @@ pub fn setup() -> (SimWorld, VecScene, VecEntityMap) {
 pub fn bits(map: &VecEntityMap, id: VecPathId) -> Entity {
     Entity::from_bits(map[&id])
 }
+
+#[cfg(test)]
+#[path = "entities_pick_tests.rs"]
+mod pick_tests;

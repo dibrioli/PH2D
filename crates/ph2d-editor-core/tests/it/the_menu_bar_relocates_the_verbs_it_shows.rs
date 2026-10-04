@@ -680,7 +680,8 @@ fn clicking_a_toggle_row_moves_its_mark() {
 fn the_tool_toggles_can_cancel_and_not_only_activate() {
     use ph2d_editor_core::action_bus::EditorAction;
     // ⚠️ O `vector_toggle` saiu com o pill VECTOR (spec/06 F3): o Motion é o activador que fica.
-    for (id, tool) in [(ids::TOPBAR_MOTION, "motion")] {
+    {
+        let (id, tool) = (ids::TOPBAR_MOTION, "motion");
         // (a) desligada ⇒ o clique ACTIVA.
         let mut h = hero();
         h.image_edit.active_tool_id = None;

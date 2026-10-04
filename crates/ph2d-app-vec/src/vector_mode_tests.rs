@@ -190,3 +190,17 @@ fn an_edit_tool_arriving_without_the_mode_asks_for_it() {
         .set_mode(DrawMode::Pen);
     assert_eq!(fam.wants(&mut tools), None, "a caneta pediu o Edit");
 }
+
+/// ⭐⭐ GATE — **a ferramenta que o menu Add pediu entra quando a ferramenta chega à mão**: antes
+/// disso o pedido ESPERA (o `ActivateTool` só se aplica depois do dreno), e depois é gasto uma vez.
+#[test]
+fn the_add_menu_tool_enters_when_the_vector_tool_is_in_hand() {
+    let (mut vec, mut tools, _, _) = duas_formas();
+    assert!(crate::object_add::arm(crate::object_add::PENCIL, &mut vec));
+    Family::new(&mut vec).follow(None, &mut tools);
+    assert_eq!(vec.edit.armed, Some(DrawMode::Pencil), "o pedido perdeu-se antes da mão");
+    assert!(tools.set_active(&ToolId::new(VECTOR)));
+    Family::new(&mut vec).follow(None, &mut tools);
+    assert_eq!(tool_in_hand(&mut tools), Some(DrawMode::Pencil));
+    assert_eq!(vec.edit.armed, None, "o pedido ficou para o próximo quadro");
+}

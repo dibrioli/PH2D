@@ -18,8 +18,43 @@ pub const ELLIPSE: AddEntry = AddEntry::new("object_add.vector.ellipse", AddGrou
 pub const POLYGON: AddEntry = AddEntry::new("object_add.vector.polygon", AddGroup::TwoD);
 /// Estrela.
 pub const STAR: AddEntry = AddEntry::new("object_add.vector.star", AddGroup::TwoD);
+/// ⭐ **Desenhar com a caneta** (spec/06 F3 ▸ Vector; escolha do dono, 03/10: as ferramentas de
+/// criar vão para o menu Add, e não para a fila de cima, que não cabe no iPad 11 nem no mini).
+/// Não nasce objecto: a ferramenta fica na mão, e cada traço é um objecto novo.
+pub const PEN: AddEntry = AddEntry::new("object_add.vector.pen", AddGroup::TwoD);
+/// Desenhar à mão livre — ver [`PEN`].
+pub const PENCIL: AddEntry = AddEntry::new("object_add.vector.pencil", AddGroup::TwoD);
+/// Escrever texto — ver [`PEN`].
+pub const TEXT: AddEntry = AddEntry::new("object_add.vector.text", AddGroup::TwoD);
+/// As formas, que nascem como objecto.
+pub const SHAPES: &[AddEntry] = &[RECTANGLE, ELLIPSE, POLYGON, STAR];
+/// As ferramentas de criar, que vão para a mão ([`arm`]).
+pub const TOOLS: &[AddEntry] = &[PEN, PENCIL, TEXT];
 /// O que esta família põe no menu.
-pub const ENTRIES: &[AddEntry] = &[RECTANGLE, ELLIPSE, POLYGON, STAR];
+pub const ENTRIES: &[AddEntry] = &[RECTANGLE, ELLIPSE, POLYGON, STAR, PEN, PENCIL, TEXT];
+
+/// A ferramenta de uma entrada de [`TOOLS`].
+#[must_use]
+pub fn tool_of(entry: AddEntry) -> Option<ph2d_tool_vector::DrawMode> {
+    use ph2d_tool_vector::DrawMode;
+    Some(match entry {
+        e if e == PEN => DrawMode::Pen,
+        e if e == PENCIL => DrawMode::Pencil,
+        e if e == TEXT => DrawMode::Text,
+        _ => return None,
+    })
+}
+
+/// ⭐ **Arma a ferramenta** de uma entrada de [`TOOLS`]: `true` = é nossa, e quem a chamou pede a
+/// ferramenta `vector` (`ActivateTool`). O modo entra quando ela chegar à mão
+/// ([`crate::vector_mode`]): o `ActivateTool` só se aplica depois do dreno do barramento.
+pub fn arm(entry: AddEntry, vec: &mut crate::state::VecState) -> bool {
+    let Some(mode) = tool_of(entry) else {
+        return false;
+    };
+    vec.edit.armed = Some(mode);
+    true
+}
 
 /// A fracção da altura visível que o lado de uma forma nova ocupa — a mesma regra do Model
 /// (`ph2d_app_field3d::scene::new_shape_size`): uma forma nova tem de ser VISTA, e um tamanho fixo

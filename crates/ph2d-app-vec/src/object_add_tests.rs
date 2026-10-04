@@ -7,7 +7,7 @@ use super::*;
 /// vence o arrasto mínimo e não nasce ⇒ RED.)
 #[test]
 fn every_menu_shape_is_born_a_live_vector_object() {
-    for entry in ENTRIES {
+    for entry in SHAPES {
         let mut sim = SimWorld::new();
         let mut scene = VecScene::default();
         let mut vec = crate::state::VecState::default();
@@ -69,4 +69,28 @@ fn an_entry_of_another_family_is_not_ours() {
     let empty = ph2d_editor_core::object_add::EMPTY;
     assert!(add(empty, &mut sim, &mut scene, &mut vec, [0.0; 2], 1.0, 800.0).is_none());
     assert!(scene.paths().is_empty());
+}
+
+/// ⭐⭐ GATE (spec/06 F3 ▸ Vector) — **as ferramentas de criar não criam nada**: armam a ferramenta e
+/// não são formas; e o menu tem as duas listas, sem sobra.
+#[test]
+fn a_create_tool_entry_arms_the_tool_and_is_not_a_shape() {
+    for entry in TOOLS {
+        let mut vec = crate::state::VecState::default();
+        let mut sim = SimWorld::new();
+        let mut scene = VecScene::default();
+        assert!(
+            add(*entry, &mut sim, &mut scene, &mut vec, [0.0; 2], 1.0, 800.0).is_none(),
+            "{} criou uma forma",
+            entry.key.key()
+        );
+        assert!(arm(*entry, &mut vec), "{}", entry.key.key());
+        assert_eq!(vec.edit.armed, tool_of(*entry));
+        assert!(scene.paths().is_empty());
+    }
+    for entry in SHAPES {
+        assert!(!arm(*entry, &mut crate::state::VecState::default()));
+    }
+    assert_eq!(ENTRIES.len(), SHAPES.len() + TOOLS.len());
+    assert!(SHAPES.iter().chain(TOOLS).all(|e| ENTRIES.contains(e)));
 }

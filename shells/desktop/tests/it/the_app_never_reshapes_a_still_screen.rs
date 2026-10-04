@@ -42,6 +42,20 @@ fn a_still_frame_with_every_panel_open_shapes_no_text() {
     //    esta fixtura existe para passar. O chrome legado é conteúdo REAL do app (a barra do topo e
     //    o trilho), não enchimento.
     h.view.legacy_chrome = true;
+    // ⚠️ **E o menu Add aberto, pela mesma razão** (2026-10-04): a F3 do Vector tirou o pill VECTOR
+    //    e a fileira do painel passou a mostrar só as ferramentas do modo — `1 014` textos. A paleta
+    //    do `+` é conteúdo real do app, e é a que o artista abre para criar.
+    h.store
+        .open_command_palette(ph2d_editor_core::object_add::build(
+            &[
+                ph2d_editor_core::object_add::CORE,
+                ph2d_app_vec::object_add::ENTRIES,
+                ph2d_app_flip::object_add::ENTRIES,
+                ph2d_app_field3d::object_add::ENTRIES,
+                ph2d_app_components::object_add::ENTRIES,
+            ],
+            &|_| None,
+        ));
     ph2d_editor_core::panel::with_registry_ref(|reg| {
         for p in reg.panels() {
             h.panel_visibility.insert(p.manifest.id, true);

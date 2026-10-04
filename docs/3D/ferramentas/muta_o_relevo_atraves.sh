@@ -135,19 +135,13 @@ muta "$SCU/slots.rs" \
   'T9 o sync_mesh não dobra o relevo por dobrar'
 
 muta "$SCU/tinta_da_peca_pilha.rs" \
-  '    *relevo_sujo |= pilha.relevo_atraves();' \
-  '' \
-  'T10 o traço por baixo de um desfoque não sobe o relevo'
-
-muta "$SCU/tinta_da_peca_pilha.rs" \
   '        pilha.relevo_em_dia(peca);' \
   '' \
   'T11 o em_dia não dobra o relevo por dobrar'
 
-muta "$SCU/tinta_da_peca_pilha.rs" \
-  '            if (p.atrasada() || p.relevo_por_dobrar())' \
-  '            if p.atrasada()' \
-  'T12 o para_ler lê o relevo velho'
+# ⚠️ Retiradas em 04/10 depois da 1.ª corrida (SOBREVIVERAM, e com razão): o `relevo_sujo` no
+#    `recompoe_sujas` (o `sync_mesh` põe-no ao dobrar) e o `relevo_por_dobrar` no `para_ler` (um
+#    relevo por dobrar vem sempre com a pilha atrasada — o gate afirma-o). As duas linhas saíram.
 
 # ── A PLACA (ph2d-render) ────────────────────────────────────────────────
 muta "$REN/layer_compositor/surface.rs" \

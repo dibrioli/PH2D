@@ -821,3 +821,80 @@ H1/H4 re-ancoradas (o corpo mudou de casa).
 
 **Supersede:** doc 29 §6.2 (*«o bump do shader é escalado pelo corpo»*) e §8.2 (*«`corpo = 0` devolve a
 base»* — agora *sem declive*); §18.1 (*«a orla é a parede alta demais»*).
+
+## 20. Os efeitos de vizinhança borram TAMBÉM o relevo (04/10, a decisão do §17)
+
+**O desenho — UMA porta para o 2D e a peça** (`ph2d-tool-painter/src/layers/relief_through.rs`):
+
+| pergunta | resposta |
+|---|---|
+| *quem entra* | `LayerStack::relief_plan`: as camadas de pintura pela ordem da dobra (a profundidade e o modo de cada uma), os ajustes que AGEM no relevo e os âmbitos dos GRUPOS, pela visibilidade do compositor da cor (uma camada ou um grupo escondido não entra; um ajuste entra visível, com opacidade e com efeito) |
+| *o que é «o relevo por baixo de um ajuste»* | a dobra até ao `z` dele, no âmbito dele: na raiz, a altura inteira; dentro de um grupo, o que o GRUPO fez ao relevo desde que abriu — como o compositor faz à cor do grupo (um grupo compõe-se num acumulador próprio) |
+| *como* | `fold_relief_through`: a dobra de sempre (`fold_relief_step`) amostra a amostra, e em cada ajuste o passa-baixo da vizinhança (`Neighbourhood::blur2`: a grelha no 2D, a retícula na peça) sobre a ALTURA e o CORPO, pesado pela opacidade e pela máscara do ajuste (`t = opacidade · máscara`, a mistura linear do compositor) |
+| *o corpo* | borra-se com a altura: é a presença da tinta, e o Gaussiano espalha a tinta (o alfa da cor) — sem ele a luz cortava o relevo borrado na borda da tinta (o corpo `0` não acende) |
+| *Gaussiano · Nitidez* | o passa-baixo e a máscara de nitidez (`base + q·(base − passa-baixo)`) sobre a altura; o corpo preso a `0..1`. Lineares e sem unidade: uma altura borrada é uma altura |
+| *Brilho · Sombras/Realces* | **não agem** (`relief_effect = Tone`): são operações de TOM — o limiar e as quantidades estão em luminância `0..1`, que uma altura (píxeis no 2D, unidades da peça) não tem; agir pediria uma constante inventada altura→tom. O painel di-lo por baixo dos parâmetros deles (`panel.painter_layers.adjust.tone_not_relief`) |
+| *o modo de mistura do ajuste* | não entra: é uma lei de cor; o relevo leva a opacidade e a máscara |
+| *sem ajuste que aja* | as duas pontas dobram POR AMOSTRA como antes — ao bit (gate) |
+
+- **2D:** o `ReliefFields` materializa a dobra quando o plano tem um ajuste (`folded`); a luz da CPU e o
+  preview de placa leem-na pelo `height_at`/`cover_at` (o preview recebe o relevo já dobrado na CPU).
+- **Peça:** a assinatura da dobra É o plano (com só as camadas que têm relevo); um ajuste que age deixa o
+  relevo **POR DOBRAR** (`Dobrado`, sem pagar a CPU no gesto) e o `sync_mesh` dobra-o com o calor NA
+  PLACA (`CompostosDaCena::dobra_o_relevo` → `LayerCompositor::surface_heat_field`: o MESMO passo e
+  polinómio da cor, sobre um campo por amostra, ida e volta). Os leitores da CPU (`em_dia`, `para_ler`:
+  gravar, exportar, doar) dobram na CPU (`VizinhancaDaPeca`, a referência). Um traço por baixo de um
+  desfoque deixa o relevo inteiro por dobrar (cada amostra lê as vizinhas) e sobe-o inteiro.
+
+**Medido** (sonda `relevo_atraves::diag_o_preco_de_arrastar_o_raio_com_relevo`, perfil `smoke`, a camada
+de cima com relevo em TODAS as amostras — o pior caso; 10 passos; carga `2–5`):
+
+| degrau | amostras | CPU (o calor na CPU): 40 % · 100 % do curso | PLACA: 40 % · 100 % do curso |
+|---|---|---|---|
+| `8x` | 47 k | `8,0` · `20,7 ms` | `1,9` · `3,1 ms` |
+| `16x` | 188 k | `23,5` · `51,5 ms` | `6,8` · `9,4 ms` |
+| `32x` | 754 k | **`103`** · **`256 ms`** | **`32,9`** · **`62,0 ms`** |
+| `64x` | 3,0 M | `1 357` · `3 978 ms` | `369` · `870 ms` |
+
+⇒ **a CPU passa do critério da W6 (`100 ms` a `32x`) já a 40 % do curso; a placa cabe com folga** (`1,6×`
+no fim do curso). A `64x` é a família do limite já nomeado da cor (§14, `340 ms` a meio do curso). O
+arrasto da profundidade sem ajuste que aja não mudou (a dobra por amostra de sempre); com um, paga o
+mesmo que o do raio. Paridade placa↔CPU: pior desvio relativo `1,0e-5`.
+
+**Premissas do briefing que o código derrubou:**
+
+1. *«o relevo por baixo de um ajuste = a dobra até ao z do ajuste»* → dentro de um GRUPO não: o que o
+   grupo fez desde que abriu (o compositor da cor compõe o grupo num acumulador próprio).
+2. *«decida se o relevo borrado se calcula na placa e como as inclinações o seguem»* → só o PASSA-BAIXO
+   vai à placa (a dobra é barata na CPU) e volta; as inclinações seguem pela porta de sempre
+   (`Inclinacoes::refaz`, `upload_tinta_relevo_at`), sem compute novo.
+3. *«a assinatura passa a incluir os ajustes»* → a assinatura PASSOU A SER o plano (`ReliefStep`, a
+   igualdade ao bit: `-0` não é `0`).
+
+**⛔ Recusas MEDIDAS**
+
+| recusado | medida | porquê |
+|---|---|---|
+| o calor do relevo na CPU como caminho vivo | `103`/`256 ms` a `32x` | passa do critério |
+| o Brilho e as Sombras/Realces sobre a altura | — (lei de tom) | pediriam uma constante altura→luminância que nenhum recurso nomeia |
+| borrar só a altura (o corpo intacto) | gate `T5` | a luz cortava o relevo borrado na borda da tinta |
+
+**Fica (nomeado):** `64x` aos solavancos (`369`/`870 ms`) e `128x`/`256x` (recusados pelos efeitos de
+vizinhança, §14); o Motion Blur do 2D (que também arrasta tinta) não age no relevo — a decisão do dono
+listou os quatro de vizinhança; um traço por baixo de um desfoque paga a dobra inteira por quadro
+(`~33 ms` a `32x`).
+
+**Gates:** porta `relief_through_tests` (7: sem ajuste = por amostra ao bit · só o de baixo · opacidade e
+máscara, invertida também · o âmbito do grupo, CONTROLO fora dele · a nitidez · quem age · o plano ao
+bit) · 2D `impasto_body::blur` (2: o relevo E o corpo que a luz lê são os borrados, escondido volta ao bit,
+a luz muda; o Brilho ao bit) · peça sem placa `o_relevo_por_dobrar_chega_aos_leitores_da_cpu`, a cena
+`scenes_relevo_borrado_tests` · com placa `relevo_atraves` (o DoD: **o arrasto REAL do raio pelo painel
+muda o relevo LIDO DA PLACA**, paridade com a CPU, as inclinações, o `Ctrl+Z` ao bit · um traço por baixo do
+desfoque · o Brilho não mexe) · painel `nota_do_relevo_tests`. Cena **`=56`** (fotografada: a raio
+`0`/`50 %`/`100 %` as riscas e a borda da faixa amaciam juntas). Mutação:
+`docs/3D/ferramentas/muta_o_relevo_atraves.sh` **12/12** + o controlo inerte C1. Na 1.ª corrida
+duas SOBREVIVERAM e eram linhas redundantes, que saíram: o `relevo_sujo` no `recompoe_sujas` (o
+`sync_mesh` põe-no ao dobrar) e o `relevo_por_dobrar` no `para_ler` (um relevo por dobrar vem sempre
+com a pilha atrasada — o gate dos leitores afirma o invariante).
+
+**Supersede:** §15 premissa 7 e §17 (*«os efeitos de vizinhança não mexem no relevo»*).

@@ -159,6 +159,10 @@ fn o_relevo_por_dobrar_chega_aos_leitores_da_cpu() {
     recompoe(&mut obj);
     let p = obj.pilha.as_ref().expect("pilha");
     assert!(p.relevo_por_dobrar(), "o raio deixou o relevo por dobrar");
+    assert!(
+        p.atrasada(),
+        "o relevo por dobrar vem com a pilha atrasada (é ela que leva o para_ler a dobrar)"
+    );
     assert_eq!(
         bits(obj.tinta.as_ref().and_then(|t| t.relevo())),
         nitido,

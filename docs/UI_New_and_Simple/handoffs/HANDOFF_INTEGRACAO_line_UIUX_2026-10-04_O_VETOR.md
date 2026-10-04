@@ -194,6 +194,15 @@ Hierarchy, nós laranja SÓ na elipse (a 1.ª foto mostrou as âncoras do rectâ
 - (e) A **F3 está COMPLETA** (Image, Sculpt, Flip, Model, Vector); a próxima é a F4 (layouts) ou o que o
   dono mandar.
 
+## §7b — Depois do fecho (04/10)
+
+- **Smoke do dono: RECUSADO.** O vetor passa a ser um OBJECTO-contentor (uma entrada no Add, nasce em
+  Edit com o painel inteiro, as formas são filhas, as booleanas dentro dele; as soltas ganham cada uma
+  o seu objecto). Partes deste ficheiro deixam de valer (o Add com Pen/Pencil/Text, a fileira do
+  painel por modo, a partição `EDIT_TOOLS`) — ver
+  [`HANDOFF_CONTINUACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md`](HANDOFF_CONTINUACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md) §4.
+  ⛔ Não integre esta linha sem o handoff da onda seguinte.
+
 ## §8 — Perfil do loop (`bash scripts/agent-loop-profile.sh`)
 
 ```

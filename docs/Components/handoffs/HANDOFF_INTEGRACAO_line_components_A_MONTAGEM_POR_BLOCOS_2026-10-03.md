@@ -112,12 +112,17 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_NAV
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_VIDA_SMOKE=4 cargo run -p ph2d-host-desktop --profile smoke
 ```
 
-Errado = o guarda da `=3` não passa a porta quando ela abre, ou fica parado depois de ela fechar; na `=4` um
+Errado = na `=3` o guarda PASSA a porta depois de ela fechar (ela fecha-se na cara dele quando o herói foge
+para a zona verde — é aí que ele desiste e volta à ronda), ou não volta à ronda; na `=4` um
 inimigo entra na lava ou não usa o portal; na arena um morcego preso no muro.
 
 Fotografadas no ecrã virtual antes de ir ao dono (`target/prova/w10/nav3.png`, `nav4.png`, `vida4.png`, 59–60
 fps): na `=3` o guarda patrulha (*«Moving · 2.14 m to go»*, o mesmo da foto da W9); na `=4` o vermelho deu a
 volta à lava e *«Arrived»* ao herói; na arena os morcegos e o herói andam.
+
+✅ **Smoke do dono (04/10): APROVADO** — *«a porta não deixa ele passar mas parece tudo OK»*. ⚠️ O critério
+da `=3` que lhe mandei (e o do handoff da W9) dizia o CONTRÁRIO da cena — «passa a porta quando ela abre»; a
+cena é o guarda barrado pela porta que fecha. Corrigido acima.
 
 ### O smoke compilado (a 2.ª corrida, colada)
 

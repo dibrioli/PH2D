@@ -66,7 +66,6 @@ impl PainterTool {
             && self.paint.brush.stroke_method.is_incremental()
             && matches!(self.paint.paint_mode, super::PaintMode::Paint)
             && !self.paint.eraser
-            && !self.paint.brush.watercolor
             && !self.paint.wetpaint.armed
     }
 
@@ -112,6 +111,13 @@ impl PainterTool {
             return;
         }
         let ink = self.thread_ink();
+        // **Na aquarela o fio é COBERTURA** e entra nos acumuladores da aguada, como um carimbo
+        // ([`super::watercolor_fios`]); fora de uma aguada aberta não há onde a depositar — a mesma
+        // guarda do carimbo (`stamp_dabs_dispatch`).
+        let na_aguada = self.watercolor_render_active();
+        if na_aguada && self.paint.watercolor_base.is_none() {
+            return;
+        }
         // **Tiling** (W7): um fio que cruza a costura também desenha do outro lado, como um dab.
         // ⚠️ A **Symmetry** não entra aqui e não é omissão: ela mora no MOTOR
         // (`push_symmetric_segment`, ao lado da que espelha o dab que gerou o fio), e replicá-la
@@ -136,6 +142,10 @@ impl PainterTool {
             w: bw as u32,
             h: bh as u32,
         };
+        if na_aguada {
+            self.fios_na_aguada(threads, ink, rect);
+            return;
+        }
         let mask_gate = self.mask_protection_active();
         let sel_gate = self.selection_restricts_paint();
         if mask_gate || sel_gate {

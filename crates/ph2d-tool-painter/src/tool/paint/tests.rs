@@ -41,9 +41,13 @@ mod spray_probe; // W5 do plano 38: o custo por evento de `n` marcas — o teto 
 #[path = "thread_deposit_tests.rs"]
 mod thread_deposit_tests;
 #[path = "thread_probe.rs"]
-mod thread_probe;
+mod thread_probe; // W3/W4 do plano 38: o custo por evento que os tetos do Sketchy e do Wire EXIGEM
+/// Os fios (Sketchy · Wire · degraus do Ribbon) na aguada (doc 46 §2-7).
+#[path = "watercolor_fios_tests.rs"]
+mod watercolor_fios_tests;
+/// A Shape Color Ramp na aguada (doc 46 §2-7).
 #[path = "watercolor_rampa_tests.rs"]
-mod watercolor_rampa_tests; // a Shape Color Ramp na aguada (doc 46 §2-7) // W3/W4 do plano 38: o custo por evento que os tetos do Sketchy e do Wire EXIGEM
+mod watercolor_rampa_tests;
 
 #[path = "measure_penup_cost.rs"]
 mod measure_penup_cost; // o que custa FECHAR um traço — a irmã do `measure_pendown_cost`

@@ -93,6 +93,8 @@ mod watercolor_backdrop;
 /// Watercolor SECAGEM: o decaimento por-quadro do mapa de umidade; irmão do backdrop (LOC + assunto).
 mod watercolor_dry;
 pub(crate) mod watercolor_field;
+/// Os fios (Sketchy · Wire · degraus do Ribbon) na aguada: cobertura fina (doc 46 §2-7).
+mod watercolor_fios;
 /// A forma da borda da aguada: o FLUXO do Ragged Edge e o PAPEL na borda (BUGS #31).
 mod watercolor_flow;
 /// Watercolor optical LUTs (`s2l`/`ln`/`exp`) + pigment-body helpers; split for the LOC cap (HR-5).

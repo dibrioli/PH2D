@@ -100,12 +100,10 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     v.push((
         Watercolor,
         painter_line_type_option_id(2),
-        "a fazer: os fios (Sketchy) na aquarela (doc 46 §2-7)",
-    ));
-    v.push((
-        Watercolor,
-        painter_line_type_option_id(3),
-        "a fazer: os fios (Wire) na aquarela (doc 46 §2-7)",
+        "age, mas não na FÁBRICA: o Reach de fábrica (1 diâmetro) costura dentro da própria aguada, e dentro \
+         da tinta molhada o fio deposita só PIGMENTO da mesma cor (`watercolor_fios`: estender a cobertura ali \
+         fazia o aro riscá-la de preto) — com Reach 3 a teia sai para o papel seco e pinta \
+         (`o_sketchy_tinge_a_aguada_alem_do_rastro`)",
     ));
     for modo in [6u8, 7] {
         v.push((

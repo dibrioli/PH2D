@@ -112,6 +112,8 @@ mod watercolor_reserve;
 mod watercolor_rewet_px;
 /// O ARO vira a QUINA: a distância à fronteira que limita o unsharp do `edge` (doc 36).
 mod watercolor_rim;
+/// Cada POÇA seca no seu tempo: a que secou longe da tinta molhada assa-se na base da sessão.
+mod watercolor_secagem;
 /// Watercolor section setters + router (edge darkening / granulation / pigment); no fluid sim.
 mod watercolor_settings;
 /// Watercolor Wet Mix reservoir (Smudge/Pickup): lift the pre-stroke paint, mix into the dab colour.

@@ -62,7 +62,7 @@ Leitor = onde a decisão mora (`file:line` no ramo de hoje). `D` Digital · `A` 
 | **Accumulate + Space Attenuation** juntos | W | o traço pinta **2 428 → 26** texels | `ph2d-painter-brush/src/stroke.rs:268,302` (`space_overlap_factor`, a lei do Blender para alfa que ACUMULA) aplicada ao carimbo da água; o Wet Paint não lê `accumulate` (`wetpaint/dab_route.rs`) | decisão §4-1 |
 | **Reset** da secção Watercolor · Impasto · Wet Paint | A I W | na fábrica muda a pintura (**3 934 · 3 853 · 3 590** texels): o Reset DESLIGA o meio (`media 1/2/3 → 0`) | `watercolor_settings.rs:500` (`b.watercolor = d.watercolor`), `impasto_settings.rs:490`, `reset_brush_wetpaint` — e três gates o AFIRMAM (`watercolor_settings/tests.rs:229`, `impasto_body/deposit.rs:627`, `wetpaint/tests.rs:861`), escritos quando o meio era uma caixa DENTRO da secção | decisão §4-6 |
 | **Reset** da Shape | I | `3 730` texels na fábrica: Falloff `2 → 0` (o Reset repõe o default GERAL, não o do meio) | `jitter_settings.rs:45` | decisão §4-6 |
-| **Dry Time** | A | `0` texels em 1,3 s, com e sem Wet/Smudge/Charge armados | só o véu de humidade (`canvas_wet` → `painter_bridge_wetness.rs:30`); nenhum depósito o lê | decisão §4-4 (o nome promete que a tinta seca mais devagar) |
+| **Dry Time** | A | `0` texels em 1,3 s, com e sem Wet/Smudge/Charge armados | a régua era curta: o Dry Time decide quando a sessão inteira seca (traços a mais que ele velam), e o censo risca dois traços a 67 ms | **CURADO** (doc 46 §2-5): além disso cada poça seca no seu tempo (`assa_as_pocas_secas`); gates `watercolor_secagem_por_poca` |
 
 ### §2.2 — Mortos num meio (o painel mostra, o meio não lê)
 

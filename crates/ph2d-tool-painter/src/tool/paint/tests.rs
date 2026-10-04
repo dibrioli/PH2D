@@ -184,6 +184,7 @@ mod watercolor_papel_nos_vales; // o Tooth e a granulação assentam nos vales (
 mod watercolor_parity;
 mod watercolor_reserve_cache; // o campo da reserva GUARDADO entre quadros (ADR-0173, 3.a ronda)
 mod watercolor_seams;
+mod watercolor_secagem_por_poca; // cada poça seca no seu tempo: a seca vela, a molhada funde (doc 46 §2-5)
 mod watercolor_selfseam; // a costura do retorno sobre o PROPRIO traco (doc 40): a regua e os gates
 mod watercolor_session;
 mod watercolor_smudge_borda; // o Smudge na borda da tela nao abre transparencia (report 2026-09-24)

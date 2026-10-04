@@ -93,6 +93,80 @@ impl PainterTool {
         };
         let dirty = dirty?;
 
+        let Alcance {
+            spread,
+            warp_amp,
+            wet,
+            core_r,
+            wet_any,
+            spread_any,
+            soaked,
+            watered,
+            pad,
+            pad_maximo: _,
+        } = self.alcance_da_janela();
+        let x0 = (dirty.x as usize).saturating_sub(pad);
+        let y0 = (dirty.y as usize).saturating_sub(pad);
+        let x1 = ((dirty.x as usize) + (dirty.w as usize) + pad).min(fw);
+        let y1 = ((dirty.y as usize) + (dirty.h as usize) + pad).min(fh);
+        if x0 >= x1 || y0 >= y1 {
+            return None;
+        }
+        let (bw, bh) = (x1 - x0, y1 - y0);
+        let region = Region {
+            x: x0 as u32,
+            y: y0 as u32,
+            w: bw as u32,
+            h: bh as u32,
+        };
+
+        // READ window = the output region padded by the influence radius AGAIN, so the blur under
+        // every warped sample position inside the output has full support. (A window clamped at
+        // the output's edge would misread the old coverage there — a darkened seam at each
+        // frame-region boundary.)
+        let rx0 = x0.saturating_sub(pad);
+        let ry0 = y0.saturating_sub(pad);
+        let rx1 = (x1 + pad).min(fw);
+        let ry1 = (y1 + pad).min(fh);
+        let (rw, rh) = (rx1 - rx0, ry1 - ry0);
+
+        Some(WashWindow {
+            fw,
+            fh,
+            n,
+            base_arc,
+            backdrop_arc,
+            spread,
+            warp_amp,
+            wet,
+            core_r,
+            wet_any,
+            spread_any,
+            soaked,
+            watered,
+            x0,
+            y0,
+            y1,
+            bw,
+            bh,
+            region,
+            changed,
+            rx0,
+            ry0,
+            rx1,
+            ry1,
+            rw,
+            rh,
+        })
+    }
+
+    /// O ALCANCE de um texel da sessão sobre os vizinhos no composite: até onde o que ele guarda
+    /// (cobertura, água, nível, dono) muda a saída de outro texel. A janela do composite cresce `pad`
+    /// em volta do sujo; o assar das poças secas ([`super::super::watercolor_secagem`]) separa o que
+    /// assa do que fica por mais que isso — a MESMA conta, uma porta só.
+    pub(in crate::tool::paint) fn alcance_da_janela(&self) -> Alcance {
+        let (fw, fh) = self.source_size;
+        let n = (fw as usize) * (fh as usize);
         let spread = super::super::watercolor_mistura_agua::raio_da_agua(&self.paint.brush);
         let warp_amp = self.paint.brush.warp.max(0.0);
         let wet = self.paint.brush.wet_rewet.clamp(0.0, 1.0);
@@ -150,37 +224,9 @@ impl PainterTool {
             0.0
         };
         let pad = reach + (warp_any + papel).ceil() as usize + 2;
-        let x0 = (dirty.x as usize).saturating_sub(pad);
-        let y0 = (dirty.y as usize).saturating_sub(pad);
-        let x1 = ((dirty.x as usize) + (dirty.w as usize) + pad).min(fw);
-        let y1 = ((dirty.y as usize) + (dirty.h as usize) + pad).min(fh);
-        if x0 >= x1 || y0 >= y1 {
-            return None;
-        }
-        let (bw, bh) = (x1 - x0, y1 - y0);
-        let region = Region {
-            x: x0 as u32,
-            y: y0 as u32,
-            w: bw as u32,
-            h: bh as u32,
-        };
-
-        // READ window = the output region padded by the influence radius AGAIN, so the blur under
-        // every warped sample position inside the output has full support. (A window clamped at
-        // the output's edge would misread the old coverage there — a darkened seam at each
-        // frame-region boundary.)
-        let rx0 = x0.saturating_sub(pad);
-        let ry0 = y0.saturating_sub(pad);
-        let rx1 = (x1 + pad).min(fw);
-        let ry1 = (y1 + pad).min(fh);
-        let (rw, rh) = (rx1 - rx0, ry1 - ry0);
-
-        Some(WashWindow {
-            fw,
-            fh,
-            n,
-            base_arc,
-            backdrop_arc,
+        // O tecto do `pad` nesta sessão: a água e o soak dobram o alcance assim que nascem.
+        let pad_maximo = pad.max(spread_any * 2 + (warp_any + papel).ceil() as usize + 2);
+        Alcance {
             spread,
             warp_amp,
             wet,
@@ -189,19 +235,24 @@ impl PainterTool {
             spread_any,
             soaked,
             watered,
-            x0,
-            y0,
-            y1,
-            bw,
-            bh,
-            region,
-            changed,
-            rx0,
-            ry0,
-            rx1,
-            ry1,
-            rw,
-            rh,
-        })
+            pad,
+            pad_maximo,
+        }
     }
+}
+
+/// O que o [`PainterTool::alcance_da_janela`] mede — o `pad` e os máximos que o dimensionaram (o laço
+/// do composite lê vários deles de novo).
+pub(in crate::tool::paint) struct Alcance {
+    pub spread: usize,
+    pub warp_amp: f32,
+    pub wet: f32,
+    pub core_r: usize,
+    pub wet_any: f32,
+    pub spread_any: usize,
+    pub soaked: bool,
+    pub watered: bool,
+    pub pad: usize,
+    /// O `pad` com a água/soak já nascidos — o que um traço seguinte da MESMA sessão pode alcançar.
+    pub pad_maximo: usize,
 }

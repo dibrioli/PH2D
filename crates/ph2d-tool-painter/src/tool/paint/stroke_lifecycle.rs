@@ -151,6 +151,11 @@ impl PainterTool {
             self.paint
                 .wet_styles
                 .push_capture(&self.paint.brush, forced_wet);
+            // Cada poça seca no seu tempo: a que secou longe da tinta molhada assa ANTES do primeiro
+            // carimbo, para este traço velar sobre ela (o alcance já conta o estilo deste traço).
+            if wet_session {
+                self.assa_as_pocas_secas();
+            }
         }
         self.paint.per_layer_stroke.reset();
         // Smear chains its source from the previous dab; a fresh stroke has none yet.

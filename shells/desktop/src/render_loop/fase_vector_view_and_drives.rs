@@ -148,6 +148,8 @@ impl crate::App {
         // directa não precisar de código.
         // ⭐⭐⭐ E o que se VÊ da forma presa é o desenho fiel, entregue à geometria viva na
         // `fase_vector_live_geometry` — o caminho da cena fica com os nós do artista.
+        // ⭐ A forma presa que ainda traz efeitos vivos (projecto anterior à F51) coze-os (A4).
+        crate::skeleton_live::coze_os_efeitos_presos(sim, vec_scene);
         self.vec.skin_desenhado = crate::skeleton_live::recook_desenhando(sim, vec_scene);
         // **Select: arrastar o objeto blend move as fontes** — o gizmo mira as FONTES (não o
         // spine), então ele as move NATIVAMENTE como grupo (`vec_selection::sync_selection`

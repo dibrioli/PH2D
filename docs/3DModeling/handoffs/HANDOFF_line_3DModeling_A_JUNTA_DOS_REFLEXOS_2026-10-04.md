@@ -161,3 +161,21 @@ Suíte com placa: **45/45**; clippy `--all-targets` e fmt limpos.
 (`+0,3 ms`), 8 peças `+0,1 ms`; a ARRASTAR 16 `12,7–12,8 → 13,6 ms`. Parte aparece com as capturas DESLIGADAS
 (`2,02 → 2,30 ms`): o código da busca maior pesa no passe inteiro (registos), não só nas arestas — alavanca
 não medida: tirar `sonda_fora_na_aresta` para um laço que não se desenrola.
+
+## §10 — ⛔ DECISÃO DO DONO (04/10) e a PRÓXIMA ETAPA
+
+*«não melhorou»* (sem foto) depois do report 4. Perguntado se a técnica é a das grandes engines: **não** — as
+capturas (Unreal reflection captures, Unity reflection probes, Godot) só servem de reflexo de FUNDO/borrado em
+todas; a busca dentro da captura (Szirmay-Kalos 2005) é académica e tem um tecto que não se fura (UM ponto de
+vista por peça: lateral escondida, uma vizinha atrás da outra — cada cura abriu outro defeito: ponte → buraco →
+borda). Proposto o raio de verdade na placa (ray query): ⛔ **RECUSADO pelo dono — «quero que tudo funcione em
+qualquer hardware»** (WebGL2/celular incluídos). Não proponha ray tracing por hardware outra vez.
+
+**Próxima etapa (para a janela nova):** o reflexo PELA TELA (screen-space reflections) POR CIMA das capturas —
+o padrão das engines que corre em qualquer placa (um passe de ecrã que marcha o raio refletido sobre a
+profundidade do quadro): nítido e exacto para o que está à vista, e onde o raio sai da tela ou passa por trás
+do que se vê, cai na captura de hoje. Antes de escrever: (1) pedir ao dono a FOTO do que ainda vê errado (é a
+régua — as minhas não viam o que ele vê); (2) oráculo = os mesmos Cycles (`junta`, `sobreposta`, `perto`, `par`)
+com a câmara do app, e réguas da faixa/orla já existentes; (3) custo medido inclusive no caminho GLES/WebGL2
+(o tecto do celular), com o passe em meia resolução como alavanca. Candidato a medir depois, também sem placa
+especial: marcha contra o CAMPO de distância da cena (o que o Lumen faz em software) — o módulo já é um campo.

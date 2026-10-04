@@ -52,6 +52,31 @@ pub struct SkinnedMesh {
     /// derivada, que é o caminho da 1.ª mídia. ⛔ Não é um erro silencioso — é o único estado em
     /// que uma malha gravada antes desta wave pode chegar aqui, e ele é nomeado.
     pub pesos: Vec<f64>,
+    /// ⭐⭐ **Onde há tinta na arte** (A5-a, 2026-10-04): a costura mede o vão entre a TINTA e não
+    /// entre as bordas da malha, que passa da tinta de propósito. `None` num bind anterior (lido pela
+    /// [`SkinnedMeshV1`]): a costura mede a malha, como sempre.
+    pub mascara: Option<crate::skin_image_arte::Mascara>,
+}
+
+/// O registo antes de [`SkinnedMesh::mascara`] (2026-10-04).
+#[derive(serde::Deserialize)]
+struct SkinnedMeshV1 {
+    mesh: Mesh2d,
+    pesos: Vec<f64>,
+}
+
+/// ⭐⭐ **A malha guardada de uma imagem presa**, nas duas formas que um projecto pode trazer.
+#[must_use]
+pub fn le_malha(bytes: &[u8]) -> Option<SkinnedMesh> {
+    if let Ok(m) = postcard::from_bytes::<SkinnedMesh>(bytes) {
+        return Some(m);
+    }
+    let v1 = postcard::from_bytes::<SkinnedMeshV1>(bytes).ok()?;
+    Some(SkinnedMesh {
+        mesh: v1.mesh,
+        pesos: v1.pesos,
+        mascara: None,
+    })
 }
 
 impl SkinnedMesh {
@@ -61,6 +86,7 @@ impl SkinnedMesh {
         Self {
             mesh,
             pesos: Vec::new(),
+            mascara: None,
         }
     }
 

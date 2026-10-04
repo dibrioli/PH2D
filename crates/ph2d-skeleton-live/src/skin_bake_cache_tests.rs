@@ -19,6 +19,7 @@ fn malha(n: u32) -> SkinnedMesh {
         mesh.tris.push([0, 1, 2]);
     }
     SkinnedMesh {
+        mascara: None,
         pesos: vec![1.0; mesh.rest.len()],
         mesh,
     }

@@ -67,6 +67,9 @@ pub mod skin_desenho;
 /// ⭐⭐ As voltas apertadas de um cozido viram nós antes do bake (F50-h).
 pub mod skin_desenho_voltas;
 pub mod skin_image;
+/// ⭐⭐⭐ **Onde a tinta começa** (A5-a) — a máscara guardada ao prender e o anel da arte que a costura
+/// mede; irmão do [`skin_image_fecho`].
+pub mod skin_image_arte;
 /// ⭐ **PRENDER uma IMAGEM** — irmão do `skin_live` pelo tecto de LOC, cortado por assunto.
 pub mod skin_image_bind;
 /// ⭐⭐⭐ **O FECHO da imagem presa** — a lei da silhueta da pele na 2.ª mídia (2026-10-02).

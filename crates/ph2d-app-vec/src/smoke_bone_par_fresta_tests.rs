@@ -28,6 +28,8 @@ struct Palco {
     crua: ph2d_skeleton_live::skinned_mesh::SkinnedMesh,
     /// A profundidade de cada coluna na corrente (a coluna vem por `to_bits`, não pela corrente).
     prof: Vec<f64>,
+    /// Onde há tinta (A5-a), guardada pelo bind.
+    mascara: Option<ph2d_skeleton_live::skin_image_arte::Mascara>,
 }
 
 fn palco((g1, g2): (f32, f32)) -> Palco {
@@ -81,18 +83,41 @@ fn palco((g1, g2): (f32, f32)) -> Palco {
             skin,
             &ph2d_skeleton_live::skin_live::bone_index(&sim),
         ),
+        mascara: m.mascara,
         mesh: m.mesh,
         crua,
     }
 }
 
-/// A malha desenhada pela porta do produto — `costura` liga a costura (os anéis da borda).
-fn desenhada(p: &Palco, costura: bool, placa: bool) -> SpriteMesh {
-    let aneis = if costura {
-        ph2d_skeleton_live::skin_image_fecho::aneis_da_borda(&p.mesh.tris)
-    } else {
-        Vec::new()
+/// As bordas que o produto guarda para esta malha (`bordas_da`): os anéis e, com `arte`, o anel da
+/// arte sobre a máscara do bind (A5-a); sem `costura`, nenhumas.
+fn bordas(
+    p: &Palco,
+    costura: bool,
+    arte: bool,
+) -> ph2d_skeleton_live::skin_image_arte::BordasDaMalha {
+    if !costura {
+        return ph2d_skeleton_live::skin_image_arte::BordasDaMalha::default();
+    }
+    let aneis = ph2d_skeleton_live::skin_image_fecho::aneis_da_borda(&p.mesh.tris);
+    let arte = match (&p.mascara, arte) {
+        (Some(m), true) => ph2d_skeleton_live::skin_image_arte::anel_da_arte(&p.mesh, m, &aneis),
+        _ => Vec::new(),
     };
+    ph2d_skeleton_live::skin_image_arte::BordasDaMalha { aneis, arte }
+}
+
+/// A malha desenhada pela porta do produto — `costura` liga a costura (com o anel da arte).
+fn desenhada(p: &Palco, costura: bool, placa: bool) -> SpriteMesh {
+    desenhada_com(p, &bordas(p, costura, true), placa)
+}
+
+/// A malha desenhada com as `bordas` dadas — o CONTROLO do A5-a passa a costura sem a arte.
+fn desenhada_com(
+    p: &Palco,
+    aneis: &ph2d_skeleton_live::skin_image_arte::BordasDaMalha,
+    placa: bool,
+) -> SpriteMesh {
     ph2d_skeleton_live::skin_image_fecho::malha_desenhada_com(
         p.mesh.clone(),
         p.p2l,
@@ -100,7 +125,7 @@ fn desenhada(p: &Palco, costura: bool, placa: bool) -> SpriteMesh {
         &p.pesos,
         p.quad,
         &p.correcoes,
-        &aneis,
+        aneis,
         placa,
     )
     .expect("a malha desenha-se")
@@ -273,13 +298,14 @@ fn area_cosida(p: &Palco) -> f64 {
         .sum()
 }
 
-/// ⭐⭐⭐ **A TINTA da costura é a das BEIRAS** — cada pedaço cosido (`4` pontos: dois da beira que
-/// cose, dois da outra) parte de uma beira com arte (pelo menos dois texels com alfa `> 0`).
+/// ⭐⭐⭐ **A TINTA da costura é a das BEIRAS** — cada pedaço cosido são DUAS metades de `4` pontos,
+/// cada uma a esticar a cor da SUA beira até ao meio do vão (A5-a: um quadrilátero só misturava a
+/// UV dos dois membros e apanhava as pintas entre elas — FOTOGRAFADO na cúspide). Cada metade tem a
+/// mesma UV nos dois pontos de cada ponta e parte de uma beira com arte (alfa `> 0` nos seus dois
+/// pontos de beira, ou — onde a beira é a escada transparente da tampa — no da outra metade).
 ///
-/// ⚠️ Não «os quatro»: a outra ponta pode cair na ESCADA da grelha à volta da tampa redonda, que é
-/// margem transparente — medido na pose do report, o texel `(586, 1)` com alfa `0` —, e aí a costura
-/// esmaece até ela (fotografado: sem névoa). ⛔ Sem isto, uma UV errada (o canto da imagem,
-/// transparente) deixava o vão cosido com NADA e todos os gates de geometria verdes.
+/// ⛔ Sem isto, uma UV errada (o canto da imagem, transparente) deixava o vão cosido com NADA e
+/// todos os gates de geometria verdes.
 #[test]
 fn a_tinta_da_costura_e_a_das_beiras() {
     let px = pixels();
@@ -291,41 +317,66 @@ fn a_tinta_da_costura_e_a_das_beiras() {
         reason = "texel"
     )]
     let texel = |t: f32, n: u32| ((t * n as f32) as u32).min(n - 1);
-    for pedaco in novos.chunks(4) {
-        let com_arte = pedaco
-            .iter()
-            .filter(|(_, uv)| {
-                let (x, y) = (texel(uv[0], IMG_W), texel(uv[1], IMG_H));
-                px[((y * IMG_W + x) * 4 + 3) as usize] > 0
-            })
-            .count();
+    let arte = |uv: [f32; 2]| {
+        let (x, y) = (texel(uv[0], IMG_W), texel(uv[1], IMG_H));
+        px[((y * IMG_W + x) * 4 + 3) as usize] > 0
+    };
+    assert_eq!(novos.len() % 8, 0, "pedaços de duas metades de 4 pontos");
+    for pedaco in novos.chunks(8) {
+        for metade in pedaco.chunks(4) {
+            // [beira a, beira b, meio b, meio a]: a UV do meio é a da beira do mesmo lado.
+            assert_eq!(metade[0].1, metade[3].1, "a metade mistura UVs: {pedaco:?}");
+            assert_eq!(metade[1].1, metade[2].1, "a metade mistura UVs: {pedaco:?}");
+        }
+        let com_arte = pedaco.iter().filter(|(_, uv)| arte(*uv)).count();
         assert!(
-            com_arte >= 2,
+            com_arte >= 4,
             "um pedaço cosido sem beira de arte: {pedaco:?}"
         );
     }
 }
 
-/// ⭐⭐⭐ **Nenhuma pose à volta do report deixa o fio** — e é a resposta ao *«ora redonda ora
-/// pontuda»* do dono: a costura é contínua na pose, logo a varredura fina não pode ter UMA pose com
-/// fundo entalado. Alcance `1 px`: só um vão mais fino que `2 px` conta (a costura cose até `2`
-/// texels, e a `100 %` um texel é um pixel); a baía de um «V» é mais larga e não conta.
+/// ⭐⭐⭐ **Nenhuma pose à volta do report deixa mais fio de TINTA que a lei de antes, e no total
+/// deixa bem menos** — a lei é contínua na pose (a resposta ao *«ora redonda ora pontuda»* do dono).
+/// Régua de TINTA (alfa `≥ 128`), alcance `1 px` (a `100 %` um texel é um pixel). Duas janelas: a do
+/// risquinho do report e a da CÚSPIDE junto à tampa (A5-a).
+///
+/// ⚠️ **A régua era GEOMÉTRICA (o vão entre bordas da MALHA) e dava `0`** — era a pergunta da lei de
+/// antes. Desde a A5-a a lei mede a TINTA (a malha passa dela de propósito), e em tinta nenhuma das
+/// duas é zero: a `−144°` sem costura `354`, a lei antiga `91`, a nova `37` (o resto é a fenda REAL
+/// de `2`–`3` px das recusas da F49). ⛔ O CONTROLO é a lei antiga, que continua viva (binds
+/// anteriores a 2026-10-04, sem máscara).
 #[test]
-fn nenhuma_pose_a_volta_do_report_deixa_o_fio() {
-    let mut com_fio = Vec::new();
-    for k in 0..=24 {
-        let g2 = -150.0 + 0.5 * k as f32;
-        let p = palco((36.0, g2));
-        let sem = buracos(&desenhada(&p, false, false), JANELA_DO_VAO, 1.0);
-        let com = buracos(&desenhada(&p, true, false), JANELA_DO_VAO, 1.0);
-        if com > 0 {
-            com_fio.push((g2, sem, com));
+fn nenhuma_pose_a_volta_do_report_deixa_mais_fio_que_a_lei_de_antes() {
+    const CUSPIDE: [f64; 4] = [-1.8, 0.3, -0.5, 0.75];
+    for (janela, nome) in [(JANELA_DO_VAO, "risquinho"), (CUSPIDE, "cúspide")] {
+        let (mut antes, mut depois) = (0, 0);
+        for k in 0..=24 {
+            let g2 = -150.0 + 0.5 * k as f32;
+            let p = palco((36.0, g2));
+            let velha = buracos_de(
+                &desenhada_com(&p, &bordas(&p, true, false), false),
+                janela,
+                1.0,
+                true,
+            );
+            let nova = buracos_de(&desenhada(&p, true, false), janela, 1.0, true);
+            assert!(
+                nova <= velha,
+                "{nome} (36°, {g2}°): a lei nova deixa {nova} amostras de fio, a de antes {velha}"
+            );
+            (antes, depois) = (antes + velha, depois + nova);
         }
+        println!("  {nome}: fio de tinta na varredura — lei de antes {antes}, nova {depois}");
+        assert!(
+            antes > 0,
+            "o CONTROLO: a lei de antes não deixa fio na {nome}"
+        );
+        assert!(
+            10 * depois <= 6 * antes,
+            "{nome}: a lei nova só tira {depois} de {antes}"
+        );
     }
-    assert!(
-        com_fio.is_empty(),
-        "(pose, sem costura, com costura): {com_fio:?}"
-    );
 }
 
 /// ⭐⭐⭐ **A costura nunca cose mais que `VAO_MAXIMO_EM_TEXELS`** — as pontas de cada troço caem
@@ -520,11 +571,40 @@ fn cosidos_sobre_tinta(p: &Palco) -> (usize, usize) {
             ]
         });
         let h = 1e-4;
-        if buracos(&sem, [c[0] - h, c[1] - h, c[0] + h, c[1] + h], 0.0) == 0 && tinta_em(&sem, c) {
+        if buracos(&sem, [c[0] - h, c[1] - h, c[0] + h, c[1] + h], 0.0) == 0
+            && tinta_em(&sem, c)
+            && !tinta_da_mesma_zona(&sem, c, t.map(|i| com.uv[i as usize]))
+        {
             sobre += 1;
         }
     }
     (sobre, novos.len())
+}
+
+/// A tinta de `m` em `q` é da MESMA zona da imagem que o pedaço cosido (`uv` dele) — a menos de
+/// `4` texels? Um remendo de `0,1` texel² sobre a tinta da própria beira, com a cor dela, não pinta
+/// um membro por cima de outro (o que este gate guarda); MEDIDO na A5-a: `4` de `236` a `−144°`, onde
+/// a borda recta encontra a tampa. Pela UV e não pela chave de osso (a régua não usa a lei).
+fn tinta_da_mesma_zona(m: &SpriteMesh, q: [f64; 2], uv: [[f32; 2]; 3]) -> bool {
+    let p = |i: u32| {
+        [
+            f64::from(m.local[i as usize][0]),
+            f64::from(m.local[i as usize][1]),
+        ]
+    };
+    let meio = [0, 1].map(|k| (uv[0][k] + uv[1][k] + uv[2][k]) / 3.0);
+    m.tris.iter().any(|t| {
+        let (a, b, c) = (p(t[0]), p(t[1]), p(t[2]));
+        if !dentro(q, a, b, c) {
+            return false;
+        }
+        let v = [0, 1].map(|k| {
+            (m.uv[t[0] as usize][k] + m.uv[t[1] as usize][k] + m.uv[t[2] as usize][k]) / 3.0
+        });
+        #[expect(clippy::cast_precision_loss, reason = "texels")]
+        let d = ((v[0] - meio[0]) * IMG_W as f32).hypot((v[1] - meio[1]) * IMG_H as f32);
+        d <= 4.0
+    })
 }
 
 /// Há tinta da malha `m` no ponto `q`?

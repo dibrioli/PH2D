@@ -22,7 +22,7 @@ fn smoothstep(a: f32, b: f32, x: f32) -> f32 {
 /// `sonda_aresta`: o desvio pelo 2.º momento passa `aresta` da distância média.
 fn aresta(g: [f32; 3], k: f32) -> bool {
     let m = g[0] / g[1].max(1.0e-6);
-    g[1] > 0.5 && g[2] / g[1].max(1.0e-6) - m * m > k * k * m * m
+    g[2] / g[1].max(1.0e-6) - m * m > k * k * m * m
 }
 
 /// `sonda_marcha` com o leitor `ler` (a distância e o quadrado dela vezes a cobertura, a cobertura):

@@ -77,10 +77,11 @@ fn sonda_dist0(d: vec3<f32>) -> vec3<f32> {
 
 // A leitura mistura superficies de distancias diferentes (o desvio pelo 2.o momento passa `SONDA_ARESTA`
 // da media): a distancia dela e' FANTASMA — a junta entre duas vizinhas, report do dono 04/10.
+// So' se pergunta onde ha' cobertura (o lado de la' de um cruzamento).
 fn sonda_aresta(g: vec3<f32>) -> bool {
     let m = g.x / max(g.y, 1.0e-6);
     let v = g.z / max(g.y, 1.0e-6) - m * m;
-    return g.y > 0.5 && v > SONDA_ARESTA * SONDA_ARESTA * m * m;
+    return v > SONDA_ARESTA * SONDA_ARESTA * m * m;
 }
 
 // O peso do que a busca devolve: `1` num cruzamento NA superficie; perto do contorno (o raio rente,

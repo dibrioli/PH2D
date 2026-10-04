@@ -238,6 +238,16 @@ fn mask_paints_the_layer_mask_and_paint_the_layer_without_dropping_the_painter()
         (false, cor, mascara),
         "o Paint não voltou à camada, ou o Painter caiu"
     );
+    // Largado e retomado no mesmo quadro, o Painter desmonta a tela (0×0) ou deixa um bake pendente.
+    assert_eq!(
+        c.painter().canvas_size(),
+        (4, 4),
+        "a troca desmontou a tela"
+    );
+    assert!(
+        !c.painter().take_deferred_bake(),
+        "a troca largou o Painter"
+    );
     c.quadro(Some(ModeRequest::Enter(ObjectMode::Mask)));
     assert_eq!(
         c.alvo(),

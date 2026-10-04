@@ -115,7 +115,7 @@ Bateria verde no fim: `ph2d-skeleton-live` 276 · `ph2d-vec-skin` 48 · `ph2d-ap
 - No *Zig Zag* muito dobrado (`~110°`) os dentes de dentro encavalam-se e fecham buraquinhos REAIS (a
   imagem também os mostra).
 
-### A6 — ✅ FEITO (F55, `57900aac8`; pedido pelo dono 04/10; smoke ao dono pendente): o traço dos fechados de trás não pinta por cima da frente
+### A6 — ✅ FEITO (F55 + F55-b `9dc1a0434`…; pedido pelo dono 04/10; o 1.º smoke do dono achou o traço DESCOLADO numa dobra agressiva — curado na F55-b; smoke de novo pendente): o traço dos fechados de trás não pinta por cima da frente
 
 > Sem união, a forma sai em duas camadas (preenchimento + traço à vista). Causa de fundo curada: o
 > domínio do campo segue a regra de preenchimento (a sobreposição `NonZero` era furo). Só a ARTE
@@ -142,6 +142,11 @@ Bateria verde no fim: `ph2d-skeleton-live` 276 · `ph2d-vec-skin` 48 · `ph2d-ap
   (passo ¼ da aresta da malha) foi construída e RETIRADA na F55: nenhuma fixtura a exprimiu (a barra
   `400 × 2` tem a malha grossa demais), e a hipótese que a trouxe estava errada. Só com um caso
   FOTOGRAFADO.
+
+### A9 — (novo, 04/10, pequeno) Tiques curtos nas pontas de alguns cortes do traço numa dobra extrema
+
+- Em SVG a `170°/−110°` (cena `=6` com o osso do meio quase dobrado sobre si) sobram dois ou três
+  tiques de `~0,1` nas pontas de cortes do traço, junto ao vinco. Não medido nem fotografado no app.
 
 ## 2. Lições da 2.ª onda de 04/10 (morderam)
 

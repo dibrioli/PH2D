@@ -7,7 +7,7 @@ use ph2d_skeleton_ecs::SkinBind;
 use ph2d_vec_scene::VecPath;
 use ph2d_vec_scene::effect::{FxEntry, PathEffect};
 
-type Fixtura = (
+pub(super) type Fixtura = (
     VecPath,
     Vec<f64>,
     ph2d_vec_skin::pesos::CampoDoDominio,
@@ -16,7 +16,7 @@ type Fixtura = (
 );
 
 /// A barra `40 × 10` com *Hatch* (`8`), presa a dois ossos e a ponta a `graus`.
-fn riscas_dobradas(graus: f32) -> Fixtura {
+pub(super) fn riscas_dobradas(graus: f32) -> Fixtura {
     let (mut sim, mut scene, map, id, [_, ponta]) = palco();
     scene.path_mut(id).expect("path").effects = vec![FxEntry::new(PathEffect::Hatch(
         ph2d_vec_scene::fx_hatch::HatchSpec {
@@ -232,13 +232,21 @@ fn a_saida_rapida_nao_muda_o_recorte_ao_bit() {
         0f32, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0, 110.0, 130.0, 150.0,
     ] {
         for (nome, fx) in fixturas(graus) {
-            let (com, sem) = (recorte(&fx, false), recorte(&fx, true));
+            let antes = super::super::AMOSTRAGENS.with(std::cell::Cell::get);
+            let com = recorte(&fx, false);
+            let amostrou = super::super::AMOSTRAGENS.with(std::cell::Cell::get) > antes;
+            let sem = recorte(&fx, true);
             assert_eq!(
                 com, sem,
                 "{nome} a {graus}°: a saída rápida mudou o recorte"
             );
             let (_, _, campo, pele, prof) = &fx;
             let f = Posada::nova(campo, None, pele, &[], true, prof).expect("posada");
+            // ⭐ E a saída POUPA: quando dispara nenhum contorno é amostrado (M8 sobrevivia).
+            assert!(
+                !(f.nada_tapa() && amostrou),
+                "{nome} a {graus}°: a saída disparou e o contorno foi amostrado"
+            );
             saiu += usize::from(f.nada_tapa());
             cortou += usize::from(!f.nada_tapa() && com != "None None");
         }

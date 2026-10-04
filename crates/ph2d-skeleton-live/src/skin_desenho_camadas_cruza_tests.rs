@@ -277,3 +277,106 @@ fn diag_a_foto_da_fixtura() {
     std::fs::create_dir_all("target/prova").expect("pasta");
     std::fs::write("target/prova/cruza.svg", s).expect("svg");
 }
+
+/// O `x` do ponto da base da barra (o segmento `0`, nós de canto) no parâmetro `u`, e o inverso.
+fn x_da_base(u: f64) -> f64 {
+    let c = [[0.0, 0.0], [0.0, 0.0], [10.0, 0.0], [10.0, 0.0]];
+    super::super::super::frente::avalia(&c, u)[0]
+}
+
+fn u_da_base(x: f64) -> f64 {
+    let (mut a, mut b) = (0.0, 1.0);
+    for _ in 0..60 {
+        let m = 0.5 * (a + b);
+        if x_da_base(m) < x { a = m } else { b = m }
+    }
+    0.5 * (a + b)
+}
+
+/// Um polígono recto (alças sobre as âncoras) como contorno.
+fn poligono(pts: &[[f64; 2]], closed: bool) -> ph2d_vec_scene::Contour {
+    ph2d_vec_scene::Contour {
+        verts: pts
+            .iter()
+            .map(|&p| ph2d_vec_scene::VecVertex::corner(p))
+            .collect(),
+        closed,
+    }
+}
+
+/// A barra `[0, 10] × [0, 1]` e duas tiras verticais que lhe cruzam a base em `x = 5,2 / 5,3` e
+/// `5,6 / 5,7`; `barra_fechada` diz como o ASSADO marca a barra (a fonte marca-a sempre fechada).
+fn barra_e_tiras(barra_fechada: bool) -> (VecPath, VecPath) {
+    let tira = |x: f64| {
+        poligono(
+            &[[x, -1.0], [x + 0.1, -1.0], [x + 0.1, 2.0], [x, 2.0]],
+            true,
+        )
+    };
+    let barra = [[0.0, 0.0], [10.0, 0.0], [10.0, 1.0], [0.0, 1.0]];
+    let de = |fechada: bool| {
+        let b = poligono(&barra, fechada);
+        VecPath {
+            verts: b.verts,
+            closed: fechada,
+            subpaths: vec![tira(5.2), tira(5.6)],
+            ..VecPath::default()
+        }
+    };
+    (de(barra_fechada), de(true))
+}
+
+/// ⭐⭐ **GATE — a ponta vai ao cruzamento MAIS PERTO ao longo do contorno**, não a outro da janela
+/// (M11 sobrevivia: as fixturas tinham um cruzamento por janela). A ponta em `x = 5` tem `4`
+/// cruzamentos a menos de uma largura `1`; vai para `x = 5,2`.
+#[test]
+fn a_ponta_vai_ao_cruzamento_mais_perto() {
+    let (d, fonte) = barra_e_tiras(true);
+    let b = super::Bordas::de(&d, &fonte, 1.0);
+    let x = x_da_base(b.encaixa(0, u_da_base(5.0), 1.0));
+    assert!(
+        (x - 5.2).abs() < 5e-3,
+        "a ponta foi a x = {x} (o cruzamento mais perto é 5,2)"
+    );
+    let parada = x_da_base(b.encaixa(0, u_da_base(5.0), 0.1));
+    assert!(
+        (parada - 5.0).abs() < 1e-9,
+        "o CONTROLO: fora do alcance não se mexe ({parada})"
+    );
+}
+
+/// ⭐⭐ **GATE — quem diz que um contorno é fechado é a FONTE** (M13 sobrevivia): com o assado a marcar
+/// a barra aberta, as bordas continuam a ver a volta e a ponta encaixa igual.
+#[test]
+fn o_fecho_das_bordas_e_o_da_fonte() {
+    let (d, fonte) = barra_e_tiras(false);
+    assert!(
+        !d.contour(0).expect("barra").1,
+        "o CONTROLO: o assado marca a barra aberta"
+    );
+    let x = x_da_base(super::Bordas::de(&d, &fonte, 1.0).encaixa(0, u_da_base(5.0), 1.0));
+    assert!(
+        (x - 5.2).abs() < 5e-3,
+        "com o assado aberto a ponta ficou em x = {x}"
+    );
+}
+
+/// ⭐⭐ **GATE — um trecho que o encaixe inverte SAI** (era todo tique; M14 sobrevivia): as pontas em
+/// `x = 5,29` e `5,31` vão as duas para `5,3`. ⛔ O CONTROLO: um trecho que só encolhe fica.
+#[test]
+fn um_trecho_que_o_encaixe_inverte_sai() {
+    let (d, fonte) = barra_e_tiras(true);
+    let b = super::Bordas::de(&d, &fonte, 1.0);
+    assert_eq!(
+        b.encaixa_trecho(0, (u_da_base(5.29), u_da_base(5.31)), 4.0, 1.0),
+        None
+    );
+    let fica = b
+        .encaixa_trecho(0, (u_da_base(5.1), u_da_base(5.35)), 4.0, 1.0)
+        .expect("o CONTROLO: o trecho fica");
+    let (x0, x1) = (x_da_base(fica.0), x_da_base(fica.1));
+    assert!(
+        (x0 - 5.2).abs() < 5e-3 && (x1 - 5.3).abs() < 5e-3,
+        "{x0} {x1}"
+    );
+}

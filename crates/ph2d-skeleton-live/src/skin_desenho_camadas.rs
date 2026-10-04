@@ -131,14 +131,10 @@ pub(super) fn traco_sobre_o_assado(
             // ⭐⭐ A9: cada ponta acerta no cruzamento desenhado a menos de uma largura do traço
             // ([`cruza`]), sem dar a volta; um trecho que isso inverta era todo tique e sai.
             if let Some(br) = &bordas {
-                if u1 <= u0 {
-                    u1 += fim;
-                }
-                let (e0, e1) = (br.encaixa(c, u0, largura), br.encaixa(c, u1, largura));
-                if e1 <= e0 {
+                let Some(e) = br.encaixa_trecho(c, (u0, u1), fim, largura) else {
                     continue;
-                }
-                (u0, u1) = (e0.rem_euclid(fim), e1.rem_euclid(fim));
+                };
+                (u0, u1) = e;
             }
             let verts: Vec<VecVertex> = if u0 < u1 {
                 recorta(&w, u0, u1).into_iter().map(|(v, _)| v).collect()

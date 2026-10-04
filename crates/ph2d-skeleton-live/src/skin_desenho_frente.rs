@@ -23,6 +23,8 @@ const BISSECCOES: usize = 12;
 thread_local! {
     /// Os gates desligam a [`Posada::nada_tapa`] para comparar o desenho com e sem ela.
     static SEM_SAIDA_RAPIDA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// Quantas vezes um contorno foi AMOSTRADO ([`a_vista`]) — o gate da saída rápida vê-a poupar.
+    static AMOSTRAGENS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// A malha do campo POSADA neste quadro, com a chave de cada triângulo e uma grelha por caixa.
@@ -52,7 +54,7 @@ struct Posada<'a> {
 
 #[path = "skin_desenho_frente_malha.rs"]
 mod malha;
-use malha::{Arte, Grelha, bari, dentro, ha_sobreposicao, se_sobrepoem};
+use malha::{Arte, Grelha, bari, dentro, ha_sobreposicao};
 
 impl<'a> Posada<'a> {
     fn nova(
@@ -131,7 +133,6 @@ impl<'a> Posada<'a> {
         let m = &self.campo.malha;
         let t = m.tris[dono];
         let minha = self.chave_tri[dono];
-        let posado = |t: [u32; 3]| t.map(|v| self.pos[v as usize]);
         self.grelha.balde(q).iter().any(|&k| {
             let o = m.tris[k as usize];
             if self.chave_tri[k as usize] <= minha || o.iter().any(|v| t.contains(v)) {
@@ -140,7 +141,6 @@ impl<'a> Posada<'a> {
             let [a, b, c] = o.map(|v| v as usize);
             let uv = bari(q, self.pos[a], self.pos[b], self.pos[c]);
             dentro(uv)
-                && se_sobrepoem(posado(t), posado(o))
                 && uv.is_some_and(|(u, v)| {
                     let r = [0, 1].map(|j| {
                         (1.0 - u - v) * self.repouso[a][j]
@@ -154,7 +154,11 @@ impl<'a> Posada<'a> {
 
     /// ⭐⭐ **A SAÍDA RÁPIDA** (A7): nenhum par sobreposto e, se o avesso tapa, nenhum triângulo
     /// virado ⇒ nada está tapado — sem amostrar um contorno (`0,13 ms` por forma com riscas sem
-    /// dobra, MEDIDO). Exacta por construção: [`Self::tapado`] só aceita um cobridor que SE SOBREPÕE ao dono.
+    /// dobra, MEDIDO). ⚠️ A igualdade com o caminho lento é MEDIDA (gate ao bit, `0°…150°`), não de
+    /// construção: o ponto posado pela pele sai da malha linear até `0,19` aresta sem dobra, e um
+    /// cobridor que NÃO se sobrepõe ao dono podia em tese apanhá-lo — isso seria um corte sem dobra,
+    /// e a lei antiga nunca o fez em `0°…90°` de `2,5°` em `2,5°` (3 fixturas). A exigência da
+    /// sobreposição na lei foi construída e SAIU (mutação sobrevivente: nenhuma fixtura a via).
     fn nada_tapa(&self) -> bool {
         #[cfg(test)]
         if SEM_SAIDA_RAPIDA.with(std::cell::Cell::get) {
@@ -302,6 +306,8 @@ fn pedaco(c: &[[f64; 2]; 4], t0: f64, t1: f64) -> [[f64; 2]; 4] {
 /// Os intervalos À VISTA de um contorno aberto, no parâmetro `k + t` (`0 ..= segmentos`).
 /// `None` quando nada está tapado.
 fn a_vista(vs: &[VecVertex], f: &Posada<'_>) -> Option<Vec<(f64, f64)>> {
+    #[cfg(test)]
+    AMOSTRAGENS.with(|c| c.set(c.get() + 1));
     let segs = vs.len().saturating_sub(1);
     let mut vis: Vec<(f64, f64)> = Vec::new();
     let mut aberto: Option<f64> = None;

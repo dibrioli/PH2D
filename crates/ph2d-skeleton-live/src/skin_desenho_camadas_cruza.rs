@@ -138,6 +138,22 @@ impl Bordas {
         melhor.map_or(u, |(_, sx)| sx / AMOSTRAS as f64)
     }
 
+    /// Um trecho `(u0, u1)` do contorno `c` (de volta `fim`; `u1 ≤ u0` = passa pela emenda) com as
+    /// duas pontas encaixadas — `None` quando o encaixe o inverte (era todo tique).
+    pub(super) fn encaixa_trecho(
+        &self,
+        c: usize,
+        (u0, mut u1): (f64, f64),
+        fim: f64,
+        alcance: f64,
+    ) -> Option<(f64, f64)> {
+        if u1 <= u0 {
+            u1 += fim;
+        }
+        let (e0, e1) = (self.encaixa(c, u0, alcance), self.encaixa(c, u1, alcance));
+        (e1 > e0).then(|| (e0.rem_euclid(fim), e1.rem_euclid(fim)))
+    }
+
     /// O primeiro cruzamento (fracção em `a → b`) do troço `troco` do contorno `c` com uma borda
     /// que não lhe é vizinha.
     fn cruzamento(&self, c: usize, troco: f64, a: [f64; 2], b: [f64; 2]) -> Option<f64> {

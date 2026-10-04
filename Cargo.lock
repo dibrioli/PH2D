@@ -6550,6 +6550,7 @@ dependencies = [
  "miniz_oxide 0.8.9",
  "ph2d-nav",
  "ph2d-orca",
+ "rayon",
  "spade",
 ]
 

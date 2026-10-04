@@ -36,6 +36,7 @@ use std::collections::BTreeMap;
 
 use clipper2_rust::{FillRule, Path64, Paths64, Point64, difference_64, union_subjects_64};
 use ph2d_nav::{FaixaDeParedes, MalhaPorBlocos, NavMesh, Peca, V2};
+use rayon::prelude::*;
 
 use crate::lattice::{P, SCALE, to_lattice, to_world};
 use crate::{Area, Params, Shape, inflate};
@@ -46,6 +47,9 @@ use crate::{Area, Params, Shape, inflate};
 /// e a PROCURA paga as costuras conforme onde elas cortam a geometria — até `1,8×` a `5`, `10`, `25`
 /// e `33` m numa das posições, e `≤ 1,07×` a `15` e `20` m nas duas.
 pub const TILE_M: f64 = 15.0;
+
+/// A partir de quantos mosaicos a refazer vale acordar o `rayon` (plano 30 §22.2).
+const MOSAICOS_EM_PARALELO: usize = 2;
 
 /// Um mosaico construído: a assinatura do que o construiu e os polígonos, na grelha inteira.
 #[derive(Clone, Debug, Default)]
@@ -151,14 +155,14 @@ impl TiledMesh {
     /// ⭐ **Põe a malha em dia** com esta região (convexa) e estes obstáculos. Devolve `true` se a
     /// malha MUDOU (quem a usa esquece os caminhos), `false` se nenhum mosaico mudou — ⚠️ um
     /// obstáculo que mexe FORA da região muda a entrada e não a malha, e não acorda ninguém.
-    pub fn update<S: Borrow<Shape>>(&mut self, region: &[V2], obstacles: &[S]) -> bool {
+    pub fn update<S: Borrow<Shape> + Sync>(&mut self, region: &[V2], obstacles: &[S]) -> bool {
         self.update_with_areas(region, obstacles, &[])
     }
 
     /// ⭐ (W7) [`Self::update`] com ÁREAS DE CUSTO (ver [`crate::build_with_areas`]): cada mosaico
     /// corta o anel recuado de cada área que lhe toca pelo MESMO corte canónico dos obstáculos (as
     /// costuras ficam exactas), e a assinatura dele inclui essas áreas, pela ordem.
-    pub fn update_with_areas<S: Borrow<Shape>>(
+    pub fn update_with_areas<S: Borrow<Shape> + Sync>(
         &mut self,
         region: &[V2],
         obstacles: &[S],
@@ -223,6 +227,9 @@ impl TiledMesh {
                     }
                 }
             }
+            // Os mosaicos que mudaram constroem-se em PARALELO (cada um lê só o que lhe toca e escreve só
+            // o seu) e entram na montagem pela ordem da chave — a malha é a mesma ao bit (plano 30 §22.2).
+            let mut faltam: Vec<((i64, i64), u64)> = Vec::new();
             for x in ix..=jx {
                 for y in iy..=jy {
                     let quem = por_mosaico.get(&(x, y)).map_or(&[][..], Vec::as_slice);
@@ -236,22 +243,33 @@ impl TiledMesh {
                     }
                     let sig = h.0;
                     stats.tiles += 1;
-                    let m = match self.mosaicos.remove(&(x, y)) {
-                        Some(m) if m.sig == sig => m,
-                        _ => {
-                            stats.rebuilt += 1;
-                            refeitos.push((x, y));
-                            let obs: Vec<&Shape> =
-                                quem.iter().map(|&i| obstacles[i].borrow()).collect();
-                            let ars: Vec<&Area> = quais.iter().map(|&i| &areas[i]).collect();
-                            let (m, falhou) = self.constroi(sig, &anel, (x, y), &obs, &ars);
-                            stats.failed += usize::from(falhou);
-                            self.blocos.poe((x, y), self.peca((x, y), &m));
-                            m
+                    match self.mosaicos.remove(&(x, y)) {
+                        Some(m) if m.sig == sig => {
+                            novos.insert((x, y), m);
                         }
-                    };
-                    novos.insert((x, y), m);
+                        _ => faltam.push(((x, y), sig)),
+                    }
                 }
+            }
+            let constroi = |&(k, sig): &((i64, i64), u64)| {
+                let vazio: &[usize] = &[];
+                let quem = por_mosaico.get(&k).map_or(vazio, Vec::as_slice);
+                let quais = areas_por.get(&k).map_or(vazio, Vec::as_slice);
+                let obs: Vec<&Shape> = quem.iter().map(|&i| obstacles[i].borrow()).collect();
+                let ars: Vec<&Area> = quais.iter().map(|&i| &areas[i]).collect();
+                self.constroi(sig, &anel, k, &obs, &ars)
+            };
+            let feitos: Vec<(Mosaico, bool)> = if faltam.len() >= MOSAICOS_EM_PARALELO {
+                faltam.par_iter().map(constroi).collect()
+            } else {
+                faltam.iter().map(constroi).collect()
+            };
+            for ((k, _), (m, falhou)) in faltam.into_iter().zip(feitos) {
+                stats.rebuilt += 1;
+                stats.failed += usize::from(falhou);
+                refeitos.push(k);
+                self.blocos.poe(k, self.peca(k, &m));
+                novos.insert(k, m);
             }
         }
         // O que sobrou do mapa antigo saiu da região: também muda a malha.

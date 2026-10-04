@@ -1333,3 +1333,84 @@ gate da fila cheia nasceu disso.
 - **A procura ponderada com muita lama**: `~4×` os nós e `~12×` o tempo da uniforme.
 - **Um obstáculo largo que anda prende o agente** (o limite do ORCA — achado acima).
 - O passo 7–8 do tutorial 03 prova-se no smoke do dono (a foto não clica).
+
+## §22 — W14 (2026-10-04): a velocidade em cenas grandes
+
+A lista é a do §21.2, por esta ordem. Cada item: a medição, o kill-criterion escrito ANTES do código, o
+código, o gate com CONTROLO, a mutação. O que a medição mostrar não valer a pena fica como recusa medida.
+
+### §22.1 — A fila contava NÓS; o tempo de um nó não é um só
+
+**A medição que abre** (sonda provisória `sonda_custo_por_no_w14` da `ph2d-navmesh`: a malha por mosaicos
+da cena grande, `100 × 100 m`, `1 000` obstáculos, com `30`, `100` e `300` lamas, pesos `1` · `1,5` · `4` ·
+`10`, `240` pares — metade curtos —, o mínimo de 7 por consulta, `--release`; contadores provisórios na
+procura). O tempo por nó EXPANDIDO, por grupo (load `20–40` — os tempos absolutos estão inflados; a forma
+não):
+
+| lamas | uniforme | peso 1,5 | peso 4 | peso 10 |
+|---|---|---|---|---|
+| `30` | `104 ns` | `181` | `185` | `184` |
+| `100` | `110` | `225` | `248` | `261` |
+| `300` | `117` | `268` | `338` | `376` |
+
+⇒ não há UM factor para a ponderada (o «`~3×`» do §17.6 era a média de uma cena): o nó custa mais quanto
+mais FRENTES há na mesma aresta (a dominância, `polyanya_dominancia.rs`, percorre a lista do polígono) e
+quanto mais raízes de FRONTEIRA se materializam (`Kind::Pending`, que o `expanded` não conta). Ajuste por
+mínimos quadrados do tempo de cada consulta sobre três contagens — nós expandidos `≈127 ns`, raízes
+materializadas `≈590`, frentes comparadas `≈18` —: real/modelo `0,82–1,03` em todos os grupos (só os
+expandidos: `0,30–1,08`, e a uniforme lia-se `3×` acima do que custa face à ponderada de `300` lamas).
+
+Na ponte (`medir_replaneio`, agora com `LAMAS=<n>`; orçamento `20 000`, load `25–39`): sem lama o pior
+tique depois da porta é `4,2 · 6,0 · 11,1 ms` (10 · 50 · 200 agentes); com `150` lamas a peso 4,
+`55 · 97 · 112 ms` — o orçamento deixa passar o mesmo número de nós, e cada nó vale mais.
+
+De passagem: com a tabela de custos SEM lama (`[1.0]`) cada procura varria os `~15 000` polígonos para
+saber que é uniforme (`5–7 µs` por procura, `~50` nós).
+
+**Kill-criterion (escrito antes do código):**
+1. A unidade de custo é uma soma de contagens DETERMINÍSTICAS da procura (nada lê um relógio — o replay
+   serve a mesma fila), com pesos MEDIDOS; e numa procura sem lama é EXACTAMENTE o número de nós de hoje
+   (as cenas sem lama ficam com a mesma fila ao tique: os gates de hoje não mudam).
+2. Real/modelo por grupo dentro de `0,75–1,25` em todos os grupos acima, re-medido a load `≤ 5`.
+3. Na ponte, com lama, o pior tique depois da porta desce para perto do de sem lama mais UMA procura (o
+   «sempre pelo menos um» fica — a procura cara sozinha é o item 4).
+Se a soma não ficar em `0,75–1,25`, a unidade não entra e a fila continua em nós (recusa medida).
+
+### §22.2 — O início de uma cena grande: a montagem a frio
+
+**A medição que abre** (sonda provisória `sonda_frio_w14`, cronómetros provisórios por fase, a cena
+grande `100 × 100 m`, `1 000` obstáculos, `49` mosaicos de `15 m`, o mínimo de 8, `--release`, load `~48`
+— os tempos absolutos estão inflados, a partilha não):
+
+| fase | sem lama | com `100` lamas | natureza |
+|---|---|---|---|
+| índice (que mosaico toca cada forma) | `0,06 ms` | `0,07` | série |
+| recuo + corte canónico | `3,91` | `4,43` | por mosaico |
+| união (Clipper) | `7,40` | `8,02` | por mosaico |
+| diferença (Clipper) | `3,75` | `4,10` | por mosaico |
+| anéis das áreas | — | `0,49` | por mosaico |
+| pedaços (área a área, Clipper) | `0,03` | `19,00` | por mosaico |
+| triangulação (`spade`) | `10,75` | `16,34` | por mosaico |
+| fusão em convexos | `3,89` | `5,47` | por mosaico |
+| a peça de cada mosaico | `0,68` | `0,90` | série |
+| a montagem (`MalhaPorBlocos::monta`) | `2,17` | `2,65` | série |
+| **total** | **`32,8`** | **`61,8`** | |
+
+⇒ `~95 %` é trabalho POR MOSAICO, e os mosaicos são independentes por construção (cada um lê só as formas
+que lhe tocam e escreve só o seu `Mosaico`; a costura é exacta pelo corte canónico, não pela ordem). O
+piso das bibliotecas (§20.5: `spade` + Clipper) não se move; o que se move é o número de núcleos.
+
+**A decisão (técnica, delegada):** os mosaicos a refazer constroem-se em PARALELO (`rayon`) e entram na
+montagem pela mesma ordem de chave de antes. É uma exceção à regra «sem rayon» restrita a
+`TiledMesh::update_with_areas` (ADR próprio, no molde dos cinco anteriores); na web o `rayon` cai sozinho
+para uma thread (stack §11).
+
+**Kill-criterion (escrito antes do código):**
+1. A malha é a MESMA ao bit: a impressão digital da sonda (`IMPRESSAO=1`: 3 cenas × 3 raios × lamas
+   sim/não × fusão sim/não × 5 mudanças incrementais — vértices, anéis, áreas, paredes, ilhas, área,
+   falhas; `180` malhas) é `42f3d779b02e0329` antes e depois; os oráculos ao bit da `ph2d-navmesh` e o
+   hash/replay da ponte não mudam.
+2. A frio, a cena grande com `100` lamas desce a `≤ 16 ms` (um quadro a 60 Hz) a load `≤ 5`, na
+   workstation; e uma porta (`1–4` mosaicos) não fica mais lenta que hoje (o paralelo só acorda com
+   trabalho que o pague).
+Se (2) não se cumprir, o paralelo não entra (recusa medida, com o número).

@@ -24,6 +24,9 @@ authors.workspace = true
 ph2d-nav = { path = "../ph2d-nav" }
 clipper2-rust = "1.1.0"
 spade = "2.15.1"
+# (W14) A montagem a frio constrói os mosaicos em paralelo — exceção «sem rayon» restrita a
+# `TiledMesh::update_with_areas` (plano 30 §22.2); já resolvido no `Cargo.lock`.
+rayon = "1"
 
 [dev-dependencies]
 ph2d-nav = { path = "../ph2d-nav", features = ["test-support"] }

@@ -424,3 +424,85 @@ fn a_assinatura_distingue_os_sinais_trocados() {
         assert_ne!(assinatura(a), assinatura(b), "{a:?} e {b:?}");
     }
 }
+
+/// ⭐ (W14, ADR-0178) **Os mosaicos feitos em PARALELO são os de UMA thread, ao bit** — a frio e depois
+/// de mudanças que refazem vários mosaicos (o `rayon` acorda a partir de dois), com lamas.
+#[test]
+fn os_mosaicos_feitos_em_paralelo_sao_os_de_uma_thread_ao_bit() {
+    let mut r = Lcg(0x0057_1714);
+    let lado = 60.0;
+    let reg = vec![[0.0, 0.0], [lado, 0.0], [lado, lado], [0.0, lado]];
+    let caixa = |r: &mut Lcg, h: (f64, f64)| -> Shape {
+        let c = [r.f(0.0, lado), r.f(0.0, lado)];
+        let (hx, hy) = (r.f(h.0, h.1), r.f(h.0, h.1));
+        let (a, b) = (r.f(-1.0, 1.0), r.f(-1.0, 1.0));
+        let l = (a * a + b * b).sqrt().max(1e-6);
+        let (co, si) = (a / l, b / l);
+        Shape::Convex(
+            [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]]
+                .iter()
+                .map(|q| [c[0] + q[0] * co - q[1] * si, c[1] + q[0] * si + q[1] * co])
+                .collect(),
+        )
+    };
+    let obs: Vec<Shape> = (0..300).map(|_| caixa(&mut r, (0.2, 1.2))).collect();
+    let areas: Vec<Area> = (0..30)
+        .map(|i| Area {
+            shape: caixa(&mut r, (1.0, 3.0)),
+            id: i + 1,
+        })
+        .collect();
+    // As mudanças: cinco obstáculos espalhados mexem, depois uma lama, depois saem dois.
+    let mut passos = vec![(obs.clone(), areas.clone())];
+    let mut o = obs.clone();
+    for i in [3, 70, 140, 210, 280] {
+        if let Shape::Convex(pts) = &mut o[i] {
+            pts.iter_mut().for_each(|p| p[0] += 0.7);
+        }
+    }
+    passos.push((o.clone(), areas.clone()));
+    let mut a = areas.clone();
+    if let Shape::Convex(pts) = &mut a[5].shape {
+        pts.iter_mut().for_each(|p| p[1] += 0.9);
+    }
+    passos.push((o.clone(), a.clone()));
+    o.remove(250);
+    o.remove(20);
+    passos.push((o, a));
+    let corre = |n: usize| -> Vec<(NavMesh, TileStats)> {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(n)
+            .build()
+            .expect("o pool");
+        pool.install(|| {
+            let params = Params {
+                agent_radius: 0.4,
+                ..Params::default()
+            };
+            let mut t = TiledMesh::new(params, 10.0);
+            passos
+                .iter()
+                .map(|(o, a)| {
+                    t.update_with_areas(&reg, o, a);
+                    (t.mesh().clone(), t.stats())
+                })
+                .collect()
+        })
+    };
+    let (um, oito) = (corre(1), corre(8));
+    for (k, ((m1, s1), (m8, s8))) in um.iter().zip(&oito).enumerate() {
+        assert_eq!(m1.diferenca(m8), None, "o passo {k}");
+        assert_eq!(s1, s8, "o passo {k}");
+        // A população: cada passo refaz vários mosaicos — o paralelo acorda.
+        assert!(
+            s1.rebuilt >= MOSAICOS_EM_PARALELO,
+            "o passo {k} refez {}",
+            s1.rebuilt
+        );
+    }
+    assert!(
+        um[0].1.rebuilt >= 36 && um[0].0.has_areas(),
+        "a frio: {:?}",
+        um[0].1
+    );
+}

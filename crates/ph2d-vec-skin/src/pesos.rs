@@ -239,7 +239,7 @@ pub fn campo_do_caminho(path: &VecPath, ossos: &[Handle]) -> Option<CampoDoDomin
     if aneis.is_empty() {
         return None;
     }
-    let (malha, regua) = malha_do_dominio_com_regua(&aneis, ossos)?;
+    let (malha, regua) = malha_do_dominio_com_regua(&aneis, ossos, path.fill_rule)?;
     let para_malha = |p: [f64; 2]| [(p[0] - regua[0]) * regua[2], (p[1] - regua[1]) * regua[2]];
     let handles: Vec<Handle> = ossos
         .iter()
@@ -378,20 +378,22 @@ fn cubica(p0: [f64; 2], p1: [f64; 2], p2: [f64; 2], p3: [f64; 2], t: f64) -> [f6
     ]
 }
 
-/// `true` quando `p` está DENTRO dos anéis, pela regra par-ímpar.
+/// `true` quando `p` está DENTRO dos anéis, pela REGRA DE PREENCHIMENTO da forma.
 ///
-/// ⭐ **Par-ímpar e não *nonzero*, e a diferença é um FURO:** um caminho composto escreve o anel de
-/// dentro com a mesma orientação do de fora tantas vezes quanto o artista quiser, e é a paridade que
-/// faz o furo ser furo. *Um domínio que tape o furo dá peso a uma região que não é arte.*
+/// ⭐ **O domínio é o que a forma PINTA** (a lei da F50-d: o *Puppet* tira a malha do que a camada
+/// desenha). Um furo é furo pela regra da forma: par-ímpar para um composto `EvenOdd`, o número de
+/// voltas para um `NonZero`. ⛔ Até 2026-10-04 era par-ímpar SEMPRE, e as cópias sobrepostas de um
+/// *Repeater* (`NonZero`, pintadas cheias) tinham a sobreposição como FURO: sem malha, os contornos
+/// de dentro não tinham peso do campo nem chave de osso (A6, FOTOGRAFADO em SVG a `110°`).
 /// ⚠️ A VARREDURA de todas as arestas — a régua do [`aneis::IndiceDosAneis`], que a grelha usa.
 #[cfg(test)]
-fn dentro(aneis: &[Vec<[f64; 2]>], p: [f64; 2]) -> bool {
-    let cruz = aneis
+fn dentro(aneis: &[Vec<[f64; 2]>], p: [f64; 2], regra: ph2d_vec_scene::FillRule) -> bool {
+    let voltas: i32 = aneis
         .iter()
         .flat_map(|anel| (0..anel.len()).map(move |i| (anel[i], anel[(i + 1) % anel.len()])))
-        .filter(|&(a, b)| aneis::cruza_o_raio(a, b, p))
-        .count();
-    cruz % 2 == 1
+        .map(|(a, b)| aneis::volta(a, b, p))
+        .sum();
+    aneis::pela_regra(voltas, regra)
 }
 
 #[path = "pesos_aneis.rs"]
@@ -434,6 +436,7 @@ fn cruza_a_celula(p: [f64; 2], q: [f64; 2], x0: f64, y0: f64, x1: f64, y1: f64) 
 fn malha_do_dominio_com_regua(
     aneis: &[Vec<[f64; 2]>],
     ossos: &[Handle],
+    regra: ph2d_vec_scene::FillRule,
 ) -> Option<(ph2d_poly2d::Mesh2d, [f64; 3])> {
     let mut caixa = [
         f64::INFINITY,
@@ -488,7 +491,7 @@ fn malha_do_dominio_com_regua(
                 [a, d],
             ]
             .iter()
-            .any(|&p| indice.dentro(&aneis_malha, p));
+            .any(|&p| indice.dentro(&aneis_malha, p, regra));
             // ⭐⭐⭐ **OU a FRONTEIRA atravessa a célula** — e esta segunda metade é a que faz a
             // malha cobrir a ARTE, medida em 2026-09-20.
             //

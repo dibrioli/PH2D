@@ -47,7 +47,7 @@ fn cobertura(kind: ShapeKind, size: [f64; 2]) -> (usize, usize) {
     let aneis = contornos_fechados(&path);
     assert!(!aneis.is_empty(), "a fixtura tem de ter contorno fechado");
     let ossos = ossos_do_membro(size[0], size[1]);
-    let (malha, regua) = malha_do_dominio_com_regua(&aneis, &ossos).expect("domínio");
+    let (malha, regua) = malha_do_dominio_com_regua(&aneis, &ossos, ph2d_vec_scene::FillRule::NonZero).expect("domínio");
     let para_malha = |p: [f64; 2]| [(p[0] - regua[0]) * regua[2], (p[1] - regua[1]) * regua[2]];
     // O campo é irrelevante aqui — o que se mede é se o ponto ACERTA um triângulo.
     let campo: Vec<f64> = vec![0.5; malha.rest.len() * 2];
@@ -123,7 +123,7 @@ fn a_regua_da_cobertura_sabe_ver_um_ponto_de_fora() {
     let path = cook(ShapeKind::Star, [0.0, 0.0], size, &[]);
     let aneis = contornos_fechados(&path);
     let ossos = ossos_do_membro(size[0], size[1]);
-    let (malha, regua) = malha_do_dominio_com_regua(&aneis, &ossos).expect("domínio");
+    let (malha, regua) = malha_do_dominio_com_regua(&aneis, &ossos, ph2d_vec_scene::FillRule::NonZero).expect("domínio");
     let para_malha = |p: [f64; 2]| [(p[0] - regua[0]) * regua[2], (p[1] - regua[1]) * regua[2]];
     let campo: Vec<f64> = vec![0.5; malha.rest.len() * 2];
     let longe = para_malha([size[0] * 10.0, size[1] * 10.0]);
@@ -147,7 +147,7 @@ fn cobrir_a_fronteira_nao_estoura_o_orcamento_de_triangulos() {
         let path = cook(kind, [0.0, 0.0], size, &[]);
         let aneis = contornos_fechados(&path);
         let ossos = ossos_do_membro(size[0], size[1]);
-        let (malha, _) = malha_do_dominio_com_regua(&aneis, &ossos).expect("domínio");
+        let (malha, _) = malha_do_dominio_com_regua(&aneis, &ossos, ph2d_vec_scene::FillRule::NonZero).expect("domínio");
         assert!(
             malha.tris.len() <= ALVO_DE_TRIANGULOS * 2,
             "{nome}: {} triângulos contra um orçamento de {ALVO_DE_TRIANGULOS}",
@@ -216,7 +216,7 @@ fn o_indice_da_a_mesma_resposta_que_a_varredura() {
     let path = cook(ShapeKind::Star, [0.0, 0.0], size, &[]);
     let aneis = contornos_fechados(&path);
     let ossos = ossos_do_membro(size[0], size[1]);
-    let (malha, _) = malha_do_dominio_com_regua(&aneis, &ossos).expect("domínio");
+    let (malha, _) = malha_do_dominio_com_regua(&aneis, &ossos, ph2d_vec_scene::FillRule::NonZero).expect("domínio");
     // ⚠️ Pesos DISTINTOS por vértice: um campo constante faria a metade da igualdade passar mesmo
     // que o índice escolhesse outro triângulo — a régua tem de conseguir ver a diferença.
     #[expect(clippy::cast_precision_loss, reason = "índice de vértice")]

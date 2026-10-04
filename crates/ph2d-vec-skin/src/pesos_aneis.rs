@@ -20,6 +20,24 @@ pub(super) fn cruza_o_raio(a: [f64; 2], b: [f64; 2], p: [f64; 2]) -> bool {
     (a[1] > p[1]) != (b[1] > p[1]) && (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0] > p[0]
 }
 
+/// A volta que a aresta `a→b` dá em torno de `p`: `±1` quando corta o raio (o sinal é o sentido
+/// dela), `0` quando não — a soma é o número de voltas, e a paridade dela a do par-ímpar.
+pub(super) fn volta(a: [f64; 2], b: [f64; 2], p: [f64; 2]) -> i32 {
+    match (cruza_o_raio(a, b, p), b[1] > a[1]) {
+        (false, _) => 0,
+        (true, true) => 1,
+        (true, false) => -1,
+    }
+}
+
+/// `voltas` está DENTRO pela regra de preenchimento?
+pub(super) fn pela_regra(voltas: i32, regra: ph2d_vec_scene::FillRule) -> bool {
+    match regra {
+        ph2d_vec_scene::FillRule::EvenOdd => voltas % 2 != 0,
+        ph2d_vec_scene::FillRule::NonZero => voltas != 0,
+    }
+}
+
 impl IndiceDosAneis {
     pub(super) fn novo(aneis: &[Vec<[f64; 2]>]) -> Self {
         let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
@@ -76,15 +94,20 @@ impl IndiceDosAneis {
     }
 
     /// O [`super::dentro`] pelas arestas da faixa de `p`.
-    pub(super) fn dentro(&self, aneis: &[Vec<[f64; 2]>], p: [f64; 2]) -> bool {
-        let cruz = self.faixas[self.celula(p)[1]]
+    pub(super) fn dentro(
+        &self,
+        aneis: &[Vec<[f64; 2]>],
+        p: [f64; 2],
+        regra: ph2d_vec_scene::FillRule,
+    ) -> bool {
+        let voltas: i32 = self.faixas[self.celula(p)[1]]
             .iter()
-            .filter(|&&e| {
+            .map(|&e| {
                 let (a, b) = Self::aresta(aneis, e);
-                cruza_o_raio(a, b, p)
+                volta(a, b, p)
             })
-            .count();
-        cruz % 2 == 1
+            .sum();
+        pela_regra(voltas, regra)
     }
 
     /// Alguma aresta toca o rectângulo `[x0,y0]..[x1,y1]`? — pelas células que ele cobre.

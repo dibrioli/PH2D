@@ -455,3 +455,105 @@ de placa, medida quando o dono a pedir.
 razão para a placa); a pilha translúcida num traço semeia o fundo inteiro em cada quadro (`fundo_semeado`
 na `compoe_amostras` — o caso da base a menos de `100 %`; cachear o fundo por amostra é a cura se o
 dono o sentir).
+
+## 14. W6 — os efeitos de vizinhança na peça (03/10)
+
+**O desenho (o que o código derrubou do §2):** o «gancho» não é uma lista de vizinhos — é o
+**passa-baixo**. Cada efeito de vizinhança (Gaussiano, Nitidez, Bloom, Sombras/Realces) é uma lei
+escrita UMA vez (a fronteira pré-multiplicada em tons de ecrã, a máscara de nitidez, o passo claro e a
+soma em luz do brilho, a correcção de tom local) por cima de UMA pergunta: *«um Gaussiano de
+σ = raio/3 sobre os vizinhos»*. Duas respostas:
+
+| porta | onde |
+|---|---|
+| a pergunta | `ph2d_painter_effects::Neighbourhood` (`blur4` · `blur1` · `glow` · `window` · `image_plane`) e o despacho único `apply_adjustment_on`; `apply_adjustment_windowed` é ele com a grelha |
+| a grelha 2D | `impl Neighbourhood for AdjustWindow` — os kernels de sempre (`separable_blur_premul`, `separable_blur_scalar`, a pirâmide do brilho `grid_glow`): **ao bit** |
+| a superfície | `ph2d_mesh_colors::difusao::Difusao` (a lei) embrulhada em `ph2d_app_sculpt3d::vizinhanca_da_peca::VizinhancaDaPeca` |
+| σ | `gaussian_sigma(raio) = raio/3` — UMA conta para a grelha, a superfície e a placa (cópia da placa gateada em `spatial_weights_parity`) |
+| o compositor sobre uma superfície | `ph2d_tool_painter::composite_over` (a pilha inteira, a superfície como vizinhança de cada ajuste) |
+| a pilha da peça | `PilhaDaPeca::le_a_vizinhanca` · `garante_vizinhanca` (refeita só quando a `Impressao` — posições, níveis — muda) · `faixa_da_superficie` |
+| a placa | `LayerCompositor::set_surface` + o módulo `surface` (`ph2d-render`, o grafo em buffers + `surface_heat.wgsl`): o calor no lugar do desfoque separável nos estágios Gaussiano/Nitidez, Bloom e Sombras/Realces; a mistura de volta é a de sempre. `composto_na_placa::garante_superficie` sobe o grafo uma vez por geometria |
+| o traço por baixo de um desfoque | `tinta_da_peca::pilha::recompoe_sujas` (uma vizinha de uma amostra suja também muda ⇒ a peça inteira na placa, a CPU atrasada; o relevo das sujas desce sempre) |
+| a unidade do raio | `SpatialUnits` (`Pixels` · `Surface { size }`): na peça o raio grava-se no mundo e lê-se em **% da diagonal**; o slider guarda as proporções do 2D (`SURFACE_RADIUS_MAX = 2,5 %`); um ajuste novo nasce com o polegar onde o 2D o põe (`rescale_spatial_params`) |
+| fora da peça | Motion, Chromatic Aberration e Halftone (`reads_the_image_plane`): pedem uma DIRECÇÃO, um CENTRO ou uma TRAMA de imagem plana; uma superfície não tem nenhum (um campo de direcções numa esfera tem de se anular — o teorema da bola cabeluda). Apagados no menu e recusados na porta (`LeOPlanoDaImagem`) |
+| o tecto de degrau | `NIVEL_MAX_DA_VIZINHANCA = 6` (`64x`); acima, a porta recusa (`DegrauAlto`, a frase no painel) |
+
+**A lei na retícula:** o desfoque é o calor `e^{−tA}`, `t = σ²/2`, `A = M⁻¹L` com `L` o laplaciano de
+COTANGENTES da triangulação conforme da retícula (sub-triângulos de um triângulo são a face em ponto
+pequeno; as células de quad partem-se pela diagonal mais curta) e `M` a massa baricêntrica. Aplica-se
+por um polinómio de **Chebyshev** de `g(λ) = (1 − e^{−tλ})/λ` em `[0, λ_sup]` (Gershgorin), erro
+`< 1e-6`, na forma `u − g(A)(A u)` — um campo constante fica constante AO BIT. Numa retícula regular o
+calor acrescenta `2t` de variância por eixo em qualquer resolução: `σ²` EXACTO no mundo.
+
+**Premissas que o código derrubou:**
+
+1. **Passos explícitos não servem:** o passo estável é `~h²/8` ⇒ `8(σ/h)²` passos (`2 048` a `σ = 16`
+   amostras); o polinómio pede `~7σ/h` termos (`~120`).
+2. **O estêncil de eixos nos quads (a 1.ª lei) era inconsistente em células trapezoidais** — e a esfera
+   UV é feita delas: uma amostra de ARESTA da malha desviava `28×` mais que duas do meio de faces à
+   mesma distância de uma risca (média `0,195` contra `0,007` degraus, pior `3`). Com a triangulação
+   conforme: pior `1` (o meio-meio também `1`), `5,7 %` das amostras de aresta a `1` degrau.
+3. **A cor por vértice com uma pilha que lê vizinhos:** o prefixo dos vértices só existe com a peça
+   inteira composta — ele fica atrasado COM o resto e IGUAL à cor por vértice (o estacionamento compara
+   as duas, `desparqueia`); o `em_dia` (exportar, a recusa da placa) e o abrir de um ficheiro
+   (`cor_por_vertice_da_composta`) levam as duas à composição exacta.
+4. **A cor debaixo de alfa nulo** diverge entre a CPU e a placa (o despré-multiplicar corta em `1e-6`
+   contra `f32::EPSILON` e a cauda do calor deixa `~1e-7`): `2 560` bytes a `8x` na pilha translúcida,
+   TODOS de alfa `0` — ninguém os lê (o `achata` usa o fundo). A paridade compara a cor onde o alfa é
+   visível. Limpar o resto na lei foi escrito, medido COSMÉTICO e retirado.
+5. **O raio em px não tem sentido numa peça** (o `Bloom` nascia com `20` unidades numa peça de diagonal
+   `3,5`): na peça grava-se no mundo e lê-se em %.
+
+**Medido** (a esfera de fábrica `24×32`, perfil `smoke`; a placa é uma RTX 5060 Ti; sondas
+`sonda_vizinhanca::diag_o_preco_do_desfoque_na_superficie` e
+`tinta_no_produto_tests::placa_vizinhanca::diag_o_preco_do_desfoque_na_placa`):
+
+| degrau | amostras | rigidez `λ` das amostras: p90 · p98 · máx sobre a mediana | um passo do arrasto NA PLACA: `25 %` · `50 %` · `100 %` do curso de `5 %` |
+|---|---|---|---|
+| `8x` | 47 k | `6,0×` · `14,8×` · `17,9×` | `0,53` · `0,99` · `2,08 ms` |
+| `16x` | 188 k | `6,0×` · `14,8×` · `17,9×` | `1,66` · `3,18` · `6,90 ms` |
+| `32x` | 754 k | `5,8×` · `14,8×` · `17,9×` | `25,5` · `52,7` · **`111,9 ms`** |
+| `64x` | 3,0 M | `5,9×` · `14,8×` · `17,9×` | `162` · `340` · `732 ms` |
+
+⇒ **`13 %` das amostras são `4–15×` mais rígidas que a mediana, `98 %` delas nas duas primeiras filas dos
+pólos** (faces minúsculas com o mesmo número de amostras): o grau do polinómio cresce com `√λ_sup`, ~`4×`
+o que a mediana pediria. O tecto do curso fica em **`2,5 %` da diagonal** (`52,7 ms` a `32x`, abaixo do
+critério de `100 ms` do §7 com `1,9×` de folga) e o critério de desistência da W6 **passa**: um raio
+razoável (`1 %` da peça) custa `~22 ms` a `32x`. A CPU (a referência) não é caminho vivo: a `32x` um raio
+de `1 %` são `89` termos sobre `754 k` amostras (`~0,2 s`).
+
+Paridade placa↔CPU (`a_placa_desfoca_a_peca_como_a_cpu`, os quatro ajustes a mexer): `5 / 36 / 621`
+bytes a um degrau a `8x / 16x / 32x` (`0,02 %` a `32x`), nunca mais de um; a pilha translúcida `0` no que
+se vê.
+
+**⛔ Recusas MEDIDAS**
+
+| recusado | medida | porquê |
+|---|---|---|
+| passos explícitos do calor | `2 048` passos contra `~120` termos (`σ = 16` amostras) | o grau do polinómio cresce com `σ/h`, os passos com o quadrado |
+| estêncil de eixos nas células de quad | aresta `28×` pior (pior `3` degraus) | inconsistente numa célula trapezoidal |
+| cortar a rigidez dos pólos (piso de massa) | `13 %` das amostras, `~3 %` da área | desfocaria MENOS nos pólos (`σ` efectivo `~½` lá) |
+| limpar o resto do calor abaixo de `1e-6` | `0` bytes visíveis antes e depois | código sem efeito observável |
+| a CPU como caminho vivo | `~0,2 s` por passo a `32x` (`1 %` da peça) | o critério é `100 ms` |
+| tecto do curso em `5 %` da diagonal | `111,9 ms` a `32x` | passa do critério |
+| borrar pela ordem das amostras (a dobra como imagem) | o CONTROLO dos gates vaza cor para faces longe | o §1, lição 2 |
+
+**Gates** (W6): retícula `difusao_tests` (8) · gancho/unidades `units_tests` (4) e os 105 da crate de
+efeitos · peça `vizinhanca_da_peca_tests` (11: na superfície e nada vaza — CONTROLO pela ordem —, a aresta
+lê o meio, constante e raio `0` ao bit, `8x = 32x`, o alfa feathera, só os três do plano de fora, o raio
+novo em %, a recusa acima de `64x`, esculpir refaz a vizinhança, a cor por vértice segue o prefixo) ·
+`scenes_vizinhanca_tests` (1) · painel `seam_peca` (o menu, o chip do raio em %) · com placa
+`placa_vizinhanca` (3: a paridade incl. translúcida, a saída da placa borra na superfície, o traço por
+baixo de um desfoque) e o seam test do produto `painel::o_desfoque_pelo_menu_borra_a_peca_e_o_ctrl_z_o_tira`.
+Mutação: `docs/3D/ferramentas/muta_os_efeitos_de_vizinhanca.sh` (49).
+
+**Fica para depois (nomeado):**
+- **`64x` com um raio grande é aos solavancos** (`340 ms` no fim do curso) e **`128x`/`256x` recusam** os
+  efeitos de vizinhança. A cura medida possível: uma pirâmide pelos degraus da retícula (o desfoque
+  largo num degrau mais grosso, interpolado de volta — custo independente do raio) e/ou um estêncil
+  implícito por face na placa (as faces são retículas regulares: só as arestas precisam do grafo).
+- Com uma pilha que lê vizinhos, a **cor por vértice** fica um gesto atrás (igual ao prefixo atrasado)
+  até ao `em_dia`/gravar-abrir: invisível com o plano armado (o shader lê o plano); com o plano
+  desarmado mostra a peça sem o último efeito. Uma composição exacta em segundo plano é a cura.
+- O limiar do despré-multiplicar da CPU (`1e-6`) e da placa (`f32::EPSILON`) diverge também no 2D (só se
+  vê em cor debaixo de alfa nulo) — anterior à W6.

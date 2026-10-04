@@ -66,7 +66,13 @@ diz onde ler o mecanismo:
 
 ---
 
-### F59 — A5: OS DOIS DETALHES (2026-10-04) — (b) ✅ FEITO; (a) ⏳ tentado e REVERTIDO
+### F59 — A5: OS DOIS DETALHES (2026-10-04) — (b) ⛔ RECUSADO PELO DONO no smoke; (a) ⏳ tentado e REVERTIDO
+
+> ⛔ **(b) REVERTIDO em `501daabf4`** — o dono escolheu «fechar os buracos tão pequenos que a linha
+> os cobre», viu-o no smoke da `=5` e respondeu *«o modo anterior era melhor»*: os buracos que a linha
+> cobre (as manchas escuras) voltam a aparecer. A lei e os gates ficam em `f1481cd7d`/`5d3375f04`;
+> ⛔ não reconstruir sem nova ordem dele. O texto abaixo é o registo.
+
 
 - **(b) ✅ FEITO** por ordem do dono (04/10: «fechar os buracos tão pequenos que a linha os cobre»), `f1481cd7d` + `5d3375f04` (gate da ilhota). Lei `skin_desenho_buracos::fecha_os_buracos_que_o_traco_engole`, chamada na `uniao_dos_fechados` (só a união dos efeitos cozidos): um contorno de sentido contrário ao maior, que nenhum fechado da entrada tem (área e caixa a 10⁻³ — o buraco desenhado pelo artista fica), com raio inscrito (grelha 24×24) `<` meia largura do traço, sai. Zig Zag da `=5` (raios em larguras): 100° `[0,13 0,54 0,12]→[0,54]`; 110° `[1,24 0,25 1,25 0,42]→[1,24 1,25]`; 120° `[0,64 0,63]` igual. Gates `os_buracos_que_o_traco_cobre_fecham_e_os_outros_ficam` (régua própria 64×64; controlo sem a lei, cada lado numa thread nova) e `so_o_buraco_novo_que_o_traco_cobre_sai` (o do artista fica; ilhota pequena fica; o novo que se vê fica). Mutação 5/5 sangra (sem a guarda do artista · limiar 2× · sem o sentido · nunca sai · a união não chama). FOTOGRAFADO em SVG a 100°/110°: as manchas pretas sumiram, os dois triângulos de 110° ficam. ⏳ A 100° restam duas marquinhas escuras que NÃO são buracos: reentrâncias ABERTAS mais estreitas que a linha (handoff A12).
 - **(a) ⏳ TENTADO e REVERTIDO** (ordem do dono «corrigir»): tentativa inteira em `ac8246764`, revertida em `9e39c48a5` (`git show ac8246764` para retomar). Desenho: máscara da tinta no bind (alfa `≥ 128`, corridas por linha; `SkinnedMesh.mascara`, binds antigos lêem-se); por malha, o ANEL DA ARTE (cada ponto da borda encostado à tinta, só onde a borda está a `> 1 px` dela, com o triângulo onde cai); a costura mede e cose sobre ele (posado pelos vértices do triângulo), com saída rápida; cada metade do vão estica a cor da SUA beira (1,5 px dentro da tinta). Régua de tinta (alcance 1 px; sonda `diag_a_foto_da_imagem`): cúspide −147° 26→9, −145° 39→14, −144° 104→48 — MAS −149,5° 4→12 e a −160° 3 de 16 remendos sobre a tinta de OUTRO membro (gate `onde_os_membros_se_sobrepoem_nada_se_cose_por_cima`); `skin_image_fecho.rs` a 705 linhas. Três reconstruções ⇒ parou (DIRETIVA §5).

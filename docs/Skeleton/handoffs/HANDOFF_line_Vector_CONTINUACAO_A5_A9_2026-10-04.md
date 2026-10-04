@@ -117,7 +117,7 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
   `efeitos_cozidos = true`), e a pilha esvazia. Meça que não move um pixel (gate com controlo). ⚠️ Se
   isto tocar no formato do ficheiro, conte o degrau com `python3 scripts/schema-recount.py`.
 
-### A5 — (b) ✅ FEITO (F59, `f1481cd7d`): os buracos que a linha cobre fecham-se · (a) ⏳ TENTADO E REVERTIDO (F59, `ac8246764` → `9e39c48a5`): a cúspide da imagem
+### A5 — (b) ⛔ recusado pelo dono no smoke (F59; feito em `f1481cd7d`, REVERTIDO em `501daabf4`: «o modo anterior era melhor») · (a) ⏳ TENTADO E REVERTIDO (F59, `ac8246764` → `9e39c48a5`): a cúspide da imagem
 
 > O dono escolheu (04/10) «fechar os buracos tão pequenos que a linha os cobre» e «corrigir» a cúspide.
 > (b) feito: 100° `[0,13 0,54 0,12]→[0,54]`, 110° `[1,24 0,25 1,25 0,42]→[1,24 1,25]`, mutação 5/5. (a) a tentativa

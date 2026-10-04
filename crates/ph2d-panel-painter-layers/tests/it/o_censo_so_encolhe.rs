@@ -86,7 +86,9 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     v.push((
         Watercolor,
         PAINTER_WATERCOLOR_SPREAD,
-        "a fazer: a lei exacta do Spread, para esmaecer (doc 46 §2-4)",
+        "age, mas não PARA CIMA sem água: o aro usa `core_r = min(Spread, raio/2)` — na fábrica (raio 10, \
+         Spread 7) baixá-lo a 1 muda 1 841 texels, subi-lo a 48 muda 0; acima de raio/2 só a água (Wet, \
+         Dilution) o lê. Não é um dependente (não esmaece): o censo leva-o para cima (doc 46 §2-4)",
     ));
     v.push((
         Watercolor,

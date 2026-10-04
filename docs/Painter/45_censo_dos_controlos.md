@@ -93,7 +93,7 @@ A procura confirma-os da mesma forma: o único gesto que os acorda é **trocar o
 | **Jitter Rotate** | todos | uma Shape não redonda; na A, Automatic desligado | `3 433` (D) · `2 986` (A) |
 | 4.º parâmetro do Grain/Shape **Noise** (Roughness) | todos | Detail > 0 (uma oitava só não tem persistência) | `2 875` |
 | **Grain** (as 28 opções) | A | *Same as Paper* desligado | `1 720–3 507` |
-| **Spread** | A | Wet > 0 ou Dilution | `3 339` · `2 722` |
+| **Spread** | A | para CIMA: Wet > 0 ou Dilution; para BAIXO age sempre abaixo de raio/2 (o aro, `core_r = min(Spread, raio/2)` — `1 841` texels em Spread 1 na fábrica, medido 2026-10-04) | `3 339` · `2 722` |
 | **Pull** | A | Charge < 1 (o pincel volta a apanhar) | `669` (fraco: máx. 8 níveis) |
 | **Automatic** (Shape) | A | Smudge > 0, ou uma Shape escolhida | `566` |
 | **Depth Source = Grain** | I | um Grain escolhido | `2 711` |

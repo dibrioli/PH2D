@@ -125,6 +125,10 @@ pub struct PainterTool {
     /// o `canvas_rgba` mora: é bookkeeping sobre ESCREVER a tela, não sobre o modelo de pintura.
     /// O porquê, a medição e a alavanca de mutação: [`paint::watercolor_field::WashCadence`].
     wash: paint::watercolor_field::WashCadence,
+    /// **A mancha provisória do `Style: Solid` na aguada** — o recorte dos planos da sessão molhada
+    /// que ela tapou, reposto no evento seguinte; o commit larga-o. Irmã do `drag_preview` da tela,
+    /// e mora ao lado da cadência pela mesma razão: [`paint::watercolor_solido`].
+    mancha_na_aguada: Option<paint::watercolor_solido::ManchaNaAguada>,
     /// **A ponte para um dispositivo**, instalada pelo shell — `None` é o mundo inteiro que existia
     /// antes, e todo lote cai na rota em banda da CPU.
     ///
@@ -369,6 +373,7 @@ impl Default for PainterTool {
             params: PainterParams::default(),
             canvas_rgba: Arc::new(Vec::new()),
             wash: paint::watercolor_field::WashCadence::default(),
+            mancha_na_aguada: None,
             device_stamp: None,
             lut_cache: paint::stamp_device::LutCache::default(),
             donated_form: None,

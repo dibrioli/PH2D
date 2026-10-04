@@ -40,9 +40,9 @@ impl PainterTool {
         // que o gate da espessura mediu: um sítio esquecido não *deixa de desenhar*, ele **apaga** —
         // o restore de um snapshot velho desfaz a tinta que o artista acabou de pôr.
         //
-        // ⚠️ O `peel_drag_preview` é a porta de descascar do módulo; as duas coisas a mais que ela
-        // faz (o rascunho da água e o stash de commit do Wet Paint) são no-ops aqui por construção,
-        // porque `solid_owns_the_gesture` já recusa a aquarela e o fluido.
+        // ⚠️ O `peel_drag_preview` é a porta de descascar do módulo; o rascunho da água e o stash do
+        // Wet Paint são no-ops aqui (`solid_owns_the_gesture` recusa o fluido), e na aquarela é ela
+        // que desfaz a mancha provisória da aguada (`super::watercolor_solido`).
         // ⚠️ **Um lote VAZIO não abre a transação.** Descascar e re-preencher com o mesmo caminho dá
         // exactamente os mesmos pixels, então a única coisa que isso produzia era trabalho: o tique
         // do motor corre a cada quadro, e sob simetria circular o retângulo é a TELA INTEIRA — um

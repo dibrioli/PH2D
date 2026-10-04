@@ -48,6 +48,9 @@ mod watercolor_fios_tests;
 /// A Shape Color Ramp na aguada (doc 46 §2-7).
 #[path = "watercolor_rampa_tests.rs"]
 mod watercolor_rampa_tests;
+/// O `Style: Solid` na aguada (doc 46 §2-7).
+#[path = "watercolor_solido_tests.rs"]
+mod watercolor_solido_tests;
 
 #[path = "measure_penup_cost.rs"]
 mod measure_penup_cost; // o que custa FECHAR um traço — a irmã do `measure_pendown_cost`

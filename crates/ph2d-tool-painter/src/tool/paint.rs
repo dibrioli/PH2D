@@ -120,6 +120,8 @@ mod watercolor_secagem;
 mod watercolor_settings;
 /// Watercolor Wet Mix reservoir (Smudge/Pickup): lift the pre-stroke paint, mix into the dab colour.
 mod watercolor_smudge;
+/// O `Style: Solid` na aguada: a região cercada é mais um carimbo, provisória até o pen-up.
+pub(crate) mod watercolor_solido;
 pub(crate) use paint_mode::{PAINT_MODE_COUNT, PaintMode};
 mod lifecycle; // transient-edit reset run at each document (re)bind — abandons pending Fill/stroke/etc.
 /// Drawing symmetry (mirror / radial) — engine glue, canvas-centre resolution + on-canvas pick modes.

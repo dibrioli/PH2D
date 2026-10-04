@@ -51,14 +51,14 @@ impl PainterTool {
     /// O gesto está sendo depositado como forma SÓLIDA?
     ///
     /// ⚠️ **Porta única, e ela pergunta ao MODO também** — o Solid escreve pigmento pela rota própria,
-    /// então onde o depósito não é pigmento (Sculpt, Smear/Blur/Clone, a máscara, a aquarela, o
-    /// fluido) ele não tem o que preencher, e deixá-lo entrar seria o botão fazendo outra coisa em
-    /// cada ferramenta. `false` ⇒ tudo é byte-idêntico ao mundo sem esta feature.
+    /// então onde o depósito não é pigmento (Sculpt, Smear/Blur/Clone, a máscara, o fluido) ele não
+    /// tem o que preencher. A aquarela entra (doc 46 §2-7): ali a mancha é cobertura da aguada
+    /// ([`super::watercolor_solido`]). Nos outros, deixá-lo entrar seria o botão fazendo outra coisa
+    /// em cada ferramenta. `false` ⇒ tudo é byte-idêntico ao mundo sem esta feature.
     pub(super) fn solid_owns_the_gesture(&self) -> bool {
         self.paint.brush.style_solid
             && matches!(self.paint.paint_mode, super::PaintMode::Paint)
             && !self.paint.eraser
-            && !self.paint.brush.watercolor
             && !self.paint.wetpaint.armed
     }
 
@@ -171,6 +171,13 @@ impl PainterTool {
     /// guarda contém todo dab do gesto e nenhum fill, que é o invariante inteiro.
     pub(super) fn stamp_solid_preview(&mut self) {
         let loops = self.solid_fill_loops();
+        // **Na aquarela a mancha é COBERTURA da aguada, sem corda** ([`super::watercolor_solido`]):
+        // a fronteira dela já ganha a orla no composite. O descasque da anterior é o do rascunho.
+        if self.watercolor_render_active() {
+            self.peel_mancha_na_aguada();
+            self.mancha_na_aguada(&loops, true);
+            return;
+        }
         let chord = self.closing_chord_dabs();
         self.stamp_solid_loops_with_chord(&loops, &chord);
     }
@@ -341,7 +348,7 @@ impl PainterTool {
     /// ⚠️ Só no `paint_end`, e não no `commit_drag_preview`: o envelope do traço é por `max`, mas
     /// depois do commit do relevo ele é um envelope NOVO, e uma segunda chamada somaria o corpo.
     pub(super) fn assenta_o_corpo_da_corda(&mut self) {
-        if !self.freehand_solid_fill_live() {
+        if !self.freehand_solid_fill_live() || self.watercolor_render_active() {
             return;
         }
         let chord = self.closing_chord_dabs();

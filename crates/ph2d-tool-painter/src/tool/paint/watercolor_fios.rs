@@ -78,6 +78,8 @@ impl PainterTool {
 /// Como um depósito que NÃO é dab sobe a cobertura da aguada.
 #[derive(Clone, Copy)]
 pub(super) enum Cobertura {
+    /// Como um carimbo: por `max` (a mancha do Solid).
+    Max,
     /// Só onde o papel está seco (o fio, ver [`PainterTool::fios_na_aguada`]).
     SoNoSeco,
 }
@@ -129,6 +131,7 @@ impl PlanosDaAguada<'_> {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let v = (a * 255.0) as u8;
         match cobertura {
+            Cobertura::Max => self.cov[idx] = self.cov[idx].max(v),
             Cobertura::SoNoSeco if self.cov[idx] == 0 => self.cov[idx] = v,
             Cobertura::SoNoSeco => {}
         }

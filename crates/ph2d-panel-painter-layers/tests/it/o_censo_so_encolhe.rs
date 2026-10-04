@@ -94,11 +94,6 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     ));
     v.push((
         Watercolor,
-        PAINTER_LINE_SOLID,
-        "a fazer: o Solid na aquarela (doc 46 §2-7)",
-    ));
-    v.push((
-        Watercolor,
         painter_line_type_option_id(2),
         "age, mas não na FÁBRICA: o Reach de fábrica (1 diâmetro) costura dentro da própria aguada, e dentro \
          da tinta molhada o fio deposita só PIGMENTO da mesma cor (`watercolor_fios`: estender a cobertura ali \

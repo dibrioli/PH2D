@@ -62,6 +62,7 @@ impl PainterTool {
         let before = self.snapshot_model_eliding_relief();
         self.paint.stroke_undo = Some(before);
         self.paint.drag_preview = None;
+        self.mancha_na_aguada = None; // a do gesto anterior é tinta (ou foi descascada)
         self.paint.wetpaint.pending_deposit.clear(); // doc 21: a new gesture invalidates the stash
         self.paint.line_anchor = Some(ev.pos);
         // EDGE-1 wet session: while the paper is still WET and the canvas is untouched since OUR

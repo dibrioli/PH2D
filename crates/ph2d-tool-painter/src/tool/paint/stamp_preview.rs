@@ -179,6 +179,8 @@ impl PainterTool {
     pub(super) fn peel_drag_preview(&mut self) {
         // A água tem o seu próprio rascunho, e ele é desfeito pela porta dela (grid + tela).
         self.wet_peel_preview();
+        // …e a aguada também: a mancha provisória do `Style: Solid` (`super::watercolor_solido`).
+        self.peel_mancha_na_aguada();
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
             self.wetpaint_rearm_after_own_write();
@@ -230,6 +232,8 @@ impl PainterTool {
     /// what closes it, at the same one point, for every method — and it is also where a sculpt gesture
     /// stops being editable, which is the point of `end_sculpt_session`'s docs.
     pub(super) fn commit_drag_preview(&mut self) {
+        // A mancha do Solid na aguada passa a ser tinta: larga o registo (`super::watercolor_solido`).
+        self.mancha_na_aguada = None;
         // Doc 21 law C: in Wet Paint the commit IS the deposit — peel the
         // flat sketch, replay the stash once through the full dispatcher,
         // let the sim resume ("the sketch melts"). The eraser and an empty
@@ -296,9 +300,19 @@ impl PainterTool {
         };
         // Save the pristine pixels under the wash's INFLUENCE footprint (dab bbox + rim/warp reach), so the
         // next frame restores everything `apply_watercolor` will have written — else the rim leaves a trail.
-        let Some(rect) = self.watercolor_preview_footprint(wet_dabs) else {
+        // **Style: Solid** (`super::watercolor_solido`): a região da figura entra na aguada deste
+        // quadro, e a pegada salva cresce pela caixa dela com a MESMA folga do alcance da aguada.
+        let solid_loops = self.solid_fill_loops();
+        let solid_rect = self.solid_fill_rect(&solid_loops).and_then(|r| {
+            let pad = self.alcance_do_rascunho_da_aguada() as u32;
+            super::region::grow_region(r, pad, self.source_size.0, self.source_size.1)
+        });
+        let Some(mut rect) = self.watercolor_preview_footprint(wet_dabs) else {
             return; // empty batch (no dabs) — the peel above already cleared the last preview
         };
+        if let Some(r) = solid_rect {
+            rect = union_region(rect, r);
+        }
         let pixels = self.save_region(&rect);
         self.paint.drag_preview = Some(DragPreview { rect, pixels });
         // Freeze the ground ONCE per shape session (expensive: `build_wet_backdrop` composites the layers
@@ -315,6 +329,9 @@ impl PainterTool {
         self.clear_wet_color();
         self.accumulate_wet_coverage(wet_dabs);
         self.accumulate_wet_color(wet_dabs);
+        if !solid_loops.is_empty() {
+            self.mancha_na_aguada(&solid_loops, false);
+        }
         self.apply_watercolor(true);
     }
 
@@ -325,9 +342,7 @@ impl PainterTool {
     /// wash spans the WHOLE tiled axis (`apply_watercolor` renders it there via `dab_batch_region`), so the
     /// footprint is forced full-axis to match — else the wrapped span leaves a trail on the next peel.
     fn watercolor_preview_footprint(&self, dabs: &[Dab]) -> Option<Region> {
-        let b = &self.paint.brush;
-        // Match `apply_watercolor`'s max reach (`spread * 2` when watered/soaked) + warp + slack.
-        let pad = b.edge_spread.round().clamp(0.0, 48.0) * 2.0 + b.warp.max(0.0).ceil() + 4.0;
+        let pad = self.alcance_do_rascunho_da_aguada();
         let mut r = dabs.iter().fold(None, |acc, d| {
             match (acc, self.dab_bbox(d.center, d.radius_px + pad)) {
                 (Some(a), Some(r)) => Some(union_region(a, r)),
@@ -344,6 +359,14 @@ impl PainterTool {
             r.h = fh;
         }
         Some(r)
+    }
+
+    /// The wash's influence reach around what a shape preview deposits (rim `edge_spread` ×2 +
+    /// Ragged-Edge `warp` + slack) — ONE number for the dab footprint and the Solid region's.
+    fn alcance_do_rascunho_da_aguada(&self) -> f32 {
+        let b = &self.paint.brush;
+        // Match `apply_watercolor`'s max reach (`spread * 2` when watered/soaked) + warp + slack.
+        b.edge_spread.round().clamp(0.0, 48.0) * 2.0 + b.warp.max(0.0).ceil() + 4.0
     }
 
     /// Stamp the dabs a `begin`/`extend` produced. Drag Dot, Anchored AND Line are interactive

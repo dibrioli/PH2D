@@ -81,6 +81,22 @@ pub(crate) const JUNTA: Vista = Vista {
     meia: 0.14,
 };
 
+/// A azul quase toda atrás da verde vista do centro do cromo e, de cada ponto dele, ENCOSTADA à verde e meio
+/// escondida por ela (o 4.º report de 04/10: a cura da junta abria um BURACO onde os reflexos se sobrepõem).
+pub(crate) const SOBREPOSTA: Vista = Vista {
+    oraculo: include_bytes!("../fixtures/oraculo_reflexo_sobreposta.csv.gz"),
+    pecas: &[
+        ([0.0, 0.3, 0.0], 0.3, false),
+        ([0.0, 0.18, 0.72], 0.18, true),
+        ([0.45, 0.15, 1.9], 0.15, true),
+    ],
+    albedos: &[0.15, 0.5],
+    de: [1.0, 0.45, 0.5],
+    rug2: 0.05,
+    alvo: [-0.0612, 0.2323, 0.1832],
+    meia: 0.14,
+};
+
 /// Um pixel do cromo: `(i, j)`, o ponto, a normal e `[viz, viz05, solo, solo05]` do Cycles.
 pub(crate) struct Px {
     pub(crate) i: u32,

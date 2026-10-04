@@ -204,6 +204,12 @@ traçada com o gizmo 3D, e a barra de cima sem o MODEL. Conferida.
 - A câmera do módulo é UMA: trocar de peça enquadra a nova (não guarda a vista de cada peça).
 - `Ctrl+Tab`; Image ▸ Mask; F4 (a barra MOVE/ROT/SCALE continua visível nos modos de criação).
 
+## §7b — Depois do fecho (03/10)
+
+- **Smoke do dono: APROVADO** («smoke OK. siga»).
+- A F3 do Vector segue NESTA linha, noutra janela:
+  [`HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_VECTOR.md`](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03_F3_VECTOR.md).
+
 ## §8 — Perfil do loop (`bash scripts/agent-loop-profile.sh`)
 
 ```

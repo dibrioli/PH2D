@@ -1555,3 +1555,21 @@ casos medidos, e o resto fica aberto com o mecanismo (§22.6). Escrevi o critér
   passar. A cura é do CAMINHO (contornar o polígono pela tangente do lado escolhido), não do desvio.
 - A dominância da procura ponderada (§22.4): o maior pedaço que sobra; nenhuma alavanca medida chega a
   metade.
+
+### §22.7 — A prova
+
+Gates novos: `a_ultima_procura_guarda_o_trabalho_e_nao_os_nos` · `o_trabalho_sem_lama_sao_os_nos_e_na_lama_pesa_o_que_custa`
+(`16 837` de trabalho sobre `9 290` nós, `1,81×`) · `na_lama_a_vez_de_quem_nasce_conta_o_trabalho` (+ CONTROLO) ·
+`os_mosaicos_feitos_em_paralelo_sao_os_de_uma_thread_ao_bit` (1 thread contra 8, quatro passos que refazem vários
+mosaicos) · `os_vizinhos_por_aneis_sao_os_da_varrida` (o oráculo verbatim; `10 404` listas, `9 472` cortadas pelo
+tecto, `2 089` empates na fronteira) · `o_corpo_largo_em_poligono_contorna_e_em_discos_prende_como_no_godot` ·
+`um_corpo_que_anda_e_o_mesmo_parado_no_referencial_dele` (`785` de `2 000` cortados) ·
+`um_corpo_largo_que_vem_de_frente_e_contornado` (+ CONTROLO sem desvio) ·
+`uma_capsula_que_anda_e_um_torniquete_que_roda_sao_contornados_pela_forma` (a folga à forma EXACTA).
+
+Mutação **17 / 17** a sangrar, zero defeitos de arnês
+([`mutacao_navegacao_w14_2026-10-04.py`](ferramentas/mutacao_navegacao_w14_2026-10-04.py): o motor da W10/W13 com
+UMA mudança declarada — cada grupo corre só os seus observadores). A 1.ª corrida deu **16 / 17**: a L2 (o agente
+com a velocidade ABSOLUTA, não a relativa ao corpo) sobrevivia — chegar e a folga não mudam; o gate da
+invariância de referencial nasceu disso. E antes da prova, a cápsula (o octógono) e a rotação (`ω ×` o braço) não
+tinham régua nenhuma — os dois gates nasceram antes de a mutação os acusar.

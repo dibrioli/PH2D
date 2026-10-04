@@ -91,3 +91,106 @@ fn um_corpo_largo_que_vem_de_frente_e_contornado() {
     let (a_frente, _, _) = corrida(1.5, -3.0, 0.3, true);
     assert!(a_frente.is_some_and(|t| t <= 230), "à frente: {a_frente:?}");
 }
+
+/// Um cinemático com a forma `forma`, em `c`.
+fn corpo_com(sim: &mut SimWorld, c: (f32, f32), forma: ColliderShape) -> Entity {
+    sim.world_mut()
+        .spawn((
+            Name::new("Corpo"),
+            RigidBody {
+                kind: BodyKind::Kinematic,
+            },
+            Collider {
+                shape: forma,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(c.0, c.1)),
+        ))
+        .id()
+}
+
+/// A distância de `p` ao segmento `a`–`b`.
+fn ao_segmento(p: (f32, f32), a: (f32, f32), b: (f32, f32)) -> f32 {
+    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+    let t = (((p.0 - a.0) * dx + (p.1 - a.1) * dy) / (dx * dx + dy * dy)).clamp(0.0, 1.0);
+    dist(p, (a.0 + t * dx, a.1 + t * dy))
+}
+
+/// ⭐ (W14) **A forma inteira de uma CÁPSULA que anda, e um TORNIQUETE que roda** — a cápsula entra no
+/// desvio pelo octógono circunscrito de cada ponta (contém-na), e a velocidade de cada ponto de um corpo
+/// que roda é `ω ×` o braço (as pontas de uma barra que gira andam mais que o centro, parado). A folga
+/// medida é à forma EXACTA.
+#[test]
+fn uma_capsula_que_anda_e_um_torniquete_que_roda_sao_contornados_pela_forma() {
+    // A cápsula deitada em `y` (meia-altura `1,2`, raio `0,3`), a vir de frente a `0,3 m/s`.
+    let mut sim = SimWorld::new();
+    regiao(&mut sim);
+    let cap = corpo_com(
+        &mut sim,
+        (3.0, 0.0),
+        ColliderShape::Capsule {
+            half_height: 1.2,
+            radius: 0.3,
+        },
+    );
+    let quem = agente(
+        &mut sim,
+        "A",
+        (-6.0, 0.0),
+        NavTarget::Point([6.0, 0.0]),
+        true,
+    );
+    let mut b = PhysicsBridge::new();
+    let (mut chegou, mut folga) = (None, f32::INFINITY);
+    for t in 1..=900_u64 {
+        let x = 3.0 - 0.3 * t as f32 / 60.0;
+        sim.world_mut()
+            .get_mut::<Transform>(cap)
+            .expect("a cápsula")
+            .translation
+            .x = x;
+        b.dispatch(&mut sim, true, t);
+        let p = pos(&sim, quem);
+        folga = folga.min(ao_segmento(p, (x, -1.2), (x, 1.2)) - 0.3 - R);
+        if chegou.is_none() && dist(p, (6.0, 0.0)) < 0.15 {
+            chegou = Some(t);
+        }
+    }
+    eprintln!("a cápsula: chegou {chegou:?}, folga {folga:.3}");
+    assert!(chegou.is_some(), "a cápsula: não chegou");
+    // A folga do que ela anda num horizonte é `0,3 m`: o octógono contém-na, logo não se come.
+    assert!(folga > 0.2, "a cápsula: folga {folga}");
+
+    // O torniquete: uma barra `3 m` a rodar no sítio a `0,5 rad/s` no meio do caminho.
+    let mut sim = SimWorld::new();
+    regiao(&mut sim);
+    let barra = barreira(&mut sim, (0.0, 0.0), 0.15, 1.5);
+    let quem = agente(
+        &mut sim,
+        "A",
+        (-6.0, 0.0),
+        NavTarget::Point([6.0, 0.0]),
+        true,
+    );
+    let mut b = PhysicsBridge::new();
+    let (mut chegou, mut folga) = (None, f32::INFINITY);
+    for t in 1..=1_200_u64 {
+        let ang = 0.5 * t as f32 / 60.0;
+        sim.world_mut()
+            .get_mut::<Transform>(barra)
+            .expect("a barra")
+            .rotation = ang;
+        b.dispatch(&mut sim, true, t);
+        let p = pos(&sim, quem);
+        let (s, c) = (libm::sinf(ang), libm::cosf(ang));
+        // A barra deitada em `y`, rodada de `ang`: o segmento do eixo dela, e a meia-espessura.
+        let (a, z) = ((1.5 * s, -1.5 * c), (-1.5 * s, 1.5 * c));
+        folga = folga.min(ao_segmento(p, a, z) - 0.15 - R);
+        if chegou.is_none() && dist(p, (6.0, 0.0)) < 0.15 {
+            chegou = Some(t);
+        }
+    }
+    eprintln!("o torniquete: chegou {chegou:?}, folga {folga:.3}");
+    assert!(chegou.is_some(), "o torniquete: não chegou");
+    assert!(folga > 0.0, "o torniquete bateu no agente: folga {folga}");
+}

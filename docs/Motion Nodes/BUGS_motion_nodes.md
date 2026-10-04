@@ -18,6 +18,7 @@
 | [5](#bug-5--o-editor-de-curva-era-oferecido-numa-onda-que-não-o-lê--e-o-censo-que-o-teria-apanhado-não-podia-vê-lo) | **"Wave curve dos osciladores não está funcionando"** (com foto) | `motion.oscillator` (o MOTOR, **inocente**) + a tabela de gates dele — e mais DOIS nós pelo mesmo mecanismo | ✅ **CURADO** (aguarda smoke, cena `=94`) — o editor aparecia em toda onda e só era lido na `Custom` | 2026-08-24 |
 | [11](#bug-11--a-seta-diferente-era-a-única-certa-a-família-do-rig-escreve-o-ângulo-local-na-coluna-que-o-desenho-lê-como-mundo) | **"Em skeleton o último objeto tem direção diferente"** (com foto) | a família do **RIG** (7 nós, 6 cópias do `fk.rs`) — e a seta acusada é a ÚNICA certa | ✅ **CURADO** (aguarda smoke) — `rot` passa a levar o MUNDO, `lrot` o local; 6 provas de mutação | 2026-09-19 |
 | [12](#bug-12--o-fio-agia-num-ramo-e-não-no-outro-e-o-cartão-mentia-nos-dois) | **"Number no Strength do Vortex não tem efeito"** + **"Number não aceita negativos"** | o ramo HÍBRIDO do `cook_gpu` (não entregava os valores do fio) + o CARTÃO (desenhava o override) + a faixa `0..40` das forças com sentido | ✅ **CURADO** (aguarda smoke, cena `=128`) | 2026-10-03 |
+| [13](#bug-13--o-grafo-abria-com-a-parte-de-cima-escondida-o-enquadramento-media-cartões-e-desenhava-pílulas) | **"O grafo abre com a parte de cima escondida"** | o enquadramento automático do painel do grafo (a tela, acusada, **inocente**) | ✅ **CURADO** | 2026-10-03 |
 
 ---
 
@@ -1289,3 +1290,56 @@ E o «não aceita negativos»: um Number ligado veste a faixa do destino (`Param
    de `feedback_two_hand_written_loops_that_must_agree_need_one_door`) — e o gate tem de ser POR RAMO.
 3. ⛔ **Um report de «não tem efeito» pode ter DUAS metades**: o efeito e o mostrador. Curar a que se
    achou primeiro e declarar o resto inocente foi o erro desta janela.
+
+---
+
+## Bug #13 — o grafo abria com a parte de cima escondida: o enquadramento media CARTÕES e desenhava PÍLULAS
+
+**Estado:** ✅ **CURADO** em 2026-10-03 (`82f9623e2`) · handoff
+[03/10 §6.4](handoffs/HANDOFF_INTEGRACAO_line_motion_value_2026-10-03.md).
+
+### Sintoma
+
+Visto nas fotos da cena `=128` e confirmado pelo dono: ao abrir uma cena, os cartões de cima do grafo
+ficam tapados — parece a tela de desenho a cobrir o painel.
+
+### O que a medição disse (sonda `[SONDA-FIT]` no `paint`, `=128` a 1930×1040)
+
+| quadro | retângulo do painel | `fitted` |
+|---|---|---|
+| 0 | `x 6 · y 566,5 · 1918 × 205,5` | `false` → enquadra AQUI |
+| 1… | `x 312 · y 566,5 · 1310 × 205,5` | `true` |
+
+⛔ **A tela NÃO tapa o painel** (a pintura recorta e pinta o fundo exactamente no retângulo). Eram dois
+mecanismos:
+
+1. **Vertical — o regime errado.** O piso do enquadramento é `0,35` e a pílula começa abaixo de
+   `ZOOM_DA_CAPSULA ≈ 0,655`: num painel de `205` px quase todo grafo abre em PÍLULAS, mas o `fit`
+   media os cartões ABERTOS (`card_h` com todas as rows). Centrava uma caixa muito mais alta do que o
+   desenhado, e as pílulas ficavam no topo dela — cortadas.
+2. **Horizontal — o painel do quadro 0.** O enquadramento corre uma vez, no quadro 0, com o painel a
+   `1918` px; no quadro 1 os painéis laterais deixam-no a `1310` e os cartões ficam `304` px à direita
+   (o gate reproduz os `304` ao píxel).
+
+### A cura
+
+- O `fit` mede pela geometria da PINTURA (`card_x_w_at`/`card_h_at`) no regime em que vai desenhar:
+  primeiro abertos; se o zoom que sai é de pílula, mede pílulas (com teto logo abaixo do limiar, onde
+  elas reabririam). No regime aberto é o de antes, ao bit.
+- Uma vista AUTOMÁTICA que ninguém tocou re-enquadra quando o painel muda de tamanho
+  (`refit_if_the_panel_moved_under_an_untouched_view`); a vista que o artista mexeu é dele.
+- O que não cabe ao piso (o piso é o da LEITURA do nome na pílula) alinha pelo TOPO: o excesso vai
+  para baixo, para onde se rola, em vez de cortar o início.
+
+Gates pela costura real (`paint_fit_tests.rs`, o painel no retângulo MEDIDO): o que se desenha cabe e
+fica ao centro · o que não cabe perde o fundo, nunca o topo · o painel que muda re-enquadra (e o
+controlo: a vista mexida não muda) · um grafo pequeno continua com cartões abertos. **4 mutações a
+sangrar** (medir pílulas como abertos — sobreviveu à 1.ª redacção do gate, que não exigia o centro ·
+centrar sempre · não re-enquadrar · re-enquadrar a vista mexida).
+
+### Lições generalizáveis
+
+1. ⛔ **Quem mede para posicionar tem de medir o que se DESENHA** — um LOD que muda a forma do objecto
+   muda a caixa, e uma medida do regime errado lê-se como «outra coisa a tapar».
+2. ⛔ **Um cálculo feito UMA vez no 1.º quadro herda a geometria provisória do 1.º quadro.** Meça o
+   retângulo nos dois primeiros quadros antes de culpar a geometria.

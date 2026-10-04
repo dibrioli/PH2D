@@ -261,6 +261,22 @@ hipóteses que caíram e a conclusão intermédia errada: [BUGS #12](../BUGS_mot
   (Pivot Offset, Bone/Rope Segment, Bounciness `0 a 1`) — é o que o código já dizia.
 - Smoke ao dono: §7.1.
 
+### §6.4 — O grafo abria com a parte de cima escondida (03/10, mesma linha, depois do smoke da §6.3)
+
+- **`82f9623e2`** — mecanismo e medição: [BUGS #13](../BUGS_motion_nodes.md). O `fit` do painel do grafo
+  mede pelo regime que desenha (pílula ou cartão), re-enquadra uma vista automática intocada quando o
+  painel muda de tamanho (o quadro 0 tem `1918` px, o 1 tem `1310`), e alinha pelo topo o que não cabe
+  ao piso de leitura. Estado novo no painel: `MotionGraphPanelState::enquadrado_em` (privado do crate).
+  A cadeia de forças partilhada da `=126`/`=127` passa a `220` de passo (pílulas sobrepostas a `160`).
+- ⚠️ **Para quem lê o diff:** no regime de cartões ABERTOS o `fit` é o de antes ao bit (a mesma
+  geometria); muda só quando o zoom cai no regime das pílulas, que num painel de `205` px é quase sempre.
+- Gates: `paint_fit_tests.rs` (4, pela costura) · 4 mutações a sangrar · nextest das duas crates
+  `1 582` + `14` de integração do painel · clippy limpo. Fotos `=127` e `=128` a 1930×1040: a fila de cima
+  inteira; a `=128` cabe e centra.
+- ⏳ **A fazer ANTES de integrar (ordem do dono, 03/10):** os itens 3 e 4 do §6 — encolher o ramo do
+  tracejado (a variante COMPLETA a `128` VGPRs, o proxy de telemóvel) e a variante ESPARSA das células
+  (medir primeiro a fracção de células tocadas, nas formas GRANDES).
+
 ## §7 — OS SMOKES
 
 ✅ **Smoke do dono APROVADO em 03/10** (a `=127` pelo comando abaixo); e de novo depois da §6.2, a memória das células).

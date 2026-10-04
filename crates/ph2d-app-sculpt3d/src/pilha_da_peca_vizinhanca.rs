@@ -98,14 +98,19 @@ impl PilhaDaPeca {
     /// retícula** — o caminho da [`Self::compor_faixa`] quando a pilha lê
     /// vizinhos.
     pub(super) fn faixa_da_superficie(&self, inicio: usize, fim: usize) -> Vec<u8> {
-        let todo = match self.vizinhanca() {
-            Some(v) => composite_over(&self.pilha, self, v),
+        let todo = self.com_vizinhos(|nb| composite_over(&self.pilha, self, nb));
+        todo[inicio * 4..fim * 4].to_vec()
+    }
+
+    /// `f` com a vizinhança da peça — a cor e o relevo leem a MESMA.
+    pub(super) fn com_vizinhos<R>(&self, f: impl FnOnce(&dyn Neighbourhood) -> R) -> R {
+        match self.vizinhanca() {
+            Some(v) => f(v),
             None => {
                 debug_assert!(false, "uma pilha que lê vizinhos sem a vizinhança da peça");
                 let (l, h) = dobra(self.amostras);
-                composite_over(&self.pilha, self, &SemVizinhos(AdjustWindow::full(l, h)))
+                f(&SemVizinhos(AdjustWindow::full(l, h)))
             }
-        };
-        todo[inicio * 4..fim * 4].to_vec()
+        }
     }
 }

@@ -302,7 +302,10 @@ impl HeatGpu {
                 gpu.device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some(label),
                     size: u64::from(total.max(1)) * 16,
-                    usage: wgpu::BufferUsages::STORAGE,
+                    // O campo da peça sobe ao `u` e ao `y` e o `y` volta (`surface_heat_field`).
+                    usage: wgpu::BufferUsages::STORAGE
+                        | wgpu::BufferUsages::COPY_DST
+                        | wgpu::BufferUsages::COPY_SRC,
                     mapped_at_creation: false,
                 })
             };
@@ -357,20 +360,64 @@ impl LayerCompositor {
         sigma: f32,
         premul: bool,
     ) {
+        self.heat_core(gpu, Ponta::Textura(src), Saida::Textura(dst), sigma, premul);
+    }
+
+    /// ⭐⭐⭐ **O calor da superfície sobre um CAMPO por amostra, na placa e de volta** — o MESMO
+    /// polinómio e o mesmo passo dos desfoques da composição, sem textura: `campo` (uma linha por
+    /// amostra, até quatro canais) sobe para o `u`, os passos correm, e o `y` volta. É por aqui que
+    /// a peça borra o RELEVO (a altura e o corpo, `docs/3D/30` §20). `false` sem superfície
+    /// instalada ou com um campo que não é das amostras dela.
+    pub fn surface_heat_field(
+        &mut self,
+        gpu: &GpuContext,
+        campo: &mut [[f32; 4]],
+        sigma: f32,
+    ) -> bool {
+        let Some(s) = self.surface.as_ref() else {
+            return false;
+        };
+        if campo.len() != s.n as usize || self.heat.is_none() {
+            return false;
+        }
+        let entrada = campo.to_vec();
+        self.heat_core(
+            gpu,
+            Ponta::Campo(&entrada),
+            Saida::Campo(campo),
+            sigma,
+            false,
+        )
+    }
+
+    fn heat_core(
+        &mut self,
+        gpu: &GpuContext,
+        src: Ponta<'_>,
+        dst: Saida<'_>,
+        sigma: f32,
+        premul: bool,
+    ) -> bool {
         let Self {
             surface,
             heat,
             work,
             ..
         } = self;
-        let (Some(s), Some(h), Some(work)) = (surface.as_ref(), heat.as_mut(), work.as_ref())
-        else {
-            return;
+        let (Some(s), Some(h)) = (surface.as_ref(), heat.as_mut()) else {
+            return false;
         };
-        let view = |w: WorkSel| match w {
-            WorkSel::Base(i) => &work.base[i].view,
-            WorkSel::Blur(i) => &work.blur[i].view,
-            WorkSel::Sh(i) => &work.sh[i].view,
+        let texturas = matches!(src, Ponta::Textura(_)) || matches!(dst, Saida::Textura(_));
+        if texturas && work.is_none() {
+            return false;
+        }
+        let view = |w: WorkSel| {
+            let work = work.as_ref().expect("as texturas de trabalho");
+            match w {
+                WorkSel::Base(i) => &work.base[i].view,
+                WorkSel::Blur(i) => &work.blur[i].view,
+                WorkSel::Sh(i) => &work.sh[i].view,
+            }
         };
         let coefs = (s.polynomial)(sigma);
         let pass = |mode: u32, coef: f32| HeatPass {
@@ -391,7 +438,7 @@ impl LayerCompositor {
         uniforms.push(pass(0, 0.0));
         h.ensure(gpu, s.total, uniforms.len());
         let (Some((pass_buf, _)), Some((_, [u, t0, t1, t2, y]))) = (&h.passes, &h.scratch) else {
-            return;
+            return false;
         };
         let mut bytes = vec![0u8; uniforms.len() * PASS_STRIDE as usize];
         for (i, p) in uniforms.iter().enumerate() {
@@ -399,27 +446,35 @@ impl LayerCompositor {
             bytes[o..o + size_of::<HeatPass>()].copy_from_slice(bytemuck::bytes_of(p));
         }
         gpu.queue.write_buffer(pass_buf, 0, &bytes);
+        // O campo é o `u` e o começo do `y` — o que o `cs_heat_load` escreveria de uma textura.
+        if let Ponta::Campo(c) = src {
+            gpu.queue.write_buffer(u, 0, bytemuck::cast_slice(c));
+            gpu.queue.write_buffer(y, 0, bytemuck::cast_slice(c));
+        }
         let pass_binding = wgpu::BindingResource::Buffer(wgpu::BufferBinding {
             buffer: pass_buf,
             offset: 0,
             size: wgpu::BufferSize::new(size_of::<HeatPass>() as u64),
         });
-        let load_bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-render surface_heat load bg"),
-            layout: &h.bgl_load,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: pass_binding.clone(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: wgpu::BindingResource::TextureView(view(src)),
-                },
-                buf(7, u),
-                buf(11, y),
-            ],
-        });
+        let load_bg = match src {
+            Ponta::Textura(sel) => Some(gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-render surface_heat load bg"),
+                layout: &h.bgl_load,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: pass_binding.clone(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: wgpu::BindingResource::TextureView(view(sel)),
+                    },
+                    buf(7, u),
+                    buf(11, y),
+                ],
+            })),
+            Ponta::Campo(_) => None,
+        };
         // `(t_cur, t_prev, t_out)` of each step: T₀ from u; then the three T's rotate.
         let ts = [t0, t1, t2];
         let step_bg = |cur: &wgpu::Buffer, prev: &wgpu::Buffer, out: &wgpu::Buffer| {
@@ -449,21 +504,24 @@ impl LayerCompositor {
                 k => step_bg(ts[(k - 1) % 3], ts[(k - 2) % 3], ts[k % 3]),
             })
             .collect();
-        let store_bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-render surface_heat store bg"),
-            layout: &h.bgl_store,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: pass_binding,
-                },
-                wgpu::BindGroupEntry {
-                    binding: 6,
-                    resource: wgpu::BindingResource::TextureView(view(dst)),
-                },
-                buf(11, y),
-            ],
-        });
+        let store_bg = match &dst {
+            Saida::Textura(sel) => Some(gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ph2d-render surface_heat store bg"),
+                layout: &h.bgl_store,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: pass_binding,
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: wgpu::BindingResource::TextureView(view(*sel)),
+                    },
+                    buf(11, y),
+                ],
+            })),
+            Saida::Campo(_) => None,
+        };
         let height = s.total.div_ceil(s.width.max(1));
         let texel_groups = (
             s.width.div_ceil(WORKGROUP_EDGE),
@@ -482,9 +540,11 @@ impl LayerCompositor {
                 timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("render.surface_heat"),
             });
             let offset = |i: usize| (i as u64 * PASS_STRIDE) as u32;
-            cp.set_pipeline(&h.load);
-            cp.set_bind_group(0, &load_bg, &[offset(0)]);
-            cp.dispatch_workgroups(texel_groups.0, texel_groups.1, 1);
+            if let Some(bg) = &load_bg {
+                cp.set_pipeline(&h.load);
+                cp.set_bind_group(0, bg, &[offset(0)]);
+                cp.dispatch_workgroups(texel_groups.0, texel_groups.1, 1);
+            }
             if groups > 0 {
                 cp.set_pipeline(&h.step);
                 for k in 0..coefs.len() {
@@ -494,10 +554,49 @@ impl LayerCompositor {
                     cp.dispatch_workgroups(step_groups.0, step_groups.1, 1);
                 }
             }
-            cp.set_pipeline(&h.store);
-            cp.set_bind_group(0, &store_bg, &[offset(uniforms.len() - 1)]);
-            cp.dispatch_workgroups(texel_groups.0, texel_groups.1, 1);
+            if let Some(bg) = &store_bg {
+                cp.set_pipeline(&h.store);
+                cp.set_bind_group(0, bg, &[offset(uniforms.len() - 1)]);
+                cp.dispatch_workgroups(texel_groups.0, texel_groups.1, 1);
+            }
         }
+        let Saida::Campo(campo) = dst else {
+            gpu.queue.submit([encoder.finish()]);
+            return true;
+        };
+        let bytes = (campo.len() * 16) as u64;
+        let ler = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-render surface_heat campo"),
+            size: bytes.max(16),
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        encoder.copy_buffer_to_buffer(y, 0, &ler, 0, bytes);
         gpu.queue.submit([encoder.finish()]);
+        let fatia = ler.slice(..bytes);
+        fatia.map_async(wgpu::MapMode::Read, |_| {});
+        if gpu
+            .device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .is_err()
+        {
+            return false;
+        }
+        campo.copy_from_slice(bytemuck::cast_slice(&fatia.get_mapped_range()));
+        ler.unmap();
+        true
     }
+}
+
+/// De onde o calor lê.
+#[derive(Clone, Copy)]
+enum Ponta<'a> {
+    Textura(WorkSel),
+    Campo(&'a [[f32; 4]]),
+}
+
+/// Para onde o calor escreve.
+enum Saida<'a> {
+    Textura(WorkSel),
+    Campo(&'a mut [[f32; 4]]),
 }

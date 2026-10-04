@@ -242,6 +242,9 @@ impl CompostoNaPlaca {
     }
 }
 
+#[path = "composto_na_placa_relevo.rs"]
+mod relevo;
+
 #[cfg(test)]
 #[path = "composto_na_placa_tests.rs"]
 mod tests;

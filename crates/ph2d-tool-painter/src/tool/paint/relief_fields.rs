@@ -19,6 +19,9 @@ use super::*;
 /// canvas planes so the GPU can shade from them. It is the same fold, asked the same way — the GPU port
 /// re-implements the *optics* and deliberately re-implements none of the *plumbing*.
 pub(super) struct ReliefFields<'a> {
+    /// ⭐ A dobra MATERIALIZADA através dos ajustes que agem no relevo — `(altura, corpo)` por píxel,
+    /// antes do tecto (`docs/3D/30` §20). `None` = a dobra por píxel de sempre.
+    pub(super) folded: Option<(Vec<f32>, Vec<f32>)>,
     /// Every visible layer that carries relief, **bottom-up** — the order it composites in. The order
     /// is load-bearing now: [`ReliefComposite::Level`] buries what is *under* it, and until it existed
     /// the fold was a commutative sum that could iterate in any order at all.
@@ -86,20 +89,10 @@ impl ReliefFields<'_> {
     #[inline]
     pub(super) fn height_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
-        let mut h = crate::layers::RELIEF_FOLD_SEED;
-        let cover_max = self
-            .layers
-            .iter()
-            .map(|l| self.layer_cover_at(l, i))
-            .fold(0.0f32, f32::max);
-        for l in &self.layers {
-            let mut own = l.height.map_or(0.0, |f| f[i]);
-            if l.active {
-                own += self.live_h.map_or(0.0, |s| s[i]);
-            }
-            let cover = self.layer_cover_at(l, i);
-            h = crate::layers::fold_relief_step(h, own, l.depth, l.composite, cover, cover_max);
-        }
+        let h = match &self.folded {
+            Some((f, _)) => f[i],
+            None => self.fold_at(i),
+        };
         let h = super::impasto_ceiling::soft_ceiling(h);
         // ⚠️ **O dente do papel SOMA à altura da tinta, e entra DEPOIS do teto de vidro.** Depois,
         // porque o teto é uma propriedade de como a TINTA se empilha (`impasto_ceiling`) e um papel não
@@ -226,6 +219,9 @@ impl ReliefFields<'_> {
     #[inline]
     pub(super) fn cover_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
+        if let Some((_, corpo)) = &self.folded {
+            return corpo[i].clamp(0.0, 1.0);
+        }
         let mut c = self.live_c.map_or(0.0, |l| f32::from(l[i]) / 255.0);
         for l in &self.layers {
             if let Some(cv) = l.cover {
@@ -277,5 +273,69 @@ impl ReliefFields<'_> {
         let cx = x.clamp(0, self.width as i64 - 1) as usize;
         let cy = y.clamp(0, self.height as i64 - 1) as usize;
         cy * self.width + cx
+    }
+}
+
+impl ReliefFields<'_> {
+    /// A dobra POR PÍXEL de sempre (sem ajuste que aja no relevo), antes do tecto.
+    #[inline]
+    fn fold_at(&self, i: usize) -> f32 {
+        let mut h = crate::layers::RELIEF_FOLD_SEED;
+        let cover_max = self
+            .layers
+            .iter()
+            .map(|l| self.layer_cover_at(l, i))
+            .fold(0.0f32, f32::max);
+        for l in &self.layers {
+            let cover = self.layer_cover_at(l, i);
+            h = crate::layers::fold_relief_step(
+                h,
+                self.own_at(l, i),
+                l.depth,
+                l.composite,
+                cover,
+                cover_max,
+            );
+        }
+        h
+    }
+
+    /// A altura própria da camada no píxel, com o traço aberto na activa.
+    #[inline]
+    fn own_at(&self, l: &ReliefLayer<'_>, i: usize) -> f32 {
+        let mut own = l.height.map_or(0.0, |f| f[i]);
+        if l.active {
+            own += self.live_h.map_or(0.0, |s| s[i]);
+        }
+        own
+    }
+}
+
+/// ⭐ A tela 2D vista pela porta da dobra através dos ajustes ([`crate::layers::fold_relief_through`]).
+pub(super) struct Amostras<'f, 'a> {
+    pub(super) f: &'f ReliefFields<'a>,
+    pub(super) mascaras: std::collections::BTreeMap<crate::layers::LayerId, Vec<f32>>,
+}
+
+impl Amostras<'_, '_> {
+    fn camada(&self, id: crate::layers::LayerId) -> Option<&ReliefLayer<'_>> {
+        self.f.layers.iter().find(|l| l.id == id)
+    }
+}
+
+impl crate::layers::ReliefSamples for Amostras<'_, '_> {
+    fn len(&self) -> usize {
+        self.f.width * self.f.height
+    }
+    fn has(&self, id: crate::layers::LayerId) -> bool {
+        self.camada(id).is_some()
+    }
+    fn at(&self, id: crate::layers::LayerId, i: usize) -> (f32, f32) {
+        self.camada(id).map_or((0.0, 0.0), |l| {
+            (self.f.own_at(l, i), self.f.layer_cover_at(l, i))
+        })
+    }
+    fn mask(&self, id: crate::layers::LayerId) -> Option<Vec<f32>> {
+        self.mascaras.get(&id).cloned()
     }
 }

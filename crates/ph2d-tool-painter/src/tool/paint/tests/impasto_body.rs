@@ -4,6 +4,7 @@
 
 use super::*;
 
+mod blur;
 mod deposit;
 mod light;
 mod material;

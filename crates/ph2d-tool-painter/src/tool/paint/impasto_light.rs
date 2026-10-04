@@ -116,6 +116,8 @@ fn gloss_body(cover: f32) -> f32 {
 
 /// One layer's contribution to the composed relief, in z-order.
 pub(super) struct ReliefLayer<'a> {
+    /// A camada — a chave da dobra através dos ajustes (`docs/3D/30` §20).
+    pub(super) id: crate::layers::LayerId,
     /// The committed height plane. `None` for the active layer when it has only a live stroke on it.
     pub(super) height: Option<&'a [f32]>,
     /// Its paint coverage, when it has one.
@@ -209,6 +211,7 @@ impl PainterTool {
                 continue;
             };
             layers.push(ReliefLayer {
+                id,
                 height,
                 cover: self
                     .covers
@@ -251,7 +254,8 @@ impl PainterTool {
         if layers.is_empty() && form.is_none() && self.substrate().is_none() {
             return None;
         }
-        Some(ReliefFields {
+        let mut fields = ReliefFields {
+            folded: None,
             substrate: self.substrate(),
             layers,
             live_h,
@@ -264,7 +268,53 @@ impl PainterTool {
             neutral: ph2d_painter_brush::material::Material::NEUTRAL.to_bytes(),
             width: w as usize,
             height: h as usize,
-        })
+        };
+        // ⭐ Um Gaussiano ou uma Nitidez por cima de uma camada com relevo borram-no como borram a cor
+        // (`docs/3D/30` §20): a dobra materializa-se pela porta única; sem eles, a dobra por píxel.
+        let plan = self.layers.relief_plan();
+        if crate::layers::relief_plan_filters(&plan) {
+            let mascaras = self.relief_filter_masks(&plan);
+            let folded = crate::layers::fold_relief_through(
+                &plan,
+                &super::relief_fields::Amostras {
+                    f: &fields,
+                    mascaras,
+                },
+                &ph2d_painter_effects::adjustments::AdjustWindow::full(w, h),
+            );
+            fields.folded = folded;
+        }
+        Some(fields)
+    }
+
+    /// As máscaras dos ajustes do plano, `0..1` por píxel (a luminância, como o compositor as lê).
+    fn relief_filter_masks(
+        &self,
+        plan: &[crate::layers::ReliefStep],
+    ) -> std::collections::BTreeMap<crate::layers::LayerId, Vec<f32>> {
+        let active = self.layers.active();
+        plan.iter()
+            .filter_map(|s| match *s {
+                crate::layers::ReliefStep::Filter {
+                    mask: Some((m, _)), ..
+                } => Some(m),
+                _ => None,
+            })
+            .filter_map(|m| {
+                let rgba: &[u8] = if active == Some(m) {
+                    self.canvas_rgba.as_slice()
+                } else {
+                    self.images.get(&m)?.rgba8.as_slice()
+                };
+                let n = rgba.len() / 4;
+                Some((
+                    m,
+                    (0..n)
+                        .map(|i| crate::compositor::mask_value(rgba, i))
+                        .collect(),
+                ))
+            })
+            .collect()
     }
 
     /// **A porta da DOAÇÃO** — instala (ou remove) o plano de forma que o módulo 3D rasteriza.
@@ -424,6 +474,19 @@ impl PainterTool {
     pub(crate) fn composed_relief_at(&self, x: u32, y: u32) -> f32 {
         self.impasto_fields()
             .map_or(0.0, |f| f.height_at(i64::from(x), i64::from(y)))
+    }
+
+    /// O relevo composto da tela inteira e o corpo que a luz lê — o mesmo amostrador, uma só vez.
+    pub(crate) fn composed_relief_plane(&self) -> (Vec<f32>, Vec<f32>) {
+        let (w, h) = self.source_size;
+        let Some(f) = self.impasto_fields() else {
+            let n = (w as usize) * (h as usize);
+            return (vec![0.0; n], vec![0.0; n]);
+        };
+        (0..i64::from(h))
+            .flat_map(|y| (0..i64::from(w)).map(move |x| (x, y)))
+            .map(|(x, y)| (f.height_at(x, y), f.cover_at(x, y)))
+            .unzip()
     }
 }
 

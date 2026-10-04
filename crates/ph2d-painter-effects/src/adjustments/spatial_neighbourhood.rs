@@ -37,6 +37,12 @@ pub trait Neighbourhood: Sync {
     fn blur4(&self, radius: f32, buf: &mut [[f32; 4]]);
     /// The same low-pass of a scalar field.
     fn blur1(&self, radius: f32, buf: &mut [f32]);
+    /// The same low-pass of TWO scalar fields — the sculpt relief's height and body
+    /// (`docs/3D/30` §20). A neighbourhood on the GPU overrides it with one round trip.
+    fn blur2(&self, radius: f32, a: &mut [f32], b: &mut [f32]) {
+        self.blur1(radius, a);
+        self.blur1(radius, b);
+    }
     /// Bloom's glow low-pass, full resolution out (premultiplied light). The grid
     /// overrides it with its downsampled pyramid (the GPU's mirror).
     fn glow(&self, radius: f32, mut bright: Vec<[f32; 4]>) -> Vec<[f32; 4]> {

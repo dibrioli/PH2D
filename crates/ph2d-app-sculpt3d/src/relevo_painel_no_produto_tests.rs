@@ -20,7 +20,7 @@ fn pilha(s: &crate::Sculpt3dScene) -> &PilhaDaPeca {
 }
 
 /// O relevo da PEÇA (na CPU ele está sempre em dia — só a cor se atrasa).
-fn relevo(s: &crate::Sculpt3dScene) -> Vec<[f32; 2]> {
+pub(super) fn relevo(s: &crate::Sculpt3dScene) -> Vec<[f32; 2]> {
     s.objects[s.active]
         .tinta
         .as_ref()
@@ -33,7 +33,7 @@ fn da_camada(s: &crate::Sculpt3dScene, id: LayerId) -> Option<Vec<[f32; 2]>> {
     pilha(s).plano(id)?.relevo().map(<[_]>::to_vec)
 }
 
-fn bits(r: &[[f32; 2]]) -> Vec<[u32; 2]> {
+pub(super) fn bits(r: &[[f32; 2]]) -> Vec<[u32; 2]> {
     r.iter().map(|x| x.map(f32::to_bits)).collect()
 }
 
@@ -54,7 +54,7 @@ fn iguais(a: &[[f32; 2]], b: &[[f32; 2]], quando: &str) {
 }
 
 /// O relevo e as inclinações LIDOS DA PLACA, depois do `sync_mesh` do quadro.
-fn da_placa(
+pub(super) fn da_placa(
     s: &mut crate::Sculpt3dScene,
     gpu: &ph2d_gpu::GpuContext,
 ) -> (Vec<[f32; 2]>, Vec<[f32; 3]>) {
@@ -67,7 +67,7 @@ fn da_placa(
 }
 
 /// As inclinações que a CPU calcula do zero para o relevo `r` sobre a peça.
-fn inclinacoes_de(s: &crate::Sculpt3dScene, r: &[[f32; 2]]) -> Vec<[f32; 3]> {
+pub(super) fn inclinacoes_de(s: &crate::Sculpt3dScene, r: &[[f32; 2]]) -> Vec<[f32; 3]> {
     let o = &s.objects[s.active];
     let mut t = o.tinta.clone().expect("plano");
     t.com_relevo(Some(r.to_vec()));
@@ -77,7 +77,7 @@ fn inclinacoes_de(s: &crate::Sculpt3dScene, r: &[[f32; 2]]) -> Vec<[f32; 3]> {
         .to_vec()
 }
 
-fn pior(a: &[[f32; 3]], b: &[[f32; 3]]) -> f32 {
+pub(super) fn pior(a: &[[f32; 3]], b: &[[f32; 3]]) -> f32 {
     a.iter()
         .zip(b)
         .flat_map(|(x, y)| (0..3).map(move |j| (x[j] - y[j]).abs()))

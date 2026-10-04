@@ -204,6 +204,23 @@ impl Sculpt3dScene {
             // carrega — só a peça ACTIVA ganha um plano novo, e durante um traço
             // não se reconcilia nada — só são gateáveis fora deste laço, que
             // pede um `wgpu::Device`.
+            // ⭐⭐ **O RELEVO POR DOBRAR** (`docs/3D/30` §20): um Gaussiano ou uma Nitidez por
+            //   cima de camadas com relevo — a dobra corre com o calor NA PLACA, antes das
+            //   subidas (que levam o relevo); recusada, na CPU.
+            if self.objects[i]
+                .pilha
+                .as_ref()
+                .is_some_and(crate::pilha_da_peca::PilhaDaPeca::relevo_por_dobrar)
+            {
+                let obj = &mut self.objects[i];
+                if let (Some(peca), Some(pl)) = (obj.tinta.as_mut(), obj.pilha.as_mut()) {
+                    pl.garante_vizinhanca(peca, obj.stack.mesh());
+                    if !self.na_placa.dobra_o_relevo(gpu, obj.id, pl, peca) {
+                        pl.relevo_em_dia(peca);
+                    }
+                    obj.relevo_sujo = true;
+                }
+            }
             let rota = crate::tinta_da_peca::rota(
                 i == self.active,
                 self.stroke.tinta_fina.is_some(),

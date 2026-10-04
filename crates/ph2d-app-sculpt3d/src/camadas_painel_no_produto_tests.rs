@@ -74,7 +74,7 @@ impl Painel {
     }
 
     /// Um clique que só muda o painel (abrir um menu): nada vai ao barramento.
-    fn abre(&mut self, p: &PainterTool, id: NodeId) {
+    pub(super) fn abre(&mut self, p: &PainterTool, id: NodeId) {
         let r = self.onde(p, id);
         for ev in self.host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
             self.host

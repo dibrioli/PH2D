@@ -138,12 +138,16 @@ pub(crate) fn recompoe_sujas(obj: &mut crate::SceneObject, sujas: &[u32]) {
         tinta,
         pilha,
         compor_na_placa,
+        relevo_sujo,
         ..
     } = obj;
     let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
         return;
     };
     let (mesh, k) = (stack.mesh(), peca.nivel());
+    // Um ajuste que age no relevo faz cada amostra ler as vizinhas: o relevo
+    // dobra-se inteiro (`PilhaDaPeca::relevo_nas`) e sobe inteiro.
+    *relevo_sujo |= pilha.relevo_atraves();
     let vizinhos = pilha.le_a_vizinhanca();
     if vizinhos {
         pilha.garante_vizinhanca(peca, mesh);
@@ -191,6 +195,10 @@ pub(crate) fn em_dia(obj: &mut crate::SceneObject) {
     let (Some(peca), Some(pilha)) = (tinta.as_mut(), pilha.as_mut()) else {
         return;
     };
+    if pilha.relevo_por_dobrar() {
+        pilha.garante_vizinhanca(peca, stack.mesh());
+        pilha.relevo_em_dia(peca);
+    }
     if !pilha.atrasada() {
         return;
     }
@@ -294,7 +302,10 @@ pub(crate) fn para_ler<'a>(
     plano: &'a Tinta,
 ) -> std::borrow::Cow<'a, Tinta> {
     match obj.pilha.as_ref() {
-        Some(p) if p.atrasada() && p.amostras() == plano.amostras().len() => {
+        Some(p)
+            if (p.atrasada() || p.relevo_por_dobrar())
+                && p.amostras() == plano.amostras().len() =>
+        {
             let mut fresco = plano.clone();
             let (mesh, k) = (obj.stack.mesh(), plano.nivel());
             // Com vizinhos a pilha precisa da vizinhança DESTA malha — uma

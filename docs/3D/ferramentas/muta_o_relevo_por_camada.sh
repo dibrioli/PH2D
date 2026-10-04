@@ -136,7 +136,7 @@ muta $S/tela_na_malha_pousa.rs '            let a = (alfa + da * k).clamp(0.0, 1
 muta $A/pilha_da_peca_relevo.rs '        self.relevo_dobrado.poe(self.assinatura_do_relevo());
         let camadas' '        let camadas' \
   'R24 o traço não renova a assinatura (esconder deixa o fantasma)' app
-muta $T/layers/relief_fold.rs '    let ref_ = cover_max.min(ph2d_painter_brush::height_film::W_SOLID);' '    let ref_ = cover_max.min(ph2d_painter_brush::height_film::W_SOLID) * 0.0;' \
+muta $T/layers/relief_fold.rs '    let ref_ = body_profile(cover_max.min(W_SOLID));' '    let ref_ = body_profile(cover_max.min(W_SOLID)) * 0.0;' \
   'R25 a encosta sem tinta conta sobre a tinta de outra' app
 
 # ── W4c: o painel ────────────────────────────────────────────────────────────

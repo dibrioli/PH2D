@@ -725,3 +725,19 @@ Gates: `relief_fold::tests::a_parte_do_relevo_de_uma_camada_e_a_sua_tinta_sobre_
 `pilha_da_peca::relevo::tests::{a_encosta_fora_da_tinta_de_uma_camada_de_cima_nao_conta,
 esconder_uma_camada_que_ganhou_relevo_num_traco_tira_o_relevo_dela}` · o neutro re-escrito. Sondas com
 foto: `relevo_painel::{diag_a_orla_da_camada_de_cima, diag_a_orla_sobre_as_riscas}`. Mutação: R24, R25.
+
+### 18.1 A 3.ª foto do dono (04/10): «sem melhora» — medido
+
+A orla continuou. Medido com um pincel grosso (`48 px`) sobre as riscas: **a mesma orla aparece numa
+pincelada na BASE, sem camada nenhuma** (`relevo_painel::diag_a_orla_sobre_as_riscas`, `PH2D_SONDA_NA_BASE`),
+e com a profundidade da camada de cima a `0` a cor vermelha ocupa exactamente a zona da orla. ⇒ a orla
+**não é das camadas**: é a parede do impasto DENTRO da tinta, alta demais — altura média `0,32` do raio da
+bola na tinta cheia (`0,19` onde o alfa é `192–254`), quase de lado para a luz, e a borda vermelha
+fica cinzenta. O 2D comprime essas alturas com o tecto de vidro (`soft_ceiling`, joelho `24 px`); na
+peça o relevo chega cru (`docs/3D/29`). Decisão de aparência pedida ao dono (ver o handoff).
+
+A lei da parte (§18, lei 2) passou da cobertura linear à `body_profile` do pincel: sobre tinta sólida de
+outra camada, o relevo da de cima só existe onde a tinta dela tem CORPO (nenhum sobre a mancha
+`≤ W_TAIL`) — a regra do 2D. ⛔ **Recusa MEDIDA:** pesar o relevo pelo corpo da própria tinta também numa
+camada só (experimentado com a foto): a imagem não muda — a parede está dentro da tinta sólida, onde o
+corpo é `1`.

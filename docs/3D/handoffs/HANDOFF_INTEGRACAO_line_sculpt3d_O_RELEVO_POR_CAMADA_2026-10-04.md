@@ -180,6 +180,9 @@ mudou).
 
 ## §10. ABERTO (nomeado)
 
+- ⏳ **A parede do impasto na peça com pincéis grossos** (3.ª foto do dono, 04/10, doc 30 §18.1): uma orla
+  cinzenta à volta da tinta — também numa camada só. É a altura crua (`0,32` do raio a `48 px`), sem o
+  tecto de vidro do 2D. Pergunta de aparência feita ao dono; não é das camadas.
 - ✅ **Decisão do dono (04/10): os efeitos de vizinhança borram TAMBÉM o relevo** (Gaussiano, Nitidez,
   Bloom, Sombras/Realces), no 2D e na peça, com a mesma regra — é a PRÓXIMA onda, janela nova (doc 30
   §17: o desenho técnico por decidir e o critério de custo).

@@ -44,19 +44,25 @@ pub fn fold_relief_step(
     }
 }
 
-/// A parte do relevo de uma camada que conta: `min(1, cover / min(W_SOLID, cover_max))` — `1` sem
-/// tinta nenhuma ali, `1` exacto quando ela É a maior (uma camada só não muda), `0` para relevo sem
-/// tinta dela sobre tinta de outra. Com a tinta de baixo SÓLIDA (`≥ W_SOLID`, o filme cheio do
-/// pincel) só a tinta da própria camada decide: a razão crua `cover / cover_max` desenhava um degrau
-/// onde a de baixo começa debaixo de uma tinta de cima parcial (a moldura medida na foto de 04/10).
+/// A parte do relevo de uma camada que conta: `min(1, corpo(cover) / corpo(min(cover_max,
+/// W_SOLID)))`, com `corpo` a [`body_profile`](ph2d_painter_brush::height_film::body_profile) do
+/// pincel — nenhum corpo sobre a mancha (`≤ W_TAIL`), a parede até `W_SOLID`, planalto acima.
+///
+/// `1` exacto quando ela É a maior (uma camada só não muda, ao bit) e `1` sem corpo nenhum ali (o
+/// relevo cru, como sempre). Sobre tinta SÓLIDA de outra camada é o corpo da própria tinta: a regra
+/// do 2D — *a parede sobe DENTRO da parte pigmentada* — que impede a luz de sombrear o que se vê
+/// através de uma tinta fina (a orla cinzenta das fotos de 04/10, `docs/3D/30` §18). ⛔ A razão crua
+/// `cover / cover_max` desenhava uma moldura onde a de baixo começa; a linear `cover / W_SOLID`
+/// deixava a parede inteira sobre a mancha (medido: a orla na 3.ª foto do dono).
 #[inline]
 #[must_use]
 pub fn relief_share(cover: f32, cover_max: f32) -> f32 {
-    let ref_ = cover_max.min(ph2d_painter_brush::height_film::W_SOLID);
+    use ph2d_painter_brush::height_film::{W_SOLID, body_profile};
+    let ref_ = body_profile(cover_max.min(W_SOLID));
     if ref_ <= 0.0 {
         1.0
     } else {
-        (cover / ref_).min(1.0)
+        (body_profile(cover) / ref_).min(1.0)
     }
 }
 

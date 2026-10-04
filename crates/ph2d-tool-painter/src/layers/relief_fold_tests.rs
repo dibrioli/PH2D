@@ -94,7 +94,17 @@ fn a_parte_do_relevo_de_uma_camada_e_a_sua_tinta_sobre_a_maior() {
         0.0,
         "a encosta sobre a tinta de outra não conta"
     );
-    assert_eq!(relief_share(0.5, 1.0), 0.5 / 0.75);
+    let corpo = ph2d_painter_brush::height_film::body_profile;
+    assert_eq!(
+        relief_share(0.5, 1.0),
+        corpo(0.5),
+        "sobre tinta sólida: o corpo da própria tinta"
+    );
+    assert_eq!(
+        relief_share(0.3, 1.0),
+        0.0,
+        "a mancha (≤ W_TAIL) não tem relevo sobre tinta de outra"
+    );
     // Sem degrau onde a tinta de baixo muda debaixo de uma de cima parcial: sobre tinta sólida, só a
     // tinta da própria camada decide (a moldura da foto de 04/10).
     assert_eq!(relief_share(0.8, 0.8), relief_share(0.8, 1.0));

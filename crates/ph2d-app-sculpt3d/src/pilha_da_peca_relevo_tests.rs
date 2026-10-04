@@ -172,10 +172,12 @@ fn profundidade_zero_e_o_neutro_nao_mudam_um_bit() {
     let (p0, _) = pilha_de(&[camada(1, 6.0, 1.0, Add, true), muda]);
     let (pz, _) = pilha_de(&[camada(1, 6.0, 1.0, Add, true), zerada]);
     let r0 = p0.relevo_composto().expect("r");
+    // Valor a valor (`==` de `f32`): onde a parte de uma camada é exactamente `0` o zero pode vir
+    // com o sinal de `-0,0` — a mesma altura.
     assert_eq!(
-        bits(&r0),
-        bits(&pz.relevo_composto().expect("r")),
-        "profundidade 0 = o relevo dela a zero, ao bit"
+        r0,
+        pz.relevo_composto().expect("r"),
+        "profundidade 0 = o relevo dela a zero"
     );
     let alturas = |r: &[[f32; 2]]| r.iter().map(|x| x[0].to_bits()).collect::<Vec<_>>();
     let base_so = pilha_de(&[camada(1, 6.0, 1.0, Add, true)])

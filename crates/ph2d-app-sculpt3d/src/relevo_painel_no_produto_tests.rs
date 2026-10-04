@@ -532,6 +532,12 @@ fn diag_a_orla_sobre_as_riscas() {
     let mut s = cena_52(&gpu.device);
     s.sync_mesh(&gpu);
     let mut p = painter_impasto();
+    p.set_brush_size_px(
+        std::env::var("PH2D_SONDA_PINCEL")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(28.0),
+    );
     let mut painel = Painel::novo();
     quadro(Some(&mut s), Some(&mut p));
     {
@@ -550,8 +556,10 @@ fn diag_a_orla_sobre_as_riscas() {
     }
     s.sync_mesh(&gpu);
     quadro(Some(&mut s), Some(&mut p));
-    painel.clica(&mut p, PAINTER_LAYERS_ADD);
-    quadro(Some(&mut s), Some(&mut p));
+    if std::env::var_os("PH2D_SONDA_NA_BASE").is_none() {
+        painel.clica(&mut p, PAINTER_LAYERS_ADD);
+        quadro(Some(&mut s), Some(&mut p));
+    }
     let curva: Vec<(f32, f32)> = (0..=30)
         .map(|k| {
             let t = k as f32 / 30.0;
@@ -562,6 +570,27 @@ fn diag_a_orla_sobre_as_riscas() {
     s.sync_mesh(&gpu);
     quadro(Some(&mut s), Some(&mut p));
     super::painter::fotografa(&gpu, &mut s, dir.join("orla_riscas.png").as_os_str());
+    {
+        let cima = pilha(&s).pilha().active().expect("cima");
+        let o = &mut s.objects[s.active];
+        let pl = o.pilha.as_mut().expect("p");
+        let mut m = pl.pilha().clone();
+        m.set_impasto_depth(cima, 0.0);
+        pl.troca_metadado(m).expect("profundidade 0");
+        crate::tinta_da_peca::pilha::recompoe(o);
+    }
+    s.sync_mesh(&gpu);
+    super::painter::fotografa(&gpu, &mut s, dir.join("orla_sem_relevo.png").as_os_str());
+    {
+        let cima = pilha(&s).pilha().active().expect("cima");
+        let o = &mut s.objects[s.active];
+        let pl = o.pilha.as_mut().expect("p");
+        let mut m = pl.pilha().clone();
+        m.set_impasto_depth(cima, 1.0);
+        pl.troca_metadado(m).expect("profundidade 1");
+        crate::tinta_da_peca::pilha::recompoe(o);
+    }
+    s.sync_mesh(&gpu);
     let n = pilha(&s).amostras();
     let cima = pilha(&s).pilha().active().expect("cima");
     let pc = pilha(&s).plano(cima).expect("c").rgba8(n).to_vec();

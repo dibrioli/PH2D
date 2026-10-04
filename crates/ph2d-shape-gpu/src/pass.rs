@@ -63,6 +63,8 @@ pub struct ShapePass {
     carregadas: Vec<u32>,
     /// O contorno de cada cópia calculado uma vez (doc 121 §9.5).
     contorno: crate::contorno::Contorno,
+    /// O grupo de ligação e as cópias do último desenho — o que o [`Self::redesenha`] repete.
+    ultimo: Option<(wgpu::BindGroup, u32)>,
 }
 
 /// O shader: o desenho e os passes de cálculo do contorno num MÓDULO só — os dois lêem a mesma
@@ -191,6 +193,7 @@ impl ShapePass {
             instances: None,
             carregadas: Vec::new(),
             contorno,
+            ultimo: None,
         }
     }
 
@@ -223,6 +226,13 @@ impl ShapePass {
         self.contorno.celulas_tocadas_do_ultimo_quadro(gpu)
     }
 
+    /// **Quantas cópias o último desenho escreveu pelo passe de GRUPO** (doc 121 §9.14, o tracejado por
+    /// troço) — lido de volta da placa (bloqueia). Instrumento de gates e sondas.
+    #[must_use]
+    pub fn copias_do_grupo_do_ultimo_quadro(&self, gpu: &GpuContext) -> u32 {
+        self.contorno.copias_do_grupo_do_ultimo_quadro(gpu)
+    }
+
     /// **Quantas células o último desenho pediu, e a capacidade delas** (doc 121 §9.12) — lido de
     /// volta da placa (bloqueia). Pedido acima da capacidade ⇒ alguma cópia foi desenhada pelo
     /// caminho de sempre. Instrumento de gates e sondas.
@@ -241,6 +251,12 @@ impl ShapePass {
     /// antes do doc 121 §9.5 — a porta pela qual os gates comparam os dois caminhos.
     pub fn com_contorno(&mut self, ligado: bool) {
         self.contorno.ligado = ligado;
+    }
+
+    /// Os itens do eixo a partir dos quais uma cópia TRACEJADA se escreve por um GRUPO (doc 121 §9.14,
+    /// [`crate::ITENS_DO_GRUPO`]). `0` ⇒ todas; `u32::MAX` ⇒ nenhuma — as portas dos gates.
+    pub fn itens_do_grupo(&mut self, itens: u32) {
+        self.contorno.itens_do_grupo = itens;
     }
 
     /// A área no ecrã (px²) a partir da qual uma cópia CONFORME vai pelas arestas no ecrã (doc 121
@@ -428,6 +444,34 @@ impl ShapePass {
             self.contorno
                 .calcula(gpu, encoder, &bg, count, self.tracejado);
         }
+        self.ultimo = desenha.then(|| (bg.clone(), count));
+        self.passe_de_desenho(gpu, encoder, target, load, desenha.then_some((&bg, count)));
+    }
+
+    /// ⭐ doc 121 §9.14 (c) — **o último desenho outra vez, noutro alvo**, por cima do que lá está: as
+    /// mesmas cópias e as células que o cálculo desse desenho deixou, sem as recalcular. É o halo do
+    /// `fx.glow` (o alvo `Rgba16Float` do brilho: o HDR do `tint` sobrevive). ⚠️ O alvo tem de ter o
+    /// tamanho do último (o `alvo` da vista é o dele), e o encoder do último desenho já submetido.
+    pub fn redesenha(
+        &self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+    ) {
+        if let Some((bg, count)) = &self.ultimo {
+            self.passe_de_desenho(gpu, encoder, target, wgpu::LoadOp::Load, Some((bg, *count)));
+        }
+    }
+
+    /// O passe de desenho sobre `target`; `None` só limpa (ou carrega) o alvo.
+    fn passe_de_desenho(
+        &self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        target: &wgpu::TextureView,
+        load: wgpu::LoadOp<wgpu::Color>,
+        copias: Option<(&wgpu::BindGroup, u32)>,
+    ) {
         let leitura = self.contorno.grupo_de_leitura(gpu);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("ph2d-shape-gpu"),
@@ -446,10 +490,10 @@ impl ShapePass {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        if !desenha {
+        let Some((bg, count)) = copias else {
             return;
-        }
-        pass.set_bind_group(0, &bg, &[]);
+        };
+        pass.set_bind_group(0, bg, &[]);
         pass.set_bind_group(1, &leitura, &[]);
         if self.tracejado {
             // doc 121 §9.13 — a placa escolhe: a completa só num quadro com uma cópia tracejada

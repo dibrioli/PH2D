@@ -435,7 +435,12 @@ pub(super) fn pelo_passe_em_etapas(
         forma,
         etapas,
         format,
-        (contorno, area_minima_conforme, celulas_no_maximo),
+        (
+            contorno,
+            area_minima_conforme,
+            celulas_no_maximo,
+            ph2d_shape_gpu::ITENS_DO_GRUPO,
+        ),
         &mut |_, _| {},
     )
 }
@@ -446,7 +451,7 @@ pub(super) fn pelo_passe_observado(
     forma: &Forma<'_>,
     etapas: &[(&[Copia], usize)],
     format: wgpu::TextureFormat,
-    (contorno, area_minima_conforme, celulas_no_maximo): (bool, f32, u64),
+    (contorno, area_minima_conforme, celulas_no_maximo, itens_do_grupo): (bool, f32, u64, u32),
     observa: &mut dyn FnMut(&GpuContext, &ShapePass),
 ) -> Vec<(Vec<u8>, u32, (u64, u64))> {
     let traco = forma.traco.as_ref().map(|(s, cor)| StrokeInput {
@@ -464,6 +469,7 @@ pub(super) fn pelo_passe_observado(
     p.com_contorno(contorno);
     p.area_minima_conforme(area_minima_conforme);
     p.limita_as_celulas(celulas_no_maximo);
+    p.itens_do_grupo(itens_do_grupo);
     p.set_geometries(gpu, [(7u32, &g)]);
     let tex = textura(gpu, wgpu::TextureUsages::RENDER_ATTACHMENT, format);
     let vista = tex.create_view(&wgpu::TextureViewDescriptor::default());

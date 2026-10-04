@@ -29,7 +29,7 @@ mod geometry;
 mod pass;
 
 pub use blocos::{BlocoDeSegmentos, SEGS_POR_BLOCO};
-pub use contorno::AREA_MINIMA_CONFORME;
+pub use contorno::{AREA_MINIMA_CONFORME, ITENS_DO_GRUPO};
 pub use eixo::EixoItem;
 pub use geometry::{
     FLAG_EVEN_ODD, FLAG_SO_CONFORME, FillRule, GeometryRecord, LEVELS, ShapeGeometry, ShapeInput,

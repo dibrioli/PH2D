@@ -316,3 +316,119 @@ fn os_blocos_guardam_as_pecas_e_cobrem_o_alcance_delas() {
         "controlo: ha' um bloco cujo alcance e' o da esquadria (0,05 x 4)"
     );
 }
+
+/// ⭐ doc 121 §9.14 (b) — **AS MUTAÇÕES `S6` E `S8` SÃO EQUIVALENTES À TOLERÂNCIA DO PASSE, medido.**
+/// A `S6` tira a cerca de `0,1` px (`FAIXA_FOLGA`, `shape.wgsl`) que deixa um vértice LISO usar a
+/// esquadria; sem ela, a esquadria sai do arco `r·(1/cos(θ/2) − 1)`. Mas a OUTRA cerca (o recuo
+/// `r·tan(θ/2) ≤` meia corda) limita `r ≤ R·cos(θ/2)`, e então o excesso fica `≤ R·(1 − cos(θ/2))` — a
+/// FLECHA do aplanamento no ecrã, que o nível de detalhe escolhido pelo shader mantém `≤ 0,125` px
+/// (`tol × escala ≤ 0,25`, e o eixo aplana a meia tolerância). A junta «redonda» de recurso erra o
+/// mesmo para DENTRO (o leque tem flecha `≤ 0,25` px; para `θ` pequeno é um chanfro). ⇒ com ou sem a
+/// cerca, o erro de um liso cabe na tolerância do Vello, e nenhuma régua de pixel separa as duas.
+/// A `S8` (a folga da caixa da peça, só no pixel a pixel) corta no máximo a mesma esquadria.
+///
+/// Este gate MEDE a premissa sobre uma varredura de formas, larguras e afins — pelo nível que o
+/// shader escolheria. Medido em 2026-10-04: `126 870` lisos, NENHUM acima da cerca, o pior a `0,086`
+/// px (`0,85` da flecha) ⇒ a cerca da `S6` não decide nada no produto, e a `S8` corta no máximo esse
+/// excesso. CONTROLO: a varredura chega perto da cerca (`≥ 0,05` px), senão não mediria nada. Uma
+/// mudança nos níveis (a tolerância, o passo) que deixasse a esquadria passar da flecha poria a `S6`
+/// a pintar: ele fica vermelho primeiro.
+#[test]
+fn a_esquadria_de_um_vertice_liso_nunca_passa_da_flecha_do_nivel() {
+    use crate::geometry::{LEVELS, ShapeGeometry, ShapeInput, StrokeInput};
+    use ph2d_vector::Affine;
+    const FAIXA_FOLGA: f64 = 0.1;
+    let circulo = Circle::new((0.0, 0.0), 0.5).to_path(0.1);
+    let mut anel = circulo.clone();
+    for el in Circle::new((0.1, 0.0), 0.12).to_path(0.1).elements() {
+        anel.push(*el);
+    }
+    let formas: [(&str, BezPath); 3] = [
+        ("circulo", circulo.clone()),
+        (
+            "elipse",
+            Affine::rotate(0.3) * Affine::scale_non_uniform(1.0, 0.4) * circulo,
+        ),
+        ("anel", anel),
+    ];
+    let (mut pior, mut pior_razao, mut acima, mut lisos) = (0.0f64, 0.0f64, 0usize, 0usize);
+    for (nome, bp) in &formas {
+        for w in [0.01, 0.05, 0.15, 0.4, 0.8] {
+            let st = Stroke::new(w);
+            let g = ShapeGeometry::prepare(&ShapeInput {
+                fill: None,
+                strokes: vec![StrokeInput {
+                    path: bp,
+                    style: &st,
+                    color: [0.0; 4],
+                }],
+                stroke_fills: vec![],
+            })
+            .expect("a forma prepara");
+            for lado in [8.0f64, 30.0, 120.0, 500.0, 2000.0] {
+                for aspecto in [1.7f64, 3.0, 5.0] {
+                    for ang in [0.0f64, 0.4, 1.1] {
+                        let (s, c) = ang.sin_cos();
+                        // As colunas do afim local→ecrã: `rot(ang) · diag(lado, lado·aspecto)`.
+                        let (c0, c1) = (
+                            [c * lado, s * lado],
+                            [-s * lado * aspecto, c * lado * aspecto],
+                        );
+                        let (e, f) = (0.5 * (c0[0] + c1[1]), 0.5 * (c0[0] - c1[1]));
+                        let (gg, h) = (0.5 * (c0[1] + c1[0]), 0.5 * (c0[1] - c1[0]));
+                        let escala = e.hypot(h) + f.hypot(gg);
+                        let nivel = (0..LEVELS)
+                            .find(|&k| f64::from(g.record.tol[k]) * escala <= 0.25)
+                            .unwrap_or(LEVELS - 1);
+                        let flecha = f64::from(g.record.tol[nivel]) * 0.5 * escala;
+                        let caneta = (c0[0] * c1[1] - c1[0] * c0[1]).abs().sqrt();
+                        let ecra = |p: [f32; 2]| {
+                            let (x, y) = (f64::from(p[0]), f64::from(p[1]));
+                            [c0[0] * x + c1[0] * y, c0[1] * x + c1[1] * y]
+                        };
+                        let [x0, n, ..] = g.record.eixo[nivel];
+                        for it in &g.eixo[x0 as usize..(x0 + n) as usize] {
+                            if it.tipo != ITEM_TROCO
+                                || it.ponta & FAIXA_FIM == 0
+                                || it.ponta & QUINA_FIM != 0
+                            {
+                                continue;
+                            }
+                            let (a, b, cc) = (ecra(it.a), ecra(it.b), ecra(it.c));
+                            let (d0, d1) =
+                                ([b[0] - a[0], b[1] - a[1]], [cc[0] - b[0], cc[1] - b[1]]);
+                            let (l0, l1) = (d0[0].hypot(d0[1]), d1[0].hypot(d1[1]));
+                            if l0 <= 0.0 || l1 <= 0.0 {
+                                continue;
+                            }
+                            let dt = (d0[0] * d1[0] + d0[1] * d1[1]) / (l0 * l1);
+                            let r = f64::from(it.meia_largura) * caneta;
+                            // As cercas do `bissectriz_ate` SEM a da folga (a mutação `S6`).
+                            if dt <= 0.0 || r * ((1.0 - dt) / (1.0 + dt)).sqrt() > 0.5 * l0.min(l1)
+                            {
+                                continue;
+                            }
+                            let excesso = r * ((2.0 / (1.0 + dt)).sqrt() - 1.0);
+                            lisos += 1;
+                            acima += usize::from(excesso > FAIXA_FOLGA);
+                            pior = pior.max(excesso);
+                            pior_razao = pior_razao.max(excesso / flecha);
+                        }
+                    }
+                }
+            }
+            let _ = nome;
+        }
+    }
+    eprintln!(
+        "esquadria dos lisos: {lisos} vertices · {acima} acima da cerca de {FAIXA_FOLGA} px · pior {pior:.4} px · pior/flecha {pior_razao:.3}"
+    );
+    assert!(
+        pior >= 0.05,
+        "CONTROLO: a varredura tem de chegar perto da cerca ({pior:.4} px)"
+    );
+    assert!(
+        pior_razao <= 1.0 && acima == 0,
+        "a esquadria de um liso passou da flecha do nivel: {pior:.4} px ({pior_razao:.3} da flecha)"
+    );
+}

@@ -32,15 +32,18 @@ struct Contas {
     // A área no ecrã (px², da caixa estimada) a partir da qual uma cópia CONFORME vai pelas arestas
     // no ecrã (`contorno.rs`, `AREA_MINIMA_CONFORME`).
     area_minima_conforme: f32,
-    _p0: u32,
+    // Os itens do eixo a partir dos quais uma cópia tracejada vai ao passe de GRUPO (`contorno.rs`,
+    // `ITENS_DO_GRUPO`; doc 121 §9.14).
+    itens_do_grupo: u32,
     _p1: u32,
     _p2: u32,
 }
 
 @group(2) @binding(0) var<uniform> contas: Contas;
-// Três contagens por cópia, e depois do `cs_soma` onde cada uma começa: as ARESTAS (múltiplo de
-// `SEGS_POR_BLOCO`) nas `n + 1` primeiras entradas, as CÉLULAS nas `n + 1` seguintes e as LINHAS de
-// ecrã nas `n + 1` últimas — a última de cada terço é o total.
+// Quatro contagens por cópia, e depois do `cs_soma` onde cada uma começa: as ARESTAS (múltiplo de
+// `SEGS_POR_BLOCO`) nas `n + 1` primeiras entradas, as CÉLULAS nas `n + 1` seguintes, as LINHAS de
+// ecrã nas `n + 1` terceiras e a MARCA do passe de grupo (doc 121 §9.14) nas `n + 1` últimas — a
+// última de cada quarto é o total.
 @group(2) @binding(1) var<storage, read_write> contagem: array<u32>;
 @group(2) @binding(2) var<storage, read_write> contorno_rw: array<vec4<f32>>;
 @group(2) @binding(4) var<storage, read_write> ccopias_rw: array<vec4<u32>>;
@@ -60,6 +63,20 @@ const DESENHO_COMPLETO: u32 = 13u;
 // com os `PIXELS_DA_CELULA` depósitos em ponto fixo). O `cs_varre` grava a COBERTURA acabada de cada
 // pixel NO LUGAR do depósito do preenchimento dele, que já leu: é a palavra que o desenho lê.
 @group(2) @binding(8) var<storage, read_write> acumula_rw: array<atomic<u32>>;
+// ⭐ doc 121 §9.14 (a) — os argumentos do despacho do `cs_escreve_grande` (um GRUPO por cópia tracejada
+// grande), escritos pelo `cs_soma`. Fora do `despacho`: o passe de grupo escreve nele (a variante do
+// desenho), e o wgpu recusa o mesmo buffer como escrita e como argumento indirecto.
+@group(2) @binding(9) var<storage, read_write> despacho_grande: array<u32>;
+
+// doc 121 §9.14 — as escolhas que a rodada de medição decide.
+// (a) o tecto de itens do passe de GRUPO: o da memória de grupo (`6` vectores de `ITENS_NO_GRUPO`
+// palavras — `12 KB` dos `16` garantidos).
+const ITENS_NO_GRUPO: u32 = 512u;
+// (d) D1 — o `cs_varre` só lê as famílias PRESENTES e devolve-as a zero; o `cs_zera` apaga uma palavra.
+const VARRE_PRESENCA: bool = true;
+// (d) D2 — `4` pixels por fio no `cs_zera` e no `cs_varre` (`8` fios por célula); `1` é o de antes.
+const PIXELS_DO_FIO: u32 = 4u;
+const FIOS_DA_CELULA: u32 = PIXELS_DA_CELULA / PIXELS_DO_FIO;
 
 // O estado da emissão de UMA cópia (um fio por cópia). A ordem das arestas não importa a ninguém: as
 // células as tomam uma a uma (doc 121 §9.8).
@@ -443,13 +460,18 @@ fn arestas_da_tampa(tampa: u32, r: f32) -> u32 {
     return select(select(0u, 4u, tampa == 1u), arestas_do_leque(r), tampa == 2u);
 }
 
+// O `limite_de_arestas` viu um troço tracejado (a marca do passe de grupo, doc 121 §9.14).
+var<private> viu_tracejado: bool;
+
 fn limite_de_arestas(cp: Copia) -> u32 {
     let caneta = bitcast<f32>(cp.eixo_rg.w);
     var n = 0u;
+    viu_tracejado = false;
     for (var i = cp.eixo_rg.x; i < cp.eixo_rg.x + cp.eixo_rg.y; i += 1u) {
         let it = eixo[i];
         let r = it.meia * caneta;
         if it.tipo == 0u && tracejado(it) {
+            viu_tracejado = true;
             // doc 121 §9.9 — cada traço que toca o troço: o quadrilátero, as duas pontas e a junta.
             // ⭐ §9.13: sem o ajuste — ele nunca encurta o período mais que MEIA peça por troço.
             // ⚠️ `0,99`: a folga cobre o arredondamento do arco.
@@ -485,6 +507,7 @@ fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     var ne = 0u;
     var nmask = 0u;
     var linhas = 0u;
+    var grande = 0u;
     let p = plano_de(ii);
     if p.valido {
         var nc = 0u;
@@ -497,11 +520,25 @@ fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
             ne = 0u;
         } else {
             linhas = p.linhas;
+            grande = u32(vai_ao_grupo(p.cp, p.eixo && viu_tracejado));
         }
     }
     contagem[ii] = ne;
     contagem[contas.n + 1u + ii] = nmask;
     contagem[2u * (contas.n + 1u) + ii] = linhas;
+    contagem[3u * (contas.n + 1u) + ii] = grande;
+}
+
+// ⭐ doc 121 §9.14 (a) — uma cópia TRACEJADA vai ao passe de grupo quando os itens do eixo dela cabem na
+// memória de grupo; as outras ficam com um fio (a mesma imagem por qualquer dos dois).
+fn vai_ao_grupo(cp: Copia, tracejada: bool) -> bool {
+    return tracejada && cp.eixo_rg.y >= contas.itens_do_grupo && cp.eixo_rg.y <= ITENS_NO_GRUPO;
+}
+
+// A cópia vai ao passe de grupo (a marca dela no 4.º quarto da contagem, depois do prefixo).
+fn e_do_grupo(ii: u32) -> bool {
+    let q0 = 3u * (contas.n + 1u);
+    return contagem[q0 + ii + 1u] != contagem[q0 + ii];
 }
 
 // Os prefixos exclusivos das DUAS contagens, num grupo só: cada fio soma um pedaço contíguo, o fio
@@ -528,31 +565,37 @@ fn desenho(em: u32, copias: u32) {
 }
 var<workgroup> parcial_m: array<u32, 256>;
 var<workgroup> parcial_l: array<u32, 256>;
+var<workgroup> parcial_g: array<u32, 256>;
 
 @compute @workgroup_size(256)
 fn cs_soma(@builtin(local_invocation_index) li: u32) {
     let n = contas.n;
     let m0 = n + 1u;
     let l0 = 2u * (n + 1u);
+    let g0 = 3u * (n + 1u);
     let pedaco = (n + 255u) / 256u;
     let i0 = min(li * pedaco, n);
     let i1 = min(i0 + pedaco, n);
     var s = 0u;
     var sm = 0u;
     var sl = 0u;
+    var sg = 0u;
     for (var i = i0; i < i1; i += 1u) {
         s += contagem[i];
         sm += contagem[m0 + i];
         sl += contagem[l0 + i];
+        sg += contagem[g0 + i];
     }
     parcial[li] = s;
     parcial_m[li] = sm;
     parcial_l[li] = sl;
+    parcial_g[li] = sg;
     workgroupBarrier();
     if li == 0u {
         var acc = 0u;
         var acc_m = 0u;
         var acc_l = 0u;
+        var acc_g = 0u;
         for (var k = 0u; k < 256u; k += 1u) {
             let v = parcial[k];
             parcial[k] = acc;
@@ -563,15 +606,24 @@ fn cs_soma(@builtin(local_invocation_index) li: u32) {
             let vl = parcial_l[k];
             parcial_l[k] = acc_l;
             acc_l += vl;
+            let vg = parcial_g[k];
+            parcial_g[k] = acc_g;
+            acc_g += vg;
         }
         contagem[n] = acc;
         contagem[m0 + n] = acc_m;
         contagem[l0 + n] = acc_l;
+        contagem[g0 + n] = acc_g;
         // ⭐ doc 121 §9.7–§9.12 — os despachos das células: um fio por LINHA, um por ARESTA e um por
-        // PIXEL das células que cabem (as de uma cópia que não cabe não se lêem).
+        // `PIXELS_DO_FIO` pixels das células que cabem (as de uma cópia que não cabe não se lêem).
         despacha(0u, acc_l);
         despacha(3u, acc);
-        despacha(6u, min(acc_m, contas.cap_celulas) * PIXELS_DA_CELULA);
+        despacha(6u, min(acc_m, contas.cap_celulas) * FIOS_DA_CELULA);
+        // doc 121 §9.14 (a) — um GRUPO por cópia do passe de grupo (em duas dimensões, como o `despacha`).
+        let gx = min(acc_g, 65535u);
+        despacho_grande[0] = gx;
+        despacho_grande[1] = select(1u, (acc_g + gx - 1u) / max(gx, 1u), gx > 0u);
+        despacho_grande[2] = 1u;
         // doc 121 §9.13 — todas as cópias pela ENXUTA, até o `cs_escreve` pedir a completa.
         desenho(DESENHO_ENXUTA, n);
         desenho(DESENHO_COMPLETO, 0u);
@@ -580,6 +632,7 @@ fn cs_soma(@builtin(local_invocation_index) li: u32) {
     var acc = parcial[li];
     var acc_m = parcial_m[li];
     var acc_l = parcial_l[li];
+    var acc_g = parcial_g[li];
     for (var i = i0; i < i1; i += 1u) {
         let v = contagem[i];
         contagem[i] = acc;
@@ -590,6 +643,9 @@ fn cs_soma(@builtin(local_invocation_index) li: u32) {
         let vl = contagem[l0 + i];
         contagem[l0 + i] = acc_l;
         acc_l += vl;
+        let vg = contagem[g0 + i];
+        contagem[g0 + i] = acc_g;
+        acc_g += vg;
     }
 }
 
@@ -608,7 +664,7 @@ fn transforma(cp: Copia, s0: u32, k: u32, saida: u32) {
 @compute @workgroup_size(64)
 fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
     let ii = indice(gid, nwg);
-    if ii >= contas.n {
+    if ii >= contas.n || e_do_grupo(ii) {
         return;
     }
     if !escreve(ii) {
@@ -633,58 +689,379 @@ fn pede_a_completa(ii: u32) {
     }
 }
 
-// As arestas e o registo de célula de uma cópia; `false` ⇒ ela fica com o caminho de sempre.
-fn escreve(ii: u32) -> bool {
+// O que a contagem RESERVOU para uma cópia, e se ela pode escrever: com o eixo, o limite superior do
+// contorno (o que se usa é ≤). ⚠️ Fora da capacidade, a cópia fica com o caminho de sempre — nunca um
+// contorno truncado. A MESMA porta para o fio por cópia e para o grupo (doc 121 §9.14).
+struct Reserva {
+    ok: bool,
+    p: Plano,
+    base: u32,
+    mbase: u32,
+    // As arestas do contorno que cabem depois do preenchimento e das marcas.
+    nc: u32,
+}
+
+fn reserva_de(ii: u32) -> Reserva {
+    var r: Reserva;
+    r.ok = false;
     ccopias_rw[3u * ii] = vec4<u32>(0u);
     ccopias_rw[3u * ii + 1u] = vec4<u32>(0u);
     ccopias_rw[3u * ii + 2u] = vec4<u32>(0u);
     let m0 = contas.n + 1u;
-    let base = contagem[ii];
-    // O que a contagem RESERVOU: com o eixo, o limite superior do contorno; o que se usa é ≤.
-    let reservado = contagem[ii + 1u] - base;
-    let mbase = contagem[m0 + ii];
-    let nmask_reservado = contagem[m0 + ii + 1u] - mbase;
-    // ⚠️ Fora da capacidade, a cópia fica com o caminho de sempre — nunca um contorno truncado.
-    if reservado == 0u || base + reservado > contas.cap
-        || mbase + nmask_reservado > contas.cap_celulas {
+    r.base = contagem[ii];
+    let reservado = contagem[ii + 1u] - r.base;
+    r.mbase = contagem[m0 + ii];
+    let nmask_reservado = contagem[m0 + ii + 1u] - r.mbase;
+    if reservado == 0u || r.base + reservado > contas.cap
+        || r.mbase + nmask_reservado > contas.cap_celulas {
+        return r;
+    }
+    r.p = plano_de(ii);
+    if !r.p.valido || r.p.nf + r.p.nm > reservado
+        || r.p.linhas * r.p.celulas != nmask_reservado {
+        return r;
+    }
+    r.nc = reservado - r.p.nf - r.p.nm;
+    r.ok = true;
+    return r;
+}
+
+// O registo de célula de uma cópia com `nc` arestas de contorno DE FACTO escritas (múltiplo do bloco)
+// e a caixa delas; `false` ⇒ ela não tem nada para as células.
+fn regista(ii: u32, r: Reserva, nc: u32, caixa: vec4<f32>) -> bool {
+    let p = r.p;
+    ccaixas_rw[ii] = caixa;
+    ccopias_rw[3u * ii] = vec4<u32>(r.base / SEGS_POR_BLOCO, p.nf / SEGS_POR_BLOCO, p.nm / SEGS_POR_BLOCO, nc / SEGS_POR_BLOCO);
+    ccopias_rw[3u * ii + 1u] = vec4<u32>(r.mbase, p.linhas, 0u, bitcast<u32>(p.y0));
+    ccopias_rw[3u * ii + 2u] = vec4<u32>(bitcast<u32>(p.x0), p.celulas, p.regra, 0u);
+    // O desenho só lê as células com algum bloco (`tela` no `vs_main`).
+    return p.nf + p.nm + nc > 0u;
+}
+
+// O fim de `cursor` arestas até ao bloco inteiro: arestas de comprimento zero (`dy = 0` em toda a
+// fileira — as células não as vêem).
+fn ate_ao_bloco(n: u32) -> u32 {
+    return (n + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
+}
+
+// As arestas e o registo de célula de uma cópia; `false` ⇒ ela fica com o caminho de sempre.
+fn escreve(ii: u32) -> bool {
+    let r = reserva_de(ii);
+    if !r.ok {
         return false;
     }
-    let p = plano_de(ii);
-    if !p.valido || p.nf + p.nm > reservado
-        || p.linhas * p.celulas != nmask_reservado {
-        return false;
-    }
+    let p = r.p;
     cmin = vec2<f32>(3.0e38);
     cmax = vec2<f32>(-3.0e38);
-    transforma(p.cp, p.f0, p.nf, base);
-    transforma(p.cp, p.m0, p.nm, base + p.nf);
-    let nc_reservado = reservado - p.nf - p.nm;
+    transforma(p.cp, p.f0, p.nf, r.base);
+    transforma(p.cp, p.m0, p.nm, r.base + p.nf);
     var nc = 0u;
-    if nc_reservado > 0u {
-        let bc = base + p.nf + p.nm;
+    if r.nc > 0u {
+        let bc = r.base + p.nf + p.nm;
         base_saida = bc;
-        limite_saida = nc_reservado;
+        limite_saida = r.nc;
         percorre(p.cp);
         // ⚠️ O limite da contagem é um pior caso: uma escrita que o passasse seria um contorno
         // truncado. ⇒ é deitada fora e a cópia segue pelo caminho de sempre.
-        if cursor > nc_reservado {
+        if cursor > r.nc {
             return false;
         }
-        nc = (cursor + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
-        // O enchimento até ao bloco inteiro: arestas de comprimento zero (`dy = 0` em toda a fileira —
-        // as células não as vêem).
+        nc = ate_ao_bloco(cursor);
         for (var i = cursor; i < nc; i += 1u) {
             contorno_rw[bc + i] = vec4<f32>(0.0);
         }
     }
-    // O que se usa: as arestas e o registo de célula do que foi DE FACTO escrito.
-    let ne = p.nf + p.nm + nc;
-    ccaixas_rw[ii] = vec4<f32>(cmin, cmax);
-    ccopias_rw[3u * ii] = vec4<u32>(base / SEGS_POR_BLOCO, p.nf / SEGS_POR_BLOCO, p.nm / SEGS_POR_BLOCO, nc / SEGS_POR_BLOCO);
-    ccopias_rw[3u * ii + 1u] = vec4<u32>(mbase, p.linhas, 0u, bitcast<u32>(p.y0));
-    ccopias_rw[3u * ii + 2u] = vec4<u32>(bitcast<u32>(p.x0), p.celulas, p.regra, 0u);
-    // O desenho só lê as células com algum bloco (`tela` no `vs_main`).
-    return ne > 0u;
+    return regista(ii, r, nc, vec4<f32>(cmin, cmax));
+}
+
+// ⭐⭐ doc 121 §9.14 (a) — **O TRACEJADO POR TROÇO: um GRUPO por cópia tracejada.** Com um fio por cópia,
+// uma cópia tracejada grande anda os seus `N` troços × `P` pedaços em SÉRIE (as `72` estrelas grandes
+// da sonda são `2` ondas na placa inteira). Aqui os `64` fios de um grupo partem o eixo da cópia:
+//
+// 1. cada fio o ARCO e a natureza dos seus itens (memória de grupo);
+// 2. o fio `0` faz o prefixo do arco de cada sub-caminho e o ajuste do tracejado, numa volta, pela
+//    MESMA ordem de soma do `percorre` — os mesmos bits que o pixel a pixel e o fio por cópia;
+// 3. cada fio CONTA as arestas dos seus itens (a emissão com `limite_saida = 0`), o grupo faz o
+//    prefixo, e cada fio ESCREVE os seus no lugar dele; a caixa reduz-se no grupo.
+//
+// A ordem das arestas muda (a das células não importa a ninguém, doc 121 §9.8); a imagem não.
+const SALTA: u32 = 0xffffffffu;
+const PECA: u32 = 0xfffffffeu;
+var<workgroup> g_arco: array<f32, ITENS_NO_GRUPO>;
+var<workgroup> g_s0: array<f32, ITENS_NO_GRUPO>;
+// O comprimento de cada sub-caminho, no índice do troço que o começa.
+var<workgroup> g_tot: array<f32, ITENS_NO_GRUPO>;
+// Do item: `tipo | tracejado << 2 | SUB_INICIO << 3 | SUB_FECHADO << 4 | _pad << 16`.
+var<workgroup> g_meta: array<u32, ITENS_NO_GRUPO>;
+// O troço: `início do sub-caminho | k << 16`; ou `PECA` (`emite_peca`) ou `SALTA`.
+var<workgroup> g_sub: array<u32, ITENS_NO_GRUPO>;
+// As arestas de cada item, e depois onde ele começa a escrever.
+var<workgroup> g_cnt: array<u32, ITENS_NO_GRUPO>;
+var<workgroup> g_parcial: array<u32, 64>;
+var<workgroup> g_min: array<vec2<f32>, 64>;
+var<workgroup> g_max: array<vec2<f32>, 64>;
+// A cópia (`SALTA` ⇒ o grupo não tem cópia ou ela não cabe), o ajuste e o total de arestas.
+var<workgroup> g_copia: u32;
+var<workgroup> g_ajuste: f32;
+var<workgroup> g_total: u32;
+
+// O sub-caminho do troço que o fio `0` arrumou: o mesmo que o `sub_tracejado` devolveria.
+fn sub_do_grupo(i0: u32, inicio: u32, caneta: f32, ajuste: f32) -> SubTracejado {
+    let it = eixo[i0 + inicio];
+    var s: SubTracejado;
+    s.n = it._pad;
+    s.fechado = (it.ponta & SUB_FECHADO) != 0u;
+    s.tr = it.traco * caneta * ajuste;
+    s.per = (it.traco + it.vao) * caneta * ajuste;
+    s.tot = 0.0;
+    s.emenda = false;
+    if s.fechado && s.per > 0.0 {
+        s.tot = g_tot[inicio];
+        s.a_fim = floor(s.tot / s.per) * s.per;
+        s.emenda = s.a_fim < s.tot && s.tot < s.a_fim + s.tr;
+    }
+    return s;
+}
+
+// As arestas do item `i` da cópia (`cursor` conta-as; `limite_saida` diz quantas se escrevem).
+fn emite_item(cp: Copia, i: u32, caneta: f32, ajuste: f32) {
+    let s = g_sub[i];
+    if s == SALTA {
+        return;
+    }
+    let it = eixo[cp.eixo_rg.x + i];
+    if s == PECA {
+        emite_peca(it, cp.lin, cp.t, caneta);
+        return;
+    }
+    let sub = sub_do_grupo(cp.eixo_rg.x, s & 0xffffu, caneta, ajuste);
+    if sub.per <= 0.0 {
+        return;
+    }
+    let tr = troco_tracejado(it, sub, s >> 16u, g_s0[i], cp.lin, cp.t);
+    for (var n = tr.n0; n <= tr.n1; n += 1.0) {
+        let p = pedaco(tr, sub, n);
+        if p.valido {
+            emite_pedaco(it, cp.lin, cp.t, caneta, tr, p);
+        }
+    }
+}
+
+// O fio `0`: o prefixo do arco de cada sub-caminho e o ajuste (o `ajuste_do_tracejado` e o
+// `emite_tracejado`, na mesma ordem de soma).
+fn arruma_o_eixo(cp: Copia, caneta: f32) -> f32 {
+    let n = cp.eixo_rg.y;
+    var melhor = 0.0;
+    var melhor_i = SALTA;
+    var tot = 0.0;
+    var restantes = 0u;
+    var inicio = 0u;
+    var k = 0u;
+    for (var i = 0u; i < n; i += 1u) {
+        let m = g_meta[i];
+        let tipo = m & 3u;
+        g_sub[i] = SALTA;
+        if tipo != 0u {
+            // Um cabeçalho de bloco não desenha; uma ponta desenha se não for tracejada (o `percorre`).
+            if tipo == 2u && (m & 4u) == 0u {
+                g_sub[i] = PECA;
+            }
+            continue;
+        }
+        if restantes == 0u {
+            if (m & 4u) == 0u {
+                g_sub[i] = PECA;
+                continue;
+            }
+            if (m & 8u) == 0u || (m >> 16u) == 0u {
+                continue;
+            }
+            restantes = m >> 16u;
+            tot = 0.0;
+            inicio = i;
+            k = 0u;
+        }
+        g_s0[i] = tot;
+        g_sub[i] = inicio | (k << 16u);
+        tot = tot + g_arco[i];
+        g_tot[inicio] = tot;
+        k += 1u;
+        restantes -= 1u;
+        if restantes == 0u {
+            if tot > melhor {
+                melhor = tot;
+                melhor_i = inicio;
+            }
+        }
+    }
+    if melhor_i == SALTA {
+        return 1.0;
+    }
+    let it = eixo[cp.eixo_rg.x + melhor_i];
+    let fechado = (it.ponta & SUB_FECHADO) != 0u;
+    let tr = it.traco * caneta;
+    let per = (it.traco + it.vao) * caneta;
+    if melhor <= 0.0 || per <= 0.0 {
+        return 1.0;
+    }
+    var denom = max(arredonda(melhor / per), 1.0) * per;
+    if !fechado {
+        denom = max(arredonda((melhor - tr) / per), 0.0) * per + tr;
+    }
+    if denom <= 0.0 {
+        return 1.0;
+    }
+    return melhor / denom * select(1.0, 1.0 + FOLGA_DO_AJUSTE, fechado);
+}
+
+@compute @workgroup_size(64)
+fn cs_escreve_grande(
+    @builtin(workgroup_id) wid: vec3<u32>,
+    @builtin(num_workgroups) nwg: vec3<u32>,
+    @builtin(local_invocation_index) li: u32,
+) {
+    let n_total = contas.n;
+    let q0 = 3u * (n_total + 1u);
+    if li == 0u {
+        g_copia = SALTA;
+        let g = wid.x + wid.y * nwg.x;
+        if g < contagem[q0 + n_total] {
+            // A cópia: a ÚLTIMA cuja marca começa em `≤ g` (as sem marca partilham o início da seguinte).
+            var a = 0u;
+            var b = n_total;
+            while b - a > 1u {
+                let m = (a + b) / 2u;
+                if contagem[q0 + m] <= g {
+                    a = m;
+                } else {
+                    b = m;
+                }
+            }
+            if reserva_de(a).ok {
+                g_copia = a;
+            } else {
+                pede_a_completa(a);
+            }
+        }
+    }
+    let ii = workgroupUniformLoad(&g_copia);
+    if ii == SALTA {
+        return;
+    }
+    let r = reserva_de_lida(ii);
+    let p = r.p;
+    let cp = p.cp;
+    let caneta = bitcast<f32>(cp.eixo_rg.w);
+    let ni = cp.eixo_rg.y;
+    cmin = vec2<f32>(3.0e38);
+    cmax = vec2<f32>(-3.0e38);
+    // O preenchimento e as marcas, um segmento por fio.
+    for (var i = li; i < p.nf; i += 64u) {
+        transforma(cp, p.f0 + i, 1u, r.base + i);
+    }
+    for (var i = li; i < p.nm; i += 64u) {
+        transforma(cp, p.m0 + i, 1u, r.base + p.nf + i);
+    }
+    // 1. O arco e a natureza de cada item.
+    for (var i = li; i < ni; i += 64u) {
+        let it = eixo[cp.eixo_rg.x + i];
+        let traco = tracejado(it);
+        g_meta[i] = (it.tipo & 3u) | (u32(traco) << 2u) | (u32((it.ponta & SUB_INICIO) != 0u) << 3u)
+            | (u32((it.ponta & SUB_FECHADO) != 0u) << 4u) | (min(it._pad, 0xffffu) << 16u);
+        g_arco[i] = select(0.0, arco(it, cp.lin, cp.t), it.tipo == 0u && traco);
+    }
+    workgroupBarrier();
+    // 2. Os sub-caminhos e o ajuste.
+    if li == 0u {
+        g_ajuste = arruma_o_eixo(cp, caneta);
+    }
+    let ajuste = workgroupUniformLoad(&g_ajuste);
+    // 3. Quantas arestas cada item escreve.
+    limite_saida = 0u;
+    for (var i = li; i < ni; i += 64u) {
+        cursor = 0u;
+        emite_item(cp, i, caneta, ajuste);
+        g_cnt[i] = cursor;
+    }
+    workgroupBarrier();
+    // O prefixo: cada fio soma um pedaço contíguo, o grupo faz o dos `64` parciais.
+    let pedaco_g = (ni + 63u) / 64u;
+    let j0 = min(li * pedaco_g, ni);
+    let j1 = min(j0 + pedaco_g, ni);
+    var soma = 0u;
+    for (var j = j0; j < j1; j += 1u) {
+        soma += g_cnt[j];
+    }
+    g_parcial[li] = soma;
+    for (var d = 1u; d < 64u; d *= 2u) {
+        workgroupBarrier();
+        var t = 0u;
+        if li >= d {
+            t = g_parcial[li - d];
+        }
+        workgroupBarrier();
+        g_parcial[li] += t;
+    }
+    workgroupBarrier();
+    var acc = g_parcial[li] - soma;
+    for (var j = j0; j < j1; j += 1u) {
+        let v = g_cnt[j];
+        g_cnt[j] = acc;
+        acc += v;
+    }
+    if li == 63u {
+        // ⚠️ O limite da contagem é um pior caso: uma escrita que o passasse seria um contorno truncado.
+        g_total = select(g_parcial[63], SALTA, g_parcial[63] > r.nc);
+    }
+    let total = workgroupUniformLoad(&g_total);
+    if total == SALTA {
+        if li == 0u {
+            pede_a_completa(ii);
+        }
+        return;
+    }
+    // 4. Cada fio escreve os seus itens no lugar deles.
+    let bc = r.base + p.nf + p.nm;
+    for (var i = li; i < ni; i += 64u) {
+        let fim = select(total, g_cnt[i + 1u], i + 1u < ni);
+        if fim > g_cnt[i] {
+            cursor = 0u;
+            base_saida = bc + g_cnt[i];
+            limite_saida = fim - g_cnt[i];
+            emite_item(cp, i, caneta, ajuste);
+        }
+    }
+    let nc = ate_ao_bloco(total);
+    for (var i = total + li; i < nc; i += 64u) {
+        contorno_rw[bc + i] = vec4<f32>(0.0);
+    }
+    g_min[li] = cmin;
+    g_max[li] = cmax;
+    workgroupBarrier();
+    if li == 0u {
+        var lo = g_min[0];
+        var hi = g_max[0];
+        for (var k = 1u; k < 64u; k += 1u) {
+            lo = min(lo, g_min[k]);
+            hi = max(hi, g_max[k]);
+        }
+        if !regista(ii, r, nc, vec4<f32>(lo, hi)) {
+            pede_a_completa(ii);
+        }
+    }
+}
+
+// A reserva de uma cópia que o fio `0` já validou (`reserva_de` apagou o registo dela): os mesmos
+// números, sem voltar a apagar.
+fn reserva_de_lida(ii: u32) -> Reserva {
+    var r: Reserva;
+    let m0 = contas.n + 1u;
+    r.base = contagem[ii];
+    r.mbase = contagem[m0 + ii];
+    r.p = plano_de(ii);
+    r.nc = contagem[ii + 1u] - r.base - r.p.nf - r.p.nm;
+    r.ok = true;
+    return r;
 }
 
 // ⭐⭐ doc 121 §9.12 — **AS CÉLULAS POR ACUMULAÇÃO, EM QUATRO PASSES LARGOS.** Cada fileira de pixels de
@@ -821,17 +1198,22 @@ fn fileiras_da_aresta(a: ArestaDoFio) -> vec2<u32> {
 @compute @workgroup_size(64)
 fn cs_zera(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
     let g = indice(gid, nwg);
-    let cel = g / PIXELS_DA_CELULA;
+    let cel = g / FIOS_DA_CELULA;
     if cel >= celulas_em_uso() {
         return;
     }
-    let p = g % PIXELS_DA_CELULA;
-    let a = cel * ACUMULA + p;
-    atomicStore(&acumula_rw[a], 0u);
-    atomicStore(&acumula_rw[a + PIXELS_DA_CELULA], 0u);
-    atomicStore(&acumula_rw[a + 2u * PIXELS_DA_CELULA], 0u);
-    if p < REGISTO {
-        atomicStore(&ccelulas_rw[cel * REGISTO + p], 0u);
+    for (var k = 0u; k < PIXELS_DO_FIO; k += 1u) {
+        let p = (g % FIOS_DA_CELULA) * PIXELS_DO_FIO + k;
+        let a = cel * ACUMULA + p;
+        atomicStore(&acumula_rw[a], 0u);
+        // doc 121 §9.14 D1 — as outras duas famílias o `cs_varre` do quadro anterior já devolveu a zero.
+        if !VARRE_PRESENCA {
+            atomicStore(&acumula_rw[a + PIXELS_DA_CELULA], 0u);
+            atomicStore(&acumula_rw[a + 2u * PIXELS_DA_CELULA], 0u);
+        }
+        if p < REGISTO {
+            atomicStore(&ccelulas_rw[cel * REGISTO + p], 0u);
+        }
     }
 }
 
@@ -899,7 +1281,11 @@ fn cs_fundo(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     }
     // O fundo de uma célula é o de TODAS as arestas que acabam antes dela: o prefixo ao longo da
     // fileira, em inteiros. A 4.ª palavra leva a regra da cópia ao `cs_varre`.
-    let regra = ccopias_rw[3u * f.ii + 2u].z;
+    // doc 121 §9.14 D1 — e as famílias que a cópia TEM (o preenchimento, as marcas, o contorno), nos
+    // bits `1..4`: as outras não recebem depósito nenhum, e o `cs_varre` não as lê.
+    let c0 = ccopias_rw[3u * f.ii];
+    let regra = ccopias_rw[3u * f.ii + 2u].z | (u32(c0.y > 0u) << 1u) | (u32(c0.z > 0u) << 2u)
+        | (u32(c0.w > 0u) << 3u);
     var fundo = vec3<i32>(0);
     for (var k = 0u; k < f.celulas; k += 1u) {
         let q = (f.celula + k) * REGISTO;
@@ -915,8 +1301,9 @@ fn cs_fundo(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     }
 }
 
-// O prefixo SEGMENTADO por célula: um grupo de `64` fios são duas células, e cada fio soma os
-// depósitos dos pixels à esquerda dele na MESMA célula (`log₂ 32 = 5` passos).
+// O prefixo SEGMENTADO por célula: um grupo de `64` fios são `64 / FIOS_DA_CELULA` células; cada fio
+// soma os seus `PIXELS_DO_FIO` depósitos em registos e os dos fios à esquerda dele na MESMA célula
+// (`log₂ FIOS_DA_CELULA` passos em memória de grupo).
 var<workgroup> prefixo: array<vec3<i32>, 64>;
 
 @compute @workgroup_size(64)
@@ -926,23 +1313,40 @@ fn cs_varre(
     @builtin(local_invocation_index) li: u32,
 ) {
     let g = indice(gid, nwg);
-    let cel = g / PIXELS_DA_CELULA;
-    let p = g % PIXELS_DA_CELULA;
+    let cel = g / FIOS_DA_CELULA;
+    let j = g % FIOS_DA_CELULA;
     let viva = cel < celulas_em_uso();
-    let a = cel * ACUMULA + p;
-    var v = vec3<i32>(0);
+    let q = cel * REGISTO;
+    var regra = 0u;
     if viva {
-        v = vec3<i32>(
-            bitcast<i32>(atomicLoad(&acumula_rw[a])),
-            bitcast<i32>(atomicLoad(&acumula_rw[a + PIXELS_DA_CELULA])),
-            bitcast<i32>(atomicLoad(&acumula_rw[a + 2u * PIXELS_DA_CELULA])),
-        );
+        regra = atomicLoad(&ccelulas_rw[q + 3u]);
     }
-    prefixo[li] = v;
-    for (var d = 1u; d < PIXELS_DA_CELULA; d *= 2u) {
+    // doc 121 §9.14 D1 — só as famílias que a cópia tem (o `cs_fundo` pô-las no registo).
+    let tem = select(7u, (regra >> 1u) & 7u, VARRE_PRESENCA);
+    var v: array<vec3<i32>, PIXELS_DO_FIO>;
+    var s = vec3<i32>(0);
+    if viva {
+        for (var k = 0u; k < PIXELS_DO_FIO; k += 1u) {
+            let a = cel * ACUMULA + j * PIXELS_DO_FIO + k;
+            var d = vec3<i32>(0);
+            if (tem & 1u) != 0u {
+                d.x = bitcast<i32>(atomicLoad(&acumula_rw[a]));
+            }
+            if (tem & 2u) != 0u {
+                d.y = bitcast<i32>(atomicLoad(&acumula_rw[a + PIXELS_DA_CELULA]));
+            }
+            if (tem & 4u) != 0u {
+                d.z = bitcast<i32>(atomicLoad(&acumula_rw[a + 2u * PIXELS_DA_CELULA]));
+            }
+            s += d;
+            v[k] = s;
+        }
+    }
+    prefixo[li] = s;
+    for (var d = 1u; d < FIOS_DA_CELULA; d *= 2u) {
         workgroupBarrier();
         var t = vec3<i32>(0);
-        if p >= d {
+        if j >= d {
             t = prefixo[li - d];
         }
         workgroupBarrier();
@@ -951,20 +1355,32 @@ fn cs_varre(
     if !viva {
         return;
     }
-    let q = cel * REGISTO;
-    let s = prefixo[li] + vec3<i32>(
+    let antes = prefixo[li] - s + vec3<i32>(
         bitcast<i32>(atomicLoad(&ccelulas_rw[q])),
         bitcast<i32>(atomicLoad(&ccelulas_rw[q + 1u])),
         bitcast<i32>(atomicLoad(&ccelulas_rw[q + 2u])),
     );
-    // As regras de sempre, à letra do Vello (o fragmento aplica-as no caminho de sempre).
-    let af0 = f32(s.x) / ESCALA_FIXA;
-    var af = min(abs(af0), 1.0);
-    if atomicLoad(&ccelulas_rw[q + 3u]) != 0u {
-        af = abs(af0 - 2.0 * round(0.5 * af0));
+    for (var k = 0u; k < PIXELS_DO_FIO; k += 1u) {
+        let a = cel * ACUMULA + j * PIXELS_DO_FIO + k;
+        let t = antes + v[k];
+        // As regras de sempre, à letra do Vello (o fragmento aplica-as no caminho de sempre).
+        let af0 = f32(t.x) / ESCALA_FIXA;
+        var af = min(abs(af0), 1.0);
+        if (regra & 1u) != 0u {
+            af = abs(af0 - 2.0 * round(0.5 * af0));
+        }
+        let as_ = min(min(abs(f32(t.y) / ESCALA_FIXA), 1.0) + min(abs(f32(t.z) / ESCALA_FIXA), 1.0), 1.0);
+        // ⭐ Na palavra do PRÓPRIO pixel, já lida: nenhum outro fio a lê (o prefixo vive na memória de
+        // grupo), e o `cs_zera` do quadro seguinte apaga-a.
+        atomicStore(&acumula_rw[a], pack2x16unorm(vec2<f32>(af, as_)));
+        // doc 121 §9.14 D1 — as outras famílias voltam a zero aqui, e o `cs_zera` já não as apaga.
+        if VARRE_PRESENCA {
+            if (tem & 2u) != 0u {
+                atomicStore(&acumula_rw[a + PIXELS_DA_CELULA], 0u);
+            }
+            if (tem & 4u) != 0u {
+                atomicStore(&acumula_rw[a + 2u * PIXELS_DA_CELULA], 0u);
+            }
+        }
     }
-    let as_ = min(min(abs(f32(s.y) / ESCALA_FIXA), 1.0) + min(abs(f32(s.z) / ESCALA_FIXA), 1.0), 1.0);
-    // ⭐ Na palavra do PRÓPRIO fio, lida antes das barreiras: nenhum outro fio a lê (o prefixo vive na
-    // memória de grupo), e o `cs_zera` do quadro seguinte apaga-a com as outras.
-    atomicStore(&acumula_rw[a], pack2x16unorm(vec2<f32>(af, as_)));
 }

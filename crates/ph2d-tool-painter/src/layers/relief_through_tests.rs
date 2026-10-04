@@ -123,12 +123,12 @@ fn sem_ajuste_a_dobra_e_a_por_amostra_ao_bit() {
         h.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
         quer.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
     );
-    for i in 0..N {
+    for (i, &got) in corpo.iter().enumerate() {
         let m = [a, b, c]
             .iter()
             .map(|id| p.at(*id, i).1)
             .fold(0.0f32, f32::max);
-        assert_eq!(corpo[i], m, "o corpo é o máximo das visíveis");
+        assert_eq!(got, m, "o corpo é o máximo das visíveis");
     }
 }
 

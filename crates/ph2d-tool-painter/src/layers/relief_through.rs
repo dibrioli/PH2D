@@ -201,6 +201,10 @@ impl LayerStack {
 pub trait ReliefSamples: Sync {
     /// Quantas amostras.
     fn len(&self) -> usize;
+    /// Sem amostras?
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     /// A camada tem relevo?
     fn has(&self, id: LayerId) -> bool;
     /// `(altura própria, cobertura)` da camada na amostra `i`.

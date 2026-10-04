@@ -624,3 +624,57 @@ fn uma_malha_que_nao_para_de_mudar_serve_todos_a_vez() {
         );
     }
 }
+
+/// ⭐ (o aberto da W9) **Quem NASCE no tique em que a fila está cheia**: o 1.º procura na mesma (há
+/// sempre pelo menos um), e o que a fila PROMETEU conta — o 2.º espera pelo tique seguinte. O orçamento
+/// é exactamente o que os oito guardas gastaram da última vez: a porta abre o atalho, a fila serve-os
+/// a todos e não sobra nada.
+#[test]
+fn quem_nasce_com_a_fila_cheia_procura_um_e_o_outro_espera() {
+    let (mut sim, porta, quem) = atalho(true);
+    let mut b = PhysicsBridge::new();
+    let mut cena = PortaQueMuda {
+        porta,
+        de: (0.0, 0.0),
+        para: (30.0, 30.0),
+        quando: 5,
+    };
+    // A porta muda no `5` e a fila serve a partir do `6` (a malha nova é a do tique seguinte).
+    for t in 1..=5 {
+        b.dispatch_with_scene(&mut sim, true, t, &mut cena);
+    }
+    let antes = procuras_de(&b, &quem);
+    let gasto: u64 = quem
+        .iter()
+        .map(|&e| b.nav_agent(e).map_or(0, |r| r.last_nodes))
+        .sum();
+    b.set_nav_replan_budget(gasto);
+    let mut novos: Vec<Entity> = (0..2)
+        .map(|i| {
+            agente(
+                &mut sim,
+                &format!("Novo {i}"),
+                (-6.0, 3.0 + i as f32),
+                NavTarget::Point([6.0, 5.0]),
+            )
+        })
+        .collect();
+    novos.sort();
+    b.dispatch_with_scene(&mut sim, true, 6, &mut cena);
+    let depois = procuras_de(&b, &quem);
+    assert!(
+        antes.iter().zip(&depois).all(|(a, d)| d > a),
+        "a fila serve os oito no tique da porta: {antes:?} → {depois:?}"
+    );
+    assert_eq!(
+        procuras_de(&b, &novos),
+        vec![1, 0],
+        "com a fila cheia: o 1.º que nasce procura, o 2.º espera"
+    );
+    b.dispatch_with_scene(&mut sim, true, 7, &mut cena);
+    assert_eq!(
+        procuras_de(&b, &novos),
+        vec![1, 1],
+        "e o 2.º procura no tique seguinte"
+    );
+}

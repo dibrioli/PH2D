@@ -1291,3 +1291,45 @@ re-medidas e a mutação re-corrida sobre o código final (`10 / 10`).
 - **A montagem** (`MalhaPorBlocos::monta`, `0,24 ms` sem lamas) é agora o MAIOR pedaço de uma porta, e o que
   resta O(malha) nela só desce com ids fixos (recusados no §18.6 enquanto ninguém os consumir).
 - O piso das bibliotecas no mosaico (`spade` + Clipper, `0,15 ms`; `+0,16` com lamas).
+
+## §21 — W13 (2026-10-04): o comportamento que faltava (os abertos da W5 e da W9)
+
+A ordem do dono (04/10): *«antes de juntar vamos fechar completamente a feature»*. O inventário de TODOS os
+abertos do plano (§13.5 … §20.7) separou o que já estava fechado por uma wave seguinte (o *«a dar passagem»*,
+a porta que anda como um círculo, todos a replanear no mesmo tique, a grelha das paredes), as recusas medidas
+(ids fixos e a montagem O(malha), a porta que muda a malha duas vezes, o piso das bibliotecas, o tamanho do
+mosaico), um plano à parte (plataformas) e o que estava MESMO por fazer. Esta wave fecha o comportamento:
+
+| aberto | o defeito | a cura | o gate (e o que media sem a cura) |
+|---|---|---|---|
+| W5: o empurrão de um golpe | o desvio lia só o comando do mover de vista de cima; o corpo anda com o comando MAIS o empurrão | `velocidade_de` = a mesma soma do mover | `um_corpo_empurrado_por_um_golpe_e_visto_a_andar`: um herói atirado ATRAVÉS do caminho — `0,80 m` de desvio de quem já ia a sair, agora `0,0016` (= o CONTROLO) |
+| W5: o corpo composto | o desvio via um corpo que anda só pelo colisor principal | os discos de cada peça no referencial do corpo; o disco de um ALVO envolve o corpo e as peças | `um_corpo_composto_desvia_se_pela_forma_inteira`: o carrinho com um braço atravessado — folga `0,006 → 0,80 m`; perseguido, `0,009 → 0,78 m` fora do eixo a 1 m do braço |
+| W9: quem nasce junto | a 1.ª procura de quem não tem caminho não passava pela fila — cinquenta a nascer = cinquenta procuras num tique | é do orçamento do tique: cabe enquanto houver folga (a fila devolve o que prometeu; as outras contam pelo que gastam), sempre pelo menos uma; quem não cabe espera PARADO | `nav_nascer.rs` (um por tique pela ordem das entidades; quem espera fica parado e todos chegam; o scrub a meio) · `quem_nasce_com_a_fila_cheia_procura_um_e_o_outro_espera` |
+
+⚠️ **A condução passa a correr pela ordem das ENTIDADES** (era a da consulta, a das tabelas): o 1.º gate do
+scrub dos nascimentos DIVERGIA — o rebuild do scrub baralha as tabelas e servia outro agente. E a ordem das
+entidades não é a de nascimento (o `Entity` desta versão do `bevy_ecs` ordena ao contrário): os gates calculam-na.
+
+⚠️ **Achados de passagem:** (1) um obstáculo LARGO que anda contra o agente (ou à frente dele, na mesma direcção)
+PRENDE-o — o desvio local (ORCA) escolhe a velocidade mais perto da pedida e nunca contorna; parado, o obstáculo
+vira parede da malha e o caminho contorna-o (o gate do composto pára o carrinho por isso). É o limite conhecido
+do ORCA, fica no §21.2. (2) O gate do caminho do hash apanhou um `hypot` do `std` no disco do alvo (curado com
+`sqrt`). (3) O gate da fila que abre o atalho fixava o orçamento ANTES do nascimento; com a 1.ª procura no
+orçamento, os oito nasciam um por tique ainda a meio da porta — a premissa passou a explícita (o orçamento do
+teste vale a partir do tique `2`).
+
+Mutação **8 / 8** a sangrar ([`mutacao_navegacao_w13_2026-10-04.py`](ferramentas/mutacao_navegacao_w13_2026-10-04.py));
+a 1.ª corrida deu **5/8**: a K1 tirava só a componente x de um golpe vertical (o arnês), e a N2 e a N5 (o
+«sempre pelo menos um» e o que a fila prometeu) não tinham fixtura que juntasse a fila CHEIA e quem nasce — o
+gate da fila cheia nasceu disso.
+
+### §21.2 — ⏳ O que fica (a velocidade, wave seguinte)
+
+- **A fila conta NÓS, e um nó da procura ponderada custa `~3×` o da uniforme** (`~330` contra `~110 ns`): com
+  muita lama a fila deixa passar mais tempo do que o orçamento diz.
+- **O início de uma cena grande** (`100 × 100 m`, `1 000` obstáculos, `100` lamas): `~55–60 ms` a montar a malha a
+  frio — um engasgo ao dar play.
+- **O desvio a `1 000` agentes**: `2,4 ms` a varrer os candidatos.
+- **A procura ponderada com muita lama**: `~4×` os nós e `~12×` o tempo da uniforme.
+- **Um obstáculo largo que anda prende o agente** (o limite do ORCA — achado acima).
+- O passo 7–8 do tutorial 03 prova-se no smoke do dono (a foto não clica).

@@ -264,7 +264,10 @@ fn diag_as_pontas_dos_cortes() {
         for (k, x) in d.values().enumerate() {
             let Some(t) = &x.traco else { continue };
             let w = t.stroke.as_ref().map_or(1.0, |s| s.width);
-            let contorno = polilinhas(&x.forma, 64);
+            // Só os FECHADOS são borda: uma risca toca o contorno de propósito.
+            let mut fechados = x.forma.clone();
+            fechados.subpaths.retain(|c| c.closed);
+            let contorno = polilinhas(&fechados, 64);
             let cruz = cruzamentos(&contorno);
             let perto_do_contorno = |p: [f64; 2]| {
                 contorno.iter().flat_map(|l| l.windows(2)).any(|s| {

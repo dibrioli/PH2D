@@ -43,9 +43,11 @@ fn cruza(a: [f64; 2], b: [f64; 2], c: [f64; 2], d: [f64; 2]) -> Option<f64> {
 }
 
 impl Bordas {
-    pub(super) fn de(d: &VecPath, lado: f64) -> Self {
+    /// Quem diz que contorno é FECHADO é a `fonte`, como na [`super::traco_sobre_o_assado`] (o
+    /// assado segue-lhe os contornos um a um).
+    pub(super) fn de(d: &VecPath, fonte: &VecPath, lado: f64) -> Self {
         let pl: Vec<Vec<[f64; 2]>> = (0..d.contour_count())
-            .filter_map(|c| d.contour(c))
+            .filter_map(|c| Some((d.contour(c)?.0, fonte.contour(c)?.1)))
             .map(|(v, fechado)| {
                 if !fechado || v.len() < 2 {
                     return Vec::new();

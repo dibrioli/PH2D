@@ -48,7 +48,7 @@ pub(super) fn traco_sobre_o_assado(
     let mut pecas: Vec<ph2d_vec_scene::Contour> = Vec::new();
     let mut base = 0;
     let largura = d.stroke.as_ref().map_or(0.0, |s| s.width);
-    let bordas = (largura > 0.0).then(|| cruza::Bordas::de(d, largura));
+    let bordas = (largura > 0.0).then(|| cruza::Bordas::de(d, fonte, largura));
     for c in 0..fonte.contour_count() {
         let ((fv, fechado), (ov, _)) = (fonte.contour(c)?, d.contour(c)?);
         let m = fv.len();

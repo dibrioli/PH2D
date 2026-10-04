@@ -13,8 +13,22 @@ use ph2d_vec_scene::effect::{FxEntry, PathEffect};
 
 const LARGURA: f64 = 0.5;
 
+/// O [`desenho_aqui`] numa thread NOVA, com ou sem o encaixe — ⚠️ o memo do quadro é por thread e
+/// guarda o desenho por forma: na mesma thread o 2.º desenho era o do 1.º (o gate lia a lei
+/// desligada dos dois lados).
+fn desenho(graus: f32, sem_encaixe: bool) -> SkinDesenhado {
+    std::thread::scope(|s| {
+        s.spawn(|| {
+            super::SEM_ENCAIXE.with(|c| c.set(sem_encaixe));
+            desenho_aqui(graus)
+        })
+        .join()
+        .expect("thread do desenho")
+    })
+}
+
 /// Duas cópias da barra `40 × 10` (a 2.ª girada `5°`), traço `0,5`, presas e a ponta a `graus`.
-fn desenho(graus: f32) -> SkinDesenhado {
+fn desenho_aqui(graus: f32) -> SkinDesenhado {
     let (mut sim, mut scene, map, id, [_, ponta]) = palco();
     {
         let p = scene.path_mut(id).expect("path");
@@ -186,10 +200,10 @@ fn nenhuma_ponta_de_corte_fica_a_um_tique_do_cruzamento() {
     let tiques = |v: &[f64]| v.iter().filter(|d| **d > 0.05 && **d < 1.0).count();
     let (mut com, mut sem, mut no_cruzamento) = (0, 0, 0);
     for graus in [110f32, 130.0, 150.0, 170.0] {
-        super::SEM_ENCAIXE.with(|c| c.set(true));
-        let antes = pontas(&desenho(graus));
-        super::SEM_ENCAIXE.with(|c| c.set(false));
-        let depois = pontas(&desenho(graus));
+        let (antes, depois) = (
+            pontas(&desenho(graus, true)),
+            pontas(&desenho(graus, false)),
+        );
         println!(
             "  {graus}°: tiques sem o encaixe {} · com {} · pontas {} {depois:.2?}",
             tiques(&antes),
@@ -221,7 +235,7 @@ fn diag_a_foto_da_fixtura() {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(130.0);
-    let d = desenho(g);
+    let d = desenho(g, std::env::var("SONDA_SEM").is_ok());
     let mut s = String::from(
         "<svg xmlns='http://www.w3.org/2000/svg' viewBox='-30 -40 90 70' width='2400' height='1867'><rect x='-30' y='-40' width='90' height='70' fill='white'/>",
     );

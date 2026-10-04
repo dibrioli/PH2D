@@ -71,12 +71,13 @@ fn fora_na_aresta(
     lam(0.5 * (ab + af)) - dn
 }
 
-/// `sonda_marcha` com o leitor `ler` (a distância e o quadrado dela vezes a cobertura, a cobertura):
-/// `(direcção, peso)`.
+/// `sonda_marcha` com o leitor `ler` (a distância e o quadrado dela vezes a cobertura, a cobertura) e a
+/// altura do ponto sobre o chão (`None` = sem chão): `(direcção, peso)`.
 pub(crate) fn marcha(
     ler: &dyn Fn([f32; 3]) -> [f32; 3],
     q: [f32; 3],
     r: [f32; 3],
+    altura: Option<f32>,
     franja: f32,
     k_aresta: f32,
     traco: &mut Option<Vec<String>>,
@@ -97,11 +98,21 @@ pub(crate) fn marcha(
         g[1] > 0.5 && lam(a) >= g[0] / g[1]
     };
     let texel = std::f32::consts::FRAC_PI_2 / ((LADO - 2) as f32 * 0.5);
-    let n = ((th / (PASSO * texel)).ceil() as u32).clamp(MARCHA_MIN, MARCHA_MAX);
+    // O chão acaba o raio, e a última amostra é nele.
+    let chao = altura.filter(|h| r[1] < -1.0e-6 && *h > 0.0);
+    let fim = chao.map_or(th, |h| {
+        let uf: [f32; 3] = std::array::from_fn(|e| q[e] - h / r[1] * r[e]);
+        dot(uf, w).atan2(dot(uf, qh))
+    });
+    let n = ((fim / (PASSO * texel)).ceil() as u32).clamp(MARCHA_MIN, MARCHA_MAX);
     let (mut ant, mut frente) = (0.0f32, true);
     let mut melhor = (r, 0.0f32);
     for k in 1..=n {
-        let a = th * k as f32 / (n + 1) as f32;
+        let a = if chao.is_some() {
+            fim * k as f32 / n as f32
+        } else {
+            th * k as f32 / (n + 1) as f32
+        };
         let at = atras(a);
         if at && frente {
             let (mut lo, mut hi) = (ant, a);
@@ -207,7 +218,7 @@ fn sonda_da_junta_na_cpu() {
                         let r: [f32; 3] =
                             std::array::from_fn(|e| vista[e] - 2.0 * dot(vista, p.n) * p.n[e]);
                         let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
-                        let (_, w) = marcha(ler, q, r, franja.max(1.0e-6), k_aresta, &mut None);
+                        let (_, w) = marcha(ler, q, r, Some(p.p[1]), franja.max(1.0e-6), k_aresta, &mut None);
                         aceita += usize::from(w >= 1.0);
                         peso += w;
                     }
@@ -271,7 +282,7 @@ fn sonda_da_tira() {
                 [g[0], g[1], g[2]]
             };
             let mut t = Some(Vec::new());
-            let (_, w) = marcha(&ler, q, r, FRANJA, ARESTA, &mut t);
+            let (_, w) = marcha(&ler, q, r, Some(p.p[1]), FRANJA, ARESTA, &mut t);
             eprintln!(" {nome}: peso {w:.3}");
             for l in t.unwrap_or_default() {
                 eprintln!("{l}");
@@ -324,8 +335,130 @@ fn sonda_da_orla_de_dentro() {
             dot(q, q).sqrt()
         );
         let mut tr = Some(Vec::new());
-        let (_, w) = marcha(&ler, q, r, FRANJA, ARESTA, &mut tr);
+        let (_, w) = marcha(&ler, q, r, Some(p.p[1]), FRANJA, ARESTA, &mut tr);
         eprintln!("  peso {w:.3}");
+        for l in tr.unwrap_or_default() {
+            eprintln!("{l}");
+        }
+    }
+}
+
+/// Sonda (imprime): na vista do dono (`VAZIO`, perspectiva), os px que acertam uma vizinha vista do centro e
+/// erram contra o Cycles (`|Δ| > 0,1`): o mapa grosso de onde ficam e a busca de alguns.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn sonda_das_bordas_do_dono() {
+    let v = &crate::tests_reflexo_perto::VAZIO;
+    let Some(mut fw) = desenhista(v) else {
+        return;
+    };
+    let px = oraculo(v);
+    let c = v.pecas[0].0;
+    let viz = desenha(v, &mut fw, metal(0.0), true);
+    let d = camada(&fw, 1);
+    let solo = desenha(v, &mut fw, metal(0.0), false);
+    let lin = crate::tests_contacto::linear;
+    let erro = |k: usize| {
+        let p = &px[k];
+        let i = (p.j * LADO + p.i) as usize * 4 + 1;
+        lin(viz[i]) / lin(solo[i]).max(1.0e-3) - p.col[0] / p.col[2].max(1.0e-3)
+    };
+    let zona = crate::tests_reflexo_tela::zona(v, &px, false);
+    let maus: Vec<usize> = zona.iter().copied().filter(|&k| erro(k).abs() > 0.1).collect();
+    eprintln!("{} de {} px vistos do centro erram > 0,1", maus.len(), zona.len());
+    let mut mapa = std::collections::BTreeMap::new();
+    for &k in &maus {
+        *mapa.entry((px[k].j / 16, px[k].i / 16)).or_insert(0usize) += 1;
+    }
+    for ((j, i), n) in &mapa {
+        eprintln!("  bloco ({}, {}) px: {n}", i * 16, j * 16);
+    }
+    let ler = |x: [f32; 3]| {
+        let g = le(&d, x, 0.0);
+        [g[0], g[1], g[2]]
+    };
+    for &k in maus.iter().step_by((maus.len() / 10).max(1)) {
+        let p = &px[k];
+        let f = v.vista_em(p.p);
+        let r: [f32; 3] = std::array::from_fn(|e| f[e] - 2.0 * dot(f, p.n) * p.n[e]);
+        let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
+        let alvo = crate::tests_reflexo_perto::vizinha_refletida(v, p);
+        let t = alvo.and_then(|j| crate::tests_sonda_cpu::acerta_em(v.pecas[j + 1], p.p, r));
+        eprintln!(
+            "px ({}, {}): erro {:+.3} · acerta {alvo:?} a t {t:?} · |q| {:.3}",
+            p.i,
+            p.j,
+            erro(k),
+            dot(q, q).sqrt()
+        );
+        let mut tr = Some(Vec::new());
+        let (_, w) = marcha(&ler, q, r, Some(p.p[1]), FRANJA, ARESTA, &mut tr);
+        eprintln!("  peso {w:.3}");
+        for l in tr.unwrap_or_default() {
+            eprintln!("{l}");
+        }
+    }
+}
+
+/// Sonda (imprime): filas de px que atravessam a borda esquerda da azul refletida na vista do dono — por px, a
+/// vizinha da geometria, o peso da busca (o gémeo), o nosso e o Cycles: a ESCADA vem da busca ou de depois dela?
+#[test]
+#[ignore = "precisa de aparelho"]
+fn sonda_da_escada() {
+    let v = &crate::tests_reflexo_perto::VAZIO;
+    let Some(mut fw) = desenhista(v) else {
+        return;
+    };
+    let px = oraculo(v);
+    let c = v.pecas[0].0;
+    let viz = desenha(v, &mut fw, metal(0.0), true);
+    let d = camada(&fw, 1);
+    let solo = desenha(v, &mut fw, metal(0.0), false);
+    let lin = crate::tests_contacto::linear;
+    let ler = |x: [f32; 3]| {
+        let g = le(&d, x, 0.0);
+        [g[0], g[1], g[2]]
+    };
+    let mut onde = std::collections::HashMap::new();
+    for (k, p) in px.iter().enumerate() {
+        onde.insert((p.i, p.j), k);
+    }
+    for j in (404..=452).step_by(4) {
+        let mut linha = format!("j {j}:");
+        for i in 262..300 {
+            let Some(&k) = onde.get(&(i, j)) else {
+                continue;
+            };
+            let p = &px[k];
+            let f = v.vista_em(p.p);
+            let r: [f32; 3] = std::array::from_fn(|e| f[e] - 2.0 * dot(f, p.n) * p.n[e]);
+            let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
+            let (_, w) = marcha(&ler, q, r, Some(p.p[1]), FRANJA, ARESTA, &mut None);
+            let g = crate::tests_reflexo_perto::vizinha_refletida(v, p).map_or('.', |n| {
+                char::from_digit(n as u32, 10).unwrap_or('?')
+            });
+            let ix = (p.j * LADO + p.i) as usize * 4 + 1;
+            let nosso = lin(viz[ix]) / lin(solo[ix]).max(1.0e-3);
+            let ciclos = p.col[0] / p.col[2].max(1.0e-3);
+            linha += &format!(" {i}:{g}{}{:.0}/{:.0}", if w >= 1.0 { 'A' } else { '-' }, 10.0 * nosso, 10.0 * ciclos);
+        }
+        eprintln!("{linha}");
+    }
+    // A faixa: a geometria acerta a azul e a busca não aceita — a busca cruzamento a cruzamento.
+    for (i, j) in [(272u32, 416u32), (275, 420), (277, 420), (277, 424), (279, 424), (284, 436), (287, 440)] {
+        let Some(&k) = onde.get(&(i, j)) else {
+            continue;
+        };
+        let p = &px[k];
+        let f = v.vista_em(p.p);
+        let r: [f32; 3] = std::array::from_fn(|e| f[e] - 2.0 * dot(f, p.n) * p.n[e]);
+        let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
+        let t = crate::tests_sonda_cpu::acerta_em(v.pecas[2], p.p, r);
+        let x = t.map(|t| [0, 1, 2].map(|e| p.p[e] + t * r[e]));
+        let lam = x.map(|x| dot([0, 1, 2].map(|e| x[e] - c[e]), [0, 1, 2].map(|e| x[e] - c[e])).sqrt());
+        let mut tr = Some(Vec::new());
+        let (_, w) = marcha(&ler, q, r, Some(p.p[1]), FRANJA, ARESTA, &mut tr);
+        eprintln!("px ({i}, {j}): t até a azul {t:?} · ponto {x:?} · λ do ponto {lam:?} · peso {w:.3}");
         for l in tr.unwrap_or_default() {
             eprintln!("{l}");
         }

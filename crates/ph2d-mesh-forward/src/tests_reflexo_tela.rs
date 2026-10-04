@@ -229,3 +229,102 @@ fn sonda_da_foto_do_dono() {
         );
     }
 }
+
+/// A BASE (índices em `px`): o raio reflectido acerta uma vizinha a menos de [`BASE`] do chão num ponto que o
+/// centro do espelho vê, a mais de `2 px` da silhueta dele — a faixa fina da base de uma peça pousada.
+pub(crate) fn base(v: &Vista, px: &[Px]) -> Vec<usize> {
+    let l = LADO as i32;
+    let mut no_espelho = vec![false; (l * l) as usize];
+    for p in px {
+        no_espelho[(p.j * LADO + p.i) as usize] = true;
+    }
+    let dentro = |i: i32, j: i32| {
+        (-2..=2).all(|dy| {
+            (-2..=2).all(|dx| {
+                let (x, y) = (i + dx, j + dy);
+                (0..l).contains(&x) && (0..l).contains(&y) && no_espelho[(y * l + x) as usize]
+            })
+        })
+    };
+    px.iter()
+        .enumerate()
+        .filter(|(_, p)| {
+            let Some(k) = vizinha_refletida(v, p) else {
+                return false;
+            };
+            let f = v.vista_em(p.p);
+            let fn_ = f[0] * p.n[0] + f[1] * p.n[1] + f[2] * p.n[2];
+            let r: [f32; 3] = std::array::from_fn(|e| f[e] - 2.0 * fn_ * p.n[e]);
+            let t = crate::tests_sonda_cpu::acerta_em(v.pecas[k + 1], p.p, r).unwrap_or(0.0);
+            p.p[1] + t * r[1] < BASE && visto_do_centro(v, p) && dentro(p.i as i32, p.j as i32)
+        })
+        .map(|(q, _)| q)
+        .collect()
+}
+
+/// A altura da faixa da base, em mundo.
+const BASE: f32 = 0.03;
+
+/// ⭐⭐⭐ **A base de uma vizinha pousada não se salta** — o report 5 do dono (04/10): de perto, a borda de baixo
+/// do reflexo da caixa azul em ESCADA e com dentes escuros. Medido: a base (o ponto acertado a `y < 0,011`), vista
+/// de raspão do centro, cabia entre dois passos da busca, e por trás dela aparecia a sombra do chão junto à caixa.
+/// Nítido e `0,05`, na vista do dono (`VAZIO`) e na de perto da cena 42 (`PERTO`).
+#[test]
+#[ignore = "precisa de aparelho"]
+fn a_base_de_uma_vizinha_pousada_nao_se_salta() {
+    let mut falhas = Vec::new();
+    for (v, nome) in [(&VAZIO, "vazio"), (&crate::tests_reflexo_perto::PERTO, "perto")] {
+        let Some(mut fw) = desenhista(v) else {
+            eprintln!("sem aparelho — o gate não corre aqui");
+            return;
+        };
+        let px = oraculo(v);
+        let b = base(v, &px);
+        for (rug, cols) in [(0.0f32, (0usize, 2usize)), (v.rug2, (1, 3))] {
+            let viz = desenha(v, &mut fw, metal(rug), true);
+            let solo = desenha(v, &mut fw, metal(rug), false);
+            let m = mede_em(&px, &b, (&viz, &solo), cols, 0.1);
+            foto(&px, &b, (&viz, &solo), cols, &format!("base_{nome}_{rug}"));
+            eprintln!(
+                "base {nome}, espelho {rug}: {} px · |Δ| médio {:.4} · |Δ| > 0,1: {}",
+                m.0, m.1, m.2
+            );
+            assert!(m.0 > 300, "a base encolheu: {} px", m.0);
+            if !(m.1 < BARRA_BASE.0 && m.2 <= BARRA_BASE.1) {
+                falhas.push(format!("{nome} {rug}"));
+            }
+        }
+    }
+    assert!(
+        falhas.is_empty(),
+        "a base de uma vizinha pousada saltou-se: {falhas:?}"
+    );
+}
+
+/// `(px, |Δ| médio, px com |Δ| > grosso)` da razão `viz/solo` contra a do Cycles nos px `quais`.
+fn mede_em(
+    px: &[Px],
+    quais: &[usize],
+    (viz, solo): (&[u8], &[u8]),
+    (cv, cs): (usize, usize),
+    grosso: f32,
+) -> (usize, f32, usize) {
+    let lin = crate::tests_contacto::linear;
+    let (mut n, mut s, mut g) = (0usize, 0.0f32, 0usize);
+    for &k in quais {
+        let p = &px[k];
+        let q = (p.j * LADO + p.i) as usize;
+        let (lv, ls) = (lin(viz[q * 4 + 1]), lin(solo[q * 4 + 1]));
+        if ls < 0.05 || p.col[cs] < 0.05 {
+            continue;
+        }
+        let e = (lv / ls - p.col[cv] / p.col[cs]).abs();
+        n += 1;
+        s += e;
+        g += usize::from(e > grosso);
+    }
+    (n, s / n.max(1) as f32, g)
+}
+
+/// `(|Δ| médio na base, px com |Δ| > 0,1)`.
+const BARRA_BASE: (f32, usize) = (0.03, 50);

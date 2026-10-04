@@ -139,13 +139,24 @@ fn sonda_marcha(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
     }
     let w = normalize(r - ct * qh);
     let st = sin(th);
+    // ⭐ O CHAO acaba o raio (nada se acerta abaixo dele) e a ultima amostra e' NO chao: a base fina de uma
+    // vizinha pousada, vista de raspao do centro, cabia entre dois passos — a escada e os dentes, report 5.
+    var fim = th;
+    let chao = quadro.chao.y > 0.5 && r.y < -1.0e-6 && p.y > quadro.chao.x;
+    if (chao) {
+        let uf = q + (quadro.chao.x - p.y) / r.y * r;
+        fim = atan2(dot(uf, w), dot(uf, qh));
+    }
     // Os passos acompanham o arco: um a cada `SONDA_PASSO` texels do nivel 0, entre o minimo e o maximo.
-    let n = clamp(u32(ceil(th / (SONDA_PASSO * SONDA_TEXEL))), SONDA_MARCHA_MIN, SONDA_MARCHA_MAX);
+    let n = clamp(u32(ceil(fim / (SONDA_PASSO * SONDA_TEXEL))), SONDA_MARCHA_MIN, SONDA_MARCHA_MAX);
     var ant = 0.0;
     var frente = true;
     var melhor = vec4<f32>(r, -1.0);
     for (var k = 1u; k <= n; k = k + 1u) {
-        let a = th * f32(k) / f32(n + 1u);
+        var a = th * f32(k) / f32(n + 1u);
+        if (chao) {
+            a = fim * f32(k) / f32(n);
+        }
         let g = sonda_dist0(cos(a) * qh + sin(a) * w);
         let atras = g.y > 0.5 && ql * st / sin(th - a) >= g.x / g.y;
         if (atras && frente) {

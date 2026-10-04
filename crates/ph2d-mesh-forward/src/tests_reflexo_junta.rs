@@ -250,8 +250,11 @@ fn o_reflexo_nao_alarga_alem_da_vizinha() {
 /// `0,0153 / 0` — o resto é a face LATERAL da caixa, que o centro do cromo não vê.
 const BARRA_ORLA: (f32, usize) = (0.022, 200);
 
-/// A orla de DENTRO — por medir.
-const BARRA_DENTRO: (f32, usize) = (0.03, 50);
+/// A orla de DENTRO (só onde o centro do cromo VÊ o ponto refletido). Medido (04/10): antes desta resposta
+/// `0,0423 / 822` e `0,0647 / 896` (sobreposta, nítido e `0,05`), `0,0351 / 605` (junta); com a silhueta a
+/// meio da mistura, a cor lida onde a vizinha cobre o texel e a de trás pelos momentos, `0,0248 / 405`,
+/// `0,0491 / 403`, `0,0222 / 345`. O resto: o limbo do cromo (raspão extremo, já antes) e `1 px` de contorno.
+const BARRA_DENTRO: (f32, usize) = (0.055, 450);
 
 /// A VERDE (índices em `px`): a até [`PERTO_DA`] px de quem acerta a verde e a mais disso de quem acerta a azul.
 pub(crate) fn em_volta_da_verde(v: &Vista, px: &[Px]) -> Vec<usize> {

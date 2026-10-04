@@ -67,6 +67,8 @@ pub(crate) const FRANJA: f32 = 0.01;
 pub(crate) const ARESTA: f32 = 0.1;
 /// Numa aresta, até quantos texels adiante (no arco do raio) se procura a leitura pura da vizinha da frente.
 pub(crate) const ARESTA_PASSOS: u32 = 4;
+/// A cobertura a partir da qual a cor do cruzamento se lê (abaixo é a silhueta, meio céu).
+pub(crate) const CHEIA: f32 = 0.95;
 /// Até quantos níveis de borrão o reflexo usa a BUSCA (passando ao ponto fixo no último). ⛔ Medido
 /// (04/10, o par a `0,3`): a `3` o lobo áspero via a fronteira acerta/falha da busca como uma aresta dura.
 pub(crate) const LOD_BUSCA: f32 = 1.0;
@@ -144,7 +146,7 @@ pub(crate) fn constantes() -> String {
          const SONDA_PASSO: f32 = {PASSO:?};\nconst SONDA_TEXEL: f32 = {texel:?};\n\
          const SONDA_REFINO: u32 = {REFINO}u;\n\
          const SONDA_ESPESSURA: f32 = {ESPESSURA:?};\nconst SONDA_FRANJA: f32 = {FRANJA:?};\n\
-         const SONDA_ARESTA: f32 = {ARESTA:?};\nconst SONDA_ARESTA_PASSOS: u32 = {ARESTA_PASSOS}u;\n\
+         const SONDA_ARESTA: f32 = {ARESTA:?};\nconst SONDA_ARESTA_PASSOS: u32 = {ARESTA_PASSOS}u;\nconst SONDA_CHEIA: f32 = {CHEIA:?};\n\
          const SONDA_LOD_BUSCA: f32 = {LOD_BUSCA:?};\nconst SONDA_PASSAGEM: f32 = {PASSAGEM:?};\nconst SONDA_COBERTURA_PLENA: f32 = {COBERTURA_PLENA:?};\n\
          const SONDA_ACIMA: f32 = {ACIMA:?};\n\
          const SONDA_PARALAXE: array<f32, {np}> = array<f32, {np}>({});\n\

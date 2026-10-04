@@ -4,7 +4,7 @@
 //! causa isolada sem tocar no WGSL.
 
 use crate::gpu::sondas_impl::{
-    ARESTA, ARESTA_PASSOS, ESPESSURA, FRANJA, LADO, MARCHA_MAX, MARCHA_MIN, PASSO, REFINO,
+    ARESTA, ARESTA_PASSOS, CHEIA, ESPESSURA, FRANJA, LADO, MARCHA_MAX, MARCHA_MIN, PASSO, REFINO,
 };
 use crate::tests_chao_tapa::metal;
 use crate::tests_contacto::norm;
@@ -27,8 +27,8 @@ fn aresta(g: [f32; 3], k: f32) -> bool {
     g[2] / g[1].max(1.0e-6) - m * m > k * k * m * m
 }
 
-/// `sonda_fora_na_aresta`: quanto o raio passa atrás da vizinha da frente na silhueta dela (a distância lida
-/// a meio das duas puras).
+/// `sonda_fora_na_aresta`: quanto o raio passa atrás da vizinha da frente na silhueta dela (a da frente pura
+/// adiante, a de trás pelos dois momentos em `hi`, a silhueta a meio das duas).
 fn fora_na_aresta(
     ler: &dyn Fn([f32; 3]) -> [f32; 3],
     u: &dyn Fn(f32) -> [f32; 3],
@@ -37,33 +37,35 @@ fn fora_na_aresta(
     texel: f32,
     k: f32,
 ) -> f32 {
-    let (mut af, mut ab) = (hi, hi);
-    let (mut gf, mut gb) = (ler(u(hi)), ler(u(hi)));
+    let g0 = ler(u(hi));
+    let (mut af, mut gf) = (hi, g0);
     for s in 1..=ARESTA_PASSOS {
-        if !(aresta(gf, k) || aresta(gb, k)) {
+        if !aresta(gf, k) {
             break;
         }
-        if aresta(gf, k) {
-            af = hi + s as f32 * texel;
-            gf = ler(u(af));
-        }
-        if aresta(gb, k) {
-            ab = (hi - s as f32 * texel).max(0.0);
-            gb = ler(u(ab));
-        }
+        af = hi + s as f32 * texel;
+        gf = ler(u(af));
     }
-    if aresta(gf, k) || aresta(gb, k) || gf[1] < 0.5 || gb[1] < 0.5 {
+    if aresta(gf, k) || gf[1] < 0.5 {
+        return 1.0e9;
+    }
+    if g0[1] < CHEIA {
         return 1.0e9;
     }
     let dn = gf[0] / gf[1];
-    let meio = 0.5 * (dn + gb[0] / gb[1]);
+    let m = g0[0] / g0[1].max(1.0e-6);
+    if m <= dn {
+        return lam(hi) - dn;
+    }
+    let meio = 0.5 * (dn + m + (g0[2] / g0[1].max(1.0e-6) - m * m).max(0.0) / (m - dn));
+    let mut ab = (hi - ARESTA_PASSOS as f32 * texel).max(0.0);
     for _ in 0..REFINO {
-        let m = 0.5 * (ab + af);
-        let g = ler(u(m));
+        let c = 0.5 * (ab + af);
+        let g = ler(u(c));
         if g[0] / g[1].max(1.0e-6) > meio {
-            ab = m;
+            ab = c;
         } else {
-            af = m;
+            af = c;
         }
     }
     lam(0.5 * (ab + af)) - dn
@@ -118,11 +120,15 @@ pub(crate) fn marcha(
             let mut s = 1;
             if aresta(gh, k_aresta) {
                 fora = fora_na_aresta(ler, &u, &lam, hi, texel, k_aresta);
-                while s <= ARESTA_PASSOS && aresta(gh, k_aresta) {
-                    uh = u(hi + s as f32 * texel);
-                    gh = ler(uh);
-                    s += 1;
+            }
+            while s <= ARESTA_PASSOS && (aresta(gh, k_aresta) || gh[1] < CHEIA) {
+                let g = ler(u(hi + s as f32 * texel));
+                if !aresta(g, k_aresta) && g[1] < gh[1] {
+                    break;
                 }
+                uh = u(hi + s as f32 * texel);
+                gh = g;
+                s += 1;
             }
             if let Some(t) = traco.as_mut() {
                 let g0 = ler(u(hi));

@@ -27,6 +27,48 @@ fn aresta(g: [f32; 3], k: f32) -> bool {
     g[2] / g[1].max(1.0e-6) - m * m > k * k * m * m
 }
 
+/// `sonda_fora_na_aresta`: quanto o raio passa atrás da vizinha da frente na silhueta dela (a distância lida
+/// a meio das duas puras).
+fn fora_na_aresta(
+    ler: &dyn Fn([f32; 3]) -> [f32; 3],
+    u: &dyn Fn(f32) -> [f32; 3],
+    lam: &dyn Fn(f32) -> f32,
+    hi: f32,
+    texel: f32,
+    k: f32,
+) -> f32 {
+    let (mut af, mut ab) = (hi, hi);
+    let (mut gf, mut gb) = (ler(u(hi)), ler(u(hi)));
+    for s in 1..=ARESTA_PASSOS {
+        if !(aresta(gf, k) || aresta(gb, k)) {
+            break;
+        }
+        if aresta(gf, k) {
+            af = hi + s as f32 * texel;
+            gf = ler(u(af));
+        }
+        if aresta(gb, k) {
+            ab = (hi - s as f32 * texel).max(0.0);
+            gb = ler(u(ab));
+        }
+    }
+    if aresta(gf, k) || aresta(gb, k) || gf[1] < 0.5 || gb[1] < 0.5 {
+        return 1.0e9;
+    }
+    let dn = gf[0] / gf[1];
+    let meio = 0.5 * (dn + gb[0] / gb[1]);
+    for _ in 0..REFINO {
+        let m = 0.5 * (ab + af);
+        let g = ler(u(m));
+        if g[0] / g[1].max(1.0e-6) > meio {
+            ab = m;
+        } else {
+            af = m;
+        }
+    }
+    lam(0.5 * (ab + af)) - dn
+}
+
 /// `sonda_marcha` com o leitor `ler` (a distância e o quadrado dela vezes a cobertura, a cobertura):
 /// `(direcção, peso)`.
 pub(crate) fn marcha(
@@ -71,14 +113,17 @@ pub(crate) fn marcha(
             }
             let gl = ler(u(lo));
             let (mut uh, mut gh) = (u(hi), ler(u(hi)));
-            let mut s = 1;
-            while s <= ARESTA_PASSOS && aresta(gh, k_aresta) {
-                uh = u(hi + s as f32 * texel);
-                gh = ler(uh);
-                s += 1;
-            }
             let l = lam(hi);
-            let fora = l - gh[0] / gh[1].max(1.0e-6);
+            let mut fora = l - gh[0] / gh[1].max(1.0e-6);
+            let mut s = 1;
+            if aresta(gh, k_aresta) {
+                fora = fora_na_aresta(ler, &u, &lam, hi, texel, k_aresta);
+                while s <= ARESTA_PASSOS && aresta(gh, k_aresta) {
+                    uh = u(hi + s as f32 * texel);
+                    gh = ler(uh);
+                    s += 1;
+                }
+            }
             if let Some(t) = traco.as_mut() {
                 let g0 = ler(u(hi));
                 let m0 = g0[0] / g0[1].max(1.0e-6);
@@ -229,6 +274,58 @@ fn sonda_da_tira() {
             for l in t.unwrap_or_default() {
                 eprintln!("{l}");
             }
+        }
+    }
+}
+
+/// Sonda (imprime): na vista `SOBREPOSTA`, os px da orla de DENTRO (acertam a face que o centro vê) que
+/// erram contra o Cycles, e a busca de alguns deles.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn sonda_da_orla_de_dentro() {
+    let v = &crate::tests_reflexo_perto::SOBREPOSTA;
+    let Some(mut fw) = desenhista(v) else {
+        return;
+    };
+    let px = oraculo(v);
+    let c = v.pecas[0].0;
+    let vista = norm(v.de.map(|x| -x));
+    let viz = desenha(v, &mut fw, metal(0.0), true);
+    let d = camada(&fw, 1);
+    let solo = desenha(v, &mut fw, metal(0.0), false);
+    let lin = crate::tests_contacto::linear;
+    let maus: Vec<usize> = crate::tests_reflexo_junta::orla(v, &px, true)
+        .into_iter()
+        .filter(|&k| {
+            let p = &px[k];
+            let i = (p.j * LADO + p.i) as usize * 4 + 1;
+            (lin(viz[i]) / lin(solo[i]).max(1.0e-3) - p.col[0] / p.col[2].max(1.0e-3)).abs() > 0.2
+        })
+        .collect();
+    eprintln!("{} px da orla de dentro erram", maus.len());
+    let ler = |x: [f32; 3]| {
+        let g = le(&d, x, 0.0);
+        [g[0], g[1], g[2]]
+    };
+    for &k in maus.iter().step_by((maus.len() / 8).max(1)) {
+        let p = &px[k];
+        let r: [f32; 3] = std::array::from_fn(|e| vista[e] - 2.0 * dot(vista, p.n) * p.n[e]);
+        let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
+        let t = crate::tests_sonda_cpu::acerta_em(v.pecas[1], p.p, r);
+        let i = (p.j * LADO + p.i) as usize * 4 + 1;
+        eprintln!(
+            "px ({}, {}): nosso {:.3} · Cycles {:.3} · t até a verde {t:?} · |q| {:.3}",
+            p.i,
+            p.j,
+            lin(viz[i]) / lin(solo[i]).max(1.0e-3),
+            p.col[0] / p.col[2].max(1.0e-3),
+            dot(q, q).sqrt()
+        );
+        let mut tr = Some(Vec::new());
+        let (_, w) = marcha(&ler, q, r, FRANJA, ARESTA, &mut tr);
+        eprintln!("  peso {w:.3}");
+        for l in tr.unwrap_or_default() {
+            eprintln!("{l}");
         }
     }
 }

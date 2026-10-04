@@ -7,7 +7,8 @@
 use crate::tests_chao_tapa::metal;
 use crate::tests_contacto::linear;
 use crate::tests_reflexo_perto::{
-    JUNTA, LADO, Px, SOBREPOSTA, Vista, desenha, desenha_ate, desenhista, oraculo, vizinha_refletida,
+    JUNTA, LADO, Px, SOBREPOSTA, Vista, desenha, desenha_ate, desenhista, oraculo, visto_do_centro,
+    vizinha_refletida,
 };
 
 /// Até quantos px, na mesma linha, se procura a vizinha de cada lado.
@@ -69,7 +70,8 @@ fn mede(
     (n, s / n.max(1) as f32, g)
 }
 
-/// Com `PH2D_REFLEXO_FOTOS=<pasta>`: `nossa | Cycles | a faixa` (a razão `viz/solo`; a faixa a cinzento).
+/// Com `PH2D_REFLEXO_FOTOS=<pasta>`: `nossa | Cycles | o erro na zona medida` (a razão `viz/solo`; a zona a
+/// cinzento-escuro, mais claro onde erra).
 fn foto(
     px: &[Px],
     quais: &[usize],
@@ -90,7 +92,11 @@ fn foto(
         img[p.j as usize * 3 * l + l + p.i as usize] = b(p.col[cv] / p.col[cs].max(1.0e-3));
     }
     for &k in quais {
-        img[px[k].j as usize * 3 * l + 2 * l + px[k].i as usize] = 128;
+        let p = &px[k];
+        let q = p.j as usize * l + p.i as usize;
+        let nosso = linear(viz[q * 4 + 1]) / linear(solo[q * 4 + 1]).max(1.0e-3);
+        let e = (nosso - p.col[cv] / p.col[cs].max(1.0e-3)).abs();
+        img[p.j as usize * 3 * l + 2 * l + p.i as usize] = b(0.15 + 2.0 * e);
     }
     let mut f = format!("P5 {} {l} 255\n", 3 * l).into_bytes();
     f.extend_from_slice(&img);
@@ -150,9 +156,10 @@ fn entre_dois_reflexos_o_cromo_mostra_o_fundo() {
     );
 }
 
-/// A ORLA (índices em `px`): o raio não acerta nada, a mais de `1 px` de quem acerta (a faixa do Cycles
-/// pontual) e a até [`ORLA`] px de quem acerta — onde um reflexo ALARGADO além da vizinha aparece.
-pub(crate) fn orla(v: &Vista, px: &[Px]) -> Vec<usize> {
+/// A ORLA (índices em `px`), a `1 px` a `[ORLA]` px da borda de um reflexo de vizinha (a faixa de `1 px` é
+/// do Cycles pontual): `dentro = false`, os px cujo raio não acerta nada — onde um reflexo ALARGADO aparece;
+/// `true`, os que acertam a vizinha — onde um reflexo ROÍDO (o buraco) aparece.
+pub(crate) fn orla(v: &Vista, px: &[Px], dentro: bool) -> Vec<usize> {
     let l = LADO as i32;
     let mut mapa: Vec<Option<Option<usize>>> = vec![None; (l * l) as usize];
     for p in px {
@@ -163,15 +170,26 @@ pub(crate) fn orla(v: &Vista, px: &[Px]) -> Vec<usize> {
             .then(|| mapa[(y * l + x) as usize])
             .flatten()
     };
-    let acerta_ate = |i: i32, j: i32, r: i32| {
-        (-r..=r).any(|dy| (-r..=r).any(|dx| matches!(at(i + dx, j + dy), Some(Some(_)))))
+    let acha = |i: i32, j: i32, r: i32, f: &dyn Fn(Option<usize>) -> bool| {
+        (-r..=r).any(|dy| (-r..=r).any(|dx| at(i + dx, j + dy).is_some_and(f)))
     };
     px.iter()
         .enumerate()
         .filter(|(_, p)| {
             let (i, j) = (p.i as i32, p.j as i32);
             let limpo = (-2..=2).all(|dy| (-2..=2).all(|dx| at(i + dx, j + dy).is_some()));
-            limpo && at(i, j) == Some(None) && !acerta_ate(i, j, 1) && acerta_ate(i, j, ORLA)
+            limpo
+                && match at(i, j) {
+                    Some(None) if !dentro => {
+                        !acha(i, j, 1, &|o| o.is_some()) && acha(i, j, ORLA, &|o| o.is_some())
+                    }
+                    Some(Some(k)) if dentro && visto_do_centro(v, p) => {
+                        limpo
+                            && !acha(i, j, 1, &|o| o != Some(k))
+                            && acha(i, j, ORLA, &|o| o != Some(k))
+                    }
+                    _ => false,
+                }
         })
         .map(|(k, _)| k)
         .collect()
@@ -194,19 +212,30 @@ fn o_reflexo_nao_alarga_alem_da_vizinha() {
             return;
         };
         let px = oraculo(v);
-        let o = orla(v, &px);
+        let (fora, dentro) = (orla(v, &px, false), orla(v, &px, true));
         for (rug, cols) in [(0.0f32, (0usize, 2usize)), (v.rug2, (1, 3))] {
             let viz = desenha(v, &mut fw, metal(rug), true);
             let solo = desenha(v, &mut fw, metal(rug), false);
-            let m = mede(&px, &o, (&viz, &solo), cols);
-            foto(&px, &o, (&viz, &solo), cols, &format!("orla_{nome}_{rug}"));
-            eprintln!(
-                "orla {nome}, cromo {rug}: {} px · |Δ| médio {:.4} · |Δ| > 0,2: {}",
-                m.0, m.1, m.2
-            );
-            assert!(m.0 > 2000, "a orla encolheu: {} px", m.0);
-            if !(m.1 < BARRA_ORLA.0 && m.2 <= BARRA_ORLA.1) {
-                falhas.push(format!("{nome} {rug}"));
+            for (lado, o, barra) in [
+                ("fora", &fora, BARRA_ORLA),
+                ("dentro", &dentro, BARRA_DENTRO),
+            ] {
+                let m = mede(&px, o, (&viz, &solo), cols);
+                foto(
+                    &px,
+                    o,
+                    (&viz, &solo),
+                    cols,
+                    &format!("orla_{lado}_{nome}_{rug}"),
+                );
+                eprintln!(
+                    "orla de {lado} {nome}, cromo {rug}: {} px · |Δ| médio {:.4} · |Δ| > 0,2: {}",
+                    m.0, m.1, m.2
+                );
+                assert!(m.0 > 2000, "a orla encolheu: {} px", m.0);
+                if !(m.1 < barra.0 && m.2 <= barra.1) {
+                    falhas.push(format!("{lado} {nome} {rug}"));
+                }
             }
         }
     }
@@ -220,6 +249,9 @@ fn o_reflexo_nao_alarga_alem_da_vizinha() {
 /// `0,0255 / 775` (sobreposta, nítido); a `0,01`, `0,0166 / 169` e `0,0195 / 83` (a `0,05`), a junta
 /// `0,0153 / 0` — o resto é a face LATERAL da caixa, que o centro do cromo não vê.
 const BARRA_ORLA: (f32, usize) = (0.022, 200);
+
+/// A orla de DENTRO — por medir.
+const BARRA_DENTRO: (f32, usize) = (0.03, 50);
 
 /// A VERDE (índices em `px`): a até [`PERTO_DA`] px de quem acerta a verde e a mais disso de quem acerta a azul.
 pub(crate) fn em_volta_da_verde(v: &Vista, px: &[Px]) -> Vec<usize> {
@@ -245,7 +277,6 @@ pub(crate) fn em_volta_da_verde(v: &Vista, px: &[Px]) -> Vec<usize> {
 
 /// A vizinhança da verde, em px (a sonda da tira, `tests_sonda_junta`).
 const PERTO_DA: i32 = 12;
-
 
 /// `(|Δ| médio na faixa, px com |Δ| > 0,2)`. O CONTROLO só afirma os grosseiros: a média dele é a da
 /// lei sem capturas (a máscara da zona escurece a faixa, `0,107`).

@@ -89,6 +89,41 @@ fn sonda_aresta(g: vec3<f32>) -> bool {
 // pixel em vez de acertar/falhar ao acaso (os pontos claros e as franjas do report).
 var<private> marcha_peso: f32 = 0.0;
 
+// Numa ARESTA em `hi` (o arco `cos a qh + sin a w`, `lambda(a) = k / sen(th - a)`): quanto o raio passa atras
+// da vizinha da FRENTE na silhueta dela — a pura adiante, a de tras pura atras, a silhueta onde a distancia
+// lida e' a media das duas. Sem leituras puras, um valor enorme (nada).
+fn sonda_fora_na_aresta(qh: vec3<f32>, w: vec3<f32>, th: f32, k: f32, hi: f32) -> f32 {
+    var af = hi;
+    var gf = sonda_dist0(cos(af) * qh + sin(af) * w);
+    var ab = hi;
+    var gb = gf;
+    for (var s = 1u; s <= SONDA_ARESTA_PASSOS && (sonda_aresta(gf) || sonda_aresta(gb)); s = s + 1u) {
+        if (sonda_aresta(gf)) {
+            af = hi + f32(s) * SONDA_TEXEL;
+            gf = sonda_dist0(cos(af) * qh + sin(af) * w);
+        }
+        if (sonda_aresta(gb)) {
+            ab = max(hi - f32(s) * SONDA_TEXEL, 0.0);
+            gb = sonda_dist0(cos(ab) * qh + sin(ab) * w);
+        }
+    }
+    if (sonda_aresta(gf) || sonda_aresta(gb) || gf.y < 0.5 || gb.y < 0.5) {
+        return 1.0e9;
+    }
+    let dn = gf.x / gf.y;
+    let meio = 0.5 * (dn + gb.x / gb.y);
+    for (var b = 0u; b < SONDA_REFINO; b = b + 1u) {
+        let m = 0.5 * (ab + af);
+        let g = sonda_dist0(cos(m) * qh + sin(m) * w);
+        if (g.x / max(g.y, 1.0e-6) > meio) {
+            ab = m;
+        } else {
+            af = m;
+        }
+    }
+    return k / sin(th - 0.5 * (ab + af)) - dn;
+}
+
 fn sonda_marcha(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
     marcha_peso = 0.0;
     let q = p - objeto.sonda.yzw;
@@ -127,17 +162,21 @@ fn sonda_marcha(p: vec3<f32>, r: vec3<f32>) -> vec4<f32> {
             // com a distancia a ela (a borda continua de pixel a pixel).
             let gl = sonda_dist0(cos(lo) * qh + sin(lo) * w);
             let lam = ql * st / sin(th - hi);
-            // Numa ARESTA a distancia lida e' fantasma (a junta): decide-se contra a vizinha da FRENTE, lida
-            // pura uns texels adiante (o lado de la' do cruzamento) — a de tras nao muda a da frente (o
-            // buraco, report do dono 04/10); sem leitura pura, nada.
+            // Numa ARESTA a distancia lida e' fantasma (a junta): a da vizinha da FRENTE le-se pura uns texels
+            // adiante (o lado de la' do cruzamento), a da de TRAS uns atras, e a silhueta da da frente fica
+            // onde a mistura e' meio a meio — ali se mede quanto o raio passa atras dela, como contra o fundo
+            // (a cobertura a meio). A de tras nao muda a da frente (o buraco, report do dono 04/10).
             var u = cos(hi) * qh + sin(hi) * w;
             var gh = sonda_dist0(u);
-            for (var s = 1u; s <= SONDA_ARESTA_PASSOS && sonda_aresta(gh); s = s + 1u) {
-                let av = hi + f32(s) * SONDA_TEXEL;
-                u = cos(av) * qh + sin(av) * w;
-                gh = sonda_dist0(u);
+            var fora = lam - gh.x / max(gh.y, 1.0e-6);
+            if (sonda_aresta(gh)) {
+                fora = sonda_fora_na_aresta(qh, w, th, ql * st, hi);
+                for (var s = 1u; s <= SONDA_ARESTA_PASSOS && sonda_aresta(gh); s = s + 1u) {
+                    let av = hi + f32(s) * SONDA_TEXEL;
+                    u = cos(av) * qh + sin(av) * w;
+                    gh = sonda_dist0(u);
+                }
             }
-            let fora = lam - gh.x / max(gh.y, 1.0e-6);
             if (!sonda_aresta(gh)) {
                 if (gl.y > 0.5 && fora <= SONDA_ESPESSURA * lam) {
                     marcha_peso = 1.0;

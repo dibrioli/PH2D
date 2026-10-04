@@ -232,6 +232,40 @@ fn reflete_vizinha(v: &Vista, p: &Px) -> bool {
     vizinha_refletida(v, p).is_some()
 }
 
+/// O ponto que o raio reflectido em `p` acerta é VISTO do centro do cromo (onde a captura dele está)? A face
+/// virada para o centro e nenhuma outra vizinha no caminho.
+pub(crate) fn visto_do_centro(v: &Vista, p: &Px) -> bool {
+    let f = norm(v.de.map(|c| -c));
+    let fn_ = dot(f, p.n);
+    let r: [f32; 3] = std::array::from_fn(|e| f[e] - 2.0 * fn_ * p.n[e]);
+    let Some((t, k)) = v.pecas[1..]
+        .iter()
+        .enumerate()
+        .filter_map(|(k, q)| crate::tests_sonda_cpu::acerta_em(*q, p.p, r).map(|t| (t, k)))
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+    else {
+        return false;
+    };
+    let x: [f32; 3] = std::array::from_fn(|e| p.p[e] + t * r[e]);
+    let (c, (q, _, caixa)) = (v.pecas[0].0, v.pecas[k + 1]);
+    let d: [f32; 3] = std::array::from_fn(|e| x[e] - q[e]);
+    let n: [f32; 3] = if caixa {
+        let e = (0..3)
+            .max_by(|a, b| d[*a].abs().total_cmp(&d[*b].abs()))
+            .unwrap_or(0);
+        std::array::from_fn(|i| if i == e { d[e].signum() } else { 0.0 })
+    } else {
+        norm(d)
+    };
+    let a: [f32; 3] = std::array::from_fn(|e| x[e] - c[e]);
+    let dist = dot(a, a).sqrt();
+    let u = a.map(|y| y / dist);
+    dot(n, u) < 0.0
+        && v.pecas[1..]
+            .iter()
+            .all(|q| crate::tests_sonda_cpu::acerta_em(*q, c, u).is_none_or(|s| s > dist - 1.0e-3))
+}
+
 /// A vizinha que o raio reflectido em `p` acerta primeiro (conta analítica).
 pub(crate) fn vizinha_refletida(v: &Vista, p: &Px) -> Option<usize> {
     let f = norm(v.de.map(|c| -c));

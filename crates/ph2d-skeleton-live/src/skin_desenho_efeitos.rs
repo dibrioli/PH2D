@@ -141,7 +141,7 @@ pub(super) fn uniao_dos_fechados(d: &VecPath) -> Option<VecPath> {
 }
 
 /// O caminho sem os subcontornos ABERTOS.
-fn so_os_fechados(d: &VecPath) -> VecPath {
+pub(super) fn so_os_fechados(d: &VecPath) -> VecPath {
     let mut so = d.clone();
     so.subpaths.retain(|c| c.closed);
     so

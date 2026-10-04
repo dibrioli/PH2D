@@ -126,6 +126,19 @@ pub struct SkinnedPath {
     /// volta à mistura, que é exactamente o que ela fazia. ⛔ *Nenhuma migração:* re-prender a forma
     /// preenche-o, e até lá o desenho é o de sempre.
     pub campo: Option<ph2d_vec_skin::pesos::CampoDoDominio>,
+    /// ⭐⭐ **O caminho saiu de EFEITOS COZIDOS no Bind** (2026-10-03, ver `skin_live::bind`): as
+    /// cristas e pontas de um efeito não são quinas do artista, e o contacto é só a UNIÃO, e só
+    /// quando neutra em repouso — a lei da F50 (a bola comia os dentes de um *Zig Zag* dobrado,
+    /// FOTOGRAFADO). `false` num bind anterior (lido pela [`SkinnedPathV2`]).
+    pub efeitos_cozidos: bool,
+}
+
+/// O registo antes de [`SkinnedPath::efeitos_cozidos`] (2026-10-03) — ver a [`SkinnedPathV1`].
+#[derive(serde::Deserialize)]
+struct SkinnedPathV2 {
+    path: ph2d_vec_scene::VecPath,
+    pesos: Vec<f64>,
+    campo: Option<ph2d_vec_skin::pesos::CampoDoDominio>,
 }
 
 /// ⭐⭐ **A FORMA ANTERIOR do registo, para a [`le`] não perder os pesos de um bind já gravado.**
@@ -193,6 +206,14 @@ pub fn le(bytes: &[u8]) -> Option<SkinnedPath> {
     if let Ok(g) = postcard::from_bytes::<SkinnedPath>(bytes) {
         return Some(g);
     }
+    if let Ok(v2) = postcard::from_bytes::<SkinnedPathV2>(bytes) {
+        return Some(SkinnedPath {
+            path: v2.path,
+            pesos: v2.pesos,
+            campo: v2.campo,
+            efeitos_cozidos: false,
+        });
+    }
     // ⭐ A forma ANTERIOR — ver [`SkinnedPathV1`]. Um bind gravado antes de 2026-09-20 não tem
     // campo, e a lei da curva volta à mistura das linhas dos nós, que é o que ele já desenhava.
     let v1 = postcard::from_bytes::<SkinnedPathV1>(bytes).ok()?;
@@ -200,6 +221,7 @@ pub fn le(bytes: &[u8]) -> Option<SkinnedPath> {
         path: v1.path,
         pesos: v1.pesos,
         campo: None,
+        efeitos_cozidos: false,
     })
 }
 

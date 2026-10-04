@@ -55,3 +55,49 @@ fn binding_drops_a_disabled_effect_without_baking_it() {
     let pior = pior_desvio_do_desenho(&liso, &depois);
     assert!(pior < 1e-9, "o efeito desligado foi cozido ({pior})");
 }
+
+/// ⭐⭐⭐ **GATE — numa forma de efeito COZIDO no Bind o contacto é só a UNIÃO** (a lei da F50): dobrada
+/// sem se cruzar, ela desenha-se igual com e sem a lei do contacto.
+///
+/// ⛔ **O CONTROLO:** a MESMA fonte sem a marca `efeitos_cozidos` vai à bola, e a bola come os vales
+/// entre os dentes do lado de dentro da junta (FOTOGRAFADO na `=5` a `60°`, 2026-10-03).
+#[test]
+fn a_baked_zigzag_keeps_its_teeth_in_the_bend() {
+    use crate::skin_desenho::Leis;
+    let monta = |marca: bool| {
+        let (mut sim, mut scene, map, id, [_, ponta]) = palco();
+        scene.path_mut(id).expect("path").effects = vec![FxEntry::new(PathEffect::ZigZag(
+            ph2d_vec_scene::fx_zigzag::ZigZagSpec {
+                amplitude: 6.0,
+                ridges: 24.0,
+                ..Default::default()
+            },
+        ))];
+        assert_eq!(bind(&mut sim, &mut scene, &map, &[id], None), 1);
+        let e = ph2d_ecs::Entity::from_bits(map[&id]);
+        let mut skin = sim.world().get::<SkinBind>(e).expect("pele").clone();
+        let mut g = crate::skinned_mesh::le(&skin.source).expect("fonte");
+        assert!(g.efeitos_cozidos, "o Bind não marcou a fonte cozida");
+        g.efeitos_cozidos = marca;
+        skin.source = crate::skinned_mesh::grava(&g).expect("grava");
+        sim.world_mut().entity_mut(e).insert(skin);
+        sim.world_mut()
+            .get_mut::<ph2d_ecs::Transform>(ponta)
+            .expect("Transform")
+            .rotation = 60f32.to_radians();
+        let desenho = |contacto: bool| {
+            let leis = Leis {
+                contacto,
+                ..Leis::do_ambiente()
+            };
+            crate::skin_live::recook_leis(&sim, &mut scene.clone(), leis)
+                .remove(&id)
+                .expect("desenho")
+        };
+        pior_desvio_do_desenho(&desenho(true), &desenho(false))
+    };
+    let (marcada, controlo) = (monta(true), monta(false));
+    println!("  contacto contra sem contacto: marcada {marcada:.5} · sem a marca {controlo:.5}");
+    assert!(marcada < 1e-9, "a forma cozida foi reescrita pelo contacto ({marcada})");
+    assert!(controlo > 1e-3, "o CONTROLO: a bola não mexe — a fixtura perdeu o defeito ({controlo})");
+}

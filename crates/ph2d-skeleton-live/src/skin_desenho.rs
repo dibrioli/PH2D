@@ -216,6 +216,9 @@ pub struct Preparado {
     /// percorre quando a fonte tem raio de quina. `None` sem quinas, ou sem campo para amostrar a
     /// tabela (ver [`cozido_para_o_bake`]).
     pub cozido: Option<(VecPath, Vec<f64>)>,
+    /// ⭐⭐ **Numa fonte de EFEITOS COZIDOS no Bind: a união do contacto é neutra em repouso?**
+    /// (`SkinnedPath::efeitos_cozidos`) — `None` numa fonte do artista, que é da bola.
+    pub uniao_neutra: Option<bool>,
 }
 
 /// O que um quadro produziu para uma forma: o caminho CRU e, quando serve, o DESENHADO.
@@ -427,10 +430,14 @@ fn prepara(fonte: &[u8]) -> Option<Preparado> {
         .as_ref()
         .and_then(|c| IndiceDoCampo::novo(&c.malha));
     let cozido = cozido_para_o_bake(&guardado);
+    let uniao_neutra = guardado
+        .efeitos_cozidos
+        .then(|| !ph2d_vec_boolean::overlaps_itself(&so_os_fechados(&guardado.path)));
     Some(Preparado {
         guardado,
         indice,
         cozido,
+        uniao_neutra,
     })
 }
 
@@ -467,7 +474,7 @@ fn cozido_para_o_bake(g: &SkinnedPath) -> Option<(VecPath, Vec<f64>)> {
 mod efeitos;
 #[cfg(test)]
 pub(crate) use efeitos::solver_em_fundo_no_teste;
-use efeitos::{efeitos_da_gaveta, uniao_dos_fechados};
+use efeitos::{efeitos_da_gaveta, so_os_fechados, uniao_dos_fechados};
 
 
 /// A lei sobre a fonte preparada — o corpo que o [`crate::skin_live`] corria por forma.
@@ -578,10 +585,13 @@ fn calcula(
             // de 2026-10-03: pedaços de traço soltos, serrilha): a serrilha era a laçada do ajuste
             // (F50-e) e os riscos soltos as LASCAS da união (F50-f) — curadas as duas, a união
             // volta, e o traço deixa de se cruzar por dentro de uma dobra forte.
+            // ⭐⭐ E o mesmo numa fonte de efeitos COZIDOS no Bind (2026-10-03): a bola comia os
+            // dentes de um *Zig Zag* do lado de dentro da junta (FOTOGRAFADO a `60°`).
+            let neutra = fx.map(|c| c.contacto).or(prep.uniao_neutra);
             if !leis.contacto {
                 d
-            } else if let Some(c) = fx {
-                if c.contacto {
+            } else if let Some(neutra) = neutra {
+                if neutra {
                     uniao_dos_fechados(&d).unwrap_or(d)
                 } else {
                     d

@@ -100,14 +100,16 @@ pub fn bind_com(
         // ⚠️ **Antes dos pesos, e é isso que a torna barata:** o solver do padrão-ouro corre UMA vez,
         // sobre a forma já subdividida. *Subdividir depois obrigaria a interpolar a tabela, que é a
         // lei do ponto novo — boa para um ponto, uma aproximação para trinta.*
-        // ⭐⭐⭐ Os efeitos ACTIVOS cozidos; os desligados saem com a pilha (ver o [`bind`]).
+        // ⭐⭐⭐ Os efeitos ACTIVOS cozidos; os desligados saem com a pilha (ver o [`bind`]). As voltas
+        // apertadas do efeito viram NÓS (F50-h, exacto em repouso), e a cena recebe a MESMA geometria.
         let coze = src.effects.iter().any(ph2d_vec_scene::effect::FxEntry::is_active);
         let mut src = if coze {
-            src.cooked().into_owned()
+            crate::skin_desenho_voltas::parte_nas_voltas(src.cooked().into_owned())
         } else {
             src.clone()
         };
         src.effects.clear();
+        let cozido = coze.then(|| src.clone());
         if let Some(alvo) = subdividir
             .then(|| crate::subdivisao::alvo_dos_eixos(&eixos))
             .flatten()
@@ -128,6 +130,7 @@ pub fn bind_com(
             path: src,
             pesos,
             campo,
+            efeitos_cozidos: coze,
         };
         let Some(bytes) = crate::skinned_mesh::grava(&guardado) else {
             continue;
@@ -136,10 +139,10 @@ pub fn bind_com(
         sim.world_mut()
             .entity_mut(shape)
             .insert(SkinBind::new(bytes, tendoes));
-        if coze {
-            scene.bake_cooked(id);
-        }
         if let Some(p) = scene.path_mut(id) {
+            if let Some(g) = cozido {
+                p.replace_geometry(g);
+            }
             p.effects.clear();
         }
         feitos += 1;

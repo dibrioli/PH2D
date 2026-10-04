@@ -153,6 +153,7 @@ fn a_forma_nova_atravessa_o_arquivo_com_o_campo_dentro() {
         path,
         pesos,
         campo: Some(campo),
+        efeitos_cozidos: true,
     };
     let bytes = super::grava(&g).expect("grava");
     let volta = super::le(&bytes).expect("lê");

@@ -131,6 +131,7 @@ pub mod test_support {
             // logo não há domínio sobre que resolver. *A fixtura tem de ficar exactamente onde a
             // lei do bind a deixaria.*
             campo: None,
+            efeitos_cozidos: false,
         };
         ph2d_skeleton_ecs::SkinBind::new(
             crate::skinned_mesh::grava(&guardado).expect("a pele codifica"),

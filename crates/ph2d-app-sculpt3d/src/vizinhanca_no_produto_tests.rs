@@ -366,6 +366,29 @@ fn o_traco_por_baixo_de_um_desfoque_borra_na_placa() {
         );
         quadro(Some(&mut s), Some(&mut p));
         s.sync_mesh(&gpu);
+        if k == 4 {
+            // ⚠️ A MEIO do traço: no pen-up a subida inteira do plano corrige a placa
+            //    de qualquer maneira — só aqui se vê se cada quadro a pediu.
+            let a_meio = le(&s);
+            let slot = s
+                .slots
+                .iter()
+                .position(|&o| o == s.objects[a].id)
+                .expect("slot");
+            let placa = s
+                .renderer
+                .le_tinta_at(&gpu.device, &gpu.queue, slot)
+                .expect("plano");
+            let pior = placa
+                .iter()
+                .zip(&a_meio)
+                .flat_map(|(g, c)| (0..3).map(move |j| (g[j] - c[j]).abs()))
+                .fold(0.0f32, f32::max);
+            assert!(
+                pior <= 1.0 / 255.0 + 1e-5,
+                "a meio do traço a placa ficou atrás ({pior})"
+            );
+        }
     }
     entrega(&mut s, &mut p, 474.0, 350.0, 1.0, PointerPhase::Up);
     quadro(Some(&mut s), Some(&mut p));

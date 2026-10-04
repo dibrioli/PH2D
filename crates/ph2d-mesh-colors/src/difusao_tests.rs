@@ -146,6 +146,41 @@ fn nada_sai_do_intervalo_da_entrada() {
     );
 }
 
+/// ⭐⭐⭐ **Numa malha de triângulos OBTUSOS nada sai do intervalo** — a
+/// cotangente de `136°` é `−1,04`, e um peso negativo faria do calor um
+/// anti-calor ao longo desses pares: o corte em `0` é o que o mantém uma média.
+#[test]
+fn numa_malha_obtusa_nada_sai_do_intervalo() {
+    let n = 6u32;
+    let v = |i: u32, j: u32| j * (n + 1) + i;
+    let mut faces = Vec::new();
+    for j in 0..n {
+        for i in 0..n {
+            let (a, b, c, d) = (v(i, j), v(i + 1, j), v(i + 1, j + 1), v(i, j + 1));
+            faces.push(vec![a, b, d]);
+            faces.push(vec![b, c, d]);
+        }
+    }
+    let mut pos = Vec::new();
+    for j in 0..=n {
+        for i in 0..=n {
+            pos.push(roda(i as f32 + 0.5 * j as f32, 0.2 * j as f32));
+        }
+    }
+    let (t, d) = difusao(&faces, &pos, 3);
+    // Um IMPULSO no meio: um peso negativo põe valores abaixo de zero ao lado dele (um
+    // campo aleatório raramente o mostra — o laplaciano de cotangentes é semi-definido
+    // positivo em qualquer malha, só a média deixa de ser convexa).
+    let mut buf = vec![0.0f32; t.amostras().len()];
+    buf[t.amostras().len() / 2] = 1.0;
+    d.desfoca(0.15, &mut buf);
+    let menor = buf.iter().copied().fold(f32::MAX, f32::min);
+    assert!(
+        menor >= -2e-6,
+        "o calor ficou negativo ({menor}) numa malha obtusa"
+    );
+}
+
 /// ⭐⭐⭐ **O polinómio É o calor**: o mesmo `e^{−tA}` por passos explícitos
 /// pequenos (`(I − dt·A)^n`, que converge para ele) dá o mesmo a `1e-4`, nas
 /// duas formas.

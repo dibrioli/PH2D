@@ -86,7 +86,7 @@ P=crates/ph2d-panel-painter-layers/src
 
 # ── A RETÍCULA: o laplaciano e o polinómio ──────────────────────────────────────────────────────
 muta $M/difusao.rs '*w = w.max(0.0);' '*w = *w;' \
-  'V1 o peso negativo de uma face obtusa entra' peca
+  'V1 o peso negativo de uma face obtusa entra' reticula
 muta $M/difusao.rs 'massa[i as usize] += dupla / 6.0;' 'massa[i as usize] += dupla / 4.0;' \
   'V2 a massa não é um terço do triângulo' reticula
 muta $M/difusao.rs 'soma(ip, iq, 0.5 * cot_r);' 'soma(ip, iq, cot_r);' \

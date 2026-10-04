@@ -100,6 +100,43 @@ impl Painel {
     }
 }
 
+/// O plano LIDO DA PLACA é `peca` a um degrau de sRGB8 (o que o artista vê).
+fn a_placa_mostra(
+    s: &crate::Sculpt3dScene,
+    gpu: &ph2d_gpu::GpuContext,
+    peca: &[[f32; 3]],
+    quando: &str,
+) {
+    let id = s.objects[s.active].id;
+    let slot = s
+        .slots
+        .iter()
+        .position(|&o| o == id)
+        .expect("a peça está à vista");
+    let placa = s
+        .renderer
+        .le_tinta_at(&gpu.device, &gpu.queue, slot)
+        .expect("o plano está armado na placa");
+    let pior = placa
+        .iter()
+        .zip(peca)
+        .flat_map(|(g, c)| (0..3).map(move |j| (g[j] - c[j]).abs()))
+        .fold(0.0f32, f32::max);
+    assert!(
+        pior <= 1.0 / 255.0 + 1e-5,
+        "{quando}: a placa mostra outra peça ({pior})"
+    );
+    // E a cor por vértice é o prefixo da peça, ao bit (o estacionamento compara-os; com o
+    // plano desarmado é ela que se vê) — o que só a recomposição do desfazer escreve.
+    let o = &s.objects[s.active];
+    let v = o.stack.mesh().vert_count();
+    assert_eq!(
+        o.stack.mesh().colors().expect("cor por vértice"),
+        &peca[..v],
+        "{quando}: a cor por vértice não é o prefixo da peça"
+    );
+}
+
 fn painter_vermelho() -> PainterTool {
     let mut p = PainterTool::default();
     p.set_brush_color_srgb8([255, 0, 0]);
@@ -231,6 +268,10 @@ fn o_painel_de_camadas_muda_a_cor_da_peca_e_o_ctrl_z_a_devolve_ao_bit() {
         bits(&pintada),
         "o Ctrl+Z não devolveu a peça ao bit"
     );
+    // ⚠️ E a PLACA mostra-a: o plano da CPU compõe-se a pedido (`para_ler`), logo só o
+    //    plano lido da placa prova que o desfazer pediu a recomposição.
+    s.sync_mesh(&gpu);
+    a_placa_mostra(&s, &gpu, &pintada, "o 1.º Ctrl+Z");
     assert_eq!(activa(&s).2, Some(1.0));
     assert_eq!(
         p.panel_layers()

@@ -63,7 +63,8 @@ fn as_duas_leis(p: &BPalco) -> (VecPath, VecPath) {
         },
     )
     .remove(&p.id)
-    .expect("a forma com efeito tem desenho fiel");
+    .expect("a forma com efeito tem desenho fiel")
+    .forma;
     assert!(
         nova.effects.is_empty(),
         "o desenhado leva a pilha outra vez — um consumidor que o coza aplica-a DUAS vezes"
@@ -648,7 +649,7 @@ fn as_riscas_de_um_hatch_nao_saem_da_forma_ao_dobrar() {
             .remove(&p.id)
             .expect("desenho");
         let contorno = {
-            let mut c = d.clone();
+            let mut c = d.forma.clone();
             c.subpaths.clear();
             b_amostra_com(&c, 64)
         };

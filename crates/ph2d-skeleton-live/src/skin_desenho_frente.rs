@@ -392,37 +392,77 @@ fn recorta(vs: &[VecVertex], u0: f64, u1: f64) -> Vec<(VecVertex, Origem)> {
     out
 }
 
-/// ⭐⭐⭐ **A fonte só com o que se VÊ**, e a tabela dela — `None` quando nada está tapado (o caso
-/// comum, sem alocar a fonte). A tabela tem três linhas por nó, como a guardada: a de um nó da
-/// fonte é COPIADA (o fechado sai ao bit), a de um nó novo é a do campo na âncora e, fora dele, a
-/// mistura das linhas do segmento em `t` (a lei da F28).
+/// ⭐⭐⭐ **A fonte só com o que se VÊ**, e a tabela dela — os contornos ABERTOS cortados, os fechados
+/// como estão. `None` quando nada está tapado (o caso comum, sem alocar a fonte). A tabela tem três
+/// linhas por nó, como a guardada: a de um nó da fonte é COPIADA (o fechado sai ao bit), a de um nó
+/// novo é a do campo na âncora e, fora dele, a mistura das linhas do segmento em `t` (a lei da F28).
 #[must_use]
 pub(super) fn so_o_que_se_ve(
+    fonte: &VecPath,
+    tabela: &[f64],
+    campo: (&CampoDoDominio, Option<&IndiceDoCampo>),
+    pele: (&Skin, &[Correccao], bool),
+    prof: &[f64],
+) -> Option<(VecPath, Vec<f64>)> {
+    recorta_a_fonte(fonte, tabela, campo, pele, prof, false)
+}
+
+/// ⭐⭐ **O TRAÇO à vista dos contornos FECHADOS** (A6) — só eles, cada um em trechos abertos onde a
+/// dobra o tapa (inteiro e fechado onde não tapa), para a camada de traço de uma forma sem união.
+/// `None` quando nenhum fechado está tapado.
+#[must_use]
+pub(super) fn tracos_a_vista(
+    fonte: &VecPath,
+    tabela: &[f64],
+    campo: (&CampoDoDominio, Option<&IndiceDoCampo>),
+    pele: (&Skin, &[Correccao], bool),
+    prof: &[f64],
+) -> Option<(VecPath, Vec<f64>)> {
+    recorta_a_fonte(fonte, tabela, campo, pele, prof, true)
+}
+
+/// A porta das duas: `fechados = false` corta os abertos e deixa os fechados; `true` corta os
+/// fechados (uma volta aberta com o 1.º nó repetido no fim, e o trecho que passa pela emenda cosido
+/// de volta) e larga os abertos.
+fn recorta_a_fonte(
     fonte: &VecPath,
     tabela: &[f64],
     (campo, indice): (&CampoDoDominio, Option<&IndiceDoCampo>),
     (pele, correcoes, rigido): (&Skin, &[Correccao], bool),
     prof: &[f64],
+    fechados: bool,
 ) -> Option<(VecPath, Vec<f64>)> {
     let contornos: Vec<(&[VecVertex], bool)> = (0..fonte.contour_count())
         .filter_map(|c| fonte.contour(c))
         .collect();
-    if !contornos.iter().any(|(_, f)| *f) || !contornos.iter().any(|(v, f)| !*f && v.len() > 1) {
+    let julga = |v: &[VecVertex], fechado: bool| fechado == fechados && v.len() > 1;
+    if !contornos.iter().any(|(_, f)| *f) || !contornos.iter().any(|(v, f)| julga(v, *f)) {
         return None;
     }
     let f = Posada::nova(campo, indice, pele, correcoes, rigido, prof)?;
     // ⭐ Um pedaço CORTADO mais curto que a largura do próprio traço é um borrão, não uma risca
     // (FOTOGRAFADO a `110°`: tiques soltos junto às juntas) — sai.
     let largura = fonte.stroke.as_ref().map_or(0.0, |s| s.width);
+    let volta = |v: &[VecVertex], fechado: bool| -> Vec<VecVertex> {
+        let mut w = v.to_vec();
+        if fechado {
+            w.push(v[0]);
+        }
+        w
+    };
     let cortes: Vec<Option<Vec<(f64, f64)>>> = contornos
         .iter()
         .map(|(v, fechado)| {
-            let vis = (!*fechado && v.len() > 1).then(|| a_vista(v, &f)).flatten()?;
+            if !julga(v, *fechado) {
+                return None;
+            }
+            let w = volta(v, *fechado);
+            let vis = a_vista(&w, &f)?;
             #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
-            let fim = (v.len() - 1) as f64;
+            let fim = (w.len() - 1) as f64;
             Some(
                 vis.into_iter()
-                    .filter(|&(a, b)| (a <= 0.0 && b >= fim) || f.comprimento(v, a, b) >= largura)
+                    .filter(|&(a, b)| (a <= 0.0 && b >= fim) || f.comprimento(&w, a, b) >= largura)
                     .collect(),
             )
         })
@@ -438,23 +478,45 @@ pub(super) fn so_o_que_se_ve(
     let mut novos: Vec<ph2d_vec_scene::Contour> = Vec::new();
     let mut base = 0;
     for ((vs, fechado), corte) in contornos.iter().zip(&cortes) {
+        let m = vs.len();
         let pecas: Vec<Vec<(VecVertex, Origem)>> = match corte {
+            None if fechados && !*fechado => Vec::new(),
             None => vec![vs.iter().enumerate().map(|(i, v)| (*v, Origem::Fonte(i))).collect()],
-            Some(vis) => vis
-                .iter()
-                .filter(|(a, b)| b > a)
-                .map(|&(a, b)| recorta(vs, a, b))
-                .collect(),
+            Some(vis) => {
+                let w = volta(vs, *fechado);
+                #[expect(clippy::cast_precision_loss, reason = "índice de segmento")]
+                let fim = (w.len() - 1) as f64;
+                let mut p: Vec<Vec<(VecVertex, Origem)>> = vis
+                    .iter()
+                    .filter(|(a, b)| b > a)
+                    .map(|&(a, b)| recorta(&w, a, b))
+                    .collect();
+                // A emenda: um trecho que acaba no fim da volta e outro que começa no início são o
+                // MESMO trecho de um contorno fechado.
+                let cose = *fechado
+                    && p.len() > 1
+                    && vis.first().is_some_and(|v| v.0 <= 0.0)
+                    && vis.last().is_some_and(|v| v.1 >= fim);
+                if cose {
+                    let primeiro = p.remove(0);
+                    let ultimo = p.last_mut().expect("mais de um trecho");
+                    if let (Some(fim_v), Some(ini)) = (ultimo.last_mut(), primeiro.first()) {
+                        fim_v.0.out_handle = ini.0.out_handle;
+                    }
+                    ultimo.extend(primeiro.into_iter().skip(1));
+                }
+                p
+            }
         };
         for peca in pecas {
             if usa {
                 for (v, o) in &peca {
                     let linha: Vec<f64> = match *o {
-                        Origem::Fonte(i) => linha_de(base + i).to_vec(),
+                        Origem::Fonte(i) => linha_de(base + i % m).to_vec(),
                         Origem::Novo(k, t) => campo.linha_com(v.anchor, indice).unwrap_or_else(|| {
-                            linha_de(base + k)
+                            linha_de(base + k % m)
                                 .iter()
-                                .zip(linha_de(base + k + 1))
+                                .zip(linha_de(base + (k + 1) % m))
                                 .map(|(x, y)| (y - x).mul_add(t, *x))
                                 .collect()
                         }),
@@ -469,7 +531,7 @@ pub(super) fn so_o_que_se_ve(
                 closed: corte.is_none() && *fechado,
             });
         }
-        base += vs.len();
+        base += m;
     }
     let mut saida = fonte.clone();
     let mut it = novos.into_iter();
@@ -482,4 +544,4 @@ pub(super) fn so_o_que_se_ve(
 
 #[cfg(test)]
 #[path = "skin_desenho_frente_tests.rs"]
-mod tests;
+pub(super) mod tests;

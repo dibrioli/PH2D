@@ -434,7 +434,24 @@ pub fn recook_leis(
                 let mut visto = p.clone();
                 visto.replace_geometry(d);
                 visto.effects.clear();
-                desenho.insert(id, visto);
+                // ⭐⭐ A6: a camada do traço leva o traço; a forma, só o preenchimento. ⚠️ Não com
+                // uma pilha de tintas nem com opacidade de OBJECTO (duas camadas compor-se-iam duas
+                // vezes) — aí fica a forma inteira, como antes.
+                let traco = q
+                    .traco
+                    .filter(|_| visto.stroke.is_some())
+                    .filter(|_| visto.paints.is_empty() && visto.opacity.is_opaque())
+                    .map(|t| {
+                        let mut l = visto.clone();
+                        l.replace_geometry(t);
+                        l.fill = None;
+                        l
+                    });
+                if traco.is_some() {
+                    visto.stroke = None;
+                }
+                let forma = visto;
+                desenho.insert(id, crate::skin_desenho::Desenhado { forma, traco });
             }
         }
     }

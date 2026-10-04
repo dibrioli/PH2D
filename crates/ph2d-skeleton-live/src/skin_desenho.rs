@@ -80,9 +80,10 @@ use ph2d_vec_skin::pesos::{CampoDoDominio, IndiceDoCampo};
 
 use crate::skinned_mesh::SkinnedPath;
 
-/// O que um quadro de pele entrega à GEOMETRIA VIVA: o desenho fiel de cada forma presa que o
-/// pode ter, em coordenadas LOCAIS do caminho (quem o põe no mundo é a [`funde`]).
-pub type SkinDesenhado = BTreeMap<VecPathId, VecPath>;
+/// ⭐⭐ **O desenho em CAMADAS e a porta que o põe no mundo**, num irmão pelo tecto de LOC (A6).
+#[path = "skin_desenho_camadas.rs"]
+mod camadas;
+pub use camadas::{Desenhado, SkinDesenhado, funde};
 
 /// ⭐⭐⭐ **Quantas amostras a forma INTEIRA recebe** — o orçamento que a amostragem reparte pelos
 /// segmentos.
@@ -232,6 +233,8 @@ pub struct Quadro {
     pub cru: VecPath,
     /// O bake — vai para a geometria viva, quando a forma o pode ter.
     pub desenhado: Option<VecPath>,
+    /// ⭐⭐ O TRAÇO à vista numa dobra que tapa um contorno fechado sem união (A6, [`camadas`]).
+    pub traco: Option<VecPath>,
 }
 
 /// ⭐⭐⭐ **A fonte cozida com os EFEITOS em repouso, e a tabela de pesos dela** — derivada da
@@ -567,6 +570,11 @@ fn calcula(
         frente::so_o_que_se_ve(f, t, campo, (pele, &correcoes, leis.rigido), ordem)
     });
     let percurso = visivel.as_ref().map(|(f, t)| (f, t.as_slice())).or(percurso);
+    let neutra = fx.map(|c| c.contacto).or(prep.uniao_neutra);
+    let bake_de = |f: &VecPath| Bake {
+        amostras: amostras_por_segmento(segmentos(f)),
+        tolerancia: TOLERANCIA_DA_DIAGONAL * diagonal(f),
+    };
     let desenhado = percurso
         .filter(|_| leis.desenho && estilo_serve)
         .map(|(fonte, tabela)| {
@@ -577,10 +585,7 @@ fn calcula(
                 &correcoes,
                 leis.rigido,
                 lido_do_bake,
-                Bake {
-                    amostras: amostras_por_segmento(segmentos(fonte)),
-                    tolerancia: TOLERANCIA_DA_DIAGONAL * diagonal(fonte),
-                },
+                bake_de(fonte),
             );
             (d, quinas_do_artista(fonte, nos))
         })
@@ -597,7 +602,6 @@ fn calcula(
             // ⭐⭐ **Numa forma com EFEITO (viva ou cozida no Bind), só a UNIÃO**, e só neutra em
             // repouso: a bola arredonda o vinco do ARTISTA e comia os dentes de um *Zig Zag*
             // (fila §F50-d/e/f e §F51).
-            let neutra = fx.map(|c| c.contacto).or(prep.uniao_neutra);
             if !leis.contacto {
                 d
             } else if let Some(neutra) = neutra {
@@ -610,7 +614,22 @@ fn calcula(
                 ph2d_vec_boolean::silhueta_da_pele(&d, &quinas).unwrap_or(d)
             }
         });
-    Quadro { cru, desenhado }
+    // ⭐⭐ A6: sem a união, o traço dos FECHADOS que a dobra tapa sai numa camada própria.
+    let sem_uniao = !leis.contacto || neutra == Some(false);
+    let traco = percurso
+        .zip(desenhado.as_ref())
+        .filter(|_| leis.frente && leis.desenho && estilo_serve && sem_uniao)
+        .and_then(|((f, t), d)| {
+            let campo = (lido_do_bake.campo?, lido_do_bake.indice);
+            let (arcos, tab) =
+                frente::tracos_a_vista(f, t, campo, (pele, &correcoes, leis.rigido), ordem)?;
+            let (mut a, _) = ph2d_vec_skin::curva::assa_a_pele_com_nos(
+                pele, &arcos, &tab, &correcoes, leis.rigido, lido_do_bake, bake_de(f),
+            );
+            a.subpaths.extend(camadas::abertos(d));
+            Some(a)
+        });
+    Quadro { cru, desenhado, traco }
 }
 
 /// ⭐⭐ **As QUINAS DO ARTISTA do assado** — cada nó da `fonte` onde o assado o pousou, com a viragem
@@ -669,29 +688,6 @@ fn diagonal(p: &VecPath) -> f64 {
         return 0.0;
     }
     (x1 - x0).hypot(y1 - y0)
-}
-
-/// ⭐⭐ **O desenho fiel no MUNDO, dentro da geometria viva do quadro.**
-///
-/// `vivo` é o mapa que o desenho e o PICK lêem (`ph2d_vec_render::LiveGeometry`, o mesmo tipo
-/// escrito por extenso para esta folha não depender da crate de desenho).
-///
-/// ⚠️ **Não ESCREVE por cima de outro produtor** — uma forma presa com Offset vivo, largura viva,
-/// simetria, padrão ou contorno continua a mostrar o que aquele produtor cozeu dela (sobre os nós
-/// do artista, como ontem). ⛔ Os dois juntos seriam uma escolha sem dono; o primeiro a escrever
-/// ganha, e os outros produtores escrevem ANTES desta chamada.
-pub fn funde(
-    desenho: &SkinDesenhado,
-    xforms: &VecXforms,
-    vivo: &mut BTreeMap<VecPathId, Vec<VecPath>>,
-) {
-    for (id, p) in desenho {
-        vivo.entry(*id).or_insert_with(|| {
-            let mut mundo = p.clone();
-            ph2d_vec_scene::bake_xform(&mut mundo, &ph2d_vec_scene::xform_of(xforms, *id));
-            vec![mundo]
-        });
-    }
 }
 
 #[cfg(test)]

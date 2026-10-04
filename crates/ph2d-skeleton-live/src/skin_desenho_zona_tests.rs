@@ -307,8 +307,8 @@ fn braco_em(primeira: f32, segunda: f32) -> (VecPath, VecPath) {
     );
     let com = crate::skin_live::recook_leis(&sim, &mut scene, super::PRODUTO);
     (
-        sem.get(&id).expect("sem contacto").clone(),
-        com.get(&id).expect("com contacto").clone(),
+        sem.get(&id).expect("sem contacto").forma.clone(),
+        com.get(&id).expect("com contacto").forma.clone(),
     )
 }
 

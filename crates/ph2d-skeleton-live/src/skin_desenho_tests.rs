@@ -189,7 +189,7 @@ fn a_fusao_cede_a_quem_ja_la_estava_e_assa_a_pose() {
     let mut p = VecPath::default();
     p.verts.push(ph2d_vec_scene::VecVertex::corner([1.0, 0.0]));
     let mut d = SkinDesenhado::new();
-    d.insert(id, p.clone());
+    d.insert(id, crate::skin_desenho::Desenhado { forma: p.clone(), traco: None });
     let mut xf = VecXforms::default();
     xf.insert(id, ph2d_vec_scene::Xform([1.0, 0.0, 0.0, 1.0, 10.0, 0.0]));
     let mut vivo: BTreeMap<VecPathId, Vec<VecPath>> = BTreeMap::new();
@@ -266,8 +266,8 @@ fn com_e_sem_contacto_em(graus: f32, forma: Forma) -> (VecPath, VecPath) {
     );
     let com = crate::skin_live::recook_leis(&sim, &mut scene, PRODUTO);
     (
-        sem.get(&id).expect("desenho sem contacto").clone(),
-        com.get(&id).expect("desenho com contacto").clone(),
+        sem.get(&id).expect("desenho sem contacto").forma.clone(),
+        com.get(&id).expect("desenho com contacto").forma.clone(),
     )
 }
 

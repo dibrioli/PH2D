@@ -33,6 +33,7 @@ fn desenho(sim: &ph2d_ecs::SimWorld, scene: &VecScene, id: ph2d_vec_scene::VecPa
     crate::skin_live::recook_leis(sim, &mut scene.clone(), Leis::do_ambiente())
         .remove(&id)
         .expect("desenho")
+        .forma
 }
 
 /// ⭐⭐⭐ **GATE — cozer no carregamento não move um pixel, esvazia a pilha e marca a fonte; uma 2.ª

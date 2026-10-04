@@ -23,11 +23,11 @@ const PERTO: f64 = 0.1;
 /// Folga da fronteira da frente: perto dela a régua não julga.
 const FOLGA: f64 = 0.25;
 
-fn cubica(vs: &[ph2d_vec_scene::VecVertex], k: usize) -> [[f64; 2]; 4] {
+pub(crate) fn cubica(vs: &[ph2d_vec_scene::VecVertex], k: usize) -> [[f64; 2]; 4] {
     [vs[k].anchor, vs[k].out_handle, vs[k + 1].in_handle, vs[k + 1].anchor]
 }
 
-fn em(c: &[[f64; 2]; 4], t: f64) -> ([f64; 2], [f64; 2]) {
+pub(crate) fn em(c: &[[f64; 2]; 4], t: f64) -> ([f64; 2], [f64; 2]) {
     let s = 1.0 - t;
     let p = |k: usize| {
         s * s * s * c[0][k] + 3.0 * s * s * t * c[1][k] + 3.0 * s * t * t * c[2][k] + t * t * t * c[3][k]
@@ -39,7 +39,7 @@ fn em(c: &[[f64; 2]; 4], t: f64) -> ([f64; 2], [f64; 2]) {
 }
 
 /// Amostras `(ponto, tangente)` dos contornos ABERTOS (ou dos fechados, `fechados = true`).
-fn amostras(p: &VecPath, fechados: bool, por_seg: usize) -> Vec<([f64; 2], [f64; 2])> {
+pub(crate) fn amostras(p: &VecPath, fechados: bool, por_seg: usize) -> Vec<([f64; 2], [f64; 2])> {
     let mut out = Vec::new();
     for c in 0..p.contour_count() {
         let Some((vs, fechado)) = p.contour(c) else { continue };
@@ -71,7 +71,7 @@ fn amostras_em_troco(p: &VecPath) -> Vec<[[f64; 2]; 2]> {
     out
 }
 
-fn dentro(pol: &[[f64; 2]], q: [f64; 2]) -> bool {
+pub(crate) fn dentro(pol: &[[f64; 2]], q: [f64; 2]) -> bool {
     let mut d = false;
     for i in 0..pol.len() {
         let (a, b) = (pol[i], pol[(i + 1) % pol.len()]);
@@ -82,7 +82,7 @@ fn dentro(pol: &[[f64; 2]], q: [f64; 2]) -> bool {
     d
 }
 
-fn dist_pol(pol: &[[f64; 2]], q: [f64; 2]) -> f64 {
+pub(crate) fn dist_pol(pol: &[[f64; 2]], q: [f64; 2]) -> f64 {
     (0..pol.len())
         .map(|i| {
             let (a, b) = (pol[i], pol[(i + 1) % pol.len()]);

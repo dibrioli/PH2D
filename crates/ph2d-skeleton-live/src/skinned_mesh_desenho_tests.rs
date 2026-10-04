@@ -34,7 +34,7 @@ fn o_que_se_ve(p: &BPalco, contacto: bool) -> (ph2d_vec_scene::VecPath, ph2d_vec
         .clone();
     let visto = desenho
         .get(&p.id)
-        .cloned()
+        .map(|d| d.forma.clone())
         .expect("a barra tem desenho fiel");
     (cru, visto)
 }

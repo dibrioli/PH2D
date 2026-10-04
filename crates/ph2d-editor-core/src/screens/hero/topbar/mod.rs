@@ -27,14 +27,10 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_IMAGE_TOOLS,
         ids::TOPBAR_AUDIO_MIXER,
         ids::TOPBAR_AUDIO_EDITOR,
-        // Vector pill MUST be registered here (not only painted/hit-indexed in
+        // Motion Nodes pill MUST be registered here (not only painted/hit-indexed in
         // cluster_painter.rs): a pill absent here has no `InteractiveState`, so
-        // pointer-Up never emits `Click` and the tool is dead on click.
-        // (Audit 2026-06-02 killer.)
-        ids::TOPBAR_VECTOR,
-        // Motion Nodes pill — same parity requirement as the Vector pill above
-        // (painted + hit-indexed in the fixture → MUST be registered here or the
-        // pill is dead on click). Motion Nodes M0.T9.
+        // pointer-Up never emits `Click` and the tool is dead on click (audit
+        // 2026-06-02 killer, found on the old Vector pill). Motion Nodes M0.T9.
         ids::TOPBAR_MOTION,
         ids::TOPBAR_PHYSICS,
         // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09) — registado AQUI e **sem pill na fixture**,

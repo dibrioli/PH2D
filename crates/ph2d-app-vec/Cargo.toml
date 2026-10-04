@@ -51,6 +51,8 @@ ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 ph2d-vec-blend = { path = "../ph2d-vec-blend" }
 ph2d-vec-fill = { path = "../ph2d-vec-fill" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# O vocabulário dos tipos de objecto (zero deps) — o par (Vector, Edit) do modo, spec/06 F3.
+ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }

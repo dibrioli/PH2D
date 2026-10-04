@@ -12,11 +12,12 @@ use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
 const FASE: &str = "src/render_loop/fase_object_mode.rs";
 
 /// `(o construtor no fonte, a variável que entra na lista)` de cada família.
-const FAMILIAS: [(&str, &str); 4] = [
+const FAMILIAS: [(&str, &str); 5] = [
     ("ph2d_app_painter::paint_mode::Family", "&mut paint"),
     ("ph2d_app_sculpt3d::sculpt_mode::Family::new", "&mut sculpt"),
     ("ph2d_app_flip::flip_mode::Family::new", "&mut flip"),
     ("ph2d_app_field3d::model_mode::Family::new", "&mut model"),
+    ("ph2d_app_vec::vector_mode::Family::new", "&mut vector"),
 ];
 
 /// ⭐⭐ GATE — cada família é construída E entra na lista do quadro.
@@ -46,7 +47,7 @@ fn every_mode_family_is_in_the_frame_list() {
 /// nenhum par (tipo, modo) duas vezes (o quadro abriria só a primeira).
 ///
 /// *Mutação que sangra:* um modo novo em `ObjectMode` sem família, ou a do Flip a deixar de
-/// declarar o Edit, ou a do Model a declarar o par de outra.
+/// declarar o Edit, ou a do Model a declarar o par de outra, ou a do vetor a não declarar o dela.
 #[test]
 fn the_composed_families_declare_every_creation_mode() {
     let mut sim = ph2d_ecs::SimWorld::new();
@@ -56,7 +57,34 @@ fn the_composed_families_declare_every_creation_mode() {
     let sculpt = ph2d_app_sculpt3d::sculpt_mode::Family::new(&mut sim, None);
     let flip = ph2d_app_flip::flip_mode::Family::new(&mut state, &doc);
     let model = ph2d_app_field3d::model_mode::Family::new(&mut sim, false);
-    let pairs: Vec<_> = [paint.modes(), sculpt.modes(), flip.modes(), model.modes()].concat();
+    let mut vec_state = ph2d_app_vec::state::VecState::default();
+    let vector = ph2d_app_vec::vector_mode::Family::new(&mut vec_state);
+    let pairs: Vec<_> = [
+        paint.modes(),
+        sculpt.modes(),
+        flip.modes(),
+        model.modes(),
+        vector.modes(),
+    ]
+    .concat();
+    // ⭐ A tabela D6 (spec/06 §3.4) INTEIRA: o Edit do vetor some sem nenhum modo morrer (o Flip e
+    // o Model também o declaram) — só os PARES o vêem.
+    use ph2d_component_desc::ObjectKind as K;
+    let d6 = [
+        (K::Image, ObjectMode::Paint),
+        (K::Sculpt3D, ObjectMode::Sculpt),
+        (K::Sculpt3D, ObjectMode::Paint),
+        (K::Flip, ObjectMode::Draw),
+        (K::Flip, ObjectMode::Edit),
+        (K::Model3D, ObjectMode::Edit),
+        (K::Vector, ObjectMode::Edit),
+    ];
+    for p in d6 {
+        assert!(
+            pairs.contains(&p),
+            "{p:?} (D6) não é declarado por família composta nenhuma"
+        );
+    }
     for (i, p) in pairs.iter().enumerate() {
         assert!(!pairs[..i].contains(p), "{p:?} declarado por duas famílias");
     }

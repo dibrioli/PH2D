@@ -53,6 +53,10 @@ pub struct VecViewState {
     /// escrever isto nas formas seria uma EDIÇÃO, com passo de undo e bytes no ficheiro, por uma
     /// coisa que só existe enquanto o artista está a olhar.
     pub isolated: Vec<VecPathId>,
+    /// ⭐ **As formas em modo EDIT** (spec/06 F3 ▸ Vector): só elas se agarram. Vazia = Object, e
+    /// tudo se lê como antes. Estado de VISTA, pela razão do [`Self::isolated`]: entrar num modo
+    /// não é uma edição.
+    pub editing: Vec<VecPathId>,
     /// As MOLDURAS que recortam neste frame (`ph2d_ecs::VecFrame`), já resolvidas para o
     /// intervalo que cada uma ocupa na pilha de z. Vazio = nenhuma moldura recorta, e o desenho é
     /// **byte-idêntico** ao mundo pré-moldura.
@@ -204,14 +208,18 @@ impl VecViewState {
         self.hidden.contains(&id)
     }
 
-    /// O path pode ser agarrado no canvas (visível E destravado).
+    /// O path pode ser agarrado no canvas (visível E destravado, e — em Edit — uma das formas do
+    /// modo, [`Self::editing`]: a porta única de todas as ferramentas do Edit).
     ///
     /// ⚠️ **O recorte não entra aqui, de propósito.** Um filho que a moldura esconde continua
     /// selecionável (pela Hierarquia e pelo canvas) — é o que Figma e Illustrator fazem, e o
     /// contrário tornaria impossível recuperar algo que se arrastou para fora por engano.
     #[must_use]
     pub fn is_pickable(&self, id: VecPathId) -> bool {
-        !self.hidden.contains(&id) && !self.locked.contains(&id) && !self.is_derived(id)
+        !self.hidden.contains(&id)
+            && !self.locked.contains(&id)
+            && !self.is_derived(id)
+            && (self.editing.is_empty() || self.editing.contains(&id))
     }
 
     /// A geometria deste path é escrita por um motor — ela não tem nós próprios ([`Self::derived`]).

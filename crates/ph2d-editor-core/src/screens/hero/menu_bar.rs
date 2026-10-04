@@ -6,8 +6,8 @@
 //! # A lei desta barra: ela REALOJA, não constrói
 //!
 //! ⚠️ **Quase toda linha destes quatro menus leva um id que já existia.** O *Save* é o
-//! `CTX_MENU_SAVE` do `chrome::io_menu`; o *Vector* é o `TOPBAR_VECTOR` que o pill levava, e quem
-//! o despacha continua a ser o painel do vetor. É a **D2** ao pé da letra
+//! `CTX_MENU_SAVE` do `chrome::io_menu`; o *Motion Nodes* é o `TOPBAR_MOTION` que o pill levava, e
+//! quem o despacha continua a ser o `chrome::motion_toggle`. É a **D2** ao pé da letra
 //! (`docs/UI_New_and_Simple/00_DECISOES_DO_ENIO.md`): *existe um sítio canónico para cada comando*
 //! — e um comando com dois ids tem dois sítios a apodrecer em separado.
 //!
@@ -171,7 +171,8 @@ pub fn publish_toggle_state(hero: &mut super::HeroScreen) {
 /// cluster nenhum (`hash_node_id("topbar_vector")` ≠ `hash_node_id("vector")`).
 ///
 /// 1. **a marca não aparecia** — o menu *Window* dizia o mesmo com o Vector aberto e fechado;
-/// 2. ⚠️ **e o `chrome::vector_toggle` LIA esse estado para escolher a direcção** (activar ou
+/// 2. ⚠️ **e o `chrome::vector_toggle` (que saiu com o pill, spec/06 F3) LIA esse estado para
+///    escolher a direcção** (activar ou
 ///    cancelar). Preso em `Normal`, o segundo clique voltava a activar. *Um estado que ninguém
 ///    escreve e alguém lê não é uma marca em falta: é um `if` com um lado morto.*
 ///
@@ -217,8 +218,7 @@ impl ModuleTruth {
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 19] = [
-    (ids::TOPBAR_VECTOR, ModuleTruth::Tool("vector")),
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 18] = [
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_PHYSICS, ModuleTruth::Panel("physics")),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09). ⚠️ O literal é o `Panel::ID` da

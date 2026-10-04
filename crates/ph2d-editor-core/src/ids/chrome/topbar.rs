@@ -38,17 +38,8 @@ pub const TOPBAR_AUDIO_MIXER: NodeId = hash_node_id("topbar_audio_mixer");
 /// (mirrors the Audio Mixer panel-toggle pattern). Handled by
 /// `ph2d_panel_audio_editor::AudioEditorPanel::apply_event`.
 pub const TOPBAR_AUDIO_EDITOR: NodeId = hash_node_id("topbar_audio_editor");
-/// Vector tool pill — TopBar single-pill that activates the Vector drawing
-/// tool (ADR-0108 cutover; sole `vector_tools` member). Click pushes
-/// `EditorAction::ActivateTool { tool_id: "vector" }`; the shell drain in
-/// `render_loop::mod` calls `tools.set_active(&ToolId::new("vector"))`.
-///
-/// **Hash key = `hash_node_id("vector")`** (the manifest id, NOT
-/// `"topbar_vector"`) so the Pressed-highlight reconcile loop discovers the
-/// pill via `hash_node_id(manifest.id)` — same path bgremoval/image pills use.
-pub const TOPBAR_VECTOR: NodeId = hash_node_id("vector");
 /// Motion Nodes tool pill (Motion Nodes M0.T9). **Hash key =
-/// `hash_node_id("motion")`** (the manifest id, like [`TOPBAR_VECTOR`]) so the
+/// `hash_node_id("motion")`** (the manifest id, like the image pills) so the
 /// active-tool Pressed-highlight reconcile discovers the pill via
 /// `hash_node_id(manifest.id)`. Click routes through `chrome::motion_toggle`.
 pub const TOPBAR_MOTION: NodeId = hash_node_id("motion");

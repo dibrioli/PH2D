@@ -126,6 +126,9 @@ pub use mode::{
     BoneAction, DrawMode, MarqueeShape, WEIGHT_AMOUNT_DEFAULT, WEIGHT_RADIUS_DEFAULT,
     WEIGHT_RADIUS_MIN, WeightDirection, WeightMode,
 };
+/// A partição do [`DrawMode`] pelos modos do objecto — irmão do `mode`, pelo mesmo teto.
+#[path = "params_mode_object.rs"]
+mod mode_object;
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of
 /// `ph2d_vec_scene::VertexKind`; the shell maps between them). Lives in the tool

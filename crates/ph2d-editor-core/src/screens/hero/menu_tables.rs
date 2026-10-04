@@ -153,8 +153,8 @@ pub(super) const THEME_SELECTOR_ROWS: &[MenuRow] = &[
 
 // ── A BARRA DE MENUS (D2, 2026-08-30) ────────────────────────────────────────────
 // ⭐⭐ **Quase toda linha aqui leva um id que JÁ EXISTIA**, e é essa a decisão: a barra
-// realoja verbos, não os constrói. O `Save` é o do `io_menu`; o `Vector` é o
-// `TOPBAR_VECTOR` que o pill levava, e o painel do vetor continua a ser quem o despacha.
+// realoja verbos, não os constrói. O `Save` é o do `io_menu`; o `Motion Nodes` é o
+// `TOPBAR_MOTION` que o pill levava, e o `motion_toggle` continua a ser quem o despacha.
 // ⇒ um verbo, um id, um handler — e nenhuma segunda tabela a divergir da primeira.
 /// As linhas de `ContextMenuKind::MenuBarFile`.
 pub(super) const MENU_BAR_FILE_ROWS: &[MenuRow] = &[
@@ -227,7 +227,6 @@ pub(super) const MENU_BAR_VIEW_ROWS: &[MenuRow] = &[
 // bissecção, não uma porta de produto.
 /// As linhas de `ContextMenuKind::MenuBarWindow`.
 pub(super) const MENU_BAR_WINDOW_ROWS: &[MenuRow] = &[
-    menu_row(ids::TOPBAR_VECTOR, "chrome.menu.vector"),
     menu_row(ids::TOPBAR_MOTION, "chrome.menu.motion_nodes"),
     menu_row(ids::TOPBAR_PHYSICS, "chrome.menu.physics"),
     // ⭐⭐⭐ **AS TAGS** (TOP-20 #9, W4). ⚠️ Vizinho da Física porque os dois são painéis de

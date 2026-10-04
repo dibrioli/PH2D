@@ -2570,22 +2570,29 @@ fn every_tool_row_pill_answers_a_real_pointer() {
         h: 4000.0,
     };
     const SEC: u128 = 1_000_000_000;
-    let pills: [(ph2d_a11y::NodeId, &str); 12] = [
-        (ph2d_tool_vector::ids::VECTOR_MODE_SELECT, "Select"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_NODE, "Node"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_PEN, "Pen"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_PENCIL, "Pencil"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_SHAPE, "Shape"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_TEXT, "Text"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_CONNECT, "Connect"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_BUILD, "Build"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_FILLET, "Fillet"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_CHAMFER, "Chamfer"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_WIDTH, "Width"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_CUT, "Cut"),
+    use ph2d_tool_vector::ids as v;
+    let pills: [(ph2d_a11y::NodeId, &str, DrawMode); 12] = [
+        (v::VECTOR_MODE_SELECT, "Select", DrawMode::Select),
+        (v::VECTOR_MODE_NODE, "Node", DrawMode::Node),
+        (v::VECTOR_MODE_PEN, "Pen", DrawMode::Pen),
+        (v::VECTOR_MODE_PENCIL, "Pencil", DrawMode::Pencil),
+        (v::VECTOR_MODE_SHAPE, "Shape", DrawMode::Shape),
+        (v::VECTOR_MODE_TEXT, "Text", DrawMode::Text),
+        (v::VECTOR_MODE_CONNECT, "Connect", DrawMode::Connect),
+        (v::VECTOR_MODE_BUILD, "Build", DrawMode::Build),
+        (v::VECTOR_MODE_FILLET, "Fillet", DrawMode::Fillet),
+        (v::VECTOR_MODE_CHAMFER, "Chamfer", DrawMode::Chamfer),
+        (v::VECTOR_MODE_WIDTH, "Width", DrawMode::Width),
+        (v::VECTOR_MODE_CUT, "Cut", DrawMode::Cut),
     ];
     let mut dead = Vec::new();
-    for (id, name) in pills {
+    for (id, name, mode) in pills {
+        // ⚠️ Cada pill no modo do OBJECTO dele (spec/06 F3 ▸ Vector): a fileira só mostra as do modo
+        // em curso — o Node vive no Edit, a Caneta no Object.
+        ph2d_panel_vector::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot {
+            mode,
+            ..ph2d_tool_vector::VectorStyleSnapshot::default()
+        }));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
         let Some(r) = host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id) else {
@@ -2604,7 +2611,50 @@ fn every_tool_row_pill_answers_a_real_pointer() {
             ));
         }
     }
+    ph2d_panel_vector::set_current_vector_style(None);
     assert!(dead.is_empty(), "pills que nao respondem: {dead:?}");
+}
+
+/// ⭐⭐ GATE (spec/06 F3 ▸ Vector) — **a fileira TOOL só mostra as do modo em curso**: com o Node na
+/// mão (Edit) a Caneta não é pintada, e com a Caneta (Object) o Node não é — o modo é a verdade, e
+/// a fileira não oferece o outro. CONTROLE: cada uma é pintada no modo dela.
+#[test]
+fn the_tool_row_shows_only_the_tools_of_the_current_mode() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 4000.0,
+    };
+    let painted = |mode: DrawMode, id: ph2d_a11y::NodeId| {
+        ph2d_panel_vector::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot {
+            mode,
+            ..ph2d_tool_vector::VectorStyleSnapshot::default()
+        }));
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let p = host
+            .painted_rect::<VectorPanel>(&mut VectorPanelState, VIEWPORT, id)
+            .is_some();
+        ph2d_panel_vector::set_current_vector_style(None);
+        p
+    };
+    use ph2d_tool_vector::ids::{VECTOR_MODE_NODE as NODE, VECTOR_MODE_PEN as PEN};
+    assert!(
+        painted(DrawMode::Node, NODE) && painted(DrawMode::Pen, PEN),
+        "CONTROLE"
+    );
+    assert!(
+        !painted(DrawMode::Node, PEN),
+        "a Caneta (Object) aparece no Edit"
+    );
+    assert!(
+        !painted(DrawMode::Pen, NODE),
+        "o Node (Edit) aparece em Object"
+    );
+    assert!(
+        !painted(DrawMode::Width, PEN),
+        "a Caneta aparece com o Width (Edit)"
+    );
 }
 
 /// **Os dois botões do corte só aparecem com o pill Cut escolhido** (Enio, 2026-07-31: *"as

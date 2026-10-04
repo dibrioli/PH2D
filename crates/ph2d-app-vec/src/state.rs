@@ -220,6 +220,10 @@ pub struct VecState {
     /// the tool's palette via `render_loop::vector_bridge`.
     pub pen: ph2d_vec_edit::PenTool,
 
+    /// ⭐ O que o modo **Edit** tem em mãos (spec/06 F3 ▸ Vector) — fora da `VecScene`, que entra
+    /// no undo. Escrito só pela [`crate::vector_mode::Family`].
+    pub edit: crate::vector_mode::EditTarget,
+
     /// The tool's current draw-mode + shape parameters, mirrored each frame from
     /// the `VectorTool` (the input dispatch can't downcast — that lives in the
     /// allowlisted bridge). Decides pen vs shape routing + sizes the shapes.

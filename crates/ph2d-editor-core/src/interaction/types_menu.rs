@@ -74,8 +74,8 @@ pub enum ContextMenuKind {
     /// ([`crate::screens::hero::menu_bar::MENUS`]).
     ///
     /// ⚠️ **Quase toda linha destes menus leva um id que já existia** — a barra é
-    /// **realojamento**, não construção: o *Save* é o `CTX_MENU_SAVE` do `io_menu`, o *Vector* é
-    /// o `TOPBAR_VECTOR` que o pill levava. ⇒ nenhum handler novo para eles, e nenhuma segunda
+    /// **realojamento**, não construção: o *Save* é o `CTX_MENU_SAVE` do `io_menu`, o *Motion
+    /// Nodes* é o `TOPBAR_MOTION` que o pill levava. ⇒ nenhum handler novo para eles, e nenhuma segunda
     /// tabela de verbos a divergir da primeira.
     MenuBarFile,
     /// Ver [`Self::MenuBarFile`].

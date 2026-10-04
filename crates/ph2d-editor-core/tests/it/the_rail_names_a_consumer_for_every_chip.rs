@@ -116,6 +116,29 @@ const RAIL_CONSUMERS: &[Row] = &[
     // `EditorAction::ToolPanelEvent(PanelEvent::SelectOption(..))`, que o shell drena e entrega à
     // ferramenta. ⭐ **É o contra-exemplo que dá sentido a esta tabela:** aqui o clique SAI do
     // chrome e vira um efeito; nos quatro verbos de transformação ele parava na própria luz.
+    // ── As ferramentas de CRIAR forma vetorial (spec/06 F3 ▸ Vector) ──────────────────────────
+    //
+    // O clique deixa o id no canal de pick; quem o lê e o põe na mão como `DrawMode` é o vetor.
+    (
+        "VECTOR_RAIL_PEN",
+        || ids::VECTOR_RAIL_PEN,
+        Fate::ReadBy("crates/ph2d-app-vec/src/rail.rs"),
+    ),
+    (
+        "VECTOR_RAIL_PENCIL",
+        || ids::VECTOR_RAIL_PENCIL,
+        Fate::ReadBy("crates/ph2d-app-vec/src/rail.rs"),
+    ),
+    (
+        "VECTOR_RAIL_SHAPE",
+        || ids::VECTOR_RAIL_SHAPE,
+        Fate::ReadBy("crates/ph2d-app-vec/src/rail.rs"),
+    ),
+    (
+        "VECTOR_RAIL_TEXT",
+        || ids::VECTOR_RAIL_TEXT,
+        Fate::ReadBy("crates/ph2d-app-vec/src/rail.rs"),
+    ),
     (
         "PAINTER_RAIL_BRUSH",
         || ids::PAINTER_RAIL_BRUSH,

@@ -194,6 +194,7 @@ pub fn populate(store: &mut WidgetStore) {
     // a família inteira, e quem corta é quem pinta.
     .chain((0..ids::MAX_AREA_MENUS).map(ids::area_menu_button))
     .chain(crate::object_mode::ObjectMode::ALL.map(crate::object_mode::ObjectMode::row_id))
+    .chain(ids::VECTOR_RAIL_TOOL_IDS)
     {
         store.register(
             id,
@@ -281,6 +282,10 @@ fn left_rail_chip_name(id: NodeId) -> Option<&'static str> {
         return Some(label.tr());
     }
     if let Some((_, label, ..)) = PAINTER_MASK_SUBS.iter().find(|(sid, ..)| *sid == id) {
+        return Some(label.tr());
+    }
+    let vector = super::chrome::RAIL_VECTOR_TOOLS;
+    if let Some((_, label, ..)) = vector.iter().find(|(vid, ..)| *vid == id) {
         return Some(label.tr());
     }
     Some(match id {
@@ -443,7 +448,8 @@ pub fn tool_section(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEn
                 TextKey::new("chrome.rail.sub.pivot"),
             ),
         ];
-        for tool in entries {
+        // ⭐ E as de CRIAR forma vetorial (spec/06 F3 ▸ Vector): criar um objecto é do modo Object.
+        for tool in entries.into_iter().chain(super::chrome::RAIL_VECTOR_TOOLS) {
             rail_entries.push(tool_entry(store, tool));
         }
     }

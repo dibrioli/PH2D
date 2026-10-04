@@ -87,13 +87,8 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_AUDIO_EDITOR,
             TopBarCluster::single(tr("chrome.topbar.pill.wave"), IconId::Audio),
         ),
-        // Vector drawing tool — the single `vector_tools` pill (ADR-0108
-        // cutover). Click activates it via `vector_toggle::apply` →
-        // `EditorAction::ActivateTool { tool_id: "vector" }`.
-        (
-            ids::TOPBAR_VECTOR,
-            TopBarCluster::single(tr("chrome.topbar.pill.vector"), IconId::Vector),
-        ),
+        // ⚠️ O pill VECTOR saiu (spec/06 F3): editar uma forma é o modo Edit dela, e as
+        // ferramentas de criar moram no trilho da esquerda, em Object.
         // Motion Nodes tool — the single `motion_tools` pill (Motion Nodes M0).
         // Click activates it via `motion_toggle::apply` →
         // `EditorAction::ActivateTool { tool_id: "motion" }`.

@@ -4,7 +4,7 @@
 //! *Ficheiro* que inventasse um `MENUBAR_SAVE` teria um segundo id para o verbo que o
 //! `CTX_MENU_SAVE` já é — e dois ids para um verbo são duas coisas a apodrecer em separado. A
 //! barra **realoja** os verbos que já existem (D2, `docs/UI_New_and_Simple/00_DECISOES_DO_ENIO.md`):
-//! a linha *Save* leva o id do `io_menu`, a linha *Vector* leva o `TOPBAR_VECTOR` que o pill
+//! a linha *Save* leva o id do `io_menu`, a linha *Motion Nodes* leva o `TOPBAR_MOTION` que o pill
 //! levava, e o despacho é o mesmo de sempre.
 //!
 //! ⇒ o que nasce aqui é só o que **não existia**: os quatro títulos, e as três linhas cujo verbo

@@ -134,7 +134,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.inspector" => "Inspector",
         "chrome.menu.rulers" => "Rulers",
         "chrome.menu.theme" => "Theme\u{2026}",
-        "chrome.menu.vector" => "Vector",
         "chrome.menu.motion_nodes" => "Motion Nodes",
         "chrome.menu.physics" => "Physics",
         "chrome.menu.tags" => "Tags",

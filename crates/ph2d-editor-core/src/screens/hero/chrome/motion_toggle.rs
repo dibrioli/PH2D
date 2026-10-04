@@ -7,7 +7,7 @@
 //!
 //! Central wiring: `ids::TOPBAR_MOTION` (ids/chrome/topbar.rs) + the pill in
 //! `screens/hero/fixture.rs` (`IconId::MotionNodes`) + registration in
-//! `topbar/mod.rs::populate`. Mirror of `chrome::vector_toggle`.
+//! `topbar/mod.rs::populate`.
 
 use crate::action_bus::EditorAction;
 use crate::ids;

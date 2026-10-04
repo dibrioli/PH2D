@@ -665,7 +665,7 @@ fn clicking_a_toggle_row_moves_its_mark() {
 
 /// ⛔⛔⛔ **O RAMO *cancelar* dos três activadores de ferramenta VOLTOU A EXISTIR.**
 ///
-/// `vector_toggle`/`motion_toggle` escolhem entre `ActivateTool` e `CancelActiveTool`
+/// O `motion_toggle` (e o `vector_toggle`, até o pill sair) escolhe entre `ActivateTool` e `CancelActiveTool`
 /// lendo *«a minha ferramenta está activa?»*. Enquanto a pergunta era `store.button_state(id)` —
 /// que **ninguém escrevia** — a resposta era sempre *não*: o segundo clique **reactivava**, e o
 /// artista não tinha como desligar o módulo pelo menu.
@@ -679,10 +679,8 @@ fn clicking_a_toggle_row_moves_its_mark() {
 #[test]
 fn the_tool_toggles_can_cancel_and_not_only_activate() {
     use ph2d_editor_core::action_bus::EditorAction;
-    for (id, tool) in [
-        (ids::TOPBAR_VECTOR, "vector"),
-        (ids::TOPBAR_MOTION, "motion"),
-    ] {
+    // ⚠️ O `vector_toggle` saiu com o pill VECTOR (spec/06 F3): o Motion é o activador que fica.
+    for (id, tool) in [(ids::TOPBAR_MOTION, "motion")] {
         // (a) desligada ⇒ o clique ACTIVA.
         let mut h = hero();
         h.image_edit.active_tool_id = None;

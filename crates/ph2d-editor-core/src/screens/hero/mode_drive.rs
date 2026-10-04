@@ -49,6 +49,50 @@ pub trait ModeFamily {
     fn owner_of(&mut self, _bits: u64) -> Option<u64> {
         None
     }
+    /// ⭐ **Multi-objecto** (o Edit do Blender): `true` = entrar em `mode` leva junto os objectos
+    /// do MESMO tipo seleccionados — chegam a [`Self::enter_with`], voltam como [`Self::parts`], e
+    /// sair devolve-os à selecção. `false` = a selecção colapsa no activo.
+    fn joins(&self, _mode: ObjectMode) -> bool {
+        false
+    }
+    /// Abre o módulo sobre `entity` e os `joined` (só chamada quando [`Self::joins`]).
+    fn enter_with(
+        &mut self,
+        mode: ObjectMode,
+        entity: u64,
+        _joined: &[u64],
+        tools: &mut ToolRegistry,
+    ) -> bool {
+        self.enter(mode, entity, tools)
+    }
+}
+
+/// Os objectos seleccionados do tipo de `active`, sem ele — os que um modo que
+/// [junta](ModeFamily::joins) leva consigo.
+fn same_kind_selected(
+    hero: &HeroScreen,
+    kind_of: &dyn Fn(u64) -> ObjectKind,
+    active: u64,
+) -> Vec<u64> {
+    let kind = kind_of(active);
+    let selected = hero
+        .gizmo
+        .selection
+        .iter()
+        .chain(&hero.gizmo.extra_selection);
+    selected
+        .copied()
+        .filter(|b| *b != active && kind_of(*b) == kind)
+        .collect()
+}
+
+/// Deixa seleccionados `joined` e, por último (o activo do Blender), `active`.
+fn select_together(hero: &mut HeroScreen, active: u64, joined: &[u64]) {
+    hero.gizmo
+        .replace_selection(joined.first().copied().or(Some(active)));
+    for b in joined.iter().skip(1).chain([&active]) {
+        hero.gizmo.add_to_selection(*b);
+    }
 }
 
 fn family<'a>(
@@ -122,7 +166,13 @@ pub fn drive(
     // 0. Um objecto que nasceu num modo pede-o (só sem pedido do artista neste quadro).
     let request = request.or_else(|| {
         let (bits, mode) = families.iter_mut().find_map(|f| f.wants(tools))?;
-        hero.gizmo.replace_selection(Some(bits));
+        let joins = family(families, kind_of(bits), mode).is_some_and(|f| f.joins(mode));
+        let joined = if joins {
+            same_kind_selected(hero, kind_of, bits)
+        } else {
+            Vec::new()
+        };
+        select_together(hero, bits, &joined);
         Some(ModeRequest::Enter(mode))
     });
     // 1. O activo e os modos que o TIPO dele declara.
@@ -152,9 +202,15 @@ pub fn drive(
                     && let Some(f) = family(families, kind_of(bits), m)
                 {
                     // ⚠️ Colapsar ANTES de abrir: o módulo lê a selecção ao abrir (o Sculpt do
-                    // Blender toma só o activo, e o Painter o documento seleccionado).
-                    hero.gizmo.replace_selection(Some(bits));
-                    if f.enter(m, bits, tools) {
+                    // Blender toma só o activo, e o Painter o documento seleccionado) — salvo os
+                    // do mesmo tipo, num modo que os junta.
+                    let joined = if f.joins(m) {
+                        same_kind_selected(hero, kind_of, bits)
+                    } else {
+                        Vec::new()
+                    };
+                    select_together(hero, bits, &joined);
+                    if f.enter_with(m, bits, &joined, tools) {
                         hero.gizmo.mode.enter(bits, m);
                         hero.gizmo.mode.publish_parts(f.parts(bits));
                         let label = m.label_key().tr();
@@ -168,10 +224,22 @@ pub fn drive(
             Step::Leave => {
                 // Sair de um modo de partes devolve a selecção ao objecto inteiro (o `Tab` do
                 // Blender): uma parte seleccionada em Object não teria o modo de volta.
+                // Num modo que JUNTA, as partes são os objectos que entraram com ele: voltam todos.
                 let whole = hero.gizmo.mode.parts().and(hero.gizmo.mode.locked_entity());
+                let joined = hero.gizmo.mode.active().and_then(|a| {
+                    let f = family(families, kind_of(a.entity), a.mode)?;
+                    let parts = f.joins(a.mode).then(|| hero.gizmo.mode.parts())??;
+                    Some(
+                        parts
+                            .iter()
+                            .copied()
+                            .filter(|b| *b != a.entity)
+                            .collect::<Vec<_>>(),
+                    )
+                });
                 leave_current(families, kind_of, tools, hero);
-                if whole.is_some() {
-                    hero.gizmo.replace_selection(whole);
+                if let Some(e) = whole {
+                    select_together(hero, e, joined.as_deref().unwrap_or_default());
                 }
                 toasts.push(Toast::info(ph2d_i18n::tr("object_mode.left")));
             }

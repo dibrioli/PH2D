@@ -1435,6 +1435,12 @@ célula, o regime, a soma dos passes, ms; as duas corridas de cada célula iguai
   escrita é UM fio por cópia (`72` fios). O que fica é a topologia da escrita (um fio por troço, com o
   prefixo do arco), não os registos — item próprio, não deste fecho. As densas `1,48` contra `3,25`
   (`2,2×`) e as conformes `0,66` contra `0,85` ganham.
+- **No PRODUTO, a cena do report** (`=127` densa tracejada, `16 384` cópias, `1930 × 1040`, rota
+  `HIBRIDO` lida no `[motion-route]`, `mede_formas_na_placa.sh` com `PH2D_TRACO_ESTICADO_TRACEJADO=1`,
+  binário de `40a2cbc1a`): com a placa **`16,6 ms` (`60 fps`) nas duas placas**; sem ela (o Vello, que
+  corta o tracejado na CPU) `80`–`84 ms` (`12 fps`). Células `114 688` = **`43 MB`**, a mesma criação de
+  antes. ⇒ a «perda para o Vello» da sonda é contra o Vello com o tracejado JÁ cortado e fora do relógio;
+  no produto a alternativa é `5×` mais lenta.
 
 **Mutação `6` de `8`** ([arnês](ferramentas/mutacao_a_variante_da_placa_2026-10-03.py), pré-voo `8/8`,
 corrida LIMPA `17` verdes): nenhuma cópia pede a completa · a completa sempre (só o gate novo a vê) · o

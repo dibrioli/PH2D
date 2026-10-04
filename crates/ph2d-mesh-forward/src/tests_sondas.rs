@@ -90,6 +90,42 @@ fn as_capturas_so_se_refazem_quando_a_cena_muda() {
     assert_eq!(fw.sondas_refeitas(), base + 3, "subir uma malha refaz");
 }
 
+/// ⭐⭐ **Girar PERTO não refaz** — a câmara junto da caixa, com a cena cortada pelo ecrã: o mapa de
+/// sombra da VISTA enquadra-se pelo que se vê e muda a cada giro; o das capturas é o da cena inteira.
+/// (A prova de mutação de 04/10: enquadrar as capturas pela câmara sobrevivia com a cena toda à vista.)
+#[test]
+#[ignore = "precisa de aparelho"]
+fn girar_perto_nao_refaz_as_capturas() {
+    let Some(mut fw) = desenhista() else {
+        eprintln!("sem aparelho — o gate não corre aqui");
+        return;
+    };
+    if !fw.tem_brilho() {
+        return;
+    }
+    let mats = [fosca(), metal(0.0), fosca()];
+    let o = objs(0.0);
+    let perto = |fw: &mut Forward, giro: f32| {
+        let de = [
+            0.6 * giro.cos() - giro.sin(),
+            0.4,
+            0.6 * giro.sin() + giro.cos(),
+        ];
+        let mut c = cena(&o, &mats, camera_do_blender(de, PECAS[0].0, 0.15));
+        c.tamanho = (LADO, LADO);
+        c.chao = Some(0.0);
+        c.caixa_tan = Some(0.47);
+        fw.quadro(&c).expect("quadro")
+    };
+    let a = perto(&mut fw, 0.0);
+    let base = fw.sondas_refeitas();
+    for k in 1..6 {
+        let _ = perto(&mut fw, 0.4 * k as f32);
+    }
+    assert_eq!(fw.sondas_refeitas(), base, "girar perto refez as capturas");
+    assert_eq!(perto(&mut fw, 0.0), a, "a mesma câmara deu outro quadro");
+}
+
 /// ⭐⭐⭐ **O quadro depois das edições é o de um desenhista novo, ao byte** — o mesmo desenhista passa
 /// por outra pose, outro material e outra câmara; o quadro final é o que um desenhista que nasce agora
 /// dá para a mesma cena. Controlo: as capturas existem (refeitas) e mudam a imagem.

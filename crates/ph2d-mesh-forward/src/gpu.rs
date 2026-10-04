@@ -155,8 +155,8 @@ impl Forward {
     /// ⭐ **Quantos pipelines este desenhista já compilou** — fixo desde que nasce: `10` (objeto,
     /// chão, fundo, sombra, cobertura de cima e de baixo, redução, céu do chão e o borrão dele,
     /// codificação) e, onde a placa desenha `Rgba16Float`, `+5` do brilho (objeto, chão e fundo com
-    /// a cena-linear, descer, subir) e `+4` das capturas de reflexo (faces, octaedro, cadeia,
-    /// pré-filtro). Ligar, desligar ou mexer no brilho, trocar de céu, ou refazer capturas, não
+    /// a cena-linear, descer, subir) e `+3` das capturas de reflexo (faces, octaedro, cada
+    /// nível). Ligar, desligar ou mexer no brilho, trocar de céu, ou refazer capturas, não
     /// compila nada.
     #[must_use]
     pub fn pipelines_compilados(&self) -> usize {
@@ -463,7 +463,7 @@ impl Forward {
         let sondas = brilho
             .is_some()
             .then(|| sondas_impl::Sondas::nova(&device, &queue, &modulo, &pl_g0g1, &vertice));
-        let pipelines = if brilho.is_some() { 19 } else { 10 };
+        let pipelines = if brilho.is_some() { 18 } else { 10 };
         let sondas_vazia = device
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("ph2d-mesh-forward sondas vazias"),

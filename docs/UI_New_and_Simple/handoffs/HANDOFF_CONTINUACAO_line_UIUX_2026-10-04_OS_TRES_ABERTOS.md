@@ -10,7 +10,8 @@
 - O objecto vetorial (F3 ▸ Vector refeita) está entregue e com **smoke do dono APROVADO (04/10)**:
   [`HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md`](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md)
   (§5b: os três reports do dono depois do fecho e as curas; §8: as decisões dele sobre a Hierarquia
-  e o duplicar — a última, «a cópia fica no mesmo pai», curada em `987769702`).
+  e o duplicar — a última, «a cópia fica no mesmo pai», curada em `987769702`, **smoke do dono
+  APROVADO**).
 - A linha acumula OITO handoffs de integração (A_ESCALA, O_MENU_ADD, OS_MODOS, O_SCULPT, O_FLIP,
   O_MODEL, O_VETOR, O_OBJECTO_VETORIAL). ⛔ Nada integrado; integrar é só por ordem do dono.
 

@@ -262,7 +262,7 @@ junta em `mode_drive_tests.rs` (M20, o filtro do mesmo tipo ao sair), a REAL em
 - (c) ✅ **Decidido pelo dono (04/10):** (a) e (b) ficam como estão. Duplicar a LINHA de uma forma
   deixa a cópia no MESMO pai, logo a seguir à original (`entities::object::place_beside`, chamado
   em `hierarchy_duplicate.rs`; gate `a_duplicated_shape_stays_beside_its_source`, mutação sangra);
-  duplicar o OBJECTO copia-o inteiro (`duplicate_subtree`).
+  duplicar o OBJECTO copia-o inteiro (`duplicate_subtree`). **Smoke do dono: APROVADO (04/10)** sobre `987769702`.
 - (d) `Ctrl+Tab`; Image ▸ Mask; F4 (layouts); Model em Object não desenha (dos handoffs anteriores).
 
 ## §9 — Perfil do loop (`bash scripts/agent-loop-profile.sh`)

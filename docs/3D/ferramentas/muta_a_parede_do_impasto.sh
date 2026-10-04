@@ -86,9 +86,10 @@ muta "$REN/fonte.rs" \
   'W1 o corpo deixa de pesar a luz: a parede com pouca tinta fica de lado (a orla)'
 
 muta "$REN/fonte.rs" \
-  '    let tinta = fs_core_n(in, t.c.xyz, tinta_relevo_n(in, t.g));' \
-  '    let tinta = fs_core_n(in, t.c.xyz, normalize(mix(in.n_view, tinta_relevo_n(in, t.g), corpo)));' \
-  'W2 o corpo volta a pesar a INCLINAÇÃO (a lei velha, a orla escura)'
+  '    let tinta = fs_core_n(in, t.c.xyz, tinta_relevo_n(in, t.g));
+    return mix(liso, tinta, corpo);' \
+  '    return fs_core_n(in, t.c.xyz, tinta_relevo_n(in, t.g * corpo));' \
+  'W2 o corpo volta a pesar a INCLINAÇÃO (a lei velha exacta, a orla escura)'
 
 # ── A COR ENTRA DESCODIFICADA ────────────────────────────────────────────
 muta "$REN/shaders/mesh.wgsl" \

@@ -166,11 +166,11 @@ pub fn triangulate_pieces(
         if um_so {
             return Some(if estado == 0 { FORA } else { 0 });
         }
-        match owners(a as u32, b as u32) {
-            &[k] if estado == k => Some(FORA),
-            &[k] if estado == FORA => Some(k),
-            &[k, j] if k != j && estado == k => Some(j),
-            &[k, j] if k != j && estado == j => Some(k),
+        match *owners(a as u32, b as u32) {
+            [k] if estado == k => Some(FORA),
+            [k] if estado == FORA => Some(k),
+            [k, j] if k != j && estado == k => Some(j),
+            [k, j] if k != j && estado == j => Some(k),
             _ => None,
         }
     };

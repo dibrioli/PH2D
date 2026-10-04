@@ -1230,3 +1230,64 @@ recusa medida do §14.1 (a procura paga as costuras até `1,8×` fora de `15`/`2
    como ORÁCULO dos gates. A triangulação (`spade`) e o Clipper NÃO mudam: trocar um deles muda a malha.
 2. **O custo:** o mosaico refeito **≤ `0,17 ms`** sem lamas e **≤ `0,40`** com lamas. Se depois da 2.ª tentativa
    ficar acima de `0,20` / `0,45`, o que não chegou fica escrito como o piso das duas bibliotecas.
+
+### §20.3 — O que mudou (a mesma malha, ao bit)
+
+| fase | antes | agora |
+|---|---|---|
+| a fusão em convexos | um `BTreeMap` das semi-arestas; `try_merge` copiava os dois anéis antes de decidir; um `Vec` por triângulo | as semi-arestas num vector ORDENADO (numa repetida vale a do último triângulo — o `insert` de antes); decide antes de copiar; um anel só ganha memória quando funde |
+| a numeração e as restrições | um `BTreeMap<P, u32>` e um `BTreeMap<aresta, Vec<pedaço>>` | duas ordenações: cada ponto pela 1.ª aparição, cada restrição pela 1.ª aparição e com o sentido dela, e os donos de uma aresta por `partition_point` |
+| as junções em T | um `BTreeMap` de listas de baldes, cada uma com `contains` | os pontos únicos numa grelha contígua (a ordem num balde não conta: os candidatos ordenam-se por `(t, p)`) |
+| as assinaturas | FNV-1a byte a byte; a caixa de cada obstáculo com uma lista nova | por palavra, cada uma pelo finalizador do `splitmix64` (sem ele, dois sinais trocados anulavam-se — gate); a caixa sem lista |
+
+### §20.4 — As medições (`--release`, o melhor de 8 alternado antes/depois, cronómetros provisórios)
+
+| | antes | **W12** |
+|---|---|---|
+| o mosaico refeito, sem lamas | `0,217` | **`0,190 ms`** (`−12 %`) |
+| o mosaico refeito, com 100 lamas | `0,503` | **`0,446`** (`−11 %`) |
+| — a fusão | `0,051 · 0,084` | `0,031 · 0,053` |
+| — limpar, junções em T, numerar | `0,015 · 0,067` | `0,011 · 0,041` |
+| as assinaturas e os baldes | `0,072 · 0,086` | `0,046 · 0,057` |
+| **uma porta** | `0,547 · 0,929` | **`0,486 · 0,824`** (`−11 %`) |
+
+E sem cronómetros, `medir_custo` `SO_GRANDE=1` alternado (load `22–24`, os números inflados mas a razão justa):
+uma porta `1,16–1,26 → 1,06–1,12 ms` sem lamas e `1,85–1,96 → 1,71–1,78` com lamas; a frio com lamas
+`58,9–63,3 → 54,1–57,8`.
+
+⛔ **O kill-criterion não foi atingido** (`≤ 0,17 · ≤ 0,40`), e ficou dentro da 2.ª banda (`≤ 0,20 · ≤ 0,45`). O
+que resta do mosaico é o **PISO das duas bibliotecas**: sem lamas, `spade` `0,067` + Clipper `0,060` + o corte
+`0,011` + a paridade `0,009` = `0,147` de `0,190`; com lamas, mais `0,156` do Clipper nas áreas. Trocar qualquer
+delas muda a malha (o kill-criterion 1).
+
+### §20.5 — ⛔ Recusas MEDIDAS
+
+| recusado | medição |
+|---|---|
+| mosaicos mais pequenos | §14.1: a procura paga as costuras até `1,8×` fora de `15`/`20 m` |
+| assinatura por palavra SEM mistura | `(1, 2)` e `(−1, −2)` davam a mesma (o bit do sinal anula-se) — o mosaico não se refazia (gate `a_assinatura_distingue_os_sinais_trocados`) |
+| a união e a diferença numa só chamada do Clipper, ou cortar o chão à caixa de uma área antes de a intersectar | a geometria seria a mesma, a malha não (a ordem e o início dos anéis) — fora do kill-criterion 1 |
+
+### §20.6 — A prova
+
+Gates: `a_triangulacao_e_a_fusao_de_agora_sao_as_de_antes_ao_bit` (as funções de antes, verbatim, em
+`triangulate_oraculo.rs`, sobre os pedaços REAIS de 36 cenas — caixas rodadas, círculos, cápsulas, três raios,
+os dois cantos, lamas sobrepostas; CONTROLOS medidos: `30` cenas com vários pedaços, `10` pontos das junções em
+T, `2 069` arestas com dois donos, `10 259` fusões de `23 781` triângulos) · `a_assinatura_distingue_os_sinais_trocados`.
+A impressão digital da sonda (`71c5f70e3d312ee3`) igual antes, a meio e depois. Para isso a construção inteira
+expõe `chao_e_areas` e `pedacos` (`pub(crate)`), a mesma porta que `build_with_areas` e `poligonos` usam.
+
+Mutação **10 / 10** a sangrar, zero defeitos de arnês
+([`mutacao_navegacao_w12_2026-10-04.py`](ferramentas/mutacao_navegacao_w12_2026-10-04.py)); duas EQUIVALENTES saíram
+com o porquê: o par de uma semi-aresta sem conferir o oposto (o `try_merge` recusa o par errado), e a ordem
+das restrições (o `spade` 2.15 não depende dela em nenhuma fixtura — a ordenação fica, pela ordem de antes).
+⚠️ A 1.ª corrida do fecho acusou `no_std_transcendental_reaches_the_deterministic_hash`: a fixtura do oráculo
+rodava as caixas com `cos`/`sin` do `std`, e a `ph2d-navmesh` inteira está no caminho do hash (a varredura lê o
+FONTE, testes incluídos). A rotação passou a uma direcção ao calhas normalizada por `sqrt`; as populações foram
+re-medidas e a mutação re-corrida sobre o código final (`10 / 10`).
+
+### §20.7 — ⏳ O que fica
+
+- **A montagem** (`MalhaPorBlocos::monta`, `0,24 ms` sem lamas) é agora o MAIOR pedaço de uma porta, e o que
+  resta O(malha) nela só desce com ids fixos (recusados no §18.6 enquanto ninguém os consumir).
+- O piso das bibliotecas no mosaico (`spade` + Clipper, `0,15 ms`; `+0,16` com lamas).

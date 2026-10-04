@@ -339,7 +339,7 @@ fn a_triangulacao_e_a_fusao_de_agora_sao_as_de_antes_ao_bit() {
     let (mut varios, mut inseridos, mut dois_donos, mut fundidos, mut triangulos) =
         (0usize, 0usize, 0usize, 0usize, 0usize);
     for caso in 0..36 {
-        let mut forma = |r: &mut dyn FnMut() -> f64, k: usize| {
+        let forma = |r: &mut dyn FnMut() -> f64, k: usize| {
             let c = [r() * 30.0, r() * 20.0];
             match k % 3 {
                 0 => Shape::Circle {
@@ -347,8 +347,11 @@ fn a_triangulacao_e_a_fusao_de_agora_sao_as_de_antes_ao_bit() {
                     radius: 0.2 + r() * 1.5,
                 },
                 1 => {
-                    let (hx, hy, a) = (0.2 + r() * 1.8, 0.2 + r() * 1.8, r() * 3.0);
-                    let (co, si) = (a.cos(), a.sin());
+                    // A rotação por uma direcção ao calhas (só `sqrt`: a crate está no caminho do hash).
+                    let (hx, hy) = (0.2 + r() * 1.8, 0.2 + r() * 1.8);
+                    let (a, b) = (r() * 2.0 - 1.0, r() * 2.0 - 1.0);
+                    let l = (a * a + b * b).sqrt().max(1e-6);
+                    let (co, si) = (a / l, b / l);
                     Shape::Convex(
                         [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]]
                             .iter()
@@ -437,9 +440,9 @@ fn a_triangulacao_e_a_fusao_de_agora_sao_as_de_antes_ao_bit() {
         );
         fundidos += tris.len() - fusao.0.len();
     }
-    // CONTROLOS de população (medidos: 30 · 15 · 2 027 · 10 228 de 23 475).
+    // CONTROLOS de população (medidos: 30 · 10 · 2 069 · 10 259 de 23 781).
     assert!(varios >= 25, "só {varios} casos com vários pedaços");
-    assert!(inseridos >= 10, "só {inseridos} pontos das junções em T");
+    assert!(inseridos >= 6, "só {inseridos} pontos das junções em T");
     assert!(
         dois_donos >= 1_500,
         "só {dois_donos} arestas com dois donos"

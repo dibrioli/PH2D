@@ -19,8 +19,10 @@
 //!   pesquisa, medida no próprio Godot.
 
 pub mod agent;
+pub mod blocos;
 pub mod cost;
 pub mod geom;
+mod grelha;
 pub mod link;
 pub mod mesh;
 pub mod polyanya;
@@ -30,6 +32,7 @@ pub mod refresh;
 pub mod oracle;
 
 pub use agent::{AgentConfig, AgentRuntime, Event, Status, Steer};
+pub use blocos::{MalhaPorBlocos, Peca};
 pub use geom::V2;
 pub use link::{Hop, Link, Query};
 pub use mesh::{MeshError, NavMesh, Poly};

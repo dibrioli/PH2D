@@ -965,3 +965,41 @@ De bónus, só é «partido» quem a mudança partiu: o último servido passa de
 | **+ só os troços que tocam a mudança** | **`5,7 · 6,5 · 10,1`** (load `5–8`) |
 
 Mutação: M17–M20 sangram — a prova da W9 fica em **19 / 19**.
+
+## §18 — W10 (2026-10-03): a montagem proporcional ao mosaico tocado
+
+### §18.1 — A medição que abre (`medir_custo` `SO_GRANDE=1`, `--release`, load `0,7`)
+
+Uma porta (sem lamas) = **`2,66 ms`**, por fase (cronómetros provisórios, o mínimo de 5):
+
+| o mosaico refeito | juntar (`monta`) | validar | vértice→polígonos | arestas que saem | sobreposição | vizinhança | ilhas | grelha |
+|---|---|---|---|---|---|---|---|---|
+| `0,68` | `0,32` | `0,18` | `0,09` | `0,09` | `0,36` | `0,32` | `0,15` | `0,44` |
+
+A montagem é `1,95` dos `2,66 ms`, e TODA ela é O(malha). E a ponte, a cada mudança, refaz ainda a grelha das
+paredes do desvio: **`0,53 ms`** (`Walls::from_walkable_walls`, `24 462` paredes, `13 671` polígonos).
+
+### §18.2 — As perguntas que o briefing mandava fazer antes
+
+| pergunta | resposta (medida / lida no código) |
+|---|---|
+| a porta mudar a malha DUAS vezes é a alavanca mais barata? | ⛔ não: é a LEI do §14.2 — um cinemático só é obstáculo PARADO (a velocidade do solver); andar e parar são duas geometrias diferentes, e o relógio de espera já está recusado |
+| ids FIXOS por mosaico (o Detour: polígono = mosaico + índice local, com folga) servem a alguém? | ⛔ não: NINGUÉM guarda um id de polígono através de uma mudança — o agente guarda o caminho em PONTOS e esquece-o (`forget_path`), a dominância e a procura recomeçam por consulta. Os ids fixos só trariam BURACOS na numeração a todos os consumidores que varrem `0..poly_count` |
+
+### §18.3 — O desenho: numeração densa e canónica, montada por BLOCOS com cache
+
+A malha montada fica **a mesma de hoje, ao bit** (a mesma numeração de vértices — o 1.º mosaico pela ordem da
+chave que tem o ponto —, os mesmos anéis cosidos, vizinhos, gémeos, cantos, ilhas, paredes); muda QUEM a
+calcula. `ph2d_nav::MalhaPorBlocos` (a porta da malha por mosaicos, dentro da `ph2d-nav`, que valida tudo o que
+recebe) guarda por mosaico três camadas:
+
+| camada | depende de | o quê |
+|---|---|---|
+| L1 | só a peça do mosaico | a grelha de localização DO MOSAICO, a caixa, os vértices de cada lado |
+| L2 | L1 dele e dos 8 vizinhos | o «dono» de cada ponto de costura, os anéis cosidos (as junções em T), a validação, a vizinhança interna, as componentes |
+| L3 | L2 dos dois lados de uma costura | a vizinhança através da costura (e a sobreposição entre mosaicos) |
+
+e a montagem final são só passagens lineares (numerar, traduzir, paredes, cantos, vértice→polígonos, ilhas por
+união das componentes). A localização passa a uma grelha POR MOSAICO (a resposta de `locate_all` é a mesma — a
+grelha nunca foi observável). O `monta` antigo fica como ORÁCULO dos gates: montagem por blocos = montagem
+inteira, campo a campo.

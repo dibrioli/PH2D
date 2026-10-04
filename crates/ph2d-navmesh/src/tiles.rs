@@ -19,9 +19,11 @@
 //!    aresta ORIGINAL (nunca de um pedaço já cortado por outra linha), com arredondamento inteiro ⇒
 //!    os dois lados escrevem o MESMO ponto. ⚠️ A ORDEM dos extremos não entra: os dois mosaicos
 //!    cortam o MESMO anel no mesmo sentido (a prova de mutação da W6 mostrou-a equivalente, e saiu).
-//! 2. **A montagem repara as junções em T** ([`monta`]): todo vértice que cai numa linha de costura
-//!    entra nas arestas de costura que o atravessam. Um polígono convexo com um ponto colinear a mais
-//!    continua convexo (a `ph2d-nav` aceita os `180°`), e a vizinhança casa aresta a aresta.
+//! 2. **A montagem repara as junções em T** ([`ph2d_nav::MalhaPorBlocos`], W10 — só o que depende dos
+//!    mosaicos refeitos): todo vértice que cai numa linha de costura entra nas arestas de costura que o
+//!    atravessam. Um polígono convexo com um ponto colinear a mais continua convexo (a `ph2d-nav`
+//!    aceita os `180°`), e a vizinhança casa aresta a aresta. A montagem INTEIRA de antes é o oráculo
+//!    dos gates (`tiles_tests.rs`).
 //!
 //! # ⚠️ Determinismo
 //!
@@ -30,10 +32,10 @@
 //! bit, que uma construção a frio da mesma entrada (gate `mosaicos::incremental_e_a_frio_dao_o_mesmo`).
 
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use clipper2_rust::{FillRule, Path64, Paths64, Point64, difference_64, union_subjects_64};
-use ph2d_nav::{NavMesh, V2};
+use ph2d_nav::{MalhaPorBlocos, NavMesh, Peca, V2};
 
 use crate::lattice::{P, SCALE, to_lattice, to_world};
 use crate::{Area, Params, Shape, inflate};
@@ -75,6 +77,8 @@ pub struct TiledMesh {
     /// A assinatura de TUDO o que entrou na última actualização (o atalho de nada mudou).
     sig: Option<u64>,
     mosaicos: BTreeMap<(i64, i64), Mosaico>,
+    /// (W10) A montagem por blocos: refaz só o que depende dos mosaicos que mudaram (plano 30 §18).
+    blocos: MalhaPorBlocos,
     mesh: NavMesh,
     stats: TileStats,
     /// (W9) Os mosaicos refeitos na última actualização (`None` = a malha inteira pode ter mudado).
@@ -91,6 +95,7 @@ impl TiledMesh {
             lado: ((tile_m * SCALE).round() as i64).max(1),
             sig: None,
             mosaicos: BTreeMap::new(),
+            blocos: MalhaPorBlocos::new(),
             mesh: vazia(),
             stats: TileStats::default(),
             refeitos: None,
@@ -225,6 +230,7 @@ impl TiledMesh {
                             let ars: Vec<&Area> = quais.iter().map(|&i| &areas[i]).collect();
                             let (m, falhou) = self.constroi(sig, &anel, (x, y), &obs, &ars);
                             stats.failed += usize::from(falhou);
+                            self.blocos.poe((x, y), self.peca((x, y), &m));
                             m
                         }
                     };
@@ -235,9 +241,12 @@ impl TiledMesh {
         // O que sobrou do mapa antigo saiu da região: também muda a malha.
         let mudou = stats.rebuilt > 0 || !self.mosaicos.is_empty();
         self.refeitos = (!primeira && self.mosaicos.is_empty()).then_some(refeitos);
+        for &k in self.mosaicos.keys() {
+            self.blocos.tira(k);
+        }
         self.mosaicos = novos;
         if mudou {
-            self.mesh = monta(&self.mosaicos, self.lado);
+            self.mesh = self.blocos.monta().unwrap_or_else(|_| vazia());
         }
         self.stats = stats;
         mudou
@@ -246,6 +255,27 @@ impl TiledMesh {
     /// O mosaico que contém o ponto da grelha `(x, y)`.
     fn indice(&self, x: i64, y: i64) -> (i64, i64) {
         (x.div_euclid(self.lado), y.div_euclid(self.lado))
+    }
+
+    /// A peça do mosaico `(x, y)` para a montagem: o rectângulo e os pontos em metros (EXACTOS: os da
+    /// grelha inteira, logo os lados de dois vizinhos coincidem ao bit).
+    fn peca(&self, (x, y): (i64, i64), m: &Mosaico) -> Peca {
+        let lo = (x * self.lado, y * self.lado);
+        let mut ring_off = Vec::with_capacity(m.polys.len() + 1);
+        ring_off.push(0u32);
+        let mut ring = Vec::with_capacity(m.polys.iter().map(Vec::len).sum());
+        for p in &m.polys {
+            ring.extend_from_slice(p);
+            ring_off.push(ring.len() as u32);
+        }
+        Peca {
+            lo: to_world(lo),
+            hi: to_world((lo.0 + self.lado, lo.1 + self.lado)),
+            verts: m.pts.iter().map(|&p| to_world(p)).collect(),
+            ring_off,
+            ring,
+            area: m.ids.clone(),
+        }
     }
 
     /// Constrói um mosaico. `true` na segunda posição = a triangulação recusou (mosaico vazio).
@@ -308,81 +338,6 @@ impl TiledMesh {
                 true,
             ),
         }
-    }
-}
-
-/// ⭐⭐ **A montagem**: os vértices de todos os mosaicos fundidos por posição na grelha, as junções em
-/// T das costuras reparadas, e a [`NavMesh`] pela porta única dela.
-fn monta(mosaicos: &BTreeMap<(i64, i64), Mosaico>, lado: i64) -> NavMesh {
-    // ⚠️ Só um vértice NUMA LINHA DE COSTURA (`x = k·lado` ou `y = k·lado`) pode ser de dois
-    // mosaicos: os outros entram direitos, e só estes passam pelo índice (medido: a montagem é a
-    // maior parte de uma mudança, e o índice de todos os vértices era um terço dela).
-    let mut indice: BTreeMap<P, u32> = BTreeMap::new();
-    let mut verticais: BTreeMap<i64, BTreeSet<i64>> = BTreeMap::new();
-    let mut horizontais: BTreeMap<i64, BTreeSet<i64>> = BTreeMap::new();
-    let mut pts: Vec<P> = Vec::new();
-    // Os anéis CONTÍGUOS, como a `NavMesh` os guarda (nenhuma lista por polígono — W9).
-    let mut cru_off: Vec<u32> = vec![0];
-    let mut cru: Vec<u32> = Vec::new();
-    let mut ids: Vec<u16> = Vec::new();
-    let mut mapa: Vec<u32> = Vec::new();
-    for m in mosaicos.values() {
-        ids.extend_from_slice(&m.ids);
-        mapa.clear();
-        mapa.extend(m.pts.iter().map(|&p| {
-            let (vx, hy) = (p.0.rem_euclid(lado) == 0, p.1.rem_euclid(lado) == 0);
-            if !(vx || hy) {
-                pts.push(p);
-                return (pts.len() - 1) as u32;
-            }
-            *indice.entry(p).or_insert_with(|| {
-                if vx {
-                    verticais.entry(p.0).or_default().insert(p.1);
-                }
-                if hy {
-                    horizontais.entry(p.1).or_default().insert(p.0);
-                }
-                pts.push(p);
-                (pts.len() - 1) as u32
-            })
-        }));
-        for p in &m.polys {
-            cru.extend(p.iter().map(|&v| mapa[v as usize]));
-            cru_off.push(cru.len() as u32);
-        }
-    }
-    let mut ring_off: Vec<u32> = Vec::with_capacity(cru_off.len());
-    ring_off.push(0);
-    let mut ring: Vec<u32> = Vec::with_capacity(cru.len());
-    for w in cru_off.windows(2) {
-        let p = &cru[w[0] as usize..w[1] as usize];
-        let n = p.len();
-        for i in 0..n {
-            let (a, b) = (pts[p[i] as usize], pts[p[(i + 1) % n] as usize]);
-            ring.push(p[i]);
-            if a.0 == b.0 && a.0.rem_euclid(lado) == 0 {
-                ring.extend(entre(verticais.get(&a.0), a.1, b.1).map(|y| indice[&(a.0, y)]));
-            } else if a.1 == b.1 && a.1.rem_euclid(lado) == 0 {
-                ring.extend(entre(horizontais.get(&a.1), a.0, b.0).map(|x| indice[&(x, a.1)]));
-            }
-        }
-        ring_off.push(ring.len() as u32);
-    }
-    let verts: Vec<V2> = pts.iter().map(|&p| to_world(p)).collect();
-    NavMesh::from_rings(verts, ring_off, ring, ids).unwrap_or_else(|_| vazia())
-}
-
-/// Os valores de `linha` estritamente entre `de` e `para`, pela ordem de `de` para `para`.
-fn entre(linha: Option<&BTreeSet<i64>>, de: i64, para: i64) -> Box<dyn Iterator<Item = i64> + '_> {
-    let Some(l) = linha else {
-        return Box::new(std::iter::empty());
-    };
-    if de < para {
-        Box::new(l.range(de + 1..para).copied())
-    } else if para < de {
-        Box::new(l.range(para + 1..de).rev().copied())
-    } else {
-        Box::new(std::iter::empty())
     }
 }
 

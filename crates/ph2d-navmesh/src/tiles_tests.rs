@@ -1,4 +1,82 @@
+use std::collections::BTreeSet;
+
 use super::*;
+
+/// ⭐ O ORÁCULO da montagem por blocos (W10): a montagem INTEIRA de antes — os vértices de todos os mosaicos fundidos por posição na grelha, as junções em
+/// T das costuras reparadas, e a [`NavMesh`] pela porta única dela.
+fn monta(mosaicos: &BTreeMap<(i64, i64), Mosaico>, lado: i64) -> NavMesh {
+    // ⚠️ Só um vértice NUMA LINHA DE COSTURA (`x = k·lado` ou `y = k·lado`) pode ser de dois
+    // mosaicos: os outros entram direitos, e só estes passam pelo índice (medido: a montagem é a
+    // maior parte de uma mudança, e o índice de todos os vértices era um terço dela).
+    let mut indice: BTreeMap<P, u32> = BTreeMap::new();
+    let mut verticais: BTreeMap<i64, BTreeSet<i64>> = BTreeMap::new();
+    let mut horizontais: BTreeMap<i64, BTreeSet<i64>> = BTreeMap::new();
+    let mut pts: Vec<P> = Vec::new();
+    // Os anéis CONTÍGUOS, como a `NavMesh` os guarda (nenhuma lista por polígono — W9).
+    let mut cru_off: Vec<u32> = vec![0];
+    let mut cru: Vec<u32> = Vec::new();
+    let mut ids: Vec<u16> = Vec::new();
+    let mut mapa: Vec<u32> = Vec::new();
+    for m in mosaicos.values() {
+        ids.extend_from_slice(&m.ids);
+        mapa.clear();
+        mapa.extend(m.pts.iter().map(|&p| {
+            let (vx, hy) = (p.0.rem_euclid(lado) == 0, p.1.rem_euclid(lado) == 0);
+            if !(vx || hy) {
+                pts.push(p);
+                return (pts.len() - 1) as u32;
+            }
+            *indice.entry(p).or_insert_with(|| {
+                if vx {
+                    verticais.entry(p.0).or_default().insert(p.1);
+                }
+                if hy {
+                    horizontais.entry(p.1).or_default().insert(p.0);
+                }
+                pts.push(p);
+                (pts.len() - 1) as u32
+            })
+        }));
+        for p in &m.polys {
+            cru.extend(p.iter().map(|&v| mapa[v as usize]));
+            cru_off.push(cru.len() as u32);
+        }
+    }
+    let mut ring_off: Vec<u32> = Vec::with_capacity(cru_off.len());
+    ring_off.push(0);
+    let mut ring: Vec<u32> = Vec::with_capacity(cru.len());
+    for w in cru_off.windows(2) {
+        let p = &cru[w[0] as usize..w[1] as usize];
+        let n = p.len();
+        for i in 0..n {
+            let (a, b) = (pts[p[i] as usize], pts[p[(i + 1) % n] as usize]);
+            ring.push(p[i]);
+            if a.0 == b.0 && a.0.rem_euclid(lado) == 0 {
+                ring.extend(entre(verticais.get(&a.0), a.1, b.1).map(|y| indice[&(a.0, y)]));
+            } else if a.1 == b.1 && a.1.rem_euclid(lado) == 0 {
+                ring.extend(entre(horizontais.get(&a.1), a.0, b.0).map(|x| indice[&(x, a.1)]));
+            }
+        }
+        ring_off.push(ring.len() as u32);
+    }
+    let verts: Vec<V2> = pts.iter().map(|&p| to_world(p)).collect();
+    NavMesh::from_rings(verts, ring_off, ring, ids).unwrap_or_else(|_| vazia())
+}
+
+/// Os valores de `linha` estritamente entre `de` e `para`, pela ordem de `de` para `para`.
+fn entre(linha: Option<&BTreeSet<i64>>, de: i64, para: i64) -> Box<dyn Iterator<Item = i64> + '_> {
+    let Some(l) = linha else {
+        return Box::new(std::iter::empty());
+    };
+    if de < para {
+        Box::new(l.range(de + 1..para).copied())
+    } else if para < de {
+        Box::new(l.range(para + 1..de).rev().copied())
+    } else {
+        Box::new(std::iter::empty())
+    }
+}
+
 
 #[test]
 fn o_cruzamento_e_o_mesmo_dos_dois_lados_da_costura() {
@@ -93,4 +171,110 @@ fn a_area_que_mudou_e_o_mosaico_da_pedra() {
         "{a:?}"
     );
     assert!(hi[0] - lo[0] <= 10.0 + 1e-9, "um mosaico de 10 m: {a:?}");
+}
+
+/// Um gerador pequeno e determinístico (os gates desta crate não alcançam `tests/it/cena.rs`).
+struct Lcg(u64);
+
+impl Lcg {
+    fn f(&mut self, a: f64, b: f64) -> f64 {
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        a + (b - a) * ((self.0 >> 11) as f64 / (1u64 << 53) as f64)
+    }
+}
+
+fn forma(r: &mut Lcg) -> Shape {
+    let c = [r.f(1.0, 15.0), r.f(1.0, 11.0)];
+    if r.f(0.0, 1.0) < 0.5 {
+        Shape::Circle {
+            center: c,
+            radius: r.f(0.3, 1.2),
+        }
+    } else {
+        let (hx, hy, a) = (r.f(0.2, 1.5), r.f(0.2, 1.5), r.f(0.0, 3.0));
+        let (co, si) = (a.cos(), a.sin());
+        Shape::Convex(
+            [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]]
+                .iter()
+                .map(|q| [c[0] + q[0] * co - q[1] * si, c[1] + q[0] * si + q[1] * co])
+                .collect(),
+        )
+    }
+}
+
+/// ⭐⭐ (W10, plano 30 §18) **A montagem por blocos É a montagem inteira de antes**, campo a campo
+/// (vértices ao bit, anéis cosidos, vizinhos, gémeos, cantos, vértice→polígonos, ilhas, áreas, paredes,
+/// caixa) e com a mesma resposta de `locate_all` — a frio, depois de cada mudança, com lamas, e quando
+/// mosaicos SAEM da região.
+#[test]
+fn a_montagem_por_blocos_e_a_montagem_inteira_ao_bit() {
+    let (mut cosidos, mut parciais, mut comparados, mut saidas) = (0usize, 0, 0, 0);
+    for seed in 1..=12u64 {
+        let mut r = Lcg(seed);
+        let p = Params {
+            agent_radius: [0.0, 0.3, 0.6][(seed % 3) as usize],
+            corner: if seed % 4 == 0 {
+                crate::Corner::Miter
+            } else {
+                crate::Corner::Round
+            },
+            disk_sides: 8,
+            merge: seed % 2 == 0,
+        };
+        let lado = [2.0, 3.0, 5.0][(seed % 3) as usize];
+        let mut reg = vec![[0.0, 0.0], [16.0, 0.0], [16.0, 12.0], [0.0, 12.0]];
+        let mut obs: Vec<Shape> = (0..8).map(|_| forma(&mut r)).collect();
+        if p.agent_radius == 0.0 {
+            // As JUNÇÕES EM T: um obstáculo que encosta a uma costura só de UM lado (a aresta e o
+            // vértice em cima da linha) — o mosaico do outro lado não tem esses pontos na aresta dele.
+            let (x, z) = (2.0 * lado, 4.0 * lado);
+            obs.push(Shape::Convex(vec![[x, 2.3], [x + 1.0, 2.3], [x + 1.0, 4.7], [x, 4.7]]));
+            obs.push(Shape::Convex(vec![[z, 7.3], [z + 1.0, 6.5], [z + 2.0, 7.3], [z + 1.0, 8.1]]));
+        }
+        let areas = vec![Area {
+            shape: forma(&mut r),
+            id: 1,
+        }];
+        let mut t = TiledMesh::new(p, lado);
+        for passo in 0..8 {
+            if passo > 0 {
+                let i = passo % obs.len();
+                obs[i] = forma(&mut r);
+            }
+            if passo == 6 {
+                reg = vec![[0.0, 0.0], [11.0, 0.0], [11.0, 9.0], [0.0, 9.0]];
+            }
+            let ars: &[Area] = if seed % 2 == 0 { &areas } else { &[] };
+            let antes = t.mosaicos.len();
+            t.update_with_areas(&reg, &obs, ars);
+            saidas += usize::from(t.mosaicos.len() < antes);
+            parciais += usize::from(t.stats().rebuilt < t.stats().tiles);
+            let inteira = monta(&t.mosaicos, t.lado);
+            let m = t.mesh();
+            assert_eq!(m.diferenca(&inteira), None, "semente {seed}, passo {passo}");
+            let crus: usize = t.mosaicos.values().flat_map(|q| &q.polys).map(Vec::len).sum();
+            cosidos += m.polys().map(|q| q.len()).sum::<usize>() - crus;
+            // A localização: pontos ao acaso e pontos EXACTAMENTE nas linhas das costuras.
+            let (mut a, mut b) = (Vec::new(), Vec::new());
+            for k in 0..300 {
+                let mut q = [r.f(-0.5, 16.5), r.f(-0.5, 12.5)];
+                if k % 3 == 0 {
+                    q[k % 2] = (q[k % 2] / lado).round() * lado;
+                }
+                m.locate_all(q, &mut a);
+                inteira.locate_all(q, &mut b);
+                assert_eq!(a, b, "semente {seed}, passo {passo}: localizar {q:?}");
+                comparados += usize::from(!a.is_empty());
+            }
+        }
+    }
+    // Os CONTROLOS de população: houve junções em T, actualizações parciais, mosaicos que saíram, e
+    // pontos dentro da malha.
+    assert!(cosidos >= 100, "só {cosidos} vértices cosidos (medido: 115)");
+    assert!(parciais >= 60, "só {parciais} actualizações parciais (medido: 72)");
+    assert!(saidas >= 12, "só {saidas} regiões encolheram (uma por semente)");
+    assert!(comparados >= 15_000, "só {comparados} pontos localizados (medido: 16 078)");
 }

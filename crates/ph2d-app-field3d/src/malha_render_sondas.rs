@@ -60,6 +60,26 @@ fn sonda_do_render_por_malha() {
                     world.entity_mut(*e).insert(m);
                 }
             }
+            // `PH2D_SONDA_MOVE=<folha>:x,y,z;…` (folha na ordem do documento): a peça passa a esse centro
+            // — a pose de um report do dono (a «junta» dos reflexos, 04/10).
+            if let Ok(v) = std::env::var("PH2D_SONDA_MOVE") {
+                let world = sim.world_mut();
+                let mut q =
+                    world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
+                let root = q.iter(world).next().map(|(e, _)| e).expect("a peça");
+                let folhas = crate::materials::folhas(world, root);
+                for item in v.split(';').filter(|x| !x.trim().is_empty()) {
+                    let (k, xyz) = item.split_once(':').expect("<folha>:x,y,z");
+                    let c: Vec<f32> = xyz.split(',').map(|x| x.trim().parse().expect("número")).collect();
+                    assert_eq!(c.len(), 3, "<folha>:x,y,z");
+                    let e = folhas[k.trim().parse::<usize>().expect("folha")].0;
+                    world
+                        .get_mut::<ph2d_field_ecs::FieldPose>(e)
+                        .expect("a folha tem pose")
+                        .xform
+                        .translation = [c[0], c[1], c[2]];
+                }
+            }
             // `PH2D_SONDA_BRILHO=1` liga o brilho de fábrica — o que o artista tem ao clicar «On».
             let brilho = std::env::var("PH2D_SONDA_BRILHO").is_ok_and(|v| v == "1");
             // `PH2D_SONDA_ESTILO=1`: tinta quente nas ARESTAS e fria nas COVAS (o roteiro da `=35`).
@@ -174,9 +194,10 @@ fn sonda_do_render_por_malha() {
                 .map(|c| format!("_{c}"))
                 .unwrap_or_default();
             let sufixo = format!(
-                "{}{}{ceu}",
+                "{}{}{ceu}{}",
                 if brilho { "_brilho" } else { "" },
-                if estilo { "_estilo" } else { "" }
+                if estilo { "_estilo" } else { "" },
+                if std::env::var("PH2D_SONDA_MOVE").is_ok() { "_move" } else { "" }
             );
             let caminho =
                 std::path::Path::new(&dir).join(format!("render_malha_cena_{n}{sufixo}.ppm"));

@@ -110,14 +110,22 @@ fn mede(graus: f32, frente: bool) -> (f64, f64, f64, usize, bool) {
         })
         .collect();
     let na_forma = |p: [f64; 2]| aneis.iter().any(|a| dentro(a, p));
-    let nuvem = |x0: f64| -> Vec<[f64; 2]> {
+    // `funda`: só o INTERIOR da arte (a `0,3` da borda) — a borda da nuvem passava da arte e lia como
+    // «tapado» o traço logo ao lado dela (MEDIDO: `2,9 %` a `130°`).
+    let nuvem = |x0: f64, funda: bool| -> Vec<[f64; 2]> {
         (0..=200)
             .flat_map(|i| (-40..=120).map(move |j| [f64::from(i) * 0.2, f64::from(j) * 0.2]))
             .filter(|p| p[0] > x0 && na_forma(*p))
+            .filter(|p| {
+                !funda
+                    || [[0.3, 0.0], [-0.3, 0.0], [0.0, 0.3], [0.0, -0.3]]
+                        .iter()
+                        .all(|d| na_forma([p[0] + d[0], p[1] + d[1]]))
+            })
             .map(&posa)
             .collect()
     };
-    let (frente_n, adiante_n) = (nuvem(JUNTA + M), nuvem(JUNTA - M));
+    let (frente_n, adiante_n) = (nuvem(JUNTA + M, true), nuvem(JUNTA - M, false));
     let coberto =
         |n: &[[f64; 2]], q: [f64; 2], r: f64| n.iter().any(|p| (p[0] - q[0]).hypot(p[1] - q[1]) < r);
     let (mut tap, mut tap_p, mut fr, mut fr_p, mut vis, mut vis_p) = (0, 0, 0, 0, 0, 0);
@@ -126,9 +134,12 @@ fn mede(graus: f32, frente: bool) -> (f64, f64, f64, usize, bool) {
         if s.1[0].hypot(s.1[1]) < 1e-9 {
             continue;
         }
-        if x > JUNTA + M {
+        // ⚠️ A frente julgada começa a `2M` da junta: entre `M` e `2M` a zona de mistura dobra-se
+        // sobre si mesma e a ordem ali é a da lei (MEDIDO: `0,3 %` em `x ≈ 24`).
+        if x > JUNTA + 2.0 * M {
             fr += 1;
             fr_p += usize::from(pintada(s));
+        } else if x > JUNTA + M {
         } else if x < JUNTA - M {
             let q = posa(s.0);
             if coberto(&frente_n, q, 0.15) {

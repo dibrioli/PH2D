@@ -45,7 +45,7 @@ use super::fixtures::{
 /// enumeração que aqui viveu apodreceu no dia previsível, e a cena `=14` abriu com o canvas em
 /// branco porque ninguém lhe acrescentou o `"14"`. *O censo mede os predicados; ele não pede a
 /// ninguém que se lembre de uma lista.*
-pub const CENAS: u32 = 53;
+pub const CENAS: u32 = 54;
 
 /// ⭐⭐ **O PRÓLOGO — o que uma cena ARMA depois de a cena nascer.**
 ///
@@ -63,6 +63,7 @@ pub(crate) fn prologo(cena: &mut crate::Sculpt3dScene) {
     pente::arma(cena);
     pintura::arma(cena);
     tinta_fina::arma(cena);
+    vizinhanca::arma(cena);
 }
 
 /// **A env do roteador, lida DENTRO da crate.**
@@ -551,6 +552,11 @@ pub(crate) mod trim;
 /// linha de corte: cada arquivo é a história de uma wave.
 #[path = "scenes_viewports.rs"]
 pub(crate) mod viewports;
+/// **OS EFEITOS DE VIZINHANÇA** (`=54`) — ver [`vizinhanca`]. ⚠️ Ela abre na
+/// peça GROSSA da `=52`, com o arame e uma risca escura já pintada a `16x`: o
+/// desfoque tem de atravessar as arestas sem costura (`docs/3D/30` §14).
+#[path = "scenes_vizinhanca.rs"]
+pub(crate) mod vizinhanca;
 pub(crate) use masked::{
     flatten_scene, flatten_scene_counts, mask_channel_numbers, mask_channel_scene,
     masked_dome_counts, soft_masked_counts, transform_scene,

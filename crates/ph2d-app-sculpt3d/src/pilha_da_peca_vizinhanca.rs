@@ -68,6 +68,20 @@ impl PilhaDaPeca {
         self.vizinhanca.0 = Some(Arc::new(v));
     }
 
+    /// ⭐ **A base pintada de uma vez** — a fixtura da cena `=54` (uma peça já
+    /// pintada, como um ficheiro aberto). `false` se `px` não tem `N` amostras.
+    pub(crate) fn pinta_a_base(&mut self, px: &[[u8; 4]]) -> bool {
+        let n = self.amostras;
+        match self.base().and_then(|b| self.planos.get_mut(&b)) {
+            Some(plano) if px.len() == n => {
+                let relevo = plano.relevo.take();
+                plano.escreve(px, relevo);
+                true
+            }
+            _ => false,
+        }
+    }
+
     /// A vizinhança da peça, se a pilha a tem.
     #[must_use]
     pub(crate) fn vizinhanca(&self) -> Option<&VizinhancaDaPeca> {

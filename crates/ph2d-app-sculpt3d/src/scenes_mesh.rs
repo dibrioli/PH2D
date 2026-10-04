@@ -163,6 +163,11 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     if tinta_fina::tinta_fina_scene() {
         return tinta_fina::peca();
     }
+    // ⭐ **A `=54` abre na MESMA peça grossa**: a aresta da malha tem de se ver
+    // (o arame) para o desfoque mostrar que a atravessa sem costura.
+    if vizinhanca::vizinhanca_scene() {
+        return tinta_fina::peca();
+    }
     // ⭐ **A `=40` abre na MESMA enrugada, e a razão é a mesma da `=34` vista de
     // outro lado:** os dois gestos tangenciais movem o barro NO PLANO da
     // superfície, e numa esfera lisa isso não muda a silhueta nem quase a luz —

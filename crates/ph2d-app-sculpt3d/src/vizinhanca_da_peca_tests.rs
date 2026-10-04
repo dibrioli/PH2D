@@ -9,7 +9,6 @@
 
 use ph2d_mesh::Mesh;
 use ph2d_mesh_colors::Tinta;
-use ph2d_mesh_colors::amostragem::{posicao_quad, posicao_tri};
 use ph2d_tool_painter::{
     AdjustmentKind, AdjustmentParams, BloomParams, GaussianBlurParams, LayerId, SURFACE_RADIUS_MAX,
     SpatialUnits, adjustment_slider_params_in,
@@ -33,26 +32,7 @@ pub(crate) fn dist(x: [f32; 3]) -> f32 {
     (x[0] * n[0] + x[1] * n[1] + x[2] * n[2]).abs()
 }
 
-/// Onde cada amostra cai no mundo.
-pub(crate) fn posicoes(t: &Tinta, mesh: &Mesh) -> Vec<[f32; 3]> {
-    let mut out = vec![[0.0; 3]; t.amostras().len()];
-    let pos = mesh.positions();
-    for (f, face) in mesh.faces().iter().enumerate() {
-        let c = face.verts();
-        let l = t.lado_da_face(f);
-        let p = |k: usize| pos[c[k] as usize];
-        if c.len() == 3 {
-            t.para_cada_amostra_tri(f, c, |i, ijk| {
-                out[i as usize] = posicao_tri(p(0), p(1), p(2), l, ijk);
-            });
-        } else {
-            t.para_cada_amostra_quad(f, c, |i, ij| {
-                out[i as usize] = posicao_quad([p(0), p(1), p(2), p(3)], l, ij);
-            });
-        }
-    }
-    out
-}
+pub(crate) use crate::vizinhanca_da_peca::posicoes;
 
 /// A peça da lição ao degrau `k`, com a BASE pintada pela cor de cada sítio.
 pub(crate) fn peca(

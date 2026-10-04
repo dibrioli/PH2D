@@ -33,6 +33,28 @@ use ph2d_tool_painter::{AdjustWindow, Neighbourhood, SpatialUnits, gaussian_sigm
 /// ⇒ acima de `64x` um único passo leva segundos: a porta recusa com a frase.
 pub(crate) const NIVEL_MAX_DA_VIZINHANCA: u8 = 6;
 
+/// Onde cada amostra do plano cai na peça (as unidades dela).
+pub(crate) fn posicoes(t: &Tinta, mesh: &Mesh) -> Vec<[f32; 3]> {
+    use ph2d_mesh_colors::amostragem::{posicao_quad, posicao_tri};
+    let mut out = vec![[0.0; 3]; t.amostras().len()];
+    let pos = mesh.positions();
+    for (f, face) in mesh.faces().iter().enumerate() {
+        let c = face.verts();
+        let l = t.lado_da_face(f);
+        let p = |k: usize| pos[c[k] as usize];
+        if c.len() == 3 {
+            t.para_cada_amostra_tri(f, c, |i, ijk| {
+                out[i as usize] = posicao_tri(p(0), p(1), p(2), l, ijk);
+            });
+        } else {
+            t.para_cada_amostra_quad(f, c, |i, ij| {
+                out[i as usize] = posicao_quad([p(0), p(1), p(2), p(3)], l, ij);
+            });
+        }
+    }
+    out
+}
+
 /// ⭐ **As unidades dos raios na peça** — as dela (o mundo), mostradas em % da
 /// diagonal da caixa dela (`SpatialUnits::Surface`).
 pub(crate) fn unidades(mesh: &Mesh) -> SpatialUnits {

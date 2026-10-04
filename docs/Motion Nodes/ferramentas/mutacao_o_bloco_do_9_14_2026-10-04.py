@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Prova de mutação do bloco do doc 121 §9.14: o tracejado por troço (o passe de GRUPO), o D1/D2 do
-`cs_varre`, a porta `redesenha` e o halo do `fx.glow` pela rota do quadro. Cada mutação tem de SANGRAR
+"""Prova de mutação do bloco do doc 121 §9.14: o tracejado por troço (o passe de GRUPO), a porta
+`redesenha` e o halo do `fx.glow` pela rota do quadro. Cada mutação tem de SANGRAR
 nos gates que a nomeiam — a GPU de `ph2d-shape-gpu` (`--ignored`), os gates puros do halo
 (`ph2d-app-motion --lib motion_glow_layer`) ou os de costura da shell (`present_placa`).
 
 Controlos: pré-voo (cada âncora casa o nº esperado de vezes) · corrida LIMPA verde de cada comando com
 população > 0 · mutação que não compila é defeito do arnês · zero testes aborta · shader que não valida
 é marcado. Restaura por cópia + touch (o cargo guarda o build da mutação pelo mtime).
-Uso: MUTA_SO_ANCORAS=1 só o pré-voo; MUTA_SO=G1,D2a filtra.
+Uso: MUTA_SO_ANCORAS=1 só o pré-voo; MUTA_SO=G1,H2 filtra. (O D1/D2 do `cs_varre` foi RECUSADO
+pela rodada do §9.14 e saiu do código com as mutações dele.)
 """
 import os, re, shutil, subprocess, sys, time
 
@@ -37,15 +38,6 @@ MUTS = [
     ("G7 todo troco e o primeiro do sub-caminho", GPU, [(C,
         "let tr = troco_tracejado(it, sub, s >> 16u, g_s0[i], cp.lin, cp.t);",
         "let tr = troco_tracejado(it, sub, 0u, g_s0[i], cp.lin, cp.t);", 1)]),
-    ("D1a o cs_varre nao devolve o contorno a zero", GPU, [(C,
-        "            if (tem & 4u) != 0u {\n                atomicStore(&acumula_rw[a + 2u * PIXELS_DA_CELULA], 0u);\n            }\n",
-        "", 1)]),
-    ("D1b o registo sem o bit do contorno", GPU, [(C,
-        "        | (u32(c0.w > 0u) << 3u);", "        | 0u;", 1)]),
-    ("D2a o prefixo dos pixels do fio perdido", GPU, [(C,
-        "            v[k] = s;", "            v[k] = d;", 1)]),
-    ("D2b o cs_zera apaga so o 1.o pixel do fio", GPU, [(C,
-        "        let p = (g % FIOS_DA_CELULA) * PIXELS_DO_FIO + k;", "        let p = (g % FIOS_DA_CELULA) * PIXELS_DO_FIO;", 1)]),
     ("R1 o redesenho mudo", GPU, [(P,
         "self.passe_de_desenho(gpu, encoder, target, wgpu::LoadOp::Load, Some((bg, *count)));",
         "self.passe_de_desenho(gpu, encoder, target, wgpu::LoadOp::Load, None);", 1)]),

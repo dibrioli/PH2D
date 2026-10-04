@@ -68,15 +68,9 @@ const DESENHO_COMPLETO: u32 = 13u;
 // desenho), e o wgpu recusa o mesmo buffer como escrita e como argumento indirecto.
 @group(2) @binding(9) var<storage, read_write> despacho_grande: array<u32>;
 
-// doc 121 §9.14 — as escolhas que a rodada de medição decide.
-// (a) o tecto de itens do passe de GRUPO: o da memória de grupo (`6` vectores de `ITENS_NO_GRUPO`
-// palavras — `12 KB` dos `16` garantidos).
+// doc 121 §9.14 (a) — o tecto de itens do passe de GRUPO: o da memória de grupo (`6` vectores de
+// `ITENS_NO_GRUPO` palavras — `12 KB` dos `16` garantidos).
 const ITENS_NO_GRUPO: u32 = 512u;
-// (d) D1 — o `cs_varre` só lê as famílias PRESENTES e devolve-as a zero; o `cs_zera` apaga uma palavra.
-const VARRE_PRESENCA: bool = true;
-// (d) D2 — `4` pixels por fio no `cs_zera` e no `cs_varre` (`8` fios por célula); `1` é o de antes.
-const PIXELS_DO_FIO: u32 = 4u;
-const FIOS_DA_CELULA: u32 = PIXELS_DA_CELULA / PIXELS_DO_FIO;
 
 // O estado da emissão de UMA cópia (um fio por cópia). A ordem das arestas não importa a ninguém: as
 // células as tomam uma a uma (doc 121 §9.8).
@@ -615,10 +609,10 @@ fn cs_soma(@builtin(local_invocation_index) li: u32) {
         contagem[l0 + n] = acc_l;
         contagem[g0 + n] = acc_g;
         // ⭐ doc 121 §9.7–§9.12 — os despachos das células: um fio por LINHA, um por ARESTA e um por
-        // `PIXELS_DO_FIO` pixels das células que cabem (as de uma cópia que não cabe não se lêem).
+        // PIXEL das células que cabem (as de uma cópia que não cabe não se lêem).
         despacha(0u, acc_l);
         despacha(3u, acc);
-        despacha(6u, min(acc_m, contas.cap_celulas) * FIOS_DA_CELULA);
+        despacha(6u, min(acc_m, contas.cap_celulas) * PIXELS_DA_CELULA);
         // doc 121 §9.14 (a) — um GRUPO por cópia do passe de grupo (em duas dimensões, como o `despacha`).
         let gx = min(acc_g, 65535u);
         despacho_grande[0] = gx;
@@ -1198,22 +1192,17 @@ fn fileiras_da_aresta(a: ArestaDoFio) -> vec2<u32> {
 @compute @workgroup_size(64)
 fn cs_zera(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
     let g = indice(gid, nwg);
-    let cel = g / FIOS_DA_CELULA;
+    let cel = g / PIXELS_DA_CELULA;
     if cel >= celulas_em_uso() {
         return;
     }
-    for (var k = 0u; k < PIXELS_DO_FIO; k += 1u) {
-        let p = (g % FIOS_DA_CELULA) * PIXELS_DO_FIO + k;
-        let a = cel * ACUMULA + p;
-        atomicStore(&acumula_rw[a], 0u);
-        // doc 121 §9.14 D1 — as outras duas famílias o `cs_varre` do quadro anterior já devolveu a zero.
-        if !VARRE_PRESENCA {
-            atomicStore(&acumula_rw[a + PIXELS_DA_CELULA], 0u);
-            atomicStore(&acumula_rw[a + 2u * PIXELS_DA_CELULA], 0u);
-        }
-        if p < REGISTO {
-            atomicStore(&ccelulas_rw[cel * REGISTO + p], 0u);
-        }
+    let p = g % PIXELS_DA_CELULA;
+    let a = cel * ACUMULA + p;
+    atomicStore(&acumula_rw[a], 0u);
+    atomicStore(&acumula_rw[a + PIXELS_DA_CELULA], 0u);
+    atomicStore(&acumula_rw[a + 2u * PIXELS_DA_CELULA], 0u);
+    if p < REGISTO {
+        atomicStore(&ccelulas_rw[cel * REGISTO + p], 0u);
     }
 }
 
@@ -1281,11 +1270,7 @@ fn cs_fundo(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     }
     // O fundo de uma célula é o de TODAS as arestas que acabam antes dela: o prefixo ao longo da
     // fileira, em inteiros. A 4.ª palavra leva a regra da cópia ao `cs_varre`.
-    // doc 121 §9.14 D1 — e as famílias que a cópia TEM (o preenchimento, as marcas, o contorno), nos
-    // bits `1..4`: as outras não recebem depósito nenhum, e o `cs_varre` não as lê.
-    let c0 = ccopias_rw[3u * f.ii];
-    let regra = ccopias_rw[3u * f.ii + 2u].z | (u32(c0.y > 0u) << 1u) | (u32(c0.z > 0u) << 2u)
-        | (u32(c0.w > 0u) << 3u);
+    let regra = ccopias_rw[3u * f.ii + 2u].z;
     var fundo = vec3<i32>(0);
     for (var k = 0u; k < f.celulas; k += 1u) {
         let q = (f.celula + k) * REGISTO;
@@ -1301,9 +1286,8 @@ fn cs_fundo(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
     }
 }
 
-// O prefixo SEGMENTADO por célula: um grupo de `64` fios são `64 / FIOS_DA_CELULA` células; cada fio
-// soma os seus `PIXELS_DO_FIO` depósitos em registos e os dos fios à esquerda dele na MESMA célula
-// (`log₂ FIOS_DA_CELULA` passos em memória de grupo).
+// O prefixo SEGMENTADO por célula: um grupo de `64` fios são duas células, e cada fio soma os
+// depósitos dos pixels à esquerda dele na MESMA célula (`log₂ 32 = 5` passos).
 var<workgroup> prefixo: array<vec3<i32>, 64>;
 
 @compute @workgroup_size(64)
@@ -1313,40 +1297,23 @@ fn cs_varre(
     @builtin(local_invocation_index) li: u32,
 ) {
     let g = indice(gid, nwg);
-    let cel = g / FIOS_DA_CELULA;
-    let j = g % FIOS_DA_CELULA;
+    let cel = g / PIXELS_DA_CELULA;
+    let p = g % PIXELS_DA_CELULA;
     let viva = cel < celulas_em_uso();
-    let q = cel * REGISTO;
-    var regra = 0u;
+    let a = cel * ACUMULA + p;
+    var v = vec3<i32>(0);
     if viva {
-        regra = atomicLoad(&ccelulas_rw[q + 3u]);
+        v = vec3<i32>(
+            bitcast<i32>(atomicLoad(&acumula_rw[a])),
+            bitcast<i32>(atomicLoad(&acumula_rw[a + PIXELS_DA_CELULA])),
+            bitcast<i32>(atomicLoad(&acumula_rw[a + 2u * PIXELS_DA_CELULA])),
+        );
     }
-    // doc 121 §9.14 D1 — só as famílias que a cópia tem (o `cs_fundo` pô-las no registo).
-    let tem = select(7u, (regra >> 1u) & 7u, VARRE_PRESENCA);
-    var v: array<vec3<i32>, PIXELS_DO_FIO>;
-    var s = vec3<i32>(0);
-    if viva {
-        for (var k = 0u; k < PIXELS_DO_FIO; k += 1u) {
-            let a = cel * ACUMULA + j * PIXELS_DO_FIO + k;
-            var d = vec3<i32>(0);
-            if (tem & 1u) != 0u {
-                d.x = bitcast<i32>(atomicLoad(&acumula_rw[a]));
-            }
-            if (tem & 2u) != 0u {
-                d.y = bitcast<i32>(atomicLoad(&acumula_rw[a + PIXELS_DA_CELULA]));
-            }
-            if (tem & 4u) != 0u {
-                d.z = bitcast<i32>(atomicLoad(&acumula_rw[a + 2u * PIXELS_DA_CELULA]));
-            }
-            s += d;
-            v[k] = s;
-        }
-    }
-    prefixo[li] = s;
-    for (var d = 1u; d < FIOS_DA_CELULA; d *= 2u) {
+    prefixo[li] = v;
+    for (var d = 1u; d < PIXELS_DA_CELULA; d *= 2u) {
         workgroupBarrier();
         var t = vec3<i32>(0);
-        if j >= d {
+        if p >= d {
             t = prefixo[li - d];
         }
         workgroupBarrier();
@@ -1355,32 +1322,20 @@ fn cs_varre(
     if !viva {
         return;
     }
-    let antes = prefixo[li] - s + vec3<i32>(
+    let q = cel * REGISTO;
+    let s = prefixo[li] + vec3<i32>(
         bitcast<i32>(atomicLoad(&ccelulas_rw[q])),
         bitcast<i32>(atomicLoad(&ccelulas_rw[q + 1u])),
         bitcast<i32>(atomicLoad(&ccelulas_rw[q + 2u])),
     );
-    for (var k = 0u; k < PIXELS_DO_FIO; k += 1u) {
-        let a = cel * ACUMULA + j * PIXELS_DO_FIO + k;
-        let t = antes + v[k];
-        // As regras de sempre, à letra do Vello (o fragmento aplica-as no caminho de sempre).
-        let af0 = f32(t.x) / ESCALA_FIXA;
-        var af = min(abs(af0), 1.0);
-        if (regra & 1u) != 0u {
-            af = abs(af0 - 2.0 * round(0.5 * af0));
-        }
-        let as_ = min(min(abs(f32(t.y) / ESCALA_FIXA), 1.0) + min(abs(f32(t.z) / ESCALA_FIXA), 1.0), 1.0);
-        // ⭐ Na palavra do PRÓPRIO pixel, já lida: nenhum outro fio a lê (o prefixo vive na memória de
-        // grupo), e o `cs_zera` do quadro seguinte apaga-a.
-        atomicStore(&acumula_rw[a], pack2x16unorm(vec2<f32>(af, as_)));
-        // doc 121 §9.14 D1 — as outras famílias voltam a zero aqui, e o `cs_zera` já não as apaga.
-        if VARRE_PRESENCA {
-            if (tem & 2u) != 0u {
-                atomicStore(&acumula_rw[a + PIXELS_DA_CELULA], 0u);
-            }
-            if (tem & 4u) != 0u {
-                atomicStore(&acumula_rw[a + 2u * PIXELS_DA_CELULA], 0u);
-            }
-        }
+    // As regras de sempre, à letra do Vello (o fragmento aplica-as no caminho de sempre).
+    let af0 = f32(s.x) / ESCALA_FIXA;
+    var af = min(abs(af0), 1.0);
+    if atomicLoad(&ccelulas_rw[q + 3u]) != 0u {
+        af = abs(af0 - 2.0 * round(0.5 * af0));
     }
+    let as_ = min(min(abs(f32(s.y) / ESCALA_FIXA), 1.0) + min(abs(f32(s.z) / ESCALA_FIXA), 1.0), 1.0);
+    // ⭐ Na palavra do PRÓPRIO fio, lida antes das barreiras: nenhum outro fio a lê (o prefixo vive na
+    // memória de grupo), e o `cs_zera` do quadro seguinte apaga-a com as outras.
+    atomicStore(&acumula_rw[a], pack2x16unorm(vec2<f32>(af, as_)));
 }

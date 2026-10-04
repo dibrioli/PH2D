@@ -1312,7 +1312,10 @@ fn a_click_on_a_character_chip_dispatches_that_slot_and_never_the_verb() {
 /// botão, um despacho que ignorasse a célula e mandasse sempre `0` passaria por acidente. *Uma
 /// fixtura cujo valor é o que o defeito produziria não mede nada.*
 fn scene_with_one_choice_row() {
-    scene_with_a_choice_row(&ph2d_field::Axis::KEYS, ph2d_field::Param::Mod { slot: 0, field: 4 });
+    scene_with_a_choice_row(
+        &ph2d_field::Axis::KEYS,
+        ph2d_field::Param::Mod { slot: 0, field: 4 },
+    );
 }
 
 /// ⭐ Os NOVE céus do Render por malha — a escolha mais longa que um produtor publica hoje.
@@ -1436,7 +1439,11 @@ fn a_click_on_the_ninth_choice_reaches_the_intent() {
     }
     let botao = ph2d_panel_model3d::ids::model3d_choice_button(0, 8);
     let saida = host.apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::Click(botao));
-    assert_eq!(saida, EventOutcome::Consumed, "o painel tem de consumir o clique no 9.º");
+    assert_eq!(
+        saida,
+        EventOutcome::Consumed,
+        "o painel tem de consumir o clique no 9.º"
+    );
     assert_eq!(
         drain_intents(),
         vec![ModelIntent::SetParam {

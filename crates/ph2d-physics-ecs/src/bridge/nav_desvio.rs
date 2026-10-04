@@ -94,6 +94,11 @@ impl PhysicsBridge {
         // FORMA, em discos (ver [`discos`]). ⚠️ O ALVO de alguém fica um disco só: quem o persegue
         // ignora-o por um índice, e um disco é o que esse índice nomeia.
         let alvos: BTreeSet<Entity> = pedidas.iter().filter_map(|p| p.alvo).collect();
+        // (o aberto da W5) As PEÇAS de cada corpo (um filho só com `Collider`): fazem parte da forma.
+        let mut pecas: BTreeMap<Entity, Vec<&super::super::parts::PartRef>> = BTreeMap::new();
+        for p in self.parts.values().filter(|p| !p.rest.is_sensor) {
+            pecas.entry(p.owner).or_default().push(p);
+        }
         for (&e, b) in &self.bodies {
             if b.kind == BodyKind::Static || b.rest.is_sensor || indice.contains_key(&e) {
                 continue;
@@ -107,10 +112,30 @@ impl PhysicsBridge {
             // ⚠️ `libm`, nunca o `sin_cos` do `std`: a libc de cada SO muda o último ulp (o hash c9).
             let (sin, cos) = libm::sincos(f64::from(pose.rotation.angle()));
             indice.insert(e, corpos.len() as u32);
+            let minhas = pecas.get(&e).map_or(&[][..], Vec::as_slice);
             let forma = if alvos.contains(&e) {
-                vec![([0.0, 0.0], f64::from(raio_que_envolve(&b.rest)))]
+                // O disco que envolve o corpo E as peças, contado do centro do corpo.
+                let r = minhas
+                    .iter()
+                    .fold(f64::from(raio_que_envolve(&b.rest)), |r, p| {
+                        let [lx, ly, _] = p.local;
+                        let d = f64::from(lx).hypot(f64::from(ly));
+                        r.max(d + f64::from(raio_que_envolve(&p.rest)))
+                    });
+                vec![([0.0, 0.0], r)]
             } else {
-                discos(&b.rest)
+                let mut f = discos(&b.rest);
+                for p in minhas {
+                    // Os discos da peça, do referencial dela para o do corpo (`local` = onde ela está).
+                    let [lx, ly, lr] = p.local.map(f64::from);
+                    let (s, c) = libm::sincos(lr);
+                    f.extend(
+                        discos(&p.rest)
+                            .into_iter()
+                            .map(|([x, y], r)| ([lx + c * x - s * y, ly + s * x + c * y], r)),
+                    );
+                }
+                f
             };
             for ([lx, ly], raio) in forma {
                 let r = [cos * lx - sin * ly, sin * lx + cos * ly];

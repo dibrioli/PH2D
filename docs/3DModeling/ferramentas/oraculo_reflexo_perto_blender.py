@@ -52,6 +52,18 @@ if len(argv) > 1 and argv[1] == "par":
     ]
     DE = (1.0, 0.45, 0.6)
     RUG2 = 0.3
+# `-- <saida> junta`: o report 3 do dono de 04/10 (a «junta» que o `par` não reproduziu): a caixa AZUL LONGE
+# meio atrás da VERDE PERTO vistas do centro do cromo (a borda delas partilhada na captura), e com FUNDO entre
+# elas visto de cada ponto do cromo; a vista amplia o par refletido. O cromo a `0,05` (o da cena 42).
+if len(argv) > 1 and argv[1] == "junta":
+    PECAS = [
+        ("cromo", (0.0, 0.3, 0.0), 0.3, False, 1.0),
+        ("caixa_verde", (0.0, 0.18, 0.72), 0.18, True, 0.15),
+        ("caixa_azul", (0.7, 0.15, 1.7), 0.15, True, 0.5),
+    ]
+    DE = (1.0, 0.45, 0.8)
+    ALVO = (-0.0562, 0.2449, 0.1013)
+    MEIA = 0.14
 
 
 def b(p):

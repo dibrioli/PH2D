@@ -1,0 +1,126 @@
+//! ⭐ **A JUNTA na CPU** — a busca do produto (`sonda_marcha`, `sonda_le.wgsl`) portada passo a passo sobre
+//! a captura do cromo lida de volta, na vista [`JUNTA`]: o que ela aceita nos px da FAIXA entre os dois
+//! reflexos (onde o raio, pela geometria, não acerta nada), por leitor da distância e por franja — a
+//! causa isolada sem tocar no WGSL.
+
+use crate::gpu::sondas_impl::{ESPESSURA, FRANJA, LADO, MARCHA_MAX, MARCHA_MIN, PASSO, REFINO};
+use crate::tests_chao_tapa::metal;
+use crate::tests_contacto::norm;
+use crate::tests_reflexo_junta::faixa;
+use crate::tests_reflexo_perto::{JUNTA, desenha, desenha_ate, desenhista, oraculo};
+use crate::tests_sonda_cpu::{Nivel, camada, le, texel};
+
+fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+fn smoothstep(a: f32, b: f32, x: f32) -> f32 {
+    let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+/// `sonda_marcha` com o leitor `ler` (a distância vezes a cobertura, a cobertura): `(direcção, peso)`.
+pub(crate) fn marcha(
+    ler: &dyn Fn([f32; 3]) -> [f32; 2],
+    q: [f32; 3],
+    r: [f32; 3],
+    franja: f32,
+) -> ([f32; 3], f32) {
+    let ql = dot(q, q).sqrt();
+    let qh = q.map(|x| x / ql.max(1.0e-6));
+    let ct = dot(qh, r).clamp(-1.0, 1.0);
+    let th = ct.acos();
+    if th < 1.0e-4 {
+        return (r, 0.0);
+    }
+    let w = norm([0, 1, 2].map(|e| r[e] - ct * qh[e]));
+    let st = th.sin();
+    let u = |a: f32| [0, 1, 2].map(|e| a.cos() * qh[e] + a.sin() * w[e]);
+    let lam = |a: f32| ql * st / (th - a).sin();
+    let atras = |a: f32| {
+        let g = ler(u(a));
+        g[1] > 0.5 && lam(a) >= g[0] / g[1]
+    };
+    let texel = std::f32::consts::FRAC_PI_2 / ((LADO - 2) as f32 * 0.5);
+    let n = ((th / (PASSO * texel)).ceil() as u32).clamp(MARCHA_MIN, MARCHA_MAX);
+    let (mut ant, mut frente) = (0.0f32, true);
+    let mut melhor = (r, 0.0f32);
+    for k in 1..=n {
+        let a = th * k as f32 / (n + 1) as f32;
+        let at = atras(a);
+        if at && frente {
+            let (mut lo, mut hi) = (ant, a);
+            for _ in 0..REFINO {
+                let m = 0.5 * (lo + hi);
+                if atras(m) {
+                    hi = m;
+                } else {
+                    lo = m;
+                }
+            }
+            let (gh, gl) = (ler(u(hi)), ler(u(lo)));
+            let l = lam(hi);
+            let fora = l - gh[0] / gh[1].max(1.0e-6);
+            if gl[1] > 0.5 && fora <= ESPESSURA * l {
+                return (u(hi), 1.0);
+            }
+            let peso = 1.0 - smoothstep(0.0, franja * l, fora);
+            if peso > melhor.1 {
+                melhor = (u(hi), peso);
+            }
+        }
+        frente = !at;
+        ant = a;
+    }
+    melhor
+}
+
+/// Sonda (imprime): nos px da faixa, quantos a busca ACEITA (peso `1`) e o peso médio que lhes dá, por
+/// leitor (bilinear = o produto, o texel mais próximo) e franja; com a azul e sem ela.
+#[test]
+#[ignore = "precisa de aparelho"]
+fn sonda_da_junta_na_cpu() {
+    let v = &JUNTA;
+    let Some(mut fw) = desenhista(v) else {
+        return;
+    };
+    let px = oraculo(v);
+    let f = faixa(v, &px);
+    let c = v.pecas[0].0;
+    let vista = norm(v.de.map(|x| -x));
+    for (nome, n) in [("com a azul", v.pecas.len()), ("sem a azul", 2)] {
+        let _ = desenha_ate(v, &mut fw, metal(0.0), n, true);
+        let dist: Vec<Nivel> = camada(&fw, 1);
+        let bil = |d: [f32; 3]| {
+            let g = le(&dist, d, 0.0);
+            [g[0], g[1]]
+        };
+        let viz = |d: [f32; 3]| {
+            let g = texel(&dist, d, 0);
+            [g[0], g[1]]
+        };
+        for (leitor, ler) in [
+            ("bilinear", &bil as &dyn Fn([f32; 3]) -> [f32; 2]),
+            ("texel", &viz),
+        ] {
+            for franja in [FRANJA, 0.0] {
+                let (mut aceita, mut peso) = (0usize, 0.0f32);
+                for &k in &f {
+                    let p = &px[k];
+                    let r: [f32; 3] =
+                        std::array::from_fn(|e| vista[e] - 2.0 * dot(vista, p.n) * p.n[e]);
+                    let q = [0, 1, 2].map(|e| p.p[e] - c[e]);
+                    let (_, w) = marcha(ler, q, r, franja.max(1.0e-6));
+                    aceita += usize::from(w >= 1.0);
+                    peso += w;
+                }
+                eprintln!(
+                    "{nome} · {leitor} · franja {franja}: {} px na faixa · ACEITES {aceita} · peso médio {:.3}",
+                    f.len(),
+                    peso / f.len().max(1) as f32
+                );
+            }
+        }
+    }
+    let _ = desenha(v, &mut fw, metal(0.0), true);
+}

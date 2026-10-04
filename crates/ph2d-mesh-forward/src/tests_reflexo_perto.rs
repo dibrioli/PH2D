@@ -15,7 +15,7 @@ use crate::tests_contacto::{Peca, camera_do_blender, grades_de, linear, norm};
 use crate::tests_sol::cubo;
 use crate::{Forward, Instancia, Malha};
 
-const LADO: u32 = 512;
+pub(crate) const LADO: u32 = 512;
 const ALVO: [f32; 3] = [0.0, 0.3, 0.0];
 const MEIA: f32 = 0.34;
 
@@ -26,7 +26,9 @@ pub(crate) struct Vista {
     pub(crate) pecas: &'static [Peca],
     albedos: &'static [f32],
     pub(crate) de: [f32; 3],
-    rug2: f32,
+    pub(crate) rug2: f32,
+    alvo: [f32; 3],
+    meia: f32,
 }
 
 /// A arrumação da cena 42 (o report de 04/10: degraus, mordidas, borrão).
@@ -42,6 +44,8 @@ pub(crate) const PERTO: Vista = Vista {
     albedos: &[0.8, 0.15, 0.5, 0.3],
     de: [1.0, 0.45, 0.3],
     rug2: 0.05,
+    alvo: ALVO,
+    meia: MEIA,
 };
 
 /// A caixa AZUL atrás da VERDE vista do centro do cromo, e o cromo áspero (o 2.º report de 04/10: a
@@ -56,6 +60,25 @@ pub(crate) const PAR: Vista = Vista {
     albedos: &[0.15, 0.5],
     de: [1.0, 0.45, 0.6],
     rug2: 0.3,
+    alvo: ALVO,
+    meia: MEIA,
+};
+
+/// A caixa AZUL longe meio atrás da VERDE perto vistas do centro do cromo (a borda delas partilhada na
+/// captura), com FUNDO entre elas visto de cada ponto do cromo; a vista amplia o par refletido (o 3.º report
+/// de 04/10: a «junta», a ponte entre dois reflexos de objectos separados).
+pub(crate) const JUNTA: Vista = Vista {
+    oraculo: include_bytes!("../fixtures/oraculo_reflexo_junta.csv.gz"),
+    pecas: &[
+        ([0.0, 0.3, 0.0], 0.3, false),
+        ([0.0, 0.18, 0.72], 0.18, true),
+        ([0.7, 0.15, 1.7], 0.15, true),
+    ],
+    albedos: &[0.15, 0.5],
+    de: [1.0, 0.45, 0.8],
+    rug2: 0.05,
+    alvo: [-0.0562, 0.2449, 0.1013],
+    meia: 0.14,
 };
 
 /// Um pixel do cromo: `(i, j)`, o ponto, a normal e `[viz, viz05, solo, solo05]` do Cycles.
@@ -83,7 +106,7 @@ fn raio(v: &Vista, i: u32, j: u32) -> ([f32; 3], [f32; 3]) {
     ];
     let x = (i as f32 + 0.5) / LADO as f32 * 2.0 - 1.0;
     let y = 1.0 - (j as f32 + 0.5) / LADO as f32 * 2.0;
-    let o = [0, 1, 2].map(|e| ALVO[e] + MEIA * (x * r[e] + y * up[e]) - 10.0 * f[e]);
+    let o = [0, 1, 2].map(|e| v.alvo[e] + v.meia * (x * r[e] + y * up[e]) - 10.0 * f[e]);
     (o, f)
 }
 
@@ -155,7 +178,17 @@ pub(crate) fn desenha(
     cromo: [f32; ph2d_material::wgsl::PACKED],
     todas: bool,
 ) -> Vec<u8> {
-    let n = if todas { v.pecas.len() } else { 1 };
+    desenha_ate(v, fw, cromo, if todas { v.pecas.len() } else { 1 }, todas)
+}
+
+/// O quadro com as `n` primeiras peças (o cromo primeiro), com ou sem o chão.
+pub(crate) fn desenha_ate(
+    v: &Vista,
+    fw: &mut Forward,
+    cromo: [f32; ph2d_material::wgsl::PACKED],
+    n: usize,
+    chao: bool,
+) -> Vec<u8> {
     let objs: Vec<Instancia> = (0..n)
         .map(|k| {
             let mut m = ID;
@@ -169,9 +202,9 @@ pub(crate) fn desenha(
     let mats: Vec<[f32; ph2d_material::wgsl::PACKED]> = std::iter::once(cromo)
         .chain(v.albedos.iter().map(|a| fosca(*a)))
         .collect();
-    let mut c = cena(&objs, &mats, camera_do_blender(v.de, ALVO, MEIA));
+    let mut c = cena(&objs, &mats, camera_do_blender(v.de, v.alvo, v.meia));
     c.tamanho = (LADO, LADO);
-    if todas {
+    if chao {
         c.chao = Some(0.0);
         c.caixa_tan = Some(0.47);
     }
@@ -180,12 +213,20 @@ pub(crate) fn desenha(
 
 /// O raio reflectido em `p` acerta uma vizinha? (conta analítica sobre a geometria do oráculo)
 fn reflete_vizinha(v: &Vista, p: &Px) -> bool {
+    vizinha_refletida(v, p).is_some()
+}
+
+/// A vizinha que o raio reflectido em `p` acerta primeiro (conta analítica).
+pub(crate) fn vizinha_refletida(v: &Vista, p: &Px) -> Option<usize> {
     let f = norm(v.de.map(|c| -c));
     let fn_ = dot(f, p.n);
     let r: [f32; 3] = std::array::from_fn(|e| f[e] - 2.0 * fn_ * p.n[e]);
     v.pecas[1..]
         .iter()
-        .any(|q| crate::tests_sonda_cpu::acerta_em(*q, p.p, r).is_some())
+        .enumerate()
+        .filter_map(|(k, q)| crate::tests_sonda_cpu::acerta_em(*q, p.p, r).map(|t| (t, k)))
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, k)| k)
 }
 
 /// `(px, |Δ| médio, px no miolo do reflexo de uma vizinha, |Δ| ali, máx ali, px na faixa do contorno,

@@ -50,6 +50,15 @@ pub(crate) fn le(niveis: &[Nivel], d: [f32; 3], lod: f32) -> [f32; 4] {
     std::array::from_fn(|e| a[e] + (b[e] - a[e]) * (l - k0 as f32))
 }
 
+/// O texel MAIS PRÓXIMO do nível `k` (sem filtro).
+pub(crate) fn texel(niveis: &[Nivel], d: [f32; 3], k: u32) -> [f32; 4] {
+    let n = &niveis[k as usize];
+    let p = uv(d, k);
+    let w = n.w as i32;
+    let at = |s: f32| ((s * n.w as f32).floor() as i32).clamp(0, w - 1);
+    n.t[(at(p[1]) * w + at(p[0])) as usize]
+}
+
 /// A camada `camada` em todos os níveis.
 pub(crate) fn camada(fw: &crate::Forward, camada: u32) -> Vec<Nivel> {
     (0..NIVEIS)

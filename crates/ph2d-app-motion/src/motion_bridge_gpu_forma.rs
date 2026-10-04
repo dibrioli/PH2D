@@ -38,9 +38,8 @@ pub(crate) const RECUSA_FORMAS_DESLIGADAS: &str =
 /// Uma forma que o passe não desenha como o Vello (tinta própria, traço de padrão ou de pincel).
 pub(crate) const RECUSA_FORMA_DO_VELLO: &str =
     "CPU: uma forma viva so' o Vello a desenha (tinta propria, traco de padrao ou de pincel)";
-/// O halo do `fx.glow` lê as cópias da CPU (`motion_glow_layer`), que a rota do dispositivo não tem.
-pub(crate) const RECUSA_FORMA_COM_BRILHO: &str =
-    "CPU: formas vivas com fx.glow -- o halo le' as copias da CPU";
+// ⭐ doc 121 §9.14 (c) — saiu a recusa do `fx.glow` com formas: o halo lia as cópias da CPU, que a
+// rota do dispositivo não tem; hoje vem do buffer dela e da camada do passe de formas.
 /// Uma forma declara o colisor pelo cartão e alguém o lê — o contacto só existe na CPU (doc 109).
 /// ⚠️ Era a cerca do TIPO que o apanhava; sem ela, a pergunta tem de ser feita aqui.
 pub(crate) const RECUSA_FORMA_COM_COLISOR: &str =
@@ -152,7 +151,6 @@ pub(crate) fn handles_publicados(cook: &ph2d_nodegraph::cook::Cook) -> Vec<u32> 
 pub(crate) fn formas_para_a_placa(
     ligada: bool,
     vivas: &[u32],
-    com_brilho: bool,
     com_colisor_lido: bool,
     store: &crate::motion_shape_gen::VecPathStore,
     geometrias: &mut crate::motion_shape_placa::GeometriasDaPlaca,
@@ -163,9 +161,6 @@ pub(crate) fn formas_para_a_placa(
     }
     if !ligada {
         return Err(RECUSA_FORMAS_DESLIGADAS);
-    }
-    if com_brilho {
-        return Err(RECUSA_FORMA_COM_BRILHO);
     }
     if com_colisor_lido {
         return Err(RECUSA_FORMA_COM_COLISOR);

@@ -142,8 +142,10 @@ impl SpriteRenderer {
     /// fused sprite+motion pass is untouched — this is an *additional* render, so
     /// the frame is byte-identical whenever the caller declines to run it.
     ///
-    /// No clip/mask, no `gpu_extra` — the plain single-pass path of
-    /// [`draw_scratch`](Self::draw_scratch).
+    /// No clip/mask — the plain single-pass path of [`draw_scratch`](Self::draw_scratch).
+    ///
+    /// ⭐ `gpu_extra` (doc 121 §9.14 do Motion): num quadro cozido no DISPOSITIVO as instâncias da CPU
+    /// são de um quadro velho, e o halo desenha o buffer do cozimento — o MESMO que o passe fundido liga.
     ///
     /// ⚠️ **A frase «Motion instances are all atlas (`texture_id == 0`)» era desta
     /// linha e CAIU em 2026-08-20** (a ordem do Enio: *"tudo deve brilhar"*). A
@@ -167,6 +169,7 @@ impl SpriteRenderer {
         window: WindowSize,
         clear_color: wgpu::Color,
         instances: &[RenderInstance],
+        gpu_extra: Option<(&wgpu::Buffer, u32, &[crate::GpuTexRun])>,
         scene_viewport: Option<[f32; 4]>,
     ) {
         self.scratch.clear();
@@ -174,7 +177,14 @@ impl SpriteRenderer {
         // ⛔ Uma fatia crua não traz malhas: uma marca herdada indexaria as malhas de OUTRA chamada.
         crate::sprite_mesh::tag_lifted(&mut self.scratch, &mut self.mesh_frame, &[]);
         crate::sprite_collect::sort_render_order(&mut self.scratch);
-        self.draw_scratch(target, camera, window, clear_color, None, scene_viewport);
+        self.draw_scratch(
+            target,
+            camera,
+            window,
+            clear_color,
+            gpu_extra,
+            scene_viewport,
+        );
     }
 
     /// ⭐⭐ [`render_instances_only`](Self::render_instances_only) para instâncias COPIADAS DA CENA com

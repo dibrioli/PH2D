@@ -6,7 +6,8 @@
 //! *Mutações: apagar o `|=` (a camada é colada num acumulador que o compositor não lê) · não
 //! forçar as faixas do documento (o documento fica na cena Vello, POR CIMA das formas) · apagar o
 //! `!…ativa()` (as formas desenhadas DUAS vezes) · mover a colagem para depois do chrome (as formas
-//! por cima dos gizmos).*
+//! por cima dos gizmos) · desenhar a camada DEPOIS do halo (doc 121 §9.14: o halo redesenha as
+//! formas DESTE quadro, e leria as do anterior).*
 #[test]
 fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     let present = include_str!("present.rs");
@@ -19,8 +20,14 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     let em = |agulha: &str| chrome.find(agulha).expect(agulha);
     let (cima, placa, vello) = (
         em("present_bands::draw_upper_bands("),
-        em("self.motion_shell.placa.desenha("),
+        em("self.motion_shell.placa.camada()"),
         em("vello_pass.render_to_intermediate("),
+    );
+    // ⭐ doc 121 §9.14 — a camada DESENHA-SE antes dos passes de luz (o halo redesenha-a).
+    let em_present = |agulha: &str| present.find(agulha).expect(agulha);
+    assert!(
+        em_present("self.motion_shell.placa.desenha(") < em_present("super::present_fx::run("),
+        "as formas desenham-se ANTES do halo que as redesenha"
     );
     assert!(
         cima < placa && placa < vello,
@@ -39,7 +46,7 @@ fn a_rota_do_dispositivo_chega_ao_quadro() {
     let bandas = include_str!("fase_vector_bands.rs");
     assert!(bandas.contains(".formas().filter(|_| motion.gpu_live)"));
     assert!(bandas.contains("self.motion_shell.placa.decide_do_dispositivo("));
-    let chrome = include_str!("present_chrome.rs");
-    assert!(chrome.contains(".filter(|_| motion.gpu_live)"));
-    assert!(chrome.contains("do_dispositivo,"));
+    let present = include_str!("present.rs");
+    assert!(present.contains(".formas().filter(|_| motion.gpu_live)"));
+    assert!(present.contains("let buffer = do_dispositivo.map(|f| f.buffer());"));
 }

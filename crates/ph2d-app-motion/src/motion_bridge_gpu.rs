@@ -303,14 +303,12 @@ pub(super) fn cook_gpu(
     let com_colisor_lido = !vivas.is_empty()
         && graph_reads_declared_collider(&motion.doc.graph, &motion.registry)
         && forma::forma_declara_colisor(motion, target as f64 * fixed_dt);
-    let com_brilho = ph2d_node_fx_glow::from_graph(&motion.doc.graph).is_some();
     if !vivas.is_empty() && forma::saida_com_mistura_em_formas(motion) {
         return fell(motion, forma::RECUSA_FORMA_COM_MISTURA);
     }
     if let Err(porque) = forma::formas_para_a_placa(
         crate::motion_shape_placa::por_ordem(),
         &vivas,
-        com_brilho,
         com_colisor_lido,
         &motion.shape_store,
         &mut motion.placa_geometrias,

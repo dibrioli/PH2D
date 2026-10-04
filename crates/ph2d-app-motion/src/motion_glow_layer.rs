@@ -57,8 +57,71 @@
 use super::motion_bridge::vector_instance_as_tile;
 use crate::motion_object_bake::ObjectBake;
 use crate::motion_shape_bake::ShapeBake;
+use crate::motion_state::MotionState;
 use ph2d_eval_motion::VectorInstance;
 use ph2d_render::RenderInstance;
+
+/// ⭐ doc 121 §9.14 (c) — **O QUE O HALO DESTE QUADRO DESENHA**, pela rota que o quadro tomou.
+///
+/// ⛔ Num quadro do DISPOSITIVO a bomba da CPU não corre (`MotionState::gpu_live`): as listas dela são
+/// de um quadro VELHO (as sprites) ou vazias (as formas). O halo lia-as — as sprites brilhavam onde
+/// estiveram, e as formas não brilhavam, e era por isso que uma cena com `fx.glow` e formas recusava a
+/// placa. ⇒ as sprites do dispositivo saem do buffer dele (o mesmo que o passe de sprites liga) e as
+/// formas da CAMADA do passe de formas, redesenhada no RT do halo
+/// ([`crate::motion_shape_placa::PlacaDeFormas::redesenha_em`]).
+pub struct Halo<'a> {
+    /// As cópias da CPU: as sprites e o TILE de cada forma que a placa NÃO desenhou.
+    pub cpu: Vec<RenderInstance>,
+    /// As sprites do DISPOSITIVO: o buffer do cozimento, quantas, e os runs de textura.
+    pub placa: Option<(&'a wgpu::Buffer, u32, &'a [ph2d_render::GpuTexRun])>,
+    /// As formas saem da camada do passe de formas deste quadro.
+    pub formas_da_placa: bool,
+}
+
+impl Halo<'_> {
+    /// Nada a brilhar.
+    #[must_use]
+    pub fn vazio(&self) -> bool {
+        self.cpu.is_empty() && self.placa.is_none() && !self.formas_da_placa
+    }
+}
+
+/// O halo deste quadro; `formas_da_placa` = o passe de formas desenhou-as neste quadro (TUDO-OU-NADA:
+/// então todas as formas vivas estão na camada dele, e nenhuma pede o tile).
+#[must_use]
+pub fn halo_do_quadro(motion: &MotionState, formas_da_placa: bool) -> Halo<'_> {
+    if motion.gpu_live {
+        // A MESMA pergunta do passe de sprites (`present.rs`): a arte desenha-se neste quadro?
+        let arte = crate::lei_da_aparencia::a_arte_desenha(
+            motion,
+            ph2d_eval_motion::so_com_forma_por_ordem(),
+        );
+        let placa = arte
+            .then(|| motion.gpu_cook.instances())
+            .flatten()
+            .map(|gi| (gi.buffer(), gi.len(), motion.gpu_cook.texture_runs()));
+        return Halo {
+            cpu: Vec::new(),
+            placa,
+            formas_da_placa,
+        };
+    }
+    let vetores: &[VectorInstance] = if formas_da_placa {
+        &[]
+    } else {
+        &motion.pump.vector_instances
+    };
+    Halo {
+        cpu: layer_instances(
+            &motion.pump.instances,
+            vetores,
+            &motion.object_bake,
+            &motion.shape_bake,
+        ),
+        placa: None,
+        formas_da_placa,
+    }
+}
 
 /// A lista que o passe de isolamento do glow desenha: os sprites, mais toda
 /// geometria viva que TENHA um tile assado, convertida em quad.
@@ -132,19 +195,22 @@ pub fn unreachable_geometries(
 ///
 /// ⚠️ **Só imprime na MUDANÇA.** Um diagnóstico por quadro afoga o terminal e o
 /// artista deixa de o ler — e a linha que interessa é a primeira.
-pub fn diag(
-    sprites: &[RenderInstance],
-    vectors: &[VectorInstance],
-    bake: &ObjectBake,
-    shapes: &ShapeBake,
-    glow: Option<f32>,
-    layer_len: usize,
-) {
+///
+/// ⭐ doc 121 §9.14 — e a ROTA do halo: as sprites do dispositivo (`placa=`) e as formas pela camada
+/// do passe de formas (`formas_da_placa`); num quadro do dispositivo as listas da CPU não contam.
+pub fn diag(motion: &MotionState, halo: &Halo<'_>, glow: Option<f32>) {
     use std::sync::atomic::{AtomicU64, Ordering};
     static LAST: AtomicU64 = AtomicU64::new(u64::MAX);
     if std::env::var_os("PH2D_GLOW_DIAG").is_none() {
         return;
     }
+    let (bake, shapes) = (&motion.object_bake, &motion.shape_bake);
+    let (sprites, vectors): (&[RenderInstance], &[VectorInstance]) =
+        if halo.placa.is_some() || halo.formas_da_placa {
+            (&[], &[])
+        } else {
+            (&motion.pump.instances, &motion.pump.vector_instances)
+        };
     let with_object = vectors
         .iter()
         .filter(|vi| bake.tile_texture_for_gid(vi.geometry_id).is_some())
@@ -157,18 +223,23 @@ pub fn diag(
         })
         .count();
     let blind = vectors.len() - with_object - with_shape;
+    let placa = halo.placa.map_or(0, |(_, n, _)| n);
     let key = (sprites.len() as u64) << 40
         | (vectors.len() as u64) << 24
         | (with_object as u64) << 12
-        | with_shape as u64;
+        | with_shape as u64
+        | u64::from(placa) << 52
+        | u64::from(halo.formas_da_placa) << 63;
     if LAST.swap(key, Ordering::Relaxed) == key {
         return;
     }
     eprintln!(
         "[glow-diag] sprites={} vetor_vivo={} (tile_objeto={with_object} tile_forma={with_shape} \
-         SEM_TILE={blind}) camada={layer_len} glow={}",
+         SEM_TILE={blind}) camada={} placa={placa} formas_da_placa={} glow={}",
         sprites.len(),
         vectors.len(),
+        halo.cpu.len(),
+        halo.formas_da_placa,
         glow.map_or_else(|| "ausente".to_string(), |i| format!("intensidade {i}")),
     );
     if blind > 0 {

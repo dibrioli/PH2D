@@ -2,8 +2,8 @@
 //! que recebe, e a varredura das cenas que a achou é `#[ignore]` (o CI nunca a corre).
 
 use super::{
-    RECUSA_FORMA_COM_BRILHO, RECUSA_FORMA_COM_COLISOR, RECUSA_FORMA_DO_VELLO,
-    RECUSA_FORMAS_DESLIGADAS, formas_para_a_placa, handles_publicados, saida_com_mistura_em_formas,
+    RECUSA_FORMA_COM_COLISOR, RECUSA_FORMA_DO_VELLO, RECUSA_FORMAS_DESLIGADAS, formas_para_a_placa,
+    handles_publicados, saida_com_mistura_em_formas,
 };
 use crate::motion_shape_gen::VecPathStore;
 use crate::motion_shape_placa::GeometriasDaPlaca;
@@ -107,57 +107,37 @@ fn store() -> (VecPathStore, u32, u32, u32) {
 fn a_cerca_das_formas_nomeia_cada_recusa() {
     let (s, lisa, tracada, pintada) = store();
     let mut g = GeometriasDaPlaca::default();
-    let mut cerca = |ligada, vivas: &[u32], brilho, colisor| {
-        formas_para_a_placa(ligada, vivas, brilho, colisor, &s, &mut g)
-    };
+    let mut cerca =
+        |ligada, vivas: &[u32], colisor| formas_para_a_placa(ligada, vivas, colisor, &s, &mut g);
+    assert_eq!(cerca(true, &[lisa], false), Ok(()), "o CONTROLO passa");
     assert_eq!(
-        cerca(true, &[lisa], false, false),
-        Ok(()),
-        "o CONTROLO passa"
-    );
-    assert_eq!(
-        cerca(false, &[], false, false),
+        cerca(false, &[], false),
         Ok(()),
         "sem formas não há o que recusar"
     );
-    assert_eq!(
-        cerca(false, &[lisa], false, false),
-        Err(RECUSA_FORMAS_DESLIGADAS)
-    );
-    assert_eq!(
-        cerca(true, &[lisa], true, false),
-        Err(RECUSA_FORMA_COM_BRILHO)
-    );
-    assert_eq!(
-        cerca(true, &[lisa], false, true),
-        Err(RECUSA_FORMA_COM_COLISOR)
-    );
+    assert_eq!(cerca(false, &[lisa], false), Err(RECUSA_FORMAS_DESLIGADAS));
+    // ⭐ doc 121 §9.14 (c) — o `fx.glow` já NÃO recusa: o halo de um quadro do dispositivo vem do
+    // buffer dele e da camada do passe de formas (`motion_glow_layer::halo_do_quadro`).
+    assert_eq!(cerca(true, &[lisa], true), Err(RECUSA_FORMA_COM_COLISOR));
     // ⭐ doc 121 §9.9 — o traço TRACEJADO vai à placa: sob escala não uniforme o shader corta-o pelo
     // comprimento de arco no ecrã (até lá recusava o quadro inteiro, a cena `=76`).
-    assert_eq!(cerca(true, &[lisa, tracada], false, false), Ok(()));
+    assert_eq!(cerca(true, &[lisa, tracada], false), Ok(()));
     // ⭐ doc 121 W4 — o CONTROLO do traço: o mesmo traço CONTÍNUO vai à placa.
     let mut continuo = ph2d_vec_scene::ellipse([0.0, 0.0], 0.5, 0.5);
     continuo.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 0.05));
     let mut s2 = VecPathStore::default();
     let h = s2.push(continuo);
     assert_eq!(
-        formas_para_a_placa(
-            true,
-            &[h],
-            false,
-            false,
-            &s2,
-            &mut GeometriasDaPlaca::default()
-        ),
+        formas_para_a_placa(true, &[h], false, &s2, &mut GeometriasDaPlaca::default()),
         Ok(()),
         "um traco continuo vai a' placa -- o shader constroi-o no ecra"
     );
     assert_eq!(
-        cerca(true, &[pintada, lisa], false, false),
+        cerca(true, &[pintada, lisa], false),
         Err(RECUSA_FORMA_DO_VELLO)
     );
     // ⚠️ Um handle AUSENTE do store não recusa — não há o que desenhar.
-    assert_eq!(cerca(true, &[lisa, 9_999], false, false), Ok(()));
+    assert_eq!(cerca(true, &[lisa, 9_999], false), Ok(()));
 }
 
 /// ⭐ **A cerca e a rota da CPU perguntam ao MESMO cache** — depois da cerca, a geometria está
@@ -167,7 +147,7 @@ fn a_cerca_prepara_as_geometrias_que_a_placa_liga() {
     let (s, lisa, _, _) = store();
     let mut g = GeometriasDaPlaca::default();
     assert!(g.is_empty());
-    formas_para_a_placa(true, &[lisa], false, false, &s, &mut g).expect("passa");
+    formas_para_a_placa(true, &[lisa], false, &s, &mut g).expect("passa");
     assert_eq!(g.len(), 1, "a lisa ficou preparada no cache partilhado");
 }
 

@@ -5,7 +5,7 @@
 //!
 //! - **As FORMAS vivas** (`source.shape`, os glifos, a fita do L-System) — desde o doc 121 W3
 //!   VÃO à placa pelo passe de formas, e o que ainda recusa (a placa desligada, um traço, uma
-//!   tinta própria, o `fx.glow`, um colisor lido, a mistura por linha) recusa ANTES de
+//!   tinta própria, um colisor lido, a mistura por linha) recusa ANTES de
 //!   `ph2d_gpu_cook::plan(...)`, para o pump da CPU possuir o tick do zero. Sinal: por CONTEÚDO
 //!   (`forma::formas_para_a_placa`, `forma::saida_com_mistura_em_formas`). ⛔ Era a cerca do
 //!   TIPO (`graph_has_live_vector_source`) e a da instância condicional, que recusavam SEMPRE.

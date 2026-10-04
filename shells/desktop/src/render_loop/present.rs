@@ -457,6 +457,17 @@ impl crate::App {
                 (window_size.width, window_size.height),
             );
         }
+        // ⭐⭐⭐ **AS FORMAS DO MOTION, pela placa** (doc 121 W2/W3) — DESENHADAS aqui, antes do halo
+        // que as redesenha (§9.14), e COLADAS no mundo onde sempre foram (`present_chrome`). ⚠️ O buffer
+        // do DISPOSITIVO só com o cozimento vivo — o mesmo `gpu_live` que o passe de sprites pergunta.
+        let do_dispositivo = motion.gpu_cook.formas().filter(|_| motion.gpu_live);
+        let tamanho = (window_size.width, window_size.height);
+        let geos = &motion.placa_geometrias;
+        let buffer = do_dispositivo.map(|f| f.buffer());
+        let _ = self
+            .motion_shell
+            .placa
+            .desenha(surface.gpu(), tamanho, geos, buffer);
         // Passes 1b-bis e 1c: **OS PASSES DE LUZ** — a sprite emissiva e o glow do
         // Motion. Cortados para o irmão [`super::present_fx`] pelo tecto de LOC, e o
         // corte é por RESPONSABILIDADE: os dois somam luz sobre o `game_rt` antes do
@@ -475,6 +486,7 @@ impl crate::App {
                 motion_active,
                 present,
                 instances: &mut self.emissive_instances,
+                formas: &self.motion_shell.placa,
             },
         );
     }

@@ -247,6 +247,8 @@ pub struct PlacaDeFormas {
     /// `true` ⇒ o traço do eixo sai pixel a pixel mesmo com a porta do contorno aberta — para os
     /// gates e a sonda compararem os dois caminhos sem ler o ambiente.
     sem_contorno: bool,
+    /// O [`Self::desenha`] DESTE quadro desenhou a camada — o que o [`Self::redesenha_em`] repete.
+    desenhou: bool,
 }
 
 impl PlacaDeFormas {
@@ -384,6 +386,7 @@ impl PlacaDeFormas {
     ) -> Option<&wgpu::TextureView> {
         // ⚠️ **A decisão vale UM quadro** e é consumida aqui: um quadro que não a tome (sem o ecrã
         // do herói, que é onde ela corre) volta ao caminho de sempre em vez de colar as cópias velhas.
+        self.desenhou = false;
         if !std::mem::take(&mut self.ativa) {
             return None;
         }
@@ -440,7 +443,49 @@ impl PlacaDeFormas {
             },
         );
         gpu.queue.submit([enc.finish()]);
+        self.desenhou = true;
         Some(&g.vista)
+    }
+
+    /// ⭐ doc 121 §9.14 (c) — **as formas deste quadro outra vez, sobre `alvo`** (o RT `Rgba16Float` do
+    /// halo do `fx.glow`, com o tamanho da camada): a silhueta EXACTA e o `tint` HDR, nas duas rotas —
+    /// na do dispositivo as cópias nem existem na CPU, e era por isso que o brilho recusava a placa.
+    /// `false` ⇒ o [`Self::desenha`] deste quadro não desenhou (ou o alvo é de outro tamanho).
+    pub fn redesenha_em(
+        &self,
+        gpu: &GpuContext,
+        alvo: &wgpu::TextureView,
+        tamanho: (u32, u32),
+    ) -> bool {
+        let Some(g) = self
+            .gpu
+            .as_ref()
+            .filter(|g| self.desenhou && g.tamanho == tamanho)
+        else {
+            return false;
+        };
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        g.passe.redesenha(gpu, &mut enc, alvo);
+        gpu.queue.submit([enc.finish()]);
+        true
+    }
+
+    /// O [`Self::desenha`] deste quadro desenhou a camada.
+    #[must_use]
+    pub fn desenhou(&self) -> bool {
+        self.desenhou
+    }
+
+    /// A camada que o [`Self::desenha`] deste quadro desenhou — para o presente a colar no mundo
+    /// DEPOIS do halo (doc 121 §9.14: o desenho corre antes do brilho, a colagem onde sempre correu).
+    #[must_use]
+    pub fn camada(&self) -> Option<&wgpu::TextureView> {
+        self.gpu
+            .as_ref()
+            .filter(|_| self.desenhou)
+            .map(|g| &g.vista)
     }
 }
 

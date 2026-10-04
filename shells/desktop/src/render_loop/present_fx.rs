@@ -32,6 +32,8 @@ pub(super) struct FxGear<'a> {
     /// O scratch das instâncias emissivas — vive no `App` porque é lixo de quadro, e re-alocá-lo
     /// por quadro seria uma alocação por frame para uma lista quase sempre vazia.
     pub instances: &'a mut ph2d_render::LiftedInstances,
+    /// As formas do Motion deste quadro, já desenhadas pela placa (doc 121 §9.14).
+    pub formas: &'a ph2d_app_motion::motion_shape_placa::PlacaDeFormas,
 }
 
 /// Corre os dois passes, nesta ordem.
@@ -90,44 +92,35 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
     // varredura de 512 avaliações num quadro em que existe um `fx.glow` com rampa —
     // e o passe só corre nesse quadro de qualquer forma.
     let halo_lut = ph2d_node_fx_glow::bake_halo_lut(&g.motion.doc.graph);
-    // ⚠️ **A LISTA DO GLOW É A CAMADA MOTION, e não o passe de sprites**
-    // (bug do Enio, 2026-08-20: *"Glow não funciona com shape"*, e a
-    // ordem dele depois: *"tudo deve brilhar"*). Ver
-    // [`ph2d_app_motion::motion_glow_layer`] — a metade vetorial viva entra aqui
-    // pelo TILE assado, porque um halo é imediatamente reduzido por seis
-    // níveis de mip e nunca precisou de nitidez de tela.
-    let glow_layer = ph2d_app_motion::motion_glow_layer::layer_instances(
-        &g.motion.pump.instances,
-        &g.motion.pump.vector_instances,
-        &g.motion.object_bake,
-        &g.motion.shape_bake,
-    );
-    // ⚠️ **`PH2D_GLOW_DIAG=1`** — de que é feita a camada, quando ela muda.
-    // Ver o doc de [`ph2d_app_motion::motion_glow_layer::diag`]: «o halo não
-    // aparece» tem cinco causas indistinguíveis a olho.
-    ph2d_app_motion::motion_glow_layer::diag(
-        &g.motion.pump.instances,
-        &g.motion.pump.vector_instances,
-        &g.motion.object_bake,
-        &g.motion.shape_bake,
-        glow.as_ref().map(|k| k.intensity),
-        glow_layer.len(),
-    );
+    // ⚠️ **A LISTA DO GLOW É A CAMADA MOTION, e não o passe de sprites** (bug do Enio, 2026-08-20:
+    // *"tudo deve brilhar"*) — pela rota do quadro: ver [`ph2d_app_motion::motion_glow_layer::Halo`]
+    // (doc 121 §9.14: num quadro do DISPOSITIVO as listas da CPU são de um quadro velho).
+    let halo = ph2d_app_motion::motion_glow_layer::halo_do_quadro(g.motion, g.formas.desenhou());
+    // ⚠️ **`PH2D_GLOW_DIAG=1`** — de que é feito o halo, quando muda («o halo não aparece» tem cinco
+    // causas indistinguíveis a olho; ver o doc de [`ph2d_app_motion::motion_glow_layer::diag`]).
+    ph2d_app_motion::motion_glow_layer::diag(g.motion, &halo, glow.as_ref().map(|k| k.intensity));
     if let Some(glow) = glow
         && g.motion_active
         && glow.intensity > 0.0
-        && !glow_layer.is_empty()
+        && !halo.vazio()
     {
         g.renderer.render_instances_only(
             g.motion_fx.rt_view(),
             g.camera,
             g.window_size,
             wgpu::Color::TRANSPARENT,
-            &glow_layer,
+            &halo.cpu,
+            halo.placa,
             // SAME sub-rect the fused scene used above — or the glow
             // desyncs from the sparks (the halo floats away).
             g.scene_viewport,
         );
+        let tamanho = (g.window_size.width, g.window_size.height);
+        if halo.formas_da_placa && !g.formas.redesenha_em(gpu, g.motion_fx.rt_view(), tamanho) {
+            eprintln!(
+                "[glow-diag] (!) as formas da placa nao entraram no halo (outro tamanho de alvo)"
+            );
+        }
         // **A MÁSCARA DE SUJIDADE** (doc 89 folha 11) — o nó guarda o NOME de um
         // objecto da cena e o passe de tela quer uma `TextureView`. As duas metades
         // encontram-se aqui, DEPOIS do passe de isolamento: aquele leva o renderer

@@ -192,3 +192,53 @@ fn deriving_the_layer_leaves_the_visible_frame_untouched() {
 fn an_empty_motion_layer_stays_empty() {
     assert!(layer_instances(&[], &[], &ObjectBake::default(), &ShapeBake::default()).is_empty());
 }
+
+/// ⭐⭐ doc 121 §9.14 (c) — **NUM QUADRO DO DISPOSITIVO O HALO NÃO LÊ AS LISTAS DA CPU.** A bomba não
+/// correu (`gpu_live`), e as listas dela são de um quadro VELHO: o halo brilhava onde as sprites
+/// estiveram. Com o CONTROLO de que, no quadro da CPU, as mesmas listas entram.
+#[test]
+fn a_device_frame_halo_never_reads_the_stale_cpu_lists() {
+    let mut m = MotionState::new();
+    m.pump.instances.push(sprite(3.0));
+    m.pump.vector_instances.push(vi(9, 0.0));
+    m.shape_bake.seed_for_test(
+        9,
+        crate::motion_shape_bake::ShapeTile {
+            texture_id: 77,
+            world_size: [1.0, 1.0],
+            local_center: [0.0, 0.0],
+        },
+    );
+    let cpu = halo_do_quadro(&m, false);
+    assert_eq!(cpu.cpu.len(), 2, "CONTROLO: no quadro da CPU a sprite e o tile entram");
+    assert!(cpu.placa.is_none());
+    m.gpu_live = true;
+    let placa = halo_do_quadro(&m, true);
+    assert!(
+        placa.cpu.is_empty(),
+        "num quadro do dispositivo as listas da CPU são de um quadro velho"
+    );
+    assert!(placa.formas_da_placa && !placa.vazio());
+}
+
+/// ⭐ doc 121 §9.14 (c) — **as formas que o passe de formas desenhou não pedem o tile**: o halo
+/// redesenha a camada dele (a silhueta exacta, o mesmo HDR). Sem a camada, o tile de sempre.
+#[test]
+fn shapes_drawn_by_the_shape_pass_leave_the_tile_path() {
+    let mut m = MotionState::new();
+    m.pump.instances.push(sprite(3.0));
+    m.pump.vector_instances.push(vi(9, 0.0));
+    m.shape_bake.seed_for_test(
+        9,
+        crate::motion_shape_bake::ShapeTile {
+            texture_id: 77,
+            world_size: [1.0, 1.0],
+            local_center: [0.0, 0.0],
+        },
+    );
+    let com_a_placa = halo_do_quadro(&m, true);
+    assert_eq!(com_a_placa.cpu.len(), 1, "só a sprite: a forma vem da camada");
+    assert!(com_a_placa.cpu.iter().all(|r| r.texture_id != 77));
+    let sem = halo_do_quadro(&m, false);
+    assert!(sem.cpu.iter().any(|r| r.texture_id == 77), "CONTROLO: sem a camada, o tile");
+}

@@ -12,7 +12,7 @@
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector` |
 | ramo | `line/Vector`, base `main` `1ad60a1ce`, HEAD `42ca2e29f` (ou depois), `70` commits à frente, nenhum integrado |
 | smoke | o binário `--profile smoke` da worktree foi construído pelo `fotografa_cena.sh` a `c5458de61`; reconstrua antes do smoke |
-| o dono | escolheu no A1 «o osso mais PERTO»; mandou **não fechar** a linha; o smoke do A2 está POR FAZER |
+| o dono | escolheu no A1 «o osso mais PERTO»; aprovou o smoke do A2 e da ordem da imagem (*«smoke ok»*, 2026-10-04); mandou **não fechar** a linha |
 
 O que a 2.ª onda de 04/10 entregou está na fila: [§F52](../01_a_fila.md) (A2 — a frente tapa as riscas
 de trás; a chave de osso pela PROFUNDIDADE, que curou também a ordem das faces da imagem), §F53 (A3 — o
@@ -51,7 +51,7 @@ Bateria verde no fim: `ph2d-skeleton-live` 276 · `ph2d-vec-skin` 48 · `ph2d-ap
   da fonte, em toda a varredura do *Twist* `0°`…`360°`.
 - **Se ele escolher «o mais perto»:** feche a F50-k/§2-b na fila como decidido e siga.
 
-### A2 — ✅ FEITO (F52, `3caa88daa` + docs; smoke ao dono pendente): a parte da FRENTE tapa o que é aberto na de trás
+### A2 — ✅ FEITO (F52, `3caa88daa` + docs; smoke do dono APROVADO 2026-10-04: «smoke ok»): a parte da FRENTE tapa o que é aberto na de trás
 
 > As riscas abertas cortam-se no repouso onde a malha posada as tapa (chave de osso pela
 > PROFUNDIDADE na hierarquia, triângulos do avesso, pedaços mais curtos que o traço saem); mutação

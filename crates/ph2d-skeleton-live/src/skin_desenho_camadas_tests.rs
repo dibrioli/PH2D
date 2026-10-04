@@ -186,3 +186,55 @@ fn sem_dobra_que_tape_nao_ha_camada() {
         assert!(!camada, "a {graus}° saiu camada de traço");
     }
 }
+
+/// ⭐ **SONDA — o preço da camada do traço** (duas cópias, pose a mudar `110°` ↔ `150°`), com e sem a
+/// lei da frente. Imprime; corra em `--release` com o `loadavg` ao lado.
+#[test]
+#[ignore = "sonda de preço: --release, máquina calma"]
+fn diag_o_preco_da_camada_do_traco() {
+    use std::time::Instant;
+    let (mut sim, mut scene, map, id, [_, ponta]) = palco();
+    {
+        let p = scene.path_mut(id).expect("path");
+        p.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+            ph2d_vec_scene::Rgba8::new(0, 0, 0, 255),
+            0.5,
+        ));
+        p.effects = vec![FxEntry::new(PathEffect::Repeat(
+            ph2d_vec_scene::fx_repeat::RepeatSpec {
+                copies_x: 1.0,
+                move_x: 0.0,
+                copies_y: 2.0,
+                move_y: 60.0,
+                spin: 5.0,
+                orbit: 0.0,
+            },
+        ))];
+    }
+    assert_eq!(crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], None), 1);
+    let mut n = 0_u32;
+    let mut quadro = |frente: bool| {
+        let leis = Leis {
+            frente,
+            ..Leis::do_ambiente()
+        };
+        let mut sc = scene.clone();
+        let t = Instant::now();
+        let mut k = 0_u32;
+        while t.elapsed().as_millis() < 300 {
+            n += 1;
+            sim.world_mut()
+                .get_mut::<ph2d_ecs::Transform>(ponta)
+                .expect("Transform")
+                .rotation = if n.is_multiple_of(2) { 110f32 } else { 150f32 }.to_radians();
+            let _ = crate::skin_live::recook_leis(&sim, &mut sc, leis);
+            k += 1;
+        }
+        t.elapsed().as_secs_f64() * 1e6 / f64::from(k)
+    };
+    let (com, sem) = (quadro(true), quadro(false));
+    println!(
+        "  µs/forma/quadro: com a lei {com:.1} · sem ela {sem:.1} · loadavg {}",
+        std::fs::read_to_string("/proc/loadavg").unwrap_or_default().trim()
+    );
+}

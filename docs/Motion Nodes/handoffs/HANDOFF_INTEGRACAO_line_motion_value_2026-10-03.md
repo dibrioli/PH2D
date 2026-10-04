@@ -463,6 +463,8 @@ zero `Compiling`. As duas cenas fotografadas na tela virtual (`fotografa_cena.sh
 
 ### §7.3 — Smoke da §6.6 (a `=70`: o brilho com a forma, agora pela placa)
 
+✅ **Smoke do dono APROVADO em 04/10.**
+
 Binário já compilado: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` corrido 2×
 depois do último commit de código e do `rm -rf target/*/incremental`; a 2.ª saída: `Finished smoke profile
 [optimized] target(s) in 0.20s`, zero `Compiling`. Fotografada com esse binário a 1930×2000 na tela virtual

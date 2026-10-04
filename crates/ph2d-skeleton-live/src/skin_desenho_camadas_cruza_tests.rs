@@ -210,6 +210,21 @@ fn nenhuma_ponta_de_corte_fica_a_um_tique_do_cruzamento() {
             tiques(&depois),
             depois.len()
         );
+        // ⭐ E o que fica a MAIS de uma largura de um cruzamento (a ponta do vinco) não se mexe.
+        let longe = |v: &[f64]| {
+            let mut l: Vec<String> = v
+                .iter()
+                .filter(|d| **d >= 1.0)
+                .map(|d| format!("{d:.3}"))
+                .collect();
+            l.sort();
+            l
+        };
+        assert_eq!(
+            longe(&antes),
+            longe(&depois),
+            "a {graus}° o encaixe mexeu numa ponta longe de um cruzamento"
+        );
         sem += tiques(&antes);
         com += tiques(&depois);
         no_cruzamento += depois.iter().filter(|d| **d <= 0.05).count();

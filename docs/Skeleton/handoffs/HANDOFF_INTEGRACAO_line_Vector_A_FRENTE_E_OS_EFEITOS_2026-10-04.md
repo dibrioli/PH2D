@@ -14,7 +14,7 @@
 | ramo | `line/Vector` |
 | base | **`1ad60a1ce`** = o `main` de quando este doc foi escrito (`behind 0`) ⇒ **nenhum rebase foi preciso** |
 | forma | **fast-forward** enquanto o `main` não andar |
-| commits | **113** (produto, gates, sondas, docs, duas tentativas revertidas no próprio ramo) + o deste handoff |
+| commits | **113** = 112 (produto, gates, sondas, docs, duas tentativas revertidas no próprio ramo) + o deste handoff |
 | ⚠️ `CARGO_TARGET_DIR` | a worktree usa o `target/` DELA. ⛔⛔ Nunca partilhe o target entre worktrees (troca os `.rlib`) |
 
 **Passos** (DIRETRIZ §1.5.3; `/pd-integracao`): (1) no primário, `git status` — `project-memory/` de

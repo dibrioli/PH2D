@@ -34,7 +34,7 @@ fn the_entry_creates_an_empty_vector_object_that_asks_for_edit() {
 
 /// **UMA entrada** (escolha do dono, 04/10), e uma de outra família não é desta — nada nasce.
 #[test]
-fn one_entry_and_another_familys_is_not_ours() {
+fn one_entry_and_the_entry_of_another_family_is_not_ours() {
     assert_eq!(ENTRIES, &[VECTOR_OBJECT]);
     let mut sim = SimWorld::new();
     let mut vec = crate::state::VecState::default();

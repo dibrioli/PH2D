@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**13 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **13** são handoffs (registro **morto**).
+**18 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **18** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -25,9 +25,14 @@
 | 2026-09-16 |   | [HANDOFF_INTEGRACAO_line_Vector_2026-09-16.md](HANDOFF_INTEGRACAO_line_Vector_2026-09-16.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/Vector` (o ESQUELETO), 2026-09-16 |
 | 2026-09-20 |   | [HANDOFF_INTEGRACAO_line_Vector_A_LINHA_2026-09-20.md](HANDOFF_INTEGRACAO_line_Vector_A_LINHA_2026-09-20.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/Vector` (o ESQUELETO), a linha inteira · 2026-09-20 |
 | 2026-09-24 |   | [HANDOFF_INTEGRACAO_line_Vector_O_CAMPO_E_A_PESQUISA_2026-09-24.md](HANDOFF_INTEGRACAO_line_Vector_O_CAMPO_E_A_PESQUISA_2026-09-24.md) | ⚠️ handoff (morto) | HANDOFF de INTEGRAÇÃO — `line/Vector`: o CAMPO do domínio, o bind SEM pontos novos, e a pesquisa do estado da … |
-| 2026-10-01 | ◆ | [HANDOFF_INTEGRACAO_line_Vector_A_SILHUETA_DA_PELE_2026-10-01.md](HANDOFF_INTEGRACAO_line_Vector_A_SILHUETA_DA_PELE_2026-10-01.md) | ⚠️ handoff (morto) | HANDOFF de INTEGRAÇÃO — `line/Vector`: o desenho FIEL da forma presa e a SILHUETA da pele (F37–F47, 2026-10-01… |
+| 2026-10-01 |   | [HANDOFF_INTEGRACAO_line_Vector_A_SILHUETA_DA_PELE_2026-10-01.md](HANDOFF_INTEGRACAO_line_Vector_A_SILHUETA_DA_PELE_2026-10-01.md) | ⚠️ handoff (morto) | HANDOFF de INTEGRAÇÃO — `line/Vector`: o desenho FIEL da forma presa e a SILHUETA da pele (F37–F47, 2026-10-01… |
 | 2026-10-02 |   | [HANDOFF_line_Vector_CONTINUACAO_FORMAS_COM_EFEITOS_2026-10-02.md](HANDOFF_line_Vector_CONTINUACAO_FORMAS_COM_EFEITOS_2026-10-02.md) | ⚠️ handoff (morto) | HANDOFF (continuação, janela nova) — `line/Vector`: próximo trabalho = FORMAS VETORIAIS COM EFEITOS (2026-10-0… |
 | 2026-10-02 |   | [HANDOFF_line_Vector_F48_O_FECHO_DA_IMAGEM_2026-10-02.md](HANDOFF_line_Vector_F48_O_FECHO_DA_IMAGEM_2026-10-02.md) | ⚠️ handoff (morto) | HANDOFF (continuação) — `line/Vector` F48: o fecho da imagem presa (2026-10-02) |
+| 2026-10-03 |   | [HANDOFF_line_Vector_CONTINUACAO_A_FRENTE_PINTA_POR_CIMA_2026-10-03.md](HANDOFF_line_Vector_CONTINUACAO_A_FRENTE_PINTA_POR_CIMA_2026-10-03.md) | ⚠️ handoff (morto) | HANDOFF (continuação, janela nova) — `line/Vector`: próximo = o BOTÃO «antes/depois dos ossos» por efeito (ord… |
+| 2026-10-04 | ◆ | [HANDOFF_INTEGRACAO_line_Vector_A_FRENTE_E_OS_EFEITOS_2026-10-04.md](HANDOFF_INTEGRACAO_line_Vector_A_FRENTE_E_OS_EFEITOS_2026-10-04.md) | ⚠️ handoff (morto) | HANDOFF de INTEGRAÇÃO — `line/Vector`: a imagem COSIDA, os EFEITOS cozidos no Bind e a FRENTE que tapa a de tr… |
+| 2026-10-04 |   | [HANDOFF_line_Vector_CONTINUACAO_A2_A4_FEITOS_2026-10-04.md](HANDOFF_line_Vector_CONTINUACAO_A2_A4_FEITOS_2026-10-04.md) | ⚠️ handoff (morto) | HANDOFF (continuação, janela nova) — `line/Vector`: A2–A4 FEITOS, o smoke do A2 e os abertos A5–A7 (2026-10-04… |
+| 2026-10-04 |   | [HANDOFF_line_Vector_CONTINUACAO_A5_A9_2026-10-04.md](HANDOFF_line_Vector_CONTINUACAO_A5_A9_2026-10-04.md) | ⚠️ handoff (morto) | HANDOFF (continuação, janela nova) — `line/Vector`: fechar A5, A7, A8 e A9 num turno só (2026-10-04, 3.ª onda) |
+| 2026-10-04 |   | [HANDOFF_line_Vector_CONTINUACAO_OS_ABERTOS_2026-10-04.md](HANDOFF_line_Vector_CONTINUACAO_OS_ABERTOS_2026-10-04.md) | ⚠️ handoff (morto) | HANDOFF (continuação, janela nova) — `line/Vector`: OS ABERTOS, um a um (2026-10-04) |
 
 ---
 

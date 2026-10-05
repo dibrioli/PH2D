@@ -1018,6 +1018,10 @@ Strenght = "Strenght"
 # `line/components`, plano 28 W6–W7 (2026-09-30): pt «resistências», sem acento em identificador —
 # a lista `Resistances` do `Health` (os tipos de dano) e os gates dela.
 resistencias = "resistencias"
+# Rodada de 2026-10-04: duas palavras que JÁ estão no `extend-ignore-identifiers-re` e aparecem
+# DENTRO de nomes compostos (a mesma lição de 17/09 e 20/09).
+projecto = "projecto"  # pt-PT «projeto», dentro de `projecto_antigo` (ph2d-skeleton-live)
+cose = "cose"  # pt «cose» (de coser), dentro de `onde_os_membros_se_sobrepoem_nada_se_cose_por_cima`
 
 [files]
 extend-exclude = [
@@ -1045,6 +1049,10 @@ extend-exclude = [
     # (`…U05BS0VIT09L…` contém `VOR`), e a acusação muda com o CONTEÚDO CIFRADO, não com o texto.
     # ⛔ Isentar a palavra em vez do ficheiro esconderia um `VOR`/`FOR` real no repo inteiro.
     "docs/3D/cleanroom/VASSOURA_*.txt",
+    # As saídas GRAVADAS dos oráculos de camadas (GIMP 3.2.6, Krita 6.0.4; ADR-0177) são bytes de
+    # pixel (`file` diz `data`), não texto: o typos lê sílabas soltas (`Iz`, `Pn`, `yor`) e a
+    # acusação muda com os PIXELS. Mesma postura das VASSOURAS: isenta-se o ficheiro, não a palavra.
+    "docs/Painter/ferramentas/oraculo_camadas_gimp/*.bin",
     # Spike fixtures may contain Luau intentionally
     "docs/scripting/examples/spike/**/*.luau",
     # PT-BR docs — typos-cli only knows en-US, would flag every "rever",

@@ -31,7 +31,7 @@
 | 2026-09-29 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-29_A_ROLAGEM.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-29_A_ROLAGEM.md) | ⚠️ handoff (morto) | `line/UIUX` · 2026-09-29 · **HANDOFF DO INTEGRADOR — a rolagem única, com inércia** |
 | 2026-09-30 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_OS_CARTOES.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_OS_CARTOES.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-09-30 — OS CARTÕES DE SECÇÃO, A PEGA E O TEMA POR SECÇÃO |
 | 2026-09-30 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_TEMAS_NOTAS_FANTASMA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-09-30_TEMAS_NOTAS_FANTASMA.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-09-30 — OS QUATRO TEMAS COLORIDOS, AS CORES VIVAS, O FANTASMA DO ARR… |
-| 2026-10-01 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-01_A_LINHA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-01_A_LINHA.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-10-01 — A LINHA INTEIRA (rolagem · cartões · temas e notas · fonte, … |
+| 2026-10-01 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-01_A_LINHA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-01_A_LINHA.md) | ⚠️ handoff (morto) | Handoff de integração — `line/UIUX`, 2026-10-01 — A LINHA INTEIRA (rolagem · cartões · temas e notas · fonte, … |
 | 2026-10-02 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-02.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-02.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-02 (a linha NÃO fechou) |
 | 2026-10-02 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-02_A_ESCALA.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-02_A_ESCALA.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-02 — a escala da interface (e o HiDPI) |
 | 2026-10-03 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-03.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-03.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-03 (a linha segue; NÃO integrar agora) |
@@ -50,7 +50,7 @@
 | 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_CTRL_TAB_E_O_MASK.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_CTRL_TAB_E_O_MASK.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — o Ctrl+Tab e o Mask (os três abertos dos modos) |
 | 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — o OBJECTO VETORIAL (contentor das formas) |
 | 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — a F3 do Vector (Vector ▸ Object · Edit) |
-| 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — PARA O `main` (o ponto de entrada único) |
+| 2026-10-04 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — PARA O `main` (o ponto de entrada único) |
 
 ---
 

@@ -72,6 +72,8 @@ mod motion_panels;
 mod object_add;
 /// O MODO de edição do objecto (o seletor *Mode*, o `Tab` e o cadeado).
 mod object_mode;
+/// O QUADRO (MiroClone): as abas de documento da barra de cima.
+mod board;
 /// As strings da SHELL (avisos, diálogos, nomes por omissão).
 mod shell;
 /// As strings da SHELL sobre mídia (imagem, folhas, importar/exportar, áudio).
@@ -499,6 +501,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| chrome_menus::tr(k))
             .or_else(|| object_add::tr(k))
             .or_else(|| object_mode::tr(k))
+            .or_else(|| board::tr(k))
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))
             .or_else(|| audio_fx::tr(k))

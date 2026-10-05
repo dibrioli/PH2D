@@ -5131,6 +5131,23 @@ name = "ph2d-bloom"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-board-model"
+version = "0.0.0"
+dependencies = [
+ "postcard",
+ "serde",
+]
+
+[[package]]
+name = "ph2d-board-render"
+version = "0.0.0"
+dependencies = [
+ "ph2d-board-model",
+ "ph2d-tokens",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-chrome-sync"
 version = "0.0.0"
 
@@ -5205,6 +5222,8 @@ dependencies = [
  "dhat",
  "libm",
  "ph2d-a11y",
+ "ph2d-board-model",
+ "ph2d-board-render",
  "ph2d-chrome-sync",
  "ph2d-color",
  "ph2d-component-desc",

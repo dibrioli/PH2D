@@ -84,6 +84,8 @@ mod inspector_model_properties;
 mod inspector_model_slice;
 mod inspector_model_tags;
 mod inspector_model_timer;
+pub mod board_view;
+pub mod document_tabs;
 pub mod layout_switch;
 pub mod layout_tabs;
 /// O tique da UI viva (o `motion` + a corda) — irmão, e não corpo do `HeroScreen`: aquele diz o
@@ -98,6 +100,7 @@ pub mod mode_drive;
 /// O que esta tela OFERECE agora — as portas de *«esta superfície está viva?»*.
 mod offers;
 mod paint;
+mod paint_canvas_overlays;
 mod panel_host;
 mod panel_walk;
 mod pre_dispatch;
@@ -258,17 +261,16 @@ pub struct HeroScreen {
     /// Wave 5 stage B: grid subsystem state — per-frame projection view
     /// + paint config + snap state (overlay + per-kind config).
     pub grid: GridState,
-    /// M14.4b.bis: set by the VIEW button (`TOOL_HOME`) when its
-    /// cycle lands on the "Zero" mode, signaling the host to reset
-    /// `Camera2d` to its default (`center=(0,0)`, `height_world=10`).
-    /// The shell polls this flag after `paint_hero_screen` and
-    /// clears it after acting.
+    /// M14.4b.bis: set by the VIEW button (`TOOL_HOME`) when its cycle lands on the "Zero" mode,
+    /// signaling the host to reset `Camera2d` to its default (`center=(0,0)`, `height_world=10`).
+    /// The shell polls this flag after `paint_hero_screen` and clears it after acting.
     pub camera_reset_pending: bool,
-    /// M14.4c: set by the "Import…" context-menu entry
-    /// (`CTX_MENU_IMPORT`). The shell polls this flag, opens the
-    /// native file picker, and processes any selected images
-    /// (PNG/WEBP/JPEG). Cleared by the shell after handling.
+    /// M14.4c: set by the "Import…" context-menu entry (`CTX_MENU_IMPORT`). The shell polls this
+    /// flag, opens the native file picker, and processes any selected images (PNG/WEBP/JPEG).
+    /// Cleared by the shell after handling.
     pub import_requested: bool,
+    /// ⭐ **Os QUADROS do projecto e a aba activa** (MiroClone) — ver [`crate::documents`].
+    pub documents: crate::documents::Documents,
     /// O que o menu Ficheiro pediu — ver [`file_menu::FileMenuRequests`].
     pub file_menu: file_menu::FileMenuRequests,
     /// Project-level configuration (px/meter, future global toggles).
@@ -300,11 +302,9 @@ pub struct HeroScreen {
     /// the bottom HUD. Host assigns directly (`hero.stats = ...`)
     /// once per frame; painter reads them in `paint_bottom_hud`.
     pub stats: BottomHudStats,
-    /// Most recent viewport rect — written each frame at the top of
-    /// [`paint_hero_screen`]. Chrome event handlers in `chrome/` read
-    /// it to make smart layout decisions (e.g. cascade submenus flip
-    /// to the left of their parent when the right edge is reached).
-    /// Defaults to a zero rect until the first paint.
+    /// Most recent viewport rect — written each frame at the top of [`paint_hero_screen`]. Chrome
+    /// event handlers in `chrome/` read it to make smart layout decisions (e.g. cascade submenus
+    /// flip to the left of their parent when the right edge is reached). Zero until the 1st paint.
     pub last_viewport: Rect,
     /// O retângulo do CANVAS que o último `paint_hero_screen` resolveu.
     ///
@@ -449,6 +449,7 @@ impl HeroScreen {
             grid: GridState::default(),
             camera_reset_pending: false,
             import_requested: false,
+            documents: crate::documents::Documents::default(),
             file_menu: file_menu::FileMenuRequests::default(),
             project: crate::project::ProjectSettings::default(),
             input_map: ph2d_input::InputMap::with_player_defaults(),

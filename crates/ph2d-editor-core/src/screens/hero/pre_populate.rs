@@ -1,16 +1,12 @@
-//! Pre-paint widget registrations that are NOT owned by any single
-//! panel.
+//! Pre-paint widget registrations that are NOT owned by any single panel.
 //!
-//! ADR-0029 Phase C.1 split: the legacy `inspector::populate` module
-//! historically registered Inspector widgets together with
-//! widget-gallery showcase samples, the floating BlenderColorPicker,
-//! global context-menu items, scrollbars, and Hierarchy drag/resize
-//! handles. After the Inspector panel migrated to `ph2d-panel-inspector`,
-//! the Inspector-specific 4 functions moved with it (via
-//! `Panel::populate` on the new registry); the rest stays here because
-//! it is either shared across panels (showcase samples, picker) or
-//! owned by chrome (context menus, scrollbars, Hierarchy handles —
-//! the latter follow Hierarchy into its own crate in C.2).
+//! ADR-0029 Phase C.1 split: the legacy `inspector::populate` module historically registered
+//! Inspector widgets together with widget-gallery showcase samples, the floating
+//! BlenderColorPicker, global context-menu items, scrollbars, and Hierarchy drag/resize handles.
+//! After the Inspector panel migrated to `ph2d-panel-inspector`, the Inspector-specific 4
+//! functions moved with it (via `Panel::populate` on the new registry); the rest stays here because
+//! it is either shared across panels (showcase samples, picker) or owned by chrome (context menus,
+//! scrollbars, Hierarchy handles — the latter follow Hierarchy into its own crate in C.2).
 
 use crate::ids;
 use crate::interaction::{InteractiveState, WidgetStore};
@@ -31,6 +27,7 @@ pub fn populate_shared(store: &mut WidgetStore) {
     super::menu_bar::populate(store);
     super::slot_tabs::populate(store);
     super::layout_tabs::populate(store);
+    super::document_tabs::populate(store);
     populate_scrollbars(store);
     populate_hierarchy_chrome(store);
     populate_prefab_bar(store);

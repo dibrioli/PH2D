@@ -23,6 +23,8 @@ mod asset_browser;
 /// vivo. As rows nao existem em tempo de escrita: os ids delas sao derivados da CHAVE.
 mod authored;
 mod bgremoval;
+/// As abas de DOCUMENTO da barra de menus (MiroClone).
+mod documents;
 mod flip;
 mod image_tools;
 mod input_map;
@@ -52,6 +54,7 @@ mod wet_tuning;
 pub use asset_browser::*;
 pub use authored::*;
 pub use bgremoval::*;
+pub use documents::*;
 pub use flip::*;
 pub use image_tools::*;
 pub use input_map::*;

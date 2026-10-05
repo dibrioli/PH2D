@@ -326,6 +326,7 @@ pub fn paint_menu_bar(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     motion: &crate::motion::UiMotion,
+    docs: &crate::documents::Documents,
 ) {
     let bar = layout.top_bar;
     if bar.w <= 0.0 || bar.h <= 0.0 {
@@ -382,6 +383,22 @@ pub fn paint_menu_bar(
         .iter()
         .map(|(_, _, r)| r.x + r.w)
         .fold(bar.x, f32::max);
+    // ⭐⭐ **AS ABAS DE DOCUMENTO** (MiroClone) no vazio entre os menus e as abas de layout.
+    let gap = super::document_tabs::gap_px();
+    let layout_start = super::layout_tabs::tab_rects(bar, menus_end_x, text_system)
+        .first()
+        .map_or(bar.x + bar.w, |(_, r)| r.x);
+    super::document_tabs::paint(
+        bar,
+        menus_end_x + gap,
+        layout_start - gap,
+        docs,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
     super::layout_tabs::paint(
         bar,
         menus_end_x,

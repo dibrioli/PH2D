@@ -50,6 +50,10 @@ pub(super) fn run(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if super::layout_tabs::apply_event(hero, event) {
         return true;
     }
+    // Uma aba de DOCUMENTO troca a área central entre a cena e um quadro (MiroClone).
+    if super::document_tabs::apply_event(hero, event) {
+        return true;
+    }
     // Uma aba de painel levanta o painel dela, e isso é tudo o que uma aba faz.
     super::slot_tabs::apply_event(hero, event)
 }

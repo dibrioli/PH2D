@@ -221,5 +221,5 @@ cai para Object depois de desenhar.
 
 ```
 ▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.22s
+    Finished `smoke` profile [optimized] target(s) in 0.27s
 ```

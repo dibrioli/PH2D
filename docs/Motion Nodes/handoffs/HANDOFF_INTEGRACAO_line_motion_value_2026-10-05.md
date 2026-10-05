@@ -92,6 +92,8 @@
 
 ## §7 — SMOKE (o dono)
 
+✅ **Smoke do dono APROVADO em 05/10.**
+
 Binário compilado nesta árvore (`rm -rf target/*/incremental` e `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` 2×; a 2.ª saída):
 
 ```

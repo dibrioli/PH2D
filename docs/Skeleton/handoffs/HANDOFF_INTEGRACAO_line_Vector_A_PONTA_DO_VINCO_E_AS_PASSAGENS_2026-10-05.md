@@ -47,11 +47,21 @@
 
 ## 3. Prova de fecho
 
-(gate batched sobre `f4a5594a4..HEAD` — ver §3.1, preenchido no fecho)
+Gate batched 1× (agente `verificador`, base `f4a5594a4` — o diff apanha também o `main` de 05/10 que a
+linha recebeu por fast-forward; tudo verde):
 
-### 3.1 Resultado
+| portão | resultado |
+|---|---|
+| `nextest-impacted.sh` (BASE `f4a5594a4`) | ✅ 19 927 / 19 927 |
+| `cargo clippy --workspace --all-targets -D warnings` | ❌ 9 avisos, todos desta onda (tipo complexo ×2, `arco` só usado em teste, `div_ceil` ×4, laço indexado, `if` colapsável) → corrigidos em `…` e o clippy das duas crates limpo |
+| `cargo fmt --all --check` | ✅ |
+| `file_loc_caps` (4/4) · `architecture` da shell (3/3) · `architecture` do editor-core (102) | ✅ |
+| `censos-da-arvore-combinada.sh` | ✅ 114/114, 12 de 12 censos |
+| ficheiros da onda acima de 700 linhas | nenhum |
 
-PENDENTE
+Depois das curas: `ph2d-skeleton-live` 301 ✅, `ph2d-skeleton` 97 ✅, `ph2d-app-vec smoke_bone` 60 ✅.
+Mutação: §2. Fotos: as cenas `=6` e `=5` a abrir nas telas novas (painel **Bones** com
+**Transform**; na Hierarchy **Copias bone 2**, **Zig Zag bone 2**).
 
 ## 4. ABERTO
 

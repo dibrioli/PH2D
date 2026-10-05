@@ -52,8 +52,11 @@ fn antiga(k: &Skin, p: [f64; 2], w: &[f64]) -> [f64; 2] {
     ]
 }
 
+/// Um ponto e os pesos dele nos três ossos.
+type Ponto = ([f64; 2], [f64; 3]);
+
 /// Pontos e pesos de uma cadeia de três ossos (pesos com dois e três ossos a mandar).
-fn amostra() -> (Skin, Vec<([f64; 2], [f64; 3])>) {
+fn amostra() -> (Skin, Vec<Ponto>) {
     let k = super::centro_tests::cadeia3(10.0, 20.0, 30.0, 0.7, -1.9);
     let mut v = Vec::new();
     for i in 0..400_u32 {

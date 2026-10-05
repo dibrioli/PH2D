@@ -17,11 +17,15 @@ thread_local! {
     pub(super) static SEM_FECHO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     /// A última entrada da lei — `(união, fonte)` — para as sondas.
     pub(super) static ULTIMA: std::cell::RefCell<Option<(VecPath, VecPath)>> = const { std::cell::RefCell::new(None) };
-    /// O que a [`fenda`] examinou: `(s, e, arco, corda, velha, raio)` — para as sondas.
     /// As sondas ligam o registo das [`EXAMINADAS`] (o raio de cada uma custa: fora do relógio).
     pub(super) static REGISTA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-    pub(super) static EXAMINADAS: std::cell::RefCell<Vec<(usize, usize, f64, f64, bool, f64)>> = const { std::cell::RefCell::new(Vec::new()) };
+    /// O que a [`fendas`] examinou — para as sondas.
+    pub(super) static EXAMINADAS: std::cell::RefCell<Vec<Examinada>> = const { std::cell::RefCell::new(Vec::new()) };
 }
+
+/// Uma passagem examinada: `(s, e, arco, corda, velha, raio)`.
+#[cfg(test)]
+pub(super) type Examinada = (usize, usize, f64, f64, bool, f64);
 
 /// Amostras por segmento das polilinhas.
 const AMOSTRAS: usize = 16;
@@ -301,7 +305,8 @@ fn fendas(pl: &[[f64; 2]], cruz: &[bool], w: f64, buraco: bool, cor: f64) -> Vec
         let d = (acc[a] - acc[b]).abs();
         d.min(total - d) <= w
     };
-    for (arco, s, e) in pares {
+    for par in pares {
+        let (s, e) = (par.1, par.2);
         let toca = |&(a, b): &(usize, usize)| {
             dentro_do_arco(a, b, s) || dentro_do_arco(a, b, e) || dentro_do_arco(s, e, a)
         };
@@ -327,7 +332,7 @@ fn fendas(pl: &[[f64; 2]], cruz: &[bool], w: f64, buraco: bool, cor: f64) -> Vec
             let corda = (pl[s][0] - pl[e][0]).hypot(pl[s][1] - pl[e][1]);
             EXAMINADAS.with(|x| {
                 x.borrow_mut()
-                    .push((s, e, arco, corda, false, raio_inscrito(&regiao)));
+                    .push((s, e, par.0, corda, false, raio_inscrito(&regiao)));
             });
         }
         if cabe(&regiao, 0.5 * w) {

@@ -70,9 +70,9 @@ fn desvio(d: usize, fina: &[([f64; 2], [f64; 2])], grossa: &[([f64; 2], [f64; 2]
         for i in 0..=e - j {
             let (a, b) = match (i % 2, j % 2) {
                 (0, 0) => continue,
-                (1, 0) => (((i - 1) / 2, j / 2), ((i + 1) / 2, j / 2)),
-                (0, 1) => ((i / 2, (j - 1) / 2), (i / 2, (j + 1) / 2)),
-                _ => (((i - 1) / 2, (j + 1) / 2), ((i + 1) / 2, (j - 1) / 2)),
+                (1, 0) => (((i - 1) / 2, j / 2), (i.div_ceil(2), j / 2)),
+                (0, 1) => ((i / 2, (j - 1) / 2), (i / 2, j.div_ceil(2))),
+                _ => (((i - 1) / 2, j.div_ceil(2)), (i.div_ceil(2), (j - 1) / 2)),
             };
             let (pa, pb) = (grossa[ix(d, a.0, a.1)].1, grossa[ix(d, b.0, b.1)].1);
             let p = fina[ix(e, i, j)].1;
@@ -150,7 +150,7 @@ impl Fina {
         let adapta = fixo.is_none() && tol > 0.0 && tol.is_finite();
         let mut grades: Vec<(usize, Grade, bool)> = Vec::with_capacity(n);
         let mut folga = vec![0.0; n];
-        for k in 0..n {
+        for (k, folga_k) in folga.iter_mut().enumerate() {
             grades.push(if let Some(d) = fixo {
                 (d.max(1), grelha_de(d.max(1), k, None, &mut posa), true)
             } else if !adapta || rigido(k) {
@@ -161,7 +161,7 @@ impl Fina {
                 let dv = desvio(1, &g2, &g);
                 // ⚠️ O desvio é AMOSTRADO nos meios das arestas: a folga dobra-o (o máximo
                 // amostrado erra para baixo).
-                folga[k] = 2.0 * dv;
+                *folga_k = 2.0 * dv;
                 (2, g2, dv <= tol)
             });
         }
@@ -215,10 +215,10 @@ impl Fina {
                 if let Some(r) = em([ix(d, i, j), ix(d, i + 1, j), ix(d, i, j + 1)]) {
                     return Some(r);
                 }
-                if i + j + 1 < d {
-                    if let Some(r) = em([ix(d, i + 1, j), ix(d, i + 1, j + 1), ix(d, i, j + 1)]) {
-                        return Some(r);
-                    }
+                if i + j + 1 < d
+                    && let Some(r) = em([ix(d, i + 1, j), ix(d, i + 1, j + 1), ix(d, i, j + 1)])
+                {
+                    return Some(r);
                 }
             }
         }

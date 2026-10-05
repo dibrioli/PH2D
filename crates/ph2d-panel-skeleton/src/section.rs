@@ -29,6 +29,12 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::RowCtx;
 use ph2d_i18n::tr;
 
+/// ⭐ **O `Bind` só em Object** (A14) — sem a ferramenta de osso na mão (`armado == None`) o
+/// esqueleto está em Object; com ela, está em Edit ou Pose.
+pub(crate) fn bind_e_oferecido(armado: Option<usize>) -> bool {
+    armado.is_none()
+}
+
 /// Seção **SKELETON** — prender ao esqueleto, as duas saídas, e o osso em foco.
 /// ⭐⭐⭐ **ESTE SEGMENTO ESTÁ ACESO?** — a lei que o dono descreveu, numa porta.
 ///
@@ -246,10 +252,16 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
     // Tabela tipada como a do Blend e a do Envelope (HR-12): o `action_button` delega ao
     // `paint_button` canónico, que é quem costura o AccessKit — e nomear o [`ph2d_a11y::NodeId`]
     // aqui é o idioma que o gate `every_widget_file_wires_a11y` lê.
-    let verbos: [(ph2d_a11y::NodeId, &str); 1] =
-        [(ids::VECTOR_BONE_BIND, tr("panel.vector.bone.bind"))];
-    for (id, label) in verbos {
-        y = r.action_button(id, label, y);
+    //
+    // ⭐⭐ **O `Bind` é do modo OBJECT** (A14): ele prende a forma-objecto escolhida ao esqueleto
+    // escolhido, e em Edit/Pose o cadeado não deixa escolher formas — pintado ali seria um botão que
+    // só sabe recusar.
+    if bind_e_oferecido(armado) {
+        let verbos: [(ph2d_a11y::NodeId, &str); 1] =
+            [(ids::VECTOR_BONE_BIND, tr("panel.vector.bone.bind"))];
+        for (id, label) in verbos {
+            y = r.action_button(id, label, y);
+        }
     }
     // ⭐⭐⭐ **AS SAÍDAS APARECEM PARA AS DUAS MÍDIAS — o *Expand* só para UMA.**
     //

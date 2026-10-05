@@ -178,6 +178,17 @@ diz onde ler o mecanismo:
   corrente), `a_bone_under_the_finger_selects_its_skeleton_and_seeds_the_bind` (controlo: fora do
   osso), e os três de costura `the_skeleton_object_is_picked_and_bound_in_object_mode.rs` (vermelho
   visto sobre o HEAD).
+- **C8 — o painel Bones por modo.** ⚠️ **Desvio do plano, decidido por uma lei viva:** o plano dizia
+  «Edit = só *Create*; Pose = *Transform*, *Weight*; Object = só *Bind*», mas o gate
+  `the_create_transform_group_is_the_door_and_starts_with_nothing_lit` guarda a porta do PRIMEIRO
+  osso numa cena vazia, e com o C5 cada segmento já leva ao modo dele (*Create* → Edit,
+  *Transform*/*Weight* → Pose; numa cena sem esqueleto o 1.º osso é embrulhado pela porta das raízes
+  soltas). ⇒ a fileira dos verbos fica sempre — é o seletor do verbo E do modo, acende o do modo em
+  curso — e o **`Bind` passa a ser só de Object** (`section::bind_e_oferecido`): em Edit/Pose o
+  cadeado não deixa escolher a forma, e ele só saberia recusar. As saídas (*Expand*/*Release*) já só
+  aparecem com uma forma presa escolhida, o que em Edit/Pose não acontece. Gate
+  `the_two_exits_appear_only_when_something_is_bound` ganhou o controlo «em Pose o Bind some»
+  (vermelho visto com a lei mutada para `true`).
 
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 

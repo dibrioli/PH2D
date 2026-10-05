@@ -443,7 +443,15 @@ fn the_two_exits_appear_only_when_something_is_bound() {
     };
     state::set_current_skinned(state::Skinned::default());
     state::set_current_bone(None);
-    assert!(sem(ids::VECTOR_BONE_BIND), "o Bind tem de estar la' sempre");
+    assert!(
+        sem(ids::VECTOR_BONE_BIND),
+        "o Bind tem de estar la' em Object"
+    );
+    // ⭐ E SÓ em Object (A14): com a ferramenta de osso na mão o esqueleto está em Edit/Pose, onde o
+    // cadeado não deixa escolher a forma — o Bind só saberia recusar.
+    state::set_current_bone_tool(Some(1));
+    assert!(!sem(ids::VECTOR_BONE_BIND), "o Bind foi pintado em Pose");
+    state::set_current_bone_tool(None);
     assert!(
         !sem(ids::VECTOR_BONE_EXPAND) && !sem(ids::VECTOR_BONE_RELEASE),
         "as saidas foram pintadas sem nada preso"

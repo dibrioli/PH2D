@@ -269,3 +269,22 @@ fn the_vector_tool_arriving_without_the_mode_asks_for_the_selected_shape() {
     c.quadro(None);
     assert_eq!(c.em_edit(), Some(a));
 }
+
+/// ⭐ GATE — **o Add não entra no Edit de uma forma VELHA**: a caneta com uma selecção antiga não
+/// pode puxar o Edit pela porta antiga quando a ferramenta chega à mão — o Add espera o 1.º traço.
+/// CONTROLO: a mesma selecção com a ferramenta posta à mão (sem o Add) entra
+/// (`the_vector_tool_arriving_without_the_mode_asks_for_the_selected_shape`).
+/// (Mutação: o `follow` não limpar a caneta ao armar ⇒ RED.)
+#[test]
+fn add_never_enters_the_edit_of_a_stale_pen_selection() {
+    let mut c = cena();
+    c.forma(0.0);
+    c.quadro(None);
+    let velha = *c.vec.entities.keys().next().expect("a forma");
+    c.vec.pen.select_many(&[velha]);
+    c.vec.edit.arm();
+    c.quadro(None);
+    c.quadro(None);
+    assert!(c.na_mao(), "o Add não pôs a ferramenta na mão");
+    assert_eq!(c.em_edit(), None, "o Add entrou no Edit da forma velha");
+}

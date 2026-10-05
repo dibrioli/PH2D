@@ -47,6 +47,7 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `a_round_live_offset_costs_like_the_other_joins` | [`ph2d-vec-boolean`](../../crates/ph2d-vec-boolean/tests/it/offset_live_cost.rs) | razão de relógios |
 | `the_cost_of_depth_is_linear_not_explosive` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/it/nesting_clock.rs) | razão de relógios |
 | `the_cost_of_sampling_a_path_is_flat_in_its_anchors` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/it/motion_path_perf.rs) | razão de relógios |
+| `the_segment_lookup_is_a_binary_search_not_a_scan` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/it/motion_path_perf.rs) | razão de relógios (5,13× na suíte a `load 40`; 1,05× sozinho, 3/3) |
 | `apply_from_doc_is_zero_alloc_steady_state` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/no_alloc_bridge.rs) | contagem de alocações |
 | `no_expression_allocates_no_link_frame` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/no_expression_link_frame_alloc.rs) | contagem de alocações |
 | `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/wetpaint/tests.rs) | razão de relógios |

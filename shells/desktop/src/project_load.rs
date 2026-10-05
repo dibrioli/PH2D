@@ -83,6 +83,16 @@ impl crate::App {
                 return;
             }
         };
+        // **E OS QUADROS, pela mesma lei** (MiroClone): um blob que este binário não lê recusa o load,
+        // senão o próximo Ctrl+S gravaria o projecto sem eles.
+        let boards = match ph2d_editor_core::documents::BoardSet::from_bytes(&file.boards) {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!("[proj] quadros ilegiveis — load RECUSADO: {e}");
+                self.toast_refused("shell.project_load.project_refused_its_boards", &e);
+                return;
+            }
+        };
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----
         //
         self.project_forget_previous(&file);
@@ -95,6 +105,10 @@ impl crate::App {
             pattern_art,
             timeline,
         );
+        // Os quadros do ficheiro tomam as abas (e a área volta à cena).
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            ph2d_editor_core::screens::hero::document_tabs::load(hero, boards);
+        }
     }
 
     /// **A sessão ESQUECE o documento anterior** — o relógio, o undo, o mundo rígido e as settings

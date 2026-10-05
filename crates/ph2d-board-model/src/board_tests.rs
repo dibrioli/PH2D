@@ -7,7 +7,12 @@ fn tabs_keep_their_order_through_create_duplicate_move_and_remove() {
     let a = set.create("A".into());
     let b = set.create("B".into());
     let a2 = set.duplicate(a, "A cópia".into()).unwrap();
-    let names = |s: &BoardSet| s.boards().iter().map(|b| b.name.clone()).collect::<Vec<_>>();
+    let names = |s: &BoardSet| {
+        s.boards()
+            .iter()
+            .map(|b| b.name.clone())
+            .collect::<Vec<_>>()
+    };
     assert_eq!(names(&set), ["A", "A cópia", "B"]);
     assert!(set.move_tab(b, 0));
     assert_eq!(names(&set), ["B", "A", "A cópia"]);
@@ -33,12 +38,18 @@ fn bytes_round_trip_with_content_camera_and_order() {
     let a = set.create("Retro".into());
     set.create("Ideias".into());
     let board = set.get_mut(a).unwrap();
-    board.camera = Camera { center_x: 120.5, center_y: -40.0, zoom: 2.5 };
+    board.camera = Camera {
+        center_x: 120.5,
+        center_y: -40.0,
+        zoom: 2.5,
+    };
     let id = board.doc.mint_id();
     let z = board.doc.z_on_top();
     let el = Element {
         id,
-        kind: ElementKind::Rect { fill: Rgba([1, 2, 3, 4]) },
+        kind: ElementKind::Rect {
+            fill: Rgba([1, 2, 3, 4]),
+        },
         x: 1.0,
         y: 2.0,
         w: 3.0,

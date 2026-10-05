@@ -18,7 +18,11 @@ pub fn paint(board: &Board, area: Area, scene: &mut VectorScene, theme: Theme) {
     scene.push_clip(&clip);
     scene.fill_rect(clip, token(ColorToken::Bg1, theme));
     let dots = dot_grid(&board.camera, area);
-    scene.fill_path(&dots, &Brush::Solid(token(ColorToken::GridLine, theme)), Affine::IDENTITY);
+    scene.fill_path(
+        &dots,
+        &Brush::Solid(token(ColorToken::GridLine, theme)),
+        Affine::IDENTITY,
+    );
     for el in board.doc.live_in_z_order() {
         let a = board.camera.to_screen(area, [el.x, el.y]);
         let b = board.camera.to_screen(area, [el.x + el.w, el.y + el.h]);

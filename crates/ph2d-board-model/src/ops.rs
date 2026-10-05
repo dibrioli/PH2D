@@ -21,7 +21,10 @@ impl BoardOp {
         match self {
             BoardOp::Put(mut el) => {
                 let prev = doc.elements.get(&el.id).cloned();
-                el.version = prev.as_ref().map_or(el.version, |p| p.version.max(el.version)) + 1;
+                el.version = prev
+                    .as_ref()
+                    .map_or(el.version, |p| p.version.max(el.version))
+                    + 1;
                 doc.next_id = doc.next_id.max(el.id.0);
                 let id = el.id;
                 doc.elements.insert(id, el);

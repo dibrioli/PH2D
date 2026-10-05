@@ -25,6 +25,17 @@ pub(super) fn write_project_art(
     timeline: Vec<u8>,
     pattern_art: Vec<u8>,
 ) {
+    write_project_boards(path, schema, timeline, pattern_art, Vec::new());
+}
+
+/// O mesmo, com os bytes dos **QUADROS** — o último campo do arquivo (v184, MiroClone).
+pub(super) fn write_project_boards(
+    path: &std::path::Path,
+    schema: u32,
+    timeline: Vec<u8>,
+    pattern_art: Vec<u8>,
+    boards: Vec<u8>,
+) {
     let file = ProjectFile {
         state: empty_state(),
         assets: Vec::new(),
@@ -39,6 +50,7 @@ pub(super) fn write_project_art(
         stable_id_counter: ph2d_ecs::StableId::FIRST,
         input_map: ph2d_input::InputMap::new(),
         pattern_art,
+        boards,
     };
     let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
     std::fs::write(path, bytes).expect("grava o arquivo de projeto");

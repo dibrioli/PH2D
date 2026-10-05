@@ -4,7 +4,9 @@ use crate::{BoardDoc, Element, ElementKind, Rgba};
 fn rect(doc: &mut BoardDoc, x: f64) -> Element {
     Element {
         id: doc.mint_id(),
-        kind: ElementKind::Rect { fill: Rgba([200, 180, 40, 255]) },
+        kind: ElementKind::Rect {
+            fill: Rgba([200, 180, 40, 255]),
+        },
         x,
         y: 0.0,
         w: 10.0,
@@ -39,13 +41,19 @@ fn a_move_undoes_to_the_previous_pose_and_the_version_only_climbs() {
     let id = el.id;
     BoardOp::Put(el.clone()).apply(&mut doc);
     let v1 = doc.get(id).unwrap().version;
-    let moved = Element { x: 50.0, ..doc.get(id).unwrap().clone() };
+    let moved = Element {
+        x: 50.0,
+        ..doc.get(id).unwrap().clone()
+    };
     let undo = BoardOp::Put(moved).apply(&mut doc).unwrap();
     assert_eq!(doc.get(id).unwrap().x, 50.0);
     let v2 = doc.get(id).unwrap().version;
     undo.apply(&mut doc);
     assert_eq!(doc.get(id).unwrap().x, 1.0);
-    assert!(v1 < v2 && v2 < doc.get(id).unwrap().version, "a versão nunca desce, nem ao desfazer");
+    assert!(
+        v1 < v2 && v2 < doc.get(id).unwrap().version,
+        "a versão nunca desce, nem ao desfazer"
+    );
 }
 
 #[test]
@@ -64,7 +72,10 @@ fn a_batch_undoes_in_reverse_order() {
     let a = rect(&mut doc, 1.0);
     let b = rect(&mut doc, 2.0);
     let (ia, ib) = (a.id, b.id);
-    let undo = apply_batch(&mut doc, vec![BoardOp::Put(a), BoardOp::Put(b), BoardOp::Delete(ia)]);
+    let undo = apply_batch(
+        &mut doc,
+        vec![BoardOp::Put(a), BoardOp::Put(b), BoardOp::Delete(ia)],
+    );
     assert_eq!(doc.live_len(), 1);
     apply_batch(&mut doc, undo);
     assert_eq!(doc.live_len(), 0);

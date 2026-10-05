@@ -105,7 +105,12 @@ pub fn register_board(store: &mut WidgetStore, id: BoardId) {
 }
 
 fn register(store: &mut WidgetStore, id: NodeId) {
-    store.register(id, InteractiveState::Button { state: ButtonState::Normal });
+    store.register(
+        id,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
 }
 
 /// ⭐ **Carregar um projecto** traz os quadros dele: troca-os, regista as abas e volta à `Scene`.
@@ -136,7 +141,10 @@ pub fn paint(
         let state = store.button_state(id).unwrap_or(ButtonState::Normal);
         let bg = if is_on {
             Some(ColorToken::AccentSoft)
-        } else if matches!(state, ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed) {
+        } else if matches!(
+            state,
+            ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
+        ) {
             Some(ColorToken::BgElev)
         } else {
             None
@@ -145,7 +153,14 @@ pub fn paint(
             let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
             fill_rounded_rect(scene, r, radius, resolve(bg, theme));
         }
-        let fg = resolve(if is_on { ColorToken::Accent } else { ColorToken::Text2 }, theme);
+        let fg = resolve(
+            if is_on {
+                ColorToken::Accent
+            } else {
+                ColorToken::Text2
+            },
+            theme,
+        );
         match t {
             Target::New => {
                 let s = INLINE_ICON_PX;
@@ -153,7 +168,14 @@ pub fn paint(
                 paint_icon(scene, IconId::Plus, icon, fg, StrokeToken::Default.px());
             }
             Target::Scene => {
-                paint_text_centered(text_system, scene, &tr("board.tab.scene"), r, TypeToken::Sm.px(), fg);
+                paint_text_centered(
+                    text_system,
+                    scene,
+                    &tr("board.tab.scene"),
+                    r,
+                    TypeToken::Sm.px(),
+                    fg,
+                );
             }
             Target::Board(b) => {
                 let name = hero_docs.boards().get(b).map_or("", |b| b.name.as_str());
@@ -190,7 +212,13 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         register_board(&mut hero.store, board);
         return true;
     }
-    let hit = hero.documents.boards().boards().iter().map(|b| b.id).find(|b| tab_node_id(*b) == id);
+    let hit = hero
+        .documents
+        .boards()
+        .boards()
+        .iter()
+        .map(|b| b.id)
+        .find(|b| tab_node_id(*b) == id);
     if let Some(board) = hit {
         hero.documents.activate(Some(board));
         return true;

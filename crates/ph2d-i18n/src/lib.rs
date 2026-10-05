@@ -49,6 +49,8 @@ mod audio_engines;
 mod audio_fx;
 /// ⭐⭐ **Os nomes das MISTURAS** que o motor `ph2d-blend-mode` publica — pintados por três painéis.
 mod blend_modes;
+/// O QUADRO (MiroClone): as abas de documento da barra de cima.
+mod board;
 /// As strings dos MENUS da moldura (barra de menus, menus de contexto, paleta de comandos).
 mod chrome_menus;
 /// As strings do RESTO da moldura (barra do topo, HUD, diálogos, seletor de cor, cartão de instância).
@@ -72,8 +74,6 @@ mod motion_panels;
 mod object_add;
 /// O MODO de edição do objecto (o seletor *Mode*, o `Tab` e o cadeado).
 mod object_mode;
-/// O QUADRO (MiroClone): as abas de documento da barra de cima.
-mod board;
 /// As strings da SHELL (avisos, diálogos, nomes por omissão).
 mod shell;
 /// As strings da SHELL sobre mídia (imagem, folhas, importar/exportar, áudio).

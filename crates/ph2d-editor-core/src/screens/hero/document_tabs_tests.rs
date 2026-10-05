@@ -50,9 +50,13 @@ fn find(hero: &HeroScreen, id: NodeId) -> Option<(f32, f32)> {
 fn click(hero: &mut HeroScreen, id: NodeId) {
     let (x, y) = find(hero, id).unwrap_or_else(|| panic!("{id:?} não foi pintado na barra"));
     let arena = Bump::new();
-    let mut events = hero.handle_pointer(ptr(PointerKind::Down, x, y), &arena).to_vec();
+    let mut events = hero
+        .handle_pointer(ptr(PointerKind::Down, x, y), &arena)
+        .to_vec();
     events.extend_from_slice(hero.handle_pointer(ptr(PointerKind::Up, x, y), &arena));
-    let clicked = events.iter().any(|e| matches!(e, WidgetEvent::Click(i) | WidgetEvent::DoubleClick(i) if *i == id));
+    let clicked = events
+        .iter()
+        .any(|e| matches!(e, WidgetEvent::Click(i) | WidgetEvent::DoubleClick(i) if *i == id));
     assert!(clicked, "o clique em {id:?} não emitiu Click: {events:?}");
     for e in events {
         hero.apply_event(e);
@@ -62,7 +66,10 @@ fn click(hero: &mut HeroScreen, id: NodeId) {
 #[test]
 fn clicking_plus_creates_a_board_opens_it_and_its_tab_is_clickable() {
     let (mut hero, mut text) = painted();
-    assert!(find(&hero, ids::DOC_TAB_SCENE).is_some(), "a aba Scene não está na barra");
+    assert!(
+        find(&hero, ids::DOC_TAB_SCENE).is_some(),
+        "a aba Scene não está na barra"
+    );
     click(&mut hero, ids::DOC_TAB_NEW);
     let first = hero.documents.boards().boards()[0].id;
     assert_eq!(hero.documents.active(), Some(first));
@@ -72,10 +79,18 @@ fn clicking_plus_creates_a_board_opens_it_and_its_tab_is_clickable() {
     assert_eq!(hero.documents.boards().boards().len(), 2);
     repaint(&mut hero, &mut text);
     click(&mut hero, ids::DOC_TAB_SCENE);
-    assert_eq!(hero.documents.active(), None, "a aba Scene não devolveu a cena");
+    assert_eq!(
+        hero.documents.active(),
+        None,
+        "a aba Scene não devolveu a cena"
+    );
     repaint(&mut hero, &mut text);
     click(&mut hero, tab_node_id(first));
-    assert_eq!(hero.documents.active(), Some(first), "a aba do 1.º quadro não o abriu");
+    assert_eq!(
+        hero.documents.active(),
+        Some(first),
+        "a aba do 1.º quadro não o abriu"
+    );
 }
 
 #[test]
@@ -83,7 +98,10 @@ fn a_board_owns_the_drawing_area_and_takes_no_ruler_inset() {
     let (mut hero, mut text) = painted();
     click(&mut hero, ids::DOC_TAB_NEW);
     repaint(&mut hero, &mut text);
-    assert_eq!(hero.last_content, hero.last_canvas, "a área do quadro perdeu a faixa das réguas");
+    assert_eq!(
+        hero.last_content, hero.last_canvas,
+        "a área do quadro perdeu a faixa das réguas"
+    );
 }
 
 #[test]
@@ -100,11 +118,20 @@ fn tabs_sit_between_start_and_end_without_overlap() {
     assert_eq!(tabs[7].0, Target::New);
     assert!(tabs[0].1.x >= 260.0);
     let last = tabs[7].1;
-    assert!(last.x + last.w <= 900.0 + 0.001, "a última aba passou do fim: {last:?}");
+    assert!(
+        last.x + last.w <= 900.0 + 0.001,
+        "a última aba passou do fim: {last:?}"
+    );
     for w in tabs.windows(2) {
-        assert!(w[0].1.x + w[0].1.w <= w[1].1.x + 0.001, "abas sobrepostas: {w:?}");
+        assert!(
+            w[0].1.x + w[0].1.w <= w[1].1.x + 0.001,
+            "abas sobrepostas: {w:?}"
+        );
     }
-    assert!(tab_rects(bar, 260.0, 270.0, &set, &mut text).is_empty(), "sem espaço não se pinta nada");
+    assert!(
+        tab_rects(bar, 260.0, 270.0, &set, &mut text).is_empty(),
+        "sem espaço não se pinta nada"
+    );
 }
 
 #[test]
@@ -126,20 +153,10 @@ fn loading_registers_every_tab_and_returns_to_the_scene() {
     hero.documents.activate(None);
     load(&mut hero, set);
     assert_eq!(hero.documents.active(), None);
-    assert!(!hero.documents.take_dirty(), "carregar não suja o projecto");
     repaint(&mut hero, &mut text);
     click(&mut hero, tab_node_id(b));
     assert_eq!(hero.documents.active(), Some(b));
     repaint(&mut hero, &mut text);
     click(&mut hero, tab_node_id(a));
     assert_eq!(hero.documents.active(), Some(a));
-}
-
-#[test]
-fn creating_a_board_dirties_the_project_once() {
-    let (mut hero, _) = painted();
-    assert!(!hero.documents.take_dirty());
-    hero.apply_event(WidgetEvent::Click(ids::DOC_TAB_NEW));
-    assert!(hero.documents.take_dirty());
-    assert!(!hero.documents.take_dirty());
 }

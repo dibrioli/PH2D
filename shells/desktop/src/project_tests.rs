@@ -43,10 +43,19 @@ pub(super) fn empty_state() -> ProjectState {
 /// responsabilidade. `pub(super)` + `use` para que os outros filhos o alcancem por `super::*`.
 #[path = "project_test_writer.rs"]
 mod writer;
-use writer::{write_project, write_project_art, write_project_with};
+use writer::{write_project, write_project_art, write_project_boards, write_project_with};
 
 /// O documento de uma animação: uma track em `hero`, com o `wire_id` (a identidade do objeto)
 /// carimbado como o save carimba. Devolve os bytes que o arquivo de projeto carregaria.
+/// Dois quadros com nome e um com a vista mexida — o fixture dos QUADROS (v184).
+fn two_boards() -> ph2d_editor_core::documents::BoardSet {
+    let mut set = ph2d_editor_core::documents::BoardSet::default();
+    let a = set.create("Retro".into());
+    set.create("Ideas".into());
+    set.get_mut(a).expect("acabou de nascer").camera.zoom = 2.5;
+    set
+}
+
 fn animation_of_hero() -> Vec<u8> {
     use ph2d_ecs::{Name, SimWorld};
     let mut sim = SimWorld::new();
@@ -410,9 +419,17 @@ fn project_file_round_trips_through_postcard() {
         // exactamente assim que uma mutacao sobreviveu a 10.503 testes na auditoria de 23/08.
         input_map: super::input_map_tests::authored_input_map(),
         pattern_art: Vec::new(),
+        // NÃO-vazio pela razão do `input_map` acima: dois quadros com nome.
+        boards: two_boards().to_bytes().unwrap(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
+    let boards = ph2d_editor_core::documents::BoardSet::from_bytes(&back.boards).unwrap();
+    assert_eq!(
+        boards,
+        two_boards(),
+        "os QUADROS atravessaram o arquivo (v184)"
+    );
     // ⭐ **O INPUT MAP atravessa o arquivo** (v97) — e a afirmação é CAMPO A CAMPO, não um
     // `assert_eq!` do mapa inteiro: um igual de estrutura passaria se os dois lados fossem o
     // default, e é precisamente esse o modo de falha que esta linha já pagou.
@@ -548,6 +565,10 @@ fn an_unreadable_animation_refuses_the_whole_file_and_leaves_the_session_alone()
 /// suíte (`headless_app`, `write_project_art`, `tmp_path`) são as portas dele.
 #[path = "project_pattern_art_tests.rs"]
 mod pattern_art;
+
+/// **Os QUADROS no arquivo** (MiroClone, v184) — filho pela mesma razão: as fixtures são as portas.
+#[path = "project_boards_tests.rs"]
+mod boards;
 
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — filho (`#[path]`) pelo
 /// teto de LOC do HR-18, e FILHO e não irmão porque as fixtures desta suíte

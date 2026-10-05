@@ -149,6 +149,16 @@ impl App {
         // DroppedFile carries no position, so we project the most-
         // recently-seen cursor to world.
         self.last_cursor = self.last_pointer;
+        // Um arrasto da vista de um QUADRO (MiroClone) em curso é dono do movimento.
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+            && ph2d_editor_core::screens::hero::board_view::pointer_move(
+                hero,
+                self.last_pointer.0,
+                self.last_pointer.1,
+            )
+        {
+            return;
+        }
         if self.ramo_mover_arrastos_de_topo() {
             return;
         }
@@ -275,6 +285,19 @@ impl App {
         // rola-a pelo mesmo caminho de todo painel — e nunca dá zoom no canvas por baixo dela.
         let over_panel =
             cursor_over_hero_panel(self.gfx.as_ref(), self.last_pointer.0, self.last_pointer.1);
+        // ⭐ Um QUADRO activo (MiroClone) é dono da área de desenho: a roda dá zoom nele, nunca na cena.
+        if !over_panel
+            && let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+            && ph2d_editor_core::screens::hero::board_view::wheel(
+                hero,
+                self.last_pointer.0,
+                self.last_pointer.1,
+                dy,
+            )
+        {
+            self.any_input_this_frame = true;
+            return;
+        }
         // **O ajuste modal do Gap Closure** (doc 06 §8): em modo Fill, Ctrl+roda sobre o
         // canvas ajusta o alcance — e os helpers no canvas mostram, ao vivo, quais vãos
         // o valor atual fecha (`flip_gap_live`). A roda CRUA continua sendo zoom
@@ -434,6 +457,19 @@ impl App {
             })
             .unwrap_or(false);
         if self.ramo_preview_e_fechos(kind, mapped_button, evt, menu_open_before) {
+            return;
+        }
+        // ⭐ Com um QUADRO activo (MiroClone) o clique na área de desenho é dele — nunca da cena.
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+            && ph2d_editor_core::screens::hero::board_view::pointer(
+                hero,
+                kind,
+                mapped_button,
+                evt.x,
+                evt.y,
+                on_canvas,
+            )
+        {
             return;
         }
         // ⭐⭐⭐ **O BOTÃO DO HUD** (TOP-20 #20) — cedo de propósito: durante a CORRIDA um clique num

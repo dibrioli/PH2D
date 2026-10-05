@@ -58,6 +58,20 @@ impl crate::App {
             }
             None => Vec::new(),
         };
+        // Os QUADROS (MiroClone) — o dono é o `HeroScreen` (as abas são pintadas por ele). ⚠️ Se não
+        // serializarem, NÃO se grava: um ficheiro sem eles apagaria os do disco no próximo save.
+        let boards = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .map_or(Ok(Vec::new()), |h| h.documents.boards().to_bytes());
+        let boards = match boards {
+            Ok(b) => b,
+            Err(e) => {
+                eprintln!("[proj] quadros nao serializaram — save RECUSADO: {e}");
+                return;
+            }
+        };
         let Some(state) = self.capture_project() else {
             return;
         };
@@ -110,6 +124,7 @@ impl crate::App {
                 .map(|h| h.input_map.clone())
                 .unwrap_or_default(),
             pattern_art,
+            boards,
             // ⚠️ **A taxonomia NÃO está aqui, e a ausência é a decisão** (v105): ela viaja dentro
             // do `state`, que é a unidade do undo — ver [`crate::project_library`]. Um campo aqui
             // seria a **segunda** resposta à mesma pergunta, e a que o load lesse ganharia sem

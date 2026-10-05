@@ -15,7 +15,12 @@ const WHEEL_ZOOM_PER_LINE: f64 = 0.9;
 const WHEEL_LINE_PX: f64 = 16.0;
 
 fn area_of(r: Rect) -> Area {
-    [f64::from(r.x), f64::from(r.y), f64::from(r.w), f64::from(r.h)]
+    [
+        f64::from(r.x),
+        f64::from(r.y),
+        f64::from(r.w),
+        f64::from(r.h),
+    ]
 }
 
 fn inside(r: Rect, x: f32, y: f32) -> bool {
@@ -28,9 +33,13 @@ pub fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> bool {
     if !inside(area, x, y) {
         return false;
     }
-    let Some(board) = hero.documents.active_board_mut() else { return false };
+    let Some(board) = hero.documents.active_board_mut() else {
+        return false;
+    };
     let factor = WHEEL_ZOOM_PER_LINE.powf(-f64::from(dy) / WHEEL_LINE_PX);
-    board.camera.zoom_about(area_of(area), [f64::from(x), f64::from(y)], factor);
+    board
+        .camera
+        .zoom_about(area_of(area), [f64::from(x), f64::from(y)], factor);
     true
 }
 
@@ -61,7 +70,9 @@ pub fn pointer(
 
 /// O cursor mexeu-se. `true` = um arrasto da vista do quadro está em curso e consumiu-o.
 pub fn pointer_move(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
-    let Some(from) = hero.documents.pan_from else { return false };
+    let Some(from) = hero.documents.pan_from else {
+        return false;
+    };
     let to = [f64::from(x), f64::from(y)];
     if let Some(board) = hero.documents.active_board_mut() {
         board.camera.pan_by_screen(to[0] - from[0], to[1] - from[1]);

@@ -231,10 +231,21 @@ pub fn paint_hero_screen(
     //    nada do que é da cena (réguas, gizmos, selecção) chega a ser pintado ou clicável.
     if let Some(board) = hero.documents.active_board() {
         let r = layout.draw_area;
-        let area = [f64::from(r.x), f64::from(r.y), f64::from(r.w), f64::from(r.h)];
+        let area = [
+            f64::from(r.x),
+            f64::from(r.y),
+            f64::from(r.w),
+            f64::from(r.h),
+        ];
         ph2d_board_render::paint(board, area, scene, hero.theme);
     } else {
-        super::paint_canvas_overlays::paint_canvas_overlays(hero, layout, rulers_on, scene, text_system);
+        super::paint_canvas_overlays::paint_canvas_overlays(
+            hero,
+            layout,
+            rulers_on,
+            scene,
+            text_system,
+        );
     }
     // ⛔ **O CHROME LEGADO** — os clusters de botões da barra e o trilho lateral. Fora por
     // omissão desde 2026-08-30 (Enio: *«pode tirar também os botões do topo para começarmos a

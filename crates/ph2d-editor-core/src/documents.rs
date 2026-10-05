@@ -9,7 +9,8 @@
 //! ao gravar ([`Documents::boards`]) e escreve-o ao carregar
 //! ([`crate::screens::hero::document_tabs::load`]).
 
-use ph2d_board_model::{Board, BoardId, BoardSet};
+pub use ph2d_board_model::BoardSet;
+use ph2d_board_model::{Board, BoardId};
 
 /// Os quadros e a aba activa.
 #[derive(Debug, Default)]
@@ -17,8 +18,6 @@ pub struct Documents {
     boards: BoardSet,
     /// `None` = a aba `Cena`.
     active: Option<BoardId>,
-    /// Mudou algo que se grava desde a última vez que a shell perguntou.
-    dirty: bool,
     /// Âncora do arrasto da vista do quadro (px de ecrã), enquanto ele dura.
     pub(crate) pan_from: Option<[f64; 2]>,
 }
@@ -55,19 +54,12 @@ impl Documents {
     pub fn create(&mut self, name: String) -> BoardId {
         let id = self.boards.create(name);
         self.activate(Some(id));
-        self.dirty = true;
         id
     }
 
-    /// Troca todos os quadros (ao carregar um projecto). Volta à `Cena`; não suja o projecto.
+    /// Troca todos os quadros (ao carregar um projecto) e volta à `Cena`.
     pub fn replace(&mut self, boards: BoardSet) {
         self.boards = boards;
         self.activate(None);
-        self.dirty = false;
-    }
-
-    /// `true` uma vez por mudança gravável — a shell acende o «modificado» do título.
-    pub fn take_dirty(&mut self) -> bool {
-        std::mem::take(&mut self.dirty)
     }
 }

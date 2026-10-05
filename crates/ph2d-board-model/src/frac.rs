@@ -24,10 +24,17 @@ impl FracKey {
         let a = lo.map(|k| digits_of(&k.0)).unwrap_or_default();
         let b = hi.map(|k| digits_of(&k.0));
         if let Some(b) = &b {
-            assert!(a < *b, "FracKey::between: lo ({lo:?}) não é menor que hi ({hi:?})");
+            assert!(
+                a < *b,
+                "FracKey::between: lo ({lo:?}) não é menor que hi ({hi:?})"
+            );
         }
         let mid = midpoint(&a, b.as_deref());
-        FracKey(mid.iter().map(|&d| char::from(DIGITS[usize::from(d)])).collect())
+        FracKey(
+            mid.iter()
+                .map(|&d| char::from(DIGITS[usize::from(d)]))
+                .collect(),
+        )
     }
 
     /// A chave como texto.

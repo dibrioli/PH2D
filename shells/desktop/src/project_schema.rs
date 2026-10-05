@@ -398,4 +398,14 @@
 /// recusado em voz alta.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 184;
+///
+/// # `184 → 185` — **os QUADROS** (`line/MiroClone`, W0, 2026-10-05; integrada sobre o `184` do
+/// objecto vetorial em 2026-10-07)
+///
+/// Campo novo no FIM do `ProjectFile`: `boards: Vec<u8>`, o `BoardSet` com versão PRÓPRIA
+/// (`ph2d_board_model::FORMAT_VERSION`) — campos novos lá dentro não voltam a subir este número.
+/// ⛔ **Sem degrau de migração**: um v184 é recusado em voz alta (postcard é posicional).
+/// Registos de componentes: `0` (os quadros não são entidades).
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 185;

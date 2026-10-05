@@ -62,6 +62,8 @@ pub mod style;
 pub mod tool_bar;
 pub mod topbar;
 
+pub mod board_view;
+pub mod document_tabs;
 mod inspector_model;
 /// ⭐ O modelo da secção TIMERS (TOP-20 #2, W3) — irmão por CAP de LOC.
 /// ⭐ O modelo da secção SIGNAL ACTIONS (TOP-20 #5, W3) — irmão por CAP de LOC.
@@ -84,8 +86,6 @@ mod inspector_model_properties;
 mod inspector_model_slice;
 mod inspector_model_tags;
 mod inspector_model_timer;
-pub mod board_view;
-pub mod document_tabs;
 pub mod layout_switch;
 pub mod layout_tabs;
 /// O tique da UI viva (o `motion` + a corda) — irmão, e não corpo do `HeroScreen`: aquele diz o

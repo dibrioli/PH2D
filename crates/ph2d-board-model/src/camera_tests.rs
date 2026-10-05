@@ -9,11 +9,18 @@ fn close(a: [f64; 2], b: [f64; 2]) -> bool {
 
 #[test]
 fn screen_and_world_are_inverse() {
-    let cam = Camera { center_x: 37.5, center_y: -12.0, zoom: 2.75 };
+    let cam = Camera {
+        center_x: 37.5,
+        center_y: -12.0,
+        zoom: 2.75,
+    };
     for p in [[0.0, 0.0], [123.4, -56.7], [1e6, -1e6]] {
         assert!(close(cam.to_world(AREA, cam.to_screen(AREA, p)), p));
     }
-    assert!(close(cam.to_screen(AREA, [37.5, -12.0]), [500.0, 350.0]), "o centro vai ao meio da área");
+    assert!(
+        close(cam.to_screen(AREA, [37.5, -12.0]), [500.0, 350.0]),
+        "o centro vai ao meio da área"
+    );
 }
 
 #[test]
@@ -43,7 +50,11 @@ fn zoom_is_clamped_and_ignores_nonsense_factors() {
 
 #[test]
 fn panning_moves_the_world_with_the_cursor() {
-    let mut cam = Camera { center_x: 0.0, center_y: 0.0, zoom: 2.0 };
+    let mut cam = Camera {
+        center_x: 0.0,
+        center_y: 0.0,
+        zoom: 2.0,
+    };
     let p = [10.0, 10.0];
     let s0 = cam.to_screen(AREA, p);
     cam.pan_by_screen(30.0, -8.0);

@@ -297,7 +297,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // tripla NÃO vê este degrau.
         // ⚠️ **`184` em 2026-10-05** — o OBJECTO VETORIAL sai (spec/06 F3 ▸ Vector, 2.ª volta):
         // `VecObject` deixa o registo (ECS `-1`, espelhos `-1`). A tripla NÃO vê este degrau.
-        (184, 13, 22),
+        // ⚠️ **`185` em 2026-10-07** (`line/MiroClone`, W0) — os QUADROS: `boards: Vec<u8>` no fim do
+        // `ProjectFile`, ZERO componentes registados. A tripla NÃO vê este degrau.
+        (185, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

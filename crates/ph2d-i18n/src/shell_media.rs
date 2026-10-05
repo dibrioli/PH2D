@@ -187,6 +187,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.project_load.project_refused_its_2" => {
             "Project refused: its pattern artwork is from another version ({e})"
         }
+        "shell.project_load.project_refused_its_boards" => {
+            "Project refused: its boards are from another version ({e})"
+        }
         "shell.project_load.project_refused_its" => {
             "Project refused: its animation is from another version ({e})"
         }

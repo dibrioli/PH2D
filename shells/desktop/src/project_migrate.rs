@@ -181,6 +181,7 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
             // `Paint::Pattern` só existe desde o `VEC_SCENE_SCHEMA_VERSION` 15 (plano 33 W3), que é
             // posterior. Vazio aqui não é "não sei": é o que aquele ficheiro de facto tem.
             pattern_art: Vec::new(),
+            boards: Vec::new(),
         },
         stable_id_counter,
         sculpture_left_out,
@@ -272,6 +273,7 @@ pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
             stable_id_counter: old.stable_id_counter,
             input_map: old.input_map,
             pattern_art: old.pattern_art,
+            boards: Vec::new(),
         },
         actions,
         cameras,

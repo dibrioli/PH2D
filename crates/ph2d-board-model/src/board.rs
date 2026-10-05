@@ -22,7 +22,11 @@ pub struct Camera {
 
 impl Default for Camera {
     fn default() -> Self {
-        Self { center_x: 0.0, center_y: 0.0, zoom: 1.0 }
+        Self {
+            center_x: 0.0,
+            center_y: 0.0,
+            zoom: 1.0,
+        }
     }
 }
 
@@ -46,7 +50,11 @@ pub struct BoardSet {
 
 impl Default for BoardSet {
     fn default() -> Self {
-        Self { version: FORMAT_VERSION, boards: Vec::new(), next_id: 0 }
+        Self {
+            version: FORMAT_VERSION,
+            boards: Vec::new(),
+            next_id: 0,
+        }
     }
 }
 
@@ -75,7 +83,12 @@ impl BoardSet {
     pub fn create(&mut self, name: String) -> BoardId {
         self.next_id += 1;
         let id = BoardId(self.next_id);
-        self.boards.push(Board { id, name, camera: Camera::default(), doc: BoardDoc::default() });
+        self.boards.push(Board {
+            id,
+            name,
+            camera: Camera::default(),
+            doc: BoardDoc::default(),
+        });
         id
     }
 
@@ -98,7 +111,9 @@ impl BoardSet {
 
     /// Leva a aba de `id` para a posição `to` (limitada ao fim). `false` se `id` não existe.
     pub fn move_tab(&mut self, id: BoardId, to: usize) -> bool {
-        let Some(from) = self.boards.iter().position(|b| b.id == id) else { return false };
+        let Some(from) = self.boards.iter().position(|b| b.id == id) else {
+            return false;
+        };
         let b = self.boards.remove(from);
         self.boards.insert(to.min(self.boards.len()), b);
         true
@@ -128,7 +143,10 @@ impl BoardSet {
         }
         let set: BoardSet = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
         if set.version != FORMAT_VERSION {
-            return Err(format!("board format version {} != {FORMAT_VERSION}", set.version));
+            return Err(format!(
+                "board format version {} != {FORMAT_VERSION}",
+                set.version
+            ));
         }
         Ok(set)
     }

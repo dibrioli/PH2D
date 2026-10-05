@@ -127,6 +127,7 @@ mod nav_custo;
 mod nav_desvio;
 mod nav_desvio_corpos;
 mod nav_desvio_largo;
+mod nav_fatias;
 mod nav_mundo;
 mod nav_nascer;
 mod nav_ordens;

@@ -7861,6 +7861,7 @@ dependencies = [
  "ph2d-tags",
  "ph2d-topdown",
  "postcard",
+ "rayon",
  "serde",
 ]
 

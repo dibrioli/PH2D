@@ -58,6 +58,10 @@ ph2d-navmesh = { path = "../ph2d-navmesh" }
 # ⭐ O DESVIO entre agentes (plano 30, W5) — ORCA numa folha sem dependências, corrida DEPOIS da
 # condução e antes do mover, na mesma porta.
 ph2d-orca = { path = "../ph2d-orca" }
+# (W15) As procuras de caminho A MEIO avançam em paralelo — exceção «sem rayon» restrita a
+# `fila::procuras_a_meio` (ADR-0180, plano 30 §23.4): a fatia de cada uma decide-se antes, logo o resultado não
+# depende do número de threads. Já resolvido no `Cargo.lock` (é o da `ph2d-navmesh`).
+rayon = "1"
 # ⭐ O splitmix64 da casa (`ph2d_shake::baralha`), para o sorteio da ESQUIVA: a lei pede UM
 # sorteio por golpe, e o gerador tem de ser determinista e ir no anel com a vida.
 ph2d-shake = { path = "../ph2d-shake" }

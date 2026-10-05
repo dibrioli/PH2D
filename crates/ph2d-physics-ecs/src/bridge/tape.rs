@@ -262,6 +262,7 @@ impl PhysicsBridge {
                 nav: self.nav.agents.clone(),
                 nav_ordens: self.nav.ordens.em_vigor.clone(),
                 nav_rondas: self.nav.rondas.clone(),
+                nav_sinais: self.nav.sinais.clone(),
             },
         );
         // A janela do ring é limitada; a nossa segue a dele pela borda de baixo
@@ -287,6 +288,9 @@ impl PhysicsBridge {
             self.nav.agents = m.nav.clone();
             self.nav.ordens.em_vigor = m.nav_ordens.clone();
             self.nav.rondas = m.nav_rondas.clone();
+            self.nav.sinais = m.nav_sinais.clone();
+            // As procuras a meio são do futuro: a condução refá-las a partir de `a_meio`.
+            self.nav.planos.clear();
         }
     }
 
@@ -339,6 +343,9 @@ pub(super) struct ControllerMemory {
     /// ⭐ As RONDAS da patrulha (plano 30, W6): sem elas um scrub devolvia o guarda a caminho de
     /// outro ponto da ronda.
     pub(super) nav_rondas: BTreeMap<Entity, super::nav::Ronda>,
+    /// ⭐ (W15) A assinatura de cada MALHA (plano 30 §23): sem ela o replay comparava a malha do âncora
+    /// com a do fim da corrida e via uma porta mudar onde a corrida não viu.
+    pub(super) nav_sinais: BTreeMap<super::nav::ChaveMalha, u64>,
 }
 
 /// O tipo da tabela — uma memória por tique âncora.

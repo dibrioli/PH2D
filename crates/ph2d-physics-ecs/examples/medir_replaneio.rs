@@ -1,18 +1,20 @@
-//! A SONDA DO REPLANEIO EM MASSA (plano 30, W9) — quando UMA porta muda a malha, quantos agentes
-//! replaneiam no MESMO tique, e quanto custa esse tique? Corre-se em `--release`, com a carga ao lado:
+//! A SONDA DO REPLANEIO EM MASSA (plano 30, W9; W15) — quando UMA porta muda a malha, quanto custa o
+//! pior tique que se segue? Uma compilação, no perfil `smoke`, com a carga ao lado:
 //!
 //! ```text
-//! bash scripts/ph2d-run.sh cargo run -p ph2d-physics-ecs --release --example medir_replaneio
+//! bash scripts/ph2d-run.sh cargo run -p ph2d-physics-ecs --profile smoke --example medir_replaneio
 //! ```
 //!
 //! A cena da `medir_nav_tique` (`100 × 100 m`, `1 000` caixas, a semente fixa) com `N` agentes do
-//! mesmo raio (a mesma malha), cada um com o seu alvo longe. A porta alterna entre dois sítios; a
-//! régua é o PIOR tique (e o maior número de procuras num tique) da janela de oito que se segue a cada
-//! movimento, e o CONTROLO é a mesma janela sem a porta mexer.
-//! ⛔ Nenhum número de tempo desta saída vale acima de `load ~5`; as procuras não dependem da carga.
+//! mesmo raio (a mesma malha), cada um com o seu alvo longe. ⭐ (W15, a regra do dono de 05/10) As duas
+//! versões vivem no MESMO processo, lado a lado, escolhidas em execução (`set_nav_slices`): A = toda
+//! procura inteira no tique; B = a vez e as fatias (plano 30 §23). Em cada uma de 7 rodadas, com a
+//! ordem rodada, cada versão move a porta e corre um bloco de 16 tiques (o pior tique), e depois outro
+//! sem a porta mexer (o CONTROLO); vale o MÍNIMO das rodadas, a mediana ao lado só como controlo.
 //!
 //! (W14) `LAMAS=<n>` põe `n` áreas de lama (caixas sensoras, `LAMA_PESO`, por omissão `4`) com outra
 //! semente — as caixas e os agentes ficam os mesmos: a régua do orçamento quando a procura é a PONDERADA.
+//! `ORCAMENTO=<n>` muda o orçamento de trabalho por tique (por omissão o de fábrica, `20 000`).
 
 use std::time::Instant;
 
@@ -142,44 +144,52 @@ fn procuras(b: &PhysicsBridge, quem: &[Entity]) -> u64 {
         .sum()
 }
 
-/// Os agentes que a fila ainda deve, e quantos deles têm o caminho PARTIDO.
-fn devidos(b: &PhysicsBridge, quem: &[Entity]) -> (usize, usize) {
-    let rts: Vec<_> = quem.iter().filter_map(|&e| b.nav_agent(e)).collect();
-    (
-        rts.iter().filter(|rt| rt.owed > 0).count(),
-        rts.iter().filter(|rt| rt.owed > 0 && rt.broken).count(),
-    )
-}
-
-/// Uma janela de `JANELA` tiques: o pior em ms, o maior número de procuras num tique, o tique em que
-/// a fila ficou vazia e o tique em que o último PARTIDO foi servido (`0` = nunca houve).
-fn janela(
+/// Um bloco de `BLOCO` tiques: o pior tique em ms, o maior trabalho de procura do caminho CRÍTICO num
+/// tique (a maior fatia em paralelo mais a condução), e o maior número de procuras começadas num tique.
+fn bloco(
     sim: &mut SimWorld,
     b: &mut PhysicsBridge,
     quem: &[Entity],
     t: &mut u64,
-) -> (f64, u64, usize, usize) {
-    let (mut pior, mut mais, mut vazia, mut partidos) = (0.0f64, 0u64, 0usize, 0usize);
-    for k in 1..=JANELA {
+) -> (f64, u64, u64) {
+    let (mut pior, mut trabalho, mut mais) = (0.0f64, 0u64, 0u64);
+    for _ in 0..BLOCO {
         *t += 1;
         let antes = procuras(b, quem);
         let t0 = Instant::now();
         b.dispatch(sim, true, *t);
         pior = pior.max(t0.elapsed().as_secs_f64() * 1e3);
+        trabalho = trabalho.max(b.nav_search_critical_work());
         mais = mais.max(procuras(b, quem) - antes);
-        let (d, p) = devidos(b, quem);
-        if d > 0 {
-            vazia = k + 1;
-        }
-        if p > 0 {
-            partidos = k + 1;
-        }
     }
-    (pior, mais, vazia, partidos)
+    (pior, trabalho, mais)
 }
 
-/// A janela depois de cada movimento da porta: a fila mais longa medida esvazia dentro dela.
-const JANELA: usize = 96;
+/// O bloco depois de cada movimento da porta: o pior tique cai nos primeiros.
+const BLOCO: usize = 16;
+/// As rodadas intercaladas (a ordem das versões roda a cada uma).
+const RODADAS: usize = 7;
+
+/// As versões, lado a lado: o nome, as fatias ligadas, e quantas procuras a meio em paralelo.
+const VERSOES: [(&str, bool, usize); 4] = [
+    ("A inteira", false, 0),
+    ("B série  ", true, 0),
+    ("B par 8  ", true, 8),
+    ("B par 16 ", true, 16),
+];
+
+fn loadavg() -> String {
+    std::fs::read_to_string("/proc/loadavg")
+        .unwrap_or_default()
+        .trim()
+        .to_string()
+}
+
+/// O mínimo e a mediana.
+fn min_med(v: &mut [f64]) -> (f64, f64) {
+    v.sort_by(f64::total_cmp);
+    (v[0], v[v.len() / 2])
+}
 
 fn main() {
     // `FASES=<n>`: o tique com `n` agentes e NADA a mudar (o CONTROLO), a média de 30.
@@ -203,60 +213,87 @@ fn main() {
         );
         return;
     }
-    let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
-    println!("# loadavg: {}", load.trim());
+    // ⭐ (W15, a regra do dono de 05/10) As versões no MESMO processo, escolhidas em execução
+    // (`set_nav_slices`, `set_nav_parallel`): A = toda procura inteira no tique; B = a vez e as fatias,
+    // em série ou com `n` procuras a meio em paralelo. Intercaladas em blocos curtos com a ordem rodada;
+    // o MÍNIMO das rodadas, a mediana ao lado só como controlo.
+    let orc: u64 = std::env::var("ORCAMENTO")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(20_000);
+    println!("# loadavg: {} · orçamento {orc}", loadavg());
     println!(
-        "# orçamento | agentes | pior tique com a porta (ms, mediana · máx de 6) | procuras num tique (máx) | tiques até a fila esvaziar · até o último partido (máx) | CONTROLO: pior tique · procuras"
+        "# versão | agentes | pior tique depois da porta (ms, mín · mediana de {RODADAS}) | trabalho crítico num tique (máx) | procuras num tique (máx) | CONTROLO sem porta: pior tique (mín · mediana) | falta (m)"
     );
-    let orcamentos: Vec<u64> = std::env::var("ORCAMENTOS").map_or_else(
-        |_| vec![u64::MAX, 40_000, 20_000, 10_000],
-        |v| {
-            v.split(',')
-                .map(|x| x.parse().expect("um número"))
-                .collect()
-        },
-    );
-    for &orc in &orcamentos {
-        for &n in &[10usize, 50, 200] {
-            let (mut sim, porta, quem) = cena(n);
-            let mut b = PhysicsBridge::new();
-            b.set_nav_replan_budget(orc);
-            let mut t = 0u64;
-            for _ in 0..30 {
-                t += 1;
-                b.dispatch(&mut sim, true, t);
-            }
-            let mut piores = Vec::new();
-            let (mut mais, mut vazia, mut partidos) = (0u64, 0usize, 0usize);
-            for k in 0..6 {
+    for &n in &[10usize, 50, 200] {
+        let mut v: Vec<(SimWorld, Entity, Vec<Entity>, PhysicsBridge, u64)> = VERSOES
+            .iter()
+            .map(|&(_, fatias, paralelas)| {
+                let (mut sim, porta, quem) = cena(n);
+                let mut b = PhysicsBridge::new();
+                b.set_nav_replan_budget(orc);
+                b.set_nav_slices(fatias);
+                b.set_nav_parallel(paralelas);
+                let mut t = 0u64;
+                for _ in 0..30 {
+                    t += 1;
+                    b.dispatch(&mut sim, true, t);
+                }
+                (sim, porta, quem, b, t)
+            })
+            .collect();
+        let nv = v.len();
+        let mut porta = vec![Vec::new(); nv];
+        let mut ctl = vec![Vec::new(); nv];
+        let mut trab = vec![0u64; nv];
+        let mut proc = vec![0u64; nv];
+        for r in 0..RODADAS {
+            for k in 0..nv {
+                let i = (k + r) % nv;
+                let (sim, p, quem, b, t) = &mut v[i];
                 sim.world_mut()
-                    .get_mut::<Transform>(porta)
+                    .get_mut::<Transform>(*p)
                     .expect("a porta")
-                    .translation = Vec2::new(50.3 + ((k + 1) % 2) as f32, 50.3);
-                let (p, m, v, pt) = janela(&mut sim, &mut b, &quem, &mut t);
-                piores.push(p);
-                mais = mais.max(m);
-                vazia = vazia.max(v);
-                partidos = partidos.max(pt);
+                    .translation = Vec2::new(50.3 + ((r + 1) % 2) as f32, 50.3);
+                let (ms, w, m) = bloco(sim, b, quem, t);
+                porta[i].push(ms);
+                trab[i] = trab[i].max(w);
+                proc[i] = proc[i].max(m);
+                let (ms, _, _) = bloco(sim, b, quem, t);
+                ctl[i].push(ms);
             }
-            let (ctl, ctl_m, _, _) = janela(&mut sim, &mut b, &quem, &mut t);
-            piores.sort_by(f64::total_cmp);
-            let nome = if orc == u64::MAX {
-                "sem fila".to_string()
-            } else {
-                orc.to_string()
-            };
+        }
+        for i in 0..nv {
+            let (sim, _, quem, b, _) = &v[i];
+            // O que falta, em média, a cada agente no fim (a régua de que a vez não os atrasa): pelo
+            // caminho, ou — quem ainda espera o 1.º — a direito até ao alvo.
+            let falta = quem
+                .iter()
+                .filter_map(|&e| {
+                    let p = sim.world().get::<Transform>(e)?.translation;
+                    let p = [f64::from(p.x), f64::from(p.y)];
+                    let rt = b.nav_agent(e)?;
+                    if !rt.path.is_empty() {
+                        return Some(rt.remaining(p));
+                    }
+                    let NavTarget::Point(t) = sim.world().get::<NavAgent>(e)?.target else {
+                        return None;
+                    };
+                    Some((p[0] - f64::from(t[0])).hypot(p[1] - f64::from(t[1])))
+                })
+                .sum::<f64>()
+                / quem.len() as f64;
+            let esperam = quem
+                .iter()
+                .filter(|&&e| b.nav_agent(e).is_none_or(|r| r.path.is_empty()))
+                .count();
+            let (pm, pd) = min_med(&mut porta[i]);
+            let (cm, cd) = min_med(&mut ctl[i]);
             println!(
-                "{nome:>11} | {n:>7} | {:>8.2} · {:>8.2} | {mais:>6} | {vazia:>4} · {partidos:>3} | {ctl:>8.2} · {ctl_m}",
-                piores[piores.len() / 2],
-                piores[piores.len() - 1]
+                "{} | {n:>4} | {pm:>7.2} · {pd:>7.2} | {:>7} | {:>4} | {cm:>7.2} · {cd:>7.2} | {falta:.2} ({esperam} sem caminho)",
+                VERSOES[i].0, trab[i], proc[i]
             );
         }
     }
-    println!(
-        "# loadavg: {}",
-        std::fs::read_to_string("/proc/loadavg")
-            .unwrap_or_default()
-            .trim()
-    );
+    println!("# loadavg: {}", loadavg());
 }

@@ -39,21 +39,29 @@ fn pela_ordem(quem: &[Entity]) -> Vec<Entity> {
     v
 }
 
-/// Quais já procuraram um caminho.
+/// Quais já TÊM um caminho. ⚠️ (W15) Não «quais procuraram»: a procura abre-se no pedido (as que não
+/// custam nada acabam logo), e quem foi servido é quem tem o caminho.
 fn procuraram(b: &PhysicsBridge, quem: &[Entity]) -> Vec<bool> {
     quem.iter()
-        .map(|&e| b.nav_agent(e).is_some_and(|r| r.searches > 0))
+        .map(|&e| b.nav_agent(e).is_some_and(|r| !r.path.is_empty()))
         .collect()
 }
 
-/// Com o orçamento de UM nó, os que nascem juntos procuram UM por tique, pela ordem das entidades — e
-/// todos acabam a andar. CONTROLO: com o orçamento de fábrica procuram todos no 1.º tique.
+/// A lei da FILA, numa faixa: sem o passo em paralelo (que tem os gates dele, `nav_fatias`).
+fn uma_faixa(orc: u64) -> PhysicsBridge {
+    let mut b = PhysicsBridge::new();
+    b.set_nav_replan_budget(orc);
+    b.set_nav_parallel(0);
+    b
+}
+
+/// Com o orçamento de UM nó, os que nascem juntos ganham o caminho UM por tique, pela ordem das
+/// entidades — e todos acabam a andar. CONTROLO: com o orçamento de fábrica têm-no todos no 1.º tique.
 #[test]
 fn os_que_nascem_juntos_procuram_pela_fila() {
     let (mut sim, quem) = nascem();
     let quem = pela_ordem(&quem);
-    let mut b = PhysicsBridge::new();
-    b.set_nav_replan_budget(1);
+    let mut b = uma_faixa(1);
     for t in 1..=N as u64 + 5 {
         b.dispatch(&mut sim, true, t);
         let ja = procuraram(&b, &quem);
@@ -84,8 +92,7 @@ fn quem_espera_pela_vez_fica_parado_e_depois_chega() {
     let (mut sim, quem) = nascem();
     let quem = pela_ordem(&quem);
     let partida: Vec<(f32, f32)> = quem.iter().map(|&e| pos(&sim, e)).collect();
-    let mut b = PhysicsBridge::new();
-    b.set_nav_replan_budget(1);
+    let mut b = uma_faixa(1);
     b.dispatch(&mut sim, true, 1);
     b.dispatch(&mut sim, true, 2);
     // No 2.º tique o último da vez ainda não procurou: está onde nasceu.
@@ -174,8 +181,7 @@ fn na_lama_a_vez_de_quem_nasce_conta_o_trabalho() {
     assert!(procuraram(&c, &quem).iter().all(|&p| p), "o CONTROLO");
     let w0 = c.nav_agent(quem[0]).map_or(0, |r| r.last_work);
     let (mut sim, quem) = nascem_na_lama();
-    let mut b = PhysicsBridge::new();
-    b.set_nav_replan_budget(w0);
+    let mut b = uma_faixa(w0);
     b.dispatch(&mut sim, true, 1);
     assert_eq!(
         procuraram(&b, &quem),

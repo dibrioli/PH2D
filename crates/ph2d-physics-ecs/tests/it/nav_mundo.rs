@@ -425,6 +425,8 @@ fn com_a_porta_a_mudar(
             b.dispatch_with_scene(sim, true, t, cena);
             if t == 1 {
                 b.set_nav_replan_budget(orc);
+                // A lei da FILA, numa faixa (o passo em paralelo tem os gates dele, `nav_fatias`).
+                b.set_nav_parallel(0);
             }
             procuras_de(b, quem)
         })
@@ -437,6 +439,48 @@ fn servido_em(por_tique: &[Vec<u64>], i: usize) -> Option<usize> {
     (5..por_tique.len())
         .find(|&k| por_tique[k][i] > base)
         .map(|k| k + 1)
+}
+
+/// O orçamento que paga UMA procura destas e não duas: o trabalho da mais cara das que a porta pede
+/// (medido com a cena corrida sem tecto). ⚠️ (W15) Um orçamento de `1` já não quer dizer «um por
+/// tique»: cada procura paga do orçamento e pára a meio quando ele acaba.
+fn uma_procura(porta_fechada: bool, vigia: bool) -> u64 {
+    let (mut sim, porta, mut quem) = atalho(porta_fechada);
+    if vigia {
+        quem.push(agente(
+            &mut sim,
+            "Vigia",
+            (-7.0, 5.0),
+            NavTarget::Point([-2.0, 5.0]),
+        ));
+    }
+    let mut b = PhysicsBridge::new();
+    let (de, para) = if porta_fechada {
+        ((0.0, 0.0), (30.0, 30.0))
+    } else {
+        ((30.0, 30.0), (0.0, 0.0))
+    };
+    let mut cena = PortaQueMuda {
+        porta,
+        de,
+        para,
+        quando: 5,
+    };
+    com_a_porta_a_mudar(&mut sim, &mut b, &mut cena, &quem, 30, u64::MAX);
+    // (Os oito guardas; o vigia, se há, procura pouco e vem no fim da fila.)
+    let w = quem[..8]
+        .iter()
+        .filter_map(|&e| b.nav_agent(e).map(|r| r.last_work))
+        .collect::<Vec<_>>();
+    let (lo, hi) = (
+        *w.iter().min().expect("agentes"),
+        *w.iter().max().expect("agentes"),
+    );
+    assert!(
+        2 * lo > hi,
+        "a fixtura: duas procuras não cabem no orçamento de uma ({w:?})"
+    );
+    hi
 }
 
 /// ⭐ Uma porta que ABRE o atalho não põe os oito a procurar no mesmo tique: com um orçamento que só
@@ -465,7 +509,7 @@ fn a_porta_que_abre_um_atalho_serve_os_agentes_um_por_tique() {
         por_ordem.sort();
         por_ordem.into_iter().map(|(_, t)| t).collect::<Vec<_>>()
     };
-    let fila = servidos(1);
+    let fila = servidos(uma_procura(true, false));
     let primeiro = fila[0];
     assert_eq!(
         fila,
@@ -480,8 +524,8 @@ fn a_porta_que_abre_um_atalho_serve_os_agentes_um_por_tique() {
 }
 
 /// ⭐ Quem tem o caminho PARTIDO passa à frente na fila: a porta FECHA o atalho por onde os oito iam;
-/// um VIGIA cujo caminho não passa pela porta — e que é o PRIMEIRO na ordem das entidades — é servido
-/// DEPOIS deles todos.
+/// um VIGIA cujo caminho não passa pela porta — e que é o PRIMEIRO na ordem das entidades — nunca é
+/// servido antes de nenhum deles.
 #[test]
 fn o_caminho_partido_passa_a_frente_na_fila() {
     let (mut sim, porta, guardas) = atalho(false);
@@ -505,15 +549,32 @@ fn o_caminho_partido_passa_a_frente_na_fila() {
         para: (0.0, 0.0),
         quando: 5,
     };
-    let pt = com_a_porta_a_mudar(&mut sim, &mut b, &mut cena, &quem, 30, 1);
+    let pt = com_a_porta_a_mudar(
+        &mut sim,
+        &mut b,
+        &mut cena,
+        &quem,
+        30,
+        uma_procura(false, true),
+    );
     let vigia_em = servido_em(&pt, 0).expect("o vigia acaba por ser servido");
-    for i in 1..quem.len() {
-        let g = servido_em(&pt, i).expect("cada guarda procura");
+    // (W15) A fila reparte o tique: o vigia, barato, pode levar a sobra do tique do ÚLTIMO guarda —
+    // atrás dele na fila, nunca antes.
+    let guardas: Vec<usize> = (1..quem.len())
+        .map(|i| servido_em(&pt, i).expect("cada guarda procura"))
+        .collect();
+    for (i, &g) in guardas.iter().enumerate() {
         assert!(
-            g < vigia_em,
-            "o guarda {i} (caminho partido) servido no tique {g}, o vigia no {vigia_em}"
+            g <= vigia_em,
+            "o guarda {} (caminho partido) servido no tique {g}, o vigia no {vigia_em}",
+            i + 1
         );
     }
+    let primeiro = *guardas.iter().min().expect("guardas");
+    assert!(
+        vigia_em > primeiro,
+        "o vigia esperou: {vigia_em} contra o 1.º guarda no {primeiro}"
+    );
 }
 
 /// ⭐⭐ **Um scrub para o MEIO da fila devolve a mesma corrida** — a dívida (`owed`) vai no anel com a
@@ -625,12 +686,13 @@ fn uma_malha_que_nao_para_de_mudar_serve_todos_a_vez() {
     }
 }
 
-/// ⭐ (o aberto da W9) **Quem NASCE no tique em que a fila está cheia**: o 1.º procura na mesma (há
-/// sempre pelo menos um), e o que a fila PROMETEU conta — o 2.º espera pelo tique seguinte. O orçamento
-/// é exactamente o que os oito guardas gastaram da última vez: a porta abre o atalho, a fila serve-os
-/// a todos e não sobra nada.
+/// ⭐ (o aberto da W9; W15) **Quem NASCE no tique em que a fila está cheia ESPERA parado** — o que a
+/// fila PROMETEU conta, e nenhuma procura passa o orçamento (o «sempre pelo menos um» da W9 saiu: quem
+/// garante que ninguém fica para sempre é a procura em fatias). No tique seguinte procuram os dois. O
+/// orçamento é exactamente o que os oito guardas gastaram da última vez: a porta abre o atalho, a fila
+/// serve-os a todos e não sobra nada.
 #[test]
-fn quem_nasce_com_a_fila_cheia_procura_um_e_o_outro_espera() {
+fn quem_nasce_com_a_fila_cheia_espera_pelo_tique_seguinte() {
     let (mut sim, porta, quem) = atalho(true);
     let mut b = PhysicsBridge::new();
     let mut cena = PortaQueMuda {
@@ -649,6 +711,7 @@ fn quem_nasce_com_a_fila_cheia_procura_um_e_o_outro_espera() {
         .map(|&e| b.nav_agent(e).map_or(0, |r| r.last_work))
         .sum();
     b.set_nav_replan_budget(gasto);
+    b.set_nav_parallel(0);
     let mut novos: Vec<Entity> = (0..2)
         .map(|i| {
             agente(
@@ -666,15 +729,87 @@ fn quem_nasce_com_a_fila_cheia_procura_um_e_o_outro_espera() {
         antes.iter().zip(&depois).all(|(a, d)| d > a),
         "a fila serve os oito no tique da porta: {antes:?} → {depois:?}"
     );
+    // (W15: a procura abre-se no pedido; quem foi servido é quem tem o caminho.)
+    let com_caminho = |b: &PhysicsBridge| -> Vec<bool> {
+        novos
+            .iter()
+            .map(|&e| b.nav_agent(e).is_some_and(|r| !r.path.is_empty()))
+            .collect()
+    };
     assert_eq!(
-        procuras_de(&b, &novos),
-        vec![1, 0],
-        "com a fila cheia: o 1.º que nasce procura, o 2.º espera"
+        com_caminho(&b),
+        vec![false, false],
+        "com a fila cheia quem nasce espera"
     );
     b.dispatch_with_scene(&mut sim, true, 7, &mut cena);
     assert_eq!(
-        procuras_de(&b, &novos),
-        vec![1, 1],
-        "e o 2.º procura no tique seguinte"
+        com_caminho(&b),
+        vec![true, true],
+        "e tem o caminho no tique seguinte"
     );
+}
+
+/// A porta que abre e fecha de 9 em 9 tiques (fica parada o resto: entra na malha).
+struct PortaQueAlterna {
+    porta: Entity,
+}
+
+impl ph2d_physics_ecs::SceneAtTick for PortaQueAlterna {
+    fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool {
+        let fechada = (tick / 9).is_multiple_of(2);
+        poe(
+            sim,
+            self.porta,
+            if fechada { (0.0, 0.0) } else { (30.0, 30.0) },
+        );
+        true
+    }
+}
+
+/// ⭐⭐ (W15) **Um scrub numa corrida em que a porta abre e fecha devolve a MESMA corrida**, a memória
+/// inteira dos agentes ao bit e as posições. A fixtura CONTÉM o fenómeno: a corrida acaba no tique `95`
+/// com a porta FECHADA e parada, e cada âncora para onde um scrub volta (`10 · 30 · 50 · 70`, o anel
+/// guarda um de 10 em 10) tem-na ABERTA — a malha que o scrub encontra é a de outro conteúdo, e o
+/// replay só vê a mudança que a corrida viu se «mudou» se compara com a assinatura do âncora (plano 30
+/// §23.1; medido antes da cura, numa porta que muda depois do âncora: `(procuras, dívida)`
+/// `[(1,4)×5, (2,0)×3]` contra `[(1,0)×8]` da corrida).
+#[test]
+fn um_scrub_numa_corrida_com_a_porta_a_alternar_devolve_a_mesma_corrida() {
+    const FIM: u64 = 95;
+    for alvo in [13u64, 33, 53, 73] {
+        let (mut sim, porta, quem) = atalho(true);
+        let mut b = PhysicsBridge::new();
+        let mut cena = PortaQueAlterna { porta };
+        let foto = |sim: &mut SimWorld, b: &PhysicsBridge| {
+            quem.iter()
+                .map(|&e| {
+                    let t = sim.world_mut().get::<Transform>(e).expect("o corpo");
+                    ((t.translation.x, t.translation.y), b.nav_agent(e).cloned())
+                })
+                .collect::<Vec<_>>()
+        };
+        let mut primeira = Vec::new();
+        for t in 1..=FIM {
+            b.dispatch_with_scene(&mut sim, true, t, &mut cena);
+            primeira.push(foto(&mut sim, &b));
+        }
+        assert!(
+            (FIM / 9).is_multiple_of(2) && !((alvo / 10 * 10) / 9).is_multiple_of(2),
+            "a fixtura: o fim com a porta fechada, o âncora de {alvo} com ela aberta"
+        );
+        b.dispatch_with_scene(&mut sim, false, alvo, &mut cena);
+        assert_eq!(
+            foto(&mut sim, &b),
+            primeira[(alvo - 1) as usize],
+            "o scrub para {alvo}"
+        );
+        for t in alvo + 1..=alvo + 8 {
+            b.dispatch_with_scene(&mut sim, true, t, &mut cena);
+            assert_eq!(
+                foto(&mut sim, &b),
+                primeira[(t - 1) as usize],
+                "o tique {t} depois do scrub para {alvo}"
+            );
+        }
+    }
 }

@@ -40,7 +40,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_nav::{AgentConfig, AgentRuntime, Event, NavMesh, Polyanya, V2};
+use ph2d_nav::agent::Vez as VezDeProcurar;
+use ph2d_nav::{AgentConfig, AgentRuntime, Event, NavMesh, Plano, Polyanya, V2};
 use ph2d_navmesh::TiledMesh;
 use ph2d_physics::{BodyDesc, ShapeDesc};
 
@@ -90,6 +91,23 @@ pub(super) struct NavWorld {
     events: Vec<NavEvent>,
     /// (W9) O orçamento de nós por tique da fila do replaneio — ver [`fila`].
     orcamento: u64,
+    /// ⭐ (W15) As procuras A MEIO, com os buffers delas — FORA do anel (lá vai só a descrição,
+    /// [`AgentRuntime::a_meio`]); um scrub esquece-as e a condução refá-las até ao mesmo ponto.
+    pub(super) planos: BTreeMap<Entity, Plano>,
+    /// ⭐ (W15) A assinatura de cada malha no fim do tique anterior DESTA corrida — ⚠️ entra no anel.
+    /// Ver [`PhysicsBridge::malhas_em_dia`].
+    pub(super) sinais: BTreeMap<ChaveMalha, u64>,
+    /// (W15) As malhas cuja actualização deste tique partiu de outro conteúdo (depois de um scrub).
+    sem_zona: BTreeSet<ChaveMalha>,
+    /// (W15) O trabalho de procura gasto no último tique, e o do caminho CRÍTICO (a maior fatia em
+    /// paralelo mais a condução, em série) — as réguas dos gates e da sonda.
+    gasto: u64,
+    critico: u64,
+    /// (W15) O CONTROLO da sonda: `false` = toda procura inteira, no tique em que é pedida (a fila só
+    /// decide quem refaz o caminho quando a malha muda) — ver [`PhysicsBridge::set_nav_slices`].
+    fatias: bool,
+    /// (W15) Quantas procuras a meio avançam em paralelo num tique — ver [`fila::PROCURAS_EM_PARALELO`].
+    paralelas: usize,
 }
 
 impl Default for NavWorld {
@@ -107,6 +125,13 @@ impl Default for NavWorld {
             tick_events: Vec::new(),
             events: Vec::new(),
             orcamento: fila::ORCAMENTO_DE_TRABALHO_POR_TIQUE,
+            planos: BTreeMap::new(),
+            sinais: BTreeMap::new(),
+            sem_zona: BTreeSet::new(),
+            gasto: 0,
+            critico: 0,
+            fatias: true,
+            paralelas: fila::PROCURAS_EM_PARALELO,
         }
     }
 }
@@ -123,6 +148,9 @@ impl NavWorld {
         self.avanco.clear();
         self.tick_events.clear();
         self.events.clear();
+        self.planos.clear();
+        self.sinais.clear();
+        self.sem_zona.clear();
     }
 }
 
@@ -190,6 +218,7 @@ impl PhysicsBridge {
         }
         let vivos: BTreeSet<Entity> = pedidos.iter().map(|p| p.entity).collect();
         self.nav.agents.retain(|e, _| vivos.contains(e));
+        self.nav.planos.retain(|e, _| vivos.contains(e));
         let dt = f64::from(self.world.dt());
         if !(dt.is_finite() && dt > 0.0) {
             return;
@@ -271,14 +300,21 @@ impl PhysicsBridge {
             links: &links,
         };
 
-        // ⭐ (W9) Quem a malha que mudou põe a procurar NESTE tique: a fila, não todos.
-        let (servir, mut gasto) = self.fila_do_replaneio(&vez, &mudou);
-        // ⭐ (o aberto da W9) A procura de quem NÃO TEM caminho (nasceu, foi religado, ou ainda não
-        // achou nenhum) também é do orçamento do tique: cabe enquanto houver folga — e há sempre pelo
-        // menos uma —, senão espera parado pelo tique seguinte. Cinquenta agentes que nascem juntos
-        // faziam cinquenta procuras no mesmo tique.
-        let orcamento = self.nav.orcamento;
-        let mut sem_caminho = 0usize;
+        let entradas = self.entradas_das_procuras(&custos.tabela, &links);
+        // ⭐ (W15) As procuras a meio avançam em PARALELO, antes da condução — e o relógio do tique paga
+        // UM orçamento: a fila e a condução, em série, ficam com o que a maior fatia não gastou.
+        let (mut prontos, gasto, maior) = self.procuras_a_meio(&vez, &entradas, &q);
+        (self.nav.gasto, self.nav.critico) = (gasto, maior);
+        let orcamento = self.nav.orcamento.saturating_sub(maior);
+        // ⭐ (W9) Quem a malha que mudou põe a procurar NESTE tique: a fila, não todos — com a reserva
+        // de cada um.
+        let reservas = self.fila_do_replaneio(&vez, &mudou, orcamento);
+        // ⭐⭐ (W15) TODA procura paga do orçamento do tique: a da fila (com a reserva dela), a de quem
+        // não tem caminho (nasceu, foi religado) e a de quem replaneia por motivo próprio (o alvo andou,
+        // saiu do corredor, preso) — estas com o que sobra, pela ordem das entidades. Quem não tem vez
+        // entra na fila e anda o que tem; a procura que não cabe pára a meio (plano 30 §23).
+        let mut livre =
+            orcamento.saturating_sub(reservas.values().fold(0u64, |a, &r| a.saturating_add(r)));
 
         // 2.ª passagem: a condução, contra as malhas em dia — pela ordem das ENTIDADES (a da consulta
         // é a das tabelas, que um rebuild do scrub baralha): quem tem a vez de procurar decide-se nela.
@@ -288,9 +324,7 @@ impl PhysicsBridge {
         for v in vez {
             let p = v.p;
             let mut rt = self.nav.agents.remove(&p.entity).unwrap_or_default();
-            if servir.contains(&p.entity) {
-                rt.forget_path();
-            }
+            let reserva = reservas.get(&p.entity).copied();
             let chegada = f64::from(p.arrive.max(0.0));
             let (quem, alvo) = self.alvo_de(sim, p.entity, v.target, v.pos, chegada, &mut por_tag);
             let cfg = AgentConfig {
@@ -299,30 +333,38 @@ impl PhysicsBridge {
                 stuck_after_s: f64::from(p.stuck.max(0.0)),
                 speed: v.speed,
             };
-            let NavWorld { meshes, search, .. } = &mut self.nav;
+            let NavWorld {
+                meshes,
+                search,
+                planos,
+                fatias,
+                ..
+            } = &mut self.nav;
             let malha = v.chave.and_then(|k| meshes.get(&k)).map(TiledMesh::mesh);
-            let sem = !servir.contains(&p.entity) && rt.path.is_empty() && alvo.is_some();
-            if sem && sem_caminho > 0 && gasto >= orcamento && malha.is_some() {
-                pedidas.push(desvio::Pedida {
-                    entity: p.entity,
-                    pos: v.pos,
-                    dir: [0.0; 2],
-                    speed: cfg.speed,
-                    raio: f64::from(v.raio),
-                    malha: v.chave,
-                    avoidance: p.avoidance,
-                    alvo: quem,
-                });
-                self.nav.agents.insert(p.entity, rt);
-                continue;
-            }
-            sem_caminho += usize::from(sem);
-            let antes = search.stats.work();
-            let steer =
-                ph2d_nav::agent::step_with(&mut rt, malha, search, &q, v.pos, alvo, &cfg, dt);
-            if !servir.contains(&p.entity) {
-                // (Os servidos pela fila já entraram pela estimativa dela.)
-                gasto = gasto.saturating_add(search.stats.work() - antes);
+            let mut plano = planos.remove(&p.entity);
+            let mut turno = VezDeProcurar {
+                pode: if *fatias {
+                    reserva.unwrap_or(0).saturating_add(livre)
+                } else {
+                    u64::MAX
+                },
+                refazer: reserva.is_some(),
+                entradas: v.chave.and_then(|k| entradas.get(&k)).copied().unwrap_or(0),
+                plano: &mut plano,
+                pronto: prontos.remove(&p.entity),
+                gasto: 0,
+            };
+            let steer = ph2d_nav::agent::step_in_turn(
+                &mut rt, malha, search, &q, &mut turno, v.pos, alvo, &cfg, dt,
+            );
+            self.nav.gasto = self.nav.gasto.saturating_add(turno.gasto);
+            self.nav.critico = self.nav.critico.saturating_add(turno.gasto);
+            // O que a reserva dele não gastou volta ao que sobra.
+            livre = livre
+                .saturating_add(reserva.unwrap_or(0))
+                .saturating_sub(turno.gasto);
+            if let Some(pl) = plano {
+                self.nav.planos.insert(p.entity, pl);
             }
             // (W7) Um TELEPORTE: o corpo vai já para a saída (velocidade a zero), dentro do tique —
             // o replay corre a mesma lei e salta no mesmo tique.
@@ -385,6 +427,32 @@ impl PhysicsBridge {
     #[must_use]
     pub fn nav_events(&self) -> &[NavEvent] {
         &self.nav.events
+    }
+
+    /// (W15) O CONTROLO da sonda e dos gates: `false` desliga a vez e as fatias — toda procura corre
+    /// inteira no tique em que é pedida (só a fila da malha que muda espera). Por omissão, ligadas.
+    pub fn set_nav_slices(&mut self, on: bool) {
+        self.nav.fatias = on;
+    }
+
+    /// (W15) A sonda: quantas procuras a meio avançam em paralelo num tique (`0` = nenhuma: só a
+    /// condução as avança, em série).
+    pub fn set_nav_parallel(&mut self, n: usize) {
+        self.nav.paralelas = n;
+    }
+
+    /// (W15) O trabalho de procura ([`ph2d_nav::Stats::work`]) gasto no último tique, todo.
+    #[must_use]
+    pub fn nav_search_work(&self) -> u64 {
+        self.nav.gasto
+    }
+
+    /// (W15) O do caminho CRÍTICO do último tique: a maior fatia das procuras em paralelo mais o que a
+    /// condução gastou em série — o que o relógio paga com núcleos que cheguem (o orçamento, mais um
+    /// `pop`).
+    #[must_use]
+    pub fn nav_search_critical_work(&self) -> u64 {
+        self.nav.critico
     }
 
     /// (W7) Quem é o atalho com este `id` (o que a lei devolve no `Event::Crossed`).

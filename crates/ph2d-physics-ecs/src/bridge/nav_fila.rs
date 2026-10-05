@@ -7,9 +7,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_ecs::Entity;
-use ph2d_nav::refresh::{Owed, path_still_walkable, serve};
+use ph2d_nav::refresh::{Owed, path_still_walkable, reparte};
+use ph2d_nav::{AgentRuntime, Planeado, Plano, Query};
+use rayon::prelude::*;
 
-use super::{ChaveMalha, Vez};
+use super::{ChaveMalha, NavWorld, Vez};
 use crate::bridge::PhysicsBridge;
 
 /// ⭐ **O orçamento de trabalho da procura por tique** para os caminhos que a fila deve, em nós
@@ -29,19 +31,50 @@ use crate::bridge::PhysicsBridge;
 /// ⇒ abaixo de `20 000` o tique quase não desce e a espera dobra. (W14, load `~2`) Uma unidade de trabalho
 /// vale `85–123 ns` em todas as procuras (`~114`) ⇒ `20 000` é `~2,3 ms` de procura por tique; com muita lama
 /// o tique continua acima — UMA procura passa o orçamento sozinha, e os replaneios fora da fila não contam
-/// (plano 30 §22.8).
+/// (plano 30 §22.8). ⭐ (W15) Os dois deixaram de ser verdade: TODA procura paga daqui, e a que não cabe
+/// pára a meio e continua no tique seguinte (§23).
 pub(super) const ORCAMENTO_DE_TRABALHO_POR_TIQUE: u64 = 20_000;
+
+/// ⭐ (W15) **As procuras A MEIO que avançam juntas num tique**, cada uma com uma fatia do orçamento, em
+/// paralelo (ADR-0180, plano 30 §23.4) — o recurso é os NÚCLEOS: com eles, o relógio do tique paga uma
+/// fatia e não todas. ⚠️ É um número FIXO e não o dos núcleos da máquina: quem avança e quanto decide-se
+/// antes de as correr, logo o resultado é o mesmo com qualquer número de threads (na web, uma: o tique
+/// paga-as em série). Medido (`medir_replaneio`, `150` lamas, `200` agentes, o mínimo de 7 intercaladas):
+///
+/// | em paralelo | sem caminho no fim | pior tique depois da porta (50 · 200 agentes) | crítico (máx) |
+/// |---|---|---|---|
+/// | `0` (série) | `189` | `8,5 · 13,5 ms` | `76 000` |
+/// | `8` | `0` | `11,1 · 14,4` | `80 000` |
+/// | **`16`** | **`0`** | **`7,5 · 12,9`** | **`40 000`** |
+pub(super) const PROCURAS_EM_PARALELO: usize = 16;
+
+/// FNV-1a de 64 bits, por palavra — a assinatura só precisa de distinguir.
+struct Fnv(u64);
+
+impl Default for Fnv {
+    fn default() -> Self {
+        Self(0xcbf2_9ce4_8422_2325)
+    }
+}
+
+impl Fnv {
+    fn u64(&mut self, x: u64) {
+        for b in x.to_le_bytes() {
+            self.0 = (self.0 ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+}
 
 impl PhysicsBridge {
     /// Marca na fila os agentes cuja malha MUDOU (o caminho que ainda se anda fica; o partido passa à
-    /// frente), envelhece quem lá está, e devolve quem a fila serve neste tique — a quem a condução
-    /// esquece o caminho antes do passo — e o trabalho que essas procuras devem gastar (a estimativa de
-    /// cada um: a última procura dele).
+    /// frente), envelhece quem lá está, e devolve a RESERVA de trabalho de quem a fila serve neste tique
+    /// (a estimativa de cada um: a última procura dele) — a condução refaz-lhe o caminho com ela.
     pub(super) fn fila_do_replaneio(
         &mut self,
         vez: &[Vez],
         mudou: &BTreeSet<ChaveMalha>,
-    ) -> (BTreeSet<Entity>, u64) {
+        orcamento: u64,
+    ) -> BTreeMap<Entity, u64> {
         // Pela ordem das ENTIDADES (a do `vez` é a da consulta ao mundo): o `id` de cada um é a ordem
         // dele aqui.
         let por_entidade: BTreeMap<Entity, &Vez> = vez.iter().map(|v| (v.p.entity, v)).collect();
@@ -50,8 +83,11 @@ impl PhysicsBridge {
         for (i, (&e, v)) in por_entidade.iter().enumerate() {
             let tiled = v.chave.and_then(|k| self.nav.meshes.get(&k));
             let malha = tiled.map(ph2d_navmesh::TiledMesh::mesh);
-            // Só os troços que tocam os mosaicos refeitos se percorrem (a lei, `refresh`).
-            let onde = tiled.and_then(ph2d_navmesh::TiledMesh::changed_area);
+            // Só os troços que tocam os mosaicos refeitos se percorrem (a lei, `refresh`) — salvo quando a
+            // malha de onde a actualização partiu é de OUTRA corrida (um scrub): então todos.
+            let onde = tiled
+                .filter(|_| v.chave.is_none_or(|k| !self.nav.sem_zona.contains(&k)))
+                .and_then(ph2d_navmesh::TiledMesh::changed_area);
             let Some(rt) = self.nav.agents.get_mut(&e) else {
                 continue;
             };
@@ -60,7 +96,8 @@ impl PhysicsBridge {
                     !malha.is_some_and(|m| path_still_walkable(m, rt, v.pos, onde.as_deref()));
                 rt.owed = rt.owed.max(1);
             }
-            if rt.owed > 0 {
+            // (Quem tem uma procura a meio avança no passo em paralelo, [`Self::procuras_a_meio`].)
+            if rt.owed > 0 && rt.a_meio.is_none() {
                 fila.push(Owed {
                     id: i as u64,
                     broken: rt.broken,
@@ -70,19 +107,124 @@ impl PhysicsBridge {
                 quem.insert(i as u64, e);
             }
         }
-        let n = serve(&mut fila, self.nav.orcamento);
-        let mut servir = BTreeSet::new();
-        let mut gasto = 0u64;
-        for (k, o) in fila.iter().enumerate() {
+        let reservas = reparte(&mut fila, orcamento);
+        let mut servir = BTreeMap::new();
+        for (o, r) in fila.iter().zip(reservas) {
             let e = quem[&o.id];
-            if k < n {
-                servir.insert(e);
-                gasto = gasto.saturating_add(o.work);
+            if r > 0 {
+                servir.insert(e, r);
             } else if let Some(rt) = self.nav.agents.get_mut(&e) {
                 rt.owed = rt.owed.saturating_add(1);
             }
         }
-        (servir, gasto)
+        servir
+    }
+
+    /// ⭐⭐ (W15) **As procuras A MEIO avançam em PARALELO**, antes da condução: as primeiras
+    /// [`PROCURAS_EM_PARALELO`] da fila (a mais ADIANTADA primeiro — acabá-las é o que não deixa
+    /// acumular procuras a meio, nem revezá-las sem que nenhuma acabe —, depois os partidos, quem espera
+    /// há mais tiques, e a ordem das entidades), cada uma com uma fatia do orçamento inteiro; as outras
+    /// envelhecem. Devolve a
+    /// resposta de cada uma que acabou (a condução instala-a), o trabalho gasto e a maior fatia (o que o
+    /// relógio paga com núcleos que cheguem). ⚠️ Uma procura de outras entradas fica para a condução,
+    /// que a recomeça.
+    pub(super) fn procuras_a_meio(
+        &mut self,
+        vez: &[Vez],
+        entradas: &BTreeMap<ChaveMalha, u64>,
+        q: &Query<'_>,
+    ) -> (BTreeMap<Entity, Planeado>, u64, u64) {
+        let mut prontos = BTreeMap::new();
+        if !self.nav.fatias {
+            return (prontos, 0, 0);
+        }
+        let mut fila: Vec<((u64, bool, u32), Entity, ChaveMalha)> = vez
+            .iter()
+            .filter_map(|v| {
+                let k = v.chave?;
+                let rt = self.nav.agents.get(&v.p.entity)?;
+                let a = rt.a_meio?;
+                (entradas.get(&k) == Some(&a.entradas)).then_some((
+                    (a.trabalho, rt.broken, rt.owed),
+                    v.p.entity,
+                    k,
+                ))
+            })
+            .collect();
+        fila.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+        let NavWorld {
+            meshes,
+            agents,
+            planos,
+            paralelas,
+            orcamento,
+            ..
+        } = &mut self.nav;
+        let corre = (*paralelas).min(fila.len());
+        for &(_, e, _) in &fila[corre..] {
+            if let Some(rt) = agents.get_mut(&e) {
+                rt.owed = rt.owed.saturating_add(1);
+            }
+        }
+        let mut lote: Vec<(Entity, AgentRuntime, Option<Plano>, ChaveMalha)> = fila[..corre]
+            .iter()
+            .filter_map(|&(_, e, k)| Some((e, agents.remove(&e)?, planos.remove(&e), k)))
+            .collect();
+        let orc = *orcamento;
+        let meshes = &*meshes;
+        let feitas: Vec<(Option<Planeado>, u64)> = lote
+            .par_iter_mut()
+            .map(|(_, rt, plano, k)| {
+                let Some(malha) = meshes.get(k) else {
+                    return (None, 0);
+                };
+                let (r, w) = ph2d_nav::agent::advance_mid(rt, malha.mesh(), q, plano, orc);
+                (r.map(|(r, _)| r), w)
+            })
+            .collect();
+        let (mut gasto, mut maior) = (0u64, 0u64);
+        for ((e, rt, plano, _), (r, w)) in lote.into_iter().zip(feitas) {
+            gasto = gasto.saturating_add(w);
+            maior = maior.max(w);
+            agents.insert(e, rt);
+            if let Some(p) = plano {
+                planos.insert(e, p);
+            }
+            if let Some(r) = r {
+                prontos.insert(e, r);
+            }
+        }
+        (prontos, gasto, maior)
+    }
+
+    /// ⭐ (W15) **A assinatura das entradas da procura**, por malha: a chave, o conteúdo dela (a
+    /// assinatura deste tique), os custos e os atalhos — uma procura a meio de outras entradas recomeça
+    /// ([`ph2d_nav::agent::Vez::entradas`]). Só lê estado que o replay refaz igual.
+    pub(super) fn entradas_das_procuras(
+        &self,
+        custos: &[f64],
+        links: &[ph2d_nav::Link],
+    ) -> BTreeMap<ChaveMalha, u64> {
+        let mut h = Fnv::default();
+        custos.iter().for_each(|c| h.u64(c.to_bits()));
+        for l in links {
+            h.u64(u64::from(l.id));
+            [l.from[0], l.from[1], l.to[0], l.to[1], l.cost]
+                .iter()
+                .for_each(|x| h.u64(x.to_bits()));
+            h.u64(u64::from(l.two_way) | u64::from(l.teleport) << 1);
+        }
+        self.nav
+            .sinais
+            .iter()
+            .map(|(&(regiao, raio, evita), &s)| {
+                let mut g = Fnv(h.0);
+                [regiao.to_bits(), u64::from(raio), evita, s]
+                    .iter()
+                    .for_each(|&x| g.u64(x));
+                ((regiao, raio, evita), g.0)
+            })
+            .collect()
     }
 
     /// A sonda e o CONTROLO dos gates: outro orçamento de trabalho por tique (`u64::MAX` = todos no tique,

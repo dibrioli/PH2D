@@ -41,6 +41,12 @@ impl PhysicsBridge {
     /// ⭐ **Põe em dia as malhas que os agentes pedem neste tique** — e só essas: uma chave que
     /// ninguém pede é esquecida (*a área andável é DE QUEM anda*). Devolve as que MUDARAM.
     ///
+    /// ⭐⭐ (W15) **«Mudou» é o CONTEÚDO contra o tique anterior DESTA corrida** (a assinatura de cada
+    /// malha, que entra no anel), e não o que a actualização diz: depois de um scrub as malhas são as do
+    /// fim da corrida, e uma porta que mudou depois do âncora fazia o replay ver uma mudança que a
+    /// corrida não viu (plano 30 §23.1). Uma malha cuja actualização partiu de OUTRO conteúdo fica em
+    /// `sem_zona` (a zona do que mudou é relativa a outra malha).
+    ///
     /// (W7) Cada malha recebe as áreas de custo, os furos proibidos e os das zonas que ESSA chave
     /// evita (`evita[chave]`, índices em `custos.ferem` — ver `nav_custo.rs`).
     pub(super) fn malhas_em_dia(
@@ -52,6 +58,8 @@ impl PhysicsBridge {
     ) -> BTreeSet<ChaveMalha> {
         self.nav.meshes.retain(|k, _| chaves.contains_key(k));
         self.nav.walls.retain(|k, _| chaves.contains_key(k));
+        self.nav.sinais.retain(|k, _| chaves.contains_key(k));
+        self.nav.sem_zona.clear();
         let mut mudou = BTreeSet::new();
         if chaves.is_empty() {
             return mudou;
@@ -91,8 +99,15 @@ impl PhysicsBridge {
                     TILE_M,
                 )
             });
-            if malha.update_with_areas(&poligono, &dela, &custos.areas) {
+            let base = malha.assinatura();
+            malha.update_with_areas(&poligono, &dela, &custos.areas);
+            let agora = malha.assinatura();
+            let antes = self.nav.sinais.insert(chave, agora.unwrap_or(0));
+            if antes != agora {
                 mudou.insert(chave);
+            }
+            if base != antes {
+                self.nav.sem_zona.insert(chave);
             }
         }
         mudou

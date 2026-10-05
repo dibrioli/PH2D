@@ -13,6 +13,8 @@
 #   R1  comando pesado fora da porta  → uma linha podia tomar a máquina inteira
 #   R2  vigia de fundo sem prazo      → 9 laços de `sleep` ficaram a girar, e um
 #                                        deles escondeu uma sonda pendurada 56 min
+# (e depois: R3, o fonte de um alvo amuralhado, 18/09; R4, um `kill` que fecha a
+#  SESSÃO do dono — o `systemd --user` morto por engano em 05/10.)
 #
 # ⚠️ **Ele FALHA ABERTO por desenho.** Qualquer coisa inesperada — jq ausente,
 # JSON que não lê, estado que não reconhece — devolve 0 e o comando passa. Um
@@ -126,6 +128,55 @@ que procura tem de vir de CORRER o alvo sobre entradas nossas." \
     ou Edit, que não passa por este guarda.
 
 ⛔ Se acha que precisa mesmo de LER, pare e reporte — é decisão do Enio, não sua."
+fi
+
+# ── R4 · a SESSÃO do dono não se mata ─────────────────────────────────────────
+# Medido em 2026-10-05 18:30:03: um agente quis parar um `ph2d-run.sh` e correu
+# `pp=$(ps -o ppid= -p <pid>); kill $pp`. O processo era ÓRFÃO (o shell que o
+# lançou já tinha saído) e um órfão é adoptado pelo subreaper da sessão — o
+# `systemd --user`. O SIGTERM chegou-lhe, e 26 ms depois o journal regista
+# `Activating special unit Exit the Session`: VS Code, Chrome, todas as janelas do
+# Claude e o ecrã do Enio acabaram num logout. Ele leu «o PC reiniciou».
+# `kill`/`pkill`/`killall` só contam em POSIÇÃO DE COMANDO: um `grep` que os
+# MENCIONA passa (o custo de errar a fechar aqui é travar quem documenta).
+kill_cmd='(^|[;&|(`]|&&|\|\|)[[:space:]]*(sudo[[:space:]]+)?(kill|pkill|killall)([[:space:]]|$)'
+sessao_recusa() { # $1 = o que foi visto
+  recusa "⛔ Isto pode FECHAR A SESSÃO do Enio ($1).
+
+Em 05/10 um \`kill\` do «pai» de um processo órfão matou o \`systemd --user\` — o
+gestor da sessão — e o ecrã inteiro do dono caiu num logout (VS Code, Chrome,
+todas as janelas do Claude). Um órfão é adoptado por ESSE gestor: «matar o pai»
+de um processo que não é seu filho directo é matar a sessão." \
+"Pare o que é SEU, pelo que é seu:
+
+  · o PID do próprio processo:      kill <pid>        (confira antes:
+                                     ps -o pid,comm,args -p <pid>)
+  · o grupo inteiro do processo:    kill -- -<pgid>   (ps -o pgid= -p <pid>)
+  · a fatia da linha (ph2d-run):    systemctl --user list-units 'ph2d*'
+                                     systemctl --user stop <unidade>.scope
+
+⛔ Nunca \`kill\` de um PID CALCULADO (ppid, \$PPID) nem de systemd, kwin, plasma,
+code ou claude. Se acha que precisa mesmo, pare e reporte ao Enio."
+}
+if printf '%s' "$cmd" | grep -qE "$kill_cmd"; then
+  # (1) o idioma exacto do incidente: matar um PAI calculado.
+  printf '%s' "$cmd" | grep -qiE 'ppid|\$PPID' && sessao_recusa "kill de um PAI calculado"
+  # (2) um PID que, AGORA, é da sessão gráfica ou do gestor dela — lido SÓ nos
+  #     argumentos do próprio `kill` (um `sleep 1; kill <pid>` não é o PID 1, e o
+  #     `%1` é a tarefa 1 do shell).
+  protegidos="$(pgrep -u "$(id -u)" -x 'systemd|kwin_wayland|plasmashell|ksmserver|startplasma-way|plasma_session|dbus-broker|code|claude' 2>/dev/null | tr '\n' ' ')"
+  alvos="$(printf '%s' "$cmd" | grep -oE "$kill_cmd[^;&|]*" | grep -oE '(^|[[:space:]])[0-9]+([[:space:]]|$)' | tr -d ' \t')"
+  for p in 1 $protegidos; do
+    printf '%s\n' "$alvos" | grep -qx "$p" && sessao_recusa "o PID $p é da sessão"
+  done
+  # (3) por NOME, ou TODOS os processos do utilizador.
+  printf '%s' "$cmd" | grep -qE '(pkill|killall)[^;&|]*[[:space:]](-u|--user)([[:space:]]|$)' && sessao_recusa "todos os processos do utilizador"
+  printf '%s' "$cmd" | grep -qE 'kill[[:space:]]+(-[A-Za-z0-9]+[[:space:]]+)*-1([[:space:]]|$)' && sessao_recusa "kill -1 = todos os processos"
+  printf '%s' "$cmd" | grep -qE '(pkill|killall)[^;&|]*(systemd|kwin|plasma|ksmserver|sddm|dbus|code|claude)' && sessao_recusa "um processo da sessão, por nome"
+fi
+# (4) os comandos de logout, em qualquer posição.
+if printf '%s' "$cmd" | grep -qE 'loginctl[[:space:]]+(terminate|kill)-(session|user)|systemctl[[:space:]]+--user[[:space:]]+(exit|kill|halt|poweroff|stop[[:space:]]+(plasma|graphical|default|exit))|org\.kde\.(Shutdown|ksmserver)'; then
+  sessao_recusa "um comando de logout"
 fi
 
 exit 0

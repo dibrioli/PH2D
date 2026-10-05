@@ -177,7 +177,7 @@ coisa certa, e foi invocado **5 vezes em 101 sessões** contra **13 791** `cargo
 check` digitados à mão; o `git-stage-guard.sh` tem 5 docs a apontá-lo e **zero**
 invocações. *Ponteiro não é adoção.*
 
-Ele recusa **duas** formas e dá a linha corrigida:
+Ele recusa **quatro** formas e dá a linha corrigida:
 
 - **R1 — comando pesado fora da porta.** `cargo test|nextest|build|run|bench|clippy`
   sem `ph2d-run.sh`.
@@ -189,12 +189,24 @@ Ele recusa **duas** formas e dá a linha corrigida:
   plano nunca termina sozinho, e **o silêncio dele lê-se igual a «ainda a
   trabalhar»**. Em 14/09 nove destes ficaram a girar e um deles escondeu a sonda
   pendurada durante quase uma hora.
+- **R3 — o fonte de um alvo amuralhado** (Unreal `Engine/Source|Shaders`, os `.py` do
+  Blender): oráculos que se CORREM, nunca fontes que se leem (CLAUDE.md §0.9).
+- **R4 — um `kill` que fecha a SESSÃO do dono** (2026-10-05). Um agente correu
+  `pp=$(ps -o ppid= -p <pid>); kill $pp` sobre um `ph2d-run.sh` ÓRFÃO; o pai de um
+  órfão é o subreaper da sessão — o `systemd --user` — e 26 ms depois o journal
+  regista `Exit the Session`: o ecrã inteiro do Enio caiu num logout (ele leu «o PC
+  reiniciou»). Recusa: `kill` de um PAI calculado (`ppid`, `$PPID`); `kill` de um PID
+  que AGORA é do `systemd --user`, do KWin, do Plasma, do VS Code ou do Claude (lido só
+  nos argumentos do `kill`); `pkill`/`killall` desses por nome ou com `-u`; `kill -1`;
+  e os logouts (`loginctl terminate-*`, `systemctl --user exit`, `org.kde.Shutdown`).
+  Parar o que é seu continua livre: o PID, o grupo (`kill -- -<pgid>`), `%1`, ou a
+  fatia (`systemctl --user stop <unidade>.scope`).
 
 ⚠️ **Ele FALHA ABERTO por desenho** — `jq` ausente, JSON ilegível, estado que não
 reconhece: devolve `0` e o comando passa. *Um guarda que se engana a fechar pára
 seis linhas; um que se engana a abrir volta ao que havia antes dele.*
 
-**Prova versionada:** `bash .claude/hooks/tecto-de-recursos.prova.sh` — 18 casos,
+**Prova versionada:** `bash .claude/hooks/tecto-de-recursos.prova.sh` — 50 casos (contados em 05/10),
 e os de *«tem de passar»* valem tanto como os de *«recusado»*.
 
 ---

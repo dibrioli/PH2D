@@ -592,6 +592,7 @@ pub fn encode(
     // ⚠️ **Toda linha sem camada partilha a chave `None`**, e é isso que faz o caminho de sempre
     // sair BYTE-IDÊNTICO: sem nenhum sink misturado a lista inteira é UMA corrida, e ela vai ao
     // mesmo lote de antes.
+    let mut traco = mistura::traco::TracoDaPlaca::default();
     let mut i = 0;
     while i < insts.len() {
         let chave = mistura::chave_de_mistura(&insts[i].mistura);
@@ -599,7 +600,17 @@ pub fn encode(
         while j < insts.len() && mistura::chave_de_mistura(&insts[j].mistura) == chave {
             j += 1;
         }
-        mistura::desenha_corrida(&insts[i..j], chave, store, art, cam, janela, filtro, scene);
+        mistura::desenha_corrida(
+            &mut traco,
+            &insts[i..j],
+            chave,
+            store,
+            art,
+            cam,
+            janela,
+            filtro,
+            scene,
+        );
         i = j;
     }
 }

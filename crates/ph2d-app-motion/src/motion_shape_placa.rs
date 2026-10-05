@@ -62,6 +62,21 @@ fn prepara(path: &VecPath) -> Entrada {
     let Some(f) = ph2d_vec_render::forma_para_a_placa(path) else {
         return Entrada::Recusada;
     };
+    match ShapeGeometry::prepare(&entrada_de(&f)) {
+        // ⚠️ Um tracejado que o eixo não exprime só se desenharia conforme — e a placa não o sabe
+        // sob escala não uniforme. O `kurbo_stroke` da casa nunca o produz; se um dia produzir, o
+        // quadro fica no Vello em vez de desenhar outra coisa.
+        Some(g) if g.record.flags & ph2d_shape_gpu::FLAG_SO_CONFORME != 0 => Entrada::Recusada,
+        Some(g) => Entrada::Pronta {
+            geometria: Box::new(g),
+        },
+        None => Entrada::Vazia,
+    }
+}
+
+/// O que a placa recebe de uma forma — a MESMA entrada para a geometria dela e para o traço da rota Vello
+/// pela lei dela (doc 121 §9.18 C, [`crate::motion_shape_traco`]).
+pub(crate) fn entrada_de(f: &ph2d_vec_render::FormaParaAPlaca) -> ShapeInput<'_> {
     let fill = f.fill.as_ref().map(|(bp, regra)| {
         let regra = match regra {
             Fill::NonZero => FillRule::NonZero,
@@ -78,20 +93,10 @@ fn prepara(path: &VecPath) -> Entrada {
             color: f.cor_do_traco,
         })
         .collect();
-    let input = ShapeInput {
+    ShapeInput {
         fill,
         strokes,
         stroke_fills: f.preenchimentos_do_traco.iter().collect(),
-    };
-    match ShapeGeometry::prepare(&input) {
-        // ⚠️ Um tracejado que o eixo não exprime só se desenharia conforme — e a placa não o sabe
-        // sob escala não uniforme. O `kurbo_stroke` da casa nunca o produz; se um dia produzir, o
-        // quadro fica no Vello em vez de desenhar outra coisa.
-        Some(g) if g.record.flags & ph2d_shape_gpu::FLAG_SO_CONFORME != 0 => Entrada::Recusada,
-        Some(g) => Entrada::Pronta {
-            geometria: Box::new(g),
-        },
-        None => Entrada::Vazia,
     }
 }
 

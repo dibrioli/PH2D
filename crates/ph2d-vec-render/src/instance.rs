@@ -25,8 +25,12 @@ pub fn draw_shape_instance(
     target: &mut VectorScene,
 ) {
     let tess = tessellate_shape_instance(path);
-    draw_shape_instance_tessellated(path, &tess, None, transform, tint, target);
+    draw_shape_instance_tessellated(path, &tess, None, transform, tint, target, None);
 }
+
+/// ⭐ doc 121 §9.18 (C) do Motion — **quem desenha o TRAÇO de uma cópia em vez do traçador da casa**: recebe o
+/// handle, o caminho, o afim da cópia e o pincel do traço; `true` ⇒ desenhou (e a casa não traça).
+pub type TracoProprio<'a> = dyn FnMut(u32, &VecPath, Affine, &Brush, &mut VectorScene) -> bool + 'a;
 
 /// A [`PathTess`] de uma instância de Motion — a metade CARA de [`draw_shape_instance`], separada
 /// para que um lote de instâncias da MESMA geometria a construa uma vez ([`draw_shared_instances`]).
@@ -80,6 +84,7 @@ pub(crate) fn draw_shape_instance_tessellated(
     transform: Affine,
     tint: [f32; 4],
     target: &mut VectorScene,
+    traco: Option<(u32, &mut TracoProprio<'_>)>,
 ) {
     if path.fill.is_some() {
         // ⚠️⚠️ **UMA INSTÂNCIA DE MOTION DE UMA FORMA COM PADRÃO PINTA A `fallback`, e é DECLARADO.**
@@ -116,7 +121,12 @@ pub(crate) fn draw_shape_instance_tessellated(
         // mexia na largura do traço, e o `motion.tint` a jusante deixava de pintar coisa
         // nenhuma. Pela porta ÚNICA do traço ([`crate::draw_stroke_with`]), então tracejado,
         // pontas e alinhamento são os mesmos de um caminho de documento.
-        crate::draw_stroke_with(path, tess, transform, target, None, None);
+        let proprio = traco.zip(path.stroke.as_ref()).is_some_and(|((h, f), s)| {
+            f(h, path, transform, &Brush::Solid(crate::color(s.color())), target)
+        });
+        if !proprio {
+            crate::draw_stroke_with(path, tess, transform, target, None, None);
+        }
     }
 }
 
@@ -156,6 +166,28 @@ pub fn draw_shared_instances<'p>(
         carimbo_preparado(),
         recorte_ligado().then_some(janela).flatten(),
         None,
+        None,
+    );
+}
+
+/// ⭐ doc 121 §9.18 (C) do Motion — **o MESMO lote, com o traço de cada cópia por `traco`** quando ele o
+/// quer (o tracejado pela lei da placa); `por_copia` é a camada de [`draw_shared_instances_em_camadas`].
+pub fn draw_shared_instances_com_traco<'p>(
+    instances: impl IntoIterator<Item = (u32, Affine, [f32; 4])>,
+    resolve: impl Fn(u32) -> Option<&'p VecPath>,
+    janela: Option<Rect>,
+    por_copia: Option<ph2d_vector::VelloBlend>,
+    traco: &mut TracoProprio<'_>,
+    target: &mut VectorScene,
+) {
+    draw_shared_instances_com(
+        instances,
+        resolve,
+        target,
+        carimbo_preparado(),
+        recorte_ligado().then_some(janela).flatten(),
+        por_copia,
+        Some(traco),
     );
 }
 
@@ -182,6 +214,7 @@ pub fn draw_shared_instances_em_camadas<'p>(
         carimbo_preparado(),
         recorte_ligado().then_some(janela).flatten(),
         Some(mistura),
+        None,
     );
 }
 
@@ -239,6 +272,8 @@ pub(crate) fn draw_shared_instances_com<'p>(
     // ⭐ `Some(m)` = cada cópia na sua camada `m` — ver [`draw_shared_instances_em_camadas`].
     // `None` é o lote de sempre, byte a byte.
     por_copia: Option<ph2d_vector::VelloBlend>,
+    // `Some` = o traço de cada cópia por quem o quer ([`draw_shared_instances_com_traco`]).
+    mut traco: Option<&mut TracoProprio<'_>>,
 ) {
     let janela = janela.map(|r| r.inflate(FOLGA_DA_JANELA, FOLGA_DA_JANELA));
     let mut cache: std::collections::BTreeMap<u32, (PathTess, Option<PreparedFill>)> =
@@ -286,7 +321,15 @@ pub(crate) fn draw_shared_instances_com<'p>(
         if let Some((m, r)) = camada {
             target.push_object_layer(&r, m, 1.0);
         }
-        draw_shape_instance_tessellated(path, tess, prep.as_ref(), transform, tint, target);
+        draw_shape_instance_tessellated(
+            path,
+            tess,
+            prep.as_ref(),
+            transform,
+            tint,
+            target,
+            traco.as_deref_mut().map(|f| (handle, f)),
+        );
         if camada.is_some() {
             target.pop_layer();
         }

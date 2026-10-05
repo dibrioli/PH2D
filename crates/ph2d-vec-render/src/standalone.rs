@@ -37,6 +37,7 @@ pub fn draw_path_standalone(path: &VecPath, transform: Affine, target: &mut Vect
         transform,
         [1.0, 1.0, 1.0, 1.0],
         target,
+        None,
     );
 }
 

@@ -117,8 +117,7 @@ impl ShapeGeometry {
             !s.style.dash_pattern.is_empty() && crate::eixo::tracejado_do_eixo(s.style).is_none()
         });
         for nivel in 0..LEVELS {
-            #[expect(clippy::cast_possible_wrap, reason = "LEVELS é oito")]
-            let tol = ext * TOL_BASE * TOL_STEP.powi(nivel as i32);
+            let tol = tolerancia(ext, nivel);
             #[expect(clippy::cast_possible_truncation, reason = "a placa lê f32")]
             {
                 record.tol[nivel] = tol as f32;
@@ -137,11 +136,7 @@ impl ShapeGeometry {
             }
             crate::blocos::completa(&mut segments);
             let marcas = conta(&segments) - stroke_start;
-            for s in &input.strokes {
-                // ⚠️ Metade do orçamento para a expansão e metade para o aplanamento: os dois
-                // erros SOMAM-se, e o nível promete `tol` no total.
-                let contorno =
-                    expand_stroke(s.path.iter(), s.style, &StrokeOpts::default(), tol * 0.5);
+            for contorno in contornos_dos_tracos(input, tol) {
                 aplana_fechado(contorno.iter(), tol * 0.5, &mut segments, &mut caixa);
             }
             crate::blocos::completa(&mut segments);
@@ -149,12 +144,8 @@ impl ShapeGeometry {
             record.ranges[nivel] = [fill_start, fill_count, stroke_start, stroke_count];
             let eixo_start = conta_eixo(&itens);
             if !tracejado {
-                let mut pecas = Vec::new();
-                for s in &input.strokes {
-                    #[expect(clippy::cast_possible_truncation, reason = "a placa lê f32")]
-                    let meia = (s.style.width * 0.5) as f32;
-                    ext_fora = ext_fora.max(meia * eixo(s.path, s.style, tol * 0.5, &mut pecas));
-                }
+                let (pecas, fora) = eixo_do_nivel(input, tol);
+                ext_fora = ext_fora.max(fora);
                 itens.extend(crate::eixo::em_blocos(&pecas));
             }
             record.eixo[nivel] = [eixo_start, conta_eixo(&itens) - eixo_start, marcas, 0];
@@ -190,6 +181,51 @@ impl ShapeGeometry {
     }
 }
 
+/// A tolerância LOCAL do nível `nivel` de uma forma de extensão `ext` (o `record.tol`, em `f64`).
+#[must_use]
+pub fn tolerancia(ext: f64, nivel: usize) -> f64 {
+    #[expect(clippy::cast_possible_wrap, clippy::cast_possible_truncation, reason = "LEVELS é oito")]
+    let k = nivel as i32;
+    ext * TOL_BASE * TOL_STEP.powi(k)
+}
+
+/// O eixo de TODOS os traços de `input` aplanado à tolerância de nível `tol` (sem os cabeçalhos de bloco)
+/// e quanto ele vai para fora (`ext_fora`, em unidades locais).
+#[must_use]
+pub fn eixo_do_nivel(input: &ShapeInput<'_>, tol: f64) -> (Vec<EixoItem>, f32) {
+    let mut pecas = Vec::new();
+    let mut fora: f32 = 0.0;
+    for s in &input.strokes {
+        #[expect(clippy::cast_possible_truncation, reason = "a placa lê f32")]
+        let meia = (s.style.width * 0.5) as f32;
+        fora = fora.max(meia * eixo(s.path, s.style, tol * 0.5, &mut pecas));
+    }
+    (pecas, fora)
+}
+
+/// O contorno de cada traço de `input` no nível de tolerância `tol` — metade do orçamento para a expansão e
+/// metade para o aplanamento: os dois erros SOMAM-se, e o nível promete `tol` no total.
+fn contornos_dos_tracos<'a>(
+    input: &'a ShapeInput<'_>,
+    tol: f64,
+) -> impl Iterator<Item = BezPath> + 'a {
+    input
+        .strokes
+        .iter()
+        .map(move |s| expand_stroke(s.path.iter(), s.style, &StrokeOpts::default(), tol * 0.5))
+}
+
+/// ⭐ doc 121 §9.18 (C) — **o contorno do traço de uma cópia CONFORME no nível `tol`**, aplanado como as
+/// marcas da placa (os MESMOS pontos, em `f64`): a rota Vello do Motion preenche-o em vez de traçar.
+#[must_use]
+pub fn contorno_conforme(input: &ShapeInput<'_>, tol: f64) -> BezPath {
+    let mut bp = BezPath::new();
+    for c in contornos_dos_tracos(input, tol) {
+        flatten(c.iter(), tol * 0.5, |el| bp.push(el));
+    }
+    bp
+}
+
 fn conta_eixo(v: &[EixoItem]) -> u32 {
     u32::try_from(v.len()).expect("um eixo com mais de 4 mil milhoes de itens")
 }
@@ -200,7 +236,8 @@ fn conta(v: &[[f32; 4]]) -> u32 {
 
 /// A extensão da forma — o maior lado da caixa do preenchimento e do traço (com a metade da
 /// largura, que é o que o contorno acrescenta). `None` para uma forma vazia.
-fn extensao(input: &ShapeInput<'_>) -> Option<f64> {
+#[must_use]
+pub fn extensao(input: &ShapeInput<'_>) -> Option<f64> {
     let mut ext: f64 = 0.0;
     let mut algo = false;
     let mut conta = |bp: &BezPath, folga: f64| {

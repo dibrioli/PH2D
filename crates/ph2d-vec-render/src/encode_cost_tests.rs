@@ -368,6 +368,7 @@ fn o_lote_carimba_a_forma_preparada_uma_vez_por_geometria() {
             preparado,
             None,
             None,
+            None,
         );
         assert_eq!(
             counters::take_stamps(),

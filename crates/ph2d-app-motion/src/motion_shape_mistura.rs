@@ -10,6 +10,10 @@
 use ph2d_eval_motion::{BlendWith, VectorInstance};
 use ph2d_vector::{Affine, VectorScene};
 
+// ⭐ doc 121 §9.18 (C) — o tracejado da rota Vello pela lei da placa.
+#[path = "motion_shape_traco.rs"]
+pub(super) mod traco;
+
 use super::{VecPathStore, instance_pose};
 
 /// **A chave de uma corrida** — `None` para toda linha que desenha sem camada.
@@ -85,6 +89,7 @@ fn rect_do_grupo(janela: Option<ph2d_vector::Rect>) -> ph2d_vector::Rect {
 /// - **`Scene`** — as cópias juntam-se em `Normal` dentro de um grupo, e o GRUPO pousa em `m`.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn desenha_corrida(
+    traco: &mut traco::TracoDaPlaca,
     corrida: &[VectorInstance],
     chave: Option<(u8, BlendWith, u32)>,
     store: &VecPathStore,
@@ -103,11 +108,11 @@ pub(super) fn desenha_corrida(
     };
     let Some((tag, com, _)) = chave else {
         sobre_o_cenario(scene);
-        return desenha_linhas(corrida, None, store, art, cam, janela, filtro, scene);
+        return desenha_linhas(traco, corrida, None, store, art, cam, janela, filtro, scene);
     };
     let Some(m) = mistura_vello(tag) else {
         sobre_o_cenario(scene);
-        return desenha_linhas(corrida, None, store, art, cam, janela, filtro, scene);
+        return desenha_linhas(traco, corrida, None, store, art, cam, janela, filtro, scene);
     };
     let normal =
         ph2d_vector::VelloBlend::new(ph2d_vector::Mix::Normal, ph2d_vector::Compose::SrcOver);
@@ -119,16 +124,16 @@ pub(super) fn desenha_corrida(
     }
     match com {
         BlendWith::Everything => {
-            desenha_linhas(corrida, Some(m), store, art, cam, janela, filtro, scene)
+            desenha_linhas(traco, corrida, Some(m), store, art, cam, janela, filtro, scene)
         }
         BlendWith::Copies => {
             scene.push_object_layer(&rect_do_grupo(janela), normal, 1.0);
-            desenha_linhas(corrida, Some(m), store, art, cam, janela, filtro, scene);
+            desenha_linhas(traco, corrida, Some(m), store, art, cam, janela, filtro, scene);
             scene.pop_layer();
         }
         BlendWith::Scene => {
             scene.push_object_layer(&rect_do_grupo(janela), m, 1.0);
-            desenha_linhas(corrida, None, store, art, cam, janela, filtro, scene);
+            desenha_linhas(traco, corrida, None, store, art, cam, janela, filtro, scene);
             scene.pop_layer();
         }
     }
@@ -146,6 +151,7 @@ pub(super) fn desenha_corrida(
 /// seguir. Sem imagem nenhuma, isto é **uma** chamada com tudo — byte-idêntico ao que havia.
 #[allow(clippy::too_many_arguments)]
 fn desenha_linhas(
+    traco: &mut traco::TracoDaPlaca,
     linhas: &[VectorInstance],
     por_copia: Option<ph2d_vector::VelloBlend>,
     store: &VecPathStore,
@@ -160,33 +166,28 @@ fn desenha_linhas(
     // camada é sempre a `por_copia` — o lote de sempre, byte a byte.
     let mut lote: Vec<(u32, Affine, [f32; 4])> = Vec::new();
     let mut camada_do_lote = por_copia;
+    // ⭐ doc 121 §9.18 (C): o tracejado pela lei da placa ([`traco`]).
     let despeja = |lote: &mut Vec<(u32, Affine, [f32; 4])>,
                    camada: Option<ph2d_vector::VelloBlend>,
+                   traco: &mut traco::TracoDaPlaca,
                    scene: &mut VectorScene| {
         if lote.is_empty() {
             return;
         }
-        match camada {
-            None => ph2d_vec_render::draw_shared_instances(
-                lote.drain(..),
-                |h| store.get(h),
-                janela,
-                scene,
-            ),
-            Some(m) => ph2d_vec_render::draw_shared_instances_em_camadas(
-                lote.drain(..),
-                |h| store.get(h),
-                janela,
-                m,
-                scene,
-            ),
-        }
+        ph2d_vec_render::draw_shared_instances_com_traco(
+            lote.drain(..),
+            |h| store.get(h),
+            janela,
+            camada,
+            &mut |h, p, x, b, s| traco.desenha(h, p, x, b, s),
+            scene,
+        );
     };
     for inst in linhas {
         let camada = camada_da_linha(inst).or(por_copia);
         if inst.geometry_id > 0 {
             if camada != camada_do_lote {
-                despeja(&mut lote, camada_do_lote, scene);
+                despeja(&mut lote, camada_do_lote, traco, scene);
                 camada_do_lote = camada;
             }
             lote.push((inst.geometry_id, instance_pose(inst, cam), inst.tint));
@@ -198,10 +199,10 @@ fn desenha_linhas(
         let Some((w, h, rgba)) = art(inst.texture_id, inst.atlas_uv) else {
             continue;
         };
-        despeja(&mut lote, camada_do_lote, scene);
+        despeja(&mut lote, camada_do_lote, traco, scene);
         draw_quad(inst, &rgba, w, h, cam, camada, filtro, scene);
     }
-    despeja(&mut lote, camada_do_lote, scene);
+    despeja(&mut lote, camada_do_lote, traco, scene);
 }
 
 /// **Um quad texturado na cena vectorial** — a pose é a MESMA função das formas

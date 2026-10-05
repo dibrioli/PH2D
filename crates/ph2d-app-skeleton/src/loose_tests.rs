@@ -72,6 +72,12 @@ fn an_old_project_opens_with_one_skeleton_per_root_and_the_pose_to_the_bit() {
         Some(&RootOrder(3)),
         "o esqueleto de topo herda a ordem da raiz"
     );
+    // (sobrevivente M10) a raiz deixou de ser raiz: a ordem dela fica com o esqueleto, não em dobro.
+    assert_eq!(
+        w.get::<RootOrder>(a),
+        None,
+        "a raiz adoptada guardou uma RootOrder obsoleta"
+    );
     assert_eq!(
         ph2d_skeleton_live::skin_live::bone_polylines(&sim),
         antes,

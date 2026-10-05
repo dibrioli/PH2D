@@ -244,3 +244,25 @@ fn the_verb_in_hand_brings_its_mode() {
         "a entrada trocou o verbo que trouxe a ferramenta"
     );
 }
+
+/// ⭐⭐ GATE (sobrevivente M6 da mutação) — **o modo que acaba SEM `leave` também larga a
+/// ferramenta**: apagar o esqueleto em Pose tira-o do modo, e a ferramenta de osso não pode ficar na
+/// mão a criar ossos soltos. Controlo: antes de apagar, em Pose com ela na mão.
+#[test]
+fn deleting_the_skeleton_in_pose_releases_the_bone_tool() {
+    let mut c = cena();
+    let (s, osso) = c.esqueleto();
+    c.quadro(None);
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Pose)));
+    assert_eq!(c.verbo(), Some(BoneAction::Transform), "controlo: na mão");
+    c.sim.world_mut().despawn(Entity::from_bits(osso));
+    c.sim.world_mut().despawn(Entity::from_bits(s));
+    c.quadro(None);
+    c.quadro(None);
+    assert_eq!(c.modo(), None, "o modo sobreviveu ao esqueleto");
+    assert_eq!(
+        c.verbo(),
+        None,
+        "a ferramenta de osso ficou na mão sem esqueleto"
+    );
+}

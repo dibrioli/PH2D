@@ -130,6 +130,29 @@ máquina — o número final **mede-se**, não se escolhe.
   forma — pára-se e prova-se o modelo de render antes da 3.ª.
 - Setas: rota **em cache**, refeita só quando uma ponta ou um obstáculo próximo muda (corrige o risco do §0).
 
+### §2.1 — Medido na W0 (2026-10-05)
+
+**CPU — encodar o quadro inteiro numa `VectorScene`** (`ph2d_board_render::paint`, todos os
+elementos visíveis, grelha de pontos incluída), `--release`, 7 rodadas × 20 quadros intercaladas com
+ordem rodada, mínimo e mediana; `loadavg 12.45 21.16 20.65`. Régua versionada:
+`crates/ph2d-board-render/tests/it/measure_encode_cost.rs` (`#[ignore]`, à mão).
+
+| elementos | mínimo ms/quadro | mediana |
+|---|---|---|
+| 1 000 | 0,093 | 0,094 |
+| 10 000 | 0,450 | 0,460 |
+| 100 000 | 3,441 | 3,617 |
+
+⇒ o encode cresce linear (~34 ns por rectângulo) e não é o tecto: 100 mil cabem em 3,4 ms de CPU
+**reconstruindo tudo a cada quadro**. ⚠️ Falta o lado da PLACA (raster do Vello), que decide o
+kill-criterion acima — mede-se na W1 com o perfilador da GPU, na mesma cena.
+
+⛔ **Dois defeitos que a montagem desta régua apanhou** (curados no mesmo dia): o `z_on_top` era
+O(n) por chamada (100 mil elementos = 10¹⁰ comparações; a régua não terminava) e a chave de z só com
+fracção crescia ~1 carácter a cada 6 acrescentos. Cura: o esquema publicado do
+`fractional-indexing` (parte inteira de comprimento variável) e o topo de z lembrado — gates com os
+17 vectores publicados e 100 mil acrescentos com chaves ≤ 5 caracteres.
+
 ---
 
 ## §3 — As ondas (cada uma fecha com gate batched, smoke e o que o dono vê)
@@ -144,6 +167,12 @@ Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um bra
   barra curta aparece → clique em `Cena` → a cena volta intacta; e a Hierarquia **não** ganha linha nenhuma.
 - **Dono vê:** a barra de cima com `Cena` e `+`; criar dois quadros, alternar entre eles e a cena, fechar e
   reabrir o projecto e encontrar os quadros lá.
+- **Estado em 2026-10-05 (W0a, commits `4694a5273..`):** ✅ abas `Scene · Board n · +` na barra de menus
+  (clique real com gate), área do quadro (grelha de pontos de densidade constante, zoom à volta do cursor,
+  arrastar), a fila de chips da cena some num quadro, gravar/abrir no `.ph2dproj` (v184, recusa de blob
+  ilegível), cena `PH2D_BOARD_SMOKE=1` fotografada, régua de encode (§2.1). ⏳ **W0b, na próxima janela:**
+  renomear (duplo-clique), reordenar (arrastar), menu do botão direito (Renomear · Duplicar · Apagar com
+  confirmação), undo por quadro (§1.4 — nasce com o 1.º gesto que cria elementos) e a régua da PLACA.
 
 ### W1 — Tela, formas e texto
 - Pan/zoom infinito (rato, trackpad, `Espaço`+arrastar), grelha de pontos, snap, guias de alinhamento.

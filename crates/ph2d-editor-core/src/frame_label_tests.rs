@@ -94,7 +94,11 @@ fn a_frame_panned_off_screen_has_no_label_on_the_edge() {
 /// chrome.
 #[test]
 fn the_hero_paint_pass_draws_the_frame_labels() {
-    const PAINT: &str = include_str!("screens/hero/paint.rs");
+    // O bloco dos overlays mudou-se VERBATIM para `paint_canvas_overlays.rs` (MiroClone, 2026-10-05).
+    const PAINT: &str = concat!(
+        include_str!("screens/hero/paint.rs"),
+        include_str!("screens/hero/paint_canvas_overlays.rs")
+    );
     assert!(
         PAINT.contains("frame_label::paint_frame_labels("),
         "o passe de paint do hero deixou de desenhar as etiquetas de moldura — elas seriam \

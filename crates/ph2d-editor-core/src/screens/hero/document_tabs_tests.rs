@@ -120,6 +120,25 @@ fn the_scene_tool_row_is_not_on_top_of_a_board() {
     );
 }
 
+/// ⛔ Os overlays da cena (réguas, gizmos, selecção) mudaram-se para `paint_canvas_overlays.rs`, e
+/// os gates deles leem esse ficheiro — este é o que prova que o `paint_hero_screen` ainda o CHAMA,
+/// e só no ramo da cena (um quadro activo pinta-se no lugar dele).
+#[test]
+fn the_scene_overlays_are_still_painted_and_only_without_a_board() {
+    const PAINT: &str = include_str!("paint.rs");
+    let board = PAINT
+        .find("hero.documents.active_board()")
+        .expect("o ramo do quadro sumiu do paint");
+    let call = PAINT
+        .find("paint_canvas_overlays::paint_canvas_overlays(")
+        .expect("o paint deixou de chamar os overlays da cena");
+    let between = &PAINT[board..call];
+    assert!(
+        between.contains("} else {"),
+        "os overlays correm fora do `else` do quadro"
+    );
+}
+
 /// O alvo `id` está em algum ponto do ecrã (passo de 4 px)?
 fn find_anywhere(hero: &HeroScreen, id: NodeId) -> bool {
     let vp = hero.last_viewport;

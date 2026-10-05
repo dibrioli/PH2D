@@ -229,8 +229,11 @@ fn the_position_commit_reseats_the_anchor_through_the_door() {
 /// Mutation-tested: moving the call back above the extras/global block goes red.
 #[test]
 fn the_paint_pass_draws_the_point_gizmo_last() {
-    let paint = fs::read_to_string("../../crates/ph2d-editor-core/src/screens/hero/paint.rs")
-        .expect("the hero paint pass");
+    // The overlay block moved verbatim to `paint_canvas_overlays.rs` (MiroClone, 2026-10-05).
+    let paint = fs::read_to_string(
+        "../../crates/ph2d-editor-core/src/screens/hero/paint_canvas_overlays.rs",
+    )
+    .expect("the hero paint pass");
     let point = paint.find("paint_point_gizmo(").expect(
         "the hero paint pass no longer draws the point gizmo — a published \
          joint-anchor handle would never reach the screen or the hit index",

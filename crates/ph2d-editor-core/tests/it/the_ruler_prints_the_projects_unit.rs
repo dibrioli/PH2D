@@ -18,7 +18,11 @@
 //! ⚠️ A asserção afirma **de onde o valor NASCE**, nunca uma distância em bytes —
 //! esta linha já teve dois arch-gates apodrecerem por medirem bytes.
 
-const HERO_PAINT: &str = include_str!("../../src/screens/hero/paint.rs");
+// A régua mudou-se VERBATIM para `paint_canvas_overlays.rs` (MiroClone, 2026-10-05).
+const HERO_PAINT: &str = concat!(
+    include_str!("../../src/screens/hero/paint.rs"),
+    include_str!("../../src/screens/hero/paint_canvas_overlays.rs")
+);
 
 /// A posição da 1ª ocorrência, ou pânico com a razão — o **controle positivo**:
 /// um dono que se mudou vira falha alta, e não uma varredura vazia que passa.

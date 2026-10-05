@@ -10,9 +10,9 @@ use crate::zones::Rect;
 use ph2d_board_model::Area;
 use ph2d_host::{PointerButton, PointerKind};
 
-/// Factor de zoom por píxel de roda: o mesmo da câmara da cena (`0.9` por linha de 16 px).
-const WHEEL_ZOOM_PER_LINE: f64 = 0.9;
-const WHEEL_LINE_PX: f64 = 16.0;
+/// Factor de zoom por linha de roda: o MESMO da câmara da cena (`input_dispatch::on_mouse_wheel`).
+const WHEEL_ZOOM_PER_LINE: f64 = 0.9; // LITERAL-PX-OK: factor por linha, espelho da roda da cena
+const WHEEL_LINE_PX: f64 = 16.0; // LITERAL-PX-OK: px por linha de roda, espelho da roda da cena
 
 fn area_of(r: Rect) -> Area {
     [

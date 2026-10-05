@@ -173,7 +173,7 @@ fn midpoint(a: &[u8], b: Option<&[u8]>) -> Vec<u8> {
     if db - da > 1 {
         // O meio ARREDONDADO (meio para cima), como no algoritmo publicado — os vectores dele
         // apanharam o `floor` que aqui esteve (`a0V..a1` dava `a0k`, o publicado é `a0l`).
-        return vec![DIGITS[usize::from((da + db + 1) / 2)]];
+        return vec![DIGITS[usize::from((da + db).div_ceil(2))]];
     }
     // Dígitos vizinhos: se `b` continua, o seu primeiro dígito sozinho já fica entre os dois.
     if let Some(b) = b.filter(|b| b.len() > 1) {

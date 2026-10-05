@@ -52,6 +52,12 @@ const RAMOS: &[&str] = &[
     //     normal do editor — o clique selecciona. *Uma ferramenta sem gesto e um botão que nesse
     //     ponto se comporta como o resto do editor não são o mesmo defeito.*
     "ramo_botao_do_hud(",
+    // ⭐ **O 5.º, o QUADRO (MiroClone, 2026-10-05) — e também NÃO entra, por mecanismo:** com uma
+    // aba de quadro activa o `paint_hero_screen` salta o `paint_canvas_overlays` inteiro, logo
+    // nenhuma caixa nem alça da cena é pintada nem registada por cima dele — não há caixa a matar o
+    // gesto. Gate: `document_tabs::tests::the_scene_tool_row_is_not_on_top_of_a_board` e o
+    // `paint_canvas_overlays` a ser chamado SÓ no ramo da cena.
+    "board_view::pointer(",
 ];
 
 fn shell_src() -> PathBuf {

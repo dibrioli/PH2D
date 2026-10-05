@@ -163,9 +163,11 @@ fn each_button_asks_for_its_own_exit() {
 #[test]
 fn the_bar_hangs_below_the_ruler_not_over_it() {
     let paint = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/screens/hero/paint.rs"),
+        // O sítio da chamada mudou-se VERBATIM para o irmão (MiroClone, 2026-10-05).
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src/screens/hero/paint_canvas_overlays.rs"),
     )
-    .expect("paint.rs");
+    .expect("paint_canvas_overlays.rs");
     let at = paint
         .find("prefab_bar::paint(")
         .expect("a barra deixou de ser pintada");

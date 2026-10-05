@@ -491,11 +491,13 @@ fn each_phase_of_the_guide_drag_is_wired_to_the_door_that_delivers_it() {
 /// dispararia, com todos os 9 gates da régua verdes.
 #[test]
 fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
-    let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../crates/ph2d-editor-core/src/screens/hero/paint.rs"),
-    )
-    .expect("hero/paint.rs");
+    // ⚠️ A condição vive no `paint.rs` e a chamada mudou-se VERBATIM para o irmão
+    // `paint_canvas_overlays.rs` (MiroClone, 2026-10-05) — lêem-se pela ORDEM em que correm.
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../crates/ph2d-editor-core/src/screens/hero");
+    let src = std::fs::read_to_string(dir.join("paint.rs")).expect("hero/paint.rs")
+        + &std::fs::read_to_string(dir.join("paint_canvas_overlays.rs"))
+            .expect("hero/paint_canvas_overlays.rs");
     let call = src
         .find("crate::ruler::paint_rulers(")
         .expect("as réguas são pintadas");
@@ -504,8 +506,14 @@ fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
     // réguas **e** decide o recuo do `last_content` que o módulo 3D habita. ⛔ Se cada metade
     // perguntasse por si, um quadro publicaria um recuo de `20 px` contra uma régua que não foi
     // pintada — a mesma doença de duas metades a divergir, com o sinal trocado.
+    // ⚠️ Desde 2026-10-05 (MiroClone) ela pergunta também *«a aba activa é a cena?»* — um quadro
+    // não tem réguas, logo também não recua a área. Continua a ser UMA condição (espaços normalizados).
+    let flat: String = src.split_whitespace().collect::<Vec<_>>().join(" ");
     assert!(
-        src.contains("let rulers_on = hero.rulers_live() && hero.grid.view.is_some();"),
+        flat.contains(
+            "let rulers_on = hero.rulers_live() && hero.grid.view.is_some() && \
+             hero.documents.active().is_none();"
+        ),
         "a condição das réguas deixou de ser UMA — quem pinta e quem recua a área têm de ler a \
          mesma resposta"
     );

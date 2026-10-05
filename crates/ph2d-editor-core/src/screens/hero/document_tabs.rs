@@ -67,7 +67,7 @@ pub fn tab_rects(
     text_system: &mut TextSystem,
 ) -> Vec<(Target, Rect)> {
     let font = TypeToken::Sm.px();
-    let scene_w = rect_for_label(text_system.prefix_width(&tr("board.tab.scene"), font));
+    let scene_w = rect_for_label(text_system.prefix_width(tr("board.tab.scene"), font));
     let new_w = bar.h;
     let free = end_x - start_x - scene_w - new_w;
     if free < 0.0 {
@@ -171,7 +171,7 @@ pub fn paint(
                 paint_text_centered(
                     text_system,
                     scene,
-                    &tr("board.tab.scene"),
+                    tr("board.tab.scene"),
                     r,
                     TypeToken::Sm.px(),
                     fg,

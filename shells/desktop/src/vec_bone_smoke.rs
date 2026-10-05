@@ -33,10 +33,10 @@ impl crate::App {
             });
         match self.vec.bone_smoke_step {
             0 => {
+                // ⛔ A cena já NÃO põe a ferramenta Vector na mão (A14): era a herança que prendia o
+                // osso ao Edit do vetor. Os ossos desenham-se em Object, e os modos do esqueleto
+                // (Tab, seletor *Mode*) são do artista.
                 let gfx = self.gfx.as_mut().expect("gfx");
-                let _ = gfx
-                    .tools
-                    .set_active(&ph2d_editor_core::ToolId::new("vector"));
                 ph2d_app_vec::smoke_bone::build(
                     &mut gfx.vec_scene,
                     &mut gfx.sim,

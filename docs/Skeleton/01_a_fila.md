@@ -189,6 +189,16 @@ diz onde ler o mecanismo:
   aparecem com uma forma presa escolhida, o que em Edit/Pose não acontece. Gate
   `the_two_exits_appear_only_when_something_is_bound` ganhou o controlo «em Pose o Bind some»
   (vermelho visto com a lei mutada para `true`).
+- **C10 — as cenas.** As `PH2D_VEC_BONE_SMOKE=1..6` deixam de pôr a ferramenta Vector na mão ao abrir
+  (`vec_bone_smoke.rs`, passo 0) — era a herança que prendia o osso ao Edit do vetor —, e os ossos
+  delas ganham esqueleto pela porta das raízes soltas no 1.º quadro (abrem em Object, ossos à vista,
+  sem alças). ⭐ Cena nova **`=7` — OS TRÊS MODOS** (`smoke_bone_modos.rs`, `NIVEIS` `6 → 7`): uma
+  barra SOLTA e um esqueleto-OBJECTO de dois ossos montado pela cena, nada preso; o roteiro no
+  terminal ensina Object (clicar no osso, Shift+clique na barra, `Ctrl+P`) → `Tab` Edit (arrastar da
+  ponta cria) → *Mode* ▸ *Pose Mode* (arrastar dobra a barra) → `Tab` Object (o gizmo leva tudo). A
+  barra entra no `bone_smoke_pend` para a shell chegar ao prólogo (painel de ossos aberto). Gate
+  `the_three_modes_scene_has_one_skeleton_object_and_a_loose_bar` (controlo: nada preso depois do 2.º
+  tempo). ⏳ Fotos das sete cenas: no fecho.
 
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 

@@ -57,7 +57,7 @@ Edit-do-Model; os painéis Model3D e Sculpt3D; as fases e ids 3D.
 
 - **Projetos `.ph2dproj` salvos antes NÃO abrem:** `PROJECT_SCHEMA` 182 → 183, **sem degrau de migração**
   (política da casa: o degrau só existe quando o dono pede). Nenhum dado 2D é migrado.
-- Os gates e censos que varriam as crates 3D passam a varrer zero ou saem com elas; ver o handoff da poda.
+- Os gates e censos que varriam as crates 3D saem com elas ou perdem a entrada 3D (nunca afrouxados; os que ficariam a medir uma lista vazia foram reescritos com casos 2D); ver o [handoff da poda](../../Retirados/handoffs/HANDOFF_INTEGRACAO_line_poda-3d_2026-10-05.md).
 - Quem quiser o 3D de volta lê a história, não reconstrói às cegas.
 
 ## 5. Onde está a história
@@ -69,4 +69,19 @@ Edit-do-Model; os painéis Model3D e Sculpt3D; as fases e ids 3D.
 
 ## 6. Medidas
 
-<!-- MEDIDAS: preenche a janela principal -->
+Medido na `line/poda-3d` (2026-10-05), `b1a6f9b07` → fecho da linha:
+
+| | antes | depois |
+|---|---|---|
+| crates (`crates/`) · membros do workspace | 390 · 403 | 347 · 360 |
+| linhas `.rs` em crates+shells | 2 702 458 | 2 151 875 (−20,4 %) |
+| shell inteira | 196 867 | 185 076 |
+| testes do nextest `--workspace` | 28 143 (ship de 04/10) | 24 186 |
+| `Cargo.lock` | — | −75 pacotes, zero versões novas |
+| `cargo check --workspace --all-targets` a frio, sem sccache | 62 s · 837 unidades | 60 s · 781 unidades |
+
+⚠️ O relógio do check quase não mexe: ele corre em paralelo e é limitado pelo caminho crítico das
+crates de base, não pela soma. O que a poda corta é o **volume** (linhas, testes, disco, leitura).
+
+A luz do impasto — o único caminho 2D cuja aritmética a poda simplificou — foi provada idêntica AO
+BIT contra o próprio PH2D de antes da poda (gate `a_luz_do_impasto_com_relevo_e_a_de_antes_da_poda`).

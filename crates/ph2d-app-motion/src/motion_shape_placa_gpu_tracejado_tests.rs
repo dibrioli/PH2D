@@ -224,7 +224,10 @@ fn custo_do_encode_tracejado() {
     #[expect(clippy::cast_precision_loss, reason = "uma grelha pequena")]
     let grande: Vec<VectorInstance> = (0..128 * 128)
         .map(|k| VectorInstance {
-            world_pos: [-7.65 + 0.45 * (k % 128) as f32, -7.65 + 0.45 * (k / 128) as f32],
+            world_pos: [
+                -7.65 + 0.45 * (k % 128) as f32,
+                -7.65 + 0.45 * (k / 128) as f32,
+            ],
             ..base
         })
         .collect();
@@ -269,7 +272,11 @@ fn custo_do_encode_tracejado() {
         for r in 0..rodadas {
             for k in [r % 2, 1 - r % 2] {
                 let t0 = std::time::Instant::now();
-                let c = if k == 0 { novo(insts, j) } else { antes(insts, j) };
+                let c = if k == 0 {
+                    novo(insts, j)
+                } else {
+                    antes(insts, j)
+                };
                 t[k].push(t0.elapsed().as_secs_f64() * 1e3);
                 drop(c);
             }

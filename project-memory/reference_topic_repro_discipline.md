@@ -68,3 +68,4 @@ própria cena (`panel_visibility`, a selecção, o espaço de trabalho).
   a curar só o mostrador. *Dois laços à mão que devem concordar → gate POR RAMO, e `route_said` em toda
   sonda.* **Why:** o defeito vivia no ramo que só a cena do report toma. **How to apply:** antes de
   concluir «o motor está certo», corra a cena exacta do report nas rotas que o produto usa.
+- ⛔⛔ **O DEFEITO ATRIBUÍDO A UM COMPONENTE VARRE-SE ANTES DA CURA** — «o kurbo morde» era o Vello; o controlo positivo falhou e a varredura poupou a troca das marcas da placa ([[feedback_a_defect_attributed_to_a_component_is_swept_before_the_cure]], 05/10).

@@ -122,7 +122,13 @@ pub(crate) fn draw_shape_instance_tessellated(
         // nenhuma. Pela porta ÚNICA do traço ([`crate::draw_stroke_with`]), então tracejado,
         // pontas e alinhamento são os mesmos de um caminho de documento.
         let proprio = traco.zip(path.stroke.as_ref()).is_some_and(|((h, f), s)| {
-            f(h, path, transform, &Brush::Solid(crate::color(s.color())), target)
+            f(
+                h,
+                path,
+                transform,
+                &Brush::Solid(crate::color(s.color())),
+                target,
+            )
         });
         if !proprio {
             crate::draw_stroke_with(path, tess, transform, target, None, None);

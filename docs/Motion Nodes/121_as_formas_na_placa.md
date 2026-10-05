@@ -2062,3 +2062,84 @@ falhas MESMO sem a cura — as threads do compilador do driver não ficam presas
 da máquina inteira. A evidência que fica é o experimento `com × sem perfilador` (`4/6` contra `0/9`, carga natural),
 e a cura retira exactamente o que ele isolou. A rede de segurança continua: o `mede_intercalado.sh` aceita e DIZ uma
 saída `≠ 0` depois do `test result: ok`. Quem vir a próxima falha com a cura no binário reabre isto com o despejo.
+
+**(E) — o resultado: a PROVA do modelo cai, e o (E) fecha por recusa medida.** O código medido é o `afa0cc014`
+(`override POR_PECA`: `1` a prova · `2` o produto com a reserva atómica por aresta · `3` o produto contado e
+reservado de uma vez · `4`–`6` as ablações da prova), retirado em `ce2fab7ad`. A rodada intercalada
+(`mede_intercalado.sh`, `7` variantes com o A/A `F1` × `6` cenas, `7` rodadas, carga `20`–`33`, sem espera) e a das
+ablações (`11` rodadas, `3` cenas). `escreve` mínimo, ms, as esticadas TRACEJADAS:
+
+| variante | iGPU | RTX |
+|---|---:|---:|
+| `F` (o produto) | `0,239` | `0,158` |
+| `P1` **a prova**: o passeio por troço + a tabela + o `pedaco` por peça, SEM arestas | **`0,183`** (critério `≤ 0,13`) | `0,110` |
+| `P2` o produto, uma reserva atómica por aresta | `0,297` | `0,115` |
+| `P3` o produto, contado e reservado de uma vez por peça | `0,275` | `0,112` |
+
+O produto, na soma: iGPU esticadas tracejadas `+7,2 %` (`P2`) · `+3,0 %` (`P3`), densas tracejadas `+20,2 %` · `+14,9 %`
+(`escreve` `0,364` · `0,317` contra `0,147`); RTX esticadas tracejadas `−14 %` · `−15 %`, densas tracejadas `+12 %` ·
+`+10 %` — e a imagem das densas da RTX DIFERE do `F` em `183 B` (a mesma fusão do compilador da NVIDIA do achado `A1b`,
+§9.17); nas outras células `P2`/`P3` dão a imagem `= F` byte a byte. As conformes tracejadas pagam `+0,014` ms: os dois
+despachos que correm vazios.
+
+**A decomposição da prova** (iGPU, esticadas tracejadas, `escreve` mínimo de `11` rodadas; densas entre parênteses):
+
+| ablação | `escreve` | o que acrescenta |
+|---|---:|---|
+| `P6` só o passeio por troço, sem escrever as linhas (+ os dois despachos vazios: `0,014`) | `0,144` (`0,083`) | o passeio ≈ **`0,130`** |
+| `P4` + as linhas da tabela; o fio da peça sai logo | `0,165` (`0,099`) | `+0,021` |
+| `P5` + as duas buscas binárias e as leituras | `0,184` (`0,130`) | `+0,019` |
+| `P1` + o `pedaco` | `0,186` (`0,146`) | `+0,002` |
+
+⇒ **o chão é o PASSEIO em série de cada cópia pelos troços** (o arco de cada um somado por ordem, o `n0`/`n1`, o
+prefixo das peças): sozinho ele gasta o limite inteiro do modelo; o `pedaco` por peça custa `0,002`. ⚠️ A premissa do
+plano — *«o passeio é o `E1F`, `0,084`»* — não se confirmou: o passeio que GUARDA o que anda mede `0,130`; o `E1F` não
+guardava nada (hipótese não medida: o compilador cortou a aritmética que ninguém lia). **Quem voltar:** a única
+alavanca que resta é tirar o passeio da série — um fio por troço com o arco e um prefixo SEGMENTADO por sub-caminho (a
+4.ª topologia, two-strikes outra vez). ⚠️ Um prefixo paralelo soma noutra ordem: a imagem deixa de ser a do `F` ao bit
+(as decisões de limite e de emenda podem virar, §9.17 `A1b`), e o critério da imagem teria de ser outro (alfa `≤ 1`
+contra o `F`, escrito antes); e a troca RTX (`−15 %` nas esticadas, `+10 %` nas densas) tem de vir escrita antes.
+
+**(C) — o resultado: CURADA, e o defeito não estava onde o plano o punha.** ⛔ O traçador da CASA (`kurbo`,
+`expand_stroke` — o das marcas de uma cópia CONFORME na placa) **não morde**: varrido no CPU (`contorno_cpu_tests.rs`,
+um L com o 1.º traço a acabar depois da quina, quina de `30°` a `170°` × `0,05`–`0,8` larguras além dela × pontas
+redonda, rente e quadrada) dá os MESMOS pontos pintados que a lei da placa. Quem morde é o traçador do **Vello** (o
+traço expandido na placa gráfica), e só na rota Vello. ⇒ as marcas conformes da placa ficam como estavam, e a cura é
+toda na rota Vello do Motion, que passa a PREENCHER (`nonzero`, com o pincel do traço) os polígonos que a placa desenha
+para a MESMA cópia, no MESMO nível de aplanamento que ela escolhe:
+
+- **a porta CPU da lei** (`ph2d-shape-gpu/src/contorno_cpu.rs`): o `percorre` do `contorno.wgsl` função a função em
+  `f32` — o quadrilátero com a faixa na bissectriz, a junta de quem chega, os leques, as pontas, o tracejado andado
+  pelo arco no ecrã com o ajuste e a emenda — escrito como POLÍGONOS fechados com o sentido de cada peça da placa (as
+  arestas que a placa não escreve cancelam-se aos pares); e o `copia_de` (o nível e a conformidade, `nivel_da_copia`;
+  a caneta, `caneta_de`). O espaço de saída é o ECRÃ (as constantes em pixels da placa: a flecha `0,25` dos leques, a
+  folga `0,1` da faixa) — uma cópia conforme não passa por ela, usa as marcas;
+- **as portas da geometria** (`geometry.rs`): `tolerancia`, `extensao`, `eixo_do_nivel`, `contorno_conforme` — o
+  `prepare` passa a usá-las (as mesmas chamadas pela mesma ordem: os `14` gates da crate dão o mesmo);
+- **o gancho** (`ph2d-vec-render`, `draw_shared_instances_com_traco` + `TracoProprio`): a porta de lote do Motion com
+  «quem desenha o traço»; as portas de sempre passam `None`, byte a byte;
+- **o traço pela lei** (`ph2d-app-motion/src/motion_shape_traco.rs`, `TracoDaPlaca`, uma por `encode`): uma forma com UM
+  traço, sem marcadores, com o tracejado que o eixo exprime → cópia conforme: o `contorno_conforme` do nível (as marcas
+  da placa) pelo afim da cópia; cópia esticada: o `contorno_do_eixo` no ecrã. O resto continua no traçador da casa.
+
+O arnês do tracejado contra a placa (`motion_shape_placa_gpu_tracejado_tests.rs`), as DUAS placas iguais:
+
+| | rota Vello × placa: alfa máx. · px `> 16` |
+|---|---|
+| **família nova** (`a_rota_vello_traceja_o_pedaco_rente_como_a_placa`: estrelas de arestas rectas com traços de `2` larguras e vão `1`, ponta REDONDA e ponta rente, e uma estrela ARREDONDADA de preenchimento transparente — o nível de aplanamento entra; `160` cópias, `54` conformes) — a rota de ANTES (o controlo) | `192` · `5 234` |
+| a mesma família — **pela lei** | **`1`** · `0` |
+| as `4` famílias de hoje (`a_rota_da_placa_traceja_o_esticado_como_a_casa`) — antes | `85` · `2 142` |
+| as mesmas — pela lei | `46` · `165` (o resto é o aplanamento das curvas do PREENCHIMENTO, §6) |
+
+O custo, a sonda intercalada no mesmo processo (`custo_do_encode_tracejado`, a rota pela lei contra a de antes, mínimo
+de `15`/`5` rodadas, carga `16`–`46`):
+
+| a `=127` tracejada | `encode` (CPU) | parede do Vello RTX | parede do Vello iGPU |
+|---|---:|---:|---:|
+| densa `35 × 35` (o arranjo da sonda) | `10,86 → 1,85` ms (**`−83 %`**) | `0,58 → 0,62` (`+7 %`) | `3,33 → 4,17` (`+25 %`) |
+| `16 384` cópias | `146,5 → 25,3` ms (**`−83 %`**) | `4,39 → 6,33` (`+44 %`) | `15,5 → 23,3` (`+50 %`) |
+
+⇒ o critério do `encode` (`≤ +10 %`) passa com `−83 %`. ⚠️ **A troca, escrita:** o Vello preenche mais caminhos do que
+expandia traços, e a parede dele sobe; o quadro da rota Vello (`encode` + parede) fica `58`–`79 %` mais curto (iGPU
+densa: `14,2 → 6,0` ms; `16 384` cópias: `161,9 → 48,5` ms). A rota Vello é a da CPU sem a placa
+(`PH2D_FORMAS_NA_PLACA=0`) e a de um quadro que a placa recusa inteiro.

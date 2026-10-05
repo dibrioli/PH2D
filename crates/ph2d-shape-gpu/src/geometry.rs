@@ -184,7 +184,11 @@ impl ShapeGeometry {
 /// A tolerância LOCAL do nível `nivel` de uma forma de extensão `ext` (o `record.tol`, em `f64`).
 #[must_use]
 pub fn tolerancia(ext: f64, nivel: usize) -> f64 {
-    #[expect(clippy::cast_possible_wrap, clippy::cast_possible_truncation, reason = "LEVELS é oito")]
+    #[expect(
+        clippy::cast_possible_wrap,
+        clippy::cast_possible_truncation,
+        reason = "LEVELS é oito"
+    )]
     let k = nivel as i32;
     ext * TOL_BASE * TOL_STEP.powi(k)
 }

@@ -68,7 +68,10 @@ impl Geometria {
     fn conforme(&mut self, nivel: usize) -> &BezPath {
         let (forma, ext) = (&self.forma, self.ext);
         self.conformes[nivel].get_or_insert_with(|| {
-            ph2d_shape_gpu::contorno_conforme(&entrada(forma), ph2d_shape_gpu::tolerancia(ext, nivel))
+            ph2d_shape_gpu::contorno_conforme(
+                &entrada(forma),
+                ph2d_shape_gpu::tolerancia(ext, nivel),
+            )
         })
     }
 }
@@ -109,7 +112,7 @@ impl TracoDaPlaca {
                 caneta: ph2d_shape_gpu::caneta_de(lin),
             };
             let mut contorno = BezPath::new();
-            ph2d_shape_gpu::contorno_do_eixo(g.eixo(n.nivel), &m, 1.0, false, &mut contorno);
+            ph2d_shape_gpu::contorno_do_eixo(g.eixo(n.nivel), &m, false, &mut contorno);
             cena.inner_mut()
                 .fill(Fill::NonZero, Affine::IDENTITY, pincel, None, &contorno);
         }

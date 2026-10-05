@@ -10,8 +10,8 @@
 //! curto depois de uma quina. ⚠️ Uma mudança na lei do `contorno.wgsl` muda aqui também: os gates do
 //! tracejado comparam as duas (`ph2d-app-motion`, `motion_shape_placa_gpu_tracejado_tests.rs`).
 //!
-//! `px`: quanto mede um pixel no espaço de saída — `1` no ecrã. As constantes da placa em pixels (a
-//! flecha `0,25` de um leque, a folga `0,1` da faixa) escalam com ele.
+//! ⚠️ O espaço de saída é o ECRÃ: as constantes da placa são em pixels (a flecha `0,25` de um leque, a folga
+//! `0,1` da faixa).
 
 use std::ops::{Add, Mul, Neg, Sub};
 
@@ -55,7 +55,10 @@ pub fn nivel_da_copia(tol: &[f32; LEVELS], lin: [f32; 4]) -> NivelDaCopia {
     let g = 0.5 * (y + z);
     let h = 0.5 * (y - z);
     let escala = (e * e + h * h).sqrt() + (f * f + g * g).sqrt();
-    let nivel = tol.iter().position(|t| t * escala <= 0.25).unwrap_or(LEVELS - 1);
+    let nivel = tol
+        .iter()
+        .position(|t| t * escala <= 0.25)
+        .unwrap_or(LEVELS - 1);
     let l1 = x * x + y * y;
     let l2 = z * z + w * w;
     let esc2 = l1.max(l2).max(1.0e-30);
@@ -74,14 +77,12 @@ pub fn caneta_de(lin: [f32; 4]) -> f32 {
 pub fn contorno_do_eixo(
     eixo: &[EixoItem],
     m: &AfimDaCopia,
-    px: f32,
     so_tracejado: bool,
     saida: &mut BezPath,
 ) {
     let mut s = Saida {
         eixo,
         m: *m,
-        px,
         bp: saida,
     };
     let ajuste = s.ajuste_do_tracejado();
@@ -218,7 +219,6 @@ struct Pedaco {
 struct Saida<'a> {
     eixo: &'a [EixoItem],
     m: AfimDaCopia,
-    px: f32,
     bp: &'a mut BezPath,
 }
 
@@ -258,19 +258,22 @@ impl Saida<'_> {
 
     /// O `emite_leque`: cada triângulo `(centro, p, w)` com o seu sentido.
     fn leque(&mut self, centro: V, n0: V, n_fim: V, cos_alpha: f32, dir: f32, r: f32) {
-        let flecha = FLECHA * self.px;
-        if r <= flecha {
+        if r <= FLECHA {
             self.tri(centro, centro + n0, centro + n_fim);
             return;
         }
-        let q = 1.0 - flecha / r;
+        let q = 1.0 - FLECHA / r;
         if cos_alpha >= 2.0 * q * q - 1.0 {
             self.tri(centro, centro + n0, centro + n_fim);
             return;
         }
         let alpha = cos_alpha.clamp(-1.0, 1.0).acos();
         let passo_max = 2.0 * q.acos();
-        #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "entre 1 e 64")]
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "entre 1 e 64"
+        )]
         let k = (alpha / passo_max.max(1.0e-4)).ceil().clamp(1.0, 64.0) as u32;
         #[expect(clippy::cast_precision_loss, reason = "k <= 64")]
         let ang = dir * alpha / k as f32;
@@ -322,7 +325,10 @@ impl Saida<'_> {
     }
 
     /// O `bissectriz_ate`: o deslocamento da faixa em `p1`, ou `None` quando ela não serve.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "a assinatura do `bissectriz_ate` do shader"
+    )]
     fn bissectriz_ate(
         &self,
         p0: V,
@@ -352,7 +358,7 @@ impl Saida<'_> {
             return None;
         }
         let m = (perp(u0) + perp(u1)) * (r / (1.0 + dt));
-        let fora = r + FAIXA_FOLGA * self.px;
+        let fora = r + FAIXA_FOLGA;
         let recuo = r * ((1.0 - dt).max(0.0) / (1.0 + dt)).sqrt();
         if (!quina && dot(m, m) > fora * fora) || recuo > recuo_max {
             return None;
@@ -360,7 +366,20 @@ impl Saida<'_> {
         Some(m)
     }
 
-    fn bissectriz(&self, p0: V, p1: V, p2: V, r: f32, quina: bool, junta: u32, limite: f32) -> Option<V> {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "a assinatura do `bissectriz` do shader"
+    )]
+    fn bissectriz(
+        &self,
+        p0: V,
+        p1: V,
+        p2: V,
+        r: f32,
+        quina: bool,
+        junta: u32,
+        limite: f32,
+    ) -> Option<V> {
         let recuo = 0.5 * length(p1 - p0).min(length(p2 - p1));
         self.bissectriz_ate(p0, p1, p2, r, quina, junta, limite, recuo)
     }
@@ -387,7 +406,15 @@ impl Saida<'_> {
             let mut m0 = nr;
             let mut m1 = nr;
             if it.ponta & 1 != 0
-                && let Some(e) = self.bissectriz(self.aplica(it.d), a, b, r, it.ponta & 4 != 0, it.junta, it.limite_esquadria)
+                && let Some(e) = self.bissectriz(
+                    self.aplica(it.d),
+                    a,
+                    b,
+                    r,
+                    it.ponta & 4 != 0,
+                    it.junta,
+                    it.limite_esquadria,
+                )
             {
                 m0 = e;
             }
@@ -396,7 +423,14 @@ impl Saida<'_> {
                 let cf = self.aplica(it.c);
                 match self.bissectriz(a, b, cf, r, quina, it.junta, it.limite_esquadria) {
                     Some(e) => m1 = e,
-                    None => self.junta(u, b, cf, r, if quina { it.junta } else { 2 }, it.limite_esquadria),
+                    None => self.junta(
+                        u,
+                        b,
+                        cf,
+                        r,
+                        if quina { it.junta } else { 2 },
+                        it.limite_esquadria,
+                    ),
                 }
             }
             self.quadrilatero(a, b, m0, m1);
@@ -450,7 +484,11 @@ impl Saida<'_> {
         let (mut melhor, mut fechado, mut tr, mut per) = (0.0_f32, false, 0.0_f32, 0.0_f32);
         let (mut tot, mut restantes) = (0.0_f32, 0_u32);
         let (mut sub_fechado, mut sub_tr, mut sub_per) = (false, 0.0_f32, 0.0_f32);
-        for it in self.eixo.iter().filter(|it| it.tipo == ITEM_TROCO && it.tracejado()) {
+        for it in self
+            .eixo
+            .iter()
+            .filter(|it| it.tipo == ITEM_TROCO && it.tracejado())
+        {
             if restantes == 0 {
                 if it.ponta & SUB_INICIO == 0 || it._pad == 0 {
                     continue;
@@ -561,8 +599,16 @@ impl Saida<'_> {
         }
         let a = self.aplica(it.a);
         let b = self.aplica(it.b);
-        let q0 = if p.x0 <= tr.s0 { a } else { mix(a, b, (p.x0 - tr.s0) / tr.len) };
-        let q1 = if p.x1 >= tr.fim { b } else { mix(a, b, (p.x1 - tr.s0) / tr.len) };
+        let q0 = if p.x0 <= tr.s0 {
+            a
+        } else {
+            mix(a, b, (p.x0 - tr.s0) / tr.len)
+        };
+        let q1 = if p.x1 >= tr.fim {
+            b
+        } else {
+            mix(a, b, (p.x1 - tr.s0) / tr.len)
+        };
         let ab = b - a;
         let u = v(ab.x / tr.corda, ab.y / tr.corda);
         let nr = perp(u) * r;
@@ -589,7 +635,14 @@ impl Saida<'_> {
             let cf = self.aplica(it.c);
             match self.bissectriz_ate(a, b, cf, r, quina, it.junta, it.limite_esquadria, p.recuo1) {
                 Some(e) => m1 = e,
-                None => self.junta(u, b, cf, r, if quina { it.junta } else { 2 }, it.limite_esquadria),
+                None => self.junta(
+                    u,
+                    b,
+                    cf,
+                    r,
+                    if quina { it.junta } else { 2 },
+                    it.limite_esquadria,
+                ),
             }
         } else {
             self.tampa(q1, u, r, (it.ponta >> 8) & 3);

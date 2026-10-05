@@ -123,12 +123,30 @@ pub(super) fn desenha_corrida(
         scene.pede_o_mundo_por_baixo();
     }
     match com {
-        BlendWith::Everything => {
-            desenha_linhas(traco, corrida, Some(m), store, art, cam, janela, filtro, scene)
-        }
+        BlendWith::Everything => desenha_linhas(
+            traco,
+            corrida,
+            Some(m),
+            store,
+            art,
+            cam,
+            janela,
+            filtro,
+            scene,
+        ),
         BlendWith::Copies => {
             scene.push_object_layer(&rect_do_grupo(janela), normal, 1.0);
-            desenha_linhas(traco, corrida, Some(m), store, art, cam, janela, filtro, scene);
+            desenha_linhas(
+                traco,
+                corrida,
+                Some(m),
+                store,
+                art,
+                cam,
+                janela,
+                filtro,
+                scene,
+            );
             scene.pop_layer();
         }
         BlendWith::Scene => {

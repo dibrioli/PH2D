@@ -53,7 +53,7 @@ linha recebeu por fast-forward; tudo verde):
 | portão | resultado |
 |---|---|
 | `nextest-impacted.sh` (BASE `f4a5594a4`) | ✅ 19 927 / 19 927 |
-| `cargo clippy --workspace --all-targets -D warnings` | ❌ 9 avisos, todos desta onda (tipo complexo ×2, `arco` só usado em teste, `div_ceil` ×4, laço indexado, `if` colapsável) → corrigidos em `…` e o clippy das duas crates limpo |
+| `cargo clippy --workspace --all-targets -D warnings` | ❌ 9 avisos, todos desta onda (tipo complexo ×2, `arco` só usado em teste, `div_ceil` ×4, laço indexado, `if` colapsável) → corrigidos em `dc80d5e37` e o clippy das duas crates limpo |
 | `cargo fmt --all --check` | ✅ |
 | `file_loc_caps` (4/4) · `architecture` da shell (3/3) · `architecture` do editor-core (102) | ✅ |
 | `censos-da-arvore-combinada.sh` | ✅ 114/114, 12 de 12 censos |

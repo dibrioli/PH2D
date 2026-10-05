@@ -73,6 +73,7 @@
 | **Stack / Hard Rule** | SKILL_Stack §HR-1..18 · versões: [STACK_VERSOES.md](docs/IntegracaoMultiAgente/STACK_VERSOES.md) · «dá para atualizar X?» → `bash scripts/stack-audit.sh --tetos` primeiro |
 | **Física** | [ADR-0131](docs/architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) · [tracker](docs/Physics/handoffs/HANDOFF_line_physics.md) · [BUGS](docs/Physics/BUGS_physics.md) |
 | **Máquina lenta · comando pesado** | [TETOS_DE_RECURSO_POR_LINHA.md](docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md) |
+| **Medir velocidade (A × B)** | [MEDIR_VELOCIDADE.md](docs/DevOps/MEDIR_VELOCIDADE.md) — variantes no MESMO processo, intercaladas, o MÍNIMO; nunca esperar calma |
 | **Teste que reprova sob carga** | [FLAKES_DE_CARGA.md](docs/DevOps/FLAKES_DE_CARGA.md) |
 | **Fim de dia · disco cheio** | [DIRETIVA_FIM_DE_DIA.md](docs/IntegracaoMultiAgente/DIRETIVA_FIM_DE_DIA.md) — primeiro `bash scripts/btrfs-health.sh` |
 | **Que agente usar** | §2 (agentes) · [`.claude/agents/`](.claude/agents/) |
@@ -107,6 +108,10 @@ contexto*. As alavancas, por ordem:
 - **EDITE pela ferramenta `Edit`**, não por `python3`/`sed` — um `replace()` que não casa é no-op
   SILENCIOSO; o `Edit` falha alto. Script só onde é a forma certa (mutação, renomear em N arquivos),
   sempre com `assert` de contagem.
+- ⛔ **Comparar velocidade NÃO espera horas** ([MEDIR_VELOCIDADE.md](docs/DevOps/MEDIR_VELOCIDADE.md)): as
+  variantes são caminhos do MESMO processo (`override`/flag em execução, nunca `const` recompilada), intercalados
+  em blocos rodados, resumo = o MÍNIMO; uma compilação `smoke`; zero espera de calma. Medido em 05/10: a mesma
+  rodada em `37 s` contra `4`–`5 h` (doc 121 §9.16).
 - **Inner loop = `bash scripts/cargo-check-narrow.sh <crate>`.** O teste não responde «a minha edição
   entrou?». **Corrida dirigida = `bash scripts/cargo-test-narrow.sh <crate>`** (corre `check` na frente;
   exit `0` verde · `1` vermelho · `2` não compilou). Medido em 02/10: `cargo test` ainda corre **~3×**

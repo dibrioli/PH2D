@@ -128,7 +128,8 @@ agente do Painter REPÔS inteiros (pré-3D) foram conferidos commit a commit: en
 ## 8. Smoke (o que NÃO foi smokado à mão: tudo — é do Enio)
 
 Comando: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-poda-3d && cargo run -p ph2d-host-desktop --profile smoke`
-(prova do binário quente: @@SMOKEBUILD@@).
+(prova do binário quente, depois do último commit de código e do `rm -rf target/*/incremental`:
+2.ª corrida de `cargo build -p ph2d-host-desktop --profile smoke` → `Finished … in 0.18s`, zero `Compiling`).
 
 Fotografado antes de ir ao dono (`docs/Components/ferramentas/fotografa_cena.sh`, tela virtual, 1930×1040):
 

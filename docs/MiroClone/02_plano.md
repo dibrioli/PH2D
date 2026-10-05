@@ -10,7 +10,9 @@
 >    para a 2 (§1.2), para ela não pedir migração.
 > 2. **Sticky cresce na vertical** (FigJam), não encolhe a letra (Miro).
 > 3. **Aparência com botão «Rascunho ↔ Final»** — traço à mão (rough) ou limpo, por quadro e por elemento.
-> 4. **Barra curta, num MODO próprio** do editor (seletor *Mode*), com os atalhos de uma tecla só lá dentro.
+> 4. **Barra curta**, com os atalhos de uma tecla só dentro do quadro.
+> 5. **Cada quadro é uma ABA na barra superior do app e não aparece na Hierarquia** (ordem posterior do
+>    mesmo dia — substitui o «modo próprio no seletor *Mode*» do 01 §8.5; §1.1).
 >
 > Pesquisa: [01](01_pesquisa_miro_excalidraw.md) · oráculo instalado: [`ferramentas/excalidraw_oracle/`](ferramentas/excalidraw_oracle/README.md).
 
@@ -41,16 +43,30 @@ permitido, só não é a melhor forma.
 
 ## §1 — Arquitectura
 
-### §1.1 — O que é um Quadro no editor
+### §1.1 — O que é um Quadro no editor: um DOCUMENTO numa ABA, nunca um objecto da cena
 
-- **Um TIPO de objecto novo**, `ObjectKind::Board` (6.ª variante em `crates/ph2d-component-desc/src/lib.rs:334`,
-  `ALL` passa a 6, chave `component.object_kind.board`), com marcador próprio.
-- **Um MODO**, aberto por uma `impl ModeFamily` (`crates/ph2d-editor-core/src/screens/hero/mode_drive.rs:23`;
-  moldes vivos: `crates/ph2d-app-flip/src/flip_mode.rs:88`, `crates/ph2d-app-painter/src/paint_mode.rs:22`).
-  Entrar no quadro (`Tab`) dá a barra curta e os atalhos de uma tecla; sair devolve o editor normal.
-- **Os elementos do quadro NÃO são entidades ECS.** Um quadro com 100 mil notas como 100 mil entidades
-  encheria a Hierarquia, o undo do mundo e o laço de sistemas. Vivem num documento (`BoardDoc`) que é **um**
-  componente do objecto Quadro. A Hierarquia mostra o Quadro; dentro dele, um painel de **Frames** próprio.
+> **Ordem do dono (2026-10-05):** *«Os quadros não devem aparecer na hierarquia mas devem aparecer como abas
+> na barra superior do APP.»*
+
+- **Um quadro não é objecto da cena:** não aparece na Hierarquia, não é entidade, não tem `ObjectKind` nem
+  `ModeFamily`. É um **documento** do projecto, ao lado da cena.
+- **Abas de documento na barra superior:** `[Cena] [Quadro 1] [Quadro 2] [+]`. Clicar troca a área central;
+  `+` cria um quadro; duplo-clique renomeia; arrastar reordena; botão direito: Renomear · Duplicar · Apagar
+  (com confirmação). Hoje a barra pinta os grupos da esquerda (`clusters[..split]`) e os da direita
+  (`crates/ph2d-editor-core/src/screens/hero/topbar/mod.rs:276-355`) e **não há abas de documento** — as
+  abas que existem são de PAINÉIS (`screens/hero/slot_tabs.rs`). A fila de abas nasce num módulo **irmão**
+  (`topbar/document_tabs.rs`, ids num ficheiro novo em `ids/chrome/`), no espaço entre os dois grupos, com o
+  idioma visual das abas de painel (mesma altura, mesmo arrastar).
+- **Trocar de aba troca o conteúdo, não a tela.** O precedente vivo é o modo das ferramentas de imagem, que
+  troca o lado direito da barra e as ferramentas visíveis (`topbar/mod.rs:343-355`,
+  `topbar/image_action_row.rs`, `tool.rs:395`). Com uma aba de quadro activa: a área central desenha o quadro
+  (câmara própria por quadro — pan/zoom gravados), a **barra curta** de ferramentas flutua à esquerda da área
+  (o idioma do Miro/Excalidraw), e os painéis laterais da cena dão lugar aos do quadro (Frames, Estilo,
+  Comentários). Voltar à aba `Cena` devolve tudo como estava.
+- **Atalhos de uma tecla** só valem com uma aba de quadro activa e a área com foco — o despacho já dá
+  prioridade ao widget com foco sobre a área (`crates/ph2d-editor-core/src/interaction/dispatch/key.rs:33`).
+- **Os elementos do quadro também não são entidades.** Vivem no `BoardDoc` (§1.2); um quadro com 100 mil
+  notas não toca no ECS, na Hierarquia nem no laço de sistemas.
 
 ### §1.2 — O modelo de documento (`ph2d-board-model`, crate pura: sem ECS, sem render)
 
@@ -64,9 +80,12 @@ permitido, só não é a melhor forma.
   as MESMAS operações.
 - Cores do documento = **dado do utilizador** (RGBA no documento); a paleta por omissão vem de `ph2d-tokens`
   — zero hex no código (HR-15).
-- Persistência: o `BoardDoc` viaja como **blob com versão própria** (o idioma do `TimelineDoc`) ⇒ **um**
-  degrau de `PROJECT_SCHEMA` para todo o módulo (hoje `183`, `shells/desktop/src/project_schema.rs:392`;
-  recontado na integração com `scripts/schema-recount.py`).
+- Persistência: um campo novo no `ProjectFile` (`shells/desktop/src/project.rs:16`), `boards: Vec<u8>` — um
+  **`BoardSet`** (os `BoardDoc`, a ordem das abas, o nome e a câmara de cada quadro) como **blob com versão
+  própria**, o idioma do campo `timeline: Vec<u8>` ⇒ **um** degrau de `PROJECT_SCHEMA` para todo o módulo
+  (hoje `183`, `shells/desktop/src/project_schema.rs:392`; recontado na integração com
+  `scripts/schema-recount.py`). Os quadros viajam **com o projecto**, não com o layout do utilizador
+  (`~/.ph2d/layout.txt` é por máquina).
 
 ### §1.3 — As crates
 
@@ -77,16 +96,21 @@ permitido, só não é a melhor forma.
 | `ph2d-board-rough` | **traço à mão** (porta do algoritmo do rough.js, MIT) e **contorno do desenho livre** (porta do perfect-freehand, MIT), com o aviso de copyright; semente por elemento ⇒ determinístico | `kurbo` |
 | `ph2d-vec-connect` | **reusado**: o roteador | — |
 | `ph2d-board-render` | índice espacial, recorte ao ecrã, fragmentos Vello em cache por elemento (refaz só o sujo), nível de detalhe por zoom | `vello`, model, layout, rough |
-| `ph2d-app-board` | a família: modo, ferramentas, gestos, painel, roteador de smokes `PH2D_BOARD_SMOKE` | `ph2d-app-host`, tudo acima |
+| `ph2d-app-board` | a família: a área do quadro (câmara, ferramentas, gestos, barra curta, painéis), roteador de smokes `PH2D_BOARD_SMOKE` | `ph2d-app-host`, tudo acima |
+| `ph2d-editor-core` (foundational, aditivo) | a fila de abas de documento (`topbar/document_tabs.rs` + ids próprios) e o estado «documento activo» | — |
 
 A shell só **compõe** (`the_shell_only_shrinks`); o registo da família é gerado (`ph2d-app-sync` →
 `ph2d-app-registry-init`).
 
 ### §1.4 — Undo
 
-Cada gesto produz um lote de `BoardOp` com o inverso; entra na **fila única** do editor como uma entrada.
-⚠️ **A medir na W0:** o custo do diff do `ProjectState` com um `BoardDoc` de 100 mil elementos. Se o diff do
-blob inteiro passar de ~1 ms por gesto, o quadro entrega à fila o **seu** diff (as ops), não o blob.
+Cada gesto produz um lote de `BoardOp` com o inverso. **Regra de produto:** com uma aba de quadro activa,
+`Ctrl+Z` desfaz o último gesto **daquele quadro** — nunca algo da cena nem de outro quadro, e vice-versa
+(documentos separados, como as abas do Miro/Figma).
+⚠️ **A decidir na W0, medindo:** (a) entradas na fila única do editor (`shells/desktop/src/undo.rs`) marcadas
+com o documento e filtradas pela aba activa, ou (b) histórico próprio por quadro — conferindo primeiro, no
+código, como o Motion e a Timeline (que também vivem fora do ECS) fazem hoje. Em qualquer dos dois, o que
+entra é o lote de ops, nunca o blob inteiro (100 mil elementos por gesto não cabem num diff).
 
 ---
 
@@ -113,10 +137,13 @@ máquina — o número final **mede-se**, não se escolhe.
 Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um brainstorm.
 
 ### W0 — Fundação e réguas
-- Crates vazias com o molde; `ObjectKind::Board` + o modo; `BoardDoc` gravado e carregado; undo de uma op.
+- Crates com o molde; **abas de documento** na barra superior (`[Cena] [+]`); `+` cria «Quadro 1»; trocar,
+  renomear, reordenar, apagar; `BoardSet` gravado e carregado com o projecto; undo de uma op por quadro (§1.4).
 - Cena de medida gerada (§2) + a régua A/B; **primeira medição** do custo de desenhar N rectângulos.
-- Teste de seam (`ph2d-ui-testkit`): Add → Quadro → `Tab` entra no modo → a barra aparece.
-- **Dono vê:** menu *Add → Quadro*, um quadro vazio com grelha de pontos, entrar e sair do modo.
+- Teste de seam (`ph2d-ui-testkit`): clique em `+` → nasce a aba → clique nela → a área central é o quadro e a
+  barra curta aparece → clique em `Cena` → a cena volta intacta; e a Hierarquia **não** ganha linha nenhuma.
+- **Dono vê:** a barra de cima com `Cena` e `+`; criar dois quadros, alternar entre eles e a cena, fechar e
+  reabrir o projecto e encontrar os quadros lá.
 
 ### W1 — Tela, formas e texto
 - Pan/zoom infinito (rato, trackpad, `Espaço`+arrastar), grelha de pontos, snap, guias de alinhamento.
@@ -207,6 +234,7 @@ trouxe (§5.0: cena que ensina o contrário é pior que nenhuma), fotografada an
 | assunto | estado |
 |---|---|
 | herdar o modo Vector inteiro para o quadro | ⛔ recusado (§0): ciclo de ilustração, sem cache de rota |
+| quadro como objecto da cena (`ObjectKind::Board` + `ModeFamily`, a 1.ª versão deste plano) | ⛔ **ordem do dono 05/10**: abas na barra superior, fora da Hierarquia (§1.1) |
 | elementos como entidades ECS | ⛔ recusado (§1.1): Hierarquia, undo e laço a crescer com cada nota |
 | copiar o desvio de setas do Excalidraw | ⛔ medido pior que o nosso |
 | ler o código do Excalidraw para portar o render | ⛔ §0.9 — corre-se. A porta do rough.js e do perfect-freehand é a **permissiva** (MIT, com aviso) e confere-se por passo contra o oráculo |

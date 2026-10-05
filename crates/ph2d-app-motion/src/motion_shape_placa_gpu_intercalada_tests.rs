@@ -36,35 +36,43 @@ const CENAS: [(&str, &str, &str, bool); 6] = [
     ("densas_tr1", "", "2", true),
 ];
 
-/// As variantes do §9.15: cada pedaço sozinho sobre o `base` (todos desligados) e o `F` (o produto).
+/// As variantes do §9.17: o `base` (os pedaços do §9.15 desligados), o `F` (o produto), o `F` sem UM pedaço
+/// do §9.15 (`F-…`), a ablação `E1F` e os candidatos da emissão tracejada sobre o `F`.
 fn variantes() -> Vec<(&'static str, VarianteDoPasse)> {
-    const PEDACOS: [&str; 4] = [
-        "AJUSTE_NA_CONTAGEM",
-        "TOTAL_NO_PERCURSO",
-        "ARESTAS_COMPACTAS",
-        "JUNTA_UMA_POR_TROCO",
-    ];
-    let com = |ligados: &[&str], subgrupo: bool, medida: bool| VarianteDoPasse {
-        constantes: PEDACOS
-            .iter()
-            .map(|p| (*p, if ligados.contains(p) { 1.0 } else { 0.0 }))
-            .collect(),
-        sem_subgrupo: !subgrupo,
-        sem_medida_no_inicio: !medida,
+    let com = |c: &[(&'static str, f64)]| VarianteDoPasse {
+        constantes: c.to_vec(),
+        ..VarianteDoPasse::default()
     };
+    let base = VarianteDoPasse {
+        sem_subgrupo: true,
+        sem_medida_no_inicio: true,
+        ..com(&[
+            ("AJUSTE_NA_CONTAGEM", 0.0),
+            ("TOTAL_NO_PERCURSO", 0.0),
+            ("ARESTAS_COMPACTAS", 0.0),
+            ("JUNTA_UMA_POR_TROCO", 0.0),
+        ])
+    };
+    let lhpg = [
+        ("ADIADO_NO_LACO", 1.0),
+        ("GEOMETRIA_DO_TROCO", 1.0),
+        ("ARESTAS_POR_PECA", 1.0),
+        ("GRUPO_DO_CONTORNO", 32.0),
+    ];
     vec![
-        ("base", com(&[], false, false)),
-        ("A1a", com(&["AJUSTE_NA_CONTAGEM"], false, false)),
-        ("A1b", com(&["TOTAL_NO_PERCURSO"], false, false)),
-        (
-            "A1",
-            com(&["AJUSTE_NA_CONTAGEM", "TOTAL_NO_PERCURSO"], false, false),
-        ),
-        ("B1", com(&["ARESTAS_COMPACTAS"], false, false)),
-        ("B2", com(&["JUNTA_UMA_POR_TROCO"], false, false)),
-        ("D", com(&[], true, false)),
-        ("c2", com(&[], false, true)),
+        ("base", base),
         ("F", VarianteDoPasse::default()),
+        ("F-A1a", com(&[("AJUSTE_NA_CONTAGEM", 0.0)])),
+        ("F-A1b", com(&[("TOTAL_NO_PERCURSO", 0.0)])),
+        ("F-B1", com(&[("ARESTAS_COMPACTAS", 0.0)])),
+        ("F-B2", com(&[("JUNTA_UMA_POR_TROCO", 0.0)])),
+        ("E1F", com(&[("X_SEM_PEDACOS", 1.0)])),
+        ("E4F", com(&[("X_SO_LACO", 1.0)])),
+        ("L", com(&lhpg[..1])),
+        ("H", com(&lhpg[1..2])),
+        ("P", com(&lhpg[2..3])),
+        ("G32", com(&lhpg[3..])),
+        ("LHPG", com(&lhpg)),
     ]
 }
 
@@ -143,11 +151,13 @@ fn sonda_intercalada() {
             })
             .collect();
         // O aquecimento: a criação dos pipelines, a capacidade medida e o regime — fora da régua.
+        let mut camadas = Vec::with_capacity(placas.len());
         for (p, geo) in &mut placas {
             for _ in 0..4 {
                 quadro(p, geo, &insts, &store);
             }
-            let tinta = le_a_camada(&gpu, p)
+            let camada = le_a_camada(&gpu, p);
+            let tinta = camada
                 .as_chunks::<4>()
                 .0
                 .iter()
@@ -157,11 +167,31 @@ fn sonda_intercalada() {
                 tinta > 1000,
                 "{cena}: uma variante nao desenhou ({tinta} px)"
             );
+            camadas.push(camada);
         }
+        // §9.17: a imagem de cada variante contra a do `F` (o produto), byte a byte — a `E1F` é o controlo.
+        let i_f = todas.iter().position(|(n, _)| *n == "F");
+        let imagem: Vec<String> = camadas
+            .iter()
+            .map(|c| {
+                i_f.map_or_else(
+                    || "?".to_owned(),
+                    |f| match c.iter().zip(&camadas[f]).filter(|(x, y)| x != y).count() {
+                        0 => "imagem = F".to_owned(),
+                        d => format!("imagem DIFERE em {d} B"),
+                    },
+                )
+            })
+            .collect();
+        // As arestas reservadas · escritas de cada variante (§9.17: a reserva faz crescer a memória).
+        let arestas: Vec<_> = placas
+            .iter()
+            .map(|(p, _)| p.arestas_do_ultimo_quadro(&gpu))
+            .collect();
         let _ = ph2d_gpu::pass_profiler::drain(&gpu.device);
-        // Por variante, por rodada: a soma e os três grupos, por quadro (ms).
+        // Por variante, por rodada: a soma e os quatro passes, por quadro (ms).
         let n = placas.len();
-        let mut amostras = vec![Vec::<[f64; 4]>::new(); n];
+        let mut amostras = vec![Vec::<[f64; 5]>::new(); n];
         for r in 0..rodadas as usize {
             for k in 0..n {
                 let i = (k + r) % n;
@@ -181,7 +211,7 @@ fn sonda_intercalada() {
                         .sum::<f64>()
                 };
                 let [c, e, cel, f] = PASSES.map(ms);
-                amostras[i].push([c + e + cel + f, c + e, cel, f]);
+                amostras[i].push([c + e + cel + f, c, e, cel, f]);
             }
         }
         let vello_ms = vello.then(|| {
@@ -214,11 +244,15 @@ fn sonda_intercalada() {
             let col = |j: usize| min_med(&amostras[i].iter().map(|a| a[j]).collect::<Vec<_>>());
             let (smin, smed) = col(0);
             eprintln!(
-                "INTERCALADA {cena:<14} {nome:<5} soma min {smin:.3} med {smed:.3} ({:+.1} % do 1.º) · conta+escreve {:.3} · celulas {:.3} · formas {:.3}{}",
+                "INTERCALADA {cena:<14} {nome:<6} soma min {smin:.3} med {smed:.3} ({:+.1} % do 1.º) · conta {:.3} · escreve {:.3} · celulas {:.3} · formas {:.3} · arestas {} · {} · {}{}",
                 (smin / base - 1.0) * 100.0,
                 col(1).0,
                 col(2).0,
                 col(3).0,
+                col(4).0,
+                arestas[i].0,
+                arestas[i].1,
+                imagem[i],
                 if i == 0 {
                     vello_ms.map_or(String::new(), |v| format!(" · vello (parede) {v:.3}"))
                 } else {

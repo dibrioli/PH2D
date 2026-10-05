@@ -394,8 +394,14 @@ impl PlacaDeFormas {
         }
         let g = self.gpu.get_or_insert_with(|| {
             let (textura, vista) = Gpu::camada(gpu, tamanho);
+            // doc 121 §9.17 — sem variante de sonda, a do ambiente (`PH2D_FORMAS_CONSTANTES`; vazia = o produto).
+            let variante = if self.variante.constantes.is_empty() {
+                ph2d_shape_gpu::VarianteDoPasse::do_ambiente()
+            } else {
+                self.variante.clone()
+            };
             Gpu {
-                passe: ShapePass::da_variante(gpu, FORMATO_DA_CAMADA, &self.variante),
+                passe: ShapePass::da_variante(gpu, FORMATO_DA_CAMADA, &variante),
                 textura,
                 vista,
                 tamanho,

@@ -107,6 +107,8 @@ pub(crate) struct Contorno {
     /// doc 121 §9.15 — o `cs_deposita` por aresta ESCRITA (o `override ARESTAS_COMPACTAS` do módulo:
     /// os dois mudam juntos, pelas mesmas constantes).
     compactas: bool,
+    /// O grupo do `cs_conta` e do `cs_escreve` (o `override GRUPO_DO_CONTORNO`, §9.17).
+    grupo: u32,
     /// O grupo `1` do DESENHO (as três leituras).
     pub(crate) leitura: wgpu::BindGroupLayout,
     /// O grupo `2` do CÁLCULO (o uniforme e as cinco escritas).
@@ -345,6 +347,15 @@ impl Contorno {
                 .iter()
                 .find(|(k, _)| *k == "ARESTAS_COMPACTAS")
                 .is_none_or(|(_, v)| *v != 0.0),
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "um grupo"
+            )]
+            grupo: constantes
+                .iter()
+                .find(|(k, _)| *k == "GRUPO_DO_CONTORNO")
+                .map_or(64, |(_, v)| *v as u32),
             leitura,
             escrita,
             escrita_celulas,
@@ -426,69 +437,6 @@ impl Contorno {
                     });
             }
             _ => {}
-        }
-    }
-
-    /// Garante os buffers para `n` cópias e para o total medido.
-    fn garante(&mut self, gpu: &GpuContext, n: u64) {
-        if n > self.cap_copias {
-            let cap = n.next_power_of_two();
-            let armazens = wgpu::BufferUsages::STORAGE;
-            // Cinco quintos de `n + 1`: as arestas reservadas, as células, as linhas de ecrã, as
-            // arestas escritas e o ajuste do tracejado (§9.15).
-            self.contagem = buffer(
-                gpu,
-                "ph2d-shape-gpu contagem",
-                QUINTOS * (cap + 1) * 4,
-                armazens | wgpu::BufferUsages::COPY_SRC,
-            );
-            // Três `vec4<u32>` por cópia. `COPY_SRC`: o instrumento `copias_com_contorno` lê-o.
-            self.copias = buffer(
-                gpu,
-                "ph2d-shape-gpu copias do contorno",
-                cap * 48,
-                armazens | wgpu::BufferUsages::COPY_SRC,
-            );
-            self.caixas = buffer(gpu, "ph2d-shape-gpu caixas do contorno", cap * 16, armazens);
-            self.cap_copias = cap;
-        }
-        let pedido = self
-            .total_visto
-            .max(n * ARESTAS_POR_COPIA_INICIAL)
-            .min(self.tecto_arestas);
-        if pedido > self.cap_arestas {
-            let cap = pedido
-                .next_power_of_two()
-                .min(self.tecto_arestas)
-                .next_multiple_of(BLOCO);
-            let armazens = wgpu::BufferUsages::STORAGE;
-            self.arestas = buffer(gpu, "ph2d-shape-gpu arestas", cap * ARESTA, armazens);
-            self.cap_arestas = cap;
-        }
-        let tecto_m = self.tecto_celulas.min(self.celulas_no_maximo);
-        let pedido_m = self.total_visto_m.min(tecto_m);
-        if pedido_m > self.cap_celulas {
-            let cap = ao_oitavo_do_degrau(pedido_m).min(tecto_m);
-            let armazens = wgpu::BufferUsages::STORAGE;
-            self.celulas_buf = buffer(
-                gpu,
-                "ph2d-shape-gpu celulas do contorno",
-                cap * REGISTO,
-                armazens,
-            );
-            self.acumula = buffer(
-                gpu,
-                "ph2d-shape-gpu acumulacao das celulas",
-                cap * ACUMULA,
-                armazens | wgpu::BufferUsages::COPY_SRC,
-            );
-            self.cap_celulas = cap;
-            if self.relata {
-                let mb = cap * (REGISTO + ACUMULA) / (1024 * 1024);
-                eprintln!(
-                    "[formas] celulas: capacidade {cap} ({mb} MB) para {pedido_m} pedidas por {n} copias"
-                );
-            }
         }
     }
 
@@ -578,7 +526,7 @@ impl Contorno {
             self.garante(gpu, u64::from(count));
         }
         let (escrita, celulas) = self.prepara(gpu, count);
-        let grupos = count.div_ceil(64);
+        let grupos = count.div_ceil(self.grupo);
         let x = grupos.min(65_535);
         let y = grupos.div_ceil(x.max(1));
         // Três passes de cálculo, cada um com o seu relógio no perfilador (`PH2D_FLUID_PROFILE=1`):

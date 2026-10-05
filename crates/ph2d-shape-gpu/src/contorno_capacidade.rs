@@ -27,7 +27,7 @@ impl Contorno {
             16,
             wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         );
-        let grupos = count.div_ceil(64);
+        let grupos = count.div_ceil(self.grupo);
         let x = grupos.min(65_535);
         let y = grupos.div_ceil(x.max(1));
         let mut enc = gpu
@@ -65,6 +65,77 @@ impl Contorno {
         let total_m: u32 = bytemuck::pod_read_unaligned(&dados[4..8]);
         self.total_visto = self.total_visto.max(u64::from(total));
         self.total_visto_m = self.total_visto_m.max(u64::from(total_m));
+    }
+
+    /// Garante os buffers para `n` cópias e para o total medido.
+    pub(super) fn garante(&mut self, gpu: &GpuContext, n: u64) {
+        if n > self.cap_copias {
+            let cap = n.next_power_of_two();
+            let armazens = wgpu::BufferUsages::STORAGE;
+            // Cinco quintos de `n + 1`: as arestas reservadas, as células, as linhas de ecrã, as
+            // arestas escritas e o ajuste do tracejado (§9.15).
+            self.contagem = buffer(
+                gpu,
+                "ph2d-shape-gpu contagem",
+                QUINTOS * (cap + 1) * 4,
+                armazens | wgpu::BufferUsages::COPY_SRC,
+            );
+            // Três `vec4<u32>` por cópia. `COPY_SRC`: o instrumento `copias_com_contorno` lê-o.
+            self.copias = buffer(
+                gpu,
+                "ph2d-shape-gpu copias do contorno",
+                cap * 48,
+                armazens | wgpu::BufferUsages::COPY_SRC,
+            );
+            self.caixas = buffer(gpu, "ph2d-shape-gpu caixas do contorno", cap * 16, armazens);
+            self.cap_copias = cap;
+        }
+        let pedido = self
+            .total_visto
+            .max(n * ARESTAS_POR_COPIA_INICIAL)
+            .min(self.tecto_arestas);
+        if pedido > self.cap_arestas {
+            let cap = pedido
+                .next_power_of_two()
+                .min(self.tecto_arestas)
+                .next_multiple_of(BLOCO);
+            let armazens = wgpu::BufferUsages::STORAGE;
+            self.arestas = buffer(gpu, "ph2d-shape-gpu arestas", cap * ARESTA, armazens);
+            self.cap_arestas = cap;
+            // doc 121 §9.17 (c): a memória das arestas na cena do app (a reserva do tracejado a faz crescer).
+            if self.relata {
+                let mb = cap * ARESTA / (1024 * 1024);
+                let reservadas = self.total_visto;
+                eprintln!(
+                    "[formas] arestas: capacidade {cap} ({mb} MB) para {reservadas} reservadas por {n} copias"
+                );
+            }
+        }
+        let tecto_m = self.tecto_celulas.min(self.celulas_no_maximo);
+        let pedido_m = self.total_visto_m.min(tecto_m);
+        if pedido_m > self.cap_celulas {
+            let cap = ao_oitavo_do_degrau(pedido_m).min(tecto_m);
+            let armazens = wgpu::BufferUsages::STORAGE;
+            self.celulas_buf = buffer(
+                gpu,
+                "ph2d-shape-gpu celulas do contorno",
+                cap * REGISTO,
+                armazens,
+            );
+            self.acumula = buffer(
+                gpu,
+                "ph2d-shape-gpu acumulacao das celulas",
+                cap * ACUMULA,
+                armazens | wgpu::BufferUsages::COPY_SRC,
+            );
+            self.cap_celulas = cap;
+            if self.relata {
+                let mb = cap * (REGISTO + ACUMULA) / (1024 * 1024);
+                eprintln!(
+                    "[formas] celulas: capacidade {cap} ({mb} MB) para {pedido_m} pedidas por {n} copias"
+                );
+            }
+        }
     }
 
     pub(crate) fn tem_subgrupo(&self) -> bool {

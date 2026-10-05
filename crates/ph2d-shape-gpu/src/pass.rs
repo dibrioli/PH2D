@@ -120,6 +120,41 @@ pub struct VarianteDoPasse {
     pub sem_medida_no_inicio: bool,
 }
 
+/// doc 121 §9.17 — as constantes `override` do contorno que uma variante pode dar.
+pub const CONSTANTES_DO_CONTORNO: [&str; 10] = [
+    "AJUSTE_NA_CONTAGEM",
+    "TOTAL_NO_PERCURSO",
+    "ARESTAS_COMPACTAS",
+    "JUNTA_UMA_POR_TROCO",
+    "ADIADO_NO_LACO",
+    "GEOMETRIA_DO_TROCO",
+    "ARESTAS_POR_PECA",
+    "GRUPO_DO_CONTORNO",
+    "X_SEM_PEDACOS",
+    "X_SO_LACO",
+];
+
+impl VarianteDoPasse {
+    /// A variante de `PH2D_FORMAS_CONSTANTES=NOME=v,…` (doc 121 §9.17): a porta para medir as constantes
+    /// no APP com o mesmo binário. Sem a variável, o produto.
+    #[must_use]
+    pub fn do_ambiente() -> Self {
+        let mut v = Self::default();
+        let Ok(lista) = std::env::var("PH2D_FORMAS_CONSTANTES") else {
+            return v;
+        };
+        for par in lista.split(',').filter(|p| !p.trim().is_empty()) {
+            let (k, x) = par.split_once('=').unwrap_or((par, ""));
+            let nome = CONSTANTES_DO_CONTORNO.iter().find(|n| **n == k.trim());
+            match (nome, x.trim().parse::<f64>()) {
+                (Some(nome), Ok(x)) => v.constantes.push((nome, x)),
+                _ => eprintln!("[formas] PH2D_FORMAS_CONSTANTES: «{par}» ignorada (nome ou valor)"),
+            }
+        }
+        v
+    }
+}
+
 impl ShapePass {
     /// O passe da `variante` (a omissão é [`Self::new`]).
     #[must_use]

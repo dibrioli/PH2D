@@ -536,12 +536,19 @@ fn bissectriz(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, r: f32, quina: bool, 
 // A mesma, com o recuo máximo dado: num traço TRACEJADO (doc 121 §9.9) o que limita o recuo são os
 // PEDAÇOS de traço dos dois lados do vértice, e não os troços inteiros.
 fn bissectriz_ate(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, r: f32, quina: bool, junta: u32, limite: f32, recuo_max: f32) -> vec3<f32> {
+    let e = bissectriz_geo(p0, p1, p2, r, quina, junta, limite);
+    return select(vec3<f32>(0.0), vec3<f32>(e.xy, 1.0), serve(e, recuo_max));
+}
+
+// A bissectriz SEM o tecto do recuo: `(m, recuo, 1)`, ou `w = 0` quando ela não serve por outra razão —
+// o troço calcula-a uma vez e cada pedaço compara o recuo com o seu (doc 121 §9.17 H).
+fn bissectriz_geo(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, r: f32, quina: bool, junta: u32, limite: f32) -> vec4<f32> {
     let d0 = p1 - p0;
     let d1 = p2 - p1;
     let l0 = length(d0);
     let l1 = length(d1);
     if l0 <= 0.0 || l1 <= 0.0 {
-        return vec3<f32>(0.0);
+        return vec4<f32>(0.0);
     }
     let u0 = d0 / l0;
     let u1 = d1 / l1;
@@ -549,18 +556,21 @@ fn bissectriz_ate(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, r: f32, quina: bo
     if quina {
         // A esquadria do Vello: `1 / cos(θ/2) ≤ limite` ⇔ `2 ≤ (1 + cos θ)·limite²`.
         if junta != 0u || 2.0 > (1.0 + dt) * limite * limite {
-            return vec3<f32>(0.0);
+            return vec4<f32>(0.0);
         }
     } else if dt <= 0.0 {
-        return vec3<f32>(0.0);
+        return vec4<f32>(0.0);
     }
     let m = (perp(u0) + perp(u1)) * (r / (1.0 + dt));
     let fora = r + FAIXA_FOLGA;
-    let recuo = r * sqrt(max(1.0 - dt, 0.0) / (1.0 + dt));
-    if (!quina && dot(m, m) > fora * fora) || recuo > recuo_max {
-        return vec3<f32>(0.0);
+    if !quina && dot(m, m) > fora * fora {
+        return vec4<f32>(0.0);
     }
-    return vec3<f32>(m, 1.0);
+    return vec4<f32>(m, r * sqrt(max(1.0 - dt, 0.0) / (1.0 + dt)), 1.0);
+}
+
+fn serve(e: vec4<f32>, recuo_max: f32) -> bool {
+    return e.w > 0.0 && !(e.z > recuo_max);
 }
 
 // A junta em `b` entre `b − u` e `b → c`, do lado de FORA, com o estilo `junta` (`0` esquadria ·

@@ -380,6 +380,25 @@ pub fn bind_seed(sim: &SimWorld, selection: &[u64]) -> Option<u64> {
     })
 }
 
+/// ⭐ **As formas do Bind** — as da caneta E as formas-objecto da selecção (A14: em Object a forma
+/// escolhida é um OBJECTO do gizmo, e a caneta pode estar vazia). Sem repetidos, pela ordem da caneta.
+#[must_use]
+pub fn bind_paths(
+    pen: &[ph2d_vec_scene::VecPathId],
+    entities: &ph2d_vec_entities::entities::VecEntityMap,
+    selection: &[u64],
+) -> Vec<ph2d_vec_scene::VecPathId> {
+    let mut ids = pen.to_vec();
+    for b in selection {
+        if let Some((pid, _)) = entities.iter().find(|(_, x)| **x == *b)
+            && !ids.contains(pid)
+        {
+            ids.push(*pid);
+        }
+    }
+    ids
+}
+
 #[cfg(test)]
 #[path = "bone_pick_tests.rs"]
 mod tests;

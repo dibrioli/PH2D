@@ -447,3 +447,21 @@ fn a_bone_under_the_finger_selects_its_skeleton_and_seeds_the_bind() {
     );
     assert_eq!(bind_seed(&sim, &[]), None);
 }
+
+/// ⭐ **As formas do Bind juntam a caneta e a selecção de objecto, sem repetidos** (A14). Controlo:
+/// uma entidade que não é forma (um esqueleto) não entra.
+#[test]
+fn the_bind_paths_join_the_pen_and_the_object_selection() {
+    use crate::bone_pick::bind_paths;
+    use ph2d_vec_scene::VecPathId;
+    let mut mapa = ph2d_vec_entities::entities::VecEntityMap::new();
+    let (a, b): (VecPathId, VecPathId) = (1, 2);
+    mapa.insert(a, 10);
+    mapa.insert(b, 20);
+    assert_eq!(bind_paths(&[a], &mapa, &[20, 10, 99]), vec![a, b]);
+    assert_eq!(
+        bind_paths(&[], &mapa, &[99]),
+        Vec::<VecPathId>::new(),
+        "controlo"
+    );
+}

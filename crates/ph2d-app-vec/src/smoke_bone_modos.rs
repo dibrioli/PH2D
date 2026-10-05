@@ -12,12 +12,8 @@ use ph2d_vec_scene::{ShapeKind, VecScene, cook_tinted as shape};
 /// Quantos ossos a corrente tem.
 pub(crate) const OSSOS: u32 = 2;
 
-/// O 1.º tempo: a barra e o esqueleto. Devolve o esqueleto (para o gate).
-pub(crate) fn build(
-    scene: &mut VecScene,
-    sim: &mut SimWorld,
-    st: &mut crate::state::VecState,
-) -> Option<Entity> {
+/// O 1.º tempo: a barra e o esqueleto.
+pub(crate) fn build(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::state::VecState) {
     let (l, t) = crate::smoke_bone_efeitos::PECA;
     let mut p = shape(
         ShapeKind::RoundRect,
@@ -47,15 +43,16 @@ pub(crate) fn build(
     for k in 0..OSSOS {
         let a = [x0 + passo * f64::from(k), 0.0];
         let b = [x0 + passo * f64::from(k + 1), 0.0];
-        let e = Entity::try_from_bits(ph2d_skeleton_live::bone::create(sim, Some(pai), a, b)?)?;
-        pai = e;
+        let Some(e) = ph2d_skeleton_live::bone::create(sim, Some(pai), a, b) else {
+            return;
+        };
+        pai = Entity::from_bits(e);
     }
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     // ⚠️ A barra entra na espera do 2.º tempo (a shell só avança com a entidade dela): sem isto o
     // prólogo — o painel de ossos, o enquadramento — nunca corria.
     st.bone_smoke_pend = Some(vec![(barra, None)]);
     st.bone_smoke_step = 1;
-    Some(esq)
 }
 
 /// O 2.º tempo: nada a prender (é o gesto que a cena ensina) — só o roteiro no terminal.

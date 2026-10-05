@@ -154,16 +154,11 @@ impl crate::App {
             if !pending_bone_bind {
                 break 'bind;
             }
-            // ⭐ **As formas: as da caneta E as da selecção de objecto** (A14): em Object a forma
-            // escolhida é um OBJECTO (o gizmo), e a caneta pode estar vazia.
-            let mut ids: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
-            for b in &selecao_bits {
-                if let Some((pid, _)) = self.vec.entities.iter().find(|(_, x)| **x == *b)
-                    && !ids.contains(pid)
-                {
-                    ids.push(*pid);
-                }
-            }
+            let ids = ph2d_app_skeleton::bone_pick::bind_paths(
+                self.vec.pen.selected_paths(),
+                &self.vec.entities,
+                &selecao_bits,
+            );
             // ⭐ **A semente: o osso escolhido, senão o esqueleto escolhido** (em Object a selecção
             // é o objecto esqueleto, não um osso dele).
             let semente = osso_selecionado

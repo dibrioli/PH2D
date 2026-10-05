@@ -199,7 +199,12 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
   desligada (`TOL = 0`) é o mesmo desenho. Hipótese (por medir): a parte VIRADA pela dobra inverte o
   sentido do contorno e a regra *NonZero* anula a cor onde camadas viradas e direitas se sobrepõem.
 
-### A14 — (novo, 05/10, ORDEM DO DONO) O ESQUELETO é um OBJECTO — plano em [`05_plano_o_esqueleto_e_um_objecto.md`](../05_plano_o_esqueleto_e_um_objecto.md)
+### A14 — ✅ FEITO (F64, `ed0d4852f`…`8c456103e`, 05/10; smoke do dono PENDENTE — ele pediu-o para depois da obra): O ESQUELETO é um OBJECTO — plano em [`05_plano_o_esqueleto_e_um_objecto.md`](../05_plano_o_esqueleto_e_um_objecto.md), handoff [`HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md`](HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md)
+
+> Os ossos desenham-se em todo modo (o olho esconde); *Add ▸ Skeleton*; Object · Edit · Pose com
+> ferramenta de osso própria (`ph2d-tool-bone`); em Object clicar num osso selecciona o esqueleto,
+> o gizmo move-o com a forma presa, *Bind*/`Ctrl+P`; raízes soltas ganham esqueleto (pose ao bit);
+> `PROJECT_SCHEMA 185`; cena `=7`. Desvios do plano e porquê: fila §F64. Registo de antes:
 
 - Os ossos só se viam no Edit do vetor e ali não se mexiam (report do dono): os gestos do osso eram um
   modo da ferramenta Vector, que desde a onda dos modos só está na mão dentro do Edit de uma forma.

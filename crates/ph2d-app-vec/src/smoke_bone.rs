@@ -142,8 +142,7 @@ pub fn build(
         return;
     }
     if nivel() == 7 {
-        crate::smoke_bone_modos::build(scene, sim, st);
-        return;
+        return crate::smoke_bone_modos::build(scene, sim, st);
     }
     if nivel() >= 3 {
         crate::smoke_bone_par::build(scene, sim, renderer, assets, ppm, nivel(), st);
@@ -266,8 +265,7 @@ pub fn bind(
         return;
     }
     if nivel() == 7 {
-        crate::smoke_bone_modos::bind(st);
-        return;
+        return crate::smoke_bone_modos::bind(st);
     }
     if nivel() >= 3 {
         crate::smoke_bone_par::bind(scene, sim, assets, ppm, nivel(), st);

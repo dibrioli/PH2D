@@ -47,7 +47,7 @@ fn the_bind_reads_the_object_selection() {
         .find("bone_pick::bind_seed(sim, &selecao_bits)")
         .expect("a semente do Bind não sai do esqueleto escolhido");
     let formas = src
-        .find("for b in &selecao_bits")
+        .find("bone_pick::bind_paths(")
         .expect("o Bind não junta as formas-objecto escolhidas");
     assert!(seed < bind && formas < bind);
 }

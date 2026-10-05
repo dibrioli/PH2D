@@ -164,6 +164,20 @@ diz onde ler o mecanismo:
   vazia, corrente com esqueleto intocada) e `the_loose_roots_are_adopted_before_the_mode_families`.
   ⚠️ O degrau `185` reconta-se na integração (`python3 scripts/schema-recount.py`): a `line/UIUX` e
   outras linhas sobem o mesmo número.
+- **C7 — o ESQUELETO em Object.** Clicar num osso à vista selecciona o esqueleto dono
+  (`bone_pick::object_at`, à frente da arte nos `hits` do `ramo_gizmo_pick`; com a ferramenta de osso
+  na mão o clique é dela). A entidade do esqueleto é um «objecto vazio» para o
+  `group_gizmo_view::is_empty_object` ⇒ anel e gizmo na origem dele — DECIDIDO manter (é o ponto de
+  origem da Armature do Blender, e o alvo do gizmo que move o esqueleto inteiro). O Bind junta as
+  formas da caneta E as formas-objecto da selecção, e a semente sai do osso escolhido ou do esqueleto
+  escolhido (`bone_pick::bind_seed`); `Ctrl+P` empurra o MESMO clique do *Bind to Skeleton* para o
+  barramento. ⭐ `skin_live::skeleton_of` de um osso com objecto devolve os ossos do OBJECTO (todas as
+  raízes — o Bind, a navegação, a pele de cebola e a timeline perguntam isso), e a recusa «vários
+  esqueletos» conta objectos (`esqueletos::esqueletos`). Gates: `moving_the_skeleton_object_carries_the_bound_shape`
+  (controlo: parado), `the_skeleton_of_a_bone_is_the_whole_object` (controlo: sem objecto, a
+  corrente), `a_bone_under_the_finger_selects_its_skeleton_and_seeds_the_bind` (controlo: fora do
+  osso), e os três de costura `the_skeleton_object_is_picked_and_bound_in_object_mode.rs` (vermelho
+  visto sobre o HEAD).
 
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 

@@ -154,8 +154,21 @@ impl crate::App {
             if !pending_bone_bind {
                 break 'bind;
             }
-            let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
-            let semente = osso_selecionado.map(ph2d_ecs::Entity::from_bits);
+            // ⭐ **As formas: as da caneta E as da selecção de objecto** (A14): em Object a forma
+            // escolhida é um OBJECTO (o gizmo), e a caneta pode estar vazia.
+            let mut ids: Vec<ph2d_vec_scene::VecPathId> = self.vec.pen.selected_paths().to_vec();
+            for b in &selecao_bits {
+                if let Some((pid, _)) = self.vec.entities.iter().find(|(_, x)| **x == *b)
+                    && !ids.contains(pid)
+                {
+                    ids.push(*pid);
+                }
+            }
+            // ⭐ **A semente: o osso escolhido, senão o esqueleto escolhido** (em Object a selecção
+            // é o objecto esqueleto, não um osso dele).
+            let semente = osso_selecionado
+                .or_else(|| ph2d_app_skeleton::bone_pick::bind_seed(sim, &selecao_bits))
+                .map(ph2d_ecs::Entity::from_bits);
             // ⛔⛔⛔ **O BIND PERGUNTA ANTES DE PRENDER** (2026-09-18, defeito MEDIDO): sem osso
             // escolhido a semente é `None`, e o `skeleton_of` responde a `None` com **todos os
             // ossos da cena** — com dois esqueletos a forma ficava presa aos SEIS, em silêncio, e

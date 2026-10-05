@@ -355,6 +355,31 @@ pub fn hover(
     })
 }
 
+/// ⭐⭐ **O OBJECTO sob o dedo, em Object** (A14): um osso à vista sob o ponteiro selecciona o
+/// esqueleto dono dele (o clique num osso da Armature do Blender selecciona a Armature); um osso
+/// solto responde por si.
+#[must_use]
+pub fn object_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<u64> {
+    let osso = hit(sim, world, px_to_world)?;
+    let e = Entity::from_bits(osso);
+    Some(ph2d_skeleton_ecs::skeleton_of(sim.world(), e).map_or(osso, Entity::to_bits))
+}
+
+/// ⭐ **A semente do Bind** — o osso escolhido, senão o 1.º osso de um esqueleto escolhido (em Object
+/// a selecção é o OBJECTO esqueleto, não um osso dele).
+#[must_use]
+pub fn bind_seed(sim: &SimWorld, selection: &[u64]) -> Option<u64> {
+    crate::bone_gesture::selected_bone(sim, selection.iter().copied()).or_else(|| {
+        selection.iter().find_map(|&b| {
+            let e = Entity::try_from_bits(b)?;
+            sim.world().get::<ph2d_skeleton_ecs::Skeleton>(e)?;
+            ph2d_skeleton_ecs::bones_of(sim.world(), e)
+                .first()
+                .map(|o| o.to_bits())
+        })
+    })
+}
+
 #[cfg(test)]
 #[path = "bone_pick_tests.rs"]
 mod tests;

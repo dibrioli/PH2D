@@ -418,3 +418,32 @@ fn a_bone_hidden_by_the_eye_is_not_grabbed() {
         "a ponta escondida foi oferecida"
     );
 }
+
+/// ⭐⭐ **Em Object, o osso sob o dedo selecciona o ESQUELETO; a semente do Bind sai do esqueleto
+/// escolhido** (A14). Controlo: fora do osso nada; um osso solto responde por si.
+#[test]
+fn a_bone_under_the_finger_selects_its_skeleton_and_seeds_the_bind() {
+    use crate::bone_pick::{bind_seed, object_at};
+    let mut sim = SimWorld::default();
+    let solto = create(&mut sim, None, [0.0, 50.0], [10.0, 50.0]).expect("osso");
+    let esq = sim.world_mut().spawn(ph2d_skeleton_ecs::Skeleton).id();
+    let osso = create(&mut sim, Some(esq), [0.0, 0.0], [10.0, 0.0]).expect("osso");
+    assert_eq!(object_at(&sim, [5.0, 1.0], 1.0), Some(esq.to_bits()));
+    assert_eq!(
+        object_at(&sim, [5.0, 50.0], 1.0),
+        Some(solto),
+        "o solto responde por si"
+    );
+    assert_eq!(
+        object_at(&sim, [5.0, 25.0], 1.0),
+        None,
+        "controlo: fora do osso"
+    );
+    assert_eq!(bind_seed(&sim, &[esq.to_bits()]), Some(osso));
+    assert_eq!(
+        bind_seed(&sim, &[solto]),
+        Some(solto),
+        "o osso escolhido manda"
+    );
+    assert_eq!(bind_seed(&sim, &[]), None);
+}

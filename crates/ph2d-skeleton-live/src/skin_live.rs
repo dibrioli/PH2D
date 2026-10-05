@@ -160,6 +160,11 @@ pub fn skeleton_of(sim: &SimWorld, seed: Option<Entity>) -> Vec<Entity> {
     // ⭐ A subida é a PORTA — ela tem um segundo leitor (o `recusa_do_bind`), e duas cópias
     // divergiriam no dia do primeiro ajuste.
     let raiz = crate::esqueletos::raiz_do_osso(sim, seed);
+    // ⭐⭐ **Com o OBJECTO esqueleto (A14), a resposta são os ossos DELE** — todas as raízes, como a
+    // Armature do Blender; uma corrente sem objecto continua a ser a corrente.
+    if let Some(obj) = ph2d_skeleton_ecs::skeleton_of(sim.world(), raiz) {
+        return ph2d_skeleton_ecs::bones_of(sim.world(), obj);
+    }
     // ⭐ **E a DESCIDA também é a porta** desde 2026-09-19: ela ganhou um segundo leitor (a pose de
     // repouso, que desce a partir do osso ESCOLHIDO e não da raiz), e duas cópias divergiriam no
     // dia do primeiro ajuste — foi assim que a subida virou porta uma wave antes.

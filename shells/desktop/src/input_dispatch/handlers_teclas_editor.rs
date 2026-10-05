@@ -191,6 +191,18 @@ impl crate::App {
                     a.editor_apply(cmd);
                 }
             }
+            // ⭐ **Ctrl+P — prender ao esqueleto** (o *Parent* do Blender, A14): o MESMO clique do botão
+            // *Bind to Skeleton*, pelo barramento — uma porta, duas teclas.
+            KeyCode::KeyP if self.modifiers.super_key() || self.modifiers.control_key() => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    hero.bus
+                        .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+                            ph2d_editor_core::tool::PanelEvent::Click(
+                                ph2d_editor_core::ids::VECTOR_BONE_BIND,
+                            ),
+                        ));
+                }
+            }
             KeyCode::KeyZ if self.modifiers.super_key() || self.modifiers.control_key() => {
                 let redo = self.modifiers.shift_key();
                 self.undo_or_redo(redo);

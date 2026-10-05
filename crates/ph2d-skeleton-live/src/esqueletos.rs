@@ -55,6 +55,19 @@ pub fn bone_roots(sim: &SimWorld) -> Vec<Entity> {
 ///
 /// ⚠️ **A ordem é por `to_bits` e é DETERMINÍSTICA de propósito** — ver a nota do `skeleton_of`
 /// sobre a ordem da soma em `f64`. ⛔ Isto não é o `canonicalize` que o `CLAUDE.md` §5 proíbe.
+/// ⭐ **Os esqueletos da cena, contados como o artista os vê** (A14): o objecto esqueleto de cada
+/// raiz, ou a própria raiz quando ela é solta. Duas raízes do mesmo objecto são UM esqueleto.
+#[must_use]
+pub fn esqueletos(sim: &SimWorld) -> Vec<Entity> {
+    let mut out: Vec<Entity> = bone_roots(sim)
+        .into_iter()
+        .map(|r| ph2d_skeleton_ecs::skeleton_of(sim.world(), r).unwrap_or(r))
+        .collect();
+    out.sort_by_key(|e| e.to_bits());
+    out.dedup();
+    out
+}
+
 #[must_use]
 pub fn ossos_desde(sim: &SimWorld, raiz: Entity) -> Vec<Entity> {
     let mut out = Vec::new();

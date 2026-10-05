@@ -24,7 +24,6 @@
 //! ali que a sonda lê. *A tela é para o artista; o terminal é para quem mede* — o mesmo par que o
 //! `PH2D_BONE_LOG` já é.
 
-use crate::esqueletos::bone_roots;
 use ph2d_ecs::{Entity, SimWorld};
 
 /// Porque é que um verbo do osso não vai fazer nada.
@@ -138,7 +137,7 @@ pub fn recusa_do_bind(sim: &SimWorld, semente: Option<Entity>) -> Option<RecusaD
     if semente.is_some() {
         return None;
     }
-    let quantos = bone_roots(sim).len();
+    let quantos = crate::esqueletos::esqueletos(sim).len();
     (quantos > 1).then_some(RecusaDoOsso::VariosEsqueletos { quantos })
 }
 

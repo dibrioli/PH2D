@@ -27,7 +27,7 @@ impl Contorno {
             16,
             wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         );
-        let grupos = count.div_ceil(self.grupo);
+        let grupos = count.div_ceil(64);
         let x = grupos.min(65_535);
         let y = grupos.div_ceil(x.max(1));
         let mut enc = gpu

@@ -120,19 +120,10 @@ pub struct VarianteDoPasse {
     pub sem_medida_no_inicio: bool,
 }
 
-/// doc 121 §9.17 — as constantes `override` do contorno que uma variante pode dar.
-pub const CONSTANTES_DO_CONTORNO: [&str; 10] = [
-    "AJUSTE_NA_CONTAGEM",
-    "TOTAL_NO_PERCURSO",
-    "ARESTAS_COMPACTAS",
-    "JUNTA_UMA_POR_TROCO",
-    "ADIADO_NO_LACO",
-    "GEOMETRIA_DO_TROCO",
-    "ARESTAS_POR_PECA",
-    "GRUPO_DO_CONTORNO",
-    "X_SEM_PEDACOS",
-    "X_SO_LACO",
-];
+/// doc 121 §9.17 — as constantes `override` do contorno que uma variante pode dar. Vazia: os pedaços
+/// medidos dobraram-se (§9.17); um candidato novo NASCE `override` e acrescenta aqui o nome dele
+/// (`docs/DevOps/MEDIR_VELOCIDADE.md`).
+pub const CONSTANTES_DO_CONTORNO: &[&str] = &[];
 
 impl VarianteDoPasse {
     /// A variante de `PH2D_FORMAS_CONSTANTES=NOME=v,…` (doc 121 §9.17): a porta para medir as constantes
@@ -173,8 +164,8 @@ impl ShapePass {
     }
 
     /// O mesmo passe com constantes `override` do módulo do contorno (doc 121 §9.16) — a porta da
-    /// sonda intercalada, que liga e desliga pedaços ao criar o pipeline, sem recompilar. Hoje:
-    /// `AJUSTE_NA_CONTAGEM` · `TOTAL_NO_PERCURSO` · `ARESTAS_COMPACTAS` · `JUNTA_UMA_POR_TROCO` (`1` ou `0`).
+    /// sonda intercalada, que liga e desliga pedaços ao criar o pipeline, sem recompilar
+    /// ([`CONSTANTES_DO_CONTORNO`]).
     #[must_use]
     pub fn com_constantes(
         gpu: &GpuContext,

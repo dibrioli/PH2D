@@ -11,7 +11,7 @@
 //! ```text
 //! cargo test -p ph2d-app-motion --lib --profile smoke -- --ignored --nocapture sonda_intercalada
 //! ```
-//! Ambiente: `PH2D_SONDA_VARIANTES=base,F` · `PH2D_SONDA_CENAS=esticadas_tr1,densas_tr0` ·
+//! Ambiente: `PH2D_SONDA_VARIANTES=F,F-D` · `PH2D_SONDA_CENAS=esticadas_tr1,densas_tr0` ·
 //! `PH2D_SONDA_BLOCO=20` (quadros por bloco) · `PH2D_SONDA_RODADAS=7` · `PH2D_SONDA_VELLO=0` (sem a
 //! referência do Vello).
 
@@ -36,43 +36,26 @@ const CENAS: [(&str, &str, &str, bool); 6] = [
     ("densas_tr1", "", "2", true),
 ];
 
-/// As variantes do §9.17: o `base` (os pedaços do §9.15 desligados), o `F` (o produto), o `F` sem UM pedaço
-/// do §9.15 (`F-…`), a ablação `E1F` e os candidatos da emissão tracejada sobre o `F`.
+/// As variantes: o `F` (o produto) e as duas portas de EXECUÇÃO que ficam (o prefixo por subgrupo e a medida
+/// no início, doc 121 §9.15). Os pedaços `override` do §9.15 dobraram-se e os candidatos do §9.17 saíram com o
+/// código deles (doc 121 §9.17); um candidato novo entra aqui como `override` ([`ph2d_shape_gpu::CONSTANTES_DO_CONTORNO`]).
 fn variantes() -> Vec<(&'static str, VarianteDoPasse)> {
-    let com = |c: &[(&'static str, f64)]| VarianteDoPasse {
-        constantes: c.to_vec(),
-        ..VarianteDoPasse::default()
-    };
-    let base = VarianteDoPasse {
-        sem_subgrupo: true,
-        sem_medida_no_inicio: true,
-        ..com(&[
-            ("AJUSTE_NA_CONTAGEM", 0.0),
-            ("TOTAL_NO_PERCURSO", 0.0),
-            ("ARESTAS_COMPACTAS", 0.0),
-            ("JUNTA_UMA_POR_TROCO", 0.0),
-        ])
-    };
-    let lhpg = [
-        ("ADIADO_NO_LACO", 1.0),
-        ("GEOMETRIA_DO_TROCO", 1.0),
-        ("ARESTAS_POR_PECA", 1.0),
-        ("GRUPO_DO_CONTORNO", 32.0),
-    ];
     vec![
-        ("base", base),
         ("F", VarianteDoPasse::default()),
-        ("F-A1a", com(&[("AJUSTE_NA_CONTAGEM", 0.0)])),
-        ("F-A1b", com(&[("TOTAL_NO_PERCURSO", 0.0)])),
-        ("F-B1", com(&[("ARESTAS_COMPACTAS", 0.0)])),
-        ("F-B2", com(&[("JUNTA_UMA_POR_TROCO", 0.0)])),
-        ("E1F", com(&[("X_SEM_PEDACOS", 1.0)])),
-        ("E4F", com(&[("X_SO_LACO", 1.0)])),
-        ("L", com(&lhpg[..1])),
-        ("H", com(&lhpg[1..2])),
-        ("P", com(&lhpg[2..3])),
-        ("G32", com(&lhpg[3..])),
-        ("LHPG", com(&lhpg)),
+        (
+            "F-D",
+            VarianteDoPasse {
+                sem_subgrupo: true,
+                ..VarianteDoPasse::default()
+            },
+        ),
+        (
+            "F-c2",
+            VarianteDoPasse {
+                sem_medida_no_inicio: true,
+                ..VarianteDoPasse::default()
+            },
+        ),
     ]
 }
 

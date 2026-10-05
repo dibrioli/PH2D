@@ -37,30 +37,6 @@ struct Contas {
     _p2: u32,
 }
 
-// doc 121 §9.15 — os pedaços da rodada; §9.16 — `override`, para a sonda intercalada os escolher ao criar o
-// pipeline (`ShapePass::com_constantes`), sem recompilar.
-// O ajuste do tracejado sai da CONTAGEM (o 5.º quinto), não de uma volta do `cs_escreve`.
-override AJUSTE_NA_CONTAGEM: bool = true;
-// O total de um fechado sai do PRÓPRIO percurso; o 1.º traço (o da emenda) emite-se no fim.
-override TOTAL_NO_PERCURSO: bool = true;
-// O `cs_deposita` corre um fio por aresta ESCRITA (o 4.º quinto), não por aresta reservada.
-override ARESTAS_COMPACTAS: bool = true;
-// A reserva do tracejado conta a junta UMA vez por troço (só uma peça por troço passa do fim dele).
-override JUNTA_UMA_POR_TROCO: bool = true;
-// doc 121 §9.17 (d) — os candidatos da emissão tracejada, medidos pela sonda intercalada.
-// L: o 1.º traço adiado de um fechado sai pelo MESMO sítio de chamada (uma volta a mais do laço).
-override ADIADO_NO_LACO: bool = false;
-// H: a geometria do troço (cantos, direcção, normal, bissectrizes) uma vez por troço; a junta depois.
-override GEOMETRIA_DO_TROCO: bool = false;
-// P: as arestas de uma peça com um teste de capacidade e a caixa pelos quatro cantos.
-override ARESTAS_POR_PECA: bool = false;
-// G32: o grupo do `cs_conta` e do `cs_escreve` (o despacho do Rust lê a mesma constante).
-override GRUPO_DO_CONTORNO: u32 = 64u;
-// Ablação E1F (sai depois da rodada): o `F` sem emitir pedaços.
-override X_SEM_PEDACOS: bool = false;
-// Ablação E4F (sai depois da rodada): o laço e o `pedaco` correm, a geometria e as arestas não.
-override X_SO_LACO: bool = false;
-
 @group(2) @binding(0) var<uniform> contas: Contas;
 // Cinco contagens por cópia, `n + 1` entradas cada (a última é o total), e depois do `cs_soma` onde
 // cada uma começa: as ARESTAS reservadas (múltiplo de `SEGS_POR_BLOCO`), as CÉLULAS e as LINHAS de
@@ -315,84 +291,18 @@ fn emite_pedaco(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, tr: TrocoTr
     } else {
         emite_tampa(q.zw, u, r, (it.ponta >> 8u) & 3u);
     }
-    emite_lados(q.xy + m0, q.zw + m1, q.zw - m1, q.xy - m0, faixa0, faixa1);
-}
-
-// O quadrilátero `q0 → q1 → q2 → q3` de uma peça, sem as arestas de ponta que a faixa partilha.
-// P (§9.17): um teste de capacidade por peça e a caixa pelos quatro cantos — os pontos das arestas.
-fn emite_lados(q0: vec2<f32>, q1: vec2<f32>, q2: vec2<f32>, q3: vec2<f32>, faixa0: bool, faixa1: bool) {
+    let q0 = q.xy + m0;
+    let q1 = q.zw + m1;
+    let q2 = q.zw - m1;
+    let q3 = q.xy - m0;
     let s = positivo(q0, q1, q2);
-    if !ARESTAS_POR_PECA {
-        if !faixa0 {
-            aresta(q3, q0, s);
-        }
-        aresta(q0, q1, s);
-        aresta(q2, q3, s);
-        if !faixa1 {
-            aresta(q1, q2, s);
-        }
-        return;
+    if !faixa0 {
+        aresta(q3, q0, s);
     }
-    let k = 2u + select(1u, 0u, faixa0) + select(1u, 0u, faixa1);
-    if cursor + k <= limite_saida {
-        var o = base_saida + cursor;
-        if !faixa0 {
-            contorno_rw[o] = lado(q3, q0, s);
-            o += 1u;
-        }
-        contorno_rw[o] = lado(q0, q1, s);
-        contorno_rw[o + 1u] = lado(q2, q3, s);
-        if !faixa1 {
-            contorno_rw[o + 2u] = lado(q1, q2, s);
-        }
-        cmin = min(cmin, min(min(q0, q1), min(q2, q3)));
-        cmax = max(cmax, max(max(q0, q1), max(q2, q3)));
-    }
-    cursor += k;
-}
-
-fn lado(p0: vec2<f32>, p1: vec2<f32>, positivo: bool) -> vec4<f32> {
-    return select(vec4<f32>(p1, p0), vec4<f32>(p0, p1), positivo);
-}
-
-// H (§9.17): os pedaços `[n0, n1]` de UM troço, cada um o `emite_pedaco` com a geometria do troço feita uma
-// vez (as bissectrizes com o recuo GEOMÉTRICO; cada pedaço compara-o com o seu). A junta do troço — no
-// máximo UMA, a da peça que passa do fim (§9.15 B2) — sai depois do laço.
-fn emite_troco(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, tr: TrocoTracejado, sub: SubTracejado, n0: f32, n1: f32, salta0: bool) {
-    let r = it.meia * caneta;
-    if tr.corda <= 0.0 || tr.len <= 0.0 || r <= 0.0 {
-        return;
-    }
-    let a = aplica(lin, t, it.a);
-    let b = aplica(lin, t, it.b);
-    let cf = aplica(lin, t, it.c);
-    let u = (b - a) / tr.corda;
-    let nr = perp(u) * r;
-    let quina = (it.ponta & 8u) != 0u;
-    let e0 = bissectriz_geo(aplica(lin, t, it.d), a, b, r, (it.ponta & 4u) != 0u, it.junta, it.limite);
-    let e1 = bissectriz_geo(a, b, cf, r, quina, it.junta, it.limite);
-    var junta = false;
-    for (var n = n0; n <= n1; n += 1.0) {
-        let p = pedaco(tr, sub, n);
-        if (salta0 && n == 0.0) || !p.valido || X_SEM_PEDACOS {
-            continue;
-        }
-        let q = cantos_do_pedaco(a, b, tr, p);
-        let faixa0 = p.liga0 && serve(e0, p.recuo0);
-        let faixa1 = p.liga1 && serve(e1, p.recuo1);
-        if !p.liga0 {
-            emite_tampa(q.xy, -u, r, (it.ponta >> 6u) & 3u);
-        }
-        if !p.liga1 {
-            emite_tampa(q.zw, u, r, (it.ponta >> 8u) & 3u);
-        }
-        junta = junta || (p.liga1 && !faixa1);
-        let m0 = select(nr, e0.xy, faixa0);
-        let m1 = select(nr, e1.xy, faixa1);
-        emite_lados(q.xy + m0, q.zw + m1, q.zw - m1, q.xy - m0, faixa0, faixa1);
-    }
-    if junta {
-        emite_junta(u, b, cf, r, select(2u, it.junta, quina), it.limite);
+    aresta(q0, q1, s);
+    aresta(q2, q3, s);
+    if !faixa1 {
+        aresta(q1, q2, s);
     }
 }
 
@@ -401,68 +311,43 @@ fn emite_troco(it: Eixo, lin: vec4<f32>, t: vec2<f32>, caneta: f32, tr: TrocoTra
 // percurso é a MESMA soma (os mesmos `arco`, pela mesma ordem), logo esse traço emite-se no fim.
 fn emite_tracejado(i0: u32, lin: vec4<f32>, t: vec2<f32>, caneta: f32, ajuste: f32) {
     var sub = cabeca_do_tracejado(i0, caneta, ajuste);
-    if !TOTAL_NO_PERCURSO {
-        sub = sub_tracejado(i0, lin, t, caneta, ajuste);
-    }
     if sub.per <= 0.0 {
         return;
     }
-    let adia = TOTAL_NO_PERCURSO && sub.fechado;
-    // L (§9.17): o traço adiado é a volta `k == n` do mesmo laço — o mesmo sítio de chamada.
-    let voltas = sub.n + select(0u, 1u, adia && ADIADO_NO_LACO);
     var i = i0;
     var s0 = 0.0;
-    for (var k = 0u; k < voltas; k += 1u) {
-        let extra = k == sub.n;
-        if extra {
-            fecha_o_tracejado(&sub, s0);
-            i = i0;
-            s0 = 0.0;
-        }
+    for (var k = 0u; k < sub.n; k += 1u) {
         i = proximo_troco(i);
         let it = eixo[i];
-        let tr = troco_tracejado(it, sub, select(k, 0u, extra), s0, lin, t);
-        let n0 = select(tr.n0, 0.0, extra);
-        let n1 = select(tr.n1, 0.0, extra);
-        let salta0 = adia && k == 0u && !extra;
-        if GEOMETRIA_DO_TROCO {
-            emite_troco(it, lin, t, caneta, tr, sub, n0, n1, salta0);
-        } else {
-            for (var n = n0; n <= n1; n += 1.0) {
-                if salta0 && n == 0.0 {
-                    continue;
-                }
-                let p = pedaco(tr, sub, n);
-                if p.valido && !X_SEM_PEDACOS {
-                    if X_SO_LACO {
-                        cursor += 4u;
-                    } else {
-                        emite_pedaco(it, lin, t, caneta, tr, p);
-                    }
-                }
+        let tr = troco_tracejado(it, sub, k, s0, lin, t);
+        for (var n = tr.n0; n <= tr.n1; n += 1.0) {
+            if sub.fechado && k == 0u && n == 0.0 {
+                continue;
+            }
+            let p = pedaco(tr, sub, n);
+            if p.valido {
+                emite_pedaco(it, lin, t, caneta, tr, p);
             }
         }
         s0 = tr.fim;
         i += 1u;
     }
-    if adia && !ADIADO_NO_LACO {
+    if sub.fechado {
         fecha_o_tracejado(&sub, s0);
         let it = eixo[proximo_troco(i0)];
         let tr = troco_tracejado(it, sub, 0u, 0.0, lin, t);
         let p = pedaco(tr, sub, 0.0);
-        if p.valido && !X_SEM_PEDACOS {
+        if p.valido {
             emite_pedaco(it, lin, t, caneta, tr, p);
         }
     }
 }
 
 // As peças do eixo de uma cópia (os cabeçalhos de bloco não desenham nada; um sub-caminho tracejado
-// percorre-se inteiro a partir do primeiro troço dele). `ajuste`: o da contagem (§9.15), ou `0` ⇒
-// calcula-o aqui.
-fn percorre(cp: Copia, ajuste_da_contagem: f32) {
+// percorre-se inteiro a partir do primeiro troço dele). `ajuste`: o da contagem (§9.15).
+fn percorre(cp: Copia, ajuste: f32) {
     cursor = 0u;
     let caneta = bitcast<f32>(cp.eixo_rg.w);
-    var ajuste = ajuste_da_contagem;
     for (var i = cp.eixo_rg.x; i < cp.eixo_rg.x + cp.eixo_rg.y; i += 1u) {
         let it = eixo[i];
         if it.tipo == 3u {
@@ -471,9 +356,6 @@ fn percorre(cp: Copia, ajuste_da_contagem: f32) {
         if !tracejado(it) {
             emite_peca(it, cp.lin, cp.t, caneta);
         } else if (it.ponta & SUB_INICIO) != 0u {
-            if ajuste == 0.0 {
-                ajuste = ajuste_do_tracejado(cp.eixo_rg.x, cp.eixo_rg.y, cp.lin, cp.t, caneta);
-            }
             emite_tracejado(i, cp.lin, cp.t, caneta, ajuste);
         }
     }
@@ -595,17 +477,12 @@ fn limite_de_arestas(cp: Copia) -> Limite {
             // ⚠️ `0,99`: a folga cobre o arredondamento do arco.
             let per = (it.traco + it.vao) * caneta;
             let len = arco(it, cp.lin, cp.t);
-            if AJUSTE_NA_CONTAGEM {
-                ajuste_passo(&aj, it, len, caneta);
-            }
+            ajuste_passo(&aj, it, len, caneta);
             let pecas = u32(min(ceil((len / max(per, 1.0e-30) + 0.5) / 0.99), TRACOS_POR_TROCO_MAX)) + 2u;
             let tampa = max(arestas_da_tampa((it.ponta >> 6u) & 3u, r), arestas_da_tampa((it.ponta >> 8u) & 3u, r));
             let junta = max(4u, arestas_do_leque(r));
             // ⭐ §9.15 — só a peça que passa do FIM do troço liga ao seguinte (e emite a junta).
-            var por_troco = pecas * (4u + 2u * tampa) + junta;
-            if !JUNTA_UMA_POR_TROCO {
-                por_troco = pecas * (4u + 2u * tampa + junta);
-            }
+            let por_troco = pecas * (4u + 2u * tampa) + junta;
             n = min(n + por_troco, 0x3fffffffu);
         } else if it.tipo == 0u {
             n += 4u;
@@ -625,14 +502,9 @@ fn indice(gid: vec3<u32>, nwg: vec3<u32>) -> u32 {
     return gid.x + gid.y * nwg.x * 64u;
 }
 
-// O índice da cópia no `cs_conta` e no `cs_escreve`, com o grupo deles.
-fn indice_da_copia(gid: vec3<u32>, nwg: vec3<u32>) -> u32 {
-    return gid.x + gid.y * nwg.x * GRUPO_DO_CONTORNO;
-}
-
-@compute @workgroup_size(GRUPO_DO_CONTORNO)
+@compute @workgroup_size(64)
 fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
-    let ii = indice_da_copia(gid, nwg);
+    let ii = indice(gid, nwg);
     if ii >= contas.n {
         return;
     }
@@ -646,9 +518,7 @@ fn cs_conta(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
         if p.eixo {
             let lim = limite_de_arestas(p.cp);
             nc = (lim.arestas + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
-            if AJUSTE_NA_CONTAGEM {
-                ajuste = lim.ajuste;
-            }
+            ajuste = lim.ajuste;
         }
         ne = p.nf + p.nm + nc;
         nmask = p.linhas * p.celulas;
@@ -727,12 +597,9 @@ fn cs_soma(@builtin(local_invocation_index) li: u32) {
         contagem[n] = acc;
         contagem[m0 + n] = acc_m;
         contagem[l0 + n] = acc_l;
-        // ⭐ doc 121 §9.7–§9.12 — os despachos das células: um fio por LINHA, um por ARESTA e um por
+        // ⭐ doc 121 §9.7–§9.12 — os despachos das células: um fio por LINHA e um por
         // PIXEL das células que cabem (as de uma cópia que não cabe não se lêem).
         despacha(0u, acc_l);
-        if !ARESTAS_COMPACTAS {
-            despacha(3u, acc);
-        }
         despacha(6u, min(acc_m, contas.cap_celulas) * PIXELS_DA_CELULA);
         // doc 121 §9.13 — todas as cópias pela ENXUTA, até o `cs_escreve` pedir a completa.
         desenho(DESENHO_ENXUTA, n);
@@ -807,9 +674,9 @@ fn transforma(cp: Copia, s0: u32, k: u32, saida: u32) {
     }
 }
 
-@compute @workgroup_size(GRUPO_DO_CONTORNO)
+@compute @workgroup_size(64)
 fn cs_escreve(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nwg: vec3<u32>) {
-    let ii = indice_da_copia(gid, nwg);
+    let ii = indice(gid, nwg);
     if ii >= contas.n {
         return;
     }
@@ -980,8 +847,8 @@ fn aresta_de(g: u32) -> ArestaDoFio {
     var a: ArestaDoFio;
     a.valida = false;
     let n = contas.n;
-    // O prefixo que o fio percorre: o das ESCRITAS (§9.15) ou o da reserva.
-    let p0 = select(0u, quinto(3u), ARESTAS_COMPACTAS);
+    // O prefixo que o fio percorre: o das arestas ESCRITAS (§9.15; o por-aresta despacha-o o `cs_soma_escritas`).
+    let p0 = quinto(3u);
     if g >= contagem[p0 + n] {
         return a;
     }

@@ -104,11 +104,6 @@ pub(crate) struct Contorno {
     pub(crate) medir_ja: bool,
     /// `false` ⇒ só a leitura assíncrona (os gates que medem a mistura do 1.º quadro).
     pub(crate) mede_no_inicio: bool,
-    /// doc 121 §9.15 — o `cs_deposita` por aresta ESCRITA (o `override ARESTAS_COMPACTAS` do módulo:
-    /// os dois mudam juntos, pelas mesmas constantes).
-    compactas: bool,
-    /// O grupo do `cs_conta` e do `cs_escreve` (o `override GRUPO_DO_CONTORNO`, §9.17).
-    grupo: u32,
     /// O grupo `1` do DESENHO (as três leituras).
     pub(crate) leitura: wgpu::BindGroupLayout,
     /// O grupo `2` do CÁLCULO (o uniforme e as cinco escritas).
@@ -343,19 +338,6 @@ impl Contorno {
             subgrupo: true,
             medir_ja: true,
             mede_no_inicio: true,
-            compactas: constantes
-                .iter()
-                .find(|(k, _)| *k == "ARESTAS_COMPACTAS")
-                .is_none_or(|(_, v)| *v != 0.0),
-            #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "um grupo"
-            )]
-            grupo: constantes
-                .iter()
-                .find(|(k, _)| *k == "GRUPO_DO_CONTORNO")
-                .map_or(64, |(_, v)| *v as u32),
             leitura,
             escrita,
             escrita_celulas,
@@ -526,7 +508,7 @@ impl Contorno {
             self.garante(gpu, u64::from(count));
         }
         let (escrita, celulas) = self.prepara(gpu, count);
-        let grupos = count.div_ceil(self.grupo);
+        let grupos = count.div_ceil(64);
         let x = grupos.min(65_535);
         let y = grupos.div_ceil(x.max(1));
         // Três passes de cálculo, cada um com o seu relógio no perfilador (`PH2D_FLUID_PROFILE=1`):
@@ -554,10 +536,9 @@ impl Contorno {
             let mut pass = passe(encoder, "render.contorno.escreve");
             pass.set_pipeline(self.escreve.de(tracejado));
             pass.dispatch_workgroups(x, y, 1);
-            if self.compactas {
-                pass.set_pipeline(&self.soma_escritas);
-                pass.dispatch_workgroups(1, 1, 1);
-            }
+            // doc 121 §9.15 — o prefixo das arestas ESCRITAS e o despacho do `cs_deposita` por elas.
+            pass.set_pipeline(&self.soma_escritas);
+            pass.dispatch_workgroups(1, 1, 1);
         }
         {
             let mut pass = passe(encoder, "render.contorno.celulas");

@@ -1956,3 +1956,30 @@ tracejadas `607 600` → **`343 000`** · `127 400`.
 - ⛔ **Na RTX a sonda com `13` variantes voltou a morrer com SIGSEGV DEPOIS do `test result: ok`**, mesmo com
   `__GL_SHADER_DISK_CACHE=0` (com `2` variantes saiu limpa). Os dados estão completos (a tabela sai antes); o roteiro
   passa a aceitar a saída quando o `test result: ok` está lá e a dizê-lo alto.
+
+**A dobra (`df46623f5`):** os quatro pedaços `true` com os ramos `false` apagados; os candidatos e as ablações saem
+com o código deles (o `shape.wgsl` volta ao de `64b08daab`); sai também o recurso `ajuste == 0 ⇒ calcula-o aqui` do
+`percorre`, que a contagem tornou morto e nenhum `override` apagava. **Registos do `F` dobrado contra o `F` por
+`override` (iGPU): `16` dos `17` shaders IGUAIS** (a porta não custava nada); o `cs_escreve` completo `47 112 → 46 216`
+B, `28 → 26` SGPRs derramados — o recurso morto. Sonda intercalada sobre o dobrado (`F`, `F-D`, `F-c2`): todas as
+imagens iguais ao `F`; esticadas tracejadas `0,940` ms iGPU · `0,294` RTX. `contorno.rs` `695 → 624` linhas (o
+`garante` mudou-se para `contorno_capacidade.rs`, `73 → 144`). A sonda fica com `F` · `F-D` · `F-c2`; a lista da
+porta (`CONSTANTES_DO_CONTORNO`) fica vazia, à espera do próximo candidato.
+
+**(a) as mutações ✅ `7` de `7` SANGRARAM** ([`mutacao_o_bloco_do_9_15_2026-10-05.py`](ferramentas/mutacao_o_bloco_do_9_15_2026-10-05.py),
+sozinho na árvore depois do gate; pré-voo `7/7`; corrida limpa `14/14` nas duas placas):
+
+| mutação | placa | reprovou |
+|---|---|---|
+| `m1` o ajuste da contagem a `1` | RTX | `3`: os dois do tracejado contra o Vello e o pixel, a escolha da variante |
+| `m2` o traço adiado do fechado nunca emitido | RTX | os mesmos `3` |
+| `m3` o prefixo das escritas deslocado de um bloco | RTX | `7` (paridade com o Vello, contorno calculado, tracejado) |
+| `m4` a reserva sem as pontas | RTX | `5` (o tracejado e a cena nova: cópias recusadas por falta de reserva) |
+| `m5a` o c2 desligado | RTX | `a_cena_nova_mede_a_capacidade_antes_do_primeiro_quadro` |
+| `m5b` a cena nova sem `medir_ja` | RTX | o mesmo |
+| `m6` o subgrupo sem a correcção da fronteira da célula | **iGPU** (subgrupo `64`) | `9` |
+
+**Fecho:** gate batched sobre `df46623f5` (base `5d596eaaf`) verde — `nextest-impacted` `15 713/15 713`, `check
+--workspace --all-targets` com `-D warnings`, clippy `--all-targets --all-features` das três crates, `fmt`, `machete`,
+`check-standalone-optional`, `check-workflow-packages`, `ph2d-shape-gpu --test it --ignored` `14/14` nas duas placas,
+`motion_shape_placa` `5/5` nas duas, `ph2d-gpu-cook formas` `2/2` nas duas, o tecto de LOC, censos `114/114`.

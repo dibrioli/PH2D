@@ -1743,3 +1743,4 @@ a propriedade*. Ver [[reference_topic_mutation_proofs]] · [[reference_topic_gat
   a premissa media-se em CPU (`126 870` lisos, zero acima da cerca)
   ([[feedback_a_fence_implied_by_another_fence_never_decides]], 04/10).
 - ⛔⛔ **A PAREDE MÉDIA DE UMA SONDA QUE COMEÇA FRIA ESCONDE UM QUADRO** — `76` ms em `250` eram os `0,30` ms «nunca explicados»; leia a mediana e os primeiros quadros ([[feedback_a_mean_wall_over_a_loop_that_starts_cold_hides_one_slow_frame]], 04/10).
+- ⛔⛔ **CRITÉRIO «NENHUMA CENA MELHORA SEM ELE» TIRA UMA TROCA** — à letra tirava o B1 (`−2,2 %` nas conformes contra `+16 %` nas densas); e `0` derrames não mexeram no tempo com duas ondas ([[feedback_a_leave_one_out_criterion_is_blind_to_a_trade_between_scenes]], 05/10).

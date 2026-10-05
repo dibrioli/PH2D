@@ -193,10 +193,11 @@
 | [0177](0177-as-camadas-do-painter-juntam-se-em-tons-de-ecra.md) | Accepted | As camadas do Painter juntam-se em tons de ecrã (sRGB codificado), não em luz |
 | [0178](0178-os-mosaicos-da-malha-andavel-constroem-se-em-paralelo.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | Os mosaicos da malha andável constroem-se em paralelo: exceção `rayon` na `ph2d-navmesh` |
 | [0179](0179-o-3d-sai-do-ph2d.md) | Aceite (2026-10-05). | O 3D sai do PH2D |
+| [0180](0180-as-procuras-de-caminho-a-meio-avancam-em-paralelo.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | As procuras de caminho A MEIO avançam em paralelo: exceção `rayon` na ponte da física |
 
 ---
 
-**184 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**185 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

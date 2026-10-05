@@ -1683,3 +1683,94 @@ juntas num tique) mede-se; na web o `rayon` cai para uma thread e o tique paga-a
 6. Na cena de stress a `200` agentes, os que esperam o 1.º caminho no fim da sonda caem a `≤ 10 %`, com o pior tique
    depois da porta `≤ 2×` o de sem lama (load anotado). Senão o paralelo não entra e o orçamento fica a vazão (recusa
    medida, com a tabela).
+
+### §23.5 — O que mudou, o que se mediu, e o que a medição corrigiu no caminho
+
+**O desenho final** (o §23.2 e o §23.4, com as correcções que a régua mandou):
+
+1. **«Mudou» é o conteúdo** (`TiledMesh::assinatura`: os mosaicos e a assinatura de cada um — a assinatura das
+   ENTRADAS mudava com um obstáculo fora da região) contra a do tique anterior desta corrida, que vai no anel
+   (`ControllerMemory::nav_sinais`); depois de um scrub, uma malha cuja actualização partiu de outro conteúdo
+   percorre o caminho inteiro (`sem_zona`).
+2. **A procura abre-se no PEDIDO** (`Plano::begin`; as que não custam nada acabam logo) e paga do orçamento; sem
+   a vez, a fila deve-lha e o agente anda o que tem.
+3. **A pausa** acontece depois do `pop` em que o trabalho PASSOU o tecto (um tecto `W` paga uma procura de `W`; o
+   scrub refaz com `W − 1`).
+4. **O passo em paralelo** (`PROCURAS_EM_PARALELO = 16`, `rayon`, ADR-0180): antes da condução, as procuras a
+   meio avançam juntas, a MAIS ADIANTADA primeiro, cada uma com uma fatia do orçamento; a fila e a condução, em
+   série, ficam com o que a maior fatia não gastou — **o caminho crítico do tique é UM orçamento**.
+5. **Uma procura a meio de outras entradas recomeça**; cada recomeço SEGUIDO com trabalho feito DOBRA a fatia da
+   seguinte (`fatia_depois_de`: vivacidade numa malha que nunca pára, sem pico de uma vez).
+
+**A medição final** (`medir_replaneio`, a régua do dono de 05/10: as versões no mesmo processo, 7 rodadas
+intercaladas com a ordem rodada, o MÍNIMO e a mediana; perfil `smoke`; ⚠️ load `22–37` — a máquina estava cheia de
+outras linhas, e as rodadas intercaladas são o que torna a comparação válida assim). A = toda procura inteira no
+tique (`set_nav_slices(false)`); **B = o produto** (16 em paralelo):
+
+| lamas | agentes | depois da porta A → **B** | CONTROLO sem porta A → **B** | trabalho crítico num tique A → **B** | `falta` A → B | sem caminho no fim (B) |
+|---|---|---|---|---|---|---|
+| 0 | 10 · 50 · 200 | `6,7 · 9,3 · 9,2` → **`5,4 · 6,0 · 8,2`** | `0,8 · 1,7 · 6,1` → `0,7 · 1,8 · 5,7` | `35 · 34 · 50 mil` → **`24 · 28 · 28 mil`** | `+0,1 · +0,3 · +0,8 %` | `0` |
+| 150 | 10 | `48,0` → **`5,9`** | `1,2` → `6,4` | `328 mil` → **`40 mil`** | `+0,6 %` | `0` |
+| 150 | 50 | `58,7` → **`7,5`** | `37,0` → **`6,0`** | `651 mil` → **`40 mil`** | `+1,2 %` | `0` |
+| 150 | 200 | `65,9` → **`12,9`** | `88,4` → **`11,1`** | `968 mil` → **`40 mil`** | `+2,2 %` | `0` (em série: `189`) |
+
+**Contra o kill-criterion:** (1) ✓ com a ressalva de que os gates da LEI DA FILA mudaram de observável (a
+procura abre-se no pedido: «quem foi servido» é quem TEM o caminho) e correm numa faixa (`set_nav_parallel(0)`);
+o «sempre pelo menos um» da W9 saiu (quem nasce com a fila cheia espera um tique). (2) ✓ (gates abaixo). (3) depois
+da porta ✓ (`1,1 · 1,25 · 1,6×` o de sem lama); ⛔ o CONTROLO com lama a `10` agentes fica em `6,4 ms` contra `0,7`
+sem lama — o critério comparava coisas diferentes: A faz todo o trabalho no tique da porta (`48 ms`) e fica vazio
+depois, B reparte-o pelos tiques seguintes a um orçamento cada; o que se cumpre é «nenhum tique paga mais que um
+orçamento (dois, num recomeço)». (4) ✓ (`≤ +2,2 %`). (5) ✓. (6) ✓ (`0` à espera a `200`). Com `8` em paralelo também `0` na medição final (`62–63` antes
+da ordem pela mais adiantada), mas o pior tique a `50` agentes fica em `11,1 ms` (`7,5` com `16`) e o crítico chega a
+`80 000` — ficam `16`.
+
+**O que a régua corrigiu no caminho** (cada um foi um defeito do desenho, medido, e não uma afinação):
+
+| achado | medido | cura |
+|---|---|---|
+| quem tem uma procura a meio ficava com a estimativa de quem nunca procurou; os que não tinham começado passavam-lhe à frente | `47` procuras e `5,1 M` de trabalho num tique (a porta recomeçava todas, e cada uma corria inteira ao 1.º recomeço) | a meio, primeiro; depois, o passo em paralelo |
+| em série, o orçamento é a VAZÃO na cena de stress | a `200` agentes, `157` sem caminho ao fim de `8 s` (orçamento `40 000`: `107`; `80 000`: `14`, o tique a `15 ms`) | o passo em paralelo (`16`: `0`) |
+| o paralelo e a série somavam-se | o caminho crítico em DOIS orçamentos (`9,6 ms` contra `4,6` sem lama a `10`) | a série fica com o que a maior fatia não gastou |
+| a fila revezava as procuras a meio pela espera | nenhuma acabava antes de a porta seguinte as recomeçar; ao 3.º recomeço, inteira (`150 000` num tique) | a mais ADIANTADA primeiro |
+| «corre inteira ao 3.º recomeço» | na cena de stress há procuras de `200–360 000` (`25–40 ms`), mais longas que o intervalo da porta da sonda | dobrar a fatia por recomeço (o crítico: `40 000` no pior) |
+| um recomeço sem trabalho feito contava | dobrava a fatia de quem não perdeu nada | só conta o que tinha trabalho |
+
+### §23.6 — ⛔ Recusas MEDIDAS
+
+| recusado | porquê |
+|---|---|
+| subir o orçamento em vez do paralelo | `80 000`: o tique a `15 ms` e ainda `14` à espera a `200` agentes (§23.4) |
+| guardar o estado da procura a meio no anel | megabytes por âncora (`256` âncoras); o anel leva a descrição e o scrub refá-la |
+| continuar a procura numa malha nova (sem recomeçar) | o estado dela fala dos polígonos da malha velha; a numeração muda quando QUALQUER mosaico muda |
+| guardar a malha velha (`Arc`) para a procura acabar nela | o anel reteria uma versão da malha por âncora com procura a meio (`~3 MB` cada; até `~80` versões na sonda) |
+| `PROCURAS_EM_PARALELO` pelo número de núcleos da máquina | o resultado mudaria com a máquina (o hash do CI compara três) |
+
+### §23.7 — A prova
+
+Gates novos: `a_procura_em_fatias_e_a_procura_inteira_ao_bit` (`ph2d-navmesh`: fatias de `1 · 7 · 61`, com e sem
+atalhos, a pesos 4 e 10, e refeita do zero até cada pausa — `140` de `144` procuras pararam a meio, `132` pausas
+refeitas, `9` caminhos por um atalho) · `nav_fatias` (8): `uma_procura_que_nao_cabe_para_a_meio_e_acaba_no_mesmo_caminho`
+(+ CONTROLO sem tecto) · `um_scrub_a_meio_de_uma_procura_em_fatias_devolve_a_mesma_corrida` (também com a procura
+a meio NO MOMENTO do scrub) · `quem_segue_um_alvo_que_salta_espera_pela_vez` · `o_passo_em_paralelo_da_o_mesmo_com_uma_thread_e_com_oito`
+· `uma_malha_que_nunca_para_nao_deixa_a_procura_sem_acabar` · `com_poucas_faixas_a_procura_mais_adiantada_acaba_primeiro`
+· `uma_procura_que_nao_comecou_nao_conta_como_recomeco` · `uma_procura_a_meio_numa_malha_que_mudou_recomeca` ·
+`um_scrub_numa_corrida_com_a_porta_a_alternar_devolve_a_mesma_corrida` (`nav_mundo`: a fixtura CONTÉM o fenómeno — o
+fim com a porta fechada, cada âncora com ela aberta).
+
+Mutação **18 / 19** ([`mutacao_navegacao_w15_2026-10-05.py`](ferramentas/mutacao_navegacao_w15_2026-10-05.py), o
+motor da W14). A 1.ª corrida deu `13 / 22`: quatro mutações eram de código MORTO (a ordem das procuras a meio na fila
+da série só valia sem o passo em paralelo, que não é um modo do produto — cortado); `F3` escapava porque a
+referência «inteira» passa pelo mesmo código (observador novo: o gate da dominância); `S1/S2` escapavam porque o gate
+do scrub tinha a fixtura VAZIA (o orçamento `1` deixava os guardas sem caminho no tique do replay — substituído);
+`V6`, `P2` e a ordem do paralelo não tinham régua (três gates novos); `S3` perdeu a régua com o gate substituído e
+ganhou-a no scrub com a procura a meio. ⏳ **`S5` sobrevive:** sem a guarda `sem_zona`, a zona do que mudou depois de
+um scrub é a relativa à malha do FIM da corrida; a guarda percorre o caminho inteiro, o que dá a mesma resposta que a
+verificação parcial da corrida (todo troço fora da zona que mudou anda-se, por construção) — uma fixtura que a
+separe pede duas portas com mudanças em zonas diferentes entre o âncora, o agora e o fim.
+
+### §23.8 — ⏳ O que fica
+
+- `S5` (acima).
+- A barreira larga e lenta (§22.6) e a dominância da ponderada (§22.4), como estavam.
+- Com a fila cheia, as procuras novas de quem replaneia por motivo próprio esperam um tique pela vez — um
+  perseguidor numa cena de stress segue o alvo com um tique de atraso a mais.

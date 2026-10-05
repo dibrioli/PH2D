@@ -68,7 +68,7 @@ mod copies;
 mod kernel;
 mod soft;
 use copies::{falloff_at, positions, tile, tints};
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 

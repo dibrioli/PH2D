@@ -1220,7 +1220,7 @@ escrita no script para ninguém a ler como buraco.*
   e o `pose.rs` (3) vivem numa crate-folha, `ph2d-rig-kinematics` (`0bb491ca3`); o predicado «quem é pai», que o
   `rig.bones` copiava letra por letra, é a porta `fk::pai`. E a MESMA doença em mais `38` crates — o sorteio
   `hash3`/`rand01`, o `cos_sin_cycles` e a acumulação das forças, cada cópia a dizer «o vocabulário partilhado é o
-  comportamento» — vive agora na `ph2d-node-kit` (`hash`/`trig` sem dependências, `forca` atrás da feature; a
+  comportamento» — vive agora na `ph2d-motion-kit` (`hash`/`trig` sem dependências, `forca` atrás da feature; a
   `ph2d-contact` e a `ph2d-bloom` usam-na). Recenso de ficheiros `.rs` byte-iguais `> 1 KB` entre crates: `5`
   grupos → `0`. **Portão:** `architecture_a_lei_partilhada_dos_nos_vive_numa_porta` (`ph2d-editor-core`) reprova
   um ficheiro byte-igual e uma definição de `hash3`/`cos_sin_cycles`/`sin_cycles` fora da porta — `3/3` mutações a

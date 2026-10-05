@@ -33,7 +33,7 @@ use ph2d_nodegraph::node::{
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 use hash::hash3;
-use ph2d_node_kit::hash;
+use ph2d_motion_kit::hash;
 // ⚠️ **`Region`, e não `Domain`** — a palavra `Domain` já é da casa: no
 // `ph2d_nodegraph::port` ela diz em que PLANO de dados a porta vive (instâncias,
 // vetor, campo). Reusá-la para «a região do plano» daria dois sentidos ao mesmo

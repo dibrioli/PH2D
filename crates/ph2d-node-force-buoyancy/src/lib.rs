@@ -39,7 +39,7 @@
 //! A horizontal current is *not* a param here: that is `force.wind` with `angle = 0`, the
 //! same argument by which there is no separate gravity node.
 //!
-//! HR-5: the wave is the corrected parabolic sine (`ph2d_node_kit::trig`), the normal is a
+//! HR-5: the wave is the corrected parabolic sine (`ph2d_motion_kit::trig`), the normal is a
 //! `sqrt` — no transcendentals.
 
 use ph2d_node_registry::{
@@ -53,8 +53,8 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 use accum::{add_accel, falloff_at, vec2_at};
-use ph2d_node_kit::forca as accum;
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::forca as accum;
+use ph2d_motion_kit::trig;
 
 /// **A DENSIDADE POR-INSTÂNCIA** (doc 89 folha 02) — a coluna que multiplica o param
 /// global. Ausente ⇒ `1.0` ⇒ o nó que sempre shipou, ao bit.
@@ -356,7 +356,7 @@ impl NodeOp for ForceBuoyancy {
 /// boundary, and the boundary makes `plan` refuse the whole simulation (the two-sims rule).
 /// Five forces on the GPU are worth nothing in the graph that drops a buoy in the water.
 ///
-/// The wave is `ph2d_node_kit::trig` ported literally — the same corrected parabolic sine
+/// The wave is `ph2d_motion_kit::trig` ported literally — the same corrected parabolic sine
 /// `force.wind` already carries, so the sea has one shape on both sides (HR-5). `sqrt` and
 /// `/` are *not* bit-exact by the Vulkan guarantee (3 / 2.5 ULP), which is why this is
 /// gated at the ε the sim parity already budgets, and why `force.attractor` — sqrt and a

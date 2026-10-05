@@ -15,7 +15,7 @@ authors.workspace = true
 # um nó a depender de outro nó quebraria o isolamento de drop-crate (ADR-0075).
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
-ph2d-node-kit = { path = "../ph2d-node-kit" }
+ph2d-motion-kit = { path = "../ph2d-motion-kit" }
 
 [lints]
 workspace = true

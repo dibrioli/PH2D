@@ -12,7 +12,7 @@ authors.workspace = true
 [dependencies]
 ph2d-fbm = { path = "../ph2d-fbm" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
-ph2d-node-kit = { path = "../ph2d-node-kit", features = ["forca"] }
+ph2d-motion-kit = { path = "../ph2d-motion-kit", features = ["forca"] }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 
 [lints]

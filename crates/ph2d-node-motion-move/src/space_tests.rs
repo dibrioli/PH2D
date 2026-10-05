@@ -116,7 +116,7 @@ fn local_turns_the_offset_by_each_elements_own_rotation() {
         p[0]
     );
     // A `90°` o mesmo `(3, 0)` aponta para +Y. A barra é a da senoide parabólica
-    // (HR-5) — e neste ângulo ela é EXACTA, ver o `anchors_match_true_trig` do `ph2d_node_kit::trig`.
+    // (HR-5) — e neste ângulo ela é EXACTA, ver o `anchors_match_true_trig` do `ph2d_motion_kit::trig`.
     assert!(
         p[1][0].abs() < 1e-5 && (p[1][1] - 3.0).abs() < 1e-5,
         "a `90°` o passo tem de correr em Y: {:?}",

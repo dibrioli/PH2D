@@ -95,9 +95,9 @@
 //! missing kernel. Gate:
 //! `the_chain_that_opened_the_wave_is_blocked_by_the_spawn_and_no_longer_by_the_metronome`.
 
-use ph2d_node_kit::hash;
+use ph2d_motion_kit::hash;
 mod kernel;
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 
 use kernel::GPU_KERNEL;
 use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};

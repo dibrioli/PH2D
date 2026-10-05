@@ -50,7 +50,7 @@ use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-use ph2d_node_kit::forca as accum;
+use ph2d_motion_kit::forca as accum;
 mod noise;
 use accum::{add_accel, falloff_at, vec2_at};
 use noise::octave;

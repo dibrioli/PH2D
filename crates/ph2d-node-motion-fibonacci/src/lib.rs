@@ -30,7 +30,7 @@ use ph2d_nodegraph::node::{
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -82,7 +82,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// ([doc 98](../../../docs/Motion%20Nodes/98_auditoria_de_performance_2026-09-01.md)).
 ///
 /// ⭐⭐ **É PARIDADE AO BIT por construção, não por sorte:** a lei já era
-/// **transcendental-free** (a parábola corrigida de Capens que o oscilador usa, `ph2d_node_kit::trig`), e o
+/// **transcendental-free** (a parábola corrigida de Capens que o oscilador usa, `ph2d_motion_kit::trig`), e o
 /// WGSL escreve a MESMA sequência de operações. Um `sin` de verdade não daria — a `sin` do
 /// driver não é a `sin` da libm, e é essa a razão de a casa não a usar (HR-5).
 ///
@@ -95,7 +95,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let fib_cycles = (params.angle * fib_i) / 360.0;\n\
         let fib_r = params.spacing * sqrt(fib_i);\n\
         write_P(i, vec2<f32>(fib_r * fib_sin(fib_cycles + 0.25), fib_r * fib_sin(fib_cycles)));\n",
-    // A mesma parábola corrigida do `ph2d_node_kit::trig`, operação a operação.
+    // A mesma parábola corrigida do `ph2d_motion_kit::trig`, operação a operação.
     wgsl_lib: "\
         fn fib_sin(phase: f32) -> f32 {\n\
         \x20   let f = phase - floor(phase);\n\

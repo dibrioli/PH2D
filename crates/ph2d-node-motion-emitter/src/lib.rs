@@ -74,7 +74,7 @@ mod life;
 pub use history::{INHERIT, MOTION, MOTION_LABELS, history_offsets, history_samples, time_fans};
 pub use life::LIFE_RANDOM;
 use life::life_of;
-use ph2d_node_kit::hash;
+use ph2d_motion_kit::hash;
 mod params_ui;
 /// A AGENDA — quando a emissão está ligada (TOP-20 #18).
 pub mod schedule;
@@ -84,7 +84,7 @@ use hash::rand01;
 use params_ui::{
     PARAM_GATES, PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HARD_MIN, PARAM_HINTS, PARAM_UNITS,
 };
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 use schedule::{EMIT_SCHEDULED, SCHEDULE_KEY, Schedule};
 use spawn::{Spawn, window, window_in};
 use trig::cos_sin_cycles;

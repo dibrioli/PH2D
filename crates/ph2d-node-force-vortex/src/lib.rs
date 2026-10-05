@@ -24,7 +24,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 use accum::{add_accel, falloff_at, vec2_at};
-use ph2d_node_kit::forca as accum;
+use ph2d_motion_kit::forca as accum;
 
 /// A chave do param **do modo**: uma aceleração, ou uma velocidade-ALVO.
 ///

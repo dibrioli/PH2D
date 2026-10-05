@@ -1,6 +1,6 @@
 //! Stateless per-instance randomness: a well-mixed integer hash of
 //! `(seed, index)` → `f32 ∈ [0, 1)`: this crate's wrapper (`rand01(seed, index)`, lane `0`)
-//! over the shared law `ph2d_node_kit::hash::hash3` (bug #11 — one door, not a per-crate
+//! over the shared law `ph2d_motion_kit::hash::hash3` (bug #11 — one door, not a per-crate
 //! copy).
 //!
 //! **Stateless is the whole point** (Jarzynski & Olano 2020): an instance's draw
@@ -8,7 +8,7 @@
 //! is `Effect::Pure`, scrubbing reproduces it bit-for-bit, and a GPU lowering
 //! computes the same value per lane. Transcendental-free (HR-5).
 
-use ph2d_node_kit::hash::hash3;
+use ph2d_motion_kit::hash::hash3;
 
 /// Instance `index`'s draw for `seed`, in `[0, 1)`.
 pub(crate) fn rand01(seed: u32, index: u32) -> f32 {

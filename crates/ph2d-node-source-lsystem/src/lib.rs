@@ -68,7 +68,7 @@ mod derive;
 mod grammar;
 /// **A LEI DO CRESCIMENTO** — a remapagem do `Growth` e a razão que a ancora (HR-18).
 mod growth;
-use ph2d_node_kit::hash;
+use ph2d_motion_kit::hash;
 /// **OS NÚMEROS DO PAINEL** — o que o nó lê antes de fazer o que faz (HR-18).
 mod params;
 /// **OS MOLDES** — a tabela e o que cada um exige (HR-18).
@@ -78,7 +78,7 @@ mod probe;
 /// **A PORTA DAS FITAS** — o vocabulário do modo `Branches` e o contrato com a shell (HR-18).
 mod ribbons;
 pub mod shape;
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 mod turtle;
 /// **A FACE DO NÓ** — o que o painel mostra da lei (HR-18).
 mod ui;

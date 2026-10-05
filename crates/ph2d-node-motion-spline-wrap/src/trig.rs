@@ -43,8 +43,8 @@ pub(crate) fn deg(rad: f32) -> f32 {
     rad * (180.0 / PI)
 }
 
-/// O `(cos, sin)` em CICLOS é a porta partilhada `ph2d_node_kit::trig` (bug #11) — a MESMA
+/// O `(cos, sin)` em CICLOS é a porta partilhada `ph2d_motion_kit::trig` (bug #11) — a MESMA
 /// do `motion.bend`: o eixo do embrulho ([`super::taper::DIRECTION`]) e a direção da dobra
 /// respondem à MESMA pergunta (*"que ângulo é este?"*), e duas aproximações dariam dois
 /// quadros locais ligeiramente diferentes para o mesmo número autorado.
-pub(crate) use ph2d_node_kit::trig::cos_sin_cycles;
+pub(crate) use ph2d_motion_kit::trig::cos_sin_cycles;

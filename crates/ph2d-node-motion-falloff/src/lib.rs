@@ -14,7 +14,7 @@
 //! `center_x` (0), `center_y` (0), `radius` (5), `invert` (0/1 — flips the mask to
 //! `1 − f`). The defaults reproduce the classic smoothstep circle.
 
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 
 use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -335,7 +335,7 @@ impl NodeOp for MotionFalloff {
         let curve_kind = ctx.param("curve").round() as i32;
         let invert = ctx.param("invert") >= 0.5;
         // A base de rotação, calculada UMA vez (constante por cook). ⚠️ É a MESMA
-        // aproximação que o `field.box` usa (a porta `ph2d_node_kit::trig`), e
+        // aproximação que o `field.box` usa (a porta `ph2d_motion_kit::trig`), e
         // tem de ser: os dois são campos espaciais que o artista gira, e um `30°`
         // que significasse ângulos diferentes em dois nós seria a falha de duas
         // portas na sua forma mais quieta — nada na tela diria qual está certo.

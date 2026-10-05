@@ -111,12 +111,12 @@ fn the_rect_turns_too() {
 ///
 /// ⚠️ **O gate é ESTRUTURAL, não numérico**, e é de propósito: um gate numérico
 /// ficaria verde com duas cópias a derivar juntas. Desde o bug #11 o seno dos dois
-/// nós é UMA porta (`ph2d_node_kit::trig`) — o gate prende que os dois a importam e
+/// nós é UMA porta (`ph2d_motion_kit::trig`) — o gate prende que os dois a importam e
 /// que nenhum volta a declarar um `trig` próprio (o que reabriria a cópia que se
 /// promete igual).
 #[test]
 fn the_angle_means_the_same_thing_as_the_field_box() {
-    const PORTA: &str = "use ph2d_node_kit::trig;";
+    const PORTA: &str = "use ph2d_motion_kit::trig;";
     for (no, lib) in [
         ("motion.falloff", include_str!("lib.rs")),
         (

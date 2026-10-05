@@ -28,8 +28,8 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 use hash::rand01;
-use ph2d_node_kit::hash;
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::hash;
+use ph2d_motion_kit::trig;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// O tipo do domínio de VALOR — o campo escalar por-instância na coluna `v` (o espelho
@@ -203,7 +203,7 @@ fn keys(
     //
     // ⚠️ **Ciclos e a senoide local, nunca o `f32::sin_cos` da `std`** (HR-5): aquele é a
     // libm da PLATAFORMA, e uma ordenação é justamente onde um ulp de diferença vira uma
-    // PERMUTAÇÃO diferente — o replay cross-OS deixaria de bater. Ver `ph2d_node_kit::trig`.
+    // PERMUTAÇÃO diferente — o replay cross-OS deixaria de bater. Ver `ph2d_motion_kit::trig`.
     let (cos, sin) = crate::trig::cos_sin_cycles(axis_deg / 360.0);
     (0..p.len())
         .map(|i| match key {

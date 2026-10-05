@@ -29,7 +29,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 use std::f32::consts::{PI, TAU};
 
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 mod ui;
 use trig::cos_sin_cycles;
 use ui::{PARAM_HINTS, PARAM_UNITS};
@@ -167,7 +167,7 @@ static REDUCES: &[ReduceSpec] = &[
 /// SUBSTRATO, não este nó.** Ela dizia: o `x_extent` é uma redução que o sequenciador corre
 /// antes do passe por elemento; num quadro rodado ela tem de dobrar a projecção
 /// `v.x·cos + v.y·sin`, e a expressão de um `ReduceSpec` **só alcançava `params`** — o `cos`/`sin`
-/// teriam de ser o polinómio do `ph2d_node_kit::trig` escrito uma **segunda vez** dentro da string, que é
+/// teriam de ser o polinómio do `ph2d_motion_kit::trig` escrito uma **segunda vez** dentro da string, que é
 /// exactamente como as duas metades divergem.
 ///
 /// ⇒ o canal [`wgsl_shared`](ph2d_nodegraph::gpu::KernelResolver::wgsl_shared) (append-only, o

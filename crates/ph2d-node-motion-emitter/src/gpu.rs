@@ -31,7 +31,7 @@ use ph2d_nodegraph::port::Dim;
 ///
 /// The hash (`em_hash3`) is the integer avalanche of [`hash`], **bit-exact** in WGSL (u32
 /// wraps mod 2³² like `wrapping_mul`); the wave is [`trig`] (the shared
-/// `ph2d_node_kit::trig`), the same corrected parabolic sine as the force kernels' (HR-5). `max` is not a kernel param — `count`
+/// `ph2d_motion_kit::trig`), the same corrected parabolic sine as the force kernels' (HR-5). `max` is not a kernel param — `count`
 /// already carries the cap.
 pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\

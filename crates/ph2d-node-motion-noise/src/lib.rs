@@ -33,7 +33,7 @@ mod kernel;
 mod params_ui;
 use kernel::GPU_KERNEL;
 use params_ui::{PARAM_CHANNEL_RANGE, PARAM_GATES, PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 mod noise;
 use channel::{apply_channel_delta, apply_channel_delta_xy, clock_at, falloff_at, scalar_values};
 use noise::{NoiseType, fbm};

@@ -1,4 +1,4 @@
-//! **A lei partilhada dos nós vive numa PORTA** (`ph2d-node-kit`), nunca em N cópias que se
+//! **A lei partilhada dos nós vive numa PORTA** (`ph2d-motion-kit`), nunca em N cópias que se
 //! prometem iguais.
 //!
 //! Bug #11 (`docs/Motion Nodes/BUGS_motion_nodes.md`): o `hash3`, o `cos_sin_cycles` e a
@@ -8,7 +8,7 @@
 //! - (a) nenhum grupo de `.rs` com mais de 1 KB e conteúdo BYTE-IGUAL em `crates/*/src` e
 //!   `shells/*/src` (o recenso `md5sum | uniq` que fechou o bug, agora gateado);
 //! - (b) nenhuma definição de `fn hash3(`, `fn cos_sin_cycles(` ou `fn sin_cycles(` fora de
-//!   `crates/ph2d-node-kit/` — a cópia que diverge num comentário escapa a (a), não a (b).
+//!   `crates/ph2d-motion-kit/` — a cópia que diverge num comentário escapa a (a), não a (b).
 //!
 //! Os kernels WGSL que espelham estas leis usam nomes prefixados (`em_hash3`, `bend_sin_cycles`)
 //! e não casam com (b) de propósito: o que os prende à porta é o gate de paridade de cada nó.
@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 const MIN_BYTES: usize = 1024;
 /// As leis que só a porta define.
 const LEIS: [&str; 3] = ["hash3", "cos_sin_cycles", "sin_cycles"];
-const PORTA: &str = "crates/ph2d-node-kit/";
+const PORTA: &str = "crates/ph2d-motion-kit/";
 /// `(caminho a partir da raiz, lei, porquê)`. Vazia: toda cópia conhecida foi fundida. Uma
 /// entrada nova traz o PORQUÊ, e o portão reprova a que já não existir (censo de obsolescência).
 const EXCECOES: &[(&str, &str, &str)] = &[];
@@ -140,7 +140,7 @@ fn nenhum_rs_maior_que_1kb_e_byte_igual_a_outro() {
     assert!(
         copias.is_empty(),
         "{} grupo(s) de ficheiros byte-iguais — a lei partilhada mora numa porta \
-         (ph2d-node-kit ou a crate-folha da família), não numa cópia:\n  {}",
+         (ph2d-motion-kit ou a crate-folha da família), não numa cópia:\n  {}",
         copias.len(),
         copias.join("\n  ")
     );
@@ -175,7 +175,7 @@ fn as_leis_partilhadas_so_se_definem_na_porta() {
     );
     assert!(
         fora.is_empty(),
-        "a lei partilhada definida fora do `{PORTA}` — use `ph2d_node_kit::{{hash, trig}}` \
+        "a lei partilhada definida fora do `{PORTA}` — use `ph2d_motion_kit::{{hash, trig}}` \
          (ou acrescente a EXCECOES com o porquê):\n  {}",
         fora.join("\n  ")
     );

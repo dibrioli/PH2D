@@ -27,12 +27,12 @@ use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-use ph2d_node_kit::forca as accum;
+use ph2d_motion_kit::forca as accum;
 mod params_ui;
 use params_ui::{PARAM_GATES_ABOVE, PARAM_HARD_MAX, PARAM_HARD_MIN, PARAM_HINTS};
 mod noise;
 use accum::{add_accel, falloff_at, vec2_at};
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 
 /// O teto de oitavas — o mesmo do `force.curl`: o laço é real e o kernel de GPU o
 /// percorre por elemento, então ele é um limite de CUSTO, não de gosto.

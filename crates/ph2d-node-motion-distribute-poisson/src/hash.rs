@@ -1,11 +1,11 @@
 //! The draw stream of Bridson's algorithm over the shared stateless hash
-//! (`ph2d_node_kit::hash::hash3`, bug #11 — one door, not a per-crate copy).
+//! (`ph2d_motion_kit::hash::hash3`, bug #11 — one door, not a per-crate copy).
 //!
 //! Stateless (Jarzynski & Olano 2020): a draw is a pure function of its identity, so
 //! the layout reproduces bit-for-bit from the seed alone and the node is
 //! `Effect::Pure`. Transcendental-free (HR-5).
 
-use ph2d_node_kit::hash::hash3;
+use ph2d_motion_kit::hash::hash3;
 
 /// **The draw sequence.** Bridson's algorithm is sequential — how many darts it throws
 /// depends on where the last one landed — so unlike `motion.scatter` (whose every

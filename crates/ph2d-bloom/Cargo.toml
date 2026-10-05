@@ -13,7 +13,7 @@ authors.workspace = true
 # o renderizador inteiro.
 [dependencies]
 # Só o `trig` (o seno por voltas da anamorfose) — sem a feature `forca`, o kit não puxa nada.
-ph2d-node-kit = { path = "../ph2d-node-kit" }
+ph2d-motion-kit = { path = "../ph2d-motion-kit" }
 
 [lints]
 workspace = true

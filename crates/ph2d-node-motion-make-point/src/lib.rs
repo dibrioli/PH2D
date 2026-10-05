@@ -13,7 +13,7 @@
 //! fields' own length does. Transcendental-free (HR-5): a coordinate pack, no maths.
 //! `Effect::Pure`.
 
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};

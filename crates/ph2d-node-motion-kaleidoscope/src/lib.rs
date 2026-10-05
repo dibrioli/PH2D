@@ -63,7 +63,7 @@ use ph2d_nodegraph::gpu::StreamOp;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);

@@ -24,7 +24,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 use accum::{add_accel, falloff_at, vec2_at};
-use ph2d_node_kit::forca as accum;
+use ph2d_motion_kit::forca as accum;
 
 /// **O ARRASTO ANISOTRÓPICO** (doc 89 folha 02 — o `Directional Scale` do POP Drag).
 ///

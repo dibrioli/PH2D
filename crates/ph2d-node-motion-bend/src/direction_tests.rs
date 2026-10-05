@@ -100,7 +100,7 @@ fn bending_a_turned_row_equals_turning_the_bent_row() {
     .collect();
     // ⚠️ **A barra é 0,5% e não um épsilon de `f32`, e o número tem dono:** os dois caminhos
     // não são a mesma expressão — um roda a ENTRADA e o outro roda a SAÍDA, e a base é a
-    // senoide parabólica do `ph2d_node_kit::trig` (~0,09% fora da trig verdadeira, HR-5). Duas rotações
+    // senoide parabólica do `ph2d_motion_kit::trig` (~0,09% fora da trig verdadeira, HR-5). Duas rotações
     // aproximadas em ordens diferentes divergem nessa ordem de grandeza; medido aqui:
     // `4,2e-3` sobre uma magnitude de `2,7`, que é 0,15%.
     for (x, y) in a.iter().zip(&b) {

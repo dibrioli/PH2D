@@ -77,7 +77,7 @@ use ph2d_nodegraph::node::{
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-use ph2d_node_kit::trig;
+use ph2d_motion_kit::trig;
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -221,7 +221,7 @@ fn ring_counts(count: usize, rings: usize) -> Vec<usize> {
 /// `rem·(base+1)` e o resto é uniforme: nenhum laço, nenhuma soma de prefixo, nenhum readback.
 ///
 /// ⭐ **Paridade ao bit por construção:** a trigonometria já é a parábola corrigida
-/// transcendental-free (`ph2d_node_kit::trig`, a mesma do oscilador e do `motion.fibonacci`), e o WGSL
+/// transcendental-free (`ph2d_motion_kit::trig`, a mesma do oscilador e do `motion.fibonacci`), e o WGSL
 /// escreve as mesmas operações pela mesma ordem.
 ///
 /// ⚠️ **O `spin` lê-se no ÍNDICE 0**, como o `eval` faz (`v.first()`), e não por elemento: este
@@ -307,7 +307,7 @@ const RADIAL_BODY: &str = "\
     let rad_cycles = params.start_angle / 360.0 + rad_frac * rad_sweep + read_v(0u) / 360.0;\n\
     write_P(i, vec2<f32>(rad_rr * rad_sin(rad_cycles + 0.25), rad_rr * rad_sin(rad_cycles)));\n";
 
-/// A parábola corrigida, operação a operação como no `ph2d_node_kit::trig`.
+/// A parábola corrigida, operação a operação como no `ph2d_motion_kit::trig`.
 const RADIAL_LIB: &str = "\
     fn rad_sin(phase: f32) -> f32 {\n\
     \x20   let f = phase - floor(phase);\n\

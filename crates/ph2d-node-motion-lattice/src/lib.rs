@@ -27,7 +27,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 // ⚠️ **`Region`, e não `Domain`** — o `Domain` do `port` diz em que PLANO a porta vive.
 
 use hash::hash3;
-use ph2d_node_kit::hash;
+use ph2d_motion_kit::hash;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type of the `jitter` input (mirror of `motion.look_at::VALUE`).

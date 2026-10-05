@@ -78,7 +78,7 @@ mod probe;
 /// **A PORTA DAS FITAS** — o vocabulário do modo `Branches` e o contrato com a shell (HR-18).
 mod ribbons;
 pub mod shape;
-mod trig;
+use ph2d_node_kit::trig;
 mod turtle;
 /// **A FACE DO NÓ** — o que o painel mostra da lei (HR-18).
 mod ui;

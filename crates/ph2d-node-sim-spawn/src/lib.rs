@@ -97,7 +97,7 @@
 
 use ph2d_node_kit::hash;
 mod kernel;
-mod trig;
+use ph2d_node_kit::trig;
 
 use kernel::GPU_KERNEL;
 use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};

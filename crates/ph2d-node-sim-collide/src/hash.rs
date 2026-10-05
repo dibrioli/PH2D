@@ -1,33 +1,19 @@
 //! Stateless per-instance randomness: a well-mixed integer hash of
-//! `(seed, index, lane)` → `f32 ∈ [0, 1)`. A leaf-local mirror of
-//! `motion.emitter`'s `hash.rs` (copied per drop-crate — the shared vocabulary is
-//! the *behaviour*, not a shared symbol).
+//! `(seed, index)` → `f32 ∈ [0, 1)`: this crate's wrapper (`rand01(seed, index)`, lane `0`)
+//! over the shared law `ph2d_node_kit::hash::hash3` (bug #11 — one door, not a per-crate
+//! copy).
 //!
-//! ⚠️ **A cópia é a convenção declarada desta biblioteca, e o que a torna segura é o
-//! GOLDEN:** o gate `the_hash_agrees_with_the_other_copies` prende o VALOR de três pares
-//! `(seed, index)` conhecidos. Uma cópia que derive — um literal trocado, um `>>` a menos —
-//! deixa de bater com o número, em vez de deixar de bater com uma cena. *Duplicar uma lei é
-//! aceitável quando a divergência é observável de graça.*
+//! ⚠️ **O GOLDEN fica aqui** porque é o oráculo do `sc_rand01` do WGSL deste nó (que É uma
+//! segunda escrita da lei, em `gpu.rs`): o gate `the_hash_agrees_with_the_other_copies`
+//! prende o VALOR de três pares `(seed, index)` conhecidos através do embrulho deste nó. O
+//! mesmo golden, sobre a lei crua, vive em `ph2d_node_kit::hash` (`hash3_golden_bits`).
 //!
 //! **Stateless is the whole point** (Jarzynski & Olano 2020): an instance's draw
 //! is a pure function of its identity, never of a stream of draws — so the field
 //! is `Effect::Pure`, scrubbing reproduces it bit-for-bit, and a GPU lowering
 //! computes the same value per lane. Transcendental-free (HR-5).
 
-/// splitmix-style avalanche on a 32-bit lattice → `[0, 1)`.
-fn hash3(a: u32, b: u32, lane: u32) -> f32 {
-    let mut h = a
-        .wrapping_mul(0x9e37_79b9)
-        .wrapping_add(b.wrapping_mul(0x85eb_ca6b))
-        .wrapping_add(lane.wrapping_mul(0xc2b2_ae35));
-    h ^= h >> 16;
-    h = h.wrapping_mul(0x7feb_352d);
-    h ^= h >> 15;
-    h = h.wrapping_mul(0x846c_a68b);
-    h ^= h >> 16;
-    // 24 bits into the mantissa → exactly representable, uniform, and never 1.0.
-    (h >> 8) as f32 / (1u32 << 24) as f32
-}
+use ph2d_node_kit::hash::hash3;
 
 /// Instance `index`'s draw for `seed`, in `[0, 1)`.
 pub(crate) fn rand01(seed: u32, index: u32) -> f32 {

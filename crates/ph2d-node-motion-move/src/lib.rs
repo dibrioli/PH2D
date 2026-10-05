@@ -22,7 +22,7 @@
 //! *"andar para a frente"* de *"virar-se"*, e é o que mantém os dois compostáveis
 //! na ordem que o artista quiser.
 
-mod trig;
+use ph2d_node_kit::trig;
 
 use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};

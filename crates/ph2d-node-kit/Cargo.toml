@@ -9,8 +9,14 @@ authors.workspace = true
 
 [lib]
 
+[features]
+# `forca` (a acumulação das forças na coluna `accel`) é a ÚNICA parte que lê o `Stream` do
+# `ph2d-nodegraph`. `hash` e `trig` ficam sem dependência nenhuma, para que folhas fora do
+# grafo de nós (`ph2d-bloom`, que hoje não depende de nada) usem a porta sem o puxar.
+forca = ["dep:ph2d-nodegraph"]
+
 [dependencies]
-ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-nodegraph = { path = "../ph2d-nodegraph", optional = true }
 
 [lints]
 workspace = true

@@ -31,8 +31,8 @@ use ph2d_node_kit::forca as accum;
 mod params_ui;
 use params_ui::{PARAM_GATES_ABOVE, PARAM_HARD_MAX, PARAM_HARD_MIN, PARAM_HINTS};
 mod noise;
-mod trig;
 use accum::{add_accel, falloff_at, vec2_at};
+use ph2d_node_kit::trig;
 
 /// O teto de oitavas — o mesmo do `force.curl`: o laço é real e o kernel de GPU o
 /// percorre por elemento, então ele é um limite de CUSTO, não de gosto.

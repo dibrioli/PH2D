@@ -113,7 +113,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod aleatorio;
-mod trig;
+use ph2d_node_kit::trig;
 mod ui;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -323,7 +323,7 @@ pub fn particle_radius(mode: i32, fixed: f32, scale: f32, size: [f32; 2], collid
 /// One `sqrt` fixes it, and `sqrt` is the one operation IEEE-754 pins exactly, so the CPU and
 /// the device agree on it.
 ///
-/// ⚠️ **No zero-guard, deliberately**: `trig::tests::stays_near_unit_circle` bounds the radius²
+/// ⚠️ **No zero-guard, deliberately**: `ph2d_node_kit::trig`'s `stays_near_unit_circle` bounds the radius²
 /// inside `[0.98, 1.02]`, so the divisor cannot approach zero. A branch that can never fire is a
 /// defense no gate could ever prove.
 ///

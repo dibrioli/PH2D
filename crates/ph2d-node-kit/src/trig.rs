@@ -9,9 +9,13 @@
 //! bone's direction is taken from its own ABSOLUTE world angle (a sum of authored
 //! angles), never from the previous bone's approximated direction.
 //!
-//! UMA porta (bug #11): era copiada em bend, distribute.radial, fibonacci, twist,
-//! field.box, motion.falloff e na cinemática do rig — e um ângulo que significasse
-//! coisas diferentes em dois nós não teria sintoma na tela.
+//! UMA porta (bug #11): era copiada em vinte e seis crates (os nós que giram, orbitam,
+//! dobram e lançam; a cinemática do rig; o contacto; o bloom) — e um ângulo que
+//! significasse coisas diferentes em dois nós não teria sintoma na tela.
+//!
+//! ⚠️ [`tests::stays_near_unit_circle`] é load-bearing para o `sim.collide`: o
+//! `plane_normal` dele divide por `√(c² + s²)` SEM guarda de zero, e o que licencia a
+//! falta do ramo é precisamente este limite.
 
 fn frac(p: f32) -> f32 {
     p - p.floor()
@@ -76,5 +80,33 @@ mod tests {
     #[test]
     fn is_deterministic() {
         assert_eq!(cos_sin_cycles(0.37), cos_sin_cycles(0.37));
+    }
+
+    /// The pair is a *derivative* pair: `cos` is where `sin` is steepest and flat where
+    /// `sin` peaks. The buoyancy wave's surface slope is read from the `cos`, so a swapped
+    /// return would tilt every float the wrong way — and only this relation catches that.
+    ///
+    /// The bound is **measured, not slack**: the parabolic sine is ~0.09% off in VALUE but
+    /// its *derivative* is looser — the worst point of the cycle sits `0.0812` away from
+    /// the true `2π·cos`, i.e. **1.29%** of the peak slope. That is the approximation's
+    /// error, so that is what the gate allows (`0.085`) — and a swapped or sign-flipped
+    /// pair misses by `2π`, seventy times more than this admits.
+    #[test]
+    fn cos_is_the_slope_of_sin() {
+        let mut worst = 0.0f32;
+        for i in 0..400 {
+            let ph = i as f32 / 400.0;
+            let h = 1e-3;
+            let (c, _) = cos_sin_cycles(ph);
+            let numeric = (cos_sin_cycles(ph + h).1 - cos_sin_cycles(ph - h).1) / (2.0 * h);
+            // d/dphase sin(2π·phase) = 2π·cos(2π·phase)
+            let expected = std::f32::consts::TAU * c;
+            worst = worst.max((numeric - expected).abs());
+        }
+        assert!(
+            worst < 0.085,
+            "the parabolic sine's slope drifted {worst} from its own cosine (measured \
+             ceiling: 0.0812)"
+        );
     }
 }

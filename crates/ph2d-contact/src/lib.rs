@@ -114,7 +114,7 @@ mod par;
 /// ⭐⭐⭐ **O PASSE AUTOMÁTICO** (doc 115 W5) — o acabamento que separa o que vai ser desenhado, sem
 /// nó e sem fio. Ver o cabeçalho dele.
 pub mod passe;
-mod trig;
+use ph2d_node_kit::trig;
 mod varredura;
 
 pub use atrito::{Deslize, Material, Pecas, Saida, materiais};

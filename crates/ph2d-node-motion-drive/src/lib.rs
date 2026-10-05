@@ -36,8 +36,8 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod channel;
 /// Os kernels WGSL — cortados no teto de LOC (HR-18); ver o cabeçalho deles.
 mod kernel;
-mod trig;
 use kernel::GPU_KERNEL;
+use ph2d_node_kit::trig;
 /// A aritmética que junta o valor conduzido ao canal — os sete modos.
 mod combine;
 pub use channel::DRIVE_COL_KEY;

@@ -191,8 +191,7 @@ pub const MIN_STRETCH: f32 = 0.05;
 /// impõe, e o valor com que o clamp desligado passa pelo `min` sem morder.
 pub const F16_MAX: f32 = 65_504.0;
 
-/// ⭐ **A aritmética da FASE** (o seno polinomial que a anamorfose lê) vive no irmão — ver
-/// [`trig`]. ⛔ Corte por responsabilidade e por tecto de LOC, nunca por isenção.
-#[path = "trig.rs"]
-mod trig;
+/// ⭐ **A aritmética da FASE** (o seno polinomial que a anamorfose lê) é a porta partilhada
+/// `ph2d_node_kit::trig` (bug #11) — a mesma dos nós do Motion, não uma cópia.
+use ph2d_node_kit::trig;
 pub(crate) use trig::cos_sin_cycles;

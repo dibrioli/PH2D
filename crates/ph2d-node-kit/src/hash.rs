@@ -6,10 +6,12 @@
 //! the same draws bit-for-bit, and a GPU lowering computes the same values per lane
 //! without a sequence. Transcendental-free (HR-5).
 //!
-//! UMA porta (bug #11): era copiada em oito crates de nó em duas embalagens — a
-//! [`hash3`] crua (lattice, scatter, voronoi, lsystem) e o [`rand01`] por partícula
-//! (emitter, randomize, sim.lifetime, sim.spawn). Os dois nomes ficam, porque cada
-//! um lê-se certo no seu chamador; a lei é uma.
+//! UMA porta (bug #11): era copiada em treze crates de nó em duas embalagens — a
+//! [`hash3`] crua (lattice, scatter, voronoi, lsystem, boids, distribute.poisson) e o
+//! [`rand01`] por partícula (emitter, randomize, sim.lifetime, sim.spawn, sort). Os dois
+//! nomes ficam, porque cada um lê-se certo no seu chamador; a lei é uma. Quem embrulha a
+//! lei noutra assinatura (o `rand01(seed, index)` de `sim.collide` e
+//! `value.instance_field`, o `Draws` do poisson) guarda só o embrulho e chama esta porta.
 
 /// splitmix-style avalanche on a 32-bit lattice → `[0, 1)`.
 pub fn hash3(a: u32, b: u32, lane: u32) -> f32 {
@@ -65,6 +67,17 @@ mod tests {
         assert_ne!(rand01(0, 1, 0), rand01(0, 1, 1), "lanes differ");
         assert_ne!(rand01(0, 1, 0), rand01(1, 1, 0), "seeds differ");
         assert_ne!(rand01(0, 1, 0), rand01(0, 2, 0), "ids differ");
+    }
+
+    /// ⭐ **O GOLDEN da lei**, em bits: os mesmos três pares que o `sim.collide` deriva para o
+    /// oráculo do `sc_rand01` do WGSL dele (lá `rand01(seed, index)` = `hash3(seed, index, 0)`).
+    /// Um literal trocado ou um `>>` a menos reprova aqui, sem cena, sem GPU, sem olho. E
+    /// `(0, 0, 0)` dá **zero** por aritmética: a avalanche parte de `0·k + 0·k + 0·k`.
+    #[test]
+    fn hash3_golden_bits() {
+        assert_eq!(hash3(0, 0, 0).to_bits(), 0x0000_0000, "(0, 0, 0)");
+        assert_eq!(hash3(7, 3, 0).to_bits(), 0x3edd_93de, "(7, 3, 0)");
+        assert_eq!(hash3(11, 1000, 0).to_bits(), 0x3dba_59d0, "(11, 1000, 0)");
     }
 
     #[test]

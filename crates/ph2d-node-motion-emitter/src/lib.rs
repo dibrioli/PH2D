@@ -79,14 +79,14 @@ mod params_ui;
 /// A AGENDA — quando a emissão está ligada (TOP-20 #18).
 pub mod schedule;
 mod spawn;
-use schedule::{EMIT_SCHEDULED, SCHEDULE_KEY, Schedule};
-use spawn::{Spawn, window, window_in};
-mod trig;
 use gpu::GPU_KERNEL;
 use hash::rand01;
 use params_ui::{
     PARAM_GATES, PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HARD_MIN, PARAM_HINTS, PARAM_UNITS,
 };
+use ph2d_node_kit::trig;
+use schedule::{EMIT_SCHEDULED, SCHEDULE_KEY, Schedule};
+use spawn::{Spawn, window, window_in};
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);

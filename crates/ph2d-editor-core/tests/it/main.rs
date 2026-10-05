@@ -40,6 +40,7 @@ mod arch_no_absolute_drag_pattern;
 mod arch_no_char_count_widths;
 mod arch_safe_clamp_only;
 mod arch_shape_slot_uses_the_shape_door;
+mod architecture_a_lei_partilhada_dos_nos_vive_numa_porta;
 mod architecture_adr_numbers_are_unique;
 mod architecture_chrome_dispatch_in_sync;
 mod architecture_claude_md_cabe_no_orcamento;

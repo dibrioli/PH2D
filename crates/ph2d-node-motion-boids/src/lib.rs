@@ -64,8 +64,8 @@ use ph2d_nodegraph::node::{
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod gpu;
-mod hash;
 use hash::hash3;
+use ph2d_node_kit::hash;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type of the `target_*` inputs (mirror of `motion.look_at::VALUE`).

@@ -5142,6 +5142,9 @@ dependencies = [
 [[package]]
 name = "ph2d-bloom"
 version = "0.0.0"
+dependencies = [
+ "ph2d-node-kit",
+]
 
 [[package]]
 name = "ph2d-board-edit"
@@ -5245,6 +5248,7 @@ dependencies = [
 name = "ph2d-contact"
 version = "0.0.0"
 dependencies = [
+ "ph2d-node-kit",
  "ph2d-nodegraph",
 ]
 
@@ -6134,6 +6138,7 @@ dependencies = [
 name = "ph2d-node-field-radial-sweep"
 version = "0.0.0"
 dependencies = [
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6216,6 +6221,7 @@ dependencies = [
 name = "ph2d-node-fx-drop-shadow"
 version = "0.0.0"
 dependencies = [
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6266,6 +6272,7 @@ name = "ph2d-node-motion-boids"
 version = "0.0.0"
 dependencies = [
  "libm",
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6274,6 +6281,7 @@ dependencies = [
 name = "ph2d-node-motion-clone"
 version = "0.0.0"
 dependencies = [
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6342,6 +6350,7 @@ name = "ph2d-node-motion-distribute-poisson"
 version = "0.0.0"
 dependencies = [
  "ph2d-motion-region",
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6361,6 +6370,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-color",
  "ph2d-i18n",
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6439,6 +6449,7 @@ dependencies = [
 name = "ph2d-node-motion-kaleidoscope"
 version = "0.0.0"
 dependencies = [
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6474,6 +6485,7 @@ name = "ph2d-node-motion-make-point"
 version = "0.0.0"
 dependencies = [
  "ph2d-i18n",
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6507,6 +6519,7 @@ name = "ph2d-node-motion-move"
 version = "0.0.0"
 dependencies = [
  "ph2d-i18n",
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6517,6 +6530,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-fbm",
  "ph2d-i18n",
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6525,6 +6539,7 @@ dependencies = [
 name = "ph2d-node-motion-orbit"
 version = "0.0.0"
 dependencies = [
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6638,6 +6653,7 @@ dependencies = [
 name = "ph2d-node-motion-sort"
 version = "0.0.0"
 dependencies = [
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6655,6 +6671,7 @@ name = "ph2d-node-motion-spline-wrap"
 version = "0.0.0"
 dependencies = [
  "ph2d-arc-length",
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -7084,6 +7101,7 @@ name = "ph2d-node-sim-collide"
 version = "0.0.0"
 dependencies = [
  "ph2d-contact",
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-nodegraph",
@@ -7226,6 +7244,7 @@ dependencies = [
 name = "ph2d-node-value-instance-field"
 version = "0.0.0"
 dependencies = [
+ "ph2d-node-kit",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

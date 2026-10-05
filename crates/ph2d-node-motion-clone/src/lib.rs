@@ -37,7 +37,7 @@ pub mod fan;
 /// ⭐ O kernel do DISPOSITIVO (ciclo 10 W1a, doc 116 §5.3) — ver [`kernel`].
 mod kernel;
 mod radial;
-mod trig;
+use ph2d_node_kit::trig;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 

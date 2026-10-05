@@ -16,7 +16,7 @@
 | [3](#bug-3--o-diagnoser-sabia-e-ninguem-perguntava) | **"Todas as peças paradas"** (cena `=71`, banda 6) | uma cena com um fio a menos — e o INSTRUMENTO que ninguém invocava | ✅ **CURADO** (aguarda smoke) — mais um falso positivo pré-existente do diagnoser | 2026-08-20 |
 | [4](#bug-4--o-multiply-não-desobedecia-à-alfa-ele-a-invertia-e-o-gate-media-o-único-ponto-em-que-os-modos-concordam) | **"Shadow multiply não obedece o alpha"** (cena `=84`) | `fx.drop_shadow` (acusado, **inocente**) + o par de fatores do `Multiply` em `ph2d-render` | ✅ **FECHADO — smoke aprovado** (cena `=84`, linha ALFA) — resposta invertida, num gate verde há anos | 2026-08-23 |
 | [5](#bug-5--o-editor-de-curva-era-oferecido-numa-onda-que-não-o-lê--e-o-censo-que-o-teria-apanhado-não-podia-vê-lo) | **"Wave curve dos osciladores não está funcionando"** (com foto) | `motion.oscillator` (o MOTOR, **inocente**) + a tabela de gates dele — e mais DOIS nós pelo mesmo mecanismo | ✅ **CURADO** (aguarda smoke, cena `=94`) — o editor aparecia em toda onda e só era lido na `Custom` | 2026-08-24 |
-| [11](#bug-11--a-seta-diferente-era-a-única-certa-a-família-do-rig-escreve-o-ângulo-local-na-coluna-que-o-desenho-lê-como-mundo) | **"Em skeleton o último objeto tem direção diferente"** (com foto) | a família do **RIG** (7 nós, 6 cópias do `fk.rs`) — e a seta acusada é a ÚNICA certa | ✅ **CURADO** (aguarda smoke) — `rot` passa a levar o MUNDO, `lrot` o local; 6 provas de mutação | 2026-09-19 |
+| [11](#bug-11--a-seta-diferente-era-a-única-certa-a-família-do-rig-escreve-o-ângulo-local-na-coluna-que-o-desenho-lê-como-mundo) | **"Em skeleton o último objeto tem direção diferente"** (com foto) | a família do **RIG** (7 nós, 6 cópias do `fk.rs`) — e a seta acusada é a ÚNICA certa | ✅ **CURADO** (aguarda smoke) — `rot` passa a levar o MUNDO, `lrot` o local; 6 provas de mutação; ✅ as cópias numa porta (05/10) | 2026-09-19 |
 | [12](#bug-12--o-fio-agia-num-ramo-e-não-no-outro-e-o-cartão-mentia-nos-dois) | **"Number no Strength do Vortex não tem efeito"** + **"Number não aceita negativos"** | o ramo HÍBRIDO do `cook_gpu` (não entregava os valores do fio) + o CARTÃO (desenhava o override) + a faixa `0..40` das forças com sentido | ✅ **CURADO** (aguarda smoke, cena `=128`) | 2026-10-03 |
 | [13](#bug-13--o-grafo-abria-com-a-parte-de-cima-escondida-o-enquadramento-media-cartões-e-desenhava-pílulas) | **"O grafo abre com a parte de cima escondida"** | o enquadramento automático do painel do grafo (a tela, acusada, **inocente**) | ✅ **CURADO** | 2026-10-03 |
 
@@ -1216,8 +1216,16 @@ escrita no script para ninguém a ler como buraco.*
 
 #### ⏳ O que fica aberto
 
-- O `fk.rs` continua **duplicado byte-a-byte em seis crates** (`sha256` igual), e os `pose.rs` em
-  três. A cura tocou nas seis cópias à mão; uma folha partilhada é wave própria.
+- ✅ **(2026-10-05, `line/motion-value`) A cópia acabou, e a família era maior.** O `fk.rs`/`trig.rs` (6 cópias)
+  e o `pose.rs` (3) vivem numa crate-folha, `ph2d-rig-kinematics` (`0bb491ca3`); o predicado «quem é pai», que o
+  `rig.bones` copiava letra por letra, é a porta `fk::pai`. E a MESMA doença em mais `38` crates — o sorteio
+  `hash3`/`rand01`, o `cos_sin_cycles` e a acumulação das forças, cada cópia a dizer «o vocabulário partilhado é o
+  comportamento» — vive agora na `ph2d-node-kit` (`hash`/`trig` sem dependências, `forca` atrás da feature; a
+  `ph2d-contact` e a `ph2d-bloom` usam-na). Recenso de ficheiros `.rs` byte-iguais `> 1 KB` entre crates: `5`
+  grupos → `0`. **Portão:** `architecture_a_lei_partilhada_dos_nos_vive_numa_porta` (`ph2d-editor-core`) reprova
+  um ficheiro byte-igual e uma definição de `hash3`/`cos_sin_cycles`/`sin_cycles` fora da porta — `3/3` mutações a
+  sangrar (cópia byte-igual · `fn hash3` noutra crate · o falloff com o seu `mod trig`). Os espelhos WGSL continuam
+  em cada nó, presos pelos gates de paridade GPU↔CPU deles.
 - O `rig.skeleton` **não** ganhou o interruptor que o L-System tem (`orient_world`). Ninguém o
   pediu, e o dono viu o mundo como a resposta certa — *fica nomeado, não construído*.
 

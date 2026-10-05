@@ -30,8 +30,8 @@ use ph2d_nodegraph::port::Dim;
 /// the one the product uses).
 ///
 /// The hash (`em_hash3`) is the integer avalanche of [`hash`], **bit-exact** in WGSL (u32
-/// wraps mod 2³² like `wrapping_mul`); the wave is the sibling `trig.rs`, byte-identical to the
-/// force kernels' corrected parabolic sine (HR-5). `max` is not a kernel param — `count`
+/// wraps mod 2³² like `wrapping_mul`); the wave is [`trig`] (the shared
+/// `ph2d_node_kit::trig`), the same corrected parabolic sine as the force kernels' (HR-5). `max` is not a kernel param — `count`
 /// already carries the cap.
 pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\

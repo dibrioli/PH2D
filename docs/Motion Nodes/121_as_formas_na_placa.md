@@ -2154,3 +2154,66 @@ quadrilátero trocado (`241`, e o teste da porta CPU) · `m8` a faixa nunca serv
 e a emenda só acontece num mais curto — as formas da família tinham um contorno só. A engrenagem com furo entrou na
 família e a `m6` sangra.
 
+
+### §9.19 — A 4.ª ONDA: o passeio em paralelo, a parede do Vello, a ponta e a junta no cartão, a prova do SIGSEGV e o contacto em Play (2026-10-05, escrito ANTES de medir)
+
+Ordem do dono (05/10): *«integrar só quando não houver nada em aberto»* e *«resolver tudo numa ÚNICA onda»*. Base
+`a46c4c200` (o main andou um commit, só o guarda R4; rebase sem conflito). Cinco itens; cada um CONSTRUÍDO e medido ou
+RECUSADO pela medição, com o critério daqui.
+
+**(1) O PASSEIO EM PARALELO — 4.ª topologia ⇒ two-strikes: a PROVA do modelo vem antes do produto.** O código de
+`afa0cc014` volta (a tabela, `cs_soma_pecas`, `cs_pecas`, `cs_fecha`, os modos `POR_PECA`) e ganha UM passe novo,
+`cs_trocos`: um GRUPO de `64` fios por CÓPIA, um fio por entrada do eixo dela, em pedaços de `64` com o transporte
+do pedaço anterior. Cada fio lê o seu troço e calcula o `arco`; um prefixo SEGMENTADO (a cabeça é o troço com
+`SUB_INICIO`) dá o `fim` de cada troço, e o `s0` é o `fim` da entrada ANTERIOR lido da memória do grupo — os MESMOS
+bits dos dois lados de um vértice (somar o `0` de um cabeçalho de bloco não muda bits); `k` e a linha saem de dois
+prefixos inteiros; `n0`/`n1` do `s0`/`fim`; um 2.º prefixo inteiro dá as peças antes de cada troço; o último troço
+de um FECHADO escreve o total na linha do 1.º. O `cs_escreve` deixa de andar o tracejado (escreve a cabeça das linhas
+e o estado da cópia). ⚠️ Não é o GRUPO recusado do §9.14: aquele EMITIA por cópia (duas vezes, com a fase em série do
+fio `0` e `13` KB de memória de grupo); este só anda os troços, e a emissão continua a ser um fio por PEÇA. A override
+nova `PASSEIO` (`0` em série no `cs_escreve`, o de `afa0cc014` · `1` o `cs_trocos`) cruza com o `POR_PECA`.
+- **Variantes da rodada (uma só, a sonda intercalada):** `F` · `F1` (A/A) · `P1` (a prova com o passeio em série, o
+  controlo do §9.18) · **`Q1` a PROVA** (`PASSEIO=1`, `POR_PECA=1`) · `Q4` (a ablação: o fio da peça sai logo — o
+  passeio paralelo + as linhas + o prefixo) · `Q2`/`Q3` o produto (reserva atómica por aresta · contada por peça).
+  O que as ablações GUARDAM: o `Q1` segura o `pedaco` por uma escrita que nunca acontece (como o `P1`); o `Q4` escreve
+  as linhas (o passeio paralelo não tem nada que o compilador possa cortar: tudo o que ele calcula vai para a tabela).
+- **Prova:** `escreve` do `Q1` nas esticadas tracejadas da iGPU `≤ 0,13` ms; acima ⇒ (1) fecha por recusa medida, com a
+  decomposição (`Q4` e `Q1`).
+- **Produto (`Q2` ou `Q3`, o melhor):** iGPU esticadas tracejadas `escreve ≤ 0,15` e soma `≤ 0,86`; NENHUMA célula da
+  sonda pior que `+5 %` na iGPU nem `+10 %` na RTX (soma, contra o `F`). **A troca aceitável, escrita:** a melhoria
+  só é exigida nas esticadas tracejadas; uma célula que piora dentro da faixa (`≤ +5 %` iGPU, `≤ +10 %` RTX) é o preço
+  aceite; fora dela, o produto não entra. **A imagem:** um prefixo paralelo soma noutra ordem, logo «imagem = F» deixa
+  de ser o critério — a sonda ganha a coluna «alfa máx. contra o F», e o critério é alfa `≤ 1` em TODAS as cenas; mais os
+  `14` gates de `ph2d-shape-gpu` e os `motion_shape_placa` (o arnês do tracejado contra o Vello) nas duas placas. A
+  reserva: igual (as arestas reservadas da coluna `arestas` não mudam). Mutações dos pedaços aceites.
+
+**(2) A PAREDE DO VELLO NA ROTA PELA LEI.** Candidatos, medidos na MESMA rodada (`custo_do_encode_tracejado`):
+`U` uma forma por TRAÇO — os polígonos de todas as peças, juntas e pontas de um traço da cópia num ÚNICO caminho
+`nonzero` (um `fill` em vez de um por peça: o Vello paga por caminho a montagem, a caixa e as etiquetas); `U+A` o
+mesmo e as arestas que a FAIXA partilha não se escrevem (como na placa: as duas metades cancelam-se). Critério: parede
+`≤ +10 %` da rota de ANTES nas quatro células da sonda (densa e `16 384`, RTX e iGPU), o `encode` sem perder mais de
+`10 %` do ganho (`−83 %` ⇒ `≤ −73 %`), a família do traço rente alfa `≤ 1` nas duas placas, as `4` famílias de hoje não
+pioram (alfa `46`, `165` px). Senão, recusa medida com a tabela.
+
+**(3) A PONTA E A JUNTA NO CARTÃO DA FORMA.** Dois parâmetros de escolha no `source.shape` (`ParamWidget::Enum`, o
+padrão do `KIND`): `Cap` (Butt · Round · Square) e `Join` (Miter · Round · Bevel), omissão Butt/Miter = o produto de
+hoje. ADR-0039 lido: o contrato é o `NodeManifest` de `8` CAMPOS; um `ParamSpec` a mais não é campo ⇒ o contrato não
+muda. Critério: cada combinação (`3 × 3`) pela placa contra a rota Vello (alfa `≤ 1` na família do traço rente com os
+valores novos) e pela rota do dispositivo; o catálogo/manifesto do nó; um projecto antigo (sem as linhas) abre com
+Butt/Miter; ida e volta da gravação com os valores novos.
+
+**(4) A PROVA DIRECTA DA CURA DO SIGSEGV DA RTX.** Binário de ANTES: `453354fb5^` (o `pass_profiler` antigo) com SÓ o
+controlo A/A da sonda aplicado (`PH2D_SONDA_AA`, o `variantes()` da cura sem o `shutdown`), num worktree temporário
+com `CARGO_TARGET_DIR` próprio; DEPOIS: o HEAD da linha antes desta onda (`d253432ac`). A MESMA sonda com `13`
+variantes (`PH2D_SONDA_AA=10`), na RTX, `__GL_SHADER_DISK_CACHE=0` (o ambiente do `mede_intercalado.sh`), `N = 20`
+corridas de cada, ALTERNADAS (antes, depois, antes, …), com a carga natural da máquina (as outras linhas e os builds
+desta) ao lado de cada corrida. Critério: ANTES `≥ 2` falhas e DEPOIS `0` ⇒ provada; ANTES `0` ⇒ a condição não se
+reproduz nesta máquina hoje, e o item fecha com a evidência que existe (o experimento `com × sem` do §9.18 F).
+
+**(5) O CONTACTO EM PLAY — a medição que faltava.** A `=114` com `PH2D_PILHA_LADO` `32` · `64` · `128` (`1 024` · `4 096`
+· `16 384` peças por taça; as duas taças: a da esquerda sem `Collide`), as duas placas, pelo `mede_formas_na_placa.sh`
+(`release`) e o `[frame] MOTION`. Antes: confirmar que a cena ANDA no roteiro (a ponte do Motion faz `playhead.play()`
+ao abrir a ferramenta, `motion_bridge_surfaces.rs`); se não andar, a porta `PH2D_PLAY=1`. Critério (o do §9.18 D): a
+`4 096` peças o quadro da iGPU `> 16,7` ms com o contacto a ser o custo ⇒ a recusa expirou e o contacto da CAIXA no
+dispositivo entra NESTA onda; senão a recusa renova-se com o número do app e o ponto de expiração escreve-se.
+⚠️ O resultado de (5) muda o que se constrói (uma wave inteira, ou nada): por isso mede-se ANTES de construir, em série.

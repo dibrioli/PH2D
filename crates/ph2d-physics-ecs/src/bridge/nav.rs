@@ -332,6 +332,7 @@ impl PhysicsBridge {
                 repath_distance: f64::from(p.repath.max(0.0)),
                 stuck_after_s: f64::from(p.stuck.max(0.0)),
                 speed: v.speed,
+                radius: f64::from(v.raio),
             };
             let NavWorld {
                 meshes,

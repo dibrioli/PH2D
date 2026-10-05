@@ -29,6 +29,7 @@ fn cfg() -> AgentConfig {
         repath_distance: 0.5,
         stuck_after_s: 0.0,
         speed: 3.0,
+        radius: 0.0,
     }
 }
 

@@ -44,6 +44,7 @@ const CFG: AgentConfig = AgentConfig {
     repath_distance: 0.25,
     stuck_after_s: 0.5,
     speed: 2.0,
+    radius: 0.0,
 };
 const DT: f64 = 1.0 / 60.0;
 

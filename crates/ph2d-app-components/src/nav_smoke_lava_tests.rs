@@ -135,3 +135,54 @@ fn cada_inimigo_diz_que_apanhou_uma_vez() {
         "{ouvidos:?}"
     );
 }
+
+/// ⭐⭐ (report do dono, 05/10) **Dois inimigos IGUAIS pelo mesmo portal não se prendem um ao outro.**
+/// O dono ligou o *Avoid Harm* também no cinzento: os dois foram ao portal da esquerda e ficaram
+/// parados, encostados, um de cada lado do ponto da entrada — o teletransporte disparava só no PONTO,
+/// e para lá chegar cada um teria de se sobrepor ao outro (medido: `5` de `20` nascimentos presos para
+/// sempre, `0,31` e `0,47 m` do ponto, a `0,70 m` um do outro = os dois raios). O cinzento a nascer em
+/// `40` sítios à esquerda — entre eles `(-2, -1,5)`, o que ainda prende com meio raio de alcance; a
+/// fixtura exige casos em que os DOIS saltam pelo portal.
+#[test]
+fn dois_inimigos_iguais_pelo_mesmo_portal_nao_se_prendem() {
+    let mut pelos_dois = 0;
+    for i in 0..8 {
+        for j in 0..5 {
+            let (x, y) = (-4.5 + 0.5 * i as f32, -1.5 + 0.5 * j as f32);
+            let mut sim = SimWorld::new();
+            let m = crate::nav_smoke::montar(sim.world_mut(), 4);
+            let l = m.lava.expect("a lava");
+            if let Some(mut a) = sim.world_mut().get_mut::<NavAgent>(l.cinzento) {
+                a.avoid_harm = true;
+            }
+            if let Some(mut t) = sim.world_mut().get_mut::<Transform>(l.cinzento) {
+                t.translation = Vec2::new(x, y);
+            }
+            let mut bridge = PhysicsBridge::new();
+            let quem = [l.vermelho, l.cinzento];
+            let mut antes = quem.map(|e| pos(&sim, e));
+            let (mut saltou, mut chegou) = ([false; 2], [false; 2]);
+            for t in 1..=900u64 {
+                bridge.dispatch(&mut sim, true, t);
+                for (k, &e) in quem.iter().enumerate() {
+                    let p = pos(&sim, e);
+                    saltou[k] |= (p[0] - antes[k][0]).abs() > 3.0;
+                    antes[k] = p;
+                    chegou[k] |= bridge
+                        .nav_agent(e)
+                        .is_some_and(|r| r.status == ph2d_nav::Status::Arrived);
+                }
+            }
+            pelos_dois += usize::from(saltou == [true, true]);
+            assert_eq!(
+                chegou,
+                [true, true],
+                "o cinzento a nascer em ({x}, {y}): saltaram {saltou:?}"
+            );
+        }
+    }
+    assert!(
+        pelos_dois >= 8,
+        "a fixtura: os dois pelo portal em {pelos_dois} de 40"
+    );
+}

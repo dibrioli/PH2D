@@ -36,6 +36,21 @@ pub struct AgentConfig {
     pub stuck_after_s: f64,
     /// A velocidade do executor (m/s) — mede o «alcançado» de um canto (Q5).
     pub speed: f64,
+    /// O raio do CORPO (m) — a entrada de um atalho alcança-se quando fica DENTRO dele (ver
+    /// [`alcance_de_atalho`]); `0` = um ponto (só a régua de um canto).
+    pub radius: f64,
+}
+
+/// ⭐ (report do dono, 05/10) **A entrada de um ATALHO alcança-se quando fica DENTRO do corpo** (a um
+/// raio), e não no centro: dois agentes iguais que vão ao mesmo portal encostam-se um de cada lado do
+/// ponto, e para lá chegar cada um teria de se sobrepor ao outro — o desvio não deixa, e ficavam os dois
+/// parados para sempre. Medido na cena `=4` (o 2.º inimigo a nascer em `135` sítios): no centro, `44`
+/// presos; a `0,5` raio, `1`; a `0,75`, `0`; a um raio e a dois, `0` — fica UM (o limiar com folga, e o
+/// que a palavra diz: o corpo está em cima do portal). Um canto continua a alcançar-se no passo do
+/// executor (Q5): só o atalho é uma porta que se ATRAVESSA, não um sítio por onde se passa.
+#[must_use]
+pub fn alcance_de_atalho(cfg: &AgentConfig, passo: f64) -> f64 {
+    cfg.radius.max(passo)
 }
 
 /// O que o agente está a fazer — o que o painel pinta.
@@ -375,7 +390,14 @@ pub fn step_in_turn(
     // ── Avançar os pontos alcançados (Q5) — e os atalhos (W7) ─────────────────
     let accept = (cfg.speed * dt).max(EPS);
     let mut crossed = None;
-    while rt.next + 1 < rt.path.len() && dist(pos, rt.path[rt.next]) <= accept {
+    let alcance = |rt: &AgentRuntime| {
+        if rt.hop_at(rt.next).is_some() {
+            alcance_de_atalho(cfg, accept)
+        } else {
+            accept
+        }
+    };
+    while rt.next + 1 < rt.path.len() && dist(pos, rt.path[rt.next]) <= alcance(rt) {
         // A entrada de um TELEPORTE: o corpo salta para a saída neste tique.
         if let Some(h) = rt.hop_at(rt.next)
             && h.teleport

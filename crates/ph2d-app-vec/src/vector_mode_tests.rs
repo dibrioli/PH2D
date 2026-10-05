@@ -137,7 +137,11 @@ fn the_pure_laws() {
     );
     assert_eq!(newborn(&[1, 2], None, &[]), None, "antes do 1.º quadro");
     assert_eq!(newborn(&[1], Some(&[1]), &[]), None, "nada de novo");
-    assert_eq!(heir(&[9, 1], &[1, 2], &[2, 1]), Some(1), "a última da caneta");
+    assert_eq!(
+        heir(&[9, 1], &[1, 2], &[2, 1]),
+        Some(1),
+        "a última da caneta"
+    );
     assert_eq!(heir(&[9, 1], &[1, 2], &[]), Some(1), "senão uma do Edit");
     assert_eq!(heir(&[9], &[1, 2], &[]), Some(2), "senão qualquer forma");
     assert_eq!(heir(&[1], &[1, 2], &[2]), None, "a trancada vive");
@@ -232,7 +236,11 @@ fn the_edit_holds_every_shape_and_another_kind_leaves_it() {
     );
     c.hero.gizmo.replace_selection(Some(b));
     c.quadro(None);
-    assert_eq!(c.em_edit(), Some(a), "seleccionar a outra forma largou o Edit");
+    assert_eq!(
+        c.em_edit(),
+        Some(a),
+        "seleccionar a outra forma largou o Edit"
+    );
     assert!(c.na_mao());
     c.quadro(Some(ModeRequest::Toggle));
     assert_eq!(c.em_edit(), None);
@@ -251,7 +259,11 @@ fn the_edit_holds_every_shape_and_another_kind_leaves_it() {
     assert_eq!(c.toasts.iter().count(), avisos, "a escolha deu um aviso");
     c.hero.gizmo.replace_selection(Some(sprite));
     c.quadro(None);
-    assert_eq!(c.em_edit(), None, "o objecto de outro tipo não saiu do Edit");
+    assert_eq!(
+        c.em_edit(),
+        None,
+        "o objecto de outro tipo não saiu do Edit"
+    );
     assert_eq!(c.hero.gizmo.selection, Some(sprite));
     assert!(!c.na_mao(), "Object não largou a ferramenta");
 }
@@ -337,8 +349,16 @@ fn clearing_the_selection_in_edit_keeps_the_edit() {
     assert_eq!(c.hero.gizmo.selected_len(), 0);
     c.sim.world_mut().despawn(Entity::from_bits(b));
     c.quadro(None);
-    assert_eq!(c.em_edit(), Some(a), "apagar a trancada largou o Edit (há outra forma)");
-    assert_eq!(c.hero.gizmo.selected_len(), 0, "a herdeira mexeu na selecção");
+    assert_eq!(
+        c.em_edit(),
+        Some(a),
+        "apagar a trancada largou o Edit (há outra forma)"
+    );
+    assert_eq!(
+        c.hero.gizmo.selected_len(),
+        0,
+        "a herdeira mexeu na selecção"
+    );
     c.sim.world_mut().despawn(Entity::from_bits(a));
     c.quadro(None);
     assert_eq!(

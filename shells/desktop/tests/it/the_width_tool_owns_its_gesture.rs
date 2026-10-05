@@ -35,7 +35,7 @@ fn at(needle: &str) -> usize {
 fn the_scanner_finds_what_it_scans_for() {
     for needle in [
         "ph2d_tool_vector::DrawMode::Width",
-        "crate::width_handles::press(",
+        "crate::width_handles::press_at(",
         "crate::width_handles::drag(",
         "crate::width_handles::remove(",
         "crate::width_handles::discard_if_untouched(",
@@ -52,7 +52,7 @@ fn the_scanner_finds_what_it_scans_for() {
 /// seria código morto — a lição que o release do lápis pagou, no mesmo arquivo.
 #[test]
 fn the_width_press_runs_before_the_mode_chain() {
-    let press = at("crate::width_handles::press(");
+    let press = at("crate::width_handles::press_at(");
     let chain = at("if shape_kind_for_mode(&self.vec.draw_config).is_none() {");
     assert!(
         press < chain,

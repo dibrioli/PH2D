@@ -51,9 +51,17 @@ fn the_weld_leaves_the_net_in_edit_with_its_gizmo() {
     c.quadro(None);
     let xf = ph2d_vec_entities::transform::build(&c.sim, &c.vec.entities);
     crate::weld::apply_vec_weld(&mut c.scene, &mut c.vec.pen, &xf, 0.0);
-    assert_eq!(c.scene.paths().len(), 1, "controlo: a solda não consumiu o traço");
+    assert_eq!(
+        c.scene.paths().len(),
+        1,
+        "controlo: a solda não consumiu o traço"
+    );
     assert_eq!(c.scene.path(ia).map(VecPath::contour_count), Some(4));
-    assert_eq!(c.vec.pen.selected_paths(), [ia], "controlo: a caneta fica com a rede");
+    assert_eq!(
+        c.vec.pen.selected_paths(),
+        [ia],
+        "controlo: a caneta fica com a rede"
+    );
     c.quadro(None);
     sincroniza(&mut c);
     // A shell copia a caneta para a selecção (`vec_selection::sync_selection`).
@@ -62,7 +70,11 @@ fn the_weld_leaves_the_net_in_edit_with_its_gizmo() {
     assert_eq!(c.em_edit(), Some(a), "a rede não ficou em Edit");
     assert!(c.na_mao(), "o Soldar largou a ferramenta");
     assert!(object_gizmo_shows(&c.hero), "a rede ficou sem gizmo");
-    assert_eq!(c.avisos_de_entrada(), 1, "a passagem à rede repetiu o aviso");
+    assert_eq!(
+        c.avisos_de_entrada(),
+        1,
+        "a passagem à rede repetiu o aviso"
+    );
 }
 
 /// ⭐⭐ GATE (furo 2, `…_O_VETOR.md` §7b) — **a caneta DENTRO do Edit continua o caminho aberto**:
@@ -85,12 +97,20 @@ fn the_pen_in_edit_continues_the_open_path_and_joins_another() {
     let l1 = *c.vec.entities.keys().next().expect("o 1.º traço");
     let e1 = c.vec.entities[&l1];
     assert_eq!(c.em_edit(), Some(e1));
-    assert_eq!(clique(&mut c, [1.0, 0.0]), PenClick::Grabbed, "a ponta não retomou o traço");
+    assert_eq!(
+        clique(&mut c, [1.0, 0.0]),
+        PenClick::Grabbed,
+        "a ponta não retomou o traço"
+    );
     assert_eq!(clique(&mut c, [1.0, 1.0]), PenClick::Added);
     c.vec.pen.finish();
     sincroniza(&mut c);
     c.quadro(None);
-    assert_eq!(c.scene.paths().len(), 1, "a continuação nasceu outro objecto");
+    assert_eq!(
+        c.scene.paths().len(),
+        1,
+        "a continuação nasceu outro objecto"
+    );
     assert_eq!(c.scene.path(l1).map(|p| p.verts.len()), Some(3));
     assert_eq!(c.em_edit(), Some(e1), "a continuação largou o Edit");
     // CONTROLO: longe das pontas nasce outro objecto, e o Edit passa a ele.
@@ -99,9 +119,18 @@ fn the_pen_in_edit_continues_the_open_path_and_joins_another() {
     c.vec.pen.finish();
     sincroniza(&mut c);
     c.quadro(None);
-    let l2 = *c.vec.entities.keys().find(|id| **id != l1).expect("o 2.º traço");
+    let l2 = *c
+        .vec
+        .entities
+        .keys()
+        .find(|id| **id != l1)
+        .expect("o 2.º traço");
     let e2 = c.vec.entities[&l2];
-    assert_eq!(c.em_edit(), Some(e2), "controlo: o traço novo não pediu o Edit");
+    assert_eq!(
+        c.em_edit(),
+        Some(e2),
+        "controlo: o traço novo não pediu o Edit"
+    );
     // Retomar o 1.º (é do Edit: o Edit é do tipo) e juntar-lhe o 2.º pela ponta dele.
     assert_eq!(clique(&mut c, [1.0, 1.0]), PenClick::Grabbed);
     clique(&mut c, [3.0, 0.0]);
@@ -112,7 +141,11 @@ fn the_pen_in_edit_continues_the_open_path_and_joins_another() {
     sincroniza(&mut c);
     c.hero.gizmo.replace_selection(Some(e1));
     c.quadro(None);
-    assert_eq!(c.em_edit(), Some(e1), "o Edit não passou ao traço que ficou");
+    assert_eq!(
+        c.em_edit(),
+        Some(e1),
+        "o Edit não passou ao traço que ficou"
+    );
     assert!(c.na_mao(), "juntar largou a ferramenta");
 }
 
@@ -143,13 +176,23 @@ fn width_and_trim_pressed_in_edit_reach_the_shapes_and_skip_a_locked_one() {
     let press = |c: &mut Cena, p| {
         crate::width_handles::press_at(&mut c.vec.pen, &mut c.sim, &c.scene, &c.vec.entities, p, r)
     };
-    assert!(press(&mut c, [5.0, 5.0]).is_none(), "controlo: o Width respondeu no vazio");
-    assert!(press(&mut c, em_b).is_some(), "o Width não respondeu na outra forma do Edit");
+    assert!(
+        press(&mut c, [5.0, 5.0]).is_none(),
+        "controlo: o Width respondeu no vazio"
+    );
+    assert!(
+        press(&mut c, em_b).is_some(),
+        "o Width não respondeu na outra forma do Edit"
+    );
     assert_eq!(c.vec.pen.selected(), Some(ib));
     let xf = ph2d_vec_entities::transform::build(&c.sim, &c.vec.entities);
     assert!(crate::trim::hit_at(&c.vec.pen, &c.scene, &xf, [5.0, 5.0], r).is_none());
     let hit = crate::trim::hit_at(&c.vec.pen, &c.scene, &xf, [0.25, 1.75], r);
-    assert_eq!(hit.map(|h| h.path), Some(ib), "o Trim não respondeu na outra forma do Edit");
+    assert_eq!(
+        hit.map(|h| h.path),
+        Some(ib),
+        "o Trim não respondeu na outra forma do Edit"
+    );
     c.quadro(None);
     assert_eq!(c.em_edit(), Some(a), "o press largou o Edit");
     // TRAVADA (e ainda seleccionada pela Hierarquia): nem o Width nem o Trim.
@@ -159,7 +202,10 @@ fn width_and_trim_pressed_in_edit_reach_the_shapes_and_skip_a_locked_one() {
         .insert(ph2d_ecs::Locked);
     vista(&mut c);
     c.vec.pen.select(Some(ib));
-    assert!(press(&mut c, em_b).is_none(), "o Width deu uma parada à forma travada");
+    assert!(
+        press(&mut c, em_b).is_none(),
+        "o Width deu uma parada à forma travada"
+    );
     let hit = crate::trim::hit_at(&c.vec.pen, &c.scene, &xf, [0.25, 1.75], r);
     assert!(hit.is_none(), "o Trim respondeu na forma travada");
 }

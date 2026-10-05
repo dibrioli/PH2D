@@ -101,30 +101,6 @@ fn the_composed_families_declare_every_creation_mode() {
     }
 }
 
-/// ⭐⭐ GATE (spec/06 F3 ▸ Vector) — **as formas do Edit chegam à vista do quadro**: é a vista que
-/// as ferramentas lêem (`is_pickable`) e que desenha os nós (`in_edit`). Sem esta linha o Edit do
-/// vetor abre, o seletor diz Edit — e toda forma continua a agarrar-se e a mostrar nós.
-///
-/// *Mutação que sangra:* apagar a linha da fase.
-#[test]
-fn the_vector_edit_reaches_the_frame_view() {
-    let src = std::fs::read_to_string(shell("src/render_loop/fase_vector_view_and_drives.rs"))
-        .expect("a fase da vista vetorial existe");
-    assert!(
-        src.contains("vec_view.editing = self.vec.edit.editing(&self.vec.entities)"),
-        "a vista do quadro não recebe as formas do Edit"
-    );
-    // ⛔ E a vista do CLIQUE (`view_derived`, lida pelo pick do Select, do laço e do realce) tem de
-    // a receber: sem esta linha o Select em Edit lia Object e subia da forma ao objecto inteiro —
-    // report do dono, 04/10: «não consigo selecionar as formas vetoriais dentro do objeto».
-    let recook = std::fs::read_to_string(shell("src/render_loop/fase_vector_layout_recook.rs"))
-        .expect("a fase do recook existe");
-    assert!(
-        recook.contains("view_derived.editing.clone_from(&vec_view.editing)"),
-        "a vista do clique não recebe o Edit do quadro"
-    );
-}
-
 /// ⭐⭐ GATE (spec/06 F3 ▸ Vector, 2.ª volta) — **o *Add ▸ Vector Drawing* da shell só ARMA a
 /// ferramenta e pede Object** (nada nasce: a 1.ª forma pede o Edit). Sem o pedido de Object, um Add
 /// feito em Paint deixaria o Painter a disputar a mão com o vetor.

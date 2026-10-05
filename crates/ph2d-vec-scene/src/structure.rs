@@ -212,9 +212,7 @@ impl VecViewState {
     /// contrário tornaria impossível recuperar algo que se arrastou para fora por engano.
     #[must_use]
     pub fn is_pickable(&self, id: VecPathId) -> bool {
-        !self.hidden.contains(&id)
-            && !self.locked.contains(&id)
-            && !self.is_derived(id)
+        !self.hidden.contains(&id) && !self.locked.contains(&id) && !self.is_derived(id)
     }
 
     /// A geometria deste path é escrita por um motor — ela não tem nós próprios ([`Self::derived`]).

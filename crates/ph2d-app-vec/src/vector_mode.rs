@@ -55,7 +55,6 @@ impl EditTarget {
     pub fn armed(&self) -> bool {
         self.armed
     }
-
 }
 
 /// A ferramenta do vetor, se é a que está na mão.
@@ -310,7 +309,12 @@ impl ModeFamily for Family<'_> {
         if !self.is_shape(entity) {
             return None;
         }
-        let parts: Vec<u64> = self.shapes.iter().copied().filter(|b| *b != entity).collect();
+        let parts: Vec<u64> = self
+            .shapes
+            .iter()
+            .copied()
+            .filter(|b| *b != entity)
+            .collect();
         (!parts.is_empty()).then_some(parts)
     }
 }

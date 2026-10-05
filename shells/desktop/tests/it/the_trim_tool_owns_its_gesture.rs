@@ -40,7 +40,7 @@ fn at(src: &str, needle: &str, onde: &str) -> usize {
 #[test]
 fn the_scanner_finds_what_it_scans_for() {
     at(&DISPATCH, "ph2d_tool_vector::DrawMode::Trim", "o dispatch");
-    at(&DISPATCH, "crate::vec_trim::apply(", "o dispatch");
+    at(&DISPATCH, "ph2d_app_vec::trim::apply(", "o dispatch");
     at(
         &frame(),
         "self.refresh_trim_hover(pointer);",
@@ -62,7 +62,7 @@ fn the_press_never_falls_through_to_the_drawing_chain() {
         "self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
         "o dispatch",
     );
-    let apply = at(&DISPATCH, "crate::vec_trim::apply(", "o dispatch");
+    let apply = at(&DISPATCH, "ph2d_app_vec::trim::apply(", "o dispatch");
     let corner = at(
         &DISPATCH,
         "if self.vec.draw_config.mode.is_corner_tool() {",
@@ -117,7 +117,7 @@ fn a_live_shape_freezes_its_recipe_before_the_cut() {
         "self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Trim",
         "o dispatch",
     );
-    let apply = at(&DISPATCH, "crate::vec_trim::apply(", "o dispatch");
+    let apply = at(&DISPATCH, "ph2d_app_vec::trim::apply(", "o dispatch");
     assert!(
         DISPATCH[arm..apply].contains("freeze_shape_recipe("),
         "sem congelar a receita, o `recook_into` come o corte no quadro seguinte"

@@ -428,7 +428,6 @@ instale = "instale"  # pt-BR imperativo ("instale este plano", donated_form.rs) 
 portugues = "portugues"  # dentro de `nenhuma_frase_que_o_artista_le_esta_em_portugues` e do módulo `src/portugues.rs`
 parenteses = "parenteses"  # dentro de `entre_parenteses`/`sem_parenteses`, a lei de encurtar um rótulo
 parentesis = "parentesis"  # dentro de `primeiro_numero_entre_parentesis`, o leitor do índice da memória
-contendor = "contendor"  # dentro de `unreal_contendor_*` e em prosa: quem CONTENDE com o padrão-ouro
 # ORDINAIS LATINOS: o `docs/3D/quad-remesh/PLAN.md` numera as secoes por ordinal
 # latino (`§4-bis`, `§4-decies`, `§4-tricies`, `§4-quinquagies`) porque sao dezenas
 # de secoes acrescentadas em ordem estrita e um numero arabe colidiria com os
@@ -442,7 +441,6 @@ decies = "decies"
 # âncoras não casam. A entrada por PALAVRA apanha o sub-token onde quer que ele esteja.
 transformes = "transformes"
 comercial = "comercial"  # pt-PT ("valor comercial") — o ingles seria `commercial`, mas o texto e' portugues
-contentes = "contentes"  # pt ("as guardas ficavam todas contentes") — o ingles seria `contents`, mas o texto e' portugues (ph2d-trace, 2026-08-23)
 inconveniente = "inconveniente"  # pt ("um gate inconveniente") — o ingles seria `inconvenience`; texto portugues (sim_extract_sheet_tests, 2026-08-23)
 # pt-BR de comentario, drenadas no ship de 2026-07-31 (a jornada de SETE linhas
 # acumulou 33 ocorrencias / 16 palavras -- este gate nao roda no fechamento de
@@ -467,7 +465,6 @@ cenario = "cenario"            # pt-BR (diagrama da polia: "[cenario]")
 # integrador -- que e' exatamente o que a nota acima descreve tendo acontecido.
 programa = "programa"          # pt-BR ("outro programa", "um programa de fora")
 programas = "programas"        # pt-BR ("tres programas adiante")
-receptores = "receptores"      # pt-BR ("os receptores do gesto")
 aspectos = "aspectos"          # pt-BR ("os dois aspectos da projecao")
 assuma = "assuma"              # pt-BR imperativo ("assuma o formato"), irmao do `instale` acima
 mediam = "mediam"              # pt-BR, 5x ("todos mediam o MIOLO") -- imperfeito de "medir"
@@ -732,7 +729,6 @@ eles = "eles"
 mis = "mis"
 ambiguidade = "ambiguidade"
 implementador = "implementador"
-imutaveis = "imutaveis"
 materializadas = "materializadas"
 pendente = "pendente"
 processsa = "processsa"
@@ -994,13 +990,12 @@ unparseable = "unparseable"
 # `ship.sh`, logo as palavras novas de cada linha aterram no integrador. ⛔ Uma era erro A SÉRIO
 # e foi CORRIGIDA no texto, não isentada (`muder` → `mudar`, num doc-comment da escultura).
 # pt: «cenários» (o corpus do oráculo do GDevelop) · «depósitos» · «monstros» (a cena da vida) ·
-# «coice» (o recuo do abanão) · «extrapole» (o verbo) · «três» escrito `tre^s` numa string ASCII.
+# «coice» (o recuo do abanão) · «três» escrito `tre^s` numa string ASCII.
 CENARIOS = "CENARIOS"
 depositos = "depositos"
 monstros = "monstros"
 MONSTROS = "MONSTROS"
 coice = "coice"
-extrapole = "extrapole"
 tre = "tre"
 TRE = "TRE"
 # Identificadores curtos (metades de um par ou prefixos): `alo`/`ahi` (o mínimo e o máximo de uma

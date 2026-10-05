@@ -294,10 +294,6 @@ impl Paint for ToastQueue {
 }
 
 #[cfg(test)]
-#[path = "toast_orcamento_tests.rs"]
-mod orcamento_tests;
-
-#[cfg(test)]
 mod tests {
     use super::*;
 

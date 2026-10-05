@@ -123,8 +123,8 @@ fn every_offered_component_can_be_constructed() {
 
 /// **Máquina não tem seção, e um `Machinery` com campos descritos é uma contradição.**
 ///
-/// As quatro pontes de identidade (`VecPathRef` · `PaintedDoc` · `BakedForm` ·
-/// `FlipObjectRef`) são ids opacos: descrever campos delas seria construir a tabela que
+/// As três pontes de identidade (`VecPathRef` · `PaintedDoc` · `FlipObjectRef`) são ids
+/// opacos: descrever campos delas seria construir a tabela que
 /// nenhum painel lê. O gate protege a distinção que a terceira variante comprou —
 /// `Intrinsic` **pode** ter seção (a `Sprite` tem a maior de todas), `Machinery` não.
 ///

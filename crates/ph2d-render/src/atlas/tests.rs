@@ -141,6 +141,12 @@ fn remove_of_missing_key_returns_none() {
     let mut atlas = TextureAtlas::new(&gpu, 256);
     assert!(atlas.remove(123).is_none());
     assert_eq!(atlas.free_slot_count(), 0);
+    // O `new` submete a limpeza do nível 0 e este teste não lê nada de volta: sem esperar a fila,
+    // o processo sai com o lavapipe do CI ainda a executá-la (SIGABRT/SIGSEGV no fecho, 2/2 com o
+    // Mesa 25.2.8-0ubuntu0.24.04.4 — docs/DevOps/FLAKES_DE_CARGA.md).
+    gpu.device
+        .poll(wgpu::PollType::wait_indefinitely())
+        .expect("a fila drena antes de o processo sair");
 }
 
 #[test]

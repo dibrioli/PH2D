@@ -93,4 +93,13 @@ commit passou: é o adaptador por software do runner (`lavapipe`), não a lei. A
 `SIGSEGV` de GPU no CI, pergunte **se os outros dois SO passaram** e **se o módulo tem diff**; com
 as duas respostas «sim» e «não», a cura é `gh run rerun --failed`.
 
+⚠️ **04/10: deixou de ser 1 em 1 300.** Com o Mesa do runner a passar de `25.2.8-0ubuntu0.24.04.3`
+para `…04.4` (mesma imagem `ubuntu-24.04 20260927.320.1`), o mesmo teste caiu **2/2** (SIGABRT
+«double free», depois SIGSEGV) — sempre DEPOIS de imprimir `ok`, no fecho do processo. Mecanismo: o
+`TextureAtlas::new` submete a limpeza do nível 0, o teste não lê nada de volta e sai em ~0,05 s com
+o `GpuContext` preso num `OnceLock` (nunca largado) e o lavapipe ainda a executar a fila. Os outros
+20 testes GPU do atlas fazem readback (esperam a fila) e passaram. Cura: o teste espera a fila
+(`device.poll(PollType::wait_indefinitely())`) antes de sair. ⇒ um teste GPU que **submete e não
+lê** drena a fila no fim; o re-run deixou de ser a cura.
+
 Os gates de GPU deste repo são `#[ignore]` e precisam de adaptador: *um skip gracioso não é verde*.

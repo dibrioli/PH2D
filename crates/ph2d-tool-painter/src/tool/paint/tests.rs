@@ -107,6 +107,10 @@ mod diag_composite_cinco_camadas;
 #[path = "diag_ordem_entre_carimbos.rs"]
 mod diag_ordem_entre_carimbos; // o pincel de cima coberto pelo de baixo do lote seguinte // o preco MARGINAL de uma camada na pilha, e a lei do tamanho
 
+/// O preço da pilha, dos fios e do Solid no Wet Paint, antes de os construir (doc 46 itens 8–9).
+#[path = "diag_wet_pilha_fios_solido.rs"]
+mod diag_wet_pilha_fios_solido;
+
 #[path = "look_watercolor_arc.rs"]
 mod look_watercolor_arc; // o arco palido na concavidade: o oraculo e o RENDER, nao um escalar
 #[path = "measure_impasto_cost.rs"]

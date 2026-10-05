@@ -48,6 +48,8 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `the_cost_of_depth_is_linear_not_explosive` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/it/nesting_clock.rs) | razão de relógios |
 | `the_cost_of_sampling_a_path_is_flat_in_its_anchors` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/it/motion_path_perf.rs) | razão de relógios |
 | `the_segment_lookup_is_a_binary_search_not_a_scan` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/it/motion_path_perf.rs) | razão de relógios (5,13× na suíte a `load 40`; 1,05× sozinho, 3/3) |
+| `a_locked_selection_is_announced_once_not_every_frame` | [`ph2d-app-field3d`](../../crates/ph2d-app-field3d/src/malha_render_costura_tests.rs) | a malha do Render nasce noutra thread: 5 quadros contados antes de ela chegar (falhou na suíte da crate a `load ~14`, 36 s; sozinho 3/3 a `load 6–8`, 4 s) |
+| `in_the_mesh_render_the_style_tint_and_its_softness_reach_the_frame` | [`ph2d-app-field3d`](../../crates/ph2d-app-field3d/src/malha_render_costura_tests.rs) | prazo de RELÓGIO de 30 s à espera do quadro da outra thread («o quadro nunca chegou»; 70 s na suíte a `load ~14`; sozinho 3/3 a `load 6–8`) |
 | `apply_from_doc_is_zero_alloc_steady_state` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/no_alloc_bridge.rs) | contagem de alocações |
 | `no_expression_allocates_no_link_frame` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/no_expression_link_frame_alloc.rs) | contagem de alocações |
 | `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/wetpaint/tests.rs) | razão de relógios |

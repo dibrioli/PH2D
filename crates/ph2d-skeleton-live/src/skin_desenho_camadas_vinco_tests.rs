@@ -249,12 +249,14 @@ fn diag_a_foto_do_vinco() {
     }
 }
 
-/// ⭐⭐⭐ **GATE — a ponta do traço na ponta do VINCO converge** (A10): a lei fica a menos de `0,1`
-/// largura da malha fina de lado `16` em `150°…175°`, com as mesmas pontas. ⛔ **O CONTROLO:** a
-/// malha do campo (lado `1`) passa de `0,5` largura nalguma pose (MEDIDO: `2,11` a `160°`).
+/// ⭐⭐⭐ **GATE — a ponta do traço na ponta do VINCO converge** (A10): a lei fica a menos de `0,03`
+/// largura da malha fina de lado `16` em `150°…175°` (MEDIDO `≤ 0,019`), com as mesmas pontas.
+/// ⛔ **OS CONTROLOS:** a malha do campo (lado `1`) passa de `0,5` (MEDIDO `2,11` a `160°`) e o 1.º
+/// degrau sozinho (lado `2`) passa de `0,03` (MEDIDO `0,06` a `150°`) — sem o 2.º, uma lei que não
+/// refinasse além do 1.º degrau passava (mutação sobrevivente).
 #[test]
 fn a_ponta_do_vinco_converge_para_a_pele_exacta() {
-    let mut pior_campo = 0.0_f64;
+    let (mut pior_campo, mut pior_degrau) = (0.0_f64, 0.0_f64);
     for graus in [150f32, 160.0, 170.0, 175.0] {
         let refe = pontas(&desenho(graus, Some(16)));
         let maior = |p: &[[f64; 2]]| {
@@ -272,13 +274,43 @@ fn a_ponta_do_vinco_converge_para_a_pele_exacta() {
         let m = maior(&lei);
         println!("  {graus}°: a lei a {m:.3} larg. da referência");
         assert!(
-            m < 0.1,
+            m < 0.03,
             "a {graus}° a ponta do vinco ficou a {m:.3} larguras"
         );
         pior_campo = pior_campo.max(maior(&pontas(&desenho(graus, Some(1)))));
+        pior_degrau = pior_degrau.max(maior(&pontas(&desenho(graus, Some(2)))));
     }
+    assert!(
+        pior_degrau > 0.03,
+        "controlo morto: o 1.º degrau já acertava ({pior_degrau:.3})"
+    );
     assert!(
         pior_campo > 0.5,
         "controlo morto: a malha do campo já acertava ({pior_campo:.3})"
     );
+}
+
+/// ⭐ **SONDA — a varredura densa**: a lei contra o lado `16`, de `100°` a `180°` de `2,5°` em `2,5°`
+/// (o pior desvio e onde).
+#[test]
+#[ignore = "sonda: imprime"]
+fn diag_a_varredura_do_vinco() {
+    let mut pior = (0.0_f64, 0.0_f32);
+    let mut g = 100.0_f32;
+    while g <= 180.0 {
+        let refe = pontas(&desenho(g, Some(16)));
+        let lei = pontas(&desenho(g, None));
+        let m = desvios(&lei, &refe)
+            .into_iter()
+            .chain(desvios(&refe, &lei))
+            .fold(0.0, f64::max);
+        if lei.len() != refe.len() {
+            println!("  {g}°: pontas {} contra {}", lei.len(), refe.len());
+        }
+        if m > pior.0 {
+            pior = (m, g);
+        }
+        g += 2.5;
+    }
+    println!("  pior desvio {:.4} larg. a {}°", pior.0, pior.1);
 }

@@ -295,7 +295,12 @@ fn fendas(pl: &[[f64; 2]], cruz: &[bool], w: f64, buraco: bool, cor: f64) -> Vec
     // dentro de uma larga — a ponta que entra num bolso, `=5`).
     let mut largas: Vec<(usize, usize)> = Vec::new();
     let mut achadas: Vec<(usize, usize)> = Vec::new();
-    let perto = |a: usize, b: usize| a.abs_diff(b).min(n - a.abs_diff(b)) <= AMOSTRAS;
+    // «Junto à mesma boca» pelo COMPRIMENTO (a largura do traço), não por amostras: uma aresta
+    // comprida tem amostras largas.
+    let perto = |a: usize, b: usize| {
+        let d = (acc[a] - acc[b]).abs();
+        d.min(total - d) <= w
+    };
     for (arco, s, e) in pares {
         let toca = |&(a, b): &(usize, usize)| {
             dentro_do_arco(a, b, s) || dentro_do_arco(a, b, e) || dentro_do_arco(s, e, a)

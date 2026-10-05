@@ -481,3 +481,127 @@ fn diag_o_preco_das_passagens() {
         );
     }
 }
+
+/// Duas lâminas finas (`0,8 < W`) que se cruzam em X: a união é UMA ilhota que o traço engole inteira,
+/// e tem cruzamentos (as pontas dela seriam passagens novas).
+fn ilhota_em_x() -> VecPath {
+    caminho(vec![
+        poligono(&[[0.0, 0.0], [10.0, 9.4], [10.0, 10.0], [0.0, 0.6]]),
+        poligono(&[[0.0, 9.4], [10.0, 0.0], [10.0, 0.6], [0.0, 10.0]]),
+    ])
+}
+
+/// ⭐⭐ **GATE — uma ILHOTA que o traço engole inteira fica** (como o buraco pequeno: o dono recusou
+/// fechá-los, F59-b). ⛔ **O CONTROLO:** ela tem passagens novas (as pontas do X).
+#[test]
+fn a_ilhota_que_o_traco_engole_inteira_fica() {
+    let fonte = ilhota_em_x();
+    let (sem, com) = (uniao(&fonte, false), uniao(&fonte, true));
+    assert_eq!(sem, com, "a ilhota mexeu");
+    let (v, _) = sem.contour(0).expect("contorno");
+    let aneis: Vec<super::Anel> = (0..fonte.contour_count())
+        .filter_map(|c| fonte.contour(c))
+        .map(|(v, _)| super::Anel::novo(super::polilinha(v)))
+        .collect();
+    let ancoras: Vec<[f64; 2]> = (0..fonte.contour_count())
+        .filter_map(|c| fonte.contour(c))
+        .flat_map(|(v, _)| v.iter().map(|x| x.anchor).collect::<Vec<_>>())
+        .collect();
+    let cruz = super::cruzamentos(v, &aneis, &ancoras, 1e-3 * W);
+    assert!(
+        !super::fendas(&super::polilinha(v), &cruz, W, false, 1.0).is_empty(),
+        "controlo: a ilhota tem passagens novas"
+    );
+}
+
+/// O bolso: a barra de baixo `[0, 20] × [0, 4]`, a parede `[0, 3] × [0, 14]`, a tampa
+/// `[0, 20] × [12, 14]` e a parede da direita `[17, 20] × [5, 14]` — entre ela e a barra fica uma
+/// boca de `1 < W`, e o bolso é largo por dentro. E uma PONTA fina (`0,64` na boca dela) que sai da
+/// barra e entra no bolso até `(10, 8)`.
+fn bolso_com_ponta() -> VecPath {
+    caminho(vec![
+        poligono(&[[0.0, 0.0], [20.0, 0.0], [20.0, 4.0], [0.0, 4.0]]),
+        poligono(&[[0.0, 0.0], [3.0, 0.0], [3.0, 14.0], [0.0, 14.0]]),
+        poligono(&[[0.0, 12.0], [20.0, 12.0], [20.0, 14.0], [0.0, 14.0]]),
+        poligono(&[[17.0, 5.0], [20.0, 5.0], [20.0, 14.0], [17.0, 14.0]]),
+        poligono(&[[9.6, 3.0], [10.4, 3.0], [10.0, 8.0]]),
+    ])
+}
+
+/// ⭐⭐ **GATE — a ponta nova DENTRO de um bolso largo corta-se, e o bolso fica** (a 2.ª marca da `=5`
+/// a `100°`). ⛔ Recusar a boca larga do bolso punha de lado tudo o que estava dentro dela (mutação
+/// sobrevivente). **O CONTROLO:** sem a lei a ponta está no contorno.
+#[test]
+fn a_ponta_dentro_de_um_bolso_largo_corta_se_e_o_bolso_fica() {
+    let fonte = bolso_com_ponta();
+    let (sem, com) = (uniao(&fonte, false), uniao(&fonte, true));
+    assert!(
+        ao_contorno(&sem, [10.0, 8.0]) < 1e-6,
+        "controlo: a ponta está no contorno"
+    );
+    assert!(
+        ao_contorno(&com, [10.0, 8.0]) > 1.0,
+        "a ponta dentro do bolso ficou"
+    );
+    // O bolso: a tampa por dentro e a parede da direita continuam no contorno.
+    assert!(ao_contorno(&com, [8.0, 12.0]) < 1e-6, "o bolso fechou-se");
+    assert!(
+        ao_contorno(&com, [17.0, 9.0]) < 1e-6,
+        "a parede do bolso mexeu"
+    );
+}
+
+/// ⭐ **GATE — a boca de uma passagem é RECTA mesmo num contorno curvo** (as alças das duas âncoras
+/// da boca vão para cima delas). Um círculo de quatro cúbicas cortado de âncora a âncora.
+#[test]
+fn a_boca_de_uma_passagem_e_recta_num_contorno_curvo() {
+    let k = 0.552_284_75 * 5.0;
+    let v = |p: [f64; 2], t: [f64; 2]| VecVertex {
+        anchor: p,
+        in_handle: [p[0] - t[0], p[1] - t[1]],
+        out_handle: [p[0] + t[0], p[1] + t[1]],
+        ..VecVertex::corner(p)
+    };
+    let circulo = [
+        v([5.0, 0.0], [0.0, k]),
+        v([0.0, 5.0], [-k, 0.0]),
+        v([-5.0, 0.0], [0.0, -k]),
+        v([0.0, -5.0], [k, 0.0]),
+    ];
+    let a = super::AMOSTRAS;
+    let r = super::sem_as_fendas(&circulo, &[(a, 3 * a)]);
+    let (p, u) = (r.first().expect("1.º"), r.last().expect("último"));
+    assert_eq!(p.in_handle, p.anchor, "a boca entra curva");
+    assert_eq!(u.out_handle, u.anchor, "a boca sai curva");
+    assert!(
+        (u.anchor[0] - 0.0).abs() < 1e-9 && (u.anchor[1] - 5.0).abs() < 1e-9,
+        "{u:?}"
+    );
+}
+
+/// ⭐ **GATE — um CRUZAMENTO mora em dois sítios da fonte**: uma âncora a meio de uma aresta da fonte
+/// (um ponto de divisão do motor booleano) não é cruzamento; a esquina onde duas formas se cortam é.
+#[test]
+fn so_e_cruzamento_o_que_mora_em_dois_sitios_da_fonte() {
+    let fonte = caminho(vec![
+        poligono(&[[0.0, 0.0], [10.0, 0.0], [10.0, 4.0], [0.0, 4.0]]),
+        poligono(&[[5.0, 2.0], [15.0, 2.0], [15.0, 8.0], [5.0, 8.0]]),
+    ]);
+    let aneis: Vec<super::Anel> = (0..fonte.contour_count())
+        .filter_map(|c| fonte.contour(c))
+        .map(|(v, _)| super::Anel::novo(super::polilinha(v)))
+        .collect();
+    let ancoras: Vec<[f64; 2]> = (0..fonte.contour_count())
+        .filter_map(|c| fonte.contour(c))
+        .flat_map(|(v, _)| v.iter().map(|x| x.anchor).collect::<Vec<_>>())
+        .collect();
+    let teste = [
+        VecVertex::corner([2.0, 0.0]),  // a meio da base do 1.º: divisão
+        VecVertex::corner([10.0, 2.0]), // a parede direita do 1.º corta a base do 2.º
+        VecVertex::corner([0.0, 0.0]),  // âncora da fonte
+    ];
+    assert_eq!(
+        super::cruzamentos(&teste, &aneis, &ancoras, 1e-3 * W),
+        vec![false, true, false]
+    );
+}

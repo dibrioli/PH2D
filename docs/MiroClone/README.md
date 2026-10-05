@@ -1,7 +1,8 @@
 # MiroClone — o quadro de planear, organizar, brainstorm e equipa, dentro do PH2D
 
-Canvas infinito no idioma do Miro/Excalidraw, construído sobre o motor vectorial do PH2D
-(`ph2d-app-vec`: formas, conectores presos que desviam, texto, auto-layout) e o desenho livre do Flip.
+Canvas infinito no idioma do Miro/Excalidraw. Cada quadro é um DOCUMENTO numa aba da barra de cima
+(nunca um objecto da cena), com núcleo próprio (`ph2d-board-model` · `ph2d-board-render` ·
+`ph2d-app-board`) que reusa o roteador de setas `ph2d-vec-connect` e a geometria das formas.
 Linha `line/MiroClone`, aberta em 2026-10-05.
 
 | doc | o quê |

@@ -23,6 +23,10 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
+        // ⭐ A raiz de ossos sem esqueleto ganha um (A14): projectos antigos, cenas, o 1.º *Create*.
+        if !ph2d_app_skeleton::loose::adopt_loose_roots(sim).is_empty() {
+            self.title_dirty = true;
+        }
         let request = request
             .or_else(|| ph2d_app_painter::paint_mode::smoke_step(sim, hero))
             .or_else(|| ph2d_app_vec::vector_mode::smoke_step(&mut self.vec, vec_scene, hero));

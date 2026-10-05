@@ -170,6 +170,7 @@ mod the_input_map_window_can_be_moved;
 mod the_joint_edit_loop_flushes_the_command_queue;
 mod the_key_blocks_ask_whether_the_keys_are_live;
 mod the_light_table_reaches_the_ghost_pass;
+mod the_loose_bone_roots_get_a_skeleton;
 mod the_marquee_shape_comes_from_one_door;
 mod the_math_is_installed_at_boot;
 mod the_mode_keys_are_wired;

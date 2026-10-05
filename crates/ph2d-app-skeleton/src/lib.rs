@@ -47,6 +47,7 @@ pub mod goal;
 mod goal_authored;
 /// ⭐⭐⭐ O que cada NÚMERO do painel significa para um osso — a tradução e a aplicação.
 pub mod knobs;
+pub mod loose;
 pub mod object_add;
 pub mod reveal;
 pub mod skeleton_mode;

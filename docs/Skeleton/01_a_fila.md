@@ -151,6 +151,19 @@ diz onde ler o mecanismo:
   era *o que acende tem de responder*, e fora do Edit/Pose nada acende agora. Gates
   `the_bone_handles_belong_to_edit_and_pose.rs` (3, vermelho visto sobre o HEAD, controlo positivo em
   cada).
+- **C9 — os projectos antigos: uma PORTA, não uma escada.** `PROJECT_SCHEMA` `184 → 185` (o
+  `Skeleton` registado; esqueleto `7 → 8`, ECS e espelhos `0`; tripla `(185, 13, 22)`) — ⛔ sem degrau
+  de migração, pela decisão de sempre (um v184 é recusado). A porta
+  `ph2d_app_skeleton::loose::adopt_loose_roots`, chamada em todo quadro antes das famílias
+  (`fase_object_mode`), põe um esqueleto por cima de cada raiz solta: na IDENTIDADE, no lugar dela na
+  Hierarquia (o mesmo pai, a mesma `RootOrder`) ⇒ pose AO BIT. Cobre o projecto antigo, as cenas que
+  criam ossos à mão e o 1.º *Create* numa cena sem esqueleto (a família adopta-o no quadro seguinte).
+  ⚠️ Desvio do plano: o esqueleto adoptado chama-se `Skeleton` (que conta), não o nome da raiz — dois
+  nomes iguais na Hierarquia (o esqueleto e o 1.º osso) seriam ilegíveis. Gates
+  `an_old_project_opens_with_one_skeleton_per_root_and_the_pose_to_the_bit` (controlos: 2.ª passagem
+  vazia, corrente com esqueleto intocada) e `the_loose_roots_are_adopted_before_the_mode_families`.
+  ⚠️ O degrau `185` reconta-se na integração (`python3 scripts/schema-recount.py`): a `line/UIUX` e
+  outras linhas sobem o mesmo número.
 
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 

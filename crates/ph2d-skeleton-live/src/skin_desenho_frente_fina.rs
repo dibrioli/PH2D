@@ -15,14 +15,21 @@ mod tests;
 /// qualidade: ver a fila §F60 para o preço medido.
 pub(super) const MAX_DIV: usize = 16;
 
-/// A malha fina posada: cada subtriângulo sabe o triângulo do campo de que nasceu (`pai`), que dá a
-/// chave de osso e a vizinhança.
+/// Uma grelha triangular posada: `(repouso, posado)` de cada vértice.
+type Grade = Vec<([f64; 2], [f64; 2])>;
+
+/// ⭐ **A malha fina, refinada SOB PEDIDO:** só os [`cobridores`] entram, cada um na grelha de
+/// baldes pela caixa alargada da sua folga, e cada um só se parte (até `tol`) na 1.ª vez que um ponto
+/// lhe cai na caixa ([`Fina::cobre`]) — os triângulos longe do traço de trás nunca se posam além do
+/// 1.º degrau.
 pub(super) struct Fina {
-    pub(super) pos: Vec<[f64; 2]>,
-    pub(super) repouso: Vec<[f64; 2]>,
-    pub(super) tris: Vec<[u32; 3]>,
-    pub(super) pai: Vec<u32>,
+    tol: f64,
+    adapta: bool,
+    /// Baldes dos cobridores (índice = triângulo do campo), pela caixa alargada.
     pub(super) grelha: Grelha,
+    caixa: Vec<[f64; 4]>,
+    /// O lado e a grelha de cada triângulo, e se ela já está FINAL (desvio `≤ tol` ou lado máximo).
+    grades: std::cell::RefCell<Vec<(usize, Grade, bool)>>,
 }
 
 /// O índice do vértice `(i, j)` (`i + j ≤ d`) da grelha triangular de lado `d`.
@@ -38,7 +45,7 @@ fn grelha_de(
     k: usize,
     antes: Option<&[([f64; 2], [f64; 2])]>,
     posa: &mut impl FnMut(usize, f64, f64) -> ([f64; 2], [f64; 2]),
-) -> Vec<([f64; 2], [f64; 2])> {
+) -> Grade {
     let mut g = Vec::with_capacity((d + 1) * (d + 2) / 2);
     for j in 0..=d {
         for i in 0..=d - j {
@@ -75,9 +82,8 @@ fn desvio(d: usize, fina: &[([f64; 2], [f64; 2])], grossa: &[([f64; 2], [f64; 2]
     m
 }
 
-/// A malha do campo POSADA (recta), com a chave de osso de cada triângulo.
+/// Os triângulos da malha do campo, com a chave de osso de cada um.
 pub(super) struct Campo<'a> {
-    pub(super) pos: &'a [[f64; 2]],
     pub(super) tris: &'a [[u32; 3]],
     pub(super) chave: &'a [f64],
 }
@@ -85,19 +91,25 @@ pub(super) struct Campo<'a> {
 /// ⭐ **Quem pode TAPAR alguém** — o triângulo de chave maior de um par sem vértice comum cujas
 /// caixas, cada uma alargada pela sua `folga` (o quanto a pele exacta sai da recta), se tocam. Um
 /// triângulo fora desta lista não tapa nada e não entra na malha fina. Varrimento em `x`.
-fn cobridores(c: &Campo<'_>, folga: &[f64]) -> Vec<bool> {
-    let caixa: Vec<[f64; 4]> = c
-        .tris
+fn cobridores(
+    c: &Campo<'_>,
+    grades: &[(usize, Grade, bool)],
+    folga: &[f64],
+) -> (Vec<bool>, Vec<[f64; 4]>) {
+    // A caixa dos pontos EXACTOS da grelha do 1.º degrau, alargada pela folga.
+    let caixa: Vec<[f64; 4]> = grades
         .iter()
         .zip(folga)
-        .map(|(t, &m)| {
-            let p = t.map(|v| c.pos[v as usize]);
-            [
-                p[0][0].min(p[1][0]).min(p[2][0]) - m,
-                p[0][1].min(p[1][1]).min(p[2][1]) - m,
-                p[0][0].max(p[1][0]).max(p[2][0]) + m,
-                p[0][1].max(p[1][1]).max(p[2][1]) + m,
-            ]
+        .map(|((_, g, _), &m)| {
+            let (lo, hi) = g
+                .iter()
+                .fold(([f64::MAX; 2], [f64::MIN; 2]), |(lo, hi), (_, p)| {
+                    (
+                        [lo[0].min(p[0]), lo[1].min(p[1])],
+                        [hi[0].max(p[0]), hi[1].max(p[1])],
+                    )
+                });
+            [lo[0] - m, lo[1] - m, hi[0] + m, hi[1] + m]
         })
         .collect();
     let mut ordem: Vec<usize> = (0..caixa.len()).collect();
@@ -117,15 +129,16 @@ fn cobridores(c: &Campo<'_>, folga: &[f64]) -> Vec<bool> {
             cobre[if c.chave[a] > c.chave[b] { a } else { b }] = true;
         }
     }
-    cobre
+    (cobre, caixa)
 }
 
 impl Fina {
-    /// A malha fina dos triângulos de `campo`: `posa(k, u, v)` dá o repouso e o ponto posado no
-    /// baricentro `(u, v)` do triângulo `k`. `fixo` força o lado de todos (gates e sondas); senão o
-    /// lado dobra até o desvio ser `≤ tol` (com `tol` não finito ou `≤ 0`, lado `1`), e só nos
-    /// [`cobridores`] — os outros ficam de fora. Um triângulo `rigido(k)` (a mesma linha de pesos
-    /// nos três cantos, sem correcções) é posado por UMA transformação afim: a recta é a pele exacta.
+    /// O 1.º degrau da malha fina dos triângulos de `campo`: `posa(k, u, v)` dá o repouso e o ponto
+    /// posado no baricentro `(u, v)` do triângulo `k`. `fixo` força o lado de todos (gates e
+    /// sondas, todos entram); senão a grelha de lado `2` mede a folga de cada um e só os
+    /// [`cobridores`] entram (com `tol` não finito ou `≤ 0`, lado `1`). Um triângulo `rigido(k)` (a
+    /// mesma linha de pesos nos três cantos, sem correcções) é posado por UMA transformação afim:
+    /// a recta é a pele exacta.
     pub(super) fn nova(
         campo: &Campo<'_>,
         tol: f64,
@@ -135,75 +148,86 @@ impl Fina {
     ) -> Self {
         let n = campo.tris.len();
         let adapta = fixo.is_none() && tol > 0.0 && tol.is_finite();
-        // O 1.º degrau de todos: a grelha de lado 2 e o desvio dela à recta.
-        let mut grelhas: Vec<(usize, Vec<([f64; 2], [f64; 2])>)> = Vec::with_capacity(n);
+        let mut grades: Vec<(usize, Grade, bool)> = Vec::with_capacity(n);
         let mut folga = vec![0.0; n];
         for k in 0..n {
-            grelhas.push(if let Some(d) = fixo {
-                (d.max(1), grelha_de(d.max(1), k, None, &mut posa))
+            grades.push(if let Some(d) = fixo {
+                (d.max(1), grelha_de(d.max(1), k, None, &mut posa), true)
             } else if !adapta || rigido(k) {
-                (1, grelha_de(1, k, None, &mut posa))
+                (1, grelha_de(1, k, None, &mut posa), true)
             } else {
                 let g = grelha_de(1, k, None, &mut posa);
                 let g2 = grelha_de(2, k, Some(&g), &mut posa);
+                let dv = desvio(1, &g2, &g);
                 // ⚠️ O desvio é AMOSTRADO nos meios das arestas: a folga dobra-o (o máximo
                 // amostrado erra para baixo).
-                folga[k] = 2.0 * desvio(1, &g2, &g);
-                (2, g2)
+                folga[k] = 2.0 * dv;
+                (2, g2, dv <= tol)
             });
         }
-        let cobre = if adapta {
-            cobridores(campo, &folga)
-        } else {
-            vec![true; n]
-        };
-        let mut pos = Vec::new();
-        let mut repouso = Vec::new();
-        let mut tris = Vec::new();
-        let mut pai = Vec::new();
-        for (k, (mut d, mut g)) in grelhas.into_iter().enumerate() {
-            if !cobre[k] {
-                continue;
-            }
-            if adapta && d == 2 && folga[k] > 2.0 * tol {
-                loop {
-                    let g2 = grelha_de(2 * d, k, Some(&g), &mut posa);
-                    let ok = desvio(d, &g2, &g) <= tol;
-                    (d, g) = (2 * d, g2);
-                    if ok || d >= MAX_DIV {
-                        break;
-                    }
-                }
-            }
-            #[expect(clippy::cast_possible_truncation, reason = "índice de vértice u32")]
-            let base = pos.len() as u32;
-            for (r, p) in g {
-                repouso.push(r);
-                pos.push(p);
-            }
-            #[expect(clippy::cast_possible_truncation, reason = "índice de vértice u32")]
-            let v = |i: usize, j: usize| base + ix(d, i, j) as u32;
-            #[expect(clippy::cast_possible_truncation, reason = "índice de triângulo u32")]
-            let ku = k as u32;
-            for j in 0..d {
-                for i in 0..d - j {
-                    tris.push([v(i, j), v(i + 1, j), v(i, j + 1)]);
-                    pai.push(ku);
-                    if i + j + 1 < d {
-                        tris.push([v(i + 1, j), v(i + 1, j + 1), v(i, j + 1)]);
-                        pai.push(ku);
-                    }
-                }
-            }
-        }
-        let grelha = Grelha::nova(&pos, &tris);
+        let (cobre, caixa) = cobridores(campo, &grades, &folga);
+        let quais: Vec<usize> = (0..n).filter(|&k| !adapta || cobre[k]).collect();
+        let grelha = Grelha::de_caixas(&caixa, &quais);
         Self {
-            pos,
-            repouso,
-            tris,
-            pai,
+            tol,
+            adapta,
             grelha,
+            caixa,
+            grades: std::cell::RefCell::new(grades),
         }
     }
-}
 
+    /// ⭐ O ponto do repouso que o triângulo `k` põe em `q` (posado), pela pele exacta até `tol`;
+    /// `None` se `q` não cai nele. Parte o triângulo na 1.ª vez que é preciso.
+    pub(super) fn cobre(
+        &self,
+        k: usize,
+        q: [f64; 2],
+        mut posa: impl FnMut(usize, f64, f64) -> ([f64; 2], [f64; 2]),
+    ) -> Option<[f64; 2]> {
+        let c = self.caixa[k];
+        if q[0] < c[0] || q[0] > c[2] || q[1] < c[1] || q[1] > c[3] {
+            return None;
+        }
+        let mut grades = self.grades.borrow_mut();
+        let (d, g, final_) = &mut grades[k];
+        if !*final_ && self.adapta {
+            loop {
+                let g2 = grelha_de(2 * *d, k, Some(g), &mut posa);
+                let ok = desvio(*d, &g2, g) <= self.tol;
+                (*d, *g) = (2 * *d, g2);
+                if ok || *d >= MAX_DIV {
+                    break;
+                }
+            }
+            *final_ = true;
+        }
+        let (d, g) = (*d, &*g);
+        let em = |[a, b, c]: [usize; 3]| {
+            let uv = super::malha::bari(q, g[a].1, g[b].1, g[c].1);
+            super::malha::dentro(uv).then(|| {
+                let (u, v) = uv.unwrap_or_default();
+                [0, 1].map(|x| (1.0 - u - v) * g[a].0[x] + u * g[b].0[x] + v * g[c].0[x])
+            })
+        };
+        for j in 0..d {
+            for i in 0..d - j {
+                if let Some(r) = em([ix(d, i, j), ix(d, i + 1, j), ix(d, i, j + 1)]) {
+                    return Some(r);
+                }
+                if i + j + 1 < d {
+                    if let Some(r) = em([ix(d, i + 1, j), ix(d, i + 1, j + 1), ix(d, i, j + 1)]) {
+                        return Some(r);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Quantos vértices finos há agora (sondas).
+    #[cfg(test)]
+    pub(super) fn vertices(&self) -> usize {
+        self.grades.borrow().iter().map(|(_, g, _)| g.len()).sum()
+    }
+}

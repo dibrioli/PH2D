@@ -161,7 +161,7 @@ fn a_lei_e_continua_no_peso() {
 
 /// Três ossos em linha (juntas em `j1` e `j2`), com os DOIS primeiros girados — logo a 2.ª junta
 /// **move-se**.
-fn cadeia3(j1: f64, j2: f64, fim: f64, r1: f64, r2: f64) -> Skin {
+pub(super) fn cadeia3(j1: f64, j2: f64, fim: f64, r1: f64, r2: f64) -> Skin {
     let rot = |t: f64, o: [f64; 2]| {
         let (c, s) = (t.cos(), t.sin());
         // roda em torno da ORIGEM do mundo, para a junta de facto andar

@@ -92,15 +92,35 @@ pub(super) fn dentro(uv: Option<(f64, f64)>) -> bool {
 
 impl Grelha {
     pub(super) fn nova(pos: &[[f64; 2]], tris: &[[u32; 3]]) -> Self {
+        let caixas: Vec<[f64; 4]> = tris
+            .iter()
+            .map(|t| {
+                let ps = t.map(|v| pos[v as usize]);
+                [
+                    ps[0][0].min(ps[1][0]).min(ps[2][0]),
+                    ps[0][1].min(ps[1][1]).min(ps[2][1]),
+                    ps[0][0].max(ps[1][0]).max(ps[2][0]),
+                    ps[0][1].max(ps[1][1]).max(ps[2][1]),
+                ]
+            })
+            .collect();
+        let todos: Vec<usize> = (0..tris.len()).collect();
+        Self::de_caixas(&caixas, &todos)
+    }
+
+    /// A grelha das caixas `caixas[i]` dos índices `quais` (o balde guarda `i`).
+    pub(super) fn de_caixas(caixas: &[[f64; 4]], quais: &[usize]) -> Self {
         let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
-        for p in pos {
-            for k in 0..2 {
-                lo[k] = lo[k].min(p[k]);
-                hi[k] = hi[k].max(p[k]);
-            }
+        for &i in quais {
+            let c = caixas[i];
+            lo = [lo[0].min(c[0]), lo[1].min(c[1])];
+            hi = [hi[0].max(c[2]), hi[1].max(c[3])];
+        }
+        if quais.is_empty() {
+            (lo, hi) = ([0.0; 2], [1.0; 2]);
         }
         #[expect(clippy::cast_precision_loss, reason = "contagem de triângulos")]
-        let n = tris.len().max(1) as f64;
+        let n = quais.len().max(1) as f64;
         let area = ((hi[0] - lo[0]) * (hi[1] - lo[1])).max(1e-12);
         let lado = (area / n).sqrt() * 2.0;
         #[expect(
@@ -115,16 +135,9 @@ impl Grelha {
             dim,
             baldes: vec![Vec::new(); dim[0] * dim[1]],
         };
-        for (i, t) in tris.iter().enumerate() {
-            let ps = t.map(|v| pos[v as usize]);
-            let c0 = g.celula([
-                ps[0][0].min(ps[1][0]).min(ps[2][0]),
-                ps[0][1].min(ps[1][1]).min(ps[2][1]),
-            ]);
-            let c1 = g.celula([
-                ps[0][0].max(ps[1][0]).max(ps[2][0]),
-                ps[0][1].max(ps[1][1]).max(ps[2][1]),
-            ]);
+        for &i in quais {
+            let c = caixas[i];
+            let (c0, c1) = (g.celula([c[0], c[1]]), g.celula([c[2], c[3]]));
             for y in c0[1]..=c1[1] {
                 for x in c0[0]..=c1[0] {
                     #[expect(clippy::cast_possible_truncation, reason = "índice de triângulo u32")]

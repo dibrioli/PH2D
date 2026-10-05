@@ -34,7 +34,7 @@ thread_local! {
 }
 
 /// O desvio admitido entre a pele exacta e a malha fina, em larguras do traço (A10, fila §F60).
-const TOL_EM_LARGURAS: f64 = 0.05;
+const TOL_EM_LARGURAS: f64 = 0.1;
 
 /// A malha do campo POSADA neste quadro, com a chave de cada triângulo e uma grelha por caixa.
 struct Posada<'a> {
@@ -147,27 +147,35 @@ impl<'a> Posada<'a> {
         let m = &self.campo.malha;
         let t = m.tris[dono];
         let minha = self.chave_tri[dono];
-        let (grelha, tris, pos, repouso, pai) = match &self.fina {
-            Some(f) => (
-                &f.grelha,
-                &f.tris[..],
-                &f.pos[..],
-                &f.repouso[..],
-                Some(&f.pai[..]),
-            ),
-            None => (&self.grelha, &m.tris[..], &self.pos[..], &self.repouso[..], None),
-        };
-        grelha.balde(q).iter().any(|&s| {
-            let k = pai.map_or(s, |p| p[s as usize]) as usize;
+        if let Some(f) = &self.fina {
+            let mut rascunho: Option<(Vec<f64>, Vec<f64>)> = None;
+            return f.grelha.balde(q).iter().any(|&k| {
+                let k = k as usize;
+                if self.chave_tri[k] <= minha || m.tris[k].iter().any(|v| t.contains(v)) {
+                    return false;
+                }
+                f.cobre(k, q, |k, u, v| {
+                    let (linha, w) = rascunho.get_or_insert_with(|| {
+                        (vec![0.0; self.campo.ossos()], self.pele.scratch())
+                    });
+                    self.posa_no(k, u, v, linha, w)
+                })
+                .is_some_and(|r| self.arte.tem(r))
+            });
+        }
+        self.grelha.balde(q).iter().any(|&k| {
+            let k = k as usize;
             if self.chave_tri[k] <= minha || m.tris[k].iter().any(|v| t.contains(v)) {
                 return false;
             }
-            let [a, b, c] = tris[s as usize].map(|v| v as usize);
-            let uv = bari(q, pos[a], pos[b], pos[c]);
+            let [a, b, c] = m.tris[k].map(|v| v as usize);
+            let uv = bari(q, self.pos[a], self.pos[b], self.pos[c]);
             dentro(uv)
                 && uv.is_some_and(|(u, v)| {
                     let r = [0, 1].map(|j| {
-                        (1.0 - u - v) * repouso[a][j] + u * repouso[b][j] + v * repouso[c][j]
+                        (1.0 - u - v) * self.repouso[a][j]
+                            + u * self.repouso[b][j]
+                            + v * self.repouso[c][j]
                     });
                     self.arte.tem(r)
                 })
@@ -196,7 +204,9 @@ impl<'a> Posada<'a> {
         #[cfg(test)]
         let (fixo, tol_em) = (
             DIV_FIXO.with(std::cell::Cell::get),
-            TOL_FIXA.with(std::cell::Cell::get).unwrap_or(TOL_EM_LARGURAS),
+            TOL_FIXA
+                .with(std::cell::Cell::get)
+                .unwrap_or(TOL_EM_LARGURAS),
         );
         #[cfg(not(test))]
         let (fixo, tol_em) = (None, TOL_EM_LARGURAS);
@@ -218,30 +228,38 @@ impl<'a> Posada<'a> {
         };
         let (mut linha, mut w) = (vec![0.0; n], self.pele.scratch());
         let campo = fina::Campo {
-            pos: &self.pos,
             tris,
             chave: &self.chave_tri,
         };
         let fina = fina::Fina::nova(&campo, tol, fixo, rigido, |k, u, v| {
-            let [a, b, c] = tris[k].map(|x| x as usize);
-            if (u, v) == (0.0, 0.0) {
-                return (self.repouso[a], self.pos[a]);
-            }
-            if (u, v) == (1.0, 0.0) {
-                return (self.repouso[b], self.pos[b]);
-            }
-            if (u, v) == (0.0, 1.0) {
-                return (self.repouso[c], self.pos[c]);
-            }
-            let r = [0, 1].map(|j| {
-                (1.0 - u - v) * self.repouso[a][j] + u * self.repouso[b][j] + v * self.repouso[c][j]
-            });
-            (r, self.posa_com(r, k, (u, v), &mut linha, &mut w))
+            self.posa_no(k, u, v, &mut linha, &mut w)
         });
         #[cfg(test)]
-        ULTIMA_FINA.with(|c| c.set((tris.len(), fina.pos.len(), fina.tris.len())));
+        ULTIMA_FINA.with(|c| c.set((tris.len(), fina.vertices(), 0)));
         self.fina = Some(fina);
         self
+    }
+
+    /// O repouso e o ponto posado no baricentro `(u, v)` do triângulo `k` — os cantos são os da
+    /// malha posada, ao bit.
+    fn posa_no(
+        &self,
+        k: usize,
+        u: f64,
+        v: f64,
+        linha: &mut [f64],
+        w: &mut [f64],
+    ) -> ([f64; 2], [f64; 2]) {
+        let [a, b, c] = self.campo.malha.tris[k].map(|x| x as usize);
+        for (canto, x) in [((0.0, 0.0), a), ((1.0, 0.0), b), ((0.0, 1.0), c)] {
+            if (u, v) == canto {
+                return (self.repouso[x], self.pos[x]);
+            }
+        }
+        let r = [0, 1].map(|j| {
+            (1.0 - u - v) * self.repouso[a][j] + u * self.repouso[b][j] + v * self.repouso[c][j]
+        });
+        (r, self.posa_com(r, k, (u, v), linha, w))
     }
 
     /// O ponto `p` (LOCAL, em repouso) posado pela pele, com a linha de pesos do campo no
@@ -266,7 +284,8 @@ impl<'a> Posada<'a> {
             let r = |x: u32| self.campo.pesos[x as usize * n + j];
             *l = (1.0 - u - v) * r(t[0]) + u * r(t[1]) + v * r(t[2]);
         }
-        self.pele.weights_corrected(p, Some(linha), w, self.correcoes);
+        self.pele
+            .weights_corrected(p, Some(linha), w, self.correcoes);
         if self.rigido {
             self.pele.blend(p, w)
         } else {

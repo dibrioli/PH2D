@@ -310,5 +310,8 @@ impl Skin {
 }
 
 #[cfg(test)]
+#[path = "centro_cache_tests.rs"]
+mod centro_cache_tests;
+#[cfg(test)]
 #[path = "centro_tests.rs"]
 mod centro_tests;

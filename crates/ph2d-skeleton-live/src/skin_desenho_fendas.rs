@@ -1,12 +1,13 @@
-//! ⭐⭐ **AS FENDAS QUE O TRAÇO ENCHE FECHAM-SE** (A12, ordem do dono 2026-10-05: *«sim»* a fechar
-//! as reentrâncias mais estreitas que a linha). Num *Zig Zag* muito dobrado a UNIÃO dos membros
-//! deixa, onde dois contornos se cruzam, uma fenda ABERTA mais estreita que o traço: o traço dos dois
-//! lados enche-a toda e ela lê-se como uma mancha escura (FOTOGRAFADO na `=5` a `100°`). A fenda
-//! corta-se pela corda onde a largura dela chega à do traço, e o contorno passa a ir recto por ali.
+//! ⭐⭐ **AS PASSAGENS QUE O TRAÇO ENCHE CORTAM-SE PELA CORDA** (A12, ordem do dono 2026-10-05:
+//! *«sim»* a fechar as reentrâncias mais estreitas que a linha). Num *Zig Zag* muito dobrado a UNIÃO
+//! dos membros deixa, onde dois contornos se cruzam, passagens mais estreitas que o traço — uma
+//! FENDA aberta para fora, ou a PONTA de um dente que entra num buraco: o traço dos dois lados
+//! enche-as e elas leem-se como manchas escuras (FOTOGRAFADO na `=5` a `100°`, uma de cada). Cada
+//! uma corta-se pela corda onde a largura chega à do traço, e o contorno passa recto por ali.
 //!
-//! ⚠️ **Só as fendas NOVAS:** o vale de um dente do *Zig Zag* também é uma fenda junto ao bico, mas
-//! já está na fonte (os dois lados da corda estão no MESMO contorno da fonte, à mesma distância
-//! pelo contorno) — fica. ⛔ E os BURACOS fechados ficam como estão (F59-b, recusado pelo dono).
+//! ⚠️ **Só as NOVAS:** o vale e o bico de um dente também são estreitos, mas já estão na fonte (os
+//! dois lados da corda estão no MESMO contorno da fonte, à mesma distância pelo contorno) — ficam.
+//! ⛔ E um contorno que o traço engole inteiro (o buraco pequeno) fica (F59-b, recusado pelo dono).
 
 use ph2d_vec_scene::{VecPath, VecVertex};
 
@@ -102,12 +103,14 @@ impl Anel {
 
 /// O raio do maior círculo dentro do polígono `p` (grelha `24 × 24` na caixa).
 fn raio_inscrito(p: &[[f64; 2]]) -> f64 {
-    let (lo, hi) = p.iter().fold(([f64::MAX; 2], [f64::MIN; 2]), |(lo, hi), q| {
-        (
-            [lo[0].min(q[0]), lo[1].min(q[1])],
-            [hi[0].max(q[0]), hi[1].max(q[1])],
-        )
-    });
+    let (lo, hi) = p
+        .iter()
+        .fold(([f64::MAX; 2], [f64::MIN; 2]), |(lo, hi), q| {
+            (
+                [lo[0].min(q[0]), lo[1].min(q[1])],
+                [hi[0].max(q[0]), hi[1].max(q[1])],
+            )
+        });
     let anel = [p.to_vec()];
     let mut r = 0.0_f64;
     for i in 0..24 {
@@ -127,14 +130,9 @@ fn raio_inscrito(p: &[[f64; 2]]) -> f64 {
     r
 }
 
-/// ⭐ A melhor fenda NOVA do contorno `c` da união: `(s, e)` em amostras, a fenda vai de `s` para a
-/// frente até `e`. A boca é a corda mais larga (`< w`) de uma fenda cujo interior o traço cobre.
-fn fenda(
-    pl: &[[f64; 2]],
-    aneis_u: &[Vec<[f64; 2]>],
-    fonte: &[Anel],
-    w: f64,
-) -> Option<(usize, usize)> {
+/// ⭐ A melhor passagem NOVA do contorno `pl` da união: `(s, e)` em amostras, ela vai de `s` para
+/// a frente até `e`. A boca é a corda mais larga (`< w`) de uma passagem que o traço cobre toda.
+fn fenda(pl: &[[f64; 2]], fonte: &[Anel], w: f64) -> Option<(usize, usize)> {
     let n = pl.len();
     let mut acc = vec![0.0];
     for i in 0..n {
@@ -176,10 +174,6 @@ fn fenda(
                     if arco <= 1.5 * w {
                         continue;
                     }
-                    let meio = [0.5 * (p[0] + q[0]), 0.5 * (p[1] + q[1])];
-                    if dentro(aneis_u, meio) {
-                        continue;
-                    }
                     pares.push((arco, s, e));
                 }
             }
@@ -202,12 +196,16 @@ fn fenda(
             continue;
         }
         vistos.push((s, e));
-        // ⚠️ NOVA: os dois lados da boca não estão no mesmo contorno da fonte à mesma distância.
+        // ⚠️ NOVA: nenhum contorno da fonte liga os dois lados da boca pelo MESMO caminho (o mesmo
+        // comprimento). ⛔ «Um caminho não mais longo» não serve: a borda de um buraco liga a base
+        // de uma ponta que entra nele por um caminho CURTO, e a ponta lia-se como da fonte.
         let tol = 1e-3 * w;
         let velha = fonte.iter().any(|a| {
             let (xs, ys) = (a.onde(pl[s], tol), a.onde(pl[e], tol));
-            xs.iter()
-                .any(|&x| ys.iter().any(|&y| a.entre(x, y) <= arco * (1.0 + 1e-3) + tol))
+            xs.iter().any(|&x| {
+                ys.iter()
+                    .any(|&y| (a.entre(x, y) - arco).abs() <= 1e-2 * arco + tol)
+            })
         });
         if velha {
             continue;
@@ -258,13 +256,13 @@ pub(super) fn fecha_as_fendas_que_o_traco_enche(u: &mut VecPath, fonte: &VecPath
             if !c.closed || c.verts.len() < 2 {
                 break;
             }
-            let aneis_u: Vec<Vec<[f64; 2]>> = contornos
-                .iter()
-                .filter(|c| c.closed && c.verts.len() > 1)
-                .map(|c| polilinha(&c.verts))
-                .collect();
             let pl = polilinha(&c.verts);
-            let Some((s, e)) = fenda(&pl, &aneis_u, &fonte, w) else {
+            // ⛔ Um contorno que o traço engole INTEIRO (o buraco pequeno, a ilhota) fica como
+            // está: fechá-lo foi recusado pelo dono (F59-b).
+            if raio_inscrito(&pl) < 0.5 * w {
+                break;
+            }
+            let Some((s, e)) = fenda(&pl, &fonte, w) else {
                 break;
             };
             contornos[ci].verts = sem_a_fenda(&contornos[ci].verts, s, e);
@@ -304,3 +302,7 @@ fn sem_a_fenda(v: &[VecVertex], s: usize, e: usize) -> Vec<VecVertex> {
     }
     resto
 }
+
+#[cfg(test)]
+#[path = "skin_desenho_fendas_tests.rs"]
+mod tests;

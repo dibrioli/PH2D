@@ -199,7 +199,8 @@ sozinhos a `load 32`–`36`) · `check --workspace --all-targets` `-D warnings` 
 sozinho na árvore, pré-voo `12/12`): **`12/12` sangram** na família nova (a lista no doc 121 §9.18). A `m6` (a emenda
 nunca) sobreviveu à 1.ª corrida — nenhuma forma da família tinha dois contornos; a engrenagem com furo entrou e ela sangra.
 
-**Smoke (o dono):** ⏳ por aprovar. Fotografado a `1930 × 1040` (RTX), as duas rotas: a placa (`[formas] 1024 copias de 1
+**Smoke (o dono):** ✅ **APROVADO em 05/10.** Ordem do dono: *integrar só quando não houver nada em aberto* — a 4.ª
+onda fecha o §11 «Aberto» e o resto ([`HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_TUDO.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_TUDO.md)). Fotografado a `1930 × 1040` (RTX), as duas rotas: a placa (`[formas] 1024 copias de 1
 geometrias pela PLACA (do dispositivo)`) e o Vello (`PH2D_FORMAS_NA_PLACA=0`: `[formas] 1024 copias … pela cena Vello`,
 `59` fps) — o mesmo desenho, as estrelas amarelas esticadas com o contorno azul em traços (`target/prova/smoke_c/`).
 Binário: `rm -rf target/*/incremental` e o build `smoke` do `ph2d-host-desktop` 2× (a 2.ª: `Finished … in 0.20s`, zero

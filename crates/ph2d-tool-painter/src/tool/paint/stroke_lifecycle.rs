@@ -192,14 +192,17 @@ impl PainterTool {
             &mut dabs,
         );
         self.stamp_stroke_dabs(&dabs);
+        self.paint.dabs = dabs;
+        // ⚠️ O traço volta ANTES do composite: o `park_stroke` fecha o evento (fios e a mancha do
+        // Solid na aguada), e o composite é o LEITOR dele — invertidos, o quadro sai sem a mancha
+        // (o «pisca» do smoke de 2026-10-04, `a_mancha_nao_some_no_quadro_em_que_o_tique_carimba`).
+        self.park_stroke(stroke);
         // Watercolor render-path: reconstruct the wash optically over the frozen base (live; grows with
         // the stroke). Replaces the per-dab deposit that `stamp_dabs` skipped in watercolor mode.
         if self.watercolor_render_active() {
             self.apply_watercolor(false);
             self.pour_canvas_wet(); // #2: moisture is laid LIVE (the damp shows during the stroke, not at pen-up)
         }
-        self.paint.dabs = dabs;
-        self.park_stroke(stroke);
     }
 
     /// The cursor moved over the canvas with **no button down** (image px). Advances the hover heading so
@@ -301,12 +304,12 @@ impl PainterTool {
         // pointer-Move flush already recomposited this frame's window". That premise holds for the
         // COALESCED methods (one delivery per frame) and is false for the incremental freehand path,
         // which is the default watercolor brush: there the flush is one per raw event.
+        self.paint.dabs = dabs;
+        self.park_stroke(stroke); // antes do composite — ver o `paint_begin`
         if self.watercolor_render_active() && self.wash.per_event {
             self.apply_watercolor(false); // the frozen legacy route — measurement + mutation only
             self.pour_canvas_wet();
         }
-        self.paint.dabs = dabs;
-        self.park_stroke(stroke);
         self.paint.moved_this_frame = true;
         true
     }
@@ -392,12 +395,12 @@ impl PainterTool {
         // frame's pointer Moves, which now accumulate without recompositing. Either way it runs at most
         // ONCE per frame, and the tick sits after the pointer flush and before the preview upload, so
         // what the artist sees this frame is fully reconstructed — the deferral costs no latency.
+        self.paint.dabs = dabs;
+        self.park_stroke(stroke); // antes do composite — ver o `paint_begin`
         if wet && (stamped || (!parked && !self.wash.per_event)) {
             self.apply_watercolor(false);
             self.pour_canvas_wet(); // #2: live moisture on the held/settling heartbeat too
         }
-        self.paint.dabs = dabs;
-        self.park_stroke(stroke);
     }
 
     /// Finish the stroke at `ev` (stamp the final segment, flush the freehand smoother's tail so

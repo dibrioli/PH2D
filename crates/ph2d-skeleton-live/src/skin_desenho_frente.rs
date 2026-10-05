@@ -27,6 +27,10 @@ thread_local! {
     static AMOSTRAGENS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     /// Os gates e as sondas forçam o lado da [`fina::Fina`] (`Some(1)` = a malha do campo).
     pub(super) static DIV_FIXO: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+    /// As sondas forçam a tolerância da malha fina (em larguras).
+    pub(super) static TOL_FIXA: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
+    /// A última malha fina construída: `(triângulos do campo, vértices finos, subtriângulos)`.
+    pub(super) static ULTIMA_FINA: std::cell::Cell<(usize, usize, usize)> = const { std::cell::Cell::new((0, 0, 0)) };
 }
 
 /// O desvio admitido entre a pele exacta e a malha fina, em larguras do traço (A10, fila §F60).
@@ -189,13 +193,36 @@ impl<'a> Posada<'a> {
     /// [`TOL_EM_LARGURAS`] do traço de `fonte` ([`fina::Fina`]).
     fn com_a_arte(mut self, fonte: &VecPath) -> Self {
         self.arte = Arte::de(fonte);
-        let tol = TOL_EM_LARGURAS * fonte.stroke.as_ref().map_or(0.0, |s| s.width);
         #[cfg(test)]
-        let fixo = DIV_FIXO.with(std::cell::Cell::get);
+        let (fixo, tol_em) = (
+            DIV_FIXO.with(std::cell::Cell::get),
+            TOL_FIXA.with(std::cell::Cell::get).unwrap_or(TOL_EM_LARGURAS),
+        );
         #[cfg(not(test))]
-        let fixo = None;
+        let (fixo, tol_em) = (None, TOL_EM_LARGURAS);
+        let tol = tol_em * fonte.stroke.as_ref().map_or(0.0, |s| s.width);
         let tris = &self.campo.malha.tris;
-        let fina = fina::Fina::nova(tris.len(), tol, fixo, |k, u, v| {
+        let n = self.campo.ossos();
+        let pesos = &self.campo.pesos;
+        // Os pesos só são a linha do campo sem correcções nem osso partido (a quota de um osso
+        // partido varia ao longo dele).
+        let pesos_da_linha =
+            self.correcoes.is_empty() && self.pele.bones().iter().all(|b| b.sub.1 <= 1);
+        let rigido = |k: usize| {
+            let t = tris[k];
+            pesos_da_linha
+                && (0..n).all(|j| {
+                    let r = |x: u32| pesos[x as usize * n + j];
+                    (r(t[0]) - r(t[1])).abs() <= 1e-12 && (r(t[0]) - r(t[2])).abs() <= 1e-12
+                })
+        };
+        let (mut linha, mut w) = (vec![0.0; n], self.pele.scratch());
+        let campo = fina::Campo {
+            pos: &self.pos,
+            tris,
+            chave: &self.chave_tri,
+        };
+        let fina = fina::Fina::nova(&campo, tol, fixo, rigido, |k, u, v| {
             let [a, b, c] = tris[k].map(|x| x as usize);
             if (u, v) == (0.0, 0.0) {
                 return (self.repouso[a], self.pos[a]);
@@ -209,8 +236,10 @@ impl<'a> Posada<'a> {
             let r = [0, 1].map(|j| {
                 (1.0 - u - v) * self.repouso[a][j] + u * self.repouso[b][j] + v * self.repouso[c][j]
             });
-            (r, self.posa_em(r, k, u, v))
+            (r, self.posa_com(r, k, (u, v), &mut linha, &mut w))
         });
+        #[cfg(test)]
+        ULTIMA_FINA.with(|c| c.set((tris.len(), fina.pos.len(), fina.tris.len())));
         self.fina = Some(fina);
         self
     }
@@ -218,21 +247,30 @@ impl<'a> Posada<'a> {
     /// O ponto `p` (LOCAL, em repouso) posado pela pele, com a linha de pesos do campo no
     /// baricentro `(u, v)` do triângulo `k`.
     fn posa_em(&self, p: [f64; 2], k: usize, u: f64, v: f64) -> [f64; 2] {
+        let (mut linha, mut w) = (vec![0.0; self.campo.ossos()], self.pele.scratch());
+        self.posa_com(p, k, (u, v), &mut linha, &mut w)
+    }
+
+    /// O [`Self::posa_em`] com os rascunhos do chamador (a malha fina posa milhares de pontos).
+    fn posa_com(
+        &self,
+        p: [f64; 2],
+        k: usize,
+        (u, v): (f64, f64),
+        linha: &mut [f64],
+        w: &mut [f64],
+    ) -> [f64; 2] {
         let t = self.campo.malha.tris[k];
-        let n = self.campo.ossos();
-        let linha: Vec<f64> = (0..n)
-            .map(|j| {
-                let r = |x: u32| self.campo.pesos[x as usize * n + j];
-                (1.0 - u - v) * r(t[0]) + u * r(t[1]) + v * r(t[2])
-            })
-            .collect();
-        let mut w = self.pele.scratch();
-        self.pele
-            .weights_corrected(p, Some(&linha), &mut w, self.correcoes);
+        let n = linha.len();
+        for (j, l) in linha.iter_mut().enumerate() {
+            let r = |x: u32| self.campo.pesos[x as usize * n + j];
+            *l = (1.0 - u - v) * r(t[0]) + u * r(t[1]) + v * r(t[2]);
+        }
+        self.pele.weights_corrected(p, Some(linha), w, self.correcoes);
         if self.rigido {
-            self.pele.blend(p, &w)
+            self.pele.blend(p, w)
         } else {
-            self.pele.blend_linear(p, &w)
+            self.pele.blend_linear(p, w)
         }
     }
 

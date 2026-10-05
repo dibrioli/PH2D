@@ -102,6 +102,16 @@ fn a_board_owns_the_drawing_area_and_takes_no_ruler_inset() {
         hero.last_content, hero.last_canvas,
         "a área do quadro perdeu a faixa das réguas"
     );
+    // E cobre a faixa da fila de ferramentas: vazia num quadro, ela mostraria a cena por baixo.
+    let l = hero.last_layout.expect("pintado");
+    assert!(
+        l.tool_bar.h > 0.0,
+        "controlo: a fixture tem fila de ferramentas"
+    );
+    assert!(
+        hero.last_canvas.y <= l.tool_bar.y,
+        "a faixa da fila ficou fora do quadro"
+    );
 }
 
 /// ⛔ Num quadro, os chips da cena (mover, girar, desfazer da cena) não se pintam nem se clicam.

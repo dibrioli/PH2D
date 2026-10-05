@@ -14,6 +14,19 @@ use ph2d_host::{PointerButton, PointerKind};
 const WHEEL_ZOOM_PER_LINE: f64 = 0.9; // LITERAL-PX-OK: factor por linha, espelho da roda da cena
 const WHEEL_LINE_PX: f64 = 16.0; // LITERAL-PX-OK: px por linha de roda, espelho da roda da cena
 
+/// ⭐ **A área de um quadro** — a de desenho MAIS a faixa da fila de ferramentas por cima dela (num
+/// quadro a fila da cena não se pinta, e a faixa vazia mostraria a cena por baixo — foto de 05/10).
+#[must_use]
+pub fn area(layout: &super::HeroLayout) -> Rect {
+    let d = layout.draw_area;
+    let t = layout.tool_bar;
+    if t.h <= 0.0 || t.w <= 0.0 {
+        return d;
+    }
+    let top = t.y.min(d.y);
+    Rect::new(d.x, top, d.w, d.y + d.h - top)
+}
+
 fn area_of(r: Rect) -> Area {
     [
         f64::from(r.x),

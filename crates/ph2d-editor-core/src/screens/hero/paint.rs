@@ -230,7 +230,7 @@ pub fn paint_hero_screen(
     // ⭐⭐ **Um QUADRO activo é dono da área de desenho** (MiroClone): pinta-se por cima da cena e
     //    nada do que é da cena (réguas, gizmos, selecção) chega a ser pintado ou clicável.
     if let Some(board) = hero.documents.active_board() {
-        let r = layout.draw_area;
+        let r = super::board_view::area(&layout);
         let area = [
             f64::from(r.x),
             f64::from(r.y),
@@ -238,6 +238,9 @@ pub fn paint_hero_screen(
             f64::from(r.h),
         ];
         ph2d_board_render::paint(board, area, scene, hero.theme);
+        // Pintar e agarrar leem o MESMO rect (o `board_view` lê o `last_canvas`).
+        hero.last_canvas = r;
+        hero.last_content = r;
     } else {
         super::paint_canvas_overlays::paint_canvas_overlays(
             hero,

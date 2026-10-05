@@ -102,7 +102,14 @@ impl PhysicsBridge {
             pecas.entry(p.owner).or_default().push(p);
         }
         for (&e, b) in &self.bodies {
-            if b.kind == BodyKind::Static || b.rest.is_sensor || indice.contains_key(&e) {
+            // ⚠️ (report do dono, 05/10) Um PROJÉCTIL não é um obstáculo a contornar, é um golpe: com
+            // ele no desvio os morcegos da arena ESQUIVAVAM-SE dos tiros do herói (o gate
+            // `um_tiro_mata_um_morcego` sangrou quando o corpo deles cresceu para o quadrado desenhado).
+            if b.kind == BodyKind::Static
+                || b.rest.is_sensor
+                || indice.contains_key(&e)
+                || self.projectile_state.contains_key(&e)
+            {
                 continue;
             }
             let Some(pose) = self.world.body_pose(b.handle) else {

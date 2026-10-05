@@ -288,9 +288,14 @@ fn receita_do_morcego(world: &mut World) -> Entity {
             RigidBody {
                 kind: BodyKind::Kinematic,
             },
+            // ⭐ (report do dono, 05/10) O corpo é o QUADRADO que se desenha. Era uma bola inscrita
+            // nele: os cantos desenhados saíam `41 %` para fora do corpo, e um morcego que passava a
+            // `2 mm` da lava (a bola) aparecia a entrar `6 cm` nela — *«encostam na lava»*. Com o corpo
+            // do desenho, o raio da navegação é o que envolve o quadrado, e o que se vê é o que toca.
             Collider {
-                shape: ColliderShape::Ball {
-                    radius: LADO_DO_MORCEGO / 2.0,
+                shape: ColliderShape::Cuboid {
+                    half_x: LADO_DO_MORCEGO / 2.0,
+                    half_y: LADO_DO_MORCEGO / 2.0,
                 },
                 ..Collider::default()
             },

@@ -113,6 +113,12 @@ corrida não viu. Agora «mudou» é o conteúdo contra a assinatura que o anel 
    entrada (**`Vez` ganha `saida_livre`** — a ponte responde pela forma de cada corpo). Plano 30 §24.1, gate
    `ninguem_sai_do_portal_dentro_de_outro_corpo`.
 
+4. **Cena VIDA `=4` (2.º report): «os morcegos encostam na lava e morrem».** Nenhum se queimava: o desenho (um
+   quadrado) era maior que o corpo (uma bola inscrita) e entrava `6 cm` na lava; os que «morriam» sumiam no
+   recomeço. Cura: o corpo do morcego é o quadrado desenhado — e isso destapou que **o desvio fazia os agentes
+   ESQUIVAREM-SE dos projécteis**; os projécteis saíram do desvio (`nav_desvio.rs`). Plano 30 §24.2, gate
+   `o_morcego_desenhado_nunca_entra_na_lava`.
+
 ## §5 — O smoke
 
 Nenhuma cena nova: numa cena pequena o orçamento nunca se esgota e a condução é a MESMA (o kill-criterion 1); o que

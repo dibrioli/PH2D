@@ -1823,3 +1823,26 @@ cima da entrada, e esperar não é estar preso (o relógio do «preso» não and
 `a_distancia_a_uma_caixa_e_zero_dentro_e_a_do_canto_fora`. Mutações à mão (a lei sem a pergunta, a ponte sem
 ela, o disco que não conta, o «dentro» ao contrário) sangram as quatro; o zerar do relógio do «preso» à espera
 era redundante (sobreviveu) e saiu.
+
+### §24.2 — O 2.º report (05/10): *«alguns morcegos encostam na lava e morrem»* (a arena)
+
+**A investigação** (o arnês `Jogo` da arena, pelo laço inteiro; o dono: o herói estava DENTRO da lava, e os
+morcegos não tinham levado tiro): em seis maneiras de jogar e nove sítios dentro da lava, **zero** morcegos
+queimados — a folga do corpo deles à lava ficava em `0,7–2,2 mm` (passam rente, como todo caminho mais curto).
+Duas causas medidas, nenhuma era a lava a matar:
+
+1. **O desenho maior que o corpo:** o morcego desenhava-se como um QUADRADO de `0,45 m` com um corpo BOLA inscrito
+   nele (raio `0,225`); os cantos saíam `41 %` para fora do corpo e entravam até `6 cm` na lava (`58–99`
+   tiques-morcego em `40 s`) — *«encostam»*.
+2. **O sumiço:** os que «morriam» (`6–12` por corrida) sumiam todos no RECOMEÇO, quando o herói morria na lava.
+
+**A cura:** o corpo do morcego é o quadrado desenhado (`Cuboid`); a navegação dá-lhe o raio que o envolve
+(`0,32 m`) e o desenho deixa de poder entrar na lava. ⚠️ **E ela destapou um 3.º defeito:** o gate
+`um_tiro_mata_um_morcego` sangrou — a bala atravessava o morcego. Isolado (uma bala contra bola e caixa, com e
+sem mover: as quatro acertam) e confirmado por ablação: o DESVIO tratava a bala como um corpo sólido que anda, e
+o morcego **esquivava-se dos tiros** (com o corpo maior, sempre). Um projéctil não é um obstáculo a contornar, é
+um golpe: os projécteis saem do desvio (`nav_desvio`, `projectile_state`).
+
+**A prova:** gate `o_morcego_desenhado_nunca_entra_na_lava` (o herói parado dentro da lava junto à borda, `30 s`;
+a fixtura exige morcegos rente a ela); `um_tiro_mata_um_morcego` como estava. Mutações à mão: o corpo de volta à
+bola sangra o 1.º, as balas de volta ao desvio sangram o 2.º.

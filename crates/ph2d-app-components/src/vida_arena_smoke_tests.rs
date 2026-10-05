@@ -596,3 +596,46 @@ fn cada_nivel_ate_cenas_monta_a_sua_cena() {
 
 #[path = "vida_arena_nav_tests.rs"]
 mod nav;
+
+/// ⭐⭐ (report do dono, 05/10) **O morcego desenhado nunca entra na lava** — *«alguns morcegos
+/// encostam na lava e morrem»*, com o herói dentro dela. Medido: nenhum se queimava (a folga do corpo à
+/// lava era `~2 mm`); o corpo era uma BOLA inscrita no quadrado desenhado, e os cantos dele entravam até
+/// `6 cm` na lava (`58–99` tiques-morcego em `40 s`); e os que «morriam» sumiam no RECOMEÇO, quando o
+/// herói morria na lava. Hoje o corpo é o quadrado desenhado. O herói parado dentro da lava, junto à
+/// borda de baixo; a fixtura exige morcegos rente a ela.
+#[test]
+fn o_morcego_desenhado_nunca_entra_na_lava() {
+    let mut j = Jogo::novo([LAVA_XY[0], LAVA_XY[1] - LAVA_WH[1] / 2.0 + 0.1], 0.0);
+    let (mut invade, mut rente) = (0usize, 0usize);
+    for _ in 0..1800u32 {
+        j.quadro(&[]);
+        for m in j.copias("Morcego") {
+            let Some(t) = j.sim.world().get::<Transform>(m) else {
+                continue;
+            };
+            let (s, c) = (t.rotation.sin(), t.rotation.cos());
+            let mut fundo = f32::NEG_INFINITY;
+            for (cx, cy) in [(1.0f32, 1.0f32), (1.0, -1.0), (-1.0, 1.0), (-1.0, -1.0)] {
+                let (lx, ly) = (cx * LADO_DO_MORCEGO / 2.0, cy * LADO_DO_MORCEGO / 2.0);
+                let (x, y) = (
+                    t.translation.x + c * lx - s * ly,
+                    t.translation.y + s * lx + c * ly,
+                );
+                // Quanto o canto entra na lava (`> 0` = dentro).
+                let dx = LAVA_WH[0] / 2.0 - (x - LAVA_XY[0]).abs();
+                let dy = LAVA_WH[1] / 2.0 - (y - LAVA_XY[1]).abs();
+                fundo = fundo.max(dx.min(dy));
+            }
+            invade += usize::from(fundo > 0.0);
+            rente += usize::from(fundo > -0.15);
+        }
+    }
+    assert!(
+        rente >= 30,
+        "a fixtura: morcegos rente à lava ({rente} tiques-morcego)"
+    );
+    assert_eq!(
+        invade, 0,
+        "o quadrado desenhado de um morcego entrou na lava"
+    );
+}

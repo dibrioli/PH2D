@@ -105,7 +105,9 @@ fn a_rota_da_placa_traceja_o_esticado_como_a_casa() {
 /// A família do pedaço RENTE (doc 121 §9.18 C): estrelas de arestas rectas — o preenchimento não põe
 /// diferenças de aplanamento na régua — com traços curtos (`2` larguras, vão `1`) que acabam a qualquer
 /// distância depois de uma quina; ponta REDONDA e ponta rente. E uma estrela ARREDONDADA (o nível de
-/// aplanamento muda o eixo), cujas cópias têm o preenchimento transparente: só o traço entra na régua.
+/// aplanamento muda o eixo) e uma engrenagem com FURO (dois contornos de comprimentos diferentes: o ajuste fecha o
+/// mais longo, e o 1.º traço do outro EMENDA no último), cujas cópias têm o preenchimento transparente: só o traço
+/// entra na régua.
 fn store_rente() -> (VecPathStore, Vec<u32>) {
     let formas = [
         tracejada(
@@ -128,6 +130,13 @@ fn store_rente() -> (VecPathStore, Vec<u32>) {
             (2.5, 1.5),
             LineCap::Round,
             LineJoin::Round,
+        ),
+        tracejada(
+            ph2d_vec_scene::gear([-0.5, -0.5], [0.5, 0.5], 9.0, 0.25, 0.3),
+            0.04,
+            (2.0, 1.0),
+            LineCap::Round,
+            LineJoin::Miter,
         ),
     ];
     let mut s = VecPathStore::default();
@@ -182,7 +191,10 @@ fn a_rota_vello_traceja_o_pedaco_rente_como_a_placa() {
             c.size[1] *= 0.35 + 2.45 * k;
         }
     }
-    for c in insts.iter_mut().filter(|c| c.geometry_id == hs[2]) {
+    for c in insts
+        .iter_mut()
+        .filter(|c| c.geometry_id == hs[2] || c.geometry_id == hs[3])
+    {
         c.tint[3] = 0.0;
     }
     let conformes = insts.iter().filter(|c| super::super::conforme(c)).count();

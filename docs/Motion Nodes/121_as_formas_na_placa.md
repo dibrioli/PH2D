@@ -2126,7 +2126,7 @@ O arnês do tracejado contra a placa (`motion_shape_placa_gpu_tracejado_tests.rs
 
 | | rota Vello × placa: alfa máx. · px `> 16` |
 |---|---|
-| **família nova** (`a_rota_vello_traceja_o_pedaco_rente_como_a_placa`: estrelas de arestas rectas com traços de `2` larguras e vão `1`, ponta REDONDA e ponta rente, e uma estrela ARREDONDADA de preenchimento transparente — o nível de aplanamento entra; `160` cópias, `54` conformes) — a rota de ANTES (o controlo) | `192` · `5 234` |
+| **família nova** (`a_rota_vello_traceja_o_pedaco_rente_como_a_placa`: estrelas de arestas rectas com traços de `2` larguras e vão `1`, ponta REDONDA e ponta rente; uma estrela ARREDONDADA — o nível de aplanamento entra — e uma engrenagem com FURO — a emenda do contorno mais curto entra —, as duas de preenchimento transparente; `160` cópias, `54` conformes) — a rota de ANTES (o controlo) | `173` · `6 333` |
 | a mesma família — **pela lei** | **`1`** · `0` |
 | as `4` famílias de hoje (`a_rota_da_placa_traceja_o_esticado_como_a_casa`) — antes | `85` · `2 142` |
 | as mesmas — pela lei | `46` · `165` (o resto é o aplanamento das curvas do PREENCHIMENTO, §6) |
@@ -2143,3 +2143,14 @@ de `15`/`5` rodadas, carga `16`–`46`):
 expandia traços, e a parede dele sobe; o quadro da rota Vello (`encode` + parede) fica `58`–`79 %` mais curto (iGPU
 densa: `14,2 → 6,0` ms; `16 384` cópias: `161,9 → 48,5` ms). A rota Vello é a da CPU sem a placa
 (`PH2D_FORMAS_NA_PLACA=0`) e a de um quadro que a placa recusa inteiro.
+
+**(C) — as mutações ✅ `12` de `12` SANGRARAM** ([`mutacao_a_mordida_do_traco_rente_2026-10-05.py`](ferramentas/mutacao_a_mordida_do_traco_rente_2026-10-05.py),
+sozinho na árvore, pré-voo `12/12`, corrida limpa verde nas duas placas; reprovam a família nova — alfa entre parênteses):
+`m1` a cura desligada (`192`) · `m2` a conforme pelo eixo no ecrã (`87`) · `m3` a esticada pelas marcas (`249`) · `m4` o
+nível fixo no mais grosso (`240`) · `m5` o ajuste a `1` (`251`) · `m6` a emenda nunca (`62`) · `m7` o sentido do
+quadrilátero trocado (`241`, e o teste da porta CPU) · `m8` a faixa nunca serve (`101`) · `m9` o leque grosso (`200`) ·
+`m10` o traço sem a ponta de início (`249`) · `m11` o arco pela corda (`237`) · `m12` a casa traça por cima da lei (`92`).
+⛔ Na 1.ª corrida a `m6` SOBREVIVEU: o ajuste fecha o sub-caminho mais LONGO dentro do último vão (a `FOLGA_DO_AJUSTE`),
+e a emenda só acontece num mais curto — as formas da família tinham um contorno só. A engrenagem com furo entrou na
+família e a `m6` sangra.
+

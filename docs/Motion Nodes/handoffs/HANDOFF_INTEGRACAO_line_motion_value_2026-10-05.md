@@ -162,3 +162,45 @@ POR RASTREAR (e a linha no `MEMORY.md` dele, por comitar): o merge recusa-se a s
 --all-targets` `-D warnings` ✓ · clippy das `9` crates ✓ · `fmt`/`machete`/`standalone`/`workflow` ✓ · `ph2d-shape-gpu`
 `14/14` iGPU e RTX · `ph2d-gpu --ignored` `1/1` nas duas · `motion_shape_placa` `5/5` nas duas · `motion_fx` `26/26` nas
 duas · `architecture_*` `106` ✓ · censos `114/114` · staleness do registo `2/2`.
+
+## §11 — A 3.ª onda (05/10): (E) a emissão por peça e (C) a mordida do traço rente
+
+Plano, kill-criteria e números: [doc 121 §9.18](../121_as_formas_na_placa.md) (o (E) e o (C) por baixo do plano).
+Commits `afa0cc014` … `6112741eb` (base `5d596eaaf`; o main não andou).
+
+| item | o que ficou |
+|---|---|
+| **(E) a emissão tracejada por peça** | ⛔ **RECUSA MEDIDA.** A prova do modelo (o passeio por troço + a tabela + o `pedaco` por peça, sem arestas) deu `escreve` `0,183` ms nas esticadas tracejadas da iGPU (critério `≤ 0,13`); o produto (`P2` reserva atómica por aresta, `P3` contado por peça) `0,297`/`0,275`, densas `+20`/`+15 %` na iGPU, RTX `−15 %` nas esticadas mas `+10 %` nas densas e `183 B` diferentes. A decomposição (`P4`–`P6`): o passeio SOZINHO custa `0,130` — o chão é o percurso em série por cópia, não a emissão (o `pedaco` custa `0,002`). Código medido em `afa0cc014`, retirado em `ce2fab7ad`: a árvore não tem nada dele |
+| **(C) a mordida do traço rente** | ✅ **CURADA.** Quem mordia era o traçador do **Vello** (o `kurbo` das marcas conformes da placa não morde — varrido). A rota Vello do Motion passa a PREENCHER os polígonos da placa no MESMO nível de aplanamento: cópia conforme → as marcas (`contorno_conforme`); esticada → a porta CPU da lei (`ph2d-shape-gpu/src/contorno_cpu.rs`, o `percorre` do `contorno.wgsl` em `f32`). Família nova `a_rota_vello_traceja_o_pedaco_rente_como_a_placa`: alfa `1` contra a placa nas duas placas (a rota de antes `173`, o controlo); as `4` famílias de hoje `85 → 46`. `encode` da `=127` tracejada `−83 %` na CPU; a parede do Vello `+7`–`+50 %`, o quadro da rota Vello `58`–`79 %` mais curto |
+
+**Superfície de colisão nova (o integrador mede):**
+- `ph2d-vec-render` (a porta de lote do Motion): `instance.rs` ganha `TracoProprio` e `draw_shared_instances_com_traco`;
+  o `draw_shape_instance_tessellated` (crate-privado) e o `draw_shared_instances_com` ganham um parâmetro no fim (os
+  chamadores da casa passam `None`: `standalone.rs`, `encode_cost_tests.rs`). ⚠️ Outra linha que chame estes dois
+  crate-privados não compila depois do merge — acrescenta `None`. As portas públicas de sempre não mudam.
+- `ph2d-shape-gpu`: `contorno_cpu.rs` (novo) e `geometry.rs` (portas `tolerancia`/`extensao`/`eixo_do_nivel`/
+  `contorno_conforme`, o `prepare` igual por construção — `14/14` nas duas placas); `lib.rs` exporta-as e o
+  `tracejado_do_eixo`.
+- `ph2d-app-motion`: `motion_shape_traco.rs` (novo), `motion_shape_mistura.rs`/`motion_shape_gen.rs` (o `encode` leva
+  um `TracoDaPlaca`), `motion_shape_placa.rs` (`entrada_de`, partilhada pelas duas rotas).
+- Memória: `feedback_an_ablation_that_stops_storing_the_walk_measures_less_than_the_walk.md` ·
+  `feedback_a_defect_attributed_to_a_component_is_swept_before_the_cure.md` (nas famílias régua `190` e diagnóstico `25`).
+
+**Fecho corrido (HEAD `0321a1b46`, depois `6112741eb` com o `px` retirado, `clippy`/`fmt` e os gates do tracejado
+re-corridos):** `nextest-impacted` `17 209/17 211` (os `2` vermelhos são flakes de relógio sem diff nas crates deles —
+`ph2d-physics-ecs` `the_cost_of_a_player_is_linear…` e `ph2d-tool-painter` `the_mask_stroke_cost…` — verdes `3/3`
+sozinhos a `load 32`–`36`) · `check --workspace --all-targets` `-D warnings` ✓ · `clippy --all-targets --all-features
+-D warnings` das `3` crates ✓ · `fmt` ✓ · `machete`/`standalone`/`workflow` ✓ · `ph2d-shape-gpu --test it --ignored`
+`14/14` iGPU e RTX · `motion_shape_placa` `9/9` nas duas (com as sondas) · `ph2d-gpu-cook formas` `2/2` nas duas ·
+`ph2d-vec-render --ignored` `6/6` nas duas · censos `114/114` · tecto de LOC ✓ (`contorno_cpu.rs` `~620`,
+`motion_shape_gen.rs` `672`).
+
+**Mutações** ([`mutacao_a_mordida_do_traco_rente_2026-10-05.py`](../ferramentas/mutacao_a_mordida_do_traco_rente_2026-10-05.py),
+sozinho na árvore, pré-voo `12/12`): **`12/12` sangram** na família nova (a lista no doc 121 §9.18). A `m6` (a emenda
+nunca) sobreviveu à 1.ª corrida — nenhuma forma da família tinha dois contornos; a engrenagem com furo entrou e ela sangra.
+
+**Smoke (o dono):** SMOKE_AQUI
+
+**Aberto:** a emissão por peça só volta com o PASSEIO fora da série (um fio por troço e um prefixo segmentado — a
+4.ª topologia, two-strikes; a imagem deixa de ser a do `F` ao bit, e o critério tem de vir escrito antes, doc 121
+§9.18 E). O nó de forma do Motion não expõe ponta nem junta (o produto traceja sempre rente/esquadria).

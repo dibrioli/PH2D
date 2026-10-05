@@ -8,6 +8,12 @@
 >
 > Leitor: a janela que implementa. ⚠️ **Isto é um PLANO aprovado por partes**: as escolhas de
 > produto estão no §6, com a resposta do dono quando a houver. Não comece a F1 sem o §6 respondido.
+>
+> ⛔⛔ **05/10 — o 3D SAIU do PH2D** ([ADR-0179](../../architecture/decisions/0179-o-3d-sai-do-ph2d.md);
+> código em `b1a6f9b07`). Sculpt, Model e Render já não existem: tudo o que este plano diz deles (§1–§4)
+> é HISTÓRIA. Hoje: `ObjectMode` = Object · Paint · Draw · Edit; famílias com modos = Painter (Image ▸
+> Paint), Flip (Draw · Edit), Vector (Edit); cenas `PH2D_OBJECT_MODE_SMOKE=1|4|6`. ⏳ **A próxima obra**
+> é a 2.ª volta do Vector (F3 ▸ Vector, 05/10): cada forma é um objecto.
 
 ## §0 — Isto já foi DECIDIDO em parte (30/08), e o plano não o re-litiga
 
@@ -184,9 +190,8 @@ sozinho (§6.5).
 | tipo | modos | módulo que abre |
 |---|---|---|
 | qualquer | **Object** (mover · rodar · escalar) | gizmo de transformação |
-| Sculpt (malha) | Object · **Sculpt** · **Paint** (Edit quando existir) | `ph2d-app-sculpt3d` + Painter na peça |
-| Model (SDF) | Object · **Edit** | `ph2d-app-field3d` |
-| Vector | Object · **Edit** (as formas dentro dele) ✅ | `ph2d-app-vec` (o `VecObject` é o contentor; o Edit tem o painel inteiro; criar = *Add ▸ Vector Object*) |
+| ~~Sculpt (malha) · Model (SDF)~~ | ⛔ saíram com o 3D (ADR-0179, 05/10) | — |
+| Vector | Object · **Edit** — hoje o contentor `VecObject` (formas filhas); ⏳ **decidido 05/10: cada forma é um objecto** (F3 ▸ Vector, 2.ª volta) | `ph2d-app-vec` (o Edit tem o painel inteiro) |
 | Flip | Object · **Draw** · **Edit** | `ph2d-app-flip` |
 | Image | Object · **Paint** (⛔ o Mask foi retirado pelo dono, 04/10) | `ph2d-app-painter` |
 | Câmara, corpo de física, áudio, HUD… | **só Object** | Inspector |
@@ -257,7 +262,9 @@ sozinho (§6.5).
     divergem).
   - **Gate por módulo:** dois objectos do mesmo tipo, entrar em modo num, e o outro fica
     intocado.
-  - **Sculpt** — ✅ **entregue em 03/10** (handoff `HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_SCULPT.md`):
+  - **Sculpt** — ⛔ **SAIU com o 3D (ADR-0179, 05/10); o que segue é HISTÓRIA** (as leis que ficaram na
+    fundação — `ModeFamily` como trait, `follow`, `wants` — continuam a servir Flip, Vector e Painter).
+    Foi ✅ entregue em 03/10 (handoff `HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_SCULPT.md`):
     `ObjectMode::Sculpt` e `ph2d_app_sculpt3d::sculpt_mode::Family` — `(Sculpt3D, Sculpt)` e
     `(Sculpt3D, Paint)`. Sculpt = o barro na tela com a peça da entidade PRESA (a mira do pen-down
     só vê ela, `Sculpt3dScene::preso`); Paint = o mesmo com o Painter em mãos (a tela da vista,
@@ -294,7 +301,9 @@ sozinho (§6.5).
     - **Escolhas do dono (03/10):** o pill FLIP **saiu** (e a linha *Window ▸ Flip*); o desenho
       novo **nasce em Draw** (`FlipState::born`). A aba Flip de cima pede o Draw
       (`CanvasOwner::Mode`), e sem activo compatível fica em Object — ⛔ já não cria um desenho.
-  - **Model** — ✅ **entregue em 03/10** (handoff `HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_MODEL.md`):
+  - **Model** — ⛔ **SAIU com o 3D (ADR-0179, 05/10); o que segue é HISTÓRIA** (ficaram na fundação o
+    modo de PARTES — `parts`/`owner_of` — e o multi-objecto, que o Vector usa).
+    Foi ✅ entregue em 03/10 (handoff `HANDOFF_INTEGRACAO_line_UIUX_2026-10-03_O_MODEL.md`):
     `ph2d_app_field3d::model_mode::Family` — `(Model3D, Edit)`. Edit = o painel `model3d` aberto
     (é ele que arma o módulo) com a peça da entidade EM MÃOS (`model_mode::target`); Object = o
     painel fecha.
@@ -318,7 +327,7 @@ sozinho (§6.5).
     - **Escolhas do dono (03/10):** o pill MODEL **saiu** (e *Window ▸ Model 3D*); a peça nova
       **nasce em Edit** (`model_mode::born`). A aba Modeling de cima pede o Edit (`CanvasOwner::Mode`;
       o `CanvasOwner::Model3d` saiu) e já não abre o painel sem peça.
-    - ⏳ **Fica de fora, nomeado:** em Object a peça não se desenha no canvas 2D (D9: o 3D como
+    - ⛔ **Morreu com o 3D (05/10)** — era: em Object a peça não se desenha no canvas 2D (D9: o 3D como
       camada entre camadas é outra obra), e o gizmo do objecto move um `Transform` que o traçado não
       lê. **Medido em 04/10** (o traçado é CPU, 46–57 ms por quadro a 560², ecrã cheio exclusivo; falta
       a ponte para textura na GPU, o afim 2D do `Transform` da raiz e a ordem entre camadas: ~800–1 200
@@ -351,6 +360,22 @@ sozinho (§6.5).
       `DrawMode::EDIT_TOOLS`/`object_mode` (Edit = Node·Fillet·Chamfer·Width·Trim; criar em Object) e
       o painel a filtrar a fileira pelo modo; as entradas Rectangle·Ellipse·Polygon·Star·Pen·Pencil·Text
       no Add. Histórico em `HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md`.
+  - **Vector, 2.ª volta** — ⏳ **POR CONSTRUIR. Decisão do dono (05/10)**, que SUBSTITUI o contentor
+    acima: *«Não precisaremos mais de um objeto vazio como pai de vetoriais. Quando o usuário criar um
+    desenho vetorial, o painel vector abre e nada aparece no canvas ou na hierarquia até que o usuário
+    crie alguma forma ou linha. Ao desenhar algo, o objeto aparece na hierarquia no modo edit»*; e,
+    perguntado *«a 2.ª forma desenhada no mesmo Edit entra no 1.º objecto ou é outro?»*: **cada forma
+    é um objecto** (sem contentor).
+    - ⇒ **Add ▸ Vector** (uma entrada só) não cria entidade: abre o painel Vector inteiro (o de
+      sempre) com a ferramenta na mão. A 1.ª forma ou linha nasce como OBJECTO na Hierarquia e entra
+      em **Edit** sobre ela; a 2.ª é outro objecto, e o Edit passa a ela.
+    - Continua ⛔ **recusado** (04/10): as 7 entradas Rectangle·Ellipse·…·Text no Add; o painel a
+      filtrar a fileira pelo modo; a partição `DrawMode::EDIT_TOOLS` (Edit = só as de mexer).
+    - ⚠️ **A medir antes de codar** (o plano desta volta): o que do contentor sai (`VecObject` — é
+      componente REGISTADO, degrau de `PROJECT_SCHEMA` —, a regra das soltas `adopt_loose`, `enclose`,
+      `lift_to_objects`/`object_view`, a fronteira `top_within_object`, o `born` vazio); o que é o
+      Edit sobre UMA forma (o `in_edit` e o `editing` passam a apontar a forma); o que faz um projecto
+      gravado com contentores; e os grupos de formas (hoje param no objecto).
   - **Image ▸ Mask** — ⛔ **RETIRADO pelo dono no smoke (04/10):** *«não armou a máscara
     imediatamente. vamos retirar esse modo mask»*. Não reconstruir sem ler o porquê. O que se
     construiu (`1d87241aa`, desfeito por revert com `f796202ff` e `94156f3e4`): `ObjectMode::Mask` =
@@ -363,9 +388,8 @@ sozinho (§6.5).
 - **F4 — Layouts:** o campo opcional *«modo ao abrir»* (§3.3) e a limpeza dos toggles de módulo
   que viraram modos.
 
-⚠️ **Custo e janela:** é uma obra de várias ondas, que cruza a fundação e cinco crates de família.
-Recomenda-se uma **linha nova** (`line/ObjectModes`), aberta depois de integrar a `line/UIUX`,
-com uma janela por fase.
+⚠️ **Custo e janela:** foi uma obra de várias ondas, feita na própria `line/UIUX` (F1–F3 integradas
+a 04/10; a recomendação de uma `line/ObjectModes` à parte não se seguiu).
 
 ## §5 — Recusas e riscos (o que NÃO fazer)
 

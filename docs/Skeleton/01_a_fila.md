@@ -88,6 +88,14 @@ diz onde ler o mecanismo:
   agarra). O gate antigo `the_bones_are_drawn_in_every_mode_of_the_vector_tool` saiu com o campo
   (afirmava a lei que o dono refutou). ⚠️ Em Object os ossos aparecem com as alças de hoje; o
   desenho por modo (fino em Object) é o C6.
+- **C1 — o TIPO.** Marcador vazio `ph2d_skeleton_ecs::Skeleton` (`skeleton.rs`, `register` sem default:
+  chega pelo Add ou pela migração; registo do esqueleto `7 → 8`, contado no gate; os totais 105/106
+  da fundação não o somam), descritor `intrinsic` no catálogo, `ObjectKind::Skeleton` ANEXADO ao fim
+  de `ALL`, `kind_of` pergunta-o (gate `every_marker_derives_its_kind`, vermelho visto: lia-se
+  `Empty`). ⛔ Achado: `ObjectKinds::ANY` era o literal `0b1_1111` e deixava a 6.ª variante sem paleta
+  (3 gates vermelhos) ⇒ derivado de `ALL`; `DRAWABLE` exclui o esqueleto (sem pixels). ⚠️ Para o
+  C5/C7: a entidade do esqueleto (Transform, sem pixels) é um «objecto vazio» para o
+  `group_gizmo_view::is_empty_object` e ganharia o anel — decidir lá.
 
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 

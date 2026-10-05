@@ -1,4 +1,4 @@
-//! **A família do ESQUELETO** — os 7 componentes de `ph2d-skeleton-ecs`.
+//! **A família do ESQUELETO** — os 8 componentes de `ph2d-skeleton-ecs`.
 //!
 //! ⚠️ **Família própria, e não uma prateleira do vetor.** Ela nasceu em 2026-09-06, quando os
 //! ossos saíram de dentro do módulo vectorial: nas quatro referências do mercado um esqueleto só
@@ -66,6 +66,14 @@ pub const DESCS: &[D] = &[
     D::intrinsic(
         "ph2d::skeleton::IkTarget",
         "component.ik_target.name",
+        C::Skeleton,
+        &[],
+    ),
+    // ⭐ O OBJECTO esqueleto (A14) — `intrinsic`: ele chega pelo menu Add (com um osso) ou pela
+    // migração; pendurá-lo pela paleta faria um esqueleto sem ossos.
+    D::intrinsic(
+        "ph2d::skeleton::Skeleton",
+        "component.skeleton.name",
         C::Skeleton,
         &[],
     ),

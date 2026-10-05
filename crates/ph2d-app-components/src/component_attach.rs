@@ -31,6 +31,7 @@ pub fn kind_of(
         ObjectKind::Vector => world.get::<ph2d_ecs::VecPathRef>(entity).is_some(),
         ObjectKind::Flip => world.get::<ph2d_ecs::FlipObjectRef>(entity).is_some(),
         ObjectKind::Painted => world.get::<ph2d_ecs::PaintedDoc>(entity).is_some(),
+        ObjectKind::Skeleton => world.get::<ph2d_skeleton_ecs::Skeleton>(entity).is_some(),
     };
     ObjectKind::ALL
         .into_iter()

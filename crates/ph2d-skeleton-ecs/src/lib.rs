@@ -58,6 +58,10 @@ pub use skin_bind::{CorreccaoDePeso, SkinBind, SkinLaw};
 mod bone_rest;
 pub use bone_rest::BoneRest;
 
+// ⭐⭐ **O OBJECTO esqueleto** (A14) — ver o cabeçalho de [`skeleton`].
+mod skeleton;
+pub use skeleton::Skeleton;
+
 /// ⭐ **Os dois tipos que um campo público do [`Bone`] nomeia, re-exportados daqui.**
 ///
 /// ⚠️ **Não é conveniência — era uma lacuna:** quem vê `bone.handles` e `bone.curve` não
@@ -583,6 +587,8 @@ pub fn register_skeleton_components(reg: &mut ComponentRegistry) {
     // com o osso (o gesto de o criar) ou com o verbo *Set Rest Pose*, e um osso sem ele faz o
     // verbo recusar em voz alta em vez de adivinhar.
     reg.register::<BoneRest>("ph2d::skeleton::BoneRest");
+    // `register`: o objecto chega pelo menu Add (com um osso) ou pela migração, nunca pela paleta.
+    reg.register::<Skeleton>("ph2d::skeleton::Skeleton");
 }
 
 #[cfg(test)]
@@ -596,7 +602,8 @@ mod tests {
     fn registers_every_skeleton_component() {
         let mut reg = ComponentRegistry::new();
         register_skeleton_components(&mut reg);
-        assert_eq!(reg.len(), 7);
+        assert_eq!(reg.len(), 8);
+        assert!(reg.get_by_name("ph2d::skeleton::Skeleton").is_some());
         assert!(reg.get_by_name("ph2d::skeleton::Bone").is_some());
         assert!(reg.get_by_name("ph2d::skeleton::Skin").is_some());
         assert!(reg.get_by_name("ph2d::skeleton::IkGoal").is_some());

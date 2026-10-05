@@ -343,16 +343,19 @@ pub enum ObjectKind {
     Flip,
     /// Documento do Painter (`ph2d::ecs::PaintedDoc`).
     Painted,
+    /// O esqueleto (`ph2d::skeleton::Skeleton`): os ossos são as partes dele (A14).
+    Skeleton,
 }
 
 impl ObjectKind {
     /// Todos, em ordem — a fonte da iteração (⛔ nunca escreva a lista uma segunda vez).
-    pub const ALL: [ObjectKind; 5] = [
+    pub const ALL: [ObjectKind; 6] = [
         ObjectKind::Empty,
         ObjectKind::Image,
         ObjectKind::Vector,
         ObjectKind::Flip,
         ObjectKind::Painted,
+        ObjectKind::Skeleton,
     ];
 
     /// O rótulo que o artista lê no filtro da paleta. Inglês (HR-15).
@@ -364,6 +367,7 @@ impl ObjectKind {
             ObjectKind::Vector => "component.object_kind.vector",
             ObjectKind::Flip => "component.object_kind.flip",
             ObjectKind::Painted => "component.object_kind.painted",
+            ObjectKind::Skeleton => "component.object_kind.skeleton",
         }
     }
 
@@ -380,6 +384,7 @@ impl ObjectKind {
             ObjectKind::Vector => Some("ph2d::ecs::VecPathRef"),
             ObjectKind::Flip => Some("ph2d::ecs::FlipObjectRef"),
             ObjectKind::Painted => Some("ph2d::ecs::PaintedDoc"),
+            ObjectKind::Skeleton => Some("ph2d::skeleton::Skeleton"),
         }
     }
 
@@ -398,16 +403,19 @@ pub struct ObjectKinds(u16);
 
 impl ObjectKinds {
     /// Vale para qualquer objeto — o caso de `Transform`, `Name`, `Visibility`, ordenação.
-    pub const ANY: ObjectKinds = ObjectKinds(0b1_1111);
+    /// ⚠️ Derivado do [`ObjectKind::ALL`]: o literal `0b1_1111` deixou de fora a 6.ª variante.
+    pub const ANY: ObjectKinds = ObjectKinds::of(&ObjectKind::ALL);
     /// Só imagem — o caso do 9-Slice, da folha, da animação de sprite.
     pub const IMAGE: ObjectKinds = ObjectKinds(ObjectKind::Image.bit());
     /// Só vetor.
     pub const VECTOR: ObjectKinds = ObjectKinds(ObjectKind::Vector.bit());
 
-    /// Qualquer objeto que tenha uma forma visível — tudo menos [`ObjectKind::Empty`].
-    /// É a resposta certa para o que precisa de algo para desenhar (blend, máscara, camada
-    /// de visibilidade): um objeto vazio não tem o que misturar.
-    pub const DRAWABLE: ObjectKinds = ObjectKinds(ObjectKinds::ANY.0 & !ObjectKind::Empty.bit());
+    /// Qualquer objeto que tenha uma forma visível — tudo menos [`ObjectKind::Empty`] e
+    /// [`ObjectKind::Skeleton`]. É a resposta certa para o que precisa de algo para desenhar
+    /// (blend, máscara, camada de visibilidade): um vazio ou um esqueleto não têm pixels a
+    /// misturar (os ossos são overlay do editor).
+    pub const DRAWABLE: ObjectKinds =
+        ObjectKinds(ObjectKinds::ANY.0 & !ObjectKind::Empty.bit() & !ObjectKind::Skeleton.bit());
 
     /// Constrói a partir de uma lista.
     #[must_use]

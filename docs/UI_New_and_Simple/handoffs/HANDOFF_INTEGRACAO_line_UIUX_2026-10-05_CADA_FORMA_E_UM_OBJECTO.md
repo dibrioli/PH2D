@@ -199,6 +199,8 @@ cai para Object depois de desenhar.
    `!gone`, o gizmo do trancado (sangra também no gate do quadro) e a poda da caneta no `enter_with`.
    Lint `-D warnings` de `ph2d-app-vec`/`ph2d-editor-core` verde; `ph2d-editor-core` 1 966/1 966.
 
+**Smoke do dono: APROVADO (05/10)** sobre `d3400dd07` (*«smoke OK»*).
+
 ## §6 — O que fica ABERTO
 
 - As layouts F4 (spec/06).

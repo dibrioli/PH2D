@@ -170,7 +170,7 @@ Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um bra
 - **Estado em 2026-10-05 (W0a, commits `4694a5273..`):** ✅ abas `Scene · Board n · +` na barra de menus
   (clique real com gate), área do quadro (grelha de pontos de densidade constante, zoom à volta do cursor,
   arrastar), a fila de chips da cena some num quadro, gravar/abrir no `.ph2dproj` (v184, recusa de blob
-  ilegível), cena `PH2D_BOARD_SMOKE=1` fotografada, régua de encode (§2.1). ⏳ **W0b, na próxima janela:**
+  ilegível), cena `PH2D_BOARD_SMOKE=1` fotografada, régua de encode (§2.1). ✅ **Smoke aprovado pelo dono.** ⏳ **W0b, na próxima janela** ([handoff](handoffs/HANDOFF_CONTINUACAO_W0b_2026-10-05.md)):
   renomear (duplo-clique), reordenar (arrastar), menu do botão direito (Renomear · Duplicar · Apagar com
   confirmação), undo por quadro (§1.4 — nasce com o 1.º gesto que cria elementos) e a régua da PLACA.
 

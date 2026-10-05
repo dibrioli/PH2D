@@ -1,0 +1,32 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-05T21:29:30.533Z",
+  "input": "desenho_livre_s.excalidraw",
+  "input_sha256": "0f89687fe715f6ba44ef8d3fb504376c5d780df93ea4ad5972a26b86be16bef7",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 9223,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "desenho_livre_s.svg": "809c0f1a1846b40d13f3eb6dbf2695634e9525f40e3854bab134004f8853dc17",
+    "desenho_livre_s.png": "c4d78c7062c9f0dc7318b063b7a620d5c7c4cecd39571fd58aa9a4fe14842650",
+    "desenho_livre_s.restored.json": "4ba1aa06c3e49e40c63a6b87f936f9ad26dfd05ae6fb44025d04d9c9eb964c87"
+  }
+}

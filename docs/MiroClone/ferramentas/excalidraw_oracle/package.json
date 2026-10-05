@@ -1,0 +1,17 @@
+{
+  "name": "ph2d-excalidraw-oracle",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Excalidraw como oráculo corrido por script (só API pública: exportToSvg, exportToBlob, restoreElements, convertToExcalidrawElements).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "@excalidraw/excalidraw": "0.18.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.63.0"
+  }
+}

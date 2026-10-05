@@ -1,0 +1,51 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "ph2d-miroclone-oracle-input",
+  "ph2d_note": "esqueleto: seta reta com start/end por id; o convertToExcalidrawElements faz a ligação",
+  "elements": [
+    {
+      "type": "rectangle",
+      "id": "caixa-a",
+      "x": 40,
+      "y": 60,
+      "width": 160,
+      "height": 100,
+      "label": {
+        "text": "A"
+      }
+    },
+    {
+      "type": "ellipse",
+      "id": "caixa-b",
+      "x": 420,
+      "y": 180,
+      "width": 160,
+      "height": 100,
+      "label": {
+        "text": "B"
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "seta-ab",
+      "x": 200,
+      "y": 110,
+      "width": 220,
+      "height": 120,
+      "start": {
+        "id": "caixa-a"
+      },
+      "end": {
+        "id": "caixa-b"
+      },
+      "label": {
+        "text": "liga"
+      }
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+}

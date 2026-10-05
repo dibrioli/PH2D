@@ -1,0 +1,40 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "ph2d-miroclone-oracle-input",
+  "ph2d_note": "esqueleto: label em retângulo com texto longo que quebra; label em losango",
+  "elements": [
+    {
+      "type": "rectangle",
+      "id": "cartao",
+      "x": 40,
+      "y": 40,
+      "width": 220,
+      "height": 80,
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "label": {
+        "text": "Este é um texto longo de propósito, para obrigar o contentor a quebrar as linhas e a crescer na altura quando não couber.",
+        "fontSize": 20,
+        "textAlign": "center",
+        "verticalAlign": "middle"
+      }
+    },
+    {
+      "type": "diamond",
+      "id": "losango-rotulo",
+      "x": 320,
+      "y": 40,
+      "width": 200,
+      "height": 140,
+      "label": {
+        "text": "decisão com várias palavras",
+        "fontSize": 16
+      }
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+}

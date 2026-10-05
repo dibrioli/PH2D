@@ -1,0 +1,59 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "ph2d-miroclone-oracle-input",
+  "ph2d_note": "esqueleto: seta elbowed:true entre origem e destino DESALINHADOS em y, obstáculo no meio — obriga dobras",
+  "elements": [
+    {
+      "type": "rectangle",
+      "id": "origem",
+      "x": 40,
+      "y": 60,
+      "width": 140,
+      "height": 90,
+      "label": {
+        "text": "origem"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "obstaculo",
+      "x": 280,
+      "y": 40,
+      "width": 120,
+      "height": 260,
+      "backgroundColor": "#ffc9c9",
+      "fillStyle": "solid"
+    },
+    {
+      "type": "rectangle",
+      "id": "destino",
+      "x": 500,
+      "y": 280,
+      "width": 140,
+      "height": 90,
+      "label": {
+        "text": "destino"
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "cotovelo",
+      "x": 180,
+      "y": 105,
+      "width": 320,
+      "height": 220,
+      "elbowed": true,
+      "start": {
+        "id": "origem"
+      },
+      "end": {
+        "id": "destino"
+      }
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+}

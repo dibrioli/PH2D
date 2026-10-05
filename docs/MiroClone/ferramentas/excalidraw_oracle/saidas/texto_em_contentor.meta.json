@@ -1,0 +1,41 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-05T21:29:34.950Z",
+  "input": "texto_em_contentor.excalidraw",
+  "input_sha256": "b23b6e2334bb4206913cd38a5338a0a3c1f3f736b017f26ff0754735c090cb80",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 36761,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [
+    "\"Comic Shanns\"",
+    "\"Liberation Sans\"",
+    "\"Lilita One\"",
+    "Assistant",
+    "Cascadia",
+    "Excalifont",
+    "Nunito",
+    "Virgil"
+  ],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "texto_em_contentor.svg": "54cdbfec3b68283261eb65a500735657b0b47489f600d81b2f24ab1a30e6f1ea",
+    "texto_em_contentor.png": "4bbd37f2c565e1241f3b3e42976204521e61bd0528600c1a35e0226815a12b6c",
+    "texto_em_contentor.restored.json": "d8a4a0e25929603f3ab6b92884109017ff2ed6df87ad31de81bc9d1a726f99fa"
+  }
+}

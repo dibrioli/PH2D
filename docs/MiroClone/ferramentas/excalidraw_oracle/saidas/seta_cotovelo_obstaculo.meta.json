@@ -1,0 +1,50 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-05T21:29:34.362Z",
+  "input": "seta_cotovelo_obstaculo.excalidraw",
+  "input_sha256": "deca639abbefbf94ea17c883bf8f4e679ab65efc4b1b32f911ab902a7244f218",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": {
+    "what": "<Excalidraw> montado; formas das pontas das setas elbowed seleccionadas e empurradas ArrowRight+ArrowLeft; cena lida por excalidrawAPI.getSceneElements",
+    "nudged": [
+      "origem",
+      "destino"
+    ]
+  },
+  "png_bytes": 19126,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [
+    "\"Comic Shanns\"",
+    "\"Liberation Sans\"",
+    "\"Lilita One\"",
+    "Assistant",
+    "Cascadia",
+    "Excalifont",
+    "Nunito",
+    "Virgil"
+  ],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "seta_cotovelo_obstaculo.svg": "1398b637eb1083c70db1848b7fcb552f34afc68610bd7039326efd07eb1024d6",
+    "seta_cotovelo_obstaculo.png": "7e0ef13784d0b1a252e0484ba2f793cd52d376b59756a009647aa53ceac60271",
+    "seta_cotovelo_obstaculo.restored.json": "16ae5b0eec7bb9359256711144b80fbad6eb859d6501e09fbec036eba143a768",
+    "seta_cotovelo_obstaculo.editor.svg": "e08c6b069ae6ddca03c93f483b78e42a7ccde0241cf28e62bead1f46f7ae555a",
+    "seta_cotovelo_obstaculo.editor.png": "9fe5f2cfc98ff8dcd52f850d0cf08b2c7fd9cc5af96d525499ef10886d99cae3",
+    "seta_cotovelo_obstaculo.editor.json": "90b727ed65a8088c12d1785b10a26572879beb821ad38bcdf1fe9ef679b6deb7"
+  }
+}

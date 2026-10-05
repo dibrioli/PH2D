@@ -1,0 +1,32 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-05T21:29:30.890Z",
+  "input": "formas_losango.excalidraw",
+  "input_sha256": "0c66a233c633ffad2b7823ee4f813dd20a436866119c648a8e172ad1acc7bf58",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 123806,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "formas_losango.svg": "c7a33907a417f1b028cf55ec6f64653e43d8dc633c09f8e00c11b844e4c0f589",
+    "formas_losango.png": "df41d3f4b38cf85a826ba6ad89a60f007c008e3ca1ac4f9cdda02fcfab9af9a1",
+    "formas_losango.restored.json": "5d4b32a51eebeaa4f120e8332649feed192972e00447fc21f6825fb1c932390c"
+  }
+}

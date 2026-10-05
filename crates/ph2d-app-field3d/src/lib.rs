@@ -87,6 +87,8 @@ pub mod model_mode;
 pub mod notice;
 pub mod object_add;
 pub mod pick;
+/// O nascimento de uma peça (a semente e o menu Add) — ver o cabeçalho.
+pub(crate) mod plant;
 pub mod preview;
 /// ADR-0161 W53 — o perfil DESENHADO vira peça: o fluxo do MoI, com a caneta que a casa já tem.
 pub mod profile;

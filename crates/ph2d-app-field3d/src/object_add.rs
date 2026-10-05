@@ -52,7 +52,7 @@ fn first_doc() -> FieldDoc {
 /// ⚠️ **Pelo MESMO plantio que a semente do módulo usa** ([`crate::scene::plant`]): o material e a
 /// luz de abertura entram ali, e uma segunda porta divergiria da primeira.
 pub fn add(sim: &mut SimWorld) -> u64 {
-    let (root, _) = crate::scene::plant(sim.world_mut(), &first_doc());
+    let (root, _) = crate::plant::plant(sim.world_mut(), &first_doc());
     let bits = root.to_bits();
     crate::model_mode::born(bits);
     bits

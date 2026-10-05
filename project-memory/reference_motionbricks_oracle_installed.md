@@ -6,7 +6,9 @@ metadata:
 ---
 
 **NVIDIA MotionBricks** (NVlabs/GR00T-WholeBodyControl, SIGGRAPH 2026) está instalado e **a correr**
-em `~/Documentos/Projetos/ph2d-motionbricks/` — **fora** da árvore do PH2D, como a `ph2d-quadbench`
+em `~/Documentos/Projetos/ph2d-motionbricks/` (desde 2026-10-05 é um ATALHO para `~/Apps/ph2d-motionbricks/`,
+no disco do sistema — o mesmo para `~/Documentos/Projetos/UnrealEngine` → `~/Apps/UnrealEngine`; o caminho
+antigo continua a valer) — **fora** da árvore do PH2D, como a `ph2d-quadbench` (apagada com o 3D)
 (precedente ADR-0162). Instalado em 2026-09-15.
 
 ⭐⭐ **O CÓDIGO é Apache-2.0** ⇒ ler e portar é legal, com atribuição. ⛔ **Por isso ele NÃO vive em

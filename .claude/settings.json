@@ -4,6 +4,8 @@
     "deny": [
       "Read(//home/enio/Documentos/Projetos/UnrealEngine/Engine/Source/**)",
       "Read(//home/enio/Documentos/Projetos/UnrealEngine/Engine/Shaders/**)",
+      "Read(//home/enio/Apps/UnrealEngine/Engine/Source/**)",
+      "Read(//home/enio/Apps/UnrealEngine/Engine/Shaders/**)",
       "Read(//usr/share/blender/*/scripts/**)"
     ]
   },

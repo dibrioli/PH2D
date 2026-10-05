@@ -73,6 +73,7 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `the_cost_of_a_player_is_linear_in_their_number` | [`ph2d-physics-ecs`](../../crates/ph2d-physics-ecs/tests/it/measure_player_budget.rs) | razão de relógios |
 | `sub_stepping_costs_what_it_says_it_costs` | [`ph2d-physics`](../../crates/ph2d-physics/tests/it/penetration.rs) | razão de relógios |
 | `sizing_a_long_lossy_clip_is_capped_for_every_lossy_codec` | [`ph2d-audio-encode`](../../crates/ph2d-audio-encode/src/delivery.rs) | razão de relógios (OggVorbis `2,05×` contra o tecto `2×` na suíte do `ship.sh` de 04/10, crate sem diff; sozinho `8/8` a `load ~19`, `0,93–0,98×`) |
+| `the_cost_of_a_range_edit_does_not_scale_with_the_clip` | [`ph2d-audio-edit`](../../crates/ph2d-audio-edit/tests/it/measure_range_edit.rs) | razão de relógios (`8,36×` contra o tecto `3×` no `ship.sh` seguinte de 04/10, crate sem diff; sozinho `8/8` a `load ~10`, `0,99–1,04×`) |
 | `the_trusted_len_collect_allocates_once` | [`ph2d-audio-edit`](../../crates/ph2d-audio-edit/tests/measure_arc_build.rs) | contagem de alocações |
 | `interaction_dispatch_no_alloc` | [`ph2d-editor-core`](../../crates/ph2d-editor-core/tests/interaction_no_alloc.rs) | contagem de alocações |
 | `the_ui_clock_does_not_allocate_per_frame` | [`ph2d-editor-core`](../../crates/ph2d-editor-core/tests/ui_motion_no_alloc.rs) | contagem de alocações |

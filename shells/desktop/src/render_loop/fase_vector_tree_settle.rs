@@ -45,18 +45,6 @@ impl crate::App {
             &self.vec.pencil,
         );
         ph2d_vec_entities::transform::settle_origins(sim, vec_scene, &self.vec.entities, &drawing);
-        // ⭐ spec/06 F3 ▸ Vector: toda forma vive num objecto vetorial — a do Edit entra nele.
-        let (into, name) = (
-            self.vec.edit.object(),
-            ph2d_i18n::tr("object_add.vector.object_name"),
-        );
-        ph2d_vec_entities::entities::object::adopt_loose(
-            sim,
-            &self.vec.entities,
-            into,
-            &drawing,
-            name,
-        );
         // ADR-0114/ADR-0111: idem para os objetos Flip — o pivô nasce no centro do
         // MUNDO; assim que a arte pára de crescer, ele vai para o centro dela (e a
         // geometria vira LOCAL). O objeto EM GESTO (desenho/borracha ativos) NÃO é

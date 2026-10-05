@@ -1,34 +1,24 @@
-//! ⭐ **O objecto vetorial no menu Add de objectos** (spec/06 F1/F3) — a entrada e o nascimento.
+//! ⭐ **O desenho vetorial no menu Add de objectos** (spec/06 F1/F3 ▸ Vector, 2.ª volta).
 //!
-//! UMA entrada (escolha do dono, 04/10: *«melhor seria se houvesse apenas uma opção no modal:
-//! objeto vetorial»*): cria um objecto VAZIO e ele pede o Edit
-//! ([`crate::vector_mode::EditTarget::born`]), onde o painel inteiro desenha as formas DENTRO dele.
+//! UMA entrada, e ela NÃO cria entidade (escolha do dono, 05/10: *«o painel vector abre e nada
+//! aparece no canvas ou na hierarquia até que o usuário crie alguma forma ou linha»*): arma a
+//! ferramenta ([`crate::vector_mode::EditTarget::arm`]); cada forma desenhada é um objecto e pede o
+//! Edit sobre ela.
 
-use ph2d_ecs::SimWorld;
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 
-/// O objecto vetorial.
-pub const VECTOR_OBJECT: AddEntry = AddEntry::new("object_add.vector.object", AddGroup::TwoD);
+/// O desenho vetorial.
+pub const VECTOR: AddEntry = AddEntry::new("object_add.vector.drawing", AddGroup::TwoD);
 /// O que esta família põe no menu.
-pub const ENTRIES: &[AddEntry] = &[VECTOR_OBJECT];
+pub const ENTRIES: &[AddEntry] = &[VECTOR];
 
-/// ⭐ **Cria o objecto vazio** em `at` (mundo) e arma o Edit dele — os bits da entidade, ou `None`
-/// se a entrada não é desta família.
-pub fn add(
-    entry: AddEntry,
-    sim: &mut SimWorld,
-    vec: &mut crate::state::VecState,
-    at: [f64; 2],
-) -> Option<u64> {
-    if entry != VECTOR_OBJECT {
-        return None;
+/// ⭐ **Arma a ferramenta do vetor** — `true` se a entrada é desta família. Nada nasce aqui.
+pub fn add(entry: AddEntry, vec: &mut crate::state::VecState) -> bool {
+    if entry != VECTOR {
+        return false;
     }
-    #[allow(clippy::cast_possible_truncation)] // posição de mundo: f32 é a do `Transform`
-    let at = ph2d_core::Vec2::new(at[0] as f32, at[1] as f32);
-    let name = ph2d_i18n::tr("object_add.vector.object_name");
-    let bits = ph2d_vec_entities::entities::object::spawn_object(sim, name, at).to_bits();
-    vec.edit.born(bits);
-    Some(bits)
+    vec.edit.arm();
+    true
 }
 
 #[cfg(test)]

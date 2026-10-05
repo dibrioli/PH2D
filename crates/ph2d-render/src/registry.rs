@@ -110,7 +110,9 @@ mod tests {
         //   OBJECTO vetorial), registado no ECS. Quem integrar conta o DELTA, nunca o literal.
         // ⚠️ **2026-10-05: `110` -> `107`, delta -3** -- o 3D sai do PH2D (ADR-0179): `BakedForm`,
         //   `Sculpt3dPieceRef` e `Mesh3D`. Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 107);
+        // ⚠️ **2026-10-05: `107` -> `106`, delta -1** -- o `VecObject` sai (spec/06 F3 ▸ Vector,
+        //   2.ª volta: cada forma é um objecto). Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 106);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

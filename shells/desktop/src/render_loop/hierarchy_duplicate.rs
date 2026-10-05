@@ -100,7 +100,7 @@ pub(super) fn drain(
         if crate::input_dispatch::duplicate_vec_paths(vec_scene, vec_pen, &[vp.0], dx, dy) {
             // spec/06 F3 (escolha do dono): a cópia fica no mesmo pai, ao lado da original.
             let copies = vec_pen.selected_paths().to_vec();
-            ph2d_vec_entities::entities::object::place_beside(
+            ph2d_vec_entities::entities::duplicate::place_beside(
                 sim,
                 vec_scene,
                 vec_entities,

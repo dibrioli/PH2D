@@ -99,9 +99,6 @@ pub fn selection_root(sim: &SimWorld, entity: Entity) -> Entity {
         if w.get::<VecPathRef>(parent).is_some() {
             break; // o pai é uma FORMA (uma moldura): a fronteira do objeto é aqui.
         }
-        if w.get::<ph2d_ecs::VecObject>(parent).is_some() {
-            break; // o pai é o OBJECTO vetorial: as formas dele escolhem-se uma a uma (spec/06 F3).
-        }
         cur = parent;
     }
     cur

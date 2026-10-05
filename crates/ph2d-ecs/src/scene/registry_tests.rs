@@ -235,8 +235,10 @@ fn register_ecs_components_populates_registry() {
     //   OBJECTO vetorial, contentor das formas. Quem integrar conta o DELTA, nunca o literal.
     // ⚠️ **2026-10-05: `109` -> `106`, delta -3** -- o 3D sai do PH2D (ADR-0179): `BakedForm`,
     //   `Sculpt3dPieceRef` e `Mesh3D` deixam o registo. Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 106);
-    assert!(reg.get_by_name("ph2d::ecs::VecObject").is_some());
+    // ⚠️ **2026-10-05: `106` -> `105`, delta -1** -- o `VecObject` sai (spec/06 F3 ▸ Vector, 2.ª
+    //   volta: o dono retira o contentor; cada forma é um objecto). Conte o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 105);
+    assert!(reg.get_by_name("ph2d::ecs::VecObject").is_none());
     assert!(reg.get_by_name("ph2d::ecs::WeaponFire").is_some());
     assert!(reg.get_by_name("ph2d::ecs::CameraShake").is_some());
     assert!(reg.get_by_name("ph2d::ecs::ShakeEmitter").is_some());

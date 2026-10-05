@@ -16,8 +16,8 @@ pub(crate) const FAMILIES: &[&[AddEntry]] = &[
     ph2d_app_components::object_add::ENTRIES,
 ];
 
-/// O que o pick deu: um objecto já na cena, ou nada (a imagem abre o diálogo de tamanho, que cria
-/// no quadro dele).
+/// O que o pick deu: um objecto já na cena, ou nada ainda (a imagem abre o diálogo de tamanho; o
+/// desenho vetorial nasce no 1.º traço).
 enum Born {
     Entity(u64),
     Dialog,
@@ -26,11 +26,6 @@ enum Born {
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_object_add(&mut self, open: bool) {
-        // ⚠️ A geometria da vista lê-se ANTES do empréstimo do `gfx`: o objecto 2D nasce no centro.
-        let at = self.scene_window().map_or([0.0; 2], |w| {
-            let centre = (w.width as f32 * 0.5, w.height as f32 * 0.5);
-            self.vec_world_at(centre).unwrap_or([0.0; 2])
-        });
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -71,8 +66,11 @@ impl crate::App {
             ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
         ) {
             r.map(Born::Entity)
-        } else if let Some(bits) = ph2d_app_vec::object_add::add(entry, sim, &mut self.vec, at) {
-            Ok(Born::Entity(bits))
+        } else if ph2d_app_vec::object_add::add(entry, &mut self.vec) {
+            use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
+            let leave = ph2d_editor_core::action_bus::EditorAction::ObjectMode;
+            hero.bus.push(leave(ModeRequest::Enter(ObjectMode::Object)));
+            Ok(Born::Dialog)
         } else if let Some(r) =
             ph2d_app_flip::object_add::add(entry, sim, flip, &mut self.flip_state)
         {

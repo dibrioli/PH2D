@@ -83,16 +83,12 @@ fn the_drawing_lands_where_the_gesture_asked() {
         * 0.5;
     // ⚠️ A geometria pode ter sido assente (o `settle_origins` move o pivô para a entidade), então
     // o que se mede é o CENTRO no mundo: geometria + pose.
-    // ⚠️ A pose de MUNDO: a forma é filha do objecto vetorial que o desenho ganhou (spec/06 F3).
+    // ⚠️ A pose de MUNDO (a mesma que a da forma, se ela for raiz).
     let forma = Entity::from_bits(*map.values().next().expect("uma entidade"));
     let pose = f64::from(
         ph2d_vec_entities::transform::world_transform(&sim, forma)
             .translation
             .x,
-    );
-    assert!(
-        ph2d_vec_entities::entities::object_of(&sim, forma).is_some(),
-        "a forma única do ficheiro ficou sem objecto vetorial"
     );
     assert!(
         (cx + pose - 7.0).abs() < 1e-5,
@@ -158,12 +154,6 @@ fn a_file_with_many_loose_shapes_still_lands_as_one_object() {
     assert!(
         sim.world().get::<ChildOf>(topo).is_none(),
         "o objecto devolvido e' a RAIZ do desenho"
-    );
-    // ⭐ GATE (spec/06 F3 ▸ Vector): o ficheiro de uma vez entra num SÓ objecto vetorial — sem o
-    // marcador, a regra das soltas embrulharia cada forma no seu.
-    assert!(
-        sim.world().get::<ph2d_ecs::VecObject>(topo).is_some(),
-        "o desenho importado não é um objecto vetorial"
     );
     let raizes = sim
         .world()

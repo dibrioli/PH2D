@@ -422,7 +422,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.vec_layout_size.name" => "Layout Size",
         "component.vec_morph.name" => "Morph",
         "component.vec_morph_machine.name" => "Morph States",
-        "component.vec_object.name" => "Vector Object",
         "component.vec_offset.name" => "Offset",
         "component.vec_path_ref.name" => "Vector Path",
         "component.vec_pattern_path.name" => "Pattern Path",

@@ -111,7 +111,7 @@ fn the_vector_edit_reaches_the_frame_view() {
     let src = std::fs::read_to_string(shell("src/render_loop/fase_vector_view_and_drives.rs"))
         .expect("a fase da vista vetorial existe");
     assert!(
-        src.contains("vec_view.editing = self.vec.edit.editing(sim, &self.vec.entities)"),
+        src.contains("vec_view.editing = self.vec.edit.editing(&self.vec.entities)"),
         "a vista do quadro não recebe as formas do Edit"
     );
     // ⛔ E a vista do CLIQUE (`view_derived`, lida pelo pick do Select, do laço e do realce) tem de
@@ -125,56 +125,32 @@ fn the_vector_edit_reaches_the_frame_view() {
     );
 }
 
-/// ⭐⭐ GATE (spec/06 F3 ▸ Vector) — **a regra das soltas corre nas DUAS redes, com o objecto do
-/// Edit**: no passe do desenho (a forma entra no objecto no quadro seguinte ao gesto) e na rede da
-/// captura (no MESMO passo de undo). Sem o `edit.object()`, o que se desenha num Edit ganharia um
-/// objecto novo em vez de entrar no do Edit; sem a rede, nasceria um passo fantasma.
+/// ⭐⭐ GATE (spec/06 F3 ▸ Vector, 2.ª volta) — **o *Add ▸ Vector Drawing* da shell só ARMA a
+/// ferramenta e pede Object** (nada nasce: a 1.ª forma pede o Edit). Sem o pedido de Object, um Add
+/// feito em Paint deixaria o Painter a disputar a mão com o vetor.
 ///
-/// *Mutação que sangra:* trocar o `self.vec.edit.object()` de uma das duas por `None`.
+/// *Mutação que sangra:* apagar o `push` do pedido de Object, ou voltar a passar o `sim` ao `add`.
 #[test]
-fn the_loose_shape_rule_runs_in_both_nets_with_the_edit_object() {
-    for f in [
-        "src/render_loop/fase_vector_tree_settle.rs",
-        "src/vec_tree_settle.rs",
-    ] {
-        let src = std::fs::read_to_string(shell(f)).expect("a fase existe");
-        let call = src
-            .split("entities::object::adopt_loose(")
-            .nth(1)
-            .unwrap_or_else(|| panic!("{f}: a regra das soltas não corre"));
-        let edit = src.contains("self.vec.edit.object()");
-        assert!(
-            edit && call.contains("drawing"),
-            "{f}: sem o objecto do Edit ou sem o gesto"
-        );
-    }
+fn the_vector_add_only_arms_the_tool_and_asks_for_object() {
+    let src = std::fs::read_to_string(shell("src/render_loop/fase_object_add.rs"))
+        .expect("a fase do Add existe");
+    let arm = src
+        .split("ph2d_app_vec::object_add::add(entry, &mut self.vec)")
+        .nth(1)
+        .expect("a entrada do vetor não arma a ferramenta");
+    let braço = arm.split("} else").next().unwrap_or_default();
+    assert!(
+        braço.contains("ModeRequest::Enter(ObjectMode::Object)"),
+        "o Add do vetor não pede Object"
+    );
 }
 
-/// ⭐⭐ GATE (spec/06 F3 ▸ Vector) — **em Object o objecto vetorial é UM objecto no canvas**: o
-/// clique e o realce (a porta única `pick_objects_at`) e o laço sobem ao objecto, e o gizmo dele é
-/// a caixa-união das formas. Cada porta compila e passa os gates da crate sem ser chamada — e o
-/// clique numa forma seleccionaria a FORMA, que o gizmo moveria para fora do objecto.
+/// ⭐ GATE — **a cópia de uma forma na Hierarquia fica no pai da original** (escolha do dono, 04/10).
 ///
-/// *Mutação que sangra:* apagar qualquer uma das três chamadas.
+/// *Mutação que sangra:* apagar a chamada.
 #[test]
-fn object_mode_picks_and_boxes_the_whole_vector_object() {
-    for (f, call) in [
-        ("src/hover_highlight.rs", "vector_mode::lift_to_objects("),
-        (
-            "src/input_dispatch/despacho_clique_largar.rs",
-            "vector_mode::lift_to_objects(",
-        ),
-        (
-            "src/render_loop/snapshots.rs",
-            "vec_gizmo_view::container_or_object_view(",
-        ),
-        // A cópia de uma forma na Hierarquia fica no pai da original (escolha do dono, 04/10).
-        (
-            "src/render_loop/hierarchy_duplicate.rs",
-            "object::place_beside(",
-        ),
-    ] {
-        let src = std::fs::read_to_string(shell(f)).expect("o ficheiro existe");
-        assert!(src.contains(call), "{f} não chama {call}");
-    }
+fn the_hierarchy_duplicate_keeps_the_copy_beside_its_source() {
+    let src = std::fs::read_to_string(shell("src/render_loop/hierarchy_duplicate.rs"))
+        .expect("o ficheiro existe");
+    assert!(src.contains("duplicate::place_beside("));
 }

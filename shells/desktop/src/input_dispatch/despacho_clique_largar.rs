@@ -132,7 +132,6 @@ impl crate::App {
                         rmin,
                         rmax,
                     );
-                    ph2d_app_vec::vector_mode::lift_to_objects(&gfx.sim, &vec_view, &mut bits);
                     // ADR-0114/ADR-0111: o marquee também pega objetos Flip pela
                     // bbox de mundo.
                     bits.extend(ph2d_app_flip::gizmo_view::pick_in_world_rect(

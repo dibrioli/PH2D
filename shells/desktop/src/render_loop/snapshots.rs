@@ -396,9 +396,9 @@ fn publish_gizmo(
                     pivot_tool_active,
                 );
             }
-            // ADR-0129 Fatia 3 + spec/06 F3: o contentor de um Envelope e o OBJECTO vetorial têm a
-            // caixa-união dos filhos (a porta acima gateia o Envelope: no Node aparece a gaiola).
-            let union = ph2d_app_vec::vec_gizmo_view::container_or_object_view(
+            // ADR-0129 Fatia 3: o contentor de um Envelope tem a caixa-união dos filhos (a porta acima
+            // gateia o Envelope: no Node aparece a gaiola).
+            let union = ph2d_app_vec::vec_gizmo_view::container_view(
                 sim,
                 vec_scene,
                 sim_entity,

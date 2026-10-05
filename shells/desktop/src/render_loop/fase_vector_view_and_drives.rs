@@ -22,7 +22,7 @@ impl crate::App {
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let hero = hero_screen.as_mut()?;
         let mut vec_view = ph2d_vec_entities::entities::view_state(sim, &self.vec.entities);
-        vec_view.editing = self.vec.edit.editing(sim, &self.vec.entities);
+        vec_view.editing = self.vec.edit.editing(&self.vec.entities);
         // **As MOLDURAS** (plano UI/UX W0): que intervalo da pilha cada uma recorta. Sai do
         // MESMO snapshot que acabou de ditar a pilha de z — derivá-lo de outra fonte seria uma
         // segunda resposta a *"em que ordem estas formas estão?"* — e da pilha FINAL, porque o

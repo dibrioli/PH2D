@@ -109,8 +109,6 @@ pub fn is_empty_object(sim: &SimWorld, e: Entity) -> bool {
         && w.get::<ph2d_ecs::VecPathRef>(e).is_none()
         && w.get::<ph2d_ecs::FlipObjectRef>(e).is_none()
         && w.get::<ph2d_ecs::VecEnvelope>(e).is_none()
-        // Um objecto vetorial COM formas desenha-se por elas (`vec_gizmo_view::object_view`).
-        && !(w.get::<ph2d_ecs::VecObject>(e).is_some() && w.get::<ph2d_ecs::Children>(e).is_some())
         && !ph2d_entity_visibility::off_canvas::is_unedited_recipe(w, e)
         && !publishes_its_own_handles(sim, e)
 }

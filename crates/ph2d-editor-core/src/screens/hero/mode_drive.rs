@@ -169,21 +169,17 @@ pub fn drive(
     request: Option<ModeRequest>,
 ) -> bool {
     let mut changed = false;
-    // 0. Um objecto que nasceu num modo pede-o (só sem pedido do artista neste quadro).
+    // 0. Um objecto que nasceu num modo pede-o (só sem pedido do artista neste quadro). ⚠️ SÓ ele:
+    // a selecção de antes não entra junto — a forma desenhada num Edit levaria a anterior com ela.
     let request = request.or_else(|| {
         let (bits, mode) = families.iter_mut().find_map(|f| f.wants(tools))?;
-        let joins = family(families, kind_of(bits), mode).is_some_and(|f| f.joins(mode));
-        let joined = if joins {
-            same_kind_selected(hero, kind_of, bits)
-        } else {
-            Vec::new()
-        };
-        select_together(hero, bits, &joined);
+        select_together(hero, bits, &[]);
         Some(ModeRequest::Enter(mode))
     });
     // 1. O activo e os modos que o TIPO dele declara.
     let mut active = publish_active(families, kind_of, hero);
     // 2. A rede de segurança: quem perdeu a entidade (por qualquer porta) volta a Object.
+    let mut fell_from = None;
     if let Some(current) = hero.gizmo.mode.active() {
         let f = family(families, kind_of(current.entity), current.mode);
         let (held, parts) = f.map_or((false, None), |f| {
@@ -193,6 +189,7 @@ pub fn drive(
         hero.gizmo.mode.publish_parts(parts);
         let (sel, extras) = (hero.gizmo.selection, &hero.gizmo.extra_selection);
         if !hero.gizmo.mode.still_holds(sel, extras, held) {
+            fell_from = Some(current.mode);
             leave_current(families, kind_of, tools, hero);
             active = publish_active(families, kind_of, hero);
             changed = true;
@@ -218,11 +215,15 @@ pub fn drive(
                     if f.enter_with(m, bits, &joined, tools) {
                         hero.gizmo.mode.enter(bits, m);
                         hero.gizmo.mode.publish_parts(f.parts(bits));
-                        let label = m.label_key().tr();
-                        toasts.push(Toast::info(tr_with(
-                            "object_mode.entered",
-                            &[("mode", &label)],
-                        )));
+                        // O modo que só PASSOU a outro objecto (a forma que nasceu num Edit) não
+                        // é notícia: o aviso repetir-se-ia a cada forma desenhada.
+                        if fell_from != Some(m) {
+                            let label = m.label_key().tr();
+                            toasts.push(Toast::info(tr_with(
+                                "object_mode.entered",
+                                &[("mode", &label)],
+                            )));
+                        }
                     }
                 }
             }

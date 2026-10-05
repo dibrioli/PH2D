@@ -1,18 +1,18 @@
-//! ⭐⭐ **VECTOR ▸ EDIT** — o modo que o OBJECTO vetorial declara e como ele abre a ferramenta do
-//! vetor DENTRO dele (spec/06 F3; escolha do dono, 04/10: *«ao clicar nele cria-se um objeto vazio e
-//! entra-se no modo edit do vector com o menu exatamente como era antigamente»*).
+//! ⭐⭐ **VECTOR ▸ EDIT** — cada FORMA é um objecto, e o Edit abre a ferramenta do vetor sobre ela
+//! (spec/06 F3 ▸ Vector, 2.ª volta; escolha do dono, 05/10: *«nada aparece no canvas ou na hierarquia
+//! até que o usuário crie alguma forma ou linha. Ao desenhar algo, o objeto aparece na hierarquia no
+//! modo edit»*, e a 2.ª forma é OUTRO objecto).
 //!
-//! - **Edit** = a ferramenta `vector` na mão (qualquer `DrawMode`, o painel inteiro) com o objecto em
-//!   mãos ([`EditTarget`]). Tudo o que nasce nesse Edit é filho dele
-//!   ([`ph2d_vec_entities::entities::object::adopt_loose`]); só as formas dele se agarram e mostram
-//!   nós ([`EditTarget::editing`] → `VecViewState::editing`). As formas são as PARTES do modo.
-//! - **Object** = a ferramenta sai da mão; o clique numa forma selecciona o objecto inteiro.
-//! - ⭐ **Multi-objecto** ([`ModeFamily::joins`]): `Tab` com vários objectos = Edit de todos.
+//! - **Add ▸ Vector Drawing** não cria entidade: arma a ferramenta ([`EditTarget::arm`]) — ela chega
+//!   à mão em Object, com o painel inteiro.
+//! - **A forma que NASCE com a ferramenta na mão pede o Edit sobre ela** ([`ModeFamily::wants`]): a
+//!   1.ª depois do Add, e cada nova num Edit (o Edit PASSA a ela — a rede `still_holds` larga a
+//!   anterior e o pedido entra na nova, no mesmo quadro).
+//! - **Edit** = a ferramenta `vector` na mão (qualquer `DrawMode`) com as formas do Edit
+//!   ([`EditTarget::editing`] → `VecViewState::editing`: só elas se agarram e mostram nós).
+//! - **Object** = a ferramenta sai da mão. ⭐ Multi-objecto ([`ModeFamily::joins`]): `Tab` com várias
+//!   formas = Edit de todas.
 //! - ⭐ **O ALVO** mora no [`crate::state::VecState`], fora da `VecScene` (que entra no undo).
-//!
-//! **Duas portas para o Edit, uma regra** ([`ModeFamily::wants`]): o objecto que NASCE pelo menu Add
-//! pede-o, e a ferramenta `vector` que chega à mão sem o modo (a aba de cima, as cenas
-//! `PH2D_*_SMOKE`) pede-o sobre o objecto da forma seleccionada.
 
 use ph2d_component_desc::ObjectKind;
 use ph2d_ecs::{Entity, SimWorld};
@@ -21,7 +21,7 @@ use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
 use ph2d_editor_core::{ToolId, ToolRegistry};
 use ph2d_tool_vector::VectorTool;
-use ph2d_vec_entities::entities::{VecEntityMap, object_of};
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::VecPathId;
 
 use crate::state::VecState;
@@ -32,40 +32,41 @@ const VECTOR: &str = "vector";
 /// ⭐ **O que o Edit tem em mãos.**
 #[derive(Default)]
 pub struct EditTarget {
-    /// Os objectos do Edit — o activo à frente. Vazio em Object.
+    /// As formas do Edit — a activa à frente. Vazio em Object.
     pub objects: Vec<u64>,
     /// O quadro anterior seguia um Edit do vetor.
     following: bool,
-    /// O objecto que nasceu pelo menu Add e ainda não pediu o Edit.
-    born: Option<u64>,
+    /// O *Add ▸ Vector Drawing* pediu a ferramenta na mão (consumido quando não há modo).
+    armed: bool,
+    /// As formas assentadas no quadro anterior (fora de gesto) — `None` antes do 1.º quadro. Uma
+    /// forma fora desta lista NASCEU.
+    known: Option<Vec<u64>>,
 }
 
 impl EditTarget {
-    /// O objecto `bits` acabou de nascer: pede o Edit no próximo quadro do modo.
-    pub fn born(&mut self, bits: u64) {
-        self.born = Some(bits);
+    /// *Add ▸ Vector Drawing*: a ferramenta vem à mão sem objecto; a 1.ª forma pede o Edit.
+    pub fn arm(&mut self) {
+        self.armed = true;
     }
 
-    /// O objecto onde nasce o que se desenha agora — `None` em Object.
+    /// A ferramenta ainda espera vir à mão.
     #[must_use]
-    pub fn object(&self) -> Option<Entity> {
-        self.objects.first().map(|b| Entity::from_bits(*b))
+    pub fn armed(&self) -> bool {
+        self.armed
     }
 
-    /// ⭐ **As formas do Edit, para a vista** — as dos objectos em mãos e as soltas (que entram no
-    /// objecto quando o gesto acabar). `None` = Object; `Some` vazio = um objecto ainda sem formas.
+    /// ⭐ **As formas do Edit, para a vista** — as do Edit e as que estão a nascer (em gesto, ainda
+    /// por pedir o Edit). `None` = Object.
     #[must_use]
-    pub fn editing(&self, sim: &SimWorld, map: &VecEntityMap) -> Option<Vec<VecPathId>> {
+    pub fn editing(&self, map: &VecEntityMap) -> Option<Vec<VecPathId>> {
         if self.objects.is_empty() {
             return None;
         }
-        let ours = |bits: u64| {
-            object_of(sim, Entity::from_bits(bits))
-                .is_none_or(|o| self.objects.contains(&o.to_bits()))
-        };
+        let known = self.known.as_deref().unwrap_or_default();
+        let ours = |b: &u64| self.objects.contains(b) || !known.contains(b);
         Some(
             map.iter()
-                .filter(|(_, b)| ours(**b))
+                .filter(|(_, b)| ours(b))
                 .map(|(id, _)| *id)
                 .collect(),
         )
@@ -84,7 +85,7 @@ fn in_hand(tools: &mut ToolRegistry) -> bool {
     tool_mut(tools).is_some()
 }
 
-/// ⭐⭐ **A LEI do «tem em mãos»**, pura: Edit, o objecto é o alvo e a ferramenta está na mão.
+/// ⭐⭐ **A LEI do «tem em mãos»**, pura: Edit, a forma é o alvo e a ferramenta está na mão.
 pub(crate) fn holds(mode: ObjectMode, is_target: bool, tool_in_hand: bool) -> bool {
     mode == ObjectMode::Edit && is_target && tool_in_hand
 }
@@ -100,80 +101,64 @@ pub(crate) fn releases(ours_now: bool, following: bool) -> bool {
     !ours_now && following
 }
 
+/// ⭐⭐ **A LEI do nascimento**, pura: a forma nova que pede o Edit — UMA só nasceu fora de gesto
+/// desde o quadro anterior (desenhar, a booleana, colar uma); várias de uma vez (carregar, colar
+/// muitas) não pedem, e antes do 1.º quadro (`known` = `None`) nada nasceu.
+pub(crate) fn newborn(shapes: &[u64], known: Option<&[u64]>, drawing: &[u64]) -> Option<u64> {
+    let known = known?;
+    let mut new = shapes
+        .iter()
+        .filter(|b| !known.contains(b) && !drawing.contains(b));
+    let first = *new.next()?;
+    new.next().is_none().then_some(first)
+}
+
 /// ⭐ **A família**, construída em cada quadro com o que ela lê do mundo.
 pub struct Family<'a> {
     vec: &'a mut VecState,
-    /// Cada objecto vetorial, com tudo o que vive debaixo dele.
-    objects: Vec<(u64, Vec<u64>)>,
-    /// As formas sem objecto (entram num no próximo assentamento).
-    loose: Vec<u64>,
-    /// Os objectos das formas que a caneta tem seleccionadas, a da última no fim.
-    pen_owners: Vec<u64>,
-    /// Este quadro o Edit veio pela porta antiga ([`ModeFamily::wants`] pela caneta): só aí os
-    /// [`Self::pen_owners`] juntam — noutra entrada a caneta pode ter a selecção de um Edit velho.
+    /// Cada forma viva — os objectos desta família.
+    shapes: Vec<u64>,
+    /// As formas em gesto (a mão ainda as escreve).
+    drawing: Vec<u64>,
+    /// As formas que a caneta tem seleccionadas, a última no fim.
+    pen: Vec<u64>,
+    /// Este quadro o Edit veio pela porta antiga ([`ModeFamily::wants`] pela caneta): só aí a
+    /// selecção da caneta junta — noutra entrada ela pode ser a de um Edit velho.
     via_pen: bool,
 }
 
-/// Teto de nós de uma sub-árvore (defesa contra save corrompido, não limite de produto).
-const MAX_NODES: usize = 4096;
-
-/// Tudo o que vive debaixo de `root`.
-fn descendants(sim: &SimWorld, root: Entity) -> Vec<u64> {
-    let w = sim.world();
-    let mut out = Vec::new();
-    let mut stack = vec![root];
-    while let Some(e) = stack.pop() {
-        if out.len() >= MAX_NODES {
-            break;
-        }
-        if let Some(kids) = w.get::<ph2d_ecs::Children>(e) {
-            for k in kids.iter().copied() {
-                out.push(k.to_bits());
-                stack.push(k);
-            }
-        }
-    }
-    out
-}
-
 impl<'a> Family<'a> {
-    /// Lê os objectos e as soltas de `sim`.
-    pub fn new(vec: &'a mut VecState, sim: &mut SimWorld) -> Self {
-        let world = sim.world_mut();
-        let mut q = world.query::<(Entity, &ph2d_ecs::VecObject)>();
-        let roots: Vec<Entity> = q.iter(world).map(|(e, _)| e).collect();
-        let objects = roots
-            .into_iter()
-            .map(|o| (o.to_bits(), descendants(sim, o)))
-            .collect();
+    /// Lê as formas de `sim`.
+    pub fn new(vec: &'a mut VecState, sim: &SimWorld) -> Self {
         let alive = |b: u64| sim.world().get_entity(Entity::from_bits(b)).is_ok();
-        let loose = vec
+        let shapes: Vec<u64> = vec
             .entities
             .values()
             .copied()
-            .filter(|b| alive(*b) && object_of(sim, Entity::from_bits(*b)).is_none())
+            .filter(|b| alive(*b))
             .collect();
-        let mut pen_owners: Vec<u64> = Vec::new();
-        for id in vec.pen.selected_paths() {
-            let Some(b) = vec.entities.get(id) else {
-                continue;
-            };
-            if let Some(o) = object_of(sim, Entity::from_bits(*b)).map(Entity::to_bits) {
-                pen_owners.retain(|x| *x != o);
-                pen_owners.push(o);
-            }
-        }
+        let bits_of = |ids: &[VecPathId]| -> Vec<u64> {
+            ids.iter()
+                .filter_map(|id| vec.entities.get(id).copied())
+                .collect()
+        };
+        let drawing = bits_of(&ph2d_vec_entities::transform::gesture_paths(
+            &vec.pen,
+            &vec.shape,
+            &vec.pencil,
+        ));
+        let pen = bits_of(vec.pen.selected_paths());
         Self {
             vec,
-            objects,
-            loose,
-            pen_owners,
+            shapes,
+            drawing,
+            pen,
             via_pen: false,
         }
     }
 
-    fn is_object(&self, bits: u64) -> bool {
-        self.objects.iter().any(|(o, _)| *o == bits)
+    fn is_shape(&self, bits: u64) -> bool {
+        self.shapes.contains(&bits)
     }
 }
 
@@ -183,7 +168,7 @@ impl ModeFamily for Family<'_> {
     }
 
     fn holds(&mut self, mode: ObjectMode, entity: u64, tools: &mut ToolRegistry) -> bool {
-        let is_target = self.vec.edit.objects.first() == Some(&entity) && self.is_object(entity);
+        let is_target = self.vec.edit.objects.first() == Some(&entity) && self.is_shape(entity);
         holds(mode, is_target, in_hand(tools))
     }
 
@@ -206,42 +191,41 @@ impl ModeFamily for Family<'_> {
         joined: &[u64],
         tools: &mut ToolRegistry,
     ) -> bool {
-        if mode != ObjectMode::Edit || !self.is_object(entity) {
+        if mode != ObjectMode::Edit || !self.is_shape(entity) {
             return false;
         }
         if !in_hand(tools) && !tools.set_active(&ToolId::new(VECTOR)) {
             return false;
         }
         let mut objects = vec![entity];
-        let pen: &[u64] = if self.via_pen { &self.pen_owners } else { &[] };
+        let pen: &[u64] = if self.via_pen { &self.pen } else { &[] };
         for b in joined.iter().chain(pen) {
-            if self.is_object(*b) && !objects.contains(b) {
+            if self.is_shape(*b) && !objects.contains(b) {
                 objects.push(*b);
             }
         }
         self.vec.edit.objects = objects;
-        self.vec.edit.born = self.vec.edit.born.filter(|b| *b != entity);
+        self.vec.edit.armed = false;
         true
     }
 
-    fn leave(&mut self, _: ObjectMode, _: u64, tools: &mut ToolRegistry) {
+    /// ⚠️ Não larga a ferramenta: o Edit pode estar só a PASSAR à forma que nasceu (ver o
+    /// cabeçalho) — quem a larga é o [`ModeFamily::follow`], quando nenhum Edit do vetor ficou.
+    fn leave(&mut self, _: ObjectMode, _: u64, _: &mut ToolRegistry) {
         self.vec.edit.objects.clear();
-        if in_hand(tools) {
-            tools.activate_default();
-        }
     }
 
     fn follow(&mut self, current: Option<ActiveMode>, tools: &mut ToolRegistry) {
         let ours = current
-            .filter(|a| a.mode == ObjectMode::Edit && self.is_object(a.entity))
+            .filter(|a| a.mode == ObjectMode::Edit && self.is_shape(a.entity))
             .map(|a| a.entity);
-        let objects = &self.objects;
+        let shapes = &self.shapes;
         let edit = &mut self.vec.edit;
         if let Some(o) = ours {
             if edit.objects.first() != Some(&o) {
                 edit.objects = vec![o];
             }
-            edit.objects.retain(|b| objects.iter().any(|(x, _)| x == b));
+            edit.objects.retain(|b| shapes.contains(b));
         } else if releases(false, edit.following) {
             edit.objects.clear();
             if in_hand(tools) {
@@ -249,82 +233,60 @@ impl ModeFamily for Family<'_> {
             }
         }
         edit.following = ours.is_some();
+        // *Add ▸ Vector Drawing*: a ferramenta vem à mão quando nenhum modo a disputa (um pedido de
+        // Object pode estar a caminho), com a caneta sem selecção — senão a porta antiga entraria
+        // no Edit de uma forma velha.
+        if edit.armed && current.is_none() {
+            edit.armed = false;
+            self.vec.pen.select_many(&[]);
+            if !in_hand(tools) {
+                tools.set_active(&ToolId::new(VECTOR));
+            }
+        }
+        let drawing = &self.drawing;
+        self.vec.edit.known = Some(
+            self.shapes
+                .iter()
+                .copied()
+                .filter(|b| !drawing.contains(b))
+                .collect(),
+        );
     }
 
     fn wants(&mut self, tools: &mut ToolRegistry) -> Option<(u64, ObjectMode)> {
-        if let Some(b) = self.vec.edit.born.take()
-            && self.is_object(b)
-        {
+        if !in_hand(tools) {
+            return None;
+        }
+        if let Some(b) = newborn(&self.shapes, self.vec.edit.known.as_deref(), &self.drawing) {
             return Some((b, ObjectMode::Edit));
         }
-        if !adopt(in_hand(tools), self.vec.edit.following) {
+        if !adopt(true, self.vec.edit.following) {
             return None;
         }
         self.via_pen = true;
-        Some((*self.pen_owners.last()?, ObjectMode::Edit))
+        Some((*self.pen.last()?, ObjectMode::Edit))
     }
 
     fn parts(&mut self, entity: u64) -> Option<Vec<u64>> {
         let edit = &self.vec.edit.objects;
-        if edit.first() != Some(&entity) {
-            return None;
-        }
-        let mut parts: Vec<u64> = Vec::new();
-        for o in edit {
-            if *o != entity {
-                parts.push(*o);
-            }
-            if let Some((_, under)) = self.objects.iter().find(|(x, _)| x == o) {
-                parts.extend(under);
-            }
-        }
-        parts.extend(&self.loose);
-        Some(parts)
-    }
-
-    fn owner_of(&mut self, bits: u64) -> Option<u64> {
-        if self.is_object(bits) {
-            return None;
-        }
-        self.objects
-            .iter()
-            .find(|(_, under)| under.contains(&bits))
-            .map(|(o, _)| *o)
+        (edit.first() == Some(&entity) && edit.len() > 1)
+            .then(|| edit.iter().copied().filter(|b| *b != entity).collect())
     }
 }
 
-/// ⭐⭐ **Em Object o clique nomeia o OBJECTO** (spec/06 F3: *«clicar numa forma selecciona o objecto
-/// inteiro»*) — cada forma de `hits` sobe ao objecto vetorial dela, sem repetidos e na ordem. Em Edit
-/// (`view.editing` armado) a lista fica: as formas escolhem-se uma a uma. A porta do clique, do laço
-/// e do realce.
-pub fn lift_to_objects(sim: &SimWorld, view: &ph2d_vec_scene::VecViewState, hits: &mut Vec<u64>) {
-    if view.editing.is_some() {
-        return;
-    }
-    let mut out: Vec<u64> = Vec::with_capacity(hits.len());
-    for b in hits.iter() {
-        let o = object_of(sim, Entity::from_bits(*b)).map_or(*b, Entity::to_bits);
-        if !out.contains(&o) {
-            out.push(o);
-        }
-    }
-    *hits = out;
-}
-
-/// ⭐ **O smoke do modo** — `PH2D_OBJECT_MODE_SMOKE=6`: *Add ▸ Vector Object* (nasce em Edit),
-/// um rectângulo e uma elipse por cima, a booleana UNION pelo botão do painel, `Tab`; depois um
-/// segundo objecto com uma estrela, em Edit com o Node, e o seletor aberto — a foto mostra os nós
-/// SÓ da estrela, e a união do primeiro intocada. Corre uma vez.
+/// ⭐ **O smoke do modo** — `PH2D_OBJECT_MODE_SMOKE=6`: *Add ▸ Vector Drawing* (nada nasce: a
+/// ferramenta vem à mão), um rectângulo (nasce objecto, em Edit), uma elipse ao lado (OUTRO objecto,
+/// e o Edit passa a ela), o Node e o seletor aberto — a foto mostra os dois objectos na Hierarquia e
+/// os nós SÓ da elipse. Corre uma vez.
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
-    sim: &SimWorld,
     hero: &mut HeroScreen,
 ) -> Option<ModeRequest> {
     use ph2d_vec_scene::ShapeKind;
     use std::sync::atomic::{AtomicU8, Ordering};
-    // 0 = por ler · 1 = o 1.º objecto · 2 = o rectângulo · 3 = a elipse · 4 = a booleana ·
-    // 5 = o `Tab` · 6 = o 2.º objecto · 7 = a estrela · 8 = o Node · 10 = o seletor · 9 = feito.
+    // 0 = por ler · 1 = o Add · 2 = a ferramenta na mão · 3 = o rectângulo · 4 = a elipse ·
+    // 5 = o Node · 10 = o seletor · 9 = feito.
     static STAGE: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
@@ -338,56 +300,29 @@ pub fn smoke_step(
         s => s,
     };
     let go = |next| STAGE.store(next, Ordering::Relaxed);
-    // Toda forma já assentou num objecto (a regra das soltas corre no assentamento da árvore).
-    let settled = vec
-        .entities
-        .values()
-        .all(|b| object_of(sim, Entity::from_bits(*b)).is_some());
-    let editing =
-        settled && hero.gizmo.mode.current() == ObjectMode::Edit && vec.edit.objects.len() == 1;
+    let edit = hero.gizmo.mode.current() == ObjectMode::Edit;
     let shapes = vec.entities.len();
+    // A forma mais nova (os ids crescem): é nela que o Edit tem de estar.
+    let newest = vec.entities.values().last().copied();
     match stage {
-        1 | 6 if hero.gizmo.mode.current() == ObjectMode::Object => {
-            hero.store
-                .set_command_pick(crate::object_add::VECTOR_OBJECT.id());
-            go(stage + 1);
+        1 if hero.gizmo.mode.current() == ObjectMode::Object => {
+            hero.store.set_command_pick(crate::object_add::VECTOR.id());
+            go(2);
         }
-        2 if editing => {
-            draw_shape(vec, scene, ShapeKind::Rectangle, [-1.6, 0.0], 0.7);
-            go(3);
-        }
-        3 if editing && shapes == 1 => {
-            draw_shape(vec, scene, ShapeKind::Ellipse, [-1.1, 0.4], 0.6);
+        // ⚠️ Pelo espelho da ferramenta activa, e não pelo `armed`: o quadro do Add traz o pedido
+        // de Object, e nesse quadro este passo não corre — o `armed` nasce e morre sem ser visto.
+        2 if hero.image_edit.active_tool_id == Some(VECTOR) => go(3),
+        3 if !edit => {
+            draw_shape(vec, scene, ShapeKind::Rectangle, [-1.2, 0.0], 0.7);
             go(4);
         }
-        4 if editing && shapes == 2 => {
-            let ids: Vec<VecPathId> = vec.entities.keys().copied().collect();
-            vec.pen.select_many(&ids);
-            hero.bus
-                .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
-                    ph2d_editor_core::tool::PanelEvent::Click(
-                        ph2d_panel_vector::ids::VECTOR_BOOL_UNION,
-                    ),
-                ));
+        4 if edit && shapes == 1 => {
+            draw_shape(vec, scene, ShapeKind::Ellipse, [1.2, 0.0], 0.7);
             go(5);
         }
-        5 if editing && shapes == 1 => {
-            go(6);
-            return Some(ModeRequest::Toggle);
-        }
-        7 if editing && shapes == 1 => {
-            draw_shape(vec, scene, ShapeKind::Star, [1.4, 0.0], 0.7);
-            go(8);
-        }
-        8 if editing && shapes == 2 => {
-            // A estrela na mão do Node: os nós dela aparecem, e os da união (outro objecto) não.
-            let ours: Vec<VecPathId> = vec
-                .entities
-                .iter()
-                .filter(|(_, b)| object_of(sim, Entity::from_bits(**b)) == vec.edit.object())
-                .map(|(id, _)| *id)
-                .collect();
-            vec.pen.select_many(&ours);
+        5 if edit && shapes == 2 && vec.edit.objects.first().copied() == newest => {
+            let ellipse: Vec<VecPathId> = vec.entities.keys().last().copied().into_iter().collect();
+            vec.pen.select_many(&ellipse);
             hero.bus
                 .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
                     ph2d_editor_core::tool::PanelEvent::Click(
@@ -396,7 +331,7 @@ pub fn smoke_step(
                 ));
             go(10);
         }
-        10 if editing => {
+        10 if edit => {
             // O chip só se abre depois de pintado (o pulldown ancora-se no rect dele).
             let chip = ph2d_editor_core::ids::area_menu_button(0);
             if hero.hit_index.rect_for(chip).is_some() {

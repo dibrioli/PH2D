@@ -389,4 +389,13 @@
 /// um campo a menos no meio do `ProjectFile` seria lido errado em silêncio.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 183;
+///
+/// # `183 → 184` — **o OBJECTO VETORIAL sai: cada forma é um objecto** (spec/06 F3 ▸ Vector, 2.ª
+/// volta, 2026-10-05)
+///
+/// Escolha do dono: sem contentor — a forma (`VecPathRef`) é o objecto. `VecObject` deixa o registo
+/// (ECS `-1`, espelhos `-1`). ⛔ **Sem degrau de migração**, pela decisão de sempre — um v183 é
+/// recusado em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 184;

@@ -93,13 +93,6 @@ impl App {
             &self.vec.entities,
             &drawing,
         );
-        ph2d_vec_entities::entities::object::adopt_loose(
-            &mut gfx.sim,
-            &self.vec.entities,
-            self.vec.edit.object(),
-            &drawing,
-            ph2d_i18n::tr("object_add.vector.object_name"),
-        );
         // ⭐⭐ **E o pivô dos objectos FLIP, pelo mesmo motivo e noutra mídia** (achado pelo censo
         // `the_net_knows_every_derived_writer`, 2026-09-08). O `ph2d_flip_entities::transform::settle_origins`
         // corria no passe do desenho e **não** estava aqui — o mesmo buraco que o gate do *duplicar*

@@ -295,7 +295,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // escultura, do campo e as formas assadas saem do `ProjectFile`; o registo do campo
         // inteiro e `BakedForm`/`Sculpt3dPieceRef`/`Mesh3D` saem (ECS `-3`, espelhos `-3`). A
         // tripla NÃO vê este degrau.
-        (183, 13, 22),
+        // ⚠️ **`184` em 2026-10-05** — o OBJECTO VETORIAL sai (spec/06 F3 ▸ Vector, 2.ª volta):
+        // `VecObject` deixa o registo (ECS `-1`, espelhos `-1`). A tripla NÃO vê este degrau.
+        (184, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

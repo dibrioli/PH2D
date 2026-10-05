@@ -322,7 +322,7 @@ pub enum Attach {
 /// por um campo.
 ///
 /// Medido em 2026-08-24 sobre os 107 registados: `Sprite` ⇒ [`ObjectKind::Image`] ·
-/// `VecObject` ⇒ [`ObjectKind::Vector`] · `FlipObjectRef` ⇒ [`ObjectKind::Flip`] ·
+/// `VecPathRef` ⇒ [`ObjectKind::Vector`] · `FlipObjectRef` ⇒ [`ObjectKind::Flip`] ·
 /// `PaintedDoc` ⇒ [`ObjectKind::Painted`]. Nenhum deles ⇒ [`ObjectKind::Empty`], que é
 /// exatamente o objeto que a F3 aprende a criar.
 ///
@@ -336,8 +336,8 @@ pub enum ObjectKind {
     Empty,
     /// Sprite de imagem (`ph2d::render::Sprite`).
     Image,
-    /// Objecto vetorial, o contentor das formas (`ph2d::ecs::VecObject`; até 04/10 era a forma,
-    /// `VecPathRef` — as formas são agora PARTES dele, como as do Model).
+    /// Forma vetorial (`ph2d::ecs::VecPathRef`): cada forma é um objecto (spec/06 F3 ▸ Vector, 2.ª
+    /// volta, 05/10 — o contentor `VecObject` de 04/10 saiu).
     Vector,
     /// Objeto Flip (`ph2d::ecs::FlipObjectRef`).
     Flip,
@@ -377,7 +377,7 @@ impl ObjectKind {
         match self {
             ObjectKind::Empty => None,
             ObjectKind::Image => Some("ph2d::render::Sprite"),
-            ObjectKind::Vector => Some("ph2d::ecs::VecObject"),
+            ObjectKind::Vector => Some("ph2d::ecs::VecPathRef"),
             ObjectKind::Flip => Some("ph2d::ecs::FlipObjectRef"),
             ObjectKind::Painted => Some("ph2d::ecs::PaintedDoc"),
         }

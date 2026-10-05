@@ -96,7 +96,7 @@ fn the_menu_offers_every_compiled_family() {
     let wanted = [
         ph2d_editor_core::object_add::EMPTY,
         ph2d_editor_core::object_add::IMAGE,
-        ph2d_app_vec::object_add::VECTOR_OBJECT,
+        ph2d_app_vec::object_add::VECTOR,
         ph2d_app_flip::object_add::FLIP,
         ph2d_app_components::object_add::CAMERA,
     ];
@@ -126,15 +126,15 @@ fn capture(
     )
 }
 
-/// ⭐⭐ **Criar pelo menu e desfazer devolve o projecto ao BIT** — o vazio, um objecto de jogo, um
-/// objecto vetorial e um desenho Flip, pela porta de cada família e pelo `ProjectState` que o
+/// ⭐⭐ **Criar pelo menu e desfazer devolve o projecto ao BIT** — o vazio, um objecto de jogo e um
+/// desenho Flip (o desenho vetorial não cria nada no menu: nasce no 1.º traço, spec/06 F3), pela porta de cada família e pelo `ProjectState` que o
 /// `post_frame_undo` usa (o mundo, a cena vetorial e o documento Flip juntos).
 ///
 /// (Mutação: o `restore` devolver uma `VecScene` vazia ⇒ a forma que já existia some ⇒ RED.)
 #[test]
 fn creating_then_undoing_returns_the_project_to_the_bit() {
     let reg = ph2d_app_components::test_support::registo();
-    for which in ["empty", "camera", "vector", "flip"] {
+    for which in ["empty", "camera", "flip"] {
         let mut sim = ph2d_ecs::SimWorld::new();
         let mut vec_scene = ph2d_vec_scene::VecScene::new();
         let mut flip = ph2d_flip::FlipDoc::new();
@@ -156,13 +156,6 @@ fn creating_then_undoing_returns_the_project_to_the_bit() {
                 &[],
             )
             .expect("é de jogo"),
-            "vector" => Ok(ph2d_app_vec::object_add::add(
-                ph2d_app_vec::object_add::VECTOR_OBJECT,
-                &mut sim,
-                &mut vec,
-                [0.0, 0.0],
-            )
-            .expect("é do vetor")),
             _ => ph2d_app_flip::object_add::add(
                 ph2d_app_flip::object_add::FLIP,
                 &mut sim,

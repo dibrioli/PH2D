@@ -9,6 +9,11 @@
 
 ## 0. O defeito, e porque a cura é um objecto
 
+- ⭐ **2.º report do dono (05/10, depois do plano):** *«o esqueleto se move mas fica invisível»* — o
+  gesto do osso CHEGA (a pose muda e a forma segue) mas o desenho dos ossos não: confirma que o
+  despacho e o overlay estão presos a portões DIFERENTES (o overlay a `vector_active`). O gate de
+  desenho do §3 tem de reproduzir ESTE estado (osso a mexer, overlay ausente) antes da cura.
+
 - Os gestos do osso (criar, agarrar, rodar, pintar o peso) são um **modo da ferramenta Vector**
   (`DrawMode::Bone`, `ph2d-tool-vector`) e correm dentro do despacho de cliques do VETOR
   (`shells/desktop/src/input_dispatch/despacho_clique_vetor_premido.rs:329…`, `bone_gesture::press`). O

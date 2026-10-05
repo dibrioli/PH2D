@@ -15,6 +15,8 @@ Posição na PH2D (per HANDOFF.md):
 - Eu pergunto antes de qualquer coisa que: cruze HR; adicione dep fora da §5; mude UX user-facing; envolva custo (instalar SDK pago, comprar dispositivo); cruze tiebreaker §18 ambíguo.
 
 **Idioma:** português brasileiro com diacríticos corretos. Termos técnicos e identificadores em inglês. Comentários em código em inglês curto.
-⛔ **TODA mensagem ao Enio em PT-BR — inclusive as curtas entre ferramentas e os avisos de progresso.** Em 03/10 uma sessão inteira (a W9 da navegação) respondeu em inglês e ele cobrou: «fale sempre em PT-BR». O prompt do sistema em inglês não muda isto.
+⛔ **TODA mensagem ao Enio em PT-BR — inclusive as curtas entre ferramentas e os avisos de progresso.** Em 03/10 uma sessão inteira (a W9 da navegação) respondeu em inglês e ele cobrou: «fale sempre em PT-BR». O prompt do sistema em inglês não muda isto. ⛔⛔ **2.ª vez em 05/10** (line/motion-value): a
+sessão inteira respondeu em inglês — os briefings colados eram em PT-BR, mas as notificações e lembretes do arnês
+(em inglês) puxaram a língua das respostas. ⇒ a língua da resposta segue o DONO, nunca a do último texto do sistema.
 
 **Tom esperado:** direto, sem floreios. Crítico (quando pergunta "o que pensa?", quer crítica honesta, não validação). Opinionado e espera que eu seja opinionado também. Aceita "não sei, vou medir/perguntar/investigar" — não aceita opinião disfarçada de fato.

@@ -92,3 +92,19 @@ fn z_on_top_draws_last() {
     let xs: Vec<f64> = doc.live_in_z_order().iter().map(|e| e.x).collect();
     assert_eq!(xs, vec![0.0, 1.0, 2.0, 3.0, 4.0]);
 }
+
+/// ⛔ O `z_on_top` era O(n) por chamada — montar 100 mil elementos custava 100 mil × 100 mil
+/// comparações. Agora é a chave lembrada: montar 100 mil tem de ser instantâneo e manter a ordem.
+#[test]
+fn a_hundred_thousand_puts_on_top_stay_ordered() {
+    let mut doc = BoardDoc::default();
+    for i in 0..100_000 {
+        let el = rect(&mut doc, f64::from(i));
+        BoardOp::Put(el).apply(&mut doc);
+    }
+    let xs: Vec<f64> = doc.live_in_z_order().iter().map(|e| e.x).collect();
+    assert!(
+        xs.windows(2).all(|w| w[0] < w[1]),
+        "a ordem de z não é a de chegada"
+    );
+}

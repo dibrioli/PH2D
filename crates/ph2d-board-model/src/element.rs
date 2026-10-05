@@ -47,6 +47,9 @@ pub struct Element {
 pub struct BoardDoc {
     pub(crate) elements: BTreeMap<ElementId, Element>,
     pub(crate) next_id: u64,
+    /// A maior chave de z que já entrou (lápides incluídas) — o `z_on_top` em O(1). Só sobe: uma
+    /// chave acima de um elemento apagado continua acima de todos os vivos.
+    pub(crate) top_z: Option<FracKey>,
 }
 
 impl BoardDoc {
@@ -79,7 +82,6 @@ impl BoardDoc {
     /// A chave de z para pôr um elemento novo à frente de todos.
     #[must_use]
     pub fn z_on_top(&self) -> FracKey {
-        let top = self.elements.values().map(|e| &e.z).max();
-        FracKey::between(top, None)
+        FracKey::between(self.top_z.as_ref(), None)
     }
 }

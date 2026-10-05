@@ -26,6 +26,9 @@ impl BoardOp {
                     .map_or(el.version, |p| p.version.max(el.version))
                     + 1;
                 doc.next_id = doc.next_id.max(el.id.0);
+                if doc.top_z.as_ref().is_none_or(|t| el.z > *t) {
+                    doc.top_z = Some(el.z.clone());
+                }
                 let id = el.id;
                 doc.elements.insert(id, el);
                 Some(match prev {

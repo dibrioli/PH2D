@@ -69,8 +69,8 @@ const RAIL_CONSUMERS: &[Row] = &[
     //
     // ⛔⛔ **O único leitor destes três era o módulo 3D**, que saiu (ADR-0179). No editor 2D o gizmo
     // escolhe o verbo pela ALÇA que se agarra (bbox → mover, canto → escalar, anel → rodar), não por
-    // um modo — então não há lá o que ligar. ⏳ Apagar os chips ou ligá-los ao gizmo 2D é uma
-    // decisão de PRODUTO, nomeada no handoff da `line/poda-3d`.
+    // um modo — então não há lá o que ligar. ⭐ **Decisão do dono (2026-10-05): os chips FICAM**,
+    // pintados e sem leitor — a linha é esta, de propósito, e não uma dívida.
     (
         "TOOL_TRANSLATE",
         || ids::TOOL_TRANSLATE,
@@ -99,7 +99,7 @@ const RAIL_CONSUMERS: &[Row] = &[
         || ids::TOOL_SPACE,
         Fate::DeadOnPurpose(
             "o referencial Global/Local era lido so' pelo gizmo 3D, que saiu (ADR-0179); o gizmo 2D \
-             nao tem eixos locais a escolher. Mesma decisao de produto em aberto dos tres verbos.",
+             nao tem eixos locais a escolher. Fica por decisao do dono (2026-10-05), como os tres verbos.",
         ),
     ),
     (

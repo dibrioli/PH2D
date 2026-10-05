@@ -114,9 +114,8 @@ agente do Painter REPÔS inteiros (pré-3D) foram conferidos commit a commit: en
 
 ## 7. Aberto (decisões, não dívida da linha)
 
-1. **Produto (Enio):** os chips MOVER/RODAR/ESCALAR/ESPAÇO do trilho esquerdo continuam pintados e o
-   único leitor era o 3D; estão `DeadOnPurpose` em `the_rail_names_a_consumer_for_every_chip`. Apagar ou
-   ligar ao gizmo 2D.
+1. ✅ **Decidido pelo dono (05/10):** os chips MOVE/ROT/SCALE/SPACE (o único leitor era o 3D) FICAM,
+   `DeadOnPurpose` em `the_rail_names_a_consumer_for_every_chip`, com a decisão escrita lá.
 2. `set_area_commands`/`menu_contrib` (D2) ficaram sem produtor — mecanismo genérico, mantido, com o
    gate reescrito sobre uma fixtura.
 3. Memória `reference_topic_impasto_physics` mistura impasto 2D e escultura: ficou inteira (o índice

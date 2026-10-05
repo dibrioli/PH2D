@@ -12,8 +12,8 @@
 > ⛔⛔ **05/10 — o 3D SAIU do PH2D** ([ADR-0179](../../architecture/decisions/0179-o-3d-sai-do-ph2d.md);
 > código em `b1a6f9b07`). Sculpt, Model e Render já não existem: tudo o que este plano diz deles (§1–§4)
 > é HISTÓRIA. Hoje: `ObjectMode` = Object · Paint · Draw · Edit; famílias com modos = Painter (Image ▸
-> Paint), Flip (Draw · Edit), Vector (Edit); cenas `PH2D_OBJECT_MODE_SMOKE=1|4|6`. ⏳ **A próxima obra**
-> é a 2.ª volta do Vector (F3 ▸ Vector, 05/10): cada forma é um objecto.
+> Paint), Flip (Draw · Edit), Vector (Edit; cada forma é um objecto desde 05/10); cenas
+> `PH2D_OBJECT_MODE_SMOKE=1|4|6`.
 
 ## §0 — Isto já foi DECIDIDO em parte (30/08), e o plano não o re-litiga
 
@@ -191,7 +191,7 @@ sozinho (§6.5).
 |---|---|---|
 | qualquer | **Object** (mover · rodar · escalar) | gizmo de transformação |
 | ~~Sculpt (malha) · Model (SDF)~~ | ⛔ saíram com o 3D (ADR-0179, 05/10) | — |
-| Vector | Object · **Edit** — hoje o contentor `VecObject` (formas filhas); ⏳ **decidido 05/10: cada forma é um objecto** (F3 ▸ Vector, 2.ª volta) | `ph2d-app-vec` (o Edit tem o painel inteiro) |
+| Vector (a forma) | Object · **Edit** ✅ — cada forma é um objecto (F3 ▸ Vector, 2.ª volta, 05/10) | `ph2d-app-vec` (o Edit tem o painel inteiro; criar = *Add ▸ Vector Drawing*, nada nasce até ao 1.º traço) |
 | Flip | Object · **Draw** · **Edit** | `ph2d-app-flip` |
 | Image | Object · **Paint** (⛔ o Mask foi retirado pelo dono, 04/10) | `ph2d-app-painter` |
 | Câmara, corpo de física, áudio, HUD… | **só Object** | Inspector |
@@ -360,8 +360,8 @@ sozinho (§6.5).
       `DrawMode::EDIT_TOOLS`/`object_mode` (Edit = Node·Fillet·Chamfer·Width·Trim; criar em Object) e
       o painel a filtrar a fileira pelo modo; as entradas Rectangle·Ellipse·Polygon·Star·Pen·Pencil·Text
       no Add. Histórico em `HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md`.
-  - **Vector, 2.ª volta** — ⏳ **POR CONSTRUIR. Decisão do dono (05/10)**, que SUBSTITUI o contentor
-    acima: *«Não precisaremos mais de um objeto vazio como pai de vetoriais. Quando o usuário criar um
+  - **Vector, 2.ª volta** — ✅ **entregue em 05/10** (`8d344c9de`). Decisão do dono, que SUBSTITUI o
+    contentor acima (⛔ ele saiu: `VecObject`, a regra das soltas, a fronteira do objecto, a caixa-união): *«Não precisaremos mais de um objeto vazio como pai de vetoriais. Quando o usuário criar um
     desenho vetorial, o painel vector abre e nada aparece no canvas ou na hierarquia até que o usuário
     crie alguma forma ou linha. Ao desenhar algo, o objeto aparece na hierarquia no modo edit»*; e,
     perguntado *«a 2.ª forma desenhada no mesmo Edit entra no 1.º objecto ou é outro?»*: **cada forma
@@ -371,11 +371,14 @@ sozinho (§6.5).
       em **Edit** sobre ela; a 2.ª é outro objecto, e o Edit passa a ela.
     - Continua ⛔ **recusado** (04/10): as 7 entradas Rectangle·Ellipse·…·Text no Add; o painel a
       filtrar a fileira pelo modo; a partição `DrawMode::EDIT_TOOLS` (Edit = só as de mexer).
-    - ⚠️ **A medir antes de codar** (o plano desta volta): o que do contentor sai (`VecObject` — é
-      componente REGISTADO, degrau de `PROJECT_SCHEMA` —, a regra das soltas `adopt_loose`, `enclose`,
-      `lift_to_objects`/`object_view`, a fronteira `top_within_object`, o `born` vazio); o que é o
-      Edit sobre UMA forma (o `in_edit` e o `editing` passam a apontar a forma); o que faz um projecto
-      gravado com contentores; e os grupos de formas (hoje param no objecto).
+    - **Como ficou:** `ObjectKind::Vector` lê `VecPathRef`; um GRUPO de formas é um vazio (como o
+      *empty* do Blender) — o Edit é por forma, e várias formas seleccionadas + `Tab` = Edit de todas.
+      O Add arma a ferramenta (`EditTarget::arm`; a shell pede Object); a forma que nasce com a
+      ferramenta na mão pede o Edit (`vector_mode::newborn`: UMA só, fora de gesto) e, num Edit, o
+      modo PASSA a ela sem largar a ferramenta nem repetir o aviso. O quadro do modo deixou de juntar
+      a selecção ao pedido de uma família (`wants`). `PROJECT_SCHEMA` 183 → 184: um projecto com
+      contentores (v182–183) é recusado, pela decisão de sempre. O duplicar ao lado da original fica
+      (`entities::duplicate::place_beside`). Smoke `PH2D_OBJECT_MODE_SMOKE=6`.
   - **Image ▸ Mask** — ⛔ **RETIRADO pelo dono no smoke (04/10):** *«não armou a máscara
     imediatamente. vamos retirar esse modo mask»*. Não reconstruir sem ler o porquê. O que se
     construiu (`1d87241aa`, desfeito por revert com `f796202ff` e `94156f3e4`): `ObjectMode::Mask` =

@@ -8,10 +8,12 @@
 //! - **A forma que NASCE com a ferramenta na mão pede o Edit sobre ela** ([`ModeFamily::wants`]): a
 //!   1.ª depois do Add, e cada nova num Edit (o Edit PASSA a ela — a rede `still_holds` larga a
 //!   anterior e o pedido entra na nova, no mesmo quadro).
-//! - **Edit** = a ferramenta `vector` na mão (qualquer `DrawMode`) com as formas do Edit
-//!   ([`EditTarget::editing`] → `VecViewState::editing`: só elas se agarram e mostram nós).
-//! - **Object** = a ferramenta sai da mão. ⭐ Multi-objecto ([`ModeFamily::joins`]): `Tab` com várias
-//!   formas = Edit de todas.
+//! - **Edit** = a ferramenta `vector` na mão (qualquer `DrawMode`). ⭐⭐ **O Edit é do TIPO** (dono,
+//!   05/10: *«todos os objetos daquele tipo estão em modo de edição»*, [`ModeFamily::holds_the_whole_kind`]):
+//!   toda forma se agarra e é parte do Edit; escolher um objecto de outro tipo volta a Object.
+//! - **A forma trancada que MORRE** (o Soldar consome os traços, a caneta junta dois caminhos) passa o
+//!   Edit à [herdeira](ModeFamily::heir) — a última forma viva da caneta.
+//! - **Object** = a ferramenta sai da mão.
 //! - ⭐ **O ALVO** mora no [`crate::state::VecState`], fora da `VecScene` (que entra no undo).
 
 use ph2d_component_desc::ObjectKind;
@@ -21,7 +23,6 @@ use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
 use ph2d_editor_core::{ToolId, ToolRegistry};
 use ph2d_tool_vector::VectorTool;
-use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::VecPathId;
 
 use crate::state::VecState;
@@ -55,22 +56,6 @@ impl EditTarget {
         self.armed
     }
 
-    /// ⭐ **As formas do Edit, para a vista** — as do Edit e as que estão a nascer (em gesto, ainda
-    /// por pedir o Edit). `None` = Object.
-    #[must_use]
-    pub fn editing(&self, map: &VecEntityMap) -> Option<Vec<VecPathId>> {
-        if self.objects.is_empty() {
-            return None;
-        }
-        let known = self.known.as_deref().unwrap_or_default();
-        let ours = |b: &u64| self.objects.contains(b) || !known.contains(b);
-        Some(
-            map.iter()
-                .filter(|(_, b)| ours(b))
-                .map(|(id, _)| *id)
-                .collect(),
-        )
-    }
 }
 
 /// A ferramenta do vetor, se é a que está na mão.
@@ -111,6 +96,23 @@ pub(crate) fn newborn(shapes: &[u64], known: Option<&[u64]>, drawing: &[u64]) ->
         .filter(|b| !known.contains(b) && !drawing.contains(b));
     let first = *new.next()?;
     new.next().is_none().then_some(first)
+}
+
+/// ⭐⭐ **A LEI da herdeira**, pura: a forma trancada (`objects[0]`) morreu e outra continua o Edit —
+/// a última viva da caneta (a rede que o Soldar deixa), senão uma do Edit, senão qualquer forma (o
+/// Edit é do tipo). `None` = a trancada vive, ou não resta forma.
+pub(crate) fn heir(objects: &[u64], shapes: &[u64], pen: &[u64]) -> Option<u64> {
+    let locked = objects.first()?;
+    if shapes.contains(locked) {
+        return None;
+    }
+    let alive = |b: &&u64| shapes.contains(b);
+    pen.iter()
+        .rev()
+        .find(alive)
+        .or_else(|| objects.iter().find(alive))
+        .or_else(|| shapes.last())
+        .copied()
 }
 
 /// ⭐ **A família**, construída em cada quadro com o que ela lê do mundo.
@@ -184,6 +186,23 @@ impl ModeFamily for Family<'_> {
         mode == ObjectMode::Edit
     }
 
+    fn holds_the_whole_kind(&self, mode: ObjectMode) -> bool {
+        mode == ObjectMode::Edit
+    }
+
+    fn heir(&mut self, mode: ObjectMode, tools: &mut ToolRegistry) -> Option<u64> {
+        let edit = &self.vec.edit;
+        if mode != ObjectMode::Edit || !edit.following || !in_hand(tools) {
+            return None;
+        }
+        let h = heir(&edit.objects, &self.shapes, &self.pen)?;
+        let shapes = &self.shapes;
+        let edit = &mut self.vec.edit;
+        edit.objects.retain(|b| *b != h && shapes.contains(b));
+        edit.objects.insert(0, h);
+        Some(h)
+    }
+
     fn enter_with(
         &mut self,
         mode: ObjectMode,
@@ -204,8 +223,8 @@ impl ModeFamily for Family<'_> {
                 objects.push(*b);
             }
         }
-        // A caneta fica só com as formas deste Edit: uma selecção velha (de um Edit anterior)
-        // juntar-se-ia a ele pelo `follow`.
+        // A caneta fica só com as formas que entram: uma selecção velha (de um Edit anterior)
+        // mostraria nós numa forma que o artista não escolheu, e a herdeira sairia dela.
         let entities = &self.vec.entities;
         let keep: Vec<VecPathId> = self
             .vec
@@ -241,13 +260,6 @@ impl ModeFamily for Family<'_> {
                 edit.objects = vec![o];
             }
             edit.objects.retain(|b| shapes.contains(b));
-            // ⭐ As formas que a CANETA selecciona num Edit juntam-se a ele (o multi-objecto do
-            // Blender): a booleana do painel trabalha sobre elas, e o cadeado não as lê como troca.
-            for b in &self.pen {
-                if shapes.contains(b) && !edit.objects.contains(b) {
-                    edit.objects.push(*b);
-                }
-            }
         } else if releases(false, edit.following) {
             // ⭐ O Edit caiu porque as formas dele DESAPARECERAM (a booleana, apagar — o quadro nem
             // chama o `leave`: uma entidade morta não tem tipo): a ferramenta FICA na mão, e a forma
@@ -293,19 +305,12 @@ impl ModeFamily for Family<'_> {
         Some((*self.pen.last()?, ObjectMode::Edit))
     }
 
-    /// As outras formas do Edit — as que entraram com ele e as que a caneta selecciona (ver o
-    /// [`ModeFamily::follow`]); `None` = uma forma só (o cadeado é exacto).
+    /// ⭐ **Todas as outras formas** — o Edit é do tipo; `None` = uma forma só (o cadeado é exacto).
     fn parts(&mut self, entity: u64) -> Option<Vec<u64>> {
-        let edit = &self.vec.edit.objects;
-        if edit.first() != Some(&entity) {
+        if !self.is_shape(entity) {
             return None;
         }
-        let mut parts: Vec<u64> = edit.iter().copied().filter(|b| *b != entity).collect();
-        for b in &self.pen {
-            if *b != entity && self.shapes.contains(b) && !parts.contains(b) {
-                parts.push(*b);
-            }
-        }
+        let parts: Vec<u64> = self.shapes.iter().copied().filter(|b| *b != entity).collect();
         (!parts.is_empty()).then_some(parts)
     }
 }
@@ -314,6 +319,8 @@ impl ModeFamily for Family<'_> {
 /// ferramenta vem à mão), um rectângulo (nasce objecto, em Edit), uma elipse por cima dele (OUTRO
 /// objecto, e o Edit passa a ela), a booleana UNION pelo botão do painel (nasce UMA forma, e o Edit
 /// passa a ela) e o seletor aberto — a foto mostra um objecto só na Hierarquia, em Edit, COM o gizmo.
+/// `PH2D_OBJECT_MODE_SMOKE=7` (os furos, 05/10): duas linhas que se cruzam pela CANETA (o Edit passa
+/// à 2.ª) e o *Weld* do painel — a solda consome a 2.ª, e a foto mostra a REDE em Edit, com o gizmo.
 /// Corre uma vez.
 pub fn smoke_step(
     vec: &mut VecState,
@@ -323,19 +330,24 @@ pub fn smoke_step(
     use ph2d_vec_scene::ShapeKind;
     use std::sync::atomic::{AtomicU8, Ordering};
     // 0 = por ler · 1 = o Add · 2 = a ferramenta na mão · 3 = o rectângulo · 4 = a elipse ·
-    // 5 = a booleana · 6 = o Edit na forma dela · 10 = o seletor · 9 = feito.
+    // 5 = a booleana · 6 = o Edit na forma dela · 10 = o seletor · 9 = feito. A cena 7 troca 3–6 por
+    // 13 = a 1.ª linha · 14 = a 2.ª · 15 = o Weld · 16 = o Edit na rede.
     static STAGE: AtomicU8 = AtomicU8::new(0);
+    static WELD: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
-            let want = match std::env::var("PH2D_OBJECT_MODE_SMOKE").as_deref() {
-                Ok("6") => 1,
+            let scene = std::env::var("PH2D_OBJECT_MODE_SMOKE");
+            let want = match scene.as_deref() {
+                Ok("6" | "7") => 1,
                 _ => 9,
             };
+            WELD.store(u8::from(scene.as_deref() == Ok("7")), Ordering::Relaxed);
             STAGE.store(want, Ordering::Relaxed);
             want
         }
         s => s,
     };
+    let weld = WELD.load(Ordering::Relaxed) == 1;
     let go = |next| STAGE.store(next, Ordering::Relaxed);
     let edit = hero.gizmo.mode.current() == ObjectMode::Edit;
     let shapes = vec.entities.len();
@@ -348,7 +360,30 @@ pub fn smoke_step(
         }
         // ⚠️ Pelo espelho da ferramenta activa, e não pelo `armed`: o quadro do Add traz o pedido
         // de Object, e nesse quadro este passo não corre — o `armed` nasce e morre sem ser visto.
-        2 if hero.image_edit.active_tool_id == Some(VECTOR) => go(3),
+        2 if hero.image_edit.active_tool_id == Some(VECTOR) => go(if weld { 13 } else { 3 }),
+        13 if !edit => {
+            draw_line(vec, scene, [-1.6, -0.4], [0.2, 1.0]);
+            go(14);
+        }
+        14 if edit && shapes == 1 => {
+            draw_line(vec, scene, [-1.6, 1.0], [0.2, -0.4]);
+            go(15);
+        }
+        15 if edit && shapes == 2 && vec.edit.objects.first().copied() == newest => {
+            let both: Vec<VecPathId> = vec.entities.keys().copied().collect();
+            vec.pen.select_many(&both);
+            hero.bus
+                .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
+                    ph2d_editor_core::tool::PanelEvent::Click(
+                        ph2d_panel_vector::ids::VECTOR_PATH_WELD,
+                    ),
+                ));
+            go(16);
+        }
+        // A rede fica no traço mais ao fundo (o mais VELHO): é nele que o Edit tem de estar.
+        16 if edit && shapes == 1 && vec.edit.objects.first() == vec.entities.values().next() => {
+            go(10);
+        }
         3 if !edit => {
             draw_shape(vec, scene, ShapeKind::Rectangle, [-1.2, 0.0], 0.7);
             go(4);
@@ -382,6 +417,15 @@ pub fn smoke_step(
     None
 }
 
+/// Desenha um traço aberto de dois cliques pela CANETA (o mesmo gesto do artista) e acaba-o.
+fn draw_line(vec: &mut VecState, scene: &mut ph2d_vec_scene::VecScene, a: [f64; 2], b: [f64; 2]) {
+    for p in [a, b] {
+        vec.pen.on_press(scene, p, 0.01, false, &mut |q| q);
+        vec.pen.on_release();
+    }
+    vec.pen.finish();
+}
+
 /// Desenha uma forma pela FERRAMENTA de forma (o mesmo commit do gesto do artista), de lado `2 ×
 /// half` centrada em `at` (mundo, metros), com os valores de fábrica dela.
 fn draw_shape(
@@ -403,3 +447,9 @@ fn draw_shape(
 #[cfg(test)]
 #[path = "vector_mode_tests.rs"]
 mod tests;
+
+/// Os gates dos FUROS do Edit (o Soldar, a caneta que continua, o Width e o Trim) — irmão pelo tecto
+/// de LOC (HR-18).
+#[cfg(test)]
+#[path = "vector_mode_furos_tests.rs"]
+mod furos_tests;

@@ -188,8 +188,6 @@ pub fn view_state_for_pick(
     v.clips.clone_from(&derived.clips);
     v.poses.clone_from(&derived.poses);
     v.absorbed.clone_from(&derived.absorbed);
-    // O modo é do quadro, não do mundo: o Edit tranca o clique às formas que o quadro publicou.
-    v.editing.clone_from(&derived.editing);
     v
 }
 
@@ -299,7 +297,3 @@ pub fn setup() -> (SimWorld, VecScene, VecEntityMap) {
 pub fn bits(map: &VecEntityMap, id: VecPathId) -> Entity {
     Entity::from_bits(map[&id])
 }
-
-#[cfg(test)]
-#[path = "entities_pick_tests.rs"]
-mod pick_tests;

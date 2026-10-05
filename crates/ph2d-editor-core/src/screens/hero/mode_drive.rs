@@ -61,6 +61,20 @@ pub trait ModeFamily {
     fn joins(&self, _mode: ObjectMode) -> bool {
         false
     }
+    /// ⭐⭐ **O modo é do TIPO** (dono, 05/10: *«o modo de edição significa que todos os objetos daquele
+    /// tipo estão em modo de edição. Ao clicar num objeto de outro tipo, o objeto deve ser
+    /// selecionado mas em modo object»*): `true` = as [`Self::parts`] são todos os objectos do tipo,
+    /// e escolher um de outro tipo não é recusado — a selecção muda e a rede `still_holds` volta a
+    /// Object.
+    fn holds_the_whole_kind(&self, _mode: ObjectMode) -> bool {
+        false
+    }
+    /// ⭐ **A HERDEIRA** — a entidade trancada morreu (o Soldar consome as formas, juntar dois
+    /// caminhos apaga um): `Some` = outra entidade da família continua o modo, sem tocar a selecção.
+    /// Só chamada quando o modo em curso deixou de se segurar.
+    fn heir(&mut self, _mode: ObjectMode, _tools: &mut ToolRegistry) -> Option<u64> {
+        None
+    }
     /// Abre o módulo sobre `entity` e os `joined` (só chamada quando [`Self::joins`]).
     fn enter_with(
         &mut self,
@@ -171,9 +185,11 @@ pub fn drive(
     let mut changed = false;
     // 0. Um objecto que nasceu num modo pede-o (só sem pedido do artista neste quadro). ⚠️ SÓ ele:
     // a selecção de antes não entra junto — a forma desenhada num Edit levaria a anterior com ela.
+    let mut born = None;
     let request = request.or_else(|| {
         let (bits, mode) = families.iter_mut().find_map(|f| f.wants(tools))?;
         select_together(hero, bits, &[]);
+        born = Some(bits);
         Some(ModeRequest::Enter(mode))
     });
     // 1. O activo e os modos que o TIPO dele declara.
@@ -189,8 +205,17 @@ pub fn drive(
         hero.gizmo.mode.publish_parts(parts);
         let (sel, extras) = (hero.gizmo.selection, &hero.gizmo.extra_selection);
         if !hero.gizmo.mode.still_holds(sel, extras, held) {
-            fell_from = Some(current.mode);
-            leave_current(families, kind_of, tools, hero);
+            let heir = families
+                .iter_mut()
+                .find_map(|f| f.heir(current.mode, tools));
+            if let Some(h) = heir {
+                hero.gizmo.mode.enter(h, current.mode);
+                let parts = family(families, kind_of(h), current.mode).and_then(|f| f.parts(h));
+                hero.gizmo.mode.publish_parts(parts);
+            } else {
+                fell_from = Some(current.mode);
+                leave_current(families, kind_of, tools, hero);
+            }
             active = publish_active(families, kind_of, hero);
             changed = true;
         }
@@ -198,7 +223,17 @@ pub fn drive(
     // 3. O pedido do quadro.
     if let Some(req) = request {
         match hero.gizmo.mode.resolve(req) {
-            Step::Stay => {}
+            // ⭐ Num modo do TIPO o nascido já é parte dele (a rede não cai): o modo PASSA a ele.
+            Step::Stay => {
+                if let (Some(b), Some(a)) = (born, hero.gizmo.mode.active())
+                    && b != a.entity
+                    && hero.gizmo.mode.whole_kind()
+                {
+                    hero.gizmo.mode.enter(b, a.mode);
+                    let parts = family(families, kind_of(b), a.mode).and_then(|f| f.parts(b));
+                    hero.gizmo.mode.publish_parts(parts);
+                }
+            }
             Step::Enter(m) => {
                 leave_current(families, kind_of, tools, hero);
                 if let Some(bits) = active
@@ -232,10 +267,21 @@ pub fn drive(
                 // Blender): uma parte seleccionada em Object não teria o modo de volta.
                 // Num modo que JUNTA, os objectos que entraram com ele voltam todos — os das partes
                 // do MESMO tipo (as formas de dentro de um objecto vetorial também são partes).
-                let whole = hero.gizmo.mode.parts().and(hero.gizmo.mode.locked_entity());
+                // Num modo do TIPO as partes são todos os objectos dele: a selecção fica como está
+                // (vazia, o trancado — o `Tab` seguinte tem o activo).
+                let whole = if hero.gizmo.mode.whole_kind() {
+                    hero.gizmo
+                        .selection
+                        .is_none()
+                        .then(|| hero.gizmo.mode.locked_entity())
+                        .flatten()
+                } else {
+                    hero.gizmo.mode.parts().and(hero.gizmo.mode.locked_entity())
+                };
                 let joined = hero.gizmo.mode.active().and_then(|a| {
                     let f = family(families, kind_of(a.entity), a.mode)?;
-                    let parts = f.joins(a.mode).then(|| hero.gizmo.mode.parts())??;
+                    let parts = (f.joins(a.mode) && !f.holds_the_whole_kind(a.mode))
+                        .then(|| hero.gizmo.mode.parts())??;
                     let kind = kind_of(a.entity);
                     Some(
                         parts
@@ -266,11 +312,17 @@ pub fn drive(
     }
     // 4. Cada módulo segue o modo que ficou.
     let current = hero.gizmo.mode.active();
-    let part_gizmo = current.is_some_and(|a| {
-        family(families, kind_of(a.entity), a.mode)
-            .is_some_and(|f| f.parts_take_the_object_gizmo(a.mode))
-    });
+    let (part_gizmo, whole_kind) = current
+        .and_then(|a| {
+            let f = family(families, kind_of(a.entity), a.mode)?;
+            Some((
+                f.parts_take_the_object_gizmo(a.mode),
+                f.holds_the_whole_kind(a.mode),
+            ))
+        })
+        .unwrap_or_default();
     hero.gizmo.mode.publish_part_gizmo(part_gizmo);
+    hero.gizmo.mode.publish_whole_kind(whole_kind);
     for f in families.iter_mut() {
         f.follow(current, tools);
     }
@@ -289,8 +341,9 @@ pub fn refused(
     toasts: &mut ToastQueue,
 ) -> bool {
     let (locked, parts) = (hero.gizmo.mode.locked_entity(), hero.gizmo.mode.parts());
-    let refuse =
-        object_mode::decide(locked, parts, target, additive) == object_mode::Decision::Refuse;
+    // Num modo do TIPO nada se recusa: um objecto de outro tipo escolhido sai do modo (a rede).
+    let refuse = !hero.gizmo.mode.whole_kind()
+        && object_mode::decide(locked, parts, target, additive) == object_mode::Decision::Refuse;
     if refuse {
         toasts.push(Toast::warning(object_mode::refusal(&hero.gizmo.mode)));
     }

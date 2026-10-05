@@ -34,16 +34,16 @@ impl Tool for Move {
     }
 }
 
-struct Cena {
-    sim: SimWorld,
-    scene: ph2d_vec_scene::VecScene,
-    vec: VecState,
-    tools: ToolRegistry,
-    hero: HeroScreen,
-    toasts: ToastQueue,
+pub(super) struct Cena {
+    pub(super) sim: SimWorld,
+    pub(super) scene: ph2d_vec_scene::VecScene,
+    pub(super) vec: VecState,
+    pub(super) tools: ToolRegistry,
+    pub(super) hero: HeroScreen,
+    pub(super) toasts: ToastQueue,
 }
 
-fn cena() -> Cena {
+pub(super) fn cena() -> Cena {
     ph2d_editor_core::test_support::ensure_panel_registry();
     let mut tools = ToolRegistry::new();
     tools.register(Box::new(Move));
@@ -69,7 +69,7 @@ impl Cena {
         self.vec.entities[&id]
     }
     /// ⚠️ O lado INDEPENDENTE do tipo: escrito aqui, pelo marcador, e não lido do `kind_of`.
-    fn quadro(&mut self, req: Option<ModeRequest>) {
+    pub(super) fn quadro(&mut self, req: Option<ModeRequest>) {
         let sim = &self.sim;
         let kind_of = |b: u64| {
             if sim
@@ -94,10 +94,10 @@ impl Cena {
             req,
         );
     }
-    fn na_mao(&mut self) -> bool {
+    pub(super) fn na_mao(&mut self) -> bool {
         in_hand(&mut self.tools)
     }
-    fn em_edit(&self) -> Option<u64> {
+    pub(super) fn em_edit(&self) -> Option<u64> {
         self.hero
             .gizmo
             .mode
@@ -105,7 +105,7 @@ impl Cena {
             .filter(|a| a.mode == ObjectMode::Edit)
             .map(|a| a.entity)
     }
-    fn avisos_de_entrada(&self) -> usize {
+    pub(super) fn avisos_de_entrada(&self) -> usize {
         let entered = ph2d_i18n::tr_with("object_mode.entered", &[("mode", &"")]);
         let marca = entered.trim();
         self.toasts
@@ -137,6 +137,11 @@ fn the_pure_laws() {
     );
     assert_eq!(newborn(&[1, 2], None, &[]), None, "antes do 1.º quadro");
     assert_eq!(newborn(&[1], Some(&[1]), &[]), None, "nada de novo");
+    assert_eq!(heir(&[9, 1], &[1, 2], &[2, 1]), Some(1), "a última da caneta");
+    assert_eq!(heir(&[9, 1], &[1, 2], &[]), Some(1), "senão uma do Edit");
+    assert_eq!(heir(&[9], &[1, 2], &[]), Some(2), "senão qualquer forma");
+    assert_eq!(heir(&[1], &[1, 2], &[2]), None, "a trancada vive");
+    assert_eq!(heir(&[9], &[], &[]), None, "não resta forma");
 }
 
 /// ⭐⭐ GATE (escolha do dono, 05/10) — **o fluxo**: *Add ▸ Vector Drawing* não cria NADA e põe a
@@ -167,10 +172,6 @@ fn add_arms_the_tool_and_each_drawn_shape_becomes_the_object_in_edit() {
     c.quadro(None);
     assert_eq!(c.em_edit(), Some(a), "a 1.ª forma não entrou em Edit");
     assert_eq!(c.hero.gizmo.selection, Some(a));
-    assert_eq!(
-        c.vec.edit.editing(&c.vec.entities).map(|v| v.len()),
-        Some(1)
-    );
     let b = c.forma(3.0);
     c.quadro(None);
     assert_eq!(c.em_edit(), Some(b), "o Edit não passou à 2.ª forma");
@@ -205,35 +206,54 @@ fn a_shape_born_without_the_tool_does_not_ask_for_edit() {
     assert_ne!(a, b);
 }
 
-/// ⭐⭐ GATE (spec/06 F3) — **duas formas, Edit numa, a outra intocada**: só as formas do Edit se
-/// agarram (a vista), a outra não é «tida em mãos», e o `Tab` sobre a outra entra nela.
+/// ⭐⭐ GATE (dono, 05/10: *«o modo de edição significa que todos os objetos daquele tipo estão em
+/// modo de edição. Ao clicar num objeto de outro tipo, o objeto deve ser selecionado mas em modo
+/// object»*) — **o Edit é do TIPO**: com o Edit numa forma, a outra é parte dele (o cadeado deixa-a
+/// seleccionar e o modo fica); um objecto de OUTRO tipo não é recusado — seleccioná-lo volta a
+/// Object e larga a ferramenta; e o `Tab` de volta deixa a selecção como estava (não todas as formas).
+/// CONTROLO: num modo que não é do tipo (o Paint), o mesmo clique é recusado
+/// (`mode_drive_tests::the_lock_door_refuses_and_says_why`).
+/// (Mutações: `holds_the_whole_kind` = `false` ⇒ o sprite é recusado ⇒ RED; `parts` só com as do
+/// Edit ⇒ a outra forma larga o Edit ⇒ RED.)
 #[test]
-fn two_shapes_edit_in_one_and_the_other_is_untouched() {
+fn the_edit_holds_every_shape_and_another_kind_leaves_it() {
+    use ph2d_editor_core::screens::hero::mode_drive::refused;
     let mut c = cena();
     let (a, b) = (c.forma(0.0), c.forma(3.0));
+    let sprite = c.sim.world_mut().spawn_empty().id().to_bits();
     c.quadro(None);
     c.hero.gizmo.replace_selection(Some(a));
     c.quadro(Some(ModeRequest::Toggle));
     assert_eq!(c.em_edit(), Some(a));
-    let id_of = |c: &Cena, bits: u64| {
-        c.vec
-            .entities
-            .iter()
-            .find(|(_, x)| **x == bits)
-            .map(|(id, _)| *id)
-    };
-    assert_eq!(
-        c.vec.edit.editing(&c.vec.entities),
-        Some(id_of(&c, a).into_iter().collect())
+    assert!(c.hero.gizmo.mode.whole_kind());
+    assert!(
+        !refused(&c.hero, Some(b), false, &mut c.toasts),
+        "a outra forma foi recusada no Edit"
     );
-    let mut fam = Family::new(&mut c.vec, &c.sim);
-    assert!(fam.holds(ObjectMode::Edit, a, &mut c.tools));
-    assert!(!fam.holds(ObjectMode::Edit, b, &mut c.tools));
-    assert_eq!(fam.parts(a), None, "uma forma só: o cadeado é exacto");
-    c.quadro(Some(ModeRequest::Toggle));
     c.hero.gizmo.replace_selection(Some(b));
+    c.quadro(None);
+    assert_eq!(c.em_edit(), Some(a), "seleccionar a outra forma largou o Edit");
+    assert!(c.na_mao());
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.em_edit(), None);
+    assert_eq!(
+        (c.hero.gizmo.selection, c.hero.gizmo.selected_len()),
+        (Some(b), 1),
+        "sair do Edit mudou a selecção"
+    );
     c.quadro(Some(ModeRequest::Toggle));
     assert_eq!(c.em_edit(), Some(b));
+    let avisos = c.toasts.iter().count();
+    assert!(
+        !refused(&c.hero, Some(sprite), false, &mut c.toasts),
+        "o objecto de outro tipo foi recusado"
+    );
+    assert_eq!(c.toasts.iter().count(), avisos, "a escolha deu um aviso");
+    c.hero.gizmo.replace_selection(Some(sprite));
+    c.quadro(None);
+    assert_eq!(c.em_edit(), None, "o objecto de outro tipo não saiu do Edit");
+    assert_eq!(c.hero.gizmo.selection, Some(sprite));
+    assert!(!c.na_mao(), "Object não largou a ferramenta");
 }
 
 /// ⭐ GATE — **multi-objecto**: `Tab` com duas formas seleccionadas = Edit das duas (a activa à
@@ -248,10 +268,6 @@ fn tab_with_two_shapes_edits_both() {
     c.quadro(Some(ModeRequest::Toggle));
     assert_eq!(c.em_edit(), Some(b), "o activo é o ÚLTIMO");
     assert_eq!(c.vec.edit.objects, vec![b, a]);
-    assert_eq!(
-        c.vec.edit.editing(&c.vec.entities).map(|v| v.len()),
-        Some(2)
-    );
 }
 
 /// ⭐ GATE — **a porta antiga**: a ferramenta que chega à mão SEM o modo (a aba de cima, as cenas
@@ -291,8 +307,9 @@ fn add_never_enters_the_edit_of_a_stale_pen_selection() {
 
 /// ⭐⭐ GATE (dono, 05/10: *«em edit mode se clicar no canvas vazio (desselecionar) sai do modo Edit.
 /// Não permita isso»* e *«permita desselecionar mesmo sem sair do modo edit»*) — **desseleccionar num
-/// Edit não sai dele, e a selecção FICA vazia** (num Edit de uma forma e num de duas). CONTROLO: a
-/// forma APAGADA ainda faz o modo cair a Object.
+/// Edit não sai dele, e a selecção FICA vazia** (num Edit de uma forma e num de duas). Apagar a
+/// trancada passa o Edit à outra forma ([`heir`], sem tocar a selecção); CONTROLO: sem forma
+/// nenhuma o modo cai a Object.
 /// (Mutação: o `still_holds` voltar a exigir a entidade seleccionada ⇒ RED.)
 #[test]
 fn clearing_the_selection_in_edit_keeps_the_edit() {
@@ -319,12 +336,15 @@ fn clearing_the_selection_in_edit_keeps_the_edit() {
     );
     assert_eq!(c.hero.gizmo.selected_len(), 0);
     c.sim.world_mut().despawn(Entity::from_bits(b));
-    c.hero.gizmo.replace_selection(None);
+    c.quadro(None);
+    assert_eq!(c.em_edit(), Some(a), "apagar a trancada largou o Edit (há outra forma)");
+    assert_eq!(c.hero.gizmo.selected_len(), 0, "a herdeira mexeu na selecção");
+    c.sim.world_mut().despawn(Entity::from_bits(a));
     c.quadro(None);
     assert_eq!(
         c.em_edit(),
         None,
-        "controlo: a forma apagada não larga o modo"
+        "controlo: sem forma nenhuma o modo não larga"
     );
 }
 
@@ -350,8 +370,8 @@ fn the_shape_a_boolean_leaves_is_in_edit_with_its_gizmo() {
     c.quadro(None);
     assert_eq!(c.em_edit(), Some(b), "a selecção da caneta largou o Edit");
     assert!(
-        c.vec.edit.objects.contains(&a),
-        "a forma da caneta não entrou no Edit"
+        c.hero.gizmo.mode.parts().is_some_and(|p| p.contains(&a)),
+        "a forma da caneta não é parte do Edit"
     );
     assert!(object_gizmo_shows(&c.hero), "controlo: duas formas em Edit");
     // A booleana: as duas saem da cena (e do mapa), nasce o resultado.

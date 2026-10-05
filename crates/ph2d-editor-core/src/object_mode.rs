@@ -121,6 +121,8 @@ pub struct ModeState {
     parts: Option<Vec<u64>>,
     /// As partes transformam-se pelo gizmo de objecto ([`crate::screens::hero::mode_drive::ModeFamily::parts_take_the_object_gizmo`]).
     part_gizmo: bool,
+    /// O modo é do TIPO ([`crate::screens::hero::mode_drive::ModeFamily::holds_the_whole_kind`]).
+    whole_kind: bool,
 }
 
 impl ModeState {
@@ -172,6 +174,7 @@ impl ModeState {
     /// Volta a Object; devolve o modo que estava.
     pub fn leave(&mut self) -> Option<ActiveMode> {
         self.parts = None;
+        self.whole_kind = false;
         self.active.take()
     }
 
@@ -189,6 +192,18 @@ impl ModeState {
     #[must_use]
     pub fn part_gizmo(&self) -> bool {
         self.part_gizmo
+    }
+
+    /// Publica se o modo em curso é do tipo inteiro.
+    pub fn publish_whole_kind(&mut self, on: bool) {
+        self.whole_kind = on;
+    }
+
+    /// ⭐ O modo em curso é do TIPO inteiro: escolher um objecto de outro tipo sai dele (em vez de
+    /// o cadeado recusar).
+    #[must_use]
+    pub fn whole_kind(&self) -> bool {
+        self.whole_kind
     }
 
     /// As partes publicadas da entidade trancada.

@@ -53,10 +53,6 @@ pub struct VecViewState {
     /// escrever isto nas formas seria uma EDIÇÃO, com passo de undo e bytes no ficheiro, por uma
     /// coisa que só existe enquanto o artista está a olhar.
     pub isolated: Vec<VecPathId>,
-    /// ⭐ **As formas em modo EDIT** (spec/06 F3 ▸ Vector): só elas se agarram. `None` = Object, e
-    /// tudo se lê como antes; `Some` vazio = o Edit de um objecto ainda sem formas (nada de fora se
-    /// agarra). Estado de VISTA, pela razão do [`Self::isolated`]: entrar num modo não é uma edição.
-    pub editing: Option<Vec<VecPathId>>,
     /// As MOLDURAS que recortam neste frame (`ph2d_ecs::VecFrame`), já resolvidas para o
     /// intervalo que cada uma ocupa na pilha de z. Vazio = nenhuma moldura recorta, e o desenho é
     /// **byte-idêntico** ao mundo pré-moldura.
@@ -208,8 +204,8 @@ impl VecViewState {
         self.hidden.contains(&id)
     }
 
-    /// O path pode ser agarrado no canvas (visível E destravado, e — em Edit — uma das formas do
-    /// modo, [`Self::editing`]: a porta única de todas as ferramentas do Edit).
+    /// O path pode ser agarrado no canvas (visível E destravado). ⚠️ O Edit do vetor é do TIPO (dono,
+    /// 05/10): nenhuma forma fica de fora dele.
     ///
     /// ⚠️ **O recorte não entra aqui, de propósito.** Um filho que a moldura esconde continua
     /// selecionável (pela Hierarquia e pelo canvas) — é o que Figma e Illustrator fazem, e o
@@ -219,15 +215,6 @@ impl VecViewState {
         !self.hidden.contains(&id)
             && !self.locked.contains(&id)
             && !self.is_derived(id)
-            && self.in_edit(id)
-    }
-
-    /// ⭐ A forma é do modo em curso: em Object todas; em Edit só as [`Self::editing`]. A porta
-    /// única do clique ([`Self::is_pickable`]) E do desenho das âncoras — uma âncora desenhada que
-    /// não se agarra é uma pista falsa.
-    #[must_use]
-    pub fn in_edit(&self, id: VecPathId) -> bool {
-        self.editing.as_ref().is_none_or(|e| e.contains(&id))
     }
 
     /// A geometria deste path é escrita por um motor — ela não tem nós próprios ([`Self::derived`]).

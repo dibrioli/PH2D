@@ -12,8 +12,8 @@
 > ⛔⛔ **05/10 — o 3D SAIU do PH2D** ([ADR-0179](../../architecture/decisions/0179-o-3d-sai-do-ph2d.md);
 > código em `b1a6f9b07`). Sculpt, Model e Render já não existem: tudo o que este plano diz deles (§1–§4)
 > é HISTÓRIA. Hoje: `ObjectMode` = Object · Paint · Draw · Edit; famílias com modos = Painter (Image ▸
-> Paint), Flip (Draw · Edit), Vector (Edit; cada forma é um objecto desde 05/10); cenas
-> `PH2D_OBJECT_MODE_SMOKE=1|4|6`.
+> Paint), Flip (Draw · Edit), Vector (Edit; cada forma é um objecto desde 05/10, e o Edit é do TIPO);
+> cenas `PH2D_OBJECT_MODE_SMOKE=1|4|6|7`.
 
 ## §0 — Isto já foi DECIDIDO em parte (30/08), e o plano não o re-litiga
 
@@ -379,6 +379,18 @@ sozinho (§6.5).
       a selecção ao pedido de uma família (`wants`). `PROJECT_SCHEMA` 183 → 184: um projecto com
       contentores (v182–183) é recusado, pela decisão de sempre. O duplicar ao lado da original fica
       (`entities::duplicate::place_beside`). Smoke `PH2D_OBJECT_MODE_SMOKE=6`.
+  - **Vector, os furos** — ✅ **05/10**. Decisão do dono, perguntado se Shift+clique juntava uma forma
+    de fora ao Edit: *«o modo de edição significa que todos os objetos daquele tipo estão em modo de
+    edição. Ao clicar num objeto de outro tipo, o objeto deve ser selecionado mas em modo object,
+    saindo do modo de edição do objeto de tipo diferente»*. ⇒ **o Edit do vetor é do TIPO**
+    (`ModeFamily::holds_the_whole_kind`): toda forma se agarra e é parte dele (o filtro
+    `VecViewState::editing` saiu); escolher um objecto de outro tipo (canvas no Select, Hierarquia)
+    não é recusado — a selecção muda e o modo volta a Object; sair com `Tab` deixa a selecção como
+    estava. ⚠️ O Paint e o Draw continuam com o cadeado (recusam a troca). A forma trancada que
+    MORRE passa o Edit à **herdeira** (`ModeFamily::heir`): o *Weld* consome os traços e a rede fica
+    em Edit com o gizmo; a caneta continua um caminho aberto pela PONTA (já existia, `reopen_endpoint`)
+    e junta outro pela ponta dele. O press do Width não dá paradas a uma forma travada. Smoke
+    `PH2D_OBJECT_MODE_SMOKE=7` (duas linhas pela caneta + *Weld*).
   - **Image ▸ Mask** — ⛔ **RETIRADO pelo dono no smoke (04/10):** *«não armou a máscara
     imediatamente. vamos retirar esse modo mask»*. Não reconstruir sem ler o porquê. O que se
     construiu (`1d87241aa`, desfeito por revert com `f796202ff` e `94156f3e4`): `ObjectMode::Mask` =

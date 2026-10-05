@@ -286,39 +286,3 @@ fn a_single_shape_behaves_exactly_as_it_always_did() {
     assert_eq!(after[0], [before[0][0] + 1.0, before[0][1]]);
     assert_eq!(&after[1..], &before[1..], "os nao-escolhidos ficam");
 }
-
-// ── O MODO EDIT (spec/06 F3 ▸ Vector) ───────────────────────────────────────
-
-/// ⭐⭐ GATE — **em Edit só as formas do modo se agarram** (`VecViewState::editing`): o clique de
-/// nó, a quina e a caixa sobre as duas não tocam a outra. CONTROLE: sem Edit, a mesma pressão sobre
-/// B agarra-a — o gate não passa por B ser inalcançável de outra maneira.
-#[test]
-fn in_edit_only_the_shapes_of_the_mode_are_reached() {
-    let (mut scene, mut pen, a, b) = two_squares();
-    let b_corner = [2.0, 0.0];
-    assert_eq!(
-        pen.on_press_node(&mut scene, b_corner, 1e-3, false),
-        crate::PenClick::Grabbed,
-        "CONTROLE: sem Edit, a âncora de B agarra-se"
-    );
-    pen.on_release();
-    let (mut scene, mut pen, a2, b2) = two_squares();
-    assert_eq!((a2, b2), (a, b));
-    pen.set_view(VecViewState {
-        editing: Some(vec![a]),
-        ..Default::default()
-    });
-    let before = scene.clone();
-    assert_ne!(
-        pen.on_press_node(&mut scene, b_corner, 1e-3, false),
-        crate::PenClick::Grabbed,
-        "a âncora da forma FORA do Edit foi agarrada"
-    );
-    pen.on_drag(&mut scene, [2.5, 0.5], &mut |p| p);
-    pen.on_release();
-    assert!(scene == before, "a outra forma mexeu");
-    assert!(!pen.selected_paths().contains(&b));
-    pen.box_select(&scene, [-0.5, -0.5], [3.5, 1.5]);
-    assert_eq!(pen.verts_in(b).count(), 0, "a caixa alcançou a outra forma");
-    assert_eq!(pen.verts_in(a).count(), 4, "a caixa não alcançou a do Edit");
-}

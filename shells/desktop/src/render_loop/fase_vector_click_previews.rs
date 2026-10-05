@@ -25,7 +25,7 @@ impl crate::App {
         // ⭐⭐⭐ **O REALCE DO TRIM** (plano 38): o pedaço que o clique vai apagar, a vermelho,
         // como no Fusion. ⚠️ **A geometria vem da MESMA porta que o corte** — ela é calculada
         // no dreno do ponteiro e guardada, então o que acende neste quadro é literalmente o que
-        // o `vec_trim::apply` vai comer. Uma segunda conta aqui seria a divergência mais cara
+        // o `trim::apply` vai comer. Uma segunda conta aqui seria a divergência mais cara
         // que uma ferramenta destrutiva pode ter.
         if !self.vec.trim_piece.is_empty() {
             ph2d_vec_render::draw_trim_piece(&self.vec.trim_piece, cam_affine, vector_scene);

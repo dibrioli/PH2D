@@ -206,6 +206,25 @@ fn landing(
     Some(Landing { pos, stop })
 }
 
+/// ⭐ **O press do modo Width, pela porta da shell**: o caminho sob o cursor passa a seleccionado
+/// (o gesto vale sem pré-seleccionar) e a [`press`] corre sobre a selecção — ⚠️ só se ela se agarra:
+/// uma forma travada ou escondida que a Hierarquia seleccionou não ganha paradas pelo canvas.
+#[must_use]
+pub fn press_at(
+    pen: &mut ph2d_vec_edit::PenTool,
+    sim: &mut SimWorld,
+    scene: &VecScene,
+    map: &VecEntityMap,
+    world_pt: [f64; 2],
+    radius: f64,
+) -> Option<Grab> {
+    if let Some(pid) = pen.path_at(scene, world_pt, radius) {
+        pen.select(Some(pid));
+    }
+    let pid = pen.selected().filter(|id| pen.is_pickable(*id))?;
+    press(sim, scene, map, pid, world_pt, radius)
+}
+
 /// **A pressão**: agarra a alça sob o cursor, ou ACRESCENTA uma parada se o cursor está sobre a
 /// curva. `None` quando o gesto não é deste caminho.
 ///

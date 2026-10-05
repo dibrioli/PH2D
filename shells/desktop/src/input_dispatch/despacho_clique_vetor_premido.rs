@@ -290,7 +290,7 @@ impl crate::App {
                 && let Some(gfx) = self.gfx.as_mut()
             {
                 crate::vec_convert::freeze_shape_recipe(&mut gfx.sim, &self.vec.entities, hit.path);
-                if crate::vec_trim::apply(&mut gfx.vec_scene, &hit) {
+                if ph2d_app_vec::trim::apply(&mut gfx.vec_scene, &hit) {
                     // A selecção pode ter deixado de existir (a peça toda saiu).
                     if gfx.vec_scene.path(hit.path).is_none() {
                         self.vec.pen.select(None);
@@ -539,22 +539,12 @@ impl crate::App {
             let px_to_world = self.vec_px_to_world();
             if let Some(world) = self.vec_world_at(self.last_pointer) {
                 let hit_r = HANDLE_HIT_PX * px_to_world;
-                // (Re)seleciona o caminho sob o cursor — o gesto vale sem
-                // pré-selecionar, como o das ferramentas de quina.
-                if let Some(gfx) = self.gfx.as_mut()
-                    && let Some(pid) = self.vec.pen.path_at(&gfx.vec_scene, world, hit_r)
-                {
-                    self.vec.pen.select(Some(pid));
-                }
-                if let Some(pid) = self.vec.pen.selected()
-                    && let Some(gfx) = self.gfx.as_mut()
-                {
-                    let scene = &gfx.vec_scene;
-                    self.vec.width_grab = crate::width_handles::press(
+                if let Some(gfx) = self.gfx.as_mut() {
+                    self.vec.width_grab = crate::width_handles::press_at(
+                        &mut self.vec.pen,
                         &mut gfx.sim,
-                        scene,
+                        &gfx.vec_scene,
                         &self.vec.entities,
-                        pid,
                         world,
                         hit_r,
                     );

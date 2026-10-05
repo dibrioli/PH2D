@@ -248,6 +248,12 @@ impl PenTool {
         self.view = view;
     }
 
+    /// O path pode ser agarrado agora (a vista publicada: nem escondido, nem travado, nem derivado).
+    #[must_use]
+    pub fn is_pickable(&self, id: VecPathId) -> bool {
+        self.view.is_pickable(id)
+    }
+
     /// Publica o afim de cada path (ADR-0111). Chamado com `set_view`, uma vez por
     /// frame, antes de qualquer hit-test.
     pub fn set_xforms(&mut self, xforms: ph2d_vec_scene::VecXforms) {

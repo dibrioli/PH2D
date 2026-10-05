@@ -69,10 +69,10 @@ pub trait ModeFamily {
     fn holds_the_whole_kind(&self, _mode: ObjectMode) -> bool {
         false
     }
-    /// ⭐ **A HERDEIRA** — a entidade trancada morreu (o Soldar consome as formas, juntar dois
-    /// caminhos apaga um): `Some` = outra entidade da família continua o modo, sem tocar a selecção.
-    /// Só chamada quando o modo em curso deixou de se segurar.
-    fn heir(&mut self, _mode: ObjectMode, _tools: &mut ToolRegistry) -> Option<u64> {
+    /// ⭐ **A HERDEIRA** — a entidade trancada (`locked`) morreu (o Soldar consome as formas, juntar
+    /// dois caminhos apaga um): `Some` = outra entidade da família continua o modo, sem tocar a
+    /// selecção. Só chamada quando o modo em curso deixou de se segurar.
+    fn heir(&mut self, _mode: ObjectMode, _locked: u64, _tools: &mut ToolRegistry) -> Option<u64> {
         None
     }
     /// Abre o módulo sobre `entity` e os `joined` (só chamada quando [`Self::joins`]).
@@ -207,7 +207,7 @@ pub fn drive(
         if !hero.gizmo.mode.still_holds(sel, extras, held) {
             let heir = families
                 .iter_mut()
-                .find_map(|f| f.heir(current.mode, tools));
+                .find_map(|f| f.heir(current.mode, current.entity, tools));
             if let Some(h) = heir {
                 hero.gizmo.mode.enter(h, current.mode);
                 let parts = family(families, kind_of(h), current.mode).and_then(|f| f.parts(h));

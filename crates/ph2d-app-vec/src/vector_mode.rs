@@ -206,9 +206,13 @@ impl ModeFamily for Family<'_> {
         mode == ObjectMode::Edit
     }
 
-    fn heir(&mut self, mode: ObjectMode, tools: &mut ToolRegistry) -> Option<u64> {
+    fn heir(&mut self, mode: ObjectMode, locked: u64, tools: &mut ToolRegistry) -> Option<u64> {
         let edit = &self.vec.edit;
-        if mode != ObjectMode::Edit || !edit.following || !in_hand(tools) {
+        if mode != ObjectMode::Edit
+            || !edit.following
+            || edit.objects.first() != Some(&locked)
+            || !in_hand(tools)
+        {
             return None;
         }
         let h = heir(&edit.objects, &self.shapes, &self.pen)?;

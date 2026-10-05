@@ -44,17 +44,8 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_OPEN,
             TopBarCluster::single(tr("chrome.topbar.pill.open"), IconId::Open),
         ),
-        // Image Tools — toggle entry-point for the image-editing
-        // action row (Trim, BG Removal, Equalize, etc.). Placed
-        // immediately to the right of Open per ImageToolsV1 spec.
-        // Click is currently no-op (visual only); modal toggle +
-        // action row land in a follow-up.
-        (
-            ids::TOPBAR_IMAGE_TOOLS,
-            TopBarCluster::single(tr("chrome.topbar.pill.img"), IconId::Image),
-        ),
         // Physics (world) — abre o painel de física, o mesmo bool que a tecla
-        // `W`. Fica ao lado do IMG por pedido do Enio; um painel de MUNDO não
+        // `W`. Fica ao lado do Open por pedido do Enio; um painel de MUNDO não
         // tem chip no rail (que é de ferramentas), então este pill é o único
         // abridor visível que ele tem.
         (
@@ -76,7 +67,7 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             TopBarCluster::single("UI", IconId::Inspector),
         ),
         // Audio Mixer — toggles the floating mixer panel (Master strip:
-        // fader + live meter + mute). Left group, next to Image Tools.
+        // fader + live meter + mute). Next to the UI pill.
         (
             ids::TOPBAR_AUDIO_MIXER,
             TopBarCluster::single(tr("chrome.topbar.pill.mix"), IconId::Audio),

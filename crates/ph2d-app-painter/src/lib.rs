@@ -44,6 +44,7 @@ pub mod canvas_map;
 // varredura só. Aqui dentro tudo é a família; o prefixo é só história que não custa nada.
 // ─────────────────────────────────────────────────────────────────────────
 /// ⭐⭐ Image ▸ Paint — o modo que esta família declara (spec/06 F2).
+pub mod image_edit_mode;
 pub mod paint_mode;
 /// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
 ///

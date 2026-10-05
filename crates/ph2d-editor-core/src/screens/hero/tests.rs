@@ -845,25 +845,10 @@ fn paint_top_bar_image_tools_mode_swaps_right_side() {
             "right-side default cluster {default_right:?} must NOT be registered in image_tools mode",
         );
     }
-    // Left half stays intact — Project/Save/Open/ImageTools still hit-able.
+    // Left half stays intact — Project/Save/Open still hit-able.
     assert!(hits.rect_for(ids::TOPBAR_PROJECT).is_some());
     assert!(hits.rect_for(ids::TOPBAR_SAVE).is_some());
     assert!(hits.rect_for(ids::TOPBAR_OPEN).is_some());
-    assert!(hits.rect_for(ids::TOPBAR_IMAGE_TOOLS).is_some());
-}
-
-/// Clicking the Image Tools pill flips `image_tools_mode`; clicking
-/// again flips it back. Verified through `HeroScreen::apply_event`
-/// so the dispatcher hook is exercised end-to-end.
-#[test]
-fn click_on_image_tools_pill_toggles_mode() {
-    crate::test_support::ensure_panel_registry();
-    let mut hero = HeroScreen::new(NodeId(1));
-    assert!(!hero.image_edit.mode_on);
-    assert!(hero.apply_event(WidgetEvent::Click(ids::TOPBAR_IMAGE_TOOLS)));
-    assert!(hero.image_edit.mode_on);
-    assert!(hero.apply_event(WidgetEvent::Click(ids::TOPBAR_IMAGE_TOOLS)));
-    assert!(!hero.image_edit.mode_on);
 }
 
 /// Audit #2 fix (MEDIUM): `paint_hero_screen` selection-change

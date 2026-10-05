@@ -50,7 +50,6 @@ fn nenhuma_legenda_da_barra_do_topo_e_cortada() {
                         &mut hit,
                         &store,
                         &motion,
-                        false,
                     );
                 });
                 fora.extend(medidos.iter().filter(|m| !m.coube()).map(|m| {
@@ -82,7 +81,6 @@ fn nenhuma_legenda_da_barra_do_topo_e_cortada() {
                         &mut hit,
                         &store,
                         &motion,
-                        false,
                     );
                 });
                 fora.extend(medidos.iter().filter(|m| !m.coube()).map(|m| {

@@ -54,9 +54,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.dialog.resolution" => "Resolution",
 
         "chrome.fill.title" => "Fill",
-        // ⚠️ **Abreviado de propósito**, como os rótulos das ferramentas de imagem: ele vive num
-        // chip da barra do topo, e o nome por extenso não cabe na coluna.
-        "chrome.topbar.image_chip" => "IMG",
         "chrome.color.read_only" => "Read-only",
         // As duas sondas do inspector da grelha.
         "chrome.grid_snap.probe_a" => "Probe A",

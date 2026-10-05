@@ -53,7 +53,7 @@ pub const MANIFEST: ToolManifest = ToolManifest {
     label_key: "tool.bgremoval.label",
     icon_fn: icon::eraser_bezpath,
     // `image_tools` cluster — pill in the TopBar's image-action row
-    // (Image Tools toggle in `TOPBAR_IMAGE_TOOLS` flips it on). Shares
+    // (o modo Image ▸ Edit liga-o). Shares
     // the cluster with `make_square` (order 50) and `trim_transparency`
     // (order 40); bgremoval at 60 sits to the right of both per
     // ImageToolsV1 spec. Wave 2 PR 11.4 renamed this from

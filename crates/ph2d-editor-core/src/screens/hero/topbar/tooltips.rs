@@ -30,7 +30,6 @@ pub(super) fn seed_tooltips(store: &mut WidgetStore) {
             tr("chrome.topbar.tip.save_as_cmd_shift_s"),
         ),
         (ids::TOPBAR_OPEN, tr("chrome.topbar.tip.open_cmd_o")),
-        (ids::TOPBAR_IMAGE_TOOLS, tr("chrome.topbar.tip.image_tools")),
         (ids::TOPBAR_AUDIO_MIXER, tr("chrome.topbar.tip.audio_mixer")),
         (
             ids::TOPBAR_AUDIO_EDITOR,

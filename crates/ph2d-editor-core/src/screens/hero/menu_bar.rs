@@ -185,8 +185,6 @@ pub enum ModuleTruth {
     /// A ferramenta activa, pelo id do manifesto que a shell espelha em
     /// `ImageEditState::active_tool_id`.
     Tool(&'static str),
-    /// O modo das ferramentas de imagem (`ImageEditState::mode_on`).
-    ImageMode,
     /// O interruptor das réguas (`ViewState::rulers_visible`).
     Rulers,
     /// ⭐⭐ **Uma COLUNA lateral está aberta?** — a verdade das duas linhas que o menu *View*
@@ -209,7 +207,6 @@ impl ModuleTruth {
         match self {
             Self::Panel(name) => hero.is_panel_visible(name),
             Self::Tool(id) => hero.image_edit.active_tool_id == Some(id),
-            Self::ImageMode => hero.image_edit.mode_on,
             Self::Rulers => hero.view.rulers_visible,
             Self::Column(side) => !super::dock_columns::is_closed(hero, side),
         }
@@ -218,7 +215,7 @@ impl ModuleTruth {
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 18] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 17] = [
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_PHYSICS, ModuleTruth::Panel("physics")),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09). ⚠️ O literal é o `Panel::ID` da
@@ -228,7 +225,6 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 18] = [
     // ⭐⭐⭐ **AS TAGS** (TOP-20 #9, W4). ⚠️ O literal é o `Panel::ID` da `ph2d-panel-tags` —
     // esta camada é chrome e não depende de painel nenhum, que é a mesma cerca das vizinhas.
     (ids::TOPBAR_TAGS, ModuleTruth::Panel("tags")),
-    (ids::TOPBAR_IMAGE_TOOLS, ModuleTruth::ImageMode),
     (ids::TOPBAR_AUDIO_MIXER, ModuleTruth::Panel("audio_mixer")),
     (ids::TOPBAR_AUDIO_EDITOR, ModuleTruth::Panel("audio_editor")),
     (ids::TOPBAR_TOKENS, ModuleTruth::Panel("tokens")),

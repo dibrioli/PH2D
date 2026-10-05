@@ -14,7 +14,6 @@ pub(super) fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
         x if x == ids::TOPBAR_SAVE => tr("chrome.topbar.name.save"),
         x if x == ids::TOPBAR_SAVE_AS => tr("chrome.topbar.name.save_as"),
         x if x == ids::TOPBAR_OPEN => tr("chrome.topbar.name.open"),
-        x if x == ids::TOPBAR_IMAGE_TOOLS => tr("chrome.topbar.name.image_tools"),
         x if x == ids::TOPBAR_AUDIO_MIXER => tr("chrome.topbar.name.audio_mixer"),
         x if x == ids::TOPBAR_AUDIO_EDITOR => tr("chrome.topbar.name.audio_editor"),
         x if x == ids::TOPBAR_PLAY_BUTTON => tr("chrome.topbar.name.play"),

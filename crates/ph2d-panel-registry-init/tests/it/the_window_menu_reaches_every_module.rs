@@ -1,6 +1,7 @@
-//! ⭐⭐ **O menu *Window* alcança os TREZE módulos — e só esta crate consegue prová-lo.**
+//! ⭐⭐ **O menu *Window* alcança os DOZE módulos — e só esta crate consegue prová-lo.**
 //!
-//! A barra de menus nasceu em 2026-08-30 no lugar dos 29 pills. As treze linhas do menu *Window*
+//! A barra de menus nasceu em 2026-08-30 no lugar dos 29 pills. As linhas do menu *Window* (treze;
+//! doze desde 2026-10-05, quando o Image Tools virou o modo Image ▸ Edit)
 //! são a **única** porta de produto para os módulos desde então: enquanto elas não existiram, o
 //! caminho era a tecla `F9`, que devolve o chrome legado — um interruptor de bissecção, não uma
 //! porta.
@@ -11,7 +12,7 @@
 //!
 //! | linha | quem despacha | visível de `ph2d-editor-core`? |
 //! |---|---|---|
-//! | Vector · Motion · Flip · Physics · Image Tools · Tokens · Authored | `screens/hero/chrome/*_toggle.rs` | ✅ |
+//! | Vector · Motion · Flip · Physics · Tokens · Authored | `screens/hero/chrome/*_toggle.rs` | ✅ |
 //! | **Audio Mixer · Audio Editor · Widget Gallery · Grid Settings** | o `event.rs` do próprio painel | ❌ |
 //!
 //! O `test_support::ensure_panel_registry` da `editor-core` é um `{}` — o registry vive nesta
@@ -40,7 +41,7 @@ fn hero() -> HeroScreen {
 fn every_window_menu_row_reaches_a_consumer() {
     let rows = menu_rows(ContextMenuKind::MenuBarWindow);
     assert!(
-        rows.len() >= 13,
+        rows.len() >= 12,
         "o menu Window encolheu para {} linhas — um módulo ficou sem porta",
         rows.len()
     );

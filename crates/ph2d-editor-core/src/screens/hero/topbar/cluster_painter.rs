@@ -87,7 +87,6 @@ pub(super) fn paint_topbar_rail_chip(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     motion: &crate::motion::UiMotion,
-    active: bool,
 ) {
     // Chip size mirrors the rail. Read from store so the Themes-menu
     // RailButtonSize preset (Small/Medium/Large) affects the topbar
@@ -123,13 +122,7 @@ pub(super) fn paint_topbar_rail_chip(
     // "moldura intermediária".
     // ⭐ Raio e moldura pela porta do TEMA — a mesma porta do rail (`chip_feel`).
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    // ⭐ **O MODO ligado é o `active` do chip, não um anel por cima.** Até 2026-09-05 o
-    //    `topbar/mod.rs` traçava um anel de acento SOBRE o chip do Image Tools quando o modo estava
-    //    ligado — o único indicador do modo, fora de qualquer tabela, e num tema moderno (sem
-    //    moldura em repouso) ele desapareceria. Hoje o chip é `is_active` pelo mesmo eixo que o
-    //    rail usa para a ferramenta em mãos: no clássico a tinta `AccentSoft` + contorno de acento
-    //    (a matriz do rail, que este pintor declara copiar), num tema moderno o realce do tema.
-    let is_active = active || state == ButtonState::Pressed;
+    let is_active = state == ButtonState::Pressed;
     let bg = match state {
         ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
         ButtonState::Pressed => ColorToken::AccentSoft,
@@ -200,7 +193,7 @@ pub(super) fn paint_topbar_rail_chip(
     // UPPERCASE + truncate to ≤5 chars (Enio 2026-05-25: "contraia
     // todos os nomes ou transforma em em siglas para caber em até 5
     // letras"). Fixture labels longer than 5 chars must abbreviate
-    // themselves (e.g. "Image Tools" → "IMG"); we hard-cap here so
+    // themselves (e.g. "Physics" → "PHYS"); we hard-cap here so
     // any drift through i18n still fits.
     // Hard-cap labels at 8 chars (Enio 2026-05-25: bumped from 5 to
     // accommodate SCRIPT / WIDGET in full). ⚠️ O tecto de caracteres não
@@ -220,8 +213,6 @@ pub(super) fn paint_topbar_rail_chip(
 }
 
 #[allow(clippy::too_many_arguments)]
-/// `active`: o cluster está EM MODO (hoje só o chip do Image Tools, com o modo ligado) — pinta-se
-/// como a ferramenta em mãos do rail. Só o `Single` o lê; os outros clusters não têm modo.
 pub(super) fn paint_top_bar_cluster(
     id: NodeId,
     cluster: &fixture::TopBarCluster,
@@ -233,14 +224,13 @@ pub(super) fn paint_top_bar_cluster(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     motion: &crate::motion::UiMotion,
-    active: bool,
 ) {
     use fixture::TopBarCluster;
     let pad_x = Spacing::Md.px();
     let icon_w = 18.0; // LITERAL-PX-OK: chev icon dim (chrome accent)
     let font = TypeToken::Sm.px();
     // Theme + Project are "wide chips" — share the chip-row Y of the
-    // rail-style chips (Save/Open/IMG sit below their label, both
+    // rail-style chips (Save/Open sit below their label, both
     // anchored in the backdrop top via viewport_y). Width is the
     // full cluster width (set per cluster in `cluster_width`), height
     // = chip_px so the BgElev fill + Border stroke read identically
@@ -333,7 +323,6 @@ pub(super) fn paint_top_bar_cluster(
                 hit_index,
                 store,
                 motion,
-                active,
             );
         }
         TopBarCluster::Project { name } => {
@@ -418,7 +407,6 @@ pub(super) fn paint_top_bar_cluster(
                     hit_index,
                     store,
                     motion,
-                    false,
                 );
             }
         }
@@ -459,7 +447,6 @@ pub(super) fn paint_top_bar_cluster(
                     hit_index,
                     store,
                     motion,
-                    false,
                 );
             }
         }

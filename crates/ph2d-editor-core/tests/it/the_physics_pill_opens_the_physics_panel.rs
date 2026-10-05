@@ -19,20 +19,21 @@ fn hero() -> HeroScreen {
 }
 
 #[test]
-fn the_pill_is_painted_next_to_the_image_tools_one() {
+fn the_pill_is_painted_next_to_the_open_one() {
     let clusters = fixture::topbar_clusters();
-    let img = clusters
+    let open = clusters
         .iter()
-        .position(|(id, _)| *id == ids::TOPBAR_IMAGE_TOOLS)
-        .expect("o pill IMG existe");
+        .position(|(id, _)| *id == ids::TOPBAR_OPEN)
+        .expect("o pill Open existe");
     let phys = clusters
         .iter()
         .position(|(id, _)| *id == ids::TOPBAR_PHYSICS)
         .expect("o pill PHYS existe");
     assert_eq!(
         phys,
-        img + 1,
-        "o pedido foi 'ao lado de IMG' — se ele escorregar, o pill vai parar noutro grupo"
+        open + 1,
+        "o pill IMG saiu (2026-10-05) e o PHYS ficou ao lado do Open — se ele escorregar, o \
+         pill vai parar noutro grupo"
     );
 }
 

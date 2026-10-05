@@ -31,10 +31,17 @@ impl crate::App {
         let mut paint = ph2d_app_painter::paint_mode::Family;
         let mut flip = ph2d_app_flip::flip_mode::Family::new(&mut self.flip_state, flip);
         let mut vector = ph2d_app_vec::vector_mode::Family::new(&mut self.vec, sim);
-        let families: &mut [&mut dyn ModeFamily] = &mut [&mut paint, &mut flip, &mut vector];
         let world = sim.world();
+        let mut image_edit = ph2d_app_painter::image_edit_mode::Family::new(world);
+        let families: &mut [&mut dyn ModeFamily] =
+            &mut [&mut paint, &mut flip, &mut vector, &mut image_edit];
         if ph2d_app_components::object_mode::drive(world, families, tools, hero, toasts, request) {
             self.title_dirty = true;
         }
+        // O interruptor das ferramentas de imagem é o ESPELHO do Image ▸ Edit.
+        ph2d_app_painter::image_edit_mode::mirror(hero, |b| {
+            ph2d_app_components::component_attach::kind_of(world, ph2d_ecs::Entity::from_bits(b))
+                == ph2d_component_desc::ObjectKind::Image
+        });
     }
 }

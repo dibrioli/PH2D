@@ -62,7 +62,9 @@ pub fn leave(tools: &mut ToolRegistry) {
 }
 
 /// ⭐ **O smoke do modo** — `PH2D_OBJECT_MODE_SMOKE=1` selecciona a 1.ª imagem da cena e abre o
-/// seletor *Mode* sobre ela; `=2` entra logo em *Paint Mode*. É como a foto do passo do smoke o
+/// seletor *Mode* sobre ela; `=2` entra logo em *Paint Mode*; `=8` entra em *Edit Mode* (as
+/// ferramentas de imagem, [`crate::image_edit_mode`]) e abre o seletor — a foto mostra Object · Paint ·
+/// Edit e a fila das ferramentas de imagem. É como a foto do passo do smoke o
 /// apanha, já que o clique sintético não chega à tela virtual
 /// (`docs/Components/ferramentas/fotografa_cena.sh`). Corre uma vez; devolve o pedido a drenar.
 pub fn smoke_step(
@@ -70,7 +72,8 @@ pub fn smoke_step(
     hero: &mut HeroScreen,
 ) -> Option<ph2d_editor_core::object_mode::ModeRequest> {
     use std::sync::atomic::{AtomicU8, Ordering};
-    // 0 = por ler · 1 = abrir o seletor · 2 = entrar em Paint · 9 = feito.
+    // 0 = por ler · 1 = abrir o seletor · 2 = entrar em Paint · 3 = entrar em Edit · 4 = o seletor
+    // sobre o Edit · 9 = feito.
     static STAGE: AtomicU8 = AtomicU8::new(0);
     static REQUESTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     let stage = match STAGE.load(Ordering::Relaxed) {
@@ -78,6 +81,7 @@ pub fn smoke_step(
             let want = match std::env::var("PH2D_OBJECT_MODE_SMOKE").as_deref() {
                 Ok("1") => 1,
                 Ok("2") => 2,
+                Ok("8") => 3,
                 _ => 9,
             };
             STAGE.store(want, Ordering::Relaxed);
@@ -109,6 +113,15 @@ pub fn smoke_step(
         return Some(ph2d_editor_core::object_mode::ModeRequest::Enter(
             ObjectMode::Paint,
         ));
+    }
+    if stage == 3 {
+        STAGE.store(4, Ordering::Relaxed);
+        return Some(ph2d_editor_core::object_mode::ModeRequest::Enter(
+            ObjectMode::Edit,
+        ));
+    }
+    if stage == 4 && hero.gizmo.mode.current() != ObjectMode::Edit {
+        return None;
     }
     // O chip só se abre depois de pintado (o pulldown ancora-se no rect dele).
     let chip = ph2d_editor_core::ids::area_menu_button(0);

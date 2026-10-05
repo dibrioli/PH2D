@@ -58,7 +58,6 @@ mod curve_point_handle;
 mod falloff_handle;
 mod fill_modal;
 mod image_actions;
-mod image_tools_toggle;
 mod input_map;
 mod io_menu;
 mod menu_bar;
@@ -178,7 +177,6 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || input_map::apply(hero, event)
         || command_palette::apply(hero, event)
         || scene_picker::apply(hero, event)
-        || image_tools_toggle::apply(hero, event)
         || image_actions::apply(hero, event)
         || prefab_bar::apply(hero, event)
         || curve_point_handle::apply(hero, event)

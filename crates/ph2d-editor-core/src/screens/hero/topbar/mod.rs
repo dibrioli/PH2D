@@ -24,7 +24,6 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_SAVE,
         ids::TOPBAR_SAVE_AS,
         ids::TOPBAR_OPEN,
-        ids::TOPBAR_IMAGE_TOOLS,
         ids::TOPBAR_AUDIO_MIXER,
         ids::TOPBAR_AUDIO_EDITOR,
         // Motion Nodes pill MUST be registered here (not only painted/hit-indexed in
@@ -287,15 +286,14 @@ pub fn paint_top_bar(
     let row_h = layout.top_bar.h;
     let mut x = layout.top_bar.x;
     let gap = cluster_painter::cluster_gap_px();
-    // Left half now holds 7 clusters: Theme, Project (Level), Save,
-    // Open, Image Tools, Physics, Audio Mixer (Project moved here 2026-05-24;
-    // Audio Mixer added 2026-07-05; Physics added 2026-07-27).
+    // Left half holds 6 clusters: Theme, Project (Level), Save, Open,
+    // Physics, Tokens. O pill IMG saiu em 2026-10-05 (as ferramentas de imagem
+    // são o modo Image ▸ Edit), e o split desceu com ele.
     //
-    // ⚠️ **O número CRESCEU junto com a lista, e não é detalhe:** o pill novo
-    // entra depois do IMG, então deixar o split em 6 empurraria o Audio Mixer
-    // para o grupo da DIREITA — um pill mudando de lado da tela por causa de um
-    // vizinho, que ninguém pediu.
-    let split = 7.min(clusters.len());
+    // ⚠️ **O número anda junto com a lista, e não é detalhe:** um split que não
+    // acompanha empurra um pill para o grupo do OUTRO lado — um pill mudando de
+    // lado da tela por causa de um vizinho, que ninguém pediu.
+    let split = 6.min(clusters.len());
     // Single agrupador backdrop spanning ALL left clusters (Enio
     // 2026-05-24: "Os componentes da esquerda devem ter apenas 1
     // fundo"). RailBg + radius Lg, top edge glued to viewport.y so
@@ -320,15 +318,10 @@ pub fn paint_top_bar(
             );
         }
     }
-    // Left half is always painted — the Image Tools mode keeps the
-    // identity / Save / Open / ImageTools cluster visible so the user
-    // can exit the mode by clicking ImageTools again.
+    // Left half is always painted — the Image ▸ Edit mode keeps the
+    // identity / Save / Open cluster visible.
     for (id, cluster) in &clusters[..split] {
         let rect = Rect::new(x, layout.top_bar.y, cluster_width(cluster), row_h);
-        // ⭐ O modo ligado é o `active` do chip do Image Tools — pintado pelo próprio chip, pela
-        //    matriz do rail. Até 2026-09-05 era um anel de acento traçado AQUI por cima do chip,
-        //    reconstruindo o `chip_rect` à mão; num tema moderno (sem moldura) ele sumiria e o
-        //    modo ficaria invisível. Ver `paint_topbar_rail_chip`.
         paint_top_bar_cluster(
             *id,
             cluster,
@@ -340,7 +333,6 @@ pub fn paint_top_bar(
             hit_index,
             store,
             motion,
-            image_tools_mode && *id == ids::TOPBAR_IMAGE_TOOLS,
         );
         x = rect.x + rect.w + gap;
     }
@@ -372,7 +364,7 @@ pub fn paint_top_bar(
     // before the left group ends (`x` = left-group right edge + gap). When
     // the bar overflows (too many clusters for the width), this stops the
     // leftmost right clusters (the vector tool pills) from being painted
-    // under Save/Open/IMG — they stay on-screen + clickable; the rightmost
+    // under Save/Open — they stay on-screen + clickable; the rightmost
     // clusters clip off the right edge instead (restored by the W2-close
     // topbar UI pass). No-op when everything fits.
     let right_x = (layout.top_bar.x + layout.top_bar.w - right_w).max(x);
@@ -403,7 +395,6 @@ pub fn paint_top_bar(
             hit_index,
             store,
             motion,
-            false,
         );
         rx = rect.x + rect.w + gap;
     }
@@ -539,59 +530,5 @@ mod tooltip_placement_tests {
             "nao pode acabar fora: {got:?}"
         );
         assert!(got.x >= VP.x - 1e-3);
-    }
-
-    /// ⭐⭐ **O MODO LIGADO é o `active` do chip, e VÊ-SE em todas as famílias.**
-    ///
-    /// Até 2026-09-05 o modo *Image Tools* era um anel de acento traçado pelo `paint_top_bar` POR
-    /// CIMA do chip — fora da tabela de estados dele, reconstruindo o `chip_rect` à mão. Num tema
-    /// moderno (moldura em repouso = `0`) o anel desapareceria e o modo ficaria invisível. Hoje o
-    /// chip sabe que está activo e pinta-se pela matriz do rail (a tinta `AccentSoft`), que é
-    /// visível em TODAS as famílias — é isso que este gate mede: o chip com `active = true`
-    /// emite tinta DIFERENTE do chip em repouso, no clássico, no moderno e no OLED.
-    ///
-    /// ⚠️ Compara o `draw_data` (as cores e os pincéis), não a contagem de caminhos: no moderno o
-    /// chip activo tem os MESMOS caminhos que o em repouso (fundo + glifo), só a cor muda.
-    ///
-    /// **Mutação que deve sangrar:** `is_active = state == ButtonState::Pressed` (ignorar o
-    /// `active`) em `paint_topbar_rail_chip` — as duas cenas ficam byte a byte iguais.
-    #[test]
-    fn the_image_tools_chip_shows_the_mode_in_every_family() {
-        for theme in [Theme::Forge, Theme::Dark, Theme::Oled] {
-            let paint = |active: bool| {
-                let mut scene = VectorScene::new();
-                let mut text = TextSystem::without_system_fonts();
-                let mut hit = HitIndex::new();
-                let store = WidgetStore::default();
-                let motion = crate::motion::UiMotion::default();
-                super::cluster_painter::paint_topbar_rail_chip(
-                    ids::TOPBAR_IMAGE_TOOLS,
-                    IconGlyph::Builtin(IconId::Image),
-                    ph2d_i18n::tr("chrome.topbar.image_chip"),
-                    Rect::new(0.0, 0.0, 44.0, 48.0),
-                    super::cluster_painter::cluster_gap_px(),
-                    0.0,
-                    &mut scene,
-                    &mut text,
-                    theme,
-                    &mut hit,
-                    &store,
-                    &motion,
-                    active,
-                );
-                scene.inner().encoding().draw_data.clone()
-            };
-            let rest = paint(false);
-            let on = paint(true);
-            assert!(
-                !rest.is_empty(),
-                "{theme:?}: o chip nao pintou nada — a regua esta' partida"
-            );
-            assert_ne!(
-                rest, on,
-                "{theme:?}: o chip do Image Tools com o modo LIGADO pinta igual ao em repouso — o \
-                 modo ficou invisivel"
-            );
-        }
     }
 }

@@ -238,7 +238,6 @@ pub(super) const MENU_BAR_WINDOW_ROWS: &[MenuRow] = &[
     // porta do painel numa cena **sem** ossos, que é onde o artista carrega em *Create*
     // para fazer o primeiro.
     menu_row(ids::TOPBAR_SKELETON, "chrome.menu.bones"),
-    menu_row(ids::TOPBAR_IMAGE_TOOLS, "chrome.menu.image_tools"),
     menu_row(ids::TOPBAR_AUDIO_MIXER, "chrome.menu.audio_mixer"),
     menu_row(ids::TOPBAR_AUDIO_EDITOR, "chrome.menu.audio_editor"),
     menu_row(ids::TOPBAR_TOKENS, "chrome.menu.design_tokens"),

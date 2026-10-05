@@ -29,14 +29,15 @@
 // All store their retained state inside `ErasedPanel` in the typed
 // registry; visibility flags moved into `HeroScreen::panel_visibility`.
 
-/// Image-edit subsystem state — TopBar Image-Tools mode flag + a
+/// Image-edit subsystem state — the Image ▸ Edit mode mirror + a
 /// read-only signal mirroring the shell's image-edit undo snapshot.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct ImageEditState {
-    /// `true` when the TopBar is in **Image Tools mode**. Right-side
-    /// clusters hide; image-editing action pills surface. Toggled by
-    /// `TOPBAR_IMAGE_TOOLS` clicks (handled in `apply_event` before
-    /// the topbar's stub). Default `false`.
+    /// `true` while the selected image is in the **Image ▸ Edit** mode — a
+    /// MIRROR of that mode, never an independent switch: the shell writes it
+    /// every frame after the mode's own frame
+    /// (`ph2d_app_painter::image_edit_mode::mirror`). Right-side clusters hide;
+    /// image-editing action pills surface. Default `false`.
     pub mode_on: bool,
     /// Read-only signal from the host: `true` when the host has a
     /// stored image-edit snapshot that Cmd+Z would restore. Lets the

@@ -22,14 +22,7 @@ pub const TOPBAR_SETTINGS: NodeId = hash_node_id("topbar_settings");
 pub const TOPBAR_LEFT_BACKDROP: NodeId = hash_node_id("topbar_left_backdrop");
 pub const TOPBAR_RIGHT_BACKDROP: NodeId = hash_node_id("topbar_right_backdrop");
 pub const TOPBAR_IMAGE_TOOLS_BACKDROP: NodeId = hash_node_id("topbar_image_tools_backdrop");
-/// Image Tools cluster — toggle entry-point for the image-editing
-/// action row (Trim Transparency in V1; BG Removal / Equalize / etc.
-/// to follow). Click flips the TopBar between Edit mode and
-/// ImageTools mode; the state lives on
-/// [`crate::screens::HeroScreen::image_tools_mode`].
-pub const TOPBAR_IMAGE_TOOLS: NodeId = hash_node_id("topbar_image_tools");
-/// Audio Mixer cluster — TopBar single-pill (left group, next to Image
-/// Tools) that toggles the floating Audio Mixer panel (mirrors the
+/// Audio Mixer cluster — TopBar single-pill that toggles the floating Audio Mixer panel (mirrors the
 /// Widget Gallery / Grid Settings panel-toggle pattern). Handled by
 /// `ph2d_panel_audio_mixer::AudioMixerPanel::apply_event`.
 pub const TOPBAR_AUDIO_MIXER: NodeId = hash_node_id("topbar_audio_mixer");

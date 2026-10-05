@@ -2054,3 +2054,11 @@ IGUAIS do controlo A/A, `PH2D_SONDA_AA`), sem ele **`0/9`**. **A cura:** o perfi
 `ph2d-shape-gpu`) passam a `compute_writes(..).as_ref().map(PassTimestamps::compute)`. ⚠️ A shell chama o `init`
 com `PH2D_FLUID_PROFILE=1` e não o `shutdown` (a catraca da shell só desce; as corridas de perfil do app acabam
 mortas pelo roteiro, não pelo `exit`).
+
+⚠️ **A prova DIRECTA da cura sob carga está por fazer, e digo porquê.** Com a máquina calma as duas versões passam
+(`6/6` a cura, `3/3` a antiga); a carga sintética dentro da fatia da linha (`≤ 50 %`, load `7`–`11`) não chegou à
+condição; e a disputa presa aos núcleos `30`–`31` (a sonda e `4` laços nos mesmos núcleos até ela sair) deu `0/4`
+falhas MESMO sem a cura — as threads do compilador do driver não ficam presas à afinidade, ou a carga que conta é a
+da máquina inteira. A evidência que fica é o experimento `com × sem perfilador` (`4/6` contra `0/9`, carga natural),
+e a cura retira exactamente o que ele isolou. A rede de segurança continua: o `mede_intercalado.sh` aceita e DIZ uma
+saída `≠ 0` depois do `test result: ok`. Quem vir a próxima falha com a cura no binário reabre isto com o despejo.

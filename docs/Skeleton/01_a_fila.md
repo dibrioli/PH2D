@@ -66,6 +66,34 @@ diz onde ler o mecanismo:
 
 ---
 
+### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
+
+- **Causa confirmada pela régua da CONVERGÊNCIA** (sonda `cruza::tests::vinco::diag_a_ponta_do_vinco_converge`, barra 40×10 em cópias, traço 0,5): a mesma lei com os cobridores partidos em `d × d` subtriângulos posados pela pele exacta, `d = 1…16`, contra `d = 32`. Hoje (`d = 1`, a malha do campo em triângulos RECTOS): maior desvio da ponta `0,35` larg. a 110°, `0,08` a 150°, **`2,11` a 160°**, `0,15` a 170°, `0,26` a 175°; `d = 2` já `≤ 0,06`; `d = 16` `≤ 0,001`. O número de pontas não muda.
+- **Lei** (`skin_desenho_frente_fina.rs`, `Fina`): só os COBRIDORES (o de chave maior de um par sem vértice comum cujas caixas — dos 6 pontos EXACTOS da grelha de lado 2, alargadas por 2× o desvio medido nos meios das arestas — se tocam) entram; cada um parte-se SOB PEDIDO (`Fina::cobre`, na 1.ª vez que um ponto lhe cai na caixa), dobrando o lado até o meio de cada aresta ficar a `≤ 0,1` largura da recta (`TOL_EM_LARGURAS`, `MAX_DIV = 16`). Triângulo com a mesma linha de pesos nos três cantos, sem correcções nem osso partido = afim, lado 1. ⛔ **A caixa da recta + folga ERROU** (desvio `1,07` larg. a 170°): o máximo amostrado nos meios das arestas erra para baixo — a caixa é a dos pontos exactos.
+- **Tolerância escolhida pela medição** (lei a `tol` contra `d = 32`): `0,05` → `≤ 0,011`; `0,1` → `≤ 0,019`; `0,2` → `≤ 0,06`; `0,4` → **`1,07`** a 170° (fora).
+- **Preço** (µs/forma/quadro, poses alternadas, mesma corrida, 7 rodadas × 20 quadros, mínimo; loadavg ~3): 110°↔150° campo `959` · lei `1 090`; 160°↔175° campo `928` · lei `1 405`; 0°↔30° (sem dobra, saída rápida) igual. Com a construção ANSIOSA de antes eram `+2,1–3,5 ms`.
+- **Gate** `a_ponta_do_vinco_converge_para_a_pele_exacta` (150/160/170/175°: a lei a `< 0,1` larg. de `d = 16`, as mesmas pontas; controlo: a malha do campo passa de `0,5`, MEDIDO `2,11`). Gate `o_indice_da_grelha_triangular_e_a_ordem_de_construcao`. Os 291 testes da crate verdes (os do recorte, da saída rápida ao bit e da camada do traço incluídos).
+- **Mutação:** (ver abaixo, F60-m).
+
+### F61 — ⭐⭐ **AS PASSAGENS NOVAS QUE O TRAÇO ENCHE CORTAM-SE PELA CORDA** (A12, ordem do dono 2026-10-05: *«sim»*) — `…c693beae6`
+
+- **Reproduzido e FOTOGRAFADO** (`=5`, Zig Zag a 100°): as duas marcas eram de espécies OPOSTAS — uma FENDA aberta para fora (a boca entre dois membros) e a PONTA de um dente que entra num BOLSO de fora (não num buraco: o bolso é do contorno exterior). As duas são uma passagem mais estreita que o traço criada pela dobra, e curam-se pela mesma corda.
+- **Lei** (`skin_desenho_fendas.rs`, chamada na `uniao_dos_fechados` depois da `resolve_overlap`): pares de amostras (16/segmento) a `< w` com arco `> 1,5 w`; NOVA = **o arco tem um CRUZAMENTO** (âncora da união que não é âncora da fonte e mora em dois sítios dela) — entre dois cruzamentos a união segue um pedaço contínuo da fonte (o vale de um dente fica). A região (arco + corda) onde não cabe um círculo de raio `w/2` sai; as escolhidas sem se tocarem cortam-se juntas (`sem_as_fendas`, rectas nas bocas). ⛔ Um contorno que o traço engole INTEIRO (o buraco pequeno, a ilhota) fica (F59-b, recusado pelo dono); ⛔ num BURACO só sai a ponta de COR que entra nele, nunca um canto do próprio buraco (seria fechá-lo aos bocados).
+- ⛔ **Três leituras erradas desta wave:** (1) «da fonte = algum contorno liga os dois lados por um caminho NÃO MAIS LONGO» — a borda de um buraco liga a base de uma ponta por um caminho CURTO; (2) recusar uma boca LARGA (o bolso, raio `0,86 w`) punha de lado tudo o que estava dentro dela — a ponta dentro do bolso ficava; (3) o sinal da cor comparado com o do PRÓPRIO contorno (num buraco a cor fica do lado do sentido do MAIOR).
+- **Preço** (sobre a entrada real da `=5`, mínimo de 7×20): começou em `~12 ms` por chamada; `cabe()` com saída cedo (o raio inteiro do contorno de fora custava ms), «nova» pelo cruzamento (prefixo) em vez de procurar na fonte, grelha plana, uma passagem só → **`0,38–0,58 ms`** (100/110/120°, loadavg ~3,6).
+- **Gates** (`skin_desenho_fendas_tests.rs`): `a_fenda_nova_fecha_e_o_vale_da_fonte_fica`, `a_ponta_nova_que_entra_num_buraco_corta_se`, `o_buraco_que_o_traco_engole_inteiro_fica`, `sem_a_lei_nada_muda`, `na_cena_as_passagens_novas_saem_e_os_buracos_engolidos_ficam` (`=5` a 100/110°: os contornos engolidos iguais ao `10⁻⁷`; depois da lei nenhuma passagem nova; controlo: a lei mexe). FOTOGRAFADO 100/105/110/120° (as duas marcas de 100° saem; os buracos ficam).
+- **Mutação:** (ver abaixo, F61-m).
+
+### F62 — ⭐⭐ **A PELE GUARDA O ÂNGULO DE CADA OSSO E A TABELA DAS JUNTAS** (achado medindo a F60, 2026-10-05)
+
+- A mistura (`Skin::blend_com`) calculava POR PONTO o `atan2` + `sin`/`cos` de cada osso e a junta de cada par (quatro `hypot`), que não mudam no quadro. `Skin` guarda `(θ, cos θ, sin θ)` ao construir e a tabela das juntas num `OnceLock` (na 1.ª mistura que a pede). A igualdade de `Skin` passou a ser a dos ossos e da lei (manual: a cache não entra).
+- **Medido** (`centro_cache_tests::diag_o_preco_da_mistura`, mesmo processo, 7 rodadas intercaladas, mínimo): **`108,1 → 34,0 ns` por ponto** (3,2×). Vale para todo o desenho de formas e imagens presas, não só para a F60.
+- **Gate** `a_cache_da_pele_da_o_ponto_de_antes_ao_bit` (400 pontos, pesos com 1–3 ossos: a mistura com a cache contra a conta por ponto de antes, ao bit). Os testes da `ph2d-skeleton` verdes.
+
+### F63 — O efeito ANIMADO numa forma presa (herdado) — ✅ fechado no código, sem medição de relógio
+
+- Desde a F51/F54 uma forma presa não tem efeitos vivos: `skin_live_carrega::coze_os_efeitos_presos` corre por QUADRO (`fase_vector_view_and_drives`) e coze qualquer pilha que apareça. As únicas que ficam vivas são as que a F54 deixa (com deslocamento de camada, `NaoServe`; sem campo não há gaveta de efeitos), e nelas o solver da gaveta corre em FUNDO (`efeitos_da_gaveta`, F53): o quadro paga o assado, não o solver.
+
 ### F59 — A5: OS DOIS DETALHES (2026-10-04) — (b) ⛔ RECUSADO PELO DONO no smoke; (a) ⏳ tentado e REVERTIDO
 
 > ⛔ **(b) REVERTIDO em `501daabf4`** — o dono escolheu «fechar os buracos tão pequenos que a linha

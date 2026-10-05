@@ -171,7 +171,7 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
 - Em SVG a `170°/−110°` (cena `=6` com o osso do meio quase dobrado sobre si) sobram dois ou três
   tiques de `~0,1` nas pontas de cortes do traço, junto ao vinco. Não medido nem fotografado no app.
 
-### A10 — (novo, 04/10) A ponta do traço na ponta do VINCO passa 0,4–3 larguras
+### A10 — ✅ FEITO (F60, 05/10): a ponta do vinco converge para a pele exacta (`2,11 → ≤ 0,019` larg. a 160–175°) — fila §F60. Registo de antes:
 
 - O traço de um fechado contorna a dobra do papel (o grampo) e volta um pedaço antes de acabar
   (FOTOGRAFADO em SVG na `=6` a `170°/−110°`, barra sem riscas). Não há cruzamento ali ⇒ o encaixe da F57
@@ -180,12 +180,12 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
   do cobridor (inverter o mapa no triângulo por Newton, ou triângulos quadráticos com o ponto médio de
   cada aresta posado) — medir o preço antes (a dobra já custa `0,3 ms` no recorte).
 
-### A11 — (novo, 04/10, fecho) fmt pendente noutras crates da linha
+### A11 — ✅ FEITO (`eaa53edb1`, 04/10; conferido 05/10: `cargo fmt --check` limpo nas crates da linha). Registo de antes:
 
 - `cargo fmt --check`: `ph2d-app-vec` 9 diffs, `ph2d-vec-skin` 14, `ph2d-vec-boolean` 2 (a
   `ph2d-skeleton-live` ficou formatada nesta janela, `4d91679e9`); o ship corre `cargo fmt --all -- --check`.
 
-### A12 — (novo, 04/10) Reentrâncias ABERTAS mais estreitas que a linha leem-se como manchas escuras
+### A12 — ✅ FEITO (F61, 05/10, «sim» do dono): as passagens NOVAS mais estreitas que o traço (fendas e pontas) cortam-se pela corda; os buracos engolidos ficam — fila §F61. Registo de antes:
 
 - No Zig Zag a 100° (FOTOGRAFADO em SVG, `=5`) duas marquinhas escuras onde o contorno entra numa reentrância mais estreita que o traço; não são buracos (a lei da F59-b não as toca). Medir (largura da reentrância vs largura do traço) e perguntar ao dono se as quer fechadas como os buracos.
 

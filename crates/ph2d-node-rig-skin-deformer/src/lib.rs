@@ -76,8 +76,8 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 // copied leaf: it cannot drift). This node only reads the skeleton, so the parts that write
 // a pose go unused here.
 #[allow(dead_code)]
-mod fk;
-mod trig;
+use ph2d_rig_kinematics::fk;
+use ph2d_rig_kinematics::trig;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 

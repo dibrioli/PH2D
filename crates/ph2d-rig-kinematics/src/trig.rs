@@ -25,7 +25,7 @@ fn sin_cycles(phase: f32) -> f32 {
 }
 
 /// `(cos, sin)` of `phase` cycles. `cos(x) = sin(x + ¼ cycle)`.
-pub(crate) fn cos_sin_cycles(phase: f32) -> (f32, f32) {
+pub fn cos_sin_cycles(phase: f32) -> (f32, f32) {
     (sin_cycles(phase + 0.25), sin_cycles(phase))
 }
 

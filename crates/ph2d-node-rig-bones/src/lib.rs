@@ -96,14 +96,10 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// As colunas do contrato do rig que este nó lê ou retira. ⚠️ **Os nomes são os do
-/// `fk.rs` da família** (que vive copiado em cinco crates, por decisão registada lá): repeti-los
-/// aqui é a mesma cópia de folha, e uma dependência nova entre nós de rig não se paga por três
-/// literais.
-const PARENT: &str = "parent";
-/// Ver a decisão (2) do cabeçalho — é esta que faz um `rig.fk` a jusante reescrever `rot`.
-const LROT: &str = "lrot";
-const WROT: &str = "wrot";
+// As colunas do contrato do rig que este nó lê ou retira: as do `fk` da família, a MESMA porta
+// (bug #11; o `LROT` é o da decisão (2) do cabeçalho — é ele que faz um `rig.fk` a jusante
+// reescrever `rot`).
+use ph2d_rig_kinematics::fk::{self, LEN, LROT, PARENT, ROT, WROT};
 const INDEX: &str = "Index";
 const COUNT: &str = "Count";
 /// A coluna que decide o TAMANHO desenhado de cada elemento — ver [`veste`].
@@ -117,21 +113,13 @@ pub fn bones(input: &Stream) -> Stream {
         // Não é um rig: a identidade (doc 39).
         return input.clone();
     };
-    // ⚠️ **O predicado é o do [`fk::resolve`], letra por letra:** um índice finito, não negativo
-    // e que aponta para TRÁS é um pai; tudo o resto é raiz. *Duas leituras de «quem é raiz» que
-    // divirjam põem um osso a nascer num sítio que a pose nunca visitou.*
-    let mut ossos: Vec<(usize, usize)> = Vec::new();
-    for (i, &pi) in parent.iter().enumerate().take(n) {
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "o indice do pai viaja num f32, como em toda a familia rig"
-        )]
-        let j = pi as usize;
-        if pi >= 0.0 && pi.is_finite() && j < i {
-            ossos.push((i, j));
-        }
-    }
+    // ⚠️ **O predicado é o do [`fk::resolve`]** — a MESMA porta, [`fk::pai`].
+    let ossos: Vec<(usize, usize)> = parent
+        .iter()
+        .enumerate()
+        .take(n)
+        .filter_map(|(i, &pi)| fk::pai(pi, i).map(|j| (i, j)))
+        .collect();
     let pos = positions(input, n);
     let m = ossos.len();
     let mut out = Stream::new(m);
@@ -182,11 +170,6 @@ pub fn bones(input: &Stream) -> Stream {
     }
     out
 }
-
-/// O ângulo de MUNDO de cada osso, na convenção do [`fk::resolve`] da família.
-const ROT: &str = "rot";
-/// O comprimento de cada osso, na mesma convenção.
-const LEN: &str = "len";
 
 /// **O quadro que a corrente não trouxe** — ver a chamada, que é onde a lei está escrita.
 ///

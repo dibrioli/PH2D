@@ -46,13 +46,13 @@ use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-mod fk;
+use ph2d_rig_kinematics::fk;
 // The `pose` leaf is carried BYTE-IDENTICAL by every reaching solver. This one solves in
 // angle space from the start, so it needs only the goal and the heading — not the
 // position-to-pose conversion the other two lean on.
 #[allow(dead_code)]
-mod pose;
-mod trig;
+use ph2d_rig_kinematics::pose;
+use ph2d_rig_kinematics::trig;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 

@@ -6998,6 +6998,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
+ "ph2d-rig-kinematics",
 ]
 
 [[package]]
@@ -7006,6 +7007,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
+ "ph2d-rig-kinematics",
 ]
 
 [[package]]
@@ -7014,6 +7016,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
+ "ph2d-rig-kinematics",
 ]
 
 [[package]]
@@ -7022,6 +7025,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
+ "ph2d-rig-kinematics",
 ]
 
 [[package]]
@@ -7030,6 +7034,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
+ "ph2d-rig-kinematics",
 ]
 
 [[package]]
@@ -7038,6 +7043,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
+ "ph2d-rig-kinematics",
 ]
 
 [[package]]
@@ -7046,6 +7052,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
+ "ph2d-rig-kinematics",
 ]
 
 [[package]]
@@ -8041,6 +8048,13 @@ dependencies = [
  "serde",
  "vello",
  "wgpu",
+]
+
+[[package]]
+name = "ph2d-rig-kinematics"
+version = "0.0.0"
+dependencies = [
+ "ph2d-nodegraph",
 ]
 
 [[package]]

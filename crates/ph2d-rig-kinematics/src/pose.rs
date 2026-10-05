@@ -54,20 +54,20 @@ fn atan2_approx(y: f32, x: f32) -> f32 {
 }
 
 /// The world heading of a vector, in degrees.
-pub(crate) fn heading_deg(dx: f32, dy: f32) -> f32 {
+pub fn heading_deg(dx: f32, dy: f32) -> f32 {
     atan2_approx(dy, dx) * RAD_TO_DEG
 }
 
 /// The goal a solver reaches for: the **first element** of the `target` stream. An
 /// unconnected port cooks to an empty stream → `None` → the solver is a no-op (a limb
 /// with nothing to reach for keeps the pose it had; it does not collapse to the origin).
-pub(crate) fn goal(target: &Stream) -> Option<[f32; 2]> {
+pub fn goal(target: &Stream) -> Option<[f32; 2]> {
     (target.count() > 0).then(|| fk::positions(target)[0])
 }
 
 /// `v`, normalised — or `fallback` when it has no length (a degenerate configuration
 /// must pick a direction, not divide by zero).
-pub(crate) fn unit(v: [f32; 2], fallback: [f32; 2]) -> [f32; 2] {
+pub fn unit(v: [f32; 2], fallback: [f32; 2]) -> [f32; 2] {
     let d = (v[0] * v[0] + v[1] * v[1]).sqrt();
     if d > f32::EPSILON {
         [v[0] / d, v[1] / d]
@@ -82,7 +82,7 @@ pub(crate) fn unit(v: [f32; 2], fallback: [f32; 2]) -> [f32; 2] {
 /// A solved joint's world heading comes from the solved positions; an untouched one's
 /// comes from the `wrot` the last resolve published — so the span the solver moved is
 /// stitched onto the pose around it without disturbing it.
-pub(crate) fn relocal(input: &Stream, solved: &[[f32; 2]], joints: &[usize]) -> Vec<f32> {
+pub fn relocal(input: &Stream, solved: &[[f32; 2]], joints: &[usize]) -> Vec<f32> {
     let n = input.count();
     let parent = fk::scalars(input, fk::PARENT, -1.0, n);
     let mut rot = fk::local(input, n);
@@ -107,7 +107,7 @@ pub(crate) fn relocal(input: &Stream, solved: &[[f32; 2]], joints: &[usize]) -> 
 /// with the distance from a box the artist drags on screen"* is a WIRE here, where Rive and Spine
 /// have a single keyed number per constraint. That is the `SUPERAR:` item of conference sheet 16,
 /// paid for by spending nothing.
-pub(crate) const FALLOFF: &str = "falloff";
+pub const FALLOFF: &str = "falloff";
 
 /// Blend a solved pose back towards the one that came IN, joint by joint, by [`FALLOFF`] — the
 /// `Strength` of every Rive constraint and the `Mix` of Spine's.
@@ -131,7 +131,7 @@ pub(crate) const FALLOFF: &str = "falloff";
 ///
 /// ⚠️ `t` is clamped to `0..1`: a strength is a mix, and a field handing out `2.0` must not make a
 /// constraint overshoot its own solve.
-pub(crate) fn mix_by_falloff(input: &Stream, solved: Vec<f32>) -> Vec<f32> {
+pub fn mix_by_falloff(input: &Stream, solved: Vec<f32>) -> Vec<f32> {
     let n = solved.len();
     let t = fk::scalars(input, FALLOFF, 1.0, n);
     // ⚠️ This is a SHORTCUT, not the guarantee. The first draft of this comment said the

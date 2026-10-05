@@ -1,6 +1,6 @@
-//! The rig's shared **column contract** and its **forward-kinematics resolve** —
-//! the leaf both `rig.skeleton` and `rig.fk` carry (a 60-line copy beats a new
-//! foundational crate for two consumers, [[project_brush_along_path_satellite_not_node]]).
+//! The rig's shared **column contract** and its **forward-kinematics resolve** — ONE copy for
+//! the whole `rig.*` family (bug #11: it lived byte-for-byte in six crates, and the cure of the
+//! `rot` meaning had to be typed six times).
 //!
 //! ## A skeleton is an ordinary instance stream (Motion Nodes M4.N3)
 //!
@@ -37,10 +37,10 @@
 use crate::trig;
 use ph2d_nodegraph::attr::{Column, Stream};
 
-pub(crate) const PARENT: &str = "parent";
-pub(crate) const LEN: &str = "len";
-pub(crate) const ROT: &str = "rot";
-pub(crate) const WROT: &str = "wrot";
+pub const PARENT: &str = "parent";
+pub const LEN: &str = "len";
+pub const ROT: &str = "rot";
+pub const WROT: &str = "wrot";
 /// **O ângulo LOCAL** — o que o autor escreve, relativo ao pai.
 ///
 /// ⛔⛔⛔ **Ele existe porque a coluna `rot` mudou de significado em 2026-09-19, por um report do
@@ -57,7 +57,7 @@ pub(crate) const WROT: &str = "wrot";
 ///
 /// ⚠️ **A idempotência é a razão de ele ser uma coluna e não um esquecimento:** com o `rot` a
 /// carregar o MUNDO, uma segunda resolução somaria o mundo ao mundo e a pose andava.
-pub(crate) const LROT: &str = "lrot";
+pub const LROT: &str = "lrot";
 
 /// **A pose LOCAL de uma corrente** — a porta ÚNICA da escada, e ela tem TRÊS degraus.
 ///
@@ -77,7 +77,7 @@ pub(crate) const LROT: &str = "lrot";
 ///    `rot`, que é o nome que ele vê. A primeira redacção desta porta não tinha este degrau e
 ///    **tornou esse gesto MUDO** — o `motion_rig_probe` apanhou-o, e era a rota do produto.
 /// 3. **senão** ⇒ o [`LROT`], que é por onde os nós que POSAM entregam o solve.
-pub(crate) fn local(input: &Stream, n: usize) -> Vec<f32> {
+pub fn local(input: &Stream, n: usize) -> Vec<f32> {
     let rot = scalars(input, ROT, 0.0, n);
     if input.get(LROT).is_none() {
         return rot; // autorada à mão: o `rot` é o local, como sempre foi
@@ -98,7 +98,7 @@ pub(crate) fn local(input: &Stream, n: usize) -> Vec<f32> {
 const DEGREES_PER_TURN: f32 = 360.0;
 
 /// A Scalar column read to length `n` (absent / short → `default`).
-pub(crate) fn scalars(s: &Stream, name: &str, default: f32, n: usize) -> Vec<f32> {
+pub fn scalars(s: &Stream, name: &str, default: f32, n: usize) -> Vec<f32> {
     let mut v = match s.get(name) {
         Some(Column::Scalar(v)) => v.clone(),
         _ => Vec::new(),
@@ -108,11 +108,25 @@ pub(crate) fn scalars(s: &Stream, name: &str, default: f32, n: usize) -> Vec<f32
 }
 
 /// Every element's position (absent → the origin).
-pub(crate) fn positions(s: &Stream) -> Vec<[f32; 2]> {
+pub fn positions(s: &Stream) -> Vec<[f32; 2]> {
     match s.get("P") {
         Some(Column::Vec2(v)) if v.len() == s.count() => v.clone(),
         _ => vec![[0.0, 0.0]; s.count()],
     }
+}
+
+/// **Quem é o pai da junta `i`**: o índice `parent[i]` quando é finito, não negativo e aponta para
+/// TRÁS; tudo o resto é raiz. UMA porta para o [`resolve`] e para quem lê a corrente (`rig.bones`):
+/// duas leituras de «quem é raiz» que divirjam põem um osso a nascer num sítio que a pose nunca visitou.
+#[must_use]
+pub fn pai(pi: f32, i: usize) -> Option<usize> {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "o indice do pai viaja num f32, como em toda a familia rig"
+    )]
+    let j = pi as usize;
+    (pi >= 0.0 && pi.is_finite() && j < i).then_some(j)
 }
 
 /// **Forward kinematics**: rebuild `P` and `wrot` from (`parent`, `len`, `rot`).
@@ -133,7 +147,7 @@ pub(crate) fn positions(s: &Stream) -> Vec<[f32; 2]> {
 /// Joints are assumed **topologically ordered** (a parent before its children) —
 /// which every rig source emits. A forward reference (`parent >= i`) is treated as a
 /// root rather than read as garbage: it cannot deadlock or read uninitialised state.
-pub(crate) fn resolve(input: &Stream) -> Stream {
+pub fn resolve(input: &Stream) -> Stream {
     let n = input.count();
     let parent = scalars(input, PARENT, -1.0, n);
     let len = scalars(input, LEN, 0.0, n);
@@ -143,10 +157,7 @@ pub(crate) fn resolve(input: &Stream) -> Stream {
     let mut p = vec![[0.0f32; 2]; n];
     let mut w = vec![0.0f32; n];
     for i in 0..n {
-        let pi = parent[i];
-        // A finite, backward-pointing index is a parent; anything else is a root.
-        let par = (pi >= 0.0 && pi.is_finite() && (pi as usize) < i).then_some(pi as usize);
-        match par {
+        match pai(parent[i], i) {
             None => {
                 p[i] = base[i];
                 w[i] = rot[i];

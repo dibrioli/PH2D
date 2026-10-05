@@ -3,7 +3,7 @@ use crate::widget::command_palette::top_match;
 
 const A: &[AddEntry] = &[
     AddEntry::new("object_add.flip", AddGroup::TwoD),
-    AddEntry::new("object_add.vector.object", AddGroup::TwoD),
+    AddEntry::new("object_add.vector.drawing", AddGroup::TwoD),
 ];
 const B: &[AddEntry] = &[AddEntry::new("object_add.game.camera", AddGroup::Game)];
 

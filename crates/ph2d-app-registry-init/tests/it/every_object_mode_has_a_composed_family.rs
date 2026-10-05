@@ -62,13 +62,13 @@ fn every_mode_family_is_in_the_frame_list() {
 /// declarar o Edit, ou a do vetor a declarar o par do Flip, ou a não declarar o dela.
 #[test]
 fn the_composed_families_declare_every_creation_mode() {
-    let mut sim = ph2d_ecs::SimWorld::new();
+    let sim = ph2d_ecs::SimWorld::new();
     let mut state = ph2d_app_flip::state::FlipState::default();
     let doc = ph2d_flip::FlipDoc::new();
     let paint = ph2d_app_painter::paint_mode::Family;
     let flip = ph2d_app_flip::flip_mode::Family::new(&mut state, &doc);
     let mut vec_state = ph2d_app_vec::state::VecState::default();
-    let vector = ph2d_app_vec::vector_mode::Family::new(&mut vec_state, &mut sim);
+    let vector = ph2d_app_vec::vector_mode::Family::new(&mut vec_state, &sim);
     let pairs: Vec<_> = [paint.modes(), flip.modes(), vector.modes()].concat();
     // ⭐ A tabela D6 (spec/06 §3.4) INTEIRA: o Edit do vetor some sem nenhum modo morrer (o Flip
     // também o declara) — só os PARES o vêem. ⚠️ 2026-10-05: `7` -> `4` pares, delta -3 — o 3D

@@ -71,6 +71,7 @@
 - ⛔ [`--bins` NÃO alcança `tests/`](feedback_a_bins_run_never_reaches_the_gates_that_live_in_tests.md) · [e o `cargo-check-narrow.sh` é cego aos `tests/it/`](feedback_the_inner_loop_check_script_is_blind_to_its_own_integration_tests.md)
 - ⛔⛔⛔ [Partilhar `CARGO_TARGET_DIR` entre worktrees TROCA os `.rlib` — o erro acusa o código, e a medição que se fez antes de perceber vale ZERO (li `6,5×` onde era `1,4×`)](feedback_sharing_a_target_dir_between_worktrees_corrupts_the_build.md)
 - ⛔⛔ [Vigia `until ! pgrep -f <padrão>` NUNCA termina (auto-apanha-se) e o `pkill` mata o próprio shell — espere pelo **PID**](feedback_a_pgrep_watcher_catches_its_own_shell.md)
+- ⛔⛔⛔ [`kill` do PAI de um órfão = `systemd --user` = LOGOUT do dono (05/10)](feedback_killing_the_parent_of_an_orphan_kills_the_owners_session.md)
 - ⛔ [Um `-D warnings` que só corre no `ship.sh` é um portão que a LINHA nunca vê — 4 avisos de uma wave descobertos pela seguinte](feedback_a_deny_warnings_that_only_runs_at_ship_is_a_gate_the_line_never_sees.md)
 - ⛔ [E o `cargo check` NUNCA avalia um `const { assert!(…) }` de dentro de uma função — verde no laço interno, `E0080` só no build](feedback_cargo_check_never_evaluates_an_inline_const_assert.md)
 - ⛔ [um `tail` é uma JANELA, não um veredito (0 FAILED sobre 212 suites)](feedback_a_tail_is_a_window_not_a_verdict.md)

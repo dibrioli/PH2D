@@ -164,7 +164,7 @@ de despacho de teclado precisa da App) — deixado ao smoke do dono.
    continua «Edit Mode»; o aviso «Edit Mode» não volta a saltar.
 5. `Tab`: «Object Mode»; clicar Path 0 no canvas e arrastar: só o rectângulo se move.
 6. Ctrl+clique nas duas linhas e `Tab`: as duas entram em Edit.
-7. Em Edit, clicar no canvas vazio: continua «Edit Mode» e a forma continua seleccionada.
+7. Em Edit, clicar no canvas vazio: a forma fica DESSELECCIONADA e continua «Edit Mode».
 8. Com duas formas sobrepostas: Ctrl+clique nas duas linhas da Hierarquia, `Tab` (Edit das duas) e
    «Union» no painel: fica uma forma («Path 2»), seleccionada, em «Edit Mode», COM o gizmo à volta.
 
@@ -173,11 +173,13 @@ cai para Object depois de desenhar.
 
 ## §5b — Depois do fecho: reports do dono (05/10), curados em `0f3c8bef5`
 
-1. *«em edit mode se clicar no canvas vazio (desselecionar) sai do modo Edit. Não permita isso»* —
-   `mode_drive::drive` passo **0b**: num modo, LIMPAR a selecção (clique no vazio, `Esc`, caixa vazia)
-   devolve-a ao objecto enquanto o módulo o tiver em mãos; o modo só cai com o objecto apagado ou
-   desfeito. O `decide` continua a deixar passar o `None` SEM aviso (a doc diz agora porquê). Gate
-   `clearing_the_selection_in_edit_keeps_the_edit` (controlo: a forma apagada ainda larga o modo).
+1. *«em edit mode se clicar no canvas vazio (desselecionar) sai do modo Edit. Não permita isso»* e, a
+   seguir, *«permita desselecionar mesmo sem sair do modo edit»* (`d3400dd07`, que substitui a 1.ª cura
+   de `0f3c8bef5`, que repunha a selecção): `ModeState::still_holds` aceita a selecção VAZIA com o
+   módulo em mãos — desseleccionar não sai do modo (todo modo, como o Edit do Blender) e a selecção
+   FICA vazia. A entidade apagada continua a largar o modo (o quadro não acha família para uma entidade
+   sem tipo). Gates `clearing_the_selection_in_edit_keeps_the_edit` (controlo: a forma apagada larga) e
+   `object_mode_tests::the_mode_holds_only_its_own_entity`; mutação (exigir a entidade) ⇒ RED nos dois.
 2. *«ao fazer um boolean o gizmo já não aparece»* — **três causas**, medidas com um registo temporário
    da família no programa real (o 1.º gate passava porque fazia tudo num quadro só; a foto não):
    - a caneta a seleccionar as duas formas DENTRO do Edit (a shell copia-a para a selecção) largava o
@@ -193,7 +195,7 @@ cai para Object depois de desenhar.
    `mode_drive_tests::a_parts_mode_gives_the_part_its_gizmo_and_the_lasso_its_parts` actualizado. A cena
    `PH2D_OBJECT_MODE_SMOKE=6` passa a fazer a UNION (rectângulo + elipse sobrepostos); **foto**: «Path 2»
    seleccionado, Edit Mode, gizmo à volta, painel Vector aberto.
-   **Mutação** (agente `mutacao`): **6/6 sangram** — o passo 0b, a caneta no `follow` e no `parts`, o
+   **Mutação** (agente `mutacao`): **6/6 sangram** — o passo 0b (depois substituído, ver 1.), a caneta no `follow` e no `parts`, o
    `!gone`, o gizmo do trancado (sangra também no gate do quadro) e a poda da caneta no `enter_with`.
    Lint `-D warnings` de `ph2d-app-vec`/`ph2d-editor-core` verde; `ph2d-editor-core` 1 966/1 966.
 

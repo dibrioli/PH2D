@@ -80,6 +80,29 @@ pub(crate) fn dobra_de(nivel: u32, pedido: Option<&str>) -> f32 {
         .unwrap_or(DOBRA_FORTE)
 }
 
+/// A dobra das duas juntas das cenas `=5` e `=6`: `PH2D_VEC_BONE_DOBRA=<graus>` (as duas) ou
+/// `<g1>,<g2>` (05/10: com os ossos presos ao Edit do vetor o dono não os conseguia mexer; o vinco
+/// lê-se com uma junta a `170°` e a outra a `110°`, e as duas a `≥ 140°` dobram a barra em TRÊS
+/// camadas — o aberto A13). Sem pedido válido, a `omissao` da cena nas duas.
+#[must_use]
+pub(crate) fn dobra_da_cena(omissao: f32) -> (f32, f32) {
+    dobra_pedida(omissao, std::env::var("PH2D_VEC_BONE_DOBRA").ok().as_deref())
+}
+
+/// A lei pura de [`dobra_da_cena`]: só números finitos valem; um só vale para as duas juntas.
+#[must_use]
+pub(crate) fn dobra_pedida(omissao: f32, pedido: Option<&str>) -> (f32, f32) {
+    let num = |s: &str| s.trim().parse::<f32>().ok().filter(|g| g.is_finite());
+    match pedido.map(|s| s.split_once(',').map_or((s, None), |(a, b)| (a, Some(b)))) {
+        Some((a, None)) => num(a).map_or((omissao, omissao), |g| (g, g)),
+        Some((a, Some(b))) => match (num(a), num(b)) {
+            (Some(x), Some(y)) => (x, y),
+            _ => (omissao, omissao),
+        },
+        None => (omissao, omissao),
+    }
+}
+
 /// A junta do contorno da `=4` — `PH2D_VEC_BONE_JUNTA=miter|round|bevel` (F39: a foto precisa de
 /// ver as três juntas no mesmo vinco). Qualquer outra coisa é a de fábrica do traço.
 #[must_use]
@@ -580,6 +603,11 @@ mod tests {
     #[test]
     fn a_dobra_e_o_traco_pedidos_so_valem_onde_devem() {
         assert!((dobra_de(4, Some("145")) - 145.0).abs() < f32::EPSILON);
+        assert_eq!(dobra_pedida(60.0, Some(" 100 ")), (100.0, 100.0));
+        assert_eq!(dobra_pedida(60.0, Some("170,110")), (170.0, 110.0));
+        assert_eq!(dobra_pedida(60.0, Some("170,x")), (60.0, 60.0));
+        assert_eq!(dobra_pedida(60.0, None), (60.0, 60.0));
+        assert_eq!(dobra_pedida(60.0, Some("inf")), (60.0, 60.0));
         assert!((dobra_de(4, None) - DOBRA_FORTE).abs() < f32::EPSILON);
         assert!((dobra_de(4, Some("nan")) - DOBRA_FORTE).abs() < f32::EPSILON);
         assert!((dobra_de(4, Some("x")) - DOBRA_FORTE).abs() < f32::EPSILON);

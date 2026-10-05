@@ -82,7 +82,8 @@ pub(crate) fn bind(scene: &mut VecScene, sim: &mut SimWorld, st: &mut crate::sta
                 .insert(ph2d_ecs::Name::new(nome));
         }
         if let Some(r) = raiz {
-            crate::smoke_bone_par::dobra_duas(sim, *r, DOBRA, DOBRA);
+            let (g1, g2) = crate::smoke_bone_par::dobra_da_cena(DOBRA);
+            crate::smoke_bone_par::dobra_duas(sim, *r, g1, g2);
         }
     }
     if presas != pecas.len() {

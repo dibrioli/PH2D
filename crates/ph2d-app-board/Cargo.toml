@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-app-board"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A família do QUADRO (MiroClone): o que a shell chama pelo nome. O documento é `ph2d-board-model`,
+# o desenho `ph2d-board-render`, as abas e a vista vivem no `ph2d-editor-core`.
+ph2d-app-host = { path = "../ph2d-app-host" }
+ph2d-board-model = { path = "../ph2d-board-model" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+
+[lints]
+workspace = true

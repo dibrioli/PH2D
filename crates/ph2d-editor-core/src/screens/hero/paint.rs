@@ -357,7 +357,9 @@ pub fn paint_hero_screen(
             painter_active,
             &hero.motion,
         );
-    } else {
+    } else if hero.documents.active().is_none() {
+        // ⚠️ Só com a aba `Scene`: num QUADRO estes chips (mover, girar, desfazer da cena) seriam
+        //    controlos da cena por cima de outro documento.
         // ⭐ **O que não coube fica publicado** para o corpo do `⋯` o desenhar — ANTES do pintor,
         // porque o pintor toma `&hero.store` emprestado.
         super::tool_bar::publish_overflow(

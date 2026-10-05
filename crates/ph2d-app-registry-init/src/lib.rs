@@ -60,6 +60,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     // <ph2d-app-sync:begin>
     #[cfg(feature = "app-audio")]
     reg.push(ph2d_app_audio::FAMILY);
+    #[cfg(feature = "app-board")]
+    reg.push(ph2d_app_board::FAMILY);
     #[cfg(feature = "app-components")]
     reg.push(ph2d_app_components::FAMILY);
     #[cfg(feature = "app-flip")]

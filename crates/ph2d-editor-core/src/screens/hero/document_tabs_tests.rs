@@ -104,6 +104,39 @@ fn a_board_owns_the_drawing_area_and_takes_no_ruler_inset() {
     );
 }
 
+/// ⛔ Num quadro, os chips da cena (mover, girar, desfazer da cena) não se pintam nem se clicam.
+#[test]
+fn the_scene_tool_row_is_not_on_top_of_a_board() {
+    let (mut hero, mut text) = painted();
+    assert!(
+        find_anywhere(&hero, ids::TOOL_TRANSLATE),
+        "controlo: na Scene o MOVE está lá"
+    );
+    click(&mut hero, ids::DOC_TAB_NEW);
+    repaint(&mut hero, &mut text);
+    assert!(
+        !find_anywhere(&hero, ids::TOOL_TRANSLATE),
+        "o MOVE da cena está por cima do quadro"
+    );
+}
+
+/// O alvo `id` está em algum ponto do ecrã (passo de 4 px)?
+fn find_anywhere(hero: &HeroScreen, id: NodeId) -> bool {
+    let vp = hero.last_viewport;
+    let mut y = vp.y;
+    while y < vp.y + vp.h {
+        let mut x = vp.x;
+        while x < vp.x + vp.w {
+            if hero.hit_index.hit(x, y) == Some(id) {
+                return true;
+            }
+            x += 4.0;
+        }
+        y += 4.0;
+    }
+    false
+}
+
 #[test]
 fn tabs_sit_between_start_and_end_without_overlap() {
     let mut text = TextSystem::without_system_fonts();

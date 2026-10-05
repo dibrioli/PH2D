@@ -4602,6 +4602,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-board"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-host",
+ "ph2d-board-model",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-tokens",
+]
+
+[[package]]
 name = "ph2d-app-components"
 version = "0.0.0"
 dependencies = [
@@ -4848,6 +4859,7 @@ name = "ph2d-app-registry-init"
 version = "0.0.0"
 dependencies = [
  "ph2d-app-audio",
+ "ph2d-app-board",
  "ph2d-app-components",
  "ph2d-app-flip",
  "ph2d-app-host",
@@ -5529,6 +5541,7 @@ dependencies = [
  "miniz_oxide 0.8.9",
  "ph2d-anim",
  "ph2d-app-audio",
+ "ph2d-app-board",
  "ph2d-app-components",
  "ph2d-app-flip",
  "ph2d-app-host",

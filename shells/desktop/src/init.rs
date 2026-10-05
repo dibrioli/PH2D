@@ -357,6 +357,8 @@ fn boot_hero_screen(
         // saltar para a do artista no seguinte.
         crate::layout_persist::install_saved(&mut hero, tools, &crate::layout_persist::load());
         crate::layout_persist::load_sections(&mut hero.store);
+        // A cena de smoke dos QUADROS (`PH2D_BOARD_SMOKE`), inerte sem a env.
+        ph2d_app_board::smoke::stage_armed_smokes(&mut hero);
         Some(hero)
     } else {
         None

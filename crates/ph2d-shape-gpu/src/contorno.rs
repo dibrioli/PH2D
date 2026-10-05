@@ -72,9 +72,9 @@ const POR_PIXEL: u64 = 24;
 /// doc 121 §9.13 — e os dos dois DESENHOS (`desenho` no WGSL): a variante enxuta e a completa.
 const DESENHO_ENXUTA: u64 = 36;
 const DESENHO_COMPLETO: u64 = 52;
-const DESPACHO: u64 = 80;
+const DESPACHO: u64 = 68;
 /// As contagens por cópia na `contagem` (`quinto` no WGSL).
-const QUINTOS: u64 = 6;
+const QUINTOS: u64 = 5;
 
 // Os estados da leitura do total (um `AtomicU8`, porque o fecho do `map_async` corre noutro sítio).
 const LIVRE: u8 = 0;
@@ -90,8 +90,6 @@ pub(crate) struct Contorno {
     escreve: Variantes<wgpu::ComputePipeline>,
     /// doc 121 §9.15 — o prefixo das arestas ESCRITAS (o despacho do `cs_deposita`).
     soma_escritas: wgpu::ComputePipeline,
-    /// doc 121 §9.18 (E) — a emissão tracejada por peça.
-    pecas: pecas::Pecas,
     /// doc 121 §9.12 — as células por acumulação, por despachos indirectos: um fio por PIXEL apaga,
     /// um por ARESTA deposita, um por LINHA faz o prefixo do fundo, um por PIXEL varre a célula.
     zera: wgpu::ComputePipeline,
@@ -264,8 +262,6 @@ impl Contorno {
             entrada(5, armazem(false), c),
             entrada(6, armazem(false), c),
             entrada(8, armazem(false), c),
-            entrada(9, armazem(false), c),
-            entrada(10, armazem(false), c),
             entrada(7, armazem(false), c),
         ];
         let escrita = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -325,15 +321,6 @@ impl Contorno {
             soma: pipeline("cs_soma"),
             escreve: variantes("cs_escreve"),
             soma_escritas: pipeline("cs_soma_escritas"),
-            pecas: pecas::Pecas::new(
-                gpu,
-                pecas::modo(constantes),
-                [
-                    pipeline("cs_soma_pecas"),
-                    pipeline_em("cs_pecas", &pl_celulas),
-                    pipeline("cs_fecha"),
-                ],
-            ),
             zera: pipeline_em("cs_zera", &pl_celulas),
             deposita: pipeline_em("cs_deposita", &pl_celulas),
             fundo: pipeline_em("cs_fundo", &pl_celulas),
@@ -486,7 +473,6 @@ impl Contorno {
                 resource: self.acumula.as_entire_binding(),
             },
         ];
-        entradas.extend(self.pecas.entradas());
         // O grupo do passe das células: as mesmas ligações SEM o `despacho`.
         let celulas = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-shape-gpu contorno (escrita, celulas)"),
@@ -552,10 +538,6 @@ impl Contorno {
             let mut pass = passe(encoder, "render.contorno.escreve");
             pass.set_pipeline(self.escreve.de(tracejado));
             pass.dispatch_workgroups(x, y, 1);
-            if tracejado {
-                self.pecas
-                    .escreve(&mut pass, [&escrita, &celulas], &self.despacho, (x, y));
-            }
             // doc 121 §9.15 — o prefixo das arestas ESCRITAS e o despacho do `cs_deposita` por elas.
             pass.set_pipeline(&self.soma_escritas);
             pass.dispatch_workgroups(1, 1, 1);
@@ -638,9 +620,6 @@ mod sondas;
 
 #[path = "contorno_capacidade.rs"]
 mod capacidade;
-
-#[path = "contorno_pecas.rs"]
-mod pecas;
 
 #[cfg(test)]
 #[path = "contorno_tests.rs"]

@@ -62,19 +62,6 @@ fn variantes() -> Vec<(&'static str, VarianteDoPasse)> {
             },
         ),
     ];
-    // §9.18 (E): `P1` a prova do modelo (o `pedaco` por peça, sem arestas — a imagem DIFERE); `P2`/`P3` o
-    // produto (a reserva por aresta · contada e reservada de uma vez).
-    // As ablações da prova: `P4` o fio da peça sai logo · `P5` depois das buscas · `P6` o passeio sem linhas.
-    let pecas = [("P1", 1.0), ("P2", 2.0), ("P3", 3.0), ("P4", 4.0), ("P5", 5.0), ("P6", 6.0)];
-    v.extend(pecas.map(|(n, m)| {
-        (
-            n,
-            VarianteDoPasse {
-                constantes: vec![("POR_PECA", m)],
-                ..VarianteDoPasse::default()
-            },
-        )
-    }));
     v.extend(AA[..aa].iter().map(|n| (*n, VarianteDoPasse::default())));
     v
 }

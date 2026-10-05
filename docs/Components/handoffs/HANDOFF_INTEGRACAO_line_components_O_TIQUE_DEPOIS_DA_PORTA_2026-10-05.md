@@ -141,8 +141,13 @@ Depois de `rm -rf target/*/incremental` (`11 G` do `debug` + `3,6 G` do `smoke`)
 
 ```
 ▸ linha line_components · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 3600s
-    Finished `smoke` profile [optimized] target(s) in 0.45s
+    Finished `smoke` profile [optimized] target(s) in 0.24s
 ```
+
+(⚠️ A 2.ª volta das curas do §4b — os pontos 3 e 4 — refê-lo outra vez, depois de `rm -rf target/*/incremental`: a
+2.ª corrida acima é dessa. Gate batched final sobre o diff acumulado: `nextest-impacted` **`15 771 / 15 771`**,
+clippy `--workspace --all-targets -D warnings` limpo; as cenas `=4` fotografadas — `target/prova/w15/*-curas2.png`,
+`59 fps`.)
 
 (Refeito depois das curas do §4b, de novo após `rm -rf target/*/incremental`; as cenas `=4` da navegação e da
 arena fotografadas outra vez — `target/prova/w15/*-curas.png`, `59–60 fps`. O gate batched sobre o diff

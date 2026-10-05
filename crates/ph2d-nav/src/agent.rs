@@ -147,7 +147,6 @@ pub struct AMeio {
 }
 
 /// ⭐ (W15) **A vez de procurar deste agente, NESTE tique** — o que a ponte lhe dá e o que ele gasta.
-#[derive(Debug)]
 pub struct Vez<'a> {
     /// O trabalho que as procuras deste agente podem gastar agora ([`crate::Stats::work`]); `0` = não é a
     /// vez dele (a fila deve-lha, e ele anda o caminho que tem); `u64::MAX` = sem tecto.
@@ -163,6 +162,9 @@ pub struct Vez<'a> {
     /// A resposta da procura a meio, já acabada FORA da condução (a ponte avança-as em paralelo,
     /// [`advance_mid`]).
     pub pronto: Option<Planeado>,
+    /// (report do dono, 05/10) A saída de um teletransporte está livre para o corpo deste agente?
+    /// `None` = sempre (a lei sem mundo); ocupada, ele espera na entrada.
+    pub saida_livre: Option<&'a dyn Fn(V2) -> bool>,
     /// Saída: o trabalho que as procuras gastaram nesta condução.
     pub gasto: u64,
 }
@@ -176,6 +178,7 @@ impl Vez<'_> {
             entradas: 0,
             plano,
             pronto: None,
+            saida_livre: None,
             gasto: 0,
         }
     }
@@ -403,6 +406,15 @@ pub fn step_in_turn(
             && h.teleport
         {
             let saida = rt.path[rt.next + 1];
+            // ⭐ (report do dono, 05/10) Com a saída OCUPADA espera em cima da entrada — sair dentro de
+            // outro corpo prendia-o (o herói). Esperar não é estar preso: o relógio do «preso» só anda
+            // mais abaixo, e daqui volta-se antes dele.
+            if vez.saida_livre.is_some_and(|livre| !livre(saida)) {
+                return Steer {
+                    event: stuck_event,
+                    ..Steer::default()
+                };
+            }
             rt.next += 1;
             rt.stuck_clock = 0.0;
             rt.best_remaining = f64::INFINITY;

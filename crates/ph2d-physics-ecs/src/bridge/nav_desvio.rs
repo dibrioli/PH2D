@@ -12,8 +12,9 @@ use ph2d_physics::{BodyDesc, ShapeDesc};
 
 use super::raio_que_envolve;
 use crate::PlayerInput;
-use crate::bridge::PhysicsBridge;
+use crate::bridge::{BodyRef, PhysicsBridge};
 use crate::components::BodyKind;
+use ph2d_physics::PhysicsWorld;
 
 /// ⭐ (W11) **As paredes de uma malha** como o desvio as lê: por mosaicos, e as montadas com a versão da
 /// malha de onde vieram. Uma mudança refaz só os mosaicos cujas paredes mudaram — as mesmas
@@ -294,4 +295,62 @@ fn forma(d: &BodyDesc) -> Forma {
         .map(|[x, y]| [o[0] + ax * x, o[1] + ay * y + h * y.signum()])
         .to_vec(),
     )
+}
+
+/// ⭐ (report do dono, 05/10) **A saída de um teletransporte está LIVRE para um corpo de raio `r`**:
+/// nenhum corpo sólido que não é parede (um estático é parede da malha, e a saída está nela) a menos de
+/// `r` dela, pela forma de cada um (o disco, ou o polígono do desvio). Medido antes: quem saltava aterrava
+/// a `2 cm` do centro do herói parado na saída, e prendia-o.
+pub(super) fn saida_livre(
+    corpos: &BTreeMap<Entity, BodyRef>,
+    mundo: &PhysicsWorld,
+    quem: Entity,
+    p: V2,
+    r: f64,
+) -> bool {
+    corpos.iter().all(|(&e, b)| {
+        if e == quem || b.kind == BodyKind::Static || b.rest.is_sensor {
+            return true;
+        }
+        let Some(pose) = mundo.body_pose(b.handle) else {
+            return true;
+        };
+        let c = [f64::from(pose.translation.x), f64::from(pose.translation.y)];
+        // ⚠️ `libm`, nunca o `sin_cos` do `std` (o hash c9).
+        let (sin, cos) = libm::sincos(f64::from(pose.rotation.angle()));
+        let no_mundo = |[x, y]: V2| [c[0] + cos * x - sin * y, c[1] + sin * x + cos * y];
+        match forma(&b.rest) {
+            Forma::Disco(o, raio) => {
+                let o = no_mundo(o);
+                let (dx, dy) = (o[0] - p[0], o[1] - p[1]);
+                (dx * dx + dy * dy).sqrt() >= raio + r
+            }
+            Forma::Poligono(pts) => {
+                let w: Vec<V2> = pts.into_iter().map(no_mundo).collect();
+                distancia_ao_poligono(&w, p) >= r
+            }
+        }
+    })
+}
+
+/// A distância de `p` a um polígono CONVEXO anti-horário (`0` dentro dele).
+pub(super) fn distancia_ao_poligono(w: &[V2], p: V2) -> f64 {
+    let n = w.len();
+    let mut dentro = true;
+    let mut menor = f64::INFINITY;
+    for i in 0..n {
+        let (a, b) = (w[i], w[(i + 1) % n]);
+        let (ex, ey) = (b[0] - a[0], b[1] - a[1]);
+        let (px, py) = (p[0] - a[0], p[1] - a[1]);
+        dentro &= ex * py - ey * px >= 0.0;
+        let l2 = ex * ex + ey * ey;
+        let s = if l2 > 0.0 {
+            ((px * ex + py * ey) / l2).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let (qx, qy) = (px - s * ex, py - s * ey);
+        menor = menor.min((qx * qx + qy * qy).sqrt());
+    }
+    if dentro { 0.0 } else { menor }
 }

@@ -186,3 +186,82 @@ fn dois_inimigos_iguais_pelo_mesmo_portal_nao_se_prendem() {
         "a fixtura: os dois pelo portal em {pelos_dois} de 40"
     );
 }
+
+/// ⭐⭐ (report do dono, 05/10, 2.º) **Ninguém sai do portal DENTRO de outro corpo** — *«se fizerem o
+/// teletransporte e caírem em cima do player, travam o player»*: o salto punha o corpo no ponto da saída
+/// sem perguntar quem lá estava (medido: o vermelho aterrava a `2 cm` do centro do herói parado na
+/// saída). Agora quem chega à entrada ESPERA nela enquanto a saída está ocupada. O herói parado na saída
+/// `3 s` (os dois inimigos, com *Avoid Harm*, vão pelo portal); depois anda para cima e liberta-a.
+#[test]
+fn ninguem_sai_do_portal_dentro_de_outro_corpo() {
+    use ph2d_physics_ecs::PlayerInput;
+    let mut sim = SimWorld::new();
+    let m = crate::nav_smoke::montar(sim.world_mut(), 4);
+    let l = m.lava.expect("a lava");
+    if let Some(mut a) = sim.world_mut().get_mut::<NavAgent>(l.cinzento) {
+        a.avoid_harm = true;
+    }
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(l.cinzento) {
+        t.translation = Vec2::new(-3.0, -1.0);
+    }
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(l.heroi) {
+        t.translation = Vec2::new(PORTAL_B[0], PORTAL_B[1]);
+    }
+    let mut bridge = PhysicsBridge::new();
+    let quem = [l.vermelho, l.cinzento, l.heroi];
+    let raio = [RAIO_PEQUENO, RAIO_PEQUENO, RAIO_HEROI];
+    let mut antes = quem.map(|e| pos(&sim, e));
+    let (mut saltos, mut a_espera, mut presos) = (0, 0, 0);
+    for t in 1..=600u64 {
+        if t > 180 {
+            bridge.set_player_input(
+                l.heroi,
+                PlayerInput {
+                    drive_y: 1.0,
+                    ..PlayerInput::default()
+                },
+            );
+        }
+        bridge.dispatch(&mut sim, true, t);
+        // Esperar na entrada não é estar PRESO (o sinal `On Stuck` calado).
+        presos += bridge
+            .nav_events()
+            .iter()
+            .filter(|ev| ev.kind == ph2d_nav::Event::Stuck && t <= 180)
+            .count();
+        let agora = quem.map(|e| pos(&sim, e));
+        for k in 0..2 {
+            if (agora[k][0] - antes[k][0]).abs() > 3.0 {
+                saltos += 1;
+                for o in 0..3 {
+                    if o == k {
+                        continue;
+                    }
+                    let d = ((agora[k][0] - agora[o][0]).powi(2)
+                        + (agora[k][1] - agora[o][1]).powi(2))
+                    .sqrt();
+                    assert!(
+                        d >= raio[k] + raio[o] - 0.01,
+                        "no tique {t} o {k}.º saiu do portal a {d:.2} m do {o}.º"
+                    );
+                }
+            }
+            // À espera na entrada: perto do portal A, parado.
+            let pa =
+                ((agora[k][0] - PORTAL_A[0]).powi(2) + (agora[k][1] - PORTAL_A[1]).powi(2)).sqrt();
+            let passo =
+                ((agora[k][0] - antes[k][0]).powi(2) + (agora[k][1] - antes[k][1]).powi(2)).sqrt();
+            a_espera += usize::from(t <= 180 && pa < 0.5 && passo < 1e-4);
+        }
+        antes = agora;
+    }
+    assert_eq!(
+        saltos, 2,
+        "os dois acabam por passar quando a saída fica livre"
+    );
+    assert_eq!(presos, 0, "à espera na entrada ninguém diz «preso»");
+    assert!(
+        a_espera >= 30,
+        "a fixtura: alguém esperou na entrada com a saída ocupada ({a_espera} tiques)"
+    );
+}

@@ -144,3 +144,14 @@ fn as_paredes_da_ponte_por_mosaicos_sao_as_da_malha_inteira() {
     );
     assert_eq!(sairam, 1);
 }
+
+/// (report do dono, 05/10) A distância à forma de um corpo que não é bola (a saída de um teletransporte
+/// tem de a respeitar): zero dentro, a perpendicular ao lado, e a do canto fora dele.
+#[test]
+fn a_distancia_a_uma_caixa_e_zero_dentro_e_a_do_canto_fora() {
+    let caixa = [[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]];
+    let d = |p| super::desvio::distancia_ao_poligono(&caixa, p);
+    assert_eq!(d([0.2, -0.3]), 0.0, "dentro");
+    assert!((d([3.0, 0.5]) - 2.0).abs() < 1e-12, "ao lado");
+    assert!((d([4.0, 5.0]) - 5.0).abs() < 1e-12, "do canto (3, 4, 5)");
+}

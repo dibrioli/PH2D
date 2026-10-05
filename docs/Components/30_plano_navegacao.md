@@ -1806,3 +1806,20 @@ o argumento geométrico que o sustentava não se aguentava, e a medição não o
 **A prova:** gate `dois_inimigos_iguais_pelo_mesmo_portal_nao_se_prendem` (`nav_smoke_lava_tests.rs`: `40`
 nascimentos, a fixtura exige os DOIS pelo portal em `≥ 8`), vermelho antes da cura; mutações à mão — o alcance no
 ponto, a meio raio (o nascimento `(-2, -1,5)` prende), e a ponte sem o raio — sangram as três.
+
+### §24.1 — O 2.º report (05/10): quem sai do portal em cima do herói prende-o
+
+*«Se fizerem o teletransporte e caírem em cima do player, travam o player.»* **Medido:** o salto punha o
+corpo no ponto da saída sem perguntar quem lá estava — com o herói parado na saída, o cinzento aterrava a
+`2 cm` do centro dele (dois corpos sobrepostos). No arnês sem janela o herói ainda se soltava com as setas;
+no app prendia — e sobrepor corpos é o defeito, seja qual for o efeito do mover.
+
+**A cura** (a dos portais da indústria): quem chega à entrada só salta com a saída LIVRE para o corpo dele
+(`ph2d_nav::agent::Vez::saida_livre`, respondida pela ponte, `nav_desvio::saida_livre`: nenhum corpo que não é
+parede nem sensor a menos do raio, pela forma de cada um — o disco, ou o polígono do desvio); senão ESPERA em
+cima da entrada, e esperar não é estar preso (o relógio do «preso» não anda). Gate
+`ninguem_sai_do_portal_dentro_de_outro_corpo` (vermelho antes; o herói parado na saída `3 s`, os dois esperam
+`≥ 30` tiques, ninguém diz «preso», e os dois passam quando ela fica livre) e
+`a_distancia_a_uma_caixa_e_zero_dentro_e_a_do_canto_fora`. Mutações à mão (a lei sem a pergunta, a ponte sem
+ela, o disco que não conta, o «dentro» ao contrário) sangram as quatro; o zerar do relógio do «preso» à espera
+era redundante (sobreviveu) e saiu.

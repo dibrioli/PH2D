@@ -343,6 +343,8 @@ impl PhysicsBridge {
             } = &mut self.nav;
             let malha = v.chave.and_then(|k| meshes.get(&k)).map(TiledMesh::mesh);
             let mut plano = planos.remove(&p.entity);
+            let (corpos, mundo, raio) = (&self.bodies, &self.world, f64::from(v.raio));
+            let livre_de = |s: V2| desvio::saida_livre(corpos, mundo, p.entity, s, raio);
             let mut turno = VezDeProcurar {
                 pode: if *fatias {
                     reserva.unwrap_or(0).saturating_add(livre)
@@ -353,6 +355,7 @@ impl PhysicsBridge {
                 entradas: v.chave.and_then(|k| entradas.get(&k)).copied().unwrap_or(0),
                 plano: &mut plano,
                 pronto: prontos.remove(&p.entity),
+                saida_livre: Some(&livre_de),
                 gasto: 0,
             };
             let steer = ph2d_nav::agent::step_in_turn(

@@ -108,6 +108,11 @@ corrida não viu. Agora «mudou» é o conteúdo contra a assinatura que o anel 
    (`ph2d-app-physics/src/bridge/dispatch.rs` — ⚠️ **ficheiro da família da Física**, tocado por esta linha).
    `docs/Physics/BUGS_physics.md` **Bug #10**, gate `na_segunda_vida_sem_tecla_o_heroi_nao_anda_nem_roda`.
 
+3. **Cena `=4` (2.º report): quem sai do portal em cima do herói prende-o.** O salto não perguntava quem
+   estava na saída (aterrava a `2 cm` do centro do herói). Cura: com a saída ocupada, espera em cima da
+   entrada (**`Vez` ganha `saida_livre`** — a ponte responde pela forma de cada corpo). Plano 30 §24.1, gate
+   `ninguem_sai_do_portal_dentro_de_outro_corpo`.
+
 ## §5 — O smoke
 
 Nenhuma cena nova: numa cena pequena o orçamento nunca se esgota e a condução é a MESMA (o kill-criterion 1); o que

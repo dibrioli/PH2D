@@ -157,7 +157,9 @@ impl PreviewPremul {
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("ph2d-render preview_premul pass"),
-                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("render.premul"),
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("render.premul")
+                    .as_ref()
+                    .map(ph2d_gpu::pass_profiler::PassTimestamps::compute),
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);

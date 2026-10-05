@@ -517,7 +517,9 @@ impl Contorno {
             let mut pass = encoder
                 .begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some(relogio),
-                    timestamp_writes: ph2d_gpu::pass_profiler::compute_writes(relogio),
+                    timestamp_writes: ph2d_gpu::pass_profiler::compute_writes(relogio)
+                        .as_ref()
+                        .map(ph2d_gpu::pass_profiler::PassTimestamps::compute),
                 })
                 .forget_lifetime();
             pass.set_bind_group(0, grupo0, &[]);

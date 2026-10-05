@@ -354,7 +354,9 @@ impl FrostPass {
                     },
                 })],
                 depth_stencil_attachment: None,
-                timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.frost"),
+                timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.frost")
+                    .as_ref()
+                    .map(ph2d_gpu::pass_profiler::PassTimestamps::render),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });

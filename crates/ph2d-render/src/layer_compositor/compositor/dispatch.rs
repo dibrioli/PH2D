@@ -66,7 +66,9 @@ impl LayerCompositor {
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("ph2d-render layer_composite pass"),
-                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("render.layer_comp"),
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("render.layer_comp")
+                    .as_ref()
+                    .map(ph2d_gpu::pass_profiler::PassTimestamps::compute),
             });
             pass.set_pipeline(pipeline);
             pass.set_bind_group(0, &bind_group, &[]);

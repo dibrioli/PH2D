@@ -307,6 +307,10 @@ falha — é não haver solução.
 ⭐ **A vantagem da grelha CRESCE com `n`** (`4,0×` → `12,1×`), que é a assinatura de duas classes
 diferentes — e é a prova, em número, de que a tabela `§1-ter` da corda mediu o caminho errado.
 
+⚠️ **(2026-10-05) Esta tabela lia `~8×` a mais**: re-tirada com a máquina calma e no perfil otimizado, `1 000`
+peças a `32` varreduras custam `2,162` ms (não `18,058`), e com as `8` do produto `4 096` peças custam `9,3 %` de um
+quadro — ver [doc 121 §9.18 (D)](121_as_formas_na_placa.md), onde a recusa se renova até aos milhares.
+
 ### §9.4 — E a alavanca é a VARREDURA, não o dispositivo
 
 `500` caixas a 25 %:

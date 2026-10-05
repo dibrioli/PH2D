@@ -118,7 +118,9 @@ fn profiler_round_trip_zero_validation_errors() {
         {
             let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("gate instrumented pass"),
-                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("gate.pass"),
+                timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("gate.pass")
+                    .as_ref()
+                    .map(ph2d_gpu::pass_profiler::PassTimestamps::compute),
             });
             pass.set_pipeline(&busy_pipeline);
             pass.set_bind_group(0, &busy_bind, &[]);
@@ -149,5 +151,13 @@ fn profiler_round_trip_zero_validation_errors() {
     assert!(
         !errored.load(Ordering::Acquire),
         "pass profiler produced wgpu validation errors (see stderr above)"
+    );
+    // `shutdown` releases the query set (and the profiler's hold on the device): instrumented
+    // passes go back to `None` (doc 121 §9.18 F — held to `exit`, NVIDIA crashed the process).
+    assert!(ph2d_gpu::pass_profiler::compute_writes("gate.before").is_some());
+    ph2d_gpu::pass_profiler::shutdown();
+    assert!(
+        ph2d_gpu::pass_profiler::compute_writes("gate.after").is_none(),
+        "shutdown must release the profiler"
     );
 }

@@ -576,7 +576,9 @@ impl ShapePass {
             })],
             depth_stencil_attachment: None,
             // O relógio da placa do perfilador (`PH2D_FLUID_PROFILE=1`) — `None` com ele desligado.
-            timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.formas"),
+            timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.formas")
+                .as_ref()
+                .map(ph2d_gpu::pass_profiler::PassTimestamps::render),
             occlusion_query_set: None,
             multiview_mask: None,
         });

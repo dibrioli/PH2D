@@ -611,6 +611,8 @@ fn sonda_relogio_das_estrelas_grandes() {
         "  [{modo}] {} copias: placa {placa:.3} ms · vello {vello:.3} ms (com leitura) · load {carga}",
         insts.len()
     );
+    // doc 121 §9.18 (F): o perfilador solta o dispositivo antes do `exit`.
+    ph2d_gpu::pass_profiler::shutdown();
 }
 
 #[path = "motion_shape_placa_gpu_letras_tests.rs"]

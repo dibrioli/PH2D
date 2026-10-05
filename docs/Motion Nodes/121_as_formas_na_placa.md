@@ -1983,3 +1983,74 @@ sozinho na árvore depois do gate; pré-voo `7/7`; corrida limpa `14/14` nas dua
 --workspace --all-targets` com `-D warnings`, clippy `--all-targets --all-features` das três crates, `fmt`, `machete`,
 `check-standalone-optional`, `check-workflow-packages`, `ph2d-shape-gpu --test it --ignored` `14/14` nas duas placas,
 `motion_shape_placa` `5/5` nas duas, `ph2d-gpu-cook formas` `2/2` nas duas, o tecto de LOC, censos `114/114`.
+
+### §9.18 — O QUE O §9.17 DEIXOU: a emissão por PEÇA, a mordida e o SIGSEGV da RTX (2026-10-05, escrito ANTES de construir)
+
+Ordem do dono (05/10, depois do smoke do §9.17): *«precisamos resolver tudo»*.
+
+**(E) A emissão tracejada por PEÇA, em paralelo — ⚠️ é a 3.ª topologia da escrita** (um fio por cópia, §9.5; o
+GRUPO por cópia, §9.14, recusado) ⇒ **regra two-strikes (DIRETIVA §5): PROVAR O MODELO antes de construir.**
+O modelo: hoje o `escreve` das esticadas tracejadas (iGPU, `0,244` ms) é o passeio em série de cada cópia
+(`E1F`: `0,084`) mais a emissão em série (`0,160`: `0,066` só de andar o laço dos pedaços, `0,094` de geometria).
+O GRUPO perdia por emitir DUAS vezes, pela fase em série do fio `0` e por `13` KB de memória de grupo — nenhuma das
+três existe aqui: (1) o passeio de cada cópia anda só os TROÇOS (o `arco`, o `s0`, `n0..n1`) e escreve uma linha
+por troço numa tabela; (2) um prefixo das peças por troço; (3) um passe com UM FIO POR PEÇA (`~9 000` nas
+esticadas, `~32 000` nas densas) acha o seu troço por busca binária no prefixo (o desenho do `aresta_de`) e emite
+nos sítios da reserva da peça. **Prova antes de construir (sem relógio de produto, ablação):** o passeio por troço
++ a tabela + o passe por peça a fazer só o `pedaco` (sem arestas) ≤ `0,13` ms no `escreve` das esticadas
+tracejadas da iGPU; acima disso o modelo cai e (E) fecha por recusa medida. **Kill-criterion do produto:** `escreve`
+`≤ 0,15` (de `0,244`) e soma `≤ 0,86` (de `0,94`) nas esticadas tracejadas da iGPU, nenhuma cena pior que `+5 %`
+iGPU / `+10 %` RTX, a imagem IGUAL à do `F` byte a byte (o controlo da sonda) e os `14` gates, a reserva igual.
+
+**(C) A mordida do traço rente — a PLACA é a lei** (a união verdadeira); quem morde é o traçador do Vello
+(`kurbo::stroke`: a junta interior passa pelo pivô e o pedaço curto cruza-se, enrolamento `0`). A cura é na rota
+Vello do Motion (`motion_shape_gen::encode`): o contorno TRACEJADO expande-se pela MESMA lei da placa — peças,
+juntas e pontas como sub-caminhos com o mesmo sentido, preenchidos `nonzero` — em vez do `kurbo::stroke`. O
+traçador do módulo Vector NÃO muda (outra linha; o defeito lá é do `kurbo`). **Kill-criterion:** uma família
+nova no arnês do tracejado contra o Vello com pedaços rentes depois de uma quina e PONTA REDONDA (hoje evitada com
+ponta quadrada): rota Vello do Motion = placa (alfa `≤ 1`); as `7` famílias de hoje não pioram; o `encode` da
+`=127` tracejada não fica mais de `10 %` mais caro na CPU.
+
+**(D) O contacto dos colisores na placa — a pergunta JÁ foi medida e RECUSADA, com prazo de validade.** O doc 115
+§9.5/§11 recusou o contacto no dispositivo À POPULAÇÃO DO DONO (centenas de objectos: a separação na CPU custa
+`12,4 %` de um quadro a `500` objectos e `8` varreduras) e escreveu quando a recusa EXPIRA: *«um duplicador que
+multiplique um objecto com colisor em milhares»*. Este doc pôs as formas aos milhares na placa (a `=127`: `16 384`)
+— e uma forma com `Collide` ainda derruba o cozimento INTEIRO para a CPU (`motion_bridge_gpu_colisor.rs`; o kernel
+de dispositivo de hoje só separa DISCOS, a CPU honra a CAIXA). ⇒ **o 1.º passo é MEDIR se a recusa expirou, não
+construir:** a `=127` com `Collide` ligado na forma (caixa), `1 024` · `4 096` · `16 384` cópias, as duas placas,
+o quadro inteiro pela régua do app (`mede_formas_na_placa.sh`) e o custo do cozimento da CPU (`[frame] MOTION`).
+**Critério:** se a `4 096` o quadro passa de `16,7` ms (`60` fps) na iGPU, a recusa expirou e abre-se a wave do
+contacto da CAIXA no dispositivo (o solver de `ph2d-contact` em WGSL, paridade por passo contra a CPU, as cercas do
+`motion_bridge_gpu_colisor.rs` a cair só para o que o kernel honra); senão a recusa renova-se com o número novo.
+
+**(D) — o resultado: a recusa RENOVA-SE até aos milhares, com o ponto de expiração novo.** A separação na CPU
+(`ph2d-contact`, `custo_da_separacao_aos_milhares`, perfil `smoke`, carga `2,2`, caixas orientadas na densidade de
+uma cena, mínimo de `5`):
+
+| peças | `8` varreduras (o PRODUTO, `sim.step`) | % de um quadro | `32` varreduras | % |
+|---|---:|---:|---:|---:|
+| `1 024` | `0,505` ms | `3,0 %` | `2,162` ms | `13,0 %` |
+| `4 096` | `1,548` ms | **`9,3 %`** | `5,524` ms | `33,1 %` |
+| `16 384` | `5,778` ms | **`34,7 %`** | `20,078` ms | `120,4 %` |
+
+⇒ a `4 096` peças com colisor o contacto na CPU cabe com folga num quadro: a recusa do doc 115 vale até aos
+milhares; o ponto em que ela expira passa a ser **`16 384`** (um terço do quadro nesta CPU de secretária — e o dobro,
+`8` varreduras de `32`, se uma cena pedir a convergência da corda). ⛔⛔ **E a tabela do doc 115 §9.3 lia `~8×` a
+mais** (`1 000` peças, `32` varreduras: `18,058` ms lá, `2,162` aqui): foi tirada com a máquina a `load 45`–`91` (o
+cabeçalho da sonda di-lo) — *o mínimo sob carga continua a ser um tecto, nunca o custo*. A medição do quadro INTEIRO
+no app (com Play: a `=114` ganhou `PH2D_PILHA_LADO`/`PH2D_PILHA_COLIDE`) fica por correr — o roteiro de foto não carrega
+em Play.
+
+**(F) O SIGSEGV/SIGABRT da RTX ao sair — a causa MEDIDA e a cura.** As pilhas (`coredumpctl`, `3` despejos): uma
+thread do compilador da NVIDIA (`libnvidia-gpucomp`, `_nv002nvvm`) ainda compila quando a principal está no `exit`, e
+o destrutor do `libGLX_nvidia` desmonta o driver por baixo dela. Depende da carga (`3/3` limpas com a máquina calma).
+O nosso papel: o perfilador (`pass_profiler`, um `static OnceLock` que emprestava `&'static QuerySet`) segurava o
+dispositivo até ao `exit`, e o `vkDestroyDevice` nunca corria antes do destrutor do driver. **O experimento (a mesma
+sonda, `13` variantes, RTX, carga `8`–`67`):** com o perfilador `4/6` falhas (incluindo `1/3` com as `13` variantes
+IGUAIS do controlo A/A, `PH2D_SONDA_AA`), sem ele **`0/9`**. **A cura:** o perfilador vive num
+`Mutex<Option<Arc<…>>>`, entrega a cada passe uma cópia DONA do `QuerySet` (`PassTimestamps`, `.compute()` /
+`.render()`) em vez do empréstimo `'static`, e ganha `shutdown()` — que as sondas chamam no fim (o gate
+`pass_profiler_gpu` prova que ele solta). Os `15` sítios instrumentados (`13` em `ph2d-render`, `2` em
+`ph2d-shape-gpu`) passam a `compute_writes(..).as_ref().map(PassTimestamps::compute)`. ⚠️ A shell chama o `init`
+com `PH2D_FLUID_PROFILE=1` e não o `shutdown` (a catraca da shell só desce; as corridas de perfil do app acabam
+mortas pelo roteiro, não pelo `exit`).

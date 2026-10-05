@@ -40,7 +40,12 @@ const CENAS: [(&str, &str, &str, bool); 6] = [
 /// no início, doc 121 §9.15). Os pedaços `override` do §9.15 dobraram-se e os candidatos do §9.17 saíram com o
 /// código deles (doc 121 §9.17); um candidato novo entra aqui como `override` ([`ph2d_shape_gpu::CONSTANTES_DO_CONTORNO`]).
 fn variantes() -> Vec<(&'static str, VarianteDoPasse)> {
-    vec![
+    // `PH2D_SONDA_AA=k`: `k` cópias do `F` a mais — o controlo A/A (o que a régua lê entre variantes iguais).
+    const AA: [&str; 12] = [
+        "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+    ];
+    let aa = (numero("PH2D_SONDA_AA", 0) as usize).min(AA.len());
+    let mut v = vec![
         ("F", VarianteDoPasse::default()),
         (
             "F-D",
@@ -56,7 +61,9 @@ fn variantes() -> Vec<(&'static str, VarianteDoPasse)> {
                 ..VarianteDoPasse::default()
             },
         ),
-    ]
+    ];
+    v.extend(AA[..aa].iter().map(|n| (*n, VarianteDoPasse::default())));
+    v
 }
 
 /// A lista do ambiente (`a,b,c`), ou tudo.
@@ -249,4 +256,6 @@ fn sonda_intercalada() {
         t0.elapsed().as_secs_f64(),
         carga().trim()
     );
+    // §9.18 (F): o perfilador solta o dispositivo antes do `exit` (na RTX, segurado até lá, o processo morria).
+    ph2d_gpu::pass_profiler::shutdown();
 }

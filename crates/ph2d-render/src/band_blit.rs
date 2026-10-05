@@ -207,7 +207,9 @@ impl BandBlit {
                     },
                 })],
                 depth_stencil_attachment: None,
-                timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.band_blit"),
+                timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.band_blit")
+                    .as_ref()
+                    .map(ph2d_gpu::pass_profiler::PassTimestamps::render),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });

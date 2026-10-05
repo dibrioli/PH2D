@@ -492,3 +492,45 @@ fn o_custo_contra_a_densidade() {
     eprintln!("  `1,0` = cada disco com o centro na borda do vizinho.");
     eprintln!("  load: {}\n", carga());
 }
+
+/// ⭐ doc 121 §9.18 (D) — **a recusa do doc 115 expira aos MILHARES?** Aquela mediu centenas; a placa já
+/// desenha milhares de formas (a `=127`: `16 384`), e uma forma com `Collide` derruba o cozimento inteiro
+/// para a CPU. A grelha só (a lei é a mesma de todos-os-pares), com as `8` varreduras do PRODUTO
+/// (`sim.step`, `VARREDURAS`) e as `32` da corda; o mínimo de `CORRIDAS_MILHARES`.
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn custo_da_separacao_aos_milhares() {
+    const CORRIDAS_MILHARES: usize = 5;
+    eprintln!(
+        "\n  ═══ A SEPARAÇÃO AOS MILHARES (doc 121 §9.18 D) — grelha, mínimo de {CORRIDAS_MILHARES} ═══\n"
+    );
+    eprintln!(
+        "  {:<7} │ {:>12} │ {:>9} │ {:>12} │ {:>9}",
+        "peças", "8 varr.", "% quadro", "32 varr.", "% quadro"
+    );
+    for n in [1024usize, 4096, 16384] {
+        let (p0, c, w) = campo(n, ESPACO_DE_CENA);
+        let inv = vec![0.0; n];
+        let pecas = Pecas::novas(&c, &w, &inv);
+        let mut col = [0.0f64; 2];
+        for (k, v) in [8usize, 32].into_iter().enumerate() {
+            let mut melhor = f64::INFINITY;
+            for _ in 0..CORRIDAS_MILHARES {
+                let mut p = p0.clone();
+                let mut giro = vec![0.0; n];
+                let agora = Instant::now();
+                separate(&mut p, &mut Saida { giro: &mut giro }, &pecas, v);
+                melhor = melhor.min(agora.elapsed().as_secs_f64() * 1e3);
+            }
+            col[k] = melhor;
+        }
+        eprintln!(
+            "  {n:<7} │ {:>9.3} ms │ {:>8.1}% │ {:>9.3} ms │ {:>8.1}%",
+            col[0],
+            col[0] / QUADRO_MS * 100.0,
+            col[1],
+            col[1] / QUADRO_MS * 100.0
+        );
+    }
+    eprintln!("\n  load durante a corrida: {}\n", carga());
+}

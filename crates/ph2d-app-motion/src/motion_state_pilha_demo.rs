@@ -40,6 +40,17 @@ use ph2d_nodegraph::graph::NodeId;
 /// direita, muitas o bastante para as da esquerda serem um borrão.
 const COLS: f32 = 5.0;
 const ROWS: f32 = 5.0;
+
+/// Porta de MEDIÇÃO (doc 121 §9.18 D — a recusa do doc 115 expira aos milhares): `PH2D_PILHA_LADO=k`
+/// põe `k × k` peças em cada taça; `PH2D_PILHA_COLIDE=0` desliga o `Collide` (a MESMA cena pela placa).
+fn medida() -> (f32, f32, bool) {
+    let lado = std::env::var("PH2D_PILHA_LADO")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+        .filter(|k| *k >= 1.0);
+    let colide = !std::env::var("PH2D_PILHA_COLIDE").is_ok_and(|v| v == "0");
+    (lado.unwrap_or(ROWS), lado.unwrap_or(COLS), colide)
+}
 /// O meio-lado de cada quadrado (o `size` do `source.shape`: a geometria nasce em raio 1).
 const LADO: f32 = 0.11;
 /// O vão de partida. ⚠️ **Maior que o diâmetro do colisor à volta** (`2 · √2 · LADO ≈ 0,311`):
@@ -89,7 +100,9 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     let quadrado = super::sim_demo::indice_de(reg, "source.shape", "kind", "Square")?;
     let em_laco = super::sim_demo::indice_de(reg, "sim.zone", "mode", "Loop")?;
 
+    let (linhas, colunas, com_colisor) = medida();
     let mut metade = |x: f32, colide: bool, y_linha: f32| -> Option<NodeId> {
+        let colide = colide && com_colisor;
         let g = &mut doc.graph;
         let forma = g.add_node("source.shape");
         g.set_param(forma, param::KIND, quadrado);
@@ -100,8 +113,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         }
 
         let grid = g.add_node("motion.grid");
-        g.set_param(grid, "rows", ROWS);
-        g.set_param(grid, "cols", COLS);
+        g.set_param(grid, "rows", linhas);
+        g.set_param(grid, "cols", colunas);
         g.set_param(grid, "gap_x", GAP);
         g.set_param(grid, "gap_y", GAP);
 

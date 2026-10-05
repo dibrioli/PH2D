@@ -20,11 +20,16 @@
 //!    supports — encoder-level `write_timestamp` is NOT available there).
 //!
 //! Every public fn is a no-op returning `None`/`()` when uninitialized, so
-//! instrumentation sites cost one `OnceLock::get` + branch in production.
+//! instrumentation sites cost one uncontended lock + branch in production.
+//!
+//! ⚠️ The profiler holds the device (its query set and buffers) — call [`shutdown`] before the
+//! process exits. Held to `exit`, the device is never destroyed before the driver's own teardown,
+//! and on NVIDIA a shader-compiler thread still running then crashes the process (doc 121 §9.18 F:
+//! `4/6` crashes with the profiler held, `0/9` without, same probe and load).
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex};
 
 /// Timestamp queries per frame (begin+end pairs ⇒ ≤ 256 scopes). The fluid
 /// step alone is ~40 passes/frame; 512 leaves headroom for the layer-compositor
@@ -75,7 +80,19 @@ struct Inner {
     accum: Accum,
 }
 
-static PROF: OnceLock<Prof> = OnceLock::new();
+static PROF: Mutex<Option<Arc<Prof>>> = Mutex::new(None);
+
+fn prof() -> Option<Arc<Prof>> {
+    PROF.lock().ok()?.clone()
+}
+
+/// Release the profiler's GPU objects (and with them its hold on the device). Instrumented passes
+/// go back to `None`; a later [`init`] builds it again.
+pub fn shutdown() {
+    if let Ok(mut p) = PROF.lock() {
+        p.take();
+    }
+}
 
 /// Build the profiler if `PH2D_FLUID_PROFILE` is on AND the device was created
 /// with `TIMESTAMP_QUERY`. Call once from the shell right after device
@@ -125,7 +142,11 @@ pub fn init_forced(device: &wgpu::Device, queue: &wgpu::Queue) {
         })
         .collect();
     let period = queue.get_timestamp_period();
-    let _ = PROF.set(Prof {
+    let Ok(mut slot) = PROF.lock() else { return };
+    if slot.is_some() {
+        return;
+    }
+    *slot = Some(Arc::new(Prof {
         query_set,
         resolve_buf,
         period,
@@ -135,12 +156,12 @@ pub fn init_forced(device: &wgpu::Device, queue: &wgpu::Queue) {
             ring,
             accum: Accum::default(),
         }),
-    });
+    }));
     eprintln!("[gpu] pass profiler ON (timestamp period {period:.3} ns/tick)");
 }
 
-fn alloc_pair(label: &'static str) -> Option<(&'static Prof, u32, u32)> {
-    let prof = PROF.get()?;
+fn alloc_pair(label: &'static str) -> Option<(Arc<Prof>, u32, u32)> {
+    let prof = prof()?;
     let mut inner = prof.inner.lock().ok()?;
     if inner.next_idx + 2 > CAPACITY {
         inner.accum.dropped += 1;
@@ -149,31 +170,57 @@ fn alloc_pair(label: &'static str) -> Option<(&'static Prof, u32, u32)> {
     let b = inner.next_idx;
     inner.next_idx += 2;
     inner.scopes.push((label, b, Some(b + 1)));
+    drop(inner);
     Some((prof, b, b + 1))
 }
 
-/// Timestamp writes for a compute pass. Attach to the pass descriptor:
-/// `timestamp_writes: ph2d_gpu::pass_profiler::compute_writes("fluid.diffuse")`.
-/// `None` (free) when profiling is off.
+/// One pass's begin/end timestamp slots — an OWNED handle (a clone of the query set), so the
+/// profiler can be [`shutdown`] and release the device. Bind it before the descriptor:
+/// ```ignore
+/// let relogio = ph2d_gpu::pass_profiler::compute_writes("fluid.diffuse");
+/// // … timestamp_writes: relogio.as_ref().map(PassTimestamps::compute),
+/// ```
+pub struct PassTimestamps {
+    query_set: wgpu::QuerySet,
+    begin: u32,
+    end: u32,
+}
+
+impl PassTimestamps {
+    #[must_use]
+    pub fn compute(&self) -> wgpu::ComputePassTimestampWrites<'_> {
+        wgpu::ComputePassTimestampWrites {
+            query_set: &self.query_set,
+            beginning_of_pass_write_index: Some(self.begin),
+            end_of_pass_write_index: Some(self.end),
+        }
+    }
+
+    #[must_use]
+    pub fn render(&self) -> wgpu::RenderPassTimestampWrites<'_> {
+        wgpu::RenderPassTimestampWrites {
+            query_set: &self.query_set,
+            beginning_of_pass_write_index: Some(self.begin),
+            end_of_pass_write_index: Some(self.end),
+        }
+    }
+}
+
+/// Timestamp slots for a compute pass ([`PassTimestamps::compute`]). `None` (free) when off.
 #[must_use]
-pub fn compute_writes(label: &'static str) -> Option<wgpu::ComputePassTimestampWrites<'static>> {
-    let (prof, b, e) = alloc_pair(label)?;
-    Some(wgpu::ComputePassTimestampWrites {
-        query_set: &prof.query_set,
-        beginning_of_pass_write_index: Some(b),
-        end_of_pass_write_index: Some(e),
+pub fn compute_writes(label: &'static str) -> Option<PassTimestamps> {
+    let (prof, begin, end) = alloc_pair(label)?;
+    Some(PassTimestamps {
+        query_set: prof.query_set.clone(),
+        begin,
+        end,
     })
 }
 
-/// Timestamp writes for a render pass (sprite/tonemap/compositor).
+/// Timestamp slots for a render pass ([`PassTimestamps::render`]). `None` (free) when off.
 #[must_use]
-pub fn render_writes(label: &'static str) -> Option<wgpu::RenderPassTimestampWrites<'static>> {
-    let (prof, b, e) = alloc_pair(label)?;
-    Some(wgpu::RenderPassTimestampWrites {
-        query_set: &prof.query_set,
-        beginning_of_pass_write_index: Some(b),
-        end_of_pass_write_index: Some(e),
-    })
+pub fn render_writes(label: &'static str) -> Option<PassTimestamps> {
+    compute_writes(label)
 }
 
 /// Token pairing a span begin with its end (the end query index + the scope
@@ -183,8 +230,8 @@ pub struct SpanToken {
     end_idx: u32,
 }
 
-fn alloc_span(label: &'static str) -> Option<(&'static Prof, u32, SpanToken)> {
-    let prof = PROF.get()?;
+fn alloc_span(label: &'static str) -> Option<(Arc<Prof>, u32, SpanToken)> {
+    let prof = prof()?;
     let mut inner = prof.inner.lock().ok()?;
     if inner.next_idx + 2 > CAPACITY {
         inner.accum.dropped += 1;
@@ -195,6 +242,7 @@ fn alloc_span(label: &'static str) -> Option<(&'static Prof, u32, SpanToken)> {
     let scope_idx = inner.scopes.len();
     // `end` stays None until `*_span_end` proves the end marker was recorded.
     inner.scopes.push((label, b, None));
+    drop(inner);
     Some((
         prof,
         b,
@@ -207,7 +255,7 @@ fn alloc_span(label: &'static str) -> Option<(&'static Prof, u32, SpanToken)> {
 
 fn empty_marker_pass(
     enc: &mut wgpu::CommandEncoder,
-    prof: &'static Prof,
+    prof: &Prof,
     begin: Option<u32>,
     end: Option<u32>,
 ) {
@@ -230,14 +278,14 @@ fn empty_marker_pass(
 #[must_use]
 pub fn copy_span_begin(enc: &mut wgpu::CommandEncoder, label: &'static str) -> Option<SpanToken> {
     let (prof, b, token) = alloc_span(label)?;
-    empty_marker_pass(enc, prof, Some(b), None);
+    empty_marker_pass(enc, &prof, Some(b), None);
     Some(token)
 }
 
 /// Close a [`copy_span_begin`] span.
 pub fn copy_span_end(enc: &mut wgpu::CommandEncoder, token: SpanToken) {
-    let Some(prof) = PROF.get() else { return };
-    empty_marker_pass(enc, prof, None, Some(token.end_idx));
+    let Some(prof) = prof() else { return };
+    empty_marker_pass(enc, &prof, None, Some(token.end_idx));
     if let Ok(mut inner) = prof.inner.lock()
         && let Some(s) = inner.scopes.get_mut(token.scope_idx)
     {
@@ -258,18 +306,18 @@ pub fn span_begin(
     let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("ph2d gpu profiler span begin"),
     });
-    empty_marker_pass(&mut enc, prof, Some(b), None);
+    empty_marker_pass(&mut enc, &prof, Some(b), None);
     queue.submit([enc.finish()]);
     Some(token)
 }
 
 /// Close a [`span_begin`] span (its own submit).
 pub fn span_end(device: &wgpu::Device, queue: &wgpu::Queue, token: SpanToken) {
-    let Some(prof) = PROF.get() else { return };
+    let Some(prof) = prof() else { return };
     let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("ph2d gpu profiler span end"),
     });
-    empty_marker_pass(&mut enc, prof, None, Some(token.end_idx));
+    empty_marker_pass(&mut enc, &prof, None, Some(token.end_idx));
     queue.submit([enc.finish()]);
     if let Ok(mut inner) = prof.inner.lock()
         && let Some(s) = inner.scopes.get_mut(token.scope_idx)
@@ -338,11 +386,11 @@ pub struct Totals {
 /// door for a probe that interleaves variants in blocks of frames (doc 121 §9.16). Call
 /// [`end_frame`] after the block's last frame first, so its queries are resolved. `None` when off.
 pub fn drain(device: &wgpu::Device) -> Option<Totals> {
-    let prof = PROF.get()?;
+    let prof = prof()?;
     let _ = device.poll(wgpu::PollType::wait_indefinitely());
     let mut inner = prof.inner.lock().ok()?;
     let inner = &mut *inner;
-    collect_ready(prof, inner);
+    collect_ready(&prof, inner);
     let accum = std::mem::take(&mut inner.accum);
     Some(Totals {
         per_label: accum
@@ -361,7 +409,7 @@ pub fn drain(device: &wgpu::Device) -> Option<Totals> {
 /// frames. Call once per frame from the shell, after the last instrumented
 /// submit. No-op when off.
 pub fn end_frame(device: &wgpu::Device, queue: &wgpu::Queue) {
-    let Some(prof) = PROF.get() else { return };
+    let Some(prof) = prof() else { return };
     let Ok(mut inner) = prof.inner.lock() else {
         return;
     };
@@ -370,7 +418,7 @@ pub fn end_frame(device: &wgpu::Device, queue: &wgpu::Queue) {
     // 1. Drain completed readbacks (the map callback fired on some earlier
     //    poll — `acquire_frame`/present polls the device every frame).
     let _ = device.poll(wgpu::PollType::Poll);
-    collect_ready(prof, inner);
+    collect_ready(&prof, inner);
 
     // 2. Print the report window.
     if inner.accum.frames >= WINDOW {

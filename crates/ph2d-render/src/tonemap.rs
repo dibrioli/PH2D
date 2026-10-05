@@ -300,7 +300,9 @@ impl Tonemap {
                     },
                 })],
                 depth_stencil_attachment: None,
-                timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.tonemap"),
+                timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.tonemap")
+                    .as_ref()
+                    .map(ph2d_gpu::pass_profiler::PassTimestamps::render),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });

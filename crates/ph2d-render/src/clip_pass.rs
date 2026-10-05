@@ -75,7 +75,9 @@ pub(crate) fn encode_clip_groups<'a>(
                 store: wgpu::StoreOp::Discard,
             }),
         }),
-        timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.clip"),
+        timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.clip")
+            .as_ref()
+            .map(ph2d_gpu::pass_profiler::PassTimestamps::render),
         occlusion_query_set: None,
         multiview_mask: None,
     });
@@ -186,7 +188,9 @@ pub(crate) fn encode_mask_pass<'a>(
                 store: wgpu::StoreOp::Discard,
             }),
         }),
-        timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.clip"),
+        timestamp_writes: ph2d_gpu::pass_profiler::render_writes("render.clip")
+            .as_ref()
+            .map(ph2d_gpu::pass_profiler::PassTimestamps::render),
         occlusion_query_set: None,
         multiview_mask: None,
     });

@@ -1879,3 +1879,10 @@ PARTE e as arestas reservadas · escritas de cada variante; e o app (`mede_forma
 contínua e tracejada × `base` · `F` · `LHPG` × as duas placas. Depois da tabela: os pedaços recusados saem com o código
 deles, os aceites dobram-se, e o `variantes()` da sonda fica com o que sobrar de porta de medição. Imagens iguais: os
 `14` gates nas duas placas, os do produto (`motion_shape_placa`) e o arnês do tracejado contra o Vello.
+
+**Série justificada (§0.10), escrita ANTES da 2.ª medição:** na rodada (`3609f28d2`) o **G32** falhou o critério dele
+nas tracejadas (`conta + escreve` `−0,016` ms, pedia `−0,02`) e SAI daí; mas nas esticadas CONTÍNUAS da iGPU a soma
+desceu `0,858 → 0,817` (`−4,8 %`, mínimo e mediana juntos), que não era o alvo dele. ⇒ uma confirmação curta, só `F` e
+`G32`, `11` rodadas, as `6` cenas nas duas placas. **Critério:** o `G32` fica (o grupo passa a `32` no `cs_conta` e
+no `cs_escreve`) se a soma das esticadas contínuas da iGPU descer `≥ 3 %` OUTRA VEZ, e nenhuma cena piorar mais que
+`+2 %` na iGPU nem `+5 %` na RTX; senão sai com as outras.

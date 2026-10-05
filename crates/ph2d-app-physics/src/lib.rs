@@ -359,6 +359,8 @@ mod measure_player_tape;
 #[cfg(test)]
 mod physics_gesture_surface_tests;
 #[cfg(test)]
+mod tape_second_life_tests;
+#[cfg(test)]
 mod topdown_finger_tests;
 
 // ⚠️ **`pub(crate)` e não privado**: a porta `apply` (um edit do §11 aplicado

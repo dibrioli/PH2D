@@ -65,10 +65,16 @@ pub fn dispatch(
     // a corrida que o artista está justamente tentando rever — o replay passaria
     // a reproduzir uma corrida que ninguém deu.
     //
-    // ⚠️ E a gravação é no tique ALVO, não num por tique devido: um dispatch que
+    // ⚠️⚠️ E a gravação é em TODO tique devido, não só no ALVO: um dispatch que
     // deve vários ticks aplica a MESMA entrada a todos (é o que segurar uma tecla
-    // quer dizer), e o `record` preenche o vão com a última entrada exatamente
-    // por isso.
+    // quer dizer), e a fita tem de dizer o mesmo. ⛔ Gravar só o alvo valia na 1.ª
+    // corrida (o `record` estende e preenche o vão com a última entrada) e MENTIA
+    // numa corrida regravada por cima de outra — depois de um recomeço, de um loop
+    // ou de um scrub para trás e play: os tiques do meio ficavam com o dedo da
+    // corrida ANTERIOR, e a ponte joga-os. Report do dono (05/10, a arena): *«o
+    // player rotaciona e se move sozinho algumas vezes»* — um passo da vida
+    // anterior em cada quadro que devia dois tiques (gate
+    // `na_segunda_vida_sem_tecla_o_heroi_nao_anda_nem_roda`).
     //
     // ⚠️ **E as outras duas condições são a CORREÇÃO da W17** — a que tornou a
     // fita persistível. Medido pela porta do produto antes de qualquer linha
@@ -85,7 +91,9 @@ pub fn dispatch(
     // Uma entrada gravada num tique que o solver não rodou descreve um instante
     // que não aconteceu, e o replay a reproduziria como se tivesse acontecido.
     if simulate && players > 0 && target > bridge.last_stepped() {
-        tape.record(target, input);
+        for tick in bridge.last_stepped() + 1..=target {
+            tape.record(tick, input);
+        }
     }
     if !simulate {
         bridge.hold(sim, target);

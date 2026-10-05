@@ -132,6 +132,8 @@ Troca só o link do handoff na entrada **Motion Nodes**: `Último: [handoff 05/1
 
 ## §10 — A 2.ª onda (05/10, depois do smoke aprovado): «precisamos resolver tudo»
 
+✅ **Smoke do dono da 2.ª onda APROVADO em 05/10** (a `=127` tracejada, a mesma imagem e `60` fps).
+
 Ordem do dono sobre o §6. Plano e números: [doc 121 §9.18](../121_as_formas_na_placa.md). Commits
 `0bb491ca3` … `cd11b022c` (⚠️ `849ca87f0` SOZINHO não compila — o `name` do `Cargo.toml` do kit entrou no seguinte; não o
 escolha num cherry-pick nem num bisect).

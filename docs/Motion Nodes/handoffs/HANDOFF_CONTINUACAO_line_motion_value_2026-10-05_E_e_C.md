@@ -12,7 +12,7 @@ Sua linha: line/motion-value · worktree Worktrees/line-motion-value/ (JÁ EXIST
 
 FASE 0 (já, sem pedir confirmação):
 1. cd Worktrees/line-motion-value && pwd && git branch --show-current   → line/motion-value
-2. git log --oneline -8 && git status --short --ignored | grep -v target/   → HEAD = o commit deste prompt; árvore limpa.
+2. git log --oneline -8 && git status --short --ignored | grep -v target/   → HEAD = o commit «smoke da 2.ª onda aprovado» (o último da linha); árvore limpa (só `!! assets/sprites/`).
 FASE 1:
 3. git cherry main HEAD | grep -c '^+' (a linha NÃO está integrada: o handoff de integração de 05/10 cobre tudo).
    Se o main andou: `git range-diff main...HEAD` e `git rebase main 2>&1 | tee target/rebase.log`.

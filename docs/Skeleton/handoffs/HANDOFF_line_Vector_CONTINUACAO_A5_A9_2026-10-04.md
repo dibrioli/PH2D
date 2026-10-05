@@ -119,6 +119,8 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
 
 ### A5 — (b) ⛔ recusado pelo dono no smoke (F59; feito em `f1481cd7d`, REVERTIDO em `501daabf4`: «o modo anterior era melhor») · (a) ⏳ TENTADO E REVERTIDO (F59, `ac8246764` → `9e39c48a5`): a cúspide da imagem
 
+> ⛔ **05/10 — a hipótese seguinte (o anel por *marching squares*) foi medida e REFUTADA** (fila §F59, tabela das três leis): pior que a marcha na cúspide, pior que a lei de hoje a −149,5°, e ainda cose sobre a tinta de outro membro. Quatro desenhos ⇒ (a) fica ABERTO sem lei candidata; o que falta perceber é o critério de LADO (porque remenda sobre outro membro), não a forma do anel.
+
 > O dono escolheu (04/10) «fechar os buracos tão pequenos que a linha os cobre» e «corrigir» a cúspide.
 > (b) feito: 100° `[0,13 0,54 0,12]→[0,54]`, 110° `[1,24 0,25 1,25 0,42]→[1,24 1,25]`, mutação 5/5. (a) a tentativa
 > melhorou a pose do relatório (104→48) mas regrediu −149,5° e −160° nos gates da F49 ⇒ revertida após 3

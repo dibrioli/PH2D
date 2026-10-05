@@ -199,7 +199,22 @@ sozinhos a `load 32`–`36`) · `check --workspace --all-targets` `-D warnings` 
 sozinho na árvore, pré-voo `12/12`): **`12/12` sangram** na família nova (a lista no doc 121 §9.18). A `m6` (a emenda
 nunca) sobreviveu à 1.ª corrida — nenhuma forma da família tinha dois contornos; a engrenagem com furo entrou e ela sangra.
 
-**Smoke (o dono):** SMOKE_AQUI
+**Smoke (o dono):** ⏳ por aprovar. Fotografado a `1930 × 1040` (RTX), as duas rotas: a placa (`[formas] 1024 copias de 1
+geometrias pela PLACA (do dispositivo)`) e o Vello (`PH2D_FORMAS_NA_PLACA=0`: `[formas] 1024 copias … pela cena Vello`,
+`59` fps) — o mesmo desenho, as estrelas amarelas esticadas com o contorno azul em traços (`target/prova/smoke_c/`).
+Binário: `rm -rf target/*/incremental` e o build `smoke` do `ph2d-host-desktop` 2× (a 2.ª: `Finished … in 0.20s`, zero
+«Compiling»).
+
+1. No terminal:
+   ```
+   cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=127 PH2D_TRACO_ESTICADO_TRACEJADO=1 PH2D_FORMAS_NA_PLACA=0 cargo run -p ph2d-host-desktop --profile smoke
+   ```
+2. Não precisa clicar: abre a cena das estrelas amarelas com o contorno azul em traços, a mexerem com a simulação.
+   Esta corrida desenha pelo caminho de RESERVA (o que o app usa quando a placa não pode desenhar) — é o que mudou.
+3. Tem de acontecer: igual ao smoke de antes (sem o `PH2D_FORMAS_NA_PLACA=0`) — os traços inteiros nas pontas da
+   estrela, sem pedacinhos «comidos» no lado de dentro das pontas; a barra de baixo perto de 60 fps.
+4. Deu errado se: algum traço faltar ou aparecer cortado junto a uma ponta, a estrela ficar sem contorno, ou a barra
+   cair muito abaixo de 60.
 
 **Aberto:** a emissão por peça só volta com o PASSEIO fora da série (um fio por troço e um prefixo segmentado — a
 4.ª topologia, two-strikes; a imagem deixa de ser a do `F` ao bit, e o critério tem de vir escrito antes, doc 121

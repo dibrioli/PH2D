@@ -53,10 +53,8 @@ ph2d-layer-ops = { path = "../ph2d-layer-ops" }
 # from `tool/paint.rs` to write dabs into the active layer's `canvas_rgba`.
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
 # O RIG DE LUZ, e só ele: quantas lâmpadas há, onde cada uma está, e a conversão
-# graus→vetor. Ele saiu daqui porque a escultura do módulo 3D tem de ser acesa
-# pelas MESMAS lâmpadas (docs/3D/05.2) — um segundo rig faria o artista afinar a
-# arte contra uma iluminação e ver outra. ⚠️ A ÓPTICA não saiu: material, LUT
-# especular, wax, metal e o modelo relativo continuam em `tool/paint/impasto_*`.
+# graus→vetor — a CPU e o shader leem-no da MESMA casa. ⚠️ A ÓPTICA fica aqui:
+# material, LUT especular, wax, metal e o modelo relativo vivem em `tool/paint/impasto_*`.
 ph2d-light = { path = "../ph2d-light" }
 # Wet Paint (PaintMode::WetPaint): the parity-tested fluid engine — ADR-0134.
 ph2d-wet-paint = { path = "../ph2d-wet-paint" }

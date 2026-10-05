@@ -91,8 +91,6 @@ mod paint_watercolor_flow;
 mod paint_watercolor_paper;
 mod paint_wetpaint;
 mod paint_wetpaint_tilt; // doc 22: the TILT dial (polar pad) of the Wet Paint section
-/// ⭐ O painel a mostrar a pilha da peça 3D (`docs/3D/30` §4).
-mod peca;
 mod plano_corpo; // quais secções do corpo se arrastam, quais ficam, e o cabeçalho de cada
 mod populate;
 mod populate_brush_chips;
@@ -109,7 +107,6 @@ mod state_dropdowns;
 mod state_ramp;
 pub mod stroke_method_offer; // the Method dropdown's narrowing law — pure, gate-tested from `tests/`
 
-pub use peca::{set_current_layers_on_piece, set_current_piece_refusal, set_current_spatial_units};
 pub use state::{
     FalloffHit, PainterLayersPanelState, falloff_canvas_norm, falloff_hit_test, last_content_h,
     last_visible_h, selected_falloff_point, set_current_brush, set_current_brush_flow_image,

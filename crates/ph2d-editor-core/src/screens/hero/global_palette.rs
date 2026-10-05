@@ -51,8 +51,8 @@
 //! `TITLE` tocaria as ~23 crates de painel (contrato foundational, churn próprio), e uma tabela
 //! `id → nome` aqui seria a segunda lista que apodrece. Então o título é `snake_case` → Title Case,
 //! uma **derivação do facto que já existe**: medido sobre os 23 ids registados, **21 saem limpos**
-//! (`audio_editor` → *Audio Editor*) e **dois saem feios** (`bgremoval` → *Bgremoval*, `sculpt3d` →
-//! *Sculpt3d*). Isso é cosmético e tem cura própria; uma tabela paralela não teria.
+//! (`audio_editor` → *Audio Editor*) e **dois saíam feios** (`bgremoval` → *Bgremoval*, e um painel
+//! que saiu com o 3D). Isso é cosmético e tem cura própria; uma tabela paralela não teria.
 
 use crate::widget::command_palette::{PaletteGroup, PaletteItem, PaletteModel, PaletteSub};
 use ph2d_a11y::NodeId;

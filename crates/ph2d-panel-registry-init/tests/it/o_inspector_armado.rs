@@ -43,7 +43,6 @@ use ph2d_editor_core::factory_edits::{
     InspectorFactory, InspectorFactoryInfo, InspectorLifecycle, InspectorSpawnWhere,
 };
 use ph2d_editor_core::hud_edits::InspectorHudInfo;
-use ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo;
 use ph2d_editor_core::nav_edits::{
     InspectorNavAgent, InspectorNavCostArea, InspectorNavInfo, InspectorNavLink,
     InspectorNavRegion, NavAgora, NavAlvoModo, NavEstado,
@@ -1110,17 +1109,6 @@ fn arma_o_top20() {
         clock_playing: true,
         selected_count: 1,
     }));
-    // ⭐⭐⭐ O CATAVENTO (`docs/3D/02.2`, rota B). ⚠️ **`assado: true` de propósito:** com `false` a
-    // secção pinta a queixa `bake this sprite first` e as três caixas continuam lá — mas é a
-    // configuração TRABALHADORA que a varredura de elisões tem de medir, e a queixa mais longa é a
-    // do outro braço. *Uma fixtura no estado degenerado mede a metade que o artista menos vê.*
-    insp::set_current_inspector_mesh3d(Some(InspectorMesh3dInfo {
-        entity_bits: BITS,
-        yaw: 0.75,
-        pitch: -0.25,
-        spin: 0.25,
-        assado: true,
-    }));
     // ⭐⭐ A NAVEGAÇÃO (plano 30, W4) — a região E o agente no MESMO objecto, cada um no estado
     // que pinta MAIS linhas: a região com a queixa mais longa · o agente em `Ponto` (duas
     // linhas de alvo contra uma do `Objecto`), com o mover a ler o teclado (a queixa mais
@@ -1203,7 +1191,6 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_tween(None);
     insp::set_current_inspector_weapon(None);
     insp::set_current_inspector_vida(None);
-    insp::set_current_inspector_mesh3d(None);
     insp::set_current_inspector_nav(None);
     insp::set_current_inspector_name(None);
     insp::set_current_inspector_transform(None);
@@ -1303,11 +1290,10 @@ pub const PORTAS: &[(&str, fn())] = &[
     }),
     ("particles", || insp::set_current_inspector_particles(None)),
     ("script", || insp::set_current_inspector_script(None)),
-    // ⭐ As três da rodada 03 (integração de 2026-09-25): a PARALAXE e a VIDA (`line/components`) e
-    // o CATAVENTO (`line/3DModeling`). Sem elas a régua de ALTURA não as desarma.
+    // ⭐ As duas da rodada 03 (integração de 2026-09-25): a PARALAXE e a VIDA (`line/components`).
+    // Sem elas a régua de ALTURA não as desarma.
     ("parallax", || insp::set_current_inspector_parallax(None)),
     ("vida", || insp::set_current_inspector_vida(None)),
-    ("mesh3d", || insp::set_current_inspector_mesh3d(None)),
     // ⭐ A NAVEGAÇÃO (plano 30, W4): a região e o agente partilham UMA porta.
     ("nav", || insp::set_current_inspector_nav(None)),
 ];

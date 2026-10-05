@@ -8,5 +8,4 @@
 //! ⛔ Excepção: um ficheiro com `#[global_allocator]` tem de ser binário PRÓPRIO (dois alocadores
 //! globais não cabem num binário, e um contador global veria as alocações dos vizinhos): fica em `tests/`.
 
-mod donated_form;
 mod measure_undo_capacity;

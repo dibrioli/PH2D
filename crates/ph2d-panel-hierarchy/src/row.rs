@@ -33,13 +33,6 @@ fn badge_tone(badge: &str) -> TagTone {
         // ⚠️ `UNI` cai no Neutral por já existir acima com outro significado, e ⛔ **não se muda o
         // tom daquele** para acomodar este: seria repintar um selo de outra família.
         "SUB" => TagTone::Warn,
-        // ⭐ **O vínculo ao desenho** (W57): a forma muda quando a curva muda. `Success` porque é
-        // uma capacidade a mais, nunca um aviso — o oposto de uma forma que perdeu a fonte.
-        "LNK" => TagTone::Success,
-        // ⭐⭐ **O ISOLAMENTO** (2026-08-25): esta linha é a única que está a ser desenhada, e as
-        // outras estão escondidas por causa dela. `Warn` porque é um **estado da vista** que
-        // explica uma ausência — o artista que não o vê conclui que perdeu a peça.
-        "ISO" => TagTone::Warn,
         "INT" | "EXC" => TagTone::Accent,
         // A BASE não tem verbo e a RECEITA é do grupo inteiro: nenhum dos dois é escolha daquela
         // linha, e o neutro é o que os separa dos que são.
@@ -477,8 +470,8 @@ mod badge_tests {
     use super::{TagTone, badge_tone};
 
     /// ⚠️⚠️ **[`badge_tone`] casa contra o TEXTO PINTADO**, e desde 2026-09-16 esse texto vem da
-    /// tabela de strings (`app.field3d.*`, `app.vec.*` — HR-15). As duas coisas convivem porque a
-    /// tabela devolve exactamente o mesmo código; **o dia em que uma língua traduzir `ISO` o selo
+    /// tabela de strings (`app.vec.*`, `shell.*` — HR-15). As duas coisas convivem porque a
+    /// tabela devolve exactamente o mesmo código; **o dia em que uma língua traduzir `SUB` o selo
     /// perde a cor em silêncio**, e é esse dia que este teste apanha.
     ///
     /// ⇒ a cura, quando ele reprovar, **não é reverter a tabela**: é o selo viajar como ID até
@@ -487,10 +480,8 @@ mod badge_tests {
     #[test]
     fn the_badge_tone_still_matches_what_the_table_paints() {
         for (chave, tom) in [
-            ("app.field3d.scene_acts.iso", TagTone::Warn),
-            ("app.field3d.scene_acts.lnk", TagTone::Success),
-            ("app.field3d.scene_verb.sub", TagTone::Warn),
-            ("app.field3d.scene_verb.int", TagTone::Accent),
+            ("shell.hero_bridge.prf", TagTone::Accent),
+            ("panel.hierarchy.badge.entity", TagTone::Neutral),
             ("app.vec.bool_shape.sub", TagTone::Warn),
             ("app.vec.bool_shape.int", TagTone::Accent),
             ("app.vec.bool_shape.exc", TagTone::Accent),

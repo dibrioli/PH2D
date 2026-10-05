@@ -4,7 +4,7 @@
 //!
 //! `shells/desktop` é uma crate de 493 k linhas e é a última unidade de todo build grande
 //! ([auditoria de velocidade][audit] §4-C2). Dentro dela vivem **famílias inteiras** — `motion_*`,
-//! `physics_*`, `sculpt3d_*`, `vec_*`, `flip_*`, `field3d_*` — que só ali estão por inércia: elas
+//! `physics_*`, `vec_*`, `flip_*` — que só ali estão por inércia: elas
 //! precisam de meia dúzia de coisas da `App` e, por causa dessa meia dúzia, pagam (e fazem pagar) a
 //! recompilação da maior crate do repo.
 //!
@@ -21,11 +21,9 @@
 //! 3. **É genuinamente da SHELL** — a janela, o `gfx`, o índice de acerto do chrome, a captura de
 //!    undo, o diálogo do sistema operativo? ⇒ **e só então** é um método deste trait.
 //!
-//! *A prova de que a ordem funciona é o piloto:* a `field3d` guarda o estado dela num
-//! `thread_local` da própria família **desde que existe**, com o doc-comment a dizer porquê
-//! (*«`app_state.rs` é compartilhado e a `line/sculpt3d` edita-o — um campo novo lá é uma colisão
-//! por conveniência»*). É exactamente por isso que ela é a família mais desacoplada das seis — **1**
-//! `impl App` contra os 22 da física — e é por isso que ela foi o piloto.
+//! *A prova de que a ordem funciona foi o piloto da W2:* uma família que guardava o estado num
+//! `thread_local` próprio **desde que existia** — **1** `impl App` contra os 22 da física (saiu
+//! com o 3D, ADR-0179).
 //!
 //! ⇒ **Uma família que precisa de um método por campo da `App` que hoje toca não precisa de um
 //! trait maior: precisa de tirar o campo da `App`.** O trait abaixo tem **cinco** métodos, e o
@@ -73,7 +71,7 @@ impl HostMods {
     /// **A pergunta que o app inteiro faz para «juntar à selecção»** — `Shift`, `Super` ou `Ctrl`.
     ///
     /// ⚠️ **É uma porta e não três `||` espalhados**: o `input_dispatch` do canvas 2D já fazia
-    /// exactamente esta conta, e a `field3d_input` copiou-a com o comentário *«um terceiro
+    /// exactamente esta conta, e outro módulo copiou-a com o comentário *«um terceiro
     /// vocabulário de modificador no mesmo app é onde a mão aprende errado»*. Duas cópias da mesma
     /// lei é a forma de a terceira divergir.
     #[must_use]

@@ -28,8 +28,6 @@ fn kind_options() -> Vec<DropdownOption<usize>> {
                 i,
                 ph2d_i18n::tr(crate::adjust_nomes::chave_da_especie(*kind)),
             )
-            // ⭐ Na peça 3D os que leem a vizinhança aparecem APAGADOS (a frase está no fundo do painel).
-            .disabled(!crate::peca::adjustment_offered(*kind))
         })
         .collect()
 }

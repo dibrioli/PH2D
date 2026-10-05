@@ -61,9 +61,6 @@ pub const INSP_LIVE_SHAKE_SECTION: NodeId = hash_node_id("insp_live_shake_sectio
 pub const INSP_LIVE_EMITTER_SECTION: NodeId = hash_node_id("insp_live_emitter_section");
 /// O cabeçalho dobrável da secção WEAPON — o RITMO, o PENTE e a recarga da arma do jogador.
 pub const INSP_LIVE_WEAPON_SECTION: NodeId = hash_node_id("insp_live_weapon_section");
-/// O cabeçalho dobrável da secção LIVE MESH — o CATAVENTO (`docs/3D/02.2`, rota B): a pose 3D da
-/// malha que este sprite mantém viva, e as voltas por segundo dela.
-pub const INSP_LIVE_MESH3D_SECTION: NodeId = hash_node_id("insp_live_mesh3d_section");
 /// A secção LIFECYCLE — o cabeçalho colapsável (TOP-20 #12, W3).
 pub const INSP_LIVE_LIFECYCLE_SECTION: NodeId = hash_node_id("insp_live_lifecycle_section");
 /// ⛔⛔ **Os PONTOS DE COR das três secções novas, e eles nasceram de um DEFEITO MEDIDO.**
@@ -125,8 +122,6 @@ pub const INSP_LIVE_DAMAGE_GRIP: NodeId = hash_node_id("insp_live_damage_grip");
 pub const INSP_LIVE_HEALTH_BAR_SECTION: NodeId = hash_node_id("insp_live_health_bar_section");
 /// A pega de arrasto da secção HEALTH BAR.
 pub const INSP_LIVE_HEALTH_BAR_GRIP: NodeId = hash_node_id("insp_live_health_bar_grip");
-/// A pega de arrasto da secção LIVE MESH (o catavento).
-pub const INSP_LIVE_MESH3D_GRIP: NodeId = hash_node_id("insp_live_mesh3d_grip");
 /// O cabeçalho dobrável da secção NAV REGION — onde os agentes andam (plano 30, W4).
 pub const INSP_LIVE_NAV_REGION_SECTION: NodeId = hash_node_id("insp_live_nav_region_section");
 /// A pega de arrasto da secção NAV REGION.

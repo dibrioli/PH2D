@@ -154,12 +154,6 @@ fn every_marker_derives_its_kind() {
             ObjectKind::Painted => {
                 e.insert(ph2d_ecs::PaintedDoc(1));
             }
-            ObjectKind::Model3D => {
-                e.insert(ph2d_field_ecs::FieldObject);
-            }
-            ObjectKind::Sculpt3D => {
-                e.insert(ph2d_ecs::Sculpt3dPieceRef(1));
-            }
         }
         let e = e.id();
         assert_eq!(kind_of(sim.world(), e), kind, "{kind:?}");

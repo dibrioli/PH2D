@@ -205,10 +205,6 @@ const KNOWN_LIVE: &[(&str, &str)] = &[
         "CMP no event.rs, pintado em `src/paint/body.rs` — a regua tem de ler o DIRECTORIO",
     ),
     (
-        "SCULPT3D_SEC_BRUSH",
-        "tabela de STRUCTS: membro de `rows::SECTIONS`, varrida com `.any(|s| s.id == id)`",
-    ),
-    (
         "VECTOR_SECTION_STROKE",
         "tabela: membro de VECTOR_SECTIONS, marcada colapsavel num for",
     ),
@@ -220,7 +216,6 @@ const KNOWN_LIVE: &[(&str, &str)] = &[
         "PAINTER_BRUSH_SIZE_CHIP",
         "par: (SLIDER, CHIP, STEP) no mesmo grupo de parênteses",
     ),
-    ("INSP_DRAG_HANDLE", "SELF: BlenderHit no pre_populate"),
 ];
 
 /// A **metade justa**: a sonda tem de VER o que já existe. Baseline medido em

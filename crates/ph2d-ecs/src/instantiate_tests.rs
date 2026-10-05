@@ -303,9 +303,11 @@ fn the_bridges_are_the_owned_documents() {
     );
     // ⚠️ **Um PISO, e não uma contagem exacta** (2026-09-04): a igualdade acima é a lei; este
     // número é só o controlo contra o vácuo, e como literal ele fazia **cada ponte nova editar
-    // o gate de outra pessoa** — foi o que aconteceu quando o `Sculpt3dPieceRef` entrou.
+    // o gate de outra pessoa**. ⚠️ 2026-10-05: piso `4` -> `3`, delta -1 — o 3D sai do PH2D
+    // (ADR-0179) e a ponte `Sculpt3dPieceRef` sai com ele (ficam `FlipObjectRef`, `PaintedDoc`
+    // e `VecPathRef`).
     assert!(
-        owned.len() >= 4,
+        owned.len() >= 3,
         "o controle positivo: o censo nao esta' vazio ({} pontes)",
         owned.len()
     );

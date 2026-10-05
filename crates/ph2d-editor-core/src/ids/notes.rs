@@ -236,7 +236,6 @@ mod tests {
             GAL_PANEL,
             crate::ids::VECTOR_PANEL,
             crate::ids::PHYSICS_PANEL,
-            crate::ids::SCULPT3D_PANEL,
             crate::ids::GS_PANEL,
             crate::ids::PAINTER_LAYERS_PANEL,
             crate::ids::WET_TUNING_PANEL,

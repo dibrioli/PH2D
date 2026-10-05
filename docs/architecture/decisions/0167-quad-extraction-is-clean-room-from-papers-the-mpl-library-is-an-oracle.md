@@ -1,12 +1,14 @@
 # ADR-0167 — A EXTRAÇÃO de malha quad é clean-room dos *papers*; a biblioteca MPL-2.0 é ORÁCULO, não fonte a portar
 
-- **Status:** Accepted
+> **Revogado por [ADR-0179](0179-o-3d-sai-do-ph2d.md) em 2026-10-05 — o 3D saiu do PH2D.** O texto abaixo fica como história; o código foi apagado (`git show b1a6f9b07:<caminho>`).
+
+- **Status:** **REVOGADO** pelo ADR-0179 (2026-10-05) · era: Accepted
 - **Data:** 2026-08-24
 - **Linha:** `line/sculpt3d` — papel **E** da [`SKILL_Cleanroom`](../../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md)
 - **Toca:** `ph2d-gridmap` (o arredondamento inteiro) · uma crate nova de extração · `ph2d-quadflow` (a porta do botão)
 - **Não move:** contrato congelado nenhum (CLAUDE.md §6). Nada no produto muda enquanto o interruptor estiver desligado.
-- **Espec funcional:** [`SPEC_extracao_de_malha_quad.md`](../../3D/cleanroom/SPEC_extracao_de_malha_quad.md)
-- **Triagem e medições:** [`TRIAGEM_quad_remesh.md`](../../3D/cleanroom/TRIAGEM_quad_remesh.md)
+- **Espec funcional:** `SPEC_extracao_de_malha_quad.md`
+- **Triagem e medições:** `TRIAGEM_quad_remesh.md`
 
 ## Contexto
 
@@ -129,5 +131,5 @@ primeira fase, e saltá-lo custa **o dobro** do enviesamento.
 | ⛔ **Não portar a biblioteca MPL-2.0** | obrigação de publicar arquivos no subsistema mais valioso, + descarte da cadeia própria, + custo de desempenho não compreendido | acima, razões 1-2-5 |
 | ⛔ **Não abrir clean-room T2 do alvo GPL** | ⚠️ **razão corrigida:** a rota escolhida **não** mede melhor que ele (`9–12°` contra `5–7°`); ela é a **única** que resta depois da caça por eliminação, e custa semanas a menos | alternativas · TRIAGEM §5-bis.3-ter |
 | ⛔⛔ **Não anunciar resultado medido em peça DELES como se fosse do nosso corpus** | a jarra deu `3,0°`, o nosso corpus deu `9–12°` — a conclusão inverteu-se | contexto |
-| ⛔ **Não voltar ao preenchimento por patch** | família fechada por medição em 2026-08-23 | [`PLAN.md`](../../3D/quad-remesh/PLAN.md) §4-tricies..§4-septemetquinquagies |
+| ⛔ **Não voltar ao preenchimento por patch** | família fechada por medição em 2026-08-23 | `PLAN.md` §4-tricies..§4-septemetquinquagies |
 | ⛔ **Não trocar o nosso campo** | ele mede **melhor** que o da biblioteca de referência | contexto |

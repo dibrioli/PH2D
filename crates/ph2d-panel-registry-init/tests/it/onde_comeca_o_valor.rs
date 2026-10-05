@@ -175,8 +175,6 @@ const FONTES: &[&str] = &[
     "../ph2d-panel-inspector/src",
     "../ph2d-panel-grid-snap/src",
     "../ph2d-panel-physics/src",
-    "../ph2d-panel-sculpt3d/src",
-    "../ph2d-panel-model3d/src",
     "../ph2d-panel-vector/src",
     "../ph2d-panel-flip/src",
     "../ph2d-panel-painter-layers/src",
@@ -319,7 +317,8 @@ const COLUNAS_DECLARADAS_POR_PAINEL: &[(&str, usize, &str)] = &[
 ];
 
 /// O piso de painéis — o do âmbito de WORKSPACE (a régua das elisões mede o mesmo registo).
-const PISO_DE_PAINEIS: usize = 27;
+/// ⬇️ `27 → 25` em 2026-10-05: os painéis `model3d` e `sculpt3d` saíram com o 3D (ADR-0179).
+const PISO_DE_PAINEIS: usize = 25;
 /// O piso de linhas colhidas — medido `455` em 2026-09-23 no âmbito de workspace (ver o `eprintln!`).
 const PISO_DE_LINHAS: usize = 400;
 

@@ -66,7 +66,7 @@
 > ⚠️ **Fica AQUI apesar de FECHADO, por ordem do dono** (*«Documente a solução dos problemas do
 > impasto nos docs de bugs do painter»*, 2026-10-01) — a terceira excepção viva, ao lado do #24 e
 > do #25. O mecanismo inteiro, com as tabelas e as sondas, vive em
-> [`docs/3D/29`](../3D/29_plano_o_relevo_do_impasto_na_peca.md) §6–§8; isto é a versão para quem
+> `docs/3D/29` §6–§8; isto é a versão para quem
 > caça o próximo defeito do impasto **fora** do Painter 2D.
 
 **Contexto:** a etapa 3b do Painter na peça (`line/sculpt3d`, 30/09) levou o meio **Impasto** para

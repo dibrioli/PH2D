@@ -112,8 +112,7 @@ pub fn eligible(sim: &SimWorld, map: &VecEntityMap, sel: &[VecPathId]) -> Vec<Ve
 /// reagir. A lista de formas é `Children(host)` filtrado ao que a cena sabe desenhar, e a tecla de
 /// cada uma sai da tabela do componente (uma forma sem entrada usa os valores de partida).
 ///
-/// É a lei que o módulo 3D Modeling já paga (`CLAUDE.md` §5.1): *a hierarquia da cena É o
-/// documento, e o resto é cozido dela a cada quadro.*
+/// A lei: *a hierarquia da cena É o documento, e o resto é cozido dela a cada quadro.*
 ///
 /// ⚠️ **A ORDEM é a dos `Children`**, que é a ordem de inserção (= a de z), e o **primeiro é onde
 /// a máquina nasce**. Reordenar irmãos na Hierarquia muda o estado inicial — e é a resposta certa:
@@ -459,8 +458,8 @@ pub fn disconnect_row(
 /// # A lei
 ///
 /// ⇒ **é a hierarquia que responde**, como responde à lista: *o meu pai tem máquina, logo eu sou um
-/// estado, logo eu não me desenho*. É a lei que o módulo 3D Modeling já paga (`CLAUDE.md` §5.1: *«a
-/// hierarquia da cena É o documento»*) e que a §8.2 deste plano previu — só que ela foi aplicada à
+/// estado, logo eu não me desenho*. É a lei *«a hierarquia da cena É o documento»*, que a §8.2
+/// deste plano previu — só que ela foi aplicada à
 /// lista e **não** à ocultação.
 ///
 /// ⭐ Com isto os dois gestos ficam de graça e **simétricos**, e não há estado guardado que possa

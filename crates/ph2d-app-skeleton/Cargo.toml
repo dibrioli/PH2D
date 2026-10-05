@@ -31,7 +31,7 @@ ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # ⭐ Os rótulos das duas opções FIXAS do selector de ponta (`curve_tip`) — HR-15: nenhuma string
-# de UI nasce num literal. As irmãs `app-vec`/`app-field3d`/`app-sculpt3d` já dependem dela.
+# de UI nasce num literal. A irmã `app-vec` já depende dela.
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 ph2d-timeline = { path = "../ph2d-timeline" }

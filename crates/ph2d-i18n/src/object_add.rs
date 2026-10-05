@@ -1,8 +1,8 @@
 //! **O MENU ADD DE OBJECTOS** — o modal que o `+` da Hierarquia e o `Shift+A` abrem
 //! (`docs/UI_New_and_Simple/spec/06_tipos_e_modos_de_objeto.md`, F1).
 //!
-//! ⚠️ Cada rótulo de item leva o NOME DO TIPO (`Sculpt Sphere`, e não `Sphere`): a busca da paleta
-//! só lê o rótulo do item, e *«sculpt»* tem de achar as quatro peças.
+//! ⚠️ Cada rótulo de item leva o NOME DO TIPO (`Vector Object`, e não `Object`): a busca da paleta
+//! só lê o rótulo do item, e *«vector»* tem de achar o vetor.
 
 /// A tradução de uma chave deste menu, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
@@ -10,7 +10,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ph2d-migrar-texto:begin
         "object_add.title" => "Add Object",
         "object_add.group.two_d" => "2D",
-        "object_add.group.three_d" => "3D",
         "object_add.group.game" => "Game",
         "object_add.group.empty" => "Empty",
         "object_add.empty" => "Empty",
@@ -19,11 +18,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "object_add.flip.first_layer" => "Layer",
         "object_add.vector.object" => "Vector Object",
         "object_add.vector.object_name" => "Vector",
-        "object_add.model" => "Model Solid",
-        "object_add.sculpt.sphere" => "Sculpt Sphere",
-        "object_add.sculpt.cube" => "Sculpt Cube",
-        "object_add.sculpt.cylinder" => "Sculpt Cylinder",
-        "object_add.sculpt.torus" => "Sculpt Torus",
         "object_add.game.camera" => "Camera",
         "object_add.game.body" => "Physics Body",
         "object_add.game.sound" => "Sound",

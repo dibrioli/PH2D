@@ -11,7 +11,7 @@
 //!
 //! | linha | quem despacha | visível de `ph2d-editor-core`? |
 //! |---|---|---|
-//! | Vector · Motion · Flip · Physics · Sculpt · Model · Image Tools · Tokens · Authored | `screens/hero/chrome/*_toggle.rs` | ✅ |
+//! | Vector · Motion · Flip · Physics · Image Tools · Tokens · Authored | `screens/hero/chrome/*_toggle.rs` | ✅ |
 //! | **Audio Mixer · Audio Editor · Widget Gallery · Grid Settings** | o `event.rs` do próprio painel | ❌ |
 //!
 //! O `test_support::ensure_panel_registry` da `editor-core` é um `{}` — o registry vive nesta

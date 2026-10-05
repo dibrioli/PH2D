@@ -101,8 +101,7 @@ impl RasterEditTool for PainterTool {
     }
 
     fn take_pending_commit(&mut self) -> bool {
-        // ⚠️ A tela da vista 3D NÃO se assa numa sprite: o que ela pintou já está na peça.
-        std::mem::take(&mut self.pending_commit) && !self.on_screen_canvas()
+        std::mem::take(&mut self.pending_commit)
     }
 
     /// Bake the final canvas for commit (Apply): the full layer COMPOSITE (base + every layer's

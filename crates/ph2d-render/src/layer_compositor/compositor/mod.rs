@@ -515,8 +515,6 @@ impl LayerCompositor {
             blur_weights_buffer: None,
             seg_base_dummy,
             work: None,
-            surface: None,
-            heat: None,
         }
     }
 

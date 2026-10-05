@@ -1325,7 +1325,7 @@ vizinha, e não tem conceito de oclusor. *Reutilizá-lo seria confundir sombream
    que a física manda e quase ninguém quer em 2D.
 4. **Normais.** Sem elas a luz é chapada (só atenuação). Com elas há relevo — e aí o `ph2d-light`
    **volta** a ser relevante, agora como o consumidor certo: a sprite passa a ter um plano de
-   normais, doado (o `docs/3D` já faz isso) ou pintado.
+   normais, doado (o 3D fazia isso e saiu — [ADR-0179](docs/architecture/decisions/0179-o-3d-sai-do-ph2d.md)) ou pintado.
 
 ⛔ **Não comece pelo shader.** As quatro decisões acima mudam-no inteiro, e é a ordem em que este
 projeto já pagou para aprender: *o passe publica o que a decisão diz; ele não a toma.*

@@ -28,7 +28,6 @@ pub mod bridges;
 /// ⭐⭐⭐ **O PONTO DE VISTA do jogo** (TOP-20 #7) — a câmera, quem ela segue e a cerca dela.
 pub mod camera;
 pub mod core;
-pub mod field;
 /// ⭐⭐⭐ **O HUD** (TOP-20 #20) — a raiz, o rótulo, o botão e o contador.
 pub mod hud;
 pub mod image;
@@ -50,7 +49,6 @@ const FAMILIES: &[&[ComponentDesc]] = &[
     bridges::DESCS,
     camera::DESCS,
     core::DESCS,
-    field::DESCS,
     hud::DESCS,
     image::DESCS,
     logic::DESCS,

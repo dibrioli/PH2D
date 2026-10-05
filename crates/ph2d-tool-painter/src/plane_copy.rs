@@ -154,7 +154,7 @@ thread_local! {
 /// *plano ausente = neutro* (a convenção que a luz já implementa) **nunca dispararia**, porque o
 /// pincel de fábrica tem `impasto_shine: 0.7` e deposita material não-neutro desde a primeira
 /// pincelada; e *preencher só a janela* morre no `body` da luz, que toma
-/// `paint_body(cover).max(form[3]).max(paper_body)` — com um papel a presença é **1 em toda parte**,
+/// `paint_body(cover).max(paper_body)` — com um papel a presença é **1 em toda parte**,
 /// logo o chão do plano É observável fora da tinta.
 pub(crate) fn size_to<T>(dst: &mut Vec<T>, n: usize, value: T)
 where

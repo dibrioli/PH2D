@@ -99,10 +99,6 @@ pub fn dispatch(
     commit_requested: &mut bool,
     undo_requested: &mut bool,
     redo_requested: &mut bool,
-    // **A DOAÇÃO de forma** — o canal nos dois sentidos: aqui se PUBLICA o tamanho do canvas (o
-    // produtor precisa dele e não pode perguntar ao tool) e se CONSOME o plano que ele rasterizou.
-    // ⚠️ Nenhum tipo do módulo 3D atravessa: o que chega é `Vec<f32>`. Ver `donated_form`.
-    donated_form: &mut ph2d_form_donation::donated_form::DonatedForm,
     toasts: &mut ToastQueue,
     // `true` enquanto um botão de ponteiro está preso — o sinal de *"há um gesto em voo"* que o
     // `post_frame_undo` já usa. Aqui ele fecha o ciclo do rascunho de figura: ver `set_shape_draft_hold`.
@@ -180,9 +176,6 @@ pub fn dispatch(
         // de uma assinatura que a própria ferramenta já dizia ser larga demais.
         |entity, renderer| read_source(entity, sim, renderer, asset_db, atlas_asset_map),
     );
-
-    // ── A DOAÇÃO de forma: publica o TAMANHO, instala a NOTÍCIA ───────────
-    crate::painter_bridge_phases::donate_form(tools, painter_is_active, donated_form);
 
     // Audit T1.5 round 1 B-H2: NO ghost `panel_visibility` insert. Painter
     // has no docked panel in T1.5 (sidebar lands W2 via
@@ -418,14 +411,8 @@ pub fn dispatch(
             static LAST_LAYERS_REV: AtomicU64 = AtomicU64::new(u64::MAX);
             let rev = painter.layers_revision();
             if LAST_LAYERS_REV.swap(rev, Ordering::Relaxed) != rev {
-                // ⭐ Com a tela da vista 3D presa, a pilha da PEÇA (`docs/3D/30` §4).
-                ph2d_panel_painter_layers::set_current_layers(painter.panel_layers().cloned());
+                ph2d_panel_painter_layers::set_current_layers(Some(painter.layers().clone()));
             }
-            ph2d_panel_painter_layers::set_current_layers_on_piece(painter.panel_shows_the_piece());
-            ph2d_panel_painter_layers::set_current_spatial_units(painter.panel_spatial_units());
-            ph2d_panel_painter_layers::set_current_piece_refusal(
-                painter.piece_layer_refusal().map(str::to_owned),
-            );
             ph_panel_sub[1] = elapsed_ms(m_p);
             m_p = perf_t0.map(|_| std::time::Instant::now());
             // (W3 multi-select) Publish the selection set every frame — a tiny
@@ -434,7 +421,7 @@ pub fn dispatch(
             // already-active layer changes the selection WITHOUT a structural
             // edit, so a revision gate would miss it. The panel reads this for
             // the multi-row highlight (active = strong outline, others = wash).
-            ph2d_panel_painter_layers::set_current_selection(painter.panel_selection());
+            ph2d_panel_painter_layers::set_current_selection(painter.selection());
             // (Mask view) Publish which mask's grayscale-view eye is open so its row draws it open.
             ph2d_panel_painter_layers::set_current_mask_grayscale_view(
                 painter.mask_view_grayscale(),

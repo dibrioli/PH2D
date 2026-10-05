@@ -1,6 +1,6 @@
 //! **AS STRINGS DO PAINEL TAGS** (TOP-20 #9, W4) — o irmão de tabela do [`super`].
 //!
-//! ⚠️ **Um módulo por ASSUNTO, como o `sculpt3d.rs` e o `model3d.rs`**, e pela mesma razão de
+//! ⚠️ **Um módulo por ASSUNTO, como o `vector.rs` e o `timeline.rs`**, e pela mesma razão de
 //! isolamento (`CLAUDE.md` §0.2): enquanto todas as chaves moram num `match` só, duas linhas
 //! paralelas que acrescentem uma chave cada colidem no mesmo punhado de linhas.
 //!

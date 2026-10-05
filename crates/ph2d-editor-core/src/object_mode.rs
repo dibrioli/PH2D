@@ -22,10 +22,8 @@ use std::collections::BTreeMap;
 pub enum ObjectMode {
     /// Mover, rodar, escalar — o gizmo de transformação.
     Object,
-    /// Pintar com o Painter: a imagem (Image ▸ Paint) ou a peça esculpida (Sculpt ▸ Paint, D6).
+    /// Pintar a imagem com o Painter (Image ▸ Paint, D6).
     Paint,
-    /// Esculpir a peça com o barro na tela (Sculpt ▸ Sculpt, D6).
-    Sculpt,
     /// Desenhar traços no desenho Flip (Flip ▸ Draw, D6 — o Draw Mode do Grease Pencil, que NÃO é
     /// o Paint: o que se edita é um traço, não um pixel).
     Draw,
@@ -35,10 +33,9 @@ pub enum ObjectMode {
 
 impl ObjectMode {
     /// Todos, em ordem — a fonte da iteração (⛔ nunca escreva a lista uma segunda vez).
-    pub const ALL: [ObjectMode; 5] = [
+    pub const ALL: [ObjectMode; 4] = [
         ObjectMode::Object,
         ObjectMode::Paint,
-        ObjectMode::Sculpt,
         ObjectMode::Draw,
         ObjectMode::Edit,
     ];
@@ -49,7 +46,6 @@ impl ObjectMode {
         TextKey::new(match self {
             ObjectMode::Object => "object_mode.object",
             ObjectMode::Paint => "object_mode.paint",
-            ObjectMode::Sculpt => "object_mode.sculpt",
             ObjectMode::Draw => "object_mode.draw",
             ObjectMode::Edit => "object_mode.edit",
         })
@@ -61,7 +57,6 @@ impl ObjectMode {
         match self {
             ObjectMode::Object => crate::ids::OBJECT_MODE_OBJECT,
             ObjectMode::Paint => crate::ids::OBJECT_MODE_PAINT,
-            ObjectMode::Sculpt => crate::ids::OBJECT_MODE_SCULPT,
             ObjectMode::Draw => crate::ids::OBJECT_MODE_DRAW,
             ObjectMode::Edit => crate::ids::OBJECT_MODE_EDIT,
         }
@@ -121,8 +116,8 @@ pub struct ModeState {
     /// O último modo de criação de cada objecto — o destino do `Tab`.
     last: BTreeMap<u64, ObjectMode>,
     /// ⭐ **As PARTES da entidade trancada**, publicadas em todo quadro pela família do modo:
-    /// `None` = o modo edita o objecto inteiro (Paint, Sculpt, Draw); `Some` = o modo edita o que
-    /// está DENTRO dele, e a selecção pode ser qualquer parte (o Edit do Model: as formas da peça).
+    /// `None` = o modo edita o objecto inteiro (Paint, Draw); `Some` = o modo edita o que está
+    /// DENTRO dele, e a selecção pode ser qualquer parte (o Edit do vetor: as formas do objecto).
     parts: Option<Vec<u64>>,
     /// As partes transformam-se pelo gizmo de objecto ([`crate::screens::hero::mode_drive::ModeFamily::parts_take_the_object_gizmo`]).
     part_gizmo: bool,

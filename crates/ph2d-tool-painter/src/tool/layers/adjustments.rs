@@ -296,7 +296,7 @@ impl PainterTool {
 
 /// ⭐ **What a user-created adjustment starts with** — Curves gets 5 evenly-spaced identity handles on
 /// every channel so the editor opens with draggable points (the data-model default stays empty: a
-/// bit-exact identity for persisted / programmatic layers). One law for the 2D stack and the 3D piece's.
+/// bit-exact identity for persisted / programmatic layers).
 pub fn seed_user_adjustment(params: &mut ph2d_painter_effects::adjustments::AdjustmentParams) {
     if let ph2d_painter_effects::adjustments::AdjustmentParams::Curves(c) = params {
         let identity: Vec<[f32; 2]> = (0..5)

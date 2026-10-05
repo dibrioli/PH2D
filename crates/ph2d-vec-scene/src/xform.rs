@@ -12,9 +12,9 @@
 //! [`Xform`] e entrega o mapa pronto. Aqui só há álgebra.
 //!
 //! ⚠️ **A ÁLGEBRA mudou de dono e a API não mudou** — o [`Xform`] mora na
-//! [`ph2d_affine`], uma folha sem dependência nenhuma, porque seis crates que nada
-//! têm de vectorial já o consumiam e porque a lei do esqueleto (que serve raster, 3D
-//! e Flip) não pode puxar a cena vectorial para multiplicar duas matrizes. O que
+//! [`ph2d_affine`], uma folha sem dependência nenhuma, porque crates que nada
+//! têm de vectorial já o consumiam e porque a lei do esqueleto (que serve raster e
+//! Flip) não pode puxar a cena vectorial para multiplicar duas matrizes. O que
 //! FICA aqui é o que de facto conhece um path: o mapa por `VecPathId`.
 
 use crate::VecPathId;

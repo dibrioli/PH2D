@@ -26,7 +26,7 @@
 //!
 //! [`Tag::natural_width`] inverte a lei que o pintor gasta, e o `ICON_BTN_SIZE_PX` fica sendo o
 //! **piso** — o selo é uma das ranhuras daquele cacho, logo nunca encolhe abaixo dela e só CRESCE
-//! quando a palavra pede. ⛔ Sem o piso, `ISO` passaria a ser mais estreito que os irmãos e a
+//! quando a palavra pede. ⛔ Sem o piso, o selo mais estreito ficaria mais estreito que os irmãos e a
 //! coluna da direita ficaria irregular sem ninguém ter pedido.
 
 use ph2d_editor_core::icons::IconId;
@@ -44,7 +44,7 @@ const FIRST_ROW: u64 = 100_000;
 /// ⚠️ **Escritos à mão de propósito** — eles são o CONTROLO do vocabulário que o `badge_tone`
 /// casa. Derivá-los da tabela de tons mediria a tabela contra si própria.
 const SELOS: &[&str] = &[
-    "ENT", "SPR", "GRP", "CAM", "LNK", "ISO", "PRF", "SUB", "EXC",
+    "ENT", "SPR", "GRP", "CAM", "PRF", "UNI", "SUB", "INT", "EXC",
 ];
 
 fn linha(nome: &str, selo: &str) -> HierarchyEntity {
@@ -115,22 +115,25 @@ fn todo_selo_da_hierarquia_e_pintado_inteiro() {
 
 /// ⛔ **E a caixa nunca encolhe abaixo da ranhura do cacho.**
 ///
-/// Sem esta metade, `ISO` (`18,54`) ficaria com uma pílula mais estreita que as irmãs e a coluna
-/// da direita passaria a dançar de linha para linha. *A largura natural é o PISO da palavra; o
-/// slot é o piso da COLUNA.*
+/// Sem esta metade, o selo de palavra mais estreita ficaria com uma pílula mais estreita que as
+/// irmãs e a coluna da direita passaria a dançar de linha para linha. *A largura natural é o PISO
+/// da palavra; o slot é o piso da COLUNA.* ⭐ Mede-se em TODOS, e não num escolhido à mão: qual
+/// palavra é a mais estreita depende da fonte, e um nome fixo envelhece com o vocabulário.
 #[test]
 fn o_selo_nunca_fica_mais_estreito_que_a_ranhura_do_cacho() {
     let medidos = selos_pintados();
-    let m = medidos
-        .iter()
-        .find(|m| m.texto == "ISO")
-        .expect("o selo mais estreito tem de ser pintado");
     // O orçamento de uma pílula lisa de `ICON_BTN_SIZE_PX` — a lei da casa, pela porta.
     let piso = ph2d_editor_core::paint::label_budget(ph2d_tokens::ICON_BTN_SIZE_PX);
-    assert!(
-        m.largura >= piso - 0.01,
-        "o selo mais estreito recebeu {:.2} px e a ranhura do cacho dá {piso:.2} — a caixa \
-         encolheu abaixo do slot em que ela vive",
-        m.largura
-    );
+    for selo in SELOS {
+        let m = medidos
+            .iter()
+            .find(|m| m.texto == *selo)
+            .unwrap_or_else(|| panic!("o selo {selo:?} tem de ser pintado"));
+        assert!(
+            m.largura >= piso - 0.01,
+            "o selo {selo:?} recebeu {:.2} px e a ranhura do cacho dá {piso:.2} — a caixa \
+             encolheu abaixo do slot em que ela vive",
+            m.largura
+        );
+    }
 }

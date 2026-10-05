@@ -181,9 +181,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Put the piece back \u{2014} it returns as the component has it"
         }
         "shell.fase_bus_inspector.cleared_unused" => "Cleared {n} unused override(s)",
-        "shell.fase_field3d_requests.there_is_no_sculpture" => {
-            "There is no sculpture in the scene to bring in"
-        }
         "shell.fase_hierarchy_group_merge.merge_sprites_right" => {
             "Merge Sprites: right-click on one of the selected sprites"
         }
@@ -252,10 +249,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Remove from Sheet: this object is not in a sheet"
         }
         "shell.fase_sprite_precision_emissive.removed_from_sheet" => "Removed from sheet",
-        "shell.fase_world_panel_bridges.modelling_took_the" => "Modelling took the canvas",
-        "shell.fase_world_panel_bridges.modelling_stepped" => {
-            "Modelling stepped aside for the other tool"
-        }
         "shell.hierarchy.that_prefab_is_no" => "That prefab is no longer in the project",
         "shell.hierarchy.view_zero_camera_reset" => "View · Zero (camera reset)",
         "shell.hierarchy.transform_reset" => "Transform reset",
@@ -410,13 +403,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.tokens_bridge_dtcg.dtcg_export_failed" => "DTCG export failed: {e}",
         "shell.tokens_bridge_dtcg.dtcg_exported_tokens" => "DTCG exported: {all} tokens to {path}",
         "shell.tokens_bridge_dtcg.dtcg_tokens" => "DTCG tokens",
-        "shell.sculpt3d_host.sculpt" => "Sculpt",
-        "shell.sculpt3d_host.sculpting_took_the_canvas" => "Sculpting took the canvas",
         "shell.texture_pattern_pick.image" => "Image",
         "shell.undo_app.sem_entrada_neste" => "sem entrada neste quadro",
         "shell.undo_app.transicao_de_estado_de" => "transicao de estado de UI ao vivo",
         "shell.undo_app.colorize_a_recalcular" => "colorize a recalcular",
-        "shell.undo_app.arrasto_do_gizmo_3d_em" => "arrasto do gizmo 3D em curso",
         "shell.undo_app.botao_do_rato_em_baixo" => "botao do rato em baixo",
         "shell.undo_route.shift_z" => "Shift+Z",
         "shell.vec_component_general.that_copy_cannot" => "That copy cannot become this prefab",

@@ -255,8 +255,11 @@ fn sobe(g: &Grafo, de: &str, para: &str, dev: bool) -> bool {
 fn no_dependency_climbs_a_layer() {
     let g = grafo();
     let conta = |e: Especie| g.especies.values().filter(|x| **x == e).count();
+    // ⚠️ `9` → `8` em 2026-10-05, MEDIDO: as famílias `field3d` e `sculpt3d` saíram com o 3D
+    //    (ADR-0179) e ficam oito (`audio` · `components` · `flip` · `motion` · `painter` ·
+    //    `physics` · `skeleton` · `vec`).
     assert!(
-        conta(Especie::Familia) >= 9,
+        conta(Especie::Familia) >= 8,
         "li {} famílias",
         conta(Especie::Familia)
     );

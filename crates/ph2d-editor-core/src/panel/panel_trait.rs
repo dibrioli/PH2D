@@ -43,8 +43,8 @@ pub trait Panel: Sized + 'static {
     /// com outro (spec §2, regra 1).
     ///
     /// ⛔ **Sem default, de propósito.** Um default derivado do [`Self::ID`] daria *"Tokens"* onde
-    /// o menu *Window* diz *"Design Tokens"* e *"Sculpt3d"* onde ele diz *"Sculpt 3D"* — e o
-    /// artista teria **dois nomes para o mesmo painel**, um em cada superfície. O gate
+    /// o menu *Window* diz *"Design Tokens"* e *"Bgremoval"* onde ele diz *"Background Removal"* —
+    /// e o artista teria **dois nomes para o mesmo painel**, um em cada superfície. O gate
     /// `the_tab_and_the_menu_call_a_panel_the_same_thing` mede exactamente isso, conduzido pela
     /// tabela [`crate::screens::hero::menu_bar::MODULE_TRUTHS`].
     ///

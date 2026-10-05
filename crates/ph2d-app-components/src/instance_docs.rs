@@ -1,8 +1,8 @@
 //! ⭐⭐ **Os DOCUMENTOS possuídos, clonados para a cópia** (ADR-0164 / plano F4.6).
 //!
 //! A cópia profunda ([`ph2d_ecs::deep_copy_subtree`]) copia os bytes de todo componente registado
-//! — **menos** os quatro que apontam para um documento fora do ECS (`ComponentDesc::owned_document`:
-//! `VecPathRef` · `PaintedDoc` · `BakedForm` · `FlipObjectRef`). O id deles é opaco, e copiá-lo
+//! — **menos** os três que apontam para um documento fora do ECS (`ComponentDesc::owned_document`:
+//! `VecPathRef` · `PaintedDoc` · `FlipObjectRef`). O id deles é opaco, e copiá-lo
 //! verbatim poria **duas entidades a escrever no mesmo documento** — duplicar uma sprite pintada
 //! devolvia um sósia que apaga a tinta do original (F4.2).
 //!
@@ -23,9 +23,9 @@
 //! registar o par daria à cópia uma entidade fantasma ao lado — a arte apareceria duas vezes na
 //! Hierarquia e uma delas seria inalcançável.
 //!
-//! # ⛔ Os outros TRÊS continuam a ser DROPADOS, e isso é uma decisão
+//! # ⛔ Os outros DOIS continuam a ser DROPADOS, e isso é uma decisão
 //!
-//! Ver [`DROPPED`]. Cada um deles precisa do *store* do módulo dele (o Painter, o 3D, o Flip), e
+//! Ver [`DROPPED`]. Cada um deles precisa do *store* do módulo dele (o Painter, o Flip), e
 //! nenhum desses está aqui — clonar às cegas seria pior que dropar. O gate
 //! [`tests::every_owned_document_is_cloned_or_declared_dropped`] é um censo de DOIS lados: um
 //! bridge novo que não venha a esta lista **não compila o gate**, em vez de nascer mudo.
@@ -49,8 +49,8 @@ pub struct OwnedDocs<'a> {
 
 /// ⛔ **Os documentos possuídos que a cópia NÃO clona hoje, e porquê.**
 ///
-/// A entidade copiada nasce **sem** eles: uma sprite pintada perde as camadas, uma peça 3D perde
-/// os canais assados, um objeto Flip perde os desenhos. É o comportamento de sempre, agora
+/// A entidade copiada nasce **sem** eles: uma sprite pintada perde as camadas, um objeto Flip perde
+/// os desenhos. É o comportamento de sempre, agora
 /// **declarado** — e cada um espera o store do módulo dele.
 pub(crate) const DROPPED: &[(&str, &str)] = &[
     (
@@ -58,16 +58,8 @@ pub(crate) const DROPPED: &[(&str, &str)] = &[
         "o documento em camadas do Painter vive no store dele, fora desta porta",
     ),
     (
-        "ph2d::ecs::BakedForm",
-        "os canais assados do 3D vivem no módulo de escultura",
-    ),
-    (
         "ph2d::ecs::FlipObjectRef",
         "o objeto do Flip vive no `FlipDoc`",
-    ),
-    (
-        "ph2d::ecs::Sculpt3dPieceRef",
-        "a peça vive na cena da escultura, e a ponte duplica-a no quadro seguinte",
     ),
 ];
 

@@ -124,7 +124,7 @@ conteúdo* — confira sempre a imagem **e** um escalar, nunca só um deles.
 | **Vassoura** | `bash scripts/cleanroom-sweep.sh <VASSOURA> <paths>` antes de cada commit que cruza a parede |
 
 ⚠️ **O `README.md` das fixtures carrega a régua das excepções**, e ela cresce com
-o corpus — [exemplo vivo](../3D/cleanroom/fixtures/cloth/README.md), onde a
+o corpus — exemplo vivo, onde a
 conta foi de `7` para `30` de `86` por a régua varrer menos grandezas do que o
 corpus continha.
 

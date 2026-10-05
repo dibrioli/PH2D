@@ -55,7 +55,7 @@ fn cat_token(c: C) -> ColorToken {
         // O que se move.
         C::Animation | C::Anchors => ColorToken::NodeCatTransform,
         // Geometria autorada.
-        C::Vector | C::Model3D => ColorToken::NodeCatFocus,
+        C::Vector => ColorToken::NodeCatFocus,
         // ⭐ O que DEFORMA o que foi autorado — o esqueleto fica com a cor de quem move, ao lado
         // da Animação e das Âncoras, e não com a da geometria: ele não é geometria de ninguém.
         C::Skeleton => ColorToken::NodeCatTransform,

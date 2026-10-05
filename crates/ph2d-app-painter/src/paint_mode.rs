@@ -37,14 +37,12 @@ impl ModeFamily for Family {
 /// O id do Painter no registo de ferramentas.
 const PAINTER: &str = "painter";
 
-/// O Painter está em mãos **sobre uma imagem** — e não sobre a tela da peça 3D, que é a pintura
-/// da escultura (`ph2d_app_sculpt3d::painter_na_malha`, o Paint do Sculpt na F3).
+/// O Painter está em mãos **sobre uma imagem**.
 #[must_use]
 pub fn holds_an_image(tools: &mut ToolRegistry) -> bool {
     tools
         .active_mut()
-        .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
-        .is_some_and(|p| !p.on_screen_canvas())
+        .is_some_and(|t| t.as_any_mut().downcast_mut::<PainterTool>().is_some())
 }
 
 /// ⭐ **Entra**: põe o Painter em mãos — o quadro do modo já colapsou a selecção ao activo, que é o

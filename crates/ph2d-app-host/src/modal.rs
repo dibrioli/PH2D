@@ -38,13 +38,13 @@
 //! # ⚠️ A porta, e por que ela é uma porta
 //!
 //! Um `rfd::FileDialog` que alguém abra à mão volta a congelar sem declarar. Por isso o diálogo
-//! passa por [`save_file`] / [`pick_file`], que **medem a própria duração**. Gate:
-//! `every_field3d_modal_goes_through_the_door`.
+//! passa por [`save_file`] / [`pick_file`], que **medem a própria duração**. ⚠️ O gate que varria
+//! as chamadas da família 3D saiu com ela (ADR-0179); hoje nenhum gate varre a árvore.
 //!
 //! ⛔ **MEDIDO 2026-08-22: há 25 chamadas de `rfd::FileDialog` em 12 arquivos do shell**, e as
 //! outras 23 continuam a perder a mensagem que escrevem a seguir. Elas são de outras linhas
-//! (`sculpt3d`, image tools, tokens, sheet, texto vetorial) e a lista está no doc §38 — *o defeito
-//! é da casa, e nomeá-lo com o endereço é o que impede a próxima linha de o redescobrir.*
+//! (image tools, tokens, sheet, texto vetorial; as do 3D saíram com ele) e a lista está no doc
+//! §38 — *o defeito é da casa, e nomeá-lo com o endereço é o que impede a próxima linha de o redescobrir.*
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -95,9 +95,8 @@ pub fn chrome_dt(wall_dt: f64, stalled_s: f64) -> f64 {
 /// o KDE pinta a janela de cinza e oferece *"forçar o encerramento"* — o sistema operativo a dizer
 /// ao artista que o programa morreu, com o trabalho não gravado dentro.
 ///
-/// ⇒ ⭐ **Para um CÁLCULO a resposta certa não é declarar: é não bloquear.** O módulo 3D tirou a
-/// exportação da thread que desenha (`ph2d_app_field3d::export_job`), e com isso não há
-/// congelamento nenhum a declarar. *Um diálogo é uma janela que o compositor sabe que abriu; uma
+/// ⇒ ⭐ **Para um CÁLCULO a resposta certa não é declarar: é não bloquear** — tirar a conta da
+/// thread que desenha, e com isso não há congelamento nenhum a declarar. *Um diálogo é uma janela que o compositor sabe que abriu; uma
 /// conta é o programa a não responder.* Esta porta continua a ser a resposta certa **para o
 /// diálogo**, que é o que ela sempre foi.
 fn timed<T>(f: impl FnOnce() -> T) -> T {

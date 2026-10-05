@@ -1462,7 +1462,7 @@ fn the_rulers_are_live_in_every_mode_and_only_the_toggle_stops_them() {
     );
 
     // E nenhuma ferramenta as apaga, nem a que as costumava exigir.
-    for tool in ["vector", "painter", "sculpt3d", "model3d", "flip"] {
+    for tool in ["vector", "painter", "flip"] {
         hero.panel_visibility.insert(tool, true);
         assert!(
             hero.rulers_live(),

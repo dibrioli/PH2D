@@ -63,8 +63,6 @@ pub(crate) struct LiveSnapshots {
     pub vida_info: Option<ph2d_editor_core::vida_edits::InspectorVidaInfo>,
     /// ⭐⭐⭐ As secções NAV REGION e NAV AGENT (plano 30, W4).
     pub nav_info: Option<ph2d_editor_core::nav_edits::InspectorNavInfo>,
-    /// ⭐ O CATAVENTO (`docs/3D/02.2`, rota B).
-    pub mesh3d_info: Option<ph2d_editor_core::mesh3d_edits::InspectorMesh3dInfo>,
     /// ⭐ O snapshot do CÉREBRO (TOP-20 #15).
     pub statemachine_info: Option<ph2d_editor_core::statemachine_edits::InspectorStateMachineInfo>,
     /// ⭐ O snapshot do SCRIPT (TOP-20 #16).
@@ -141,7 +139,6 @@ impl LiveSnapshots {
         let weapon_info = crate::state_components::current_inspector_weapon();
         let vida_info = crate::state_components::current_inspector_vida();
         let nav_info = crate::state_components::current_inspector_nav();
-        let mesh3d_info = crate::state_components::current_inspector_mesh3d();
         let statemachine_info = crate::state_components::current_inspector_statemachine();
         let script_info = crate::state_components::current_inspector_script();
         let particles_info = crate::state_components::current_inspector_particles();
@@ -212,7 +209,6 @@ impl LiveSnapshots {
             weapon_info,
             vida_info,
             nav_info,
-            mesh3d_info,
             statemachine_info,
             script_info,
             particles_info,

@@ -81,8 +81,8 @@ fn every_registered_id_is_given_geometry_by_the_painter() {
 
 /// ⭐⭐ **E o corpo que RECORTA tem de saber rolar.**
 ///
-/// ⛔ Um painel que recorta e não rola é a pior das três formas (a nota do `MODEL3D_SCROLLBAR_ID`
-/// já o dizia, e não impediu nada): sem recorte o conteúdo desenha por cima e **vê-se**; com
+/// ⛔ Um painel que recorta e não rola é a pior das três formas (uma nota já o dizia, e não
+/// impediu nada): sem recorte o conteúdo desenha por cima e **vê-se**; com
 /// recorte e rolagem funciona; **com recorte e sem rolagem os controlos de baixo somem calados**.
 ///
 /// ⭐ Desde 2026-09-29 o par recortar/rolar é **UMA porta** (`scroll_area`, spec

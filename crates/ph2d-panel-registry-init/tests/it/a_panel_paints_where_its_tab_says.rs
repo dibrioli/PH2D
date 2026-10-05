@@ -30,9 +30,9 @@
 //! silêncio, e acusá-lo seria acusar um inocente. A condição é *«não publica no próprio default»*,
 //! **derivada**, e não uma lista de nomes.
 //!
-//! ⚠️⚠️ **E o exemplo que este doc dava ENVELHECEU em 2026-09-09.** Ele nomeava o `sculpt3d` —
-//! que hoje publica sempre, porque calar-se de painel ABERTO fechava a coluna e levava o vizinho
-//! consigo (`shells/desktop/tests/it/no_open_panel_leaves_its_column_blank.rs`). O que sobra na
+//! ⚠️⚠️ **E o exemplo que este doc dava ENVELHECEU em 2026-09-09** (e o painel que ele nomeava saiu
+//! depois com o 3D): calar-se de painel ABERTO fechava a coluna e levava o vizinho consigo
+//! (`shells/desktop/tests/it/no_open_panel_leaves_its_column_blank.rs`). O que sobra na
 //! condição é o `motion_graph`, que vive no CENTRO: ele parte a área de desenho em vez de ocupar
 //! uma coluna, e sem `split` não há região nenhuma para publicar. *Um exemplo dentro de um doc é
 //! uma medição com data — a condição é que é a lei.*

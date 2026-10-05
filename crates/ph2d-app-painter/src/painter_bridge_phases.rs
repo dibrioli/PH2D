@@ -77,52 +77,6 @@ pub(crate) fn forward_picker_colour(hero: &mut HeroScreen, tools: &mut ToolRegis
     }
 }
 
-/// **A DOAÇÃO de forma — publica o TAMANHO, consome a NOTÍCIA.**
-///
-/// O canal nos dois sentidos entre a escultura e a tinta. ⚠️ Este é o único ponto que liga as
-/// duas, e ele **não sabe disso**: o que vê é um plano de `f32` que alguém deixou no canal. É essa
-/// ignorância que mantém a promessa de `docs/3D/02.3` — apagar o módulo 3D deixa isto a existir,
-/// a publicar um tamanho que ninguém lê e a nunca receber notícia.
-pub(crate) fn donate_form(
-    tools: &mut ToolRegistry,
-    painter_is_active: bool,
-    donated_form: &mut ph2d_form_donation::donated_form::DonatedForm,
-) {
-    //
-    // Este é o único ponto do shell que liga uma escultura à tinta, e ele não sabe disso: o que ele
-    // vê é um plano de `f32` que alguém deixou no canal. É essa ignorância que mantém a promessa de
-    // `docs/3D/02.3` — apagar o módulo 3D deixa este bloco existindo, publicando um tamanho que
-    // ninguém lê e nunca recebendo notícia.
-    //
-    // ⚠️ **A ordem é publicar-DEPOIS-instalar, e ela é load-bearing:** o produtor lê o tamanho no
-    // frame SEGUINTE, então publicar aqui é o que faz um documento recém-bindado ser rasterizado.
-    // Instalar antes de publicar não muda nada hoje e mentiria sobre a dependência.
-    if painter_is_active
-        && let Some(tool) = tools.active_mut()
-        && let Some(painter) = tool
-            .as_any_mut()
-            .downcast_mut::<ph2d_tool_painter::PainterTool>()
-    {
-        let (w, h) = painter.canvas_size();
-        // Canvas vazio é **ausência**, não `(0, 0)`: o produtor tem de ficar quieto, e um par de
-        // zeros o faria rasterizar uma extensão que o `form_plane` recusa de qualquer jeito.
-        donated_form.canvas = (w != 0 && h != 0).then_some((w, h));
-        if let Some(news) = donated_form.news.take() {
-            // ⚠️ **As duas metades são instaladas do MESMO `news`, e é isto que o arch-gate
-            // `the_bridge_installs_both_halves_of_a_donation` exige.** O tool as aceita por portas
-            // separadas (o neutro da oclusão é `1.0`, então uma ausência ali é legítima); o que não
-            // pode é este sítio entregar uma e esquecer a outra, porque aí a fresta que o artista
-            // vê na escultura não apareceria na tinta e nada daria erro.
-            let (normal, occlusion) = match news {
-                Some(planes) => (Some(planes.normal), Some(planes.occlusion)),
-                None => (None, None),
-            };
-            painter.set_donated_form(normal);
-            painter.set_donated_occlusion(occlusion);
-        }
-    }
-}
-
 /// **O BIND do documento:** quando o Painter não tem documento para a selecção, empurra-lhe os
 /// pixels dela.
 ///

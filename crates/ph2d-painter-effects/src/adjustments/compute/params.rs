@@ -12,15 +12,6 @@ use super::*;
 /// (Curves, Gradient Map, …) return empty here and get their own UI later.
 #[must_use]
 pub fn adjustment_slider_params(params: &AdjustmentParams) -> Vec<(&'static str, f32)> {
-    adjustment_slider_params_in(params, SpatialUnits::Pixels)
-}
-
-/// [`adjustment_slider_params`] with the spatial extents in `units` (a surface's own units).
-#[must_use]
-pub fn adjustment_slider_params_in(
-    params: &AdjustmentParams,
-    units: SpatialUnits,
-) -> Vec<(&'static str, f32)> {
     match params {
         AdjustmentParams::HueSaturationBrightness(p) => vec![
             ("Hue", p.h.clamp(0.0, 1.0)),
@@ -95,10 +86,7 @@ pub fn adjustment_slider_params_in(
         // Angle a full turn, Sharpen amount 0..2 (unsharp coef). Ranges are the
         // inverse of `set_adjustment_slider_param`.
         AdjustmentParams::GaussianBlur(p) => {
-            vec![(
-                "Radius",
-                (p.radius / units.extent(SPATIAL_PX_MAX)).clamp(0.0, 1.0),
-            )]
+            vec![("Radius", (p.radius / SPATIAL_PX_MAX).clamp(0.0, 1.0))]
         }
         AdjustmentParams::MotionBlur(p) => vec![
             ("Distance", (p.distance / SPATIAL_PX_MAX).clamp(0.0, 1.0)),
@@ -106,10 +94,7 @@ pub fn adjustment_slider_params_in(
         ],
         AdjustmentParams::Sharpen(p) => vec![
             ("Amount", (p.amount / SHARPEN_AMOUNT_MAX).clamp(0.0, 1.0)),
-            (
-                "Radius",
-                (p.radius / units.extent(SHARPEN_RADIUS_MAX)).clamp(0.0, 1.0),
-            ),
+            ("Radius", (p.radius / SHARPEN_RADIUS_MAX).clamp(0.0, 1.0)),
         ],
         // Chromatic Aberration: 3 bipolar per-channel shifts (centered; 0.5 =
         // none). `falloff_center` is RESERVED (no slider — linear-radial model).
@@ -144,10 +129,7 @@ pub fn adjustment_slider_params_in(
                 "Intensity",
                 (p.intensity / BLOOM_INTENSITY_MAX).clamp(0.0, 1.0),
             ),
-            (
-                "Radius",
-                (p.radius / units.extent(SPATIAL_PX_MAX)).clamp(0.0, 1.0),
-            ),
+            ("Radius", (p.radius / SPATIAL_PX_MAX).clamp(0.0, 1.0)),
             ("Falloff", p.falloff.clamp(0.0, 1.0)),
         ],
         // Shadows/Highlights: 8 params — shadows (amount/width/radius), highlights
@@ -158,13 +140,13 @@ pub fn adjustment_slider_params_in(
             ("Shad Wid", p.shadows_tonal_width.clamp(0.0, 1.0)),
             (
                 "Shad Rad",
-                (p.shadows_radius / units.extent(SPATIAL_PX_MAX)).clamp(0.0, 1.0),
+                (p.shadows_radius / SPATIAL_PX_MAX).clamp(0.0, 1.0),
             ),
             ("High Amt", p.highlights_amount.clamp(0.0, 1.0)),
             ("High Wid", p.highlights_tonal_width.clamp(0.0, 1.0)),
             (
                 "High Rad",
-                (p.highlights_radius / units.extent(SPATIAL_PX_MAX)).clamp(0.0, 1.0),
+                (p.highlights_radius / SPATIAL_PX_MAX).clamp(0.0, 1.0),
             ),
             ("Color", (p.color_correction.clamp(-1.0, 1.0) + 1.0) * 0.5),
             (
@@ -241,16 +223,6 @@ fn slider_to_shift(v: f32) -> f32 {
 /// Set slider `slot` of an adjustment from a normalized `0..1` value (inverse of
 /// [`adjustment_slider_params`]). Out-of-range slots / non-slider kinds no-op.
 pub fn set_adjustment_slider_param(params: &mut AdjustmentParams, slot: usize, value01: f32) {
-    set_adjustment_slider_param_in(params, slot, value01, SpatialUnits::Pixels);
-}
-
-/// [`set_adjustment_slider_param`] with the spatial extents in `units` (a surface's own units).
-pub fn set_adjustment_slider_param_in(
-    params: &mut AdjustmentParams,
-    slot: usize,
-    value01: f32,
-    units: SpatialUnits,
-) {
     let v = value01.clamp(0.0, 1.0);
     match params {
         AdjustmentParams::HueSaturationBrightness(p) => match slot {
@@ -320,9 +292,7 @@ pub fn set_adjustment_slider_param_in(
             _ => {}
         },
         // W4 spatial mesh — inverse of `adjustment_slider_params`.
-        AdjustmentParams::GaussianBlur(p) if slot == 0 => {
-            p.radius = v * units.extent(SPATIAL_PX_MAX);
-        }
+        AdjustmentParams::GaussianBlur(p) if slot == 0 => p.radius = v * SPATIAL_PX_MAX,
         AdjustmentParams::MotionBlur(p) => match slot {
             0 => p.distance = v * SPATIAL_PX_MAX,
             1 => p.angle = slider_to_angle(v),
@@ -330,7 +300,7 @@ pub fn set_adjustment_slider_param_in(
         },
         AdjustmentParams::Sharpen(p) => match slot {
             0 => p.amount = v * SHARPEN_AMOUNT_MAX,
-            1 => p.radius = v * units.extent(SHARPEN_RADIUS_MAX),
+            1 => p.radius = v * SHARPEN_RADIUS_MAX,
             _ => {}
         },
         AdjustmentParams::ChromaticAberration(p) => match slot {
@@ -353,17 +323,17 @@ pub fn set_adjustment_slider_param_in(
         AdjustmentParams::Bloom(p) => match slot {
             0 => p.threshold = v,
             1 => p.intensity = v * BLOOM_INTENSITY_MAX,
-            2 => p.radius = v * units.extent(SPATIAL_PX_MAX),
+            2 => p.radius = v * SPATIAL_PX_MAX,
             3 => p.falloff = v,
             _ => {}
         },
         AdjustmentParams::ShadowsHighlights(p) => match slot {
             0 => p.shadows_amount = v,
             1 => p.shadows_tonal_width = v,
-            2 => p.shadows_radius = v * units.extent(SPATIAL_PX_MAX),
+            2 => p.shadows_radius = v * SPATIAL_PX_MAX,
             3 => p.highlights_amount = v,
             4 => p.highlights_tonal_width = v,
-            5 => p.highlights_radius = v * units.extent(SPATIAL_PX_MAX),
+            5 => p.highlights_radius = v * SPATIAL_PX_MAX,
             6 => p.color_correction = v * 2.0 - 1.0, // -1..1
             7 => p.midtone_contrast = v * 2.0 - 1.0, // -1..1
             _ => {}

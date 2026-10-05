@@ -18,7 +18,7 @@ fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
 /// Separable Gaussian blur of a SCALAR field (a tone map) in place, clamp-to-edge.
 /// Used by Shadows/Highlights to build the local-average luma. `radius ≤ 0` leaves
 /// the field unblurred (a global, per-pixel tone reference).
-pub(super) fn separable_blur_scalar(radius: f32, field: &mut [f32], win: AdjustWindow) {
+pub fn separable_blur_scalar(radius: f32, field: &mut [f32], win: AdjustWindow) {
     if radius <= 0.0 {
         return;
     }
@@ -67,17 +67,9 @@ pub(super) fn separable_blur_scalar(radius: f32, field: &mut [f32], win: AdjustW
 /// outward** past the bright source into transparency (the bloom look). Bloom is a
 /// coverage-feathering kind (see `AdjustmentKind::feathers_coverage`).
 pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
-    apply_bloom_on(p, acc, &win);
-}
-
-/// [`apply_bloom`] over any [`Neighbourhood`]: the bright pass, the add and the light
-/// boundary are the law; the glow's low-pass is the neighbourhood's
-/// ([`Neighbourhood::glow`] — the grid's downsampled pyramid, a surface's heat kernel).
-pub fn apply_bloom_on(p: &BloomParams, acc: &mut [[f32; 4]], nb: &dyn Neighbourhood) {
     if p.intensity <= 0.0 || p.radius <= 0.0 {
         return;
     }
-    let win = nb.window();
     let (w, h) = (win.width as i32, win.height as i32);
     if w == 0 || h == 0 {
         return;
@@ -98,58 +90,64 @@ pub fn apply_bloom_on(p: &BloomParams, acc: &mut [[f32; 4]], nb: &dyn Neighbourh
             }
         });
     }
-    let glow = nb.glow(p.radius, bright);
+    // PERF: the glow is low-frequency, so blur it at REDUCED resolution — the
+    // standard bloom trick + a mirror of the GPU mip pyramid. Downsample the
+    // bright-pass by `factor`, blur the small buffer (radius scaled down → far
+    // fewer taps over far fewer pixels: ≈ factor⁴ less work), bilinear-upsample on
+    // the add. Large canvases pick a bigger factor; small ones stay full-res so the
+    // glow shape is unchanged. This is what fixes the slider-drag FPS on the CPU
+    // fallback path (the GPU pass-graph is the Coord's follow-up).
+    // RADIUS-based factor (mirror of the GPU) → the low-res blur is bounded, so the
+    // cost is radius-independent AND the CPU fallback matches the GPU at every radius.
+    let factor = bloom_downsample_factor(p.radius) as i32;
+    let glow = if factor == 1 {
+        let mut g = bright;
+        separable_blur_premul(p.radius, &mut g, win);
+        g
+    } else {
+        let (sw, sh) = ((w + factor - 1) / factor, (h + factor - 1) / factor);
+        let mut small = downsample_box(&bright, w, h, sw, sh, factor);
+        separable_blur_premul(
+            p.radius / factor as f32,
+            &mut small,
+            AdjustWindow::full(sw as u32, sh as u32),
+        );
+        small // upsampled on read below
+    };
     // Add the glow onto the premultiplied base, then back to straight (parallel).
     premultiply_em_luz(acc);
     let intensity = p.intensity;
     let glow = &glow;
-    par_rows(acc, wu, hu, |y, out_row| {
-        for (x, o) in out_row.iter_mut().enumerate() {
-            let g = glow[y * wu + x];
-            o[0] += intensity * g[0];
-            o[1] += intensity * g[1];
-            o[2] += intensity * g[2];
-            o[3] = (o[3] + intensity * g[3]).clamp(0.0, 1.0);
-        }
-    });
-    unpremultiply_em_luz(acc);
-}
-
-/// ⭐ **The grid's glow low-pass** — the glow is low-frequency, so it is blurred at
-/// REDUCED resolution (the standard bloom trick + a mirror of the GPU mip pyramid):
-/// downsample the bright-pass by a RADIUS-based `factor` (the low-res blur is bounded, so
-/// the cost is radius-independent AND it matches the GPU at every radius), blur the small
-/// buffer, bilinear-upsample back to full res. `factor == 1` blurs at full res.
-pub(super) fn grid_glow(radius: f32, bright: Vec<[f32; 4]>, win: AdjustWindow) -> Vec<[f32; 4]> {
-    let (w, h) = (win.width as i32, win.height as i32);
-    let factor = bloom_downsample_factor(radius) as i32;
     if factor == 1 {
-        let mut g = bright;
-        separable_blur_premul(radius, &mut g, win);
-        return g;
+        par_rows(acc, wu, hu, |y, out_row| {
+            for (x, o) in out_row.iter_mut().enumerate() {
+                let g = glow[y * wu + x];
+                o[0] += intensity * g[0];
+                o[1] += intensity * g[1];
+                o[2] += intensity * g[2];
+                o[3] = (o[3] + intensity * g[3]).clamp(0.0, 1.0);
+            }
+        });
+    } else {
+        let (sw, sh) = ((w + factor - 1) / factor, (h + factor - 1) / factor);
+        // Centre-aligned map full → small using the actual dim ratio (sw/w, not
+        // 1/factor) — matches the GPU `cs_bloom_up` exactly when w isn't a clean
+        // multiple of `factor`.
+        let inv_x = sw as f32 / w as f32;
+        let inv_y = sh as f32 / h as f32;
+        par_rows(acc, wu, hu, |y, out_row| {
+            let fy = (y as f32 + 0.5) * inv_y - 0.5;
+            for (x, o) in out_row.iter_mut().enumerate() {
+                let fx = (x as f32 + 0.5) * inv_x - 0.5;
+                let g = bilinear(glow, sw, sh, fx, fy);
+                o[0] += intensity * g[0];
+                o[1] += intensity * g[1];
+                o[2] += intensity * g[2];
+                o[3] = (o[3] + intensity * g[3]).clamp(0.0, 1.0);
+            }
+        });
     }
-    let (sw, sh) = ((w + factor - 1) / factor, (h + factor - 1) / factor);
-    let mut small = downsample_box(&bright, w, h, sw, sh, factor);
-    separable_blur_premul(
-        radius / factor as f32,
-        &mut small,
-        AdjustWindow::full(sw as u32, sh as u32),
-    );
-    // Centre-aligned map full → small using the actual dim ratio (sw/w, not
-    // 1/factor) — matches the GPU `cs_bloom_up` exactly when w isn't a clean
-    // multiple of `factor`.
-    let inv_x = sw as f32 / w as f32;
-    let inv_y = sh as f32 / h as f32;
-    let (wu, hu) = (w as usize, h as usize);
-    let mut full = bright;
-    par_rows(&mut full, wu, hu, |y, out_row| {
-        let fy = (y as f32 + 0.5) * inv_y - 0.5;
-        for (x, o) in out_row.iter_mut().enumerate() {
-            let fx = (x as f32 + 0.5) * inv_x - 0.5;
-            *o = bilinear(&small, sw, sh, fx, fy);
-        }
-    });
-    full
+    unpremultiply_em_luz(acc);
 }
 
 /// Box-downsample a `w×h` premultiplied buffer to `dw×dh` by averaging each
@@ -219,25 +217,14 @@ pub fn apply_shadows_highlights(
     acc: &mut [[f32; 4]],
     win: AdjustWindow,
 ) {
-    apply_shadows_highlights_on(p, acc, &win);
-}
-
-/// [`apply_shadows_highlights`] over any [`Neighbourhood`] — the local-tone maps are the
-/// neighbourhood's low-pass of the luma ([`Neighbourhood::blur1`]).
-pub fn apply_shadows_highlights_on(
-    p: &ShadowsHighlightsParams,
-    acc: &mut [[f32; 4]],
-    nb: &dyn Neighbourhood,
-) {
-    let win = nb.window();
     if p.shadows_amount == 0.0 && p.highlights_amount == 0.0 && p.midtone_contrast == 0.0 {
         return;
     }
     // Local-average luma maps (one per correction radius).
     let mut local_lo: Vec<f32> = acc.iter().map(display_luma).collect();
     let mut local_hi = local_lo.clone();
-    nb.blur1(p.shadows_radius, &mut local_lo);
-    nb.blur1(p.highlights_radius, &mut local_hi);
+    separable_blur_scalar(p.shadows_radius, &mut local_lo, win);
+    separable_blur_scalar(p.highlights_radius, &mut local_hi, win);
     let tw_s = p.shadows_tonal_width.max(1e-3);
     let tw_h = p.highlights_tonal_width.max(1e-3);
     let (wu, hu) = (win.width as usize, win.height as usize);

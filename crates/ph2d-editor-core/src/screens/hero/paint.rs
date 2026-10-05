@@ -8,8 +8,7 @@ pub use na_escala::paint_hero_screen_na_escala;
 ///
 /// ⚠️ **Estar no registro e estar visível NÃO chega**: se o id não passa por aqui, o painel é
 /// registado, visível e **nunca pintado** — nada quebra e nada avisa. Este arquivo pagou esse
-/// defeito seis vezes (as notas dentro da lista são o registo de cada uma), e a última foi um smoke
-/// reprovado do painel de modelagem 3D.
+/// defeito várias vezes (as notas dentro da lista são o registo de cada uma).
 ///
 /// ⭐ Desde 2026-08-19 há um gate — `every_registered_panel_is_reachable_by_the_z_order_walk` — que
 /// compara esta lista com o REGISTRO. É por isso que ela é uma const com nome em vez de um array
@@ -85,20 +84,7 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     // no-opa quando escondido — sem esta entrada ele fica registado, visível, e NUNCA
     // pintado (nada quebra, nada avisa).
     ids::AUTHORED_PANEL,
-    // O painel da cena 3D (ADR-0150 W12): mesma categoria dos dois acima.
-    // O `paint()` dele sai no primeiro `if` sem cena viva — sem esta entrada
-    // ele fica registrado, visível, e NUNCA pintado.
-    ids::SCULPT3D_PANEL,
-    // O painel de MODELAGEM 3D (ADR-0161 W4) — irmão do de cima, e não ele:
-    // `sculpt3d` é escultura, `model3d` é modelagem por campo implícito.
-    //
-    // ⚠️ **A ausência desta linha foi um smoke reprovado** (Enio, 2026-08-19:
-    // *"o painel não abre"*): a crate existia, estava no registro, a
-    // visibilidade estava escrita, os 6 gates dela passavam — e este passeio
-    // nunca chegava nele. É a **sexta** vez que este arquivo paga o mesmo
-    // defeito, e as cinco notas acima já o diziam.
-    ids::MODEL3D_PANEL,
-    // ⭐ O NAVEGADOR DE ASSETS (plano `docs/Components/07`) — e ele entra AQUI porque as seis
+    // ⭐ O NAVEGADOR DE ASSETS (plano `docs/Components/07`) — e ele entra AQUI porque as
     // notas acima já pagaram esta lição: sem esta linha o painel fica registado, visível, com os
     // gates verdes, e **nunca pintado**.
     ids::ASSET_PANEL,
@@ -108,7 +94,7 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     // mesmo defeito** — o painel nasceu registado, visível ao clique do menu, e o passeio de
     // z-order nunca chegava a ele: nada quebra, nada avisa, e o menu abre um painel invisível.
     // Desta vez o `every_registered_panel_is_reachable_by_the_z_order_walk` apanhou-o na primeira
-    // corrida, que é exactamente o que as seis notas acima pediam que acontecesse.
+    // corrida, que é exactamente o que as notas acima pediam que acontecesse.
     ids::LAB_PANEL,
     ids::AUDIO_MIXER_PANEL,
     ids::AUDIO_EDITOR_PANEL,

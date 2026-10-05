@@ -1,4 +1,3 @@
-use super::super::surface::WorkSel;
 use super::super::*;
 use super::ShTonal;
 
@@ -143,8 +142,6 @@ impl LayerCompositor {
             idx: usize,
             weights: Vec<f32>,
             half: u32,
-            /// σ of the stage's low-pass(es) — the surface heat reads it (`docs/3D/30` §14).
-            sigma: [f32; 2],
             stage: BlurStage,
             combine_mode: u32,
             amount: f32,
@@ -156,7 +153,6 @@ impl LayerCompositor {
         struct KernelPlan {
             weights: Vec<f32>,
             half: u32,
-            sigma: [f32; 2],
             stage: BlurStage,
             combine_mode: u32,
             amount: f32,
@@ -174,7 +170,6 @@ impl LayerCompositor {
                     Some(KernelPlan {
                         weights,
                         half,
-                        sigma: [gaussian_sigma(params[0]), 0.0],
                         stage: BlurStage::Separable,
                         combine_mode: COMBINE_GAUSSIAN,
                         amount: 0.0,
@@ -185,7 +180,6 @@ impl LayerCompositor {
                     Some(KernelPlan {
                         weights,
                         half,
-                        sigma: [gaussian_sigma(params[1]), 0.0],
                         stage: BlurStage::Separable,
                         combine_mode: COMBINE_SHARPEN,
                         amount: params[0],
@@ -199,7 +193,6 @@ impl LayerCompositor {
                     Some(KernelPlan {
                         weights,
                         half,
-                        sigma: [0.0; 2],
                         stage,
                         combine_mode: COMBINE_GAUSSIAN,
                         amount: 0.0,
@@ -213,7 +206,6 @@ impl LayerCompositor {
                     Some(KernelPlan {
                         weights: Vec::new(),
                         half,
-                        sigma: [0.0; 2],
                         stage: BlurStage::Chroma(shifts),
                         combine_mode: COMBINE_GAUSSIAN,
                         amount: 0.0,
@@ -233,7 +225,6 @@ impl LayerCompositor {
                     Some(KernelPlan {
                         weights: low_weights,
                         half: halo,
-                        sigma: [gaussian_sigma(radius), 0.0],
                         stage: BlurStage::Bloom {
                             threshold: params[0],
                             falloff: params[3],
@@ -253,7 +244,6 @@ impl LayerCompositor {
                     Some(KernelPlan {
                         weights: Vec::new(),
                         half: lo_half.max(hi_half), // halo = the larger blur radius
-                        sigma: [gaussian_sigma(params[2]), gaussian_sigma(params[5])],
                         stage: BlurStage::Sh {
                             lo_weights,
                             lo_half,
@@ -297,7 +287,6 @@ impl LayerCompositor {
                         idx: i,
                         weights: plan.weights,
                         half: plan.half,
-                        sigma: plan.sigma,
                         stage: plan.stage,
                         combine_mode: plan.combine_mode,
                         amount: plan.amount,
@@ -360,38 +349,7 @@ impl LayerCompositor {
             cur = dst;
             // Stage → writes the adjusted texture into blur[1] for the SHARED
             // combine; or, for S/H, runs its OWN sub-graph + combine into base[dst].
-            // ⭐ On a SURFACE (`docs/3D/30` §14) the low-pass of each stage is the surface
-            //   heat; the rest of the stage and the combine are the grid's, untouched.
-            let on_surface = self.surface.is_some();
             let shared_combine = match &b.stage {
-                BlurStage::Separable if on_surface => {
-                    self.run_surface_heat(
-                        gpu,
-                        (WorkSel::Base(cur), WorkSel::Blur(1)),
-                        b.sigma[0],
-                        true,
-                    );
-                    true
-                }
-                BlurStage::Directional(_) | BlurStage::Chroma(_) if on_surface => {
-                    // ⛔ The image-plane kinds never reach a surface; if one does, its
-                    //    low-pass is the identity (the caller refuses them at its door).
-                    debug_assert!(false, "an image-plane kind on a surface");
-                    self.run_surface_heat(gpu, (WorkSel::Base(cur), WorkSel::Blur(1)), 0.0, true);
-                    true
-                }
-                BlurStage::Bloom {
-                    threshold, falloff, ..
-                } if on_surface => {
-                    self.run_bloom_bright(gpu, cur, *threshold, *falloff, work);
-                    self.run_surface_heat(
-                        gpu,
-                        (WorkSel::Blur(1), WorkSel::Blur(1)),
-                        b.sigma[0],
-                        false,
-                    );
-                    true
-                }
                 BlurStage::Separable => {
                     self.upload_blur_weights(gpu, &b.weights);
                     self.run_blur(gpu, cur, b.half, false, [0.0, 0.0], work);
@@ -427,9 +385,10 @@ impl LayerCompositor {
                         gpu,
                         cur,
                         cur ^ 1,
-                        (lo_weights, *lo_half),
-                        (hi_weights, *hi_half),
-                        on_surface.then_some(b.sigma),
+                        lo_weights,
+                        *lo_half,
+                        hi_weights,
+                        *hi_half,
                         *tonal,
                         b.blend,
                         b.opacity,

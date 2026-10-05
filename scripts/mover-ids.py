@@ -700,7 +700,7 @@ def move_definicoes(mundo: Mundo, palco: Palco, pk, precisa_do_dono, rel):
 
 def apaga_declaracao(palco: Palco, src: str):
     """Tira a declaração de um ficheiro que ficou vazio — `mod x;` no `mod.rs`, ou `#[path = "x.rs"]
-    mod alias;` num IRMÃO (o `chrome/sculpt3d.rs` declara assim o `sculpt3d_cloth.rs`), com o
+    mod alias;` num IRMÃO (um `chrome/<x>.rs` que declara assim o `<x>_<parte>.rs`), com o
     `pub use alias::*;` dele. A doc `///` por cima vai junto."""
     d, base = os.path.dirname(src), os.path.basename(src)
     stem = base[:-3]

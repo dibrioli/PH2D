@@ -6,7 +6,7 @@
 //! # ⚠️ Não há segmentado nenhum, e isso é o desenho
 //!
 //! A arma são **dois números e seis nomes**: ⇒ **não há posição-no-array a ser tag de clique
-//! aqui**, que é a armadilha que os três segmentados do `SCULPT3D_POSE_MODE` carregam, e que o
+//! aqui**, que é a armadilha de todo segmentado indexado, e que o
 //! `SignalVerb::ALL` desta linha pagou em 19/09 (o verbo existia, tinha lei e gates, e o artista
 //! não lhe chegava porque o array de ids ficou com um a menos).
 

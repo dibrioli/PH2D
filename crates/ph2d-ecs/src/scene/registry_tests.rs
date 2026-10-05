@@ -233,7 +233,9 @@ fn register_ecs_components_populates_registry() {
     //   integrar conta o DELTA, nunca o literal.
     // ⚠️ **2026-10-04: `108` -> `109`, delta +1** -- o `VecObject` (spec/06 F3 ▸ Vector): o
     //   OBJECTO vetorial, contentor das formas. Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 109);
+    // ⚠️ **2026-10-05: `109` -> `106`, delta -3** -- o 3D sai do PH2D (ADR-0179): `BakedForm`,
+    //   `Sculpt3dPieceRef` e `Mesh3D` deixam o registo. Quem integrar conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 106);
     assert!(reg.get_by_name("ph2d::ecs::VecObject").is_some());
     assert!(reg.get_by_name("ph2d::ecs::WeaponFire").is_some());
     assert!(reg.get_by_name("ph2d::ecs::CameraShake").is_some());
@@ -241,7 +243,6 @@ fn register_ecs_components_populates_registry() {
     assert!(reg.get_by_name("ph2d::ecs::PathFollow").is_some());
     assert!(reg.get_by_name("ph2d::ecs::Tags").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SignalOnAction").is_some());
-    assert!(reg.get_by_name("ph2d::ecs::Sculpt3dPieceRef").is_some());
     assert!(reg.get_by_name("ph2d::ecs::AudioSource2D").is_some());
     assert!(reg.get_by_name("ph2d::ecs::AudioListener2D").is_some());
     assert!(reg.get_by_name("ph2d::ecs::GameCamera").is_some());
@@ -287,7 +288,6 @@ fn register_ecs_components_populates_registry() {
     assert!(reg.get_by_name("ph2d::ecs::RootOrder").is_some());
     assert!(reg.get_by_name("ph2d::ecs::Locked").is_some());
     assert!(reg.get_by_name("ph2d::ecs::PaintedDoc").is_some());
-    assert!(reg.get_by_name("ph2d::ecs::BakedForm").is_some());
     assert!(reg.get_by_name("ph2d::ecs::GroupedChildren").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecPathRef").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecConnector").is_some());

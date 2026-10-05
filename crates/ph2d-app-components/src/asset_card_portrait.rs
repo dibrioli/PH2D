@@ -24,7 +24,7 @@
 //! |---|---|
 //! | a ordem de **z** (`OrderInLayer`, `YSort`, `SortingGroup`) | ele usa a ordem do DOCUMENTO; honrar o z pede a lei do extract, que vive noutra fase |
 //! | modos de mistura e `tint` | a composição é `src-over` reta; um modo por peça pede o vocabulário do renderer |
-//! | peças que não são sprite (vetor, texto, campo 3D) | elas não têm pixels em memória — e uma peça invisível no retrato é melhor que um retrato que mente sobre ter tudo |
+//! | peças que não são sprite (vetor, texto) | elas não têm pixels em memória — e uma peça invisível no retrato é melhor que um retrato que mente sobre ter tudo |
 //!
 //! *Um retrato parcial com os limites escritos é outra coisa que um retrato que se diz completo.*
 

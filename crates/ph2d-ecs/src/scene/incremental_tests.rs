@@ -349,12 +349,12 @@ fn recycled_bits_never_make_a_row_read_the_wrong_object() {
 ///
 /// A lista de colunas vigiadas resolvia-se **uma vez**, na primeira captura (`primed`), a partir de
 /// `world.component_id::<T>()` — que é `None` para todo tipo registado que ainda não existe no
-/// mundo. Pelo pill a primeira captura vê a cena **vazia**: nenhum nó do modelador existe, logo
-/// `FieldPose`/`FieldNode`/`FieldMods` ficam de fora da lista **para sempre**. Tudo o que nasce
-/// depois tem essas colunas, e o pré-filtro nunca as olha ⇒ uma escrita **no lugar** (mover com o
-/// gizmo, arrastar um slider, digitar um número) é invisível — só um spawn, um despawn ou uma troca
-/// de archetype (pôr um modificador) chegam a ser passo. Medido pela sonda
-/// (`PH2D_FIELD_UNDO_PROBE=1`, sem `PH2D_FIELD_SMOKE`):
+/// mundo. Pelo pill a primeira captura vê a cena **vazia**, logo os tipos de um módulo que ainda
+/// não pôs nada no mundo ficam de fora da lista **para sempre**. Tudo o que nasce depois tem essas
+/// colunas, e o pré-filtro nunca as olha ⇒ uma escrita **no lugar** (mover com o gizmo, arrastar
+/// um slider, digitar um número) é invisível — só um spawn, um despawn ou uma troca de archetype
+/// chegam a ser passo. Medido pela sonda do módulo de então (o modelador 3D, retirado pelo
+/// ADR-0179), sem a cena de smoke armada:
 ///
 /// ```text
 /// f=30 criar pela paleta        undo=0→1            (spawn: visto)
@@ -362,7 +362,7 @@ fn recycled_bits_never_make_a_row_read_the_wrong_object() {
 /// f=80 Ctrl+Z                   nos=5→0             ⛔ um Ctrl+Z apaga TUDO
 /// ```
 ///
-/// ⚠️ **Com `PH2D_FIELD_SMOKE=1` o mesmo arrasto registava** — a cena de demo nasce ANTES da
+/// ⚠️ **Com a cena de smoke armada o mesmo arrasto registava** — a cena de demo nasce ANTES da
 /// primeira captura, então as colunas já existiam quando a lista foi resolvida. *Foi por isso que
 /// quatro jornadas de sondas passaram verdes sobre um produto partido: a sonda armava o módulo pela
 /// variável de ambiente, e o dono arma-o pelo pill.*

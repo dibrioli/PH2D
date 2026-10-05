@@ -132,9 +132,9 @@ pub use layer_compositor::{
     CompositeSpace, GpuOpScratch, HARD_CAP_LAYERS, LAYER_CACHE_BUDGET_DISCRETE_BYTES,
     LAYER_CACHE_BUDGET_SHARED_BYTES, LayerCompositeError, LayerCompositor, LayerMask, LayerOp,
     LayerPixelProvider, LayerPixels, MAX_BLUR_HALF, Region, SPATIAL_BLOOM, SPATIAL_CHROMA,
-    SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHADOWS_HIGHLIGHTS, SPATIAL_SHARPEN, SurfaceGraph,
-    SurfaceNeighbourhood, SurfaceRefusal, flatten_layer_ops, gaussian_sigma, gaussian_weights,
-    has_spatial, layer_cache_budget, max_layers_for_budget, motion_weights,
+    SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHADOWS_HIGHLIGHTS, SPATIAL_SHARPEN,
+    flatten_layer_ops, gaussian_weights, has_spatial, layer_cache_budget, max_layers_for_budget,
+    motion_weights,
 };
 pub use motion_fx::{BloomParams, DirtMask, MotionFx, dirt_scale_offset};
 pub use picking::{

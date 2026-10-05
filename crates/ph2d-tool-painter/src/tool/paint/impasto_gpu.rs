@@ -83,25 +83,14 @@ pub struct ImpastoPlanes {
     pub cover: Vec<u8>,
     /// `[shine, roughness, metallic, wax]` — the first 4 of the canvas's 7 material bytes.
     pub mat0: Vec<u8>,
-    /// **A FORMA doada** — `[nx, ny, nz, peso]` por texel da janela, ou `None` sem escultura
-    /// (`docs/3D/05.2`). O ausente NÃO viaja como um plano de zeros: um `z` zero é uma normal deitada,
-    /// e quem põe o neutro `[0, 0, 1]` é o shader, por um bit do uniform.
-    pub form: Option<Vec<f32>>,
     /// **A PRESENÇA DO PAPEL** — `1.0` quando o substrato está ligado, `0.0` quando não.
     ///
     /// ⚠️ **Escalar, não plano, e é medição e não economia:** a presença de um papel é uniforme na
-    /// tela (ou há substrato ou não há), então uma textura inteira de `1` diria o que um bit diz. É o
-    /// idioma do `has_form` ao lado — e ele é NECESSÁRIO aqui, não cosmético: o plano de relevo já sobe
+    /// tela (ou há substrato ou não há), então uma textura inteira de `1` diria o que um bit diz. E
+    /// ele é NECESSÁRIO aqui, não cosmético: o plano de relevo já sobe
     /// com o dente somado, e sem esta presença o shader o multiplica pela cobertura da TINTA, que num
     /// documento digital é zero. Plano certo, apagado no device.
     pub paper_body: f32,
-    /// **A OCLUSÃO DE FORMA** doada com ela — um escalar por texel da janela, ou `None`.
-    ///
-    /// ⚠️ Ao contrário da irmã, a ausência desta é **honesta e não um bit de emergência**: o neutro
-    /// da oclusão é a constante `1.0`, que é o que um documento sem escultura — e toda doação
-    /// anterior a esta wave — de fato significa. O bit no uniform existe só para não uploadar uma
-    /// tela inteira de uns.
-    pub form_occ: Option<Vec<f32>>,
     /// `[wax_r, wax_g, wax_b, 255]` — the last 3, padded to a texel. Seven bytes do not fit a GPU
     /// format; four and four do, and the split falls exactly on the boundary between the scalar
     /// properties and the Wax filter's colour.
@@ -204,16 +193,6 @@ impl PainterTool {
         let mut cover = vec![0u8; n];
         let mut mat0 = vec![0u8; n * 4];
         let mut mat1 = vec![0u8; n * 4];
-        // **A FORMA doada**, na MESMA janela dos outros planos (`docs/3D/05.2`, costura S1).
-        //
-        // ⚠️ `None` quando não há escultura, e não um plano neutro de zeros: quem substitui o neutro
-        // `[0, 0, 1]` é o shader, pelo bit `has_form` do uniform — materializar uma tela inteira de
-        // números para dizer "nada" custaria o mesmo que a doação de verdade.
-        let mut form = fields.has_form().then(|| vec![0f32; n * 4]);
-        // A oclusão anda com a forma, e a condição é a MESMA: sem doação não há oclusão de forma a
-        // materializar. (Com doação e sem plano de oclusão — o caso de um projeto salvo antes desta
-        // wave — o `form_occlusion_at` devolve `1.0` e o plano sai neutro, que é o certo.)
-        let mut form_occ = fields.has_form().then(|| vec![0f32; n]);
         // The samplers are the light's OWN, asked in the same order as before, so a texel inside the
         // window carries the identical bytes a full fold would have given it. That is what makes
         // "partial" a statement about how MUCH is folded and never about WHAT it says.
@@ -227,32 +206,6 @@ impl PainterTool {
         // with 32 cores: the walk is the entire cost (0,1 ms of allocation against 183 ms of walk), and
         // it is the biggest single number a Painter frame can produce.
         let rww = rw as usize;
-        // A forma sai num passe próprio e não no `zip` acima, e é a escolha de menor risco: enfiá-la
-        // na cadeia obrigaria a `Option` a virar um plano sempre-alocado só para o tipo fechar, que é
-        // exatamente a tela de zeros que o parágrafo acima recusa. Ela é row-disjunta pelo mesmo
-        // argumento (ADR-0109) e byte-idêntica a uma varredura serial.
-        if let Some(f) = form.as_mut() {
-            f.par_chunks_mut(rww * 4)
-                .enumerate()
-                .for_each(|(row, frow)| {
-                    let y = i64::from(ry) + row as i64;
-                    for i in 0..rww {
-                        let v = fields.form_at(i64::from(rx) + i as i64, y);
-                        frow[i * 4..i * 4 + 4].copy_from_slice(&v);
-                    }
-                });
-        }
-        // A oclusão pelo mesmo caminho e pelo mesmo argumento (row-disjunta, ADR-0109), e num passe
-        // próprio pelo mesmo motivo da irmã: fundi-la no `zip` obrigaria a `Option` a virar um plano
-        // sempre-alocado só para o tipo fechar.
-        if let Some(o) = form_occ.as_mut() {
-            o.par_chunks_mut(rww).enumerate().for_each(|(row, orow)| {
-                let y = i64::from(ry) + row as i64;
-                for (i, slot) in orow.iter_mut().enumerate() {
-                    *slot = fields.form_occlusion_at(i64::from(rx) + i as i64, y);
-                }
-            });
-        }
         relief
             .par_chunks_mut(rww)
             .zip(cover.par_chunks_mut(rww))
@@ -281,8 +234,6 @@ impl PainterTool {
             cover,
             mat0,
             mat1,
-            form,
-            form_occ,
             paper_body: fields.paper_body(),
             lamps,
             spec_lut: lut.table(),
@@ -563,18 +514,14 @@ mod tests {
         let body = &body[..end];
         // Os planos TODOS, porque um `zip` serial no meio de paralelos serializa o conjunto todo:
         // `par_chunks_mut(...).zip(cover.chunks_mut(...))` nem compila como `ParallelIterator`, mas a
-        // forma que compila e regride é trocar TODOS, e contar é o que distingue "quatro de cinco".
+        // forma que compila e regride é trocar TODOS, e contar é o que distingue "três de quatro".
         //
-        // ⚠️ Eram QUATRO até a doação do módulo 3D (`docs/3D/05.2`) acrescentar o plano de FORMA. Ele
-        // sai num passe próprio e não no `zip` dos outros: como ele é `Option` — um documento sem
-        // escultura não paga um byte —, enfiá-lo na cadeia obrigaria o plano a ser sempre alocado só
-        // para o tipo fechar, que é exatamente a tela de zeros que o desenho recusa.
-        // ⚠️ E SEIS a partir da W10.7: a **oclusão de forma** (`docs/3D/05.2`) é o segundo plano que a
-        // doação carrega, e ela sai num passe próprio pelo mesmo argumento do irmão acima.
+        // ⚠️ 2026-10-05: 6 -> 4 — o 3D sai do PH2D (ADR-0179): os planos de FORMA e de OCLUSÃO doados
+        // saíram com ele. Quem integrar conta o DELTA, nunca o literal.
         let par = body.matches("par_chunks_mut(").count();
         assert_eq!(
-            par, 6,
-            "o walk do fold tem de percorrer os SEIS planos em paralelo (achei {par}) — as linhas sao \
+            par, 4,
+            "o walk do fold tem de percorrer os QUATRO planos em paralelo (achei {par}) — as linhas sao \
              disjuntas (ADR-0109) e este e o mecanismo dos 201,5 -> 14,55 ms a 4096². Nenhum gate de \
              razao ou de bytes pega esta regressao: serial e paralelo dao os MESMOS bytes e os dois sao \
              limitados pela janela"

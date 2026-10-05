@@ -116,10 +116,6 @@ const OUTSIDE_THE_DOOR: &[(&str, &str)] = &[
         "shells/desktop/src/render_loop/audio_overlay.rs",
         "CANVAS: a camada de audio pinta-se SOBRE o desenho, fora de todo painel",
     ),
-    (
-        "crates/ph2d-app-field3d/src/gizmo_paint.rs",
-        "CANVAS: o gizmo 3D",
-    ),
 ];
 
 fn repo_root() -> PathBuf {
@@ -160,10 +156,7 @@ fn ui_sources() -> Vec<PathBuf> {
             // família de cada vez — e uma varredura que não as siga perde a população **em
             // silêncio**: a isenção fica obsoleta, o censo de obsolescência acusa-a, e a leitura
             // fácil é apagar a isenção. *Isso não cura nada: apaga a cobertura junto com a linha.*
-            //
-            // ⚠️ A `ph2d-viewport3d` está aqui pela mesma razão — ela é a moldura 3D partilhada
-            // pelos dois módulos 3D, e é código de UI como qualquer painel.
-            if name.starts_with("ph2d-app-") || name == "ph2d-viewport3d" {
+            if name.starts_with("ph2d-app-") {
                 walk(&p.join("src"), &mut out);
             }
         }

@@ -164,21 +164,3 @@ fn an_empty_object_has_no_paint_mode() {
     assert!(!c.painter_na_mao());
     assert_eq!(c.hero.gizmo.mode.active(), None);
 }
-
-/// ⭐⭐ GATE — o Painter sobre a TELA da peça 3D (o Paint do Sculpt, F3) NÃO é o modo da imagem: o
-/// quadro não o adopta nem o larga como se fosse.
-#[test]
-fn the_painter_on_the_sculpt_screen_is_not_the_image_mode() {
-    let mut c = cena();
-    assert!(c.tools.set_active(&ToolId::new(PAINTER)));
-    assert!(
-        holds_an_image(&mut c.tools),
-        "controlo: sem tela, é o Painter da imagem"
-    );
-    let painter = c
-        .tools
-        .active_mut()
-        .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>());
-    assert!(painter.expect("é o Painter").bind_screen_canvas(64, 64));
-    assert!(!holds_an_image(&mut c.tools));
-}

@@ -118,14 +118,13 @@ serde = { version = "1", features = ["derive"] }
 bevy_ecs = "0.19"
 postcard = { version = "1", default-features = false, features = ["use-std"] }
 
-# ⚠️⚠️ **Estas duas entram pelo REGISTO DE COMPONENTES, não pelo código.** Nenhum
-# ficheiro desta família nomeia um tipo delas — elas existem aqui porque o
+# ⚠️⚠️ **Esta entra pelo REGISTO DE COMPONENTES, não pelo código.** Nenhum
+# ficheiro desta família nomeia um tipo dela — ela existe aqui porque o
 # catálogo que as fixturas montam tem de ser **o mesmo** que o produto monta
-# (ver `test_support::registo` e o gate que o prova). ⛔ Tirá-las daqui não é
+# (ver `test_support::registo` e o gate que o prova). ⛔ Tirá-la daqui não é
 # uma poda: é fazer as fixturas medirem um catálogo mais pobre que o do produto,
 # **em silêncio e a verde**, que é precisamente o defeito que esta família
 # inteira existe para apanhar.
-ph2d-field-ecs = { path = "../ph2d-field-ecs" }
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 
 [dev-dependencies]

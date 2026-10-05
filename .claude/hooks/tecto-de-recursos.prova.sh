@@ -43,7 +43,7 @@ t "grep que MENCIONA"     'grep -rn "cargo test" docs/'                     fals
 t "CORRER a Unreal"       '/home/enio/Documentos/Projetos/UnrealEngine/Engine/Binaries/Linux/UnrealEditor-Cmd P.uproject -run=pythonscript' false passa
 t "CORRER o Blender"      'blender -b --factory-startup -P /var/tmp/arnes/render_ref.py' false passa
 t "config do Blender"     'cat /usr/share/blender/5.2/datafiles/colormanagement/config.ocio' false passa
-t "o nosso oráculo"       'python3 docs/Render3d/ferramentas/oraculo_de_cor.py' false passa
+t "o nosso oráculo"       'python3 docs/Painter/ferramentas/oraculo_de_cor.py' false passa
 echo "— falha ABERTO (um guarda que se engana a fechar pára seis linhas) —"
 for e in 'lixo nao-json' '{}' '{"tool_input":{}}'; do
   printf '%s' "$e" | bash .claude/hooks/tecto-de-recursos.sh >/dev/null 2>&1

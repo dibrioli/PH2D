@@ -66,20 +66,10 @@ struct Globals {
     oy: u32,
     rw: u32,
     rh: u32,
-    // 1 quando a textura `form` carrega a doacao deste frame.
-    //
-    // ⚠️ Um bit, e nao "uma textura de zeros": um `z` ZERO nao e "nenhuma forma",
-    // e uma normal DEITADA, e somada a inclinacao da tinta daria um vetor quase
-    // horizontal. O neutro de "nao ha forma aqui" e [0, 0, 1] -- e uma textura
-    // neutra uploadada por frame custaria uma tela inteira para dizer nada.
-    has_form: u32,
-    // 1 quando a textura `form_occ` carrega a oclusao de forma deste frame.
-    //
-    // ⚠️ Um bit e nao "uma textura de uns", pelo motivo de sempre -- mas note a
-    // ASSIMETRIA com o irmao acima: la o bit e' NECESSARIO (o zero do buffer e'
-    // uma normal deitada, que nao e' o neutro); aqui ele e' so' economia, porque
-    // o neutro da oclusao E' um numero (`1.0`).
-    has_form_occ: u32,
+    // ⚠️ Vagas livres: um bit novo COME uma delas (o `Globals` do Rust tem as mesmas),
+    // nunca se soma a elas.
+    pad0: u32,
+    pad1: u32,
     // 1 quando ha SUBSTRATO (o dente do papel) neste frame.
     //
     // ⚠️ Necessario, e nao economia. O plano `relief` ja sobe com o dente somado
@@ -94,8 +84,7 @@ struct Globals {
     // ⚠️ Ele COMEU a ultima vaga (`pad2`), e nao se somou a ela -- que era o aviso
     // que aquele campo carregava: cada bit que nasce come um padding, e deixar a
     // vaga para tras faz o WGSL medir 4 bytes a mais que o `Globals` do Rust, o
-    // que o wgpu recusa no dispatch, como PANIC. O uniform NAO tem mais folga:
-    // o proximo bit paga um bloco de 16 dos DOIS lados, de proposito. Ver o gate
+    // que o wgpu recusa no dispatch, como PANIC. Ver o gate
     // `the_wgsl_globals_measures_exactly_the_rust_globals`.
     paper_body: u32,
 };
@@ -108,12 +97,6 @@ struct Globals {
 @group(0) @binding(5) var mat1: texture_2d<f32>;
 @group(0) @binding(6) var spec_lut: texture_2d<f32>;
 @group(0) @binding(7) var<uniform> u: Globals;
-// A FORMA doada pelo modulo 3D (docs/3D/05.2): xyz = a normal no espaco do rig,
-// w = quanta forma ha ali.
-@group(0) @binding(8) var form: texture_2d<f32>;
-// A OCLUSAO DE FORMA -- cavidade x os dois AOs, composta do lado de quem doa por
-// uma porta unica (`mesh.wgsl::form_occlusion`). Um escalar em [0, 1].
-@group(0) @binding(9) var form_occ: texture_2d<f32>;
 
 // Wrap lighting (`Wax`): Valve's half-Lambert. At w = 0 this is `max(N.L, 0)` exactly, which is what
 // makes the neutral material the pass as it shaded before materials existed.
@@ -127,38 +110,6 @@ fn wrapped_ndl(ndl: f32, wax: f32) -> f32 {
 fn spec_at(level: i32, ndh: f32) -> f32 {
     let i = i32(clamp(ndh, 0.0, 1.0) * SPEC_LUT_LAST);
     return textureLoad(spec_lut, vec2<i32>(i, min(level, ROUGH_LAST)), 0).r;
-}
-
-// A forma doada neste pixel -- [nx, ny, nz, peso], ou o NEUTRO onde nao ha doacao.
-//
-// ⚠️ **O plano CHEGA NEUTRALIZADO, e por isso nao ha um guard de peso aqui.** Quem
-// le o G-buffer cru e o `ReliefFields::form_at` da CPU, que ja troca o [0,0,0,0] de
-// fora da silhueta pelo neutro [0,0,1,0] -- e e o resultado DELE que o
-// `impasto_gpu` materializa e sobe. Um segundo guard aqui seria uma segunda copia
-// da mesma regra, concordando por acidente; e ele foi MEDIDO inalcancavel (removido,
-// a paridade continuou em 0 de 16384 bytes). O contrato esta pinado em
-// `the_form_plane_crosses_the_seam_already_neutralised`.
-//
-// O que fica e o bit `has_form`, que responde outra pergunta: a textura e
-// PERSISTENTE, entao sem ele um documento que PERDEU a escultura continuaria sendo
-// iluminado pela ultima forma que passou por ali.
-// A oclusao de forma neste pixel -- ou o neutro `1.0` onde nao ha doacao.
-//
-// ⚠️ Fora da silhueta o alvo de quem doa e' limpo em BRANCO, entao o papel nu ja
-// le 1.0 sem caso especial: o unico ramo aqui e' o do documento que nao tem
-// escultura nenhuma.
-fn form_occlusion_at(c: vec2<i32>) -> f32 {
-    if (u.has_form_occ == 0u) {
-        return 1.0;
-    }
-    return clamp(textureLoad(form_occ, c, 0).r, 0.0, 1.0);
-}
-
-fn form_at(c: vec2<i32>) -> vec4<f32> {
-    if (u.has_form == 0u) {
-        return vec4<f32>(0.0, 0.0, 1.0, 0.0);
-    }
-    return textureLoad(form, c, 0);
 }
 
 // The composed height, clamped to the CANVAS — so the central difference reads across the lit region's
@@ -211,30 +162,12 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // The weight IS the coverage: the pass multiplies a composited pixel, and at a stroke's translucent
     // edge that pixel is mostly paper showing through. Shading it in full means shading the paper.
     let cover_here = textureLoad(cover, coord, 0).r;
-    let f = form_at(coord);
-    // ⚠️ O `body` toma o MAXIMO das duas presencas: a forma existe onde ela cobre,
-    // mesmo sobre papel nu, e e isso que faz *pintar sobre forma* funcionar desde a
-    // primeira pincelada. (O `gloss` segue a TINTA: um realce e do material da
-    // tinta, e o barro ainda nao tem material -- docs/3D/05.1, W7.)
-    let body = max(max(cover_here, f.w), f32(u.paper_body));
+    let body = max(cover_here, f32(u.paper_body));
     let gloss = cover_here;
-
-    // A OCLUSAO deste texel, lida ANTES do early-out.
-    //
-    // ⚠️ **Ela entra no early-out, e a primeira versao afirmava que nao precisava.** O argumento era
-    // que *"onde a oclusao e' < 1 ha forma, logo `f.w > 0` e `body > 0`"* -- verdade sobre o que a
-    // rasterizacao PRODUZ (o alvo e' limpo em branco fora da silhueta), e uma afirmacao sobre o
-    // dominio alcancavel de HOJE. A CPU sempre exigiu `occ >= 1.0` para nao tocar o pixel, entao as
-    // duas rotas concordavam por coincidencia do produtor: bastava uma oclusao chegar sem forma para
-    // uma escurecer o papel nu e a outra nao. Medido no gate de paridade: 150 de diferenca em 3504
-    // bytes.
-    //
-    // ⚠️ Sem doacao isto custa ZERO -- o `has_form_occ` e' 0 e a funcao devolve 1.0 sem ler textura.
-    let occ = form_occlusion_at(coord);
 
     // Flat paint — or bare paper — is untouched, to the byte. Writing the source back is byte-identical:
     // `textureLoad` returns an exact multiple of 1/255 and `quantise` reproduces it.
-    if (((dhx == 0.0 && dhy == 0.0 && f.w <= 0.0) || body <= 0.0) && occ >= 1.0) {
+    if ((dhx == 0.0 && dhy == 0.0) || body <= 0.0) {
         textureStore(dst, coord, texel);
         return;
     }
@@ -270,10 +203,7 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // so `scattered` is identically 0.0 and `direct + 0.0 * wax_tint` is exactly `direct`; and
     // metallic = 0, so `spec_tint` is exactly 1.0. Pinned by
     // `the_achromatic_fast_lane_is_the_coloured_one_to_the_bit`.
-    // As DUAS fontes de normal, compostas: somar a inclinacao da tinta a normal da
-    // forma (o blend UDN) degenera EXATO nos dois extremos -- sem forma, `v` e
-    // literalmente [-dhx*K, -dhy*K, 1], a expressao que sempre esteve aqui.
-    let v = vec3<f32>(f.x - dhx * DEPTH_UNIT_PX, f.y - dhy * DEPTH_UNIT_PX, f.z);
+    let v = vec3<f32>(-dhx * DEPTH_UNIT_PX, -dhy * DEPTH_UNIT_PX, 1.0);
     let len = max(sqrt(v.x * v.x + v.y * v.y + v.z * v.z), 1.0e-6);
     let nrm = v / len;
     // How much of the highlight takes the PAINT's colour instead of the LAMP's — the one line that
@@ -306,16 +236,10 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cg = channel(diffuse.g, spec.g, flat_rgb.g, body, gloss, shine);
     let cb = channel(diffuse.b, spec.b, flat_rgb.b, body, gloss, shine);
 
-    // **A OCLUSAO DE FORMA multiplica o DIFUSO e nao o realce**, e e' a mesma lei
-    // que o barro aplica do outro lado (`mesh.wgsl`): uma fresta oclui a luz de
-    // AMBIENTE, e o caminho especular de uma lampada ou alcanca aquele ponto ou
-    // nao -- o `N·H` ja responde isso. Com `occ == 1.0` isto e' a identidade EXATA
-    // em IEEE-754, e e' isso que mantem o documento sem escultura byte-identico.
-    // (O `occ` e' lido la' em cima, antes do early-out -- ver o ⚠️ de la'.)
     let out = vec4<f32>(
-        quantise(light_pixel(albedo.r, cr.x * occ, cr.y)),
-        quantise(light_pixel(albedo.g, cg.x * occ, cg.y)),
-        quantise(light_pixel(albedo.b, cb.x * occ, cb.y)),
+        quantise(light_pixel(albedo.r, cr.x, cr.y)),
+        quantise(light_pixel(albedo.g, cg.x, cg.y)),
+        quantise(light_pixel(albedo.b, cb.x, cb.y)),
         texel.a,
     );
     textureStore(dst, coord, out);

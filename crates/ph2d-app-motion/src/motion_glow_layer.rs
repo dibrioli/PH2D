@@ -52,7 +52,7 @@
 //! por [`crate::motion_object_bake`], e o `source.shape` paramétrico por
 //! [`crate::motion_shape_bake`], o irmão que esta ordem trouxe. A sonda
 //! [`unreachable_geometries`] conta o que sobrar — ela é o que fará um caminho
-//! FUTURO (o 3D) nascer visível em vez de mudo.
+//! FUTURO nascer visível em vez de mudo.
 
 use super::motion_bridge::vector_instance_as_tile;
 use crate::motion_object_bake::ObjectBake;

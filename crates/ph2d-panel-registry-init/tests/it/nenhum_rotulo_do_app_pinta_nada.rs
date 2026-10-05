@@ -204,7 +204,9 @@ const PISO_DE_MEDICOES: usize = 12_000;
 /// params passaram a viver no cartão). *A população encolheu; o piso descreve-a.* ⚠️ Um piso que
 /// ficasse em `28` reprovaria para sempre sobre produto correcto, e subi-lo de volta só é honesto
 /// no dia em que um painel NOVO entrar no `default` do registo.
-const PISO_DE_PAINEIS: usize = 27;
+/// ⬇️ **`27 → 25` em 2026-10-05, pela mesma razão:** os painéis `model3d` e `sculpt3d` saíram com
+/// o 3D (ADR-0179). Medido sem o `painter_layers` (o cluster dele estava a ser editado): `24`.
+const PISO_DE_PAINEIS: usize = 25;
 
 /// ⭐⭐ **A DÍVIDA NOMEADA — o que sai cortado HOJE, em inglês.** Ela só **encolhe**: uma linha
 /// daqui sai quando alguém curar o rótulo, e o censo de obsolescência **reprova** se ela ficar a
@@ -436,21 +438,6 @@ const A_PASSAGEM_ARMADA_AINDA_CORTA: &[(&str, &str, &str)] = &[
         "Background Parallax Layer",
         "nome do artista · 110,8 px",
     ),
-    // ⭐⭐ **A TRIPLA DA SUBSUPERFÍCIE, na integração de 2026-09-20.** A `W10` da `line/3DModeling`
-    //    trouxe `"Subsurface Color R/G/B"` (a luz que atravessa a peça, por canal), e nas TRÊS
-    //    larguras largas só o **G** é cortado: `G` pinta mais largo que `R` e `B`, logo dois irmãos
-    //    cabem nos `110 px` da fileira e o terceiro perde uma letra.
-    // ⚠️⚠️ *Nenhum dos dois lados vê isto sozinho:* o rótulo é da linha, a régua que o mede chegou
-    //    do `main` na MESMA rodada, e o painel dela só passou a ser medido quando a fixtura deixou
-    //    de ler uma tabela de quatro (ver `o_model3d_armado`).
-    // ⛔ **E a cura não é renomear:** a lei de 19/09 manda um nome perder a EXPLICAÇÃO antes das
-    //    LETRAS, e aqui não há explicação para tirar — `Subsurface Color G` é o nome. Renomear a
-    //    tripla é decisão de VOCABULÁRIO do dono, que esta casa já mediu e reverteu uma vez.
-    (
-        "model3d",
-        "Subsurface Color G",
-        "fileira de campo · 110,0 px · a tripla R/G/B, e o `G` pinta mais largo que os irmaos",
-    ),
 ];
 
 /// ⛔⛔⛔ **O QUE FICA CORTADO NUMA SUPERFÍCIE QUE O DONO JÁ MANDOU SAIR — e por isso NÃO é
@@ -652,7 +639,6 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     ("audio_mixer", 5),
-    ("sculpt3d", 6),
     ("hierarchy", 5),
     // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
     //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
@@ -669,14 +655,6 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("tags", 2),
     ("audio_editor", 1),
     ("authored", 1),
-    // ⭐⭐ Era `1` (a `"Subsurface Anisotropy"`): a wave da SUBSUPERFÍCIE desta linha (`W10`, 17/09)
-    //    trouxe a tripla `"Subsurface Color R/G/B"`, e no degrau estreito **só o G** é cortado —
-    //    `G` pinta mais largo que `R` e `B`, logo dois irmãos cabem em `110 px` e o terceiro não.
-    //    ⚠️ *Nenhum dos dois lados vê isto sozinho:* o rótulo é da linha e a régua que o mede
-    //    chegou do `main` na mesma rodada. ⛔ E a cura NÃO é renomear — a lei de 19/09 manda o nome
-    //    perder a EXPLICAÇÃO antes das LETRAS, e aqui não há explicação para tirar: os `~63` nomes
-    //    compostos que ficam são decisão de VOCABULÁRIO do dono, medida e revertida uma vez.
-    ("model3d", 2),
     ("widget_lab", 1),
     // ⛔⛔⛔ **OS TRÊS QUE SÓ A ÁRVORE INTEIRA VÊ** (integração de 2026-09-20). Eles estão atrás de
     //    features que o `default` desta crate NÃO liga (`panel-flip`, `panel-painter-layers`,
@@ -745,7 +723,6 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬆️ `83 → 85` em 2026-09-29, pelo mesmo par da tabela de resistências — ver a irmã acima.
     ("inspector", 85),
     ("audio_mixer", 5),
-    ("sculpt3d", 6),
     ("hierarchy", 5),
     // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
     //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
@@ -762,9 +739,6 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("tags", 2),
     ("audio_editor", 1),
     ("authored", 1),
-    // ⭐ Era `1`, pela MESMA tripla da irmã [`CORTES_NO_DEGRAU_ESTREITO`] — o `"Subsurface Color G"`
-    //    acaba em reticência, logo conta nas duas.
-    ("model3d", 2),
     ("widget_lab", 1),
     // ⛔ Os dois que só a árvore inteira vê — o mecanismo está na irmã
     //    [`CORTES_NO_DEGRAU_ESTREITO`]. ⚠️ O `wet_tuning` NÃO entra aqui: os dois rótulos dele

@@ -118,7 +118,9 @@ mod tests {
         //   (o material e' GLOBAL) existem. Quem integrar conta o DELTA.
         // ⚠️ **2026-10-04: `109` -> `110`, delta +1** -- o `VecObject` (spec/06 F3 ▸ Vector, o
         //   OBJECTO vetorial), registado no ECS. Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 110);
+        // ⚠️ **2026-10-05: `110` -> `107`, delta -3** -- o 3D sai do PH2D (ADR-0179): `BakedForm`,
+        //   `Sculpt3dPieceRef` e `Mesh3D`. Quem integrar conta o DELTA, nunca o literal.
+        assert_eq!(reg.len(), 107);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

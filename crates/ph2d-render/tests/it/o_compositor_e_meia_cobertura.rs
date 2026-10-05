@@ -33,7 +33,7 @@ use vello::peniko::{Color, Fill, ImageQuality};
 /// O formato de superfície que o construtor do `VelloPass` pede para o blitter — esta sonda nunca
 /// apresenta, e lê o intermédio.
 const SURFACE: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
-/// O cinzento do canvas do modelador, em byte sRGB.
+/// Um cinzento médio de canvas, em byte sRGB.
 const FUNDO: u8 = 110;
 
 fn try_headless_gpu() -> Option<GpuContext> {

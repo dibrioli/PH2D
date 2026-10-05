@@ -19,8 +19,11 @@
 //! |---|---|---:|
 //! | o nome de um componente | `component.<snake(tipo)>.name` | 86 |
 //! | o rótulo de um campo | `component.field.<snake(CONST)>.<field_id>` | 128 |
-//! | a família na paleta | `component.category.<snake>` | 16 |
-//! | o tipo de objecto no filtro | `component.object_kind.<snake>` | 7 |
+//! | a família na paleta | `component.category.<snake>` | 15 |
+//! | o tipo de objecto no filtro | `component.object_kind.<snake>` | 5 |
+//!
+//! (As duas últimas eram `16` e `7`: a família *3D* e os tipos *3D Model* e *Sculpt* saíram com o
+//! 3D, ADR-0179.)
 //!
 //! ⚠️ **O dono da chave de um campo é o BLOCO e não o componente**, e isso foi medido: `MARKER` é
 //! partilhado por **5** descritores e `TAGS` por **2**. Um `FieldDesc` partilhado só pode carregar
@@ -31,9 +34,10 @@
 //! unicidade cala-se no dia em que duas famílias declararem o mesmo nome.*
 //!
 //! ⛔⛔ **E TRÊS rótulos só entraram porque o gerador não é a régua léxica:** `"Y-Sort"`, `"9-Slice"`
-//! e `"3D"` são pintados e a [`ph2d_label_census`] **não os acusa** — ela não reconhece uma sigla
-//! nem um composto com hífen ou dígito como língua. *Uma régua léxica tem um ponto cego exactamente
-//! onde o rótulo é mais curto*, e quem os apanhou foi o cruzamento entre as duas populações.
+//! e `"3D"` (este saiu com o 3D, ADR-0179) eram pintados e a [`ph2d_label_census`] **não os
+//! acusava** — ela não reconhece uma sigla nem um composto com hífen ou dígito como língua. *Uma
+//! régua léxica tem um ponto cego exactamente onde o rótulo é mais curto*, e quem os apanhou foi o
+//! cruzamento entre as duas populações.
 
 /// A tradução de uma chave `component.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
@@ -49,7 +53,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.area_torque.name" => "Torque Zone",
         "component.audio_listener_2d.name" => "Audio Listener 2D",
         "component.audio_source_2d.name" => "Audio Source 2D",
-        "component.baked_form.name" => "Baked Form",
         "component.blend_mode.name" => "Blend Mode",
         "component.bone.name" => "Bone",
         "component.bone_limit.name" => "Angle Limit",
@@ -65,7 +68,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.category.image" => "Image",
         "component.category.instancing" => "Instancing",
         "component.category.logic" => "Logic",
-        "component.category.model_3d" => "3D",
         "component.category.ordering" => "Ordering",
         "component.category.physics" => "Physics",
         "component.category.rendering" => "Rendering",
@@ -312,15 +314,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.y_sort.3" => "Sort Point",
         "component.field.z_as_relative.1" => "Z as Relative",
         "component.field.z_index.1" => "Z Index",
-        "component.field_light.name" => "Field Light",
-        "component.field_material.name" => "Field Material",
-        "component.field_mods.name" => "Field Modifiers",
-        "component.field_node.name" => "Field Node",
-        "component.field_object.name" => "3D Model",
-        "component.field_pose.name" => "Field Pose",
-        "component.field_profile_source.name" => "Profile Source",
-        "component.field_texture.name" => "Field Texture",
-        "component.field_verb.name" => "Field Verb",
         "component.flip_object_ref.name" => "Flip Object",
         "component.game_camera.name" => "Game Camera",
         "component.gravity_scale.name" => "Gravity Scale",
@@ -349,9 +342,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.object_kind.empty" => "Empty",
         "component.object_kind.flip" => "Flip",
         "component.object_kind.image" => "Image",
-        "component.object_kind.model_3d" => "3D Model",
         "component.object_kind.painted" => "Painted",
-        "component.object_kind.sculpt_3d" => "Sculpt",
         "component.object_kind.vector" => "Vector",
         "component.on_screen_enabler.name" => "On-Screen Enabler",
         "component.one_way_platform.name" => "One-Way Platform",
@@ -374,8 +365,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.scroll_repeat.name" => "Parallax Repeat",
         "component.scroll_limits.name" => "Parallax Limits",
         "component.scroll_motion.name" => "Parallax Drift",
-        "component.sculpt_3d_piece_ref.name" => "Sculpt Piece",
-        "component.mesh_3d.name" => "Live Mesh",
         "component.sequence_player.name" => "Sequence Player",
         "component.shake_emitter.name" => "Shake Emitter",
         "component.show_behind_parent.name" => "Show Behind Parent",

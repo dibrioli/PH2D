@@ -1,12 +1,14 @@
 # ADR-0176 — O modo Render do modelador desenha MALHAS com luz de jogo; o campo continua a FONTE
 
-- **Status:** Aceito (2026-10-02, ordem do dono).
+> **Revogado por [ADR-0179](0179-o-3d-sai-do-ph2d.md) em 2026-10-05 — o 3D saiu do PH2D.** O texto abaixo fica como história; o código foi apagado (`git show b1a6f9b07:<caminho>`).
+
+- **Status:** **REVOGADO** pelo ADR-0179 (2026-10-05) · era: Aceito (2026-10-02, ordem do dono).
   ✓ **O número 0176 foi confirmado na integração de 04/10** (lido na base `1ad60a1ce`; o main tinha
   `0177` e `0178` de outras linhas, nenhuma com `0176`).
 - **Data:** 2026-10-02
 - **Linha:** `line/3DModeling`
-- **Cofre do módulo:** [`docs/3DModeling/`](../../3DModeling/README.md)
-- **Handoff da wave:** [`HANDOFF_line_3DModeling_O_RENDER_POR_MALHA_2026-10-02.md`](../../3DModeling/handoffs/HANDOFF_line_3DModeling_O_RENDER_POR_MALHA_2026-10-02.md)
+- **Cofre do módulo:** `docs/3DModeling/`
+- **Handoff da wave:** `HANDOFF_line_3DModeling_O_RENDER_POR_MALHA_2026-10-02.md`
 - **Emenda:** [ADR-0161](0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md)
   — a cláusula *«o que o artista vê é o campo traçado»* deixa de valer **só para o modo Render**.
   O Matcap continua traçado; o campo continua a fonte de edição.
@@ -60,11 +62,11 @@ Decisões do dono (a ordem é dele, não derivada):
   **texturas em vez de storage**; **6 pipelines compilados UMA vez** (nada compila ao editar).
 - **Style e Bloom foram portados em 02/10** ao desenhista de jogo: o Bloom pela lei `ph2d_bloom::wgsl`
   em passes de desenho; o Style por `ph2d_style::wgsl` por pixel, com a curvatura assada por vértice.
-  Ver [handoff O_BRILHO_E_O_ESTILO](../../3DModeling/handoffs/HANDOFF_line_3DModeling_O_BRILHO_E_O_ESTILO_2026-10-02.md).
+  Ver handoff O_BRILHO_E_O_ESTILO.
 - **O céu fotográfico (HDRI) entrou em 03/10** (crate `ph2d-sky`): substitui a parte sem caixa do
-  céu; a luz-chave com sombra fica. Ver [handoff O_CEU_DE_VERDADE](../../3DModeling/handoffs/HANDOFF_line_3DModeling_O_CEU_DE_VERDADE_2026-10-03.md).
+  céu; a luz-chave com sombra fica. Ver handoff O_CEU_DE_VERDADE.
 - **O sol do HDRI é a luz-chave desde 03/10**, com a sombra na direcção dele (mapa de faces de trás,
-  PCSS em 3 níveis), medida contra o Cycles. Ver [handoff O_SOL_E_A_SOMBRA](../../3DModeling/handoffs/HANDOFF_line_3DModeling_O_SOL_E_A_SOMBRA_2026-10-03.md).
+  PCSS em 3 níveis), medida contra o Cycles. Ver handoff O_SOL_E_A_SOMBRA.
 - **Kill-criterion escrito ANTES de medir:** quadro **≤ 8 ms** a 1080p e entrada no Render **≤ 1 s**.
   Medido: quadro **1,2–2,4 ms**, entrada **0,03–0,44 s** (a de 0,44 s a `load` 6–20 — re-medir calmo).
 - A malha tem de **concordar com o campo** (pose, partição, material): a lei vive nos gates do
@@ -75,7 +77,7 @@ Decisões do dono (a ordem é dele, não derivada):
   da placa (`ph2d-field-gpu::paint*`, céu no tempo, sondas) e a luz/céu/chão do shader da marcha.
   Sem placa, o modo Render mostra o **Matcap**; nenhum caminho de produto chega ao traçado (gate
   `render_sem_tracado_tests`). O Matcap continua **traçado** (ADR-0161). Ver o
-  [handoff O_RENDER_ANTIGO_SAI](../../3DModeling/handoffs/HANDOFF_line_3DModeling_O_RENDER_ANTIGO_SAI_2026-10-03.md).
+  handoff O_RENDER_ANTIGO_SAI.
 - ⭐ **As CAPTURAS DE REFLEXO entraram em 2026-10-04** (ordem do dono: *«não temos reflexo dos objetos
   ao lado»*): o idioma do Fortnite móvel — um cubo 360° por peça, desenhado do centro dela com o MESMO
   desenhista, pré-filtrado por rugosidade, refeito só quando a chave muda (girar a câmara não refaz
@@ -83,4 +85,4 @@ Decisões do dono (a ordem é dele, não derivada):
   WebGL2 (texturas, atlas `3 × 2` das faces, octaedro com borda numa matriz de texturas). Medido contra
   o Cycles; o reflexo lê o chão TODO e as vizinhas tapam pela cobertura da captura (a máscara da zona da
   peça fica só para a placa sem `Rgba16Float` e acima de `128` peças). Ver o
-  [handoff AS_CAPTURAS_DE_REFLEXO](../../3DModeling/handoffs/HANDOFF_line_3DModeling_AS_CAPTURAS_DE_REFLEXO_2026-10-04.md).
+  handoff AS_CAPTURAS_DE_REFLEXO.

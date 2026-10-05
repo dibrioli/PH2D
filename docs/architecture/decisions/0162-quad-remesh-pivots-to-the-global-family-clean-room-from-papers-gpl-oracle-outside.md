@@ -1,7 +1,9 @@
 # ADR-0162 — O quad remesh PIVOTA para a família GLOBAL: clean-room a partir dos papers, oráculo GPL fora da árvore
 
-Status: **Aceito** (2026-08-20) · Supersede o **plano** do [ADR-0160](0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md) (o porte permanece, como backend de PREVIEW)
-Decisor: Enio · Plano vivo: [`docs/3D/quad-remesh/PLAN.md`](../../3D/quad-remesh/PLAN.md)
+> **Revogado por [ADR-0179](0179-o-3d-sai-do-ph2d.md) em 2026-10-05 — o 3D saiu do PH2D.** O texto abaixo fica como história; o código foi apagado (`git show b1a6f9b07:<caminho>`).
+
+Status: **REVOGADO** pelo ADR-0179 (2026-10-05) · era: **Aceito** (2026-08-20) · Supersede o **plano** do [ADR-0160](0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md) (o porte permanece, como backend de PREVIEW)
+Decisor: Enio · Plano vivo: `docs/3D/quad-remesh/PLAN.md`
 
 ## O que se decidiu
 

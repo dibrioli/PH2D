@@ -128,7 +128,7 @@ ObjectTypeDecl {
     e quem o abriu mapeia o id de volta.
   - Já tem scrim, cascata, **busca** (o mesmo predicado filtra a pintura e o `Enter`),
     sub-grupos, rolagem e 2 colunas.
-  - O modelo copia os precedentes: [`ph2d-app-field3d/src/shape_palette.rs`](../../../crates/ph2d-app-field3d/src/shape_palette.rs)
+  - O modelo copia os precedentes: `ph2d-app-field3d/src/shape_palette.rs`
     (`build_from`, `item_id` = hash da chave i18n, `slot_of_pick`) e o `+` do Inspector
     (`component_palette` da shell, ADR-0166/F3).
   - Os **grupos** são *2D · 3D · Jogo · Vazio*, e os **presets** são itens de cada grupo:

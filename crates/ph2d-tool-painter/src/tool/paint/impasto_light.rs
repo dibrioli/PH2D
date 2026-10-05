@@ -55,10 +55,8 @@ pub(super) const DEPTH_UNIT_PX: f32 = 16.0;
 
 /// **Ambient** floor of the diffuse term: what a face turned fully AWAY from the light still returns.
 ///
-/// ⚠️ O número mudou-se para [`ph2d_light`] junto com o rig, e não por arrumação: ele é **lei do
-/// modelo relativo**, não material, e a escultura do módulo 3D dobra a razão pela mesma lei. Duas
-/// cópias dariam uma escultura mais escura na sombra que a pintura ao lado dela, sob a MESMA lâmpada,
-/// e ninguém saberia dizer por quê. O porquê do valor está lá.
+/// ⚠️ O número mora em [`ph2d_light`] junto com o rig: ele é **lei do modelo relativo**, não
+/// material. O porquê do valor está lá.
 pub(super) use ph2d_light::AMBIENT;
 
 /// How the relief's effect scales with how much PAINT is at a pixel.
@@ -116,7 +114,7 @@ fn gloss_body(cover: f32) -> f32 {
 
 /// One layer's contribution to the composed relief, in z-order.
 pub(super) struct ReliefLayer<'a> {
-    /// A camada — a chave da dobra através dos ajustes (`docs/3D/30` §20).
+    /// A camada — a chave da dobra através dos ajustes.
     pub(super) id: crate::layers::LayerId,
     /// The committed height plane. `None` for the active layer when it has only a live stroke on it.
     pub(super) height: Option<&'a [f32]>,
@@ -142,25 +140,7 @@ impl PainterTool {
     /// Cheap enough to call per frame — the height map is empty for every document nobody has sculpted.
     #[must_use]
     pub fn impasto_visible(&self) -> bool {
-        // ⛔⛔ **Na tela da vista 3D não há luz 2D** (`docs/3D/29`, D4): ali o
-        //   relevo é da PEÇA, e quem o acende é a luz da cena 3D (decisão do
-        //   dono, 24/09). Assar a luz 2D na cor faria a peça acender duas vezes
-        //   a mesma espessura — uma com a luz do Painter pintada na tinta, outra
-        //   com a da cena. A espessura sai crua pela `layer_height_px_in`.
-        if self.on_screen_canvas() {
-            return false;
-        }
-        // ⚠️ **A doação é a SEGUNDA razão para o passe existir, e ela não passa pelo `impasto_show`.**
-        //
-        // Aquele interruptor pergunta *"mostrar o relevo da TINTA?"*, e a forma de uma escultura não é
-        // relevo de tinta — é geometria de outra camada. Pendurar as duas no mesmo bit faria esconder
-        // o impasto apagar a escultura junto, que é uma coisa que ninguém pediu e que o artista leria
-        // como o 3D ter sumido.
-        //
-        // E sem esta metade a doação seria invisível no caso que ela existe para servir: um documento
-        // com uma escultura e NENHUM relevo de tinta não tem `heights`, então o passe nem correria.
-        self.donated_form.is_some()
-            || self.substrate().is_some()
+        self.substrate().is_some()
             || (self.paint.impasto_show
                 && (!self.heights.is_empty() || !self.paint.relief.stroke_height.is_empty()))
     }
@@ -228,30 +208,13 @@ impl PainterTool {
                 active: is_active,
             });
         }
-        // O plano só é aceito com a FORMA do canvas: um plano de outro tamanho descreveria a forma no
-        // lugar errado, e o modo de falha disso é uma luz torta que ninguém liga à escultura.
-        let form = self
-            .donated_form
-            .as_deref()
-            .map(Vec::as_slice)
-            .filter(|f| f.len() == n * 4);
-        // A oclusão passa pelo MESMO filtro de forma, e por um motivo a mais: ela é opcional mesmo
-        // COM doação (uma doação de antes desta wave não a traz), então um plano curto aqui é o caso
-        // normal de um documento salvo antes — e o `map_or(1.0)` da porta o cobre sem ramo especial.
-        let form_occ = self
-            .donated_occlusion
-            .as_deref()
-            .map(Vec::as_slice)
-            .filter(|o| o.len() == n);
-        // ⚠️ A segunda camada da mesma pergunta: sem camada de relevo E sem forma não há nada a
-        // iluminar. Com forma e nenhum relevo há — é *pintar sobre forma*, o objetivo O1 inteiro.
-        // ⚠️ **E o SUBSTRATO é a terceira, pelo mesmo motivo — este guarda é irmão do
+        // ⚠️ Sem camada de relevo E sem SUBSTRATO não há nada a iluminar. **Este guarda é irmão do
         // [`Self::impasto_visible`] e os dois têm de concordar.** Corrigir só um deixa o passe correr e
         // desistir aqui: a luz nunca acende, todos os outros gates passam, e o modo de falha é
         // exatamente *"a feature não faz nada"*. É a lei que esta casa já pagou com o default de mídia
         // do Painter — *a regra de ENTRADA mascara a de SAÍDA* —, e é por isso que há um gate por
         // camada (`the_paper_lights_on_a_canvas_with_no_paint_at_all` nasceu VERMELHO aqui).
-        if layers.is_empty() && form.is_none() && self.substrate().is_none() {
+        if layers.is_empty() && self.substrate().is_none() {
             return None;
         }
         let mut fields = ReliefFields {
@@ -261,16 +224,12 @@ impl PainterTool {
             live_h,
             live_c,
             live_mat: self.paint.brush.material().to_bytes(),
-            // O plano só é aceito com a FORMA do canvas: um plano de outro tamanho descreveria a forma
-            // no lugar errado, e o modo de falha disso é uma luz torta que ninguém liga à escultura.
-            form,
-            form_occ,
             neutral: ph2d_painter_brush::material::Material::NEUTRAL.to_bytes(),
             width: w as usize,
             height: h as usize,
         };
-        // ⭐ Um Gaussiano ou uma Nitidez por cima de uma camada com relevo borram-no como borram a cor
-        // (`docs/3D/30` §20): a dobra materializa-se pela porta única; sem eles, a dobra por píxel.
+        // ⭐ Um Gaussiano ou uma Nitidez por cima de uma camada com relevo borram-no como borram a cor:
+        // a dobra materializa-se pela porta única; sem eles, a dobra por píxel.
         let plan = self.layers.relief_plan();
         if crate::layers::relief_plan_filters(&plan) {
             let mascaras = self.relief_filter_masks(&plan);
@@ -315,50 +274,6 @@ impl PainterTool {
                 ))
             })
             .collect()
-    }
-
-    /// **A porta da DOAÇÃO** — instala (ou remove) o plano de forma que o módulo 3D rasteriza.
-    ///
-    /// `form` é `[nx, ny, nz, peso]` por texel do canvas, em ordem de linha: a normal no espaço do rig
-    /// e quanto de forma há ali. `None` remove a doação, e remover é **byte-idêntico** ao mundo sem
-    /// escultura — a soma do [`super::impasto_shade::Rig::shade_over`] com a forma neutra reduz
-    /// literalmente à expressão da tinta.
-    ///
-    /// ⚠️ **Ele NÃO valida o tamanho aqui, e isso é deliberado:** quem valida é o
-    /// [`Self::impasto_fields`], contra a forma do canvas VIVO. Um canvas pode ser redimensionado
-    /// entre o instante em que a malha foi rasterizada e o instante em que a luz roda, e um plano com
-    /// a forma errada descreveria a escultura no lugar errado — cujo modo de falha é uma luz torta que
-    /// ninguém liga à escultura. Guardar e conferir na leitura é o que torna o descasamento
-    /// *inofensivo* em vez de invisível.
-    pub fn set_donated_form(&mut self, form: Option<std::sync::Arc<Vec<f32>>>) {
-        self.donated_form = form;
-    }
-
-    /// **A outra metade da doação** — a oclusão de forma, um escalar por texel do canvas.
-    ///
-    /// ⚠️ **Uma porta separada, e a segurança disso não é convenção — é o NEUTRO.** Uma normal
-    /// ausente não tem valor honesto (o zero do buffer é uma normal deitada, e é por isso que a irmã
-    /// viaja com um bit no uniform); uma oclusão ausente vale `1.0`, que é *"nada oclui"* — a
-    /// leitura exata de um documento que ninguém esculpiu, e a de toda doação anterior a esta wave.
-    /// Instalar uma sem a outra portanto **não pode** produzir um estado que ninguém pediu.
-    ///
-    /// O que garante que elas andem juntas na prática é o CHAMADOR: o shell as instala do mesmo
-    /// `FormPlanes`, no mesmo sítio, e há arch-gate exigindo isso.
-    pub fn set_donated_occlusion(&mut self, occ: Option<std::sync::Arc<Vec<f32>>>) {
-        self.donated_occlusion = occ;
-    }
-
-    /// O plano de oclusão vigente, se houver — o irmão do [`Self::donated_form`], e pelo mesmo motivo.
-    #[must_use]
-    pub fn donated_occlusion(&self) -> Option<&[f32]> {
-        self.donated_occlusion.as_deref().map(Vec::as_slice)
-    }
-
-    /// O plano de forma vigente, se houver. Existe para o gate poder afirmar o que o tool guarda sem
-    /// abrir o passe inteiro.
-    #[must_use]
-    pub fn donated_form(&self) -> Option<&[f32]> {
-        self.donated_form.as_deref().map(Vec::as_slice)
     }
 
     /// Light `rgba` — the pixels of `region`, freshly composited and NOT yet lit (`rgba` is
@@ -411,34 +326,23 @@ impl PainterTool {
                 if key != mat.key {
                     mat = light.resolve(key);
                 }
-                // ⚠️ O `body` toma o MÁXIMO das duas presenças, e não só a da tinta: a forma existe onde
-                // ela cobre, mesmo sobre papel nu, e é isso que faz *pintar sobre forma* funcionar
-                // desde a primeira pincelada. Sem isto a doação só apareceria onde já houvesse tinta —
-                // e onde já há tinta o artista não precisa dela para saber onde a forma está.
-                let form = fields.form_at(gx, gy);
                 // ⚠️ **A presença do PAPEL é `1` em toda parte, e é a única exceção honesta à regra
                 // *"relevo sob cobertura zero não acende"*.** A regra existe porque relevo de TINTA sem
                 // tinta é relevo de nada; um papel, ao contrário, está lá — a cobertura dele é 1 por
                 // definição (doc 19 §1.3 antecipou exatamente isto). Sem esta linha o dente acenderia
                 // só onde já houvesse tinta, e o Digital — que não tem `covers` nenhum — não veria nada.
                 let paper_body = fields.paper_body();
-                let body = paint_body(cover).max(form[3]).max(paper_body);
+                let body = paint_body(cover).max(paper_body);
                 // ⚠️ **O `gloss` NÃO ganha a presença do papel, e isso é medição e não descuido:** um
                 // papel não tem realce especular observável (ver o ⛔ em `substrate_relief` — o realce
                 // plano é subtraído e clampado, e num dente de ~1 px ele é nulo em qualquer expoente).
                 // Dar-lhe presença aqui seria escrever uma linha que a mutação prova inerte.
-                let (mul, add) =
-                    light.shade_over(&mat, body, gloss_body(cover), dhx, dhy, form, albedo);
-                // **A OCLUSÃO DE FORMA multiplica o DIFUSO e não o realce**, e é a mesma lei que o
-                // barro aplica do outro lado (`mesh.wgsl`): uma fresta oclui a luz de AMBIENTE, e o
-                // caminho especular de uma lâmpada ou alcança aquele ponto ou não — o `N·H` já
-                // responde isso. Somá-la ao `add` clarearia a fresta quando ela devia escurecer.
-                let occ = fields.form_occlusion_at(gx, gy);
-                if mul == [1.0; 3] && add == [0.0; 3] && occ >= 1.0 {
+                let (mul, add) = light.shade(&mat, body, gloss_body(cover), dhx, dhy, albedo);
+                if mul == [1.0; 3] && add == [0.0; 3] {
                     continue; // flat: byte-identical, and not even a rounding trip through f32
                 }
                 for c in 0..3 {
-                    let lit = light_pixel(albedo[c], mul[c] * occ, add[c]);
+                    let lit = light_pixel(albedo[c], mul[c], add[c]);
                     rgba[i + c] = (lit * 255.0 + 0.5) as u8;
                 }
             }

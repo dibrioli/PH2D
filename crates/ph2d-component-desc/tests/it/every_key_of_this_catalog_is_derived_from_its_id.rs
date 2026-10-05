@@ -13,7 +13,7 @@
 ///
 /// ⚠️ **O dígito abre palavra e NÃO a fecha**, e isso é medido: sem a 1.ª metade,
 /// `AudioListener2D` lê-se `audio_listener2_d` (o `D` vem depois de um dígito e seria tratado como
-/// início de palavra); sem a 2.ª, `Model3D` parte-se em três. *As duas regras são uma só lei sobre
+/// início de palavra); sem a 2.ª, `Body2D` parte-se em três. *As duas regras são uma só lei sobre
 /// a fronteira letra↔dígito, e ela precisa dos dois lados.*
 fn snake(s: &str) -> String {
     let b: Vec<char> = s.chars().collect();
@@ -129,12 +129,12 @@ fn the_snake_law_is_the_one_that_was_measured() {
     //    «simplificada» e volta a partir `2D` em dois.
     for (tipo, esperado) in [
         ("AudioListener2D", "audio_listener_2d"),
-        ("Model3D", "model_3d"),
+        ("Body2D", "body_2d"),
         ("ZIndexOverride", "z_index_override"),
         ("YSort", "y_sort"),
         ("Ccd", "ccd"),
         ("OneWayPlatform", "one_way_platform"),
-        ("Sculpt3dPieceRef", "sculpt_3d_piece_ref"),
+        ("Skin2dWeightRef", "skin_2d_weight_ref"),
     ] {
         assert_eq!(snake(tipo), esperado, "a lei do snake mudou em {tipo}");
     }

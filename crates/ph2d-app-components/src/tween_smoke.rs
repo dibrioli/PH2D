@@ -67,7 +67,7 @@ const NASCER_US: u64 = 1_600_000;
 /// correr — o clippy di-lo em voz alta (`assertions_on_constants`), e a forma que ele aponta é
 /// esta. ⭐ Ao nível do MÓDULO ela é avaliada pelo `cargo check`, que é onde qualquer um a
 /// encontra; ⛔ **dentro de uma função um `const { assert!(…) }` é CEGO ao `check`** (só é
-/// avaliado quando a função é construída) — armadilha que a `line/sculpt3d` mediu em 14/09.
+/// avaliado quando a função é construída) — armadilha medida em 14/09.
 ///
 /// *Sem isto há sempre duas cópias na tela de cada lado, e o que o dono lê é uma pilha em vez
 /// de um objecto.*

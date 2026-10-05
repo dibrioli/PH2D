@@ -7,7 +7,7 @@
 //!
 //! | painel | rótulos medidos, de fábrica |
 //! |---|---:|
-//! | `model3d` · `motion_graph` · `motion_params` · `sculpt3d` · `inspector` | **0** |
+//! | `motion_graph` · `motion_params` · `inspector` (e os dois painéis 3D, que saíram com o ADR-0179) | **0** |
 //! | `tags` | 2 |
 //! | `hierarchy` | 3 |
 //! | `skeleton` | 7 |
@@ -75,21 +75,6 @@ pub const TABELA: &[Armacao] = &[
     //    `ph2d_app_motion::motion_param_reach_tests` usa-a sobre os nomes de TIPO. ⏳ O que fica
     //    ABERTO é a mesma medição sobre os `828` rótulos de PARAM no cartão — ela pede uma fixtura
     //    que monte um cartão, que é desenho e não integração.
-    // ⭐⭐ **O painel do MODELADOR 3D** — ele estava declarado como «precisa de um mundo ECS para
-    //    cozer o `FieldDoc`», e precisa de um SNAPSHOT: ver [`super::o_model3d_armado`].
-    Armacao {
-        painel: "model3d",
-        arma: |_| super::o_model3d_armado::arma(),
-        desarma: super::o_model3d_armado::desarma,
-    },
-    // ⭐⭐ **O painel da ESCULTURA** — ele estava declarado como «a cena segura uma surface de
-    //    wgpu», o que é verdade sobre quem PUBLICA e falso sobre o que atravessa: ver
-    //    [`super::o_sculpt3d_armado`].
-    Armacao {
-        painel: "sculpt3d",
-        arma: |_| super::o_sculpt3d_armado::arma(),
-        desarma: super::o_sculpt3d_armado::desarma,
-    },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────

@@ -1,30 +1,25 @@
 //! ⭐⭐⭐ **TODO CONTROLO DA MOLDURA É ALCANÇÁVEL PELO ÍNDICE DE ACERTO** — a propriedade de que a
-//! porta da cena 3D depende, medida sobre o quadro real.
+//! porta do canvas (`chrome_hit::pointer_over_chrome`) depende, medida sobre o quadro real.
 //!
 //! # O report que o obrigou
 //!
-//! Enio, 2026-08-30: *«quando coloco Model, não consigo mais clicar nos menus superiores nem nas
-//! abas. É como se tudo fosse canvas.»*
+//! Enio, 2026-08-30: *«não consigo mais clicar nos menus superiores nem nas abas. É como se tudo
+//! fosse canvas.»* (O módulo do report saiu do produto com o ADR-0179; a lei é da porta.)
 //!
-//! ⛔ **A causa não era o módulo 3D: eram DUAS portas para a mesma pergunta.** O
-//! `field3d_pointer_down` e o `sculpt3d_pointer_down` perguntavam a
-//! `forwarding::cursor_over_hero_chrome`, que era **uma lista de quatro ids de fundo escrita à
-//! mão**; o resto do app pergunta a `chrome_hit::pointer_over_chrome`, que consulta o **índice de
-//! acerto** — o que o chrome pintou naquele quadro.
-//!
-//! Quando a barra de pills saiu e a barra de menus, a fila de ferramentas e as abas entraram, a
-//! lista ficou com **três entradas mortas** (a barra legada só é pintada sob `F9`) e **duas
-//! superfícies novas descobertas**. A cena 3D engolia o clique nelas.
+//! ⛔ **A causa eram DUAS portas para a mesma pergunta.** Uma cena perguntava a uma **lista de
+//! quatro ids de fundo escrita à mão**; o resto do app pergunta a `chrome_hit::pointer_over_chrome`,
+//! que consulta o **índice de acerto** — o que o chrome pintou naquele quadro. Quando a barra de
+//! menus, a fila de ferramentas e as abas entraram, a lista ficou com entradas mortas e superfícies
+//! novas descobertas, e o canvas engolia o clique nelas.
 //!
 //! ⭐ A cura foi **apagar a segunda porta**, não completá-la. Este gate defende a propriedade de
 //! que a porta sobrevivente depende: *se o chrome pinta um controlo, o índice de acerto sabe dele
 //! naquele ponto* — e por isso uma faixa nova fica coberta **no dia em que é pintada**, sem
 //! ninguém escrever um nome em lado nenhum.
 //!
-//! ⚠️ **A metade de FONTE — «os dois módulos 3D perguntam a porta certa» — vive no shell**
-//! (`shells/desktop/tests/it/the_scene_asks_the_one_chrome_door.rs`), porque o `chrome_hit` é privado
-//! do binário. As duas metades são precisas: esta afirma que **há** o que recusar, aquela que
-//! alguém **pergunta**.
+//! ⚠️ **A metade de FONTE — «quem consome o ponteiro do canvas pergunta a porta certa» — vive no
+//! shell** (`shells/desktop/tests/it/the_scene_asks_the_one_chrome_door.rs`), porque o `chrome_hit`
+//! é privado do binário.
 
 use ph2d_editor_core::screens::hero::{HeroScreen, slot_tabs};
 use ph2d_editor_core::screens::slot::Slot;
@@ -100,7 +95,7 @@ fn the_menu_bar_the_tool_bar_and_the_tabs_all_belong_to_the_frame() {
     }
     assert!(
         wild.is_empty(),
-        "superfícies da moldura que a cena 3D engoliria — é o report de 2026-08-30:\n  {}",
+        "superfícies da moldura que o canvas engoliria — é o report de 2026-08-30:\n  {}",
         wild.join("\n  ")
     );
 }

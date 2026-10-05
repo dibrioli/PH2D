@@ -59,7 +59,7 @@ Uma lei lida no fonte chega sem barra e sem corpus: ela é uma afirmação. Uma 
 medida chega com as duas metades — o número que ela produz **e** o conjunto de
 entradas em que ela tem de o produzir. ⚠️ Neste repo, **onze** explicações do
 tecido foram construídas, medidas e **refutadas**
-([plano §3](../3D/cloth/06_o_plano_do_que_falta.md)). Nenhuma delas teria sido
+(plano §3). Nenhuma delas teria sido
 refutada por leitura — todas eram plausíveis no papel.
 
 **(b) O fonte descreve o programa; o artista usa o PRODUTO, e os dois divergem.**
@@ -70,7 +70,7 @@ que o app aplica *antes* de chamar a função que tem o nome bonito.
 
 **(c) Ler contamina — e não só juridicamente.**
 A triagem de 2026-08 achou **~460 notas** no repo inteiro a citar nome interno de
-alvo restrito ([ACHADO](../3D/cleanroom/ACHADO_proveniencia_por_nome_interno.md)).
+alvo restrito (ACHADO).
 Cada uma é uma âncora que ata o nosso desenho ao desenho dele — inclusive aos
 defeitos dele. ⛔ E há a metade legal, que é dura e simples: **portar GPL para
 dentro deste produto obriga a publicar** ([SKILL §1](../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md)).
@@ -114,7 +114,7 @@ ficheiro.**
 ⚠️⚠️ **A régua das excepções do corpus do tecido cresceu TRÊS vezes** — de `7`
 para `30` de `86` —, e das três vezes o número estava certo e **a régua** é que
 varria menos grandezas do que o corpus continha
-([README das fixtures](../3D/cleanroom/fixtures/cloth/README.md)). *Uma lista de
+(README das fixtures). *Uma lista de
 excepções sem a régua ao lado não é auditável, e quem acrescenta um traço herda
 a régua que não vê.* ⇒ o cabeçalho do ficheiro é a fonte; a prosa nunca é.
 
@@ -162,7 +162,7 @@ população, e há gate a dizê-lo (`onde_o_maximo_nao_decide_decide_o_p95`).
 | **Quem escreveu o produto** | esta janela, que **nunca** viu o fonte — ⚠️ por **DISCIPLINA**: o `deny` que esta linha alegava **não existia** (§0), e o mecanismo só nasceu em 18/09 (§6) |
 | **Entradas** | grelha `64×64` e esfera UV `96×64` — **nossas** |
 | **Corpus** | `86` traços · `149` ficheiros · com rastreio **por passo** em `10` deles |
-| **Placar** | **`79` dentro da barra**, `7` abertos (`VERDE_N`/`ABERTO_N` no [bancada](../../crates/ph2d-cloth/tests/it/oraculo_do_pincel.rs) — ⛔ conte-os lá, nunca aqui) |
+| **Placar** | **`79` dentro da barra**, `7` abertos (`VERDE_N`/`ABERTO_N` no bancada — ⛔ conte-os lá, nunca aqui) |
 | **Leis achadas** | duas `φ` · o peso de face uniforme · a área fixa do Grab · a base persistente que **satura** · as cinco cláusulas da colisão |
 | **Leis REFUTADAS** | `11`, escritas |
 | **O que o método deu de graça** | o corpus **é** a suíte de regressão; e foi um traço dela que apanhou um defeito de `11,5×` no produto (o `δ` incremental do Grab) |

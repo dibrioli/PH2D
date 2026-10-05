@@ -151,10 +151,7 @@ pub(crate) struct Fillet {
 /// | 150° | `5,97e-3` |
 /// | 170° | `1,29e-2` |
 ///
-/// ⇒ o artista pedia o raio `r` numa ponta e a curva desenhada afastava-se `1 %` dele; e o modelador
-/// 3D, que reconhece arcos pela precisão de um quarto de círculo, não reconhecia esta — a quina ficava
-/// partida em segmentos, com as faixas de luz do Bug #1 dos `docs/3DModeling/BUGS_3dmodeling.md`
-/// sempre que o botão `Resolution` subia.
+/// ⇒ o artista pedia o raio `r` numa ponta e a curva desenhada afastava-se `1 %` dele.
 ///
 /// Partida em duas, cada metade varre `α/2 < 90°` e erra no máximo o que um quarto erra. ⚠️ **Até
 /// `90°` a saída é BYTE-IDÊNTICA à de antes** (o mesmo alçapão `(4/3)·tan(α/4)·r`, a mesma conta), e

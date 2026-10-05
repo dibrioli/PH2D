@@ -46,7 +46,6 @@ pub mod anchor_mount;
 /// ⭐⭐⭐ **O som de um objecto** (TOP-20 #4) — o consumidor de CENA que o rack de áudio
 /// nunca teve.
 pub mod audio_2d;
-pub mod baked_form;
 pub mod blend;
 /// ⭐ **O MESTRE de um componente de objeto** (ADR-0164 / F4) — e o que o torna INERTE para a
 /// ponte de física. A refutação 1 mediu o preço de não o excluir: *a receita não cai*.
@@ -91,11 +90,6 @@ pub mod scroll_factor;
 pub mod scroll_limits;
 pub mod scroll_motion;
 pub mod scroll_repeat;
-/// ⭐⭐⭐ **A PEÇA DA ESCULTURA na árvore do editor** — ver [`sculpt_piece_ref`].
-pub mod sculpt_piece_ref;
-
-/// ⭐⭐⭐ **O CATAVENTO** — a malha que um sprite mantém VIVA, e a pose 3D dela. Ver [`mesh3d`].
-pub mod mesh3d;
 pub mod sequence;
 pub mod sibling_order;
 /// ⭐⭐⭐ **A tabela nome → acção** (TOP-20 #5) — o consumidor que faltava aos sinais.
@@ -166,7 +160,6 @@ pub use anchor_mount::{
     AnchorMount, AnchorVisibility, MountState, anchor_names, anchor_pose_under, anchor_world_pose,
     anchors_draw_in_editor, mount_frame, mount_state, mount_state_of,
 };
-pub use baked_form::BakedForm;
 pub use blend::BlendMode;
 pub use blink::BlinkOff;
 pub use counter_watch::{
@@ -192,7 +185,6 @@ pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use master::{
     MasterEditing, MasterPiece, MasterRoot, assign_master_pieces, is_master_piece, master_root_of,
 };
-pub use mesh3d::Mesh3D;
 pub use name::{Name, stable_name_id};
 pub use named_anchor::{
     ANCHOR_NAME_MAX_BYTES, ANCHORS_MAX, AnchorData, AnchorKind, AnchorNameError, DICT_MAX_DEPTH,
@@ -210,7 +202,6 @@ pub use scroll_factor::ScrollFactor;
 pub use scroll_limits::{ScrollLimits, confina_eixo, meia_da_camada};
 pub use scroll_motion::ScrollMotion;
 pub use scroll_repeat::{ScrollRepeat, envolve_eixo};
-pub use sculpt_piece_ref::Sculpt3dPieceRef;
 pub use sequence::SequencePlayer;
 pub use sibling_order::{
     SiblingOrder, assign_missing_sibling_order, ordered_children, root_key, set_sibling_order,
@@ -351,7 +342,7 @@ pub use vec_envelope::{
 
 // ⛔ **O ESQUELETO SAIU DA FUNDAÇÃO em 2026-09-06** e vive na `ph2d-skeleton-ecs`
 // (`Bone` + `SkinBind` + `Tendon`), que os regista pela porta dela — o precedente é a
-// `ph2d-physics-ecs`. A razão é que ele serve vector, raster, 3D e Flip, e um componente por mídia
+// `ph2d-physics-ecs`. A razão é que ele serve vector, raster e Flip, e um componente por mídia
 // aqui dentro faria a fundação crescer uma vez por cliente.
 // ⚠️ O que ele CONTINUA a usar daqui é o que o justifica ser entidade: o `Transform`, a
 // `propagate_transforms` (que É a cinemática directa) e o `SimComponent`.

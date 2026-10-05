@@ -110,7 +110,7 @@ Pô-la dentro de `ph2d-app-field3d` teria obrigado a `line/app-sculpt3d` a depen
 irmã inteira** — com as 17 cenas de smoke dela dentro — para desenhar uma bola de eixos.
 
 > ⇒ **Duas famílias que partilham código partilham uma FOLHA, nunca uma delas à outra.**
-> O piloto criou [`ph2d-viewport3d`](../../crates/ph2d-viewport3d/) (1 382 LOC).
+> O piloto criou `ph2d-viewport3d` (1 382 LOC).
 
 **A régua do corte, ficheiro a ficheiro:** *«isto pergunta alguma coisa ao ESTADO da família?»*
 No piloto o `gizmo_paint` lê o `smoke` ⇒ ficou; a **lei** do gizmo (geometria, projecção, picking)

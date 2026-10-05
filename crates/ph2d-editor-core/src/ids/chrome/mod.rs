@@ -27,8 +27,6 @@ mod flip;
 mod image_tools;
 mod input_map;
 mod inspector;
-/// **Os ids do painel de MODELAGEM 3D** (ADR-0161) — não confundir com `sculpt3d`.
-mod model3d;
 mod motion;
 mod padding;
 mod painter;
@@ -38,9 +36,6 @@ mod physics;
 mod prefab;
 mod rail;
 mod rail_painter;
-/// **Os ids do painel da cena 3D** (ADR-0150, W12) — a ferramenta, o pincel, o espelho,
-/// a topologia e o sombreamento. Categoria MUNDO, como o de física.
-mod sculpt3d;
 /// ⭐⭐⭐ **Os ids do painel TAGS** (TOP-20 #9) — o rect do painel e o abridor do menu, que são
 /// os dois que o CHROME lê. Os controlos vivem na crate do painel.
 mod tags;
@@ -61,7 +56,6 @@ pub use flip::*;
 pub use image_tools::*;
 pub use input_map::*;
 pub use inspector::*;
-pub use model3d::*;
 pub use motion::*;
 pub use padding::*;
 pub use painter::*;
@@ -70,7 +64,6 @@ pub use physics::*;
 pub use prefab::*;
 pub use rail::*;
 pub use rail_painter::*;
-pub use sculpt3d::*;
 pub use tags::*;
 pub use timeline::*;
 pub use tokens::*;

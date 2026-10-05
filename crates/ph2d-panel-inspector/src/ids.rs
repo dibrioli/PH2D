@@ -31,7 +31,6 @@ pub use inspector_shake::*;
 mod inspector_factory;
 /// ⭐ Os ids da secção SCRIPT (TOP-20 #16) — ver o cabeçalho.
 mod inspector_hud;
-mod inspector_mesh3d;
 mod inspector_nav;
 /// Os ids da secção RAY SENSOR (suplente #21).
 mod inspector_parallax;
@@ -49,7 +48,6 @@ mod inspector_weapon;
 pub use inspector_camera::*;
 pub use inspector_factory::*;
 pub use inspector_hud::*;
-pub use inspector_mesh3d::*;
 pub use inspector_nav::*;
 pub use inspector_parallax::*;
 pub use inspector_particles::*;

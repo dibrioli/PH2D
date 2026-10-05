@@ -40,8 +40,6 @@ const FONTES: &[&str] = &[
     "../ph2d-panel-inspector/src",
     "../ph2d-panel-grid-snap/src",
     "../ph2d-panel-physics/src",
-    "../ph2d-panel-sculpt3d/src",
-    "../ph2d-panel-model3d/src",
     "../ph2d-panel-vector/src",
     "../ph2d-panel-flip/src",
     "../ph2d-panel-painter-layers/src",
@@ -178,7 +176,7 @@ const FORA: &[(&str, &str, &str)] = &[
 ///
 /// ⭐ Nasceu em 2026-09-23 como gate do Inspector mais uma catraca de `33` nos outros painéis; a
 /// catraca chegou a ZERO no ciclo seguinte (Vector e Esqueleto pelo `RowCtx::segmented`, a Física,
-/// a Escultura, o Upscale e as sete fileiras do Modelo 3D, que não tinham nome nenhum) e morreu.
+/// o Upscale e os dois painéis 3D, que saíram depois com o ADR-0179) e morreu.
 ///
 /// **Mutações que devem sangrar:** um painel voltar ao `paint_segmented_group_adaptive` com o nome
 /// por cima · uma exceção deixar de existir no painel.
@@ -203,10 +201,11 @@ fn nenhuma_escolha_do_app_e_montada_a_mao() {
     );
     let v = a_toda_a_largura();
     // ⛔ Piso de população: medido 48 grupos pela porta a toda a largura (2026-09-23). Sem ele,
-    //    um arnês que deixasse de armar os painéis passaria por vácuo.
+    //    um arnês que deixasse de armar os painéis passaria por vácuo. ⬇️ `35 → 31` em 2026-10-05:
+    //    as escolhas dos painéis `model3d` e `sculpt3d` saíram com o 3D (ADR-0179); medido `31`.
     let pela_porta = v.iter().filter(|g| g.da_porta).count();
     assert!(
-        pela_porta >= 35,
+        pela_porta >= 31,
         "so' {pela_porta} escolhas pela porta a toda a largura — o arnes deixou de armar paineis?"
     );
     let a_mao: Vec<String> = v

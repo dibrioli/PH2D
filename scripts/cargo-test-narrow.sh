@@ -42,7 +42,7 @@
 #
 # USO
 #   bash scripts/cargo-test-narrow.sh ph2d-timeline
-#   bash scripts/cargo-test-narrow.sh ph2d-sculpt3d --release -- --ignored
+#   bash scripts/cargo-test-narrow.sh ph2d-tool-painter --release -- --ignored
 #   PH2D_SKIP_CHECK=1 bash scripts/cargo-test-narrow.sh ph2d-ecs   # pula a porta
 set -uo pipefail
 

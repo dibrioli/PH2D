@@ -1,6 +1,8 @@
 # ADR-0156 — O traço de AO é um GATHER por-vértice, e por isso o `rayon` entra na `ph2d-sdf`
 
-- **Status:** **ACEITO** pelo Enio em 2026-08-06 (*"pode usar rayon. siga"*), depois de a decisão ser
+> **Revogado por [ADR-0179](0179-o-3d-sai-do-ph2d.md) em 2026-10-05 — o 3D saiu do PH2D.** O texto abaixo fica como história; o código foi apagado (`git show b1a6f9b07:<caminho>`).
+
+- **Status:** **REVOGADO** pelo ADR-0179 (2026-10-05) · era: **ACEITO** pelo Enio em 2026-08-06 (*"pode usar rayon. siga"*), depois de a decisão ser
   reapresentada sem jargão — ⚠️ **a primeira formulação foi recusada por ser ininteligível**
   (*"não sei do que vc está falando"*), e o registro disso fica aqui de propósito: um ADR cuja pergunta
   o dono não consegue ler não é uma decisão, é um carimbo.
@@ -10,7 +12,7 @@
   ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
 - **Data:** 2026-08-06
 - **Linha:** `line/sculpt3d`
-- **Cofre do módulo:** [`docs/3D/`](../../3D/00-INDEX.md)
+- **Cofre do módulo:** `docs/3D/`
 - **Ampara-se em:** [ADR-0109](0109-rayon-exception-watercolor-composite.md) (a regra e a cerca) ·
   [ADR-0147](0147-wet-paint-order-invariant-solver.md) (o precedente EXATO da soma em float privada)
 

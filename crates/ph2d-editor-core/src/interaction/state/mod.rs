@@ -501,7 +501,7 @@ pub struct WidgetStore {
     /// [`Self::tool_overflow`]: um mapa que o tique apaga não envelhece. Quem fecha o módulo deixa
     /// de o escrever e a fila volta ao que era **no mesmo quadro**.
     ///
-    /// ⛔ Os ids são os do PAINEL dono (ex.: `ids::model3d_view_button(n)`), e é isso que faz o
+    /// ⛔ Os ids são os do PAINEL dono (o id que ele regista para a linha), e é isso que faz o
     /// clique continuar a chegar ao mesmo braço de `apply_event` sem uma segunda porta: o
     /// `HeroScreen::apply_event` entrega todo evento a todo painel do registry, por **id**, nunca
     /// por posição. *Um comando com dois ids tem dois sítios a apodrecer em separado.*
@@ -513,8 +513,8 @@ pub struct WidgetStore {
     /// ⭐⭐⭐ **O QUE O MÓDULO ACRESCENTA A UM MENU QUE JÁ EXISTE** — a metade 1 da **D2**.
     ///
     /// O corte da D2 é por **âmbito**: *vale em todo o app ⇒ barra global; vale só naquele editor
-    /// ⇒ a área*. Escrever um arquivo é do app — então os três níveis de exportação do módulo 3D
-    /// vão ao menu **File**, e não a um pulldown de área
+    /// ⇒ a área*. Escrever um arquivo é do app — então um comando de exportação de um módulo vai
+    /// ao menu **File**, e não a um pulldown de área
     /// (`docs/UI_New_and_Simple/00_DECISOES_DO_ENIO.md` §D2, a tabela de destino).
     ///
     /// ⚠️ **Contribuição, e não uma linha na tabela estática** ([`super::super::screens::hero::menu_rows`]):

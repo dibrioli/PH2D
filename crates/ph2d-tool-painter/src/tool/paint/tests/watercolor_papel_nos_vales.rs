@@ -255,7 +255,7 @@ fn mexer_no_tooth_com_a_sessao_viva_refaz_o_papel() {
             frame(&mut t);
         }
         assert!(
-            t.wet_paint_session_alive(),
+            t.paint.wetpaint.session.is_some(),
             "a régua precisa da sessão viva entre os dois traços"
         );
         t.set_paint_media(PaintMedia::Digital);

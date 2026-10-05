@@ -32,8 +32,6 @@ ph2d-vector = { path = "../ph2d-vector" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # `ObjectKind` — o tipo que declara o modo Paint (spec/06 F2, `paint_mode::MODES`).
 ph2d-component-desc = { path = "../ph2d-component-desc" }
-# `RigStamp`/`DonatedForm` — o canal da doação de forma, nos dois sentidos.
-ph2d-form-donation = { path = "../ph2d-form-donation" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 # `WindowSize` — o rectângulo em que as pontes desenham.
 ph2d-host = { path = "../ph2d-host" }

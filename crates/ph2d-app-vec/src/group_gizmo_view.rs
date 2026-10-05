@@ -58,8 +58,6 @@ pub const EMPTY_HALF_PX: f32 = 2.0 * ph2d_editor_core::HANDLE_SIZE_PX;
 ///
 /// - **junta** e **roldana** são PONTOS com dots agarráveis
 ///   ([`crate::render_loop::point_gizmo`]); uma caixa por cima engoliria o clique neles.
-/// - uma peça de **modelagem 3D** tem o gizmo do módulo MODEL — e a pose dela nem sequer é o
-///   `Transform` da casa (é o `FieldPose`), então a caixa sairia na origem do mundo, longe da peça.
 /// - ⭐ um **OSSO** tem DUAS alças com verbos diferentes — o corpo GIRA, a bolinha da junta
 ///   DESLOCA ([`crate::bone_gesture`]) —, e o corpo dele já é o losango que o
 ///   [`ph2d_skeleton_render::draw_bones`] pinta.
@@ -79,8 +77,6 @@ fn publishes_its_own_handles(sim: &SimWorld, e: Entity) -> bool {
     let w = sim.world();
     w.get::<ph2d_physics_ecs::PhysicsJoint>(e).is_some()
         || w.get::<ph2d_physics_ecs::PulleyWheel>(e).is_some()
-        || w.get::<ph2d_field_ecs::FieldObject>(e).is_some()
-        || w.get::<ph2d_field_ecs::FieldNode>(e).is_some()
         || w.get::<ph2d_skeleton_ecs::Bone>(e).is_some()
         // ⭐ o **ALVO de uma âncora de IK** tem o losango que o `draw_goals` pinta, e o anel de
         // objecto vazio seria o segundo anel concêntrico do report de 06/09 — mais um disco a

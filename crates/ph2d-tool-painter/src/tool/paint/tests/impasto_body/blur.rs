@@ -1,9 +1,9 @@
-//! O Gaussiano por cima de uma camada com relevo borra o relevo que a luz do impasto lê (`docs/3D/30`
-//! §20) — pela ferramenta, com a pincelada de verdade.
+//! O Gaussiano por cima de uma camada com relevo borra o relevo que a luz do impasto lê — pela
+//! ferramenta, com a pincelada de verdade.
 
 use super::*;
 use ph2d_painter_effects::adjustments::{
-    AdjustWindow, AdjustmentKind, AdjustmentParams, GaussianBlurParams, Neighbourhood,
+    AdjustWindow, AdjustmentKind, AdjustmentParams, GaussianBlurParams, separable_blur_scalar,
 };
 
 const LADO: u32 = 64;
@@ -18,7 +18,7 @@ fn pincelada(t: &mut PainterTool) {
 
 fn borra(v: &[f32], raio: f32) -> Vec<f32> {
     let mut b = v.to_vec();
-    AdjustWindow::full(LADO, LADO).blur1(raio, &mut b);
+    separable_blur_scalar(raio, &mut b, AdjustWindow::full(LADO, LADO));
     b
 }
 

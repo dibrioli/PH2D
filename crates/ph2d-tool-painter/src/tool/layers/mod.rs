@@ -26,6 +26,3 @@ mod undo;
 // the re-export is path-only — silence the unused-import lint it would trip).
 #[allow(unused_imports)]
 pub use adjustments::MAX_CURVE_POINTS_PER_CHANNEL;
-pub use adjustments::seed_user_adjustment;
-pub(crate) use adjustments::{add_curve_point_in, remove_curve_point_in, set_curve_point_in};
-pub(crate) use mutate::reparent_in;

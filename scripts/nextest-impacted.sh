@@ -54,7 +54,7 @@ fi
 # Isto era `sed -n 's#^crates/\([^/]*\)/.*#\1#p'`, e a consequência foi medida em
 # 2026-08-19: um diff inteiramente em `shells/desktop/src/` produzia `CHANGED`
 # **vazio**, o script caía no ramo "no crate changes" e rodava **4 testes** —
-# saindo VERDE. `shells/desktop` é o shell inteiro (sculpt3d, undo, persistência,
+# saindo VERDE. `shells/desktop` é o shell inteiro (undo, persistência,
 # `input_dispatch`), e todo fechamento de linha cujo diff fosse só de shell correu
 # com essa cobertura. O mesmo valia para `tools/` e `tests/`.
 #

@@ -304,28 +304,7 @@ pub(crate) fn push_optional_sections<'a>(
     );
     // ── FÍSICA (10) ───────────────────────────────────────────────────────────────────────────
     crate::paint_familias::push_familia_fisica(plano, store, inner_x, inner_w, header_h, snaps);
-    // ── MODELO 3D (11) ────────────────────────────────────────────────────────────────────────
-    // ⭐ A LIVE MESH (o CATAVENTO, `docs/3D/02.2` rota B) — `ph2d::ecs::Mesh3D` é da família
-    // `Model3D`, a 11.ª do catálogo, e é por ela que a secção aparece entre a FÍSICA e a LÓGICA
-    // (integração de 2026-09-25: a linha pintava-a colada à ARMA, antes de a ordem ser derivada).
-    plano.push(
-        ph2d_editor_core::ids::INSP_LIVE_MESH3D_SECTION,
-        move |c, t, y| {
-            crate::paint_optional_suplentes::paint_mesh3d_section(
-                c.scene,
-                c.text,
-                t,
-                c.hit,
-                store,
-                inner_x,
-                inner_w,
-                y,
-                header_h,
-                snaps.mesh3d_info.as_ref(),
-            )
-        },
-    );
-    // ── LÓGICA (12) ───────────────────────────────────────────────────────────────────────────
+    // ── LÓGICA (11) ───────────────────────────────────────────────────────────────────────────
     crate::paint_familias::push_familia_logica(
         plano,
         store,
@@ -339,7 +318,7 @@ pub(crate) fn push_optional_sections<'a>(
     crate::paint_familias::push_familia_logica_cont(
         plano, store, inner_x, inner_w, header_h, snaps, infos,
     );
-    // ── ÁUDIO (13) · CÂMERA (14) · SCRIPT (15) ────────────────────────────────────────────────
+    // ── ÁUDIO (12) · CÂMERA (13) · SCRIPT (14) ────────────────────────────────────────────────
     crate::paint_familias::push_familia_saida(
         plano, store, inner_x, inner_w, header_h, snaps, infos,
     );

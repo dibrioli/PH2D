@@ -139,26 +139,6 @@ pub struct PainterTool {
     device_stamp: Option<paint::stamp_device::DeviceStamp>,
     /// A tabela do perfil que sobe ao device, reconstruída só quando a LEI que a define muda.
     lut_cache: paint::stamp_device::LutCache,
-    /// **A FORMA doada pelo módulo 3D** — `[nx, ny, nz, peso]` por texel do canvas (`docs/3D/05.2`).
-    ///
-    /// O passe de luz deriva a normal de `∇h` da tinta; com este plano na mão ele compõe as DUAS
-    /// fontes, e é isso que faz uma pincelada chapada acender pela escultura embaixo dela.
-    ///
-    /// ⚠️ **`None` é o mundo inteiro que existia antes**, e não por convenção: a soma do
-    /// `Rig::shade_over` com a forma neutra reduz *literalmente* à expressão que sempre shipou. Um
-    /// documento sem escultura não paga um byte nem um ramo.
-    ///
-    /// ⚠️ E ele é um plano PRONTO, do mesmo jeito que os três do relevo: quem rasteriza a malha é o
-    /// `ph2d-mesh-render`, uma vez, e o resultado chega aqui como números. É essa cerca que mantém o
-    /// Painter sem saber o que é um triângulo.
-    donated_form: Option<Arc<Vec<f32>>>,
-    /// A **OCLUSAO DE FORMA** doada junto com a normal — um escalar por texel do canvas.
-    ///
-    /// ⚠️ Campo proprio e nao um quinto canal do plano acima: aquele e' `[f32; 4]` e os quatro estao
-    /// ocupados (`docs/3D/05.2`). E `Option` separado do irmao **porque o neutro dele e' uma
-    /// CONSTANTE** (`1.0` = nada oclui), enquanto o neutro de uma normal (`[0, 0, 1]`) nao e' o zero
-    /// do buffer — e' essa assimetria que torna a ausencia desta segura e a daquela um bug.
-    donated_occlusion: Option<Arc<Vec<f32>>>,
     /// The runtime layer model — source of truth for layer structure + per-layer
     /// blend/opacity/visibility/flags. The ACTIVE layer's pixels live in
     /// `canvas_rgba`; non-active layers' pixels live in `images`.
@@ -315,17 +295,6 @@ pub struct PainterTool {
     /// The sprite the working document is currently bound to (`bind_document`), so switching sprites can
     /// stash THIS document's layers by id before binding the next. `None` until the first bind.
     bound_doc: Option<u64>,
-    /// ⭐ **A pilha da PEÇA 3D**, espelhada pela escultura a cada quadro enquanto a tela da vista está
-    /// presa — o que o painel de camadas mostra ali, e onde os gestos dele são lidos
-    /// ([`piece_layers`]). `None` fora da tela, ou numa peça sem plano de tinta fina.
-    piece_layers: Option<LayerStack>,
-    /// Os pedidos do painel sobre a pilha da peça, à espera de quem a tem ([`Self::take_piece_layer_ops`]).
-    piece_ops: Vec<PieceLayerOp>,
-    /// A frase da última recusa da pilha da peça, que o painel mostra (`None` = nenhuma).
-    piece_refusal: Option<String>,
-    /// Onde vive o raio de um efeito de vizinhança na peça (as unidades dela, mostradas em % do
-    /// tamanho) — publicado pela escultura com o espelho (`docs/3D/30` §14).
-    piece_units: ph2d_painter_effects::adjustments::SpatialUnits,
     /// Stashed multi-layer documents by sprite id — switching sprites preserves each sprite's layer stack
     /// instead of flattening it. See [`crate::tool::documents`].
     doc_cache: BTreeMap<u64, documents::StashedDoc>,
@@ -387,8 +356,6 @@ impl Default for PainterTool {
             mancha_na_aguada: None,
             device_stamp: None,
             lut_cache: paint::stamp_device::LutCache::default(),
-            donated_form: None,
-            donated_occlusion: None,
             layers: LayerStack::new(),
             images: BTreeMap::new(),
             heights: BTreeMap::new(),
@@ -424,10 +391,6 @@ impl Default for PainterTool {
             dock_shows_layers: false,
             paint: paint::PaintState::default(),
             bound_doc: None,
-            piece_layers: None,
-            piece_ops: Vec::new(),
-            piece_refusal: None,
-            piece_units: ph2d_painter_effects::adjustments::SpatialUnits::Pixels,
             doc_cache: BTreeMap::new(),
             shape_source_doc: None,
             shape_source_revision: 0,
@@ -463,12 +426,7 @@ pub use paint::{
 };
 pub use paint::{DICA_DO_PARAMETRO, Dependente, Inercias};
 mod layer_edit;
-mod piece_layers;
-pub use layers::seed_user_adjustment;
-pub use piece_layers::PieceLayerOp;
 mod runtime;
-mod screen_canvas;
-pub use screen_canvas::{SCREEN_CANVAS_DOC, ScreenCanvasFrame, ScreenCanvasRelief};
 mod trait_impls;
 mod trait_impls_raster;
 mod undo_audit; // a rede de verificação do S3 (doc 28 §7) — irmã do runtime, por assunto // `impl RasterEditTool` split from `trait_impls` (workspace file-LOC cap)

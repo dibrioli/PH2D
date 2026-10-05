@@ -42,14 +42,13 @@ pub mod wet_diag; // o split do tick da agua para o log do produto (PH2D_FLUID_P
 pub use tool::paint::stamp_device::{DeviceDab, DeviceStamp, DeviceStampJob};
 
 pub use compositor::{
-    LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_over,
-    composite_region, flatten_for_gpu,
+    LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,
+    flatten_for_gpu,
 };
 pub use layers::{
     DEPTH_NEUTRAL, GroupLayer, HARD_CAP_LAYERS, Layer, LayerId, LayerKind, LayerModifiers,
     LayerStack, MAX_GROUP_DEPTH, MaskLayer, RELIEF_FOLD_SEED, RasterLayer, ReliefComposite,
-    ReliefEffect, ReliefFilter, ReliefSamples, ReliefStep, TextureLayer, fold_relief_step,
-    fold_relief_through, relief_effect, relief_plan_filters, relief_share,
+    ReliefEffect, TextureLayer, fold_relief_step, relief_effect, relief_share,
 };
 pub use params::PainterParams;
 /// **Qual rota o depósito de pigmento tomou** — o instrumento que separa *"o ramo não dispara"*
@@ -59,11 +58,6 @@ pub use tool::paint::stamp_banded::diag as band_diag;
 pub use tool::persist::PaintedDocument;
 // Re-export the effects surface so the layers panel can name adjustment params /
 // blend modes without a direct `ph2d-painter-effects` import.
-/// The neighbourhood hook (`docs/3D/30` §14): a surface that composes its layers implements it.
-pub use ph2d_painter_effects::adjustments::{
-    AdjustWindow, BloomParams, GaussianBlurParams, Neighbourhood, ShadowsHighlightsParams,
-    SharpenParams, gaussian_sigma,
-};
 pub use ph2d_painter_effects::adjustments::{
     AdjustmentKind, AdjustmentLayer, AdjustmentParams, CurvesParams, HsbParams, SELCOLOR_BUCKETS,
     adjustment_segment_params, adjustment_slider_params, adjustment_toggle_params,
@@ -71,11 +65,6 @@ pub use ph2d_painter_effects::adjustments::{
     gradient_map_lut, gradient_stop_color_params, selective_color_slider_params,
     set_adjustment_segment_param, set_adjustment_slider_param, set_adjustment_toggle_param,
     set_channel_mixer_param, set_selective_color_param,
-};
-/// Where a spatial slider's extent lives — px, or a surface's units shown as % of its size.
-pub use ph2d_painter_effects::adjustments::{
-    SURFACE_RADIUS_MAX, SpatialUnits, adjustment_slider_numbers_in, adjustment_slider_params_in,
-    rescale_spatial_params,
 };
 pub use ph2d_painter_effects::adjustments::{
     SliderNumber, adjustment_slider_numbers, channel_mixer_slider_numbers,
@@ -142,9 +131,6 @@ pub use ph2d_painter_brush::{
     // law, so the picture and the paint cannot drift -- see `ph2d_painter_brush::taper`.
     taper::{MAX_TAPER_DIAMETERS, Taper},
 };
-/// A sonda da dobra do relevo para o gate cruzado «a dobra é UMA» (`docs/3D/30` §5).
-#[doc(hidden)]
-pub use tool::paint::relief_fold_probe::ReliefPlaneProbe;
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
@@ -153,14 +139,11 @@ pub use tool::{
     ImpastoLight, ImpastoPlanes, LightRig, LineCornerGizmo, LineDimensions, LineOverlay,
     MAX_COMPOSITE_LAYER_SIZE, MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG,
     N_COMPOSITE_ERASE_SCOPES, N_COMPOSITE_LAYERS, N_COMPOSITE_OPS, PANEL_RAMP_STOPS, PaintMedia,
-    PainterTool, PolygonOverlay, SCREEN_CANVAS_DOC, ScreenCanvasFrame, ScreenCanvasRelief,
-    SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles,
-    TransformGizmo, UsoDaCamada, WetKnobs, WetTool, brush_falloff_weight_at,
+    PainterTool, PolygonOverlay, SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge,
+    TangentHandles, TransformGizmo, UsoDaCamada, WetKnobs, WetTool, brush_falloff_weight_at,
     render_classic_flow_preview, set_pending_select_mods,
 };
 pub use tool::{DICA_DO_PARAMETRO, Dependente, Inercias};
-/// ⭐ O painel de camadas sobre a peça 3D (`docs/3D/30` §4): os pedidos e a semente de um ajuste novo.
-pub use tool::{PieceLayerOp, seed_user_adjustment};
 pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController, history_budget_bytes};
 
 use ph2d_a11y::Role;

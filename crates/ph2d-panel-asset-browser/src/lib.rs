@@ -44,7 +44,7 @@ mod populate;
 pub mod state;
 
 /// O id estável do painel — o mesmo `Panel::ID`, exposto como `const` para quem só quer perguntar
-/// se ele está aberto sem importar o trait (é o idioma do `ph2d_panel_model3d::PANEL_ID`).
+/// se ele está aberto sem importar o trait.
 pub const PANEL_ID: &str = "asset_browser";
 
 pub use paint::{default_rect, probe_query};

@@ -8,8 +8,8 @@
 //! porque o que falta está noutra crate.
 //!
 //! `screens/hero/paint.rs` carrega **seis** notas a dizer isto — uma por vez que o defeito foi pago
-//! (motion, timeline, physics, wet-tuning, tokens, authored, sculpt3d…). A sexta foi um smoke
-//! reprovado do painel de modelagem 3D (Enio, 2026-08-19: *"o painel não abre"*), e é ela que
+//! (motion, timeline, physics, wet-tuning, tokens, authored…). A sexta foi um smoke
+//! reprovado de um painel que saiu com o 3D (Enio, 2026-08-19: *"o painel não abre"*), e é ela que
 //! transformou a nota repetida neste teste.
 //!
 //! *Uma regra escrita seis vezes em comentário é uma regra que ninguém está a aplicar.*

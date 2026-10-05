@@ -1,4 +1,4 @@
-//! A dobra do relevo através dos ajustes de vizinhança (`docs/3D/30` §20).
+//! A dobra do relevo através dos ajustes de vizinhança.
 
 use super::*;
 use crate::layers::GroupLayer;
@@ -50,7 +50,7 @@ fn lomba(x0: u32, x1: u32, alto: f32) -> (Vec<f32>, Vec<f32>) {
     (h, c)
 }
 
-/// A dobra POR AMOSTRA de sempre (a do `ReliefFields::height_at` e do `relevo_em` da peça).
+/// A dobra POR AMOSTRA de sempre (a do `ReliefFields::height_at`).
 fn por_amostra(s: &LayerStack, p: &Planos) -> Vec<f32> {
     let ids: Vec<LayerId> = s
         .relief_layers_bottom_up()
@@ -92,7 +92,7 @@ fn gaussiano(s: &mut LayerStack, raio: f32) -> LayerId {
 
 fn borra(v: &[f32], raio: f32) -> Vec<f32> {
     let mut b = v.to_vec();
-    grelha().blur1(raio, &mut b);
+    ph2d_painter_effects::adjustments::separable_blur_scalar(raio, &mut b, grelha());
     b
 }
 
@@ -324,17 +324,4 @@ fn quem_age_no_relevo_e_quem_nao() {
     s.adjustment_mut(g).expect("g").params =
         AdjustmentParams::GaussianBlur(GaussianBlurParams { radius: 0.0 });
     assert!(!relief_plan_filters(&s.relief_plan()));
-}
-
-/// O plano é a ASSINATURA da dobra da peça: a igualdade é ao bit.
-#[test]
-fn o_plano_compara_ao_bit() {
-    let mut s = LayerStack::new();
-    let a = s.add_raster("a", W, H).expect("a");
-    let antes = s.relief_plan();
-    s.set_impasto_depth(a, -0.0);
-    let p0 = s.relief_plan();
-    s.set_impasto_depth(a, 0.0);
-    assert_ne!(p0, s.relief_plan(), "-0 e 0 são planos diferentes");
-    assert_eq!(antes.len(), 1);
 }

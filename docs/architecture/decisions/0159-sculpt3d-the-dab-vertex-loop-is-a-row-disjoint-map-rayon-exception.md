@@ -1,6 +1,8 @@
 # ADR-0159 — O laço de vértices de um dab é um MAP disjunto: exceção `rayon` na `ph2d-sculpt3d`
 
-- **Status:** aceito (ordem do Enio, 2026-08-13: *"ambos"*, sobre a avaliação que
+> **Revogado por [ADR-0179](0179-o-3d-sai-do-ph2d.md) em 2026-10-05 — o 3D saiu do PH2D.** O texto abaixo fica como história; o código foi apagado (`git show b1a6f9b07:<caminho>`).
+
+- **Status:** **REVOGADO** pelo ADR-0179 (2026-10-05) · era: aceito (ordem do Enio, 2026-08-13: *"ambos"*, sobre a avaliação que
   nomeou esta alavanca e a cerca que a bloqueava).
 - **Escopo:** habilita `rayon` na `ph2d-sculpt3d`, **restrito ao laço de vértices
   do `SculptStroke::dab`**. Não abre `rayon` para o resto da crate; um sítio novo
@@ -28,7 +30,7 @@ que o módulo abre — `sculpt_sphere`, 196 608 triângulos) decompõe um dab do
 | a consulta do octree | 0,591 | 9 % | — |
 
 ⛔ **Três alavancas foram medidas e MORTAS antes desta** (§7.14 do
-[plano 21](../../3D/21_plano_modos_e_ferramentas.md)):
+plano 21):
 
 1. a **família de escalas** rende zero — `Tri` custa **1,00×** o `Bi` (o 3º tap
    é grátis: o kernel é limitado por latência, não por vazão), e só o `Mono` é

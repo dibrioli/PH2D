@@ -62,8 +62,10 @@ fn the_shell_links_exactly_the_registered_families() {
     let registadas: BTreeSet<String> = ph2d_app_sync::scan_app_crates(&root.join("crates"))
         .into_iter()
         .collect();
+    // ⚠️ 2026-10-05: piso `9` -> `8`, delta -1 — o 3D sai do PH2D (ADR-0179): `field3d` e
+    // `sculpt3d` saem (`-2`); o piso estava um abaixo das 10 de então.
     assert!(
-        registadas.len() >= 9,
+        registadas.len() >= 8,
         "a varredura viu só {} famílias — ela partiu-se",
         registadas.len()
     );

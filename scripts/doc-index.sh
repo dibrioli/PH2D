@@ -94,18 +94,6 @@ DIRS = [
         ),
     ),
     dict(
-        dir="docs/3D/cloth",
-        titulo="`3D / cloth` — o pincel de tecido (W10)",
-        ordem="num",
-        o_que_e=(
-            "A pesquisa e o plano do **pincel de tecido** — a W10 do "
-            "[plano das ferramentas](../21_plano_modos_e_ferramentas.md).\n>\n"
-            "> \u26a0\ufe0f **A pesquisa contradiz o plano num ponto, com nu\u0301mero:** a escolha de "
-            "me\u0301todo dele (XPBD, 2016) esta\u0301 uma gerac\u0327a\u0303o atra\u0301s, e atra\u0301s exatamente na "
-            "propriedade de que um PINCEL precisa. Leia o `01` antes de pegar o `02`."
-        ),
-    ),
-    dict(
         dir="docs/Motion Nodes",
         titulo="`Motion Nodes` — índice do módulo",
         ordem="num",
@@ -215,38 +203,6 @@ DIRS = [
             "> ⚠️ Esta pasta contém **um handoff** (`HANDOFF_deform_impl.md`) misturado com o "
             "doc vivo. Um handoff é registro **morto** — ele descreve o mundo no dia em que foi "
             "escrito e não é atualizado depois."
-        ),
-    ),
-    dict(
-        dir="docs/3D/03-Implementacao",
-        titulo="`3D / 03-Implementacao` — a implementação do módulo de escultura",
-        ordem="num",
-        o_que_e=(
-            "A camada de **implementação** do cofre do módulo 3D: onde roda o motor, a "
-            "referência SculptGL, o oráculo de fidelidade. O índice do cofre inteiro é o "
-            "[`00-INDEX.md`](../00-INDEX.md).\n>\n"
-            "> ⚠️ Esta pasta contém **dois handoffs de implementador** (W1 e W4) misturados com "
-            "o doc vivo. Um handoff é registro **morto** — ele descreve o mundo no dia em que "
-            "foi escrito e não é atualizado depois; os handoffs de sessão do módulo vivem em "
-            "[`../handoffs/`](../handoffs/README.md)."
-        ),
-    ),
-    dict(
-        dir="docs/3D/quad-retopology",
-        titulo="`3D / quad-retopology` — o botão `Quad Retopology`, resolvido",
-        ordem="num",
-        o_que_e=(
-            "A **documentação da solução**: o que o botão faz fase a fase, as réguas e de onde "
-            "cada barra veio, as dez curas que fecharam o problema (com os números), as recusas "
-            "medidas, como medir, e o que fica aberto.\n>\n"
-            "> ⚠️ **Esta pasta é a SOLUÇÃO, não o diário.** O caminho que se percorreu até aqui "
-            "— com as hipóteses que caíram, na ordem em que caíram — vive no "
-            "[`../quad-remesh/PLANO_a_graduacao_da_ponta.md`](../quad-remesh/PLANO_a_graduacao_da_ponta.md) "
-            "(§1–§109) e nos [handoffs por jornada](../handoffs/README.md). O estado **vivo** é "
-            "o `CLAUDE.md` §5.\n>\n"
-            "> ⛔ **Antes de propor qualquer mudança de desenho, leia o "
-            "[`04_recusas_medidas.md`](04_recusas_medidas.md)** — cada linha dele é trabalho já "
-            "pago, e duas delas já dissolveram porque a cadeia mudou por baixo."
         ),
     ),
     dict(

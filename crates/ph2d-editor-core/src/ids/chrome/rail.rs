@@ -26,7 +26,8 @@ pub const TOOL_BAR_OVERFLOW: NodeId = hash_node_id("tool_bar_overflow");
 /// ⛔⛔ **São PULLDOWNS, nunca os comandos crus — e o número é MEDIDO.** Com as nove entradas cruas
 /// na fila (as seis vistas nomeadas e os três gestos de câmera do módulo 3D) ela precisa de
 /// **2 linhas até no iPad 12,9"**, o maior dos três alvos, e ainda transborda `2` chips para o `⋯`
-/// (`the_area_costs_one_chip_and_the_bar_is_still_one_line`, mutação 6).
+/// (medido pelo `the_area_costs_one_chip_and_the_bar_is_still_one_line`, que saiu com o 3D — ADR-0179;
+/// o gate vivo da lei é `two_area_chips_and_the_bar_is_still_one_line`).
 /// *Poupar altura gastando largura não poupa nada.*
 ///
 /// ⭐ **E o ORÇAMENTO de chips da área é `3`, medido em 2026-09-01** (sonda sobre `bar_split` +
@@ -63,8 +64,6 @@ pub const MAX_AREA_MENUS: u32 = 4;
 pub const OBJECT_MODE_OBJECT: NodeId = hash_node_id("object_mode.row.object");
 /// Ver [`OBJECT_MODE_OBJECT`].
 pub const OBJECT_MODE_PAINT: NodeId = hash_node_id("object_mode.row.paint");
-/// Ver [`OBJECT_MODE_OBJECT`].
-pub const OBJECT_MODE_SCULPT: NodeId = hash_node_id("object_mode.row.sculpt");
 /// Ver [`OBJECT_MODE_OBJECT`].
 pub const OBJECT_MODE_DRAW: NodeId = hash_node_id("object_mode.row.draw");
 /// Ver [`OBJECT_MODE_OBJECT`].

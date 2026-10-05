@@ -124,8 +124,8 @@ pub const PIVOT_Y: &str = "pivot_y";
 /// `shape_key` listava os nove campos à mão, e uma chave que enumera as
 /// entradas de um valor é como a próxima é esquecida — o param novo passa a
 /// não mintar entrada nova, a forma antiga volta do cache, e o controle fica
-/// **inerte depois da primeira vez** (foi o defeito do *Pattern Offset* do
-/// sculpt3d, 2026-08-09). Um param acrescentado aqui entra na chave e no
+/// **inerte depois da primeira vez** (foi o defeito do *Pattern Offset*,
+/// 2026-08-09). Um param acrescentado aqui entra na chave e no
 /// manifesto de uma vez.
 pub const ALL: &[&str] = &[
     KIND,

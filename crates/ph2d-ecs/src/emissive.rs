@@ -12,7 +12,7 @@
 //! | a sprite **ilumina** outras sprites — sombra, oclusão, atenuação | um sistema de propagação de luz 2D, do zero | ⛔ não |
 //!
 //! ⚠️ **A diferença não é de grau, é de sistema.** O `ph2d-light` que existe é um rig de
-//! **sombreamento por normais** (lâmpadas + ambiente, para o impasto e o sculpt) — ele acende uma
+//! **sombreamento por normais** (lâmpadas + ambiente, para o impasto) — ele acende uma
 //! superfície que tem relevo, e não sabe nada sobre uma sprite iluminar a vizinha. A segunda leitura
 //! é uma frente própria; esta wave entrega a primeira, que é a que o `Rgba16Float` do `GameRt`
 //! tornava gratuita e que ninguém tinha ligado.

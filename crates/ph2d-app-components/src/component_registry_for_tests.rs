@@ -22,8 +22,7 @@
 //!
 //! ⛔ **Aqui não chega, e o motivo é o assunto desta família.** Medido em 12/09, as fixturas
 //! usam `ph2d_render::Sprite` (**54** ocorrências), `ph2d_physics_ecs::{Collider, RigidBody,
-//! ColliderShape, PlatformPlayer}` (**23** ficheiros) e `ph2d_field_ecs::FieldObject` — que são
-//! exactamente os componentes cujo **descarte silencioso** estes gates medem. *Um registo montado
+//! ColliderShape, PlatformPlayer}` (**23** ficheiros) — que são exactamente os componentes cujo **descarte silencioso** estes gates medem. *Um registo montado
 //! com «o que este teste põe» não pode nunca acusar «o produto deixou de registar isto»: ele é a
 //! mesma resposta escrita duas vezes, e as duas envelhecem juntas na direcção errada.*
 //!
@@ -47,7 +46,6 @@ pub(crate) fn registo() -> ComponentRegistry {
     register_ecs_components(&mut reg);
     ph2d_render::register_render_components(&mut reg);
     ph2d_physics_ecs::register_physics_components(&mut reg);
-    ph2d_field_ecs::register_field_components(&mut reg);
     ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
     // ⭐ TOP-20 #16 — o sexto registador entrou no boot, e este gate reprovou até ele entrar aqui.
     ph2d_script::register_script_components(&mut reg);

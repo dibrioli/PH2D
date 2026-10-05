@@ -1,13 +1,12 @@
-//! ⭐⭐⭐ **O RELEVO ATRAVÉS DOS AJUSTES DE VIZINHANÇA** (`docs/3D/30` §20; decisão do dono de 04/10) —
-//! o Gaussiano e a Nitidez borram e afiam o relevo das camadas POR BAIXO deles como borram e afiam a
-//! cor delas, no 2D e na peça, por ESTA porta.
+//! ⭐⭐⭐ **O RELEVO ATRAVÉS DOS AJUSTES DE VIZINHANÇA** (decisão do dono de 04/10) — o Gaussiano e a
+//! Nitidez borram e afiam o relevo das camadas POR BAIXO deles como borram e afiam a cor delas.
 //!
 //! - *quem entra* é o [`LayerStack::relief_plan`]: as camadas pela ordem da dobra, os ajustes que agem
 //!   no relevo e os âmbitos dos grupos — um ajuste dentro de um grupo age no que o GRUPO fez ao relevo
 //!   por baixo dele, como o compositor da cor o faz à cor do grupo;
 //! - *como* é o [`fold_relief_through`]: a dobra de sempre ([`fold_relief_step`]) amostra a amostra, e
-//!   em cada ajuste o passa-baixo da vizinhança (a grelha no 2D, a retícula na peça) sobre a altura e
-//!   o corpo, pesado pela opacidade e pela máscara do ajuste.
+//!   em cada ajuste o passa-baixo da grelha sobre a altura e o corpo, pesado pela opacidade e pela
+//!   máscara do ajuste.
 //!
 //! O Brilho e as Sombras/Realces são operações de TOM (limiar e quantidades em luminância): não agem
 //! no relevo ([`ReliefEffect::Tone`]) e o painel di-lo. Sem ajuste que aja, quem dobra usa a dobra por
@@ -15,7 +14,9 @@
 
 use super::fold_relief_step;
 use super::{LayerId, LayerKind, LayerStack, MAX_GROUP_DEPTH, RELIEF_FOLD_SEED, ReliefComposite};
-use ph2d_painter_effects::adjustments::{AdjustmentKind, AdjustmentParams, Neighbourhood};
+use ph2d_painter_effects::adjustments::{
+    AdjustWindow, AdjustmentKind, AdjustmentParams, separable_blur_scalar,
+};
 use rayon::prelude::*;
 
 /// O que um ajuste faz ao relevo por baixo dele.
@@ -58,13 +59,6 @@ impl ReliefFilter {
             _ => None,
         }
     }
-
-    fn bits(self) -> (u8, u32, u32) {
-        match self {
-            Self::Blur { radius } => (0, radius.to_bits(), 0),
-            Self::Sharpen { radius, amount } => (1, radius.to_bits(), amount.to_bits()),
-        }
-    }
 }
 
 /// ⭐ **O que este tipo de ajuste faz ao relevo** — o painel diz porquê nos de TOM.
@@ -98,43 +92,6 @@ pub enum ReliefStep {
         /// A máscara do ajuste e se ela está invertida.
         mask: Option<(LayerId, bool)>,
     },
-}
-
-/// ⚠️ A igualdade é AO BIT (`-0` não é `0`): o plano é a assinatura da dobra da peça, e um sinal de
-/// zero que mudasse sem redobrar deixava o relevo de antes.
-impl PartialEq for ReliefStep {
-    fn eq(&self, o: &Self) -> bool {
-        match (*self, *o) {
-            (
-                Self::Layer {
-                    id: a,
-                    depth: da,
-                    composite: ca,
-                },
-                Self::Layer {
-                    id: b,
-                    depth: db,
-                    composite: cb,
-                },
-            ) => a == b && da.to_bits() == db.to_bits() && ca == cb,
-            (Self::Open, Self::Open) | (Self::Close, Self::Close) => true,
-            (
-                Self::Filter {
-                    id: a,
-                    filter: fa,
-                    opacity: oa,
-                    mask: ma,
-                },
-                Self::Filter {
-                    id: b,
-                    filter: fb,
-                    opacity: ob,
-                    mask: mb,
-                },
-            ) => a == b && fa.bits() == fb.bits() && oa.to_bits() == ob.to_bits() && ma == mb,
-            _ => false,
-        }
-    }
 }
 
 /// O plano tem algum ajuste que age no relevo?
@@ -197,7 +154,7 @@ impl LayerStack {
     }
 }
 
-/// As amostras de relevo de quem dobra (o 2D: píxeis; a peça: amostras da retícula).
+/// As amostras de relevo de quem dobra (os píxeis da tela).
 pub trait ReliefSamples: Sync {
     /// Quantas amostras.
     fn len(&self) -> usize;
@@ -226,7 +183,7 @@ struct Ambito {
 pub fn fold_relief_through(
     plan: &[ReliefStep],
     src: &dyn ReliefSamples,
-    nb: &dyn Neighbourhood,
+    win: &AdjustWindow,
 ) -> Option<(Vec<f32>, Vec<f32>)> {
     let n = src.len();
     let camadas: Vec<LayerId> = plan
@@ -308,7 +265,7 @@ pub fn fold_relief_through(
                 };
                 let mut d = d0.clone();
                 let mut b = amb.corpo.clone();
-                aplica(filter, &mut d, &mut b, nb);
+                aplica(filter, &mut d, &mut b, *win);
                 let m = mask.and_then(|(id, inv)| {
                     src.mask(id).map(|v| {
                         v.into_iter()
@@ -337,13 +294,19 @@ pub fn fold_relief_through(
     Some((h, ambitos.pop().expect("o de fora").corpo))
 }
 
-/// O filtro sobre a altura e o corpo — o MESMO passa-baixo da cor (`Neighbourhood::blur2`).
-fn aplica(f: ReliefFilter, h: &mut [f32], corpo: &mut [f32], nb: &dyn Neighbourhood) {
+/// O MESMO passa-baixo da cor, sobre a altura e o corpo.
+fn blur2(radius: f32, h: &mut [f32], corpo: &mut [f32], win: AdjustWindow) {
+    separable_blur_scalar(radius, h, win);
+    separable_blur_scalar(radius, corpo, win);
+}
+
+/// O filtro sobre a altura e o corpo.
+fn aplica(f: ReliefFilter, h: &mut [f32], corpo: &mut [f32], win: AdjustWindow) {
     match f {
-        ReliefFilter::Blur { radius } => nb.blur2(radius, h, corpo),
+        ReliefFilter::Blur { radius } => blur2(radius, h, corpo, win),
         ReliefFilter::Sharpen { radius, amount } => {
             let (bh, bc) = (h.to_vec(), corpo.to_vec());
-            nb.blur2(radius, h, corpo);
+            blur2(radius, h, corpo, win);
             for (x, b) in h.iter_mut().zip(&bh) {
                 *x = b + amount * (b - *x);
             }

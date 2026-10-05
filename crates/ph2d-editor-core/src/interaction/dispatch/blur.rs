@@ -1,25 +1,14 @@
 //! ⭐⭐⭐ **A PARTIDA DO FOCO — uma lei, dois chamadores.**
 //!
-//! # O report
+//! # O defeito
 //!
-//! Enio, 2026-09-07, a esculpir com o pincel de tecido: *«a tecla del para
-//! deletar o mesh parou de funcionar e não temos undo/redo para Cloth»*.
-//!
-//! # ⛔ Os dois relatos são UM defeito, e ele não é do tecido
-//!
-//! Cada fileira de slider do painel de escultura regista um **chip numérico**
-//! ([`crate::interaction::InteractiveState::NumberInput`]) ao lado do cursor —
-//! são 37 deles, e o pincel de tecido acrescentou cinco. Tocar num chip põe o
-//! foco do teclado nele, como em todo campo deste app.
-//!
-//! O que faltava era a metade de sair. O `sculpt3d_pointer_down` da shell
-//! **toma** o clique no barro e devolve `return` **antes** do `forward_to_hero`
-//! — logo o bloco de partida de foco que vive no [`super::pointer_down`] nunca
-//! corre, e `focus_id` fica preso naquele chip **para o resto da sessão**.
-//! A partir daí o `sculpt3d_key` recusa na primeira linha (`text_entry_focused`)
-//! e morrem, de uma vez: `Delete`, `Ctrl+Z`, `Ctrl+Shift+Z` e **todo** atalho da
-//! cena 3D. O artista lê isso como *«o Del parou»* e *«o tecido não desfaz»*,
-//! que são as duas teclas que ele de facto usa.
+//! Um campo de painel com chip numérico ([`crate::interaction::InteractiveState::NumberInput`])
+//! toma o foco do teclado ao toque, como em todo campo deste app. O que faltava era a metade de
+//! sair: um consumidor de canvas que **toma** o clique e devolve `return` **antes** do
+//! `forward_to_hero` da shell faz com que o bloco de partida de foco do [`super::pointer_down`]
+//! nunca corra, e o `focus_id` fica preso naquele chip **para o resto da sessão** — e com ele
+//! morrem `Delete`, `Ctrl+Z` e todo atalho do canvas. (Achado em 2026-09-07 no módulo 3D, que saiu
+//! com o ADR-0179; a lei é de todo consumidor que devolve cedo.)
 //!
 //! *Uma porta que toma o gesto herda TODAS as obrigações da porta que ela
 //! saltou — e a que se esquece é sempre a que não se vê acontecer.*
@@ -66,8 +55,7 @@ pub(super) fn depart_focus<'a>(
 /// **A porta pública: largue o teclado que um campo estava a segurar.**
 ///
 /// Para quem **toma** um gesto de canvas e devolve cedo, sem deixar o evento
-/// chegar ao despachante — a cena 3D de escultura, a janela de modelagem, a alça
-/// do gizmo de âncora. Devolve os eventos emitidos, que o chamador drena como
+/// chegar ao despachante — a alça do gizmo de âncora, por exemplo. Devolve os eventos emitidos, que o chamador drena como
 /// draina os do ponteiro.
 ///
 /// ⚠️ **Não é «cancelar»**: um número digitado e não confirmado é

@@ -3,11 +3,11 @@
 //!
 //! # ⛔⛔ O defeito é conhecido há três fatias e NENHUM instrumento o contava
 //!
-//! O cabeçalho do `ph2d-i18n/src/sculpt_engine.rs` escreve-o por extenso depois da terceira ocorrência:
-//! *«um censo cuja crate não é DONA do texto que ela pinta fica verde sobre texto cru»*, e
-//! *«nenhuma das 30 réguas lexicais o podia ver: elas varrem os painéis, as `ph2d-app-*`, a
-//! `ph2d-editor-core` e a shell — o motor não está na lista»*. Quem achou as três foi, das três
-//! vezes, uma **fotografia do dono**.
+//! O cabeçalho da 3.ª fatia da fronteira (a do motor da escultura, que saiu com o 3D — ADR-0179)
+//! escrevia-o por extenso depois da terceira ocorrência: *«um censo cuja crate não é DONA do texto
+//! que ela pinta fica verde sobre texto cru»*, e *«nenhuma das 30 réguas lexicais o podia ver: elas
+//! varrem os painéis, as `ph2d-app-*`, a `ph2d-editor-core` e a shell — o motor não está na
+//! lista»*. Quem achou as três foi, das três vezes, uma **fotografia do dono**.
 //!
 //! ⇒ *uma cegueira escrita em prosa não é medida, e uma que só o dono encontra custa um report por
 //! ocorrência.* Este gate é a lista, e ela só ENCOLHE.
@@ -223,25 +223,11 @@ esta isencao nao abriga rotulo nenhum, so' a expressao.",
 Sintaxe de outra linguagem.",
     ),
     (
-        "ph2d-mesh-render",
-        "pipeline_build.rs",
-        "sao os rotulos de DEPURACAO do `wgpu` (`label: Some(\"ph2d-mesh pipeline\")`), que \
-aparecem num capturador de frames e nunca num ecra do artista — a mesma familia ja' isenta no \
-`ph2d-render/pipeline.rs`.",
-    ),
-    (
-        "ph2d-field-ecs",
-        "spawn.rs",
-        "⭐ e' o NOME DA ENTIDADE que uma forma nova recebe ao nascer (`shape_name` alimenta o \
-`unique_sibling_name`, que escreve o componente `Name`). Um nome de objecto e' DOCUMENTO: o \
-artista renomeia-o e ele viaja no `.ph2dproj`. Traduzi-lo poria a lingua da INTERFACE dentro do \
-ficheiro gravado, e a mesma peca abriria com outro nome noutra maquina.",
-    ),
-    (
         "ph2d-timeline",
         "doc.rs",
-        "⭐ e' `\"Main\"`, o nome do clipe que um documento novo traz. Mesma familia do \
-`shape_name`: e' DOCUMENTO, nao rotulo — ele e' gravado e o artista renomeia-o.",
+        "⭐ e' `\"Main\"`, o nome do clipe que um documento novo traz. Um nome destes e' DOCUMENTO, \
+nao rotulo: ele e' gravado no `.ph2dproj` e o artista renomeia-o. Traduzi-lo poria a lingua da \
+INTERFACE dentro do ficheiro, e o mesmo clipe abriria com outro nome noutra maquina.",
     ),
     (
         "ph2d-imageio-ora",
@@ -254,22 +240,6 @@ atravessa a fronteira do app: quem o le' e' outro programa, e o formato nao tem 
         "lib.rs",
         "⭐ e' `\"Background\"`, o nome canonico da camada de fundo no formato PSD. Ele e' lido e \
 escrito por outros programas — traduzi-lo deixaria de ser um PSD valido para eles.",
-    ),
-    (
-        "ph2d-mesh-bool",
-        "lib.rs",
-        "sao as tres recusas do corte booleano, e elas sao lidas por um \
-`eprintln!(\"[sculpt3d] o corte nao aconteceu: {}\", r.porque())`: diagnostico de TERMINAL, e o \
-terminal e' do dono (`CLAUDE.md` §0.8 — o que o ARTISTA le' no ecra e' ingles; o que o DONO le' no \
-terminal e' a lingua dele; e por isso elas estao em portugues). ⏳ No dia em que uma delas chegar a \
-um PIXEL, ela deixa de ser isenta e passa a divida.",
-    ),
-    (
-        "ph2d-trim",
-        "lib.rs",
-        "sao as tres recusas do gesto de aparar, lidas pelo mesmo `eprintln!` do `ph2d-mesh-bool` \
-(`trim_aplica.rs` junta as duas familias num `porque()` so'). Diagnostico de TERMINAL, na lingua do \
-dono. ⏳ Mesma cerca: se chegarem a um pixel, viram divida.",
     ),
     (
         "ph2d-asset",
@@ -490,7 +460,7 @@ fn nenhum_motor_publica_um_rotulo_cru_fora_da_divida_declarada() {
     }
     assert!(
         queixas.is_empty(),
-        "A FRONTEIRA DOS MOTORES mexeu-se:\n\n{}\n\nA cura é a do `sculpt_engine`: o motor publica \
+        "A FRONTEIRA DOS MOTORES mexeu-se:\n\n{}\n\nA cura é a das fatias da fronteira (`tool_engines`, `ecs_scene`): o motor publica \
          `label_key()` e a `label()` passa a ser `tr_em(Ingles, label_key())`, com o inglês numa \
          tabela desta crate. Se o rótulo NÃO é pintado por ninguém, ele é um ÓRFÃO e a cura é \
          APAGÁ-LO — nunca uma linha nova em `POR_PAGAR`.",

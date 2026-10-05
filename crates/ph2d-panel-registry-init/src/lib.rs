@@ -68,8 +68,6 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<ph2d_panel_hierarchy::HierarchyPanel>());
     #[cfg(feature = "panel-inspector")]
     reg.push(ErasedPanel::new::<ph2d_panel_inspector::InspectorPanel>());
-    #[cfg(feature = "panel-model3d")]
-    reg.push(ErasedPanel::new::<ph2d_panel_model3d::Model3dPanel>());
     #[cfg(feature = "panel-motion-graph")]
     reg.push(ErasedPanel::new::<ph2d_panel_motion_graph::MotionGraphPanel>());
     #[cfg(feature = "panel-padding")]
@@ -80,8 +78,6 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     >());
     #[cfg(feature = "panel-physics")]
     reg.push(ErasedPanel::new::<ph2d_panel_physics::PhysicsPanel>());
-    #[cfg(feature = "panel-sculpt3d")]
-    reg.push(ErasedPanel::new::<ph2d_panel_sculpt3d::Sculpt3dPanel>());
     #[cfg(feature = "panel-skeleton")]
     reg.push(ErasedPanel::new::<ph2d_panel_skeleton::SkeletonPanel>());
     #[cfg(feature = "panel-tags")]
@@ -171,15 +167,6 @@ mod tests {
         {
             n += 1;
         }
-        // ⚠️ **O painel de MODELAGEM 3D esteve REGISTADO e NÃO CONTADO** desde a W4 desta linha
-        // (2026-08-19) até ao fecho dela. O braço do `push` acima ganhou o `#[cfg]` e este ficou
-        // para trás — e o vermelho é **invisível de dentro do módulo**: só a unificação de features
-        // da workspace liga o painel, então `cargo test -p <crate>` passa e o `ship.sh` reprova.
-        // *A nota acima já dizia isto; quem acrescentou o painel não a leu.*
-        #[cfg(feature = "panel-model3d")]
-        {
-            n += 1;
-        }
         #[cfg(feature = "panel-physics")]
         {
             n += 1;
@@ -189,10 +176,6 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-authored")]
-        {
-            n += 1;
-        }
-        #[cfg(feature = "panel-sculpt3d")]
         {
             n += 1;
         }

@@ -7,15 +7,14 @@
 //! três metades (a suavização tem o gate dela no fim):
 //!
 //! 1. acima de `90°` a quina sai em **duas** cúbicas, e cada uma fica na precisão de um quarto de
-//!    círculo (a mesma barra com que o modelador 3D reconhece um arco);
+//!    círculo;
 //! 2. até `90°` sai **uma**, como sempre;
 //! 3. um blend **assimétrico** (recuos diferentes, porque um lado curva) não é um círculo, e fica
 //!    numa cúbica só — partir o que não é um círculo não o tornaria um.
 
 use crate::{VecVertex, VertexKind};
 
-/// A barra: o erro radial do quarto de círculo canónico, `2,7253e-4·r` (medido; ver o
-/// `ERRO_DO_QUARTO` do `ph2d-field-profile`, que esta crate não pode ler).
+/// A barra: o erro radial do quarto de círculo canónico, `2,7253e-4·r` (medido).
 const QUARTO: f64 = 2.7254e-4;
 
 /// Os pontos de um V cuja quina em `(0, 0)` vira `graus`, fechado longe dela.

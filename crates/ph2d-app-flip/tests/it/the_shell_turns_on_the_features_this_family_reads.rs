@@ -5,7 +5,7 @@
 //! **As features NÃO viajam com o código.** Quando um ficheiro sai da `shells/desktop` para
 //! uma crate que não declara a feature que o governa, o `#[cfg(feature = "x")]` dele passa a
 //! ser falso **por construção** — e a crate compila **VERDE** com aquele braço desligado.
-//! O piloto da W2 (`field3d`, 11/09) perdeu assim o carregador do matcap: a cena sairia
+//! O piloto da W2 (11/09) perdeu assim um carregador de textura: a cena sairia
 //! cinzenta, e o único aviso foi um `unexpected cfg condition value` no meio de 93 erros.
 //!
 //! Esta família tem **dois** `cfg` de feature no código que se mudou

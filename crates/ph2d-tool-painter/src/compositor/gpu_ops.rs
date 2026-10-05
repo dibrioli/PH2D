@@ -1,9 +1,7 @@
 //! Flatten a painter `LayerStack` → `Vec<LayerOp>` for the GPU layer compositor
 //! (`ph2d_render::layer_compositor`; Painter GPU preview, ADR-0045 Phase 3).
 //!
-//! ⭐ **Two consumers, one door**: the Painter 2D preview (`ph2d-app-painter`)
-//! and the 3D piece's layer stack (`ph2d_app_sculpt3d::composto_na_placa`,
-//! `docs/3D/30` §13). It lives HERE, beside the `LayerStack`, and speaks the
+//! It lives HERE, beside the `LayerStack`, and speaks the
 //! leaf vocabulary `ph2d-layer-ops`: a tool may not depend on the render engine
 //! nor a family on another family (`architecture_no_dependency_climbs_a_layer`).
 //!

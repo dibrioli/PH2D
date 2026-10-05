@@ -46,7 +46,7 @@ pub fn scan_app_crates(crates_dir: &Path) -> Vec<String> {
     names
 }
 
-/// `ph2d-app-field3d` → `field3d`.
+/// `ph2d-app-vec` → `vec`.
 #[must_use]
 pub fn family_key(crate_name: &str) -> String {
     crate_name
@@ -55,13 +55,13 @@ pub fn family_key(crate_name: &str) -> String {
         .to_string()
 }
 
-/// `ph2d-app-field3d` → `app-field3d`.
+/// `ph2d-app-vec` → `app-vec`.
 #[must_use]
 pub fn feature_slug(crate_name: &str) -> String {
     format!("app-{}", family_key(crate_name))
 }
 
-/// `ph2d-app-field3d` → `ph2d_app_field3d`.
+/// `ph2d-app-vec` → `ph2d_app_vec`.
 #[must_use]
 pub fn crate_ident(crate_name: &str) -> String {
     crate_name.replace('-', "_")
@@ -170,20 +170,17 @@ mod tests {
 
     #[test]
     fn a_family_renders_all_four_blocks() {
-        let c = vec!["ph2d-app-field3d".to_string()];
-        assert!(render_rs(&c).contains("ph2d_app_field3d::FAMILY"));
-        assert!(render_deps(&c).contains("path = \"../ph2d-app-field3d\""));
-        assert!(render_default(&c).contains("\"app-field3d\","));
-        assert_eq!(
-            render_features(&c),
-            "app-field3d = [\"dep:ph2d-app-field3d\"]\n"
-        );
+        let c = vec!["ph2d-app-vec".to_string()];
+        assert!(render_rs(&c).contains("ph2d_app_vec::FAMILY"));
+        assert!(render_deps(&c).contains("path = \"../ph2d-app-vec\""));
+        assert!(render_default(&c).contains("\"app-vec\","));
+        assert_eq!(render_features(&c), "app-vec = [\"dep:ph2d-app-vec\"]\n");
     }
 
     /// ⛔ Os dois agregadores partilham o prefixo e NÃO são famílias.
     #[test]
     fn the_two_aggregators_are_not_families() {
-        assert_eq!(family_key("ph2d-app-field3d"), "field3d");
+        assert_eq!(family_key("ph2d-app-vec"), "vec");
         // a varredura filtra-os pelo nome; aqui prova-se que o filtro é sobre os DOIS
         for nome in ["ph2d-app-host", "ph2d-app-registry-init"] {
             assert!(

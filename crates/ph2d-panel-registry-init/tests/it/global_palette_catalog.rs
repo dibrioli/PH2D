@@ -94,10 +94,9 @@ fn the_two_ugly_derived_titles_are_named_here() {
             "o título derivado {pretty:?} devia estar na paleta"
         );
     }
-    for ugly in ["Bgremoval", "Sculpt3d"] {
-        assert!(
-            labels.iter().any(|l| l == ugly),
-            "o título {ugly:?} é o que a derivação dá hoje; se ele mudou, foi de propósito"
-        );
-    }
+    let ugly = "Bgremoval";
+    assert!(
+        labels.iter().any(|l| l == ugly),
+        "o título {ugly:?} é o que a derivação dá hoje; se ele mudou, foi de propósito"
+    );
 }

@@ -100,8 +100,8 @@ fn the_two_spatial_boxes_group_a_shared_param_the_same_way() {
         let tid = ph2d_nodegraph::node::NodeTypeId::of(nome);
         let grupos = reg.param_groups(tid);
         // ⚠️ Pela CHAVE, que é o que o campo guarda desde 2026-09-18. Escrito como o nome
-        //    inglês isto casaria ZERO e a sonda ficaria muda — a mesma armadilha do «valor
-        //    esperado que é um NOME» que os matcaps pagaram, aqui num caminho que NÃO estoura.
+        //    inglês isto casaria ZERO e a sonda ficaria muda — a armadilha do «valor esperado
+        //    que é um NOME», aqui num caminho que NÃO estoura.
         if !grupos.iter().any(|g| g.group_key == "node.group.placement") {
             continue;
         }

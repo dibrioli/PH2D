@@ -97,8 +97,8 @@ fi
 #     `Engine/Source` e `Engine/Shaders` dentro do que se instala;
 #   · Blender — GPL, com 810 ficheiros `.py` em `scripts/`.
 # ⚠️ O `datafiles/` do Blender fica de FORA **de propósito**: o
-# `docs/Render3d/ferramentas/oraculo_de_cor.py` deste repo lê o `config.ocio`
-# (OpenColorIO, BSD-3) — isso é DADO e não implementação, e é a mesma distinção
+# oráculo de cor deste repo lia o `config.ocio` (o `docs/Render3d/ferramentas/oraculo_de_cor.py`,
+# que saiu com o 3D — ADR-0179; OpenColorIO, BSD-3) — isso é DADO e não implementação, e é a mesma distinção
 # que faz a SAÍDA de um alvo ser livre.
 #
 # ⚠️ Ela recusa a MENÇÃO e não só a leitura, e isso é deliberado. Separar «este

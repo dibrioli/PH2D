@@ -11,8 +11,7 @@
 //! àquilo de que o dono se queixa lê-se como um painel limpo.*
 //!
 //! ⚠️ **A LOCALIZAÇÃO é metade do valor.** Uma régua que diz *«esta frase saiu 21 vezes»* e não
-//! diz **de onde** obriga a arqueologia — a lição que o censo das elisões já pagou, e que as três
-//! réguas da ponta do Sculpt pagaram antes dela (mediam ápice a ápice e deitavam fora o ÍNDICE).
+//! diz **de onde** obriga a arqueologia — a lição que o censo das elisões já pagou.
 //!
 //! # ⚠️ Ele nasce DESARMADO, e isso não é conforto
 //!

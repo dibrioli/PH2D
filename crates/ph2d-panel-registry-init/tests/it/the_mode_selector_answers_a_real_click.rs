@@ -53,23 +53,23 @@ fn every_mode_row_is_registered() {
     }
 }
 
-/// ⭐⭐ **A linha *Sculpt Mode* do seletor de uma PEÇA chega ao barramento** (spec/06 F3) — com todos
-/// os painéis registados, pela porta do quadro. ⚠️ O CONTROLO é a ordem das linhas: Object à frente,
-/// depois as da família na ordem que ela declara.
+/// ⭐⭐ **A ÚLTIMA linha de uma família com DOIS modos chega ao barramento** (spec/06 F3) — com
+/// todos os painéis registados, pela porta do quadro. ⚠️ O CONTROLO é a ordem das linhas: Object à
+/// frente, depois as da família na ordem que ela declara (um desenho do Flip: Draw · Edit).
 #[test]
-fn the_sculpt_row_of_a_piece_asks_for_sculpt() {
+fn the_last_row_of_a_two_mode_family_asks_for_its_mode() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.gizmo
         .mode
-        .publish(Some(9), &[ObjectMode::Sculpt, ObjectMode::Paint]);
+        .publish(Some(9), &[ObjectMode::Draw, ObjectMode::Edit]);
     let menu = hero.gizmo.mode.menu(&mut hero.store);
     assert_eq!(
         menu.as_ref().map(|m| m.faces.clone()),
         Some(vec![
             "Object Mode".to_string(),
-            "Sculpt Mode".to_string(),
-            "Paint Mode".to_string()
+            "Draw Mode".to_string(),
+            "Edit Mode".to_string()
         ])
     );
     hero.store.publish_mode_menu(menu);
@@ -77,9 +77,7 @@ fn the_sculpt_row_of_a_piece_asks_for_sculpt() {
         0,
     )));
     let _ = hero.bus.drain().count();
-    hero.apply_event(WidgetEvent::Click(
-        ph2d_editor_core::ids::OBJECT_MODE_SCULPT,
-    ));
+    hero.apply_event(WidgetEvent::Click(ph2d_editor_core::ids::OBJECT_MODE_EDIT));
     let asked: Vec<ModeRequest> = hero
         .bus
         .drain()
@@ -88,7 +86,7 @@ fn the_sculpt_row_of_a_piece_asks_for_sculpt() {
             _ => None,
         })
         .collect();
-    assert_eq!(asked, vec![ModeRequest::Enter(ObjectMode::Sculpt)]);
+    assert_eq!(asked, vec![ModeRequest::Enter(ObjectMode::Edit)]);
 }
 
 fn image_selected() -> HeroScreen {

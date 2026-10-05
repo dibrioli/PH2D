@@ -9,9 +9,9 @@
 //!
 //! Um rótulo que atravessa a fronteira escapa às duas: do lado do motor não há pintor nenhum a
 //! seguir, e do lado do painel **o literal não existe**. ⇒ *um censo cuja crate não é DONA do texto
-//! que ela pinta fica verde sobre texto cru* — o que o cabeçalho do `ph2d_i18n::sculpt_engine` já
-//! escrevia em prosa depois de o defeito aparecer **três vezes**, todas achadas por uma fotografia
-//! do dono, e que nenhum instrumento enumerava.
+//! que ela pinta fica verde sobre texto cru* — o que o cabeçalho da 3.ª fatia da fronteira (o motor
+//! da escultura, que saiu com o 3D — ADR-0179) já escrevia em prosa depois de o defeito aparecer
+//! **três vezes**, todas achadas por uma fotografia do dono, e que nenhum instrumento enumerava.
 //!
 //! # A população: o que o motor PUBLICA
 //!

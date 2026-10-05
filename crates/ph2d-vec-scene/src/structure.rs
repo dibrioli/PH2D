@@ -49,7 +49,7 @@ pub struct VecViewState {
     /// ser borrado) e o `dispatch_isolated` desenha **só** elas, numa cena própria que o presente
     /// compõe depois do borrão.
     ///
-    /// ⚠️ **Estado de VISTA, nunca do documento** (o precedente é o `isolated` do modelador 3D):
+    /// ⚠️ **Estado de VISTA, nunca do documento**:
     /// escrever isto nas formas seria uma EDIÇÃO, com passo de undo e bytes no ficheiro, por uma
     /// coisa que só existe enquanto o artista está a olhar.
     pub isolated: Vec<VecPathId>,

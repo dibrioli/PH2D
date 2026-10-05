@@ -38,43 +38,6 @@ pub fn composite_region(
     encode(&acc)
 }
 
-/// ⭐⭐⭐ **Composite the whole canvas over a SURFACE neighbourhood** (`docs/3D/30` §14) —
-/// the canvas is a surface's samples laid out as `width × height` (`nb.window()`), and every
-/// neighbourhood adjustment low-passes over `nb` instead of the image grid. Everything else is
-/// [`composite`]'s walk, so with no neighbourhood adjustment it IS [`composite`], ao bit.
-#[must_use]
-pub fn composite_over(
-    stack: &LayerStack,
-    src: &(impl LayerPixelSource + Sync),
-    nb: &dyn ph2d_painter_effects::adjustments::Neighbourhood,
-) -> Vec<u8> {
-    let win = nb.window();
-    debug_assert_eq!(
-        (win.origin_x, win.origin_y),
-        (0, 0),
-        "a surface is composed whole"
-    );
-    if !has_spatial_adjustment(stack, stack.root()) {
-        return composite(stack, src, win.width, win.height);
-    }
-    let mut acc = vec![[0.0f32; 4]; (win.width as usize) * (win.height as usize)];
-    composite_into(
-        &mut acc,
-        stack.root(),
-        stack,
-        src,
-        win.width,
-        0,
-        0,
-        win.width,
-        win.height,
-        0,
-        None,
-        Some(nb),
-    );
-    encode(&acc)
-}
-
 /// Composite the FULL canvas with the cut-point cache (ADR-0045 §2.7) — the
 /// slider-drag FPS lever. On a param-only change of a root adjustment (after
 /// `cache.invalidate_above(adj, stack)`), this restarts from that adjustment's
@@ -126,7 +89,6 @@ pub fn composite_with_cache(
         height,
         0,
         Some(cache),
-        None,
     );
     encode(&acc)
 }
@@ -206,7 +168,7 @@ pub fn composite_below(
     let mut acc = vec![g; (width as usize) * (height as usize)];
     for ids in slices {
         composite_into(
-            &mut acc, ids, stack, src, width, 0, 0, width, height, 0, None, None,
+            &mut acc, ids, stack, src, width, 0, 0, width, height, 0, None,
         );
     }
     encode(&acc)
@@ -343,7 +305,6 @@ fn composite_region_linear(
             rh,
             0,
             None,
-            None,
         );
         return acc;
     }
@@ -367,7 +328,6 @@ fn composite_region_linear(
                         rw,
                         band_rh,
                         0,
-                        None,
                         None,
                     );
                 })
@@ -396,7 +356,6 @@ fn composite_into(
     rh: u32,
     depth: usize,
     mut cache: Option<&mut CompositorCache>,
-    nb: Option<&dyn ph2d_painter_effects::adjustments::Neighbourhood>,
 ) {
     // Defense-in-depth (audit W3): never recurse past the group-nesting cap,
     // even if a (future deserialized / forged) stack smuggles a cycle or an
@@ -484,7 +443,6 @@ fn composite_into(
                     rh,
                     depth + 1,
                     None,
-                    nb,
                 );
                 blend_window(acc, rx, ry, rw, rh, mode, opacity, |gx, gy| {
                     let lx = gx - rx;
@@ -530,26 +488,16 @@ fn composite_into(
                 // sub-window is clamp-to-edge approximate at the seam — the GPU
                 // pass-graph with halo is the exact real-time path; a full-canvas
                 // recompose here, the common param-drag case, is exact.)
-                let win = ph2d_painter_effects::adjustments::AdjustWindow {
-                    width: rw,
-                    height: rh,
-                    origin_x: rx,
-                    origin_y: ry,
-                };
-                // The neighbourhood hook (`docs/3D/30` §14): the grid of this window, or the
-                // caller's surface — which is laid out as this very window.
-                let nb: &dyn ph2d_painter_effects::adjustments::Neighbourhood = match nb {
-                    Some(n) => {
-                        debug_assert_eq!(n.window(), win, "a surface is composed whole");
-                        n
-                    }
-                    None => &win,
-                };
-                ph2d_painter_effects::adjustments::apply_adjustment_on(
+                ph2d_painter_effects::adjustments::apply_adjustment_windowed(
                     &adj.kind,
                     &adj.params,
                     &mut adjusted,
-                    nb,
+                    ph2d_painter_effects::adjustments::AdjustWindow {
+                        width: rw,
+                        height: rh,
+                        origin_x: rx,
+                        origin_y: ry,
+                    },
                 );
                 // Optional mask — raw layer-id (amendment-1): white = full
                 // effect. Missing/short buffer = no mask (full effect).

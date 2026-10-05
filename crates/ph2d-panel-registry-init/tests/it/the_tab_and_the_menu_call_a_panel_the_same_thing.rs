@@ -12,7 +12,7 @@
 //! a ponte seria o registo em runtime, que é o que este ficheiro já faz.
 //!
 //! ⛔ **É por isso que o `TITLE` não tem default.** Um derivado do `Panel::ID` daria *"Tokens"*,
-//! *"Sculpt3d"* e *"Grid Snap"*: três divergências no dia em que nascesse, sem uma linha de erro.
+//! *"Bgremoval"* e *"Grid Snap"*: três divergências no dia em que nascesse, sem uma linha de erro.
 //!
 //! ⭐ A ponte entre as duas é a tabela [`menu_bar::MODULE_TRUTHS`], que já existia — ela é quem
 //! sabe que o pill `TOPBAR_TOKENS` fala do painel `"tokens"`.

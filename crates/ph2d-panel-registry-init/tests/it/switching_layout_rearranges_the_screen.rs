@@ -68,15 +68,12 @@ fn a_layout_never_inherits_what_the_previous_one_left_open() {
         h.is_panel_visible("timeline"),
         "controlo: o layout *Animate* não abre a linha do tempo e o gate mediria o vazio"
     );
-    layout_switch::apply(&mut h, TaskLayout::Modeling3d);
+    layout_switch::apply(&mut h, TaskLayout::Vector);
     assert!(
         !h.is_panel_visible("timeline"),
-        "a linha do tempo sobreviveu à troca para o *Model* — um layout virou um passo sobre o \
+        "a linha do tempo sobreviveu à troca para o *Vector* — um layout virou um passo sobre o \
          anterior em vez do estado da tela"
     );
-    // ⭐ O painel do modelador vem com o MODO Edit da peça (spec/06 F3), não com a aba: sem peça
-    // activa abri-lo aqui armaria o módulo e plantaria a peça de demo (⛔ §6.5).
-    assert!(!h.is_panel_visible("model3d"));
 }
 
 /// ⚠️ **A tabela nomeia painéis que EXISTEM.** Um id com erro de escrita não falha nada — ele
@@ -154,6 +151,12 @@ fn every_named_panel_that_this_build_registers_actually_opens() {
 fn clicking_a_layout_tab_rearranges_the_screen() {
     let mut h = hero();
     layout_switch::apply(&mut h, TaskLayout::Drawing2d);
+    // Um painel que NENHUM layout nomeia, aberto à mão antes da troca — é o desarrumo a herdar.
+    assert!(
+        registered("physics"),
+        "controlo: a régua precisa do painel de física registado"
+    );
+    h.panel_visibility.insert("physics", true);
 
     let consumed = h.apply_event(WidgetEvent::Click(layout_tabs::tab_node_id(
         TaskLayout::Animation,
@@ -169,7 +172,10 @@ fn clicking_a_layout_tab_rearranges_the_screen() {
     );
     // ⚠️ E o que a tarefa anterior tinha aberto fechou. (O `painter_layers` não serve de régua
     // aqui desde 31/08: ele é da ponte do pintor, não da lista de abertos.)
-    assert!(!h.is_panel_visible("model3d"));
+    assert!(
+        !h.is_panel_visible("physics"),
+        "o painel aberto antes da troca sobreviveu ao clique na aba"
+    );
 }
 
 /// ⭐⭐⭐ **TODO layout entrega o canvas, e NENHUM o herda** — a régua do report do Enio de

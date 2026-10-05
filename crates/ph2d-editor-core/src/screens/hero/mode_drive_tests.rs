@@ -57,20 +57,20 @@ impl ModeFamily for ImageFamily {
     }
 }
 
-/// Uma escultura FALSA: Sculpt3D ▸ Sculpt · Paint, com o documento dela (a peça em mãos e o modo),
-/// e um objecto que nasce a pedir o Sculpt.
+/// Um Flip FALSO: Flip ▸ Draw · Edit, com o documento dele (o desenho em mãos e o modo), e um
+/// objecto que nasce a pedir o Draw.
 #[derive(Default)]
-struct SculptFamily {
+struct DrawingFamily {
     held: Option<(u64, ObjectMode)>,
     born: Option<u64>,
     followed: Vec<Option<ActiveMode>>,
 }
 
-impl ModeFamily for SculptFamily {
+impl ModeFamily for DrawingFamily {
     fn modes(&self) -> &'static [(ObjectKind, ObjectMode)] {
         &[
-            (ObjectKind::Sculpt3D, ObjectMode::Sculpt),
-            (ObjectKind::Sculpt3D, ObjectMode::Paint),
+            (ObjectKind::Flip, ObjectMode::Draw),
+            (ObjectKind::Flip, ObjectMode::Edit),
         ]
     }
     fn holds(&mut self, m: ObjectMode, e: u64, _: &mut ToolRegistry) -> bool {
@@ -87,17 +87,18 @@ impl ModeFamily for SculptFamily {
         self.followed.push(current);
     }
     fn wants(&mut self, _: &mut ToolRegistry) -> Option<(u64, ObjectMode)> {
-        self.born.take().map(|e| (e, ObjectMode::Sculpt))
+        self.born.take().map(|e| (e, ObjectMode::Draw))
     }
 }
 
-const PIECE: u64 = 30;
-const PIECE2: u64 = 31;
+const DRAWING: u64 = 30;
+const DRAWING2: u64 = 31;
 
 fn kind_of(bits: u64) -> ObjectKind {
     match bits {
         EMPTY => ObjectKind::Empty,
-        PIECE | PIECE2 => ObjectKind::Sculpt3D,
+        DRAWING | DRAWING2 => ObjectKind::Flip,
+        VEC_A => ObjectKind::Vector,
         _ => ObjectKind::Image,
     }
 }
@@ -106,7 +107,8 @@ struct Cena {
     tools: ToolRegistry,
     hero: HeroScreen,
     toasts: ToastQueue,
-    sculpt: SculptFamily,
+    flip: DrawingFamily,
+    vector: JoinFamily,
 }
 
 fn cena() -> Cena {
@@ -119,14 +121,15 @@ fn cena() -> Cena {
         tools,
         hero: HeroScreen::new(NodeId(1)),
         toasts: ToastQueue::new(),
-        sculpt: SculptFamily::default(),
+        flip: DrawingFamily::default(),
+        vector: JoinFamily::default(),
     }
 }
 
 impl Cena {
     fn quadro(&mut self, req: Option<ModeRequest>) {
         drive(
-            &mut [&mut ImageFamily, &mut self.sculpt],
+            &mut [&mut ImageFamily, &mut self.flip, &mut self.vector],
             &kind_of,
             &|_| "Obj".to_string(),
             &mut self.tools,
@@ -290,57 +293,54 @@ fn the_right_click_adds_only_in_object_mode() {
     assert!(!asks_add(&mut c.hero));
 }
 
-/// ⭐⭐ GATE — `Paint` declarado por DOIS tipos: o quadro procura a família por (tipo, modo). Paint
-/// sobre a peça abre a ESCULTURA e não a ferramenta da imagem; sobre a imagem, o contrário.
+/// ⭐⭐ GATE — `Edit` declarado por DOIS tipos (o Flip e o vetor): o quadro procura a família por
+/// (tipo, modo). Edit sobre o desenho abre o FLIP e não o vetor; sobre o vetor, o contrário.
 #[test]
-fn paint_declared_by_two_types_opens_the_family_of_the_type() {
+fn edit_declared_by_two_types_opens_the_family_of_the_type() {
     let mut c = cena();
-    c.hero.gizmo.replace_selection(Some(PIECE));
+    c.hero.gizmo.replace_selection(Some(DRAWING));
     c.quadro(None);
     assert_eq!(
         c.hero.store.area_menus()[0].faces,
-        ["Object Mode", "Sculpt Mode", "Paint Mode"],
-        "o seletor da peça não segue a ordem que a família declara"
+        ["Object Mode", "Draw Mode", "Edit Mode"],
+        "o seletor do desenho não segue a ordem que a família declara"
     );
-    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
-    assert_eq!(c.sculpt.held, Some((PIECE, ObjectMode::Paint)));
-    assert!(
-        !c.paint_in_hand(),
-        "Paint da peça abriu a ferramenta da imagem"
-    );
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Edit)));
+    assert_eq!(c.flip.held, Some((DRAWING, ObjectMode::Edit)));
+    assert!(c.vector.held.is_empty(), "Edit do desenho abriu o vetor");
     c.quadro(Some(ModeRequest::Enter(ObjectMode::Object)));
-    c.hero.gizmo.replace_selection(Some(IMG));
-    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
-    assert!(c.paint_in_hand());
-    assert_eq!(c.sculpt.held, None, "Paint da imagem mexeu na escultura");
+    c.hero.gizmo.replace_selection(Some(VEC_A));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Edit)));
+    assert_eq!(c.vector.held, vec![VEC_A]);
+    assert_eq!(c.flip.held, None, "Edit do vetor mexeu no desenho");
 }
 
-/// ⭐⭐ GATE (spec/06 §4 F3) — duas peças do mesmo tipo, o modo numa: a outra fica intocada, e a
-/// troca entre os modos da família fica na MESMA peça.
+/// ⭐⭐ GATE (spec/06 §4 F3) — dois desenhos do mesmo tipo, o modo num: o outro fica intocado, e a
+/// troca entre os modos da família fica no MESMO desenho.
 #[test]
-fn two_pieces_the_mode_on_one_leaves_the_other_untouched() {
+fn two_drawings_the_mode_on_one_leaves_the_other_untouched() {
     let mut c = cena();
-    c.hero.gizmo.replace_selection(Some(PIECE2));
-    c.quadro(Some(ModeRequest::Enter(ObjectMode::Sculpt)));
-    assert_eq!(c.sculpt.held, Some((PIECE2, ObjectMode::Sculpt)));
-    c.quadro(Some(ModeRequest::Enter(ObjectMode::Paint)));
-    assert_eq!(c.sculpt.held, Some((PIECE2, ObjectMode::Paint)));
-    assert!(refused(&c.hero, Some(PIECE), false, &mut c.toasts));
+    c.hero.gizmo.replace_selection(Some(DRAWING2));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Draw)));
+    assert_eq!(c.flip.held, Some((DRAWING2, ObjectMode::Draw)));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Edit)));
+    assert_eq!(c.flip.held, Some((DRAWING2, ObjectMode::Edit)));
+    assert!(refused(&c.hero, Some(DRAWING), false, &mut c.toasts));
     c.quadro(None);
-    assert_eq!(c.hero.gizmo.mode.locked_entity(), Some(PIECE2));
-    assert_eq!(c.sculpt.held, Some((PIECE2, ObjectMode::Paint)));
+    assert_eq!(c.hero.gizmo.mode.locked_entity(), Some(DRAWING2));
+    assert_eq!(c.flip.held, Some((DRAWING2, ObjectMode::Edit)));
 }
 
-/// ⭐⭐ GATE — um objecto que NASCE num modo (a peça do menu Add, escolha do dono 03/10) fica
+/// ⭐⭐ GATE — um objecto que NASCE num modo (escolha do dono 03/10) fica
 /// seleccionado e entra nele; o pedido corre UMA vez.
 #[test]
 fn a_born_object_is_selected_and_enters_its_mode_once() {
     let mut c = cena();
     c.hero.gizmo.replace_selection(Some(IMG));
-    c.sculpt.born = Some(PIECE);
+    c.flip.born = Some(DRAWING);
     c.quadro(None);
-    assert_eq!(c.hero.gizmo.selection, Some(PIECE));
-    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Sculpt);
+    assert_eq!(c.hero.gizmo.selection, Some(DRAWING));
+    assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Draw);
     c.quadro(Some(ModeRequest::Toggle));
     c.quadro(None);
     assert_eq!(
@@ -354,50 +354,45 @@ fn a_born_object_is_selected_and_enters_its_mode_once() {
 #[test]
 fn every_family_follows_the_mode_that_stayed() {
     let mut c = cena();
-    c.hero.gizmo.replace_selection(Some(PIECE));
-    c.quadro(Some(ModeRequest::Enter(ObjectMode::Sculpt)));
+    c.hero.gizmo.replace_selection(Some(DRAWING));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Draw)));
     c.quadro(Some(ModeRequest::Toggle));
-    let seen: Vec<_> = c
-        .sculpt
-        .followed
-        .iter()
-        .map(|a| a.map(|a| a.mode))
-        .collect();
-    assert_eq!(seen, [Some(ObjectMode::Sculpt), None]);
+    let seen: Vec<_> = c.flip.followed.iter().map(|a| a.map(|a| a.mode)).collect();
+    assert_eq!(seen, [Some(ObjectMode::Draw), None]);
 }
 
 /// ⭐ GATE — o gizmo de transformação só existe em Object: entrar num modo esconde-o, sair devolve-o.
 #[test]
 fn the_object_gizmo_shows_only_in_object_mode() {
     let mut c = cena();
-    c.hero.gizmo.replace_selection(Some(PIECE));
+    c.hero.gizmo.replace_selection(Some(DRAWING));
     assert!(
         object_gizmo_shows(&c.hero),
         "controlo: em Object o gizmo aparece"
     );
-    c.quadro(Some(ModeRequest::Enter(ObjectMode::Sculpt)));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Draw)));
     assert!(
         !object_gizmo_shows(&c.hero),
-        "o gizmo ficou por cima do barro"
+        "o gizmo ficou por cima do desenho"
     );
     c.quadro(Some(ModeRequest::Toggle));
     assert!(object_gizmo_shows(&c.hero));
 }
 
-/// Um Model FALSO: Model3D ▸ Edit, que edita as PARTES da peça (as formas dela).
+/// Um vetor FALSO sem junção: Vector ▸ Edit, que edita as PARTES do objecto (as formas dele).
 #[derive(Default)]
-struct ModelFamily {
+struct ContainerFamily {
     held: Option<u64>,
 }
 
-const MODEL: u64 = 40;
-const MODEL2: u64 = 41;
+const CONTAINER: u64 = 40;
+const CONTAINER2: u64 = 41;
 const SHAPE: u64 = 42;
 const SHAPE2: u64 = 43;
 
-impl ModeFamily for ModelFamily {
+impl ModeFamily for ContainerFamily {
     fn modes(&self) -> &'static [(ObjectKind, ObjectMode)] {
-        &[(ObjectKind::Model3D, ObjectMode::Edit)]
+        &[(ObjectKind::Vector, ObjectMode::Edit)]
     }
     fn holds(&mut self, _: ObjectMode, e: u64, _: &mut ToolRegistry) -> bool {
         self.held == Some(e)
@@ -410,32 +405,32 @@ impl ModeFamily for ModelFamily {
         self.held = None;
     }
     fn parts(&mut self, e: u64) -> Option<Vec<u64>> {
-        (e == MODEL).then(|| vec![SHAPE, SHAPE2])
+        (e == CONTAINER).then(|| vec![SHAPE, SHAPE2])
     }
     fn owner_of(&mut self, bits: u64) -> Option<u64> {
-        [SHAPE, SHAPE2].contains(&bits).then_some(MODEL)
+        [SHAPE, SHAPE2].contains(&bits).then_some(CONTAINER)
     }
 }
 
-fn model_kind(bits: u64) -> ObjectKind {
+fn container_kind(bits: u64) -> ObjectKind {
     match bits {
-        MODEL | MODEL2 => ObjectKind::Model3D,
+        CONTAINER | CONTAINER2 => ObjectKind::Vector,
         _ => ObjectKind::Empty,
     }
 }
 
-/// ⭐⭐ GATE (spec/06 F3, o Edit do Model) — **num modo de PARTES a selecção anda dentro da peça**:
-/// uma forma em Object oferece o Edit do dono; em Edit, as formas (uma, duas, nenhuma) seguram o
-/// modo e o seletor continua a dizer Edit; outra peça é recusada; e o `Tab` de volta devolve a
-/// selecção à peça inteira, para o `Tab` seguinte voltar ao Edit.
+/// ⭐⭐ GATE (spec/06 F3, o Edit do vetor) — **num modo de PARTES a selecção anda dentro do
+/// objecto**: uma forma em Object oferece o Edit do dono; em Edit, as formas (uma, duas, nenhuma)
+/// seguram o modo e o seletor continua a dizer Edit; outro objecto é recusado; e o `Tab` de volta
+/// devolve a selecção ao objecto inteiro, para o `Tab` seguinte voltar ao Edit.
 #[test]
-fn a_mode_of_parts_lets_the_selection_move_inside_the_piece() {
+fn a_mode_of_parts_lets_the_selection_move_inside_the_object() {
     let mut c = cena();
-    let mut model = ModelFamily::default();
-    let quadro = |c: &mut Cena, model: &mut ModelFamily, req| {
+    let mut fam = ContainerFamily::default();
+    let quadro = |c: &mut Cena, fam: &mut ContainerFamily, req| {
         drive(
-            &mut [model],
-            &model_kind,
+            &mut [fam],
+            &container_kind,
             &|_| "Obj".to_string(),
             &mut c.tools,
             &mut c.hero,
@@ -444,16 +439,16 @@ fn a_mode_of_parts_lets_the_selection_move_inside_the_piece() {
         );
     };
     c.hero.gizmo.replace_selection(Some(SHAPE));
-    quadro(&mut c, &mut model, None);
+    quadro(&mut c, &mut fam, None);
     assert!(
         c.hero.gizmo.mode.available().contains(&ObjectMode::Edit),
-        "uma forma em Object não oferece o Edit da peça dela"
+        "uma forma em Object não oferece o Edit do objecto dela"
     );
-    quadro(&mut c, &mut model, Some(ModeRequest::Toggle));
-    assert_eq!(c.hero.gizmo.mode.locked_entity(), Some(MODEL));
+    quadro(&mut c, &mut fam, Some(ModeRequest::Toggle));
+    assert_eq!(c.hero.gizmo.mode.locked_entity(), Some(CONTAINER));
     c.hero.gizmo.replace_selection(Some(SHAPE));
     c.hero.gizmo.extra_selection = vec![SHAPE2];
-    quadro(&mut c, &mut model, None);
+    quadro(&mut c, &mut fam, None);
     assert_eq!(
         c.hero.gizmo.mode.current(),
         ObjectMode::Edit,
@@ -464,15 +459,15 @@ fn a_mode_of_parts_lets_the_selection_move_inside_the_piece() {
         "o seletor perdeu o Edit com uma forma seleccionada"
     );
     assert!(
-        refused(&c.hero, Some(MODEL2), false, &mut c.toasts),
-        "outra peça"
+        refused(&c.hero, Some(CONTAINER2), false, &mut c.toasts),
+        "outro objecto"
     );
     assert!(
         !refused(&c.hero, Some(SHAPE2), true, &mut c.toasts),
         "acrescentar uma forma"
     );
     c.hero.gizmo.replace_selection(None);
-    quadro(&mut c, &mut model, None);
+    quadro(&mut c, &mut fam, None);
     assert_eq!(
         c.hero.gizmo.mode.current(),
         ObjectMode::Edit,
@@ -480,28 +475,28 @@ fn a_mode_of_parts_lets_the_selection_move_inside_the_piece() {
     );
     assert!(
         c.hero.gizmo.mode.available().contains(&ObjectMode::Edit),
-        "sem nada seleccionado o seletor perdeu o Edit — o activo publicado tem de ser a peça"
+        "sem nada seleccionado o seletor perdeu o Edit — o activo publicado tem de ser o objecto"
     );
     c.hero.gizmo.replace_selection(Some(SHAPE));
-    quadro(&mut c, &mut model, Some(ModeRequest::Toggle));
+    quadro(&mut c, &mut fam, Some(ModeRequest::Toggle));
     assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Object);
     assert_eq!(
         c.hero.gizmo.selection,
-        Some(MODEL),
-        "o Tab não devolveu a peça inteira"
+        Some(CONTAINER),
+        "o Tab não devolveu o objecto inteiro"
     );
-    quadro(&mut c, &mut model, Some(ModeRequest::Toggle));
+    quadro(&mut c, &mut fam, Some(ModeRequest::Toggle));
     assert_eq!(
         c.hero.gizmo.mode.current(),
         ObjectMode::Edit,
         "o Tab não voltou ao Edit"
     );
-    c.hero.gizmo.replace_selection(Some(MODEL2));
-    quadro(&mut c, &mut model, None);
+    c.hero.gizmo.replace_selection(Some(CONTAINER2));
+    quadro(&mut c, &mut fam, None);
     assert_eq!(
         c.hero.gizmo.mode.current(),
         ObjectMode::Object,
-        "outra peça por outra porta e o Edit ficou de pé"
+        "outro objecto por outra porta e o Edit ficou de pé"
     );
 }
 
@@ -646,8 +641,8 @@ fn a_mode_that_joins_takes_the_selected_of_the_same_kind() {
 /// ⭐⭐ GATE (spec/06 F3 ▸ Vector; report do dono 04/10: *«o gizmo não aparece e não consigo a
 /// multiseleção»*) — **num modo de PARTES que o declara, a parte seleccionada tem o gizmo** (o
 /// Select do Edit do vetor transforma as formas por ele), o objecto trancado não; e **o laço fica só
-/// com as partes** em vez de recusar. Num modo de objecto inteiro (Sculpt) o gizmo some e o laço é
-/// recusado, como antes.
+/// com as partes** em vez de recusar. Num modo de objecto inteiro (o Draw do Flip) o gizmo some e o
+/// laço é recusado, como antes.
 #[test]
 fn a_parts_mode_gives_the_part_its_gizmo_and_the_lasso_its_parts() {
     let mut c = cena();
@@ -685,9 +680,9 @@ fn a_parts_mode_gives_the_part_its_gizmo_and_the_lasso_its_parts() {
     assert_eq!(bits, vec![VEC_SHAPE], "o laço levou o que não é parte");
 
     let mut s = cena();
-    s.hero.gizmo.replace_selection(Some(PIECE));
-    s.quadro(Some(ModeRequest::Enter(ObjectMode::Sculpt)));
-    let mut bits = vec![PIECE, PIECE2];
+    s.hero.gizmo.replace_selection(Some(DRAWING));
+    s.quadro(Some(ModeRequest::Enter(ObjectMode::Draw)));
+    let mut bits = vec![DRAWING, DRAWING2];
     assert!(
         !lasso_admits(&s.hero, &mut bits, &mut s.toasts),
         "o laço passou num modo inteiro"

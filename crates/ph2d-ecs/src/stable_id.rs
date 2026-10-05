@@ -17,14 +17,14 @@
 //!
 //! 1. **Toda entidade que o snapshot CAPTURA tem um** — o critério é ter
 //!    [`crate::Transform`] **ou** `ChildOf`. ⚠️ **Não** é *"ter `Transform`"*, e a diferença
-//!    custou um gate vermelho: os filhos de uma peça 3D não o têm (ver a nota dentro de
+//!    custou um gate vermelho: há filhos que não o têm (ver a nota dentro de
 //!    [`assign_missing_stable_ids`]). O critério é o do CONSUMIDOR — o que a DFS do snapshot
 //!    alcança —, e não o de um irmão que responde a outra pergunta.
 //! 2. **Único por documento** — gate com prova de mutação.
 //! 3. **Nunca reusado**, e o contador é **monotónico e vive FORA do `ProjectState`**: um undo
 //!    não o pode rebobinar, senão um *redo* reusaria um id que ainda está vivo na pilha.
-//! 4. **`0` é reservado** para *"nenhum"* — a mesma convenção do `stable_name_id`, do
-//!    `PaintedDoc` e do `BakedForm`.
+//! 4. **`0` é reservado** para *"nenhum"* — a mesma convenção do `stable_name_id` e do
+//!    `PaintedDoc`.
 //!
 //! # ⚠️ Por que uma VARREDURA idempotente, e não um hook `on_add`
 //!
@@ -87,7 +87,7 @@ pub struct StableId(pub u64);
 
 impl StableId {
     /// `0` = *nenhum*. Reservado, nunca alocado — a mesma convenção do
-    /// [`crate::stable_name_id`], do `PaintedDoc` e do `BakedForm`.
+    /// [`crate::stable_name_id`] e do `PaintedDoc`.
     pub const NONE: StableId = StableId(0);
 
     /// O primeiro id que a alocação pode entregar.
@@ -183,10 +183,8 @@ pub fn assign_missing_stable_ids(world: &mut World) -> bool {
     // ⚠️⚠️ **O critério é `Transform` OU `ChildOf`, e a segunda metade custou um gate
     // vermelho.** A 1.ª versão perguntava só `With<Transform>`, seguindo o `RootOrder` e a
     // frase que o `undo.rs` repete há meses — *"toda entidade editável tem `Transform`
-    // (sprites, formas, objetos Flip, grupos)"*. **Essa frase envelheceu**: desde o módulo de
-    // modelagem 3D (ADR-0161) os FILHOS de uma peça não têm `Transform` — o `spawn_doc`
-    // declara-o, *"a raiz recebe `FieldObject`, `Transform` e `RootOrder`; os filhos recebem
-    // só o que é deles: nome, forma e pose"*.
+    // (sprites, formas, objetos Flip, grupos)"*. **Essa frase envelheceu**: uma entidade pode
+    // ser FILHA sem ter `Transform` (o modelador 3D, retirado pelo ADR-0179, fazia-o assim).
     //
     // Sem id, a linha deles saía com `StableId::NONE` — **todas com o mesmo** —, o mapa
     // `id → entidade` do restore colapsava-as numa só, e uma peça de 5 nós voltava com 2.

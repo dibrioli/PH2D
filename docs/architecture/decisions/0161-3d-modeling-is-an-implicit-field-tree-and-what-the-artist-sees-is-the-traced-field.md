@@ -1,6 +1,8 @@
 # ADR-0161 — A modelagem 3D é uma ÁRVORE DE CAMPO IMPLÍCITO, e o que o artista vê é o campo TRAÇADO
 
-- **Status:** proposto — o **caráter** já foi aprovado pelo Enio no smoke de 2026-08-19
+> **Revogado por [ADR-0179](0179-o-3d-sai-do-ph2d.md) em 2026-10-05 — o 3D saiu do PH2D.** O texto abaixo fica como história; o código foi apagado (`git show b1a6f9b07:<caminho>`).
+
+- **Status:** **REVOGADO** pelo ADR-0179 (2026-10-05) · era: proposto — o **caráter** já foi aprovado pelo Enio no smoke de 2026-08-19
   (*"excepcional, lindo e maravilhoso"*); o registro formal aguarda o aceite.
   ⚠️ **O número foi CONTADO, não escolhido** (2026-08-19): `main` está em 0159 e a `line/sculpt3d`
   já ocupa o **0160** sem ter integrado. Número de ADR é leitura, não reserva — se outra linha
@@ -11,7 +13,7 @@
   em 03/10. O que o artista vê no **Matcap** continua a ser o campo traçado; o campo continua a fonte.
 - **Data:** 2026-08-19
 - **Linha:** `line/3DModeling`
-- **Cofre do módulo:** [`docs/3DModeling/`](../../3DModeling/README.md)
+- **Cofre do módulo:** `docs/3DModeling/`
 - **Não confundir com** [ADR-0150](0150-3d-sculpt-is-a-mesh-that-donates-shading-sculptgl-referenced.md),
   que decide a **escultura** (malha + verbos). Este decide a **modelagem** (booleana e
   arredondamento exatos). São dois módulos, e a §"Consequências" diz onde eles se encontram.
@@ -28,7 +30,7 @@ Ou seja: o alvo é o **resultado**, e a representação é meio. Isso obriga a d
 linha, porque as três famílias candidatas divergem já na estrutura de dados do documento — e trocar
 depois é reescrever o módulo.
 
-E há duas forças externas, ambas **medidas** ([`02_o_que_torna_boolean_e_fillet_extraordinarios.md`](../../3DModeling/02_o_que_torna_boolean_e_fillet_extraordinarios.md)):
+E há duas forças externas, ambas **medidas** (`02_o_que_torna_boolean_e_fillet_extraordinarios.md`):
 
 1. **Metade da queixa já está resolvida pela indústria.** O Blender adotou o `Manifold` como solver
    de booleana na **4.5**. Trazer booleana de malha para cá **empata**, não vence.
@@ -48,7 +50,7 @@ Dela decorrem, e cada uma é consequência e não escolha independente:
 União é `min(a, b)`; não existe geometria degenerada para uma comparação de dois números. O
 arredondamento é um operador sobre os mesmos dois números, e **funciona onde três ou mais formas se
 encontram** — o caso que quebra o rolling-ball do CAD e o `Bevel` do Blender. Medido: o vértice
-triplo fecha ([`01_resultados_spike.md`](../../3DModeling/01_resultados_spike.md) §1).
+triplo fecha (`01_resultados_spike.md` §1).
 
 ### 2. ⭐ O que o artista VÊ é o campo **traçado**; a malha é artefato de **exportação**
 
@@ -95,7 +97,7 @@ nomeia.
 **O JIT dela fica LIGADO**: medido **5,3×** no traçado (o caminho que o artista olha) e 1,6× na
 malhagem. É a justificativa que o HR-2 exige para `unsafe`, e ela é forte.
 ⚠️ *A primeira medição dizia "ganho zero" e estava errada — comparava `VmShape` com `VmShape`.
-Registro em [`01_resultados_spike.md`](../../3DModeling/01_resultados_spike.md) §6.*
+Registro em `01_resultados_spike.md` §6.*
 
 ### 6. ⛔ Escala **não-uniforme** é recusada
 
@@ -107,7 +109,7 @@ quiser um elipsoide usa uma primitiva de elipsoide, não uma esfera esticada.
 
 | Alternativa | Por que não |
 |---|---|
-| **B-Rep / NURBS** (o caminho do MoI e do Plasticity) | O padrão-ouro do arredondamento é o **Parasolid**, que **não se compra numa loja**: contrato Siemens, ~130 ISVs, sem preço público. O aberto em Rust é o `monstertruck` (Apache-2.0, 2 dias de idade quando medido) — e **não tem casca**, que é o passo 3 da definição de pronto do original. Detalhe em [`00_plano_port.md`](../../3DModeling/00_plano_port.md) §3 |
+| **B-Rep / NURBS** (o caminho do MoI e do Plasticity) | O padrão-ouro do arredondamento é o **Parasolid**, que **não se compra numa loja**: contrato Siemens, ~130 ISVs, sem preço público. O aberto em Rust é o `monstertruck` (Apache-2.0, 2 dias de idade quando medido) — e **não tem casca**, que é o passo 3 da definição de pronto do original. Detalhe em `00_plano_port.md` §3 |
 | **OCCT** (`opencascade-rs`) | Duas portas independentes: LGPL **não está** na allowlist do [`deny.toml`](../../../deny.toml), e o `cargo deny` roda no `ship.sh` e no CI; e construir OCCT na matriz de 3 SOs é custo desproporcional |
 | **`brepkit`** | O mais completo — e **AGPL-3.0** sobre produto fechado. Só por licença comercial: decisão de produto, não de engenharia |
 | **Booleana de malha exata** (`Manifold` / `manifold-rust`) | Robusta e rápida — e **é o que o Blender já tem desde a 4.5**. Empatar não é o alvo. E ela **não resolve arredondamento**, que é o buraco real |

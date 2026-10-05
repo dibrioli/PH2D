@@ -140,10 +140,9 @@ fn a_panel_title_is_derived_from_its_id() {
     assert_eq!(humanise_panel_id("audio_editor"), "Audio Editor");
     assert_eq!(humanise_panel_id("wet_tuning"), "Wet Tuning");
     assert_eq!(humanise_panel_id("vector"), "Vector");
-    // ⚠️ Os dois que a derivação não embeleza, PINADOS: quem lhes der um título próprio um dia
-    // muda esta linha de propósito, em vez de descobrir a feiura num screenshot.
+    // ⚠️ O que a derivação não embeleza, PINADO: quem lhe der um título próprio um dia muda esta
+    // linha de propósito, em vez de descobrir a feiura num screenshot.
     assert_eq!(humanise_panel_id("bgremoval"), "Bgremoval");
-    assert_eq!(humanise_panel_id("sculpt3d"), "Sculpt3d");
 }
 
 /// A paleta **segue o modo**: com o Painter em mãos ela oferece as ferramentas de pintura.

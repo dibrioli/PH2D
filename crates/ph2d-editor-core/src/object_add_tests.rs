@@ -2,8 +2,8 @@ use super::*;
 use crate::widget::command_palette::top_match;
 
 const A: &[AddEntry] = &[
-    AddEntry::new("object_add.sculpt.sphere", AddGroup::ThreeD),
-    AddEntry::new("object_add.sculpt.cube", AddGroup::ThreeD),
+    AddEntry::new("object_add.flip", AddGroup::TwoD),
+    AddEntry::new("object_add.vector.object", AddGroup::TwoD),
 ];
 const B: &[AddEntry] = &[AddEntry::new("object_add.game.camera", AddGroup::Game)];
 
@@ -34,7 +34,7 @@ fn a_group_without_entries_is_not_shown() {
     assert_eq!(
         titles,
         [AddGroup::TwoD.title(), AddGroup::Empty.title()],
-        "sem as famílias 3D e Jogo, os grupos delas não podem aparecer"
+        "sem a família de Jogo, o grupo dela não pode aparecer"
     );
     assert_eq!(entry_of_pick(&[CORE], A[0].id()), None);
 }
@@ -44,7 +44,7 @@ fn a_group_without_entries_is_not_shown() {
 #[test]
 fn the_search_finds_every_family_by_its_type_name() {
     let model = build(&[CORE, A, B], &|_| None);
-    assert_eq!(top_match(&model, "sculpt"), Some(A[0].id()));
+    assert_eq!(top_match(&model, "flip"), Some(A[0].id()));
     assert_eq!(top_match(&model, "image"), Some(IMAGE.id()));
     for e in [CORE, A, B].iter().flat_map(|f| f.iter()) {
         assert_eq!(

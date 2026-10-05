@@ -296,8 +296,7 @@ fn probe_os_sub_passos() {
 ///
 /// As [`ph2d_contact::Leis`] são um argumento da porta e a escolha vive num `const` do `sim.step`
 /// (o `contact::LEIS`). Para as varrer daqui seria preciso uma **bandeira global** lida dentro do
-/// solver — *o defeito que o `remesh_with` da `line/sculpt3d` pagou por escrito, e que alcança todo
-/// chamador*. ⇒ a varredura é `backup → mutar o const → correr esta sonda → restaurar`, que é a
+/// solver — *um defeito que a casa já pagou por escrito, e que alcança todo chamador*. ⇒ a varredura é `backup → mutar o const → correr esta sonda → restaurar`, que é a
 /// forma que o `CLAUDE.md` §2 sanciona para uma edição derivada de medição.
 ///
 /// ⛔⛔ **E a alternativa — uma bancada de pilha DENTRO da `ph2d-contact` — foi construída, medida

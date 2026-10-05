@@ -45,15 +45,3 @@ fn motion_weights_match_canonical_painter_brush() {
         assert_eq!(rw, bw, "motion weights mismatch at distance {d}");
     }
 }
-
-/// The σ the surface heat reads (`docs/3D/30` §14) is the same σ the grid weights use.
-#[test]
-fn gaussian_sigma_matches_canonical_painter_effects() {
-    for &r in &[-1.0f32, 0.0, 0.25, 1.0, 2.7, 15.3, 255.0, 1e-3] {
-        assert_eq!(
-            ph2d_render::gaussian_sigma(r).to_bits(),
-            ph2d_painter_effects::adjustments::gaussian_sigma(r).to_bits(),
-            "gaussian sigma mismatch at radius {r}"
-        );
-    }
-}

@@ -1,6 +1,6 @@
 //! **AS STRINGS DO PAINEL PAINTER** — o irmão de tabela do [`super`] para `panel.painter_layers.*`.
 //!
-//! ⚠️ **Um corte por ASSUNTO, como o `vector.rs`, o `sculpt3d.rs` e o `chrome.rs`** — e pela mesma
+//! ⚠️ **Um corte por ASSUNTO, como o `vector.rs` e o `chrome.rs`** — e pela mesma
 //! razão de isolamento (`CLAUDE.md` §0.2): enquanto todas as chaves moram num `match` só, duas linhas
 //! paralelas que acrescentem uma chave cada colidem no mesmo punhado de linhas.
 //!
@@ -548,24 +548,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.tilt" => "Tilt",
         "panel.painter_layers.layers.save_as_object" => "Save As Object",
         // ph2d-migrar-texto:end
-        // ⭐ O painel a mostrar a pilha da peça 3D (`docs/3D/30` §4, W3) — as frases do fundo.
-        "panel.painter_layers.piece.no_plane" => {
-            "This piece has no Paint Detail, so it has no layers yet -- turn Paint Detail on (2x \
-             or finer) to paint it in layers"
-        }
-        "panel.painter_layers.piece.active_not_paint" => {
-            "The selected layer is an adjustment or a mask: strokes need a paint layer -- pick \
-             one in the list"
-        }
         "panel.painter_layers.adjust.tone_not_relief" => {
             "The paint's relief stays as it is: this effect works on tones. Blur and Sharpen \
              soften and crisp the relief too"
-        }
-        "panel.painter_layers.piece.off_here" => {
-            "Layers of the 3D piece. Blur, Sharpen, Bloom and Shadows/Highlights follow the \
-             surface (up to 64x Paint Detail), the radius in % of the piece's size. Not here: \
-             groups, texture layers, Lock, Ref, and Motion Blur, Chromatic Aberration and Halftone -- a surface has \
-             no direction, centre or dot screen of its own"
         }
         _ => return None,
     })

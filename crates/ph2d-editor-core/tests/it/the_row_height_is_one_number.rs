@@ -14,8 +14,7 @@
 //!   a wave 17, **a linha de LISTA também**: as quatro que escreviam `22.0` à mão escreviam, por
 //!   coincidência, o valor do token, e uma coincidência não segue quem mexe no token;
 //! - **a geometria de um CANVAS**, que tem a sua própria régua (a linha de socket do grafo, que
-//!   escala com o zoom; o alvo de 44 px de uma barra de progresso; o menu flutuante sobre a
-//!   vista 3D).
+//!   escala com o zoom; o alvo de 44 px de uma barra de progresso).
 //!
 //! ⚠️ **A régua separa PALAVRAS, não subcadeias** — a primeira versão deste censo, escrita a
 //! `grep`, acusou `DUR_ARROW_HALF_W` e `NARROW_HALF` três vezes, porque `ROW_H` vive dentro de
@@ -45,11 +44,6 @@ const OWN_RULER: &[(&str, &str, &str)] = &[
         "crates/ph2d-panel-motion-graph/src/geom.rs",
         "MENU_ROW_H",
         "a linha do menu de adicionar no canvas do grafo: idem",
-    ),
-    (
-        "crates/ph2d-viewport3d/src/view_menu.rs",
-        "ROW_H_PX",
-        "a linha de um menu FLUTUANTE sobre a vista 3D (26 px), nao uma linha de painel",
     ),
 ];
 
@@ -99,10 +93,7 @@ fn ui_sources() -> Vec<PathBuf> {
             // família de cada vez — e uma varredura que não as siga perde a população **em
             // silêncio**: a isenção fica obsoleta, o censo de obsolescência acusa-a, e a leitura
             // fácil é apagar a isenção. *Isso não cura nada: apaga a cobertura junto com a linha.*
-            //
-            // ⚠️ A `ph2d-viewport3d` está aqui pela mesma razão — ela é a moldura 3D partilhada
-            // pelos dois módulos 3D, e é código de UI como qualquer painel.
-            if name.starts_with("ph2d-app-") || name == "ph2d-viewport3d" {
+            if name.starts_with("ph2d-app-") {
                 walk(&p.join("src"), &mut out);
             }
         }

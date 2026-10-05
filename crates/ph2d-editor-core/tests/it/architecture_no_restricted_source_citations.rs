@@ -3,9 +3,9 @@
 //! ## Porque isto existe
 //!
 //! O `SKILL_Cleanroom` §4.2 põe **nomes internos do alvo** (ficheiros, funções,
-//! variáveis) na lista curta do que a lei protege, e o
-//! [`ACHADO_proveniencia_por_nome_interno`](../../../docs/3D/cleanroom/ACHADO_proveniencia_por_nome_interno.md)
-//! registou-o em 2026-08-24 sobre as **notas** do repo. ⚠️ **Em 2026-09-09
+//! variáveis) na lista curta do que a lei protege, e o achado *proveniência por
+//! nome interno* (o clean-room do 3D, que saiu com o ADR-0179) registou-o em
+//! 2026-08-24 sobre as **notas** do repo. ⚠️ **Em 2026-09-09
 //! mediu-se que ele está vivo no CÓDIGO RASTREADO, não só em notas** — e a
 //! diferença importa: uma nota fica no repo, mas uma citação dentro de uma
 //! *string* **viaja no binário** e no log do CI.
@@ -80,16 +80,12 @@ const ATRIBUICAO_PERMISSIVA: &[(&str, &str)] = &[
     ("ph2d-tokens/src/spacing.rs", "tema de editor MIT"),
     ("ph2d-tokens/src/slider_style.rs", "tema de editor MIT"),
     ("ph2d-tokens/src/visuals.rs", "tema de editor MIT"),
-    (
-        "ph2d-quantize/src/refine.rs",
-        "biblioteca de quantização MIT",
-    ),
 ];
 
 /// ⭐⭐ **ALVOS PERMISSIVOS, pelo NOME do ficheiro CITADO.**
 ///
 /// ⚠️ **Isto é melhor que isentar um ficheiro NOSSO inteiro**, que é a forma das
-/// sete entradas acima: aquela cega o ficheiro para todas as citações, incluindo
+/// seis entradas acima: aquela cega o ficheiro para todas as citações, incluindo
 /// uma a alvo restrito que entre lá amanhã. Esta isenta exactamente o que foi
 /// triado. *A unidade da triagem é o ARTEFACTO citado, não quem o cita.*
 const ALVO_PERMISSIVO: &[(&str, &str)] = &[
@@ -100,58 +96,11 @@ const ALVO_PERMISSIVO: &[(&str, &str)] = &[
     ("editor_dock.h", "Godot, MIT"),
     // Chromium — BSD-3. A resolução da bézier de temporização.
     ("cubic_bezier.cc", "Chromium, BSD-3"),
-    // Instant Meshes — BSD-3. É o porte fiel que o `ph2d-quadflow` É, e a
-    // atribuição é obrigação da licença, não dívida.
-    //
-    // ⚠️ **Quatro dos cinco declaram a licença NA PRÓPRIA linha que os cita**, e
-    // o quinto (`optimizer.cpp`) é o mesmo artefacto instalado — nenhuma destas
-    // foi adivinhada a partir do nome do projecto.
-    ("field.cpp", "Instant Meshes, BSD-3"),
-    ("extract.cpp", "Instant Meshes, BSD-3"),
-    ("hierarchy.cpp", "Instant Meshes, BSD-3"),
-    ("cleanup.cpp", "Instant Meshes, BSD-3"),
-    ("adjacency.cpp", "Instant Meshes, BSD-3"),
-    ("meshstats.cpp", "Instant Meshes, BSD-3"),
-    ("optimizer.cpp", "Instant Meshes, BSD-3"),
-    // ⭐⭐⭐ **MaterialX — Apache-2.0**, com a licença LIDA NO ARTEFACTO INSTALADO
-    // (`pacman -Qo /usr/share/licenses/materialx/LICENSE` → `materialx 1.39.5-1.1`;
-    // o ficheiro abre com *«Apache License, Version 2.0»*). ⛔ **Não foi adivinhada
-    // pelo nome do projecto** — é a armadilha §0.9 que esta casa mede desde 09/09.
-    //
-    // A `ph2d-material` **É** o porte destes ficheiros (o OpenPBR Surface como lei
-    // de referência em CPU, `docs/Render3d/05`), e a atribuição é **obrigação da
-    // licença, não dívida**: a mesma leitura que o `ph2d-quadflow` tem sobre o
-    // Instant Meshes, acima.
-    //
-    // ⚠️ Todos em `/usr/share/materialx/libraries/pbrlib/genglsl/`, e a proveniência
-    // ficheiro a ficheiro vive no cabeçalho de `ph2d-material/src/bsdf.rs`.
-    ("mx_microfacet.glsl", "MaterialX, Apache-2.0"),
-    ("mx_microfacet_specular.glsl", "MaterialX, Apache-2.0"),
-    ("mx_microfacet_diffuse.glsl", "MaterialX, Apache-2.0"),
-    ("mx_dielectric_bsdf.glsl", "MaterialX, Apache-2.0"),
-    ("mx_generalized_schlick_bsdf.glsl", "MaterialX, Apache-2.0"),
-    ("mx_oren_nayar_diffuse_bsdf.glsl", "MaterialX, Apache-2.0"),
-    ("mx_add_bsdf.glsl", "MaterialX, Apache-2.0"),
-    ("mx_layer_bsdf.glsl", "MaterialX, Apache-2.0"),
-    ("mx_multiply_bsdf_float.glsl", "MaterialX, Apache-2.0"),
-    ("mx_multiply_bsdf_color3.glsl", "MaterialX, Apache-2.0"),
-    ("mx_environment_prefilter.glsl", "MaterialX, Apache-2.0"),
-    // ⭐ **Os TRÊS da SUBSUPERFÍCIE** (17/09, `docs/Render3d/10`) — a mesma triagem, o mesmo
-    // artefacto instalado e o mesmo directório dos onze acima. ⚠️ A nodedef e as duas definições
-    // do `stdlib`/`pbrlib` entram pela mesma porta: o `energy_compensation` desta wave é um valor
-    // de OMISSÃO lido de um `.mtlx`, e um facto lido de um ficheiro nomeia-o.
-    ("mx_translucent_bsdf.glsl", "MaterialX, Apache-2.0"),
-    ("mx_subsurface_bsdf.glsl", "MaterialX, Apache-2.0"),
-    ("mx_mix_bsdf.glsl", "MaterialX, Apache-2.0"),
-    ("open_pbr_surface.mtlx", "MaterialX, Apache-2.0"),
-    ("pbrlib_defs.mtlx", "MaterialX, Apache-2.0"),
-    ("mx_math.glsl", "MaterialX, Apache-2.0"),
     // ⭐⭐⭐ **rive-runtime — MIT**, e é o BLUEPRINT declarado do módulo vectorial
     // ([ADR-0108](../../../../docs/architecture/decisions/0108-vector-reposition-rive-referenced-native-editor-first.md)
     // D2/D5: *«Rive é a fonte da verdade … portados com atribuição MIT»*). A
     // deformação por ossos desta casa é o LBS dele sobre pontos de controlo, e a
-    // atribuição é **obrigação da licença, não dívida** — a mesma leitura que o
-    // `ph2d-quadflow` tem sobre o Instant Meshes.
+    // atribuição é **obrigação da licença, não dívida**.
     //
     // ⚠️ **A licença foi LIDA NO ARTEFACTO** (o `LICENSE` na raiz de
     // `rive-app/rive-runtime`: *«MIT License · Copyright (c) 2020 Rive»*), e não
@@ -177,33 +126,10 @@ const ALVO_PERMISSIVO: &[(&str, &str)] = &[
     // ficheiro concedem a dupla. *A unidade da triagem é o artefacto instalado,
     // nunca o rótulo do pacote.*
     ("bezier-utils.cpp", "lib2geom, LGPL-2.1-only OR MPL-1.1"),
-    // libSatsuma — MIT, com `SPDX-License-Identifier: MIT` na linha 2 de CADA um
-    // dos dois. ⚠️⚠️ **É a armadilha do §0.9 ao contrário:** a APLICAÇÃO que os
-    // linka (o oráculo de quantização) é GPL-3.0 e a BIBLIOTECA citada é MIT —
-    // triar pelo nome do projecto restrito pagaria clean-room por um motor que
-    // este repo pode simplesmente ligar.
-    ("CostFunction.hh", "libSatsuma, MIT"),
-    ("Highlevel.cc", "libSatsuma, MIT"),
-    // ⭐⭐ **E estes dois são NOSSOS** — a bancada do PH2D, que vive FORA da
-    // árvore do repo (`ph2d-quadbench/`, ao lado do oráculo). O discriminador
-    // `nomes_da_nossa_arvore` só varre `crates`/`shells`/`docs`/`scripts`, logo
-    // não os alcança: *a nossa própria ferramenta, se morar fora do repo, lê-se
-    // como citação de alvo alheio.* A premissa da pergunta que os mandou triar
-    // estava errada, e foi o revisor que a desmentiu.
-    ("layout.py", "bancada do PH2D, obra própria"),
-    ("metrics.py", "bancada do PH2D, obra própria"),
     // O arnês que corre a SciPy (BSD-3) sobre o NOSSO lattice — ver
     // `docs/Skeleton/ferramentas/oraculo_do_campo.py`, escrito nesta casa.
     ("oraculo_do_campo.py", "bancada do PH2D, obra própria"),
 ];
-
-/// ⚠️ **A entrada que este ficheiro teve ERRADA, e o registo fica:** o
-/// `layout.py` estava aqui listado como *«do oráculo, restrito»*, com a nota
-/// *«vive fora da árvore»* lida como agravante. O revisor mediu-o: **o upstream
-/// não tem ficheiro nenhum com esse nome**, e ele é a nossa própria bancada.
-/// *Uma acusação de proveniência afirmada pelo vizinho de um ficheiro é um
-/// palpite com cara de triagem* — a licença lê-se no artefacto.
-const _: () = ();
 
 /// A catraca: quantas citações **em comentário** cada crate ainda carrega.
 ///
@@ -345,8 +271,8 @@ fn citacoes_com(l: &str, nossos: &std::collections::BTreeSet<String>) -> usize {
 
 /// ⚠️⚠️ **UM FICHEIRO NOSSO NÃO É UMA CITAÇÃO DO ALVO.**
 ///
-/// O repo tem arneses com extensão de outra linguagem — `blender_sculpt_oracle.py`,
-/// `sculptgl_oracle.mjs`, `cook_matcaps.sh` — e apontá-los é **referência interna
+/// O repo tem arneses com extensão de outra linguagem — `oraculo_pesos.py`,
+/// `censo-texto-pintado.py` — e apontá-los é **referência interna
 /// legítima**, não proveniência de fonte alheio. ⛔ Sem esta metade o censo
 /// inflaciona a dívida e manda alguém «curar» um ponteiro para a nossa própria
 /// bancada. *Um censo que acusa o vivo manda a cura errada.*
@@ -552,16 +478,15 @@ fn o_detector_conta_o_que_deve_e_nada_mais() {
         "um cabecalho minusculo COM caminho conta -- a segunda metade da regra"
     );
     // ⛔ E o caso que so' a arvore responde: um arnes NOSSO nao conta.
-    let nossos: std::collections::BTreeSet<String> = ["blender_sculpt_oracle.py".to_string()]
-        .into_iter()
-        .collect();
+    let nossos: std::collections::BTreeSet<String> =
+        ["oraculo_pesos.py".to_string()].into_iter().collect();
     assert_eq!(
-        citacoes_com("/// ver `blender_sculpt_oracle.py`", &nossos),
+        citacoes_com("/// ver `oraculo_pesos.py`", &nossos),
         0,
         "um ficheiro da NOSSA arvore nao e' citacao do alvo"
     );
     assert_eq!(
-        citacoes_com("/// ver `blender_sculpt_oracle.py`", &vazio),
+        citacoes_com("/// ver `oraculo_pesos.py`", &vazio),
         1,
         "e sem a arvore ele contaria -- o controlo do proprio discriminador"
     );

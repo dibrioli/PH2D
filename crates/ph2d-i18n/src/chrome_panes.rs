@@ -188,7 +188,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.layout.draw" => "Draw",
         "chrome.layout.vector" => "Vector",
         "chrome.layout.flip" => "Flip",
-        "chrome.layout.model" => "Model",
         "chrome.layout.animate" => "Animate",
         "chrome.layout.nodes" => "Nodes",
         "chrome.color.off" => "Off",

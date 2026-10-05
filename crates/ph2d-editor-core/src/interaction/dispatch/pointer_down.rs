@@ -364,9 +364,8 @@ pub(super) fn dispatch_down<'frame>(
     }
     // ⚠️ **A partida de foco é uma PORTA, e este é um dos dois chamadores dela** —
     // ver [`super::blur`]. O outro é a shell, que a chama à frente de um consumidor
-    // de canvas que devolve cedo (a cena 3D, a janela de modelagem, a alça de
-    // âncora): sem isso o foco fica preso num chip numérico para sempre, e com ele
-    // morrem `Delete`, `Ctrl+Z` e todo atalho daquele módulo.
+    // de canvas que devolve cedo (a alça de âncora, por exemplo): sem isso o foco fica preso
+    // num chip numérico para sempre, e com ele morrem `Delete`, `Ctrl+Z` e todo atalho do canvas.
     super::blur::depart_focus(store, new_focus, events);
 
     // Detect double-click against the previous Down. Use the

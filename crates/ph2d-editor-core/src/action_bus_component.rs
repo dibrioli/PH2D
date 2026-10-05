@@ -69,10 +69,6 @@ pub enum ComponentEdit {
     /// **HEALTH e DAMAGE** (plano 28) — as duas secções partilham UM vocabulário (ver o cabeçalho
     /// do [`crate::vida_edits`]).
     Vida(crate::vida_edits::VidaFieldEdit),
-    /// **LIVE MESH** — o CATAVENTO (`docs/3D/02.2`, rota B): a pose 3D e o giro da malha que um
-    /// sprite mantém viva. ⚠️ **Apendada no fim**, como todas: a posição é a tag do postcard em
-    /// tudo o que atravesse o `action_bus`.
-    Mesh3d(crate::mesh3d_edits::Mesh3dFieldEdit),
     /// **NAV REGION e NAV AGENT** (plano 30, W4) — as duas secções partilham UM vocabulário (ver o
     /// cabeçalho do [`crate::nav_edits`]).
     Nav(crate::nav_edits::NavFieldEdit),

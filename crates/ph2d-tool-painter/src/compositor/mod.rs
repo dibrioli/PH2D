@@ -136,7 +136,5 @@ mod oraculo_vizinhanca_tests;
 #[cfg(test)]
 mod tests;
 pub use cache::CompositorCache;
-pub use compose::{
-    composite, composite_below, composite_over, composite_region, composite_with_cache,
-};
+pub use compose::{composite, composite_below, composite_region, composite_with_cache};
 pub use gpu_ops::flatten_for_gpu;

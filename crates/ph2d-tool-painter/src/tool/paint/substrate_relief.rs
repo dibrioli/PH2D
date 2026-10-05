@@ -229,10 +229,10 @@ fn default_paper() -> TextureSettings {
 impl crate::tool::PainterTool {
     /// O SUBSTRATO vigente — o dente do papel como superfície, ou `None` quando desligado.
     ///
-    /// ⚠️ **É a TERCEIRA razão para este passe existir, e a forma é a da doação:** ela também não passa
-    /// pelo `impasto_show` (aquele bit pergunta *"mostrar o relevo da TINTA?"*, e um papel não é relevo
-    /// de tinta) e também precisa correr num documento que não tem `heights` nenhum — que é literalmente
-    /// o caso do Digital, o meio para o qual isto foi pedido.
+    /// ⚠️ **É a SEGUNDA razão para este passe existir:** ela não passa pelo `impasto_show` (aquele bit
+    /// pergunta *"mostrar o relevo da TINTA?"*, e um papel não é relevo de tinta) e precisa correr num
+    /// documento que não tem `heights` nenhum — que é literalmente o caso do Digital, o meio para o
+    /// qual isto foi pedido.
     pub(super) fn substrate(&self) -> Option<Substrate<'_>> {
         Substrate::resolve(
             self.paint.brush.paper,

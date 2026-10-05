@@ -46,7 +46,7 @@
 //! # ⚠️ Porque é textual, e com que oráculo foi validado
 //!
 //! Os `.d` do compilador são a verdade sobre o que foi CONSTRUÍDO, mas são cegos ao gémeo desligado
-//! (`shells/desktop/src/sculpt3d_absent.rs` é declarado e nunca construído com a feature ligada) e
+//! (`crates/ph2d-inpaint/src/gpu/mod.rs` é declarado sob a feature `gpu`, desligada por omissão) e
 //! exigem uma build. Este gate lê DECLARAÇÕES, e foi validado contra os `.d` em 12/09: `0` órfãos
 //! nas 7 545 fontes de 361 membros, os controlos abaixo todos alcançados, e **provado por mutação**
 //! (apagar a declaração da sonda faz este censo acusar exactamente esse ficheiro, e mais nenhum).
@@ -562,8 +562,8 @@ fn the_census_reaches_every_hard_case() {
             "crates/ph2d-vec-scene/src/arrows_tests.rs",
         ),
         (
-            "gémeo DESLIGADO — declarado, nunca construído por omissão",
-            "shells/desktop/src/sculpt3d_absent.rs",
+            "módulo DESLIGADO — declarado sob uma feature que é OFF por omissão",
+            "crates/ph2d-inpaint/src/gpu/mod.rs",
         ),
         (
             "`foo.rs` + `foo/` — os filhos vivem numa subpasta",

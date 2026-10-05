@@ -171,7 +171,7 @@ impl SinkStyle {
 /// ⇒ A resposta honesta não é *«tudo vale em todo o lado»*, porque dois dos quatro campos
 /// **não existem** fora de uma imagem: um vector vivo é rasterizado analiticamente e não
 /// tem texels para amostrar nem UV para recortar. O que a compatibilidade exige é que
-/// cada rota **DIGA** o que honra, e que uma rota nova (3D) não possa nascer sem dizer.
+/// cada rota **DIGA** o que honra, e que uma rota nova não possa nascer sem dizer.
 ///
 /// O gate `every_draw_route_answers_the_sink_style` (em `ph2d-render/tests/`) percorre
 /// [`Self::ALL`] e obriga cada entrada a trazer o motivo de cada ausência.
@@ -248,8 +248,8 @@ impl StyleReach {
         why_absent: "",
     };
 
-    /// Toda rota de desenho que consome um [`SinkStyle`]. ⚠️ **Uma rota nova (o 3D que o
-    /// Enio nomeou) entra AQUI**, e o gate obriga-a a declarar antes de desenhar.
+    /// Toda rota de desenho que consome um [`SinkStyle`]. ⚠️ **Uma rota nova entra AQUI**, e o
+    /// gate obriga-a a declarar antes de desenhar.
     pub const ALL: &'static [Self] = &[Self::SPRITE, Self::VECTOR, Self::IMAGE_ON_VECTOR];
 
     /// `true` se esta rota honra os quatro campos.

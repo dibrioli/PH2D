@@ -7,7 +7,7 @@
 //! de um tecto vermelho é **corte por responsabilidade**, nunca uma entrada nova no
 //! `FILE_OVERAGE_OK`.
 //!
-//! ⭐ O corte é o que os irmãos já fizeram (`vector.rs`, `sculpt3d.rs`, `grid_snap.rs`, …): *ali
+//! ⭐ O corte é o que os irmãos já fizeram (`vector.rs`, `grid_snap.rs`, …): *ali
 //! ficam as chaves do APP, aqui as de UM painel*. Elas saem VERBATIM — nenhuma palavra muda.
 
 /// A tradução de uma chave do painel Timeline, ou `None` se ela não é daqui.

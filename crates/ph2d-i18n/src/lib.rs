@@ -29,8 +29,6 @@
 
 /// O que a família das INSTÂNCIAS diz (avisos dos verbos de prefab, a paleta de componentes).
 mod app_components;
-/// O que a família do MODELADOR de campo diz (peças, paleta de formas, importar/exportar).
-mod app_field3d;
 /// O que a família do FLIP diz (os avisos de pintar, preencher, colorir, esculpir).
 mod app_flip;
 /// O que a família do MOTION diz (as recusas de ligar, os conselhos do grafo, o cartão).
@@ -39,8 +37,6 @@ mod app_motion;
 mod app_painter;
 /// O que a família da FÍSICA diz (desenhar uma junta, o leitor de carga, o cartão do corpo).
 mod app_physics;
-/// O que a família da ESCULTURA diz (as recusas da retopologia, importar/exportar malhas).
-mod app_sculpt3d;
 /// O que a família do VETOR diz (os selos da booleana, importar SVG).
 mod app_vec;
 /// As strings do navegador de assets.
@@ -103,22 +99,6 @@ mod inspector_game;
 mod inspector_nav;
 mod inspector_player;
 mod inspector_vida;
-mod model3d;
-/// ⭐⭐⭐ **O vocabulário do BRILHO da cena 3D** (`docs/Render3d/12`, a `W7`) — irmão do
-/// [`model3d_render`] por RESPONSABILIDADE e para o não deixar chegar ao tecto de LOC.
-mod model3d_bloom;
-/// ⭐ **As RAZÕES de uma fileira apagada** (18/09) — irmão de ASSUNTO do [`model3d`], e não de
-/// painel: o corte foi imposto pelo tecto de LOC dele e separa *nomes de coisas* de *frases para o
-/// artista*.
-mod model3d_inert;
-/// ⭐⭐⭐ **A APRESENTAÇÃO da cena 3D** — o olhar, a exposição e a camada de ESTILO
-/// (`docs/Render3d/03` e `05`). ⚠️ Ele NÃO entra na cadeia do [`tr`]: quem o alcança é o braço
-/// final do [`model3d`], que lhe delega — *a tabela do documento aponta para a da apresentação.*
-mod model3d_render;
-/// ⭐⭐⭐ **O vocabulário do CÉU fotográfico** do Render por malha — irmão do [`model3d_bloom`].
-mod model3d_sky;
-/// ⭐⭐⭐ **O vocabulário da TEXTURA** das formas — irmão do [`model3d_sky`].
-mod model3d_texture;
 /// Os nomes dos nós — a 3.ª fatia da fronteira dos motores.
 mod node_catalog;
 /// ⭐⭐ **Os nomes das SECÇÕES** do painel de params de um nó — 38 palavras sobre 229 sítios.
@@ -134,9 +114,6 @@ mod paint_engines;
 mod painter_layers;
 /// ⭐⭐ **A COR, a CURVA, o COMANDO e as RECUSAS da timeline** — quatro motores numa fatia.
 mod quatro_motores;
-mod sculpt3d;
-/// ⭐⭐ **As palavras do MOTOR da escultura** — a 6.ª fatia da fronteira dos motores.
-mod sculpt_engine;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
 mod tags;
 /// ⭐⭐ **As cinco recusas da ÁRVORE de tags**, publicadas pela folha `ph2d-tags`.
@@ -467,8 +444,8 @@ fn tr_ingles(key: &str) -> &'static str {
         // setting. This panel shows it so the metre-valued knobs above can be
         // read in pixels, and deliberately does not own or duplicate it (D4).
         "panel.physics.scale" => "Scale",
-        // ⭐ O leitor da escala do mundo é uma FRASE — ver a nota do `panel.model3d.footer`. ⚠️ O
-        // `px/m` é um SÍMBOLO de unidade e fica dentro dela: ele é igual em toda língua, e parti-lo
+        // ⭐ O leitor da escala do mundo é uma FRASE: a ordem das palavras é dela, e o rótulo entra
+        // como ARGUMENTO, nunca montado à mão pelo pintor. ⚠️ O `px/m` é um SÍMBOLO de unidade e fica dentro dela: ele é igual em toda língua, e parti-lo
         // num argumento daria a alguém a ideia de o traduzir.
         "panel.physics.scale_readout" => "{label}: {value} px/m",
         // ⚠️ O MODELO, e não só a palavra: o `": "` vivia no `format!` do pintor, e há
@@ -481,9 +458,8 @@ fn tr_ingles(key: &str) -> &'static str {
         // Only the ROW labels live here: the marker NAMES ("Arrow", "Diamond",
         // "Bar"…) come from `ph2d_vec_scene::Marker::label()`, which is their
         // single source — the same rule the shape catalogue follows.
-        // ⚠️ **A família de chaves de um painel mora num IRMÃO** — `vector.rs` e `sculpt3d.rs`,
-        // os dois cortados do mesmo arquivo pelo mesmo teto de LOC, em linhas paralelas. O corte
-        // é de ASSUNTO: aqui ficam as chaves do APP, lá as de UM painel.
+        // ⚠️ **A família de chaves de um painel mora num IRMÃO** — o `vector.rs`, cortado deste
+        // arquivo pelo teto de LOC. O corte é de ASSUNTO: aqui ficam as chaves do APP, lá as de UM painel.
         //
         // ⚠️ **Os irmãos são consultados em CADEIA, e o encaminhamento vem ANTES do vazamento** —
         // senão toda chave do painel que ficasse por último cairia no `leak_key` e ele pintaria os
@@ -493,18 +469,11 @@ fn tr_ingles(key: &str) -> &'static str {
         // (o identificador cru é feio de propósito).
         k => vector::tr(k)
             .or_else(|| timeline::tr(k))
-            .or_else(|| sculpt3d::tr(k))
-            .or_else(|| model3d::tr(k))
-            .or_else(|| model3d_inert::tr(k))
-            .or_else(|| model3d_bloom::tr(k))
-            .or_else(|| model3d_sky::tr(k))
-            .or_else(|| model3d_texture::tr(k))
             .or_else(|| tags::tr(k))
             .or_else(|| factory::tr(k))
             .or_else(|| topdown::tr(k))
             .or_else(|| component_catalog::tr(k))
             .or_else(|| paint_engines::tr(k))
-            .or_else(|| sculpt_engine::tr(k))
             .or_else(|| ecs_scene::tr(k))
             .or_else(|| tags_engine::tr(k))
             .or_else(|| tool_engines::tr(k))
@@ -540,11 +509,9 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| shell::tr(k))
             .or_else(|| shell_media::tr(k))
             .or_else(|| app_components::tr(k))
-            .or_else(|| app_field3d::tr(k))
             .or_else(|| app_flip::tr(k))
             .or_else(|| app_painter::tr(k))
             .or_else(|| app_physics::tr(k))
-            .or_else(|| app_sculpt3d::tr(k))
             .or_else(|| app_motion::tr(k))
             .or_else(|| app_vec::tr(k))
             .unwrap_or_else(|| leak_key(k)),

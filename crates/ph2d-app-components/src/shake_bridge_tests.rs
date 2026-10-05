@@ -2,7 +2,7 @@
 //!
 //! ⚠️ **Todos entram pela PORTA DO PRODUTO** ([`super::drive_camera_shake`]) e medem o OFFSET ou o
 //! TRAUMA — nunca uma tabela de leis. *Uma tabela é um resumo do produto, e um resumo não tem de
-//! conter tudo* (a lição que o `Clay Strips` da escultura pagou).
+//! conter tudo*.
 
 use super::*;
 use ph2d_ecs::{GameCamera, Name, ShakeSource, SignalFrom, StableId};

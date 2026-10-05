@@ -341,7 +341,7 @@ fn the_columns_are_occupied_by_what_was_published_not_by_a_list_of_names() {
     );
 
     // ⭐ O caso que mata a lista: um painel que NENHUMA lista conhece — desde que publique o
-    // rect da coluna, ele ocupa-a. E' o painel Vector, o Physics, o Sculpt3D, e o proximo.
+    // rect da coluna, ele ocupa-a. E' o painel Vector, o Physics, e o proximo.
     let inquilino_desconhecido = Rect::new(right_col.x, right_col.y, right_col.w, right_col.h);
     assert!(
         DockSides::from_published(left_col, right_col, [inquilino_desconhecido]).right,

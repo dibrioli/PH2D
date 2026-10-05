@@ -163,39 +163,40 @@
 | [0147](0147-wet-paint-order-invariant-solver.md) | ACEITO (Enio, 2026-07-30 — ordem literal: *"GPU do Wet Paint"*). | O solver do Wet Paint é INDEPENDENTE DE ORDEM (e é por isso que ele paraleliza) |
 | [0148](0148-vector-live-width-profile-is-an-ecs-component-and-one-baker-serves-preview-and-apply.md) | ⛔ superseded por 0153 · aceito (2026-07-29) | A largura variável é um COMPONENTE ECS, e UM motor serve o preview e o Apply |
 | [0149](0149-physics-ik-is-a-transient-posing-tree-not-a-second-joint-representation.md) | Aceito (2026-07-27) | A IK é uma ÁRVORE DE POSE transitória, não uma segunda representação do joint |
-| [0150](0150-3d-sculpt-is-a-mesh-that-donates-shading-sculptgl-referenced.md) | proposto — aguarda aceite do Enio. | A escultura 3D é uma MALHA que doa sombreamento, referenciada no SculptGL (MIT) |
+| [0150](0150-3d-sculpt-is-a-mesh-that-donates-shading-sculptgl-referenced.md) | ⛔ superseded por 0179 · **REVOGADO** pelo ADR-0179 (2026-10-05) | A escultura 3D é uma MALHA que doa sombreamento, referenciada no SculptGL (MIT) |
 | [0151](0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md) | aceito (Enio 2026-07-27) | A expressão é POR-CLIP, então um strip a janela |
 | [0152](0152-timeline-expressions-are-a-first-class-lane-source-that-fades.md) | — | Timeline expressions are a first-class LANE SOURCE that fades (they compose inside the blend, not after it) |
 | [0153](0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md) | — | O auto layout é o `taffy` atrás de uma crate-folha, e a pose que ele produz é DERIVADA |
 | [0154](0154-motion-shapes-are-live-gpu-vector-not-baked-tiles.md) | Aceito (proposto na linha `line/motion-value`). … | As formas do Motion são VETOR VIVO na GPU, não tiles assadas |
 | [0155](0155-motion-graph-setup-is-diagnosed-and-healed-not-refused.md) | Aceito (proposto na linha `line/motion-value`). … | O setup do grafo de Motion é DIAGNOSTICADO e CURADO no gesto, não recusado |
-| [0156](0156-sculpt3d-ao-trace-is-a-per-vertex-gather-rayon-exception.md) | **ACEITO** pelo Enio em 2026-08-06 (*"pode usar rayon. … | O traço de AO é um GATHER por-vértice, e por isso o `rayon` entra na `ph2d-sdf` |
+| [0156](0156-sculpt3d-ao-trace-is-a-per-vertex-gather-rayon-exception.md) | ⛔ superseded por 0179 · **REVOGADO** pelo ADR-0179 (2026-10-05) | O traço de AO é um GATHER por-vértice, e por isso o `rayon` entra na `ph2d-sdf` |
 | [0157](0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md) | Aceito (linha `line/Painter`, integrada 2026-08-08). … | Uma deformação de Liquify é uma LISTA DE DABS autorada, cozida no device; o campo denso é cache, nunca estado |
 | [0158](0158-solid-fill-running-sum-is-row-disjoint-rayon-exception.md) | **ACEITO** pelo Enio em 2026-08-15 (*"siga e corrija os abertos"*), sobre o item 1 da | A soma corrida do preenchimento é POR LINHA, e por isso o `rayon` entra na `ph2d-painter-brush` |
-| [0159](0159-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md) | aceito (ordem do Enio, 2026-08-13: *"ambos"*, sobre a avaliação que | O laço de vértices de um dab é um MAP disjunto: exceção `rayon` na `ph2d-sculpt3d` |
-| [0160](0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md) | aceito (ordem do Enio, 2026-08-19: *"investigue o melhor algoritmo | O quad remesh é um porte NATIVO de campo cruzado, QuadriFlow referenciado |
-| [0161](0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md) | proposto — o **caráter** já foi aprovado pelo Enio no smoke de 2026-08-19 | A modelagem 3D é uma ÁRVORE DE CAMPO IMPLÍCITO, e o que o artista vê é o campo TRAÇADO |
-| [0162](0162-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md) | — | O quad remesh PIVOTA para a família GLOBAL: clean-room a partir dos papers, oráculo GPL fora da árvore |
+| [0159](0159-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md) | ⛔ superseded por 0179 · **REVOGADO** pelo ADR-0179 (2026-10-05) | O laço de vértices de um dab é um MAP disjunto: exceção `rayon` na `ph2d-sculpt3d` |
+| [0160](0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md) | ⛔ superseded por 0179 · **REVOGADO** pelo ADR-0179 (2026-10-05) | O quad remesh é um porte NATIVO de campo cruzado, QuadriFlow referenciado |
+| [0161](0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md) | ⛔ superseded por 0179 · **REVOGADO** pelo ADR-0179 (2026-10-05) | A modelagem 3D é uma ÁRVORE DE CAMPO IMPLÍCITO, e o que o artista vê é o campo TRAÇADO |
+| [0162](0162-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md) | ⛔ superseded por 0179 · — | O quad remesh PIVOTA para a família GLOBAL: clean-room a partir dos papers, oráculo GPL fora da árvore |
 | [0163](0163-a-node-may-cook-its-own-input-at-n-instants-a-time-fan.md) | Accepted | Um nó pode cozinhar a PRÓPRIA entrada em N instantes (o *leque de tempo*) |
 | [0164](0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md) | Accepted (aprovado pelo Enio em 2026-08-24 ao ordenar a implementação) | Instância = objetos REAIS ligados por id ao mestre, sync vivo no mesmo mundo, e o undo vira INCREMENTAL |
 | [0165](0165-assets-are-born-inside-the-app-three-level-identity-index-before-browser.md) | Accepted (aprovado pelo Enio em 2026-08-24, junto com o ADR-0164) | O asset nasce DENTRO do app: identidade em 3 níveis, o ÍNDICE antes do navegador, catálogos por UUID — e o mestre É um asset |
 | [0166](0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md) | Accepted (Enio, 2026-08-24 — instruções complementares à ordem de implementação … | O Inspector mostra o que o objeto TEM; componente anexa-se por UMA porta, com categorias e filtro por TIPO DE OBJETO |
-| [0167](0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md) | Accepted | A EXTRAÇÃO de malha quad é clean-room dos *papers*; a biblioteca MPL-2.0 é ORÁCULO, não fonte a portar |
+| [0167](0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md) | ⛔ superseded por 0179 · **REVOGADO** pelo ADR-0179 (2026-10-05) | A EXTRAÇÃO de malha quad é clean-room dos *papers*; a biblioteca MPL-2.0 é ORÁCULO, não fonte a portar |
 | [0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md) | Accepted | O stack sobe até os TETOS, e o que fica para trás fica por MEDIÇÃO |
 | [0169](0169-the-skeleton-is-its-own-module-and-each-medium-answers-only-what-a-point-is.md) | Aceito (2026-09-06) | O esqueleto é um MÓDULO PRÓPRIO, e cada mídia responde só a *«o que é um ponto aqui»* |
-| [0170](0170-o-corte-e-uma-booleana-de-malha-e-o-motor-permissivo-ENTRA-em-vez-de-ficar-oraculo.md) | Aceito (2026-09-15) | O corte é uma **booleana de malha**, e desta vez a biblioteca **ENTRA** em vez de ficar oráculo |
+| [0170](0170-o-corte-e-uma-booleana-de-malha-e-o-motor-permissivo-ENTRA-em-vez-de-ficar-oraculo.md) | ⛔ superseded por 0179 · **REVOGADO** pelo ADR-0179 (2026-10-05) | O corte é uma **booleana de malha**, e desta vez a biblioteca **ENTRA** em vez de ficar oráculo |
 | [0171](0171-o-borrao-de-caixa-da-pilha-parte-se-em-fatias-e-a-largura-da-banda-e-medida.md) | Accepted | O borrão de CAIXA da pilha parte-se em fatias, e a largura da banda é MEDIDA |
 | [0172](0172-as-passagens-por-pixel-da-pilha-correm-em-linhas-disjuntas-e-a-banda-do-deposito-fica-como-esta.md) | Accepted | As passagens POR PIXEL da pilha correm em linhas disjuntas; a banda do depósito fica como está |
 | [0173](0173-as-passagens-da-aquarela-correm-na-equipa-e-o-rascunho-vive-entre-quadros.md) | Accepted | As passagens da aquarela correm na equipa de threads, e o rascunho vive entre quadros |
 | [0174](0174-o-produto-compila-para-x86-64-v2.md) | Accepted | O produto compila para `x86-64-v2` |
 | [0175](0175-o-deposito-do-dab-do-wet-paint-corre-em-linhas-disjuntas.md) | Accepted | O depósito de um dab do Wet Paint corre em linhas disjuntas, e o bico do transfer também |
-| [0176](0176-o-render-do-modelador-e-uma-malha-de-jogo.md) | Aceito (2026-10-02, ordem do dono). | O modo Render do modelador desenha MALHAS com luz de jogo; o campo continua a FONTE |
+| [0176](0176-o-render-do-modelador-e-uma-malha-de-jogo.md) | ⛔ superseded por 0179 · **REVOGADO** pelo ADR-0179 (2026-10-05) | O modo Render do modelador desenha MALHAS com luz de jogo; o campo continua a FONTE |
 | [0177](0177-as-camadas-do-painter-juntam-se-em-tons-de-ecra.md) | Accepted | As camadas do Painter juntam-se em tons de ecrã (sRGB codificado), não em luz |
 | [0178](0178-os-mosaicos-da-malha-andavel-constroem-se-em-paralelo.md) | Accepted (decisão técnica delegada — `feedback_architecture_decisions_are_delegated… | Os mosaicos da malha andável constroem-se em paralelo: exceção `rayon` na `ph2d-navmesh` |
+| [0179](0179-o-3d-sai-do-ph2d.md) | Aceite (2026-10-05). | O 3D sai do PH2D |
 
 ---
 
-**183 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**184 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

@@ -27,7 +27,6 @@ pub(crate) fn populate_das_waves(store: &mut WidgetStore) {
     super::populate_weapon::populate_weapon(store);
     super::populate_vida::populate_vida(store);
     super::populate_nav::populate_nav(store);
-    super::populate_mesh3d::populate_mesh3d(store);
     super::populate_tween::populate_tween(store);
     super::populate_path_follow::populate_path_follow(store);
     super::populate_statemachine::populate_statemachine(store);

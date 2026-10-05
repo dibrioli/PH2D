@@ -10,8 +10,7 @@
 // ⭐⭐⭐ **O TIPO MUDOU-SE PARA A FOLHA [`ph2d_bloom`], e o nome fica** (2026-09-19).
 //
 // ⛔ Ordem do dono, depois de ver um bloom pior ao lado deste: *«nosso bloom original é muito
-// melhor. retire essa implementação godot»*. A lei do halo passa a ter **um** dono — a folha —
-// e o campo implícito (`docs/Render3d/12`) consome-a de lá em vez de a copiar.
+// melhor. retire essa implementação godot»*. O tipo do halo passa a ter **um** dono — a folha.
 //
 // ⚠️ **O re-export é o que faz esta mudança não tocar em consumidor nenhum**: `MotionFx`, o nó
 // `fx.glow` e a shell continuam a escrever `ph2d_render::BloomParams`.

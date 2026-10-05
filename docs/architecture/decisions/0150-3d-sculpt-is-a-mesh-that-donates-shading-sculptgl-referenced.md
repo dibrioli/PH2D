@@ -1,18 +1,20 @@
 # ADR-0150 — A escultura 3D é uma MALHA que doa sombreamento, referenciada no SculptGL (MIT)
 
-- **Status:** proposto — aguarda aceite do Enio.
+> **Revogado por [ADR-0179](0179-o-3d-sai-do-ph2d.md) em 2026-10-05 — o 3D saiu do PH2D.** O texto abaixo fica como história; o código foi apagado (`git show b1a6f9b07:<caminho>`).
+
+- **Status:** **REVOGADO** pelo ADR-0179 (2026-10-05) · era: proposto — aguarda aceite do Enio.
   ⚠️ **O número 0145 está livre no `main` de 2026-07-30** (o último é o 0144). Número de ADR escolhido
   numa linha paralela é **provisório**: se outra linha reivindicar o mesmo na mesma janela, **renumera na
   integração** — já aconteceu duas vezes neste repo
   ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
 - **Data:** 2026-07-29 · **reescrito 2026-07-30**
 - **Linha:** `line/sculpt3d`
-- **Cofre do módulo:** [`docs/3D/`](../../3D/00-INDEX.md)
+- **Cofre do módulo:** `docs/3D/`
 
 > ⚠️ **Este ADR foi reescrito, não emendado.** A versão de 2026-07-29 decidia *campo SDF como
 > representação primária* e um *MVP em TypeScript* antes do Rust. As duas decisões caíram, por motivos
-> diferentes e registrados: a representação em [`02.1`](../../3D/02-Arquitetura/02.1-Representacao-malha-primaria.md),
-> o MVP em [`02.4`](../../3D/02-Arquitetura/02.4-Por-que-nao-ha-MVP-em-TypeScript.md). Reescrever em vez
+> diferentes e registrados: a representação em `02.1`,
+> o MVP em `02.4`. Reescrever em vez
 > de emendar é deliberado: o ADR nunca chegou ao `main`, então não há decisão publicada a preservar — e
 > um ADR cuja decisão real mora no cabeçalho de revisão, e não no corpo, é o comentário velho que mente.
 
@@ -59,7 +61,7 @@ esta casa já nomeou ([[feedback_two_engines_one_state_is_worse_than_a_slow_engi
 
 > **O campo é como a forma é REFEITA. A malha é como a forma É.**
 
-Detalhe, com o que morre da versão anterior: [`02.1`](../../3D/02-Arquitetura/02.1-Representacao-malha-primaria.md).
+Detalhe, com o que morre da versão anterior: `02.1`.
 
 ### 2. Escrito direto em Rust; o SculptGL é a referência, e ele é MIT
 
@@ -72,7 +74,7 @@ contrário do Blender (GPL), onde a política da casa é clean-room de comportam
 ⚠️ **O que ele NÃO prova, e isso é metade da decisão:** ele é JavaScript de thread única sobre **WebGL**,
 que não tem compute shader — logo a malha vive na CPU e o render é básico. Ele não diz nada sobre onde o
 nosso kernel deve rodar, sobre o nosso orçamento de shader, nem sobre a doação, que ele não tem.
-Detalhe, com o mapa arquivo→crate: [`03.4`](../../3D/03-Implementacao/03.4-Referencia-SculptGL.md).
+Detalhe, com o mapa arquivo→crate: `03.4`.
 
 ### 3. Onde o motor roda é MEDIDO, atrás de uma porta única
 
@@ -91,7 +93,7 @@ caminho GPU, se e quando a medição o pedir.
 **Kill-criterion escrito antes do build** (DIRETIVA §5): se um dab numa malha de 5 M triângulos passar de
 **8 ms** na CPU — o mesmo teto que o Painter usa para um move —, o kernel migra para a GPU atrás da mesma
 porta. O número é do Painter porque é o mesmo gesto humano; se a medição disser outro, o número muda **com
-a tabela ao lado**. Detalhe: [`03.5`](../../3D/03-Implementacao/03.5-Onde-roda-o-motor.md).
+a tabela ao lado**. Detalhe: `03.5`.
 
 ### 4. A doação é um G-buffer, e o passe de luz vira do DOCUMENTO
 
@@ -124,7 +126,7 @@ para de-riscar seis coisas; o SculptGL de-risca os algoritmos de graça, e as ou
 orçamento de shader, a doação) **ele não de-risca e o protótipo também não de-riscaria bem**, porque
 protótipo mede protótipo. Esta casa aprendeu isso três vezes na `line/Painter`: *"eu media peça isolada num
 harness meu, em vez do produto"*. As medições vão para `tests/measure_*.rs` **dentro das crates reais**.
-Registro completo: [`02.4`](../../3D/02-Arquitetura/02.4-Por-que-nao-ha-MVP-em-TypeScript.md).
+Registro completo: `02.4`.
 
 **(B) Portar o sculpt do Blender como ele é (malha + PBVH).** *Rejeitada.* São **três** motores por dentro
 — `FACES`, `GRIDS` (multires) e `BMESH` (dyntopo) — cada um com estrutura de dados, pilha de undo e render
@@ -176,7 +178,7 @@ a forma **dentro** do documento emprestando sombreamento às camadas de cima.
   portá-lo importaria exatamente o defeito que esta casa pagou duas vezes.
 - **O módulo é removível por construção** — uma feature flag, crates próprias, três costuras aditivas, e um
   gate que falha se qualquer arquivo fora do módulo o mencionar sem `#[cfg(feature)]`
-  ([`02.3`](../../3D/02-Arquitetura/02.3-Modulo-removivel-e-mapa-de-crates.md)).
+  (`02.3`).
 
 ## O que este ADR NÃO decide
 

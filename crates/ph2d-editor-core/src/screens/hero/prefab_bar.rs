@@ -8,8 +8,8 @@
 //! no vazio desfaz a selecção.
 //!
 //! *Um modo em que se entra por um verbo e de que se sai por acidente é um modo sem saída* — e é o
-//! mesmo defeito que este repo já nomeou no pill que muda o dono do ponteiro
-//! (o antigo pill SCULPT, que precisava precisamente de *«uma saída visível»*).
+//! mesmo defeito que este repo já nomeou num pill antigo que mudava o dono do ponteiro e precisava
+//! precisamente de *«uma saída visível»*.
 //!
 //! # As três coisas que ela diz, e porque são estas três
 //!

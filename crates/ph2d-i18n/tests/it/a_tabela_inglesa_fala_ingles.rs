@@ -157,8 +157,8 @@ fn a_regua_ve_as_oito_frases_que_ela_curou() {
     // ⛔ O CONTROLO NEGATIVO: o inglês da tabela não pode ser acusado. ⚠️ Estas seis são reais, e a
     //    última é a armadilha — `Dash` e `Range` são palavras que a cena do Motion passou a pintar.
     for f in [
-        "a multiresolution stack is mounted -- J reverts it",
-        "there is no piece to cut",
+        "The paint's relief stays as it is: this effect works on tones",
+        "Sculpt: the layer is locked, or has no drawing on this frame",
         "Canonical widget showcase \u{b7} reference for peripheral agents",
         "Select an entity to inspect its components",
         "Snap to grid",
@@ -214,20 +214,20 @@ fn a_leitura_junta_uma_entrada_partida_em_duas_linhas() {
     let todas = entradas();
     let (_, _, _, texto) = todas
         .iter()
-        .find(|(_, _, chave, _)| chave == "app.sculpt3d.recusa.trabalha_a_beira_de_uma_peca_aberta")
-        .expect("a chave da recusa do contorno existe na tabela");
+        .find(|(_, _, chave, _)| chave == "panel.painter_layers.adjust.tone_not_relief")
+        .expect("a chave da nota do relevo existe na tabela");
     assert!(
-        texto.starts_with("{nome} works the RIM"),
+        texto.starts_with("The paint's relief stays"),
         "o começo da entrada mudou: {texto:?}"
     );
     assert!(
-        texto.ends_with("open a mouth)"),
+        texto.ends_with("crisp the relief too"),
         "⛔ a entrada chegou TRUNCADA — o leitor deixou de juntar a continuação de linha: {texto:?}"
     );
     // ⛔ E o CONTROLO: uma entrada de UMA linha continua inteira.
     let (_, _, _, curta) = todas
         .iter()
-        .find(|(_, _, chave, _)| chave == "app.sculpt3d.trim_aplica.sem_peca_para_cortar")
-        .expect("a chave do corte sem peça existe");
-    assert_eq!(curta, "there is no piece to cut");
+        .find(|(_, _, chave, _)| chave == "panel.painter_layers.layers.save_as_object")
+        .expect("a chave do Save As Object existe");
+    assert_eq!(curta, "Save As Object");
 }

@@ -104,7 +104,7 @@ ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 # ⛔⛔ HOWTO §2.4 — **as features NÃO viajam com o código**, e esta é a armadilha MUDA mais
 # cara da wave: num crate que não as declara, um `#[cfg(feature = "panel-flip")]` é falso
 # **por construção**, e a crate compila VERDE com a fiação do painel desligada. O piloto
-# perdeu o carregador do matcap exactamente assim.
+# da W2 perdeu uma fiação exactamente assim.
 #
 # ⇒ os dois `cfg` que governam código desta família (`strip_drag.rs` e `bridge.rs`) têm de
 # ter aqui a feature que os acende, e a shell tem de a repassar.

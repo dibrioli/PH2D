@@ -44,8 +44,7 @@ fn linha(edge: ActionEdge) -> ActionTriggerRow {
 ///
 /// ⛔⛔ **E a 1.ª redacção CONTAVA e uma mutação sobreviveu-lhe:** ela afirmava *«o `Release` fala
 /// UMA vez»*, e trocar a lei dele para `just_pressed` também fala uma vez — no quadro **errado**.
-/// *Uma régua que conta QUANTOS nunca vê QUAIS* (a mesma forma que o pincel de contorno pagou,
-/// §54 do `sculpt3d`) ⇒ o que se afirma é o PERFIL do toque, quadro a quadro.
+/// *Uma régua que conta QUANTOS nunca vê QUAIS* ⇒ o que se afirma é o PERFIL do toque, quadro a quadro.
 #[test]
 fn press_fala_uma_vez_por_toque_e_hold_fala_sempre() {
     // Um toque de quatro quadros: solta, desce, segura, sobe.

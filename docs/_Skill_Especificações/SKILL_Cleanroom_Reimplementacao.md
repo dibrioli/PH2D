@@ -555,7 +555,7 @@ autofiltragem não é auditoria.
   ou já existe (`ph2d-quadbench` compara fase a fase hoje — ⚠️ I usa os dumps de `ref/`
   pelos caminhos da espec; a pasta contém `oracle/`, que é ⛔).
 - ⚠️ **Comparar fase a fase é mais forte que comparar o fim** — achado medido da casa
-  ([PLAN.md §4-duotricies](../3D/quad-remesh/PLAN.md)): o oráculo grava as fases
+  (PLAN.md §4-duotricies): o oráculo grava as fases
   intermediárias, e cada fase nossa pode ser cobrada contra a dele **na malha dele**.
 - ⚠️ **Paridade bit-a-bit: depende do degrau.** Em porte T0 é meta legítima (o sculpt
   fecha a 1 ULP do SculptGL — MIT, sem parede). **No pipeline T2 o precedente da casa

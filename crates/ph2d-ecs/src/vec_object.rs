@@ -10,8 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::SimComponent;
 
-/// O marcador do `ObjectKind::Vector` — tamanho zero de propósito, como o `FieldObject` do Model:
-/// as formas são as filhas, e o documento continua na `VecScene`.
+/// O marcador do `ObjectKind::Vector` — tamanho zero de propósito: as formas são as filhas, e o documento continua na `VecScene`.
 #[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VecObject;
 

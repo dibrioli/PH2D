@@ -19,7 +19,7 @@
 //!
 //! Um `rfd::FileDialog` aberto à mão congela o loop sem declarar, e a mensagem escrita a
 //! seguir vive um quadro ([`ph2d_app_host::modal`]). Aqui ele passa por `modal::pick_file`, que
-//! cronometra. Gate: `every_field3d_modal_goes_through_the_door` varre a árvore.
+//! cronometra.
 
 use crate::motion_state::MotionState;
 use ph2d_node_registry::{FileKind, ParamWidget};

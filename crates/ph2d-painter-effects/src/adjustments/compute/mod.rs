@@ -28,7 +28,6 @@ mod numbers;
 mod params;
 mod selective_color;
 mod shared;
-mod units;
 
 // Re-export every family's symbols at the `compute` module root so the existing
 // external paths (`super::compute::X`, `compute::*`, the `adjustments/mod.rs`
@@ -46,7 +45,6 @@ pub use numbers::*;
 pub use params::*;
 pub use selective_color::*;
 pub use shared::*;
-pub use units::*;
 
 /// Apply a non-destructive adjustment to a window of the compositor's
 /// accumulator IN PLACE. `acc` is **straight, ENCODED f32 RGBA** — the display

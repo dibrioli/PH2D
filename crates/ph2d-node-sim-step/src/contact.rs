@@ -61,8 +61,7 @@ pub(crate) const VARREDURAS: usize = 8;
 /// **AS LEIS DO SOLVER DE VELOCIDADE** — uma escolha do produto, e o único sítio onde ela se faz.
 ///
 /// ⚠️ Ela é um `const` e **não** uma variável de ambiente de propósito: uma bandeira global lida
-/// dentro do solver alcançaria todo chamador dele (o defeito que o `remesh_with` da `line/sculpt3d`
-/// pagou por escrito). Quem varre as células é a bancada da `ph2d-contact`, que chama a porta com
+/// dentro do solver alcançaria todo chamador dele (um defeito que a casa já pagou por escrito). Quem varre as células é a bancada da `ph2d-contact`, que chama a porta com
 /// as leis na mão; aqui escolhe-se **uma**, com a tabela que a escolheu ao lado — doc 111 §9.
 const LEIS: ph2d_contact::Leis = ph2d_contact::Leis::EM_VIGOR;
 

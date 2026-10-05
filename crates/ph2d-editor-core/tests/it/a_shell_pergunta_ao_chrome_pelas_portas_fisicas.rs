@@ -46,7 +46,7 @@ fn a_shell_pergunta_ao_chrome_pelas_portas_fisicas() {
         .flatten()
     {
         let nome = c.file_name().to_string_lossy().into_owned();
-        if nome.starts_with("ph2d-app-") || nome == "ph2d-viewport3d" {
+        if nome.starts_with("ph2d-app-") {
             fontes(&c.path().join("src"), &mut ficheiros);
         }
     }

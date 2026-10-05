@@ -1,8 +1,8 @@
 //! ⭐ **O MENU ADD DE OBJECTOS** — o modal que o `+` da Hierarquia e o `Shift+A` abrem
 //! (`docs/UI_New_and_Simple/spec/06_tipos_e_modos_de_objeto.md`, F1).
 //!
-//! ⛔ **Não é um modal novo:** é o [`crate::widget::command_palette`], como o *Add shape…* do
-//! Modeling (`ph2d_app_field3d::shape_palette`). Este módulo só constrói o MODELO e devolve o pick.
+//! ⛔ **Não é um modal novo:** é o [`crate::widget::command_palette`]. Este módulo só constrói o
+//! MODELO e devolve o pick.
 //!
 //! ⭐ **Cada família declara as suas entradas na própria crate** (`&[AddEntry]`), e a COMPOSIÇÃO
 //! junta as que estão compiladas: um tipo cuja crate saiu do build não deixa um item morto.
@@ -18,8 +18,6 @@ use ph2d_tokens::ColorToken;
 pub enum AddGroup {
     /// Imagem, Flip, Vetor.
     TwoD,
-    /// Model e Sculpt.
-    ThreeD,
     /// Um vazio com o componente de jogo já posto (só modo Object).
     Game,
     /// O objecto vazio.
@@ -28,19 +26,13 @@ pub enum AddGroup {
 
 impl AddGroup {
     /// Todos, na ordem em que o modal os mostra.
-    pub const ALL: [AddGroup; 4] = [
-        AddGroup::TwoD,
-        AddGroup::ThreeD,
-        AddGroup::Game,
-        AddGroup::Empty,
-    ];
+    pub const ALL: [AddGroup; 3] = [AddGroup::TwoD, AddGroup::Game, AddGroup::Empty];
 
     /// O título do grupo.
     #[must_use]
     pub fn title(self) -> &'static str {
         ph2d_i18n::tr(match self {
             AddGroup::TwoD => "object_add.group.two_d",
-            AddGroup::ThreeD => "object_add.group.three_d",
             AddGroup::Game => "object_add.group.game",
             AddGroup::Empty => "object_add.group.empty",
         })
@@ -51,7 +43,6 @@ impl AddGroup {
     pub const fn color(self) -> ColorToken {
         match self {
             AddGroup::TwoD => ColorToken::NodeCatSource,
-            AddGroup::ThreeD => ColorToken::NodeCatTransform,
             AddGroup::Game => ColorToken::NodeCatOutput,
             AddGroup::Empty => ColorToken::NodeCatUtility,
         }

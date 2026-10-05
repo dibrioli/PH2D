@@ -326,8 +326,7 @@ fn the_drawn_bone_is_where_the_hierarchy_puts_it() {
 
 /// ⭐⭐⭐ **A PELE ATRAVESSA O DESFAZER** — o gate que separa *"a pele existe"* de *"o app a tem"*.
 ///
-/// Irmão do `field3d_snapshot_tests::the_whole_part_survives_the_world_snapshot_round_trip`, e pela
-/// mesma razão: o undo e o salvar são **a mesma máquina** (`world_to_snapshot` → `snapshot_to_world`),
+/// O undo e o salvar são **a mesma máquina** (`world_to_snapshot` → `snapshot_to_world`),
 /// e ela **re-spawna** o mundo. Uma referência guardada que não sobreviva ao respawn morre **em
 /// silêncio** — a forma fica com a última geometria boa e deixa de responder aos ossos.
 ///

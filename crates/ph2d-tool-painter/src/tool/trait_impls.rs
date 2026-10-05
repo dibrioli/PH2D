@@ -52,11 +52,6 @@ impl Tool for PainterTool {
         // SetValue, SelectOption}, each routed to the matching layer / adjustment edit.
         use ph2d_editor_core::ids as core_ids;
         use ph2d_editor_core::tool::PanelEvent;
-        // ⭐ Com a tela da vista 3D presa o painel de camadas mostra a pilha da PEÇA, e os pedidos dele
-        //   vão para ela (`piece_layers`, `docs/3D/30` §4) — nunca para a pilha da tela.
-        if self.route_piece_layer_event(&event) {
-            return;
-        }
         let appearance_before = self.appearance_sig(); // re-fill an open shape live on any appearance change
         if self.route_texture_layer_event(&event)
             || self.route_brush_jitter_event(&event)

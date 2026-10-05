@@ -92,15 +92,15 @@ fn nenhuma_legenda_da_fila_de_ferramentas_e_cortada() {
 
 /// ⭐⭐ **Nenhuma FACE de pulldown da fila sai cortada** (2026-10-02, escolha do dono: *botão mais
 /// largo*) — em todo estado (SPACE nos dois, VIEW nos três, pulldowns de área com o vocabulário do
-/// 3D), fonte, peso, tamanho de texto, nitidez e tamanho de botão.
+/// seletor de modo), fonte, peso, tamanho de texto, nitidez e tamanho de botão.
 ///
 /// ⛔ O defeito (foto): o chip era quadrado e `Global` saía `G…`, `Selected` `S…`; no Large, `…`.
 #[test]
 fn nenhuma_face_de_pulldown_da_fila_e_cortada() {
     let tr = ph2d_i18n::tr;
-    // Fixtura: dois pulldowns de área com as faces REAIS do modelador (as mais largas incluídas).
+    // Fixtura: dois pulldowns de área com as faces REAIS do seletor de modo (todas as quatro).
     let area = |face: &str, faces: &[&str]| crate::interaction::AreaMenu {
-        label: tr("panel.model3d.area.view").to_owned(),
+        label: tr("object_mode.menu").to_owned(),
         face: tr(face).to_owned(),
         faces: faces.iter().map(|k| tr(k).to_owned()).collect(),
         rows: Vec::new(),
@@ -117,19 +117,13 @@ fn nenhuma_face_de_pulldown_da_fila_e_cortada() {
                 store.set_rail_button_size(size);
                 store.set_tool_space_local(local);
                 store.set_tool_view_mode(view);
-                for face in [
-                    "viewport.model3d.view.front",
-                    "viewport.model3d.view.bottom",
-                ] {
+                for face in ["object_mode.object", "object_mode.paint"] {
                     store.set_area_commands(
                         vec![
+                            area(face, &["object_mode.object", "object_mode.paint"]),
                             area(
-                                face,
-                                &["viewport.model3d.view.bottom", "viewport.model3d.view.user"],
-                            ),
-                            area(
-                                "panel.model3d.shading.matcap",
-                                &["panel.model3d.shading.render"],
+                                "object_mode.edit",
+                                &["object_mode.draw", "object_mode.edit"],
                             ),
                         ],
                         Vec::new(),

@@ -1,11 +1,10 @@
 //! ⭐⭐ **O QUE UM GESTO DO PAINEL DE CAMADAS PEDE** — o [`PanelEvent`] lido UMA vez como um pedido
-//! tipado ([`LayerEdit`]). Dois leitores: a pilha do documento 2D ([`PainterTool::apply_layer_edit`])
-//! e a pilha da PEÇA 3D ([`super::piece_layers`], `docs/3D/30` §4). O formato do fio — os ids por
-//! camada e as cargas `"camada:canal:…"` — tem uma leitura só.
+//! tipado ([`LayerEdit`]), que a pilha do documento aplica ([`PainterTool::apply_layer_edit`]). O
+//! formato do fio — os ids por camada e as cargas `"camada:canal:…"` — tem uma leitura só.
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_painter_effects::adjustments::{AdjustmentKind, AdjustmentParams};
+use ph2d_painter_effects::adjustments::AdjustmentKind;
 
 use super::*;
 use crate::ids::{self, PainterLayerWidget};
@@ -218,91 +217,18 @@ fn decode_option(
     Some(E::Param(p.0, p.1))
 }
 
-/// ⭐⭐ **Um pedido de parâmetros sobre os parâmetros NUS de um ajuste** — as mesmas funções puras que
-/// os métodos da ferramenta chamam, com os raios em `units` (a peça: as unidades dela). `false` =
-/// nada mudou (outro tipo de ajuste, índice fora).
-pub(crate) fn apply_param_edit(
-    params: &mut AdjustmentParams,
-    e: &ParamEdit,
-    units: ph2d_painter_effects::adjustments::SpatialUnits,
-) -> bool {
-    use ph2d_painter_effects::adjustments as fx;
-    match *e {
-        ParamEdit::Slider(slot, v) => {
-            fx::set_adjustment_slider_param_in(params, slot, v, units);
-            true
-        }
-        ParamEdit::Toggle(slot) => {
-            let cur = fx::adjustment_toggle_params(params)
-                .get(slot)
-                .is_some_and(|(_, on)| *on);
-            fx::set_adjustment_toggle_param(params, slot, !cur);
-            true
-        }
-        ParamEdit::Segment(option) => {
-            fx::set_adjustment_segment_param(params, option);
-            true
-        }
-        ParamEdit::CurvePoint {
-            channel,
-            index,
-            x,
-            y,
-        } => super::layers::set_curve_point_in(params, channel, index, x, y),
-        ParamEdit::CurveAdd(channel) => {
-            super::layers::add_curve_point_in(params, channel).is_some()
-        }
-        ParamEdit::CurveRemove(channel, index) => {
-            super::layers::remove_curve_point_in(params, channel, index)
-        }
-        ParamEdit::Mixer {
-            output,
-            slot,
-            value,
-        } => match params {
-            AdjustmentParams::ChannelMixer(m) => {
-                fx::set_channel_mixer_param(m, output, slot, value);
-                true
-            }
-            _ => false,
-        },
-        ParamEdit::GradientOffset { stop, offset } => match params {
-            AdjustmentParams::GradientMap(g) => {
-                fx::move_gradient_stop(g, stop, offset);
-                true
-            }
-            _ => false,
-        },
-        ParamEdit::GradientAdd => match params {
-            AdjustmentParams::GradientMap(g) => fx::add_gradient_stop(g).is_some(),
-            _ => false,
-        },
-        ParamEdit::GradientRemove(stop) => match params {
-            AdjustmentParams::GradientMap(g) => {
-                fx::remove_gradient_stop(g, stop);
-                true
-            }
-            _ => false,
-        },
-        ParamEdit::GradientColor { stop, slot, value } => match params {
-            AdjustmentParams::GradientMap(g) => {
-                fx::set_gradient_stop_color_param(g, stop, slot, value);
-                true
-            }
-            _ => false,
-        },
-        ParamEdit::SelectiveColor {
-            bucket,
-            slot,
-            value,
-        } => match params {
-            AdjustmentParams::SelectiveColor(s) => {
-                fx::set_selective_color_param(s, bucket, slot, value);
-                true
-            }
-            _ => false,
-        },
-    }
+/// `(camada, widget)` de um id por camada, sobre a pilha `stack`.
+pub(crate) fn layer_widget_in(
+    stack: &LayerStack,
+    id: NodeId,
+) -> Option<(RtLayerId, PainterLayerWidget)> {
+    use crate::ids::painter_layer_widget_id;
+    stack.all_ids().find_map(|layer| {
+        PainterLayerWidget::ALL
+            .into_iter()
+            .find(|&kind| painter_layer_widget_id(layer.0, kind) == id)
+            .map(|kind| (layer, kind))
+    })
 }
 
 impl PainterTool {

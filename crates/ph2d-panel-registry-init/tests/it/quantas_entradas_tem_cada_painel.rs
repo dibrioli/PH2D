@@ -2,9 +2,9 @@
 //!
 //! # ⛔⛔ Porque ele existe: o degrau mais caro do plano tinha UM painel medido
 //!
-//! O `README.md` do módulo diz, desde 2026-09-04: *«a maior obra aberta: 1 painel de 25 censado.
-//! O `3D Model` perdeu `17` das `74` entradas; ⛔ **nenhum outro foi medido** — o «66 de 74» é só
-//! dele.»* ⇒ a obra que devolve mais tela deste app estava a ser escolhida **sem régua**.
+//! O `README.md` do módulo diz, desde 2026-09-04: *«a maior obra aberta: 1 painel de 25 censado.»*
+//! (O painel triado era o do modelador 3D, que saiu com o ADR-0179.) ⇒ a obra que devolve mais tela
+//! deste app estava a ser escolhida **sem régua**.
 //!
 //! # ⚠️ A pergunta do degrau `G` não é «o painel é grande?»
 //!
@@ -24,19 +24,17 @@
 //! `NumberInput`, `Checkbox`, `Toggle`, `Dropdown`, `Combobox`, `TextInput`, `Radio` ou
 //! `ColorPicker` é um **valor**. ⛔ Nada aqui é uma lista de nomes de painel.
 //!
-//! # ⭐⭐ O CONTROLO POSITIVO, e porque ele calibra as DUAS metades
+//! # ⭐⭐ Porque a espécie `Button` é a proxy de «comando»
 //!
-//! O `3D Model` é o único painel com a triagem feita, e os **17** que saíram dele em 2026-09-01
-//! (`the_area_hands_its_commands_to_the_bar_and_the_app_menu`) eram **9 vistas + câmera**,
-//! **5 verbos de gizmo** e **3 níveis de exportação** — ⭐ *todos botões*. É isso que prova que a
-//! espécie `Button` é a proxy certa para «comando», e não uma escolha minha.
+//! A 1.ª triagem da `D2` (2026-09-01, num painel que entretanto saiu com o 3D) tirou **17** entradas
+//! para a fila e para o menu *File* — vistas, verbos de gizmo, níveis de exportação —, ⭐ *todas
+//! botões*. É isso que fez da espécie `Button` a proxy para «comando», e não uma escolha minha.
 //!
 //! # ⚠️ O que esta régua NÃO afirma, declarado
 //!
 //! Ela diz **onde olhar**, nunca dá o veredito de uma entrada. Um botão pode abrir o editor de uma
 //! propriedade (o quadrado de cor), e um `Toggle` pode ser um comando disfarçado. ⇒ a triagem de
-//! cada painel continua a ser trabalho de wave, com a tabela da `D2` na mão — como foi a do
-//! `3D Model`. *Uma contagem que se lesse como veredito mandaria apagar controlos vivos.*
+//! cada painel continua a ser trabalho de wave, com a tabela da `D2` na mão. *Uma contagem que se lesse como veredito mandaria apagar controlos vivos.*
 //!
 //! # ⛔ E ele ASSERTA, não imprime
 //!
@@ -51,9 +49,8 @@ use ph2d_ui_testkit::MockPanelHost;
 
 /// ⭐⭐⭐ **A DOBRA — a altura de um encaixe real desta casa, `880 px`.**
 ///
-/// ⛔ Não é escolhida: é o número que a `line/sculpt3d` mediu em 2026-09-19 ao responder ao dono
-/// onde o botão do pente caía (`crates/ph2d-app-sculpt3d/src/scenes_pente.rs`, a tabela do `y`),
-/// e é contra ele que aquela linha declara *«o painel está sobre o orçamento»*.
+/// ⛔ Não é escolhida: é a altura do encaixe da coluna medida NA APP a correr em 2026-09-19 (ao
+/// responder ao dono onde um botão caía), e é contra ela que um painel está *«sobre o orçamento»*.
 pub(super) const DOBRA: f32 = 880.0;
 
 /// ⛔⛔ **A viewport é ALTA de propósito: `32000 px`.**
@@ -165,7 +162,7 @@ impl Contagem {
     }
 
     /// ⭐ **A grandeza da triagem de 2026-09-01: ALVOS DE TOQUE.** Cada célula de um composto
-    /// conta por si, que é o que o dono contou quando triou o `3D Model` em `74`.
+    /// conta por si, que é o que o dono contou na 1.ª triagem da `D2`.
     ///
     /// ⚠️ Ela existe **só** para o controlo da régua: a `D2` pergunta *«esta coisa no ecrã é um
     /// comando ou uma propriedade?»*, e um selector é UMA coisa. *Duas grandezas com o mesmo nome
@@ -263,9 +260,8 @@ fn classifica(c: &mut Contagem, s: &InteractiveState) {
 ///
 /// ⛔⛔ **Registar e pintar são grandezas diferentes, e a diferença é `12×`.** O `populate` semeia
 /// tudo o que o painel *poderia* mostrar (todos os modos, todas as secções condicionais); o
-/// `paint` desenha o subconjunto do estado actual. Medido: o `3D Model` **regista `912`** e a
-/// triagem da `D2` contou **`74`** — ⭐ e foi o CONTROLO POSITIVO deste ficheiro que apanhou a 1.ª
-/// redacção a medir o catálogo e a chamar-lhe ecrã.
+/// `paint` desenha o subconjunto do estado actual. Medido em 2026-09-20 no painel da 1.ª triagem
+/// (saiu com o 3D): **regista `912`**, e a triagem da `D2` contou **`74`** no ecrã.
 fn conta(
     store: &ph2d_editor_core::interaction::WidgetStore,
     pintados: &[(NodeId, Rect)],
@@ -520,11 +516,9 @@ fn tabela(linhas: &[Linha]) -> String {
             c.altura,
             if l.armado.is_some() {
                 // ⛔⛔ **As duas leituras, nunca o `max` sozinho.** A armação de um painel é o
-                //    estado MÁXIMO dele e não o do dia a dia: medido em 2026-09-20, a fixtura da
-                //    escultura arma o FILTRO, e as catorze fichas dele são condicionais
-                //    (`if !snap.filter_armed { return }`) — escondê-las atrás de um `max` daria
-                //    `+230 px` a um painel que o artista raramente vê assim. *Uma coluna que
-                //    colapsa dois estados num número descreve um app que ninguém usa.*
+                //    estado MÁXIMO dele e não o do dia a dia (fileiras condicionais que só existem
+                //    com o documento na mão). *Uma coluna que colapsa dois estados num número
+                //    descreve um app que ninguém usa.*
                 format!(
                     "vazio {:.0} · armado {:.0}  ",
                     l.vazio.altura,
@@ -566,8 +560,8 @@ fn tabela(linhas: &[Linha]) -> String {
 ///   --test it -- quantas_entradas --nocapture
 /// ```
 ///
-/// ⛔⛔ **AS QUATRO FEATURES NÃO SÃO DECORAÇÃO.** O `default` desta crate regista **24** painéis e
-/// o app corre com **28** (`shells/desktop/Cargo.toml`) — sem elas o censo lê `0` para quatro
+/// ⛔⛔ **AS QUATRO FEATURES NÃO SÃO DECORAÇÃO.** O `default` desta crate regista **21** painéis e
+/// o app corre com **25** (`shells/desktop/Cargo.toml`; medido em 2026-10-05, depois de o 3D sair) — sem elas o censo lê `0` para quatro
 /// painéis, que se lê como *«este painel não tem comandos»* em vez de *«este painel não existe
 /// aqui»*. *Os dois lêem-se igual num número* — é a mesma armadilha que a varredura das elisões
 /// pagou em 2026-09-20, e é por isso que o teste abaixo tem piso de população.
@@ -576,46 +570,31 @@ fn imprime_o_censo() {
     println!("{}", tabela(&censo()));
 }
 
-/// ⭐⭐⭐ **O CONTROLO POSITIVO: o painel cuja triagem já foi feita reproduz o número dela.**
+/// ⭐⭐⭐ **O CONTROLO POSITIVO: a régua ainda separa as DUAS grandezas.**
 ///
-/// ⛔⛔ Sem isto a tabela de cima é um número sem unidade. O `3D Model` tinha `74` entradas e
-/// perdeu `17` para a fila e para o menu *File* em 2026-09-01 ⇒ ~`57`.
+/// ⚠️ Em 2026-09-21 a régua aprendeu que **um controlo COMPOSTO é um** (as células de um selector
+/// deixaram de contar uma a uma); a grandeza antiga — **alvos de toque**, a da triagem de
+/// 2026-09-01 — fica reproduzível pelo [`Contagem::alvos`]. *Uma régua que troca de grandeza tem
+/// de conseguir reproduzir a antiga, senão ninguém sabe se ela melhorou ou se se partiu.*
 ///
-/// ⚠️ **A banda é larga de propósito**: o `populate` regista também o que a tabela da `D2` não
-/// contava como «entrada» (barras, âncoras de secção). O que se afirma é a ORDEM DE GRANDEZA — se
-/// esta régua lesse `9` ou `200`, ela não estaria a medir o mesmo painel.
+/// ⭐ O sujeito é o Inspector armado, que tem a grelha de 32 camadas de colisão e os selectores de
+/// junta: se as duas grandezas lerem o mesmo, ou ele deixou de ter compostos, ou os pintores
+/// canónicos deixaram de declarar o grupo. (Até ao ADR-0179 o sujeito era o painel triado do
+/// modelador 3D, com uma banda sobre os `~57` da triagem.)
 #[test]
-fn o_painel_ja_triado_reproduz_o_numero_da_triagem() {
+fn a_regua_separa_controlos_de_alvos_de_toque() {
     let linhas = censo();
-    let m3d = linhas
+    let insp = linhas
         .iter()
-        .find(|l| l.painel == "model3d")
-        .expect("o painel `3D Model` tem de estar no registo");
-    let c = m3d.cheia();
-    // ⚠️⚠️ **A PREMISSA deste gate mudou em 2026-09-21, e as duas metades dizem porquê.**
-    //
-    // Ele comparava o `total()` com os `~57` da triagem de 2026-09-01 e passou a ler `21`, porque
-    // a régua aprendeu que **um controlo COMPOSTO é um** (as células de um selector deixaram de
-    // contar uma a uma). ⛔ Alargar a banda seria matar o controlo: ele existe para dizer que esta
-    // régua ainda vê o painel.
-    //
-    // ⇒ a metade velha fica INTACTA sobre a grandeza que a triagem usou — **alvos de toque** — e
-    // a metade nova afirma a diferença, que é a razão de a wave existir. *Uma régua que troca de
-    // grandeza tem de conseguir reproduzir a antiga, senão ninguém consegue saber se ela melhorou
-    // ou se se partiu.*
+        .find(|l| l.painel == "inspector")
+        .expect("o painel do Inspector tem de estar no registo");
+    let c = insp.cheia();
     let alvos = c.alvos();
     assert!(
-        (40..=90).contains(&alvos),
-        "o controlo da régua falhou: o `3D Model` lê {alvos} ALVOS DE TOQUE, e a triagem de \
-         2026-09-01 deixou-o em ~57 (74 − 17). Ou o painel mudou, ou esta régua deixou de medir o \
-         que mede.{}",
-        tabela(&linhas),
-    );
-    assert!(
         c.total() < alvos,
-        "o `3D Model` lê o mesmo nas duas grandezas ({} controlos contra {alvos} alvos) — então \
-         ou ele deixou de ter um único selector, ou os pintores canónicos deixaram de declarar o \
-         grupo e a régua voltou a contar célula a célula.{}",
+        "o Inspector lê o mesmo nas duas grandezas ({} controlos contra {alvos} alvos) — então \
+         ou ele deixou de ter compostos, ou os pintores canónicos deixaram de declarar o grupo e a \
+         régua voltou a contar célula a célula.{}",
         c.total(),
         tabela(&linhas),
     );
@@ -623,8 +602,8 @@ fn o_painel_ja_triado_reproduz_o_numero_da_triagem() {
 
 /// ⛔⛔ **O PISO DE POPULAÇÃO — o censo recusa o âmbito pobre.**
 ///
-/// Ver a nota do [`imprime_o_censo`]: uma corrida `-p` sem as quatro features mede **24** painéis
-/// e o app tem **28**. Sem este piso, quatro painéis liam `0` comandos e a wave seguinte ia para o
+/// Ver a nota do [`imprime_o_censo`]: uma corrida `-p` sem as quatro features mede **21** painéis
+/// e o app tem **25**. Sem este piso, quatro painéis liam `0` comandos e a wave seguinte ia para o
 /// painel errado.
 #[test]
 fn o_censo_recusa_o_ambito_pobre() {
@@ -644,11 +623,12 @@ fn o_censo_recusa_o_ambito_pobre() {
             tabela(&linhas),
         );
     }
-    // ⚠️ O piso da população fica ao lado, a ver o resto: `27` é o mesmo número do
-    //    `PISO_DE_PAINEIS` da varredura das elisões, medido no mesmo âmbito.
+    // ⚠️ O piso da população fica ao lado, a ver o resto: `25` é o mesmo número do
+    //    `PISO_DE_PAINEIS` da varredura das elisões, medido no mesmo âmbito. ⬇️ `27 → 25` em
+    //    2026-10-05: os painéis `model3d` e `sculpt3d` saíram com o 3D (ADR-0179).
     assert!(
-        linhas.len() >= 27,
-        "o censo viu {} painéis e o registo tem 27.{}",
+        linhas.len() >= 25,
+        "o censo viu {} painéis e o registo tem 25.{}",
         linhas.len(),
         tabela(&linhas),
     );
@@ -678,215 +658,6 @@ fn a_cegueira_do_painel_do_centro_esta_nomeada() {
          Apague esta cegueira e conte-o com os outros.{}",
         tabela(&linhas),
     );
-}
-
-/// ⭐⭐⭐ **ONDE CAI CADA SECÇÃO DO PAINEL DA ESCULTURA** — a sonda que dimensiona a wave do `G`.
-///
-/// ⛔⛔ **Ela existe porque a `line/sculpt3d` já mediu esta tabela e eu não posso usar o número
-/// dela.** O `scenes_pente.rs` daquela crate tem os `y` de cada secção contra a [`DOBRA`], medidos
-/// **na app a correr**; este censo mede num arnês. *Misturar dois instrumentos numa conta é a
-/// forma exacta de fabricar uma medição* — e a diferença entre os dois é a resposta à pergunta
-/// *«quanto é que esta wave devolve?»*, que é o que decide se ela vale a pena.
-///
-/// ⚠️ Ela **não reprova**: é uma sonda. Quem a lê é quem for fazer a triagem.
-#[test]
-fn diag_onde_caem_as_seccoes_da_escultura() {
-    use ph2d_panel_sculpt3d::ids as sid;
-
-    // ⭐ As sete secções, pelo nome que o artista vê. ⛔ A ordem aqui é a da TABELA e não a do
-    //   ecrã — é exactamente isso que a sonda vai desmentir, e a `line/sculpt3d` já pagou essa
-    //   leitura uma vez (*«a ordem da tela lê-se do `y`, nunca da tabela `SECTIONS`»*).
-    let seccoes: [(&str, NodeId); 7] = [
-        ("Tool", sid::SCULPT3D_SEC_TOOL),
-        ("Brush", sid::SCULPT3D_SEC_BRUSH),
-        ("Symmetry", sid::SCULPT3D_SEC_SYMMETRY),
-        ("Topology", sid::SCULPT3D_SEC_TOPOLOGY),
-        ("Shading", sid::SCULPT3D_SEC_SHADING),
-        ("Scene", sid::SCULPT3D_SEC_SCENE),
-        ("Bake", sid::SCULPT3D_SEC_BAKE),
-    ];
-
-    let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
-        let painel = reg
-            .panels_mut()
-            .iter_mut()
-            .find(|p| p.manifest.id == "sculpt3d")
-            .expect("o painel da escultura tem de estar no registo");
-        let arm = super::paineis_armados::TABELA
-            .iter()
-            .find(|a| a.painel == "sculpt3d")
-            .expect("a escultura tem armação");
-
-        // ⛔⛔ **DOIS estados, e não um.** A armação pinta o estado MÁXIMO de propósito (nível
-        //    `Pro`, filtro ARMADO) — é o que faz uma régua de LARGURA ver todos os rótulos. Medir a
-        //    ALTURA ali lê o **pior caso**: as catorze fichas do filtro valem `~221 px` e só são
-        //    pintadas depois de o artista armar o filtro. *Uma coluna que colapsa dois estados num
-        //    número descreve um app que ninguém usa.*
-        for (nome_do_estado, arma) in [
-            ("PIOR CASO (Pro, filtro armado)", arm.arma),
-            (
-                "DIA A DIA (Basic, filtro desarmado)",
-                (|store: &mut ph2d_editor_core::interaction::WidgetStore| {
-                    let _ = store;
-                    super::o_sculpt3d_armado::arma_o_dia_a_dia();
-                }) as fn(&mut ph2d_editor_core::interaction::WidgetStore),
-            ),
-        ] {
-            let mut host = MockPanelHost::new();
-            (arma)(host.store_mut());
-            painel.populate(host.store_mut());
-            abre_tudo(host.store_mut());
-            let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
-            let pintados = host.registos_da_ultima_pintura();
-            (arm.desarma)();
-
-            let mut linhas: Vec<(f32, &str)> = seccoes
-                .iter()
-                .filter_map(|(nome, id)| {
-                    pintados
-                        .iter()
-                        .find(|(pid, _)| pid == id)
-                        .map(|(_, r)| (r.y, *nome))
-                })
-                .collect();
-            linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
-
-            let fundo = conta(host.store(), &pintados, &[]).altura;
-            println!(
-                "\n  === o painel da ESCULTURA — {nome_do_estado} (dobra = {DOBRA:.0} px) ==="
-            );
-            let mut anterior: Option<(f32, &str)> = None;
-            for (y, nome) in &linhas {
-                if let Some((ya, na)) = anterior {
-                    println!("      {na:<12} ocupa {:>6.0} px", y - ya);
-                }
-                println!(
-                    "  {:>6.0}  {nome:<12} {}",
-                    y,
-                    if *y > DOBRA {
-                        "⛔ fora do ecrã"
-                    } else {
-                        "visível"
-                    }
-                );
-                anterior = Some((*y, nome));
-            }
-            if let Some((ya, na)) = anterior {
-                println!("      {na:<12} ocupa {:>6.0} px", fundo - ya);
-            }
-            println!("  {fundo:>6.0}  (fim do conteúdo)\n");
-        }
-    });
-}
-
-/// ⭐⭐⭐ **O QUE COME OS `614 px` DA SECÇÃO `Tool`** — a sonda que impede a cura errada.
-///
-/// ⛔⛔ **Ela existe porque eu quase propus cortar a coisa errada.** A secção `Tool` mede `614 px`
-/// e tem `38` chips de VERBO, e a conta de cabeça («38 chips ⇒ 614 px») **não fecha**: `38` chips
-/// numa coluna de `~300 px` são `~9` fileiras, `~216 px`. ⇒ o resto são as **outras 24 famílias de
-/// chips** daquele painel (o modo da pose, os oito do pano, os seis do contorno, os nove do
-/// filtro…), que aparecem conforme o verbo na mão.
-///
-/// *Uma cura desenhada sobre a família que eu já tinha na cabeça teria devolvido um terço do que
-/// promete* — e a régua que a impede é esta.
-#[test]
-fn diag_o_que_come_a_seccao_tool_da_escultura() {
-    use ph2d_panel_sculpt3d::ids as sid;
-
-    // ⚠️ **As famílias são NOMEADAS, e a lista é a do ficheiro de ids** — não um `grep` meu. Uma
-    //    família nova que não esteja aqui aparece na linha `(sem família nomeada)`, que é o que
-    //    impede esta sonda de mentir por omissão.
-    let familias: &[(&str, &[NodeId])] = &[
-        ("VERB", &sid::SCULPT3D_VERB),
-        ("FALLOFF", &sid::SCULPT3D_FALLOFF),
-        ("ALPHA", &sid::SCULPT3D_ALPHA),
-        ("MATCAP", &sid::SCULPT3D_MATCAP),
-        ("FILTER_KIND", &sid::SCULPT3D_FILTER_KIND),
-        ("CLOTH_MODE", &sid::SCULPT3D_CLOTH_MODE),
-        ("BOUNDARY_MODE", &sid::SCULPT3D_BOUNDARY_MODE),
-        ("POSE_MODE", &sid::SCULPT3D_POSE_MODE),
-        ("CLOTH_FILTER_KIND", &sid::SCULPT3D_CLOTH_FILTER_KIND),
-        ("REF_MODE", &sid::SCULPT3D_REF_MODE),
-        ("ADD", &sid::SCULPT3D_ADD),
-        ("MASK_OP", &sid::SCULPT3D_MASK_OP),
-        ("TRANSFORM", &sid::SCULPT3D_TRANSFORM),
-        ("BOUNDARY_FALLOFF", &sid::SCULPT3D_BOUNDARY_FALLOFF),
-        ("ELASTIC_SCALES", &sid::SCULPT3D_ELASTIC_SCALES),
-        ("CLOTH_AREA", &sid::SCULPT3D_CLOTH_AREA),
-        ("CFILTER_AXIS", &sid::SCULPT3D_CFILTER_AXIS),
-        ("TRIM_FORMA", &sid::SCULPT3D_TRIM_FORMA),
-        ("SMEAR_MODE", &sid::SCULPT3D_SMEAR_MODE),
-        ("UI_LEVEL", &sid::SCULPT3D_UI_LEVEL),
-        ("RETOPO_MODE", &sid::SCULPT3D_RETOPO_MODE),
-        ("PROJECT_MODE", &sid::SCULPT3D_PROJECT_MODE),
-        ("PLANO_INVERSAO", &sid::SCULPT3D_PLANO_INVERSAO),
-        ("CLOTH_FORCE_FALLOFF", &sid::SCULPT3D_CLOTH_FORCE_FALLOFF),
-        ("CLOTH_FILTER_ORIENT", &sid::SCULPT3D_CLOTH_FILTER_ORIENT),
-    ];
-
-    let _ = ph2d_panel_registry_init::register_all_panels();
-    ph2d_editor_core::panel::with_registry(|reg| {
-        let painel = reg
-            .panels_mut()
-            .iter_mut()
-            .find(|p| p.manifest.id == "sculpt3d")
-            .expect("o painel da escultura tem de estar no registo");
-        let arm = super::paineis_armados::TABELA
-            .iter()
-            .find(|a| a.painel == "sculpt3d")
-            .expect("a escultura tem armação");
-
-        let mut host = MockPanelHost::new();
-        (arm.arma)(host.store_mut());
-        painel.populate(host.store_mut());
-        abre_tudo(host.store_mut());
-        let _ = host.medindo_a_pintura_do_registo(painel, VIEWPORT);
-        let pintados = host.registos_da_ultima_pintura();
-        (arm.desarma)();
-
-        // Só o que cai DENTRO da secção `Tool` (entre o cabeçalho dela e o da `Brush`).
-        let y_de = |id: NodeId| pintados.iter().find(|(p, _)| *p == id).map(|(_, r)| r.y);
-        let (topo, fundo) = (
-            y_de(sid::SCULPT3D_SEC_TOOL).unwrap_or(0.0),
-            y_de(sid::SCULPT3D_SEC_BRUSH).unwrap_or(f32::MAX),
-        );
-
-        println!("\n  === a secção `Tool` ({topo:.0}..{fundo:.0}) por família de chips ===");
-        let mut somado = 0usize;
-        let mut linhas: Vec<(f32, String)> = Vec::new();
-        for (nome, ids) in familias {
-            let dentro: Vec<f32> = ids
-                .iter()
-                .filter_map(|id| y_de(*id))
-                .filter(|y| *y >= topo && *y < fundo)
-                .collect();
-            if dentro.is_empty() {
-                continue;
-            }
-            somado += dentro.len();
-            let lo = dentro.iter().copied().fold(f32::MAX, f32::min);
-            let hi = dentro.iter().copied().fold(f32::MIN, f32::max);
-            linhas.push((
-                lo,
-                format!(
-                    "  {lo:>6.0}..{hi:<6.0} {nome:<22} {:>3} chips",
-                    dentro.len()
-                ),
-            ));
-        }
-        linhas.sort_by(|a, b| a.0.total_cmp(&b.0));
-        for (_, l) in &linhas {
-            println!("{l}");
-        }
-        let total_na_seccao = pintados
-            .iter()
-            .filter(|(_, r)| r.y >= topo && r.y < fundo)
-            .count();
-        println!(
-            "  → {somado} chips em famílias nomeadas, de {total_na_seccao} rectângulos na secção\n"
-        );
-    });
 }
 
 /// SONDA TEMPORÁRIA — de que SECÇÃO são as 707 entradas do Inspector.
@@ -1336,14 +1107,12 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    passaram a CAIXAS DE MARCAR da casa (`paint_check_row`, `Toggled`) — um liga/desliga é um
     //    VALOR, não um comando. Os `2` que ficam são comandos a sério: fechar e *Reset to Defaults*.
     ("physics", 2),
-    ("sculpt3d", 36),
     // ⬇️ `24 → 8` em 2026-09-24 (ordem do dono: *«Arrumar o painel Vector»*): os `16` que saíram
     //    são as peças da grelha `button_grid` — os `15` modos da ferramenta e o *Pick Shapes* —,
     //    uma ESCOLHA que não se declarava composto. Os `8` que ficam são comandos a sério (fechar,
     //    as quatro acções do Blend, o *Morph*, o *Both* dos marcadores) e passaram à coluna do
     //    valor pela `caixa_do_botao`, via `RowCtx::action_button_kind`.
     ("vector", 8),
-    ("model3d", 1),
     // ⭐ Entra na catraca em 2026-09-24 com `22 → 17`: os quatro liga/desliga dos efeitos do master
     //    (*Limiter* · *Reverb* · *Delay* · *Ducking*) são CAIXAS DE MARCAR, e o *Key* que ciclava os
     //    barramentos é uma ESCOLHA declarada (conta como um grupo). Os `17` que ficam são comandos a
@@ -2356,29 +2125,6 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    ⚠️ A política de dobra não mudou — o plano de secções (`PlanoCtx`) não toca no
     //    `set_collapsed_if_unchosen` de ninguém.
     ("painter_layers", 1605.0),
-    // ⬇️ `2 097 → 2 021`, `1 349 → 1 262` e `1 293 → 1 281` em 2026-09-23: as escolhas destes três
-    //    painéis passaram pela porta da ESCOLHA, e as que cabem numa fileira deixaram de gastar uma
-    //    linha só para o nome POR CIMA — a altura desceu sem uma secção a menos.
-    // ⬆️ `2 021 → 2 051` em 2026-09-24, por ORDEM do dono e com a conta fechada: depois de um botão
-    //    vem o vão de toda linha (*«sem espaçamento nenhum. corrija»*, e *«siga»* para os outros
-    //    painéis). `11` botões de linha inteira deste painel avançavam só a altura (`+3` cada, o
-    //    `control_gap_px`) e `3` somavam o `Spacing::Xs` à mão (`4 → 3`, `−1` cada): `33 − 3 = 30`.
-    //    ⛔ Nenhuma secção nasceu aberta — é o mesmo número de linhas com o vão que as outras têm.
-    // ⬆️ `2 051 → 2 186` na integração de 2026-09-25 (rodada 03, `line/3DModeling` sobre a
-    //    `line/sculpt3d`), com a conta fechada fileira a fileira pela porta deste gate: `+41` a lei
-    //    que acende o sprite assado (a fileira `Bake Law`, que a fixtura arma com `lei_do_alvo`) ·
-    //    `+44` o `Lens` do sombreamento (report do dono de 21/09) · `+50` as duas pistas de LÂMPADA
-    //    que passaram de `under_the_rig` a `always` (report do dono de 20/09: *«não encontrei no
-    //    painel de Sculpt os parâmetros de iluminação»* — eram dois controlos VIVOS inalcançáveis),
-    //    `2 × 25`. `41 + 44 + 50 = 135`. ⛔ Nenhuma secção nasceu aberta: são fileiras em secções
-    //    que já existiam, e recolhê-las esconderia o que o dono pediu para ver.
-    // ⬆️ `2 186 → 2 196` em 2026-09-30, e NÃO é uma secção a nascer aberta: o painel passou a CARTÕES por secção (ordem do
-    //    dono: o menu de tema e o arrasto «nos outros painéis»), e o corredor entre cartões (`12`)
-    //    substitui o `Spacing::Md` (`8`) que cada secção somava à mão depois do corpo.
-
-    //    ⚠️ A política de dobra não mudou — o plano de secções (`PlanoCtx`) não toca no
-    //    `set_collapsed_if_unchosen` de ninguém.
-    ("sculpt3d", 2196.0),
     ("tokens", 2866.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do

@@ -71,19 +71,6 @@ impl GpuContext {
                 | wgpu::Features::TEXTURE_COMPRESSION_ASTC
                 | wgpu::Features::TEXTURE_COMPRESSION_ETC2
                 | wgpu::Features::TEXTURE_FORMAT_16BIT_NORM
-                // ⭐⭐ PRIMITIVE_INDEX: e' ela que deixa um shader de FRAGMENTO
-                // saber em que face esta', e e' disso que a TINTA FINA da
-                // escultura vive (`ph2d-mesh-render/src/shaders/tinta.wgsl`).
-                // Medida em 2026-09-20 como `true` nas TRES rotas desta maquina
-                // (`ph2d-gpu --example o_que_a_placa_anuncia`).
-                //
-                // ⛔ Ela entra pela MESMA intersecao das outras: pedimos so' o
-                // que o adaptador anuncia, logo o `request_device` nao pode
-                // falhar por causa dela. Onde ela falta, a fonte do shader sai
-                // SEM o bloco que a menciona (`ph2d_mesh_render::fonte`) e a
-                // peca desenha com a cor por-vertice de sempre — a validacao de
-                // um modulo WGSL e' tudo-ou-nada.
-                | wgpu::Features::PRIMITIVE_INDEX
                 // doc 121 §9.15 (d): o prefixo das células do passe de formas por
                 // SUBGRUPO (`ph2d-shape-gpu`, `contorno_subgrupo.wgsl`). A mesma
                 // regra: onde falta, o módulo sai sem ele e o passe usa o de
@@ -120,31 +107,8 @@ impl GpuContext {
         // cannot run the integrator; the sequencer REFUSES such a kernel at cook
         // time (`GpuCookError::TooManyBindings`) and the caller falls back to the
         // CPU, rather than the pipeline blowing up at first dispatch.
-        // **Vertex buffers per pipeline.** The default is 8 — again the WebGPU
-        // guaranteed minimum, and again a floor no desktop adapter is limited
-        // by: measured on this machine (2026-09-19, `vulkaninfo`), BOTH the
-        // NVIDIA RTX 5060 Ti and the AMD RADV iGPU advertise
-        // `maxVertexInputBindings = 32`, four times what the mesh pipeline
-        // needs. The sculpt mesh feeds ONE buffer per per-vertex channel
-        // (position, normal, mask, curvature, world curvature, thickness,
-        // preview, AO — and, since the paint brushes, vertex COLOUR), which is
-        // exactly 9 and lands one over the floor.
-        //
-        // Raised to the adapter's advertised max by the SAME argument as the
-        // three below: a superset of the default, so `request_device` cannot
-        // fail on it and nothing that worked breaks. ⚠️ Unlike the storage
-        // bindings, there is no graceful per-kernel refusal here — a device
-        // that really does stop at 8 cannot build the mesh pipeline at all. It
-        // does not exist among the adapters this app ships to (desktop
-        // Vulkan/Metal/D3D12 all advertise ≥ 16); a downlevel/WebGPU-floor
-        // adapter would have to pack two scalar channels into one `vec2`
-        // buffer, and the pair that costs nothing to pack is the curvature one
-        // (both derived, both uploaded in the same call, full and partial).
         let adapter_limits = adapter.limits();
         let mut required_limits = wgpu::Limits::default();
-        required_limits.max_vertex_buffers = required_limits
-            .max_vertex_buffers
-            .max(adapter_limits.max_vertex_buffers);
         required_limits.max_storage_buffer_binding_size = required_limits
             .max_storage_buffer_binding_size
             .max(adapter_limits.max_storage_buffer_binding_size);
@@ -302,8 +266,8 @@ mod voz_do_dispositivo_tests {
     /// constrói o [`super::GpuContext`] chama o relator.
     ///
     /// ⚠️ **A agulha é montada em runtime**, nunca escrita como literal: *um censo textual que se
-    /// lê a si mesmo encontra sempre o que procura* (a armadilha que a `line/sculpt3d` registou ao
-    /// escrever um gate trivialmente verdadeiro). Aqui o texto lido é o do PRODUTO e o gate vive
+    /// lê a si mesmo encontra sempre o que procura* (a armadilha de um gate trivialmente
+    /// verdadeiro). Aqui o texto lido é o do PRODUTO e o gate vive
     /// noutro módulo, mas a regra vale na mesma — o `concat!` garante-o para quem os juntar.
     #[test]
     fn quem_cria_o_dispositivo_liga_a_voz_dele() {

@@ -96,8 +96,8 @@ fn a_contributed_row_is_marked_by_the_state_its_module_publishes() {
         },
     );
     let contrib = vec![
-        ToolRailEntry::compound(na_lista, "Render", "Render", ""),
-        ToolRailEntry::compound(apagada, "Matcap", "Matcap", ""),
+        ToolRailEntry::compound(na_lista, "Standard", "Standard", ""),
+        ToolRailEntry::compound(apagada, "Neutral", "Neutral", ""),
     ];
 
     assert!(

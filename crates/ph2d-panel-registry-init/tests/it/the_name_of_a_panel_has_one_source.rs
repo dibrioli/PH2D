@@ -220,8 +220,9 @@ fn no_panel_paints_its_own_name_beside_the_key() {
         })
         .collect();
     caixas.sort();
+    // ⬇️ `28 → 26` em 2026-10-05: os painéis `model3d` e `sculpt3d` saíram com o 3D (ADR-0179).
     assert!(
-        caixas.len() >= 28,
+        caixas.len() >= 26,
         "só {} crates de painel — o censo está a ler o sítio errado",
         caixas.len()
     );

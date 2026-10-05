@@ -17,8 +17,8 @@
 //! são geométricos e valem para qualquer objecto; **filtro** e **sub-UV** só existem onde
 //! há imagem — um vector vivo é rasterizado analiticamente e não tem texels para amostrar
 //! nem UV para recortar. A ausência é DECLARADA em `ph2d_render::StyleReach::VECTOR`, com
-//! o motivo, e um gate recusa uma rota que não a declare (é o que impede o 3D de nascer a
-//! ignorar os quatro em silêncio).
+//! o motivo, e um gate recusa uma rota que não a declare (é o que impede uma rota nova de
+//! nascer a ignorar os quatro em silêncio).
 //!
 //! ⚠️ **E a ORDEM já é universal sem uma linha nova**: o `draw_shared_instances` encoda na
 //! ordem do iterador e nunca reagrupa por forma, então para um vector a ordem das linhas é

@@ -439,8 +439,8 @@ fn print_the_pen_measurement() {
 /// ```
 ///
 /// ⚠️ **A pose tem de DOBRAR e não rodar em bloco:** numa rotação rígida todo osso sofre a mesma
-/// mudança de referencial e a pele sai no mesmo sítio **seja qual for o peso** — a `ph2d-boundary`
-/// do skin di-lo por escrito, e a 1.ª redacção dos gates de unidade reprovou por isso. Aqui o `rot`
+/// mudança de referencial e a pele sai no mesmo sítio **seja qual for o peso** — o doc do skin
+/// di-lo por escrito, e a 1.ª redacção dos gates de unidade reprovou por isso. Aqui o `rot`
 /// é conduzido por uma rampa, logo cada junta dobra um bocado diferente.
 fn pele_com_envelope(envelope: Option<f32>) -> Vec<[f32; 2]> {
     use ph2d_nodegraph::attr::Column;

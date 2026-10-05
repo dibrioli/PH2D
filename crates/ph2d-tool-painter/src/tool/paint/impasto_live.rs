@@ -477,49 +477,6 @@ impl PainterTool {
             (Some(c), Some(_)) => Some(c.as_ref().clone()),
         }
     }
-
-    /// ⭐⭐ **A espessura de `id` numa JANELA, em PÍXEIS** — o relevo que a tela
-    /// da vista leva à peça 3D (`docs/3D/29`, D2/D3).
-    ///
-    /// É a soma da [`Self::layer_height_view`] (o comprometido mais o traço
-    /// aberto) × a `impasto_depth` da camada — os dois factores que o passe de
-    /// luz 2D também aplica (`impasto_fields`) — × [`DEPTH_UNIT_PX`], a
-    /// conversão que toda grandeza GEOMÉTRICA sobre a altura cruza.
-    ///
-    /// ⚠️ **Só a JANELA, nunca a tela:** a pousada lê o rectângulo que mudou, e
-    /// materializar o campo inteiro por quadro seria uma cópia do tamanho da
-    /// vista a cada movimento do ponteiro. `None` quando a camada não tem relevo.
-    #[must_use]
-    pub fn layer_height_px_in(
-        &self,
-        id: crate::tool::RtLayerId,
-        (x, y, jw, jh): (u32, u32, u32, u32),
-    ) -> Option<Vec<f32>> {
-        let (w, h) = self.source_size;
-        let n = (w as usize) * (h as usize);
-        let committed = self.heights.get(&id).filter(|c| c.len() == n);
-        let live = (self.paint.relief.stroke_height.len() == n
-            && self.layers.active() == Some(id)
-            && !self.paint.eraser)
-            .then_some(&self.paint.relief.stroke_height);
-        if committed.is_none() && live.is_none() {
-            return None;
-        }
-        let escala = self.layers.get(id).map_or(1.0, |l| l.impasto_depth)
-            * super::impasto_light::DEPTH_UNIT_PX;
-        let (x, y) = (x.min(w), y.min(h));
-        let (jw, jh) = (jw.min(w - x), jh.min(h - y));
-        let mut out = Vec::with_capacity((jw as usize) * (jh as usize));
-        for j in y..y + jh {
-            for i in x..x + jw {
-                let k = (j as usize) * (w as usize) + i as usize;
-                let c = committed.map_or(0.0, |c| c[k]);
-                let l = live.map_or(0.0, |l| l[k]);
-                out.push((c + l) * escala);
-            }
-        }
-        Some(out)
-    }
 }
 
 /// **O RELÓGIO DO COMMIT, medido no código que SHIPA** — o precedente do doc 28 §5.57.
@@ -553,10 +510,3 @@ pub(super) mod spans {
         })
     }
 }
-
-#[path = "impasto_screen_relief.rs"]
-mod impasto_screen_relief;
-
-#[cfg(test)]
-#[path = "screen_canvas_relief_tests.rs"]
-mod screen_canvas_relief_tests;

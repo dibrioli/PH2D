@@ -1,24 +1,10 @@
 #![forbid(unsafe_code)]
 //! **O rig de lâmpadas — a casa ÚNICA.**
 //!
-//! # Por que esta crate deixou de estar vazia
-//!
-//! O Painter já ilumina relevo: quatro lâmpadas, material por-pixel, LUT especular, com paridade
-//! CPU/GPU gateada. O módulo 3D precisa da MESMA luz — e a exigência que decide tudo está escrita em
-//! `docs/3D/05.2`:
-//!
-//! > *"O mesmo rig de lâmpadas em editor e runtime. Um segundo modelo de luz no jogo faria o artista
-//! > ajustar a arte contra uma iluminação que o jogador nunca veria — e é a classe de erro mais cara
-//! > que existe, porque ninguém a percebe até o jogo estar pronto."*
-//!
-//! Duas cópias do rig não divergiriam no dia em que fossem escritas; divergiriam no dia em que alguém
-//! consertasse uma. Então o rig tem um dono, e é esta crate.
-//!
-//! ⚠️ **Ela é a única peça NÃO-removível do módulo 3D**, e isso é deliberado (`docs/3D/02.3`): depois
-//! que o Painter passa por aqui, arrancá-la quebra o Painter. Em troca, o Painter continua sendo o dono
-//! de tudo o que é *dele* — o material, a LUT especular, o fold do relevo, a óptica por-pixel. **O que
-//! mora aqui é só o que os dois consumidores têm de responder igual: quantas lâmpadas há, onde cada uma
-//! está, e com que força.**
+//! O Painter ilumina o relevo do impasto: quatro lâmpadas, material por-pixel, LUT especular, com
+//! paridade CPU/GPU gateada. **O que mora aqui é só o que os dois produtores (a CPU e o shader) têm de
+//! responder igual: quantas lâmpadas há, onde cada uma está, e com que força.** O Painter continua dono
+//! de tudo o que é *dele* — o material, a LUT especular, o fold do relevo, a óptica por-pixel.
 //!
 //! # A fronteira, numa linha
 //!
@@ -42,7 +28,7 @@
 //! arquitetura nenhuma. ⚠️ O rotor está lá por acidente de nascimento, não por pertencer ao pincel —
 //! mas movê-lo é churn na crate mais quente do repo e **é decisão do dono dela**, não desta wave.
 
-pub use ph2d_painter_brush::texture::rotate_by_degrees;
+use ph2d_painter_brush::texture::rotate_by_degrees;
 
 /// Quantas lâmpadas o rig comporta.
 ///
@@ -64,150 +50,13 @@ pub const MIN_ELEV_DEG: u16 = 5;
 /// smoke do impasto (a ponta de um traço é onde a altura cai de cheia a nada em um pixel, logo é a
 /// encosta mais íngreme da tela, logo é o primeiro lugar onde um piso zero morde).
 ///
-/// ⚠️ **Ele é LEI do modelo relativo, não material** — e por isso mora aqui e não no Painter: os dois
-/// consumidores (tinta e forma) têm de dobrar a razão do MESMO jeito, senão a mesma lâmpada deixaria a
-/// escultura mais escura na sombra que a pintura ao lado dela, e ninguém saberia dizer por quê.
-/// Dobrado de modo que uma superfície PLANA ainda devolva exatamente `1.0` — o contrato de
-/// byte-identidade sobrevive. // CLAMP-OK
+/// ⚠️ **Ele é LEI do modelo relativo, não material** — por isso mora aqui: a CPU e o shader têm de
+/// dobrar a razão do MESMO jeito. Dobrado de modo que uma superfície PLANA ainda devolva exatamente
+/// `1.0` — o contrato de byte-identidade sobrevive. // CLAMP-OK
 pub const AMBIENT: f32 = 0.35;
 
-/// **A CHROMA do ambiente na média** — a cor que o piso [`AMBIENT`] tem quando
-/// se olha para todas as direções de uma vez. Luminância exatamente **1**.
-///
-/// ⚠️ **É luminância 1 por construção, e é isso que faz o ambiente REDISTRIBUIR
-/// em vez de expor:** ligar o termo não deixa a peça mais clara nem mais escura
-/// na média — ele tira luz de baixo e põe em cima. A exposição continua sendo o
-/// [`AMBIENT`], um número, no lugar onde ela sempre esteve.
-///
-/// A média em luminância é preservada; **a chroma não é**, e ela é metade do
-/// efeito: a sombra de um estúdio é FRIA, porque o que a preenche é o céu.
-pub const ENV_BASE: [f32; 3] = [0.946, 1.002, 1.137];
-
-/// **O GRADIENTE do ambiente**, já convolvido com o lóbulo cosseno.
-///
-/// A irradiância de um ambiente que varia linearmente com a altura é
-/// `E(n) = c + (2/3)·k·(n·cima)` — e o `2/3` **não é uma aproximação**: é o fator
-/// `Â₁` da convolução de um harmônico zonal de grau 1 com o lóbulo cosseno
-/// (Ramamoorthi & Hanrahan 2001). ⚠️ **Um ambiente LINEAR não tem termo de grau
-/// 2**, então esta forma de dois termos é a resposta EXATA, não a barata: a sonda
-/// `env_probe` mede **0,000003** contra a integral numérica — o erro da própria
-/// quadratura.
-///
-/// ⚠️ **E o candidato mais sofisticado foi MEDIDO e REPROVADO:** um ambiente de
-/// três zonas (céu, horizonte claro, chão) — a forma de um HDRI de estúdio — dá
-/// contraste cima/baixo de **1,83×** contra os **2,20×** deste, precisa de um
-/// terceiro coeficiente e ainda deixa **0,0042** de resíduo. *O ambiente mais
-/// rico mede pior justamente na coisa para a qual o termo existe.*
-pub const ENV_SLOPE: [f32; 3] = [0.300, 0.383, 0.518];
-
-/// **O piso ambiente NA DIREÇÃO da normal** — o [`AMBIENT`] com direção.
-///
-/// ⚠️ **`n` está no referencial do CANVAS, onde `y` cresce para BAIXO** — o mesmo
-/// em que as lâmpadas deste rig são autoradas (azimute/elevação de tela) e o
-/// mesmo que o `canvas_normal` do barro produz. É por isso que o gradiente entra
-/// **subtraindo**: o céu é o topo da TELA, e o topo da tela é `−y`. O módulo já
-/// pagou este sinal uma vez — *"sem esta negação a mesma lâmpada acende a pintura
-/// por cima e a escultura por baixo, no mesmo documento, sob o mesmo card"* —, e
-/// o oráculo dele é um RENDER, nunca a aritmética.
-///
-/// ⚠️ **O ambiente é ancorado na TELA e não no MUNDO, e isso é obrigatório aqui:**
-/// as lâmpadas são de tela, e um estúdio cujo céu gira enquanto as luzes ficam
-/// paradas não é um estúdio. Um ambiente de mundo é outra decisão — e ela chega
-/// junto com um rig de mundo, não antes.
-#[must_use]
-pub fn env_ambient(n_canvas: [f32; 3]) -> [f32; 3] {
-    let up = -n_canvas[1];
-    [
-        AMBIENT * ENV_SLOPE[0].mul_add(up, ENV_BASE[0]),
-        AMBIENT * ENV_SLOPE[1].mul_add(up, ENV_BASE[1]),
-        AMBIENT * ENV_SLOPE[2].mul_add(up, ENV_BASE[2]),
-    ]
-}
-
-/// ⭐⭐⭐ **O CÉU ABSOLUTO que este rig produz** — o [`AMBIENT`] traduzido de FRACÇÃO para uma
-/// irradiância, na forma de rampa que uma lei de óptica consegue ler.
-///
-/// Devolve `(base, inclinação)`: a irradiância normalizada vale `base + inclinação · (−n.y)`, com
-/// `n` no referencial do CANVAS — a mesma rampa do [`env_ambient`], noutra unidade.
-///
-/// # ⛔⛔ Porque ela mora AQUI, e é a mesma razão que o [`clay_shine`] já escreve
-///
-/// *O que dois consumidores têm de responder igual mora onde os dois alcançam.* Hoje são dois: a lei
-/// que acende o SPRITE assado (`ph2d-form-pbr`, pela porta da `ph2d-form-donation`) e a que acende o
-/// BARRO VIVO no visor. Escrita duas vezes, ela divergiria na primeira wave que mexesse no `AMBIENT`
-/// — e o sintoma seria *«o assado não está igual ao vivo»*, que é literalmente o report que criou
-/// metade dos gates deste módulo.
-///
-/// # ⚠️ A conversão NÃO é uma escolha: `f = A/(1 − A)`
-///
-/// O [`AMBIENT`] declara-se como *«o que uma face totalmente virada PARA LONGE da luz ainda
-/// devolve»* — uma **fracção da resposta plana**, não uma quantidade de luz. Uma lei ABSOLUTA (o
-/// OpenPBR) precisa da quantidade, e o termo aditivo que faz `sombra/plano` voltar a valer
-/// exactamente `A` é `f = A/(1 − A)` — a única solução de `f/(1 + f) = A`.
-///
-/// ⚠️ **E o `plano` é a resposta de uma superfície PLANA sob este rig** (`Σ max(l·z, 0) · tint`, com
-/// a normal plana a ser o eixo da vista), dividida por `π` porque o que a lei pede é a irradiância
-/// **normalizada** (`E/π`, *o que uma difusa branca devolveria*).
-///
-/// ⭐ **Apagar as lâmpadas apaga o céu**, e isso é a metade que torna a tradução honesta: o estúdio
-/// É o rig. Com `plano = [0, 0, 0]` a rampa é toda zero, e a lei que a lê fica byte-idêntica ao que
-/// ela era antes de haver céu nenhum.
-#[must_use]
-pub fn env_ramp(plano: [f32; 3]) -> ([f32; 3], [f32; 3]) {
-    /// Ver o doc: `A/(1 − A)`, a única solução de `f/(1 + f) = A`.
-    const F: f32 = AMBIENT / (1.0 - AMBIENT);
-    let k = [0, 1, 2].map(|i| F * plano[i] / core::f32::consts::PI);
-    (
-        [0, 1, 2].map(|i| k[i] * ENV_BASE[i]),
-        [0, 1, 2].map(|i| k[i] * ENV_SLOPE[i]),
-    )
-}
-
-/// **A RESPOSTA PLANA deste rig** — `Σ max(l·z, 0) · tint`, a entrada do [`env_ramp`].
-///
-/// ⚠️ **A normal plana é o eixo da VISTA**, logo `n·l` é a componente `z` da lâmpada — e ela é a
-/// mesma nos dois consumidores porque o rig é autorado em espaço de CANVAS nos dois.
-///
-/// ⚠️ **Ela é uma porta e não quatro linhas em cada chamador**, porque é a entrada de uma conversão
-/// cuja outra metade ([`env_ramp`]) tem uma subtileza — e uma metade partilhada ao lado de uma
-/// copiada é exactamente como as duas divergem.
-#[must_use]
-pub fn flat_response(rig: &ResolvedRig) -> [f32; 3] {
-    let mut plano = [0.0f32; 3];
-    for l in rig.lamps() {
-        let ndl = l.dir[2].max(0.0);
-        for (p, r) in plano.iter_mut().zip(l.tint) {
-            *p += ndl * r;
-        }
-    }
-    plano
-}
-
-/// **O REALCE do barro** — quanto do especular entra na superfície de argila.
-///
-/// ⚠️ **Ele mora AQUI e não na crate do renderizador de malha, e a razão não é organização:** um
-/// objeto assado (`docs/3D/02.2`, rota A) tem de **re-acender ao ser reaberto**, e a promessa
-/// inteira daquela rota é que isso acontece **sem o módulo 3D no build**. Enquanto este número
-/// morasse na `ph2d-mesh-render` — que cai com a feature `sculpt3d` — a re-acendida seria
-/// alcançável só onde a escultura existe, ou seja em lugar nenhum depois de o artista fechar o
-/// módulo. É o mesmo movimento que a W3 fez com o rig (`impasto_rig.rs` virou re-export desta
-/// crate) e pela mesma razão: **o que dois consumidores têm de responder igual mora onde os dois
-/// alcançam**. A `ph2d-mesh-render` re-exporta, então nenhum caminho de chamada mudou.
-///
-/// Sem ele o objeto assado sai **sem realce nenhum** enquanto o barro na tela tem um — foi o que o
-/// smoke da W8.6 reportou (*"o modelo vivo parece em perspectiva, o assado parece isométrico"*), e
-/// a medição mostrou que a projeção é idêntica nos dois: o que faltava era o especular, que é o cue
-/// de volume de uma esfera lisa. // CLAMP-OK
-pub const CLAY_SHINE: f32 = 0.35;
-
-/// **O expoente Blinn-Phong do barro**, e a razão de o objeto assado não precisar de conversão
-/// nenhuma: 24 é a média geométrica de 6 e 96, que é **exatamente** o que a rugosidade neutra da
-/// tinta (`0.5`) produz na LUT dela. Os dois caminhos já concordavam sobre a LARGURA do realce; só
-/// discordavam sobre a INTENSIDADE. // CLAMP-OK
-pub const CLAY_EXPONENT: f32 = 24.0;
-
 /// Uma lâmpada, como o artista a autora.
-#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Light {
     /// Acesa. A 0 é a principal e começa ligada; 1..3 começam **apagadas**, então uma tela nova é
     /// byte-idêntica ao build de uma lâmpada só.
@@ -252,7 +101,7 @@ impl Default for Light {
 }
 
 /// O rig inteiro, como o documento o guarda.
-#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LightRig {
     pub lights: [Light; MAX_LIGHTS],
     /// Qual lâmpada o card está editando (`0..MAX_LIGHTS`). É estado de EDIÇÃO, não de aparência — não
@@ -292,8 +141,8 @@ impl LightRig {
 
 /// Uma lâmpada RESOLVIDA — a forma que todo consumidor sombreia.
 ///
-/// É esta struct que atravessa a fronteira para a GPU (tinta) e para o passe da malha (forma). Nenhum
-/// dos dois reconstrói `dir` a partir de graus: o rotor roda **uma vez**, aqui.
+/// É esta struct que atravessa a fronteira para a GPU. Ninguém reconstrói `dir` a partir de graus: o
+/// rotor roda **uma vez**, aqui.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Lamp {
     /// Direção unitária da luz; `z > 0` aponta para fora da superfície.
@@ -389,7 +238,3 @@ pub fn resolve(rig: &LightRig) -> Option<ResolvedRig> {
 #[cfg(test)]
 #[path = "rig_tests.rs"]
 mod rig_tests;
-
-#[cfg(test)]
-#[path = "env_tests.rs"]
-mod env_tests;

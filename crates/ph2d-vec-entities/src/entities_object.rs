@@ -77,7 +77,6 @@ fn not_vector(w: &ph2d_ecs::World, e: Entity) -> bool {
     w.get::<VecObject>(e).is_some()
         || w.get::<ph2d_render::Sprite>(e).is_some()
         || w.get::<ph2d_ecs::FlipObjectRef>(e).is_some()
-        || w.get::<ph2d_ecs::Sculpt3dPieceRef>(e).is_some()
         || w.get::<ph2d_ecs::PaintedDoc>(e).is_some()
 }
 

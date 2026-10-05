@@ -21,9 +21,9 @@ authors.workspace = true
 # desta crate seguem escrevendo `crate::arclen::...` verbatim.
 ph2d-arclen = { path = "../ph2d-arclen" }
 # ⭐ O AFIM 2D, extraído para uma folha ZERO-dep pelo MESMO precedente do `ph2d-arclen` logo
-# acima — e pelo mesmo motivo, medido: seis crates que não têm nada de vectorial
-# (`ph2d-field*`, `ph2d-flip`, `ph2d-tool-painter`) já escreviam `ph2d_vec_scene::Xform`, e a
-# lei do esqueleto (que serve raster, 3D e Flip) não pode puxar a cena vectorial para
+# acima — e pelo mesmo motivo, medido: crates que não têm nada de vectorial (`ph2d-flip`,
+# `ph2d-tool-painter`) já escreviam `ph2d_vec_scene::Xform`, e a
+# lei do esqueleto (que serve raster e Flip) não pode puxar a cena vectorial para
 # multiplicar duas matrizes. `xform.rs` re-exporta, então os ~300 sítios que escrevem
 # `ph2d_vec_scene::Xform` seguem verbatim.
 ph2d-affine = { path = "../ph2d-affine" }

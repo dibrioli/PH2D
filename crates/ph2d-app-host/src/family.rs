@@ -21,7 +21,7 @@ pub struct SmokeRouter {
 /// **O que uma família declara à shell.**
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AppFamily {
-    /// A chave da família (`"field3d"`, `"motion"`, …) — o sufixo da crate `ph2d-app-<chave>`.
+    /// A chave da família (`"vec"`, `"motion"`, …) — o sufixo da crate `ph2d-app-<chave>`.
     pub key: &'static str,
     /// Os roteadores de smoke que ela possui.
     pub routers: &'static [SmokeRouter],

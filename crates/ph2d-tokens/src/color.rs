@@ -17,7 +17,7 @@
 //! build.rs codegen from tokens.json so divergence becomes impossible.
 
 // ⭐ **O endereço não muda com o corte:** quem escrevia `ph2d_tokens::color::srgb_to_oklch`
-// continua a escrevê-lo (a `ph2d-viewport3d` escreve), e este ficheiro usa-as na mesma linha.
+// continua a escrevê-lo, e este ficheiro usa-as na mesma linha.
 pub use crate::color_space::{oklch_in_gamut, oklch_to_linear_srgb, oklch_to_srgb, srgb_to_oklch};
 use crate::theme::Theme;
 
@@ -350,16 +350,16 @@ color_tokens! {
     CurveG => "curve-g",
     /// `curve-b` — blue channel tint for the Curves editor.
     CurveB => "curve-b",
-    /// `axis-x` — a **identidade do eixo X** num gizmo 3D (vermelho).
+    /// `axis-x` — a **identidade do eixo X** num gizmo (vermelho).
     ///
     /// ⚠️ **Não é o `curve-r`, e a diferença não é de tom — é de significado.** O `curve-*` é o
     /// tinto de um canal de cor; um eixo é uma **direção do espaço**, e a convenção
     /// X=vermelho / Y=verde / Z=azul é a que todo modelador 3D usa (Blender, Maya, Unity). Um dia
     /// alguém vai re-vestir o editor de Curvas e não pode mover os eixos junto.
     AxisX => "axis-x",
-    /// `axis-y` — a identidade do eixo Y num gizmo 3D (verde). Ver [`ColorToken::AxisX`].
+    /// `axis-y` — a identidade do eixo Y num gizmo (verde). Ver [`ColorToken::AxisX`].
     AxisY => "axis-y",
-    /// `axis-z` — a identidade do eixo Z num gizmo 3D (azul). Ver [`ColorToken::AxisX`].
+    /// `axis-z` — a identidade do eixo Z num gizmo (azul). Ver [`ColorToken::AxisX`].
     AxisZ => "axis-z",
     /// `canvas` — viewport background (scene render target backdrop).
     Canvas => "canvas",

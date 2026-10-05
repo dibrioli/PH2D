@@ -56,13 +56,8 @@ const FORBIDDEN: &[(&str, &str)] = &[
 
 /// As crates cuja escrita a captura do desfazer LÊ. ⚠️ Acrescentar uma crate de simulação nova
 /// significa acrescentá-la aqui — o lint não a descobre sozinha, e a ausência seria muda.
-const SIM_CRATES: &[&str] = &[
-    "ph2d-ecs",
-    "ph2d-physics-ecs",
-    "ph2d-render",
-    "ph2d-script",
-    "ph2d-field-ecs",
-];
+/// (2026-10-05: `5` -> `4` — a `ph2d-field-ecs` saiu com o 3D, ADR-0179.)
+const SIM_CRATES: &[&str] = &["ph2d-ecs", "ph2d-physics-ecs", "ph2d-render", "ph2d-script"];
 
 fn workspace_root() -> PathBuf {
     // `CARGO_MANIFEST_DIR` = .../crates/ph2d-ecs

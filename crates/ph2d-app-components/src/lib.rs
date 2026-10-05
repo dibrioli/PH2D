@@ -8,7 +8,7 @@
 //! # ⚠️ Por que os ficheiros MANTIVERAM o prefixo, ao contrário das seis irmãs
 //!
 //! O HOWTO §1.3 diz *«o prefixo `<fam>_` sai: dentro da crate tudo é a família»*, e as seis famílias
-//! anteriores fizeram-no (`field3d_gizmo.rs` → `gizmo.rs`). ⛔ **Aqui a regra não se aplica, e não é
+//! anteriores fizeram-no. ⛔ **Aqui a regra não se aplica, e não é
 //! preguiça:** ali o prefixo **era o nome da família**; aqui a família é `components` e os prefixos
 //! são `instance_` e `component_`, que são **dois assuntos DENTRO dela** — `instance_verbs` («os
 //! verbos de uma instância») e `component_attach` («anexar um componente») não são redundantes com o

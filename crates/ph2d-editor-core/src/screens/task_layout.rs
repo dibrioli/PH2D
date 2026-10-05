@@ -19,19 +19,18 @@
 //! não ao layout** (a `motion_bridge` escreve `motion_graph`/`motion_params` a cada quadro a
 //! partir de `tools.active() == motion`), então um layout que não larga a ferramenta traz os
 //! painéis dela atrás — e a lista de abertos, que se diz **absoluta**, é reescrita pela ponte no
-//! quadro seguinte. ⚠️ Valia para **dois** dos seis (*Model* e *Animate*), e a segunda mordida
-//! via-se na foto dele: as abas *Inspector | Vector* no dock direito do *Animate*.
+//! quadro seguinte. A mordida via-se na foto dele: as abas *Inspector | Vector* no dock direito do
+//! *Animate*.
 //!
-//! ⇒ **não há herança.** O *Model* entrega o canvas ao modelador; o *Animate* entrega-o à
-//! ferramenta neutra (o `move`, que é o que este app tem em vez de *«nenhuma»* — ver
-//! [`CanvasOwner`]).
+//! ⇒ **não há herança.** O *Animate* entrega o canvas à ferramenta neutra (o `move`, que é o que
+//! este app tem em vez de *«nenhuma»* — ver [`CanvasOwner`]).
 //!
 //! # ⛔ E por isso a lista de abertos ENCOLHEU
 //!
 //! Um layout só pode comandar o que mais ninguém escreve. O `motion_graph`, o `vector`, o `flip`,
 //! o `painter_layers` e companhia vêm **com a ferramenta**; nomeá-los aqui era decoração que o
-//! quadro seguinte reescrevia. O que sobra — a hierarquia, a linha do tempo, o painel do
-//! modelador — é o que o layout de facto arruma. O gate que defende a fronteira vive em
+//! quadro seguinte reescrevia. O que sobra — a hierarquia, o inspector, a linha
+//! do tempo — é o que o layout de facto arruma. O gate que defende a fronteira vive em
 //! `shells/desktop/tests/it/a_layout_never_commands_a_panel_a_bridge_owns.rs`, porque o censo de quem
 //! é da ferramenta só existe nas pontes.
 //!
@@ -54,8 +53,6 @@ pub enum TaskLayout {
     Vector,
     /// ⭐ Animação quadro-a-quadro, **layout próprio** além do modo `Draw`.
     Flip,
-    /// Modelar e esculpir.
-    Modeling3d,
     /// ⚠️ **Não é o layout onde se pode animar** (a D8 diz que as timelines funcionam em todos) —
     /// é aquele onde a **ênfase** é o tempo: linha do tempo grande, canvas pequeno. *Distinção de
     /// proporção, não de capacidade.*
@@ -101,15 +98,15 @@ pub struct LayoutSpec {
 }
 
 impl TaskLayout {
-    /// Os seis, na ordem em que aparecem na barra — a fonte de toda varredura.
+    /// Os cinco, na ordem em que aparecem na barra — a fonte de toda varredura.
     ///
-    /// ⚠️ **A ordem é a da D7** (menos os dois bloqueados), e não a alfabética: ela é lida da
-    /// esquerda para a direita por quem escolhe, e a tabela dele começa no desenho.
-    pub const ALL: [Self; 6] = [
+    /// ⚠️ **A ordem é a da D7** (menos os dois bloqueados e o *Model*, que saiu com o 3D —
+    /// ADR-0179), e não a alfabética: ela é lida da esquerda para a direita por quem escolhe, e a
+    /// tabela dele começa no desenho.
+    pub const ALL: [Self; 5] = [
         Self::Drawing2d,
         Self::Vector,
         Self::Flip,
-        Self::Modeling3d,
         Self::Animation,
         Self::Nodes,
     ];
@@ -134,7 +131,7 @@ impl TaskLayout {
             // ⇒ a lei é derivável: seis pontes escrevem `insert("inspector", !active)` — a tomada
             // de conta, em que o painel da ferramenta o **substitui** na coluna. Um layout cuja
             // ferramenta faz isso não o pode nomear (seria desmentido no quadro seguinte); um cujo
-            // dono do canvas não a faz — o pintor, o `move`, o modelador — **tem** de o nomear,
+            // dono do canvas não a faz — o pintor, o `move` — **tem** de o nomear,
             // senão ele fecha e não há quem o reabra. Gate: `a_layout_names_the_inspector_exactly_
             // when_its_canvas_owner_does_not_take_it_over`.
             Self::Drawing2d => LayoutSpec {
@@ -160,15 +157,6 @@ impl TaskLayout {
                 open: &["hierarchy", "inspector"],
                 slots: &[],
                 canvas: CanvasOwner::Mode(crate::object_mode::ObjectMode::Draw),
-            },
-            Self::Modeling3d => LayoutSpec {
-                title: TextKey::new("chrome.layout.model"),
-                wire: "modeling_3d",
-                // ⭐ Modelar é o MODO Edit da peça (spec/06 F3): o painel `model3d` vem com o
-                // modo, e sem peça activa fica em Object (⛔ abri-lo aqui plantava a peça de demo).
-                open: &["hierarchy", "inspector"],
-                slots: &[],
-                canvas: CanvasOwner::Mode(crate::object_mode::ObjectMode::Edit),
             },
             Self::Animation => LayoutSpec {
                 title: TextKey::new("chrome.layout.animate"),

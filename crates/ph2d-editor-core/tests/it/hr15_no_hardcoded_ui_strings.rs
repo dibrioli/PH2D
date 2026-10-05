@@ -15,8 +15,8 @@
 //!
 //! Ela dizia: *«Until the Fluent runtime (`ph2d-i18n`) is wired and `t!(...)` exists, this test
 //! enforces a frozen baseline… When `t!(...)` ships, reduce `BASELINE` entries to 0»*. ⚠️ **A porta
-//! CHEGOU e a frase ficou:** o `ph2d_i18n::tr` existe, é usado por seis tabelas
-//! (`vector` · `sculpt3d` · `model3d` · `chrome` · e as chaves do `lib.rs`), e a `ph2d-editor-core`
+//! CHEGOU e a frase ficou:** o `ph2d_i18n::tr` existe, é usado por dezenas de tabelas
+//! (`vector` · `chrome` · `timeline` · e as chaves do `lib.rs`, entre outras), e a `ph2d-editor-core`
 //! migrou os rótulos dela em 2026-09-10. *Um gate à espera de uma coisa que já chegou é uma frase
 //! que faz a próxima pessoa acreditar que o HR-15 está fechado.*
 //!

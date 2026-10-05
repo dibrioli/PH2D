@@ -1,6 +1,8 @@
 # ADR-0160 — O quad remesh é um porte NATIVO de campo cruzado, QuadriFlow referenciado
 
-- **Status:** aceito (ordem do Enio, 2026-08-19: *"investigue o melhor algoritmo
+> **Revogado por [ADR-0179](0179-o-3d-sai-do-ph2d.md) em 2026-10-05 — o 3D saiu do PH2D.** O texto abaixo fica como história; o código foi apagado (`git show b1a6f9b07:<caminho>`).
+
+- **Status:** **REVOGADO** pelo ADR-0179 (2026-10-05) · era: aceito (ordem do Enio, 2026-08-19: *"investigue o melhor algoritmo
   de quad remesh com adaptação correta à topologia e implemente"*).
 - **Escopo:** crate-folha nova `ph2d-quadflow` (só `ph2d-mesh` como dependência
   de domínio). **Não** substitui o `ph2d-sdf::surface_nets` — os dois respondem a
@@ -14,7 +16,7 @@
 ## §1 — O problema, com o que já existe medido ao lado
 
 Este módulo **já tem um remesh que devolve quads**: o
-[`ph2d-sdf::surface_nets`](../../../crates/ph2d-sdf/src/surface_nets.rs), portado
+`ph2d-sdf::surface_nets`, portado
 do SculptGL (MIT). Ele põe **um vértice por célula** que a superfície cruza e liga
 os vizinhos ⇒ a saída é uma **grade deformada, valência 4 quase em toda parte**.
 
@@ -30,7 +32,7 @@ os vizinhos ⇒ a saída é uma **grade deformada, valência 4 quase em toda par
 | custo | O(voxels da casca) | O(V) por iteração de suavização |
 
 ⇒ O `surface_nets` é o **cavalo de batalha destrutivo** (arrumar uma malha que a
-escultura destruiu, fundir booleanas — [`04.3-Topologia`](../../3D/04-Ferramentas/04.3-Topologia.md)
+escultura destruiu, fundir booleanas — `04.3-Topologia`
 §1). O que falta, e o que o Enio pediu, é a **retopologia**: os quads correndo
 *ao longo da forma*, que é o que torna a malha subdivisível, animável e editável.
 
@@ -57,7 +59,7 @@ arestas do quad, com as junções forçadas a inteiros.
   libigl + um MIP externo. Trazer um MIP para dentro deste app é uma dependência
   de porte e de licença que o [HR-1](../../../SKILL_Stack_PH2D_Definitiva.md) não
   aceitaria sem uma wave só para ela — e o custo é de **minutos**, não do
-  *"sob comando"* que o [`04.3`](../../3D/04-Ferramentas/04.3-Topologia.md) exige.
+  *"sob comando"* que o `04.3` exige.
 
 ### (b) Campo cruzado local — Instant Meshes
 
@@ -154,7 +156,7 @@ triângulos que este módulo abre o passe custar **> 3 s** depois da segunda
 tentativa de otimização, a feature **não existe nesta forma** — ela vira offline
 (fora do laço interativo, com barra de progresso) ou não entra. *O remesh é
 "sob comando", mas um artista de Nomad o usa dezenas de vezes por sessão*
-([`04.3`](../../3D/04-Ferramentas/04.3-Topologia.md) §1).
+(`04.3` §1).
 
 ⚠️ **A4 é bilateral de propósito.** Uma distância só de ida premia uma malha que
 encolhe para dentro da original, e foi assim que a primeira sonda de remesh deste

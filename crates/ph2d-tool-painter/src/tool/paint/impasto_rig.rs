@@ -1,11 +1,7 @@
-//! O **rig de luz** da tela — e onde ele passou a morar.
+//! O **rig de luz** da tela — e onde ele mora.
 //!
-//! ## O rig saiu daqui, e o motivo não é arrumação
-//!
-//! O modelo (quantas lâmpadas, onde cada uma está, com que força, e a conversão graus→vetor) mudou-se
-//! para a crate [`ph2d_light`], porque o módulo 3D precisa **da mesma luz**: uma escultura que doa
-//! sombreamento à pintura tem de ser acesa pelas lâmpadas que o artista já mexeu, senão ele afina a
-//! arte contra uma iluminação e o resultado mostra outra (`docs/3D/05.2`).
+//! O modelo (quantas lâmpadas, onde cada uma está, com que força, e a conversão graus→vetor) mora na
+//! crate [`ph2d_light`], onde a CPU e o shader o leem igual.
 //!
 //! ⚠️ **O que NÃO se mudou é a óptica.** O material por-pixel, a LUT especular, o wax, o metal, o fold
 //! do relevo e o modelo RELATIVO continuam aqui, em `impasto_shade`. A fronteira é:

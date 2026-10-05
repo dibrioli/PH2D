@@ -106,8 +106,6 @@ fn what_the_first_lit_stroke_pays_per_canvas_size() {
             lut_width: 256,
             rough_levels: 65,
             paper_body: 0.0,
-            form: None,
-            form_occlusion: None,
         };
         let first = ms(&mut || {
             let _ = pass.run(&gpu, &src, &input);

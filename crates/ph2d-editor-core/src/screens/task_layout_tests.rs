@@ -106,7 +106,7 @@ const NEUTRAL_TOOL: &str = "move";
 fn leaving_a_modal_layout_never_leaves_its_mode_behind() {
     for from in TaskLayout::ALL {
         let CanvasOwner::Tool(modal) = from.spec().canvas else {
-            continue; // o *Model* não é uma ferramenta; a saída dele é a lei do `field3d_mode`
+            continue; // um MODO não é uma ferramenta: a saída dele é a lei do quadro do modo
         };
         if modal == NEUTRAL_TOOL {
             continue;

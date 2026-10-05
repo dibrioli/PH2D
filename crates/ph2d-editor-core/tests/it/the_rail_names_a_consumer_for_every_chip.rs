@@ -59,27 +59,32 @@ enum Fate {
 /// `const` não os pode chamar directamente.
 type Row = (&'static str, fn() -> NodeId, Fate);
 
+/// O motivo partilhado dos três verbos de transformação (ver a nota na tabela).
+const GIZMO_2D_PELA_ALCA: &str = "o unico leitor era o modulo 3D, que saiu (ADR-0179); o gizmo 2D \
+     escolhe o verbo pela ALCA que se agarra, e o chip so' acende a propria luz (`chrome::rail_tools`).";
+
 /// ⭐⭐⭐ **UMA LINHA POR CHIP DA FILA** — e o veredito é sobre o **VALOR**, não sobre o clique.
 const RAIL_CONSUMERS: &[Row] = &[
     // ── Os verbos de transformação ─────────────────────────────────────────────────────────────
     //
-    // ⛔⛔ **Vivos SÓ com o módulo 3D no canvas**, desde 2026-09-01. No editor 2D o gizmo escolhe o
-    // verbo pela ALÇA que se agarra (bbox → mover, canto → escalar, anel → rodar), não por um modo —
-    // então não há lá o que ligar, e a fileira é decoração.
+    // ⛔⛔ **O único leitor destes três era o módulo 3D**, que saiu (ADR-0179). No editor 2D o gizmo
+    // escolhe o verbo pela ALÇA que se agarra (bbox → mover, canto → escalar, anel → rodar), não por
+    // um modo — então não há lá o que ligar. ⏳ Apagar os chips ou ligá-los ao gizmo 2D é uma
+    // decisão de PRODUTO, nomeada no handoff da `line/poda-3d`.
     (
         "TOOL_TRANSLATE",
         || ids::TOOL_TRANSLATE,
-        Fate::ReadBy("crates/ph2d-panel-model3d/src/area_bar.rs"),
+        Fate::DeadOnPurpose(GIZMO_2D_PELA_ALCA),
     ),
     (
         "TOOL_ROTATE",
         || ids::TOOL_ROTATE,
-        Fate::ReadBy("crates/ph2d-panel-model3d/src/area_bar.rs"),
+        Fate::DeadOnPurpose(GIZMO_2D_PELA_ALCA),
     ),
     (
         "TOOL_SCALE",
         || ids::TOOL_SCALE,
-        Fate::ReadBy("crates/ph2d-panel-model3d/src/area_bar.rs"),
+        Fate::DeadOnPurpose(GIZMO_2D_PELA_ALCA),
     ),
     // ⭐ **O `PIVOT` é o único dos quatro que sempre teve consumidor** — e a entrega 36 disse o
     // contrário porque o `grep` dela levou `head -20`.
@@ -92,7 +97,10 @@ const RAIL_CONSUMERS: &[Row] = &[
     (
         "TOOL_SPACE",
         || ids::TOOL_SPACE,
-        Fate::ReadBy("crates/ph2d-panel-model3d/src/event.rs"),
+        Fate::DeadOnPurpose(
+            "o referencial Global/Local era lido so' pelo gizmo 3D, que saiu (ADR-0179); o gizmo 2D \
+             nao tem eixos locais a escolher. Mesma decisao de produto em aberto dos tres verbos.",
+        ),
     ),
     (
         "TOOL_HOME",
@@ -291,8 +299,9 @@ fn is_a_shrug(reason: &str) -> bool {
 
 /// ⭐⭐ **O CONTROLE POSITIVO da regra acima** — e ele é obrigatório por duas razões.
 ///
-/// ⛔ **A primeira:** hoje a tabela tem **zero** `DeadOnPurpose`, então o laço do censo nunca entra
-/// naquele braço — a regra estaria a ser afirmada sobre uma população vazia, *«verde por vácuo»*.
+/// ⛔ **A primeira:** até 2026-10-05 a tabela tinha **zero** `DeadOnPurpose` (hoje são os quatro que
+/// o 3D deixou, ADR-0179), e uma população que pode voltar a zero deixa o laço do censo fora daquele
+/// braço — a regra estaria a ser afirmada sobre uma população vazia, *«verde por vácuo»*.
 ///
 /// ⭐ **A segunda:** é ele que mantém a variante VIVA. Sem um construtor, o compilador acusa-a de
 /// morta — e apagá-la deixaria as mensagens dos gates irmãos a mandar usar um vocabulário que já

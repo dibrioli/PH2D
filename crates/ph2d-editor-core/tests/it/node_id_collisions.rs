@@ -82,12 +82,6 @@ const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
         "item do menu Add de objectos = hash da CHAVE i18n da entrada (`object_add.*`); só é hit-registado com a paleta aberta; a colisão com as outras paletas do canal de pick é o no_menu_id_belongs_to_another_palette da shell",
     ),
     (
-        "crates/ph2d-app-field3d/src/shape_palette.rs",
-        "item_id",
-        Especie::HashDeExpressao,
-        "item da paleta de formas = hash da CHAVE i18n da forma (`panel.model3d.add.*`); só é hit-registado com a paleta aberta",
-    ),
-    (
         "crates/ph2d-app-motion/src/motion_bridge_library.rs",
         "build_palette_model",
         Especie::HashDeExpressao,
@@ -158,12 +152,6 @@ const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
         "detect_collisions",
         Especie::HashDeExpressao,
         "é a PRÓPRIA verificação tool-vs-tool dos manifestos",
-    ),
-    (
-        "crates/ph2d-viewport3d/src/view_menu.rs",
-        "row_id",
-        Especie::HashDeExpressao,
-        "linha do menu de vistas = hash da CHAVE i18n da vista; só é hit-registada com o menu aberto",
     ),
     (
         "crates/ph2d-app-motion/src/motion_bridge_color.rs",

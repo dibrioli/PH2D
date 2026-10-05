@@ -16,9 +16,9 @@ use ph2d_editor_core::{HeroScreen, Toast};
 /// imagem pintada tem `Sprite` **e** `PaintedDoc`, e é uma IMAGEM (pintar é um modo dela, escolha
 /// 1 do dono no spec/06). O primeiro que casar manda.
 ///
-/// ⛔ Até 03/10 esta função conhecia **três** dos seis marcadores: um desenho Flip, uma imagem
-/// pintada sem `Sprite` e uma peça de escultura liam-se como VAZIO. O gate
-/// `every_marker_derives_its_kind` cobre os seis contra o [`ObjectKind::marker`].
+/// ⛔ Até 03/10 esta função não conhecia todos os marcadores: um desenho Flip e uma imagem
+/// pintada sem `Sprite` liam-se como VAZIO. O gate `every_marker_derives_its_kind` cobre todos
+/// contra o [`ObjectKind::marker`].
 #[must_use]
 pub fn kind_of(
     world: &ph2d_ecs::World,
@@ -31,8 +31,6 @@ pub fn kind_of(
         ObjectKind::Vector => world.get::<ph2d_ecs::VecObject>(entity).is_some(),
         ObjectKind::Flip => world.get::<ph2d_ecs::FlipObjectRef>(entity).is_some(),
         ObjectKind::Painted => world.get::<ph2d_ecs::PaintedDoc>(entity).is_some(),
-        ObjectKind::Model3D => world.get::<ph2d_field_ecs::FieldObject>(entity).is_some(),
-        ObjectKind::Sculpt3D => world.get::<ph2d_ecs::Sculpt3dPieceRef>(entity).is_some(),
     };
     ObjectKind::ALL
         .into_iter()

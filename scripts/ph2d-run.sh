@@ -48,7 +48,7 @@
 #
 # ## USO
 #   bash scripts/ph2d-run.sh cargo test -p ph2d-timeline
-#   PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-field-gpu -- --ignored
+#   PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-render -- --ignored
 #   PH2D_PRAZO=5400 bash scripts/ph2d-run.sh cargo nextest run --workspace
 #
 # ## SUBIR UM TECTO (§0.0: quem sobe, MEDE e escreve o número)

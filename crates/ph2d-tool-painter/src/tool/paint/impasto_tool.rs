@@ -83,9 +83,7 @@ impl PainterTool {
     }
 
     /// ⭐ **Este traço MOLDA o relevo?** — o depósito com o `Impasto` ligado, a
-    /// faca e os verbos de esculpir. A pergunta da escultura antes de pintar a
-    /// peça (`docs/3D/29`, D1): sem plano de tinta fina a espessura não tem
-    /// onde morar, e o artista tem de ouvir isso no pen-down.
+    /// faca e os verbos de esculpir.
     ///
     /// ⚠️ É o [`Self::impasto_section_applies`] com o depósito a exigir o
     /// interruptor do pincel — a secção aparece em `Paint` mesmo com ele

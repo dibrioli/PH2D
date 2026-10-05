@@ -204,7 +204,7 @@ commits** atrás do meu merge-base e não serve. A prova que fica é equivalente
 
 ### O único vermelho é uma FLAKE NOMEADA
 
-`measure_normals_parallel_speedup` ([`ph2d-mesh`](../../../crates/ph2d-mesh/)) — **membro nomeado**
+`measure_normals_parallel_speedup` (`ph2d-mesh`) — **membro nomeado**
 da família de flakes de carga (`CLAUDE.md` §5.0). As três assinaturas:
 
 - **zero** linhas do meu diff naquela crate;

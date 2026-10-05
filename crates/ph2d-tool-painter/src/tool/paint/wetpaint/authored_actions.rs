@@ -144,14 +144,7 @@ impl PainterTool {
     /// is already in `canvas_rgba`, so ending IS the bake — the water just
     /// stops moving. The show-wet VEIL must never bake (doc 22 §2.7): with
     /// the overlay on and the canvas still ours, recomposite clean first.
-    #[track_caller]
     pub(crate) fn wetpaint_end_session(&mut self) {
-        if self.paint.wetpaint.session.is_some() && super::registo_da_agua() {
-            eprintln!(
-                "[painter3d] ⛔ a sessao da agua ACABOU: fim explicito (chamado de {})",
-                std::panic::Location::caller()
-            );
-        }
         self.wetpaint_guard();
         if self.paint.wetpaint.show_wet && self.paint.wetpaint.session.is_some() {
             if let Some(sess) = self.paint.wetpaint.session.as_mut() {

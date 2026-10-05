@@ -114,11 +114,9 @@ const UNCONSUMED_PENDING: &[(&str, &str, &str)] = &[
 /// varredura, a sonda deixou de a ver e isso também reprova.
 const CLEAN_QUEUES: &[&str] = &[
     "FlipStripIntent",
-    "ModelIntent",
     "GraphIntent",
     "MotionParamIntent",
     "PhysicsIntent",
-    "Sculpt3dIntent",
     "TimelineIntent",
     "TokensIntent",
 ];

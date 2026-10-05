@@ -597,9 +597,7 @@ mod spatial;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
-mod units_tests;
-#[cfg(test)]
-mod vizinhanca_tests; // ADR-0177 P4: the space of each neighbourhood kernel (LOC cap: sibling) // docs/3D/30 §14: where a spatial slider's extent lives
+mod vizinhanca_tests; // ADR-0177 P4: the space of each neighbourhood kernel (LOC cap: sibling)
 pub use compute::{
     DISPLAY_LUT_N, SELCOLOR_BUCKETS, add_gradient_stop, adjustment_segment_params,
     adjustment_slider_params, adjustment_toggle_params, apply_adjustment,
@@ -614,11 +612,6 @@ pub use compute::{
     SliderNumber, adjustment_slider_numbers, channel_mixer_slider_numbers,
     gradient_stop_color_numbers, selective_color_slider_numbers,
 };
-// Where a spatial extent lives — px on the grid, a surface's units (`docs/3D/30` §14).
-pub use compute::{
-    SURFACE_RADIUS_MAX, SpatialUnits, adjustment_slider_numbers_in, adjustment_slider_params_in,
-    rescale_spatial_params, set_adjustment_slider_param_in, spatial_extent_slots,
-};
 // Color Lookup — built-in cinematic looks (per-pixel grade; `.cube` load is a
 // shell follow-up).
 pub use lut::{LUT_PRESET_COUNT, LUT_PRESETS, apply_color_lookup};
@@ -628,9 +621,8 @@ pub use psd_export::PsdExport;
 // (gated by `spatial_weights_parity`); `apply_chromatic_aberration` is NOT yet
 // reconciled and DIVERGES from the GPU (see `spatial.rs` §Two roles, audit 2026-06-18).
 pub use spatial::{
-    AdjustWindow, MAX_BLUR_HALF, Neighbourhood, apply_adjustment_on, apply_adjustment_windowed,
-    apply_bloom, apply_bloom_on, apply_chromatic_aberration, apply_gaussian, apply_gaussian_on,
-    apply_halftone, apply_motion_blur, apply_noise, apply_shadows_highlights,
-    apply_shadows_highlights_on, apply_sharpen, apply_sharpen_on, gaussian_sigma, gaussian_weights,
-    motion_weights,
+    AdjustWindow, MAX_BLUR_HALF, apply_adjustment_windowed, apply_bloom,
+    apply_chromatic_aberration, apply_gaussian, apply_halftone, apply_motion_blur, apply_noise,
+    apply_shadows_highlights, apply_sharpen, gaussian_weights, motion_weights,
+    separable_blur_scalar,
 };

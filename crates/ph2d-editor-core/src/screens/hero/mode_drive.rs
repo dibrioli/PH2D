@@ -17,7 +17,7 @@ use ph2d_i18n::tr_with;
 /// dela. Uma família sem modo de criação não declara nada.
 ///
 /// ⚠️ **Um trait, e não uma tabela de `fn`:** cada família abre o modo com os recursos DELA (o
-/// Painter só precisa do registo de ferramentas; a escultura, da cena e do mapa peça↔entidade). A
+/// Painter só precisa do registo de ferramentas; o vetor, da cena e das formas do objecto). A
 /// shell constrói as famílias em cada quadro com o que cada uma empresta — a assinatura comum de
 /// recursos seria uma mentira (o mesmo desvio do `object_add`, spec/06 F1).
 pub trait ModeFamily {
@@ -40,12 +40,12 @@ pub trait ModeFamily {
     }
     /// ⭐ **O que se edita DENTRO de `entity`** no modo em curso: `None` = o modo edita o objecto
     /// inteiro (o cadeado exige a selecção exacta); `Some` = as partes que a selecção pode ter sem o
-    /// modo cair (o Edit do Model: as formas da peça são linhas próprias na Hierarquia).
+    /// modo cair (o Edit do vetor: as formas do objecto são linhas próprias na Hierarquia).
     fn parts(&mut self, _entity: u64) -> Option<Vec<u64>> {
         None
     }
     /// ⭐ **De que objecto desta família `bits` é parte** — o seletor e o `Tab` sobre uma parte
-    /// respondem pelo dono (uma forma seleccionada na Hierarquia oferece o Edit da peça dela).
+    /// respondem pelo dono (uma forma seleccionada na Hierarquia oferece o Edit do objecto dela).
     fn owner_of(&mut self, _bits: u64) -> Option<u64> {
         None
     }
@@ -207,9 +207,8 @@ pub fn drive(
                 if let Some(bits) = active
                     && let Some(f) = family(families, kind_of(bits), m)
                 {
-                    // ⚠️ Colapsar ANTES de abrir: o módulo lê a selecção ao abrir (o Sculpt do
-                    // Blender toma só o activo, e o Painter o documento seleccionado) — salvo os
-                    // do mesmo tipo, num modo que os junta.
+                    // ⚠️ Colapsar ANTES de abrir: o módulo lê a selecção ao abrir (o Painter toma
+                    // só o documento seleccionado) — salvo os do mesmo tipo, num modo que os junta.
                     let joined = if f.joins(m) {
                         same_kind_selected(hero, kind_of, bits)
                     } else {
@@ -297,7 +296,7 @@ pub fn refused(
     refuse
 }
 
-/// ⭐ **O gizmo de transformação É o modo Object** (D6): num modo de criação (Paint, Sculpt) ele
+/// ⭐ **O gizmo de transformação É o modo Object** (D6): num modo de criação (Paint, Draw) ele
 /// seria um controlo que não responde por cima do módulo. A shell pergunta aqui ao decidir se o
 /// pinta; a selecção fica armada. ⭐ A excepção é uma PARTE seleccionada num modo cuja família o
 /// declara ([`ModeFamily::parts_take_the_object_gizmo`]) — nunca o objecto trancado inteiro.

@@ -1,7 +1,7 @@
 //! **AS STRINGS DA MOLDURA DO APP** — o irmão de tabela do [`super`], para o que **não** é de um
 //! painel: diálogos, modais, a paleta de comandos, a barra do topo, o selector de cor.
 //!
-//! ⚠️ **Um corte por ASSUNTO, como o `sculpt3d.rs` e o `model3d.rs`** — e pela mesma razão de
+//! ⚠️ **Um corte por ASSUNTO, como o `vector.rs` e o `timeline.rs`** — e pela mesma razão de
 //! isolamento (`CLAUDE.md` §0.2): enquanto todas as chaves moram num `match` só, duas linhas
 //! paralelas que acrescentem uma chave cada colidem no mesmo punhado de linhas.
 //!

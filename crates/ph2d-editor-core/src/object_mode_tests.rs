@@ -173,7 +173,7 @@ fn the_lock_refuses_another_object_in_a_creation_mode() {
     assert_eq!(decide(Some(IMG), None, None, false), Decision::Allow);
 }
 
-/// ⭐ GATE — num modo que edita PARTES (o Edit do Model, spec/06 F3) a selecção pode ser qualquer
+/// ⭐ GATE — num modo que edita PARTES (o Edit do vetor, spec/06 F3) a selecção pode ser qualquer
 /// parte, várias, ou nenhuma; outro objecto continua a derrubar o modo e a ser recusado.
 #[test]
 fn a_mode_of_parts_holds_and_admits_its_parts_only() {

@@ -111,12 +111,8 @@ pub const TOKENS_SCROLLBAR_ID: NodeId = NodeId(838);
 /// for the same reason as the siblings above. Next free id is `840`;
 /// re-read the collision note above before taking it.
 pub const AUTHORED_SCROLLBAR_ID: NodeId = NodeId(839);
-/// Painel da cena 3D (ADR-0150 W12) — seis seções, das quais a de FERRAMENTA
-/// sozinha é uma faixa de dezesseis chips que reflui em várias linhas: ele
-/// transborda o dock em qualquer resolução. Thumb próprio pelo mesmo motivo dos
-/// irmãos acima. Next free id is `841`; re-read the collision note above before
-/// taking it.
-pub const SCULPT3D_SCROLLBAR_ID: NodeId = NodeId(840);
+// ⛔ `840` foi da barra do painel de escultura 3D, que saiu com o 3D (ADR-0179). O número fica
+// RETIRADO: este livro-razão nunca reusa um id.
 /// Motion **params** docked-panel scrollbar (doc 88 §B3). Medido na época: uma linha escalar
 /// ocupa **34 px** e o dock comportava **24** delas, contra um tecto de `MAX_PARAM_ROWS = 16` e
 /// um pior nó (`motion.tint`) de **15 params**.
@@ -133,7 +129,7 @@ pub const SCULPT3D_SCROLLBAR_ID: NodeId = NodeId(840);
 /// note above before taking it.
 ///
 /// ⚠️ **A linha escreveu 839; o valor CONTADO na integração é 841** — a
-/// `line/Vector` (AUTHORED, 839) e a `line/sculpt3d` (SCULPT3D, 840) pousaram
+/// `line/Vector` (AUTHORED, 839) e uma linha vizinha (o `840`, hoje retirado) pousaram
 /// antes na mesma janela, e os NOMES das constantes diferem, então o git funde
 /// as três limpas e deixa a colisão para o `assert_ne!` da lista abaixo. O
 /// número se CONTA a partir do `main` do dia, nunca se escolhe.
@@ -148,16 +144,8 @@ pub const MOTION_PARAMS_SCROLLBAR_ID: NodeId = NodeId(841);
 /// collision note above before taking it.
 pub const INPUT_MAP_SCROLLBAR_ID: NodeId = NodeId(842);
 
-/// **O painel do módulo de MODELAGEM 3D** (ADR-0161) — o report do Enio de 2026-08-27:
-/// *«o painel 3d Model precisa de scroll e barra de scroll»*.
-///
-/// ⛔ **Ele já RECORTAVA e nunca rolava**, que é a pior das três formas: um painel sem recorte
-/// desenha por cima do título e vê-se; um que recorta e rola funciona; **um que recorta e não rola
-/// esconde os controles e não diz nada.** As linhas do fim — o rodapé, e as fileiras de parâmetros
-/// de um documento com vários nós — ficavam inalcançáveis, sem sinal nenhum de que existiam.
-///
-/// ⚠️ Thumb próprio pelo mesmo motivo dos irmãos acima.
-pub const MODEL3D_SCROLLBAR_ID: NodeId = NodeId(843);
+// ⛔ `843` foi da barra do painel de modelagem 3D, que saiu com o 3D (ADR-0179). RETIRADO, como o
+// `840`: nunca se reusa.
 
 /// Barra do **navegador de assets** (plano `docs/Components/07`, wave A4) — a grade de cartões
 /// passa da altura do painel assim que o projecto tem mais de uma dúzia de assets.
@@ -250,10 +238,8 @@ mod tests {
             ("WET_TUNING", WET_TUNING_SCROLLBAR_ID),
             ("TOKENS", TOKENS_SCROLLBAR_ID),
             ("AUTHORED", AUTHORED_SCROLLBAR_ID),
-            ("SCULPT3D", SCULPT3D_SCROLLBAR_ID),
             ("MOTION_PARAMS", MOTION_PARAMS_SCROLLBAR_ID),
             ("INPUT_MAP", INPUT_MAP_SCROLLBAR_ID),
-            ("MODEL3D", MODEL3D_SCROLLBAR_ID),
             ("ASSET_CATALOG", ASSET_CATALOG_SCROLLBAR_ID),
             ("LAB", LAB_SCROLLBAR_ID),
             ("ASSET_BROWSER", ASSET_BROWSER_SCROLLBAR_ID),

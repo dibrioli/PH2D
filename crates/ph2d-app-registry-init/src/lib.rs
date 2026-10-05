@@ -26,15 +26,15 @@
 //!
 //! # ⚠️ O que este registo NÃO faz (e a razão é medida)
 //!
-//! ⛔ **Ele não abstrai o laço de quadro.** O `render_loop` chama **48 símbolos** do piloto, em
-//! ordem e heterogéneos — desenhar, drenar nove pedidos, sincronizar o ECS, exportar, importar,
-//! pintar quatro gizmos. Transformar isso numa lista de ganchos genéricos é redesenhar o laço a
+//! ⛔ **Ele não abstrai o laço de quadro.** O `render_loop` chama dezenas de símbolos de cada
+//! família, em ordem e heterogéneos — desenhar, drenar pedidos, sincronizar o ECS, exportar,
+//! importar, pintar gizmos. Transformar isso numa lista de ganchos genéricos é redesenhar o laço a
 //! partir de **uma** família, que é exactamente o que o briefing proíbe (*«medir antes de
-//! generalizar»*). A shell continua a chamar `ph2d_app_field3d::…` pelo nome — e pode, porque a
+//! generalizar»*). A shell continua a chamar `ph2d_app_<fam>::…` pelo nome — e pode, porque a
 //! seta aponta na direcção certa: **a shell depende da família, a família nunca depende da shell.**
 //!
-//! ⛔ **Ele não arma a família.** O piloto pergunta-se a si próprio se está armado
-//! (`armed_scene()` lê a env ou o pill) e todo gancho dele é **inerte** quando a resposta é não.
+//! ⛔ **Ele não arma a família.** Cada família pergunta-se a si própria se está armada (a env ou o
+//! pill) e todo gancho dela é **inerte** quando a resposta é não.
 //! Um registo que «ligasse» famílias seria um segundo dono dessa decisão.
 //!
 //! # O que ele carrega: a DECLARAÇÃO de cada família
@@ -62,8 +62,6 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_audio::FAMILY);
     #[cfg(feature = "app-components")]
     reg.push(ph2d_app_components::FAMILY);
-    #[cfg(feature = "app-field3d")]
-    reg.push(ph2d_app_field3d::FAMILY);
     #[cfg(feature = "app-flip")]
     reg.push(ph2d_app_flip::FAMILY);
     #[cfg(feature = "app-motion")]
@@ -72,8 +70,6 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_painter::FAMILY);
     #[cfg(feature = "app-physics")]
     reg.push(ph2d_app_physics::FAMILY);
-    #[cfg(feature = "app-sculpt3d")]
-    reg.push(ph2d_app_sculpt3d::FAMILY);
     #[cfg(feature = "app-skeleton")]
     reg.push(ph2d_app_skeleton::FAMILY);
     #[cfg(feature = "app-vec")]

@@ -96,8 +96,8 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_MOTION,
             TopBarCluster::single(tr("chrome.topbar.pill.motion"), IconId::MotionNodes),
         ),
-        // ⚠️ Os pills SCULPT, FLIP e MODEL saíram (spec/06 F3): a escultura, o desenho Flip e a
-        // peça de modelagem abrem-se pelo MODO do objecto, não por um pill.
+        // ⚠️ O pill FLIP saiu (spec/06 F3): o desenho Flip abre-se pelo MODO do objecto, não por
+        // um pill. (Os dois pills do 3D saíram com ele, ADR-0179.)
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
         // Widget Gallery (palette) — toggles a floating reference

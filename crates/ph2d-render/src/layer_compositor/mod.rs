@@ -37,7 +37,6 @@ mod compositor;
 mod flatten; // the LayerOp list → the GPU op list + its reusable scratch (LOC cap: sibling module)
 mod ops; // the op-list model + its pure queries (LOC cap: sibling module)
 mod readback; // the blocking test/verification readback (LOC cap: sibling module)
-mod surface; // the surface neighbourhood: the heat kernel on a graph (docs/3D/30 §14)
 
 #[cfg(test)]
 mod tests;
@@ -46,12 +45,11 @@ pub use flatten::{GpuOpScratch, flatten_layer_ops};
 use ops::{COMBINE_BLOOM, COMBINE_GAUSSIAN, COMBINE_SHARPEN};
 pub use ops::{
     LayerMask, LayerOp, MAX_BLUR_HALF, SPATIAL_BLOOM, SPATIAL_CHROMA, SPATIAL_GAUSSIAN,
-    SPATIAL_MOTION, SPATIAL_SHADOWS_HIGHLIGHTS, SPATIAL_SHARPEN, gaussian_sigma, gaussian_weights,
-    has_spatial, motion_weights,
+    SPATIAL_MOTION, SPATIAL_SHADOWS_HIGHLIGHTS, SPATIAL_SHARPEN, gaussian_weights, has_spatial,
+    motion_weights,
 };
 use ops::{distinct_layer_count, op_mask, validate_op_list};
 use readback::readback_rgba8;
-pub use surface::{SurfaceGraph, SurfaceNeighbourhood, SurfaceRefusal};
 
 /// **As 22 leis de mistura**, extraídas quando ganharam o SEGUNDO consumidor (a pilha de FX raster
 /// do módulo vetorial, plano 24 W6). Prefixo de módulo — não parseia sozinho, de propósito.
@@ -658,10 +656,6 @@ pub struct LayerCompositor {
     /// (rebuilt when it grows). `base[2]` ping-pong across segments + combines;
     /// `blur[2]` ping-pong across the separable H/V passes. Reused across frames.
     work: Option<WorkTextures>,
-    /// The surface the neighbourhood kinds low-pass over (`None` = the image grid).
-    surface: Option<SurfaceNeighbourhood>,
-    /// The surface heat's pipelines + scratch, built on the first installed surface.
-    heat: Option<surface::HeatGpu>,
 }
 
 /// Linear `Rgba32Float` intermediates for the segmented pass-graph, all sized to

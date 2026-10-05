@@ -149,9 +149,6 @@ impl PainterTool {
         dragged: ph2d_a11y::NodeId,
         drop: ph2d_editor_core::interaction::PanelRowDrop,
     ) {
-        if self.piece_reparent(dragged, drop) {
-            return;
-        }
         if reparent_in(&mut self.layers, dragged, drop) {
             self.invalidate_composite();
         }
@@ -625,8 +622,7 @@ impl PainterTool {
     }
 }
 
-/// ⭐ **A lei do arrasto de uma linha sobre uma pilha** — a do documento 2D e a da peça 3D (o espelho
-/// em `piece_layers`). `true` = a pilha mudou.
+/// ⭐ **A lei do arrasto de uma linha sobre uma pilha**. `true` = a pilha mudou.
 pub(crate) fn reparent_in(
     stack: &mut LayerStack,
     dragged: ph2d_a11y::NodeId,
@@ -634,7 +630,7 @@ pub(crate) fn reparent_in(
 ) -> bool {
     use ph2d_editor_core::interaction::PanelRowDrop;
     let find =
-        |s: &LayerStack, id| super::super::piece_layers::layer_widget_in(s, id).map(|(l, _)| l);
+        |s: &LayerStack, id| super::super::layer_edit::layer_widget_in(s, id).map(|(l, _)| l);
     let Some(d) = find(stack, dragged) else {
         return false;
     };

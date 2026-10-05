@@ -21,9 +21,8 @@
 //!
 //! ## Por que NÃO é um terceiro remédio ad-hoc
 //!
-//! O [`crate::PaintedDoc`] nomeia um documento em **camadas** (não achatável) e o
-//! [`crate::BakedForm`] nomeia **canais de G-buffer + rig de luz**. Nenhum dos dois é *pixels
-//! chapados* — o caso base é que nunca existiu, e é ele que faltava debaixo dos dois. Toda
+//! O [`crate::PaintedDoc`] nomeia um documento em **camadas** (não achatável), que não é *pixels
+//! chapados* — o caso base é que nunca existiu, e é ele que faltava debaixo dele. Toda
 //! ferramenta de imagem (trim · bgremoval · make-square · padding · upscale · rasterize ·
 //! equalize · painter) sai por um funil só (`commit_edited_texture`), e até aqui o que ela
 //! produzia não sobrevivia a fechar o app.

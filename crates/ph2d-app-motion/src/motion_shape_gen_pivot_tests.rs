@@ -130,8 +130,8 @@ fn o_zero_do_pivot_e_o_pivo_natural_da_especie() {
 /// ⚠️ **O PIVÔ ENTRA NA CHAVE DA GEOMETRIA** — senão a 1.ª forma cozida volta do cache para todos
 /// os outros valores e o controlo fica **inerte depois da primeira vez**.
 ///
-/// É o defeito que o cabeçalho de [`ph2d_node_motion_shape::param::ALL`] narra (o *Pattern Offset*
-/// do sculpt3d, 2026-08-09), e a régua é a chave que o shell e o nó calculam pela MESMA porta.
+/// É o defeito que o cabeçalho de [`ph2d_node_motion_shape::param::ALL`] narra (o *Pattern Offset*,
+/// 2026-08-09), e a régua é a chave que o shell e o nó calculam pela MESMA porta.
 #[test]
 fn o_pivot_entra_na_chave_da_geometria() {
     let chave = |pivot: f32| {

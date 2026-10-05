@@ -434,8 +434,8 @@ fn no_magic_numeric_in_widget_or_screens() {
                 }
                 // ⚠️ **O COMENTÁRIO À DIREITA não é código, e varrê-lo é varrer PROSA.** Este gate
                 // reprovou em 2026-08-23 sobre a linha `… // 0 = herda (spec §8.12)`: ele leu a
-                // referência da spec como o literal `8.12`. É a lição que o `sculpt_source::source`
-                // do shell já tinha pago, escrita lá: *um gate que dispara em documentação ensina a
+                // referência da spec como o literal `8.12`. É a lição que um gate de fonte da
+                // shell já tinha pago: *um gate que dispara em documentação ensina a
                 // não documentar*.
                 //
                 // ⚠️ O corte respeita as STRINGS (`"http://…"` não abre comentário), senão ele

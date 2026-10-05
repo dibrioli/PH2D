@@ -1,12 +1,14 @@
 # ADR-0170 — O corte é uma **booleana de malha**, e desta vez a biblioteca **ENTRA** em vez de ficar oráculo
 
-- **Status:** Aceito (2026-09-15)
+> **Revogado por [ADR-0179](0179-o-3d-sai-do-ph2d.md) em 2026-10-05 — o 3D saiu do PH2D.** O texto abaixo fica como história; o código foi apagado (`git show b1a6f9b07:<caminho>`).
+
+- **Status:** **REVOGADO** pelo ADR-0179 (2026-10-05) · era: Aceito (2026-09-15)
 - **Contexto:** `line/sculpt3d`. Ordem do dono em 2026-09-15: *«Creio que ainda não temos vários
   pincéis do blender: Vamos começar por TRIM. Vá estudar o blender para implementar aqui.»*
 - **Sob:** [ADR-0075](0075-multiagent-parallelism-ecs-decoupling-not-runtime-plugins.md) (drop-crate)
   · [ADR-0150](0150-3d-sculpt-is-a-mesh-that-donates-shading-sculptgl-referenced.md) (o módulo de
   escultura) · a lei do gesto vive na
-  [`SPEC_trim_gesture.md`](../../3D/cleanroom/SPEC_trim_gesture.md), atestada pelo R-pré.
+  `SPEC_trim_gesture.md`, atestada pelo R-pré.
 - ⚠️ **Contraste deliberado com [ADR-0162](0162-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md)
   e [ADR-0167](0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)** —
   a *mesma* pergunta, e a resposta é **oposta**, porque a **licença** é outra.
@@ -25,7 +27,7 @@ tem **duas** rotas possíveis, e elas **não** levam ao mesmo sítio:
 ## 2 — A medição que decide (e ela foi feita dos DOIS lados, independentemente)
 
 A sonda `ph2d_sdf::remesh::tests::diag_o_preco_da_volta_por_campo` mediu a nossa rota; a
-[`SPEC_trim_gesture.md`](../../3D/cleanroom/SPEC_trim_gesture.md) §1.1–§1.2 mediu o oráculo. **Os
+`SPEC_trim_gesture.md` §1.1–§1.2 mediu o oráculo. **Os
 dois números concordam**, na mesma peça de `98 306` vértices:
 
 | | booleana | volta por campo |
@@ -50,7 +52,7 @@ artista a possibilidade de cortar **sem** remalhar, que é a razão de o passo e
 2. **A biblioteca permissiva ENTRA na árvore** — `manifold-rust 0.13.1`, **Apache-2.0**, **Rust
    puro**.
 3. **Ela vive atrás de uma fronteira nossa** — a crate-folha
-   [`ph2d-mesh-bool`](../../../crates/ph2d-mesh-bool/), com **cinco** coisas na superfície
+   `ph2d-mesh-bool`, com **cinco** coisas na superfície
    (converter · importar · **ler o estado da entrada** · operar · converter de volta). *Trocar o
    motor é reescrever **um ficheiro**.*
 

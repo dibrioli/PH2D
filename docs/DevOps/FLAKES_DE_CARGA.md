@@ -48,8 +48,6 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `the_cost_of_depth_is_linear_not_explosive` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/it/nesting_clock.rs) | razão de relógios |
 | `the_cost_of_sampling_a_path_is_flat_in_its_anchors` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/it/motion_path_perf.rs) | razão de relógios |
 | `the_segment_lookup_is_a_binary_search_not_a_scan` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/it/motion_path_perf.rs) | razão de relógios (5,13× na suíte a `load 40`; 1,05× sozinho, 3/3) |
-| `a_locked_selection_is_announced_once_not_every_frame` | [`ph2d-app-field3d`](../../crates/ph2d-app-field3d/src/malha_render_costura_tests.rs) | a malha do Render nasce noutra thread: 5 quadros contados antes de ela chegar (falhou na suíte da crate a `load ~14`, 36 s; sozinho 3/3 a `load 6–8`, 4 s) |
-| `in_the_mesh_render_the_style_tint_and_its_softness_reach_the_frame` | [`ph2d-app-field3d`](../../crates/ph2d-app-field3d/src/malha_render_costura_tests.rs) | prazo de RELÓGIO de 30 s à espera do quadro da outra thread («o quadro nunca chegou»; 70 s na suíte a `load ~14`; sozinho 3/3 a `load 6–8`) |
 | `apply_from_doc_is_zero_alloc_steady_state` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/no_alloc_bridge.rs) | contagem de alocações |
 | `no_expression_allocates_no_link_frame` | [`ph2d-timeline`](../../crates/ph2d-timeline/tests/no_expression_link_frame_alloc.rs) | contagem de alocações |
 | `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/wetpaint/tests.rs) | razão de relógios |
@@ -59,13 +57,7 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/mask_gate_tests.rs) | razão de relógios |
 | `glaze_layering_costs_a_ratio_not_an_order_of_magnitude` | [`ph2d-wet-paint`](../../crates/ph2d-wet-paint/tests/it/perf_experimental.rs) | razão de relógios |
 | `only_the_lower_row_breathes_and_it_moves_with_the_playhead` | [`ph2d-app-motion`](../../crates/ph2d-app-motion/src/motion_state_conferencia_demos_audio_tests.rs) | relógio |
-| `an_abandoned_march_returns_nothing_and_returns_fast` | [`ph2d-field-render`](../../crates/ph2d-field-render/src/tests.rs) | relógio de desistência |
 | `emitter_sim_ceiling_probe` | [`ph2d-gpu-cook`](../../crates/ph2d-gpu-cook/tests/it/gpu_cpu_parity_sim.rs) | relógio (`#[ignore]`) |
-| `the_region_refresh_is_bound_by_the_footprint_not_by_the_mesh` | [`ph2d-mesh`](../../crates/ph2d-mesh/tests/it/measure_normals.rs) | razão de relógios |
-| `measure_normals_parallel_speedup` | [`ph2d-mesh`](../../crates/ph2d-mesh/tests/it/measure_normals.rs) | razão paralelo/série |
-| `measure_brush_kernel` | [`ph2d-sculpt3d`](../../crates/ph2d-sculpt3d/tests/it/measure_brush_kernel.rs) | relógio (34 s sozinho) |
-| `o_pen_down_do_filtro_e_linear_nos_vertices` | [`ph2d-sculpt3d`](../../crates/ph2d-sculpt3d/tests/it/mede_o_filtro_de_tecido.rs) | expoente ajustado a relógios |
-| `the_frame_is_hoisted_out_of_the_vertex_loop` | [`ph2d-sculpt3d`](../../crates/ph2d-sculpt3d/tests/it/the_frame_is_hoisted_out_of_the_vertex_loop.rs) | razão de relógios |
 | `packing_a_dense_scribble_is_bounded` | [`ph2d-flip-render`](../../crates/ph2d-flip-render/tests/it/pack_perf.rs) | relógio |
 | `the_cache_makes_a_preview_frame_cost_the_tail_not_the_stroke` | [`ph2d-app-flip`](../../crates/ph2d-app-flip/src/fit_cache_tests.rs) | razão de relógios |
 | `a_long_stroke_is_bounded_by_the_redundancy_floor_not_by_a_budget` | [`ph2d-app-flip`](../../crates/ph2d-app-flip/src/fit_budget_tests.rs) | relógio (família `orcamento`) |
@@ -81,10 +73,6 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `riding_the_path_costs_about_twice_the_straight_layout` | [`shells/desktop`](../../shells/desktop/src/text_path_smoke.rs) | razão de relógios |
 
 Uma família entra por padrão e não por nome: `test(/orcamento::the_fit_/)` (`ph2d-app-flip`).
-
-**Na faixa por outra razão** (não é flake de carga; está lá desde a auditoria de 2026-09-10):
-
-- `the_quads_are_as_square_as_the_oracles` — [`ph2d-app-sculpt3d`](../../crates/ph2d-app-sculpt3d/src/quad_shape.rs), gate `#[ignore]` VERMELHO por desenho (a cura está nomeada no doc dele).
 
 ## A outra espécie: a flake de GPU só no Linux do CI
 

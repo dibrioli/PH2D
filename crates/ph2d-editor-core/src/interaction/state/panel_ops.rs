@@ -173,8 +173,8 @@ impl WidgetStore {
 
     /// ⭐ **Every panel rect published this frame** — no id list to keep in sync.
     ///
-    /// ⚠️ Added for the 3D modelling nav gizmo (ADR-0161 W50), which has to place itself in the
-    /// part of the viewport the chrome does NOT cover. The alternative was a second copy of the
+    /// ⚠️ For a canvas overlay that has to place itself in the part of the viewport the chrome
+    /// does NOT cover (today `frame_layout`). The alternative was a second copy of the
     /// "which ids are panels" list that `cursor_over_hero_panel` already carries — and a list that
     /// must be remembered is a list that gets forgotten (the W48 lesson, same module, same day).
     ///

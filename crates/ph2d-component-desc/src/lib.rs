@@ -79,8 +79,7 @@ pub struct ComponentDesc {
     /// daria **duas entidades a escrever no mesmo documento** — e o artista que duplica uma sprite
     /// pintada esperava dois objetos independentes, não um sósia que apaga a tinta do original.
     ///
-    /// São os quatro de [`catalog::bridges`] (`PaintedDoc` · `VecPathRef` · `BakedForm` ·
-    /// `FlipObjectRef`). ⛔ **Não é o mesmo que [`Attach::Machinery`]**, que é muito mais largo
+    /// São os três de [`catalog::bridges`] (`PaintedDoc` · `VecPathRef` · `FlipObjectRef`). ⛔ **Não é o mesmo que [`Attach::Machinery`]**, que é muito mais largo
     /// (`RootOrder`, `SiblingOrder`, `SpritePixels`… são máquina e copiam-se muito bem).
     ///
     /// ⚠️ Um `AssetId` **não** entra aqui: um asset é partilhado por desenho, e duas sprites a
@@ -221,7 +220,7 @@ impl ComponentDesc {
     }
 
     /// **Máquina que é o id de um documento POSSUÍDO 1:1** — ver
-    /// [`ComponentDesc::owned_document`]. Os quatro de [`catalog::bridges`], e só eles.
+    /// [`ComponentDesc::owned_document`]. Os três de [`catalog::bridges`], e só eles.
     ///
     /// ⚠️ **Construtor à parte pela razão do [`Self::authored_requiring`]:** `machinery` é chamado
     /// 17 vezes e treze delas copiam-se muito bem. *A excepção paga o preço dela.*
@@ -279,10 +278,10 @@ impl ComponentDesc {
 
 /// **Autorável × máquina** — e a ausência é DECLARADA, nunca um esquecimento.
 ///
-/// ⚠️ Quatro tipos registados são **pontes de identidade**, não escolhas: `VecPathRef`,
-/// `PaintedDoc`, `BakedForm` e `FlipObjectRef` (cada um é um `u32`/id opaco que liga a
+/// ⚠️ Três tipos registados são **pontes de identidade**, não escolhas: `VecPathRef`,
+/// `PaintedDoc` e `FlipObjectRef` (cada um é um `u32`/id opaco que liga a
 /// entidade ao documento do módulo dela). Uma paleta que listasse *"todo tipo registado"*
-/// ofereceria as quatro ao artista. Marcá-las [`Attach::Machinery`] é o que as tira — e por
+/// ofereceria as três ao artista. Marcá-las [`Attach::Machinery`] é o que as tira — e por
 /// serem declaradas, o censo consegue exigir que **toda** ausência tenha um autor.
 /// ⚠️ **Os três estados foram MEDIDOS, não desenhados.** A versão de duas variantes
 /// (`Authored`/`Machinery`) sobreviveu até o compilador a refutar: ao converter os
@@ -315,7 +314,7 @@ pub enum Attach {
     /// as que SEMEIAM um valor do contexto vivo fazem algo que o `+` não pode fazer.
     Intrinsic,
     /// Máquina: nunca oferecido na paleta, nunca uma seção do Inspector. Identidade interna
-    /// ou dado derivado (as quatro pontes, o `RootOrder`).
+    /// ou dado derivado (as três pontes, o `RootOrder`).
     Machinery,
 }
 
@@ -324,14 +323,8 @@ pub enum Attach {
 ///
 /// Medido em 2026-08-24 sobre os 107 registados: `Sprite` ⇒ [`ObjectKind::Image`] ·
 /// `VecObject` ⇒ [`ObjectKind::Vector`] · `FlipObjectRef` ⇒ [`ObjectKind::Flip`] ·
-/// `PaintedDoc` ⇒ [`ObjectKind::Painted`] · `FieldObject` ⇒ [`ObjectKind::Model3D`] ·
-/// `Sculpt3dPieceRef` ⇒ [`ObjectKind::Sculpt3D`]. Nenhum deles ⇒ [`ObjectKind::Empty`], que é
+/// `PaintedDoc` ⇒ [`ObjectKind::Painted`]. Nenhum deles ⇒ [`ObjectKind::Empty`], que é
 /// exatamente o objeto que a F3 aprende a criar.
-///
-/// ⚠️ **O marcador da escultura era o `BakedForm` até 03/10, e estava errado:** o `BakedForm` vai
-/// numa SPRITE assada (que é uma imagem), e a peça viva que a Hierarquia lista leva o
-/// `Sculpt3dPieceRef` — que nenhum tipo reconhecia, e por isso a peça lia-se como vazia
-/// (spec/06 F0, medido).
 ///
 /// ⚠️ **É derivado, e tem de continuar a ser.** Se algum dia isto virar um campo escrito à
 /// mão numa entidade, passa a haver duas respostas para *"que objeto é este?"* — e a que o
@@ -350,22 +343,16 @@ pub enum ObjectKind {
     Flip,
     /// Documento do Painter (`ph2d::ecs::PaintedDoc`).
     Painted,
-    /// Peça de modelagem 3D por campo implícito (`ph2d::field::FieldObject`).
-    Model3D,
-    /// Peça viva do módulo de escultura (`ph2d::ecs::Sculpt3dPieceRef`).
-    Sculpt3D,
 }
 
 impl ObjectKind {
     /// Todos, em ordem — a fonte da iteração (⛔ nunca escreva a lista uma segunda vez).
-    pub const ALL: [ObjectKind; 7] = [
+    pub const ALL: [ObjectKind; 5] = [
         ObjectKind::Empty,
         ObjectKind::Image,
         ObjectKind::Vector,
         ObjectKind::Flip,
         ObjectKind::Painted,
-        ObjectKind::Model3D,
-        ObjectKind::Sculpt3D,
     ];
 
     /// O rótulo que o artista lê no filtro da paleta. Inglês (HR-15).
@@ -377,8 +364,6 @@ impl ObjectKind {
             ObjectKind::Vector => "component.object_kind.vector",
             ObjectKind::Flip => "component.object_kind.flip",
             ObjectKind::Painted => "component.object_kind.painted",
-            ObjectKind::Model3D => "component.object_kind.model_3d",
-            ObjectKind::Sculpt3D => "component.object_kind.sculpt_3d",
         }
     }
 
@@ -395,8 +380,6 @@ impl ObjectKind {
             ObjectKind::Vector => Some("ph2d::ecs::VecObject"),
             ObjectKind::Flip => Some("ph2d::ecs::FlipObjectRef"),
             ObjectKind::Painted => Some("ph2d::ecs::PaintedDoc"),
-            ObjectKind::Model3D => Some("ph2d::field::FieldObject"),
-            ObjectKind::Sculpt3D => Some("ph2d::ecs::Sculpt3dPieceRef"),
         }
     }
 
@@ -415,13 +398,11 @@ pub struct ObjectKinds(u16);
 
 impl ObjectKinds {
     /// Vale para qualquer objeto — o caso de `Transform`, `Name`, `Visibility`, ordenação.
-    pub const ANY: ObjectKinds = ObjectKinds(0b111_1111);
+    pub const ANY: ObjectKinds = ObjectKinds(0b1_1111);
     /// Só imagem — o caso do 9-Slice, da folha, da animação de sprite.
     pub const IMAGE: ObjectKinds = ObjectKinds(ObjectKind::Image.bit());
     /// Só vetor.
     pub const VECTOR: ObjectKinds = ObjectKinds(ObjectKind::Vector.bit());
-    /// Só modelagem 3D por campo.
-    pub const MODEL3D: ObjectKinds = ObjectKinds(ObjectKind::Model3D.bit());
 
     /// Qualquer objeto que tenha uma forma visível — tudo menos [`ObjectKind::Empty`].
     /// É a resposta certa para o que precisa de algo para desenhar (blend, máscara, camada
@@ -504,8 +485,6 @@ pub enum ComponentCategory {
     Vector,
     /// Corpos, colisores, juntas, zonas, player.
     Physics,
-    /// Campo implícito e escultura.
-    Model3D,
     /// Script do utilizador.
     Scripting,
     /// Instância, mestre, override (nascem na F4).
@@ -547,7 +526,7 @@ pub enum ComponentCategory {
 
 impl ComponentCategory {
     /// Todas, na ordem em que a paleta as mostra. ⛔ Fonte única da iteração.
-    pub const ALL: [ComponentCategory; 16] = [
+    pub const ALL: [ComponentCategory; 15] = [
         ComponentCategory::Identity,
         ComponentCategory::Transform,
         ComponentCategory::Ordering,
@@ -558,7 +537,6 @@ impl ComponentCategory {
         ComponentCategory::Skeleton,
         ComponentCategory::Vector,
         ComponentCategory::Physics,
-        ComponentCategory::Model3D,
         ComponentCategory::Logic,
         ComponentCategory::Audio,
         ComponentCategory::Camera,
@@ -580,7 +558,6 @@ impl ComponentCategory {
             ComponentCategory::Skeleton => "component.category.skeleton",
             ComponentCategory::Vector => "component.category.vector",
             ComponentCategory::Physics => "component.category.physics",
-            ComponentCategory::Model3D => "component.category.model_3d",
             ComponentCategory::Scripting => "component.category.scripting",
             ComponentCategory::Logic => "component.category.logic",
             ComponentCategory::Audio => "component.category.audio",

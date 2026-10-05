@@ -387,24 +387,9 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // da entidade são id de alocação e morrem no restore —, e a pintura voltaria como um
     // bake achatado, sem camadas e sem espessura.
     reg.register_default::<crate::PaintedDoc>("ph2d::ecs::PaintedDoc");
-    // ADR-0150 (W8.7): a identidade ESTÁVEL dos canais assados de uma malha (`base` + `form`).
-    // Mesmo mecanismo do `PaintedDoc` e mesma consequência de esquecê-la — mas com um agravante
-    // próprio: os canais existem justamente para o objeto sobreviver ao módulo 3D sair do build, e
-    // sem esta identidade eles não sobreviveriam nem ao arquivo ser reaberto com ele DENTRO.
-    reg.register_default::<crate::BakedForm>("ph2d::ecs::BakedForm");
     // ADR-0114: idem para um objeto Flip (animação quadro-a-quadro). Sem ela o
     // save perderia o vínculo objeto↔entidade e o load duplicaria os objetos Flip.
     reg.register_default::<crate::FlipObjectRef>("ph2d::ecs::FlipObjectRef");
-    // ADR-0150: idem para uma PEÇA da escultura. Sem ela o save perderia o vínculo
-    // peça↔entidade e o load duplicaria as linhas da Hierarquia — o mesmo defeito, à letra,
-    // que o `FlipObjectRef` acima existe para evitar.
-    reg.register_default::<crate::Sculpt3dPieceRef>("ph2d::ecs::Sculpt3dPieceRef");
-    // ⭐⭐⭐ O CATAVENTO (a rota B do `02.2`): a malha que um sprite mantém VIVA, e a POSE 3D dela.
-    // ⛔ A pose mora no componente e não no `Transform` por MEDIÇÃO: aquele tem `rotation: f32` e
-    // exprime só o plano do ecrã, que é exactamente a rotação que a rota A já dá (`0,00°` de
-    // desacordo medido). Sem registá-la, virar um catavento não sobreviveria a um `Ctrl+Z` nem ao
-    // arquivo — e a arte voltaria a apontar para outro lado, em silêncio.
-    reg.register_default::<crate::Mesh3D>("ph2d::ecs::Mesh3D");
     // Live Shapes: os parâmetros de uma forma paramétrica viva (a geometria é
     // derivada deles). Sem registrar, um save/undo perderia a "forma-ness" e o texto
     // não saberia se re-cozinhar / converter em curvas.
@@ -517,7 +502,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // é insubstituível: o recook já sobrescreveu o path da cena com a cozida).
     reg.register::<crate::VecEnvelope>("ph2d::ecs::VecEnvelope");
     // ⭐⭐⭐ O ESQUELETO (o OSSO e a PELE) **MUDOU-SE** para a `ph2d-skeleton-ecs` em 2026-09-06,
-    // quando virou módulo próprio: ele serve vector, raster, 3D e Flip, e um componente por mídia
+    // quando virou módulo próprio: ele serve vector, raster e Flip, e um componente por mídia
     // dentro da fundação a faria crescer uma vez por cliente. Quem os regista é a porta
     // `register_skeleton_components`, do mesmo modo que a `ph2d-physics-ecs` regista os dela.
     // ⛔ **Não os traga de volta para cá** — e note que os nomes canónicos deixaram de dizer

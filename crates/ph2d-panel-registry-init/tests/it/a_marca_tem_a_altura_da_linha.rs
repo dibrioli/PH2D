@@ -158,8 +158,9 @@ pub(crate) fn censo() -> Vec<Marca> {
 }
 
 /// ⛔ Pisos de população. ⚠️ Eles são do âmbito em que o app CORRE (a workspace), nunca o do `-p`.
-/// ⭐ **MEDIDO**: o registo da workspace tem `27` painéis (2026-09-21).
-const PISO_DE_PAINEIS: usize = 27;
+/// ⭐ **MEDIDO**: o registo da workspace tem `27` painéis (2026-09-21). ⬇️ `27 → 25` em
+/// 2026-10-05: os painéis `model3d` e `sculpt3d` saíram com o 3D (ADR-0179).
+const PISO_DE_PAINEIS: usize = 25;
 /// ⭐ **MEDIDO** na 1.ª corrida (2026-09-21): `40` marcas em `27` painéis varridos. ⛔ Ele não é
 /// escolhido — a 1.ª redacção deste ficheiro palpitou `60` e reprovou sobre um censo CORRECTO.
 const PISO_DE_MARCAS: usize = 40;
@@ -580,12 +581,10 @@ const FONTES_DAS_CORES: &[&str] = &[
     "../ph2d-panel-grid-snap/src",
     "../ph2d-panel-hierarchy/src",
     "../ph2d-panel-inspector/src",
-    "../ph2d-panel-model3d/src",
     "../ph2d-panel-motion-graph/src",
     "../ph2d-panel-padding/src",
     "../ph2d-panel-painter-layers/src",
     "../ph2d-panel-physics/src",
-    "../ph2d-panel-sculpt3d/src",
     "../ph2d-panel-skeleton/src",
     "../ph2d-panel-tags/src",
     "../ph2d-panel-timeline/src",

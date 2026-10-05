@@ -2,13 +2,13 @@
 //!
 //! # ⚠️ Porque ele vive aqui e não numa `sin` da biblioteca
 //!
-//! Esta crate é uma **folha de zero dependências** e a lei tem de ser a MESMA nos dois motores; a
-//! `f32::sin` do Rust e a `sin` do WGSL não são a mesma função (HR-5). ⇒ a fase é polinomial, e os
+//! A `f32::sin` do Rust e a `sin` do WGSL não são a mesma função (HR-5), e a base da tenda tem de
+//! ser a MESMA dos dois lados ⇒ a fase é polinomial, e os
 //! gates dela **vieram com ela** — *uma lei que se muda de casa sem os testes dela chega à casa
 //! nova sem régua.*
 //!
-//! ⚠️ **Corte por RESPONSABILIDADE, forçado pelo tecto de LOC** e melhor por isso: o irmão responde
-//! *«que halo é que este quadro tem»* e isto responde *«em que direcção é que a tenda se estica»*.
+//! ⚠️ **Corte por RESPONSABILIDADE:** o irmão responde *«que halo o artista autorou»* e isto
+//! responde *«em que direcção é que a tenda se estica»*.
 
 // ⭐ O seno SEM TRANSCENDENTAIS (HR-5) que a base da tenda usa — veio com ela.
 fn frac(p: f32) -> f32 {

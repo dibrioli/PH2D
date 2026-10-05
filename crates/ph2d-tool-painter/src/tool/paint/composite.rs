@@ -288,8 +288,7 @@ impl PainterTool {
     // a operação de uma camada, e com as QUOTAS do dono (`3 Brush · 2 Erase · 1 Blur · 1 Smear`)
     // um ciclo livre tornaria a quota uma mentira. A operação escolhe-se na CRIAÇÃO
     // ([`Self::acrescenta_camada`]) e trocá-la é retirar a camada e criar outra. ⚠️ *Quando o
-    // único leitor de um valor sai, o valor sai com ele* — o precedente é o `Brush::invert` do
-    // `Scene Project` da escultura.
+    // único leitor de um valor sai, o valor sai com ele*.
 
     /// Escreve a COR autorada da camada em `pos`. O picker chega aqui; o `None` chega pelo
     /// [`Self::clear_composite_layer_color`] (o clique-direito na amostra).

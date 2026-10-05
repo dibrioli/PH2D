@@ -53,7 +53,7 @@ estiver. *A cura anterior respondeu a uma das duas perguntas e a nota não disse
 | *«ao selecionar deveria fechar»* | ele **nunca selecionou pela paleta** — o pincel mudou por atalho, e o modal ficou aberto porque ninguém lhe tocou |
 
 ⭐ **O caminho do CLIQUE já fechava** (`set_command_pick` + `close_command_palette` na mesma linha),
-e isso passou a ser **medido** em vez de deduzido: `a_paleta_de_pinceis_fecha_ao_escolher`, pela
+e isso passou a ser **medido** em vez de deduzido: `a_paleta_de_pinceis_fecha_ao_escolher` (hoje `a_paleta_fecha_ao_escolher_por_cima_de_um_painel`, desde que o 3D saiu — ADR-0179), pela
 porta real do chrome (`dispatch_all`) e não pelo handler. *Uma causa descartada por raciocínio e
 não por medição volta na wave seguinte.*
 

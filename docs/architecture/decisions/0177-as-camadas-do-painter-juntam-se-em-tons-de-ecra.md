@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Data:** 2026-10-03
 - **Linha:** `line/sculpt3d` (a lei é do Painter INTEIRO — 2D e a peça 3D)
+- **Nota (2026-10-05):** a parte «peça 3D» deste texto é **histórica** — o 3D saiu do PH2D ([ADR-0179](0179-o-3d-sai-do-ph2d.md)); a lei continua válida no Painter 2D.
 - **Decisão do dono:** 2026-10-03, «opção 1»
 - **Plano e ondas:** [doc Painter 45](../../Painter/45_plano_as_camadas_juntam_se_em_tons_de_ecra.md)
 - **Oráculo:** [`docs/Painter/ferramentas/oraculo_camadas_gimp/`](../../Painter/ferramentas/oraculo_camadas_gimp/README.md)

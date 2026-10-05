@@ -102,7 +102,7 @@ fn run(mode: Mode, frames: usize, viewports: usize, w: u32, h: u32) -> Report {
 }
 
 /// Como [`run`], mas com um **segundo produtor** a desenhar `(w, h)` no mesmo quadro — o vizinho
-/// que compete pelo mesmo atlas. É ele que responde se o padrão do módulo 3D **rouba a tela** de
+/// que compete pelo mesmo atlas. É ele que responde se o padrão de vistas **rouba a tela** de
 /// outra ferramenta, ou se apenas gasta largura de banda.
 ///
 /// ⚠️ O vizinho usa sempre o [`StableImage`]: ele é o **bom vizinho**, o que já faz a coisa certa.
@@ -184,7 +184,8 @@ fn run_with_neighbour(
     report
 }
 
-/// ⭐ **A SONDA** — imprime a tabela que responde *«o que o módulo 3D custa ao atlas?»*.
+/// ⭐ **A SONDA** — imprime a tabela que responde *«o que um produtor de imagens do tamanho da área
+/// custa ao atlas?»* (o padrão nasceu no traçado 3D, que saiu — ADR-0179).
 ///
 /// Não afirma nada: é uma medição (`CLAUDE.md` §5.0 — 64% dos `#[ignore]` deste repo são sondas,
 /// e tratá-las como portões produz mil falsos alarmes).
@@ -195,8 +196,7 @@ fn run_with_neighbour(
 #[test]
 #[ignore = "sonda: imprime a tabela do atlas, nao afirma"]
 fn measure_the_image_atlas_under_the_viewport_pattern() {
-    // Os tamanhos saem do produto: o traçado do módulo 3D sai **no tamanho real da área**
-    // (`field3d_smoke_draw::viewport_pass`), e a divisão em quatro dá quartos dela.
+    // Uma imagem **no tamanho real da área** por vista, e a divisão em quatro dá quartos dela.
     let casos: [(&str, usize, u32, u32); 4] = [
         ("1 vista, 1920x1080", 1, 1920, 1080),
         ("4 vistas, 960x540", 4, 960, 540),
@@ -237,13 +237,12 @@ fn measure_the_image_atlas_under_the_viewport_pattern() {
 /// desenhada, em silêncio»* — mas **cabe?** Só uma corrida com vizinho responde.
 ///
 /// ⚠️ **Que número a resposta CONTRÁRIA imprimiria?** `nao coube = 0` em todas as linhas: o atlas
-/// tem `8192²` e o padrão do módulo, sozinho, não o esgota.
+/// tem `8192²` e o padrão de vistas, sozinho, não o esgota.
 #[test]
 #[ignore = "sonda: imprime se o vizinho perde a vez no atlas"]
 fn measure_whether_a_neighbour_still_fits_beside_the_viewport_pattern() {
     const FRAMES: usize = 60;
-    // O vizinho é uma pré-visualização de painel do tamanho de um dock — o `ph2d-panel-sculpt3d`
-    // desenha exactamente isto, e é o candidato mais próximo a partilhar a tela com o MODEL.
+    // O vizinho é uma pré-visualização de painel do tamanho de um dock.
     const VIZINHO: (u32, u32) = (512, 512);
 
     let casos: [(&str, usize, u32, u32); 4] = [

@@ -8,7 +8,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "object_mode.menu" => "Mode",
         "object_mode.object" => "Object Mode",
         "object_mode.paint" => "Paint Mode",
-        "object_mode.sculpt" => "Sculpt Mode",
         "object_mode.draw" => "Draw Mode",
         "object_mode.edit" => "Edit Mode",
         "object_mode.entered" => "{mode} \u{2014} Tab returns to Object Mode",

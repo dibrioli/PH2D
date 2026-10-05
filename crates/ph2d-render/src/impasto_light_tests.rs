@@ -18,12 +18,11 @@ fn impasto_light_wgsl_parses_and_validates_via_naga() {
 
 /// **O `Globals` do WGSL MEDE exatamente o `Globals` do Rust** — e a ordem dos campos é a mesma.
 ///
-/// ⚠️ **Este gate nasceu de um PANIC**, e o mecanismo vale mais que a asserção. A W10.7 deu ao
-/// uniform um bit novo (`has_form_occ`) ocupando a vaga que era `pad1`; o Rust trocou o nome da
-/// vaga, o WGSL **acrescentou o campo e deixou o `pad1` para trás**, e o alinhamento de 16 bytes do
-/// `Lamp` arredondou o struct de lá para **240 bytes contra os 224 daqui**. O wgpu recusa isso no
-/// dispatch — como **panic**, não como erro devolvido —, então TODO documento com relevo na rota de
-/// GPU, o bake da escultura e a re-acendida de um objeto assado morriam no primeiro quadro.
+/// ⚠️ **Este gate nasceu de um PANIC**, e o mecanismo vale mais que a asserção. Um bit novo do
+/// uniform ocupou uma vaga de padding; o Rust trocou o nome da vaga, o WGSL **acrescentou o campo e
+/// deixou a vaga para trás**, e o alinhamento de 16 bytes do `Lamp` arredondou o struct de lá para
+/// **240 bytes contra os 224 daqui**. O wgpu recusa isso no dispatch — como **panic**, não como erro
+/// devolvido —, então TODO documento com relevo na rota de GPU morria no primeiro quadro.
 ///
 /// ⚠️ **Nenhum gate de unidade via, e os seis que veriam são `#[ignore]`** (`tests/impasto_light_gpu.rs`,
 /// que precisa de adapter). É por isso que este mora aqui e **sem device**: uma incompatibilidade de
@@ -42,8 +41,8 @@ fn the_wgsl_globals_measures_exactly_the_rust_globals() {
         "oy",
         "rw",
         "rh",
-        "has_form",
-        "has_form_occ",
+        "pad0",
+        "pad1",
         "paper_body",
     ];
     /// Onde o uniform mora — o mesmo par que o `bind_group` do [`ImpastoLightPass::run`] escreve.
@@ -96,9 +95,7 @@ fn impasto_light_shader_constants_match_the_cpu_pass() {
     //
     // ⚠️ `AMBIENT` é a exceção, e ela é DERIVADA da constante de propósito. Uma string escrita à mão
     // pega o shader driftando e é CEGA à outra direção — o número em Rust mudar e o shader ficar
-    // parado. Isso era teórico enquanto havia um dono e um shader; com o rig morando em `ph2d-light` e
-    // a malha do módulo 3D acendendo pela MESMA lei, são três lugares, e o piso ambiente é justamente
-    // o que os dois consumidores têm de dobrar igual.
+    // parado: com o rig morando em `ph2d-light`, a CPU e o shader têm de dobrar o MESMO piso.
     let ambient_decl = format!("const AMBIENT: f32 = {};", ph2d_light::AMBIENT);
     for (decl, why) in [
         (
@@ -175,30 +172,8 @@ fn a_mis_shaped_request_is_refused_without_a_device() {
         lut_width: 4,
         rough_levels: 2,
         paper_body: 0.0,
-        // O mundo sem escultura — e a doação é opcional exatamente para que ele continue existindo.
-        form: None,
-        form_occlusion: None,
     };
     assert_eq!(base().check(), Ok(()), "a well-formed request passes");
-
-    // ⚠️ E o plano de FORMA é conferido pela mesma porta: um plano curto chegaria ao `write_texture`,
-    // onde a falha é um erro de driver em vez de uma recusa com nome.
-    let short_form = vec![0f32; 4 * 4 - 1];
-    let mut bad_form = base();
-    bad_form.form = Some(&short_form);
-    assert_eq!(
-        bad_form.check(),
-        Err(ImpastoLightError::PlaneSize),
-        "a short form plane is refused, not silently read past"
-    );
-    let good_form = vec![0f32; 4 * 4];
-    let mut ok_form = base();
-    ok_form.form = Some(&good_form);
-    assert_eq!(
-        ok_form.check(),
-        Ok(()),
-        "quatro floats por texel é a forma certa"
-    );
 
     let mut short_relief = base();
     short_relief.relief = &relief[..3];

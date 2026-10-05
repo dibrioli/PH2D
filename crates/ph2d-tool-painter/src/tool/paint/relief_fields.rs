@@ -1,7 +1,7 @@
 //! **O que o RELEVO É** — os campos compostos que a luz lê, emprestados e nunca materializados.
 //!
 //! [LOC split de `impasto_light`, 2026-08-10.] A linha do corte é a de sempre nesta casa: aqui mora
-//! *o que existe naquele texel* (a dobra das camadas, o dente do papel, a forma doada, o material);
+//! *o que existe naquele texel* (a dobra das camadas, o dente do papel, o material);
 //! no irmão fica *o que o produtor de CPU FAZ com isso* (`apply_impasto_light`) e como ele decide se
 //! há trabalho (`impasto_visible` / `impasto_fields`).
 //!
@@ -20,7 +20,7 @@ use super::*;
 /// re-implements the *optics* and deliberately re-implements none of the *plumbing*.
 pub(super) struct ReliefFields<'a> {
     /// ⭐ A dobra MATERIALIZADA através dos ajustes que agem no relevo — `(altura, corpo)` por píxel,
-    /// antes do tecto (`docs/3D/30` §20). `None` = a dobra por píxel de sempre.
+    /// antes do tecto. `None` = a dobra por píxel de sempre.
     pub(super) folded: Option<(Vec<f32>, Vec<f32>)>,
     /// Every visible layer that carries relief, **bottom-up** — the order it composites in. The order
     /// is load-bearing now: [`ReliefComposite::Level`] buries what is *under* it, and until it existed
@@ -38,20 +38,6 @@ pub(super) struct ReliefFields<'a> {
     /// (it comes off the brush). No plane is needed for it, which is what makes the whole per-pixel
     /// material cost one merge at commit instead of a second buffer per stroke.
     pub(super) live_mat: MaterialBytes,
-    /// **A FORMA doada** pelo módulo 3D (`docs/3D/05.2`) — `[nx, ny, nz, peso]` por texel do canvas, ou
-    /// `None` num documento sem escultura.
-    ///
-    /// ⚠️ Ela é um plano PRONTO, exatamente como os três do relevo: a malha é rasterizada uma vez e
-    /// chega aqui como números. Um segundo rasterizador dentro do passe de luz seria uma segunda
-    /// resposta a *"que forma há neste pixel"* — a mesma cerca que mantém o FOLD do relevo fora do
-    /// shader.
-    pub(super) form: Option<&'a [f32]>,
-    /// **A OCLUSÃO DE FORMA** doada com ela — cavidade × os dois AOs, um escalar por texel do canvas.
-    ///
-    /// ⚠️ Ela chega PRONTA, pela mesma razão do plano acima: quem a compõe é o shader do barro, por
-    /// uma porta única (`mesh.wgsl::form_occlusion`), e uma segunda composição aqui divergiria da
-    /// que o artista vê no viewport.
-    pub(super) form_occ: Option<&'a [f32]>,
     /// `Material::NEUTRAL`, quantised ONCE — the ground the material fold starts from, and the material
     /// a layer with no entry reads as. It is a constant, and it is read per texel; deriving it in the
     /// loop is the kind of thing that costs half a millisecond and looks like nothing.
@@ -85,7 +71,7 @@ impl ReliefFields<'_> {
     /// not a ceiling but an eraser).
     ///
     /// The fold walks the layers bottom-up, each one joined to the pile under it by
-    /// [`crate::layers::fold_relief_step`] — the ONE fold the 3D piece calls too (`docs/3D/30` §2).
+    /// [`crate::layers::fold_relief_step`] — the ONE fold.
     #[inline]
     pub(super) fn height_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
@@ -130,8 +116,8 @@ impl ReliefFields<'_> {
     /// onde já houvesse tinta, e o Digital — que não tem plano de `covers` nenhum — não veria nada.
     ///
     /// ⚠️ **Escalar e não plano**, e é o que a torna barata dos dois lados: a presença de um papel é
-    /// uniforme na tela, então ela viaja para a GPU num BIT do uniform (o idioma do `has_form`) em vez
-    /// de uma textura inteira dizendo `1`.
+    /// uniforme na tela, então ela viaja para a GPU num BIT do uniform em vez de uma textura inteira
+    /// dizendo `1`.
     #[inline]
     pub(super) fn paper_body(&self) -> f32 {
         f32::from(u8::from(self.substrate.is_some()))
@@ -229,43 +215,6 @@ impl ReliefFields<'_> {
             }
         }
         c.clamp(0.0, 1.0)
-    }
-
-    /// Há doação neste documento? A pergunta que decide se o plano de forma é materializado.
-    #[inline]
-    pub(super) fn has_form(&self) -> bool {
-        self.form.is_some()
-    }
-
-    /// A forma doada neste pixel — `[nx, ny, nz, peso]`, ou [`NO_FORM`] onde não há escultura.
-    ///
-    /// ⚠️ **O guard de peso é load-bearing, e é uma armadilha de verdade:** o G-buffer escreve
-    /// `[0, 0, 0, 0]` fora da silhueta, e um `z` ZERO não é "nenhuma forma" — é uma normal DEITADA, que
-    /// somada à inclinação da tinta daria um vetor quase horizontal e uma faixa preta em volta de toda
-    /// escultura. O neutro de *"não há forma aqui"* é `[0, 0, 1]`, e é ele que faz a soma do
-    /// [`Rig::shade_over`] reduzir à expressão da tinta.
-    #[inline]
-    pub(super) fn form_at(&self, x: i64, y: i64) -> [f32; 4] {
-        let Some(f) = self.form else {
-            return super::impasto_shade::NO_FORM;
-        };
-        let i = self.index(x, y) * 4;
-        if f[i + 3] <= 0.0 {
-            return super::impasto_shade::NO_FORM;
-        }
-        [f[i], f[i + 1], f[i + 2], f[i + 3]]
-    }
-
-    /// A oclusão de forma neste pixel — `1.0` (nada oclui) onde não há doação.
-    ///
-    /// ⚠️ **O neutro é uma CONSTANTE, e é isso que separa esta porta da irmã.** O `form_at` tem de
-    /// inventar `[0, 0, 1]` porque o zero do buffer é uma normal deitada; aqui o zero do buffer
-    /// seria PRETO, mas o alvo é limpo em BRANCO do lado de quem doa (`render_gbuffer`), então fora
-    /// da silhueta o número já é o neutro e não há caso especial a escrever.
-    #[inline]
-    pub(super) fn form_occlusion_at(&self, x: i64, y: i64) -> f32 {
-        self.form_occ
-            .map_or(1.0, |o| o[self.index(x, y)].clamp(0.0, 1.0))
     }
 
     #[inline]

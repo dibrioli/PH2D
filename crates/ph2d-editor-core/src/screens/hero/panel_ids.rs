@@ -39,16 +39,7 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         "widget_gallery" => Some("widget_gallery"),
         "grid_snap" => Some("grid_snap"),
         PANEL_TIMELINE => Some(PANEL_TIMELINE),
-        // O painel da cena 3D (ADR-0150 W12). A ponte do shell o abre no frame
-        // em que a escultura nasce, então a chave é escrita a cada sessão de
-        // smoke — vazá-la pelo `Box::leak` seria uma alocação por processo, o
-        // que é barato e mesmo assim errado quando o nome é conhecido.
-        "sculpt3d" => Some("sculpt3d"),
-        // O painel de MODELAGEM 3D (ADR-0161 W4) — o irmão do de cima. Sem esta entrada o
-        // `set_panel_visible` cai no `Box::leak`, o que funciona e mesmo assim é errado
-        // quando o nome é conhecido.
-        "model3d" => Some("model3d"),
-        // O painel das TAGS (TOP-20 #9) — irmão dos dois de cima. Sem esta entrada o
+        // O painel das TAGS (TOP-20 #9). Sem esta entrada o
         // `set_panel_visible` cai no `Box::leak`, o que funciona e mesmo assim é errado quando o
         // nome é conhecido.
         "tags" => Some("tags"),

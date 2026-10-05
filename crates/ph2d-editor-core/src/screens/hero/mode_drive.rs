@@ -228,10 +228,11 @@ pub fn drive(
                 if let (Some(b), Some(a)) = (born, hero.gizmo.mode.active())
                     && b != a.entity
                     && hero.gizmo.mode.whole_kind()
+                    && let Some(f) = family(families, kind_of(b), a.mode)
+                    && f.enter_with(a.mode, b, &[], tools)
                 {
                     hero.gizmo.mode.enter(b, a.mode);
-                    let parts = family(families, kind_of(b), a.mode).and_then(|f| f.parts(b));
-                    hero.gizmo.mode.publish_parts(parts);
+                    hero.gizmo.mode.publish_parts(f.parts(b));
                 }
             }
             Step::Enter(m) => {

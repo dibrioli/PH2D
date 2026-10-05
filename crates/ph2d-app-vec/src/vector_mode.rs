@@ -57,6 +57,23 @@ impl EditTarget {
     }
 }
 
+/// ⭐ **Num Edit do TIPO, o clique do Node que não acerta no vetor escolhe o objecto de OUTRO tipo
+/// por baixo** (dono, 05/10: *«ao clicar num objeto de outro tipo, o objeto deve ser selecionado mas
+/// em modo object»*): o 1.º dos `hits` (a porta única do pick) que não é forma. `None` = nada de
+/// outro tipo ali — o Node desselecciona, como sempre. Os modos de DESENHAR não perguntam: desenhar
+/// por cima de uma imagem é o uso.
+#[must_use]
+pub fn another_kind_under(
+    whole_kind: bool,
+    hits: &[u64],
+    map: &ph2d_vec_entities::entities::VecEntityMap,
+) -> Option<u64> {
+    if !whole_kind {
+        return None;
+    }
+    hits.iter().copied().find(|b| !map.values().any(|v| v == b))
+}
+
 /// A ferramenta do vetor, se é a que está na mão.
 pub(crate) fn tool_mut(tools: &mut ToolRegistry) -> Option<&mut VectorTool> {
     tools

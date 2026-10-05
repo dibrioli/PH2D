@@ -260,6 +260,41 @@ impl crate::App {
         }
     }
 
+    /// ⭐ **O Node que não acerta no vetor escolhe o objecto de OUTRO tipo por baixo** — num Edit do
+    /// tipo a rede volta a Object (dono, 05/10). A lei é `vector_mode::another_kind_under`.
+    pub(super) fn vetor_node_escolhe_outro_tipo(&mut self) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let Some(hero) = gfx.hero_screen.as_mut() else {
+            return;
+        };
+        let window_size = crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size());
+        let mut pw = crate::hover_highlight::PickWorld {
+            window_size,
+            sim: &gfx.sim,
+            vec_scene: &gfx.vec_scene,
+            flip: &gfx.flip,
+            present: &mut gfx.present,
+            camera: &gfx.camera,
+            pixels_per_meter: hero.project.pixels_per_meter,
+        };
+        let hits = crate::hover_highlight::pick_objects_at(
+            &mut pw,
+            &self.vec.entities,
+            &self.vec.view_derived,
+            &self.vec.live_drawn,
+            &self.flip_state.entities,
+            self.last_pointer,
+        );
+        let whole_kind = hero.gizmo.mode.whole_kind();
+        if let Some(b) =
+            ph2d_app_vec::vector_mode::another_kind_under(whole_kind, &hits, &self.vec.entities)
+        {
+            hero.gizmo.replace_selection(Some(b));
+        }
+    }
+
     /// O pick de canvas: os hits pela porta única, a ordem (filhos antes, a seleção primeiro) e o ciclo.
     pub(super) fn ramo_gizmo_pick(
         &mut self,

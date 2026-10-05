@@ -93,10 +93,11 @@ fn the_marquee_release_adds_with_shift_and_deselects_on_a_bare_click() {
     );
 }
 
-/// **`Tab` e `Ctrl+A` chegam ao `PenTool`, e só no modo Node.** Noutro modo não há nó selecionado
-/// a que estas teclas se refiram, e o `Tab` do app tem outros donos.
+/// **`]`/`[` e `Ctrl+A` chegam ao `PenTool`, e só no modo Node.** Noutro modo não há nó selecionado
+/// a que estas teclas se refiram. ⛔ O `Tab` é do modo em toda ferramenta (dono, 05/10) — o gate
+/// `only_the_mode_owns_the_tab` o guarda.
 #[test]
-fn tab_and_select_all_reach_the_pen_in_node_mode() {
+fn brackets_and_select_all_reach_the_pen_in_node_mode() {
     let block = at(&KEYBOARD, "// **A ESCALA DA SELEÇÃO DE NÓS**");
     let end = at(&KEYBOARD[block..], "// Arrow keys nudge the selection") + block;
     let window = &KEYBOARD[block..end];
@@ -105,7 +106,7 @@ fn tab_and_select_all_reach_the_pen_in_node_mode() {
         "as teclas da escala nao sao gateadas no modo Node"
     );
     for (needle, why) in [
-        ("step_vert_selection(", "o `Tab` nao percorre os nos"),
+        ("step_vert_selection(", "o `]`/`[` nao percorre os nos"),
         ("select_all_verts(", "o `Ctrl+A` nao apanha todos os nos"),
     ] {
         assert!(
@@ -114,7 +115,8 @@ fn tab_and_select_all_reach_the_pen_in_node_mode() {
         );
     }
     assert!(
-        window.contains("KeyCode::Tab") && window.contains("KeyCode::KeyA"),
+        window.contains("KeyCode::BracketRight | KeyCode::BracketLeft")
+            && window.contains("KeyCode::KeyA"),
         "uma das duas teclas nao esta ligada"
     );
 }

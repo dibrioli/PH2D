@@ -209,3 +209,27 @@ fn width_and_trim_pressed_in_edit_reach_the_shapes_and_skip_a_locked_one() {
     let hit = crate::trim::hit_at(&c.vec.pen, &c.scene, &xf, [0.25, 1.75], r);
     assert!(hit.is_none(), "o Trim respondeu na forma travada");
 }
+
+/// ⭐ GATE (dono, 05/10) — **o Node que falha o vetor escolhe o objecto de OUTRO tipo por baixo**,
+/// só num modo do TIPO: o 1.º dos hits que não é forma. CONTROLO: só formas por baixo ⇒ nada (o Node
+/// desselecciona), e fora de um modo do tipo ⇒ nada.
+#[test]
+fn a_node_miss_picks_the_object_of_another_kind_underneath() {
+    let mut c = cena();
+    let ia = linha(&mut c, [0.0, 0.0], [2.0, 2.0]);
+    sincroniza(&mut c);
+    let a = c.vec.entities[&ia];
+    let sprite = c.sim.world_mut().spawn_empty().id().to_bits();
+    let map = &c.vec.entities;
+    assert_eq!(another_kind_under(true, &[a, sprite], map), Some(sprite));
+    assert_eq!(
+        another_kind_under(true, &[a], map),
+        None,
+        "controlo: só formas"
+    );
+    assert_eq!(
+        another_kind_under(false, &[sprite], map),
+        None,
+        "controlo: fora de um modo do tipo"
+    );
+}

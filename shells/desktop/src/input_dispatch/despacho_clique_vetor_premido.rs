@@ -39,6 +39,7 @@ impl crate::App {
                 ph2d_vec_edit::snap::snap(&[p], &targets, cfg, Some(&mut grid)).apply(p)
             };
             let node_mode = self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Node;
+            let mut node_missed = false;
             match shape_kind {
                 // Node edita nós e NUNCA cria (ADR-0112). Não encaixa
                 // tampouco: o snap serve a quem POSICIONA um ponto novo.
@@ -95,12 +96,12 @@ impl crate::App {
                         // Node edita âncoras/handles. Arredondar/chanfrar quina não é
                         // mais deste modo — virou o par Fillet/Chamfer (o hit-test aqui
                         // não agarra alça de raio nenhuma).
-                        self.vec.pen.on_press_node(
+                        node_missed = self.vec.pen.on_press_node(
                             &mut gfx.vec_scene,
                             [w[0] as f64, w[1] as f64],
                             px_to_world,
                             alt,
-                        );
+                        ) == ph2d_vec_edit::PenClick::Ignored;
                     }
                 }
                 None => {
@@ -183,6 +184,9 @@ impl crate::App {
                 (Some(moving), _) => self.vec_rebuild_snap_targets(&[], &moving),
                 (None, Some(sid)) => self.vec_rebuild_snap_targets(&[sid], &[]),
                 (None, None) => {}
+            }
+            if node_missed {
+                self.vetor_node_escolhe_outro_tipo();
             }
             return true;
         }

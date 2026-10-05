@@ -85,7 +85,7 @@ impl crate::App {
         false
     }
 
-    /// A selecção de nós (`Tab`, `Ctrl+A`), o nudge pelas setas, os acordes de ficheiro, o clipboard do vetor (a área
+    /// A selecção de nós (`]`/`[`, `Ctrl+A`), o nudge pelas setas, os acordes de ficheiro, o clipboard do vetor (a área
     /// sob o rato é dona do atalho) e o undo/redo do grafo do Motion.
     pub(super) fn ramo_teclas_nos_ficheiros_e_acordes(
         &mut self,
@@ -93,12 +93,12 @@ impl crate::App {
         state: ElementState,
         repeat: bool,
     ) -> bool {
-        // **A ESCALA DA SELEÇÃO DE NÓS** (plano 25 §6, W3b) — `Tab`/`Shift+Tab` percorre, `Ctrl+A`
+        // **A ESCALA DA SELEÇÃO DE NÓS** (plano 25 §6, W3b) — `]`/`[` percorre, `Ctrl+A`
         // apanha todos. Sem estes dois, trabalhar uma forma de 40 nós é clique-a-clique, que era
         // literalmente a queixa do plano.
         //
-        // ⚠️ Só no modo **Node**: noutro modo não há nó selecionado a que estas teclas se refiram,
-        // e o `Tab` do app tem outros donos.
+        // ⚠️ Só no modo **Node**: noutro modo não há nó selecionado a que estas teclas se refiram.
+        // ⛔ O `Tab` NÃO: ele é do modo, em toda ferramenta (dono, 05/10) — os nós andam com `]`/`[`.
         if self.vector_keys_live()
             && self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Node
             && state == ElementState::Pressed
@@ -106,13 +106,13 @@ impl crate::App {
         {
             // `gfx` e `vec_pen` são campos DISJUNTOS de `self` — o empréstimo se divide, e a
             // cena não precisa de ser clonada por tecla premida.
-            let back = self.modifiers.shift_key();
             let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
             if let Some(gfx) = self.gfx.as_ref() {
                 match code {
-                    // `Tab` anda para a frente, `Shift+Tab` para trás — o percurso do Inkscape.
-                    KeyCode::Tab if !ctrl => {
-                        self.vec.pen.step_vert_selection(&gfx.vec_scene, !back);
+                    // `]` anda para a frente, `[` para trás.
+                    KeyCode::BracketRight | KeyCode::BracketLeft if !ctrl => {
+                        let forward = code == KeyCode::BracketRight;
+                        self.vec.pen.step_vert_selection(&gfx.vec_scene, forward);
                         return true;
                     }
                     // `Ctrl+A` (ou `Cmd+A`) apanha TODOS os nós do caminho selecionado.

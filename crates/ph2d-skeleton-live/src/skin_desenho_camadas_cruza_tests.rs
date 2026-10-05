@@ -28,7 +28,7 @@ fn desenho(graus: f32, sem_encaixe: bool) -> SkinDesenhado {
 }
 
 /// Duas cópias da barra `40 × 10` (a 2.ª girada `5°`), traço `0,5`, presas e a ponta a `graus`.
-fn desenho_aqui(graus: f32) -> SkinDesenhado {
+pub(super) fn desenho_aqui(graus: f32) -> SkinDesenhado {
     let (mut sim, mut scene, map, id, [_, ponta]) = palco();
     {
         let p = scene.path_mut(id).expect("path");
@@ -58,7 +58,7 @@ fn desenho_aqui(graus: f32) -> SkinDesenhado {
     crate::skin_live::recook_leis(&sim, &mut scene.clone(), Leis::do_ambiente())
 }
 
-fn polilinhas(p: &VecPath, so_fechados: bool) -> Vec<Vec<[f64; 2]>> {
+pub(super) fn polilinhas(p: &VecPath, so_fechados: bool) -> Vec<Vec<[f64; 2]>> {
     (0..p.contour_count())
         .filter_map(|c| p.contour(c))
         .filter(|(v, f)| v.len() > 1 && (*f || !so_fechados))
@@ -380,3 +380,6 @@ fn um_trecho_que_o_encaixe_inverte_sai() {
         "{x0} {x1}"
     );
 }
+
+#[path = "skin_desenho_camadas_vinco_tests.rs"]
+mod vinco;

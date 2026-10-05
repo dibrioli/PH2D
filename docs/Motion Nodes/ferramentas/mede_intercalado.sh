@@ -37,10 +37,17 @@ for placa in $PLACAS; do
     env "${kv[@]}" "$OUT/sonda" --ignored --nocapture --test-threads=1 sonda_intercalada > "$OUT/$placa.txt" 2>&1
   rc=$?
   echo "$placa: exit $rc em $(( $(date +%s) - t )) s"
-  [ "$rc" -eq 0 ] || { tail -5 "$OUT/$placa.txt"; exit 3; }
+  # ⛔ 05/10 (doc 121 §9.17): com 13 variantes a RTX morreu outra vez DEPOIS do `test result: ok`, mesmo sem a
+  # cache. A tabela já saiu inteira: aceita-se, e diz-se alto ao lado da tabela.
+  if [ "$rc" -ne 0 ] && grep -q '^test result: ok' "$OUT/$placa.txt"; then
+    echo "⚠️  $placa: exit $rc DEPOIS do 'test result: ok' (a saída do driver; os dados estão completos)" | tee -a "$OUT/avisos.txt"
+  elif [ "$rc" -ne 0 ]; then
+    tail -5 "$OUT/$placa.txt"; exit 3
+  fi
 done
 for placa in $PLACAS; do
   echo "== $placa"
   grep '^INTERCALADA' "$OUT/$placa.txt" | sed 's/^INTERCALADA //'
 done > "$OUT/tabela.txt"
+[ -f "$OUT/avisos.txt" ] && cat "$OUT/avisos.txt" >> "$OUT/tabela.txt"
 echo "tudo em $(( $(date +%s) - t0 )) s · tabela: $OUT/tabela.txt"

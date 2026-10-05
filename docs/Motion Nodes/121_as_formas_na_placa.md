@@ -1886,3 +1886,73 @@ desceu `0,858 → 0,817` (`−4,8 %`, mínimo e mediana juntos), que não era o 
 `G32`, `11` rodadas, as `6` cenas nas duas placas. **Critério:** o `G32` fica (o grupo passa a `32` no `cs_conta` e
 no `cs_escreve`) se a soma das esticadas contínuas da iGPU descer `≥ 3 %` OUTRA VEZ, e nenhuma cena piorar mais que
 `+2 %` na iGPU nem `+5 %` na RTX; senão sai com as outras.
+
+**O resultado da rodada (05/10, `3609f28d2`, `mede_intercalado.sh`: `13` variantes × `6` cenas, `7` rodadas de blocos
+de `20` quadros; iGPU `18,6` s, RTX `73` s; carga `8`–`13`, sem espera).** Soma mínima, ms; `conta` e `escreve` À PARTE
+(os dois passes da escrita); `=F` ⇒ a camada IGUAL à do `F` byte a byte (o controlo: as ablações diferem).
+
+| iGPU | `base` | `F` | `F−A1a` | `F−A1b` | `F−B1` | `F−B2` | `E1F` | `E4F` | `L` | `H` | `P` | `G32` | `LHPG` |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| esticadas contínuas | `0,907` | `0,858` | `0,855` | `0,857` | `0,879` | `0,858` | `0,859` | `0,856` | `0,860` | `0,861` | `0,859` | `0,817` | `0,846` |
+| esticadas TRACEJADAS | `1,198` | **`0,964`** | `0,991` | `0,996` | `1,015` | `0,966` | `0,634` | `0,693` | `0,959` | `0,970` | `0,958` | `0,952` | `0,956` |
+| — `escreve` | `0,310` | **`0,244`** | `0,293` | `0,277` | `0,229` | `0,244` | **`0,084`** | **`0,150`** | `0,239` | `0,254` | `0,238` | `0,230` | `0,233` |
+| conformes contínuas | `0,626` | `0,627` | `0,622` | `0,627` | `0,613` | `0,625` | `0,620` | `0,623` | `0,621` | `0,622` | `0,627` | `0,610` | `0,610` |
+| conformes tracejadas ⚠️ | `0,588` | `0,594` | `0,579` | `0,594` | `0,545` | `0,576` | `0,583` | `0,564` | `0,580` | `0,582` | `0,562` | `0,587` | `0,559` |
+| densas contínuas | `1,028` | `0,873` | `0,872` | `0,874` | `0,967` | `0,874` | `0,884` | `0,872` | `0,872` | `0,867` | `0,882` | `0,875` | `0,880` |
+| densas TRACEJADAS | `1,331` | **`0,963`** | `0,978` | `0,970` | `1,119` | `0,990` | `0,576` | `0,750` | `0,964` | `0,965` | `0,961` | `0,965` | `0,965` |
+
+| RTX | `base` | `F` | `F−A1a` | `F−A1b` | `F−B1` | `F−B2` | `L` | `H` | `P` | `G32` |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| esticadas contínuas | `0,231` | `0,225` | `0,224` | `0,223` | `0,222` | `0,223` | `0,223` | `0,223` | `0,223` | `0,218` |
+| esticadas TRACEJADAS | `0,370` | **`0,302`** | `0,337` | `0,340` | `0,304` | `0,302` | `0,309` | `0,316` | `0,301` | `0,299` |
+| conformes contínuas · tracejadas | `0,088` · `0,083` | `0,084` · `0,080` | `0,083` · `0,080` | `0,083` · `0,079` | `0,081` · `0,076` | `0,083` · `0,078` | `0,084` · `0,080` | `0,084` · `0,078` | `0,084` · `0,080` | `0,081` · `0,075` |
+| densas contínuas · TRACEJADAS | `0,098` · `0,120` | `0,085` · `0,096` | `0,084` · `0,098` | `0,085` · `0,098` | `0,085` · `0,099` | `0,085` · `0,097` | `0,085` · `0,097` | `0,084` · `0,097` | `0,085` · `0,096` | `0,086` · `0,096` |
+
+⚠️ As conformes tracejadas da iGPU NÃO decidem nada: nenhuma cópia delas usa a emissão (`0` arestas do contorno) e
+o mínimo varia `±0,03` entre variantes que lhes são idênticas, com a mediana a `+0,1` do mínimo. Arestas reservadas ·
+escritas (iguais nas duas placas): esticadas tracejadas `561 600` (`base`, `F−B2`) → `285 120` · `36 288`; densas
+tracejadas `607 600` → **`343 000`** · `127 400`.
+
+**Os veredictos, contra os critérios escritos antes:**
+
+- **(b) os pedaços do §9.15 DOBRAM-SE, os quatro.** Tirar o `A1a` piora as esticadas tracejadas `+2,8 %` na iGPU e
+  `+11,6 %` na RTX; o `A1b` `+3,3 %` e `+12,6 %`; o `B2` as densas tracejadas `+2,8 %` (e a reserva volta a
+  `561 600`/`607 600`). ⚠️ **O critério escrito estava mal posto para o `B1`:** à letra ele o tirava — sem ele as
+  conformes contínuas descem `2,2 %` (`0,627 → 0,613`: o `cs_soma_escritas` de um grupo, `+0,015` ms num passe onde
+  reserva = escritas). Mas sem ele as densas tracejadas sobem `+16 %`, as densas contínuas `+11 %`, as esticadas
+  tracejadas `+5 %`: o critério era cego à TROCA entre cenas. Fica o do §9.15 que o aceitou (nenhum arranjo pior que
+  `+5 %`), e a troca fica escrita. O `D` e o `c2` são portas de execução e ficam. A dobra apaga os ramos `false` (código
+  velho vivo) e as constantes saem da lista da porta (`CONSTANTES_DO_CONTORNO`), que fica para o próximo candidato.
+- ⚠️ **Achado (sem acção): o `A1b` muda `183` B da camada nas densas tracejadas da RTX** (o `base` e o `F−A1b` diferem
+  do `F` pelos mesmos `183` B; na iGPU é igual). O total de um fechado somado no percurso e somado à parte é a MESMA
+  soma termo a termo, mas o compilador da NVIDIA funde-a de outra maneira: numa estrela onde o total cai no limite da
+  emenda (`a_fim < tot < a_fim + tr`) a decisão vira — um traço de `~46` px. As duas leituras estão no limite do
+  arredondamento; os gates contra o Vello passam nas duas.
+- **(d) os quatro candidatos SAEM:** `escreve` das esticadas tracejadas da iGPU `F 0,244` → `L 0,239` (`−0,005`) ·
+  `H 0,254` (`+0,010`) · `P 0,238` (`−0,006`) · `G32 0,230` (`−0,014`) · os quatro `0,233` — nenhum chega aos `−0,02`.
+  As ablações partem a emissão (`0,160` ms dos `0,244`): **andar o laço dos pedaços** (`E4F − E1F`) `0,066`, **a
+  geometria e as arestas** `0,094`; na RTX o laço não custa nada (`0,088` contra `0,086`) e a geometria `0,072`.
+  **Os registos não são o custo:** o `L` leva o `cs_escreve` completo de `47 112` a `32 776` B (`26` derramados), os
+  quatro juntos a `112` VGPRs, **zero** derrames e `28 916` B — e o tempo fica onde estava: com `72` cópias em DUAS
+  ondas não há ocupação a ganhar, e o caminho de cada pedaço já não encurta por arrumação. ⇒ a alavanca que resta é o
+  PARALELISMO dentro de uma cópia — a topologia recusada (o GRUPO por cópia, §9.14) —; esta onda não a reconstrói.
+- **G32 na série justificada (`353156e55`, só `F` e `G32`, `11` rodadas):** esticadas contínuas da iGPU `0,883 →
+  0,862` (**`−2,4 %`**, o critério pedia `≥ 3 %`), RTX `−1,6 %`; nenhuma cena pior. ⇒ **SAI.** A diferença real e
+  repetida é a do `escreve` (`−0,014`–`−0,016` ms na iGPU — compatível com a placa a saltar a metade vazia de uma onda
+  de `64`, hipótese NÃO medida), pequena demais para o critério.
+- **(e) registos ✅** (a tabela do início desta secção); `registos_dos_shaders.sh` não muda.
+- **(c) o app ✅** (`mede_formas_na_placa.sh`, `release` de `3609f28d2`, sem espera de calma, carga `2`–`5`; a
+  `=127` densa: `16 384` cópias «pela PLACA (do dispositivo)»; `sem915` = os quatro pedaços do §9.15 desligados pela
+  porta `PH2D_FORMAS_CONSTANTES`, o MESMO binário):
+
+  | `=127` densa | arestas reservadas | capacidade das arestas | células | parede (3 janelas de `120`) |
+  |---|---:|---:|---:|---:|
+  | contínua, `F` e `sem915` (as duas placas) | `1 235 968` | `2 097 152` (**`32` MB**) | `43` MB | `16,6`–`16,8` ms (`60` fps) |
+  | TRACEJADA, `sem915` (as duas placas) | `4 507 648` | `8 388 608` (**`128` MB**) | `43` MB | `16,6`–`16,7` ms |
+  | TRACEJADA, `F` (as duas placas) | **`2 544 640`** | **`4 194 304` (`64` MB)** | `43` MB | `16,6`–`16,8` ms |
+
+  ⇒ o `B2` corta a memória das arestas da cena tracejada do app a METADE (`128 → 64` MB). A parede está presa ao
+  ecrã (`60` fps em todas as células): no app ela não separa as variantes — a régua delas é a sonda.
+- ⛔ **Na RTX a sonda com `13` variantes voltou a morrer com SIGSEGV DEPOIS do `test result: ok`**, mesmo com
+  `__GL_SHADER_DISK_CACHE=0` (com `2` variantes saiu limpa). Os dados estão completos (a tabela sai antes); o roteiro
+  passa a aceitar a saída quando o `test result: ok` está lá e a dizê-lo alto.

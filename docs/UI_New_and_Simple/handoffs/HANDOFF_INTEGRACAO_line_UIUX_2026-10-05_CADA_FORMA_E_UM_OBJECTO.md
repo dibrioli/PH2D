@@ -164,9 +164,38 @@ de despacho de teclado precisa da App) — deixado ao smoke do dono.
    continua «Edit Mode»; o aviso «Edit Mode» não volta a saltar.
 5. `Tab`: «Object Mode»; clicar Path 0 no canvas e arrastar: só o rectângulo se move.
 6. Ctrl+clique nas duas linhas e `Tab`: as duas entram em Edit.
+7. Em Edit, clicar no canvas vazio: continua «Edit Mode» e a forma continua seleccionada.
+8. Com duas formas sobrepostas: Ctrl+clique nas duas linhas da Hierarquia, `Tab` (Edit das duas) e
+   «Union» no painel: fica uma forma («Path 2»), seleccionada, em «Edit Mode», COM o gizmo à volta.
 
 **Errado:** aparece uma linha «Vector» vazia depois do Add; a 2.ª forma vai para dentro da 1.ª; o modo
 cai para Object depois de desenhar.
+
+## §5b — Depois do fecho: reports do dono (05/10), curados em `0f3c8bef5`
+
+1. *«em edit mode se clicar no canvas vazio (desselecionar) sai do modo Edit. Não permita isso»* —
+   `mode_drive::drive` passo **0b**: num modo, LIMPAR a selecção (clique no vazio, `Esc`, caixa vazia)
+   devolve-a ao objecto enquanto o módulo o tiver em mãos; o modo só cai com o objecto apagado ou
+   desfeito. O `decide` continua a deixar passar o `None` SEM aviso (a doc diz agora porquê). Gate
+   `clearing_the_selection_in_edit_keeps_the_edit` (controlo: a forma apagada ainda larga o modo).
+2. *«ao fazer um boolean o gizmo já não aparece»* — **três causas**, medidas com um registo temporário
+   da família no programa real (o 1.º gate passava porque fazia tudo num quadro só; a foto não):
+   - a caneta a seleccionar as duas formas DENTRO do Edit (a shell copia-a para a selecção) largava o
+     Edit — o cadeado lia «troca». ⇒ as formas que a caneta selecciona **juntam-se ao Edit** (`follow`
+     e `parts`); ao entrar num Edit a caneta é **podada** às formas dele (uma selecção velha não entra
+     no Edit seguinte — gate `a_stale_pen_selection_never_joins_the_next_edit`);
+   - o Edit que cai porque as formas dele DESAPARECERAM largava a ferramenta, e a forma da booleana só
+     ganha entidade no quadro SEGUINTE ⇒ o `follow` não larga a ferramenta quando todas as formas do
+     Edit morreram (o `leave` nem é chamado: uma entidade morta não tem tipo);
+   - `object_gizmo_shows`: no modo que declara `parts_take_the_object_gizmo` (só o vetor), a selecção
+     tem o gizmo **incluindo a forma trancada** (com o contentor o trancado não o tinha).
+   Gate `the_shape_a_boolean_leaves_is_in_edit_with_its_gizmo` (DOIS quadros, pelo caminho da caneta);
+   `mode_drive_tests::a_parts_mode_gives_the_part_its_gizmo_and_the_lasso_its_parts` actualizado. A cena
+   `PH2D_OBJECT_MODE_SMOKE=6` passa a fazer a UNION (rectângulo + elipse sobrepostos); **foto**: «Path 2»
+   seleccionado, Edit Mode, gizmo à volta, painel Vector aberto.
+   **Mutação** (agente `mutacao`): **6/6 sangram** — o passo 0b, a caneta no `follow` e no `parts`, o
+   `!gone`, o gizmo do trancado (sangra também no gate do quadro) e a poda da caneta no `enter_with`.
+   Lint `-D warnings` de `ph2d-app-vec`/`ph2d-editor-core` verde; `ph2d-editor-core` 1 966/1 966.
 
 ## §6 — O que fica ABERTO
 

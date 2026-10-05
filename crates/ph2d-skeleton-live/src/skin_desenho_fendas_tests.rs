@@ -262,7 +262,9 @@ fn diag_as_passagens_do_zig_zag() {
             let r = super::raio_inscrito(&pl) / w;
             super::EXAMINADAS.with(|x| x.borrow_mut().clear());
             let cruz = super::cruzamentos(v, &aneis, &ancoras, 1e-3 * w);
-            let achou = super::fenda(&pl, &cruz, w, false, 1.0);
+            super::REGISTA.with(|x| x.set(true));
+            let achou = super::fendas(&pl, &cruz, w, false, 1.0);
+            super::REGISTA.with(|x| x.set(false));
             for (s, e, arco, corda, velha, r) in super::EXAMINADAS.with(|x| x.take()) {
                 println!(
                     "      {s}→{e} arco {:.2} corda {:.2} velha {velha} raio {:.2} (larg.)",
@@ -294,7 +296,7 @@ fn diag_as_passagens_do_zig_zag() {
                 "<path d='{d}Z' fill='none' stroke='{cor}' stroke-width='{}'/>",
                 w / 6.0
             ));
-            if let Some((a, b)) = achou {
+            for &(a, b) in &achou {
                 svg.push_str(&format!(
                     "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='black' stroke-width='{}'/>",
                     pl[a][0],
@@ -365,8 +367,8 @@ fn na_cena_as_passagens_novas_saem_e_os_buracos_engolidos_ficam() {
             .0;
         let cruz = super::cruzamentos(maior, &aneis, &ancoras, 1e-3 * w);
         assert_eq!(
-            super::fenda(&super::polilinha(maior), &cruz, w, false, 1.0),
-            None,
+            super::fendas(&super::polilinha(maior), &cruz, w, false, 1.0),
+            vec![],
             "a {graus}° ficou uma passagem nova no contorno de fora"
         );
     }
@@ -384,14 +386,19 @@ fn diag_o_preco_das_passagens() {
             continue;
         };
         super::EXAMINADAS.with(|x| x.borrow_mut().clear());
+        super::REGISTA.with(|x| x.set(true));
         let mut c = u.clone();
         fecha_as_fendas_que_o_traco_enche(&mut c, &fonte);
+        super::REGISTA.with(|x| x.set(false));
         let ex = super::EXAMINADAS.with(|x| x.take());
         println!(
             "  {graus}°: {} candidatos examinados ({} da fonte) · {} amostras",
             ex.len(),
             ex.iter().filter(|x| x.4).count(),
-            (0..u.contour_count()).filter_map(|k| u.contour(k)).map(|(v, _)| v.len() * 16).sum::<usize>()
+            (0..u.contour_count())
+                .filter_map(|k| u.contour(k))
+                .map(|(v, _)| v.len() * 16)
+                .sum::<usize>()
         );
         {
             let w = LARGURA_DA_CENA;
@@ -400,11 +407,15 @@ fn diag_o_preco_das_passagens() {
                 .filter(|(v, f)| *f && v.len() > 1)
                 .map(|(v, _)| v)
                 .collect();
-            let ancoras: Vec<[f64; 2]> =
-                fechados.iter().flat_map(|v| v.iter().map(|x| x.anchor)).collect();
+            let ancoras: Vec<[f64; 2]> = fechados
+                .iter()
+                .flat_map(|v| v.iter().map(|x| x.anchor))
+                .collect();
             let t0 = std::time::Instant::now();
-            let aneis: Vec<super::Anel> =
-                fechados.iter().map(|v| super::Anel::novo(super::polilinha(v))).collect();
+            let aneis: Vec<super::Anel> = fechados
+                .iter()
+                .map(|v| super::Anel::novo(super::polilinha(v)))
+                .collect();
             let t1 = t0.elapsed().as_secs_f64() * 1e6;
             let mut n_cruz = 0;
             let mut iguais = 0;
@@ -412,7 +423,11 @@ fn diag_o_preco_das_passagens() {
                 let Some((v, _)) = u.contour(k) else { continue };
                 iguais += v
                     .iter()
-                    .filter(|x| ancoras.iter().any(|a| (a[0] - x.anchor[0]).hypot(a[1] - x.anchor[1]) <= 1e-3 * w))
+                    .filter(|x| {
+                        ancoras
+                            .iter()
+                            .any(|a| (a[0] - x.anchor[0]).hypot(a[1] - x.anchor[1]) <= 1e-3 * w)
+                    })
                     .count();
                 n_cruz += super::cruzamentos(v, &aneis, &ancoras, 1e-3 * w)
                     .iter()
@@ -422,7 +437,10 @@ fn diag_o_preco_das_passagens() {
             println!(
                 "  {graus}°: anéis {t1:.0} µs · cruzamentos {:.0} µs · {n_cruz} cruzamentos · âncoras iguais às da fonte {iguais} de {}",
                 t0.elapsed().as_secs_f64() * 1e6 - t1,
-                (0..u.contour_count()).filter_map(|k| u.contour(k)).map(|(v, _)| v.len()).sum::<usize>()
+                (0..u.contour_count())
+                    .filter_map(|k| u.contour(k))
+                    .map(|(v, _)| v.len())
+                    .sum::<usize>()
             );
         }
         let mut t: Vec<f64> = Vec::new();

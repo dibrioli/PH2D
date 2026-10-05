@@ -18,13 +18,13 @@ thread_local! {
     /// A última entrada da lei — `(união, fonte)` — para as sondas.
     pub(super) static ULTIMA: std::cell::RefCell<Option<(VecPath, VecPath)>> = const { std::cell::RefCell::new(None) };
     /// O que a [`fenda`] examinou: `(s, e, arco, corda, velha, raio)` — para as sondas.
+    /// As sondas ligam o registo das [`EXAMINADAS`] (o raio de cada uma custa: fora do relógio).
+    pub(super) static REGISTA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     pub(super) static EXAMINADAS: std::cell::RefCell<Vec<(usize, usize, f64, f64, bool, f64)>> = const { std::cell::RefCell::new(Vec::new()) };
 }
 
 /// Amostras por segmento das polilinhas.
 const AMOSTRAS: usize = 16;
-/// Fendas fechadas por contorno no máximo (cada uma refaz as amostras).
-const MAX_FENDAS: usize = 32;
 
 /// A polilinha de um contorno fechado, `AMOSTRAS` por segmento, sem repetir o 1.º ponto.
 fn polilinha(v: &[VecVertex]) -> Vec<[f64; 2]> {
@@ -183,11 +183,12 @@ fn raio_inscrito(p: &[[f64; 2]]) -> f64 {
     r
 }
 
-/// ⭐ A melhor passagem NOVA do contorno `pl` da união: `(s, e)` em amostras, ela vai de `s` para
-/// a frente até `e`. A boca é a corda mais larga (`< w`) de uma passagem que o traço cobre toda.
+/// ⭐ As passagens NOVAS do contorno `pl` da união, sem se tocarem: `(s, e)` em amostras, cada uma
+/// vai de `s` para a frente até `e`. A boca é a corda mais larga (`< w`) de uma passagem que o traço
+/// cobre toda.
 /// `cruz[k]`: a âncora `k` do contorno é um CRUZAMENTO da união ([`cruzamentos`]). `buraco`: `pl` é
 /// um buraco, e a cor fica do lado do sentido `cor` (o do maior contorno).
-fn fenda(pl: &[[f64; 2]], cruz: &[bool], w: f64, buraco: bool, cor: f64) -> Option<(usize, usize)> {
+fn fendas(pl: &[[f64; 2]], cruz: &[bool], w: f64, buraco: bool, cor: f64) -> Vec<(usize, usize)> {
     let n = pl.len();
     let mut acc = vec![0.0];
     for i in 0..n {
@@ -265,7 +266,8 @@ fn fenda(pl: &[[f64; 2]], cruz: &[bool], w: f64, buraco: bool, cor: f64) -> Opti
                     } else {
                         (j, i, total - ida)
                     };
-                    if arco <= 1.5 * w {
+                    // Sem cruzamento no arco é da fonte — e tudo o que está dentro dele também.
+                    if arco <= 1.5 * w || !tem_cruzamento(s, e) {
                         continue;
                     }
                     pares.push((arco, s, e));
@@ -289,26 +291,16 @@ fn fenda(pl: &[[f64; 2]], cruz: &[bool], w: f64, buraco: bool, cor: f64) -> Opti
             })
             .sum()
     };
-    // Da fonte: o que está dentro também é. Larga: só os pares junto à MESMA boca (os de dentro
-    // podem ser uma passagem estreita dentro de uma larga — a ponta que entra num bolso, `=5`).
-    let mut velhas: Vec<(usize, usize)> = Vec::new();
+    // Larga: só os pares junto à MESMA boca saem (os de dentro podem ser uma passagem estreita
+    // dentro de uma larga — a ponta que entra num bolso, `=5`).
     let mut largas: Vec<(usize, usize)> = Vec::new();
+    let mut achadas: Vec<(usize, usize)> = Vec::new();
     let perto = |a: usize, b: usize| a.abs_diff(b).min(n - a.abs_diff(b)) <= AMOSTRAS;
     for (arco, s, e) in pares {
-        if velhas
-            .iter()
-            .any(|&(a, b)| dentro_do_arco(a, b, s) && dentro_do_arco(a, b, e))
-            || largas.iter().any(|&(a, b)| perto(a, s) && perto(b, e))
-        {
-            continue;
-        }
-        let velha = !tem_cruzamento(s, e);
-        #[cfg(test)]
-        let corda = (pl[s][0] - pl[e][0]).hypot(pl[s][1] - pl[e][1]);
-        if velha {
-            #[cfg(test)]
-            EXAMINADAS.with(|x| x.borrow_mut().push((s, e, arco, corda, true, -1.0)));
-            velhas.push((s, e));
+        let toca = |&(a, b): &(usize, usize)| {
+            dentro_do_arco(a, b, s) || dentro_do_arco(a, b, e) || dentro_do_arco(s, e, a)
+        };
+        if achadas.iter().any(toca) || largas.iter().any(|&(a, b)| perto(a, s) && perto(b, e)) {
             continue;
         }
         let mut regiao = Vec::new();
@@ -326,16 +318,20 @@ fn fenda(pl: &[[f64; 2]], cruz: &[bool], w: f64, buraco: bool, cor: f64) -> Opti
             continue;
         }
         #[cfg(test)]
-        EXAMINADAS.with(|x| {
-            x.borrow_mut()
-                .push((s, e, arco, corda, false, raio_inscrito(&regiao)));
-        });
-        if !cabe(&regiao, 0.5 * w) {
-            return Some((s, e));
+        if REGISTA.with(std::cell::Cell::get) {
+            let corda = (pl[s][0] - pl[e][0]).hypot(pl[s][1] - pl[e][1]);
+            EXAMINADAS.with(|x| {
+                x.borrow_mut()
+                    .push((s, e, arco, corda, false, raio_inscrito(&regiao)));
+            });
         }
-        largas.push((s, e));
+        if cabe(&regiao, 0.5 * w) {
+            largas.push((s, e));
+        } else {
+            achadas.push((s, e));
+        }
     }
-    None
+    achadas
 }
 
 /// ⭐⭐ Tira de `u` (a UNIÃO dos fechados de `fonte`) cada fenda NOVA que o traço enche — o contorno
@@ -387,45 +383,25 @@ pub(super) fn fecha_as_fendas_que_o_traco_enche(u: &mut VecPath, fonte: &VecPath
         .copied()
         .fold(0.0_f64, |m, a| if a.abs() > m.abs() { a } else { m });
     let buraco: Vec<bool> = areas.iter().map(|a| a * maior < 0.0).collect();
-    // Os pontos de cruzamento, uma vez: um corte só tira âncoras e põe duas novas, que não o são.
-    let pontos: Vec<[f64; 2]> = contornos
+    let cruz: Vec<Vec<bool>> = contornos
         .iter()
-        .flat_map(|c| {
-            let cruz = cruzamentos(&c.verts, &fonte, &ancoras, tol);
-            c.verts
-                .iter()
-                .zip(cruz)
-                .filter(|(_, x)| *x)
-                .map(|(v, _)| v.anchor)
-                .collect::<Vec<_>>()
-        })
+        .map(|c| cruzamentos(&c.verts, &fonte, &ancoras, tol))
         .collect();
     let mut mexeu = false;
     for ci in 0..contornos.len() {
-        for _ in 0..MAX_FENDAS {
-            let c = &contornos[ci];
-            if !c.closed || c.verts.len() < 2 {
-                break;
-            }
-            let pl = polilinha(&c.verts);
-            // ⛔ Um contorno que o traço engole INTEIRO (o buraco pequeno, a ilhota) fica como
-            // está: fechá-lo foi recusado pelo dono (F59-b).
-            if !cabe(&pl, 0.5 * w) {
-                break;
-            }
-            let cruz: Vec<bool> = contornos[ci]
-                .verts
-                .iter()
-                .map(|v| {
-                    pontos
-                        .iter()
-                        .any(|p| (p[0] - v.anchor[0]).hypot(p[1] - v.anchor[1]) <= tol)
-                })
-                .collect();
-            let Some((s, e)) = fenda(&pl, &cruz, w, buraco[ci], maior.signum()) else {
-                break;
-            };
-            contornos[ci].verts = sem_a_fenda(&contornos[ci].verts, s, e);
+        let c = &contornos[ci];
+        if !c.closed || c.verts.len() < 2 {
+            continue;
+        }
+        let pl = polilinha(&c.verts);
+        // ⛔ Um contorno que o traço engole INTEIRO (o buraco pequeno, a ilhota) fica como está:
+        // fechá-lo foi recusado pelo dono (F59-b).
+        if !cabe(&pl, 0.5 * w) {
+            continue;
+        }
+        let achadas = fendas(&pl, &cruz[ci], w, buraco[ci], maior.signum());
+        if !achadas.is_empty() {
+            contornos[ci].verts = sem_as_fendas(&contornos[ci].verts, &achadas);
             mexeu = true;
         }
     }
@@ -439,28 +415,36 @@ pub(super) fn fecha_as_fendas_que_o_traco_enche(u: &mut VecPath, fonte: &VecPath
     u.subpaths = it.collect();
 }
 
-/// O contorno fechado `v` sem a fenda que vai da amostra `s` à `e` (para a frente): fica o resto,
-/// de `e` à volta até `s`, e a recta de `s` a `e` fecha-o.
-fn sem_a_fenda(v: &[VecVertex], s: usize, e: usize) -> Vec<VecVertex> {
+/// O contorno fechado `v` sem as passagens `fendas` (cada uma da amostra `s` para a frente até `e`,
+/// sem se tocarem): ficam os pedaços entre elas, e a recta de cada `s` ao seu `e` liga-os.
+fn sem_as_fendas(v: &[VecVertex], fendas: &[(usize, usize)]) -> Vec<VecVertex> {
     let m = v.len();
     #[expect(clippy::cast_precision_loss, reason = "parâmetro do contorno")]
-    let (us, ue) = (s as f64 / AMOSTRAS as f64, e as f64 / AMOSTRAS as f64);
-    #[expect(clippy::cast_precision_loss, reason = "parâmetro do contorno")]
-    let fim = if us > ue { us } else { us + m as f64 };
-    // O contorno aberto `v v v[0]` — duas voltas para o resto poder passar pela emenda.
+    let u = |k: usize| k as f64 / AMOSTRAS as f64;
+    let mut ordem: Vec<(f64, f64)> = fendas.iter().map(|&(s, e)| (u(s), u(e))).collect();
+    ordem.sort_by(|a, b| a.0.total_cmp(&b.0));
+    // O contorno aberto `v v v[0]` — duas voltas para um pedaço poder passar pela emenda.
     let mut dupla: Vec<VecVertex> = v.iter().chain(v).copied().collect();
     dupla.push(v[0]);
-    let mut resto: Vec<VecVertex> = super::super::frente::recorta(&dupla, ue, fim)
-        .into_iter()
-        .map(|(x, _)| x)
-        .collect();
-    if let Some(p) = resto.first_mut() {
-        p.in_handle = p.anchor;
+    let mut saida: Vec<VecVertex> = Vec::new();
+    for (i, &(_, ue)) in ordem.iter().enumerate() {
+        // Do fim desta ao início da seguinte (a última volta até à 1.ª).
+        let us = ordem[(i + 1) % ordem.len()].0;
+        #[expect(clippy::cast_precision_loss, reason = "parâmetro do contorno")]
+        let fim = if us > ue { us } else { us + m as f64 };
+        let mut pedaco: Vec<VecVertex> = super::super::frente::recorta(&dupla, ue, fim)
+            .into_iter()
+            .map(|(x, _)| x)
+            .collect();
+        if let Some(p) = pedaco.first_mut() {
+            p.in_handle = p.anchor;
+        }
+        if let Some(p) = pedaco.last_mut() {
+            p.out_handle = p.anchor;
+        }
+        saida.extend(pedaco);
     }
-    if let Some(u) = resto.last_mut() {
-        u.out_handle = u.anchor;
-    }
-    resto
+    saida
 }
 
 #[cfg(test)]

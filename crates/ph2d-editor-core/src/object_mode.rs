@@ -234,21 +234,24 @@ impl ModeState {
     /// ⭐⭐ **O modo em curso ainda se segura?** — a rede de segurança de cada quadro.
     ///
     /// Ele só vale enquanto o módulo tem a entidade em mãos e a selecção é EXACTAMENTE ela — ou,
-    /// num modo que edita as [partes](Self::publish_parts), só partes dela (nenhuma incluído: o
-    /// Edit do Blender não sai ao desseleccionar). A selecção muda por dezenas de portas que não
-    /// são gestos (criar, duplicar, apagar, desfazer, largar um ficheiro) — em vez de as ensinar
-    /// uma a uma, quem perde a entidade volta a Object.
+    /// num modo que edita as [partes](Self::publish_parts), só partes dela — ou NENHUMA: o Edit do
+    /// Blender não sai ao desseleccionar (escolha do dono, 05/10: *«permita desselecionar mesmo sem
+    /// sair do modo edit»*). A selecção muda por dezenas de portas que não são gestos (criar,
+    /// duplicar, desfazer, largar um ficheiro) — em vez de as ensinar uma a uma, quem selecciona
+    /// OUTRA coisa volta a Object; a entidade APAGADA cai pelo `module_holds` (o quadro do modo não
+    /// acha família para uma entidade sem tipo).
     #[must_use]
     pub fn still_holds(&self, selection: Option<u64>, extras: &[u64], module_holds: bool) -> bool {
         self.active.is_none_or(|a| {
             module_holds
-                && match &self.parts {
-                    None => selection == Some(a.entity) && extras.is_empty(),
-                    Some(parts) => selection
-                        .iter()
-                        .chain(extras)
-                        .all(|b| *b == a.entity || parts.contains(b)),
-                }
+                && (selection.is_none() && extras.is_empty()
+                    || match &self.parts {
+                        None => selection == Some(a.entity) && extras.is_empty(),
+                        Some(parts) => selection
+                            .iter()
+                            .chain(extras)
+                            .all(|b| *b == a.entity || parts.contains(b)),
+                    })
         })
     }
 
@@ -301,8 +304,8 @@ pub enum Decision {
 ///   (re-seleccionar é um no-op, e recusá-lo ensinaria o artista a ignorar avisos);
 /// - **acrescentar** ⇒ só entre partes; num modo de objecto inteiro recusa, mesmo sobre a própria:
 ///   o que o modo não sabe representar é o ESTADO de duas seleccionadas;
-/// - limpar (alvo `None`) ⇒ passa SEM aviso — e o quadro devolve a selecção ao objecto enquanto o
-///   modo durar (`mode_drive::drive`, escolha do dono 05/10: o clique no vazio não sai do Edit);
+/// - limpar (alvo `None`) ⇒ passa SEM aviso, e o modo continua (escolha do dono 05/10: desseleccionar
+///   não sai do Edit — [`ModeState::still_holds`]);
 /// - outra entidade ⇒ recusa.
 #[must_use]
 pub fn decide(

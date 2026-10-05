@@ -148,8 +148,8 @@ fn the_mode_holds_only_its_own_entity() {
         "a selecção mudou por outra porta"
     );
     assert!(
-        !s.still_holds(None, &[], true),
-        "a entidade saiu (apagar, desfazer)"
+        s.still_holds(None, &[], true),
+        "desseleccionar saiu do modo (escolha do dono, 05/10: não sai)"
     );
     assert!(
         !s.still_holds(Some(IMG), &[OTHER], true),

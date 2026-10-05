@@ -289,10 +289,11 @@ fn add_never_enters_the_edit_of_a_stale_pen_selection() {
     assert_eq!(c.em_edit(), None, "o Add entrou no Edit da forma velha");
 }
 
-/// ⭐⭐ GATE (report do dono, 05/10: *«em edit mode se clicar no canvas vazio (desselecionar) sai do
-/// modo Edit. Não permita isso»*) — **limpar a selecção num Edit não sai dele**: ela volta à forma (e
-/// às duas, num Edit de duas). CONTROLO: a forma APAGADA ainda faz o modo cair a Object.
-/// (Mutação: apagar o passo 0b do `mode_drive::drive` ⇒ RED.)
+/// ⭐⭐ GATE (dono, 05/10: *«em edit mode se clicar no canvas vazio (desselecionar) sai do modo Edit.
+/// Não permita isso»* e *«permita desselecionar mesmo sem sair do modo edit»*) — **desseleccionar num
+/// Edit não sai dele, e a selecção FICA vazia** (num Edit de uma forma e num de duas). CONTROLO: a
+/// forma APAGADA ainda faz o modo cair a Object.
+/// (Mutação: o `still_holds` voltar a exigir a entidade seleccionada ⇒ RED.)
 #[test]
 fn clearing_the_selection_in_edit_keeps_the_edit() {
     let mut c = cena();
@@ -304,19 +305,19 @@ fn clearing_the_selection_in_edit_keeps_the_edit() {
     c.hero.gizmo.replace_selection(None);
     c.quadro(None);
     assert_eq!(c.em_edit(), Some(a), "o clique no vazio saiu do Edit");
-    assert_eq!(
-        c.hero.gizmo.selection,
-        Some(a),
-        "a selecção não voltou à forma"
-    );
+    assert_eq!(c.hero.gizmo.selection, None, "a desselecção foi desfeita");
     c.quadro(Some(ModeRequest::Toggle));
     c.hero.gizmo.replace_selection(Some(a));
     c.hero.gizmo.add_to_selection(b);
     c.quadro(Some(ModeRequest::Toggle));
     c.hero.gizmo.replace_selection(None);
     c.quadro(None);
-    assert_eq!(c.em_edit(), Some(b));
-    assert_eq!(c.hero.gizmo.selected_len(), 2, "o Edit de duas perdeu uma");
+    assert_eq!(
+        c.em_edit(),
+        Some(b),
+        "o Edit de duas caiu ao desseleccionar"
+    );
+    assert_eq!(c.hero.gizmo.selected_len(), 0);
     c.sim.world_mut().despawn(Entity::from_bits(b));
     c.hero.gizmo.replace_selection(None);
     c.quadro(None);

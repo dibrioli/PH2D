@@ -176,23 +176,6 @@ pub fn drive(
         select_together(hero, bits, &[]);
         Some(ModeRequest::Enter(mode))
     });
-    // 0b. ⭐ Num modo, LIMPAR a selecção (o clique no vazio, o `Esc`, a caixa vazia) não larga o
-    // objecto — ela volta a ele (escolha do dono, 05/10). O modo só cai quando o módulo deixa de o ter
-    // em mãos (apagado, desfeito, outra ferramenta).
-    if let Some(current) = hero.gizmo.mode.active()
-        && hero.gizmo.selection.is_none()
-        && hero.gizmo.extra_selection.is_empty()
-        && family(families, kind_of(current.entity), current.mode)
-            .is_some_and(|f| f.holds(current.mode, current.entity, tools))
-    {
-        let joined = hero
-            .gizmo
-            .mode
-            .parts()
-            .map(<[u64]>::to_vec)
-            .unwrap_or_default();
-        select_together(hero, current.entity, &joined);
-    }
     // 1. O activo e os modos que o TIPO dele declara.
     let mut active = publish_active(families, kind_of, hero);
     // 2. A rede de segurança: quem perdeu a entidade (por qualquer porta) volta a Object.

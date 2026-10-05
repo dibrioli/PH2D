@@ -1,4 +1,6 @@
 #!/bin/bash
+# ⛔ SUBSTITUÍDA para comparar variantes (doc 121 §9.16, 05/10): use `mede_intercalado.sh` — todas as variantes e
+# cenas num só processo, sem espera de calma (`37 s` contra `4`–`5 h`). Esta fica para a PAREDE por célula.
 # mede_sonda_das_estrelas.sh — a régua do doc 121 §9.7+: `sonda_relogio_das_estrelas_grandes` nos três
 # arranjos (grandes esticadas · grandes conformes · densas da `=127`), nas placas pedidas, só com a
 # máquina CALMA e com a placa pela porta da casa (exclusão + prazo) SÓ durante a corrida.

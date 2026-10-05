@@ -35,4 +35,4 @@ pub use geometry::{
     FLAG_EVEN_ODD, FLAG_SO_CONFORME, FillRule, GeometryRecord, LEVELS, ShapeGeometry, ShapeInput,
     StrokeInput, TOL_BASE, TOL_STEP,
 };
-pub use pass::{Copias, ShapeInstance, ShapePass, ShapeView};
+pub use pass::{Copias, ShapeInstance, ShapePass, ShapeView, VarianteDoPasse};

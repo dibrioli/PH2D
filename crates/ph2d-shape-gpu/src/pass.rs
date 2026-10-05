@@ -73,8 +73,6 @@ const SHADER: &str = concat!(include_str!("shape.wgsl"), include_str!("contorno.
 /// doc 121 §9.15 (d) — o `cs_varre` por subgrupo, num módulo à parte: um módulo com operações de
 /// subgrupo não valida num dispositivo sem `Features::SUBGROUP`.
 const SUBGRUPO: &str = include_str!("contorno_subgrupo.wgsl");
-/// O roteiro de troca da rodada desliga o pedaço (d) aqui.
-const PREFIXO_POR_SUBGRUPO: bool = true;
 
 fn storage_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
@@ -112,11 +110,42 @@ fn buffer_com(
     b
 }
 
+/// doc 121 §9.16 — uma VARIANTE do passe, para a sonda intercalada medir pedaços lado a lado no MESMO
+/// processo: as constantes `override` do contorno ([`ShapePass::com_constantes`]) e as duas portas de
+/// execução. A omissão é o produto.
+#[derive(Clone, Debug, Default)]
+pub struct VarianteDoPasse {
+    pub constantes: Vec<(&'static str, f64)>,
+    pub sem_subgrupo: bool,
+    pub sem_medida_no_inicio: bool,
+}
+
 impl ShapePass {
+    /// O passe da `variante` (a omissão é [`Self::new`]).
+    #[must_use]
+    pub fn da_variante(gpu: &GpuContext, format: wgpu::TextureFormat, v: &VarianteDoPasse) -> Self {
+        let mut p = Self::com_constantes(gpu, format, &v.constantes);
+        p.com_subgrupo(!v.sem_subgrupo);
+        p.mede_a_capacidade_no_inicio(!v.sem_medida_no_inicio);
+        p
+    }
+
     /// Um passe que desenha para alvos de `format`, com a mistura pré-multiplicada «por cima»
     /// (a do Vello: `Mix::Normal` + `Compose::SrcOver`).
     #[must_use]
     pub fn new(gpu: &GpuContext, format: wgpu::TextureFormat) -> Self {
+        Self::com_constantes(gpu, format, &[])
+    }
+
+    /// O mesmo passe com constantes `override` do módulo do contorno (doc 121 §9.16) — a porta da
+    /// sonda intercalada, que liga e desliga pedaços ao criar o pipeline, sem recompilar. Hoje:
+    /// `AJUSTE_NA_CONTAGEM` · `TOTAL_NO_PERCURSO` · `ARESTAS_COMPACTAS` · `JUNTA_UMA_POR_TROCO` (`1` ou `0`).
+    #[must_use]
+    pub fn com_constantes(
+        gpu: &GpuContext,
+        format: wgpu::TextureFormat,
+        constantes: &[(&str, f64)],
+    ) -> Self {
         let device = &gpu.device;
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ph2d-shape-gpu"),
@@ -145,22 +174,28 @@ impl ShapePass {
                 storage_entry(6),
             ],
         });
-        let modulo_subgrupo = (PREFIXO_POR_SUBGRUPO
-            && device.features().contains(wgpu::Features::SUBGROUP))
-        .then(|| {
-            device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("ph2d-shape-gpu (subgrupo)"),
-                source: wgpu::ShaderSource::Wgsl(format!("{SHADER}{SUBGRUPO}").into()),
-            })
-        });
-        let contorno =
-            crate::contorno::Contorno::new(gpu, &module, modulo_subgrupo.as_ref(), &layout);
+        let modulo_subgrupo = device
+            .features()
+            .contains(wgpu::Features::SUBGROUP)
+            .then(|| {
+                device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("ph2d-shape-gpu (subgrupo)"),
+                    source: wgpu::ShaderSource::Wgsl(format!("{SHADER}{SUBGRUPO}").into()),
+                })
+            });
+        let contorno = crate::contorno::Contorno::new(
+            gpu,
+            &module,
+            modulo_subgrupo.as_ref(),
+            &layout,
+            constantes,
+        );
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-shape-gpu"),
             bind_group_layouts: &[Some(&layout), Some(&contorno.leitura)],
             immediate_size: 0,
         });
-        let pipeline = crate::contorno::Variantes::cria(|compilation_options| {
+        let pipeline = crate::contorno::Variantes::cria(&[], |compilation_options| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("ph2d-shape-gpu"),
                 layout: Some(&pl),

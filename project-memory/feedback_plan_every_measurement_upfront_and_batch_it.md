@@ -30,5 +30,13 @@ e mutações lançadas em paralelo com o verificador na MESMA árvore (tive de a
 - Trabalho que muta a árvore (mutação) e trabalho que a compila (gates) correm EM SÉRIE, planeados.
 - Ao dono: diga logo no início quanto tempo é espera de máquina e quanto é trabalho.
 
+⛔⛔ **05/10 — e mesmo UMA rodada «de binários» levou 4–5 h** (o §9.15: `360` células, `15` compilações, `20` s de
+calma antes de CADA célula = `2 h` de espera com a máquina ociosa, mais `2 h 35` presa pela carga de outras linhas).
+O dono: *«não podemos esperar horas»*, e *«20 a 30 minutos é muito lento»*. ⇒ **variantes são PASSES do mesmo
+processo, não binários**: constantes `override` escolhidas ao criar o pipeline, blocos de quadros intercalados
+por ordem rodada, o MÍNIMO das rodadas (interferência só soma), nenhuma espera de calma — a mesma rodada em
+**`37 s`** com `load 20`–`29`, mínimo = mediana ao `0,01` (doc 121 §9.16, `mede_intercalado.sh`). Peça nova
+que se vai medir nasce já como `override`/porta de execução, nunca como `const` a trocar por script.
+
 Relacionado: [[feedback_an_old_attribution_is_worth_more_after_ablating_todays_suspect]] ·
 [[reference_topic_measurement_discipline]]

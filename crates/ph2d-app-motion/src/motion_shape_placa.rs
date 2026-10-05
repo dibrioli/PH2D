@@ -247,6 +247,8 @@ pub struct PlacaDeFormas {
     /// `true` ⇒ o traço do eixo sai pixel a pixel mesmo com a porta do contorno aberta — para os
     /// gates e a sonda compararem os dois caminhos sem ler o ambiente.
     sem_contorno: bool,
+    /// doc 121 §9.16 — a variante do passe (a omissão é o produto; só a sonda intercalada a troca).
+    variante: ph2d_shape_gpu::VarianteDoPasse,
     /// O [`Self::desenha`] DESTE quadro desenhou a camada — o que o [`Self::redesenha_em`] repete.
     desenhou: bool,
 }
@@ -393,7 +395,7 @@ impl PlacaDeFormas {
         let g = self.gpu.get_or_insert_with(|| {
             let (textura, vista) = Gpu::camada(gpu, tamanho);
             Gpu {
-                passe: ShapePass::new(gpu, FORMATO_DA_CAMADA),
+                passe: ShapePass::da_variante(gpu, FORMATO_DA_CAMADA, &self.variante),
                 textura,
                 vista,
                 tamanho,
@@ -494,6 +496,12 @@ impl PlacaDeFormas {
     #[cfg(test)]
     pub(crate) fn sem_contorno(&mut self) {
         self.sem_contorno = true;
+    }
+
+    /// O passe desta placa com a `variante` (doc 121 §9.16) — antes do 1.º desenho.
+    #[cfg(test)]
+    pub(crate) fn com_variante(&mut self, variante: ph2d_shape_gpu::VarianteDoPasse) {
+        self.variante = variante;
     }
 
     /// Quantas das cópias do último desenho ganharam o contorno calculado (doc 121 §9.5).

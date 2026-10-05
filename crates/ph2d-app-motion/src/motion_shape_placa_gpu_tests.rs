@@ -394,23 +394,22 @@ fn a_forma_alinhada_aos_eixos_nao_risca_uma_linha() {
     );
 }
 
-/// SONDA de relógio (doc 121 W4, report de 2026-09-30: *«com `PH2D_FORMAS_NA_PLACA=0` o `raw` está
-/// quase sempre maior»*, com as estrelas GRANDES no ecrã). Estrelas esticadas que enchem o alvo,
-/// desenhadas `N` vezes por cada rota, com o dispositivo drenado entre elas.
-#[test]
-#[ignore = "sonda de relógio"]
-fn sonda_relogio_das_estrelas_grandes() {
-    let Some(gpu) = gpu() else { return };
+/// O arranjo das estrelas da sonda (doc 121 §9.3–§9.16): `modo` `""` esticadas · `"conforme"` · `"fill"`;
+/// `nivel_denso` `""` grandes · `"1"` · `"2"` (as densas da `=127`); `tracejado` o `Dash` da `=127`.
+/// UMA porta para a sonda de relógio e a intercalada — as duas medem a MESMA cena.
+pub(crate) fn estrelas_da_sonda(
+    modo: &str,
+    nivel_denso: &str,
+    tracejado: bool,
+) -> (VecPathStore, Vec<VectorInstance>) {
     let mut store = VecPathStore::default();
     let mut f = ph2d_vec_scene::star_rounded([0.0, 0.0], 0.5, 0.5, 8, 0.6, 0.08, 0.08);
-    let modo = std::env::var("PH2D_SONDA_MODO").unwrap_or_default();
     // `PH2D_SONDA_DENSO=1`: o arranjo DENSO da `=127` (estrela de `8 px`, contorno de `1 px`, o vão
     // da cena) a encher o alvo — o regime em que o proxy de telemóvel ficou preso na placa (§9.3).
     //
     // `PH2D_SONDA_DENSO=2`: o MESMO arranjo com o vão da CENA (`2 · 0,125 · 1,8 = 0,45` unidades,
     // `14,4 px`) — a `=127` densa põe as estrelas a metade do vão do `=1`, e o custo por estrela do
     // app só se reproduz com a densidade dele.
-    let nivel_denso = std::env::var("PH2D_SONDA_DENSO").unwrap_or_default();
     let denso = nivel_denso == "1" || nivel_denso == "2";
     if modo != "fill" {
         let w = if denso { 0.125 } else { 0.06 };
@@ -427,7 +426,7 @@ fn sonda_relogio_das_estrelas_grandes() {
     };
     // `PH2D_SONDA_TRACEJADO=1`: o contorno com o `Dash` e o `Dash Gap` da `=127` tracejada — a
     // variante COMPLETA do shader (doc 121 §9.13).
-    if std::env::var("PH2D_SONDA_TRACEJADO").is_ok_and(|v| v == "1") {
+    if tracejado {
         use crate::motion_state::traco_esticado_demo::TRACEJADO;
         if let Some(s) = f.stroke.as_mut() {
             s.dash = Some((f64::from(TRACEJADO.0), f64::from(TRACEJADO.1)));
@@ -487,6 +486,23 @@ fn sonda_relogio_das_estrelas_grandes() {
             });
         }
     }
+    (store, insts)
+}
+
+/// SONDA de relógio (doc 121 W4, report de 2026-09-30: *«com `PH2D_FORMAS_NA_PLACA=0` o `raw` está
+/// quase sempre maior»*, com as estrelas GRANDES no ecrã). Estrelas esticadas que enchem o alvo,
+/// desenhadas `N` vezes por cada rota, com o dispositivo drenado entre elas.
+#[test]
+#[ignore = "sonda de relógio"]
+fn sonda_relogio_das_estrelas_grandes() {
+    let Some(gpu) = gpu() else { return };
+    let modo = std::env::var("PH2D_SONDA_MODO").unwrap_or_default();
+    let nivel_denso = std::env::var("PH2D_SONDA_DENSO").unwrap_or_default();
+    let (store, insts) = estrelas_da_sonda(
+        &modo,
+        &nivel_denso,
+        std::env::var("PH2D_SONDA_TRACEJADO").is_ok_and(|v| v == "1"),
+    );
     // `PH2D_FLUID_PROFILE=1`: o relógio da placa POR PASSE (o cálculo `render.contorno` e o desenho
     // `render.formas`), impresso a cada `120` quadros — a decomposição que o relógio de parede não dá.
     let perfil = std::env::var("PH2D_FLUID_PROFILE").is_ok_and(|v| v != "0");
@@ -602,3 +618,6 @@ mod letras;
 
 #[path = "motion_shape_placa_gpu_tracejado_tests.rs"]
 mod tracejado;
+
+#[path = "motion_shape_placa_gpu_intercalada_tests.rs"]
+mod intercalada;

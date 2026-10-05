@@ -278,21 +278,8 @@ pub fn span_end(device: &wgpu::Device, queue: &wgpu::Queue, token: SpanToken) {
     }
 }
 
-/// Per-frame tail: resolve this frame's queries into a free ring slot
-/// (async map, no blocking poll), drain any COMPLETED prior slot into the
-/// accumulator, and print the per-label table every [`WINDOW`] sampled
-/// frames. Call once per frame from the shell, after the last instrumented
-/// submit. No-op when off.
-pub fn end_frame(device: &wgpu::Device, queue: &wgpu::Queue) {
-    let Some(prof) = PROF.get() else { return };
-    let Ok(mut inner) = prof.inner.lock() else {
-        return;
-    };
-    let inner = &mut *inner;
-
-    // 1. Drain completed readbacks (the map callback fired on some earlier
-    //    poll — `acquire_frame`/present polls the device every frame).
-    let _ = device.poll(wgpu::PollType::Poll);
+/// Fold every COMPLETED readback slot into the accumulator.
+fn collect_ready(prof: &Prof, inner: &mut Inner) {
     for slot in &mut inner.ring {
         if !slot.in_flight || !slot.ready.load(Ordering::Acquire) {
             continue;
@@ -336,6 +323,54 @@ pub fn end_frame(device: &wgpu::Device, queue: &wgpu::Queue) {
             inner.accum.frames += 1;
         }
     }
+}
+
+/// Totals since the last [`drain`]: per label `(label, ns summed, scopes)`, frames sampled and
+/// the summed whole-frame GPU span — what an interleaved A/B probe attributes to ONE variant.
+#[derive(Debug, Clone, Default)]
+pub struct Totals {
+    pub per_label: Vec<(&'static str, u64, u32)>,
+    pub frames: u32,
+    pub span_ns: u64,
+}
+
+/// Wait for every in-flight readback, fold it, and hand back (and reset) the accumulator — the
+/// door for a probe that interleaves variants in blocks of frames (doc 121 §9.16). Call
+/// [`end_frame`] after the block's last frame first, so its queries are resolved. `None` when off.
+pub fn drain(device: &wgpu::Device) -> Option<Totals> {
+    let prof = PROF.get()?;
+    let _ = device.poll(wgpu::PollType::wait_indefinitely());
+    let mut inner = prof.inner.lock().ok()?;
+    let inner = &mut *inner;
+    collect_ready(prof, inner);
+    let accum = std::mem::take(&mut inner.accum);
+    Some(Totals {
+        per_label: accum
+            .per_label
+            .into_iter()
+            .map(|(l, (ns, n))| (l, ns, n))
+            .collect(),
+        frames: accum.frames,
+        span_ns: accum.span_ns,
+    })
+}
+
+/// Per-frame tail: resolve this frame's queries into a free ring slot
+/// (async map, no blocking poll), drain any COMPLETED prior slot into the
+/// accumulator, and print the per-label table every [`WINDOW`] sampled
+/// frames. Call once per frame from the shell, after the last instrumented
+/// submit. No-op when off.
+pub fn end_frame(device: &wgpu::Device, queue: &wgpu::Queue) {
+    let Some(prof) = PROF.get() else { return };
+    let Ok(mut inner) = prof.inner.lock() else {
+        return;
+    };
+    let inner = &mut *inner;
+
+    // 1. Drain completed readbacks (the map callback fired on some earlier
+    //    poll — `acquire_frame`/present polls the device every frame).
+    let _ = device.poll(wgpu::PollType::Poll);
+    collect_ready(prof, inner);
 
     // 2. Print the report window.
     if inner.accum.frames >= WINDOW {

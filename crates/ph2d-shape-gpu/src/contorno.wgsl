@@ -37,15 +37,16 @@ struct Contas {
     _p2: u32,
 }
 
-// doc 121 §9.15 — os pedaços da rodada, um por constante (o roteiro de troca liga-os um a um).
+// doc 121 §9.15 — os pedaços da rodada; §9.16 — `override`, para a sonda intercalada os escolher ao criar o
+// pipeline (`ShapePass::com_constantes`), sem recompilar.
 // O ajuste do tracejado sai da CONTAGEM (o 5.º quinto), não de uma volta do `cs_escreve`.
-const AJUSTE_NA_CONTAGEM: bool = true;
+override AJUSTE_NA_CONTAGEM: bool = true;
 // O total de um fechado sai do PRÓPRIO percurso; o 1.º traço (o da emenda) emite-se no fim.
-const TOTAL_NO_PERCURSO: bool = true;
+override TOTAL_NO_PERCURSO: bool = true;
 // O `cs_deposita` corre um fio por aresta ESCRITA (o 4.º quinto), não por aresta reservada.
-const ARESTAS_COMPACTAS: bool = true;
+override ARESTAS_COMPACTAS: bool = true;
 // A reserva do tracejado conta a junta UMA vez por troço (só uma peça por troço passa do fim dele).
-const JUNTA_UMA_POR_TROCO: bool = true;
+override JUNTA_UMA_POR_TROCO: bool = true;
 
 @group(2) @binding(0) var<uniform> contas: Contas;
 // Cinco contagens por cópia, `n + 1` entradas cada (a última é o total), e depois do `cs_soma` onde

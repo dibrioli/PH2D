@@ -1779,3 +1779,57 @@ arestas `→ 0,39` (a escrita na memória não custa nada); `C1` contagem pela c
   duas placas (gate). ⏳ o critério (densas `−5 %`) NÃO foi medido.
 - **`F`:** a soma das esticadas tracejadas `1,17 → 0,95` (`−19 %`) e a parede mediana `1,27 → 1,03` contra o
   Vello `0,95` (que recebe o tracejado cortado fora do relógio) — quase empatados; contínuas `−6 %`.
+
+### §9.16 — A SONDA INTERCALADA: a rodada do §9.15 em `37 s` em vez de `4`–`5 h` (2026-10-05)
+
+Pedido do dono (05/10): *«não podemos esperar horas»*. **Onde estava o tempo da rodada do §9.15** (medido):
+`mede_sonda_das_estrelas.sh` abria UM processo por célula (`1`–`2` s de dispositivo e pipelines para
+`~0,3` s de régua), esperava `SEGUIDAS=2` leituras calmas com `20` s entre elas ANTES de cada célula — `360 ×
+20 s = 2 h` de espera com a máquina ociosa —, ficou `2 h 35` à espera com três outras linhas a compilar
+(`load 16`–`30`), e compilava um binário `release` por variante (`15 × 1,5 min`).
+
+**A régua nova** — `sonda_intercalada` ([`motion_shape_placa_gpu_intercalada_tests.rs`](../../crates/ph2d-app-motion/src/motion_shape_placa_gpu_intercalada_tests.rs))
+e [`ferramentas/mede_intercalado.sh`](ferramentas/mede_intercalado.sh):
+
+- **as variantes são passes do MESMO processo:** os pedaços do §9.15 passaram de `const` a `override`
+  (`ShapePass::com_constantes`, `VarianteDoPasse`: as constantes escolhem-se ao criar o pipeline; o subgrupo e
+  a medida no início já eram portas de execução) ⇒ UMA compilação (perfil `smoke`, otimizado e incremental:
+  o relógio é o da placa, e o nível de otimização do Rust só mexe na CPU);
+- **intercaladas em blocos de `20` quadros por ordem rodada** (`7` rodadas): uma carga alheia cai em todas
+  as variantes por igual;
+- **o resumo é o MÍNIMO das rodadas** (uma interferência só soma tempo), com a mediana ao lado; a régua
+  continua a SOMA dos passes do relógio da placa, agora entregue por bloco (`ph2d_gpu::pass_profiler::drain`,
+  aditivo no foundational);
+- **nenhuma espera de calma.** Medido com `load 20`–`29`: mínimo e mediana iguais ao `0,01`, e o `base`/`F` das
+  esticadas tracejadas da iGPU a repetir a rodada de 04/10 (`1,18`/`0,94`–`0,95` contra `1,17`–`1,18`/`0,95`).
+
+| | rodada do §9.15 | sonda intercalada |
+|---|---:|---:|
+| compilação | `15 ×` release (`~25 min`) | `1 ×` smoke (`~1 min` com mudança de código; `0 s` sem) |
+| iGPU, `9` variantes × `6` cenas | — (parada em `94/360` células) | **`11 s`** |
+| RTX, idem | — | **`26`–`28 s`** |
+| espera de calma | `2 h` (ociosa) + `2 h 35` (carga) | `0` |
+
+⛔→✅ **Na RTX o processo morria com SIGSEGV DEPOIS do `test result: ok`** (o core: uma thread que não a
+principal a saltar para `0x170`): a thread do driver a gravar a cache de shaders (`54` passes × `~20`
+pipelines) quando a biblioteca já fora descarregada. Com `__GL_SHADER_DISK_CACHE=0` sai limpo (a sonda
+antiga, com `1` passe, sai limpa com e sem perfilador). O roteiro desliga a cache SÓ no processo da sonda
+— ela só acelera o arranque seguinte, o relógio da placa não a vê.
+
+**O que faltava do §9.15, medido agora** (soma mínima, ms; `F` = todos os pedaços, o produto):
+
+| cena | iGPU `base → F` | RTX `base → F` | o pedaço que mais pesa |
+|---|---:|---:|---|
+| esticadas contínuas | `0,91 → 0,87` (`−4 %`) | `0,222 → 0,214` (`−4 %`) | `D`, `B1` |
+| esticadas TRACEJADAS | `1,18 → 0,95` (`−20 %`) | `0,367 → 0,297` (`−19 %`) | `B1` `−12 %` · `B2` `−9 %` · `A1` `−6 %` (RTX `−15 %`) |
+| conformes contínuas | `0,615 → 0,610` (`−1 %`) | `0,087 → 0,083` (`−5 %`) | `D` |
+| conformes tracejadas | `0,557 → 0,545` (`−2 %`) | `0,083 → 0,078` (`−6 %`) | `D` |
+| **densas contínuas** | **`1,02 → 0,85` (`−16 %`)** | `0,099 → 0,085` (`−14 %`) | `B1` `−11 %` · `D` `−5 %` (RTX `D` `−13 %`) |
+| **densas TRACEJADAS** | **`1,32 → 0,95` (`−28 %`)** | `0,121 → 0,097` (`−20 %`) | `B1` `−21 %` · `B2` `−12 %` |
+
+**Os critérios do §9.15 que ficaram por medir, agora fechados:** **B1 ✅** células das densas tracejadas
+`1,00 → 0,71` (critério `≤ 0,90`); **D ✅** densas contínuas da iGPU `−5,3 %` (critério `−5 %`); **RTX ✅**
+nenhum arranjo pior que `+10 %` — o pior pedaço sozinho é o `B1` nas conformes (`+6,4 %`, o
+`cs_soma_escritas` num passe de `0,09` ms), e o `F` melhora em TODAS as cenas das duas placas. Nas conformes
+o `B1` sozinho custa `+3 %` na iGPU e o `D` devolve-o: o `F` fica a `−1`/`−2 %`. ⏳ Sem medida ainda: o app
+(`=127` e a memória das arestas que o `B2` corta) e os registos — a próxima onda corre-os já pela régua nova.

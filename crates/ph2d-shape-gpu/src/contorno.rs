@@ -75,10 +75,6 @@ const DESENHO_COMPLETO: u64 = 52;
 const DESPACHO: u64 = 68;
 /// As contagens por cópia na `contagem` (`quinto` no WGSL).
 const QUINTOS: u64 = 5;
-/// doc 121 §9.15 — o `cs_deposita` por aresta ESCRITA (`ARESTAS_COMPACTAS` no WGSL: as duas mudam juntas).
-const ARESTAS_COMPACTAS: bool = true;
-/// doc 121 §9.15 (c2) — uma cena nova mede a capacidade antes do 1.º quadro (`contorno_capacidade.rs`).
-const MEDE_NO_INICIO: bool = true;
 
 // Os estados da leitura do total (um `AtomicU8`, porque o fecho do `map_async` corre noutro sítio).
 const LIVRE: u8 = 0;
@@ -108,6 +104,9 @@ pub(crate) struct Contorno {
     pub(crate) medir_ja: bool,
     /// `false` ⇒ só a leitura assíncrona (os gates que medem a mistura do 1.º quadro).
     pub(crate) mede_no_inicio: bool,
+    /// doc 121 §9.15 — o `cs_deposita` por aresta ESCRITA (o `override ARESTAS_COMPACTAS` do módulo:
+    /// os dois mudam juntos, pelas mesmas constantes).
+    compactas: bool,
     /// O grupo `1` do DESENHO (as três leituras).
     pub(crate) leitura: wgpu::BindGroupLayout,
     /// O grupo `2` do CÁLCULO (o uniforme e as cinco escritas).
@@ -166,11 +165,21 @@ pub(crate) struct Variantes<T> {
 }
 
 impl<T> Variantes<T> {
-    /// As duas, criadas com as opções de cada uma ([`opcoes`]).
-    pub(crate) fn cria(f: impl Fn(wgpu::PipelineCompilationOptions<'static>) -> T) -> Self {
+    /// As duas, criadas com as opções de cada uma — o `TRACEJADO` delas e as constantes `extra` (doc 121
+    /// §9.16: as da sonda intercalada; vazias no produto).
+    pub(crate) fn cria(
+        extra: &[(&str, f64)],
+        f: impl Fn(wgpu::PipelineCompilationOptions<'_>) -> T,
+    ) -> Self {
+        let com = |tracejado: f64| {
+            let mut c: Vec<(&str, f64)> = extra.to_vec();
+            c.push(("TRACEJADO", tracejado));
+            c
+        };
+        let (e, c) = (com(0.0), com(1.0));
         Self {
-            enxuta: f(opcoes(false)),
-            completa: f(opcoes(true)),
+            enxuta: f(opcoes(&e)),
+            completa: f(opcoes(&c)),
         }
     }
 
@@ -183,12 +192,10 @@ impl<T> Variantes<T> {
     }
 }
 
-/// As opções de compilação de uma variante: o valor do `override TRACEJADO`.
-fn opcoes(tracejado: bool) -> wgpu::PipelineCompilationOptions<'static> {
-    const ENXUTA: &[(&str, f64)] = &[("TRACEJADO", 0.0)];
-    const COMPLETA: &[(&str, f64)] = &[("TRACEJADO", 1.0)];
+/// As opções de compilação com as constantes `override` dadas.
+fn opcoes<'a>(constants: &'a [(&'a str, f64)]) -> wgpu::PipelineCompilationOptions<'a> {
     wgpu::PipelineCompilationOptions {
-        constants: if tracejado { COMPLETA } else { ENXUTA },
+        constants,
         ..Default::default()
     }
 }
@@ -229,6 +236,7 @@ impl Contorno {
         module: &wgpu::ShaderModule,
         modulo_subgrupo: Option<&wgpu::ShaderModule>,
         grupo0: &wgpu::BindGroupLayout,
+        constantes: &[(&str, f64)],
     ) -> Self {
         let device = &gpu.device;
         let vf = wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT;
@@ -304,11 +312,10 @@ impl Contorno {
                     cache: None,
                 })
             };
-        let pipeline_em = |entry: &str, pl: &wgpu::PipelineLayout| {
-            compila(entry, pl, wgpu::PipelineCompilationOptions::default())
-        };
+        let pipeline_em =
+            |entry: &str, pl: &wgpu::PipelineLayout| compila(entry, pl, opcoes(constantes));
         let pipeline = |entry: &str| pipeline_em(entry, &pl);
-        let variantes = |entry: &str| Variantes::cria(|o| compila(entry, &pl, o));
+        let variantes = |entry: &str| Variantes::cria(constantes, |o| compila(entry, &pl, o));
         let tecto_arestas = device.limits().max_storage_buffer_binding_size / ARESTA;
         let tecto_celulas = device.limits().max_storage_buffer_binding_size / ACUMULA;
         let armazens = wgpu::BufferUsages::STORAGE;
@@ -333,7 +340,11 @@ impl Contorno {
             }),
             subgrupo: true,
             medir_ja: true,
-            mede_no_inicio: MEDE_NO_INICIO,
+            mede_no_inicio: true,
+            compactas: constantes
+                .iter()
+                .find(|(k, _)| *k == "ARESTAS_COMPACTAS")
+                .is_none_or(|(_, v)| *v != 0.0),
             leitura,
             escrita,
             escrita_celulas,
@@ -595,7 +606,7 @@ impl Contorno {
             let mut pass = passe(encoder, "render.contorno.escreve");
             pass.set_pipeline(self.escreve.de(tracejado));
             pass.dispatch_workgroups(x, y, 1);
-            if ARESTAS_COMPACTAS {
+            if self.compactas {
                 pass.set_pipeline(&self.soma_escritas);
                 pass.dispatch_workgroups(1, 1, 1);
             }

@@ -1648,3 +1648,38 @@ procura.
    com lama `≤ 2×` o de sem lama (`--release`, load `≤ 5`, antes e depois alternados).
 4. **Não atrasa:** a `falta` média com lama não sobe mais de `10 %` em nenhum `N`.
 Se (3) não se cumprir, as fatias não entram (recusa medida); (2) é inegociável.
+
+### §23.4 — A 1.ª medição da cura, e o que ela mandou acrescentar (antes do código seguinte)
+
+A régua é a da regra do dono de 05/10: as duas versões no MESMO processo (`set_nav_slices`: A = toda procura
+inteira no tique, B = a vez e as fatias), 7 rodadas intercaladas com a ordem rodada, o MÍNIMO (a mediana ao lado),
+uma compilação no perfil `smoke`, o loadavg anotado (`2,8–5,1`). `150` lamas a peso 4, orçamento `20 000`:
+
+| agentes | A: pior tique depois da porta | **B** | A: CONTROLO sem porta | **B** | A: trabalho num tique | **B** |
+|---|---|---|---|---|---|---|
+| 10 | `45,3 ms` | **`6,5`** | `1,1` | `4,3` | `327 693` | **`20 013`** |
+| 50 | `57,9` | **`7,8`** | `37,7` | **`4,7`** | `651 366` | **`20 010`** |
+| 200 | `50,3` | **`7,4`** | `70,1` | **`5,5`** | `967 600` | **`20 012`** |
+
+Dois defeitos achados pela régua no caminho: (1) quem tinha uma procura a meio ficava com a estimativa de quem
+nunca procurou, e os que ainda não tinham começado passavam-lhe à frente e começavam outras — as procuras a meio
+acumulavam-se e a porta seguinte recomeçava-as todas, cada uma INTEIRA ao 1.º recomeço (`47` procuras e `5,1 M`
+de trabalho num tique). Cura: quem tem uma procura a meio vai primeiro na fila e leva o que sobra, e só corre
+inteira ao 3.º recomeço SEGUIDO. (2) A régua `falta` contava `0` a quem ainda espera o 1.º caminho.
+
+⛔ **O que fica por cumprir (o critério 4):** na cena de stress (`~40 %` do chão em lama, cada procura `~65 000`
+de trabalho, `~7 ms`), o orçamento é a VAZÃO da procura — a `200` agentes, ao fim de `~8 s`, `157` ainda esperam o
+1.º caminho (orçamento `40 000`: `107`; `80 000`: `14`, com o tique a `15 ms`). Antes, o «sempre pelo menos um»
+pagava uma procura inteira por tique (o pico). Subir o orçamento troca um pelo outro.
+
+**A alavanca é o hardware:** as procuras a meio são independentes (cada uma com os buffers dela) — correm em
+PARALELO, cada uma com uma fatia de um orçamento; quem decide a fatia de cada uma é a fila, pela ordem, antes de as
+correr; o resultado entra na condução pela ordem das entidades. ⇒ o resultado NÃO depende do número de núcleos (o
+`rayon` com uma thread dá o mesmo, ao bit), só o relógio. `PROCURAS_EM_PARALELO` (as procuras a meio que avançam
+juntas num tique) mede-se; na web o `rayon` cai para uma thread e o tique paga-as em série.
+
+**Kill-criterion (escrito antes do código):**
+5. O mesmo resultado com `1` e com `8` threads (gate: posições e memória dos agentes ao bit).
+6. Na cena de stress a `200` agentes, os que esperam o 1.º caminho no fim da sonda caem a `≤ 10 %`, com o pior tique
+   depois da porta `≤ 2×` o de sem lama (load anotado). Senão o paralelo não entra e o orçamento fica a vazão (recusa
+   medida, com a tabela).

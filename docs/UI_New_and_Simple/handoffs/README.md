@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**36 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **36** são handoffs (registro **morto**).
+**37 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **37** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -51,6 +51,7 @@
 | 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_OBJECTO_VETORIAL.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — o OBJECTO VETORIAL (contentor das formas) |
 | 2026-10-04 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_VETOR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — a F3 do Vector (Vector ▸ Object · Edit) |
 | 2026-10-04 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — PARA O `main` (o ponto de entrada único) |
+| 2026-10-05 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-05_CADA_FORMA_E_UM_OBJECTO.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-05_CADA_FORMA_E_UM_OBJECTO.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-05 — cada forma é um objecto (o contentor `VecObject` sai) |
 
 ---
 

@@ -56,10 +56,17 @@ impl PainterTool {
     /// ([`super::watercolor_solido`]). Nos outros, deixá-lo entrar seria o botão fazendo outra coisa
     /// em cada ferramenta. `false` ⇒ tudo é byte-idêntico ao mundo sem esta feature.
     pub(super) fn solid_owns_the_gesture(&self) -> bool {
-        self.paint.brush.style_solid
-            && matches!(self.paint.paint_mode, super::PaintMode::Paint)
-            && !self.paint.eraser
-            && !self.paint.wetpaint.armed
+        self.paint.brush.style_solid && self.o_meio_pinta_pigmento()
+    }
+
+    /// O gesto deposita PIGMENTO — o pincel de cor (não armado na água), ou a água com a ferramenta
+    /// Paint (a porta da máscara, `wetpaint::mascara`). Os fios e o Solid perguntam AQUI.
+    pub(super) fn o_meio_pinta_pigmento(&self) -> bool {
+        match self.paint.paint_mode {
+            super::PaintMode::Paint => !self.paint.eraser && !self.paint.wetpaint.armed,
+            super::PaintMode::WetPaint => self.agua_pinta_pigmento(),
+            _ => false,
+        }
     }
 
     /// **O preenchimento é uma transação PRÓPRIA neste gesto?** — a testemunha que faz o `stamp_dabs`
@@ -170,6 +177,11 @@ impl PainterTool {
     /// Chamada pelo `stamp_dabs` **depois** do lote, com o preview já descascado: o snapshot que ela
     /// guarda contém todo dab do gesto e nenhum fill, que é o invariante inteiro.
     pub(super) fn stamp_solid_preview(&mut self) {
+        // **Na água a mancha enche AO SOLTAR** (`wetpaint::mascara::enche_a_mancha_na_agua`, escolha
+        // do dono): durante o gesto o bracket só grava o caminho.
+        if matches!(self.paint.paint_mode, super::PaintMode::WetPaint) {
+            return;
+        }
         let loops = self.solid_fill_loops();
         // **Na aquarela a mancha é COBERTURA da aguada, sem corda** ([`super::watercolor_solido`]):
         // a fronteira dela já ganha a orla no composite. O descasque da anterior é o do rascunho.
@@ -178,6 +190,7 @@ impl PainterTool {
             self.mancha_na_aguada(&loops, true);
             return;
         }
+
         let chord = self.closing_chord_dabs();
         self.stamp_solid_loops_with_chord(&loops, &chord);
     }

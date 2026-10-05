@@ -111,22 +111,9 @@ fn inertes_com_motivo() -> Vec<Inerte> {
     v.push((
         WetPaint,
         PAINTER_BRUSH_COMPOSITE_ENABLE,
-        "a fazer: o Composite Brush no Wet Paint (doc 46 §2-8)",
-    ));
-    v.push((
-        WetPaint,
-        PAINTER_LINE_SOLID,
-        "a fazer: o Solid no Wet Paint (doc 46 §2-9)",
-    ));
-    v.push((
-        WetPaint,
-        painter_line_type_option_id(2),
-        "a fazer: os fios (Sketchy) no Wet Paint (doc 46 §2-9)",
-    ));
-    v.push((
-        WetPaint,
-        painter_line_type_option_id(3),
-        "a fazer: os fios (Wire) no Wet Paint (doc 46 §2-9)",
+        "recusado (medido 2026-10-05, doc 46 §2-8): a soma das quatro ferramentas da água — o piso da \
+         pilha — já é 1,28× a pilha do Digital, e a ordem entre camadas não existe num fluido que \
+         mistura o pigmento",
     ));
     v.push((
         WetPaint,

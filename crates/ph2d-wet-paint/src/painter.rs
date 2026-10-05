@@ -679,4 +679,6 @@ impl Engine {
 
 mod doors; // the product-facing LANE doors (host-driven strokes) — LOC-cap split
 mod knobs; // como o motor REAGE a um knob (o `onChange` do JS) — filho por LOC
+/// A porta da MÁSCARA: uma região pousada de uma vez (o Solid e os fios do Painter).
+mod mascara;
 mod stage; // as portas do passo RETOMAVEL (drain/step_stage) — LOC-cap split

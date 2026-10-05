@@ -64,9 +64,7 @@ impl PainterTool {
     pub(super) fn threads_own_the_gesture(&self) -> bool {
         self.paint.brush.sews_threads()
             && self.paint.brush.stroke_method.is_incremental()
-            && matches!(self.paint.paint_mode, super::PaintMode::Paint)
-            && !self.paint.eraser
-            && !self.paint.wetpaint.armed
+            && self.o_meio_pinta_pigmento()
     }
 
     /// **O `Connection Line` do Wire está DESLIGADO?** — então o traço em si não é pintado e sobra
@@ -144,6 +142,10 @@ impl PainterTool {
         };
         if na_aguada {
             self.fios_na_aguada(threads, ink, rect);
+            return;
+        }
+        if matches!(self.paint.paint_mode, super::PaintMode::WetPaint) {
+            self.fios_na_agua(threads, ink, rect);
             return;
         }
         let mask_gate = self.mask_protection_active();

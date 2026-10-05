@@ -356,7 +356,10 @@ impl PainterTool {
 
 mod authored_actions; // canvas actions + session birth + facts — child file (LOC cap)
 mod authoring; // o rascunho é a PRÓPRIA água (o preview de autoria) — filho por LOC
+
 mod composite;
+/// O Solid e os fios na água, pela porta da MÁSCARA do motor (doc 46 item 9).
+mod mascara;
 #[cfg(test)]
 pub(in crate::tool::paint) use composite::split as composite_split;
 mod offthread; // a sim FORA da thread do frame (o slot + o worker) — filho por LOC // the composite half (visual terms + veil) — child file (LOC cap)
@@ -395,6 +398,10 @@ pub(in crate::tool::paint) fn modo_da_sessao(
         ph2d_painter_brush::BrushBlend::Mix
     }
 }
+
+#[cfg(test)]
+#[path = "wetpaint/mascara_tests.rs"]
+mod mascara_tests; // o Solid e os fios na água (doc 46 item 9)
 
 #[cfg(test)]
 #[path = "wetpaint/blend_tests.rs"]

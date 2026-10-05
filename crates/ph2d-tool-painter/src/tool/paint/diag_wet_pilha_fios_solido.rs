@@ -1,15 +1,19 @@
-//! DIAGNÓSTICO — o preço do **Composite Brush**, dos **fios** e do **Solid** no Wet Paint, ANTES de
-//! os construir (doc 46 itens 8 e 9; os kill-criteria do §1 escritos antes de qualquer build).
+//! DIAGNÓSTICO — o preço do **Composite Brush**, dos **fios** e do **Solid** no Wet Paint (doc 46
+//! itens 8 e 9; os kill-criteria do §1 escritos antes de qualquer build).
 //!
-//! ⚠️ **Isto NÃO implementa nada.** Mede, pela porta do produto (`on_canvas_pointer` + um
-//! `paint_tick` por evento, que é o quadro), o que cada peça custaria na água:
+//! Mede pela porta do produto (`on_canvas_pointer` + um `paint_tick` por evento, que é o quadro):
 //!
 //! | linha | o que corre | o que estima |
 //! |---|---|---|
 //! | `D pincel` · `D pilha 4` | Digital, uma camada · o Composite com Brush · Smear · Blur · Erase | a régua do kill-criterion |
 //! | `W Paint/Smear/Blend/Erase` | cada ferramenta da água SOZINHA no mesmo gesto | a pilha na água ≥ a SOMA (cada camada é um despacho por carimbo) |
-//! | `D fios` · `W fios` | o Sketchy denso no Digital · os MESMOS fios (o motor de traço a costurá-los ao lado) carimbados na água a 1 px | a teia densa na água |
-//! | `D solid` · `W solid` | o Solid no Digital · um carimbo de água da ÁREA da região, a cada quadro | a mancha na água (a porta por máscara não existe; o disco de área igual é o seu custo de depósito) |
+//! | `D fios` · `W fios` | o Sketchy denso no Digital · na água, pela porta da máscara (`wetpaint::mascara`) | a teia densa na água |
+//! | `D solid` · `W solid` | o Solid no Digital · na água, pela porta da máscara | a mancha na água |
+//!
+//! ⛔ **As rotas recusadas, medidas aqui ANTES da porta** (2026-10-05, doc 46 itens 8–9): os fios como
+//! carimbos de água de 1 px (os mesmos 23 769 fios, `2 194 425` carimbos) `283,6 ms` por quadro; o
+//! Solid como um carimbo da área da região `1,155`; a pilha de quatro, pela soma das ferramentas,
+//! `1,28×` a régua.
 //!
 //! ⛔ **A soma é um PISO, não uma previsão:** no Digital a pilha corre por CAMADA sobre o traço
 //! inteiro (`composite_pilha`), e esse custo a mais não tem análogo medível sem o construir.
@@ -95,8 +99,10 @@ fn tela(prep: &dyn Fn() -> PainterTool, extra: &mut dyn FnMut(&mut PainterTool, 
 
 /// Píxeis que diferem entre duas telas.
 fn diferem(a: &[u8], b: &[u8]) -> usize {
-    a.chunks_exact(4)
-        .zip(b.chunks_exact(4))
+    a.as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0)
         .filter(|(x, y)| x != y)
         .count()
 }
@@ -146,48 +152,6 @@ fn fios_por_evento(t: &PainterTool) -> Vec<Vec<Thread>> {
     por_evento
 }
 
-fn carimbo(center: [f32; 2], r: f32, coverage: f32, color: [f32; 3]) -> Dab {
-    Dab {
-        center,
-        radius_px: r,
-        coverage,
-        color,
-        rotation: [1.0, 0.0],
-        dir: [1.0, 0.0],
-        arc_len: 0.0,
-        stroke_radius_px: r,
-    }
-}
-
-/// Um fio como carimbos de água a 1 px, raio ½ — a rota mais barata que a grelha de 1 px por célula
-/// aceita sem uma porta nova.
-fn carimbos_do_fio(fios: &[Thread], cor: [f32; 3]) -> Vec<Dab> {
-    let mut out = Vec::new();
-    for f in fios {
-        let (dx, dy) = (f[2] - f[0], f[3] - f[1]);
-        let len = dx.hypot(dy).max(1.0);
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let n = len.ceil() as usize;
-        #[allow(clippy::cast_precision_loss)]
-        for k in 0..=n {
-            let u = k as f32 / n as f32;
-            out.push(carimbo([f[0] + dx * u, f[1] + dy * u], 0.5, 0.25, cor));
-        }
-    }
-    out
-}
-
-/// A área do polígono dos pontos `0..=i` da espiral (fecho implícito), em px².
-fn area_ate(i: usize) -> f32 {
-    let p: Vec<[f32; 2]> = (0..=i).map(ponto).collect();
-    let mut a = 0.0;
-    for k in 0..p.len() {
-        let (u, v) = (p[k], p[(k + 1) % p.len()]);
-        a += u[0] * v[1] - v[0] * u[1];
-    }
-    (a * 0.5).abs()
-}
-
 fn carga() -> String {
     std::fs::read_to_string("/proc/loadavg")
         .map(|s| s.split_whitespace().take(3).collect::<Vec<_>>().join(" "))
@@ -228,6 +192,18 @@ fn com_solid() -> PainterTool {
     t
 }
 
+fn agua_sketchy() -> PainterTool {
+    let mut t = so_agua();
+    sketchy(&mut t);
+    t
+}
+
+fn agua_solid() -> PainterTool {
+    let mut t = so_agua();
+    t.paint.brush.style_solid = true;
+    t
+}
+
 fn so_agua() -> PainterTool {
     let mut t = ferramenta();
     molhada(&mut t, 0);
@@ -236,44 +212,29 @@ fn so_agua() -> PainterTool {
 
 /// Os CONTROLOS: cada linha da tabela pinta o que diz. Sem relógio, logo valem sob carga.
 fn controlos() {
-    let fios = fios_por_evento(&com_sketchy());
-    let cor = ferramenta().paint.brush.color;
     let d_base = tela(&ferramenta, &mut nada);
     let c_pilha = diferem(&d_base, &tela(&pilha_cheia, &mut nada));
     let c_dfios = diferem(&d_base, &tela(&com_sketchy, &mut nada));
     let c_dsolid = diferem(&d_base, &tela(&com_solid, &mut nada));
     let base = tela(&so_agua, &mut nada);
-    let c_fios = diferem(
-        &base,
-        &tela(&so_agua, &mut |t, i| {
-            t.stamp_dabs(&carimbos_do_fio(&fios[i], cor));
-        }),
-    );
-    let c_solid = diferem(
-        &base,
-        &tela(&so_agua, &mut |t, i| {
-            if i == PASSOS {
-                t.stamp_dabs(&[carimbo([512.0, 512.0], 150.0, 1.0, [0.0, 0.0, 0.6])]);
-            }
-        }),
-    );
+    let c_fios = diferem(&base, &tela(&agua_sketchy, &mut nada));
+    let c_solid = diferem(&base, &tela(&agua_solid, &mut nada));
     // A tinta de baixo SOZINHA (sem o 2.º gesto): é contra ela que a ferramenta tem de mexer.
     let com_tinta = agua_com_tinta(0).canvas_rgba.to_vec();
     let c_smear = diferem(&com_tinta, &tela(&|| agua_com_tinta(2), &mut nada));
     let c_blend = diferem(&com_tinta, &tela(&|| agua_com_tinta(3), &mut nada));
     let c_erase = diferem(&com_tinta, &tela(&|| agua_com_tinta(1), &mut nada));
-    let n_fios: usize = fios.iter().map(Vec::len).sum();
     eprintln!(
         "controlos (píxeis que mudam): D pilha {c_pilha} · D fios {c_dfios} · D solid {c_dsolid} · \
-         W fios {c_fios} ({n_fios} fios) · W disco {c_solid} · W Smear {c_smear} · W Blend \
-         {c_blend} · W Erase {c_erase}"
+         W fios {c_fios} · W solid {c_solid} · W Smear {c_smear} · W Blend {c_blend} · W Erase \
+         {c_erase}"
     );
     for (nome, n) in [
         ("D pilha", c_pilha),
         ("D fios", c_dfios),
         ("D solid", c_dsolid),
         ("W fios", c_fios),
-        ("W disco", c_solid),
+        ("W solid", c_solid),
         ("W Smear", c_smear),
         ("W Blend", c_blend),
         ("W Erase", c_erase),
@@ -294,8 +255,11 @@ fn diag_os_controlos_da_agua() {
 struct Variante<'a> {
     nome: &'static str,
     prep: Box<dyn Fn() -> PainterTool + 'a>,
-    extra: Box<dyn FnMut(&mut PainterTool, usize) + 'a>,
+    extra: Box<Extra<'a>>,
 }
+
+/// O que corre depois de cada Move de uma variante.
+type Extra<'a> = dyn FnMut(&mut PainterTool, usize) + 'a;
 
 fn variante<'a>(
     nome: &'static str,
@@ -336,10 +300,7 @@ fn intercalado(vs: &mut [Variante<'_>]) -> Vec<(f64, f64)> {
 #[ignore = "diagnóstico de relógio: roda sob demanda, no perfil smoke"]
 fn diag_o_preco_da_agua() {
     controlos();
-    let fios = fios_por_evento(&com_sketchy());
-    let cor = ferramenta().paint.brush.color;
-    let n_fios: usize = fios.iter().map(Vec::len).sum();
-    let n_carimbos: usize = fios.iter().map(|f| carimbos_do_fio(f, cor).len()).sum();
+    let n_fios: usize = fios_por_evento(&com_sketchy()).iter().map(Vec::len).sum();
     let antes = carga();
     let mut vs = [
         variante("D pincel", ferramenta, nada),
@@ -350,27 +311,15 @@ fn diag_o_preco_da_agua() {
         variante("W Smear", || agua_com_tinta(2), nada),
         variante("W Blend", || agua_com_tinta(3), nada),
         variante("W Erase", || agua_com_tinta(1), nada),
-        variante("W Paint + fios", so_agua, |t: &mut PainterTool, i| {
-            t.stamp_dabs(&carimbos_do_fio(&fios[i], cor));
-        }),
-        // O Solid na água: um carimbo da ÁREA da região, a cada quadro.
-        variante("W Paint + solid", so_agua, |t: &mut PainterTool, i| {
-            let p: Vec<[f32; 2]> = (0..=i).map(ponto).collect();
-            #[allow(clippy::cast_precision_loss)]
-            let n = p.len() as f32;
-            let c = p
-                .iter()
-                .fold([0.0, 0.0], |a, q| [a[0] + q[0] / n, a[1] + q[1] / n]);
-            let r = (area_ate(i) / std::f32::consts::PI).sqrt().max(1.0);
-            t.stamp_dabs(&[carimbo(c, r, 1.0, [0.6, 0.0, 0.0])]);
-        }),
+        // O PRODUTO (doc 46 item 9): o Sketchy denso e o Solid na água, pela porta da máscara.
+        variante("W fios", agua_sketchy, nada),
+        variante("W solid", agua_solid, nada),
     ];
     let r = intercalado(&mut vs);
     let m = |nome: &str| r[vs.iter().position(|v| v.nome == nome).expect("variante")].0;
     eprintln!(
         "loadavg antes {antes} · depois {} · canvas {SIZE}² · raio {RAIO} · espiral {VOLTAS} voltas \
-         ({PASSOS} quadros) · {RODADAS} rodadas intercaladas · {n_fios} fios / {n_carimbos} \
-         carimbos de água no gesto",
+         ({PASSOS} quadros) · {RODADAS} rodadas intercaladas · {n_fios} fios no gesto",
         carga()
     );
     eprintln!("ms POR QUADRO          mínimo   (mediana)");
@@ -382,15 +331,15 @@ fn diag_o_preco_da_agua() {
     eprintln!("kill-criterion (régua = D pilha 4 = {regua:.3} ms):");
     eprintln!("  W soma das 4 (piso) {soma:>8.3} → {:.2}×", soma / regua);
     eprintln!(
-        "  W Paint + fios      {:>8.3} → {:.2}× a régua · {:.2}× o D fios",
-        m("W Paint + fios"),
-        m("W Paint + fios") / regua,
-        m("W Paint + fios") / m("D fios")
+        "  W fios              {:>8.3} → {:.2}× a régua · {:.2}× o D fios",
+        m("W fios"),
+        m("W fios") / regua,
+        m("W fios") / m("D fios")
     );
     eprintln!(
-        "  W Paint + solid     {:>8.3} → {:.2}× a régua · {:.2}× o D solid",
-        m("W Paint + solid"),
-        m("W Paint + solid") / regua,
-        m("W Paint + solid") / m("D solid")
+        "  W solid             {:>8.3} → {:.2}× a régua · {:.2}× o D solid",
+        m("W solid"),
+        m("W solid") / regua,
+        m("W solid") / m("D solid")
     );
 }

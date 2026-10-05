@@ -125,6 +125,9 @@ do Composite (escolhe o que o `+` acrescenta) · *Falloff Add* (o ponto novo nas
 - ~~**Sketchy no Impasto**~~ — **resolvido** (2026-10-04, BUGS #34): o «só com Solid» era a corda do
   Solid a estragar o traço; o Sketchy age sem Solid fora do rastro (Reach > 1 diâmetro) e, na fábrica,
   cai dentro do rastro OPACO da mesma cor (0 bytes, por física — fica na lista com esse motivo).
+- ~~**Wet Paint: Composite Brush, Solid, Sketchy/Wire**~~ — **resolvido** (2026-10-05, doc 46 §2-8 e
+  §2-9): o Solid e os fios agem na água pela porta da máscara do motor (o censo obrigou a apagar as
+  três linhas); o Composite Brush fica na lista como **recusado (medido)**.
 - **A procura completa** (`CENSO_ARMAR=2`) não cabe nos 30 min do `ph2d-run` sob carga no Impasto e
   no Wet Paint; ali correu só a dos vizinhos, e os mortos que sobraram leram-se à mão (§2).
 - **Composite: as pilhas atravessando os meios** não foram exploradas além da 1.ª camada.

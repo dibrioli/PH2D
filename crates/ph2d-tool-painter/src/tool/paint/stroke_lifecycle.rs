@@ -422,6 +422,8 @@ impl PainterTool {
         // and a pen-up costs exactly what it cost before the taper existed. See `ph2d_painter_brush::taper`.
         // **Style: Solid** — a corda final ganha o corpo que os rascunhos dela não depositaram.
         self.assenta_o_corpo_da_corda();
+        // …e na água a região enche AGORA, antes do commit e do fecho do traço (um passo de Undo).
+        self.enche_a_mancha_na_agua();
         // Drag Dot: the dab at the release point is the commit — keep it (drop the restore record).
         self.commit_drag_preview();
         // Wet Paint: close the engine's direct stroke (the sim resumes; the session — the water —

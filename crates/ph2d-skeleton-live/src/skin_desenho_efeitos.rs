@@ -135,11 +135,16 @@ pub(super) fn efeitos_da_gaveta(
 /// recusa a forma inteira por causa delas: o contorno da barra cruzava-se por dentro de uma dobra
 /// forte (FOTOGRAFADO a `110°`, F50-f). `None` quando nada se cruza.
 pub(super) fn uniao_dos_fechados(d: &VecPath) -> Option<VecPath> {
-    let mut u = ph2d_vec_boolean::resolve_overlap(&so_os_fechados(d))?;
+    let fechados = so_os_fechados(d);
+    let mut u = ph2d_vec_boolean::resolve_overlap(&fechados)?;
+    fendas::fecha_as_fendas_que_o_traco_enche(&mut u, &fechados);
     u.subpaths
         .extend(d.subpaths.iter().filter(|c| !c.closed).cloned());
     Some(u)
 }
+
+#[path = "skin_desenho_fendas.rs"]
+pub(super) mod fendas;
 
 /// O caminho sem os subcontornos ABERTOS.
 pub(super) fn so_os_fechados(d: &VecPath) -> VecPath {

@@ -174,13 +174,7 @@ impl Skin {
     /// depois dela.*
     #[must_use]
     pub fn angulos_das_poses(&self) -> Vec<[f64; 2]> {
-        self.bones
-            .iter()
-            .map(|b| {
-                let t = b.angulo_da_pose();
-                [t.cos(), t.sin()]
-            })
-            .collect()
+        self.angulos.iter().map(|&(_, c, s)| [c, s]).collect()
     }
 
     /// ⭐⭐⭐ **O CENTRO EM TORNO DO QUAL UM PONTO COM ESTES PESOS RODA.**
@@ -190,18 +184,22 @@ impl Skin {
     #[must_use]
     pub fn centro_de_rotacao(&self, w: &[f64]) -> Option<[f64; 2]> {
         let (mut num, mut den) = ([0.0_f64, 0.0], 0.0_f64);
-        for (i, a) in self.bones.iter().enumerate() {
+        let n = self.bones.len();
+        let mut juntas: Option<&[[f64; 2]]> = None;
+        for i in 0..n {
             let wi = w.get(i).copied().unwrap_or(0.0);
             if wi <= 0.0 {
                 continue;
             }
-            for (j, b) in self.bones.iter().enumerate().skip(i + 1) {
+            for j in i + 1..n {
                 let wj = w.get(j).copied().unwrap_or(0.0);
                 if wj <= 0.0 {
                     continue;
                 }
                 let q = wi * wj;
-                let c = junta(a, b);
+                let t = *juntas
+                    .get_or_insert_with(|| self.juntas.get_or_init(|| self.tabela_de_juntas()));
+                let c = t[i * n + j];
                 num[0] = q.mul_add(c[0], num[0]);
                 num[1] = q.mul_add(c[1], num[1]);
                 den += q;
@@ -272,13 +270,12 @@ impl Skin {
         match lei {
             MisturaDoAngulo::Circulo => {
                 let (mut sx, mut sy, mut soma) = (0.0_f64, 0.0_f64, 0.0_f64);
-                for (b, &peso) in self.bones.iter().zip(w.iter()) {
+                for (&(_, co, si), &peso) in self.angulos.iter().zip(w.iter()) {
                     if peso == 0.0 {
                         continue;
                     }
-                    let t = b.angulo_da_pose();
-                    sx = peso.mul_add(t.cos(), sx);
-                    sy = peso.mul_add(t.sin(), sy);
+                    sx = peso.mul_add(co, sx);
+                    sy = peso.mul_add(si, sy);
                     soma += peso;
                 }
                 if soma == 0.0 || (sx == 0.0 && sy == 0.0) {
@@ -289,8 +286,8 @@ impl Skin {
             }
             MisturaDoAngulo::Desdobrado => {
                 let (mut ang, mut soma, mut ant) = (0.0_f64, 0.0_f64, 0.0_f64);
-                for (b, &peso) in self.bones.iter().zip(w.iter()) {
-                    let mut t = b.angulo_da_pose();
+                for (&(t0, _, _), &peso) in self.angulos.iter().zip(w.iter()) {
+                    let mut t = t0;
                     while t - ant > std::f64::consts::PI {
                         t -= std::f64::consts::TAU;
                     }

@@ -184,15 +184,29 @@ impl SkinBone {
 }
 
 /// **A pele de UMA coisa** — os ossos a que ela está presa, já resolvidos para este quadro.
-#[derive(Clone, Debug, PartialEq)]
+///
+/// ⚠️ A igualdade é a dos OSSOS e da lei: os campos de cache derivam deles.
+#[derive(Clone, Debug)]
 pub struct Skin {
     bones: Vec<SkinBone>,
+    /// `(θ, cos θ, sin θ)` de cada osso, θ o [`SkinBone::angulo_da_pose`] — a mistura lia-os por
+    /// PONTO (três `atan2` e três `sin_cos` por ponto posado; A10, fila §F60).
+    angulos: Vec<(f64, f64, f64)>,
+    /// A [`Skin::tabela_de_juntas`], calculada na 1.ª mistura que a pede (`O(n²)` — só quando há
+    /// pontos a misturar).
+    juntas: std::sync::OnceLock<Vec<[f64; 2]>>,
     /// Qual lei resolve o ângulo médio da mistura. Ver [`centro::MisturaDoAngulo`].
     ///
     /// ⚠️ **Ela vive na PELE e não num argumento do [`Skin::blend`]** porque a escolha é de quem
     /// monta o quadro, e o `blend` é chamado por PONTO — passá-la por ponto poria a mesma pergunta
     /// em dezenas de sítios de chamada, que é como uma lei ganha duas respostas.
     mistura: centro::MisturaDoAngulo,
+}
+
+impl PartialEq for Skin {
+    fn eq(&self, o: &Self) -> bool {
+        self.bones == o.bones && self.mistura == o.mistura
+    }
 }
 
 impl Skin {
@@ -209,7 +223,19 @@ impl Skin {
     /// [`Skin::new`] com a lei do ângulo escolhida — a porta do PRODUTO e das sondas.
     #[must_use]
     pub fn com_mistura(bones: Vec<SkinBone>, mistura: centro::MisturaDoAngulo) -> Option<Self> {
-        (!bones.is_empty()).then_some(Self { bones, mistura })
+        let angulos = bones
+            .iter()
+            .map(|b| {
+                let t = b.angulo_da_pose();
+                (t, t.cos(), t.sin())
+            })
+            .collect();
+        (!bones.is_empty()).then_some(Self {
+            bones,
+            angulos,
+            juntas: std::sync::OnceLock::new(),
+            mistura,
+        })
     }
 
     /// Que lei do ângulo esta pele usa.

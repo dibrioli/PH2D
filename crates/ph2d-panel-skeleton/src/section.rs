@@ -66,12 +66,12 @@ pub(crate) fn aceso(armado: Option<usize>, segmento: usize) -> bool {
 pub(crate) fn segmentos_da_direccao(lado: usize) -> [(NodeId, &'static str, bool); 2] {
     [
         (
-            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ADD,
+            ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_ADD,
             "panel.vector.bone.weight.add",
             aceso(Some(lado), 0),
         ),
         (
-            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_SUB,
+            ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_SUB,
             "panel.vector.bone.weight.subtract",
             aceso(Some(lado), 1),
         ),
@@ -85,12 +85,12 @@ pub(crate) fn segmentos_da_direccao(lado: usize) -> [(NodeId, &'static str, bool
 pub(crate) fn segmentos_do_modo(modo: usize) -> [(NodeId, &'static str, bool); 2] {
     [
         (
-            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_CUMUL,
+            ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_CUMUL,
             "panel.vector.bone.weight.mode.cumulative",
             aceso(Some(modo), 0),
         ),
         (
-            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ABS,
+            ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_ABS,
             "panel.vector.bone.weight.mode.absolute",
             aceso(Some(modo), 1),
         ),
@@ -107,7 +107,7 @@ pub(crate) fn segmentos_do_modo(modo: usize) -> [(NodeId, &'static str, bool); 2
 /// a razão onde uma cerca de produto proíbe esconder*), e nada proíbe: a fileira chama-se
 /// *Direction*, e num pincel absoluto não há direcção nenhuma para nomear.
 pub(crate) fn pinta_a_direccao(modo: usize) -> bool {
-    modo != ph2d_tool_vector::WeightMode::Absolute.indice()
+    modo != ph2d_tool_bone::WeightMode::Absolute.indice()
 }
 
 /// ⭐⭐⭐ **A CHAVE DO RÓTULO DO NÚMERO, PELO MODO** — *Strength* no cumulativo, *Weight* no absoluto.
@@ -120,7 +120,7 @@ pub(crate) fn pinta_a_direccao(modo: usize) -> bool {
 ///
 /// ⭐ **É uma função e não um `if` dentro da pintura** porque é isto que um gate consegue observar.
 pub(crate) fn rotulo_do_numero(modo: usize) -> &'static str {
-    if modo == ph2d_tool_vector::WeightMode::Absolute.indice() {
+    if modo == ph2d_tool_bone::WeightMode::Absolute.indice() {
         "panel.vector.bone.weight.target"
     } else {
         "panel.vector.bone.weight.amount"
@@ -168,17 +168,17 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
         ];
         let acoes: [(NodeId, &str, bool); 3] = [
             (
-                ph2d_tool_vector::ids::VECTOR_BONE_ACT_CREATE,
+                ph2d_tool_bone::ids::VECTOR_BONE_ACT_CREATE,
                 rotulos[0],
                 aceso(armado, 0),
             ),
             (
-                ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM,
+                ph2d_tool_bone::ids::VECTOR_BONE_ACT_TRANSFORM,
                 rotulos[1],
                 aceso(armado, 1),
             ),
             (
-                ph2d_tool_vector::ids::VECTOR_BONE_ACT_WEIGHT,
+                ph2d_tool_bone::ids::VECTOR_BONE_ACT_WEIGHT,
                 rotulos[2],
                 aceso(armado, 2),
             ),
@@ -195,7 +195,7 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
     // ser um só: negativo TIRA peso. ⛔ Um segundo chip apagar seria a segunda maneira de dizer a
     // mesma coisa»*.** A premissa morreu por **ordem do dono**: *«no lugar de valores negativos em
     // Brush Strength prefiro botões Add e Subtract»*. A objecção fica **registada e não vencida**,
-    // e o que ela não via está escrito na [`ph2d_tool_vector::WeightDirection`]: enquanto o sinal
+    // e o que ela não via está escrito na [`ph2d_tool_bone::WeightDirection`]: enquanto o sinal
     // vivia no número, *«tirar peso»* era um **estado invisível** — o artista tinha de ler um menos
     // para saber o que o próximo arrasto ia fazer.
     //
@@ -230,7 +230,7 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
         }
         y = r.labeled_number_field(
             tr("panel.vector.bone.weight.radius"),
-            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS,
+            ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_RADIUS,
             LENGTH_STEP,
             y,
         );
@@ -238,7 +238,7 @@ pub(crate) fn body(r: &mut RowCtx, y: f32) -> f32 {
         // dois campos seriam duas superfícies sobre um valor.
         y = r.labeled_number_field(
             tr(rotulo_do_numero(modo)),
-            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT,
+            ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_AMOUNT,
             STRENGTH_STEP,
             y,
         );

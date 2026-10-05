@@ -70,7 +70,7 @@ pub struct SkeletonState {
     /// `sim`/`hero` — e a ferramenta vive em `gfx.tools`. ⇒ o pedido atravessa num campo e é
     /// consumido **antes** de a ferramenta republicar o espelho do modo, senão ela reverteria a
     /// escrita da aresta no mesmo quadro.
-    pub bone_arm_pending: Option<ph2d_tool_vector::BoneAction>,
+    pub bone_arm_pending: Option<ph2d_tool_bone::BoneAction>,
     /// ⭐⭐ **A METADE DE OSSO sob o ponteiro** neste quadro (Enio, 2026-09-06: *«precisamos de um
     /// efeito hover na bolinha e no corpo do osso»*), e `None` quando ele não aponta osso nenhum.
     ///
@@ -119,4 +119,9 @@ pub struct SkeletonState {
     /// escrito: *um par de slots resolvido no mesmo sítio esquece-se meio a meio*, e com três o
     /// risco só cresce. ⛔ Ler a câmara no sítio do desenho seria um segundo empréstimo do `gfx`.
     pub weight_cursor: Option<[f64; 2]>,
+    /// ⭐ **O espelho da ferramenta de osso** (A14), escrito por quadro: o estado dela e se ela está
+    /// na mão. Quem o lê é o despacho do ponteiro, o overlay e o painel — sem downcast por evento.
+    pub tool: ph2d_tool_bone::BoneConfig,
+    /// A ferramenta de osso está na mão neste quadro. Ver [`Self::tool`].
+    pub tool_in_hand: bool,
 }

@@ -35,6 +35,7 @@
 //! registo tem duas respostas para a mesma env. Um `routers: &[]` com o nome na catraca é a forma
 //! de dizer *«não tenho»* em voz alta.
 
+pub mod bone_bridge;
 pub mod bone_gesture;
 pub mod bone_limit;
 pub mod bone_pick;

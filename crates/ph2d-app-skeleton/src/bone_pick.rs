@@ -187,7 +187,7 @@ pub fn hover(
     world: [f64; 2],
     px_to_world: f64,
     focused: Option<u64>,
-    action: ph2d_tool_vector::BoneAction,
+    action: ph2d_tool_bone::BoneAction,
 ) -> Option<ph2d_skeleton_render::BoneHover> {
     use ph2d_skeleton_render::{BoneHover, BonePart};
     // ⭐⭐⭐ **O PINCEL DE PESO não agarra osso nenhum, e por isso não REALÇA nenhum.**
@@ -196,10 +196,10 @@ pub fn hover(
     // paredes do limite acenderem-se sob o dedo num verbo cujo press **nunca** as honra — *uma
     // alça agarrável onde nada acontece é pior que uma alça ausente*, que é a lei que o próprio
     // comentário abaixo já escreve para o caso simétrico.
-    if action == ph2d_tool_vector::BoneAction::Weight {
+    if action == ph2d_tool_bone::BoneAction::Weight {
         return None;
     }
-    if action == ph2d_tool_vector::BoneAction::Create {
+    if action == ph2d_tool_bone::BoneAction::Create {
         return tip_at(sim, world, px_to_world).map(|(bone, _)| BoneHover {
             bone,
             part: BonePart::Tip,

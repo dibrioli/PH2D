@@ -67,6 +67,8 @@ ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 
 [dev-dependencies]
+# Os ids do verbo do osso (A14) — só o gate `the_bone_segments_leave_the_vector_tool_alone`.
+ph2d-tool-bone = { path = "../ph2d-tool-bone" }
 # Blindagem Fase 1.2: headless behavioral seam harness (populate → apply_event
 # → bus → handle_panel_event). Dev-dep only — the `architecture_cycle_prevention`
 # gate reads `[dependencies]` only, so this builds no runtime cycle.

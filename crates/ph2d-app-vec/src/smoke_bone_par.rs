@@ -86,7 +86,10 @@ pub(crate) fn dobra_de(nivel: u32, pedido: Option<&str>) -> f32 {
 /// camadas — o aberto A13). Sem pedido válido, a `omissao` da cena nas duas.
 #[must_use]
 pub(crate) fn dobra_da_cena(omissao: f32) -> (f32, f32) {
-    dobra_pedida(omissao, std::env::var("PH2D_VEC_BONE_DOBRA").ok().as_deref())
+    dobra_pedida(
+        omissao,
+        std::env::var("PH2D_VEC_BONE_DOBRA").ok().as_deref(),
+    )
 }
 
 /// A lei pura de [`dobra_da_cena`]: só números finitos valem; um só vale para as duas juntas.

@@ -6,7 +6,7 @@ use crate::bone_gesture::Pincel;
 // nomear o `Name` no código dele. *Um `use` que só o filho usa é um aviso no pai.*
 use ph2d_ecs::Name;
 use ph2d_skeleton_render::BonePart;
-use ph2d_tool_vector::BoneAction;
+use ph2d_tool_bone::BoneAction;
 
 /// ⭐⭐ **O OSSO NASCE ONDE O ARTISTA APONTOU, seja qual for a pose do pai.**
 ///

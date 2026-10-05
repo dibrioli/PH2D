@@ -73,6 +73,13 @@ impl crate::App {
     ) -> Option<()> {
         let gfx = self.gfx.as_mut()?;
         let FrameGfx { tools, flip, .. } = FrameGfx::of(gfx);
+        // ⭐ **Um segmento do verbo do osso PÕE A FERRAMENTA DE OSSO NA MÃO** (A14) antes de o clique
+        // lhe chegar: o evento vai para a ferramenta ACTIVA, e com outra na mão ele morria nela.
+        if let ph2d_editor_core::tool::PanelEvent::Click(id) = &ev
+            && let Some(verbo) = ph2d_tool_bone::BoneAction::of_segment(*id)
+        {
+            ph2d_app_skeleton::bone_bridge::arm(tools, verbo);
+        }
         // ⭐ **O NOME de uma ligação sinal → papel**: `SelectOption(campo,
         // "<texto>")`. O texto é o que o artista digitou, e vem por este canal
         // porque o `PanelEvent` é contrato CONGELADO — o `SelectOption` já é o

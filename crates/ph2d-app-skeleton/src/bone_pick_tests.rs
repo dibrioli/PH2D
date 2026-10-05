@@ -10,7 +10,7 @@ use crate::bone_gesture::{BonePress, create, press, test_chain};
 use crate::bone_pick::{free_root_at, grabbed_the_joint, hit, hover, is_a_free_chain_root, tip_at};
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_skeleton_render::BonePart;
-use ph2d_tool_vector::BoneAction;
+use ph2d_tool_bone::BoneAction;
 
 /// **Apontar um osso acha-o; apontar ao lado não.** O raio é o mesmo das alças do vetor.
 #[test]

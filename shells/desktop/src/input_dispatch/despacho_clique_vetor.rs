@@ -163,7 +163,7 @@ impl crate::App {
                     if self.ramo_vetor_premido_modos() {
                         return true;
                     }
-                    if self.ramo_vetor_premido_corte_balde_osso() {
+                    if self.ramo_vetor_premido_corte_e_balde() {
                         return true;
                     }
                     if self.ramo_vetor_premido_quina() {
@@ -174,9 +174,9 @@ impl crate::App {
                     }
                 }
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
-                    if self.ramo_vetor_solto_osso() {
-                        return true;
-                    }
+                    // Fim de gesto: as guias de snap não sobrevivem ao Up (o osso, que aqui
+                    // morava, saiu para o `ramo_ferramenta_osso`).
+                    self.vec_clear_snap_guides();
                     if self.ramo_vetor_solto_gestos() {
                         return true;
                     }

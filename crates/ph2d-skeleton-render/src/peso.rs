@@ -285,7 +285,7 @@ fn cantos(pesos: &[f64], t: &[u32; 3]) -> Option<[f64; 3]> {
 /// preço da confusão foi um valor de fábrica de `2 000` px (`2,85 ×` a peça inteira), porque **um
 /// número de mundo não pode ter um valor de fábrica**: ele teria de saber a escala da cena.
 ///
-/// ⇒ o artista escolhe **píxeis de ecrã** ([`ph2d_tool_vector::WEIGHT_RADIUS_DEFAULT`], com a
+/// ⇒ o artista escolhe **píxeis de ecrã** ([`ph2d_tool_bone::WEIGHT_RADIUS_DEFAULT`], com a
 /// tabela medida), quem chama converte a mundo com o factor do pick, e este anel desenha o que o
 /// artista escolheu, sem escala nenhuma. ⚠️ **A propriedade declarada que isso traz:** a mesma
 /// posição do slider pinta uma área de MUNDO diferente em dois zooms — o que é precisamente o que

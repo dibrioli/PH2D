@@ -11,14 +11,14 @@
 //! carregar.
 
 use ph2d_a11y::NodeId;
-use ph2d_tool_registry::hash_node_id;
-use ph2d_tool_vector::ids::{
+use ph2d_tool_bone::ids::{
     VECTOR_BONE_ACT_CREATE, VECTOR_BONE_ACT_TRANSFORM, VECTOR_BONE_ACT_WEIGHT,
     VECTOR_BONE_WEIGHT_ABS, VECTOR_BONE_WEIGHT_ADD, VECTOR_BONE_WEIGHT_CUMUL,
     VECTOR_BONE_WEIGHT_SUB,
 };
+use ph2d_tool_registry::hash_node_id;
 
-/// Os TRÊS segmentos, **índice-alinhados** com [`ph2d_tool_vector::BoneAction::ALL`]. ⚠️ Alinhar
+/// Os TRÊS segmentos, **índice-alinhados** com [`ph2d_tool_bone::BoneAction::ALL`]. ⚠️ Alinhar
 /// por índice é o que impede a lista do painel e a do vocabulário de divergirem em silêncio — e há
 /// gate a compará-las (`a_fileira_de_verbos_do_osso_tem_um_segmento_por_accao`).
 pub const VECTOR_BONE_ACTION_IDS: [NodeId; 3] = [
@@ -28,7 +28,7 @@ pub const VECTOR_BONE_ACTION_IDS: [NodeId; 3] = [
 ];
 
 /// ⭐⭐⭐ **Os DOIS segmentos da direcção do pincel de peso**, **índice-alinhados** com
-/// [`ph2d_tool_vector::WeightDirection::ALL`] (ordem do dono, 2026-09-19: *«no lugar de valores
+/// [`ph2d_tool_bone::WeightDirection::ALL`] (ordem do dono, 2026-09-19: *«no lugar de valores
 /// negativos em Brush Strength prefiro botões Add e Subtract»*).
 ///
 /// ⚠️ **Alinhar por índice é o que impede a lista do painel e a do vocabulário de divergirem em
@@ -38,7 +38,7 @@ pub const VECTOR_BONE_WEIGHT_DIR_IDS: [NodeId; 2] =
     [VECTOR_BONE_WEIGHT_ADD, VECTOR_BONE_WEIGHT_SUB];
 
 /// ⭐⭐⭐ **Os DOIS segmentos do MODO de atribuir peso**, **índice-alinhados** com
-/// [`ph2d_tool_vector::WeightMode::ALL`] (ordem do dono, 2026-09-19: *«precisamos de 2 modos de
+/// [`ph2d_tool_bone::WeightMode::ALL`] (ordem do dono, 2026-09-19: *«precisamos de 2 modos de
 /// atribuir peso aos pontos»*).
 ///
 /// ⚠️ **A mesma lei das duas listas acima** — alinhar por índice, com gate a compará-las

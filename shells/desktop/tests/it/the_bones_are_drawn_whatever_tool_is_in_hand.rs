@@ -38,7 +38,8 @@ fn the_bone_overlay_reads_the_eye_and_never_the_vector_tool() {
     }
     let cena = code_only("src/render_loop/fase_hero_scene.rs");
     assert_eq!(
-        cena.matches("self.fase_vector_bone_overlay(vec_px_to_world, cam_affine)").count(),
+        cena.matches("self.fase_vector_bone_overlay(vec_px_to_world, cam_affine)")
+            .count(),
         1,
         "a fase é chamada sem o plano do vetor"
     );

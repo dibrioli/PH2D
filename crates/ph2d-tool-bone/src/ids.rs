@@ -1,14 +1,6 @@
-//! **Os ids do ESQUELETO** (estudo 42 item 5, doc 47) — módulo irmão de [`super`] pelo teto de 700
-//! LOC, com o corte por RESPONSABILIDADE: aqui vive a família que faz um desenho **dobrar** — o
-//! modo que autora ossos e a seção que os liga à forma.
-//!
-//! ⚠️ **Bloco APPEND-ONLY**: um id é o hash de uma STRING, então reordenar não quebra nada — mas
-//! renomear uma string quebra tudo o que a referencia por nome, e é assim que um widget fica órfão
-//! em silêncio.
-//!
-//! ⚠️ **Desceu de `ph2d-editor-core/src/ids/chrome/vector_bone.rs` em 2026-09-12** (auditoria de arquitectura
-//! A5b): quem LÊ estes ids mora nesta crate, e a fundação que 60 crates recompilam deixou de os
-//! carregar.
+//! **Os ids que a ferramenta de osso LÊ** — o verbo e o pincel de peso (a secção Bones do painel
+//! emite-os). ⚠️ As STRINGS dos hashes ficam as de sempre (`vector.bone.*`): um id é o hash dela, e
+//! renomeá-la orfanaria o widget em silêncio. Vieram da `ph2d-tool-vector` com o A14.
 
 use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;

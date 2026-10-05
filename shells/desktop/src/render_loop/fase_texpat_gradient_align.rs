@@ -176,7 +176,7 @@ impl crate::App {
         // seleccionado»*. Quem o pede é a aresta lá em baixo, que não pode tocar em `gfx.tools`
         // (ele está emprestado a `sim`/`hero`).
         if let Some(acao) = self.skeleton.bone_arm_pending.take() {
-            vector_bridge::arm_bone(tools, acao);
+            ph2d_app_skeleton::bone_bridge::arm(tools, acao);
         }
         Some(vec_xf_ops)
     }

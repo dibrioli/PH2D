@@ -40,24 +40,6 @@ impl VectorTool {
             PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_PENCIL_STABILIZER => {
                 self.pencil_stabilizer = (v as f32).clamp(0.0, 1.0);
             }
-            // ⭐⭐ **Os dois knobs do PINCEL DE PESO.** Nenhum deles restila a selecção: eles são o
-            // pincel, e o que eles produzem é uma MANCHA no documento — não uma propriedade da
-            // forma escolhida.
-            //
-            // ⚠️ **O raio tem PISO e o valor é uma MAGNITUDE**, e a assimetria é a lei: um raio
-            // nulo faria o pen-down nunca achar arte (`ForaDaArte` calado, que se lê como pincel
-            // partido), enquanto uma magnitude é *quanto* e não tem lado nenhum dentro.
-            //
-            // ⛔⛔ **Até 2026-09-19 o valor ia a `clamp(-1.0, 1.0)` e o SINAL era a direcção** — a
-            // premissa morreu por ordem do dono (*«no lugar de valores negativos em Brush Strength
-            // prefiro botões Add e Subtract»*). ⚠️ **E um negativo escrito à mão entra em ABSOLUTO,
-            // nunca cortado a zero:** cortá-lo deixaria o pincel inerte e calado.
-            PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_BONE_WEIGHT_RADIUS => {
-                self.weight_radius = v.max(crate::params::WEIGHT_RADIUS_MIN);
-            }
-            PanelEvent::SetValue(id, v) if id == crate::ids::VECTOR_BONE_WEIGHT_AMOUNT => {
-                self.weight_amount = v.abs().clamp(0.0, 1.0);
-            }
             // **Campo de forma** — um braço só para TODAS as formas: o id carrega o
             // ÍNDICE do parâmetro no catálogo, e a forma ativa diz o que ele significa.
             // Antes era um braço por parâmetro por forma; com 25 formas seria um pântano.
@@ -101,49 +83,6 @@ impl VectorTool {
             // acrescenta ao soltar é o componente `VecFrame` (a shell o pendura).
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_FRAME => {
                 self.mode = DrawMode::Frame;
-            }
-            // ⭐⭐⭐ **CRIAR × TRANSFORMAR — e eles SÃO a porta do modo** (ordem do dono, 2026-09-09).
-            //
-            // ⛔⛔ O pill `VECTOR_MODE_BONE` saiu da fileira de modos do painel de vector (*«melhor
-            // tirar de lá»*), e com ele foi-se a única porta para o `DrawMode::Bone`. ⇒ os dois
-            // segmentos do painel de Bones passam a **trocar de modo E de verbo**, que é o que
-            // torna a fileira uma porta em vez de um refinamento.
-            //
-            // ⚠️ **É isto que dá o «nenhum seleccionado»**: fora do `DrawMode::Bone` nenhum dos dois
-            // está armado, e a fileira acende-se pelo MODO — numa cena sem ossos, o artista abre o
-            // painel pelo menu e **nada** está aceso até ele carregar em *Create*.
-            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_ACT_CREATE => {
-                self.mode = DrawMode::Bone;
-                self.bone_action = crate::params::BoneAction::Create;
-            }
-            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_ACT_TRANSFORM => {
-                self.mode = DrawMode::Bone;
-                self.bone_action = crate::params::BoneAction::Transform;
-            }
-            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_ACT_WEIGHT => {
-                self.mode = DrawMode::Bone;
-                self.bone_action = crate::params::BoneAction::Weight;
-            }
-            // ⭐⭐⭐ **PARA QUE LADO A PINCELADA EMPURRA** (ordem do dono, 2026-09-19).
-            //
-            // ⛔ **Escolher um lado NÃO arma o verbo `Weight`**, ao contrário dos três chips acima:
-            // a secção destes dois só é pintada com ele já na mão, logo já se está lá — e armá-lo
-            // aqui seria arrancar o artista do que ele estava a fazer, a mesma regra que os chips
-            // da largura do lápis já escrevem.
-            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_WEIGHT_ADD => {
-                self.weight_direction = crate::params::WeightDirection::Add;
-            }
-            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_WEIGHT_SUB => {
-                self.weight_direction = crate::params::WeightDirection::Subtract;
-            }
-            // ⭐⭐⭐ **COMO A PINCELADA ATRIBUI O PESO** (ordem do dono, 2026-09-19) — a mesma regra
-            // dos dois chips acima: escolher um modo NÃO arma o verbo, porque a secção só é pintada
-            // com ele já na mão.
-            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_WEIGHT_CUMUL => {
-                self.weight_mode = crate::params::WeightMode::Cumulative;
-            }
-            PanelEvent::Click(id) if id == crate::ids::VECTOR_BONE_WEIGHT_ABS => {
-                self.weight_mode = crate::params::WeightMode::Absolute;
             }
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_PENCIL => {
                 self.mode = DrawMode::Pencil;
@@ -367,16 +306,10 @@ mod tests {
         }
         // ⛔⛔ **OS MODOS SEM PILL, com o motivo de cada um.**
         //
-        // ⚠️ **`Bone` entrou aqui em 2026-09-09, por ordem do dono** (*«vc deixou o botão Bones no
-        // Painel Vector — melhor tirar de lá»*): o esqueleto ganhou painel próprio, e a porta do
-        // modo passou a ser a fileira *Create × Transform* **daquele** painel — que troca o modo e
-        // o verbo de uma vez. ⇒ o modo continua vivo; o que saiu foi o pill.
-        //
-        // ⚠️ Ela **não** é uma isenção: um modo aqui declara que a porta dele vive noutro sítio, e
-        // o gate irmão que mede essa porta é o `the_two_bone_segments_are_the_door_to_the_mode`
-        // (`ph2d-panel-vector/tests/it/seam.rs`). *Uma excepção sem o endereço da porta é um modo
-        // inalcançável com uma nota bonita.*
-        const SEM_PILL: [DrawMode; 1] = [DrawMode::Bone];
+        // ⚠️ Vazia desde o A14 (05/10): o `Bone`, o único que aqui morou, saiu do vocabulário —
+        // o osso tem ferramenta própria (`ph2d-tool-bone`). A lista fica: um modo novo sem pill
+        // declara-se aqui, com o endereço da porta que o alcança.
+        const SEM_PILL: [DrawMode; 0] = [];
         // ⛔ **O CENSO**: todo modo do vocabulário aparece na tabela acima, ou na lista das
         // excepções. Um modo novo sem pill tem de se declarar ali, com o motivo.
         for m in DrawMode::ALL {

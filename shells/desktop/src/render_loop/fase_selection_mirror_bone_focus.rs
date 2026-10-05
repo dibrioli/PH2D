@@ -102,9 +102,9 @@ impl crate::App {
             // `gfx` já está emprestado a `sim`/`hero`, e um segundo empréstimo dele não
             // compila. O espelho da shell escreve-se **já**, para este quadro rotear certo
             // e a fileira acender no mesmo instante em que o osso é escolhido.
-            self.skeleton.bone_arm_pending = Some(ph2d_tool_vector::BoneAction::Transform);
-            self.vec.draw_config.mode = ph2d_tool_vector::DrawMode::Bone;
-            self.vec.draw_config.bone_action = ph2d_tool_vector::BoneAction::Transform;
+            self.skeleton.bone_arm_pending = Some(ph2d_tool_bone::BoneAction::Transform);
+            self.skeleton.tool_in_hand = true;
+            self.skeleton.tool.action = ph2d_tool_bone::BoneAction::Transform;
         }
         // ⭐ **PORQUE a secção não tem sujeito** (report do dono, 2026-09-08: *«seleccionar o
         // bone nem sempre abre a secção de skeleton»*). ⚠️ A pergunta tem três respostas que

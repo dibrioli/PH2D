@@ -125,16 +125,12 @@ impl crate::App {
                                 if std::env::var_os("PH2D_VEC_WEIGHT_PROBE").is_some() {
                                     // ⛔⛔ **Na FERRAMENTA, nunca no `draw_config`** — a 1.ª redacção
                                     // escreveu no segundo e a foto mostrou o painel do *Transform*: o
-                                    // `draw_config` e' uma CO'PIA derivada, reescrita da ferramenta a
+                                    // espelho (`skeleton.tool`) e' uma CO'PIA derivada, reescrita da ferramenta a
                                     // cada quadro pela `fase_tool_mirrors`. *Escrever num espelho lê-se
                                     // como escrever no objecto, até alguem fotografar.*
-                                    ph2d_app_vec::vector_bridge::set_mode(
+                                    ph2d_app_skeleton::bone_bridge::arm(
                                         &mut gfx.tools,
-                                        ph2d_tool_vector::DrawMode::Bone,
-                                    );
-                                    ph2d_app_vec::vector_bridge::set_bone_action(
-                                        &mut gfx.tools,
-                                        ph2d_tool_vector::BoneAction::Weight,
+                                        ph2d_tool_bone::BoneAction::Weight,
                                     );
                                     // ⚠️ **Pelo NOME, e nunca «o primeiro que a iteracao der».**
                                     //

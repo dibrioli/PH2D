@@ -106,8 +106,8 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // osso em foco»*, e o sujeito destes dois é **o pincel** — eles valem antes de haver osso
     // nenhum, e recusá-los por falta de foco seria uma recusa que o artista não consegue curar.
     for id in [
-        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS,
-        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT,
+        ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_RADIUS,
+        ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_AMOUNT,
     ] {
         world_number_field(store, id);
     }
@@ -142,8 +142,8 @@ fn meu(id: ph2d_a11y::NodeId) -> bool {
         || ids::VECTOR_BONE_SKIN_LAW_IDS.contains(&id)
         || id == crate::ids::VECTOR_BONE_SMART_CLIP
         || id == crate::ids::VECTOR_BONE_TIP
-        || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS
-        || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT
+        || id == ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_RADIUS
+        || id == ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_AMOUNT
         || crate::ids::VECTOR_BONE_WEIGHT_DIR_IDS.contains(&id)
         || crate::ids::VECTOR_BONE_WEIGHT_MODE_IDS.contains(&id)
 }
@@ -163,8 +163,8 @@ pub(crate) fn apply_event(
         // o valor do store que atravessa (o buffer ainda pode estar a meio de um número).
         WidgetEvent::ValueChanged(id)
             if ids::VECTOR_BONE_FIELDS.contains(&id)
-                || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS
-                || id == ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT =>
+                || id == ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_RADIUS
+                || id == ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_AMOUNT =>
         {
             let v = host.store().number_value(id).unwrap_or(0.0);
             host.bus_mut()

@@ -29,7 +29,7 @@ fn agarra(sim: &SimWorld, p: [f64; 2], foco: Entity) -> Option<ph2d_skeleton_ren
         p,
         PX,
         Some(foco.to_bits()),
-        ph2d_tool_vector::BoneAction::Transform,
+        ph2d_tool_bone::BoneAction::Transform,
     )
 }
 

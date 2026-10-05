@@ -252,7 +252,7 @@ pub(crate) fn take_pending_bone_tip_dd() -> Option<Rect> {
 // antigo.*
 
 thread_local! {
-    /// ⭐ **O VERBO do arrasto que está armado** — o ÍNDICE em `ph2d_tool_vector::BoneAction::ALL`.
+    /// ⭐ **O VERBO do arrasto que está armado** — o ÍNDICE em `ph2d_tool_bone::BoneAction::ALL`.
     /// `None` ⇒ a ferramenta Osso não está na mão, e a fileira *Criar × Transformar* não tem sujeito.
     ///
     /// ⚠️ **Um ÍNDICE e não o enum**, pelo mesmo motivo do lado da dobra: é o que mantém este painel
@@ -280,8 +280,8 @@ thread_local! {
 }
 
 /// **O pincel de peso** (shell → painel, todo quadro): raio, magnitude, o índice da direcção em
-/// `ph2d_tool_vector::WeightDirection::ALL` e o índice do modo em
-/// `ph2d_tool_vector::WeightMode::ALL`.
+/// `ph2d_tool_bone::WeightDirection::ALL` e o índice do modo em
+/// `ph2d_tool_bone::WeightMode::ALL`.
 ///
 /// ⚠️ **Uma porta e não duas**, com a direcção e o modo a entrarem na assinatura: uma função-irmã
 /// *«…_direction»* ao lado seria o segundo sítio por onde um quadro publica meio pincel, e o

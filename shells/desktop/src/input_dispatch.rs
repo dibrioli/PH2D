@@ -63,6 +63,7 @@ mod despacho_clique_flip;
 mod despacho_clique_gizmo;
 mod despacho_clique_hud;
 mod despacho_clique_largar;
+mod despacho_clique_osso;
 mod despacho_clique_pick;
 mod despacho_clique_prologo;
 mod despacho_clique_reclamantes;
@@ -495,6 +496,9 @@ impl App {
             return;
         }
         if self.ramo_alcas_soltas(kind, mapped_button, evt) {
+            return;
+        }
+        if self.ramo_ferramenta_osso(mapped_button, kind, on_canvas, evt, menu_open_before) {
             return;
         }
         if self.ramo_ferramenta_vetorial(mapped_button, kind, on_canvas, evt, menu_open_before) {

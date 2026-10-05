@@ -102,10 +102,7 @@ impl crate::App {
             // ⚠️⚠️ **E o verbo TRANSFORMAR** — sem ele o `press` sobre uma alça apenas SELECCIONA
             // (é a lei do modo *Criar*), e o arrasto da âncora nunca acontece. *Uma sonda que não
             // escolhe o verbo mede o outro gesto.*
-            48 => self.probe_click(
-                ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM,
-                "Transform",
-            ),
+            48 => self.probe_click(ph2d_tool_bone::ids::VECTOR_BONE_ACT_TRANSFORM, "Transform"),
             49 => self.probe_what_is_reachable(),
             // ⚠️⚠️ **O Down e o Up em QUADROS DIFERENTES** — é o que uma mão humana faz, e é a
             // ÚNICA diferença que sobrava contra o roteiro que passou. Dois dos cinco motivos de
@@ -294,10 +291,7 @@ impl crate::App {
         match f {
             35 => self.probe_click(ph2d_editor_core::ids::VECTOR_MODE_BONE, "o pill Bone"),
             42..=47 => self.probe_scroll_panel(),
-            48 => self.probe_click(
-                ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM,
-                "Transform",
-            ),
+            48 => self.probe_click(ph2d_tool_bone::ids::VECTOR_BONE_ACT_TRANSFORM, "Transform"),
             50 => self.probe_pick_a_bone_without_anchor(),
             53 => self.probe_press(ph2d_editor_core::ids::VECTOR_BONE_IK_ADD, "Add IK"),
             55 => self.smoke_pointer_up(),

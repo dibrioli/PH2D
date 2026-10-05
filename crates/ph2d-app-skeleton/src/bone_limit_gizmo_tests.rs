@@ -34,7 +34,7 @@ fn agarra_a(
         p,
         px_to_world,
         foco.map(Entity::to_bits),
-        ph2d_tool_vector::BoneAction::Transform,
+        ph2d_tool_bone::BoneAction::Transform,
     )
 }
 

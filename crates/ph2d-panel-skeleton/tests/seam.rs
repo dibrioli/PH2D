@@ -559,11 +559,8 @@ fn both_segments_of_create_and_transform_reach_the_tool() {
     publica_tudo();
     modo_osso(0);
     for (id, nome) in [
-        (ph2d_tool_vector::ids::VECTOR_BONE_ACT_CREATE, "Create"),
-        (
-            ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM,
-            "Transform",
-        ),
+        (ph2d_tool_bone::ids::VECTOR_BONE_ACT_CREATE, "Create"),
+        (ph2d_tool_bone::ids::VECTOR_BONE_ACT_TRANSFORM, "Transform"),
     ] {
         let acoes = clica(id, nome);
         assert!(
@@ -580,7 +577,7 @@ fn both_segments_of_create_and_transform_reach_the_tool() {
 
 /// ⭐⭐⭐ **A FILEIRA TEM UM SEGMENTO POR VERBO — nem mais, nem menos.**
 ///
-/// ⛔⛔ **Ela e a [`ph2d_tool_vector::BoneAction::ALL`] são alinhadas por POSIÇÃO**, e é isso que o
+/// ⛔⛔ **Ela e a [`ph2d_tool_bone::BoneAction::ALL`] são alinhadas por POSIÇÃO**, e é isso que o
 /// doc da `VECTOR_BONE_ACTION_IDS` promete por escrito. Um verbo novo sem id é um gesto que o
 /// artista **não alcança**; um id a mais é um segmento que acende e não troca nada. *As duas
 /// falhas são mudas, e as curas são opostas.*
@@ -592,7 +589,7 @@ fn both_segments_of_create_and_transform_reach_the_tool() {
 /// (Mutação: `indice()` a devolver `0` ⇒ RED na 2.ª metade. Um id a mais ⇒ RED na 1.ª.)
 #[test]
 fn a_fileira_de_verbos_do_osso_tem_um_segmento_por_accao() {
-    use ph2d_tool_vector::BoneAction;
+    use ph2d_tool_bone::BoneAction;
     assert_eq!(
         ph2d_panel_skeleton::ids::VECTOR_BONE_ACTION_IDS.len(),
         BoneAction::ALL.len(),
@@ -616,22 +613,22 @@ fn a_fileira_de_verbos_do_osso_tem_um_segmento_por_accao() {
 fn o_verbo_do_peso_e_os_dois_numeros_dele_chegam_a_ferramenta() {
     publica_tudo();
     modo_osso(2);
-    let acoes = clica(ph2d_tool_vector::ids::VECTOR_BONE_ACT_WEIGHT, "Weight");
+    let acoes = clica(ph2d_tool_bone::ids::VECTOR_BONE_ACT_WEIGHT, "Weight");
     assert!(
         acoes.iter().any(|a| matches!(
             a,
             EditorAction::ToolPanelEvent(PanelEvent::Click(c))
-                if *c == ph2d_tool_vector::ids::VECTOR_BONE_ACT_WEIGHT
+                if *c == ph2d_tool_bone::ids::VECTOR_BONE_ACT_WEIGHT
         )),
         "o segmento Weight nao chegou a' ferramenta"
     );
     for (id, nome) in [
         (
-            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS,
+            ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_RADIUS,
             "Brush Radius",
         ),
         (
-            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT,
+            ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_AMOUNT,
             "Brush Strength",
         ),
     ] {
@@ -657,7 +654,7 @@ fn o_verbo_do_peso_e_os_dois_numeros_dele_chegam_a_ferramenta() {
 /// lista com outro tamanho (ou noutra ordem) acende o segmento errado **em silêncio**.
 #[test]
 fn a_fileira_da_direccao_do_peso_tem_um_segmento_por_lado() {
-    use ph2d_tool_vector::WeightDirection;
+    use ph2d_tool_bone::WeightDirection;
     assert_eq!(
         ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_DIR_IDS.len(),
         WeightDirection::ALL.len(),
@@ -671,12 +668,12 @@ fn a_fileira_da_direccao_do_peso_tem_um_segmento_por_lado() {
     // ficava a mandar `Subtract`. *«Índice-alinhadas» era uma afirmação que nada verificava.*
     assert_eq!(
         ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_DIR_IDS[WeightDirection::Add.indice()],
-        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ADD,
+        ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_ADD,
         "a posicao do Add na fileira carrega outro id"
     );
     assert_eq!(
         ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_DIR_IDS[WeightDirection::Subtract.indice()],
-        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_SUB,
+        ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_SUB,
         "a posicao do Subtract na fileira carrega outro id"
     );
 }
@@ -696,8 +693,8 @@ fn os_dois_botoes_da_direccao_do_peso_respondem_ao_dedo() {
     publica_tudo();
     modo_osso(2);
     for (id, nome) in [
-        (ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ADD, "Add"),
-        (ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_SUB, "Subtract"),
+        (ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_ADD, "Add"),
+        (ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_SUB, "Subtract"),
     ] {
         let acoes = clica(id, nome);
         assert!(
@@ -717,7 +714,7 @@ fn os_dois_botoes_da_direccao_do_peso_respondem_ao_dedo() {
 /// errado **em silêncio**.
 #[test]
 fn a_fileira_do_modo_do_peso_tem_um_segmento_por_modo() {
-    use ph2d_tool_vector::WeightMode;
+    use ph2d_tool_bone::WeightMode;
     assert_eq!(
         ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_MODE_IDS.len(),
         WeightMode::ALL.len(),
@@ -725,12 +722,12 @@ fn a_fileira_do_modo_do_peso_tem_um_segmento_por_modo() {
     );
     assert_eq!(
         ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_MODE_IDS[WeightMode::Cumulative.indice()],
-        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_CUMUL,
+        ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_CUMUL,
         "a posicao do Cumulative na fileira carrega outro id"
     );
     assert_eq!(
         ph2d_panel_skeleton::ids::VECTOR_BONE_WEIGHT_MODE_IDS[WeightMode::Absolute.indice()],
-        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ABS,
+        ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_ABS,
         "a posicao do Absolute na fileira carrega outro id"
     );
 }
@@ -746,11 +743,8 @@ fn os_dois_botoes_do_modo_do_peso_respondem_ao_dedo() {
     publica_tudo();
     modo_osso(2);
     for (id, nome) in [
-        (
-            ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_CUMUL,
-            "Cumulative",
-        ),
-        (ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ABS, "Absolute"),
+        (ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_CUMUL, "Cumulative"),
+        (ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_ABS, "Absolute"),
     ] {
         let acoes = clica(id, nome);
         assert!(
@@ -786,18 +780,18 @@ fn no_modo_absoluto_a_direccao_nao_e_pintada() {
         host.painted_rect::<SkeletonPanel>(&mut st, VIEWPORT, id)
             .is_some()
     };
-    let abs = ph2d_tool_vector::WeightMode::Absolute.indice();
-    let cum = ph2d_tool_vector::WeightMode::Cumulative.indice();
+    let abs = ph2d_tool_bone::WeightMode::Absolute.indice();
+    let cum = ph2d_tool_bone::WeightMode::Cumulative.indice();
     assert!(
-        !pintado(abs, ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ADD),
+        !pintado(abs, ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_ADD),
         "no modo ABSOLUTO o botao Add continua na tela — ele nao tem sujeito ali"
     );
     assert!(
-        pintado(cum, ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_ADD),
+        pintado(cum, ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_ADD),
         "no modo CUMULATIVO o botao Add sumiu — o artista perdeu o lado"
     );
     assert!(
-        pintado(abs, ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_CUMUL),
+        pintado(abs, ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_CUMUL),
         "a fileira do MODO sumiu no absoluto — o artista nao consegue voltar"
     );
     state::set_current_bone_weight(0.0, 0.0, 0, 0);
@@ -866,8 +860,8 @@ fn os_numeros_do_pincel_seguem_o_verbo() {
         v
     };
     for id in [
-        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_RADIUS,
-        ph2d_tool_vector::ids::VECTOR_BONE_WEIGHT_AMOUNT,
+        ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_RADIUS,
+        ph2d_tool_bone::ids::VECTOR_BONE_WEIGHT_AMOUNT,
     ] {
         assert!(
             pintado(Some(2), id),
@@ -912,8 +906,8 @@ fn the_create_transform_group_is_the_door_and_starts_with_nothing_lit() {
 
     // ⚠️ **Uma cena SEM ossos**: o painel abre-se pelo menu, e a porta tem de estar lá.
     assert!(
-        pintado(ph2d_tool_vector::ids::VECTOR_BONE_ACT_CREATE)
-            && pintado(ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM),
+        pintado(ph2d_tool_bone::ids::VECTOR_BONE_ACT_CREATE)
+            && pintado(ph2d_tool_bone::ids::VECTOR_BONE_ACT_TRANSFORM),
         "a porta do modo Osso não é pintada numa cena sem ossos — o artista abre o painel pelo menu \
          e não tem gesto nenhum que crie o primeiro"
     );
@@ -922,8 +916,8 @@ fn the_create_transform_group_is_the_door_and_starts_with_nothing_lit() {
     // este arnês só vê o retângulo. *Um gate que afirmasse a cor aqui mediria o instrumento.*
     state::set_current_bone_tool(Some(1));
     assert!(
-        pintado(ph2d_tool_vector::ids::VECTOR_BONE_ACT_CREATE)
-            && pintado(ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM),
+        pintado(ph2d_tool_bone::ids::VECTOR_BONE_ACT_CREATE)
+            && pintado(ph2d_tool_bone::ids::VECTOR_BONE_ACT_TRANSFORM),
         "com um osso escolhido os dois segmentos continuam a ser oferecidos"
     );
     state::set_current_bone_tool(None);

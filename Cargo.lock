@@ -4896,6 +4896,7 @@ dependencies = [
  "ph2d-skeleton-render",
  "ph2d-timeline",
  "ph2d-timeline-preview",
+ "ph2d-tool-bone",
  "ph2d-tool-vector",
  "ph2d-vec-edit",
  "ph2d-vec-entities",
@@ -5722,6 +5723,7 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tokens-dtcg",
  "ph2d-tool-bgremoval",
+ "ph2d-tool-bone",
  "ph2d-tool-color-equalization",
  "ph2d-tool-equalize-sizes",
  "ph2d-tool-flip",
@@ -7810,6 +7812,7 @@ dependencies = [
  "ph2d-label-census",
  "ph2d-skeleton",
  "ph2d-tokens",
+ "ph2d-tool-bone",
  "ph2d-tool-registry",
  "ph2d-tool-vector",
  "ph2d-ui-testkit",
@@ -7898,6 +7901,7 @@ dependencies = [
  "ph2d-symmetry",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-tool-bone",
  "ph2d-tool-registry",
  "ph2d-tool-vector",
  "ph2d-ui-testkit",
@@ -8436,6 +8440,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-tool-bone"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-skeleton",
+ "ph2d-tool-registry",
+]
+
+[[package]]
 name = "ph2d-tool-color-equalization"
 version = "0.0.0"
 dependencies = [
@@ -8597,6 +8611,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-text",
  "ph2d-tool-bgremoval",
+ "ph2d-tool-bone",
  "ph2d-tool-color-equalization",
  "ph2d-tool-equalize-sizes",
  "ph2d-tool-flip",

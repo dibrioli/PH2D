@@ -46,8 +46,7 @@ impl crate::App {
             // ⚠️ O doc do `selected_bone_bits` já prescrevia isto: *«no laço de desenho o
             // `gfx` está emprestado mutável de ponta a ponta, e ali chama-se a função livre
             // acima — a lei é a mesma, e é por isso que ela vive numa função só»*.
-            let osso_focado =
-                crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected());
+            let osso_focado = crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected());
             // ⭐ **O FUNDO do osso em foco** — a mancha de influência e o arco de limite, os
             // dois por BAIXO do rig. Ver [`fundo_do_osso_focado`]: aqui decide-se a ORDEM
             // dos passes, não o que cada um desenha.
@@ -77,13 +76,15 @@ impl crate::App {
             // assunto só. ⚠️ **Ele saiu para um irmão por TECTO DE FUNÇÃO** (`204` contra
             // `200`, 2026-09-20) e o corte é por RESPONSABILIDADE: aqui decide-se a ORDEM dos
             // passes, ali o que o pincel de peso mostra.
-            if self.vec.draw_config.bone_action == ph2d_tool_vector::BoneAction::Weight {
+            if self.skeleton.tool_in_hand
+                && self.skeleton.tool.action == ph2d_tool_bone::BoneAction::Weight
+            {
                 pincel_de_peso_a_vista(
                     sim,
                     osso_focado.map(ph2d_ecs::Entity::from_bits),
                     PincelDePeso {
                         ppm: hero.project.pixels_per_meter,
-                        raio_px: self.vec.draw_config.weight_radius,
+                        raio_px: self.skeleton.tool.weight_radius,
                         cursor: self.skeleton.weight_cursor,
                     },
                     cam_affine,
@@ -94,8 +95,8 @@ impl crate::App {
             // ⚠️ **Que pontas recebem anel é um CORPO e mora na família**
             // ([`ph2d_app_skeleton::goal::ring_targets`]): aqui decide-se a ORDEM dos passes,
             // não o que cada um desenha.
-            let criar = self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Bone
-                && self.vec.draw_config.bone_action == ph2d_tool_vector::BoneAction::Create;
+            let criar = self.skeleton.tool_in_hand
+                && self.skeleton.tool.action == ph2d_tool_bone::BoneAction::Create;
             let pontas = ph2d_app_skeleton::goal::ring_targets(sim, criar);
             // ⭐⭐⭐ **A FAIXA DA CORRENTE GOVERNADA, por BAIXO dos ossos** (report do dono,
             // 2026-09-14: *«não temos uma linha indicativa do IK Chain»*). O `Chain` é um

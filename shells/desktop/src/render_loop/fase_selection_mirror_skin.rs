@@ -98,7 +98,7 @@ impl crate::App {
         //
         // ⇒ ficam **duas portas, as duas de ARESTA**: a linha do menu (o `skeleton_toggle`)
         // e a selecção de um osso (mais abaixo). Nenhuma das duas escreve em todo quadro.
-        let ferramenta_osso = self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Bone;
+        let ferramenta_osso = self.skeleton.tool_in_hand;
         // ⭐ E o VERBO do arrasto, como ÍNDICE — é o que mantém aquele painel sem depender
         // da crate da ferramenta de vector.
         //
@@ -107,7 +107,7 @@ impl crate::App {
         // três: o terceiro lia `0` e acendia o primeiro segmento. *Um índice derivado de uma
         // comparação é uma tabela escrita à mão com outra sintaxe.*
         ph2d_panel_skeleton::set_current_bone_tool(
-            ferramenta_osso.then(|| self.vec.draw_config.bone_action.indice()),
+            ferramenta_osso.then(|| self.skeleton.tool.action.indice()),
         );
         // ⭐ E o PINCEL DE PESO — raio, magnitude, a DIRECÇÃO e o MODO —, publicado SEMPRE, porque
         // o sujeito dele é a ferramenta: é a secção que decide se o pinta, e ela só o faz com o
@@ -117,10 +117,10 @@ impl crate::App {
         // pela mesma razão do verbo do osso na linha acima: é o que mantém o painel sem depender do
         // enum da ferramenta para o valor, e quem alinha as duas listas é a POSIÇÃO.
         ph2d_panel_skeleton::set_current_bone_weight(
-            self.vec.draw_config.weight_radius,
-            self.vec.draw_config.weight_amount,
-            self.vec.draw_config.weight_direction.indice(),
-            self.vec.draw_config.weight_mode.indice(),
+            self.skeleton.tool.weight_radius,
+            self.skeleton.tool.weight_amount,
+            self.skeleton.tool.weight_direction.indice(),
+            self.skeleton.tool.weight_mode.indice(),
         );
     }
 }

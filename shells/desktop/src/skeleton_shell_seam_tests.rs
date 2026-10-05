@@ -212,7 +212,7 @@ fn the_anchor_is_grabbable_far_away_from_every_bone() {
         longe,
         1.0,
         None,
-        ph2d_tool_vector::BoneAction::Transform,
+        ph2d_tool_bone::BoneAction::Transform,
     )
     .expect("a ancora tem de ser achada");
     assert_eq!(h.bone, cotovelo.to_bits());
@@ -247,7 +247,7 @@ fn a_middle_anchor_takes_the_ring_and_the_bone_keeps_the_core() {
         ancora,
         1.0,
         None,
-        ph2d_tool_vector::BoneAction::Transform,
+        ph2d_tool_bone::BoneAction::Transform,
     )
     .expect("algo sob o dedo");
     assert_eq!(
@@ -263,7 +263,7 @@ fn a_middle_anchor_takes_the_ring_and_the_bone_keeps_the_core() {
         no_anel,
         1.0,
         None,
-        ph2d_tool_vector::BoneAction::Transform,
+        ph2d_tool_bone::BoneAction::Transform,
     )
     .expect("algo sob o dedo");
     assert_eq!(fora.bone, ombro.to_bits(), "o anel tem de pegar a ANCORA");
@@ -311,7 +311,7 @@ fn an_anchor_far_from_every_bone_is_grabbable_at_its_centre() {
         longe,
         1.0,
         None,
-        ph2d_tool_vector::BoneAction::Transform,
+        ph2d_tool_bone::BoneAction::Transform,
     )
     .expect("o centro do losango");
     assert_eq!(h.bone, cotovelo.to_bits());

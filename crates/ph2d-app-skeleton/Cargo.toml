@@ -36,6 +36,8 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 ph2d-timeline = { path = "../ph2d-timeline" }
 ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+# ⭐ O verbo do osso e o pincel de peso (A14: sairam da ferramenta Vector).
+ph2d-tool-bone = { path = "../ph2d-tool-bone" }
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }
 ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }

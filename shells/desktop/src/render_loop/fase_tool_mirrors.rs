@@ -16,6 +16,7 @@ impl crate::App {
         let FrameGfx {
             hero_screen,
             physics,
+            tools,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -23,6 +24,9 @@ impl crate::App {
         // Mirror the tool's mode + shape params for the input dispatch's
         // pen-vs-shape routing (the downcast lives in the bridge).
         self.vec.draw_config = vec_cfg;
+        // ⭐ O espelho da ferramenta de osso (A14) — a mesma disciplina do `draw_config`.
+        self.skeleton.tool = ph2d_app_skeleton::bone_bridge::config(tools);
+        self.skeleton.tool_in_hand = ph2d_app_skeleton::bone_bridge::in_hand(tools);
         // ⭐⭐⭐ **A SONDA DA FOTOGRAFIA arma o verbo AQUI, e o sítio é a lei dela**
         // (`PH2D_VEC_WEIGHT_PROBE=1`, ver [`crate::vec_bone_smoke::sonda_do_peso`]).
         //
@@ -35,8 +39,8 @@ impl crate::App {
         // ⇒ ela mora na ÚNICA linha que escreve o espelho, logo ganha a toda a porta de aresta e a
         // tudo o que lê `draw_config` a jusante — o painel e o overlay.
         if crate::vec_bone_smoke::sonda_do_peso().is_some() {
-            self.vec.draw_config.mode = ph2d_tool_vector::DrawMode::Bone;
-            self.vec.draw_config.bone_action = ph2d_tool_vector::BoneAction::Weight;
+            self.skeleton.tool_in_hand = true;
+            self.skeleton.tool.action = ph2d_tool_bone::BoneAction::Weight;
         }
 
         // ADR-0114 W2: espelha o estado da tool Flip (ativa + estilo de brush)

@@ -130,10 +130,10 @@ pub fn press(
     world: [f64; 2],
     px_to_world: f64,
     selected: Option<u64>,
-    action: ph2d_tool_vector::BoneAction,
+    action: ph2d_tool_bone::BoneAction,
     pincel: Pincel,
 ) -> BonePress {
-    use ph2d_tool_vector::BoneAction;
+    use ph2d_tool_bone::BoneAction;
     // ⭐⭐⭐ **O PESO é o primeiro braço porque ele não pergunta nada ao rig** — o sujeito dele é a
     // ARTE presa, e o osso vem do foco. ⛔ Cair no `hover` antes disto poria o dedo a competir com
     // as alças de um osso que este verbo nunca move.

@@ -6,7 +6,7 @@
 //! ser medida*.
 
 use super::{pinta_a_direccao, rotulo_do_numero, segmentos_do_modo};
-use ph2d_tool_vector::WeightMode;
+use ph2d_tool_bone::WeightMode;
 
 /// ⭐⭐⭐ **O ÍNDICE QUE A SHELL PUBLICA ACENDE O SEGMENTO CERTO** — a mesma lei (e o mesmo gate) da
 /// fileira da direcção, uma wave depois.

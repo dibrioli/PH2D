@@ -96,6 +96,27 @@ diz onde ler o mecanismo:
   (3 gates vermelhos) ⇒ derivado de `ALL`; `DRAWABLE` exclui o esqueleto (sem pixels). ⚠️ Para o
   C5/C7: a entidade do esqueleto (Transform, sem pixels) é um «objecto vazio» para o
   `group_gizmo_view::is_empty_object` e ganharia o anel — decidir lá.
+- ⚠️ **Sequência mudada:** o C2 (`ObjectMode::Pose`) junta-se ao C5 — o gate
+  `the_composed_families_declare_every_creation_mode` reprova um modo sem família (D6: modo que não
+  abre nada é controlo morto), e a família precisa da ferramenta (C3) e do despacho (C4).
+- **C3 — a FERRAMENTA de osso** (`ph2d-tool-bone`, drop-crate sabor 2, `make` registado pelo
+  `ph2d-tool-sync`). Saíram da `ph2d-tool-vector`: `DrawMode::Bone` (vocabulário 17 → 16; o
+  `SEM_PILL` fica vazio), `BoneAction`, `WeightDirection`, `WeightMode`, as três constantes do
+  pincel, os campos do `VectorDrawConfig`/`VectorStyleSnapshot`, os braços do painel e os ids do verbo
+  e do pincel (as STRINGS dos hashes ficam `vector.bone.*`). Porta única do segmento → verbo:
+  `BoneAction::of_segment`. Ponte `ph2d_app_skeleton::bone_bridge` (`in_hand`, `config`, `arm`); a
+  shell espelha `skeleton.tool`/`tool_in_hand` por quadro (`fase_tool_mirrors`) e todos os leitores
+  do `draw_config.bone_action`/`weight_*`/`mode == Bone` passaram a ele. O press e o release do osso
+  mudaram-se (corpos iguais) para `input_dispatch/despacho_clique_osso.rs`, ramo
+  `ramo_ferramenta_osso` chamado antes do vetorial (depois do Select, onde mora o pick modal). Um
+  clique em *Create*/*Transform*/*Weight* no painel PÕE a ferramenta de osso na mão antes de o
+  evento seguir para a activa (`fase_bus_tool_panel`) — interino até o C5 o trocar pela entrada no
+  modo. Gates novos, com controlo: `arming_a_verb_puts_the_bone_tool_in_hand`,
+  `the_bone_segment_arms_the_tool_before_the_forward` (vermelho visto sobre a fase do HEAD),
+  `the_three_segments_arm_the_verb`, `the_bone_segments_leave_the_vector_tool_alone` (substitui o
+  `the_two_bone_segments_are_the_door_to_the_mode`, que afirmava a porta antiga). ⚠️ Para o C6: as
+  alças do osso (força, limite, ponta da IK) ACENDEM em Object desde o C0 mas o `Down` delas só se
+  lê com a ferramenta Vector (`despacho_clique_select`) — decidir com o desenho por modo.
 
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 

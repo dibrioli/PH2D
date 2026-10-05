@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-tool-bone"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A ferramenta de osso (A14): o verbo do arrasto e o pincel de peso. Drop-crate (DIRETRIZ §3.A,
+# sabor 2: só `make`). O documento (os ossos) e os gestos vivem fora — `ph2d-skeleton-ecs` e
+# `ph2d-app-skeleton`.
+
+[lib]
+
+[dependencies]
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+# A `Especie` da mancha de peso (`WeightMode::especie`): a lei é do módulo.
+ph2d-skeleton = { path = "../ph2d-skeleton" }
+# `hash_node_id` dos ids.
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+
+[lints]
+workspace = true

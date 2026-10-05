@@ -9,7 +9,7 @@
 //! |---|---|
 //! | `selected_bone_bits` | `gfx.hero_screen.gizmo` — a selecção do gizmo deste quadro |
 //! | `bone_handle_at` | `vec_world_at` / `vec_px_to_world` — a câmara, que é da shell |
-//! | `refresh_bone_hover` | mais `vec_draw_config.bone_action`, `bone_hover`, `bone_preview`, `vec_bone_drag` |
+//! | `refresh_bone_hover` | mais `skeleton.tool.action`, `bone_hover`, `bone_preview`, `vec_bone_drag` |
 //!
 //! ⛔⛔ **Isto NÃO é um pedido de sexto método de host.** O HOWTO §1.5 é explícito: *«se a sua
 //! família precisa de um método por campo da `App` que hoje toca, ela não precisa de um trait
@@ -60,7 +60,7 @@ impl crate::App {
             world,
             px,
             foco,
-            ph2d_tool_vector::BoneAction::Transform,
+            ph2d_tool_bone::BoneAction::Transform,
         )?;
         grabbable_outside_bone_mode(h.part).then_some(h)
     }
@@ -94,10 +94,10 @@ impl crate::App {
         // ⚠️ **O verbo só manda DENTRO do modo Osso.** Fora dele o `bone_action` continua guardado
         // (ele é estado da ferramenta, não do quadro), e lê-lo aqui deixaria o realce das outras 13
         // ferramentas preso no que o artista armou da última vez que passou pelo esqueleto.
-        let acao = if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Bone {
-            self.vec.draw_config.bone_action
+        let acao = if self.skeleton.tool_in_hand {
+            self.skeleton.tool.action
         } else {
-            ph2d_tool_vector::BoneAction::Transform
+            ph2d_tool_bone::BoneAction::Transform
         };
         // ⭐⭐⭐ **O QUE O ARRASTO SIGNIFICA AGORA** — a porta ÚNICA que o release também lê
         // ([`ph2d_app_skeleton::bone_gesture::drag_now`]). ⛔ É ela que faz o que o artista VÊ ser o que ele

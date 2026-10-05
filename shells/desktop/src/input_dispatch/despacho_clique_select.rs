@@ -338,7 +338,6 @@ impl crate::App {
             && kind == PointerKind::Down
             && !menu_open_before
             && self.vector_tool_active()
-            && self.vec.draw_config.mode != ph2d_tool_vector::DrawMode::Bone
             && self.over_canvas_or_gizmo(evt.x, evt.y)
             && let Some(h) = self.bone_handle_at((evt.x, evt.y))
         {

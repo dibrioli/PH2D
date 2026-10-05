@@ -2973,45 +2973,28 @@ fn the_apply_button_only_exists_when_something_is_live() {
     ph2d_panel_vector::set_current_vector_style(None);
 }
 
-/// ⭐⭐⭐ **OS DOIS SEGMENTOS DO PAINEL DE BONES SÃO A PORTA DO MODO.**
+/// ⭐⭐ **OS SEGMENTOS DO VERBO DO OSSO JÁ NÃO TOCAM NA FERRAMENTA VECTOR** (A14, 05/10).
 ///
-/// ⛔⛔ **Ordem do dono, 2026-09-09:** *«vc deixou o botão Bones no Painel Vector — melhor tirar de
-/// lá»*. Com o pill fora da fileira de modos, a **única** entrada no `DrawMode::Bone` são estes
-/// dois segmentos — e eles vivem noutro painel, então o que este gate mede é a metade da
-/// FERRAMENTA: o evento chega e troca o modo **e** o verbo.
-///
-/// ⚠️ **As duas metades num só gate**, e é de propósito: armar o verbo sem entrar no modo deixaria
-/// o artista a ler *Create* enquanto o arrasto continuava a fazer o que a ferramenta anterior fazia
-/// — *meio gesto*, que é pior que nenhum.
+/// Até 05/10 eles eram a porta do `DrawMode::Bone`; o osso saiu para a `ph2d-tool-bone`, e a porta
+/// passou a ser a shell (`fase_bus_tool_panel` põe a ferramenta de osso na mão). ⛔ Um braço
+/// esquecido aqui faria o segmento mexer no modo do vetor — duas portas para o mesmo verbo.
 #[test]
-fn the_two_bone_segments_are_the_door_to_the_mode() {
-    for (id, esperado) in [
-        (
-            ph2d_tool_vector::ids::VECTOR_BONE_ACT_CREATE,
-            ph2d_tool_vector::BoneAction::Create,
-        ),
-        (
-            ph2d_tool_vector::ids::VECTOR_BONE_ACT_TRANSFORM,
-            ph2d_tool_vector::BoneAction::Transform,
-        ),
+fn the_bone_segments_leave_the_vector_tool_alone() {
+    for id in [
+        ph2d_tool_bone::ids::VECTOR_BONE_ACT_CREATE,
+        ph2d_tool_bone::ids::VECTOR_BONE_ACT_TRANSFORM,
+        ph2d_tool_bone::ids::VECTOR_BONE_ACT_WEIGHT,
     ] {
-        // ⚠️ Parte de OUTRO modo, senão o gate ficava verde sobre um braço que não existe.
         let mut tool = VectorTool::default();
-        tool.set_mode(DrawMode::Select);
+        tool.set_mode(DrawMode::Pen);
         <VectorTool as ph2d_editor_core::tool::Tool>::handle_panel_event(
             &mut tool,
             ph2d_editor_core::tool::PanelEvent::Click(id),
         );
         assert_eq!(
             tool.mode(),
-            DrawMode::Bone,
-            "o segmento {id:?} não entrou no modo Osso — o pill saiu da fileira, e sem isto não há \
-             porta nenhuma"
-        );
-        assert_eq!(
-            tool.bone_action(),
-            esperado,
-            "o segmento {id:?} entrou no modo e não armou o verbo"
+            DrawMode::Pen,
+            "o segmento {id:?} mexeu no modo do vetor"
         );
     }
 }

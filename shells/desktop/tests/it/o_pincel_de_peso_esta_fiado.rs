@@ -48,7 +48,7 @@ fn o_indice_do_verbo_do_osso_sai_da_porta() {
         .expect("a fase que publica o espelho do esqueleto"),
     );
     assert!(
-        src.contains("bone_action.indice()"),
+        src.contains("tool.action.indice()"),
         "o índice do verbo deixou de sair da porta `BoneAction::indice` — com três verbos, uma \
          comparação acende sempre o segmento errado"
     );
@@ -80,7 +80,7 @@ fn o_arrasto_do_peso_pinta_e_o_soltar_acaba_o_traco() {
     let solto = code_only(
         &std::fs::read_to_string(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/src/input_dispatch/despacho_clique_vetor_solto.rs"
+            "/src/input_dispatch/despacho_clique_osso.rs"
         ))
         .expect("o despacho do soltar"),
     );
@@ -143,7 +143,7 @@ fn o_raio_do_pincel_chega_a_lei_convertido_a_mundo() {
 /// chamava-se `o_sinal_da_pincelada_sai_da_porta_da_direccao` e media `.delta(` no despacho — a
 /// porta de 2026-09-19, quando a composição era *«magnitude × direcção»*. Com os dois modos ela
 /// passou a ser *«modo × magnitude × direcção»* e mudou de dono
-/// ([`ph2d_tool_vector::WeightMode::especie`], que **chama** a antiga). *Um gate que continuasse a
+/// ([`ph2d_tool_bone::WeightMode::especie`], que **chama** a antiga). *Um gate que continuasse a
 /// procurar o `.delta(` aqui ficaria verde no dia em que alguém escrevesse o `match` do modo neste
 /// laço de input — que é exactamente o que ele existe para impedir.*
 ///

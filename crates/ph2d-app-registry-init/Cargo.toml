@@ -60,6 +60,11 @@ app-vec = ["dep:ph2d-app-vec"]
 
 [dev-dependencies]
 ph2d-app-sync = { path = "../../tools/ph2d-app-sync" }
+# `every_object_mode_has_a_composed_family` — o vocabulário dos modos e o que cada família empresta.
+ph2d-component-desc = { path = "../ph2d-component-desc" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-flip = { path = "../ph2d-flip" }
 
 [lints]
 workspace = true

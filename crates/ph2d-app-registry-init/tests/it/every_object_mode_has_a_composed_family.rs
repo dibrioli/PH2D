@@ -11,6 +11,17 @@ use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
 
 const FASE: &str = "src/render_loop/fase_object_mode.rs";
 
+/// ⚠️ Os caminhos são da SHELL — este gate mora no registo das famílias (saiu da shell pela catraca
+/// `the_shell_only_shrinks`, na rodada de 04/10), e o `cwd` do `cargo test` é o desta crate.
+fn shell(rel: &str) -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("a raiz da workspace")
+        .join("shells/desktop")
+        .join(rel)
+}
+
 /// `(o construtor no fonte, a variável que entra na lista)` de cada família.
 const FAMILIAS: [(&str, &str); 5] = [
     ("ph2d_app_painter::paint_mode::Family", "&mut paint"),
@@ -25,7 +36,7 @@ const FAMILIAS: [(&str, &str); 5] = [
 /// *Mutação que sangra:* tirar `&mut flip,` da lista (o Draw Mode morre com tudo verde).
 #[test]
 fn every_mode_family_is_in_the_frame_list() {
-    let src = std::fs::read_to_string(FASE).expect("a fase do modo existe");
+    let src = std::fs::read_to_string(shell(FASE)).expect("a fase do modo existe");
     let lista = src
         .split("let families")
         .nth(1)
@@ -107,7 +118,7 @@ fn the_composed_families_declare_every_creation_mode() {
 /// *Mutação que sangra:* apagar a linha da fase.
 #[test]
 fn the_vector_edit_reaches_the_frame_view() {
-    let src = std::fs::read_to_string("src/render_loop/fase_vector_view_and_drives.rs")
+    let src = std::fs::read_to_string(shell("src/render_loop/fase_vector_view_and_drives.rs"))
         .expect("a fase da vista vetorial existe");
     assert!(
         src.contains("vec_view.editing = self.vec.edit.editing(sim, &self.vec.entities)"),
@@ -116,7 +127,7 @@ fn the_vector_edit_reaches_the_frame_view() {
     // ⛔ E a vista do CLIQUE (`view_derived`, lida pelo pick do Select, do laço e do realce) tem de
     // a receber: sem esta linha o Select em Edit lia Object e subia da forma ao objecto inteiro —
     // report do dono, 04/10: «não consigo selecionar as formas vetoriais dentro do objeto».
-    let recook = std::fs::read_to_string("src/render_loop/fase_vector_layout_recook.rs")
+    let recook = std::fs::read_to_string(shell("src/render_loop/fase_vector_layout_recook.rs"))
         .expect("a fase do recook existe");
     assert!(
         recook.contains("view_derived.editing.clone_from(&vec_view.editing)"),
@@ -136,7 +147,7 @@ fn the_loose_shape_rule_runs_in_both_nets_with_the_edit_object() {
         "src/render_loop/fase_vector_tree_settle.rs",
         "src/vec_tree_settle.rs",
     ] {
-        let src = std::fs::read_to_string(f).expect("a fase existe");
+        let src = std::fs::read_to_string(shell(f)).expect("a fase existe");
         let call = src
             .split("entities::object::adopt_loose(")
             .nth(1)
@@ -173,7 +184,7 @@ fn object_mode_picks_and_boxes_the_whole_vector_object() {
             "object::place_beside(",
         ),
     ] {
-        let src = std::fs::read_to_string(f).expect("o ficheiro existe");
+        let src = std::fs::read_to_string(shell(f)).expect("o ficheiro existe");
         assert!(src.contains(call), "{f} não chama {call}");
     }
 }

@@ -39,7 +39,7 @@ pub const BEND_HIT_PX: f64 = 2.0 * ph2d_skeleton_render::BEND_HANDLE_R_PX;
 /// linha que não está pintada em sítio nenhum. Num osso recto ela devolve dois nós e tudo aqui
 /// continua a ser o que era, ao bit.
 fn corpo(sim: &SimWorld, bits: u64) -> Option<Vec<[f64; 2]>> {
-    ph2d_skeleton_live::skin_live::bone_polylines(sim)
+    ph2d_skeleton_live::skin_live::visible_bone_polylines(sim)
         .into_iter()
         .find(|(x, _)| *x == bits)
         .map(|(_, pts)| pts)
@@ -58,7 +58,7 @@ fn comp_px(pts: &[[f64; 2]], px_to_world: f64) -> f64 {
 pub fn hit(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<u64> {
     let r = BONE_HIT_PX * px_to_world;
     let mut melhor: Option<(f64, u64)> = None;
-    for (bits, pts) in ph2d_skeleton_live::skin_live::bone_polylines(sim) {
+    for (bits, pts) in ph2d_skeleton_live::skin_live::visible_bone_polylines(sim) {
         let d2 = ph2d_skeleton::dist2_to_polyline(world, &pts);
         if d2 <= r * r && melhor.is_none_or(|(m, _)| d2 < m) {
             melhor = Some((d2, bits));
@@ -84,7 +84,7 @@ pub fn hit(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<u64> {
 /// inexprimível — que é exactamente o defeito que esta wave veio curar, um nível acima.
 pub fn tip_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<(u64, [f64; 2])> {
     let mut melhor: Option<(f64, u64, [f64; 2])> = None;
-    for (bits, pts) in ph2d_skeleton_live::skin_live::bone_polylines(sim) {
+    for (bits, pts) in ph2d_skeleton_live::skin_live::visible_bone_polylines(sim) {
         let b = *pts.last().expect("a polilinha tem ao menos dois nos");
         let r = ph2d_skeleton_render::joint_radius_px(comp_px(&pts, px_to_world)) * px_to_world;
         let d = (b[0] - world[0]).hypot(b[1] - world[1]);
@@ -110,7 +110,7 @@ pub fn tip_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<(u64,
 /// ⚠️ Raio e desempate iguais aos do [`tip_at`]: a bolinha DESENHADA, e ganha a mais perto.
 pub fn free_root_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<(u64, [f64; 2])> {
     let mut melhor: Option<(f64, u64, [f64; 2])> = None;
-    for (bits, pts) in ph2d_skeleton_live::skin_live::bone_polylines(sim) {
+    for (bits, pts) in ph2d_skeleton_live::skin_live::visible_bone_polylines(sim) {
         if !is_a_free_chain_root(sim, bits) {
             continue;
         }

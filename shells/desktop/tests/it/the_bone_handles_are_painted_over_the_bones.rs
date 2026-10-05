@@ -81,7 +81,7 @@ fn the_bend_handles_are_the_last_pass_of_the_rig() {
     // ⭐ METADE A, no PAI: a CHAMADA ao fundo vem antes do rig. ⚠️ O corpo dela mora no fim do
     // ficheiro, logo é a chamada — e nunca a posição das duas funções que ela invoca — que diz
     // quando o fundo corre.
-    let chamada = uma_vez(&t, "\n                fundo_do_osso_focado(");
+    let chamada = uma_vez(&t, "\n            fundo_do_osso_focado(");
     let corpo = uma_vez(&t, "\nfn fundo_do_osso_focado(");
     assert!(
         chamada < ossos,

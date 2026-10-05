@@ -106,6 +106,7 @@ mod the_bake_replays_the_recorded_run;
 mod the_bind_beats_every_editor_shortcut;
 mod the_bone_handles_are_painted_over_the_bones;
 mod the_bone_pickers_are_modal;
+mod the_bones_are_drawn_whatever_tool_is_in_hand;
 mod the_boolean_cooks_before_the_alignment;
 mod the_border_gesture_reaches_the_panel;
 mod the_bridge_reverts_a_param_by_clearing_both_channels;

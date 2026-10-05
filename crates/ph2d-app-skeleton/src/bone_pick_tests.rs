@@ -431,3 +431,29 @@ fn the_finger_grabs_the_bone_where_it_is_drawn_not_where_the_chord_runs() {
         "o meio da CORDA nao tem osso pintado nenhum, e o dedo apanhou-o"
     );
 }
+
+/// ⭐⭐ **O que o olho esconde o dedo não agarra** — o `hit` lê a porta dos ossos À VISTA, a mesma
+/// do desenho (A14). Controlo: com o olho aberto o mesmo ponto acha o osso.
+#[test]
+fn a_bone_hidden_by_the_eye_is_not_grabbed() {
+    let mut sim = SimWorld::default();
+    let osso = create(&mut sim, None, [0.0, 0.0], [10.0, 0.0]).expect("osso");
+    assert_eq!(
+        hit(&sim, [5.0, 3.0], 1.0),
+        Some(osso),
+        "controlo: olho aberto"
+    );
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(osso))
+        .insert(ph2d_ecs::Visibility::hidden());
+    assert_eq!(
+        hit(&sim, [5.0, 3.0], 1.0),
+        None,
+        "o osso escondido foi agarrado"
+    );
+    assert_eq!(
+        tip_at(&sim, [10.0, 0.0], 1.0),
+        None,
+        "a ponta escondida foi oferecida"
+    );
+}

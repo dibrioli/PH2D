@@ -110,6 +110,17 @@ pub fn bone_polylines(sim: &SimWorld) -> Vec<(u64, Vec<[f64; 2]>)> {
     out
 }
 
+/// ⭐⭐ **Os ossos À VISTA** — a [`bone_polylines`] sem os que o olho da Hierarquia esconde (o
+/// próprio ou um ancestral). Porta ÚNICA do desenho e do dedo: o que não se vê não se agarra. A
+/// cinemática e a pele leem a [`bone_polylines`] inteira (um esqueleto escondido continua a
+/// deformar, como no Blender).
+#[must_use]
+pub fn visible_bone_polylines(sim: &SimWorld) -> Vec<(u64, Vec<[f64; 2]>)> {
+    let mut v = bone_polylines(sim);
+    v.retain(|(bits, _)| !ph2d_ecs::is_hidden_in_tree(sim.world(), Entity::from_bits(*bits)));
+    v
+}
+
 /// Todo osso da cena, com o que o artista autorou nele.
 ///
 /// ⚠️ **Varre entidades em vez de montar uma `QueryState`**, e a razão é a assinatura: uma query
@@ -526,3 +537,7 @@ mod efeitos_tests;
 #[cfg(test)]
 #[path = "skin_live_seleccao_tests.rs"]
 mod seleccao_tests;
+
+#[cfg(test)]
+#[path = "skin_live_vista_tests.rs"]
+mod vista_tests;

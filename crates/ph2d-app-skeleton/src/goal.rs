@@ -313,7 +313,7 @@ pub fn goal_hover(
 #[must_use]
 pub fn ring_targets(sim: &SimWorld, criar: bool) -> Vec<u64> {
     if criar {
-        ph2d_skeleton_live::skin_live::bone_polylines(sim)
+        ph2d_skeleton_live::skin_live::visible_bone_polylines(sim)
             .into_iter()
             .map(|(bits, _)| bits)
             .collect()

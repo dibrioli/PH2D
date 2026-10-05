@@ -350,7 +350,7 @@ pub use vec_envelope::{
 /// ele), e a pose é uma função pura dela. O alvo é um `VecPathId`, nunca bits de entidade.
 mod vec_label;
 pub use vec_label::VecLabel;
-pub use visibility::Visibility;
+pub use visibility::{Visibility, is_hidden_in_tree};
 pub use visibility_layer::{EnableMode, OnScreenEnabler, VisibilityLayer};
 
 // Re-export bevy_ecs essentials. Keep the surface small per LLM1

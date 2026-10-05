@@ -37,3 +37,19 @@ impl Visibility {
         Self { hidden: false }
     }
 }
+
+/// Hidden by its own eye or by any ancestor's (hiding a group hides its children) —
+/// the same `ChildOf` walk as [`crate::parent_world_transform`]. Readers: the skeleton
+/// overlay and bone picking. ⚠️ The sprite extract reads the eye PER ENTITY
+/// (`ph2d_entity_visibility::off_canvas::is_off_canvas`); the Flip gizmo walks the tree.
+#[must_use]
+pub fn is_hidden_in_tree(world: &bevy_ecs::world::World, entity: bevy_ecs::entity::Entity) -> bool {
+    let mut cur = Some(entity);
+    while let Some(e) = cur {
+        if world.get::<Visibility>(e).is_some_and(|v| v.hidden) {
+            return true;
+        }
+        cur = world.get::<crate::ChildOf>(e).map(|c| c.parent());
+    }
+    false
+}

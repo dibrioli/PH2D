@@ -66,6 +66,29 @@ diz onde ler o mecanismo:
 
 ---
 
+### F64 — ⏳ **O ESQUELETO É UM OBJECTO** (A14, ordem do dono 05/10) — plano [`05_plano_o_esqueleto_e_um_objecto.md`](05_plano_o_esqueleto_e_um_objecto.md)
+
+- **M (medição, antes do código):** (1) o mundo de um osso compõe a cadeia `ChildOf` INTEIRA
+  (`world_transform` → `parent_world_transform_with`, sem parar no 1.º osso) ⇒ um esqueleto-pai com
+  `Transform` move todos os ossos sem código novo; a raiz de corrente já é *«sem pai, ou pai que não é
+  osso»* (`bone_pick::is_a_free_chain_root`, `chain_to`). (2) Nenhum código do osso lia o olho
+  (`Visibility`). (3) Não há gancho de clique por `ModeFamily`: o despacho escolhe pela FERRAMENTA
+  activa ⇒ o modo do esqueleto arma uma ferramenta própria (como o Flip). (4) `DrawMode::Bone` em
+  **17** ficheiros (o plano dizia 16). (5) Precedente divergente: o extract de sprites lê o olho POR
+  ENTIDADE (`is_off_canvas`), o gizmo do Flip pela ÁRVORE; o esqueleto usa a árvore
+  (`ph2d_ecs::is_hidden_in_tree`, nova) — o olho do esqueleto tem de esconder os ossos-filhos.
+- **C0 — os ossos desenham-se seja qual for a ferramenta** (2.º report do dono: *«o esqueleto se
+  move mas fica invisível»*). O `VecOverlayPlan::bones` (`= vector_active`) saiu; a fase desenha pela
+  porta `skin_live::visible_bone_polylines` (sem os que o olho esconde), e o DEDO (`bone_pick` ×4,
+  `goal::ring_targets`) lê a mesma porta. A cinemática e a pele continuam na `bone_polylines`
+  inteira (escondido continua a deformar, como no Blender). Gates, vermelho visto antes do verde:
+  `the_bone_overlay_reads_the_eye_and_never_the_vector_tool` (shell, textual, controlo = a porta
+  achada 1×; vermelho sobre a fase do HEAD), `a_closed_eye_on_an_ancestor_hides_its_whole_chain_and_only_it`
+  (controlo: olhos abertos = 4), `a_bone_hidden_by_the_eye_is_not_grabbed` (controlo: olho aberto
+  agarra). O gate antigo `the_bones_are_drawn_in_every_mode_of_the_vector_tool` saiu com o campo
+  (afirmava a lei que o dono refutou). ⚠️ Em Object os ossos aparecem com as alças de hoje; o
+  desenho por modo (fino em Object) é o C6.
+
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 
 - **Causa confirmada pela régua da CONVERGÊNCIA** (sonda `cruza::tests::vinco::diag_a_ponta_do_vinco_converge`, barra 40×10 em cópias, traço 0,5): a mesma lei com os cobridores partidos em `d × d` subtriângulos posados pela pele exacta, `d = 1…16`, contra `d = 32`. Hoje (`d = 1`, a malha do campo em triângulos RECTOS): maior desvio da ponta `0,35` larg. a 110°, `0,08` a 150°, **`2,11` a 160°**, `0,15` a 170°, `0,26` a 175°; `d = 2` já `≤ 0,06`; `d = 16` `≤ 0,001`. O número de pontas não muda.

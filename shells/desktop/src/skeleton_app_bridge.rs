@@ -24,7 +24,7 @@
 //! `grabbable_outside_bone_mode`, `drag_now`. Elas atravessam por NOME, nunca por handle.
 
 use ph2d_app_skeleton::bone_gesture::selected_bone;
-use ph2d_app_skeleton::bone_pick::{grabbable_outside_bone_mode, hover};
+use ph2d_app_skeleton::bone_pick::hover;
 
 impl crate::App {
     /// [`ph2d_app_skeleton::bone_pick::selected_bone`] pela selecção do gizmo deste quadro.
@@ -44,33 +44,17 @@ impl crate::App {
     ///
     /// ⚠️ **Sem ponteiro no canvas ⇒ LIMPA**, como o realce do Trim e o do Balde: um realce que
     /// sobrevive ao cursor sair da tela é uma alça que finge estar apontada.
-    /// ⭐⭐⭐ **A alça de osso sob este ponto, se o VERBO dela não existir noutra ferramenta.**
-    ///
-    /// ⚠️ **A MESMA porta do realce** ([`ph2d_app_skeleton::bone_pick::hover`]) — o que o artista vê aceso é, por construção, o
-    /// que ele vai pegar. Uma segunda varredura seria a segunda resposta à mesma pergunta.
-    pub fn bone_handle_at(&self, pointer: (f32, f32)) -> Option<ph2d_skeleton_render::BoneHover> {
-        let world = self.vec_world_at(pointer)?;
-        let px = self.vec_px_to_world();
-        let foco = self.selected_bone_bits();
-        // ⚠️ **Sempre *Transformar*, e não o verbo armado**: esta porta é a de FORA do modo Osso, e
-        // ali o que existe são os verbos que nenhuma outra ferramenta sabe exprimir
-        // ([`ph2d_app_skeleton::bone_pick::grabbable_outside_bone_mode`]). O verbo *Criar* não é um deles.
-        let h = hover(
-            &self.gfx.as_ref()?.sim,
-            world,
-            px,
-            foco,
-            ph2d_tool_bone::BoneAction::Transform,
-        )?;
-        grabbable_outside_bone_mode(h.part).then_some(h)
-    }
-
     pub fn refresh_bone_hover(&mut self, pointer: (f32, f32)) {
         // ⚠️⚠️ **OS DOIS SLOTS SAEM DA MESMA LEITURA, e a saída antecipada tem de limpar OS DOIS.**
         // A 1.ª redacção desta função limpava só o realce e deixava a pré-visualização congelada:
         // o cursor sai do canvas e um osso fantasma fica desenhado na tela até ao gesto seguinte.
         // *Um par de slots resolvido no mesmo sítio esquece-se meio a meio.*
-        let Some(world) = self.vec_world_at(pointer) else {
+        // ⭐⭐ **As alças do osso só existem com a ferramenta de osso na mão** (Edit e Pose do
+        // esqueleto, A14): em Object o esqueleto é um objecto e move-se pelo gizmo dele.
+        let world = self
+            .vec_world_at(pointer)
+            .filter(|_| self.skeleton.tool_in_hand);
+        let Some(world) = world else {
             self.skeleton.bone_hover = None;
             self.skeleton.bone_preview = None;
             self.skeleton.weight_cursor = None;

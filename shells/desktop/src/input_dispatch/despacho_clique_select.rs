@@ -316,34 +316,6 @@ impl crate::App {
             self.smart_pick_click(evt.x, evt.y);
             return true;
         }
-        // ⭐⭐⭐ **AS ALÇAS DO OSSO PEGAM EM TODO MODO DE VECTOR, e não só no modo Osso.**
-        //
-        // ⛔⛔ **Achado da auditoria de 2026-09-08:** o arco de limite — e a alça da força, e a
-        // ponta da corrente — é **pintado e ACENDE sob o rato nos 14 modos** (o
-        // `refresh_bone_hover` não se gateia pelo modo, de propósito, porque o `vec_overlay::bones`
-        // também não) e o `Down` só era lido dentro do `DrawMode::Bone`. *Um controlo que acende
-        // debaixo do dedo e não responde é a espécie de morto que este repo já pagou três vezes.*
-        //
-        // ⚠️ **QUAIS alças é a porta [`crate::bone_pick::grabbable_outside_bone_mode`]**, e a
-        // linha é o VERBO: entram as quatro que nenhuma outra ferramenta sabe exprimir; girar e
-        // deslocar ficam com o gizmo de sprite, que já os faz.
-        //
-        // ⛔ **Dentro do modo Osso este arm NÃO corre** — lá a `bone_gesture::press` decide, e ela
-        // distingue *Criar* de *Transformar*: em *Criar*, pousar sobre uma alça só ACENDE o osso,
-        // que é o desenho e não um esquecimento.
-        //
-        // ⛔ **Consome o press**, como os picks modais acima e pela mesma razão: sem o `return;` o
-        // gesto cai na cadeia de baixo e o modo Select começa um marquee por cima do arrasto.
-        if mapped_button == ph2d_host::PointerButton::Primary
-            && kind == PointerKind::Down
-            && !menu_open_before
-            && self.vector_tool_active()
-            && self.over_canvas_or_gizmo(evt.x, evt.y)
-            && let Some(h) = self.bone_handle_at((evt.x, evt.y))
-        {
-            self.skeleton.bone_pose = Some((h.bone, h.part));
-            return true;
-        }
         false
     }
 }

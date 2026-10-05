@@ -141,6 +141,16 @@ diz onde ler o mecanismo:
   `a_bone_climbs_to_its_skeleton_and_only_its_bones_answer`; `every_object_mode_has_a_composed_family`
   (famílias 3 → 4, pares D6 4 → 6). ⚠️ Os censos do `ph2d-panel-registry-init` só valem com
   `--workspace` (aviso da própria crate) ⇒ ficam para o gate batched.
+- **C6 — o desenho e as alças por modo** (Blender: em Object a Armature não se pose). As alças do osso
+  (realce, pick, fundo, curvatura, anéis das pontas) só existem com a ferramenta de osso na mão (Edit
+  e Pose); em Object os ossos desenham-se sem elas, e as âncoras de IK continuam à vista (são
+  objectos). `refresh_bone_hover` limpa sem a ferramenta; o overlay decide `posar` uma vez (o osso em
+  foco e os anéis vazios em Object — mesmas chamadas, mesma ordem, os gates de ordem intactos).
+  ⛔ SAI o pick das alças «em todo modo de vector» de 08/09 (`despacho_clique_select`,
+  `App::bone_handle_at`, `bone_pick::grabbable_outside_bone_mode` e os seus três gates): a lei dele
+  era *o que acende tem de responder*, e fora do Edit/Pose nada acende agora. Gates
+  `the_bone_handles_belong_to_edit_and_pose.rs` (3, vermelho visto sobre o HEAD, controlo positivo em
+  cada).
 
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 

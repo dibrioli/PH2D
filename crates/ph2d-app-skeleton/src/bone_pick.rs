@@ -355,40 +355,6 @@ pub fn hover(
     })
 }
 
-/// ⭐⭐⭐ **QUE ALÇAS DE OSSO PEGAM FORA DO MODO OSSO** — a linha é o **VERBO**, não a alça.
-///
-/// ⛔⛔ **Achado da auditoria de 2026-09-08:** o arco de limite, a alça da força e a ponta da
-/// corrente são **pintados e ACENDEM sob o rato nos 14 modos de vector** — o
-/// [`crate::app_state::App::refresh_bone_hover`] não se gateia pelo modo, de propósito, porque o
-/// `vec_overlay::bones` também não —, e o `Down` só era lido dentro do `DrawMode::Bone`. *Um
-/// controlo que acende debaixo do dedo e não responde é a espécie de morto que este repo já pagou
-/// três vezes.*
-///
-/// ⭐ **Entram as quatro que NENHUMA outra ferramenta sabe exprimir:** a força, as duas paredes do
-/// limite e a ponta da corrente (a cinemática inversa).
-///
-/// ⛔ **Ficam de fora [`BonePart::Body`] (girar) e [`BonePart::Joint`] (deslocar):** o gizmo de
-/// sprite já faz as duas, e roubar-lhas aqui trocaria a lei do arrasto da seta **em silêncio** —
-/// o artista escolhe um osso com a seta e o arrasto passa a fazer outra coisa.
-///
-/// ⚠️ **É um `match` exaustivo e não uma lista:** uma parte NOVA é erro de compilação aqui, que é
-/// o único sítio onde alguém tem de responder *«este verbo existe noutra ferramenta?»*.
-pub fn grabbable_outside_bone_mode(part: ph2d_skeleton_render::BonePart) -> bool {
-    use ph2d_skeleton_render::BonePart;
-    match part {
-        // ⭐ As duas alças de CURVATURA entram pela mesma razão que a força: **nenhuma outra
-        // ferramenta sabe arquear um osso**, e elas só existem num osso com segmentos — logo não
-        // disputam com nada.
-        BonePart::Influence
-        | BonePart::LimitMin
-        | BonePart::LimitMax
-        | BonePart::Tip
-        | BonePart::BendIn
-        | BonePart::BendOut => true,
-        BonePart::Body | BonePart::Joint => false,
-    }
-}
-
 #[cfg(test)]
 #[path = "bone_pick_tests.rs"]
 mod tests;

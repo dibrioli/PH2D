@@ -46,7 +46,14 @@ impl crate::App {
             // ⚠️ O doc do `selected_bone_bits` já prescrevia isto: *«no laço de desenho o
             // `gfx` está emprestado mutável de ponta a ponta, e ali chama-se a função livre
             // acima — a lei é a mesma, e é por isso que ela vive numa função só»*.
-            let osso_focado = crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected());
+            //
+            // ⭐⭐ **Em Object não há osso em foco** (A14): as alças (fundo, curvatura, anéis) são do
+            // Edit e do Pose, com a ferramenta de osso na mão; em Object os ossos desenham-se sem
+            // elas e o esqueleto move-se pelo gizmo do objecto.
+            let posar = self.skeleton.tool_in_hand;
+            let osso_focado = posar
+                .then(|| crate::bone_gesture::selected_bone(sim, hero.gizmo.iter_selected()))
+                .flatten();
             // ⭐ **O FUNDO do osso em foco** — a mancha de influência e o arco de limite, os
             // dois por BAIXO do rig. Ver [`fundo_do_osso_focado`]: aqui decide-se a ORDEM
             // dos passes, não o que cada um desenha.
@@ -97,7 +104,11 @@ impl crate::App {
             // não o que cada um desenha.
             let criar = self.skeleton.tool_in_hand
                 && self.skeleton.tool.action == ph2d_tool_bone::BoneAction::Create;
-            let pontas = ph2d_app_skeleton::goal::ring_targets(sim, criar);
+            let pontas = if posar {
+                ph2d_app_skeleton::goal::ring_targets(sim, criar)
+            } else {
+                Vec::new()
+            };
             // ⭐⭐⭐ **A FAIXA DA CORRENTE GOVERNADA, por BAIXO dos ossos** (report do dono,
             // 2026-09-14: *«não temos uma linha indicativa do IK Chain»*). O `Chain` é um
             // número no painel e o que ele significa é **quais ossos obedecem** — sem isto,

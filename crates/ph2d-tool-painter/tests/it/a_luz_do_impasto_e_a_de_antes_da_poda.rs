@@ -55,9 +55,15 @@ fn esculpido(shine: f32, rough: f32, metallic: f32, wax: f32) -> PainterTool {
     t.set_impasto_metallic(metallic);
     t.set_impasto_wax(wax);
     t.set_impasto_wax_color([1.0, 0.7, 0.45]);
-    for (a, b) in [([12.0f32, 20.0f32], [52.0f32, 30.0f32]), ([30.0, 8.0], [34.0, 56.0])] {
+    for (a, b) in [
+        ([12.0f32, 20.0f32], [52.0f32, 30.0f32]),
+        ([30.0, 8.0], [34.0, 56.0]),
+    ] {
         t.on_canvas_pointer(cp(a, PointerPhase::Down));
-        t.on_canvas_pointer(cp([(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5], PointerPhase::Move));
+        t.on_canvas_pointer(cp(
+            [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5],
+            PointerPhase::Move,
+        ));
         t.on_canvas_pointer(cp(b, PointerPhase::Move));
         t.on_canvas_pointer(cp(b, PointerPhase::Up));
     }
@@ -76,7 +82,15 @@ fn iluminado(t: &PainterTool) -> Vec<u8> {
             ]);
         }
     }
-    t.apply_impasto_light(&mut buf, Region { x: 0, y: 0, w: W, h: H });
+    t.apply_impasto_light(
+        &mut buf,
+        Region {
+            x: 0,
+            y: 0,
+            w: W,
+            h: H,
+        },
+    );
     buf
 }
 
@@ -106,12 +120,18 @@ fn a_luz_do_impasto_com_relevo_e_a_de_antes_da_poda() {
             b
         };
         let lit = iluminado(&t);
-        assert_ne!(lit, base, "a fixtura não acendeu nada — o gate mediria o vazio");
+        assert_ne!(
+            lit, base,
+            "a fixtura não acendeu nada — o gate mediria o vazio"
+        );
         let h = fnv1a(&lit);
         println!("ORACULO ({shine}, {rough}, {metallic}, {wax}) => {h:#018x}");
         medidos.push((esperado, h));
     }
     for (esperado, h) in medidos {
-        assert_eq!(h, esperado, "a luz do impasto com relevo mudou (veja o cabeçalho)");
+        assert_eq!(
+            h, esperado,
+            "a luz do impasto com relevo mudou (veja o cabeçalho)"
+        );
     }
 }

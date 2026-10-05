@@ -35,7 +35,7 @@ fn the_governed_chain_reaches_the_canvas() {
     );
     assert!(
         src.contains("draw_chains(&crate::skeleton_goal::chains(sim)")
-            || src.contains("draw_chains(\n                    &crate::skeleton_goal::chains(sim)"),
+            || src.contains("draw_chains(\n                &crate::skeleton_goal::chains(sim)"),
         "{} não desenha a corrente que a âncora governa: o `Chain` fica um número sem nada na tela \
          que diga quais ossos ele apanha.",
         f.display()

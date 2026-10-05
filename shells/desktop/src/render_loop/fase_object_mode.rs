@@ -31,10 +31,16 @@ impl crate::App {
         let mut paint = ph2d_app_painter::paint_mode::Family;
         let mut flip = ph2d_app_flip::flip_mode::Family::new(&mut self.flip_state, flip);
         let mut vector = ph2d_app_vec::vector_mode::Family::new(&mut self.vec, sim);
+        let selected = hero.gizmo.selection;
+        let mut skeleton = ph2d_app_skeleton::skeleton_mode::Family::new(
+            &mut self.skeleton,
+            sim.world(),
+            selected,
+        );
         let world = sim.world();
         let mut image_edit = ph2d_app_painter::image_edit_mode::Family::new(world);
         let families: &mut [&mut dyn ModeFamily] =
-            &mut [&mut paint, &mut flip, &mut vector, &mut image_edit];
+            &mut [&mut paint, &mut flip, &mut vector, &mut skeleton, &mut image_edit];
         if ph2d_app_components::object_mode::drive(world, families, tools, hero, toasts, request) {
             self.title_dirty = true;
         }

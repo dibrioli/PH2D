@@ -26,10 +26,16 @@ fn shell(rel: &str) -> std::path::PathBuf {
 ///
 /// ⚠️ **2026-10-05: `5` -> `3`, delta -2** — o 3D sai do PH2D (ADR-0179): as famílias do Sculpt e
 /// do Model deixam o quadro.
-const FAMILIAS: [(&str, &str); 3] = [
+///
+/// ⚠️ **2026-10-05: `3` -> `4`, delta +1** — o esqueleto é um objecto (A14, `line/Vector`).
+const FAMILIAS: [(&str, &str); 4] = [
     ("ph2d_app_painter::paint_mode::Family", "&mut paint"),
     ("ph2d_app_flip::flip_mode::Family::new", "&mut flip"),
     ("ph2d_app_vec::vector_mode::Family::new", "&mut vector"),
+    (
+        "ph2d_app_skeleton::skeleton_mode::Family::new",
+        "&mut skeleton",
+    ),
 ];
 
 /// ⭐⭐ GATE — cada família é construída E entra na lista do quadro.
@@ -69,7 +75,16 @@ fn the_composed_families_declare_every_creation_mode() {
     let flip = ph2d_app_flip::flip_mode::Family::new(&mut state, &doc);
     let mut vec_state = ph2d_app_vec::state::VecState::default();
     let vector = ph2d_app_vec::vector_mode::Family::new(&mut vec_state, &sim);
-    let pairs: Vec<_> = [paint.modes(), flip.modes(), vector.modes()].concat();
+    let mut skel_state = ph2d_app_skeleton::state::SkeletonState::default();
+    let skeleton =
+        ph2d_app_skeleton::skeleton_mode::Family::new(&mut skel_state, sim.world(), None);
+    let pairs: Vec<_> = [
+        paint.modes(),
+        flip.modes(),
+        vector.modes(),
+        skeleton.modes(),
+    ]
+    .concat();
     // ⭐ A tabela D6 (spec/06 §3.4) INTEIRA: o Edit do vetor some sem nenhum modo morrer (o Flip
     // também o declara) — só os PARES o vêem. ⚠️ 2026-10-05: `7` -> `4` pares, delta -3 — o 3D
     // sai do PH2D (ADR-0179): (Sculpt3D, Sculpt), (Sculpt3D, Paint) e (Model3D, Edit).
@@ -79,6 +94,9 @@ fn the_composed_families_declare_every_creation_mode() {
         (K::Flip, ObjectMode::Draw),
         (K::Flip, ObjectMode::Edit),
         (K::Vector, ObjectMode::Edit),
+        // ⚠️ 2026-10-05: `4` -> `6` pares, delta +2 — o esqueleto (A14): Edit e Pose.
+        (K::Skeleton, ObjectMode::Edit),
+        (K::Skeleton, ObjectMode::Pose),
     ];
     for p in d6 {
         assert!(

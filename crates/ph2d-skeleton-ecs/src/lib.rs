@@ -60,7 +60,7 @@ pub use bone_rest::BoneRest;
 
 // ⭐⭐ **O OBJECTO esqueleto** (A14) — ver o cabeçalho de [`skeleton`].
 mod skeleton;
-pub use skeleton::Skeleton;
+pub use skeleton::{Skeleton, bones_of, skeleton_of};
 
 /// ⭐ **Os dois tipos que um campo público do [`Bone`] nomeia, re-exportados daqui.**
 ///

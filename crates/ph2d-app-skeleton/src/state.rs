@@ -124,4 +124,13 @@ pub struct SkeletonState {
     pub tool: ph2d_tool_bone::BoneConfig,
     /// A ferramenta de osso está na mão neste quadro. Ver [`Self::tool`].
     pub tool_in_hand: bool,
+    /// ⭐ **O esqueleto em Edit ou Pose** (bits), escrito SÓ pela família
+    /// ([`crate::skeleton_mode`]). No Edit um osso sem pai-osso nasce filho dele.
+    pub target: Option<u64>,
+    /// O modo do esqueleto que o quadro anterior seguia — ver [`crate::skeleton_mode::adopt`].
+    pub following: Option<ph2d_editor_core::object_mode::ObjectMode>,
+    /// O esqueleto que acabou de nascer pelo menu Add e pede o Edit (uma vez).
+    pub born: Option<u64>,
+    /// O último verbo do Pose (Transform ou Weight), para o `Tab` voltar a ele.
+    pub last_pose: Option<ph2d_tool_bone::BoneAction>,
 }

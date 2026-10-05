@@ -29,7 +29,7 @@ use std::path::{Path, PathBuf};
 
 /// As ferramentas cujo ramo de canvas exige `on_canvas` — e que por isso **têm** de aparecer na
 /// condição. ⚠️ Os ids são os que o `ToolId::new(..)` do shell escreve.
-const AUTORAS: &[&str] = &["\"vector\"", "\"flip\""];
+const AUTORAS: &[&str] = &["\"vector\"", "\"flip\"", "\"bone\""];
 
 /// Os ramos do `on_mouse_input` que recebem o `on_canvas`. ⚠️ **É um CENSO, não uma lista de
 /// conveniência:** um quarto ramo a receber aquele booleano é uma ferramenta nova a partilhar o
@@ -58,6 +58,9 @@ const RAMOS: &[&str] = &[
     // gesto. Gate: `document_tabs::tests::the_scene_tool_row_is_not_on_top_of_a_board` e o
     // `paint_canvas_overlays` a ser chamado SÓ no ramo da cena.
     "board_view::pointer(",
+    // ⭐ O 5.º (A14, 05/10): a ferramenta de OSSO saiu de dentro da vectorial e tem ramo próprio —
+    // é uma ferramenta que autora, logo ENTRA na condição da caixa (`"bone"` em `AUTORAS`).
+    "ramo_ferramenta_osso(",
 ];
 
 fn shell_src() -> PathBuf {

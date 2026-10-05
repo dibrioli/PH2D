@@ -172,7 +172,13 @@ impl crate::App {
                     let pai = nascimento
                         .parent
                         .and_then(ph2d_ecs::Entity::try_from_bits)
-                        .filter(|e| gfx.sim.world().get::<ph2d_skeleton_ecs::Bone>(*e).is_some());
+                        .filter(|e| gfx.sim.world().get::<ph2d_skeleton_ecs::Bone>(*e).is_some())
+                        // ⭐ Sem pai-osso, a raiz nasce FILHA do esqueleto em Edit (A14).
+                        .or_else(|| {
+                            self.skeleton
+                                .target
+                                .and_then(ph2d_ecs::Entity::try_from_bits)
+                        });
                     nasceu =
                         crate::bone_gesture::create(&mut gfx.sim, pai, nascimento.origin, ponta);
                     // ⭐⭐⭐ **E a corrente solta passa a pendurar-se no osso novo.**

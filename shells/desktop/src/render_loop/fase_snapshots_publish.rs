@@ -130,6 +130,10 @@ impl crate::App {
                 && !tools
                     .active()
                     .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("flip"))
+                // ⭐ A ferramenta de osso (A14): o canvas inteiro é o gesto dela.
+                && !tools
+                    .active()
+                    .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("bone"))
                 && !self.ui_preview.is_on(),
             // As poses que o último desenho derivou — sem elas a caixa do gizmo de um filho
             // colocado aparece onde a forma foi AUTORADA.

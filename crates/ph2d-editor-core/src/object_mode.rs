@@ -29,15 +29,19 @@ pub enum ObjectMode {
     Draw,
     /// Mexer no que já está desenhado: seleccionar traços e pontos, esculpir o traço (Flip ▸ Edit).
     Edit,
+    /// Posar o esqueleto: rodar e mover ossos, IK, corrigir o peso (Skeleton ▸ Pose — o Pose Mode da
+    /// Armature do Blender; o Edit do esqueleto é a pose de repouso). A14.
+    Pose,
 }
 
 impl ObjectMode {
     /// Todos, em ordem — a fonte da iteração (⛔ nunca escreva a lista uma segunda vez).
-    pub const ALL: [ObjectMode; 4] = [
+    pub const ALL: [ObjectMode; 5] = [
         ObjectMode::Object,
         ObjectMode::Paint,
         ObjectMode::Draw,
         ObjectMode::Edit,
+        ObjectMode::Pose,
     ];
 
     /// O nome que o artista lê.
@@ -48,6 +52,7 @@ impl ObjectMode {
             ObjectMode::Paint => "object_mode.paint",
             ObjectMode::Draw => "object_mode.draw",
             ObjectMode::Edit => "object_mode.edit",
+            ObjectMode::Pose => "object_mode.pose",
         })
     }
 
@@ -59,6 +64,7 @@ impl ObjectMode {
             ObjectMode::Paint => crate::ids::OBJECT_MODE_PAINT,
             ObjectMode::Draw => crate::ids::OBJECT_MODE_DRAW,
             ObjectMode::Edit => crate::ids::OBJECT_MODE_EDIT,
+            ObjectMode::Pose => crate::ids::OBJECT_MODE_POSE,
         }
     }
 

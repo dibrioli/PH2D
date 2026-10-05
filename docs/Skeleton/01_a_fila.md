@@ -117,6 +117,30 @@ diz onde ler o mecanismo:
   `the_two_bone_segments_are_the_door_to_the_mode`, que afirmava a porta antiga). ⚠️ Para o C6: as
   alças do osso (força, limite, ponta da IK) ACENDEM em Object desde o C0 mas o `Down` delas só se
   lê com a ferramenta Vector (`despacho_clique_select`) — decidir com o desenho por modo.
+- **C4 junta-se ao C5:** o que sobra do osso na shell (`despacho_clique_osso.rs`) é aplicação de
+  efeitos; a decisão já mora em `bone_gesture::press`. A mudança de natureza do despacho com o modo
+  (a raiz do Edit pendura-se no esqueleto) entrou no C5.
+- **C5 — o MODO e o Add.** `ObjectMode::Pose` ANEXADO (`ALL` 4 → 5, `object_mode.pose` «Pose Mode»,
+  `OBJECT_MODE_POSE`; o `tools_of` do Flip ganha o braço vazio). `ph2d_skeleton_ecs::{skeleton_of,
+  bones_of}`. Família `ph2d_app_skeleton::skeleton_mode::Family` (leis puras `mode_of` · `verb_of` ·
+  `holds` · `adopt`): Edit = *Create*, Pose = *Transform*/*Weight* (volta ao último), Object larga a
+  ferramenta; `parts` = os ossos (o cadeado não tropeça neles), `owner_of` = osso → esqueleto (o `Tab`
+  sobre um osso entra no Edit do dono); a ferramenta que chega à mão por outra porta (o segmento do
+  painel, a aresta do foco) pede o modo do verbo sobre o esqueleto da selecção. Composta em
+  `fase_object_mode.rs` (lê `hero.gizmo.selection`). *Add ▸ Skeleton* (`object_add.rs`): marcador,
+  nome que conta, UM osso filho do comprimento de fábrica do componente, pede o Edit. No Edit, um
+  osso sem pai-osso nasce filho do esqueleto (`despacho_clique_osso`, `skeleton.target`). ⛔ Achado
+  pelo gate `a_fourth_branch_on_the_canvas_wakes_this_law`: o ramo novo partilha o canvas ⇒ a
+  ferramenta `"bone"` entra na condição da caixa de objecto (`fase_snapshots_publish`) — sem isso as
+  alças do gizmo matavam o gesto (medido nos ossos a 13/09). Agulha de `architecture_the_ik_chain_is_drawn`
+  segue a indentação do C0. Gates (vermelhos de fixtura vistos e corrigidos; a mutação vem no fecho):
+  `the_pure_laws`, `add_enters_edit_with_create_and_tab_and_pose_follow`,
+  `selecting_a_bone_of_the_skeleton_keeps_pose_and_a_foreign_object_does_not`,
+  `tab_on_a_bone_enters_the_edit_of_its_skeleton`, `the_verb_in_hand_brings_its_mode`,
+  `the_menu_skeleton_is_born_an_object_with_one_bone_and_asks_for_edit`,
+  `a_bone_climbs_to_its_skeleton_and_only_its_bones_answer`; `every_object_mode_has_a_composed_family`
+  (famílias 3 → 4, pares D6 4 → 6). ⚠️ Os censos do `ph2d-panel-registry-init` só valem com
+  `--workspace` (aviso da própria crate) ⇒ ficam para o gate batched.
 
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 

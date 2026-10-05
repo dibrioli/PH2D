@@ -4883,6 +4883,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-anim",
  "ph2d-app-host",
+ "ph2d-component-desc",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
@@ -4898,6 +4899,7 @@ dependencies = [
  "ph2d-timeline-preview",
  "ph2d-tool-bone",
  "ph2d-tool-vector",
+ "ph2d-unique-name",
  "ph2d-vec-edit",
  "ph2d-vec-entities",
  "ph2d-vec-scene",

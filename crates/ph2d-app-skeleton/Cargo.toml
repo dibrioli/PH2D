@@ -29,6 +29,10 @@ ph2d-skeleton-render = { path = "../ph2d-skeleton-render" }
 ph2d-anim = { path = "../ph2d-anim" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+# O tipo do objecto (`ObjectKind::Skeleton`) que a família de modo declara, e o nome que conta
+# (`Skeleton.001`) do menu Add (A14).
+ph2d-component-desc = { path = "../ph2d-component-desc" }
+ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # ⭐ Os rótulos das duas opções FIXAS do selector de ponta (`curve_tip`) — HR-15: nenhuma string
 # de UI nasce num literal. A irmã `app-vec` já depende dela.

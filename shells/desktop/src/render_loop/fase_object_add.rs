@@ -13,6 +13,7 @@ pub(crate) const FAMILIES: &[&[AddEntry]] = &[
     object_add::CORE,
     ph2d_app_vec::object_add::ENTRIES,
     ph2d_app_flip::object_add::ENTRIES,
+    ph2d_app_skeleton::object_add::ENTRIES,
     ph2d_app_components::object_add::ENTRIES,
 ];
 
@@ -74,6 +75,8 @@ impl crate::App {
         } else if let Some(r) =
             ph2d_app_flip::object_add::add(entry, sim, flip, &mut self.flip_state)
         {
+            r.map(Born::Entity).map_err(String::from)
+        } else if let Some(r) = ph2d_app_skeleton::object_add::add(entry, sim, &mut self.skeleton) {
             r.map(Born::Entity).map_err(String::from)
         } else {
             return;

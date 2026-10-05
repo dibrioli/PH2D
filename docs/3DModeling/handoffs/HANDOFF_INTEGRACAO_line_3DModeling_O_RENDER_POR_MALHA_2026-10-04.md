@@ -18,7 +18,7 @@ desktop. O campo continua a fonte (a malha é extraída dele). Ondas, cada uma c
 | brilho e estilo no desenhista | [O_BRILHO_E_O_ESTILO](HANDOFF_line_3DModeling_O_BRILHO_E_O_ESTILO_2026-10-02.md) || ver o handoff |
 | o céu fotográfico (HDRI CC0 embutidos, cena 38) | [O_CEU_DE_VERDADE](HANDOFF_line_3DModeling_O_CEU_DE_VERDADE_2026-10-03.md) | ok 03/10 |
 | o sol e a sombra (PCSS) | [O_SOL_E_A_SOMBRA](HANDOFF_line_3DModeling_O_SOL_E_A_SOMBRA_2026-10-03.md) | ok 03/10 |
-| texturas triplanares (pacote CC0, schema `179`) | [AS_TEXTURAS](HANDOFF_line_3DModeling_AS_TEXTURAS_2026-10-03.md) | ok 03/10 |
+| texturas triplanares (pacote CC0, schema `181` no main; `179` na linha) | [AS_TEXTURAS](HANDOFF_line_3DModeling_AS_TEXTURAS_2026-10-03.md) | ok 03/10 |
 | o contacto entre peças (cena 40) | [O_CONTACTO](HANDOFF_line_3DModeling_O_CONTACTO_2026-10-03.md) | ok 03/10 |
 | o chão que tapa (cena 41) | [O_CHAO_QUE_TAPA](HANDOFF_line_3DModeling_O_CHAO_QUE_TAPA_2026-10-03.md) | ok 03/10 |
 | **o render traçado SAI** (só o Matcap fica no traçado) | [O_RENDER_ANTIGO_SAI](HANDOFF_line_3DModeling_O_RENDER_ANTIGO_SAI_2026-10-03.md) | **pendente** |
@@ -48,13 +48,14 @@ Todas `0.0.0`, só caminhos do workspace; o `Cargo.lock` muda só por elas.
 | `ph2d-panel-model3d` | fileiras de céu e textura no Render | aditivo |
 | `ph2d-vector` | `scene.rs`: método `rgba()` (leitura dos bytes) | aditivo; fora do contrato congelado |
 | `Cargo.toml` (raiz) | `[profile.dev.package.ph2d-sky]` e `exr` a `opt-level = 2` (`11,0 s → 2,9 s` na suíte, medido) | perfil, não código |
-| `shells/desktop` | **`+14 / −2`**: `PROJECT_SCHEMA 178 → 179` (+ teste) e `1` linha em `fase_field3d_requests.rs` | ver §4 |
+| `shells/desktop` | **`+14 / −2`**: `PROJECT_SCHEMA 180 → 181` no main (+ teste) e `1` linha em `fase_field3d_requests.rs` | ver §4 |
 
 ## §4 — Números que SOMAM entre linhas (recontar, nunca escolher)
 
-- **`PROJECT_SCHEMA`: `178 → 179`** (`FieldTexture` registado, sem degrau de migração). Se outra linha também
-  subiu, reconta-se: `python3 scripts/schema-recount.py`.
-- **ADR `0176`** (novo) — se outra linha usou `0176`, renumera-se na integração.
+- **`PROJECT_SCHEMA`: `180 → 181`** no main (`FieldTexture` registado, sem degrau de migração). Escrito
+  `178 → 179` na linha; **recontado na integração de 04/10** (a components já tinha levado o main a `180`).
+- **ADR `0176`** (novo) — **confirmado na integração de 04/10**: nenhuma outra linha usou `0176` (o main
+  tinha `0177` do Painter e `0178` da components).
 - **Registo de componentes**: `+1` (`FieldTexture`, catálogo `Model3D`); registo do campo `8 → 9`.
 - **Cenas de smoke do modelador**: `37, 38, 40, 41, 42` novas; a próxima é a **43**.
 - Shell: `+14 / −2` linhas (o tecto dela soma entre linhas).

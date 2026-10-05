@@ -1,8 +1,8 @@
 # ADR-0176 — O modo Render do modelador desenha MALHAS com luz de jogo; o campo continua a FONTE
 
 - **Status:** Aceito (2026-10-02, ordem do dono).
-  ⚠️ **O número 0176 é provisório:** foi lido de `ls docs/architecture/decisions` (último = 0175) na
-  base `1ad60a1ce`. O integrador **reconta** na integração.
+  ✓ **O número 0176 foi confirmado na integração de 04/10** (lido na base `1ad60a1ce`; o main tinha
+  `0177` e `0178` de outras linhas, nenhuma com `0176`).
 - **Data:** 2026-10-02
 - **Linha:** `line/3DModeling`
 - **Cofre do módulo:** [`docs/3DModeling/`](../../3DModeling/README.md)

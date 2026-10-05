@@ -168,3 +168,298 @@ fn sem_a_lei_nada_muda() {
     SEM_FECHO.with(|c| c.set(false));
     assert_eq!(u, antes);
 }
+
+/// A largura do traço da barra da cena `=5` (`0,75 · 0,06`).
+const LARGURA_DA_CENA: f64 = 0.75 * 0.06;
+
+/// A barra *Zig Zag* da cena `=5` (`4,5 × 0,75`, três ossos), presa recta e dobrada em S a `graus`,
+/// desenhada numa thread NOVA (o memo do quadro é por thread), com ou sem a lei: o desenho e a
+/// entrada da lei (`(união, fonte)`).
+pub(super) fn zig_zag_em_s(graus: f32, sem_fecho: bool) -> (VecPath, Option<(VecPath, VecPath)>) {
+    use crate::barra_da_cena_tests_support::osso;
+    use crate::skin_desenho::Leis;
+    use ph2d_vec_scene::effect::{FxEntry, PathEffect};
+    std::thread::scope(|s| {
+        s.spawn(|| {
+            SEM_FECHO.with(|c| c.set(sem_fecho));
+            let mut sim = ph2d_ecs::SimWorld::default();
+            let mut scene = ph2d_vec_scene::VecScene::new();
+            let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
+            let mut barra = ph2d_vec_scene::cook(
+                ph2d_vec_scene::ShapeKind::RoundRect,
+                [-2.25, -0.375],
+                [2.25, 0.375],
+                &[0.375],
+            );
+            barra.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+                ph2d_vec_scene::Rgba8::new(0, 0, 0, 255),
+                LARGURA_DA_CENA,
+            ));
+            barra.effects = vec![FxEntry::new(PathEffect::ZigZag(
+                ph2d_vec_scene::fx_zigzag::ZigZagSpec {
+                    amplitude: 6.0,
+                    ridges: 24.0,
+                    ..Default::default()
+                },
+            ))];
+            let id = scene.push_path(barra);
+            ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
+            let passo = (4.5 - 0.75) / 3.0;
+            #[expect(clippy::cast_possible_truncation, reason = "metros de uma cena")]
+            let p32 = passo as f32;
+            let b1 = osso(&mut sim, "b1", [-1.875, 0.0], passo, None);
+            let b2 = osso(&mut sim, "b2", [p32, 0.0], passo, Some(b1));
+            let b3 = osso(&mut sim, "b3", [p32, 0.0], passo, Some(b2));
+            assert_eq!(
+                crate::skin_live::bind(&mut sim, &mut scene, &map, &[id], Some(b1)),
+                1
+            );
+            for (b, g) in [(b2, graus), (b3, -graus)] {
+                sim.world_mut()
+                    .get_mut::<ph2d_ecs::Transform>(b)
+                    .expect("Transform")
+                    .rotation = g.to_radians();
+            }
+            let forma =
+                crate::skin_live::recook_leis(&sim, &mut scene.clone(), Leis::do_ambiente())
+                    .remove(&id)
+                    .expect("desenho")
+                    .forma;
+            (forma, super::ULTIMA.with(|c| c.borrow_mut().take()))
+        })
+        .join()
+        .expect("thread do desenho")
+    })
+}
+
+/// ⭐ **SONDA — as passagens da `=5`**, contorno a contorno: o raio inscrito, os pares estreitos e,
+/// para o de arco maior de cada passagem, se é nova e o raio da região.
+#[test]
+#[ignore = "sonda: imprime"]
+fn diag_as_passagens_do_zig_zag() {
+    let w = LARGURA_DA_CENA;
+    for graus in [100f32, 105.0, 110.0, 120.0] {
+        let (_, entrada) = zig_zag_em_s(graus, true);
+        let (u, fonte) = entrada.expect("a lei correu");
+        let aneis: Vec<super::Anel> = (0..fonte.contour_count())
+            .filter_map(|c| fonte.contour(c))
+            .filter(|(v, f)| *f && v.len() > 1)
+            .map(|(v, _)| super::Anel::novo(super::polilinha(v)))
+            .collect();
+        let ancoras: Vec<[f64; 2]> = (0..fonte.contour_count())
+            .filter_map(|c| fonte.contour(c))
+            .filter(|(v, f)| *f && v.len() > 1)
+            .flat_map(|(v, _)| v.iter().map(|x| x.anchor).collect::<Vec<_>>())
+            .collect();
+        println!("  {graus}°: {} contornos na união", u.contour_count());
+        let mut svg = String::from(
+            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='-0.6 -0.9 1.2 1.1' width='1400' \
+             height='1283'><rect x='-9' y='-9' width='99' height='99' fill='white'/>",
+        );
+        for c in 0..u.contour_count() {
+            let Some((v, _)) = u.contour(c) else { continue };
+            let pl = super::polilinha(v);
+            let r = super::raio_inscrito(&pl) / w;
+            super::EXAMINADAS.with(|x| x.borrow_mut().clear());
+            let cruz = super::cruzamentos(v, &aneis, &ancoras, 1e-3 * w);
+            let achou = super::fenda(&pl, &cruz, w, false, 1.0);
+            for (s, e, arco, corda, velha, r) in super::EXAMINADAS.with(|x| x.take()) {
+                println!(
+                    "      {s}→{e} arco {:.2} corda {:.2} velha {velha} raio {:.2} (larg.)",
+                    arco / w,
+                    corda / w,
+                    r / w
+                );
+            }
+            println!(
+                "    contorno {c}: {} amostras · raio {r:.2} larg. · passagem {achou:?}",
+                pl.len()
+            );
+            let cor = [
+                "#d00", "#0a0", "#00d", "#d0d", "#0aa", "#a60", "#555", "#f80",
+            ][c % 8];
+            let d: String = pl
+                .iter()
+                .enumerate()
+                .map(|(i, q)| {
+                    format!(
+                        "{}{:.5} {:.5} ",
+                        if i == 0 { 'M' } else { 'L' },
+                        q[0],
+                        -q[1]
+                    )
+                })
+                .collect();
+            svg.push_str(&format!(
+                "<path d='{d}Z' fill='none' stroke='{cor}' stroke-width='{}'/>",
+                w / 6.0
+            ));
+            if let Some((a, b)) = achou {
+                svg.push_str(&format!(
+                    "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='black' stroke-width='{}'/>",
+                    pl[a][0],
+                    -pl[a][1],
+                    pl[b][0],
+                    -pl[b][1],
+                    w / 4.0
+                ));
+            }
+        }
+        svg.push_str("</svg>");
+        std::fs::create_dir_all("target/prova/fendas").expect("pasta");
+        std::fs::write(format!("target/prova/fendas/passagens_{graus}.svg"), svg).expect("svg");
+    }
+}
+
+/// Os contornos que o traço engole inteiros (`raio < W/2`): `(área, caixa)` arredondadas.
+fn engolidos(u: &VecPath, w: f64) -> Vec<String> {
+    let mut v: Vec<String> = (0..u.contour_count())
+        .filter_map(|c| u.contour(c))
+        .map(|(v, _)| super::polilinha(v))
+        .filter(|p| super::raio_inscrito(p) < 0.5 * w)
+        .map(|p| {
+            let a: f64 = 0.5
+                * (0..p.len())
+                    .map(|i| {
+                        let (x, y) = (p[i], p[(i + 1) % p.len()]);
+                        x[0] * y[1] - y[0] * x[1]
+                    })
+                    .sum::<f64>();
+            format!("{a:.7} {:.5} {:.5}", p[0][0], p[0][1])
+        })
+        .collect();
+    v.sort();
+    v
+}
+
+/// ⭐⭐⭐ **GATE — na `=5` as passagens NOVAS saem e os buracos que o traço engole FICAM** (`100°`,
+/// `110°`): depois da lei a união não tem passagem nova nenhuma, e os contornos engolidos inteiros
+/// são os mesmos ao `10⁻⁷`. ⛔ **O CONTROLO:** sem a lei há passagens (a lei mexe no desenho).
+#[test]
+fn na_cena_as_passagens_novas_saem_e_os_buracos_engolidos_ficam() {
+    let w = LARGURA_DA_CENA;
+    for graus in [100f32, 110.0] {
+        let (sem, entrada) = zig_zag_em_s(graus, true);
+        let (com, _) = zig_zag_em_s(graus, false);
+        assert_ne!(sem, com, "controlo: a {graus}° a lei não mexeu");
+        assert_eq!(
+            engolidos(&sem, w),
+            engolidos(&com, w),
+            "a {graus}° um buraco engolido mexeu"
+        );
+        let (_, fonte) = entrada.expect("a lei correu");
+        let aneis: Vec<super::Anel> = (0..fonte.contour_count())
+            .filter_map(|c| fonte.contour(c))
+            .filter(|(v, f)| *f && v.len() > 1)
+            .map(|(v, _)| super::Anel::novo(super::polilinha(v)))
+            .collect();
+        let ancoras: Vec<[f64; 2]> = (0..fonte.contour_count())
+            .filter_map(|c| fonte.contour(c))
+            .filter(|(v, f)| *f && v.len() > 1)
+            .flat_map(|(v, _)| v.iter().map(|x| x.anchor).collect::<Vec<_>>())
+            .collect();
+        let maior = (0..com.contour_count())
+            .filter_map(|c| com.contour(c))
+            .max_by_key(|(v, _)| v.len())
+            .expect("contorno")
+            .0;
+        let cruz = super::cruzamentos(maior, &aneis, &ancoras, 1e-3 * w);
+        assert_eq!(
+            super::fenda(&super::polilinha(maior), &cruz, w, false, 1.0),
+            None,
+            "a {graus}° ficou uma passagem nova no contorno de fora"
+        );
+    }
+}
+
+/// ⭐ **SONDA — o preço da lei das passagens** na `=5`, µs por chamada sobre a entrada real (a cópia
+/// da união fica fora do relógio): 7 rodadas de 20 chamadas, o mínimo (a mediana como controlo).
+#[test]
+#[ignore = "sonda: imprime"]
+fn diag_o_preco_das_passagens() {
+    for graus in [0f32, 100.0, 110.0, 120.0] {
+        let (_, entrada) = zig_zag_em_s(graus, true);
+        let Some((u, fonte)) = entrada else {
+            println!("  {graus}°: sem união (a lei não corre)");
+            continue;
+        };
+        super::EXAMINADAS.with(|x| x.borrow_mut().clear());
+        let mut c = u.clone();
+        fecha_as_fendas_que_o_traco_enche(&mut c, &fonte);
+        let ex = super::EXAMINADAS.with(|x| x.take());
+        println!(
+            "  {graus}°: {} candidatos examinados ({} da fonte) · {} amostras",
+            ex.len(),
+            ex.iter().filter(|x| x.4).count(),
+            (0..u.contour_count()).filter_map(|k| u.contour(k)).map(|(v, _)| v.len() * 16).sum::<usize>()
+        );
+        {
+            let w = LARGURA_DA_CENA;
+            let fechados: Vec<&[VecVertex]> = (0..fonte.contour_count())
+                .filter_map(|c| fonte.contour(c))
+                .filter(|(v, f)| *f && v.len() > 1)
+                .map(|(v, _)| v)
+                .collect();
+            let ancoras: Vec<[f64; 2]> =
+                fechados.iter().flat_map(|v| v.iter().map(|x| x.anchor)).collect();
+            let t0 = std::time::Instant::now();
+            let aneis: Vec<super::Anel> =
+                fechados.iter().map(|v| super::Anel::novo(super::polilinha(v))).collect();
+            let t1 = t0.elapsed().as_secs_f64() * 1e6;
+            let mut n_cruz = 0;
+            let mut iguais = 0;
+            for k in 0..u.contour_count() {
+                let Some((v, _)) = u.contour(k) else { continue };
+                iguais += v
+                    .iter()
+                    .filter(|x| ancoras.iter().any(|a| (a[0] - x.anchor[0]).hypot(a[1] - x.anchor[1]) <= 1e-3 * w))
+                    .count();
+                n_cruz += super::cruzamentos(v, &aneis, &ancoras, 1e-3 * w)
+                    .iter()
+                    .filter(|x| **x)
+                    .count();
+            }
+            println!(
+                "  {graus}°: anéis {t1:.0} µs · cruzamentos {:.0} µs · {n_cruz} cruzamentos · âncoras iguais às da fonte {iguais} de {}",
+                t0.elapsed().as_secs_f64() * 1e6 - t1,
+                (0..u.contour_count()).filter_map(|k| u.contour(k)).map(|(v, _)| v.len()).sum::<usize>()
+            );
+        }
+        let mut t: Vec<f64> = Vec::new();
+        for _ in 0..7 {
+            let copias: Vec<VecPath> = (0..20).map(|_| u.clone()).collect();
+            let t0 = std::time::Instant::now();
+            for mut c in copias {
+                fecha_as_fendas_que_o_traco_enche(&mut c, &fonte);
+                std::hint::black_box(&c);
+            }
+            t.push(t0.elapsed().as_secs_f64() * 1e6 / 20.0);
+        }
+        t.sort_by(f64::total_cmp);
+        // E o quadro inteiro da forma, com e sem a lei, intercalados (o memo nunca acerta: uma
+        // thread nova por desenho).
+        let mut q: [Vec<f64>; 2] = [Vec::new(), Vec::new()];
+        for r in 0..7 {
+            for v in [r % 2, 1 - r % 2] {
+                let t0 = std::time::Instant::now();
+                let _ = zig_zag_em_s(graus, v == 1);
+                q[v].push(t0.elapsed().as_secs_f64() * 1e6);
+            }
+        }
+        for x in &mut q {
+            x.sort_by(f64::total_cmp);
+        }
+        println!(
+            "  {graus}°: bind + quadro com a lei {:.0} µs · sem {:.0} µs (mínimos)",
+            q[0][0], q[1][0]
+        );
+        println!(
+            "  {graus}°: {:.0} µs (med {:.0}) · loadavg {}",
+            t[0],
+            t[3],
+            std::fs::read_to_string("/proc/loadavg")
+                .unwrap_or_default()
+                .trim()
+        );
+    }
+}

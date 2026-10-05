@@ -15,6 +15,10 @@ use ph2d_vec_scene::{VecPath, VecVertex};
 thread_local! {
     /// Os gates desligam a lei para o CONTROLO.
     pub(super) static SEM_FECHO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// A última entrada da lei — `(união, fonte)` — para as sondas.
+    pub(super) static ULTIMA: std::cell::RefCell<Option<(VecPath, VecPath)>> = const { std::cell::RefCell::new(None) };
+    /// O que a [`fenda`] examinou: `(s, e, arco, corda, velha, raio)` — para as sondas.
+    pub(super) static EXAMINADAS: std::cell::RefCell<Vec<(usize, usize, f64, f64, bool, f64)>> = const { std::cell::RefCell::new(Vec::new()) };
 }
 
 /// Amostras por segmento das polilinhas.
@@ -92,16 +96,65 @@ impl Anel {
             })
             .collect()
     }
-
-    /// A distância pelo anel entre duas posições, pelo caminho mais curto.
-    fn entre(&self, a: f64, b: f64) -> f64 {
-        let t = self.acc[self.pts.len()];
-        let d = (a - b).abs();
-        d.min(t - d)
-    }
 }
 
-/// O raio do maior círculo dentro do polígono `p` (grelha `24 × 24` na caixa).
+/// ⭐ Cabe em `p` um círculo de raio `r`? — algum ponto da grelha `24 × 24` da caixa está dentro e a
+/// `r` ou mais da borda. Do CENTRO para fora, e pára no 1.º (o contorno de fora de uma barra tem
+/// `1 700` amostras: o raio inteiro dele custava milissegundos por quadro, MEDIDO).
+fn cabe(p: &[[f64; 2]], r: f64) -> bool {
+    let (lo, hi) = p
+        .iter()
+        .fold(([f64::MAX; 2], [f64::MIN; 2]), |(lo, hi), q| {
+            (
+                [lo[0].min(q[0]), lo[1].min(q[1])],
+                [hi[0].max(q[0]), hi[1].max(q[1])],
+            )
+        });
+    if hi[0] - lo[0] < 2.0 * r || hi[1] - lo[1] < 2.0 * r {
+        return false;
+    }
+    let mut ordem: Vec<(i32, i32)> = (0..24).flat_map(|i| (0..24).map(move |j| (i, j))).collect();
+    ordem.sort_by_key(|&(i, j)| (2 * i - 23).pow(2) + (2 * j - 23).pow(2));
+    let anel = [p.to_vec()];
+    ordem.into_iter().any(|(i, j)| {
+        let q = [
+            (hi[0] - lo[0]).mul_add((f64::from(i) + 0.5) / 24.0, lo[0]),
+            (hi[1] - lo[1]).mul_add((f64::from(j) + 0.5) / 24.0, lo[1]),
+        ];
+        (0..p.len()).all(|k| ao_troco(q, p[k], p[(k + 1) % p.len()]).0 >= r) && dentro(&anel, q)
+    })
+}
+
+/// ⭐ Que âncoras de `v` (um contorno da união) são CRUZAMENTOS: não são âncora da fonte e moram
+/// em DOIS sítios dela (o ponto onde dois contornos, ou dois troços de um, se cortam).
+fn cruzamentos(v: &[VecVertex], fonte: &[Anel], ancoras: &[[f64; 2]], tol: f64) -> Vec<bool> {
+    v.iter()
+        .map(|x| {
+            let p = x.anchor;
+            if ancoras
+                .iter()
+                .any(|a| (a[0] - p[0]).hypot(a[1] - p[1]) <= tol)
+            {
+                return false;
+            }
+            let mut sitios: Vec<(usize, f64)> = Vec::new();
+            for (k, a) in fonte.iter().enumerate() {
+                for s in a.onde(p, tol) {
+                    if !sitios
+                        .iter()
+                        .any(|&(kk, ss)| kk == k && (ss - s).abs() <= 10.0 * tol)
+                    {
+                        sitios.push((k, s));
+                    }
+                }
+            }
+            sitios.len() >= 2
+        })
+        .collect()
+}
+
+/// O raio do maior círculo dentro do polígono `p` (grelha `24 × 24` na caixa) — as sondas e os gates.
+#[cfg(test)]
 fn raio_inscrito(p: &[[f64; 2]]) -> f64 {
     let (lo, hi) = p
         .iter()
@@ -132,7 +185,9 @@ fn raio_inscrito(p: &[[f64; 2]]) -> f64 {
 
 /// ⭐ A melhor passagem NOVA do contorno `pl` da união: `(s, e)` em amostras, ela vai de `s` para
 /// a frente até `e`. A boca é a corda mais larga (`< w`) de uma passagem que o traço cobre toda.
-fn fenda(pl: &[[f64; 2]], fonte: &[Anel], w: f64) -> Option<(usize, usize)> {
+/// `cruz[k]`: a âncora `k` do contorno é um CRUZAMENTO da união ([`cruzamentos`]). `buraco`: `pl` é
+/// um buraco, e a cor fica do lado do sentido `cor` (o do maior contorno).
+fn fenda(pl: &[[f64; 2]], cruz: &[bool], w: f64, buraco: bool, cor: f64) -> Option<(usize, usize)> {
     let n = pl.len();
     let mut acc = vec![0.0];
     for i in 0..n {
@@ -140,23 +195,62 @@ fn fenda(pl: &[[f64; 2]], fonte: &[Anel], w: f64) -> Option<(usize, usize)> {
         acc.push(acc[i] + (b[0] - a[0]).hypot(b[1] - a[1]));
     }
     let total = acc[n];
-    // Os pares de amostras a menos de `w` que estão longe pelo contorno, com a corda por FORA.
-    let lado = w;
-    let celula = |p: [f64; 2]| {
-        #[expect(clippy::cast_possible_truncation, reason = "célula da grelha")]
-        [(p[0] / lado).floor() as i64, (p[1] / lado).floor() as i64]
+    // ⭐ NOVA = o arco tem um cruzamento: entre dois cruzamentos a união segue UM pedaço contínuo
+    // de um contorno da fonte (o mesmo caminho: o vale de um dente fica), e através de um ela salta
+    // de um pedaço para outro (a fenda entre dois membros, a ponta que entra num bolso).
+    let mut pre = vec![0_usize; n + 1];
+    for i in 0..n {
+        pre[i + 1] =
+            pre[i] + usize::from(i % AMOSTRAS == 0 && cruz.get(i / AMOSTRAS) == Some(&true));
+    }
+    let tem_cruzamento = |s: usize, e: usize| {
+        if s <= e {
+            pre[e + 1] > pre[s]
+        } else {
+            pre[n] > pre[s] || pre[e + 1] > 0
+        }
     };
-    let mut grelha: std::collections::BTreeMap<[i64; 2], Vec<usize>> =
-        std::collections::BTreeMap::new();
+    // Os pares de amostras a menos de `w` que estão longe pelo contorno — grelha plana de lado `w`.
+    let (lo, hi) = pl
+        .iter()
+        .fold(([f64::MAX; 2], [f64::MIN; 2]), |(lo, hi), q| {
+            (
+                [lo[0].min(q[0]), lo[1].min(q[1])],
+                [hi[0].max(q[0]), hi[1].max(q[1])],
+            )
+        });
+    let lado = w.max((hi[0] - lo[0]).max(hi[1] - lo[1]) / 256.0);
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "célula da grelha, presa a 256"
+    )]
+    let celula =
+        |p: [f64; 2]| [0, 1].map(|k| (((p[k] - lo[k]) / lado).floor().max(0.0) as usize).min(256));
+    let dim = celula(hi).map(|c| c + 1);
+    let mut inicio = vec![0_usize; dim[0] * dim[1] + 1];
+    for p in pl {
+        let c = celula(*p);
+        inicio[c[1] * dim[0] + c[0] + 1] += 1;
+    }
+    for k in 1..inicio.len() {
+        inicio[k] += inicio[k - 1];
+    }
+    let mut cheio = inicio.clone();
+    let mut ordem = vec![0_usize; n];
     for (i, p) in pl.iter().enumerate() {
-        grelha.entry(celula(*p)).or_default().push(i);
+        let c = celula(*p);
+        let x = &mut cheio[c[1] * dim[0] + c[0]];
+        ordem[*x] = i;
+        *x += 1;
     }
     let mut pares: Vec<(f64, usize, usize)> = Vec::new();
     for (i, p) in pl.iter().enumerate() {
         let c = celula(*p);
-        for dx in -1..=1 {
-            for dy in -1..=1 {
-                for &j in grelha.get(&[c[0] + dx, c[1] + dy]).into_iter().flatten() {
+        for y in c[1].saturating_sub(1)..=(c[1] + 1).min(dim[1] - 1) {
+            for x in c[0].saturating_sub(1)..=(c[0] + 1).min(dim[0] - 1) {
+                let k = y * dim[0] + x;
+                for &j in &ordem[inicio[k]..inicio[k + 1]] {
                     if j <= i {
                         continue;
                     }
@@ -164,7 +258,7 @@ fn fenda(pl: &[[f64; 2]], fonte: &[Anel], w: f64) -> Option<(usize, usize)> {
                     if (q[0] - p[0]).hypot(q[1] - p[1]) >= w {
                         continue;
                     }
-                    // A fenda é o arco mais curto entre os dois.
+                    // A passagem é o arco mais curto entre os dois.
                     let ida = acc[j] - acc[i];
                     let (s, e, arco) = if ida <= total - ida {
                         (i, j, ida)
@@ -187,27 +281,34 @@ fn fenda(pl: &[[f64; 2]], fonte: &[Anel], w: f64) -> Option<(usize, usize)> {
             k >= s || k <= e
         }
     };
-    let mut vistos: Vec<(usize, usize)> = Vec::new();
+    let area = |p: &[[f64; 2]]| -> f64 {
+        (0..p.len())
+            .map(|i| {
+                let (a, b) = (p[i], p[(i + 1) % p.len()]);
+                a[0] * b[1] - b[0] * a[1]
+            })
+            .sum()
+    };
+    // Da fonte: o que está dentro também é. Larga: só os pares junto à MESMA boca (os de dentro
+    // podem ser uma passagem estreita dentro de uma larga — a ponta que entra num bolso, `=5`).
+    let mut velhas: Vec<(usize, usize)> = Vec::new();
+    let mut largas: Vec<(usize, usize)> = Vec::new();
+    let perto = |a: usize, b: usize| a.abs_diff(b).min(n - a.abs_diff(b)) <= AMOSTRAS;
     for (arco, s, e) in pares {
-        if vistos
+        if velhas
             .iter()
             .any(|&(a, b)| dentro_do_arco(a, b, s) && dentro_do_arco(a, b, e))
+            || largas.iter().any(|&(a, b)| perto(a, s) && perto(b, e))
         {
             continue;
         }
-        vistos.push((s, e));
-        // ⚠️ NOVA: nenhum contorno da fonte liga os dois lados da boca pelo MESMO caminho (o mesmo
-        // comprimento). ⛔ «Um caminho não mais longo» não serve: a borda de um buraco liga a base
-        // de uma ponta que entra nele por um caminho CURTO, e a ponta lia-se como da fonte.
-        let tol = 1e-3 * w;
-        let velha = fonte.iter().any(|a| {
-            let (xs, ys) = (a.onde(pl[s], tol), a.onde(pl[e], tol));
-            xs.iter().any(|&x| {
-                ys.iter()
-                    .any(|&y| (a.entre(x, y) - arco).abs() <= 1e-2 * arco + tol)
-            })
-        });
+        let velha = !tem_cruzamento(s, e);
+        #[cfg(test)]
+        let corda = (pl[s][0] - pl[e][0]).hypot(pl[s][1] - pl[e][1]);
         if velha {
+            #[cfg(test)]
+            EXAMINADAS.with(|x| x.borrow_mut().push((s, e, arco, corda, true, -1.0)));
+            velhas.push((s, e));
             continue;
         }
         let mut regiao = Vec::new();
@@ -219,9 +320,20 @@ fn fenda(pl: &[[f64; 2]], fonte: &[Anel], w: f64) -> Option<(usize, usize)> {
             }
             k = (k + 1) % n;
         }
-        if raio_inscrito(&regiao) < 0.5 * w {
+        // ⛔ Num BURACO só sai a ponta de cor que entra nele (a região do lado da cor: o sentido do
+        // maior contorno): um canto estreito do próprio buraco é fechá-lo aos bocados (F59-b).
+        if buraco && area(&regiao).signum() != cor {
+            continue;
+        }
+        #[cfg(test)]
+        EXAMINADAS.with(|x| {
+            x.borrow_mut()
+                .push((s, e, arco, corda, false, raio_inscrito(&regiao)));
+        });
+        if !cabe(&regiao, 0.5 * w) {
             return Some((s, e));
         }
+        largas.push((s, e));
     }
     None
 }
@@ -230,6 +342,8 @@ fn fenda(pl: &[[f64; 2]], fonte: &[Anel], w: f64) -> Option<(usize, usize)> {
 /// passa recto pela boca dela.
 pub(super) fn fecha_as_fendas_que_o_traco_enche(u: &mut VecPath, fonte: &VecPath) {
     #[cfg(test)]
+    ULTIMA.with(|c| *c.borrow_mut() = Some((u.clone(), fonte.clone())));
+    #[cfg(test)]
     if SEM_FECHO.with(std::cell::Cell::get) {
         return;
     }
@@ -237,16 +351,53 @@ pub(super) fn fecha_as_fendas_que_o_traco_enche(u: &mut VecPath, fonte: &VecPath
     if w <= 0.0 {
         return;
     }
-    let fonte: Vec<Anel> = (0..fonte.contour_count())
+    let fechados: Vec<&[VecVertex]> = (0..fonte.contour_count())
         .filter_map(|c| fonte.contour(c))
         .filter(|(v, f)| *f && v.len() > 1)
-        .map(|(v, _)| Anel::novo(polilinha(v)))
+        .map(|(v, _)| v)
         .collect();
+    let ancoras: Vec<[f64; 2]> = fechados
+        .iter()
+        .flat_map(|v| v.iter().map(|x| x.anchor))
+        .collect();
+    let fonte: Vec<Anel> = fechados.iter().map(|v| Anel::novo(polilinha(v))).collect();
+    let tol = 1e-3 * w;
     let mut contornos: Vec<ph2d_vec_scene::Contour> = (0..u.contour_count())
         .filter_map(|c| u.contour(c))
         .map(|(v, closed)| ph2d_vec_scene::Contour {
             verts: v.to_vec(),
             closed,
+        })
+        .collect();
+    // Um BURACO tem o sentido contrário ao do maior contorno.
+    let areas: Vec<f64> = contornos
+        .iter()
+        .map(|c| {
+            let p = polilinha(&c.verts);
+            (0..p.len())
+                .map(|i| {
+                    let (a, b) = (p[i], p[(i + 1) % p.len()]);
+                    a[0] * b[1] - b[0] * a[1]
+                })
+                .sum::<f64>()
+        })
+        .collect();
+    let maior = areas
+        .iter()
+        .copied()
+        .fold(0.0_f64, |m, a| if a.abs() > m.abs() { a } else { m });
+    let buraco: Vec<bool> = areas.iter().map(|a| a * maior < 0.0).collect();
+    // Os pontos de cruzamento, uma vez: um corte só tira âncoras e põe duas novas, que não o são.
+    let pontos: Vec<[f64; 2]> = contornos
+        .iter()
+        .flat_map(|c| {
+            let cruz = cruzamentos(&c.verts, &fonte, &ancoras, tol);
+            c.verts
+                .iter()
+                .zip(cruz)
+                .filter(|(_, x)| *x)
+                .map(|(v, _)| v.anchor)
+                .collect::<Vec<_>>()
         })
         .collect();
     let mut mexeu = false;
@@ -259,10 +410,19 @@ pub(super) fn fecha_as_fendas_que_o_traco_enche(u: &mut VecPath, fonte: &VecPath
             let pl = polilinha(&c.verts);
             // ⛔ Um contorno que o traço engole INTEIRO (o buraco pequeno, a ilhota) fica como
             // está: fechá-lo foi recusado pelo dono (F59-b).
-            if raio_inscrito(&pl) < 0.5 * w {
+            if !cabe(&pl, 0.5 * w) {
                 break;
             }
-            let Some((s, e)) = fenda(&pl, &fonte, w) else {
+            let cruz: Vec<bool> = contornos[ci]
+                .verts
+                .iter()
+                .map(|v| {
+                    pontos
+                        .iter()
+                        .any(|p| (p[0] - v.anchor[0]).hypot(p[1] - v.anchor[1]) <= tol)
+                })
+                .collect();
+            let Some((s, e)) = fenda(&pl, &cruz, w, buraco[ci], maior.signum()) else {
                 break;
             };
             contornos[ci].verts = sem_a_fenda(&contornos[ci].verts, s, e);

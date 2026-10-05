@@ -1833,3 +1833,49 @@ nenhum arranjo pior que `+10 %` — o pior pedaço sozinho é o `B1` nas conform
 `cs_soma_escritas` num passe de `0,09` ms), e o `F` melhora em TODAS as cenas das duas placas. Nas conformes
 o `B1` sozinho custa `+3 %` na iGPU e o `D` devolve-o: o `F` fica a `−1`/`−2 %`. ⏳ Sem medida ainda: o app
 (`=127` e a memória das arestas que o `B2` corta) e os registos — a próxima onda corre-os já pela régua nova.
+
+### §9.17 — UM BLOCO: fechar o aberto do passe de formas e a próxima alavanca do tracejado (2026-10-05, escrito ANTES de construir)
+
+Ordem do dono (`CLAUDE.md` §0.10): (a) as mutações dos pedaços do §9.15 · (b) os `override` dos pedaços: ficam ou
+dobram-se · (c) o app (`=127` densa contínua e tracejada, as duas placas, e a memória das arestas) · (d) a próxima
+alavanca da emissão tracejada · (e) os registos do `base` e do `F`. Base: `014c93238`. Uma construção, UMA rodada
+intercalada (sonda + app no mesmo binário), as decisões, a dobra, o gate batched e as mutações sobre o código final.
+
+**(e) os registos, JÁ medidos sem relógio** (iGPU, `RADV_DEBUG=shaderstats`, a sonda intercalada com uma variante — o
+roteiro `registos_dos_shaders.sh` lê a sonda antiga; os números são os mesmos shaders): só dois mudam de `base` a `F`.
+
+| shader (iGPU) | `base` | `F` |
+|---|---:|---:|
+| `cs_escreve` COMPLETA | `128` VGPRs · `8` ondas · **`30 140` B** · `12` SGPRs derramados | `128` · `8` · **`47 112` B** · **`28`** derramados |
+| `cs_conta` COMPLETA | `40` · `24` · `3 964` B | `40` · `24` · `4 384` B |
+| `cs_soma` | `1 328` B | `1 156` B |
+| os outros `13` | iguais | iguais (nada em scratch em nenhum) |
+
+**O inventário da emissão (d), lido no CÓDIGO DE MÁQUINA** (`RADV_DEBUG=shaders`, o `cs_escreve` completo do `F`): o
+laço dos pedaços tem `2 517` instruções de código, com `68` escritas de aresta e, antes de CADA uma, `2` leituras de
+derrame (`v_readlane`) e a recarga do descritor do buffer (`s_load_dwordx4` + espera) — `136` leituras de derrame no
+laço. ⚠️ A ablação `E3` do §9.15 (sem gravar arestas) tirou só `0,01` ms: as recargas NÃO são o custo, são o sintoma da
+pressão. O que dobrou o código é o **A1b**: o 1.º traço do fechado, emitido no FIM, é um SEGUNDO sítio de chamada do
+`emite_pedaco`, e o compilador inline-o inteiro duas vezes (`30 → 47` KB, `12 → 28` derramados). As cópias da sonda só
+diferem na posição (a onda não diverge): o custo é o COMPRIMENTO do caminho de cada pedaço — `~1,5 µs` por pedaço na
+iGPU (`0,19` ms ÷ `~126` pedaços por cópia), muito acima da aritmética do `emite_pedaco`.
+
+**O plano, item a item:**
+
+| item | o que se constrói | régua | kill-criterion (escrito antes) |
+|---|---|---|---|
+| (b) os pedaços do §9.15 | nada novo: a sonda passa a medir **deixar UM de fora** sobre o `F` (`F−A1a` · `F−A1b` · `F−B1` · `F−B2`), além do `base` | soma por cena, iGPU e RTX | um pedaço DOBRA-SE (`true`, os ramos `false` apagados) se tirá-lo do `F` não melhora nenhuma cena mais de `2 %` na iGPU; se melhora, SAI com o código dele. O `D` e o `c2` são portas de EXECUÇÃO (o dispositivo sem subgrupos; os gates do 1.º quadro) e ficam. **Prova de custo zero:** os registos do `F` dobrado iguais aos do `F` por `override` |
+| (d) **L** — o adiado no laço | o 1.º traço do fechado emite-se pelo MESMO sítio de chamada (uma volta a mais do laço dos troços, `k == n`), um `emite_pedaco` só | `escreve` e os registos | `cs_escreve` completo `≤ 35` KB e `≤ 19` SGPRs derramados, **e** `escreve` das esticadas tracejadas da iGPU `−0,02` ms; senão sai |
+| (d) **H** — a geometria do troço uma vez | os cantos `a`, `b`, a direcção, a normal e as duas bissectrizes (com o recuo GEOMÉTRICO; a comparação com o recuo de cada pedaço fica no pedaço) calculados por troço, fora do laço dos pedaços; a junta do troço (no máximo uma, §9.15 B2) emitida DEPOIS do laço | `escreve` | `−0,02` ms nas esticadas tracejadas da iGPU; senão sai |
+| (d) **P** — as quatro arestas de uma peça de uma vez | um teste de capacidade por peça e a caixa da cópia pelos `4` cantos (os mesmos pontos: `min`/`max` são exactos) em vez de por aresta | `escreve` | `−0,02` ms nas esticadas tracejadas da iGPU; senão sai |
+| (d) **G32** — grupos de `32` no `cs_conta` e no `cs_escreve` | `@workgroup_size` por `override` (e o despacho do Rust pela mesma constante): a iGPU corre ondas de `64` em duas metades, e uma onda com metade das pistas vazias pode saltar a metade | `conta + escreve` | `−0,02` ms nas esticadas tracejadas da iGPU e nenhuma cena (densas incluídas: `1 225` cópias) pior que `+5 %`; senão sai. ⚠️ Previsão: se a placa não salta a metade vazia, zero — e sai |
+| (d) **E1F** (ablação, fora de commit) | o `F` sem emitir pedaços | `escreve` | sem critério: a fatia da emissão no `F` (no §9.15 era `0,19` dos `0,40` sobre o `base`) |
+| (c) o app | `[formas] arestas: capacidade {cap} ({MB}) para {reservadas} reservadas por {n} copias` no `garante` (que MUDA-SE para `contorno_capacidade.rs`: `contorno.rs` está em `695`/`700`); uma porta de medição `PH2D_FORMAS_CONSTANTES=NOME=v,…` (lida ao criar a placa no app, só nomes da lista exportada pela crate) para o A/B no MESMO binário; `mede_formas_na_placa.sh` SEM a espera de calma (a carga vai ao lado, `CLAUDE.md` §2) | `[frame]` (as três últimas janelas de `120` quadros), `[motion-route]`, `[formas]` | sem critério de velocidade (é a confirmação no produto); a memória das arestas da `=127` densa tracejada `base → F` medida e escrita, e a do `F` com os aceites do (d) |
+| (a) as mutações | `mutacao_o_bloco_do_9_15_2026-10-05.py`, no padrão do de 04/10 (pré-voo, corrida LIMPA verde nas duas placas, restauro + `touch`), SOZINHO na árvore depois do gate | os `14` gates de `ph2d-shape-gpu --test it --ignored` | cada mutação SANGRA; uma que sobrevive é um gate por escrever, nesta sessão. As previstas: `m1` o ajuste da contagem a `1` · `m2` o traço adiado nunca emitido · `m3` o prefixo das escritas deslocado de um bloco · `m4` a reserva sem as pontas (`pecas · 4 + junta`) · `m5` o c2 desligado e a cena nova sem `medir_ja` · `m6` a correção da fronteira da célula no subgrupo (só sangra com subgrupos de `64`: iGPU) — mais uma por pedaço aceite do (d) |
+
+**A rodada (uma só):** a sonda intercalada (`mede_intercalado.sh`, as duas placas) com `base` · `F` · `F−A1a` · `F−A1b`
+· `F−B1` · `F−B2` · `E1F` · `L` · `H` · `P` · `G32` · `LHPG` (os quatro), a passar a imprimir `conta` e `escreve` À
+PARTE e as arestas reservadas · escritas de cada variante; e o app (`mede_formas_na_placa.sh`, `release`): `=127` densa
+contínua e tracejada × `base` · `F` · `LHPG` × as duas placas. Depois da tabela: os pedaços recusados saem com o código
+deles, os aceites dobram-se, e o `variantes()` da sonda fica com o que sobrar de porta de medição. Imagens iguais: os
+`14` gates nas duas placas, os do produto (`motion_shape_placa`) e o arnês do tracejado contra o Vello.

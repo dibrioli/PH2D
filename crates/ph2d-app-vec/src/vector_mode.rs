@@ -204,6 +204,21 @@ impl ModeFamily for Family<'_> {
                 objects.push(*b);
             }
         }
+        // A caneta fica só com as formas deste Edit: uma selecção velha (de um Edit anterior)
+        // juntar-se-ia a ele pelo `follow`.
+        let entities = &self.vec.entities;
+        let keep: Vec<VecPathId> = self
+            .vec
+            .pen
+            .selected_paths()
+            .iter()
+            .copied()
+            .filter(|id| entities.get(id).is_some_and(|b| objects.contains(b)))
+            .collect();
+        if keep.len() != self.vec.pen.selected_paths().len() {
+            self.vec.pen.select_many(&keep);
+        }
+        self.pen.retain(|b| objects.contains(b));
         self.vec.edit.objects = objects;
         self.vec.edit.armed = false;
         true
@@ -226,9 +241,20 @@ impl ModeFamily for Family<'_> {
                 edit.objects = vec![o];
             }
             edit.objects.retain(|b| shapes.contains(b));
+            // ⭐ As formas que a CANETA selecciona num Edit juntam-se a ele (o multi-objecto do
+            // Blender): a booleana do painel trabalha sobre elas, e o cadeado não as lê como troca.
+            for b in &self.pen {
+                if shapes.contains(b) && !edit.objects.contains(b) {
+                    edit.objects.push(*b);
+                }
+            }
         } else if releases(false, edit.following) {
+            // ⭐ O Edit caiu porque as formas dele DESAPARECERAM (a booleana, apagar — o quadro nem
+            // chama o `leave`: uma entidade morta não tem tipo): a ferramenta FICA na mão, e a forma
+            // que a booleana deixa, que só ganha entidade no quadro seguinte, pede o Edit então.
+            let gone = !edit.objects.is_empty() && edit.objects.iter().all(|b| !shapes.contains(b));
             edit.objects.clear();
-            if in_hand(tools) {
+            if !gone && in_hand(tools) {
                 tools.activate_default();
             }
         }
@@ -267,17 +293,28 @@ impl ModeFamily for Family<'_> {
         Some((*self.pen.last()?, ObjectMode::Edit))
     }
 
+    /// As outras formas do Edit — as que entraram com ele e as que a caneta selecciona (ver o
+    /// [`ModeFamily::follow`]); `None` = uma forma só (o cadeado é exacto).
     fn parts(&mut self, entity: u64) -> Option<Vec<u64>> {
         let edit = &self.vec.edit.objects;
-        (edit.first() == Some(&entity) && edit.len() > 1)
-            .then(|| edit.iter().copied().filter(|b| *b != entity).collect())
+        if edit.first() != Some(&entity) {
+            return None;
+        }
+        let mut parts: Vec<u64> = edit.iter().copied().filter(|b| *b != entity).collect();
+        for b in &self.pen {
+            if *b != entity && self.shapes.contains(b) && !parts.contains(b) {
+                parts.push(*b);
+            }
+        }
+        (!parts.is_empty()).then_some(parts)
     }
 }
 
 /// ⭐ **O smoke do modo** — `PH2D_OBJECT_MODE_SMOKE=6`: *Add ▸ Vector Drawing* (nada nasce: a
-/// ferramenta vem à mão), um rectângulo (nasce objecto, em Edit), uma elipse ao lado (OUTRO objecto,
-/// e o Edit passa a ela), o Node e o seletor aberto — a foto mostra os dois objectos na Hierarquia e
-/// os nós SÓ da elipse. Corre uma vez.
+/// ferramenta vem à mão), um rectângulo (nasce objecto, em Edit), uma elipse por cima dele (OUTRO
+/// objecto, e o Edit passa a ela), a booleana UNION pelo botão do painel (nasce UMA forma, e o Edit
+/// passa a ela) e o seletor aberto — a foto mostra um objecto só na Hierarquia, em Edit, COM o gizmo.
+/// Corre uma vez.
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -286,7 +323,7 @@ pub fn smoke_step(
     use ph2d_vec_scene::ShapeKind;
     use std::sync::atomic::{AtomicU8, Ordering};
     // 0 = por ler · 1 = o Add · 2 = a ferramenta na mão · 3 = o rectângulo · 4 = a elipse ·
-    // 5 = o Node · 10 = o seletor · 9 = feito.
+    // 5 = a booleana · 6 = o Edit na forma dela · 10 = o seletor · 9 = feito.
     static STAGE: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
@@ -317,20 +354,21 @@ pub fn smoke_step(
             go(4);
         }
         4 if edit && shapes == 1 => {
-            draw_shape(vec, scene, ShapeKind::Ellipse, [1.2, 0.0], 0.7);
+            draw_shape(vec, scene, ShapeKind::Ellipse, [-0.6, 0.4], 0.7);
             go(5);
         }
         5 if edit && shapes == 2 && vec.edit.objects.first().copied() == newest => {
-            let ellipse: Vec<VecPathId> = vec.entities.keys().last().copied().into_iter().collect();
-            vec.pen.select_many(&ellipse);
+            let both: Vec<VecPathId> = vec.entities.keys().copied().collect();
+            vec.pen.select_many(&both);
             hero.bus
                 .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
                     ph2d_editor_core::tool::PanelEvent::Click(
-                        ph2d_tool_vector::ids::VECTOR_MODE_NODE,
+                        ph2d_panel_vector::ids::VECTOR_BOOL_UNION,
                     ),
                 ));
-            go(10);
+            go(6);
         }
+        6 if edit && shapes == 1 && vec.edit.objects.first().copied() == newest => go(10),
         10 if edit => {
             // O chip só se abre depois de pintado (o pulldown ancora-se no rect dele).
             let chip = ph2d_editor_core::ids::area_menu_button(0);

@@ -288,3 +288,123 @@ fn add_never_enters_the_edit_of_a_stale_pen_selection() {
     assert!(c.na_mao(), "o Add não pôs a ferramenta na mão");
     assert_eq!(c.em_edit(), None, "o Add entrou no Edit da forma velha");
 }
+
+/// ⭐⭐ GATE (report do dono, 05/10: *«em edit mode se clicar no canvas vazio (desselecionar) sai do
+/// modo Edit. Não permita isso»*) — **limpar a selecção num Edit não sai dele**: ela volta à forma (e
+/// às duas, num Edit de duas). CONTROLO: a forma APAGADA ainda faz o modo cair a Object.
+/// (Mutação: apagar o passo 0b do `mode_drive::drive` ⇒ RED.)
+#[test]
+fn clearing_the_selection_in_edit_keeps_the_edit() {
+    let mut c = cena();
+    let (a, b) = (c.forma(0.0), c.forma(3.0));
+    c.quadro(None);
+    c.hero.gizmo.replace_selection(Some(a));
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.em_edit(), Some(a));
+    c.hero.gizmo.replace_selection(None);
+    c.quadro(None);
+    assert_eq!(c.em_edit(), Some(a), "o clique no vazio saiu do Edit");
+    assert_eq!(
+        c.hero.gizmo.selection,
+        Some(a),
+        "a selecção não voltou à forma"
+    );
+    c.quadro(Some(ModeRequest::Toggle));
+    c.hero.gizmo.replace_selection(Some(a));
+    c.hero.gizmo.add_to_selection(b);
+    c.quadro(Some(ModeRequest::Toggle));
+    c.hero.gizmo.replace_selection(None);
+    c.quadro(None);
+    assert_eq!(c.em_edit(), Some(b));
+    assert_eq!(c.hero.gizmo.selected_len(), 2, "o Edit de duas perdeu uma");
+    c.sim.world_mut().despawn(Entity::from_bits(b));
+    c.hero.gizmo.replace_selection(None);
+    c.quadro(None);
+    assert_eq!(
+        c.em_edit(),
+        None,
+        "controlo: a forma apagada não larga o modo"
+    );
+}
+
+/// ⭐⭐ GATE (report do dono, 05/10: *«ao fazer um boolean o gizmo já não aparece»*) — **a forma que a
+/// booleana deixa fica em Edit COM o gizmo**: as duas do Edit somem, nasce uma, o Edit passa a ela e
+/// o gizmo de objecto mostra-se (a forma trancada é a própria selecção).
+/// (Mutação: o `object_gizmo_shows` voltar a excluir o objecto trancado ⇒ RED.)
+#[test]
+fn the_shape_a_boolean_leaves_is_in_edit_with_its_gizmo() {
+    use ph2d_editor_core::screens::hero::mode_drive::object_gizmo_shows;
+    let mut c = cena();
+    let (a, b) = (c.forma(0.0), c.forma(3.0));
+    c.quadro(None);
+    c.hero.gizmo.replace_selection(Some(b));
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.em_edit(), Some(b));
+    // O caminho do programa: a CANETA selecciona as duas no Edit (e a shell copia-a para a
+    // selecção) — elas juntam-se ao Edit, e o cadeado não o larga.
+    let ids: Vec<VecPathId> = c.vec.entities.keys().copied().collect();
+    c.vec.pen.select_many(&ids);
+    c.hero.gizmo.replace_selection(Some(a));
+    c.hero.gizmo.add_to_selection(b);
+    c.quadro(None);
+    assert_eq!(c.em_edit(), Some(b), "a selecção da caneta largou o Edit");
+    assert!(
+        c.vec.edit.objects.contains(&a),
+        "a forma da caneta não entrou no Edit"
+    );
+    assert!(object_gizmo_shows(&c.hero), "controlo: duas formas em Edit");
+    // A booleana: as duas saem da cena (e do mapa), nasce o resultado.
+    let ids: Vec<VecPathId> = c.vec.entities.keys().copied().collect();
+    for id in ids {
+        let e = c.vec.entities.remove(&id).expect("a forma");
+        c.sim.world_mut().despawn(Entity::from_bits(e));
+        c.scene.remove_path(id);
+    }
+    // ⚠️ No programa a forma nova só ganha entidade no quadro SEGUINTE (a sincronia): o Edit cai
+    // num quadro e o resultado nasce no outro — com tudo num quadro só este gate passava e a foto não.
+    c.quadro(None);
+    assert!(
+        c.na_mao(),
+        "o Edit caiu com as formas consumidas e largou a ferramenta"
+    );
+    let u = c.forma(1.0);
+    c.quadro(None);
+    assert_eq!(
+        c.em_edit(),
+        Some(u),
+        "o Edit não passou à forma da booleana"
+    );
+    assert!(c.na_mao());
+    assert!(
+        object_gizmo_shows(&c.hero),
+        "a forma da booleana ficou sem gizmo"
+    );
+}
+
+/// ⭐ GATE — **uma selecção VELHA da caneta não entra no Edit seguinte**: as formas que a caneta
+/// selecciona juntam-se ao Edit, mas só as que ela seleccionou DENTRO dele — o `Tab` noutra forma
+/// abre o Edit dessa forma só.
+/// (Mutação: o `enter_with` não podar a caneta ⇒ RED.)
+#[test]
+fn a_stale_pen_selection_never_joins_the_next_edit() {
+    let mut c = cena();
+    let (a, b) = (c.forma(0.0), c.forma(3.0));
+    c.quadro(None);
+    let id_a = c
+        .vec
+        .entities
+        .iter()
+        .find(|(_, x)| **x == a)
+        .map(|(id, _)| *id)
+        .expect("a");
+    c.vec.pen.select_many(&[id_a]);
+    c.hero.gizmo.replace_selection(Some(b));
+    c.quadro(Some(ModeRequest::Toggle));
+    c.quadro(None);
+    assert_eq!(c.em_edit(), Some(b));
+    assert_eq!(
+        c.vec.edit.objects,
+        vec![b],
+        "a selecção velha entrou no Edit"
+    );
+}

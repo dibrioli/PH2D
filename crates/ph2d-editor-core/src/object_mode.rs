@@ -301,7 +301,8 @@ pub enum Decision {
 ///   (re-seleccionar é um no-op, e recusá-lo ensinaria o artista a ignorar avisos);
 /// - **acrescentar** ⇒ só entre partes; num modo de objecto inteiro recusa, mesmo sobre a própria:
 ///   o que o modo não sabe representar é o ESTADO de duas seleccionadas;
-/// - limpar (alvo `None`) ⇒ passa — o `Esc` e o clique no vazio não podem parecer partidos;
+/// - limpar (alvo `None`) ⇒ passa SEM aviso — e o quadro devolve a selecção ao objecto enquanto o
+///   modo durar (`mode_drive::drive`, escolha do dono 05/10: o clique no vazio não sai do Edit);
 /// - outra entidade ⇒ recusa.
 #[must_use]
 pub fn decide(

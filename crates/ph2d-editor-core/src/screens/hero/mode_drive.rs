@@ -49,9 +49,9 @@ pub trait ModeFamily {
     fn owner_of(&mut self, _bits: u64) -> Option<u64> {
         None
     }
-    /// ⭐ **As PARTES transformam-se pelo gizmo de objecto** neste modo (o Select do Edit do vetor:
-    /// mover, girar e escalar uma forma dentro do objecto). `false` = o gizmo só existe em Object
-    /// (D6: num modo de criação seria um controlo por cima do módulo).
+    /// ⭐ **A selecção transforma-se pelo gizmo de objecto** neste modo (o Edit do vetor: mover,
+    /// girar e escalar a forma — a trancada e as que entraram com ela). `false` = o gizmo só existe
+    /// em Object (D6: num modo de criação seria um controlo por cima do módulo).
     fn parts_take_the_object_gizmo(&self, _mode: ObjectMode) -> bool {
         false
     }
@@ -176,6 +176,23 @@ pub fn drive(
         select_together(hero, bits, &[]);
         Some(ModeRequest::Enter(mode))
     });
+    // 0b. ⭐ Num modo, LIMPAR a selecção (o clique no vazio, o `Esc`, a caixa vazia) não larga o
+    // objecto — ela volta a ele (escolha do dono, 05/10). O modo só cai quando o módulo deixa de o ter
+    // em mãos (apagado, desfeito, outra ferramenta).
+    if let Some(current) = hero.gizmo.mode.active()
+        && hero.gizmo.selection.is_none()
+        && hero.gizmo.extra_selection.is_empty()
+        && family(families, kind_of(current.entity), current.mode)
+            .is_some_and(|f| f.holds(current.mode, current.entity, tools))
+    {
+        let joined = hero
+            .gizmo
+            .mode
+            .parts()
+            .map(<[u64]>::to_vec)
+            .unwrap_or_default();
+        select_together(hero, current.entity, &joined);
+    }
     // 1. O activo e os modos que o TIPO dele declara.
     let mut active = publish_active(families, kind_of, hero);
     // 2. A rede de segurança: quem perdeu a entidade (por qualquer porta) volta a Object.
@@ -299,17 +316,14 @@ pub fn refused(
 
 /// ⭐ **O gizmo de transformação É o modo Object** (D6): num modo de criação (Paint, Draw) ele
 /// seria um controlo que não responde por cima do módulo. A shell pergunta aqui ao decidir se o
-/// pinta; a selecção fica armada. ⭐ A excepção é uma PARTE seleccionada num modo cuja família o
-/// declara ([`ModeFamily::parts_take_the_object_gizmo`]) — nunca o objecto trancado inteiro.
+/// pinta; a selecção fica armada. ⭐ A excepção é o modo cuja família o declara
+/// ([`ModeFamily::parts_take_the_object_gizmo`]): a selecção tem o gizmo — a parte E o objecto
+/// trancado (o Edit do vetor é sobre a própria forma desde 05/10; com o contentor de 04/10 o
+/// trancado não o tinha, e a booleana deixava a forma nova sem gizmo — report do dono).
 #[must_use]
 pub fn object_gizmo_shows(hero: &HeroScreen) -> bool {
     let mode = &hero.gizmo.mode;
-    mode.active().is_none()
-        || (mode.part_gizmo()
-            && hero
-                .gizmo
-                .selection
-                .is_some_and(|s| Some(s) != mode.locked_entity()))
+    mode.active().is_none() || (mode.part_gizmo() && hero.gizmo.selection.is_some())
 }
 
 /// ⭐ **O cadeado na porta do LAÇO** — num modo de objecto inteiro a multi-selecção é recusada (com

@@ -639,8 +639,9 @@ fn a_mode_that_joins_takes_the_selected_of_the_same_kind() {
 }
 
 /// ⭐⭐ GATE (spec/06 F3 ▸ Vector; report do dono 04/10: *«o gizmo não aparece e não consigo a
-/// multiseleção»*) — **num modo de PARTES que o declara, a parte seleccionada tem o gizmo** (o
-/// Select do Edit do vetor transforma as formas por ele), o objecto trancado não; e **o laço fica só
+/// multiseleção»*; e 05/10: *«ao fazer um boolean o gizmo já não aparece»*) — **num modo que o
+/// declara, a selecção tem o gizmo** — a parte E o objecto trancado (o Edit do vetor é sobre a própria
+/// forma, e a forma da booleana fica sozinha nele); e **o laço fica só
 /// com as partes** em vez de recusar. Num modo de objecto inteiro (o Draw do Flip) o gizmo some e o
 /// laço é recusado, como antes.
 #[test]
@@ -662,8 +663,8 @@ fn a_parts_mode_gives_the_part_its_gizmo_and_the_lasso_its_parts() {
     quadro(&mut c, &mut fam, Some(ModeRequest::Toggle));
     assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Edit);
     assert!(
-        !object_gizmo_shows(&c.hero),
-        "o objecto trancado ganhou o gizmo em Edit"
+        object_gizmo_shows(&c.hero),
+        "o objecto trancado (a forma do Edit) perdeu o gizmo"
     );
     c.hero.gizmo.replace_selection(Some(VEC_SHAPE));
     quadro(&mut c, &mut fam, None);

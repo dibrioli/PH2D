@@ -129,3 +129,34 @@ Troca só o link do handoff na entrada **Motion Nodes**: `Último: [handoff 05/1
   ✗ contexto relido por passo (media)         460 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
   ✓ contexto no inicio da sessao               63 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
 ```
+
+## §10 — A 2.ª onda (05/10, depois do smoke aprovado): «precisamos resolver tudo»
+
+Ordem do dono sobre o §6. Plano e números: [doc 121 §9.18](../121_as_formas_na_placa.md). Commits
+`0bb491ca3` … `cd11b022c` (⚠️ `849ca87f0` SOZINHO não compila — o `name` do `Cargo.toml` do kit entrou no seguinte; não o
+escolha num cherry-pick nem num bisect).
+
+| item | o que ficou |
+|---|---|
+| **bug #11 e a família** | ✅ `crates/ph2d-rig-kinematics` (`fk`/`pose`/`trig` da família `rig.*`: 6+6+3 cópias → 1; `fk::pai`, a porta que o `rig.bones` copiava) e `crates/ph2d-motion-kit` (`hash`/`trig` sem dependências; `forca` atrás da feature `forca`): a MESMA lei em `38` crates (nós, `ph2d-contact`, `ph2d-bloom`). Ficheiros `.rs` byte-iguais `> 1 KB` entre crates `5 → 0`. Portão novo `architecture_a_lei_partilhada_dos_nos_vive_numa_porta` (`ph2d-editor-core`), `3/3` mutações a sangrar. ⚠️ O nome NÃO pode começar por `ph2d-node-` (o `ph2d-node-sync` trata toda `ph2d-node-*` como nó — foi o vermelho do gate). Espelhos WGSL intocados |
+| **(F) o SIGSEGV da RTX ao sair** | ✅ causa medida (o perfilador segurava o dispositivo: `4/6` com ele, `0/9` sem). `ph2d_gpu::pass_profiler`: `Mutex<Option<Arc<…>>>`, `PassTimestamps` (cópia dona do `QuerySet`) e `shutdown()`. ⏳ a prova directa sob carga não reproduziu nem sem a cura (§9.18 F) |
+| **(D) o contacto na placa** | ✅ recusa do doc 115 RENOVADA com o número: `4 096` peças custam `9,3 %` de um quadro na CPU (`8` varreduras do produto); expira a `16 384`. A tabela antiga lia `~8×` a mais (carga `45`–`91`) |
+| **(E) a emissão por peça** · **(C) a mordida** | ⏳ planos e kill-criteria no §9.18; prompt da próxima janela: [`HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_E_e_C.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_E_e_C.md) |
+
+**Superfície de colisão nova (o integrador mede):** `ph2d-gpu` (foundational, aditivo na intenção mas MUDA a assinatura:
+`compute_writes`/`render_writes` devolvem `Option<PassTimestamps>`) e os `15` sítios instrumentados — `13` em
+`ph2d-render` (`band_blit`, `clip_pass` ×2, `compositor`, `frost`, `impasto_light`, `layer_compositor/compositor/{dispatch,pass}`,
+`motion_fx`, `preview_premul`, `renderer_draw`, `tonemap`) e `2` em `ph2d-shape-gpu`; ⚠️ **outra linha que acrescente um
+`timestamp_writes: …compute_writes(..)` NÃO compila depois deste merge** — a forma nova é
+`compute_writes(..).as_ref().map(ph2d_gpu::pass_profiler::PassTimestamps::compute)`. ~`40` `Cargo.toml` de nós (dependência
+nova do kit) e o `Cargo.lock`; `ph2d-node-registry-init` intocado. Crates novas: `ph2d-rig-kinematics`, `ph2d-motion-kit`.
+Ficheiros apagados: os `fk.rs`/`pose.rs`/`trig.rs`/`hash.rs`/`accum.rs` copiados (um merge com outra linha que os edite
+dá conflito modify/delete — a edição vai para a porta). Teste novo: `ph2d-contact` `custo_da_separacao_aos_milhares`
+(`#[ignore]`, sonda). Porta de medição nova: `PH2D_PILHA_LADO`/`PH2D_PILHA_COLIDE` (cena `=114`). Memória:
+`feedback_killing_the_parent_of_an_orphan_kills_the_owners_session.md` — ⚠️ o checkout PRINCIPAL tem uma cópia igual
+POR RASTREAR (e a linha no `MEMORY.md` dele, por comitar): o merge recusa-se a sobrescrevê-la até ela sair de lá.
+
+**Fecho corrido (HEAD `ce5095c32` + a mudança de nome):** `nextest-impacted` `17 057/17 057` · `check --workspace
+--all-targets` `-D warnings` ✓ · clippy das `9` crates ✓ · `fmt`/`machete`/`standalone`/`workflow` ✓ · `ph2d-shape-gpu`
+`14/14` iGPU e RTX · `ph2d-gpu --ignored` `1/1` nas duas · `motion_shape_placa` `5/5` nas duas · `motion_fx` `26/26` nas
+duas · `architecture_*` `106` ✓ · censos `114/114` · staleness do registo `2/2`.

@@ -94,7 +94,7 @@ impl PastePatch {
         let y0 = (y0.floor() as i64 - 1).max(0) as u32;
         let x1 = ((x1.ceil() as i64 + 1).max(0) as u32).min(w);
         let y1 = ((y1.ceil() as i64 + 1).max(0) as u32).min(h);
-        (x1 > x0 && y1 > y0).then_some(Region {
+        (x1 > x0 && y1 > y0).then(|| Region {
             x: x0,
             y: y0,
             w: x1 - x0,

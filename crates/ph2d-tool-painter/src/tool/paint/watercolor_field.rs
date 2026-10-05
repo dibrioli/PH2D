@@ -556,6 +556,11 @@ pub(crate) struct WashCadence {
     /// precisa de uma alavanca que o faça ir VERMELHO. Precedente: `Sim::order_invariant` na
     /// `ph2d-wet-paint` (ADR-0147), mantido para exatamente estes dois serviços.
     pub(crate) per_event: bool,
+    /// **A rota inteira da mancha do Solid** — `true` descasca e repõe a caixa INTEIRA a cada evento
+    /// (o comportamento antes de 2026-10-05), em vez de só onde ela mudou
+    /// (`watercolor_solido`). O produto é sempre `false`; é o oráculo ao byte do gate
+    /// `a_mancha_incremental_e_a_inteira_ao_byte` e a metade A da medição A×B, no mesmo processo.
+    pub(crate) mancha_inteira: bool,
     /// Quantas vezes `apply_watercolor` de fato compôs (janela resolvida, trabalho feito) — o
     /// observável que deixa um gate afirmar a CADÊNCIA sem relógio.
     ///

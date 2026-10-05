@@ -227,12 +227,17 @@ pub(crate) fn union_region(a: Region, b: Region) -> Region {
 /// ⚠️ Irmã da [`union_region`] e pelo mesmo motivo: escrita duas vezes, a que divergisse publicaria
 /// um rectângulo que não é o que o chamador julga estar a limitar.
 #[must_use]
+///
+/// ⚠️ **`then`, nunca `then_some`, ao montar o rectângulo:** o argumento do `then_some` é avaliado
+/// ANTES do teste, e com os rectângulos disjuntos o `x1 - x0` transbordava (em debug, pânico). O 1.º
+/// chamador a passá-los disjuntos foi o descasque da mancha do Solid (`watercolor_solido`); a mesma
+/// forma estava em mais quatro sítios, curados juntos.
 pub(super) fn intersect_region(a: Region, b: Region) -> Option<Region> {
     let x0 = a.x.max(b.x);
     let y0 = a.y.max(b.y);
     let x1 = (a.x + a.w).min(b.x + b.w);
     let y1 = (a.y + a.h).min(b.y + b.h);
-    (x1 > x0 && y1 > y0).then_some(Region {
+    (x1 > x0 && y1 > y0).then(|| Region {
         x: x0,
         y: y0,
         w: x1 - x0,
@@ -254,7 +259,7 @@ pub(super) fn grow_region(r: Region, pad: u32, w: u32, h: u32) -> Option<Region>
     let y0 = r.y.saturating_sub(pad);
     let x1 = (r.x + r.w + pad).min(w);
     let y1 = (r.y + r.h + pad).min(h);
-    (x1 > x0 && y1 > y0).then_some(Region {
+    (x1 > x0 && y1 > y0).then(|| Region {
         x: x0,
         y: y0,
         w: x1 - x0,

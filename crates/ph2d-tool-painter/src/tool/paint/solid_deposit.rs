@@ -186,8 +186,10 @@ impl PainterTool {
         // **Na aquarela a mancha é COBERTURA da aguada, sem corda** ([`super::watercolor_solido`]):
         // a fronteira dela já ganha a orla no composite. O descasque da anterior é o do rascunho.
         if self.watercolor_render_active() {
-            self.peel_mancha_na_aguada();
-            self.mancha_na_aguada(&loops, true);
+            if self.wash.mancha_inteira {
+                self.peel_mancha_na_aguada();
+            }
+            self.atualiza_a_mancha(&loops);
             return;
         }
 

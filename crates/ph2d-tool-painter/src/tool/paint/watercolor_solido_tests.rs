@@ -170,3 +170,292 @@ fn uma_elipse_em_solid_e_um_disco_na_aguada() {
         "a elipse em Solid não encheu o miolo na aguada"
     );
 }
+
+/// SONDA (relógio) — o report do dono, 2026-10-05: *«ficou lento numa mancha de 1000px»* (na
+/// Aquarela, enquanto desenha). Um laço de 1000 px, com e sem Solid, em 2048² e 4096², intercalados.
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_a_mancha_de_1000px_na_aguada -- --ignored --nocapture`
+#[test]
+#[ignore = "diagnóstico de relógio"]
+fn diag_a_mancha_de_1000px_na_aguada() {
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!("loadavg {}", carga.trim());
+    for lado in [2048u32, 4096] {
+        #[allow(clippy::cast_precision_loss)]
+        let c = (lado / 2) as f32;
+        let pt = |i: usize| {
+            #[allow(clippy::cast_precision_loss)]
+            let a = i as f32 / 120.0 * std::f32::consts::TAU;
+            [c + 500.0 * a.cos(), c + 500.0 * a.sin()]
+        };
+        let variantes = [
+            ("sem Solid", false, false),
+            ("inteira", true, true),
+            ("só o que muda", true, false),
+        ];
+        for rodada in 0..3 {
+            for k in 0..variantes.len() {
+                let (nome, solid, inteira) = variantes[(rodada + k) % variantes.len()];
+                let mut t = tool(lado, PaintMedia::Watercolor, 20.0);
+                t.set_brush_color_srgb8([30, 60, 220]);
+                t.paint.brush.style_solid = solid;
+                t.wash.mancha_inteira = inteira;
+                t.on_canvas_pointer(cp(pt(0), PointerPhase::Down));
+                let (mut pior, t0) = (0.0f64, std::time::Instant::now());
+                for i in 1..=120 {
+                    let q = std::time::Instant::now();
+                    t.on_canvas_pointer(cp(pt(i), PointerPhase::Move));
+                    t.paint_tick(1.0 / 60.0);
+                    pior = pior.max(q.elapsed().as_secs_f64() * 1e3);
+                }
+                let gesto = t0.elapsed().as_secs_f64() * 1e3 / 120.0;
+                let q = std::time::Instant::now();
+                t.on_canvas_pointer(cp(pt(120), PointerPhase::Up));
+                let soltar = q.elapsed().as_secs_f64() * 1e3;
+                eprintln!(
+                    "{lado}² rodada {rodada} {nome:<13}: gesto {gesto:>8.3} ms/quadro (pior {pior:>8.3}) · soltar {soltar:>8.3} ms"
+                );
+            }
+        }
+    }
+}
+
+/// Um gesto pelos `cantos` com um quadro por evento e `parados` quadros de caneta parada no fim;
+/// devolve a tela de cada quadro (e a do pen-up) e o trabalho do composite (`wash.window_px`).
+fn quadros(
+    t: &mut PainterTool,
+    cantos: &[[f32; 2]],
+    por_aresta: usize,
+    parados: usize,
+) -> (Vec<Vec<u8>>, u64) {
+    let mut telas = Vec::new();
+    t.on_canvas_pointer(cp(cantos[0], PointerPhase::Down));
+    for w in cantos.windows(2) {
+        for k in 1..=por_aresta {
+            #[allow(clippy::cast_precision_loss)]
+            let f = k as f32 / por_aresta as f32;
+            t.on_canvas_pointer(cp(
+                [
+                    w[0][0] + (w[1][0] - w[0][0]) * f,
+                    w[0][1] + (w[1][1] - w[0][1]) * f,
+                ],
+                PointerPhase::Move,
+            ));
+            t.paint_tick(0.1);
+            telas.push(t.canvas_rgba.to_vec());
+        }
+    }
+    for _ in 0..parados {
+        t.paint_tick(0.25);
+        telas.push(t.canvas_rgba.to_vec());
+    }
+    t.on_canvas_pointer(cp(cantos[cantos.len() - 1], PointerPhase::Up));
+    telas.push(t.canvas_rgba.to_vec());
+    (telas, t.wash.window_px)
+}
+
+/// **A MANCHA REFEITA SÓ ONDE MUDOU É A DA CAIXA INTEIRA, AO BYTE** — o oráculo é a rota de antes
+/// no mesmo processo (`wash.mancha_inteira`): os SEIS planos da aguada iguais em todo quadro, e a
+/// tela igual no pen-up (que recompõe o traço inteiro). O caminho volta pelo meio (a mancha ENCOLHE
+/// no entalhe), com fios (que caem sobre o papel sem a mancha) e com o Airbrush (o tique carimba
+/// com a caneta parada).
+///
+/// ⚠️ **A tela A MEIO do gesto não é a régua, e está medido porquê:** com o Airbrush um pixel do
+/// TRAÇO (fora da mancha) lia `116` na rota inteira e `117` na incremental — e `117` no mesmo gesto
+/// SEM Solid. O composite lê uma entrada que o tique do Airbrush muda sem marcar o quadro, e a rota
+/// inteira, ao recompor a caixa toda a cada quadro, refrescava-o por acaso. A incremental faz o que
+/// o traço sem Solid faz.
+#[test]
+fn a_mancha_incremental_e_a_inteira_ao_byte() {
+    let volta = [
+        [20.0, 20.0],
+        [108.0, 20.0],
+        [108.0, 108.0],
+        [20.0, 108.0],
+        [20.0, 60.0],
+        [90.0, 60.0],
+    ];
+    let planos = |t: &PainterTool| {
+        [
+            t.paint.stroke_coverage.clone(),
+            t.paint.stroke_color.clone(),
+            t.paint.stroke_density.clone(),
+            t.paint.stroke_deplete.clone(),
+            t.paint.stroke_deplete_prox.clone(),
+            t.paint.wet_styles.owner.clone(),
+        ]
+    };
+    use ph2d_painter_brush::line_kind::LineKind;
+    // O Wire liga o carimbo de agora aos anteriores pelo PERCURSO: fios longos que atravessam a
+    // borda suavizada da mancha LONGE da janela dos dabs — é só lá que a ordem fio × mancha se vê
+    // (os dois têm a cor do pincel; na borda a cobertura do fio, «só no seco», difere do `max`).
+    for (nome, metodo, fios) in [
+        ("Space", StrokeMethod::Space, None),
+        (
+            "Space + Sketchy",
+            StrokeMethod::Space,
+            Some(LineKind::Sketchy),
+        ),
+        ("Space + Wire", StrokeMethod::Space, Some(LineKind::Wire)),
+        ("Airbrush", StrokeMethod::Airbrush, None),
+    ] {
+        let corre = |inteira: bool| {
+            let mut t = tool(128, PaintMedia::Watercolor, 4.0);
+            t.set_brush_color_srgb8([30, 60, 220]);
+            t.paint.brush.stroke_method = metodo;
+            t.paint.brush.style_solid = true;
+            if let Some(kind) = fios {
+                t.paint.brush.line_kind = kind;
+                t.paint.brush.sketchy_reach = 3.0;
+                t.paint.brush.thread_opacity = 1.0;
+            }
+            t.wash.mancha_inteira = inteira;
+            let mut por_quadro = Vec::new();
+            t.on_canvas_pointer(cp(volta[0], PointerPhase::Down));
+            for w in volta.windows(2) {
+                for k in 1..=12 {
+                    #[allow(clippy::cast_precision_loss)]
+                    let f = k as f32 / 12.0;
+                    t.on_canvas_pointer(cp(
+                        [
+                            w[0][0] + (w[1][0] - w[0][0]) * f,
+                            w[0][1] + (w[1][1] - w[0][1]) * f,
+                        ],
+                        PointerPhase::Move,
+                    ));
+                    t.paint_tick(0.1);
+                    por_quadro.push(planos(&t));
+                }
+            }
+            for _ in 0..3 {
+                t.paint_tick(0.25);
+                por_quadro.push(planos(&t));
+            }
+            t.on_canvas_pointer(cp(volta[5], PointerPhase::Up));
+            (por_quadro, t.canvas_rgba.to_vec())
+        };
+        let ((qa, ta), (qb, tb)) = (corre(true), corre(false));
+        for (q, (a, b)) in qa.iter().zip(&qb).enumerate() {
+            for k in 0..a.len() {
+                let difere = a[k].iter().zip(&b[k]).filter(|(p, s)| p != s).count();
+                assert_eq!(
+                    difere, 0,
+                    "{nome}: no quadro {q} o plano {k} da mancha incremental difere da inteira em \
+                     {difere} bytes"
+                );
+            }
+        }
+        let difere = ta.iter().zip(&tb).filter(|(p, s)| p != s).count();
+        assert_eq!(
+            difere, 0,
+            "{nome}: a tela do pen-up difere em {difere} bytes"
+        );
+        assert!(ta.iter().any(|&v| v < 240), "controlo: {nome} pintou");
+    }
+}
+
+/// **O FIO QUE CAI SOB A MANCHA SOBREVIVE QUANDO ELA ENCOLHE** — um fio cai a meio do gesto através
+/// da mancha viva, longe da janela dos dabs; o caminho volta pelo meio e o entalhe tira a mancha de
+/// cima de metade dele. O fio tem de ficar lá (ele é tinta CUMULATIVA, a mancha é que é provisória):
+/// por isso o depósito dos fios descasca a mancha sob eles antes de cair. Sem isso o fio caía POR
+/// CIMA da mancha e o entalhe, ao repor o papel sem ela, levava o fio junto.
+#[test]
+fn o_fio_sob_a_mancha_sobrevive_ao_entalhe() {
+    use ph2d_painter_brush::thread_raster::{ThreadInk, threads_bbox};
+    let volta = [
+        [20.0, 20.0],
+        [108.0, 20.0],
+        [108.0, 108.0],
+        [20.0, 108.0],
+        [20.0, 60.0],
+        [90.0, 60.0],
+    ];
+    let mut linhas = Vec::new();
+    for (inteira, solid) in [(false, false), (false, true), (true, true)] {
+        let mut t = tool(128, PaintMedia::Watercolor, 4.0);
+        t.set_brush_color_srgb8([30, 60, 220]);
+        t.paint.brush.style_solid = solid;
+        t.wash.mancha_inteira = inteira;
+        t.on_canvas_pointer(cp(volta[0], PointerPhase::Down));
+        for (perna, w) in volta.windows(2).enumerate() {
+            if perna == 4 {
+                // O fio: uma linha a y = 40 através da mancha viva (o entalhe vai de x 20 a 55 ali).
+                let fio = [[24.0f32, 40.5, 100.0, 40.5]];
+                let ink = ThreadInk {
+                    width_px: 6.0,
+                    opacity: 1.0,
+                };
+                let [bx, by, bw, bh] = threads_bbox(&fio, ink.width_px, 128, 128).expect("caixa");
+                #[allow(clippy::cast_possible_truncation)]
+                let rect = crate::tool::paint::Region {
+                    x: bx as u32,
+                    y: by as u32,
+                    w: bw as u32,
+                    h: bh as u32,
+                };
+                t.fios_na_aguada(&fio, ink, rect);
+            }
+            for k in 1..=12 {
+                #[allow(clippy::cast_precision_loss)]
+                let f = k as f32 / 12.0;
+                t.on_canvas_pointer(cp(
+                    [
+                        w[0][0] + (w[1][0] - w[0][0]) * f,
+                        w[0][1] + (w[1][1] - w[0][1]) * f,
+                    ],
+                    PointerPhase::Move,
+                ));
+                t.paint_tick(0.1);
+            }
+        }
+        t.on_canvas_pointer(cp(volta[5], PointerPhase::Up));
+        // O troço do fio que ficou no entalhe (x 28..44, longe da borda e do rastro).
+        let tingidos = (28..44)
+            .filter(|&x| t.canvas_rgba[(40 * 128 + x) * 4] < 240)
+            .count();
+        assert_eq!(
+            tingidos, 16,
+            "rota inteira = {inteira}, Solid = {solid}: o fio não está no entalhe"
+        );
+        linhas.push(
+            (28..44)
+                .flat_map(|x| t.canvas_rgba[(40 * 128 + x) * 4..(40 * 128 + x) * 4 + 4].to_vec())
+                .collect::<Vec<u8>>(),
+        );
+    }
+    // O fio no entalhe é o do mesmo gesto SEM Solid, ao byte, nas duas rotas.
+    for (i, l) in linhas.iter().enumerate().skip(1) {
+        assert_eq!(
+            l, &linhas[0],
+            "rota {i}: o fio que caiu sob a mancha não é o do gesto sem Solid"
+        );
+    }
+}
+
+/// **O QUADRO RECOMPÕE SÓ O QUE MUDOU** — num laço de 400 px o composite caminha uma fração dos
+/// texels da rota inteira (contagem, não relógio: `wash.window_px`).
+#[test]
+fn o_quadro_da_mancha_recompoe_so_o_que_mudou() {
+    let laco: Vec<[f32; 2]> = (0..=48)
+        .map(|i| {
+            #[allow(clippy::cast_precision_loss)]
+            let a = i as f32 / 48.0 * std::f32::consts::TAU;
+            [256.0 + 200.0 * a.cos(), 256.0 + 200.0 * a.sin()]
+        })
+        .collect();
+    let trabalho = |inteira: bool| {
+        let mut t = tool(512, PaintMedia::Watercolor, 6.0);
+        t.paint.brush.style_solid = true;
+        t.wash.mancha_inteira = inteira;
+        quadros(&mut t, &laco, 2, 0).1
+    };
+    let (inteira, so_o_que_mudou) = (trabalho(true), trabalho(false));
+    #[allow(clippy::cast_precision_loss)]
+    let razao = so_o_que_mudou as f64 / inteira as f64;
+    eprintln!(
+        "texels do composite: inteira {inteira} · só o que mudou {so_o_que_mudou} · {razao:.3}"
+    );
+    assert!(
+        razao < 0.5,
+        "o composite ainda caminha a caixa inteira: {so_o_que_mudou} contra {inteira} ({razao:.3})"
+    );
+}

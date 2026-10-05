@@ -330,7 +330,7 @@ impl PainterTool {
         self.accumulate_wet_coverage(wet_dabs);
         self.accumulate_wet_color(wet_dabs);
         if !solid_loops.is_empty() {
-            self.mancha_na_aguada(&solid_loops, false);
+            self.mancha_na_aguada(&solid_loops);
         }
         self.apply_watercolor(true);
     }

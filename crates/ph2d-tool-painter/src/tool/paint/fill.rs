@@ -104,7 +104,7 @@ pub(super) fn flood_fill(
             }
         }
     }
-    changed.then_some(Region {
+    changed.then(|| Region {
         x: minx as u32,
         y: miny as u32,
         w: (maxx - minx + 1) as u32,

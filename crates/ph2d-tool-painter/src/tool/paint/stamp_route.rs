@@ -48,7 +48,13 @@ impl PainterTool {
         // do motor corre a cada quadro, e sob simetria circular o retângulo é a TELA INTEIRA — um
         // pincel PARADO pagava um preenchimento de canvas por quadro para não mudar um byte.
         if self.freehand_solid_fill_live() && !dabs.is_empty() {
-            self.peel_drag_preview();
+            // Na aguada a mancha sai só sob a janela de escrita deste lote (`watercolor_solido`).
+            match self.dab_batch_region(dabs) {
+                Some(r) if self.watercolor_render_active() && !self.wash.mancha_inteira => {
+                    self.descasca_a_mancha_sob(r);
+                }
+                _ => self.peel_drag_preview(),
+            }
             // ⚠️ **O caminho é gravado ANTES do carimbo, e a ordem é a feature:** o preenchimento
             // deste quadro é o polígono da tinta deste quadro.
             self.note_ink_path(dabs);

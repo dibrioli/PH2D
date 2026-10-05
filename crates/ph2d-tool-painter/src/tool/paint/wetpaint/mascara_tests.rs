@@ -244,3 +244,54 @@ fn a_mancha_tem_o_corpo_do_traco() {
         );
     }
 }
+
+/// SONDA (relógio) — o report do dono, 2026-10-05: *«ficou lento numa mancha de 1000px»*. Os três
+/// momentos de um laço de 1000 px numa tela de 2048²: o gesto, o pen-up e a água depois dele.
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_a_mancha_de_1000px -- --ignored --nocapture`
+#[test]
+#[ignore = "diagnóstico de relógio"]
+fn diag_a_mancha_de_1000px() {
+    const L: u32 = 4096;
+    let pt = |i: usize| {
+        #[allow(clippy::cast_precision_loss)]
+        let a = i as f32 / 120.0 * std::f32::consts::TAU;
+        [2048.0 + 500.0 * a.cos(), 2048.0 + 500.0 * a.sin()]
+    };
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!("loadavg {}", carga.trim());
+    for rodada in 0..3 {
+        for solid in [rodada % 2 == 0, rodada % 2 != 0] {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (L * L * 4) as usize], L, L);
+            t.paint.brush.radius_px = 20.0;
+            t.paint.brush.color = [0.1, 0.2, 0.8];
+            t.set_paint_tool_mode("wetpaint");
+            t.paint.brush.style_solid = solid;
+            t.on_canvas_pointer(cp(pt(0), PointerPhase::Down));
+            let (mut pior, t0) = (0.0f64, std::time::Instant::now());
+            for i in 1..=120 {
+                let q = std::time::Instant::now();
+                t.on_canvas_pointer(cp(pt(i), PointerPhase::Move));
+                t.paint_tick(1.0 / 60.0);
+                pior = pior.max(q.elapsed().as_secs_f64() * 1e3);
+            }
+            let gesto = t0.elapsed().as_secs_f64() * 1e3 / 120.0;
+            let q = std::time::Instant::now();
+            t.on_canvas_pointer(cp(pt(120), PointerPhase::Up));
+            let soltar = q.elapsed().as_secs_f64() * 1e3;
+            // A água depois: o PASSO da sim (síncrono — o worker esconde-o do quadro, mas a cadência
+            // visual da água É a taxa de passos: acima de 25 ms ela anda em câmara lenta).
+            let mut passos = Vec::new();
+            for _ in 0..12 {
+                let q = std::time::Instant::now();
+                t.wet_step_sync(1);
+                passos.push(q.elapsed().as_secs_f64() * 1e3);
+            }
+            passos.sort_by(f64::total_cmp);
+            eprintln!(
+                "rodada {rodada} solid {solid:<5}: gesto {gesto:>7.3} ms/quadro (pior {pior:>7.3}) · soltar {soltar:>8.3} ms · passo da água mín {:>7.3} med {:>7.3} ms",
+                passos[0], passos[6]
+            );
+        }
+    }
+}

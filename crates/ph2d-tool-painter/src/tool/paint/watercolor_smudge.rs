@@ -269,7 +269,7 @@ impl PainterTool {
         let y0 = miny.floor().max(0.0) as u32;
         let x1 = (maxx.ceil() as i64).clamp(0, i64::from(w)) as u32;
         let y1 = (maxy.ceil() as i64).clamp(0, i64::from(h)) as u32;
-        (x1 > x0 && y1 > y0).then_some(Region {
+        (x1 > x0 && y1 > y0).then(|| Region {
             x: x0,
             y: y0,
             w: x1 - x0,

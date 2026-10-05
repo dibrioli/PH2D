@@ -20,6 +20,8 @@ impl PainterTool {
         if fw == 0 || fh == 0 || rect.w == 0 || rect.h == 0 {
             return;
         }
+        // Os fios caem sobre o papel SEM a mancha do Solid, como os dabs (`watercolor_solido`).
+        self.descasca_a_mancha_sob(rect);
         #[allow(clippy::cast_precision_loss)]
         let origin = [rect.x as f32, rect.y as f32];
         let alpha = threads_alpha(threads, ink, rect.w as usize, rect.h as usize, origin);

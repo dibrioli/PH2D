@@ -16,6 +16,7 @@
 | [3](#bug-3--a-escala-não-alcançava-o-collider) | **A escala não alcançava o collider** — o sprite crescia, o corpo não | `ph2d-physics-ecs` (`body_desc`) + `ph2d-physics` (`ShapeDesc`) + overlay | ✅ Resolvido (W6; smokada pelos gates) | 2026-07-19 |
 | [8](#bug-8--os-players-pulavam-e-andavam-sozinhos-e-a-física-estava-imóvel) | **Os players pulavam e andavam sozinhos** — e a física estava IMÓVEL | `shells/desktop` (o caminho da ENTRADA) | ✅ Resolvido (smoke aprovado) | 2026-08-12 |
 | [9](#bug-9--o-leque-de-sensores-driftava-do-corpo-e-a-geometria-estava-certa) | **O leque de sensores driftava do corpo** — e a geometria estava certa | `ph2d-physics-ecs` (a ÂNCORA da leitura) | ✅ Resolvido (smoke aprovado) | 2026-08-12 |
+| [10](#bug-10--na-2ª-vida-o-herói-andava-e-rodava-sozinho-e-nada-o-empurrava) | **Na 2.ª vida o herói andava e rodava sozinho** — e nada o empurrava | `ph2d-app-physics` (a GRAVAÇÃO da fita) | ✅ Resolvido (pendente smoke) | 2026-10-05 |
 
 **Anteriores, catalogados no tracker** (mesma classe — *a causa enganava* — mas escritos por wave,
 lá, e não repetidos aqui):
@@ -1166,3 +1167,53 @@ relativo a ele.
    gates ancorados no ENDEREÇO `player.rs` caíram quando duas funções se mudaram
    para o irmão; a cura é ler a **família** por uma porta única — *afirme a
    PROPRIEDADE, nunca o endereço*.
+
+---
+
+## Bug #10 — Na 2.ª vida o herói andava e rodava sozinho, e nada o empurrava
+
+**Sintoma** (Enio, 05/10, a arena `PH2D_VIDA_SMOKE=4`): *«o player rotaciona e se move solinho algumas
+vezes»*.
+
+### O que foi EXONERADO por medição
+
+A arena corrida pelo laço INTEIRO do jogo (relógios, fábricas, tabela de acções, a ponte, mortes e o
+recomeço — o arnês `Jogo` dos gates dela), `2 400` quadros sem tecla nenhuma, com `8` mordidas de morcego e
+um recomeço: o herói **nunca** mudou de sítio nem de rumo. Os morcegos e as balas têm empurrão `0`. ⇒ não era
+um empurrão, nem a física: era algo que só o app tem — e o arnês não tinha uma coisa que o app tem: a FITA,
+com o dedo de uma vida anterior.
+
+### A causa: a fita regravava só o tique ALVO
+
+`ph2d_app_physics::bridge::dispatch` gravava `tape.record(target, input)` — UM tique por quadro — e a ponte
+joga a fita em TODO tique devido (`take_taped_input`). Na 1.ª corrida isso é inofensivo: a fita estende, e o
+`record` preenche o vão com a última entrada. Mas o recomeço volta o relógio a zero e a corrida continua: a
+2.ª vida é gravada **por cima** da 1.ª, e um quadro que deve DOIS tiques (um quadro mais lento) regravava só o
+alvo — o tique do meio ficava com o dedo da vida anterior, e a ponte jogava-o. ⇒ um passo da vida anterior, e,
+com `RotationMode::ToMovement`, o herói a virar-se para ele. Esporádico porque só morde os quadros que devem
+mais de um tique; o mesmo vale para um loop ou um scrub para trás seguido de play.
+
+⚠️ **E o comentário ao lado afirmava a cura que não existia:** *«o `record` preenche o vão com a última
+entrada exatamente por isso»* — verdade só quando a fita CRESCE. O comentário era parte do bug (corrigido com
+ele).
+
+### A cura
+
+Gravar o dedo de agora em TODO tique devido (`last_stepped + 1 ..= target`) — é o que o dispatch aplica a
+todos eles (segurar uma tecla), e a fita passa a dizer o mesmo.
+
+### Gate que fecha este bug
+
+`tape_second_life_tests::na_segunda_vida_sem_tecla_o_heroi_nao_anda_nem_roda` (`ph2d-app-physics`, pela porta
+do produto): a 1.ª vida anda 2 s, o relógio volta ao zero como no recomeço, e a 2.ª vida, sem tecla e com um
+quadro em cada três a dever dois tiques, fica PARADA. Vermelho antes da cura (`(0,057; 0,034) m` e `0,21 rad`
+num tique); CONTROLOS: um tique por quadro, e a fita esquecida no recomeço.
+
+### Lições
+
+1. **Irmão do Bug #8** (os players que andavam sozinhos por um acorde lido como tecla): *«anda sozinho» é,
+   duas vezes em dois, uma ENTRADA que ninguém deu* — procure quem escreve o dedo antes de suspeitar da física.
+2. **Uma estrutura que se REGRAVA tem de ser escrita por inteiro**: o que é verdade ao estender (o vão
+   preenchido) não é ao sobrescrever. O gate tem de ter as DUAS corridas.
+3. **O arnês sem a fita não podia ver o defeito** — *um arnês que não corre o que o quadro corre não afirma
+   nada sobre o quadro*; a sonda negativa foi o que mandou procurar o que faltava nele.

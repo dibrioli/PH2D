@@ -31,7 +31,9 @@ memória de corrida, vai no anel e não no projeto). Prova: `git diff --name-onl
 | `ph2d-navmesh/src/tiles.rs` | `TiledMesh::assinatura()` (o CONTEÚDO: os mosaicos e a assinatura de cada um) |
 | `ph2d-physics-ecs/src/bridge/nav.rs` · `nav_fila.rs` · `nav_malha.rs` · `tape.rs` · `Cargo.toml` | o passo em paralelo (`PROCURAS_EM_PARALELO = 16`); a vez; «mudou» pelo conteúdo; **`ControllerMemory` ganha `nav_sinais`** (o anel); `set_nav_slices` · `set_nav_parallel` · `nav_search_work` · `nav_search_critical_work` |
 | testes | `ph2d-navmesh` `tests/it/fatias.rs` **NOVO** (+ `dominancia::cena` passa a `pub(super)`) · `ph2d-physics-ecs` `tests/it/nav_fatias.rs` **NOVO**, `nav_mundo.rs`, `nav_nascer.rs` |
-| docs | plano 30 §23; **ADR-0180** (o `rayon` na ponte); `ferramentas/mutacao_navegacao_w15_2026-10-05.py`; `examples/medir_replaneio.rs` (as versões no mesmo processo) |
+| `ph2d-app-physics/src/bridge/dispatch.rs` · `tape_second_life_tests.rs` **NOVO** | (§4b) a fita grava todo tique devido |
+| `ph2d-nav/src/agent.rs` (`AgentConfig::radius`, `alcance_de_atalho`) · `ph2d-app-components/src/nav_smoke_lava_tests.rs` | (§4b) a entrada de um atalho a um raio |
+| docs | plano 30 §23–§24; `docs/Physics/BUGS_physics.md` Bug #10; **ADR-0180** (o `rayon` na ponte); `ferramentas/mutacao_navegacao_w15_2026-10-05.py`; `examples/medir_replaneio.rs` (as versões no mesmo processo) |
 
 ### ⚠️ O que um merge pode partir
 
@@ -91,6 +93,20 @@ corrida não viu. Agora «mudou» é o conteúdo contra a assinatura que o anel 
   novos), e um observador faltava (a dominância).
 - **A medição** (`medir_replaneio`, a régua do dono de 05/10): as versões no MESMO processo (`set_nav_slices`,
   `set_nav_parallel`), 7 rodadas intercaladas com a ordem rodada, o mínimo e a mediana, uma compilação `smoke`.
+
+## §4b — Os dois reports do smoke do dono (05/10), curados na mesma linha
+
+1. **Cena `=4`: dois inimigos iguais presos no mesmo portal** (pré-existente, W5 + W7 — igual com as fatias
+   desligadas). O teletransporte disparava no CENTRO do agente; dois corpos encostados um de cada lado do
+   ponto nunca lá chegavam. Cura: a entrada de um atalho alcança-se quando fica DENTRO do corpo
+   (`ph2d_nav::agent::alcance_de_atalho`; **`AgentConfig` ganha `radius`** — quem o constrói por campos tem
+   de o pôr; `0` = o comportamento de antes). Plano 30 §24 (a tabela do limiar), gate
+   `dois_inimigos_iguais_pelo_mesmo_portal_nao_se_prendem`, três mutações à mão a sangrar.
+2. **Cena VIDA `=4`: na 2.ª vida o herói andava e rodava sozinho** (pré-existente, a fita da W7/W17). A
+   gravação regravava só o tique ALVO de cada quadro; depois do recomeço, num quadro que devia dois tiques, o
+   do meio ficava com o dedo da vida anterior. Cura: gravar todo tique devido
+   (`ph2d-app-physics/src/bridge/dispatch.rs` — ⚠️ **ficheiro da família da Física**, tocado por esta linha).
+   `docs/Physics/BUGS_physics.md` **Bug #10**, gate `na_segunda_vida_sem_tecla_o_heroi_nao_anda_nem_roda`.
 
 ## §5 — O smoke
 

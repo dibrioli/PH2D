@@ -1774,3 +1774,35 @@ separe pede duas portas com mudanças em zonas diferentes entre o âncora, o ago
 - A barreira larga e lenta (§22.6) e a dominância da ponderada (§22.4), como estavam.
 - Com a fila cheia, as procuras novas de quem replaneia por motivo próprio esperam um tique pela vez — um
   perseguidor numa cena de stress segue o alvo com um tique de atraso a mais.
+
+## §24 — Report do dono (05/10): dois inimigos iguais presos no mesmo portal
+
+**O sintoma** (cena `=4`): *«dois inimigos configurados igual, ao tentarem usar o teletransporte, se impedem
+e ficam parados — não tem a inteligência de ceder ou empurrar»*.
+
+**A reprodução, pela cena real** (`nav_smoke::montar(…, 4)`, o cinzento com *Avoid Harm* ligado e a nascer em
+`20` sítios à esquerda): `5` presos PARA SEMPRE, os dois encostados (`0,70 m` = os dois raios) um de cada lado do
+portal, a `0,31` e a `0,47 m` dele. Igual com as fatias da W15 desligadas — o defeito é da W5 + W7.
+
+**O mecanismo:** o teletransporte disparava quando o CENTRO do agente chegava ao ponto da entrada (a
+`velocidade · dt`, `~4 cm`); para lá chegar, cada um teria de se sobrepor ao outro, e o desvio — simétrico —
+não deixa nenhum. Nenhum gate tinha DOIS agentes no mesmo atalho (os da W7 e os da cena têm um).
+
+**A cura** (`ph2d_nav::agent::alcance_de_atalho`): a entrada de um atalho alcança-se quando fica DENTRO do corpo
+(a um raio); `AgentConfig::radius` (a ponte dá-lhe o raio do corpo). Um canto continua no passo do executor
+(Q5). Medido sobre `135` nascimentos (`--release`):
+
+| alcance | presos |
+|---|---|
+| o ponto (antes) | `44` |
+| `0,5` raio | `1` |
+| `0,75` raio | `0` |
+| **`1` raio** | **`0`** |
+| `2` raios | `0` |
+
+Fica UM: o limiar com folga, e o que a palavra diz (o corpo está em cima do portal). ⛔ Recusado: dois raios —
+o argumento geométrico que o sustentava não se aguentava, e a medição não o distingue de um.
+
+**A prova:** gate `dois_inimigos_iguais_pelo_mesmo_portal_nao_se_prendem` (`nav_smoke_lava_tests.rs`: `40`
+nascimentos, a fixtura exige os DOIS pelo portal em `≥ 8`), vermelho antes da cura; mutações à mão — o alcance no
+ponto, a meio raio (o nascimento `(-2, -1,5)` prende), e a ponte sem o raio — sangram as três.

@@ -131,6 +131,17 @@ const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
     //
     // ⇒ e é exactamente por isso que a metade de obsolescência existe: ela acusou a linha no mesmo
     // dia, e sem ela a catraca guardaria para sempre uma nota que já não descreve nada.
+    //
+    // ⚠️ **E VOLTOU em 2026-10-05 (`line/poda-3d`, ADR-0179):** o gizmo de navegação era 3D e saiu
+    // com o módulo — e com ele o `CHROME_BACKDROPS`, o único consumidor POSITIVO. O que fica é o
+    // efeito de 08/30, por AUSÊNCIA, e a prova dele é outro gate.
+    (
+        "MENUBAR_BACKDROP",
+        "TERMINA POR AUSENCIA: o efeito de o registar e' ENGOLIR o clique sobre a barra de menus \
+         (sem ele 86,9 % da barra deixava o ponteiro passar para a arte). Provado por \
+         `both_bars_swallow_every_pixel_they_paint`, que sangra se o `hit_index.register` sair. O \
+         consumidor positivo (o gizmo 3D, via `CHROME_BACKDROPS`) saiu com o 3D (ADR-0179).",
+    ),
     (
         "PAINTER_BRUSH_STROKE_SAVE_OBJECT",
         "MORTO POR DECISAO, declarado no fonte: `paint_stroke.rs` diz *\"clicking it is a \

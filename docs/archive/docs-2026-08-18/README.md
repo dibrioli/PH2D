@@ -11,8 +11,8 @@
 | arquivo (história, verbatim) | tamanho | o doc VIVO de onde saiu |
 |---|---:|---|
 | [`Painter/28_otimizacoes_o_que_funcionou.md`](Painter/28_otimizacoes_o_que_funcionou.md) | 391 KB | [`28_otimizacoes_o_que_funcionou.md`](../../Painter/28_otimizacoes_o_que_funcionou.md) |
-| [`3D/06.1-Waves-riscos-e-alvos.md`](3D/06.1-Waves-riscos-e-alvos.md) | 199 KB | [`06.1-Waves-riscos-e-alvos.md`](../../3D/06-Plano/06.1-Waves-riscos-e-alvos.md) |
-| [`3D/21_plano_modos_e_ferramentas.md`](3D/21_plano_modos_e_ferramentas.md) | 187 KB | [`21_plano_modos_e_ferramentas.md`](../../3D/21_plano_modos_e_ferramentas.md) |
+| [`3D/06.1-Waves-riscos-e-alvos.md`](3D/06.1-Waves-riscos-e-alvos.md) | 199 KB | — |
+| [`3D/21_plano_modos_e_ferramentas.md`](3D/21_plano_modos_e_ferramentas.md) | 187 KB | — |
 | [`Physics/00_plano_waves.md`](Physics/00_plano_waves.md) | 146 KB | [`00_plano_waves.md`](../../Physics/00_plano_waves.md) |
 | [`Painter/BUGS_painter.md`](Painter/BUGS_painter.md) | 131 KB | [`BUGS_painter.md`](../../Painter/BUGS_painter.md) |
 | [`Vector Module/README.md`](Vector%20Module/README.md) | 105 KB | — |

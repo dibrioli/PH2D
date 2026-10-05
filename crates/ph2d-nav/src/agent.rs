@@ -322,11 +322,8 @@ pub fn step_in_turn(
             (pronto, rt.last_work) = (Some(r), w);
             vez.gasto = vez.gasto.saturating_add(w);
         } else {
-            match Plano::begin(mesh, std::mem::take(search), q, pos, t) {
-                Err((r, s)) => {
-                    *search = s;
-                    (pronto, rt.last_work) = (Some(r), 0);
-                }
+            match Plano::begin(mesh, search, q, pos, t) {
+                Err(r) => (pronto, rt.last_work) = (Some(r), 0),
                 Ok(p) => {
                     // A procura abre-se já (o que não custa nada acaba aqui); sem a vez dele, a fila
                     // deve-lha, e ele anda o que tem.
@@ -510,10 +507,11 @@ pub fn advance_mid(
         return (None, 0);
     };
     if plano.is_none() {
-        match Plano::begin(mesh, Polyanya::new(), q, a.pos, a.alvo) {
-            Err((r, s)) => {
+        let mut novos = Polyanya::new();
+        match Plano::begin(mesh, &mut novos, q, a.pos, a.alvo) {
+            Err(r) => {
                 rt.a_meio = None;
-                return (Some((r, s)), 0);
+                return (Some((r, novos)), 0);
             }
             Ok(mut p) => {
                 // Até ao MESMO `pop`: o primeiro em que o trabalho passou `trabalho − 1`.

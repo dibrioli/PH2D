@@ -227,6 +227,32 @@ impl PhysicsBridge {
             .collect()
     }
 
+    /// (W15) O CONTROLO da sonda e dos gates: `false` desliga a vez e as fatias — toda procura corre
+    /// inteira no tique em que é pedida (só a fila da malha que muda espera). Por omissão, ligadas.
+    pub fn set_nav_slices(&mut self, on: bool) {
+        self.nav.fatias = on;
+    }
+
+    /// (W15) A sonda: quantas procuras a meio avançam em paralelo num tique (`0` = nenhuma: só a
+    /// condução as avança, em série).
+    pub fn set_nav_parallel(&mut self, n: usize) {
+        self.nav.paralelas = n;
+    }
+
+    /// (W15) O trabalho de procura ([`ph2d_nav::Stats::work`]) gasto no último tique, todo.
+    #[must_use]
+    pub fn nav_search_work(&self) -> u64 {
+        self.nav.gasto
+    }
+
+    /// (W15) O do caminho CRÍTICO do último tique: a maior fatia das procuras em paralelo mais o que a
+    /// condução gastou em série — o que o relógio paga com núcleos que cheguem (o orçamento, mais um
+    /// `pop`).
+    #[must_use]
+    pub fn nav_search_critical_work(&self) -> u64 {
+        self.nav.critico
+    }
+
     /// A sonda e o CONTROLO dos gates: outro orçamento de trabalho por tique (`u64::MAX` = todos no tique,
     /// o comportamento antes da fila).
     pub fn set_nav_replan_budget(&mut self, nos: u64) {

@@ -38,29 +38,31 @@ enum Etapa {
 }
 
 impl Plano {
-    /// Começa a procura do caminho de `pos` até `t`. `Err` = a resposta já, com os buffers de volta.
+    /// Começa a procura do caminho de `pos` até `t` com os buffers de `search` (o plano leva-os; uma
+    /// resposta já deixa-os lá).
     ///
     /// # Errors
     /// A resposta, quando nenhuma procura fica a meio.
     pub fn begin(
         mesh: &NavMesh,
-        mut search: Polyanya,
+        search: &mut Polyanya,
         q: &Query<'_>,
         pos: V2,
         t: V2,
-    ) -> Result<Self, (Planeado, Polyanya)> {
+    ) -> Result<Self, Planeado> {
         // Um agente empurrado para fora da malha volta pelo ponto mais perto dela.
         let Some(s) = mesh.nearest_point(pos, None) else {
-            return Err((None, search));
+            return Err(None);
         };
-        let emprestadas = std::mem::take(&mut search.stats);
+        let mut buffers = std::mem::take(search);
+        let emprestadas = std::mem::take(&mut buffers.stats);
         // (Um grafo sem atalhos é só o lugar da etapa até se saber qual é.)
         let sem_atalhos = Query {
             costs: q.costs,
             links: &[],
         };
         let mut plano = Self {
-            search,
+            search: buffers,
             emprestadas,
             pos,
             s,
@@ -76,7 +78,10 @@ impl Plano {
             return Ok(plano);
         }
         match plano.directo(mesh, q) {
-            Some(r) => Err((r, plano.into_search())),
+            Some(r) => {
+                *search = plano.into_search();
+                Err(r)
+            }
             None => Ok(plano),
         }
     }
@@ -163,11 +168,8 @@ pub(crate) fn plan(
     pos: V2,
     t: V2,
 ) -> (Planeado, u64) {
-    match Plano::begin(mesh, std::mem::take(search), q, pos, t) {
-        Err((r, s)) => {
-            *search = s;
-            (r, 0)
-        }
+    match Plano::begin(mesh, search, q, pos, t) {
+        Err(r) => (r, 0),
         Ok(mut p) => loop {
             if let Some(r) = p.run(mesh, q, u64::MAX) {
                 let w = p.trabalho();

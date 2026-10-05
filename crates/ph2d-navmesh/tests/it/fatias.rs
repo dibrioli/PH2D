@@ -8,7 +8,7 @@ use ph2d_nav::{Link, NavMesh, Planeado, Plano, Polyanya, Query, V2};
 use super::dominancia::cena;
 
 fn comeca(m: &NavMesh, q: &Query<'_>, a: V2, z: V2) -> Result<Plano, Planeado> {
-    Plano::begin(m, Polyanya::new(), q, a, z).map_err(|(r, _)| r)
+    Plano::begin(m, &mut Polyanya::new(), q, a, z)
 }
 
 fn ate_ao_fim(m: &NavMesh, q: &Query<'_>, p: &mut Plano) -> Planeado {

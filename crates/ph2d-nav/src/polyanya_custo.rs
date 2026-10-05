@@ -430,30 +430,15 @@ impl Polyanya {
         s: V2,
         t: V2,
     ) -> Result<Path, NoPath> {
-        self.stats.searches += 1;
-        let wmin = costs.iter().copied().fold(1.0, f64::min);
-        // (W14) Uma tabela toda a `1` (a da ponte sem lama é `[1.0]`) é uniforme sem varrer a malha.
-        let uniforme = costs.iter().all(|&c| c == 1.0)
-            || (0..mesh.poly_count() as u32).all(|p| cost_of(costs, mesh.area_id(p)) == wmin);
-        if uniforme {
-            return self.search(mesh, costs, s, t);
+        // (W15) A procura em fatias ([`super::fatias`]) sem tecto: uma só fatia.
+        match super::fatias::Custos::begin(self, mesh, costs, s, t) {
+            Err(r) => r,
+            Ok(mut c) => loop {
+                if let Some(r) = c.run(self, mesh, costs, u64::MAX) {
+                    return r;
+                }
+            },
         }
-        let p0 = self.search(mesh, &[], s, t)?;
-        let c0 = crate::cost::path_cost(mesh, costs, &p0.points).unwrap_or(f64::INFINITY);
-        let geral = Path {
-            cost: c0,
-            ..p0.clone()
-        };
-        if c0 <= wmin * p0.length * (1.0 + 1e-12) + EPS {
-            return Ok(geral);
-        }
-        self.dominancia = !self.sem_dominancia;
-        let ponderado = self.search(mesh, costs, s, t);
-        self.dominancia = false;
-        Ok(match ponderado {
-            Ok(p) if p.cost < c0 => p,
-            _ => geral,
-        })
     }
 
     /// O custo da área do polígono `p` nesta consulta.

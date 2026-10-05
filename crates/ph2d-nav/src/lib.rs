@@ -25,6 +25,7 @@ pub mod geom;
 mod grelha;
 pub mod link;
 pub mod mesh;
+pub mod plano;
 pub mod polyanya;
 pub mod refresh;
 
@@ -36,6 +37,7 @@ pub use blocos::{FaixaDeParedes, MalhaPorBlocos, Peca};
 pub use geom::V2;
 pub use link::{Hop, Link, Query};
 pub use mesh::{MeshError, NavMesh, Poly};
+pub use plano::{Planeado, Plano};
 pub use polyanya::{NoPath, Path, Polyanya, Stats};
 
 #[cfg(test)]

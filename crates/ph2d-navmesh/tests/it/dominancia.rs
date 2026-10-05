@@ -36,7 +36,7 @@ fn caixa(r: &mut Lcg, c: V2, hmin: f64, hmax: f64) -> Shape {
 }
 
 /// A cena `30 × 20` da sonda: 10 obstáculos e 4 lamas (ids `1..=4`).
-fn cena(seed: u64) -> NavMesh {
+pub(super) fn cena(seed: u64) -> NavMesh {
     let (w, h) = (30.0, 20.0);
     let mut r = Lcg(seed);
     let obs: Vec<Shape> = (0..10)

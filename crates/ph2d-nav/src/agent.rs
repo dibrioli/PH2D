@@ -20,9 +20,10 @@
 //! está lá. Quem pinta o estado lê [`AgentRuntime::status`].
 
 use crate::geom::{EPS, V2, dist, dist_to_segment, scale, sub};
-use crate::link::{Hop, Query, plan_with_links};
+use crate::link::{Hop, Query};
 use crate::mesh::NavMesh;
-use crate::polyanya::{NoPath, Polyanya};
+use crate::plano::{Planeado, Plano, plan};
+use crate::polyanya::Polyanya;
 
 /// Os números de um agente — em METROS e segundos (o `Transform` já é metros).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -99,6 +100,70 @@ pub struct AgentRuntime {
     /// (W9) O trabalho da última procura ([`crate::Stats::work`], W14) — a estimativa do que a próxima
     /// custa.
     pub last_work: u64,
+    /// ⭐ (W15) A procura que este agente tem A MEIO (o estado dela fica na ponte, fora do anel).
+    pub a_meio: Option<AMeio>,
+    /// (W15) Quantas vezes SEGUIDAS a procura a meio recomeçou (com trabalho feito) porque as entradas
+    /// mudaram: cada uma DOBRA a fatia da seguinte ([`fatia_depois_de`]) — uma malha que nunca pára não
+    /// a deixa sem acabar, e o excesso cresce aos poucos.
+    pub recomecos: u32,
+}
+
+/// (W15) **A fatia de uma procura que já recomeçou `k` vezes seguidas:** `pode · 2^k`. ⚠️ Medido e
+/// recusado, nesta ordem (plano 30 §23.5): recomeçar INTEIRA ao 1.º recomeço (`47` procuras e `5,1 M` de
+/// trabalho num tique, a `50` agentes na lama — uma porta recomeça TODAS as procuras a meio daquela
+/// malha); e ao 3.º (picos de `150 000`: na cena de stress há procuras de `200–360 000`, que precisam de
+/// mais tiques do que a porta da sonda lhes dá).
+#[must_use]
+pub fn fatia_depois_de(pode: u64, recomecos: u32) -> u64 {
+    pode.saturating_mul(1u64.checked_shl(recomecos.min(63)).unwrap_or(u64::MAX))
+}
+
+/// ⭐ (W15) **Uma procura A MEIO, descrita** — o que entra no anel. Refazê-la desde o começo até ao
+/// mesmo `trabalho` dá o MESMO estado (plano 30 §23.2), com as mesmas entradas.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AMeio {
+    /// Onde o agente estava e onde estava o alvo quando ela começou.
+    pub pos: V2,
+    pub alvo: V2,
+    /// O trabalho já feito ([`Plano::trabalho`]).
+    pub trabalho: u64,
+    /// A assinatura das entradas com que começou ([`Vez::entradas`]).
+    pub entradas: u64,
+}
+
+/// ⭐ (W15) **A vez de procurar deste agente, NESTE tique** — o que a ponte lhe dá e o que ele gasta.
+#[derive(Debug)]
+pub struct Vez<'a> {
+    /// O trabalho que as procuras deste agente podem gastar agora ([`crate::Stats::work`]); `0` = não é a
+    /// vez dele (a fila deve-lha, e ele anda o caminho que tem); `u64::MAX` = sem tecto.
+    pub pode: u64,
+    /// O caminho em curso tem de ser refeito (a malha mudou debaixo dele, e a fila serviu-o).
+    pub refazer: bool,
+    /// A assinatura das entradas da procura (a malha, os custos, os atalhos): uma procura a meio de
+    /// outras entradas recomeça.
+    pub entradas: u64,
+    /// A procura a meio deste agente; `None` com [`AgentRuntime::a_meio`] posto (depois de um scrub)
+    /// refaz-se até ao mesmo ponto.
+    pub plano: &'a mut Option<Plano>,
+    /// A resposta da procura a meio, já acabada FORA da condução (a ponte avança-as em paralelo,
+    /// [`advance_mid`]).
+    pub pronto: Option<Planeado>,
+    /// Saída: o trabalho que as procuras gastaram nesta condução.
+    pub gasto: u64,
+}
+
+impl Vez<'_> {
+    /// Sem tecto: a procura inteira, no tique (a condução de antes da W15).
+    pub fn sem_tecto(plano: &mut Option<Plano>) -> Vez<'_> {
+        Vez {
+            pode: u64::MAX,
+            refazer: false,
+            entradas: 0,
+            plano,
+            pronto: None,
+            gasto: 0,
+        }
+    }
 }
 
 /// A resposta de um tique.
@@ -174,13 +239,35 @@ pub fn step_with(
     cfg: &AgentConfig,
     dt: f64,
 ) -> Steer {
+    let mut plano = None;
+    let mut vez = Vez::sem_tecto(&mut plano);
+    step_in_turn(rt, mesh, search, q, &mut vez, pos, target, cfg, dt)
+}
+
+/// ⭐⭐ (W15) [`step_with`] com a VEZ de procurar ([`Vez`]): a procura paga do orçamento do tique, pára
+/// a meio quando ele acaba e continua no tique seguinte; enquanto espera, o agente anda o caminho que
+/// tem (sem caminho, fica parado). Sem tecto é `step_with`, ao bit.
+#[allow(clippy::too_many_arguments)]
+pub fn step_in_turn(
+    rt: &mut AgentRuntime,
+    mesh: Option<&NavMesh>,
+    search: &mut Polyanya,
+    q: &Query<'_>,
+    vez: &mut Vez<'_>,
+    pos: V2,
+    target: Option<V2>,
+    cfg: &AgentConfig,
+    dt: f64,
+) -> Steer {
     let prev = rt.status;
     let Some(t) = target else {
         rt.forget_path();
+        larga(rt, vez);
         return halt(rt, prev, Status::Idle, None);
     };
     let Some(mesh) = mesh.filter(|m| m.poly_count() != 0) else {
         rt.forget_path();
+        larga(rt, vez);
         return halt(rt, prev, Status::NoPath, None);
     };
     // (W7) Longe do alvo mais que chegada + recálculo (a régua de «mudou o bastante» do Q6), a
@@ -189,6 +276,7 @@ pub fn step_with(
         rt.arrival_told = false;
     }
     if dist(pos, t) <= cfg.arrive_distance {
+        larga(rt, vez);
         return halt(rt, prev, Status::Arrived, None);
     }
 
@@ -207,7 +295,21 @@ pub fn step_with(
                 .is_some_and(|p| dist(p, t) > cfg.repath_distance));
     let stuck = cfg.stuck_after_s > 0.0 && rt.stuck_clock >= cfg.stuck_after_s;
     let mut stuck_event = None;
-    if rt.path.is_empty() || target_moved || off_corridor || stuck {
+    // (W15) Uma procura a meio de outras entradas recomeça — e a seguinte corre inteira.
+    if let Some(a) = rt.a_meio
+        && a.entradas != vez.entradas
+    {
+        larga(rt, vez);
+        // Só conta a que já tinha trabalho feito (a que ainda não começou não perdeu nada).
+        if a.trabalho > 0 {
+            rt.recomecos = rt.recomecos.saturating_add(1);
+        }
+    }
+    let quer = rt.path.is_empty() || target_moved || off_corridor || stuck || vez.refazer;
+    // ⚠️ Com uma procura a meio os motivos esperam por ela: o alvo que anda não a recomeça (acabaria
+    // nunca), e depois dela o recálculo do Q6 decide outra vez.
+    let mut pronto: Option<Planeado> = vez.pronto.take();
+    if pronto.is_none() && rt.a_meio.is_none() && quer {
         if stuck {
             stuck_event = Some(Event::Stuck);
         }
@@ -215,11 +317,42 @@ pub fn step_with(
         rt.best_remaining = f64::INFINITY;
         rt.searches += 1;
         rt.planned_for = Some(t);
+        if vez.pode == u64::MAX {
+            let (r, w) = plan(mesh, search, q, pos, t);
+            (pronto, rt.last_work) = (Some(r), w);
+            vez.gasto = vez.gasto.saturating_add(w);
+        } else {
+            match Plano::begin(mesh, std::mem::take(search), q, pos, t) {
+                Err((r, s)) => {
+                    *search = s;
+                    (pronto, rt.last_work) = (Some(r), 0);
+                }
+                Ok(p) => {
+                    // A procura abre-se já (o que não custa nada acaba aqui); sem a vez dele, a fila
+                    // deve-lha, e ele anda o que tem.
+                    *vez.plano = Some(p);
+                    rt.a_meio = Some(AMeio {
+                        pos,
+                        alvo: t,
+                        trabalho: 0,
+                        entradas: vez.entradas,
+                    });
+                    rt.owed = rt.owed.max(1);
+                }
+            }
+        }
+    }
+    if pronto.is_none() && rt.a_meio.is_some() && vez.pode > 0 {
+        let (r, w) = advance_mid(rt, mesh, q, vez.plano, vez.pode);
+        vez.gasto = vez.gasto.saturating_add(w);
+        if let Some((r, buffers)) = r {
+            *search = buffers;
+            pronto = Some(r);
+        }
+    }
+    if let Some(planeado) = pronto {
         // (W9) Um caminho novo, por qualquer motivo, salda a dívida da fila.
-        (rt.owed, rt.broken) = (0, false);
-        let antes = search.stats.work();
-        let planeado = plan(mesh, search, q, pos, t);
-        rt.last_work = search.stats.work() - antes;
+        (rt.owed, rt.broken, rt.recomecos) = (0, false, 0);
         match planeado {
             Some((path, hops, partial)) => {
                 rt.path = path;
@@ -234,6 +367,12 @@ pub fn step_with(
                 return halt(rt, prev, Status::NoPath, stuck_event);
             }
         }
+    } else if rt.path.is_empty() {
+        // À espera do 1.º caminho: parado, no estado em que estava.
+        return Steer {
+            event: stuck_event,
+            ..Steer::default()
+        };
     }
 
     // ── Avançar os pontos alcançados (Q5) — e os atalhos (W7) ─────────────────
@@ -351,44 +490,65 @@ fn transition(prev: Status, s: Status) -> Option<Event> {
     }
 }
 
-/// O caminho de `pos` até `t` (ou até ao ponto alcançável mais perto dele, `partial = true`), e os
-/// atalhos dele. `None` só quando não há caminho nenhum.
-fn plan(
+/// (W15) Esquece a procura a meio (o agente chegou, ficou sem alvo ou sem malha, ou as entradas mudaram).
+fn larga(rt: &mut AgentRuntime, vez: &mut Vez<'_>) {
+    rt.a_meio = None;
+    *vez.plano = None;
+}
+
+/// ⭐ (W15) **Avança a procura a meio de um agente** com `pode` de trabalho — refeita até ao mesmo ponto
+/// se `plano` está vazio (um scrub; o que ela refaz não conta). Devolve a resposta e os buffers, se ela
+/// acabou, e o trabalho gasto. Só toca o agente e o plano dele: a ponte corre várias em PARALELO.
+pub fn advance_mid(
+    rt: &mut AgentRuntime,
     mesh: &NavMesh,
-    search: &mut Polyanya,
     q: &Query<'_>,
-    pos: V2,
-    t: V2,
-) -> Option<(Vec<V2>, Vec<Hop>, bool)> {
-    // Um agente empurrado para fora da malha volta pelo ponto mais perto dela.
-    let (s, sp) = mesh.nearest_point(pos, None)?;
-    // (W7) Com atalhos, o alvo pode estar noutra ilha e ser alcançável (um teleporte liga-as): o
-    // grafo dos atalhos tenta o ponto mais perto dele em QUALQUER ilha; sem caminho, o de sempre.
-    if !q.links.is_empty()
-        && let Some((t_any, _)) = mesh.nearest_point(t, None)
-        && let Some((mut pts, mut hops, _)) = plan_with_links(mesh, search, q, s, t_any)
-    {
-        if dist(pts[0], pos) > EPS {
-            pts.insert(0, pos);
-            hops.iter_mut().for_each(|h| h.at += 1);
-        }
-        return Some((pts, hops, false));
-    }
-    let island = mesh.island(sp);
-    // ⚠️ «Parcial» quer dizer OUTRA ilha — o alvo fora da malha por estar encostado a uma parede está
-    // na mesma ilha (o ponto mais perto dele, em qualquer ilha, é desta).
-    let (_, tp_any) = mesh.nearest_point(t, None)?;
-    let partial = mesh.island(tp_any) != island;
-    let (t_in, _) = mesh.nearest_point(t, Some(island))?;
-    match search.find_path_costs(mesh, q.costs, s, t_in) {
-        Ok(p) => {
-            let mut pts = p.points;
-            if dist(pts[0], pos) > EPS {
-                pts.insert(0, pos);
+    plano: &mut Option<Plano>,
+    pode: u64,
+) -> (Option<(Planeado, Polyanya)>, u64) {
+    let Some(a) = rt.a_meio else {
+        return (None, 0);
+    };
+    if plano.is_none() {
+        match Plano::begin(mesh, Polyanya::new(), q, a.pos, a.alvo) {
+            Err((r, s)) => {
+                rt.a_meio = None;
+                return (Some((r, s)), 0);
             }
-            Some((pts, Vec::new(), partial))
+            Ok(mut p) => {
+                // Até ao MESMO `pop`: o primeiro em que o trabalho passou `trabalho − 1`.
+                if a.trabalho > 0
+                    && let Some(r) = p.run(mesh, q, a.trabalho - 1)
+                {
+                    rt.a_meio = None;
+                    rt.last_work = p.trabalho();
+                    return (Some((r, p.into_search())), 0);
+                }
+                *plano = Some(p);
+            }
         }
-        Err(NoPath::Unreachable | NoPath::StartOff | NoPath::TargetOff) => None,
+    }
+    let Some(p) = plano.as_mut() else {
+        return (None, 0);
+    };
+    let antes = p.trabalho();
+    let tecto = antes.saturating_add(fatia_depois_de(pode, rt.recomecos));
+    let r = p.run(mesh, q, tecto);
+    let gasto = p.trabalho() - antes;
+    match r {
+        Some(r) => {
+            rt.last_work = p.trabalho();
+            rt.a_meio = None;
+            let buffers = plano.take().map(Plano::into_search).unwrap_or_default();
+            (Some((r, buffers)), gasto)
+        }
+        None => {
+            if let Some(a) = rt.a_meio.as_mut() {
+                a.trabalho = p.trabalho();
+            }
+            rt.owed = rt.owed.max(1);
+            (None, gasto)
+        }
     }
 }
 

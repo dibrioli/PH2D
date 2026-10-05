@@ -9,9 +9,10 @@
 //!   não atravessa nada);
 //! - quem o tem PARTIDO entra à frente (continua a andar o que tem enquanto espera — um ou dois
 //!   tiques —, e o corpo não atravessa a parede: é a física);
-//! - cada tique serve a fila por ordem ([`serve`]) até um ORÇAMENTO de trabalho da procura (em nós
-//!   uniformes, [`crate::Stats::work`], W14; a estimativa de cada um é a última procura dele) — sempre
-//!   pelo menos um.
+//! - cada tique reparte um ORÇAMENTO de trabalho da procura pela fila, por ordem ([`reparte`]; em nós
+//!   uniformes, [`crate::Stats::work`], W14; a estimativa de cada um é a última procura dele). ⭐ (W15)
+//!   O último a caber leva o que sobra e a procura dele PÁRA a meio ([`crate::Plano`]) — continua no
+//!   tique seguinte, à frente: nenhuma procura passa o orçamento sozinha.
 //!
 //! ⚠️ **Determinismo:** nada aqui lê um relógio. A ordem é a da fila (partidos, quem espera há mais
 //! tiques, a ordem das entidades), a estimativa é uma contagem, e o estado (`owed`, `broken`,
@@ -72,31 +73,30 @@ pub struct Owed {
     pub work: u64,
 }
 
-/// Ordena a fila (os partidos primeiro, depois quem espera há mais tiques, depois o `id`) e devolve
-/// quantos da frente se servem neste tique com `budget` de trabalho — sempre pelo menos um, e nunca se salta
-/// à frente de quem não coube (um barato atrás de um caro esperaria para sempre se o caro cedesse).
-pub fn serve(fila: &mut [Owed], budget: u64) -> usize {
+/// Ordena a fila (os partidos primeiro, depois quem espera há mais tiques, depois o `id`) e reparte
+/// `budget` de trabalho pela frente dela: a cada um a estimativa dele (pelo menos `1`), e ao último o que
+/// sobra. A reserva de cada um, pela ordem da fila (`0` = não é a vez dele). Nunca se salta à frente de
+/// quem não coube (um barato atrás de um caro esperaria para sempre se o caro cedesse).
+pub fn reparte(fila: &mut [Owed], budget: u64) -> Vec<u64> {
     fila.sort_by(|a, b| {
         b.broken
             .cmp(&a.broken)
             .then(b.ticks.cmp(&a.ticks))
             .then(a.id.cmp(&b.id))
     });
-    let mut gasto = 0u64;
-    let mut n = 0;
-    for o in fila.iter() {
-        if n > 0 && gasto.saturating_add(o.work) > budget {
-            break;
-        }
-        gasto = gasto.saturating_add(o.work);
-        n += 1;
-    }
-    n
+    let mut resta = budget;
+    fila.iter()
+        .map(|o| {
+            let r = o.work.max(1).min(resta);
+            resta -= r;
+            r
+        })
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Owed, path_still_walkable, serve};
+    use super::{Owed, path_still_walkable, reparte};
     use crate::{AgentRuntime, NavMesh};
 
     /// Dois quadrados SEM ligação (um vão em `1 < x < 2`) e um caminho que os atravessa: partido —
@@ -147,20 +147,23 @@ mod tests {
     }
 
     #[test]
-    fn a_fila_serve_os_partidos_depois_os_mais_antigos_e_nunca_salta_a_frente() {
+    fn a_fila_reparte_pelos_partidos_depois_os_mais_antigos_e_nunca_salta_a_frente() {
         let mut f = [
             o(0, false, 1, 10),
             o(1, false, 3, 10),
             o(2, true, 1, 10),
             o(3, false, 3, 10),
         ];
-        assert_eq!(serve(&mut f, 25), 2);
+        assert_eq!(reparte(&mut f, 25), [10, 10, 5, 0]);
         assert_eq!(f.map(|x| x.id), [2, 1, 3, 0]);
-        // Sempre pelo menos um, mesmo acima do orçamento.
+        // Um caro acima do orçamento leva-o todo (a procura dele pára a meio).
         let mut g = [o(5, false, 1, 1_000)];
-        assert_eq!(serve(&mut g, 1), 1);
+        assert_eq!(reparte(&mut g, 7), [7]);
         // Um barato atrás de um caro que não coube espera (a ordem não salta).
         let mut h = [o(0, false, 2, 10), o(1, false, 2, 1_000), o(2, false, 1, 1)];
-        assert_eq!(serve(&mut h, 100), 1);
+        assert_eq!(reparte(&mut h, 100), [10, 90, 0]);
+        // Sem estimativa (ainda não procurou) vale `1`.
+        let mut z = [o(0, false, 1, 0), o(1, false, 1, 0)];
+        assert_eq!(reparte(&mut z, 5), [1, 1]);
     }
 }

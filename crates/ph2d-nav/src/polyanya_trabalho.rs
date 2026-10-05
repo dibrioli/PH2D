@@ -22,4 +22,19 @@ impl Stats {
         self.expanded
             + (OITAVOS_POR_PENDENTE * self.pending + OITAVOS_POR_FRENTE * self.compared) / 8
     }
+
+    /// (W15) Soma as contagens de `o` a estas (um plano devolve os buffers a quem os emprestou).
+    pub fn soma(&mut self, o: &Stats) {
+        self.searches += o.searches;
+        self.generated += o.generated;
+        self.expanded += o.expanded;
+        self.turns += o.turns;
+        self.pruned_turns += o.pruned_turns;
+        self.refractions += o.refractions;
+        self.pruned_refractions += o.pruned_refractions;
+        self.dominated += o.dominated;
+        self.trimmed += o.trimmed;
+        self.pending += o.pending;
+        self.compared += o.compared;
+    }
 }

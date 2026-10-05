@@ -8,5 +8,6 @@ mod contra_o_exacto;
 mod custo;
 mod determinismo;
 mod dominancia;
+mod fatias;
 mod mosaicos;
 mod oraculo_do_godot;

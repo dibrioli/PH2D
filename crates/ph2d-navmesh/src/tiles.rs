@@ -89,6 +89,8 @@ pub struct TiledMesh {
     refeitos: Option<Vec<(i64, i64)>>,
     /// (W11) Sobe a cada mudança da malha — ver [`Self::versao`].
     versao: u64,
+    /// (W15) A assinatura do CONTEÚDO — ver [`Self::assinatura`].
+    conteudo: Option<u64>,
 }
 
 impl TiledMesh {
@@ -106,6 +108,7 @@ impl TiledMesh {
             stats: TileStats::default(),
             refeitos: None,
             versao: 0,
+            conteudo: None,
         }
     }
 
@@ -126,6 +129,14 @@ impl TiledMesh {
     #[must_use]
     pub fn versao(&self) -> u64 {
         self.versao
+    }
+
+    /// ⭐ (W15) **A assinatura do que a malha É**: os mosaicos e a assinatura do que construiu cada um
+    /// (`None` antes da 1.ª actualização). Duas malhas com a mesma são a mesma, ao bit — ao contrário da
+    /// versão, que conta mudanças e depende da história (plano 30 §23.2).
+    #[must_use]
+    pub fn assinatura(&self) -> Option<u64> {
+        self.conteudo
     }
 
     /// O que a última actualização fez.
@@ -279,6 +290,13 @@ impl TiledMesh {
             self.blocos.tira(k);
         }
         self.mosaicos = novos;
+        let mut h = Fnv::new();
+        for (&(x, y), m) in &self.mosaicos {
+            h.u64(x as u64);
+            h.u64(y as u64);
+            h.u64(m.sig);
+        }
+        self.conteudo = Some(h.0);
         if mudou {
             self.mesh = self.blocos.monta().unwrap_or_else(|_| vazia());
             self.versao += 1;

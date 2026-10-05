@@ -59,6 +59,8 @@ use crate::mesh::NavMesh;
 mod custo;
 #[path = "polyanya_dominancia.rs"]
 mod dominancia;
+#[path = "polyanya_fatias.rs"]
+pub(crate) mod fatias;
 #[path = "polyanya_trabalho.rs"]
 mod trabalho;
 
@@ -163,6 +165,8 @@ pub struct Polyanya {
     root_g: Vec<f64>,
     touched: Vec<u32>,
     target_polys: Vec<u32>,
+    /// O alvo da procura em curso (W15: uma procura em fatias continua noutra chamada).
+    alvo: V2,
     seq: u64,
     /// (W7) A tabela de custos desta consulta, o menor deles (o heurístico escala por ele) e as
     /// podas das raízes de fronteira — ver `polyanya_custo.rs`.
@@ -210,92 +214,6 @@ impl Polyanya {
     /// O caminho mais curto de `s` a `t`, os dois DENTRO da malha (fechada).
     pub fn find_path(&mut self, mesh: &NavMesh, s: V2, t: V2) -> Result<Path, NoPath> {
         self.find_path_costs(mesh, &[], s, t)
-    }
-
-    /// A procura (uniforme quando `costs` não distingue nada).
-    fn search(&mut self, mesh: &NavMesh, costs: &[f64], s: V2, t: V2) -> Result<Path, NoPath> {
-        self.reset(mesh);
-        self.costs.clear();
-        self.costs.extend_from_slice(costs);
-        self.wmin = costs.iter().copied().fold(1.0, f64::min);
-        let mut ps = Vec::new();
-        mesh.locate_all(s, &mut ps);
-        if ps.is_empty() {
-            return Err(NoPath::StartOff);
-        }
-        mesh.locate_all(t, &mut self.target_polys);
-        if self.target_polys.is_empty() {
-            return Err(NoPath::TargetOff);
-        }
-        // No mesmo polígono: a direito (convexo), ao custo do mais barato que tem os dois. ⚠️ (W7) Só
-        // é a resposta se nenhuma área custa MENOS: dentro da lama, sair e contornar pode ser mais
-        // barato (medido) — então a recta é uma candidata no heap, como qualquer outra.
-        let directo = ps
-            .iter()
-            .filter(|p| self.target_polys.binary_search(p).is_ok())
-            .map(|&p| self.cost(mesh, p))
-            .reduce(f64::min);
-        if let Some(c) = directo
-            && c <= self.wmin
-        {
-            return Ok(Path {
-                points: vec![s, t],
-                length: dist(s, t),
-                cost: c * dist(s, t),
-            });
-        }
-        let same_island = directo.is_some()
-            || ps.iter().any(|&a| {
-                self.target_polys
-                    .iter()
-                    .any(|&b| mesh.island(a) == mesh.island(b))
-            });
-        if !same_island {
-            return Err(NoPath::Unreachable);
-        }
-
-        self.roots.push(Root {
-            p: s,
-            g: 0.0,
-            prev: NONE,
-            w_in: 0.0,
-            range: None,
-        });
-        if let Some(c) = directo {
-            self.push(
-                c * dist(s, t),
-                Node {
-                    root: 0,
-                    kind: Kind::Final { via: None },
-                    w: c,
-                },
-            );
-        }
-        for &p in &ps {
-            self.push_from_point(mesh, 0, p, None, t);
-        }
-        while let Some(Reverse((_, _, ni))) = self.open.pop() {
-            let node = self.nodes[ni as usize];
-            match node.kind {
-                Kind::Final { via } => {
-                    return Ok(self.reconstruct(mesh, node.root, via, node.w, t));
-                }
-                Kind::Interval {
-                    poly,
-                    entry,
-                    left,
-                    right,
-                } => {
-                    self.stats.expanded += 1;
-                    self.expand(mesh, node.root, poly, entry, left, right, node.w, t);
-                }
-                Kind::Pending { idx } => {
-                    self.stats.pending += 1;
-                    self.materialize(mesh, idx, t);
-                }
-            }
-        }
-        Err(NoPath::Unreachable)
     }
 
     fn push(&mut self, f: f64, node: Node) {

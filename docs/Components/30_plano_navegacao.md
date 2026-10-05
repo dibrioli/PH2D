@@ -1598,3 +1598,53 @@ cumprido**, e a medição separa os dois mecanismos — nenhum deles é a unidad
 **`7,5 ms`** com `100` (critério `≤ 16` ✓); uma porta `1,06` · `1,69 ms`; uma lama a mexer `2,24`. O desvio a
 `1 000` agentes **`0,659 ms`** por tique, a vizinhança **`0,477 ms`** (critério `≤ 0,6` ✓); a `100`, `0,057` (era
 `0,067` na W5 ✓).
+
+## §23 — W15 (2026-10-05): o tique depois da porta, com lama — toda procura paga do orçamento, e a procura em FATIAS
+
+O aberto do §22.8, nos dois mecanismos que a medição separou, e um defeito de determinismo da mesma família
+achado ao desenhar a cura. Um bloco só (CLAUDE.md §0.10): os três decidem QUANDO e SOBRE QUE MALHA corre uma
+procura.
+
+### §23.1 — O que se mede e o que se achou
+
+- **A medição que abre** é a do §22.8 (calma, load `1,2–3,5`): com `150` lamas a peso 4, o pior tique depois
+  da porta `38,7 · 46,9 · 88,0 ms` (10 · 50 · 200 agentes) contra `3,1 · 3,9 · 6,8` sem lama; o CONTROLO com
+  lama e sem porta `0,9 · 32,9 · 61,1 ms`, com `1–7` procuras num tique. Re-mede-se no fecho com o binário de
+  antes e o de depois ALTERNADOS (`medir_replaneio`, que ganha a régua `falta` — o que falta andar em média a
+  cada agente no fim da corrida —, a régua de que a cura não os atrasa).
+- **⛔ Defeito achado (pré-existente, W9):** a fila decide «a malha mudou» pelo que o `TiledMesh` diz da última
+  actualização — e depois de um scrub as malhas são as do FIM da corrida, não as do âncora. Uma porta que muda
+  DEPOIS do âncora faz o replay ver uma mudança que a corrida não viu: a sonda
+  `sonda_scrub_com_a_porta_noutro_sitio` (a porta abre no tique 25, scrub para o 13 a partir do 60) devolve
+  `(procuras, dívida)` `[(1,4)×5, (2,0)×3]` contra `[(1,0)×8]` da corrida. O gate da W9 não o via: a porta
+  dele muda ANTES do âncora.
+
+### §23.2 — O desenho
+
+1. **«Mudou» é o CONTEÚDO contra o tique anterior DESTA corrida:** a assinatura das entradas de cada malha
+   (`TiledMesh::assinatura`) fica na ponte e entra no anel com a memória dos agentes; uma malha mudou quando a
+   assinatura de agora difere da guardada. Depois de um scrub, a zona do que mudou (`changed_area`) é relativa
+   a outra malha — essa chave percorre o caminho inteiro (`onde = None`).
+2. **Toda procura paga do orçamento do tique** — a da fila, a de quem nasce E a de quem replaneia por motivo
+   próprio (o alvo andou, saiu do corredor, preso). Quem não tem vez entra na fila (`owed`) e continua a andar o
+   caminho que tem; quem não tem caminho espera parado.
+3. **A procura em FATIAS** (a do Detour, `dtNavMeshQuery::updateSlicedFindPath`): uma procura que não cabe no
+   que resta do tique PÁRA entre dois `pop` do heap e continua no tique seguinte, com prioridade na fila. O
+   estado inteiro (heap, nós, raízes) fica na ponte, FORA do anel; no anel vai só a descrição
+   (`AgentRuntime::a_meio`: de onde, para onde, o trabalho já feito e a assinatura das entradas). Depois de um
+   scrub, a procura REFAZ-SE até ao mesmo trabalho — a mesma sequência de `pop`s, porque o trabalho cresce
+   estritamente a cada `pop` e a pausa só acontece depois de um. Entradas que mudam (a malha, os custos, os
+   atalhos) recomeçam-na; um recomeço deixa a seguinte correr inteira (vivacidade numa malha que nunca pára).
+   Sem tecto (`u64::MAX`) a procura é a de hoje, ao bit.
+
+### §23.3 — O kill-criterion (escrito ANTES do código)
+
+1. **Ao bit onde cabe:** com o orçamento que hoje não se esgota (todas as cenas pequenas dos gates), a condução
+   é a mesma — os gates da navegação passam sem mudar um número; os oráculos da `ph2d-nav` passam (a procura
+   síncrona é a mesma).
+2. **Determinismo:** um scrub para o MEIO de uma procura em fatias devolve a mesma corrida ao bit (gate), e a
+   sonda do §23.1 passa a gate e fica verde.
+3. **O tique:** com `150` lamas, o pior tique depois da porta fica `≤ 2×` o de sem lama em cada `N`, e o CONTROLO
+   com lama `≤ 2×` o de sem lama (`--release`, load `≤ 5`, antes e depois alternados).
+4. **Não atrasa:** a `falta` média com lama não sobe mais de `10 %` em nenhum `N`.
+Se (3) não se cumprir, as fatias não entram (recusa medida); (2) é inegociável.

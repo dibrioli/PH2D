@@ -130,8 +130,15 @@ Depois de `rm -rf target/*/incremental` (`11 G` do `debug` + `3,6 G` do `smoke`)
 
 ```
 ▸ linha line_components · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 3600s
-    Finished `smoke` profile [optimized] target(s) in 0.23s
+    Finished `smoke` profile [optimized] target(s) in 0.45s
 ```
+
+(Refeito depois das curas do §4b, de novo após `rm -rf target/*/incremental`; as cenas `=4` da navegação e da
+arena fotografadas outra vez — `target/prova/w15/*-curas.png`, `59–60 fps`. O gate batched sobre o diff
+acumulado: `nextest-impacted` `15 766 / 15 768`, os dois vermelhos são membros catalogados da família de flakes
+de carga — `the_cost_of_sampling_a_path_is_flat_in_its_anchors` e
+`the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas`, `FLAKES_DE_CARGA.md` — e passam sozinhos a load
+`35`; clippy `--workspace --all-targets -D warnings` limpo.)
 
 O perfil do laço do agente (`bash scripts/agent-loop-profile.sh`), no fecho:
 

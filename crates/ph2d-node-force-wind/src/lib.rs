@@ -27,7 +27,7 @@ use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-mod accum;
+use ph2d_node_kit::forca as accum;
 mod params_ui;
 use params_ui::{PARAM_GATES_ABOVE, PARAM_HARD_MAX, PARAM_HARD_MIN, PARAM_HINTS};
 mod noise;

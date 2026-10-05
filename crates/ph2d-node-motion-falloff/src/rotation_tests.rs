@@ -109,36 +109,31 @@ fn the_rect_turns_too() {
 /// seria a falha de duas portas na sua forma mais quieta: nada na tela diria qual
 /// está certo.
 ///
-/// ⚠️ **O gate é ESTRUTURAL, não numérico**, e é de propósito: a
-/// `cos_sin_cycles` do `field.box` é `pub(crate)`, e expô-la só para um teste
-/// abriria superfície pública para provar uma coisa que o TEXTO já diz. Aqui o
-/// `trig.rs` deste nó é comparado com o de lá, do qual foi copiado verbatim — um
-/// gate numérico ficaria verde com os dois a derivar juntos, este falha alto no
-/// dia em que alguém editar um só.
-///
-/// ⚠️ **E o repo tem 21 cópias deste arquivo.** Medido em 2026-08-12, os CORPOS
-/// são idênticos (só testes e docs diferem), então não há divergência hoje — há
-/// vinte e uma chances de uma. Unificá-las é wave própria; este gate pina o par
-/// que ESTE P0 tornou load-bearing.
+/// ⚠️ **O gate é ESTRUTURAL, não numérico**, e é de propósito: um gate numérico
+/// ficaria verde com duas cópias a derivar juntas. Desde o bug #11 o seno dos dois
+/// nós é UMA porta (`ph2d_node_kit::trig`) — o gate prende que os dois a importam e
+/// que nenhum volta a declarar um `trig` próprio (o que reabriria a cópia que se
+/// promete igual).
 #[test]
 fn the_angle_means_the_same_thing_as_the_field_box() {
-    fn body(src: &str) -> String {
-        // Só o código, e só até o módulo de testes (que difere de propósito).
-        let code = src.split("#[cfg(test)]").next().unwrap_or(src);
-        code.lines()
-            .map(str::trim)
-            .filter(|l| !l.is_empty() && !l.starts_with("//"))
-            .collect::<Vec<_>>()
-            .join("\n")
+    const PORTA: &str = "use ph2d_node_kit::trig;";
+    for (no, lib) in [
+        ("motion.falloff", include_str!("lib.rs")),
+        (
+            "field.box",
+            include_str!("../../ph2d-node-field-box/src/lib.rs"),
+        ),
+    ] {
+        assert!(
+            lib.lines().any(|l| l.trim() == PORTA),
+            "o `{no}` le o angulo pela porta partilhada (`{PORTA}`) -- \
+             um `30 graus` que significasse coisas diferentes nos dois nao teria sintoma"
+        );
+        assert!(
+            !lib.lines().any(|l| l.trim() == "mod trig;"),
+            "o `{no}` voltou a ter um `trig` proprio: a copia que o bug #11 fundiu"
+        );
     }
-    let ours = body(include_str!("trig.rs"));
-    let theirs = body(include_str!("../../ph2d-node-field-box/src/trig.rs"));
-    assert!(!ours.is_empty(), "o controle: o arquivo tem codigo");
-    assert_eq!(
-        ours, theirs,
-        "o `trig.rs` deste no e uma copia verbatim do do `field.box` -- \
-         um `30 graus` que significasse coisas diferentes nos dois nao teria sintoma"
-    );
 }
 
 /// **E o ÂNGULO chega pelo `eval` do nó, não só pela aritmética.**

@@ -29,7 +29,7 @@
 //! transcendental-free). Without it every particle born on the same tick dies on the same tick,
 //! and the population blinks instead of breathing.
 
-mod hash;
+use ph2d_node_kit::hash;
 
 use ph2d_node_registry::{
     NodeRegistry, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,

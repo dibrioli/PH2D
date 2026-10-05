@@ -11,6 +11,7 @@ authors.workspace = true
 
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-node-kit = { path = "../ph2d-node-kit" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 # ⚠️ A UMA gramática de expressão do repo (ADR-0144). Um L-System PARAMÉTRICO precisa
 # de aritmética nos argumentos do sucessor (`A(x*0.7)`) e de condições (`x > 0.1`), e

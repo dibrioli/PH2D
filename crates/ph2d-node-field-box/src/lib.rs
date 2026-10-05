@@ -48,8 +48,8 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod params_ui;
 use params_ui::{PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 mod mask;
-mod trig;
 use mask::box_mask;
+use ph2d_node_kit::trig;
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);

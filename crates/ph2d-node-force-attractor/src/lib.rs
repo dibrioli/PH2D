@@ -25,8 +25,8 @@ use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-mod accum;
 use accum::{add_accel, falloff_at, vec2_at, vec2_col};
+use ph2d_node_kit::forca as accum;
 mod profile;
 use profile::Profile;
 pub use profile::{INNER, PEAK, REVERSE};

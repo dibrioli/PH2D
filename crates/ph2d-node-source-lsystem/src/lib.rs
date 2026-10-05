@@ -68,7 +68,7 @@ mod derive;
 mod grammar;
 /// **A LEI DO CRESCIMENTO** — a remapagem do `Growth` e a razão que a ancora (HR-18).
 mod growth;
-mod hash;
+use ph2d_node_kit::hash;
 /// **OS NÚMEROS DO PAINEL** — o que o nó lê antes de fazer o que faz (HR-18).
 mod params;
 /// **OS MOLDES** — a tabela e o que cada um exige (HR-18).

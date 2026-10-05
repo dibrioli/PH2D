@@ -23,8 +23,8 @@ use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-mod accum;
 use accum::{add_accel, falloff_at, vec2_at};
+use ph2d_node_kit::forca as accum;
 
 /// **O ARRASTO ANISOTRÓPICO** (doc 89 folha 02 — o `Directional Scale` do POP Drag).
 ///

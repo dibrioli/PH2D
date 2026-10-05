@@ -74,7 +74,7 @@ mod life;
 pub use history::{INHERIT, MOTION, MOTION_LABELS, history_offsets, history_samples, time_fans};
 pub use life::LIFE_RANDOM;
 use life::life_of;
-mod hash;
+use ph2d_node_kit::hash;
 mod params_ui;
 /// A AGENDA — quando a emissão está ligada (TOP-20 #18).
 pub mod schedule;

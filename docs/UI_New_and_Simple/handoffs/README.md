@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**38 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **38** são handoffs (registro **morto**).
+**39 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **39** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -53,6 +53,7 @@
 | 2026-10-04 | ◆ | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-04 — PARA O `main` (o ponto de entrada único) |
 | 2026-10-05 |   | [HANDOFF_CONTINUACAO_line_UIUX_2026-10-05_OS_FUROS_DO_VETOR.md](HANDOFF_CONTINUACAO_line_UIUX_2026-10-05_OS_FUROS_DO_VETOR.md) | ⚠️ handoff (morto) | Continuação — `line/UIUX`, 2026-10-05 — os FUROS do Vector (Soldar · caneta no Edit · Shift no canvas · Width/… |
 | 2026-10-05 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-05_CADA_FORMA_E_UM_OBJECTO.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-05_CADA_FORMA_E_UM_OBJECTO.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-05 — cada forma é um objecto (o contentor `VecObject` sai) |
+| 2026-10-05 |   | [HANDOFF_INTEGRACAO_line_UIUX_2026-10-05_OS_FUROS_DO_VETOR.md](HANDOFF_INTEGRACAO_line_UIUX_2026-10-05_OS_FUROS_DO_VETOR.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/UIUX`, 2026-10-05 — os furos do Vector (o Edit é do TIPO) |
 
 ---
 

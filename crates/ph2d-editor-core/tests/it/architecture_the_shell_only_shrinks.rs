@@ -77,6 +77,11 @@ use std::path::{Path, PathBuf};
 /// limite para caber a separação.»* ⛔ **Não é precedente:** o que cresceu aqui é a FORMA do laço,
 /// não código de família; a cura de um crescimento continua a ser MOVER para a crate da família.
 ///
+/// **A PODA DO 3D** (05/10, `line/poda-3d`, ADR-0179): o modelador, a escultura e o Render3d saem do
+/// PH2D, e com eles a metade-shell das duas famílias (as fases do quadro, o anfitrião da escultura,
+/// os canais assados, ~30 gates) → **185 041** / 974 (de `196 867` / 1 021 no `b1a6f9b07`, `−11 826`
+/// linhas), medido depois do `cargo fmt`. O tecto é o medido mais a folga.
+///
 /// ⭐⭐⭐ **De 526 809 para 186 647 em dois dias — a shell tem 35 % do tamanho que tinha**, e a
 /// unidade de compilação que era o tecto do relógio deste repo deixou de o ser.
 ///
@@ -104,7 +109,7 @@ use std::path::{Path, PathBuf};
 /// ⛔ **Nenhuma LINHA lhe toca** — é um número que soma entre linhas, logo CONTA-SE, nunca se
 /// escolhe (`CLAUDE.md` §5.0): com cinco linhas a escrevê-lo o merge fica com um deles e nenhum
 /// está certo, em silêncio. Quem o reconta é o integrador, sobre a árvore combinada.
-const TETO_LOC: usize = 196_990;
+const TETO_LOC: usize = 189_041;
 
 /// Quanto a shell pode crescer acima do medido antes de o gate reprovar — a margem da raiz de
 /// composição, **não** espaço para um módulo.

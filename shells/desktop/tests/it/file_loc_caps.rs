@@ -29,13 +29,13 @@ const MARKER_WINDOW_LINES: usize = 20;
 const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
     (
         "app_state.rs",
-        976,
-        "a struct `App` sozinha são ~920 linhas; descer a 600 é reagrupar campos — o `AppGfx`, as ferramentas de imagem, os dispositivos e o `HeroLive` já saíram (`line/loc-caps`). ⭐ 1019 → 998 em 2026-09-14: os CINCO cursores do outbox de sinais viraram UMA struct (`line/components`). ⭐ E os CINCO da Remoção de fundo seguiram-nos em 2026-09-15 (`bgremoval_shell`, `line/Vector`) — o número combinado é MENOR que o de qualquer das duas linhas, e foi medido na integração",
+        931,
+        "a struct `App` sozinha são ~880 linhas; descer a 600 é reagrupar campos — o `AppGfx`, as ferramentas de imagem, os dispositivos e o `HeroLive` já saíram (`line/loc-caps`). ⭐ 1019 → 998 em 2026-09-14: os CINCO cursores do outbox de sinais viraram UMA struct (`line/components`). ⭐ E os CINCO da Remoção de fundo seguiram-nos em 2026-09-15 (`bgremoval_shell`, `line/Vector`) — o número combinado é MENOR que o de qualquer das duas linhas, e foi medido na integração. ⭐ 976 → 931 em 2026-10-05: os quatro campos da escultura e da doação de forma saíram com o 3D (`line/poda-3d`, ADR-0179)",
     ),
     (
         "main.rs",
-        1118,
-        "a raiz: 618 linhas de declarações de `mod` e aliases, que não saem sem mudar o caminho de cada módulo — os dispositivos, o undo de imagem e os testes do tema já saíram (`line/loc-caps`)",
+        1061,
+        "a raiz: ~600 linhas de declarações de `mod` e aliases, que não saem sem mudar o caminho de cada módulo — os dispositivos, o undo de imagem e os testes do tema já saíram (`line/loc-caps`). ⭐ 1118 → 1061 em 2026-10-05: os `mod` e os campos do 3D saíram com ele (`line/poda-3d`, ADR-0179)",
     ),
 ];
 

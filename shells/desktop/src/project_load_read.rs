@@ -109,8 +109,13 @@ impl crate::App {
                             m.cameras.tables,
                             m.cameras.unreadable
                         );
+                        let chave = if m.sculpture_left_out {
+                            "shell.project_load.project_migrated_from_128_without_sculpture"
+                        } else {
+                            "shell.project_load.project_migrated_from_128"
+                        };
                         self.toast(ph2d_i18n::tr_with(
-                            "shell.project_load.project_migrated_from_128",
+                            chave,
                             &[("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
                         ));
                         (m.file, None)
@@ -139,8 +144,13 @@ impl crate::App {
                             m.file.state.world.entities.len(),
                             split.sprites
                         );
+                        let chave = if m.sculpture_left_out {
+                            "shell.project_load.project_migrated_from_without_sculpture"
+                        } else {
+                            "shell.project_load.project_migrated_from"
+                        };
                         self.toast(ph2d_i18n::tr_with(
-                            "shell.project_load.project_migrated_from",
+                            chave,
                             &[("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
                         ));
                         (m.file, Some(m.stable_id_counter))

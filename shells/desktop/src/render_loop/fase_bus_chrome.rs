@@ -81,8 +81,8 @@ impl crate::App {
         None
     }
 
-    /// Os pedidos que esperam outro ponto do quadro: cancelar a ferramenta modal (ADR-0040 TG-C), o pill SCULPT, o
-    /// Undo da imagem e o Undo/Redo da barra.
+    /// Os pedidos que esperam outro ponto do quadro: cancelar a ferramenta modal (ADR-0040 TG-C), o Undo da imagem e
+    /// o Undo/Redo da barra.
     pub(super) fn fase_bus_tool_requests(
         &mut self,
         action: EditorAction,

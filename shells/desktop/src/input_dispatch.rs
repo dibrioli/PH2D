@@ -21,10 +21,6 @@
 //! items — so this `impl` block compiles without exposing any field
 //! visibility upstream.
 
-// ⭐ **W2: os ganchos de entrada da janela 3D são um trait de extensão sobre o `AppHost`.**
-// Os sítios de chamada abaixo ficaram **byte a byte iguais** — o que mudou foi só esta linha.
-use ph2d_app_field3d::input::Field3dInput;
-
 use winit::dpi::PhysicalPosition;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::event_loop::ActiveEventLoop;
@@ -56,8 +52,6 @@ mod keyboard_bind_capture;
 /// `keyboard`, cortado dele pelo cap de LOC. A ORDEM entre elas é a lei, e é por isso que
 /// viajam juntas em vez de por dono.
 mod keyboard_escapes;
-/// ⭐ As teclas do modelador 3D, numa porta só — ver [`keyboard_field3d`].
-mod keyboard_field3d;
 /// ⭐⭐⭐ **Que MODO é dono do teclado neste quadro** — irmão do `keyboard`, cortado dele pelo cap
 /// de LOC. *Um modo em curso é dono da entrada dele.*
 mod keyboard_modal;
@@ -281,16 +275,6 @@ impl App {
         // rola-a pelo mesmo caminho de todo painel — e nunca dá zoom no canvas por baixo dela.
         let over_panel =
             cursor_over_hero_panel(self.gfx.as_ref(), self.last_pointer.0, self.last_pointer.1);
-        // ADR-0150 W1/M2: fora de painel, a roda aproxima a câmera 3D. Um
-        // "passo" é uma linha de roda (os 16 px acima são a régua do zoom 2D).
-        #[cfg(feature = "sculpt3d")]
-        if !over_panel && self.sculpt3d_wheel(dy / 16.0) {
-            return;
-        }
-        // ADR-0161 W4: o mesmo para a janela 3D de modelagem.
-        if !over_panel && self.field3d_wheel(dy / 16.0) {
-            return;
-        }
         // **O ajuste modal do Gap Closure** (doc 06 §8): em modo Fill, Ctrl+roda sobre o
         // canvas ajusta o alcance — e os helpers no canvas mostram, ao vivo, quais vãos
         // o valor atual fecha (`flip_gap_live`). A roda CRUA continua sendo zoom
@@ -375,7 +359,7 @@ impl App {
         }
         self.ramo_arrasto_biblioteca(state, button);
         self.ramo_aperto_solta_teclado(state);
-        if self.ramo_navegacao_3d_e_ancora(state, button) {
+        if self.ramo_alca_da_ancora(state, button) {
             return;
         }
         let kind = match state {

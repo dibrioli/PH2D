@@ -105,8 +105,7 @@ impl crate::App {
         // **O PAINEL AUTORADO publica no MESMO outbox** — a ponte que faltava.
         //
         // ⚠️ Ela fecha DOIS defeitos de uma vez, e o menor deles é o vazamento: a fila de intents
-        // era a única do app sem ponte (physics, sculpt3d, tokens, motion e timeline todas
-        // drenam), então ela **crescia sem teto** com o painel aberto — um arrasto de slider
+        // era a única do app sem ponte (physics, tokens, motion e timeline todas drenam), então ela **crescia sem teto** com o painel aberto — um arrasto de slider
         // empurrava um intent com duas `String` por quadro. O maior é que **todo botão autorado
         // era um controle MORTO**: um aperto não tem valor no store, então este canal é o único
         // que o carrega, e ninguém o lia.

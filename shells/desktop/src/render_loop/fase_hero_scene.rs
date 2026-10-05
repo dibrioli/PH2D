@@ -6,7 +6,7 @@ use std::mem::take;
 
 impl crate::App {
     /// Converter em curvas, os espelhos da selecção, os campos da forma, o assentar da árvore, as recozeduras vivas, a
-    /// moldura e os estados, as bandas, os overlays, as guias, o modelador 3D e a pintura do ecrã. Devolve o pedido de
+    /// moldura e os estados, as bandas, os overlays, as guias e a pintura do ecrã. Devolve o pedido de
     /// reparentar que o assentar da árvore devolveu (o dreno da Hierarquia lê-o).
     pub(super) fn fase_hero_scene(
         &mut self,
@@ -124,9 +124,7 @@ impl crate::App {
             viewport,
         )?;
         self.fase_vector_tool_handles(vector_active, cam_affine, overlay);
-        self.fase_gizmo_suppression_and_field3d_frame(viewport);
-        self.fase_field3d_smoke_draw(viewport);
-        self.fase_field3d_requests();
+        self.fase_gizmo_suppression();
         self.fase_hero_paint(viewport);
         Some(reparent_intent)
     }

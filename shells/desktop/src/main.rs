@@ -73,8 +73,6 @@ mod bgremoval_shell;
 // ⛔ **O BACKEND DE ÁUDIO mudou-se para a `ph2d-audio-desktop`** (`line/shell-folhas`, 12/09 — hoje a FAMÍLIA `ph2d-app-audio`, auditoria A1):
 // 8 544 linhas e o `cpal` inteiro saíram desta unidade de compilação. A shell continua a ler as
 // sete `PH2D_AUDIO_*` — o ROTEADOR é composição e fica aqui; o que saiu foi o motor.
-/// **O OBJETO ASSADO** (`docs/3D/02.2`, rota A) — os canais que uma malha doou a um sprite e a luz
-/// que os le'. ⚠️ Deliberadamente FORA da feature `sculpt3d`: um objeto assado sobrevive ao modulo.
 /// Blend Objects vivos (ADR-0128): o objeto único que interpola 2..=5 formas e as segue
 /// (re-cook por frame). Espelha `connector_live`.
 pub(crate) use ph2d_app_vec::blend_live;
@@ -178,21 +176,6 @@ mod envelope_undo_seam_tests;
 mod expr_blend_smoke;
 mod extrap_smoke;
 mod falloff_smoke;
-// ⭐ **Estes dois VOLTARAM da família, e a razão é o SUJEITO de cada um.**
-//
-// - `field3d_undo_probe` conduz a `App` REAL pelo ponteiro real (`self.smoke_pointer_move`,
-//   `self.probe_grab_widget`) — o arnês é da shell, e uma crate de família não lhe chega.
-// - `field3d_snapshot_tests` captura um `ProjectState`, que é a máquina de undo da shell; o doc
-//   dele já se chamava *«a metade de SHELL da ponte ECS»*.
-//
-// ⚠️ **O censo da linha contou `1 impl App` nesta família e eram DOIS** — ele grepou `^impl App`
-// e o segundo está escrito `impl crate::App`. *Um censo por forma textual conta a forma, não a
-// coisa.*
-#[cfg(test)]
-#[path = "field3d_snapshot_tests.rs"]
-mod field3d_snapshot_tests;
-mod field3d_undo_probe;
-/// ADR-0161 W109 — o cabeçalho CLICÁVEL de cada vista: o menu que troca a câmera daquele quadrante.
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do
 /// `flip_selection_gizmo` — `GizmoTarget::MotionField`, apply nos params do NÓ.
 mod flip;
@@ -356,8 +339,6 @@ pub(crate) use ph2d_app_vec::profile_live;
 /// A cena de smoke da **largura viva** (`PH2D_BUILD_SMOKE=41`) — irmã de `build_smoke`, teto de LOC.
 mod profile_smoke;
 mod project;
-/// **Os canais assados dentro do arquivo** (ADR-0150 W8.7) — gemeo do `project_painter`.
-mod project_baked_form;
 /// **A arte dos padrões dentro do ficheiro de projecto** (plano 33, W4).
 /// ⭐⭐ **A TAXONOMIA da biblioteca dentro do ficheiro** (plano 07, A3) — blob auto-versionado.
 mod project_catalogs;
@@ -401,22 +382,6 @@ mod render_loop;
 /// ⛔ A lei está escrita desde 07/25 e foi paga TRÊS vezes curando um consumidor de cada vez.
 mod scene_mapping;
 mod scroll_smoke;
-/// ⭐ **O gémeo NEUTRO do acima** — as três respostas que o resto do app espera quando a família
-/// não foi compilada. Ver o cabeçalho dele: gatear os chamadores era a cura errada.
-#[cfg(not(feature = "sculpt3d"))]
-mod sculpt3d_absent;
-/// A família 3D inteira — **uma pasta, um `mod`** (W2/L3, 2026-09-11). Os 111 ficheiros
-/// `sculpt3d_*.rs` que viviam soltos aqui no `src/` passaram a `src/sculpt3d/`, e o
-/// `sculpt3d_keys_view` — que era o único irmão declarado à parte — é hoje
-/// [`sculpt3d::keys_view`]. ⇒ o corte da Fase B é mover UMA pasta.
-/// ⭐ **Onde a shell ATENDE a família da escultura** — os quinze invólucros que desmontam o
-/// `AppGfx`. A família mora em [`ph2d_app_sculpt3d`] desde a W2/L3.
-/// **O GESTO INTEIRO do bake, num device de verdade** — `#[ignore]`, precisa de adapter.
-#[cfg(all(test, feature = "sculpt3d"))]
-#[path = "sculpt3d_bake_gesture_tests.rs"]
-mod sculpt3d_bake_gesture_tests;
-#[cfg(feature = "sculpt3d")]
-mod sculpt3d_host;
 mod shape_build_gesture;
 /// O BAKE da folha — as peças passam a ser N janelas para UMA textura (plano §7.3, W5.2).
 mod sheet_bake;
@@ -775,11 +740,6 @@ impl App {
             impasto_smoke_done: false,
             substrate_smoke_done: false,
             line_smoke_done: false,
-            // ⭐ Os cinco pedidos da escultura num sítio só (W2/L3-A2) — e o `Default` é o
-            // estado INERTE: sem ninguém pedir nada, o laço do quadro não tem trabalho de
-            // escultura para fazer (gate na crate).
-            sculpt3d_req: Default::default(),
-            sculpt_doc: Vec::new(),
             mask_smoke_done: false,
             sheet_smoke_done: false,
             demo_tool_forced: false,
@@ -861,7 +821,6 @@ impl App {
             painter_shape_source_preview_gpu: None,
             painter_gpu_preview: None,
             painter_commit_requested: false,
-            donated_form: ph2d_form_donation::donated_form::DonatedForm::default(),
             painter_undo_requested: false,
             painter_redo_requested: false,
             // ADR-0114 W2: estado de desenho do Flip (publicado pelo flip_bridge).
@@ -916,11 +875,6 @@ impl App {
             texpat_gap_link: [true, true],
             guide_drag: None,
             motion_shell: Default::default(),
-            // ⭐ E os quatro que só existem com o módulo ligado (W2/L3-A2): UM `cfg` no lugar
-            // de quatro, que é o ponto — a fronteira entre este e o `sculpt3d_req` acima é
-            // imposta pela `cfg`, não escolhida (ver `sculpt3d/shell_state.rs`).
-            #[cfg(feature = "sculpt3d")]
-            sculpt3d: Default::default(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first
                                  // frame's status bar doesn't display
                                  // a wild value while the EWMA seeds.

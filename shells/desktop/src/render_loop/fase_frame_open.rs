@@ -85,7 +85,6 @@ impl crate::App {
         // O empréstimo do `gfx` do quadro: o padrão EXAUSTIVO do `AppGfx` mora em [`frame_gfx`]; aqui
         // ficam só os campos que o resto do corpo ainda lê (os das fases já extraídas saem da lista).
         let FrameGfx {
-            #[cfg(feature = "sculpt3d")]
             surface,
             theme,
             vector_scene,

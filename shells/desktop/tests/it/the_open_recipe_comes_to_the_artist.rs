@@ -110,24 +110,14 @@ fn the_stage_never_moves_the_view() {
 ///
 /// O canvas é *full-bleed* e os painéis flutuam por cima: centrar na janela põe a receita debaixo
 /// de uma coluna docada. ⚠️ A pergunta tem UMA porta (`canvas_area::visible`) desde que o segundo
-/// cliente apareceu — este censo é o que impede a terceira cópia de nascer com o `last_content` à
-/// mão.
+/// cliente apareceu (a moldura 3D, que saiu com o módulo — ADR-0179) — este censo é o que impede
+/// outra cópia de nascer com o `last_content` à mão.
 #[test]
-fn the_visible_area_has_one_door_and_both_clients_use_it() {
+fn the_visible_area_has_one_door_and_its_client_uses_it() {
     let stage = code_of_family("prefab_stage.rs");
     assert!(
         stage.contains("canvas_area::visible("),
         "o palco deixou de perguntar a` porta da area visivel"
-    );
-    // ⚠️ A lei mudou-se para a moldura 3D partilhada (`ph2d-viewport3d`), que e' consumida
-    // pelos DOIS modulos 3D — e o `code_of` desta crate ja' nao lhe chega.
-    let field3d = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/ph2d-viewport3d/src/layout.rs"),
-    )
-    .expect("a moldura 3D partilhada");
-    assert!(
-        field3d.contains("canvas_area::visible("),
-        "o modulo 3D voltou a ter a propria copia da area visivel"
     );
     // E a porta é uma só: ninguém mais lê o `last_content` cru.
     // ⚠️ As duas metades moram em casas diferentes desde 2026-09-13: a lei do palco na família, o

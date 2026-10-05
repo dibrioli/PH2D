@@ -11,9 +11,6 @@ impl crate::App {
         // reconstrói quando a SELEÇÃO muda — refazê-lo por frame jogaria fora o memo do
         // arranjo e cada hover voltaria a pagar a booleana.
         self.build_smoke();
-        self.field3d_undo_probe();
-        #[cfg(feature = "sculpt3d")]
-        self.sculpt3d_undo_probe();
         self.stack_smoke();
         self.with_motion_scene(ph2d_app_motion::motion_path_smoke::motion_path_smoke);
         self.harmony_smoke();
@@ -76,7 +73,5 @@ impl crate::App {
         self.flip_tween_torsion_smoke();
         self.flip_tip_smoke();
         self.flip_multiplane_smoke();
-        #[cfg(feature = "sculpt3d")]
-        self.sculpt3d_smoke();
     }
 }

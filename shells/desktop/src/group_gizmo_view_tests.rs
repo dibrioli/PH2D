@@ -157,38 +157,6 @@ fn a_joint_publishes_no_box_so_its_dots_keep_the_click() {
     );
 }
 
-/// ⛔ **E uma peça de MODELAGEM 3D também não** — ela tem o gizmo do MODEL, e a pose dela nem é o
-/// `Transform` da casa: a caixa sairia na origem do mundo.
-///
-/// (Mutação: tirar `FieldNode` da lista ⇒ RED.)
-#[test]
-fn a_modelling_part_publishes_no_box_either() {
-    let mut sim = SimWorld::new();
-    for marker in ["object", "node"] {
-        let e = sim
-            .world_mut()
-            .spawn((Transform::IDENTITY, Name::new(marker)))
-            .id();
-        if marker == "object" {
-            sim.world_mut()
-                .entity_mut(e)
-                .insert(ph2d_field_ecs::FieldObject);
-        } else {
-            sim.world_mut()
-                .entity_mut(e)
-                .insert(ph2d_field_ecs::FieldNode {
-                    shape: ph2d_field::NodeShape::Leaf(ph2d_field::Primitive::Sphere {
-                        radius: 1.0,
-                    }),
-                });
-        }
-        assert!(
-            boxed(&sim, e).is_none(),
-            "a peca de modelagem ({marker}) ganhou uma segunda caixa"
-        );
-    }
-}
-
 // ───────────── O anel: o report de 2026-08-26 (2.ª volta) ─────────────
 
 /// ⭐⭐⭐ **O anel NÃO segue a seleção, e ter filhos não o apaga.**

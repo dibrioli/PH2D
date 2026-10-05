@@ -51,7 +51,6 @@ fn a_still_frame_with_every_panel_open_shapes_no_text() {
                 ph2d_editor_core::object_add::CORE,
                 ph2d_app_vec::object_add::ENTRIES,
                 ph2d_app_flip::object_add::ENTRIES,
-                ph2d_app_field3d::object_add::ENTRIES,
                 ph2d_app_components::object_add::ENTRIES,
             ],
             &|_| None,

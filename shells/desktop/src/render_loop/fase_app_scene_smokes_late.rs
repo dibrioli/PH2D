@@ -1,7 +1,7 @@
 //! **Fase do quadro: AS CENAS DE SMOKE QUE PEDEM A `App` INTEIRA — a 2.ª metade** (OBRA 2 da `line/render-loop`, 2026-09-12).
 //!
-//! A metade que corre DEPOIS do pré-quadro do sculpt3d; partida da primeira só porque aquele assunto
-//! está no meio da lista, e a ordem é o contrato.
+//! A metade que corre DEPOIS da primeira; a partição nasceu com o pré-quadro do sculpt3d entre as
+//! duas (que saiu com o 3D — ADR-0179), e a ordem é o contrato.
 
 impl crate::App {
     /// Ver o cabeçalho do módulo.

@@ -6,8 +6,8 @@
 //!
 //! ⭐ **Uma pergunta, dois consumidores.** O cursor e o arrasto chamam a MESMA função
 //! ([`ph2d_editor_core::screens::layout::HeroLayout::dock_seam_at`]) — a seta a aparecer um pixel ao
-//! lado de onde o gesto agarra lê-se como *«às vezes não pega»*, e é o defeito que o irmão desta
-//! costura no canvas 3D (`ph2d_viewport3d::layout::seam_cursor`) já pagou.
+//! lado de onde o gesto agarra lê-se como *«às vezes não pega»*, e é o defeito que a costura do
+//! canvas 3D (que saiu com o módulo — ADR-0179) já tinha pago.
 //!
 //! ⚠️ **O layout vem PUBLICADO, não re-derivado** (`hero.last_layout`): o ponteiro corre fora do
 //! quadro, e espelhar a aritmética das colunas aqui seria dar dois donos ao mesmo pixel.
@@ -61,8 +61,8 @@ impl crate::App {
     /// A seta a mostrar sob este ponto, se ele estiver sobre uma costura de largura.
     ///
     /// ⚠️ **`EwResize` e não `ColResize`**: o Enio pediu *«setas bidirecionais»*, e é a mesma seta
-    /// que a divisória do canvas 3D já usa — duas costuras do mesmo app não podem prometer o mesmo
-    /// gesto com desenhos diferentes.
+    /// que a divisória do grafo do Motion usa — duas costuras do mesmo app não podem prometer o
+    /// mesmo gesto com desenhos diferentes.
     pub(crate) fn dock_seam_cursor(&self, x: f32, y: f32) -> Option<winit::window::CursorIcon> {
         if self.dock_seam_drag.is_some() {
             return Some(winit::window::CursorIcon::EwResize);

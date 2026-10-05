@@ -9,31 +9,17 @@ use ph2d_editor_core::object_add::{self, AddEntry};
 
 /// ⭐ **As famílias compiladas, na ordem do modal** — um tipo cuja crate saiu do build não deixa
 /// item morto.
-#[cfg(feature = "sculpt3d")]
 pub(crate) const FAMILIES: &[&[AddEntry]] = &[
     object_add::CORE,
     ph2d_app_vec::object_add::ENTRIES,
     ph2d_app_flip::object_add::ENTRIES,
-    ph2d_app_field3d::object_add::ENTRIES,
-    ph2d_app_sculpt3d::object_add::ENTRIES,
-    ph2d_app_components::object_add::ENTRIES,
-];
-/// Ver o outro braço.
-#[cfg(not(feature = "sculpt3d"))]
-pub(crate) const FAMILIES: &[&[AddEntry]] = &[
-    object_add::CORE,
-    ph2d_app_vec::object_add::ENTRIES,
-    ph2d_app_flip::object_add::ENTRIES,
-    ph2d_app_field3d::object_add::ENTRIES,
     ph2d_app_components::object_add::ENTRIES,
 ];
 
-/// O que o pick deu: um objecto já na cena, uma peça de escultura à espera da sincronia, ou nada
-/// (a imagem abre o diálogo de tamanho, que cria no quadro dele).
+/// O que o pick deu: um objecto já na cena, ou nada (a imagem abre o diálogo de tamanho, que cria
+/// no quadro dele).
 enum Born {
     Entity(u64),
-    #[cfg(feature = "sculpt3d")]
-    Piece(u32),
     Dialog,
 }
 
@@ -53,9 +39,6 @@ impl crate::App {
             hero_screen,
             component_registry,
             flip,
-            surface,
-            #[cfg(feature = "sculpt3d")]
-            sculpt3d,
             ..
         } = FrameGfx::of(gfx);
         let Some(hero) = hero_screen.as_mut() else {
@@ -81,8 +64,6 @@ impl crate::App {
             // ⭐ O `Ctrl+N` continua a ser o atalho desta entrada (escolha 2 do dono).
             hero.store.open_new_image_dialog();
             Ok(Born::Dialog)
-        } else if entry == ph2d_app_field3d::object_add::MODEL {
-            Ok(Born::Entity(ph2d_app_field3d::object_add::add(sim)))
         } else if let Some(r) = ph2d_app_components::object_add::add(
             entry,
             sim,
@@ -97,36 +78,10 @@ impl crate::App {
         {
             r.map(Born::Entity).map_err(String::from)
         } else {
-            #[cfg(feature = "sculpt3d")]
-            {
-                let size = surface.size();
-                let device = std::sync::Arc::clone(&surface.gpu().device);
-                match ph2d_app_sculpt3d::object_add::add(
-                    entry,
-                    sculpt3d,
-                    Some((&device, (size.width, size.height))),
-                ) {
-                    Some(r) => r.map(Born::Piece).map_err(String::from),
-                    None => return,
-                }
-            }
-            #[cfg(not(feature = "sculpt3d"))]
-            {
-                let _ = surface;
-                return;
-            }
+            return;
         };
-        // ⚠️ A peça de escultura ganha a entidade na sincronia da Hierarquia — corrida já, para o
-        // objecto novo nascer seleccionado neste quadro.
         let bits = match born {
             Ok(Born::Entity(bits)) => Some(bits),
-            #[cfg(feature = "sculpt3d")]
-            Ok(Born::Piece(piece)) => {
-                self.sculpt3d_entities_sync();
-                self.gfx
-                    .as_mut()
-                    .and_then(|g| ph2d_app_sculpt3d::object_add::entity_of_piece(&mut g.sim, piece))
-            }
             Ok(Born::Dialog) => None,
             Err(e) => {
                 if let Some(g) = self.gfx.as_mut() {

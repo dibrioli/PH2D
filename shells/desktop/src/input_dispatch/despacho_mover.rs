@@ -2,8 +2,6 @@
 //! ordem: cada arrasto vivo é dono do ponteiro até ao Up. ⚠️ Os blocos ficam à MESMA indentação: as agulhas de coluna
 //! dos gates (o fecho do `if` da preview) casam no texto emendado.
 
-use super::*;
-
 impl crate::App {
     /// Os arrastos da ferramenta vetorial: a região, o Build, o osso posado, a gaiola, a caneta, o gradiente, a forma,
     /// o lápis, o Width, o conector e as alças (conector, texto, fichas), e a âncora do motion path.
@@ -193,7 +191,7 @@ impl crate::App {
     }
 
     /// O topo dos arrastos: a borda da coluna, a biblioteca, o pie menu, o cursor do conta-gotas, as guias, o hover da
-    /// preview (sem consumir), o conta-gotas arrastado, as órbitas 3D e os arrastos do editor de áudio.
+    /// preview (sem consumir), o conta-gotas arrastado e os arrastos do editor de áudio.
     pub(super) fn ramo_mover_arrastos_de_topo(&mut self) -> bool {
         // ⚠️ **A ORDEM destes dois foi decidida na integracao de 2026-09-04**, e nao
         // e' arbitraria: o da BORDA tem `return` e uma guarda estreita (so' responde com
@@ -252,28 +250,6 @@ impl crate::App {
         // also drive a gizmo drag / panel slider.
         if self.eyedropper_dragging {
             self.try_eyedropper_sample(self.last_pointer.0, self.last_pointer.1);
-            return true;
-        }
-        // ADR-0150 W1/M2: a órbita da cena 3D. Só consome com um arrasto EM
-        // CURSO — a porta devolve `false` sem cena armada e sem botão preso, e
-        // é por isso que ela não rouba o hover do app 2D.
-        // ⭐ A shell procura a cena; a lei do gesto é função livre da família (W2/L3-A2).
-        // ⚠️ **O `false` sem cena armada continua a ser a resposta** — ele mudou de sítio
-        // (era o `else` do `let Some` lá dentro), não de valor: sem cena esta porta não rouba
-        // o hover do app 2D, e é essa a promessa que a linha de cima descreve.
-        #[cfg(feature = "sculpt3d")]
-        {
-            let (px, py) = self.last_pointer;
-            if self
-                .sculpt3d_scene_mut()
-                .is_some_and(|scene| ph2d_app_sculpt3d::pointer_move(scene, px, py))
-            {
-                return true;
-            }
-        }
-        // ADR-0161 W4: a órbita da janela 3D de MODELAGEM (irmã da de cima, e com
-        // a mesma lei: só consome com um arrasto EM CURSO).
-        if self.field3d_pointer_move(self.last_pointer.0, self.last_pointer.1) {
             return true;
         }
         // Audio Editor piece drag (SHELL-only): Move / Scale own the pointer while they are live.

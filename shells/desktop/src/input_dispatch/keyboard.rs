@@ -78,11 +78,8 @@ impl App {
         // (*«o modal não captura o que escrevo. o painel lateral captura os atalhos»*). O
         // mecanismo, e porque só o capturador de atalhos fica acima dela, vivem no doc do
         // [`super::keyboard_palette`], que é a porta; aqui fica a ORDEM, que é o que se lê.
-        // ⛔ Gate: `shells/desktop/tests/it/um_modal_aberto_tem_o_teclado_antes_da_cena_3d.rs`.
+        // ⛔ Gate: `shells/desktop/tests/it/um_modal_aberto_tem_o_teclado_antes_dos_atalhos.rs`.
         if self.command_palette_keys(physical_key, state, text.as_deref()) {
-            return;
-        }
-        if self.ramo_teclas_3d(physical_key, state) {
             return;
         }
 
@@ -239,6 +236,6 @@ impl App {
 #[path = "keyboard_tail.rs"]
 mod tail;
 
-/// A cadeia do `key_input` (3D, texto/Flip/vetor, nós/ficheiros/acordes, timeline/Painter/Hierarquia) — os ramos.
+/// A cadeia do `key_input` (texto/Flip/vetor, nós/ficheiros/acordes, timeline/Painter/Hierarquia) — os ramos.
 #[path = "keyboard_cadeia.rs"]
 mod cadeia;

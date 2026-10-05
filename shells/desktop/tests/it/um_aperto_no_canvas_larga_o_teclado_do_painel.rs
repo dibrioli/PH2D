@@ -11,7 +11,7 @@
 //! antes do `forward_to_hero`, que é o **único** sítio onde a partida de foco corria. `focus_id`
 //! ficava preso naquele chip para o resto da sessão, e o `sculpt3d_key` recusa na primeira linha
 //! quando um campo de texto tem o foco ⇒ morriam juntos `Delete`, `Ctrl+Z`, `Ctrl+Shift+Z` e **todo**
-//! atalho da cena 3D.
+//! atalho da cena 3D. (O 3D saiu do PH2D — ADR-0179; a lei ficou, com o consumidor 2D que sobra.)
 //!
 //! # ⚠️ Por que este gate lê o FONTE, dito na cara
 //!
@@ -38,12 +38,16 @@ fn corpo_do_on_mouse_input(fonte: &str) -> &str {
     &resto[..fim]
 }
 
+/// Quem toma o aperto e devolve antes do despachante — uma lista, porque um consumidor novo entra
+/// aqui (os dois da cena 3D saíram com o módulo, ADR-0179).
+const CONSUMIDORES: &[&str] = &["self.try_open_anchor_gizmo_drag("];
+
 /// ⭐⭐ **A soltura corre ANTES de cada consumidor que devolve cedo.**
 ///
-/// Os três — a cena de escultura, a janela de modelagem e a alça do gizmo de âncora — tomam o
-/// aperto e devolvem antes do despachante. ⚠️ **Um quarto que nasça abaixo da soltura herda a cura
-/// de graça**; um que nasça acima dela é exactamente o defeito de 07/09 outra vez, e a cura é mover
-/// a chamada, nunca alargar este gate.
+/// Hoje é a alça do gizmo de âncora (a cena de escultura e a janela de modelagem saíram com o 3D)
+/// — toma o aperto e devolve antes do despachante. ⚠️ **Um segundo que nasça abaixo da soltura
+/// herda a cura de graça**; um que nasça acima dela é exactamente o defeito de 07/09 outra vez, e
+/// a cura é mover a chamada, nunca alargar este gate.
 #[test]
 fn a_soltura_do_foco_corre_antes_de_quem_toma_o_aperto_e_devolve_cedo() {
     let fonte = crate::input_text::dispatch();
@@ -52,15 +56,11 @@ fn a_soltura_do_foco_corre_antes_de_quem_toma_o_aperto_e_devolve_cedo() {
     let soltura = corpo.find("forward_blur_to_hero(").unwrap_or_else(|| {
         panic!(
             "o `on_mouse_input` deixou de largar o foco do painel: sem isso, tocar num chip \
-             numerico e voltar ao canvas mata `Delete` e `Ctrl+Z` da cena 3D para o resto da sessao"
+             numerico e voltar ao canvas mata os atalhos de quem toma o aperto para o resto da sessao"
         )
     });
 
-    for consumidor in [
-        "self.sculpt3d_pointer_down(",
-        "self.field3d_pointer_down(",
-        "self.try_open_anchor_gizmo_drag(",
-    ] {
+    for consumidor in CONSUMIDORES {
         let encontrado = corpo.find(consumidor).unwrap_or_else(|| {
             panic!(
                 "este gate perdeu a ancora `{consumidor}` — ele foi renomeado ou saiu do \
@@ -89,7 +89,7 @@ fn a_soltura_usa_a_mesma_regua_de_chrome_que_o_consumidor() {
         .saturating_sub(600)..];
     assert!(
         bloco[..700.min(bloco.len())].contains("pointer_over_chrome"),
-        "a soltura deixou de se guardar por `pointer_over_chrome` — a régua dela e a do \
-         `sculpt3d_pointer_down` divergiram"
+        "a soltura deixou de se guardar por `pointer_over_chrome` — a régua dela e a dos \
+         consumidores do aperto divergiram"
     );
 }

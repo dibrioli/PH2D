@@ -23,8 +23,9 @@ pub(crate) fn surviving_selection(was: &[VecPathId], scene: &VecScene) -> Vec<Ve
         .collect()
 }
 
-/// ⭐⭐⭐ **A SELEÇÃO DE UMA PEÇA 3D, EM IDENTIDADE DURÁVEL** — a irmã da
-/// [`surviving_selection`], para quem não é um caminho vetorial.
+/// ⭐⭐⭐ **A SELEÇÃO DE QUEM NÃO É CAMINHO, EM IDENTIDADE DURÁVEL** — a irmã da
+/// [`surviving_selection`], para quem não é um caminho vetorial (hoje, o esqueleto; nasceu para o
+/// modelador 3D, que saiu — ADR-0179).
 ///
 /// # ⛔⛔ O report que ela fecha (Enio, 2026-09-03)
 ///
@@ -69,11 +70,10 @@ pub(crate) fn field_selection_ids(
 /// não o pediram, e essa decisão é de quem os possui. O que se pode fazer sem os acordar é
 /// **nomear** as famílias, uma linha cada, com o motivo ao lado.
 fn keeps_its_selection(world: &bevy_ecs::world::World, e: bevy_ecs::entity::Entity) -> bool {
-    // O modelador 3D (W113, report de 03/09) — a pose de um nó nem sequer é o `Transform` da casa.
-    world.get::<ph2d_field_ecs::FieldNode>(e).is_some()
-        // ⭐ O ESQUELETO (report de 07/09): o osso é o **sujeito** da secção SKELETON, e sem ele o
-        // painel deixa de mostrar `Length`, `Strength` e os verbos da âncora.
-        || world.get::<ph2d_skeleton_ecs::Bone>(e).is_some()
+    // ⭐ O ESQUELETO (report de 07/09): o osso é o **sujeito** da secção SKELETON, e sem ele o
+    // painel deixa de mostrar `Length`, `Strength` e os verbos da âncora. (A primeira família, o
+    // nó do modelador 3D do report de 03/09, saiu com o módulo — ADR-0179.)
+    world.get::<ph2d_skeleton_ecs::Bone>(e).is_some()
         // ⭐ E o ALVO de uma âncora, que é o que o artista tem na mão enquanto anima a corrente.
         || world.get::<ph2d_skeleton_ecs::IkTarget>(e).is_some()
 }

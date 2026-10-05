@@ -1,4 +1,4 @@
-//! **Fase do quadro: AS SOBREPOSIÇÕES DO CANVAS** — a escultura na cena, a trajectória do objecto seleccionado e as poses-fantasma do onion da
+//! **Fase do quadro: AS SOBREPOSIÇÕES DO CANVAS** — a trajectória do objecto seleccionado e as poses-fantasma do onion da
 //! timeline (OBRA 2 da `line/render-loop`, 2026-09-13).
 
 use super::*;
@@ -11,8 +11,6 @@ impl crate::App {
             return;
         };
         let FrameGfx {
-            #[cfg(feature = "sculpt3d")]
-            sculpt3d,
             sim,
             present,
             camera,
@@ -24,106 +22,6 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
-        // **O ANEL DO PINCEL 3D** (ADR-0150 W12). Ele é desenhado no PONTO DE
-        // ACERTO reprojetado, então ele é ao mesmo tempo a mira e o
-        // instrumento: se ele não estiver debaixo do mouse sobre o barro, a
-        // fiação do pick está errada e dá para VER — que é a única coisa que
-        // as sondas headless não alcançam.
-        //
-        // ⚠️ Sob painel ele não é desenhado: o ponteiro ali não é da cena (o
-        // `pointer_down` já recusa pela MESMA porta), e uma mira sobre o
-        // chrome prometeria um gesto que o clique não faz.
-        #[cfg(feature = "sculpt3d")]
-        if let Some(scene) = sculpt3d.as_mut() {
-            use ph2d_vector::{Affine, Brush, Color, Stroke};
-            let (px, py) = self.last_pointer;
-            let over_panel = hero
-                .panel_rect_fisico(ph2d_editor_core::ids::SCULPT3D_PANEL)
-                .is_some_and(|r| r.contains(px, py));
-            // ⚠️ `Affine::IDENTITY` em todos: no Vello o transform do `stroke`
-            // MULTIPLICA a largura — os caminhos já estão em pixels.
-            let mut traco = |caminho: &ph2d_vector::BezPath, rgba: [f32; 4]| {
-                vector_scene.inner_mut().stroke(
-                    &Stroke::new(1.5), // LITERAL-PX-OK: chrome de overlay, espessura de tela
-                    Affine::IDENTITY,
-                    &Brush::Solid(Color::new(rgba)),
-                    None,
-                    caminho,
-                );
-            };
-            // ⭐⭐ **O OSSO DO PINCEL DE POSE**, e ele vem ANTES do anel de
-            // propósito: o anel é onde a mão está *agora* e tem de ficar por
-            // cima. Aquele verbo não tem atenuação radial, então o anel sozinho
-            // descreve-o mal — ele mostra um círculo onde a ferramenta pensa
-            // num membro.
-            if !over_panel && let Some(osso) = scene.pose_gizmo(px, py) {
-                for caminho in osso.ossos.iter().chain(&osso.juntas) {
-                    traco(caminho, ph2d_app_sculpt3d::POSE_BONE_RGBA);
-                }
-                if let Some(pivo) = &osso.pivo {
-                    let rgba = if osso.inerte {
-                        // ⭐ §11.1: o pivô caiu em cima do cursor e este gesto
-                        // **não move nada**. O alvo cala-se aqui.
-                        ph2d_app_sculpt3d::POSE_INERT_RGBA
-                    } else {
-                        ph2d_app_sculpt3d::POSE_PIVOT_RGBA
-                    };
-                    traco(pivo, rgba);
-                }
-            }
-            // ⭐⭐ **A FITA DO PINCEL DE CONTORNO**, e ela vem antes do anel pela
-            // razão do osso: a região deste verbo também não sai do cursor — ela
-            // sai da BORDA, e o anel sozinho promete um círculo onde a
-            // ferramenta pensa numa beirada.
-            //
-            // ⚠️ **A alfa de cada pedaço é o PESO dele.** É o que faz o
-            // selector `Falloff along the edge` deixar de ser uma palavra e
-            // passar a ser uma coisa que se vê: com `Constant` a boca inteira
-            // acende, com `Radius` só o troço que de facto se move.
-            if !over_panel && let Some(fita) = scene.boundary_gizmo(px, py) {
-                for (caminho, peso) in &fita.borda {
-                    let mut rgba = ph2d_app_sculpt3d::BOUNDARY_EDGE_RGBA;
-                    rgba[3] *= peso;
-                    traco(caminho, rgba);
-                }
-                if let Some(linha) = &fita.profundidade {
-                    traco(linha, ph2d_app_sculpt3d::BOUNDARY_DEPTH_RGBA);
-                }
-                if let Some(pivo) = &fita.pivo {
-                    let rgba = if fita.inerte {
-                        // ⛔ Não há beirada ao alcance: este gesto não move nada.
-                        ph2d_app_sculpt3d::BOUNDARY_INERT_RGBA
-                    } else {
-                        ph2d_app_sculpt3d::BOUNDARY_PIVOT_RGBA
-                    };
-                    traco(pivo, rgba);
-                }
-            }
-            // ⭐⭐ **O CORTE EM CURSO** — a forma que a mão já desenhou.
-            //
-            // ⚠️ **Ela é pintada mesmo SOBRE o painel**, ao contrário dos
-            // vizinhos: os outros indicadores seguem o cursor e sobre a moldura
-            // não teriam sujeito, mas este é um gesto **em captura** — o dedo
-            // continua em baixo, e um arrasto que passeia por cima de um painel
-            // não deixa de existir. *Apagá-lo ali faria a lâmina piscar.*
-            if let Some(anel) = scene.trim_previa() {
-                let mut caminho = ph2d_vector::BezPath::new();
-                caminho.move_to((f64::from(anel[0][0]), f64::from(anel[0][1])));
-                for p in &anel[1..] {
-                    caminho.line_to((f64::from(p[0]), f64::from(p[1])));
-                }
-                caminho.close_path();
-                traco(&caminho, ph2d_app_sculpt3d::TRIM_RING_RGBA);
-            }
-            if !over_panel && let Some(mark) = scene.cursor_mark(px, py) {
-                let rgba = if mark.on_surface {
-                    ph2d_app_sculpt3d::ON_SURFACE_RGBA
-                } else {
-                    ph2d_app_sculpt3d::OFF_SURFACE_RGBA
-                };
-                traco(&mark.path, rgba);
-            }
-        }
         // A TRAJETÓRIA do objeto selecionado (ADR-0141): um binding Position guarda
         // uma curva, e sem desenhá-la o artista vê o objeto aparecer noutro lugar a
         // cada frame sem ter onde pegar o caminho. Os PONTOS são um por quadro, e o

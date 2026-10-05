@@ -376,4 +376,17 @@
 /// (escolha do dono), e é essa a porta, não uma migração.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 182;
+///
+/// # `182 → 183` — **o 3D SAI do PH2D** (`line/poda-3d`, ADR-0179, 2026-10-05)
+///
+/// Ordem do dono: o modelador, a escultura e o Render3d saem inteiros. Do `ProjectFile` saem os
+/// campos da escultura (o documento opaco com `SCULPT_DOC_VERSION`), do modelador (o documento do
+/// campo com `FIELD_DOC_VERSION`) e as formas assadas (`baked_forms`). Do registo saem os nove do
+/// campo (`FieldObject` · `FieldNode` · `FieldPose` · `FieldMods` · `FieldMaterial` · `FieldVerb` ·
+/// `FieldProfileSource` · `FieldLight` · `FieldTexture` — o registo do campo deixa de existir) e,
+/// do ECS, `BakedForm` · `Sculpt3dPieceRef` · `Mesh3D` (ECS `-3`, espelhos `-3`). ⛔ **Sem degrau de
+/// migração**, pela decisão de sempre — um v182 é recusado em voz alta; o postcard é POSICIONAL e
+/// um campo a menos no meio do `ProjectFile` seria lido errado em silêncio.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 183;

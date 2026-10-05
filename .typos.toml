@@ -1042,16 +1042,10 @@ extend-exclude = [
     # upstream's spelling — same stance as the workspace `exclude`, the machete
     # ignores and the `[lints]` allow that keep our tooling off code we did not write.
     "crates/ph2d-audio-ml/vendor/**",
-    # As VASSOURAS do clean-room (`docs/3D/cleanroom/VASSOURA_*.txt`) são listas de nomes
-    # INTERNOS do alvo restrito, guardadas em **base64 de propósito** para que ninguém as leia
-    # por acidente — o Implementador tem um `deny` a proibi-lo de as abrir (`docs/3D/00-INDEX.md`,
-    # `LEDGER_*`). ⚠️ Não há prosa aqui para corrigir: o que o typos acusa é uma sílaba de base64
-    # (`…U05BS0VIT09L…` contém `VOR`), e a acusação muda com o CONTEÚDO CIFRADO, não com o texto.
-    # ⛔ Isentar a palavra em vez do ficheiro esconderia um `VOR`/`FOR` real no repo inteiro.
-    "docs/3D/cleanroom/VASSOURA_*.txt",
     # As saídas GRAVADAS dos oráculos de camadas (GIMP 3.2.6, Krita 6.0.4; ADR-0177) são bytes de
     # pixel (`file` diz `data`), não texto: o typos lê sílabas soltas (`Iz`, `Pn`, `yor`) e a
-    # acusação muda com os PIXELS. Mesma postura das VASSOURAS: isenta-se o ficheiro, não a palavra.
+    # acusação muda com os PIXELS. Mesma postura das VASSOURAS do clean-room 3D (saíram com o 3D, ADR-0179): isenta-se o
+    # ficheiro, não a palavra.
     "docs/Painter/ferramentas/oraculo_camadas_gimp/*.bin",
     # Spike fixtures may contain Luau intentionally
     "docs/scripting/examples/spike/**/*.luau",

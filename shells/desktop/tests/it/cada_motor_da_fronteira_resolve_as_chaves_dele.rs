@@ -18,9 +18,7 @@
 //! único sítio que as vê todas — o mesmo argumento do `HOWTO §2.6` (*um gate mora com o que ele
 //! exercita*) e o mesmo que já pôs aqui o `the_warp_effect_and_envelope_share_one_catalogue`.
 //!
-//! ⚠️ O irmão dele para o motor da escultura é o
-//! `ph2d-sculpt3d/tests/it/cada_rotulo_deste_motor_vem_da_tabela.rs`, que tem a tabela das quatro
-//! metades e a razão de cada uma.
+//! (O irmão dele para o motor da escultura saiu com o 3D — ADR-0179.)
 
 use std::collections::BTreeMap;
 
@@ -177,10 +175,13 @@ fn nenhum_pintor_chama_o_acessorio_ingles_de_um_motor_da_fronteira() {
     //    acessório é um `tr_em(…Ingles…)`. *Uma lista que decide o que um gate VÊ tem de crescer com
     //    a migração — e a única que cresce sozinha é a que se deriva.*
     let ingles = acessorios_ingleses(&repo);
-    // ⛔ Piso de população: em 2026-09-19 a árvore tem 24 pares (2 na `ph2d-ecs`, 16 no motor da
-    //    escultura, 4 nas ferramentas, 2 no `ph2d-asset-index`).
+    // ⛔ Piso de população: em 2026-09-19 a árvore tinha 24 pares (2 na `ph2d-ecs`, 16 no motor da
+    //    escultura, 4 nas ferramentas, 2 no `ph2d-asset-index`). ⚠️ Em 2026-10-05 o motor da
+    //    escultura saiu com o 3D (ADR-0179, `24 → 8`, medido): o piso é o número de hoje. As
+    //    isenções das linhas do `Verb`/`Falloff` (tipos daquele motor) saíram com ele — a metade
+    //    justa abaixo acusava-as de mortas.
     assert!(
-        ingles.len() >= 20,
+        ingles.len() >= 8,
         "a varredura achou {} acessórios ingleses — a régua partiu-se, e um gate com a lista vazia \
          aprova todo pintor",
         ingles.len()
@@ -207,123 +208,6 @@ fn nenhum_pintor_chama_o_acessorio_ingles_de_um_motor_da_fronteira() {
             "SortBy",
             &["format!(\"{} x{n}\", k.label())"],
             "e' a `probe_index_summary`, uma SONDA: ela devolve o resumo do indice para o terminal e para os gates, nunca para um pixel.",
-        ),
-        (
-            "crates/ph2d-panel-sculpt3d/src/paint/brush.rs",
-            "Alpha",
-            &["UiLevel::ALL.iter().map(|l| l.label())"],
-            "o `.label()` desta linha e' de OUTRO tipo com o mesmo nome; o ficheiro so' NOMEIA o tipo listado noutro sitio.",
-        ),
-        (
-            "crates/ph2d-panel-sculpt3d/src/paint/brush.rs",
-            "Falloff",
-            &["UiLevel::ALL.iter().map(|l| l.label())"],
-            "o `.label()` desta linha e' de OUTRO tipo com o mesmo nome; o ficheiro so' NOMEIA o tipo listado noutro sitio.",
-        ),
-        (
-            "crates/ph2d-panel-sculpt3d/src/paint/brush.rs",
-            "Verb",
-            &["UiLevel::ALL.iter().map(|l| l.label())"],
-            "o `.label()` desta linha e' de OUTRO tipo com o mesmo nome; o ficheiro so' NOMEIA o tipo listado noutro sitio.",
-        ),
-        (
-            "crates/ph2d-app-components/src/asset_catalog_verbs.rs",
-            "Verb",
-            &[
-                "map_or(path.clone(), |c| c.label()",
-                ".map(|c| c.label().to_string())",
-            ],
-            "o `.label()` desta linha e' de OUTRO tipo com o mesmo nome; o ficheiro so' NOMEIA o tipo listado noutro sitio.",
-        ),
-        (
-            "crates/ph2d-app-vec/src/fx_bridge.rs",
-            "Falloff",
-            &["label: e.effect.label(),"],
-            "o `.label()` desta linha e' de OUTRO tipo com o mesmo nome; o ficheiro so' NOMEIA o tipo listado noutro sitio.",
-        ),
-        (
-            "crates/ph2d-app-sculpt3d/src/scenes_cloth_filter.rs",
-            "ClothFilterKind",
-            &[".map(|k| k.label())", ".map(|o| o.label())"],
-            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
-        ),
-        (
-            "crates/ph2d-app-sculpt3d/src/scenes_cloth_filter.rs",
-            "ClothFilterOrientation",
-            &[".map(|k| k.label())", ".map(|o| o.label())"],
-            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
-        ),
-        (
-            "crates/ph2d-app-sculpt3d/src/scenes_cloth_filter.rs",
-            "FilterKind",
-            &[".map(|k| k.label())", ".map(|o| o.label())"],
-            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
-        ),
-        (
-            "crates/ph2d-app-sculpt3d/src/scenes_viewports.rs",
-            "TransformKind",
-            &[".map(|k| k.label())"],
-            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
-        ),
-        (
-            "crates/ph2d-app-sculpt3d/src/dyntopo.rs",
-            "Verb",
-            &["nao mudou a malha"],
-            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
-        ),
-        // ⛔⛔ **INTEGRAÇÃO (20/09): a MESMA linha, acusada por um SEGUNDO tipo.** A
-        //    `line/sculpt3d` acrescentou a este ficheiro um campo `queda: ph2d_sculpt3d::Falloff`,
-        //    e a régua empareha *«o ficheiro NOMEIA o tipo»* com *«o ficheiro chama o acessório»* —
-        //    logo o `Falloff` herdou a acusação de um `.label()` que é de um `Verb` e que o main já
-        //    isentava acima. ⇒ é a família do `paint/brush.rs`, com o `eprintln!` por baixo:
-        //    *nomear um tipo não é chamá-lo.*
-        (
-            "crates/ph2d-app-sculpt3d/src/dyntopo.rs",
-            "Falloff",
-            &["nao mudou a malha"],
-            "o `.label()` desta linha e' de OUTRO tipo (um `Verb`, isento acima) e vai para um `eprintln!`: o ficheiro so' NOMEIA o `Falloff`, num campo de struct. Diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
-        ),
-        (
-            "crates/ph2d-app-sculpt3d/src/keys.rs",
-            "TrimForma",
-            &[
-                "eprintln!(\"[sculpt3d] mascara:",
-                "Verb::BoxTrim.label(),",
-                "scene.brush.trim_forma.label()",
-                "scene.brush.verb.label()",
-                // `eprintln!("[sculpt3d] verbo: {} (forca {:.2})", v.label(), …)`
-                "v.label(),",
-            ],
-            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
-        ),
-        (
-            "crates/ph2d-app-sculpt3d/src/keys.rs",
-            "Verb",
-            &[
-                "eprintln!(\"[sculpt3d] mascara:",
-                "Verb::BoxTrim.label(),",
-                "scene.brush.trim_forma.label()",
-                "scene.brush.verb.label()",
-                // `eprintln!("[sculpt3d] verbo: {} (forca {:.2})", v.label(), …)`
-                "v.label(),",
-            ],
-            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
-        ),
-        (
-            "crates/ph2d-app-sculpt3d/src/panel.rs",
-            "Alpha",
-            &[
-                "kind.label(),",
-                "self.brush.verb.label(),",
-                "eprintln!(\"[sculpt3d] mascara:",
-            ],
-            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
-        ),
-        (
-            "crates/ph2d-app-sculpt3d/src/sonda_undo.rs",
-            "Verb",
-            &["s.brush.verb.label()"],
-            "vai para um `eprintln!` ou para a frase que o roteiro de uma cena imprime: diagnostico de TERMINAL, e o terminal e' do DONO (`CLAUDE.md` §0.8).",
         ),
     ];
 

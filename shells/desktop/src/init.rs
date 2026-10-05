@@ -44,7 +44,8 @@ use crate::{AppGfx, HeroLive, SPRITE_COUNT};
 #[path = "init_subsystems.rs"]
 mod subsystems; // os subsistemas do arranque, por ordem (LOC cap: sibling module)
 
-/// ⭐ **O registo de componentes do produto** — as quatro famílias que o app conhece.
+/// ⭐ **O registo de componentes do produto** — os cinco registadores que o app conhece (o
+/// sexto, o do campo 3D, saiu com o módulo — ADR-0179).
 ///
 /// ⚠️ **É função com nome porque o censo da F3 tem de perguntar ao MESMO registo que o app usa**
 /// (ADR-0166): *"todo componente que a paleta oferece, o registo sabe construir"* é uma afirmação
@@ -62,12 +63,8 @@ pub(crate) fn build_component_registry() -> ComponentRegistry {
     // ADR-0131 W1: RigidBody/Collider — without this the WorldSnapshot (undo + save) silently
     // drops them.
     ph2d_physics_ecs::register_physics_components(&mut reg);
-    // ADR-0161 — o objeto de modelagem 3D. Sem esta linha o WorldSnapshot descarta o componente EM
-    // SILENCIO, e o sintoma é o objeto sumir ao desfazer. `field3d_snapshot_tests` prova os dois
-    // lados disso.
-    ph2d_field_ecs::register_field_components(&mut reg);
     // ⭐⭐⭐ O ESQUELETO (2026-09-06) — o osso e a pele. Eles viveram dentro do `ph2d-ecs` até virarem
-    // MÓDULO: ele serve vector, raster, 3D e Flip, e um componente por mídia dentro da fundação a
+    // MÓDULO: ele serve vector, raster e Flip, e um componente por mídia dentro da fundação a
     // faria crescer uma vez por cliente. Sem esta linha o WorldSnapshot descarta-os EM SILÊNCIO, e
     // o sintoma é o personagem perder o esqueleto ao desfazer.
     ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
@@ -147,15 +144,6 @@ pub(crate) fn build_initial_state(
         ph2d_flip_render::FlipCompose::new(&surface.gpu().device, ph2d_render::GameRt::FORMAT);
 
     let gfx = AppGfx {
-        // ADR-0150 W1/M2: cena 3D nasce VAZIA — o smoke a arma no 1o frame.
-        #[cfg(feature = "sculpt3d")]
-        sculpt3d: None,
-        // Os objetos que uma forma acende (`docs/3D/02.2`). Nascem vazios e NÃO são `cfg`-gated: um
-        // projeto salvo pode trazer objetos assados para um binário sem o módulo 3D.
-        baked_forms: std::collections::BTreeMap::new(),
-        #[cfg(feature = "sculpt3d")]
-        formas_vivas: std::collections::BTreeMap::new(),
-        baked_light: ph2d_form_donation::baked_form::PassesDaLuz::default(),
         surface,
         renderer,
         sim,
@@ -244,7 +232,6 @@ pub(crate) fn build_initial_state(
         sheet_textures: std::collections::BTreeMap::new(),
         next_sheet_id: 0,
         next_painted_doc: 1, // 0 fica livre como "nenhum"
-        next_baked_form: 1,  // idem: 0 fica livre como "nenhum"
         atlas_asset_map: BTreeMap::new(),
         catalogs: ph2d_asset_index::CatalogTree::new(),
         library_cache: crate::project_library::LibraryCache::default(),

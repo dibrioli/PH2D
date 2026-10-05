@@ -70,8 +70,7 @@ impl crate::App {
     /// assim — o arrasto de linha aparece inteiro (as três estações), e depois silêncio —, e as
     /// duas leituras levam a obras opostas.
     ///
-    /// Entre a janela e a fila global há ~20 `return`: a escuta do Input Map, a escultura, o
-    /// modelador 3D, o `F9`, a paleta de comandos, o peek do Flip, o texto vectorial, o modal, os
+    /// Entre a janela e a fila global há ~20 `return`: a escuta do Input Map, o `F9`, a paleta de comandos, o peek do Flip, o texto vectorial, o modal, os
     /// acordes de ficheiro, o bloco do Vector, o do Motion, o da timeline, e por fim o
     /// `handle_editor_key` — que ainda tem o seu próprio `return` de campo de texto focado. Cada
     /// um deles engole em **silêncio**, que é o desenho certo para um roteador e o pior possível
@@ -91,9 +90,8 @@ impl crate::App {
             .and_then(|g| g.hero_screen.as_ref())
             .is_some_and(|h| h.store.command_palette_model().is_some());
         eprintln!(
-            "[undo] Ctrl+Z {estacao} · guardas: escultura={} paleta={} texto_vectorial={} \
+            "[undo] Ctrl+Z {estacao} · guardas: paleta={} texto_vectorial={} \
              campo_de_texto={} vector={} motion={} timeline={} (desfaz={}) rato_sobre_timeline={}",
-            self.sculpt3d_keys_live(),
             paleta,
             self.vec_text_editing(),
             self.text_entry_focused(),

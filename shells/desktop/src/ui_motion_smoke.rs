@@ -364,8 +364,8 @@ fn print_fold_script(folds: usize) {
               e e' ela que deixou isto entrar em dez paineis de uma vez.\n"
     );
     eprintln!(
-        "[ui-motion-smoke 3] (!) A LEI E' A MESMA nos dez paineis (inspector, vector,\n  \
-         painter-layers, physics, audio-editor, audio-mixer, sculpt3d, wet-tuning,\n  \
+        "[ui-motion-smoke 3] (!) A LEI E' A MESMA nos nove paineis (inspector, vector,\n  \
+         painter-layers, physics, audio-editor, audio-mixer, wet-tuning,\n  \
          motion-params, authored). Este smoke abre UM porque o roteiro precisa de um sitio,\n  \
          nao porque a dobra seja dele -- dobre noutro painel e tem de ser identico.\n"
     );

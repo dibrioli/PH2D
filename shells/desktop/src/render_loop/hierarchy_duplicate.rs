@@ -18,18 +18,16 @@ use ph2d_render::Camera2d;
 /// copia `Transform` + `Sprite` + `Name`, e para uma entidade que guarda a geometria noutro sítio
 /// isso produz um **sósia que não desenha nada** — uma linha na Hierarchy sobre coisa nenhuma.
 ///
-/// Já aconteceu duas vezes, em dois módulos:
+/// Já aconteceu duas vezes, em dois módulos (o segundo, o nó de modelagem 3D, saiu com o módulo —
+/// ADR-0179):
 ///
 /// | Entidade | O que o braço genérico produzia | Quem duplica de verdade |
 /// |---|---|---|
 /// | um **path vetorial** (`VecPathRef`) | um sósia sem geometria — ou, pior, dois donos do mesmo path | o documento vetorial, pela porta do painel |
-/// | um **nó de modelagem 3D** (`FieldNode`) | uma linha sem `FieldNode` nem `FieldPose`, invisível ao traçado | `field3d_scene::duplicate_node`, a porta do painel |
 ///
 /// *Uma entidade cuja geometria não está nela não se duplica clonando-a.*
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum DuplicateKind {
-    /// Um nó de modelagem 3D (ADR-0161).
-    Field,
     /// Um path do editor vetorial (ADR-0110).
     VecPath,
     /// Tudo o resto: sprites e entidades comuns, que **são** o que guardam.
@@ -41,9 +39,7 @@ pub(super) fn duplicate_kind(
     world: &bevy_ecs::world::World,
     src: ph2d_ecs::Entity,
 ) -> DuplicateKind {
-    if world.get::<ph2d_field_ecs::FieldNode>(src).is_some() {
-        DuplicateKind::Field
-    } else if world.get::<ph2d_ecs::VecPathRef>(src).is_some() {
+    if world.get::<ph2d_ecs::VecPathRef>(src).is_some() {
         DuplicateKind::VecPath
     } else {
         DuplicateKind::Entity
@@ -91,25 +87,16 @@ pub(super) fn drain(
     // `sync` cunha a entidade dele (com nome único e `RootOrder`) no mesmo frame.
     // ⚠️ **Quem duplica esta entidade não é óbvio, e a escolha errada é SILENCIOSA** — ver
     // [`duplicate_kind`], que é onde a decisão mora (e onde um gate lhe chega).
-    if duplicate_kind(sim.world(), src) == DuplicateKind::Field {
-        if let Some(copy) = ph2d_app_field3d::scene::duplicate_node(sim.world_mut(), src) {
-            // ⭐ A cópia fica selecionada, como no botão do painel: é o que põe o gizmo em cima
-            // dela sem ninguém a ter de procurar.
-            hero.gizmo.replace_selection(Some(copy));
-            toasts.push(Toast::success(tr(
-                "shell.hierarchy_duplicate.duplicated_shape",
-            )));
-            return true;
-        }
-        return false;
-    }
-    // O degrau de TELA, convertido pela câmara — o mesmo dos dois ramos que sobram.
+    //
+    // O degrau de TELA, convertido pela câmara — o mesmo dos dois ramos.
     let (dx, dy) = crate::input_dispatch::screen_offset_world(
         camera,
         window_size,
         crate::input_dispatch::PASTE_OFFSET_PX,
     );
-    if let Some(vp) = sim.world().get::<ph2d_ecs::VecPathRef>(src).copied() {
+    if duplicate_kind(sim.world(), src) == DuplicateKind::VecPath
+        && let Some(vp) = sim.world().get::<ph2d_ecs::VecPathRef>(src).copied()
+    {
         if crate::input_dispatch::duplicate_vec_paths(vec_scene, vec_pen, &[vp.0], dx, dy) {
             // spec/06 F3 (escolha do dono): a cópia fica no mesmo pai, ao lado da original.
             let copies = vec_pen.selected_paths().to_vec();
@@ -163,7 +150,7 @@ pub(super) fn drain(
     if sprite {
         *duplicate_made = Some((entity_bits, copy.to_bits()));
     }
-    // ⭐ A cópia fica seleccionada, como no ramo de MODELAGEM: é o que põe o gizmo em cima dela sem
+    // ⭐ A cópia fica seleccionada: é o que põe o gizmo em cima dela sem
     // ninguém a ter de procurar. ⚠️ **Já não é isto que a torna visível** — ver o doc do dreno.
     hero.gizmo.replace_selection(Some(copy.to_bits()));
     // ⚠️ **O toast diz o que a cópia É** (report do Enio, 2026-08-27). A 1.ª versão anunciava a

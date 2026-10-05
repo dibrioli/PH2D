@@ -20,7 +20,8 @@
 use ph2d_component_desc::{Attach, ComponentDesc, desc_for};
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
 
-/// O registo **completo** — os SEIS registradores.
+/// O registo **completo** — os CINCO registradores (o sexto, o do campo 3D, saiu com o módulo —
+/// ADR-0179).
 ///
 /// ⚠️ **Era deliberadamente diferente do boot, e deixou de ser em 2026-09-16** (TOP-20 #16): o
 /// `init.rs` chamava cinco e o `register_script_components` ficava de fora. O censo media os tipos
@@ -39,7 +40,6 @@ fn full_registry() -> ComponentRegistry {
     ph2d_render::register_render_components(&mut reg);
     ph2d_script::register_script_components(&mut reg);
     ph2d_physics_ecs::register_physics_components(&mut reg);
-    ph2d_field_ecs::register_field_components(&mut reg);
     ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
     reg
 }

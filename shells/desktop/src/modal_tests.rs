@@ -6,9 +6,8 @@
 //!
 //! ⛔⛔ **Um gate que varre um directório por prefixo de nome fica VERDE quando a família se muda**
 //! — ele passa a varrer zero ficheiros e a asserção `bad.is_empty()` é trivialmente verdadeira.
-//! É por isso que o irmão `every_field3d_modal_goes_through_the_door` viaja com a família para
-//! `ph2d-app-field3d` **e ganha lá um piso de população**, em vez de ficar aqui a olhar para um
-//! `src/` que já não tem `field3d_*` nenhum.
+//! Foi por isso que o irmão que media os modais do modelador 3D viajou com a família (e saiu com
+//! ela — ADR-0179), em vez de ficar aqui a olhar para um `src/` que já não os tinha.
 
 /// ⭐ **O LOOP LÊ O NÚMERO DESCONTADO** — e sem este gate o [`chrome_dt`] podia estar perfeito e
 /// não ser usado por ninguém.

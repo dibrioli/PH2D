@@ -80,30 +80,6 @@ pub(crate) struct ProjectFile {
     /// layout de um tipo de runtime torna um refactor interno numa quebra de save).
     /// Ver [`crate::project_settings`].
     pub(crate) settings: crate::project_settings::SavedSettings,
-    /// **A ESCULTURA** (ADR-0150 W8.3) — a lista de peças, cada uma com a pilha de
-    /// níveis e a pose, em postcard. Ver [`ph2d_app_sculpt3d`] (`sculpt3d/doc.rs`).
-    ///
-    /// Fora do `ProjectState` pelo mesmo motivo de `motion`/`timeline`/`physics`: o
-    /// `ProjectState` é a unidade do undo GLOBAL, e a escultura tem fila própria —
-    /// um Ctrl+Z do canvas não pode rebobinar uma pincelada de barro.
-    ///
-    /// ⚠️ **`Vec<u8>` opaco e SEM `cfg`**, e é isso que sustenta a promessa de
-    /// removibilidade do `docs/3D/02.3`: o campo existe com o módulo desligado (o
-    /// postcard é posicional — um campo condicional daria DUAS formas de arquivo com o
-    /// mesmo número de schema), e um binário sem escultura **carrega os bytes adiante**
-    /// em vez de os triturar. Ele carrega a própria versão lá dentro.
-    pub(crate) sculpt: Vec<u8>,
-    /// **OS CANAIS ASSADOS** (ADR-0150 W8.7) — por objeto: os pixels antes da luz, o G-buffer que
-    /// uma malha doou, e o rig com que aquilo foi aceso. Ver [`crate::project_baked_form`].
-    ///
-    /// ⚠️ **Campo de SPRITE, e não parte do blob `sculpt` acima**, embora aquele já guarde as
-    /// malhas. O parser da escultura é `#[cfg(feature = "sculpt3d")]`; guardar os canais lá os
-    /// tornaria legíveis só com o módulo 3D no build — o oposto exato do que a *rota A* promete
-    /// (`docs/3D/02.2`: a malha some do build, o objeto continua reluminável). Ele fica ao lado do
-    /// `painted`, que resolve o mesmo problema para o outro produtor de `SpriteSource::Individual`.
-    ///
-    /// Vazio quando nada foi assado.
-    pub(crate) baked_forms: Vec<crate::project_baked_form::BakedFormDocument>,
     /// **A CORRIDA GRAVADA** (ADR-0131 W17) — o que o dedo do jogador fez, tique
     /// a tique, na forma de arquivo da fita (`ph2d_physics_ecs::TapeWire`).
     ///
@@ -128,12 +104,13 @@ pub(crate) struct ProjectFile {
     /// ⚠️ **Ele fecha uma perda de dados que já acontecia**, e não é uma capacidade nova: o
     /// `texture_id` do `Individual` é um id de alocação da GPU, e o store recomeça em `1` a cada
     /// processo — um sprite tocado por qualquer ferramenta de imagem reabria **invisível**, ou a
-    /// exibir os pixels de outro sprite. O `painted` (v3) e o `baked_forms` resolveram isto para
-    /// os DOIS produtores ricos; este campo é o chão que faltava debaixo deles, e cobre o funil
-    /// que todas as ferramentas atravessam (`commit_edited_texture`).
+    /// exibir os pixels de outro sprite. O `painted` (v3) resolveu isto para o produtor rico (e o
+    /// `baked_forms` para o outro, até o 3D sair — ADR-0179); este campo é o chão que faltava
+    /// debaixo deles, e cobre o funil que todas as ferramentas atravessam
+    /// (`commit_edited_texture`).
     ///
     /// ⚠️ **`Vec<u8>` opaco, e carrega a própria versão lá dentro** (`SHEET_DOC_VERSION`) — o
-    /// precedente literal do `timeline` e do `sculpt`. É o que faz as REGIÕES do hand-packed,
+    /// precedente literal do `timeline`. É o que faz as REGIÕES do hand-packed,
     /// que entram neste mesmo documento, não voltarem a bumpar o `PROJECT_SCHEMA`.
     ///
     /// Vazio num projeto sem sprites individuais.
@@ -181,7 +158,7 @@ pub(crate) struct ProjectFile {
     /// literalmente o defeito que o `sprite_pixels` acima curou para as sprites.
     ///
     /// ⚠️ **`Vec<u8>` opaco, e carrega a própria versão lá dentro** (`PATTERN_ART_DOC_VERSION`) — o
-    /// precedente do `timeline`, do `sculpt` e do `sprite_pixels`. É o que faz um campo novo lá
+    /// precedente do `timeline` e do `sprite_pixels`. É o que faz um campo novo lá
     /// dentro não voltar a bumpar o `PROJECT_SCHEMA`.
     ///
     /// ⚠️⚠️ **A POSIÇÃO É O FORMATO, e este campo é o ÚLTIMO** — o postcard é posicional. Ver o

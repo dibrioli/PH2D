@@ -222,7 +222,6 @@ impl crate::App {
                 ComponentEdit::Weapon(e) => pd.weapon_edits.push((entity_bits, e)),
                 ComponentEdit::Vida(e) => pd.vida_edits.push((entity_bits, e)),
                 ComponentEdit::Nav(e) => pd.nav_edits.push((entity_bits, e)),
-                ComponentEdit::Mesh3d(e) => pd.mesh3d_edits.push((entity_bits, e)),
                 ComponentEdit::Tween(e) => pd.tween_edits.push((entity_bits, e)),
                 ComponentEdit::PathFollow(e) => pd.path_follow_edits.push((entity_bits, e)),
                 ComponentEdit::StateMachine(e) => pd.statemachine_edits.push((entity_bits, e)),

@@ -3,9 +3,9 @@
 //!
 //! # Por que este ficheiro existe separado do handler da roda
 //!
-//! Pela mesma lei que o `sculpt3d_wheel` escreve no dele: **quem decide de quem é o gesto é o
-//! módulo do assunto, não o roteador**. O `on_mouse_wheel` já tem quatro inquilinos (painel ·
-//! escultura · o alcance do Gap Closure · o zoom), e a quinta pergunta escrita lá dentro seria a
+//! Pela lei que o `sculpt3d_wheel` escrevia no dele (o 3D saiu — ADR-0179): **quem decide de quem
+//! é o gesto é o módulo do assunto, não o roteador**. O `on_mouse_wheel` já tem três inquilinos
+//! (painel · o alcance do Gap Closure · o zoom), e a quinta pergunta escrita lá dentro seria a
 //! quinta cópia de *"e se…"* num sítio onde ninguém consegue ler a ordem.
 //!
 //! # A régua: 16 px de tela por linha de roda, convertidos para MUNDO

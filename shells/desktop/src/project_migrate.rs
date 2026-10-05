@@ -32,6 +32,50 @@
 use crate::undo::ProjectState;
 use ph2d_ecs::scene::{WorldSnapshotV1, migrate_v1_to_v2, next_free_after_migration};
 
+/// ⛔⛔ **Os dois campos do 3D de um ficheiro antigo** (`182 → 183`, `line/poda-3d`, ADR-0179).
+///
+/// O `ProjectFile` vivo já não tem `sculpt` nem `baked_forms`, mas os ficheiros v95 e v128 têm-nos
+/// **no meio** do fluxo de bytes, e o postcard é posicional — os tipos congelados continuam a
+/// declará-los para que o resto do ficheiro se leia no sítio certo.
+///
+/// - **`sculpt`** é um `Vec<u8>` opaco: lê-se, e a migração deita-o fora — o módulo que o sabia ler
+///   saiu do produto, e o resto do projecto (todo o 2D) abre.
+/// - **`baked_forms`** é uma lista de documentos com forma própria, e o tipo que a sabia ler saiu
+///   com o módulo. ⛔ Um ficheiro com a lista **vazia** (o caso de todo projecto que nunca assou)
+///   abre; um com objectos assados é **recusado em voz alta** pelo braço da versão dele, em vez de
+///   ser lido com um palpite — ler errado num formato posicional dá lixo bem-formado.
+///
+/// ⚠️ É um tipo **sem valores**: a lista vazia desserializa sem nunca o construir, e o primeiro
+/// elemento devolve o erro.
+#[derive(Debug)]
+pub(crate) enum ObjectoAssadoAntigo {}
+
+impl<'de> serde::Deserialize<'de> for ObjectoAssadoAntigo {
+    // ⚠️ O texto do erro é só o NOME da decisão: o postcard descarta a mensagem de um erro de serde
+    // (devolve `SerdeDeCustom`), e quem o artista lê é o toast de recusa do braço da versão.
+    fn deserialize<D: serde::Deserializer<'de>>(_: D) -> Result<Self, D::Error> {
+        Err(serde::de::Error::custom("ADR-0179"))
+    }
+}
+
+/// O que a migração faz com os dois campos do 3D: nada — ver [`ObjectoAssadoAntigo`]. A escultura
+/// fica para trás, e a resposta (`true` = havia uma) chega ao TOAST do leitor: uma recusa que só o
+/// terminal vê é um botão mudo. A lista de objectos assados está vazia **por tipo** (um ficheiro
+/// que os trazia nem chegou aqui).
+fn deixa_o_3d(sculpt: &[u8], baked_forms: Vec<ObjectoAssadoAntigo>) -> bool {
+    if let Some(nunca) = baked_forms.into_iter().next() {
+        match nunca {}
+    }
+    if sculpt.is_empty() {
+        return false;
+    }
+    eprintln!(
+        "[proj] escultura de {} bytes deixada para tras: o 3D saiu do PH2D (ADR-0179)",
+        sculpt.len()
+    );
+    true
+}
+
 /// O `ProjectState` como a v95 o guardava — com o snapshot **v1**.
 #[derive(serde::Deserialize)]
 pub(crate) struct ProjectStateV95 {
@@ -55,8 +99,10 @@ pub(crate) struct ProjectFileV95 {
     pub(crate) physics: ph2d_physics_ecs::PhysicsSettings,
     pub(crate) tokens: Vec<crate::project_tokens::SavedToken>,
     pub(crate) settings: crate::project_settings::SavedSettings,
+    /// ⛔ O documento da escultura — lido para o fio andar e DEITADO FORA na migração: o 3D saiu
+    /// (ADR-0179). Ver [`ObjectoAssadoAntigo`].
     pub(crate) sculpt: Vec<u8>,
-    pub(crate) baked_forms: Vec<crate::project_baked_form::BakedFormDocument>,
+    pub(crate) baked_forms: Vec<ObjectoAssadoAntigo>,
     pub(crate) player_tape: ph2d_physics_ecs::TapeWire,
     pub(crate) sprite_pixels: Vec<u8>,
 }
@@ -67,6 +113,8 @@ pub(crate) struct MigratedV95 {
     /// O primeiro id livre. ⚠️ Tem de ser plantado no mundo depois do restore, senão a
     /// primeira entidade criada a seguir ao load reusa um id vivo.
     pub(crate) stable_id_counter: u64,
+    /// O ficheiro trazia uma escultura, que ficou para trás (ADR-0179) — o leitor DI-LO no toast.
+    pub(crate) sculpture_left_out: bool,
 }
 
 /// **v95 → o schema CORRENTE** (nasceu `v95 -> v96`; ver a nota abaixo).
@@ -92,6 +140,7 @@ pub(crate) struct MigratedV95 {
 /// Foi assim que o `input_map` foi apanhado.
 #[must_use]
 pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
+    let sculpture_left_out = deixa_o_3d(&old.sculpt, old.baked_forms);
     let stable_id_counter = next_free_after_migration(&old.state.world);
     MigratedV95 {
         file: crate::project::ProjectFile {
@@ -120,8 +169,6 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
             physics: old.physics,
             tokens: old.tokens,
             settings: old.settings,
-            sculpt: old.sculpt,
-            baked_forms: old.baked_forms,
             player_tape: old.player_tape,
             sprite_pixels: old.sprite_pixels,
             stable_id_counter,
@@ -136,6 +183,7 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
             pattern_art: Vec::new(),
         },
         stable_id_counter,
+        sculpture_left_out,
     }
 }
 
@@ -169,8 +217,10 @@ pub(crate) struct ProjectFileV128 {
     pub(crate) physics: ph2d_physics_ecs::PhysicsSettings,
     pub(crate) tokens: Vec<crate::project_tokens::SavedToken>,
     pub(crate) settings: crate::project_settings::SavedSettings,
+    /// ⛔ O documento da escultura — lido para o fio andar e DEITADO FORA na migração: o 3D saiu
+    /// (ADR-0179). Ver [`ObjectoAssadoAntigo`].
     pub(crate) sculpt: Vec<u8>,
-    pub(crate) baked_forms: Vec<crate::project_baked_form::BakedFormDocument>,
+    pub(crate) baked_forms: Vec<ObjectoAssadoAntigo>,
     pub(crate) player_tape: ph2d_physics_ecs::TapeWire,
     pub(crate) sprite_pixels: Vec<u8>,
     pub(crate) stable_id_counter: u64,
@@ -193,6 +243,7 @@ pub(crate) struct SignalActionSplit {
 /// sobre tags), e cada tabela de acções é reescrita com o alvo *por nome*, que é o que ela significava.
 #[must_use]
 pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
+    let sculpture_left_out = deixa_o_3d(&old.sculpt, old.baked_forms);
     let mut state = ProjectState {
         world: old.state.world,
         vec: old.state.vec,
@@ -216,8 +267,6 @@ pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
             physics: old.physics,
             tokens: old.tokens,
             settings: old.settings,
-            sculpt: old.sculpt,
-            baked_forms: old.baked_forms,
             player_tape: old.player_tape,
             sprite_pixels: old.sprite_pixels,
             stable_id_counter: old.stable_id_counter,
@@ -226,6 +275,7 @@ pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
         },
         actions,
         cameras,
+        sculpture_left_out,
     }
 }
 
@@ -236,6 +286,8 @@ pub(crate) struct MigratedV128 {
     /// As `GameCamera` que ganharam o `dolly` (auditoria 26, §2.2) — a mesma contagem de duas
     /// metades das acções, porque o modo de falha é o mesmo.
     pub(crate) cameras: SignalActionSplit,
+    /// O ficheiro trazia uma escultura, que ficou para trás (ADR-0179) — o leitor DI-LO no toast.
+    pub(crate) sculpture_left_out: bool,
 }
 
 /// **Reescreve o blob do `SignalActions` de cada linha do snapshot** — o precedente exacto do

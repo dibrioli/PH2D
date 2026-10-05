@@ -11,7 +11,7 @@
 //! | o prólogo (`impl crate::App`) | 1 | rebobinar · armar o toggle · abrir a timeline · play/pause |
 //!
 //! ⭐ **O `build_component_registry` regista os componentes de CINCO crates irmãs**
-//! (`ph2d_render`, `ph2d_physics_ecs`, `ph2d_field_ecs`, `ph2d_skeleton_ecs` + os do `ph2d-ecs`):
+//! (`ph2d_render`, `ph2d_physics_ecs`, `ph2d_skeleton_ecs`, `ph2d_script` + os do `ph2d-ecs`):
 //! ele é **composição**, pela mesma lei que mantém o `render_loop` aqui. E os gates que o
 //! atravessam fazem-no de propósito — *«um atalho de teste que constrói o componente por outro
 //! caminho é a segunda porta que diverge»* —, logo eles moram com o que EXERCITAM (HOWTO §2.6),

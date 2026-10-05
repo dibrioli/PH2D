@@ -74,10 +74,8 @@ impl crate::App {
             tags_problem,
             script,
             particles,
-            baked_forms,
             ..
         } = FrameGfx::of(gfx);
-        let catavento_assado = ja_esta_assado(hero_screen.as_ref(), baked_forms);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let hero = hero_screen.as_mut()?;
         // Snapshot publication phase — extracted to sibling
@@ -100,7 +98,6 @@ impl crate::App {
             sheets,
             renderer,
             window_size,
-            catavento_assado,
             self.game_camera_preview,
             // ⭐ O ledger — a secção PARALLAX pergunta se OUTRO motor conduz o objecto (auditoria 26).
             &self.preview_drive,
@@ -183,16 +180,7 @@ impl crate::App {
             // no mesmo `run_render_frame`. O atraso é de um quadro e o `vec_bool_shape` o
             // documenta — mover qualquer das duas metades na ordem do frame é mudança com
             // gates próprios e sem nada a ganhar.
-            // ⭐⭐ **E o selo de quem SEGUE UM DESENHO** (W57), fundido no mesmo mapa: o
-            // campo é um selo por linha, e as duas famílias nunca caem na mesma entidade (uma
-            // é forma vetorial, a outra é nó do modelador). ⚠️ Fundir aqui, e não somar dois
-            // mapas lá dentro, é o que mantém *um produtor, um campo* — a lei que o comentário
-            // do `hovered` já escreve dez linhas acima.
-            &{
-                let mut b = crate::vec_bool_shape::badges(sim, &self.vec.entities, &self.bool_live);
-                b.extend(ph2d_app_field3d::scene::link_badges());
-                b
-            },
+            &crate::vec_bool_shape::badges(sim, &self.vec.entities, &self.bool_live),
             // O registo — ver o parâmetro na assinatura do `publish`.
             component_registry,
             // ⭐ A árvore de tags do projecto — ver o parâmetro na assinatura do `publish`.
@@ -233,22 +221,4 @@ impl crate::App {
         );
         Some(tool_preview_bits)
     }
-}
-
-/// ⭐ **O sprite escolhido já tem forma ASSADA?** — o facto de que a queixa da secção LIVE MESH
-/// vive (`docs/3D/02.2`, rota B).
-///
-/// ⚠️ **Ele é calculado na SHELL porque o mapa mora no `AppGfx` e nenhuma crate o vê**; o que
-/// atravessa a fronteira é um `bool`, e é isso que mantém a ponte do Inspector testável **sem um
-/// device**.
-///
-/// ⚠️ **Função livre e não seis linhas na fase**, e quem o impôs foi o tecto de FUNÇÃO (ela chegou
-/// a `202` contra `200`). ⛔ *Partir por RESPONSABILIDADE, nunca subir o número* — e a fronteira é
-/// limpa: a fase COMPÕE o quadro, isto responde uma pergunta sobre um mapa.
-fn ja_esta_assado(
-    hero: Option<&ph2d_editor_core::HeroScreen>,
-    baked_forms: &std::collections::BTreeMap<u64, ph2d_form_donation::baked_form::BakedForm>,
-) -> bool {
-    hero.and_then(|h| h.gizmo.selection)
-        .is_some_and(|b| baked_forms.contains_key(&b))
 }

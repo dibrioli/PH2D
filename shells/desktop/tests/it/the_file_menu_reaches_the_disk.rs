@@ -9,8 +9,7 @@
 //! ⛔ Sem ele, os três itens voltariam a ser mudos com um `git revert` de uma linha, e nada
 //! reprovaria — foi exactamente esse o estado até 2026-08-23.
 
-use crate::sculpt_source;
-use sculpt_source::{function_body, source};
+use crate::fonte_da_shell::{function_body, source};
 
 /// **A agulha casa como PALAVRA, nunca como SUBCADEIA.**
 ///

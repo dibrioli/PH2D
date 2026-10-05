@@ -1,7 +1,7 @@
 //! **A ARTE DOS PADRÕES no arquivo de projeto** (plano 33, W8) — filho de `project_tests`
 //! (declarado lá via `#[path]`), então `super::*` alcança as fixtures dele.
 //!
-//! ⚠️ **FILHO e não irmão, pela razão exacta do `sculpt` e do `tape`:** as fixtures desta suíte
+//! ⚠️ **FILHO e não irmão, pela razão exacta do `tape`:** as fixtures desta suíte
 //! (`headless_app`, `write_project_art`, `tmp_path`, `empty_state`) são as portas dele, e copiá-las
 //! seria um segundo escritor de arquivo de projeto — que divergiria no próximo campo novo.
 //!
@@ -38,7 +38,6 @@ fn unreadable_pattern_art_refuses_the_whole_file_and_leaves_the_session_alone() 
         &path,
         PROJECT_SCHEMA,
         Vec::new(),
-        Vec::new(),
         vec![0xff, 0xff, 0xff, 0xff],
     );
     app.project_load_from(&path.to_string_lossy());
@@ -65,7 +64,7 @@ fn a_well_formed_pattern_art_blob_still_opens_the_file() {
     let arte = crate::project_texture_pattern::encode_for_test(4, 3);
 
     let path = tmp_path("load_good_pattern_art");
-    write_project_art(&path, PROJECT_SCHEMA, Vec::new(), Vec::new(), arte);
+    write_project_art(&path, PROJECT_SCHEMA, Vec::new(), arte);
     app.project_load_from(&path.to_string_lossy());
     let _ = std::fs::remove_file(&path);
 

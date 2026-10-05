@@ -1,5 +1,5 @@
 //! **O clique, o PRÓLOGO** — ramos do `on_mouse_input` ([`super`]), corpos verbatim pela mesma ordem: o arrasto da
-//! biblioteca, o aperto que solta o teclado do painel, as janelas 3D e a alça do gizmo de âncora, e o editor de áudio.
+//! biblioteca, o aperto que solta o teclado do painel, a alça do gizmo de âncora, e o editor de áudio.
 //! ⚠️ A soltura das mãos NÃO está aqui: é a primeira coisa do handler, e fica no índice à vista.
 
 use super::*;
@@ -83,43 +83,8 @@ impl crate::App {
         false
     }
 
-    /// A cena de escultura 3D e a janela de modelagem tomam o botão para navegar; a alça do gizmo de âncora toma-o
-    /// antes do resto do `Down`.
-    pub(super) fn ramo_navegacao_3d_e_ancora(
-        &mut self,
-        state: ElementState,
-        button: MouseButton,
-    ) -> bool {
-        // ADR-0150 W1/M2: a cena 3D toma o botão para navegar. Inerte (e
-        // portanto invisível) sem cena armada.
-        #[cfg(feature = "sculpt3d")]
-        {
-            let taken = match state {
-                ElementState::Pressed => self.sculpt3d_pointer_down(button),
-                // ⚠️ **Os dois lados do `match` deixaram de ter a mesma FORMA** (W2/L3-A2), e
-                // é mensagem, não descuido: o pen-up só precisa da CENA e é função livre; o
-                // pen-down arbitra quem fica com o gesto e para isso lê `gfx`, `last_pointer`
-                // e `modifiers` — logo continua em `impl App`, com a razão escrita lá.
-                ElementState::Released => self
-                    .sculpt3d_scene_mut()
-                    .is_some_and(ph2d_app_sculpt3d::pointer_up),
-            };
-            if taken {
-                return true;
-            }
-        }
-        // ADR-0161 W4: a janela 3D de modelagem toma o botão para navegar. Inerte
-        // (e portanto invisível) sem o smoke armado, e ela só reclama o gesto que
-        // começa DENTRO da área que ela desenhou.
-        {
-            let taken = match state {
-                ElementState::Pressed => self.field3d_pointer_down(button),
-                ElementState::Released => self.field3d_pointer_up(),
-            };
-            if taken {
-                return true;
-            }
-        }
+    /// A alça do gizmo de âncora toma o botão antes do resto do `Down`.
+    pub(super) fn ramo_alca_da_ancora(&mut self, state: ElementState, button: MouseButton) -> bool {
         // **§12 — a alça do gizmo de âncora toma o botão** (ADR-0072 §2.3).
         //
         // ⚠️ Antes do resto do `Down`, e com `return`: agarrar uma alça **não** é selecionar um
@@ -140,9 +105,10 @@ impl crate::App {
     pub(super) fn ramo_aperto_solta_teclado(&mut self, state: ElementState) {
         // ⭐⭐⭐ **UM APERTO NO CANVAS SOLTA O TECLADO QUE UM CAMPO DO PAINEL SEGURAVA.**
         //
-        // ⛔ **Ele vem ANTES dos três consumidores abaixo, e é aí que está a cura.** Os três
-        // — a cena de escultura, a janela de modelagem, a alça do gizmo de âncora — TOMAM o
-        // aperto e devolvem `return` antes do `forward_to_hero`, que é o único sítio onde a
+        // ⛔ **Ele vem ANTES dos consumidores abaixo, e é aí que está a cura.** Eles — hoje a
+        // alça do gizmo de âncora; eram também a cena de escultura e a janela de modelagem, que
+        // saíram com o 3D (ADR-0179) — TOMAM o aperto e devolvem `return` antes do
+        // `forward_to_hero`, que é o único sítio onde a
         // partida de foco corre. Sem esta linha, tocar num chip numérico de painel e voltar
         // ao canvas deixava `focus_id` preso naquele chip **para o resto da sessão**, e com
         // ele morriam `Delete`, `Ctrl+Z` e todo atalho do módulo que tomou o gesto (Enio,

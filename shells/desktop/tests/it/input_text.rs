@@ -164,14 +164,6 @@ pub fn gizmo_drag_file() -> String {
     file("input_dispatch/gizmo_drag.rs")
 }
 
-/// O texto sem o que vem depois de `//` — a régua do `sculpt_source::source`, para os gates do território.
-pub fn code_only(text: &str) -> String {
-    text.lines()
-        .map(|l| l.find("//").map_or(l, |at| &l[..at]))
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
 /// O corpo de um ramo INLINE: o `return true;` («consumiu») é o `return;` da porta; o `return false;` fica.
 fn inline(body: &str) -> String {
     body.replace("return true;", "return;")

@@ -171,7 +171,8 @@ pub fn forward_to_hero(
 /// **antes** do [`forward_to_hero`], então a partida de foco do despachante nunca corria e
 /// `focus_id` ficava preso naquele chip **para o resto da sessão**. Dali em diante o
 /// `sculpt3d_key` recusa na primeira linha (`text_entry_focused`) e morrem, juntos, `Delete`,
-/// `Ctrl+Z`, `Ctrl+Shift+Z` e todo atalho da cena 3D.
+/// `Ctrl+Z`, `Ctrl+Shift+Z` e todo atalho da cena 3D. (O 3D saiu — ADR-0179; a lei ficou com quem
+/// ainda toma o gesto antes do despachante, a alça do gizmo de âncora.)
 ///
 /// ⚠️ **A cura é chamar a MESMA lei, nunca repeti-la** — [`ph2d_editor_core::interaction::blur_focus`]
 /// compromete o buffer numérico por confirmar, repõe o visual do widget e emite o `Blur`. Um
@@ -284,33 +285,6 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     };
     hero.chrome_panel_at(x, y).is_some()
 }
-
-/// **Os fundos que a MOLDURA do app pinta** — os obstáculos que o gizmo de navegação contorna.
-///
-/// ⛔⛔ **ESTA LISTA JÁ FOI A PORTA DA CENA 3D, E APODRECEU. Não a use para isso outra vez.**
-/// Ela decidia se um clique era da moldura, e o doc dizia que ser uma lista de **backdrops** (e não
-/// de botões) a impedia de envelhecer. Não impediu — ela envelhece pelo outro lado:
-///
-/// | 2026-08-30, depois de a barra de pills sair | |
-/// |---|---|
-/// | três entradas deixaram de ser PINTADAS (a barra legada só existe sob `F9`) | mortas |
-/// | o `MENUBAR_BACKDROP` e a fila de ABAS nasceram fora dela | **descobertos** |
-///
-/// ⇒ Enio, 2026-08-30: *«quando coloco Model, não consigo mais clicar nos menus superiores nem nas
-/// abas»*. A porta da cena é hoje o [`crate::chrome_hit::pointer_over_chrome`], que **pergunta ao
-/// índice de acerto** — o que o chrome pintou NESTE quadro — e por isso cobre uma faixa nova no dia
-/// em que ela é pintada. *Uma lista de nomes ao lado de um índice que já sabe a resposta são duas
-/// respostas à mesma pergunta, e a que envelhece é a que ninguém relê.*
-///
-/// O que sobra aqui é outra pergunta: **que rectângulos o gizmo de navegação deve contornar**
-/// (`render_loop`, W50). O gate `every_chrome_backdrop_is_known_to_the_scene` guarda-a.
-pub const CHROME_BACKDROPS: [ph2d_editor_core::NodeId; 5] = [
-    ph2d_editor_core::ids::RAIL_BACKDROP,
-    ph2d_editor_core::ids::MENUBAR_BACKDROP,
-    ph2d_editor_core::ids::TOPBAR_LEFT_BACKDROP,
-    ph2d_editor_core::ids::TOPBAR_RIGHT_BACKDROP,
-    ph2d_editor_core::ids::TOPBAR_IMAGE_TOOLS_BACKDROP,
-];
 
 /// ADR-0029 Phase C.2: resolve canvas-picked entity bits to a live
 /// Hierarchy entry via the panel-owned thread-local snapshot. Takes

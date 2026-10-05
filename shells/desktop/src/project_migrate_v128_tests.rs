@@ -30,6 +30,17 @@ fn v128_bytes() -> Vec<u8> {
 /// **Um ficheiro v128 com UM objecto que carrega `blobs`** — a mesma montagem campo a campo, para
 /// os gates que precisam de outro componente no objecto.
 fn v128_bytes_com(blobs: Vec<ph2d_asset::ComponentBlob>) -> Vec<u8> {
+    v128_bytes_com_3d(blobs, Vec::new(), Vec::new())
+}
+
+/// **E com os dois campos do 3D preenchidos** (`sculpt` · `baked_forms`), que o tipo vivo já não
+/// tem (degrau `183`, ADR-0179). Um `baked_forms` de N bytes é, no fio, uma lista de N elementos
+/// — o que basta para o gate: o que ele mede é se uma lista NÃO vazia se lê.
+fn v128_bytes_com_3d(
+    blobs: Vec<ph2d_asset::ComponentBlob>,
+    sculpt: Vec<u8>,
+    baked_forms: Vec<u8>,
+) -> Vec<u8> {
     let world = WorldSnapshot {
         version: WorldSnapshot::VERSION,
         entities: vec![std::sync::Arc::new(EntitySnapshotRow {
@@ -55,8 +66,8 @@ fn v128_bytes_com(blobs: Vec<ph2d_asset::ComponentBlob>) -> Vec<u8> {
         ph2d_physics_ecs::PhysicsSettings::default(),         // physics
         Vec::<u8>::new(),                                     // tokens
         crate::project_settings::collect(Default::default()), // settings
-        Vec::<u8>::new(),                                     // sculpt
-        Vec::<u8>::new(),                                     // baked_forms
+        sculpt,                                               // sculpt
+        baked_forms,                                          // baked_forms
         ph2d_physics_ecs::TapeWire::default(),                // player_tape
         Vec::<u8>::new(),                                     // sprite_pixels
         7u64,                                                 // stable_id_counter
@@ -163,5 +174,45 @@ fn a_frozen_v128_camera_migrates_and_the_world_restores() {
     assert_eq!(
         cam.dolly, 0.0,
         "o dolly de um ficheiro velho é a identidade"
+    );
+}
+
+/// ⛔⛔ **O 3D saiu (ADR-0179), e um v128 que o tinha não pode ser lido com um palpite.**
+///
+/// - com **escultura** (o `Vec<u8>` opaco), o ficheiro abre e a escultura fica para trás — o resto
+///   do projecto (todo o 2D) é o que o artista ainda pode usar — e a migração DI-LO
+///   (`sculpture_left_out`, que o leitor leva ao toast);
+/// - com **objectos assados**, cuja forma o tipo vivo já não conhece, o ficheiro é **recusado** —
+///   o postcard é posicional, e ler a lista com um palpite daria lixo bem-formado a partir dela.
+///
+/// **Mutações que devem sangrar:** o `ObjectoAssadoAntigo` a aceitar um elemento (o assado lê-se) ·
+/// o campo `sculpt` a sair do tipo congelado (os campos seguintes deslizam e o contador muda).
+#[test]
+fn a_v128_with_3d_content_drops_the_sculpture_and_refuses_baked_objects() {
+    let com_escultura = v128_bytes_com_3d(Vec::new(), vec![1, 2, 3, 4], Vec::new());
+    let (_, antigo): (u32, ProjectFileV128) = postcard::from_bytes(&com_escultura)
+        .expect("um v128 com escultura le-se pelo tipo congelado");
+    let m = migrate_v128_to_v129(antigo);
+    assert_eq!(
+        m.file.stable_id_counter, 7,
+        "os campos depois da escultura leram-se no sitio certo"
+    );
+    assert!(
+        m.sculpture_left_out,
+        "a escultura ficou para tras CALADA — o toast do leitor nao a pode dizer"
+    );
+    let sem_escultura = v128_bytes_com_3d(Vec::new(), Vec::new(), Vec::new());
+    let (_, antigo): (u32, ProjectFileV128) =
+        postcard::from_bytes(&sem_escultura).expect("um v128 sem 3D le-se pelo tipo congelado");
+    assert!(
+        !migrate_v128_to_v129(antigo).sculpture_left_out,
+        "um ficheiro SEM escultura anunciou que a deixou para tras"
+    );
+
+    // Uma lista NÃO vazia — o conteúdo não importa: o tipo congelado recusa o primeiro elemento.
+    let com_assados = v128_bytes_com_3d(Vec::new(), Vec::new(), vec![0]);
+    assert!(
+        postcard::from_bytes::<(u32, ProjectFileV128)>(&com_assados).is_err(),
+        "um v128 com objectos assados foi lido — a forma deles saiu com o modulo 3D"
     );
 }

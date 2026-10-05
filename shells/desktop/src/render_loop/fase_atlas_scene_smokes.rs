@@ -2,8 +2,8 @@
 //! o card LINE, cada uma a pousar uma tela branca e a sentar a selecção nela no primeiro quadro em que o
 //! atlas está em escopo (OBRA 2 da `line/render-loop`, 2026-09-12).
 //!
-//! Partida da 2.ª metade (`fase_atlas_scene_smokes_late`) só porque o bake do sculpt3d corre entre as
-//! duas, e a ordem é o contrato.
+//! Partida da 2.ª metade (`fase_atlas_scene_smokes_late`) porque o bake do sculpt3d corria entre as
+//! duas (saiu com o 3D — ADR-0179); a ordem é o contrato.
 
 use super::*;
 

@@ -43,7 +43,7 @@ pub(super) fn empty_state() -> ProjectState {
 /// responsabilidade. `pub(super)` + `use` para que os outros filhos o alcancem por `super::*`.
 #[path = "project_test_writer.rs"]
 mod writer;
-use writer::{write_project, write_project_art, write_project_full, write_project_with};
+use writer::{write_project, write_project_art, write_project_with};
 
 /// O documento de uma animação: uma track em `hero`, com o `wire_id` (a identidade do objeto)
 /// carimbado como o save carimba. Devolve os bytes que o arquivo de projeto carregaria.
@@ -402,8 +402,6 @@ fn project_file_round_trips_through_postcard() {
         physics: Default::default(),
         tokens: Vec::new(),
         settings: crate::project_settings::collect(Default::default()),
-        sculpt: Vec::new(),
-        baked_forms: Vec::new(),
         player_tape: ph2d_physics_ecs::TapeWire::default(),
         sprite_pixels: Vec::new(),
         stable_id_counter: ph2d_ecs::StableId::FIRST,
@@ -546,26 +544,15 @@ fn an_unreadable_animation_refuses_the_whole_file_and_leaves_the_session_alone()
 }
 
 /// **A ARTE DOS PADRÕES no arquivo** (plano 33, W8) — filho (`#[path]`) pelo teto
-/// de LOC do HR-18, e FILHO pela razão exacta dos três abaixo: as fixtures desta
+/// de LOC do HR-18, e FILHO pela razão exacta do de baixo: as fixtures desta
 /// suíte (`headless_app`, `write_project_art`, `tmp_path`) são as portas dele.
 #[path = "project_pattern_art_tests.rs"]
 mod pattern_art;
 
-/// **O que um load faz com a ESCULTURA** — filho (`#[path]`) pelo teto de LOC do
-/// HR-18, e FILHO e não irmão porque as fixtures desta suíte (`headless_app`,
-/// `write_project_full`, `tmp_path`) são as portas dele: copiá-las seria um
-/// segundo escritor de arquivo de projeto, e ele divergiria no próximo bump.
-#[path = "project_sculpt_tests.rs"]
-mod sculpt;
-
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — filho (`#[path]`) pelo
-/// teto de LOC do HR-18, e FILHO pela razão exata do `sculpt` acima: as fixtures
-/// desta suíte (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são
-/// as portas dele.
+/// teto de LOC do HR-18, e FILHO e não irmão porque as fixtures desta suíte
+/// (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são as portas dele:
+/// copiá-las seria um segundo escritor de arquivo de projeto, e ele divergiria no
+/// próximo bump.
 #[path = "project_tape_tests.rs"]
 mod tape;
-
-/// **O que um load faz com a PEÇA DE MODELAGEM 3D** (ADR-0161) — filho (`#[path]`)
-/// pela razão exata dos dois acima: as fixtures desta suíte são as portas dele.
-#[path = "project_field_tests.rs"]
-mod field;

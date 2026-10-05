@@ -123,12 +123,7 @@ impl crate::App {
                 ) else {
                     return;
                 };
-                self.present_flip_sculpt_fx(
-                    window_size,
-                    scene_viewport,
-                    motion_active,
-                    &flip_preview,
-                );
+                self.present_flip_fx(window_size, scene_viewport, motion_active, &flip_preview);
                 self.present_chrome_and_composite(
                     &frame,
                     window_size,
@@ -364,9 +359,9 @@ impl crate::App {
         Some((plan, banded))
     }
 
-    /// Os passes 1b a 1c do quadro adquirido: o Flip composto por camada (com os fantasmas e o *peek*), a malha 3D, e
-    /// os passes de luz (a sprite emissiva e o glow do Motion).
-    fn present_flip_sculpt_fx(
+    /// Os passes 1b a 1c do quadro adquirido: o Flip composto por camada (com os fantasmas e o *peek*), as formas
+    /// do Motion pela placa, e os passes de luz (a sprite emissiva e o glow do Motion).
+    fn present_flip_fx(
         &mut self,
         window_size: ph2d_host::WindowSize,
         scene_viewport: Option<[f32; 4]>,
@@ -377,8 +372,6 @@ impl crate::App {
             return;
         };
         let AppGfx {
-            #[cfg(feature = "sculpt3d")]
-            sculpt3d,
             surface,
             renderer,
             present,
@@ -439,24 +432,6 @@ impl crate::App {
             scene_viewport,
             surface.gpu(),
         );
-        // Pass 1d: a malha 3D (ADR-0150 W1/M2) — MESMO alvo `game_rt`,
-        //   câmera PRÓPRIA (perspectiva orbital) e depth-buffer próprio.
-        //   `LoadOp::Load`, então a cena 2D fica por baixo. No-op sem
-        //   cena armada: num run normal `sculpt3d` é `None` e o frame é
-        //   byte-idêntico ao de antes deste bloco existir.
-        //
-        // ⚠️ **O ENCODER E O SUBMIT SÃO DA PORTA desde 2026-09-08**, e não deste sítio:
-        // com a divisão aberta há N vistas, e o uniform da câmera é UM — as escritas dele
-        // correm na FILA, então cada vista precisa do seu `submit` entre elas, senão as N
-        // desenham com a câmera da última (report do Enio; ver `render_views`).
-        #[cfg(feature = "sculpt3d")]
-        if let Some(scene) = sculpt3d.as_mut() {
-            scene.render(
-                surface.gpu(),
-                game_rt.view(),
-                (window_size.width, window_size.height),
-            );
-        }
         // ⭐⭐⭐ **AS FORMAS DO MOTION, pela placa** (doc 121 W2/W3) — DESENHADAS aqui, antes do halo
         // que as redesenha (§9.14), e COLADAS no mundo onde sempre foram (`present_chrome`). ⚠️ O buffer
         // do DISPOSITIVO só com o cozimento vivo — o mesmo `gpu_live` que o passe de sprites pergunta.

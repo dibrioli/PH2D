@@ -30,7 +30,7 @@ impl crate::App {
     /// executa (o `project_load` acima só resolve o caminho) — e não uma cópia da decisão
     /// posta num helper que ninguém chama.
     pub(crate) fn project_load_from(&mut self, path: &str) {
-        let Some((mut file, migrated_counter)) = self.read_project_file(path) else {
+        let Some((file, migrated_counter)) = self.read_project_file(path) else {
             return;
         };
         // A ANIMAÇÃO É PARTE DO ARQUIVO, e um documento que este binário não sabe ler faz o
@@ -58,8 +58,8 @@ impl crate::App {
         // coletor salta o `AssetId` que já não está no `AssetDb`. *A arte não some por um bug; some
         // porque o app abriu, mentiu e salvou.*
         //
-        // ⚠️ Descodificada AQUI (antes de qualquer mutação da sessão) e **instalada** lá em baixo,
-        // pela mesma razão que a escultura: instalar precisa do `AssetDb`, descodificar não.
+        // ⚠️ Descodificada AQUI (antes de qualquer mutação da sessão) e **instalada** lá em baixo:
+        // instalar precisa do `AssetDb`, descodificar não.
         let pattern_art =
             match crate::project_texture_pattern::decode_texture_pattern_art(&file.pattern_art) {
                 Ok(v) => v,
@@ -69,27 +69,6 @@ impl crate::App {
                     return;
                 }
             };
-        // **E A ESCULTURA, pela MESMA lei** (ADR-0150 W8.3): um documento que este
-        // binário não sabe ler faz o load inteiro ser RECUSADO. Abrir sem ela mostraria
-        // a cena, pareceria certo, e o próximo Ctrl+S gravaria o vazio por cima — a obra
-        // não sumiria por um bug, sumiria porque o app abriu, mentiu e salvou.
-        //
-        // ⚠️ Ela é decodificada AQUI e o resultado é guardado: a decodificação é
-        // `O(vértices)` com octree e adjacência POR NÍVEL, e fazê-la de novo na hora de
-        // instalar seria pagar duas vezes pelo mesmo documento.
-        #[cfg(feature = "sculpt3d")]
-        let sculpt = if file.sculpt.is_empty() {
-            None
-        } else {
-            match ph2d_app_sculpt3d::decode_doc(&file.sculpt) {
-                Ok(v) => Some(v),
-                Err(e) => {
-                    eprintln!("[proj] escultura ilegivel — load RECUSADO: {e}");
-                    self.toast_refused("shell.project_load.project_refused_its_3", &e);
-                    return;
-                }
-            }
-        };
         // **E OS PIXELS PRÓPRIOS DOS SPRITES, pela MESMÍSSIMA lei** (plano
         // `docs/Sprite_projeto/17` §3). Aqui ela é ainda mais afiada, porque isto **são os
         // pixels**: abrir sem eles mostraria a cena com os sprites em branco — ou invisíveis —,
@@ -106,10 +85,7 @@ impl crate::App {
         };
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----
         //
-        #[cfg(feature = "sculpt3d")]
-        self.project_forget_previous(&mut file, sculpt);
-        #[cfg(not(feature = "sculpt3d"))]
-        self.project_forget_previous(&mut file);
+        self.project_forget_previous(&file);
         self.project_install_accepted(
             path,
             file,
@@ -122,16 +98,11 @@ impl crate::App {
     }
 
     /// **A sessão ESQUECE o documento anterior** — o relógio, o undo, o mundo rígido e as settings
-    /// dele, a tabela de cor, a timeline e as poses que ela devia, os produtores vivos, a memória da
-    /// modelagem 3D e a escultura; e as duas perguntas que o MODEL faz ao documento que entra.
+    /// dele, a tabela de cor, a timeline e as poses que ela devia, e os produtores vivos.
     ///
     /// ⚠️ Saiu do [`Self::project_load_from`] pelo tecto de 200 LOC por função (`fn_loc_caps`),
     /// verbatim e no MESMO instante: colada logo a seguir a o arquivo ser aceite.
-    fn project_forget_previous(
-        &mut self,
-        file: &mut ProjectFile,
-        #[cfg(feature = "sculpt3d")] sculpt: Option<(Vec<ph2d_app_sculpt3d::LoadedPiece>, usize)>,
-    ) {
+    fn project_forget_previous(&mut self, file: &ProjectFile) {
         // **A SESSÃO ESQUECE O DOCUMENTO ANTERIOR.** Este bloco fica colado na decisão de
         // aceitar, e não lá no fim: entre o aceite e o esquecimento não sobra nenhum passo que
         // dependa de `gfx`, então o que o gate headless observa é exatamente o que o app com
@@ -196,68 +167,6 @@ impl crate::App {
         // herdou o número. É a MESMA razão da linha acima, um nível abaixo.
         ph2d_timeline::expr_owed::forget_owed_poses();
         self.forget_live_producers();
-        // E as ESCULTURAS que o módulo de modelagem 3D já tentou ler (ADR-0161 W23). A **peça**
-        // atravessa o arquivo sozinha — ela é uma árvore de entidades, e o `ProjectState` é o mundo
-        // inteiro. O que não atravessava era a memória de *"já tentei este arquivo"*: ela existe
-        // para o aviso não repetir em todo quadro, e o limite dela é o **documento**.
-        //
-        // ⚠️ Sem esta linha, um arquivo de escultura CONSERTADO no disco nunca era relido — e o
-        // segundo silêncio era idêntico ao de quando estava tudo certo. Mesma família das duas
-        // linhas acima: *o que o documento anterior possuía e não pode atravessar*.
-        ph2d_app_field3d::reload::forget_tried();
-        // E o ISOLAMENTO da vista (W43): desde que a vista sobrevive a fechar o painel, ela pode
-        // atravessar um Ctrl+O — e o `isolated` guarda **bits de entidade**, que o mundo novo
-        // realoca. Ver [`ph2d_app_field3d::smoke::forget_isolation_across_documents`]: a câmera fica,
-        // este campo não.
-        ph2d_app_field3d::smoke::forget_isolation_across_documents();
-        // ⭐⭐ **E o projeto que traz uma PEÇA de modelagem abre o painel dela** (W45).
-        //
-        // ⚠️ A lei é a do módulo irmão, **lida e não decidida**: *"um projeto com escultura ARMA o
-        // módulo… a alternativa seria abrir o arquivo, descartar a obra em silêncio"*. Aqui a obra
-        // não se perde — ela é uma árvore de entidades e o save leva o mundo inteiro (W35) — mas o
-        // **silêncio** era o mesmo: o arquivo abria e a tela ficava vazia.
-        //
-        // ⛔ **E a porta estava trancada por dentro:** o pedido de abrir o painel só era aceite com
-        // o módulo já **armado**, e o único caminho que o arma é a visibilidade do painel.
-        //
-        // ⚠️ Só uma **PERGUNTA**, respondida no quadro: o mundo vive no `gfx`, e este caminho corre
-        // sem janela (`apply_project` volta cedo). Ver `field3d_smoke::ask_open_panel_if_part`.
-        //
-        // ⚠️ **E cede a um projeto que também traz ESCULTURA**: os dois querem o canvas, e a lei do
-        // dono único (W40) diz que ele é de um só. Quem chegou pelo mesmo arquivo não se disputa —
-        // a escultura já arma o módulo dela, e o MODEL fica a um clique.
-        //
-        // ⚠️⚠️ **A pergunta é feita DEPOIS de a escultura deste load ser instalada**, e a primeira
-        // escrita fazia-a antes: ali o `sculpt3d_pending` ainda é o do **documento anterior**, e a
-        // condição respondia sobre o arquivo errado — verde em todo gate que abrisse um projeto de
-        // cada vez. *Uma condição sobre estado mutável tem um instante, e ele faz parte da lei.*
-        // **A ESCULTURA do documento anterior morre aqui.** Os bytes ficam para o save
-        // (o passa-adiante), e a cena viva é substituída — ou APAGADA, quando o projeto
-        // novo não tem escultura nenhuma: a lista nunca-vazia é o invariante que torna
-        // `obj()` total, então "sem peças" se diz com a cena inteira fora, não com uma
-        // cena vazia.
-        self.sculpt_doc = std::mem::take(&mut file.sculpt);
-        #[cfg(feature = "sculpt3d")]
-        {
-            self.sculpt3d.pending = sculpt;
-            if self.sculpt3d.pending.is_none()
-                && let Some(gfx) = self.gfx.as_mut()
-            {
-                gfx.sculpt3d = None;
-            }
-        }
-        // Agora sim — ver o bloco acima sobre o **instante** em que esta pergunta é feita.
-        #[cfg(feature = "sculpt3d")]
-        let solo = self.sculpt3d.pending.is_none();
-        #[cfg(not(feature = "sculpt3d"))]
-        let solo = true;
-        if solo {
-            ph2d_app_field3d::smoke::ask_open_panel_if_part();
-        }
-        // ⭐ **E a peça nasce ENQUADRADA** (W46), abra o painel agora ou daqui a uma hora: o pedido
-        // fica de pé até a ponte o servir, e ela só corre com o módulo armado. ⚠️ Sem `solo`, de
-        // propósito — enquadrar não disputa o canvas com ninguém.
-        ph2d_app_field3d::smoke::ask_frame_the_part();
         self.timeline_insert_key = false;
         self.timeline_reveal_after_apply = false;
         self.autokey = Default::default(); // pins/baselines de pose keyados por bits mortos
@@ -265,7 +174,7 @@ impl crate::App {
 
     /// **O ficheiro aceite ENTRA** — os assets e o mundo, a semente de identidades (e, na migração, as
     /// juntas por identidade), os pixels, a arte dos padrões, a biblioteca, as folhas, os documentos
-    /// pintados e assados, a fita, o Input Map, o grafo de Motion, a animação e o loop dela, o
+    /// pintados, a fita, o Input Map, o grafo de Motion, a animação e o loop dela, o
     /// autoplay, e o baseline do undo desarmado.
     ///
     /// ⚠️ Saiu do [`Self::project_load_from`] pelo tecto de 200 LOC por função, verbatim e pela MESMA
@@ -360,14 +269,6 @@ impl crate::App {
         // Depois do mundo: os sprites já existem (com bits novos), e é pelo `PaintedDoc` que cada um
         // reencontra o documento que era dele.
         self.restore_painted_docs(file.painted);
-        // **OS CANAIS ASSADOS** (`docs/3D/02.2`, rota A) — mesma dança, mesmo motivo: o
-        // `texture_id` do save morreu com o processo que o criou, e é pelo `BakedForm` que cada
-        // sprite reencontra os canais que eram dele.
-        //
-        // ⚠️ Ele NÃO acende: o slot nasce vazio e quem o acende é o passe de re-acendida no
-        // primeiro frame, que é a MESMA porta que a lâmpada usa. Acender aqui seria a segunda
-        // resposta a *como um objeto assado vira pixels*.
-        self.restore_baked_forms(file.baked_forms);
         // **A CORRIDA GRAVADA** (W17). Instalada, nunca fundida: um load é uma
         // troca de documento, e uma fita costurada com a da sessão anterior
         // descreveria uma corrida que ninguém deu — o irmão exato do que o

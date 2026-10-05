@@ -90,9 +90,10 @@ fn render_loop_inteiro() -> String {
 #[test]
 fn toda_fila_do_drain_out_e_tirada_por_um_take() {
     let filas = filas();
+    // ⚠️ `40 → 39` em 2026-10-05: a fila do catavento (`mesh3d_edits`) saiu com o 3D (ADR-0179).
     assert!(
-        filas.len() >= 40,
-        "o DrainOut declara {} filas `_edits` — medido 40 na W4; um padrão que deixou de casar \
+        filas.len() >= 39,
+        "o DrainOut declara {} filas `_edits` — medido 39 desde a poda do 3D; um padrão que deixou de casar \
          lê-se igual a «todas drenadas»",
         filas.len()
     );
@@ -131,9 +132,10 @@ fn todo_parametro_da_aplicacao_chega_a_uma_porta() {
             (tipo.trim_start().starts_with("&[") && !nome.is_empty()).then_some(nome)
         })
         .collect();
+    // ⚠️ `19 → 18` em 2026-10-05: o parâmetro do catavento (`mesh3d`) saiu com o 3D (ADR-0179).
     assert!(
-        params.len() >= 19,
-        "a `aplicar` tem {} parâmetros de fatia — medido 19 na W4",
+        params.len() >= 18,
+        "a `aplicar` tem {} parâmetros de fatia — medido 18 desde a poda do 3D",
         params.len()
     );
     assert!(

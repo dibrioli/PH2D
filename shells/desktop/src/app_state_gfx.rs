@@ -174,42 +174,6 @@ pub(crate) struct AppGfx {
     /// ADR-0114 W1: o pipeline wgpu que rasteriza o traço do Flip no `game_rt`
     /// (HDR), amostrado pelo playhead. Criado 1× (device + formato do game_rt).
     pub(crate) flip_render: ph2d_flip_render::FlipRenderer,
-    /// ADR-0150 W1/M2: a cena 3D viva (malha + camera orbital + pipeline).
-    /// `None` num run normal — so o smoke a cria, e sem ela toda porta do
-    /// `ph2d_app_sculpt3d` devolve `false` e o frame 2D fica intocado.
-    #[cfg(feature = "sculpt3d")]
-    pub(crate) sculpt3d: Option<ph2d_app_sculpt3d::Sculpt3dScene>,
-    /// **OS SPRITES QUE UMA FORMA ACENDE** (`docs/3D/02.2`, rota A), por bits de entidade.
-    ///
-    /// ⚠️ **Ele mora aqui, e NÃO dentro da cena 3D, porque um objeto assado sobrevive à escultura —
-    /// e ao módulo.** Enquanto o mapa morasse na `Sculpt3dScene`, apagar a peça levaria os canais
-    /// junto, e um binário sem a feature não teria onde pôr o que o arquivo trouxe. A promessa da
-    /// rota A é exatamente essa: *a malha some do build, o objeto continua reluminável.*
-    ///
-    /// ⚠️ **NÃO é `cfg`-gated**, e é isso que torna a promessa verificável em vez de prosa.
-    pub(crate) baked_forms:
-        std::collections::BTreeMap<u64, ph2d_form_donation::baked_form::BakedForm>,
-    /// ⭐⭐⭐ **OS CATAVENTOS** (`docs/3D/02.2`, rota **B**) — as texturas de G-buffer que ficam na
-    /// placa entre quadros, por bits de entidade.
-    ///
-    /// ⚠️ **Ele É `cfg`-gated, ao contrário do vizinho de cima, e a assimetria é a diferença entre
-    /// as duas rotas:** um objecto assado acende sem o módulo 3D porque a forma dele viaja no
-    /// documento; um catavento **rasteriza por quadro**, logo precisa da malha — e a malha é o
-    /// módulo. *Ver o cabeçalho da [`ph2d_app_sculpt3d::vivo_fase`], que carrega a medição.*
-    #[cfg(feature = "sculpt3d")]
-    pub(crate) formas_vivas: std::collections::BTreeMap<u64, ph2d_app_sculpt3d::vivo::FormaViva>,
-    /// **OS PASSES que ACENDEM um objeto assado** — um por LEI (a tinta do Painter e o OpenPBR da
-    /// forma), cada um construído na primeira acendida DELE.
-    ///
-    /// ⚠️ Era um `Option<ImpastoLightPass>` até a lei da forma ganhar o passe de dispositivo
-    /// (`docs/Render3d/15` §7). ⛔ Um segundo `Option` ao lado deste seria **quatro sítios a ter de
-    /// concordar** (aqui, no `FrameGfx` e nas duas fases do quadro), e uma terceira lei a custar as
-    /// quatro edições outra vez — ver o doc da [`ph2d_form_donation::baked_form::PassesDaLuz`].
-    ///
-    /// ⚠️ **Sem `Option` à volta, e isso NÃO é uma capacidade nova:** o vazio dele é o `Default`, e
-    /// cada passe continua a nascer preguiçoso. Ver o [`crate::project_forget`] para porque ele não
-    /// é limpo ao esquecer um projecto.
-    pub(crate) baked_light: ph2d_form_donation::baked_form::PassesDaLuz,
     /// ADR-0114 W1 T1.7: as passagens de espaço-de-cor (resolve 16F→sRGB8 e blit
     /// sRGB8→16F) que ligam o rasterizador ao `LayerCompositor` do Painter. Criado
     /// 1× (device + formato do game_rt). O compositor em si é o `flip_composite`.
@@ -320,10 +284,6 @@ pub(crate) struct AppGfx {
     /// arquivo — e, como a componente viaja no `WorldSnapshot`, ao undo também. Monotônico; o load o
     /// avança para além dos ids do projeto (mesmo contrato de `next_import_cell`).
     pub(crate) next_painted_doc: u32,
-    /// Próximo `ph2d_ecs::BakedForm(u32)` livre — a identidade ESTÁVEL dos canais assados de uma
-    /// malha. Mesmo contrato do `next_painted_doc`: monotônico, e o load o avança para além dos ids
-    /// do projeto, senão um bake novo nesta sessão sobrescreveria o documento de um objeto carregado.
-    pub(crate) next_baked_form: u32,
     /// M14.7 polish: atlas-key → AssetId map kept in sync with each
     /// import. Drives the regrow callback so doubling the atlas
     /// texture preserves every previously-imported sprite. BTreeMap

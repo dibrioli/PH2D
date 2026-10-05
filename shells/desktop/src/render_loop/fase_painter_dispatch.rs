@@ -12,22 +12,6 @@ impl crate::App {
     ) -> Option<bool> {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
-        // ⭐ O Painter sobre a peça 3D prende a tela da vista e pousa-a ANTES da ponte da sprite,
-        // que enquanto ela está presa não a toca (`ph2d_tool_painter::SCREEN_CANVAS_DOC`).
-        #[cfg(feature = "sculpt3d")]
-        ph2d_app_sculpt3d::painter_na_malha::quadro(
-            gfx.sculpt3d.as_mut(),
-            gfx.tools.active_mut().and_then(|t| {
-                t.as_any_mut()
-                    .downcast_mut::<ph2d_tool_painter::PainterTool>()
-            }),
-        );
-        // Lido ANTES de desmontar o `gfx`: as abas da peça seguem a ferramenta (report de 29/09).
-        #[cfg(feature = "sculpt3d")]
-        let barro = gfx
-            .sculpt3d
-            .as_ref()
-            .is_some_and(ph2d_app_sculpt3d::Sculpt3dScene::clay_on_screen);
         let FrameGfx {
             renderer,
             sim,
@@ -133,7 +117,6 @@ impl crate::App {
             &mut self.painter_commit_requested,
             &mut self.painter_undo_requested,
             &mut self.painter_redo_requested,
-            &mut self.donated_form,
             toasts,
             self.held_button.is_some(),
             crate::input_dispatch::fill_drag::fill_drag_armed(),
@@ -156,14 +139,6 @@ impl crate::App {
                 })
             },
             &note_preview_px,
-        );
-        // ⭐ DEPOIS da ponte, que reescreve a visibilidade da aba do Painter em todo quadro.
-        #[cfg(feature = "sculpt3d")]
-        ph2d_app_sculpt3d::abas::abas_seguem_a_ferramenta(
-            hero,
-            barro,
-            tools.active().map(ph2d_editor_core::Tool::id)
-                == Some(ph2d_editor_core::ToolId::new("painter")),
         );
         // Live-preview a non-selected sprite used as the brush Shape (so its opacity/blend remote-
         // control edits show in real time), into a SECOND preview slot/override.

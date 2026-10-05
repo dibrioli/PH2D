@@ -24,7 +24,10 @@
 /// das TAGS) e a falha deste gate diz, no próprio texto, o que fazer — *«um campo novo tem DONO»*.
 /// Os SEIS latches das cenas daquela família viraram uma `ComponentsSmokeLatches`, e a catraca
 /// desceu quatro degraus em vez de subir um.
-const TETO_CAMPOS: usize = 178;
+///
+/// ⭐ **178 → 174 em 2026-10-05** (`line/poda-3d`, ADR-0179): o 3D saiu, e com ele os quatro campos
+/// da escultura e da doação de forma (`sculpt3d_req` · `sculpt_doc` · `sculpt3d` · `donated_form`).
+const TETO_CAMPOS: usize = 174;
 
 const APP_STATE: &str = include_str!("../../src/app_state.rs");
 

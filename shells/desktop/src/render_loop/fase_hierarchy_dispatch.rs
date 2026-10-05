@@ -117,19 +117,6 @@ impl crate::App {
         ) {
             self.title_dirty = true;
         }
-        // ⭐⭐⭐ **O *Duplicate* de uma PEÇA da escultura** (ADR-0150, 2026-09-04): a cópia
-        // profunda **deixa cair** o `Sculpt3dPieceRef` — copiar o id daria duas entidades
-        // sobre a mesma peça (`instance_docs::DROPPED`) —, então a linha nova nasceria vazia.
-        // ⇒ regista-se um PEDIDO, e o `sculpt3d::entities::sync` do quadro seguinte duplica a
-        // peça e põe o `ref` novo na cópia. *A cena está emprestada neste ponto do laço.*
-        #[cfg(feature = "sculpt3d")]
-        if let Some((src_bits, new_bits)) = duplicate_made
-            && let Some(piece) = sim
-                .world()
-                .get::<ph2d_ecs::Sculpt3dPieceRef>(ph2d_ecs::Entity::from_bits(src_bits))
-        {
-            self.sculpt3d.dup = Some((piece.0, new_bits));
-        }
         // A duplicated sprite copies the source's `Sprite` component verbatim, so it SHARES the
         // source pixels — and if the source is being painted, the unbaked paint+mask never reaches
         // either entity (the working state is dropped on the next rebind, losing the paint from

@@ -281,44 +281,6 @@ pub(crate) struct App {
     pub(crate) taper_smoke_done: bool,
     /// Latch for the `PH2D_WETPAINT_SMOKE` canvas (Wet Paint mode, ADR-0134 W1; same rationale).
     pub(crate) wetpaint_smoke_done: bool,
-    /// ⭐ **O QUE A ESCULTURA PEDE AO LAÇO DO QUADRO, num sítio só** (W2/L3-A2, ADR-0075).
-    ///
-    /// Eram **cinco** campos soltos aqui (`sculpt3d_canvas_done`, `sculpt3d_bake_request`,
-    /// `sculpt3d_alpha_request`, `sculpt3d_toggle_request`, `sculpt_doc`), cada um com a mesma
-    /// razão escrita ao lado: *armar tem a cena emprestada, cumprir precisa do laço*. Hoje são
-    /// [`ph2d_app_sculpt3d::Sculpt3dRequests`] (o do pill saiu com ele, spec/06 F3), e os `take_*` dele tornam **inexprimível**
-    /// o defeito que um `bool` público convida — ler o pedido sem o desarmar, que se cumpre a
-    /// cada quadro e se lê como *«o botão assou sozinho»*.
-    ///
-    /// ⚠️ **Sem `cfg`, como as cinco famílias irmãs** — a crate é dependência não-opcional da
-    /// shell (ver o `Cargo.toml`, que diz porquê e o que foi medido e revertido).
-    pub(crate) sculpt3d_req: ph2d_app_sculpt3d::Sculpt3dRequests,
-    /// ⛔⛔ **O PASSA-ADIANTE, e o único campo desta família que NÃO tem `cfg`.**
-    ///
-    /// Os bytes de uma escultura gravada atravessam um binário construído **sem** a feature
-    /// `sculpt3d` — do load ao save, sem ninguém os ler. Sem este campo, abrir um projeto com
-    /// escultura nesse binário e gravá-lo descartaria a obra do artista **em silêncio**.
-    ///
-    /// ⭐⭐ **Ele já morou aqui, com este nome.** A Fase A (W2/L3-A2) absorveu-o para dentro do
-    /// `Sculpt3dRequests` e, para o manter alcançável, prendeu a crate inteira a
-    /// **não-opcional** — com a nota a dizer, ali mesmo, *«é também por isso que ela não pode
-    /// ganhar dependências»*. A Fase B deu-lhe vinte e oito, entre elas as quatro crates do
-    /// módulo 3D, que são `optional` precisamente para caírem juntas (`docs/3D/02.3`).
-    ///
-    /// ⇒ *a cerca era sobre o DOCUMENTO, nunca sobre a crate.* Com o `Vec<u8>` aqui, ela cai com
-    /// a feature e a promessa de removibilidade volta a ser verdade — medida, não afirmada.
-    pub(crate) sculpt_doc: Vec<u8>,
-    /// ⭐ **O que a escultura guarda e SÓ existe com o módulo ligado** (W2/L3-A2).
-    ///
-    /// Eram **quatro** campos soltos (`sculpt3d_pending`, `sculpt3d_rows`, `sculpt3d_dup`,
-    /// `sculpt3d_sel`). ⛔ **Eles não puderam juntar-se ao irmão acima**, e a fronteira é
-    /// exactamente a que este ficheiro já declarava: os quatro carregam **tipos do módulo**
-    /// (`LoadedPiece`, `SculptRowsSeen`), logo têm de ser gateados — e uma struct gateada não
-    /// pode guardar o `doc`, cujo valor inteiro é sobreviver a um binário sem a feature.
-    /// ⇒ **dois campos e não um**, com a fronteira a ser *o que a `cfg` obriga*.
-    /// Quando aqueles tipos saírem para a crate (Fase B), os dois fundem-se.
-    #[cfg(feature = "sculpt3d")]
-    pub(crate) sculpt3d: ph2d_app_sculpt3d::Sculpt3dShellState,
     /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
     pub(crate) stack_smoke_done: bool,
     /// O smoke do onion da timeline (ADR-0142 W1) já rodou. `PH2D_ONION_SMOKE=1`.
@@ -610,10 +572,6 @@ pub(crate) struct App {
     /// concrete-tool downcast in the keyboard handler (keeps
     /// `architecture_no_downcast_to_concrete_tool_in_shell` green).
     pub(crate) painter_commit_requested: bool,
-    /// **A DOAÇÃO de forma** — o plano de normais que ilumina a tinta, e o tamanho do canvas que o
-    /// produtor precisa para rasterizá-lo. Ver [`ph2d_form_donation::donated_form::DonatedForm`]: o canal não
-    /// menciona um único tipo do módulo 3D, e é isso que o mantém removível.
-    pub(crate) donated_form: ph2d_form_donation::donated_form::DonatedForm,
     /// Transient flags set by the Cmd+Z / Cmd+Shift+Z keybind (only while the
     /// Painter tool is active) to undo/redo the last structural layer edit.
     /// Consumed (taken) by `painter_bridge::dispatch` — the downcast-allowed
@@ -899,9 +857,6 @@ pub(crate) struct App {
     /// ⭐ **O estado de shell da familia MOTION** — quatro campos que eram soltos aqui e
     /// que so' esta familia le' (W2/L1). Ver [`ph2d_app_motion::motion_shell_state`].
     pub(crate) motion_shell: ph2d_app_motion::motion_shell_state::MotionShellState,
-    // ⭐ **Os três que viviam aqui — `sculpt3d_rows`, `sculpt3d_dup`, `sculpt3d_sel` — mudaram-se
-    // para o `sculpt3d: Sculpt3dShellState` lá em cima** (W2/L3-A2), com a `sculpt3d_pending`.
-    // A prosa de cada um viajou com ele; ver `sculpt3d/shell_state.rs`.
     /// TOOL_PIVOT: world-space center of the selected sprite's CONTENT
     /// bbox (non-transparent pixels), computed once (lazily, on the
     /// first CTRL-held move) per MovePivot drag and reused as a snap

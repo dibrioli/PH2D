@@ -31,16 +31,6 @@ pub(super) struct FrameGfx<'a> {
     pub(super) doc_guides: &'a mut ph2d_guides::GuideSet,
     pub(super) ui_states: &'a mut ph2d_ui_state::StateSets,
     pub(super) ui_machines: &'a mut crate::render_loop::ui_state_bridge::UiMachines,
-    #[cfg(feature = "sculpt3d")]
-    pub(super) sculpt3d: &'a mut Option<ph2d_app_sculpt3d::Sculpt3dScene>,
-    pub(super) baked_forms:
-        &'a mut std::collections::BTreeMap<u64, ph2d_form_donation::baked_form::BakedForm>,
-    /// Os CATAVENTOS (rota B). ⚠️ `cfg`-gated ao contrário do vizinho — ver o `AppGfx`.
-    #[cfg(feature = "sculpt3d")]
-    pub(super) formas_vivas:
-        &'a mut std::collections::BTreeMap<u64, ph2d_app_sculpt3d::vivo::FormaViva>,
-    pub(super) baked_light: &'a mut ph2d_form_donation::baked_form::PassesDaLuz,
-    pub(super) next_baked_form: &'a mut u32,
     pub(super) surface: &'a mut SurfaceContext,
     pub(super) renderer: &'a mut SpriteRenderer,
     pub(super) sim: &'a mut SimWorld,
@@ -119,17 +109,6 @@ impl<'a> FrameGfx<'a> {
             // tabela e pede à máquina, e a máquina escreve o mundo de volta.
             ui_states,
             ui_machines,
-            // A cena 3D é DESENHADA no `present`; aqui ela é lida por um assunto só — o bake do
-            // objeto misto (`docs/3D/02.2`), que precisa do mundo e do renderizador ao lado dela.
-            #[cfg(feature = "sculpt3d")]
-            sculpt3d,
-            // Os objetos que uma forma acende. NAO sao `cfg`-gated: a re-acendida deles roda sem o
-            // modulo 3D no build, que e' a promessa da rota A (`docs/3D/02.2`).
-            baked_forms,
-            #[cfg(feature = "sculpt3d")]
-            formas_vivas,
-            baked_light,
-            next_baked_form,
             surface,
             renderer,
             sim,
@@ -242,13 +221,6 @@ impl<'a> FrameGfx<'a> {
             doc_guides,
             ui_states,
             ui_machines,
-            #[cfg(feature = "sculpt3d")]
-            sculpt3d,
-            baked_forms,
-            #[cfg(feature = "sculpt3d")]
-            formas_vivas,
-            baked_light,
-            next_baked_form,
             surface,
             renderer,
             sim,

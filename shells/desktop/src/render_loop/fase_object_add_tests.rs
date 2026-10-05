@@ -13,8 +13,9 @@ fn all_ids() -> Vec<NodeId> {
 
 /// ⭐⭐ **O clique REAL num item do menu deixa o pick, e o dreno do menu reconhece-o** — por cada
 /// entrada compilada, pela porta do quadro (`HeroScreen::apply_event`), com os painéis
-/// registados: um painel que consumisse o id calaria o clique, como já aconteceu com a paleta de
-/// pincéis (`a_paleta_de_pinceis_fecha_ao_escolher`).
+/// registados: um painel que consumisse o id calaria o clique, como já aconteceu com uma paleta
+/// aberta por cima de um painel (`a_paleta_fecha_ao_escolher_por_cima_de_um_painel`, na
+/// `ph2d-panel-registry-init`).
 ///
 /// ⚠️ O que ele prende é a ROTA do clique até ao pick, para cada id compilado; o dreno da fase
 /// pergunta pelo mesmo `entry_of_pick(FAMILIES, …)`, e a criação de cada família tem gate na
@@ -62,15 +63,7 @@ fn no_menu_id_belongs_to_another_palette() {
         "duas entradas do menu com o mesmo id"
     );
 
-    let mut others: Vec<(String, NodeId)> = ph2d_app_field3d::shapes::SHAPES
-        .iter()
-        .map(|s| {
-            (
-                s.key.to_string(),
-                ph2d_app_field3d::shape_palette::item_id(s.key),
-            )
-        })
-        .collect();
+    let mut others: Vec<(String, NodeId)> = Vec::new();
     for e in ph2d_app_components::test_support::registo().iter() {
         others.push((
             e.canonical_name.to_string(),
@@ -78,7 +71,6 @@ fn no_menu_id_belongs_to_another_palette() {
         ));
     }
     let models = [
-        ph2d_panel_sculpt3d::brush_palette::build(),
         ph2d_editor_core::screens::hero::global_palette::build_global_model(&HeroScreen::new(
             NodeId(1),
         )),
@@ -101,16 +93,13 @@ fn no_menu_id_belongs_to_another_palette() {
 #[test]
 fn the_menu_offers_every_compiled_family() {
     let ids = all_ids();
-    let mut wanted = vec![
+    let wanted = [
         ph2d_editor_core::object_add::EMPTY,
         ph2d_editor_core::object_add::IMAGE,
         ph2d_app_vec::object_add::VECTOR_OBJECT,
         ph2d_app_flip::object_add::FLIP,
-        ph2d_app_field3d::object_add::MODEL,
         ph2d_app_components::object_add::CAMERA,
     ];
-    #[cfg(feature = "sculpt3d")]
-    wanted.push(ph2d_app_sculpt3d::object_add::SPHERE);
     for e in wanted {
         assert!(ids.contains(&e.id()), "{} fora do menu", e.key.key());
     }
@@ -138,16 +127,14 @@ fn capture(
 }
 
 /// ⭐⭐ **Criar pelo menu e desfazer devolve o projecto ao BIT** — o vazio, um objecto de jogo, um
-/// objecto vetorial, um desenho Flip e o Model, pela porta de cada família e pelo `ProjectState`
-/// que o `post_frame_undo` usa (o mundo, a cena vetorial e o documento Flip juntos).
-///
-/// ⚠️ A escultura fica de fora: a cena dela vive na placa e tem undo próprio (`StrokeUndo`).
+/// objecto vetorial e um desenho Flip, pela porta de cada família e pelo `ProjectState` que o
+/// `post_frame_undo` usa (o mundo, a cena vetorial e o documento Flip juntos).
 ///
 /// (Mutação: o `restore` devolver uma `VecScene` vazia ⇒ a forma que já existia some ⇒ RED.)
 #[test]
 fn creating_then_undoing_returns_the_project_to_the_bit() {
     let reg = ph2d_app_components::test_support::registo();
-    for which in ["empty", "camera", "vector", "flip", "model"] {
+    for which in ["empty", "camera", "vector", "flip"] {
         let mut sim = ph2d_ecs::SimWorld::new();
         let mut vec_scene = ph2d_vec_scene::VecScene::new();
         let mut flip = ph2d_flip::FlipDoc::new();
@@ -176,7 +163,7 @@ fn creating_then_undoing_returns_the_project_to_the_bit() {
                 [0.0, 0.0],
             )
             .expect("é do vetor")),
-            "flip" => ph2d_app_flip::object_add::add(
+            _ => ph2d_app_flip::object_add::add(
                 ph2d_app_flip::object_add::FLIP,
                 &mut sim,
                 &mut flip,
@@ -184,7 +171,6 @@ fn creating_then_undoing_returns_the_project_to_the_bit() {
             )
             .expect("é do Flip")
             .map_err(String::from),
-            _ => Ok(ph2d_app_field3d::object_add::add(&mut sim)),
         };
         born.unwrap_or_else(|e| panic!("{which}: {e}"));
         let after = capture(&mut sim, &vec_scene, &flip, &reg);

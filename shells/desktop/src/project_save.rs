@@ -13,22 +13,6 @@ use super::{PROJECT_SCHEMA, ProjectFile};
 use ph2d_i18n::tr_with;
 
 impl crate::App {
-    /// **Os bytes da escultura que este save vai gravar.**
-    ///
-    /// A cena VIVA é a verdade sempre que ela existe; quando não existe, a verdade são
-    /// os bytes como vieram do arquivo — o que cobre os dois casos honestos: um projeto
-    /// aberto antes de a GPU aparecer (o `pending` ainda não instalou) e um binário
-    /// construído **sem** o módulo, que carrega adiante o que não sabe ler.
-    pub(super) fn sculpt_bytes_for_save(&self) -> Vec<u8> {
-        #[cfg(feature = "sculpt3d")]
-        if let Some(gfx) = self.gfx.as_ref()
-            && let Some(scene) = gfx.sculpt3d.as_ref()
-        {
-            return scene.to_doc_bytes();
-        }
-        self.sculpt_doc.clone()
-    }
-
     /// Serializa o projeto inteiro (mundo + geometria + pixels) para `path`.
     ///
     /// ⚠️ **O caminho é PARÂMETRO, e é a única porta.** Até 2026-08-23 havia um `project_save()`
@@ -102,8 +86,6 @@ impl crate::App {
                     .map(|h| h.project)
                     .unwrap_or_default(),
             ),
-            sculpt: self.sculpt_bytes_for_save(),
-            baked_forms: self.collect_baked_forms(),
             // A corrida que o artista jogou (W17). O `to_wire` é a única tradução
             // — o `PlayerInput` da crate da LEI não conhece serde de propósito.
             player_tape: self.player_tape.to_wire(),

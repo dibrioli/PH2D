@@ -8,8 +8,7 @@
 //! ⛔ Sem ele, tirar as duas linhas da ponte deixaria a lei **verde e o produto errado** — que é
 //! exactamente o estado em que a §11 e o solver estiveram até 2026-08-23.
 
-use crate::sculpt_source;
-use sculpt_source::{function_body, source};
+use crate::fonte_da_shell::{function_body, source};
 
 /// **O censo corre ANTES do apply, e a declaração DEPOIS** — a ordem é a asserção inteira.
 ///

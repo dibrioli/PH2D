@@ -147,7 +147,8 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        // ⭐⭐⭐ **E a seleção 3D também, pela mesma razão e na mesma unidade** — ver
+        // ⭐⭐⭐ **E a seleção que não é caminho (o esqueleto) também, pela mesma razão e na mesma
+        // unidade** — ver
         // [`field_selection_ids`]. ⚠️ Tem de ser AQUI, antes do `restore`: depois dele os bits que a
         // seleção guarda já apontam para entidades que deixaram de existir.
         //
@@ -172,7 +173,7 @@ impl crate::App {
         gfx.flip = flip;
         gfx.guides = state.guides.clone();
         gfx.ui_states = state.ui_states.clone();
-        // ⭐ A seleção 3D volta com os bits NOVOS, depois de o mundo ter sido reconstruído.
+        // ⭐ A seleção que não é caminho volta com os bits NOVOS, depois de o mundo ter sido reconstruído.
         let field_back = field_selection_back(gfx.sim.world_mut(), &was_field);
         // ⭐⭐⭐ **A biblioteca volta** — a taxonomia e as lápides (Enio, 2026-08-30).
         //
@@ -345,14 +346,7 @@ impl crate::App {
         if std::mem::take(&mut self.prefab_cancel_pending) {
             self.prefab_cancel = self.capture_project();
         }
-        // ⭐⭐⭐ **E o que o módulo 3D autorou SEM evento** (W115) — a forma que a paleta escolheu,
-        // a escultura que o diálogo carregou. Elas chegam por **pedido servido noutro quadro**, e
-        // sem esta metade nasciam **sem passo próprio**, fundindo-se na acção seguinte do artista.
-        //
-        // ⚠️ **Tirada em TODO quadro, ao lado da outra** — deixá-la pousada faria a próxima
-        // supressão legítima registar um passo que já foi registado.
-        let had_input = std::mem::take(&mut self.any_input_this_frame)
-            | ph2d_app_field3d::smoke::take_authored_change();
+        let had_input = std::mem::take(&mut self.any_input_this_frame);
         // O clique no botão Undo/Redo da barra entra pela MESMA porta do Ctrl+Z (que pode
         // rotear para o Áudio, o Painter, o global ou o image-edit). Ele arma o
         // `undo_request` logo abaixo, e o passo é aplicado ainda neste frame.
@@ -383,20 +377,16 @@ impl crate::App {
         // a cena numa pose DIFERENTE a cada quadro, então sem a supressão um Show de 150 ms
         // viraria nove passos de undo. Quando ela chega, a cena está numa pose AUTORADA e o diff
         // registra um — o preço certo de *"eu mostrei o hover"*.
-        // ⚠️ **O gizmo 3D de modelagem tem de dizer-se por conta própria** (ADR-0161 W6): o gancho
-        // de ponteiro dele consome o `Down` e volta ANTES da linha que escreve o `held_button`, então
-        // a condição acima — que está certa — não alcançava aquele gesto. Sem esta, arrastar uma
-        // seta registava um passo de undo POR QUADRO.
-        //
         // ⭐⭐⭐ **E o motivo tem NOME** (W114) — porque a pergunta que um report de *«o undo pula
-        // etapas»* faz é exactamente *«qual destas cinco comeu o meu passo?»*.
+        // etapas»* faz é exactamente *«qual destas quatro comeu o meu passo?»*
+        // (eram cinco; o arrasto do gizmo 3D saiu com o módulo — ADR-0179).
         //
         // ⚠️ **Uma mudança suprimida NÃO se perde: ela funde-se no PRÓXIMO passo**, porque o
         // `undo_baseline` só é substituído quando um passo é registado. ⇒ duas acções viram um
         // `Ctrl+Z` só, que é o sintoma que o artista descreve. *Um passo suprimido e um passo
         // ausente leem-se iguais de fora, e as causas são opostas.*
         //
-        // ⛔⛔ **A ORDEM É A DO DIAGNÓSTICO, e ela custou uma jornada inteira** (04/09): os cinco
+        // ⛔⛔ **A ORDEM É A DO DIAGNÓSTICO, e ela custou uma jornada inteira** (04/09): os
         // motivos suprimem igual, mas dois deles podem ser verdade **ao mesmo tempo** — um arrasto
         // em curso em que o ponteiro não se mexeu neste quadro é `gesto` **e** `sem entrada`. Com o
         // `!had_input` à frente, o log do Enio saía cheio de *«sem entrada neste quadro»* sobre
@@ -406,8 +396,6 @@ impl crate::App {
         // simultâneas é pior do que não nomear nenhuma.*
         let motivo = if self.held_button.is_some() {
             Some(tr("shell.undo_app.botao_do_rato_em_baixo"))
-        } else if ph2d_app_field3d::smoke::gesture_in_progress() {
-            Some(tr("shell.undo_app.arrasto_do_gizmo_3d_em"))
         } else if self
             .flip_state
             .colorize
@@ -450,13 +438,13 @@ impl crate::App {
         //
         // ⚠️ **Colá-la à captura não é uma optimização condicional — é a definição dela.** *A rede
         // existe para a fotografia; ela corre exactamente quando a fotografia corre.* Nos quadros
-        // suprimidos (botão em baixo · arrasto do gizmo 3D · colorize a recalcular · transição de
-        // estado de UI · **sem entrada**) não há fotografia para proteger, e o passe do desenho do
+        // suprimidos (botão em baixo · colorize a recalcular · transição de estado de UI ·
+        // **sem entrada**) não há fotografia para proteger, e o passe do desenho do
         // quadro seguinte reconcilia na mesma. ⛔ **Não é uma bandeira que um verbo novo tem de
         // lembrar de levantar**: é a MESMA condição, já escrita e já nomeada acima.
         //
         // ⚠️ **Um verbo tardio da Hierarquia nunca cai num quadro suprimido**: ele vem de um
-        // clique, logo `had_input` é verdade, e nenhum dos outros quatro motivos está de pé quando
+        // clique, logo `had_input` é verdade, e nenhum dos outros três motivos está de pé quando
         // o menu de contexto entrega o pedido.
         //
         // ⚠️ **O `capture_project` do LOG de supressão acima corre SEM a rede**, de propósito: ali

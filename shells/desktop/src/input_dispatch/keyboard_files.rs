@@ -40,8 +40,8 @@ impl App {
             && let PhysicalKey::Code(code) = physical_key
         {
             match code {
-                // ⚠️ **Ctrl+Shift+S é o `Save As…`**, e o par é o mesmo do `Ctrl+Shift+O` (import
-                // de malha) e do `Ctrl+Shift+Z` — o `shift` é PERGUNTADO, senão os dois gestos
+                // ⚠️ **Ctrl+Shift+S é o `Save As…`**, e o par é o mesmo do `Ctrl+Shift+Z` — o
+                // `shift` é PERGUNTADO, senão os dois gestos
                 // ficam indistinguíveis, que é acidente e não desenho.
                 //
                 // ⚠️ E os dois chamam a MESMA função do menu Ficheiro (`crate::project_io`): duas
@@ -49,31 +49,6 @@ impl App {
                 // sítio que o `Ctrl+S`.
                 KeyCode::KeyS => {
                     self.project_save_gesture(self.modifiers.shift_key());
-                    return true;
-                }
-                // ⚠️ **Ctrl+Shift+O importa uma MALHA** (ADR-0150 W8.4). Ele mora
-                // aqui, e não no `sculpt3d_key`, por um motivo que decide a
-                // feature: aquele handler sai no `sculpt3d_scene_mut()` quando
-                // não há cena — e o caso que importa é justamente o de não haver
-                // uma, porque **trazer um arquivo é o que ARMA o módulo**.
-                //
-                // ⚠️ E o `shift` passou a ser PERGUNTADO: até aqui este braço
-                // ignorava o modificador, então Ctrl+Shift+O carregava projeto —
-                // indistinguível do Ctrl+O, o que é acidente e não desenho. O par
-                // é o mesmo do Ctrl+Z/Ctrl+Shift+Z que a própria cena 3D usa.
-                #[cfg(feature = "sculpt3d")]
-                KeyCode::KeyO if self.modifiers.shift_key() => {
-                    self.sculpt3d_pick_and_import();
-                    return true;
-                }
-                // ⚠️ **Ctrl+Shift+E escreve a cena 3D num arquivo** — o par
-                // exato do Ctrl+Shift+O acima, e mora ao lado dele pelo mesmo
-                // motivo: aqui é onde este app responde *"que arquivo?"*.
-                // Ctrl+E sozinho segue livre, então o `shift` não está a
-                // desviar nada.
-                #[cfg(feature = "sculpt3d")]
-                KeyCode::KeyE if self.modifiers.shift_key() => {
-                    self.sculpt3d_export();
                     return true;
                 }
                 // ⚠️ **Abrir PERGUNTA sempre** — é o gesto que deita fora o trabalho não

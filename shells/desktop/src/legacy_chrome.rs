@@ -2,7 +2,7 @@
 //! lateral enquanto a barra de menus nova (D2) não existe.
 //!
 //! ⚠️ **É um interruptor e não uma remoção, e a razão está MEDIDA:** nenhum atalho de teclado
-//! alcança as pílulas de módulo (Vector, Motion, Flip, Sculpt, Model, Play…) e a paleta de
+//! alcança as pílulas de módulo (Vector, Motion, Flip, Play…) e a paleta de
 //! comandos é um widget genérico, não um catálogo global. Apagá-las deixaria o app sem forma de
 //! abrir um módulo, e bloquearia os smokes de todas as outras linhas.
 //!

@@ -331,20 +331,6 @@ impl App {
         if !painter_active {
             return false;
         }
-        // ⭐ O Painter sobre a PEÇA 3D: a tela é a vista, não uma sprite (`painter_na_malha`).
-        #[cfg(feature = "sculpt3d")]
-        if let (Some(scene), Some(painter)) = (
-            gfx.sculpt3d.as_mut(),
-            gfx.tools
-                .active_mut()
-                .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>()),
-        ) && painter.on_screen_canvas()
-        {
-            super::painter_canvas_mods::forward(painter, shift, ctrl, alt);
-            return ph2d_app_sculpt3d::painter_na_malha::entrega(
-                scene, painter, px, py, pressure, phase,
-            );
-        }
         let Some(hero) = gfx.hero_screen.as_ref() else {
             return false;
         };

@@ -71,10 +71,6 @@ const FORA: &[Isento] = &[
         "o mesmo diagnóstico do acorde de undo, no fim da cadeia",
     ),
     (
-        "input_dispatch/despacho_metodos_modos_e_alcas.rs",
-        "as razões de teclas mortas, impressas no terminal por quem caça um report",
-    ),
-    (
         "render_loop/fase_path_shape_and_paint.rs",
         "o `log_shape` do padrão de textura — diagnóstico de consola",
     ),

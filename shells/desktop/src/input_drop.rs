@@ -20,22 +20,6 @@ impl App {
     /// platforms. Honors `grid_snap_state` so multi-drop forms a
     /// tidy grid.
     pub(crate) fn handle_dropped_files(&mut self, paths: &[std::path::PathBuf]) {
-        // ⚠️ **As malhas saem da fila ANTES do filtro de imagem**, e não é ordem
-        // arbitrária: o roteador abaixo emite um toast *"Skipped …"* por
-        // arquivo que não reconhece, então sem este desvio soltar um `.obj`
-        // produziria um aviso de que ele foi ignorado — a resposta errada, com
-        // a certeza da resposta certa.
-        #[cfg(feature = "sculpt3d")]
-        let paths: Vec<std::path::PathBuf> = {
-            let (mesh, rest): (Vec<_>, Vec<_>) = paths
-                .iter()
-                .cloned()
-                .partition(|p| ph2d_app_sculpt3d::is_mesh_file(p));
-            self.sculpt3d_import_files(&mesh);
-            rest
-        };
-        #[cfg(feature = "sculpt3d")]
-        let paths: &[std::path::PathBuf] = &paths;
         if paths.is_empty() {
             return;
         }
@@ -75,9 +59,9 @@ impl App {
         } else {
             drop_world_raw
         };
-        // **AS FOLHAS hand-packed saem da fila antes do filtro de imagem**, pela MESMA razão que
-        // as malhas 3D acima: o roteador emite *"Skipped …"* por arquivo que não reconhece,
-        // e um `.json` de folha largado com a folha produziria um aviso de que foi ignorado.
+        // **AS FOLHAS hand-packed saem da fila antes do filtro de imagem**: o roteador emite
+        // *"Skipped …"* por arquivo que não reconhece, e um `.json` de folha largado com a folha
+        // produziria um aviso de que foi ignorado.
         //
         // ⚠️ E a imagem que a folha referencia é retirada da leva também — senão largar
         // `folha.png` + `folha.json` daria a folha **e** um sprite avulso com a folha inteira

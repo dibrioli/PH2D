@@ -133,8 +133,8 @@ fn writes() -> BTreeMap<String, Vec<String>> {
 
 /// O id do painel escrito neste argumento — `None` para uma forma que a varredura não sabe ler.
 ///
-/// ⚠️ Duas formas, as duas mecânicas: `"motion_params"` e a constante. `ph2d_panel_model3d::PANEL_ID`
-/// leva o nome no CAMINHO (a crate é `ph2d-panel-<id>`); `…hero::PANEL_MOTION_GRAPH` leva-o no
+/// ⚠️ Duas formas, as duas mecânicas: `"motion_params"` e a constante.
+/// `ph2d_panel_asset_browser::PANEL_ID` leva o nome no CAMINHO (a crate é `ph2d-panel-<id>`); `…hero::PANEL_MOTION_GRAPH` leva-o no
 /// próprio nome, em maiúsculas.
 fn panel_id(expr: &str) -> Option<String> {
     if let Some(lit) = expr.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
@@ -299,8 +299,7 @@ fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_o
         let names = l.spec().open.contains(&"inspector");
         let taken = match l.spec().canvas {
             CanvasOwner::Tool(id) => takeover.iter().any(|t| t == id),
-            // Os modos (o Paint abre o Painter, o Edit do Model o painel dele) NÃO tomam o
-            // inspector: o *Draw* e o *Model* nomeiam-no.
+            // Os modos (o Paint abre o Painter) NÃO tomam o inspector: o *Draw* nomeia-o.
             CanvasOwner::Mode(_) => false,
         };
         assert_eq!(

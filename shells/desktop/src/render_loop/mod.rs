@@ -196,9 +196,6 @@ mod fase_bone_smart_and_knobs;
 mod fase_bus_drain;
 /// Fase do quadro: as sobreposicoes do canvas.
 mod fase_canvas_overlays;
-/// Fase do quadro: os CATAVENTOS (rota B) — DEPOIS da irmã assada, e ATRÁS da feature.
-#[cfg(feature = "sculpt3d")]
-mod fase_cataventos;
 /// Fase do quadro: o relógio do chrome (`wall_dt`, `ui_dt` e os tiques que andam nele).
 mod fase_chrome_clock;
 /// Fase do quadro: a paleta de componentes.
@@ -224,10 +221,6 @@ mod fase_envelope;
 mod fase_extract_inputs;
 /// Fase do quadro: o outbox de sinais (os produtores que faltavam e o dreno).
 mod fase_fabrica_e_morte;
-/// Fase do quadro: os pedidos do modelador 3D.
-mod fase_field3d_requests;
-/// Fase do quadro: o desenho do modelador 3D.
-mod fase_field3d_smoke_draw;
 /// Fase do quadro: os comandos da pilha de filtros.
 mod fase_filter_commands;
 /// Fase do quadro: o valor do filtro e a cor do picker.
@@ -246,8 +239,8 @@ mod fase_frame_profile;
 mod fase_frame_profile_report;
 /// Fase do quadro: a câmera de jogo (o herói da cena de smoke e o passe da câmera).
 mod fase_game_camera;
-/// Fase do quadro: a supressao do gizmo e a moldura do modelador 3D.
-mod fase_gizmo_suppression_and_field3d_frame;
+/// Fase do quadro: a supressao do gizmo de objecto sob as ferramentas que o tomam.
+mod fase_gizmo_suppression;
 /// Fase do quadro: a receita aberta e as vistas do gizmo.
 mod fase_gizmo_views_and_prefab;
 /// Fase do quadro: o fim do ramo hero (toasts, barras de trabalho, a arena do quadro).
@@ -314,20 +307,10 @@ mod fase_physics_step;
 mod fase_pointer_subjects;
 /// Fase do quadro: os verbos de receita e de assets.
 mod fase_recipe_and_asset_verbs;
-/// Fase do quadro: a re-acendida dos objetos assados — FORA da feature `sculpt3d`, de propósito.
-mod fase_relight_baked_forms;
 /// Fase do quadro: o som de cena (as vozes dos objectos).
 mod fase_scene_audio;
 /// Fase do quadro: o passo do GC do Luau (M7).
 mod fase_script_gc;
-/// Fase do quadro: o objeto misto do sculpt3d (bake, alpha por imagem, luz a re-autorar).
-#[cfg(feature = "sculpt3d")]
-mod fase_sculpt3d_bake;
-/// Fase do quadro: a cena da doação do sculpt3d (`PH2D_SCULPT3D_SMOKE=2`).
-#[cfg(feature = "sculpt3d")]
-mod fase_sculpt3d_donation_smoke;
-/// Fase do quadro: o pré-quadro do sculpt3d (Grab, pendente, pill, doação, Hierarquia).
-mod fase_sculpt3d_pre_frame;
 /// Fase do quadro: o realce da seleccao.
 mod fase_selection_highlight;
 /// Fase do quadro: o osso em foco no painel do esqueleto.
@@ -453,7 +436,7 @@ mod fase_vector_tree_settle;
 mod fase_vector_upkeeps;
 /// Fase do quadro: a vista vectorial, os estilos conduzidos e as recozeduras de forma.
 mod fase_vector_view_and_drives;
-/// Fase do quadro: as pontes do modelador 3D, dos tokens e da escultura.
+/// Fase do quadro: as pontes dos painéis do mundo (tokens e afins).
 mod fase_world_panel_bridges;
 /// O empréstimo do `gfx` do quadro: o destructure exaustivo do `AppGfx`, re-derivado por fase.
 mod frame_gfx;
@@ -521,7 +504,6 @@ impl crate::App {
         let (cpu_start, diag_input_events, diag_paint_stamps) = self.fase_input_and_drops();
 
         self.fase_app_scene_smokes();
-        self.fase_sculpt3d_pre_frame();
         self.fase_app_scene_smokes_late();
         self.fase_session_upkeep();
 
@@ -529,13 +511,6 @@ impl crate::App {
             return;
         };
         self.fase_atlas_scene_smokes();
-        #[cfg(feature = "sculpt3d")]
-        self.fase_sculpt3d_donation_smoke();
-        #[cfg(feature = "sculpt3d")]
-        self.fase_sculpt3d_bake();
-        self.fase_relight_baked_forms();
-        #[cfg(feature = "sculpt3d")]
-        self.fase_cataventos();
         self.fase_atlas_scene_smokes_late();
         self.fase_sprite_inspector_smokes();
         self.fase_sprite_pixel_smokes();

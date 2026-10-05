@@ -53,23 +53,22 @@ fn nothing_selected_stays_nothing() {
     assert!(surviving_selection(&[a], &VecScene::new()).is_empty());
 }
 
-/// ⭐⭐⭐ **A SELEÇÃO DE UMA PEÇA 3D SOBREVIVE AO RESPAWN** (W113) — a irmã da de cima, e o report
-/// que a comprou é *«o undo/redo não obedece cada etapa, principalmente se transformação»*
-/// (Enio, 2026-09-03).
+/// ⭐⭐⭐ **A SELEÇÃO QUE NÃO É UM CAMINHO SOBREVIVE AO RESPAWN** (W113) — a irmã da de cima, e o
+/// report que a comprou é *«o undo/redo não obedece cada etapa, principalmente se transformação»*
+/// (Enio, 2026-09-03). Nasceu com os nós do modelador 3D; o módulo saiu (ADR-0179) e a lei ficou
+/// com a família que a herdou, o esqueleto.
 ///
 /// ⚠️ O undo **respawna** o mundo: os `Entity::to_bits()` são todos novos. Este gate encena
 /// exactamente isso — dois mundos, os mesmos `StableId`, entidades diferentes — e exige que os bits
 /// que voltam sejam os do mundo NOVO.
 #[test]
-fn a_three_d_node_that_survives_the_respawn_keeps_its_selection() {
+fn a_bone_that_survives_the_respawn_keeps_its_selection() {
     use ph2d_ecs::StableId;
-    let leaf = || ph2d_field_ecs::FieldNode {
-        shape: ph2d_field::NodeShape::Leaf(ph2d_field::Primitive::Sphere { radius: 1.0 }),
-    };
-    // O mundo ANTES: dois nós do modelador, e um objecto que não é do módulo.
+    let osso = ph2d_skeleton_ecs::Bone::default;
+    // O mundo ANTES: dois ossos, e um objecto que não é de família nenhuma das nomeadas.
     let mut antes = bevy_ecs::world::World::new();
-    let a = antes.spawn((leaf(), StableId(11))).id();
-    let b = antes.spawn((leaf(), StableId(22))).id();
+    let a = antes.spawn((osso(), StableId(11))).id();
+    let b = antes.spawn((osso(), StableId(22))).id();
     let alheio = antes.spawn(StableId(33)).id();
     let ids = field_selection_ids(&antes, &[a.to_bits(), b.to_bits(), alheio.to_bits()]);
     assert_eq!(
@@ -85,7 +84,7 @@ fn a_three_d_node_that_survives_the_respawn_keeps_its_selection() {
     for _ in 0..5 {
         depois.spawn_empty();
     }
-    let a2 = depois.spawn((leaf(), StableId(11))).id();
+    let a2 = depois.spawn((osso(), StableId(11))).id();
     assert_ne!(
         a.to_bits(),
         a2.to_bits(),
@@ -98,19 +97,14 @@ fn a_three_d_node_that_survives_the_respawn_keeps_its_selection() {
     );
 }
 
-/// ⛔ **E um `StableId` VAZIO não conta** — guardá-lo traria de volta o primeiro nó sem identidade
-/// que o mundo tivesse, que é pior do que nenhuma seleção.
+/// ⛔ **E um `StableId` VAZIO não conta** — guardá-lo traria de volta o primeiro objecto sem
+/// identidade que o mundo tivesse, que é pior do que nenhuma seleção.
 #[test]
 fn a_node_without_a_stable_id_is_not_carried_across() {
     use ph2d_ecs::StableId;
     let mut w = bevy_ecs::world::World::new();
     let sem = w
-        .spawn((
-            ph2d_field_ecs::FieldNode {
-                shape: ph2d_field::NodeShape::Leaf(ph2d_field::Primitive::Sphere { radius: 1.0 }),
-            },
-            StableId::NONE,
-        ))
+        .spawn((ph2d_skeleton_ecs::Bone::default(), StableId::NONE))
         .id();
     assert!(field_selection_ids(&w, &[sem.to_bits()]).is_empty());
 }

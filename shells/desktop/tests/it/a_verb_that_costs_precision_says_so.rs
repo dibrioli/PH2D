@@ -9,14 +9,14 @@
 //! **ferramentas** — as nove entradas da fila de Image Tools. Ela estava certa e ficou incompleta,
 //! porque a pergunta que ela fez foi *por NOME DE MENU*.
 //!
-//! ⚠️ **Há quatro verbos que consomem pixels pela mesma porta e não estão naquele menu:**
+//! ⚠️ **Havia quatro verbos que consomem pixels pela mesma porta e não estão naquele menu** (o
+//! quarto, doar a forma ao 3D, saiu com o módulo — ADR-0179):
 //!
 //! | verbo | onde | o que custava, em silêncio |
 //! |---|---|---|
 //! | Pack / Bake Sheet | `sheet_bake.rs` | uma folha é **uma** textura, e é de 8 bits |
 //! | Merge Sprites | `sprite_merge.rs` | o acumulador é de 8 bits — **e despawna as fontes** |
 //! | `Strategy → Atlas` | `inspector_strategy.rs` | o atlas partilhado é de 8 bits |
-//! | doar a forma ao 3D | `sculpt3d/bake.rs` | o `base × luz` é de 8 bits |
 //!
 //! Os quatro rebaixavam 16 bits sem uma palavra, e o único vestígio era a linha `Format` do
 //! Inspector mudar sozinha — que é **literalmente** a queixa que abriu esta wave (Enio, 2026-08-20:
@@ -131,13 +131,13 @@ fn every_pixel_consumer_declares_what_it_costs() {
     );
 }
 
-/// ⚠️ **Controle positivo: os QUATRO verbos que a varredura de 2026-08-21 encontrou leem mesmo
-/// pixels, e agora declaram.**
+/// ⚠️ **Controle positivo: os verbos que a varredura de 2026-08-21 encontrou (três desde que o 3D
+/// saiu — ADR-0179) leem mesmo pixels, e agora declaram.**
 ///
 /// Sem isto, renomear `read_sprite_source` faria o gate acima ficar verde por não encontrar nada —
 /// e o dia em que ele parasse de medir seria o dia em que ninguém repararia.
 #[test]
-fn the_four_verbs_the_sweep_found_are_real_and_now_declare() {
+fn the_verbs_the_sweep_found_are_real_and_now_declare() {
     for (rel, what) in [
         ("sheet_bake.rs", "uma folha e' UMA textura, e e' de 8 bits"),
         (
@@ -148,24 +148,8 @@ fn the_four_verbs_the_sweep_found_are_real_and_now_declare() {
             "render_loop/inspector_strategy.rs",
             "o atlas partilhado e' de 8 bits",
         ),
-        // ⚠️⚠️ **A entrada MUDOU DE FICHEIRO em 2026-09-11 (W2/L3-B), e o gate mandou fazê-lo:**
-        // a mensagem dele diz *«se isso é verdade, APAGUE esta entrada em vez de a silenciar»*.
-        // O `bake.rs` da família deixou de ler os pixels — ele RECEBE-os por um leitor
-        // preguiçoso —, e quem os lê agora é o laço da shell, que é quem tem o `AssetDb`.
-        // ⚠️ **E mudou OUTRA vez na OBRA 2 da `line/render-loop` (2026-09-12):** o laço partiu-se em
-        // fases, e quem assa a forma é a `fase_sculpt3d_bake`. O `mod.rs` continua a ler pixels
-        // noutros sítios e passa na varredura acima por conta própria (`commit_edited_texture`).
-        // ⛔⛔ **E em 21/09 eu quase a mudei outra vez, e teria sido ERRADO.** Um tecto de LOC
-        // partiu a fase em dois assuntos, e as DUAS passaram a ler pixels — logo a pergunta deixou
-        // de ser *«onde está o ficheiro»* e passou a ser *«qual deles ESCREVE de volta»*. É esta:
-        // ela assa `base x luz` no sprite. ⭐ A irmã (`fase_sculpt3d_alpha`) só LÊ, para construir
-        // uma luminância, e declara-se com o `PRECISION-READONLY` que a mensagem deste gate
-        // prescreve. ⚠️ *Enquanto as duas viviam no mesmo ficheiro, esta entrada abrigava as duas
-        // — e a metade que nunca declarou nada só apareceu quando o corte as separou.*
-        (
-            "render_loop/fase_sculpt3d_bake.rs",
-            "o `base x luz` e' de 8 bits",
-        ),
+        // ⚠️ O quarto verbo da varredura (doar a forma ao 3D, `fase_sculpt3d_bake`) saiu com o
+        // módulo (ADR-0179) — a entrada saiu com ele, pela regra da mensagem abaixo.
     ] {
         let path = shell_src().join(rel);
         let src = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path:?}: {e}"));

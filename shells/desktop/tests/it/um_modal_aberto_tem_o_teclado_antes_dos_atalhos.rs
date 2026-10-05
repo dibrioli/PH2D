@@ -8,18 +8,11 @@
 //! `input_dispatch::keyboard_palette` promete por escrito que ela *«vem PRIMEIRO (antes dos
 //! atalhos de painel/ferramenta) para uma letra digitada nunca vazar num atalho»*.
 //!
-//! ⚠️ **Ela estava DUAS LINHAS ABAIXO do `ramo_teclas_3d`**, que com a escultura na mão devolve
-//! `true` em `1`–`0`, `G`, `H`, `T`, `S`, `A` e `M` — logo escrever `clay` na busca **trocava o
-//! pincel por baixo do modal** e não punha uma letra na caixa. *Uma promessa escrita num ficheiro
-//! e violada por duas linhas noutro.*
-//!
-//! # ⚠️⚠️ É a MESMA CLASSE que aquele ramo já pagou uma vez, com outra pergunta
-//!
-//! O doc do `ramo_teclas_3d` conta: uma porta que perguntava *«a cena existe?»* passou a comer
-//! *«os dez dígitos e ~26 letras de todo painel do app, para sempre»* no dia em que o pill fez a
-//! cena sobreviver a sair do modo. A cura de então foi perguntar pelo **PONTEIRO**
-//! (`sculpt3d_keys_live`) — e um **MODAL é outra pergunta**: ele não depende de onde o ponteiro
-//! está.
+//! ⚠️ **Ela estava DUAS LINHAS ABAIXO de um ramo de atalhos** (o das teclas da cena 3D, que saiu
+//! com o módulo — ADR-0179), que devolvia `true` em dígitos e letras — logo escrever na busca
+//! **disparava o atalho por baixo do modal** e não punha uma letra na caixa. *Uma promessa escrita
+//! num ficheiro e violada por duas linhas noutro.* ⇒ a lei é sobre TODA a cadeia de atalhos: a
+//! âncora hoje é o primeiro ramo dela (texto vectorial, Delete do Flip, atalhos do vetor).
 //!
 //! # ⚠️ Porque este gate lê TEXTO e não dirige uma tecla
 //!
@@ -43,18 +36,18 @@ fn onde(agulha: &str) -> usize {
     })
 }
 
-/// ⭐⭐⭐ **A paleta vê a tecla ANTES da cena 3D.**
+/// ⭐⭐⭐ **A paleta vê a tecla ANTES da cadeia de atalhos.**
 ///
-/// *Mutação que sangra:* voltar a pôr a chamada da paleta depois do `ramo_teclas_3d`.
+/// *Mutação que sangra:* pôr a chamada da paleta depois do `ramo_teclas_texto_flip_e_vetor`.
 #[test]
-fn a_paleta_ve_a_tecla_antes_da_cena_3d() {
+fn a_paleta_ve_a_tecla_antes_dos_atalhos() {
     let paleta = onde("self.command_palette_keys(");
-    let cena_3d = onde("self.ramo_teclas_3d(");
+    let atalhos = onde("self.ramo_teclas_texto_flip_e_vetor(");
     assert!(
-        paleta < cena_3d,
-        "o `command_palette_keys` está em {paleta} e o `ramo_teclas_3d` em {cena_3d} — com a \
-         escultura na mão aquele ramo devolve `true` em `1`-`0`, `G`, `H`, `T`, `S`, `A` e `M`, e \
-         uma letra escrita na busca do modal troca o PINCEL em vez de filtrar a lista."
+        paleta < atalhos,
+        "o `command_palette_keys` está em {paleta} e o `ramo_teclas_texto_flip_e_vetor` em \
+         {atalhos} — aquele ramo devolve `true` nos atalhos do vetor e do Flip, e uma letra escrita \
+         na busca do modal dispararia um atalho em vez de filtrar a lista."
     );
 }
 

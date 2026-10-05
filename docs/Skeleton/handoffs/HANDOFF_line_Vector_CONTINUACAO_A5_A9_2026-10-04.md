@@ -191,6 +191,19 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
 
 - No Zig Zag a 100° (FOTOGRAFADO em SVG, `=5`) duas marquinhas escuras onde o contorno entra numa reentrância mais estreita que o traço; não são buracos (a lei da F59-b não as toca). Medir (largura da reentrância vs largura do traço) e perguntar ao dono se as quer fechadas como os buracos.
 
+### A13 — (novo, 05/10) Com as DUAS juntas a `≥ 140°` a barra dobra em TRÊS camadas e a cor falha
+
+- FOTOGRAFADO na `=6` (`PH2D_VEC_BONE_DOBRA=170` e `140`/`150`): zonas sem cor dentro da forma, traço sem
+  cor por baixo, tiques soltos; a `170,110` sobram um degrau na cor e um tique. ⚠️ **Não é da onda
+  F60/F61:** o SVG a `170°/170°` com e sem a lei das passagens é igual ao byte, e com a malha fina
+  desligada (`TOL = 0`) é o mesmo desenho. Hipótese (por medir): a parte VIRADA pela dobra inverte o
+  sentido do contorno e a regra *NonZero* anula a cor onde camadas viradas e direitas se sobrepõem.
+
+### A14 — (novo, 05/10, ORDEM DO DONO) O ESQUELETO é um OBJECTO — plano em [`05_plano_o_esqueleto_e_um_objecto.md`](../05_plano_o_esqueleto_e_um_objecto.md)
+
+- Os ossos só se viam no Edit do vetor e ali não se mexiam (report do dono): os gestos do osso eram um
+  modo da ferramenta Vector, que desde a onda dos modos só está na mão dentro do Edit de uma forma.
+
 ## 2. Lições da 2.ª onda de 04/10 (morderam)
 
 - ⛔⛔ **A COLUNA de pesos não é a profundidade do osso** — os tendões vêm por `to_bits` e o `bevy_ecs`

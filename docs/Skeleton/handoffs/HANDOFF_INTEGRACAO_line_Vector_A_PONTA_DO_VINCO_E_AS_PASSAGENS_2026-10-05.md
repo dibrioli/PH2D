@@ -69,17 +69,31 @@ Mutação: §2. Fotos: as cenas `=6` e `=5` a abrir nas telas novas (painel **Bo
   REFUTADA (fila §F59, tabela das três leis; ramo `exp/a5a-marching`, `50328de56`). Sem lei
   candidata: falta perceber porque a costura sobre a tinta remenda sobre OUTRO membro.
 
+- **A13** — com as duas juntas a `≥ 140°` (três camadas) a cor falha; pré-existente (medido: igual sem
+  F60/F61). Lista viva.
+- **A14 (ordem do dono)** — o ESQUELETO é um OBJECTO: plano em `docs/Skeleton/05_plano_o_esqueleto_e_um_objecto.md`.
+
+## 4.1 ⚠️ A linha está EMPILHADA sobre a `line/UIUX`
+
+Rebase de 05/10 sobre `71056d29f` (a 2.ª volta dos modos do vetor, «cada forma é um objecto», aprovada
+pelo dono, handoff `HANDOFF_INTEGRACAO_line_UIUX_2026-10-05_CADA_FORMA_E_UM_OBJECTO.md`): o esqueleto
+como objecto nasce sobre os modos dela. ⇒ **a `line/UIUX` entra no `main` ANTES desta**; os commits
+dela saem do rebase desta por igualdade.
+
 ## 5. A linha do `CLAUDE.md` §5 (para o integrador)
 
 O «Último» do módulo Vector + Esqueleto passa a apontar para ESTE handoff.
 
 ## 6. Smoke (o dono)
 
+⚠️ Os ossos não se mexem à mão até o A14 (o esqueleto como objecto): a dobra vem pela variável.
+
 ```
-cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_VEC_BONE_SMOKE=6 cargo run -p ph2d-host-desktop --profile smoke
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_VEC_BONE_SMOKE=6 PH2D_VEC_BONE_DOBRA=170,110 cargo run -p ph2d-host-desktop --profile smoke
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_VEC_BONE_SMOKE=5 PH2D_VEC_BONE_DOBRA=100 cargo run -p ph2d-host-desktop --profile smoke
 ```
-(1) duas barras de cópias dobradas em S; (2) Hierarchy → **Copias bone 2**, painel **Bones** →
-**Transform**, dobrar quase sobre si; (3) na ponta da dobra o contorno de trás acaba onde a parte da
-frente começa, sem gancho; (4) errado = um pedaço de contorno a passar por cima da parte da frente
-junto à dobra. Depois `=5`: **Zig Zag bone 2** → **Transform**, dobrar até ~100°: as duas marquinhas
-escuras saem, os buracos pequenos ficam. FOTOGRAFADAS as duas cenas a abrir (telas novas).
+`=6` (uma junta a 170°, a outra a 110°): na ponta da dobra da barra da esquerda o contorno de trás
+acaba onde a parte da frente começa, sem gancho; errado = um pedaço de contorno a passar por cima da
+parte da frente junto à dobra. `=5` a 100°: no *Zig Zag* (o 2.º de cima) as duas marquinhas
+escuras em triângulo saem e as pintas redondas (os buracos pequenos) ficam. FOTOGRAFADAS as duas a
+abrir nesses ângulos (`kwin --virtual`).

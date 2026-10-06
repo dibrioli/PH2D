@@ -112,6 +112,8 @@ fn scene_shapes(hero: &mut HeroScreen) {
         }
         if i == 4 {
             style.opacity = 50;
+            style.dash = Dash::Dotted;
+            style.stroke_width = 3.0;
         }
         let shape = Shape {
             kind,

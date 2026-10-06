@@ -203,7 +203,11 @@ pub fn style_stroke(width: f64, dash: Dash) -> Stroke {
     match dash {
         Dash::Solid => s,
         Dash::Dashed => s.with_dashes(0.0, [width * 4.0, width * 4.0]),
-        Dash::Dotted => s.with_caps(Cap::Round).with_dashes(0.0, [0.0, width * 3.0]),
+        // ⛔ Um traço de comprimento ZERO com ponta redonda não se desenha (foto de 06/10: o
+        // pontilhado sumia): o ponto é um traço de meia espessura, e a ponta redonda arredonda-o.
+        Dash::Dotted => s
+            .with_caps(Cap::Round)
+            .with_dashes(0.0, [width * 0.5, width * 2.5]),
     }
 }
 

@@ -480,7 +480,8 @@ fn paint_item(
             }
             if matches!(it, Item::Stroke(Some(_))) {
                 // O contorno lê-se como um ANEL: o miolo volta à cor do painel.
-                let k = Spacing::Xs.px();
+                // O miolo tem o lado de um `Sm`, centrado (com `Xs` de recuo o miolo sumia).
+                let k = ((inner.w - Spacing::Sm.px()) / 2.0).max(0.0);
                 let hole = Rect::new(
                     inner.x + k,
                     inner.y + k,

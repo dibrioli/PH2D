@@ -305,7 +305,7 @@ pub fn paint_confirm_delete(
     };
     let gap = Spacing::Xs.px();
     let w = super::context_menu_dialogs::DIALOG_W;
-    let h = pad_y() * 2.0 + ROW_H * 3.0 + gap * 2.0;
+    let h = pad_y() * 2.0 + ROW_H * 3.0 + gap * 2.0; // LITERAL-PX-OK: 3 linhas (título · aviso · botões), 2 vãos
     let rect = Rect::new(
         (viewport.x + (viewport.w - w) * 0.5).max(viewport.x),
         (viewport.y + (viewport.h - h) * 0.5).max(viewport.y),

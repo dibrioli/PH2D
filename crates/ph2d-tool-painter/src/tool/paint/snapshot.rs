@@ -61,6 +61,13 @@ impl BrushSettings {
     pub fn texture_ramp_offered(&self) -> bool {
         !self.wetpaint && !self.watercolor
     }
+
+    /// **O meio OFERECE o Tooth do papel?** — a aguada e a água mordem o papel por ele, e o Digital
+    /// faz a tinta entrar no dente (`PainterTool::papel_como_grain`); o Impasto não o lê.
+    #[must_use]
+    pub fn paper_tooth_offered(&self) -> bool {
+        !self.impasto
+    }
 }
 
 /// Strength of the brush's active falloff at normalized distance `t` (`0` = centre, `1` = rim), for

@@ -116,10 +116,10 @@ fn paint_substrate_rows(
 /// e **falsa desde que o substrato acende** (`substrate_relief.rs`): o Digital passou a ler o dente.
 /// *Quem move o número que tornava algo inalcançável tem de reconferir a nota* (CLAUDE.md §0).
 ///
-/// O que **não** se generalizou junto, porque só a aguada os consome (medido por `grep` nos leitores):
-/// a **Color** do papel (o fundo que a óptica da aquarela vê — `watercolor_backdrop`) e a **Tooth**
-/// (quanto o grão morde o wash — `watercolor_render`/`watercolor_field`). As duas seriam controles
-/// mortos no Digital, que é a espécie que esta casa extermina.
+/// A **Color** e a **Tooth** generalizaram-se em 2026-10-05 (pedido do dono): a cor é a do PAPEL do
+/// documento nos quatro meios (`PainterTool::aplica_o_papel`), e o Tooth faz a tinta do Digital
+/// entrar no dente (`PainterTool::papel_como_grain`); o Impasto não lê o Tooth
+/// (`BrushSettings::paper_tooth_offered`).
 ///
 /// ⛔ **O Mapping saiu (Enio, 2026-10-02):** nenhum leitor do papel o decide — a aguada, o Wet Paint e
 /// o substrato amostram por `sample_tiled_rot_wrapped`, que é `Tiled` por construção (um papel que
@@ -132,8 +132,6 @@ pub(crate) fn paint_paper_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    // Quem consome o papel como META do fluido — o único dono das três rows de aguada.
-    let wash = brush.watercolor || brush.wetpaint;
     let (mut y, fold) = crate::paint_brush_top::paint_collapsible_section(
         ctx,
         theme,
@@ -150,7 +148,9 @@ pub(crate) fn paint_paper_section(
     // ── Paper COLOUR — the document ground the watercolor optics see where nothing is painted
     //    below the active layer (Rebelle: canvas colour is a user-pickable document property).
     //    Painted before the Kind gate: the ground matters even with no paper texture set. ──
-    if wash {
+    // ⭐ Nos QUATRO meios (pedido do dono, 2026-10-05): a cor é a do PAPEL do documento, e o botão
+    // «Aplicar no papel» faz dela o papel (`PainterTool::aplica_o_papel`).
+    {
         paper_color_readback(ctx, brush);
         if ctx.host.store().picker_target()
             != Some(ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB)
@@ -162,6 +162,17 @@ pub(crate) fn paint_paper_section(
             );
         }
         y = paint_paper_color_row(ctx, theme, x, content_w, y, brush);
+        y = crate::paint_watercolor::wetness_button_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            &[(
+                ph2d_tool_painter::ids::PAINTER_PAPER_APPLY,
+                tr("panel.painter_layers.paper.apply"),
+            )],
+        );
     }
     let kind = TextureKind::from_u8(brush.paper_kind);
     // ── Kind picker ──
@@ -246,8 +257,9 @@ pub(crate) fn paint_paper_section(
         2,
         sec,
     );
-    // ── Tooth (how strongly the paper grain bites the WASH — ex-"Depth"; wash-only, see the header) ──
-    if wash {
+    // ── Tooth: quanto o grão do papel morde a tinta — na aguada e na água, e no Digital (onde a tinta
+    //    entra no dente, `PainterTool::papel_como_grain`); o Impasto não o lê. ──
+    if brush.paper_tooth_offered() {
         y = number_field::paint_num_row(
             ctx,
             theme,

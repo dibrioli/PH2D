@@ -121,7 +121,7 @@ impl PainterTool {
     /// Runs once per stroke (pen-down); `composite_below` handles an unknown anchor (plain paper).
     fn build_wet_backdrop(&self) -> Vec<u8> {
         let (w, h) = self.source_size;
-        let paper = self.paper_color_rgb8();
+        let paper = self.cor_do_chao();
         let anchor = self.layers.active().and_then(|id| {
             if self.layers.is_mask(id) {
                 // The mask isn't in the z-order — resolve the raster that owns it.
@@ -148,7 +148,7 @@ impl PainterTool {
     }
 
     /// The document paper colour as straight sRGB8 bytes.
-    pub(super) fn paper_color_rgb8(&self) -> [u8; 3] {
+    pub(crate) fn paper_color_rgb8(&self) -> [u8; 3] {
         let c = self.paint.paper_color;
         [
             (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,

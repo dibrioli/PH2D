@@ -408,4 +408,13 @@
 /// Registos de componentes: `0` (os quadros não são entidades).
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 185;
+///
+/// # `185 → 186` — **o PAPEL do documento pintado** (`line/PainterWatercolor`, 2026-10-05; integrada sobre o `185` dos quadros em 2026-10-07)
+///
+/// `PaintedDocument` ganha `papel: Option<[u8; 3]>` no FIM (pedido do dono: a cor do papel nos quatro
+/// meios, invisível nas camadas). As migrações congeladas (v95, v128) passam a ler o documento pelo
+/// `PaintedDocumentSemPapel` (o layout de antes) e nascem sem papel. ⛔ **Sem degrau de migração**,
+/// pela decisão de sempre — um v185 é recusado em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 186;

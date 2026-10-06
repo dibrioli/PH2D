@@ -39,6 +39,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Acts when a Paper is chosen and Relief is above 0"
         }
         "panel.painter_layers.inerte.relief_above_zero" => "Acts when Relief is above 0",
+        "panel.painter_layers.inerte.paper_applied" => "Acts after Apply to Paper",
+        "panel.painter_layers.inerte.relief_and_no_grain" => {
+            "Acts when Relief is above 0 and no Grain is chosen"
+        }
         "panel.painter_layers.inerte.same_as_paper_off" => "Acts when Same as Paper is off",
         "panel.painter_layers.inerte.charge_below_full" => "Acts when Charge is below 100%",
         "panel.painter_layers.inerte.grain_chosen" => "Acts when a Grain is chosen",
@@ -516,6 +520,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.paper.size" => "Size",
         "panel.painter_layers.paper.tooth" => "Tooth",
         "panel.painter_layers.paper.color" => "Color",
+        "panel.painter_layers.paper.apply" => "Apply to Paper",
         "panel.painter_layers.paper.same_as_paper" => "Same as Paper",
         "panel.painter_layers.paper.amount" => "Amount",
         "panel.painter_layers.wetpaint.wet_paint" => "Wet Paint",

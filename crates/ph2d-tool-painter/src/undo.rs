@@ -130,6 +130,8 @@ pub struct ModelSnapshot {
     /// The **accumulated** Offset (px) from prior Apply & Keep presses (see `PaintState::shape_offset_base_px`),
     /// restored with `offset_norm` so undoing an Apply & Keep reinstates the pre-commit Offset exactly.
     pub offset_base_px: f32,
+    /// O PAPEL do documento ([`crate::tool::PainterTool::papel`]) — volta com o desfazer.
+    pub papel: Option<[u8; 3]>,
     /// The in-progress drag-preview's saved pixels, if a shape preview was live — so a restore can peel the
     /// preview back to the pristine baseline before re-stamping the editor's geometry (no double paint).
     pub preview_patch: Option<PreviewPatch>,
@@ -255,6 +257,8 @@ pub enum CoalesceKind {
     OpCycleStroke,
     /// A centre-square Add↔Remove tap on selection shape `i` — taps on DIFFERENT shapes don't coalesce.
     OpCycleSelection(usize),
+    /// A cor do PAPEL a mudar ao vivo (`tool::papel`): o arrasto no seletor é um passo de desfazer.
+    CorDoPapel,
 }
 
 /// One retained history entry: the two endpoints' **metadata** plus the DELTA of every canvas-shaped

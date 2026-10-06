@@ -240,6 +240,7 @@ impl PainterTool {
             images: &self.images,
         };
         let mut rgba = composite(&self.layers, &src, w, h);
+        self.compoe_sobre_o_papel(&mut rgba, Region { x: 0, y: 0, w, h });
         // ⚠️ **O relevo entra AQUI, e pela mesma função que o BAKE chama.**
         //
         // Esta porta responde *"com o que este documento se parece?"* para o Grain, o Paper e a
@@ -389,6 +390,7 @@ impl PainterTool {
                 // more every frame). The normal reads across the region's edge into the full height
                 // field, so the border is lit exactly as a full recompose would light it.
                 let mut region = region;
+                self.compoe_sobre_o_papel(&mut region, bbox);
                 self.apply_impasto_light(&mut region, bbox);
                 // Mask overlay: re-tint ONLY this region by the (dab-updated) scratch coverage — the
                 // partial twin of the full arm's `apply_mask_overlay`, same per-pixel kernel, no-op
@@ -432,6 +434,7 @@ impl PainterTool {
                         self.compositor_cache.invalidate_from(active, &self.layers);
                         composite(&self.layers, &src, w, h)
                     };
+                self.compoe_sobre_o_papel(&mut composed, Region { x: 0, y: 0, w, h });
                 // Impasto: light the whole freshly-composited canvas (see the dirty-rect lane above).
                 self.apply_impasto_light(&mut composed, Region { x: 0, y: 0, w, h });
                 // Mask overlay: tint the composite by the active mask's coverage (no-op otherwise).

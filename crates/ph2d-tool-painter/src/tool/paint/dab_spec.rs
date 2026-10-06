@@ -44,10 +44,48 @@ impl PainterTool {
             brush.accumulate = false;
             brush.space_attenuation = false;
         }
+        if self.papel_como_grain() {
+            brush.texture = brush.paper;
+            brush.grain_depth =
+                (brush.paper_depth / ph2d_painter_brush::PAPER_TOOTH_MAX).clamp(0.0, 1.0);
+        }
         if brush.stroke_method == ph2d_painter_brush::StrokeMethod::GridStamp {
             brush.as_grid_stamp(self.shape_silhouette_active())
         } else {
             brush
+        }
+    }
+
+    /// **No Digital a tinta ENTRA no dente do papel** (dono, 2026-10-05: *«digital realmente cobre o
+    /// papel, mas não deveria»* · *«impasto reconhece corretamente o papel»*; escolha: *«a tinta entra
+    /// no dente»*). Com o Relief ligado e o Tooth > 0, e nenhum Grain escolhido, o PAPEL faz de Grain do
+    /// traço — ancorado à tela, a mesma altura que o relevo ilumina — com a profundidade
+    /// `Tooth / PAPER_TOOTH_MAX` pela lei do Grain (`1 + (h − 1)·prof.`: menos tinta nos vales, igual
+    /// nos picos). Tooth 0 = o traço de antes, ao byte. Com um Grain escolhido, ele é a textura do traço.
+    #[must_use]
+    pub(crate) fn papel_como_grain(&self) -> bool {
+        self.papel_pode_ser_grain() && self.paint.brush.paper_depth > 0.0
+    }
+
+    /// O Digital está em condições de pôr o papel como Grain (o Relief ligado com um papel, sem Grain
+    /// escolhido) — só falta o Tooth. É a lei do Tooth ESMAECIDO no Digital (`inercia`).
+    #[must_use]
+    pub(crate) fn papel_pode_ser_grain(&self) -> bool {
+        matches!(self.paint_media(), super::media::PaintMedia::Digital)
+            && matches!(self.paint.paint_mode, super::PaintMode::Paint)
+            && self.paint.substrate_depth > 0.0
+            && self.paint.brush.paper.is_active()
+            && !self.paint.brush.texture.is_active()
+    }
+
+    /// A versão da imagem do slot que faz de Grain no traço (a do papel quando ele faz de Grain,
+    /// [`Self::papel_como_grain`]), para as chaves dos caches (a do papel com o bit alto, para
+    /// nunca coincidir com uma do Grain).
+    pub(crate) fn versao_da_imagem_do_grain(&self) -> u64 {
+        if self.papel_como_grain() {
+            self.paint.paper_image_version | (1 << 63)
+        } else {
+            self.paint.texture_image_version
         }
     }
 

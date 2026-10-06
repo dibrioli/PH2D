@@ -93,7 +93,7 @@ pub(crate) struct ProjectStateV95 {
 pub(crate) struct ProjectFileV95 {
     pub(crate) state: ProjectStateV95,
     pub(crate) assets: Vec<crate::project::SavedAsset>,
-    pub(crate) painted: Vec<ph2d_tool_painter::PaintedDocument>,
+    pub(crate) painted: Vec<ph2d_tool_painter::PaintedDocumentSemPapel>,
     pub(crate) motion: String,
     pub(crate) timeline: Vec<u8>,
     pub(crate) physics: ph2d_physics_ecs::PhysicsSettings,
@@ -163,7 +163,7 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
                 tags: Vec::new(),
             },
             assets: old.assets,
-            painted: old.painted,
+            painted: old.painted.into_iter().map(Into::into).collect(),
             motion: old.motion,
             timeline: old.timeline,
             physics: old.physics,
@@ -212,7 +212,7 @@ pub(crate) struct ProjectStateV128 {
 pub(crate) struct ProjectFileV128 {
     pub(crate) state: ProjectStateV128,
     pub(crate) assets: Vec<crate::project::SavedAsset>,
-    pub(crate) painted: Vec<ph2d_tool_painter::PaintedDocument>,
+    pub(crate) painted: Vec<ph2d_tool_painter::PaintedDocumentSemPapel>,
     pub(crate) motion: String,
     pub(crate) timeline: Vec<u8>,
     pub(crate) physics: ph2d_physics_ecs::PhysicsSettings,
@@ -262,7 +262,7 @@ pub(crate) fn migrate_v128_to_v129(old: ProjectFileV128) -> MigratedV128 {
         file: crate::project::ProjectFile {
             state,
             assets: old.assets,
-            painted: old.painted,
+            painted: old.painted.into_iter().map(Into::into).collect(),
             motion: old.motion,
             timeline: old.timeline,
             physics: old.physics,

@@ -45,6 +45,40 @@ pub struct PaintedDocument {
     pub mats: BTreeMap<RtLayerId, Vec<MaterialBytes>>,
     /// Tamanho do canvas em pixels.
     pub size: (u32, u32),
+    /// O PAPEL do documento ([`crate::tool::papel`]): a cor sob as camadas, ou `None`. ⚠️ O ÚLTIMO
+    /// campo: o postcard é posicional (degrau `183 → 184` do `PROJECT_SCHEMA`).
+    pub papel: Option<[u8; 3]>,
+}
+
+/// **O documento pintado como os esquemas ANTERIORES ao papel o guardavam** — o tipo das migrações
+/// congeladas (`ProjectFileV95`, `ProjectFileV128`), que embutiam o vivo: posicional é posicional, e
+/// o campo novo do fim faria um documento antigo ler os bytes do seguinte.
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+pub struct PaintedDocumentSemPapel {
+    pub id: u32,
+    pub layers: LayerStack,
+    pub canvas_rgba: Vec<u8>,
+    pub images: BTreeMap<RtLayerId, LayerImage>,
+    pub heights: BTreeMap<RtLayerId, Vec<f32>>,
+    pub covers: BTreeMap<RtLayerId, Vec<u8>>,
+    pub mats: BTreeMap<RtLayerId, Vec<MaterialBytes>>,
+    pub size: (u32, u32),
+}
+
+impl From<PaintedDocumentSemPapel> for PaintedDocument {
+    fn from(d: PaintedDocumentSemPapel) -> Self {
+        Self {
+            id: d.id,
+            layers: d.layers,
+            canvas_rgba: d.canvas_rgba,
+            images: d.images,
+            heights: d.heights,
+            covers: d.covers,
+            mats: d.mats,
+            size: d.size,
+            papel: None,
+        }
+    }
 }
 
 impl PainterTool {
@@ -87,6 +121,7 @@ impl PainterTool {
                     .map(|(k, v)| (*k, v.as_ref().clone()))
                     .collect(),
                 size: self.source_size,
+                papel: self.papel,
             });
         }
         for (bits, doc) in &self.doc_cache {

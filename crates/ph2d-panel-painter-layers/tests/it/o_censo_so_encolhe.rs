@@ -54,6 +54,13 @@ fn inertes_com_motivo() -> Vec<Inerte> {
         "por desenho: o Adjust Last Stroke age sobre a tinta JÁ pintada, e o censo muda-o antes dos traços",
     ));
     v.push((
+        WetPaint,
+        PAINTER_PAPER_APPLY,
+        "por desenho: com a cor de fábrica (branco) o papel aplicado é o branco de antes — a água compõe \
+         sobre a mesma cor; nos outros meios o arredondamento sobre o papel já muda a tinta. A cor do \
+         papel age depois, ao vivo (gate `o_papel_aplicado_e_o_chao_nos_quatro_meios`)",
+    ));
+    v.push((
         Watercolor,
         PAINTER_WATERCOLOR_WET_PREVIEW,
         "não-pixel: o véu de humidade sobre a tela",

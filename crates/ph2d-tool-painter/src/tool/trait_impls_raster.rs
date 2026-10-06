@@ -24,6 +24,7 @@ impl RasterEditTool for PainterTool {
         self.layers = LayerStack::new();
         self.layers.add_raster("Layer 1", width, height);
         self.images.clear();
+        self.papel = None; // um documento novo nasce sem papel
         self.layer_pixel_versions.clear();
         let active = self.layers.active();
         self.bump_layer_pixels(active);
@@ -121,6 +122,7 @@ impl RasterEditTool for PainterTool {
                 images: &self.images,
             };
             let mut rgba = composite(&self.layers, &src, w, h);
+            self.compoe_sobre_o_papel(&mut rgba, full);
             self.apply_impasto_light(&mut rgba, full);
             return (rgba, w, h);
         }

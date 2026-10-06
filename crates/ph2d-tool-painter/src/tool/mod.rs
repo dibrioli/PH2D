@@ -174,6 +174,8 @@ pub struct PainterTool {
     /// A layer with relief but NO material entry (a document from before this existed) reads as
     /// [`ph2d_painter_brush::material::Material::NEUTRAL`], which is the pass as it shaded then.
     mats: BTreeMap<RtLayerId, Arc<Vec<MaterialBytes>>>,
+    /// **O papel do documento** ([`papel`]): a cor sob as camadas, ou `None` (sem papel).
+    papel: Option<[u8; 3]>,
     /// The live **protection session** — see [`GateSession`]. Canvas-shaped, so it lives here beside
     /// [`Self::canvas_rgba`] and the three relief planes rather than in `PaintState` (which holds
     /// settings and per-stroke bookkeeping). `None` whenever nothing is painting through a gate,
@@ -361,6 +363,7 @@ impl Default for PainterTool {
             heights: BTreeMap::new(),
             covers: BTreeMap::new(),
             mats: BTreeMap::new(),
+            papel: None,
             gate: None,
             mask_scratch_gen: 0,
             composited: None,
@@ -426,6 +429,8 @@ pub use paint::{
 };
 pub use paint::{DICA_DO_PARAMETRO, Dependente, Inercias};
 mod layer_edit;
+/// O papel do documento: a cor sob as camadas (pedido do dono, 2026-10-05).
+mod papel;
 mod runtime;
 mod trait_impls;
 mod trait_impls_raster;

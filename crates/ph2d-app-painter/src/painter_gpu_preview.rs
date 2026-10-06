@@ -234,6 +234,12 @@ fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     if painter.repeat_image() {
         return None;
     }
+    // O PAPEL do documento (`PainterTool::papel`, 2026-10-05) compõe-se SOB as camadas na pista de CPU
+    // (`compoe_sobre_o_papel`, antes da luz); o produtor de GPU acumula sobre transparente. Enquanto o
+    // documento tem papel a CPU produz — a mesma cura do Repeat Image acima e da proteção abaixo.
+    if painter.papel().is_some() {
+        return None;
+    }
     // A PROTEÇÃO é chrome que mora no COMPOSITE: `apply_mask_overlay` tinge o composto por-pixel pela
     // cobertura do scratch, na `runtime.rs`, e o produtor de GPU **não a desenha** — ele composita e
     // ilumina, e o overlay não é uma `LayerOp`. Enquanto não havia relevo isso não aparecia: um

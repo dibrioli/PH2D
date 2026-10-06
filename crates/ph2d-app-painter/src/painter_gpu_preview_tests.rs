@@ -216,3 +216,20 @@ fn a_clipped_group_is_still_not_gpu_eligible() {
         "a clipped group must stay on the CPU while the CPU ignores the flag"
     );
 }
+
+/// **O PAPEL mantém o produtor de CPU** (2026-10-05): o papel do documento compõe-se SOB as camadas
+/// na pista de CPU (`compoe_sobre_o_papel`), e o produtor de GPU acumula sobre transparente. A metade
+/// de presença prova que a recusa é do PAPEL, não da pilha (o documento esculpido é elegível).
+#[test]
+fn o_papel_mantem_o_produtor_de_cpu() {
+    let mut t = sculpted_tool();
+    assert!(
+        gpu_eligible(&t).is_some(),
+        "precondition: o documento esculpido é elegível para a GPU"
+    );
+    t.aplica_o_papel();
+    assert!(
+        gpu_eligible(&t).is_none(),
+        "com papel a CPU tem de produzir (a GPU não compõe sobre ele)"
+    );
+}

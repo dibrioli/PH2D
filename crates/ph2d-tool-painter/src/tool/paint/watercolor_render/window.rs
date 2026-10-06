@@ -72,7 +72,7 @@ impl PainterTool {
         let backdrop_arc = match self.paint.wet_backdrop.as_ref() {
             Some(b) if b.len() == n * 4 => Arc::clone(b),
             _ => {
-                let p = self.paper_color_rgb8();
+                let p = self.cor_do_chao();
                 let mut g = vec![0u8; n * 4];
                 for px in g.as_chunks_mut::<4>().0 {
                     px.copy_from_slice(&[p[0], p[1], p[2], 255]);

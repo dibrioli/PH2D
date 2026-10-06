@@ -36,6 +36,7 @@ impl PainterTool {
             shape: None,
             offset_norm: self.shape_offset_norm(),
             offset_base_px: self.shape_offset_base_px(),
+            papel: self.papel,
             preview_patch: None,
             // Layer ops carry no parked stroke shapes; the shape paths override this via `capture_shape_model`.
             parked_shapes: Vec::new(),
@@ -149,6 +150,10 @@ impl PainterTool {
         );
         self.set_shape_offset_norm(m.offset_norm);
         self.set_shape_offset_base_px(m.offset_base_px);
+        if self.papel != m.papel {
+            self.papel = m.papel;
+            self.invalidate_composite(); // o papel cobre a tela inteira
+        }
         // Reinstate the ACTIVE shape's boolean op so undoing a centre-square op-cycle tap rolls it back.
         self.set_active_op_wire(m.active_op);
         // The **Sculpt** session — and it must land BEFORE the shape overlay below, which RE-STAMPS.

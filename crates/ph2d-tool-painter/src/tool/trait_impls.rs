@@ -369,6 +369,7 @@ impl Tool for PainterTool {
                         (r.parse::<u8>(), g.parse::<u8>(), b.parse::<u8>())
                 {
                     self.set_paper_color_rgb8(r, g, b);
+                    self.papel_segue_a_cor(); // com o papel aplicado ele muda AO VIVO
                 }
             }
             // Os pedidos por camada (ajustes, mistura) são do `layer_edit`.

@@ -29,6 +29,8 @@ pub(crate) struct StashedDoc {
     /// O MATERIAL por camada. Viaja com o documento pela MESMA razão que o relevo (Bug #13.c: os ids
     /// de camada colidem entre documentos, então o que fica pra trás sombreia a tinta do próximo).
     mats: BTreeMap<RtLayerId, Arc<Vec<MaterialBytes>>>,
+    /// O papel do documento ([`crate::tool::papel`]) — viaja com ele.
+    papel: Option<[u8; 3]>,
     layer_pixel_versions: BTreeMap<RtLayerId, u64>,
     source_size: (u32, u32),
     undo: crate::undo::UndoController,
@@ -62,6 +64,7 @@ impl StashedDoc {
             covers: unshare(&self.covers),
             mats: unshare(&self.mats),
             size: self.source_size,
+            papel: self.papel,
         }
     }
 
@@ -79,6 +82,7 @@ impl StashedDoc {
             heights: reshare(doc.heights),
             covers: reshare(doc.covers),
             mats: reshare(doc.mats),
+            papel: doc.papel,
             // Rebuilt on demand: a version cache and a fresh history. (`bump_layer_pixels` re-stamps
             // the versions the first time the compositor asks.)
             layer_pixel_versions: BTreeMap::new(),
@@ -164,7 +168,7 @@ impl PainterTool {
     /// the next sprite switch — the pixels came back (baked, with the light in them) and the relief did
     /// not, so the artist could no longer edit the thickness of paint they were looking at.
     fn doc_is_disposable(&self) -> bool {
-        self.is_trivial_stack() && self.heights.is_empty()
+        self.is_trivial_stack() && self.heights.is_empty() && self.papel.is_none()
     }
 
     /// Move the current working document out into a [`StashedDoc`] (leaving the painter's live fields
@@ -178,6 +182,7 @@ impl PainterTool {
             heights: std::mem::take(&mut self.heights),
             covers: std::mem::take(&mut self.covers),
             mats: std::mem::take(&mut self.mats),
+            papel: self.papel.take(),
             layer_pixel_versions: std::mem::take(&mut self.layer_pixel_versions),
             source_size: self.source_size,
             undo: std::mem::take(&mut self.undo),
@@ -202,6 +207,7 @@ impl PainterTool {
         self.heights = doc.heights;
         self.mats = doc.mats;
         self.covers = doc.covers;
+        self.papel = doc.papel;
         self.drop_live_relief();
         // The stack and the relief travelled together, so the `has_relief` flags arrive already true —
         // EXCEPT for a document that came off disk from a build that never sculpted it. Re-deriving is

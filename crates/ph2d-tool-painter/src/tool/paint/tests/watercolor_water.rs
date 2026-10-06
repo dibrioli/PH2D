@@ -327,7 +327,8 @@ fn watercolor_wet_reads_no_paint_on_a_paper_colored_ground() {
         }
         let mut t = PainterTool::default();
         t.set_source(src, size, size);
-        t.set_paper_color_rgb8(100, 100, 100); // declare the gray as the document paper
+        t.set_paper_color_rgb8(100, 100, 100); // declare the gray as the document paper…
+        t.aplica_o_papel(); // …by the button (2026-10-05): the gray canvas has no pure white to lift
         t.paint.brush = BrushSpec {
             radius_px: 10.0,
             hardness: 1.0,

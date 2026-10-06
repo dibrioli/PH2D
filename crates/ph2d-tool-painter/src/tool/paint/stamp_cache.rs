@@ -221,7 +221,14 @@ impl PainterTool {
         self.ensure_shape_ramp_lut();
         // Disjoint borrows: the canvas (Arc), the cache (tex+ready), the imported images + the Shape
         // ramp LUT are all separate fields, so they can be held at once.
-        let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let papel = self.papel_como_grain(); // a imagem do slot que faz de Grain (`dab_spec`)
+        let image = if papel {
+            &self.paint.paper_image
+        } else {
+            &self.paint.texture_image
+        }
+        .as_ref()
+        .map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         // Shape **tone** ramp applies when its B&W filter is on (the Grain owns colour); see
         // `stamp_dabs_ramped` (Enio 2026-06-26).
@@ -280,7 +287,7 @@ impl PainterTool {
     fn ensure_canvas_cache(&mut self, brush: &BrushSpec, w: u32, h: u32) {
         let key = CanvasKey {
             texture: brush.texture,
-            image_version: self.paint.texture_image_version,
+            image_version: self.versao_da_imagem_do_grain(),
         };
         if matches!(&self.paint.canvas_tex_cache, Some(c) if c.width == w && c.height == h && c.key == key)
         {
@@ -314,7 +321,14 @@ impl PainterTool {
         let textured = brush.texture.is_active();
         // Disjoint borrows: the imported image + the ramp LUT (both `self.paint` sub-fields) and the
         // canvas (`self.canvas_rgba`) are held at once; the texture RNG is copied out + written back.
-        let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let papel = self.papel_como_grain(); // a imagem do slot que faz de Grain (`dab_spec`)
+        let image = if papel {
+            &self.paint.paper_image
+        } else {
+            &self.paint.texture_image
+        }
+        .as_ref()
+        .map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let shape_active = brush.shape_silhouette_active(shape_image.is_some());
         // Shape **tone** ramp applies when the Shape ramp's B&W filter is on (then the Grain / brush
@@ -435,7 +449,14 @@ impl PainterTool {
     ) {
         self.ensure_shape_ramp_lut();
         let textured = brush.texture.is_active();
-        let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let papel = self.papel_como_grain(); // a imagem do slot que faz de Grain (`dab_spec`)
+        let image = if papel {
+            &self.paint.paper_image
+        } else {
+            &self.paint.texture_image
+        }
+        .as_ref()
+        .map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         // Shape **tone** ramp applies when its B&W filter is on (the Grain owns colour); see
         // `stamp_dabs_ramped` (Enio 2026-06-26).
@@ -633,7 +654,7 @@ impl PainterTool {
             hardness: brush.hardness,
             custom: brush.custom_falloff,
             texture: brush.texture,
-            image_version: self.paint.texture_image_version,
+            image_version: self.versao_da_imagem_do_grain(),
             shape: brush.shape,
             shape_image_version: self.paint.shape_image_version,
             shape_ramp_version: self.paint.shape_ramp_version,
@@ -647,7 +668,14 @@ impl PainterTool {
             return;
         }
         let mask = {
-            let image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+            let papel = self.papel_como_grain(); // a imagem do slot que faz de Grain (`dab_spec`)
+            let image = if papel {
+                &self.paint.paper_image
+            } else {
+                &self.paint.texture_image
+            }
+            .as_ref()
+            .map(|i| i.as_mask());
             let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
             let shape_ramp_lut = self.shape_tone_lut_slice();
             render_stamp_mask(

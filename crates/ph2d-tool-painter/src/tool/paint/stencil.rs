@@ -316,7 +316,7 @@ impl PainterTool {
             tex_ramp_bw: self.paint.texture_ramp_bw,
             shape_ramp_enabled: self.paint.shape_color_ramp_enabled,
             shape_ramp_bw: self.paint.shape_color_ramp_bw,
-            tex_image_version: self.paint.texture_image_version,
+            tex_image_version: self.versao_da_imagem_do_grain(),
             shape_image_version: self.paint.shape_image_version,
             shape_ramp_version: self.paint.shape_ramp_version,
             layers_version: self.paint.shape_layers.version(),

@@ -27,6 +27,7 @@ mod seam_impasto_rig;
 mod seam_impasto_tool;
 mod seam_line_card;
 mod seam_paint_media;
+mod seam_papel; // o botão «Apply to Paper» nos quatro meios (2026-10-05)
 mod seam_pigmento; // a fileira `Pigment`: a tela concorda com a porta, nos dois sentidos
 mod seam_sculpt;
 mod seam_shape_deposit;

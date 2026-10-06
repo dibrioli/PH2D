@@ -55,7 +55,7 @@ pub use params::PainterParams;
 /// de *"dispara e o tempo está noutro lugar"* (doc 28 §5.78).
 pub use tool::paint::stamp_banded::diag as band_diag;
 /// O documento pintado, serializável — a unidade que o arquivo de projeto guarda.
-pub use tool::persist::PaintedDocument;
+pub use tool::persist::{PaintedDocument, PaintedDocumentSemPapel};
 // Re-export the effects surface so the layers panel can name adjustment params /
 // blend modes without a direct `ph2d-painter-effects` import.
 pub use ph2d_painter_effects::adjustments::{

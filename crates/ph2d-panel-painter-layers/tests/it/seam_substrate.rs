@@ -174,52 +174,48 @@ fn raising_the_relief_from_the_row_arms_a_paper() {
     );
 }
 
-/// **As rows que só a aguada consome NÃO vazaram para o Digital.**
+/// **As rows do papel estão onde o meio as lê** (pedido do dono, 2026-10-05). A `Color` e o botão
+/// **Apply to Paper** em TODO meio (o papel é do documento); o `Tooth` onde ele morde — a aguada, a
+/// água e o Digital (a tinta entra no dente) —, e NÃO no Impasto, que não o lê. Antes as duas eram só
+/// da aguada (o leitor delas só existia lá).
 ///
-/// `Color` (o fundo que a óptica da aquarela vê) e `Tooth` (quanto o grão morde o wash) não têm leitor
-/// nenhum fora da aguada. Abrir a seção a todo meio sem gateá-las shiparia controles mortos. (O
-/// `Mapping` era a terceira e saiu do painel em 2026-10-02: não tinha leitor em meio nenhum.)
-///
-/// O positivo é a metade que impede o vácuo: as MESMAS têm de estar lá na aquarela.
-///
-/// **Mutação que tem de sangrar:** tirar o `if wash` de qualquer uma delas.
+/// **Mutação que tem de sangrar:** voltar a gatear a cor pela aguada, ou o Tooth a aparecer no Impasto.
 #[test]
-fn the_wash_only_rows_do_not_leak_into_the_other_media() {
-    let wash_only = [
-        (
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
-            "Color",
-        ),
-        (
-            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_DEPTH,
-            "Tooth",
-        ),
-    ];
-    // O papel tem de estar ARMADO nos dois lados, senão o portão de `None` esconde as três por outro
-    // motivo e a ausência no Digital seria verdadeira por acidente.
+fn as_rows_do_papel_estao_onde_o_meio_as_le() {
+    use ph2d_tool_painter::ids::{
+        PAINTER_PAPER_APPLY, PAINTER_WATERCOLOR_PAPER_COLOR_THUMB, PAINTER_WATERCOLOR_PAPER_DEPTH,
+    };
+    // O papel ARMADO (o portão de `None` esconderia as rows por outro motivo).
     let armed = |media| {
         let mut t = tool_in(media);
         t.set_substrate_depth(1.0);
         t
     };
-
-    let (_h, _s, wc) = painted(&armed(PaintMedia::Watercolor));
-    for (id, name) in wash_only {
+    for (media, tooth) in [
+        (PaintMedia::Digital, true),
+        (PaintMedia::Watercolor, true),
+        (PaintMedia::Impasto, false),
+        (PaintMedia::WetPaint, true),
+    ] {
+        let (_h, _s, pintados) = painted(&armed(media));
         assert!(
-            rect_of(&wc, id).is_some(),
-            "fixture: a aquarela não pintou `{name}`, então a ausência no Digital não prova nada"
+            rect_of(&pintados, ph2d_tool_painter::ids::PAINTER_SUBSTRATE_RELIEF).is_some(),
+            "fixture: {media:?} não pintou a secção Paper"
+        );
+        for (id, nome) in [
+            (PAINTER_WATERCOLOR_PAPER_COLOR_THUMB, "Color"),
+            (PAINTER_PAPER_APPLY, "Apply to Paper"),
+        ] {
+            assert!(
+                rect_of(&pintados, id).is_some(),
+                "{media:?}: `{nome}` não é pintada"
+            );
+        }
+        assert_eq!(
+            rect_of(&pintados, PAINTER_WATERCOLOR_PAPER_DEPTH).is_some(),
+            tooth,
+            "{media:?}: o Tooth {} pintado",
+            if tooth { "NÃO é" } else { "é" }
         );
     }
-    let (_h, _s, digital) = painted(&armed(PaintMedia::Digital));
-    for (id, name) in wash_only {
-        assert!(
-            rect_of(&digital, id).is_none(),
-            "`{name}` foi pintada no Digital, onde nada a lê — controle morto"
-        );
-    }
-    // E o controle positivo do outro lado: o que é do SUBSTRATO continua lá no Digital.
-    assert!(
-        rect_of(&digital, ph2d_tool_painter::ids::PAINTER_SUBSTRATE_RELIEF).is_some(),
-        "fixture: o painel do Digital não pintou a seção Paper, então as ausências acima são vácuo"
-    );
 }

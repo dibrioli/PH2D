@@ -166,6 +166,10 @@ impl PainterTool {
     /// no mask/clip — i.e. the composite is byte-identical to `canvas_rgba`,
     /// so `current_preview` skips compositing entirely (the fast path).
     pub(crate) fn is_trivial_stack(&self) -> bool {
+        // Com papel o composite não é os píxeis da camada: eles compõem-se SOBRE ele.
+        if self.papel.is_some() {
+            return false;
+        }
         let root = self.layers.root();
         if root.len() != 1 {
             return false;

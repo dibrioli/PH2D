@@ -78,8 +78,11 @@ Gate batched 1× (BASE `0910f5315`):
 
 ## 4. ABERTO
 
-- ⏳ **A13 parcial:** a cor ✅ `5d9acc3c2`; os **tiques soltos do traço** junto à dobra de dentro
-  continuam (fotografados 06/10), em medição pela janela principal.
+- ⏳ **A13 parcial:** a cor ✅ `5d9acc3c2`. **A18 (novo)** as PONTAS LIVRES do traço na ABA da dobra
+  extrema (`≥ ~170°`, já a `110°` uma) ficam: duas leis medidas e recusadas (L1 exclui coberturas
+  viradas/mesma folha; L2 estende a ponta ao cruzamento) — fila §F65, ramo `exp/a13-tiques`
+  (`2038739fb`), sonda `d831c8d72`. **Decisão de produto pedida ao dono:** deixar, ou desenhar o VINCO da
+  aba como linha (papel dobrado), por medir.
 - **A17 (novo)** raiz com posição ANIMADA: o anel fica na origem (A15 só move onde é exacto). Re-alvejar
   a faixa de translação para o esqueleto seria exacto mas muda as linhas da timeline que o artista vê —
   pergunta de PRODUTO, não feita.
@@ -104,12 +107,13 @@ Comando base, igual nos cinco: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees
 3. Tem de acontecer: o encontro está cheio, sem fio branco fininho e sem pedaço de outra cor por cima.
 4. Deu errado se: vê uma linha branca fina no encontro, ou uma mancha com a cor da outra parte.
 
-**6.2 A cor da dobra apertada** (os tiques abaixo são conhecidos)
+**6.2 A cor da dobra apertada** (as pontas de traço abaixo são conhecidas)
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_VEC_BONE_SMOKE=6 PH2D_VEC_BONE_DOBRA=170,140 cargo run --profile smoke -p ph2d-host-desktop`; depois o mesmo com `PH2D_VEC_BONE_DOBRA=170,170`.
 2. Olhe a dobra de fora das barras.
 3. Tem de acontecer: a cor enche as duas barras até à borda de fora da dobra, sem faixa vazia.
-4. Deu errado se: sobra uma zona sem cor na curva de fora. Dois tracinhos soltos pequenos junto à dobra de
-   dentro são CONHECIDOS e ainda estão a ser tratados — não conte como erro desta rodada.
+4. Deu errado se: sobra uma zona sem cor na curva de fora. Nas dobras mais apertadas ficam duas pontinhas
+   de traço soltas dentro da cor: já sabemos, não conte como erro desta rodada — vou fazer-lhe uma pergunta
+   sobre elas.
 
 **6.3 O ponto de mover do esqueleto**
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_VEC_BONE_SMOKE=3 cargo run --profile smoke -p ph2d-host-desktop`
@@ -139,8 +143,8 @@ Comando base, igual nos cinco: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees
   era a ordem de pintura. Régua de vão fixo: cúspide `3114 / 2368 / 1852`, nenhuma pose pior. *Registo de
   antes:* a cúspide da arte junto a uma tampa redonda (limite da F49); no *Zig Zag* a `~110°` os dentes de
   dentro encavalam-se e fecham buraquinhos reais.
-- **A13** — ⏳ **parcial: a cor ✅ `5d9acc3c2`; os tiques soltos do traço junto à dobra de dentro
-  continuam (fotografados 06/10), em medição.** A cor: o refino local do bake (`k = 2`) cura a tampa
+- **A13** — ⏳ **parcial: a cor ✅ `5d9acc3c2`; as pontas livres do traço na aba da dobra extrema ficam
+  (A18).** A cor: o refino local do bake (`k = 2`) cura a tampa
   cortada pelo contorno desenhado (`0,27 → 0,036`); a hipótese *NonZero* caiu. *Registo de antes:* a
   `=6` com as duas juntas `≥ 140°` (três camadas) tinha zonas sem cor, traço sem cor por baixo e
   tiques soltos; igual sem F60/F61 e com `TOL = 0`.
@@ -149,5 +153,8 @@ Comando base, igual nos cinco: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees
   vazio dos esqueletos adoptados caía na origem (visto nas fotos do fecho da A14).
 - **A16** ✅ FEITO `7a95107d5` (F65): `keeps_parts_selected` + `restore_parts` no `mode_drive`, só anexo.
   *Registo de antes:* `Tab`→Edit do esqueleto com um osso escolhido trocava a selecção pelo esqueleto.
+- **A18 (NOVO, 06/10)** as PONTAS LIVRES do traço na ABA da dobra extrema (`≥ ~170°`, já a `110°` uma):
+  `Posada::tapado` conta como cobertura triângulos virados e vizinhos da mesma folha; L1 e L2 medidas e
+  recusadas (fila §F65). ⏳ aguarda o dono: deixar, ou desenhar o vinco da aba como linha — por medir.
 - **A17 (NOVO, 06/10)** raiz com posição animada: o anel fica na origem (A15 só move onde é exacto);
   medir se re-alvejar a faixa de translação para o esqueleto serve o artista — pergunta de produto.

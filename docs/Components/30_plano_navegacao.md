@@ -2190,3 +2190,55 @@ guarda a régua da 4.ª rodada e o diagnóstico da dobra (quem persegue · as ou
   adenda 2) — decisão do dono.
 - **A dominância da procura ponderada** (§22.4): o que falta é fazer menos nós; as alavancas de custo por nó estão
   esgotadas (§26.8).
+
+## §27 — W18 (aberta em 2026-10-06): fechar o aberto da §26.9 e MOSTRAR a lama (CLAUDE.md §0.10)
+
+**Ordem do dono (06/10):** *«ainda não vi a lama em nenhum smoke. Mas vamos finalizar o que está em aberto»*. A web
+fica ESTACIONADA (aprovada, «não agora»). Três itens, um plano; os critérios abaixo foram escritos ANTES do código.
+
+### §27.1 — S: a cena da lama (`PH2D_NAV_SMOKE=5`) — o dono nunca viu a lama
+
+**Medido:** nenhuma das `4` cenas de `nav_smoke` (nem outra da família) tem um `NavCostArea`; a lama (W7) só aparece
+no Inspector. ⇒ a W7, a W9 (dominância), a W14, a W15 (fatias) e a C2 da W16 nunca tiveram uma cena — a lei
+*«cena de smoke que ensina o contrário… pior que ausente»* vale também para a ausente.
+
+**A cena:** FORMAS visíveis (as poças desenhadas do tamanho do corpo do sensor — o censo da W16 vale), duas lamas de
+peso diferente (leve `2`, pesada `10`) entre o nascimento e o alvo, de modo que a escolha se VÊ: os agentes cortam a
+leve quando o desvio é longo e contornam a pesada; um perseguidor atrás do herói na lama (o item A, visível).
+
+**Kill-criterion:** um gate pela cena real (`nav_smoke::montar(…, 5)`) que mede a escolha — a fixtura AFIRMA agentes
+que atravessam a leve (`≥ 1`) e nenhum que atravessa a pesada, com o CONTROLO (a mesma cena sem custos: o caminho
+cruza as duas) —; o censo do desenho e o `todo_roteador_que_a_shell_le_esta_na_familia` verdes; `CENAS = 5`; a
+cena fotografada (`docs/Components/ferramentas/fotografa_cena.sh`) antes de ir ao dono; o tutorial
+`03_navegacao.pdf` ganha a página da lama.
+
+### §27.2 — A: o tecto do caminho crítico, e depois quem persegue
+
+**O que se sabe (§26.6):** a lei da dobra (`fatia_depois_de`) deixa o crítico chegar a `orçamento · 2^k` — o
+produto paga `80 mil` a `10` e `50` agentes. As vagas a mais (A4) encurtam quem persegue (`30 → 4`) mas caem noutra
+dobra (`72 mil`). ⇒ a ordem é **primeiro o tecto, depois o A4 por cima** (série declarada: o A4 só se re-mede com o
+tecto escolhido).
+
+**Candidatos para o tecto** (alavancas da `Sonda`, no mesmo processo; a vivacidade numa malha que nunca pára vem de
+OUTRA coisa que não o tamanho da fatia):
+- **T1** a fatia NÃO cresce; quem recomeçou `k` vezes seguidas vai à FRENTE no passo em paralelo (a vivacidade pela
+  vez, não pelo tamanho: acaba se a procura couber em `orçamento × intervalo da porta`);
+- **T2** a dobra só conta quando a procura gastou uma fatia INTEIRA desde o recomeço anterior (quem perdeu por falta
+  de VEZ não dobra);
+- **T3** a dobra com tecto em `2` (`fatia_depois_de` satura em `2·pode`).
+
+**Kill-criterion:** crítico `≤ 2 ×` o orçamento (`40 mil`) a `10 · 50 · 200` agentes nas duas cenas da
+`medir_replaneio`; `0` sem caminho; `falta` `≤ +10 %`; o gate `uma_malha_que_nunca_para_nao_deixa_a_procura_sem_acabar`
+verde (a vivacidade) — e com o tecto escolhido, o A4 por cima: quem persegue máx `≤ 5`, uma thread `≤ +10 %` (load
+`≤ 5`). Senão: o tecto entra sozinho se cumprir o seu critério, e o A4 fica recusa medida.
+
+### §27.3 — C: menos NÓS na procura ponderada
+
+**O que se sabe (§26.8):** o custo por nó está esgotado; a metade do tempo só vem de expandir menos. **1.º passo
+(medir antes de propor):** onde estão os nós — a fracção dos expandidos com `f` perto de `C*` (o fundo que todo A\*
+exacto paga) contra os longe dele, e dentro da lama contra o chão; quantos são frentes paralelas que a dominância corta
+a meio (`trimmed`) e sobrevivem. Só depois os candidatos, cada um contra as recusas do §22.4 e da §26.8.
+
+**Kill-criterion (o do §22.4, sem mudança):** metade do tempo na cena grande (`100` lamas, pesos `4` e `10`), o custo
+contra o oráculo ao dígito, a procura em fatias = a inteira ao bit. ⚠️ Pode acabar outra vez em recusa medida — e
+então diz-se ao dono em uma frase, sem a vender como feita.

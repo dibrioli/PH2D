@@ -66,7 +66,7 @@ diz onde ler o mecanismo:
 
 ---
 
-### F64 — ⏳ **O ESQUELETO É UM OBJECTO** (A14, ordem do dono 05/10) — plano [`05_plano_o_esqueleto_e_um_objecto.md`](05_plano_o_esqueleto_e_um_objecto.md)
+### F64 — ✅ **O ESQUELETO É UM OBJECTO** (smoke do dono pendente) (A14, ordem do dono 05/10) — plano [`05_plano_o_esqueleto_e_um_objecto.md`](05_plano_o_esqueleto_e_um_objecto.md)
 
 - **M (medição, antes do código):** (1) o mundo de um osso compõe a cadeia `ChildOf` INTEIRA
   (`world_transform` → `parent_world_transform_with`, sem parar no 1.º osso) ⇒ um esqueleto-pai com
@@ -198,7 +198,11 @@ diz onde ler o mecanismo:
   ponta cria) → *Mode* ▸ *Pose Mode* (arrastar dobra a barra) → `Tab` Object (o gizmo leva tudo). A
   barra entra no `bone_smoke_pend` para a shell chegar ao prólogo (painel de ossos aberto). Gate
   `the_three_modes_scene_has_one_skeleton_object_and_a_loose_bar` (controlo: nada preso depois do 2.º
-  tempo). ⏳ Fotos das sete cenas: no fecho.
+  tempo). Fotos das sete cenas: no handoff de integração (§3).
+- **C11 — o fecho.** Gate batched (3 tectos de tamanho, curados por corte em `b82fc6cab`); mutação
+  22 → 20 sangram, M6 e M10 ganharam gate (`363096b7e`). Handoff:
+  [`HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md`](handoffs/HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md).
+  ⏳ Smoke do dono (pedido para depois da obra).
 
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 

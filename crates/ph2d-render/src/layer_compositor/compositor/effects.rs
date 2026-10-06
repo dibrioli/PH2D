@@ -442,6 +442,8 @@ impl LayerCompositor {
             out_h: region.h,
             src_off_x: region.x - work.x,
             src_off_y: region.y - work.y,
+            paper: self.paper,
+            _pad: [0; 3],
         };
         gpu.queue
             .write_buffer(&self.encode_globals_buffer, 0, bytemuck::bytes_of(&g));

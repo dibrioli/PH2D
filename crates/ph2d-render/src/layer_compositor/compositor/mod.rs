@@ -480,6 +480,7 @@ impl LayerCompositor {
             op_buffer: None,
             globals_buffer,
             space,
+            paper: 0,
             decode_lut_buffer,
             adj_params_buffer: None,
             adj_luts_buffer: None,

@@ -167,9 +167,15 @@ impl PainterTool {
     /// so `current_preview` skips compositing entirely (the fast path).
     pub(crate) fn is_trivial_stack(&self) -> bool {
         // Com papel o composite não é os píxeis da camada: eles compõem-se SOBRE ele.
-        if self.papel.is_some() {
-            return false;
-        }
+        self.papel.is_none() && self.preview_layer_stack_is_trivial()
+    }
+
+    /// **A pilha de CAMADAS é trivial**, com ou sem papel — a pergunta do produtor de GPU. Com papel
+    /// e esta pilha a CPU recompõe só a região suja, papel incluído, e medido isso é `1,85–4,5×` mais
+    /// rápido que a GPU, que refaz a tela inteira a cada quadro (Digital, `0,27` contra `0,51` ms em
+    /// 2048² e `0,26` contra `1,16` em 4096², `measure_o_quadro_com_papel_nos_dois_produtores`).
+    #[must_use]
+    pub fn preview_layer_stack_is_trivial(&self) -> bool {
         let root = self.layers.root();
         if root.len() != 1 {
             return false;

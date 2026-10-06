@@ -40,6 +40,7 @@ mod individual_texture_honours_its_sampling;
 mod ktx2_format_exhaustive_mapping;
 mod layer_compositor_ajustes_gpu;
 mod layer_compositor_gpu;
+mod layer_compositor_papel_gpu;
 mod layers_no_alloc;
 mod mask_interaction_regression;
 mod measure_first_stroke_pipelines;

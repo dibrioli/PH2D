@@ -369,77 +369,96 @@ fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
         eprintln!("no GPU adapter on this machine — nothing to assert");
         return;
     };
-    let size = 240u32;
-    let mut renderer = ph2d_render::SpriteRenderer::new(
-        gpu.clone(),
-        ph2d_render::GameRt::FORMAT,
-        ph2d_render::TextureAtlas::dummy(&gpu),
-        8,
-    );
-    let mut t = impasto_tool(size);
-    let (mut session, mut preview, mut toasts) =
-        (None, None, ph2d_editor_core::toast::ToastQueue::default());
-    let mut preview_gpu: Option<PainterPreviewGpu> = None;
+    for papel in [None, Some([196u8, 170, 120])] {
+        let size = 240u32;
+        let mut renderer = ph2d_render::SpriteRenderer::new(
+            gpu.clone(),
+            ph2d_render::GameRt::FORMAT,
+            ph2d_render::TextureAtlas::dummy(&gpu),
+            8,
+        );
+        let mut t = impasto_tool(size);
+        // O PAPEL do documento (2026-10-06): a GPU compõe sobre ele com a lei inteira da CPU, então o
+        // mesmo documento, com papel de cor, tem de dar os mesmos bytes nos dois produtores.
+        if let Some([r, g, b]) = papel {
+            ph2d_editor_core::tool::Tool::handle_panel_event(
+                &mut t,
+                ph2d_editor_core::tool::PanelEvent::SelectOption(
+                    ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+                    format!("{r},{g},{b}"),
+                ),
+            );
+            assert_eq!(t.papel(), Some([r, g, b]), "controlo: o papel foi aplicado");
+        }
+        let (mut session, mut preview, mut toasts) =
+            (None, None, ph2d_editor_core::toast::ToastQueue::default());
+        let mut preview_gpu: Option<PainterPreviewGpu> = None;
 
-    // Sculpt: a curved stroke, so the relief carries slopes in every direction. A straight one would
-    // leave the normal pointing the same way down the whole stroke and a sign error could hide.
-    t.on_canvas_pointer(cp([60.0, 90.0], PointerPhase::Down));
-    for i in 1u8..=6 {
-        let f = f32::from(i);
-        t.on_canvas_pointer(cp(
-            [60.0 + 22.0 * f, 90.0 + 9.0 * f * f * 0.25],
-            PointerPhase::Move,
-        ));
-    }
-    t.on_canvas_pointer(cp([192.0, 171.0], PointerPhase::Up));
+        // Sculpt: a curved stroke, so the relief carries slopes in every direction. A straight one would
+        // leave the normal pointing the same way down the whole stroke and a sign error could hide.
+        t.on_canvas_pointer(cp([60.0, 90.0], PointerPhase::Down));
+        for i in 1u8..=6 {
+            let f = f32::from(i);
+            t.on_canvas_pointer(cp(
+                [60.0 + 22.0 * f, 90.0 + 9.0 * f * f * 0.25],
+                PointerPhase::Move,
+            ));
+        }
+        t.on_canvas_pointer(cp([192.0, 171.0], PointerPhase::Up));
 
-    // Run frames until the producers settle. The GPU must be the one holding the slot: if the
-    // eligibility gate ever sends a sculpted canvas back to the CPU this reads as a plain failure
-    // here rather than as a silent loss of the speed the port was built for.
-    let mut gpu_owns = false;
-    for _ in 0..4 {
-        gpu_owns = app_frame(
-            &mut renderer,
-            &mut t,
-            &mut session,
-            &mut preview,
-            &mut preview_gpu,
-            &mut toasts,
+        // Run frames until the producers settle. The GPU must be the one holding the slot: if the
+        // eligibility gate ever sends a sculpted canvas back to the CPU this reads as a plain failure
+        // here rather than as a silent loss of the speed the port was built for.
+        let mut gpu_owns = false;
+        for _ in 0..4 {
+            gpu_owns = app_frame(
+                &mut renderer,
+                &mut t,
+                &mut session,
+                &mut preview,
+                &mut preview_gpu,
+                &mut toasts,
+            );
+        }
+        assert!(
+            gpu_owns,
+            "a sculpted canvas must be GPU-owned — that is the whole point of the light port"
+        );
+        assert!(
+            t.impasto_visible(),
+            "precondition: there IS relief to light (a flat canvas would make this gate vacuous)"
+        );
+
+        // The bytes the sprite shader samples, straight off the device.
+        let slot = preview_gpu.expect("the GPU lane owns a live slot");
+        let (w, h, shown) = renderer
+            .individual()
+            .readback(&gpu, slot.texture_id)
+            .expect("readback of the preview slot");
+        assert_eq!((w, h), (size, size), "slot dims match the canvas");
+
+        // …against the CPU producer's own answer for the same document. `screen_truth` drains the tool,
+        // so it runs AFTER the readback.
+        let truth = screen_truth(&mut t);
+        let lit_pixels = shown
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(truth.as_chunks::<4>().0.iter())
+            .filter(|(a, _)| a[..3] != [255, 255, 255])
+            .count();
+        assert!(
+            lit_pixels > 2_000,
+            "the fixture must actually contain a lit stroke — only {lit_pixels} pixels are not bare \
+             white paper, and a blank canvas would match a blank oracle perfectly"
+        );
+        assert_screen_equals(
+            &shown,
+            &truth,
+            size,
+            &format!("GPU producer vs CPU producer, papel {papel:?}"),
         );
     }
-    assert!(
-        gpu_owns,
-        "a sculpted canvas must be GPU-owned — that is the whole point of the light port"
-    );
-    assert!(
-        t.impasto_visible(),
-        "precondition: there IS relief to light (a flat canvas would make this gate vacuous)"
-    );
-
-    // The bytes the sprite shader samples, straight off the device.
-    let slot = preview_gpu.expect("the GPU lane owns a live slot");
-    let (w, h, shown) = renderer
-        .individual()
-        .readback(&gpu, slot.texture_id)
-        .expect("readback of the preview slot");
-    assert_eq!((w, h), (size, size), "slot dims match the canvas");
-
-    // …against the CPU producer's own answer for the same document. `screen_truth` drains the tool,
-    // so it runs AFTER the readback.
-    let truth = screen_truth(&mut t);
-    let lit_pixels = shown
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .zip(truth.as_chunks::<4>().0.iter())
-        .filter(|(a, _)| a[..3] != [255, 255, 255])
-        .count();
-    assert!(
-        lit_pixels > 2_000,
-        "the fixture must actually contain a lit stroke — only {lit_pixels} pixels are not bare \
-         white paper, and a blank canvas would match a blank oracle perfectly"
-    );
-    assert_screen_equals(&shown, &truth, size, "GPU producer vs CPU producer");
 }
 
 /// **O PAPEL atravessa o produtor da GPU — o gate que faltava, e a razão de o Enio ver o papel morto.**

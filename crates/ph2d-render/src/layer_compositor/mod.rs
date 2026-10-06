@@ -358,7 +358,7 @@ struct AdjParamsGpu {
     p2: f32,
 }
 
-/// Compositor globals (32 bytes; mirrors WGSL `Globals`).
+/// Compositor globals (48 bytes; mirrors WGSL `Globals`).
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct GpuGlobals {
@@ -373,8 +373,11 @@ struct GpuGlobals {
     /// (the dirty-rect readback path). `1` ⇒ write at CANVAS coords into a
     /// canvas-sized, persistent `out` so a region dispatch only refreshes the
     /// dirty rect and leaves the rest intact (E5 live-stroke region recomposite,
-    /// ADR-0078 S2 perf). Occupies the former `_pad` slot — size stays 32 B.
+    /// ADR-0078 S2 perf). Occupies the former `_pad` slot.
     out_canvas_coords: u32,
+    /// O papel do documento, `0x01RRGGBB` (`0` = sem papel) — [`LayerCompositor::set_paper`].
+    paper: u32,
+    _pad: [u32; 3],
 }
 
 // ── Segmented (spatial pass-graph) GPU mirrors ───────────────────────────────
@@ -446,7 +449,7 @@ struct CombineGlobals {
     _pad3: f32,
 }
 
-/// Globals for `cs_encode` (16 bytes; mirrors WGSL `EncodeGlobals`). Reads the
+/// Globals for `cs_encode` (32 bytes; mirrors WGSL `EncodeGlobals`). Reads the
 /// final encoded `work_region` intermediate at `(src_off_x, src_off_y)` and
 /// writes the `out_w × out_h` straight-sRGB8 output (the requested dirty rect).
 #[repr(C)]
@@ -456,6 +459,9 @@ struct EncodeGlobals {
     out_h: u32,
     src_off_x: u32,
     src_off_y: u32,
+    /// O papel ([`LayerCompositor::set_paper`]), a mesma lei de `cs_flat`.
+    paper: u32,
+    _pad: [u32; 3],
 }
 
 /// Globals for `cs_chroma` (32 bytes; mirrors WGSL `ChromaGlobals`). The radial
@@ -591,6 +597,8 @@ pub struct LayerCompositor {
     globals_buffer: wgpu::Buffer,
     /// The space the layers join in, fixed at construction ([`CompositeSpace`]).
     space: CompositeSpace,
+    /// O papel empacotado (`0x01RRGGBB`, `0` = sem papel) que as saídas compõem por baixo.
+    paper: u32,
     /// Immutable byte decode table of `space` (uploaded once at construction).
     decode_lut_buffer: wgpu::Buffer,
     /// Persistent adjustment-params storage buffer (grown as needed; always

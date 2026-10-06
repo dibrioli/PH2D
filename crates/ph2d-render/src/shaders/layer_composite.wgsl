@@ -139,6 +139,11 @@ struct Globals {
     // coords (canvas-sized persistent out) so a region dispatch refreshes only the
     // dirty rect (E5 live-stroke region recomposite).
     out_canvas_coords: u32,
+    // O papel do documento, 0x01RRGGBB (0 = sem papel) — `sobre_o_papel`.
+    paper: u32,
+    _p0: u32,
+    _p1: u32,
+    _p2: u32,
 }
 
 @group(0) @binding(0) var<storage, read> ops: array<Op>;
@@ -310,6 +315,22 @@ fn adjustment_strength(op: Op, coord: vec2<i32>) -> f32 {
 // `compositor::encode` byte-for-byte: `floor(clamp(x)*255 + 0.5)` round-half-up
 // (NOT the unorm-store's round-half-even) on all four channels. Dividing the
 // integer back by 255 makes the `rgba8unorm` store re-quantize to the same byte.
+// O PAPEL do documento (`LayerCompositor::set_paper`): o byte já codificado composto SOBRE o papel
+// pela lei INTEIRA da CPU (`papel::sobre_o_papel` do Painter) — `(c·a + p·(255−a) + 127)/255`, alfa
+// 255 — em `u32`, logo ao byte nas duas pistas. `enc` é `k/255` exacto (`encode_final`).
+fn sobre_o_papel(enc: vec4<f32>, paper: u32) -> vec4<f32> {
+    if (paper & 0x01000000u) == 0u {
+        return enc;
+    }
+    let b = vec4<u32>(round(enc * 255.0));
+    if b.a == 255u {
+        return enc;
+    }
+    let p = vec3<u32>((paper >> 16u) & 255u, (paper >> 8u) & 255u, paper & 255u);
+    let rgb = (b.rgb * b.a + p * (255u - b.a) + vec3<u32>(127u)) / 255u;
+    return vec4<f32>(vec3<f32>(rgb) / 255.0, 1.0);
+}
+
 fn encode_final(acc: vec4<f32>) -> vec4<f32> {
     var c = acc;
     if LIGHT_SPACE {
@@ -667,7 +688,7 @@ fn cs_flat(@builtin(global_invocation_id) gid: vec3<u32>) {
         // dispatches cs_grouped for groups and the segmented pass-graph for any
         // spatial op. The explicit OP_LAYER guard is defence-in-depth.
     }
-    textureStore(out_tex, out_local, encode_final(acc));
+    textureStore(out_tex, out_local, sobre_o_papel(encode_final(acc), g.paper));
 }
 
 // GROUPED entry — op-list contains groups. Adds a per-pixel sub-accumulator
@@ -741,7 +762,7 @@ fn cs_grouped(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
     }
 
-    textureStore(out_tex, out_local, encode_final(acc0));
+    textureStore(out_tex, out_local, sobre_o_papel(encode_final(acc0), g.paper));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1056,6 +1077,10 @@ struct EncodeGlobals {
     out_h: u32,
     src_off_x: u32, // offset of the requested region inside the work_region texture
     src_off_y: u32,
+    paper: u32, // o papel, a lei de `cs_flat`
+    _p0: u32,
+    _p1: u32,
+    _p2: u32,
 }
 @group(0) @binding(18) var<uniform> enc_g: EncodeGlobals;
 @group(0) @binding(19) var enc_src: texture_2d<f32>;
@@ -1071,7 +1096,7 @@ fn cs_encode(@builtin(global_invocation_id) gid: vec3<u32>) {
     let out_local = vec2<i32>(i32(x), i32(y));
     let src = vec2<i32>(i32(enc_g.src_off_x + x), i32(enc_g.src_off_y + y));
     let acc = textureLoad(enc_src, src, 0);
-    textureStore(enc_out, out_local, encode_final(acc));
+    textureStore(enc_out, out_local, sobre_o_papel(encode_final(acc), enc_g.paper));
 }
 
 // ── cs_chroma — chromatic-aberration GATHER (per-channel radial shift) ───────

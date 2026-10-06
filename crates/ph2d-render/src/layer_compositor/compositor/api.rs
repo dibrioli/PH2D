@@ -57,6 +57,16 @@ impl LayerCompositor {
         Ok(())
     }
 
+    /// **O papel do documento** (`None` = sem papel, o composite de sempre ao byte): toda saída — as
+    /// três entradas que gravam (`cs_flat`, `cs_grouped`, `cs_encode`) — compõe-se SOBRE ele pela lei
+    /// inteira da CPU (`papel::sobre_o_papel` do Painter): `(c·a + p·(255−a) + 127)/255`, alfa 255.
+    /// Vale até nova chamada.
+    pub fn set_paper(&mut self, paper: Option<[u8; 3]>) {
+        self.paper = paper.map_or(0, |[r, g, b]| {
+            0x0100_0000 | (u32::from(r) << 16) | (u32::from(g) << 8) | u32::from(b)
+        });
+    }
+
     /// Composite `ops` into the output texture, covering `region` of the
     /// `canvas_w × canvas_h` canvas. Uploads only layers whose version changed
     /// since the last call. Encodes + submits one compute dispatch.

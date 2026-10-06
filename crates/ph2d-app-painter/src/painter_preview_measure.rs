@@ -154,3 +154,115 @@ fn measure_the_masked_stroke_on_the_gpu_producer() {
         ms_4k / ms_2k.max(1e-6)
     );
 }
+
+/// **O quadro de um documento COM PAPEL nos dois produtores** (2026-10-06): até aqui o papel mandava o
+/// documento para a CPU (a GPU recusava-se); agora o compositor compõe sobre ele e a GPU produz. Os
+/// dois produtores, no MESMO processo, por movimento de um traço, no Digital e no Impasto, a 2048² e
+/// 4096² — três rodadas intercaladas, o mínimo das medianas com a mediana ao lado. A CPU é o «antes»
+/// do produto, a GPU o «depois».
+///
+/// Medido 2026-10-06 (`smoke`, load 4,7–5,8), GPU · CPU em ms por movimento: Digital `0,505 · 0,274`
+/// (2048²) e `1,157 · 0,255` (4096²); Impasto `0,970 · 1,482` e `1,948 · 1,495`. ⇒ uma camada LISA com
+/// papel ficou na CPU (`preview_layer_stack_is_trivial`), e desde então a linha do Digital lê
+/// `gpu produz = false`: a coluna da GPU é ali a pista que o produto toma.
+///
+/// `cargo test -p ph2d-app-painter --profile smoke --lib measure_o_quadro_com_papel -- --ignored --nocapture --test-threads=1`
+#[test]
+#[ignore = "perf measurement (GPU adapter) — run with --ignored"]
+fn measure_o_quadro_com_papel_nos_dois_produtores() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter on this machine — nothing to measure");
+        return;
+    };
+    fn por_move(ctx: &ph2d_gpu::GpuContext, size: u32, impasto: bool, na_gpu: bool) -> (f64, bool) {
+        let mut renderer = ph2d_render::SpriteRenderer::new(
+            ctx.clone(),
+            ph2d_render::GameRt::FORMAT,
+            ph2d_render::TextureAtlas::dummy(ctx),
+            8,
+        );
+        let mut t = if impasto {
+            impasto_tool(size)
+        } else {
+            let mut t = PainterTool::default();
+            ph2d_editor_core::tool::RasterEditTool::set_source(
+                &mut t,
+                vec![255u8; (size * size * 4) as usize],
+                size,
+                size,
+            );
+            t.set_brush_size_px(40.0);
+            t
+        };
+        ph2d_editor_core::tool::Tool::handle_panel_event(
+            &mut t,
+            ph2d_editor_core::tool::PanelEvent::SelectOption(
+                ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+                "196,170,120".into(),
+            ),
+        );
+        assert!(t.papel().is_some(), "controlo: o documento tem papel");
+        let (mut session, mut preview, mut toasts) =
+            (None, None, ph2d_editor_core::toast::ToastQueue::default());
+        let mut preview_gpu: Option<PainterPreviewGpu> = None;
+        let mid = (size / 2) as f32;
+        t.on_canvas_pointer(cp([60.0, mid], PointerPhase::Down));
+        let mut owns = false;
+        let mut moves = Vec::new();
+        for i in 1..=20u32 {
+            let x = 60.0 + 40.0 * (i as f32);
+            let t0 = std::time::Instant::now();
+            t.on_canvas_pointer(cp([x, mid], PointerPhase::Move));
+            if na_gpu {
+                owns = app_frame(
+                    &mut renderer,
+                    &mut t,
+                    &mut session,
+                    &mut preview,
+                    &mut preview_gpu,
+                    &mut toasts,
+                );
+                let _ = ctx.device.poll(wgpu::PollType::wait_indefinitely());
+            } else {
+                let _ = t.take_preview_arc();
+            }
+            moves.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        moves.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        (moves[moves.len() / 2], owns)
+    }
+    let leitura = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!("\n[papel] loadavg {}", leitura.trim());
+    let casos = [(false, 2048u32), (false, 4096), (true, 2048), (true, 4096)];
+    let mut gpu_ms = vec![Vec::new(); casos.len()];
+    let mut cpu_ms = vec![Vec::new(); casos.len()];
+    let mut gpu_produz = vec![true; casos.len()];
+    for _rodada in 0..3 {
+        for (k, &(impasto, size)) in casos.iter().enumerate() {
+            let (g, owns) = por_move(&gpu, size, impasto, true);
+            let (c, _) = por_move(&gpu, size, impasto, false);
+            gpu_ms[k].push(g);
+            cpu_ms[k].push(c);
+            gpu_produz[k] &= owns;
+        }
+    }
+    let min_med = |v: &mut Vec<f64>| {
+        v.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        (v[0], v[v.len() / 2])
+    };
+    eprintln!(
+        "[papel] meio     canvas   gpu ms (mín · med)   cpu ms (mín · med)   gpu/cpu   gpu produz"
+    );
+    for (k, &(impasto, size)) in casos.iter().enumerate() {
+        let (gm, gd) = min_med(&mut gpu_ms[k]);
+        let (cm, cd) = min_med(&mut cpu_ms[k]);
+        eprintln!(
+            "[papel] {:<8} {size:<8} {gm:>7.3} · {gd:>7.3}      {cm:>7.3} · {cd:>7.3}     {:>5.2}×   {}",
+            if impasto { "Impasto" } else { "Digital" },
+            gm / cm.max(1e-6),
+            gpu_produz[k]
+        );
+    }
+    let leitura = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!("[papel] loadavg {}", leitura.trim());
+}

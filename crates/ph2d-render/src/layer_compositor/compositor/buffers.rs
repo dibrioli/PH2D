@@ -382,6 +382,8 @@ impl LayerCompositor {
             region_h: region.h,
             op_count: self.scratch_ops.len() as u32,
             out_canvas_coords: u32::from(out_canvas_coords),
+            paper: self.paper,
+            _pad: [0; 3],
         };
         gpu.queue
             .write_buffer(&self.globals_buffer, 0, bytemuck::bytes_of(&g));

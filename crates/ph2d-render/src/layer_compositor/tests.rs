@@ -69,7 +69,8 @@ fn max_layers_for_budget_4k_and_degenerate() {
 #[test]
 fn gpu_pod_sizes_match_wgsl() {
     assert_eq!(core::mem::size_of::<GpuOp>(), 32);
-    assert_eq!(core::mem::size_of::<GpuGlobals>(), 32);
+    // 32 → 48 com o papel do documento (`paper` + três pads, 2026-10-06).
+    assert_eq!(core::mem::size_of::<GpuGlobals>(), 48);
 }
 
 /// The `Op` field ORDER is the binding contract, and `size_of` alone cannot see

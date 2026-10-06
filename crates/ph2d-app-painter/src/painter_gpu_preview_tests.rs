@@ -217,19 +217,34 @@ fn a_clipped_group_is_still_not_gpu_eligible() {
     );
 }
 
-/// **O PAPEL mantém o produtor de CPU** (2026-10-05): o papel do documento compõe-se SOB as camadas
-/// na pista de CPU (`compoe_sobre_o_papel`), e o produtor de GPU acumula sobre transparente. A metade
-/// de presença prova que a recusa é do PAPEL, não da pilha (o documento esculpido é elegível).
+/// **Com PAPEL a GPU produz** (2026-10-06; era `o_papel_mantem_o_produtor_de_cpu`): o compositor
+/// compõe cada saída sobre o papel com a lei inteira da CPU (`LayerCompositor::set_paper`), então um
+/// documento que a GPU produziria deixa de cair na CPU por ter papel. ⚠️ Uma camada LISA com papel
+/// fica na CPU, MEDIDO: ali ela recompõe só a região suja e é `1,85–4,5×` mais rápida
+/// (`measure_o_quadro_com_papel_nos_dois_produtores`). A paridade ao byte é a do
+/// `the_gpu_producer_shows_what_the_cpu_producer_shows`, que corre o documento sem e com papel.
 #[test]
-fn o_papel_mantem_o_produtor_de_cpu() {
+fn com_papel_a_gpu_produz() {
     let mut t = sculpted_tool();
     assert!(
         gpu_eligible(&t).is_some(),
         "precondition: o documento esculpido é elegível para a GPU"
     );
     t.aplica_o_papel();
+    assert!(t.papel().is_some(), "controlo: o papel foi aplicado");
     assert!(
-        gpu_eligible(&t).is_none(),
-        "com papel a CPU tem de produzir (a GPU não compõe sobre ele)"
+        gpu_eligible(&t).is_some(),
+        "com papel a GPU tem de produzir (ela compõe sobre ele)"
+    );
+    let mut so_papel = sourced_tool();
+    assert!(
+        gpu_eligible(&so_papel).is_none(),
+        "precondition: uma camada lisa é a pista trivial da CPU"
+    );
+    so_papel.aplica_o_papel();
+    assert!(so_papel.papel().is_some(), "controlo: o papel foi aplicado");
+    assert!(
+        gpu_eligible(&so_papel).is_none(),
+        "uma camada lisa com papel fica na pista parcial da CPU (medida mais rápida)"
     );
 }

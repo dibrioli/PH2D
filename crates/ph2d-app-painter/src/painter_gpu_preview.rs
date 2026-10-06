@@ -222,7 +222,11 @@ fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     //
     // The two lanes have to agree about this or the work goes to whichever one is worse: the guard here
     // mirrors `runtime.rs`'s, deliberately and visibly.
-    if painter.preview_is_trivial_stack() && !painter.impasto_visible() {
+    //
+    // ⚠️ **E o papel não tira o documento da pista de CPU** (2026-10-06): com uma camada lisa sobre o
+    // papel a CPU recompõe só a região suja (o papel incluído) — medido `1,85–4,5×` mais rápido que esta
+    // pista, que refaz a tela inteira. A GPU compõe sobre o papel onde já seria ela a produzir.
+    if painter.preview_layer_stack_is_trivial() && !painter.impasto_visible() {
         return None;
     }
     // Repeat Image draws the 3×3 tile preview from the CPU composite (`PainterPreview` — the GPU
@@ -232,12 +236,6 @@ fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     // GPU-eligible, but any GPU-owned stack loses the tiles the same way). While the artist is
     // LOOKING at the tiling preview, the CPU lane must produce.
     if painter.repeat_image() {
-        return None;
-    }
-    // O PAPEL do documento (`PainterTool::papel`, 2026-10-05) compõe-se SOB as camadas na pista de CPU
-    // (`compoe_sobre_o_papel`, antes da luz); o produtor de GPU acumula sobre transparente. Enquanto o
-    // documento tem papel a CPU produz — a mesma cura do Repeat Image acima e da proteção abaixo.
-    if painter.papel().is_some() {
         return None;
     }
     // A PROTEÇÃO é chrome que mora no COMPOSITE: `apply_mask_overlay` tinge o composto por-pixel pela
@@ -359,6 +357,9 @@ fn compose_light_premul(
     //    coords — a region dispatch refreshes only `region`, leaving the rest from
     //    the prior frame (the 4K multi-layer cost goes O(canvas×layers) → O(env)).
     let provider = PainterLayerProvider { tool };
+    // O PAPEL do documento: o compositor compõe cada saída SOBRE ele com a lei inteira da CPU
+    // (`compoe_sobre_o_papel`), no mesmo lugar da cadeia — depois do composite, antes da luz.
+    session.compositor.set_paper(tool.papel());
     session
         .compositor
         .composite_region_into_canvas(

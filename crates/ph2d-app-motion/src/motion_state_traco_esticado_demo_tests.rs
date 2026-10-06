@@ -226,3 +226,14 @@ fn o_roteiro_compara_com_a_porta_da_placa_e_le_o_raw() {
     );
     assert!(anuncio.contains("raw"), "o roteiro manda ler o `raw`");
 }
+
+/// doc 121 §9.19 (3) — a porta da ponta do smoke lê as três pontas do cartão, e nada mais.
+#[test]
+fn a_porta_da_ponta_le_as_tres_pontas_do_cartao() {
+    assert_eq!(super::ponta_por(Some("1")), Some(1.0));
+    assert_eq!(super::ponta_por(Some(" 2 ")), Some(2.0));
+    assert_eq!(super::ponta_por(Some("0")), Some(0.0));
+    assert_eq!(super::ponta_por(Some("3")), None);
+    assert_eq!(super::ponta_por(Some("round")), None);
+    assert_eq!(super::ponta_por(None), None);
+}

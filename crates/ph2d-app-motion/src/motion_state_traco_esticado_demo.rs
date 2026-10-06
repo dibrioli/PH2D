@@ -156,6 +156,17 @@ pub(crate) fn tracejado_por(valor: Option<&str>) -> bool {
 /// O tracejado da variante: `2` larguras de traço e `1,5` de vão (o `Dash` e o `Dash Gap` do cartão).
 pub(crate) const TRACEJADO: (f32, f32) = (2.0, 1.5);
 
+/// **A PONTA do traço à partida** — `PH2D_TRACO_ESTICADO_PONTA=0|1|2` (Butt · Round · Square, doc 121 §9.19 (3)):
+/// o mesmo `Cap` do cartão da forma, posto à partida para a foto do smoke (o roteiro de foto não clica).
+pub(crate) fn ponta_por(valor: Option<&str>) -> Option<f32> {
+    match valor.map(str::trim) {
+        Some("0") => Some(0.0),
+        Some("1") => Some(1.0),
+        Some("2") => Some(2.0),
+        _ => None,
+    }
+}
+
 /// O índice da `Star` no enum — pela mesma porta da `=126` (nunca pelo rótulo, que é i18n).
 fn indice_da_estrela() -> f32 {
     let i = ph2d_node_motion_shape::ALL_KINDS
@@ -263,6 +274,9 @@ pub(crate) fn monta(
         use ph2d_node_motion_shape::param as p;
         g.set_param(forma, p::DASH, TRACEJADO.0);
         g.set_param(forma, p::DASH_GAP, TRACEJADO.1);
+    }
+    if let Some(cap) = ponta_por(std::env::var("PH2D_TRACO_ESTICADO_PONTA").ok().as_deref()) {
+        g.set_param(forma, ph2d_node_motion_shape::param::STROKE_CAP, cap);
     }
 
     // ── A SIMULAÇÃO COM CAMPOS: a galáxia da `=126` (regra do dono, doc 103 §1).

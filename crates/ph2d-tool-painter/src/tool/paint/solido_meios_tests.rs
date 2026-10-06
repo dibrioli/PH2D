@@ -435,3 +435,170 @@ fn o_solid_preenche_em_todo_gesto() {
         }
     }
 }
+
+/// O desvio de `v` sobre os índices `ids`.
+fn desvio(v: &[f32], ids: &[usize]) -> f32 {
+    #[allow(clippy::cast_precision_loss)]
+    let n = ids.len() as f32;
+    let m = ids.iter().map(|&i| v[i]).sum::<f32>() / n;
+    (ids.iter().map(|&i| (v[i] - m) * (v[i] - m)).sum::<f32>() / n).sqrt()
+}
+
+/// Um laço largo (raio 14) em Solid no Impasto com o Relief do papel ligado (papel Cold).
+fn laco_no_papel(relief: f32) -> PainterTool {
+    laco_com(PaintMedia::Impasto, 1.0, &|t: &mut PainterTool| {
+        t.set_brush_size_px(14.0);
+        t.set_brush_paper_kind(26);
+        t.paint.substrate_depth = relief;
+    })
+}
+
+/// SONDA — o dente do papel no corpo do TRAÇO e no da MANCHA: o desvio da altura numa faixa do
+/// traço (longe dos cantos) e num quadrado do miolo, com e sem o Relief.
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_o_dente_no_corpo_da_mancha() {
+    let traco: Vec<usize> = (20..28)
+        .flat_map(|y| (44..84).map(move |x| y * 128 + x))
+        .collect();
+    let miolo: Vec<usize> = (48..80)
+        .flat_map(|y| (48..80).map(move |x| y * 128 + x))
+        .collect();
+    for relief in [0.0f32, 1.0] {
+        let t = laco_no_papel(relief);
+        let h = t
+            .heights
+            .get(&t.layers.active().expect("camada"))
+            .expect("relevo");
+        eprintln!(
+            "Relief {relief}: grain {:?} · desvio da altura no traço {:.4} · no miolo {:.4} (média traço {:.3}, miolo {:.3})",
+            t.paint.brush.texture.kind,
+            desvio(h, &traco),
+            desvio(h, &miolo),
+            traco.iter().map(|&i| h[i]).sum::<f32>() / traco.len() as f32,
+            miolo.iter().map(|&i| h[i]).sum::<f32>() / miolo.len() as f32,
+        );
+    }
+}
+
+/// SONDA — o dente na IMAGEM MOSTRADA: o desvio de `lum(Relief 1) − lum(Relief 0)` no traço e no
+/// miolo do Solid do Impasto, e a média da cobertura do relevo (`covers`) nos dois sítios.
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_o_dente_mostrado_na_mancha() {
+    let traco: Vec<usize> = (20..28)
+        .flat_map(|y| (44..84).map(move |x| y * 128 + x))
+        .collect();
+    let miolo: Vec<usize> = (48..80)
+        .flat_map(|y| (48..80).map(move |x| y * 128 + x))
+        .collect();
+    let mostra = |relief: f32| {
+        let mut t = laco_no_papel(relief);
+        t.invalidate_composite();
+        let (px, _, _) = t.take_preview_arc().expect("imagem");
+        let lum: Vec<f32> = px
+            .chunks(4)
+            .map(|p| 0.299 * f32::from(p[0]) + 0.587 * f32::from(p[1]) + 0.114 * f32::from(p[2]))
+            .collect();
+        let a = t.layers.active().expect("camada");
+        let cov: Vec<f32> = t
+            .covers
+            .get(&a)
+            .expect("cobertura")
+            .iter()
+            .map(|&c| f32::from(c))
+            .collect();
+        (lum, cov)
+    };
+    let ((l1, c1), (l0, _)) = (mostra(1.0), mostra(0.0));
+    let d: Vec<f32> = l1.iter().zip(&l0).map(|(a, b)| a - b).collect();
+    let media =
+        |v: &[f32], ids: &[usize]| ids.iter().map(|&i| v[i]).sum::<f32>() / ids.len() as f32;
+    eprintln!(
+        "dente mostrado: traço {:.3} · miolo {:.3} · cobertura do relevo: traço {:.1} miolo {:.1} · papel limpo {:.3}",
+        desvio(&d, &traco),
+        desvio(&d, &miolo),
+        media(&c1, &traco),
+        media(&c1, &miolo),
+        desvio(
+            &d,
+            &(2..10)
+                .flat_map(|y| (44..84).map(move |x| y * 128 + x))
+                .collect::<Vec<_>>()
+        ),
+    );
+}
+
+/// SONDA — o grão no CORPO do traço e da mancha: Grain = papel Cold (Tiled), com a fonte do relevo
+/// Uniform e Grain; o desvio da altura da camada no traço e no miolo.
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_o_grao_no_corpo_da_mancha() {
+    use ph2d_painter_brush::height::DepthSource;
+    let traco: Vec<usize> = (20..28)
+        .flat_map(|y| (44..84).map(move |x| y * 128 + x))
+        .collect();
+    let miolo: Vec<usize> = (48..80)
+        .flat_map(|y| (48..80).map(move |x| y * 128 + x))
+        .collect();
+    for (nome, fonte) in [
+        ("Uniform", DepthSource::Uniform),
+        ("Grain", DepthSource::Grain),
+    ] {
+        for grao in [0u8, 26] {
+            let t = laco_com(PaintMedia::Impasto, 1.0, &|t: &mut PainterTool| {
+                t.set_brush_size_px(14.0);
+                t.set_brush_texture_kind(grao);
+                t.paint.brush.impasto_source = fonte;
+            });
+            let h = t
+                .heights
+                .get(&t.layers.active().expect("camada"))
+                .expect("relevo");
+            eprintln!(
+                "fonte {nome:<7} grain {:?} ({:?}): desvio da altura no traço {:.4} · no miolo {:.4}",
+                t.paint.brush.texture.kind,
+                t.paint.brush.texture.mapping,
+                desvio(h, &traco),
+                desvio(h, &miolo)
+            );
+        }
+    }
+}
+
+/// ⭐ **O GRÃO DO PINCEL ESCULPE O CORPO DA MANCHA COMO ESCULPE O DO TRAÇO** (smoke do dono
+/// 2026-10-06: *«em impasto o relevo do papel está corretamente sendo transmitido para o traço, mas
+/// no preenchimento do solid não»*) — com a fonte do relevo em Grain e o Grain = papel Cold, o miolo
+/// varia com o grão tanto quanto o traço; com a fonte Uniform os dois ficam sem grão. Vermelho antes:
+/// o miolo era um planalto liso (desvio `0`) contra `0,153` no traço.
+#[test]
+fn o_grao_esculpe_o_corpo_da_mancha() {
+    use ph2d_painter_brush::height::DepthSource;
+    let traco: Vec<usize> = (14..22)
+        .flat_map(|y| (44..84).map(move |x| y * 128 + x))
+        .collect();
+    let miolo: Vec<usize> = (48..80)
+        .flat_map(|y| (48..80).map(move |x| y * 128 + x))
+        .collect();
+    let corre = |fonte: DepthSource| {
+        let t = laco_com(PaintMedia::Impasto, 1.0, &|t: &mut PainterTool| {
+            t.set_brush_size_px(14.0);
+            t.set_brush_texture_kind(26);
+            t.paint.brush.impasto_source = fonte;
+        });
+        let h = t
+            .heights
+            .get(&t.layers.active().expect("camada"))
+            .expect("relevo")
+            .clone();
+        (desvio(&h, &traco), desvio(&h, &miolo))
+    };
+    let (gt, gm) = corre(DepthSource::Grain);
+    assert!(gt > 0.05, "controlo: o grão esculpe o traço ({gt})");
+    assert!(
+        gm > 0.5 * gt,
+        "o grão não esculpe o corpo da mancha: desvio {gm} no miolo contra {gt} no traço"
+    );
+    let (_, um) = corre(DepthSource::Uniform);
+    assert!(um < 1e-4, "com a fonte Uniform o miolo ganhou grão ({um})");
+}

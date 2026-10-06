@@ -202,6 +202,24 @@ impl PainterTool {
         };
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         let n = w * h;
+        // O GRÃO do pincel, amostrado como um dab o amostra (`grain_at`): com a fonte do relevo em
+        // Grain ele esculpe o corpo do traço, e a mancha leva o mesmo grão (smoke do dono 2026-10-06:
+        // *«o relevo do papel está corretamente sendo transmitido para o traço, mas no preenchimento
+        // do solid não»*). Uma base só para a mancha inteira (ancorada à tela num Grain Tiled — o
+        // papel), tirada de uma CÓPIA do sorteio, que não é avançado.
+        let grao_ativo = brush.texture.is_active();
+        let imagem = self.paint.texture_image.as_ref().map(|i| i.as_mask());
+        let base_do_grao = grao_ativo.then(|| {
+            let mut rng = self.paint.tex_rng;
+            ph2d_painter_brush::texture::dab_basis(
+                &brush.texture,
+                &mut rng,
+                [w as f32, h as f32],
+                ph2d_painter_brush::footprint::FootprintDeform::identity(),
+            )
+        });
+        #[allow(clippy::cast_precision_loss)]
+        let centro = [r.x as f32 + r.w as f32 * 0.5, r.y as f32 + r.h as f32 * 0.5];
         let rel = &mut self.paint.relief;
         for (plano, vazio) in [
             (&mut rel.stroke_height, 0.0f32),
@@ -222,7 +240,6 @@ impl PainterTool {
         let cov =
             ph2d_painter_brush::solid::fill_coverage(&loops, r.w as usize, r.h as usize, origin);
         let raio = brush.clamped_radius();
-        let grao = f32::from(NO_GRAIN) / 255.0;
         // A carga que o TRAÇO atingiu (a Strength e a pressão já estão nela): o planalto da mancha
         // encosta no corpo do traço sem degrau, como a cor encosta no tecto dele.
         let carga = (r.y as usize..(r.y + r.h) as usize)
@@ -243,9 +260,25 @@ impl PainterTool {
                 let p = f32::from(c) / 255.0 * carga;
                 if p > rel.stroke_paint[i] {
                     rel.stroke_paint[i] = p;
-                    rel.stroke_grain[i] = NO_GRAIN;
+                    let gq = base_do_grao.as_ref().map_or(NO_GRAIN, |b| {
+                        let (x, y) = ((r.x as usize + cx) as i64, (r.y as usize + row) as i64);
+                        let g = ph2d_painter_brush::dab::grain_at(
+                            brush,
+                            b,
+                            imagem.as_ref(),
+                            x,
+                            y,
+                            centro,
+                            raio,
+                        );
+                        (g.clamp(0.0, 1.0) * 255.0 + 0.5) as u8
+                    });
+                    rel.stroke_grain[i] = gq;
                     rel.stroke_radius[i] = raio;
-                    rel.stroke_height[i] = derive_height(brush, p, grao);
+                    // A altura VIVA, pela mesma lei; no pen-up o commit re-deriva-a da carga, do
+                    // grão e do raio (`commit_stroke_height`) — é por isso que a mutação que tira
+                    // o grão SÓ daqui sobrevive, e a que o tira do plano do grão sangra.
+                    rel.stroke_height[i] = derive_height(brush, p, f32::from(gq) / 255.0);
                 }
                 rel.stroke_film[i] = rel.stroke_film[i].max(c);
             }

@@ -65,6 +65,33 @@ pub(crate) const VARREDURAS: usize = 8;
 /// as leis na mão; aqui escolhe-se **uma**, com a tabela que a escolheu ao lado — doc 111 §9.
 const LEIS: ph2d_contact::Leis = ph2d_contact::Leis::EM_VIGOR;
 
+/// doc 121 §9.19 (5) — a PROVA do modelo do dispositivo: `PH2D_CONTACT_JACOBI=<iterações>` corre os impulsos por
+/// Jacobi com média (a lei que a placa consegue correr) em vez do Gauss–Seidel. Porta de medição; vazia = o produto.
+fn leis() -> ph2d_contact::Leis {
+    static LEIS_DA_PROVA: std::sync::LazyLock<ph2d_contact::Leis> =
+        std::sync::LazyLock::new(|| {
+            match std::env::var("PH2D_CONTACT_JACOBI")
+                .ok()
+                .and_then(|v| v.parse::<usize>().ok())
+            {
+                Some(it) if it > 0 => ph2d_contact::Leis {
+                    jacobi: true,
+                    iteracoes: it,
+                    ..LEIS
+                },
+                // `PH2D_CONTACT_CORES=1`: o Gauss–Seidel por cores (a mesma lei sequencial, outra ordem).
+                _ if std::env::var("PH2D_CONTACT_CORES").is_ok_and(|v| v == "1") => {
+                    ph2d_contact::Leis {
+                        cores: true,
+                        ..LEIS
+                    }
+                }
+                _ => LEIS,
+            }
+        });
+    *LEIS_DA_PROVA
+}
+
 /// Separa as peças com colisor, troca o momento delas pelo IMPULSO do par, e devolve **quanto cada
 /// uma rodou**, em graus (vazio quando ninguém declara colisor).
 ///
@@ -132,7 +159,7 @@ pub(crate) fn resolve(
     // ⚠️ **A rotação POSICIONAL, quando as leis a dispensam** — ver `Leis::giro_posicional`. Ela é
     // a projecção de despenetração (doc 109 §6) e corre a par da velocidade angular; zerá-la aqui é
     // o que permite medir qual das duas é que a pilha precisa.
-    if !LEIS.giro_posicional {
+    if !leis().giro_posicional {
         giro.iter_mut().for_each(|g| *g = 0.0);
     }
     let mut spin = vec![0.0_f32; n];
@@ -145,7 +172,7 @@ pub(crate) fn resolve(
         },
         &pecas,
         &dt,
-        LEIS,
+        leis(),
     );
     (giro, spin)
 }

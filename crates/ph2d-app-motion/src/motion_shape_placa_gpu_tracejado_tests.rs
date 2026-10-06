@@ -353,3 +353,79 @@ fn custo_do_encode_tracejado() {
     }
     eprintln!("CUSTO_ENCODE fim · load {}", carga().trim());
 }
+
+/// Uma forma do CARTÃO do `source.shape` com o traço tracejado e a ponta e a junta escolhidas — o caminho do
+/// produto (`ShapeParams::read` → `build_shape_path`).
+fn do_cartao(kind: ph2d_node_motion_shape::ShapeKind, cap: f32, join: f32) -> VecPath {
+    use ph2d_node_motion_shape::param;
+    #[expect(clippy::cast_precision_loss, reason = "um indice de especie")]
+    let kind = kind as i32 as f32;
+    let get = |n: &str| match n {
+        param::KIND => kind,
+        param::SIZE => 0.5,
+        param::STROKE_WIDTH => 0.05,
+        param::STROKE_A => 1.0,
+        param::DASH => 2.0,
+        param::DASH_GAP => 1.0,
+        param::STROKE_CAP => cap,
+        param::STROKE_JOIN => join,
+        _ => param::SPECS
+            .iter()
+            .find(|s| s.name == n)
+            .map_or(0.0, |s| s.default),
+    };
+    crate::motion_shape_gen::build_shape_path(&ph2d_node_motion_shape::ShapeParams::read(get))
+}
+
+/// ⭐ doc 121 §9.19 (3) — **a PONTA e a JUNTA do cartão desenham-se como a placa**: as `3 × 3` combinações
+/// pelo caminho do produto, esticadas e conformes, a rota Vello contra a placa (alfa `≤ 1`). ⚠️ O controlo:
+/// a ponta e a junta MUDAM a imagem (senão a família só provava a omissão nove vezes).
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn a_ponta_e_a_junta_do_cartao_desenham_como_a_placa() {
+    use ph2d_node_motion_shape::ShapeKind;
+    let Some(gpu) = gpu() else {
+        eprintln!("sem adapter — o gate não correu");
+        return;
+    };
+    let mut pintados = Vec::new();
+    for cap in 0..3u8 {
+        for join in 0..3u8 {
+            let mut store = VecPathStore::default();
+            let hs = vec![
+                store.push(do_cartao(ShapeKind::Star, f32::from(cap), f32::from(join))),
+                store.push(do_cartao(ShapeKind::Gear, f32::from(cap), f32::from(join))),
+            ];
+            let mut insts = copias(&hs, 60);
+            for (i, c) in insts.iter_mut().enumerate() {
+                if i % 3 != 0 {
+                    #[expect(clippy::cast_precision_loss, reason = "uma fixtura pequena")]
+                    let k = (i as f32 * 0.618_034).fract();
+                    c.size[1] *= 0.35 + 2.45 * k;
+                }
+                c.tint[3] = 0.0;
+            }
+            let p = pela_placa(&gpu, &insts, &store);
+            let v = pelo_vello(&gpu, &insts, &store);
+            let (alfa, cor, nv, np, fora) = compara(&v, &p);
+            eprintln!(
+                "  ponta {cap} junta {join}: alfa max {alfa} · cor max {cor} · {fora} px fora · vello {nv} px · placa {np} px"
+            );
+            assert!(nv > 5_000, "controlo: a cena pinta pouco ({nv} px)");
+            assert!(
+                alfa <= 1,
+                "ponta {cap} junta {join}: a rota Vello difere da placa: alfa {alfa}"
+            );
+            pintados.push(np);
+        }
+    }
+    // A ponta muda a área (a redonda e a quadrada passam do fim do traço); a junta muda-a nas quinas.
+    assert!(
+        pintados[3] > pintados[0] && pintados[6] > pintados[3],
+        "a ponta nao chegou ao desenho: {pintados:?}"
+    );
+    assert!(
+        pintados[0] != pintados[2],
+        "a junta nao chegou ao desenho: {pintados:?}"
+    );
+}

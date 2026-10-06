@@ -95,6 +95,15 @@ pub struct Leis {
     /// contacto se declararem todas num sítio — *e é dívida nomeada: se ele decidir alguma coisa,
     /// passa a ser um argumento do `separate`.*
     pub giro_posicional: bool,
+    /// doc 121 §9.19 (5) — a composição **JACOBI COM MÉDIA** em vez do Gauss–Seidel: cada iteração lê a
+    /// FOTOGRAFIA das velocidades, cada restrição corre o MESMO `resolve_um` sobre ela, e cada peça aplica a
+    /// média do que os contactos dela pedem — a lei que um dispositivo consegue correr em paralelo. Só a
+    /// prova do modelo a liga (`PH2D_CONTACT_JACOBI`); o produto é o Gauss–Seidel.
+    pub jacobi: bool,
+    /// doc 121 §9.19 (5) — o Gauss–Seidel **por CORES**: as restrições reordenadas por cor (nenhuma cor tem
+    /// duas que partilhem uma peça), a composição que um dispositivo corre em paralelo dentro de cada cor
+    /// sem mudar a lei sequencial. Só a prova do modelo a liga (`PH2D_CONTACT_CORES`).
+    pub cores: bool,
 }
 
 impl Leis {
@@ -107,6 +116,8 @@ impl Leis {
         limiar_salto: 0.0,
         tecto_por_lambda: false,
         giro_posicional: true,
+        jacobi: false,
+        cores: false,
     };
     /// ⭐⭐⭐ **A LEI QUE O PRODUTO CORRE desde 2026-09-16** — a resposta ao 8.º report do dono
     /// (*«umas caixas rodam, outras parecem não rotacionar»*), medida célula a célula na `=114`
@@ -142,6 +153,8 @@ impl Leis {
         limiar_salto: 0.0,
         tecto_por_lambda: false,
         giro_posicional: false,
+        jacobi: false,
+        cores: false,
     };
 }
 
@@ -234,7 +247,14 @@ pub fn impulsos(
         .collect();
     let w0 = w.clone();
     let mut restricoes = monta(p, pecas, &dt, leis, mov.vel, &w);
+    if leis.cores {
+        jacobi::por_cores(&mut restricoes, n);
+    }
     for _ in 0..leis.iteracoes.max(1) {
+        if leis.jacobi {
+            jacobi::uma_iteracao(&mut restricoes, mov, &mut w, pecas, leis);
+            continue;
+        }
         for r in &mut restricoes {
             resolve_um(r, mov, &mut w, pecas, leis);
         }
@@ -641,6 +661,9 @@ fn todos_os_pares() -> bool {
         false
     }
 }
+
+#[path = "impulso_jacobi.rs"]
+mod jacobi;
 
 #[cfg(test)]
 #[path = "impulso_tests.rs"]

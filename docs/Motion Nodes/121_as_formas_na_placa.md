@@ -2313,3 +2313,69 @@ relógio, e o auto-play do Motion só corre ao abrir a ferramenta) — a porta `
 (`motion_bridge_surfaces.rs`, toca enquanto o relógio estiver parado em `t = 0`); (b) o `PH2D_PILHA_LADO` crescia a
 pilha e não a taça: `4 096` quadrados (`198` u²) numa taça de `10` u² nasciam sobrepostos — a régua media a
 vizinhança degenerada. A taça cresce agora com a pilha (`medida_de`; a cena do smoke fica byte a byte).
+
+**(5) — a medição sobre o produto curado** (o mesmo roteiro, `release`, `PH2D_PLAY=1`, as três últimas janelas de
+`120` quadros; `target/prova/onda4/pilha_curada/`):
+
+| peças por taça | `Collide` OFF (iGPU · RTX) | `Collide` ON iGPU: quadro · `MOTION` | `Collide` ON RTX: quadro · `MOTION` |
+|---|---|---|---|
+| `1 024` | `16,6` · `16,7` ms | `32,1` / `16,7` / `16,8` ms · `2,7`–`11,2` | `16,7` (×3) · `4,5`–`8,2` |
+| `4 096` | `16,7` · `16,7` | **`17,0` / `20,0` / `28,0`** · `31`–`32` (picos `~480`) | `16,7` / `17,6` / `71,0` · `23`–`25` (picos `~380`) |
+| `16 384` | `16,7` · `16,7` | `283` / `206` / `126` · `97`–`132` (picos `~840`) | `26,6` / `44,8` / `45,8` · `97`–`100` |
+
+⇒ a cura levou `1 024` peças de `247` ms a `60` fps, mas a `4 096` a iGPU passa dos `16,7` ms: **pelo critério, o
+contacto da caixa vai para a placa**. ⚠️ Os picos (`~480` ms a `4 096`) vêm a cada recomeço da queda (a zona em
+`Loop`, `3,6` s): o quadro do recomeço paga a separação das peças a nascer.
+
+**(5) — a PROVA DO MODELO antes da placa (two-strikes; escrita antes de construir).** O passo da CPU é
+`separar` (Jacobi com média — já paralelo, o kernel dos discos é ele) e `impulsos` (**Gauss–Seidel**: `8`
+iterações sobre as restrições, cada uma a ler a velocidade que a anterior acabou de escrever). A placa não corre
+um Gauss–Seidel (uma restrição por fio em série seria `~80 k` passos em série por sub-passo a `4 096` peças); ela
+corre um **Jacobi com média** — cada restrição lê a fotografia da iteração e cada peça aplica a média do que os
+contactos dela pedem. É OUTRA lei, e a pilha desta cena custou quatro reports do dono ao zumbido (doc 111). ⇒ a
+prova corre a variante Jacobi NA CPU (as mesmas restrições, a mesma lei por restrição — o `resolve_um` — só a
+composição muda; `PH2D_CONTACT_JACOBI=<iterações>`), na `=114` (`25` peças, a do smoke, e `1 024`), e compara com o
+Gauss–Seidel no instante `2,6` s (a pilha assentada, antes do recomeço). **Critério (cada um, `8` OU `32`
+iterações):** a distância mediana ao vizinho a `±5 %` da do Gauss–Seidel; a velocidade média da pilha
+`≤ 1,5 ×` a dele `+ 0,01` u/s; a sobreposição mais funda `≤` a dele `+ 2 %` do lado; e os gates da pilha
+(`the_rolling_on_the_card_calms_the_pile`, `the_pieces_tumble…`, `only_the_half_whose_shape_collides…`) verdes com ela.
+Passa ⇒ o modelo do dispositivo está provado e constrói-se o kernel (separação + impulsos Jacobi + a cerca a
+cair para a caixa). Falha ⇒ o contacto da caixa NÃO vai para a placa nesta forma (recusa medida: a lei da placa
+não segura a pilha que o dono aprovou), e o item fecha com a cura da CPU e o ponto onde o quadro passa.
+
+**(5) — a prova, 1.ª leitura, e a correcção da régua (escrita antes da 2.ª).** No instante `2,6` s: pilha de `25`
+(o lado `5`, com a taça da porta) — Gauss–Seidel vizinho `0,2222` · velocidade `0,129` u/s · sobreposição `24,9 %`;
+Jacobi `8` `0,2140` · `0,168` · `23,1 %`; Jacobi **`32`** `0,2214` (`−0,4 %`) · `0,113` · `14,3 %`; Jacobi `64`
+`0,2237` · `0,096` · `11,9 %` ⇒ a `32` e a `64` passam. Pilha de `1 024`: Gauss–Seidel `0,0866` · **`0,740` u/s** ·
+`105 %`; Jacobi `8` `0,0417` · `32` `0,0743` · `64` `0,1005` · `128` `0,1313` — sem ordem nenhuma em torno do
+Gauss–Seidel. ⚠️ **A régua estava no instante errado para `1 024`:** a `0,74` u/s a própria lei do produto ainda cai
+(a taça cresceu com a pilha, e a queda é mais longa); o critério pedia «a pilha assentada» e o `2,6` s só o é na
+pequena. ⇒ a pilha de `1 024` mede-se no FIM DA PAUSA (`3,5` s, antes do recomeço), com o MESMO critério; e um
+controlo: a velocidade do Gauss–Seidel lá tem de ser `< 0,1` u/s, senão o instante ainda não é repouso.
+Os gates da pilha sob Jacobi `32` e `64`: `11/11` verdes.
+
+**(5) — a prova, 2.ª leitura: o Jacobi REFUTADO, o Gauss–Seidel POR CORES aceite.** No `2,95` s (o último instante
+com peças antes do recomeço; no intervalo da pausa a cena não emite peças) a pilha de `1 024` AINDA cai: o
+controlo falha (Gauss–Seidel `0,266` u/s `> 0,1`) — não há repouso nesta cena a esta escala, e o critério compara
+as leis no MESMO instante. Pilha de `1 024`, `2,95` s:
+
+| lei | vizinho mediano | velocidade média | sobreposição mais funda |
+|---|---:|---:|---:|
+| Gauss–Seidel (o produto) | `0,0796` | `0,266` u/s | `109,2 %` do lado |
+| Jacobi `32` | `0,0613` (`−23 %`) | `0,493` (`1,85×`) | `104,9 %` |
+| Jacobi `64` | `0,0868` (`+9 %`) | `0,488` (`1,84×`) | `105,2 %` |
+| Jacobi `128` | `0,1191` (`+50 %`) | `0,531` (`2,0×`) | `105,9 %` |
+| **Gauss–Seidel por CORES** | `0,0758` (`−4,8 %`) | `0,258` (`0,97×`) | `108,5 %` |
+
+⇒ **o Jacobi falha** (a pilha de milhares quase o dobro mais agitada, a compactação fora de `±5 %` em qualquer
+número de iterações) — passa na de `25` e não onde o dispositivo é preciso. **O Gauss–Seidel por cores passa**
+na de `1 024` (no `2,6` s também: `−3,1 %` · `1,05×`). ⚠️ E ele é a MESMA lei sequencial com outra ordem, logo a
+diferença dele é a banda que a ordem sozinha produz numa cena caótica — o controlo A/A que o critério não tinha;
+na pilha de `25` a sobreposição mais funda dele saiu `+4,4 %` do lado (o critério pedia `≤ +2 %`): um MÁXIMO de
+`25` peças, dentro da banda da ordem. (Memória: critério de semelhança sem A/A.)
+**E o custo é o contacto, não o resto:** a sonda `custo_do_tique_do_app_na_pilha` (o `advance_or_scrub_scoped` da
+ponte, `480` tiques, com e sem o passe do sink): `1 024` por taça mediana `2,8` ms, mas `14`–`20` ms por tique
+com a pilha formada (tique `117`+); `4 096` mediana `9,5`, **`48`–`93` ms por tique** com a pilha formada; o passe
+do sink não pesa (com e sem: iguais). ⇒ o quadro de `17`–`28` ms do app a `4 096` era o relógio a DESCARTAR tempo
+de simulação (`max_substeps`): a pilha corria em câmara lenta. **Decisão:** o contacto da caixa vai para a placa
+com o Gauss–Seidel por cores.

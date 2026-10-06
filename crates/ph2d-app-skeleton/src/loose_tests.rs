@@ -77,8 +77,18 @@ fn the_adopted_skeleton_sits_on_the_root_and_the_pose_stays_to_the_bit() {
             t.scale = Vec2::new(f(0.3, 2.5), f(0.3, 2.5));
             t.skew_x = f(-0.4, 0.4);
         }
-        let o2 = osso(&mut sim, [f(1.0, 40.0), f(-5.0, 5.0)], f(-3.2, 3.2), Some(raiz));
-        let o3 = osso(&mut sim, [f(1.0, 40.0), f(-5.0, 5.0)], f(-3.2, 3.2), Some(o2));
+        let o2 = osso(
+            &mut sim,
+            [f(1.0, 40.0), f(-5.0, 5.0)],
+            f(-3.2, 3.2),
+            Some(raiz),
+        );
+        let o3 = osso(
+            &mut sim,
+            [f(1.0, 40.0), f(-5.0, 5.0)],
+            f(-3.2, 3.2),
+            Some(o2),
+        );
         let antes = [raiz, o2, o3].map(|e| mundo(&sim, e));
         let esq = Entity::from_bits(adopt_loose_roots(&mut sim, &doc)[0]);
         assert_eq!(
@@ -116,8 +126,16 @@ fn a_root_whose_place_is_stored_elsewhere_keeps_the_skeleton_at_identity() {
         let t = sim.world().get::<Transform>(esq).expect("esq").translation;
         (sim, raiz, [t.x, t.y])
     };
-    assert_eq!(adopta(None, false).2, [30.0, -12.5], "controlo: sem nada guardado");
-    assert_eq!(adopta(Some([1.0, 2.0]), false).2, [0.0, 0.0], "repouso noutro sítio");
+    assert_eq!(
+        adopta(None, false).2,
+        [30.0, -12.5],
+        "controlo: sem nada guardado"
+    );
+    assert_eq!(
+        adopta(Some([1.0, 2.0]), false).2,
+        [0.0, 0.0],
+        "repouso noutro sítio"
+    );
     assert_eq!(adopta(None, true).2, [0.0, 0.0], "posição na timeline");
     let (mut sim, raiz, t) = adopta(Some([30.0, -12.5]), false);
     assert_eq!(t, [30.0, -12.5], "o repouso igual à pose vai com ela");

@@ -581,10 +581,10 @@ fn maior_vao_cosido(p: &Palco) -> f64 {
         .fold(0.0, f64::max)
 }
 
-#[path = "smoke_bone_par_fresta_reguas.rs"]
+#[path = "smoke_bone_par_fresta_reguas_tests.rs"]
 mod reguas;
 use reguas::*;
 
 #[cfg(test)]
-#[path = "smoke_bone_par_fresta_sondas.rs"]
+#[path = "smoke_bone_par_fresta_sondas_tests.rs"]
 mod sondas;

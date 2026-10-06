@@ -40,9 +40,13 @@ fn origem(sim: &SimWorld, doc: &TimelineDoc, raiz: Entity) -> Option<ph2d_core::
         .world()
         .get::<BoneRest>(raiz)
         .is_some_and(|r| r.translation != [l.x, l.y]);
-    let animada = [PropKind::TranslationX, PropKind::TranslationY, PropKind::Position]
-        .into_iter()
-        .any(|p| doc.binding_for(raiz.to_bits(), p).is_some());
+    let animada = [
+        PropKind::TranslationX,
+        PropKind::TranslationY,
+        PropKind::Position,
+    ]
+    .into_iter()
+    .any(|p| doc.binding_for(raiz.to_bits(), p).is_some());
     (!repouso_noutro_sitio && !animada && (l.x != 0.0 || l.y != 0.0)).then_some(l)
 }
 

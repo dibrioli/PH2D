@@ -120,9 +120,17 @@ fn entering_edit_or_pose_keeps_the_chosen_bone() {
     c.hero.gizmo.replace_selection(Some(osso));
     c.quadro(Some(ModeRequest::Toggle));
     assert_eq!(c.modo(), Some((s, ObjectMode::Edit)));
-    assert_eq!(c.selecao(), vec![osso], "o Tab trocou o osso pelo esqueleto");
+    assert_eq!(
+        c.selecao(),
+        vec![osso],
+        "o Tab trocou o osso pelo esqueleto"
+    );
     c.quadro(None);
-    assert_eq!(c.modo(), Some((s, ObjectMode::Edit)), "o modo caiu com o osso");
+    assert_eq!(
+        c.modo(),
+        Some((s, ObjectMode::Edit)),
+        "o modo caiu com o osso"
+    );
     c.quadro(Some(ModeRequest::Enter(ObjectMode::Pose)));
     assert_eq!(c.modo(), Some((s, ObjectMode::Pose)));
     assert_eq!(c.selecao(), vec![osso], "o seletor trocou o osso");

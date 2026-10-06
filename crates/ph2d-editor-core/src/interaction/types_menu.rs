@@ -325,6 +325,17 @@ pub enum ContextMenuKind {
     TimelineMarker {
         index: usize,
     },
+    /// Botão direito numa ABA DE QUADRO (MiroClone): *Rename · Duplicate · Delete…*. `board` é o
+    /// `BoardId.0` — estável, nunca reusado, então o clique na linha acha o quadro certo mesmo
+    /// depois de as abas mudarem de ordem.
+    BoardTab {
+        board: u64,
+    },
+    /// A pergunta *«apagar este quadro?»* — desenha o próprio corpo
+    /// (`document_tabs_menu::paint_confirm_delete`, que conhece o nome).
+    ConfirmDeleteBoard {
+        board: u64,
+    },
 }
 
 impl ContextMenuKind {
@@ -424,5 +435,7 @@ impl ContextMenuKind {
         Self::TimelineLane { lane: 0 },
         Self::TimelineStrip { lane: 0, strip: 0 },
         Self::TimelineMarker { index: 0 },
+        Self::BoardTab { board: 0 },
+        Self::ConfirmDeleteBoard { board: 0 },
     ];
 }

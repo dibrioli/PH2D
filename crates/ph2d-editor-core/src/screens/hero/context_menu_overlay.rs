@@ -136,6 +136,11 @@ pub fn paint_context_menu_overlay(
         );
         return;
     }
+    // A pergunta de apagar um quadro precisa do NOME, que o `store` não tem: pinta-a o
+    // `document_tabs_menu::paint_confirm_delete`, logo a seguir a este overlay.
+    if matches!(req.kind, ContextMenuKind::ConfirmDeleteBoard { .. }) {
+        return;
+    }
     // Centered single-panel dialogs all share one painter signature — dispatch by kind.
     type DialogFn = fn(&mut VectorScene, &mut TextSystem, Theme, &mut HitIndex, &WidgetStore, Rect);
     let dialog: Option<DialogFn> = match req.kind {

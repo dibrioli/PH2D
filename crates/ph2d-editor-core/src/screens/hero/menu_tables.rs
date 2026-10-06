@@ -630,3 +630,11 @@ pub(super) const MOTION_PATH_ANCHOR_ROWS: &[MenuRow] = &[
         "chrome.menu.handle.symmetric",
     ),
 ];
+
+/// As linhas de `ContextMenuKind::BoardTab { .. }` (MiroClone) — a ordem da linha da Hierarquia:
+/// renomear, a cópia, e o destrutivo por último (que ainda pergunta antes de agir).
+pub(super) const BOARD_TAB_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_BOARD_RENAME, "board.menu.rename"),
+    menu_row(ids::CTX_MENU_BOARD_DUPLICATE, "board.menu.duplicate"),
+    menu_row(ids::CTX_MENU_BOARD_DELETE, "board.menu.delete"),
+];

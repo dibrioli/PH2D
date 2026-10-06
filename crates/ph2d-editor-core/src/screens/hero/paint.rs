@@ -431,6 +431,16 @@ pub fn paint_hero_screen(
         &hero.motion,
         viewport,
     );
+    // A pergunta antes de apagar um quadro: um diálogo do overlay que precisa do NOME do quadro.
+    super::document_tabs_menu::paint_confirm_delete(
+        &hero.documents,
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+        viewport,
+    );
     // Fill (Bucket) "Fill adjust" modal — a floating, draggable card at the ColorDrop release point
     // (no-op when closed). Painted after the context menu so its hit rects sit above the canvas.
     chrome::paint_fill_adjust_modal(

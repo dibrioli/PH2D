@@ -57,13 +57,15 @@ impl Target {
 ///
 /// Da esquerda para a direita a partir de `start_x`, até `end_x`. As abas de quadro partilham o que
 /// sobra depois de `Scene` e `+`; um nome que não cabe é encurtado pelo pintor. Devolve vazio se
-/// nem `Scene` e `+` cabem — uma aba por cima de um menu abriria o menu errado.
+/// nem `Scene` e `+` cabem — uma aba por cima de um menu abriria o menu errado. `editing` = a aba
+/// que é o campo de renomear e o texto dele: ela mede pelo maior dos dois, para o campo crescer.
 #[must_use]
 pub fn tab_rects(
     bar: Rect,
     start_x: f32,
     end_x: f32,
     boards: &BoardSet,
+    editing: Option<(BoardId, &str)>,
     text_system: &mut TextSystem,
 ) -> Vec<(Target, Rect)> {
     let font = TypeToken::Sm.px();
@@ -83,7 +85,11 @@ pub fn tab_rects(
     };
     push(Target::Scene, scene_w, &mut out);
     for b in boards.boards() {
-        let natural = rect_for_label(text_system.prefix_width(&b.name, font));
+        let mut text_w = text_system.prefix_width(&b.name, font);
+        if let Some((_, buf)) = editing.filter(|(id, _)| *id == b.id) {
+            text_w = text_w.max(text_system.prefix_width(buf, font));
+        }
+        let natural = rect_for_label(text_w);
         push(Target::Board(b.id), natural.min(share), &mut out);
     }
     push(Target::New, new_w, &mut out);
@@ -95,6 +101,7 @@ pub fn populate(store: &mut WidgetStore) {
     for id in [ids::DOC_TAB_SCENE, ids::DOC_TAB_NEW] {
         register(store, id);
     }
+    super::document_tabs_menu::populate(store);
 }
 
 /// Regista a aba de um quadro que acabou de nascer ou de chegar de um ficheiro.
@@ -135,16 +142,35 @@ pub fn paint(
     store: &WidgetStore,
 ) {
     let active = hero_docs.active().map_or(Target::Scene, Target::Board);
-    for (t, r) in tab_rects(bar, start_x, end_x, hero_docs.boards(), text_system) {
+    let editing = hero_docs.renaming.zip(rename_buffer(store));
+    let tabs = tab_rects(
+        bar,
+        start_x,
+        end_x,
+        hero_docs.boards(),
+        editing,
+        text_system,
+    );
+    let dragged = hero_docs.tab_drag.map(|d| Target::Board(d.board));
+    for &(t, r) in &tabs {
+        if let (Target::Board(b), Some((_, buf))) =
+            (t, editing.filter(|(e, _)| Target::Board(*e) == t))
+        {
+            debug_assert_eq!(Some(b), hero_docs.renaming);
+            paint_rename_field(r, buf, scene, text_system, theme, hit_index, store);
+            continue;
+        }
         let id = t.node();
         let is_on = t == active;
         let state = store.button_state(id).unwrap_or(ButtonState::Normal);
         let bg = if is_on {
             Some(ColorToken::AccentSoft)
-        } else if matches!(
-            state,
-            ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
-        ) {
+        } else if Some(t) == dragged
+            || matches!(
+                state,
+                ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
+            )
+        {
             Some(ColorToken::BgElev)
         } else {
             None
@@ -184,6 +210,57 @@ pub fn paint(
         }
         hit_index.register(id, r);
     }
+    if let Some(caret) = super::document_tabs_menu::drop_caret(hero_docs, bar, &tabs) {
+        scene.fill_rect(
+            crate::paint::rect_to_vello(caret),
+            resolve(ColorToken::Accent, theme),
+        );
+    }
+}
+
+/// O texto do campo de renomear (o `store` é o dono do buffer enquanto se escreve).
+fn rename_buffer(store: &WidgetStore) -> Option<&str> {
+    match store.get(ids::DOC_TAB_RENAME_INPUT) {
+        Some(InteractiveState::TextInput { text, .. }) => Some(text.as_str()),
+        _ => None,
+    }
+}
+
+/// A aba em modo renomear: o campo de texto no lugar dela, com o mesmo pintor dos outros campos.
+fn paint_rename_field(
+    r: Rect,
+    buf: &str,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) {
+    let id = ids::DOC_TAB_RENAME_INPUT;
+    let Some(InteractiveState::TextInput {
+        caret,
+        selection_anchor,
+        state,
+        ..
+    }) = store.get(id)
+    else {
+        return;
+    };
+    hit_index.register(id, r);
+    let field = crate::widget::TextInput::new(id, "").visual((*state, store.hover_live(id)));
+    let clip = crate::paint::rect_to_vello(r);
+    scene.push_clip(&clip);
+    crate::widget::paint_text_input_with_buffer(
+        &field,
+        Some(buf),
+        Some(*caret),
+        *selection_anchor,
+        r,
+        scene,
+        text_system,
+        theme,
+    );
+    scene.pop_layer();
 }
 
 /// O recuo entre os títulos dos menus e a primeira aba, e entre a última e as abas de layout.
@@ -198,6 +275,9 @@ pub fn gap_px() -> f32 {
 /// ⚠️ **O 2.º clique rápido chega como `DoubleClick`, não como `Click`** (medido no teste do clique
 /// real): sem o aceitar, carregar duas vezes depressa no `+` criaria UM quadro só.
 pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
+    if super::document_tabs_menu::apply_event(hero, event) {
+        return true;
+    }
     let (WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id)) = event else {
         return false;
     };
@@ -221,6 +301,11 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         .find(|b| tab_node_id(*b) == id);
     if let Some(board) = hit {
         hero.documents.activate(Some(board));
+        // ⭐ O 2.º clique rápido numa aba de quadro renomeia-a no lugar (o idioma das folhas de
+        // uma planilha); o 1.º já a abriu.
+        if matches!(event, WidgetEvent::DoubleClick(_)) {
+            super::document_tabs_menu::begin_rename(hero, board);
+        }
         return true;
     }
     false
@@ -229,3 +314,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
 #[cfg(test)]
 #[path = "document_tabs_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "document_tabs_menu_tests.rs"]
+mod menu_tests;

@@ -64,6 +64,7 @@ pub mod topbar;
 
 pub mod board_view;
 pub mod document_tabs;
+pub mod document_tabs_menu;
 mod inspector_model;
 /// ⭐ O modelo da secção TIMERS (TOP-20 #2, W3) — irmão por CAP de LOC.
 /// ⭐ O modelo da secção SIGNAL ACTIONS (TOP-20 #5, W3) — irmão por CAP de LOC.
@@ -519,8 +520,7 @@ impl HeroScreen {
         self.prefab_edit = view;
     }
 
-    /// Mutable access to the grid configuration (spacing, colors,
-    /// stroke widths). Changes apply on the next paint.
+    /// Mutable grid configuration (spacing, colors, stroke widths); applies on the next paint.
     pub fn grid_config_mut(&mut self) -> &mut crate::grid::GridConfig {
         &mut self.grid.config
     }
@@ -530,21 +530,23 @@ impl HeroScreen {
         event: PointerEvent,
         arena: &'frame Bump,
     ) -> &'frame [WidgetEvent] {
+        if document_tabs_menu::pointer(self, event) {
+            return &[];
+        }
         dispatch_pointer(&mut self.store, &self.hit_index, event, arena)
     }
 
-    /// Like [`Self::handle_pointer`] but threads a live `TextSystem`
-    /// so click→caret mapping snaps to the nearest glyph boundary
-    /// instead of the `font_size * APPROX_ADVANCE_RATIO` heuristic.
-    /// The shell calls this from its winit handler where it already
-    /// owns the `TextSystem` for paint; pixel-perfect caret placement
-    /// on text widgets requires this path.
+    /// [`Self::handle_pointer`] with a live `TextSystem`, so a click snaps the caret to the glyph.
+    /// ⚠️ Both ask the document tabs first (right-click menu + drag of a board tab).
     pub fn handle_pointer_with_text<'frame>(
         &mut self,
         event: PointerEvent,
         text_system: &mut TextSystem,
         arena: &'frame Bump,
     ) -> &'frame [WidgetEvent] {
+        if document_tabs_menu::pointer(self, event) {
+            return &[];
+        }
         dispatch_pointer_with_text(
             &mut self.store,
             &self.hit_index,
@@ -575,11 +577,9 @@ impl HeroScreen {
         crate::interaction::dispatch_key(&mut self.store, event, arena)
     }
 
-    /// Forward a printable character into the focused widget's
-    /// editing buffer (`TextInput.text` / `Combobox.query` /
-    /// `NumberInput.buffer`). Filters by widget kind: NumberInput
-    /// only accepts `[0-9.eE+-]`; TextInput/Combobox accept anything
-    /// non-control.
+    /// Forward a printable character into the focused widget's buffer (`TextInput.text` /
+    /// `Combobox.query` / `NumberInput.buffer`). NumberInput only accepts `[0-9.eE+-]`;
+    /// TextInput/Combobox accept anything non-control.
     pub fn handle_text_input<'frame>(
         &mut self,
         ch: char,
@@ -588,10 +588,8 @@ impl HeroScreen {
         crate::interaction::dispatch_text_input(&mut self.store, ch, arena)
     }
 
-    /// Forward a wheel/trackpad scroll event into the dispatch.
-    /// Painters publish their panel rects each frame via
-    /// `WidgetStore::set_panel_rect`, so the wheel dispatch knows
-    /// which panel sits under the cursor and applies the delta.
+    /// Forward a wheel/trackpad scroll into the dispatch. Painters publish their panel rects each
+    /// frame (`WidgetStore::set_panel_rect`), so the dispatch knows which panel is under the cursor.
     pub fn handle_wheel<'frame>(
         &mut self,
         event: ph2d_host::WheelEvent,

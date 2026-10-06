@@ -114,6 +114,9 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         ContextMenuKind::TimelineLane { .. } => &ids::TIMELINE_LANE_MENU,
         // Timeline marker pennant: its whole edit surface (ADR-0143).
         ContextMenuKind::TimelineMarker { .. } => &ids::TIMELINE_MARKER_MENU,
+        // A aba de um quadro (MiroClone); a pergunta de apagar desenha o próprio corpo.
+        ContextMenuKind::BoardTab { .. } => menu_tables::BOARD_TAB_ROWS,
+        ContextMenuKind::ConfirmDeleteBoard { .. } => &[],
     }
 }
 

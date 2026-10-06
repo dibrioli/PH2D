@@ -45,6 +45,10 @@ pub(super) fn paint_palette_rename_dialog(
     );
 }
 
+/// Largura dos diálogos centrados de uma coluna (o de renomear paleta, a pergunta de apagar um
+/// quadro): duas perguntas parecidas devem PARECER-SE.
+pub(super) const DIALOG_W: f32 = 320.0; // LITERAL-PX-OK: dialog width (long key / prompt string)
+
 /// The text/ids that distinguish one centered input dialog from another.
 struct CenteredInputDialog {
     title: &'static str,
@@ -74,7 +78,7 @@ fn paint_centered_input_dialog(
     store: &WidgetStore,
     viewport: Rect,
 ) {
-    let menu_w = 320.0_f32; // LITERAL-PX-OK: dialog width (long key / prompt string)
+    let menu_w = DIALOG_W;
     let field_h = 30.0_f32; // LITERAL-PX-OK: input height (matches scene-list search)
     let title_h = ROW_H;
     let hint_h = ROW_H;

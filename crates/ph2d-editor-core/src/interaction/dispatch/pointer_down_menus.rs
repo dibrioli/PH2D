@@ -316,6 +316,10 @@ pub(super) fn click_belongs_to_the_open_menu(
                     .iter()
                     .any(|(_, b)| *b == id)
         }
+        ContextMenuKind::ConfirmDeleteBoard { .. } => {
+            id == crate::ids::CTX_MENU_BOARD_DELETE_CONFIRM
+                || id == crate::ids::CTX_MENU_BOARD_DELETE_CANCEL
+        }
         ContextMenuKind::SheetSizeDialog => {
             id == crate::ids::CTX_MENU_SHEET_SIZE_CREATE
                 || crate::ids::CTX_MENU_SHEET_SIZES

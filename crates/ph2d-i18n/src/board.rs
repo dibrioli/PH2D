@@ -9,6 +9,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.tab.scene" => "Scene",
         "board.tab.default_name" => "Board {n}",
         "board.tab.new" => "New board",
+        "board.tab.copy_name" => "{name} copy",
+        "board.menu.rename" => "Rename",
+        "board.menu.duplicate" => "Duplicate",
+        "board.menu.delete" => "Delete…",
+        "board.dialog.delete_title" => "Delete “{name}”?",
+        "board.dialog.delete_hint" => "Everything on this board will be lost.",
+        "board.dialog.delete" => "Delete board",
+        "board.dialog.cancel" => "Cancel",
         _ => return None,
     })
 }

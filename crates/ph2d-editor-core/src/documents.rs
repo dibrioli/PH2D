@@ -20,6 +20,18 @@ pub struct Documents {
     active: Option<BoardId>,
     /// Âncora do arrasto da vista do quadro (px de ecrã), enquanto ele dura.
     pub(crate) pan_from: Option<[f64; 2]>,
+    /// O quadro cuja aba é, agora, o campo de renomear.
+    pub(crate) renaming: Option<BoardId>,
+    /// Uma aba de quadro com o dedo em cima — ver `document_tabs_menu::pointer`.
+    pub(crate) tab_drag: Option<TabDrag>,
+}
+
+/// O dedo desceu sobre a aba de `board` em `start` e está em `cursor` (px de ecrã).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct TabDrag {
+    pub board: BoardId,
+    pub start: (f32, f32),
+    pub cursor: (f32, f32),
 }
 
 impl Documents {
@@ -60,6 +72,41 @@ impl Documents {
     /// Troca todos os quadros (ao carregar um projecto) e volta à `Cena`.
     pub fn replace(&mut self, boards: BoardSet) {
         self.boards = boards;
+        self.renaming = None;
+        self.tab_drag = None;
         self.activate(None);
+    }
+
+    /// Muda o nome. `false` se `id` não existe.
+    pub fn rename(&mut self, id: BoardId, name: String) -> bool {
+        self.boards.rename(id, name)
+    }
+
+    /// Cópia de `id` logo à direita dele, e a cópia fica activa.
+    pub fn duplicate(&mut self, id: BoardId, name: String) -> Option<BoardId> {
+        let copy = self.boards.duplicate(id, name)?;
+        self.activate(Some(copy));
+        Some(copy)
+    }
+
+    /// Leva a aba de `id` para a posição `to`. `false` se `id` não existe.
+    pub fn move_tab(&mut self, id: BoardId, to: usize) -> bool {
+        self.boards.move_tab(id, to)
+    }
+
+    /// Apaga o quadro. Se era o activo, a aba que fica no lugar dele abre (a da direita, senão a
+    /// da esquerda, senão a `Cena`) — o idioma das abas de um navegador.
+    pub fn remove(&mut self, id: BoardId) -> Option<Board> {
+        let at = self.boards.boards().iter().position(|b| b.id == id)?;
+        let gone = self.boards.remove(id)?;
+        if self.renaming == Some(id) {
+            self.renaming = None;
+        }
+        if self.active == Some(id) {
+            let list = self.boards.boards();
+            let next = list.get(at).or_else(|| list.last()).map(|b| b.id);
+            self.activate(next);
+        }
+        Some(gone)
     }
 }

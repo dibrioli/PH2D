@@ -71,6 +71,12 @@ pub fn pointer(
     }
     match kind {
         PointerKind::Down if on_canvas && inside(hero.last_canvas, x, y) => {
+            // ⚠️ Tomar o Down antes do despacho herda a obrigação dele de largar o foco: sem isto o
+            // campo de renomear uma aba (ou qualquer campo do chrome) ficava com o teclado.
+            let arena = bumpalo::Bump::new();
+            for e in hero.blur_focus(&arena).to_vec() {
+                hero.apply_event(e);
+            }
             if matches!(button, PointerButton::Primary | PointerButton::Middle) {
                 hero.documents.pan_from = Some([f64::from(x), f64::from(y)]);
             }

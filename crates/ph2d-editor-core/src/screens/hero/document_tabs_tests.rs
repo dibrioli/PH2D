@@ -6,7 +6,7 @@ use crate::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
 use bumpalo::Bump;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 
-fn ptr(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
+pub(super) fn ptr(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
     PointerEvent {
         x,
         y,
@@ -18,7 +18,7 @@ fn ptr(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
     }
 }
 
-fn painted() -> (HeroScreen, TextSystem) {
+pub(super) fn painted() -> (HeroScreen, TextSystem) {
     crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let mut text = TextSystem::without_system_fonts();
@@ -26,14 +26,14 @@ fn painted() -> (HeroScreen, TextSystem) {
     (hero, text)
 }
 
-fn repaint(hero: &mut HeroScreen, text: &mut TextSystem) {
+pub(super) fn repaint(hero: &mut HeroScreen, text: &mut TextSystem) {
     let mut scene = VectorScene::new();
     let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
     paint_hero_screen(hero, vp, &mut scene, text);
 }
 
 /// O centro do alvo `id` na barra de cima, achado pelo `HitIndex` que o pintor encheu.
-fn find(hero: &HeroScreen, id: NodeId) -> Option<(f32, f32)> {
+pub(super) fn find(hero: &HeroScreen, id: NodeId) -> Option<(f32, f32)> {
     let bar = hero.last_layout.expect("pintado").top_bar;
     let (mut xs, y) = (Vec::new(), bar.y + bar.h / 2.0);
     let mut x = bar.x;
@@ -47,7 +47,7 @@ fn find(hero: &HeroScreen, id: NodeId) -> Option<(f32, f32)> {
 }
 
 /// Down + Up pelo despacho real, e cada evento que ele emitir pelo `apply_event` — o caminho da shell.
-fn click(hero: &mut HeroScreen, id: NodeId) {
+pub(super) fn click(hero: &mut HeroScreen, id: NodeId) {
     let (x, y) = find(hero, id).unwrap_or_else(|| panic!("{id:?} não foi pintado na barra"));
     let arena = Bump::new();
     let mut events = hero
@@ -150,7 +150,7 @@ fn the_scene_overlays_are_still_painted_and_only_without_a_board() {
 }
 
 /// O alvo `id` está em algum ponto do ecrã (passo de 4 px)?
-fn find_anywhere(hero: &HeroScreen, id: NodeId) -> bool {
+pub(super) fn find_anywhere(hero: &HeroScreen, id: NodeId) -> bool {
     let vp = hero.last_viewport;
     let mut y = vp.y;
     while y < vp.y + vp.h {
@@ -174,7 +174,7 @@ fn tabs_sit_between_start_and_end_without_overlap() {
     for i in 0..6 {
         set.create(format!("A board with a long name {i}"));
     }
-    let tabs = tab_rects(bar, 260.0, 900.0, &set, &mut text);
+    let tabs = tab_rects(bar, 260.0, 900.0, &set, None, &mut text);
     assert_eq!(tabs.len(), 8, "Scene + 6 quadros + New");
     assert_eq!(tabs[0].0, Target::Scene);
     assert_eq!(tabs[7].0, Target::New);
@@ -191,7 +191,7 @@ fn tabs_sit_between_start_and_end_without_overlap() {
         );
     }
     assert!(
-        tab_rects(bar, 260.0, 270.0, &set, &mut text).is_empty(),
+        tab_rects(bar, 260.0, 270.0, &set, None, &mut text).is_empty(),
         "sem espaço não se pinta nada"
     );
 }

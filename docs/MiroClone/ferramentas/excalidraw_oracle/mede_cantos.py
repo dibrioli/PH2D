@@ -133,7 +133,7 @@ def ellipse_table():
         for s in segs:
             for k in range(33):
                 x, y = bez(s, k / 32)
-                # distância (aprox. de 1.ª ordem) ao contorno: F / |∇F|
+                # distância (aproximação de 1.ª ordem) ao contorno: F / |∇F|
                 F = ((x - a) / a) ** 2 + ((y - b) / b) ** 2 - 1
                 g = math.hypot(2 * (x - a) / a**2, 2 * (y - b) / b**2)
                 worst = max(worst, abs(F) / g)

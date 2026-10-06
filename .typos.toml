@@ -1027,6 +1027,10 @@ extend-exclude = [
     # Mac/Linux/Windows (see docs/DevOps/MULTI_MACHINE_SETUP.md). It is pt-BR
     # knowledge base prose, not project source — never lint it.
     "project-memory/**",
+    # As SAÍDAS do oráculo Excalidraw (MiroClone): o que o programa de outro escreveu, gravado
+    # byte a byte como fixture — os ids aleatórios dele (`…8IZFwDZa…`) não são palavras nossas, e
+    # corrigi-los partiria a fixture que os gates leem.
+    "docs/MiroClone/ferramentas/excalidraw_oracle/saidas/**",
     # `backups/` is a verbatim snapshot of crates+docs taken before the watercolor v2
     # super-simplification (commit `30ecc096`) — NOT active source. Its pt-BR ADR docs
     # (controle, conservativo, fiel, …) trip the en-US dictionary; never lint a backup.

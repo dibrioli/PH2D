@@ -119,7 +119,8 @@ pub(crate) fn le(
 }
 
 /// **O binário da fase A ROLAR** para o passo de `dt`: o impulso angular que pára o giro, no máximo
-/// `capacidade` (nunca inverte), dividido pelo passo.
+/// `capacidade` (nunca inverte), dividido pelo passo — o rapier integra-o por sub-passo, exacto
+/// (medido: a desaceleração de um disco a rolar com um binário constante é `1,00×` a teoria).
 pub(crate) fn binario(w: f32, inercia_inv: f32, capacidade: f32, dt: f32) -> f32 {
     if capacidade <= 0.0 || inercia_inv <= 0.0 || dt <= 0.0 {
         return 0.0;

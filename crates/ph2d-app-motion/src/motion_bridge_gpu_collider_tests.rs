@@ -225,7 +225,8 @@ fn todo_leitor_do_colisor_declarado_se_regista() {
     const TABELA: &[(&str, Option<&str>)] = &[
         ("ph2d-node-motion-collide", Some("motion.collide")),
         ("ph2d-node-sim-collide", Some("sim.collide")),
-        ("ph2d-node-sim-step", Some("sim.step")),
+        // O `sim.step` lê-o pelo mundo de contacto (doc 121 §9.20, `colisores_locais`).
+        ("ph2d-contact-world", Some("sim.step")),
         // A shell: o gizmo do cartão desenha o colisor e as cenas de pilha medem-no. Nenhum
         // deles vive num grafo, logo nenhum pode divergir entre CPU e dispositivo.
         ("ph2d-app-motion", None),
@@ -246,8 +247,10 @@ fn todo_leitor_do_colisor_declarado_se_regista() {
                 pilha.push(p);
             } else if p.extension().is_some_and(|x| x == "rs") {
                 ficheiros += 1;
-                if std::fs::read_to_string(&p).is_ok_and(|t| t.contains("ph2d_contact::colisores("))
-                    && let Ok(rel) = p.strip_prefix(raiz)
+                if std::fs::read_to_string(&p).is_ok_and(|t| {
+                    t.contains("ph2d_contact::colisores(")
+                        || t.contains("ph2d_contact::colisores_locais(")
+                }) && let Ok(rel) = p.strip_prefix(raiz)
                     && let Some(c) = rel.components().next()
                 {
                     vistas.insert(c.as_os_str().to_string_lossy().into_owned());

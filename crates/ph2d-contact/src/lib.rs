@@ -435,6 +435,16 @@ fn pares<'a>(s: &'a Stream, nome: &str) -> Option<&'a [[f32; 2]]> {
 /// coluna do raio nem a da caixa), que é o que mantém toda cena sem colisor **byte-idêntica**: quem
 /// pergunta sai antes de tocar em nada.
 pub fn colisores(s: &Stream) -> Option<Vec<Option<Colisor>>> {
+    colisores_em(s, true)
+}
+
+/// **Os colisores no referencial da PEÇA** — a mesma porta, sem o `rot` (o mundo de contacto do
+/// `sim.step` põe o ângulo no CORPO e a forma fica fixa nele; doc 121 §9.20).
+pub fn colisores_locais(s: &Stream) -> Option<Vec<Option<Colisor>>> {
+    colisores_em(s, false)
+}
+
+fn colisores_em(s: &Stream, com_rot: bool) -> Option<Vec<Option<Colisor>>> {
     let (raio, caixa) = (escalares(s, COLLIDER_COLUMN), pares(s, COLLIDER_BOX_COLUMN));
     if raio.is_none() && caixa.is_none() {
         return None;
@@ -442,7 +452,7 @@ pub fn colisores(s: &Stream) -> Option<Vec<Option<Colisor>>> {
     let (desvio, size, rot) = (
         pares(s, COLLIDER_OFFSET_COLUMN),
         pares(s, "size"),
-        escalares(s, "rot"),
+        escalares(s, "rot").filter(|_| com_rot),
     );
     Some(
         (0..s.count())

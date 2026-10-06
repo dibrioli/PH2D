@@ -4,9 +4,9 @@
 //! Irmã da [`super::salto_diag`] pelo tecto de LOC (HR-18) e por ASSUNTO: ali medem-se o SALTO e os
 //! apoios; aqui mede-se o que a pilha faz com a rotação que PERSISTE.
 //!
-//! ⚠️ **Todas elas medem a lei que o `sim.step` tem em vigor AGORA** (o `contact::LEIS`), e a
-//! varredura corre-as por MUTAÇÃO daquele `const` — ver [`super::obra::probe_a_linha_das_leis`],
-//! que explica porque a varredura não é por parâmetro.
+//! ⚠️ **Todas elas medem a lei que o `sim.step` tem em vigor AGORA** — desde 06/10 o mundo de
+//! contacto do motor da casa (doc 121 §9.20; o `contact::LEIS` e a varredura por mutação dele
+//! saíram com a lei por colunas).
 
 /// ⭐⭐⭐ **SONDA — O GIRO QUE SOBRA: a pilha assente ainda tem VELOCIDADE ANGULAR?**
 ///
@@ -14,8 +14,7 @@
 /// nunca se dissipa, ou uma deriva lenta que nada trava. Esta sonda olha para o ESTADO — o `spin` de
 /// cada peça, tique a tique, na janela assente — em vez de olhar para o resultado dele.
 ///
-/// ⚠️ **Ela mede a lei que o `sim.step` tem em vigor AGORA** (o `contact::LEIS`); a varredura corre-a
-/// por mutação daquele `const`, como a [`super::obra::probe_a_linha_das_leis`].
+/// ⚠️ **Ela mede a lei que o `sim.step` tem em vigor AGORA** (o mundo de contacto, doc 121 §9.20).
 ///
 /// ```text
 /// cargo test -p ph2d-app-motion --release probe_o_giro_que_sobra -- --ignored --nocapture
@@ -370,8 +369,8 @@ pub(super) fn perfil_com(
 /// demora `~2 s` a mais — e a `=114` reinicia aos `3,0 s`, logo o artista vê o transiente inteiro.
 /// O que falta é DISSIPAÇÃO angular, e o `angular_damping` é a que já existe (`1` = nenhuma).
 ///
-/// ⚠️ **Ela varre um PARÂMETRO, logo cabe numa corrida só** — ao contrário das [`Leis`], que são um
-/// `const` e pedem mutação. *Medir o que é barato medir antes de construir o que é caro.*
+/// ⚠️ **Ela varre um PARÂMETRO, logo cabe numa corrida só** — ao contrário das leis do solver de
+/// antes, que eram um `const` e pediam mutação. *Medir o que é barato medir antes de construir o que é caro.*
 #[test]
 #[ignore = "sonda de medicao"]
 fn probe_o_arrasto_angular() {

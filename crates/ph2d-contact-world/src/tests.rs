@@ -19,12 +19,11 @@ fn caixas(p: &[[f32; 2]], t: f32) -> Stream {
         .with(COLLIDER_BOX_COLUMN, Column::Vec2(vec![[0.11, 0.11]; n]))
 }
 
+/// O que um passo devolve: posições, velocidades, ângulos e o feito.
+type Passo = (Vec<[f32; 2]>, Vec<[f32; 2]>, Vec<f32>, Option<Feito>);
+
 /// Um passo com a gravidade `4` já na velocidade (a metade do `sim.step`), devolvendo o estado.
-fn um(
-    mundo: &mut Option<Mundo>,
-    s: &Stream,
-    t: f32,
-) -> (Vec<[f32; 2]>, Vec<[f32; 2]>, Vec<f32>, Option<Feito>) {
+fn um(mundo: &mut Option<Mundo>, s: &Stream, t: f32) -> Passo {
     let n = s.count();
     let (Some(Column::Vec2(p0)), Some(Column::Vec2(v0))) = (s.get("P"), s.get("vel")) else {
         panic!("sem P/vel");

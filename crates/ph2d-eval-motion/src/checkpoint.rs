@@ -168,7 +168,7 @@ impl CheckpointRing {
     /// regista o ponto de recuo de `tick` se o anel ainda não o tem e — quando algum nó guarda
     /// [`ph2d_nodegraph::cook::Memo`] — só a cada [`MEMO_A_CADA`] tiques.
     pub fn regista(&mut self, tick: u64, cook: &ph2d_nodegraph::cook::Cook) {
-        if (cook.has_memo() && tick % MEMO_A_CADA != 0) || !self.should_record(tick) {
+        if (cook.has_memo() && !tick.is_multiple_of(MEMO_A_CADA)) || !self.should_record(tick) {
             return;
         }
         self.record(tick, cook.checkpoint());

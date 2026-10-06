@@ -420,8 +420,8 @@ pub fn passo(
                 }
             }
         }
-        for i in 0..n {
-            let (Some(r0), Some(c)) = (antes_do_passo[i], m.corpos[i].as_mut()) else {
+        for (i, r0) in antes_do_passo.iter().enumerate() {
+            let (Some(r0), Some(c)) = (*r0, m.corpos[i].as_mut()) else {
                 continue;
             };
             let b = &m.bodies[c.corpo];

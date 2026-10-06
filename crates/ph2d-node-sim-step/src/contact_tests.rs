@@ -72,7 +72,7 @@ const FOLGA: f32 = 0.005;
 fn overlapping_pieces_are_pushed_apart_to_their_radii() {
     let p = col(&corre(&par(0.1, 0.0, Some(0.5)), 60), "P");
     let d = p[1][0] - p[0][0];
-    assert!(d >= 1.0 - FOLGA && d <= 1.0 + 1e-3, "{p:?}");
+    assert!((1.0 - FOLGA..=1.0 + 1e-3).contains(&d), "{p:?}");
 }
 
 /// ⭐⭐ **O contacto NUNCA acrescenta velocidade** — duas peças que nascem sobrepostas, paradas,
@@ -97,7 +97,7 @@ fn the_contact_never_adds_speed() {
     let (p, v) = (col(&out, "P"), col(&out, "vel"));
     let d = p[1][0] - p[0][0];
     assert!(
-        d >= 1.0 - FOLGA && d <= 1.0 + 0.02,
+        (1.0 - FOLGA..=1.0 + 0.02).contains(&d),
         "separaram-se a' face e PARARAM: {p:?}"
     );
     assert!(
@@ -114,7 +114,7 @@ fn an_approach_is_cancelled_not_reflected() {
     let s = step(&par(0.5, 2.0, Some(0.5)), DT, 1.0, 0.0, 0.0, 1.0);
     let (p, v) = (col(&s, "P"), col(&s, "vel"));
     let d = p[1][0] - p[0][0];
-    assert!(d >= 1.0 - FOLGA && d <= 1.0 + 1e-4, "encostadas: {p:?}");
+    assert!((1.0 - FOLGA..=1.0 + 1e-4).contains(&d), "encostadas: {p:?}");
     for (i, vi) in v.iter().enumerate() {
         assert!(
             vi[0].abs() < 1e-3,
@@ -142,7 +142,7 @@ fn two_boxes_rest_face_to_face_and_stop() {
     let (p, v) = (col(&out, "P"), col(&out, "vel"));
     let d = p[1][0] - p[0][0];
     assert!(
-        d >= 1.0 - FOLGA && d <= 1.0 + 1e-3,
+        (1.0 - FOLGA..=1.0 + 1e-3).contains(&d),
         "elas encostam pela face, a menos da folga do contacto: {p:?}"
     );
     // ⚠️ Elas nascem `0,4` SOBREPOSTAS e a vir uma para a outra: a separação é por velocidade, e a
@@ -509,13 +509,18 @@ pub(super) fn disco_ate_parar(rolar: f32, sub: u32) -> Option<f32> {
     let mut v = vec![[0.0_f32, 0.0], [1.0, 0.0]];
     // A rolar para a direita: ponto de contacto parado, `ω = −v/R`.
     let mut spin = vec![0.0_f32, -(1.0 / R).to_degrees()];
+    // ⚠️ Com a MEMÓRIA do mundo de contacto, como o `Cook` a dá (doc 121 §9.20): o rolamento em
+    // duas fases lembra-se de que a bola parou.
+    // ⚠️ O relógio ACUMULADO (`t += dt`), como o `sim.step` o grava: um `sim_t = k·dt` difere do
+    // `playhead` anterior no último bit e o mundo renasceria a meio (o recomeço de um `Loop`).
+    let (mut mundo, mut t) = (None, 0.0_f32);
     for k in 0..(60 * 30 * sub) {
         let s = Stream::new(2)
             .with("P", Column::Vec2(p.clone()))
             .with("vel", Column::Vec2(v.clone()))
             .with(SPIN, Column::Scalar(spin.clone()))
             .with("accel", Column::Vec2(vec![[0.0, -G], [0.0, -G]]))
-            .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+            .with("sim_t", Column::Scalar(vec![t, t]))
             .with("inv_mass", Column::Scalar(vec![0.0, 1.0]))
             .with(FRICTION_COLUMN, Column::Scalar(vec![1.0, 1.0]))
             .with(ROLLING_COLUMN, Column::Scalar(vec![0.0, rolar]))
@@ -524,7 +529,8 @@ pub(super) fn disco_ate_parar(rolar: f32, sub: u32) -> Option<f32> {
                 COLLIDER_BOX_COLUMN,
                 Column::Vec2(vec![[PRANCHA, 0.5], [0.0, 0.0]]),
             );
-        let out = step(&s, dt, 1.0, 0.0, 0.0, 1.0);
+        let out = crate::step_com(&s, t + dt, 1.0, 0.0, 0.0, 1.0, &mut mundo);
+        t += dt;
         p = col(&out, "P");
         v = col(&out, "vel");
         if let Some(Column::Scalar(sp)) = out.get(SPIN) {
@@ -584,4 +590,45 @@ fn a_piece_rolling_on_a_piece_stops_as_it_does_on_the_bowl() {
             );
         }
     }
+}
+
+/// ⭐⭐ **O passo CONSOME a declaração do obstáculo e devolve o recibo** (doc 121 §9.20) — um
+/// `sim.collide` apagado deixa de declarar, e a declaração velha nunca circula de volta pela zona.
+#[test]
+fn the_step_consumes_the_obstacle_declaration_and_returns_the_receipt() {
+    use ph2d_contact::obstaculo::{self, FormaFixa};
+    let mut s = par(1.0, 0.0, Some(0.2));
+    obstaculo::declara(
+        &mut s,
+        9,
+        FormaFixa::Plano {
+            normal: [0.0, 1.0],
+            altura: -5.0,
+        },
+        0.5,
+        &[0.0, 0.0],
+    );
+    let out = step(&s, DT, 1.0, 0.0, 0.0, 1.0);
+    assert!(
+        obstaculo::declarados(&out).is_empty(),
+        "a declaracao e' consumida"
+    );
+    assert!(obstaculo::tem_recibo(&out, 9), "e o recibo volta");
+    let sem_colisor = par(1.0, 0.0, None);
+    let mut decl = sem_colisor.clone();
+    obstaculo::declara(
+        &mut decl,
+        9,
+        FormaFixa::Plano {
+            normal: [0.0, 1.0],
+            altura: -5.0,
+        },
+        0.5,
+        &[0.0, 0.0],
+    );
+    let out = step(&decl, DT, 1.0, 0.0, 0.0, 1.0);
+    assert!(
+        !obstaculo::tem_recibo(&out, 9),
+        "sem pecas com colisor nao ha' mundo, nem recibo — o sim.collide projecta"
+    );
 }

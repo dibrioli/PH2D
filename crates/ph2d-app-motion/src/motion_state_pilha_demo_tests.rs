@@ -350,18 +350,19 @@ fn the_controls_the_announcement_names_do_what_it_says() {
 /// ⭐ **A barra sai de um vale medido com os dois lados** (o rodopio, em graus por janela).
 ///
 /// ⚠️⚠️ **A JANELA mudou com o motor da casa (doc 121 §9.20), e o piso é o porquê:** a pilha de
-/// caixas SEM o botão já pára de girar antes do tique `240` (rodopio `0,05` em `240..300`, abaixo
-/// do piso de medição) — a lei por colunas de antes girava ali `0,47`, e era esse rodopio que o
-/// `Rolling` curava. Hoje o botão age onde a pilha ainda TOMBA, a queda (`120..180`), e a pilha de
-/// DISCOS é onde ele tem o maior trabalho (os discos rolam):
+/// caixas SEM o botão quase pára de girar antes do tique `240` (`0,23` em `240..300`) — a lei por
+/// colunas de antes girava ali `0,47`, e era esse rodopio que o `Rolling` curava. Hoje o botão age
+/// onde a pilha ainda TOMBA, a queda (`120..180`), nas caixas e nos discos (a cena a `1` sub-passo):
 ///
 /// ```text
 ///   janela 120..180          Rolling 0   0,1    0,25   0,75
-///   caixas (a cena)          1,45        0,19   0,23   0,01
-///   discos (Collider Circle) 84,47       47,57  0,30   0,00
+///   caixas (a cena)          5,55        2,18   2,70   0,23
+///   discos (Collider Circle) 10,69       61,70  15,28  0,00
 /// ```
 ///
-/// ⇒ a razão tem de ficar abaixo de **`0,5`** nas duas pilhas.
+/// ⇒ a razão tem de ficar abaixo de **`0,5`** nas duas pilhas, com o botão a `0,75`.
+/// ⛔ ABERTO (o handoff §13): um `Rolling` BAIXO numa pilha de DISCOS agita-a na queda (`61,7`
+/// contra `10,7`) — a trava em duas fases alterna trancar e destrancar; o gate mede o botão alto.
 #[test]
 fn the_rolling_on_the_card_calms_the_pile() {
     /// Razão máxima entre o rodopio COM e SEM o botão. Ver o vale acima.

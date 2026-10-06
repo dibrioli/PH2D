@@ -2,9 +2,7 @@
 //! ponto 4 do desenho).
 
 use ph2d_contact::{Forma, Material};
-use ph2d_nodegraph::attr::{
-    COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column, SIZE_IDENTITY, Stream,
-};
+use ph2d_nodegraph::attr::Stream;
 use rapier2d::prelude::*;
 
 /// Tudo o que o mundo precisa para construir a peça — e, comparado por igualdade, o que diz que
@@ -20,44 +18,14 @@ pub(crate) struct Spec {
     pub material: Option<Material>,
 }
 
-fn escalares<'a>(s: &'a Stream, nome: &str) -> Option<&'a [f32]> {
-    match s.get(nome) {
-        Some(Column::Scalar(v)) if v.len() == s.count() => Some(v),
-        _ => None,
-    }
-}
-
-fn pares<'a>(s: &'a Stream, nome: &str) -> Option<&'a [[f32; 2]]> {
-    match s.get(nome) {
-        Some(Column::Vec2(v)) if v.len() == s.count() => Some(v),
-        _ => None,
-    }
-}
-
 /// A [`Spec`] de cada linha — `None` quando ninguém declara colisor (o passo é o de sempre), e
 /// `Some(None)` numa linha cujo colisor é inválido (ela não entra no mundo e atravessa as outras).
 ///
-/// ⭐ As portas são as MESMAS de antes do mundo: [`ph2d_contact::declarado`] (com o ângulo `0`: a
-/// forma no referencial da peça), [`ph2d_contact::inv_inercias`] (o `Lock Rotation` escreve
+/// ⭐ As portas são as MESMAS de antes do mundo: [`ph2d_contact::colisores_locais`] (a forma no
+/// referencial da peça), [`ph2d_contact::inv_inercias`] (o `Lock Rotation` escreve
 /// `inv_inertia = 0`) e [`ph2d_contact::materiais`].
 pub(crate) fn specs(s: &Stream, pesos: &[f32]) -> Option<Vec<Option<Spec>>> {
-    let (raio, caixa) = (escalares(s, COLLIDER_COLUMN), pares(s, COLLIDER_BOX_COLUMN));
-    if raio.is_none() && caixa.is_none() {
-        return None;
-    }
-    let n = s.count();
-    let (desvio, size) = (pares(s, COLLIDER_OFFSET_COLUMN), pares(s, "size"));
-    let locais: Vec<Option<ph2d_contact::Colisor>> = (0..n)
-        .map(|i| {
-            ph2d_contact::declarado(
-                raio.map(|v| v[i]),
-                caixa.map(|v| v[i]),
-                desvio.map_or([0.0, 0.0], |v| v[i]),
-                size.map_or(SIZE_IDENTITY, |v| v[i]),
-                0.0,
-            )
-        })
-        .collect();
+    let locais = ph2d_contact::colisores_locais(s)?;
     let inercia = ph2d_contact::inv_inercias(s, &locais, pesos);
     let material = ph2d_contact::materiais(s);
     Some(

@@ -294,3 +294,46 @@ O dono escolheu: **a colisão das formas do Motion passa a usar o motor da casa 
 «o contacto na placa» e passa a ser esta troca — prompt:
 [`HANDOFF_CONTINUACAO_line_motion_value_2026-10-06_CONTACTO_RAPIER.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-06_CONTACTO_RAPIER.md)
 (o da placa fica como referência, a reavaliar com os números novos).
+
+## §13 — A 5.ª onda (06/10): o contacto das formas pelo motor da casa (`rapier2d`)
+
+Ordem do dono (06/10): *«usar o motor da casa»*. Desenho (escrito antes, medido no oráculo), prova, números e as
+correcções que a medição impôs: [doc 121 §9.20](../121_as_formas_na_placa.md). Commits `e78b2c096` (construído, com
+a lei de antes atrás de uma chave por fio para a prova) · `594a859fd` (a chave e os relógios saem) · `e21fd3195` (o
+que ficou sem chamador na `ph2d-contact` sai, `−1 414` linhas) · os seguintes (docs, gates, memória). Base
+`a46c4c200` (o main não andou).
+
+| item do prompt | o que ficou |
+|---|---|
+| **(1) o desenho** | ✅ medido ANTES no oráculo (`ferramentas/oraculo_rapier_pilha_quente_frio/`): mundo PERSISTENTE (frio custa `10×` e agita `3×`), a taça DENTRO do mundo (fora: `8×` mais agitada), `1` passo por tique. O mundo é a MEMÓRIA do nó (`Memo`) no `Cook`, e viaja no ponto de recuo (`MEMO_A_CADA = 8`). Sincronia por `id`; o stream é a verdade do estado, o mundo a dos contactos |
+| **(2) a prova** | ✅ `prova_do_mundo_de_contacto` (as duas leis no mesmo processo, pela porta do app): `4 096` por taça `17,9 → 4,30` ms de mediana (p95 `44 → 7,5`: o critério `≤ 5` passa na mediana e não no p95), `1 024` `10,8 → 1,06`; a pilha dentro da banda e menos funda (`41 % → 9,9 %` a `1 024`); determinismo ✓ |
+| **(3) o produto** | ✅ o `sim.step` resolve pelo `ph2d-contact-world`; o `sim.collide` declara-se ao mundo (aperto de mão por colunas); o rolamento em duas fases; `ESTABILIZACOES = 4`; a `=114` a `1` sub-passo; as portas Jacobi/cores e os impulsos saíram |
+| **(4) a medição no app** | ✅ `release`, `[motion-quadro]`: `1 024` e `4 096` por taça **`59`–`60` fps em todas as janelas, nas duas placas** (antes `13`–`25` a `4 096`); `16 384` `10`–`36` fps |
+| **(5) o item da placa** | ⏳ **NÃO fecha:** a CPU com o rapier não chega a `16 384` com folga (`14` ms de mediana). A pergunta seguinte é o rapier `parallel` (oráculo: `16 384` `~17 → ~6` ms) e o DETERMINISMO dele, antes de qualquer contacto no dispositivo |
+
+**⚠️ O que mudou de COMPORTAMENTO (vai ao dono no smoke):** a pilha encosta pela face e as peças já não entram umas
+nas outras aos milhares (`41 % → 10 %` do lado); uma caixa que bate de FACE devolve `88 %` do `Bounciness` (a lei do
+Box2D: dois pontos numa passagem; um disco devolve `100 %`); o `Rolling` agora TRAVA a peça parada (rampa: segura
+enquanto `tg θ ≤ Rolling`) e acalma a QUEDA — a pilha de caixas sem ele já assenta sozinha; peças nascidas
+sobrepostas separam-se em `~1` s por uma mola (antes: num passo).
+
+**Superfície de colisão nova (o integrador mede):**
+- **Foundational (append-only, Modo L):** `ph2d-nodegraph` — `cook_checkpoint.rs` (NOVO: o `CookCheckpoint`, o
+  `checkpoint`/`restore` MUDARAM-SE de `cook.rs` para lá, mais `Memo`/`DynMemo`/`has_memo`), `cook.rs` (o campo
+  `memo`, `take`/`keep` à volta do `op.eval`, a poda no `advance_tick`), `cook_eval_ctx.rs` (`memo`, `take_memo`,
+  `keep_memo`). ⚠️ Quem construir `EvalCtx { … }` literal noutra linha não compila sem o campo `memo`. Contrato
+  congelado: nenhum (ADR-0039 congela `NodeOp`/`OpResolver`/`NodeManifest`, não o `EvalCtx`).
+- `ph2d-eval-motion`: `checkpoint.rs` (`MEMO_A_CADA`, `CheckpointRing::regista` — a porta ÚNICA do registo),
+  `lib.rs`/`scrub.rs` (os dois sítios do registo passam por ela).
+- **Crate NOVA:** `crates/ph2d-contact-world` (depende de `rapier2d 0.35` com as features da `ph2d-physics`;
+  `dhat` em dev). `Cargo.lock` muda (a crate e o `dhat` na lista dela).
+- `ph2d-contact`: `obstaculo.rs` (novo); `impulso*.rs` APAGADOS, `atrito.rs`/`laco.rs`/`lib.rs`/`tests.rs` aparados.
+- `ph2d-node-sim-step`: `lib.rs` (`step_com` com o mundo; a metade angular ANTES do contacto), `contact.rs`
+  (reescrito: uma porta fina), `contact_tests.rs` (cinco gates re-expressos), `Cargo.toml`.
+- `ph2d-node-sim-collide`: `lib.rs` (a chave, `collide_com_chave`), `mundo.rs`/`geometria.rs`/`mundo_tests.rs`
+  (novos; o `contact` da geometria MUDOU-SE para `geometria.rs` pelo tecto de LOC).
+- `ph2d-app-motion`: `motion_state_pilha_demo.rs` (`SUBSTEPS = 1`), os gates da pilha e da `=115`, as sondas,
+  `motion_state_pilha_demo_recuo_tests.rs` (novo).
+- **Env:** saíram `PH2D_CONTACT_JACOBI`/`PH2D_CONTACT_CORES`. Nenhuma nova no produto. **Shell:** não tocada.
+
+**Fecho corrido:** ver a linha seguinte (o portão batched desta onda).

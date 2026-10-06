@@ -2557,3 +2557,93 @@ custam `4×` e não compram pilha: a cena passa a `1` sub-passo; o nó continua 
 `≤ 1,5×` + `0,01` u/s, sobreposição mais funda `≤` a de hoje) OU a diferença ao dono no smoke; os gates da pilha
 verdes; determinismo: duas corridas iguais ao bit; ⭐ e dois novos, do desenho: **um recuo seguido de Play dá os bits
 da 1.ª passagem**, e **a 2.ª volta do `Loop` dá os bits da 1.ª**.
+
+**§9.20 — o resultado: CONSTRUÍDO** (`e78b2c096` · `594a859fd` · `e21fd3195`). O mundo de contacto é a crate
+[`ph2d-contact-world`](../../crates/ph2d-contact-world/src/lib.rs); a memória do nó e o ponto de recuo são
+`ph2d-nodegraph` (`cook_checkpoint.rs`: `Memo`, `EvalCtx::take_memo`/`keep_memo`) e `ph2d-eval-motion`
+(`CheckpointRing::regista`, `MEMO_A_CADA = 8`); o aperto de mão é `ph2d_contact::obstaculo` e
+`ph2d-node-sim-collide/src/mundo.rs`; a `=114` passa a `1` sub-passo.
+
+**A prova, no MESMO processo, pela porta do app** (`prova_do_mundo_de_contacto`, `release`, intercaladas por tique,
+carga `5`–`7`; a lei de antes atrás de uma chave POR FIO em `e78b2c096`, retirada em `594a859fd`;
+`target/prova/onda5/prova_do_mundo.txt`). Tique do cozimento (mediana · p95 com a pilha formada) e, no `2,95` s, a
+taça da direita:
+
+| peças por taça | lei | tique (ms) | vizinho mediano | velocidade média | sobreposição mais funda |
+|---|---|---|---:|---:|---:|
+| `25` | antes (`8` sub) | `0,52` · `0,57` | `0,2214` | `0,029` | `1,3 %` |
+| `25` | **rapier (`1` sub)** | **`0,05` · `0,07`** | `0,2198` (`−0,7 %`) | `0,016` | `1,4 %` |
+| `1 024` | antes | `10,8` · `13,4` | `0,2141` | `0,220` | `41,1 %` |
+| `1 024` | **rapier** | **`1,06` · `2,17`** | `0,2129` (`−0,6 %`) | `0,144` | **`9,9 %`** |
+| `4 096` | antes | `17,9` · `44,1` | `0,1939` | `2,41` | `86,7 %` |
+| `4 096` | **rapier** | **`4,30` · `7,51`** | `0,1856` | `1,26` | `47,6 %` |
+| `16 384` | antes | `36,3` · `72,6` | — (a cair) | `8,5` | `76,3 %` |
+| `16 384` | **rapier** | **`14,3` · `24,4`** | — (a cair) | `8,1` | `65,3 %` |
+
+A base sem `Collide`: `0,02` · `0,13` · `0,45` · `1,68` ms. Duas corridas do rapier: os MESMOS bits em todas as
+células. **Os kill-criteria:** `4 096` por taça mediana `4,30 ≤ 5` ✓, p95 `7,51` ✗ (o próprio passo do rapier é
+`~2,3` ms em média a `4 096`, e o p95 dele no oráculo `3,6`–`5,2`; a cola é `0,15` ms depois de alinhar os corpos às
+linhas do stream — media `0,55` com uma busca por `id`) — no app o quadro fica nos `60` fps (abaixo); a banda da ordem a `25` e `1 024`: vizinho
+`−0,7 %`/`−0,6 %` ✓, velocidade `0,55×`/`0,65×` ✓, sobreposição `1,4 %` contra `1,3 %` a `25` (`+0,0001` u: a FOLGA que
+o rapier admite de propósito, `0,005`) e `9,9 %` contra `41 %` a `1 024` ✓ — **a diferença vai ao dono no smoke**; os
+gates da pilha verdes; determinismo ✓; o recuo seguido de Play dá os bits da 1.ª passagem ✓.
+
+**No app** (`[motion-quadro]`, `release`, a pior janela de cada ciclo; `target/prova/onda5/app/`):
+
+| peças por taça | RTX | iGPU |
+|---|---|---|
+| `1 024` | `60` fps em todas as janelas (antes `56`–`60`, recomeços `16`–`18`) | `60` fps |
+| `4 096` | **`59`–`60` fps em todas** (antes `13`–`25`) | **`59`–`60` fps** |
+| `16 384` | `12`–`31` fps (picos do cozimento `280` ms nos recomeços) | `10`–`36` fps |
+
+⇒ **o alvo (`60` fps a `4 096` por taça) foi atingido nas duas placas.**
+
+**O que a medição corrigiu no desenho (cada um com o gate novo):**
+
+1. ⛔ **«A 2.ª volta do `Loop` dá os bits da 1.ª» — a premissa estava ERRADA:** o passo é `playhead − sim_t` em
+   `f32`, e `3,6 + k/60` arredonda diferente de `k/60`. A lei de antes também não repetia (`1,5e-2` no tique `150`);
+   o mundo repete a `1,06e-3`. Gate: `the_second_lap_of_the_loop_repeats_the_first` (barra `2e-3`) — o mundo NOVO no
+   recomeço tem gate próprio ao bit (`a_stream_that_does_not_continue_the_world_starts_a_new_one`).
+2. ⛔⛔ **As sondas e os gates que andam por `cook` + `advance_tick` NÃO correm os sub-passos da zona** (só a porta
+   do app, `substep_declared_zones`): a 1.ª redacção da prova deu os MESMOS bits a `8` e a `1` sub-passo. A
+   `prova_dos_impulsos_da_placa` de 05/10 mediu assim a lei de antes a `1` passo por tique — a tabela de 05/10
+   (Gauss–Seidel `0,0796`/`0,266`/`109 %` a `1 024`) é a da lei SEM os `8` sub-passos que a cena shipava; pela porta do
+   app ela dá `0,2141`/`0,220`/`41 %` (a linha «antes» acima).
+3. **Duas caixas que nascem sobrepostas saíam a VOAR** com a omissão do rapier (`0,84` u/s mesmo paradas) — a lei
+   aprovada *«quem nasce sobreposto e parado não ganha velocidade»*. ⇒ `ESTABILIZACOES = 4` (`0,009` u/s; o custo cabe:
+   `4 096` `1,79 → 1,83` ms). Gate: `the_contact_never_adds_speed` (agora também com caixas, `120` tiques).
+4. **O salto de uma CAIXA que bate de FACE é `0,88` do pedido** — a lei da família do Box2D (o salto aplicado no fim do
+   passo, UMA passagem pelos DOIS pontos da face: `11/25 ÷ 1/2`); um disco dá a conta exacta, e o momento conserva-se
+   sempre. Gates: `two_equal_boxes_share_the_blow…` e `an_obstacle_is_still_a_wall…` medem discos (exacto) e caixas
+   (`0,88`). ⚠️ Vai ao dono: um `Bounciness 1` numa caixa de face devolve `88 %`.
+5. **O ROLAMENTO — seis leis medidas, uma aceite** (a tabela das recusas no cabeçalho de
+   [`rolar.rs`](../../crates/ph2d-contact-world/src/rolar.rs)): cortar o giro depois do passo, o binário (ganho `1` e
+   `½`), o amortecimento do rapier, o travão relativo do Box2D v3 e o contacto ACHATADO pelo gancho — todos fazem a
+   pilha tremer, rastejar ou acelerar. **Aceite: Coulomb em DUAS fases** — parada ⇒ a rotação TRANCADA no solver até
+   o binário pedido passar a capacidade `Σ μr·λn·|braço|` (segura na rampa enquanto `tg θ ≤ μr`); a rolar ⇒ um
+   binário constante da capacidade (o rapier integra-o EXACTO: medido `1,00×` a teoria). Rodopio na queda
+   (`120..180`, a cena a `1` sub-passo): caixas `5,55 → 2,18/2,70/0,23` (`Rolling` `0,1/0,25/0,75`), discos
+   `10,69 → 61,70/15,28/0,00`; a bola da `=115` trava na rampa de `12°` com `0,5` ✓; a bola que rola pára nos tempos
+   da taça (`±2 %`) ✓. ⛔ **ABERTO:** um `Rolling` BAIXO numa PILHA de discos agita-a na queda (`61,7` contra `10,7`):
+   a trava alterna trancar e destrancar (cada troca muda a inércia efectiva sob o aquecimento). A `8` sub-passos o
+   mesmo perfil saía limpo (`84,5 → 47,6/0,30/0,00`) — a decisão é a uma resolução mais fina. A cura de raiz é o
+   rolamento DENTRO do solver (uma restrição angular, como o Box2D v3), que o rapier `0.35` não tem.
+   ⚠️ E a ARMADILHA do relógio dos testes: um `sim_t = k·dt` difere do `playhead` anterior (`t + dt`) no último bit,
+   e o mundo RENASCE a meio — o gate da bola que rola lia `0,74×` o travão por isso (o produto grava `sim_t =
+   playhead`, ao bit); os gates do passo acumulam o relógio.
+6. **Gates da pilha que mediam a lei de antes, re-expressos com o porquê escrito neles:** o do `Rolling` mede a
+   QUEDA (`120..180`), caixas e discos (a pilha de caixas sem o botão já pára antes do tique `240`: `0,05`, abaixo do
+   piso); o da largura passa a ter UM lado (alargar abre a pilha `+12 %`; estreitar não a fecha — com a rotação
+   travada as caixas caem em COLUNAS e caixas alinhadas com atrito não se espremem de lado); os cinco do passo
+   (`overlapping…`, `approach…`, `two_boxes…`) marcham com a MEMÓRIA do mundo e a folga do rapier (`0,005`); o ruído
+   do `Friction 0` da `=115` (`0,0018°`, a de `Friction 1` roda `313°`).
+7. **O que saiu sem chamador** (`e21fd3195`): `ph2d_contact::impulsos`/`Leis`/`Movimento`, a variante Jacobi, o
+   deslize da separação e os testes deles (`−1 414` linhas); as portas `PH2D_CONTACT_JACOBI`/`PH2D_CONTACT_CORES`. Fica
+   o `separate` (o `motion.collide`), o `passe` (o sink), as portas do colisor e do material, e o `obstaculo` novo.
+
+**O item da placa (o prompt de 05/10), reavaliado:** a CPU com o rapier NÃO chega a `16 384` por taça com folga
+(`14` ms de mediana, `10`–`36` fps) ⇒ o item NÃO fecha por esta medição. Mas a pergunta mudou outra vez: a alavanca
+seguinte medida no oráculo é o rapier `parallel` (`16 384`: `15,8`–`18,5` → `5,8`–`7,0` ms; `4 096`: `3,0` → `1,7`),
+e falta provar o DETERMINISMO dele (a feature é unificada pelo cargo com a `ph2d-physics`, cujos gates de replay
+entre sistemas operativos o pedem) — antes de qualquer contacto no dispositivo. E o recomeço a `16 384` paga a
+construção de um mundo novo (`280` ms no quadro do recomeço).

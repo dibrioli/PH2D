@@ -2376,8 +2376,9 @@ na pilha de `25` a sobreposição mais funda dele saiu `+4,4 %` do lado (o crit�
 **E o custo é o contacto, não o resto:** a sonda `custo_do_tique_do_app_na_pilha` (o `advance_or_scrub_scoped` da
 ponte, `480` tiques, com e sem o passe do sink): `1 024` por taça mediana `2,8` ms, mas `14`–`20` ms por tique
 com a pilha formada (tique `117`+); `4 096` mediana `9,5`, **`48`–`93` ms por tique** com a pilha formada; o passe
-do sink não pesa (com e sem: iguais). ⇒ o quadro de `17`–`28` ms do app a `4 096` era o relógio a DESCARTAR tempo
-de simulação (`max_substeps`): a pilha corria em câmara lenta. **Decisão:** o contacto da caixa vai para a placa
+do sink não pesa (com e sem: iguais). ⇒ a `4 096` peças a CPU paga `48`–`93` ms de cozimento por tique com a pilha
+formada — o quadro do app não cabe em `16,7` ms em Play (⚠️ a tabela do app acima NÃO é Play: ver a correcção da
+régua no fim do §9.19). **Decisão:** o contacto da caixa vai para a placa
 com o Gauss–Seidel por cores.
 
 **(5) — a prova de CUSTO do modelo no dispositivo.** O contacto por cores pede, por tique, `8` sub-passos × (a
@@ -2388,3 +2389,55 @@ iGPU e RTX)**; um passe por despacho `8,7`–`8,9` µs. ⇒ dentro de um passe o
 o desenho junta os despachos de um sub-passo num passe. E a CPU não chega lá sozinha (medido com relógio
 temporário, uma taça de `4 096` com a pilha formada, por sub-passo: separar `~3,0` ms + impulsos `~4,0` ms ⇒
 `~56` ms por tique com `8` sub-passos; paralelizar só os impulsos deixava `~28`).
+
+**(3) — o resultado: CONSTRUÍDO.** O `source.shape` ganhou `Cap` (`stroke_cap`: Butt · Round · Square) e `Join`
+(`stroke_join`: Miter · Round · Bevel), `ParamWidget::Enum`, apendados ao `ALL` (entram na chave da geometria) e
+ao `SPECS` com omissão `0`/`0` (= o traço de sempre; um projecto antigo, sem as linhas, abre Butt/Miter); visíveis
+só com `Stroke Width > 0` (como o `Dash`); i18n em `node_params.rs`/`node_options.rs`
+(`node.opts.node_motion_shape.{cap,join}_labels.N`). O `build_shape_path` põe-nos no `StrokeSpec`
+(`mistura::traco::ponta_e_junta`, `motion_shape_gen.rs` fica em `672` linhas). A placa e a rota Vello já honravam
+as três pontas e as três juntas pelo eixo (`junta_de`/`ponta_de`). ADR-0039 lido: o contrato é o `NodeManifest`
+de `8` campos e um `ParamSpec` não é campo — nada congelado mudou. Gates: `the_cap_and_the_join_are_declared_keyed_
+read_and_labelled` (nó) · `the_cap_and_join_of_the_card_reach_the_stroke_spec` · `the_cap_and_join_labels_resolve_
+to_words` · `the_cap_and_join_survive_the_save_and_an_old_project_opens_butt_and_miter` (o caminho do produto:
+gravar → ler → publicar) · `the_stroke_cap_and_join_survive_the_round_trip_and_an_old_doc_has_neither`
+(`ph2d-motion-doc`) · **`a_ponta_e_a_junta_do_cartao_desenham_como_a_placa`** (as `3 × 3` combinações, estrela e
+engrenagem, esticadas e conformes, rota Vello × placa alfa `≤ 1`, com o controlo de que a ponta e a junta mudam a
+área pintada). Porta do smoke: `PH2D_TRACO_ESTICADO_PONTA=0|1|2`.
+
+**As mutações** ([`mutacao_a_onda_4_2026-10-05.py`](ferramentas/mutacao_a_onda_4_2026-10-05.py), sozinho na
+árvore, pré-voo `12/12`, corrida limpa verde `27` testes com o gate de imagem na RTX): **`12/12` sangram** —
+`c1` a ponta redonda chega rente · `c2` o chanfro chega esquadria · `c6` o `build_shape_path` ignora as duas (as
+três reprovam o `StrokeSpec`, a gravação e a IMAGEM) · `c3` o índice trocado · `c4` a ponta fora da chave · `c5` a
+omissão redonda · `c7` os rótulos trocados (o gate do nó) · `i2` a grelha perde vizinhos · **`i1` o par consigo
+próprio e `i3` a grelha a metade do alcance SOBREVIVERAM à 1.ª corrida**: a referência «todos-os-pares» passa pelo
+MESMO filtro (o `i1` mudava as duas por igual) e a fixtura tinha sempre a peça grande perto de todas (o `i3` não
+perdia par nenhum). O gate passou a comparar a LISTA das restrições, a exigir `lo < hi` e a correr também sem a
+peça grande — os dois sangram · `p1` a taça não cresce · `p2` a cena do smoke muda (o gate da taça).
+
+**(5) — a DECISÃO: o contacto da caixa NA PLACA fica como a única coisa em aberto desta onda, com o modelo e o
+custo provados.** O que se construiu: a cura do `O(n²)` dos impulsos (`1 024` peças por taça `247` ms → `60` fps,
+exacta ao bit), a porta da taça, as sondas (o tique do app, a prova dos impulsos, os despachos).
+O que se provou para a placa: o Jacobi dos impulsos NÃO serve (refutado), o Gauss–Seidel POR CORES serve (a banda
+da ordem), e `1 000` despachos num passe custam `1,6` ms. **Porque não se construiu nesta janela:** não é «um
+kernel»; o inventário (agente, 05/10) mostra QUATRO peças, e duas são topologias novas para o cozimento da placa —
+(a) um estágio de VÁRIAS passadas feito à mão logo a seguir ao `sim.step` (a grelha, a separação com caixas e o
+giro por varredura, a montagem das restrições numa lista, as cores por rondas, `8` iterações × as cores), (b) os
+SUB-PASSOS da zona no dispositivo (hoje a `sim.zone` é passagem no sequenciador da placa), (c) as colunas do
+colisor a viajarem pela rota da forma no dispositivo e o `sim.collide` a pousar uma caixa pelo suporte, (d) a lei
+de CPU passar a ser a mesma das cores (as cores por rondas com prioridade por par, determinísticas nas duas mídias,
+para a paridade por passo ser `ε`). Meio-construído isto seria pior que a cerca de hoje (a cena cai inteira para a
+CPU e fica CERTA). **O ponto onde a recusa expirou, escrito:** com a cura, a `4 096` peças por taça o cozimento da CPU paga `48`–`93`
+ms por tique com a pilha formada (a sonda do tique do app); a `1 024`, `14`–`20` ms.
+Prompt da próxima janela: [`HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_CONTACTO_NA_PLACA.md`](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_CONTACTO_NA_PLACA.md).
+
+**⛔ (5) — a CORRECÇÃO da régua do app (achada na foto do smoke, depois das tabelas).** A porta `PH2D_PLAY=1` punha o
+relógio a andar (registo temporário: `t` `0 → 1,8 → 3,8 → 5,8` s), mas a FOTO mostrou a `=114` parada no instante de
+partida, sem as taças desenhadas: neste roteiro a cena NÃO cai, e o motivo não foi achado nesta janela. ⇒ **as duas
+tabelas do app desta secção mediram a cena PARADA** — o cozimento a correr a cada quadro sobre o estado de partida
+(é por isso que a cura do `O(n²)` também a mexeu: `151 → 15` ms), NÃO a pilha a cair; a leitura «a simulação em
+câmara lenta» estava errada e saiu. O custo da QUEDA é o da sonda `custo_do_tique_do_app_na_pilha` (o MESMO
+`advance_or_scrub_scoped` da ponte, por tique): `1 024` por taça `14`–`20` ms, `4 096` `48`–`93` ms com a pilha
+formada — e é sobre ela que a decisão assenta, inalterada. A porta `PH2D_PLAY` SAIU (uma porta que não cumpre o que
+promete mede outra coisa em silêncio). **A régua do app em Play é a 1.ª tarefa da próxima janela** (prompt do
+contacto na placa, passo (0)).

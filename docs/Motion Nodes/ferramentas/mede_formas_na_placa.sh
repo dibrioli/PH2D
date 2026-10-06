@@ -38,7 +38,9 @@ for cel in $CELULAS; do
       kv="$kv PH2D_MOTION_OBJ_SMOKE=17 PH2D_TECTO_FORMA=1 PH2D_TECTO_N=$n"
     elif [ "$cena" = 114 ]; then
       # doc 121 §9.19 (5): a pilha com `n × n` peças por taça; `COLIDE=0` tira o `Collide` (a mesma cena sem contacto).
-      kv="$kv PH2D_GPU_COOK_DEMO=114 PH2D_PLAY=1 PH2D_PILHA_LADO=$n PH2D_PILHA_COLIDE=${COLIDE:-1}"
+      # ⚠️ A cena NÃO cai neste roteiro (o relógio pode andar e a pilha fica no instante de partida — §9.19 (5)):
+      # o quadro medido aqui é o da cena PARADA. A queda mede-se pela sonda `custo_do_tique_do_app_na_pilha`.
+      kv="$kv PH2D_GPU_COOK_DEMO=114 PH2D_PILHA_LADO=$n PH2D_PILHA_COLIDE=${COLIDE:-1}"
     else
       kv="$kv PH2D_GPU_COOK_DEMO=$cena PH2D_TRACO_ESTICADO_DENSO=1"
       [ "$tr" = 1 ] && kv="$kv PH2D_TRACO_ESTICADO_TRACEJADO=1"

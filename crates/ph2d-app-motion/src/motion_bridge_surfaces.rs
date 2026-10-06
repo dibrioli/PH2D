@@ -15,15 +15,6 @@ pub(super) fn open_and_close(
     motion_active: bool,
     cursor: (f32, f32),
 ) {
-    // doc 121 §9.19 (5) — `PH2D_PLAY=1`: o relógio toca sempre que estiver PARADO no início, com ou
-    // sem a ferramenta aberta (o arranque e um load pausam-no em `t = 0`). É a porta da régua do app:
-    // o roteiro de foto não carrega em Play, e uma simulação parada não mede nada. Depois de o
-    // relógio andar, o Espaço volta a pausar.
-    static PLAY: std::sync::LazyLock<bool> =
-        std::sync::LazyLock::new(|| std::env::var("PH2D_PLAY").is_ok_and(|v| v == "1"));
-    if *PLAY && !playhead.is_playing() && playhead.time() == 0.0 {
-        playhead.play();
-    }
     // ── 1. Panel visibility (mirror of the Vector dock takeover) ──────────
     hero.panel_visibility.insert(
         ph2d_editor_core::screens::hero::PANEL_MOTION_GRAPH,

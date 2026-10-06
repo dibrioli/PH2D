@@ -220,3 +220,45 @@ Binário: `rm -rf target/*/incremental` e o build `smoke` do `ph2d-host-desktop`
 **Aberto:** a emissão por peça só volta com o PASSEIO fora da série (um fio por troço e um prefixo segmentado — a
 4.ª topologia, two-strikes; a imagem deixa de ser a do `F` ao bit, e o critério tem de vir escrito antes, doc 121
 §9.18 E). O nó de forma do Motion não expõe ponta nem junta (o produto traceja sempre rente/esquadria).
+
+## §12 — A 4.ª onda (05/10): os cinco itens do §11 «Aberto» numa onda
+
+Plano, kill-criteria (escritos antes) e números: [doc 121 §9.19](../121_as_formas_na_placa.md). Commits `3bb13c95a` …
+(base `a46c4c200`: o main andou um commit, o guarda R4; rebase sem conflito).
+
+| item | o que ficou |
+|---|---|
+| **(1) o passeio em paralelo** | ⛔ **RECUSA MEDIDA.** `cs_trocos` (um grupo por cópia, prefixos segmentados): a prova `0,134` ms (critério `≤ 0,13`), o produto `0,226` (critério `≤ 0,15`), densas `+22 %` iGPU / `+16 %` RTX; a imagem passava (alfa `1`). O chão passou a ser a EMISSÃO por peça (`0,092`). Código medido em `2774e1d17`, retirado em `c524f9b3d` |
+| **(2) a parede do Vello** | ⛔ **RECUSA MEDIDA.** O `U` (um caminho por traço) já era o estado; a FITA (`U+A`) não funde nenhum pedaço (os dois lados do vértice calculam a faixa em ordem diferente), e a rota pela lei manda `2,45×` os segmentos (`98` por cópia contra `40`): parede iGPU `+24`/`+42 %`. `e115108de` → `274ed670e`. A sonda conta caminhos e segmentos |
+| **(3) a ponta e a junta no cartão** | ✅ **CONSTRUÍDO.** `stroke_cap`/`stroke_join` (`Enum`, omissão Butt/Miter = o de sempre), no `ALL` e no `SPECS`, i18n, `build_shape_path` → `StrokeSpec`. Gates do nó, do cartão, da gravação (ida e volta e projecto antigo) e da IMAGEM (`3 × 3`, placa × rota Vello alfa `≤ 1`). Contrato `NodeManifest=8` intocado (ADR-0039 lido) |
+| **(4) a prova do SIGSEGV** | ✅ **PROVADA.** `40` corridas alternadas na RTX: antes da cura `14/20` `SIGSEGV`, depois `0/20` (carga `3`–`38`) |
+| **(5) o contacto em Play** | ✅ medido e **curado na CPU**: o `monta` dos impulsos era `O(n²)`; pelos pares da grelha (os mesmos bits) `1 024` peças por taça `247` ms → `60` fps. ⏳ **ABERTO: o contacto da caixa na placa** — a recusa expirou (a CPU paga `48`–`93` ms por tique a `4 096` por taça com a pilha formada; ⚠️ a régua do APP em Play não funcionou nesta janela — a cena não cai no roteiro de foto — e as tabelas do app mediram a cena parada, doc 121 §9.19 correcção). Modelo de LEI provado (Jacobi refutado: pilha `1,85×` mais agitada; Gauss–Seidel por cores na banda da ordem) e de CUSTO (`1,6` µs por despacho num passe); não construído nesta janela (quatro peças, duas topologias novas do dispositivo). Prompt: [`HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_CONTACTO_NA_PLACA.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_CONTACTO_NA_PLACA.md) |
+
+**Superfície de colisão nova (o integrador mede):**
+- `ph2d-node-motion-shape`: `param.rs` (`STROKE_CAP`/`STROKE_JOIN` APENDADOS ao `ALL` e ao `SPECS` — outra linha que
+  apende params a este nó conflita aqui: os dois blocos ficam, pela ordem do merge, e a chave muda), `stroke_style.rs`
+  (novo), `lib.rs` (`Stroke` ganha `cap`/`join` — ⚠️ quem constrói `Stroke { width, rgba }` noutra linha não compila:
+  acrescente os dois campos), `hints.rs`, `param_gates.rs`, `tests.rs`.
+- `ph2d-i18n`: `node_params.rs` (`stroke_cap`/`stroke_join`) e `node_options.rs` (`cap_labels.*`/`join_labels.*`),
+  inseridos em ordem.
+- `ph2d-contact`: `impulso.rs` (o `monta` pela grelha; `Leis` ganha `jacobi` e `cores` — ⚠️ um `Leis { … }` literal
+  noutra linha não compila sem eles), `impulso_jacobi.rs` e `impulso_tests.rs` (novos).
+- `ph2d-node-sim-step`: `contact.rs` (`leis()` com as portas `PH2D_CONTACT_JACOBI`/`PH2D_CONTACT_CORES`; vazias = o
+  produto).
+- `ph2d-shape-gpu`: `contorno_cpu_vetor.rs` (novo — os vetores da porta CPU MUDARAM-SE para lá: `contorno_cpu.rs`
+  `686 → 613`).
+- `ph2d-app-motion`: `motion_state_pilha_demo.rs` (`Medida`/`medida_de`/
+  `build_com`; a cena do smoke ao bit), `motion_state_traco_esticado_demo.rs` (`PH2D_TRACO_ESTICADO_PONTA`),
+  `motion_shape_gen.rs` (uma linha: a ponta e a junta), `motion_shape_traco.rs` (`ponta_e_junta`), sondas e gates
+  novos (`*_tests.rs`, `motion_shape_placa_gpu_despachos_probe.rs`).
+- `ph2d-motion-doc`: um teste no `lib.rs`. Ferramentas: `mede_formas_na_placa.sh` (a `=114`, `COLIDE`),
+  `mutacao_a_onda_4_2026-10-05.py`.
+- **Foundational tocado:** nenhum. **Shell:** não tocada. **Contratos congelados:** nenhum.
+- **Env novas (portas de medição):** `PH2D_TRACO_ESTICADO_PONTA=0|1|2` · `PH2D_CONTACT_JACOBI=<it>` ·
+  `PH2D_CONTACT_CORES=1` · `PH2D_PILHA_LADOS`/`PH2D_PROVA_TIQUE` (só sondas).
+- Memória: três entradas na família régua (`193`): a recusa medida sobre a metade barata de um passo · a porta que
+  cresce a população e não o recipiente · a sonda de simulação sem o `advance_tick`.
+
+**Mutações:** [`mutacao_a_onda_4_2026-10-05.py`](../ferramentas/mutacao_a_onda_4_2026-10-05.py) — **`12/12` sangram**
+(o `i1` e o `i3` sobreviveram à 1.ª corrida e viraram gate: a lista das restrições, `lo < hi`, a fixtura sem a peça
+grande).

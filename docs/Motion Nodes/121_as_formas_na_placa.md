@@ -2685,3 +2685,15 @@ o gate passa a medir isso: `the_loop_pause_drops_the_world_and_the_next_fall_sta
 
 **Mutações** (o mesmo `mutacao_a_onda_5_2026-10-06.py`, `m14`/`m15` novas): `m3`, `m14`, `m15` sangram (as outras
 `13` não mudaram de alvo).
+
+**No app, com a carga a `4`–`8`** (`[motion-quadro]`, `release`, a pior janela de cada ciclo; `target/prova/onda6/app2/`):
+
+| peças por taça | RTX | iGPU | o cozimento (mediana · máximo) |
+|---|---|---|---|
+| `4 096` | `59`–`60` fps em todas | `60` fps em todas | `2,5` · `12` ms |
+| `16 384` | **`57`–`60` fps em todas** (antes `12`–`31`) | **`58`–`60` fps em todas** (antes `10`–`36`) | `7,7` · `26` ms (`≤ 2` tiques por quadro) |
+
+⇒ **o item da placa (o prompt de 05/10) FECHA pela medição:** a CPU com o rapier em vários núcleos chega a `16 384`
+por taça com o cozimento em metade do quadro; a cerca da placa fica (a cena com `Collide` coze na CPU). ⚠️ A primeira
+leitura (carga `25`–`30`) dava `4`–`59` fps: com o quadro a atrasar o relógio recupera até `8` tiques por quadro e o
+atraso alimenta-se — a medição do app não vale acima de `load ~5`.

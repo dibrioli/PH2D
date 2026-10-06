@@ -380,3 +380,30 @@ zero «Compiling»).
 
 **Perfil do loop** (`agent-loop-profile.sh`, `20` sessões): paralelismo `1,11`/passo ✗ · respostas por sessão `254` ✓ ·
 test:check `3,2×` ✗ · Edit `33 %` ✗ · contexto relido `405` mil ✗ · contexto inicial `62` mil ✓.
+
+## §14 — A 6.ª onda (06/10): o que o §13 deixou aberto, num bloco
+
+Smoke do §13 **APROVADO** pelo dono (06/10: *«smoke ok. siga com o que está em aberto»*). Números e recusas:
+[doc 121 §9.21](../121_as_formas_na_placa.md). Commits `12d3f220d` · `02106af1a` · o seguinte (docs).
+
+| item do §13 | o que ficou |
+|---|---|
+| **2. `16 384` por taça** | ✅ **FECHA:** o rapier `parallel` (os mesmos bits com `1`/`4`/`16` fios, e o hash do `ph2d_physics_c9` igual com e sem a feature) + a taça em SEGMENTOS (o 1.º passo de um mundo novo `213 → 8` ms). App: **`57`–`60` fps em todas as janelas nas duas placas** (cozimento `7,7` ms de mediana). O item da placa (prompt de 05/10) fecha com a medição |
+| **3. o p95 do tique a `4 096`** | ✅ `7,5 → 5,5` ms no produto; o app fica nos `60` fps (cozimento `2,5` ms de mediana) |
+| **1. o rolamento numa pilha de discos** | ✅ medido em três variantes; a trava destranca ao 2.º excesso SEGUIDO (discos `0,25` assentam: `44° → 0°`; gate novo). ⚠️ Os discos a `Rolling 0,1` agitam na QUEDA (`104°` contra `10,7` sem o botão) e assentam como sem ele — a leitura é um monte que desaba enquanto assenta; fica registado, não é um tremor da pilha parada |
+| **4. o comportamento que mudou** | ✅ aprovado no smoke |
+
+**Gate retirado com o porquê:** `the_second_lap_of_the_loop_repeats_the_first` — a mutação do mundo velho dava a MESMA
+diferença (o mundo já morria na pausa); no lugar dele `the_loop_pause_drops_the_world_and_the_next_fall_starts_a_new_one`.
+
+**Superfície de colisão (o integrador mede):** `ph2d-contact-world` (`Cargo.toml`: `rapier2d` + `parallel` — ⚠️ a feature
+UNIFICA-SE com a `ph2d-physics` em toda build que junte as duas; `Cargo.lock` ganha `rayon` em `parry2d`/`rapier2d`),
+`fixo.rs` (`colisores`, a taça por lados), `lib.rs` (`Fixo.colisores`, `excessos`), `rolar.rs`
+(`EXCESSOS_PARA_SOLTAR`); `ph2d-app-motion`: os gates da pilha e do recuo. Foundational: nenhum novo. Shell: não tocada.
+
+**Fecho corrido** (HEAD `02106af1a`, árvore limpa): `nextest-impacted` (`BASE=a46c4c200`) **`18 770/18 770`** ·
+`check --workspace --all-targets` (warnings negados) ✓ · clippy das `9` crates (com `ph2d-physics`/`-ecs`) ✓ · `fmt` ✓ ·
+censos `114/114` ✓ · standalone, workflow, `adr-index`, `doc-index`, `archive-index`, `machete`, **`cargo deny`** ✓ ·
+`tests/it` das `5` crates (com as duas da Física) `1 026/1 026`. Mutações `m3`/`m14`/`m15` sangram.
+
+**⏳ ABERTO:** nada desta família. Integrar só por ordem do dono.

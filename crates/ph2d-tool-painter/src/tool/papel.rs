@@ -11,13 +11,11 @@
 //! O papel é uma propriedade do DOCUMENTO (`PainterTool::papel`): o composite de todas as portas é
 //! *camadas SOBRE o papel*, antes da luz do relevo (o dente ilumina o papel), e o chão da aquarela é
 //! ele. **Escolher a cor no seletor aplica o papel** (o botão que existiu saiu, 2026-10-06): a 1.ª
-//! cor separa o papel da tinta numa camada de fundo branca opaca — o branco PURO da camada de baixo
-//! vira transparente (a tinta, opaca ou não, fica) — e as seguintes repintam-no ao vivo; o arrasto
-//! inteiro é um passo de desfazer.
-//!
-//! ⚠️ **A orla anti-aliased de um traço pintado ANTES de aplicar** guarda o branco com que ela se
-//! misturou (só o branco puro sai): sobre um papel de cor, um fio claro de 1 px em volta desses traços.
-//! Os traços pintados depois caem sobre o papel transparente e não têm orla.
+//! cor separa o papel da tinta na camada de fundo ([`separa_o_branco`]: o branco puro vira
+//! transparente e a orla de cada traço volta a ser a tinta dele com o alfa que tinha, a tinta opaca do
+//! miolo fica) — e as seguintes repintam-no ao vivo; o arrasto inteiro é um passo de desfazer.
+//! Pintar e depois escolher o papel dá a imagem de escolher o papel e depois pintar, ±1 nível (BUGS
+//! #42: antes só o branco PURO saía, e a orla AA guardava a mistura — um fio claro sobre papel de cor).
 
 use super::PainterTool;
 use crate::compositor::Region;
@@ -35,6 +33,140 @@ pub(crate) fn sobre_o_papel(px: &mut [u8; 4], p: [u8; 3]) {
         px[c] = ((u32::from(px[c]) * a + u32::from(p[c]) * (255 - a) + 127) / 255) as u8;
     }
     px[3] = 255;
+}
+
+/// Distância máxima de uma cor à reta branco→tinta para ser essa tinta numa opacidade menor: `2`
+/// níveis (o arredondamento de dois `u8`, `~1,7`) mais `20 %` da intensidade — cada dab arredonda, e
+/// na cauda de um traço mole um píxel de intensidade `~20` sai da reta por `3,4` níveis (medido no
+/// laço de `papel_orla_tests`; com `2` fixos a cadeia partia ali e o píxel ficava opaco: `184` níveis).
+const TOLERANCIA_DA_RETA: (f32, f32) = (2.0, 0.2);
+
+/// **Separa o BRANCO do papel da tinta de uma camada pintada sobre ele** — o matting com o fundo
+/// conhecido (branco): sobre branco, um píxel da orla de um traço é `c = F·a + branco·(1 − a)`, e
+/// conhecida a tinta `F` ele volta a ser `(F, a)`, que é o que o traço deixaria numa camada
+/// transparente. O branco puro vira transparente.
+///
+/// `F` sai do próprio traço: a partir do branco puro alcança-se cada vizinho (8) MAIS escuro, e de
+/// cada píxel sobe-se pelo vizinho mais escuro na mesma reta branco→cor (a mesma tinta mais opaca) até
+/// à CRISTA, que dá `F` e fica como está (a tinta opaca do miolo cobre o papel, escolha do dono). Uma
+/// área lisa fica fora: o caminho só entra nela pela orla, e o interior, sem vizinho mais escuro, é
+/// crista. Um píxel cuja subida acaba noutra tinta (fora da reta dela) fica. Só os opacos entram.
+///
+/// ⛔ Não é o «color to alpha» do GIMP: sem `F` ele escolhe a mistura mais transparente
+/// (`a = 1 − min(c)`), e o miolo opaco de um vermelho (`220,40,40`) ficaria a `84 %`.
+pub(crate) fn separa_o_branco(rgba: &mut [u8], w: usize, h: usize) {
+    let n = w * h;
+    debug_assert_eq!(rgba.len(), n * 4);
+    // «branco − cor» de um píxel, e a distância AO QUADRADO ao branco — inteira (≤ `3·255²`), o que
+    // deixa ordenar por contagem.
+    let cor = |rgba: &[u8], i: usize| {
+        [
+            255 - i32::from(rgba[i * 4]),
+            255 - i32::from(rgba[i * 4 + 1]),
+            255 - i32::from(rgba[i * 4 + 2]),
+        ]
+    };
+    let d2 = |c: [i32; 3]| (c[0] * c[0] + c[1] * c[1] + c[2] * c[2]) as u32;
+    // `m` na reta branco→`k` (ambos como «branco − cor»), com a tolerância de `TOLERANCIA_DA_RETA`.
+    let na_reta = |m: [i32; 3], k: [i32; 3]| {
+        let nk2 = d2(k) as f32;
+        if nk2 <= 0.0 {
+            return false;
+        }
+        let nm2 = d2(m) as f32;
+        let dot = (m[0] * k[0] + m[1] * k[1] + m[2] * k[2]) as f32;
+        let (fixa, relativa) = TOLERANCIA_DA_RETA;
+        let tol = fixa + relativa * nm2.sqrt();
+        nm2 - dot * dot / nk2 <= tol * tol
+    };
+    let vizinhos = |i: usize| {
+        let (x, y) = (i % w, i / w);
+        let (x0, x1, y0, y1) = (
+            x.saturating_sub(1),
+            (x + 1).min(w - 1),
+            y.saturating_sub(1),
+            (y + 1).min(h - 1),
+        );
+        (y0..=y1)
+            .flat_map(move |vy| (x0..=x1).map(move |vx| vy * w + vx))
+            .filter(move |&k| k != i)
+    };
+    let branco = |rgba: &[u8], i: usize| rgba[i * 4..i * 4 + 4] == [255, 255, 255, 255];
+    let candidato = |rgba: &[u8], i: usize| rgba[i * 4 + 3] == 255 && !branco(rgba, i);
+    // 1) A orla e o que ela alcança: semeada pelos píxeis encostados ao branco puro, e cada vizinho
+    //    mais escuro a seguir.
+    let mut na_orla = vec![false; n];
+    let mut fila: Vec<usize> = {
+        use rayon::prelude::*;
+        let r: &[u8] = rgba;
+        (0..n)
+            .into_par_iter()
+            .filter(|&i| candidato(r, i) && vizinhos(i).any(|k| branco(r, k)))
+            .collect()
+    };
+    fila.iter().for_each(|&i| na_orla[i] = true);
+    let mut orla = Vec::with_capacity(fila.len());
+    while let Some(m) = fila.pop() {
+        orla.push(m);
+        let tm = d2(cor(rgba, m));
+        for k in vizinhos(m) {
+            if !na_orla[k] && candidato(rgba, k) && d2(cor(rgba, k)) > tm {
+                na_orla[k] = true;
+                fila.push(k);
+            }
+        }
+    }
+    // 2) A tinta de cada um: a do vizinho mais escuro na reta, da crista para fora — por distância ao
+    //    branco DECRESCENTE (contagem), então o vizinho já tem a sua.
+    let maximo = d2([255, 255, 255]) as usize;
+    let mut conta = vec![0u32; maximo + 2];
+    for &i in &orla {
+        conta[maximo - d2(cor(rgba, i)) as usize + 1] += 1;
+    }
+    for b in 1..conta.len() {
+        conta[b] += conta[b - 1];
+    }
+    let mut ordem = vec![0usize; orla.len()];
+    for &i in &orla {
+        let b = maximo - d2(cor(rgba, i)) as usize;
+        ordem[conta[b] as usize] = i;
+        conta[b] += 1;
+    }
+    let mut tinta = vec![usize::MAX; n];
+    for &i in &ordem {
+        let ci = cor(rgba, i);
+        let ti = d2(ci);
+        let mais_escuro = vizinhos(i)
+            .filter(|&k| na_orla[k] && d2(cor(rgba, k)) > ti && na_reta(ci, cor(rgba, k)))
+            .max_by_key(|&k| d2(cor(rgba, k)));
+        tinta[i] = mais_escuro.map_or(i, |k| tinta[k]);
+    }
+    // 3) Cada píxel da orla na reta da sua tinta volta a ser `(F, a)`; a crista fica. O branco puro
+    //    sai. Os novos valores saem todos da tela de ANTES (lidos em paralelo), depois escrevem-se.
+    use rayon::prelude::*;
+    let r: &[u8] = rgba;
+    let novos: Vec<(usize, [u8; 4])> = ordem
+        .par_iter()
+        .filter_map(|&i| {
+            let f = tinta[i];
+            let (ci, cf) = (cor(r, i), cor(r, f));
+            if f == i || !na_reta(ci, cf) {
+                return None;
+            }
+            let a = (ci[0] * cf[0] + ci[1] * cf[1] + ci[2] * cf[2]) as f32 / d2(cf) as f32;
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let a8 = (a.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            Some((i, [r[f * 4], r[f * 4 + 1], r[f * 4 + 2], a8]))
+        })
+        .collect();
+    for (i, px) in novos {
+        rgba[i * 4..i * 4 + 4].copy_from_slice(&px);
+    }
+    rgba.par_chunks_mut(4).for_each(|px| {
+        if px == [255, 255, 255, 255] {
+            px.fill(0);
+        }
+    });
 }
 
 impl PainterTool {
@@ -80,7 +212,7 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
-    /// O branco PURO da camada raster de baixo vira transparente — onde o papel aparece.
+    /// A camada raster de baixo deixa o branco do papel ([`separa_o_branco`]) — onde o papel aparece.
     fn tira_o_branco_do_fundo(&mut self) {
         let fundo = self.layers.z_order_bottom_up().into_iter().find(|&id| {
             matches!(
@@ -91,18 +223,15 @@ impl PainterTool {
         let Some(fundo) = fundo else {
             return;
         };
-        let tira = |px: &mut [u8; 4]| {
-            if *px == [255, 255, 255, 255] {
-                *px = [0, 0, 0, 0];
-            }
-        };
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         if self.layers.active() == Some(fundo) {
             let mut c = self.canvas_rgba.as_ref().clone();
-            c.as_chunks_mut::<4>().0.iter_mut().for_each(tira);
+            separa_o_branco(&mut c, w, h);
             self.replace_canvas(Arc::new(c));
         } else if let Some(img) = self.images.get(&fundo) {
             let mut img = img.as_ref().clone();
-            img.rgba8.as_chunks_mut::<4>().0.iter_mut().for_each(tira);
+            let (iw, ih) = (img.width as usize, img.height as usize);
+            separa_o_branco(&mut img.rgba8, iw, ih);
             self.images.insert(fundo, Arc::new(img));
         }
         self.bump_layer_pixels(Some(fundo));

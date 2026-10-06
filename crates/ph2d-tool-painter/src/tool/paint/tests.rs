@@ -31,6 +31,9 @@ mod measure_commit_cost; // …e de que é feito o CUSTO: fork, pen-up, commit, 
 mod measure_dirty_overclaim;
 #[path = "measure_gpu_frontier.rs"]
 mod measure_gpu_frontier; // o pool dos cinco planos do traço escreve o que a alocação escrevia
+/// O fio claro dos traços pintados antes do papel (decisão do dono, 2026-10-06, BUGS #42).
+#[path = "papel_orla_tests.rs"]
+mod papel_orla_tests;
 #[path = "ribbon_probe.rs"]
 mod ribbon_probe; // W6 do plano 38: o orcamento da FITA — move, tique e o pen-up
 #[path = "solid_deposit_tests.rs"]

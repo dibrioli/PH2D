@@ -145,6 +145,11 @@ fn tab_opens_the_painter_and_gives_the_canvas_back() {
         ObjectMode::Paint,
         "não se segurou"
     );
+    // Report do dono (05/10): *«em edit e paint mode o gizmo da imagem não aparece»*.
+    assert!(
+        ph2d_editor_core::screens::hero::mode_drive::object_gizmo_shows(&c.hero),
+        "a imagem em Paint ficou sem gizmo"
+    );
     c.quadro(Some(ModeRequest::Toggle));
     assert_eq!(c.hero.gizmo.mode.current(), ObjectMode::Object);
     assert!(

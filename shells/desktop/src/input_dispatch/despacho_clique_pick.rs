@@ -291,7 +291,13 @@ impl crate::App {
         if let Some(b) =
             ph2d_app_vec::vector_mode::another_kind_under(whole_kind, &hits, &self.vec.entities)
         {
-            hero.gizmo.replace_selection(Some(b));
+            // ⚠️ Pela porta que avisa a sincronia: sem ela a caneta vazia apagava a escolha.
+            ph2d_app_vec::vec_selection::choose_other_kind(
+                &mut hero.gizmo,
+                &mut self.vec.pen,
+                &mut self.vec.sel,
+                b,
+            );
         }
     }
 

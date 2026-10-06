@@ -45,4 +45,10 @@ fn the_node_arm_hands_a_miss_to_the_pick_of_another_kind() {
         body.contains("another_kind_under("),
         "a lei pura nao decide"
     );
+    // ⛔ Report do dono (05/10): com um `replace_selection` cru a sincronia da caneta apagava a
+    // escolha no mesmo quadro.
+    assert!(
+        body.contains("vec_selection::choose_other_kind("),
+        "a escolha nao avisa a sincronia da caneta"
+    );
 }

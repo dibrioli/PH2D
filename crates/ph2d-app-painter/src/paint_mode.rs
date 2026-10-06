@@ -32,6 +32,11 @@ impl ModeFamily for Family {
     fn leave(&mut self, _: ObjectMode, _: u64, tools: &mut ToolRegistry) {
         leave(tools);
     }
+    /// ⭐ A imagem pintada mantém o gizmo (report do dono, 05/10: *«em edit e paint mode o gizmo da
+    /// imagem não aparece. corrija»*) — como antes de o Paint ser um modo.
+    fn parts_take_the_object_gizmo(&self, mode: ObjectMode) -> bool {
+        mode == ObjectMode::Paint
+    }
 }
 
 /// O id do Painter no registo de ferramentas.

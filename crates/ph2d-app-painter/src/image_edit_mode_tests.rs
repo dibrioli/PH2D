@@ -92,6 +92,10 @@ fn the_image_offers_edit_and_edit_is_the_image_tools() {
         c.hero.image_edit.mode_on,
         "o Edit não ligou as ferramentas de imagem"
     );
+    assert!(
+        ph2d_editor_core::screens::hero::mode_drive::object_gizmo_shows(&c.hero),
+        "a imagem em Edit ficou sem gizmo (report do dono, 05/10)"
+    );
     c.quadro(Some(ModeRequest::Toggle));
     assert_eq!(c.em_edit(), None);
     assert!(

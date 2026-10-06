@@ -63,6 +63,10 @@ impl ModeFamily for Family {
     fn holds_the_whole_kind(&self, mode: ObjectMode) -> bool {
         mode == ObjectMode::Edit
     }
+    /// ⭐ A imagem em Edit mantém o gizmo (report do dono, 05/10) — como com o antigo botão IMG.
+    fn parts_take_the_object_gizmo(&self, mode: ObjectMode) -> bool {
+        mode == ObjectMode::Edit
+    }
     fn parts(&mut self, entity: u64) -> Option<Vec<u64>> {
         if !self.images.contains(&entity) {
             return None;

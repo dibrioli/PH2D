@@ -163,6 +163,23 @@ pub fn sync_selection(
     state.paths = pen.selected_paths().to_vec();
 }
 
+/// ⭐ **O canvas do vetor escolheu um objecto de OUTRO tipo** (o Node que falha o vetor; dono,
+/// 05/10: *«ao clicar num objeto de outro tipo, o objeto deve ser selecionado»*): a caneta fica sem
+/// selecção e o gizmo com ELE — e a sincronia fica a sabê-lo. ⛔ Sem o `state`, o ramo 1 (a caneta
+/// mudou ⇒ «o canvas mandou») reescrevia o gizmo com a caneta VAZIA no mesmo quadro, e o objecto
+/// escolhido sumia (report do dono, 05/10: *«a imagem não é selecionada»*).
+pub fn choose_other_kind(
+    gizmo: &mut GizmoStateGroup,
+    pen: &mut ph2d_vec_edit::PenTool,
+    state: &mut VecSelSync,
+    bits: u64,
+) {
+    pen.select_many(&[]);
+    gizmo.replace_selection(Some(bits));
+    state.bits.clear();
+    state.paths.clear();
+}
+
 /// Os ancestrais cuja sub-árvore vetorial está INTEIRAMENTE selecionada. Sem eles a
 /// linha do grupo nunca acenderia na Hierarquia — só as dos filhos.
 fn fully_selected_ancestors(
@@ -199,6 +216,49 @@ mod tests {
     use ph2d_ecs::{Name, Transform};
     use ph2d_vec_entities::entities::{VecEntityMap, group_entities, sync};
     use ph2d_vec_scene::rectangle;
+
+    /// ⭐⭐ GATE (report do dono, 05/10: *«a imagem não é selecionada e não sai do edit do vector»*)
+    /// — **o Node que falha o vetor e escolhe um objecto de outro tipo deixa-o seleccionado depois
+    /// da sincronia**: a caneta largou a forma (o `on_press_node` no vazio) e a sincronia corre com a
+    /// ferramenta na mão. CONTROLO: sem avisar a sincronia, o ramo 1 reescreve o gizmo com a caneta
+    /// vazia — o defeito.
+    /// (Mutação: o `choose_other_kind` não limpar o `state` ⇒ RED.)
+    #[test]
+    fn choosing_another_kind_survives_the_sync() {
+        let (mut sim, mut scene, mut map) = setup();
+        let a = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+        sync(&mut sim, &mut scene, &mut map);
+        let sprite = sim.world_mut().spawn_empty().id().to_bits();
+        let arm = |gizmo: &mut GizmoStateGroup,
+                   pen: &mut ph2d_vec_edit::PenTool,
+                   state: &mut VecSelSync| {
+            pen.select_many(&[a]);
+            sync_selection(gizmo, &sim, &scene, &map, pen, state, true);
+            assert!(gizmo.selection.is_some(), "fixture morto");
+        };
+        // CONTROLO: o defeito — só o gizmo muda.
+        let (mut gizmo, mut pen, mut state) = Default::default();
+        arm(&mut gizmo, &mut pen, &mut state);
+        pen.select(None);
+        gizmo.replace_selection(Some(sprite));
+        sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut state, true);
+        assert_eq!(
+            gizmo.selection, None,
+            "controlo: a sincronia já não apaga a escolha?"
+        );
+        // A cura.
+        let (mut gizmo, mut pen, mut state) = Default::default();
+        arm(&mut gizmo, &mut pen, &mut state);
+        pen.select(None);
+        choose_other_kind(&mut gizmo, &mut pen, &mut state, sprite);
+        sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut state, true);
+        assert_eq!(
+            gizmo.selection,
+            Some(sprite),
+            "a sincronia apagou o objecto escolhido"
+        );
+        assert!(pen.selected_paths().is_empty());
+    }
 
     /// **APAGAR UMA de duas formas selecionadas PODA o pen — não re-deriva dele.**
     ///

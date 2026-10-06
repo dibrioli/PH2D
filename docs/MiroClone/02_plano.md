@@ -24,7 +24,7 @@ A desconfiança do dono foi medida contra o código e contra o oráculo. Resulta
 
 | peça | estado | prova |
 |---|---|---|
-| **roteador de setas** (`ph2d-vec-connect`) — A* sobre grafo de visibilidade ortogonal, **puro** (só `serde`, 1 384 linhas) | ✅ **melhor que o oráculo** | o Excalidraw 0.18.1 corrido aqui: a seta em cotovelo vai **através** do obstáculo (`(180,205)→(500,205)` sobre a caixa `x 280..400`); desalinhada, o segmento `x=340` cai dentro dela — [README do oráculo](ferramentas/excalidraw_oracle/README.md#o-que-já-mediu). O nosso desvia (`crates/ph2d-app-vec/src/connector_walls.rs`) |
+| **roteador de setas** (`ph2d-vec-connect`) — A* sobre grafo de visibilidade ortogonal, **puro** (só `serde`, 1 384 linhas) | ✅ **melhor que o oráculo** | o Excalidraw 0.18.1 corrido aqui: a seta em cotovelo vai **através** do obstáculo (`(180,205)→(500,205)` sobre a caixa `x 280..400`); desalinhada, o segmento `x=340` cai dentro dela — [README do oráculo](ferramentas/excalidraw_oracle/README.md#o-que-já-mediu). O nosso desvia (`crates/ph2d-app-vec/src/connector_walls.rs`). ⚠️ **Ordem do dono (06/10): as setas do quadro NÃO desviam** (o idioma do Miro) — o roteador fica só para o cotovelo contornar as SUAS duas formas (§6) |
 | âncora ao centro (`Anchor::Floating`) × ponto fixo (`Anchor::Port`), recto/cotovelo/curvo, rótulo, 8 pontas, alvo apagado ⇒ ponta solta | ✅ | `crates/ph2d-ecs/src/vec_connector.rs:38-72` · `crates/ph2d-vec-scene/src/marker.rs` |
 | geometria das formas (`ShapeKind`, ~50 tipos incl. fluxograma) | ✅ | `crates/ph2d-vec-scene/src/kind.rs:38-98` |
 | **a rota recalcula-se a CADA QUADRO, para cada seta**, sem cache de rota nem marca de sujo (só a histerese do lado, `SideCache`) | ⚠️ risco a escala | `crates/ph2d-app-vec/src/connector_live.rs:46,409-452` — nunca medido com centenas de setas |
@@ -202,28 +202,26 @@ a **3,1 ms**); forma com menos de **4 px** é um ponto de cor (a 2 px, 100 mil f
 ### §2.3 — Medido na W2 (2026-10-06): as setas
 
 Cena `Flow` (partilhada pelas três réguas): N formas 160×100 em grelha com o vão de nascença (80) e
-N/10 setas em cotovelo entre vizinhas, presas ao centro, vista a enquadrar tudo. `loadavg 4,5`, RTX
-5060 Ti / Vulkan, mínimo de 7×20 (mediana entre parênteses). Réguas: `measure_route_cost` (cache),
+N/10 setas CURVAS entre vizinhas, presas ao centro, vista a enquadrar tudo. `loadavg ~5`, RTX 5060 Ti
+/ Vulkan, mínimo de 7×20 (mediana entre parênteses). Réguas: `measure_route_cost` (cache),
 `measure_encode_cost` (CPU), `measure_gpu_raster_cost` (placa).
 
 | N formas | setas | 1.ª sincronização | parado | arrastar 1 forma (revistas / refeitas) | encode CPU | placa |
 |---|---|---|---|---|---|---|
-| 1 000 | 100 | 1,87 ms | 0 | 0,020 ms (1 / 1) | 0,17 ms | 0,28 ms |
-| 10 000 | 1 000 | 19,2 ms | 0 | 0,19 ms (3 / 3) | 1,19 ms | 0,55 ms |
-| 100 000 | 10 000 | 207 ms | 0 | 3,91 ms (1 / 1) | 9,32 ms | 1,75 ms |
+| 1 000 | 100 | 0,39 ms | 0 | 0,011 ms (1 / 1) | 0,18 ms | 0,29 ms |
+| 10 000 | 1 000 | 3,7 ms | 0 | 0,15 ms (1 / 1) | 1,19 ms | 0,56 ms |
+| 100 000 | 10 000 | 43 ms | 0 | 3,9 ms (1 / 1) | 8,9 ms | 1,77 ms |
 
-⇒ **10 mil formas com mil setas = ~1,4 ms de CPU e 0,55 ms de placa por quadro a arrastar**; o pior caso
-(100 mil + 10 mil setas, TUDO à vista, a arrastar) ~13 ms de CPU — 60 Hz ainda cabe. O «arrastar» de
-100 mil é quase todo o passeio da diferença (O(N) pelas versões); o A\* só corre para a seta tocada.
-A 1.ª sincronização (abrir um quadro de 10 mil setas) paga-se uma vez: 207 ms.
+⇒ **10 mil formas com mil setas = ~1,3 ms de CPU e 0,56 ms de placa por quadro a arrastar**; o pior caso
+(100 mil + 10 mil setas, TUDO à vista, a arrastar) ~13 ms de CPU — 60 Hz cabe. O «arrastar» de 100 mil é
+quase todo o passeio da diferença (O(N) pelas versões). Nível de detalhe (seta < 4 px no ecrã = traço de
+ponta a ponta): o encode de 100 mil + 10 mil setas passou de **11,2** para **8,9 ms**.
 
-⭐ **O tecto da região** (`DETOUR_K`, `ph2d-board-route::cache`): com a lei do vectorial (o ponto fixo
-sem tecto) cada rota viu **1 000 de 1 000** e **10 000 de 10 000** formas — o vão de nascença (80) é
-menor que a folga dupla (2 × 120), e a região encadeia o quadro inteiro; a régua a 100 mil não acabou em
-12 min. Com o tecto: **27,5 / 28,7** obstáculos por rota (máx 30). Gate:
-`a_short_arrow_in_a_dense_flow_sees_only_its_neighbourhood`.
-Nível de detalhe das setas (seta < 4 px no ecrã = traço de ponta a ponta): o encode de 100 mil + 10
-mil setas passou de **11,2** para **8,9–9,3 ms** (à carga 6 e 4,5 — o «antes» foi a load 6).
+**História medida desta onda** (recusas no §6): a 1.ª versão desviava das formas com a lei do vectorial
+(o ponto fixo de obstáculos sem tecto) e cada seta via o quadro INTEIRO — 1 000/1 000 e 10 000/10 000
+formas, a régua a 100 mil ficou 12 min sem acabar; um tecto de região (`DETOUR_K`) trouxe-a a ~28
+obstáculos por seta e a 1.ª sincronização de 10 mil setas a **207 ms**. O dono recusou o desvio (06/10)
+e a curva-de-cotovelo; sem A\* nas curvas, a mesma sincronização custa **43 ms**.
 
 ## §3 — As ondas (cada uma fecha com gate batched, smoke e o que o dono vê)
 
@@ -274,13 +272,15 @@ Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um bra
 - **Estado em 2026-10-06 (W2, commits `3e7c3564b..`):** ✅ seta no documento (`ElementKind::Connector`,
   no fim do enum: formato 2 não sobe), ferramenta Seta (`A`/`5`, botão na barra curta): arrastar de
   uma forma a outra realça o alvo e liga (`Ctrl` solta); miolo = centro, faixa junto ao contorno =
-  ponto fixo colado ao meio do lado; arrastar a ponta de uma seta seleccionada religa-a; recto /
-  cotovelo / curvo, 5 pontas na barra (8 no documento), rótulo (`Enter`/duplo-clique) sobre recorte do
-  fundo; pontos azuis (selecção ou passar o rato) e `Ctrl+seta` criam a forma seguinte já ligada;
-  apagar solta as pontas onde estão; copiar/duplicar religa as cópias. Roteador reusado com as leis
-  das pontas MOVIDAS para a crate pura (o Vector usa as mesmas). Cache de rota por diferença com
-  índice espacial e TECTO de região (§2.3). Oráculo (§4): `fixedPoint`, Z a meio do vão, volta com
-  recuo 40 medido. Smoke `PH2D_BOARD_SMOKE=3`. ⏳ smoke do dono.
+  ponto fixo colado ao meio do lado; arrastar a ponta de uma seta seleccionada religa-a; **curva do
+  Miro de nascença** (sai/entra perpendicular, braço medido), recta, cotovelo (contorna só as suas
+  formas); **pontos de ajuste** (bolinha a meio de um trecho cria, círculo oco arrasta, duplo-clique
+  apaga); 5 pontas na barra (8 no documento), rótulo (`Enter`/duplo-clique) sobre recorte do fundo;
+  pontos azuis (selecção ou passar o rato) e `Ctrl+seta` criam a forma seguinte já ligada; apagar
+  solta as pontas onde estão; copiar/duplicar religa as cópias. ⛔ **Nenhuma seta reage a outra forma**
+  (ordem do dono, 06/10). Cache de rota por diferença (§2.3). Oráculo (§4): `fixedPoint`, Z a meio do
+  vão, volta com recuo 40 medido, caixa do meio ignorada como no oráculo. Smoke `PH2D_BOARD_SMOKE=3`.
+  ⏳ smoke do dono.
 
 ### W3 — Notas adesivas (o coração do brainstorm)
 - Sticky (`N`): paleta de cores, três tamanhos, **cresce na vertical**; `Tab` cria a seguinte à direita
@@ -356,13 +356,15 @@ trouxe (§5.0: cena que ensina o contrário é pior que nenhuma), fotografada an
 | «escrever com uma forma seleccionada começa o texto» | ⛔ recusado na W1 (06/10): as letras soltas são atalhos (`R`, `O`, `D`, `V`, `H`); com a regra, desenhar uma forma e carregar `R` para a seguinte escrevia «r» nela. Escreve-se com `Enter` ou duplo-clique (o idioma do Excalidraw). Volta a pôr-se nas notas (W3), onde é o idioma do Miro |
 | quadro como objecto da cena (`ObjectKind::Board` + `ModeFamily`, a 1.ª versão deste plano) | ⛔ **ordem do dono 05/10**: abas na barra superior, fora da Hierarquia (§1.1) |
 | elementos como entidades ECS | ⛔ recusado (§1.1): Hierarquia, undo e laço a crescer com cada nota |
-| copiar o desvio de setas do Excalidraw | ⛔ medido pior que o nosso |
+| copiar o desvio de setas do Excalidraw | ⛔ medido pior que o nosso — e hoje o quadro não desvia de todo (linha abaixo) |
+| ⭐ setas que DESVIAM das formas no caminho (o roteador com as outras formas por obstáculo) | ⛔ **ordem do dono (06/10)**: *«setas não se reajustam sozinhas»* — o idioma do Miro: a rota depende só da seta, das suas duas formas e dos pontos de ajuste do artista. O cotovelo usa o roteador só para contornar as SUAS duas formas |
+| a curva = o cotovelo suavizado (o `RouteKind::Curved` do vectorial) | ⛔ **ordem do dono (06/10)**: «curvas exageradas»; a curva é a do Miro — uma cúbica perpendicular às faces com o braço medido na captura dele (`END_ARM`) |
 | ler o código do Excalidraw para portar o render | ⛔ §0.9 — corre-se. A porta do rough.js e do perfect-freehand é a **permissiva** (MIT, com aviso) e confere-se por passo contra o oráculo |
 | fontes do Excalidraw além da Excalifont/Virgil | ⚠️ não triadas — nenhuma embarca sem triagem |
 | rede na Etapa 1 | ⛔ decisão do dono (Etapa 2) |
 | texto rico: parley tem estilo por trecho? | ⚠️ a medir na W3 antes de desenhar |
-| a região de obstáculos de uma rota SEM tecto (a lei do vectorial: cresce pelo ponto fixo até parar) | ⛔ **medido e trocado** (06/10): com o vão de nascença (80 < 2 × 120 de folga) cada seta via o quadro INTEIRO — 1 000 de 1 000 e 10 000 de 10 000 formas, e a régua a 100 mil não acabou em 12 min. O quadro prende a região ao corredor + `DETOUR_K` (§2.3): ~28 obstáculos por seta |
+| a região de obstáculos de uma rota SEM tecto (a lei do vectorial) | ⛔ medido (06/10): num quadro denso cada seta via o quadro INTEIRO (1 000/1 000, 10 000/10 000). Morreu com o desvio (linha acima); fica a lição para quem o quiser de volta: precisa de tecto |
 | o `0.5001` do `fixedPoint` (e o `105.009` da rota) do oráculo | ⛔ desempate dele, não lei: o nosso meio de lado é `0.5` exacto (gate com tolerância 0,01) |
 | a ponta `arrow` com a abertura do Excalidraw (~20°) | ⛔ fica a do catálogo de pontas do vectorial (26,6°): uma lei de pontas para o app; o TAMANHO é o medido (`HEAD_SCALE`) |
-| rever TODAS as setas a cada quadro (o `recook` do vectorial) | ⛔ recusado para o quadro (§0): a cache revê só as setas cuja região toca uma forma que mudou |
+| rever TODAS as setas a cada quadro (o `recook` do vectorial) | ⛔ recusado para o quadro (§0): a cache revê só a seta que mudou ou cuja forma de ponta mudou |
 | um ponto fixo a contar para o afastamento das paralelas | ⛔ foto da cena 3 (06/10): empurrava a seta do centro para fora do vértice do losango; só contam setas presas ao centro nas duas pontas |

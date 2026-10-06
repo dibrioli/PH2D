@@ -359,3 +359,27 @@ fn the_arrow_passes_through_its_waypoints_and_each_leg_has_a_middle_handle() {
         assert_eq!(r.sides[0], Dir::North, "{route:?}");
     }
 }
+
+/// A cache REVÊ só a seta tocada (não todas): mexer numa forma que não é ponta de ninguém revê zero;
+/// mudar só os PONTOS de uma seta refá-la.
+#[test]
+fn the_cache_revisits_only_the_touched_arrow_and_sees_waypoint_changes() {
+    let mut doc = BoardDoc::default();
+    let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 160.0, 100.0]);
+    let b = shape(&mut doc, ShapeType::Rectangle, [400.0, 0.0, 160.0, 100.0]);
+    let c = shape(&mut doc, ShapeType::Rectangle, [0.0, 400.0, 160.0, 100.0]);
+    let lone = shape(&mut doc, ShapeType::Rectangle, [3000.0, 0.0, 160.0, 100.0]);
+    let ab = link(&mut doc, center(a), center(b), Route::Curved);
+    link(&mut doc, center(a), center(c), Route::Curved);
+    let mut cache = RouteCache::default();
+    cache.sync(&doc);
+    moved(&mut doc, lone, [5.0, 0.0]);
+    cache.sync(&doc);
+    assert_eq!(cache.revisited(), 0, "ninguém está preso à forma solta");
+    let mut el = doc.get(ab).unwrap().clone();
+    el.connector_mut().unwrap().waypoints = vec![[280.0, 300.0]];
+    BoardOp::Put(el).apply(&mut doc);
+    cache.sync(&doc);
+    assert_eq!((cache.revisited(), cache.rerouted()), (1, 1));
+    assert!(cache.get(ab).unwrap().polyline().contains(&[280.0, 300.0]));
+}

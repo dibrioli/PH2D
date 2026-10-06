@@ -863,3 +863,43 @@ fn a_new_arrow_is_curved() {
     let id = w.arrow_drag([80.0, 50.0], [480.0, 250.0], NONE).unwrap();
     assert_eq!(w.el(id).connector().unwrap().route, Route::Curved);
 }
+
+/// O meio do 2.º trecho de uma seta que JÁ tem um ponto cria o ponto novo ENTRE o 1.º e o fim (a
+/// ordem da rota), não no fim da lista.
+#[test]
+fn bending_the_second_leg_inserts_the_point_in_route_order() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    w.rect([600.0, 0.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [680.0, 50.0], NONE).unwrap();
+    let mut el = w.el(id).clone();
+    el.connector_mut().unwrap().waypoints = vec![[200.0, 300.0]];
+    w.h.apply(&mut w.doc, vec![BoardOp::Put(el)]);
+    let mid = w.ed.overlay(&w.doc, &mut w.ts).wires[0].mids[1];
+    w.drag(mid, [500.0, 300.0], NONE);
+    assert_eq!(
+        w.el(id).connector().unwrap().waypoints,
+        vec![[200.0, 300.0], [500.0, 300.0]]
+    );
+    let mid0 = w.ed.overlay(&w.doc, &mut w.ts).wires[0].mids[0];
+    w.drag(mid0, [100.0, 400.0], NONE);
+    assert_eq!(
+        w.el(id).connector().unwrap().waypoints,
+        vec![[100.0, 400.0], [200.0, 300.0], [500.0, 300.0]],
+        "o meio do 1.º trecho entra ANTES do 1.º ponto"
+    );
+}
+
+/// Arrastar uma seta SOLTA leva os seus pontos de ajuste com ela.
+#[test]
+fn moving_a_loose_arrow_carries_its_points() {
+    let mut w = world();
+    let id = w.arrow_drag([0.0, 0.0], [300.0, 0.0], NONE).unwrap();
+    let mut el = w.el(id).clone();
+    el.connector_mut().unwrap().waypoints = vec![[150.0, 100.0]];
+    w.h.apply(&mut w.doc, vec![BoardOp::Put(el)]);
+    w.cmd(Command::Nudge([10.0, 5.0]));
+    let c = w.el(id).connector().unwrap().clone();
+    assert_eq!(c.waypoints, vec![[160.0, 105.0]]);
+    assert_eq!(c.ends(), [End::Free([10.0, 5.0]), End::Free([310.0, 5.0])]);
+}

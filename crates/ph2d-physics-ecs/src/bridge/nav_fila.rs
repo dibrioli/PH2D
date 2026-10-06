@@ -48,6 +48,30 @@ pub(super) const ORCAMENTO_DE_TRABALHO_POR_TIQUE: u64 = 20_000;
 /// | **`16`** | **`0`** | **`7,5 · 12,9`** | **`40 000`** |
 pub(super) const PROCURAS_EM_PARALELO: usize = 16;
 
+/// ⭐ **As alavancas da sonda e dos gates** — escolhidas em EXECUÇÃO, para que as versões se meçam no
+/// MESMO processo (a régua do dono de 05/10). Por omissão, o produto.
+pub(super) struct Sonda {
+    /// (W15) `false` = toda procura inteira, no tique em que é pedida — [`PhysicsBridge::set_nav_slices`].
+    pub(super) fatias: bool,
+    /// (W15) Quantas procuras a meio avançam em paralelo num tique — [`PROCURAS_EM_PARALELO`].
+    pub(super) paralelas: usize,
+    /// (plano 30 §25, B) `false` = o caminho não contorna os corpos que andam — [`PhysicsBridge::set_nav_detour`].
+    pub(super) contorno: bool,
+    /// (plano 30 §25, C2) O alvo à vista dispensa a procura — [`ph2d_nav::agent::a_vista`].
+    pub(super) a_vista: bool,
+}
+
+impl Default for Sonda {
+    fn default() -> Self {
+        Self {
+            fatias: true,
+            paralelas: PROCURAS_EM_PARALELO,
+            contorno: true,
+            a_vista: true,
+        }
+    }
+}
+
 /// FNV-1a de 64 bits, por palavra — a assinatura só precisa de distinguir.
 struct Fnv(u64);
 
@@ -135,7 +159,7 @@ impl PhysicsBridge {
         q: &Query<'_>,
     ) -> (BTreeMap<Entity, Planeado>, u64, u64) {
         let mut prontos = BTreeMap::new();
-        if !self.nav.fatias {
+        if !self.nav.sonda.fatias {
             return (prontos, 0, 0);
         }
         let mut fila: Vec<((u64, bool, u32), Entity, ChaveMalha)> = vez
@@ -156,11 +180,11 @@ impl PhysicsBridge {
             meshes,
             agents,
             planos,
-            paralelas,
+            sonda,
             orcamento,
             ..
         } = &mut self.nav;
-        let corre = (*paralelas).min(fila.len());
+        let corre = sonda.paralelas.min(fila.len());
         for &(_, e, _) in &fila[corre..] {
             if let Some(rt) = agents.get_mut(&e) {
                 rt.owed = rt.owed.saturating_add(1);
@@ -230,13 +254,24 @@ impl PhysicsBridge {
     /// (W15) O CONTROLO da sonda e dos gates: `false` desliga a vez e as fatias — toda procura corre
     /// inteira no tique em que é pedida (só a fila da malha que muda espera). Por omissão, ligadas.
     pub fn set_nav_slices(&mut self, on: bool) {
-        self.nav.fatias = on;
+        self.nav.sonda.fatias = on;
+    }
+
+    /// (plano 30 §25, C2) A sonda e o CONTROLO: `false` = o alvo à vista também espera pela procura.
+    pub fn set_nav_sight(&mut self, on: bool) {
+        self.nav.sonda.a_vista = on;
+    }
+
+    /// (plano 30 §25, B) A sonda e o CONTROLO: `false` = o caminho atravessa os corpos que andam (só o
+    /// desvio os vê, como antes).
+    pub fn set_nav_detour(&mut self, on: bool) {
+        self.nav.sonda.contorno = on;
     }
 
     /// (W15) A sonda: quantas procuras a meio avançam em paralelo num tique (`0` = nenhuma: só a
     /// condução as avança, em série).
     pub fn set_nav_parallel(&mut self, n: usize) {
-        self.nav.paralelas = n;
+        self.nav.sonda.paralelas = n;
     }
 
     /// (W15) O trabalho de procura ([`ph2d_nav::Stats::work`]) gasto no último tique, todo.

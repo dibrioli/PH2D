@@ -15,8 +15,17 @@
 //! (W14) `LAMAS=<n>` põe `n` áreas de lama (caixas sensoras, `LAMA_PESO`, por omissão `4`) com outra
 //! semente — as caixas e os agentes ficam os mesmos: a régua do orçamento quando a procura é a PONDERADA.
 //! `ORCAMENTO=<n>` muda o orçamento de trabalho por tique (por omissão o de fábrica, `20 000`).
+//!
+//! ⭐ (plano 30 §25, C e D — UMA rodada) Sem `LAMAS`, corre as duas cenas (`0` e `150` lamas) no mesmo
+//! processo. Cada versão corre também num pool `rayon` de UMA thread (a web, D) — o resultado é o mesmo, só
+//! o relógio muda. `PERSEGUIDORES=<k>` (por omissão `10`) agentes perseguem uma PRESA que anda em
+//! círculo: a régua do atraso de quem replaneia porque o alvo andou (C2) — os tiques seguidos em que cada
+//! um tem a procura pedida e por servir. E o trabalho TOTAL de procura por porta (o bloco dela mais o
+//! CONTROLO): a régua de que a vez não DESPERDIÇA trabalho (C1).
 
 use std::time::Instant;
+
+use ph2d_ecs::stable_name_id;
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
@@ -52,7 +61,7 @@ fn caixa(w: &mut bevy_ecs::world::World, kind: BodyKind, c: Vec2, hx: f32, hy: f
     .id()
 }
 
-fn cena(agentes: usize) -> (SimWorld, Entity, Vec<Entity>) {
+fn cena(agentes: usize, lamas: usize) -> (SimWorld, Entity, Vec<Entity>) {
     let mut sim = SimWorld::new();
     let w = sim.world_mut();
     w.spawn((
@@ -75,7 +84,7 @@ fn cena(agentes: usize) -> (SimWorld, Entity, Vec<Entity>) {
     let env = |k: &str| std::env::var(k).ok().and_then(|v| v.parse::<f32>().ok());
     let peso = env("LAMA_PESO").unwrap_or(4.0);
     let mut l = Lcg(99);
-    for _ in 0..env("LAMAS").map_or(0, |n| n as usize) {
+    for _ in 0..lamas {
         let (x, y) = (l.next() * 100.0, l.next() * 100.0);
         let (hx, hy) = (1.0 + l.next() * 3.0, 1.0 + l.next() * 3.0);
         w.spawn((
@@ -133,7 +142,70 @@ fn cena(agentes: usize) -> (SimWorld, Entity, Vec<Entity>) {
             .id(),
         );
     }
+    // A PRESA (um corpo que anda, ver [`presa_em`]) e quem a persegue: longe dela, no chão livre.
+    w.spawn((
+        Name::new("Presa"),
+        RigidBody {
+            kind: BodyKind::Kinematic,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 0.4 },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(PRESA_C.0 + PRESA_R, PRESA_C.1)),
+    ));
+    let k = std::env::var("PERSEGUIDORES")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(10usize);
+    let mut perseguidores = 0;
+    while perseguidores < k {
+        let (x, y) = (2.0 + a.next() * 96.0, 2.0 + a.next() * 96.0);
+        if !livre(x, y) || (x - PRESA_C.0).hypot(y - PRESA_C.1) < 15.0 {
+            continue;
+        }
+        perseguidores += 1;
+        quem.push(
+            w.spawn((
+                Name::new("Perseguidor"),
+                RigidBody {
+                    kind: BodyKind::Kinematic,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.4 },
+                    ..Collider::default()
+                },
+                TopDownPlayer::from_law(TopDownLaw {
+                    default_controls: false,
+                    direction: DirectionMode::Free,
+                    ..TopDownLaw::default()
+                }),
+                NavAgent {
+                    target: NavTarget::Named(stable_name_id("Presa")),
+                    ..NavAgent::default()
+                },
+                Transform::from_translation(Vec2::new(x, y)),
+            ))
+            .id(),
+        );
+    }
     (sim, porta, quem)
+}
+
+/// O centro e o raio do círculo da presa (`2 m/s`).
+const PRESA_C: (f32, f32) = (50.0, 50.0);
+const PRESA_R: f32 = 6.0;
+
+/// A presa no tique `t`.
+fn presa_em(sim: &mut SimWorld, t: u64) {
+    let a = t as f32 / 60.0 * 2.0 / PRESA_R;
+    let w = sim.world_mut();
+    let mut q = w.query::<(&Name, &mut Transform)>();
+    for (n, mut tr) in q.iter_mut(w) {
+        if n.as_str() == "Presa" {
+            tr.translation = Vec2::new(PRESA_C.0 + PRESA_R * a.cos(), PRESA_C.1 + PRESA_R * a.sin());
+        }
+    }
 }
 
 /// As procuras de todos os agentes até agora.
@@ -144,25 +216,70 @@ fn procuras(b: &PhysicsBridge, quem: &[Entity]) -> u64 {
         .sum()
 }
 
-/// Um bloco de `BLOCO` tiques: o pior tique em ms, o maior trabalho de procura do caminho CRÍTICO num
-/// tique (a maior fatia em paralelo mais a condução), e o maior número de procuras começadas num tique.
+/// O que um bloco de `BLOCO` tiques mede: o pior tique em ms, o maior trabalho de procura do caminho
+/// CRÍTICO num tique (a maior fatia em paralelo mais a condução), o maior número de procuras começadas
+/// num tique, e o trabalho de procura TODO do bloco.
+#[derive(Default)]
+struct Medida {
+    pior: f64,
+    critico: u64,
+    mais: u64,
+    trabalho: u64,
+}
+
+/// (C2) O atraso dos perseguidores: os tiques SEGUIDOS em que cada um tem por acabar a procura que pediu
+/// porque o ALVO ANDOU (`AMeio::persegue`) — o maior e a média das esperas. (A 3.ª rodada contava também a
+/// dívida da porta, em que ele anda um caminho que ainda serve: misturava a espera inofensiva com a reacção.)
+#[derive(Default)]
+struct Atraso {
+    seguidos: std::collections::BTreeMap<Entity, u32>,
+    max: u32,
+    soma: u64,
+    n: u64,
+}
+
+impl Atraso {
+    fn mede(&mut self, b: &PhysicsBridge, perseguidores: &[Entity]) {
+        for &e in perseguidores {
+            let espera = b
+                .nav_agent(e)
+                .is_some_and(|rt| rt.a_meio.is_some_and(|a| a.persegue));
+            let s = self.seguidos.entry(e).or_default();
+            if espera {
+                *s += 1;
+            } else if *s > 0 {
+                (self.max, self.soma, self.n) = (self.max.max(*s), self.soma + u64::from(*s), self.n + 1);
+                *s = 0;
+            }
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn bloco(
     sim: &mut SimWorld,
     b: &mut PhysicsBridge,
     quem: &[Entity],
+    perseguidores: &[Entity],
     t: &mut u64,
-) -> (f64, u64, u64) {
-    let (mut pior, mut trabalho, mut mais) = (0.0f64, 0u64, 0u64);
+    pool: &rayon::ThreadPool,
+    atraso: &mut Atraso,
+) -> Medida {
+    let mut m = Medida::default();
     for _ in 0..BLOCO {
         *t += 1;
+        presa_em(sim, *t);
         let antes = procuras(b, quem);
+        let tique = *t;
         let t0 = Instant::now();
-        b.dispatch(sim, true, *t);
-        pior = pior.max(t0.elapsed().as_secs_f64() * 1e3);
-        trabalho = trabalho.max(b.nav_search_critical_work());
-        mais = mais.max(procuras(b, quem) - antes);
+        pool.install(|| b.dispatch(sim, true, tique));
+        m.pior = m.pior.max(t0.elapsed().as_secs_f64() * 1e3);
+        m.critico = m.critico.max(b.nav_search_critical_work());
+        m.trabalho += b.nav_search_work();
+        m.mais = m.mais.max(procuras(b, quem) - antes);
+        atraso.mede(b, perseguidores);
     }
-    (pior, trabalho, mais)
+    m
 }
 
 /// O bloco depois de cada movimento da porta: o pior tique cai nos primeiros.
@@ -170,12 +287,16 @@ const BLOCO: usize = 16;
 /// As rodadas intercaladas (a ordem das versões roda a cada uma).
 const RODADAS: usize = 7;
 
-/// As versões, lado a lado: o nome, as fatias ligadas, e quantas procuras a meio em paralelo.
-const VERSOES: [(&str, bool, usize); 4] = [
-    ("A inteira", false, 0),
-    ("B série  ", true, 0),
-    ("B par 8  ", true, 8),
-    ("B par 16 ", true, 16),
+/// As versões, lado a lado: o nome, as fatias ligadas, quantas procuras a meio em paralelo, se corre
+/// num pool de UMA thread (a web), e o alvo à vista sem procura (C2). As rodadas do plano 30 §25 mediram
+/// também `8 · 4 · 2` em paralelo, um tecto do trabalho do passo em paralelo e a procura de quem persegue
+/// primeiro — recusados (`target/prova/w16/…rodada{1,2,3,4}.txt`).
+const VERSOES: [(&str, bool, usize, bool, bool); 5] = [
+    ("A inteira            ", false, 0, false, false),
+    ("B W15                ", true, 16, false, false),
+    ("B W15 · 1t           ", true, 16, true, false),
+    ("B vista              ", true, 16, false, true),
+    ("B vista · 1t         ", true, 16, true, true),
 ];
 
 fn loadavg() -> String {
@@ -195,7 +316,7 @@ fn main() {
     // `FASES=<n>`: o tique com `n` agentes e NADA a mudar (o CONTROLO), a média de 30.
     if let Ok(n) = std::env::var("FASES") {
         let n: usize = n.parse().expect("um número");
-        let (mut sim, _porta, _quem) = cena(n);
+        let (mut sim, _porta, _quem) = cena(n, 0);
         let mut b = PhysicsBridge::new();
         let mut t = 0u64;
         for _ in 0..30 {
@@ -214,85 +335,117 @@ fn main() {
         return;
     }
     // ⭐ (W15, a regra do dono de 05/10) As versões no MESMO processo, escolhidas em execução
-    // (`set_nav_slices`, `set_nav_parallel`): A = toda procura inteira no tique; B = a vez e as fatias,
-    // em série ou com `n` procuras a meio em paralelo. Intercaladas em blocos curtos com a ordem rodada;
-    // o MÍNIMO das rodadas, a mediana ao lado só como controlo.
+    // (`set_nav_slices`, `set_nav_parallel`, o pool): intercaladas em blocos curtos com a ordem rodada; o
+    // MÍNIMO das rodadas, a mediana ao lado só como controlo.
     let orc: u64 = std::env::var("ORCAMENTO")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(20_000);
-    println!("# loadavg: {} · orçamento {orc}", loadavg());
+    let lamas: Vec<usize> = std::env::var("LAMAS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .map_or(vec![0, 150], |n| vec![n]);
+    let um = rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .build()
+        .expect("o pool de uma thread");
+    let todos = rayon::ThreadPoolBuilder::new()
+        .build()
+        .expect("o pool de todos os núcleos");
     println!(
-        "# versão | agentes | pior tique depois da porta (ms, mín · mediana de {RODADAS}) | trabalho crítico num tique (máx) | procuras num tique (máx) | CONTROLO sem porta: pior tique (mín · mediana) | falta (m)"
+        "# loadavg: {} · orçamento {orc} · {} threads no pool de todos",
+        loadavg(),
+        todos.current_num_threads()
     );
-    for &n in &[10usize, 50, 200] {
-        let mut v: Vec<(SimWorld, Entity, Vec<Entity>, PhysicsBridge, u64)> = VERSOES
-            .iter()
-            .map(|&(_, fatias, paralelas)| {
-                let (mut sim, porta, quem) = cena(n);
-                let mut b = PhysicsBridge::new();
-                b.set_nav_replan_budget(orc);
-                b.set_nav_slices(fatias);
-                b.set_nav_parallel(paralelas);
-                let mut t = 0u64;
-                for _ in 0..30 {
-                    t += 1;
-                    b.dispatch(&mut sim, true, t);
-                }
-                (sim, porta, quem, b, t)
-            })
-            .collect();
-        let nv = v.len();
-        let mut porta = vec![Vec::new(); nv];
-        let mut ctl = vec![Vec::new(); nv];
-        let mut trab = vec![0u64; nv];
-        let mut proc = vec![0u64; nv];
-        for r in 0..RODADAS {
-            for k in 0..nv {
-                let i = (k + r) % nv;
-                let (sim, p, quem, b, t) = &mut v[i];
-                sim.world_mut()
-                    .get_mut::<Transform>(*p)
-                    .expect("a porta")
-                    .translation = Vec2::new(50.3 + ((r + 1) % 2) as f32, 50.3);
-                let (ms, w, m) = bloco(sim, b, quem, t);
-                porta[i].push(ms);
-                trab[i] = trab[i].max(w);
-                proc[i] = proc[i].max(m);
-                let (ms, _, _) = bloco(sim, b, quem, t);
-                ctl[i].push(ms);
-            }
-        }
-        for i in 0..nv {
-            let (sim, _, quem, b, _) = &v[i];
-            // O que falta, em média, a cada agente no fim (a régua de que a vez não os atrasa): pelo
-            // caminho, ou — quem ainda espera o 1.º — a direito até ao alvo.
-            let falta = quem
+    println!(
+        "# lamas | versão | agentes | pior tique depois da porta (ms, mín · mediana de {RODADAS}) | crítico (máx) | procuras num tique (máx) | CONTROLO sem porta (mín · mediana) | trabalho por porta (mediana) | atraso do perseguidor (tiques: máx · média) | falta (m)"
+    );
+    for &l in &lamas {
+        for &n in &[10usize, 50, 200] {
+            let mut v: Vec<_> = VERSOES
                 .iter()
-                .filter_map(|&e| {
-                    let p = sim.world().get::<Transform>(e)?.translation;
-                    let p = [f64::from(p.x), f64::from(p.y)];
-                    let rt = b.nav_agent(e)?;
-                    if !rt.path.is_empty() {
-                        return Some(rt.remaining(p));
+                .map(|&(_, fatias, paralelas, uma, vista)| {
+                    let (mut sim, porta, quem) = cena(n, l);
+                    let persegue: Vec<Entity> = quem
+                        .iter()
+                        .copied()
+                        .filter(|&e| {
+                            sim.world()
+                                .get::<Name>(e)
+                                .is_some_and(|x| x.as_str() == "Perseguidor")
+                        })
+                        .collect();
+                    let mut b = PhysicsBridge::new();
+                    b.set_nav_replan_budget(orc);
+                    b.set_nav_slices(fatias);
+                    b.set_nav_parallel(paralelas);
+                    b.set_nav_sight(vista);
+                    let pool = if uma { &um } else { &todos };
+                    let mut t = 0u64;
+                    for _ in 0..30 {
+                        t += 1;
+                        presa_em(&mut sim, t);
+                        pool.install(|| b.dispatch(&mut sim, true, t));
                     }
-                    let NavTarget::Point(t) = sim.world().get::<NavAgent>(e)?.target else {
-                        return None;
-                    };
-                    Some((p[0] - f64::from(t[0])).hypot(p[1] - f64::from(t[1])))
+                    (sim, porta, quem, persegue, b, t, pool, Atraso::default())
                 })
-                .sum::<f64>()
-                / quem.len() as f64;
-            let esperam = quem
-                .iter()
-                .filter(|&&e| b.nav_agent(e).is_none_or(|r| r.path.is_empty()))
-                .count();
-            let (pm, pd) = min_med(&mut porta[i]);
-            let (cm, cd) = min_med(&mut ctl[i]);
-            println!(
-                "{} | {n:>4} | {pm:>7.2} · {pd:>7.2} | {:>7} | {:>4} | {cm:>7.2} · {cd:>7.2} | {falta:.2} ({esperam} sem caminho)",
-                VERSOES[i].0, trab[i], proc[i]
-            );
+                .collect();
+            let nv = v.len();
+            let mut porta = vec![Vec::new(); nv];
+            let mut ctl = vec![Vec::new(); nv];
+            let mut total = vec![Vec::new(); nv];
+            let mut trab = vec![0u64; nv];
+            let mut proc = vec![0u64; nv];
+            for r in 0..RODADAS {
+                for k in 0..nv {
+                    let i = (k + r) % nv;
+                    let (sim, p, quem, persegue, b, t, pool, atraso) = &mut v[i];
+                    sim.world_mut()
+                        .get_mut::<Transform>(*p)
+                        .expect("a porta")
+                        .translation = Vec2::new(50.3 + ((r + 1) % 2) as f32, 50.3);
+                    let m = bloco(sim, b, quem, persegue, t, pool, atraso);
+                    porta[i].push(m.pior);
+                    trab[i] = trab[i].max(m.critico);
+                    proc[i] = proc[i].max(m.mais);
+                    let c = bloco(sim, b, quem, persegue, t, pool, atraso);
+                    ctl[i].push(c.pior);
+                    total[i].push((m.trabalho + c.trabalho) as f64);
+                }
+            }
+            for i in 0..nv {
+                let (sim, _, quem, _, b, _, _, atraso) = &v[i];
+                // O que falta, em média, a cada agente com um ponto por alvo (a régua de que a vez não os
+                // atrasa): pelo caminho, ou — quem ainda espera o 1.º — a direito até ao alvo.
+                let (soma, conta) = quem
+                    .iter()
+                    .filter_map(|&e| {
+                        let NavTarget::Point(t) = sim.world().get::<NavAgent>(e)?.target else {
+                            return None;
+                        };
+                        let p = sim.world().get::<Transform>(e)?.translation;
+                        let p = [f64::from(p.x), f64::from(p.y)];
+                        let rt = b.nav_agent(e)?;
+                        if !rt.path.is_empty() {
+                            return Some(rt.remaining(p));
+                        }
+                        Some((p[0] - f64::from(t[0])).hypot(p[1] - f64::from(t[1])))
+                    })
+                    .fold((0.0, 0usize), |(s, c), x| (s + x, c + 1));
+                let falta = soma / conta.max(1) as f64;
+                let esperam = quem
+                    .iter()
+                    .filter(|&&e| b.nav_agent(e).is_none_or(|r| r.path.is_empty()))
+                    .count();
+                let (pm, pd) = min_med(&mut porta[i]);
+                let (cm, cd) = min_med(&mut ctl[i]);
+                let (_, td) = min_med(&mut total[i]);
+                let media = atraso.soma as f64 / atraso.n.max(1) as f64;
+                println!(
+                    "{l:>3} | {} | {n:>4} | {pm:>7.2} · {pd:>7.2} | {:>7} | {:>4} | {cm:>7.2} · {cd:>7.2} | {td:>9.0} | {:>3} · {media:.2} | {falta:.2} ({esperam} sem caminho)",
+                    VERSOES[i].0, trab[i], proc[i], atraso.max
+                );
+            }
         }
     }
     println!("# loadavg: {}", loadavg());

@@ -30,7 +30,7 @@ fn barreira(sim: &mut SimWorld, c: (f32, f32), hx: f32, hy: f32) -> Entity {
 /// A corrida: o agente de `(-6, 0)` para `(6, 0)`, a barreira (`0,3 × 2·hy`) a andar a `vx` m/s a
 /// partir de `x0`. Devolve o tique em que chegou (`None` = não chegou), a menor folga à barreira
 /// ENQUANTO ela anda (a distância ao rectângulo menos o raio) e o pior recuo atrás da partida.
-fn corrida(hy: f32, x0: f32, vx: f32, desvio: bool) -> (Option<u64>, f32, f32) {
+fn corrida(hy: f32, x0: f32, vx: f32, desvio: bool, contorno: bool) -> (Option<u64>, f32, f32) {
     let mut sim = SimWorld::new();
     regiao(&mut sim);
     let b = barreira(&mut sim, (x0, 0.0), 0.15, hy);
@@ -42,6 +42,7 @@ fn corrida(hy: f32, x0: f32, vx: f32, desvio: bool) -> (Option<u64>, f32, f32) {
         desvio,
     );
     let mut bridge = PhysicsBridge::new();
+    bridge.set_nav_detour(contorno);
     let (mut chegou, mut folga, mut recuo) = (None, f32::INFINITY, 0.0f32);
     for t in 1..=900_u64 {
         let bx = x0 + vx * t as f32 / 60.0;
@@ -68,27 +69,43 @@ fn corrida(hy: f32, x0: f32, vx: f32, desvio: bool) -> (Option<u64>, f32, f32) {
 /// ⭐ (W14) **Um corpo LARGO que vem de frente é contornado** — o desvio vê-o em POLÍGONO com a
 /// velocidade dele, e o agente desliza à volta, com a folga do que ele anda num horizonte. Medido antes
 /// (a fileira de discos da W6): nenhum dos três chegava — colado à frente da barreira, ou empurrado `6 m`.
+/// ⭐ (plano 30 §25, B) E o CAMINHO contorna-o pela tangente: os três chegam em `≤ 2×` o CONTROLO
+/// parado (a mesma barreira quieta é parede da malha). Medido: `194 · 200 · 207` contra `194 · 198`;
+/// sem o contorno (o CONTROLO da cura) `213 · 578 · 311` — a de `3 m` lenta passa os `2×`.
 /// CONTROLO: o mesmo agente SEM desvio fica preso (a cena contém a armadilha). E à frente, no mesmo
 /// sentido, continua a passar.
 #[test]
 fn um_corpo_largo_que_vem_de_frente_e_contornado() {
-    for (nome, hy, vx, ate) in [
-        ("1,2 m a 0,3 m/s", 0.6, -0.3, 260),
-        ("3 m a 0,3 m/s", 1.5, -0.3, 650),
-        ("3 m a 1 m/s", 1.5, -1.0, 360),
+    let parado = |hy| corrida(hy, 3.0, 0.0, true, true).0.expect("o CONTROLO parado chega");
+    let mut lenta_sem_contorno = None;
+    for (nome, hy, vx) in [
+        ("1,2 m a 0,3 m/s", 0.6, -0.3),
+        ("3 m a 0,3 m/s", 1.5, -0.3),
+        ("3 m a 1 m/s", 1.5, -1.0),
     ] {
-        let (chegou, folga, recuo) = corrida(hy, 3.0, vx, true);
-        eprintln!("de frente, {nome}: chegou {chegou:?}, folga {folga:.3}, recuo {recuo:.3}");
+        let controlo = parado(hy);
+        let (chegou, folga, recuo) = corrida(hy, 3.0, vx, true, true);
+        let (sem_contorno, _, _) = corrida(hy, 3.0, vx, true, false);
+        eprintln!(
+            "de frente, {nome}: chegou {chegou:?} (sem o contorno {sem_contorno:?}, parado {controlo}), \
+             folga {folga:.3}, recuo {recuo:.3}"
+        );
         assert!(
-            chegou.is_some_and(|t| t <= ate),
-            "{nome}: chegou {chegou:?}"
+            chegou.is_some_and(|t| t <= 2 * controlo),
+            "{nome}: chegou {chegou:?}, o CONTROLO parado {controlo}"
         );
         assert!(folga > 0.05, "{nome}: roçou a barreira (folga {folga})");
         assert!(recuo <= 0.0, "{nome}: empurrado {recuo} m para trás");
+        if hy == 1.5 && vx == -0.3 {
+            lenta_sem_contorno = sem_contorno.map(|t| (t, controlo));
+        }
     }
-    let (sem, _, _) = corrida(1.5, 3.0, -0.3, false);
+    // A fixtura contém o fenómeno: sem o contorno do caminho, a barreira larga e lenta passa os `2×`.
+    let (t, controlo) = lenta_sem_contorno.expect("sem o contorno também chega");
+    assert!(t > 2 * controlo, "sem o contorno: {t} contra {controlo}");
+    let (sem, _, _) = corrida(1.5, 3.0, -0.3, false, true);
     assert_eq!(sem, None, "o CONTROLO sem desvio passou");
-    let (a_frente, _, _) = corrida(1.5, -3.0, 0.3, true);
+    let (a_frente, _, _) = corrida(1.5, -3.0, 0.3, true, true);
     assert!(a_frente.is_some_and(|t| t <= 230), "à frente: {a_frente:?}");
 }
 

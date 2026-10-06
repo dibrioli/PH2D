@@ -576,3 +576,55 @@ fn uma_procura_a_meio_numa_malha_que_mudou_recomeca() {
         rt.path
     );
 }
+
+/// Oito que seguem o herói que salta a cada tique, num orçamento de `1`: os tiques-agente com a procura
+/// pedida e por servir, e se cada caminho é a recta até ao herói. `poca` = uma poça de lama entre eles.
+fn perseguir_a_vista(vista: bool, poca: bool) -> (usize, bool) {
+    let mut sim = SimWorld::new();
+    regiao(&mut sim);
+    if poca {
+        caixa(&mut sim, (0.0, 0.0), 3.0, true);
+    }
+    let heroi = sim
+        .world_mut()
+        .spawn((Name::new("Herói"), Transform::from_translation(Vec2::new(4.0, 5.0))))
+        .id();
+    let nome = ph2d_ecs::stable_name_id("Herói");
+    let quem: Vec<Entity> = (0..8)
+        .map(|i| {
+            let em = (-7.6, -5.6 + 0.4 * i as f32);
+            agente(&mut sim, &format!("S{i}"), em, NavTarget::Named(nome), false)
+        })
+        .collect();
+    let mut b = PhysicsBridge::new();
+    b.set_nav_sight(vista);
+    let mut cena = HeroiInquieto { heroi };
+    b.dispatch_with_scene(&mut sim, true, 1, &mut cena);
+    b.set_nav_replan_budget(1);
+    let (mut espera, mut recta) = (0, true);
+    for t in 2..=40 {
+        b.dispatch_with_scene(&mut sim, true, t, &mut cena);
+        let h = sim.world().get::<Transform>(heroi).expect("o herói").translation;
+        for &e in &quem {
+            let r = b.nav_agent(e).expect("um agente");
+            espera += usize::from(r.a_meio.is_some() || r.owed > 0);
+            recta &= r.path.len() == 2
+                && (r.path[1][0] - f64::from(h.x)).abs() < 1e-6
+                && (r.path[1][1] - f64::from(h.y)).abs() < 1e-6;
+        }
+    }
+    (espera, recta)
+}
+
+/// ⭐ (plano 30 §25, C2) **Quem persegue um alvo À VISTA não espera a vez** — a recta é o caminho mais
+/// curto que existe, e instala-se sem procura: oito perseguidores de um herói que salta, num orçamento
+/// de `1`, têm a recta até ele em TODO tique. CONTROLOS: sem o alvo à vista esperam (`195` tiques-agente,
+/// medido); com uma poça de lama no meio também (a recta cruza um custo acima de `1`).
+#[test]
+fn quem_persegue_um_alvo_a_vista_nao_espera_a_vez() {
+    assert_eq!(perseguir_a_vista(true, false), (0, true), "à vista");
+    let (sem, _) = perseguir_a_vista(false, false);
+    assert!(sem >= 100, "o CONTROLO sem o alvo à vista esperou {sem}");
+    let (poca, recta) = perseguir_a_vista(true, true);
+    assert!(poca >= 100 && !recta, "com a lama no meio esperou {poca}");
+}

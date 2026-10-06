@@ -714,11 +714,12 @@ fn quem_nasce_com_a_fila_cheia_espera_pelo_tique_seguinte() {
     b.set_nav_parallel(0);
     let mut novos: Vec<Entity> = (0..2)
         .map(|i| {
+            // (plano 30 §25, C2) Atrás da parede de cima: um alvo à VISTA não espera a fila.
             agente(
                 &mut sim,
                 &format!("Novo {i}"),
                 (-6.0, 3.0 + i as f32),
-                NavTarget::Point([6.0, 5.0]),
+                NavTarget::Point([6.0, 0.5]),
             )
         })
         .collect();
@@ -810,6 +811,121 @@ fn um_scrub_numa_corrida_com_a_porta_a_alternar_devolve_a_mesma_corrida() {
                 primeira[(t - 1) as usize],
                 "o tique {t} depois do scrub para {alvo}"
             );
+        }
+    }
+}
+
+/// Duas portas (plano 30 §25, E): `B` fecha o atalho no tique `29` (entra na malha no `31`: medido, um
+/// corpo posto num tique é obstáculo dois tiques depois) e fica fechada até ao fim; `A`, longe
+/// de todo caminho (no canto de cima à esquerda), está lá até ao tique `59` e sai no `60`.
+struct DuasPortas {
+    a: Entity,
+    b: Entity,
+}
+
+impl ph2d_physics_ecs::SceneAtTick for DuasPortas {
+    fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool {
+        poe(sim, self.b, if tick >= 29 { (0.0, 0.0) } else { (30.0, 30.0) });
+        poe(sim, self.a, if tick < 60 { (-6.5, 4.5) } else { (30.0, 30.0) });
+        true
+    }
+}
+
+/// ⭐⭐ (plano 30 §25, E — a régua da guarda `sem_zona`) **Um scrub para logo depois de uma porta fechar
+/// o caminho, com OUTRA porta diferente no fim da corrida, devolve a mesma corrida.** Depois do scrub as
+/// malhas são as do FIM: a zona do que mudou no 1.º tique do replay é a diferença entre o fim e esse
+/// tique — a porta `A` (que o fim já não tem) e NÃO a `B` (fechada nos dois). A corrida viu a `B` partir o
+/// caminho dos guardas; sem a guarda, o replay só olhava para a zona da `A` e dava-o por andável. Quem vai
+/// à frente na fila é o PARTIDO (W9): com um orçamento de duas procuras, a corrida serve dois guardas e o
+/// replay sem a guarda serviria os dois da sala da direita (nascidos antes, caminho inteiro).
+/// A fixtura contém as condições: a `B` muda a malha no 1.º tique depois do âncora (`30`), a `A` é
+/// diferente no fim, os guardas iam pelo atalho no âncora, e no `31` a fila serve SÓ guardas.
+#[test]
+fn um_scrub_com_a_zona_de_outra_porta_no_fim_devolve_a_mesma_corrida() {
+    const FIM: u64 = 95;
+    let mut sim = SimWorld::new();
+    regiao(&mut sim, (0.0, 0.0));
+    // Os da sala da direita nascem PRIMEIRO (a ordem das entidades desempata a fila).
+    let de_la: Vec<Entity> = (0..2)
+        .map(|i| {
+            let y = -5.0 + 1.0 * i as f32;
+            agente(&mut sim, &format!("Da direita {i}"), (1.5, y), NavTarget::Point([7.0, y + 9.0]))
+        })
+        .collect();
+    corpo(&mut sim, "Baixo", BodyKind::Static, (0.0, -3.5), (0.3, 2.5));
+    corpo(&mut sim, "Cima", BodyKind::Static, (0.0, 2.5), (0.3, 1.5));
+    let b_porta = corpo(&mut sim, "Porta B", BodyKind::Kinematic, (30.0, 30.0), (0.3, 1.2));
+    let a_porta = corpo(&mut sim, "Porta A", BodyKind::Kinematic, (-6.5, 4.5), (0.5, 0.5));
+    let guardas: Vec<Entity> = (0..4)
+        .map(|i| {
+            let (x, y) = (-7.0 + 1.0 * i as f32, -1.0 + 0.6 * i as f32);
+            agente(&mut sim, &format!("Guarda {i}"), (x, y), NavTarget::Point([6.0, -0.5]))
+        })
+        .collect();
+    let quem: Vec<Entity> = de_la.iter().chain(&guardas).copied().collect();
+    let mut b = PhysicsBridge::new();
+    let mut cena = DuasPortas {
+        a: a_porta,
+        b: b_porta,
+    };
+    let foto = |sim: &mut SimWorld, b: &PhysicsBridge| {
+        quem.iter()
+            .map(|&e| {
+                let t = sim.world_mut().get::<Transform>(e).expect("o corpo");
+                ((t.translation.x, t.translation.y), b.nav_agent(e).cloned())
+            })
+            .collect::<Vec<_>>()
+    };
+    let mut primeira = Vec::new();
+    let (mut pelo_atalho_no_ancora, mut no_ancora, mut servidos_no_31) = (0, Vec::new(), Vec::new());
+    for t in 1..=FIM {
+        if t == 30 {
+            // Um orçamento de DUAS procuras dos guardas, e as procuras em série.
+            let duas: u64 = guardas[..2]
+                .iter()
+                .map(|&e| b.nav_agent(e).map_or(0, |r| r.last_work))
+                .sum();
+            b.set_nav_replan_budget(duas);
+            b.set_nav_parallel(0);
+        }
+        b.dispatch_with_scene(&mut sim, true, t, &mut cena);
+        primeira.push(foto(&mut sim, &b));
+        if t == 30 {
+            pelo_atalho_no_ancora = guardas.iter().filter(|&&e| pela_porta(&b, e)).count();
+            no_ancora = procuras_de(&b, &quem);
+        }
+        if t == 31 {
+            servidos_no_31 = procuras_de(&b, &quem)
+                .iter()
+                .zip(&no_ancora)
+                .map(|(a, n)| a > n)
+                .collect();
+        }
+    }
+    assert!(
+        pelo_atalho_no_ancora == guardas.len()
+            && servidos_no_31[..2] == [false, false]
+            && servidos_no_31[2..].iter().any(|&s| s),
+        "a fixtura: {pelo_atalho_no_ancora} pelo atalho no âncora, servidos no 31 {servidos_no_31:?}"
+    );
+    for alvo in [31u64, 33] {
+        b.dispatch_with_scene(&mut sim, false, alvo, &mut cena);
+        assert_eq!(
+            foto(&mut sim, &b),
+            primeira[(alvo - 1) as usize],
+            "o scrub para {alvo}"
+        );
+        for t in alvo + 1..=alvo + 8 {
+            b.dispatch_with_scene(&mut sim, true, t, &mut cena);
+            assert_eq!(
+                foto(&mut sim, &b),
+                primeira[(t - 1) as usize],
+                "o tique {t} depois do scrub para {alvo}"
+            );
+        }
+        // Volta ao fim (as malhas outra vez as do FIM) antes do scrub seguinte.
+        for t in alvo + 9..=FIM {
+            b.dispatch_with_scene(&mut sim, true, t, &mut cena);
         }
     }
 }

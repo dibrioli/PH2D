@@ -341,3 +341,43 @@ fn a_ultima_procura_guarda_o_trabalho_e_nao_os_nos() {
         }
     }
 }
+
+/// ⭐ (plano 30 §25, C2) **O alvo À VISTA** só quando a recta é mesmo o caminho mais curto: dentro da
+/// malha, sem custo acima de `1` no caminho, sem custo abaixo de `1` na tabela (uma estrada podia ser
+/// mais curta pelo custo) e sem atalhos (um teletransporte podia). Três faixas com a do meio na área `1`.
+#[test]
+fn o_alvo_a_vista_e_so_a_recta_que_nenhum_caminho_bate() {
+    let v = vec![
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [3.0, 0.0],
+        [4.0, 0.0],
+        [4.0, 4.0],
+        [3.0, 4.0],
+        [1.0, 4.0],
+        [0.0, 4.0],
+    ];
+    let p = vec![vec![0, 1, 6, 7], vec![1, 2, 5, 6], vec![2, 3, 4, 5]];
+    let m = NavMesh::from_polygons_with_areas(v, p, vec![0, 1, 0]).expect("malha válida");
+    let q = |costs, links| Query { costs, links };
+    let atalho = [crate::link::Link {
+        id: 0,
+        from: [0.5, 3.5],
+        to: [3.5, 3.5],
+        two_way: false,
+        teleport: true,
+        cost: 0.0,
+    }];
+    // A recta pela faixa da lama: à vista com a lama a `1`, não com ela a `4`.
+    assert!(a_vista(&m, &q(&[1.0, 1.0], &[]), [0.5, 0.5], [3.5, 3.5]));
+    assert!(!a_vista(&m, &q(&[1.0, 4.0], &[]), [0.5, 0.5], [3.5, 3.5]));
+    // A recta dentro de uma faixa sem lama, com a lama a `4` noutra: à vista.
+    assert!(a_vista(&m, &q(&[1.0, 4.0], &[]), [0.5, 0.5], [0.5, 3.5]));
+    // Uma área mais BARATA que `1` em qualquer sítio da tabela, ou um atalho: nunca.
+    assert!(!a_vista(&m, &q(&[1.0, 0.5], &[]), [0.5, 0.5], [0.5, 3.5]));
+    assert!(!a_vista(&m, &q(&[1.0, 1.0], &atalho), [0.5, 0.5], [0.5, 3.5]));
+    // Fora da malha (uma parede pelo meio): nunca.
+    let a = anel();
+    assert!(!a_vista(&a, &q(&[], &[]), [0.5, 0.5], [3.5, 3.5]));
+    assert!(a_vista(&a, &q(&[], &[]), [0.5, 0.5], [3.5, 0.5]));
+}

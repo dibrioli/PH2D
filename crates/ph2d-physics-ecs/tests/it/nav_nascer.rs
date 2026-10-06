@@ -47,11 +47,13 @@ fn procuraram(b: &PhysicsBridge, quem: &[Entity]) -> Vec<bool> {
         .collect()
 }
 
-/// A lei da FILA, numa faixa: sem o passo em paralelo (que tem os gates dele, `nav_fatias`).
+/// A lei da FILA, numa faixa: sem o passo em paralelo e sem o alvo à vista (cada um tem os gates dele,
+/// `nav_fatias`; aqui todo alvo está à vista, e a recta não espera a fila — plano 30 §25, C2).
 fn uma_faixa(orc: u64) -> PhysicsBridge {
     let mut b = PhysicsBridge::new();
     b.set_nav_replan_budget(orc);
     b.set_nav_parallel(0);
+    b.set_nav_sight(false);
     b
 }
 

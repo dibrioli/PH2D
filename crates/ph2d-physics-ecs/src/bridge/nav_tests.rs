@@ -155,3 +155,27 @@ fn a_distancia_a_uma_caixa_e_zero_dentro_e_a_do_canto_fora() {
     assert!((d([3.0, 0.5]) - 2.0).abs() < 1e-12, "ao lado");
     assert!((d([4.0, 5.0]) - 5.0).abs() < 1e-12, "do canto (3, 4, 5)");
 }
+
+/// ⭐ (plano 30 §25, B) **A tangente do caminho a um corpo que anda**: a barreira `[2,9; 3,1] × [−1,5;
+/// 1,5]` à frente de quem vai de `(−6, y)` para `+x`. No eixo (o empate) contorna pela DIREITA (`y < 0`,
+/// o lado do peso do desvio); acima do eixo, pela esquerda (o lado mais curto); a tangente passa a `r`
+/// da quina. CONTROLOS: o canto antes da barreira e a barreira fora do troço não mudam nada.
+#[test]
+fn o_caminho_contorna_um_corpo_pela_tangente_do_lado_mais_curto() {
+    let b = [[2.9, -1.5], [3.1, -1.5], [3.1, 1.5], [2.9, 1.5]];
+    let r = 0.6;
+    let d = desvio::contorna([-6.0, 0.0], [1.0, 0.0], 12.0, r, &b).expect("no caminho");
+    assert!(d[1] < 0.0, "o empate vai pela direita: {d:?}");
+    // A tangente passa a `r` da quina mais extrema do lado escolhido: `(2,9; −1,5)`, a de MAIOR ângulo
+    // vista de `(−6, 0)` (a de trás, `(3,1; −1,5)`, fica dentro dela).
+    let quina = [2.9_f64, -1.5];
+    let (wx, wy) = (quina[0] + 6.0, quina[1]);
+    let afast = (wx * d[1] - wy * d[0]).abs();
+    assert!((afast - r).abs() < 1e-9, "a tangente passa a {afast} da quina");
+    assert!(((d[0] * d[0] + d[1] * d[1]).sqrt() - 1.0).abs() < 1e-12);
+    let d = desvio::contorna([-6.0, 0.4], [1.0, 0.0], 12.0, r, &b).expect("no caminho");
+    assert!(d[1] > 0.0, "acima do eixo, pela esquerda: {d:?}");
+    // CONTROLOS: o canto antes da barreira (`8 m`, a `2,3` dela) e o troço que passa por cima dela.
+    assert_eq!(desvio::contorna([-6.0, 0.0], [1.0, 0.0], 8.0, r, &b), None);
+    assert_eq!(desvio::contorna([-6.0, 2.2], [1.0, 0.0], 12.0, r, &b), None);
+}

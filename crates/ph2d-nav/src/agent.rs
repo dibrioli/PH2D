@@ -144,6 +144,9 @@ pub struct AMeio {
     pub trabalho: u64,
     /// A assinatura das entradas com que começou ([`Vez::entradas`]).
     pub entradas: u64,
+    /// (plano 30 §25, C2) Pedida porque o ALVO ANDOU — a régua da sonda do atraso de quem persegue
+    /// (`examples/medir_replaneio.rs`: os tiques em que ela fica por acabar).
+    pub persegue: bool,
 }
 
 /// ⭐ (W15) **A vez de procurar deste agente, NESTE tique** — o que a ponte lhe dá e o que ele gasta.
@@ -167,6 +170,8 @@ pub struct Vez<'a> {
     pub saida_livre: Option<&'a dyn Fn(V2) -> bool>,
     /// Saída: o trabalho que as procuras gastaram nesta condução.
     pub gasto: u64,
+    /// (plano 30 §25, C2) Com o alvo À VISTA ([`a_vista`]) o caminho é a recta, sem procura e sem a vez.
+    pub a_vista: bool,
 }
 
 impl Vez<'_> {
@@ -180,6 +185,7 @@ impl Vez<'_> {
             pronto: None,
             saida_livre: None,
             gasto: 0,
+            a_vista: false,
         }
     }
 }
@@ -306,11 +312,11 @@ pub fn step_in_turn(
         && rt.next >= 1
         && rt.next < rt.path.len()
         && dist_to_segment(rt.path[rt.next - 1], rt.path[rt.next], pos) > cfg.repath_distance;
-    let target_moved = rt.planned_for.is_none()
-        || (!numa_porta
-            && rt
-                .planned_for
-                .is_some_and(|p| dist(p, t) > cfg.repath_distance));
+    let alvo_andou = !numa_porta
+        && rt
+            .planned_for
+            .is_some_and(|p| dist(p, t) > cfg.repath_distance);
+    let target_moved = rt.planned_for.is_none() || alvo_andou;
     let stuck = cfg.stuck_after_s > 0.0 && rt.stuck_clock >= cfg.stuck_after_s;
     let mut stuck_event = None;
     // (W15) Uma procura a meio de outras entradas recomeça — e a seguinte corre inteira.
@@ -327,6 +333,12 @@ pub fn step_in_turn(
     // ⚠️ Com uma procura a meio os motivos esperam por ela: o alvo que anda não a recomeça (acabaria
     // nunca), e depois dela o recálculo do Q6 decide outra vez.
     let mut pronto: Option<Planeado> = vez.pronto.take();
+    // ⭐ (plano 30 §25, C2) O alvo À VISTA: a recta é a resposta da procura, sem procura nem a vez — e a
+    // procura a meio larga-se.
+    let recta = pronto.is_none() && quer && vez.a_vista && a_vista(mesh, q, pos, t);
+    if recta {
+        larga(rt, vez);
+    }
     if pronto.is_none() && rt.a_meio.is_none() && quer {
         if stuck {
             stuck_event = Some(Event::Stuck);
@@ -335,7 +347,9 @@ pub fn step_in_turn(
         rt.best_remaining = f64::INFINITY;
         rt.searches += 1;
         rt.planned_for = Some(t);
-        if vez.pode == u64::MAX {
+        if recta {
+            (pronto, rt.last_work) = (Some(Some((vec![pos, t], Vec::new(), false))), 0);
+        } else if vez.pode == u64::MAX {
             let (r, w) = plan(mesh, search, q, pos, t);
             (pronto, rt.last_work) = (Some(r), w);
             vez.gasto = vez.gasto.saturating_add(w);
@@ -351,6 +365,7 @@ pub fn step_in_turn(
                         alvo: t,
                         trabalho: 0,
                         entradas: vez.entradas,
+                        persegue: alvo_andou,
                     });
                     rt.owed = rt.owed.max(1);
                 }
@@ -519,6 +534,17 @@ fn transition(prev: Status, s: Status) -> Option<Event> {
         _ if sem_caminho(s) && !sem_caminho(prev) => Some(Event::NoPath),
         _ => None,
     }
+}
+
+/// ⭐ (plano 30 §25, C2) **O alvo está À VISTA**: a recta `a → b` anda-se dentro da malha com o custo do
+/// comprimento (não cruza área nenhuma acima de `1`), nenhum custo da tabela é menor que `1` e não há
+/// atalhos — então nenhum caminho é mais curto que ela (todo caminho mede pelo menos a recta e custa pelo
+/// menos o que mede), e a procura devolveria a mesma recta.
+#[must_use]
+pub fn a_vista(mesh: &NavMesh, q: &Query<'_>, a: V2, b: V2) -> bool {
+    q.links.is_empty()
+        && q.costs.iter().all(|&c| c >= 1.0)
+        && crate::cost::segment_cost(mesh, q.costs, a, b).is_some_and(|c| c <= dist(a, b) + EPS)
 }
 
 /// (W15) Esquece a procura a meio (o agente chegou, ficou sem alvo ou sem malha, ou as entradas mudaram).

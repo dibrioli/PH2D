@@ -95,6 +95,8 @@ impl PhysicsBridge {
         // FORMA, em polígonos com velocidade (ver [`forma`]; a bola é um disco). ⚠️ O ALVO de alguém
         // fica um disco só: quem o persegue ignora-o por um índice, e um disco é o que esse índice nomeia.
         let mut moveis: Vec<ph2d_orca::Movel> = Vec::new();
+        // Os mesmos polígonos, no mundo, com a folga de cada um — o que o CAMINHO contorna ([`contorna`]).
+        let mut contornar: Vec<(Vec<V2>, f64)> = Vec::new();
         let alvos: BTreeSet<Entity> = pedidas.iter().filter_map(|p| p.alvo).collect();
         // (o aberto da W5) As PEÇAS de cada corpo (um filho só com `Collider`): fazem parte da forma.
         let mut pecas: BTreeMap<Entity, Vec<&super::super::parts::PartRef>> = BTreeMap::new();
@@ -147,7 +149,7 @@ impl PhysicsBridge {
                     });
                 }
                 let mundo = |[lx, ly]: V2| [c[0] + cos * lx - sin * ly, c[1] + sin * lx + cos * ly];
-                let mut poligonos = Vec::new();
+                let mut poligonos: Vec<Vec<V2>> = Vec::new();
                 let mut discos = Vec::new();
                 for x in f {
                     match x {
@@ -156,6 +158,16 @@ impl PhysicsBridge {
                             poligonos.push(pts.into_iter().map(mundo).collect())
                         }
                     }
+                }
+                for pts in &poligonos {
+                    // A folga do desvio contra este corpo: o que o ponto mais rápido dele anda num
+                    // horizonte (a mesma conta das linhas dos móveis em `ph2d_orca`).
+                    let u = pts.iter().fold(0.0_f64, |m, q: &V2| {
+                        let (rx, ry) = (q[0] - c[0], q[1] - c[1]);
+                        let (vx, vy) = (vel[0] - w * ry, vel[1] + w * rx);
+                        m.max((vx * vx + vy * vy).sqrt())
+                    });
+                    contornar.push((pts.clone(), u * ph2d_orca::Params::PRODUCT.time_horizon_walls));
                 }
                 if !poligonos.is_empty() {
                     moveis.push(ph2d_orca::Movel {
@@ -181,8 +193,24 @@ impl PhysicsBridge {
                 });
             }
         }
-        for (k, p) in pedidas.iter().enumerate() {
+        for (k, p) in pedidas.iter_mut().enumerate() {
             corpos[k].ignores = p.alvo.and_then(|a| indice.get(&a).copied());
+            // ⭐ (plano 30 §25, B) O caminho até ao próximo canto atravessa um corpo que anda (a malha
+            // não o tem): aponta à tangente dele, do lado escolhido.
+            let canto = self.nav.agents.get(&p.entity).and_then(|rt| rt.path.get(rt.next));
+            if self.nav.sonda.contorno
+                && p.avoidance
+                && let Some(&g) = canto
+            {
+                let ate = ((g[0] - p.pos[0]).powi(2) + (g[1] - p.pos[1]).powi(2)).sqrt();
+                if let Some(d) = contornar
+                    .iter()
+                    .find_map(|(pts, folga)| contorna(p.pos, p.dir, ate, p.raio + folga, pts))
+                {
+                    p.dir = d;
+                    corpos[k].pref = [d[0] * p.speed, d[1] * p.speed];
+                }
+            }
         }
         for p in &pedidas {
             if let Some(chave) = p.malha
@@ -360,4 +388,67 @@ pub(super) fn distancia_ao_poligono(w: &[V2], p: V2) -> f64 {
         menor = menor.min((qx * qx + qy * qy).sqrt());
     }
     if dentro { 0.0 } else { menor }
+}
+
+/// ⭐ (plano 30 §25, B) **O caminho contorna um corpo que ANDA** (a malha não o tem — só o vê parado):
+/// se o troço até ao próximo canto (`ate` metros na direcção `dir`) passa a menos de `r` do polígono
+/// CONVEXO `pts`, a direcção nova é a TANGENTE ao polígono engordado por `r`, do lado mais curto — e,
+/// num empate, pela DIREITA, o lado do peso do desvio ([`ph2d_orca::SIDE_BIAS`]). Medido antes: o
+/// caminho apontava ao alvo através da barreira e puxava o agente contra o peso de lado (`2,9×` o
+/// CONTROLO a `3 m` e `0,3 m/s`, §22.6). Só `+ − × ÷ sqrt` (a cerca do hash).
+pub(super) fn contorna(pos: V2, dir: V2, ate: f64, r: f64, pts: &[V2]) -> Option<V2> {
+    let fim = [pos[0] + dir[0] * ate, pos[1] + dir[1] * ate];
+    if pts.len() < 3 || distancia_do_troco(pos, fim, pts) >= r {
+        return None;
+    }
+    let cruz = |a: V2, b: V2| a[0] * b[1] - a[1] * b[0];
+    // A tangente de `pos` ao disco de raio `r` em cada vértice, dos dois lados (`sinal` = +1 à
+    // esquerda): o mais extremo de cada lado é a tangente ao polígono engordado.
+    let tangente = |v: V2, sinal: f64| {
+        let (wx, wy) = (v[0] - pos[0], v[1] - pos[1]);
+        let l = (wx * wx + wy * wy).sqrt();
+        let (ux, uy) = (wx / l, wy / l);
+        let s = (r / l).min(1.0) * sinal;
+        let c = (1.0 - s * s).max(0.0).sqrt();
+        [ux * c - uy * s, ux * s + uy * c]
+    };
+    let extremo = |sinal: f64| {
+        pts.iter()
+            .map(|&v| tangente(v, sinal))
+            .reduce(|a, b| if cruz(a, b) * sinal > 0.0 { b } else { a })
+    };
+    let (esq, dir_) = (extremo(1.0)?, extremo(-1.0)?);
+    let perto = |t: V2| t[0] * dir[0] + t[1] * dir[1];
+    let d = if perto(dir_) >= perto(esq) { dir_ } else { esq };
+    d.iter().all(|x| x.is_finite()).then_some(d)
+}
+
+/// A distância do troço `a`–`b` a um polígono CONVEXO anti-horário (`0` se o toca).
+fn distancia_do_troco(a: V2, b: V2, w: &[V2]) -> f64 {
+    let n = w.len();
+    let mut menor = distancia_ao_poligono(w, a).min(distancia_ao_poligono(w, b));
+    for i in 0..n {
+        let (p, q) = (w[i], w[(i + 1) % n]);
+        let lado = |o: V2, x: V2, y: V2| (x[0] - o[0]) * (y[1] - o[1]) - (x[1] - o[1]) * (y[0] - o[0]);
+        if lado(a, b, p) * lado(a, b, q) < 0.0 && lado(p, q, a) * lado(p, q, b) < 0.0 {
+            return 0.0;
+        }
+        menor = menor
+            .min(ao_troco(p, a, b))
+            .min(ao_troco(q, a, b));
+    }
+    menor
+}
+
+/// A distância de `p` ao troço `a`–`b`.
+fn ao_troco(p: V2, a: V2, b: V2) -> f64 {
+    let (ex, ey) = (b[0] - a[0], b[1] - a[1]);
+    let l2 = ex * ex + ey * ey;
+    let t = if l2 > 0.0 {
+        (((p[0] - a[0]) * ex + (p[1] - a[1]) * ey) / l2).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let (dx, dy) = (p[0] - a[0] - t * ex, p[1] - a[1] - t * ey);
+    (dx * dx + dy * dy).sqrt()
 }

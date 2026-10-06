@@ -103,11 +103,8 @@ pub(super) struct NavWorld {
     /// paralelo mais a condução, em série) — as réguas dos gates e da sonda.
     gasto: u64,
     critico: u64,
-    /// (W15) O CONTROLO da sonda: `false` = toda procura inteira, no tique em que é pedida (a fila só
-    /// decide quem refaz o caminho quando a malha muda) — ver [`PhysicsBridge::set_nav_slices`].
-    fatias: bool,
-    /// (W15) Quantas procuras a meio avançam em paralelo num tique — ver [`fila::PROCURAS_EM_PARALELO`].
-    paralelas: usize,
+    /// As alavancas da sonda e dos gates (por omissão, o produto) — ver [`fila::Sonda`].
+    sonda: fila::Sonda,
 }
 
 impl Default for NavWorld {
@@ -130,8 +127,7 @@ impl Default for NavWorld {
             sem_zona: BTreeSet::new(),
             gasto: 0,
             critico: 0,
-            fatias: true,
-            paralelas: fila::PROCURAS_EM_PARALELO,
+            sonda: fila::Sonda::default(),
         }
     }
 }
@@ -338,7 +334,7 @@ impl PhysicsBridge {
                 meshes,
                 search,
                 planos,
-                fatias,
+                sonda,
                 ..
             } = &mut self.nav;
             let malha = v.chave.and_then(|k| meshes.get(&k)).map(TiledMesh::mesh);
@@ -346,7 +342,7 @@ impl PhysicsBridge {
             let (corpos, mundo, raio) = (&self.bodies, &self.world, f64::from(v.raio));
             let livre_de = |s: V2| desvio::saida_livre(corpos, mundo, p.entity, s, raio);
             let mut turno = VezDeProcurar {
-                pode: if *fatias {
+                pode: if sonda.fatias {
                     reserva.unwrap_or(0).saturating_add(livre)
                 } else {
                     u64::MAX
@@ -357,6 +353,7 @@ impl PhysicsBridge {
                 pronto: prontos.remove(&p.entity),
                 saida_livre: Some(&livre_de),
                 gasto: 0,
+                a_vista: sonda.a_vista,
             };
             let steer = ph2d_nav::agent::step_in_turn(
                 &mut rt, malha, search, &q, &mut turno, v.pos, alvo, &cfg, dt,

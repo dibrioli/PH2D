@@ -8,8 +8,6 @@
 //! com o tecto `W − 1`, sendo `W` o trabalho em que uma corrida em fatias parou, dá o MESMO estado, `pop`
 //! a `pop`. É o que deixa um scrub refazer uma procura a meio sem a guardar no anel.
 
-use std::cmp::Reverse;
-
 use super::{Kind, NONE, NoPath, Node, Path, Polyanya, Root};
 use crate::cost::{cost_of, path_cost};
 use crate::geom::{EPS, V2, dist};
@@ -99,7 +97,7 @@ impl Polyanya {
     /// Continua a procura até à resposta, ou até o trabalho passar `ate` (`u64::MAX` = sem tecto).
     pub(super) fn resume(&mut self, mesh: &NavMesh, ate: u64) -> Fatia {
         let t = self.alvo;
-        while let Some(Reverse((_, _, ni))) = self.open.pop() {
+        while let Some(ni) = self.pop() {
             let node = self.nodes[ni as usize];
             match node.kind {
                 Kind::Final { via } => {

@@ -196,14 +196,23 @@ fn cena(agentes: usize, lamas: usize) -> (SimWorld, Entity, Vec<Entity>) {
 const PRESA_C: (f32, f32) = (50.0, 50.0);
 const PRESA_R: f32 = 6.0;
 
+/// Onde a presa está no tique `t`.
+fn presa_no(t: u64) -> [f64; 2] {
+    let a = t as f32 / 60.0 * 2.0 / PRESA_R;
+    [
+        f64::from(PRESA_C.0 + PRESA_R * a.cos()),
+        f64::from(PRESA_C.1 + PRESA_R * a.sin()),
+    ]
+}
+
 /// A presa no tique `t`.
 fn presa_em(sim: &mut SimWorld, t: u64) {
-    let a = t as f32 / 60.0 * 2.0 / PRESA_R;
+    let [x, y] = presa_no(t);
     let w = sim.world_mut();
     let mut q = w.query::<(&Name, &mut Transform)>();
     for (n, mut tr) in q.iter_mut(w) {
         if n.as_str() == "Presa" {
-            tr.translation = Vec2::new(PRESA_C.0 + PRESA_R * a.cos(), PRESA_C.1 + PRESA_R * a.sin());
+            tr.translation = Vec2::new(x as f32, y as f32);
         }
     }
 }
@@ -230,27 +239,57 @@ struct Medida {
 /// (C2) O atraso dos perseguidores: os tiques SEGUIDOS em que cada um tem por acabar a procura que pediu
 /// porque o ALVO ANDOU (`AMeio::persegue`) — o maior e a média das esperas. (A 3.ª rodada contava também a
 /// dívida da porta, em que ele anda um caminho que ainda serve: misturava a espera inofensiva com a reacção.)
+///
+/// ⭐ (plano 30 §26, A) E o diagnóstico da DOBRA: o maior `recomecos` de uma procura a meio, de quem persegue
+/// e das outras — ele mostrou que o pico de quem persegue primeiro é a dobra das OUTRAS.
 #[derive(Default)]
 struct Atraso {
-    seguidos: std::collections::BTreeMap<Entity, u32>,
+    seguidos: Seguidos,
+    dobra_persegue: u32,
+    dobra_outras: u32,
+}
+
+#[derive(Default)]
+struct Seguidos {
+    por: std::collections::BTreeMap<Entity, u32>,
     max: u32,
     soma: u64,
     n: u64,
 }
 
+impl Seguidos {
+    fn conta(&mut self, e: Entity, agora: bool) {
+        let s = self.por.entry(e).or_default();
+        if agora {
+            *s += 1;
+        } else if *s > 0 {
+            (self.max, self.soma, self.n) = (self.max.max(*s), self.soma + u64::from(*s), self.n + 1);
+            *s = 0;
+        }
+    }
+
+    fn media(&self) -> f64 {
+        self.soma as f64 / self.n.max(1) as f64
+    }
+}
+
 impl Atraso {
-    fn mede(&mut self, b: &PhysicsBridge, perseguidores: &[Entity]) {
+    fn mede(&mut self, b: &PhysicsBridge, quem: &[Entity], perseguidores: &[Entity]) {
         for &e in perseguidores {
             let espera = b
                 .nav_agent(e)
                 .is_some_and(|rt| rt.a_meio.is_some_and(|a| a.persegue));
-            let s = self.seguidos.entry(e).or_default();
-            if espera {
-                *s += 1;
-            } else if *s > 0 {
-                (self.max, self.soma, self.n) = (self.max.max(*s), self.soma + u64::from(*s), self.n + 1);
-                *s = 0;
-            }
+            self.seguidos.conta(e, espera);
+        }
+        for &e in quem {
+            let Some(rt) = b.nav_agent(e) else { continue };
+            let Some(a) = rt.a_meio else { continue };
+            let d = if a.persegue {
+                &mut self.dobra_persegue
+            } else {
+                &mut self.dobra_outras
+            };
+            *d = (*d).max(rt.recomecos);
         }
     }
 }
@@ -277,7 +316,7 @@ fn bloco(
         m.critico = m.critico.max(b.nav_search_critical_work());
         m.trabalho += b.nav_search_work();
         m.mais = m.mais.max(procuras(b, quem) - antes);
-        atraso.mede(b, perseguidores);
+        atraso.mede(b, quem, perseguidores);
     }
     m
 }
@@ -287,16 +326,21 @@ const BLOCO: usize = 16;
 /// As rodadas intercaladas (a ordem das versões roda a cada uma).
 const RODADAS: usize = 7;
 
-/// As versões, lado a lado: o nome, as fatias ligadas, quantas procuras a meio em paralelo, se corre
-/// num pool de UMA thread (a web), e o alvo à vista sem procura (C2). As rodadas do plano 30 §25 mediram
-/// também `8 · 4 · 2` em paralelo, um tecto do trabalho do passo em paralelo e a procura de quem persegue
-/// primeiro — recusados (`target/prova/w16/…rodada{1,2,3,4}.txt`).
-const VERSOES: [(&str, bool, usize, bool, bool); 5] = [
-    ("A inteira            ", false, 0, false, false),
-    ("B W15                ", true, 16, false, false),
-    ("B W15 · 1t           ", true, 16, true, false),
-    ("B vista              ", true, 16, false, true),
-    ("B vista · 1t         ", true, 16, true, true),
+/// Uma versão: o nome, as fatias ligadas, quantas procuras a meio em paralelo, se corre num pool de UMA
+/// thread (a web), o alvo à vista sem procura (§25, C2), as de quem persegue em vagas a mais (§26, A4) e se
+/// um recomeço delas dobra a fatia (A5).
+type Versao = (&'static str, bool, usize, bool, bool, (bool, bool));
+
+/// As versões, lado a lado. As rodadas do plano 30 §25 mediram também `8 · 4 · 2` em paralelo e um tecto
+/// do trabalho do passo em paralelo; a 1.ª da §26, quem persegue primeiro sem a dobra (A1) e o fim do
+/// caminho a seguir o alvo (A2) — recusados (`target/prova/w16/…`, `target/prova/w17/…`).
+const VERSOES: [Versao; 6] = [
+    ("B produto            ", true, 16, false, true, (false, true)),
+    ("B produto · 1t       ", true, 16, true, true, (false, true)),
+    ("A4 vagas a mais      ", true, 16, false, true, (true, true)),
+    ("A4 · 1t              ", true, 16, true, true, (true, true)),
+    ("A5 A4 sem a dobra    ", true, 16, false, true, (true, false)),
+    ("A5 · 1t              ", true, 16, true, true, (true, false)),
 ];
 
 fn loadavg() -> String {
@@ -358,13 +402,13 @@ fn main() {
         todos.current_num_threads()
     );
     println!(
-        "# lamas | versão | agentes | pior tique depois da porta (ms, mín · mediana de {RODADAS}) | crítico (máx) | procuras num tique (máx) | CONTROLO sem porta (mín · mediana) | trabalho por porta (mediana) | atraso do perseguidor (tiques: máx · média) | falta (m)"
+        "# lamas | versão | agentes | pior tique depois da porta (ms, mín · mediana de {RODADAS}) | crítico (máx) | procuras num tique (máx) | CONTROLO sem porta (mín · mediana) | trabalho por porta (mediana) | atraso do perseguidor (tiques: máx · média) | dobra (recomeços máx: quem persegue · as outras) | falta (m)"
     );
     for &l in &lamas {
         for &n in &[10usize, 50, 200] {
             let mut v: Vec<_> = VERSOES
                 .iter()
-                .map(|&(_, fatias, paralelas, uma, vista)| {
+                .map(|&(_, fatias, paralelas, uma, vista, (a_mais, dobra))| {
                     let (mut sim, porta, quem) = cena(n, l);
                     let persegue: Vec<Entity> = quem
                         .iter()
@@ -380,6 +424,7 @@ fn main() {
                     b.set_nav_slices(fatias);
                     b.set_nav_parallel(paralelas);
                     b.set_nav_sight(vista);
+                    b.set_nav_chase(a_mais, dobra);
                     let pool = if uma { &um } else { &todos };
                     let mut t = 0u64;
                     for _ in 0..30 {
@@ -440,10 +485,15 @@ fn main() {
                 let (pm, pd) = min_med(&mut porta[i]);
                 let (cm, cd) = min_med(&mut ctl[i]);
                 let (_, td) = min_med(&mut total[i]);
-                let media = atraso.soma as f64 / atraso.n.max(1) as f64;
                 println!(
-                    "{l:>3} | {} | {n:>4} | {pm:>7.2} · {pd:>7.2} | {:>7} | {:>4} | {cm:>7.2} · {cd:>7.2} | {td:>9.0} | {:>3} · {media:.2} | {falta:.2} ({esperam} sem caminho)",
-                    VERSOES[i].0, trab[i], proc[i], atraso.max
+                    "{l:>3} | {} | {n:>4} | {pm:>7.2} · {pd:>7.2} | {:>7} | {:>4} | {cm:>7.2} · {cd:>7.2} | {td:>9.0} | {:>3} · {:.2} | {} · {} | {falta:.2} ({esperam} sem caminho)",
+                    VERSOES[i].0,
+                    trab[i],
+                    proc[i],
+                    atraso.seguidos.max,
+                    atraso.seguidos.media(),
+                    atraso.dobra_persegue,
+                    atraso.dobra_outras,
                 );
             }
         }

@@ -215,7 +215,14 @@ pub(crate) fn pedacos(
             piece = difference_64(&piece, &reclamado, FillRule::NonZero);
         }
         reclamado = union_64(&reclamado, &forma, FillRule::NonZero);
-        pieces.push((piece, *id));
+        // (plano 30 §26, C3) Áreas SEGUIDAS do mesmo id são um pedaço só: a fusão em convexos atravessa a
+        // fronteira entre elas (o custo é o mesmo dos dois lados).
+        match pieces.last_mut() {
+            Some((anterior, i)) if i == id => {
+                *anterior = union_64(anterior, &piece, FillRule::NonZero);
+            }
+            _ => pieces.push((piece, *id)),
+        }
     }
     let chao = if reclamado.is_empty() {
         walk

@@ -43,7 +43,7 @@ fn nudge(set: &mut BoardSet, id: ElementId, k: usize) {
     let bid = set.boards()[0].id;
     let doc = &mut set.get_mut(bid).unwrap().doc;
     let mut el = doc.get(id).unwrap().clone();
-    el.translate([if k % 2 == 0 { 1.0 } else { -1.0 }, 0.0]);
+    el.translate([if k.is_multiple_of(2) { 1.0 } else { -1.0 }, 0.0]);
     BoardOp::Put(el).apply(doc);
 }
 

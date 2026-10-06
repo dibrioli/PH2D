@@ -112,7 +112,6 @@ impl RouteCache {
         self.routes.retain(|id, _| alive.contains(id));
         let all = boxes.len() > MANY_CHANGES;
         for el in conns {
-            let c = el.connector().expect("filtrado acima");
             let spread = spreads.get(&el.id).copied().unwrap_or(0.0);
             let stale = match self.routes.get(&el.id) {
                 None => true,

@@ -426,7 +426,7 @@ fn the_blue_dot_and_ctrl_arrow_grow_the_flow() {
     t.drag(p, p);
     assert_eq!(t.elements().len(), 3, "a caixa nova e a seta");
     assert_eq!(t.arrows().len(), 1);
-    assert!(t.key(BoardKey::Right, CTRL, None), "Ctrl+→ é do quadro");
+    assert!(t.key(BoardKey::Right, CTRL, None), "Ctrl+Right é do quadro");
     assert_eq!(t.elements().len(), 5);
     assert_eq!(t.arrows().len(), 2);
 }

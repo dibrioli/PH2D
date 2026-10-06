@@ -55,7 +55,8 @@ pub enum ElementKind {
     /// Uma forma com estilo e (talvez) texto dentro.
     Shape(Shape),
     /// Uma seta entre duas pontas (W2). A caixa `x, y, w, h` não se usa: a geometria é a rota.
-    Connector(Connector),
+    /// Numa caixa: com ela inline o `BoardOp::Put` passava os 200 bytes do `large_enum_variant`.
+    Connector(Box<Connector>),
 }
 
 /// Uma forma do quadro: o contorno, o estilo e o texto que vive DENTRO dela (centrado, com quebra).
@@ -212,7 +213,7 @@ impl Element {
     pub fn new_connector(id: ElementId, z: FracKey, c: Connector) -> Self {
         Self {
             id,
-            kind: ElementKind::Connector(c),
+            kind: ElementKind::Connector(Box::new(c)),
             x: 0.0,
             y: 0.0,
             w: 0.0,

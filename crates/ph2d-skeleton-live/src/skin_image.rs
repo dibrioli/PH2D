@@ -578,11 +578,6 @@ pub fn attach_skin_meshes(
         // DELE. ⚠️ Cortar no espaço da IMAGEM (e não recortar o quad) é a lei toda do 9-slice: o
         // pedaço do meio mostra a faixa central ESTICADA, logo a tinta que o mapa de repouso poria
         // ali não é a que se vê.
-        let aneis = if frac.is_none_or(|f| f == [0.0, 0.0, 1.0, 1.0]) {
-            crate::skin_image_fecho::bordas_da(assada)
-        } else {
-            std::rc::Rc::default()
-        };
         let (mesh, pesos, rect) = match frac {
             Some(f) if f != [0.0, 0.0, 1.0, 1.0] => {
                 let (w, h) = (
@@ -637,8 +632,8 @@ pub fn attach_skin_meshes(
         let pesos = skin.pesos_do_quadro(&pesos);
         // ⭐⭐⭐ **E AS CORRECÇÕES À MÃO** — a porta é a mesma das duas mídias.
         let correcoes = skin.correcoes_resolvidas();
-        // ⭐⭐⭐ **QUEM POSA e o FECHO da silhueta** moram numa porta só
-        // ([`crate::skin_image_fecho::malha_desenhada`]).
+        // ⭐⭐⭐ **QUEM POSA** mora numa porta só ([`crate::skin_image_fecho::malha_desenhada`]).
+        // Nada se cose entre membros: cada um desenha só a sua imagem.
         let Some(malha) = crate::skin_image_fecho::malha_desenhada(
             mesh,
             p2l,
@@ -647,7 +642,6 @@ pub fn attach_skin_meshes(
             inst.anchor,
             inst.size,
             &correcoes,
-            &aneis,
         ) else {
             continue;
         };
@@ -678,7 +672,7 @@ pub fn attach_skin_meshes(
 #[must_use]
 pub fn skinned_mesh_of(sim: &SimWorld, e: Entity) -> Option<SkinnedMesh> {
     let skin = sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e)?;
-    let m = crate::skinned_mesh::le_malha(&skin.source)?;
+    let m: SkinnedMesh = postcard::from_bytes(&skin.source).ok()?;
     m.valida().then_some(m)
 }
 

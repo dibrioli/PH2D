@@ -47,7 +47,7 @@ const MOTOR: [&str; 11] = [
     "crates/ph2d-render/src/sprite_mesh_warp.rs", // a deformação
     "crates/ph2d-render/src/sprite_mesh_warp_probe.rs", // a sonda dela
     "crates/ph2d-skeleton-live/src/skin_image.rs", // `attach_skin_meshes`: o produtor
-    // ⭐ A COSTURA e a ordem das faces (F48/F49, `line/Vector`): devolve a malha que o quadro
+    // ⭐ A porta da malha desenhada e a ordem das faces (`line/Vector`): devolve a malha que o quadro
     // DESENHA (`SpriteMesh`, posada na CPU ou repouso + payload na placa) — é o produtor, não leitor.
     "crates/ph2d-skeleton-live/src/skin_image_fecho.rs",
     // ⭐⭐ **Os três da F9 W2 (2026-09-20)** — eles não são costuras que PRECISAM de resposta

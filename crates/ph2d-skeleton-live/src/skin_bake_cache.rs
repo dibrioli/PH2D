@@ -151,7 +151,7 @@ pub fn assada_da_arte(
 }
 
 /// A [`assada_da_arte`] sem a cópia — o `Rc` da gaveta, que é também a IDENTIDADE da malha para quem
-/// guarda coisas dela (os anéis da borda, [`crate::skin_image_fecho::bordas_da`]).
+/// guarda coisas dela.
 #[must_use]
 pub fn desenhada_da_arte(
     sim: &ph2d_ecs::SimWorld,
@@ -164,14 +164,8 @@ pub fn desenhada_da_arte(
     // caminho de omissão continua byte-idêntico, e a gaveta que fica a dizer *«esta não tem
     // assada»* é o que evita voltar a perguntar no quadro seguinte.
     assada_do_bind(e.to_bits(), &skin.source, crua, |m| {
-        let mut d = crate::skin_bake::assar_no_bind(&m.mesh, &m.pesos, m.ossos()).map_or_else(
-            || m.clone(),
-            |(mesh, pesos)| SkinnedMesh {
-                mesh,
-                pesos,
-                mascara: m.mascara.clone(),
-            },
-        );
+        let mut d = crate::skin_bake::assar_no_bind(&m.mesh, &m.pesos, m.ossos())
+            .map_or_else(|| m.clone(), |(mesh, pesos)| SkinnedMesh { mesh, pesos });
         let prof = crate::esqueletos::profundidades(sim, skin, &crate::skin_live::bone_index(sim));
         let v = d.mesh.rest.len();
         crate::skin_image_fecho::ordena_pelo_osso(&mut d.mesh.tris, &d.pesos, v, &prof);

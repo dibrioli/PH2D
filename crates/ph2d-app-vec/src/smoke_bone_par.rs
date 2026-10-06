@@ -494,8 +494,8 @@ fn anuncia(vector_preso: bool, imagem_presa: bool, nivel: u32) {
 }
 
 #[cfg(test)]
-#[path = "smoke_bone_par_fresta_tests.rs"]
-mod fresta_tests;
+#[path = "smoke_bone_par_membros_tests.rs"]
+mod membros_tests;
 
 #[cfg(test)]
 mod tests {

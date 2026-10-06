@@ -103,7 +103,7 @@ fn duas_no_mesmo_rig(graus: f32) -> (Presa, Presa) {
     let ossos_da_pele = |e: Entity| -> usize {
         sim.world()
             .get::<ph2d_skeleton_ecs::SkinBind>(e)
-            .and_then(|b| crate::skinned_mesh::le_malha(&b.source))
+            .and_then(|b| postcard::from_bytes::<crate::skinned_mesh::SkinnedMesh>(&b.source).ok())
             .map_or(0, |m| m.ossos())
     };
     let contagens: Vec<usize> = presas
@@ -266,7 +266,7 @@ fn sem_osso_escolhido_a_imagem_prende_se_a_todos_os_esqueletos() {
     let ossos = sim
         .world()
         .get::<ph2d_skeleton_ecs::SkinBind>(e)
-        .and_then(|b| crate::skinned_mesh::le_malha(&b.source))
+        .and_then(|b| postcard::from_bytes::<crate::skinned_mesh::SkinnedMesh>(&b.source).ok())
         .map_or(0, |m| m.ossos());
     println!("sem osso escolhido, a pele prendeu-se a {ossos} osso(s) de dois esqueletos de 3");
     assert_eq!(

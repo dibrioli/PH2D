@@ -153,14 +153,14 @@ fn caiu_na_lei_derivada(mundo: &ph2d_ecs::World, e: ph2d_ecs::Entity) -> bool {
         return true;
     }
     if crate::skin_image::is_skinned_image(mundo, e) {
-        return match crate::skinned_mesh::le_malha(&skin.source) {
+        return match postcard::from_bytes::<crate::skinned_mesh::SkinnedMesh>(&skin.source) {
             // ⛔ `ossos() == 0` e não `pesos.is_empty()`: a tabela que **não fecha** com a malha é
             // recusada a jusante e cai na mesma lei derivada — as duas leituras têm de concordar,
             // senão o gizmo some exactamente no caso em que o alcance volta a mandar.
-            Some(m) => !m.valida() || m.ossos() == 0,
+            Ok(m) => !m.valida() || m.ossos() == 0,
             // Uma fonte que nem descodifica é pulada pelo quadro: não há deformação nenhuma para o
             // envelope governar, e acender a mancha ali seria prometer um efeito que não existe.
-            None => false,
+            Err(_) => false,
         };
     }
     match crate::skinned_mesh::le(&skin.source) {

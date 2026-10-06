@@ -67,14 +67,10 @@ pub mod skin_desenho;
 /// ⭐⭐ As voltas apertadas de um cozido viram nós antes do bake (F50-h).
 pub mod skin_desenho_voltas;
 pub mod skin_image;
-/// ⭐⭐⭐ **Onde a tinta começa** (A5-a) — a máscara guardada ao prender e o anel da arte que a costura
-/// mede; irmão do [`skin_image_fecho`].
-pub mod skin_image_arte;
 /// ⭐ **PRENDER uma IMAGEM** — irmão do `skin_live` pelo tecto de LOC, cortado por assunto.
 pub mod skin_image_bind;
-/// A costura de cada quadro e onde ela entra na ordem das faces — irmão do [`skin_image_fecho`].
-mod skin_image_costura;
-/// ⭐⭐⭐ **O FECHO da imagem presa** — a lei da silhueta da pele na 2.ª mídia (2026-10-02).
+/// ⭐⭐⭐ **A malha que o quadro desenha e a ORDEM das faces** da imagem presa — nada se cose entre
+/// membros (decisão do dono, 2026-10-06).
 pub mod skin_image_fecho;
 /// ⭐⭐⭐ **A malha no formato que a PLACA posa** (F9 W2) — irmão do [`skin_image`] por
 /// responsabilidade e pelo tecto de LOC. Ver o cabeçalho dele.

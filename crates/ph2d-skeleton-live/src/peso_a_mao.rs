@@ -130,7 +130,7 @@ pub fn repousos(sim: &SimWorld, alvo: Entity, ppm: f32) -> Vec<[f64; 2]> {
         });
         return out;
     }
-    let Some(g) = crate::skinned_mesh::le_malha(&skin.source) else {
+    let Ok(g) = postcard::from_bytes::<crate::skinned_mesh::SkinnedMesh>(&skin.source) else {
         return Vec::new();
     };
     let Some(sprite) = sim.world().get::<ph2d_render::Sprite>(alvo) else {
@@ -291,7 +291,7 @@ fn malha_sob(
     let Some(skin) = sim.world().get::<SkinBind>(alvo) else {
         return (false, f64::INFINITY);
     };
-    let Some(g) = crate::skinned_mesh::le_malha(&skin.source) else {
+    let Ok(g) = postcard::from_bytes::<crate::skinned_mesh::SkinnedMesh>(&skin.source) else {
         return (false, f64::INFINITY);
     };
     let mut dentro = false;
@@ -452,7 +452,7 @@ fn pesos_guardados(alvo: Entity, skin: &SkinBind, pontos: usize) -> Option<Vec<f
         let p = skin.pesos_do_quadro(fecha);
         return (!p.is_empty() && p.len().is_multiple_of(pontos.max(1))).then(|| p.to_vec());
     }
-    let g = crate::skinned_mesh::le_malha(&skin.source)?;
+    let g = postcard::from_bytes::<crate::skinned_mesh::SkinnedMesh>(&skin.source).ok()?;
     let fecha: &[f64] = if g.valida() { &g.pesos } else { &[] };
     let p = skin.pesos_do_quadro(fecha);
     (!p.is_empty() && p.len().is_multiple_of(pontos.max(1))).then(|| p.to_vec())

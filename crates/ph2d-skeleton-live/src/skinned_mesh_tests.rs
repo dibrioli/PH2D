@@ -1,6 +1,6 @@
 //! Os gates da malha que leva os pesos dentro.
 
-use super::{SkinnedMesh, le_malha};
+use super::SkinnedMesh;
 use ph2d_poly2d::Mesh2d;
 
 fn malha(verts: usize) -> Mesh2d {
@@ -19,7 +19,6 @@ fn malha(verts: usize) -> Mesh2d {
 #[test]
 fn a_contagem_de_ossos_deriva_se_e_cada_vertice_le_a_fatia_dele() {
     let s = SkinnedMesh {
-        mascara: None,
         mesh: malha(4),
         pesos: vec![
             1.0, 0.0, 0.0, // v0
@@ -45,7 +44,6 @@ fn a_contagem_de_ossos_deriva_se_e_cada_vertice_le_a_fatia_dele() {
 #[test]
 fn uma_tabela_que_nao_fecha_e_recusada() {
     let s = SkinnedMesh {
-        mascara: None,
         mesh: malha(4),
         // 11 pesos para 4 vértices — não é múltiplo de nada.
         pesos: vec![0.25; 11],
@@ -72,7 +70,6 @@ fn sem_pesos_e_um_estado_legal_e_diz_zero_ossos() {
 #[test]
 fn a_malha_e_os_pesos_atravessam_o_arquivo_juntos() {
     let s = SkinnedMesh {
-        mascara: None,
         mesh: malha(3),
         pesos: vec![1.0, 0.0, 0.25, 0.75, 0.5, 0.5],
     };
@@ -551,71 +548,4 @@ fn diag_o_campo_e_invariante_a_escala() {
         );
     }
     println!("{:-<72}", "");
-}
-
-/// ⭐⭐ **Um bind gravado antes da máscara lê-se, sem ela** — o postcard é posicional: a forma nova
-/// sobre bytes velhos acaba no fim antes do `Option` e erra (o controlo), e a [`le_malha`] cai na
-/// forma anterior. A forma nova volta ao bit.
-#[test]
-fn um_bind_anterior_a_mascara_le_se_sem_ela() {
-    #[derive(serde::Serialize)]
-    struct Antes {
-        mesh: Mesh2d,
-        pesos: Vec<f64>,
-    }
-    let antes = Antes {
-        mesh: malha(3),
-        pesos: vec![1.0, 0.0, 0.25, 0.75, 0.5, 0.5],
-    };
-    let bytes = postcard::to_allocvec(&antes).expect("grava");
-    assert!(
-        postcard::from_bytes::<SkinnedMesh>(&bytes).is_err(),
-        "o controlo: a forma nova leu bytes velhos"
-    );
-    let lida = le_malha(&bytes).expect("a forma anterior lê-se");
-    assert_eq!(
-        (lida.mesh, lida.pesos, lida.mascara),
-        (antes.mesh, antes.pesos, None)
-    );
-    let nova = SkinnedMesh {
-        mesh: malha(3),
-        pesos: vec![1.0; 3],
-        mascara: Some(crate::skin_image_arte::Mascara::do_alfa(
-            &[0, 255, 255, 0],
-            2,
-            2,
-            128,
-        )),
-    };
-    let bytes = postcard::to_allocvec(&nova).expect("grava");
-    assert_eq!(le_malha(&bytes), Some(nova));
-}
-
-/// ⭐⭐ **Ninguém lê a malha de uma imagem presa sem a [`le_malha`]** — um leitor directo da forma
-/// nova perde todo bind anterior à máscara (eram quatro, em `peso_a_mao` e `esqueletos`).
-#[test]
-fn ninguem_le_a_malha_sem_a_porta_dos_binds_anteriores() {
-    let agulhas = [
-        concat!("from_bytes::<", "crate::skinned_mesh::SkinnedMesh>"),
-        concat!("from_bytes::<", "SkinnedMesh>"),
-    ];
-    let pasta = concat!(env!("CARGO_MANIFEST_DIR"), "/src");
-    let mut achados = Vec::new();
-    let mut na_porta = 0;
-    for f in std::fs::read_dir(pasta).expect("src") {
-        let f = f.expect("entrada").path();
-        let texto = std::fs::read_to_string(&f).unwrap_or_default();
-        let n: usize = agulhas.iter().map(|a| texto.matches(a).count()).sum();
-        // A porta, e o controlo do gate acima (a forma nova sobre bytes velhos).
-        if f.ends_with("skinned_mesh.rs") || f.ends_with("skinned_mesh_tests.rs") {
-            na_porta += n;
-        } else if n > 0 {
-            achados.push((f, n));
-        }
-    }
-    assert!(
-        na_porta > 0,
-        "o controlo: a agulha não acha a própria porta"
-    );
-    assert!(achados.is_empty(), "leitores directos: {achados:?}");
 }

@@ -108,6 +108,8 @@ fn the_second_lap_of_the_loop_repeats_the_first() {
     }
 }
 
+/// A sonda da barra acima: a maior diferença entre as duas voltas no tique `150`. ⚠️ A lei de antes
+/// (`1,5e-2`) correu aqui atrás de uma chave por fio em `e78b2c096` e saiu com o código dela.
 #[test]
 #[ignore = "sonda"]
 fn probe_a_diferenca_entre_as_voltas() {
@@ -117,26 +119,19 @@ fn probe_a_diferenca_entre_as_voltas() {
         reason = "segundos → tiques"
     )]
     let volta = ((DURACAO + PAUSA) * 60.0).round() as u64;
-    for antiga in [false, true] {
-        ph2d_node_sim_step::mede_com_a_lei_antiga(antiga);
-        let (mut state, sinks) = cena();
-        let mut uma = Vec::new();
-        for k in 0..=(volta + 150) {
-            let b = em(&mut state, &sinks, k);
-            if k == 150 {
-                uma = b;
-            } else if k == volta + 150 {
-                let d = uma
-                    .iter()
-                    .zip(&b)
-                    .map(|(a, b)| (f32::from_bits(*a) - f32::from_bits(*b)).abs())
-                    .fold(0.0_f32, f32::max);
-                let iguais = uma == b;
-                eprintln!(
-                    "VOLTAS lei antiga {antiga}: iguais ao bit {iguais} · maior diferenca {d:e}"
-                );
-            }
+    let (mut state, sinks) = cena();
+    let mut uma = Vec::new();
+    for k in 0..=(volta + 150) {
+        let b = em(&mut state, &sinks, k);
+        if k == 150 {
+            uma = b;
+        } else if k == volta + 150 {
+            let d = uma
+                .iter()
+                .zip(&b)
+                .map(|(a, b)| (f32::from_bits(*a) - f32::from_bits(*b)).abs())
+                .fold(0.0_f32, f32::max);
+            eprintln!("VOLTAS iguais ao bit {} · maior diferenca {d:e}", uma == b);
         }
     }
-    ph2d_node_sim_step::mede_com_a_lei_antiga(false);
 }

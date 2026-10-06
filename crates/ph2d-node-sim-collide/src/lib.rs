@@ -601,7 +601,6 @@ impl NodeOp for SimCollide {
         #[expect(clippy::cast_sign_loss, reason = "a seed is a bit pattern")]
         #[expect(clippy::cast_possible_truncation, reason = "idem")]
         let seed = ctx.param(SEED).max(0.0).round() as u32;
-        let t0 = std::time::Instant::now();
         let out = collide_com_chave(
             ctx.input(0),
             shape,
@@ -616,7 +615,6 @@ impl NodeOp for SimCollide {
             half,
             ctx.node_key(),
         );
-        ph2d_contact_world::soma(9, t0.elapsed().as_secs_f64() * 1e3);
         ctx.emit(out);
     }
 }

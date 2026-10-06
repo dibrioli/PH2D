@@ -315,12 +315,9 @@ pub fn passo(
     pedido: &Pedido<'_>,
     estado: &mut Estado<'_>,
 ) -> Option<Feito> {
-    let mut t0 = std::time::Instant::now();
     let s = pedido.state;
     let n = s.count();
-    let specs = peca::specs(s, pedido.pesos);
-    marca(0, &mut t0);
-    let Some(specs) = specs else {
+    let Some(specs) = peca::specs(s, pedido.pesos) else {
         *mundo = None;
         return None;
     };
@@ -340,11 +337,8 @@ pub fn passo(
     }
     let m = mundo.as_mut()?;
     let ids = ids(s, &m.ordem);
-    marca(1, &mut t0);
     sincroniza_fixos(m, &obstaculo::declarados(s));
-    marca(2, &mut t0);
     realinha(m, &ids, &specs);
-    marca(3, &mut t0);
     let mut depois = Vec::new();
     let mut antes_do_passo: Vec<Option<Rotation>> = vec![None; n];
     for i in 0..n {
@@ -366,7 +360,6 @@ pub fn passo(
         movidas: vec![false; n],
         recibos: m.fixos.keys().copied().collect(),
     };
-    marca(4, &mut t0);
     if dt > 0.0 {
         let params = IntegrationParameters {
             dt,
@@ -392,7 +385,6 @@ pub fn passo(
             &(),
         );
         m.passos += 1;
-        marca(5, &mut t0);
         let rolantes: BTreeMap<u32, rolar::Rolante> = m
             .ordem
             .iter()
@@ -428,7 +420,6 @@ pub fn passo(
                 }
             }
         }
-        marca(6, &mut t0);
         for i in 0..n {
             let (Some(r0), Some(c)) = (antes_do_passo[i], m.corpos[i].as_mut()) else {
                 continue;
@@ -453,7 +444,6 @@ pub fn passo(
             c.saida = bits(estado.p[i], estado.vel[i], estado.rot[i], estado.spin[i]);
         }
     }
-    marca(7, &mut t0);
     for i in depois {
         if let Some(spec) = specs[i] {
             escreve(m, i, ids[i], &spec, estado, dt);
@@ -646,22 +636,3 @@ fn sincroniza_fixos(m: &mut Mundo, declarados: &[(u32, obstaculo::Obstaculo)]) {
 
 #[cfg(test)]
 mod tests;
-
-// ⛔ TEMPORÁRIO (a prova do §9.20): o relógio por etapa do passo — sai com a prova.
-thread_local! {
-    static RELOGIO: std::cell::RefCell<[f64; 12]> = const { std::cell::RefCell::new([0.0; 12]) };
-}
-fn marca(i: usize, t0: &mut std::time::Instant) {
-    let agora = std::time::Instant::now();
-    RELOGIO.with(|r| r.borrow_mut()[i] += (agora - *t0).as_secs_f64() * 1e3);
-    *t0 = agora;
-}
-/// ⛔ TEMPORÁRIO: soma `ms` à etapa `i` (8..12: as de fora do mundo).
-pub fn soma(i: usize, ms: f64) {
-    RELOGIO.with(|r| r.borrow_mut()[i] += ms);
-}
-/// ⛔ TEMPORÁRIO: o relógio acumulado por etapa (specs · ids · fixos · mortas · escreve · step · rolar · lê), e zera.
-/// ⛔ TEMPORÁRIO
-pub fn relogio() -> [f64; 12] {
-    RELOGIO.with(|r| std::mem::take(&mut *r.borrow_mut()))
-}

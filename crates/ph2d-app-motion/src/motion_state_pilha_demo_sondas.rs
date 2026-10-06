@@ -221,9 +221,10 @@ fn custo_do_tique_do_app_na_pilha() {
     }
 }
 
-/// ⭐⭐ doc 121 §9.20 — **a PROVA do mundo de contacto antes do produto** (two-strikes: a 4.ª lei do contacto
-/// desta linha): a `=114` pela lei de antes (`ph2d_contact`, `8` sub-passos — o produto até 06/10) e pelo motor da
-/// casa (`rapier2d`, com `8` e com `1` sub-passo), no MESMO processo, intercaladas por tique. Por variante: o
+/// ⭐⭐ doc 121 §9.20 — **a PROVA do mundo de contacto** (two-strikes: a 4.ª lei do contacto desta linha): a `=114`
+/// pelo motor da casa (`rapier2d`, com `8` e com `1` sub-passo) e a base sem `Collide`, no MESMO processo,
+/// intercaladas por tique. ⚠️ A lei de antes (`ph2d_contact`, `8` sub-passos — o produto até 06/10) correu aqui
+/// atrás de uma chave por fio em `e78b2c096` (a tabela está no doc 121 §9.20) e saiu com o código dela. Por variante: o
 /// tique do cozimento (as duas taças; mediana, p95 e máximo com a pilha formada, tique `>= 60`) e, no instante
 /// `PH2D_PROVA_TIQUE` (`177` = `2,95` s, o último antes do recomeço), as réguas da `prova_dos_impulsos_da_placa`
 /// sobre a taça da DIREITA — vizinho mediano, velocidade média, sobreposição mais funda — e a impressão dos bits
@@ -241,12 +242,11 @@ fn prova_do_mundo_de_contacto() {
         .unwrap_or(177);
     let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     eprintln!("MUNDO load {}", carga().trim());
-    let variantes: [(&str, bool, f32, bool); 5] = [
-        ("antiga · 8 sub-passos", true, 8.0, true),
-        ("rapier · 8 sub-passos", false, 8.0, true),
-        ("rapier · 1 sub-passo", false, 1.0, true),
-        ("rapier · 1 sub-passo (2.a)", false, 1.0, true),
-        ("Collide OFF (a base) · 1 sub", false, 1.0, true),
+    let variantes: [(&str, f32, bool); 4] = [
+        ("rapier · 8 sub-passos", 8.0, true),
+        ("rapier · 1 sub-passo", 1.0, true),
+        ("rapier · 1 sub-passo (2.a)", 1.0, true),
+        ("Collide OFF (a base) · 1 sub", 1.0, true),
     ];
     // `PH2D_MUNDO_SO=2,4`: só essas variantes (o relógio por etapa fica de UMA).
     let so: Option<Vec<usize>> = std::env::var("PH2D_MUNDO_SO")
@@ -261,7 +261,7 @@ fn prova_do_mundo_de_contacto() {
     for lado in lados {
         let mut cenas: Vec<(MotionState, Vec<NodeId>)> = variantes
             .iter()
-            .map(|(nome, _, sub, passe)| {
+            .map(|(nome, sub, passe)| {
                 let mut state = MotionState::new();
                 state.pump.set_separa_o_desenho(*passe);
                 let colide = !nome.starts_with("Collide OFF");
@@ -296,7 +296,6 @@ fn prova_do_mundo_de_contacto() {
         // saíram com os MESMOS bits.
         for k in 0..=u64::from(ultimo) {
             for (v, (state, sinks)) in cenas.iter_mut().enumerate() {
-                ph2d_node_sim_step::mede_com_a_lei_antiga(variantes[v].1);
                 let scopes =
                     ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
                 let t0 = std::time::Instant::now();
@@ -331,13 +330,7 @@ fn prova_do_mundo_de_contacto() {
                 }
             }
         }
-        ph2d_node_sim_step::mede_com_a_lei_antiga(false);
-        let r = ph2d_contact_world::relogio();
-        eprintln!(
-            "MUNDO lado {lado} · relogio do mundo (ms somados): specs {:.0} · ids {:.0} · fixos {:.0} · mortas {:.0} · escreve {:.0} · step {:.0} · rolar {:.0} · le {:.0} · sim.step inteiro {:.0} · sim.collide inteiro {:.0}",
-            r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9]
-        );
-        for (v, (nome, _, _, _)) in variantes.iter().enumerate() {
+        for (v, (nome, _, _)) in variantes.iter().enumerate() {
             let (p, q) = (&fim[v], &antes[v]);
             let s = fluxo[v].as_ref().expect("o fluxo do fim");
             let col = ph2d_contact::colisores(s).unwrap_or_else(|| vec![None; p.len()]);

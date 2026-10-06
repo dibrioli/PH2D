@@ -490,44 +490,6 @@ fn step_com(
     }
     // ⭐⭐⭐ O CONTACTO ENTRE PEÇAS (doc 109, pelo motor da casa desde o doc 121 §9.20) — só onde há
     // colisor declarado; sobrescreve `p`, `vel`, `rot` e `spin` de quem o mundo resolve.
-    if contact_antigo::ligada() {
-        let girou: Vec<f32> = spin_prev.as_ref().map_or_else(
-            || vec![0.0; n],
-            |s0| {
-                (0..n)
-                    .map(|i| spin_step(s0[i], 0.0, passo[i], angular_damping).1)
-                    .collect()
-            },
-        );
-        let (giro, dspin) =
-            contact_antigo::resolve(state, &mut p, &mut vel, &w, &antes_do_passo, &girou, |i| {
-                passo[i]
-            });
-        let rodou = giro.iter().chain(&dspin).any(|g| *g != 0.0);
-        for i in 0..giro.len().min(n) {
-            if giro[i].is_finite() {
-                rot[i] += giro[i];
-            }
-            if dspin[i].is_finite() {
-                spin[i] += dspin[i];
-            }
-        }
-        let age: Vec<f32> = (0..n).map(|i| age_prev[i] + passo[i]).collect();
-        if spinning {
-            out.set(SPIN, Column::Scalar(spin));
-            out.set(ROT, Column::Scalar(rot));
-        } else if rodou {
-            out.set(ROT, Column::Scalar(rot));
-            if dspin.iter().any(|d| d.is_finite() && *d != 0.0) {
-                out.set(SPIN, Column::Scalar(spin));
-            }
-        }
-        out.set("P", Column::Vec2(p));
-        out.set("vel", Column::Vec2(vel));
-        out.set("age", Column::Scalar(age));
-        out.set("sim_t", Column::Scalar(vec![playhead; n]));
-        return out;
-    }
     let feito = contact::resolve(
         &ph2d_contact_world::Pedido {
             state,
@@ -577,8 +539,6 @@ fn step_com(
 }
 
 mod contact;
-mod contact_antigo;
-pub use contact_antigo::mede_com_a_lei_antiga;
 
 struct SimStep;
 
@@ -595,7 +555,6 @@ impl NodeOp for SimStep {
         // ⭐ A MEMÓRIA dos contactos (doc 121 §9.20): o mundo do motor da casa vive entre tiques
         // no `Cook`, e viaja no ponto de recuo — o recuo continua exacto.
         let mut mundo = ctx.take_memo::<ph2d_contact_world::Mundo>();
-        let t0 = std::time::Instant::now();
         let out = step_com(
             ctx.input(0),
             playhead,
@@ -605,7 +564,6 @@ impl NodeOp for SimStep {
             ctx.param(ANGULAR),
             &mut mundo,
         );
-        ph2d_contact_world::soma(8, t0.elapsed().as_secs_f64() * 1e3);
         if let Some(m) = mundo {
             ctx.keep_memo(m);
         }

@@ -404,7 +404,6 @@ fn the_bounce_of_the_pieces_reaches_the_velocity() {
 /// ```
 #[test]
 fn two_equal_boxes_share_the_blow_instead_of_one_being_a_wall() {
-    use ph2d_nodegraph::attr::BOUNCE_COLUMN;
     /// `f32` sobre uma conta de duas divisões — a folga é de arredondamento, não de lei.
     const EPS: f32 = 2e-3;
     for (forma, k) in [("discos", 1.0_f32), ("caixas", SALTO_DA_FACE)] {

@@ -114,9 +114,6 @@ path = "../ph2d-panel-motion-graph"
 optional = true
 
 [dev-dependencies]
-# A chave POR FIO da prova do mundo de contacto (doc 121 §9.20) — sai com a prova.
-ph2d-node-sim-step = { path = "../ph2d-node-sim-step" }
-ph2d-contact-world = { path = "../ph2d-contact-world" }
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
 # ⚠️ HOWTO §1.3 — invisíveis dentro da shell, onde já eram dependência do binário.

@@ -35,6 +35,13 @@ O QUE JÁ EXISTE (NÃO reconstrua):
   e a grelha reconstruída em `ph2d-gpu-cook/src/lib.rs`), o `sim.collide` no dispositivo (já tem `SC_BOX` por
   params), o estágio feito à mão de várias passadas (`ph2d-gpu-cook/src/voronoi.rs`, o molde).
 
+⛔⛔ ANTES DE TUDO (06/10, o ORÁCULO — doc 121 §9.19, o fim): a mesma pilha no `rapier2d` da casa custa `0,40` ms por
+tique a `1 024` caixas e `3,0` (`1,7` em paralelo) a `4 096`, contra `~15` e `48`–`93` do nosso contacto: `~20`–`30×`, e
+a diferença é de ALGORITMO (o nosso refaz cada contacto `64×` por tique e não lembra nada entre tiques). Portar o
+NOSSO algoritmo para a placa portaria o desperdício. ⇒ a 1.ª pergunta desta onda passa a ser a escolha do DONO
+entre (a) o contacto das peças do Motion pelo `rapier2d` (o motor da Física, ADR-0131) e (b) o nosso reescrito como
+ele — e só depois, se ainda faltar, a placa. O texto abaixo é o plano da placa, que fica para depois dessa escolha.
+
 A TAREFA — o contacto da caixa NA PLACA (4.ª topologia do dispositivo ⇒ two-strikes; os modelos de LEI e de CUSTO
 estão provados; falta o do SEQUENCIADOR):
  (0) A RÉGUA DO APP já existe: `PH2D_MOTION_RELOGIO=1` imprime `[motion-quadro]` a cada `30` quadros (a parede, o

@@ -2455,3 +2455,26 @@ paralelo** (`impulso.rs`: um balde por `lo`, juntos pela ordem de `lo`; gate de 
 A decisão do item (5) não muda.
 Mutação da montagem em paralelo: juntar os baldes ao contrário (`rev()`) SOBREVIVEU ao gate de bits (a referência
 passa pela mesma junção); o gate passou a exigir a ordem `(lo, hi)` crescente e ela sangra.
+
+**(5) — o ORÁCULO (06/10, depois de o dono dizer *«estamos muito aquém da performance de uma Unity»*).** A física 2D do
+Unity é o Box2D; o PH2D já tem um motor da mesma família, o `rapier2d` `0.35.3` (o do módulo de Física, ADR-0131,
+Apache-2.0). A MESMA pilha corrida nele, fora do repositório (`ferramentas/oraculo_rapier_pilha/`: `k × k` caixas
+de meio-lado `0,11` numa taça de segmentos com o raio da `medida_de`, gravidade `4`, `1/60` s por tique, `1`
+passo e `4` iterações — a omissão dele —, `6` s; `release`, carga `7`–`15`; duas corridas cada, iguais):
+
+| caixas | rapier, `1` núcleo (tique med · p95) | rapier, `parallel` | o nosso contacto por tique (a pilha formada) |
+|---|---|---|---|
+| `1 024` | **`0,40`** · `0,52` ms | `0,48`–`0,56` · `0,61`–`0,70` | `~15`–`18` ms (`2,2` ms por sub-passo × `8`) |
+| `4 096` | **`2,9`–`3,0`** · `4,1`–`4,2` | `1,7` · `2,3` | `48`–`93` ms |
+| `16 384` | `15,8`–`18,5` · `33`–`37` | `5,8`–`7,0` · `13` | — |
+
+As pilhas assentam (a peça mais funda a `0,11` do fundo: pousada pela face). ⇒ **o nosso contacto é `~20`–`30×` mais
+lento que um motor da família do Box2D na mesma CPU, e a diferença é de ALGORITMO, não de placa:** por tique o
+nosso refaz cada contacto `64` vezes (`8` sub-passos × `8` varreduras de separação, a grelha reconstruída a cada
+uma, e mais `8` iterações de impulso sobre manifestos refeitos), sem lembrar nada do tique anterior; o rapier (e o
+Box2D) guarda os contactos entre tiques (fase estreita incremental), aquece o solver com os impulsos da vez
+anterior e resolve com `1` passo e `4` iterações. ⇒ **levar o NOSSO algoritmo para a placa portaria o desperdício**:
+o item aberto muda de pergunta — antes da placa, o contacto das peças do Motion pelo motor da casa (o `rapier2d`
+da Física) ou o nosso reescrito como ele (contactos persistentes, aquecimento, menos passos). ⚠️ Isto muda o
+COMPORTAMENTO da pilha que o dono aprovou (doc 109–111: o zumbido curado com os `8` sub-passos): é decisão de
+produto e pede o smoke dele.

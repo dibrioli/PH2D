@@ -23,7 +23,7 @@ use ph2d_board_model::{Anchor, Element, End, Head, Route};
 use ph2d_vec_connect::{
     Aabb, EndSpec, RouteInput, RouteKind, exit_point, port_side, route, side_towards,
 };
-use ph2d_vec_scene::{Marker, VecVertex, end_tangent};
+use ph2d_vec_scene::{Marker, VecVertex};
 use ph2d_vector::BezPath;
 
 /// ⭐ **O recuo da rota em cotovelo antes de poder dobrar** (o *jetty*), em unidades do mundo.
@@ -48,13 +48,14 @@ pub const SPREAD_STEP: f64 = 0.35 * JETTY;
 pub const END_ARM: f64 = 0.45;
 
 /// O braço da curva num PONTO DE AJUSTE, em fracção de cada trecho vizinho (a tangente é a do
-/// Catmull-Rom: do ponto de trás ao da frente). **½**, escolhido contra a 2.ª captura do Miro do dono
-/// (06/10: uma curva por nove pontos, «as curvas do Miro são mais arredondadas»): a mesma sequência de
-/// pontos desenhada com ⅓ (o `DEFAULT_CURVE_ARM` do vectorial, que aqui esteve) e com o Catmull-Rom
-/// uniforme faz BICO nos pontos de cima e de baixo; com 0,6 passa do ponto e ondula; com ½ dá as
-/// voltas redondas da captura. ⚠️ Comparação a olho (a imagem só chegou na conversa, sem os píxeis):
-/// uma captura em ficheiro mede-a.
-pub const POINT_ARM: f64 = 0.5;
+/// Catmull-Rom: do ponto de trás ao da frente). ⭐ **0,4 MEDIDO** (06/10) na captura do Miro com pontos
+/// que o dono mandou (`images/3`: seis estações e cinco meios de trecho): com braços livres trecho a
+/// trecho a curva do Miro cai a < 1,1 px da cúbica com ESTAS tangentes (as direcções estão certas); a
+/// melhor lei global para o comprimento é 0,35–0,40 do próprio trecho (rms 2,9–3,1 px, a espessura do
+/// traço). ⛔ ⅓ (o do vectorial) fazia bico; ½ (escolhido a olho no 3.º smoke) mede 3,9 px; o
+/// Catmull-Rom uniforme, o centrípeto e o cordal ficam todos atrás. Régua:
+/// `docs/MiroClone/ferramentas/mede_curva_miro.py`.
+pub const POINT_ARM: f64 = 0.4;
 
 /// ⭐ **O tamanho da ponta de seta**, em múltiplos da largura do traço sobre a caixa do catálogo
 /// (`Marker`: comprimento 4·w). Medido no oráculo (`saidas/seta_reta_ligada.svg`, `strokeWidth 2`,
@@ -204,51 +205,105 @@ pub fn drawn(r: &Routed, heads: [Head; 2], width: f64) -> Drawn {
 /// cabia no botão — foto da cena 3, 06/10).
 #[must_use]
 pub fn drawn_at(r: &Routed, heads: [Head; 2], width: f64, scale: f64) -> Drawn {
+    use ph2d_vector::{ParamCurve, PathSeg};
     let ms = heads.map(marker);
-    let inset = |m: Marker| m.inset(scale) * width;
-    let line = pull_back(&r.path, [inset(ms[0]), inset(ms[1])])
-        .map_or_else(BezPath::new, |p| ph2d_vec_render::build_bezpath(&p));
-    let mut out = Vec::new();
-    for (i, m) in ms.into_iter().enumerate() {
-        let Some((tip, dir)) = end_tangent(&r.path, i == 0) else {
+    let full = ph2d_vec_render::build_bezpath(&r.path);
+    let segs: Vec<PathSeg> = full.segments().collect();
+    if segs.is_empty() {
+        return Drawn {
+            line: BezPath::new(),
+            heads: Vec::new(),
+        };
+    }
+    // A profundidade de uma cabeça (o comprimento do triângulo): é para onde ela APONTA de volta.
+    let depth = Marker::Triangle.inset(scale) * width;
+    let cut = [0, 1].map(|k| chord_cut(&segs, k == 1, ms[k].inset(scale) * width));
+    let mut heads_out = Vec::new();
+    for (k, m) in ms.into_iter().enumerate() {
+        let tip = if k == 0 {
+            segs[0].start()
+        } else {
+            segs[segs.len() - 1].end()
+        };
+        let Some(aim) = chord_cut(&segs, k == 1, depth).map(|(i, t)| segs[i].eval(t)) else {
             continue;
         };
-        if let Some(head) = m.build(tip, dir, width, scale, 0.0) {
+        let dir = [tip.x - aim.x, tip.y - aim.y];
+        if let Some(head) = m.build([tip.x, tip.y], dir, width, scale, 0.0) {
             let closed = head.closed;
-            out.push((
+            heads_out.push((
                 ph2d_vec_render::build_bezpath(&head),
                 closed && m.is_filled(),
             ));
         }
     }
-    Drawn { line, heads: out }
+    let line = match cut {
+        [Some(a), Some(b)] if a.0 < b.0 || (a.0 == b.0 && a.1 < b.1) => sub_path(&segs, a, b),
+        _ => BezPath::new(),
+    };
+    Drawn {
+        line,
+        heads: heads_out,
+    }
 }
 
-/// ⭐ **A linha recua para a BASE de cada ponta de seta, sobre o eixo dela**: a âncora da ponta (com
-/// os braços, que viajam com ela) anda `inset` para trás ao longo da tangente de saída — a linha
-/// chega ao centro da base na direcção da ponta, numa curva também. ⛔ O `trim_path` do vectorial
-/// recua pela poligonal das ÂNCORAS: numa seta de uma cúbica só isso puxava a âncora pela corda,
-/// entortava a curva e a linha entrava de lado na ponta (2.º smoke do dono, 06/10); cortar a curva
-/// pelo comprimento de arco ainda deixava a ponta 2,2 un. fora do eixo (a curva dobra debaixo da
-/// cabeça). Mais curto que os dois recuos ⇒ vazio (só as pontas).
-#[must_use]
-pub fn pull_back(path: &VecPath, insets: [f64; 2]) -> Option<VecPath> {
-    let mut out = path.clone();
-    let n = out.verts.len();
-    if n < 2 || dist(out.verts[0].anchor, out.verts[n - 1].anchor) <= insets[0] + insets[1] {
-        return None;
+/// ⭐ **Onde a curva fica a `r` (em linha recta) da sua ponta** — a ponta de início (`from_end =
+/// false`) ou a de fim: `(segmento, t)`. A linha corta-se AÍ e a cabeça aponta da ponta para AÍ — a
+/// linha acaba no centro da base dela e é a MESMA curva que a guia da selecção desenha. ⛔ Recuar a
+/// âncora ao longo da tangente (a versão anterior) mudava a curva e separava o traço da guia (3.º
+/// smoke do dono, 06/10); o `trim_path` do vectorial recua pela corda das âncoras e entortava-a.
+/// `None` = a curva inteira fica mais perto da ponta do que `r`.
+fn chord_cut(segs: &[ph2d_vector::PathSeg], from_end: bool, r: f64) -> Option<(usize, f64)> {
+    use ph2d_vector::ParamCurve;
+    let n = segs.len();
+    let tip = if from_end {
+        segs[n - 1].end()
+    } else {
+        segs[0].start()
+    };
+    if r <= 0.0 {
+        return Some(if from_end { (n - 1, 1.0) } else { (0, 0.0) });
     }
-    for (k, &inset) in insets.iter().enumerate() {
-        let Some((_, dir)) = end_tangent(path, k == 0).filter(|_| inset > 0.0) else {
+    let order: Vec<usize> = if from_end {
+        (0..n).rev().collect()
+    } else {
+        (0..n).collect()
+    };
+    for i in order {
+        let s = &segs[i];
+        let far = if from_end { s.start() } else { s.end() };
+        if (far - tip).hypot() < r {
             continue;
-        };
-        let v = &mut out.verts[if k == 0 { 0 } else { n - 1 }];
-        let mv = |p: &mut [f64; 2]| *p = [p[0] - dir[0] * inset, p[1] - dir[1] * inset];
-        mv(&mut v.anchor);
-        mv(&mut v.in_handle);
-        mv(&mut v.out_handle);
+        }
+        // Bissecção: de perto da ponta (`near`) a longe (`far`).
+        let (mut lo, mut hi) = if from_end { (1.0, 0.0) } else { (0.0, 1.0) };
+        for _ in 0..60 {
+            let mid = 0.5 * (lo + hi);
+            if (s.eval(mid) - tip).hypot() < r {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        return Some((i, hi));
     }
-    Some(out)
+    None
+}
+
+/// O pedaço da curva de `a` a `b` (`(segmento, t)`), cortando os segmentos das pontas.
+fn sub_path(segs: &[ph2d_vector::PathSeg], a: (usize, f64), b: (usize, f64)) -> BezPath {
+    use ph2d_vector::ParamCurve;
+    let mut out = BezPath::new();
+    for (i, seg) in segs.iter().enumerate().take(b.0 + 1).skip(a.0) {
+        let t0 = if i == a.0 { a.1 } else { 0.0 };
+        let t1 = if i == b.0 { b.1 } else { 1.0 };
+        let piece = seg.subsegment(t0..t1);
+        if out.elements().is_empty() {
+            out.move_to(piece.start());
+        }
+        out.push(piece.as_path_el());
+    }
+    out
 }
 
 /// O sítio do mundo de um ponto fixo `[u, v]` da caixa de `el` (antes de rodar).

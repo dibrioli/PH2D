@@ -386,11 +386,11 @@ fn the_cache_revisits_only_the_touched_arrow_and_sees_waypoint_changes() {
     assert!(cache.get(ab).unwrap().polyline().contains(&[280.0, 300.0]));
 }
 
-/// ⭐ A linha acaba no CENTRO DA BASE da ponta de seta, também numa curva (2.º smoke do dono, 06/10:
-/// o recuo pela corda entortava a curva e a linha entrava de lado no triângulo).
+/// ⭐ A linha acaba no CENTRO DA BASE da ponta de seta e é a MESMA curva da guia (3.º smoke do dono,
+/// 06/10: com o triângulo, a guia da selecção e o traço separavam-se).
 #[test]
-fn on_a_curve_the_line_ends_at_the_middle_of_the_head_base() {
-    use ph2d_vector::{ParamCurve, Point};
+fn on_a_curve_the_line_is_the_route_cut_at_the_middle_of_the_head_base() {
+    use ph2d_vector::{ParamCurve, ParamCurveNearest, Point};
     let mut doc = BoardDoc::default();
     let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 300.0, 80.0]);
     let b = shape(&mut doc, ShapeType::Pill, [500.0, 0.0, 160.0, 80.0]);
@@ -403,27 +403,50 @@ fn on_a_curve_the_line_ends_at_the_middle_of_the_head_base() {
     cache.sync(&doc);
     let r = cache.get(id).unwrap();
     let w = 2.0;
+    let inset = marker(Head::Triangle).inset(HEAD_SCALE) * w;
     let d = drawn(r, [Head::None, Head::Triangle], w);
-    let last = d.line.segments().last().unwrap();
-    let end = last.end();
-    let base = Point::new(150.0, 80.0 + marker(Head::Triangle).inset(HEAD_SCALE) * w);
+    let full = ph2d_vec_render::build_bezpath(&r.path);
+    let on_route = |p: Point| {
+        full.segments()
+            .map(|s| s.nearest(p, 1e-9).distance_sq)
+            .fold(f64::INFINITY, f64::min)
+            .sqrt()
+    };
+    // Cada ponto do traço está NA rota (a guia).
+    for seg in d.line.segments() {
+        for k in 0..=20 {
+            let p = seg.eval(f64::from(k) / 20.0);
+            assert!(on_route(p) < 1e-3, "o traço saiu da guia em {p:?}");
+        }
+    }
+    // E acaba a `inset` da ponta, no eixo da cabeça: o centro da base.
+    let end = d.line.segments().last().unwrap().end();
+    let tip = Point::new(150.0, 80.0);
+    assert!(((end - tip).hypot() - inset).abs() < 1e-6, "{end:?}");
+    // O meio dos dois cantos de TRÁS do triângulo (os mais longe do bico) é onde o traço acaba.
+    let mut corners: Vec<Point> = d.heads[0]
+        .0
+        .elements()
+        .iter()
+        .filter_map(|e| match e {
+            ph2d_vector::PathEl::MoveTo(p)
+            | ph2d_vector::PathEl::LineTo(p)
+            | ph2d_vector::PathEl::CurveTo(_, _, p) => Some(*p),
+            _ => None,
+        })
+        .collect();
+    corners.sort_by(|a, b| (*b - tip).hypot().total_cmp(&(*a - tip).hypot()));
+    let base = corners[0].midpoint(corners[1]);
     assert!(
-        (end - base).hypot() < 0.5,
-        "a linha acaba em {end:?}, a base é {base:?}"
+        (base - end).hypot() < 1e-6,
+        "base {base:?}, o traço acaba em {end:?}"
     );
-    // E chega na direcção da ponta (a vertical), não de lado.
-    let before = last.eval(0.98);
-    let slope = ((end.x - before.x) / (end.y - before.y)).abs();
-    assert!(slope < 0.05, "a linha entra de lado na ponta: {slope}");
-    // E começa onde a rota começa (a outra ponta não tem cabeça: não recua).
-    let first = d.line.segments().next().unwrap().start();
-    assert_eq!([first.x, first.y], r.ends()[0]);
 }
 
-/// Num ponto de ajuste o braço é ½ de cada trecho vizinho, na tangente de trás para a frente (as
-/// voltas redondas do Miro; com ⅓ fazia bico — `POINT_ARM`).
+/// Num ponto de ajuste o braço é 0,4 de cada trecho vizinho (MEDIDO na captura do Miro —
+/// `POINT_ARM`), na tangente de trás para a frente.
 #[test]
-fn a_waypoint_arm_is_half_of_each_neighbouring_leg() {
+fn a_waypoint_arm_is_the_measured_fraction_of_each_leg() {
     let mut doc = BoardDoc::default();
     let mut c = Connector::new(
         End::Free([0.0, 0.0]),
@@ -441,9 +464,9 @@ fn a_waypoint_arm_is_half_of_each_neighbouring_leg() {
     assert_eq!(v.anchor, [200.0, 150.0]);
     // Tangente horizontal (de (0,0) a (400,0)); cada trecho mede 250.
     assert!(
-        (v.out_handle[0] - (200.0 + 125.0)).abs() < 1e-9 && (v.out_handle[1] - 150.0).abs() < 1e-9
+        (v.out_handle[0] - (200.0 + 100.0)).abs() < 1e-9 && (v.out_handle[1] - 150.0).abs() < 1e-9
     );
     assert!(
-        (v.in_handle[0] - (200.0 - 125.0)).abs() < 1e-9 && (v.in_handle[1] - 150.0).abs() < 1e-9
+        (v.in_handle[0] - (200.0 - 100.0)).abs() < 1e-9 && (v.in_handle[1] - 150.0).abs() < 1e-9
     );
 }

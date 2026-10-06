@@ -199,6 +199,32 @@ a **3,1 ms**); forma com menos de **4 px** é um ponto de cor (a 2 px, 100 mil f
 **26,6 ms**). ⛔ Rejeitado e desfeito: o índice de z mantido pelas ops (100 mil rectângulos 7,8 ms contra
 6,1 a ordenar a cada quadro — §6).
 
+### §2.3 — Medido na W2 (2026-10-06): as setas
+
+Cena `Flow` (partilhada pelas três réguas): N formas 160×100 em grelha com o vão de nascença (80) e
+N/10 setas em cotovelo entre vizinhas, presas ao centro, vista a enquadrar tudo. `loadavg 4,5`, RTX
+5060 Ti / Vulkan, mínimo de 7×20 (mediana entre parênteses). Réguas: `measure_route_cost` (cache),
+`measure_encode_cost` (CPU), `measure_gpu_raster_cost` (placa).
+
+| N formas | setas | 1.ª sincronização | parado | arrastar 1 forma (revistas / refeitas) | encode CPU | placa |
+|---|---|---|---|---|---|---|
+| 1 000 | 100 | 1,87 ms | 0 | 0,020 ms (1 / 1) | 0,17 ms | 0,28 ms |
+| 10 000 | 1 000 | 19,2 ms | 0 | 0,19 ms (3 / 3) | 1,19 ms | 0,55 ms |
+| 100 000 | 10 000 | 207 ms | 0 | 3,91 ms (1 / 1) | 9,32 ms | 1,75 ms |
+
+⇒ **10 mil formas com mil setas = ~1,4 ms de CPU e 0,55 ms de placa por quadro a arrastar**; o pior caso
+(100 mil + 10 mil setas, TUDO à vista, a arrastar) ~13 ms de CPU — 60 Hz ainda cabe. O «arrastar» de
+100 mil é quase todo o passeio da diferença (O(N) pelas versões); o A\* só corre para a seta tocada.
+A 1.ª sincronização (abrir um quadro de 10 mil setas) paga-se uma vez: 207 ms.
+
+⭐ **O tecto da região** (`DETOUR_K`, `ph2d-board-route::cache`): com a lei do vectorial (o ponto fixo
+sem tecto) cada rota viu **1 000 de 1 000** e **10 000 de 10 000** formas — o vão de nascença (80) é
+menor que a folga dupla (2 × 120), e a região encadeia o quadro inteiro; a régua a 100 mil não acabou em
+12 min. Com o tecto: **27,5 / 28,7** obstáculos por rota (máx 30). Gate:
+`a_short_arrow_in_a_dense_flow_sees_only_its_neighbourhood`.
+Nível de detalhe das setas (seta < 4 px no ecrã = traço de ponta a ponta): o encode de 100 mil + 10
+mil setas passou de **11,2** para **8,9–9,3 ms** (à carga 6 e 4,5 — o «antes» foi a load 6).
+
 ## §3 — As ondas (cada uma fecha com gate batched, smoke e o que o dono vê)
 
 Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um brainstorm.

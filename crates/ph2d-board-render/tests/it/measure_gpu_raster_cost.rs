@@ -17,7 +17,7 @@
 //! ```
 
 use super::measure_encode_cost::{AREA, FRAMES, Mix, ROUNDS, SCENES, board_with, one_frame};
-use ph2d_board_layout::TextCache;
+use ph2d_board_render::RenderCache;
 use ph2d_gpu::GpuContext;
 use ph2d_render::VelloPass;
 use ph2d_text::TextSystem;
@@ -190,7 +190,7 @@ fn measure_gpu_raster_cost() {
         .map(|&sc| {
             let set = board_with(sc);
             let mut scene = VectorScene::new();
-            one_frame(&set, &mut scene, &mut ts, &mut TextCache::default());
+            one_frame(&set, &mut scene, &mut ts, &mut RenderCache::default());
             scene
         })
         .collect();

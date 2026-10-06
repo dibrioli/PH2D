@@ -36,7 +36,7 @@ pub(crate) struct BoardLive {
     pub(crate) editor: Option<ph2d_board_edit::Editor>,
     /// O desfazer de CADA quadro (plano §1.4: `Ctrl+Z` num quadro nunca desfaz outro nem a cena).
     pub(crate) histories: BTreeMap<BoardId, History>,
-    pub(crate) text_cache: ph2d_board_layout::TextCache,
+    pub(crate) render_cache: ph2d_board_render::RenderCache,
     /// O último carregar no quadro `(instante ns, x, y)` — o duplo-clique.
     pub(crate) last_down: Option<(u128, [f32; 2])>,
     /// `Espaço` em baixo: arrastar move a vista (o idioma do Figma/Miro/Excalidraw).

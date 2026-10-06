@@ -17,7 +17,7 @@ use parley::{
     PositionedLayoutItem, StyleProperty,
 };
 use ph2d_text::TextSystem;
-use ph2d_vector::{Affine, Color, Fill, Glyph, VectorScene};
+use ph2d_vector::{Affine, Color, Fill, Glyph, Shape as _, VectorScene};
 
 /// Moldar `text` a `font_size` (mundo), com quebra em `max_width` (mundo), centrado.
 pub fn shape(ts: &mut TextSystem, text: &str, font_size: f32, max_width: f32) -> Layout<()> {
@@ -63,6 +63,24 @@ pub fn paint(scene: &mut VectorScene, layout: &Layout<()>, transform: Affine, co
                 );
         }
     }
+}
+
+/// Uma barra por linha (a largura e a altura do x da linha), num só caminho — o que se desenha no
+/// lugar do texto quando a letra é pequena demais para ler.
+#[must_use]
+pub fn line_bars(layout: &Layout<()>) -> ph2d_vector::BezPath {
+    let mut p = ph2d_vector::BezPath::new();
+    for line in layout.lines() {
+        let m = line.metrics();
+        let x0 = f64::from(m.offset);
+        let w = f64::from(m.advance - m.trailing_whitespace);
+        let y1 = f64::from(m.baseline);
+        let y0 = y1 - f64::from(m.ascent) * 0.6;
+        if w > 0.0 {
+            p.extend(ph2d_vector::Rect::new(x0, y0, x0 + w, y1).path_elements(0.1));
+        }
+    }
+    p
 }
 
 /// Quantos quadros um moldado fica guardado sem ser usado.

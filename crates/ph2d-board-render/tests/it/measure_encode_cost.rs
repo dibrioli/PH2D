@@ -10,8 +10,8 @@
 //! bash scripts/ph2d-run.sh cargo test -p ph2d-board-render --release --test it -- --ignored --nocapture
 //! ```
 
-use ph2d_board_layout::TextCache;
 use ph2d_board_model::{BoardOp, BoardSet, Camera, Element, Rgba, Shape, ShapeType, Style};
+use ph2d_board_render::RenderCache;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -22,17 +22,28 @@ use std::time::Instant;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Mix {
     Rects,
+    /// As formas da W1 com a vista a enquadrar o quadro inteiro (a letra é pequena demais para
+    /// ler: desenha-se como traço).
     Shapes,
+    /// As MESMAS formas com a vista aproximada até a letra se ler (14 px): só uma parte está à
+    /// vista — o regime de quem trabalha num quadro grande.
+    ShapesNear,
 }
 
-pub(super) const SCENES: [(usize, Mix); 6] = [
+pub(super) const SCENES: [(usize, Mix); 9] = [
     (1_000, Mix::Rects),
     (10_000, Mix::Rects),
     (100_000, Mix::Rects),
     (1_000, Mix::Shapes),
     (10_000, Mix::Shapes),
     (100_000, Mix::Shapes),
+    (1_000, Mix::ShapesNear),
+    (10_000, Mix::ShapesNear),
+    (100_000, Mix::ShapesNear),
 ];
+/// O tamanho da letra das formas da mistura (mundo) e o do ecrã a que a vista de perto a põe.
+const FONT: f64 = 6.0;
+const NEAR_FONT_PX: f64 = 14.0;
 pub(super) const ROUNDS: usize = 7;
 pub(super) const FRAMES: usize = 20;
 pub(super) const AREA: [f64; 4] = [0.0, 0.0, 1920.0, 1080.0];
@@ -54,12 +65,12 @@ pub(super) fn board_with((n, mix): (usize, Mix)) -> BoardSet {
                 style: Style::new(Some(ORANGE), None, ink),
                 text: String::new(),
             },
-            Mix::Shapes => {
+            Mix::Shapes | Mix::ShapesNear => {
                 let kind = [ShapeType::Rectangle, ShapeType::Ellipse, ShapeType::Diamond][i % 3];
                 let mut style = Style::new(Some(ORANGE), Some(ink), ink);
                 style.round = i % 2 == 0;
                 style.stroke_width = 1.0;
-                style.font_size = 6.0;
+                style.font_size = FONT;
                 Shape {
                     kind,
                     style,
@@ -73,7 +84,7 @@ pub(super) fn board_with((n, mix): (usize, Mix)) -> BoardSet {
             shape,
             [col * 30.0, row * 30.0, 24.0, 24.0],
         );
-        if mix == Mix::Shapes && i % 5 == 0 {
+        if mix != Mix::Rects && i % 5 == 0 {
             el.angle = 0.3;
         }
         BoardOp::Put(el).apply(&mut b.doc);
@@ -81,7 +92,11 @@ pub(super) fn board_with((n, mix): (usize, Mix)) -> BoardSet {
     b.camera = Camera {
         center_x: side * 15.0,
         center_y: side * 15.0,
-        zoom: 1000.0 / (side * 30.0),
+        zoom: if mix == Mix::ShapesNear {
+            NEAR_FONT_PX / FONT
+        } else {
+            1000.0 / (side * 30.0)
+        },
     };
     set
 }
@@ -91,7 +106,7 @@ pub(super) fn one_frame(
     set: &BoardSet,
     scene: &mut VectorScene,
     ts: &mut TextSystem,
-    cache: &mut TextCache,
+    cache: &mut RenderCache,
 ) {
     scene.reset();
     ph2d_board_render::paint(&set.boards()[0], AREA, scene, Theme::Forge, ts, cache);
@@ -105,10 +120,10 @@ fn measure_board_encode_cost() {
     let mut ts = TextSystem::without_system_fonts();
     // Uma cache por cena (o ecrã de cada uma), aquecida fora da régua: o regime é o de um quadro
     // PARADO, em que o texto já está moldado.
-    let mut caches: Vec<TextCache> = boards
+    let mut caches: Vec<RenderCache> = boards
         .iter()
         .map(|b| {
-            let mut c = TextCache::default();
+            let mut c = RenderCache::default();
             one_frame(b, &mut scene, &mut ts, &mut c);
             c
         })

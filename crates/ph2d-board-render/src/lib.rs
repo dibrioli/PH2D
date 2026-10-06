@@ -7,19 +7,69 @@
 
 use ph2d_board_edit::{Frame, Handle, Metrics, Overlay};
 use ph2d_board_geom::{outline, text_origin, text_rect, to_world};
+use std::collections::HashMap;
+
+use ph2d_board_geom::Outline;
 use ph2d_board_layout::TextCache;
-use ph2d_board_model::{Area, Board, Camera, Dash, Element, Rgba, Shape};
+use ph2d_board_model::{Area, Board, Camera, Dash, Element, Rgba, Shape, ShapeType};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme};
 use ph2d_vector::{
     Affine, BezPath, Brush, Cap, Color, Point, Rect, Shape as _, Stroke, VectorScene, VelloBlend,
 };
 
-/// Abaixo deste tamanho no ecrã (px) a letra não se lê: não se molda nem se desenha.
-const MIN_TEXT_PX: f64 = 2.0;
+/// Abaixo deste tamanho no ecrã (px) a letra não se lê: cada linha vira um traço (o «greeking»
+/// do nível de detalhe). ⛔ Medido 06/10: com o tecto a 2 px, 10 mil formas com uma palavra cada,
+/// todas à vista, pediam 14,9 ms de placa por quadro a desenhar letras de 2 px que ninguém lê.
+const READ_PX: f64 = 6.0;
+/// Abaixo disto nem o traço se vê.
+const GREEK_MIN_PX: f64 = 1.0;
+/// Opacidade do traço que substitui uma linha de texto.
+const GREEK_ALPHA: f32 = 0.35;
 /// Abaixo deste lado no ecrã (px) uma forma é um ponto de cor: só a caixa cheia, sem contorno nem
-/// curva (o «nível de detalhe» de quem se afastou muito).
-const DOT_PX: f64 = 2.0;
+/// curva (o «nível de detalhe» de quem se afastou muito). ⛔ Medido 06/10: a 2 px, 100 mil formas de
+/// 2,5 px desenhadas inteiras custavam 26,6 ms de CPU por quadro.
+const DOT_PX: f64 = 4.0;
+
+/// Quantos quadros um contorno guardado sobrevive sem ser desenhado.
+const KEEP_FRAMES: u64 = 120;
+
+/// O contorno de uma forma só depende disto.
+type OutlineKey = (ShapeType, u64, u64, bool);
+
+/// ⭐ **O que o desenho guarda entre quadros** — o texto moldado e o contorno de cada forma. ⛔
+/// Medido 06/10: refazer o contorno a cada quadro levou 10 mil rectângulos de 0,45 para 3,1 ms.
+#[derive(Default)]
+pub struct RenderCache {
+    pub text: TextCache,
+    outlines: HashMap<(u64, u64), (OutlineKey, Outline, u64)>,
+    frame: u64,
+}
+
+impl RenderCache {
+    fn outline(&mut self, owner: (u64, u64), shape: &Shape, w: f64, h: f64) -> &Outline {
+        let key = (shape.kind, w.to_bits(), h.to_bits(), shape.style.round);
+        let frame = self.frame;
+        let e = self
+            .outlines
+            .entry(owner)
+            .or_insert_with(|| (key, outline(shape, w, h), frame));
+        if e.0 != key {
+            *e = (key, outline(shape, w, h), frame);
+        }
+        e.2 = frame;
+        &e.1
+    }
+
+    fn end_frame(&mut self) {
+        self.text.end_frame();
+        self.frame += 1;
+        if self.frame.is_multiple_of(KEEP_FRAMES) {
+            let cut = self.frame.saturating_sub(KEEP_FRAMES);
+            self.outlines.retain(|_, e| e.2 >= cut);
+        }
+    }
+}
 
 /// Mundo do quadro → ecrã.
 #[must_use]
@@ -37,7 +87,7 @@ pub fn paint(
     scene: &mut VectorScene,
     theme: Theme,
     ts: &mut TextSystem,
-    cache: &mut TextCache,
+    cache: &mut RenderCache,
 ) {
     let [x, y, w, h] = area;
     if !(w > 0.0 && h > 0.0) {
@@ -65,8 +115,13 @@ pub fn paint(
         let Some(shape) = el.shape() else {
             continue;
         };
-        if r.width().max(r.height()) < DOT_PX {
-            if let Some(c) = shape.style.fill.or(shape.style.stroke) {
+        let st = &shape.style;
+        let plain = el.angle == 0.0 && st.opacity == 100 && st.stroke.is_none() && !st.round;
+        if r.width().max(r.height()) < DOT_PX
+            || (plain && shape.kind == ShapeType::Rectangle && shape.text.is_empty())
+        {
+            // Um ponto de cor, ou o rectângulo cheio sem mais nada: o caminho rápido da W0.
+            if let Some(c) = st.fill.or(st.stroke) {
                 scene.fill_rect(r, doc_color(c));
             }
             continue;
@@ -85,7 +140,7 @@ fn paint_shape(
     v: Affine,
     zoom: f64,
     ts: &mut TextSystem,
-    cache: &mut TextCache,
+    cache: &mut RenderCache,
     board: u64,
 ) {
     let st = &shape.style;
@@ -102,7 +157,7 @@ fn paint_shape(
             f32::from(st.opacity) / 100.0,
         );
     }
-    let o = outline(shape, el.w, el.h);
+    let o = cache.outline((board, el.id.0), shape, el.w, el.h);
     if let Some(c) = st.fill {
         scene.fill_path(&o.fill, &Brush::Solid(doc_color(c)), t);
     }
@@ -114,9 +169,10 @@ fn paint_shape(
             scene.inner_mut().stroke(&stroke, t, &brush, None, &o.lines);
         }
     }
-    if !shape.text.is_empty() && st.font_size * zoom >= MIN_TEXT_PX {
+    let font_px = st.font_size * zoom;
+    if !shape.text.is_empty() && font_px >= GREEK_MIN_PX {
         let [_, _, tw, _] = text_rect(shape.kind, el.w, el.h);
-        let layout = cache.get(
+        let layout = cache.text.get(
             ts,
             (board, el.id.0),
             &shape.text,
@@ -124,12 +180,15 @@ fn paint_shape(
             tw as f32,
         );
         let [ox, oy] = text_origin(shape.kind, el.w, el.h, f64::from(layout.height()));
-        ph2d_board_layout::paint(
-            scene,
-            layout,
-            t * Affine::translate((ox, oy)),
-            doc_color(st.text_color),
-        );
+        let at = t * Affine::translate((ox, oy));
+        if font_px >= READ_PX {
+            ph2d_board_layout::paint(scene, layout, at, doc_color(st.text_color));
+        } else {
+            let bars = ph2d_board_layout::line_bars(layout);
+            let Rgba([r, g, b, _]) = st.text_color;
+            let c = Color::from_rgba8(r, g, b, 255).with_alpha(GREEK_ALPHA);
+            scene.fill_path(&bars, &Brush::Solid(c), at);
+        }
     }
     if faded {
         scene.pop_layer();

@@ -234,7 +234,14 @@ pub fn paint_hero_screen(
         let area = super::board_view::area_of(r);
         let theme = hero.theme;
         if let Some((board, live)) = hero.documents.active_parts() {
-            ph2d_board_render::paint(board, area, scene, theme, text_system, &mut live.text_cache);
+            ph2d_board_render::paint(
+                board,
+                area,
+                scene,
+                theme,
+                text_system,
+                &mut live.render_cache,
+            );
             if let Some(ed) = live.editor.as_mut() {
                 let overlay = ed.overlay(&board.doc, text_system);
                 ph2d_board_render::paint_overlay(board, area, scene, theme, &overlay, ed.metrics());

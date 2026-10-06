@@ -5272,7 +5272,6 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-board-edit",
  "ph2d-board-geom",
- "ph2d-board-layout",
  "ph2d-board-model",
  "ph2d-board-render",
  "ph2d-chrome-sync",

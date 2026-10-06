@@ -269,6 +269,61 @@ fn a_lama_cara_contorna_a_barata_atravessa_e_a_proibida_e_um_furo() {
     }
 }
 
+/// ⭐ (W18) **Mexer no `Cost` de uma lama com o agente a ANDAR refaz-lhe o caminho** — era um controlo
+/// morto: só um custo que passava a `1` (a lama sai da malha) mudava alguma coisa, e o dono mudava `10`
+/// para `2` no Inspector sem efeito nenhum (medido na cena `PH2D_NAV_SMOKE=5`: `0` procuras novas). A
+/// lama a `10` (contorna); no tique `20`, já a contornar, passa a `1,05`: UMA procura nova, e atravessa.
+/// O CONTROLO: a mesma corrida sem a mudança — nenhuma procura nova, e não pisa.
+#[test]
+fn mexer_no_custo_refaz_o_caminho_de_quem_anda() {
+    let (h, c) = ((1.5, 2.0), (0.0, 0.0));
+    let corre_com = |muda: bool| {
+        let (mut sim, mut b, quem) = cena_lama(NavCostArea {
+            cost: 10.0,
+            forbidden: false,
+        });
+        let lama = sim
+            .world_mut()
+            .query::<(Entity, &NavCostArea)>()
+            .iter(sim.world())
+            .map(|(e, _)| e)
+            .next()
+            .expect("a lama");
+        let mut caminho = corre(&mut sim, &mut b, quem, 20);
+        let antes = b.nav_agent(quem).map_or(0, |r| r.searches);
+        if muda && let Some(mut a) = sim.world_mut().get_mut::<NavCostArea>(lama) {
+            a.cost = 1.05;
+        }
+        caminho.extend((21..=600).map(|t| {
+            b.dispatch(&mut sim, true, t);
+            pos(&sim, quem)
+        }));
+        let novas = b.nav_agent(quem).map_or(0, |r| r.searches) - antes;
+        let chegou = b.nav_agent(quem).map(|r| r.status) == Some(Status::Arrived);
+        (
+            pisou(&caminho[20..], c, h),
+            pisou(&caminho[..20], c, h),
+            novas,
+            chegou,
+        )
+    };
+    let (depois, antes, novas, chegou) = corre_com(true);
+    assert!(
+        !antes,
+        "a fixtura: a lama a 10 contorna-se antes da mudança"
+    );
+    assert!(
+        depois && chegou,
+        "o custo mudou e ele não atravessou ({novas} procuras novas)"
+    );
+    assert_eq!(novas, 1, "uma procura pela mudança, e nenhuma a mais");
+    let (pisou_ctl, _, novas_ctl, _) = corre_com(false);
+    assert!(
+        !pisou_ctl && novas_ctl == 0,
+        "o CONTROLO: {novas_ctl} procuras sem mudança"
+    );
+}
+
 /// Duas salas separadas por uma parede maciça, um portal em cada uma.
 fn cena_portal(com_atalho: bool) -> (SimWorld, PhysicsBridge, Entity, Entity) {
     let mut sim = SimWorld::new();

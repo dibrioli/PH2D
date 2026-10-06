@@ -296,7 +296,7 @@ impl PhysicsBridge {
             links: &links,
         };
 
-        let entradas = self.entradas_das_procuras(&custos.tabela, &links);
+        let (entradas, assinatura_dos_custos) = self.entradas_das_procuras(&custos.tabela, &links);
         // ⭐ (W15) As procuras a meio avançam em PARALELO, antes da condução — e o relógio do tique paga
         // UM orçamento: a fila e a condução, em série, ficam com o que a maior fatia não gastou.
         let (mut prontos, gasto, maior) = self.procuras_a_meio(&vez, &entradas, &q);
@@ -335,6 +335,7 @@ impl PhysicsBridge {
                 search,
                 planos,
                 sonda,
+                orcamento,
                 ..
             } = &mut self.nav;
             let malha = v.chave.and_then(|k| meshes.get(&k)).map(TiledMesh::mesh);
@@ -354,6 +355,8 @@ impl PhysicsBridge {
                 saida_livre: Some(&livre_de),
                 gasto: 0,
                 a_vista: sonda.a_vista,
+                dobra: (sonda.dobra, *orcamento),
+                custos: assinatura_dos_custos,
             };
             let steer = ph2d_nav::agent::step_in_turn(
                 &mut rt, malha, search, &q, &mut turno, v.pos, alvo, &cfg, dt,

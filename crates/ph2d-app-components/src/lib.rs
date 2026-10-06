@@ -137,6 +137,7 @@ pub mod nav_rota;
 /// ⭐⭐⭐ A NAVEGAÇÃO (plano 30, W3) — `PH2D_NAV_SMOKE=1`.
 pub mod nav_smoke;
 pub mod nav_smoke_guarda;
+pub mod nav_smoke_lama;
 pub mod nav_smoke_lava;
 pub mod nav_smoke_porta;
 /// O vazio e os objectos de JOGO no menu Add de objectos (spec/06 F1).

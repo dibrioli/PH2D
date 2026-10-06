@@ -29,6 +29,7 @@ use ph2d_ecs::stable_name_id;
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
+use ph2d_nav::agent::Dobra;
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, NavAgent, NavCostArea, NavRegion, NavTarget, PhysicsBridge,
     RigidBody, TopDownPlayer,
@@ -263,7 +264,8 @@ impl Seguidos {
         if agora {
             *s += 1;
         } else if *s > 0 {
-            (self.max, self.soma, self.n) = (self.max.max(*s), self.soma + u64::from(*s), self.n + 1);
+            (self.max, self.soma, self.n) =
+                (self.max.max(*s), self.soma + u64::from(*s), self.n + 1);
             *s = 0;
         }
     }
@@ -327,17 +329,111 @@ const BLOCO: usize = 16;
 const RODADAS: usize = 7;
 
 /// Uma versão: o nome, as fatias ligadas, quantas procuras a meio em paralelo, se corre num pool de UMA
-/// thread (a web), e o alvo à vista sem procura (§25, C2).
-type Versao = (&'static str, bool, usize, bool, bool);
+/// thread (a web), o alvo à vista sem procura (§25, C2), e (§27.2) o tecto da dobra e as vagas a mais de
+/// quem persegue (A4).
+type Versao = (&'static str, bool, usize, bool, bool, (Dobra, bool));
 
 /// As versões, lado a lado. As rodadas do plano 30 §25 mediram também `8 · 4 · 2` em paralelo e um tecto
 /// do trabalho do passo em paralelo; as da §26 (W17), quem persegue primeiro sem a dobra, o fim do caminho
 /// a seguir o alvo e as procuras de quem persegue em vagas a mais — recusados (`target/prova/w16/…`,
 /// `target/prova/w17/…`; as alavancas vivem no commit `4ccf96f2c`).
-const VERSOES: [Versao; 3] = [
-    ("A inteira            ", false, 0, false, false),
-    ("B produto            ", true, 16, false, true),
-    ("B produto · 1t       ", true, 16, true, true),
+const VERSOES: [Versao; 12] = [
+    (
+        "A inteira            ",
+        false,
+        0,
+        false,
+        false,
+        (Dobra::Produto, false),
+    ),
+    (
+        "B produto            ",
+        true,
+        16,
+        false,
+        true,
+        (Dobra::Produto, false),
+    ),
+    (
+        "B produto · 1t       ",
+        true,
+        16,
+        true,
+        true,
+        (Dobra::Produto, false),
+    ),
+    (
+        "T1 vez               ",
+        true,
+        16,
+        false,
+        true,
+        (Dobra::Vez, false),
+    ),
+    (
+        "T2 cheia             ",
+        true,
+        16,
+        false,
+        true,
+        (Dobra::Cheia, false),
+    ),
+    (
+        "T3 duas              ",
+        true,
+        16,
+        false,
+        true,
+        (Dobra::Duas, false),
+    ),
+    (
+        "T1 + A4              ",
+        true,
+        16,
+        false,
+        true,
+        (Dobra::Vez, true),
+    ),
+    (
+        "T1 + A4 · 1t         ",
+        true,
+        16,
+        true,
+        true,
+        (Dobra::Vez, true),
+    ),
+    (
+        "T2 + A4              ",
+        true,
+        16,
+        false,
+        true,
+        (Dobra::Cheia, true),
+    ),
+    (
+        "T2 + A4 · 1t         ",
+        true,
+        16,
+        true,
+        true,
+        (Dobra::Cheia, true),
+    ),
+    (
+        "T3 + A4              ",
+        true,
+        16,
+        false,
+        true,
+        (Dobra::Duas, true),
+    ),
+    (
+        "T3 + A4 · 1t         ",
+        true,
+        16,
+        true,
+        true,
+        (Dobra::Duas, true),
+    ),
 ];
 
 fn loadavg() -> String {
@@ -405,7 +501,7 @@ fn main() {
         for &n in &[10usize, 50, 200] {
             let mut v: Vec<_> = VERSOES
                 .iter()
-                .map(|&(_, fatias, paralelas, uma, vista)| {
+                .map(|&(_, fatias, paralelas, uma, vista, (dobra, a4))| {
                     let (mut sim, porta, quem) = cena(n, l);
                     let persegue: Vec<Entity> = quem
                         .iter()
@@ -421,6 +517,7 @@ fn main() {
                     b.set_nav_slices(fatias);
                     b.set_nav_parallel(paralelas);
                     b.set_nav_sight(vista);
+                    b.set_nav_fold(dobra, a4);
                     let pool = if uma { &um } else { &todos };
                     let mut t = 0u64;
                     for _ in 0..30 {

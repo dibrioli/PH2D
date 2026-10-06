@@ -99,7 +99,7 @@ impl Polyanya {
     /// Continua a procura até à resposta, ou até o trabalho passar `ate` (`u64::MAX` = sem tecto).
     pub(super) fn resume(&mut self, mesh: &NavMesh, ate: u64) -> Fatia {
         let t = self.alvo;
-        while let Some(Reverse((_, _, ni))) = self.open.pop() {
+        while let Some(Reverse((k, _, ni))) = self.open.pop() {
             let node = self.nodes[ni as usize];
             match node.kind {
                 Kind::Final { via } => {
@@ -112,6 +112,23 @@ impl Polyanya {
                     right,
                 } => {
                     self.stats.expanded += 1;
+                    if let Some(d) = self.diag.as_mut() {
+                        let b = if k >> 63 == 1 { k & !(1 << 63) } else { !k };
+                        let r = self.roots[node.root as usize];
+                        let refrata = cost_of(&self.costs, mesh.area_id(poly)) != node.w;
+                        d.push(super::Expandido {
+                            f: f64::from_bits(b),
+                            w: node.w,
+                            poly,
+                            entry,
+                            rho: r.p,
+                            g: r.g,
+                            left,
+                            right,
+                            refrata,
+                            ponderada: self.dominancia || self.sem_dominancia,
+                        });
+                    }
                     self.expand(mesh, node.root, poly, entry, left, right, node.w, t);
                 }
                 Kind::Pending { idx } => {

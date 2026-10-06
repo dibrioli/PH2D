@@ -121,6 +121,10 @@ pub struct AgentRuntime {
     /// mudaram: cada uma DOBRA a fatia da seguinte ([`fatia_depois_de`]) — uma malha que nunca pára não
     /// a deixa sem acabar, e o excesso cresce aos poucos.
     pub recomecos: u32,
+    /// ⭐ (W18) A assinatura dos CUSTOS e dos ATALHOS com que o caminho em curso foi planeado
+    /// ([`Vez::custos`]): mudou, ele replaneia — o `Cost` de uma lama mexido no Inspector com o agente a
+    /// andar era um controlo morto até ele ter outro motivo (plano 30 §27.1).
+    pub custos_do_caminho: u64,
 }
 
 /// (W15) **A fatia de uma procura que já recomeçou `k` vezes seguidas:** `pode · 2^k`. ⚠️ Medido e
@@ -131,6 +135,30 @@ pub struct AgentRuntime {
 #[must_use]
 pub fn fatia_depois_de(pode: u64, recomecos: u32) -> u64 {
     pode.saturating_mul(1u64.checked_shl(recomecos.min(63)).unwrap_or(u64::MAX))
+}
+
+/// (plano 30 §27.2, SONDA) O tecto da dobra — as alavancas medidas no mesmo processo.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Dobra {
+    /// O produto: `pode · 2^k`.
+    #[default]
+    Produto,
+    /// T1: a fatia não cresce; quem recomeçou mais vezes vai à frente no passo em paralelo.
+    Vez,
+    /// T2: só dobra quem pausou com uma fatia INTEIRA (o orçamento todo) desde o recomeço anterior.
+    Cheia,
+    /// T3: a dobra satura em `2 · pode`.
+    Duas,
+}
+
+/// A fatia de uma procura com `recomecos` recomeços seguidos, sob o tecto `dobra`.
+#[must_use]
+pub fn fatia_com(pode: u64, recomecos: u32, dobra: Dobra) -> u64 {
+    match dobra {
+        Dobra::Produto | Dobra::Cheia => fatia_depois_de(pode, recomecos),
+        Dobra::Vez => pode,
+        Dobra::Duas => fatia_depois_de(pode, recomecos.min(1)),
+    }
 }
 
 /// ⭐ (W15) **Uma procura A MEIO, descrita** — o que entra no anel. Refazê-la desde o começo até ao
@@ -147,6 +175,8 @@ pub struct AMeio {
     /// (plano 30 §25, C2) Pedida porque o ALVO ANDOU — a régua da sonda do atraso de quem persegue
     /// (`examples/medir_replaneio.rs`: os tiques em que ela fica por acabar).
     pub persegue: bool,
+    /// (§27.2, T2) Pausou com uma fatia INTEIRA (o orçamento todo) desde que começou.
+    pub cheia: bool,
 }
 
 /// ⭐ (W15) **A vez de procurar deste agente, NESTE tique** — o que a ponte lhe dá e o que ele gasta.
@@ -172,6 +202,10 @@ pub struct Vez<'a> {
     pub gasto: u64,
     /// (plano 30 §25, C2) Com o alvo À VISTA ([`a_vista`]) o caminho é a recta, sem procura e sem a vez.
     pub a_vista: bool,
+    /// (§27.2, SONDA) O tecto da dobra, e o orçamento INTEIRO (T2: pausar com ele é uma fatia cheia).
+    pub dobra: (Dobra, u64),
+    /// ⭐ (W18) A assinatura dos custos e dos atalhos deste tique (`0` = sem tabela: a lei sem mundo).
+    pub custos: u64,
 }
 
 impl Vez<'_> {
@@ -186,6 +220,8 @@ impl Vez<'_> {
             saida_livre: None,
             gasto: 0,
             a_vista: false,
+            dobra: (Dobra::Produto, u64::MAX),
+            custos: 0,
         }
     }
 }
@@ -325,11 +361,18 @@ pub fn step_in_turn(
     {
         larga(rt, vez);
         // Só conta a que já tinha trabalho feito (a que ainda não começou não perdeu nada).
-        if a.trabalho > 0 {
+        if a.trabalho > 0 && (vez.dobra.0 != Dobra::Cheia || a.cheia) {
             rt.recomecos = rt.recomecos.saturating_add(1);
         }
     }
-    let quer = rt.path.is_empty() || target_moved || off_corridor || stuck || vez.refazer;
+    // (W18) O quinto motivo: os custos ou os atalhos mudaram desde que o caminho foi planeado.
+    let custos_mudaram = !rt.path.is_empty() && rt.custos_do_caminho != vez.custos;
+    let quer = rt.path.is_empty()
+        || target_moved
+        || off_corridor
+        || stuck
+        || vez.refazer
+        || custos_mudaram;
     // ⚠️ Com uma procura a meio os motivos esperam por ela: o alvo que anda não a recomeça (acabaria
     // nunca), e depois dela o recálculo do Q6 decide outra vez.
     let mut pronto: Option<Planeado> = vez.pronto.take();
@@ -366,6 +409,7 @@ pub fn step_in_turn(
                         trabalho: 0,
                         entradas: vez.entradas,
                         persegue: alvo_andou,
+                        cheia: false,
                     });
                     rt.owed = rt.owed.max(1);
                 }
@@ -373,7 +417,8 @@ pub fn step_in_turn(
         }
     }
     if pronto.is_none() && rt.a_meio.is_some() && vez.pode > 0 {
-        let (r, w) = advance_mid(rt, mesh, q, vez.plano, vez.pode);
+        let cheia = vez.pode >= vez.dobra.1;
+        let (r, w) = advance_mid(rt, mesh, q, vez.plano, vez.pode, (vez.dobra.0, cheia));
         vez.gasto = vez.gasto.saturating_add(w);
         if let Some((r, buffers)) = r {
             *search = buffers;
@@ -383,6 +428,7 @@ pub fn step_in_turn(
     if let Some(planeado) = pronto {
         // (W9) Um caminho novo, por qualquer motivo, salda a dívida da fila.
         (rt.owed, rt.broken, rt.recomecos) = (0, false, 0);
+        rt.custos_do_caminho = vez.custos;
         match planeado {
             Some((path, hops, partial)) => {
                 rt.path = path;
@@ -562,6 +608,7 @@ pub fn advance_mid(
     q: &Query<'_>,
     plano: &mut Option<Plano>,
     pode: u64,
+    (dobra, inteira): (Dobra, bool),
 ) -> (Option<(Planeado, Polyanya)>, u64) {
     let Some(a) = rt.a_meio else {
         return (None, 0);
@@ -590,7 +637,7 @@ pub fn advance_mid(
         return (None, 0);
     };
     let antes = p.trabalho();
-    let tecto = antes.saturating_add(fatia_depois_de(pode, rt.recomecos));
+    let tecto = antes.saturating_add(fatia_com(pode, rt.recomecos, dobra));
     let r = p.run(mesh, q, tecto);
     let gasto = p.trabalho() - antes;
     match r {
@@ -603,6 +650,7 @@ pub fn advance_mid(
         None => {
             if let Some(a) = rt.a_meio.as_mut() {
                 a.trabalho = p.trabalho();
+                a.cheia |= inteira;
             }
             rt.owed = rt.owed.max(1);
             (None, gasto)

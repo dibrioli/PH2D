@@ -1,6 +1,6 @@
 //! ⭐⭐⭐ **Smoke da NAVEGAÇÃO** (plano 30, W3). `PH2D_NAV_SMOKE=1` (e `=2`, o DESVIO da W5:
 //! [`crate::nav_smoke_porta`]; e `=3`, O GUARDA da W6: [`crate::nav_smoke_guarda`]; e `=4`, A LAVA E
-//! O PORTAL da W7: [`crate::nav_smoke_lava`]).
+//! O PORTAL da W7: [`crate::nav_smoke_lava`]; e `=5`, A LAMA da W18: [`crate::nav_smoke_lama`]).
 //!
 //! # A cena: **o labirinto em S, e três perseguidores**
 //!
@@ -34,7 +34,7 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
 
 /// ⭐⭐ **Quantas cenas este roteador serve** — contado do `match` do [`montar`].
-pub const CENAS: u32 = 4;
+pub const CENAS: u32 = 5;
 
 const PAREDE_RGBA: [f32; 4] = [0.38, 0.40, 0.46, 1.0];
 const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
@@ -84,6 +84,8 @@ pub struct Montada {
     pub guarda: Option<crate::nav_smoke_guarda::Guarda>,
     /// As peças da cena `=4` (W7).
     pub lava: Option<crate::nav_smoke_lava::Lava>,
+    /// As peças da cena `=5` (W18).
+    pub lama: Option<crate::nav_smoke_lama::Lama>,
 }
 
 /// As peças da cena `=1`.
@@ -301,11 +303,26 @@ fn cena_um(world: &mut World) -> Montada {
         porta: None,
         guarda: None,
         lava: None,
+        lama: None,
     }
 }
 
 /// **Monta a cena `nivel`** — o roteador.
 pub fn montar(world: &mut World, nivel: u32) -> Montada {
+    if nivel == 5 {
+        let l = crate::nav_smoke_lama::montar(world);
+        crate::nav_smoke_lama::anuncia();
+        return Montada {
+            nivel: 5,
+            // ⭐ A lama PESADA escolhida: o `Cost` dela no Inspector é o passo do roteiro.
+            escolhido: l.pesada,
+            labirinto: None,
+            porta: None,
+            guarda: None,
+            lava: None,
+            lama: Some(l),
+        };
+    }
     if nivel == 4 {
         let l = crate::nav_smoke_lava::montar(world);
         crate::nav_smoke_lava::anuncia();
@@ -317,6 +334,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
             porta: None,
             guarda: None,
             lava: Some(l),
+            lama: None,
         };
     }
     if nivel == 2 {
@@ -335,6 +353,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
             porta: Some(porta),
             guarda: None,
             lava: None,
+            lama: None,
         };
     }
     let m = cena_um(world);
@@ -375,6 +394,7 @@ pub fn monta_tres(
         porta: None,
         guarda: Some(g),
         lava: None,
+        lama: None,
     }
 }
 

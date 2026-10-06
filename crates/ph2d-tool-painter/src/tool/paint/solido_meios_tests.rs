@@ -296,3 +296,142 @@ fn no_impasto_o_relevo_enche_a_mancha() {
         );
     }
 }
+
+/// Um gesto da varredura: os vértices, os eventos por aresta, o tique entre eventos e se a caneta
+/// levanta no último ponto ou volta ao primeiro.
+#[derive(Clone, Debug)]
+struct Gesto {
+    pontos: Vec<[f32; 2]>,
+    por_aresta: usize,
+    tique: Option<f32>,
+    fecha: bool,
+    strength: f32,
+}
+
+fn gestos_da_varredura(n: usize) -> Vec<Gesto> {
+    let mut s = 0x9E37_79B9u32;
+    let mut u = move || {
+        s ^= s << 13;
+        s ^= s >> 17;
+        s ^= s << 5;
+        #[allow(clippy::cast_precision_loss)]
+        let v = (s >> 8) as f32 / (1u32 << 24) as f32;
+        v
+    };
+    (0..n)
+        .map(|_| {
+            let lados = 3 + (u() * 6.0) as usize;
+            let raio = 25.0 + u() * 30.0;
+            let fase = u() * std::f32::consts::TAU;
+            let sentido = if u() < 0.5 { 1.0 } else { -1.0 };
+            let pontos = (0..lados)
+                .map(|k| {
+                    #[allow(clippy::cast_precision_loss)]
+                    let a = fase + sentido * k as f32 / lados as f32 * std::f32::consts::TAU;
+                    let r = raio * (0.8 + 0.4 * u());
+                    [64.0 + r * a.cos(), 64.0 + r * a.sin()]
+                })
+                .collect();
+            Gesto {
+                pontos,
+                por_aresta: 1 + (u() * 12.0) as usize,
+                tique: (u() < 0.6).then(|| 0.004 + u() * 0.05),
+                fecha: u() < 0.5,
+                strength: if u() < 0.5 { 1.0 } else { 0.4 },
+            }
+        })
+        .collect()
+}
+
+fn corre_gesto(meio: PaintMedia, g: &Gesto) -> PainterTool {
+    let mut t = tool(128, meio, 6.0);
+    t.set_brush_color_srgb8([220, 40, 40]);
+    t.paint.brush.style_solid = true;
+    t.paint.brush.strength = g.strength;
+    let mut pts = g.pontos.clone();
+    if g.fecha {
+        pts.push(pts[0]);
+    }
+    t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+    for w in pts.windows(2) {
+        for k in 1..=g.por_aresta {
+            #[allow(clippy::cast_precision_loss)]
+            let f = k as f32 / g.por_aresta as f32;
+            t.on_canvas_pointer(cp(
+                [
+                    w[0][0] + (w[1][0] - w[0][0]) * f,
+                    w[0][1] + (w[1][1] - w[0][1]) * f,
+                ],
+                PointerPhase::Move,
+            ));
+            if let Some(dt) = g.tique {
+                t.paint_tick(dt);
+            }
+        }
+    }
+    t.on_canvas_pointer(cp(*pts.last().expect("pontos"), PointerPhase::Up));
+    t
+}
+
+/// SONDA — «de vez em quando o impasto com solid não preenche» (dono, 2026-10-06): 300 gestos
+/// variados; em cada, a cor e o relevo no centro (64, 64), que todo polígono da varredura cerca.
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_o_solid_que_nao_preenche() {
+    for meio in [PaintMedia::Impasto, PaintMedia::Digital] {
+        let mut falhas = 0;
+        for (k, g) in gestos_da_varredura(300).iter().enumerate() {
+            let t = corre_gesto(meio, g);
+            let cor = t.canvas_rgba[(64 * 128 + 64) * 4 + 1];
+            let alt = t
+                .layers
+                .active()
+                .and_then(|a| t.heights.get(&a))
+                .map_or(-1.0, |h| h[64 * 128 + 64]);
+            let sem_cor = cor > 250;
+            let sem_corpo = meio == PaintMedia::Impasto && alt <= 1e-4;
+            if sem_cor || sem_corpo {
+                falhas += 1;
+                if falhas <= 8 {
+                    eprintln!("{meio:?} #{k}: G {cor} altura {alt} · {g:?}");
+                }
+            }
+        }
+        eprintln!("{meio:?}: {falhas} de 300 sem preencher");
+    }
+}
+
+/// ⭐ **O SOLID PREENCHE EM TODO GESTO** (dono, 2026-10-06: *«de vez em quando o impasto com solid
+/// não preenche»*) — 120 gestos variados (3 a 8 lados, os dois sentidos, 1 a 12 eventos por aresta,
+/// com e sem tique, Strength 1 e 0,4, e metade a FECHAR no ponto de partida): o centro, que todo
+/// polígono cerca, tem cor nos dois meios e corpo no Impasto. Vermelho antes: o laço que fecha no
+/// ponto de partida não tem corda, e o corpo da mancha saía junto com ela (135 de 300 sem corpo).
+#[test]
+fn o_solid_preenche_em_todo_gesto() {
+    let gestos = gestos_da_varredura(120);
+    assert!(
+        gestos.iter().any(|g| g.fecha) && gestos.iter().any(|g| !g.fecha),
+        "controlo"
+    );
+    for meio in [PaintMedia::Impasto, PaintMedia::Digital] {
+        for (k, g) in gestos.iter().enumerate() {
+            let t = corre_gesto(meio, g);
+            let cor = t.canvas_rgba[(64 * 128 + 64) * 4 + 1];
+            assert!(
+                cor < 250,
+                "{meio:?} gesto {k}: o centro ficou sem cor · {g:?}"
+            );
+            if meio == PaintMedia::Impasto {
+                let alt = t
+                    .layers
+                    .active()
+                    .and_then(|a| t.heights.get(&a))
+                    .map_or(0.0, |h| h[64 * 128 + 64]);
+                assert!(
+                    alt > 1e-4,
+                    "Impasto gesto {k}: o centro ficou sem corpo · {g:?}"
+                );
+            }
+        }
+    }
+}

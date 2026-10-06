@@ -372,17 +372,17 @@ impl PainterTool {
         if !self.freehand_solid_fill_live() || self.watercolor_render_active() {
             return;
         }
-        let chord = self.closing_chord_dabs();
-        if chord.is_empty() {
-            return;
-        }
         let brush = self.stroke_spec();
+        let chord = self.closing_chord_dabs();
         if self.paint.tiling[0] || self.paint.tiling[1] {
             let wrapped = super::tiling::tiled_dabs(&chord, self.source_size, self.paint.tiling);
             self.stamp_dabs_height(&wrapped, &brush);
         } else {
             self.stamp_dabs_height(&chord, &brush);
         }
+        // ⚠️ O corpo da mancha NÃO depende da corda: um laço que volta ao ponto de partida não tem
+        // corda (vazia), e com o `return` dela aqui à frente 135 de 300 gestos do Impasto saíam sem
+        // corpo no miolo (`diag_o_solid_que_nao_preenche`, BUGS #40).
         self.assenta_o_corpo_da_mancha(&brush);
     }
 

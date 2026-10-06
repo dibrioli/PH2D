@@ -632,3 +632,36 @@ fn the_step_consumes_the_obstacle_declaration_and_returns_the_receipt() {
         "sem pecas com colisor nao ha' mundo, nem recibo — o sim.collide projecta"
     );
 }
+
+/// ⭐⭐ **O atrito do PAR é `√(a·b)`** (doc 109 §7) — uma peça de gelo desliza sobre uma de lixa sem
+/// travar: com a regra `Max` do rapier ela pararia. (Os outros gates usam o MESMO atrito nas duas
+/// peças, e aí `√(a·a) = max(a, a)` — a mutação da regra sobrevivia, `m13` da onda 5.)
+#[test]
+fn ice_slides_over_sandpaper_because_the_pair_friction_is_the_geometric_mean() {
+    use ph2d_nodegraph::attr::FRICTION_COLUMN;
+    let s = Stream::new(2)
+        .with("P", Column::Vec2(vec![[0.0, -0.5], [0.0, 0.11]]))
+        .with("vel", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]))
+        .with("accel", Column::Vec2(vec![[0.0, -4.0], [0.0, -4.0]]))
+        .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+        .with("inv_mass", Column::Scalar(vec![0.0, 1.0]))
+        .with(FRICTION_COLUMN, Column::Scalar(vec![1.0, 0.0]))
+        .with(INV_INERTIA_COLUMN, Column::Scalar(vec![0.0, 0.0]))
+        .with(
+            COLLIDER_BOX_COLUMN,
+            Column::Vec2(vec![[20.0, 0.5], [0.11, 0.11]]),
+        );
+    // A gravidade a CADA tique (o passo consome o `accel`): sem peso o atrito não tem carga.
+    let (mut s, mut mundo, mut t) = (s, None, 0.0_f32);
+    for _ in 0..30 {
+        s = crate::step_com(&s, t + DT, 1.0, 0.0, 0.0, 1.0, &mut mundo)
+            .with("accel", Column::Vec2(vec![[0.0, -4.0], [0.0, -4.0]]));
+        t += DT;
+    }
+    let v = col(&s, "vel");
+    assert!(
+        (v[1][0] - 1.0).abs() < 0.01,
+        "o gelo desliza sem travar sobre a lixa: {:?}",
+        v[1]
+    );
+}

@@ -336,4 +336,47 @@ sobrepostas separam-se em `~1` s por uma mola (antes: num passo).
   `motion_state_pilha_demo_recuo_tests.rs` (novo).
 - **Env:** saíram `PH2D_CONTACT_JACOBI`/`PH2D_CONTACT_CORES`. Nenhuma nova no produto. **Shell:** não tocada.
 
-**Fecho corrido:** ver a linha seguinte (o portão batched desta onda).
+- `ph2d-contact`: `colisores_locais` (nova porta irmã da `colisores`, sem o `rot`); o censo
+  `todo_leitor_do_colisor_declarado_se_regista` passa a ter `ph2d-contact-world → sim.step` no lugar da `ph2d-node-sim-step`.
+- Ferramentas: `oraculo_rapier_pilha_quente_frio/` (novo), `oraculo_rapier_pilha/` (o `main.rs` foi para `src/`, o
+  `cargo machete` lia uma pasta `src` inexistente), `mutacao_a_onda_5_2026-10-06.py`.
+- `project-memory`: três lições nas famílias; o índice `22 065 → 21 956` bytes (estava acima do tecto do gate desde
+  antes desta onda — saiu um parêntese de história).
+
+**Mutações:** [`mutacao_a_onda_5_2026-10-06.py`](../ferramentas/mutacao_a_onda_5_2026-10-06.py) — **`13/13` sangram**
+(pré-voo `13/13`, corrida limpa `58` verdes; `target/prova/onda5/mutacao.txt`). Na 1.ª corrida **`m7`** (a trava
+estática nunca fecha) e **`m13`** (o atrito do par por `Max`) SOBREVIVERAM: a bola da rampa parecia presa pelo travão a
+rolar (a barra `0,15` passou a `0,035` entre os dois lados MEDIDOS: com a trava `0,020`, sem ela `0,061`), e nenhum gate
+tinha atritos DIFERENTES nas duas peças (novo: `ice_slides_over_sandpaper…`, com a gravidade a cada tique — o `corre`
+dos gates do passo consome o `accel`). ⚠️ Sem gate: o espaçamento `MEMO_A_CADA` (só custo, nenhum bit muda).
+
+**Fecho corrido** (HEAD `d9f3e413b`, árvore limpa; a 1.ª corrida foi com a árvore a mudar e não vale):
+`nextest-impacted` (`BASE=a46c4c200`) **`18 768/18 768`** · `check --workspace --all-targets` (`CARGO_BUILD_WARNINGS=deny`)
+✓ · clippy `--all-targets --all-features -D warnings` das `7` crates ✓ · `fmt` ✓ · censos `114/114` ✓ · workflow,
+standalone, `adr-index`, `doc-index`, `archive-index`, `machete` ✓ · `tests/it` contact-world `1/1` (os bytes:
+declarados `3 724 640` contra `1 659 885` alocados), eval-motion `12/12`, nodegraph `13/13`. Depois do fecho: os dois
+gates das mutações sobreviventes (o passo `35/35`).
+
+**Smoke (o dono), fotografado** (`target/prova/onda5/smoke/`, `release`, `1930 × 1040`): a `=114` com a pilha da
+direita encostada e tombada, a da esquerda um borrão, `60` fps (`c114_e12.png`); a `=114` com `4 096` por taça a `60` fps
+na régua (a pilha cai para fora do enquadramento — a taça cresce com ela; o passo 4 do smoke manda afastar a câmara).
+Binário: `rm -rf target/*/incremental` e `cargo build -p ph2d-host-desktop --release` 2× (a 2.ª `Finished … in 0.22s`,
+zero «Compiling»).
+
+**⏳ O QUE FICA ABERTO:**
+1. **O rolamento numa PILHA de discos com `Rolling` BAIXO** (`0,1`): na queda gira `61,7°` contra `10,7°` sem o botão
+   (a trava alterna trancar e destrancar). Com `0,75` acalma ao zero; numa bola sozinha a lei é exacta. A cura de raiz
+   é o rolamento DENTRO do solver (o rapier `0.35` não tem; o Box2D v3 tem) — doc 121 §9.20 ponto 5.
+2. **O contacto aos `16 384` por taça** (`10`–`36` fps): a próxima alavanca medida é o rapier `parallel` (oráculo
+   `~3×`) e o DETERMINISMO dele (a feature unifica-se com a `ph2d-physics`); o item da placa NÃO fecha.
+3. **O p95 do tique a `4 096`** (`7,5` ms contra o critério `≤ 5` escrito antes): a mediana passa (`4,3`) e o app fica
+   nos `60` fps; o p95 é o do próprio rapier no instante denso.
+4. **O comportamento que mudou** (a pilha encosta pela face e quase não se sobrepõe; o `Bounciness` de uma caixa de
+   face devolve `88 %`; o `Rolling` trava a peça parada) — ⚠️ vai ao dono no smoke; integrar só depois do smoke dele.
+
+**A UMA LINHA para o `CLAUDE.md` §5 (o integrador aplica):** em *Motion Nodes*, trocar o «Último» por
+`[handoff 05–06/10](docs/Motion%20Nodes/handoffs/HANDOFF_INTEGRACAO_line_motion_value_2026-10-05.md)` e acrescentar
+«o contacto das formas é o `rapier2d` da casa (`ph2d-contact-world`)».
+
+**Perfil do loop** (`agent-loop-profile.sh`, `20` sessões): paralelismo `1,11`/passo ✗ · respostas por sessão `254` ✓ ·
+test:check `3,2×` ✗ · Edit `33 %` ✗ · contexto relido `405` mil ✗ · contexto inicial `62` mil ✓.

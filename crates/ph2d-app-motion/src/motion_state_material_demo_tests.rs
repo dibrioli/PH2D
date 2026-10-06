@@ -529,8 +529,11 @@ fn the_rolling_friction_locks_the_ball_on_the_ramp() {
         "o controlo: sem rolamento a bola desce a rampa toda, e desceu {solta}"
     );
     let presa = desceu(0.5);
+    eprintln!("  rampa │ solta {solta:.4} · presa (Rolling 0,5) {presa:.6}");
+    // ⚠️ A barra é a da TRAVA do rolamento em duas fases (doc 121 §9.20), medida: com ela a bola só
+    // assenta na rampa (`0,020`); sem a fase parada, só com o travão a rolar, ela rasteja `0,061`.
     assert!(
-        presa < 0.15,
+        presa < 0.035,
         "com `Rolling Friction 0,5` (acima de tan 12° = 0,213) ela tem de FICAR onde está, \
          e andou {presa}"
     );

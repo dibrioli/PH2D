@@ -275,3 +275,7 @@ de relógio `ph2d-physics-ecs` `the_cost_of_a_player_is_linear…` (crate não t
 **Smoke (o dono), fotografado** (`target/prova/onda4/smoke/`, `smoke`, a `1930 × 1040`): a `=127` tracejada com a
 ponta REDONDA à partida (`59` fps) e a `=114` com `1 024` peças por taça (`59` fps; ⚠️ no roteiro de foto a cena fica
 no instante de partida — a queda não se fotografa nesta janela, §9.19 correcção).
+
+Binário: `rm -rf target/*/incremental` e o build `smoke` do `ph2d-host-desktop` 2× (a 2.ª `Finished … in 0.20s`, zero
+«Compiling»). Perfil do loop (`agent-loop-profile.sh`, `20` sessões): paralelismo `1,13`/passo ✗ · respostas por
+sessão `265` ✓ · test:check `3,5×` ✗ · Edit `34 %` ✗ · contexto relido `466` mil ✗ · contexto inicial `63` mil ✓.

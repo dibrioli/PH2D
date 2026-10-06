@@ -27,10 +27,7 @@ use ph2d_vector::{Affine, Brush, Color, Stroke, VectorScene};
 /// «mais formas» era a aba do quadro 1).
 const SALT: u64 = 0xb0a2_d7ab_5ba2_0000;
 
-/// Os tamanhos de letra que a barra oferece (unidades do mundo): P · M · G · GG (os do Excalidraw).
-const FONT_SIZES: [f64; 4] = [16.0, 20.0, 28.0, 36.0];
-/// As espessuras de contorno (unidades do mundo): fino · normal · grosso.
-const WIDTHS: [f64; 3] = [1.0, 2.0, 4.0];
+use ph2d_board_edit::{FONT_SIZES, STROKE_WIDTHS as WIDTHS};
 /// As opacidades oferecidas (%).
 const OPACITIES: [u8; 4] = [25, 50, 75, 100];
 /// Os preenchimentos claros (os pastéis do marcador) e as tintas fortes do contorno.
@@ -186,7 +183,7 @@ fn btn_px() -> f32 {
 }
 
 fn gap() -> f32 {
-    Spacing::Xxs.px()
+    ph2d_tokens::control_gap_px()
 }
 
 /// O rectângulo de cada atalho da barra curta, de cima para baixo, encostado à esquerda de `area`.
@@ -394,7 +391,7 @@ fn ink(theme: Theme) -> Rgba {
 }
 
 fn doc_color(Rgba([r, g, b, a]): Rgba) -> Color {
-    Color::from_rgba8(r, g, b, a)
+    Color::from_rgba8(r, g, b, a) // LITERAL-COLOR-OK: cor do DOCUMENTO (dado do artista), não da UI
 }
 
 /// O item corresponde ao estilo actual da selecção?
@@ -483,7 +480,7 @@ fn paint_item(
             }
             if matches!(it, Item::Stroke(Some(_))) {
                 // O contorno lê-se como um ANEL: o miolo volta à cor do painel.
-                let k = inner.w * 0.3;
+                let k = Spacing::Xs.px();
                 let hole = Rect::new(
                     inner.x + k,
                     inner.y + k,
@@ -509,9 +506,9 @@ fn paint_item(
         }
         Item::Round(round) => shape_icon(scene, ShapeType::Rectangle, inner, fg, line, round),
         Item::Opacity(i) => {
-            let a = (f32::from(OPACITIES[i]) / 100.0 * 255.0) as u8;
-            let c = ColorToken::Text1.resolve(theme);
-            fill_rounded_rect(scene, inner, radius, Color::from_rgba8(c.r, c.g, c.b, a));
+            let a = f32::from(OPACITIES[i]) / 100.0; // LITERAL-PX-OK: percentagem → fracção
+            let c = resolve(ColorToken::Text1, theme).with_alpha(a);
+            fill_rounded_rect(scene, inner, radius, c);
         }
         Item::Font(i) => {
             let label = tr([
@@ -526,14 +523,9 @@ fn paint_item(
     hit_index.register(id, r);
 }
 
+/// Um traço de ícone com o MESMO tracejado que a forma desenha (`ph2d_board_render::style_stroke`).
 fn stroke(scene: &mut VectorScene, p: &ph2d_vector::BezPath, c: Color, w: f64, d: Dash) {
-    let s = match d {
-        Dash::Solid => Stroke::new(w),
-        Dash::Dashed => Stroke::new(w).with_dashes(0.0, [w * 3.0, w * 2.0]),
-        Dash::Dotted => Stroke::new(w)
-            .with_caps(ph2d_vector::Cap::Round)
-            .with_dashes(0.0, [0.0, w * 2.5]),
-    };
+    let s = ph2d_board_render::style_stroke(w, d);
     scene
         .inner_mut()
         .stroke(&s, Affine::IDENTITY, &Brush::Solid(c), None, p);
@@ -549,7 +541,7 @@ fn shape_icon(scene: &mut VectorScene, t: ShapeType, r: Rect, c: Color, w: f64, 
         style,
         text: String::new(),
     };
-    let (bw, bh) = (f64::from(r.w), f64::from(r.h) * 0.75);
+    let (bw, bh) = (f64::from(r.w), f64::from(r.h - Spacing::Xs.px()));
     let o = ph2d_board_geom::outline(&shape, bw, bh);
     let at = Affine::translate((f64::from(r.x), f64::from(r.y) + (f64::from(r.h) - bh) / 2.0));
     let s = Stroke::new(w);

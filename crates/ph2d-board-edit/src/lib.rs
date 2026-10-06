@@ -28,6 +28,13 @@ pub const CLICK_SIZE: [f64; 2] = [160.0, 100.0];
 /// Desvio de cada colagem/duplicação, em unidades do MUNDO (o do Figma e do Excalidraw).
 pub const PASTE_OFFSET: f64 = 10.0;
 
+/// Os tamanhos de letra que a barra oferece (mundo): P · M · G · GG — os do Excalidraw.
+pub const FONT_SIZES: [f64; 4] = [16.0, 20.0, 28.0, 36.0];
+/// As espessuras de contorno oferecidas (mundo): fina · normal · grossa — as do Excalidraw.
+pub const STROKE_WIDTHS: [f64; 3] = [1.0, 2.0, 4.0];
+/// O empurrão das setas (mundo): normal e com `Shift` — o do Figma.
+pub const NUDGE: [f64; 2] = [1.0, 10.0];
+
 /// A ferramenta activa.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tool {

@@ -20,7 +20,7 @@ fn stops(b: &[f64; 4], axis: usize) -> [f64; 3] {
 pub fn snap_box(moving: [f64; 4], targets: &[[f64; 4]], tol: f64) -> ([f64; 2], Vec<Guide>) {
     let mut delta = [0.0; 2];
     let mut guides = Vec::new();
-    for axis in 0..2 {
+    for (axis, slot) in delta.iter_mut().enumerate() {
         let mine = stops(&moving, axis);
         let best = targets
             .iter()
@@ -31,7 +31,7 @@ pub fn snap_box(moving: [f64; 4], targets: &[[f64; 4]], tol: f64) -> ([f64; 2], 
         let Some(d) = best else {
             continue;
         };
-        delta[axis] = d;
+        *slot = d;
         // A guia vai de uma ponta à outra de TUDO o que se alinha naquela linha.
         let snapped = moved(moving, axis, d);
         let other = 1 - axis;

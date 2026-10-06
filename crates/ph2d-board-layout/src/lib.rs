@@ -10,7 +10,7 @@
 //! texto, o tamanho ou a largura mudam.
 
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use parley::{
     Alignment, AlignmentOptions, FontFamily, FontWeight, Layout, OverflowWrap, PlainEditor,
@@ -97,7 +97,7 @@ struct Entry {
 /// O moldado de cada dono (uma forma de um quadro), refeito só quando muda.
 #[derive(Default)]
 pub struct TextCache {
-    map: HashMap<(u64, u64), Entry>,
+    map: BTreeMap<(u64, u64), Entry>,
     frame: u64,
     shaped: u64,
 }

@@ -7,7 +7,7 @@
 
 use ph2d_board_edit::{Frame, Handle, Metrics, Overlay};
 use ph2d_board_geom::{outline, text_origin, text_rect, to_world};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use ph2d_board_geom::Outline;
 use ph2d_board_layout::TextCache;
@@ -42,7 +42,7 @@ type OutlineKey = (ShapeType, u64, u64, bool);
 #[derive(Default)]
 pub struct RenderCache {
     pub text: TextCache,
-    outlines: HashMap<(u64, u64), (OutlineKey, Outline, u64)>,
+    outlines: BTreeMap<(u64, u64), (OutlineKey, Outline, u64)>,
     frame: u64,
 }
 
@@ -197,7 +197,8 @@ fn paint_shape(
 
 /// O traço de uma forma: contínuo, tracejado ou pontilhado (com pontas redondas, para o ponto ser
 /// um ponto). Comprimentos em unidades do mundo, proporcionais à espessura.
-fn style_stroke(width: f64, dash: Dash) -> Stroke {
+#[must_use]
+pub fn style_stroke(width: f64, dash: Dash) -> Stroke {
     let s = Stroke::new(width);
     match dash {
         Dash::Solid => s,

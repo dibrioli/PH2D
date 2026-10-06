@@ -135,7 +135,7 @@ pub fn key(
         }
         return taken();
     }
-    let nudge = if mods.shift { 10.0 } else { 1.0 };
+    let nudge = ph2d_board_edit::NUDGE[usize::from(mods.shift)];
     let command = match (k, ctrl) {
         (BoardKey::Char('z' | 'y'), true) => Some(chord_undo(k, mods)),
         (BoardKey::Char('d'), true) => Some(Command::Duplicate),

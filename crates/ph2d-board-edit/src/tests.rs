@@ -501,3 +501,21 @@ fn the_hand_tool_hands_the_drag_back_to_the_view() {
         w.ed.pointer_down(&mut w.doc, &mut w.h, &mut w.ts, at(0.0, 0.0, NONE), VIEW);
     assert_eq!(d, Down::Pan);
 }
+
+/// Com `Shift` no canto, manda o eixo que o dedo mais esticou — também quando é o VERTICAL (a
+/// prova de mutação apanhou que só o horizontal estava medido).
+#[test]
+fn shift_on_a_corner_follows_the_axis_stretched_most() {
+    let mut w = world();
+    let id = w.rect([0.0, 0.0, 100.0, 50.0]);
+    w.drag(
+        [100.0, 50.0],
+        [110.0, 150.0],
+        Mods {
+            ctrl: true,
+            ..SHIFT
+        },
+    );
+    let e = w.el(id);
+    assert_eq!([e.w, e.h], [300.0, 150.0], "o vertical (×3) não mandou");
+}

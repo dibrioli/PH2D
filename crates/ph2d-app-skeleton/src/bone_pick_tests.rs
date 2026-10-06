@@ -419,24 +419,25 @@ fn a_bone_hidden_by_the_eye_is_not_grabbed() {
     );
 }
 
-/// ⭐⭐ **Em Object, o osso sob o dedo selecciona o ESQUELETO; a semente do Bind sai do esqueleto
-/// escolhido** (A14). Controlo: fora do osso nada; um osso solto responde por si.
+/// ⭐⭐ **Em Object, o osso sob o dedo é o 1.º candidato e o ESQUELETO dele o 2.º** (report do dono,
+/// 06/10: *«se não estiver no modo transform do osso não é possível selecioná-lo»*) — o 1.º clique
+/// escolhe o osso, o seguinte no mesmo sítio passa ao esqueleto (o ciclo do pick). A semente do Bind
+/// sai do osso ou do esqueleto escolhido. Controlo: fora do osso nada; um osso solto só se oferece a si.
 #[test]
-fn a_bone_under_the_finger_selects_its_skeleton_and_seeds_the_bind() {
-    use crate::bone_pick::{bind_seed, object_at};
+fn a_bone_under_the_finger_is_offered_before_its_skeleton_and_seeds_the_bind() {
+    use crate::bone_pick::{bind_seed, objects_at};
     let mut sim = SimWorld::default();
     let solto = create(&mut sim, None, [0.0, 50.0], [10.0, 50.0]).expect("osso");
     let esq = sim.world_mut().spawn(ph2d_skeleton_ecs::Skeleton).id();
     let osso = create(&mut sim, Some(esq), [0.0, 0.0], [10.0, 0.0]).expect("osso");
-    assert_eq!(object_at(&sim, [5.0, 1.0], 1.0), Some(esq.to_bits()));
+    assert_eq!(objects_at(&sim, [5.0, 1.0], 1.0), vec![osso, esq.to_bits()]);
     assert_eq!(
-        object_at(&sim, [5.0, 50.0], 1.0),
-        Some(solto),
-        "o solto responde por si"
+        objects_at(&sim, [5.0, 50.0], 1.0),
+        vec![solto],
+        "o solto só se oferece a si"
     );
-    assert_eq!(
-        object_at(&sim, [5.0, 25.0], 1.0),
-        None,
+    assert!(
+        objects_at(&sim, [5.0, 25.0], 1.0).is_empty(),
         "controlo: fora do osso"
     );
     assert_eq!(bind_seed(&sim, &[esq.to_bits()]), Some(osso));

@@ -307,15 +307,16 @@ impl crate::App {
         evt: PointerEvent,
         gizmo_kind: Option<ph2d_editor_core::GizmoDragKind>,
     ) {
-        // ⭐⭐ **O osso sob o dedo, em Object, é o ESQUELETO** (A14) — com a ferramenta de osso na mão
-        // o clique é dela e nem chega aqui.
+        // ⭐⭐ **O osso sob o dedo, em Object, vem primeiro e o ESQUELETO dele a seguir** (A14) — com a
+        // ferramenta de osso na mão o clique é dela e nem chega aqui.
         let osso_objecto = if self.skeleton.tool_in_hand {
-            None
+            Vec::new()
         } else {
             let px = self.vec_px_to_world();
             self.vec_world_at((evt.x, evt.y))
                 .zip(self.gfx.as_ref())
-                .and_then(|(w, g)| ph2d_app_skeleton::bone_pick::object_at(&g.sim, w, px))
+                .map(|(w, g)| ph2d_app_skeleton::bone_pick::objects_at(&g.sim, w, px))
+                .unwrap_or_default()
         };
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(hero) = gfx.hero_screen.as_mut()
@@ -360,10 +361,10 @@ impl crate::App {
             // ficava sempre no índice 0 e a peça de dentro era inalcançável. O
             // ancestral é ADIADO, não descartado: o segundo clique ainda o alcança.
             crate::pick_order::descendants_first(gfx.sim.world(), &mut hits);
-            // O esqueleto do osso sob o dedo vem à frente: o osso desenha-se por cima da arte.
-            if let Some(b) = osso_objecto {
-                hits.retain(|h| *h != b);
-                hits.insert(0, b);
+            // O osso e o esqueleto dele vêm à frente: o osso desenha-se por cima da arte.
+            for b in osso_objecto.iter().rev() {
+                hits.retain(|h| h != b);
+                hits.insert(0, *b);
             }
             // Uma forma ABERTA (linha/arco) não é pega pelo interior — só
             // pelo traço. Mas clicar no INTERIOR do gizmo dela (hit

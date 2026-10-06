@@ -61,8 +61,8 @@ pub(crate) fn bind(st: &mut crate::state::VecState) {
     st.bone_smoke_pend = None;
     println!(
         "[vec-bone-smoke] OS TRES MODOS DO ESQUELETO: uma barra solta e um esqueleto de dois \
-         ossos.\n[vec-bone-smoke] 1) Object: clique num osso (o esqueleto fica seleccionado), \
-         Shift+clique na barra, Ctrl+P (prende).\n[vec-bone-smoke] 2) Tab: Edit -- arraste da \
+         ossos.\n[vec-bone-smoke] 1) Object: clique num osso (ele fica escolhido; um 2o clique no \
+         mesmo sitio escolhe o esqueleto), Shift+clique na barra, Ctrl+P (prende).\n[vec-bone-smoke] 2) Tab: Edit -- arraste da \
          ponta do ultimo osso e nasce outro.\n[vec-bone-smoke] 3) Mode > Pose Mode: arraste um \
          osso e a barra dobra.\n[vec-bone-smoke] 4) Tab: Object -- o gizmo move o esqueleto \
          inteiro, e a barra vai junto."

@@ -15,25 +15,26 @@ fn code_only(rel: &str) -> String {
 }
 
 #[test]
-fn a_bone_click_in_object_selects_its_skeleton() {
+fn a_bone_click_in_object_offers_the_bone_then_its_skeleton() {
     let src = code_only("src/input_dispatch/despacho_clique_pick.rs");
     let pick = src
         .find("pick_objects_at(")
         .expect("controlo: a porta do pick de objecto");
     let osso = src
-        .find("bone_pick::object_at(")
+        .find("bone_pick::objects_at(")
         .expect("o pick de canvas não pergunta pelo osso sob o dedo");
     assert!(
         osso < pick,
         "o osso é lido depois do pick (o gfx já está emprestado)"
     );
     assert!(
-        src.contains("if self.skeleton.tool_in_hand {\n            None"),
-        "o osso selecciona o esqueleto também com a ferramenta de osso na mão — o clique é dela"
+        src.contains("if self.skeleton.tool_in_hand {\n            Vec::new()"),
+        "o pick de objecto lê o osso também com a ferramenta de osso na mão — o clique é dela"
     );
+    // ⚠️ Pela ordem: o osso à frente, o esqueleto a seguir (o 2.º clique no mesmo sítio).
     assert!(
-        src.contains("hits.insert(0, b)"),
-        "o esqueleto não vem à frente da arte"
+        src.contains("for b in osso_objecto.iter().rev()") && src.contains("hits.insert(0, *b)"),
+        "o osso e o esqueleto não vêm à frente da arte, pela ordem"
     );
 }
 

@@ -211,6 +211,11 @@ diz onde ler o mecanismo:
   `bone_arm_pending`; o press do osso no Edit/Pose não aponta formas na caneta (estado invisível que o
   Bind de Object prendia). Re-medido: `[Bone 2, Path 0]` em Object, Bind `1`. Detalhe:
   `docs/Vector Module/BUGS_vector.md` #34.
+- **C13 — o 2.º report (06/10): «se não estiver no modo transform do osso não é possível
+  selecioná-lo».** Em Object o clique num osso passa a escolher o OSSO, e o esqueleto é o 2.º
+  candidato no mesmo sítio (`bone_pick::objects_at`; desvio do C7, que copiava a Armature do Blender).
+  Medido no caminho real: `[Bone 3]` → `Shift`+barra `[Bone 3, Path 0]` → Bind `1` → 2.º clique
+  `[Skeleton]`. BUGS #35.
 
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 

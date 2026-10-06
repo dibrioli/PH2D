@@ -355,14 +355,19 @@ pub fn hover(
     })
 }
 
-/// ⭐⭐ **O OBJECTO sob o dedo, em Object** (A14): um osso à vista sob o ponteiro selecciona o
-/// esqueleto dono dele (o clique num osso da Armature do Blender selecciona a Armature); um osso
-/// solto responde por si.
+/// ⭐⭐ **Os candidatos sob o dedo, em Object** (A14): o OSSO à vista sob o ponteiro e, a seguir, o
+/// esqueleto dono dele — o 1.º clique escolhe o osso, o seguinte no mesmo sítio passa ao esqueleto
+/// (o ciclo do pick). ⛔ Só o esqueleto (a Armature do Blender) deixava o osso inalcançável fora do
+/// Pose, e no Pose o cadeado recusa a forma do Bind (report do dono, 06/10).
 #[must_use]
-pub fn object_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Option<u64> {
-    let osso = hit(sim, world, px_to_world)?;
-    let e = Entity::from_bits(osso);
-    Some(ph2d_skeleton_ecs::skeleton_of(sim.world(), e).map_or(osso, Entity::to_bits))
+pub fn objects_at(sim: &SimWorld, world: [f64; 2], px_to_world: f64) -> Vec<u64> {
+    let Some(osso) = hit(sim, world, px_to_world) else {
+        return Vec::new();
+    };
+    let dono = ph2d_skeleton_ecs::skeleton_of(sim.world(), Entity::from_bits(osso));
+    std::iter::once(osso)
+        .chain(dono.map(Entity::to_bits))
+        .collect()
 }
 
 /// ⭐ **A semente do Bind** — o osso escolhido, senão o 1.º osso de um esqueleto escolhido (em Object

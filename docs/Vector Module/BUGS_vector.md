@@ -155,7 +155,30 @@ mutação que tira o teto da rota do painel derruba **três** gates.
     o rato e consumiam o gesto. ⇒ *uma família nova responde às perguntas dela num MÓDULO, e ganha
     um `seam_*` com gesto real cujo oráculo é o `EditorAction`, nunca o `WidgetEvent`.*
 
-## Índice dos 34 FECHADOS — o mecanismo de cada um, em uma linha
+## Índice dos 35 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #35 — *«se não estiver no modo transform do osso não é possível selecioná-lo»*: o C7 copiou o Blender e o osso deixou de ter porta em Object ✅ 2026-10-06
+
+**Sintoma** (dono, 2.º report do smoke da A14): o osso só se escolhia no Transform (Pose), e lá o
+cadeado não deixa juntar a forma — *«Shift não funciona pois tanto a shape como o osso só permitem
+selecionar outra coisa se estiverem em modo object»*.
+
+**O mecanismo** (já MEDIDO na sonda do #34, caminho real): em Object o clique num osso dava
+`[Skeleton]` — o C7 fez do osso sob o dedo um candidato do ESQUELETO (*a Armature do Blender*). O osso
+só voltava a ser escolhível com a ferramenta de osso na mão (Edit/Pose), onde o cadeado é a lei. ⇒ o
+gesto que o dono conhece (*escolher o osso, juntar a forma, prender*) não tinha um modo onde as duas
+metades fossem possíveis.
+
+⛔ **O gate estava VERDE sobre isto, e de propósito:** `a_bone_under_the_finger_selects_its_skeleton…`
+afirmava a escolha do C7. *Copiar o padrão-ouro de outro app copia também o que o artista DESTE app
+já sabe fazer — e esse é o oráculo que manda.*
+
+**Cura:** `bone_pick::objects_at` devolve `[osso, esqueleto]` — o 1.º clique escolhe o osso, o 2.º no
+mesmo sítio passa ao esqueleto (o ciclo que o pick já tinha). Medido no caminho real: clique →
+`[Bone 3]` em Object, `Shift`+clique na barra → `[Bone 3, Path 0]`, Bind → `1`, cliques seguintes no
+mesmo osso → `[Skeleton]`. Gate `a_bone_under_the_finger_is_offered_before_its_skeleton_and_seeds_the_bind`
+(vermelho visto com a lei antiga; mutação da ordem sangra) e a costura
+`a_bone_click_in_object_offers_the_bone_then_its_skeleton`.
 
 ### #34 — *«não é possível selecionar ossos e vetor para fazer o bind»*: uma palavra mudou de EFEITO e o gate leu a palavra ✅ 2026-10-05
 

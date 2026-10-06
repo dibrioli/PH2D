@@ -144,3 +144,19 @@ fn rotation_round_trips_and_the_aabb_holds_the_rotated_corners() {
     assert!((x1 - x0 - 10.0).abs() < 1e-9 && (y1 - y0 - 20.0).abs() < 1e-9);
     assert!(((x0 + x1) / 2.0 - 10.0).abs() < 1e-9 && ((y0 + y1) / 2.0 - 5.0).abs() < 1e-9);
 }
+
+#[test]
+fn the_readable_ink_is_dark_on_pastels_and_light_on_dark_fills() {
+    let dark = Rgba(crate::DEFAULT_INK);
+    let light = Rgba(crate::DEFAULT_PAPER);
+    for pastel in [
+        [0xFF, 0xF5, 0x9D, 0xFF],
+        [0xBB, 0xDE, 0xFB, 0xFF],
+        [0xC8, 0xE6, 0xC9, 0xFF],
+    ] {
+        assert_eq!(Rgba(pastel).readable_ink(), dark);
+    }
+    for deep in [[0x1E, 0x1E, 0x2E, 0xFF], [0x3D, 0x3D, 0x8B, 0xFF]] {
+        assert_eq!(Rgba(deep).readable_ink(), light);
+    }
+}

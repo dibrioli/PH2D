@@ -311,7 +311,12 @@ pub fn paint(
     let (Some(f), Some(style)) = (frame, sel_style) else {
         return;
     };
-    let sel = screen_box(&f, &camera, super::board_view::area_of(area));
+    // A pega de RODAR fica acima da moldura: a barra sobe acima dela (na foto de 06/10 tapava-a).
+    let m = super::board_view::metrics();
+    let knob = (m.rotate_offset + m.handle) as f32;
+    let mut sel = screen_box(&f, &camera, super::board_view::area_of(area));
+    sel.y -= knob;
+    sel.h += knob;
     let bar = style_rects(area, sel);
     paint_panel(scene, &bar, theme);
     for (it, r) in bar {
@@ -584,8 +589,17 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             live.shapes_open = false;
         }
         Item::Fill(_) => {
+            // A letra acompanha o fundo: escolher um preenchimento escolhe a tinta que se lê nele
+            // (sem fundo, a do tema — a mesma do quadro).
             let c = swatch(it, theme);
-            ed.set_style(doc, history, |s| s.fill = c);
+            let ink = c.map_or_else(
+                || super::board_view::default_style(theme).text_color,
+                Rgba::readable_ink,
+            );
+            ed.set_style(doc, history, |s| {
+                s.fill = c;
+                s.text_color = ink;
+            });
         }
         Item::Stroke(_) => {
             let c = swatch(it, theme);

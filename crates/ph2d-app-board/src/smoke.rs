@@ -7,7 +7,7 @@
 
 use ph2d_board_model::{BoardOp, BoardSet, Dash, Element, Rgba, Shape, ShapeType};
 use ph2d_editor_core::HeroScreen;
-use ph2d_editor_core::screens::hero::board_view::default_style;
+use ph2d_editor_core::screens::hero::board_view::{self, default_style};
 use ph2d_editor_core::screens::hero::{board_bar, document_tabs};
 use ph2d_editor_core::widget::panel_chrome::HIGHLIGHTER_RGBA;
 use ph2d_tokens::{ColorToken, Spacing};
@@ -101,9 +101,11 @@ fn scene_shapes(hero: &mut HeroScreen) {
         (ShapeType::Rectangle, "board.smoke.build", pastel(4), 680.0),
         (ShapeType::Pill, "board.smoke.end", pastel(1), 900.0),
     ];
+    let mut decision = None;
     for (i, (kind, key, fill, x)) in flow.into_iter().enumerate() {
         let mut style = base.clone();
         style.fill = fill;
+        style.text_color = fill.map_or(style.text_color, Rgba::readable_ink);
         style.round = kind == ShapeType::Rectangle;
         if i == 3 {
             style.dash = Dash::Dashed;
@@ -130,6 +132,9 @@ fn scene_shapes(hero: &mut HeroScreen) {
         if i == 1 {
             el.angle = -0.08;
         }
+        if kind == ShapeType::Diamond {
+            decision = Some(el.id);
+        }
         BoardOp::Put(el).apply(&mut board.doc);
     }
     // O catálogo: as 18 formas em três filas de seis, cada uma com o nome dentro.
@@ -151,4 +156,6 @@ fn scene_shapes(hero: &mut HeroScreen) {
     board.camera.zoom = 0.9;
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));
+    // O losango abre seleccionado: as pegas e a barra de estilo estão à vista desde o início.
+    board_view::select(hero, decision);
 }

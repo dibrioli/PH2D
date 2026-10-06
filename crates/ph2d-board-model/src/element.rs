@@ -14,6 +14,40 @@ pub struct ElementId(pub u64);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Rgba(pub [u8; 4]);
 
+impl Rgba {
+    /// Luminância relativa (WCAG 2), `0` = preto, `1` = branco.
+    #[must_use]
+    pub fn luminance(self) -> f64 {
+        let lin = |c: u8| {
+            let c = f64::from(c) / 255.0;
+            if c <= 0.039_28 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        let [r, g, b, _] = self.0;
+        0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+    }
+
+    /// A tinta de texto que se lê sobre esta cor: a escura de nascença ou a clara, a de MAIOR
+    /// contraste WCAG.
+    #[must_use]
+    pub fn readable_ink(self) -> Rgba {
+        let (dark, light) = (Rgba(crate::DEFAULT_INK), Rgba(crate::DEFAULT_PAPER));
+        let l = self.luminance();
+        let contrast = |o: Rgba| {
+            let (a, b) = (l.max(o.luminance()), l.min(o.luminance()));
+            (a + 0.05) / (b + 0.05)
+        };
+        if contrast(dark) >= contrast(light) {
+            dark
+        } else {
+            light
+        }
+    }
+}
+
 /// O que um elemento é. ⚠️ postcard é posicional: variante NOVA só no fim, e campo novo numa
 /// variante existente sobe o [`crate::FORMAT_VERSION`].
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

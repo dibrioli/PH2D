@@ -58,9 +58,13 @@ pub fn outline(shape: &Shape, w: f64, h: f64) -> Outline {
         other => {
             let kind = vec_kind(other);
             let path = cook(kind, [0.0, 0.0], [w, h], &kind.defaults());
+            // ⛔ O catálogo vectorial é Y PARA CIMA (`space.rs`: `1 − 2v`); o quadro é Y para baixo.
+            // Sem virar, a onda do Documento, a ponta do «fora da página» e o bico do balão ficavam
+            // em cima (foto da cena 2, 06/10).
+            let flip = Affine::new([1.0, 0.0, 0.0, -1.0, 0.0, h]);
             Outline {
-                fill: ph2d_vec_render::build_fill_bezpath(&path),
-                lines: ph2d_vec_render::build_lines_bezpath(&path),
+                fill: flip * ph2d_vec_render::build_fill_bezpath(&path),
+                lines: flip * ph2d_vec_render::build_lines_bezpath(&path),
             }
         }
     }
@@ -75,7 +79,8 @@ fn vec_kind(t: ShapeType) -> ShapeKind {
         ShapeType::Triangle => ShapeKind::Polygon,
         ShapeType::Pill => ShapeKind::Pill,
         ShapeType::Parallelogram => ShapeKind::Parallelogram,
-        ShapeType::Trapezoid => ShapeKind::Trapezoid,
+        // A operação manual ISO 5807 tem o lado LONGO em cima: no catálogo é o `TrapezoidFlip`.
+        ShapeType::Trapezoid => ShapeKind::TrapezoidFlip,
         ShapeType::Hexagon => ShapeKind::HexagonFlat,
         ShapeType::Cylinder => ShapeKind::Cylinder,
         ShapeType::Document => ShapeKind::Document,

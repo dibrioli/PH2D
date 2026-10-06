@@ -110,3 +110,37 @@ fn to_world_puts_the_local_box_on_the_element() {
         "dois caminhos de rodar discordam"
     );
 }
+
+/// ⛔ O catálogo vectorial é Y para cima; o quadro é Y para baixo. Os símbolos que têm um «em baixo»
+/// têm-no em baixo: a onda do Documento, a ponta do «fora da página», o bico do balão, a tampa do
+/// cilindro em cima, e a operação manual com o lado longo em cima.
+#[test]
+fn flowchart_symbols_are_the_right_way_up() {
+    let (w, h) = (100.0, 100.0);
+    let o = |t| outline(&shape(t, false), w, h);
+    // Documento: o canto inferior direito é recto, o esquerdo desce mais (a folha) — o topo é recto.
+    let doc = o(ShapeType::Document).fill;
+    assert!(
+        doc.contains(Point::new(50.0, 2.0)),
+        "o topo do documento não é recto"
+    );
+    assert!(
+        !doc.contains(Point::new(50.0, 99.0)),
+        "a onda não está em baixo"
+    );
+    // Fora da página: a ponta em baixo, ao meio.
+    let off = o(ShapeType::OffPage).fill;
+    assert!(off.contains(Point::new(50.0, 95.0)) && !off.contains(Point::new(5.0, 95.0)));
+    // Balão: o corpo em cima (o canto superior esquerdo é corpo), o bico em baixo.
+    let sp = o(ShapeType::SpeechRect).fill;
+    assert!(
+        sp.contains(Point::new(10.0, 10.0)),
+        "o corpo do balão não está em cima"
+    );
+    // Operação manual: larga em cima, estreita em baixo.
+    let tr = o(ShapeType::Trapezoid).fill;
+    assert!(tr.contains(Point::new(3.0, 3.0)) && !tr.contains(Point::new(3.0, 97.0)));
+    // Cilindro: a tampa (linha de construção) na metade de cima.
+    let cy = o(ShapeType::Cylinder).lines.bounding_box();
+    assert!(cy.y1 < h / 2.0, "a tampa está em baixo: {cy:?}");
+}

@@ -32,3 +32,5 @@ pub const DEFAULT_STROKE_WIDTH: f64 = 2.0;
 pub const DEFAULT_FONT_SIZE: f64 = 20.0;
 /// Tinta do texto quando o documento não diz outra (dado do documento, não da UI).
 pub const DEFAULT_INK: [u8; 4] = [30, 30, 30, 255];
+/// A tinta clara (texto sobre preenchimentos escuros).
+pub const DEFAULT_PAPER: [u8; 4] = [250, 250, 250, 255];

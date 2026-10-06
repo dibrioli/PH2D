@@ -159,6 +159,11 @@ fn the_toolbar_tool_draws_a_shape_and_the_style_bar_restyles_it_and_ctrl_z_undoe
     // A barra de estilo está por cima da selecção: o tracejado aplica-se à forma.
     t.click_bar(Item::Dash(Dash::Dashed));
     assert_eq!(t.elements()[0].shape().unwrap().style.dash, Dash::Dashed);
+    // Um fundo claro troca a letra para a tinta escura (a do tema escuro sumia nele — foto 06/10).
+    t.click_bar(Item::Fill(Some(0)));
+    let st = t.elements()[0].shape().unwrap().style.clone();
+    assert_eq!(st.text_color, st.fill.unwrap().readable_ink());
+    t.key(BoardKey::Char('z'), CTRL, None);
     assert!(t.key(BoardKey::Char('z'), CTRL, None));
     assert_eq!(t.elements()[0].shape().unwrap().style.dash, Dash::Solid);
     assert!(t.key(BoardKey::Char('z'), CTRL, None));
@@ -321,5 +326,32 @@ fn every_bar_item_has_a_distinct_id_that_maps_back() {
             let tab = super::super::document_tabs::tab_node_id(ph2d_board_model::BoardId(b));
             assert_ne!(tab, id, "{it:?} é a aba do quadro {b}");
         }
+    }
+}
+
+/// ⛔ A barra de estilo não tapa a pega de RODAR (foto da cena 2, 06/10: tapava).
+#[test]
+fn the_style_bar_does_not_cover_the_rotate_knob() {
+    let mut t = T::new();
+    t.key(BoardKey::Char('r'), Modifiers::default(), Some("r"));
+    let (a, b) = (t.at(0.4, 0.5), t.at(0.6, 0.6));
+    t.drag(a, b);
+    let board = t.hero.documents.active_board().unwrap();
+    let ed = t.hero.documents.live.editor.as_ref().unwrap();
+    let f = ed.frame(&board.doc).unwrap();
+    let area = super::super::board_view::area_of(t.hero.last_canvas);
+    let px = 1.0 / board.camera.zoom;
+    let knob = f.handle(ph2d_board_edit::Handle::Rotate, px, ed.metrics());
+    let [kx, ky] = board.camera.to_screen(area, knob);
+    let half = (ed.metrics().handle / 2.0) as f32;
+    // Quem está por cima da pega no ecrã é ela mesma — nenhum botão da barra.
+    let (kx, ky) = (kx as f32, ky as f32);
+    for dy in [-half, 0.0, half] {
+        let hit = t.hero.hit_index.hit(kx, ky + dy);
+        assert!(
+            hit.and_then(item_of).is_none(),
+            "a barra tapa a pega de rodar: {:?}",
+            hit.and_then(item_of)
+        );
     }
 }

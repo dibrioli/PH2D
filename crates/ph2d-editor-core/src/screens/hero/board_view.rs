@@ -80,6 +80,14 @@ pub(crate) fn editor(slot: &mut Option<Editor>, theme: Theme) -> &mut Editor {
     slot.get_or_insert_with(|| Editor::new(default_style(theme), metrics()))
 }
 
+/// Selecciona `ids` no quadro activo (as cenas de smoke abrem com a selecção à vista).
+pub fn select(hero: &mut HeroScreen, ids: impl IntoIterator<Item = ph2d_board_model::ElementId>) {
+    let theme = hero.theme;
+    if let Some((board, live)) = hero.documents.active_parts() {
+        editor(&mut live.editor, theme).select(&board.doc, ids);
+    }
+}
+
 /// Ecrã → ponteiro no mundo do quadro.
 fn world_pointer(board: &Board, area: Area, x: f32, y: f32, mods: Modifiers) -> Pointer {
     Pointer {

@@ -336,11 +336,11 @@ fn stamp_dab_inner(
     if buf.len() < (width as usize) * (height as usize) * 4 {
         return None;
     }
-    // Per-dab opacity = the stroke's coverage × the brush's Flow (per-dab build-up) × Strength
-    // (overall opacity). With `mask` set this is the per-stroke CAP (Accumulate off); without it the
-    // dab just builds up (Accumulate on). Both default to 1.0.
-    let coverage =
-        coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0) * spec.strength.clamp(0.0, 1.0);
+    // Per-dab opacity = the dab's coverage (which already carries the Strength, ONCE —
+    // `stroke/dab_build.rs`) × the brush's Flow (per-dab build-up). With `mask` set this is the
+    // per-stroke CAP (Accumulate off); without it the dab just builds up (Accumulate on). BUGS #41:
+    // multiplying `spec.strength` here as well made the opacity Strength².
+    let coverage = coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0);
     if coverage <= 0.0 || width == 0 || height == 0 {
         return None;
     }

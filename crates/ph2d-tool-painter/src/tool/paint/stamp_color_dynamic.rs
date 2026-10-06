@@ -117,7 +117,7 @@ impl PainterTool {
                         shape_basis,
                         grain_basis,
                         colors,
-                        coverage: (d.coverage * brush.flow * brush.strength).clamp(0.0, 1.0),
+                        coverage: (d.coverage * brush.flow).clamp(0.0, 1.0),
                     }
                 })
                 .collect();
@@ -186,7 +186,7 @@ impl PainterTool {
             .map(|d| FusedDab {
                 center: d.center,
                 radius: d.radius_px,
-                coverage: (d.coverage * brush.flow * brush.strength).clamp(0.0, 1.0),
+                coverage: (d.coverage * brush.flow).clamp(0.0, 1.0),
             })
             .collect();
         let bbox = accumulate_color_stamps_rgba_batch(

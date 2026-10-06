@@ -76,7 +76,7 @@ fn diag_o_solid_no_digital_e_no_impasto() {
 }
 
 /// O laço com a pressão `p` constante e os ajustes `f` aplicados ao pincel.
-fn laco_com(meio: PaintMedia, p: f32, f: &dyn Fn(&mut PainterTool)) -> PainterTool {
+pub(super) fn laco_com(meio: PaintMedia, p: f32, f: &dyn Fn(&mut PainterTool)) -> PainterTool {
     use ph2d_editor_core::tool::CanvasPointer;
     let ptr = |pos: [f32; 2], phase| CanvasPointer {
         pos,
@@ -174,7 +174,7 @@ fn diag_a_strength_do_traco_comum() {
 }
 
 /// O canal G mais baixo (o texel mais opaco) da camada.
-fn mais_opaco(t: &PainterTool) -> u8 {
+pub(super) fn mais_opaco(t: &PainterTool) -> u8 {
     t.canvas_rgba.chunks(4).map(|p| p[1]).min().expect("tela")
 }
 
@@ -202,8 +202,14 @@ fn a_mancha_obedece_ao_tecto_do_traco() {
                 t.paint.brush.style_solid = false;
             });
             let (g_com, g_sem) = (mais_opaco(&com), mais_opaco(&sem));
+            // ⚠️ `2` níveis e não `1`, MEDIDO (BUGS #41, `diag_o_tecto_da_mancha_por_strength`): com a
+            // Strength aplicada uma vez o tecto subiu de `0,163` para `0,4`, e no texel onde os dabs da
+            // CORDA se empilham sobre o começo do laço (22, 26 — fora da mancha) o arredondamento da
+            // mistura com a cor vermelha soma `+2` (Digital 0,4 · Impasto 0,7). Ablação: com tinta
+            // PRETA o Digital passa `0` em toda Strength (`diag_onde_a_mancha_passa_do_tecto`
+            // acha o texel). Não é a mancha a compor por cima: essa passava dezenas de níveis (o #40).
             assert!(
-                g_com + 1 >= g_sem,
+                g_com + 2 >= g_sem,
                 "{meio:?} {nome}: o gesto com Solid passou do tecto do traço (G {g_com} contra {g_sem})"
             );
             let miolo = com.canvas_rgba[(64 * 128 + 64) * 4 + 1];

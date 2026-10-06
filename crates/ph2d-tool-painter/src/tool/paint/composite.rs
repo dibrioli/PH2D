@@ -662,12 +662,19 @@ impl PainterTool {
         // ⚠️ As listas por camada resolvem-se UMA vez e ANTES de qualquer decisão: o
         // [`Self::camada_dabs`] consome o acumulador de arco daquela posição (estado por TRAÇO), e
         // chamá-lo duas vezes para o mesmo lote entregaria duas subamostragens diferentes.
+        // ⚠️ **A Strength da camada vai no `coverage` do dab**, como a do pincel vai no do traço: os
+        // núcleos levam a Strength UMA vez, a do dab (BUGS #41). A troca do `brush.strength` por camada
+        // continua, mas só decide o tecto do Accumulate.
         let camadas: [Vec<Dab>; N_CAMADAS] = std::array::from_fn(|pos| {
-            if self.paint.composite[pos].strength <= 0.0 {
-                Vec::new()
-            } else {
-                self.camada_dabs(pos, dabs).unwrap_or_else(|| dabs.to_vec())
+            let forca = self.paint.composite[pos].strength;
+            if forca <= 0.0 {
+                return Vec::new();
             }
+            let mut v = self.camada_dabs(pos, dabs).unwrap_or_else(|| dabs.to_vec());
+            for d in &mut v {
+                d.coverage = (d.coverage * forca).clamp(0.0, 1.0);
+            }
+            v
         });
         // ⛔ **Com menos de duas camadas activas não há ordem para arrumar** — o caminho é o de
         // sempre, byte-idêntico, e nem a fotografia do `pre` é paga.

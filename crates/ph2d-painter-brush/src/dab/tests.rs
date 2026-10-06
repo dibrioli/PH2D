@@ -229,7 +229,7 @@ fn soft_falloff_fades_from_center_to_rim() {
 
 #[test]
 fn strength_scales_dab_opacity() {
-    // Full strength → black; half strength → mid-grey over white (Mix at a=0.5).
+    // The coverage carries the Strength ONCE (BUGS #41): full → black; half → mid-grey, not 0.25.
     let (w, h) = (16, 16);
     let hard = |strength: f32| BrushSpec {
         radius_px: 5.0,
@@ -245,11 +245,11 @@ fn strength_scales_dab_opacity() {
     assert_eq!(full[((8 * w + 8) * 4) as usize], 0, "full strength = black");
 
     let mut half = solid(w, h, [255, 255, 255, 255]);
-    stamp_dab(&mut half, w, h, [8.0, 8.0], &hard(0.5), 1.0, false).expect("painted");
+    stamp_dab(&mut half, w, h, [8.0, 8.0], &hard(0.5), 0.5, false).expect("painted");
     let v = half[((8 * w + 8) * 4) as usize];
     assert!(
-        (120..=136).contains(&v),
-        "half strength ≈ mid-grey, got {v}"
+        (126..=129).contains(&v),
+        "half strength ≈ mid-grey (once, not squared ≈ 191), got {v}"
     );
 }
 
@@ -322,7 +322,7 @@ fn large_dab_takes_the_parallel_path_and_stamps_correctly() {
 #[test]
 fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
     // Accumulate OFF (a per-stroke coverage mask) caps overlapping dabs at Strength; ON (no mask)
-    // lets them build past it. Constant falloff + hard disk ⇒ the centre weight is exactly 1.
+    // lets them build past it. Constant falloff ⇒ centre weight 1; coverage carries Strength (#41).
     let (w, h) = (16u32, 16u32);
     let spec = BrushSpec {
         radius_px: 5.0,
@@ -346,7 +346,7 @@ fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
             h,
             center,
             &spec,
-            1.0,
+            spec.strength,
             false,
             None,
             None,
@@ -369,7 +369,7 @@ fn accumulate_off_caps_a_stroke_at_strength_while_on_builds_up() {
             h,
             center,
             &spec,
-            1.0,
+            spec.strength,
             false,
             None,
             None,

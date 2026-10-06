@@ -11,7 +11,10 @@ use ph2d_editor_core::tool::{PanelEvent, Tool};
 fn spacing_ratio(accumulate: bool, atten: bool) -> f32 {
     let (mut lo, mut hi) = (f32::MAX, 0.0f32);
     for &sp in &[0.05f32, 0.10, 0.20, 0.40] {
-        let mut t = soft_tool(0.5, accumulate);
+        // `0,25`: a opacidade por dab que `0,5` dava com a Strength ao quadrado (BUGS #41) — a `0,5`
+        // a lei que empilha satura antes e a dependência do espaçamento cai para `1,74×` (o CONTROLO
+        // pede `> 2`). `0,5 × 0,5` é exacto em `f32`: os bytes são os de antes.
+        let mut t = soft_tool(0.25, accumulate);
         if atten {
             t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_BRUSH_SPACE_ATTEN));
         }

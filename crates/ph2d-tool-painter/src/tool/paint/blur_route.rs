@@ -33,7 +33,6 @@ impl PainterTool {
             return;
         }
         let base = self.paint.brush;
-        let strength = base.strength.clamp(0.0, 1.0);
         let has_shape_image = self.paint.shape_image.is_some();
         let textured = base.shape_silhouette_active(has_shape_image)
             || base.texture.is_active()
@@ -90,7 +89,8 @@ impl PainterTool {
         );
         let mut touched: Option<Region> = None;
         for d in dabs {
-            let amount = strength * d.coverage;
+            // The dab's coverage already carries the Strength, once (BUGS #41).
+            let amount = d.coverage;
             // Per-dab frame for the Grain path: the Jitter-Rotate footprint + the Rake heading (`d.dir`)
             // + the Random draw (`tex_rng`), computed ONCE per dab so the wrapped Tiling copies share it.
             let rotor = base.dab_rotor(d);

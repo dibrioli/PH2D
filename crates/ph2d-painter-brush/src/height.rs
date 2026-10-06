@@ -346,10 +346,9 @@ pub fn accumulate_dab_height(
     {
         return None;
     }
-    // The same fold the colour kernel applies: pressure × Flow × Strength. A light, thin stroke is
-    // both fainter AND thinner — one number drives both.
-    let coverage =
-        dab.coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0) * spec.strength.clamp(0.0, 1.0);
+    // The same fold the colour kernel applies: the dab's coverage (Strength × pressure, once) × Flow.
+    // A light, thin stroke is both fainter AND thinner — one number drives both.
+    let coverage = dab.coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0);
     if coverage <= 0.0 {
         return None;
     }
@@ -438,8 +437,7 @@ pub fn erase_dab_height(
     if dst.len() < n || cover.len() < n || width == 0 || height == 0 {
         return None;
     }
-    let coverage =
-        dab.coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0) * spec.strength.clamp(0.0, 1.0);
+    let coverage = dab.coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0);
     if coverage <= 0.0 {
         return None;
     }

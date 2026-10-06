@@ -141,8 +141,7 @@ pub fn blit_stamp(
     if buf.len() < (width as usize) * (height as usize) * 4 {
         return None;
     }
-    let coverage =
-        coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0) * spec.strength.clamp(0.0, 1.0);
+    let coverage = coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0);
     if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
         return None;
     }
@@ -364,8 +363,7 @@ pub fn blit_canvas_cached(
     coverage: f32,
     preserve_alpha: bool,
 ) -> Option<DirtyRect> {
-    let coverage =
-        coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0) * spec.strength.clamp(0.0, 1.0);
+    let coverage = coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0);
     if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
         return None;
     }

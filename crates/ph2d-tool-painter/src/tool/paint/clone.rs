@@ -105,7 +105,6 @@ impl PainterTool {
             return; // no source sampled yet → nothing to clone
         };
         let base = self.paint.brush;
-        let strength = base.strength.clamp(0.0, 1.0);
         let has_shape_image = self.paint.shape_image.is_some();
         let textured = base.shape_silhouette_active(has_shape_image)
             || base.texture.is_active()
@@ -156,7 +155,8 @@ impl PainterTool {
         );
         let mut touched: Option<Region> = None;
         for d in dabs {
-            let amount = strength * d.coverage;
+            // The dab's coverage already carries the Strength, once (BUGS #41).
+            let amount = d.coverage;
             let rotor = base.dab_rotor(d);
             let fp = base.dab_footprint(rotor);
             let sbasis = (want_grain && shape_active).then(|| {

@@ -44,6 +44,9 @@ mod solido_meios_tests;
 mod spray_defaults_tests; // W5: a primeira nuvem parece uma nuvem
 #[path = "spray_probe.rs"]
 mod spray_probe; // W5 do plano 38: o custo por evento de `n` marcas — o teto do Count
+/// A Strength é a opacidade, uma vez só, em toda rota (decisão do dono, 2026-10-06, BUGS #41).
+#[path = "strength_rotas_tests.rs"]
+mod strength_rotas_tests;
 #[path = "thread_deposit_tests.rs"]
 mod thread_deposit_tests;
 #[path = "thread_probe.rs"]

@@ -31,9 +31,12 @@ const RADIO: f32 = 12.0;
 /// chega a lado nenhum. A mistura só é observável onde há o que misturar.
 fn tela(media: PaintMedia) -> PainterTool {
     let mut t = white_canvas(SIZE, RADIO);
-    t.paint.brush.strength = 0.5;
+    // ⚠️ `0,25`: a opacidade que a «meia força» dava enquanto a Strength entrava AO QUADRADO (BUGS
+    // #41) — o regime em que azul sobre amarelo soma para um cinzento (a `0,5` lê `139,153,178`, e o
+    // CONTROLO deixa de conter o fenómeno). `0,5 × 0,5` é exacto em `f32`: os bytes são os de antes.
+    t.paint.brush.strength = 0.25;
     t.paint.brush_by_mode.iter_mut().for_each(|b| {
-        b.strength = 0.5;
+        b.strength = 0.25;
     });
     t.set_paint_media(media);
     t

@@ -158,7 +158,8 @@ pub fn device_dabs(dabs: &[Dab], brush: &BrushSpec) -> Vec<DeviceDab> {
             DeviceDab {
                 center: d.center,
                 radius: d.radius_px,
-                coverage: d.coverage,
+                // A opacidade por dab da CPU (`stamp_dab_inner`): a cobertura do dab × o Flow.
+                coverage: (d.coverage * brush.flow.clamp(0.0, 1.0)).clamp(0.0, 1.0),
                 color: d.color,
                 m0: linhas[0],
                 m1: linhas[1],

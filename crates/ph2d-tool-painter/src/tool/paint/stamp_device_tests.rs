@@ -508,3 +508,66 @@ fn the_bridge_publishes_the_linear_part_and_carries_the_fold_beside_it() {
          corpus deixou de ter curvatura, e o gate passaria sobre a publicação errada"
     );
 }
+
+/// ⭐ **A PONTE LEVA AO DEVICE A OPACIDADE QUE A CPU CARIMBA** (BUGS #41) — o kernel WGSL pinta
+/// `a = falloff × coverage` e não conhece o Flow, então o `coverage` que a ponte publica tem de ser a
+/// opacidade por dab da CPU (`stamp_dab_inner`: a cobertura do dab × o Flow). Prova pela função REAL:
+/// carimbar `d.coverage` com o Flow do pincel é, ao byte, carimbar o `coverage` da ponte com Flow 1.
+/// Vermelho antes: a ponte publicava `d.coverage` cru e o device pintava o Flow `0,3` a `1`.
+#[test]
+fn a_ponte_leva_a_opacidade_que_a_cpu_carimba() {
+    let carimba = |spec: &BrushSpec, c: [f32; 2], cov: f32| {
+        let mut buf = vec![255u8; 64 * 64 * 4];
+        let _ = ph2d_painter_brush::stamp_dab_textured_masked(
+            &mut buf,
+            64,
+            64,
+            c,
+            spec,
+            cov,
+            false,
+            None,
+            None,
+            None,
+            None,
+            [1.0, 0.0],
+        );
+        buf
+    };
+    for flow in [0.3f32, 0.6, 1.0] {
+        let brush = BrushSpec {
+            radius_px: 9.0,
+            flow,
+            strength: 0.4,
+            color: [0.1, 0.2, 0.7],
+            ..BrushSpec::default()
+        };
+        let dabs: Vec<Dab> = [0.4f32, 0.25]
+            .iter()
+            .map(|&coverage| Dab {
+                center: [31.5, 30.25],
+                radius_px: 9.0,
+                coverage,
+                color: brush.color,
+                rotation: [1.0, 0.0],
+                dir: [1.0, 0.0],
+                arc_len: 0.0,
+                stroke_radius_px: 9.0,
+            })
+            .collect();
+        let sem_flow = BrushSpec { flow: 1.0, ..brush };
+        for (d, dev) in dabs.iter().zip(device_dabs(&dabs, &brush)) {
+            let cpu = carimba(&brush, d.center, d.coverage);
+            assert!(
+                cpu.iter().any(|&b| b != 255),
+                "controlo: o dab pintou (Flow {flow})"
+            );
+            assert!(
+                cpu == carimba(&sem_flow, d.center, dev.coverage),
+                "Flow {flow}, cobertura {}: o device recebe {} e a CPU carimba outra opacidade",
+                d.coverage,
+                dev.coverage
+            );
+        }
+    }
+}

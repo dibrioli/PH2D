@@ -308,9 +308,7 @@ impl<'a, 'b> Passeio<'a, 'b> {
         // measured, not read). It is also what makes Strength 0 cost nothing at all — the walk never
         // starts, so nothing is written, so the layer's relief plane is never forked. Not an
         // optimisation: a consequence.
-        let coverage = dab.coverage.clamp(0.0, 1.0)
-            * spec.flow.clamp(0.0, 1.0)
-            * spec.strength.clamp(0.0, 1.0);
+        let coverage = dab.coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0);
         if coverage <= 0.0 {
             return None;
         }

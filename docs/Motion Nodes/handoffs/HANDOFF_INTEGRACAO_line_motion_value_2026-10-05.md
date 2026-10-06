@@ -419,3 +419,7 @@ até `31`, `15` s daí para cima), pela medição do instante em que cada pilha 
 FORMADA o tique é `11`–`16` ms e o app lê `21`–`32` fps. `4 096` por taça fica nos `60` fps na queda inteira (`2,8` ms
 plano). ⇒ **o item da placa REABRE** (doc 121 §9.22: dormir não ajuda; menos iterações tiram `20`–`30 %`; o rapier
 puro gasta `6`–`9` ms nessa pilha).
+
+**Decisão do dono (06/10):** *«por enquanto deixamos assim»* — `16 384` por taça com a pilha formada fica nos `~30`
+fps; o contacto no dispositivo NÃO entra agora (o item da placa fica registado como adiado pelo dono, com os números
+do doc 121 §9.22, não como recusa medida).

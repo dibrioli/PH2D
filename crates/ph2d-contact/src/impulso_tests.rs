@@ -16,7 +16,7 @@ fn acaso(i: u32, faixa: u32) -> f32 {
 
 /// Uma pilha apertada de caixas rodadas e discos, com uma peça GRANDE (a que a grelha põe à parte) e um
 /// obstáculo de peso zero.
-fn pilha(n: u32) -> (Vec<[f32; 2]>, Vec<Option<Colisor>>, Vec<f32>) {
+fn pilha(n: u32, grande: bool) -> (Vec<[f32; 2]>, Vec<Option<Colisor>>, Vec<f32>) {
     let mut p = Vec::new();
     let mut c = Vec::new();
     let mut w = Vec::new();
@@ -27,7 +27,7 @@ fn pilha(n: u32) -> (Vec<[f32; 2]>, Vec<Option<Colisor>>, Vec<f32>) {
         let a = acaso(i, 3) * std::f32::consts::TAU;
         c.push(Some(if i % 3 == 0 {
             Colisor::disco(0.11 + acaso(i, 4) * 0.03)
-        } else if i == 7 {
+        } else if grande && i == 7 {
             Colisor::caixa([0.9, 0.4], [a.cos(), a.sin()])
         } else {
             Colisor::caixa([0.1, 0.07 + acaso(i, 5) * 0.04], [a.cos(), a.sin()])
@@ -38,8 +38,16 @@ fn pilha(n: u32) -> (Vec<[f32; 2]>, Vec<Option<Colisor>>, Vec<f32>) {
 }
 
 /// Uma corrida do `sim.step`: separar e depois os impulsos (as leis em vigor), com material e deslize.
-fn corre(todos: bool) -> (Vec<[f32; 2]>, Vec<[f32; 2]>, Vec<f32>, Vec<f32>) {
-    let (mut p, c, w) = pilha(300);
+type Corrida = (
+    Vec<[f32; 2]>,
+    Vec<[f32; 2]>,
+    Vec<f32>,
+    Vec<f32>,
+    Vec<(usize, usize, u32, u32)>,
+);
+
+fn corre(todos: bool, grande: bool) -> Corrida {
+    let (mut p, c, w) = pilha(300, grande);
     let n = p.len();
     let inv: Vec<f32> = c
         .iter()
@@ -79,6 +87,19 @@ fn corre(todos: bool) -> (Vec<[f32; 2]>, Vec<[f32; 2]>, Vec<f32>, Vec<f32>) {
     let mut vel = vel0.clone();
     let mut spin = vec![0.0; n];
     TODOS_OS_PARES.with(|t| t.set(todos));
+    // A lista das restrições, pela ordem: o que o Gauss–Seidel percorre (um par a mais, ou a menos, é outra lei
+    // mesmo quando não muda um bit desta fixtura).
+    let lista: Vec<(usize, usize, u32, u32)> = super::monta(
+        &antes_do_passo,
+        &pecas,
+        &|_| 1.0 / 60.0,
+        Leis::EM_VIGOR,
+        &vel,
+        &vec![0.0; n],
+    )
+    .iter()
+    .map(|r| (r.lo, r.hi, r.n[0].to_bits(), r.n[1].to_bits()))
+    .collect();
     impulsos(
         &antes_do_passo,
         &mut Movimento {
@@ -91,13 +112,35 @@ fn corre(todos: bool) -> (Vec<[f32; 2]>, Vec<[f32; 2]>, Vec<f32>, Vec<f32>) {
         Leis::EM_VIGOR,
     );
     TODOS_OS_PARES.with(|t| t.set(false));
-    (vel0, vel, giro, spin)
+    (vel0, vel, giro, spin, lista)
 }
 
 #[test]
 fn os_impulsos_pela_grelha_dao_os_bits_de_todos_os_pares() {
-    let (_, vg, gg, sg) = corre(false);
-    let (v0, vt, gt, st) = corre(true);
+    // Com e sem a peça GRANDE: sem ela as peças estão longe umas das outras em relação ao alcance, e uma grelha
+    // mais fina do que a lei pede perderia pares (com ela, a nuvem inteira é vizinha de todas).
+    for grande in [true, false] {
+        compara(grande);
+    }
+}
+
+fn compara(grande: bool) {
+    let (_, vg, gg, sg, lg) = corre(false, grande);
+    let (v0, vt, gt, st, lt) = corre(true, grande);
+    assert!(
+        lt.len() > 100,
+        "a fixtura tinha de ter restricoes: {}",
+        lt.len()
+    );
+    assert_eq!(
+        lg, lt,
+        "a lista das restricoes difere de todos-os-pares (grande {grande})"
+    );
+    // E a lei do par, que a referência partilha com a grelha: cada par uma vez, do MENOR para o MAIOR.
+    assert!(
+        lt.iter().all(|r| r.0 < r.1),
+        "um par fora da ordem lo < hi (ou de uma peca consigo propria)"
+    );
     // Os controlos: o contacto respondeu (velocidades e spins mudaram), senão a igualdade era de zeros.
     let mexeram = (0..v0.len()).filter(|&i| v0[i] != vt[i]).count();
     assert!(

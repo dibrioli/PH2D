@@ -240,6 +240,10 @@ pub struct BrushSettings {
     /// **Style: Solid** on/off — o checkbox do card Line. Desmarcado (default) o traço é a linha de
     /// sempre; marcado ele é a região CERCADA pelo gesto, e a espessura deixa de entrar.
     pub style_solid: bool,
+    /// **O Solid MANDA no gesto** — a resposta da porta única (`PainterTool::solid_owns_the_gesture`:
+    /// o Solid marcado E o modo deposita pigmento). Com ele o Accumulate não é oferecido
+    /// ([`Self::accumulate_offered`], decisão do dono 2026-10-06).
+    pub solid_owns_the_gesture: bool,
     /// **O TIPO de linha procedural** como wire (`0` = None · `1` = Speed · `2` = Sketchy) — o
     /// dropdown `Type` do card Line.
     pub line_kind: u8,

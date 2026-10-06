@@ -165,6 +165,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24; mirrors BrushSpec::default)
     accumulate: false,
     style_solid: false,
+    solid_owns_the_gesture: false,
     line_kind: 0,
     // Sketchy: os defaults do `BrushSpec` (o fallback é o espelho de um pincel de fábrica).
     sketchy_reach: 1.0,

@@ -57,6 +57,31 @@ fn o_accumulate_e_o_space_attenuation_so_onde_o_meio_os_oferece() {
     }
 }
 
+/// **Com o Solid o Accumulate e o Space Attenuation saem do painel** (decisão do dono, 2026-10-06): a
+/// mancha obedece ao tecto do traço, e com o Accumulate ligado o traço passava dele (`0,744` contra a
+/// mancha a `0,400`). No Digital, onde o meio os oferece; e voltam ao desmarcar o Solid.
+#[test]
+fn com_solid_o_accumulate_sai_do_painel() {
+    for solid in [true, false] {
+        let ids = pintados_com(PaintMedia::Digital, |t| {
+            if solid {
+                t.toggle_style_solid();
+            }
+        });
+        for (id, nome) in [
+            (PAINTER_BRUSH_ACCUMULATE, "Accumulate"),
+            (PAINTER_BRUSH_SPACE_ATTEN, "Space Attenuation"),
+        ] {
+            assert_eq!(
+                ids.contains(&id),
+                !solid,
+                "Digital com Solid {solid}: o {nome} {} pintado",
+                if solid { "é" } else { "NÃO é" }
+            );
+        }
+    }
+}
+
 /// **A Shape Color Ramp não aparece no Wet Paint** (doc 46 §1, recusada: a água leva UMA cor por
 /// carimbo ao fluido, e a mistura K–M homogeneíza-o no primeiro passo — a rampa seria apagada pela
 /// física). A lei é a `BrushSettings::shape_ramp_offered`.

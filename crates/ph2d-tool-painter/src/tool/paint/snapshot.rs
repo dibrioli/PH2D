@@ -41,9 +41,16 @@ impl BrushSettings {
     /// no Wet Paint: o fluido não tem Strength para o tecto e conserva a massa que deposita, e a lei
     /// de alfa do Blender (`space_overlap_factor`) entrava como intensidade da água — o traço caía de
     /// `2 428` para `26` texels (doc 45 §2.1, doc 46 §1).
+    ///
+    /// E não com o **Solid** (decisão do dono, 2026-10-06): a mancha obedece ao tecto do traço, e com
+    /// o Accumulate ligado o traço passava dele (`0,744` contra a mancha a `0,400`).
     #[must_use]
     pub fn accumulate_offered(&self) -> bool {
-        !self.paints_no_color() && !self.watercolor_active && !self.impasto && !self.wetpaint
+        !self.paints_no_color()
+            && !self.watercolor_active
+            && !self.impasto
+            && !self.wetpaint
+            && !self.solid_owns_the_gesture
     }
 
     /// **O meio OFERECE a Shape Color Ramp?** — a porta única da secção do painel e da pré-visualização
@@ -274,6 +281,7 @@ impl PainterTool {
             space_attenuation: b.space_attenuation,
             accumulate: b.accumulate,
             style_solid: b.style_solid,
+            solid_owns_the_gesture: self.solid_owns_the_gesture(),
             line_kind: b.line_kind.to_wire(),
             sketchy_reach: b.sketchy_reach,
             sketchy_density: b.sketchy_density,

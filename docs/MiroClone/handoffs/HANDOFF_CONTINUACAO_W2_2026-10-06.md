@@ -44,6 +44,13 @@
   do losango, agora gate `a_fixed_point_arrow_does_not_spread_its_centered_neighbour`; pontos azuis
   pequenos demais — agora do tamanho do alcance do clique).
 
+- `target/*/incremental` reclamado (26 GB). Binário `smoke` quente, 2.ª corrida depois do reclamo:
+  `Finished \`smoke\` profile [optimized] target(s) in 0.21s`, zero `Compiling`. Foto final da cena 3
+  igual à aprovada na janela.
+- `agent-loop-profile.sh` (20 sessões): paralelismo 1,11 ✗ · `test:check` 3,1× ✗ · edições pela
+  ferramenta `Edit` **33 %** ✗ — esta janela editou muito por `python3` com `assert` de contagem (falha
+  alto, mas é a lei do §2 que diz `Edit`); a próxima janela: `Edit` primeiro.
+
 ## §3 — ⏳ O que fica aberto (por ordem)
 
 1. **Smoke do dono** da W2 (§5).

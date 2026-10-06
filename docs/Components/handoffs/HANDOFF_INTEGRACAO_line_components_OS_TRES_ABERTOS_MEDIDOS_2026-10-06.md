@@ -43,8 +43,9 @@ corrida que calhou. E a dobra que sobe quando quem persegue toma vagas é a das 
 - **Quem persegue sem o alvo à vista**, na lama cerrada: máx `30` tiques (média `2,2`) a `200` agentes. A cura passa
   por limitar a DOBRA das procuras adiantadas (vivacidade com outro tecto) — só então as vagas a mais (A4, que dá `4`)
   cabem no crítico.
-- **A web numa thread**: a shell web não existe; o 1.º degrau é o codec AVIF fora do caminho de `ph2d-ecs`. Decisão de
-  PRODUTO do dono (perguntada no fecho da W17).
+- **A web numa thread**: a shell web não existe; o 1.º degrau é o codec AVIF fora do caminho de `ph2d-ecs`.
+  ✅ **Decisão do dono (06/10): SIM, o PH2D terá uma versão no navegador** — frente aprovada, por abrir como LINHA
+  NOVA (`/pd-linha-abrir`); esta linha não a abre.
 - **A dominância da procura ponderada**: o custo por nó está esgotado (§26.8); falta fazer MENOS nós.
 
 ## §4 — A prova de fecho
@@ -62,6 +63,8 @@ corrida que calhou. E a dobra que sobe quando quem persegue toma vagas é a das 
   Load `6,4` antes e `25–32` durante, puxado pela própria suíte; os gates de relógio e de alocação passaram.
 
 ## §5 — O smoke
+
+✅ **Smoke do dono: OK (06/10).**
 
 Nenhuma cena nova nem tocada: o smoke da W16 continua a ser o da linha (os discos, o «Rumo», a barreira contornada,
 aprovado pelo dono). O binário compilado (a 2.ª corrida, colada), depois de `rm -rf target/*/incremental`:

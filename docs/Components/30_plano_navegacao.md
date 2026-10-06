@@ -1996,3 +1996,91 @@ tiques em que ele corta o pedido (`0 · 0 · 7` contra `51 · 58 · 95`).
   alavanca medida que o encurta (a vez primeiro) traz o pico de volta pela DOBRA da fatia de um recomeço — uma cura
   teria de mudar essa dobra só para elas, e não foi medida.
 - A dominância da procura ponderada (§22.4), como estava.
+
+## §26 — W17 (2026-10-06): os três abertos do §25.8 num ciclo só (CLAUDE.md §0.10)
+
+Os três itens do briefing de 06/10, um plano escrito ANTES de qualquer código (só a medição que o abre veio antes:
+o perfil de C e o `cargo check` de B). **Série declarada:** nenhuma entre os itens — A (a fila da ponte e a condução),
+B (só medir) e C (a procura ponderada da `ph2d-nav`) não partilham código nem régua; todos os candidatos de A e de C
+entram no MESMO lote de binários como alavancas escolhidas em execução (`fila::Sonda` para A; `Polyanya` para C) e
+medem-se na MESMA rodada intercalada. Série só DENTRO de A, e só se a rodada a pedir: se A1 falhar, a coluna de
+diagnóstico (abaixo) diz se a dobra que traz o pico é a de quem persegue ou a das outras — e isso muda o candidato
+seguinte; se for preciso, é uma 2.ª rodada e diz-se aqui porquê.
+
+### §26.1 — A: quem persegue sem o alvo à vista, na lama cerrada
+
+**O que se sabe (§25.4, 4.ª rodada):** a procura de quem persegue nasce com trabalho `0` e fica atrás das mais
+adiantadas no passo em paralelo (`fila::procuras_a_meio` ordena pelo trabalho feito) — máx `30` tiques, média `2,2`
+a `200` agentes com `150` lamas. Dar-lhe a vez primeiro, tal como está, dá máx `4` mas o crítico `40 → 160 mil`
+(recusa §25.6). A régua é a da 4.ª rodada: os tiques SEGUIDOS com `AMeio::persegue` por acabar.
+
+**Candidatos (alavancas da `Sonda`, todas no mesmo processo):**
+
+- **A1 — a vez primeiro SEM a dobra para elas.** A procura de quem persegue vai à frente no passo em paralelo, e um
+  recomeço dela não conta para `recomecos` (a fatia dela fica `pode`). Hipótese do briefing: o pico vem da dobra
+  DELAS. ⚠️ Hipótese rival: o pico vem da dobra das OUTRAS — com `10` das `16` vagas tomadas, as adiantadas avançam
+  menos, a porta apanha-as a meio mais vezes e a fatia delas dobra. **Coluna de diagnóstico** (nova na sonda): o maior
+  `recomecos` visto numa procura a meio, separado em quem persegue e as outras. Ela decide entre as duas.
+- **A2 — o FIM do caminho segue o alvo** (o `moveTargetPosition` do Detour): enquanto a procura de quem persegue
+  está por acabar, se o troço do último canto do caminho até ao alvo NOVO se anda (`cost::segment_cost` é `Some`), o
+  último ponto passa a ser o alvo novo — um caminho andável na hora; a procura completa continua atrás e, quando
+  acaba, substitui-o. Nada muda onde o orçamento chega (a procura acaba no tique em que é pedida: não há janela).
+  ⚠️ **A régua de A2 não pode ser a da 4.ª rodada**, que conta a procura por acabar — e A2 não a encurta, encurta o
+  tempo em que o agente anda para onde o alvo JÁ NÃO está. Régua de A2 (nova, ao lado da da 4.ª, que continua
+  impressa): os tiques seguidos com a procura de quem persegue por acabar E o fim do caminho a mais de
+  `repath_distance` do alvo de agora (`0,5 m`, o de fábrica).
+- **A3 — A1 e A2 juntos.**
+
+**Kill-criterion (a `200` agentes, `150` lamas, a cena de stress do `medir_replaneio`):** entra o candidato com
+**máx `≤ 5` tiques** (na régua dele, dita acima), **crítico `≤ 40 mil`**, e nenhuma outra coluna pior mais de `10 %`
+(trabalho por porta, `falta`, sem caminho; o pior tique e o CONTROLO só valem a load `≤ 5` — acima disso valem as
+colunas de trabalho e de espera). Se dois cumprirem, o mais simples. Se nenhum cumprir, recusa medida com a tabela.
+
+### §26.2 — B: a web numa thread — o que desta linha compila para `wasm32`
+
+Medido antes do plano (`target/prova/w17/wasm32_check.txt`, `cargo check --target wasm32-unknown-unknown`):
+`ph2d-nav`, `ph2d-navmesh` e `ph2d-orca` compilam limpas; `ph2d-physics-ecs` NÃO — e o que falha não é dela: o codec
+AVIF (`libavif-sys`, `libdav1d-sys`, `rav1e`: C e assembly), que chega por `ph2d-ecs → ph2d-asset →
+ph2d-imageio-registry-init → ph2d-imageio-avif` (com `--keep-going` são só esses três). Vai para o ADR-0180 (adenda).
+⛔ A shell web não se abre nesta linha: é decisão de PRODUTO do dono (perguntada no fecho).
+
+### §26.3 — C: a dominância da procura ponderada (§22.4)
+
+**O perfil novo** (`docs/Painter/ferramentas/amostra_gdb.py` sobre `medir_custo` `SO_GRANDE=1`, `release` com
+símbolos; `target/prova/w17/perfil_dominancia.txt`), dentro de `find_path_costs`: `domina` `37 %`, dos quais o
+`corte` (a geometria: `sqrt` e as bissecções) `32 %` e o percorrer da lista `~5 %`; o heap `~15 %`; o resto é a
+expansão e as raízes. Confirma o de 04/10 (`37,6 · 25,4 · 17,2 %`). ⇒ indexar as frentes por aresta (o percorrer da
+lista) vale pouco; o que pesa é a CONTA do `corte`.
+
+**Candidatos (alavancas da `Polyanya`, escolhidas em execução):**
+
+- **C1 — o `corte` barato, com a mesma resposta:** as rejeições baratas (a cobertura no parâmetro, sem `sqrt`) antes
+  da desigualdade triangular, e o zero de `D(y)` em FORMA FECHADA (`g_A + w·|ρ_A − y| = g_B + w·|ρ_B − y|` sobre a
+  recta da aresta é uma hipérbole cortada por uma recta: uma quadrática) no lugar das bissecções — e o corte continua
+  conservador (fica o lado dominado).
+- **C2 — outro heap:** a entrada de `24` para `16` bytes (o `seq` e o índice num `u64`) num heap de aridade 4 —
+  menos falhas de cache por `pop`. A ordem dos `pop`s TEM de ser a mesma (a chave e o desempate não mudam).
+- **C3 — menos polígonos na lama:** a fusão em convexos JÁ existe (`triangulate::merge_convex_labeled`,
+  Hertel–Mehlhorn), mas só DENTRO do mesmo pedaço — e o pedaço é por ÁREA (`navmesh::pedacos`: um por
+  `NavCostArea`, ids `1..`). Duas lamas do MESMO custo que se tocam ou sobrepõem são dois pedaços: a fronteira entre
+  elas é uma aresta obrigatória e parte os polígonos dos dois lados. A alavanca: os pedaços pela CLASSE de custo e não
+  pela área. ⚠️ Mexe num desenho da W7 (o custo vai na CONSULTA para que mudar a tabela não refaça malha) — por isso
+  mede-se PRIMEIRO na sonda, sem código de produto: a mesma cena com as `100` lamas num id só (`costs = [1, w]`)
+  contra os `100` ids. Só se essa medição, junta com C1 e C2, chegar a metade se desenha a porta do produto (série
+  declarada: o desenho depende do número).
+
+**Kill-criterion (o do §22.4, sem mudança):** entra só o que, sozinho ou junto, cortar o tempo da procura ponderada
+na cena grande (`100` lamas, pesos `4` e `10`) a METADE ou menos — o mínimo de rodadas intercaladas no mesmo processo
+—, com o custo contra o oráculo ao dígito de hoje (§17.1) e a procura em fatias = a inteira ao bit
+(`a_procura_em_fatias_e_a_procura_inteira_ao_bit`). Senão, recusa medida com a tabela, e nenhum código de produto fica.
+
+### §26.4 — A prova (planeada)
+
+- **A medição:** UM lote de binários (`medir_replaneio` e `medir_custo`, perfil `smoke`, uma compilação), UMA rodada
+  intercalada por sonda (as versões no mesmo processo, ordem rodada, o mínimo; a mediana só como controlo; loadavg
+  anotado) — `target/prova/w17/`.
+- **Os gates** de quem entrar: vermelho ANTES da cura, com CONTROLO e população afirmada; correm o produto por
+  omissão e só o CONTROLO desliga a alavanca (a lição B7/V5 da W16). Quem não entrar deixa só a alavanca da sonda se
+  ela for a régua de uma recusa — senão sai, e a sonda fica com a nota.
+- **A mutação** (o motor da W16, `ferramentas/mutacao_navegacao_w16_2026-10-05.py`, copiado para a W17): cada lei
+  nova; mutação que sobrevive = gate novo ou código morto cortado.

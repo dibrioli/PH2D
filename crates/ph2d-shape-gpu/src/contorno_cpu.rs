@@ -13,8 +13,6 @@
 //! ⚠️ O espaço de saída é o ECRÃ: as constantes da placa são em pixels (a flecha `0,25` de um leque, a folga
 //! `0,1` da faixa).
 
-use std::ops::{Add, Mul, Neg, Sub};
-
 use ph2d_vector::BezPath;
 
 use crate::LEVELS;
@@ -80,10 +78,23 @@ pub fn contorno_do_eixo(
     so_tracejado: bool,
     saida: &mut BezPath,
 ) {
+    contorno_do_eixo_com(eixo, m, so_tracejado, false, saida);
+}
+
+/// [`contorno_do_eixo`] com os pedaços ligados pela faixa FUNDIDOS numa fita (doc 121 §9.19 (2)).
+pub fn contorno_do_eixo_com(
+    eixo: &[EixoItem],
+    m: &AfimDaCopia,
+    so_tracejado: bool,
+    fundir: bool,
+    saida: &mut BezPath,
+) {
     let mut s = Saida {
         eixo,
         m: *m,
         bp: saida,
+        fundir,
+        fita: fita::Fita::default(),
     };
     let ajuste = s.ajuste_do_tracejado();
     for (i, it) in eixo.iter().enumerate() {
@@ -98,77 +109,15 @@ pub fn contorno_do_eixo(
             s.tracejado(i, ajuste);
         }
     }
+    s.fecha_a_fita();
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct V {
-    x: f32,
-    y: f32,
-}
+#[path = "contorno_cpu_vetor.rs"]
+mod vetor;
+use vetor::{V, dot, length, mix, perp, positivo, pt, sign, v};
 
-const fn v(x: f32, y: f32) -> V {
-    V { x, y }
-}
-
-impl Add for V {
-    type Output = V;
-    fn add(self, o: V) -> V {
-        v(self.x + o.x, self.y + o.y)
-    }
-}
-
-impl Sub for V {
-    type Output = V;
-    fn sub(self, o: V) -> V {
-        v(self.x - o.x, self.y - o.y)
-    }
-}
-
-impl Neg for V {
-    type Output = V;
-    fn neg(self) -> V {
-        v(-self.x, -self.y)
-    }
-}
-
-impl Mul<f32> for V {
-    type Output = V;
-    fn mul(self, k: f32) -> V {
-        v(self.x * k, self.y * k)
-    }
-}
-
-fn dot(a: V, b: V) -> f32 {
-    a.x * b.x + a.y * b.y
-}
-
-fn length(a: V) -> f32 {
-    dot(a, a).sqrt()
-}
-
-fn perp(u: V) -> V {
-    v(-u.y, u.x)
-}
-
-/// O `sign` do WGSL (`0` em zero; o `f32::signum` dá `1`).
-fn sign(x: f32) -> f32 {
-    if x > 0.0 {
-        1.0
-    } else if x < 0.0 {
-        -1.0
-    } else {
-        0.0
-    }
-}
-
-fn pt(p: [f32; 2]) -> V {
-    v(p[0], p[1])
-}
-
-/// O sinal que o `orienta(v, a, b, c)` daria.
-fn positivo(a: V, b: V, c: V) -> bool {
-    (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) >= 0.0
-}
+#[path = "contorno_cpu_fita.rs"]
+mod fita;
 
 /// Quantos traços um troço corta, no máximo (`TRACOS_POR_TROCO_MAX` do shader).
 const TRACOS_POR_TROCO_MAX: f32 = 65536.0;
@@ -220,6 +169,8 @@ struct Saida<'a> {
     eixo: &'a [EixoItem],
     m: AfimDaCopia,
     bp: &'a mut BezPath,
+    fundir: bool,
+    fita: fita::Fita,
 }
 
 impl Saida<'_> {
@@ -647,14 +598,14 @@ impl Saida<'_> {
         } else {
             self.tampa(q1, u, r, (it.ponta >> 8) & 3);
         }
-        self.quadrilatero(q0, q1, m0, m1);
+        if self.fundir {
+            self.quadrilatero_na_fita(q0, q1, m0, m1);
+        } else {
+            self.quadrilatero(q0, q1, m0, m1);
+        }
     }
 }
 
-/// O `mix` do WGSL.
-fn mix(a: V, b: V, t: f32) -> V {
-    a * (1.0 - t) + b * t
-}
 
 /// O `pedaco`: o traço `n` dentro de um troço.
 fn pedaco(tr: &Troco, sub: &SubTracejado, n: f32) -> Pedaco {

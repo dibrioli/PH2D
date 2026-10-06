@@ -12,7 +12,7 @@ use ph2d_vector::{Affine, VectorScene};
 
 // ⭐ doc 121 §9.18 (C) — o tracejado da rota Vello pela lei da placa.
 #[path = "motion_shape_traco.rs"]
-pub(super) mod traco;
+pub(crate) mod traco;
 
 use super::{VecPathStore, instance_pose};
 

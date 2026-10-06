@@ -31,7 +31,9 @@ mod pass;
 
 pub use blocos::{BlocoDeSegmentos, SEGS_POR_BLOCO};
 pub use contorno::AREA_MINIMA_CONFORME;
-pub use contorno_cpu::{AfimDaCopia, NivelDaCopia, caneta_de, contorno_do_eixo, nivel_da_copia};
+pub use contorno_cpu::{
+    AfimDaCopia, NivelDaCopia, caneta_de, contorno_do_eixo, contorno_do_eixo_com, nivel_da_copia,
+};
 pub use eixo::{EixoItem, tracejado_do_eixo};
 pub use geometry::{
     FLAG_EVEN_ODD, FLAG_SO_CONFORME, FillRule, GeometryRecord, LEVELS, ShapeGeometry, ShapeInput,

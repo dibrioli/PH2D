@@ -275,55 +275,81 @@ fn custo_do_encode_tracejado() {
     };
     let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     eprintln!("CUSTO_ENCODE load {}", carga().trim());
+    // §9.19 (2): três variantes, intercaladas em ordem rodada — `0` a de antes (o traçador do Vello), `1` pela
+    // lei (o produto), `2` pela lei com a FITA (os pedaços ligados pela faixa num só polígono).
+    let variante = |k: usize, insts: &[VectorInstance], j: Option<ph2d_vector::Rect>| {
+        if k == 0 {
+            return antes(insts, j);
+        }
+        crate::motion_shape_gen::mistura::traco::FUNDIR.with(|f| f.set(k == 2));
+        let c = novo(insts, j);
+        crate::motion_shape_gen::mistura::traco::FUNDIR.with(|f| f.set(false));
+        c
+    };
+    const NOMES: [&str; 3] = ["antes", "pela lei", "lei+fita"];
     for (nome, insts, j, rodadas) in [
         ("=127 densa 35x35", &densas, Some(janela), 15),
         ("=127 16 384 copias", &grande, None, 5),
     ] {
-        let _ = (novo(insts, j), antes(insts, j));
-        let mut t = [Vec::new(), Vec::new()];
+        let resumo = |v: &[f64]| {
+            let mut o = v.to_vec();
+            o.sort_by(f64::total_cmp);
+            (o[0], o[o.len() / 2])
+        };
+        let mut t = [Vec::new(), Vec::new(), Vec::new()];
+        for k in 0..3 {
+            let _ = variante(k, insts, j);
+        }
         for r in 0..rodadas {
-            for k in [r % 2, 1 - r % 2] {
+            for d in 0..3 {
+                let k = (r + d) % 3;
                 let t0 = std::time::Instant::now();
-                let c = if k == 0 {
-                    novo(insts, j)
-                } else {
-                    antes(insts, j)
-                };
+                let c = variante(k, insts, j);
                 t[k].push(t0.elapsed().as_secs_f64() * 1e3);
                 drop(c);
             }
         }
-        let resumo = |v: &mut Vec<f64>| {
-            v.sort_by(f64::total_cmp);
-            (v[0], v[v.len() / 2])
-        };
-        let ((nmin, nmed), (amin, amed)) = (resumo(&mut t[0].clone()), resumo(&mut t[1].clone()));
-        eprintln!(
-            "CUSTO_ENCODE {nome}: pela lei min {nmin:.2} med {nmed:.2} ms · antes min {amin:.2} med {amed:.2} ms · {:+.1} %",
-            (nmin / amin - 1.0) * 100.0
-        );
+        let base = resumo(&t[0]).0;
+        for k in 0..3 {
+            let (min, med) = resumo(&t[k]);
+            // O que o Vello recebe: caminhos e segmentos da codificação (o traço de antes expande-se na placa).
+            let c = variante(k, insts, j);
+            let e = c.inner().encoding();
+            eprintln!(
+                "CUSTO_ENCODE {nome}: encode {:<8} min {min:.2} med {med:.2} ms · {:+.1} % de antes · {} caminhos · {} segmentos",
+                NOMES[k],
+                (min / base - 1.0) * 100.0,
+                e.n_paths,
+                e.n_path_segments
+            );
+        }
         // A parede do Vello (o desenho na placa gráfica, com a leitura), intercalada, quando há placa.
         if let Some(gpu) = gpu() {
-            let cenas = [novo(insts, j), antes(insts, j)];
+            let cenas = [variante(0, insts, j), variante(1, insts, j), variante(2, insts, j)];
             let mut vp = ph2d_render::VelloPass::new(
                 &gpu,
                 wgpu::TextureFormat::Bgra8UnormSrgb,
                 (LADO, LADO),
             )
             .expect("vello");
-            let mut p = [Vec::new(), Vec::new()];
+            let mut p = [Vec::new(), Vec::new(), Vec::new()];
             for r in 0..rodadas {
-                for k in [r % 2, 1 - r % 2] {
+                for d in 0..3 {
+                    let k = (r + d) % 3;
                     let t0 = std::time::Instant::now();
                     let _ = vp.render_and_readback(&gpu, cenas[k].inner(), (LADO, LADO));
                     p[k].push(t0.elapsed().as_secs_f64() * 1e3);
                 }
             }
-            let ((nmin, _), (amin, _)) = (resumo(&mut p[0].clone()), resumo(&mut p[1].clone()));
-            eprintln!(
-                "CUSTO_ENCODE {nome}: parede do Vello pela lei min {nmin:.2} ms · antes min {amin:.2} ms · {:+.1} %",
-                (nmin / amin - 1.0) * 100.0
-            );
+            let base = resumo(&p[0]).0;
+            for k in 0..3 {
+                let (min, med) = resumo(&p[k]);
+                eprintln!(
+                    "CUSTO_ENCODE {nome}: parede do Vello {:<8} min {min:.2} med {med:.2} ms · {:+.1} % de antes",
+                    NOMES[k],
+                    (min / base - 1.0) * 100.0
+                );
+            }
         }
     }
     eprintln!("CUSTO_ENCODE fim · load {}", carga().trim());

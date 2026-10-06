@@ -144,8 +144,27 @@ ordem rodada, mínimo e mediana; `loadavg 12.45 21.16 20.65`. Régua versionada:
 | 100 000 | 3,441 | 3,617 |
 
 ⇒ o encode cresce linear (~34 ns por rectângulo) e não é o tecto: 100 mil cabem em 3,4 ms de CPU
-**reconstruindo tudo a cada quadro**. ⚠️ Falta o lado da PLACA (raster do Vello), que decide o
-kill-criterion acima — mede-se na W1 com o perfilador da GPU, na mesma cena.
+**reconstruindo tudo a cada quadro**.
+
+**PLACA — o Vello rasteriza a mesma cena** (`VelloPass::render_to_intermediate` do produto, 1920×1080),
+RTX 5060 Ti / Vulkan, `TIMESTAMP_QUERY` à volta das submissões do Vello (com enchimento na fila para não
+contar a placa ociosa durante o encode do Vello; `descobertos` = 0 em todas as corridas). Mesma régua (7×20,
+ordem rodada, mínimo e mediana), um aquecimento por N fora dela, e um controlo de cobertura (área laranja
+lida de volta ≈ a esperada: os buffers fixos do Vello não transbordaram a 100 mil). Régua:
+`crates/ph2d-board-render/tests/it/measure_gpu_raster_cost.rs` (`#[ignore]`, à mão com `PH2D_GPU=1`).
+Três corridas com `loadavg` 10–22 (outras linhas a compilar): a coluna da placa quase não mexe
+(10 mil: 0,364 → 0,366 → 0,370); as colunas de CPU sim. Corrida 1, `loadavg 10.53 13.02 14.75`:
+
+| rectângulos | placa mín ms | mediana | Vello CPU mín | parede mín (chamada → fila vazia) |
+|---|---|---|---|---|
+| 1 000 | 0,257 | 0,258 | 0,137 | 0,439 |
+| 10 000 | 0,364 | 0,367 | 0,192 | 0,607 |
+| 100 000 | 1,465 | 1,469 | 0,689 | 2,288 |
+
+⇒ **com rectângulos a placa não é o tecto**: 10 mil ficam 22× abaixo dos 8 ms do kill-criterion, e a
+100 mil o encode da CPU (4–6 ms sob esta carga) já pesa mais que o raster. ⚠️ O kill-criterion fala de
+**formas + texto** e a cena ainda só tem rectângulos: ele continua a decidir-se na W1, com esta régua
+(a cena de medida ganha formas e texto).
 
 ⛔ **Dois defeitos que a montagem desta régua apanhou** (curados no mesmo dia): o `z_on_top` era
 O(n) por chamada (100 mil elementos = 10¹⁰ comparações; a régua não terminava) e a chave de z só com
@@ -170,9 +189,12 @@ Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um bra
 - **Estado em 2026-10-05 (W0a, commits `4694a5273..`):** ✅ abas `Scene · Board n · +` na barra de menus
   (clique real com gate), área do quadro (grelha de pontos de densidade constante, zoom à volta do cursor,
   arrastar), a fila de chips da cena some num quadro, gravar/abrir no `.ph2dproj` (v184, recusa de blob
-  ilegível), cena `PH2D_BOARD_SMOKE=1` fotografada, régua de encode (§2.1). ✅ **Smoke aprovado pelo dono.** ⏳ **W0b, na próxima janela** ([handoff](handoffs/HANDOFF_CONTINUACAO_W0b_2026-10-05.md)):
-  renomear (duplo-clique), reordenar (arrastar), menu do botão direito (Renomear · Duplicar · Apagar com
-  confirmação), undo por quadro (§1.4 — nasce com o 1.º gesto que cria elementos) e a régua da PLACA.
+  ilegível), cena `PH2D_BOARD_SMOKE=1` fotografada, régua de encode (§2.1). ✅ **Smoke aprovado pelo dono.**
+- **W0b (2026-10-05, 2.ª janela):** ✅ renomear NO LUGAR (duplo-clique ou *Rename*; `Enter`/clicar fora
+  grava, `Esc` desiste), menu do botão direito (*Rename · Duplicate · Delete…*, apagar pergunta antes),
+  reordenar arrastando (com a marca de onde cai), régua da PLACA (§2.1). ⏳ smoke do dono; transbordo
+  das abas (medir) e undo por quadro (§1.4, nasce na W1) — ver o handoff de continuação mais recente em
+  [`handoffs/`](handoffs/).
 
 ### W1 — Tela, formas e texto
 - Pan/zoom infinito (rato, trackpad, `Espaço`+arrastar), grelha de pontos, snap, guias de alinhamento.

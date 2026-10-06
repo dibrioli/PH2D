@@ -14,13 +14,13 @@ use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 use std::time::Instant;
 
-const SIZES: [usize; 3] = [1_000, 10_000, 100_000];
-const ROUNDS: usize = 7;
-const FRAMES: usize = 20;
-const AREA: [f64; 4] = [0.0, 0.0, 1920.0, 1080.0];
+pub(super) const SIZES: [usize; 3] = [1_000, 10_000, 100_000];
+pub(super) const ROUNDS: usize = 7;
+pub(super) const FRAMES: usize = 20;
+pub(super) const AREA: [f64; 4] = [0.0, 0.0, 1920.0, 1080.0];
 
 /// N rectângulos numa grelha quadrada, com a vista a enquadrar a grelha inteira (todos visíveis).
-fn board_with(n: usize) -> BoardSet {
+pub(super) fn board_with(n: usize) -> BoardSet {
     let mut set = BoardSet::default();
     let id = set.create(format!("{n}"));
     let b = set.get_mut(id).unwrap();

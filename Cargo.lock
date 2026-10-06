@@ -5155,8 +5155,11 @@ name = "ph2d-board-render"
 version = "0.0.0"
 dependencies = [
  "ph2d-board-model",
+ "ph2d-gpu",
+ "ph2d-render",
  "ph2d-tokens",
  "ph2d-vector",
+ "wgpu",
 ]
 
 [[package]]

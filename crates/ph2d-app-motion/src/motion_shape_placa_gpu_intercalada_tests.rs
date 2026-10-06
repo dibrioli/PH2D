@@ -62,6 +62,25 @@ fn variantes() -> Vec<(&'static str, VarianteDoPasse)> {
             },
         ),
     ];
+    // §9.19 (1): `P1` a prova do §9.18 (o passeio em série, o controlo); `Q*` o passeio em PARALELO
+    // (`cs_trocos`): `Q1` a prova (o `pedaco` por peça, sem arestas — a imagem DIFERE) · `Q4` o fio da peça sai
+    // logo · `Q2`/`Q3` o produto (a reserva por aresta · contada e reservada de uma vez).
+    let pecas = [
+        ("P1", 1.0, 0.0),
+        ("Q1", 1.0, 1.0),
+        ("Q4", 4.0, 1.0),
+        ("Q2", 2.0, 1.0),
+        ("Q3", 3.0, 1.0),
+    ];
+    v.extend(pecas.map(|(n, m, passeio)| {
+        (
+            n,
+            VarianteDoPasse {
+                constantes: vec![("POR_PECA", m), ("PASSEIO", passeio)],
+                ..VarianteDoPasse::default()
+            },
+        )
+    }));
     v.extend(AA[..aa].iter().map(|n| (*n, VarianteDoPasse::default())));
     v
 }
@@ -168,7 +187,17 @@ fn sonda_intercalada() {
                     || "?".to_owned(),
                     |f| match c.iter().zip(&camadas[f]).filter(|(x, y)| x != y).count() {
                         0 => "imagem = F".to_owned(),
-                        d => format!("imagem DIFERE em {d} B"),
+                        // §9.19: um prefixo paralelo soma noutra ordem — a régua é o alfa máximo contra o F.
+                        d => format!(
+                            "imagem DIFERE em {d} B (alfa max {})",
+                            c.as_chunks::<4>()
+                                .0
+                                .iter()
+                                .zip(camadas[f].as_chunks::<4>().0)
+                                .map(|(x, y)| x[3].abs_diff(y[3]))
+                                .max()
+                                .unwrap_or(0)
+                        ),
                     },
                 )
             })

@@ -846,19 +846,28 @@ struct TrocoTracejado {
 }
 
 fn troco_tracejado(it: Eixo, sub: SubTracejado, k: u32, s0: f32, lin: vec4<f32>, t: vec2<f32>) -> TrocoTracejado {
+    let len = arco(it, lin, t);
+    var tr = troco_da_linha(it, sub, k, s0, len, s0 + len, floor(s0 / sub.per), lin, t);
+    tr.n1 = min(floor(tr.fim / sub.per), tr.n0 + TRACOS_POR_TROCO_MAX);
+    return tr;
+}
+
+// O troço `k` com o arco, o fim e o 1.º traço já andados — os da LINHA do passeio (doc 121 §9.18 E: o fio
+// de uma peça recebe-os do passeio, os mesmos bits; §9.19: o `fim` é o `s0` do troço seguinte). Sem `n1`.
+fn troco_da_linha(it: Eixo, sub: SubTracejado, k: u32, s0: f32, len: f32, fim: f32, n0: f32, lin: vec4<f32>, t: vec2<f32>) -> TrocoTracejado {
     var tr: TrocoTracejado;
     tr.s0 = s0;
-    tr.len = arco(it, lin, t);
+    tr.len = len;
     tr.corda = comprimento(lin, t, it.a, it.b);
-    tr.fim = s0 + tr.len;
+    tr.fim = fim;
     tr.lprev = comprimento(lin, t, it.d, it.a);
     tr.lnext = comprimento(lin, t, it.b, it.c);
     tr.tem_ant = k > 0u || sub.fechado;
     tr.tem_seg = k + 1u < sub.n || sub.fechado;
     tr.primeiro = k == 0u && sub.fechado;
     tr.ultimo = k + 1u == sub.n && sub.fechado;
-    tr.n0 = floor(s0 / sub.per);
-    tr.n1 = min(floor(tr.fim / sub.per), tr.n0 + TRACOS_POR_TROCO_MAX);
+    tr.n0 = n0;
+    tr.n1 = n0;
     return tr;
 }
 

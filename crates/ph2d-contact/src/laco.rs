@@ -22,11 +22,6 @@ pub(crate) fn confere(n: usize, saida: &Saida<'_>, pecas: &Pecas<'_>) {
     assert_eq!(pecas.colisores.len(), n, "um colisor por peca");
     assert_eq!(pecas.pesos.len(), n, "um peso por peca");
     assert_eq!(pecas.inv_inercia.len(), n, "uma inercia por peca");
-    if let Some(d) = pecas.deslize {
-        assert_eq!(d.antes.len(), n, "um antes por peca");
-        assert_eq!(d.girou_antes.len(), n, "um giro anterior por peca");
-        assert_eq!(d.material.len(), n, "um material por peca");
-    }
 }
 
 /// Afasta as peças sobrepostas, `varreduras` vezes. `p` é reescrito no sítio; a [`Saida`] ACUMULA

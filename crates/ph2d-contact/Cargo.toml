@@ -11,8 +11,8 @@ authors.workspace = true
 
 # ⛔ UMA dependência, e só pela porta paralela auditada (`par_build`): o contacto entre peças é
 # uma lei pura sobre posições, raios e pesos, e é por isso que ela é uma folha e não mora em
-# nenhum nó — dois integradores a pedem (`sim.step` hoje, `motion.integrate` na W4 do doc 109), e
-# um nó a depender de outro nó quebraria o isolamento de drop-crate (ADR-0075).
+# nenhum nó — vários nós a pedem (`motion.collide`, `sim.collide`, `ph2d-contact-world`), e um nó
+# a depender de outro nó quebraria o isolamento de drop-crate (ADR-0075).
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-motion-kit = { path = "../ph2d-motion-kit" }

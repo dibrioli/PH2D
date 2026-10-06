@@ -36,7 +36,11 @@
 //!
 //! ## A lei, e porque ela é POSICIONAL
 //!
-//! É a restrição de atrito do *Position Based Dynamics* (Müller et al. 2007 §3.5; a forma de
+//! ⛔ **História:** esta lei saiu da separação em 15/09 (doc 111 §7, para o impulso de Coulomb) e o
+//! impulso saiu em 06/10 (doc 121 §9.20, o `sim.step` resolve pelo rapier). Ficam aqui o
+//! [`Material`] e as leis do PAR ([`mu`], [`salto`], [`rolamento`]), que têm leitores.
+//!
+//! Era a restrição de atrito do *Position Based Dynamics* (Müller et al. 2007 §3.5; a forma de
 //! Macklin–Müller–Chentanez para corpo rígido): o **deslize** é o quanto os dois pontos de
 //! contacto se mexeram **um em relação ao outro ao longo da tangente** desde o início do passo, e
 //! o atrito é a correcção que o desfaz — repartida entre mover e RODAR pela massa efectiva ao
@@ -160,19 +164,6 @@ pub fn salto(a: f32, b: f32) -> f32 {
     coage(a.max(b), BOUNCE_MAX)
 }
 
-/// **O multiplicador TANGENCIAL** — o que desfaz o `deslize`, limitado por Coulomb a `μ · λn`.
-///
-/// `soma` é `kt_a + kt_b`, a massa efectiva do par ao longo da tangente. Um par sem massa
-/// efectiva, sem atrito ou sem contacto normal não tem atrito nenhum a repartir — e sair aqui é o
-/// que mantém `μ = 0` sem uma divisão sequer.
-pub fn lambda(deslize: f32, soma: f32, mu: f32, lambda_n: f32) -> f32 {
-    if !soma.is_finite() || !deslize.is_finite() || soma <= 0.0 || mu <= 0.0 || lambda_n <= 0.0 {
-        return 0.0;
-    }
-    let teto = mu * lambda_n;
-    (deslize / soma).clamp(-teto, teto) // CLAMP-OK: teto >= 0 verificado acima
-}
-
 /// ⭐⭐⭐ **O IMPULSO DE ROLAMENTO** — o que faz uma bola a rolar **parar sozinha** (doc 109 §7.10).
 ///
 /// O atrito tangencial trava quem **derrapa**; uma bola que já rola tem velocidade zero no ponto de
@@ -199,24 +190,6 @@ pub fn rolamento(momento: f32, mu_r: f32, lambda_n: f32, braco: f32) -> f32 {
     momento.clamp(-teto, teto) // CLAMP-OK: teto > 0 verificado acima
 }
 
-/// **O DESLIZE que o atrito opõe** — o que o solver precisa de saber para o medir.
-///
-/// ⚠️ **Sem isto não há atrito, e a ausência é honesta**: o deslize é *«quanto os pontos de
-/// contacto se mexeram um em relação ao outro desde o início do passo»*, e um consumidor sem
-/// passo (o `motion.collide`, que reautora as posições a cada quadro) não tem esse «antes» —
-/// inventá-lo daria uma força a partir de um número que não é um movimento.
-#[derive(Clone, Copy)]
-pub struct Deslize<'a> {
-    /// Onde cada peça estava ANTES de o passo a mover.
-    pub antes: &'a [[f32; 2]],
-    /// Quanto cada peça já rodou neste passo por outra causa que não o contacto (o `spin`
-    /// integrado), em GRAUS. Uma bola que chega a girar derrapa contra o chão mesmo parada, e sem
-    /// isto o atrito não a veria.
-    pub girou_antes: &'a [f32],
-    /// De que cada peça é feita.
-    pub material: &'a [Material],
-}
-
 /// **AS PEÇAS que o solver separa** — a fotografia do que cada uma é.
 ///
 /// ⚠️ Uma struct e não sete argumentos: a lista cresceu com o material, e um `&[f32]` a mais numa
@@ -229,13 +202,12 @@ pub struct Pecas<'a> {
     pub pesos: &'a [f32],
     /// Quanto cada peça roda por unidade de binário; `0` trava.
     pub inv_inercia: &'a [f32],
-    /// O deslize a opor, ou `None` — ver [`Deslize`].
-    pub deslize: Option<Deslize<'a>>,
 }
 
 impl<'a> Pecas<'a> {
-    /// As peças sem material nenhum — a lei de antes do §7, que é o que os gates de geometria
-    /// pura afirmam.
+    /// As peças que a separação afasta — forma, peso e inércia, sem material: a separação é só
+    /// geometria. ⛔ O `deslize` (o atrito de quem tinha passo) saiu em 06/10 com o `sim.step` no
+    /// rapier (doc 121 §9.20).
     pub fn novas(
         colisores: &'a [Option<Colisor>],
         pesos: &'a [f32],
@@ -245,15 +217,7 @@ impl<'a> Pecas<'a> {
             colisores,
             pesos,
             inv_inercia,
-            deslize: None,
         }
-    }
-
-    /// O material da peça `i`, ou [`Material::LISO`] quando ninguém o declarou.
-    pub(crate) fn material(&self, i: usize) -> Material {
-        self.deslize
-            .and_then(|d| d.material.get(i).copied())
-            .unwrap_or(Material::LISO)
     }
 }
 

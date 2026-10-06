@@ -294,7 +294,8 @@ fn probe_os_sub_passos() {
 ///
 /// ## ⛔⛔ Porque a varredura é por MUTAÇÃO do `const`, e não por um parâmetro
 ///
-/// As [`ph2d_contact::Leis`] são um argumento da porta e a escolha vive num `const` do `sim.step`
+/// (⛔ As `ph2d_contact::Leis` e o `const` saíram em 06/10, doc 121 §9.20: o `sim.step` resolve pelo
+/// rapier.) As `Leis` eram um argumento da porta e a escolha vivia num `const` do `sim.step`
 /// (o `contact::LEIS`). Para as varrer daqui seria preciso uma **bandeira global** lida dentro do
 /// solver — *um defeito que a casa já pagou por escrito, e que alcança todo chamador*. ⇒ a varredura é `backup → mutar o const → correr esta sonda → restaurar`, que é a
 /// forma que o `CLAUDE.md` §2 sanciona para uma edição derivada de medição.

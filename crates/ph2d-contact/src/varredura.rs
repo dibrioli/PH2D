@@ -2,7 +2,7 @@
 //!
 //! Irmã do `lib.rs` pelo tecto de LOC (HR-18) e por ASSUNTO: ali mora a NUVEM (a grelha, o laço das
 //! varreduras, a média de Jacobi, a escrituração); aqui mora o que **um** `k` soma dos parceiros
-//! dele — a normal, o [`ENCOSTO DE DOIS PONTOS`](super::Manifesto) e a metade tangencial.
+//! dele — a normal e o [`ENCOSTO DE DOIS PONTOS`](super::Manifesto).
 //!
 //! ⚠️ O par é sempre lido na ordem do PAR (menor → maior) e os parceiros chegam em ordem CRESCENTE:
 //! é isso que faz a grelha dar os MESMOS BITS que todos-os-pares. Ver o cabeçalho do `lib.rs`.
@@ -88,19 +88,15 @@ pub(super) fn corrigida(
             delta[0] += c.normal[0] * empurra;
             delta[1] += c.normal[1] * empurra;
             giro += bk * lambda * inv_inercia[k] * sinal * GRAUS * quota;
-            // ⭐⭐⭐ **A METADE TANGENCIAL** (doc 109 §7) — o deslize desfeito, limitado por Coulomb.
-            // ⚠️ Sem `sinal`: o deslize já é medido **de `k` para `j`**, então a correcção dele é
-            // simétrica por construção e os dois lados do par concordam sem desempate nenhum.
             // ⛔⛔⛔ **O ATRITO SAIU DAQUI** (doc 111 §7, 2026-09-15). Ele era POSICIONAL — desfazia
             // o deslize já acontecido — e o tecto de Coulomb dele era `μ·λn ≈ μ·g·dt²`,
             // **QUADRÁTICO no passo**. Medido: ele nunca removeu velocidade nenhuma (`v` fica em
-            // `1,0000` a todo `μ`) e enfraquecia `8×` ao partir o tique em 8 sub-passos. Hoje o
-            // atrito é o impulso de Coulomb do [`super::impulso`], com tecto `μ·g·dt` — LINEAR, e
-            // por isso invariante aos sub-passos —, e ele leva as DUAS metades: travar e RODAR.
+            // `1,0000` a todo `μ`) e enfraquecia `8×` ao partir o tique em 8 sub-passos. Passou ao
+            // impulso de Coulomb (tecto `μ·g·dt`, LINEAR), e esse saiu em 06/10 (doc 121 §9.20):
+            // o `sim.step` resolve atrito e ressalto pelo rapier.
             //
             // ⛔ **E o `salto` também saiu (doc 111 §11):** ele recolhia-se aqui como «escrituração
-            // do ressalto do par» e **ninguém o lia** desde que o ressalto passou a viver no
-            // impulso (§5.12) — um gate defendia uma saída sem consumidor.
+            // do ressalto do par» e **ninguém o lia** — um gate defendia uma saída sem consumidor.
         }
         if !tocou {
             continue;

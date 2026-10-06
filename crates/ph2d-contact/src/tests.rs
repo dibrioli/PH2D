@@ -55,101 +55,6 @@ fn corre_girando(p: &mut [[f32; 2]], c: &[Option<Colisor>], w: &[f32]) -> Vec<f3
     giro
 }
 
-/// Uma corrida com MATERIAL: o deslize medido desde `antes`, com o mesmo material para todos.
-/// Devolve o giro em graus.
-fn corre_com_atrito(
-    p: &mut [[f32; 2]],
-    antes: &[[f32; 2]],
-    c: &[Option<Colisor>],
-    w: &[f32],
-    m: Material,
-) -> Vec<f32> {
-    corre_com_atrito_girando(p, antes, &vec![0.0; p.len()], c, w, m)
-}
-
-/// O passo que o arnês do atrito usa para converter um DESLOCAMENTO numa VELOCIDADE.
-const DT_ARNES: f32 = 1.0 / 60.0;
-
-/// Idem, mas com uma rotação PRÓPRIA já feita neste passo (o `spin` integrado).
-///
-/// ⭐⭐⭐ **Ele corre as DUAS portas — `separate` e `impulsos` — porque foi isso que o produto passou
-/// a fazer** (doc 111 §7). O atrito já não é uma projecção de posição: ele é o impulso de Coulomb,
-/// e vive na VELOCIDADE. ⚠️ *Um gate cujo sujeito se mudou muda de ENDEREÇO, nunca de exigência* —
-/// as barras destes gates são as mesmas, e o que mudou é onde a lei é lida.
-///
-/// A fixtura continua a dizer *«a peça deslizou `Δ` desde o início do passo»*, e o arnês converte-o
-/// na velocidade que o produz (`Δ / dt`): é a mesma pergunta física, na unidade em que a lei nova a
-/// faz.
-fn corre_com_atrito_girando(
-    p: &mut [[f32; 2]],
-    antes: &[[f32; 2]],
-    girou_antes: &[f32],
-    c: &[Option<Colisor>],
-    w: &[f32],
-    m: Material,
-) -> Vec<f32> {
-    let n = p.len();
-    let inv = inercias(c, w);
-    let material = vec![m; n];
-    let mut giro = vec![0.0; n];
-    let pecas = Pecas {
-        colisores: c,
-        pesos: w,
-        inv_inercia: &inv,
-        deslize: Some(Deslize {
-            antes,
-            girou_antes,
-            material: &material,
-        }),
-    };
-    // A velocidade que produziu o deslocamento da fixtura, MAIS a que a rotação própria põe no
-    // ponto de contacto (o `girou_antes`, que é o que faz uma bola a girar esfregar parada).
-    let vel0: Vec<[f32; 2]> = (0..n)
-        .map(|i| {
-            [
-                (p[i][0] - antes[i][0]) / DT_ARNES,
-                (p[i][1] - antes[i][1]) / DT_ARNES,
-            ]
-        })
-        .collect();
-    let antes_do_passo = p.to_vec();
-    separate(p, &mut Saida { giro: &mut giro }, &pecas, 8);
-    let mut vel = vel0.clone();
-    let mut spin = vec![0.0; n];
-    impulsos(
-        &antes_do_passo,
-        &mut Movimento {
-            vel: &mut vel,
-            giro: &mut giro,
-            spin: &mut spin,
-        },
-        &pecas,
-        |_| DT_ARNES,
-        Leis::HOJE,
-    );
-    ULTIMA_VEL.with(|c| {
-        *c.borrow_mut() = (0..n)
-            .map(|i| [vel[i][0] - vel0[i][0], vel[i][1] - vel0[i][1]])
-            .collect();
-    });
-    giro
-}
-
-// ⭐ **O Δvelocidade que o último `corre_com_atrito_girando` produziu.**
-//
-// ⚠️ Ele existe porque **o atrito mudou de UNIDADE**: ele era uma correcção de POSIÇÃO e passou a
-// ser um impulso de VELOCIDADE (doc 111 §7). Os gates que mediam a metade translacional em
-// `p − p0` mediam-na no sítio certo da lei ANTIGA, e no sítio vazio da nova. *Um gate cujo sujeito
-// muda de unidade muda de endereço, nunca de exigência.*
-thread_local! {
-    static ULTIMA_VEL: std::cell::RefCell<Vec<[f32; 2]>> =
-        const { std::cell::RefCell::new(Vec::new()) };
-}
-
-fn delta_vel(i: usize) -> [f32; 2] {
-    ULTIMA_VEL.with(|c| c.borrow().get(i).copied().unwrap_or([0.0, 0.0]))
-}
-
 /// Uma nuvem APERTADA com o que a lei tem de saber tratar: discos e caixas (giradas e fora do
 /// centro), pinos, peças sem colisor e dois pares de centros coincidentes.
 fn nuvem(n: u32) -> (Vec<[f32; 2]>, Vec<Option<Colisor>>, Vec<f32>) {
@@ -210,32 +115,7 @@ fn the_grid_gives_the_same_bits_as_all_pairs() {
     let inv = inercias(&c, &w);
     let (mut grelha, mut todos) = (p0.clone(), p0.clone());
     let (mut g_grelha, mut g_todos) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
-    // ⚠️ Com MATERIAL e deslize: a igualdade ao bit tem de valer também para a metade tangencial,
-    // que soma por par exactamente como a normal — e é ela a que a ordem dos vizinhos pode trocar.
-    let (material, girou, antes) = (
-        vec![
-            Material {
-                atrito: 0.7,
-                salto: 0.2,
-                rolar: 0.0,
-            };
-            p0.len()
-        ],
-        vec![0.0; p0.len()],
-        p0.iter()
-            .map(|q| [q[0] - 0.01, q[1] - 0.02])
-            .collect::<Vec<_>>(),
-    );
-    let pecas = Pecas {
-        colisores: &c,
-        pesos: &w,
-        inv_inercia: &inv,
-        deslize: Some(Deslize {
-            antes: &antes,
-            girou_antes: &girou,
-            material: &material,
-        }),
-    };
+    let pecas = Pecas::novas(&c, &w, &inv);
     separate(
         &mut grelha,
         &mut Saida {
@@ -670,21 +550,6 @@ fn the_inertia_column_locks_and_the_absent_one_derives() {
 
 // ───────────────────────── §7 · O MATERIAL E O ATRITO ─────────────────────────
 
-/// Um chão imóvel (peça 0) e um disco pousado nele (peça 1), com a penetração pedida.
-///
-/// ⚠️ A penetração é MINÚSCULA de propósito: é assim que uma pilha assente vive (a gravidade
-/// afunda `~g·dt²` por tique), e é onde o braço da tangente vale o raio inteiro.
-fn chao_e_disco(raio: f32, pen: f32) -> (Vec<[f32; 2]>, Vec<Option<Colisor>>, Vec<f32>) {
-    (
-        vec![[0.0, -1.0], [0.0, raio - pen]],
-        vec![
-            Some(Colisor::caixa([10.0, 1.0], SEM_GIRO)),
-            Some(Colisor::disco(raio)),
-        ],
-        vec![0.0, 1.0],
-    )
-}
-
 /// ⭐⭐⭐ **A CONTA QUE EXPLICA O REPORT** (doc 109 §7 — *«os círculos não rotacionam com a
 /// colisão»*): num disco a alavanca da NORMAL é **exactamente zero** e a da TANGENTE é o raio
 /// inteiro. Não «pequena»: `0.0` ao bit, em todas as três rotas que produzem um contacto de disco.
@@ -756,152 +621,6 @@ fn a_disc_has_no_lever_on_the_normal_and_all_of_it_on_the_tangent() {
     }
 }
 
-/// ⭐⭐⭐ **UM DISCO QUE DERRAPA PASSA A RODAR** — a resposta ao report, e o SENTIDO certo: a
-/// deslizar para a direita sobre um chão ele roda no sentido dos ponteiros (graus negativos).
-///
-/// ⚠️ **E o controlo é o material LISO**: com `atrito = 0` o mesmo deslize não roda **nada**.
-#[test]
-fn a_disc_that_slides_starts_to_roll_and_ice_does_not() {
-    let (p0, c, w) = chao_e_disco(0.5, 1e-4);
-    let antes = vec![p0[0], [p0[1][0] - 0.1, p0[1][1]]]; // o disco deslizou +0,1 em x
-    let (mut p, mut gelo) = (p0.clone(), p0.clone());
-    let giro = corre_com_atrito(
-        &mut p,
-        &antes,
-        &c,
-        &w,
-        Material {
-            atrito: 1.0,
-            salto: 0.0,
-            rolar: 0.0,
-        },
-    );
-    let sem = corre_com_atrito(&mut gelo, &antes, &c, &w, Material::LISO);
-    assert_eq!(
-        sem[1].to_bits(),
-        0.0_f32.to_bits(),
-        "gelo nao roda: {}",
-        sem[1]
-    );
-    assert!(
-        giro[1] < -0.01,
-        "a deslizar para a direita o disco tem de rodar no sentido dos ponteiros, e rodou {}",
-        giro[1]
-    );
-    assert_eq!(giro[0], 0.0, "o chao e' um obstaculo: nao roda");
-}
-
-/// ⭐⭐ **A REPARTIÇÃO É A DE MANUAL: ⅓ para mover, ⅔ para rolar.** Num disco `invI·R² = 2w`, logo
-/// a massa efectiva tangencial é `3w` e o ponto de contacto recebe DUAS vezes mais da rotação do
-/// que da translação — é isso que faz *«deixar de derrapar»* significar *«começar a rolar»* e não
-/// *«travar»*.
-#[test]
-fn the_rolling_split_gives_the_spin_twice_the_slide() {
-    let raio = 0.5;
-    let (p0, c, w) = chao_e_disco(raio, 1e-4);
-    let antes = vec![p0[0], [p0[1][0] - 0.1, p0[1][1]]];
-    let mut p = p0.clone();
-    let giro = corre_com_atrito(
-        &mut p,
-        &antes,
-        &c,
-        &w,
-        Material {
-            atrito: 1.0,
-            salto: 0.0,
-            rolar: 0.0,
-        },
-    );
-    // ⚠️ **Em VELOCIDADE**, que é a unidade em que o atrito passou a viver (doc 111 §7): quanto o
-    // ponto de contacto foi travado por cada uma das duas metades.
-    let da_translacao = delta_vel(1)[0].abs();
-    let da_rotacao = (giro[1] / GRAUS * raio / DT_ARNES).abs();
-    assert!(
-        da_translacao > 1e-9,
-        "tem de haver correccao: {da_translacao}"
-    );
-    let razao = da_rotacao / da_translacao;
-    assert!(
-        (razao - 2.0).abs() < 0.02,
-        "a rotacao tem de valer o DOBRO da translacao no ponto de contacto, e a razao foi {razao}"
-    );
-}
-
-/// ⛔ **UM MATERIAL LISO NÃO MUDA UM BIT** — declarar gelo morto é o mesmo que não declarar
-/// material nenhum, e é isso que deixa uma corrente sem as colunas passar intocada.
-///
-/// ⚠️⚠️ **O SUJEITO deste gate mudou em 2026-09-15** (doc 111 §8). Ele comparava *«com material»*
-/// contra *«sem material»* usando DOIS arneses diferentes — e desde que o contacto passou a ter um
-/// impulso de velocidade, o arnês sem material também deixou de lhe dar VELOCIDADE. *Ele comparava
-/// duas tubagens, não dois materiais.* Hoje as duas metades correm as mesmas portas com as mesmas
-/// entradas, e a ÚNICA diferença é o `deslize` estar declarado ou ausente.
-#[test]
-fn an_icy_material_changes_nothing_to_the_bit() {
-    let (p0, c, w) = nuvem(200);
-    let n = p0.len();
-    let inv = inercias(&c, &w);
-    let antes: Vec<[f32; 2]> = p0.iter().map(|q| [q[0] - 0.03, q[1] + 0.02]).collect();
-    let girou = vec![0.0; n];
-    let material = vec![Material::LISO; n];
-    let corre = |deslize: Option<Deslize<'_>>| -> (Vec<[f32; 2]>, Vec<f32>, Vec<f32>) {
-        let mut p = p0.clone();
-        let mut giro = vec![0.0; n];
-        let pecas = Pecas {
-            colisores: &c,
-            pesos: &w,
-            inv_inercia: &inv,
-            deslize,
-        };
-        let antes_do_passo = p.clone();
-        separate(&mut p, &mut Saida { giro: &mut giro }, &pecas, 8);
-        let mut vel: Vec<[f32; 2]> = (0..n)
-            .map(|i| {
-                [
-                    (p0[i][0] - antes[i][0]) / DT_ARNES,
-                    (p0[i][1] - antes[i][1]) / DT_ARNES,
-                ]
-            })
-            .collect();
-        let mut dspin = vec![0.0; n];
-        let mut spin = vec![0.0; n];
-        impulsos(
-            &antes_do_passo,
-            &mut Movimento {
-                vel: &mut vel,
-                giro: &mut dspin,
-                spin: &mut spin,
-            },
-            &pecas,
-            |_| DT_ARNES,
-            Leis::HOJE,
-        );
-        (p, giro, dspin)
-    };
-    let (com, g_com, s_com) = corre(Some(Deslize {
-        antes: &antes,
-        girou_antes: &girou,
-        material: &material,
-    }));
-    let (sem, g_sem, s_sem) = corre(None);
-    for i in 0..n {
-        assert_eq!(
-            (
-                com[i][0].to_bits(),
-                com[i][1].to_bits(),
-                g_com[i].to_bits(),
-                s_com[i].to_bits()
-            ),
-            (
-                sem[i][0].to_bits(),
-                sem[i][1].to_bits(),
-                g_sem[i].to_bits(),
-                s_sem[i].to_bits()
-            ),
-            "peca {i}"
-        );
-    }
-}
-
 /// ⭐ **O PAR combina-se pelas leis do Box2D**: o atrito pela média GEOMÉTRICA (uma peça de gelo
 /// desliza contra tudo) e o salto pelo MAIOR (uma bola saltitante salta contra uma parede morta).
 #[test]
@@ -914,38 +633,6 @@ fn the_pair_takes_the_geometric_mean_of_friction_and_the_livelier_bounce() {
         super::atrito::salto(9.0, 0.1),
         ph2d_nodegraph::attr::BOUNCE_MAX,
         "e nunca passa do tecto da coluna"
-    );
-}
-
-/// ⭐ **E o salto CHEGA a quem responde** — à VELOCIDADE do disco que bate no chão.
-///
-/// ⚠️⚠️ **Este gate mudou de CONSUMIDOR em 2026-09-16** (doc 111 §11). Ele media o `Saida::salto`,
-/// a «escrituração do ressalto do par» que a varredura de posição recolhia — e **ninguém a lia**
-/// desde que o ressalto passou a viver no impulso do par (§5.12): *um gate verde a defender uma
-/// saída sem leitor é um controlo morto com certificado.* Hoje ele mede onde o salto ACONTECE: um
-/// disco a `1 u/s` contra um chão fixo volta a `e·v`.
-#[test]
-fn the_bounce_of_the_liveliest_pair_reaches_the_piece_that_touched() {
-    let (p0, c, w) = chao_e_disco(0.5, 0.01);
-    // O disco vinha a DESCER a `1 u/s` — o arnês converte o deslocamento em velocidade.
-    let antes = vec![p0[0], [p0[1][0], p0[1][1] + DT_ARNES]];
-    let mut p = p0.clone();
-    corre_com_atrito(
-        &mut p,
-        &antes,
-        &c,
-        &w,
-        Material {
-            atrito: 0.0,
-            salto: 0.8,
-            rolar: 0.0,
-        },
-    );
-    // `−1` antes, `+0,8` depois: a variação é `1,8`.
-    let dv = delta_vel(1);
-    assert!(
-        (dv[1] - 1.8).abs() < 1e-4 && dv[0].abs() < 1e-6,
-        "o disco tem de voltar a 0,8 do que trazia: dv = {dv:?}"
     );
 }
 
@@ -978,60 +665,6 @@ fn a_stream_without_material_columns_is_ice() {
         ph2d_nodegraph::attr::BOUNCE_MAX,
         "e a faixa e' a da COLUNA"
     );
-}
-
-/// ⭐⭐ **UMA BOLA QUE GIRA DERRAPA CONTRA O CHÃO MESMO PARADA** — o deslize inclui a rotação
-/// PRÓPRIA da peça (`ω × r`), e não só a translação dela.
-///
-/// ⛔ **Sem este termo o atrito lia zero** numa bola que gira no sítio, e ela aceleraria para
-/// sempre: é o `spin` que o `sim.step` integra, e o `angular_damping` nasce em `1` (sem arrasto).
-#[test]
-fn a_spinning_disc_rubs_against_the_floor_even_standing_still() {
-    let (p0, c, w) = chao_e_disco(0.5, 1e-3);
-    let antes = p0.clone(); // não se moveu um bit
-    let girou = vec![0.0, 30.0]; // mas rodou 30° no sentido anti-horário
-    let mut p = p0.clone();
-    let giro = corre_com_atrito_girando(
-        &mut p,
-        &antes,
-        &girou,
-        &c,
-        &w,
-        Material {
-            atrito: 1.0,
-            salto: 0.0,
-            rolar: 0.0,
-        },
-    );
-    assert!(
-        giro[1] < -0.01,
-        "o atrito tem de OPOR o giro proprio, e devolveu {}",
-        giro[1]
-    );
-    // ⭐ **E o SENTIDO é o da roda a patinar**: a girar no anti-horário o ponto de baixo varre
-    // para `+x`, logo o chão empurra a bola para `−x` — é o que um carro faz quando a roda patina.
-    // ⚠️ Bate com o gate irmão (`a_disc_that_slides_starts_to_roll…`): a deslizar para `+x` ela
-    // roda no horário, logo rolar para `−x` É girar no anti-horário. *As duas metades da mesma lei.*
-    // ⚠️ **Em VELOCIDADE** (doc 111 §7): o atrito deixou de mover a peça e passou a travá-la.
-    assert!(
-        delta_vel(1)[0] < -1e-6,
-        "e empurra a bola para o lado contrario ao varrimento, e o Δv dela foi {:?}",
-        delta_vel(1)
-    );
-    // O CONTROLO: parada e sem girar, o atrito não tem nada a opor.
-    let mut quieta = p0.clone();
-    let parada = corre_com_atrito(
-        &mut quieta,
-        &antes,
-        &c,
-        &w,
-        Material {
-            atrito: 1.0,
-            salto: 0.0,
-            rolar: 0.0,
-        },
-    );
-    assert_eq!(parada[1].to_bits(), 0.0_f32.to_bits(), "{}", parada[1]);
 }
 
 /// ⭐⭐⭐ **O SALTO E O ATRITO PARAM AMBOS EM `1`** — ordem do dono (2026-09-15: *«Limite Bounciness
@@ -1075,51 +708,6 @@ fn the_bounce_and_the_friction_both_stop_at_one() {
     assert_eq!(super::atrito::salto(9.0, 0.0), BOUNCE_MAX);
 }
 
-/// ⛔⛔ **SEM VELOCIDADE ANGULAR o rolamento é inerte AO BIT** — a lei de 2026-09-15
-/// ([`Leis::HOJE`]) sai idêntica com o [`Material::rolar`] a `0` ou no tecto.
-///
-/// ⚠️⚠️ **Este gate DECLARAVA uma fronteira que fechou em 2026-09-16** (doc 111 §10). Ele dizia
-/// *«o contacto peça×peça ignora o rolamento — não é um esquecimento, é o que esta moeda pode
-/// dizer»*, e prometia reprovar *«se um dia alguém der velocidade angular a este solver»*. ⛔ **Não
-/// reprovou quando isso aconteceu**, porque o arnês corre o `Leis::HOJE` e o produto passou a correr
-/// o `Leis::EM_VIGOR`: *um gate cujo sujeito não é a lei que o artista vê não afirma nada sobre
-/// ela.* O rolamento do produto é medido pelo `a_piece_rolling_on_a_piece_stops_as_it_does_on_the_bowl`
-/// (`sim.step`) e pelo `the_rolling_on_the_card_calms_the_pile` (`=114`).
-///
-/// ⭐ O que ele ainda defende, e é verdade: o CONTROLO de toda medição da família continua a ser a
-/// lei de 15/09 byte a byte — o `rolamento_um` não corre sem `Leis::angular`.
-#[test]
-fn the_piece_against_piece_contact_ignores_rolling_bit_for_bit() {
-    let (p0, c, w) = chao_e_disco(0.5, 1e-4);
-    let antes = vec![p0[0], [p0[1][0] - 0.1, p0[1][1]]];
-    let material = |rolar: f32| Material {
-        atrito: 1.0,
-        salto: 0.0,
-        rolar,
-    };
-    let (mut a, mut b) = (p0.clone(), p0.clone());
-    let giro_a = corre_com_atrito(&mut a, &antes, &c, &w, material(0.0));
-    let giro_b = corre_com_atrito(
-        &mut b,
-        &antes,
-        &c,
-        &w,
-        material(ph2d_nodegraph::attr::ROLLING_MAX),
-    );
-    assert!(
-        giro_a[1] < -0.01,
-        "o controlo tem de rodar, senão o gate não afirma nada: {}",
-        giro_a[1]
-    );
-    for i in 0..p0.len() {
-        assert_eq!(
-            (a[i][0].to_bits(), a[i][1].to_bits(), giro_a[i].to_bits()),
-            (b[i][0].to_bits(), b[i][1].to_bits(), giro_b[i].to_bits()),
-            "peça {i}: sem velocidade angular o rolamento mudou um bit do controlo"
-        );
-    }
-}
-
 /// ⭐⭐⭐ **O ATALHO DO PONTO FIXO NÃO MUDA UM BIT** — a cura do report de 2026-09-18.
 ///
 /// O `separate` pára quando uma varredura não mexe um bit, porque a seguinte leria a MESMA entrada
@@ -1153,7 +741,6 @@ fn o_atalho_do_ponto_fixo_nao_muda_um_bit() {
         colisores: &c,
         pesos: &w,
         inv_inercia: &inv,
-        deslize: None,
     };
     const VARREDURAS: usize = 1024;
     let (mut atalho, mut sempre) = (p0.clone(), p0.clone());
@@ -1234,7 +821,6 @@ fn uma_peca_largada_longe_nao_muda_um_bit() {
         colisores: &c,
         pesos: &w,
         inv_inercia: &inv,
-        deslize: None,
     };
     let (mut grelha, mut todos) = (longe.clone(), longe.clone());
     let (mut g_grelha, mut g_todos) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
@@ -1278,7 +864,6 @@ fn o_paralelo_da_os_mesmos_bits_que_o_serie() {
         colisores: &c,
         pesos: &w,
         inv_inercia: &inv,
-        deslize: None,
     };
     let (mut serie, mut paralelo) = (p0.clone(), p0.clone());
     let (mut g_serie, mut g_par) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
@@ -1345,7 +930,6 @@ fn parar_no_repouso_visivel_nao_muda_o_que_se_ve() {
         colisores: &c,
         pesos: &w,
         inv_inercia: &inv,
-        deslize: None,
     };
     let conta = |p: &[[f32; 2]]| {
         let mut k = 0;

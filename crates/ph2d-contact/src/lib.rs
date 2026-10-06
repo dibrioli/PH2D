@@ -52,7 +52,8 @@
 //! Precisamos de parâmetros do material»* — e ele tinha razão pela conta que o módulo [`atrito`]
 //! escreve: **a alavanca da normal sobre um disco é EXACTAMENTE zero**, logo nenhuma lei que só
 //! empurre ao longo dela roda um círculo. A metade que faltava é a TANGENTE, cuja alavanca no
-//! mesmo disco é o raio inteiro. Ler [`atrito`] antes de tocar aqui.
+//! mesmo disco é o raio inteiro. Ler [`atrito`] antes de tocar aqui. (Desde 06/10 essa metade
+//! corre no rapier do `sim.step`; aqui ficam o material e as leis do par.)
 //!
 //! ## A lei do par é calculada na ordem do PAR
 //!
@@ -62,9 +63,13 @@
 //!
 //! ## Porque é uma folha
 //!
-//! Dois integradores a pedem — o `sim.step` (W2) e o `motion.integrate` (W4) — e o `sim.collide`
-//! pergunta-lhe que forma uma peça declarou. Copiar a lei seria a segunda resposta à mesma
-//! pergunta; um nó a depender de outro nó quebraria o isolamento.
+//! O `motion.collide` e o passe automático correm a separação; o `sim.collide`, o
+//! `ph2d-contact-world` e o app perguntam-lhe que forma e que material uma peça declarou. Copiar a
+//! lei seria a segunda resposta à mesma pergunta; um nó a depender de outro nó quebraria o
+//! isolamento.
+//!
+//! ⛔ **O `sim.step` já não a chama** (06/10, doc 121 §9.20): ele resolve o contacto pelo rapier
+//! (`ph2d-contact-world`), e os impulsos de velocidade e o deslize da separação saíram com ele.
 //!
 //! ## A grelha dá os MESMOS BITS que todos-os-pares, e isso é uma escolha
 //!
@@ -108,8 +113,6 @@ pub use laco::separate;
 #[cfg(test)]
 pub(crate) use laco::{separate_com, separate_com_cercas, separate_grao};
 pub use referencia::separate_all_pairs;
-/// O impulso do par — a velocidade que responde ao contacto. Ver o cabeçalho dele.
-mod impulso;
 /// O obstáculo do `sim.collide` declarado ao mundo de contacto (doc 121 §9.20).
 pub mod obstaculo;
 mod par;
@@ -119,8 +122,7 @@ pub mod passe;
 use ph2d_motion_kit::trig;
 mod varredura;
 
-pub use atrito::{Deslize, Material, Pecas, Saida, materiais};
-pub use impulso::{Leis, Movimento, impulsos};
+pub use atrito::{Material, Pecas, Saida, materiais};
 pub use par::{Manifesto, contato, disco_caixa, manifesto};
 
 /// Abaixo disto dois centros coincidem e a normal não existe (o `EPS` do `motion.collide`).
@@ -470,8 +472,7 @@ pub fn inv_inercias(s: &Stream, colisores: &[Option<Colisor>], pesos: &[f32]) ->
         .collect()
 }
 
-/// ⚠️ `pub(crate)` porque o [`impulso`] faz a MESMA pergunta — duplicá-la seria a 2.ª resposta a
-/// *«esta peça entra no contacto?»*, e as duas divergiriam no dia em que a condição mudasse.
+/// *«Esta peça entra no contacto?»* — a pergunta única do laço, da referência e da grelha.
 pub(crate) fn ativo(p: [f32; 2], c: Option<&Colisor>) -> bool {
     p[0].is_finite() && p[1].is_finite() && c.is_some_and(Colisor::valido)
 }

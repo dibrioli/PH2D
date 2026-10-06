@@ -14,6 +14,8 @@ ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 # O contacto entre peças (doc 109): a lei é uma folha, e este nó é um dos seus dois clientes.
 ph2d-contact = { path = "../ph2d-contact" }
+# O mundo de contacto (doc 121 §9.20): o `rapier2d` da Física a resolver o contacto das peças.
+ph2d-contact-world = { path = "../ph2d-contact-world" }
 
 [dev-dependencies]
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }

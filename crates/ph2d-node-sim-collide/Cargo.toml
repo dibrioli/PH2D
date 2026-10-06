@@ -15,6 +15,7 @@ ph2d-motion-kit = { path = "../ph2d-motion-kit" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 # A FORMA que uma peça declarou (doc 109 §5) — a mesma porta que o `sim.step` pergunta.
 ph2d-contact = { path = "../ph2d-contact" }
+ph2d-contact-world = { path = "../ph2d-contact-world" } # TEMPORARIO: o relogio da prova
 
 [dev-dependencies]
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }

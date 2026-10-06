@@ -1,0 +1,13 @@
+[package]
+name = "oraculo_rapier"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rapier2d = { version = "=0.35.3", default-features = false, features = ["dim2", "f32", "std", "enhanced-determinism"] }
+
+[features]
+paralelo = ["rapier2d/parallel"]
+simd = ["rapier2d/simd8"]
+
+[workspace]

@@ -51,6 +51,12 @@ pub const RECENT_DENSE: usize = 300;
 /// anchors instead of a silent multi-GB bill.
 pub const CPU_RING_BYTES: usize = 128 * 1024 * 1024;
 
+/// **De quantos em quantos tiques um grafo com MEMÓRIA regista o ponto de recuo** (doc 121 §9.20).
+/// Cada ponto copia a memória a fundo, e a do mundo de contacto custa `~0,8` passo dele (`4 096`
+/// peças: cópia `1,26` ms, passo `1,54`): a cada `8` tiques o custo amortizado é `~10 %` e um recuo
+/// refaz no máximo `7` tiques. O recurso é o relógio do quadro.
+pub const MEMO_A_CADA: u64 = 8;
+
 /// Insertion-cost backstop (ordered insert shifts `O(n)`), far above any
 /// real spread — never the budget (that is [`CPU_RING_BYTES`]).
 pub const MAX_ENTRIES: usize = 2048;
@@ -156,6 +162,16 @@ impl CheckpointRing {
         self.entries
             .binary_search_by_key(&tick, |e| e.tick)
             .is_err()
+    }
+
+    /// **A porta ÚNICA do registo** (a marcha para a frente e a re-simulação do recuo chamam-na):
+    /// regista o ponto de recuo de `tick` se o anel ainda não o tem e — quando algum nó guarda
+    /// [`ph2d_nodegraph::cook::Memo`] — só a cada [`MEMO_A_CADA`] tiques.
+    pub fn regista(&mut self, tick: u64, cook: &ph2d_nodegraph::cook::Cook) {
+        if (cook.has_memo() && tick % MEMO_A_CADA != 0) || !self.should_record(tick) {
+            return;
+        }
+        self.record(tick, cook.checkpoint());
     }
 
     /// Drop every checkpoint — the cached sim is invalid once the graph changes

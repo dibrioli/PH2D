@@ -377,6 +377,9 @@ fn spin_step(spin: f32, rot: f32, dt: f32, angular_damping: f32) -> (f32, f32) {
     (s, rot + s * dt)
 }
 
+/// O passo SEM memória de contacto — o que os gates de um só passo chamam (um mundo novo a cada
+/// chamada; ver [`step_com`]).
+#[cfg(test)]
 fn step(
     state: &Stream,
     playhead: f32,
@@ -385,6 +388,29 @@ fn step(
     max_speed: f32,
     angular_damping: f32,
 ) -> Stream {
+    step_com(
+        state,
+        playhead,
+        damping,
+        min_speed,
+        max_speed,
+        angular_damping,
+        &mut None,
+    )
+}
+
+/// One step of the whole zone's state — the node. `mundo` is the contact world the step keeps
+/// between evaluations (its [`ph2d_nodegraph::cook::Memo`], doc 121 §9.20): the stream stays the
+/// state of record, the world is the MEMORY of the contacts.
+fn step_com(
+    state: &Stream,
+    playhead: f32,
+    damping: f32,
+    min_speed: f32,
+    max_speed: f32,
+    angular_damping: f32,
+    mundo: &mut Option<ph2d_contact_world::Mundo>,
+) -> Stream {
     let n = state.count();
     let mut out = Stream::new(n);
     // Everything the sim does not own rides through untouched — `id` above all, so a kill node
@@ -392,11 +418,14 @@ fn step(
     // ⚠️ **A metade angular só existe se alguém autorou `spin`** — sem a coluna, nada aqui
     // muda e a saída é a de sempre, bit a bit. É isso que torna o param novo inerte por
     // omissão em vez de «neutro por um valor».
+    // ⭐ E as declarações dos obstáculos (e os recibos) são CONSUMIDAS: um `sim.collide` apagado
+    // tira o obstáculo do mundo no passo seguinte (doc 121 §9.20).
     let spin_prev = scalar_col(state, SPIN, n, 0.0);
     let spinning = spin_prev.is_some();
     for (name, col) in state.columns() {
         let owned = matches!(name.as_str(), "accel" | "P" | "vel" | "sim_t" | "age")
-            || (spinning && matches!(name.as_str(), SPIN | ROT));
+            || (spinning && matches!(name.as_str(), SPIN | ROT))
+            || ph2d_contact::obstaculo::e_da_porta(name);
         if !owned {
             out.set(name.clone(), col.clone());
         }
@@ -406,21 +435,25 @@ fn step(
     let age_prev = scalar_col(state, "age", n, 0.0).unwrap_or_else(|| vec![0.0; n]);
 
     let mut p = vec2_col(state, "P", n);
-    // ⭐ ONDE CADA PEÇA ESTAVA antes de a integração a mover — o DESLIZE que o atrito do contacto
-    // opõe (doc 109 §7) mede-se daqui. Sem ele o atrito veria só o que o próprio solver empurrou,
-    // que é normal por construção: uma bola a derrapar não teria deslize nenhum a opor.
+    // ⭐ ONDE CADA PEÇA ESTAVA antes de a integração a mover — é daqui que o mundo de contacto
+    // parte (ele integra a posição das peças que resolve: uma integração só).
     let antes_do_passo = p.clone();
     let mut vel = vec2_col(state, "vel", n);
     let accel = vec2_col(state, "accel", n);
     let w = scalar_col(state, "inv_mass", n, 1.0).unwrap_or_else(|| vec![1.0; n]);
     // No clock on the state = these elements have never been stepped: `dt` is 0, they start.
     let t_prev = scalar_col(state, "sim_t", n, playhead);
+    let passo: Vec<f32> = (0..n)
+        .map(|i| {
+            t_prev
+                .as_ref()
+                .map(|t| (playhead - t[i]).clamp(0.0, MAX_DT)) // CLAMP-OK: const bounds, min < max
+                .unwrap_or(0.0)
+        })
+        .collect();
 
     for i in 0..n {
-        let dt = t_prev
-            .as_ref()
-            .map(|t| (playhead - t[i]).clamp(0.0, MAX_DT)) // CLAMP-OK: const bounds, min < max
-            .unwrap_or(0.0);
+        let dt = passo[i];
         let (mut v, mut q, a, wi) = (vel[i], p[i], accel[i], w[i]);
         // Semi-implicit: velocity first, then position with the NEW velocity.
         v[0] += a[0] * dt * wi;
@@ -440,93 +473,99 @@ fn step(
             p[i] = q;
         }
     }
-    let passo = |i: usize| {
-        t_prev
-            .as_ref()
-            .map(|t| (playhead - t[i]).clamp(0.0, MAX_DT)) // CLAMP-OK: const bounds, min < max
-            .unwrap_or(0.0)
-    };
-    // ⭐ QUANTO O `spin` JÁ RODOU neste passo. ⚠️ Ele é INTEGRADO mais abaixo, e o valor é o mesmo
-    // (`spin_step` é puro e lê o `spin` de entrada) — o que muda é só o atrito passar a VER a
-    // rotação própria da peça: uma bola que chega a girar derrapa contra o chão mesmo parada, e
-    // sem isto a única rotação que o deslize conhecia era a que o próprio contacto tinha feito.
-    let girou_spin: Vec<f32> = spin_prev.as_ref().map_or_else(
-        || vec![0.0; n],
-        |s0| {
-            (0..n)
-                .map(|i| spin_step(s0[i], 0.0, passo(i), angular_damping).1)
-                .collect()
-        },
-    );
-    // ⭐⭐ O CONTACTO ENTRE PEÇAS (doc 109) — depois da integração, só onde há colisor declarado.
-    // Ele devolve o quanto cada peça RODOU (doc 109 §6), em graus.
-    // ⭐⭐ Ele devolve DUAS coisas: o ÂNGULO que o contacto rodou (graus, a lei posicional) e a
-    // VELOCIDADE ANGULAR que o impulso acrescentou (graus/s, a lei que persiste). Qual das duas vem
-    // preenchida é a [`contact::LEIS`] que decide — nunca as duas, que seria contá-la a dobrar.
-    let (giro, dspin) = contact::resolve(
-        state,
-        &mut p,
-        &mut vel,
-        &w,
-        &antes_do_passo,
-        &girou_spin,
-        passo,
-    );
-
-    let age: Vec<f32> = (0..n)
-        .map(|i| {
-            let dt = t_prev
-                .as_ref()
-                .map(|t| (playhead - t[i]).clamp(0.0, MAX_DT)) // CLAMP-OK: const bounds, min < max
-                .unwrap_or(0.0);
-            age_prev[i] + dt
-        })
-        .collect();
-
-    if let Some(spin0) = spin_prev {
-        let rot0 = scalar_col(state, ROT, n, 0.0).unwrap_or_else(|| vec![0.0; n]);
-        let mut spin = spin0;
-        let mut rot = rot0;
+    // A METADE ANGULAR, para todas — o mundo de contacto parte do giro JÁ amortecido.
+    let rot_antes = scalar_col(state, ROT, n, 0.0).unwrap_or_else(|| vec![0.0; n]);
+    let (mut spin, mut rot) = (vec![0.0_f32; n], rot_antes.clone());
+    if let Some(s0) = &spin_prev {
+        spin.clone_from(s0);
         for i in 0..n {
-            let dt = t_prev
-                .as_ref()
-                .map(|t| (playhead - t[i]).clamp(0.0, MAX_DT)) // CLAMP-OK: const bounds
-                .unwrap_or(0.0);
-            let (s, r) = spin_step(spin[i], rot[i], dt, angular_damping);
+            let (s, r) = spin_step(s0[i], rot_antes[i], passo[i], angular_damping);
             // A mesma rede do irmão linear: uma peça que divergiu repõe-se em vez de
             // envenenar a zona inteira com `NaN`.
             if s.is_finite() && r.is_finite() {
                 spin[i] = s;
                 rot[i] = r;
             }
-            // ⭐ E o que o CONTACTO rodou (doc 109 §6) soma-se ao mesmo ângulo.
-            if let Some(g) = giro.get(i).copied().filter(|g| g.is_finite()) {
-                rot[i] += g;
+        }
+    }
+    // ⭐⭐⭐ O CONTACTO ENTRE PEÇAS (doc 109, pelo motor da casa desde o doc 121 §9.20) — só onde há
+    // colisor declarado; sobrescreve `p`, `vel`, `rot` e `spin` de quem o mundo resolve.
+    if contact_antigo::ligada() {
+        let girou: Vec<f32> = spin_prev.as_ref().map_or_else(
+            || vec![0.0; n],
+            |s0| {
+                (0..n)
+                    .map(|i| spin_step(s0[i], 0.0, passo[i], angular_damping).1)
+                    .collect()
+            },
+        );
+        let (giro, dspin) =
+            contact_antigo::resolve(state, &mut p, &mut vel, &w, &antes_do_passo, &girou, |i| {
+                passo[i]
+            });
+        let rodou = giro.iter().chain(&dspin).any(|g| *g != 0.0);
+        for i in 0..giro.len().min(n) {
+            if giro[i].is_finite() {
+                rot[i] += giro[i];
             }
-            // ⭐⭐⭐ **E a VELOCIDADE ANGULAR que o contacto trocou entra no `spin`** — é isto que
-            // faz uma caixa atingida fora do centro CONTINUAR a girar depois de se separarem, em
-            // vez de levar meio grau e congelar (doc 111 §8.2, o 8.º report do dono).
-            if let Some(d) = dspin.get(i).copied().filter(|d| d.is_finite()) {
-                spin[i] += d;
+            if dspin[i].is_finite() {
+                spin[i] += dspin[i];
             }
         }
+        let age: Vec<f32> = (0..n).map(|i| age_prev[i] + passo[i]).collect();
+        if spinning {
+            out.set(SPIN, Column::Scalar(spin));
+            out.set(ROT, Column::Scalar(rot));
+        } else if rodou {
+            out.set(ROT, Column::Scalar(rot));
+            if dspin.iter().any(|d| d.is_finite() && *d != 0.0) {
+                out.set(SPIN, Column::Scalar(spin));
+            }
+        }
+        out.set("P", Column::Vec2(p));
+        out.set("vel", Column::Vec2(vel));
+        out.set("age", Column::Scalar(age));
+        out.set("sim_t", Column::Scalar(vec![playhead; n]));
+        return out;
+    }
+    let feito = contact::resolve(
+        &ph2d_contact_world::Pedido {
+            state,
+            pesos: &w,
+            dt: &passo,
+            sim_t: t_prev.as_deref(),
+            playhead,
+        },
+        &mut ph2d_contact_world::Estado {
+            antes: &antes_do_passo,
+            rot_antes: &rot_antes,
+            p: &mut p,
+            vel: &mut vel,
+            rot: &mut rot,
+            spin: &mut spin,
+        },
+        mundo,
+    );
+
+    let age: Vec<f32> = (0..n).map(|i| age_prev[i] + passo[i]).collect();
+
+    if spinning {
         out.set(SPIN, Column::Scalar(spin));
         out.set(ROT, Column::Scalar(rot));
-    } else if giro.iter().any(|g| *g != 0.0) || dspin.iter().any(|d| *d != 0.0) {
-        // ⭐⭐ **Sem `spin` autorado, o contacto é o ÚNICO a girar** (doc 109 §6) — e só escreve a
-        // coluna quando de facto rodou alguém: uma pilha travada sai como sempre saiu.
-        let mut rot = scalar_col(state, ROT, n, 0.0).unwrap_or_else(|| vec![0.0; n]);
-        for (i, r) in rot.iter_mut().enumerate() {
-            if let Some(g) = giro.get(i).copied().filter(|g| g.is_finite()) {
-                *r += g;
-            }
+    } else if let Some(feito) = &feito {
+        // ⭐⭐ **Sem `spin` autorado, o contacto é o ÚNICO a girar** (doc 109 §6) — e só escreve as
+        // colunas quando de facto rodou alguém: uma pilha travada sai como sempre saiu.
+        let rodou = (0..n).any(|i| feito.movidas[i] && rot[i].to_bits() != rot_antes[i].to_bits());
+        if rodou {
+            out.set(ROT, Column::Scalar(rot));
         }
-        out.set(ROT, Column::Scalar(rot));
-        // ⚠️ **Sem `spin` autorado, uma velocidade angular do contacto CUNHA a coluna** — é a
-        // mesma lei do `rot` uma linha acima (só se escreve o que de facto se moveu), e sem ela a
-        // rotação que persiste seria deitada fora em toda cena que não declara giro.
-        if dspin.iter().any(|d| d.is_finite() && *d != 0.0) {
-            out.set(SPIN, Column::Scalar(dspin));
+        if spin.iter().any(|s| s.is_finite() && *s != 0.0) {
+            out.set(SPIN, Column::Scalar(spin));
+        }
+    }
+    if let Some(feito) = &feito {
+        for chave in &feito.recibos {
+            ph2d_contact::obstaculo::passa_recibo(&mut out, *chave);
         }
     }
 
@@ -538,6 +577,8 @@ fn step(
 }
 
 mod contact;
+mod contact_antigo;
+pub use contact_antigo::mede_com_a_lei_antiga;
 
 struct SimStep;
 
@@ -551,14 +592,23 @@ impl NodeOp for SimStep {
         let damping = ctx.param("damping");
         // Negativo é lido como desligado pela porta única — um limite de velocidade negativo não
         // é um pedido, e recusá-lo lá vale para os dois caminhos.
-        let out = step(
+        // ⭐ A MEMÓRIA dos contactos (doc 121 §9.20): o mundo do motor da casa vive entre tiques
+        // no `Cook`, e viaja no ponto de recuo — o recuo continua exacto.
+        let mut mundo = ctx.take_memo::<ph2d_contact_world::Mundo>();
+        let t0 = std::time::Instant::now();
+        let out = step_com(
             ctx.input(0),
             playhead,
             damping,
             ctx.param("min_speed"),
             ctx.param("max_speed"),
             ctx.param(ANGULAR),
+            &mut mundo,
         );
+        ph2d_contact_world::soma(8, t0.elapsed().as_secs_f64() * 1e3);
+        if let Some(m) = mundo {
+            ctx.keep_memo(m);
+        }
         ctx.emit(out);
     }
 }

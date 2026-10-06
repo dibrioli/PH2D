@@ -220,3 +220,162 @@ fn custo_do_tique_do_app_na_pilha() {
         }
     }
 }
+
+/// ⭐⭐ doc 121 §9.20 — **a PROVA do mundo de contacto antes do produto** (two-strikes: a 4.ª lei do contacto
+/// desta linha): a `=114` pela lei de antes (`ph2d_contact`, `8` sub-passos — o produto até 06/10) e pelo motor da
+/// casa (`rapier2d`, com `8` e com `1` sub-passo), no MESMO processo, intercaladas por tique. Por variante: o
+/// tique do cozimento (as duas taças; mediana, p95 e máximo com a pilha formada, tique `>= 60`) e, no instante
+/// `PH2D_PROVA_TIQUE` (`177` = `2,95` s, o último antes do recomeço), as réguas da `prova_dos_impulsos_da_placa`
+/// sobre a taça da DIREITA — vizinho mediano, velocidade média, sobreposição mais funda — e a impressão dos bits
+/// das posições (a 2.ª corrida do rapier tem de dar os MESMOS: o determinismo). Ambiente: `PH2D_PILHA_LADOS=5,32,64`.
+#[test]
+#[ignore = "sonda da prova (doc 121 §9.20)"]
+fn prova_do_mundo_de_contacto() {
+    let lados: Vec<f32> = std::env::var("PH2D_PILHA_LADOS").ok().map_or_else(
+        || vec![5.0, 32.0, 64.0],
+        |v| v.split(',').filter_map(|x| x.parse().ok()).collect(),
+    );
+    let ultimo: u32 = std::env::var("PH2D_PROVA_TIQUE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(177);
+    let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!("MUNDO load {}", carga().trim());
+    let variantes: [(&str, bool, f32, bool); 5] = [
+        ("antiga · 8 sub-passos", true, 8.0, true),
+        ("rapier · 8 sub-passos", false, 8.0, true),
+        ("rapier · 1 sub-passo", false, 1.0, true),
+        ("rapier · 1 sub-passo (2.a)", false, 1.0, true),
+        ("Collide OFF (a base) · 1 sub", false, 1.0, true),
+    ];
+    // `PH2D_MUNDO_SO=2,4`: só essas variantes (o relógio por etapa fica de UMA).
+    let so: Option<Vec<usize>> = std::env::var("PH2D_MUNDO_SO")
+        .ok()
+        .map(|v| v.split(',').filter_map(|x| x.parse().ok()).collect());
+    let variantes: Vec<_> = variantes
+        .into_iter()
+        .enumerate()
+        .filter(|(i, _)| so.as_ref().is_none_or(|s| s.contains(i)))
+        .map(|(_, v)| v)
+        .collect();
+    for lado in lados {
+        let mut cenas: Vec<(MotionState, Vec<NodeId>)> = variantes
+            .iter()
+            .map(|(nome, _, sub, passe)| {
+                let mut state = MotionState::new();
+                state.pump.set_separa_o_desenho(*passe);
+                let colide = !nome.starts_with("Collide OFF");
+                let sinks = build_com(
+                    &mut state.doc,
+                    &state.registry,
+                    &medida_de(Some(lado), colide),
+                )
+                .expect("a cena monta");
+                let zonas: Vec<NodeId> = state
+                    .doc
+                    .graph
+                    .nodes()
+                    .iter()
+                    .filter(|n| n.type_name == "sim.zone")
+                    .map(|n| n.id)
+                    .collect();
+                for z in zonas {
+                    state.doc.graph.set_param(z, "substeps", *sub);
+                }
+                crate::motion_shape_gen::publish(&mut state, 0.0);
+                (state, sinks)
+            })
+            .collect();
+        let mut tempos = vec![Vec::new(); variantes.len()];
+        let mut antes = vec![Vec::new(); variantes.len()];
+        let mut fim = vec![Vec::new(); variantes.len()];
+        let mut fluxo = vec![None; variantes.len()];
+        // ⚠️⚠️ **Pela PORTA DO APP** (`advance_or_scrub_scoped`, a que a ponte corre por quadro): só ela corre os
+        // SUB-PASSOS da zona (`substep_declared_zones`). A 1.ª redacção desta sonda (e a `prova_dos_impulsos_da_placa`
+        // de 05/10) usava `cook` + `advance_tick`, que dá UM passo por tique — as variantes de `8` e de `1` sub-passo
+        // saíram com os MESMOS bits.
+        for k in 0..=u64::from(ultimo) {
+            for (v, (state, sinks)) in cenas.iter_mut().enumerate() {
+                ph2d_node_sim_step::mede_com_a_lei_antiga(variantes[v].1);
+                let scopes =
+                    ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
+                let t0 = std::time::Instant::now();
+                state.pump.advance_or_scrub_scoped(
+                    &state.doc.graph,
+                    &state.registry,
+                    sinks,
+                    k,
+                    |x| x as f64 / 60.0,
+                    state.default_uv_rect,
+                    state.default_size,
+                    &scopes,
+                );
+                if k >= 60 {
+                    tempos[v].push(t0.elapsed().as_secs_f64() * 1e3);
+                }
+                if let Some(s) = state
+                    .pump
+                    .cook
+                    .peek(sinks[1])
+                    .and_then(|o| o.first())
+                    .map(|o| o.as_stream().clone())
+                    && let Some(Column::Vec2(p)) = s.get("P")
+                {
+                    if k + 1 == u64::from(ultimo) {
+                        antes[v] = p.clone();
+                    }
+                    if k == u64::from(ultimo) {
+                        fim[v] = p.clone();
+                        fluxo[v] = Some(s.clone());
+                    }
+                }
+            }
+        }
+        ph2d_node_sim_step::mede_com_a_lei_antiga(false);
+        let r = ph2d_contact_world::relogio();
+        eprintln!(
+            "MUNDO lado {lado} · relogio do mundo (ms somados): specs {:.0} · ids {:.0} · fixos {:.0} · mortas {:.0} · escreve {:.0} · step {:.0} · rolar {:.0} · le {:.0} · sim.step inteiro {:.0} · sim.collide inteiro {:.0}",
+            r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9]
+        );
+        for (v, (nome, _, _, _)) in variantes.iter().enumerate() {
+            let (p, q) = (&fim[v], &antes[v]);
+            let s = fluxo[v].as_ref().expect("o fluxo do fim");
+            let col = ph2d_contact::colisores(s).unwrap_or_else(|| vec![None; p.len()]);
+            let mut funda = 0.0_f32;
+            for i in 0..p.len() {
+                for j in (i + 1)..p.len() {
+                    if let (Some(a), Some(b)) = (col[i], col[j])
+                        && let Some(c) = ph2d_contact::contato(&a, p[i], &b, p[j], true)
+                    {
+                        funda = funda.max(c.penetracao);
+                    }
+                }
+            }
+            #[expect(clippy::cast_precision_loss, reason = "uma contagem de pecas")]
+            let vel = p
+                .iter()
+                .zip(q)
+                .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]) * 60.0)
+                .sum::<f32>()
+                / p.len() as f32;
+            let bits = p.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, x| {
+                (h ^ u64::from(x[0].to_bits()) ^ (u64::from(x[1].to_bits()) << 32))
+                    .wrapping_mul(0x0100_0000_01b3)
+            });
+            let mut o = tempos[v].clone();
+            o.sort_by(f64::total_cmp);
+            eprintln!(
+                "MUNDO lado {lado:>3} ({:>5} pecas) · {nome:<27} · tique med {:>7.2} p95 {:>7.2} max {:>7.2} ms · vizinho {:.4} · vel {:.3} u/s · funda {:.4} ({:.1} % do lado) · bits {bits:016x}",
+                p.len(),
+                o[o.len() / 2],
+                o[o.len() * 95 / 100],
+                o[o.len() - 1],
+                super::tests::vizinho_mediano(p),
+                vel,
+                funda,
+                funda / (2.0 * LADO) * 100.0
+            );
+        }
+    }
+    eprintln!("MUNDO fim · load {}", carga().trim());
+}

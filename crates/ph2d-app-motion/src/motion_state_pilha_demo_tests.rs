@@ -305,9 +305,19 @@ fn the_controls_the_announcement_names_do_what_it_says() {
         .map(|k| vizinho_lateral(&pilha_travada(&[(param::COLLIDER_WIDTH, *k)])))
         .collect();
     eprintln!("  Width       [0.6, 1.0, 1.6] -> vao LATERAL {vaos:?}");
+    // ⚠️⚠️ **Com o motor da casa (doc 121 §9.20) a lei ficou de UM lado só, e o porquê é físico:**
+    // com a rotação travada as peças caem em COLUNAS (a grelha de partida tem o vão `0,32` contra o
+    // lado `0,22`) e caixas alinhadas com atrito não se espremem de lado — a lei por colunas de
+    // antes espremia-as (a separação empurrava de lado). Medido: `0,6 → 0,3197 · 1,0 → 0,3150 ·
+    // 1,6 → 0,3529`. ⇒ ALARGAR para lá do vão abre a pilha (o passo 5 do anúncio: «a pilha abre
+    // espaço»); estreitar não a fecha (as colunas ficam onde caíram).
     assert!(
-        vaos[0] < vaos[1] && vaos[1] < vaos[2],
-        "so' a largura afasta as vizinhas DE LADO, e por igual: {vaos:?}"
+        vaos[2] > vaos[1] * 1.08,
+        "alargar o colisor afasta as vizinhas DE LADO: {vaos:?}"
+    );
+    assert!(
+        (vaos[0] - vaos[1]).abs() <= vaos[1] * 0.03,
+        "estreitar nao as puxa nem as empurra: as colunas ficam onde cairam: {vaos:?}"
     );
 
     let circulo = vizinho_mediano(&pilha_travada(&[(param::COLLIDER_SHAPE, 1.0)]));
@@ -337,37 +347,45 @@ fn the_controls_the_announcement_names_do_what_it_says() {
 /// ia a `22,03` numa janela onde sem o botão lia `0,47`. *Um controlo só está vivo se o efeito dele
 /// tem o SINAL que o nome promete, e isso só se mede onde o artista o usa.*
 ///
-/// ⭐ **A barra sai de um vale medido com os dois lados** (rodopio na janela `240..300`):
+/// ⭐ **A barra sai de um vale medido com os dois lados** (o rodopio, em graus por janela).
+///
+/// ⚠️⚠️ **A JANELA mudou com o motor da casa (doc 121 §9.20), e o piso é o porquê:** a pilha de
+/// caixas SEM o botão já pára de girar antes do tique `240` (rodopio `0,05` em `240..300`, abaixo
+/// do piso de medição) — a lei por colunas de antes girava ali `0,47`, e era esse rodopio que o
+/// `Rolling` curava. Hoje o botão age onde a pilha ainda TOMBA, a queda (`120..180`), e a pilha de
+/// DISCOS é onde ele tem o maior trabalho (os discos rolam):
 ///
 /// ```text
-///   Rolling 0 (o default)     : 0,47
-///   Rolling 0,75, esta lei    : 0,02    (razão 0,04)
-///   Rolling 0,75, forma do par: 22,03   (razão 47)
+///   janela 120..180          Rolling 0   0,1    0,25   0,75
+///   caixas (a cena)          1,45        0,19   0,23   0,01
+///   discos (Collider Circle) 84,47       47,57  0,30   0,00
 /// ```
 ///
-/// ⇒ a razão tem de ficar abaixo de **`0,5`** — `12×` acima do lado aprovado e `94×` abaixo do
-/// defeito.
+/// ⇒ a razão tem de ficar abaixo de **`0,5`** nas duas pilhas.
 #[test]
 fn the_rolling_on_the_card_calms_the_pile() {
     /// Razão máxima entre o rodopio COM e SEM o botão. Ver o vale acima.
     const BARRA: f32 = 0.5;
-    const ATE: u64 = 300;
+    const ATE: u64 = 200;
     let janela = |p: &[(usize, f32, f32)]| {
         p.iter()
-            .find(|(de, _, _)| *de == 240)
+            .find(|(de, _, _)| *de == 120)
             .map(|(_, r, _)| *r)
-            .expect("a janela 240..300 tem de existir")
+            .expect("a janela 120..180 tem de existir")
     };
-    let sem = janela(&super::giro_diag::perfil(Some(0.0), ATE));
-    let com = janela(&super::giro_diag::perfil(Some(0.75), ATE));
-    assert!(
-        sem > 0.05,
-        "piso: sem o botao a pilha ainda tem de girar alguma coisa, senao a razao nao mede nada ({sem})"
-    );
-    assert!(
-        com <= sem * BARRA,
-        "com Rolling 0,75 o monte girou {com:.3} contra {sem:.3} sem o botao (barra {BARRA}x) -- doc 111 §10"
-    );
+    let discos = [(ph2d_node_motion_shape::param::COLLIDER_SHAPE, 1.0)];
+    for (nome, extra) in [("caixas", &[][..]), ("discos", &discos[..])] {
+        let sem = janela(&super::giro_diag::perfil_com(Some(0.0), ATE, extra));
+        let com = janela(&super::giro_diag::perfil_com(Some(0.75), ATE, extra));
+        assert!(
+            sem > 0.05,
+            "piso ({nome}): sem o botao a pilha tem de girar alguma coisa na queda, senao a razao nao mede nada ({sem})"
+        );
+        assert!(
+            com <= sem * BARRA,
+            "{nome}: com Rolling 0,75 o monte girou {com:.3} contra {sem:.3} sem o botao (barra {BARRA}x) -- doc 121 §9.20"
+        );
+    }
 }
 
 /// ⭐⭐⭐ **AS PEÇAS TOMBAM — e o botão `Lock Rotation` prende-as** (doc 109 §6, report do dono:

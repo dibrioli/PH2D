@@ -43,20 +43,67 @@ fn a_zero_collider_steps_exactly_like_no_collider() {
     }
 }
 
-/// ⭐ **Duas peças sobrepostas saem à soma dos raios** (`size` ausente ⇒ escala 1).
+/// **Marcha `tiques` passos pela porta do produto, com a MEMÓRIA do mundo de contacto** — o que o
+/// `Cook` faz entre dois tiques (o mundo do rapier vive entre eles, doc 121 §9.20).
+pub(super) fn corre(s: &Stream, tiques: u32) -> Stream {
+    let t0 = match s.get("sim_t") {
+        Some(Column::Scalar(v)) => v.first().copied().unwrap_or(0.0),
+        _ => 0.0,
+    };
+    let (mut s, mut mundo) = (s.clone(), None);
+    for k in 1..=tiques {
+        #[expect(clippy::cast_precision_loss, reason = "um índice de tique")]
+        let t = t0 + k as f32 * DT;
+        s = crate::step_com(&s, t, 1.0, 0.0, 0.0, 1.0, &mut mundo);
+    }
+    s
+}
+
+/// ⭐ **A FOLGA do contacto do motor da casa** — a sobreposição que o rapier ADMITE de propósito
+/// para o contacto persistir entre tiques (`allowed_linear_error`, `0,005` u à escala `1`). ⚠️ A lei
+/// de antes separava ao bit num passo; esta guarda os contactos, e a pilha ganha com isso (doc 121
+/// §9.20). Uma barra mais apertada que isto mediria o solver, não o produto.
+const FOLGA: f32 = 0.005;
+
+/// ⭐ **Duas peças sobrepostas saem à soma dos raios** (`size` ausente ⇒ escala 1) — num segundo, e
+/// sem passar dela: o rapier corrige a penetração por uma mola amortecida (a meio segundo, de `0,8`
+/// de sobreposição sobra `0,018`), nunca de um salto.
 #[test]
 fn overlapping_pieces_are_pushed_apart_to_their_radii() {
-    let s = step(&par(0.1, 0.0, Some(0.5)), DT, 1.0, 0.0, 0.0, 1.0);
-    let p = col(&s, "P");
-    assert!(((p[1][0] - p[0][0]) - 1.0).abs() < 1e-4, "{p:?}");
+    let p = col(&corre(&par(0.1, 0.0, Some(0.5)), 60), "P");
+    let d = p[1][0] - p[0][0];
+    assert!(d >= 1.0 - FOLGA && d <= 1.0 + 1e-3, "{p:?}");
 }
 
 /// ⭐⭐ **O contacto NUNCA acrescenta velocidade** — duas peças que nascem sobrepostas, paradas,
 /// separam-se em posição e continuam paradas. Somar `Δp/dt` inteiro faria delas uma explosão.
+///
+/// ⚠️ As CAIXAS também, e ao longo da separação toda: com a omissão do rapier (`1` estabilização)
+/// duas caixas paradas e sobrepostas saíam a `0,84` u/s (ver
+/// [`ph2d_contact_world::ESTABILIZACOES`]).
 #[test]
 fn the_contact_never_adds_speed() {
     let s = step(&par(0.1, 0.0, Some(0.5)), DT, 1.0, 0.0, 0.0, 1.0);
     assert_eq!(col(&s, "vel"), vec![[0.0, 0.0], [0.0, 0.0]]);
+    let caixas = Stream::new(2)
+        .with("P", Column::Vec2(vec![[-0.3, 0.0], [0.3, 0.0]]))
+        .with("vel", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0]]))
+        .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+        .with(
+            COLLIDER_BOX_COLUMN,
+            Column::Vec2(vec![[0.5, 2.0], [0.5, 2.0]]),
+        );
+    let out = corre(&caixas, 120);
+    let (p, v) = (col(&out, "P"), col(&out, "vel"));
+    let d = p[1][0] - p[0][0];
+    assert!(
+        d >= 1.0 - FOLGA && d <= 1.0 + 0.02,
+        "separaram-se a' face e PARARAM: {p:?}"
+    );
+    assert!(
+        (v[1][0] - v[0][0]).abs() < 0.02,
+        "a velocidade que sobra da separacao: {v:?}"
+    );
 }
 
 /// ⭐⭐ **A aproximação é CANCELADA, não reflectida** — duas peças que se encostam a `±2 u/s`
@@ -66,10 +113,8 @@ fn an_approach_is_cancelled_not_reflected() {
     // Encostadas (distância 1 = a soma dos raios) e a vir uma para a outra.
     let s = step(&par(0.5, 2.0, Some(0.5)), DT, 1.0, 0.0, 0.0, 1.0);
     let (p, v) = (col(&s, "P"), col(&s, "vel"));
-    assert!(
-        ((p[1][0] - p[0][0]) - 1.0).abs() < 1e-4,
-        "encostadas: {p:?}"
-    );
+    let d = p[1][0] - p[0][0];
+    assert!(d >= 1.0 - FOLGA && d <= 1.0 + 1e-4, "encostadas: {p:?}");
     for (i, vi) in v.iter().enumerate() {
         assert!(
             vi[0].abs() < 1e-3,
@@ -81,23 +126,8 @@ fn an_approach_is_cancelled_not_reflected() {
 /// ⭐⭐ **Duas CAIXAS encostam pela FACE e param** — a distância é a soma das meias larguras, não a
 /// dos círculos à volta delas (o `41 %` de ar do report do doc 109 §5), e a aproximação é cancelada.
 ///
-/// ⚠️⚠️ **A tolerância da distância é o RESÍDUO DE CONVERGÊNCIA do encosto de dois pontos, medido**
-/// (doc 111 §5.11). Estas caixas são `0,5 × 2,0` — aspecto `4:1` —, e o braço de cada extremo do
-/// trecho é `2,0`: com o braço a entrar na massa efectiva de cada ponto (`k = w + invI·b²`), cada
-/// varredura corrige menos e o produto, às `8` varreduras, fica **`3,5 %` curto**:
-///
-/// ```text
-///   varreduras | distancia | residuo
-///            8 |  0,964626 | 3,5e-2
-///           16 |  0,996872 | 3,1e-3
-///           32 |  0,999976 | 2,4e-5
-///           64 |  1,000000 | 0,0      ← exacto
-/// ```
-///
-/// ⛔ **O resíduo ENCOLHE com as varreduras ⇒ é convergência, não viés** — e por isso o gate mede
-/// as DUAS pontas em vez de afrouxar a barra até a de `8` passar. ⭐ A `=114` usa quadrados (aspecto
-/// `1:1`) e fica `0,15 %` curta às `8`, exacta às `32`: *o preço é do ASPECTO da caixa, e uma cena
-/// que empilhe formas esguias paga-o em sub-passos.*
+/// ⚠️ Caixas `0,5 × 2,0` (aspecto `4:1`): a lei de antes ficava `3,5 %` curta às `8` varreduras (o
+/// braço de cada extremo entrava na massa efectiva); o rapier encosta-as pela face à folga dele.
 #[test]
 fn two_boxes_rest_face_to_face_and_stop() {
     let s = Stream::new(2)
@@ -108,79 +138,27 @@ fn two_boxes_rest_face_to_face_and_stop() {
             COLLIDER_BOX_COLUMN,
             Column::Vec2(vec![[0.5, 2.0], [0.5, 2.0]]),
         );
-    let out = step(&s, DT, 1.0, 0.0, 0.0, 1.0);
+    let out = corre(&s, 60);
     let (p, v) = (col(&out, "P"), col(&out, "vel"));
-    // Às `8` varreduras do produto: o resíduo MEDIDO acima, e nunca uma sobreposição maior.
     let d = p[1][0] - p[0][0];
     assert!(
-        (0.96..=1.0).contains(&d),
-        "elas encostam pela face, a menos do residuo de convergencia: {p:?}"
+        d >= 1.0 - FOLGA && d <= 1.0 + 1e-3,
+        "elas encostam pela face, a menos da folga do contacto: {p:?}"
     );
+    // ⚠️ Elas nascem `0,4` SOBREPOSTAS e a vir uma para a outra: a separação é por velocidade, e a
+    // que sobra ao fim de um segundo é a da correcção (`0,005` u/s medido; `0,84` com a omissão do
+    // rapier — ver `ESTABILIZACOES`).
     for (i, vi) in v.iter().enumerate() {
-        assert!(vi[0].abs() < 1e-3, "a caixa {i} parou em x: {vi:?}");
+        assert!(vi[0].abs() < 1e-2, "a caixa {i} parou em x: {vi:?}");
     }
-    // ⭐ E com varreduras a chegar, a distância é EXACTA — a prova de que não há viés.
-    //
-    // ⚠️⚠️ **A BARRA MUDOU DE DONO em 2026-09-18 (doc 115 §20), e a mudança é o PREÇO do
-    // `REPOUSO_VISIVEL`:** o `separate` pára quando mais nenhuma peça se mexe de forma visível, e
-    // deixa uma cauda da ordem do limiar. Medido nesta fixtura: `1,1e-4` sobre uma caixa de `1,0`
-    // de largura — **`0,011 %` dela**, ou `0,02 px` num desenho de 200 px.
-    //
-    // ⛔ **A barra é ABSOLUTA e medida, nunca derivada da constante:** uma barra que escalasse com
-    // o `REPOUSO_VISIVEL` ficaria verde se alguém o subisse `1000×` — foi uma mutação sobrevivente
-    // que ensinou isso, no gate irmão da `ph2d-contact`.
-    let convergida = {
-        let mut p = vec![[-0.3_f32, 0.0], [0.3, 0.0]];
-        let c = vec![
-            Some(ph2d_contact::Colisor::caixa([0.5, 2.0], [1.0, 0.0])),
-            Some(ph2d_contact::Colisor::caixa([0.5, 2.0], [1.0, 0.0])),
-        ];
-        let w = [1.0_f32, 1.0];
-        let inv: Vec<f32> = c
-            .iter()
-            .zip(w)
-            .map(|(c, w)| c.map_or(0.0, |c| c.inv_inercia(w)))
-            .collect();
-        let mut g = vec![0.0; 2];
-        ph2d_contact::separate(
-            &mut p,
-            &mut ph2d_contact::Saida { giro: &mut g },
-            &ph2d_contact::Pecas::novas(&c, &w, &inv),
-            64,
+    // E nenhuma TOMBOU: o encosto é de face, os dois pontos dele não dão binário (sobra o
+    // arredondamento da ordem dos dois pontos, longe de um grau).
+    if let Some(Column::Scalar(r)) = out.get("rot") {
+        assert!(
+            r.iter().all(|a| a.abs() < 0.5),
+            "caixas de frente nao tombam: {r:?}"
         );
-        p[1][0] - p[0][0]
-    };
-    assert!(
-        (convergida - 1.0).abs() < 2e-4,
-        "a 64 varreduras o residuo tem de caber no repouso visivel: {convergida}"
-    );
-    // ⭐ **E o CONTROLO do viés, no caminho que NUNCA pára cedo** — sem esta metade um viés
-    // sistemático esconder-se-ia atrás da barra nova.
-    let sem_atalho = {
-        let mut p = vec![[-0.3_f32, 0.0], [0.3, 0.0]];
-        let c = vec![
-            Some(ph2d_contact::Colisor::caixa([0.5, 2.0], [1.0, 0.0])),
-            Some(ph2d_contact::Colisor::caixa([0.5, 2.0], [1.0, 0.0])),
-        ];
-        let w = [1.0_f32, 1.0];
-        let inv: Vec<f32> = c
-            .iter()
-            .zip(w)
-            .map(|(c, w)| c.map_or(0.0, |c| c.inv_inercia(w)))
-            .collect();
-        let mut g = vec![0.0; 2];
-        ph2d_contact::separate_all_pairs(
-            &mut p,
-            &mut ph2d_contact::Saida { giro: &mut g },
-            &ph2d_contact::Pecas::novas(&c, &w, &inv),
-            256,
-        );
-        p[1][0] - p[0][0]
-    };
-    assert!(
-        (sem_atalho - 1.0).abs() < 1e-5,
-        "sem atalho nenhum a distancia e' EXACTA: {sem_atalho}"
-    );
+    }
 }
 
 /// ⭐⭐⭐ **Uma caixa cujo CENTRO passa da beira tomba** (doc 109 §6 — *«precisa destravar a rot»*),
@@ -408,6 +386,10 @@ fn the_bounce_of_the_pieces_reaches_the_velocity() {
 /// `v_a' = v(1−e)/2` e `v_b' = v(1+e)/2` — sem salto partilham a meias, com salto máximo **trocam**.
 /// O gate compara com a conta, não com uma tolerância inventada.
 ///
+/// ⚠️ As caixas nascem a ENCOSTAR (`0,22` = a soma das meias), não sobrepostas: com o motor da casa
+/// uma sobreposição de partida é corrigida por VELOCIDADE ao longo de alguns tiques, e essa seria
+/// outra lei a sujar a conta do choque.
+///
 /// ## O defeito que ele apanhou, medido
 ///
 /// A lei anterior era **por PEÇA**, sobre a velocidade ABSOLUTA de cada uma: a caixa PARADA lia
@@ -424,65 +406,79 @@ fn the_bounce_of_the_pieces_reaches_the_velocity() {
 fn two_equal_boxes_share_the_blow_instead_of_one_being_a_wall() {
     use ph2d_nodegraph::attr::BOUNCE_COLUMN;
     /// `f32` sobre uma conta de duas divisões — a folga é de arredondamento, não de lei.
-    const EPS: f32 = 1e-4;
-    for e in [0.0_f32, 0.25, 0.5, 0.75, 1.0] {
-        let s = Stream::new(2)
-            .with("P", Column::Vec2(vec![[-0.20, 0.0], [0.0, 0.0]]))
-            .with("vel", Column::Vec2(vec![[1.0, 0.0], [0.0, 0.0]]))
-            .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
-            .with(BOUNCE_COLUMN, Column::Scalar(vec![e, e]))
-            .with(
-                COLLIDER_BOX_COLUMN,
-                Column::Vec2(vec![[0.11, 0.11], [0.11, 0.11]]),
+    const EPS: f32 = 2e-3;
+    for (forma, k) in [("discos", 1.0_f32), ("caixas", SALTO_DA_FACE)] {
+        for e in [0.0_f32, 0.25, 0.5, 0.75, 1.0] {
+            let v = col(&corre(&choque(forma, e, 1.0), 3), "vel");
+            let (bate, parada) = ((1.0 - k * e) * 0.5, (1.0 + k * e) * 0.5);
+            assert!(
+                (v[0][0] - bate).abs() < EPS,
+                "{forma}, salto {e}: a que bate fica em {} e a conta da' {bate}",
+                v[0][0]
             );
-        let v = col(&step(&s, DT, 1.0, 0.0, 0.0, 1.0), "vel");
-        let (bate, parada) = ((1.0 - e) * 0.5, (1.0 + e) * 0.5);
-        assert!(
-            (v[0][0] - bate).abs() < EPS,
-            "com salto {e}, a que bate fica em {} e a conta da' {bate}",
-            v[0][0]
-        );
-        assert!(
-            (v[1][0] - parada).abs() < EPS,
-            "com salto {e}, a PARADA fica em {} e a conta da' {parada} — se ler 0, ela virou parede",
-            v[1][0]
-        );
-        // ⭐ E o MOMENTO conserva-se: é ele que distingue uma troca de uma parede.
-        assert!(
-            (v[0][0] + v[1][0] - 1.0).abs() < EPS,
-            "o momento tem de ficar em 1,0 e ficou em {}",
-            v[0][0] + v[1][0]
-        );
+            assert!(
+                (v[1][0] - parada).abs() < EPS,
+                "{forma}, salto {e}: a PARADA fica em {} e a conta da' {parada} — se ler 0, ela virou parede",
+                v[1][0]
+            );
+            // ⭐ E o MOMENTO conserva-se: é ele que distingue uma troca de uma parede.
+            assert!(
+                (v[0][0] + v[1][0] - 1.0).abs() < EPS,
+                "{forma}: o momento tem de ficar em 1,0 e ficou em {}",
+                v[0][0] + v[1][0]
+            );
+        }
+    }
+}
+
+/// ⭐ **O salto de uma CAIXA que bate de FACE é `11/25 ÷ 1/2 = 0,88` do pedido** — a lei da família
+/// do Box2D (o rapier aplica o salto no fim do passo, UMA passagem de Gauss–Seidel pelos DOIS pontos
+/// da face), e não um defeito: para quadrados iguais o sistema dos dois pontos é
+/// `K = [[5, −1], [−1, 5]]/m`, a passagem única dá `λ = (1/5 + 6/25)·m·v = 11/25·m·v` contra o
+/// exacto `1/2·m·v`. Um disco (um ponto) dá a conta exacta. Medido: `e = 1` devolve `0,880`,
+/// `e = 0,5` `0,440`, com qualquer número de iterações e estabilizações (doc 121 §9.20).
+const SALTO_DA_FACE: f32 = 0.88;
+
+/// Duas peças IGUAIS a ENCOSTAR (a soma das meias), a da esquerda a `1 u/s`; `parada_w` é o
+/// `inv_mass` da da direita (`0` = um pino). ⚠️ Encostadas e não sobrepostas: com o motor da casa uma
+/// sobreposição de partida é corrigida por VELOCIDADE ao longo de alguns tiques, e essa seria outra
+/// lei a sujar a conta do choque.
+fn choque(forma: &str, e: f32, parada_w: f32) -> Stream {
+    use ph2d_nodegraph::attr::BOUNCE_COLUMN;
+    let s = Stream::new(2)
+        .with("P", Column::Vec2(vec![[-0.22, 0.0], [0.0, 0.0]]))
+        .with("vel", Column::Vec2(vec![[1.0, 0.0], [0.0, 0.0]]))
+        .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
+        .with("inv_mass", Column::Scalar(vec![1.0, parada_w]))
+        .with(BOUNCE_COLUMN, Column::Scalar(vec![e, e]));
+    if forma == "discos" {
+        s.with(COLLIDER_COLUMN, Column::Scalar(vec![0.11, 0.11]))
+    } else {
+        s.with(
+            COLLIDER_BOX_COLUMN,
+            Column::Vec2(vec![[0.11, 0.11], [0.11, 0.11]]),
+        )
     }
 }
 
 /// ⭐⭐ **E um OBSTÁCULO continua a ser uma parede** — a metade que o gate acima não mede, e sem ela
 /// «partilhar o choque» podia ter sido escrito de forma a amolecer um pino.
 ///
-/// Com `inv_mass = 0` a peça é imóvel por declaração, e a que bate devolve **exactamente** o salto:
-/// `v' = −e·v`. ⚠️ É o mesmo `j = (1+e)·vrel/(w_a + w_b)` com `w_b = 0` — *uma lei, os dois casos*.
+/// Com `inv_mass = 0` a peça é imóvel por declaração, e a que bate devolve o salto: `v' = −e·v`
+/// (`−0,88·e·v` numa caixa de face — ver [`SALTO_DA_FACE`]).
 #[test]
 fn an_obstacle_is_still_a_wall_and_returns_the_bounce() {
-    use ph2d_nodegraph::attr::BOUNCE_COLUMN;
-    for e in [0.0_f32, 0.5, 1.0] {
-        let s = Stream::new(2)
-            .with("P", Column::Vec2(vec![[-0.20, 0.0], [0.0, 0.0]]))
-            .with("vel", Column::Vec2(vec![[1.0, 0.0], [0.0, 0.0]]))
-            .with("sim_t", Column::Scalar(vec![0.0, 0.0]))
-            .with("inv_mass", Column::Scalar(vec![1.0, 0.0]))
-            .with(BOUNCE_COLUMN, Column::Scalar(vec![e, e]))
-            .with(
-                COLLIDER_BOX_COLUMN,
-                Column::Vec2(vec![[0.11, 0.11], [0.11, 0.11]]),
+    for (forma, k) in [("discos", 1.0_f32), ("caixas", SALTO_DA_FACE)] {
+        for e in [0.0_f32, 0.5, 1.0] {
+            let v = col(&corre(&choque(forma, e, 0.0), 3), "vel");
+            assert!(
+                (v[0][0] + k * e).abs() < 2e-3,
+                "{forma}: contra um obstaculo, com salto {e}, ela devolve {} e a conta da' {}",
+                v[0][0],
+                -k * e
             );
-        let v = col(&step(&s, DT, 1.0, 0.0, 0.0, 1.0), "vel");
-        assert!(
-            (v[0][0] + e).abs() < 1e-4,
-            "contra um obstaculo, com salto {e}, ela devolve {} e a conta da' {}",
-            v[0][0],
-            -e
-        );
-        assert!(v[1][0].abs() < 1e-6, "o obstaculo nao se mexe: {:?}", v[1]);
+            assert!(v[1][0].abs() < 1e-6, "o obstaculo nao se mexe: {:?}", v[1]);
+        }
     }
 }
 

@@ -110,6 +110,8 @@ pub(crate) use laco::{separate_com, separate_com_cercas, separate_grao};
 pub use referencia::separate_all_pairs;
 /// O impulso do par — a velocidade que responde ao contacto. Ver o cabeçalho dele.
 mod impulso;
+/// O obstáculo do `sim.collide` declarado ao mundo de contacto (doc 121 §9.20).
+pub mod obstaculo;
 mod par;
 /// ⭐⭐⭐ **O PASSE AUTOMÁTICO** (doc 115 W5) — o acabamento que separa o que vai ser desenhado, sem
 /// nó e sem fio. Ver o cabeçalho dele.

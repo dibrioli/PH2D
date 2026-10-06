@@ -4719,6 +4719,7 @@ dependencies = [
  "ph2d-audio-spectral",
  "ph2d-color",
  "ph2d-contact",
+ "ph2d-contact-world",
  "ph2d-core",
  "ph2d-curve",
  "ph2d-ecs",
@@ -4757,6 +4758,7 @@ dependencies = [
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-node-rig-bones",
+ "ph2d-node-sim-step",
  "ph2d-node-source-camera",
  "ph2d-node-source-lsystem",
  "ph2d-node-source-object",
@@ -5250,6 +5252,17 @@ version = "0.0.0"
 dependencies = [
  "ph2d-motion-kit",
  "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-contact-world"
+version = "0.0.0"
+dependencies = [
+ "dhat",
+ "ph2d-contact",
+ "ph2d-motion-kit",
+ "ph2d-nodegraph",
+ "rapier2d",
 ]
 
 [[package]]
@@ -7101,6 +7114,7 @@ name = "ph2d-node-sim-collide"
 version = "0.0.0"
 dependencies = [
  "ph2d-contact",
+ "ph2d-contact-world",
  "ph2d-motion-kit",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
@@ -7132,6 +7146,7 @@ name = "ph2d-node-sim-step"
 version = "0.0.0"
 dependencies = [
  "ph2d-contact",
+ "ph2d-contact-world",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
  "ph2d-nodegraph",

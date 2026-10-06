@@ -96,9 +96,20 @@ const VAO: f32 = 2.0;
 /// A gravidade (`force.wind` apontado para baixo, sem rajada — o doc dele diz que assim ele
 /// **é** gravidade).
 const GRAVIDADE: f32 = 4.0;
-/// ⭐⭐⭐ **Os SUB-PASSOS da zona** — a cura medida do zumbido da pilha. A tabela e o porquê do `8`
-/// estão no sítio onde ele é escrito; o mecanismo inteiro no doc 111 §5.8.
-const SUBSTEPS: f32 = 8.0;
+/// ⭐⭐⭐ **Os SUB-PASSOS da zona: `1` desde o motor da casa** (doc 121 §9.20). Os `8` eram a cura do
+/// zumbido da lei por colunas (a tabela dela está onde ele é escrito; doc 111 §5.8); o rapier guarda
+/// os contactos entre tiques e sub-divide o passo por dentro (`4` iterações). Medido pela porta do
+/// app (`prova_do_mundo_de_contacto`, `release`, no instante `2,95` s, a taça da direita):
+///
+/// | peças | sub-passos | tique med (ms) | velocidade média | sobreposição mais funda |
+/// |---:|---:|---:|---:|---:|
+/// | `25` | `8` · **`1`** | `0,31` · **`0,05`** | `0,000` · `0,016` | `1,2 %` · `1,4 %` |
+/// | `1 024` | `8` · **`1`** | `7,11` · **`1,35`** | `0,106` · `0,144` | `9,4 %` · `9,9 %` |
+/// | `4 096` | `8` · **`1`** | `21,0` · **`4,5`** | `0,45` · `1,26` | `33 %` · `48 %` |
+///
+/// ⇒ `8` custa `5×` o tique para uma pilha um pouco mais assente aos milhares; o recurso é o quadro
+/// (`60` fps a `4 096` por taça), e `1` é o que cabe.
+const SUBSTEPS: f32 = 1.0;
 const RAJADA: f32 = 0.0;
 
 /// Quanto tempo dura cada queda, e a pausa antes da seguinte.
@@ -286,6 +297,10 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_state_pilha_demo_sondas.rs"]
 mod sondas;
+
+#[cfg(test)]
+#[path = "motion_state_pilha_demo_recuo_tests.rs"]
+mod recuo_tests;
 
 /// ⭐ O irmão que mede o MOVIMENTO da pilha (doc 109 §8) — ver o cabeçalho dele.
 #[cfg(test)]

@@ -49,7 +49,7 @@ use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_render::RenderInstance;
 
 mod checkpoint;
-pub use checkpoint::{CPU_RING_BYTES, CheckpointRing, RECENT_DENSE};
+pub use checkpoint::{CPU_RING_BYTES, CheckpointRing, MEMO_A_CADA, RECENT_DENSE};
 
 mod sink_style;
 pub use sink_style::{
@@ -365,7 +365,7 @@ impl MotionCookPump {
         // an edit holds the next tick's state, not this one). This is the ring a
         // backwards scrub restores from (M2.N2).
         if self.last_cooked_tick != Some(tick) {
-            self.ring.record(tick, self.cook.checkpoint());
+            self.ring.regista(tick, &self.cook);
         }
         self.substep_declared_zones(graph, ops, playhead);
         self.cook_target_into(graph, ops, target, playhead, scopes);

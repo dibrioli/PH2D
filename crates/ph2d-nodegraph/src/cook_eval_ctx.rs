@@ -60,6 +60,8 @@ pub struct EvalCtx<'a> {
     /// Seconds since the previous tick, on the ROOT clock (0 on the first tick).
     pub(super) dt: f64,
     pub(super) outputs: Vec<CookValue>,
+    /// A memória deste nó neste escopo — ver [`Self::take_memo`].
+    pub(super) memo: Option<Box<dyn super::DynMemo>>,
 }
 
 impl<'a> EvalCtx<'a> {
@@ -224,6 +226,26 @@ impl<'a> EvalCtx<'a> {
     /// `Arc<dyn Any>` (ADR-0058-amendment-1). Call once per output port, in
     /// order, just like [`Self::emit`]. The domain layer
     /// (`ph2d-vector-graph::VectorEvalExt::emit_network`) wraps this.
+    /// **A memória que ESTE nó guardou na avaliação anterior** (doc 121 §9.20) — o estado que não
+    /// cabe em colunas (o mundo do motor de contacto). Tirada daqui, ela só volta ao `Cook` por
+    /// [`Self::keep_memo`]; uma de outro tipo devolve `None` e perde-se.
+    ///
+    /// ⚠️ Viaja no ponto de recuo ([`super::CookCheckpoint`]); um nó que a usa tem de dar a MESMA
+    /// saída para a mesma entrada e a mesma memória — é o que mantém o recuo exacto.
+    pub fn take_memo<T: super::Memo>(&mut self) -> Option<T> {
+        self.memo
+            .take()?
+            .into_any()
+            .downcast::<T>()
+            .ok()
+            .map(|b| *b)
+    }
+
+    /// Guarda a memória deste nó para a próxima avaliação — ver [`Self::take_memo`].
+    pub fn keep_memo<T: super::Memo>(&mut self, memo: T) {
+        self.memo = Some(Box::new(memo));
+    }
+
     pub fn emit_any(&mut self, value: Arc<dyn Any + Send + Sync>) {
         self.outputs.push(CookValue::Opaque(value));
     }

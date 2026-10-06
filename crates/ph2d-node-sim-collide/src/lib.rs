@@ -113,6 +113,10 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod aleatorio;
+/// O aperto de mão com o mundo de contacto (doc 121 §9.20).
+mod mundo;
+#[cfg(test)]
+use mundo::collide;
 use ph2d_motion_kit::trig;
 mod ui;
 
@@ -336,61 +340,6 @@ pub fn plane_normal(angle_deg: f32) -> [f32; 2] {
     [(0.0 - s) * inv, c * inv]
 }
 
-/// The contact at `p` for a disc of radius `r`: the outward unit normal, and how deep inside the
-/// surface it is. `None` when it is clear of the surface.
-///
-/// `r` enters as the **Minkowski inflation** — the same shape grown outward — so there is still
-/// one contact test per shape and one response for all of them. `r = 0` is the point collider,
-/// term for term.
-///
-/// `plane_n` is the plane's normal (from [`plane_normal`]); the Disc and the Bowl ignore it,
-/// because a circle turned is the same circle.
-#[allow(clippy::too_many_arguments)]
-fn contact(
-    shape: i32,
-    p: [f32; 2],
-    height: f32,
-    c: [f32; 2],
-    radius: f32,
-    r: f32,
-    plane_n: [f32; 2],
-    half: [f32; 2],
-) -> Option<([f32; 2], f32)> {
-    match shape {
-        SHAPE_DISC | SHAPE_BOWL => {
-            let (dx, dy) = (p[0] - c[0], p[1] - c[1]);
-            let dist = (dx * dx + dy * dy).sqrt();
-            // Dead centre of a disc has no "way out" — any direction is as good, so pick one
-            // rather than dividing by zero and turning the element into a NaN.
-            let n = if dist > f32::EPSILON {
-                [dx / dist, dy / dist]
-            } else {
-                [0.0, 1.0]
-            };
-            if shape == SHAPE_DISC {
-                // A solid obstacle GROWS by the particle's radius: the centre of a disc of
-                // radius `r` can never be closer than `r` to the surface.
-                let grown = radius + r;
-                (dist < grown).then_some((n, grown - dist))
-            } else {
-                // A container SHRINKS by it, for the same reason — and is clamped at 0: a
-                // particle wider than its bowl has nowhere to be, and the honest answer is the
-                // centre, not a push through it and out the other side.
-                let inner = (radius - r).max(0.0);
-                (dist > inner).then_some(([-n[0], -n[1]], dist - inner))
-            }
-        }
-        SHAPE_BOX => box_contact(p, c, half, r, plane_n),
-        // The plane: the world is the side its normal points to, so "out" IS the normal — and
-        // what touches it is the element's near face, `sd − r`. At `angle = 0` the normal is
-        // `(0, 1)` to the bit, `sd` is `p[1]`, and this is the floor test verbatim.
-        _ => {
-            let sd = p[0] * plane_n[0] + p[1] * plane_n[1];
-            (sd - r < height).then_some((plane_n, height - (sd - r)))
-        }
-    }
-}
-
 fn vec2(s: &Stream, name: &str, n: usize) -> Vec<[f32; 2]> {
     match s.get(name) {
         Some(Column::Vec2(v)) if v.len() == n => v.clone(),
@@ -422,7 +371,7 @@ const BOX_H: &str = "box_height";
 
 /// The whole node: resolve each element's contact, respond, write `P` and `vel` back.
 #[allow(clippy::too_many_arguments)]
-fn collide(
+fn collide_com_chave(
     s: &Stream,
     shape: i32,
     height: f32,
@@ -435,14 +384,20 @@ fn collide(
     rnd: (f32, u32),
     // As MEIAS extensões da caixa — a porta divide as inteiras uma vez, no `eval`.
     half: [f32; 2],
+    // A chave deste nó — a da declaração ao mundo de contacto (doc 121 §9.20).
+    chave: u32,
 ) -> Stream {
     let n = s.count();
     let mut out = Stream::new(n);
     for (name, col) in s.columns() {
-        if !matches!(name.as_str(), "P" | "vel") && name.as_str() != HIT_COL {
+        if !matches!(name.as_str(), "P" | "vel")
+            && name.as_str() != HIT_COL
+            && !ph2d_contact::obstaculo::e_desta_chave(name, chave)
+        {
             out.set(name.clone(), col.clone());
         }
     }
+    let no_mundo = mundo::geridas(s, chave);
     let mut p = vec2(s, "P", n);
     let mut v = vec2(s, "vel", n);
     let mut hit = scalars(s, HIT_COL, n);
@@ -511,6 +466,14 @@ fn collide(
             }
         };
         let girou = toque.giro;
+        if no_mundo[i] {
+            if let Some((_, depth)) = toque.empurrao
+                && depth.is_finite()
+            {
+                hit[i] = hit[i].max(depth);
+            }
+            continue;
+        }
         if let Some((normal, depth)) = toque.empurrao {
             let (mut pi, mut vi) = (p[i], v[i]);
             #[expect(clippy::cast_sign_loss, reason = "uma identidade e' um inteiro >= 0")]
@@ -575,6 +538,22 @@ fn collide(
         }
         out.set("rot", Column::Scalar(rot));
     }
+    mundo::declara(
+        &mut out,
+        s,
+        chave,
+        mundo::Obstaculo {
+            shape,
+            height,
+            c,
+            radius,
+            plane_n,
+            half,
+        },
+        (friction, restitution),
+        rnd,
+        ids.as_deref(),
+    );
     out
 }
 
@@ -622,7 +601,8 @@ impl NodeOp for SimCollide {
         #[expect(clippy::cast_sign_loss, reason = "a seed is a bit pattern")]
         #[expect(clippy::cast_possible_truncation, reason = "idem")]
         let seed = ctx.param(SEED).max(0.0).round() as u32;
-        let out = collide(
+        let t0 = std::time::Instant::now();
+        let out = collide_com_chave(
             ctx.input(0),
             shape,
             height,
@@ -634,7 +614,9 @@ impl NodeOp for SimCollide {
             plane_n,
             (randomness, seed),
             half,
+            ctx.node_key(),
         );
+        ph2d_contact_world::soma(9, t0.elapsed().as_secs_f64() * 1e3);
         ctx.emit(out);
     }
 }
@@ -680,6 +662,10 @@ mod box_tests;
 mod caixa;
 use caixa::box_contact;
 
+/// O toque de um disco (ou de um ponto) contra cada forma — FILHO pelo tecto de LOC.
+mod geometria;
+use geometria::contact;
+
 #[path = "declared.rs"]
 mod declared;
 
@@ -693,3 +679,7 @@ mod declared_tests;
 #[cfg(test)]
 #[path = "randomness_tests.rs"]
 mod randomness_tests;
+
+#[cfg(test)]
+#[path = "mundo_tests.rs"]
+mod mundo_tests;

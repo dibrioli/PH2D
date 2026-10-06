@@ -68,9 +68,7 @@ impl MotionCookPump {
             // Record the state that reproduces frame `t` (before its cook), so a
             // re-sim past the window rebuilds the ring; a within-window tick is
             // already covered and the deep clone is skipped.
-            if self.ring.should_record(t) {
-                self.ring.record(t, self.cook.checkpoint());
-            }
+            self.ring.regista(t, &self.cook);
             self.substep_declared_zones(graph, ops, playhead);
             self.cook_target_into(graph, ops, target, playhead, scopes);
             if !target.has_work() {

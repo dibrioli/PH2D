@@ -223,8 +223,18 @@ fn probe_a_pilha_chega_a_parar() {
 #[test]
 #[ignore = "sonda de medicao"]
 fn probe_o_rolamento_na_pilha() {
-    for rolar in [0.0_f32, 0.25, 0.75, 1.5] {
+    for rolar in [0.0_f32, 0.1, 0.25, 0.75] {
         imprime_perfil(&format!("Rolling = {rolar}"), Some(rolar));
+    }
+    for rolar in [0.0_f32, 0.1, 0.25, 0.75] {
+        eprintln!("\n  DISCOS (Collider Shape = Circle), Rolling = {rolar}");
+        for (de, rodopio, tremor) in perfil_com(
+            Some(rolar),
+            560,
+            &[(ph2d_node_motion_shape::param::COLLIDER_SHAPE, 1.0)],
+        ) {
+            eprintln!("  {de:>7}..{:<7} | {rodopio:>7.2} | {tremor:>6.3}", de + 60);
+        }
     }
 }
 
@@ -244,6 +254,15 @@ fn imprime_perfil(titulo: &str, rolar: Option<f32>) {
 /// ⚠️ `pub(super)` porque o gate do botão ([`super::tests`]) o consome — uma 2.ª cópia desta
 /// marcha seria a 2.ª resposta à pergunta *«que cena estou a medir?»*.
 pub(super) fn perfil(rolar: Option<f32>, ate: u64) -> Vec<(usize, f32, f32)> {
+    perfil_com(rolar, ate, &[])
+}
+
+/// [`perfil`] com outros params escritos no cartão das formas (o `Collider Shape`, por exemplo).
+pub(super) fn perfil_com(
+    rolar: Option<f32>,
+    ate: u64,
+    extra: &[(&'static str, f32)],
+) -> Vec<(usize, f32, f32)> {
     use ph2d_nodegraph::attr::Column as C;
     let sub = {
         #[expect(
@@ -271,14 +290,19 @@ pub(super) fn perfil(rolar: Option<f32>, ate: u64) -> Vec<(usize, f32, f32)> {
     for z in zonas {
         state.doc.graph.set_param(z, "duration", 12.0);
     }
-    if let Some(r) = rolar {
+    if rolar.is_some() || !extra.is_empty() {
         let formas = de_tipo(&state, "source.shape");
         assert!(!formas.is_empty(), "a cena tem de ter formas");
         for f in formas {
-            state
-                .doc
-                .graph
-                .set_param(f, ph2d_node_motion_shape::param::ROLLING, r);
+            if let Some(r) = rolar {
+                state
+                    .doc
+                    .graph
+                    .set_param(f, ph2d_node_motion_shape::param::ROLLING, r);
+            }
+            for (nome, v) in extra {
+                state.doc.graph.set_param(f, *nome, *v);
+            }
         }
         crate::motion_shape_gen::publish(&mut state, 0.0);
     }

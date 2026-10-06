@@ -216,9 +216,12 @@ fn the_two_material_sliders_do_what_the_announcement_says() {
             .set_param(formas[RAMPA_ATRITO], param::FRICTION, 0.0);
     });
     eprintln!("  Friction 1 -> 0 │ rot {}°", travado.rot0(RAMPA_ATRITO));
-    // A mesma barra de ruído do gate acima — ver o mecanismo lá.
+    // A barra de ruído do gate acima — ver o mecanismo lá —, com o do motor da casa (doc 121
+    // §9.20): o rapier aplica a normal num ponto ancorado ao CORPO, e a alavanca dela é a diferença
+    // de dois números do tamanho do raio. Medido nesta bola: `0,0018°` em 2 s (a de `Friction 1`
+    // roda `313°`; a de gelo, noutra posição, `0,0°`). `0,01°` separa as duas por `4` ordens.
     assert!(
-        travado.rot0(RAMPA_ATRITO).abs() < 1e-3,
+        travado.rot0(RAMPA_ATRITO).abs() < 1e-2,
         "arrastar `Friction` a 0 tem de parar a rotacao, e sobrou {}°",
         travado.rot0(RAMPA_ATRITO)
     );

@@ -2478,3 +2478,82 @@ o item aberto muda de pergunta — antes da placa, o contacto das peças do Moti
 da Física) ou o nosso reescrito como ele (contactos persistentes, aquecimento, menos passos). ⚠️ Isto muda o
 COMPORTAMENTO da pilha que o dono aprovou (doc 109–111: o zumbido curado com os `8` sub-passos): é decisão de
 produto e pede o smoke dele.
+
+### §9.20 — O CONTACTO DAS FORMAS PELO MOTOR DA CASA (`rapier2d`): o desenho (2026-10-06, escrito ANTES de construir)
+
+Ordem do dono (06/10): *«usar o motor da casa»*. ⚠️ **A recusa do doc 111 §3** (*«o oráculo não pode virar o
+motor»*, `6 400` caixas `54` ms) **fica vencida por medição e não por ordem:** a premissa dela era que a lei por
+colunas correria no dispositivo; ela nunca correu, e na CPU custa `48`–`93` ms a `4 096` peças contra `1,5` do
+rapier (abaixo). O tecto do módulo deixa de ser o do caminho lento — é a mesma lei do `CLAUDE.md` §0.0 que a recusa
+invocava, agora a favor do rapier.
+
+**Três perguntas do desenho, medidas ANTES no oráculo** ([`oraculo_rapier_pilha_quente_frio/`](ferramentas/oraculo_rapier_pilha_quente_frio/):
+a pilha da `=114`, `release`, `enhanced-determinism`, `2,95` s — o último instante antes do recomeço —, carga `1`–`2`):
+
+| `k × k` caixas, `1` passo, `4` iterações | tique med · p95 (ms) | vizinho med | velocidade média | par mais junto (% do lado) |
+|---|---|---|---|---|
+| `1 024` mundo PERSISTENTE («quente») | **`0,39`** · `0,50` | `0,2163` | **`0,195`** | `96 %` |
+| `1 024` mundo RECONSTRUÍDO a cada tique («frio») | `1,71` · `3,27` | `0,2102` | `0,629` | `61 %` |
+| `1 024` quente, a taça FORA do mundo (a projecção do `sim.collide` depois do passo) | `0,28` · `0,68` | `0,2210` | **`1,619`** | **`8 %`** |
+| `4 096` quente | **`1,54`** · `3,67` | `0,1922` | `1,011` | `47 %` |
+| `4 096` frio | `14,9` · `21,8` | `0,1500` | `3,106` | `4 %` |
+| `4 096` quente, taça fora | `1,04` · `3,59` | `0,1820` | `1,949` | `1 %` |
+| `4 096` quente, `8` passos × `1` iteração (os sub-passos da zona) | `6,32` · `12,5` | `0,1970` | `0,746` | `72 %` |
+| `1 024` · `4 096` · `16 384`: a CÓPIA do mundo (o que um ponto de recuo pagaria) | `0,25` · `1,26` · `6,8` | — | — | — |
+
+⇒ (a) **o mundo é PERSISTENTE** — reconstruído a cada tique ele custa `10×` (`14,9` contra `1,5` ms a `4 096`) e a
+pilha fica `3×` mais agitada: o ganho do motor É a memória (contactos persistentes, aquecimento). (b) **A taça vive
+DENTRO do mundo como colisor fixo** — fora dele (projectada depois do passo, como hoje) o peso do monte não passa
+pelo solver e a pilha fica `8×` mais agitada, com peças a afundar umas nas outras (`8 %`, `1 %` do lado).
+(c) **Um passo do motor por tique** — os `8` sub-passos da zona (a cura do zumbido da NOSSA lei, doc 111 §5.8.2)
+custam `4×` e não compram pilha: a cena passa a `1` sub-passo; o nó continua certo com qualquer número.
+
+**O desenho:**
+
+1. **Onde vive o mundo:** na MEMÓRIA DO NÓ que o `Cook` guarda por `(nó, escopo)` — uma porta nova, apendada
+   (`EvalCtx::memo`/`guarda_memo`; o ADR-0039 congela `NodeOp`/`OpResolver`/`NodeManifest`, não o `EvalCtx`). ⭐ **E a
+   memória viaja no `CookCheckpoint`**: o anel do recuo (ADR-0137) diz *«para um grafo fixo a sim é função pura do
+   tique»*, e uma memória fora do ponto de recuo quebraria isso — um recuo seguido de Play mostraria OUTRA queda (a
+   família *«o que o undo não fotografa»*). Os bytes do mundo entram no orçamento do anel (`approx_bytes`), e — porque
+   copiar o mundo custa `~0,8` passo — um grafo com memória regista o ponto de recuo **a cada `8` tiques** (`MEMO_A_CADA`):
+   `+10 %` amortizado, e um recuo refaz no máximo `7` tiques. Entre dois registos o mundo é mutado no lugar (o
+   `Arc` é único).
+2. **Sincronia com o stream, por `id`:** o stream continua a VERDADE do estado (`P`, `vel`, `rot`, `spin`, `size`, as
+   colunas do colisor e do material); o mundo é a verdade da MEMÓRIA dos contactos. Por passo: corpos novos para ids
+   novos, removidos os que morreram (`BTreeMap<id, corpo>`, ordem do stream — determinístico), e o estado do stream
+   escrito no corpo só onde os bits mudaram (quem mexe numa peça entre dois passos — uma força, um `drive` — é ouvido
+   sem acordar os outros). **Recomeço** (`Loop`) e qualquer stream que não continue o mundo (o `sim_t` ausente, ou
+   diferente do instante em que o mundo parou) ⇒ mundo novo a partir do stream; uma reavaliação no MESMO instante com
+   a MESMA entrada devolve a saída guardada (o nó não avança duas vezes).
+3. **Uma integração só:** o `sim.step` faz a metade da VELOCIDADE como sempre (`accel`, `damping`, `max/min_speed`,
+   `angular_damping` no `spin`); o rapier recebe essa velocidade, resolve os contactos e integra a POSIÇÃO e o ângulo
+   (gravidade `0` no mundo — a gravidade é o `force.wind` da cena). Peças sem colisor válido não entram no mundo e
+   integram como sempre. O `rot` sai ACUMULADO (o ângulo de antes mais o quanto o corpo rodou), não o do rapier
+   (`(−π, π]`); sem rotação nenhuma a coluna não nasce (o gate do `Lock Rotation`).
+4. **O mapeamento:** caixa (com `desvio` no referencial da peça) → `cuboid`; disco → `ball`; massa `1/inv_mass` e
+   inércia `1/inv_inertia` pela MESMA porta de hoje (`ph2d_contact::inv_inercias`) como propriedades de massa
+   explícitas; `inv_inertia = 0` (o `Lock Rotation`) → rotação travada; `inv_mass = 0` → corpo cinemático conduzido
+   pelo stream; Friction → `GeometricMean` (a nossa `√(a·b)`, que o rapier `0.35` tem); Bounce → `Max`.
+   **Rolling:** o rapier `0.35.3` NÃO tem resistência ao rolamento (lido no fonte: só o `ray_cast_vehicle_controller`) —
+   a lei que o substitui é a NOSSA, a mesma porta (`ph2d_contact::atrito::rolamento`): depois do passo, por ponto de
+   contacto de cada manifesto (o impulso normal resolvido pelo rapier e o braço da peça), o giro de cada peça é
+   travado contra o próprio momento, com o próprio `μr`, sem nunca o inverter — medida contra
+   `the_rolling_on_the_card_calms_the_pile`.
+5. **A taça e os outros obstáculos (`sim.collide`)** entram no mundo por um aperto de mão em colunas (os systems não
+   se chamam — ADR-0075): o `sim.collide` DECLARA o seu obstáculo em colunas com a chave do nó; o `sim.step` consome a
+   declaração, põe o obstáculo no mundo como colisor fixo (plano → `halfspace`, disco → `ball`, caixa → `cuboid`,
+   taça → polilinha fechada com a flecha `≤ 10⁻³` u) e devolve um RECIBO; o `sim.collide` que lê o recibo não projecta
+   as peças que o mundo resolve (só escreve o `hit`, por detecção). Sem recibo — um `sim.collide` fora da zona, ou o
+   1.º passo — ele projecta como sempre. Um `sim.collide` apagado deixa de declarar e o obstáculo sai do mundo no passo
+   seguinte (o `sim.step` consome a declaração, nunca a deixa a circular). O salto aleatório por peça (`Randomness`)
+   chega ao solver pela coluna da declaração.
+6. **O que sai:** o `sim.step` deixa de chamar `ph2d_contact::separate`/`impulsos`. O `ph2d-contact` fica para quem
+   ainda o chama (o `motion.collide`, o passe do sink, o `sim.collide` para a geometria do toque e as portas do
+   colisor e do material); o que ficar sem chamador SAI com o código, e as portas de prova de 05/10
+   (`PH2D_CONTACT_JACOBI`/`PH2D_CONTACT_CORES`) saem.
+
+**Kill-criteria (os do prompt, escritos antes):** tique a `4 096` por taça `≤ 5` ms na CPU (`release`); a pilha de
+`25` e a de `1 024` dentro da banda da ordem contra o produto de hoje (vizinho mediano `±5 %`, velocidade
+`≤ 1,5×` + `0,01` u/s, sobreposição mais funda `≤` a de hoje) OU a diferença ao dono no smoke; os gates da pilha
+verdes; determinismo: duas corridas iguais ao bit; ⭐ e dois novos, do desenho: **um recuo seguido de Play dá os bits
+da 1.ª passagem**, e **a 2.ª volta do `Loop` dá os bits da 1.ª**.

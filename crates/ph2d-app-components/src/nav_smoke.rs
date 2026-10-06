@@ -88,6 +88,19 @@ pub struct Montada {
     pub lama: Option<crate::nav_smoke_lama::Lama>,
 }
 
+impl Montada {
+    /// ⭐ A secção do Inspector que o roteiro manda ler — a shell abre-a (a política fecha toda secção
+    /// viva menos o Transform). Na `=5` o escolhido é a lama, e o passo é o `Cost` dela.
+    #[must_use]
+    pub fn secao_do_roteiro(&self) -> ph2d_editor_core::ids::NodeId {
+        if self.lama.is_some() {
+            ph2d_editor_core::ids::INSP_LIVE_NAV_COST_AREA_SECTION
+        } else {
+            ph2d_editor_core::ids::INSP_LIVE_NAV_AGENT_SECTION
+        }
+    }
+}
+
 /// As peças da cena `=1`.
 pub struct Labirinto {
     pub vermelho: Entity,

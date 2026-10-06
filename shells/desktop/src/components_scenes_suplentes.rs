@@ -553,7 +553,7 @@ impl crate::App {
             hero.gizmo.extra_selection.clear();
             // ⚠️ E ABERTA: a política do Inspector fecha toda secção viva menos o Transform, e a
             // 1.ª foto mostrou a Nav Agent dobrada — o passo do roteiro ficava atrás de um clique.
-            let sec = ph2d_editor_core::ids::INSP_LIVE_NAV_AGENT_SECTION;
+            let sec = montada.secao_do_roteiro();
             hero.store.set_collapsed(sec, false);
         }
         self.playhead.rewind();

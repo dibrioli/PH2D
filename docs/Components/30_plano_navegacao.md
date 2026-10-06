@@ -2242,3 +2242,124 @@ a meio (`trimmed`) e sobrevivem. Só depois os candidatos, cada um contra as rec
 **Kill-criterion (o do §22.4, sem mudança):** metade do tempo na cena grande (`100` lamas, pesos `4` e `10`), o custo
 contra o oráculo ao dígito, a procura em fatias = a inteira ao bit. ⚠️ Pode acabar outra vez em recusa medida — e
 então diz-se ao dono em uma frase, sem a vender como feita.
+
+### §27.4 — S feita: a cena 5, e o que a régua corrigiu nela (`nav_smoke_lama.rs`)
+
+**A cena final:** duas pistas iguais, separadas por uma parede ao meio; em cada uma, uma faixa de lama de
+`8,2 × 0,8 m` (sensor desenhado do tamanho do corpo) da parede do meio até `1,6 m` da parede de fora, e três
+corredores VERMELHOS (`1,2 m/s`) que andam de baixo para a sua bandeira VERDE. Esquerda: `Light Mud`
+(`Cost 2`); direita: `Heavy Mud` (`Cost 10`, a ESCOLHIDA). Os gates correm a cena real
+(`nav_smoke::montar(…, 5)`):
+
+| gate | medido |
+|---|---|
+| `a_leve_atravessa_se_a_pesada_contorna_se` | produto: atravessaram `3` a leve, `0` a pesada, chegaram `3 · 3`; CONTROLO (as duas a `1`): `3 · 3` atravessam |
+| `com_o_cost_em_2_os_da_direita_cortam_pela_lama` | o `Cost` da pesada a `2` no tique `60` (todos abaixo da lama): cortam `2` de `3` (o 3.º, junto à passagem, segue a volta — ali ela é curta), chegam os `3` |
+| `a_cena_tem_as_pecas_que_o_roteiro_nomeia` | os nomes e os dois custos |
+
+**O que a régua corrigiu no caminho** (cada um medido antes da cura):
+
+| achado | medido | cura |
+|---|---|---|
+| a passagem de `1,2 m` | três corpos de `0,35` empurravam-se nela; um raspava a quina (`1 cm` dentro) | `1,6 m`; e a régua de «atravessou» exige o centro a mais de um raio da PONTA da faixa |
+| seis perseguidores do herói | cercavam-no e PRENDIAM-no (o herói parado com as setas premidas) | bandeiras, um alvo por corredor |
+| um perseguidor do herói a cruzar a cena | ao passar pelas bandeiras empurrava um corredor parado para a borda da lama | saiu (o A, que ele mostraria, ficou recusa — §27.7) |
+| na pista da direita, a ordem das bandeiras | o 1.º a sair da passagem estacionava no caminho dos outros | a ordem inverte-se: o 1.º vai à mais funda |
+| ⭐⭐ **o `Cost` mexido com o agente a ANDAR** | um CONTROLO MORTO: `10 → 2` no tique `20` ou `60`, `0` procuras novas nos `5` tiques seguintes; só `→ 1` mudava algo (a lama sai da malha) | o 5.º motivo de replaneio (abaixo) |
+
+**O 5.º motivo de replaneio** (o Q6 tinha quatro): `AgentRuntime::custos_do_caminho` guarda a assinatura dos
+CUSTOS e dos ATALHOS com que o caminho em curso foi planeado (`Vez::custos`, o hash de base de
+`entradas_das_procuras`, sem o conteúdo da malha — esse continua com a fila, senão cada porta replanearia
+todos); mudou, quem anda pede uma procura, que paga do orçamento como as outras. O runtime vai no anel: o scrub
+refaz o mesmo. Gate `mexer_no_custo_refaz_o_caminho_de_quem_anda` (`nav_custo`): a lama a `10` contornada; no
+tique `20` passa a `1,05` — UMA procura nova, e atravessa; o CONTROLO sem a mudança: `0` procuras, não pisa.
+Um `Nav Link` posto ou tirado com o agente a andar entra pela mesma porta.
+
+### §27.5 — A: a rodada (`target/prova/w18/medir_replaneio_w18.txt`; load `8–17`: valem só as colunas de trabalho e de espera)
+
+A vivacidade, pelo gate `uma_malha_que_nunca_para_nao_deixa_a_procura_sem_acabar` com cada alavanca (a pedra muda
+a malha de dois em dois tiques; a procura precisa de `8` orçamentos): produto ✓ · T1 ✗ *«a procura nunca acabou»*
+· T2 ✓ · T3 ✗. **A aritmética diz porquê antes da medida:** uma procura de trabalho `W` numa malha que muda de `K`
+em `K` tiques só acaba se a fatia for `≥ W / K`; com o tecto em `2` orçamentos e `K = 2`, `W` tem de ser `≤ 4`
+orçamentos — a fixtura pede `8`. Sem levar trabalho através de um recomeço (recusado, §23.6), **um tecto do
+crítico e a vivacidade numa malha que nunca pára não cabem juntos.**
+
+`150` lamas (com `0` lamas o crítico do produto já é `≤ 25 mil`):
+
+| versão | crítico máx (10 · 50 · 200) | atraso de quem persegue (máx · média, 200) | `falta` (10 · 50 · 200) | vivacidade |
+|---|---|---|---|---|
+| B produto | `80 001 · 80 003 · 40 011` | `30 · 2,23` | `66,37 · 69,42 · 70,72` | ✓ |
+| T1 a fatia não cresce, quem recomeçou vai à frente | **`20 017 · 20 015 · 20 017`** | `30 · 3,98` | `66,62 · 69,72 · 71,01` | ✗ |
+| T2 só dobra quem pausou com o orçamento inteiro | `80 001 · 80 003 · 40 011` | `30 · 2,23` | = B | ✓ |
+| T3 a dobra satura em `2` | **`40 004 · 40 008 · 40 011`** | `30 · 2,23` | = B | ✗ |
+| T1 + A4 | `20 017 · 20 015 · 20 017` | `6 · 1,94` | `66,62 · 69,72 · 70,95` | ✗ |
+| T2 + A4 | `80 001 · 80 003 · 72 307` | `4 · 1,70` | = B | ✓ |
+| T3 + A4 | `40 004 · 40 008 · 40 011` | **`4 · 1,69`** | = B | ✗ |
+
+`0` sem caminho em todas. ⚠️ O pico de `80 mil` do produto não se vê no relógio: o pior tique depois da porta a
+`10` agentes fica em `6,5–6,8 ms` em TODAS as versões (só como razão, load alto).
+
+### §27.6 — C: onde estão os nós (`target/prova/w18/diag_nos*.txt`, a cena grande, `60` consultas, `14 571` polígonos)
+
+O registo de cada nó EXPANDIDO (o `f` com que saiu do heap, o custo da região, a aresta, a raiz e o intervalo),
+classificado contra as outras frentes da MESMA aresta (polígono, entrada) em `17` amostras do intervalo. ⚠️ A 1.ª
+leitura misturava a fase GERAL (a procura sem custos que corre antes da ponderada, sem dominância) com a
+ponderada, e acusava `24 %` de nós dominados que a dominância «deixava»; o tecto amostrado (abaixo) desmentiu-a,
+e separar as fases explicou-o.
+
+| | peso 4 | peso 10 |
+|---|---|---|
+| expandidos / consulta (sem custo: `5 205`) | `24 176` | `29 142` |
+| da fase GERAL | `21,5 %` | `17,9 %` |
+| refractam (o custo muda na aresta) | `14,0 %` | `14,7 %` |
+| 1.º na aresta | `11,7 %` | `12,0 %` |
+| dominados inteiros pelas ANTERIORES do mesmo custo — **os que a dominância de hoje já corta** (`2 553 · 3 044` / consulta) | `10,6 %` | `10,5 %` |
+| … contando as de outro custo | `0,0 %` | `0,0 %` |
+| dominados só pelas POSTERIORES (a ordem do A*) | `9,9 %` | `11,9 %` |
+| dominados em parte | `31,5 %` | `32,1 %` |
+| não dominados | `0,7 %` | `1,0 %` |
+| `f / C* < 0,8` (o que um heurístico mais apertado poderia cortar) | `6,1 %` | `15,8 %` |
+
+Os tectos, medidos no mesmo processo (custo contra o de hoje igual ao bit em todos):
+
+| alavanca | nós / consulta (peso 4 · 10) | ÷ hoje |
+|---|---|---|
+| C4 a dominância até ao ponto fixo (repetir a passagem até nada mudar) | `23 923 · 28 798` | `0,990 · 0,988` |
+| **o tecto de QUALQUER dominância contra as anteriores** (amostrada, mesmo custo ou qualquer) | `24 167 · 29 131` | `0,9996` |
+| a fase geral inteira (o tempo da procura sem custo nas mesmas consultas) | — | `~10 %` do tempo (`41–61` de `420–580 ms`) |
+
+### §27.7 — Contra os kill-criteria
+
+| item | veredito |
+|---|---|
+| **S** | ✓ a cena 5, os gates pela cena real com o CONTROLO, o censo e o roteador verdes, `CENAS = 5`, fotografada, a página no `03_navegacao.pdf` — e um controlo morto curado no caminho (o `Cost` ao vivo). |
+| **A** | ✗ **recusa medida.** T1 e T3 cumprem o crítico e reprovam a vivacidade (a aritmética da §27.5); T2 a cumpre e não mexe no crítico. Sem tecto escolhido o A4 não se re-mede por cima dele, e fica recusa (W17) — mesmo com T3 + A4 a dar `4` no atraso. O critério foi escrito ANTES e não se muda. |
+| **C** | ✗ **recusa medida.** A dominância de hoje já está no tecto do que frentes anteriores podem cortar (`0,04 %` a mais); o heurístico toca `6–16 %` dos nós; a fase geral `~10 %` do tempo. Nem somados chegam a metade: o resto são nós que todo A* deste desenho expande (1.º na aresta, refracções, frentes que só a ORDEM deixou passar, dominadas em parte). |
+
+### §27.8 — ⛔ Recusas MEDIDAS (W18)
+
+| recusado | medição |
+|---|---|
+| T1: a fatia não cresce, quem recomeçou vai à frente | crítico `20 mil`, mas a procura NUNCA acaba numa malha que muda de 2 em 2 tiques |
+| T2: só dobra quem pausou com o orçamento inteiro | vivo, crítico igual ao do produto (`80 mil` a `10` e `50` agentes) |
+| T3: a dobra satura em `2` | crítico `40 mil`, a procura nunca acaba na malha inquieta |
+| T1/T2/T3 + A4 | sem tecto que entre, o A4 fica recusa (`4` no atraso só com T2/T3) |
+| C4: a dominância até ao ponto fixo | `−1 %` de nós |
+| qualquer dominância contra as frentes anteriores | o tecto amostrado corta `0,04 %` |
+| um heurístico mais apertado | só `6–16 %` dos nós têm `f < 0,8 C*` |
+| saltar a fase geral | `≤ 10 %` do tempo, e ela é a saída cedo quando a lama não toca o caminho |
+| a cena 5 com herói e perseguidores | os seis cercavam e prendiam o herói; um perseguidor a cruzar empurrava os corredores parados para a lama |
+
+### §27.9 — A prova
+
+(No fecho: o gate batched, a mutação, a foto.)
+
+### §27.10 — ⏳ O que fica
+
+- **O crítico do tique** chega a `orçamento · 2^k` (`80 mil` a `10` e `50` agentes na cena de stress) — é o preço
+  da vivacidade numa malha que nunca pára, e não se vê no relógio. Fechado como escolha: não há tecto que não a
+  parta (§27.5).
+- **Quem persegue sem o alvo à vista**, na lama cerrada: máx `30` tiques a `200` agentes — o A4 que o leva a `4`
+  só cabe com um tecto que a vivacidade não deixa.
+- **A procura ponderada** fica no que é: a dominância no tecto, o resto é o A* deste desenho. Metade do tempo
+  pediria OUTRO desenho (outra procura), não outra alavanca.

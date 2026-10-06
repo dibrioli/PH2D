@@ -57,8 +57,9 @@ pub const NASCEM_Y: f32 = -1.3;
 /// outros e o desvio deles empurrava um para a borda da lama).
 pub const BANDEIRAS_X: [f32; 3] = [1.6, 2.4, 3.2];
 pub const BANDEIRAS_Y: f32 = 1.5;
-/// Devagar: a volta dos da direita leva `≈ 5 s` — o dono vê-a, e vê-os virar quando muda o `Cost`.
-const VELOCIDADE: f32 = 1.2;
+/// Devagar: a travessia da esquerda leva `≈ 4 s` e a volta da direita `≈ 7 s` — o dono vê-as, e vê-os
+/// virar quando muda o `Cost` (a `1,2 m/s` a esquerda já tinha atravessado quando a janela abria).
+const VELOCIDADE: f32 = 0.8;
 
 /// As peças da cena `=5`.
 pub struct Lama {

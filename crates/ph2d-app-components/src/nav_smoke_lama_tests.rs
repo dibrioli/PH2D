@@ -76,9 +76,13 @@ fn a_leve_atravessa_se_a_pesada_contorna_se() {
 #[test]
 fn a_cena_tem_as_pecas_que_o_roteiro_nomeia() {
     let mut sim = SimWorld::new();
-    let l = crate::nav_smoke::montar(sim.world_mut(), 5)
-        .lama
-        .expect("a lama");
+    let m = crate::nav_smoke::montar(sim.world_mut(), 5);
+    // O passo do roteiro é o `Cost` da lama escolhida: a shell abre ESSA secção.
+    assert_eq!(
+        m.secao_do_roteiro(),
+        ph2d_editor_core::ids::INSP_LIVE_NAV_COST_AREA_SECTION
+    );
+    let l = m.lama.expect("a lama");
     let custo = |e| sim.world().get::<NavCostArea>(e).map(|a| a.cost);
     assert_eq!(custo(l.leve), Some(CUSTO_LEVE));
     assert_eq!(custo(l.pesada), Some(CUSTO_PESADA));

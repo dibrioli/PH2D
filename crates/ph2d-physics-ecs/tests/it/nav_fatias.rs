@@ -597,7 +597,9 @@ fn perseguir_a_vista(vista: bool, poca: bool) -> (usize, bool) {
         })
         .collect();
     let mut b = PhysicsBridge::new();
-    b.set_nav_sight(vista);
+    if !vista {
+        b.set_nav_sight(false);
+    }
     let mut cena = HeroiInquieto { heroi };
     b.dispatch_with_scene(&mut sim, true, 1, &mut cena);
     b.set_nav_replan_budget(1);

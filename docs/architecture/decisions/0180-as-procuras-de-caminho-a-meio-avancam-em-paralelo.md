@@ -64,3 +64,20 @@ inteira (plano 30 §23.5).
 | subir o orçamento | o tique sobe a `15 ms` e ainda há quem espere (§23.4) |
 | `PROCURAS_EM_PARALELO` = os núcleos da máquina | o resultado dependia da máquina |
 | guardar a malha velha para a procura a meio acabar nela | o anel reteria uma versão da malha por âncora (`~3 MB` cada) |
+
+## Adenda (plano 30 §25, D — 2026-10-05): o custo numa thread, e o que a web exige
+
+**Medido** (`medir_replaneio`, as versões no mesmo processo, o pool de UMA thread ao lado do de todos, 7 rodadas
+intercaladas; `150` lamas): o resultado é o MESMO ao bit (o trabalho e a espera de cada versão são iguais nos dois
+pools), mas numa thread o passo em paralelo paga as fatias todas — o pior tique depois da porta a `10 · 50 · 200`
+agentes é `9,2 · 16,6 · 40,6 ms` contra `6,5 · 7,2 · 10,5` com todos os núcleos (a procura inteira, antes da W15:
+`40 · 52 · 50`; a 2.ª rodada, load `4–8`).
+
+**Recusado, medido:** menos procuras em paralelo (`8`: quem persegue espera até `149` tiques; `4`: `57` sem caminho)
+e um tecto do trabalho TOTAL do passo em paralelo (`8` orçamentos: uma thread a `33 ms` e a espera até `151`; `4`:
+`96` sem caminho). A vazão que a cena de stress pede é o que uma thread paga; limitar o trabalho troca o tique pela
+espera. ⛔ E o número pelos núcleos da máquina continua recusado (o resultado dependeria dela).
+
+**⇒ A exigência para a shell web** (nenhuma existe hoje no repo): o pool do `rayon` sobre Web Workers (memória
+partilhada, isolamento cross-origin) — com ele o tique da web paga o caminho crítico, como o desktop, e o resultado
+não muda (gate `o_passo_em_paralelo_da_o_mesmo_com_uma_thread_e_com_oito`). Sem ele, a web paga a tabela acima.

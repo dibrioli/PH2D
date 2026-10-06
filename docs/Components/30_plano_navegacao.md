@@ -1846,3 +1846,153 @@ um golpe: os projécteis saem do desvio (`nav_desvio`, `projectile_state`).
 **A prova:** gate `o_morcego_desenhado_nunca_entra_na_lava` (o herói parado dentro da lava junto à borda, `30 s`;
 a fixtura exige morcegos rente a ela); `um_tiro_mata_um_morcego` como estava. Mutações à mão: o corpo de volta à
 bola sangra o 1.º, as balas de volta ao desvio sangram o 2.º.
+
+## §25 — W16 (2026-10-05): o aberto da W15 num ciclo só (CLAUDE.md §0.10)
+
+Os seis itens do briefing de 05/10, um plano. ⚠️ **A ordem, dita sem enfeite:** os critérios de A, B e E são os do
+briefing, sem mudança; o texto desta secção foi escrito DEPOIS do código de A, B e E (que se fez com eles à frente) e
+ANTES de a 2.ª rodada de medição decidir C2 e D. **Série declarada:** C2 e D dependem da 1.ª rodada (ela mediu que
+nenhum `PROCURAS_EM_PARALELO` menor serve — a cura de D tinha de ser outra), por isso há DUAS rodadas; A, B e E são
+independentes e foram em paralelo.
+
+### §25.1 — Os kill-criteria
+
+| item | entra se | senão |
+|---|---|---|
+| **A** o desenho maior que o corpo | um CENSO de todas as cenas da família (`FAMILY.routers × 1..=max_level`) vermelho antes e verde depois, com população afirmada (cenas = a soma dos níveis; corpos ≥ o piso medido) e um CONTROLO; nenhum gate de trajecto muda | — |
+| **B** a barreira larga e lenta | os três casos de `nav_desvio_largo` chegam em `≤ 2×` o CONTROLO parado, sem tocar (folga `> 0,05`) nem recuar; «à frente» não piora; o resto da crate sem mudar um número | a fileira de tangentes fica recusa medida |
+| **C1** o tique com lama | o trabalho TOTAL por porta de B `≤` o da A (a vez não desperdiça) e o CONTROLO de B `≤` o da A na mesma cena ⇒ é a repartição, sem código | procurar o desperdício |
+| **C2** o perseguidor com a fila cheia | o atraso (tiques seguidos com a procura pedida e por servir: máx · média) na cena de stress `≤` o da A, sem piorar as outras colunas mais de `10 %` | recusa medida |
+| **D** a web (uma thread) | numa thread, o pior tique depois da porta `≤ 2×` o de todos os núcleos, com `≤ 10 %` sem caminho, a `falta` `≤ +10 %` e o atraso de C2 sem piorar — e o resultado igual com 1 e com N threads (o gate da W15) | o custo numa thread fica medido e escrito (o ADR-0180) |
+| **E** a mutação `S5` | uma fixtura que a separa (vermelha sem a guarda `sem_zona`) | provar a guarda redundante e cortá-la |
+| **F** higiene | `line-Components2` conferida; o ADR-0180 recontado no fecho | — |
+
+### §25.2 — A 1.ª rodada (`target/prova/w16/medir_replaneio_rodada1.txt`)
+
+A régua do dono de 05/10: as versões no MESMO processo (`set_nav_slices`, `set_nav_parallel`, e um pool `rayon` de
+UMA thread ao lado do de todos — a web), 7 rodadas intercaladas com a ordem rodada, o mínimo (a mediana como
+controlo), perfil `smoke`, load `4,0–8,0`. A sonda ganhou `10` perseguidores de uma PRESA que anda em círculo (a
+régua de C2) e o trabalho total por porta (a de C1). `150` lamas, `200` agentes:
+
+| versão | pior tique depois da porta | CONTROLO | trabalho por porta | atraso do perseguidor (máx · média) | sem caminho |
+|---|---|---|---|---|---|
+| A inteira | `47,6 ms` | `62,5` | `7,66 M` | `15 · 6,6` | `0` |
+| B W15 (16 em paralelo) | `11,3` | `8,0` | `4,07 M` | **`52 · 8,7`** | `0` |
+| B W15 · uma thread | **`40,8`** | `26,4` | igual | igual | `0` |
+| B 8 em paralelo · uma thread | `29,2` | `29,9` | `4,48 M` | **`149 · 54,5`** | `0` |
+| B 4 em paralelo | `12,4` | `6,9` | `2,25 M` | — | **`57`** |
+| B 2 em paralelo | `13,0` | `5,9` | `1,15 M` | — | **`138`** |
+
+Sem lama, a `200` agentes, o atraso do perseguidor é `15 · 4,7` (A) contra **`17 · 15,3`** (B) — o «um tique de
+atraso a mais» do §23.8 era muito pior.
+
+- **C1 fecha pela medição, sem código:** B gasta MENOS trabalho por porta que A em toda a cena (`0,92 M` contra
+  `1,66 M` a `10` agentes; `4,07` contra `7,66` a `200`), e o CONTROLO de B fica abaixo do de A (`4,5 · 4,9 · 8,0 ms`
+  contra `6,6 · 32,9 · 62,5` a `10 · 50 · 200`). O `6,4 ms` contra `0,7` da W15 comparava B COM lama com a cena SEM
+  lama: é o trabalho da porta repartido pelos tiques seguintes, e é menos que o da A.
+- **D:** o resultado é o mesmo com 1 e com 16 threads (as colunas de trabalho e de atraso são iguais ao bit), mas numa
+  thread o passo paga as fatias todas (`40,8 ms`). Nenhum `PROCURAS_EM_PARALELO` menor serve: `8` atrasa quem persegue
+  `149` tiques, `4` deixa `57` sem caminho. ⇒ a cura tem de limitar o TRABALHO do passo, não o número de procuras.
+- **C2:** quem persegue espera porque a procura dele entra atrás de todas as outras (a mais adiantada primeiro).
+
+### §25.3 — Os candidatos da 2.ª rodada (desenho, antes da medição que os decide)
+
+- **C2 — o alvo À VISTA** (`ph2d_nav::agent::a_vista`): se a recta até ao alvo se anda dentro da malha com o custo do
+  comprimento, nenhum custo da tabela é menor que `1` e não há atalhos, a recta É o caminho mais curto (todo caminho
+  mede pelo menos a recta e custa pelo menos o que mede) — instala-se sem procura e sem a vez, e a procura a meio
+  larga-se. É o que a procura devolveria; só o tique em que chega muda.
+- **D — o tecto do trabalho TOTAL do passo em paralelo** (`Sonda::teto_paralelo`, em orçamentos): a fatia de cada
+  procura a meio é `min(orçamento, tecto / quantas)`. Quem avança e quanto continua decidido antes de correr — o
+  resultado não depende das threads; numa thread o passo paga no máximo o tecto. Medem-se `8` e `4` orçamentos.
+
+### §25.4 — A 2.ª, a 3.ª e a 4.ª rodadas (`…rodada{2,3,4}.txt`) — em série, e porquê
+
+- **A 2.ª** mediu os dois candidatos. O alvo à vista deu as colunas IGUAIS ao bit às da W15 na sonda — os
+  perseguidores do campo de `1 000` caixas nunca têm a presa à vista a `15 m`; num campo aberto (o gate abaixo) os
+  oito perseguidores de um herói que salta, com um orçamento de `1`, passam de `195` tiques-agente à espera a **`0`**.
+  O tecto do passo em paralelo **não serve** (`150` lamas, `200` agentes):
+
+  | tecto (orçamentos) | uma thread: pior tique depois da porta | todos os núcleos | atraso (régua da 1.ª) | sem caminho |
+  |---|---|---|---|---|
+  | nenhum (a W15) | `40,6 ms` | `10,5` | `52 · 8,7` | `0` |
+  | `8` | `33,0` | `13,1` | **`151 · 51,9`** | `0` |
+  | `4` | `22,9` | `14,6` | `167 · 38,9` | **`96`** |
+
+  ⇒ a vazão que a cena de stress pede (`~4 M` de trabalho por porta, `~127 mil` por tique) é o que UMA thread paga;
+  limitar o trabalho troca o tique pela espera. A 3.ª rodada nasceu daqui: o atraso vinha da ORDEM do passo em
+  paralelo (a procura de quem persegue começa com trabalho `0`, atrás de todas) — mediu-se dar-lhe a vez primeiro.
+- **A 3.ª** mediu a procura de quem persegue primeiro com a régua da 1.ª: `52 · 8,7 → 42 · 7,2` a `200`, e nada sem
+  lama. A régua estava ERRADA: contava como espera a dívida da porta, em que o perseguidor anda um caminho que ainda
+  serve. **A 4.ª** mediu com a régua certa — os tiques em que fica por acabar a procura pedida porque o alvo andou
+  (`AMeio::persegue`) — com load `56–62` (outras linhas a compilar: o relógio desta rodada não vale; as colunas de
+  trabalho e de espera não dependem dele):
+
+  | `150` lamas | atraso do perseguidor (máx · média) a 10 · 50 · 200 | crítico (máx) a 200 | trabalho por porta a 200 |
+  |---|---|---|---|
+  | A inteira | `0 · 0` em todos | `789 mil` | `7,66 M` |
+  | B W15 (= B vista, nenhum à vista) | `5 · 1,6 · 4 · 1,6 · 30 · 2,2` | `40 mil` | `4,07 M` |
+  | B quem persegue primeiro | `5 · 1,6 · 4 · 1,6 · ` **`4 · 1,7`** | **`160 mil`** | `4,31 M` |
+
+  Sem lama o atraso real é `0` a 10 e 50 agentes e `1 · 1,0` a `200` — o «um tique» do §23.8 estava certo; o
+  `52 · 8,7` da 1.ª rodada era a régua.
+
+### §25.5 — Contra os kill-criteria
+
+| item | veredito |
+|---|---|
+| **A** | ✓ o censo `nenhuma_cena_de_smoke_desenha_fora_do_corpo` vermelho antes (`58` desenhos fora em `41` cenas, `130` corpos), verde depois (`42` cenas com a arma, `139` corpos, o piso afirmado), com o CONTROLO; nenhum corpo mudou ⇒ os `842` gates da crate passam sem mudar um número. A decisão, por caso, abaixo. |
+| **B** | ✓ `194 · 200 · 207` tiques contra o CONTROLO parado `194 · 198` (`≤ 1,05×`); sem o contorno `213 · 578 · 311`; folga `0,30 · 0,30 · 1,00 m`, recuo `0`; «à frente» `216 → 205`. A crate inteira (`831`) passa sem mudar um gate. |
+| **C1** | ✓ sem código: B gasta MENOS por porta que A (`0,92` contra `1,66 M` a `10`; `4,07` contra `7,66` a `200`) e o CONTROLO de B fica abaixo do de A. O `6,4 ms` contra `0,7` da W15 comparava B com lama com a cena sem lama. |
+| **C2** | ⚠️ o critério como escrito («`≤` o da A») é inatingível com QUALQUER orçamento — a A paga o pico, e o pico é o que a W15 tirou. Medido: o atraso real é `≤ 1` tique sem lama, `≤ 2,2` em média com `150` lamas (máx `30` a `200` agentes). **Entra o alvo à vista** (é a resposta da procura — não pode piorar nada — e tira a espera onde o alvo se vê); **recusada** a procura de quem persegue primeiro (máx `30 → 4`, mas o crítico `40 → 160 mil`: o pico de volta). |
+| **D** | ✗ nenhuma cura cumpre: numa thread o pior tique a `200` agentes no stress é `40,6 ms` (a A: `49,6`); com menos procuras em paralelo ou um tecto do trabalho, ou o tique, ou a espera, ou os sem caminho pioram. ⇒ o custo fica escrito no ADR-0180, com a exigência para a web: o `rayon` sobre Web Workers (o resultado não muda — o gate de 1 contra 8 threads). Nenhum build web existe hoje no repo. |
+| **E** | ✓ a fixtura `um_scrub_com_a_zona_de_outra_porta_no_fim_devolve_a_mesma_corrida` sangra sem a guarda (`o scrub para 31`). |
+| **F** | ✓ `line-Components2` já não existe (nem a worktree, nem o ramo); o ADR-0180 continua livre no `main` e nas seis worktrees (máximo `0179`). |
+
+**A decisão de A, por caso** (a regra: um corpo que RODA no sítio para encarar o movimento fica bola — uma caixa
+que roda entra na parede sem teste —, e quem não roda pode ser a forma desenhada):
+
+| caso | cura | porquê |
+|---|---|---|
+| quadrado `2r` sobre bola `r` (os bonecos das cenas de navegação, os heróis da vista de cima, da paralaxe, do recomeço e do abanão, o alvo dos projécteis) | desenho = o DISCO do corpo (`DISC_TILE_KEY`, novo no atlas) | o desenho passa a ser o corpo, ao texel; nenhum trajecto, passagem estreita ou `const assert` muda |
+| barra sobre bola, herói `ToMovement` (gatilho, golpe, vida `1–4`, tipos, arena) | o disco do corpo + o filho «Rumo» (dentro do disco, `0,98 r`) | roda: tem de ficar bola; a barra dizia para onde ele olha, o «Rumo» continua a dizê-lo |
+| barra sobre bola, projéctil (`face_velocity`, por omissão) e os emissores das partículas | o disco do corpo | roda; e é um MOLDE de fábrica — um filho não viaja com a cópia |
+| a moeda (`0,45` sobre a caixa `0,44`) | o desenho com a constante do corpo | `5 mm` fora: a mesma constante nos dois |
+| o morcego (caixa desenhada, W15) | — | já era o corpo |
+
+### §25.6 — ⛔ Recusas MEDIDAS
+
+| recusado | medição |
+|---|---|
+| `PROCURAS_EM_PARALELO` menor (`8 · 4 · 2`) | `8`: perseguidores à espera até `149` tiques; `4`: `57` sem caminho; `2`: `138` (`150` lamas, `200` agentes) |
+| um tecto do trabalho TOTAL do passo em paralelo (`8` · `4` orçamentos) | `8`: uma thread `33 ms` mas espera até `151`; `4`: `96` sem caminho |
+| a procura de quem persegue primeiro | máx `30 → 4`, mas o crítico `40 → 160 mil` (cada recomeço de uma procura adiantada DOBRA a fatia) |
+| o desenho dentro de uma bola encolhida (quadrado inscrito) | o que se via deixava de tocar a `0,29 r` das faces — a mentira ao contrário; o disco é o corpo exacto |
+| um corpo-caixa para quem roda (herói, projéctil) | rodar no sítio não passa pelo teste de colisão: a caixa entraria na parede |
+
+### §25.7 — A prova
+
+Gates novos: `nenhuma_cena_de_smoke_desenha_fora_do_corpo` (o censo, `ph2d-app-components`) + o CONTROLO dele
+`o_censo_ve_um_quadrado_sobre_uma_bola_e_aceita_o_disco` + `todo_roteador_que_a_shell_le_esta_na_familia` (`23`
+roteadores) · `the_disc_tile_covers_the_inscribed_circle_and_nothing_outside_it` (`ph2d-render`; o teste da GPU
+pede as peças reservadas juntas, e o branco sozinho deixou de ser público) · `o_caminho_contorna_um_corpo_pela_tangente_do_lado_mais_curto`
+· `um_corpo_largo_que_vem_de_frente_e_contornado` (reescrito: `≤ 2×` o CONTROLO parado, o CONTROLO sem o contorno
+a passar os `2×`, e os tiques em que o desvio corta o pedido `≤ 10`) · `o_alvo_a_vista_e_so_a_recta_que_nenhum_caminho_bate`
+(`ph2d-nav`) · `quem_persegue_um_alvo_a_vista_nao_espera_a_vez` (+ CONTROLOS sem a vista e com a lama no meio) ·
+`um_scrub_com_a_zona_de_outra_porta_no_fim_devolve_a_mesma_corrida`. Os gates da LEI DA FILA (`nav_nascer`) correm
+sem a vista (todo alvo deles está à vista); o dos nascidos com a fila cheia (`nav_mundo`) põe o alvo atrás da parede.
+
+Mutação **18 / 18** ([`mutacao_navegacao_w16_2026-10-05.py`](ferramentas/mutacao_navegacao_w16_2026-10-05.py), o
+motor da W15), zero defeitos de arnês, árvore igual antes e depois. A 1.ª corrida deu `15 / 18`: `B7` e `V5` (o
+contorno e a vista desligados por omissão) sobreviviam porque os gates LIGAVAM a alavanca à mão — agora correm o
+produto por omissão e só o CONTROLO a desliga; `B2` (a tangente sem a folga do desvio) sobrevivia porque chegar
+quase não muda (`207 → 214` tiques) — o que a folga compra é não apontar para onde o desvio proíbe: o gate conta os
+tiques em que ele corta o pedido (`0 · 0 · 7` contra `51 · 58 · 95`).
+
+### §25.8 — ⏳ O que fica
+
+- **A web numa thread** paga as fatias do passo em paralelo (`40,6 ms` a `200` agentes no stress): a cura é da shell
+  web que ainda não existe — o `rayon` sobre Web Workers (ADR-0180, adenda).
+- **Quem persegue sem o alvo à vista**, na lama cerrada: `≤ 2,2` tiques em média, máx `30` a `200` agentes. A única
+  alavanca medida que o encurta (a vez primeiro) traz o pico de volta pela DOBRA da fatia de um recomeço — uma cura
+  teria de mudar essa dobra só para elas, e não foi medida.
+- A dominância da procura ponderada (§22.4), como estava.

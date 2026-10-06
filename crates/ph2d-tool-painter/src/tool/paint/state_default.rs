@@ -286,6 +286,7 @@ impl Default for PaintState {
             wet_smear_pos: None,
             wet_level_smear_pos: None,
             wet_frame_dirty: None,
+            wet_frame_linhas: Vec::new(),
             wet_cum_dirty: None,
             wet_stroke_dirty: None,
             inpaint_mask: Vec::new(),

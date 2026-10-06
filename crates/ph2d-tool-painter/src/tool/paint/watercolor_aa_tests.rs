@@ -112,6 +112,11 @@ fn the_smooth_edges_click_flips_the_mode() {
 /// e descia 1 degrau em 7 bytes escuros (3, 4, 7, 8, 11, 14, 17). Nesta fixture: **405 bytes em 135 px,
 /// todos por exactamente 1** (`0x9744233f9f852066` → `0x03c97ba0b481a619`).
 ///
+/// **4º movimento (2026-10-05) — o ponto deslocado soma-se na TELA** (BUGS #36): `gx + dx` em vez de
+/// `lx + dx` (a soma arredondava à escala da janela, e o quadro e a recomposição total liam o aro em
+/// pontos diferentes). Nesta fixture: **3 bytes em 1 px, por 1** (`0x03c97ba0b481a619` →
+/// `0x794806029e6d31d0`). Ablação: com a soma local de antes o pino volta ao bit.
+///
 /// ⚠️ **E ele move num traço RETO de propósito, não por acidente:** esta fixture tem `warp = 6`, e um
 /// contorno ondulado é localmente **côncavo** em metade das ondas. É a mesma correção da quina, na
 /// escala da ondulação — o que confirma que a lei antiga errava em toda concavidade, e não só no
@@ -126,7 +131,7 @@ fn smooth_edges_off_is_the_pre_aa_render_byte_for_byte() {
     let hard = wc_stroke_hard(256, 40.0, 6.0, &pts);
     assert_eq!(
         canvas_hash(&hard),
-        0x03c9_7ba0_b481_a619,
+        0x7948_0602_9e6d_31d0,
         "Smooth Edges OFF must render the hard-mode composite byte-for-byte"
     );
     // And the two modes genuinely differ where the AA lives (the rim) — the checkbox is not dead.
@@ -427,4 +432,16 @@ fn the_smooth_edges_checkbox_is_not_dead_under_dilution() {
              Dilution > 0)"
         );
     }
+}
+
+/// SONDA — despeja a tela de [`smooth_edges_off_is_the_pre_aa_render_byte_for_byte`] em
+/// `$PH2D_DESPEJA/sem_aa.rgba` (a medida de um re-pino contra a lei revertida).
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_despeja_o_traco_sem_aa() {
+    let Ok(dir) = std::env::var("PH2D_DESPEJA") else {
+        return;
+    };
+    let hard = wc_stroke_hard(256, 40.0, 6.0, &[[70.0, 128.0], [186.0, 128.0]]);
+    std::fs::write(format!("{dir}/sem_aa.rgba"), &hard).expect("escreve");
 }

@@ -121,6 +121,7 @@ impl PainterTool {
             self.paint.wet_cum_dirty = None;
         }
         self.paint.wet_frame_dirty = None;
+        self.paint.wet_frame_linhas.clear();
         self.paint.wet_mistura.novo_traco(); // o `proprio` da mistura molhada é deste traço só
         self.paint.wet_mistura.ha_tinta_da_sessao = wet_session; // o Smudge sobre tinta molhada
         // THIS-stroke footprint restarts every stroke (even continuing a wet session): only what THIS
@@ -397,8 +398,11 @@ impl PainterTool {
         // what the artist sees this frame is fully reconstructed — the deferral costs no latency.
         self.paint.dabs = dabs;
         self.park_stroke(stroke); // antes do composite — ver o `paint_begin`
-        if wet && (stamped || (!parked && !self.wash.per_event)) {
+        let compoe = wet && (stamped || (!parked && !self.wash.per_event));
+        if compoe || (wet && self.wash.recompoe_tudo) {
             self.apply_watercolor(false);
+        }
+        if compoe {
             self.pour_canvas_wet(); // #2: live moisture on the held/settling heartbeat too
         }
     }

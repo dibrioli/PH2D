@@ -23,8 +23,9 @@
 //!    ([`PainterTool::descasca_a_mancha_sob`] — a `dab_batch_region`, a mesma em que o composite
 //!    confia), e a janela fica marcada;
 //! 2. no fecho do evento o papel sem mancha é refrescado nas janelas marcadas, e só os texels cuja
-//!    cobertura mudou são repostos e re-depositados ([`PainterTool::atualiza_a_mancha`]); o quadro
-//!    recompõe só a caixa deles.
+//!    cobertura mudou são repostos e re-depositados ([`PainterTool::atualiza_a_mancha`]), comparados
+//!    linha a linha; o quadro recompõe as FAIXAS dessas linhas, fundidas pelo custo medido de uma
+//!    janela ([`janelas_do_quadro`]) — a caixa de um triângulo fino é quase toda papel parado.
 //!
 //! A rota de antes (descascar e repor a caixa inteira) fica em `WashCadence::mancha_inteira` — o
 //! oráculo ao byte (`a_mancha_incremental_e_a_inteira_ao_byte`) e a metade A de uma medição A×B.
@@ -54,6 +55,49 @@ pub(crate) struct ManchaNaAguada {
     /// evento há texels onde a mancha NÃO saiu, e refrescar a caixa copiava a mancha para o papel
     /// sem ela (medido: cobertura `5` onde a rota inteira dá `0`, o gate ao byte apanhou-o).
     sujo: Vec<Region>,
+}
+
+/// A altura (linhas) de uma FAIXA do quadro da mancha. Medido (`diag_a_geometria_do_quadro_da_mancha`,
+/// laço de 1000 px em `2048²`, pad 15): a caixa única lia `231 519` px por quadro; faixas de 64
+/// fundidas pelo [`JANELA_CUSTA_PX`] `~140 k` em `~2` janelas (as de 128 dão o mesmo; as de 32 fundem
+/// pior).
+const FAIXA_DA_MANCHA: usize = 64;
+
+/// O custo FIXO de uma janela do composite, em texels de leitura: medido `0,17 ms` para uma saída de
+/// 1 texel contra `12,7 ns` por texel de leitura nas janelas grandes (`2048²`, `smoke`, a mesma sonda).
+/// Duas janelas fundem-se quando caminhar a fusão não custa mais que as duas separadas mais isto.
+const JANELA_CUSTA_PX: usize = 13_000;
+
+/// As janelas do quadro: os rectângulos de saída `rects` fundidos, por ordem de `y`, sempre que a
+/// janela de LEITURA da fusão (`⊕ 2·pad` por lado, recortada à tela `fw × fh`) não caminha mais que as
+/// duas separadas mais [`JANELA_CUSTA_PX`].
+pub(super) fn janelas_do_quadro(
+    mut rects: Vec<Region>,
+    pad: usize,
+    (fw, fh): (usize, usize),
+) -> Vec<Region> {
+    let leitura = |r: Region| {
+        let (x0, y0) = (
+            (r.x as usize).saturating_sub(2 * pad),
+            (r.y as usize).saturating_sub(2 * pad),
+        );
+        let x1 = ((r.x + r.w) as usize + 2 * pad).min(fw);
+        let y1 = ((r.y + r.h) as usize + 2 * pad).min(fh);
+        x1.saturating_sub(x0) * y1.saturating_sub(y0)
+    };
+    rects.sort_by_key(|r| (r.y, r.x));
+    let mut out: Vec<Region> = Vec::with_capacity(rects.len());
+    for r in rects {
+        if let Some(u) = out.last_mut() {
+            let m = super::union_region(*u, r);
+            if leitura(m) <= leitura(*u) + leitura(r) + JANELA_CUSTA_PX {
+                *u = m;
+                continue;
+            }
+        }
+        out.push(r);
+    }
+    out
 }
 
 /// Bytes por texel de cada plano: a cor é RGBA, o resto é um byte.
@@ -168,6 +212,66 @@ impl PainterTool {
         );
     }
 
+    /// **O composite do quadro, janela a janela** — a do `wet_frame_dirty` e as FAIXAS da mancha
+    /// ([`janelas_do_quadro`]), por ordem de `y`. Janelas que se sobrepõem compõem os mesmos bytes: o
+    /// composite é o mesmo em qualquer janela (gates `o_quadro_da_aguada_e_o_da_recomposicao_total` e
+    /// `o_composite_e_o_mesmo_em_qualquer_janela`). O cache da reserva basta com o sujo de CADA
+    /// janela: o que uma janela lê velho de uma mudança de outra cai na saída dessa outra (o alcance
+    /// é o `pad`), que corre depois e o reescreve — a mutação que passava o sujo de todas sobrevive.
+    /// O pen-up (`commit`) e o oráculo da recomposição total ficam com uma janela só.
+    pub(super) fn compoe_as_janelas_do_quadro(&mut self, commit: bool) -> Option<Region> {
+        let mut linhas = std::mem::take(&mut self.paint.wet_frame_linhas);
+        let main = self.paint.wet_frame_dirty;
+        if commit || self.wash.recompoe_tudo || linhas.is_empty() {
+            let caixa = linhas.iter().map(|&(y, a, b)| Region {
+                x: a,
+                y,
+                w: b - a + 1,
+                h: 1,
+            });
+            self.paint.wet_frame_dirty = caixa.chain(main).reduce(super::union_region);
+            return self.apply_watercolor_inner(commit, None);
+        }
+        // As linhas da janela dos dabs entram também (o vão de cada linha de saída sai delas).
+        if let Some(r) = main {
+            linhas.extend((r.y..r.y + r.h).map(|y| (y, r.x, r.x + r.w - 1)));
+        }
+        linhas.sort_unstable();
+        linhas.dedup_by(|b, a| {
+            let mesma = a.0 == b.0;
+            if mesma {
+                (a.1, a.2) = (a.1.min(b.1), a.2.max(b.2));
+            }
+            mesma
+        });
+        let faixas: Vec<Region> = linhas
+            .chunk_by(|a, b| a.0 as usize / FAIXA_DA_MANCHA == b.0 as usize / FAIXA_DA_MANCHA)
+            .map(|f| {
+                let (x0, x1) = f
+                    .iter()
+                    .fold((u32::MAX, 0), |(a, b), l| (a.min(l.1), b.max(l.2)));
+                let (y0, y1) = (f[0].0, f[f.len() - 1].0);
+                Region {
+                    x: x0,
+                    y: y0,
+                    w: x1 - x0 + 1,
+                    h: y1 - y0 + 1,
+                }
+            })
+            .collect();
+        self.paint.wet_frame_dirty = None;
+        let pad = self.alcance_da_janela().pad;
+        let tela = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let mut out: Option<Region> = None;
+        for j in janelas_do_quadro(faixas, pad, tela) {
+            self.paint.wet_frame_dirty = Some(j);
+            if let Some(r) = self.apply_watercolor_inner(false, Some(&linhas)) {
+                out = Some(out.map_or(r, |o| super::union_region(o, r)));
+            }
+        }
+        out
+    }
+
     /// Os acumuladores da aguada existem? (Nenhum carimbo ainda = não há sessão onde a pôr.)
     fn aguada_nasceu(&self) -> bool {
         let (fw, fh) = (self.source_size.0 as usize, self.source_size.1 as usize);
@@ -181,6 +285,11 @@ impl PainterTool {
         if !self.aguada_nasceu() {
             return;
         }
+        let fase = |k: usize, t: &mut std::time::Instant| {
+            crate::wash_diag::note_mancha(k, t.elapsed().as_secs_f32() * 1e3);
+            *t = std::time::Instant::now();
+        };
+        let mut t = std::time::Instant::now();
         let nova = self.solid_fill_rect(loops).filter(|r| r.w > 0 && r.h > 0);
         let mut m = match self.mancha_na_aguada.take() {
             Some(m) => m,
@@ -197,6 +306,7 @@ impl PainterTool {
                 m = self.cresce_o_registo(m, u);
             }
         }
+        fase(0, &mut t);
         // 1. O papel sem mancha é refrescado onde a tinta do evento caiu (lá a mancha foi tirada).
         for s in std::mem::take(&mut m.sujo) {
             let Some(i) = super::region::intersect_region(m.rect, s) else {
@@ -208,7 +318,10 @@ impl PainterTool {
                 }
             }
         }
-        // 2. A cobertura de AGORA, e só os texels que mudaram: repor o papel e depositar de novo.
+        fase(1, &mut t);
+        // 2. A cobertura de AGORA, e só os texels que mudaram: repor o papel e depositar de novo. A
+        //    comparação é por LINHA inteira (a fatia do registo contra a de agora) e só desce ao texel
+        //    nas linhas que mudaram — entre dois eventos muda o triângulo fino da corda.
         let regiao = nova.map(|r| {
             #[allow(clippy::cast_precision_loss)]
             let origin = [r.x as f32, r.y as f32];
@@ -217,25 +330,33 @@ impl PainterTool {
                 solid::fill_coverage(loops, r.w as usize, r.h as usize, origin),
             )
         });
-        let a_de = |x: usize, y: usize| -> u8 {
-            regiao.as_ref().map_or(0, |(r, c)| {
-                let dentro = x >= r.x as usize
-                    && y >= r.y as usize
-                    && x < (r.x + r.w) as usize
-                    && y < (r.y + r.h) as usize;
-                if dentro { c[em(*r, x, y)] } else { 0 }
-            })
-        };
+        fase(2, &mut t);
         let rect = m.rect;
-        let mut mudou: Option<(usize, usize, usize, usize)> = None;
+        let (rx, ry, rw) = (rect.x as usize, rect.y as usize, rect.w as usize);
+        let mut agora = vec![0u8; rw];
+        let mut linhas: Vec<(usize, usize, usize)> = Vec::new();
         let mut depositar = Vec::new();
-        for y in rect.y as usize..(rect.y + rect.h) as usize {
-            for x in rect.x as usize..(rect.x + rect.w) as usize {
-                let j = em(rect, x, y);
-                let c = a_de(x, y);
+        for row in 0..rect.h as usize {
+            let y = ry + row;
+            agora.fill(0);
+            if let Some((r, c)) = regiao.as_ref()
+                && y >= r.y as usize
+                && y < (r.y + r.h) as usize
+            {
+                let (o, w) = (r.x as usize - rx, r.w as usize);
+                let k = (y - r.y as usize) * w;
+                agora[o..o + w].copy_from_slice(&c[k..k + w]);
+            }
+            if m.cob[row * rw..(row + 1) * rw] == agora[..] {
+                continue;
+            }
+            let (mut x0, mut x1) = (usize::MAX, 0);
+            for (dx, &c) in agora.iter().enumerate() {
+                let j = row * rw + dx;
                 if c == m.cob[j] {
                     continue;
                 }
+                let x = rx + dx;
                 if m.cob[j] > 0 {
                     self.troca_o_texel(&mut m, x, y, true);
                 }
@@ -243,22 +364,21 @@ impl PainterTool {
                 if c > 0 {
                     depositar.push((x, y, c));
                 }
-                mudou = Some(mudou.map_or((x, y, x, y), |(a, b, cx, cy)| {
-                    (a.min(x), b.min(y), cx.max(x), cy.max(y))
-                }));
+                (x0, x1) = (x0.min(x), x1.max(x));
             }
+            linhas.push((y, x0, x1));
         }
         self.mancha_na_aguada = Some(m);
+        fase(3, &mut t);
         self.deposita_a_mancha(&depositar);
-        if let Some((x0, y0, x1, y1)) = mudou {
-            #[allow(clippy::cast_possible_truncation)]
-            self.marca_o_quadro(Region {
-                x: x0 as u32,
-                y: y0 as u32,
-                w: (x1 - x0 + 1) as u32,
-                h: (y1 - y0 + 1) as u32,
-            });
-        }
+        fase(4, &mut t);
+        // O quadro recompõe as linhas que mudaram ([`Self::compoe_as_janelas_do_quadro`]).
+        #[allow(clippy::cast_possible_truncation)]
+        self.paint.wet_frame_linhas.extend(
+            linhas
+                .iter()
+                .map(|&(y, a, b)| (y as u32, a as u32, b as u32)),
+        );
         if let Some(r) = nova {
             for dirty in [
                 &mut self.paint.wet_cum_dirty,

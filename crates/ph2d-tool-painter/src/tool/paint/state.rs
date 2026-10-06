@@ -634,15 +634,15 @@ pub(crate) struct PaintState {
     /// o centro do último dab ORIGINAL (nunca uma cópia de Tiling). Irmã da de cima, e separada de
     /// propósito — a de cima avança por LOTE depois do depósito; esta avança por DAB dentro dele.
     pub(super) wet_level_smear_pos: Option<[f32; 2]>,
-    /// **Watercolor render-path** per-frame dirty rect — the union footprint of the dabs accumulated
-    /// since the last optical composite (wet_edges `fMin..fMax`/`resetFrame`). The live
-    /// [`Self::apply_watercolor`] recomposites ONLY this (padded by the influence radius), so the
-    /// per-frame cost tracks the new dabs, not the whole stroke. Consumed (reset) by each composite.
+    /// **Watercolor render-path** per-frame dirty rect — the dabs since the last optical composite
+    /// (wet_edges `fMin..fMax`/`resetFrame`); the live [`Self::apply_watercolor`] recomposites ONLY
+    /// this, padded by the influence radius. Consumed (reset) by each composite.
     pub(super) wet_frame_dirty: Option<Region>,
-    /// **Watercolor render-path** cumulative dirty rect — the union footprint of EVERY dab this stroke
-    /// (wet_edges `cMin..cMax`), tracked incrementally so the pen-up bake never scans the canvas for
-    /// its bbox. [`Self::clear_wet_coverage`] folds it into the frame dirty (the cleared shape must be
-    /// recomposited — the moving-preview union) before dropping it.
+    /// As linhas `(y, x0, x1)` que a mancha do Solid mudou no quadro (`compoe_as_janelas_do_quadro`).
+    pub(super) wet_frame_linhas: Vec<(u32, u32, u32)>,
+    /// **Watercolor render-path** cumulative dirty rect — EVERY dab this stroke (wet_edges `cMin..cMax`),
+    /// incremental so the pen-up bake never scans the canvas. [`Self::clear_wet_coverage`] folds it
+    /// into the frame dirty (the cleared shape must be recomposited) before dropping it.
     pub(super) wet_cum_dirty: Option<Region>,
     /// **Watercolor render-path** THIS-STROKE dirty rect — reset every `paint_begin` (even inside a wet
     /// session, unlike [`Self::wet_cum_dirty`] which accumulates the whole session's union). Only the

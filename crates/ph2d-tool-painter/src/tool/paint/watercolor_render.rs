@@ -24,6 +24,7 @@ mod diag; // o envelope de diagnóstico do composite (LOC split)
 mod pigment; // a COR do pigmento por pixel (LOC split, por assunto)
 mod window;
 pub(in crate::tool::paint) use window::Alcance;
+pub(in crate::tool::paint) use window::ponto_na_janela;
 
 use super::watercolor_field::*;
 use super::watercolor_rewet_px::{
@@ -39,7 +40,13 @@ pub(super) const SS0: f32 = 0.12; // LITERAL-PX-OK: coverage-hardening smoothste
 pub(super) const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge (wet_edges)
 
 impl PainterTool {
-    fn apply_watercolor_inner(&mut self, commit: bool) -> Option<Region> {
+    /// Um composite sobre a janela do `wet_frame_dirty`; cada linha de saída caminha só o vão das
+    /// `linhas` que mudaram ([`window::vao_da_linha`]; `None` = a janela inteira).
+    pub(super) fn apply_watercolor_inner(
+        &mut self,
+        commit: bool,
+        linhas: Option<&[(u32, u32, u32)]>,
+    ) -> Option<Region> {
         // Window arithmetic (frozen bases + dirty-rect consumption + influence
         // padding + read window) — moved verbatim to [`window::WashWindow`];
         // `None` = nothing to composite, and the commit still drops the base.
@@ -80,6 +87,7 @@ impl PainterTool {
             bw,
             bh,
             region,
+            pad,
             changed,
             rx0,
             ry0,
@@ -89,21 +97,8 @@ impl PainterTool {
             rh,
         } = w;
 
-        // Window-local coverage (`[0,1]`) + its blur (reads the true cumulative coverage, so the blur
-        // feathers correctly at the real rim, including coverage from earlier frames).
-        // Row-parallel (ADR-0173): each texel is a pure function of its own coverage byte.
-        let mut cov_src = vec![0.0f32; rw * rh];
-        let coverage = &self.paint.stroke_coverage;
-        cov_src
-            .par_chunks_mut(rw.max(1))
-            .with_min_len(8)
-            .enumerate()
-            .for_each(|(wy, drow)| {
-                let sbase = (ry0 + wy) * fw + rx0;
-                for (d, &c) in drow.iter_mut().zip(&coverage[sbase..sbase + rw]) {
-                    *d = f32::from(c) / 255.0;
-                }
-            });
+        let cov_src =
+            window::cobertura_da_janela(&self.paint.stroke_coverage, fw, (rx0, ry0, rw, rh));
         // OS CAMPOS DO ARO ([`watercolor_rim::rim_fields`]): `hard`, os borrões e a régua do teto
         // nascem juntos e só o aro os lê, então a receita mora ao lado dele.
         let rim = watercolor_rim::rim_fields(
@@ -299,7 +294,8 @@ impl PainterTool {
             .for_each(|(by, row)| {
                 let gy = y0 + by;
                 let ly = (gy - ry0) as f32;
-                for bx in 0..bw {
+                let (bx0, bx1) = window::vao_da_linha(linhas, gy, pad, (x0, bw));
+                for bx in bx0..bx1 {
                     let gx = x0 + bx;
                     let lx = (gx - rx0) as f32;
                     let gi = (gy * fw + gx) * 4;
@@ -319,35 +315,38 @@ impl PainterTool {
                     let st_warp = style_field
                         .as_ref()
                         .map_or(st_warp, |sf| sf.sample_warp(lx, ly, st_warp));
+                    // O ponto deslocado, pela porta [`ponto_na_janela`] (o centro e as subamostras do AA).
                     let (sx, sy) = if st_warp > 0.0 || paper_edge_any {
                         let (dx, dy) = flow.desloca(o_pre, lx, ly, gx as f32, gy as f32, st_warp);
-                        (lx + dx, ly + dy)
+                        (
+                            ponto_na_janela(gx, 0.0, dx, rx0),
+                            ponto_na_janela(gy, 0.0, dy, ry0),
+                        )
                     } else {
                         (lx, ly)
                     };
                     // Screen-space AA (Enio 2026-07-20, "borda dura pixelada"): on every silhouette
-                    // transition `aa_alpha` < 1 carries the texel's fractional coverage and the wash's
-                    // APPEARANCE is lerped toward the base by it below (see `aa_coverage` for why the
-                    // fraction must be final linear alpha — the optical model saturates it away as
-                    // density input). Flat interior/paper ⇒ `(single sample, 1.0)` ⇒ byte-identical.
-                    // The subsample positions route through the FULL Ragged-Edge warp (evaluated at
-                    // sub-texel OUTPUT offsets — `pos(0,0)` is exactly `(sx, sy)`), so a strong warp's
-                    // serrated boundary anti-aliases too instead of jumping the band between texels.
-                    // "Smooth Edges" off = the single-sample pre-AA hard edge, byte-for-byte — the
-                    // two looks coexist as a brush mode (Enio 2026-07-20, smooth is the default).
+                    // transition `aa_alpha` < 1 carries the texel's fractional coverage, and the wash's
+                    // APPEARANCE lerps toward the base by it (`aa_coverage`: final linear alpha). Flat
+                    // interior/paper ⇒ `(single sample, 1.0)`. The subsamples route through the FULL
+                    // Ragged-Edge warp at sub-texel OUTPUT offsets (`pos(0,0)` is `(sx, sy)`), so a
+                    // serrated boundary anti-aliases too. "Smooth Edges" off = the pre-AA hard edge.
                     let (cw, aa_alpha) = if smooth_edges {
                         aa_coverage(
                             &cov_src,
                             rw,
                             rh,
                             |ox, oy| {
-                                // O centro JÁ é `(sx, sy)` — exacto (`lx + 0.0 == lx`, lx ≥ 0).
+                                // O centro JÁ é `(sx, sy)` — a mesma conta com `ox = oy = 0`.
                                 if ox == 0.0 && oy == 0.0 {
                                     (sx, sy)
                                 } else if st_warp > 0.0 || paper_edge_any {
                                     let (x, y) = (gx as f32 + ox, gy as f32 + oy);
                                     let (dx, dy) = flow.desloca(o_pre, lx, ly, x, y, st_warp);
-                                    (lx + ox + dx, ly + oy + dy)
+                                    (
+                                        ponto_na_janela(gx, ox, dx, rx0),
+                                        ponto_na_janela(gy, oy, dy, ry0),
+                                    )
                                 } else {
                                     (lx + ox, ly + oy)
                                 }

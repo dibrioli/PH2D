@@ -70,6 +70,27 @@ pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f3
     })
 }
 
+/// A escala do ponto fixo das somas dos borrões: `2³²` (um campo até `255` somado sobre `4096²`
+/// texels fica abaixo de `2⁵³`, logo a soma inteira passa a `f64` sem arredondar).
+///
+/// ⭐ **As somas são INTEIRAS, e é correcção, não estilo** (BUGS #36, o pixel do Airbrush): somados
+/// em `f32` a partir da ORIGEM da janela, os prefixos davam a mesma caixa com arredondamentos
+/// diferentes conforme a coluna onde a janela começava — o quadro (janela pequena) e a recomposição
+/// total discordavam em `1` nível. Inteiros somam-se sem ordem; a média sai de UM arredondamento.
+const ESCALA_DO_BORRAO: f64 = 4_294_967_296.0;
+
+/// Um valor do campo no ponto fixo dos borrões.
+#[inline]
+pub(super) fn ao_fixo(v: f32) -> i64 {
+    (f64::from(v) * ESCALA_DO_BORRAO).round() as i64
+}
+
+/// A média de uma caixa de `cnt` texels cuja soma no ponto fixo é `soma`.
+#[inline]
+pub(super) fn media_do_fixo(soma: i64, cnt: usize) -> f32 {
+    (soma as f64 / (cnt as f64 * ESCALA_DO_BORRAO)) as f32
+}
+
 thread_local! {
     /// O rascunho do [`box_blur`] (o passe horizontal e os prefixos das faixas), GUARDADO entre
     /// chamadas e entre quadros (ADR-0173). ⚠️ Os dois eram alocados e ZERADOS a cada borrão — dez
@@ -77,7 +98,7 @@ thread_local! {
     /// na thread principal: o perfil do produto punha-o em `~6 %` da parede. Cada passagem escreve o
     /// que depois lê, logo o rascunho nunca precisa de nascer limpo (a linha 0 de cada faixa é
     /// zerada à mão, que é a única leitura sem escrita antes).
-    static RASCUNHO: std::cell::RefCell<(Vec<f32>, Vec<f32>)> =
+    static RASCUNHO: std::cell::RefCell<(Vec<f32>, Vec<i64>)> =
         const { std::cell::RefCell::new((Vec::new(), Vec::new())) };
 }
 
@@ -87,26 +108,25 @@ fn box_blur_com(
     h: usize,
     radius: usize,
     tmp: &mut Vec<f32>,
-    pref: &mut Vec<f32>,
+    pref: &mut Vec<i64>,
 ) -> Vec<f32> {
-    // Horizontal pass (src → tmp, row-major): each output row depends only on its own source row, so the
-    // per-row prefix from `x = 0` is exactly the serial `pref`.
+    // Horizontal pass (src → tmp, row-major): each output row depends only on its own source row.
+    // Os prefixos são do ponto fixo ([`ESCALA_DO_BORRAO`]): a caixa é a mesma em qualquer janela.
     tmp.resize(w * h, 0.0);
     tmp.par_chunks_mut(w)
         .zip(src.par_chunks(w))
         // ⚠️ `for_each_init` em vez de `for_each`: o `pref` era alocado POR LINHA (608 alocações por
-        // passe, ~12 mil nas dez chamadas de um quadro). O init do rayon dá um buffer por TASK, e a
-        // aritmética é a mesma na mesma ordem ⇒ byte-idêntico.
+        // passe, ~12 mil nas dez chamadas de um quadro). O init do rayon dá um buffer por TASK.
         .for_each_init(
-            || vec![0.0f32; w + 1],
+            || vec![0i64; w + 1],
             |pref, (trow, srow)| {
                 for x in 0..w {
-                    pref[x + 1] = pref[x] + srow[x];
+                    pref[x + 1] = pref[x] + ao_fixo(srow[x]);
                 }
                 for (x, t) in trow.iter_mut().enumerate() {
                     let lo = x.saturating_sub(radius);
                     let hi = (x + radius).min(w - 1);
-                    *t = (pref[hi + 1] - pref[lo]) / (hi - lo + 1) as f32;
+                    *t = media_do_fixo(pref[hi + 1] - pref[lo], hi - lo + 1);
                 }
             },
         );
@@ -119,18 +139,18 @@ fn box_blur_com(
     // element and one extra full pass (doc 32 §4 measured the blur at ~2,1 ns/texel).
     let nf = w.div_ceil(FAIXA);
     let bloco = (h + 1) * FAIXA;
-    pref.resize(nf * bloco, 0.0);
+    pref.resize(nf * bloco, 0);
     let tmp = &tmp[..];
     pref.par_chunks_mut(bloco).enumerate().for_each(|(s, blk)| {
         let x0 = s * FAIXA;
         let sw = FAIXA.min(w - x0);
-        blk[..sw].fill(0.0); // a linha 0 do prefixo: a única que nenhuma soma escreve
+        blk[..sw].fill(0); // a linha 0 do prefixo: a única que nenhuma soma escreve
         for y in 0..h {
             let (prev, next) = blk.split_at_mut((y + 1) * FAIXA);
             let prev = &prev[y * FAIXA..y * FAIXA + sw];
             let trow = &tmp[y * w + x0..y * w + x0 + sw];
             for ((n, p), t) in next[..sw].iter_mut().zip(prev).zip(trow) {
-                *n = *p + *t;
+                *n = *p + ao_fixo(*t);
             }
         }
     });
@@ -147,7 +167,7 @@ fn box_blur_com(
             let hi = (y + radius).min(h - 1);
             let blk = &pref[(x / FAIXA) * bloco..];
             let j = x % FAIXA;
-            (blk[(hi + 1) * FAIXA + j] - blk[lo * FAIXA + j]) / (hi - lo + 1) as f32
+            media_do_fixo(blk[(hi + 1) * FAIXA + j] - blk[lo * FAIXA + j], hi - lo + 1)
         })
         .collect_into_vec(&mut out);
     out
@@ -561,6 +581,10 @@ pub(crate) struct WashCadence {
     /// (`watercolor_solido`). O produto é sempre `false`; é o oráculo ao byte do gate
     /// `a_mancha_incremental_e_a_inteira_ao_byte` e a metade A da medição A×B, no mesmo processo.
     pub(crate) mancha_inteira: bool,
+    /// **O oráculo da recomposição TOTAL** — `true` recompõe a tela inteira em todo quadro. A
+    /// diferença para o produto é exactamente o conjunto das escritas que nenhum sujo marcou (BUGS
+    /// #36, o pixel do Airbrush). Só medição e gate escrevem aqui.
+    pub(crate) recompoe_tudo: bool,
     /// Quantas vezes `apply_watercolor` de fato compôs (janela resolvida, trabalho feito) — o
     /// observável que deixa um gate afirmar a CADÊNCIA sem relógio.
     ///

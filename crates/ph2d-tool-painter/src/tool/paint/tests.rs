@@ -12,6 +12,9 @@
 //!   para a mesma pergunta;
 //! - a lista dos filhos. O que cada um é está no `//!` dele, não nesta lista.
 
+/// A cor do papel em cada meio (pedido do dono, 2026-10-05).
+#[path = "cor_do_papel_tests.rs"]
+mod cor_do_papel_tests;
 #[path = "impasto_pool_tests.rs"]
 mod impasto_pool_tests;
 #[path = "journal_delta_tests.rs"]
@@ -45,9 +48,15 @@ mod thread_probe; // W3/W4 do plano 38: o custo por evento que os tetos do Sketc
 /// Os fios (Sketchy · Wire · degraus do Ribbon) na aguada (doc 46 §2-7).
 #[path = "watercolor_fios_tests.rs"]
 mod watercolor_fios_tests;
+/// O quadro da aguada contra o oráculo da recomposição total (BUGS #36).
+#[path = "watercolor_quadro_tests.rs"]
+mod watercolor_quadro_tests;
 /// A Shape Color Ramp na aguada (doc 46 §2-7).
 #[path = "watercolor_rampa_tests.rs"]
 mod watercolor_rampa_tests;
+/// A geometria do quadro da mancha do Solid na aguada (BUGS #36).
+#[path = "watercolor_solido_janelas_tests.rs"]
+mod watercolor_solido_janelas_tests;
 /// O `Style: Solid` na aguada (doc 46 §2-7).
 #[path = "watercolor_solido_tests.rs"]
 mod watercolor_solido_tests;

@@ -200,6 +200,8 @@ fn diag_a_mancha_de_1000px_na_aguada() {
                 t.paint.brush.style_solid = solid;
                 t.wash.mancha_inteira = inteira;
                 t.on_canvas_pointer(cp(pt(0), PointerPhase::Down));
+                let _ = (crate::wash_diag::take(), crate::wash_diag::take_mancha());
+                let janelas0 = t.wash.composites;
                 let (mut pior, t0) = (0.0f64, std::time::Instant::now());
                 for i in 1..=120 {
                     let q = std::time::Instant::now();
@@ -208,6 +210,21 @@ fn diag_a_mancha_de_1000px_na_aguada() {
                     pior = pior.max(q.elapsed().as_secs_f64() * 1e3);
                 }
                 let gesto = t0.elapsed().as_secs_f64() * 1e3 / 120.0;
+                let (w, m) = (crate::wash_diag::take(), crate::wash_diag::take_mancha());
+                let mut fases = format!(
+                    "composite {:.3} ({:.0} px/quadro em {:.2} janelas de {:.3} ms) · carimbo {:.3} · pour {:.3}",
+                    w.composite.avg_ms * w.composite.n as f64 / 120.0,
+                    w.window_px_per_composite * w.composite.n as f64 / 120.0,
+                    f64::from(t.wash.composites - janelas0) / 120.0,
+                    w.composite.avg_ms * w.composite.n as f64
+                        / f64::from((t.wash.composites - janelas0).max(1)),
+                    w.stamp.avg_ms * w.stamp.n as f64 / 120.0,
+                    w.pour.avg_ms * w.pour.n as f64 / 120.0,
+                );
+                for (nome, f) in crate::wash_diag::FASES_DA_MANCHA.iter().zip(&m) {
+                    fases += &format!(" · {nome} {:.3}", f.avg_ms * f.n as f64 / 120.0);
+                }
+                eprintln!("    {lado}² {nome}: ms/quadro {fases}");
                 let q = std::time::Instant::now();
                 t.on_canvas_pointer(cp(pt(120), PointerPhase::Up));
                 let soltar = q.elapsed().as_secs_f64() * 1e3;
@@ -454,8 +471,52 @@ fn o_quadro_da_mancha_recompoe_so_o_que_mudou() {
     eprintln!(
         "texels do composite: inteira {inteira} · só o que mudou {so_o_que_mudou} · {razao:.3}"
     );
+    // Medido 2026-10-05 com as faixas fundidas: `0,332` (a caixa única dava `0,398`).
     assert!(
-        razao < 0.5,
+        razao < 0.35,
         "o composite ainda caminha a caixa inteira: {so_o_que_mudou} contra {inteira} ({razao:.3})"
     );
+}
+
+/// **A MANCHA QUE ENCOLHE DEVOLVE O PAPEL FORA DELA** — o registo da mancha só cresce, e quando a
+/// região nova é menor que ele as linhas do registo fora dela têm de voltar ao papel sem mancha. Os
+/// seis planos depois de um quadrado grande e um pequeno são os de só o pequeno. ⚠️ A borda de baixo
+/// é FRACCIONÁRIA: a última linha do pequeno tem cobertura, e é ela que fica no rascunho da linha.
+#[test]
+fn a_mancha_que_encolhe_devolve_o_papel_fora_dela() {
+    let quadrado = |a: f32, b: f32| vec![vec![[a, a], [b, a], [b, b], [a, b]]];
+    let prepara = || {
+        let mut t = tool(128, PaintMedia::Watercolor, 4.0);
+        t.set_brush_color_srgb8([30, 60, 220]);
+        t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([66.0, 64.0], PointerPhase::Move));
+        t.paint_tick(0.1);
+        t
+    };
+    let planos = |t: &PainterTool| {
+        [
+            t.paint.stroke_coverage.clone(),
+            t.paint.stroke_color.clone(),
+            t.paint.stroke_density.clone(),
+            t.paint.wet_styles.owner.clone(),
+        ]
+    };
+    let mut a = prepara();
+    a.atualiza_a_mancha(&quadrado(10.0, 110.0));
+    let grande = planos(&a);
+    a.atualiza_a_mancha(&quadrado(40.0, 80.5));
+    let mut b = prepara();
+    b.atualiza_a_mancha(&quadrado(40.0, 80.5));
+    assert_ne!(
+        grande[0],
+        planos(&b)[0],
+        "controlo: o quadrado grande pintou"
+    );
+    for (k, (p, q)) in planos(&a).iter().zip(planos(&b).iter()).enumerate() {
+        let difere = p.iter().zip(q).filter(|(x, y)| x != y).count();
+        assert_eq!(
+            difere, 0,
+            "plano {k}: a mancha que encolheu deixou {difere} bytes"
+        );
+    }
 }

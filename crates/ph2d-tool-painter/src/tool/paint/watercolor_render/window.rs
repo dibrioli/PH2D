@@ -31,6 +31,8 @@ pub(super) struct WashWindow {
     pub bw: usize,
     pub bh: usize,
     pub region: Region,
+    /// O alcance de um texel sobre a saída (a folga da janela).
+    pub pad: usize,
     /// O sujo DESTE quadro (antes da união com o cumulativo do commit): onde os planos mudaram desde
     /// o composite anterior — o campo guardado da reserva recalcula-se ali.
     pub changed: Option<Region>,
@@ -82,6 +84,16 @@ impl PainterTool {
         // Pick the recomposite rect and CONSUME the frame one (wet_edges `resetFrame`): live =
         // this frame's dabs; commit = the whole stroke (`paint_end`'s finish dabs folded in).
         let frame = self.paint.wet_frame_dirty.take();
+        let frame = if self.wash.recompoe_tudo {
+            Some(Region {
+                x: 0,
+                y: 0,
+                w: fw as u32,
+                h: fh as u32,
+            })
+        } else {
+            frame
+        };
         let changed = frame;
         let dirty = if commit {
             match (self.paint.wet_cum_dirty, frame) {
@@ -151,6 +163,7 @@ impl PainterTool {
             bw,
             bh,
             region,
+            pad,
             changed,
             rx0,
             ry0,
@@ -259,4 +272,64 @@ pub(in crate::tool::paint) struct Alcance {
     pub reach: usize,
     /// Quanto o Ragged Edge e o Paper Edge deslocam o ponto amostrado (px, arredondado para cima).
     pub desloca: usize,
+}
+
+/// **O ponto amostrado `g + o + d` (tela) na janela que começa em `origem`** — o texel, a subamostra
+/// do AA e o deslocamento do Ragged. A soma faz-se na TELA e a origem inteira subtrai-se no fim
+/// (exacto enquanto o ponto cai à direita da origem, que a folga `pad` da janela de leitura garante):
+/// o ponto é o MESMO em qualquer janela (BUGS #36). Somado na janela (`(g − origem) + o + d`)
+/// ele arredondava à escala da janela, e o quadro e a recomposição total liam a distância do aro em
+/// pontos diferentes por `1e-6` px — `1` nível de diferença num texel da borda.
+#[inline]
+pub(in crate::tool::paint) fn ponto_na_janela(g: usize, o: f32, d: f32, origem: usize) -> f32 {
+    (g as f32 + o + d) - origem as f32
+}
+
+/// **O vão da linha de saída `gy`** (em colunas da saída `x0..x0 + bw`): os texels a menos de `pad`
+/// de uma das `linhas` que mudaram (`(y, x0, x1)` por `y`, sem repetir). Fora dele nenhuma entrada
+/// mudou e o composite é o mesmo em qualquer janela (BUGS #36/#38). `None` = a linha inteira.
+pub(super) fn vao_da_linha(
+    linhas: Option<&[(u32, u32, u32)]>,
+    gy: usize,
+    pad: usize,
+    (x0, bw): (usize, usize),
+) -> (usize, usize) {
+    let Some(l) = linhas else {
+        return (0, bw);
+    };
+    let i = l.partition_point(|v| (v.0 as usize) + pad < gy);
+    let vao = l[i..].iter().take_while(|v| v.0 as usize <= gy + pad).fold(
+        None,
+        |s: Option<(usize, usize)>, v| {
+            let (a, b) = ((v.1 as usize).saturating_sub(pad), v.2 as usize + pad + 1);
+            Some(s.map_or((a, b), |(p, q)| (p.min(a), q.max(b))))
+        },
+    );
+    vao.map_or((0, 0), |(a, b)| {
+        let a = a.clamp(x0, x0 + bw) - x0;
+        (a, (b.clamp(x0, x0 + bw) - x0).max(a))
+    })
+}
+
+/// A cobertura da janela de leitura `(rx0, ry0, rw, rh)` em `[0, 1]` — a cumulativa VERDADEIRA, para o
+/// borrão emplumar no aro real, com a de quadros anteriores. Por linhas (ADR-0173): cada texel é função
+/// pura do seu byte.
+pub(super) fn cobertura_da_janela(
+    coverage: &[u8],
+    fw: usize,
+    (rx0, ry0, rw, rh): (usize, usize, usize, usize),
+) -> Vec<f32> {
+    use rayon::prelude::*;
+    let mut cov_src = vec![0.0f32; rw * rh];
+    cov_src
+        .par_chunks_mut(rw.max(1))
+        .with_min_len(8)
+        .enumerate()
+        .for_each(|(wy, drow)| {
+            let sbase = (ry0 + wy) * fw + rx0;
+            for (d, &c) in drow.iter_mut().zip(&coverage[sbase..sbase + rw]) {
+                *d = f32::from(c) / 255.0;
+            }
+        });
+    cov_src
 }

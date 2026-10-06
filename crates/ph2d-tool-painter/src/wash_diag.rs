@@ -92,6 +92,27 @@ pub fn note_pendown(ms: f32) {
     PENDOWN.note(ms);
 }
 
+/// As fases da mancha do Solid na aguada (`watercolor_solido::atualiza_a_mancha`, BUGS #36), na
+/// ordem de [`FASES_DA_MANCHA`].
+static MANCHA: [Phase; 5] = [const { Phase::new() }; 5];
+
+/// Os nomes das fases de [`note_mancha`].
+pub const FASES_DA_MANCHA: [&str; 5] =
+    ["registo", "refresco", "cobertura", "diferença", "depósito"];
+
+/// A fase `fase` ([`FASES_DA_MANCHA`]) de uma mancha custou isto.
+pub fn note_mancha(fase: usize, ms: f32) {
+    MANCHA[fase].note(ms);
+}
+
+/// Lê e zera as fases da mancha.
+pub fn take_mancha() -> [PhaseRead; 5] {
+    std::array::from_fn(|k| {
+        let (avg_ms, max_ms, n) = MANCHA[k].take();
+        PhaseRead { avg_ms, max_ms, n }
+    })
+}
+
 /// Uma fase pronta para impressão.
 pub struct PhaseRead {
     pub avg_ms: f64,

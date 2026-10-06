@@ -92,6 +92,10 @@ fn o_classic_e_o_paper_edge_zero_sao_o_byte_de_hoje() {
     }
 }
 
+/// Re-gravada em 2026-10-05 (BUGS #36): o «dois donos» move **2 bytes em 2 de 16 384 píxeis, por 1**
+/// — a soma dos borrões passou a exacta (ponto fixo, a mesma caixa em qualquer janela). Ablação: com
+/// as somas `f32` de antes os seis voltam aos de antes ao bit.
+///
 /// Re-gravada na integração da `line/sculpt3d` (04/10): a orla do AA junta-se em tons de ecrã
 /// (ADR-0177). Ablação: sem esse bloco do `watercolor_render.rs` os seis voltam aos de antes ao bit, e
 /// o único sem AA não mudou.
@@ -101,7 +105,7 @@ const BASE: [(&str, u64); 6] = [
     ("ragged 48 sem AA", 0xac14_b804_34ed_b932),
     ("ragged 24 Paper Rough", 0xdf19_5034_0dc2_4fb6),
     ("ladrilho", 0xbde2_bb32_3820_811b),
-    ("dois donos", 0xb9d3_7b8e_bc3a_a991),
+    ("dois donos", 0x4738_20a1_e8e1_7a35),
 ];
 
 /// Uma faixa larga (r = 30) num canvas de 256² — a régua das bordas.
@@ -487,4 +491,18 @@ fn o_size_e_o_angle_do_classic_chegam_a_borda() {
         BASE[1].1,
         "o Angle do Classic não chegou à borda"
     );
+}
+
+/// SONDA — despeja a tela do caso «dois donos» de [`BASE`] em `$PH2D_DESPEJA/dois_donos.rgba`, para a
+/// medida de um re-pino (bytes, píxeis, pior degrau) contra a lei revertida.
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_despeja_os_dois_donos() {
+    let Ok(dir) = std::env::var("PH2D_DESPEJA") else {
+        return;
+    };
+    let mut dois = traco(128, 52.0, |t| t.paint.brush.warp = 8.0);
+    dois.paint.brush.warp = 40.0;
+    risca(&mut dois, 76.0, 128);
+    std::fs::write(format!("{dir}/dois_donos.rgba"), &dois.canvas_rgba[..]).expect("escreve");
 }

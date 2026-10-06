@@ -28,7 +28,7 @@
 
 ## §2 — Prova à saída
 
-- Gate batched sobre o diff (base `a46c4c200`): `nextest-impacted` **17 068/17 068**; clippy workspace
+- Gate batched sobre o diff (base `a46c4c200`), re-corrido depois da W2 do Miro: `nextest-impacted` **17 074/17 074**; clippy workspace
   `--all-targets --features ph2d-spike/bevy_ecs -D warnings`; `check --workspace --all-targets`
   warnings=deny; fmt; machete; standalone-optional; workflow-packages; censos-da-árvore-combinada (12);
   `typos` — verdes. A 1.ª corrida deu 4 vermelhos + `typos` (LOC do `board_bar.rs` 813/700, glifo `→`
@@ -49,8 +49,8 @@
   pequenos demais — agora do tamanho do alcance do clique).
 
 - `target/*/incremental` reclamado (26 GB). Binário `smoke` quente, 2.ª corrida depois do reclamo:
-  `Finished \`smoke\` profile [optimized] target(s) in 0.21s`, zero `Compiling`. Foto final da cena 3
-  igual à aprovada na janela.
+  `Finished \`smoke\` profile [optimized] target(s) in 0.29s`, zero `Compiling` (refeito depois da
+  W2 do Miro, `5bfb0d455`). Foto final da cena 3 refeita conferida.
 - `agent-loop-profile.sh` (20 sessões): paralelismo 1,11 ✗ · `test:check` 3,1× ✗ · edições pela
   ferramenta `Edit` **33 %** ✗ — esta janela editou muito por `python3` com `assert` de contagem (falha
   alto, mas é a lei do §2 que diz `Edit`); a próxima janela: `Edit` primeiro.

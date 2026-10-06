@@ -209,7 +209,29 @@ SIZE · PAD · CEQ · EQSZ · RASTR · UPSC na barra, o seletor aberto com Objec
 4. Vetor em «Edit Mode» com «Node»: `Tab` volta a «Object Mode»; `]`/`[` andam de ponto em ponto.
 5. Vetor em «Edit Mode» com «Node», clicar na imagem: fica seleccionada, «Object Mode».
 
+## §5c — Depois do smoke da 2.ª leva: dois reports do dono (05/10), curados em `e87d83373`
+
+1. *«em edit e paint mode o gizmo da imagem não aparece. corrija»* — o `object_gizmo_shows` só mostra
+   o gizmo num modo que declara `parts_take_the_object_gizmo`; o Paint (desde a F2) e o Image ▸ Edit
+   (novo) não o declaravam. Agora declaram — é o comportamento de antes (com o IMG e o Painter fora
+   de modo o gizmo via-se). Gates em `paint_mode_tests::tab_opens_the_painter_and_gives_the_canvas_back`
+   e `image_edit_mode_tests::the_image_offers_edit_and_edit_is_the_image_tools`; mutação (declaração a
+   `false`) ⇒ RED nos dois; fotos das cenas 2 (Paint) e 8 (Edit) com o gizmo. ⚠️ **No Paint o pincel
+   continua a ganhar ao gizmo** (`chrome_hit::chrome_claims`: o gizmo inteiro é «arte», report de
+   16/07 *«o brush move a sprite»*) — as alças vêem-se mas não se agarram enquanto o Painter está na mão.
+2. *«Passo 5 não funcionou. A imagem não é selecionada e não sai do edit do vector»* — mecanismo: o
+   `on_press_node` no vazio limpa a caneta; o `vetor_node_escolhe_outro_tipo` punha a imagem no
+   gizmo, e no MESMO quadro o ramo 1 do `vec_selection::sync_selection` (*a caneta mudou ⇒ o canvas
+   mandou*) reescrevia o gizmo com a caneta VAZIA. O gate da 2.ª leva testava a lei pura e o fonte, não
+   a sincronia que corre a seguir. Cura: `vec_selection::choose_other_kind` (limpa a caneta e avisa a
+   sincronia); gate `choosing_another_kind_survives_the_sync` com o CONTROLO do defeito (o
+   `replace_selection` cru é apagado); mutação (não avisar o `state`) ⇒ RED; o arch-gate
+   `the_node_miss_picks_another_kind` exige a porta.
+
 ## §6 — O que fica ABERTO
+
+- **Paint + gizmo:** as alças agarram-se no Paint? Hoje o pincel ganha (ver §5c.1) — pergunta ao
+  dono; agarrar as alças tiraria ao pincel os pixels sob elas.
 
 - A booleana com SÓ duas formas cujo resultado nascesse um quadro depois repetiria o aviso «Edit
   Mode»; **medido que não acontece**: o resultado ganha entidade no mesmo `sync` que apaga as duas, e a
@@ -238,6 +260,6 @@ SIZE · PAD · CEQ · EQSZ · RASTR · UPSC na barra, o seletor aberto com Objec
 
 ```
 ▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.21s
+    Finished `smoke` profile [optimized] target(s) in 0.35s
 ```
-(2.ª corrida, sobre `63478a171` + este doc.)
+(2.ª corrida, sobre `e87d83373` + este doc.)

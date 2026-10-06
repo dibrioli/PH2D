@@ -75,6 +75,11 @@ pub trait ModeFamily {
     fn heir(&mut self, _mode: ObjectMode, _locked: u64, _tools: &mut ToolRegistry) -> Option<u64> {
         None
     }
+    /// ⭐ **A selecção que era só PARTES do objecto sobrevive à entrada** em `mode` (o Edit/Pose do
+    /// esqueleto: o osso escolhido é o pai do próximo e o que se pose). `false` = colapsa no objecto.
+    fn keeps_parts_selected(&self, _mode: ObjectMode) -> bool {
+        false
+    }
     /// Abre o módulo sobre `entity` e os `joined` (só chamada quando [`Self::joins`]).
     fn enter_with(
         &mut self,
@@ -111,6 +116,23 @@ fn select_together(hero: &mut HeroScreen, active: u64, joined: &[u64]) {
     hero.gizmo
         .replace_selection(joined.first().copied().or(Some(active)));
     for b in joined.iter().skip(1).chain([&active]) {
+        hero.gizmo.add_to_selection(*b);
+    }
+}
+
+/// Repõe a selecção de antes do quadro se ela era só `parts` (vazia ou com algo de fora: fica).
+fn restore_parts(hero: &mut HeroScreen, before: &(Option<u64>, Vec<u64>), parts: Option<&[u64]>) {
+    let (Some(primary), Some(parts)) = (before.0, parts) else {
+        return;
+    };
+    if !std::iter::once(&primary)
+        .chain(&before.1)
+        .all(|b| parts.contains(b))
+    {
+        return;
+    }
+    hero.gizmo.replace_selection(Some(primary));
+    for b in &before.1 {
         hero.gizmo.add_to_selection(*b);
     }
 }
@@ -183,6 +205,7 @@ pub fn drive(
     request: Option<ModeRequest>,
 ) -> bool {
     let mut changed = false;
+    let before = (hero.gizmo.selection, hero.gizmo.extra_selection.clone());
     // 0. Um objecto que nasceu num modo pede-o (só sem pedido do artista neste quadro). ⚠️ SÓ ele:
     // a selecção de antes não entra junto — a forma desenhada num Edit levaria a anterior com ela.
     let mut born = None;
@@ -250,7 +273,11 @@ pub fn drive(
                     select_together(hero, bits, &joined);
                     if f.enter_with(m, bits, &joined, tools) {
                         hero.gizmo.mode.enter(bits, m);
-                        hero.gizmo.mode.publish_parts(f.parts(bits));
+                        let parts = f.parts(bits);
+                        if f.keeps_parts_selected(m) {
+                            restore_parts(hero, &before, parts.as_deref());
+                        }
+                        hero.gizmo.mode.publish_parts(parts);
                         // O modo que só PASSOU a outro objecto (a forma que nasceu num Edit) não
                         // é notícia: o aviso repetir-se-ia a cada forma desenhada.
                         if fell_from != Some(m) {

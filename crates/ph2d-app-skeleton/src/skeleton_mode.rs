@@ -186,6 +186,10 @@ impl ModeFamily for Family<'_> {
     fn owner_of(&mut self, bits: u64) -> Option<u64> {
         self.skeleton_of(bits).filter(|s| *s != bits)
     }
+
+    fn keeps_parts_selected(&self, _: ObjectMode) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

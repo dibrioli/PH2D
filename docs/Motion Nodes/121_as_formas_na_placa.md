@@ -2260,7 +2260,50 @@ a taça a crescer com a pilha; `target/prova/onda4/pilha/`):
 | `1 024` | ON | **`247` ms (`4` fps)** | **`151,6`** ms |
 | `4 096` | ON | `> 2 000` ms (nenhuma janela de `120` quadros em `45` s; a barra lê `2,2`–`2,8` s) | — |
 
-⇒ o quadro passa os `16,7` ms já a `1 024` peças: **a recusa expirou**. ⚠️ E a premissa do doc 115 não era a do
+⇒ o quadro passa os `16,7` ms já a `1 024` peças (**a recusa expirou** — o resultado continua abaixo, depois do (2)).
+
+**(2) — o resultado: RECUSA MEDIDA, e o candidato «um caminho por traço» já era o estado.** O `TracoDaPlaca`
+já entrega UM `fill` por cópia (todas as peças, juntas e pontas de um traço num `BezPath`): o `U` não tinha nada
+a construir. O `U+A` (a FITA: os pedaços que se ligam pela faixa num só polígono, sem a aresta partilhada) foi
+construído e medido (`e115108de`, retirado em `274ed670e`). A sonda `custo_do_encode_tracejado` (`3` variantes
+intercaladas, `15`/`5` rodadas, carga `6`–`16`; `target/prova/onda4/parede_vello_{igpu,rtx}.txt`), mais a contagem
+do que o Vello recebe:
+
+| a `=127` tracejada | `encode` antes → lei → lei+fita | segmentos para o Vello | parede RTX (lei · fita) | parede iGPU (lei · fita) |
+|---|---|---|---|---|
+| densa `35 × 35` | `10,9` → `2,7` → `2,7` ms (`−75 %`) | `49 000` → `120 050` → `120 050` | `+4,8 %` · `+4,3 %` | **`+24,4 %` · `+24,8 %`** |
+| `16 384` cópias | `143,6` → `38,6` → `36,4` ms (`−73`/`−75 %`) | `655 360` → `1 605 632` → `1 605 632` | **`+19,7 %` · `+18,0 %`** | **`+42,1 %` · `+41,2 %`** |
+
+⇒ a fita **não funde nenhum pedaço** nestas cenas (a contagem de segmentos é a mesma ao segmento): a faixa dos
+dois lados de um vértice é calculada a partir de argumentos em ORDEM diferente (`(a, b, c)` de quem chega,
+`(d, a, b)` de quem parte), os bits não coincidem, e a fita só continua sobre os MESMOS bits (uma fusão por
+tolerância deixaria uma lasca por cobrir ou a dobrar). E a conta fecha a porta mesmo a uma fusão perfeita: a rota
+pela lei manda `2,45×` os segmentos (`98` por cópia contra `40`), e a parede sobe `24`–`42 %` com isso (uma
+elasticidade de `0,17`–`0,29` por cada `+100 %` de segmentos); a fusão máxima possível (dois quadriláteros que
+viram um hexágono: `−25 %` das arestas de um pedaço que cruza um vértice) não leva a iGPU a `+10 %`. O critério
+do `encode` passava (`−73 %`, perda `≤ 10 %` do ganho) e o arnês do traço rente alfa `1` nas duas placas; a
+PAREDE falha em três das quatro células. **A troca que fica (a do §9.18 C):** o quadro da rota Vello (`encode` +
+parede) continua `58`–`79 %` mais curto que o de antes. **Quem voltar:** o custo é o volume de segmentos que a CPU
+expande — o caminho é a rota Vello mandar ao Vello o traço por EXPANDIR (o caminho fonte e o tracejado, como o
+traçador dele faz) e corrigir só as peças que mordem; sem isso, nada no lado da CPU fecha os `+10 %`.
+
+**(5) — a causa, e a medição de novo (SÉRIE, escrita antes de medir).** Lido o caminho da CPU antes de levar
+o contacto para a placa: o `sim.step` chama `ph2d_contact::separate` (pela grelha) e depois
+`ph2d_contact::impulsos` — e o `monta` dos impulsos percorria **todos os pares** (`for lo, for hi > lo`):
+`O(n²)` por sub-passo, `×8` sub-passos da zona. A `1 024` peças com colisor são `524 k` testes de par por
+sub-passo; a `4 096`, `8,4` milhões. ⇒ a separação que o doc 115 mediu (`1 024` peças `0,5` ms) era a metade
+barata; a cara estava ao lado dela. **A cura, exacta:** o `monta` tira os pares da MESMA grelha da separação —
+superconjunto dos contactos, em ordem crescente, logo a mesma lista de restrições pela mesma ordem e o
+Gauss–Seidel dá os mesmos bits (gate `os_impulsos_pela_grelha_dao_os_bits_de_todos_os_pares`: caixas rodadas,
+discos, uma peça GRANDE e um obstáculo, material e deslize — velocidade, giro e spin iguais ao bit). A sonda do
+cozimento (`custo_do_cozimento_da_pilha`, as duas taças, com o `advance_tick` — ⚠️ a 1.ª redacção dela não
+avançava a simulação e lia `0,02` ms, a leitura do estado): `2 048` peças `1,04` ms por tique, `8 192` peças
+`2,57` ms (mediana; `Collide` OFF `0,15` · `0,41`).
+⇒ **SÉRIE, e porquê:** o critério do §9.18 D é sobre o QUADRO DO PRODUTO, e o produto mudou — a cura tirou o
+termo que fazia o quadro passar os `16,7` ms. A régua do app corre outra vez sobre o produto curado (as mesmas
+células: `1 024` · `4 096` · `16 384` por taça, `Collide` ON e OFF, as duas placas). **O critério, o mesmo:** a
+`4 096` por taça, quadro da iGPU `> 16,7` ms ⇒ o contacto da caixa vai para a placa nesta onda; `≤ 16,7` ⇒ a
+recusa do doc 115 renova-se com o número do app, e a expiração escreve-se onde o quadro passar dos `16,7` ms. ⚠️ E a premissa do doc 115 não era a do
 produto: ela mediu a SEPARAÇÃO na CPU (`1 024` peças `0,5` ms, §9.18 D), mas com uma forma com `Collide` a cerca do
 `motion_bridge_gpu_colisor.rs` derruba o cozimento INTEIRO para a CPU — a queda, o vento, a taça e as `2 048` peças das
 duas taças pagam o caminho da CPU (`151` ms contra `1`–`2` no dispositivo). ⇒ a cura é o contacto da CAIXA no

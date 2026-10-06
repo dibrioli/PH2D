@@ -537,6 +537,13 @@ fn custo_do_cozimento_da_pilha() {
                         n += v.len();
                     }
                 }
+                // ⚠️ O tique AVANÇA a simulação (o `advance_tick`): sem ele o `cook` só lê o estado, e a
+                // sonda media `0,02` ms por tique a `2 048` peças — a leitura, não a lei.
+                state
+                    .pump
+                    .cook
+                    .advance_tick(&state.doc.graph, &state.registry, tempo)
+                    .expect("avanca");
                 if k >= 60 {
                     t[i].push(t0.elapsed().as_secs_f64() * 1e3);
                 }

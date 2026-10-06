@@ -264,3 +264,137 @@ fn the_material_rows_take_their_range_from_the_column_ceiling() {
         rolamento.max
     );
 }
+
+/// ⭐ doc 121 §9.19 (3) — **A PONTA E A JUNTA: declaradas, na chave, lidas e rotuladas.**
+///
+/// As quatro metades de um param de escolha, cada uma com o seu modo de falha mudo:
+/// 1. a OMISSÃO é `0` — senão um projecto antigo (sem as linhas `p`) abriria com outro traço;
+/// 2. estão na CHAVE — senão a 1.ª escolha voltaria do cache para todas as outras (o defeito do
+///    *Pattern Offset*); o gate DERIVADO acima já o diz param a param, este exige as **nove**
+///    combinações distintas, que é o que o artista vê;
+/// 3. o `read` mapeia `0/1/2` e o lixo (`NaN`, negativo, fora da faixa) cai no traço de sempre;
+/// 4. o cartão mostra-as como `Enum` de 3 opções, alinhadas aos índices, e SÓ com traço.
+///
+/// ⚠️ Que cada rótulo RESOLVE no i18n mede-se onde a tabela existe (esta crate não depende dela):
+/// `ph2d-app-motion` (`the_cap_and_join_labels_resolve_to_words`) e o censo do registo
+/// (`every_enum_option_is_a_key_from_its_declaration_site`).
+#[test]
+fn the_cap_and_the_join_are_declared_keyed_read_and_labelled() {
+    use ph2d_node_registry::ParamWidget;
+    let dflt = |n: &str| {
+        MANIFEST
+            .params
+            .iter()
+            .find(|p| p.name == n)
+            .map_or(0.0, |p| p.default)
+    };
+    // 1. declaradas, com omissão 0, e na lista da chave.
+    for nome in [param::STROKE_CAP, param::STROKE_JOIN] {
+        let spec = MANIFEST
+            .params
+            .iter()
+            .find(|s| s.name == nome)
+            .unwrap_or_else(|| panic!("`{nome}` tem de estar no manifesto"));
+        assert_eq!(
+            spec.default, 0.0,
+            "`{nome}`: a omissao e' o traco de sempre"
+        );
+        assert!(
+            param::ALL.contains(&nome),
+            "`{nome}` tem de entrar na chave"
+        );
+    }
+
+    // 2. com traço, as 9 combinações dão 9 chaves — e a omissão é a combinação (0, 0).
+    let com = |cap: f32, join: f32| {
+        move |n: &str| match n {
+            param::STROKE_WIDTH => 0.1,
+            param::STROKE_CAP => cap,
+            param::STROKE_JOIN => join,
+            _ => dflt(n),
+        }
+    };
+    let mut chaves = std::collections::BTreeSet::new();
+    for cap in 0..3 {
+        for join in 0..3 {
+            chaves.insert(shape_key(com(cap as f32, join as f32)));
+        }
+    }
+    assert_eq!(
+        chaves.len(),
+        9,
+        "duas formas que so' diferem na ponta/junta partilhavam a geometria"
+    );
+    let so_traco = |n: &str| {
+        if n == param::STROKE_WIDTH {
+            0.1
+        } else {
+            dflt(n)
+        }
+    };
+    assert_eq!(
+        shape_key(com(0.0, 0.0)),
+        shape_key(so_traco),
+        "a omissao e' (0, 0)"
+    );
+
+    // 3. o `read` — os índices, o arredondamento, e o lixo no traço de sempre.
+    let ler = |cap: f32, join: f32| {
+        let st = ShapeParams::read(com(cap, join)).stroke.expect("ha' traco");
+        (st.cap, st.join)
+    };
+    assert_eq!(ler(0.0, 0.0), (StrokeCap::Butt, StrokeJoin::Miter));
+    assert_eq!(ler(1.0, 1.0), (StrokeCap::Round, StrokeJoin::Round));
+    assert_eq!(ler(2.0, 2.0), (StrokeCap::Square, StrokeJoin::Bevel));
+    assert_eq!(
+        ler(1.4, 1.6),
+        (StrokeCap::Round, StrokeJoin::Bevel),
+        "o indice arredonda"
+    );
+    for lixo in [f32::NAN, -1.0, 3.0, 99.0, f32::INFINITY, f32::NEG_INFINITY] {
+        assert_eq!(
+            ler(lixo, lixo),
+            (StrokeCap::Butt, StrokeJoin::Miter),
+            "{lixo} fora da faixa tem de cair no traco de sempre"
+        );
+    }
+    assert_eq!(
+        ShapeParams::read(dflt).stroke,
+        None,
+        "sem largura nao ha' traco nenhum"
+    );
+
+    // 4. o cartão: `Enum` de 3, alinhado ao `from_index`, e escondido sem traço.
+    let hint = |nome: &str| {
+        PARAM_HINTS
+            .iter()
+            .find(|h| h.param == nome)
+            .unwrap_or_else(|| panic!("o cartao tem de mostrar `{nome}`"))
+    };
+    for (nome, tabela) in [("cap", param::STROKE_CAP), ("join", param::STROKE_JOIN)] {
+        let h = hint(tabela);
+        let ParamWidget::Enum { labels } = h.widget else {
+            panic!("`{tabela}` e' uma escolha: {:?}", h.widget);
+        };
+        assert_eq!(labels.len(), 3, "`{tabela}`: tres opcoes");
+        for (i, l) in labels.iter().enumerate() {
+            assert_eq!(
+                *l,
+                format!("node.opts.node_motion_shape.{nome}_labels.{i}"),
+                "`{tabela}`: a opcao {i} e' a chave do vocabulario, pela ordem do indice"
+            );
+        }
+        assert_eq!(
+            (h.min, h.max, h.step),
+            (0.0, (labels.len() - 1) as f32, 1.0),
+            "`{tabela}`: a faixa e' a dos indices"
+        );
+        assert_eq!(h.label, format!("node.source.shape.param.{tabela}"));
+        assert!(
+            PARAM_GATES_ABOVE
+                .iter()
+                .any(|g| g.param == tabela && g.when == param::STROKE_WIDTH && g.above == 0.0),
+            "`{tabela}` so' aparece com traco (largura > 0)"
+        );
+    }
+}

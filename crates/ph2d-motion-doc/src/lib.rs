@@ -497,4 +497,35 @@ mod tests {
         hist.commit_if_changed(&v); // identical -> no step
         assert!(!hist.can_undo());
     }
+
+    /// doc 121 §9.19 (3) — **a ponta e a junta do `source.shape` atravessam a gravação**, e um
+    /// documento gravado antes delas lê-se SEM as duas (o leitor do nó dá-lhes o default `0`).
+    ///
+    /// ⚠️ Os nomes vão como texto porque esta crate não depende do nó; a metade que lê o
+    /// `ShapeParams` sobre o documento lido mora em `ph2d-app-motion`
+    /// (`the_cap_and_join_survive_the_save_and_an_old_project_opens_butt_and_miter`).
+    #[test]
+    fn the_stroke_cap_and_join_survive_the_round_trip_and_an_old_doc_has_neither() {
+        let mut doc = MotionDoc::new();
+        let n = doc.graph.add_node("source.shape");
+        doc.graph.set_param(n, "stroke_width", 0.05);
+        doc.graph.set_param(n, "stroke_cap", 1.0);
+        doc.graph.set_param(n, "stroke_join", 2.0);
+        let text = doc.to_text();
+        assert!(text.contains("p 0 stroke_cap 1\n") && text.contains("p 0 stroke_join 2\n"));
+        let back = MotionDoc::from_text(&text).unwrap();
+        assert_eq!(back, doc, "o documento inteiro volta igual");
+        let ov = back.graph.node_param_overrides(n).unwrap();
+        assert_eq!(ov.get("stroke_cap"), Some(&1.0));
+        assert_eq!(ov.get("stroke_join"), Some(&2.0));
+
+        let old = "v1\nn 0 source.shape\np 0 stroke_width 0.05\n[layout]\n[backdrop]\nz 0\n";
+        let back = MotionDoc::from_text(old).unwrap();
+        let ov = back
+            .graph
+            .node_param_overrides(back.graph.nodes()[0].id)
+            .unwrap();
+        assert_eq!(ov.get("stroke_width"), Some(&0.05));
+        assert!(!ov.contains_key("stroke_cap") && !ov.contains_key("stroke_join"));
+    }
 }

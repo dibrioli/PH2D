@@ -482,3 +482,173 @@ fn a_dashed_shape_closes_its_loop_without_a_seam() {
         "esta fixture tem de ter emenda SEM o ajuste, senao nao prova nada: {n_raw}"
     );
 }
+
+/// O descritor com traço e a ponta/junta pedidas (`None` = a linha ausente: o default).
+fn com_traco(cap: Option<f32>, join: Option<f32>) -> ShapeParams {
+    ShapeParams::read(move |n: &str| match n {
+        param::STROKE_WIDTH => 0.05,
+        param::STROKE_CAP => cap.unwrap_or_else(|| manifest_default(n)),
+        param::STROKE_JOIN => join.unwrap_or_else(|| manifest_default(n)),
+        other => manifest_default(other),
+    })
+}
+
+/// ⭐ doc 121 §9.19 (3) — **A PONTA E A JUNTA DO CARTÃO CHEGAM AO `StrokeSpec`**, as nove, e a
+/// omissão é o traço que sempre shipou, byte a byte.
+///
+/// ⚠️ A metade da omissão compara contra o `StrokeSpec` construído COMO ANTES (o `new` + o
+/// tracejado, sem tocar na ponta nem na junta): um default que mudasse de `Butt`/`Miter` mudaria
+/// o traço de todo projecto que já existe, e só esta comparação o veria — a forma continua a
+/// aparecer.
+#[test]
+fn the_cap_and_join_of_the_card_reach_the_stroke_spec() {
+    use ph2d_vec_scene::{LineCap, LineJoin};
+    let caps = [LineCap::Butt, LineCap::Round, LineCap::Square];
+    let joins = [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel];
+    for (ci, cap) in caps.iter().enumerate() {
+        for (ji, join) in joins.iter().enumerate() {
+            let path = build_shape_path(&com_traco(Some(ci as f32), Some(ji as f32)));
+            let spec = path.stroke.expect("ha' traco");
+            assert_eq!(
+                (spec.cap, spec.join),
+                (*cap, *join),
+                "o cartao pediu ponta {ci} e junta {ji}"
+            );
+        }
+    }
+
+    let p = com_traco(None, None);
+    let st = p.stroke.expect("ha' traco");
+    let mut como_antes =
+        ph2d_vec_scene::StrokeSpec::new(super::rgba8(st.rgba), f64::from(st.width));
+    como_antes.dash = None;
+    let spec = build_shape_path(&p).stroke.expect("ha' traco");
+    assert_eq!((spec.cap, spec.join), (LineCap::Butt, LineJoin::Miter));
+    assert_eq!(
+        spec, como_antes,
+        "a omissao e' o StrokeSpec de antes, campo a campo"
+    );
+}
+
+/// **Cada opção dos dois selectores RESOLVE numa palavra** — a metade do gate do nó que precisa
+/// da tabela (`ph2d-node-motion-shape` não depende do i18n). Lê os hints REGISTADOS, que é o que
+/// o cartão pinta: uma chave sem palavra pinta o identificador cru na linha.
+#[test]
+fn the_cap_and_join_labels_resolve_to_words() {
+    use ph2d_node_registry::ParamWidget;
+    let state = MotionState::new();
+    let hints = state
+        .registry
+        .param_ui(ph2d_node_motion_shape::MANIFEST.id)
+        .expect("o source.shape registra o cartao");
+    for nome in [param::STROKE_CAP, param::STROKE_JOIN] {
+        let h = hints
+            .iter()
+            .find(|h| h.param == nome)
+            .unwrap_or_else(|| panic!("o cartao tem de mostrar `{nome}`"));
+        assert_ne!(
+            ph2d_i18n::tr(h.label),
+            h.label,
+            "`{nome}`: o rotulo da linha"
+        );
+        let ParamWidget::Enum { labels } = h.widget else {
+            panic!("`{nome}` e' uma escolha");
+        };
+        assert_eq!(labels.len(), 3);
+        let palavras: std::collections::BTreeSet<_> =
+            labels.iter().map(|l| ph2d_i18n::tr(l)).collect();
+        for l in labels {
+            assert_ne!(
+                ph2d_i18n::tr(l),
+                *l,
+                "`{nome}`: a opcao {l} nao tem palavra"
+            );
+        }
+        assert_eq!(
+            palavras.len(),
+            3,
+            "`{nome}`: tres opcoes, tres palavras distintas"
+        );
+    }
+}
+
+/// ⭐ doc 121 §9.19 (3) — **A PONTA E A JUNTA SOBREVIVEM À GRAVAÇÃO, e um projecto ANTIGO abre
+/// com o traço de sempre.** Pela rota do produto inteira: `to_text` → `from_text` (o que o
+/// `.ph2dproj` guarda) → `publish` → o `StrokeSpec` que o cache de geometria tem.
+///
+/// ⚠️ A metade antiga usa um texto LITERAL, sem as linhas `p … stroke_cap/stroke_join`: é o
+/// ficheiro que existe no disco de quem gravou antes do item, e nenhum `to_text` de hoje o produz.
+#[test]
+fn the_cap_and_join_survive_the_save_and_an_old_project_opens_butt_and_miter() {
+    use ph2d_vec_scene::{LineCap, LineJoin};
+    // O `StrokeSpec` que o `publish` cozinhou para o 1.º `source.shape` do documento.
+    let cozido = |doc: ph2d_motion_doc::MotionDoc| {
+        let mut state = MotionState::new();
+        state.doc = doc;
+        let n = state
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .find(|n| n.type_name == "source.shape")
+            .expect("ha' uma forma")
+            .id;
+        super::publish(&mut state, 0.0);
+        let out = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, n, 0.0)
+            .expect("cook");
+        let Some(Column::Scalar(ids)) = out[0].as_stream().get("geometry_id") else {
+            panic!("geometry_id column");
+        };
+        let path = state
+            .shape_store
+            .get(ids[0] as u32)
+            .expect("a forma publicada");
+        let spec = path.stroke.as_ref().expect("ha' traco");
+        (spec.cap, spec.join)
+    };
+
+    let mut doc = ph2d_motion_doc::MotionDoc::new();
+    let n = doc.graph.add_node("source.shape");
+    doc.graph.set_param(n, param::STROKE_WIDTH, 0.05);
+    doc.graph.set_param(n, param::STROKE_CAP, 1.0);
+    doc.graph.set_param(n, param::STROKE_JOIN, 2.0);
+    let texto = doc.to_text();
+    let lido = ph2d_motion_doc::MotionDoc::from_text(&texto).expect("o texto gravado le-se");
+    let ov = lido
+        .graph
+        .node_param_overrides(n)
+        .expect("os overrides voltaram");
+    assert_eq!(
+        ov.get(param::STROKE_CAP),
+        Some(&1.0),
+        "a ponta voltou da gravacao"
+    );
+    assert_eq!(
+        ov.get(param::STROKE_JOIN),
+        Some(&2.0),
+        "a junta voltou da gravacao"
+    );
+    assert_eq!(
+        cozido(lido),
+        (LineCap::Round, LineJoin::Bevel),
+        "e chega ao traco"
+    );
+
+    let antigo = "v1\nn 0 source.shape\np 0 stroke_width 0.05\n[layout]\n[backdrop]\nz 0\n";
+    let lido = ph2d_motion_doc::MotionDoc::from_text(antigo).expect("o projecto antigo le-se");
+    let ov = lido.graph.node_param_overrides(lido.graph.nodes()[0].id);
+    assert!(
+        ov.is_some_and(
+            |m| !m.contains_key(param::STROKE_CAP) && !m.contains_key(param::STROKE_JOIN)
+        ),
+        "a fixture e' um ficheiro SEM as duas linhas"
+    );
+    assert_eq!(
+        cozido(lido),
+        (LineCap::Butt, LineJoin::Miter),
+        "o traco de sempre"
+    );
+}

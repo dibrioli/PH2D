@@ -267,14 +267,34 @@ fn monta(
         .map(|i| super::ativo(p[i], pecas.colisores[i].as_ref()))
         .collect();
     let mut out = Vec::new();
+    // ⭐ doc 121 §9.19 (5) — **os pares saem da GRELHA, e não de todos-os-pares.** Este laço era
+    // `O(n²)` por sub-passo: a `=114` com `1 024` peças por taça custava `151` ms de cozimento por
+    // quadro, e com `4 096` passava de `2` s — a separação, essa, já tinha a grelha. A grelha entrega
+    // um SUPERCONJUNTO dos contactos em ordem CRESCENTE ([`super::grelha`]), logo `lo` por fora e `hi`
+    // crescente por dentro é a MESMA lista de restrições pela MESMA ordem: o Gauss–Seidel abaixo dá
+    // os mesmos bits (gate `os_impulsos_pela_grelha_dao_os_bits_de_todos_os_pares`).
+    let alcances = super::grelha::alcances_de(pecas.colisores, &ativo);
+    if alcances.iter().fold(0.0_f32, |a, b| a.max(*b)) <= 0.0 {
+        return out;
+    }
+    let mut grade = super::grelha::Grelha::default();
+    grade.planeia(p, &ativo, &alcances);
+    grade.constroi(p, &ativo);
+    let mut viz: Vec<u32> = Vec::new();
     // ⚠️ O laço é `lo < hi` e a normal vai do MENOR para o MAIOR — a mesma ordem do par que o
     // `separate` usa, para os dois lados de um contacto serem exactamente opostos.
     for lo in 0..n {
         if !ativo[lo] {
             continue;
         }
-        for hi in (lo + 1)..n {
-            if !ativo[hi] {
+        if todos_os_pares() {
+            viz.clear();
+            viz.extend(0..u32::try_from(n).unwrap_or(u32::MAX));
+        } else {
+            grade.vizinhos_de(lo, &mut viz);
+        }
+        for hi in viz.iter().map(|&h| h as usize) {
+            if hi <= lo || !ativo[hi] {
                 continue;
             }
             let (Some(clo), Some(chi)) = (pecas.colisores[lo], pecas.colisores[hi]) else {
@@ -604,3 +624,24 @@ fn gira(
         w[hi] += dhi;
     }
 }
+
+/// A referência do gate (`impulso_tests.rs`): os pares de todos-contra-todos, a lei de antes da grelha.
+#[cfg(test)]
+thread_local! {
+    pub(crate) static TODOS_OS_PARES: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+fn todos_os_pares() -> bool {
+    #[cfg(test)]
+    {
+        TODOS_OS_PARES.with(std::cell::Cell::get)
+    }
+    #[cfg(not(test))]
+    {
+        false
+    }
+}
+
+#[cfg(test)]
+#[path = "impulso_tests.rs"]
+mod tests;

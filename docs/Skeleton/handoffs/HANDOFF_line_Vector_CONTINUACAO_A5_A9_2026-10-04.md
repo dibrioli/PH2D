@@ -199,7 +199,7 @@ do campo segue a regra de preenchimento; cena `PH2D_VEC_BONE_SMOKE=6`).
   desligada (`TOL = 0`) é o mesmo desenho. Hipótese (por medir): a parte VIRADA pela dobra inverte o
   sentido do contorno e a regra *NonZero* anula a cor onde camadas viradas e direitas se sobrepõem.
 
-### A14 — ✅ FEITO (F64, `ed0d4852f`…`8c456103e`, 05/10; smoke do dono PENDENTE — ele pediu-o para depois da obra): O ESQUELETO é um OBJECTO — plano em [`05_plano_o_esqueleto_e_um_objecto.md`](../05_plano_o_esqueleto_e_um_objecto.md), handoff [`HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md`](HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md)
+### A14 — ✅ FEITO (F64, `ed0d4852f`…`8c456103e`, 05/10…06/10; smoke do dono APROVADO 06/10: «smoke OK», depois dos bugs #34/#35): O ESQUELETO é um OBJECTO — plano em [`05_plano_o_esqueleto_e_um_objecto.md`](../05_plano_o_esqueleto_e_um_objecto.md), handoff [`HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md`](HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md)
 
 > Os ossos desenham-se em todo modo (o olho esconde); *Add ▸ Skeleton*; Object · Edit · Pose com
 > ferramenta de osso própria (`ph2d-tool-bone`); em Object clicar num osso selecciona o esqueleto,

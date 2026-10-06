@@ -103,7 +103,7 @@ Gate batched 1× (agente `verificador`, BASE `0584aa495`, loadavg ao fim `58,6`)
 O «Último» do módulo Vector + Esqueleto passa a apontar para ESTE handoff; a frase do módulo ganha
 «o esqueleto é um objecto (Object · Edit · Pose)» e o smoke `PH2D_VEC_BONE_SMOKE=7`.
 
-## 6. Smoke (o dono — DEPOIS desta obra, como ele pediu)
+## 6. Smoke (o dono) — ✅ APROVADO 2026-10-06 («smoke OK», depois dos bugs #34 e #35)
 
 Para o dono (ele pediu-o para depois da obra):
 

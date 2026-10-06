@@ -310,3 +310,50 @@ fn deleting_the_skeleton_in_pose_releases_the_bone_tool() {
         "a ferramenta de osso ficou na mão sem esqueleto"
     );
 }
+
+/// ⭐⭐ GATE (A16, sobrevivente da mutação) — **a selecção só volta se era TODA de partes**: um osso
+/// junto com um objecto de FORA entra no Edit do esqueleto com a selecção = o esqueleto (o de fora
+/// não volta). Controlo: só o osso volta como estava.
+#[test]
+fn tab_with_a_bone_and_a_foreign_object_selects_only_the_skeleton() {
+    let mut c = cena();
+    let (s, osso) = c.esqueleto();
+    c.quadro(None);
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.modo(), None, "controlo: em Object");
+    let fora = c
+        .sim
+        .world_mut()
+        .spawn(ph2d_ecs::Transform::IDENTITY)
+        .id()
+        .to_bits();
+    // O activo é o último da selecção: o osso.
+    c.hero.gizmo.replace_selection(Some(fora));
+    c.hero.gizmo.add_to_selection(osso);
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.modo(), Some((s, ObjectMode::Edit)));
+    assert_eq!(c.selecao(), vec![s], "o objecto de fora voltou com o osso");
+}
+
+/// ⭐⭐ GATE (A16, sobrevivente da mutação) — **DOIS ossos escolhidos voltam os dois, pela mesma
+/// ordem**: o `Tab` não larga os extra da selecção.
+#[test]
+fn tab_with_two_bones_keeps_both_in_order() {
+    let mut c = cena();
+    let (s, osso) = c.esqueleto();
+    let filho = crate::bone_gesture::create(
+        &mut c.sim,
+        Some(Entity::from_bits(osso)),
+        [100.0, 0.0],
+        [150.0, 0.0],
+    )
+    .expect("o 2.º osso nasce");
+    c.quadro(None);
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.modo(), None, "controlo: em Object");
+    c.hero.gizmo.replace_selection(Some(osso));
+    c.hero.gizmo.add_to_selection(filho);
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.modo(), Some((s, ObjectMode::Edit)));
+    assert_eq!(c.selecao(), vec![osso, filho], "o Tab largou o 2.º osso");
+}

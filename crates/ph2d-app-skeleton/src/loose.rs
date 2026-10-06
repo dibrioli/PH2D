@@ -47,7 +47,7 @@ fn origem(sim: &SimWorld, doc: &TimelineDoc, raiz: Entity) -> Option<ph2d_core::
     ]
     .into_iter()
     .any(|p| doc.binding_for(raiz.to_bits(), p).is_some());
-    (!repouso_noutro_sitio && !animada && (l.x != 0.0 || l.y != 0.0)).then_some(l)
+    (!repouso_noutro_sitio && !animada).then_some(l)
 }
 
 /// ⭐ Põe um esqueleto por cima de cada raiz solta. Devolve os esqueletos criados (vazio = nada a

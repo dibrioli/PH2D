@@ -53,7 +53,7 @@ pub(super) fn amostra(
     let (mut pts, mut ts) = (vec![base[0]], vec![0.0]);
     for i in 0..amostras {
         parte(
-            s,
+            &|t| s.ponto(t),
             (t_de(i, amostras), base[i]),
             (t_de(i + 1, amostras), base[i + 1]),
             limiar,
@@ -69,9 +69,10 @@ pub(super) fn amostra(
 }
 
 /// Parte `[a, b]` ao meio enquanto o comprimento POSTO passar do `limiar`; empurra `b` (e os do
-/// meio) em ordem.
+/// meio) em ordem. `ponto` é o segmento posto (uma porta e não o segmento: o gate da terminação
+/// alimenta-a com um salto).
 fn parte(
-    s: &SegmentoDaPele<'_>,
+    ponto: &dyn Fn(f64) -> Point,
     a: (f64, Point),
     b: (f64, Point),
     limiar: f64,
@@ -82,9 +83,9 @@ fn parte(
     // Um `NaN` não parte. O `tm` que coincide com uma ponta é o fim da resolução.
     let longo = (b.1 - a.1).hypot() > limiar;
     if longo && tm > a.0 && tm < b.0 {
-        let m = (tm, s.ponto(tm));
-        parte(s, a, m, limiar, pts, ts);
-        parte(s, m, b, limiar, pts, ts);
+        let m = (tm, ponto(tm));
+        parte(ponto, a, m, limiar, pts, ts);
+        parte(ponto, m, b, limiar, pts, ts);
     } else {
         pts.push(b.1);
         ts.push(b.0);
@@ -251,5 +252,68 @@ mod tests {
             pior < 1e-4 * escala,
             "tangente {pior} fora da derivada (escala {escala})"
         );
+        // A tangente num nó INTERIOR é a diferença centrada pelos nós vizinhos (os passos à volta de
+        // `0,05` são `0,05` e `0,02`: o `2h` de um deles daria outra).
+        for k in [1, 4, 7] {
+            let fd = (pts[k + 1] - pts[k - 1]) / (irr[k + 1] - irr[k - 1]);
+            let tg = c.em(irr[k]).1;
+            assert!(
+                (tg - fd).hypot() < 1e-9 * fd.hypot(),
+                "nó {k}: tangente {tg:?}, diferença {fd:?}"
+            );
+        }
+        // Um pedaço EXACTAMENTE entre dois nós cabe (com nós e sem eles).
+        assert!(
+            c.cabe_num_intervalo(&(irr[1]..irr[2])),
+            "o intervalo [nó 1, nó 2]"
+        );
+        assert!(
+            !c.cabe_num_intervalo(&(irr[1]..irr[3])),
+            "controlo: dois intervalos"
+        );
+        assert!(a.cabe_num_intervalo(&(0.0..1.0 / 12.0)), "o passo uniforme");
+        // `4` densos por pedaço entre nós, e só os nós DENTRO do alcance cortam.
+        assert_eq!(c.densos(&(0.0..1.0)).len(), 1 + 4 * (irr.len() - 1));
+        let r = 0.06..0.5;
+        let d = c.densos(&r);
+        assert_eq!(d.len(), 1 + 4 * 6, "os cortes de {r:?}");
+        assert_eq!(d[0], c.em(r.start).0);
+        assert!(
+            (d[d.len() - 1] - c.em(r.end).0).hypot() < 1e-12,
+            "a ponta de {r:?}"
+        );
+    }
+
+    /// ⭐ GATE — **o chão de precisão é o FIM da recursão**: um segmento posto com um SALTO entre dois
+    /// `t` a um ulp um do outro (nenhum partir o encurta) termina, com os nós em ordem e o salto entre
+    /// dois `t` vizinhos. ⚠️ A sonda conta as chamadas e pára aos `1 000`: sem o chão a recursão não
+    /// tem fundo, e o teste tem de ficar VERMELHO e não rebentar a pilha.
+    #[test]
+    fn um_salto_no_segmento_posto_termina_no_chao_de_precisao() {
+        const SALTO: f64 = 0.3;
+        let chamadas = std::cell::Cell::new(0_u32);
+        let ponto = |t: f64| {
+            chamadas.set(chamadas.get() + 1);
+            assert!(chamadas.get() < 1_000, "a recursão não terminou em {t}");
+            Point::new(if t < SALTO { 0.0 } else { 10.0 }, 0.0)
+        };
+        let (mut pts, mut ts) = (vec![ponto(0.0)], vec![0.0]);
+        parte(
+            &ponto,
+            (0.0, pts[0]),
+            (1.0, ponto(1.0)),
+            1.0,
+            &mut pts,
+            &mut ts,
+        );
+        assert_eq!(pts.len(), ts.len());
+        assert!(ts.windows(2).all(|w| w[0] < w[1]), "nós fora de ordem");
+        assert_eq!(ts.last(), Some(&1.0));
+        let k = pts
+            .windows(2)
+            .position(|w| (w[1] - w[0]).hypot() > 1.0)
+            .expect("o salto fica entre dois nós");
+        assert!(ts[k] < SALTO && ts[k + 1] >= SALTO);
+        assert_eq!(ts[k].next_up(), ts[k + 1], "o salto não chegou ao ulp");
     }
 }

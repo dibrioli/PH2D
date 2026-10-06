@@ -105,11 +105,12 @@ fn the_adopted_skeleton_sits_on_the_root_and_the_pose_stays_to_the_bit() {
 }
 
 /// ⭐⭐ GATE (A15) — **onde mover a origem não seria exacto, o esqueleto fica na identidade**: o
-/// repouso guardado noutro sítio e a posição na timeline. Controlo: o repouso IGUAL à pose vai com
-/// ela (fica `0` na raiz) e repô-lo devolve o mesmo mundo.
+/// repouso guardado noutro sítio e a posição na timeline (CADA uma das três propriedades da posição,
+/// sozinha, deixa também a raiz intocada). Controlo: o repouso IGUAL à pose vai com ela (fica `0` na
+/// raiz) e repô-lo devolve o mesmo mundo.
 #[test]
 fn a_root_whose_place_is_stored_elsewhere_keeps_the_skeleton_at_identity() {
-    let adopta = |rest: Option<[f32; 2]>, animada: bool| {
+    let adopta = |rest: Option<[f32; 2]>, animada: Option<ph2d_timeline::PropKind>| {
         let mut sim = SimWorld::default();
         let raiz = osso(&mut sim, [30.0, -12.5], 0.3, None);
         if let Some(r) = rest {
@@ -119,25 +120,35 @@ fn a_root_whose_place_is_stored_elsewhere_keeps_the_skeleton_at_identity() {
             sim.world_mut().entity_mut(raiz).insert(b);
         }
         let mut doc = TimelineDoc::default();
-        if animada {
-            doc.bind(raiz.to_bits(), ph2d_timeline::PropKind::TranslationY);
+        if let Some(p) = animada {
+            doc.bind(raiz.to_bits(), p);
         }
         let esq = Entity::from_bits(adopt_loose_roots(&mut sim, &doc)[0]);
         let t = sim.world().get::<Transform>(esq).expect("esq").translation;
         (sim, raiz, [t.x, t.y])
     };
     assert_eq!(
-        adopta(None, false).2,
+        adopta(None, None).2,
         [30.0, -12.5],
         "controlo: sem nada guardado"
     );
     assert_eq!(
-        adopta(Some([1.0, 2.0]), false).2,
+        adopta(Some([1.0, 2.0]), None).2,
         [0.0, 0.0],
         "repouso noutro sítio"
     );
-    assert_eq!(adopta(None, true).2, [0.0, 0.0], "posição na timeline");
-    let (mut sim, raiz, t) = adopta(Some([30.0, -12.5]), false);
+    use ph2d_timeline::PropKind as P;
+    for p in [P::TranslationX, P::TranslationY, P::Position] {
+        let (sim, raiz, t) = adopta(None, Some(p));
+        assert_eq!(t, [0.0, 0.0], "{p:?} na timeline moveu o esqueleto");
+        let l = sim
+            .world()
+            .get::<Transform>(raiz)
+            .expect("raiz")
+            .translation;
+        assert_eq!([l.x, l.y], [30.0, -12.5], "{p:?} na timeline mexeu na raiz");
+    }
+    let (mut sim, raiz, t) = adopta(Some([30.0, -12.5]), None);
     assert_eq!(t, [30.0, -12.5], "o repouso igual à pose vai com ela");
     let antes = mundo(&sim, raiz);
     let rest = *sim.world().get::<BoneRest>(raiz).expect("repouso");

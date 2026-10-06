@@ -565,15 +565,16 @@ fn sem_vao_a_malha_sai_ao_bit() {
 }
 
 /// O maior vão (em texels) que um pedaço cosido atravessa nas pontas — `|pa − qa|` e `|pb − qb|` dos
-/// quatro pontos `[pa, pb, qb, qa]` de cada pedaço.
+/// oito pontos `[pa, pb, mb, ma, ma, mb, qb, qa]` de cada pedaço (as duas metades, A5-a). ⛔ Lido
+/// de 4 em 4 media MEIO vão (`|pa − ma|`) e o `d < 2·vão` passava.
 fn maior_vao_cosido(p: &Palco) -> f64 {
     let (sem, com) = (desenhada(p, false, false), desenhada(p, true, false));
     let [a, b, c, d, _, _] = p.p2l.0;
     let texel = (a * d - b * c).abs().sqrt();
     let q = |i: usize| [f64::from(com.local[i][0]), f64::from(com.local[i][1])];
     (sem.local.len()..com.local.len())
-        .step_by(4)
-        .flat_map(|k| [(k, k + 3), (k + 1, k + 2)])
+        .step_by(8)
+        .flat_map(|k| [(k, k + 7), (k + 1, k + 6)])
         .map(|(i, j)| {
             let (u, v) = (q(i), q(j));
             (u[0] - v[0]).hypot(u[1] - v[1]) / texel

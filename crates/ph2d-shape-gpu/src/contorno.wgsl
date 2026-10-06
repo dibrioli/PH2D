@@ -75,17 +75,8 @@ var<private> cmin: vec2<f32>;
 var<private> cmax: vec2<f32>;
 
 fn emite(p0: vec2<f32>, p1: vec2<f32>) {
-    // doc 121 §9.18 (E) — o fio de uma PEÇA conta ou reserva o sítio na cópia (`contorno_pecas.wgsl`).
-    var k = cursor;
-    if POR_PECA != 0u && modo_emite == EMITE_CONTA {
-        cursor += 1u;
-        return;
-    }
-    if POR_PECA != 0u && modo_emite == EMITE_RESERVA {
-        k = atomicAdd(&porcopia_rw[PORCOPIA * copia_emite], 1u);
-    }
-    if k < limite_saida {
-        contorno_rw[base_saida + k] = vec4<f32>(p0, p1);
+    if cursor < limite_saida {
+        contorno_rw[base_saida + cursor] = vec4<f32>(p0, p1);
         cmin = min(cmin, min(p0, p1));
         cmax = max(cmax, max(p0, p1));
     }
@@ -365,13 +356,7 @@ fn percorre(cp: Copia, ajuste: f32) {
         if !tracejado(it) {
             emite_peca(it, cp.lin, cp.t, caneta);
         } else if (it.ponta & SUB_INICIO) != 0u {
-            if POR_PECA == 0u {
-                emite_tracejado(i, cp.lin, cp.t, caneta, ajuste);
-            } else if PASSEIO == 0u {
-                regista_tracejado(i, cp.lin, cp.t, caneta, ajuste);
-            } else {
-                tem_tracejado = true;
-            }
+            emite_tracejado(i, cp.lin, cp.t, caneta, ajuste);
         }
     }
 }
@@ -722,12 +707,6 @@ fn escreve(ii: u32) -> bool {
     ccopias_rw[3u * ii] = vec4<u32>(0u);
     ccopias_rw[3u * ii + 1u] = vec4<u32>(0u);
     ccopias_rw[3u * ii + 2u] = vec4<u32>(0u);
-    if POR_PECA != 0u && TRACEJADO {
-        contagem[quinto(5u) + ii] = 0u;
-        if PASSEIO == 1u {
-            atomicStore(&porcopia_rw[PORCOPIA * ii + 10u], 0u);
-        }
-    }
     let m0 = contas.n + 1u;
     let base = contagem[ii];
     // O que a contagem RESERVOU: com o eixo, o limite superior do contorno; o que se usa é ≤.
@@ -750,33 +729,21 @@ fn escreve(ii: u32) -> bool {
     transforma(p.cp, p.m0, p.nm, base + p.nf);
     let nc_reservado = reservado - p.nf - p.nm;
     var nc = 0u;
-    // doc 121 §9.18 (E) — as peças tracejadas escrevem-nas os fios delas; o `cs_fecha` acaba a cópia.
-    var adiada = false;
     if nc_reservado > 0u {
         let bc = base + p.nf + p.nm;
         base_saida = bc;
         limite_saida = nc_reservado;
-        let ajuste = bitcast<f32>(contagem[quinto(4u) + ii]);
-        let por_peca = POR_PECA != 0u && TRACEJADO;
-        if por_peca {
-            abre_as_linhas(base, reservado, p.cp, ajuste);
-        }
-        percorre(p.cp, ajuste);
+        percorre(p.cp, bitcast<f32>(contagem[quinto(4u) + ii]));
         // ⚠️ O limite da contagem é um pior caso: uma escrita que o passasse seria um contorno
         // truncado. ⇒ é deitada fora e a cópia segue pelo caminho de sempre.
-        if cursor > nc_reservado || (por_peca && !publica_as_linhas(ii, bc, nc_reservado, p.cp)) {
+        if cursor > nc_reservado {
             return false;
         }
-        // §9.19 — com o passeio no `cs_trocos` as peças ainda não se contaram: adia-se toda cópia tracejada.
-        let ha_pecas = select(pecas > 0u, tem_tracejado, PASSEIO == 1u);
-        adiada = por_peca && (POR_PECA == 2u || POR_PECA == 3u) && ha_pecas;
-        if !adiada {
-            nc = (cursor + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
-            // O enchimento até ao bloco inteiro: arestas de comprimento zero (`dy = 0` em toda a fileira —
-            // as células não as vêem).
-            for (var i = cursor; i < nc; i += 1u) {
-                contorno_rw[bc + i] = vec4<f32>(0.0);
-            }
+        nc = (cursor + SEGS_POR_BLOCO - 1u) / SEGS_POR_BLOCO * SEGS_POR_BLOCO;
+        // O enchimento até ao bloco inteiro: arestas de comprimento zero (`dy = 0` em toda a fileira —
+        // as células não as vêem).
+        for (var i = cursor; i < nc; i += 1u) {
+            contorno_rw[bc + i] = vec4<f32>(0.0);
         }
     }
     // O que se usa: as arestas e o registo de célula do que foi DE FACTO escrito.
@@ -786,7 +753,7 @@ fn escreve(ii: u32) -> bool {
     ccopias_rw[3u * ii + 1u] = vec4<u32>(mbase, p.linhas, 0u, bitcast<u32>(p.y0));
     ccopias_rw[3u * ii + 2u] = vec4<u32>(bitcast<u32>(p.x0), p.celulas, p.regra, 0u);
     // O desenho só lê as células com algum bloco (`tela` no `vs_main`).
-    return ne > 0u || adiada;
+    return ne > 0u;
 }
 
 // ⭐⭐ doc 121 §9.12 — **AS CÉLULAS POR ACUMULAÇÃO, EM QUATRO PASSES LARGOS.** Cada fileira de pixels de

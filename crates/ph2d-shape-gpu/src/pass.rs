@@ -69,11 +69,7 @@ pub struct ShapePass {
 
 /// O shader: o desenho e os passes de cálculo do contorno num MÓDULO só — os dois lêem a mesma
 /// `copia_de` e a mesma geometria do traço (`bissectriz`), e escritas duas vezes elas divergiriam.
-const SHADER: &str = concat!(
-    include_str!("shape.wgsl"),
-    include_str!("contorno.wgsl"),
-    include_str!("contorno_pecas.wgsl")
-);
+const SHADER: &str = concat!(include_str!("shape.wgsl"), include_str!("contorno.wgsl"));
 /// doc 121 §9.15 (d) — o `cs_varre` por subgrupo, num módulo à parte: um módulo com operações de
 /// subgrupo não valida num dispositivo sem `Features::SUBGROUP`.
 const SUBGRUPO: &str = include_str!("contorno_subgrupo.wgsl");
@@ -127,7 +123,7 @@ pub struct VarianteDoPasse {
 /// doc 121 §9.17 — as constantes `override` do contorno que uma variante pode dar. Vazia: os pedaços
 /// medidos dobraram-se (§9.17); um candidato novo NASCE `override` e acrescenta aqui o nome dele
 /// (`docs/DevOps/MEDIR_VELOCIDADE.md`).
-pub const CONSTANTES_DO_CONTORNO: &[&str] = &["POR_PECA", "PASSEIO"];
+pub const CONSTANTES_DO_CONTORNO: &[&str] = &[];
 
 impl VarianteDoPasse {
     /// A variante de `PH2D_FORMAS_CONSTANTES=NOME=v,…` (doc 121 §9.17): a porta para medir as constantes

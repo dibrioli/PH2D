@@ -72,8 +72,8 @@ impl Contorno {
         if n > self.cap_copias {
             let cap = n.next_power_of_two();
             let armazens = wgpu::BufferUsages::STORAGE;
-            // Seis quintos de `n + 1`: as arestas reservadas, as células, as linhas de ecrã, as
-            // arestas escritas, o ajuste do tracejado (§9.15) e as peças tracejadas (§9.18 E).
+            // Cinco quintos de `n + 1`: as arestas reservadas, as células, as linhas de ecrã, as
+            // arestas escritas e o ajuste do tracejado (§9.15).
             self.contagem = buffer(
                 gpu,
                 "ph2d-shape-gpu contagem",
@@ -88,7 +88,6 @@ impl Contorno {
                 armazens | wgpu::BufferUsages::COPY_SRC,
             );
             self.caixas = buffer(gpu, "ph2d-shape-gpu caixas do contorno", cap * 16, armazens);
-            self.pecas.garante(gpu, Some(cap), None);
             self.cap_copias = cap;
         }
         let pedido = self
@@ -102,7 +101,6 @@ impl Contorno {
                 .next_multiple_of(BLOCO);
             let armazens = wgpu::BufferUsages::STORAGE;
             self.arestas = buffer(gpu, "ph2d-shape-gpu arestas", cap * ARESTA, armazens);
-            self.pecas.garante(gpu, None, Some(cap));
             self.cap_arestas = cap;
             // doc 121 §9.17 (c): a memória das arestas na cena do app (a reserva do tracejado a faz crescer).
             if self.relata {

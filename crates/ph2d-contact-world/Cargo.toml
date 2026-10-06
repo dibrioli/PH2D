@@ -15,9 +15,12 @@ ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-contact = { path = "../ph2d-contact" }
 # O seno e o cosseno sem `std` (HR-5): a taça é geometria que alimenta a simulação.
 ph2d-motion-kit = { path = "../ph2d-motion-kit" }
-# O motor da casa (ADR-0131), com as MESMAS features da `ph2d-physics` — o cargo unifica-as, e o
-# `enhanced-determinism` é o que faz duas corridas iguais ao bit (doc 121 §9.20).
-rapier2d = { version = "0.35", default-features = false, features = ["dim2", "f32", "std", "enhanced-determinism"] }
+# O motor da casa (ADR-0131), com as features da `ph2d-physics` — o cargo unifica-as, e o
+# `enhanced-determinism` é o que faz duas corridas iguais ao bit (doc 121 §9.20). ⭐ E o `parallel`:
+# medido no oráculo, os MESMOS bits com 1, 4 e 16 fios E os da build sem ele (`4 096`: `eb8392c1…`
+# nos quatro), e `2,0 → 0,95` ms a `4 096` · `9,3 → 3,1` a `16 384`. ⚠️ Ele chega também à
+# `ph2d-physics` (unificação): os gates de replay dela correram verdes com ele (handoff §14).
+rapier2d = { version = "0.35", default-features = false, features = ["dim2", "f32", "std", "enhanced-determinism", "parallel"] }
 
 [dev-dependencies]
 # O alocador que conta — a conta dos bytes do mundo (`tests/it`), como os gates HR-3 da casa.

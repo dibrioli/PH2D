@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prova de mutação da 5.ª onda do doc 121 (§9.20): o contacto das formas do Motion pelo motor da casa.
+"""Prova de mutação da 5.ª e da 6.ª ondas do doc 121 (§9.20–§9.21): o contacto das formas do Motion pelo motor da casa.
 
 Cada mutação tem de SANGRAR nas suites que ela nomeia:
   MUNDO  `ph2d-contact-world` (lib + tests/it)      (o mundo: renascer, recibo, ângulo, recém-nascidos, bytes)
@@ -29,6 +29,7 @@ SUITES = {
     "TACA": ["cargo", "test", "-p", "ph2d-node-sim-collide", "--lib", "mundo_tests"],
     "RECUO": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "recuo_tests"],
     "RAMPA": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "material_demo"],
+    "DISCOS": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "a_pile_of_discs_with_rolling_settles"],
 }
 
 # (nome, suites, [(ficheiro, âncora, substituição, nº de ocorrências)])
@@ -66,6 +67,11 @@ MUTS = [
     ("m13 o atrito do par pela media", ["PASSO"], [(PECA,
         "        Some(m) => (m.atrito, m.salto, CoefficientCombineRule::GeometricMean),",
         "        Some(m) => (m.atrito, m.salto, CoefficientCombineRule::Max),", 1)]),
+    # A 6.ª onda (06/10, a continuação): a trava destranca ao 2.º excesso, e o mundo some sem colisor.
+    ("m14 a trava destranca ao 1.o excesso", ["DISCOS"], [(ROLAR,
+        "pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 2;", "pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 1;", 1)]),
+    ("m15 o mundo fica sem colisor", ["RECUO"], [(MUNDO,
+        "        *mundo = None;\n        return None;\n", "        return None;\n", 1)]),
 ]
 
 

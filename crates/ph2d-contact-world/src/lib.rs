@@ -65,11 +65,14 @@ struct Corpo {
     /// A fase PARADA do rolamento: a rotação trancada no solver até o binário pedido passar do
     /// `travao` (ver [`rolar`]).
     presa: bool,
+    /// Quantos passos SEGUIDOS o binário pedido passou da capacidade, com a peça presa.
+    excessos: u8,
 }
 
 #[derive(Clone)]
 struct Fixo {
-    colisor: ColliderHandle,
+    /// Um por obstáculo; a taça, um por LADO (ver [`fixo::colisores`]).
+    colisores: Vec<ColliderHandle>,
     forma: FormaFixa,
     atrito: f32,
     /// O salto contra cada linha do stream (o `Randomness` do cartão) — ver [`Saltos`].
@@ -409,8 +412,18 @@ pub fn passo(
             let cap = lido.capacidade[i];
             c.travao = cap;
             if c.presa {
-                // Destrava quando os contactos pedem mais binário do que o rolamento segura.
-                c.presa = lido.pedido[i] <= cap;
+                // Destrava quando os contactos pedem mais binário do que o rolamento segura — em
+                // [`rolar::EXCESSOS_PARA_SOLTAR`] passos SEGUIDOS (ver a tabela lá).
+                let excede = lido.pedido[i] > cap;
+                c.excessos = if excede {
+                    c.excessos.saturating_add(1)
+                } else {
+                    0
+                };
+                if c.excessos >= rolar::EXCESSOS_PARA_SOLTAR {
+                    c.presa = false;
+                    c.excessos = 0;
+                }
             } else if cap > 0.0 && c.spec.inercia_inv > 0.0 {
                 // O rolamento pára-a neste passo ⇒ fase PARADA (o giro que sobra é zero).
                 let b = &mut m.bodies[c.corpo];
@@ -579,6 +592,7 @@ fn escreve(m: &mut Mundo, i: usize, id: u32, spec: &peca::Spec, e: &Estado<'_>, 
         saida: bits(p, v, rot, spin),
         travao: 0.0,
         presa: false,
+        excessos: 0,
     });
 }
 
@@ -594,8 +608,9 @@ fn sincroniza_fixos(m: &mut Mundo, declarados: &[(u32, obstaculo::Obstaculo)]) {
         .collect();
     for k in saem {
         if let Some(f) = m.fixos.remove(&k) {
-            m.colliders
-                .remove(f.colisor, &mut m.islands, &mut m.bodies, false);
+            for c in f.colisores {
+                m.colliders.remove(c, &mut m.islands, &mut m.bodies, false);
+            }
         }
     }
     for (k, o) in declarados {
@@ -613,18 +628,23 @@ fn sincroniza_fixos(m: &mut Mundo, declarados: &[(u32, obstaculo::Obstaculo)]) {
         }
         let varia = o.salto.iter().any(|x| x.to_bits() != salto.to_bits());
         if let Some(f) = m.fixos.remove(k) {
-            m.colliders
-                .remove(f.colisor, &mut m.islands, &mut m.bodies, false);
+            for c in f.colisores {
+                m.colliders.remove(c, &mut m.islands, &mut m.bodies, false);
+            }
         }
-        let mut c = fixo::colisor(o.forma, o.atrito, salto, FIXO | u128::from(*k));
-        if varia {
-            c.set_active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS);
-        }
-        let colisor = m.colliders.insert(c);
+        let colisores = fixo::colisores(o.forma, o.atrito, salto, FIXO | u128::from(*k))
+            .into_iter()
+            .map(|mut c| {
+                if varia {
+                    c.set_active_hooks(ActiveHooks::MODIFY_SOLVER_CONTACTS);
+                }
+                m.colliders.insert(c)
+            })
+            .collect();
         m.fixos.insert(
             *k,
             Fixo {
-                colisor,
+                colisores,
                 forma: o.forma,
                 atrito: o.atrito,
                 saltos: o.salto.clone(),

@@ -2647,3 +2647,41 @@ seguinte medida no oráculo é o rapier `parallel` (`16 384`: `15,8`–`18,5` �
 e falta provar o DETERMINISMO dele (a feature é unificada pelo cargo com a `ph2d-physics`, cujos gates de replay
 entre sistemas operativos o pedem) — antes de qualquer contacto no dispositivo. E o recomeço a `16 384` paga a
 construção de um mundo novo (`280` ms no quadro do recomeço).
+
+### §9.21 — O QUE O §9.20 DEIXOU, num bloco (2026-10-06, depois do smoke aprovado: *«siga com o que está em aberto»*)
+
+Os três itens abertos medidos juntos antes de construir (oráculo `oraculo_rapier_pilha_quente_frio/`, `release`):
+
+**(1) O rapier em VÁRIOS núcleos (`parallel`) — CONSTRUÍDO.** O determinismo, a pergunta que o §9.20 deixou: a pilha
+de `4 096` e a de `16 384` dão os MESMOS bits com `1`, `4` e `16` fios (`RAYON_NUM_THREADS`) E os da build sem a
+feature (`4 096`: `eb8392c1a4123211` nos quatro); no produto, `1` e `16` fios os mesmos bits em todas as células
+(`target/prova/onda5/paralelo_no_app.txt`); e o `ph2d_physics_c9` (o replay entre sistemas operativos da Física) dá o
+MESMO hash com e sem a feature (`f72f20f9…`, binários diferentes). Os `1 600+` testes de `ph2d-physics`,
+`ph2d-physics-ecs` e `ph2d-app-physics` verdes com ela (a feature unifica-se com a `ph2d-physics`). Custo do motor puro
+(mediana · p95): `4 096` `2,0 · 4,8 → 0,95 · 2,1` ms; `16 384` `9,3 · 15 → 3,1 · 5,6`.
+
+**(2) O pico do recomeço — CONSTRUÍDO: a taça é um colisor POR LADO.** O 1.º passo de um mundo novo de `16 384` peças
+custava `207`–`213` ms (o 2.º `20`, o 3.º `2`) e não era a montagem (`3` ms) nem os lados (`32`/`128`/`512` iguais): a
+polilinha tem a caixa do tamanho da taça e cada peça fazia par com ela. Sem a taça no mundo `10` ms; em segmentos `8`
+ms, e o passo de regime `3,29 → 2,91`, a mesma pilha.
+
+No produto (`prova_do_mundo_de_contacto`, os dois juntos; carga `5`–`10`): `4 096` por taça `4,30 · 7,51 → 2,32 ·
+5,48` ms; `16 384` `14,3 · 24,4 → 6,96 · 17,1`. A sonda do tique do app a `16 384`: mediana `6,8` ms, máximo `27`, zero
+picos. ⚠️ No app, com a máquina a carga `25`–`30` (outras linhas a correr testes a `1 585 %` de CPU), `16 384` leu
+`4`–`59` fps — a medição do app fica para quando a carga deixar (abaixo).
+
+**(3) O rolamento numa pilha de discos — MEDIDO, a trava passa a destrancar ao 2.º excesso seguido.** Três variantes
+da regra de trancar/destrancar numa rodada (a tabela em `rolar.rs`, `EXCESSOS_PARA_SOLTAR`): o 2.º excesso é a melhor
+no conjunto (caixas `0,1`/`0,25` `3,7°/4,4° → 3,2°/3,9°` com tremor `0`; discos `0,25` `44° → 0°`); os discos a `0,1`
+continuam a agitar na QUEDA em todas (`104°` na 1.ª janela contra `10,7` sem o botão) e assentam como sem ele depois
+(`3,1°` contra `2,4°`) — leitura (não prova): um monte de discos com rolamento fica inclinado e desaba enquanto
+assenta. Gate novo `a_pile_of_discs_with_rolling_settles` (`420..480` `≤ 1°`; ao 1.º excesso `71°`).
+
+**A régua das voltas do `Loop` saiu, e a lei que a substitui:** com a taça em segmentos a 2.ª volta afasta-se
+`9,15e-2` da 1.ª (era `1,06e-3`) — o relógio `f32` amplificado pelo caos da pilha nas emendas; e a mutação «o mundo
+velho continua» dava a MESMA diferença: o mundo já morria na PAUSA (a zona sem peças ⇒ sem colisor ⇒ sem mundo). ⇒
+o gate passa a medir isso: `the_loop_pause_drops_the_world_and_the_next_fall_starts_a_new_one` (mutação `m15`
+«o mundo fica sem colisor» sangra).
+
+**Mutações** (o mesmo `mutacao_a_onda_5_2026-10-06.py`, `m14`/`m15` novas): `m3`, `m14`, `m15` sangram (as outras
+`13` não mudaram de alvo).

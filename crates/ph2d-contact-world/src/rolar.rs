@@ -27,6 +27,21 @@
 //!
 //! Só a trava estática dá o repouso EXACTO, porque é a única que fica dentro do solver.
 
+/// **A trava destranca só ao 2.º excesso SEGUIDO** do binário pedido (doc 121 §9.20, a rodada das
+/// variantes, `1` sub-passo; o rodopio somado das três janelas `120..180 · 240..300 · 420..480`):
+///
+/// | regra | caixas `0,1` · `0,25` | discos `0,1` · `0,25` |
+/// |---|---|---|
+/// | destranca ao 1.º excesso | `3,7°` · `4,4°` | `69°` · `44°` |
+/// | **ao 2.º seguido** | **`3,2°` · `3,9°`** (tremor `0`) | `110°` · **`0°`** |
+/// | só tranca se os contactos não pedem giro | `5,9°` · `2,8°` | `320°` · `90°` |
+/// | espera `4` passos depois de destrancar | `2,7°` · `7,1°` | `273°` · `85°` |
+///
+/// ⚠️ Os discos a `0,1` agitam na QUEDA em todas (`104°` na 1.ª janela contra `10,7` sem o botão) e
+/// assentam como sem ele nas outras (`3,1°` contra `2,4°`): leitura — um monte de discos com
+/// rolamento fica inclinado e desaba enquanto assenta; sem rolamento eles rolam logo ao fundo.
+pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 2;
+
 use rapier2d::prelude::*;
 use std::collections::BTreeMap;
 

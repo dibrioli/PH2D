@@ -29,9 +29,27 @@ fn lados(raio: f32) -> usize {
     n.clamp(LADOS_MIN, LADOS_MAX)
 }
 
-/// O colisor fixo de um obstáculo declarado. ⚠️ A regra do atrito é `Average` de propósito: a da
-/// peça decide (ver [`crate::peca::colisor`]).
-pub(crate) fn colisor(forma: FormaFixa, atrito: f32, salto: f32, etiqueta: u128) -> Collider {
+/// Os colisores fixos de um obstáculo declarado. ⚠️ A regra do atrito é `Average` de propósito: a
+/// da peça decide (ver [`crate::peca::colisor`]).
+///
+/// ⭐ **A TAÇA é um colisor POR LADO, não uma polilinha** (doc 121 §9.20): a polilinha tem a caixa
+/// do tamanho da taça, e cada peça lá dentro faz par com ela — o 1.º passo de um mundo novo de
+/// `16 384` peças custava `213` ms (o recomeço de cada `Loop`). Lado a lado só as peças junto da
+/// parede fazem par: `8` ms, e o passo de regime `3,29 → 2,91` ms, a mesma pilha.
+pub(crate) fn colisores(
+    forma: FormaFixa,
+    atrito: f32,
+    salto: f32,
+    etiqueta: u128,
+) -> Vec<Collider> {
+    let acaba = |b: ColliderBuilder| {
+        b.friction(atrito)
+            .friction_combine_rule(CoefficientCombineRule::Average)
+            .restitution(salto)
+            .restitution_combine_rule(CoefficientCombineRule::Max)
+            .user_data(etiqueta)
+            .build()
+    };
     let b = match forma {
         FormaFixa::Plano { normal, altura } => {
             let n = Vector::new(normal[0], normal[1]);
@@ -49,7 +67,10 @@ pub(crate) fn colisor(forma: FormaFixa, atrito: f32, salto: f32, etiqueta: u128)
                     Vector::new(centro[0] + raio * c, centro[1] + raio * s)
                 })
                 .collect();
-            ColliderBuilder::polyline(pontos, None)
+            return pontos
+                .windows(2)
+                .map(|w| acaba(ColliderBuilder::segment(w[0], w[1])))
+                .collect();
         }
         FormaFixa::Caixa { centro, meia, eixo } => ColliderBuilder::cuboid(meia[0], meia[1])
             .position(Pose::from_parts(
@@ -60,12 +81,7 @@ pub(crate) fn colisor(forma: FormaFixa, atrito: f32, salto: f32, etiqueta: u128)
                 },
             )),
     };
-    b.friction(atrito)
-        .friction_combine_rule(CoefficientCombineRule::Average)
-        .restitution(salto)
-        .restitution_combine_rule(CoefficientCombineRule::Max)
-        .user_data(etiqueta)
-        .build()
+    vec![acaba(b)]
 }
 
 #[cfg(test)]

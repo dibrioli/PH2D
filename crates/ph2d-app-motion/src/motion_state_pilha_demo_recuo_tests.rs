@@ -72,43 +72,46 @@ fn a_scrub_back_then_play_gives_the_bits_of_the_first_pass() {
     }
 }
 
-/// ⭐⭐ **A 2.ª volta do `Loop` repete a 1.ª** — um recomeço é um mundo NOVO, não o velho com as
-/// peças teletransportadas e os contactos de ontem.
+/// ⭐⭐ **Na PAUSA do `Loop` não há mundo de contacto, e a queda seguinte nasce num mundo NOVO** —
+/// a zona fica sem peças entre as quedas, e um stream sem colisor apaga a memória do `sim.step`.
 ///
-/// ⚠️⚠️ **Não ao bit, e o porquê é o RELÓGIO, não o mundo** (escrevi «ao bit» no doc 121 §9.20 antes
-/// de medir): o passo é `playhead − sim_t` em `f32`, e `3,6 + k/60` arredonda diferente de `k/60`.
-/// Medido no tique `150` das duas voltas (`probe_a_diferenca_entre_as_voltas`): a lei por colunas de
-/// antes divergia `1,5e-2`; o mundo de contacto `1,06e-3`. A barra é `2e-3`.
+/// ⛔ A régua de antes («a 2.ª volta fica a `2e-3` da 1.ª») NÃO distinguia o defeito que devia
+/// pegar: com o mundo velho forçado a continuar (a mutação `m3`) a diferença era a MESMA
+/// (`9,15e-2`), porque o mundo já morria na pausa; e a diferença em si é o relógio `f32` (`3,6 + k/60`
+/// contra `k/60`) amplificado pelo caos da pilha — `1,06e-3` com a taça em polilinha, `9,15e-2` em
+/// segmentos. O mundo novo ao bit tem gate na crate (`a_stream_that_does_not_continue…`).
 #[test]
-fn the_second_lap_of_the_loop_repeats_the_first() {
+fn the_loop_pause_drops_the_world_and_the_next_fall_starts_a_new_one() {
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         reason = "segundos → tiques"
     )]
-    let volta = ((DURACAO + PAUSA) * 60.0).round() as u64;
+    let (queda, volta) = (
+        (DURACAO * 60.0).round() as u64,
+        ((DURACAO + PAUSA) * 60.0).round() as u64,
+    );
     let (mut state, sinks) = cena();
-    let mut uma = Vec::new();
-    for k in 0..=(volta + 150) {
-        let b = em(&mut state, &sinks, k);
-        if k == 150 {
-            uma = b;
-        } else if k == volta + 150 {
+    let mut na_pausa = Vec::new();
+    for k in 0..=(volta + 30) {
+        let _ = em(&mut state, &sinks, k);
+        if k == 30 || k == volta + 30 {
             assert!(
-                !uma.is_empty() && uma.len() == b.len(),
-                "as duas voltas tem as pecas"
+                state.pump.cook.has_memo(),
+                "a cair (tique {k}) ha' mundo de contacto"
             );
-            let d = uma
-                .iter()
-                .zip(&b)
-                .map(|(a, b)| (f32::from_bits(*a) - f32::from_bits(*b)).abs())
-                .fold(0.0_f32, f32::max);
-            assert!(d < 2e-3, "a 2.a volta afastou-se {d} da 1.a no tique 150");
+        }
+        if k > queda + 5 && k + 5 < volta {
+            na_pausa.push(state.pump.cook.has_memo());
         }
     }
+    assert!(
+        !na_pausa.is_empty() && na_pausa.iter().all(|m| !m),
+        "na pausa o mundo some: {na_pausa:?}"
+    );
 }
 
-/// A sonda da barra acima: a maior diferença entre as duas voltas no tique `150`. ⚠️ A lei de antes
+/// A sonda da régua retirada acima: a maior diferença entre as duas voltas no tique `150`. ⚠️ A lei de antes
 /// (`1,5e-2`) correu aqui atrás de uma chave por fio em `e78b2c096` e saiu com o código dela.
 #[test]
 #[ignore = "sonda"]

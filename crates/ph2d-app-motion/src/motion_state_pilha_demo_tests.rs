@@ -545,3 +545,22 @@ fn a_taca_da_medida_contem_a_grelha_de_partida() {
         assert_eq!((m.linhas, m.colunas), (k, k));
     }
 }
+
+/// ⭐⭐ **Uma pilha de DISCOS com `Rolling 0,25` ASSENTA** — a trava do rolamento destranca só ao 2.º
+/// excesso seguido (`ph2d-contact-world`, `EXCESSOS_PARA_SOLTAR`): ao 1.º ela alternava trancar e
+/// destrancar e a pilha parada girava `26,4°` na janela `420..480`; ao 2.º, `0,00` (doc 121 §9.20,
+/// a rodada das variantes da trava).
+#[test]
+fn a_pile_of_discs_with_rolling_settles() {
+    let discos = [(ph2d_node_motion_shape::param::COLLIDER_SHAPE, 1.0)];
+    let perfil = super::giro_diag::perfil_com(Some(0.25), 480, &discos);
+    let tarde = perfil
+        .iter()
+        .find(|(de, _, _)| *de == 420)
+        .map(|(_, r, _)| *r)
+        .expect("a janela 420..480 tem de existir");
+    assert!(
+        tarde <= 1.0,
+        "a pilha de discos com Rolling 0,25 ainda gira {tarde:.2} graus na janela 420..480"
+    );
+}

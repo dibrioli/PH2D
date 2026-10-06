@@ -94,25 +94,14 @@ impl crate::App {
                         hero.gizmo.extra_selection.clear();
                     }
                 }
-                // ⭐ Em *Transformar*, um press fora de osso aponta a forma e mais
-                // nada — o *Bind* precisa do sujeito, e nenhum osso nasce aqui.
-                Some(crate::bone_gesture::BonePress::Pick { path: Some(pid) }) => {
-                    self.vec.pen.select(Some(pid));
-                }
-                // ⛔ Sem forma sob o cursor, um press em *Transformar* não faz
-                // NADA — nem cria, nem DESMARCA: desmarcar tiraria o sujeito do
-                // `Bind` a cada clique no vazio, e o artista clica no vazio o tempo
-                // todo.
-                Some(crate::bone_gesture::BonePress::Pick { path: None }) => {}
-                Some(crate::bone_gesture::BonePress::Start { birth, pick }) => {
+                // ⛔ Em *Transformar*, um press fora de osso NÃO aponta a forma (A14): o Bind é de
+                // Object, e em Pose o cadeado não a deixa escolher — apontá-la na selecção da
+                // caneta era um estado INVISÍVEL que o Bind de Object depois prendia (report de
+                // 05/10). Fora de osso o press não faz nada.
+                Some(crate::bone_gesture::BonePress::Pick { .. }) => {}
+                // ⛔ Nem o press que começa um osso aponta a forma por baixo (A14, a mesma razão).
+                Some(crate::bone_gesture::BonePress::Start { birth, .. }) => {
                     self.skeleton.bone_drag = Some(birth);
-                    // ⚠️ **O clique que SELECCIONA e o arrasto que faz osso são o
-                    // MESMO press**, e é de propósito: um clique curto (< 12 px)
-                    // não faz osso nenhum, então apontar uma forma é só apontar —
-                    // e é assim que o *Bind* passa a ter sujeito.
-                    if let Some(pid) = pick {
-                        self.vec.pen.select(Some(pid));
-                    }
                 }
                 // ⭐⭐⭐ **O PINCEL DE PESO** — o traço fica preso à arte em que começou (o
                 // `weight_drag`), e a 1.ª pincelada sai já neste press: *um pincel que só pinta

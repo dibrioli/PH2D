@@ -203,6 +203,14 @@ diz onde ler o mecanismo:
   22 → 20 sangram, M6 e M10 ganharam gate (`363096b7e`). Handoff:
   [`HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md`](handoffs/HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md).
   ⏳ Smoke do dono (pedido para depois da obra).
+- **C12 — o 1.º report do smoke (05/10): «não é possível selecionar ossos e vetor para fazer o
+  bind».** Medido no caminho real (sonda no processo pelas portas do winit, cena `=7`): o canvas em
+  Object funcionava; escolher um osso NA HIERARQUIA levava a Pose em 5 quadros (a aresta do foco de
+  09/09 armava a ferramenta de osso, que desde o C5 traz o modo) — selecção colapsada no esqueleto,
+  forma recusada pelo cadeado, *Bind* escondido. Cura no chamador: a aresta não arma; sai
+  `bone_arm_pending`; o press do osso no Edit/Pose não aponta formas na caneta (estado invisível que o
+  Bind de Object prendia). Re-medido: `[Bone 2, Path 0]` em Object, Bind `1`. Detalhe:
+  `docs/Vector Module/BUGS_vector.md` #34.
 
 ### F60 — ⭐⭐⭐ **A PONTA DO TRAÇO NA PONTA DO VINCO: quem tapa é posado pela pele EXACTA** (A10, 2026-10-05) — `1ab7e6999`…`3837e3975`
 

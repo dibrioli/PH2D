@@ -237,9 +237,9 @@ impl crate::App {
                 );
             } else {
                 eprintln!(
-                    "[ph2d-vec] osso: {n} forma(s) presa(s) -- no modo Bone: CORPO gira, \
-                         bolinha desloca, quadradinho da mancha muda a forca, e o ANEL DUPLO na \
-                         ponta da corrente dobra a corrente inteira (IK)"
+                    "[ph2d-vec] osso: {n} forma(s) presa(s) -- no Pose Mode do esqueleto: CORPO \
+                         gira, bolinha desloca, quadradinho da mancha muda a forca, e o ANEL DUPLO \
+                         na ponta da corrente dobra a corrente inteira (IK)"
                 );
             }
         }

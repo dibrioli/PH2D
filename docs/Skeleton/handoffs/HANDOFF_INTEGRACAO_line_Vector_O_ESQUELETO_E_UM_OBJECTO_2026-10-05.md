@@ -55,6 +55,10 @@
 - **C8** o *Bind* só em Object; a fileira dos verbos fica (é a porta do 1.º osso e a troca de modo).
 - **C9** projectos antigos e cenas: cada raiz solta ganha um esqueleto no 1.º quadro, pose ao bit.
 - **C10** as cenas abrem em Object; cena nova `=7` (os três modos).
+- **Bug #34 (smoke do dono, 05/10: «não é possível selecionar ossos e vetor para fazer o bind»)** —
+  escolher um osso (Hierarquia) já NÃO muda o esqueleto para Pose: a aresta do foco de 09/09 só abre
+  e traz o painel Bones; e no Edit/Pose o press do osso deixa de «apontar» formas na selecção
+  invisível da caneta. Mecanismo, medição e gates: `docs/Vector Module/BUGS_vector.md` #34.
 - Desvios do plano, com a razão na fila: C2 junto ao C5; C4 junto ao C5; o esqueleto adoptado chama-se
   `Skeleton` (não o nome da raiz); o painel não esconde os verbos em Object.
 
@@ -101,8 +105,9 @@ O «Último» do módulo Vector + Esqueleto passa a apontar para ESTE handoff; a
 Para o dono (ele pediu-o para depois da obra):
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && env PH2D_VEC_BONE_SMOKE=7 cargo run -p ph2d-host-desktop --profile smoke`
-2. Na tela há uma barra cor de laranja com dois ossos azuis por cima. Clique num osso azul: na
-   Hierarquia acende **Skeleton**. Com `Shift` carregado, clique na barra; depois `Ctrl+P`.
+2. Na tela há uma barra cor de laranja com dois ossos azuis por cima. Clique num osso azul (na
+   Hierarquia acende **Skeleton**) — ou escolha um **Bone** na Hierarquia. Com `Shift` carregado,
+   clique na barra; depois `Ctrl+P` ou o botão **Bind to Skeleton**.
 3. Tem de acontecer: aparece «presa» no terminal. Carregue em `Tab`: o painel **Bones** acende
    **Create**; arraste a partir da ponta da direita do último osso e nasce um osso novo. Abra o menu
    **Mode** (o 1.º do topo da área) e escolha **Pose Mode**: arraste um osso e a barra DOBRA com ele.

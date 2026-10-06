@@ -34,7 +34,6 @@ impl crate::App {
         let FrameGfx {
             sim,
             asset_db,
-            tools,
             vec_scene,
             ..
         } = FrameGfx::of(gfx);
@@ -168,15 +167,6 @@ impl crate::App {
         if pending_vec_pivot_edit {
             // Arma "Set Center": a próxima pressão no canvas põe a ORIGEM ali.
             self.vec.pivot_edit = true;
-        }
-        // ⭐⭐⭐ **A FERRAMENTA ARMA-SE AQUI** — antes de ela republicar o espelho (`vec_cfg`
-        // abaixo), senão a escrita da aresta do foco seria revertida no mesmo quadro.
-        //
-        // ⛔⛔ Ordem do dono (2026-09-09): *«ao seleccionar o osso … o botão Transform é
-        // seleccionado»*. Quem o pede é a aresta lá em baixo, que não pode tocar em `gfx.tools`
-        // (ele está emprestado a `sim`/`hero`).
-        if let Some(acao) = self.skeleton.bone_arm_pending.take() {
-            ph2d_app_skeleton::bone_bridge::arm(tools, acao);
         }
         Some(vec_xf_ops)
     }

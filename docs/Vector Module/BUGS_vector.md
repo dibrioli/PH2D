@@ -155,7 +155,38 @@ mutação que tira o teto da rota do painel derruba **três** gates.
     o rato e consumiam o gesto. ⇒ *uma família nova responde às perguntas dela num MÓDULO, e ganha
     um `seam_*` com gesto real cujo oráculo é o `EditorAction`, nunca o `WidgetEvent`.*
 
-## Índice dos 33 FECHADOS — o mecanismo de cada um, em uma linha
+## Índice dos 34 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #34 — *«não é possível selecionar ossos e vetor para fazer o bind»*: uma palavra mudou de EFEITO e o gate leu a palavra ✅ 2026-10-05
+
+**Sintoma** (dono, smoke da A14 — o esqueleto como objecto): não conseguia escolher ossos e a forma
+juntos para prender.
+
+**Duas hipóteses CAÍRAM, medidas no caminho real** (sonda no processo pelas portas do sistema de
+janelas, `on_cursor_moved`/`on_mouse_input`, cena `PH2D_VEC_BONE_SMOKE=7`, tela virtual): clicar no
+osso e `Shift`+clicar na barra em Object dá `[Skeleton, Path 0]` e o Bind prende `1` — também a `5`
+px do eixo do osso (a faixa de `12` px do pick do osso não desmarca nada).
+
+**O mecanismo** (osso escolhido NA HIERARQUIA): `[Bone 2]` em Object → **5 quadros depois
+`[Skeleton]` em Pose** com a ferramenta de osso na mão. A aresta do foco da ordem de 09/09 («ao
+escolher o osso … o Transform é seleccionado») ARMAVA a ferramenta — e desde a A14 armar a ferramenta
+de osso é **mudar o esqueleto de modo** (a família adopta o modo do verbo): a entrada colapsa a
+selecção no esqueleto (o osso perde-se), o cadeado do Pose recusa a forma, o `Shift`+clique na forma
+cai na ferramenta de osso e só a «aponta» na selecção INVISÍVEL da caneta, e o *Bind* (de Object)
+some do painel. ⛔ E esse apontar invisível era o 2.º defeito: o Bind de Object lê a caneta e prenderia
+uma forma que o artista não vê escolhida.
+
+⛔⛔ **O gate estava VERDE sobre isto:** `the_focus_edge_opens_raises_and_arms` media a lei de 09/09
+pelo TEXTO (`bone_arm_pending` dentro da aresta). O texto não mudou — o EFEITO da palavra «armar»
+é que mudou de *trocar o verbo* para *trocar o modo*. ⇒ *quando uma porta passa a significar outra
+coisa, os gates que a afirmam pelo nome continuam verdes sobre o significado novo.*
+
+**Cura** (no CHAMADOR, não na família de modo nem no `drive`): a aresta abre e traz o painel à frente
+e **não arma** (o verbo é do modo; mudar de modo é do artista — `Tab`, *Mode*); `bone_arm_pending` e o
+consumidor saem; o press do osso no Edit/Pose deixa de apontar formas na caneta. Medido de novo: osso
+na Hierarquia → `[Bone 2]` em Object, `Shift`+clique → `[Bone 2, Path 0]`, Bind → `1` presa. Gates
+`the_focus_edge_opens_and_raises_and_never_arms` e `the_bone_press_never_points_a_shape_in_the_pen`
+(os dois vermelhos sobre o código anterior).
 
 ### #33 — o `Smooth` desenhava «micro irregularidades»: o refinamento estava CERTO e seguia um campo com vincos ✅ 2026-09-16
 

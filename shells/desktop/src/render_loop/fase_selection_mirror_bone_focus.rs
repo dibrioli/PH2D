@@ -87,10 +87,10 @@ impl crate::App {
         // ⚠️ A ARESTA continua a ser a lei (`skeleton_reveal::on_focus`): pedi-lo em todo
         // quadro prenderia a aba e o artista não conseguiria olhar para outra.
         if crate::skeleton_reveal::on_focus(&mut self.skeleton.osso_revelado, osso_em_foco) {
-            // ⭐⭐⭐ **ORDEM DO DONO (2026-09-09):** *«se já existe um osso no mundo, ao
-            // seleccionar o osso o painel de Bones é aberto e o botão Transform é
-            // seleccionado»*. As três metades saem da MESMA aresta, e é isso que as mantém
-            // de acordo: abrir sem armar deixaria a fileira apagada sobre um osso escolhido.
+            // ⭐⭐⭐ **Escolher um osso ABRE o painel de Bones e trá-lo à frente** (ordem do dono,
+            // 09/09). ⛔ E já NÃO arma o *Transform* (A14, report de 05/10): armar a ferramenta de
+            // osso passou a MUDAR o esqueleto para Pose, e o Bind (Object) ficava inalcançável. O
+            // verbo é do modo; mudar de modo é do artista (`Tab`, *Mode*).
             <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
                 hero,
                 <ph2d_panel_skeleton::SkeletonPanel as ph2d_editor_core::panel::Panel>::ID,
@@ -98,13 +98,6 @@ impl crate::App {
             );
             hero.store
                 .bump_panel_z(ph2d_editor_core::ids::SKELETON_PANEL);
-            // ⚠️ **A ferramenta arma-se no QUADRO SEGUINTE** (`bone_arm_pending`): aqui o
-            // `gfx` já está emprestado a `sim`/`hero`, e um segundo empréstimo dele não
-            // compila. O espelho da shell escreve-se **já**, para este quadro rotear certo
-            // e a fileira acender no mesmo instante em que o osso é escolhido.
-            self.skeleton.bone_arm_pending = Some(ph2d_tool_bone::BoneAction::Transform);
-            self.skeleton.tool_in_hand = true;
-            self.skeleton.tool.action = ph2d_tool_bone::BoneAction::Transform;
         }
         // ⭐ **PORQUE a secção não tem sujeito** (report do dono, 2026-09-08: *«seleccionar o
         // bone nem sempre abre a secção de skeleton»*). ⚠️ A pergunta tem três respostas que

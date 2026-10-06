@@ -145,17 +145,21 @@ fn nothing_writes_the_visibility_every_frame() {
     );
 }
 
-/// ⭐⭐⭐ **A ARESTA faz as TRÊS coisas que o dono descreveu.**
+/// ⭐⭐⭐ **A ARESTA ABRE e TRAZ À FRENTE — e NÃO arma o verbo** (A14, report do dono de 05/10:
+/// *«não é possível selecionar ossos e vetor para fazer o bind»*).
 ///
-/// ⛔⛔ *«Se já existe um osso no mundo, ao selecionar o osso o painel de Bones é aberto e o botão
-/// Transform é selecionado»* (2026-09-09). São **três** metades — abrir · trazer à frente · armar —
-/// e as três saem da MESMA aresta: abrir sem armar deixaria a fileira apagada sobre um osso
-/// escolhido, e armar sem abrir armaria um verbo que ninguém vê.
+/// ⛔⛔ A ordem de 09/09 (*«ao selecionar o osso o painel de Bones é aberto e o botão Transform é
+/// selecionado»*) tinha três metades, e este gate mediu-as pelo TEXTO. Com o esqueleto como objecto
+/// (C3/C5), *armar* deixou de trocar o verbo dentro do modo Osso e passou a MUDAR DE MODO: escolher
+/// um osso na Hierarquia levava a Pose, a selecção colapsava no esqueleto, o cadeado recusava a
+/// forma e o *Bind* (que é de Object) sumia. O gate ficou verde sobre o defeito porque o texto não
+/// mudou — o EFEITO de uma palavra é que mudou. ⇒ o verbo é do MODO; mudar de modo é do artista
+/// (`Tab`, *Mode*).
 ///
 /// ⚠️ A ARESTA continua a ser a lei (`skeleton_reveal::on_focus`, gateada no seu módulo): pedi-la em
 /// todo quadro prenderia a aba e o artista não conseguiria olhar para outra.
 #[test]
-fn the_focus_edge_opens_raises_and_arms() {
+fn the_focus_edge_opens_and_raises_and_never_arms() {
     let src = code_only(&LOOP);
     let linhas: Vec<&str> = src.lines().collect();
     let i = linhas
@@ -163,10 +167,14 @@ fn the_focus_edge_opens_raises_and_arms() {
         .position(|l| l.contains("skeleton_reveal::on_focus("))
         .expect("a aresta do foco deixou de ser perguntada — o painel nunca vem à frente");
     let corpo = corpo_do_bloco(&linhas, i);
+    assert!(
+        !corpo.contains("bone_arm_pending") && !corpo.contains("tool_in_hand"),
+        "a aresta do foco voltou a armar a ferramenta de osso — escolher um osso muda o esqueleto \
+         para Pose, e o Bind (Object) fica inalcançável"
+    );
     for (agulha, o_que) in [
         ("set_panel_visible", "ABRIR o painel"),
         ("bump_panel_z", "trazer a ABA à frente"),
-        ("bone_arm_pending", "armar o verbo *Transform*"),
     ] {
         assert!(
             corpo.contains(agulha),

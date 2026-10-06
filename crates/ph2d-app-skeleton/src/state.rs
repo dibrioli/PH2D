@@ -63,14 +63,6 @@ pub struct SkeletonState {
     /// ⚠️ **`None` quando nada é osso**, o que faz re-escolher o MESMO osso depois de o largar
     /// revelar outra vez — que é o gesto do report.
     pub osso_revelado: Option<u64>,
-    /// ⭐⭐⭐ **O VERBO do osso a armar no próximo passe da ferramenta.**
-    ///
-    /// ⛔⛔ Ordem do dono (2026-09-09): *«ao seleccionar o osso … o botão Transform é
-    /// seleccionado»*. Quem descobre isso é a aresta do foco, que corre com o `gfx` já emprestado a
-    /// `sim`/`hero` — e a ferramenta vive em `gfx.tools`. ⇒ o pedido atravessa num campo e é
-    /// consumido **antes** de a ferramenta republicar o espelho do modo, senão ela reverteria a
-    /// escrita da aresta no mesmo quadro.
-    pub bone_arm_pending: Option<ph2d_tool_bone::BoneAction>,
     /// ⭐⭐ **A METADE DE OSSO sob o ponteiro** neste quadro (Enio, 2026-09-06: *«precisamos de um
     /// efeito hover na bolinha e no corpo do osso»*), e `None` quando ele não aponta osso nenhum.
     ///

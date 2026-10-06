@@ -67,3 +67,20 @@ fn ctrl_p_is_the_bind_button() {
         "o Ctrl+P empurra outra coisa antes do clique do Bind"
     );
 }
+
+/// ⭐⭐ **No Edit/Pose o press do osso NÃO aponta formas na selecção da caneta** (A14, report de 05/10:
+/// *«não é possível selecionar ossos e vetor para fazer o bind»*). Era um estado invisível: o cadeado
+/// não deixa escolher a forma, o Bind é de Object, e o Bind de Object lia a caneta e prendia uma forma
+/// que o artista não via escolhida. Controlo: o ficheiro é o do osso (o press decide pela porta).
+#[test]
+fn the_bone_press_never_points_a_shape_in_the_pen() {
+    let src = code_only("src/input_dispatch/despacho_clique_osso.rs");
+    assert!(
+        src.contains("bone_gesture::press("),
+        "controlo: o press do osso"
+    );
+    assert!(
+        !src.contains("pen.select("),
+        "o press do osso voltou a apontar a forma na caneta — estado invisível que o Bind prende"
+    );
+}

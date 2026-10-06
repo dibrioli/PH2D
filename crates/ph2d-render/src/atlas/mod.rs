@@ -310,8 +310,10 @@ impl TextureAtlas {
     ///
     /// Sized like a demo tile rather than 1×1: the sampler filters at region
     /// borders, so a one-texel region would blend with whatever the packer put
-    /// next to it. Idempotent (a second call is `insert`'s replace path).
-    pub fn insert_white_tile(&mut self, gpu: &GpuContext) -> Result<[f32; 4], AtlasInsertError> {
+    /// next to it. Idempotent (a second call is `insert`'s replace path). ⚠️ Not public: a renderer
+    /// takes the reserved tiles TOGETHER ([`Self::insert_reserved_tiles`]), or a disc sprite would
+    /// sample whatever sat at its key.
+    fn insert_white_tile(&mut self, gpu: &GpuContext) -> Result<[f32; 4], AtlasInsertError> {
         let px = vec![0xff; (DEMO_TILE_PX * DEMO_TILE_PX * 4) as usize];
         self.insert(gpu, WHITE_TILE_KEY, DEMO_TILE_PX, DEMO_TILE_PX, &px)
             .map(|r| r.uv(self.size_px))

@@ -1,0 +1,32 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-06T19:47:57.853Z",
+  "input": "formas_canto_retangulo.excalidraw",
+  "input_sha256": "897462a7bb07f1545de2cedd4f97220fcc3a6c6973395fc3c26cff5696b92057",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 163103,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "formas_canto_retangulo.svg": "e3d9f0f48b5988e3cfe8cc2edd77855395c68ca14dda76f0cb3a1fde217de1c7",
+    "formas_canto_retangulo.png": "0da67817221b62fc866e952dff0af28365cd09337377c207dbc72c788c572e63",
+    "formas_canto_retangulo.restored.json": "887a743592033502df2d848500b46d8c2e2642b35665f5d3ebc5d2328f5a4f4a"
+  }
+}

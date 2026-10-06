@@ -1,0 +1,32 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-06T19:47:58.222Z",
+  "input": "formas_arredondamento_padrao.excalidraw",
+  "input_sha256": "d4d79c1582813d916042e3a365a0c4c9d7a4c32736171af013fd0d8c3ffe2436",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 28727,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "formas_arredondamento_padrao.svg": "e739e3589f1be6fa98e11ed54a5534957f603a91659414703d97de37c3695478",
+    "formas_arredondamento_padrao.png": "08461f8c617f8234d1ff10596daa60d87572eef0898e86c63515d8a72bcb6a39",
+    "formas_arredondamento_padrao.restored.json": "d0216fecca021663a1318ba5b8878bd10a494079f2d018e3568cd52af229ba01"
+  }
+}

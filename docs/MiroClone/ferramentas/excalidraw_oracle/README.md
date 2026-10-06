@@ -49,3 +49,20 @@ iguais às fixtures de `saidas/`. `--sem-semente` desliga a semente (diagnóstic
   (lados de saída, `fixedPoint`), não do desvio.
 - **Ligação de seta normalizada:** recta → `{elementId, focus, gap:1}`; cotovelo → `{elementId,
   fixedPoint:[1,0.5001], focus:0, gap:0}` (a ponta presa ao meio do lado, com o `0.5001` de desempate).
+- **Cantos e elipse das formas** (`roughness 0`, `strokeWidth 2`; tabela re-medível:
+  `python3 mede_cantos.py`; gate `crates/ph2d-board-geom/src/oracle_tests.rs`):
+  - **O que o editor escreve** ao DESENHAR (`node sonda_editor_arredondamento.mjs`, 2026-10-06):
+    rectângulo `roundness {type:3}`, losango e elipse `{type:2}`. O `restoreElements` sozinho não
+    arredonda nada (`formas_arredondamento_padrao`: esqueleto, campo ausente e o legado
+    `strokeSharpness:"round"` saem todos `roundness: null`).
+  - **Rectângulo** (`formas_canto_retangulo`, lado menor S = 20..400, deitados e em pé): `{type:3}`
+    ⇒ raio **`min(S/4, 32)`** exacto (S=128 → 32; 136 → 32; 400 → 32); `{type:2}` ⇒ `S/4` sem tecto.
+    O canto é uma **quadrática com o controlo no vértice** (no SVG, a cúbica elevada), não um arco.
+  - **Losango** (`formas_canto_losango`, 80×60 · 160×120 · 400×300 · 200×200 · 400×80 · 81×61):
+    vértices em `(⌊w/2⌋+1, 0)`, `(w, ⌊h/2⌋+1)`… (desvio de +1, assimétrico — **recusado**, o nosso é
+    simétrico); `{type:2}` ⇒ corte de **¼ da meia-extensão em cada eixo** (= ¼ de cada aresta),
+    canto = **cúbica com c1 = c2 = vértice**; `{type:3}` limita cada eixo a 32 em separado e as
+    marcas saem da aresta (até 6,1 un. em 400×300).
+  - **Elipse** (`formas_contorno_elipse`): elipse verdadeira — 73 cúbicas, desvio máx **0,075 un.**
+    da analítica em 300×160 (0,004 no círculo 120×120). O traço é a linha central (`stroke-width 2`);
+    cada `<g>` leva `translate(x − minX + 10, …)` (`exportPadding 10`).

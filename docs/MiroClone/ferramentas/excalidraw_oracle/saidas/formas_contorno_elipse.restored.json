@@ -1,0 +1,62 @@
+[
+  {
+    "id": "eli-300x160",
+    "type": "ellipse",
+    "x": 0,
+    "y": 0,
+    "width": 300,
+    "height": 160,
+    "angle": 0,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "transparent",
+    "fillStyle": "solid",
+    "strokeWidth": 2,
+    "strokeStyle": "solid",
+    "roughness": 0,
+    "opacity": 100,
+    "version": 2,
+    "isDeleted": false,
+    "groupIds": [],
+    "frameId": null,
+    "boundElements": [],
+    "updated": 1767225600000,
+    "link": null,
+    "locked": false,
+    "seed": 6001,
+    "versionNonce": 2005129216,
+    "roundness": {
+      "type": 2
+    },
+    "index": "a0"
+  },
+  {
+    "id": "eli-120x120",
+    "type": "ellipse",
+    "x": 340,
+    "y": 0,
+    "width": 120,
+    "height": 120,
+    "angle": 0,
+    "strokeColor": "#1e1e1e",
+    "backgroundColor": "transparent",
+    "fillStyle": "solid",
+    "strokeWidth": 2,
+    "strokeStyle": "solid",
+    "roughness": 0,
+    "opacity": 100,
+    "version": 2,
+    "isDeleted": false,
+    "groupIds": [],
+    "frameId": null,
+    "boundElements": [],
+    "updated": 1767225600000,
+    "link": null,
+    "locked": false,
+    "seed": 6002,
+    "versionNonce": 356886528,
+    "roundness": {
+      "type": 2
+    },
+    "index": "a1"
+  }
+]

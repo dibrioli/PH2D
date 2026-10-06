@@ -1,0 +1,32 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-06T19:47:58.105Z",
+  "input": "formas_contorno_elipse.excalidraw",
+  "input_sha256": "f7a599ed977510ce4292960713fb275276e336cadc6eb047a533f4fd9b0788e4",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 15215,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "formas_contorno_elipse.svg": "e37f536c3b3f7f324c0018379f8ef5e290b4ddb4fe31bd12886ce0d1c4750348",
+    "formas_contorno_elipse.png": "f885da0461ee5ec6630959653d1e6265cda4cb3b993726a5695cf685d8b63988",
+    "formas_contorno_elipse.restored.json": "3035304a6ad27f9e0d06065cc117107afb21f34c52513d0b1a4aa68c8ced4172"
+  }
+}

@@ -8,7 +8,7 @@
 
 use ph2d_board_model::{Element, Shape, ShapeType};
 use ph2d_vec_scene::{ShapeKind, cook};
-use ph2d_vector::{Affine, BezPath, ParamCurveNearest, PathSeg, Point, RoundedRect, Shape as _};
+use ph2d_vector::{Affine, BezPath, ParamCurveNearest, PathSeg, Point, Shape as _};
 
 /// Folga entre o texto e a caixa onde ele vive, em unidades do mundo.
 pub const TEXT_PADDING: f64 = 5.0;
@@ -21,9 +21,11 @@ pub struct Outline {
     pub lines: BezPath,
 }
 
-/// O raio do canto redondo para uma caixa cujo lado menor é `min_side`: um quarto do lado, até
-/// um tecto fixo (o «raio adaptativo»), para que uma caixa grande não vire um comprimido.
-/// ⚠️ Regra a conferir contra o oráculo (Excalidraw, `roughness 0`) no passo do oráculo da W1.
+/// O raio do canto redondo do RECTÂNGULO cujo lado menor é `min_side`: `min(S/4, 32)` (o «raio
+/// adaptativo» — uma caixa grande não vira comprimido). Medido no oráculo (Excalidraw 0.18.1,
+/// `roundness {type:3}`, o que o editor escreve ao desenhar um rectângulo): exacto em S = 20..400,
+/// fixture `docs/MiroClone/ferramentas/excalidraw_oracle/saidas/formas_canto_retangulo.svg`; gate
+/// em `oracle_tests`. O canto é uma QUADRÁTICA com o controlo no vértice, não um arco.
 #[must_use]
 pub fn corner_radius(min_side: f64) -> f64 {
     const FRACTION: f64 = 0.25;
@@ -31,26 +33,33 @@ pub fn corner_radius(min_side: f64) -> f64 {
     (min_side.abs() * FRACTION).min(CAP)
 }
 
+/// Quanto de cada aresta o canto redondo de um POLÍGONO (losango, triângulo) come a partir do
+/// vértice. Medido no oráculo (Excalidraw 0.18.1, `roundness {type:2}`, o que o editor escreve ao
+/// desenhar um losango): ¼ da meia-extensão em cada eixo, sem tecto — num losango é ¼ de cada
+/// aresta. Fixture `saidas/formas_canto_losango.svg`; gate em `oracle_tests`.
+const POLYGON_CORNER_CUT: f64 = 0.25;
+
 /// O contorno de `shape` numa caixa `w × h` (local).
 #[must_use]
 pub fn outline(shape: &Shape, w: f64, h: f64) -> Outline {
     let round = shape.style.round;
     let polygon = |pts: &[[f64; 2]]| Outline {
         fill: if round {
-            rounded_polygon(pts, corner_radius(w.min(h)))
+            rounded_polygon(pts)
         } else {
             sharp_polygon(pts)
         },
         lines: BezPath::new(),
     };
     match shape.kind {
-        ShapeType::Rectangle => {
-            let r = if round { corner_radius(w.min(h)) } else { 0.0 };
-            Outline {
-                fill: RoundedRect::new(0.0, 0.0, w, h, r).to_path(0.1),
-                lines: BezPath::new(),
-            }
-        }
+        ShapeType::Rectangle => Outline {
+            fill: if round {
+                rounded_rect(w, h, corner_radius(w.min(h)))
+            } else {
+                sharp_polygon(&[[0.0, 0.0], [w, 0.0], [w, h], [0.0, h]])
+            },
+            lines: BezPath::new(),
+        },
         ShapeType::Diamond => {
             polygon(&[[w / 2.0, 0.0], [w, h / 2.0], [w / 2.0, h], [0.0, h / 2.0]])
         }
@@ -109,20 +118,29 @@ fn sharp_polygon(pts: &[[f64; 2]]) -> BezPath {
     p
 }
 
-/// Polígono com cada canto trocado por uma curva quadrática de raio `r` (limitado a metade de cada
-/// aresta, para dois cantos vizinhos nunca se cruzarem).
-fn rounded_polygon(pts: &[[f64; 2]], r: f64) -> BezPath {
+/// Rectângulo com cada canto trocado por uma quadrática de `r` sobre cada lado e o controlo no
+/// vértice (a construção do oráculo; `r ≤ S/4` nunca deixa dois cantos cruzarem-se).
+fn rounded_rect(w: f64, h: f64, r: f64) -> BezPath {
+    let mut p = BezPath::new();
+    p.move_to((r, 0.0));
+    p.line_to((w - r, 0.0));
+    p.quad_to((w, 0.0), (w, r));
+    p.line_to((w, h - r));
+    p.quad_to((w, h), (w - r, h));
+    p.line_to((r, h));
+    p.quad_to((0.0, h), (0.0, h - r));
+    p.line_to((0.0, r));
+    p.quad_to((0.0, 0.0), (r, 0.0));
+    p.close_path();
+    p
+}
+
+/// Polígono com cada canto trocado por uma cúbica com OS DOIS controlos no vértice, das marcas a
+/// [`POLYGON_CORNER_CUT`] de cada aresta (a construção do oráculo; ¼ + ¼ nunca se cruzam).
+fn rounded_polygon(pts: &[[f64; 2]]) -> BezPath {
     let n = pts.len();
     let pt = |i: usize| Point::new(pts[i % n][0], pts[i % n][1]);
-    let toward = |from: Point, to: Point| {
-        let d = to - from;
-        let len = d.hypot();
-        if len <= 0.0 {
-            from
-        } else {
-            from + d * (r.min(len / 2.0) / len)
-        }
-    };
+    let toward = |from: Point, to: Point| from + (to - from) * POLYGON_CORNER_CUT;
     let mut p = BezPath::new();
     for i in 0..n {
         let (prev, v, next) = (pt(i + n - 1), pt(i), pt(i + 1));
@@ -132,7 +150,7 @@ fn rounded_polygon(pts: &[[f64; 2]], r: f64) -> BezPath {
         } else {
             p.line_to(a);
         }
-        p.quad_to(v, b);
+        p.curve_to(v, v, b);
     }
     p.close_path();
     p
@@ -234,5 +252,7 @@ pub fn hit(el: &Element, p: [f64; 2], tol: f64) -> bool {
         .any(|s: PathSeg| s.nearest(local, 1e-3).distance_sq <= tol * tol)
 }
 
+#[cfg(test)]
+mod oracle_tests;
 #[cfg(test)]
 mod tests;

@@ -174,6 +174,31 @@ fracção crescia ~1 carácter a cada 6 acrescentos. Cura: o esquema publicado d
 
 ---
 
+### §2.2 — Medido na W1 (2026-10-06): o kill-criterion PASSA
+
+Mesmas réguas (CPU `measure_encode_cost.rs`, placa `measure_gpu_raster_cost.rs`), agora com três cenas:
+`Rects` (a da W0), `Shapes` (rectângulo/elipse/losango com contorno, metade com cantos redondos, um em
+cinco rodado, uma palavra em cada — a vista enquadra o quadro inteiro) e `ShapesNear` (as mesmas, com a
+vista a pôr a letra a 14 px no ecrã). `loadavg ~3`, RTX 5060 Ti / Vulkan, mínimo de 7×20:
+
+| cena | N | CPU encode ms | placa ms | Vello CPU ms |
+|---|---|---|---|---|
+| Rects | 10 000 | 0,52 | 0,37 | 0,22 |
+| Rects | 100 000 | 6,09 | 1,46 | 0,68 |
+| Shapes (longe) | 10 000 | 6,07 | **1,31** | 0,76 |
+| Shapes (longe) | 100 000 | 8,20 | 1,48 | 0,65 |
+| ShapesNear | 10 000 | 0,90 | 0,45 | 1,13 |
+| ShapesNear | 100 000 | 5,40 | 0,48 | 1,25 |
+
+⇒ **10 mil formas + texto = 1,31 ms de placa**, 6× abaixo dos 8 ms do kill-criterion; o pior quadro
+inteiro (100 mil de longe) cabe em ~10 ms (CPU + placa) — 60 Hz com folga. Três curas medidas no mesmo
+dia (cada uma com o número de antes): letra abaixo de **6 px** desenha-se como traço (*greeking*: com o
+tecto a 2 px, 10 mil palavras de 2 px custavam **14,9 ms** de placa); contorno GUARDADO por forma e o
+rectângulo simples pelo `fill_rect` (refazer o contorno a cada quadro levou 10 mil rectângulos de 0,45
+a **3,1 ms**); forma com menos de **4 px** é um ponto de cor (a 2 px, 100 mil formas de 2,5 px custavam
+**26,6 ms**). ⛔ Rejeitado e desfeito: o índice de z mantido pelas ops (100 mil rectângulos 7,8 ms contra
+6,1 a ordenar a cada quadro — §6).
+
 ## §3 — As ondas (cada uma fecha com gate batched, smoke e o que o dono vê)
 
 Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um brainstorm.
@@ -285,6 +310,8 @@ trouxe (§5.0: cena que ensina o contrário é pior que nenhuma), fotografada an
 | assunto | estado |
 |---|---|
 | herdar o modo Vector inteiro para o quadro | ⛔ recusado (§0): ciclo de ilustração, sem cache de rota |
+| índice de z mantido pelas ops (`BTreeSet<(FracKey, id)>`) em vez de ordenar a cada quadro | ⛔ **medido e desfeito** (06/10): 100 mil rectângulos 7,8 ms contra 6,1 — as buscas por id custam mais que a ordenação de chaves curtas (§2.2) |
+| «escrever com uma forma seleccionada começa o texto» | ⛔ recusado na W1 (06/10): as letras soltas são atalhos (`R`, `O`, `D`, `V`, `H`); com a regra, desenhar uma forma e carregar `R` para a seguinte escrevia «r» nela. Escreve-se com `Enter` ou duplo-clique (o idioma do Excalidraw). Volta a pôr-se nas notas (W3), onde é o idioma do Miro |
 | quadro como objecto da cena (`ObjectKind::Board` + `ModeFamily`, a 1.ª versão deste plano) | ⛔ **ordem do dono 05/10**: abas na barra superior, fora da Hierarquia (§1.1) |
 | elementos como entidades ECS | ⛔ recusado (§1.1): Hierarquia, undo e laço a crescer com cada nota |
 | copiar o desvio de setas do Excalidraw | ⛔ medido pior que o nosso |

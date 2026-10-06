@@ -69,7 +69,7 @@ fn hit_follows_the_rotation_and_the_outline_not_the_box() {
     let d = el(ShapeType::Diamond, [0.0, 0.0, 100.0, 100.0], 0.0);
     assert!(hit(&d, [50.0, 50.0], 0.0));
     assert!(!hit(&d, [5.0, 5.0], 0.0));
-    assert!(hit(&d, [5.0, 5.0], 3.0) == false && hit(&d, [26.0, 26.0], 2.0));
+    assert!(!hit(&d, [5.0, 5.0], 3.0) && hit(&d, [26.0, 26.0], 2.0));
     // Rectângulo 200×20 rodado 90°: passa a ocupar a vertical à volta de (100, 10).
     let r = el(
         ShapeType::Rectangle,

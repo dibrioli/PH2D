@@ -21,6 +21,8 @@ use ph2d_i18n::tr;
 pub(crate) enum UndoOwner {
     /// O Audio Editor, com o painel da onda aberto e um clipe carregado.
     Audio,
+    /// Um QUADRO (MiroClone) na aba activa: o desfazer dele, por quadro.
+    Board,
     /// O Painter (a fila de traços dele).
     Painter,
     /// O **Colorize do Flip com rabiscos pendentes** (7º smoke, "undo/redo ruim"): os
@@ -44,12 +46,17 @@ pub(crate) enum UndoOwner {
 /// bug moraria (um dono a mais na cadeia e o atalho some).
 #[must_use]
 pub(crate) fn undo_owner(
+    board_active: bool,
     audio_owns: bool,
     painter_active: bool,
     colorize_owns: bool,
     global_has: bool,
 ) -> UndoOwner {
-    if audio_owns {
+    // Um QUADRO activo (MiroClone) desfaz-se a si mesmo — nunca a cena escondida por baixo
+    // (plano §1.4).
+    if board_active {
+        UndoOwner::Board
+    } else if audio_owns {
         UndoOwner::Audio
     } else if painter_active {
         UndoOwner::Painter
@@ -138,7 +145,17 @@ impl crate::App {
         } else {
             self.undo.can_undo()
         };
-        let dono = undo_owner(audio_owns, painter_active, colorize_owns, global_has);
+        let board_active = gfx
+            .hero_screen
+            .as_ref()
+            .is_some_and(|h| h.documents.active().is_some());
+        let dono = undo_owner(
+            board_active,
+            audio_owns,
+            painter_active,
+            colorize_owns,
+            global_has,
+        );
         // ⭐ **O log diz QUEM respondeu** (2026-09-04) — sem esta linha um Ctrl+Z que vai parar ao
         // Painter ou ao image-edit é indistinguível, no log, de um que nunca chegou: nenhum dos
         // dois imprime nada, e a fila global lê-se como «não fez nada».
@@ -154,6 +171,20 @@ impl crate::App {
             );
         }
         match dono {
+            UndoOwner::Board => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    let c = if redo {
+                        ph2d_editor_core::screens::hero::board_keys::Command::Redo
+                    } else {
+                        ph2d_editor_core::screens::hero::board_keys::Command::Undo
+                    };
+                    ph2d_editor_core::screens::hero::board_keys::board_command(
+                        hero,
+                        &mut gfx.text_system,
+                        c,
+                    );
+                }
+            }
             UndoOwner::Audio =>
             {
                 #[cfg(feature = "panel-audio-editor")]
@@ -213,15 +244,27 @@ mod tests {
     #[test]
     fn a_focused_modal_editor_owns_the_undo_chord_and_the_button_agrees() {
         // O caso comum: o global, quando há passo.
-        assert_eq!(undo_owner(false, false, false, true), UndoOwner::Global);
+        assert_eq!(
+            undo_owner(false, false, false, false, true),
+            UndoOwner::Global
+        );
         // Sem passo global, cai no image-edit (que é quem emite "Nothing to undo").
-        assert_eq!(undo_owner(false, false, false, false), UndoOwner::ImageEdit);
+        assert_eq!(
+            undo_owner(false, false, false, false, false),
+            UndoOwner::ImageEdit
+        );
         // O Painter é dono da fila dele.
-        assert_eq!(undo_owner(false, true, false, true), UndoOwner::Painter);
+        assert_eq!(
+            undo_owner(false, false, true, false, true),
+            UndoOwner::Painter
+        );
         // E o Audio ganha do Painter E do global: um editor modal FOCADO não pode ceder o
         // atalho — um passo a mais saltaria a cena inteira (auditoria 2026-07-11, A1).
-        assert_eq!(undo_owner(true, true, false, true), UndoOwner::Audio);
-        assert_eq!(undo_owner(true, false, false, false), UndoOwner::Audio);
+        assert_eq!(undo_owner(false, true, true, false, true), UndoOwner::Audio);
+        assert_eq!(
+            undo_owner(false, true, false, false, false),
+            UndoOwner::Audio
+        );
     }
 
     /// **O Colorize com rabisco pendente é dono do Ctrl+Z** (7º smoke, "undo/redo ruim"):
@@ -231,12 +274,35 @@ mod tests {
     /// rabisco na direção pedida, ele cede — e o Global é quem desfaz o Apply.
     #[test]
     fn pending_scribbles_own_the_undo_chord_and_yield_when_empty() {
-        assert_eq!(undo_owner(false, false, true, true), UndoOwner::Colorize);
-        assert_eq!(undo_owner(false, false, true, false), UndoOwner::Colorize);
+        assert_eq!(
+            undo_owner(false, false, false, true, true),
+            UndoOwner::Colorize
+        );
+        assert_eq!(
+            undo_owner(false, false, false, true, false),
+            UndoOwner::Colorize
+        );
         // Vazio na direção pedida: cede ao Global (o Apply é dele).
-        assert_eq!(undo_owner(false, false, false, true), UndoOwner::Global);
+        assert_eq!(
+            undo_owner(false, false, false, false, true),
+            UndoOwner::Global
+        );
         // Um editor modal focado ainda ganha (o Colorize é modo de tool, não painel modal).
-        assert_eq!(undo_owner(true, false, true, true), UndoOwner::Audio);
-        assert_eq!(undo_owner(false, true, true, true), UndoOwner::Painter);
+        assert_eq!(undo_owner(false, true, false, true, true), UndoOwner::Audio);
+        assert_eq!(
+            undo_owner(false, false, true, true, true),
+            UndoOwner::Painter
+        );
+    }
+
+    /// ⭐ Com um QUADRO na aba activa, o Ctrl+Z (e o botão) é dele — mesmo com passo global, com o
+    /// Painter activo ou o áudio aberto: a cena está escondida por baixo (plano MiroClone §1.4).
+    #[test]
+    fn an_active_board_owns_the_undo_before_everyone() {
+        assert_eq!(undo_owner(true, true, true, true, true), UndoOwner::Board);
+        assert_eq!(
+            undo_owner(true, false, false, false, false),
+            UndoOwner::Board
+        );
     }
 }

@@ -11,6 +11,40 @@ fn with_board() -> HeroScreen {
     hero
 }
 
+thread_local! {
+    static TS: std::cell::RefCell<TextSystem> = std::cell::RefCell::new(TextSystem::without_system_fonts());
+}
+
+/// O `pointer` da shell, com uma letra de teste e sem modificadores.
+fn press(
+    hero: &mut HeroScreen,
+    kind: PointerKind,
+    button: PointerButton,
+    x: f32,
+    y: f32,
+    on_canvas: bool,
+) -> bool {
+    TS.with_borrow_mut(|ts| {
+        let input = Input {
+            text: ts,
+            mods: Modifiers::default(),
+            now_ns: 0,
+        };
+        pointer(hero, input, kind, button, x, y, on_canvas)
+    })
+}
+
+fn drag_to(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
+    TS.with_borrow_mut(|ts| {
+        let input = Input {
+            text: ts,
+            mods: Modifiers::default(),
+            now_ns: 0,
+        };
+        pointer_move(hero, input, x, y)
+    })
+}
+
 fn zoom(hero: &HeroScreen) -> f64 {
     hero.documents.active_board().unwrap().camera.zoom
 }
@@ -33,7 +67,7 @@ fn with_the_scene_tab_active_nothing_is_consumed() {
     let mut hero = with_board();
     hero.apply_event(WidgetEvent::Click(ids::DOC_TAB_SCENE));
     assert!(!wheel(&mut hero, 500.0, 300.0, 16.0));
-    assert!(!pointer(
+    assert!(!press(
         &mut hero,
         PointerKind::Down,
         PointerButton::Primary,
@@ -41,14 +75,14 @@ fn with_the_scene_tab_active_nothing_is_consumed() {
         300.0,
         true
     ));
-    assert!(!pointer_move(&mut hero, 520.0, 300.0));
+    assert!(!drag_to(&mut hero, 520.0, 300.0));
 }
 
 #[test]
 fn dragging_moves_the_view_and_releasing_ends_it() {
     let mut hero = with_board();
     let cam0 = hero.documents.active_board().unwrap().camera;
-    assert!(pointer(
+    assert!(press(
         &mut hero,
         PointerKind::Down,
         PointerButton::Middle,
@@ -56,11 +90,11 @@ fn dragging_moves_the_view_and_releasing_ends_it() {
         300.0,
         true
     ));
-    assert!(pointer_move(&mut hero, 540.0, 290.0));
+    assert!(drag_to(&mut hero, 540.0, 290.0));
     let cam1 = hero.documents.active_board().unwrap().camera;
     assert_eq!(cam1.center_x, cam0.center_x - 40.0);
     assert_eq!(cam1.center_y, cam0.center_y + 10.0);
-    assert!(pointer(
+    assert!(press(
         &mut hero,
         PointerKind::Up,
         PointerButton::Middle,
@@ -69,7 +103,7 @@ fn dragging_moves_the_view_and_releasing_ends_it() {
         true
     ));
     assert!(
-        !pointer_move(&mut hero, 600.0, 290.0),
+        !drag_to(&mut hero, 600.0, 290.0),
         "solto, o cursor já não arrasta"
     );
 }
@@ -77,7 +111,7 @@ fn dragging_moves_the_view_and_releasing_ends_it() {
 #[test]
 fn a_press_on_chrome_over_the_area_is_not_the_boards() {
     let mut hero = with_board();
-    assert!(!pointer(
+    assert!(!press(
         &mut hero,
         PointerKind::Down,
         PointerButton::Primary,

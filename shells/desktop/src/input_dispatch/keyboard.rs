@@ -156,6 +156,11 @@ impl App {
         if self.modal_owns_the_keyboard(physical_key, state, repeat) {
             return;
         }
+        // ⭐ Um QUADRO activo (MiroClone) é dono do teclado antes de todo atalho da cena — ver
+        // [`super::keyboard_board`].
+        if self.board_owns_the_keyboard(physical_key, state, text.as_deref()) {
+            return;
+        }
 
         if let PhysicalKey::Code(code) = physical_key {
             let (next, consumed) = ph2d_app_flip::peek::key_transition(

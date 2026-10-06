@@ -102,6 +102,7 @@ pub fn populate(store: &mut WidgetStore) {
         register(store, id);
     }
     super::document_tabs_menu::populate(store);
+    super::board_bar::populate(store);
 }
 
 /// Regista a aba de um quadro que acabou de nascer ou de chegar de um ficheiro.
@@ -275,7 +276,9 @@ pub fn gap_px() -> f32 {
 /// ⚠️ **O 2.º clique rápido chega como `DoubleClick`, não como `Click`** (medido no teste do clique
 /// real): sem o aceitar, carregar duas vezes depressa no `+` criaria UM quadro só.
 pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
-    if super::document_tabs_menu::apply_event(hero, event) {
+    if super::document_tabs_menu::apply_event(hero, event)
+        || super::board_bar::apply_event(hero, event)
+    {
         return true;
     }
     let (WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id)) = event else {

@@ -10,7 +10,8 @@
 //! ([`crate::screens::hero::document_tabs::load`]).
 
 pub use ph2d_board_model::BoardSet;
-use ph2d_board_model::{Board, BoardId};
+use ph2d_board_model::{Board, BoardId, History};
+use std::collections::BTreeMap;
 
 /// Os quadros e a aba activa.
 #[derive(Debug, Default)]
@@ -24,6 +25,33 @@ pub struct Documents {
     pub(crate) renaming: Option<BoardId>,
     /// Uma aba de quadro com o dedo em cima — ver `document_tabs_menu::pointer`.
     pub(crate) tab_drag: Option<TabDrag>,
+    /// O que vive enquanto se edita um quadro (editor, desfazer por quadro, texto moldado).
+    pub(crate) live: BoardLive,
+}
+
+/// ⭐ **O estado de SESSÃO dos quadros** — nada disto vai para o ficheiro.
+#[derive(Default)]
+pub(crate) struct BoardLive {
+    /// O editor do quadro activo (nasce no 1.º gesto: o estilo de nascença vem do tema).
+    pub(crate) editor: Option<ph2d_board_edit::Editor>,
+    /// O desfazer de CADA quadro (plano §1.4: `Ctrl+Z` num quadro nunca desfaz outro nem a cena).
+    pub(crate) histories: BTreeMap<BoardId, History>,
+    pub(crate) text_cache: ph2d_board_layout::TextCache,
+    /// O último carregar no quadro `(instante ns, x, y)` — o duplo-clique.
+    pub(crate) last_down: Option<(u128, [f32; 2])>,
+    /// `Espaço` em baixo: arrastar move a vista (o idioma do Figma/Miro/Excalidraw).
+    pub(crate) space: bool,
+    /// A grelha de todas as formas, aberta pelo «mais formas» da barra curta.
+    pub(crate) shapes_open: bool,
+}
+
+impl std::fmt::Debug for BoardLive {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BoardLive")
+            .field("histories", &self.histories.len())
+            .field("space", &self.space)
+            .finish_non_exhaustive()
+    }
 }
 
 /// O dedo desceu sobre a aba de `board` em `start` e está em `cursor` (px de ecrã).
@@ -57,9 +85,34 @@ impl Documents {
     }
 
     /// Torna activa a aba de `id` (`None` = a `Cena`). Um id que não existe cai na `Cena`.
+    /// Sair de um quadro termina o texto que se escrevia nele e esquece a selecção.
     pub fn activate(&mut self, id: Option<BoardId>) {
-        self.active = id.filter(|id| self.boards.get(*id).is_some());
+        let id = id.filter(|id| self.boards.get(*id).is_some());
+        if id != self.active {
+            self.leave_board();
+        }
+        self.active = id;
         self.pan_from = None;
+    }
+
+    fn leave_board(&mut self) {
+        let Some(prev) = self.active else {
+            return;
+        };
+        let live = &mut self.live;
+        if let (Some(ed), Some(board)) = (live.editor.as_mut(), self.boards.get_mut(prev)) {
+            let h = live.histories.entry(prev).or_default();
+            ed.commit_text(&mut board.doc, h);
+            ed.cancel_gesture(&mut board.doc);
+            ed.select(&board.doc, []);
+        }
+    }
+
+    /// O quadro activo, o histórico dele e o resto do estado de sessão — juntos, para um gesto.
+    pub(crate) fn active_parts(&mut self) -> Option<(&mut Board, &mut BoardLive)> {
+        let id = self.active?;
+        let board = self.boards.get_mut(id)?;
+        Some((board, &mut self.live))
     }
 
     /// Cria um quadro vazio no fim das abas e torna-o activo.
@@ -71,10 +124,13 @@ impl Documents {
 
     /// Troca todos os quadros (ao carregar um projecto) e volta à `Cena`.
     pub fn replace(&mut self, boards: BoardSet) {
+        self.leave_board();
         self.boards = boards;
         self.renaming = None;
         self.tab_drag = None;
-        self.activate(None);
+        self.live.histories.clear();
+        self.active = None;
+        self.pan_from = None;
     }
 
     /// Muda o nome. `false` se `id` não existe.
@@ -98,7 +154,11 @@ impl Documents {
     /// da esquerda, senão a `Cena`) — o idioma das abas de um navegador.
     pub fn remove(&mut self, id: BoardId) -> Option<Board> {
         let at = self.boards.boards().iter().position(|b| b.id == id)?;
+        if self.active == Some(id) {
+            self.leave_board();
+        }
         let gone = self.boards.remove(id)?;
+        self.live.histories.remove(&id);
         if self.renaming == Some(id) {
             self.renaming = None;
         }

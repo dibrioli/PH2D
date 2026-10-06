@@ -52,6 +52,9 @@ ph2d-a11y             = { path = "../ph2d-a11y" }
 ph2d-input            = { path = "../ph2d-input" }
 ph2d-board-model      = { path = "../ph2d-board-model" }
 ph2d-board-render     = { path = "../ph2d-board-render" }
+ph2d-board-edit       = { path = "../ph2d-board-edit" }
+ph2d-board-geom       = { path = "../ph2d-board-geom" }
+ph2d-board-layout     = { path = "../ph2d-board-layout" }
 ph2d-vector           = { path = "../ph2d-vector" }
 ph2d-text             = { path = "../ph2d-text" }
 ph2d-host             = { path = "../ph2d-host" }

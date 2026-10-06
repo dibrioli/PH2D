@@ -18,8 +18,98 @@ pub struct Rgba(pub [u8; 4]);
 /// variante existente sobe o [`crate::FORMAT_VERSION`].
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ElementKind {
-    /// Rectângulo cheio — a primeira forma (W0: a régua de desenho).
-    Rect { fill: Rgba },
+    /// Uma forma com estilo e (talvez) texto dentro.
+    Shape(Shape),
+}
+
+/// Uma forma do quadro: o contorno, o estilo e o texto que vive DENTRO dela (centrado, com quebra).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Shape {
+    pub kind: ShapeType,
+    pub style: Style,
+    /// Texto do artista (pode ter `\n`). Vazio = sem texto.
+    pub text: String,
+}
+
+/// O contorno de uma forma — o catálogo de quadro (básicas + fluxograma ISO 5807 + as de nota).
+/// ⚠️ Append-only (o discriminante vai para o ficheiro). A geometria é do `ph2d-board-geom`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum ShapeType {
+    Rectangle,
+    Ellipse,
+    Diamond,
+    Triangle,
+    /// Terminador (início/fim).
+    Pill,
+    /// Dados (entrada/saída).
+    Parallelogram,
+    /// Operação manual.
+    Trapezoid,
+    /// Preparação.
+    Hexagon,
+    /// Base de dados.
+    Cylinder,
+    Document,
+    /// Processo predefinido (sub-rotina).
+    PredefinedProcess,
+    /// Ligação fora da página.
+    OffPage,
+    Delay,
+    Display,
+    /// Balão de fala rectangular.
+    SpeechRect,
+    Cloud,
+    Star,
+    ArrowRight,
+}
+
+impl ShapeType {
+    /// Todas, na ordem do enum — a que a UI oferece.
+    pub const ALL: &'static [ShapeType] = &[
+        ShapeType::Rectangle,
+        ShapeType::Ellipse,
+        ShapeType::Diamond,
+        ShapeType::Triangle,
+        ShapeType::Pill,
+        ShapeType::Parallelogram,
+        ShapeType::Trapezoid,
+        ShapeType::Hexagon,
+        ShapeType::Cylinder,
+        ShapeType::Document,
+        ShapeType::PredefinedProcess,
+        ShapeType::OffPage,
+        ShapeType::Delay,
+        ShapeType::Display,
+        ShapeType::SpeechRect,
+        ShapeType::Cloud,
+        ShapeType::Star,
+        ShapeType::ArrowRight,
+    ];
+}
+
+/// Traço contínuo, tracejado ou pontilhado.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Dash {
+    Solid,
+    Dashed,
+    Dotted,
+}
+
+/// O aspecto de uma forma. Tamanhos em unidades do MUNDO do quadro (escalam com o zoom).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Style {
+    /// `None` = sem preenchimento (transparente).
+    pub fill: Option<Rgba>,
+    /// `None` = sem contorno.
+    pub stroke: Option<Rgba>,
+    pub stroke_width: f64,
+    pub dash: Dash,
+    /// Cantos arredondados (o raio é regra da geometria, não um número livre).
+    pub round: bool,
+    /// Opacidade do OBJECTO inteiro, `0..=100` (compõe a forma uma vez e depois desvanece).
+    pub opacity: u8,
+    pub text_color: Rgba,
+    pub font_size: f64,
 }
 
 /// Um elemento. Os quatro últimos campos são a gramática da colaboração (Etapa 2).
@@ -27,11 +117,13 @@ pub enum ElementKind {
 pub struct Element {
     pub id: ElementId,
     pub kind: ElementKind,
-    /// Canto superior esquerdo e tamanho, em unidades do mundo do quadro.
+    /// Canto superior esquerdo e tamanho, em unidades do mundo do quadro — da caixa ANTES de rodar.
     pub x: f64,
     pub y: f64,
     pub w: f64,
     pub h: f64,
+    /// Rotação em radianos à volta do centro (positivo = horário no ecrã, y para baixo).
+    pub angle: f64,
     /// Ordem em z.
     pub z: FracKey,
     /// Sobe a cada mudança deste elemento.
@@ -40,6 +132,107 @@ pub struct Element {
     pub nonce: u32,
     /// Lápide: apagado continua no mapa, para não ressuscitar numa fusão.
     pub deleted: bool,
+}
+
+impl Style {
+    /// Um estilo com as espessuras e tamanhos de nascença (`DEFAULT_*`), sólido, opaco, sem cantos
+    /// redondos — as CORES são de quem chama (o editor tira-as dos tokens).
+    #[must_use]
+    pub fn new(fill: Option<Rgba>, stroke: Option<Rgba>, text_color: Rgba) -> Self {
+        Self {
+            fill,
+            stroke,
+            stroke_width: crate::DEFAULT_STROKE_WIDTH,
+            dash: Dash::Solid,
+            round: false,
+            opacity: 100,
+            text_color,
+            font_size: crate::DEFAULT_FONT_SIZE,
+        }
+    }
+}
+
+impl Element {
+    /// Uma forma nova, sem rotação, na caixa `[x, y, w, h]`.
+    #[must_use]
+    pub fn new_shape(id: ElementId, z: FracKey, shape: Shape, [x, y, w, h]: [f64; 4]) -> Self {
+        Self {
+            id,
+            kind: ElementKind::Shape(shape),
+            x,
+            y,
+            w,
+            h,
+            angle: 0.0,
+            z,
+            version: 0,
+            nonce: 0,
+            deleted: false,
+        }
+    }
+
+    #[must_use]
+    pub fn center(&self) -> [f64; 2] {
+        [self.x + self.w / 2.0, self.y + self.h / 2.0]
+    }
+
+    /// Ponto do mundo → coordenadas da caixa sem rotação (o mesmo referencial de `x, y, w, h`).
+    #[must_use]
+    pub fn unrotate(&self, p: [f64; 2]) -> [f64; 2] {
+        rotate_about(p, self.center(), -self.angle)
+    }
+
+    /// O inverso de [`Self::unrotate`].
+    #[must_use]
+    pub fn rotate(&self, p: [f64; 2]) -> [f64; 2] {
+        rotate_about(p, self.center(), self.angle)
+    }
+
+    /// Os quatro cantos no mundo (já rodados), a partir do superior esquerdo, no sentido horário.
+    #[must_use]
+    pub fn corners(&self) -> [[f64; 2]; 4] {
+        let (x0, y0, x1, y1) = (self.x, self.y, self.x + self.w, self.y + self.h);
+        [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(|p| self.rotate(p))
+    }
+
+    /// A caixa alinhada aos eixos que contém o elemento rodado: `[x0, y0, x1, y1]`.
+    #[must_use]
+    pub fn aabb(&self) -> [f64; 4] {
+        let c = self.corners();
+        let fold =
+            |f: fn(f64, f64) -> f64, i: usize, init: f64| c.iter().map(|p| p[i]).fold(init, f);
+        [
+            fold(f64::min, 0, f64::INFINITY),
+            fold(f64::min, 1, f64::INFINITY),
+            fold(f64::max, 0, f64::NEG_INFINITY),
+            fold(f64::max, 1, f64::NEG_INFINITY),
+        ]
+    }
+
+    /// A forma, se é uma.
+    #[must_use]
+    pub fn shape(&self) -> Option<&Shape> {
+        match &self.kind {
+            ElementKind::Shape(s) => Some(s),
+        }
+    }
+
+    pub fn shape_mut(&mut self) -> Option<&mut Shape> {
+        match &mut self.kind {
+            ElementKind::Shape(s) => Some(s),
+        }
+    }
+}
+
+/// Roda `p` à volta de `c` por `angle` radianos.
+#[must_use]
+pub fn rotate_about(p: [f64; 2], c: [f64; 2], angle: f64) -> [f64; 2] {
+    if angle == 0.0 {
+        return p;
+    }
+    let (s, k) = angle.sin_cos();
+    let (dx, dy) = (p[0] - c[0], p[1] - c[1]);
+    [c[0] + dx * k - dy * s, c[1] + dx * s + dy * k]
 }
 
 /// O conteúdo de um quadro. `BTreeMap` por lei (determinismo).

@@ -16,9 +16,11 @@
 //! PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-board-render --release --test it measure_gpu -- --ignored --nocapture
 //! ```
 
-use super::measure_encode_cost::{AREA, FRAMES, ROUNDS, SIZES, board_with};
+use super::measure_encode_cost::{AREA, FRAMES, Mix, ROUNDS, SCENES, board_with, one_frame};
+use ph2d_board_layout::TextCache;
 use ph2d_gpu::GpuContext;
 use ph2d_render::VelloPass;
+use ph2d_text::TextSystem;
 use ph2d_vector::{Color, VectorScene};
 use std::time::Instant;
 
@@ -182,26 +184,25 @@ fn measure_gpu_raster_cost() {
     );
     let mut pass = VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8Unorm, SIZE).expect("VelloPass");
 
-    let scenes: Vec<VectorScene> = SIZES
+    let mut ts = TextSystem::without_system_fonts();
+    let scenes: Vec<VectorScene> = SCENES
         .iter()
-        .map(|&n| {
-            let set = board_with(n);
+        .map(|&sc| {
+            let set = board_with(sc);
             let mut scene = VectorScene::new();
-            ph2d_board_render::paint(
-                &set.boards()[0],
-                AREA,
-                &mut scene,
-                ph2d_tokens::Theme::Forge,
-            );
+            one_frame(&set, &mut scene, &mut ts, &mut TextCache::default());
             scene
         })
         .collect();
 
     // Aquecimento (fora da régua) + controlo de cobertura.
-    for (k, n) in SIZES.iter().enumerate() {
+    for (k, (n, mix)) in SCENES.iter().enumerate() {
         let px = pass
             .render_and_readback(&gpu, scenes[k].inner(), SIZE)
             .expect("readback");
+        if *mix != Mix::Rects {
+            continue;
+        }
         let side = (*n as f64).sqrt().ceil();
         let rect_px = 24.0 * 1000.0 / (side * 30.0);
         println!(
@@ -211,7 +212,7 @@ fn measure_gpu_raster_cost() {
         );
     }
 
-    let k_n = SIZES.len();
+    let k_n = SCENES.len();
     let (mut vello, mut cpu, mut wall) = (vec![vec![]; k_n], vec![vec![]; k_n], vec![vec![]; k_n]);
     let mut best = vec![f64::INFINITY; k_n];
     let (mut uncovered, mut fill_min) = (vec![0usize; k_n], f64::INFINITY);
@@ -242,19 +243,19 @@ fn measure_gpu_raster_cost() {
     println!("loadavg: {}", load.trim());
     println!("enchimento mais curto: {fill_min:.3} ms");
     println!(
-        "| N | placa mín ms/quadro | placa mediana | placa melhor quadro | Vello CPU mín | Vello CPU mediana | parede mín | parede mediana | descobertos |"
+        "| N | cena | placa mín ms/quadro | placa mediana | placa melhor quadro | Vello CPU mín | Vello CPU mediana | parede mín | parede mediana | descobertos |"
     );
-    for (k, n) in SIZES.iter().enumerate() {
+    for (k, (n, mix)) in SCENES.iter().enumerate() {
         let (wm, wd) = min_med(&wall[k]);
         if stamps.is_some() {
             let (gm, gd) = min_med(&vello[k]);
             let (cm, cd) = min_med(&cpu[k]);
             println!(
-                "| {n} | {gm:.3} | {gd:.3} | {:.3} | {cm:.3} | {cd:.3} | {wm:.3} | {wd:.3} | {} |",
+                "| {n} | {mix:?} | {gm:.3} | {gd:.3} | {:.3} | {cm:.3} | {cd:.3} | {wm:.3} | {wd:.3} | {} |",
                 best[k], uncovered[k]
             );
         } else {
-            println!("| {n} | n/d | n/d | n/d | n/d | n/d | {wm:.3} | {wd:.3} | n/d |");
+            println!("| {n} | {mix:?} | n/d | n/d | n/d | n/d | n/d | {wm:.3} | {wd:.3} | n/d |");
         }
     }
 }

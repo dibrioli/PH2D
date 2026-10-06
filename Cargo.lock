@@ -5143,6 +5143,35 @@ name = "ph2d-bloom"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-board-edit"
+version = "0.0.0"
+dependencies = [
+ "ph2d-board-geom",
+ "ph2d-board-layout",
+ "ph2d-board-model",
+ "ph2d-text",
+]
+
+[[package]]
+name = "ph2d-board-geom"
+version = "0.0.0"
+dependencies = [
+ "ph2d-board-model",
+ "ph2d-vec-render",
+ "ph2d-vec-scene",
+ "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-board-layout"
+version = "0.0.0"
+dependencies = [
+ "parley",
+ "ph2d-text",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-board-model"
 version = "0.0.0"
 dependencies = [
@@ -5154,9 +5183,13 @@ dependencies = [
 name = "ph2d-board-render"
 version = "0.0.0"
 dependencies = [
+ "ph2d-board-edit",
+ "ph2d-board-geom",
+ "ph2d-board-layout",
  "ph2d-board-model",
  "ph2d-gpu",
  "ph2d-render",
+ "ph2d-text",
  "ph2d-tokens",
  "ph2d-vector",
  "wgpu",
@@ -5237,6 +5270,9 @@ dependencies = [
  "dhat",
  "libm",
  "ph2d-a11y",
+ "ph2d-board-edit",
+ "ph2d-board-geom",
+ "ph2d-board-layout",
  "ph2d-board-model",
  "ph2d-board-render",
  "ph2d-chrome-sync",

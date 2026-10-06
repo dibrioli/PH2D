@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-board-layout"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O texto do Quadro: moldar (quebra + centrado) em unidades do MUNDO, guardar o moldado, desenhá-lo a
+# qualquer zoom. Mesma parley do `ph2d-text` (os contextos vêm dele).
+parley = "0.11.1"
+ph2d-text = { path = "../ph2d-text" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

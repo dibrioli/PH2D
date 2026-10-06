@@ -354,8 +354,14 @@ fn clicking_on_the_board_keeps_what_was_typed() {
     type_text(&mut hero, "Sprint");
     let c = hero.last_canvas;
     let (x, y) = (c.x + c.w * 0.5, c.y + c.h * 0.5);
+    let input = super::super::board_view::Input {
+        text: &mut text,
+        mods: ph2d_host::Modifiers::default(),
+        now_ns: 0,
+    };
     assert!(super::super::board_view::pointer(
         &mut hero,
+        input,
         PointerKind::Down,
         PointerButton::Primary,
         x,

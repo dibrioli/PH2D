@@ -1,21 +1,14 @@
 use super::{BoardOp, apply_batch};
-use crate::{BoardDoc, Element, ElementKind, Rgba};
+use crate::{BoardDoc, Element, Rgba, Shape, ShapeType, Style};
 
 fn rect(doc: &mut BoardDoc, x: f64) -> Element {
-    Element {
-        id: doc.mint_id(),
-        kind: ElementKind::Rect {
-            fill: Rgba([200, 180, 40, 255]),
-        },
-        x,
-        y: 0.0,
-        w: 10.0,
-        h: 10.0,
-        z: doc.z_on_top(),
-        version: 0,
-        nonce: 0,
-        deleted: false,
-    }
+    let ink = Rgba([200, 180, 40, 255]);
+    let shape = Shape {
+        kind: ShapeType::Rectangle,
+        style: Style::new(Some(ink), None, ink),
+        text: String::new(),
+    };
+    Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [x, 0.0, 10.0, 10.0])
 }
 
 #[test]
@@ -107,4 +100,47 @@ fn a_hundred_thousand_puts_on_top_stay_ordered() {
         xs.windows(2).all(|w| w[0] < w[1]),
         "a ordem de z não é a de chegada"
     );
+}
+
+#[test]
+fn history_undoes_and_redoes_a_gesture_as_one_step() {
+    let mut doc = BoardDoc::default();
+    let mut h = crate::History::default();
+    let a = rect(&mut doc, 1.0);
+    let b = rect(&mut doc, 2.0);
+    let (ia, ib) = (a.id, b.id);
+    h.apply(&mut doc, vec![BoardOp::Put(a), BoardOp::Put(b)]);
+    let mut moved = doc.get(ia).unwrap().clone();
+    moved.x = 50.0;
+    h.apply(&mut doc, vec![BoardOp::Put(moved)]);
+    assert!(h.undo(&mut doc));
+    assert_eq!(doc.get(ia).unwrap().x, 1.0, "o movimento desfez-se");
+    assert!(h.undo(&mut doc));
+    assert_eq!(doc.live_len(), 0, "a criação dos dois é UM passo");
+    assert!(!h.undo(&mut doc));
+    assert!(h.redo(&mut doc));
+    assert_eq!(doc.live_len(), 2);
+    assert!(h.redo(&mut doc));
+    assert_eq!(doc.get(ia).unwrap().x, 50.0);
+    assert!(doc.get(ib).is_some());
+    assert!(!h.redo(&mut doc));
+    // Um gesto novo depois de desfazer apaga o refazer.
+    h.undo(&mut doc);
+    h.apply(&mut doc, vec![BoardOp::Delete(ib)]);
+    assert!(!h.can_redo());
+}
+
+#[test]
+fn rotation_round_trips_and_the_aabb_holds_the_rotated_corners() {
+    let mut doc = BoardDoc::default();
+    let mut el = rect(&mut doc, 0.0);
+    el.w = 20.0;
+    el.angle = std::f64::consts::FRAC_PI_2;
+    let p = [3.0, 4.0];
+    let q = el.rotate(el.unrotate(p));
+    assert!((q[0] - p[0]).abs() < 1e-9 && (q[1] - p[1]).abs() < 1e-9);
+    let [x0, y0, x1, y1] = el.aabb();
+    // 20×10 rodado 90° à volta de (10, 5): 10×20 com o mesmo centro.
+    assert!((x1 - x0 - 10.0).abs() < 1e-9 && (y1 - y0 - 20.0).abs() < 1e-9);
+    assert!(((x0 + x1) / 2.0 - 10.0).abs() < 1e-9 && ((y0 + y1) / 2.0 - 5.0).abs() < 1e-9);
 }

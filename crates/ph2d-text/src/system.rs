@@ -141,6 +141,18 @@ impl TextSystem {
         }
     }
 
+    /// ⭐ **Os dois contextos do parley e a pilha da fonte da casa, de uma vez** — para quem
+    /// molda texto de DOCUMENTO (o quadro): com o tamanho e a quebra dele, sem o estilo da interface
+    /// que o [`Self::layout`] aplica, e editável pelo `PlainEditor` do parley (que pede os dois
+    /// contextos ao mesmo tempo).
+    pub fn contexts(&mut self) -> (&mut FontContext, &mut LayoutContext<()>, &str) {
+        (
+            &mut self.font_context,
+            &mut self.layout_context,
+            self.stacks[0].as_str(),
+        )
+    }
+
     pub fn font_context(&mut self) -> &mut FontContext {
         &mut self.font_context
     }

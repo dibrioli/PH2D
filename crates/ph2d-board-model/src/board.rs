@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::BoardDoc;
 
-/// Versão do formato de [`BoardSet::to_bytes`]. postcard é posicional: qualquer campo novo sobe-a.
-pub const FORMAT_VERSION: u32 = 1;
+/// Versão do formato de [`BoardSet::to_bytes`]. postcard é posicional: qualquer campo novo sobe-a,
+/// e a anterior continua a ler-se (`legacy.rs`). 2 = formas com estilo, texto e rotação (W1).
+pub const FORMAT_VERSION: u32 = 2;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -59,6 +60,14 @@ impl Default for BoardSet {
 }
 
 impl BoardSet {
+    pub(crate) fn from_parts(boards: Vec<Board>, next_id: u64) -> Self {
+        Self {
+            version: FORMAT_VERSION,
+            boards,
+            next_id,
+        }
+    }
+
     /// Os quadros, na ordem das abas.
     #[must_use]
     pub fn boards(&self) -> &[Board] {
@@ -141,14 +150,13 @@ impl BoardSet {
         if bytes.is_empty() {
             return Ok(Self::default());
         }
-        let set: BoardSet = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
-        if set.version != FORMAT_VERSION {
-            return Err(format!(
-                "board format version {} != {FORMAT_VERSION}",
-                set.version
-            ));
+        // A versão é o 1.º campo: lê-se sozinha, e decide com que structs ler o resto.
+        let (version, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
+        match version {
+            FORMAT_VERSION => postcard::from_bytes(bytes).map_err(|e| e.to_string()),
+            1 => crate::legacy::read_v1(bytes),
+            v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
-        Ok(set)
     }
 }
 

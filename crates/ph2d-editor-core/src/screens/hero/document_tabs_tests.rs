@@ -137,7 +137,7 @@ fn the_scene_tool_row_is_not_on_top_of_a_board() {
 fn the_scene_overlays_are_still_painted_and_only_without_a_board() {
     const PAINT: &str = include_str!("paint.rs");
     let board = PAINT
-        .find("hero.documents.active_board()")
+        .find("hero.documents.active_parts()")
         .expect("o ramo do quadro sumiu do paint");
     let call = PAINT
         .find("paint_canvas_overlays::paint_canvas_overlays(")

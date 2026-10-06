@@ -11,10 +11,24 @@ mod board;
 mod camera;
 mod element;
 mod frac;
+mod history;
+mod legacy;
 mod ops;
 
 pub use board::{Board, BoardId, BoardSet, Camera, FORMAT_VERSION};
 pub use camera::{Area, ZOOM_RANGE};
-pub use element::{BoardDoc, Element, ElementId, ElementKind, Rgba};
+pub use element::{
+    BoardDoc, Dash, Element, ElementId, ElementKind, Rgba, Shape, ShapeType, Style, rotate_about,
+};
 pub use frac::FracKey;
+pub use history::{History, MAX_STEPS};
 pub use ops::{BoardOp, apply_batch};
+
+/// Espessura do contorno de uma forma nova, em unidades do mundo — a do Excalidraw (medida no
+/// oráculo: `strokeWidth: 2`).
+pub const DEFAULT_STROKE_WIDTH: f64 = 2.0;
+/// Tamanho do texto de uma forma nova, em unidades do mundo — o «M» do Excalidraw (oráculo:
+/// `fontSize: 20`).
+pub const DEFAULT_FONT_SIZE: f64 = 20.0;
+/// Tinta do texto quando o documento não diz outra (dado do documento, não da UI).
+pub const DEFAULT_INK: [u8; 4] = [30, 30, 30, 255];

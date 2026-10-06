@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-board-edit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# Os GESTOS do Quadro (W1): ferramentas, selecção, mover/redimensionar/rodar, guias, texto na forma,
+# copiar/colar, desfazer. Sem ecrã nem UI: entra o ponteiro em coordenadas do MUNDO, sai o
+# documento mudado (por `BoardOp`) e o que desenhar por cima (`Overlay`).
+ph2d-board-model = { path = "../ph2d-board-model" }
+ph2d-board-geom = { path = "../ph2d-board-geom" }
+ph2d-board-layout = { path = "../ph2d-board-layout" }
+ph2d-text = { path = "../ph2d-text" }
+
+[lints]
+workspace = true

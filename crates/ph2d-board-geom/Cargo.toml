@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-board-geom"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A geometria das formas do Quadro: contorno, cantos, onde cabe o texto, acerto do clique. Reusa o
+# catálogo de formas do vectorial (`cook`) e a tradução para `BezPath` dele — sem ECS nem UI.
+ph2d-board-model = { path = "../ph2d-board-model" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+ph2d-vec-render = { path = "../ph2d-vec-render" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

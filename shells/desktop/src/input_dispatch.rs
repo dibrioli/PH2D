@@ -47,6 +47,7 @@ mod gizmo_drag;
 mod keyboard;
 /// **A escuta do Input Map no topo do teclado** — irmão de [`keyboard`], cortado por teto de LOC.
 mod keyboard_bind_capture;
+mod keyboard_board; // o teclado de um QUADRO activo (MiroClone) -- antes dos atalhos da cena
 
 /// **As teclas que ENCERRAM um gesto em curso** (Esc cancela, Enter confirma) — irmão do
 /// `keyboard`, cortado dele pelo cap de LOC. A ORDEM entre elas é a lei, e é por isso que
@@ -150,9 +151,12 @@ impl App {
         // recently-seen cursor to world.
         self.last_cursor = self.last_pointer;
         // Um arrasto da vista de um QUADRO (MiroClone) em curso é dono do movimento.
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+        let mods = Self::convert_modifiers(self.modifiers);
+        if let Some(g) = self.gfx.as_mut()
+            && let Some(hero) = g.hero_screen.as_mut()
             && ph2d_editor_core::screens::hero::board_view::pointer_move(
                 hero,
+                board_input(&mut g.text_system, mods),
                 self.last_pointer.0,
                 self.last_pointer.1,
             )
@@ -460,9 +464,12 @@ impl App {
             return;
         }
         // ⭐ Com um QUADRO activo (MiroClone) o clique na área de desenho é dele — nunca da cena.
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+        let mods = Self::convert_modifiers(self.modifiers);
+        if let Some(g) = self.gfx.as_mut()
+            && let Some(hero) = g.hero_screen.as_mut()
             && ph2d_editor_core::screens::hero::board_view::pointer(
                 hero,
+                board_input(&mut g.text_system, mods),
                 kind,
                 mapped_button,
                 evt.x,
@@ -562,3 +569,15 @@ mod cursor_tests;
 #[cfg(all(test, feature = "panel-audio-editor"))]
 #[path = "input_dispatch/despacho_testes_espectro.rs"]
 mod spectral_axis_tests;
+
+/// O que o quadro (MiroClone) recebe com cada evento do rato: a letra, os modificadores e o relógio.
+fn board_input(
+    text: &mut ph2d_text::TextSystem,
+    mods: ph2d_host::Modifiers,
+) -> ph2d_editor_core::screens::hero::board_view::Input<'_> {
+    ph2d_editor_core::screens::hero::board_view::Input {
+        text,
+        mods,
+        now_ns: crate::App::timestamp_ns(),
+    }
+}

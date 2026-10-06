@@ -262,3 +262,16 @@ Plano, kill-criteria (escritos antes) e números: [doc 121 §9.19](../121_as_for
 **Mutações:** [`mutacao_a_onda_4_2026-10-05.py`](../ferramentas/mutacao_a_onda_4_2026-10-05.py) — **`12/12` sangram**
 (o `i1` e o `i3` sobreviveram à 1.ª corrida e viraram gate: a lista das restrições, `lo < hi`, a fixtura sem a peça
 grande).
+
+**Fecho corrido (gate batched, HEAD `2b79379dc`, e as quatro falhas dele corrigidas e re-corridas sobre o fim):**
+`nextest-impacted` (`BASE=a46c4c200`) `17 420/17 422` — os `2` vermelhos: o tecto de LOC (`motion_state_pilha_demo_tests.rs`
+`744` → as sondas mudaram-se para `motion_state_pilha_demo_sondas.rs`, `528` + `223`; o gate re-corrido verde) e o flake
+de relógio `ph2d-physics-ecs` `the_cost_of_a_player_is_linear…` (crate não tocada; verde `3/3` sozinho a `load 30`–`34`)
+· `check --workspace --all-targets` `-D warnings` ✓ (depois de um `///` sobre um `thread_local!` virar `//`) · clippy
+`--all-targets --all-features -D warnings` das `7` crates ✓ · `fmt` ✓ · `machete`/`standalone`/`workflow` ✓ · censos
+`114/114` ✓ · `ph2d-shape-gpu --test it --ignored` `14/14` iGPU e RTX · `motion_shape_placa` (gates) `7/7` nas duas ·
+`ph2d-gpu-cook formas` `2/2` nas duas · `ph2d-vec-render --ignored` `6/6` nas duas.
+
+**Smoke (o dono), fotografado** (`target/prova/onda4/smoke/`, `smoke`, a `1930 × 1040`): a `=127` tracejada com a
+ponta REDONDA à partida (`59` fps) e a `=114` com `1 024` peças por taça (`59` fps; ⚠️ no roteiro de foto a cena fica
+no instante de partida — a queda não se fotografa nesta janela, §9.19 correcção).

@@ -645,7 +645,7 @@ fn gira(
     }
 }
 
-/// A referência do gate (`impulso_tests.rs`): os pares de todos-contra-todos, a lei de antes da grelha.
+// A referência do gate (`impulso_tests.rs`): os pares de todos-contra-todos, a lei de antes da grelha.
 #[cfg(test)]
 thread_local! {
     pub(crate) static TODOS_OS_PARES: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };

@@ -283,6 +283,10 @@ pub(super) fn build_com(
 #[path = "motion_state_pilha_demo_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+#[path = "motion_state_pilha_demo_sondas.rs"]
+mod sondas;
+
 /// ⭐ O irmão que mede o MOVIMENTO da pilha (doc 109 §8) — ver o cabeçalho dele.
 #[cfg(test)]
 #[path = "motion_state_pilha_demo_tremor.rs"]

@@ -123,7 +123,11 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
 }
 
 /// [`build`] com a medida dada (a sonda do doc 121 §9.19 (5) mede várias no mesmo processo).
-pub(super) fn build_com(doc: &mut MotionDoc, reg: &NodeRegistry, m: &Medida) -> Option<Vec<NodeId>> {
+pub(super) fn build_com(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+    m: &Medida,
+) -> Option<Vec<NodeId>> {
     use ph2d_nodegraph::graph::{Edge, Pos};
 
     // ⚠️ Os índices de enum são PERGUNTADOS ao registo, nunca digitados — a porta da cena `=113`.

@@ -20,25 +20,9 @@ use ph2d_vector::{Affine, BezPath, Brush, Fill, VectorScene};
 
 /// O traço pela lei da placa, com as geometrias deste `encode` (o cache por handle vive um quadro, como o
 /// das tesselações do lote).
+#[derive(Default)]
 pub(crate) struct TracoDaPlaca {
     cache: BTreeMap<u32, Option<Geometria>>,
-    /// doc 121 §9.19 (2): os pedaços ligados pela faixa numa só FITA (menos arestas para o Vello).
-    fundir: bool,
-}
-
-impl Default for TracoDaPlaca {
-    fn default() -> Self {
-        Self {
-            cache: BTreeMap::new(),
-            fundir: FUNDIR.with(std::cell::Cell::get),
-        }
-    }
-}
-
-thread_local! {
-    /// A escolha da fita para as sondas do mesmo processo (`custo_do_encode_tracejado`): a variante de
-    /// medição do doc 121 §9.19 (2). O produto lê a omissão.
-    pub(crate) static FUNDIR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 /// O que a placa recebe de uma forma, as tolerâncias dos níveis e, pedidos um a um, o eixo e as marcas de
@@ -128,8 +112,7 @@ impl TracoDaPlaca {
                 caneta: ph2d_shape_gpu::caneta_de(lin),
             };
             let mut contorno = BezPath::new();
-            let fundir = self.fundir;
-            ph2d_shape_gpu::contorno_do_eixo_com(g.eixo(n.nivel), &m, false, fundir, &mut contorno);
+            ph2d_shape_gpu::contorno_do_eixo(g.eixo(n.nivel), &m, false, &mut contorno);
             cena.inner_mut()
                 .fill(Fill::NonZero, Affine::IDENTITY, pincel, None, &contorno);
         }

@@ -78,23 +78,10 @@ pub fn contorno_do_eixo(
     so_tracejado: bool,
     saida: &mut BezPath,
 ) {
-    contorno_do_eixo_com(eixo, m, so_tracejado, false, saida);
-}
-
-/// [`contorno_do_eixo`] com os pedaços ligados pela faixa FUNDIDOS numa fita (doc 121 §9.19 (2)).
-pub fn contorno_do_eixo_com(
-    eixo: &[EixoItem],
-    m: &AfimDaCopia,
-    so_tracejado: bool,
-    fundir: bool,
-    saida: &mut BezPath,
-) {
     let mut s = Saida {
         eixo,
         m: *m,
         bp: saida,
-        fundir,
-        fita: fita::Fita::default(),
     };
     let ajuste = s.ajuste_do_tracejado();
     for (i, it) in eixo.iter().enumerate() {
@@ -109,15 +96,11 @@ pub fn contorno_do_eixo_com(
             s.tracejado(i, ajuste);
         }
     }
-    s.fecha_a_fita();
 }
 
 #[path = "contorno_cpu_vetor.rs"]
 mod vetor;
 use vetor::{V, dot, length, mix, perp, positivo, pt, sign, v};
-
-#[path = "contorno_cpu_fita.rs"]
-mod fita;
 
 /// Quantos traços um troço corta, no máximo (`TRACOS_POR_TROCO_MAX` do shader).
 const TRACOS_POR_TROCO_MAX: f32 = 65536.0;
@@ -169,8 +152,6 @@ struct Saida<'a> {
     eixo: &'a [EixoItem],
     m: AfimDaCopia,
     bp: &'a mut BezPath,
-    fundir: bool,
-    fita: fita::Fita,
 }
 
 impl Saida<'_> {
@@ -598,14 +579,9 @@ impl Saida<'_> {
         } else {
             self.tampa(q1, u, r, (it.ponta >> 8) & 3);
         }
-        if self.fundir {
-            self.quadrilatero_na_fita(q0, q1, m0, m1);
-        } else {
-            self.quadrilatero(q0, q1, m0, m1);
-        }
+        self.quadrilatero(q0, q1, m0, m1);
     }
 }
-
 
 /// O `pedaco`: o traço `n` dentro de um troço.
 fn pedaco(tr: &Troco, sub: &SubTracejado, n: f32) -> Pedaco {

@@ -146,6 +146,9 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 # ⚠️ Só a sonda do anel da Remoção de fundo sobre a arte dobrada a usa (`smoke_bone_paint_pincel_tests`):
 # a cena presa ao esqueleto mora AQUI, e a porta do ponteiro e a do anel moram naquela folha.
 ph2d-sprite-screen = { path = "../ph2d-sprite-screen" }
+# ⚠️ Só a sonda do refino do bake na `=6` (`smoke_bone_copias_sondas_bake.rs`, A13) chama o bake
+# directamente — a cena dobrada mora AQUI e o bake na `ph2d-vec-skin`.
+ph2d-vec-skin = { path = "../ph2d-vec-skin" }
 
 [features]
 # ⛔ **A feature `panel-vector` MORREU** (auditoria de arquitectura, 12/09): o painel é dependência

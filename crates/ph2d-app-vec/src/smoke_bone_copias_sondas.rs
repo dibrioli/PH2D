@@ -304,3 +304,6 @@ fn diag_as_pontas_dos_cortes() {
 
 #[path = "smoke_bone_copias_sondas_a13.rs"]
 mod a13;
+
+#[path = "smoke_bone_copias_sondas_refino.rs"]
+mod refino;

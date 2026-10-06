@@ -36,6 +36,9 @@ pub struct Bake {
     pub amostras: usize,
     /// A tolerância de Fréchet do [`kurbo::fit_to_bezpath`].
     pub tolerancia: f64,
+    /// ⭐ O refino LOCAL onde a pose estica o contorno ([`Refino`], A13) — `None` é a amostragem
+    /// uniforme de antes, a referência dos gates.
+    pub refino: Option<Refino>,
 }
 
 /// ⭐⭐⭐ **O SEGUNDO CORPO — a curva RE-AJUSTADA, com os pontos que ela precisar.**
@@ -288,6 +291,7 @@ pub fn assa_a_pele_com_nos(
         Bake {
             amostras,
             tolerancia,
+            refino,
         },
     ) = (lido, bake);
     let mut out = fonte.clone();
@@ -320,14 +324,9 @@ pub fn assa_a_pele_com_nos(
                 indice,
                 suave,
             };
-            // ⭐ O BAKE: um número FIXO de pontos, com a leitura barata.
-            let assado: Vec<Point> = (0..=amostras)
-                .map(|i| {
-                    #[expect(clippy::cast_precision_loss, reason = "i <= amostras")]
-                    let t = i as f64 / amostras as f64;
-                    s.ponto(t)
-                })
-                .collect();
+            // ⭐ O BAKE: um número FIXO de pontos, com a leitura barata — e, com o [`Refino`], os
+            // pontos a mais onde a pose ESTICA o contorno.
+            let (assado, nos_t) = refino::amostra(&s, amostras, tolerancia, refino);
             if k == 0 {
                 inicio = assado[0];
             }
@@ -338,7 +337,7 @@ pub fn assa_a_pele_com_nos(
             // uma divergência medida.
             let no = cubicas.last().map_or(inicio, |c| c[2]);
             nos.push([no.x, no.y]);
-            let fitado = ajusta(&Assado(&assado), tolerancia);
+            let fitado = ajusta(&Assado(&assado, nos_t.as_deref()), tolerancia);
             ph2d_vec_envelope::push_cubics(&fitado, &mut cubicas);
         }
         if let Some((alvo, _)) = out.contour_mut(c) {
@@ -384,9 +383,7 @@ fn ajusta_rec(
     tolerancia: f64,
     path: &mut kurbo::BezPath,
 ) {
-    #[expect(clippy::cast_precision_loss, reason = "um punhado de amostras")]
-    let passo = 1.0 / (src.0.len().max(2) - 1) as f64;
-    let c = if range.end - range.start <= passo {
+    let c = if src.cabe_num_intervalo(&range) {
         Some(src.hermite(range.clone()))
     } else {
         kurbo::fit_to_cubic(src, range.clone(), tolerancia)
@@ -416,23 +413,7 @@ fn fecha(
 ) -> bool {
     use kurbo::{ParamCurve, ParamCurveDeriv, ParamCurveNearest};
     const NA_CUBICA: usize = 24;
-    #[expect(clippy::cast_precision_loss, reason = "um punhado de amostras")]
-    let intervalos = (src.0.len().max(2) - 1) as f64;
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "o alcance é finito e positivo"
-    )]
-    let densos = ((range.end - range.start) * intervalos * 4.0)
-        .ceil()
-        .max(4.0) as usize;
-    #[expect(clippy::cast_precision_loss, reason = "um punhado")]
-    let fonte: Vec<Point> = (0..=densos)
-        .map(|i| {
-            src.em(range.start + (range.end - range.start) * i as f64 / densos as f64)
-                .0
-        })
-        .collect();
+    let fonte: Vec<Point> = src.densos(&range);
     let folga2 = (2.0 * tolerancia).powi(2);
     let deriv = c.deriv();
     (0..=NA_CUBICA).all(|i| {
@@ -501,11 +482,17 @@ fn anda_para_a_frente(c: kurbo::CubicBez, u: Vec2, t0: f64, t1: f64) -> bool {
 /// ⭐⭐ **A tangente é a de CATMULL-ROM** e não a diferença dos vizinhos: ela é `C¹` por
 /// construção, e é isso que impede o fitter de perseguir os bicos que a lei tem. *O bake não
 /// alisa a verdade por acidente — ele alisa-a exactamente à escala da amostragem.*
-struct Assado<'a>(&'a [Point]);
+///
+/// O 2.º campo são os NÓS (o `t` da fonte de cada amostra) quando o [`refino`] partiu algum
+/// intervalo; `None` é a uniforme de sempre, e então a aritmética é a de antes, ao bit.
+struct Assado<'a>(&'a [Point], Option<&'a [f64]>);
 
 impl Assado<'_> {
     /// `(ponto, tangente)` em `t ∈ [0, 1]`, por Catmull-Rom uniforme.
     fn em(&self, t: f64) -> (Point, Vec2) {
+        if let Some(nos) = self.1 {
+            return self.em_nos(nos, t);
+        }
         let n = self.0.len();
         if n < 2 {
             return (
@@ -586,6 +573,11 @@ impl kurbo::ParamCurveFit for Assado<'_> {
     }
 }
 
+/// A amostragem do bake e a sua generalização a nós NÃO uniformes (medição A13), num irmão.
+#[path = "curva_segundo_corpo_refino.rs"]
+mod refino;
+pub use refino::{REFINO_DO_PRODUTO, Refino};
+
 #[cfg(test)]
 #[path = "curva_segundo_corpo_espeto_tests.rs"]
 mod espeto_tests;
@@ -612,7 +604,7 @@ mod tests {
                 )
             })
             .collect();
-        let a = Assado(&pts);
+        let a = Assado(&pts, None);
         // (1) Ela passa PELAS amostras.
         for (i, p) in pts.iter().enumerate() {
             #[expect(clippy::cast_precision_loss, reason = "i <= 12")]

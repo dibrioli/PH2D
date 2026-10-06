@@ -132,6 +132,7 @@ fn assar_e_depois_ajustar_ganha_de_ajustar_a_chamar_a_lei() {
         ph2d_vec_skin::curva::Bake {
             amostras: 32,
             tolerancia: tol,
+            refino: None,
         },
     );
     let adapt = ph2d_vec_skin::curva::refit_pela_curva(

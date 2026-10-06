@@ -124,7 +124,7 @@ fn pior_afastamento(src: &Assado<'_>, path: &kurbo::BezPath) -> f64 {
 #[test]
 fn o_ajuste_nunca_sai_da_fonte() {
     let pts = amostras();
-    let src = Assado(&pts);
+    let src = Assado(&pts, None);
     let so_kurbo = kurbo::fit_to_bezpath(&src, TOL);
     let espeto = pior_afastamento(&src, &so_kurbo);
     assert!(

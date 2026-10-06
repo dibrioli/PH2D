@@ -318,6 +318,7 @@ fn diag_d_o_preco_do_segundo_corpo() {
                     ph2d_vec_skin::curva::Bake {
                         amostras: am,
                         tolerancia: frac * diag,
+                        refino: None,
                     },
                 )
             };
@@ -415,6 +416,7 @@ fn diag_d_o_preco_do_segundo_corpo() {
                 ph2d_vec_skin::curva::Bake {
                     amostras: am,
                     tolerancia: 0.0003 * diag,
+                    refino: None,
                 },
             )
         };

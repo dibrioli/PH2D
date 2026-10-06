@@ -4,7 +4,7 @@
 use super::*;
 
 /// O número de voltas das polilinhas `pl` em torno de `p` (contornos já fechados).
-fn voltas(pl: &[Vec<[f64; 2]>], p: [f64; 2]) -> i32 {
+pub(super) fn voltas(pl: &[Vec<[f64; 2]>], p: [f64; 2]) -> i32 {
     let mut w = 0;
     for l in pl {
         for s in l.windows(2) {
@@ -23,14 +23,14 @@ fn voltas(pl: &[Vec<[f64; 2]>], p: [f64; 2]) -> i32 {
 }
 
 /// Só os contornos FECHADOS de `p`.
-fn fechados_de(p: &ph2d_vec_scene::VecPath) -> ph2d_vec_scene::VecPath {
+pub(super) fn fechados_de(p: &ph2d_vec_scene::VecPath) -> ph2d_vec_scene::VecPath {
     let mut f = p.clone();
     f.subpaths.retain(|c| c.closed);
     f
 }
 
 /// A distância de `p` à polilinha mais perto.
-fn dist_pl(pl: &[Vec<[f64; 2]>], p: [f64; 2]) -> f64 {
+pub(super) fn dist_pl(pl: &[Vec<[f64; 2]>], p: [f64; 2]) -> f64 {
     pl.iter()
         .flat_map(|l| l.windows(2))
         .map(|s| {

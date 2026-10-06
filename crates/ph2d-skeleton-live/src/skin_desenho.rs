@@ -579,6 +579,7 @@ fn calcula(
     let bake_de = |f: &VecPath| Bake {
         amostras: amostras_por_segmento(segmentos(f)),
         tolerancia: TOLERANCIA_DA_DIAGONAL * diagonal(f),
+        refino: ph2d_vec_skin::curva::REFINO_DO_PRODUTO,
     };
     let desenhado = percurso
         .filter(|_| leis.desenho && estilo_serve)

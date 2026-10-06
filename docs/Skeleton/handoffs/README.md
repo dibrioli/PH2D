@@ -11,7 +11,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**19 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **19** são handoffs (registro **morto**).
+**21 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**) · **21** são handoffs (registro **morto**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -34,6 +34,8 @@
 | 2026-10-04 |   | [HANDOFF_line_Vector_CONTINUACAO_A5_A9_2026-10-04.md](HANDOFF_line_Vector_CONTINUACAO_A5_A9_2026-10-04.md) | ⚠️ handoff (morto) | HANDOFF (continuação, janela nova) — `line/Vector`: fechar A5, A7, A8 e A9 num turno só (2026-10-04, 3.ª onda) |
 | 2026-10-04 |   | [HANDOFF_line_Vector_CONTINUACAO_OS_ABERTOS_2026-10-04.md](HANDOFF_line_Vector_CONTINUACAO_OS_ABERTOS_2026-10-04.md) | ⚠️ handoff (morto) | HANDOFF (continuação, janela nova) — `line/Vector`: OS ABERTOS, um a um (2026-10-04) |
 | 2026-10-05 |   | [HANDOFF_INTEGRACAO_line_Vector_A_PONTA_DO_VINCO_E_AS_PASSAGENS_2026-10-05.md](HANDOFF_INTEGRACAO_line_Vector_A_PONTA_DO_VINCO_E_AS_PASSAGENS_2026-10-05.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/Vector`: a ponta do vinco, as passagens que o traço enche e a pele mais barata (… |
+| 2026-10-05 |   | [HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md](HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md) | ⚠️ handoff (morto) | HANDOFF DE INTEGRAÇÃO — `line/Vector`: o ESQUELETO é um OBJECTO (A14, 2026-10-05) |
+| 2026-10-06 |   | [HANDOFF_line_Vector_CONTINUACAO_A5a_A13_A15_A16_2026-10-06.md](HANDOFF_line_Vector_CONTINUACAO_A5a_A13_A15_A16_2026-10-06.md) | ⚠️ handoff (morto) | HANDOFF (continuação, janela nova) — `line/Vector`: A5-a, A13, A15 e A16 numa rodada só (2026-10-06) |
 
 ---
 

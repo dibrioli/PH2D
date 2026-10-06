@@ -1,0 +1,254 @@
+# HANDOFF (continuação, janela nova) — `line/Vector`: A5-a, A13, A15 e A16 numa rodada só (2026-10-06)
+
+> Para o agente que assume a linha numa janela NOVA (`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`). Não é
+> handoff de integração: o último de integração é o
+> [`…_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md`](HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md)
+> (smoke do dono APROVADO a 06/10). Substitui o
+> [handoff da 3.ª onda](HANDOFF_line_Vector_CONTINUACAO_A5_A9_2026-10-04.md).
+
+## 0. Onde está
+
+| | |
+|---|---|
+| worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector` |
+| ramo | `line/Vector`, HEAD `af43a3f69` (ou depois), árvore limpa, NADA integrado |
+| empilhada | sobre a `line/UIUX` (rebase de 05/10 sobre `71056d29f`): a UIUX entra no `main` ANTES desta; se ela integrar entretanto, `git rebase main` |
+| ondas por integrar | a ponta do vinco e as passagens (F60–F63) + o esqueleto como objecto (F64, bugs #34/#35) — dois handoffs de integração, os dois com smoke aprovado |
+| o dono | 06/10: *«com exceção de Flip, vamos corrigir todos os outros na mesma rodada de uma vez»* |
+
+## 0.1 A TAREFA — quatro abertos, UMA rodada (`CLAUDE.md` §0.10)
+
+| # | o que o dono vê | onde começar | natureza |
+|---|---|---|---|
+| **A5-a** | numa IMAGEM presa, junto à tampa redonda, um biquinho na borda da arte | fila §F59 (a tabela das três leis, a régua de tinta, a sonda `diag_a5a_as_tres_variantes`), §F49 «LIMITE CONHECIDO»; `crates/ph2d-skeleton-live/src/skin_image_fecho.rs` (`costura`, `ordena_pelo_osso`); ramo `exp/a5a-marching` (`50328de56`) | ⛔ quatro desenhos medidos e caídos; o que falta é o CRITÉRIO DE LADO — porque a costura remenda sobre a tinta de OUTRO membro. Meça isso antes de desenhar a 5.ª lei |
+| **A13** | com as DUAS juntas a `≥ 140°` (três camadas) a cor falha: zonas sem cor, traço sem cor por baixo, tiques soltos | lista viva A13 abaixo; cena `PH2D_VEC_BONE_SMOKE=6` com `PH2D_VEC_BONE_DOBRA=170,140` / `170,150` / `170,170`; `skin_desenho*.rs` | hipótese NÃO medida: a parte virada pela dobra inverte o sentido do contorno e a regra *NonZero* anula a cor onde camadas viradas e direitas se sobrepõem. Pré-existente (igual sem F60/F61) |
+| **A15** | nas cenas antigas o esqueleto ADOPTADO tem o ponto de mover (o anel de objecto vazio) no CENTRO da tela, longe dos ossos | `crates/ph2d-app-skeleton/src/loose.rs` (nasce na IDENTIDADE para a pose ficar ao bit); `ph2d-app-vec/src/group_gizmo_view.rs::is_empty_object` | o dono quer o ponto junto ao 1.º osso. ⚠️ Mover o esqueleto para `T` e a raiz para `local − T` pode não ser exacto em `f32` — MEÇA o erro (ao bit / ULP) antes de escolher; alternativa: um pivô/origem desenhada sem mexer no `Transform` |
+| **A16** | entrar no Edit/Pose com `Tab` (ou *Mode*) com um OSSO escolhido troca a selecção pelo esqueleto | `crates/ph2d-editor-core/src/screens/hero/mode_drive.rs` (`select_together` no `Step::Enter` e no passo 0 do `wants`) | ⚠️ o `mode_drive` é FUNDAÇÃO da `line/UIUX`: só ANEXE (ex.: o `drive` repõe a selecção se ela era só PARTES da entidade — `f.parts(bits)`), com gate; declare a colisão no handoff |
+
+- ⛔ **Fora desta rodada:** o Flip com ossos (o dono excluiu-o) e a INTEGRAÇÃO das ondas por integrar
+  (só por ordem explícita do dono, numa janela de integração, a `line/UIUX` primeiro).
+- Decisões técnicas são suas (padrão-ouro). Decisão de PRODUTO nova vai ao dono, curta — p. ex. se o
+  A5-a só fechar com uma escolha visível (preencher × recortar).
+
+## 0.2 Lições desta linha que valem aqui (medidas a 05–06/10)
+
+- ⭐⭐ **Reproduzir no CAMINHO REAL de um clique:** uma sonda TEMPORÁRIA dentro do processo, numa cena
+  de smoke, que chama `App::on_cursor_moved` + `App::on_mouse_input` (as portas do winit) em posições
+  de ecrã tiradas de `camera.world_to_screen`, e escreve a selecção no `eprintln!`; corre-se com
+  `fotografa_cena.sh` (`kwin --virtual`) e lê-se o `.log`. Foi o que achou os bugs #34 e #35 (o
+  XTest não chega à tela virtual). Retire a sonda e confirme `grep -c` = 0 antes do commit.
+- ⛔ **Um gate TEXTUAL fica verde quando uma palavra muda de EFEITO** (bug #34: «armar» passou de
+  trocar o verbo a trocar o modo). Ao mudar o significado de uma porta, varra os gates que a citam
+  pelo nome.
+- ⛔ **Commit ANTES de mutar:** repor uma mutação com `git checkout -- <ficheiro>` apaga também a cura
+  por commitar (aconteceu a 06/10). Reponha por cópia + `touch`.
+- ⚠️ O guarda de comando pesado lê o TEXTO do comando: um `python3 - <<EOF` cujo conteúdo diga
+  «cargo run» é recusado — edite docs com a ferramenta `Edit`.
+- ⚠️ O shell é zsh: `for F in $VAR` não parte em palavras — use `bash -c '…'` ou uma lista literal.
+- ⚠️ A pasta de rascunho é limpa na mudança de dia: recrie as subpastas (`fotos/`) antes de fotografar.
+- ⚠️ Os censos do `ph2d-panel-registry-init` só valem com `--workspace` (aviso da crate) — no gate
+  batched, não com `-p`.
+
+## 0.3 Como a rodada fecha
+
+DIRETRIZ §1.5.9 (`/pd-linha-fechar`): gate batched 1× (BASE = o HEAD em que começar):
+`nextest-impacted`, clippy `--workspace --all-targets -D warnings`, fmt, `file_loc_caps`,
+`architecture` da shell e do editor-core, `censos-da-arvore-combinada.sh`; mutação das leis novas
+(agente `mutacao`, controlo verde com população `> 0`; sobrevivente ganha gate ou sai); fotos das
+cenas tocadas; UM handoff de integração NOVO que cite os dois anteriores; a lista viva abaixo
+actualizada; binário de smoke compilado 2×; `rm -rf target/*/incremental`. ⛔ NÃO integre, NÃO faça
+push. Smoke ao dono em passos numerados, sem jargão.
+
+## 1. ⭐⭐⭐ A LISTA VIVA DOS ABERTOS — toda janela a lê ao começar e a ACTUALIZA ao acabar
+
+> ⛔ **Regra desta lista:** ao fim da janela, cada item fica com o estado novo (`✅ FEITO <commit>` /
+> `⏳ parcial: …` / `⛔ recusado pelo dono: …`), e um aberto NOVO que a janela descobrir entra com o
+> próximo número livre. O próximo handoff de continuação COPIA esta secção actualizada. *Uma lista
+> que só a janela que a escreveu conhece morre com a janela.*
+
+### A1 — ✅ DECIDIDO pelo dono (2026-10-04): **o osso mais PERTO** (como está hoje) — nada a construir
+
+> Perguntado com as duas opções lado a lado (*«o osso de onde o pedaço veio»* × *«o osso mais perto»*),
+> o dono escolheu a lei ESPACIAL. A lei material abaixo fica como registo; NÃO se constrói.
+
+
+- **Hoje:** os efeitos cozem no Bind, e o campo de pesos é resolvido sobre o desenho COZIDO
+  (`skin_live_prender::bind_com` → `campo_do_caminho(src cozido)`) ⇒ cada pedaço segue o osso de que
+  está mais PERTO no desenho (lei espacial, à *Puppet* do After Effects). Medido na F50-k (barra da
+  fixtura, nós dominados por osso): *Twist* `60°` `[55, 22, 55]` · `120°` `[33, 66, 33]` · `150°`
+  `[40, 53, 39]` — a ponta enrolada perto do osso do meio passa a ser dele.
+- **A escolha anterior do dono** (feita ANTES de existir o Bind que coze): *«o osso de onde VEIO»* (lei
+  material, à Blender). Pergunte de novo, em linguagem dele, com as duas opções lado a lado (o que
+  muda só se vê num efeito forte). Use `AskUserQuestion`.
+- **Se ele escolher «de onde veio»** — desenho proposto (NÃO medido): no Bind, para os efeitos que
+  MOVEM pontos (*Twist*, *Warp*, *Bloat*, *Zig Zag*, *Falloff* sobre eles), resolver o campo sobre a
+  forma SEM efeito e passar os VÉRTICES da malha do campo pelo efeito (com o `FxCtx` da forma) — os
+  pesos ficam, a malha deforma-se ⇒ um campo material sobre o cozido, sem solver extra. ⚠️ Medir:
+  dobras da malha onde o efeito sobrepõe a forma a si mesma (a leitura baricêntrica acha o 1.º
+  triângulo); os geradores (*Hatch*, *Repeat*, *Sketch*, *Knot*, *Trim*) não são mapas de pontos —
+  ficam com o campo do cozido; e a pilha mista. Gate sugerido: nós dominados por osso no cozido = os
+  da fonte, em toda a varredura do *Twist* `0°`…`360°`.
+- **Se ele escolher «o mais perto»:** feche a F50-k/§2-b na fila como decidido e siga.
+
+### A2 — ✅ FEITO (F52, `3caa88daa` + docs; smoke do dono APROVADO 2026-10-04: «smoke ok»): a parte da FRENTE tapa o que é aberto na de trás
+
+> As riscas abertas cortam-se no repouso onde a malha posada as tapa (chave de osso pela
+> PROFUNDIDADE na hierarquia, triângulos do avesso, pedaços mais curtos que o traço saem); mutação
+> 12/12. ⭐ Achado no caminho: a ordem das faces da IMAGEM (F48-c) punha a RAIZ por cima (a coluna
+> vem por `to_bits`, decrescente no `bevy_ecs` 0.19) — curada pela mesma chave. Os dentes do *Zig
+> Zag* que se encavalam são o A5 (buraquinhos reais). Detalhe: fila §F52. O texto abaixo é o
+> registo de antes.
+
+
+- **O que o artista vê** (FOTOGRAFADO a `100°`–`110°` na `PH2D_VEC_BONE_SMOKE=5`): o contorno já se
+  une, mas o que é ABERTO ou fica DENTRO — as riscas do *Hatch*, os dentes do *Zig Zag* — da parte de
+  trás aparece por cima da parte da frente onde os membros se sobrepõem. A imagem presa resolve isto
+  pela ORDEM DAS FACES (F48-c, `ordena_pelo_osso`, chave `Σwⱼ·j/Σwⱼ`).
+- ⚠️ **Mudou desde 03/10:** os efeitos agora são COZIDOS no Bind ⇒ as riscas do *Hatch* são
+  subcontornos ABERTOS da própria fonte (não uma pilha viva). A lei tem de servir a forma cozida
+  (`SkinnedPath::efeitos_cozidos`) e, idealmente, qualquer forma com subcontornos abertos.
+- **Antes de construir (CLAUDE.md §5.0):** meça se a COMPOSIÇÃO já o exprime — talvez baste recortar
+  os caminhos ABERTOS da parte de trás pela região da parte da frente deformada
+  (`ph2d-vec-boolean::cut`), sem partir o preenchimento.
+- Desenho mais pesado (se a composição não chegar): partir a forma em pedaços por osso (cada
+  triângulo da malha do campo → o osso da chave dele), desenhar por chave crescente. Riscos medidos
+  noutras mídias: a COSTURA entre pedaços (F48/F49), o PREÇO (régua `diag_o_preco_do_efeito_por_quadro`,
+  hoje `0,9`–`2,7 ms`), o recorte de abertos.
+
+### A3 — ✅ FEITO (F53, `8d1a3def8`): prender um *Repeater* denso deixa de parar a tela
+
+> Medido em release: o custo era a cerca de cobertura da grelha (varria todos os anéis por
+> pergunta), não o solver — malha `743 → 21 ms`, Bind `343 → 64 ms` a `39²`. Índice dos anéis por
+> faixa/célula, mesma resposta ao bit (gate contra a varredura); nenhum tecto. Detalhe: fila §F53.
+
+
+- Medido em 03/10: um *Repeater* `39 × 39` que gira (`~1 000` contornos) — em DEBUG o Bind não acabou
+  em 10 min (o solver `campo_do_caminho` sobre o cozido inteiro, síncrono no Bind). O pânico do
+  `linesweeper` que ele também causava está CURADO (gate `a_dense_spinning_repeater_union_answers_instead_of_panicking`).
+- **Fazer:** medir em `--release` (o Bind e o 1.º quadro), com `loadavg` ao lado. Se for inaceitável
+  (CLAUDE.md §0.0: o tecto diz de que RECURSO é), decidir pela medição: solver numa thread (a F50-j já
+  o faz para a pilha viva), malha do campo mais grossa acima de N contornos, ou um tecto de cópias
+  com a razão no painel. Nenhum número sem a tabela ao lado.
+
+### A4 — ✅ FEITO (F54, `a6c3dae04`): a forma presa de um projecto antigo coze os efeitos vivos
+
+> No quadro, antes da pele: a fonte que o Bind de hoje faria (o mesmo cozido da F50, campo do
+> contorno cozido nos eixos dos tendões guardados) — desvio `0` ao bit, controlo `3,83`/`0,48`.
+> Sem degrau de schema. Detalhe: fila §F54.
+
+
+- Uma forma presa ANTES de 03/10 que tenha efeitos continua a desenhá-los (a lei F50, agora em
+  `skin_desenho_efeitos.rs`), mas o painel de uma forma presa só mostra a frase — os efeitos ficam
+  invisíveis e não se editam (solta-se a forma para mexer). ⚠️ Viola a lei do dono «presa não tem
+  efeitos» por omissão.
+- **Fazer (decisão técnica, padrão-ouro):** a cura natural é COZER no carregamento — ao ler um
+  projecto, uma forma presa com efeitos activos é cozida como o Bind faria (a fonte guardada é
+  refeita com a geometria cozida, pesos e campo resolvidos no repouso dos tendões guardados,
+  `efeitos_cozidos = true`), e a pilha esvazia. Meça que não move um pixel (gate com controlo). ⚠️ Se
+  isto tocar no formato do ficheiro, conte o degrau com `python3 scripts/schema-recount.py`.
+
+### A5 — (b) ⛔ recusado pelo dono no smoke (F59; feito em `f1481cd7d`, REVERTIDO em `501daabf4`: «o modo anterior era melhor») · (a) ⏳ TENTADO E REVERTIDO (F59, `ac8246764` → `9e39c48a5`): a cúspide da imagem
+
+> ⛔ **05/10 — a hipótese seguinte (o anel por *marching squares*) foi medida e REFUTADA** (fila §F59, tabela das três leis): pior que a marcha na cúspide, pior que a lei de hoje a −149,5°, e ainda cose sobre a tinta de outro membro. Quatro desenhos ⇒ (a) fica ABERTO sem lei candidata; o que falta perceber é o critério de LADO (porque remenda sobre outro membro), não a forma do anel.
+
+> O dono escolheu (04/10) «fechar os buracos tão pequenos que a linha os cobre» e «corrigir» a cúspide.
+> (b) feito: 100° `[0,13 0,54 0,12]→[0,54]`, 110° `[1,24 0,25 1,25 0,42]→[1,24 1,25]`, mutação 5/5. (a) a tentativa
+> melhorou a pose do relatório (104→48) mas regrediu −149,5° e −160° nos gates da F49 ⇒ revertida após 3
+> reconstruções; próximo passo = o contorno da arte por marching squares (fila F59). Registo de antes:
+
+- A **cúspide da ARTE** de uma imagem presa junto a uma tampa redonda (limite da F49): pede o fecho
+  sobre o contorno da ARTE (pixels, na `attach_skin_meshes`). Ver fila §F49 «LIMITE CONHECIDO».
+- No *Zig Zag* muito dobrado (`~110°`) os dentes de dentro encavalam-se e fecham buraquinhos REAIS (a
+  imagem também os mostra).
+
+### A6 — ✅ FEITO (F55 + F55-b `9dc1a0434`…; pedido pelo dono 04/10; o 1.º smoke do dono achou o traço DESCOLADO numa dobra agressiva — curado na F55-b; 2.º smoke APROVADO 2026-10-04: «smoke ok»): o traço dos fechados de trás não pinta por cima da frente
+
+> Sem união, a forma sai em duas camadas (preenchimento + traço à vista). Causa de fundo curada: o
+> domínio do campo segue a regra de preenchimento (a sobreposição `NonZero` era furo). Só a ARTE
+> tapa; o avesso não tapa o traço de um fechado. Cena `=6`. Detalhe: fila §F55. Registo de antes:
+
+
+- A F52 corta só os ABERTOS: o contorno fechado é da união do contacto. Mas a união só corre quando
+  é neutra em repouso (`Preparado::uniao_neutra`); numa forma cujos contornos se sobrepõem já em
+  repouso (as cópias de um *Repeater*, a agulha de um *Bloat* forte) o traço de um contorno fechado
+  de trás continua a pintar por cima da frente numa dobra forte. Não fotografado. Desenho provável:
+  a mesma `Posada` com a lei aplicada ao TRAÇO dos fechados (o preenchimento não se corta), ou
+  partir a forma em camadas por chave. Medir antes (CLAUDE.md §5.0).
+
+### A7 — ✅ FEITO (F56, `c9786bbd3` + `a93bfdcf0`): a saída rápida do recorte
+
+> Sem par sobreposto nem virado o recorte nem amostra: forma com 36 riscas sem dobra 174–216 → 77 µs,
+> igual ao bit (gate `a_saida_rapida_nao_muda_o_recorte_ao_bit`), mutação feita. Fila §F56. Registo de antes:
+
+- `so_o_que_se_ve` posa a malha e amostra as riscas em toda pose (`diag_o_preco_do_recorte_por_quadro`,
+  release). Uma saída rápida (nenhum triângulo virado e nenhuma caixa de triângulos de chave maior a
+  sobrepor-se a outra não vizinha) pouparia o caso comum. Só se o preço aparecer numa cena cheia.
+
+### A8 — ✅ FECHADO sem cura (F58): as janelas perdidas existem mas ficam abaixo da largura do traço (máx 0,45)
+
+> Medido a 2 048 amostras/segmento (60°…170°): a maior janela perdida é 0,45 da largura do traço ⇒
+> borrão pela régua da F52. Gate `nenhuma_janela_perdida_chega_a_largura_do_traco`. Fila §F58. Registo de antes:
+
+- O recorte (F52/F55) amostra `32` pontos por segmento e bissecta onde o estado muda. Numa aresta
+  recta muito longa uma janela curta pode cair entre duas amostras. A amostragem pelo comprimento
+  (passo ¼ da aresta da malha) foi construída e RETIRADA na F55: nenhuma fixtura a exprimiu (a barra
+  `400 × 2` tem a malha grossa demais), e a hipótese que a trouxe estava errada. Só com um caso
+  FOTOGRAFADO.
+
+### A9 — ✅ FEITO (F57, `4384189db` + `a3dc835f8` + `a93bfdcf0`): a ponta do corte acerta no cruzamento desenhado
+
+> Cada ponta de trecho vai ao cruzamento mais perto ao longo do contorno fechado, até 1 largura:
+> 0,13…0,98 → 0,00…0,02 na `=6`. Gate `nenhuma_ponta_de_corte_fica_a_um_tique_do_cruzamento`. Fila §F57. Registo de antes:
+
+- Em SVG a `170°/−110°` (cena `=6` com o osso do meio quase dobrado sobre si) sobram dois ou três
+  tiques de `~0,1` nas pontas de cortes do traço, junto ao vinco. Não medido nem fotografado no app.
+
+### A10 — ✅ FEITO (F60, 05/10): a ponta do vinco converge para a pele exacta (`2,11 → ≤ 0,019` larg. a 160–175°) — fila §F60. Registo de antes:
+
+- O traço de um fechado contorna a dobra do papel (o grampo) e volta um pedaço antes de acabar
+  (FOTOGRAFADO em SVG na `=6` a `170°/−110°`, barra sem riscas). Não há cruzamento ali ⇒ o encaixe da F57
+  não o alcança (de propósito: o gate prova que pontas a `> 1` largura não se mexem). Causa provável: a
+  mesma (a malha recta decide, a pele exacta desenha). Cura de fundo: decidir «tapado» pela pele EXACTA
+  do cobridor (inverter o mapa no triângulo por Newton, ou triângulos quadráticos com o ponto médio de
+  cada aresta posado) — medir o preço antes (a dobra já custa `0,3 ms` no recorte).
+
+### A11 — ✅ FEITO (`eaa53edb1`, 04/10; conferido 05/10: `cargo fmt --check` limpo nas crates da linha). Registo de antes:
+
+- `cargo fmt --check`: `ph2d-app-vec` 9 diffs, `ph2d-vec-skin` 14, `ph2d-vec-boolean` 2 (a
+  `ph2d-skeleton-live` ficou formatada nesta janela, `4d91679e9`); o ship corre `cargo fmt --all -- --check`.
+
+### A12 — ✅ FEITO (F61, 05/10, «sim» do dono): as passagens NOVAS mais estreitas que o traço (fendas e pontas) cortam-se pela corda; os buracos engolidos ficam — fila §F61. Registo de antes:
+
+- No Zig Zag a 100° (FOTOGRAFADO em SVG, `=5`) duas marquinhas escuras onde o contorno entra numa reentrância mais estreita que o traço; não são buracos (a lei da F59-b não as toca). Medir (largura da reentrância vs largura do traço) e perguntar ao dono se as quer fechadas como os buracos.
+
+### A13 — (novo, 05/10) Com as DUAS juntas a `≥ 140°` a barra dobra em TRÊS camadas e a cor falha
+
+- FOTOGRAFADO na `=6` (`PH2D_VEC_BONE_DOBRA=170` e `140`/`150`): zonas sem cor dentro da forma, traço sem
+  cor por baixo, tiques soltos; a `170,110` sobram um degrau na cor e um tique. ⚠️ **Não é da onda
+  F60/F61:** o SVG a `170°/170°` com e sem a lei das passagens é igual ao byte, e com a malha fina
+  desligada (`TOL = 0`) é o mesmo desenho. Hipótese (por medir): a parte VIRADA pela dobra inverte o
+  sentido do contorno e a regra *NonZero* anula a cor onde camadas viradas e direitas se sobrepõem.
+
+### A14 — ✅ FEITO (F64, `ed0d4852f`…`8c456103e`, 05/10…06/10; smoke do dono APROVADO 06/10: «smoke OK», depois dos bugs #34/#35): O ESQUELETO é um OBJECTO — plano em [`05_plano_o_esqueleto_e_um_objecto.md`](../05_plano_o_esqueleto_e_um_objecto.md), handoff [`HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md`](HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md)
+
+> Os ossos desenham-se em todo modo (o olho esconde); *Add ▸ Skeleton*; Object · Edit · Pose com
+> ferramenta de osso própria (`ph2d-tool-bone`); em Object clicar num osso selecciona o esqueleto,
+> o gizmo move-o com a forma presa, *Bind*/`Ctrl+P`; raízes soltas ganham esqueleto (pose ao bit);
+> `PROJECT_SCHEMA 185`; cena `=7`. Desvios do plano e porquê: fila §F64. Registo de antes:
+
+- Os ossos só se viam no Edit do vetor e ali não se mexiam (report do dono): os gestos do osso eram um
+  modo da ferramenta Vector, que desde a onda dos modos só está na mão dentro do Edit de uma forma.
+
+### A15 — (novo, 06/10, rodada A5-a/A13/A15/A16) O esqueleto ADOPTADO tem o ponto de mover no centro da tela
+
+- Visto nas fotos do fecho da A14: a porta das raízes soltas (`ph2d_app_skeleton::loose`) cria o
+  esqueleto na IDENTIDADE (a pose fica ao bit), logo o anel de objecto vazio dele cai na origem do
+  mundo — um círculo solto no centro das cenas antigas, longe dos ossos. O dono quer-no junto ao 1.º
+  osso. Medir o erro de mover o esqueleto para a raiz antes de escolher (ver §0.1).
+
+### A16 — (novo, 06/10, rodada A5-a/A13/A15/A16) Entrar no Edit/Pose troca o osso escolhido pelo esqueleto
+
+- O `mode_drive` colapsa a selecção na entidade do modo (`select_together`) ao entrar: com um osso
+  escolhido, `Tab` → Edit do esqueleto e o osso deixa de estar escolhido (clicar nele de novo resolve).
+  Fundação da `line/UIUX`: só anexar, com gate.
+

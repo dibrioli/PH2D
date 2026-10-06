@@ -139,19 +139,19 @@ pub const DISC_TILE_PX: u32 = 256;
 
 const _: () = assert!(DISC_TILE_KEY > FIRST_IMPORT_KEY && DISC_TILE_KEY != WHITE_TILE_KEY);
 
-/// The disc tile's straight-alpha texels: white, with coverage `1` inside a disc
+/// The disc tile's straight-alpha texels, row by row: white, with coverage `1` inside a disc
 /// whose edge sits half a texel inside the tile (the sampler never reaches past
 /// it) and a one-texel linear ramp across the edge.
 #[must_use]
-pub fn disc_tile_pixels(side: u32) -> Vec<u8> {
+pub fn disc_tile_pixels(side: u32) -> Vec<ph2d_color::SrgbRgba> {
     let c = side as f32 / 2.0;
     let r = c - 0.5;
-    let mut px = Vec::with_capacity((side * side * 4) as usize);
+    let mut px = Vec::with_capacity((side * side) as usize);
     for y in 0..side {
         for x in 0..side {
             let (dx, dy) = (x as f32 + 0.5 - c, y as f32 + 0.5 - c);
             let a = (r - (dx * dx + dy * dy).sqrt() + 0.5).clamp(0.0, 1.0);
-            px.extend_from_slice(&[0xff, 0xff, 0xff, (a * 255.0).round() as u8]);
+            px.push(ph2d_color::SrgbRgba::new(0xff, 0xff, 0xff, (a * 255.0).round() as u8));
         }
     }
     px
@@ -327,7 +327,8 @@ impl TextureAtlas {
         gpu: &GpuContext,
     ) -> Result<[f32; 4], AtlasInsertError> {
         let px = disc_tile_pixels(DISC_TILE_PX);
-        self.insert(gpu, DISC_TILE_KEY, DISC_TILE_PX, DISC_TILE_PX, &px)?;
+        let bytes: &[u8] = bytemuck::cast_slice(&px);
+        self.insert(gpu, DISC_TILE_KEY, DISC_TILE_PX, DISC_TILE_PX, bytes)?;
         self.insert_white_tile(gpu)
     }
 

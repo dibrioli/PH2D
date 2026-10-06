@@ -58,7 +58,7 @@ M = [
      '        r("PH2D_WEAPON_SMOKE", weapon_smoke::CENAS),\n',
      ''),
     ('A5 as peças reservadas sem o disco', 'DESENHO', AT,
-     '        self.insert(gpu, DISC_TILE_KEY, DISC_TILE_PX, DISC_TILE_PX, &px)?;\n',
+     '        self.insert(gpu, DISC_TILE_KEY, DISC_TILE_PX, DISC_TILE_PX, bytes)?;\n',
      ''),
     ('B1 o empate vai pela esquerda', 'CONTORNO', DV,
      '    let d = if perto(dir_) >= perto(esq) { dir_ } else { esq };',

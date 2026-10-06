@@ -48,8 +48,8 @@ fn monta(env: &str, nivel: u32) -> SimWorld {
     let mut tree = ph2d_tags::TagTree::new();
     let mut sim = SimWorld::new();
     match env {
-        "PH2D_AUDIO_2D_SMOKE" => return com_ctx(|cx| c::audio_2d_smoke::audio_2d_smoke(cx)),
-        "PH2D_GAME_CAMERA_SMOKE" => return com_ctx(|cx| c::camera_2d_smoke::game_camera_smoke(cx)),
+        "PH2D_AUDIO_2D_SMOKE" => return com_ctx(c::audio_2d_smoke::audio_2d_smoke),
+        "PH2D_GAME_CAMERA_SMOKE" => return com_ctx(c::camera_2d_smoke::game_camera_smoke),
         "PH2D_INSTANCE_SMOKE" => {
             return com_ctx(|cx| match nivel {
                 1 => c::instance_smoke::instance_smoke_ragdoll(cx),
@@ -63,7 +63,7 @@ fn monta(env: &str, nivel: u32) -> SimWorld {
             });
         }
         "PH2D_SIGNAL_ACTION_SMOKE" => {
-            return com_ctx(|cx| c::signal_action_smoke::signal_action_smoke(cx));
+            return com_ctx(c::signal_action_smoke::signal_action_smoke);
         }
         "PH2D_FACTORY_SMOKE" => {
             return com_ctx(|cx| {
@@ -75,7 +75,7 @@ fn monta(env: &str, nivel: u32) -> SimWorld {
                 c::tags_smoke::tags_smoke(cx, nivel);
             });
         }
-        "PH2D_TIMER_SMOKE" => return com_ctx(|cx| c::timer_smoke::timer_smoke(cx)),
+        "PH2D_TIMER_SMOKE" => return com_ctx(c::timer_smoke::timer_smoke),
         "PH2D_PATHFOLLOW_SMOKE" => {
             return com_ctx(|cx| {
                 c::path_follow_smoke::montar(cx, nivel).expect("nivel existe");

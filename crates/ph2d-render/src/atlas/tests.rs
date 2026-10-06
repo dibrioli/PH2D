@@ -384,14 +384,14 @@ fn region_uv_recomputes_against_new_size_after_regrow() {
 fn the_disc_tile_covers_the_inscribed_circle_and_nothing_outside_it() {
     let side = DISC_TILE_PX;
     let px = disc_tile_pixels(side);
-    assert_eq!(px.len(), (side * side * 4) as usize);
-    let alpha = |x: u32, y: u32| px[((y * side + x) * 4 + 3) as usize];
+    assert_eq!(px.len(), (side * side) as usize);
+    let alpha = |x: u32, y: u32| px[(y * side + x) as usize].0[3];
     let c = side as f32 / 2.0;
     let (mut dentro, mut fora, mut borda) = (0u32, 0u32, 0u32);
     for y in 0..side {
         for x in 0..side {
-            let i = ((y * side + x) * 4) as usize;
-            assert_eq!(&px[i..i + 3], &[0xff, 0xff, 0xff], "texel ({x},{y}) is white");
+            let t = px[(y * side + x) as usize].0;
+            assert_eq!(&t[..3], &[0xff, 0xff, 0xff], "texel ({x},{y}) is white");
             let d = ((x as f32 + 0.5 - c).powi(2) + (y as f32 + 0.5 - c).powi(2)).sqrt();
             let a = alpha(x, y);
             if d < c - 1.5 {

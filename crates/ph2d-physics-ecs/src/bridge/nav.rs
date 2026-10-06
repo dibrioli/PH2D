@@ -46,6 +46,7 @@ use ph2d_navmesh::TiledMesh;
 use ph2d_physics::{BodyDesc, ShapeDesc};
 
 use super::PhysicsBridge;
+use fila::Vez;
 use crate::PlayerInput;
 use crate::components::{NavAgent, NavRegion, NavTarget, PlatformPlayer, TopDownPlayer};
 
@@ -162,18 +163,6 @@ struct Pedido {
     active: bool,
     avoidance: bool,
     avoid_harm: bool,
-}
-
-/// Um agente que a ponte conduz neste tique: o pedido, a velocidade do mover, onde está, o raio e a
-/// malha que pede (`None` fora de toda região).
-struct Vez {
-    p: Pedido,
-    /// O alvo que vale neste tique: o de uma ordem `Start` com nome, ou o autorado.
-    target: NavTarget,
-    speed: f64,
-    pos: V2,
-    raio: f32,
-    chave: Option<ChaveMalha>,
 }
 
 /// Uma região deste tique: a entidade, o rectângulo de mundo e a máscara de camadas.
@@ -335,7 +324,6 @@ impl PhysicsBridge {
                 search,
                 planos,
                 sonda,
-                orcamento,
                 ..
             } = &mut self.nav;
             let malha = v.chave.and_then(|k| meshes.get(&k)).map(TiledMesh::mesh);
@@ -355,7 +343,6 @@ impl PhysicsBridge {
                 saida_livre: Some(&livre_de),
                 gasto: 0,
                 a_vista: sonda.a_vista,
-                dobra: (sonda.dobra, *orcamento),
                 custos: assinatura_dos_custos,
             };
             let steer = ph2d_nav::agent::step_in_turn(

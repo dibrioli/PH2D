@@ -11,7 +11,7 @@ use ph2d_nav::refresh::{Owed, path_still_walkable, reparte};
 use ph2d_nav::{AgentRuntime, Planeado, Plano, Query};
 use rayon::prelude::*;
 
-use super::{ChaveMalha, NavWorld, Vez};
+use super::{ChaveMalha, NavWorld, Pedido};
 use crate::bridge::PhysicsBridge;
 
 /// ⭐ **O orçamento de trabalho da procura por tique** para os caminhos que a fila deve, em nós
@@ -48,6 +48,18 @@ pub(super) const ORCAMENTO_DE_TRABALHO_POR_TIQUE: u64 = 20_000;
 /// | **`16`** | **`0`** | **`7,5 · 12,9`** | **`40 000`** |
 pub(super) const PROCURAS_EM_PARALELO: usize = 16;
 
+/// Um agente que a ponte conduz neste tique: o pedido, a velocidade do mover, onde está, o raio e a
+/// malha que pede (`None` fora de toda região). (W18: mudou-se para aqui com o tecto de LOC do `nav.rs`.)
+pub(super) struct Vez {
+    pub(super) p: Pedido,
+    /// O alvo que vale neste tique: o de uma ordem `Start` com nome, ou o autorado.
+    pub(super) target: crate::components::NavTarget,
+    pub(super) speed: f64,
+    pub(super) pos: ph2d_nav::V2,
+    pub(super) raio: f32,
+    pub(super) chave: Option<ChaveMalha>,
+}
+
 /// ⭐ **As alavancas da sonda e dos gates** — escolhidas em EXECUÇÃO, para que as versões se meçam no
 /// MESMO processo (a régua do dono de 05/10). Por omissão, o produto.
 pub(super) struct Sonda {
@@ -59,10 +71,6 @@ pub(super) struct Sonda {
     pub(super) contorno: bool,
     /// (plano 30 §25, C2) O alvo à vista dispensa a procura — [`ph2d_nav::agent::a_vista`].
     pub(super) a_vista: bool,
-    /// (§27.2, SONDA) O tecto da dobra (T1 · T2 · T3) — [`PhysicsBridge::set_nav_fold`].
-    pub(super) dobra: ph2d_nav::agent::Dobra,
-    /// (§26 A4, re-medido na §27.2) As de quem persegue em vagas a MAIS, à frente.
-    pub(super) vagas_a_mais: bool,
 }
 
 impl Default for Sonda {
@@ -72,8 +80,6 @@ impl Default for Sonda {
             paralelas: PROCURAS_EM_PARALELO,
             contorno: true,
             a_vista: true,
-            dobra: ph2d_nav::agent::Dobra::Produto,
-            vagas_a_mais: false,
         }
     }
 }
@@ -168,24 +174,14 @@ impl PhysicsBridge {
         if !self.nav.sonda.fatias {
             return (prontos, 0, 0);
         }
-        let (a4, t1) = (
-            self.nav.sonda.vagas_a_mais,
-            self.nav.sonda.dobra == ph2d_nav::agent::Dobra::Vez,
-        );
-        let mut fila: Vec<((bool, u32, u64, bool, u32), Entity, ChaveMalha)> = vez
+        let mut fila: Vec<((u64, bool, u32), Entity, ChaveMalha)> = vez
             .iter()
             .filter_map(|v| {
                 let k = v.chave?;
                 let rt = self.nav.agents.get(&v.p.entity)?;
                 let a = rt.a_meio?;
                 (entradas.get(&k) == Some(&a.entradas)).then_some((
-                    (
-                        a4 && a.persegue,
-                        if t1 { rt.recomecos } else { 0 },
-                        a.trabalho,
-                        rt.broken,
-                        rt.owed,
-                    ),
+                    (a.trabalho, rt.broken, rt.owed),
                     v.p.entity,
                     k,
                 ))
@@ -200,9 +196,7 @@ impl PhysicsBridge {
             orcamento,
             ..
         } = &mut self.nav;
-        let a_mais = fila.iter().take_while(|x| x.0.0).count();
-        let corre = (a_mais + sonda.paralelas).min(fila.len());
-        let dobra = sonda.dobra;
+        let corre = sonda.paralelas.min(fila.len());
         for &(_, e, _) in &fila[corre..] {
             if let Some(rt) = agents.get_mut(&e) {
                 rt.owed = rt.owed.saturating_add(1);
@@ -220,8 +214,7 @@ impl PhysicsBridge {
                 let Some(malha) = meshes.get(k) else {
                     return (None, 0);
                 };
-                let (r, w) =
-                    ph2d_nav::agent::advance_mid(rt, malha.mesh(), q, plano, orc, (dobra, true));
+                let (r, w) = ph2d_nav::agent::advance_mid(rt, malha.mesh(), q, plano, orc);
                 (r.map(|(r, _)| r), w)
             })
             .collect();
@@ -277,11 +270,6 @@ impl PhysicsBridge {
     /// inteira no tique em que é pedida (só a fila da malha que muda espera). Por omissão, ligadas.
     pub fn set_nav_slices(&mut self, on: bool) {
         self.nav.sonda.fatias = on;
-    }
-
-    /// (§27.2, SONDA) O tecto da dobra e as vagas a mais de quem persegue (A4).
-    pub fn set_nav_fold(&mut self, dobra: ph2d_nav::agent::Dobra, vagas_a_mais: bool) {
-        (self.nav.sonda.dobra, self.nav.sonda.vagas_a_mais) = (dobra, vagas_a_mais);
     }
 
     /// (plano 30 §25, C2) A sonda e o CONTROLO: `false` = o alvo à vista também espera pela procura.

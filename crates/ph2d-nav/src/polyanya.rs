@@ -182,30 +182,6 @@ pub struct Polyanya {
     sem_dominancia: bool,
     frentes: dominancia::Frentes,
     pub stats: Stats,
-    /// (plano 30 §27.3, SONDA) `Some` = regista cada nó EXPANDIDO (onde estão os nós).
-    pub diag: Option<Vec<Expandido>>,
-    /// (§27.3, SONDA C4) A dominância repete a passagem pelas frentes até nada mudar.
-    pub ponto_fixo: bool,
-    /// (§27.3, SONDA o TECTO) `1`/`2` = a dominância amostrada (do mesmo custo / de qualquer custo).
-    pub ideal: u8,
-}
-
-/// (§27.3, SONDA) Um nó expandido: o `f` com que saiu do heap, o custo da região, e a aresta.
-#[derive(Clone, Copy, Debug)]
-pub struct Expandido {
-    pub f: f64,
-    pub w: f64,
-    pub poly: u32,
-    pub entry: u32,
-    /// A raiz, o custo dela, e o intervalo ANTES da dominância.
-    pub rho: V2,
-    pub g: f64,
-    pub left: V2,
-    pub right: V2,
-    /// O custo muda nesta aresta (o nó refracta, sem dominância).
-    pub refrata: bool,
-    /// Da fase PONDERADA (`false` = da geral, que corre antes dela sem custos).
-    pub ponderada: bool,
 }
 
 impl Polyanya {

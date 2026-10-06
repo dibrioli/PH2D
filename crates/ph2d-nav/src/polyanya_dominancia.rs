@@ -97,65 +97,28 @@ impl Polyanya {
             f.clear(mesh);
         }
         let (mut l, mut r) = (left, right);
-        loop {
-            let (l0, r0) = (l, r);
-            let mut i = f.head[poly as usize];
-            while i != NONE {
-                let a = f.pool[i as usize];
-                i = a.next;
-                self.stats.compared += 1;
-                if a.entry != entry || a.w != w {
-                    continue;
-                }
-                // A ponta esquerda, depois a direita (as duas pela mesma porta, de pontas trocadas).
-                if let Some(s) = corte(&a, rho, g, w, l, r) {
-                    if s >= 1.0 {
-                        self.stats.dominated += 1;
-                        return None;
-                    }
-                    l = lerp(l, r, s);
-                }
-                if let Some(s) = corte(&a, rho, g, w, r, l) {
-                    if s >= 1.0 {
-                        self.stats.dominated += 1;
-                        return None;
-                    }
-                    r = lerp(r, l, s);
-                }
+        let mut i = f.head[poly as usize];
+        while i != NONE {
+            let a = f.pool[i as usize];
+            i = a.next;
+            self.stats.compared += 1;
+            if a.entry != entry || a.w != w {
+                continue;
             }
-            // (§27.3, SONDA C4) Até ao ponto FIXO: uma frente que domina o MEIO só corta depois de as
-            // outras lhe trazerem as pontas.
-            if !self.ponto_fixo || (l == l0 && r == r0) {
-                break;
-            }
-        }
-        // (§27.3, SONDA o TECTO) Dominado em 17 amostras pela união das frentes guardadas da aresta
-        // (`1` = do mesmo custo; `2` = de qualquer custo) — não é exacto: mede o máximo que qualquer
-        // dominância contra as frentes ANTERIORES pode cortar.
-        if self.ideal > 0 {
-            let todas = (0..17).all(|k| {
-                let y = lerp(l, r, f64::from(k) / 16.0);
-                let meu = g + w * dist(rho, y);
-                let mut i = f.head[poly as usize];
-                while i != NONE {
-                    let a = f.pool[i as usize];
-                    i = a.next;
-                    let len = dist(a.left, a.right);
-                    let cobre = len > 0.0
-                        && (dist(a.left, y) + dist(y, a.right) - len).abs() <= 1e-7 * (1.0 + len);
-                    if a.entry == entry
-                        && (a.w == w || self.ideal > 1)
-                        && cobre
-                        && a.g + a.w * dist(a.rho, y) <= meu + 1e-9 * (1.0 + meu)
-                    {
-                        return true;
-                    }
+            // A ponta esquerda, depois a direita (as duas pela mesma porta, de pontas trocadas).
+            if let Some(s) = corte(&a, rho, g, w, l, r) {
+                if s >= 1.0 {
+                    self.stats.dominated += 1;
+                    return None;
                 }
-                false
-            });
-            if todas {
-                self.stats.dominated += 1;
-                return None;
+                l = lerp(l, r, s);
+            }
+            if let Some(s) = corte(&a, rho, g, w, r, l) {
+                if s >= 1.0 {
+                    self.stats.dominated += 1;
+                    return None;
+                }
+                r = lerp(r, l, s);
             }
         }
         let cortou = dist(l, left) > EPS || dist(r, right) > EPS;

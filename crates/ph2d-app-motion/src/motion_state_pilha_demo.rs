@@ -53,6 +53,31 @@ pub(super) struct Medida {
     colide: bool,
     raio: f32,
     vao: f32,
+    /// Quanto dura cada queda — ver [`duracao_de`].
+    duracao: f32,
+}
+
+/// ⭐ **A queda dura o que a pilha leva a ASSENTAR** (report do dono, 06/10: *«a animação não dura o
+/// suficiente para ver todos os quadrados colidirem»*). A taça cresce com a pilha e a queda também;
+/// os `3` s da cena do smoke cortavam a de `16 384` peças a `8` u/s. Medido (`quanto_tempo_a_pilha_
+/// leva_a_assentar`, `release`; a taça da direita parada `0,5` s seguidos — média `< 0,05` u/s e a
+/// mais rápida `< 0,3`):
+///
+/// | lado | peças | parada em |
+/// |---:|---:|---:|
+/// | `5` | `25` | `2,97` s |
+/// | `16` | `256` | `7,12` s |
+/// | `32` | `1 024` | `14,23` s |
+/// | `48` · `64` · `96` · `128` | `2 304` … `16 384` | `13,12` · `11,18` · `13,63` · `14,78` s |
+///
+/// ⇒ degraus que cobrem todas as medições (a cauda é a de uma peça a escorregar devagar, não cresce
+/// com a pilha): até `15` de lado os `3` s da cena do smoke, até `31` `8` s, daí para cima `15` s.
+fn duracao_de(lado: Option<f32>) -> f32 {
+    match lado {
+        Some(k) if k >= 32.0 => 15.0,
+        Some(k) if k >= 16.0 => 8.0,
+        _ => DURACAO,
+    }
 }
 
 fn medida() -> Medida {
@@ -74,6 +99,7 @@ pub(super) fn medida_de(lado: Option<f32>, colide: bool) -> Medida {
         colide,
         raio,
         vao: raio + (VAO - TACA_R),
+        duracao: duracao_de(lado),
     }
 }
 /// O meio-lado de cada quadrado (o `size` do `source.shape`: a geometria nasce em raio 1).
@@ -217,7 +243,7 @@ pub(super) fn build_com(
         // quinas. As duas curas anteriores falharam exactamente aí.
         g.set_param(zone, "substeps", SUBSTEPS);
         g.set_param(zone, "mode", em_laco);
-        g.set_param(zone, "duration", DURACAO);
+        g.set_param(zone, "duration", m.duracao);
         g.set_param(zone, "loop_delay", PAUSA);
 
         let vento = g.add_node("force.wind");

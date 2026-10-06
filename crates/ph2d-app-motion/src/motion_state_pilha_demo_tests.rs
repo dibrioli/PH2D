@@ -564,3 +564,68 @@ fn a_pile_of_discs_with_rolling_settles() {
         "a pilha de discos com Rolling 0,25 ainda gira {tarde:.2} graus na janela 420..480"
     );
 }
+
+/// ⭐⭐ **A pilha PÁRA antes de a queda recomeçar** (report do dono, 06/10) — a de `16 × 16` (a menor
+/// do degrau de `8` s), pela porta do app: a taça da direita parada `0,5` s seguidos antes do fim da
+/// zona. E a cena do smoke continua com os `3` s de sempre.
+#[test]
+fn the_pile_stops_before_the_fall_restarts() {
+    assert_eq!(
+        medida_de(None, true).duracao,
+        DURACAO,
+        "a cena do smoke fica com os 3 s"
+    );
+    let mut state = MotionState::new();
+    let m = medida_de(Some(16.0), true);
+    let sinks = build_com(&mut state.doc, &state.registry, &m).expect("a cena monta");
+    crate::motion_shape_gen::publish(&mut state, 0.0);
+    let scopes = ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "segundos → tiques"
+    )]
+    let fim = (m.duracao * 60.0) as u64;
+    let (mut antes, mut parado) = (Vec::<[f32; 2]>::new(), 0u32);
+    for k in 0..fim {
+        state.pump.advance_or_scrub_scoped(
+            &state.doc.graph,
+            &state.registry,
+            &sinks,
+            k,
+            |x| x as f64 / 60.0,
+            state.default_uv_rect,
+            state.default_size,
+            &scopes,
+        );
+        let Some(Column::Vec2(p)) = state
+            .pump
+            .cook
+            .peek(sinks[1])
+            .and_then(|o| o.first())
+            .and_then(|o| o.as_stream().get("P").cloned())
+        else {
+            continue;
+        };
+        if antes.len() == p.len() && !p.is_empty() {
+            let v: Vec<f32> = p
+                .iter()
+                .zip(&antes)
+                .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]) * 60.0)
+                .collect();
+            #[expect(clippy::cast_precision_loss, reason = "uma contagem de pecas")]
+            let media = v.iter().sum::<f32>() / v.len() as f32;
+            let maior = v.iter().fold(0.0_f32, |a, x| a.max(*x));
+            parado = if media < 0.05 && maior < 0.3 {
+                parado + 1
+            } else {
+                0
+            };
+        }
+        antes = p;
+    }
+    assert!(
+        parado >= 30,
+        "a pilha de 256 ainda se mexia quando a queda recomecou ({parado} tiques parada)"
+    );
+}

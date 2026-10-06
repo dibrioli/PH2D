@@ -2697,3 +2697,36 @@ o gate passa a medir isso: `the_loop_pause_drops_the_world_and_the_next_fall_sta
 por taça com o cozimento em metade do quadro; a cerca da placa fica (a cena com `Collide` coze na CPU). ⚠️ A primeira
 leitura (carga `25`–`30`) dava `4`–`59` fps: com o quadro a atrasar o relógio recupera até `8` tiques por quadro e o
 atraso alimenta-se — a medição do app não vale acima de `load ~5`.
+
+### §9.22 — A QUEDA DURA O QUE A PILHA LEVA A ASSENTAR, e o que isso mostrou (2026-10-06, report do dono)
+
+Report: *«a animação não dura o suficiente para ver todos os quadrados colidirem»*. A taça crescia com a pilha (§9.19)
+e a queda ficava nos `3` s da cena do smoke: a `16 384` peças elas iam a `8` u/s quando a cena recomeçava. Medido
+(`quanto_tempo_a_pilha_leva_a_assentar`, `release`, a taça da direita parada `0,5` s seguidos — média `< 0,05` u/s e
+a mais rápida `< 0,3`; e «a olho», média `< 0,1`; `target/prova/onda6/assenta.txt`):
+
+| lado | peças | a olho | parada |
+|---:|---:|---:|---:|
+| `5` | `25` | `1,37` s | `2,97` s |
+| `16` | `256` | `2,03` | `7,12` |
+| `32` | `1 024` | `6,95` | `14,23` |
+| `48` · `64` · `96` · `128` | `2 304` … `16 384` | `4,7` · `8,2` · `8,1` · `9,0` | `13,1` · `11,2` · `13,6` · `14,8` |
+
+⇒ a duração da zona passa a degraus que cobrem todas as medições (`duracao_de`): até `15` de lado os `3` s da cena do
+smoke (ao bit), até `31` `8` s, daí para cima `15` s. Gate `the_pile_stops_before_the_fall_restarts` (a de `256` parada
+antes do recomeço; com `3` s sangra — mutação `m16`).
+
+⛔ **E a queda longa DESMENTIU o fecho do item da placa no §9.21:** as janelas do app de lá eram dos primeiros `3` s
+(a queda); com a pilha FORMADA o tique cresce. Por fase (`custo_por_fase_da_queda`, sem vídeo, carga `8`–`10`):
+
+| lado | `0–3` s | `3–6` s | `6–9` | `9–12` | `12–15` |
+|---:|---:|---:|---:|---:|---:|
+| `64` (`4 096`) | `2,3` (máx `8,7`) | `2,9` | `2,9` | `2,7` | `2,8` (máx `7,7`) |
+| `128` (`16 384`) | `6,4` (máx `25`) | **`15,7`** (máx `51`) | `12,1` | `11,0` | `10,6` (máx `34`) |
+
+No app a `16 384` com a pilha formada: `21`–`32` fps (fotos `target/prova/onda7/smoke/`). ⇒ **`4 096` por taça segura os
+`60` fps na queda INTEIRA; `16 384` só na queda, não com a pilha formada.** As alavancas medidas no oráculo (o rapier
+puro, `16 384` formada): dormir NÃO ajuda (a pilha é uma ilha só e nunca adormece: `16 384` acordados até aos `15` s);
+`2`–`3` iterações em vez de `4` tiram `20`–`30 %`; o próprio rapier gasta `6`–`9` ms nessa pilha. ⇒ **o item da placa
+REABRE**: `16 384` por taça a `60` fps com a pilha formada pede o contacto no dispositivo (um solver da família do
+Box2D na placa: contactos persistentes e aquecimento), ou aceitar `~30` fps nessa escala.

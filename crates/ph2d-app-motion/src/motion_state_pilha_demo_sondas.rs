@@ -372,3 +372,150 @@ fn prova_do_mundo_de_contacto() {
     }
     eprintln!("MUNDO fim · load {}", carga().trim());
 }
+
+/// ⭐ doc 121 §9.22 — **quanto tempo cada pilha leva a ASSENTAR** (report do dono, 06/10: *«a animação não dura o
+/// suficiente para ver todos os quadrados colidirem»*): a `=114` com a zona a durar `30` s, pela porta do app; o
+/// instante em que a taça da DIREITA fica parada `0,5` s seguidos (velocidade média `< 0,05` u/s e a mais rápida
+/// `< 0,3`). Ambiente: `PH2D_PILHA_LADOS=5,16,32,64,128`.
+#[test]
+#[ignore = "sonda de medicao"]
+fn quanto_tempo_a_pilha_leva_a_assentar() {
+    let lados: Vec<f32> = std::env::var("PH2D_PILHA_LADOS").ok().map_or_else(
+        || vec![5.0, 16.0, 32.0, 64.0, 128.0],
+        |v| v.split(',').filter_map(|x| x.parse().ok()).collect(),
+    );
+    for lado in lados {
+        let mut state = MotionState::new();
+        let m = medida_de(Some(lado), true);
+        let sinks = build_com(&mut state.doc, &state.registry, &m).expect("a cena monta");
+        let zonas: Vec<NodeId> = state
+            .doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == "sim.zone")
+            .map(|n| n.id)
+            .collect();
+        for z in zonas {
+            state.doc.graph.set_param(z, "duration", 30.0);
+        }
+        crate::motion_shape_gen::publish(&mut state, 0.0);
+        let scopes = ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
+        let (mut antes, mut parado, mut assentou) = (Vec::<[f32; 2]>::new(), 0u32, None);
+        // A olho: a velocidade média abaixo de `0,2` e de `0,1` u/s, `0,5` s seguidos.
+        let (mut olho, mut quase) = ([0u32; 2], [None::<f32>; 2]);
+        for k in 0..(30 * 60_u64) {
+            state.pump.advance_or_scrub_scoped(
+                &state.doc.graph,
+                &state.registry,
+                &sinks,
+                k,
+                |x| x as f64 / 60.0,
+                state.default_uv_rect,
+                state.default_size,
+                &scopes,
+            );
+            let Some(Column::Vec2(p)) = state
+                .pump
+                .cook
+                .peek(sinks[1])
+                .and_then(|o| o.first())
+                .and_then(|o| o.as_stream().get("P").cloned())
+            else {
+                continue;
+            };
+            if antes.len() == p.len() && !p.is_empty() {
+                let v: Vec<f32> = p
+                    .iter()
+                    .zip(&antes)
+                    .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]) * 60.0)
+                    .collect();
+                #[expect(clippy::cast_precision_loss, reason = "uma contagem de pecas")]
+                let media = v.iter().sum::<f32>() / v.len() as f32;
+                let maior = v.iter().fold(0.0_f32, |a, x| a.max(*x));
+                for (j, barra) in [0.2_f32, 0.1].into_iter().enumerate() {
+                    olho[j] = if media < barra { olho[j] + 1 } else { 0 };
+                    if olho[j] == 30 && quase[j].is_none() {
+                        #[expect(clippy::cast_precision_loss, reason = "um tique")]
+                        let t = (k - 29) as f32 / 60.0;
+                        quase[j] = Some(t);
+                    }
+                }
+                parado = if media < 0.05 && maior < 0.3 {
+                    parado + 1
+                } else {
+                    0
+                };
+                if parado == 30 && assentou.is_none() {
+                    #[expect(clippy::cast_precision_loss, reason = "um tique")]
+                    let t = (k - 29) as f32 / 60.0;
+                    assentou = Some(t);
+                    break;
+                }
+            }
+            antes = p;
+        }
+        eprintln!(
+            "ASSENTA lado {lado:>4} ({:>6} pecas, taca de raio {:.2}): media<0,2 {:?} · media<0,1 {:?} · parada {}",
+            lado * lado,
+            m.raio,
+            quase[0],
+            quase[1],
+            assentou.map_or_else(
+                || "NAO assentou em 30 s".to_owned(),
+                |t| format!("{t:.2} s")
+            )
+        );
+    }
+}
+
+/// ⭐ doc 121 §9.22 — **o tique do app por FASE da queda inteira** (a queda passou a durar o que a pilha leva a
+/// assentar, e a pilha FORMADA tem mais contactos que a queda): mediana e máximo por janela de `3` s, pela porta do
+/// app. Ambiente: `PH2D_PILHA_LADOS=64,128`.
+#[test]
+#[ignore = "sonda de relógio"]
+fn custo_por_fase_da_queda() {
+    let lados: Vec<f32> = std::env::var("PH2D_PILHA_LADOS").ok().map_or_else(
+        || vec![64.0, 128.0],
+        |v| v.split(',').filter_map(|x| x.parse().ok()).collect(),
+    );
+    for lado in lados {
+        let mut state = MotionState::new();
+        let m = medida_de(Some(lado), true);
+        let sinks = build_com(&mut state.doc, &state.registry, &m).expect("a cena monta");
+        crate::motion_shape_gen::publish(&mut state, 0.0);
+        let scopes = ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
+        let mut fases: Vec<Vec<f64>> = vec![Vec::new(); 6];
+        for k in 0..(15 * 60_u64) {
+            let t0 = std::time::Instant::now();
+            state.pump.advance_or_scrub_scoped(
+                &state.doc.graph,
+                &state.registry,
+                &sinks,
+                k,
+                |x| x as f64 / 60.0,
+                state.default_uv_rect,
+                state.default_size,
+                &scopes,
+            );
+            let f = usize::try_from(k / 180).unwrap_or(5);
+            fases[f.min(5)].push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        let linha: Vec<String> = fases
+            .iter_mut()
+            .enumerate()
+            .filter(|(_, v)| !v.is_empty())
+            .map(|(i, v)| {
+                v.sort_by(f64::total_cmp);
+                format!(
+                    "{}-{} s: med {:.1} max {:.1}",
+                    i * 3,
+                    i * 3 + 3,
+                    v[v.len() / 2],
+                    v[v.len() - 1]
+                )
+            })
+            .collect();
+        eprintln!("FASE lado {lado} · {}", linha.join(" · "));
+    }
+}

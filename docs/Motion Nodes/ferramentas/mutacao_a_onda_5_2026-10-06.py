@@ -22,6 +22,7 @@ PECA = R + "/crates/ph2d-contact-world/src/peca.rs"
 ROLAR = R + "/crates/ph2d-contact-world/src/rolar.rs"
 COLIDE = R + "/crates/ph2d-node-sim-collide/src/mundo.rs"
 PASSO = R + "/crates/ph2d-node-sim-step/src/lib.rs"
+PILHA = R + "/crates/ph2d-app-motion/src/motion_state_pilha_demo.rs"
 
 SUITES = {
     "MUNDO": ["cargo", "test", "-p", "ph2d-contact-world"],
@@ -30,6 +31,7 @@ SUITES = {
     "RECUO": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "recuo_tests"],
     "RAMPA": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "material_demo"],
     "DISCOS": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "a_pile_of_discs_with_rolling_settles"],
+    "DURA": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "the_pile_stops_before_the_fall_restarts"],
 }
 
 # (nome, suites, [(ficheiro, âncora, substituição, nº de ocorrências)])
@@ -72,6 +74,9 @@ MUTS = [
         "pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 2;", "pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 1;", 1)]),
     ("m15 o mundo fica sem colisor", ["RECUO"], [(MUNDO,
         "        *mundo = None;\n        return None;\n", "        return None;\n", 1)]),
+    # O report de 06/10 («a animação não dura o suficiente»): a queda dura o que a pilha leva a assentar.
+    ("m16 a queda de 256 dura os 3 s do smoke", ["DURA"], [(PILHA,
+        "        Some(k) if k >= 16.0 => 8.0,", "        Some(k) if k >= 16.0 => DURACAO,", 1)]),
 ]
 
 
@@ -136,7 +141,7 @@ def main():
         falhos = re.findall(r"^test (\S+) \.\.\. FAILED", out, re.M)
         print(f"{nome} {suites}: {v} ({p} passed, {fl} failed) reprovou: {falhos}", flush=True)
         sangrou += v == "SANGROU"
-    for f in (PONTO, MUNDO, PECA, ROLAR, COLIDE, PASSO):
+    for f in (PONTO, MUNDO, PECA, ROLAR, COLIDE, PASSO, PILHA):
         assert not os.path.exists(f + ".muta_bk"), "restauro falhou"
     print(f"placar: {sangrou} de {len(muts)} sangraram")
 

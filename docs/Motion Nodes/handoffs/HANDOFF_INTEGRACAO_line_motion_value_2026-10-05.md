@@ -407,3 +407,15 @@ censos `114/114` ✓ · standalone, workflow, `adr-index`, `doc-index`, `archive
 `tests/it` das `5` crates (com as duas da Física) `1 026/1 026`. Mutações `m3`/`m14`/`m15` sangram.
 
 **⏳ ABERTO:** nada desta família. Integrar só por ordem do dono.
+
+## §15 — 06/10, report do dono: *«a animação não dura o suficiente para ver todos os quadrados colidirem»*
+
+A duração da zona da `=114` cresce com a pilha (`duracao_de`: `3` s até `15` de lado — a cena do smoke ao bit —, `8` s
+até `31`, `15` s daí para cima), pela medição do instante em que cada pilha assenta (doc 121 §9.22). Gate
+`the_pile_stops_before_the_fall_restarts`; mutação `m16` sangra. Sondas novas: `quanto_tempo_a_pilha_leva_a_assentar`,
+`custo_por_fase_da_queda`.
+
+⛔ **CORRECÇÃO do §14:** «`16 384` por taça a `57`–`60` fps» valia para os primeiros `3` s (a queda). Com a pilha
+FORMADA o tique é `11`–`16` ms e o app lê `21`–`32` fps. `4 096` por taça fica nos `60` fps na queda inteira (`2,8` ms
+plano). ⇒ **o item da placa REABRE** (doc 121 §9.22: dormir não ajuda; menos iterações tiram `20`–`30 %`; o rapier
+puro gasta `6`–`9` ms nessa pilha).

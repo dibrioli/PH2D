@@ -48,7 +48,7 @@ impl PainterTool {
     /// espessura do pigmento sobre o papel, armada pela seção Paper (Enio 2026-08-10). Sem esta
     /// cláusula o Digital nunca chega ao depósito de altura, e o pedido *"o depósito de pigmento com
     /// Shape visto como relevo"* não tem onde acontecer.
-    fn impasto_batch_active(&self) -> bool {
+    pub(super) fn impasto_batch_active(&self) -> bool {
         matches!(self.paint.paint_mode, PaintMode::Paint)
             && (self.paint.brush.impasto || self.paint.brush.effective_film_depth() > 0.0)
     }

@@ -192,10 +192,22 @@ fn both_walkers_of_the_solid_over_write_the_same_bytes() {
             }
         })
         .collect();
-    let band = |par: bool| -> Vec<u8> {
+    // E com o TECTO do traço (a máscara da linha): os dois walkers têm de escrever a mesma tela e
+    // a mesma máscara.
+    let mascara: Vec<u8> = (0..rows * row_bytes / 4)
+        .map(|i| {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                ((i * 13) % 200) as u8
+            }
+        })
+        .collect();
+    let band = |par: bool, tecto: bool| -> Vec<u8> {
         let mut buf = base.clone();
+        let mut m = mascara.clone();
         blend_solid_rows(
             &mut buf,
+            tecto.then_some(m.as_mut_slice()),
             SolidBand {
                 cov: &cov,
                 cov_stride: cols,
@@ -204,13 +216,17 @@ fn both_walkers_of_the_solid_over_write_the_same_bytes() {
                 cols,
                 rgb: [200, 40, 90],
                 strength: 178,
+                no_tecto: tecto,
             },
             par,
         );
+        buf.extend_from_slice(&m);
         buf
     };
-    let serial = band(false);
-    let parallel = band(true);
+    let (serial_t, parallel_t) = (band(false, true), band(true, true));
+    assert_eq!(serial_t, parallel_t, "com o tecto as duas rotas divergem");
+    let serial = band(false, false);
+    let parallel = band(true, false);
     assert_ne!(
         serial, base,
         "a fixture nao escreveu um byte: o oraculo nao mede nada"
@@ -272,9 +288,10 @@ fn u_entregue(
     (t.canvas_rgba.to_vec(), relevo)
 }
 
-/// **A CORDA NÃO DEIXA RASTO** — o Solid só ACRESCENTA tinta (a mesma cor, por `over`), então
-/// nenhum texel pode sair mais CLARO com ele, e no Impasto o miolo do «U» — onde só passam as cordas
-/// de quadros intermédios, a mancha não tem corpo e a corda final está a 15 px — não ganha relevo.
+/// **A CORDA NÃO DEIXA RASTO** — o Solid só ACRESCENTA tinta (a mesma cor, até o tecto do traço),
+/// então nenhum texel pode sair mais CLARO com ele, e no Impasto o miolo do «U» — onde passam as
+/// cordas de quadros intermédios — é o PLANALTO liso da mancha (desde 2026-10-06 ela tem corpo, à
+/// altura do traço): um leque de corpos de corda deixaria-o irregular.
 #[test]
 fn a_corda_nao_deixa_rasto_nos_acumuladores_do_traco() {
     for (media, strength) in [(PaintMedia::Digital, 0.5f32), (PaintMedia::Impasto, 1.0)] {
@@ -297,10 +314,26 @@ fn a_corda_nao_deixa_rasto_nos_acumuladores_do_traco() {
              cobertura do traço e os dabs seguintes deixaram de pintar ali"
         );
         assert_eq!(
-            miolo(&r1),
             miolo(&r0),
-            "{media:?}: o miolo do «U» ganhou relevo — o corpo das cordas intermédias ficou no traço"
+            0,
+            "controlo: {media:?}: sem Solid o miolo do «U» é chato"
         );
+        if media == PaintMedia::Impasto {
+            let alturas: Vec<f32> = (40..80usize)
+                .flat_map(|y| (35..85usize).map(move |x| y * 128 + x))
+                .map(|i| r1[i])
+                .collect();
+            let (lo, hi) = alturas
+                .iter()
+                .fold((f32::MAX, 0.0f32), |(a, b), &v| (a.min(v), b.max(v)));
+            assert!(
+                lo > 0.0 && hi - lo <= 0.02 * hi,
+                "{media:?}: o miolo do «U» não é o planalto liso da mancha ({lo}..{hi}) — o corpo \
+                 das cordas intermédias ficou no traço"
+            );
+        } else {
+            assert_eq!(miolo(&r1), 0, "{media:?}: o Digital ganhou relevo");
+        }
         // ⚠️ E a corda FINAL tem corpo como o resto do contorno: sem isto a cura «a corda não deposita
         // relevo» passaria deixando a aresta que fecha a forma chata.
         if media == PaintMedia::Impasto {

@@ -37,6 +37,9 @@ mod ribbon_probe; // W6 do plano 38: o orcamento da FITA — move, tique e o pen
 mod solid_deposit_tests;
 #[path = "solid_transaction_tests.rs"]
 mod solid_transaction_tests; // …e o que a TRANSACAO garante: nada apagado, nada fora do retangulo
+/// O Solid no Digital e no Impasto: a Strength e o relevo do miolo (smoke do dono, 2026-10-06).
+#[path = "solido_meios_tests.rs"]
+mod solido_meios_tests;
 #[path = "spray_defaults_tests.rs"]
 mod spray_defaults_tests; // W5: a primeira nuvem parece uma nuvem
 #[path = "spray_probe.rs"]

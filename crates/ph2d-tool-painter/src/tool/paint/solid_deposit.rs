@@ -289,10 +289,16 @@ impl PainterTool {
             return;
         }
         let pixels = self.save_region(&rect);
+        // A mancha sobe o tecto do traço (`stroke_mask`) para a corda não pintar por cima dela; o
+        // tecto volta ao do traço sozinho no fim — a mancha é provisória até o pen-up.
+        let largura = self.source_size.0 as usize;
+        let texels = largura * self.source_size.1 as usize;
+        let tecto = Recorte::de(&self.paint.stroke_mask, Some(rect), largura, texels);
         self.stamp_solid(loops, rect);
         if !chord.is_empty() {
             self.stamp_corda_em_rascunho(chord, chord_rect);
         }
+        tecto.repoe(&mut self.paint.stroke_mask, largura);
         self.paint.drag_preview = Some(super::DragPreview { rect, pixels });
     }
 
@@ -377,6 +383,7 @@ impl PainterTool {
         } else {
             self.stamp_dabs_height(&chord, &brush);
         }
+        self.assenta_o_corpo_da_mancha(&brush);
     }
 
     /// Escreve a região **pela porta do gate**, exactamente como um lote de dabs: a proteção e a
@@ -441,8 +448,31 @@ impl PainterTool {
         // Piso do pool MEDIDO (`measure_what_a_solid_move_is_made_of`): abaixo dele o fork do rayon
         // custa mais que o passe, como o limiar em BYTES do `plane_copy` e o `WET_PAR_MIN` da secagem.
         let par = (x1 - x0) * (y1 - y0) >= SOLID_PAR_MIN;
+        // ⭐ **O TECTO DO TRAÇO** (smoke do dono 2026-10-06: *«a cor central do solid não respeita o
+        // strength do pincel e fica mais escura»*). Com o cap de Accumulate armado o traço é
+        // `antes·(1 − m) + cor·m`, e a mancha composta POR CIMA dele somava-se (Strength 0,4: o
+        // gesto chegava a `0,5–0,64` junto ao traço). Ela obedece ao mesmo tecto: o alvo de um texel
+        // é `cobertura × o tecto que o traço atingiu`, e ela só leva `m` até ele — o gesto inteiro é
+        // `max(traço, mancha)`, nunca a soma.
+        let n = w * h;
+        let mascara = (self.paint.stroke_mask.len() == n).then(|| {
+            let tecto = (y0..y1)
+                .flat_map(|y| {
+                    self.paint.stroke_mask[y * w + x0..y * w + x1]
+                        .iter()
+                        .copied()
+                })
+                .max()
+                .unwrap_or(0);
+            (tecto, &mut self.paint.stroke_mask[y0 * w..y1 * w])
+        });
+        let (tecto, mask) = match mascara {
+            Some((t, m)) if t > 0 => (Some(u32::from(t)), Some(m)),
+            _ => (None, None),
+        };
         blend_solid_rows(
             &mut canvas[y0 * w * 4..y1 * w * 4],
+            mask,
             SolidBand {
                 cov: &cov,
                 cov_stride: rect.w as usize,
@@ -450,7 +480,8 @@ impl PainterTool {
                 x0,
                 cols: x1 - x0,
                 rgb,
-                strength,
+                strength: tecto.unwrap_or(strength),
+                no_tecto: tecto.is_some(),
             },
             par,
         );
@@ -469,6 +500,9 @@ pub(super) struct SolidBand<'a> {
     pub(super) cols: usize,
     pub(super) rgb: [u32; 3],
     pub(super) strength: u32,
+    /// `true` = a mancha obedece ao tecto do traço: `strength` é o tecto e a máscara da linha diz
+    /// o `m` de cada texel (ver o `write_solid`).
+    pub(super) no_tecto: bool,
 }
 
 /// **UM CORPO, DOIS WALKERS** — `par` escolhe quem percorre as linhas, nunca o que a linha responde.
@@ -478,23 +512,58 @@ pub(super) struct SolidBand<'a> {
 /// identidade PODE provar é o mapeamento `linha → y`; o corpo partilhado ele não vê
 /// ([[feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body]]), e quem o cobre são os
 /// gates de aparência da mancha.
-pub(super) fn blend_solid_rows(band: &mut [u8], b: SolidBand<'_>, par: bool) {
-    if par {
-        use rayon::prelude::*;
-        band.par_chunks_mut(b.row_bytes)
+pub(super) fn blend_solid_rows(
+    band: &mut [u8],
+    mask: Option<&mut [u8]>,
+    b: SolidBand<'_>,
+    par: bool,
+) {
+    let largura = b.row_bytes / 4;
+    match (mask, par) {
+        (Some(m), true) => {
+            use rayon::prelude::*;
+            band.par_chunks_mut(b.row_bytes)
+                .zip(m.par_chunks_mut(largura))
+                .enumerate()
+                .for_each(|(row, (d, m))| blend_solid_row(row, d, Some(m), &b));
+        }
+        (Some(m), false) => band
+            .chunks_mut(b.row_bytes)
+            .zip(m.chunks_mut(largura))
             .enumerate()
-            .for_each(|(row, d)| blend_solid_row(row, d, &b));
-    } else {
-        band.chunks_mut(b.row_bytes)
+            .for_each(|(row, (d, m))| blend_solid_row(row, d, Some(m), &b)),
+        (None, true) => {
+            use rayon::prelude::*;
+            band.par_chunks_mut(b.row_bytes)
+                .enumerate()
+                .for_each(|(row, d)| blend_solid_row(row, d, None, &b));
+        }
+        (None, false) => band
+            .chunks_mut(b.row_bytes)
             .enumerate()
-            .for_each(|(row, d)| blend_solid_row(row, d, &b));
+            .for_each(|(row, d)| blend_solid_row(row, d, None, &b)),
     }
 }
 
-/// O `over` de UMA linha: cobertura exata × opacidade do pincel, sobre o que já está lá.
-fn blend_solid_row(row: usize, dst: &mut [u8], b: &SolidBand<'_>) {
+/// O `over` de UMA linha: cobertura exata × opacidade do pincel, sobre o que já está lá — ou, com
+/// o tecto do traço (`mask` = a linha do `stroke_mask`), só o que falta de `m` até o alvo.
+fn blend_solid_row(row: usize, dst: &mut [u8], mut mask: Option<&mut [u8]>, b: &SolidBand<'_>) {
     for cx in 0..b.cols {
-        let a = u32::from(b.cov[row * b.cov_stride + cx]) * b.strength / 255;
+        let alvo = u32::from(b.cov[row * b.cov_stride + cx]) * b.strength / 255;
+        let a = match mask.as_deref_mut() {
+            Some(m) if b.no_tecto => {
+                let tem = u32::from(m[b.x0 + cx]);
+                if alvo <= tem {
+                    continue;
+                }
+                #[allow(clippy::cast_possible_truncation)]
+                {
+                    m[b.x0 + cx] = alvo as u8;
+                }
+                ((alvo - tem) * 255 + (255 - tem) / 2) / (255 - tem)
+            }
+            _ => alvo,
+        };
         if a == 0 {
             continue;
         }

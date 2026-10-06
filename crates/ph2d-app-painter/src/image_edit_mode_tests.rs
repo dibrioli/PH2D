@@ -98,6 +98,19 @@ fn the_image_offers_edit_and_edit_is_the_image_tools() {
         !c.hero.image_edit.mode_on,
         "Object não desligou as ferramentas de imagem"
     );
+    // CONTROLO do espelho: o Paint da imagem e o Edit de outro tipo não as ligam.
+    c.hero.gizmo.mode.enter(A, ObjectMode::Paint);
+    mirror(&mut c.hero, |b| b == A || b == B);
+    assert!(
+        !c.hero.image_edit.mode_on,
+        "o Paint ligou as ferramentas de imagem"
+    );
+    c.hero.gizmo.mode.enter(VEC, ObjectMode::Edit);
+    mirror(&mut c.hero, |b| b == A || b == B);
+    assert!(
+        !c.hero.image_edit.mode_on,
+        "o Edit do vetor ligou as ferramentas de imagem"
+    );
 }
 
 /// ⭐⭐ GATE (dono, 05/10: *«todos os objetos daquele tipo estão em modo de edição. Ao clicar num

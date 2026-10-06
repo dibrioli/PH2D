@@ -15,10 +15,7 @@
 //! bash scripts/ph2d-run.sh cargo test -p ph2d-board-render --release --test it measure_route -- --ignored --nocapture
 //! ```
 
-use ph2d_board_model::{
-    Anchor, BoardOp, BoardSet, Camera, Connector, Element, ElementId, End, Rgba, Route, Shape,
-    ShapeType, Style,
-};
+use ph2d_board_model::{BoardOp, BoardSet, Element, ElementId};
 use ph2d_board_render::RenderCache;
 use ph2d_board_route::RouteCache;
 use ph2d_text::TextSystem;
@@ -26,54 +23,19 @@ use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 use std::time::Instant;
 
-use super::measure_encode_cost::{AREA, FRAMES, ROUNDS};
+use super::measure_encode_cost::{AREA, FRAMES, Mix, ROUNDS, board_with};
 
 const NS: [usize; 3] = [1_000, 10_000, 100_000];
-/// Passo da grelha: a caixa 160×100 e o vão de um fluxograma (o `NEXT_GAP` do editor, 80).
-const STEP: [f64; 2] = [240.0, 180.0];
 
-/// O fluxograma: N formas e uma seta de cada 10.ª forma para a vizinha da direita (a última da
-/// linha liga à de baixo). Devolve o quadro e a forma a arrastar (a origem da 1.ª seta).
+/// O fluxograma da régua (`Mix::Flow`) e a forma a arrastar: a origem da 1.ª seta.
 fn flow(n: usize) -> (BoardSet, ElementId) {
-    let mut set = BoardSet::default();
-    let id = set.create(format!("{n}"));
-    let b = set.get_mut(id).unwrap();
-    let side = (n as f64).sqrt().ceil() as usize;
-    let ink = Rgba([30, 30, 30, 255]);
-    let style = Style::new(None, Some(ink), ink);
-    let mut ids = Vec::with_capacity(n);
-    for i in 0..n {
-        let (row, col) = ((i / side) as f64, (i % side) as f64);
-        let shape = Shape {
-            kind: [ShapeType::Rectangle, ShapeType::Ellipse, ShapeType::Diamond][i % 3],
-            style: style.clone(),
-            text: String::new(),
-        };
-        let bx = [col * STEP[0], row * STEP[1], 160.0, 100.0];
-        let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), shape, bx);
-        ids.push(el.id);
-        BoardOp::Put(el).apply(&mut b.doc);
-    }
-    let center = |target| End::Bound {
-        target,
-        anchor: Anchor::Center,
-    };
-    for i in (0..n).step_by(10) {
-        let j = if (i + 1) % side == 0 { i + side } else { i + 1 };
-        if j >= n {
-            continue;
-        }
-        let c = Connector::new(center(ids[i]), center(ids[j]), Route::Elbow, style.clone());
-        let el = Element::new_connector(b.doc.mint_id(), b.doc.z_on_top(), c);
-        BoardOp::Put(el).apply(&mut b.doc);
-    }
-    let w = side as f64 * STEP[0];
-    b.camera = Camera {
-        center_x: w / 2.0,
-        center_y: w / 2.0,
-        zoom: 1000.0 / w,
-    };
-    (set, ids[0])
+    let set = board_with((n, Mix::Flow));
+    let doc = &set.boards()[0].doc;
+    let drag = doc
+        .live()
+        .find_map(|el| el.connector()?.targets().next())
+        .expect("há setas");
+    (set, drag)
 }
 
 /// Mexe a forma `id` uma unidade (o que um quadro de arrasto faz ao documento).

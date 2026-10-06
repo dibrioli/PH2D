@@ -256,9 +256,8 @@ impl Editor {
             l[0].abs() <= f.w / 2.0 + pad && l[1].abs() <= f.h / 2.0 + pad
         });
         if !keep {
-            self.hover = self
-                .hit(doc, p)
-                .filter(|id| doc.get(*id).is_some_and(|el| el.shape().is_some()));
+            let tol = self.metrics.handle / 2.0 * p.px;
+            self.hover = self.routes.shape_at(doc, p.world, tol);
         }
     }
 

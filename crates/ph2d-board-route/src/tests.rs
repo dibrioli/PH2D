@@ -179,7 +179,8 @@ fn a_side_middle_off_the_outline_does_not_snap() {
     let mut doc = BoardDoc::default();
     let id = shape(&mut doc, ShapeType::Triangle, [0.0, 0.0, 200.0, 100.0]);
     let el = doc.get(id).unwrap();
-    let got = anchor_for(el, [48.0, 52.0], 10.0);
+    // Na aresta esquerda, a 36 do (0, ½) — dentro de uma faixa de 40, que o deixaria colar.
+    let got = anchor_for(el, [20.0, 80.0], 40.0);
     assert!(
         matches!(got, Some(Anchor::Fixed(uv)) if uv != [0.0, 0.5]),
         "o (0, ½) do triângulo é vazio: {got:?}"
@@ -274,4 +275,50 @@ fn the_head_tip_sits_on_the_end_and_a_filled_head_trims_the_line() {
     assert!(d.heads[0].1, "o triângulo é cheio");
     let open = drawn(r, [Head::None, Head::Arrow], 2.0);
     assert!(!open.heads[0].1, "o «V» traça-se");
+}
+
+/// Uma seta presa a PONTOS FIXOS no mesmo par não empurra a vizinha presa ao centro (foto da cena 3,
+/// 06/10: o «não» por baixo tirava a seta da frente do vértice do losango).
+#[test]
+fn a_fixed_point_arrow_does_not_spread_its_centered_neighbour() {
+    let mut doc = BoardDoc::default();
+    let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 160.0, 100.0]);
+    let b = shape(&mut doc, ShapeType::Diamond, [400.0, -20.0, 160.0, 140.0]);
+    let front = link(&mut doc, center(a), center(b), Route::Elbow);
+    let fixed = |t, uv| End::Bound {
+        target: t,
+        anchor: Anchor::Fixed(uv),
+    };
+    link(
+        &mut doc,
+        fixed(b, [0.5, 1.0]),
+        fixed(a, [0.5, 1.0]),
+        Route::Elbow,
+    );
+    let mut cache = RouteCache::default();
+    cache.sync(&doc);
+    assert_eq!(
+        cache.get(front).unwrap().ends()[1],
+        [400.0, 50.0],
+        "no vértice esquerdo"
+    );
+}
+
+/// ⭐ O TECTO da região: num fluxograma denso (o vão de nascença, 80, menor que a folga 2 × 120) a
+/// região de uma seta curta não engole o quadro — ela vê as vizinhas, não as 400 formas.
+#[test]
+fn a_short_arrow_in_a_dense_flow_sees_only_its_neighbourhood() {
+    let mut doc = BoardDoc::default();
+    let mut ids = Vec::new();
+    for row in 0..20 {
+        for col in 0..20 {
+            let bx = [f64::from(col) * 240.0, f64::from(row) * 180.0, 160.0, 100.0];
+            ids.push(shape(&mut doc, ShapeType::Rectangle, bx));
+        }
+    }
+    let id = link(&mut doc, center(ids[210]), center(ids[211]), Route::Elbow);
+    let mut cache = RouteCache::default();
+    cache.sync(&doc);
+    let seen = cache.obstacles(id).unwrap();
+    assert!(seen < 40, "a região engoliu o quadro: {seen} de 400 formas");
 }

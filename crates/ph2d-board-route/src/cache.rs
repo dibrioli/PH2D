@@ -117,8 +117,8 @@ impl RouteCache {
             let stale = match self.routes.get(&el.id) {
                 None => true,
                 Some(e) => {
+                    // Uma forma das pontas que mudou está DENTRO da região: a caixa dela apanha-a.
                     all || changed.contains(&el.id)
-                        || c.targets().any(|t| changed.contains(&t))
                         || e.key.spread != spread
                         || boxes.iter().any(|b| b.overlaps(e.region))
                 }
@@ -238,6 +238,20 @@ impl RouteCache {
     #[must_use]
     pub fn obstacles(&self, id: ElementId) -> Option<usize> {
         self.routes.get(&id).map(|e| e.key.obstacles.len())
+    }
+
+    /// A forma de CIMA sob `p` (o contorno, ou a menos de `tol` dele) — pelo índice: o passear do
+    /// rato pergunta-o a cada movimento, e ordenar o quadro inteiro por z para isso custa O(N log N).
+    pub fn shape_at(&mut self, doc: &BoardDoc, p: [f64; 2], tol: f64) -> Option<ElementId> {
+        self.sync(doc);
+        let mut cand = Vec::new();
+        self.index.near(Aabb::new(p, p).inflate(tol), &mut cand);
+        let ids: BTreeSet<ElementId> = cand.into_iter().map(|(id, _)| id).collect();
+        ids.into_iter()
+            .filter_map(|id| doc.get(id))
+            .filter(|el| ph2d_board_geom::hit(el, p, tol))
+            .max_by(|a, b| a.z.cmp(&b.z).then(a.id.cmp(&b.id)))
+            .map(|el| el.id)
     }
 
     /// ⭐ **A forma onde uma ponta largada em `p` se prende** (a de cima, se há várias) e como —

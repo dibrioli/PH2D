@@ -47,6 +47,16 @@ iguais às fixtures de `saidas/`. `--sem-semente` desliga a semente (diagnóstic
   vertical em `x=340` cai DENTRO do obstáculo (`280..400`). ⇒ no desvio, o oráculo é **pior** que o nosso
   `ph2d-vec-connect` (A* sobre grafo de visibilidade); vale como oráculo da **forma** do cotovelo
   (lados de saída, `fixedPoint`), não do desvio.
+- **O recuo do cotovelo antes de dobrar é FIXO: 40** (W2, 2026-10-06). `seta_cotovelo_volta`
+  (origem 300,60 140×90 → destino 40,300 140×90, a seta sai pela direita e entra pela esquerda de
+  um destino que está à esquerda) ⇒ o editor traça `(440,105) (480,105) (480,225) (0,225) (0,345)
+  (40,345)`: avança **40** nas duas pontas e dá a volta a **meio** do vão vertical (225). Com as
+  caixas 2× maiores (`seta_cotovelo_volta_grande`, 280×180) o recuo continua **40** e a volta a meio
+  (380) ⇒ é uma constante, não uma fracção da caixa. Gate: `ph2d-board-route::oracle_tests` (o
+  `JETTY` do quadro), mais a forma do Z a meio do vão de `seta_cotovelo_desalinhada`.
+- **A ponta `arrow` com `strokeWidth 2`** (`seta_reta_ligada.svg`): as duas riscas recuam **23,49**
+  ao longo da linha (meia-abertura ~20°) — o `HEAD_SCALE` do quadro (`23,49 / (4·2) = 2,94` na caixa
+  do catálogo de pontas do vectorial, que mantém a abertura dele, 26,6°).
 - **Ligação de seta normalizada:** recta → `{elementId, focus, gap:1}`; cotovelo → `{elementId,
   fixedPoint:[1,0.5001], focus:0, gap:0}` (a ponta presa ao meio do lado, com o `0.5001` de desempate).
 - **Cantos e elipse das formas** (`roughness 0`, `strokeWidth 2`; tabela re-medível:

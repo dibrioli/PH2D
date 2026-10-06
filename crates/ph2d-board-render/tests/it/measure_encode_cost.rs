@@ -12,6 +12,7 @@
 
 use ph2d_board_model::{BoardOp, BoardSet, Camera, Element, Rgba, Shape, ShapeType, Style};
 use ph2d_board_render::RenderCache;
+use ph2d_board_route::RouteCache;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -28,9 +29,12 @@ pub(super) enum Mix {
     /// As MESMAS formas com a vista aproximada até a letra se ler (14 px): só uma parte está à
     /// vista — o regime de quem trabalha num quadro grande.
     ShapesNear,
+    /// O fluxograma da W2: N formas 160×100 com o vão de nascença e N/10 setas em cotovelo entre
+    /// vizinhas, presas ao centro (`measure_route_cost`), com a vista a enquadrar tudo.
+    Flow,
 }
 
-pub(super) const SCENES: [(usize, Mix); 9] = [
+pub(super) const SCENES: [(usize, Mix); 12] = [
     (1_000, Mix::Rects),
     (10_000, Mix::Rects),
     (100_000, Mix::Rects),
@@ -40,7 +44,13 @@ pub(super) const SCENES: [(usize, Mix); 9] = [
     (1_000, Mix::ShapesNear),
     (10_000, Mix::ShapesNear),
     (100_000, Mix::ShapesNear),
+    (1_000, Mix::Flow),
+    (10_000, Mix::Flow),
+    (100_000, Mix::Flow),
 ];
+/// Passo da grelha do fluxograma: a caixa 160×100 e o vão de um fluxograma (o `NEXT_GAP` do
+/// editor, 80).
+const FLOW_STEP: [f64; 2] = [240.0, 180.0];
 /// O tamanho da letra das formas da mistura (mundo) e o do ecrã a que a vista de perto a põe.
 const FONT: f64 = 6.0;
 const NEAR_FONT_PX: f64 = 14.0;
@@ -52,6 +62,9 @@ pub(super) const ORANGE: Rgba = Rgba([200, 120, 40, 255]);
 
 /// N formas numa grelha quadrada, com a vista a enquadrar a grelha inteira (todas visíveis).
 pub(super) fn board_with((n, mix): (usize, Mix)) -> BoardSet {
+    if mix == Mix::Flow {
+        return flow(n);
+    }
     let mut set = BoardSet::default();
     let id = set.create(format!("{n}"));
     let b = set.get_mut(id).unwrap();
@@ -65,7 +78,7 @@ pub(super) fn board_with((n, mix): (usize, Mix)) -> BoardSet {
                 style: Style::new(Some(ORANGE), None, ink),
                 text: String::new(),
             },
-            Mix::Shapes | Mix::ShapesNear => {
+            Mix::Shapes | Mix::ShapesNear | Mix::Flow => {
                 let kind = [ShapeType::Rectangle, ShapeType::Ellipse, ShapeType::Diamond][i % 3];
                 let mut style = Style::new(Some(ORANGE), Some(ink), ink);
                 style.round = i % 2 == 0;
@@ -101,34 +114,86 @@ pub(super) fn board_with((n, mix): (usize, Mix)) -> BoardSet {
     set
 }
 
+/// O fluxograma: N formas e uma seta de cada 10.ª forma para a vizinha da direita (a última da
+/// linha liga à de baixo).
+pub(super) fn flow(n: usize) -> BoardSet {
+    use ph2d_board_model::{Anchor, Connector, End, Route};
+    let mut set = BoardSet::default();
+    let id = set.create(format!("{n}"));
+    let b = set.get_mut(id).unwrap();
+    let side = (n as f64).sqrt().ceil() as usize;
+    let ink = Rgba([30, 30, 30, 255]);
+    let style = Style::new(None, Some(ink), ink);
+    let mut ids = Vec::with_capacity(n);
+    for i in 0..n {
+        let (row, col) = ((i / side) as f64, (i % side) as f64);
+        let shape = Shape {
+            kind: [ShapeType::Rectangle, ShapeType::Ellipse, ShapeType::Diamond][i % 3],
+            style: style.clone(),
+            text: String::new(),
+        };
+        let bx = [col * FLOW_STEP[0], row * FLOW_STEP[1], 160.0, 100.0];
+        let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), shape, bx);
+        ids.push(el.id);
+        BoardOp::Put(el).apply(&mut b.doc);
+    }
+    let center = |target| End::Bound {
+        target,
+        anchor: Anchor::Center,
+    };
+    for i in (0..n).step_by(10) {
+        let j = if (i + 1) % side == 0 { i + side } else { i + 1 };
+        if j >= n {
+            continue;
+        }
+        let c = Connector::new(center(ids[i]), center(ids[j]), Route::Elbow, style.clone());
+        let el = Element::new_connector(b.doc.mint_id(), b.doc.z_on_top(), c);
+        BoardOp::Put(el).apply(&mut b.doc);
+    }
+    let w = side as f64 * FLOW_STEP[0];
+    b.camera = Camera {
+        center_x: w / 2.0,
+        center_y: w / 2.0,
+        zoom: 1000.0 / w,
+    };
+    set
+}
+
+/// As rotas de um quadro, já em dia (o que o editor faz uma vez, fora do quadro do ecrã).
+pub(super) fn routes_of(set: &BoardSet) -> RouteCache {
+    let mut r = RouteCache::default();
+    r.sync(&set.boards()[0].doc);
+    r
+}
+
 /// Encoda um quadro inteiro (o que o `paint` faz a cada quadro do ecrã).
 pub(super) fn one_frame(
     set: &BoardSet,
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     cache: &mut RenderCache,
+    routes: &RouteCache,
 ) {
     scene.reset();
     let board = &set.boards()[0];
-    // Estas cenas não têm setas: a cache vazia é a resposta certa, e o custo dela não entra na
-    // régua das formas (as setas medem-se em `measure_route_cost`).
-    let routes = ph2d_board_route::RouteCache::default();
-    ph2d_board_render::paint(board, AREA, scene, Theme::Forge, ts, cache, &routes);
+    ph2d_board_render::paint(board, AREA, scene, Theme::Forge, ts, cache, routes);
 }
 
 #[test]
 #[ignore = "régua: corre-se à mão em --release (ver o cabeçalho)"]
 fn measure_board_encode_cost() {
     let boards: Vec<BoardSet> = SCENES.iter().map(|&sc| board_with(sc)).collect();
+    let routes: Vec<RouteCache> = boards.iter().map(routes_of).collect();
     let mut scene = VectorScene::new();
     let mut ts = TextSystem::without_system_fonts();
     // Uma cache por cena (o ecrã de cada uma), aquecida fora da régua: o regime é o de um quadro
     // PARADO, em que o texto já está moldado.
     let mut caches: Vec<RenderCache> = boards
         .iter()
-        .map(|b| {
+        .zip(&routes)
+        .map(|(b, r)| {
             let mut c = RenderCache::default();
-            one_frame(b, &mut scene, &mut ts, &mut c);
+            one_frame(b, &mut scene, &mut ts, &mut c, r);
             c
         })
         .collect();
@@ -138,7 +203,7 @@ fn measure_board_encode_cost() {
             let i = (k + round) % SCENES.len(); // ordem rodada
             let t = Instant::now();
             for _ in 0..FRAMES {
-                one_frame(&boards[i], &mut scene, &mut ts, &mut caches[i]);
+                one_frame(&boards[i], &mut scene, &mut ts, &mut caches[i], &routes[i]);
             }
             per[i].push(t.elapsed().as_secs_f64() * 1e3 / FRAMES as f64);
         }

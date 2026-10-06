@@ -16,7 +16,9 @@
 //! PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-board-render --release --test it measure_gpu -- --ignored --nocapture
 //! ```
 
-use super::measure_encode_cost::{AREA, FRAMES, Mix, ROUNDS, SCENES, board_with, one_frame};
+use super::measure_encode_cost::{
+    AREA, FRAMES, Mix, ROUNDS, SCENES, board_with, one_frame, routes_of,
+};
 use ph2d_board_render::RenderCache;
 use ph2d_gpu::GpuContext;
 use ph2d_render::VelloPass;
@@ -190,7 +192,14 @@ fn measure_gpu_raster_cost() {
         .map(|&sc| {
             let set = board_with(sc);
             let mut scene = VectorScene::new();
-            one_frame(&set, &mut scene, &mut ts, &mut RenderCache::default());
+            let routes = routes_of(&set);
+            one_frame(
+                &set,
+                &mut scene,
+                &mut ts,
+                &mut RenderCache::default(),
+                &routes,
+            );
             scene
         })
         .collect();

@@ -245,6 +245,16 @@ Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um bra
 - **Oráculo:** a normalização da ligação (`fixedPoint`, lado de saída) contra o `restored.json`; o desvio
   mede-se contra o NOSSO critério (nenhum segmento dentro de uma caixa), porque nele o oráculo falha.
 - **Dono vê:** um fluxograma feito só com cliques e teclado, que se reorganiza ao mover caixas.
+- **Estado em 2026-10-06 (W2, commits `3e7c3564b..`):** ✅ seta no documento (`ElementKind::Connector`,
+  no fim do enum: formato 2 não sobe), ferramenta Seta (`A`/`5`, botão na barra curta): arrastar de
+  uma forma a outra realça o alvo e liga (`Ctrl` solta); miolo = centro, faixa junto ao contorno =
+  ponto fixo colado ao meio do lado; arrastar a ponta de uma seta seleccionada religa-a; recto /
+  cotovelo / curvo, 5 pontas na barra (8 no documento), rótulo (`Enter`/duplo-clique) sobre recorte do
+  fundo; pontos azuis (selecção ou passar o rato) e `Ctrl+seta` criam a forma seguinte já ligada;
+  apagar solta as pontas onde estão; copiar/duplicar religa as cópias. Roteador reusado com as leis
+  das pontas MOVIDAS para a crate pura (o Vector usa as mesmas). Cache de rota por diferença com
+  índice espacial e TECTO de região (§2.3). Oráculo (§4): `fixedPoint`, Z a meio do vão, volta com
+  recuo 40 medido. Smoke `PH2D_BOARD_SMOKE=3`. ⏳ smoke do dono.
 
 ### W3 — Notas adesivas (o coração do brainstorm)
 - Sticky (`N`): paleta de cores, três tamanhos, **cresce na vertical**; `Tab` cria a seguinte à direita
@@ -325,3 +335,8 @@ trouxe (§5.0: cena que ensina o contrário é pior que nenhuma), fotografada an
 | fontes do Excalidraw além da Excalifont/Virgil | ⚠️ não triadas — nenhuma embarca sem triagem |
 | rede na Etapa 1 | ⛔ decisão do dono (Etapa 2) |
 | texto rico: parley tem estilo por trecho? | ⚠️ a medir na W3 antes de desenhar |
+| a região de obstáculos de uma rota SEM tecto (a lei do vectorial: cresce pelo ponto fixo até parar) | ⛔ **medido e trocado** (06/10): com o vão de nascença (80 < 2 × 120 de folga) cada seta via o quadro INTEIRO — 1 000 de 1 000 e 10 000 de 10 000 formas, e a régua a 100 mil não acabou em 12 min. O quadro prende a região ao corredor + `DETOUR_K` (§2.3): ~28 obstáculos por seta |
+| o `0.5001` do `fixedPoint` (e o `105.009` da rota) do oráculo | ⛔ desempate dele, não lei: o nosso meio de lado é `0.5` exacto (gate com tolerância 0,01) |
+| a ponta `arrow` com a abertura do Excalidraw (~20°) | ⛔ fica a do catálogo de pontas do vectorial (26,6°): uma lei de pontas para o app; o TAMANHO é o medido (`HEAD_SCALE`) |
+| rever TODAS as setas a cada quadro (o `recook` do vectorial) | ⛔ recusado para o quadro (§0): a cache revê só as setas cuja região toca uma forma que mudou |
+| um ponto fixo a contar para o afastamento das paralelas | ⛔ foto da cena 3 (06/10): empurrava a seta do centro para fora do vértice do losango; só contam setas presas ao centro nas duas pontas |

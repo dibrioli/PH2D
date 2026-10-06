@@ -74,13 +74,21 @@ fn custo_de_um_despacho() {
     }
     eprintln!("DESPACHO placa «{}»", gpu.adapter.get_info().name);
     for um_passe in [true, false] {
-        let minimo = |k: u32| (0..9).map(|_| corre(k, um_passe)).fold(f64::INFINITY, f64::min);
+        let minimo = |k: u32| {
+            (0..9)
+                .map(|_| corre(k, um_passe))
+                .fold(f64::INFINITY, f64::min)
+        };
         let base = minimo(1);
         for k in [100_u32, 1000] {
             let ms = minimo(k);
             eprintln!(
                 "DESPACHO {} · {k} despachos: {ms:.3} ms · {:.2} µs por despacho",
-                if um_passe { "um passe" } else { "um passe por despacho" },
+                if um_passe {
+                    "um passe"
+                } else {
+                    "um passe por despacho"
+                },
                 (ms - base) * 1e3 / f64::from(k - 1)
             );
         }

@@ -230,6 +230,12 @@ Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um bra
 - **Oráculo:** contorno das formas com `roughness 0` contra o SVG do Excalidraw (geometria dos `d=`).
 - **Kill-criterion do §2 decide-se aqui.**
 - **Dono vê:** desenhar caixas, escrever dentro, arrumá-las.
+- **Estado em 2026-10-06 (W1, commits `c7557f5b5..`):** ✅ 18 formas (básicas + fluxograma ISO), estilo
+  (preenchimento, contorno, espessura, traço, cantos, opacidade, letra), texto dentro (duplo-clique/`Enter`,
+  quebra, centrado, a forma cresce), seleccionar/mover/redimensionar/rodar/duplicar/apagar/copiar/colar,
+  guias de alinhamento, `Espaço`/mão para a vista, desfazer POR quadro (teclado e menu), barra curta e barra
+  de estilo; oráculo dos cantos (§4) e kill-criterion (§2.2) fechados. Smoke `PH2D_BOARD_SMOKE=2`.
+  ⏳ smoke do dono; o que fica aberto está no handoff de continuação da W1 em [`handoffs/`](handoffs/).
 
 ### W2 — Setas (a peça em que já somos melhores — terminar de a fazer brilhar)
 - Gesto: arrastar a ponta sobre uma forma **realça** o alvo e liga; `Ctrl` solta; linha livre.

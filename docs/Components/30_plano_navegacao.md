@@ -2084,3 +2084,109 @@ na cena grande (`100` lamas, pesos `4` e `10`) a METADE ou menos — o mínimo d
   ela for a régua de uma recusa — senão sai, e a sonda fica com a nota.
 - **A mutação** (o motor da W16, `ferramentas/mutacao_navegacao_w16_2026-10-05.py`, copiado para a W17): cada lei
   nova; mutação que sobrevive = gate novo ou código morto cortado.
+
+### §26.5 — A 1.ª rodada (`target/prova/w17/medir_{replaneio,custo}_w17.txt`, load `1,9–3,5`: o relógio vale)
+
+**A** (`150` lamas, `200` agentes; o mínimo de 7 intercaladas, perfil `smoke`):
+
+| versão | pior tique depois da porta | CONTROLO | crítico (máx) | trabalho por porta | atraso (régua da 4.ª: máx · média) | dobra máx (quem persegue · outras) |
+|---|---|---|---|---|---|---|
+| A inteira | `49,3 ms` | `64,4` | `789 mil` | `7,66 M` | `0 · 0` | — |
+| **B produto** | **`11,5`** | **`8,7`** | **`40 mil`** | **`4,07 M`** | **`30 · 2,23`** | `1 · 1` |
+| B produto · 1t | `42,0` | `22,2` | `40 mil` | igual | igual | igual |
+| A1ctl primeiro COM a dobra (a recusa §25.6) | `11,7` | `8,4` | `160 mil` | `4,31 M` | `4 · 1,69` | `1 · 3` |
+| A1 primeiro SEM a dobra delas | `12,5` | `7,7` | **`160 mil`** | `4,31 M` | `4 · 1,69` | `1 · 3` |
+| A2 o fim do caminho segue o alvo | `11,7` | `8,0` | `40 mil` | `4,07 M` | `30 · 2,23` | `1 · 1` |
+| A3 = A1 + A2 | `12,3` | `8,0` | `160 mil` | `4,31 M` | `4 · 1,69` | `1 · 3` |
+
+- **A1 ✗ — e a coluna de diagnóstico diz porquê:** a dobra que traz o pico é a das OUTRAS (`3` recomeços seguidos =
+  `8 ×` o orçamento = `160 mil`), não a de quem persegue (`1`). Com as procuras dele a tomar até `10` das `16` vagas,
+  as adiantadas avançam menos, a porta apanha-as a meio mais vezes, e a fatia delas dobra. A hipótese do briefing
+  (a dobra DELAS) estava errada; tirar-lhes a dobra não mexe um número.
+- **A2 ✗:** o máximo fica em `30`. Na cena de stress (`1 000` caixas) o troço do último canto até à presa nova
+  raramente se anda a direito; onde se anda, apaga só os episódios CURTOS (a média por episódio sobe: `2,21 → 3,38`).
+- ⇒ **série declarada (a 2.ª rodada):** o candidato seguinte sai do diagnóstico — **A4, as procuras de quem persegue
+  em vagas A MAIS**, à frente, sem tirar vaga às adiantadas (`16` continuam a ser delas). O crítico não sobe (nenhuma
+  adiantada perde a vez); o preço possível é a coluna de UMA thread, que paga as vagas a mais.
+
+**C** (a cena grande, `60` consultas, 7 rodadas intercaladas; o custo contra o oráculo IGUAL ao dígito em todas as
+versões e pesos, `1,0000 · 1,0000 · 1,0053 / 1,0107 / 1,0000 / 1,0045` de máx a `1,5 · 2 · 4 · 10`):
+
+| versão | peso 4: ms (mín) · ÷ hoje | peso 10 | nós expandidos (4 · 10) |
+|---|---|---|---|
+| hoje | `377,5` · `1,000` | `485,5` · `1,000` | `24 176 · 29 142` |
+| C1 corte fechado | `358,4` · **`0,950`** | `459,0` · **`0,945`** | `24 178 · 29 144` |
+| C2 heap de aridade 4 | `386,0` · `1,023` | `489,8` · `1,009` | igual |
+| C1 + C2 | `0,967` | `0,957` | — |
+
+- **C2 ✗ (recusa medida):** mais lento (`+1–2 %`). A entrada desce de `24` para `16` bytes sem mudar a ordem (o `seq`
+  é sempre o índice mais um), mas o `BinaryHeap` da std (o *sift* até ao fundo, e depois para cima) já é o que um
+  heap de aridade 4 escrito à mão não bate a estes tamanhos. Código cortado.
+- **C1:** `5 %`. O `corte` era `32 %` do perfil, mas a maioria das chamadas sai antes das bissecções (a cobertura,
+  `delta > k`, `D(0) > 0`) — o que pesa é o NÚMERO de comparações, não a conta de cada uma.
+- **C3 não foi medido:** a malha com um id só tinha os mesmos `14 571` polígonos — os pedaços são por ÁREA e não por
+  id (`navmesh::pedacos`). Defeito da SONDA, não do candidato. Cura (sem mudar o produto): áreas SEGUIDAS do mesmo id
+  são um pedaço só — na ponte cada `NavCostArea` tem id próprio, logo nada muda ao bit; na sonda, com um id, as lamas
+  juntam-se. Mede-se na 2.ª rodada (série declarada: a medição de C3 dependia de corrigir a régua).
+
+### §26.6 — A 2.ª e a 3.ª rodadas (`…_rodada2.txt`, `…_rodada3.txt`)
+
+**C, 2.ª rodada** (load `5–8`: as razões são de versões intercaladas no mesmo processo; o custo contra o oráculo igual
+ao dígito em todas): com as áreas SEGUIDAS do mesmo id num pedaço, a malha da cena grande passa de `14 571` a
+`14 381` polígonos (`−1,3 %`) — as lamas sobrepõem-se pouco e a fusão de Hertel–Mehlhorn já tinha juntado o que
+podia dentro de cada uma.
+
+| versão | peso 4: ÷ hoje (mín) | peso 10 | nós expandidos (4 · 10) |
+|---|---|---|---|
+| C1 corte fechado | `0,948` | `0,944` | `24 178 · 29 144` |
+| C3 um id | `0,952` | `0,938` | `23 469 · 28 069` |
+| **C1 + C3** | **`0,903`** | **`0,886`** | `23 471 · 28 069` |
+
+**A, 2.ª rodada** (load `8–10`: só as colunas de trabalho e de espera) e **3.ª** (`LAMAS=150`, load `4,4–5,8`; as
+colunas de `0` lamas da 2.ª deram A4 igual ao produto ao bit), `200` agentes:
+
+| versão | atraso (máx · média) | crítico (máx) | trabalho por porta | pior tique · 1 thread | CONTROLO · 1 thread |
+|---|---|---|---|---|---|
+| B produto | `30 · 2,23` | `40 mil` | `4,07 M` | `11,0 · 41,8 ms` | `8,0 · 22,8` |
+| **A4** vagas a mais | **`4 · 1,69`** | **`72 mil`** | `4,03 M` | `11,8 · 46,8` (`+12 %`) | `8,6 · 24,5` |
+| A5 = A4 sem a dobra delas | `4 · 1,69` | `72 mil` | `4,03 M` | `11,8 · 46,4` | `8,3 · 25,4` |
+
+⚠️ **O achado que muda a leitura do critério:** o PRODUTO já paga `80 mil` de crítico a `10` e a `50` agentes nesta
+mesma cena (as três rodadas: `80 001 · 80 003`) — a lei da dobra (`fatia_depois_de`) põe o tecto em
+`orçamento · 2^k`, não em dois orçamentos. O `40 mil` a `200` agentes (§25.4) era a corrida que calhou, não um tecto:
+o A4 muda os trajectos e uma procura adiantada cai noutro recomeço (`72 mil` = uma fatia de `80 mil` que acabou antes).
+O A5 dá o MESMO ⇒ não é a dobra de quem persegue.
+
+### §26.7 — Contra os kill-criteria
+
+| item | veredito |
+|---|---|
+| **A** | ✗ **nenhum candidato entra.** A1 (primeiro sem a dobra delas: crítico `160 mil`), A2 (o fim segue o alvo: máx `30`), A4 (máx `30 → 4`, mas crítico `40 → 72 mil` e uma thread `+12 %`), A5 (= A4). O critério (crítico `≤ 40 mil`) foi escrito ANTES e não se muda depois da medida — mesmo sabendo agora que o produto passa os `40 mil` a outros `N`. |
+| **B** | ✓ medido e escrito (ADR-0180, adenda 2): `nav`, `navmesh` e `orca` compilam para `wasm32`; a `physics-ecs` pára no codec AVIF, e nada dela. A shell web é decisão do dono. |
+| **C** | ✗ **recusa medida:** o melhor par (C1 + C3) corta `10–11 %`, longe de metade; C2 piora. Mesmo a custo zero a dominância dava `1,6×` (§22.4) — o que falta é FAZER MENOS nós, e nada barato os tira. |
+
+⇒ **Nenhum código de produto fica** (o produto é o da W16 ao bit: `git diff 640499189 -- crates shells
+':!crates/*/examples/*'` vazio). As alavancas medidas vivem no commit `4ccf96f2c`; a sonda `medir_replaneio`
+guarda a régua da 4.ª rodada e o diagnóstico da dobra (quem persegue · as outras).
+
+### §26.8 — ⛔ Recusas MEDIDAS (W17)
+
+| recusado | medição |
+|---|---|
+| a procura de quem persegue primeiro SEM a dobra delas (A1) | crítico `160 mil` igual ao com a dobra: a dobra que sobe é a das OUTRAS (`3` recomeços seguidos), que perdem vagas |
+| o fim do caminho a seguir o alvo (A2, o `moveTargetPosition`) | máx `30` igual: no campo de `1 000` caixas o troço do último canto à presa raramente se anda a direito |
+| as de quem persegue em vagas A MAIS (A4) e sem a dobra (A5) | máx `30 → 4`, mas crítico `40 → 72 mil` e uma thread `41,8 → 46,8 ms` |
+| o corte da dominância em forma fechada (C1) | `5 %`: a maioria das chamadas sai antes das bissecções |
+| o heap de aridade 4 com entradas de `16` bytes (C2) | `+1–2 %` (mais lento que o `BinaryHeap` da std) |
+| as lamas do mesmo custo num pedaço (C3) | `−1,3 %` de polígonos, `5–6 %` de tempo; e mexia no desenho da W7 (o custo na consulta) |
+
+### §26.9 — ⏳ O que fica
+
+- **Quem persegue sem o alvo à vista**, na lama cerrada: máx `30` tiques (média `2,2`) a `200` agentes. A alavanca que o
+  encurta (A4: `4`) custa o crítico — e o crítico do produto já não é `2` orçamentos mas `orçamento · 2^k` (`80 mil` a
+  `10` e `50` agentes). Uma cura de A passa por limitar a DOBRA das adiantadas (vivacidade com outro tecto), não pela
+  vez de quem persegue.
+- **A web numa thread**: a shell web não existe; o 1.º degrau é tirar o codec AVIF do caminho de `ph2d-ecs` (ADR-0180,
+  adenda 2) — decisão do dono.
+- **A dominância da procura ponderada** (§22.4): o que falta é fazer menos nós; as alavancas de custo por nó estão
+  esgotadas (§26.8).

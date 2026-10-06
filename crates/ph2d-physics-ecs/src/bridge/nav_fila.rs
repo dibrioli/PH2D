@@ -59,11 +59,6 @@ pub(super) struct Sonda {
     pub(super) contorno: bool,
     /// (plano 30 §25, C2) O alvo à vista dispensa a procura — [`ph2d_nav::agent::a_vista`].
     pub(super) a_vista: bool,
-    /// (plano 30 §26, A4) As procuras de quem PERSEGUE avançam no passo em paralelo em vagas a MAIS, à
-    /// frente — sem tirar a vez às mais adiantadas.
-    pub(super) primeiro_quem_persegue: bool,
-    /// (plano 30 §26, A5) `false` = um recomeço da procura de quem persegue não dobra a fatia dela.
-    pub(super) dobra_quem_persegue: bool,
 }
 
 impl Default for Sonda {
@@ -73,8 +68,6 @@ impl Default for Sonda {
             paralelas: PROCURAS_EM_PARALELO,
             contorno: true,
             a_vista: true,
-            primeiro_quem_persegue: false,
-            dobra_quem_persegue: true,
         }
     }
 }
@@ -169,15 +162,14 @@ impl PhysicsBridge {
         if !self.nav.sonda.fatias {
             return (prontos, 0, 0);
         }
-        let primeiro = self.nav.sonda.primeiro_quem_persegue;
-        let mut fila: Vec<((bool, u64, bool, u32), Entity, ChaveMalha)> = vez
+        let mut fila: Vec<((u64, bool, u32), Entity, ChaveMalha)> = vez
             .iter()
             .filter_map(|v| {
                 let k = v.chave?;
                 let rt = self.nav.agents.get(&v.p.entity)?;
                 let a = rt.a_meio?;
                 (entradas.get(&k) == Some(&a.entradas)).then_some((
-                    (primeiro && a.persegue, a.trabalho, rt.broken, rt.owed),
+                    (a.trabalho, rt.broken, rt.owed),
                     v.p.entity,
                     k,
                 ))
@@ -192,9 +184,7 @@ impl PhysicsBridge {
             orcamento,
             ..
         } = &mut self.nav;
-        // (§26, A4) As de quem persegue vão à frente, em vagas a MAIS.
-        let a_mais = fila.iter().take_while(|x| x.0.0).count();
-        let corre = (a_mais + sonda.paralelas).min(fila.len());
+        let corre = sonda.paralelas.min(fila.len());
         for &(_, e, _) in &fila[corre..] {
             if let Some(rt) = agents.get_mut(&e) {
                 rt.owed = rt.owed.saturating_add(1);
@@ -270,13 +260,6 @@ impl PhysicsBridge {
     /// (plano 30 §25, C2) A sonda e o CONTROLO: `false` = o alvo à vista também espera pela procura.
     pub fn set_nav_sight(&mut self, on: bool) {
         self.nav.sonda.a_vista = on;
-    }
-
-    /// (plano 30 §26, A4 e A5) A sonda: as procuras de quem persegue em vagas a mais, à frente, no passo
-    /// em paralelo — e se um recomeço delas dobra a fatia.
-    pub fn set_nav_chase(&mut self, a_mais: bool, dobra: bool) {
-        let s = &mut self.nav.sonda;
-        (s.primeiro_quem_persegue, s.dobra_quem_persegue) = (a_mais, dobra);
     }
 
     /// (plano 30 §25, B) A sonda e o CONTROLO: `false` = o caminho atravessa os corpos que andam (só o

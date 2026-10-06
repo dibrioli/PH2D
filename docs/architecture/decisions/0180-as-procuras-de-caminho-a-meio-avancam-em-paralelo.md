@@ -81,3 +81,20 @@ espera. ⛔ E o número pelos núcleos da máquina continua recusado (o resultad
 **⇒ A exigência para a shell web** (nenhuma existe hoje no repo): o pool do `rayon` sobre Web Workers (memória
 partilhada, isolamento cross-origin) — com ele o tique da web paga o caminho crítico, como o desktop, e o resultado
 não muda (gate `o_passo_em_paralelo_da_o_mesmo_com_uma_thread_e_com_oito`). Sem ele, a web paga a tabela acima.
+
+## Adenda 2 (plano 30 §26, B — 2026-10-06): o que desta linha já compila para `wasm32`
+
+**Medido** (`cargo check --target wasm32-unknown-unknown`, `target/prova/w17/wasm32_check.txt` e
+`wasm32_physics_keep_going.txt`):
+
+| crate | `wasm32-unknown-unknown` |
+|---|---|
+| `ph2d-nav` | ✓ limpa |
+| `ph2d-navmesh` | ✓ limpa (o `rayon` dos mosaicos, ADR-0178, compila — numa thread) |
+| `ph2d-orca` | ✓ limpa |
+| `ph2d-physics-ecs` | ✗ — e NADA dela: com `--keep-going` só falham `libavif-sys` (o `build.rs` do C), `libdav1d-sys` e `rav1e` — o codec AVIF, que chega por `ph2d-ecs → ph2d-asset → ph2d-imageio-registry-init → ph2d-imageio-avif`, sem feature que o desligue |
+
+⇒ a navegação e a procura em paralelo não são o que separa o PH2D da web: o 1.º degrau de uma shell web é tirar o
+codec AVIF do caminho de `ph2d-ecs` (uma feature na `ph2d-imageio-registry-init`, ou o registo sem AVIF no
+`wasm32`) — e só depois o `rayon` sobre Web Workers desta adenda. ⛔ Abrir a shell web é decisão de PRODUTO
+(perguntada ao dono no fecho da W17); esta linha não a abre.

@@ -327,20 +327,17 @@ const BLOCO: usize = 16;
 const RODADAS: usize = 7;
 
 /// Uma versão: o nome, as fatias ligadas, quantas procuras a meio em paralelo, se corre num pool de UMA
-/// thread (a web), o alvo à vista sem procura (§25, C2), as de quem persegue em vagas a mais (§26, A4) e se
-/// um recomeço delas dobra a fatia (A5).
-type Versao = (&'static str, bool, usize, bool, bool, (bool, bool));
+/// thread (a web), e o alvo à vista sem procura (§25, C2).
+type Versao = (&'static str, bool, usize, bool, bool);
 
 /// As versões, lado a lado. As rodadas do plano 30 §25 mediram também `8 · 4 · 2` em paralelo e um tecto
-/// do trabalho do passo em paralelo; a 1.ª da §26, quem persegue primeiro sem a dobra (A1) e o fim do
-/// caminho a seguir o alvo (A2) — recusados (`target/prova/w16/…`, `target/prova/w17/…`).
-const VERSOES: [Versao; 6] = [
-    ("B produto            ", true, 16, false, true, (false, true)),
-    ("B produto · 1t       ", true, 16, true, true, (false, true)),
-    ("A4 vagas a mais      ", true, 16, false, true, (true, true)),
-    ("A4 · 1t              ", true, 16, true, true, (true, true)),
-    ("A5 A4 sem a dobra    ", true, 16, false, true, (true, false)),
-    ("A5 · 1t              ", true, 16, true, true, (true, false)),
+/// do trabalho do passo em paralelo; as da §26 (W17), quem persegue primeiro sem a dobra, o fim do caminho
+/// a seguir o alvo e as procuras de quem persegue em vagas a mais — recusados (`target/prova/w16/…`,
+/// `target/prova/w17/…`; as alavancas vivem no commit `4ccf96f2c`).
+const VERSOES: [Versao; 3] = [
+    ("A inteira            ", false, 0, false, false),
+    ("B produto            ", true, 16, false, true),
+    ("B produto · 1t       ", true, 16, true, true),
 ];
 
 fn loadavg() -> String {
@@ -408,7 +405,7 @@ fn main() {
         for &n in &[10usize, 50, 200] {
             let mut v: Vec<_> = VERSOES
                 .iter()
-                .map(|&(_, fatias, paralelas, uma, vista, (a_mais, dobra))| {
+                .map(|&(_, fatias, paralelas, uma, vista)| {
                     let (mut sim, porta, quem) = cena(n, l);
                     let persegue: Vec<Entity> = quem
                         .iter()
@@ -424,7 +421,6 @@ fn main() {
                     b.set_nav_slices(fatias);
                     b.set_nav_parallel(paralelas);
                     b.set_nav_sight(vista);
-                    b.set_nav_chase(a_mais, dobra);
                     let pool = if uma { &um } else { &todos };
                     let mut t = 0u64;
                     for _ in 0..30 {

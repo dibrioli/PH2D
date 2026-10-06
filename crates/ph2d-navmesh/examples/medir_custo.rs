@@ -20,11 +20,6 @@
 //! contadores e o tempo) e o caminho do oráculo troço a troço — o instrumento que achou os três
 //! movimentos que faltavam (dobrar no canto de custo, a recta dentro da lama, o deslize).
 //!
-//! ⭐ (plano 30 §26, C) `W17=1`: as alavancas da procura ponderada lado a lado, no MESMO processo — o corte
-//! da dominância em forma fechada (C1) e as lamas do mesmo custo num pedaço só (C3: a malha construída com
-//! um id para todas) —, o custo contra o oráculo nas cenas `30 × 20` e o tempo
-//! na cena grande a pesos `4` e `10` (7 rodadas intercaladas com a ordem rodada; o MÍNIMO, a mediana ao lado).
-//!
 //! ⛔ Nenhum número de tempo desta saída vale acima de `load ~5`.
 
 use std::cmp::Reverse;
@@ -251,10 +246,6 @@ fn main() {
     // `SEM_DOMINANCIA=1`: o CONTROLO da W9 (a procura ponderada sem a dominância entre frentes).
     s.set_front_dominance(std::env::var_os("SEM_DOMINANCIA").is_none());
     let so_grande = std::env::var_os("SO_GRANDE").is_some();
-    if std::env::var_os("W17").is_some() {
-        w17(&reg, &params);
-        return;
-    }
     if let Ok(caso) = std::env::var("DBG_CASO") {
         let v: Vec<f64> = caso.split(',').map(|x| x.parse().unwrap()).collect();
         let (obs, areas) = cena(v[0] as u64, w, h, 10, 4);
@@ -574,148 +565,4 @@ fn grande(s: &mut Polyanya, params: &Params) {
             s.stats.trimmed / n
         );
     }
-}
-
-/// (plano 30 §26, C) Uma versão: o nome, o corte fechado (C1), e a lama num id só (C3: as áreas seguidas
-/// do mesmo id são um pedaço). O heap de aridade 4 (C2) foi medido na 1.ª rodada e recusado.
-const W17_VERSOES: [(&str, bool, bool); 4] = [
-    ("hoje       ", false, false),
-    ("C1 fechado ", true, false),
-    ("C3 um id   ", false, true),
-    ("C1+C3      ", true, true),
-];
-
-/// Os ids das áreas todos `1` (C3): o mesmo chão, com as lamas do mesmo custo num pedaço só.
-fn um_id(areas: &[Area]) -> Vec<Area> {
-    areas
-        .iter()
-        .map(|a| Area {
-            shape: a.shape.clone(),
-            id: 1,
-        })
-        .collect()
-}
-
-fn w17(reg: &[V2], params: &Params) {
-    let (w, h) = (30.0, 20.0);
-    let mut s = Polyanya::new();
-    let poe = |s: &mut Polyanya, v: (&str, bool, bool)| s.set_dominance_closed_form(v.1);
-    // ── O custo contra o oráculo (as cenas do §2–§3, a grelha do produto) ──
-    println!("C. custo / oráculo a {ESPACO} m (média · p95 · máx), por peso e versão");
-    for peso in [1.5, 2.0, 4.0, 10.0] {
-        let mut r: Vec<Vec<f64>> = vec![Vec::new(); W17_VERSOES.len()];
-        for seed in 1..=8u64 {
-            let (obs, areas) = cena(seed, w, h, 10, 4);
-            let b = build_with_areas(reg, &obs, &areas, params).expect("constrói");
-            let b1 = build_with_areas(reg, &obs, &um_id(&areas), params).expect("constrói");
-            let costs = [1.0, peso, peso, peso, peso];
-            let orc = oracle::WeightedOracle::new(&b.mesh, &costs, ESPACO);
-            let mut g = Lcg(seed * 31 + 7);
-            let mut n = 0;
-            while n < 20 {
-                let (a, z) = ([g.next() * w, g.next() * h], [g.next() * w, g.next() * h]);
-                if b.mesh.locate(a).is_none() || b.mesh.locate(z).is_none() {
-                    continue;
-                }
-                let Some((_, o)) = orc.shortest(a, z) else {
-                    continue;
-                };
-                n += 1;
-                for (i, &v) in W17_VERSOES.iter().enumerate() {
-                    poe(&mut s, v);
-                    let (m, cs): (&NavMesh, &[f64]) = if v.2 {
-                        (&b1.mesh, &[1.0, peso])
-                    } else {
-                        (&b.mesh, &costs)
-                    };
-                    let p = s.find_path_costs(m, cs, a, z).expect("mesma ilha");
-                    r[i].push(path_cost(m, cs, &p.points).expect("dentro") / o);
-                }
-            }
-        }
-        for (i, v) in r.iter_mut().enumerate() {
-            let media = v.iter().sum::<f64>() / v.len() as f64;
-            println!(
-                "   {peso:>4} | {} | {media:.4} · {:.4} · {:.4}",
-                W17_VERSOES[i].0,
-                quantil(v, 0.95),
-                quantil(v, 1.0)
-            );
-        }
-    }
-    // ── O tempo na cena grande ──
-    let big = vec![[0.0, 0.0], [100.0, 0.0], [100.0, 100.0], [0.0, 100.0]];
-    let (obs, areas) = cena(77, 100.0, 100.0, 1_000, 100);
-    let b = build_with_areas(&big, &obs, &areas, params).expect("constrói");
-    let b1 = build_with_areas(&big, &obs, &um_id(&areas), params).expect("constrói");
-    println!(
-        "\nC. A cena GRANDE: {} polígonos com 100 ids · {} com um id",
-        b.mesh.poly_count(),
-        b1.mesh.poly_count()
-    );
-    let mut g = Lcg(4242);
-    let mut pares = Vec::new();
-    while pares.len() < 60 {
-        let (a, z) = (
-            [g.next() * 100.0, g.next() * 100.0],
-            [g.next() * 100.0, g.next() * 100.0],
-        );
-        if b.mesh.locate(a).is_some() && b.mesh.locate(z).is_some() && s.find_path(&b.mesh, a, z).is_ok() {
-            pares.push((a, z));
-        }
-    }
-    const RODADAS: usize = 7;
-    println!(
-        "   peso | versão | ms das 60 consultas (mín · mediana de {RODADAS}) | ÷ hoje (mín) | nós expandidos / consulta | custo ÷ hoje (máx |x − 1|)"
-    );
-    for peso in [4.0, 10.0] {
-        let mut costs = vec![1.0; 101];
-        costs[1..].iter_mut().for_each(|c| *c = peso);
-        let nv = W17_VERSOES.len();
-        let mut tempos = vec![Vec::new(); nv];
-        let mut nos = vec![0u64; nv];
-        let mut custos: Vec<Vec<f64>> = vec![Vec::new(); nv];
-        for r in 0..RODADAS {
-            for k in 0..nv {
-                let i = (k + r) % nv;
-                let v = W17_VERSOES[i];
-                poe(&mut s, v);
-                let (m, cs): (&NavMesh, &[f64]) = if v.2 {
-                    (&b1.mesh, &[1.0, peso])
-                } else {
-                    (&b.mesh, &costs)
-                };
-                s.stats = Default::default();
-                let mut c = Vec::with_capacity(pares.len());
-                let i0 = Instant::now();
-                for &(a, z) in &pares {
-                    let p = s.find_path_costs(m, cs, a, z).expect("mesma ilha");
-                    c.push(p.cost);
-                }
-                tempos[i].push(i0.elapsed().as_secs_f64() * 1e3);
-                nos[i] = s.stats.expanded / pares.len() as u64;
-                custos[i] = c;
-            }
-        }
-        let (hoje, _) = {
-            let mut t = tempos[0].clone();
-            (quantil(&mut t, 0.0), 0)
-        };
-        for i in 0..nv {
-            let (mn, md) = (quantil(&mut tempos[i], 0.0), quantil(&mut tempos[i], 0.5));
-            let desvio = custos[i]
-                .iter()
-                .zip(&custos[0])
-                .map(|(x, y)| (x / y - 1.0).abs())
-                .fold(0.0, f64::max);
-            println!(
-                "   {peso:>4} | {} | {mn:>8.1} · {md:>8.1} | {:>5.3} | {:>7} | {desvio:.2e}",
-                W17_VERSOES[i].0,
-                mn / hoje,
-                nos[i]
-            );
-        }
-    }
-    let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
-    println!("loadavg no fim: {}", load.trim());
 }

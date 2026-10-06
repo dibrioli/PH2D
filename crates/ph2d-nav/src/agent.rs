@@ -172,8 +172,6 @@ pub struct Vez<'a> {
     pub gasto: u64,
     /// (plano 30 §25, C2) Com o alvo À VISTA ([`a_vista`]) o caminho é a recta, sem procura e sem a vez.
     pub a_vista: bool,
-    /// (plano 30 §26, A5) `false` = um recomeço da procura de quem PERSEGUE não dobra a fatia dela.
-    pub dobra_quem_persegue: bool,
 }
 
 impl Vez<'_> {
@@ -188,7 +186,6 @@ impl Vez<'_> {
             saida_livre: None,
             gasto: 0,
             a_vista: false,
-            dobra_quem_persegue: true,
         }
     }
 }
@@ -328,7 +325,7 @@ pub fn step_in_turn(
     {
         larga(rt, vez);
         // Só conta a que já tinha trabalho feito (a que ainda não começou não perdeu nada).
-        if a.trabalho > 0 && (vez.dobra_quem_persegue || !a.persegue) {
+        if a.trabalho > 0 {
             rt.recomecos = rt.recomecos.saturating_add(1);
         }
     }

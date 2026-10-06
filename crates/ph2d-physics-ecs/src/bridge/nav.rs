@@ -354,7 +354,6 @@ impl PhysicsBridge {
                 saida_livre: Some(&livre_de),
                 gasto: 0,
                 a_vista: sonda.a_vista,
-                dobra_quem_persegue: sonda.dobra_quem_persegue,
             };
             let steer = ph2d_nav::agent::step_in_turn(
                 &mut rt, malha, search, &q, &mut turno, v.pos, alvo, &cfg, dt,

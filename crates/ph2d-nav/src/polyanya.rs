@@ -64,7 +64,6 @@ pub(crate) mod fatias;
 #[path = "polyanya_trabalho.rs"]
 mod trabalho;
 
-
 /// Um caminho: os pontos por onde ele passa (o primeiro é a partida, o último o alvo, os do meio são
 /// CANTOS da malha — e, com áreas de custo, os pontos onde ele atravessa uma fronteira), o
 /// comprimento dele e o CUSTO (`∑ custo da área × comprimento`; sem áreas, igual ao comprimento).
@@ -182,8 +181,6 @@ pub struct Polyanya {
     dominancia: bool,
     sem_dominancia: bool,
     frentes: dominancia::Frentes,
-    /// (plano 30 §26, C1) A alavanca da sonda: o corte da dominância em forma fechada.
-    corte_fechado: bool,
     pub stats: Stats,
 }
 
@@ -225,16 +222,6 @@ impl Polyanya {
         self.seq += 1;
         self.stats.generated += 1;
         self.open.push(Reverse((ord_key(f), self.seq, idx)));
-    }
-
-    /// O nó aberto de menor `f` (no empate, o mais antigo).
-    fn pop(&mut self) -> Option<u32> {
-        self.open.pop().map(|Reverse((_, _, i))| i)
-    }
-
-    /// (plano 30 §26, C1) A sonda: o corte da dominância em forma fechada (`false` = as bissecções).
-    pub fn set_dominance_closed_form(&mut self, on: bool) {
-        self.corte_fechado = on;
     }
 
     /// Os nós de tudo o que se vê de um PONTO dentro (ou no bordo) do polígono `p`: cada aresta com

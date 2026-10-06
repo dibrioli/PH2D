@@ -92,11 +92,6 @@ impl Polyanya {
         left: V2,
         right: V2,
     ) -> Option<(V2, V2)> {
-        let corte = if self.corte_fechado {
-            corte_fechado
-        } else {
-            corte
-        };
         let f = &mut self.frentes;
         if f.head.len() != mesh.poly_count() {
             f.clear(mesh);
@@ -225,100 +220,4 @@ fn corte(a: &Frente, rho: V2, g: f64, w: f64, de: V2, para: V2) -> Option<f64> {
         }
     }
     Some(lo)
-}
-
-/// ⭐ (plano 30 §26, C1) [`corte`] sem as bissecções: as rejeições sem `sqrt` primeiro (a cobertura no
-/// parâmetro), e os zeros de `D` sobre a recta em FORMA FECHADA — `D = 0` é `|ρ_A − y| − |ρ − y| = c`, com
-/// `c = (g − g_A)/w`, uma hipérbole; elevar ao quadrado dá uma quadrática em `s` (os ramos trocados saem
-/// pelo sinal de `L = |ρ_A − y|² − |ρ − y|² − c² = 2c·|ρ − y|`). Entre dois zeros o sinal de `D` é um só:
-/// o do ponto do meio decide. O corte fica do lado dominado (verificado); se a verificação falha, as
-/// bissecções.
-fn corte_fechado(a: &Frente, rho: V2, g: f64, w: f64, de: V2, para: V2) -> Option<f64> {
-    let d = sub(para, de);
-    let l2 = dot(d, d);
-    let param = |p: V2| {
-        if l2 <= EPS * EPS {
-            0.0
-        } else {
-            dot(sub(p, de), d) / l2
-        }
-    };
-    let (sa, sb) = (param(a.left), param(a.right));
-    let (cob0, cob1) = (sa.min(sb), sa.max(sb));
-    let tol = if l2 > 0.0 { EPS / l2.sqrt() } else { 0.0 };
-    if cob0 > tol || cob1 < -tol {
-        return None;
-    }
-    let (delta, k) = (a.g - g, w * dist(a.rho, rho));
-    if delta > k {
-        return None;
-    }
-    let fim = cob1.min(1.0);
-    if delta + k <= 0.0 {
-        return Some(if fim >= 1.0 { 1.0 } else { fim.max(0.0) });
-    }
-    let y = |s: f64| lerp(de, para, s);
-    let dd = |s: f64| a.g + w * dist(a.rho, y(s)) - g - w * dist(rho, y(s));
-    if dd(0.0) > 0.0 {
-        return None;
-    }
-    if fim <= 0.0 || l2 <= EPS * EPS {
-        return Some(if fim >= 1.0 { 1.0 } else { 0.0 });
-    }
-    if w <= 0.0 {
-        return corte(a, rho, g, w, de, para);
-    }
-    let c = (g - a.g) / w;
-    let (pa, pb) = (sub(de, a.rho), sub(de, rho));
-    let alfa = dot(pa, pa) - dot(pb, pb) - c * c;
-    let beta = 2.0 * (dot(pa, d) - dot(pb, d));
-    let (c2, pbd) = (c * c, dot(pb, d));
-    let (qa, qb, qc) = (
-        beta * beta - 4.0 * c2 * l2,
-        2.0 * alfa * beta - 8.0 * c2 * pbd,
-        alfa * alfa - 4.0 * c2 * dot(pb, pb),
-    );
-    let mut raizes = [f64::NAN; 2];
-    if qa.abs() <= 1e-12 * qb.abs().max(qc.abs()) {
-        if qb != 0.0 {
-            raizes[0] = -qc / qb;
-        }
-    } else {
-        let disc = qb * qb - 4.0 * qa * qc;
-        if disc >= 0.0 {
-            let q = -0.5 * (qb + qb.signum() * disc.sqrt());
-            raizes[0] = q / qa;
-            if q != 0.0 {
-                raizes[1] = qc / q;
-            }
-        }
-    }
-    // Só os zeros de `D` (o ramo certo) dentro de `(0, fim)`, por ordem.
-    let mut zeros: [f64; 2] = [f64::NAN; 2];
-    let mut nz = 0;
-    for r in raizes {
-        if r > 0.0 && r < fim && (alfa + beta * r) * c >= 0.0 {
-            zeros[nz] = r;
-            nz += 1;
-        }
-    }
-    if nz == 2 && zeros[1] < zeros[0] {
-        zeros.swap(0, 1);
-    }
-    let mut ini = 0.0;
-    for &z in zeros[..nz].iter().chain(std::iter::once(&fim)) {
-        if dd(0.5 * (ini + z)) > 0.0 {
-            let s = (ini - tol).max(0.0);
-            return if dd(s) <= 0.0 {
-                Some(s)
-            } else {
-                corte(a, rho, g, w, de, para)
-            };
-        }
-        ini = z;
-    }
-    if dd(fim) > 0.0 {
-        return corte(a, rho, g, w, de, para);
-    }
-    Some(if fim >= 1.0 { 1.0 } else { fim })
 }

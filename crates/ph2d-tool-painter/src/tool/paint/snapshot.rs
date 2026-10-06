@@ -53,6 +53,14 @@ impl BrushSettings {
     pub fn shape_ramp_offered(&self) -> bool {
         !self.wetpaint
     }
+
+    /// **O meio OFERECE a Color Ramp do Grain?** — não no Wet Paint, pela física da da Shape (achada
+    /// morta pela procura completa do censo em 2026-10-05: a secção inteira não muda um texel), nem na
+    /// Aquarela, onde o Grain é o mapa de granulação (a cor mora no Paper).
+    #[must_use]
+    pub fn texture_ramp_offered(&self) -> bool {
+        !self.wetpaint && !self.watercolor
+    }
 }
 
 /// Strength of the brush's active falloff at normalized distance `t` (`0` = centre, `1` = rim), for

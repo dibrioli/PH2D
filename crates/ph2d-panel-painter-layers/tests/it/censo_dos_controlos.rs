@@ -591,6 +591,7 @@ fn sonda_a_tabela_dos_controlos() {
         if so.as_ref().is_some_and(|m| *m != format!("{media:?}")) {
             continue;
         }
+        let t_meio = std::time::Instant::now();
         let mut coberto: Vec<NodeId> = Vec::new();
         let mut candidatos: Vec<(Vec<Gesto>, Gesto)> = Vec::new();
         let mut fila: std::collections::VecDeque<Vec<Gesto>> = [Vec::new()].into();
@@ -661,6 +662,11 @@ fn sonda_a_tabela_dos_controlos() {
             }
         }
         eprintln!("CENSO-COBERTO {media:?}: {} gestos", coberto.len());
+        eprintln!(
+            "CENSO-TEMPO\t{media:?}\texploração\t{} candidatos\t{:.1} s",
+            candidatos.len(),
+            t_meio.elapsed().as_secs_f32()
+        );
         if std::env::var("CENSO_ARMAR").is_ok() {
             procura_as_pre_condicoes(media, &candidatos, &rotulo);
         }
@@ -679,8 +685,12 @@ fn procura_as_pre_condicoes(
     candidatos: &[(Vec<Gesto>, Gesto)],
     rotulo: &dyn Fn(&Gesto) -> String,
 ) {
+    let t_procura = std::time::Instant::now();
     let resultados = em_paralelo(candidatos, |(armar, g)| {
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let t0 = std::time::Instant::now();
+        let mut feitas = 0usize;
+        let mut total = 0usize;
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let bancada = Bancada::nova(media, armar);
             let y_de = |id: NodeId| {
                 bancada
@@ -726,7 +736,9 @@ fn procura_as_pre_condicoes(
                 mais.push(v.clone());
                 (v, mais)
             }));
+            total = tentativas.len();
             for (t, mais) in tentativas {
+                feitas += 1;
                 let Ok((base, _)) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     mede(media, &mais, &Gesto::Nenhum)
                 })) else {
@@ -744,8 +756,19 @@ fn procura_as_pre_condicoes(
             }
             None
         }))
-        .unwrap_or(None)
+        .unwrap_or(None);
+        eprintln!(
+            "ARMA-TEMPO\t{media:?}\t{feitas}/{total}\t{:.1} s\t{} armado(s)\t{g:?}",
+            t0.elapsed().as_secs_f32(),
+            armar.len()
+        );
+        r
     });
+    eprintln!(
+        "CENSO-TEMPO\t{media:?}\tprocura\t{} candidatos\t{:.1} s",
+        candidatos.len(),
+        t_procura.elapsed().as_secs_f32()
+    );
     for ((armar, g), r) in candidatos.iter().zip(resultados) {
         let estado = if armar.is_empty() {
             "fábrica".to_owned()

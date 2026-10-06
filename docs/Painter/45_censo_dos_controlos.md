@@ -128,8 +128,24 @@ do Composite (escolhe o que o `+` acrescenta) · *Falloff Add* (o ponto novo nas
 - ~~**Wet Paint: Composite Brush, Solid, Sketchy/Wire**~~ — **resolvido** (2026-10-05, doc 46 §2-8 e
   §2-9): o Solid e os fios agem na água pela porta da máscara do motor (o censo obrigou a apagar as
   três linhas); o Composite Brush fica na lista como **recusado (medido)**.
-- **A procura completa** (`CENSO_ARMAR=2`) não cabe nos 30 min do `ph2d-run` sob carga no Impasto e
-  no Wet Paint; ali correu só a dos vizinhos, e os mortos que sobraram leram-se à mão (§2).
+- ~~**A procura completa** (`CENSO_ARMAR=2`) não cabe nos 30 min~~ — **cabe, medido 2026-10-05**: o
+  que não cabia era a sonda corrida SEM perfil (debug). Com o binário `smoke` e os quatro meios EM
+  PARALELO (load a subir de `10` a `44–66`): Digital exploração `19,5 s` + procura `120 s` · Impasto
+  `27 s` + `175 s` · Aquarela `36 s` + `221 s` · Wet Paint `31 s` + `243 s` — o pior meio em `4,6 min`.
+  Sozinho e calmo (load ~2): Impasto `17 + 104 s`, Wet Paint `18 + 137 s`. **Onde vai o tempo**
+  (`ARMA-TEMPO`, por candidato): a procura é `~85 %`, e dentro dela os MORTOS de verdade correm TODAS
+  as tentativas (`122–187` cada, `~30–45 s` de CPU) enquanto os inertes param na 1.ª pré-condição.
+  Comando: `CENSO_MEIO=<meio> CENSO_ARMAR=2 bash scripts/ph2d-run.sh cargo test -p
+  ph2d-panel-painter-layers --profile smoke --test it -- --exact
+  censo_dos_controlos::sonda_a_tabela_dos_controlos --ignored --nocapture`. **O que ela achou nos
+  quatro meios**, contra a §2 e a `inertes_com_motivo`: um morto NOVO — a **Color Ramp do Grain no Wet
+  Paint** (a secção inteira, 15 gestos) — **curado** escondendo-a (`BrushSettings::texture_ramp_offered`,
+  a física da da Shape, doc 46 #10; gate `a_rampa_do_grain_so_onde_o_meio_a_oferece`, vermelho antes);
+  o resto já tem motivo: não-pixel por desenho (Grid Show, Line Dimensions, Repeat Image, Sync, Tuning,
+  Wet Preview, os chips das luzes, o menu ao lado do `+` do Composite), pré-condição que o gesto da
+  sonda não arma (modos das rampas com stops de COR, Offset Trim, Dry Time entre traços em segundos,
+  Erase com a ferramenta Erase, o Live Edit sobre tinta já pintada, o 4.º parâmetro do Noise com
+  Detail > 0).
 - **Composite: as pilhas atravessando os meios** não foram exploradas além da 1.ª camada.
 - **As ferramentas da barra lateral (Smudge, Blur, Clone, Fill…)** mudam o painel; não foram
   exploradas como estados próprios (só o que o painel do pincel oferece).

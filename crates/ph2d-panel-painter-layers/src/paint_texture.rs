@@ -191,10 +191,9 @@ pub(crate) fn paint_texture_section(
         ctx, theme, x, content_w, y, brush, compact,
     );
 
-    // In watercolor mode the BRUSH Grain slot IS the granulation map (a grayscale height-field), so its
-    // Color Ramp is meaningless — hide it (the Paper section carries the colour). A Texture LAYER
-    // (`compact`) keeps its ramp regardless. Params still show either way.
-    let show_ramp = !brush.watercolor || compact;
+    // A Color Ramp do Grain só onde o meio a oferece (`texture_ramp_offered`: nem na Aquarela, onde o
+    // Grain é o mapa de granulação, nem no Wet Paint). A Texture LAYER (`compact`) guarda a dela.
+    let show_ramp = brush.texture_ramp_offered() || compact;
     let out = paint_texture_params_and_ramp(ctx, theme, x, content_w, y, brush, kind, show_ramp);
     close(ctx, fold, out)
 }

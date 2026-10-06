@@ -13,8 +13,13 @@ use ph2d_tool_painter::{PaintMedia, PainterTool};
 use ph2d_ui_testkit::MockPanelHost;
 
 fn pintados(media: PaintMedia) -> Vec<NodeId> {
+    pintados_com(media, |_| {})
+}
+
+fn pintados_com(media: PaintMedia, ajusta: impl Fn(&mut PainterTool)) -> Vec<NodeId> {
     let mut t = PainterTool::default();
     t.set_paint_media(media);
+    ajusta(&mut t);
     set_current_brush(Some(t.brush_settings()));
     set_current_dock_shows_layers(false);
     let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
@@ -76,5 +81,28 @@ fn a_rampa_da_shape_so_onde_o_meio_a_oferece() {
                 if oferece { "NÃO é" } else { "é" }
             );
         }
+    }
+}
+
+/// **A Color Ramp do Grain não aparece no Wet Paint nem na Aquarela** — no Wet Paint pela mesma
+/// física da da Shape (achada morta pela procura completa do censo, 2026-10-05: a secção inteira não
+/// muda um texel); na Aquarela o Grain é o mapa de granulação. A lei é a
+/// `BrushSettings::texture_ramp_offered`. Com um Grain escolhido (sem ele a rampa não se pinta).
+#[test]
+fn a_rampa_do_grain_so_onde_o_meio_a_oferece() {
+    use ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE;
+    for (media, oferece) in [
+        (PaintMedia::Digital, true),
+        (PaintMedia::Watercolor, false),
+        (PaintMedia::Impasto, true),
+        (PaintMedia::WetPaint, false),
+    ] {
+        let ids = pintados_com(media, |t| t.set_brush_texture_kind(1));
+        assert_eq!(
+            ids.contains(&PAINTER_BRUSH_TEXTURE_RAMP_ENABLE),
+            oferece,
+            "{media:?}: o Use Color Ramp do Grain {} pintado",
+            if oferece { "NÃO é" } else { "é" }
+        );
     }
 }

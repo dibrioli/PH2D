@@ -589,3 +589,6 @@ use reguas::*;
 #[cfg(test)]
 #[path = "smoke_bone_par_fresta_sondas_tests.rs"]
 mod sondas;
+
+#[path = "smoke_bone_par_grudam_sondas_tests.rs"]
+mod grudam;

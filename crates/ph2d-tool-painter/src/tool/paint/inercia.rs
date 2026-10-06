@@ -27,12 +27,11 @@ pub enum Dependente {
     Pull,
     DepthSourceGrain,
     EraseDaAgua,
-    CorDoPapel,
     ToothDoDigital,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 15] = [
+    pub const TODOS: [Dependente; 14] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -46,7 +45,6 @@ impl Dependente {
         Dependente::Pull,
         Dependente::DepthSourceGrain,
         Dependente::EraseDaAgua,
-        Dependente::CorDoPapel,
         Dependente::ToothDoDigital,
     ];
 
@@ -69,7 +67,6 @@ impl Dependente {
             Dependente::Pull => &[ids::PAINTER_WATERCOLOR_PULL],
             Dependente::DepthSourceGrain => &[ids::PAINTER_IMPASTO_SOURCE_GRAIN],
             Dependente::EraseDaAgua => &[ids::PAINTER_WETPAINT_ERASE],
-            Dependente::CorDoPapel => &[ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB],
             Dependente::ToothDoDigital => &[ids::PAINTER_WATERCOLOR_PAPER_DEPTH],
         }
     }
@@ -92,7 +89,6 @@ impl Dependente {
             Dependente::Pull => "panel.painter_layers.inerte.charge_below_full",
             Dependente::DepthSourceGrain => "panel.painter_layers.inerte.grain_chosen",
             Dependente::EraseDaAgua => "panel.painter_layers.inerte.eraser_on",
-            Dependente::CorDoPapel => "panel.painter_layers.inerte.paper_applied",
             Dependente::ToothDoDigital => "panel.painter_layers.inerte.relief_and_no_grain",
         }
     }
@@ -209,8 +205,6 @@ impl PainterTool {
             (Dependente::Pull, aquarela && !self.wet_mixer_active()),
             (Dependente::DepthSourceGrain, !b.texture.is_active()),
             (Dependente::EraseDaAgua, agua && !self.paint.eraser),
-            // A cor do seletor só vira papel quando o documento o tem (`aplica_o_papel`).
-            (Dependente::CorDoPapel, self.papel().is_none()),
             // No Digital o Tooth é a profundidade do papel feito Grain (`papel_como_grain`).
             (
                 Dependente::ToothDoDigital,

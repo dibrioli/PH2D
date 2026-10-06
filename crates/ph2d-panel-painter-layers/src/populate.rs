@@ -448,8 +448,6 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // Wetness card (doc 13 #9/#10): Dry (end the wet session) / Wet (re-moisten the canvas).
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_DRY_NOW,
         ph2d_tool_painter::ids::PAINTER_WATERCOLOR_WET_NOW,
-        // O botão «Aplicar no papel» (a cor do seletor vira o papel do documento).
-        ph2d_tool_painter::ids::PAINTER_PAPER_APPLY,
     ] {
         store.register(
             id,

@@ -152,10 +152,6 @@ pub const PAINTER_WATERCOLOR_PAPER_RESET: NodeId =
 pub const PAINTER_WATERCOLOR_PAPER_COLOR_THUMB: NodeId =
     hash_node_id("painter_brush.watercolor_paper_color_thumb");
 
-/// O botão **Aplicar no papel** (secção Paper, nos quatro meios) — `Click` → `aplica_o_papel`: a cor
-/// do seletor vira o PAPEL do documento, e o branco puro da camada de baixo deixa-o aparecer.
-pub const PAINTER_PAPER_APPLY: NodeId = hash_node_id("painter_brush.paper_apply");
-
 /// **Paper** slot kind dropdown chip (None / Cold-Rough-Hot Press / other procedural / Image). `SelectOption`
 /// → `set_brush_paper_kind`. Options via [`painter_paper_kind_option_id`].
 pub const PAINTER_WATERCOLOR_PAPER_KIND: NodeId =
@@ -224,14 +220,13 @@ pub fn painter_paper_kind_option_id(k: u8) -> NodeId {
 /// into a trap (an audit read the leftover setters as live knobs). Removed 2026-07-12 — the per-dab
 /// rake/random live on the **Grain** slot, which is a stamp. `TextureSettings::rake` itself stays: it is
 /// shared with Shape/Grain, where it is real.
-pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 7] = [
+pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 6] = [
     PAINTER_WATERCOLOR_RESET,
     PAINTER_WATERCOLOR_GRAN_SAME,
     PAINTER_WATERCOLOR_SMOOTH_EDGES,
     PAINTER_WATERCOLOR_PAPER_RESET,
     PAINTER_WATERCOLOR_DRY_NOW,
     PAINTER_WATERCOLOR_WET_NOW,
-    PAINTER_PAPER_APPLY,
 ];
 
 /// The Watercolor **SetValue** number-fields — one membership check for the panel's number-field forward

@@ -174,8 +174,8 @@ fn raising_the_relief_from_the_row_arms_a_paper() {
     );
 }
 
-/// **As rows do papel estão onde o meio as lê** (pedido do dono, 2026-10-05). A `Color` e o botão
-/// **Apply to Paper** em TODO meio (o papel é do documento); o `Tooth` onde ele morde — a aguada, a
+/// **As rows do papel estão onde o meio as lê** (pedido do dono, 2026-10-05). A `Color` em TODO meio
+/// (o papel é do documento, e o seletor aplica-o); o `Tooth` onde ele morde — a aguada, a
 /// água e o Digital (a tinta entra no dente) —, e NÃO no Impasto, que não o lê. Antes as duas eram só
 /// da aguada (o leitor delas só existia lá).
 ///
@@ -183,7 +183,7 @@ fn raising_the_relief_from_the_row_arms_a_paper() {
 #[test]
 fn as_rows_do_papel_estao_onde_o_meio_as_le() {
     use ph2d_tool_painter::ids::{
-        PAINTER_PAPER_APPLY, PAINTER_WATERCOLOR_PAPER_COLOR_THUMB, PAINTER_WATERCOLOR_PAPER_DEPTH,
+        PAINTER_WATERCOLOR_PAPER_COLOR_THUMB, PAINTER_WATERCOLOR_PAPER_DEPTH,
     };
     // O papel ARMADO (o portão de `None` esconderia as rows por outro motivo).
     let armed = |media| {
@@ -202,15 +202,10 @@ fn as_rows_do_papel_estao_onde_o_meio_as_le() {
             rect_of(&pintados, ph2d_tool_painter::ids::PAINTER_SUBSTRATE_RELIEF).is_some(),
             "fixture: {media:?} não pintou a secção Paper"
         );
-        for (id, nome) in [
-            (PAINTER_WATERCOLOR_PAPER_COLOR_THUMB, "Color"),
-            (PAINTER_PAPER_APPLY, "Apply to Paper"),
-        ] {
-            assert!(
-                rect_of(&pintados, id).is_some(),
-                "{media:?}: `{nome}` não é pintada"
-            );
-        }
+        assert!(
+            rect_of(&pintados, PAINTER_WATERCOLOR_PAPER_COLOR_THUMB).is_some(),
+            "{media:?}: a `Color` do papel não é pintada"
+        );
         assert_eq!(
             rect_of(&pintados, PAINTER_WATERCOLOR_PAPER_DEPTH).is_some(),
             tooth,

@@ -98,10 +98,6 @@ impl PainterTool {
                 self.reset_brush_paper();
                 true
             }
-            PanelEvent::Click(id) if *id == crate::ids::PAINTER_PAPER_APPLY => {
-                self.aplica_o_papel();
-                true
-            }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WATERCOLOR_DRY_NOW => {
                 self.dry_session_now();
                 true

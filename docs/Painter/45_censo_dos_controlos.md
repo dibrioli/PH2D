@@ -107,7 +107,6 @@ A procura confirma-os da mesma forma: o único gesto que os acorda é **trocar o
 | **Shape/Grain = Image** | todos | uma imagem carregada (o app abre o selector) | — |
 | Modos da **Color Ramp** (Mode, Alpha Mode, B/W) | D I | stops com COR (a rampa de fábrica é cinzenta) | a sonda não escolhe cor |
 | **Offset Trim** | todos | não armado pela procura (pede offset ≠ 0 e uma linha que se cruza) | — |
-| **Color** do papel | todos | o papel aplicado (o botão **Apply to Paper**, 2026-10-05; esmaecida antes dele) | gate `o_papel_aplicado_e_o_chao_nos_quatro_meios` |
 | **Tooth** do papel | D | Relief > 0, um papel e nenhum Grain (a tinta entra no dente, 2026-10-05; esmaecido fora disso) | gate `no_digital_a_tinta_entra_no_dente` |
 
 ### §2.4 — Não-pixel, por desenho (correctos)

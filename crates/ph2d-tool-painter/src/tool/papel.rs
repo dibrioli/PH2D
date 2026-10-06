@@ -10,10 +10,10 @@
 //!
 //! O papel é uma propriedade do DOCUMENTO (`PainterTool::papel`): o composite de todas as portas é
 //! *camadas SOBRE o papel*, antes da luz do relevo (o dente ilumina o papel), e o chão da aquarela é
-//! ele. O botão **Aplicar no papel** separa o papel da tinta numa camada de fundo branca opaca: o
-//! branco PURO da camada de baixo vira transparente (a tinta, opaca ou não, fica), e o papel passa a
-//! ser a cor escolhida — um passo de desfazer. Daí em diante mexer na cor repinta o papel ao vivo
-//! (uma rajada de mudanças = um passo de desfazer).
+//! ele. **Escolher a cor no seletor aplica o papel** (o botão que existiu saiu, 2026-10-06): a 1.ª
+//! cor separa o papel da tinta numa camada de fundo branca opaca — o branco PURO da camada de baixo
+//! vira transparente (a tinta, opaca ou não, fica) — e as seguintes repintam-no ao vivo; o arrasto
+//! inteiro é um passo de desfazer.
 //!
 //! ⚠️ **A orla anti-aliased de um traço pintado ANTES de aplicar** guarda o branco com que ela se
 //! misturou (só o branco puro sai): sobre um papel de cor, um fio claro de 1 px em volta desses traços.
@@ -63,55 +63,70 @@ impl PainterTool {
         self.papel.unwrap_or([255, 255, 255])
     }
 
-    /// **O botão Aplicar no papel** — o papel passa a ser a cor do seletor, e o branco PURO da camada
-    /// raster de baixo vira transparente (onde o papel aparece). Um passo de desfazer. Com o papel já
-    /// aplicado, só a cor muda.
+    /// **Aplica o papel com a cor do seletor** — a porta programática (o produto aplica pelo próprio
+    /// seletor, [`Self::papel_segue_a_cor`]). Um passo de desfazer.
     pub fn aplica_o_papel(&mut self) {
         let (w, h) = self.source_size;
         if w == 0 || h == 0 {
             return;
         }
         let before = self.snapshot_model();
+        if self.papel.is_none() {
+            self.tira_o_branco_do_fundo();
+        }
         self.papel = Some(self.paper_color_rgb8());
+        self.edited_since_bind = true;
+        self.commit_structural_edit(before);
+        self.invalidate_composite();
+    }
+
+    /// O branco PURO da camada raster de baixo vira transparente — onde o papel aparece.
+    fn tira_o_branco_do_fundo(&mut self) {
         let fundo = self.layers.z_order_bottom_up().into_iter().find(|&id| {
             matches!(
                 self.layers.get(id).map(|l| &l.kind),
                 Some(crate::layers::LayerKind::Raster(_))
             )
         });
-        if let Some(fundo) = fundo {
-            let tira = |px: &mut [u8; 4]| {
-                if *px == [255, 255, 255, 255] {
-                    *px = [0, 0, 0, 0];
-                }
-            };
-            if self.layers.active() == Some(fundo) {
-                let mut c = self.canvas_rgba.as_ref().clone();
-                c.as_chunks_mut::<4>().0.iter_mut().for_each(tira);
-                self.replace_canvas(Arc::new(c));
-            } else if let Some(img) = self.images.get(&fundo) {
-                let mut img = img.as_ref().clone();
-                img.rgba8.as_chunks_mut::<4>().0.iter_mut().for_each(tira);
-                self.images.insert(fundo, Arc::new(img));
-            }
-            self.bump_layer_pixels(Some(fundo));
-        }
-        self.edited_since_bind = true;
-        self.commit_structural_edit(before);
-        self.invalidate_composite();
-    }
-
-    /// A cor do papel mudou no seletor: com o papel aplicado ele muda AO VIVO — uma rajada de
-    /// mudanças é um passo de desfazer ([`crate::undo::CoalesceKind::CorDoPapel`]).
-    pub(crate) fn papel_segue_a_cor(&mut self) {
-        let Some(antes) = self.papel else {
+        let Some(fundo) = fundo else {
             return;
         };
+        let tira = |px: &mut [u8; 4]| {
+            if *px == [255, 255, 255, 255] {
+                *px = [0, 0, 0, 0];
+            }
+        };
+        if self.layers.active() == Some(fundo) {
+            let mut c = self.canvas_rgba.as_ref().clone();
+            c.as_chunks_mut::<4>().0.iter_mut().for_each(tira);
+            self.replace_canvas(Arc::new(c));
+        } else if let Some(img) = self.images.get(&fundo) {
+            let mut img = img.as_ref().clone();
+            img.rgba8.as_chunks_mut::<4>().0.iter_mut().for_each(tira);
+            self.images.insert(fundo, Arc::new(img));
+        }
+        self.bump_layer_pixels(Some(fundo));
+    }
+
+    /// **A cor do papel mudou no SELETOR: o papel segue-a ao vivo** (dono, 2026-10-06: *«o botão apply
+    /// to paper parece supérfluo. não seria melhor aplicar ao usar o próprio seletor de cor?»*). A 1.ª
+    /// cor aplica o papel (o branco puro do fundo sai), as seguintes repintam-no; a rajada inteira do
+    /// arrasto — a aplicação incluída — é UM passo de desfazer
+    /// ([`crate::undo::CoalesceKind::CorDoPapel`]). Branco num documento sem papel não faz nada (o
+    /// branco do fundo já é esse papel).
+    pub(crate) fn papel_segue_a_cor(&mut self) {
         let nova = self.paper_color_rgb8();
-        if nova == antes {
+        if self.papel == Some(nova) || (self.papel.is_none() && nova == [255, 255, 255]) {
+            return;
+        }
+        let (w, h) = self.source_size;
+        if w == 0 || h == 0 {
             return;
         }
         let before = self.snapshot_model();
+        if self.papel.is_none() {
+            self.tira_o_branco_do_fundo();
+        }
         self.papel = Some(nova);
         self.edited_since_bind = true;
         self.commit_structural_edit_coalesced(crate::undo::CoalesceKind::CorDoPapel, before);

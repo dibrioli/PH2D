@@ -151,7 +151,7 @@ fn paint_wetness_card(
 /// A row of momentary action buttons (none selected) — the Dry/Wet canvas actions. Mirrors
 /// `paint_deform`'s `seg_group` (a `SegmentedAdaptive` reused as a button row); each option forwards
 /// a plain `Click` via the `PAINTER_WATERCOLOR_CLICKS` membership in the panel's `event.rs`.
-pub(crate) fn wetness_button_row(
+fn wetness_button_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,

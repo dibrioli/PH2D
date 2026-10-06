@@ -139,18 +139,17 @@ fn diag_o_dente_sob_a_tinta() {
     }
 }
 
-/// Um tool `128²` branco opaco no `meio`, com a cor do papel `cor` escolhida pelo SELETOR (o evento
-/// que o painel encaminha) e um traço largo horizontal; `aplica` = o botão antes do traço.
+/// Um tool `128²` branco opaco no `meio` e um traço largo horizontal; `aplica` = a cor do papel
+/// `cor` escolhida pelo SELETOR antes do traço (o evento que o painel encaminha — ele aplica o papel).
 fn com_papel(meio: PaintMedia, cor: [u8; 3], aplica: bool) -> PainterTool {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let mut t = tool(128, meio, 10.0);
     t.set_wet_relogio_fixo(true);
-    t.handle_panel_event(PanelEvent::SelectOption(
-        crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
-        format!("{},{},{}", cor[0], cor[1], cor[2]),
-    ));
     if aplica {
-        t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_PAPER_APPLY));
+        t.handle_panel_event(PanelEvent::SelectOption(
+            crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+            format!("{},{},{}", cor[0], cor[1], cor[2]),
+        ));
     }
     t.set_brush_color_srgb8([30, 60, 220]);
     t.on_canvas_pointer(cp([20.0, 64.0], PointerPhase::Down));
@@ -176,10 +175,10 @@ fn mostrado(t: &mut PainterTool, x: usize, y: usize) -> [u8; 4] {
 
 const CREME: [u8; 3] = [230, 200, 150];
 
-/// ⭐ **O PAPEL APLICADO É O CHÃO NOS QUATRO MEIOS** (pedido do dono, 2026-10-05) — com o botão, o
-/// papel limpo mostra a cor do seletor em todo meio; a tinta opaca (Digital, Impasto) cobre-a — o
-/// miolo do traço é o de sem papel —, e a aguada deixa-a ver (o miolo muda). CONTROLO: sem o botão a
-/// cor do seletor não muda um texel (a linha dela fica esmaecida até o papel existir).
+/// ⭐ **O PAPEL APLICADO É O CHÃO NOS QUATRO MEIOS** (pedido do dono, 2026-10-05) — escolhida a cor
+/// no seletor, o papel limpo mostra-a em todo meio; a tinta opaca (Digital, Impasto) cobre-a — o
+/// miolo do traço é o de sem papel —, e a aguada deixa-a ver (o miolo muda). CONTROLO: sem escolher
+/// cor o documento não tem papel e o branco fica.
 #[test]
 fn o_papel_aplicado_e_o_chao_nos_quatro_meios() {
     for meio in MEIOS {
@@ -188,12 +187,12 @@ fn o_papel_aplicado_e_o_chao_nos_quatro_meios() {
         assert_eq!(
             com.papel(),
             Some(CREME),
-            "{meio:?}: o botão não aplicou o papel"
+            "{meio:?}: o seletor não aplicou o papel"
         );
         assert_eq!(
             sem.papel(),
             None,
-            "{meio:?}: o seletor sozinho aplicou o papel"
+            "{meio:?}: sem escolher cor o documento ganhou papel"
         );
         let limpo = mostrado(&mut com, 64, 20);
         assert_eq!(
@@ -204,7 +203,7 @@ fn o_papel_aplicado_e_o_chao_nos_quatro_meios() {
         assert_eq!(
             mostrado(&mut sem, 64, 20),
             [255, 255, 255, 255],
-            "{meio:?}: controlo: sem o botão é branco"
+            "{meio:?}: controlo: sem escolher cor é branco"
         );
         let (m_sem, m_com) = (mostrado(&mut sem, 64, 64), mostrado(&mut com, 64, 64));
         match meio {
@@ -221,7 +220,7 @@ fn o_papel_aplicado_e_o_chao_nos_quatro_meios() {
 }
 
 /// **A COR MUDA AO VIVO E DESFAZ-SE NUM PASSO** — com o papel aplicado, três mudanças seguidas no
-/// seletor (um arrasto) repintam o papel; um desfazer volta à cor do botão, o seguinte tira o papel
+/// seletor (um arrasto) repintam o papel; um desfazer volta à 1.ª cor, o seguinte desfaz o traço e o último tira o papel
 /// e devolve o branco da camada.
 #[test]
 fn a_cor_do_papel_muda_ao_vivo_e_desfaz_num_passo() {
@@ -238,17 +237,17 @@ fn a_cor_do_papel_muda_ao_vivo_e_desfaz_num_passo() {
         [120, 200, 255, 255],
         "o papel não seguiu a cor ao vivo"
     );
-    // O traço é o passo mais recente antes do arrasto? Não: o traço veio DEPOIS do botão; o arrasto
+    // O traço veio DEPOIS da 1.ª cor, então o arrasto é um passo e a 1.ª cor outro; o arrasto
     // é o último passo.
     assert!(t.undo_last(), "há o que desfazer");
     assert_eq!(
         mostrado(&mut t, 64, 20),
         [CREME[0], CREME[1], CREME[2], 255],
-        "um desfazer não voltou à cor do botão"
+        "um desfazer não voltou à 1.ª cor"
     );
     assert!(t.undo_last(), "o traço");
-    assert!(t.undo_last(), "o botão");
-    assert_eq!(t.papel(), None, "o desfazer do botão não tirou o papel");
+    assert!(t.undo_last(), "a 1.ª cor");
+    assert_eq!(t.papel(), None, "o desfazer da 1.ª cor não tirou o papel");
     assert_eq!(
         mostrado(&mut t, 64, 20),
         [255, 255, 255, 255],
@@ -268,7 +267,6 @@ fn o_papel_viaja_com_o_documento() {
         crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
         "230,200,150".into(),
     ));
-    t.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_PAPER_APPLY));
     assert_eq!(t.papel(), Some(CREME));
     t.bind_document(2, branco(), 64, 64);
     assert_eq!(t.papel(), None, "o outro documento herdou o papel");
@@ -409,7 +407,6 @@ fn na_aguada_o_papel_e_o_chao_optico() {
         crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
         "230,200,150".into(),
     ));
-    a.handle_panel_event(PanelEvent::Click(crate::ids::PAINTER_PAPER_APPLY));
     traco(&mut a);
     let mut b = tool(128, PaintMedia::Watercolor, 10.0);
     let creme: Vec<u8> = (0..128 * 128)
@@ -445,4 +442,47 @@ fn o_use_as_ve_o_papel() {
     let t = com_papel(PaintMedia::Digital, CREME, true);
     let (lum, w, _) = t.composite_to_lum().expect("a luminância do documento");
     assert_eq!(lum[20 * w as usize + 64], 203, "o «Use as» não vê o papel");
+}
+
+/// ⭐ **O SELETOR APLICA O PAPEL, E O ARRASTO INTEIRO É UM DESFAZER** (dono, 2026-10-06: *«o botão
+/// apply to paper parece supérfluo. não seria melhor aplicar ao usar o próprio seletor de cor?»*) —
+/// a 1.ª cor aplica o papel (o branco puro do fundo sai), as seguintes repintam-no; um Ctrl+Z desfaz
+/// o arrasto todo, a aplicação incluída, e devolve o branco da camada. Branco num documento sem papel
+/// não faz nada.
+#[test]
+fn o_seletor_aplica_o_papel_e_o_arrasto_e_um_desfazer() {
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = tool(128, PaintMedia::Digital, 10.0);
+    let cor = |t: &mut PainterTool, c: &str| {
+        t.handle_panel_event(PanelEvent::SelectOption(
+            crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+            c.into(),
+        ));
+    };
+    cor(&mut t, "255,255,255");
+    assert_eq!(
+        t.papel(),
+        None,
+        "branco num documento sem papel aplicou o papel"
+    );
+    for c in ["230,200,150", "200,220,240", "120,200,255"] {
+        cor(&mut t, c);
+    }
+    assert_eq!(
+        t.papel(),
+        Some([120, 200, 255]),
+        "o seletor não aplicou o papel"
+    );
+    assert_eq!(
+        mostrado(&mut t, 64, 64),
+        [120, 200, 255, 255],
+        "o papel não é a cor do seletor"
+    );
+    assert!(t.undo_last(), "há o que desfazer");
+    assert_eq!(t.papel(), None, "um desfazer não desfez o arrasto inteiro");
+    assert_eq!(
+        mostrado(&mut t, 64, 64),
+        [255, 255, 255, 255],
+        "o branco da camada não voltou"
+    );
 }

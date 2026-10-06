@@ -23,7 +23,7 @@ use ph2d_board_model::{Anchor, Element, End, Head, Route};
 use ph2d_vec_connect::{
     Aabb, EndSpec, RouteInput, RouteKind, exit_point, port_side, route, side_towards,
 };
-use ph2d_vec_scene::{Marker, VecVertex, end_tangent, trim_path};
+use ph2d_vec_scene::{Marker, VecVertex, end_tangent};
 use ph2d_vector::BezPath;
 
 /// ⭐ **O recuo da rota em cotovelo antes de poder dobrar** (o *jetty*), em unidades do mundo.
@@ -37,17 +37,24 @@ pub const JETTY: f64 = 40.0;
 /// (`SPREAD_STEP / JETTY_MAX` = 0,35) sobre o recuo do quadro.
 pub const SPREAD_STEP: f64 = 0.35 * JETTY;
 
-/// ⭐ **O braço da curva numa PONTA** — metade da distância até ao ponto seguinte, medida ao longo do
-/// eixo por onde a seta sai. Medido 06/10 na captura do Miro que o dono mandou (a curva entre duas
-/// caixas desalinhadas: ajuste de uma cúbica com as tangentes horizontais aos píxeis do traço): braço
-/// **154** para um afastamento horizontal de **307** (erro de 2,9 px, a espessura do traço).
-pub const END_ARM: f64 = 0.5;
+/// ⭐ **O braço da curva numa PONTA**, em fracção da DISTÂNCIA até à estação vizinha. Medido 06/10 na
+/// captura do Miro que o dono mandou (a curva entre duas caixas desalinhadas: ajuste de uma cúbica
+/// com as tangentes horizontais aos píxeis do traço): braço **154** para pontas a **342,6** uma da
+/// outra (erro de 2,9 px, a espessura do traço) ⇒ 0,45.
+/// ⚠️ A mesma captura serve também a «½ do afastamento AO LONGO da saída» (154 / 307): a 1.ª versão
+/// usou essa, e com as duas pontas a sair para o MESMO lado ela caía num piso e achatava a volta (2.º
+/// smoke do dono, 06/10: «a curva não é tão suave quanto no Miro»). A distância nunca colapsa. Uma
+/// captura do Miro com as duas pontas para o mesmo lado separaria as duas leis.
+pub const END_ARM: f64 = 0.45;
 
-/// O braço da curva num PONTO DE AJUSTE (e o piso do da ponta): ⅓ do trecho — o spline cardinal
-/// que passa pelos pontos sem escapar deles (o `DEFAULT_CURVE_ARM` do conector vectorial). O piso
-/// faz a curva de duas pontas que saem para o MESMO lado (o «não» por baixo) dar a volta em vez de
-/// colapsar.
-pub const POINT_ARM: f64 = 1.0 / 3.0;
+/// O braço da curva num PONTO DE AJUSTE, em fracção de cada trecho vizinho (a tangente é a do
+/// Catmull-Rom: do ponto de trás ao da frente). **½**, escolhido contra a 2.ª captura do Miro do dono
+/// (06/10: uma curva por nove pontos, «as curvas do Miro são mais arredondadas»): a mesma sequência de
+/// pontos desenhada com ⅓ (o `DEFAULT_CURVE_ARM` do vectorial, que aqui esteve) e com o Catmull-Rom
+/// uniforme faz BICO nos pontos de cima e de baixo; com 0,6 passa do ponto e ondula; com ½ dá as
+/// voltas redondas da captura. ⚠️ Comparação a olho (a imagem só chegou na conversa, sem os píxeis):
+/// uma captura em ficheiro mede-a.
+pub const POINT_ARM: f64 = 0.5;
 
 /// ⭐ **O tamanho da ponta de seta**, em múltiplos da largura do traço sobre a caixa do catálogo
 /// (`Marker`: comprimento 4·w). Medido no oráculo (`saidas/seta_reta_ligada.svg`, `strokeWidth 2`,
@@ -199,7 +206,7 @@ pub fn drawn(r: &Routed, heads: [Head; 2], width: f64) -> Drawn {
 pub fn drawn_at(r: &Routed, heads: [Head; 2], width: f64, scale: f64) -> Drawn {
     let ms = heads.map(marker);
     let inset = |m: Marker| m.inset(scale) * width;
-    let line = trim_path(&r.path, inset(ms[0]), inset(ms[1]))
+    let line = pull_back(&r.path, [inset(ms[0]), inset(ms[1])])
         .map_or_else(BezPath::new, |p| ph2d_vec_render::build_bezpath(&p));
     let mut out = Vec::new();
     for (i, m) in ms.into_iter().enumerate() {
@@ -215,6 +222,33 @@ pub fn drawn_at(r: &Routed, heads: [Head; 2], width: f64, scale: f64) -> Drawn {
         }
     }
     Drawn { line, heads: out }
+}
+
+/// ⭐ **A linha recua para a BASE de cada ponta de seta, sobre o eixo dela**: a âncora da ponta (com
+/// os braços, que viajam com ela) anda `inset` para trás ao longo da tangente de saída — a linha
+/// chega ao centro da base na direcção da ponta, numa curva também. ⛔ O `trim_path` do vectorial
+/// recua pela poligonal das ÂNCORAS: numa seta de uma cúbica só isso puxava a âncora pela corda,
+/// entortava a curva e a linha entrava de lado na ponta (2.º smoke do dono, 06/10); cortar a curva
+/// pelo comprimento de arco ainda deixava a ponta 2,2 un. fora do eixo (a curva dobra debaixo da
+/// cabeça). Mais curto que os dois recuos ⇒ vazio (só as pontas).
+#[must_use]
+pub fn pull_back(path: &VecPath, insets: [f64; 2]) -> Option<VecPath> {
+    let mut out = path.clone();
+    let n = out.verts.len();
+    if n < 2 || dist(out.verts[0].anchor, out.verts[n - 1].anchor) <= insets[0] + insets[1] {
+        return None;
+    }
+    for (k, &inset) in insets.iter().enumerate() {
+        let Some((_, dir)) = end_tangent(path, k == 0).filter(|_| inset > 0.0) else {
+            continue;
+        };
+        let v = &mut out.verts[if k == 0 { 0 } else { n - 1 }];
+        let mv = |p: &mut [f64; 2]| *p = [p[0] - dir[0] * inset, p[1] - dir[1] * inset];
+        mv(&mut v.anchor);
+        mv(&mut v.in_handle);
+        mv(&mut v.out_handle);
+    }
+    Some(out)
 }
 
 /// O sítio do mundo de um ponto fixo `[u, v]` da caixa de `el` (antes de rodar).
@@ -383,9 +417,9 @@ pub(crate) fn compute(
 }
 
 /// ⭐ **A curva do Miro** pelas estações: em cada PONTA a tangente é a da saída (perpendicular à
-/// face, `d[k]` aponta para FORA da forma) e o braço [`END_ARM`] da distância ao vizinho ao longo
-/// dela (no mínimo [`POINT_ARM`] do trecho); num ponto de ajuste a tangente é a do Catmull-Rom (do
-/// vizinho de trás ao da frente) e o braço [`POINT_ARM`] do trecho.
+/// face, `d[k]` aponta para FORA da forma) e o braço [`END_ARM`] da distância ao vizinho; num ponto
+/// de ajuste a tangente é a do Catmull-Rom (do vizinho de trás ao da frente) e o braço
+/// [`POINT_ARM`] do trecho.
 fn curve(st: &[[f64; 2]], d: [[f64; 2]; 2]) -> Vec<VecVertex> {
     let n = st.len();
     let sub = |a: [f64; 2], b: [f64; 2]| [a[0] - b[0], a[1] - b[1]];
@@ -409,13 +443,10 @@ fn curve(st: &[[f64; 2]], d: [[f64; 2]; 2]) -> Vec<VecVertex> {
     };
     let arm = |i: usize, toward: usize| -> f64 {
         let chord = dist(st[i], st[toward]);
-        let floor = POINT_ARM * chord;
         if i == 0 || i == n - 1 {
-            let t = tangent(i);
-            let along = sub(st[toward], st[i]);
-            (END_ARM * (along[0] * t[0] + along[1] * t[1]).abs()).max(floor)
+            END_ARM * chord
         } else {
-            floor
+            POINT_ARM * chord
         }
     };
     (0..n)

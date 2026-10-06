@@ -11,6 +11,10 @@
 - O 1.º smoke do dono (06/10) RECUSOU duas coisas, com capturas do Miro: *«curvas exageradas»* (a
   curva era o cotovelo suavizado do vectorial) e *«o algoritmo de evitar as formas próximas»* — ordem:
   **setas não se reajustam sozinhas; pontos de ajuste no caminho como no Miro**. Refeito em `b57451b43`.
+- O 2.º smoke (06/10): *«o algoritmo da criação de pontos ficou correto»*; mas a curva *«não tão suave
+  quanto no Miro»* (nova captura: uma curva por nove pontos) e *«o path liga-se à ponta da seta, não à
+  base»*. Curado depois de `bd82abd15`: braço ½ nos pontos, 0,45 da distância nas pontas, a linha recua
+  sobre o eixo da ponta (`pull_back`).
 - ⏳ **Smoke da W2 refeita por fazer pelo dono** — passos no §5.
 
 ## §1 — As peças
@@ -20,7 +24,7 @@
 | `ph2d-vec-connect` | as leis ANTES do A\* mudaram-se para cá (`ends.rs`): `exit_point` (lado + ponto no contorno por fecho + spread preso à face), `port_side`, `bbox_exit`, `obstacles_in_play` (a lei ORIGINAL, só o Vector a usa), `ROI_PAD_K`. O `ph2d-app-vec::connector_live` usa-as sem mudar comportamento (27 testes de conector verdes) |
 | `ph2d-board-model` | `ElementKind::Connector(Box<Connector>)` (no FIM do enum ⇒ `FORMAT_VERSION` continua 2 para o `main`; ⚠️ ficheiros gravados pelo binário desta linha entre `3e7c3564b` e `b57451b43` com setas não se leem — o campo `waypoints` entrou depois e a linha nunca integrou): `End::{Free, Bound}`, `Anchor::{Center, Fixed([u,v])}`, `Route::{Straight, Elbow, Curved (nascença)}`, `Head` (8), estilo, rótulo, `waypoints`. `Element::{connector, style, style_mut, translate}` (pontas soltas e pontos andam). `BoardDoc::rev()` (revisão da SESSÃO, contador global, fora do ficheiro e do `PartialEq`), `BoardDoc::live()` |
 | `ph2d-board-geom` | `ray_exit` (maior t sobre a curva exacta), `nearest_on_outline`, `inside` |
-| `ph2d-board-route` (nova) | `JETTY = 40` e `HEAD_SCALE = 2,94` medidos no oráculo; ⭐ `END_ARM = 0,5` MEDIDO na captura do Miro do dono (cúbica ajustada aos píxeis: braço 154 para 307, erro 2,9 px) e `POINT_ARM = ⅓` (Catmull-Rom pelos pontos, e piso da ponta); `anchor_for` (miolo = centro, faixa = ponto fixo colado ao meio do lado se ele está NO contorno); `compute` (estações = pontas + pontos; curva / rectas / cotovelo por trechos com só as DUAS formas por obstáculo); `RouteCache` por diferença (revisão O(1) → passeio das versões → índice espacial para `bind_at`/`shape_at` → revê só a seta mudada ou com forma de ponta mudada); `Routed { stations, path, sides, bbox, mid, leg_mids }` + `from_points`, `polyline`, `waypoints`; `drawn` / `drawn_at` |
+| `ph2d-board-route` (nova) | `JETTY = 40` e `HEAD_SCALE = 2,94` medidos no oráculo; ⭐ `END_ARM = 0,45` da distância MEDIDO na captura do Miro do dono (cúbica ajustada aos píxeis: braço 154 para 342,6, erro 2,9 px) e `POINT_ARM = ½` de cada trecho (Catmull-Rom; escolhido contra a 2.ª captura, `ferramentas/curva_miro_bracos.png`); `pull_back` (a linha recua sobre o eixo da ponta); `anchor_for` (miolo = centro, faixa = ponto fixo colado ao meio do lado se ele está NO contorno); `compute` (estações = pontas + pontos; curva / rectas / cotovelo por trechos com só as DUAS formas por obstáculo); `RouteCache` por diferença (revisão O(1) → passeio das versões → índice espacial para `bind_at`/`shape_at` → revê só a seta mudada ou com forma de ponta mudada); `Routed { stations, path, sides, bbox, mid, leg_mids }` + `from_points`, `polyline`, `waypoints`; `drawn` / `drawn_at` |
 | `ph2d-board-edit` | `Tool::Connector`; `wire.rs`: criar arrastando (alvo realçado, `Ctrl` solta), `WireHandle::{End, Point, Mid}` — arrastar a ponta religa, o meio de um trecho cria um ponto (toque sem arrastar não cria), o ponto arrasta-se, duplo-clique apaga (`double_click` recebe agora o `History`); pontos azuis (`dots`, `dot_at`, `hover` pelo índice), `grow` (forma seguinte já ligada, UM passo), `release_ends`, `detach_outside` + `remap`. `Command::Grow`, `set_route`, `set_head`, rótulo pelo `text.rs` generalizado. `Metrics::{bind, dot}`, `NEXT_GAP = 80` |
 | `ph2d-board-render` | seta (tracejado, pontas cheias pintadas / vazadas traçadas, pontas e dobras redondas), rótulo sobre recorte do fundo, nível de detalhe (< 4 px = traço); overlay: realce do alvo + ponto fixo, linha da seta seleccionada, pontas e pontos (círculos ocos do tamanho do alcance), meios (bolinhas cheias), pontos azuis |
 | `ph2d-editor-core` | botão Seta (`A`/`5`); barra de estilo por TIPO de selecção (`Selected::{Shapes, Arrows, Both}`); `board_bar_look.rs` (filho: balões, selecção, ícones — a seta do ícone é `drawn_at` com a ponta de nascença do catálogo); `Ctrl+setas`; o passear alimenta o `hover` |
@@ -68,6 +72,11 @@
 
 ## §4 — O que custou e não se repete
 
+- ⛔ Um teste que calcula o esperado com a PRÓPRIA constante confirma-se a si mesmo: o do braço da
+  curva sobreviveu à mutação 0,45 → 0,5 até passar a afirmar o número MEDIDO (154).
+- ⛔ O `trim_path` do vectorial recua pela poligonal das âncoras — serve polilinhas, não uma cúbica
+  única (entortava a curva inteira). E uma lei medida numa só captura pode ter gémeas: a de ½ «ao longo
+  da saída» e a de 0,45 «da distância» cabem as duas na 1.ª captura; só a forma da volta as separou.
 - ⛔⛔ **Reusar o roteador do vectorial «porque já é melhor que o oráculo» não perguntou ao DONO se ele
   queria desvio.** O plano dizia «terminar de o fazer brilhar»; o dono, ao ver, recusou o desvio e a
   curva-de-cotovelo com capturas do Miro. O oráculo (Excalidraw) media a forma; o PRODUTO de referência

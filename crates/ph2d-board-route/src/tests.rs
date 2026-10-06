@@ -272,7 +272,7 @@ fn a_shape_dropped_in_the_way_does_not_move_the_arrow() {
 }
 
 /// ⭐ **A curva do Miro**: sem pontos de ajuste é UMA cúbica que sai e entra perpendicular às faces,
-/// com o braço de METADE do afastamento ao longo da saída (medido na captura do dono: 154 para 307).
+/// com o braço de 0,45 da distância entre as pontas (medido na captura do dono: 154 para 342,6).
 #[test]
 fn the_curve_is_one_cubic_leaving_and_entering_perpendicular_with_half_the_gap() {
     let mut doc = BoardDoc::default();
@@ -290,7 +290,9 @@ fn the_curve_is_one_cubic_leaving_and_entering_perpendicular_with_half_the_gap()
         ([714.0, 200.0], [408.0, 353.0]),
         "os meios das faces"
     );
-    let k = (x0 - x1) * END_ARM;
+    // O braço MEDIDO na captura do Miro: 154 (não a constante — senão o teste confirma-se a si mesmo).
+    let k = v[0].anchor[0] - v[0].out_handle[0];
+    assert!((k - 154.0).abs() < 1.0, "braço {k}, medido 154");
     assert_eq!(
         v[0].out_handle,
         [x0 - k, y0],
@@ -382,4 +384,66 @@ fn the_cache_revisits_only_the_touched_arrow_and_sees_waypoint_changes() {
     cache.sync(&doc);
     assert_eq!((cache.revisited(), cache.rerouted()), (1, 1));
     assert!(cache.get(ab).unwrap().polyline().contains(&[280.0, 300.0]));
+}
+
+/// ⭐ A linha acaba no CENTRO DA BASE da ponta de seta, também numa curva (2.º smoke do dono, 06/10:
+/// o recuo pela corda entortava a curva e a linha entrava de lado no triângulo).
+#[test]
+fn on_a_curve_the_line_ends_at_the_middle_of_the_head_base() {
+    use ph2d_vector::{ParamCurve, Point};
+    let mut doc = BoardDoc::default();
+    let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 300.0, 80.0]);
+    let b = shape(&mut doc, ShapeType::Pill, [500.0, 0.0, 160.0, 80.0]);
+    let bottom = |t| End::Bound {
+        target: t,
+        anchor: Anchor::Fixed([0.5, 1.0]),
+    };
+    let id = link(&mut doc, bottom(b), bottom(a), Route::Curved);
+    let mut cache = RouteCache::default();
+    cache.sync(&doc);
+    let r = cache.get(id).unwrap();
+    let w = 2.0;
+    let d = drawn(r, [Head::None, Head::Triangle], w);
+    let last = d.line.segments().last().unwrap();
+    let end = last.end();
+    let base = Point::new(150.0, 80.0 + marker(Head::Triangle).inset(HEAD_SCALE) * w);
+    assert!(
+        (end - base).hypot() < 0.5,
+        "a linha acaba em {end:?}, a base é {base:?}"
+    );
+    // E chega na direcção da ponta (a vertical), não de lado.
+    let before = last.eval(0.98);
+    let slope = ((end.x - before.x) / (end.y - before.y)).abs();
+    assert!(slope < 0.05, "a linha entra de lado na ponta: {slope}");
+    // E começa onde a rota começa (a outra ponta não tem cabeça: não recua).
+    let first = d.line.segments().next().unwrap().start();
+    assert_eq!([first.x, first.y], r.ends()[0]);
+}
+
+/// Num ponto de ajuste o braço é ½ de cada trecho vizinho, na tangente de trás para a frente (as
+/// voltas redondas do Miro; com ⅓ fazia bico — `POINT_ARM`).
+#[test]
+fn a_waypoint_arm_is_half_of_each_neighbouring_leg() {
+    let mut doc = BoardDoc::default();
+    let mut c = Connector::new(
+        End::Free([0.0, 0.0]),
+        End::Free([400.0, 0.0]),
+        Route::Curved,
+        Style::new(None, Some(ink()), ink()),
+    );
+    c.waypoints = vec![[200.0, 150.0]];
+    let el = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
+    let id = el.id;
+    BoardOp::Put(el).apply(&mut doc);
+    let mut cache = RouteCache::default();
+    cache.sync(&doc);
+    let v = &cache.get(id).unwrap().path.verts[1];
+    assert_eq!(v.anchor, [200.0, 150.0]);
+    // Tangente horizontal (de (0,0) a (400,0)); cada trecho mede 250.
+    assert!(
+        (v.out_handle[0] - (200.0 + 125.0)).abs() < 1e-9 && (v.out_handle[1] - 150.0).abs() < 1e-9
+    );
+    assert!(
+        (v.in_handle[0] - (200.0 - 125.0)).abs() < 1e-9 && (v.in_handle[1] - 150.0).abs() < 1e-9
+    );
 }

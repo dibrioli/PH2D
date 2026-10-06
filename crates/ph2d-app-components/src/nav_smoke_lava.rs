@@ -202,11 +202,7 @@ pub fn montar(world: &mut World) -> Lava {
                 shape: ColliderShape::Ball { radius: RAIO_HEROI },
                 ..Collider::default()
             },
-            Sprite::atlas(
-                WHITE_TILE_KEY,
-                [RAIO_HEROI * 2.0, RAIO_HEROI * 2.0],
-                HEROI_RGBA,
-            ),
+            crate::smoke_desenho::disco(RAIO_HEROI, HEROI_RGBA),
             TopDownPlayer::from_law(TopDownLaw {
                 speed: 4.0,
                 direction: DirectionMode::EightWay,

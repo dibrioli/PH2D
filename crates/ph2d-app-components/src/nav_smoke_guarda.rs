@@ -225,7 +225,7 @@ fn guarda(
                 },
                 ..Collider::default()
             },
-            Sprite::atlas(WHITE_TILE_KEY, [RAIO_GUARDA * 2.0, RAIO_GUARDA * 2.0], cor),
+            crate::smoke_desenho::disco(RAIO_GUARDA, cor),
             TopDownPlayer::from_law(TopDownLaw {
                 speed: VELOCIDADE_GUARDA,
                 direction: DirectionMode::Free,
@@ -371,11 +371,7 @@ pub fn monta_em(
                 shape: ColliderShape::Ball { radius: RAIO_HEROI },
                 ..Collider::default()
             },
-            Sprite::atlas(
-                WHITE_TILE_KEY,
-                [RAIO_HEROI * 2.0, RAIO_HEROI * 2.0],
-                HEROI_RGBA,
-            ),
+            crate::smoke_desenho::disco(RAIO_HEROI, HEROI_RGBA),
             TopDownPlayer::from_law(TopDownLaw {
                 speed: 4.0,
                 direction: DirectionMode::EightWay,

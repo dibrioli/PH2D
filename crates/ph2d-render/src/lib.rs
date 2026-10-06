@@ -102,7 +102,7 @@ pub mod world_rt;
 
 pub use atlas::{
     ATLAS_DEFAULT_SIZE_PX, AtlasInsertError, AtlasRegion, DEMO_TILE_COUNT, DEMO_TILE_PX,
-    FIRST_IMPORT_KEY, TextureAtlas, WHITE_TILE_KEY,
+    DISC_TILE_KEY, DISC_TILE_PX, FIRST_IMPORT_KEY, TextureAtlas, WHITE_TILE_KEY, disc_tile_pixels,
 };
 pub use camera::{Camera2d, CameraUniform};
 pub use sink_style::{SinkStyle, StyleReach};

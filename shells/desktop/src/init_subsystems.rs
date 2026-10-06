@@ -59,7 +59,7 @@ pub(super) fn boot_assets_and_renderer(
     // fallback only if the insert fails. Read before the atlas moves into the
     // renderer below.
     let motion_default_uv = atlas
-        .insert_white_tile(surface.gpu())
+        .insert_reserved_tiles(surface.gpu())
         .unwrap_or([0.0, 0.0, 1.0, 1.0]);
     // M14.5: sprite pipeline now targets the offscreen HDR game RT
     // (Rgba16Float) instead of the swap chain. The tonemap +

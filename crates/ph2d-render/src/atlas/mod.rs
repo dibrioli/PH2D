@@ -127,6 +127,36 @@ pub const WHITE_TILE_KEY: u32 = u32::MAX;
 // overwritten by a user sprite.
 const _: () = assert!(WHITE_TILE_KEY > FIRST_IMPORT_KEY && WHITE_TILE_KEY > DEMO_TILE_COUNT);
 
+/// Reserved key of the white **disc** tile: a quad of size `[d, d]` sampling it
+/// draws a disc of diameter `d` in its `tint` — the drawing of a
+/// `ColliderShape::Ball` of radius `d / 2` (plano 30 §25, A: the drawing is the body).
+pub const DISC_TILE_KEY: u32 = u32::MAX - 1;
+
+/// Side of the disc tile: the edge is anti-aliased over one texel, and the smoke
+/// scenes draw a `0,5–0,9 m` disc at `~60–110 px` (plano 30 §25), so `256` keeps the
+/// edge sharp under a `2×` zoom.
+pub const DISC_TILE_PX: u32 = 256;
+
+const _: () = assert!(DISC_TILE_KEY > FIRST_IMPORT_KEY && DISC_TILE_KEY != WHITE_TILE_KEY);
+
+/// The disc tile's straight-alpha texels: white, with coverage `1` inside a disc
+/// whose edge sits half a texel inside the tile (the sampler never reaches past
+/// it) and a one-texel linear ramp across the edge.
+#[must_use]
+pub fn disc_tile_pixels(side: u32) -> Vec<u8> {
+    let c = side as f32 / 2.0;
+    let r = c - 0.5;
+    let mut px = Vec::with_capacity((side * side * 4) as usize);
+    for y in 0..side {
+        for x in 0..side {
+            let (dx, dy) = (x as f32 + 0.5 - c, y as f32 + 0.5 - c);
+            let a = (r - (dx * dx + dy * dy).sqrt() + 0.5).clamp(0.0, 1.0);
+            px.extend_from_slice(&[0xff, 0xff, 0xff, (a * 255.0).round() as u8]);
+        }
+    }
+    px
+}
+
 pub struct TextureAtlas {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
@@ -285,6 +315,18 @@ impl TextureAtlas {
         let px = vec![0xff; (DEMO_TILE_PX * DEMO_TILE_PX * 4) as usize];
         self.insert(gpu, WHITE_TILE_KEY, DEMO_TILE_PX, DEMO_TILE_PX, &px)
             .map(|r| r.uv(self.size_px))
+    }
+
+    /// The reserved tiles a renderer needs before any sprite draws: the
+    /// [`WHITE_TILE_KEY`] square and the [`DISC_TILE_KEY`] disc. Returns the
+    /// white tile's UV rect (see [`Self::insert_white_tile`]).
+    pub fn insert_reserved_tiles(
+        &mut self,
+        gpu: &GpuContext,
+    ) -> Result<[f32; 4], AtlasInsertError> {
+        let px = disc_tile_pixels(DISC_TILE_PX);
+        self.insert(gpu, DISC_TILE_KEY, DISC_TILE_PX, DISC_TILE_PX, &px)?;
+        self.insert_white_tile(gpu)
     }
 
     /// Pack an `(width × height)` source at native resolution into

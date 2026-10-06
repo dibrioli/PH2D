@@ -252,7 +252,7 @@ fn cena_dois(world: &mut World) -> u64 {
                 shape: ColliderShape::Ball { radius: 0.2 },
                 ..Collider::default()
             },
-            Sprite::atlas(WHITE_TILE_KEY, [0.6, 0.3], CORPO_RGBA),
+            crate::smoke_desenho::disco(0.2, CORPO_RGBA),
             ProjectileMotion::from_law(voo, 0),
             ParticleEmitter {
                 space,

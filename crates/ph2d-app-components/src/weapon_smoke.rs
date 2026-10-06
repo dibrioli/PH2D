@@ -141,9 +141,8 @@ fn receita(world: &mut World, nome: &str, cor: [f32; 4]) -> Entity {
                 shape: ColliderShape::Ball { radius: 0.1 },
                 ..Collider::default()
             },
-            // ⚠️ Um rectângulo COMPRIDO: é ele que torna o LEQUE da caçadeira visível — cinco bolas
-            // redondas num cone leem-se como cinco bolas.
-            Sprite::atlas(WHITE_TILE_KEY, [0.14, 0.42], cor),
+            // Disco: o desenho encaixa-se no corpo (ver `smoke_desenho`).
+            crate::smoke_desenho::disco(0.1, cor),
             ProjectileMotion::from_law(
                 ProjectileLaw {
                     initial_speed: 7.0,

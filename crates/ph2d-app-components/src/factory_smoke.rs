@@ -51,6 +51,9 @@ use ph2d_tags::TagTree;
 pub const CENAS: u32 = 2;
 
 const MOEDA_RGBA: [f32; 4] = [0.95, 0.78, 0.25, 1.0];
+/// O lado da moeda — o desenho e o corpo leem esta MESMA constante (o desenho era `0,45` sobre um
+/// corpo de `0,44`).
+const MOEDA_LADO: f32 = 0.44;
 const NUVEM_RGBA: [f32; 4] = [0.45, 0.50, 0.62, 1.0];
 const CHAO_RGBA: [f32; 4] = [0.35, 0.45, 0.40, 1.0];
 const MARCA_RGBA: [f32; 4] = [0.30, 0.70, 0.95, 1.0];
@@ -98,12 +101,12 @@ fn cena_um(world: &mut World) {
     // A moeda: cai, e vive dois segundos.
     let moeda = receita(world, "Coin", |w, e| {
         w.entity_mut(e).insert((
-            Sprite::atlas(WHITE_TILE_KEY, [0.45, 0.45], MOEDA_RGBA),
+            Sprite::atlas(WHITE_TILE_KEY, [MOEDA_LADO, MOEDA_LADO], MOEDA_RGBA),
             Visibility::visible(),
             RigidBody {
                 kind: BodyKind::Dynamic,
             },
-            cuboide(0.22, 0.22),
+            cuboide(MOEDA_LADO / 2.0, MOEDA_LADO / 2.0),
             // ⭐⭐ **A vida vive na RECEITA e corre nas CÓPIAS** — é a lei do §2.6 do plano, e é
             // isto que a torna alcançável: num objecto solto ela seria inerte, e o painel di-lo.
             Lifetime {

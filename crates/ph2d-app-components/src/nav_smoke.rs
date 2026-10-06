@@ -144,7 +144,7 @@ pub(crate) fn perseguidor(
                 shape: ColliderShape::Ball { radius: raio },
                 ..Collider::default()
             },
-            Sprite::atlas(WHITE_TILE_KEY, [raio * 2.0, raio * 2.0], cor),
+            crate::smoke_desenho::disco(raio, cor),
             TopDownPlayer::from_law(TopDownLaw {
                 speed: velocidade,
                 direction: DirectionMode::Free,
@@ -228,11 +228,7 @@ fn cena_um(world: &mut World) -> Montada {
                 },
                 ..Collider::default()
             },
-            Sprite::atlas(
-                WHITE_TILE_KEY,
-                [LAB_RAIO_HEROI * 2.0, LAB_RAIO_HEROI * 2.0],
-                HEROI_RGBA,
-            ),
+            crate::smoke_desenho::disco(LAB_RAIO_HEROI, HEROI_RGBA),
             TopDownPlayer::from_law(TopDownLaw {
                 speed: 4.0,
                 direction: DirectionMode::EightWay,
@@ -274,11 +270,7 @@ fn cena_um(world: &mut World) -> Montada {
                 },
                 ..Collider::default()
             },
-            Sprite::atlas(
-                WHITE_TILE_KEY,
-                [LAB_RAIO_PEQUENO * 2.0, LAB_RAIO_PEQUENO * 2.0],
-                CONTROLO_RGBA,
-            ),
+            crate::smoke_desenho::disco(LAB_RAIO_PEQUENO, CONTROLO_RGBA),
             ProjectileMotion::from_law(
                 ProjectileLaw {
                     initial_speed: 2.5,

@@ -85,7 +85,7 @@ fn corpo(world: &mut World, nome: &str, em: [f32; 2], alvo: [f32; 2], desvio: bo
                 shape: ColliderShape::Ball { radius: RAIO },
                 ..Collider::default()
             },
-            Sprite::atlas(WHITE_TILE_KEY, [RAIO * 2.0, RAIO * 2.0], cor),
+            crate::smoke_desenho::disco(RAIO, cor),
             TopDownPlayer::from_law(TopDownLaw {
                 speed: VELOCIDADE,
                 direction: DirectionMode::Free,

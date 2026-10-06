@@ -274,7 +274,7 @@ fn cena_um(world: &mut World, tree: &mut TagTree) -> Entity {
             MasterRoot,
             Transform::from_translation(Vec2::ZERO),
             Visibility::visible(),
-            Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.16], BALA_RGBA),
+            crate::smoke_desenho::disco(0.1, BALA_RGBA),
             // ⭐ **A bala LEVA a tag**, e é ela que o filtro dos alvos lê. ⚠️ A cópia herda-a: uma
             // tag é um componente como outro qualquer, e a cópia profunda leva-o.
             Tags::from_ids([bala_tag]),
@@ -312,7 +312,7 @@ fn cena_um(world: &mut World, tree: &mut TagTree) -> Entity {
                 shape: ColliderShape::Ball { radius: 0.4 },
                 ..Collider::default()
             },
-            Sprite::atlas(WHITE_TILE_KEY, [1.1, 0.5], HEROI_RGBA),
+            crate::smoke_desenho::disco(0.4, HEROI_RGBA),
             // ⭐⭐⭐ **À ALTURA da fileira de cima, e isso é o passo 2 do roteiro.** Com o herói em
             // `y = 0` o tiro recto passava **entre** as duas fileiras e o dono tinha de descobrir
             // a pontaria antes de ver a lei; nascendo alinhado, o passo 2 é **uma tecla**. ⚠️ E o
@@ -339,6 +339,7 @@ fn cena_um(world: &mut World, tree: &mut TagTree) -> Entity {
         ))
         .id();
     world.entity_mut(heroi).insert(Pendente(bala));
+    crate::smoke_desenho::rumo(world, heroi, 0.4, HEROI_RGBA);
     heroi
 }
 

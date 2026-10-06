@@ -190,7 +190,7 @@ fn receita_da_bala(world: &mut World, kind: &str, rgba: [f32; 4], queima: bool) 
             MasterRoot,
             Transform::from_translation(Vec2::ZERO),
             Visibility::visible(),
-            Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.16], rgba),
+            crate::smoke_desenho::disco(0.1, rgba),
             RigidBody {
                 kind: BodyKind::Kinematic,
             },
@@ -288,7 +288,7 @@ pub fn cena_tres(world: &mut World) -> Entity {
                 shape: ColliderShape::Ball { radius: 0.3 },
                 ..Collider::default()
             },
-            Sprite::atlas(WHITE_TILE_KEY, [0.9, 0.4], HEROI_RGBA),
+            crate::smoke_desenho::disco(0.3, HEROI_RGBA),
             Transform::from_translation(Vec2::new(HEROI_X, ALVOS[0].y)),
             ph2d_physics_ecs::TopDownPlayer::from_law(TopDownLaw {
                 speed: 4.0,
@@ -310,6 +310,7 @@ pub fn cena_tres(world: &mut World) -> Entity {
             ]),
         ))
         .id();
+    crate::smoke_desenho::rumo(world, heroi, 0.3, HEROI_RGBA);
     arma(world, heroi, "Arma de fogo", SINAL_FOGO, bala_fogo);
     arma(world, heroi, "Arma de gelo", SINAL_GELO, bala_gelo);
     heroi

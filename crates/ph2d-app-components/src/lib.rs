@@ -240,6 +240,8 @@ pub mod component_registry_for_tests;
 /// ⛔⛔ A cópia que a fábrica faria de um molde — o arnês partilhado pelos gates das cenas da vida.
 #[cfg(test)]
 mod smoke_copia;
+/// O desenho encaixado no corpo (disco + «Rumo») das cenas de smoke.
+pub(crate) mod smoke_desenho;
 
 /// ⛔ **O arnês que ATRAVESSA a fronteira, e nada mais** — as duas costuras de teste que ficaram
 /// na shell porque o sujeito delas é meio chrome. Ver o cabeçalho dele.
@@ -258,6 +260,8 @@ mod asset_texture_door_census_tests;
 pub mod inspector_visibility;
 #[cfg(test)]
 mod instance_tags_tests;
+#[cfg(test)]
+mod smoke_desenho_e_corpo_tests;
 
 /// **A declaração da família** — a chave e os roteadores de smoke que ela POSSUI.
 ///
@@ -338,6 +342,9 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         // ⭐⭐⭐ A VIDA (plano 28, W2): `=1` três alvos que morrem ao 1.º, 2.º e 3.º tiro, e o
         // aliado que as balas não ferem (o CONTROLO).
         r("PH2D_VIDA_SMOKE", vida_smoke::CENAS),
+        // ⭐⭐⭐ A ARMA DO JOGADOR: `=1` as três colunas. ⚠️ O `max_level` é **contado**: a shell
+        // chama `weapon_smoke::montar(world, 1)` e a `montar` ignora o nível (`CENAS = 1`).
+        r("PH2D_WEAPON_SMOKE", weapon_smoke::CENAS),
     ],
 };
 

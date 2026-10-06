@@ -94,7 +94,7 @@ fn heroi(world: &mut World, nome: &str, em: Vec2, cor: [f32; 4], law: TopDownLaw
             shape: ColliderShape::Ball { radius: 0.35 },
             ..Collider::default()
         },
-        Sprite::atlas(WHITE_TILE_KEY, [0.7, 0.7], cor),
+        crate::smoke_desenho::disco(0.35, cor),
         TopDownPlayer::from_law(law),
         Transform::from_translation(em),
     ));

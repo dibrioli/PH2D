@@ -84,9 +84,8 @@ fn bala(world: &mut World, nome: &str, em: Vec2, cor: [f32; 4], law: ProjectileL
             shape: ColliderShape::Ball { radius: 0.18 },
             ..Collider::default()
         },
-        // ⚠️ **Um rectângulo COMPRIDO** e não um quadrado: é ele que torna o *Face Velocity*
-        // visível — uma bala redonda aponta para todo o lado.
-        Sprite::atlas(WHITE_TILE_KEY, [0.7, 0.22], cor),
+        // Disco: o desenho encaixa-se no corpo (ver `smoke_desenho`).
+        crate::smoke_desenho::disco(0.18, cor),
         ProjectileMotion::from_law(law, alvo),
         Transform::from_translation(em),
     ));
@@ -168,7 +167,7 @@ fn cena_dois(world: &mut World) {
             shape: ColliderShape::Ball { radius: 0.4 },
             ..Collider::default()
         },
-        Sprite::atlas(WHITE_TILE_KEY, [0.8, 0.8], CONTROLO_RGBA),
+        crate::smoke_desenho::disco(0.4, CONTROLO_RGBA),
         TopDownPlayer::from_law(TopDownLaw {
             speed: 3.0,
             direction: DirectionMode::EightWay,
@@ -206,7 +205,7 @@ fn cena_dois(world: &mut World) {
                 shape: ColliderShape::Ball { radius: 0.18 },
                 ..Collider::default()
             },
-            Sprite::atlas(WHITE_TILE_KEY, [0.7, 0.22], cor),
+            crate::smoke_desenho::disco(0.18, cor),
             ProjectileMotion::from_law(
                 ProjectileLaw {
                     homing_accel: homing,

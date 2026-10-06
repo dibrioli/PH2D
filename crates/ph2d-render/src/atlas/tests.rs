@@ -377,6 +377,49 @@ fn region_uv_recomputes_against_new_size_after_regrow() {
 /// so the shell points it at a fallback tile. It used to be demo tile 0 — a
 /// saturated RED square — which silently stained every authored colour (a
 /// red→blue gradient rendered red→maroon). Sampling white makes tint faithful.
+/// The disc tile draws the BALL it stands for: coverage is `1` well inside the
+/// inscribed circle, `0` outside it (the square's corners), `½` on it, and every
+/// texel is white (the tint alone colours it).
+#[test]
+fn the_disc_tile_covers_the_inscribed_circle_and_nothing_outside_it() {
+    let side = DISC_TILE_PX;
+    let px = disc_tile_pixels(side);
+    assert_eq!(px.len(), (side * side * 4) as usize);
+    let alpha = |x: u32, y: u32| px[((y * side + x) * 4 + 3) as usize];
+    let c = side as f32 / 2.0;
+    let (mut dentro, mut fora, mut borda) = (0u32, 0u32, 0u32);
+    for y in 0..side {
+        for x in 0..side {
+            let i = ((y * side + x) * 4) as usize;
+            assert_eq!(&px[i..i + 3], &[0xff, 0xff, 0xff], "texel ({x},{y}) is white");
+            let d = ((x as f32 + 0.5 - c).powi(2) + (y as f32 + 0.5 - c).powi(2)).sqrt();
+            let a = alpha(x, y);
+            if d < c - 1.5 {
+                assert_eq!(a, 0xff, "inside ({x},{y}) d={d}");
+                dentro += 1;
+            } else if d > c {
+                assert_eq!(a, 0, "outside ({x},{y}) d={d}");
+                fora += 1;
+            } else {
+                borda += 1;
+            }
+        }
+    }
+    // Population: the corners outside the circle are `1 − π/4` of the tile.
+    let n = (side * side) as f32;
+    assert!((fora as f32 / n - (1.0 - std::f32::consts::FRAC_PI_4)).abs() < 0.01);
+    assert!(dentro > 0 && borda > 0);
+    // Symmetric under the square's eight symmetries.
+    for (x, y) in [(3, 100), (100, 3), (40, 17)] {
+        let a = alpha(x, y);
+        assert_eq!(a, alpha(side - 1 - x, y));
+        assert_eq!(a, alpha(x, side - 1 - y));
+        assert_eq!(a, alpha(y, x));
+    }
+    // The square's corner, which the white tile draws, is empty.
+    assert_eq!(alpha(0, 0), 0);
+}
+
 #[test]
 fn white_tile_is_opaque_white_and_never_collides_with_import_keys() {
     // (That the reserved key sits past the importer's allocator is a

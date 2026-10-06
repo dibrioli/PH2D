@@ -125,9 +125,8 @@ fn receita(world: &mut World, nome: &str, cor: [f32; 4]) -> Entity {
                 shape: ColliderShape::Ball { radius: 0.12 },
                 ..Collider::default()
             },
-            // ⚠️ **Um rectângulo COMPRIDO** e não um quadrado: é ele que torna a MIRA visível — uma
-            // bala redonda aponta para todo o lado.
-            Sprite::atlas(WHITE_TILE_KEY, [0.55, 0.18], cor),
+            // Disco: o desenho encaixa-se no corpo (ver `smoke_desenho`).
+            crate::smoke_desenho::disco(0.12, cor),
             ProjectileMotion::from_law(
                 ProjectileLaw {
                     initial_speed: 9.0,
@@ -194,9 +193,8 @@ fn cena_um(world: &mut World) -> Entity {
                 shape: ColliderShape::Ball { radius: 0.4 },
                 ..Collider::default()
             },
-            // ⚠️ Comprido, como as balas, e pela mesma razão: é assim que se vê para onde ele está
-            // virado quando está parado.
-            Sprite::atlas(WHITE_TILE_KEY, [1.1, 0.5], HEROI_RGBA),
+            // Disco + filho «Rumo» (abaixo): é assim que se vê para onde ele está virado parado.
+            crate::smoke_desenho::disco(0.4, HEROI_RGBA),
             Transform::from_translation(Vec2::new(-3.0, 0.0)),
             ph2d_physics_ecs::TopDownPlayer::from_law(TopDownLaw {
                 speed: 4.0,
@@ -208,6 +206,7 @@ fn cena_um(world: &mut World) -> Entity {
             }),
         ))
         .id();
+    crate::smoke_desenho::rumo(world, heroi, 0.4, HEROI_RGBA);
     arma(world, heroi, bala, true);
 
     // ⭐⭐ O CONTROLO: o MESMO gatilho e a MESMA receita, com a mira DESLIGADA.

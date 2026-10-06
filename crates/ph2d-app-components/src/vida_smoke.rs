@@ -330,7 +330,7 @@ pub(crate) fn receita_da_bala(world: &mut World) -> Entity {
             MasterRoot,
             Transform::from_translation(Vec2::ZERO),
             Visibility::visible(),
-            Sprite::atlas(WHITE_TILE_KEY, [0.5, 0.16], BALA_RGBA),
+            crate::smoke_desenho::disco(0.1, BALA_RGBA),
             RigidBody {
                 kind: BodyKind::Kinematic,
             },
@@ -428,7 +428,7 @@ pub(crate) fn heroi(world: &mut World, xy: [f32; 2], rgba: [f32; 4], bala: Entit
                 shape: ColliderShape::Ball { radius: 0.3 },
                 ..Collider::default()
             },
-            Sprite::atlas(WHITE_TILE_KEY, [0.9, 0.4], rgba),
+            crate::smoke_desenho::disco(0.3, rgba),
             Transform::from_translation(Vec2::new(xy[0], xy[1])),
             ph2d_physics_ecs::TopDownPlayer::from_law(TopDownLaw {
                 speed: 4.0,
@@ -458,6 +458,7 @@ pub(crate) fn heroi(world: &mut World, xy: [f32; 2], rgba: [f32; 4], bala: Entit
         ))
         .id();
     world.entity_mut(heroi).insert(Pendente(bala));
+    crate::smoke_desenho::rumo(world, heroi, 0.3, rgba);
     heroi
 }
 

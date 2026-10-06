@@ -211,7 +211,7 @@ fn cena_um(world: &mut World) -> Entity {
                 shape: ColliderShape::Ball { radius: 0.45 },
                 ..Collider::default()
             },
-            Sprite::atlas(WHITE_TILE_KEY, [0.9, 0.9], HEROI_RGBA),
+            crate::smoke_desenho::disco(0.45, HEROI_RGBA),
             Transform::from_translation(Vec2::new(0.0, HEROI_Y)),
             ph2d_physics_ecs::TopDownPlayer::from_law(TopDownLaw {
                 speed: 5.0,

@@ -623,3 +623,6 @@ mod tracejado;
 
 #[path = "motion_shape_placa_gpu_intercalada_tests.rs"]
 mod intercalada;
+
+#[path = "motion_shape_placa_gpu_despachos_probe.rs"]
+mod despachos;

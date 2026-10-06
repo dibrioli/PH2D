@@ -2379,3 +2379,12 @@ com a pilha formada (tique `117`+); `4 096` mediana `9,5`, **`48`–`93` ms por 
 do sink não pesa (com e sem: iguais). ⇒ o quadro de `17`–`28` ms do app a `4 096` era o relógio a DESCARTAR tempo
 de simulação (`max_substeps`): a pilha corria em câmara lenta. **Decisão:** o contacto da caixa vai para a placa
 com o Gauss–Seidel por cores.
+
+**(5) — a prova de CUSTO do modelo no dispositivo.** O contacto por cores pede, por tique, `8` sub-passos × (a
+separação: `8` varreduras com a grelha · a montagem das restrições · as cores · `8` iterações × as cores) —
+`~1 000` despachos dependentes. A sonda `custo_de_um_despacho` (`k` despachos de `4 096` fios, cada um a ler o que
+o anterior escreveu, o mínimo de `9`): **um passe com `1 000` despachos `1,6` ms (`1,57`–`1,58` µs por despacho,
+iGPU e RTX)**; um passe por despacho `8,7`–`8,9` µs. ⇒ dentro de um passe o cabeçalho cabe (`~1,6` ms por tique);
+o desenho junta os despachos de um sub-passo num passe. E a CPU não chega lá sozinha (medido com relógio
+temporário, uma taça de `4 096` com a pilha formada, por sub-passo: separar `~3,0` ms + impulsos `~4,0` ms ⇒
+`~56` ms por tique com `8` sub-passos; paralelizar só os impulsos deixava `~28`).

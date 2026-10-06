@@ -58,7 +58,10 @@
 //! de sair de um ALVO fixo (senão ele recompõe-se a cada varredura e a peça ganha energia). Com
 //! `e = 0` — o default do produto — as duas contas são o mesmo bit; acima disso separam-se por 1 ULP.
 
-use super::{Contacto, GRAUS, Pecas, atrito, dot, manifesto};
+use super::{
+    Contacto, GRAUS, PECAS_PARA_PARALELIZAR, PISO_DA_TAREFA, Pecas, atrito, dot, manifesto,
+    par_preenche_em_blocos,
+};
 
 /// **As leis que o solver de velocidade corre.** O default é [`Leis::HOJE`], que é a lei medida e
 /// aprovada pelo dono em 2026-09-15 — *toda medição desta família começa por ela como CONTROLO.*
@@ -286,7 +289,6 @@ fn monta(
     let ativo: Vec<bool> = (0..n)
         .map(|i| super::ativo(p[i], pecas.colisores[i].as_ref()))
         .collect();
-    let mut out = Vec::new();
     // ⭐ doc 121 §9.19 (5) — **os pares saem da GRELHA, e não de todos-os-pares.** Este laço era
     // `O(n²)` por sub-passo: a `=114` com `1 024` peças por taça custava `151` ms de cozimento por
     // quadro, e com `4 096` passava de `2` s — a separação, essa, já tinha a grelha. A grelha entrega
@@ -295,103 +297,115 @@ fn monta(
     // os mesmos bits (gate `os_impulsos_pela_grelha_dao_os_bits_de_todos_os_pares`).
     let alcances = super::grelha::alcances_de(pecas.colisores, &ativo);
     if alcances.iter().fold(0.0_f32, |a, b| a.max(*b)) <= 0.0 {
-        return out;
+        return Vec::new();
     }
     let mut grade = super::grelha::Grelha::default();
     grade.planeia(p, &ativo, &alcances);
     grade.constroi(p, &ativo);
-    let mut viz: Vec<u32> = Vec::new();
+    // ⭐ doc 121 §9.19 (5) — **cada `lo` monta as suas restrições num balde próprio, EM PARALELO**, e os
+    // baldes juntam-se pela ordem de `lo`: a mesma lista pela mesma ordem (a montagem era `~25 %` do sub-passo
+    // na pilha de `1 024`). O passo de cada peça lê-se uma vez, e a referência do gate também (o `thread_local`
+    // não existe nas threads do rayon).
+    let passos: Vec<f32> = (0..n).map(dt).collect();
+    let todos = todos_os_pares();
+    let mut baldes: Vec<Vec<Restricao>> = (0..n).map(|_| Vec::new()).collect();
     // ⚠️ O laço é `lo < hi` e a normal vai do MENOR para o MAIOR — a mesma ordem do par que o
     // `separate` usa, para os dois lados de um contacto serem exactamente opostos.
-    for lo in 0..n {
-        if !ativo[lo] {
-            continue;
-        }
-        if todos_os_pares() {
-            viz.clear();
-            viz.extend(0..u32::try_from(n).unwrap_or(u32::MAX));
-        } else {
-            grade.vizinhos_de(lo, &mut viz);
-        }
-        for hi in viz.iter().map(|&h| h as usize) {
-            if hi <= lo || !ativo[hi] {
-                continue;
+    par_preenche_em_blocos(
+        n >= PECAS_PARA_PARALELIZAR,
+        &mut baldes,
+        PISO_DA_TAREFA,
+        Vec::<u32>::new,
+        |viz, lo, out| {
+            if !ativo[lo] {
+                return;
             }
-            let (Some(clo), Some(chi)) = (pecas.colisores[lo], pecas.colisores[hi]) else {
-                continue;
-            };
-            let Some(m) = manifesto(&clo, p[lo], &chi, p[hi], (lo + hi) % 2 == 0) else {
-                continue;
-            };
-            let soma = pecas.pesos[lo] + pecas.pesos[hi];
-            // Dois obstáculos não têm momento a trocar.
-            if soma <= 0.0 {
-                continue;
-            }
-            let passo = dt(lo).max(dt(hi));
-            let (clo_c, chi_c) = (clo.centro(p[lo]), chi.centro(p[hi]));
-            let (mlo, mhi) = (pecas.material(lo), pecas.material(hi));
-            let e = atrito::salto(mlo.salto, mhi.salto);
-            let mu = atrito::mu(mlo.atrito, mhi.atrito);
-            // ⭐⭐⭐ **UM ou DOIS pontos** — ver [`Leis::por_ponto`]. A lei de 2026-09-15 lia o
-            // primeiro e o seu comentário dizia *«a normal é a mesma nos dois, logo calcula-se uma
-            // vez»*: verdade para a TRANSLAÇÃO e falso para o binário, que é o que a wave curou.
-            let pontos: &[Contacto] = if leis.por_ponto {
-                m.pontos()
+            if todos {
+                viz.clear();
+                viz.extend(0..u32::try_from(n).unwrap_or(u32::MAX));
             } else {
-                &m.pontos()[..1]
-            };
-            for c in pontos {
-                let bn = [c.braco(clo_c), c.braco(chi_c)];
-                let bt = [c.braco_tangente(clo_c), c.braco_tangente(chi_c)];
-                // ⭐ Na normal a alavanca só entra quando a rotação PERSISTE: sem velocidade
-                // angular o impulso normal não roda ninguém, e pôr a alavanca na massa efectiva
-                // deixaria a peça a receber menos impulso por uma rotação que não vai acontecer.
-                let kn = if leis.angular {
-                    massa(pecas.pesos[lo], inv_inercia[lo], bn[0])
-                        + massa(pecas.pesos[hi], inv_inercia[hi], bn[1])
-                } else {
-                    soma
-                };
-                let kt = massa(pecas.pesos[lo], inv_inercia[lo], bt[0])
-                    + massa(pecas.pesos[hi], inv_inercia[hi], bt[1]);
-                let vn = normal_relativa(c, lo, hi, bn, vel, w, leis);
-                // ⭐⭐⭐ **A FORÇA NORMAL DE UM CONTACTO EM REPOUSO É A PENETRAÇÃO** — e sem esta
-                // linha o atrito desaparece exactamente onde ele mais importa.
-                //
-                // ⛔⛔ A 1.ª redacção prendia o tecto de Coulomb à velocidade de APROXIMAÇÃO, e num
-                // contacto assente ela é **zero**: a peça já não se aproxima de nada. *O atrito
-                // ficava ligado só no instante do embate e desligado no resto do tempo* — e as
-                // fixturas que o apanharam foram as dos discos, que não têm gravidade nenhuma.
-                //
-                // ⚠️ **As duas leituras são a MESMA grandeza:** numa pilha sob gravidade a
-                // penetração por sub-passo é `~g·dt²`, logo `pen/dt ≈ g·dt`, que é exactamente o
-                // `vrel` que a gravidade repõe. Tomar o MAIOR cobre o embate e o repouso.
-                let normal_ref = vn.max(c.penetracao / passo.max(f32::MIN_POSITIVE));
-                out.push(Restricao {
-                    lo,
-                    hi,
-                    n: c.normal,
-                    t: c.tangente(),
-                    bn,
-                    bt,
-                    kn,
-                    kt,
-                    // ⚠️ O ressalto sai de um ALVO FIXO, medido na velocidade de ENTRADA. Recalculá-lo
-                    // a cada varredura fá-lo-ia compor-se `iteracoes` vezes.
-                    restituicao: if vn > leis.limiar_salto { e * vn } else { 0.0 },
-                    mu,
-                    normal_fixo: normal_ref / soma,
-                    rolar: [mlo.rolar, mhi.rolar],
-                    passo,
-                    lambda: 0.0,
-                    lambda_t: 0.0,
-                    lambda_r: [0.0, 0.0],
-                });
+                grade.vizinhos_de(lo, viz);
             }
-        }
-    }
-    out
+            for hi in viz.iter().map(|&h| h as usize) {
+                if hi <= lo || !ativo[hi] {
+                    continue;
+                }
+                let (Some(clo), Some(chi)) = (pecas.colisores[lo], pecas.colisores[hi]) else {
+                    continue;
+                };
+                let Some(m) = manifesto(&clo, p[lo], &chi, p[hi], (lo + hi) % 2 == 0) else {
+                    continue;
+                };
+                let soma = pecas.pesos[lo] + pecas.pesos[hi];
+                // Dois obstáculos não têm momento a trocar.
+                if soma <= 0.0 {
+                    continue;
+                }
+                let passo = passos[lo].max(passos[hi]);
+                let (clo_c, chi_c) = (clo.centro(p[lo]), chi.centro(p[hi]));
+                let (mlo, mhi) = (pecas.material(lo), pecas.material(hi));
+                let e = atrito::salto(mlo.salto, mhi.salto);
+                let mu = atrito::mu(mlo.atrito, mhi.atrito);
+                // ⭐⭐⭐ **UM ou DOIS pontos** — ver [`Leis::por_ponto`]. A lei de 2026-09-15 lia o
+                // primeiro e o seu comentário dizia *«a normal é a mesma nos dois, logo calcula-se uma
+                // vez»*: verdade para a TRANSLAÇÃO e falso para o binário, que é o que a wave curou.
+                let pontos: &[Contacto] = if leis.por_ponto {
+                    m.pontos()
+                } else {
+                    &m.pontos()[..1]
+                };
+                for c in pontos {
+                    let bn = [c.braco(clo_c), c.braco(chi_c)];
+                    let bt = [c.braco_tangente(clo_c), c.braco_tangente(chi_c)];
+                    // ⭐ Na normal a alavanca só entra quando a rotação PERSISTE: sem velocidade
+                    // angular o impulso normal não roda ninguém, e pôr a alavanca na massa efectiva
+                    // deixaria a peça a receber menos impulso por uma rotação que não vai acontecer.
+                    let kn = if leis.angular {
+                        massa(pecas.pesos[lo], inv_inercia[lo], bn[0])
+                            + massa(pecas.pesos[hi], inv_inercia[hi], bn[1])
+                    } else {
+                        soma
+                    };
+                    let kt = massa(pecas.pesos[lo], inv_inercia[lo], bt[0])
+                        + massa(pecas.pesos[hi], inv_inercia[hi], bt[1]);
+                    let vn = normal_relativa(c, lo, hi, bn, vel, w, leis);
+                    // ⭐⭐⭐ **A FORÇA NORMAL DE UM CONTACTO EM REPOUSO É A PENETRAÇÃO** — e sem esta
+                    // linha o atrito desaparece exactamente onde ele mais importa.
+                    //
+                    // ⛔⛔ A 1.ª redacção prendia o tecto de Coulomb à velocidade de APROXIMAÇÃO, e num
+                    // contacto assente ela é **zero**: a peça já não se aproxima de nada. *O atrito
+                    // ficava ligado só no instante do embate e desligado no resto do tempo* — e as
+                    // fixturas que o apanharam foram as dos discos, que não têm gravidade nenhuma.
+                    //
+                    // ⚠️ **As duas leituras são a MESMA grandeza:** numa pilha sob gravidade a
+                    // penetração por sub-passo é `~g·dt²`, logo `pen/dt ≈ g·dt`, que é exactamente o
+                    // `vrel` que a gravidade repõe. Tomar o MAIOR cobre o embate e o repouso.
+                    let normal_ref = vn.max(c.penetracao / passo.max(f32::MIN_POSITIVE));
+                    out.push(Restricao {
+                        lo,
+                        hi,
+                        n: c.normal,
+                        t: c.tangente(),
+                        bn,
+                        bt,
+                        kn,
+                        kt,
+                        // ⚠️ O ressalto sai de um ALVO FIXO, medido na velocidade de ENTRADA. Recalculá-lo
+                        // a cada varredura fá-lo-ia compor-se `iteracoes` vezes.
+                        restituicao: if vn > leis.limiar_salto { e * vn } else { 0.0 },
+                        mu,
+                        normal_fixo: normal_ref / soma,
+                        rolar: [mlo.rolar, mhi.rolar],
+                        passo,
+                        lambda: 0.0,
+                        lambda_t: 0.0,
+                        lambda_r: [0.0, 0.0],
+                    });
+                }
+            }
+        },
+    );
+    baldes.into_iter().flatten().collect()
 }
 
 /// A velocidade relativa na NORMAL, no ponto do contacto.

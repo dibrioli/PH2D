@@ -2431,13 +2431,27 @@ CPU e fica CERTA). **O ponto onde a recusa expirou, escrito:** com a cura, a `4 
 ms por tique com a pilha formada (a sonda do tique do app); a `1 024`, `14`–`20` ms.
 Prompt da próxima janela: [`HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_CONTACTO_NA_PLACA.md`](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_CONTACTO_NA_PLACA.md).
 
-**⛔ (5) — a CORRECÇÃO da régua do app (achada na foto do smoke, depois das tabelas).** A porta `PH2D_PLAY=1` punha o
-relógio a andar (registo temporário: `t` `0 → 1,8 → 3,8 → 5,8` s), mas a FOTO mostrou a `=114` parada no instante de
-partida, sem as taças desenhadas: neste roteiro a cena NÃO cai, e o motivo não foi achado nesta janela. ⇒ **as duas
-tabelas do app desta secção mediram a cena PARADA** — o cozimento a correr a cada quadro sobre o estado de partida
-(é por isso que a cura do `O(n²)` também a mexeu: `151 → 15` ms), NÃO a pilha a cair; a leitura «a simulação em
-câmara lenta» estava errada e saiu. O custo da QUEDA é o da sonda `custo_do_tique_do_app_na_pilha` (o MESMO
-`advance_or_scrub_scoped` da ponte, por tique): `1 024` por taça `14`–`20` ms, `4 096` `48`–`93` ms com a pilha
-formada — e é sobre ela que a decisão assenta, inalterada. A porta `PH2D_PLAY` SAIU (uma porta que não cumpre o que
-promete mede outra coisa em silêncio). **A régua do app em Play é a 1.ª tarefa da próxima janela** (prompt do
-contacto na placa, passo (0)).
+**⛔ (5) — a régua do app, CORRIGIDA DUAS VEZES (a 2.ª em 06/10, depois do smoke do dono).** Em 05/10 escrevi aqui
+que a `=114` não caía no roteiro de foto e que as tabelas do app mediam a cena parada — **errado**: a demo força a
+ferramenta `motion` (que entra em Play) e a cena cai sozinha; a foto tinha apanhado o RECOMEÇO do ciclo (a queda
+recomeça a cada `3,6` s). A porta `PH2D_PLAY` era desnecessária e saiu. O que estava mesmo errado era outra coisa:
+**a janela de `120` quadros do `[frame]` cobre um ciclo inteiro e a média esconde o instante da pilha**, e eu dei ao
+dono um smoke de desempenho em `--profile smoke` (sem LTO; o `CLAUDE.md` §2 manda `--release` para isso). O dono viu
+`≤ 10` fps no instante denso. ⇒ a régua nova `[motion-quadro]` (`PH2D_MOTION_RELOGIO=1`, `motion_bridge_relogio.rs`):
+a cada `30` quadros a parede, o Motion médio e máximo e os tiques por quadro. Pior janela por ciclo, `=114` com
+`Collide` (`target/prova/onda4/relogio/`):
+
+| peças por taça | perfil | antes da montagem em paralelo | com a montagem dos pares em PARALELO (os mesmos bits) |
+|---|---|---|---|
+| `1 024` | `release` | `56`–`60` fps; alguns recomeços `16`–`18` | **`60` fps em todas as `38` janelas** |
+| `1 024` | `smoke` | `12`–`20` fps no instante denso (`3`–`8` tiques por quadro) | `23`–`32` fps |
+| `4 096` | `release` | `10`–`15` fps | `13`–`25` fps |
+| `4 096` | `smoke` | — | `8`–`9` fps |
+
+⇒ a queda corre a `60` fps; o quadro cai no INSTANTE MAIS DENSO da pilha (o fim de cada ciclo): o tique passa do
+orçamento e o relógio passa a recuperar até `8` tiques por quadro, o que o afunda. **A montagem dos pares em
+paralelo** (`impulso.rs`: um balde por `lo`, juntos pela ordem de `lo`; gate de bits verde) tirou o `release` de
+`1 024` por taça do mergulho. A `4 096` e no perfil `smoke` o mergulho continua — é o que o contacto na placa cura.
+A decisão do item (5) não muda.
+Mutação da montagem em paralelo: juntar os baldes ao contrário (`rev()`) SOBREVIVEU ao gate de bits (a referência
+passa pela mesma junção); o gate passou a exigir a ordem `(lo, hi)` crescente e ela sangra.

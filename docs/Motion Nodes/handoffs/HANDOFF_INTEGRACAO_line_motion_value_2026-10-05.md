@@ -232,7 +232,7 @@ Plano, kill-criteria (escritos antes) e números: [doc 121 §9.19](../121_as_for
 | **(2) a parede do Vello** | ⛔ **RECUSA MEDIDA.** O `U` (um caminho por traço) já era o estado; a FITA (`U+A`) não funde nenhum pedaço (os dois lados do vértice calculam a faixa em ordem diferente), e a rota pela lei manda `2,45×` os segmentos (`98` por cópia contra `40`): parede iGPU `+24`/`+42 %`. `e115108de` → `274ed670e`. A sonda conta caminhos e segmentos |
 | **(3) a ponta e a junta no cartão** | ✅ **CONSTRUÍDO.** `stroke_cap`/`stroke_join` (`Enum`, omissão Butt/Miter = o de sempre), no `ALL` e no `SPECS`, i18n, `build_shape_path` → `StrokeSpec`. Gates do nó, do cartão, da gravação (ida e volta e projecto antigo) e da IMAGEM (`3 × 3`, placa × rota Vello alfa `≤ 1`). Contrato `NodeManifest=8` intocado (ADR-0039 lido) |
 | **(4) a prova do SIGSEGV** | ✅ **PROVADA.** `40` corridas alternadas na RTX: antes da cura `14/20` `SIGSEGV`, depois `0/20` (carga `3`–`38`) |
-| **(5) o contacto em Play** | ✅ medido e **curado na CPU**: o `monta` dos impulsos era `O(n²)`; pelos pares da grelha (os mesmos bits) `1 024` peças por taça `247` ms → `60` fps. ⏳ **ABERTO: o contacto da caixa na placa** — a recusa expirou (a CPU paga `48`–`93` ms por tique a `4 096` por taça com a pilha formada; ⚠️ a régua do APP em Play não funcionou nesta janela — a cena não cai no roteiro de foto — e as tabelas do app mediram a cena parada, doc 121 §9.19 correcção). Modelo de LEI provado (Jacobi refutado: pilha `1,85×` mais agitada; Gauss–Seidel por cores na banda da ordem) e de CUSTO (`1,6` µs por despacho num passe); não construído nesta janela (quatro peças, duas topologias novas do dispositivo). Prompt: [`HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_CONTACTO_NA_PLACA.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_CONTACTO_NA_PLACA.md) |
+| **(5) o contacto em Play** | ✅ medido e **curado na CPU**: o `monta` dos impulsos era `O(n²)`; pelos pares da grelha (os mesmos bits) `1 024` peças por taça `247` ms → `60` fps. ⏳ **ABERTO: o contacto da caixa na placa** — a recusa expirou (a CPU paga `48`–`93` ms por tique a `4 096` por taça com a pilha formada; ⚠️ e o quadro do app no instante denso da pilha: `release` `1 024` por taça `60` fps depois da montagem dos pares em paralelo, `4 096` `13`–`25` fps; régua `[motion-quadro]`, doc 121 §9.19). Modelo de LEI provado (Jacobi refutado: pilha `1,85×` mais agitada; Gauss–Seidel por cores na banda da ordem) e de CUSTO (`1,6` µs por despacho num passe); não construído nesta janela (quatro peças, duas topologias novas do dispositivo). Prompt: [`HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_CONTACTO_NA_PLACA.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-05_CONTACTO_NA_PLACA.md) |
 
 **Superfície de colisão nova (o integrador mede):**
 - `ph2d-node-motion-shape`: `param.rs` (`STROKE_CAP`/`STROKE_JOIN` APENDADOS ao `ALL` e ao `SPECS` — outra linha que
@@ -279,3 +279,11 @@ no instante de partida — a queda não se fotografa nesta janela, §9.19 correc
 Binário: `rm -rf target/*/incremental` e o build `smoke` do `ph2d-host-desktop` 2× (a 2.ª `Finished … in 0.20s`, zero
 «Compiling»). Perfil do loop (`agent-loop-profile.sh`, `20` sessões): paralelismo `1,13`/passo ✗ · respostas por
 sessão `265` ✓ · test:check `3,5×` ✗ · Edit `34 %` ✗ · contexto relido `466` mil ✗ · contexto inicial `63` mil ✓.
+
+**06/10 — depois do smoke do dono** (smoke 1 ✅; smoke 2: *«FPS cai para 10 ou menos»*): o smoke de desempenho tinha
+ido em `--profile smoke` e a régua (`[frame]`, `120` quadros) escondia o instante denso. Régua nova `[motion-quadro]`
+(`PH2D_MOTION_RELOGIO=1`, `motion_bridge_relogio.rs`, porta de medição) e a montagem dos pares dos impulsos em
+PARALELO (`ph2d-contact/src/impulso.rs`, os mesmos bits): `release` `1 024` por taça `60` fps em todas as janelas;
+`smoke` `23`–`32` fps no instante denso. A porta `PH2D_PLAY` (que a 1.ª correcção dava por necessária) era
+desnecessária: a demo já entra em Play. Superfície nova: `motion_bridge.rs` (`+6` linhas: `relogio::comeca`/`regista`)
+e `motion_bridge_relogio.rs` (novo); `impulso.rs` usa `par_preenche_em_blocos`.

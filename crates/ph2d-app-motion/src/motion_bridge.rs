@@ -45,6 +45,10 @@ pub mod gpu;
 #[path = "motion_bridge_surfaces.rs"]
 mod surfaces;
 
+/// doc 121 §9.19 (5) — a régua `[motion-quadro]` (`PH2D_MOTION_RELOGIO=1`).
+#[path = "motion_bridge_relogio.rs"]
+mod relogio;
+
 #[path = "motion_bridge_params.rs"]
 pub mod params;
 
@@ -480,6 +484,7 @@ pub fn dispatch(
     // preço disso REALIMENTA: um quadro lento recupera mais tiques, que o tornam mais lento ainda.
     let tiques = ticks_owed(motion.pump.last_cooked_tick(), target);
     let ultimo = *tiques.end();
+    let relogio = relogio::comeca(tiques.clone().count());
     for tick in tiques {
         motion.pump.set_separa_o_desenho(tick == ultimo);
         motion.pump.advance_or_scrub_scoped(
@@ -494,6 +499,7 @@ pub fn dispatch(
         );
     }
 
+    relogio::regista(relogio, playhead.time());
     // LOD — the freeze fix (ADR-0154 follow-up). The cook just filled
     // `vector_instances` with one crisp `VectorInstance` per stamped live vector; a
     // grid of 160k is a per-frame freeze (~one Vello fill each). This moves any

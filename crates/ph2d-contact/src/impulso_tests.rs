@@ -141,6 +141,12 @@ fn compara(grande: bool) {
         lt.iter().all(|r| r.0 < r.1),
         "um par fora da ordem lo < hi (ou de uma peca consigo propria)"
     );
+    // E a ORDEM do Gauss–Seidel, que a referência também partilha com a grelha (a montagem é em paralelo, por
+    // baldes): `lo` crescente por fora, `hi` crescente por dentro.
+    assert!(
+        lt.windows(2).all(|w| (w[0].0, w[0].1) <= (w[1].0, w[1].1)),
+        "as restricoes fora da ordem (lo, hi) crescente"
+    );
     // Os controlos: o contacto respondeu (velocidades e spins mudaram), senão a igualdade era de zeros.
     let mexeram = (0..v0.len()).filter(|&i| v0[i] != vt[i]).count();
     assert!(

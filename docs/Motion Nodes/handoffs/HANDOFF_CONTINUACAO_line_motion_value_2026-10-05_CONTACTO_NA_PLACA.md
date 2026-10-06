@@ -37,11 +37,10 @@ O QUE JÁ EXISTE (NÃO reconstrua):
 
 A TAREFA — o contacto da caixa NA PLACA (4.ª topologia do dispositivo ⇒ two-strikes; os modelos de LEI e de CUSTO
 estão provados; falta o do SEQUENCIADOR):
- (0) A RÉGUA DO APP EM PLAY, antes de tudo (doc 121 §9.19, a correcção): no roteiro de foto a `=114` NÃO cai — um
-     `playhead.play()` no 1.º quadro punha o relógio a andar e a cena ficava no instante de partida, sem as taças;
-     ache porquê (a ponte só coze com a ferramenta `motion` activa — `demo_wants_the_motion_tool` força-a —, o
-     `ticks_owed`/scrub com o salto do 1.º quadro, o `Loop` da zona), construa a porta que a põe a cair e FOTOGRAFE
-     a queda; sem ela o kill-criterion do quadro não se mede.
+ (0) A RÉGUA DO APP já existe: `PH2D_MOTION_RELOGIO=1` imprime `[motion-quadro]` a cada `30` quadros (a parede, o
+     Motion médio e máximo, os tiques por quadro). A `=114` cai sozinha no roteiro de foto (a demo força a ferramenta
+     `motion`, que entra em Play); ⚠️ uma FOTO é um instante do ciclo (a queda recomeça a cada `3,6` s) e não prova
+     que a cena parou — leia as janelas. O critério do quadro lê-se na PIOR janela, em `release`.
  (0b) PROVA do sequenciador: a `sim.zone` no dispositivo é passagem (inventário de 05/10) — meça se a
      `=114` SEM colisão corre os `8` sub-passos na placa (paridade por passo com a CPU nos gates `gpu_cpu_parity_sim`
      com `substeps = 8`). Se não corre, os sub-passos da zona no dispositivo são o 1.º bloco desta onda (sem eles o
@@ -62,7 +61,7 @@ estão provados; falta o do SEQUENCIADOR):
      forma; o colisor externo da membrana e o passe armado do sink continuam a cair para a CPU até terem kernel).
 KILL-CRITERIA (escritos antes): paridade por PASSO contra a CPU (`1` tique, `8` sub-passos) — posições `≤ 2e-3` e
 giro `≤ 0,1°` nas fixturas de caixas rodadas e discos (o `ε` do gate de discos); a pilha da `=114` (`25` e `1 024`)
-dentro da banda da ordem da `prova_dos_impulsos_da_placa`; quadro do app (`release`, em Play pela porta do passo (0)) com `Collide`:
+dentro da banda da ordem da `prova_dos_impulsos_da_placa`; pior janela `[motion-quadro]` do app (`release`) com `Collide`:
 `4 096` por taça `≤ 16,7` ms na iGPU e `16 384` `≤ 33` ms na RTX; os gates da pilha verdes nas duas rotas. Falha ⇒
 a cerca fica, recusa medida com a tabela.
 Leis que já custaram caro: a régua é a soma dos passes e o resumo o mínimo; um critério de semelhança precisa de

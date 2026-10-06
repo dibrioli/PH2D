@@ -1,20 +1,20 @@
 ---
 name: feedback-a-clock-that-runs-does-not-prove-the-scene-moves
-description: "Uma porta que põe o RELÓGIO a andar não prova que a CENA anda — a matriz do app da =114 «em Play» mediu a cena parada; quem acusou foi a foto do smoke"
+description: "Uma FOTO é um instante de um ciclo, e uma janela de 120 quadros é a média dele — nenhuma das duas diz como está o instante denso; meça por janela CURTA ao longo do ciclo, em release"
 metadata:
   type: feedback
 ---
 
-Na 4.ª onda de 05/10 (doc 121 §9.19 (5)) fiz `PH2D_PLAY=1` (um `playhead.play()` no 1.º quadro) para medir a
-`=114` com colisão em Play, corri uma matriz de `12` células e tabelei «quadro em Play». Um registo temporário
-mostrava o relógio a andar (`0 → 5,8` s); a FOTO do smoke, tirada no fim, mostrou a cena parada no instante de
-partida e sem as taças. As duas tabelas mediram a cena PARADA (o cozimento a cada quadro sobre o estado de
-partida) e eu tinha escrito «a simulação em câmara lenta» por cima delas.
+4.ª onda, 05–06/10 (doc 121 §9.19 (5)): a foto da `=114` mostrou a pilha na grelha de partida e eu concluí que a
+cena NÃO caía no roteiro e que as tabelas do app mediam a cena parada — errado: a demo entra em Play sozinha e a
+foto tinha apanhado o RECOMEÇO do ciclo (a queda recomeça a cada `3,6` s). Ao mesmo tempo, a janela de `120`
+quadros do `[frame]` cobria um ciclo inteiro e a média escondia o instante da pilha, e o smoke de desempenho foi
+ao dono em `--profile smoke`: ele viu `≤ 10` fps onde as minhas tabelas diziam `60`.
 
-**Why:** validei a porta pelo efeito que eu programei (o relógio) e não pelo efeito que a régua precisa (a pilha a
-cair); a foto só veio depois da matriz.
+**Why:** tratei um instante (a foto) e uma média (a janela longa) como estado da cena; o fenómeno vive num
+instante curto e periódico, e o perfil de build multiplica-o (`smoke` ~`4×` mais lento que `release` aqui).
 
-**How to apply:** uma porta de medição prova-se pelo OBSERVÁVEL do fenómeno (fotografe a 1.ª célula: as peças
-caíram?), antes da matriz; e um número de quadro só se lê com o estado da cena ao lado. Família
-[[reference_topic_measurement_discipline]]; irmã de
-[[feedback_a_population_knob_that_does_not_grow_the_container_measures_degeneracy]].
+**How to apply:** para um custo que varia ao longo de um ciclo, meça por janela CURTA ao longo dele (a régua
+`[motion-quadro]`, `PH2D_MOTION_RELOGIO=1`) e leia a PIOR janela; antes de concluir «a cena parou», registe o estado
+(posição de uma peça) em vários instantes; smoke de desempenho ao dono sempre em `--release` (`CLAUDE.md` §2).
+Família [[reference_topic_measurement_discipline]].

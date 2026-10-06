@@ -97,6 +97,42 @@ impl Cena {
     fn verbo(&mut self) -> Option<BoneAction> {
         verb_in_hand(&mut self.tools)
     }
+    fn selecao(&self) -> Vec<u64> {
+        self.hero.gizmo.iter_selected().collect()
+    }
+}
+
+/// ⭐⭐ GATE (A16) — **entrar no Edit/Pose com um OSSO escolhido mantém o osso** (ele é o pai do
+/// próximo osso e o que o painel mostra): pelo `Tab`, pelo seletor e pela ferramenta posta na mão
+/// em Object. Controlo: com o ESQUELETO escolhido a selecção é o esqueleto.
+#[test]
+fn entering_edit_or_pose_keeps_the_chosen_bone() {
+    let mut c = cena();
+    let (s, osso) = c.esqueleto();
+    c.quadro(None);
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.modo(), None, "controlo: em Object");
+    c.hero.gizmo.replace_selection(Some(s));
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.modo(), Some((s, ObjectMode::Edit)));
+    assert_eq!(c.selecao(), vec![s], "controlo: o esqueleto escolhido");
+    c.quadro(Some(ModeRequest::Toggle));
+    c.hero.gizmo.replace_selection(Some(osso));
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.modo(), Some((s, ObjectMode::Edit)));
+    assert_eq!(c.selecao(), vec![osso], "o Tab trocou o osso pelo esqueleto");
+    c.quadro(None);
+    assert_eq!(c.modo(), Some((s, ObjectMode::Edit)), "o modo caiu com o osso");
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Pose)));
+    assert_eq!(c.modo(), Some((s, ObjectMode::Pose)));
+    assert_eq!(c.selecao(), vec![osso], "o seletor trocou o osso");
+    c.quadro(Some(ModeRequest::Toggle));
+    assert_eq!(c.modo(), None);
+    c.hero.gizmo.replace_selection(Some(osso));
+    bone_bridge::arm(&mut c.tools, BoneAction::Weight);
+    c.quadro(None);
+    assert_eq!(c.modo(), Some((s, ObjectMode::Pose)));
+    assert_eq!(c.selecao(), vec![osso], "a ferramenta na mão trocou o osso");
 }
 
 /// ⭐ GATE — as leis, puras.

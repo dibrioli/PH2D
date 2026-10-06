@@ -199,3 +199,7 @@ mod cruza;
 #[cfg(test)]
 #[path = "skin_desenho_camadas_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "skin_desenho_camadas_tiques_tests.rs"]
+mod tiques;

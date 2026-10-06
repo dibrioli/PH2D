@@ -648,6 +648,9 @@ fn uma_risca_sobre_o_avesso_da_dobra_nao_se_ve() {
 
 #[path = "skin_desenho_frente_amostras_tests.rs"]
 mod amostras;
+/// A13 (sonda): a decisão «tapado» grossa, a do produto e uma quase exacta, num ponto de repouso.
+#[path = "skin_desenho_frente_cobre_tests.rs"]
+pub(crate) mod cobre;
 #[path = "skin_desenho_frente_fechados_tests.rs"]
 mod fechados;
 #[path = "skin_desenho_frente_rapida_tests.rs"]

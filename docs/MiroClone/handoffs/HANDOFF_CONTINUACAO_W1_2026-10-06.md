@@ -10,7 +10,7 @@
 - Branch `line/MiroClone`, worktree `Worktrees/line-MiroClone`, base `a46c4c200` (rebase sem conflito; o
   `main` não andou nesta janela). Commits da W1: `c7557f5b5..c0a16b1a2` (6) + o deste handoff.
 - O dono respondeu «ok» ao relatório da W0b e mandou seguir; o smoke da W0b não foi relatado como feito.
-- ⏳ **Smoke da W1: por fazer pelo dono** (passos no §5).
+- ✅ **Smoke da W1 APROVADO pelo dono (2026-10-06)** — passos no §5.
 
 ## §1 — As peças (todas novas ou reescritas nesta janela)
 
@@ -45,7 +45,7 @@
 
 ## §3 — ⏳ O que fica aberto (por ordem)
 
-1. **Smoke do dono** (§5).
+1. ~~Smoke do dono~~ ✅ aprovado 06/10.
 2. **W2 — setas** (plano §3): o roteador `ph2d-vec-connect` reusado, cache de rota, pontos azuis.
 3. Herdado da W0b: transbordo das abas (medir com 15–30 quadros); desfazer das operações de ABA (renomear,
    duplicar, apagar, reordenar quadros não se desfazem).

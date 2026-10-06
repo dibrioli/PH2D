@@ -235,7 +235,7 @@ Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um bra
   quebra, centrado, a forma cresce), seleccionar/mover/redimensionar/rodar/duplicar/apagar/copiar/colar,
   guias de alinhamento, `Espaço`/mão para a vista, desfazer POR quadro (teclado e menu), barra curta e barra
   de estilo; oráculo dos cantos (§4) e kill-criterion (§2.2) fechados. Smoke `PH2D_BOARD_SMOKE=2`.
-  ⏳ smoke do dono; o que fica aberto está no handoff de continuação da W1 em [`handoffs/`](handoffs/).
+  ✅ **Smoke aprovado pelo dono (06/10).** O que fica aberto está no handoff de continuação da W1 em [`handoffs/`](handoffs/).
 
 ### W2 — Setas (a peça em que já somos melhores — terminar de a fazer brilhar)
 - Gesto: arrastar a ponta sobre uma forma **realça** o alvo e liga; `Ctrl` solta; linha livre.

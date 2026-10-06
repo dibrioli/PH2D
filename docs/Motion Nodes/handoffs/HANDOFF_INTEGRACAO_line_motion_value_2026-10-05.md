@@ -287,3 +287,10 @@ PARALELO (`ph2d-contact/src/impulso.rs`, os mesmos bits): `release` `1 024` por 
 `smoke` `23`–`32` fps no instante denso. A porta `PH2D_PLAY` (que a 1.ª correcção dava por necessária) era
 desnecessária: a demo já entra em Play. Superfície nova: `motion_bridge.rs` (`+6` linhas: `relogio::comeca`/`regista`)
 e `motion_bridge_relogio.rs` (novo); `impulso.rs` usa `par_preenche_em_blocos`.
+
+**06/10 — o oráculo e a DECISÃO DO DONO.** Depois do smoke (*«estamos muito aquém da performance de uma Unity»*): a mesma
+pilha no `rapier2d` da casa é `~20`–`30×` mais rápida que o nosso contacto (doc 121 §9.19, o oráculo), por algoritmo.
+O dono escolheu: **a colisão das formas do Motion passa a usar o motor da casa (rapier)**. O item aberto deixa de ser
+«o contacto na placa» e passa a ser esta troca — prompt:
+[`HANDOFF_CONTINUACAO_line_motion_value_2026-10-06_CONTACTO_RAPIER.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-06_CONTACTO_RAPIER.md)
+(o da placa fica como referência, a reavaliar com os números novos).

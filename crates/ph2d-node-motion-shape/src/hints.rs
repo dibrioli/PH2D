@@ -266,6 +266,27 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.1,
         widget: ParamWidget::Slider,
     },
+    // ⭐ doc 121 §9.19 (3) — **a PONTA e a JUNTA** do traço (e de cada pedaço do tracejado).
+    ParamUiHint {
+        param: param::STROKE_CAP,
+        label: "node.source.shape.param.stroke_cap",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: super::stroke_style::CAP_LABELS,
+        },
+    },
+    ParamUiHint {
+        param: param::STROKE_JOIN,
+        label: "node.source.shape.param.stroke_join",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: super::stroke_style::JOIN_LABELS,
+        },
+    },
     // ⭐⭐ **O PIVÔ** (ordem do dono, 2026-09-19). A unidade é o `Size` daquele eixo, logo **`±1` é
     // exactamente a ARESTA** e a faixa `±2` dá uma forma inteira de folga para cada lado — que é o
     // que o *Anchor Point* do AE permite e o que um braço a girar em torno de um ombro distante

@@ -403,10 +403,10 @@ pub fn build_shape_path(p: &ShapeParams) -> VecPath {
     // sempre shipou, byte-idêntica.
     if let Some(st) = p.stroke {
         let mut spec = ph2d_vec_scene::StrokeSpec::new(rgba8(st.rgba), f64::from(st.width));
-        // ⚠️ **O TRACEJADO já mora no `StrokeSpec`** (doc 89 folha 14) — `Some((dash, gap))`
-        // em MÚLTIPLOS da largura, e `dash <= 0` é contínuo. O que faltava era o nó ter
-        // onde dizê-lo: nenhuma linha de código nova desenha um tracejado.
+        // ⚠️ **O TRACEJADO, a PONTA e a JUNTA já moram no `StrokeSpec`** (doc 89 folha 14, doc 121
+        // §9.19 (3)): o que faltava era o nó ter onde dizê-los. `dash <= 0` é contínuo.
         spec.dash = p.dash.map(|(d, g)| (f64::from(d), f64::from(g.max(0.0))));
+        (spec.cap, spec.join) = mistura::traco::ponta_e_junta(st);
         path.stroke = Some(spec);
     }
     // ⚠️ **O TRIM entra na PILHA de efeitos do caminho, nunca na geometria** (doc 89 folha

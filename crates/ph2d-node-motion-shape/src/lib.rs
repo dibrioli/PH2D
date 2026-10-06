@@ -295,11 +295,13 @@ pub struct ShapeParams {
     pub pivot: [f32; 2],
 }
 
-/// A largura e a cor do traço de uma forma.
+/// A largura, a cor, a ponta e a junta do traço de uma forma.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Stroke {
     pub width: f32,
     pub rgba: [f32; 4],
+    pub cap: StrokeCap,
+    pub join: StrokeJoin,
 }
 
 /// The names of the f32 params — the ONE list the manifest, the UI hints, the
@@ -337,6 +339,8 @@ impl ShapeParams {
                     get(param::STROKE_B),
                     get(param::STROKE_A),
                 ],
+                cap: StrokeCap::from_index(get(param::STROKE_CAP)),
+                join: StrokeJoin::from_index(get(param::STROKE_JOIN)),
             }),
             sweep: get(param::SWEEP),
             start: get(param::START),
@@ -537,6 +541,8 @@ mod fill_tests;
 
 mod collider;
 mod hints;
+mod stroke_style;
+pub use stroke_style::{StrokeCap, StrokeJoin};
 /// **QUANDO cada linha do cartão aparece** — as duas tabelas de portão; ver o cabeçalho.
 #[path = "param_gates.rs"]
 mod param_gates;

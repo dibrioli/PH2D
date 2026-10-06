@@ -119,3 +119,22 @@ impl TracoDaPlaca {
         true
     }
 }
+
+/// doc 121 §9.19 (3) — a PONTA e a JUNTA que o cartão da forma escolheu, no vocabulário do `StrokeSpec`.
+pub(crate) fn ponta_e_junta(
+    st: ph2d_node_motion_shape::Stroke,
+) -> (ph2d_vec_scene::LineCap, ph2d_vec_scene::LineJoin) {
+    use ph2d_node_motion_shape::{StrokeCap, StrokeJoin};
+    use ph2d_vec_scene::{LineCap, LineJoin};
+    let cap = match st.cap {
+        StrokeCap::Butt => LineCap::Butt,
+        StrokeCap::Round => LineCap::Round,
+        StrokeCap::Square => LineCap::Square,
+    };
+    let join = match st.join {
+        StrokeJoin::Miter => LineJoin::Miter,
+        StrokeJoin::Round => LineJoin::Round,
+        StrokeJoin::Bevel => LineJoin::Bevel,
+    };
+    (cap, join)
+}

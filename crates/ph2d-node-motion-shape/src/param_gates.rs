@@ -273,6 +273,16 @@ pub(crate) static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
         above: 0.0,
     },
     ParamGateAbove {
+        param: param::STROKE_CAP,
+        when: param::STROKE_WIDTH,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::STROKE_JOIN,
+        when: param::STROKE_WIDTH,
+        above: 0.0,
+    },
+    ParamGateAbove {
         param: param::DASH_GAP,
         when: param::STROKE_WIDTH,
         above: 0.0,

@@ -118,6 +118,13 @@ pub const PIVOT_X: &str = "pivot_x";
 /// O mesmo no eixo `y`, com o mundo a apontar para CIMA: `+0,5` põe o pivô na aresta de BAIXO.
 pub const PIVOT_Y: &str = "pivot_y";
 
+/// **A PONTA do traço** (doc 121 §9.19 (3)): `0` Butt · `1` Round · `2` Square — o `LineCap` do
+/// `StrokeSpec`, nas duas pontas de cada traço (e de cada pedaço do tracejado). `0` é o traço de sempre.
+/// ⚠️ O índice é formato de arquivo — APPEND ONLY ([`crate::stroke_style::CAP_LABELS`]).
+pub const STROKE_CAP: &str = "stroke_cap";
+/// **A JUNTA do traço**: `0` Miter · `1` Round · `2` Bevel — o `LineJoin`. `0` é o traço de sempre.
+pub const STROKE_JOIN: &str = "stroke_join";
+
 /// **TODOS eles, na ordem do manifesto.**
 ///
 /// ⚠️ Ela existe para a CHAVE do cache ser derivada em vez de enumerada. A
@@ -160,6 +167,10 @@ pub const ALL: &[&str] = &[
     // à letra o defeito que o cabeçalho desta lista narra.
     PIVOT_X,
     PIVOT_Y,
+    // ⚠️ A ponta e a junta mudam o TRAÇO cozido no caminho (o `StrokeSpec`): sem elas aqui a 1.ª
+    // escolha voltaria do cache para todas as outras.
+    STROKE_CAP,
+    STROKE_JOIN,
 ];
 
 /// **A COR PRÓPRIA da forma** (doc 89 folha 14 — idem Cavalry / AE / Illustrator: um
@@ -462,6 +473,16 @@ pub const SPECS: &[ParamSpec] = &[
     },
     ParamSpec {
         name: PIVOT_Y,
+        default: 0.0,
+    },
+    // ── A PONTA E A JUNTA (doc 121 §9.19 (3)) ───────────────────────────────
+    // APENDADOS, nunca inseridos. `0`/`0` = Butt/Miter, o traço de sempre (um projecto antigo abre igual).
+    ParamSpec {
+        name: STROKE_CAP,
+        default: 0.0,
+    },
+    ParamSpec {
+        name: STROKE_JOIN,
         default: 0.0,
     },
 ];

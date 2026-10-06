@@ -320,6 +320,8 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.source.shape.param.smoothing", "Smoothing"),
     ("node.source.shape.param.star_depth", "Point Depth"),
     ("node.source.shape.param.start", "Start"),
+    ("node.source.shape.param.stroke_cap", "Cap"),
+    ("node.source.shape.param.stroke_join", "Join"),
     ("node.source.shape.param.stroke_r", "Stroke"),
     ("node.source.shape.param.stroke_width", "Stroke Width"),
     ("node.source.shape.param.sweep", "Sweep"),

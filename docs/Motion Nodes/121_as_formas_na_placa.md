@@ -2217,3 +2217,56 @@ ao abrir a ferramenta, `motion_bridge_surfaces.rs`); se não andar, a porta `PH2
 `4 096` peças o quadro da iGPU `> 16,7` ms com o contacto a ser o custo ⇒ a recusa expirou e o contacto da CAIXA no
 dispositivo entra NESTA onda; senão a recusa renova-se com o número do app e o ponto de expiração escreve-se.
 ⚠️ O resultado de (5) muda o que se constrói (uma wave inteira, ou nada): por isso mede-se ANTES de construir, em série.
+
+**(1) — o resultado: RECUSA MEDIDA, a prova falha por pouco e o produto por muito.** Código medido em `2774e1d17`
+(`cs_trocos` + as variantes), retirado em `c524f9b3d`. A rodada intercalada (`7` variantes com o A/A `F1` × `6`
+cenas × `7` rodadas, as duas placas, carga `11`–`24`; `target/prova/onda4/r1_passeio_paralelo.txt`). `escreve`
+mínimo, ms, e a soma contra o `F`:
+
+| esticadas tracejadas | iGPU `escreve` | iGPU soma | RTX `escreve` | RTX soma |
+|---|---:|---:|---:|---:|
+| `F` (o produto) · `F1` (A/A) | `0,239` · `0,237` | `0,948` · `−0,6 %` | `0,159` · `0,159` | `0,301` · `+0,1 %` |
+| `P1` a prova do §9.18 (o passeio em SÉRIE) | `0,182` | — | `0,109` | — |
+| **`Q1` a PROVA** (o passeio em PARALELO + a tabela + o `pedaco`) | **`0,134`** (critério `≤ 0,13`) | — | `0,070` | — |
+| `Q4` a ablação (o fio da peça sai logo) | `0,116` | — | `0,067` | — |
+| `Q2` o produto, reserva atómica | `0,245` | `+0,2 %` | `0,076` | `−27,6 %` |
+| `Q3` o produto, contado por peça | **`0,226`** (critério `≤ 0,15`) | **`0,930`** (critério `≤ 0,86`) | `0,075` | `−27,9 %` |
+
+Nas outras células: densas tracejadas `Q3` **`+21,9 %`** iGPU e **`+15,7 %`** RTX (`escreve` `0,390` contra `0,147`);
+conformes tracejadas `+3`–`+8 %` (os despachos que correm vazios); as contínuas iguais. A imagem: `Q2`/`Q3` alfa
+**`1`** contra o `F` em todas as células (o critério de imagem passava). ⇒ **o passeio deixou de ser o chão**: em
+paralelo ele custa `Q4 − (despachos)` ≈ `0,10` na iGPU (o `P1 → Q1` tira `0,048`), e a RTX ganha `28 %`. **O chão
+passou a ser a EMISSÃO por peça:** `Q3 − Q1 = 0,092` ms na iGPU (`2` passes do `emite_pedaco`: contar e escrever, ALU
+de uma placa de `2` CUs), e nas densas (`1 225` cópias, `~26` peças cada) o fio por cópia já enchia a placa — por peça
+só se paga a tabela, as buscas e a emissão dupla. A conta que fecha a porta: com a prova a `0,134`, o produto só
+caberia em `0,15` se a emissão custasse `≤ 0,016`; ela mede `≥ 0,045` por passe. **Quem voltar:** a única porta é
+uma emissão de UM passe sem atómico por aresta (um sítio fixo por peça, o enchimento pago no `cs_deposita`) E um
+seletor por cópia (as densas pelo fio da cópia) — duas topologias novas, e a conta acima diz que nem assim a iGPU
+chega a `0,15`.
+
+**(4) — o resultado: PROVADA.** `40` corridas alternadas na RTX (`13` variantes, `__GL_SHADER_DISK_CACHE=0`, carga
+natural `3,3`–`38`; `target/prova/onda4/sigsegv_antes_depois.tsv`): o binário de ANTES (`453354fb5^` + só o A/A)
+morreu com `SIGSEGV` (`rc 139`) DEPOIS do `test result: ok` em **`14/20`**; o de DEPOIS (`d253432ac`) **`0/20`**. A falha
+de antes deu-se também com a máquina calma (`load 3,3`): a carga não era a condição — era o perfilador a segurar o
+dispositivo até ao `exit`, como o §9.18 F isolou. Worktree temporário removido.
+
+**(5) — a medição: a recusa do doc 115 EXPIROU, e não pelo contacto.** A `=114` no app (`release`, iGPU, `PH2D_PLAY=1`,
+a taça a crescer com a pilha; `target/prova/onda4/pilha/`):
+
+| peças por taça | `Collide` | quadro | `[frame] MOTION` (cozer + separar) |
+|---|---|---:|---:|
+| `1 024` | OFF (o controlo) | **`16,7` ms (`60` fps)** | `0,97` ms |
+| `4 096` | OFF | **`16,6` ms (`60` fps)** | `2,07` ms |
+| `1 024` | ON | **`247` ms (`4` fps)** | **`151,6`** ms |
+| `4 096` | ON | `> 2 000` ms (nenhuma janela de `120` quadros em `45` s; a barra lê `2,2`–`2,8` s) | — |
+
+⇒ o quadro passa os `16,7` ms já a `1 024` peças: **a recusa expirou**. ⚠️ E a premissa do doc 115 não era a do
+produto: ela mediu a SEPARAÇÃO na CPU (`1 024` peças `0,5` ms, §9.18 D), mas com uma forma com `Collide` a cerca do
+`motion_bridge_gpu_colisor.rs` derruba o cozimento INTEIRO para a CPU — a queda, o vento, a taça e as `2 048` peças das
+duas taças pagam o caminho da CPU (`151` ms contra `1`–`2` no dispositivo). ⇒ a cura é o contacto da CAIXA no
+dispositivo, para a cerca deixar de cair: entra nesta onda.
+⚠️ Dois defeitos da régua achados pela foto antes de medir: (a) o roteiro abria a cena PARADA (o arranque pausa o
+relógio, e o auto-play do Motion só corre ao abrir a ferramenta) — a porta `PH2D_PLAY=1`
+(`motion_bridge_surfaces.rs`, toca enquanto o relógio estiver parado em `t = 0`); (b) o `PH2D_PILHA_LADO` crescia a
+pilha e não a taça: `4 096` quadrados (`198` u²) numa taça de `10` u² nasciam sobrepostos — a régua media a
+vizinhança degenerada. A taça cresce agora com a pilha (`medida_de`; a cena do smoke fica byte a byte).

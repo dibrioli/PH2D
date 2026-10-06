@@ -10,7 +10,7 @@
 #
 # uso (dentro da worktree, com o `release` já construído):
 #   bash "docs/Motion Nodes/ferramentas/mede_formas_na_placa.sh" <dir-de-saida>
-# Ambiente: CELULAS (lista «placa:cena:n», ver abaixo) · ESPERA=40 · FORMAS="0 1" (só "1" re-mede o lado da
+# Ambiente: CELULAS (lista «placa:cena:n», ver abaixo; a `=114` lê o n como o lado da pilha) · COLIDE=1 · ESPERA=40 · FORMAS="0 1" (só "1" re-mede o lado da
 #           placa contra um «sem» já medido na mesma sessão) · TRACEJADOS="0" (a `=127` com `1`:
 #           `PH2D_TRACO_ESTICADO_TRACEJADO=1`) · VARIANTES="F:" (lista «nome:NOME=v,NOME=v», o valor é o de
 #           `PH2D_FORMAS_CONSTANTES`; vazio = o produto)
@@ -36,6 +36,9 @@ for cel in $CELULAS; do
     [ -n "$vlista" ] && kv="$kv PH2D_FORMAS_CONSTANTES=$vlista"
     if [ "$cena" = 17 ]; then
       kv="$kv PH2D_MOTION_OBJ_SMOKE=17 PH2D_TECTO_FORMA=1 PH2D_TECTO_N=$n"
+    elif [ "$cena" = 114 ]; then
+      # doc 121 §9.19 (5): a pilha com `n × n` peças por taça; `COLIDE=0` tira o `Collide` (a mesma cena sem contacto).
+      kv="$kv PH2D_GPU_COOK_DEMO=114 PH2D_PLAY=1 PH2D_PILHA_LADO=$n PH2D_PILHA_COLIDE=${COLIDE:-1}"
     else
       kv="$kv PH2D_GPU_COOK_DEMO=$cena PH2D_TRACO_ESTICADO_DENSO=1"
       [ "$tr" = 1 ] && kv="$kv PH2D_TRACO_ESTICADO_TRACEJADO=1"

@@ -494,3 +494,66 @@ fn every_row_the_announcement_names_is_on_the_card() {
     );
     assert!(ANUNCIO.contains("Collider Radius"));
 }
+
+/// ⭐ doc 121 §9.19 (5) — **o custo do COZIMENTO da `=114` aos milhares**, por tique, com e sem `Collide`,
+/// no mesmo processo (`docs/DevOps/MEDIR_VELOCIDADE.md`: intercaladas por tique, o mínimo e a mediana). É a
+/// parte da CPU do `[frame] MOTION (cozer + separar)`: as duas taças com `lado × lado` peças cada, a taça a
+/// crescer com a pilha (`medida_de`). Mede os tiques da queda e do contacto (o 2.º segundo de cena).
+/// Ambiente: `PH2D_PILHA_LADOS=32,64,128`.
+#[test]
+#[ignore = "sonda de relógio"]
+fn custo_do_cozimento_da_pilha() {
+    let lados: Vec<f32> = std::env::var("PH2D_PILHA_LADOS").ok().map_or_else(
+        || vec![32.0, 64.0, 128.0],
+        |v| v.split(',').filter_map(|x| x.parse().ok()).collect(),
+    );
+    let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!("PILHA load {}", carga().trim());
+    for lado in lados {
+        let mut cenas: Vec<(bool, MotionState, Vec<NodeId>)> = [true, false]
+            .into_iter()
+            .map(|colide| {
+                let mut state = MotionState::new();
+                let m = medida_de(Some(lado), colide);
+                let sinks = build_com(&mut state.doc, &state.registry, &m).expect("a cena monta");
+                crate::motion_shape_gen::publish(&mut state, 0.0);
+                (colide, state, sinks)
+            })
+            .collect();
+        let mut t = [Vec::new(), Vec::new()];
+        let mut pecas = [0usize; 2];
+        for k in 0..=120u32 {
+            let tempo = f64::from(k) / 60.0;
+            for (i, (_, state, sinks)) in cenas.iter_mut().enumerate() {
+                let t0 = std::time::Instant::now();
+                let mut n = 0;
+                for sink in sinks.iter() {
+                    let s = state
+                        .pump
+                        .cook
+                        .cook(&state.doc.graph, &state.registry, *sink, tempo)
+                        .expect("cozinha");
+                    if let Some(Column::Vec2(v)) = s[0].as_stream().get("P") {
+                        n += v.len();
+                    }
+                }
+                if k >= 60 {
+                    t[i].push(t0.elapsed().as_secs_f64() * 1e3);
+                }
+                pecas[i] = n;
+            }
+        }
+        for (i, (colide, _, _)) in cenas.iter().enumerate() {
+            let mut o = t[i].clone();
+            o.sort_by(f64::total_cmp);
+            eprintln!(
+                "PILHA lado {lado:>4} · {:>6} pecas · Collide {} · cozer por tique: min {:.2} ms · med {:.2} ms",
+                pecas[i],
+                if *colide { "ON " } else { "OFF" },
+                o[0],
+                o[o.len() / 2]
+            );
+        }
+    }
+    eprintln!("PILHA fim · load {}", carga().trim());
+}

@@ -43,13 +43,38 @@ const ROWS: f32 = 5.0;
 
 /// Porta de MEDIÇÃO (doc 121 §9.18 D — a recusa do doc 115 expira aos milhares): `PH2D_PILHA_LADO=k`
 /// põe `k × k` peças em cada taça; `PH2D_PILHA_COLIDE=0` desliga o `Collide` (a MESMA cena pela placa).
-fn medida() -> (f32, f32, bool) {
+///
+/// ⚠️ §9.19 (5): a TAÇA cresce com a pilha. Com o raio de `25` peças, `4 096` não cabiam (`198` u² de
+/// quadrados numa taça de `10`): nasciam todas sobrepostas, o contacto não assentava e o quadro media a
+/// vizinhança degenerada (`2,2` s por quadro na iGPU), não uma cena. A grelha de partida cabe na taça.
+pub(super) struct Medida {
+    linhas: f32,
+    colunas: f32,
+    colide: bool,
+    raio: f32,
+    vao: f32,
+}
+
+fn medida() -> Medida {
     let lado = std::env::var("PH2D_PILHA_LADO")
         .ok()
         .and_then(|v| v.parse::<f32>().ok())
         .filter(|k| *k >= 1.0);
     let colide = !std::env::var("PH2D_PILHA_COLIDE").is_ok_and(|v| v == "0");
-    (lado.unwrap_or(ROWS), lado.unwrap_or(COLS), colide)
+    medida_de(lado, colide)
+}
+
+/// A medida de `lado × lado` peças por taça (`None`: a cena do smoke).
+pub(super) fn medida_de(lado: Option<f32>, colide: bool) -> Medida {
+    // O meio-diagonal da grelha mais a altura de partida acima do centro, e uma folga.
+    let raio = lado.map_or(TACA_R, |k| k * GAP * 0.75 + (ALTURA - TACA_Y) + 0.2);
+    Medida {
+        linhas: lado.unwrap_or(ROWS),
+        colunas: lado.unwrap_or(COLS),
+        colide,
+        raio,
+        vao: raio + (VAO - TACA_R),
+    }
 }
 /// O meio-lado de cada quadrado (o `size` do `source.shape`: a geometria nasce em raio 1).
 const LADO: f32 = 0.11;
@@ -82,17 +107,23 @@ const PAUSA: f32 = 0.6;
 
 /// A legenda que a cena pousa no canvas.
 pub(super) fn captions() -> Vec<Caption> {
+    let m = medida();
     vec![
         Caption::new(
-            [-VAO, TACA_Y - TACA_R - 0.45],
+            [-m.vao, TACA_Y - m.raio - 0.45],
             "Collide desligado: um borrao",
         ),
-        Caption::new([VAO, TACA_Y - TACA_R - 0.45], "Collide ligado: uma pilha"),
+        Caption::new([m.vao, TACA_Y - m.raio - 0.45], "Collide ligado: uma pilha"),
     ]
 }
 
 /// Monta as duas taças. Devolve os dois sinks (esquerda, direita).
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
+    build_com(doc, reg, &medida())
+}
+
+/// [`build`] com a medida dada (a sonda do doc 121 §9.19 (5) mede várias no mesmo processo).
+pub(super) fn build_com(doc: &mut MotionDoc, reg: &NodeRegistry, m: &Medida) -> Option<Vec<NodeId>> {
     use ph2d_nodegraph::graph::{Edge, Pos};
 
     // ⚠️ Os índices de enum são PERGUNTADOS ao registo, nunca digitados — a porta da cena `=113`.
@@ -100,7 +131,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     let quadrado = super::sim_demo::indice_de(reg, "source.shape", "kind", "Square")?;
     let em_laco = super::sim_demo::indice_de(reg, "sim.zone", "mode", "Loop")?;
 
-    let (linhas, colunas, com_colisor) = medida();
+    let (linhas, colunas, com_colisor) = (m.linhas, m.colunas, m.colide);
     let mut metade = |x: f32, colide: bool, y_linha: f32| -> Option<NodeId> {
         let colide = colide && com_colisor;
         let g = &mut doc.graph;
@@ -185,7 +216,7 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         g.set_param(bowl, "shape", taca);
         g.set_param(bowl, "center_x", x);
         g.set_param(bowl, "center_y", TACA_Y);
-        g.set_param(bowl, "radius", TACA_R);
+        g.set_param(bowl, "radius", m.raio);
         g.set_param(bowl, "restitution", 0.05);
         g.set_param(bowl, "friction", 0.6);
 
@@ -238,8 +269,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         Some(out)
     };
 
-    let esquerda = metade(-VAO, false, 120.0)?;
-    let direita = metade(VAO, true, 640.0)?;
+    let esquerda = metade(-m.vao, false, 120.0)?;
+    let direita = metade(m.vao, true, 640.0)?;
     doc.graph.validate(reg).ok()?;
     Some(vec![esquerda, direita])
 }

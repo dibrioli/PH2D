@@ -32,11 +32,9 @@ impl ModeFamily for Family {
     fn leave(&mut self, _: ObjectMode, _: u64, tools: &mut ToolRegistry) {
         leave(tools);
     }
-    /// ⭐ A imagem pintada mantém o gizmo (report do dono, 05/10: *«em edit e paint mode o gizmo da
-    /// imagem não aparece. corrija»*) — como antes de o Paint ser um modo.
-    fn parts_take_the_object_gizmo(&self, mode: ObjectMode) -> bool {
-        mode == ObjectMode::Paint
-    }
+    // ⛔ Sem `parts_take_the_object_gizmo`: no Paint o gizmo fica INVISÍVEL (dono, 06/10: *«melhor
+    // deixar o gizmo invisível no paint mode»*) — o pincel ganha-lhe o clique (`chrome_hit::
+    // chrome_claims`), e alças que se vêem e não se agarram mentiriam. O Edit da imagem tem-no.
 }
 
 /// O id do Painter no registo de ferramentas.

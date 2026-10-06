@@ -230,8 +230,9 @@ SIZE · PAD · CEQ · EQSZ · RASTR · UPSC na barra, o seletor aberto com Objec
 
 ## §6 — O que fica ABERTO
 
-- **Paint + gizmo:** as alças agarram-se no Paint? Hoje o pincel ganha (ver §5c.1) — pergunta ao
-  dono; agarrar as alças tiraria ao pincel os pixels sob elas.
+- ~~**Paint + gizmo**~~ — ✅ **decidido pelo dono (06/10): *«melhor deixar o gizmo invisível no paint
+  mode»*.** O Paint voltou a não declarar `parts_take_the_object_gizmo` (o pincel ganha o clique às
+  alças, que mentiriam); o gate do Paint passou a exigir o gizmo AUSENTE; o Edit da imagem mantém-no.
 
 - A booleana com SÓ duas formas cujo resultado nascesse um quadro depois repetiria o aviso «Edit
   Mode»; **medido que não acontece**: o resultado ganha entidade no mesmo `sync` que apaga as duas, e a

@@ -40,10 +40,10 @@ fn moved(doc: &mut BoardDoc, id: ElementId, d: [f64; 2]) {
     BoardOp::Put(el).apply(doc);
 }
 
-/// ⭐ A cache: o mesmo documento não volta ao roteador; mexer numa forma LONGE da seta também não;
-/// mexer numa das pontas refá-la a ela só.
+/// ⭐ A cache: o mesmo documento não volta ao roteador; mexer numa forma que não é ponta de nenhuma
+/// seta também não; mexer numa das pontas refá-la a ela só.
 #[test]
-fn only_the_arrow_whose_end_or_nearby_obstacle_moved_is_rerouted() {
+fn only_the_arrow_whose_shape_moved_is_rerouted() {
     let mut doc = BoardDoc::default();
     let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 160.0, 100.0]);
     let b = shape(&mut doc, ShapeType::Rectangle, [400.0, 0.0, 160.0, 100.0]);
@@ -74,39 +74,6 @@ fn only_the_arrow_whose_end_or_nearby_obstacle_moved_is_rerouted() {
     moved(&mut doc, b, [0.0, 30.0]);
     cache.sync(&doc);
     assert_eq!(cache.rerouted(), 1, "só a seta presa a b");
-}
-
-/// Uma forma que entra no CAMINHO de uma seta é obstáculo: a seta refaz-se e desvia dela.
-#[test]
-fn a_shape_dropped_in_the_way_reroutes_the_arrow_around_it() {
-    let mut doc = BoardDoc::default();
-    let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 160.0, 100.0]);
-    let b = shape(&mut doc, ShapeType::Rectangle, [600.0, 0.0, 160.0, 100.0]);
-    let wall = shape(&mut doc, ShapeType::Rectangle, [3000.0, 0.0, 100.0, 300.0]);
-    let id = link(&mut doc, center(a), center(b), Route::Elbow);
-    let mut cache = RouteCache::default();
-    cache.sync(&doc);
-    assert_eq!(
-        cache.get(id).unwrap().pts.len(),
-        2,
-        "sem nada no meio, uma recta"
-    );
-    moved(&mut doc, wall, [-2670.0, -100.0]);
-    cache.sync(&doc);
-    assert_eq!(cache.rerouted(), 1);
-    let r = cache.get(id).unwrap();
-    assert!(
-        r.pts.len() > 2,
-        "a parede no caminho obriga a dobrar: {:?}",
-        r.pts
-    );
-    assert!(
-        r.pts
-            .iter()
-            .all(|p| !(p[0] > 330.0 && p[0] < 430.0 && p[1] > -100.0 && p[1] < 200.0)),
-        "nenhum ponto dentro da parede: {:?}",
-        r.pts
-    );
 }
 
 /// ⭐ Presa ao CENTRO, a seta sai pela face que olha para a outra forma — e troca de face quando a
@@ -235,24 +202,6 @@ fn parallel_arrows_do_not_overlap() {
     assert!((p[1] - q[1]).abs() >= SPREAD_STEP - 1e-9, "{p:?} {q:?}");
 }
 
-/// A curva é a rota do cotovelo SUAVIZADA: as mesmas pontas, sem quinas.
-#[test]
-fn the_curve_is_the_elbow_smoothed() {
-    let mut doc = BoardDoc::default();
-    let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 160.0, 100.0]);
-    let b = shape(&mut doc, ShapeType::Rectangle, [400.0, 300.0, 160.0, 100.0]);
-    let elbow = link(&mut doc, center(a), center(b), Route::Elbow);
-    let curve = link(&mut doc, center(a), center(b), Route::Curved);
-    let mut cache = RouteCache::default();
-    cache.sync(&doc);
-    let (e, c) = (cache.get(elbow).unwrap(), cache.get(curve).unwrap());
-    assert!(e.pts.len() > 2);
-    assert!(
-        c.path.verts.iter().any(|v| v.out_handle != v.anchor),
-        "a curva tem braços"
-    );
-}
-
 /// A ponta de seta tem o bico NA ponta da rota; a cheia recua a linha o que tapa.
 #[test]
 fn the_head_tip_sits_on_the_end_and_a_filled_head_trims_the_line() {
@@ -304,21 +253,109 @@ fn a_fixed_point_arrow_does_not_spread_its_centered_neighbour() {
     );
 }
 
-/// ⭐ O TECTO da região: num fluxograma denso (o vão de nascença, 80, menor que a folga 2 × 120) a
-/// região de uma seta curta não engole o quadro — ela vê as vizinhas, não as 400 formas.
+/// ⭐ Uma forma largada no CAMINHO de uma seta não a mexe (ordem do dono, 06/10: «setas não se
+/// reajustam sozinhas» — o idioma do Miro).
 #[test]
-fn a_short_arrow_in_a_dense_flow_sees_only_its_neighbourhood() {
+fn a_shape_dropped_in_the_way_does_not_move_the_arrow() {
     let mut doc = BoardDoc::default();
-    let mut ids = Vec::new();
-    for row in 0..20 {
-        for col in 0..20 {
-            let bx = [f64::from(col) * 240.0, f64::from(row) * 180.0, 160.0, 100.0];
-            ids.push(shape(&mut doc, ShapeType::Rectangle, bx));
-        }
-    }
-    let id = link(&mut doc, center(ids[210]), center(ids[211]), Route::Elbow);
+    let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 160.0, 100.0]);
+    let b = shape(&mut doc, ShapeType::Rectangle, [600.0, 0.0, 160.0, 100.0]);
+    let wall = shape(&mut doc, ShapeType::Rectangle, [3000.0, 0.0, 100.0, 300.0]);
+    let id = link(&mut doc, center(a), center(b), Route::Elbow);
     let mut cache = RouteCache::default();
     cache.sync(&doc);
-    let seen = cache.obstacles(id).unwrap();
-    assert!(seen < 40, "a região engoliu o quadro: {seen} de 400 formas");
+    let before = cache.get(id).unwrap().clone();
+    moved(&mut doc, wall, [-2670.0, -100.0]);
+    cache.sync(&doc);
+    assert_eq!(cache.rerouted(), 0, "a parede não é ponta da seta");
+    assert_eq!(*cache.get(id).unwrap(), before);
+}
+
+/// ⭐ **A curva do Miro**: sem pontos de ajuste é UMA cúbica que sai e entra perpendicular às faces,
+/// com o braço de METADE do afastamento ao longo da saída (medido na captura do dono: 154 para 307).
+#[test]
+fn the_curve_is_one_cubic_leaving_and_entering_perpendicular_with_half_the_gap() {
+    let mut doc = BoardDoc::default();
+    let right = shape(&mut doc, ShapeType::Rectangle, [714.0, 106.0, 442.0, 188.0]);
+    let left = shape(&mut doc, ShapeType::Rectangle, [67.0, 250.0, 341.0, 206.0]);
+    let id = link(&mut doc, center(right), center(left), Route::Curved);
+    let mut cache = RouteCache::default();
+    cache.sync(&doc);
+    let r = cache.get(id).unwrap();
+    let v = &r.path.verts;
+    assert_eq!(v.len(), 2, "uma cúbica só");
+    let ([x0, y0], [x1, y1]) = (v[0].anchor, v[1].anchor);
+    assert_eq!(
+        ([x0, y0], [x1, y1]),
+        ([714.0, 200.0], [408.0, 353.0]),
+        "os meios das faces"
+    );
+    let k = (x0 - x1) * END_ARM;
+    assert_eq!(
+        v[0].out_handle,
+        [x0 - k, y0],
+        "sai na horizontal, braço = ½ do afastamento"
+    );
+    assert_eq!(v[1].in_handle, [x1 + k, y1], "entra na horizontal");
+}
+
+/// Duas pontas que saem para o MESMO lado (o «não» por baixo): o piso do braço dá a volta.
+#[test]
+fn a_curve_whose_ends_leave_the_same_way_still_loops_out() {
+    let mut doc = BoardDoc::default();
+    let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 160.0, 100.0]);
+    let b = shape(&mut doc, ShapeType::Rectangle, [400.0, 0.0, 160.0, 100.0]);
+    let fixed = |t, uv| End::Bound {
+        target: t,
+        anchor: Anchor::Fixed(uv),
+    };
+    let id = link(
+        &mut doc,
+        fixed(b, [0.5, 1.0]),
+        fixed(a, [0.5, 1.0]),
+        Route::Curved,
+    );
+    let mut cache = RouteCache::default();
+    cache.sync(&doc);
+    let r = cache.get(id).unwrap();
+    assert!(
+        r.bbox[3] > 100.0 + 0.5 * POINT_ARM * 400.0,
+        "a volta desce abaixo das caixas: {:?}",
+        r.bbox
+    );
+}
+
+/// ⭐ Os PONTOS DE AJUSTE: a seta passa por eles (curva, recta e cotovelo), e cada trecho tem a sua
+/// pega do meio (onde se arrasta para criar um ponto novo).
+#[test]
+fn the_arrow_passes_through_its_waypoints_and_each_leg_has_a_middle_handle() {
+    for route in [Route::Curved, Route::Straight, Route::Elbow] {
+        let mut doc = BoardDoc::default();
+        let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 160.0, 100.0]);
+        let b = shape(&mut doc, ShapeType::Rectangle, [600.0, 0.0, 160.0, 100.0]);
+        let mut c = Connector::new(
+            center(a),
+            center(b),
+            route,
+            Style::new(None, Some(ink()), ink()),
+        );
+        c.waypoints = vec![[300.0, 300.0], [450.0, -200.0]];
+        let el = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
+        let id = el.id;
+        BoardOp::Put(el).apply(&mut doc);
+        let mut cache = RouteCache::default();
+        cache.sync(&doc);
+        let r = cache.get(id).unwrap();
+        let line = r.polyline();
+        for w in [[300.0, 300.0], [450.0, -200.0]] {
+            assert!(
+                line.contains(&w),
+                "{route:?}: a rota não passa em {w:?}: {line:?}"
+            );
+        }
+        assert_eq!(r.waypoints(), &[[300.0, 300.0], [450.0, -200.0]]);
+        assert_eq!(r.leg_mids.len(), 3, "{route:?}: um meio por trecho");
+        // A 1.ª ponta sai rumo ao 1.º ponto (para baixo), não rumo à outra caixa.
+        assert_eq!(r.sides[0], Dir::North, "{route:?}");
+    }
 }

@@ -65,10 +65,7 @@ mod loops;
 
 /// Por onde cada ponta sai e que formas a rota enxerga — as leis antes do A\*.
 mod ends;
-pub use ends::{
-    ROI_PAD_K, SPREAD_FACE_K, bbox_exit, exit_point, obstacles_in_play, obstacles_in_play_near,
-    port_side,
-};
+pub use ends::{ROI_PAD_K, SPREAD_FACE_K, bbox_exit, exit_point, obstacles_in_play, port_side};
 
 /// **Por qual lado a linha sai** (a âncora flutuante): o quadrante da diagonal da CAIXA, com
 /// histerese para a saída não piscar quando o alvo passa pela diagonal.

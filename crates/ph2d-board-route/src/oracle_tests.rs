@@ -11,9 +11,9 @@
 //! | `seta_cotovelo_volta` | 300,60 140×90 | 40,300 140×90 | `[1, 0.5001]` → `[0, 0.5001]` | (440,105) (480,105) (480,225) (0,225) (0,345) (40,345) |
 //! | `seta_cotovelo_volta_grande` | 600,60 280×180 | 40,520 280×180 | idem | (880,150) (920,150) (920,380) (0,380) (0,610) (40,610) |
 //!
-//! ⛔ Recusas medidas: o `0.5001` (e o `105.009` da rota) é o desempate do oráculo, não uma lei — o
-//! nosso meio de lado é `0.5` exacto. E o desvio NÃO se compara: em `seta_cotovelo_obstaculo` o
-//! oráculo atravessa a caixa do meio; o critério é o NOSSO (nenhum segmento dentro de uma forma).
+//! ⛔ Recusa medida: o `0.5001` (e o `105.009` da rota) é o desempate do oráculo, não uma lei — o
+//! nosso meio de lado é `0.5` exacto. E a caixa do meio de `seta_cotovelo_obstaculo` (o oráculo
+//! atravessa-a) é hoje a NOSSA lei também: a seta não reage a outras formas (ordem do dono, 06/10).
 
 use super::*;
 use ph2d_board_model::{
@@ -98,7 +98,7 @@ fn the_elbow_bends_in_the_middle_of_the_gap_like_the_oracle() {
     let a = arrow(&mut doc, o, d, Route::Elbow);
     let mut cache = RouteCache::default();
     cache.sync(&doc);
-    let pts = &cache.get(a).unwrap().pts;
+    let pts = &cache.get(a).unwrap().polyline();
     let oracle = [
         [180.0, 105.0],
         [340.0, 105.0],
@@ -151,7 +151,7 @@ fn the_u_turn_leaves_by_the_measured_jetty_like_the_oracle() {
         let a = arrow(&mut doc, o, d, Route::Elbow);
         let mut cache = RouteCache::default();
         cache.sync(&doc);
-        let pts = &cache.get(a).unwrap().pts;
+        let pts = &cache.get(a).unwrap().polyline();
         assert_eq!(pts.len(), oracle.len(), "{pts:?}");
         for (p, q) in pts.iter().zip(oracle) {
             assert!(
@@ -162,27 +162,24 @@ fn the_u_turn_leaves_by_the_measured_jetty_like_the_oracle() {
     }
 }
 
-/// O NOSSO critério (o oráculo falha aqui): com a caixa no meio, nenhum segmento entra nela.
+/// Uma caixa no MEIO não muda a seta (o oráculo e o Miro: as setas não se reajustam sozinhas —
+/// ordem do dono, 06/10): a recta de `(180,205)` a `(500,205)`, como o `seta_cotovelo_obstaculo`.
 #[test]
-fn the_elbow_goes_around_the_box_the_oracle_crosses() {
+fn a_box_in_the_middle_does_not_bend_the_elbow_like_the_oracle() {
     let mut doc = BoardDoc::default();
     let o = rect(&mut doc, [40.0, 160.0, 140.0, 90.0]);
-    let obstacle = [280.0, 120.0, 400.0, 290.0];
     rect(&mut doc, [280.0, 120.0, 120.0, 170.0]);
     let d = rect(&mut doc, [500.0, 160.0, 140.0, 90.0]);
     let a = arrow(&mut doc, o, d, Route::Elbow);
     let mut cache = RouteCache::default();
     cache.sync(&doc);
-    let pts = &cache.get(a).unwrap().pts;
-    for w in pts.windows(2) {
-        let (lo, hi) = (
-            [w[0][0].min(w[1][0]), w[0][1].min(w[1][1])],
-            [w[0][0].max(w[1][0]), w[0][1].max(w[1][1])],
+    let pts = cache.get(a).unwrap().polyline();
+    let oracle = [[180.0, 205.0], [500.0, 205.0]];
+    assert_eq!(pts.len(), 2, "{pts:?}");
+    for (p, q) in pts.iter().zip(oracle) {
+        assert!(
+            close(*p, q, ORACLE_TIE),
+            "{pts:?} contra o oráculo {oracle:?}"
         );
-        let enters = lo[0] < obstacle[2]
-            && hi[0] > obstacle[0]
-            && lo[1] < obstacle[3]
-            && hi[1] > obstacle[1];
-        assert!(!enters, "o segmento {w:?} entra na caixa do meio: {pts:?}");
     }
 }

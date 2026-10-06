@@ -176,7 +176,7 @@ pub fn pointer(
             live.last_down = (!double).then_some((input.now_ns, [x, y]));
             let history = live.histories.entry(board.id).or_default();
             let ed = editor(&mut live.editor, theme);
-            if double && ed.double_click(&mut board.doc, input.text, p) {
+            if double && ed.double_click(&mut board.doc, history, input.text, p) {
                 return true;
             }
             if ed.pointer_down(&mut board.doc, history, input.text, p, view) == Down::Pan {

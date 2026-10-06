@@ -79,7 +79,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.yes" => "yes",
         "board.smoke.no" => "no",
         "board.smoke.skip" => "skip",
-        "board.smoke.notes" => "Notes — move me into an arrow's way",
+        "board.smoke.later" => "Later",
+        "board.smoke.notes" => "Notes — drag the dots on my arrow",
         _ => return None,
     })
 }

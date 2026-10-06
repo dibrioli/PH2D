@@ -10,6 +10,9 @@ use ph2d_board_route::Dir;
 use ph2d_tokens::Spacing;
 use ph2d_vector::{Affine, Brush, Color, Stroke, VectorScene};
 
+/// O tamanho da ponta nos ícones: o de nascença do catálogo (`Marker`, 1×).
+const ICON_HEAD_SCALE: f64 = 1.0;
+
 /// O balão de cada controlo (o nome e, quando há, o atalho de uma tecla).
 pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
     Some(match it {
@@ -189,7 +192,8 @@ pub(super) fn arrow_icon(
         }
     };
     let routed = ph2d_board_route::Routed::from_points(pts, route, [Dir::East, Dir::West]);
-    let d = ph2d_board_route::drawn(&routed, heads, w);
+    // A ponta do catálogo no tamanho de nascença (4 × a linha), não o do quadro: cabe no botão.
+    let d = ph2d_board_route::drawn_at(&routed, heads, w, ICON_HEAD_SCALE);
     let brush = Brush::Solid(c);
     let s = Stroke::new(w)
         .with_caps(ph2d_vector::Cap::Round)

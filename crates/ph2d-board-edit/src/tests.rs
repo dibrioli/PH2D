@@ -362,7 +362,7 @@ fn resizing_several_scales_their_positions_with_the_frame() {
 fn double_click_writes_inside_the_text_wraps_the_shape_grows_and_undo_is_one_step() {
     let mut w = world();
     let id = w.rect([0.0, 0.0, 120.0, 40.0]);
-    assert!(w.ed.double_click(&mut w.doc, &mut w.ts, at(60.0, 20.0, NONE)));
+    assert!(w.ed.double_click(&mut w.doc, &mut w.h, &mut w.ts, at(60.0, 20.0, NONE)));
     assert!(w.ed.is_editing_text());
     w.ed.text_input(
         &mut w.doc,
@@ -805,4 +805,61 @@ fn the_label_wraps_at_the_click_width() {
 fn the_top_dot_clears_the_rotate_knob() {
     let m = metrics();
     assert!(m.dot - m.rotate_offset >= 2.0 * m.handle);
+}
+
+/// ⭐ Os pontos de ajuste do Miro: arrastar a bolinha do MEIO de uma seta seleccionada cria um ponto
+/// ali e leva-o (UM passo); arrastar o ponto move-o; duplo-clique apaga-o; um toque no meio sem
+/// arrastar não cria nada.
+#[test]
+fn dragging_the_middle_handle_bends_the_arrow_through_a_new_point() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    w.rect([400.0, 0.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [480.0, 50.0], NONE).unwrap();
+    let mid = w.ed.overlay(&w.doc, &mut w.ts).wires[0].mids[0];
+    w.click(mid, NONE);
+    assert!(
+        w.el(id).connector().unwrap().waypoints.is_empty(),
+        "um toque não cria ponto"
+    );
+    w.drag(mid, [280.0, 200.0], NONE);
+    assert_eq!(
+        w.el(id).connector().unwrap().waypoints,
+        vec![[280.0, 200.0]]
+    );
+    let line = w.ed.routes(&w.doc).get(id).unwrap().polyline();
+    assert!(
+        line.contains(&[280.0, 200.0]),
+        "a seta passa pelo ponto: {line:?}"
+    );
+    w.drag([280.0, 200.0], [300.0, 260.0], NONE);
+    assert_eq!(
+        w.el(id).connector().unwrap().waypoints,
+        vec![[300.0, 260.0]]
+    );
+    assert!(w.cmd(Command::Undo));
+    assert_eq!(
+        w.el(id).connector().unwrap().waypoints,
+        vec![[280.0, 200.0]]
+    );
+    assert!(w.ed.double_click(&mut w.doc, &mut w.h, &mut w.ts, at(280.0, 200.0, NONE)));
+    assert!(
+        w.el(id).connector().unwrap().waypoints.is_empty(),
+        "duplo-clique apaga o ponto"
+    );
+    assert!(w.cmd(Command::Undo));
+    assert_eq!(
+        w.el(id).connector().unwrap().waypoints,
+        vec![[280.0, 200.0]]
+    );
+}
+
+/// A seta de nascença é a CURVA (ordem do dono, 06/10 — a do Miro).
+#[test]
+fn a_new_arrow_is_curved() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    w.rect([400.0, 200.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [480.0, 250.0], NONE).unwrap();
+    assert_eq!(w.el(id).connector().unwrap().route, Route::Curved);
 }

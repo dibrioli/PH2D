@@ -76,6 +76,14 @@ pub(crate) enum Gesture {
         origin: Option<ElementId>,
         dot: Option<[f64; 2]>,
     },
+    /// Arrastar (ou criar, a partir do meio de um trecho) um ponto de ajuste de uma seta.
+    Bend {
+        id: ElementId,
+        index: usize,
+        start: [f64; 2],
+        moved: bool,
+        original: Element,
+    },
     /// Arrastar uma ponta de uma seta seleccionada.
     EndDrag {
         id: ElementId,
@@ -198,14 +206,19 @@ impl Editor {
             self.gesture = Some(self.begin_connect(doc, p, Some(shape), Some(dir)));
             return Down::Taken;
         }
-        if let Some((id, which)) = self.end_handle_at(doc, p) {
-            let original = doc.get(id).cloned().expect("a pega é de uma seta viva");
-            self.gesture = Some(Gesture::EndDrag {
-                id,
-                which,
-                original,
-                target: None,
-            });
+        if let Some((id, h)) = self.wire_handle_at(doc, p) {
+            self.gesture = match h {
+                crate::wire::WireHandle::End(which) => {
+                    let original = doc.get(id).cloned().expect("a pega é de uma seta viva");
+                    Some(Gesture::EndDrag {
+                        id,
+                        which,
+                        original,
+                        target: None,
+                    })
+                }
+                _ => self.begin_bend(doc, id, h, p),
+            };
             return Down::Taken;
         }
         if let Some(h) = self.handle_at(doc, p) {
@@ -283,6 +296,7 @@ impl Editor {
             Gesture::Text => self.text_drag(ts, doc, p),
             Gesture::Connect { .. } => self.connect_move(doc, &mut g, p),
             Gesture::EndDrag { .. } => self.end_drag_move(doc, &mut g, p),
+            Gesture::Bend { .. } => self.bend_move(doc, &mut g, p),
             Gesture::Marquee {
                 start,
                 cur,
@@ -444,6 +458,7 @@ impl Editor {
         match g {
             Gesture::Text | Gesture::Marquee { .. } => {}
             g @ Gesture::Connect { .. } => self.connect_up(doc, history, g),
+            g @ Gesture::Bend { .. } => self.bend_up(doc, history, g),
             Gesture::EndDrag { original, .. } => {
                 history.record(undo_ops(doc, std::slice::from_ref(&original)));
             }
@@ -510,10 +525,8 @@ impl Editor {
                     let _ = op.apply(doc);
                 }
             }
-            Gesture::EndDrag { original, .. } => {
-                for op in undo_ops(doc, std::slice::from_ref(&original)) {
-                    let _ = op.apply(doc);
-                }
+            Gesture::EndDrag { original, .. } | Gesture::Bend { original, .. } => {
+                let _ = BoardOp::Put(original).apply(doc);
             }
             Gesture::Create { id: Some(id), .. } | Gesture::Connect { id: Some(id), .. } => {
                 let _ = BoardOp::Delete(id).apply(doc);

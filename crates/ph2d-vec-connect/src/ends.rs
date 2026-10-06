@@ -93,39 +93,14 @@ pub fn bbox_exit(b: Aabb, from: [f64; 2], dir: [f64; 2]) -> [f64; 2] {
 /// conjunto só cresce) e, num diagrama denso, pega tudo — que é a resposta certa.
 #[must_use]
 pub fn obstacles_in_play(shapes: &[Aabb], a: Aabb, b: Aabb, pad: f64) -> Vec<Aabb> {
-    let all =
-        |_: Aabb, out: &mut Vec<(usize, Aabb)>| out.extend(shapes.iter().copied().enumerate());
-    obstacles_in_play_near(all, a, b, pad, None)
-        .into_iter()
-        .map(|(_, s)| s)
-        .collect()
-}
-
-/// O mesmo ponto fixo de [`obstacles_in_play`], com os candidatos de cada região dados por `near`
-/// (um índice espacial: num documento de 100 mil formas, varrer todas por rota não cabe) e, com
-/// `limit`, a região PRESA dentro de uma caixa — sem ele, num diagrama denso (vão entre formas menor
-/// que `2·pad`) a região engole o documento inteiro e cada rota paga o grafo de todas as formas.
-/// `near` pode devolver a mais e repetidos; nunca a menos. Devolve `(chave, caixa)` por chave.
-#[must_use]
-pub fn obstacles_in_play_near<K: Ord + Copy>(
-    mut near: impl FnMut(Aabb, &mut Vec<(K, Aabb)>),
-    a: Aabb,
-    b: Aabb,
-    pad: f64,
-    limit: Option<Aabb>,
-) -> Vec<(K, Aabb)> {
-    let cap = |r: Aabb| limit.map_or(r, |l| intersection(r, l));
-    let mut roi = cap(a.union(b).inflate(pad));
-    let mut taken = std::collections::BTreeMap::new();
-    let mut cand = Vec::new();
+    let mut roi = a.union(b).inflate(pad);
+    let mut taken = vec![false; shapes.len()];
     loop {
-        cand.clear();
-        near(roi, &mut cand);
         let mut grew = false;
-        for &(k, s) in &cand {
-            if !taken.contains_key(&k) && roi.overlaps(s) {
-                taken.insert(k, s);
-                roi = cap(roi.union(s.inflate(pad)));
+        for (i, s) in shapes.iter().enumerate() {
+            if !taken[i] && roi.overlaps(*s) {
+                taken[i] = true;
+                roi = roi.union(s.inflate(pad));
                 grew = true;
             }
         }
@@ -133,17 +108,11 @@ pub fn obstacles_in_play_near<K: Ord + Copy>(
             break;
         }
     }
-    taken.into_iter().collect()
-}
-
-/// A parte comum de duas caixas. (Nunca vazia no uso: a região nasce dentro do `limit`.)
-fn intersection(r: Aabb, l: Aabb) -> Aabb {
-    let min = [r.min[0].max(l.min[0]), r.min[1].max(l.min[1])];
-    let max = [
-        r.max[0].min(l.max[0]).max(min[0]),
-        r.max[1].min(l.max[1]).max(min[1]),
-    ];
-    Aabb { min, max }
+    shapes
+        .iter()
+        .zip(&taken)
+        .filter_map(|(s, &t)| t.then_some(*s))
+        .collect()
 }
 
 fn half(b: Aabb) -> (f64, f64) {

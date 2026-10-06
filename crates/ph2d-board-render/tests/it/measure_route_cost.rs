@@ -1,11 +1,11 @@
 //! ⏱ **A RÉGUA das setas** (W2, `docs/MiroClone/02_plano.md` §2: «rota em cache, refeita só quando
-//! uma ponta ou um obstáculo próximo muda») — um fluxograma de N formas 160×100 em grelha com N/10
-//! setas em cotovelo entre vizinhas, presas ao centro. Mede, por N:
+//! a seta ou uma das suas formas muda») — um fluxograma de N formas 160×100 em grelha com N/10
+//! setas curvas entre vizinhas, presas ao centro. Mede, por N:
 //!
 //! - **frio**: a primeira sincronização (todas as rotas ao A\*);
 //! - **parado**: a sincronização de um quadro em que nada mudou (a revisão é a mesma);
 //! - **arrasto**: um quadro de arrastar UMA forma com setas (mexe 1 un. e sincroniza) — o que se paga
-//!   por quadro enquanto o dedo arrasta, e quantas setas voltaram ao roteador;
+//!   por quadro enquanto o dedo arrasta, e quantas setas foram revistas e refeitas;
 //! - **desenho**: encodar o quadro inteiro com as setas (vista a enquadrar tudo).
 //!
 //! Régua do dono (05/10): variantes no MESMO processo, rodadas intercaladas com ordem rodada, vale o
@@ -15,7 +15,7 @@
 //! bash scripts/ph2d-run.sh cargo test -p ph2d-board-render --release --test it measure_route -- --ignored --nocapture
 //! ```
 
-use ph2d_board_model::{BoardOp, BoardSet, Element, ElementId};
+use ph2d_board_model::{BoardOp, BoardSet, ElementId};
 use ph2d_board_render::RenderCache;
 use ph2d_board_route::RouteCache;
 use ph2d_text::TextSystem;
@@ -45,34 +45,6 @@ fn nudge(set: &mut BoardSet, id: ElementId, k: usize) {
     let mut el = doc.get(id).unwrap().clone();
     el.translate([if k.is_multiple_of(2) { 1.0 } else { -1.0 }, 0.0]);
     BoardOp::Put(el).apply(doc);
-}
-
-/// Quantos obstáculos cada rota enxerga: com a lei do vectorial (o ponto fixo SEM tecto) e com o
-/// tecto do quadro (`DETOUR_K`) — o número que motivou o tecto (só onde a lei sem tecto cabe).
-fn obstacle_counts(doc: &ph2d_board_model::BoardDoc, routes: &RouteCache) -> (String, String) {
-    use ph2d_vec_connect::{Aabb, ROI_PAD_K, obstacles_in_play};
-    let bx = |el: &Element| {
-        let [x0, y0, x1, y1] = el.aabb();
-        Aabb::new([x0, y0], [x1, y1])
-    };
-    let shapes: Vec<Aabb> = doc
-        .live()
-        .filter(|el| el.shape().is_some())
-        .map(bx)
-        .collect();
-    let (mut a, mut b) = (Vec::new(), Vec::new());
-    for el in doc.live() {
-        let Some(c) = el.connector() else { continue };
-        let ends: Vec<Aabb> = c.targets().filter_map(|t| doc.get(t)).map(bx).collect();
-        let pad = ROI_PAD_K * ph2d_board_route::JETTY;
-        a.push(obstacles_in_play(&shapes, ends[0], ends[1], pad).len());
-        b.push(routes.obstacles(el.id).unwrap_or(0));
-    }
-    let fmt = |v: &[usize]| {
-        let mean = v.iter().sum::<usize>() as f64 / v.len().max(1) as f64;
-        format!("{mean:.1} / {}", v.iter().max().copied().unwrap_or(0))
-    };
-    (fmt(&a), fmt(&b))
 }
 
 fn ms(t: Instant) -> f64 {
@@ -142,14 +114,6 @@ fn measure_route_cost() {
     }
     let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("loadavg: {}", load.trim());
-    println!(
-        "| N formas | obstáculos por rota SEM tecto (média / máx) | COM tecto (média / máx) |"
-    );
-    for (k, n) in NS.iter().enumerate().take(2) {
-        let doc = &boards[k].0.boards()[0].doc;
-        let (without, with) = obstacle_counts(doc, &caches[k].0);
-        println!("| {n} | {without} | {with} |");
-    }
     println!(
         "| N formas | setas | frio ms | parado ms | arrasto ms/quadro (revistas / refeitas) | desenho ms/quadro |"
     );

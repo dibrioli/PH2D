@@ -416,10 +416,17 @@ pub fn paint_overlay(
     for w in &overlay.wires {
         let path = v * ph2d_vec_render::build_bezpath(&w.path);
         line(scene, &path, accent, thin);
-        for e in w.ends {
-            let c = ph2d_vector::Circle::new(v * point(e), metrics.handle / 2.0).to_path(0.1);
+        // As pontas e os pontos de ajuste: círculos ocos (arrastam-se) — o idioma do Miro.
+        // Do tamanho do alcance do clique (`Editor::wire_handle_at`): o que se vê é o que se agarra.
+        for e in w.ends.iter().chain(&w.points) {
+            let c = ph2d_vector::Circle::new(v * point(*e), metrics.handle).to_path(0.1);
             scene.fill_path(&c, &paper, Affine::IDENTITY);
             line(scene, &c, accent, thin);
+        }
+        // O meio de cada trecho: a bolinha cheia que, arrastada, cria um ponto ali.
+        for m in &w.mids {
+            let c = ph2d_vector::Circle::new(v * point(*m), metrics.handle / 2.0).to_path(0.1);
+            scene.fill_path(&c, &Brush::Solid(accent), Affine::IDENTITY);
         }
     }
     for (at, dir) in &overlay.dots {

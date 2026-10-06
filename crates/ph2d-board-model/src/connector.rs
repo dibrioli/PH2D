@@ -1,5 +1,7 @@
-//! **A seta do quadro** (W2): a RELAÇÃO entre duas pontas — a geometria da rota não se guarda, é
-//! derivada (`ph2d-board-route`) e refaz-se quando uma ponta ou um obstáculo mexe.
+//! **A seta do quadro** (W2): a RELAÇÃO entre duas pontas e os pontos por onde o artista a fez
+//! passar — a geometria não se guarda, é derivada (`ph2d-board-route`) e refaz-se quando a seta ou
+//! uma das suas formas mexe. ⛔ Nunca por causa de OUTRA forma (ordem do dono, 06/10: «setas não se
+//! reajustam sozinhas», o idioma do Miro).
 //!
 //! ⚠️ postcard é posicional: variante NOVA só no fim de cada enum.
 
@@ -30,11 +32,13 @@ pub enum Anchor {
 /// Como a rota se desenha.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Route {
+    /// Segmentos rectos pelos pontos do artista.
     Straight,
-    /// Só segmentos horizontais e verticais, desviando das formas no caminho — o de nascença.
-    #[default]
+    /// Só segmentos horizontais e verticais (contorna só as suas duas formas).
     Elbow,
-    /// A MESMA rota do cotovelo, suavizada: desvia das formas como ele.
+    /// A curva suave do Miro, que sai e entra perpendicular às formas e passa pelos pontos do
+    /// artista — a de nascença (ordem do dono, 06/10).
+    #[default]
     Curved,
 }
 
@@ -78,6 +82,9 @@ pub struct Connector {
     pub style: Style,
     /// O rótulo, a meio da rota. Vazio = sem rótulo.
     pub label: String,
+    /// Os pontos (mundo) por onde o artista fez a seta passar, do início para o fim — os «pontos de
+    /// ajuste» do Miro. Vazio = a rota de nascença entre as pontas.
+    pub waypoints: Vec<[f64; 2]>,
 }
 
 impl Connector {
@@ -95,6 +102,7 @@ impl Connector {
             heads: Self::DEFAULT_HEADS,
             style,
             label: String::new(),
+            waypoints: Vec::new(),
         }
     }
 

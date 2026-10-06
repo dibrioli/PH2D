@@ -312,7 +312,8 @@ impl Element {
         }
     }
 
-    /// Desloca o elemento por `d` (mundo). Numa seta, só as pontas SOLTAS — as presas seguem a forma.
+    /// Desloca o elemento por `d` (mundo). Numa seta, as pontas SOLTAS e os pontos de ajuste — as
+    /// presas seguem a forma.
     pub fn translate(&mut self, d: [f64; 2]) {
         match &mut self.kind {
             ElementKind::Shape(_) => {
@@ -324,6 +325,9 @@ impl Element {
                     if let End::Free(p) = e {
                         *p = [p[0] + d[0], p[1] + d[1]];
                     }
+                }
+                for p in &mut c.waypoints {
+                    *p = [p[0] + d[0], p[1] + d[1]];
                 }
             }
         }

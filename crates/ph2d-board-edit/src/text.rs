@@ -248,7 +248,17 @@ impl Editor {
 
     /// Duplo-clique: numa forma, escreve nela com o cursor onde se clicou (numa palavra,
     /// selecciona-a se já se estava a escrever ali). `false` = não havia forma.
-    pub fn double_click(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem, p: Pointer) -> bool {
+    pub fn double_click(
+        &mut self,
+        doc: &mut BoardDoc,
+        history: &mut History,
+        ts: &mut TextSystem,
+        p: Pointer,
+    ) -> bool {
+        // Num ponto de ajuste de uma seta seleccionada, o duplo-clique apaga-o.
+        if self.editing.is_none() && self.remove_point_at(doc, history, p) {
+            return true;
+        }
         if let Some(id) = self.editing.as_ref().map(|e| e.id)
             && let Some(el) = doc.get(id).cloned()
         {

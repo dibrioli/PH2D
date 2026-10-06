@@ -407,10 +407,15 @@ fn the_arrow_tool_links_two_boxes_and_the_bar_changes_route_and_tip() {
         "as duas pontas presas: {:?}",
         c.ends()
     );
-    t.click_bar(Item::Route(Route::Curved));
+    assert_eq!(
+        t.arrows()[0].connector().unwrap().route,
+        Route::Curved,
+        "a de nascença"
+    );
+    t.click_bar(Item::Route(Route::Elbow));
     t.click_bar(Item::Head(1, Head::Triangle));
     let c = t.arrows()[0].connector().cloned().unwrap();
-    assert_eq!((c.route, c.heads[1]), (Route::Curved, Head::Triangle));
+    assert_eq!((c.route, c.heads[1]), (Route::Elbow, Head::Triangle));
     assert!(t.key(BoardKey::Char('z'), CTRL, None));
     assert_eq!(t.arrows()[0].connector().unwrap().heads[1], Head::Arrow);
 }

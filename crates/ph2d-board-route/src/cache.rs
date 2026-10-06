@@ -1,13 +1,13 @@
-//! ⭐ **A cache de rotas** (plano §2: «rota em cache, refeita só quando uma ponta ou um obstáculo
-//! próximo muda»). O conector vectorial refaz TODAS as rotas a cada quadro (plano §0, o risco a
-//! escala); aqui:
+//! ⭐ **A cache de rotas** (plano §2: «rota em cache»). O conector vectorial refaz TODAS as rotas a
+//! cada quadro (plano §0, o risco a escala); aqui:
 //!
 //! 1. o documento não mudou (a revisão da sessão é a mesma) ⇒ nada a fazer, O(1);
 //! 2. mudou ⇒ a DIFERENÇA (as versões de cada elemento contra as da última vez, num passeio pela
-//!    ordem de id) diz que formas mudaram; o índice espacial troca só essas, e só se REVÊ a seta que
-//!    mudou, cuja forma mudou, ou cuja região toca a caixa velha ou nova de uma forma que mudou;
-//! 3. uma seta revista compara a sua CHAVE — a geometria das duas pontas e as caixas dos obstáculos
-//!    que a rota enxerga — e só volta ao A\* se ela mudou.
+//!    ordem de id) diz o que mudou; o índice espacial (as perguntas do gesto) troca só essas formas,
+//!    e só se REVÊ a seta que mudou ou cuja forma de uma ponta mudou — nenhuma outra forma conta
+//!    (ordem do dono, 06/10: as setas não se reajustam sozinhas);
+//! 3. uma seta revista compara a sua CHAVE (a geometria das pontas e os pontos de ajuste) e só volta
+//!    a ser desenhada se ela mudou.
 //!
 //! A chave é GEOMETRIA, não versões: uma cache que passa de um quadro a outro nunca confunde dois
 //! elementos com o mesmo id (a diferença vê tudo mudado e revê tudo).
@@ -15,21 +15,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_board_model::{Anchor, BoardDoc, Element, ElementId, End, Route, ShapeType};
-use ph2d_vec_connect::{Aabb, ROI_PAD_K, obstacles_in_play_near};
+use ph2d_vec_connect::Aabb;
 
 use crate::index::ShapeIndex;
-use crate::{JETTY, Resolved, Routed, SPREAD_STEP, aabb, anchor_for, compute, resolve};
-
-/// ⭐ **O tecto da região de uma rota**: o corredor entre as duas pontas, mais a folga do roteador,
-/// mais esta fracção do lado maior do corredor — uma rota não se afasta do caminho mais do que
-/// metade do comprimento dele. ⛔ Sem tecto (a lei do vectorial), num fluxograma com o vão de
-/// nascença (80, menor que `2 × ROI_PAD_K × JETTY` = 240) a região engole o quadro inteiro: medido
-/// 06/10 na régua `measure_route_cost`, ver o plano §2.3.
-pub const DETOUR_K: f64 = 0.5;
-
-/// Acima de tantas formas mudadas num só passo, rever todas as setas sai mais barato que testar
-/// cada uma contra cada caixa mudada (mover 100 mil formas de uma vez).
-const MANY_CHANGES: usize = 64;
+use crate::{Resolved, Routed, SPREAD_STEP, aabb, anchor_for, compute, resolve};
 
 /// O que decide a rota de uma ponta.
 #[derive(Clone, Debug, PartialEq)]
@@ -48,15 +37,13 @@ enum EndKey {
 struct Key {
     route: Route,
     ends: [EndKey; 2],
-    obstacles: Vec<Aabb>,
+    waypoints: Vec<[f64; 2]>,
     spread: f64,
 }
 
 #[derive(Debug)]
 struct Entry {
     key: Key,
-    /// A região onde a rota procura obstáculos (o tecto): uma forma que muda fora dela não a toca.
-    region: Aabb,
     routed: Routed,
 }
 
@@ -87,14 +74,6 @@ fn end_key(r: &Resolved<'_>) -> EndKey {
     }
 }
 
-/// O tecto da região da rota entre `a` e `b` ([`DETOUR_K`]).
-#[must_use]
-pub fn region(a: Aabb, b: Aabb) -> Aabb {
-    let c = a.union(b);
-    let side = (c.max[0] - c.min[0]).max(c.max[1] - c.min[1]);
-    c.inflate(ROI_PAD_K * JETTY + DETOUR_K * side)
-}
-
 impl RouteCache {
     /// Põe as rotas em dia com `doc`. O(1) quando nada mudou.
     pub fn sync(&mut self, doc: &BoardDoc) {
@@ -104,22 +83,21 @@ impl RouteCache {
         self.rev = Some(doc.rev());
         self.rerouted = 0;
         self.revisited = 0;
-        let (changed, boxes) = self.diff(doc);
+        let changed = self.diff(doc);
 
         let conns: Vec<&Element> = doc.live().filter(|el| el.connector().is_some()).collect();
         let spreads = spreads(&conns);
         let alive: BTreeSet<ElementId> = conns.iter().map(|el| el.id).collect();
         self.routes.retain(|id, _| alive.contains(id));
-        let all = boxes.len() > MANY_CHANGES;
         for el in conns {
+            let c = el.connector().expect("filtrado acima");
             let spread = spreads.get(&el.id).copied().unwrap_or(0.0);
             let stale = match self.routes.get(&el.id) {
                 None => true,
                 Some(e) => {
-                    // Uma forma das pontas que mudou está DENTRO da região: a caixa dela apanha-a.
-                    all || changed.contains(&el.id)
+                    changed.contains(&el.id)
+                        || c.targets().any(|t| changed.contains(&t))
                         || e.key.spread != spread
-                        || boxes.iter().any(|b| b.overlaps(e.region))
                 }
             };
             if stale {
@@ -128,11 +106,10 @@ impl RouteCache {
         }
     }
 
-    /// A diferença contra a última sincronização: os ids que mudaram (novos, mudados, apagados) e
-    /// as caixas velhas e novas das FORMAS que mudaram — com o índice já em dia.
-    fn diff(&mut self, doc: &BoardDoc) -> (BTreeSet<ElementId>, Vec<Aabb>) {
+    /// A diferença contra a última sincronização: os ids que mudaram (novos, mudados, apagados) —
+    /// com o índice já em dia.
+    fn diff(&mut self, doc: &BoardDoc) -> BTreeSet<ElementId> {
         let mut changed = BTreeSet::new();
-        let mut boxes = Vec::new();
         let mut now = Vec::with_capacity(self.seen.len());
         let mut old = self.seen.iter().peekable();
         for el in doc.live() {
@@ -140,7 +117,7 @@ impl RouteCache {
             while let Some(&&(id, _)) = old.peek().filter(|(id, _)| *id < el.id) {
                 old.next();
                 changed.insert(id);
-                boxes.extend(self.index.remove(id));
+                self.index.remove(id);
             }
             let same = old
                 .peek()
@@ -153,22 +130,20 @@ impl RouteCache {
             }
             changed.insert(el.id);
             if el.shape().is_some() {
-                let b = aabb(el);
-                boxes.extend(self.index.insert(el.id, b));
-                boxes.push(b);
+                self.index.insert(el.id, aabb(el));
             } else {
-                boxes.extend(self.index.remove(el.id));
+                self.index.remove(el.id);
             }
         }
         for &(id, _) in old {
             changed.insert(id);
-            boxes.extend(self.index.remove(id));
+            self.index.remove(id);
         }
         self.seen = now;
-        (changed, boxes)
+        changed
     }
 
-    /// Resolve, procura os obstáculos e — se a chave mudou — volta ao roteador.
+    /// Resolve as pontas e — se a chave mudou — refaz a rota.
     fn revisit(&mut self, doc: &BoardDoc, el: &Element, spread: f64) {
         self.revisited += 1;
         let c = el.connector().expect("só setas");
@@ -184,32 +159,20 @@ impl RouteCache {
                 ends[i] = Resolved::Point(ends[1 - i].center());
             }
         }
-        let (a, b) = (ends[0].bbox(), ends[1].bbox());
-        let region = region(a, b);
-        let index = &self.index;
-        let near = |roi: Aabb, out: &mut Vec<(ElementId, Aabb)>| index.near(roi, out);
-        let obstacles: Vec<Aabb> =
-            obstacles_in_play_near(near, a, b, ROI_PAD_K * JETTY, Some(region))
-                .into_iter()
-                .map(|(_, s)| s)
-                .collect();
         let key = Key {
             route: c.route,
             ends: [end_key(&ends[0]), end_key(&ends[1])],
-            obstacles,
+            waypoints: c.waypoints.clone(),
             spread,
         };
         let entry = match prev {
-            Some(e) if e.key == key => Entry { region, ..e },
+            Some(e) if e.key == key => e,
             prev => {
                 self.rerouted += 1;
                 let sides = prev.map_or([None; 2], |e| e.routed.sides.map(Some));
-                let routed = compute([&ends[0], &ends[1]], c.route, sides, &key.obstacles, spread);
-                Entry {
-                    key,
-                    region,
-                    routed,
-                }
+                let ends = [&ends[0], &ends[1]];
+                let routed = compute(ends, c.route, &c.waypoints, sides, spread);
+                Entry { key, routed }
             }
         };
         self.routes.insert(el.id, entry);
@@ -231,12 +194,6 @@ impl RouteCache {
     #[must_use]
     pub fn revisited(&self) -> usize {
         self.revisited
-    }
-
-    /// Quantos obstáculos a rota de `id` enxerga (as réguas).
-    #[must_use]
-    pub fn obstacles(&self, id: ElementId) -> Option<usize> {
-        self.routes.get(&id).map(|e| e.key.obstacles.len())
     }
 
     /// A forma de CIMA sob `p` (o contorno, ou a menos de `tol` dele) — pelo índice: o passear do

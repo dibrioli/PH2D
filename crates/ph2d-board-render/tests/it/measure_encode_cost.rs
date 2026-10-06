@@ -29,7 +29,7 @@ pub(super) enum Mix {
     /// As MESMAS formas com a vista aproximada até a letra se ler (14 px): só uma parte está à
     /// vista — o regime de quem trabalha num quadro grande.
     ShapesNear,
-    /// O fluxograma da W2: N formas 160×100 com o vão de nascença e N/10 setas em cotovelo entre
+    /// O fluxograma da W2: N formas 160×100 com o vão de nascença e N/10 setas CURVAS (a de nascença) entre
     /// vizinhas, presas ao centro (`measure_route_cost`), com a vista a enquadrar tudo.
     Flow,
 }
@@ -146,7 +146,7 @@ pub(super) fn flow(n: usize) -> BoardSet {
         if j >= n {
             continue;
         }
-        let c = Connector::new(center(ids[i]), center(ids[j]), Route::Elbow, style.clone());
+        let c = Connector::new(center(ids[i]), center(ids[j]), Route::Curved, style.clone());
         let el = Element::new_connector(b.doc.mint_id(), b.doc.z_on_top(), c);
         BoardOp::Put(el).apply(&mut b.doc);
     }

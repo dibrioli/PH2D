@@ -220,6 +220,10 @@ pub struct Overlay {
 pub struct Wire {
     pub path: ph2d_board_route::VecPath,
     pub ends: [[f64; 2]; 2],
+    /// Os pontos de ajuste (círculos ocos: arrastam-se; duplo-clique apaga).
+    pub points: Vec<[f64; 2]>,
+    /// O meio de cada trecho (bolinhas cheias: arrastadas, criam um ponto ali).
+    pub mids: Vec<[f64; 2]>,
 }
 
 /// A forma alvo de uma ligação em curso.
@@ -484,6 +488,8 @@ impl Editor {
                 .map(|r| Wire {
                     path: r.path.clone(),
                     ends: r.ends(),
+                    points: r.waypoints().to_vec(),
+                    mids: r.leg_mids.clone(),
                 })
                 .collect(),
             target: self.gesture.as_ref().and_then(|g| g.target(doc)),

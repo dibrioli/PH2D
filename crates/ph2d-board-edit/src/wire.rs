@@ -12,8 +12,16 @@ use ph2d_board_route::{Routed, fixed_world};
 use crate::gesture::Gesture;
 use crate::{Editor, Frame, NEXT_GAP, Pointer, Target, live};
 
-/// Que ponta de que seta.
-pub(crate) type EndRef = (ElementId, usize);
+/// Uma pega de uma seta seleccionada.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum WireHandle {
+    /// A ponta `0` (início) ou `1` (fim).
+    End(usize),
+    /// O ponto de ajuste `i` (o círculo oco do Miro).
+    Point(usize),
+    /// O meio do trecho `i` (a bolinha cheia): arrastada, cria um ponto de ajuste ali.
+    Mid(usize),
+}
 
 impl Gesture {
     /// O realce do alvo de uma ligação em curso.
@@ -154,19 +162,121 @@ impl Editor {
         }
     }
 
-    /// A ponta `which` de uma seta seleccionada sob `p` (a pega dela).
-    pub(crate) fn end_handle_at(&mut self, doc: &BoardDoc, p: Pointer) -> Option<EndRef> {
+    /// A pega de uma seta seleccionada sob `p`: as pontas primeiro, depois os pontos de ajuste,
+    /// depois os meios dos trechos.
+    pub(crate) fn wire_handle_at(
+        &mut self,
+        doc: &BoardDoc,
+        p: Pointer,
+    ) -> Option<(ElementId, WireHandle)> {
         self.routes.sync(doc);
         let reach = self.metrics.handle * p.px;
+        let near = |q: &[f64; 2]| dist(*q, p.world) <= reach;
         self.selection
             .iter()
             .filter(|id| doc.get(**id).and_then(Element::connector).is_some())
             .find_map(|id| {
                 let r = self.routes.get(*id)?;
-                (0..2)
-                    .find(|&i| dist(r.ends()[i], p.world) <= reach)
-                    .map(|i| (*id, i))
+                let h = r
+                    .ends()
+                    .iter()
+                    .position(near)
+                    .map(WireHandle::End)
+                    .or_else(|| r.waypoints().iter().position(near).map(WireHandle::Point))
+                    .or_else(|| r.leg_mids.iter().position(near).map(WireHandle::Mid))?;
+                Some((*id, h))
             })
+    }
+
+    /// Carregar numa pega de ponto: o ponto `Point(i)` arrasta-se; o meio `Mid(i)` insere um ponto
+    /// novo ali (no trecho `i`, entre as estações `i` e `i+1`) e arrasta-o.
+    pub(crate) fn begin_bend(
+        &mut self,
+        doc: &mut BoardDoc,
+        id: ElementId,
+        h: WireHandle,
+        p: Pointer,
+    ) -> Option<Gesture> {
+        let original = doc.get(id)?.clone();
+        let index = match h {
+            WireHandle::Point(i) => i,
+            WireHandle::Mid(i) => {
+                let at = self.routes.get(id)?.leg_mids.get(i).copied()?;
+                let mut el = original.clone();
+                el.connector_mut()?.waypoints.insert(i, at);
+                live(doc, el);
+                i
+            }
+            WireHandle::End(_) => return None,
+        };
+        Some(Gesture::Bend {
+            id,
+            index,
+            start: p.world,
+            moved: false,
+            original,
+        })
+    }
+
+    /// Arrastar o ponto de ajuste da seta.
+    pub(crate) fn bend_move(&mut self, doc: &mut BoardDoc, g: &mut Gesture, p: Pointer) {
+        let Gesture::Bend {
+            id,
+            index,
+            start,
+            moved,
+            ..
+        } = g
+        else {
+            return;
+        };
+        *moved |= dist(*start, p.world) > self.metrics.drag * p.px;
+        if !*moved {
+            return;
+        }
+        let Some(mut el) = doc.get(*id).cloned() else {
+            return;
+        };
+        if let Some(w) = el.connector_mut().and_then(|c| c.waypoints.get_mut(*index)) {
+            *w = p.world;
+        }
+        live(doc, el);
+    }
+
+    /// Largar o ponto: UM passo de desfazer. Um toque no meio sem arrastar não cria ponto nenhum.
+    pub(crate) fn bend_up(&mut self, doc: &mut BoardDoc, history: &mut History, g: Gesture) {
+        let Gesture::Bend {
+            moved, original, ..
+        } = g
+        else {
+            return;
+        };
+        if moved {
+            history.record(vec![BoardOp::Put(original)]);
+        } else {
+            let _ = BoardOp::Put(original).apply(doc);
+        }
+    }
+
+    /// Duplo-clique num ponto de ajuste de uma seta seleccionada: apaga-o (UM passo). `false` = não
+    /// havia ponto ali.
+    pub(crate) fn remove_point_at(
+        &mut self,
+        doc: &mut BoardDoc,
+        history: &mut History,
+        p: Pointer,
+    ) -> bool {
+        let Some((id, WireHandle::Point(i))) = self.wire_handle_at(doc, p) else {
+            return false;
+        };
+        let Some(mut el) = doc.get(id).cloned() else {
+            return false;
+        };
+        if let Some(c) = el.connector_mut() {
+            c.waypoints.remove(i);
+        }
+        history.apply(doc, vec![BoardOp::Put(el)]);
+        true
     }
 
     /// Arrastar a ponta `which` da seta `id`: ela prende-se ao que está por baixo, nunca à forma da

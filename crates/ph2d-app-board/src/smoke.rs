@@ -3,7 +3,7 @@
 //! | n | o que ensina |
 //! |---|---|
 //! | 1 | as abas: dois quadros já criados e o 1.º aberto, com uma grelha de rectângulos coloridos — a roda dá zoom à volta do cursor, arrastar move a vista, `Scene` devolve a cena |
-//! | 3 | as SETAS (W2): o mesmo fluxograma LIGADO por setas em cotovelo (presas ao centro: seguem as caixas), o «sim» com rótulo, o «não» que volta atrás por baixo e o «saltar» que passa por cima de duas caixas (presas a pontos fixos, com rótulo), uma nota para arrastar para o caminho de uma seta (ela desvia), e a última caixa seleccionada com os quatro pontos azuis — clicar no da direita cria a seguinte já ligada (`Ctrl+→` também) |
+//! | 3 | as SETAS (W2): o mesmo fluxograma LIGADO por setas CURVAS (as do Miro: presas ao centro, seguem as caixas), o «sim» com rótulo, o «não» que volta por baixo e o «saltar» em arco por cima (presas a pontos fixos, com rótulo), e uma nota ligada a «mais tarde» por uma seta com UM ponto de ajuste, seleccionada — o ponto oco arrasta-se, a bolinha a meio de cada trecho cria outro, duplo-clique apaga; numa caixa, os pontos azuis criam a seguinte já ligada (`Ctrl+→` também) |
 //! | 2 | as FORMAS (W1): um fluxograma com texto dentro (início → recolher ideias → «boa ideia?» → construir → fim), um passo rodado, um tracejado e um meio transparente; por baixo, o catálogo das 18 formas com o nome de cada uma — seleccionar, mover, redimensionar, rodar, duplo-clique para escrever, a barra curta à esquerda e a de estilo por cima da selecção |
 
 use ph2d_board_model::{
@@ -186,15 +186,26 @@ fn put_shape(
     id
 }
 
-/// Uma seta em cotovelo entre duas pontas, com rótulo (`""` = sem).
-fn put_arrow(doc: &mut BoardDoc, a: End, b: End, style: &Style, label: &str) {
-    let mut c = Connector::new(a, b, Route::Elbow, style.clone());
+/// Uma seta CURVA (a de nascença, a do Miro) entre duas pontas, pelos `points`, com rótulo
+/// (`""` = sem); devolve o id.
+fn put_arrow(
+    doc: &mut BoardDoc,
+    a: End,
+    b: End,
+    style: &Style,
+    label: &str,
+    points: &[[f64; 2]],
+) -> ElementId {
+    let mut c = Connector::new(a, b, Route::Curved, style.clone());
     c.style.fill = None;
+    c.waypoints = points.to_vec();
     if !label.is_empty() {
         c.label = ph2d_i18n::tr(label).to_owned();
     }
     let el = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
+    let id = el.id;
     BoardOp::Put(el).apply(doc);
+    id
 }
 
 /// Cena 3 — as setas da W2: o fluxograma da cena 2 LIGADO, com o «não» a voltar atrás e uma nota.
@@ -257,39 +268,52 @@ fn scene_arrows(hero: &mut HeroScreen) {
     };
     for (i, w) in ids.windows(2).enumerate() {
         let label = if i == 2 { "board.smoke.yes" } else { "" };
-        put_arrow(doc, center(w[0]), center(w[1]), &base, label);
+        put_arrow(doc, center(w[0]), center(w[1]), &base, label, &[]);
     }
-    // O «saltar»: do topo do início ao topo do construir — passa POR CIMA das duas do meio (o
-    // desvio: no Excalidraw a mesma seta atravessa-as).
+    // O «saltar»: do topo do início ao topo do construir — um arco por cima das duas do meio.
+    let top = |t| fixed(t, [0.5, 0.0]);
     put_arrow(
         doc,
-        fixed(ids[0], [0.5, 0.0]),
-        fixed(ids[3], [0.5, 0.0]),
+        top(ids[0]),
+        top(ids[3]),
         &base,
         "board.smoke.skip",
+        &[],
     );
     // O «não»: de baixo do losango ao fundo da recolha — a volta por baixo da fila.
+    let bottom = |t| fixed(t, [0.5, 1.0]);
     put_arrow(
         doc,
-        fixed(ids[2], [0.5, 1.0]),
-        fixed(ids[1], [0.5, 1.0]),
+        bottom(ids[2]),
+        bottom(ids[1]),
         &base,
         "board.smoke.no",
+        &[],
     );
-    // A nota: uma caixa solta por baixo, para arrastar para o caminho de uma seta.
+    // A nota, ligada a «mais tarde» por uma seta com UM ponto de ajuste (seleccionada: o ponto oco
+    // e as bolinhas do meio à vista, e a barra de estilo dela abaixo da fila).
     let note = tinted(2, ShapeType::Rectangle);
-    put_shape(
+    let n = put_shape(
         doc,
         ShapeType::Rectangle,
         note,
         "board.smoke.notes",
-        [420.0, 230.0, 300.0, 80.0],
+        [260.0, 300.0, 300.0, 80.0],
     );
+    let later = tinted(1, ShapeType::Pill);
+    let l = put_shape(
+        doc,
+        ShapeType::Pill,
+        later,
+        "board.smoke.later",
+        [900.0, 300.0, 160.0, 80.0],
+    );
+    let bent = put_arrow(doc, center(n), center(l), &base, "", &[[730.0, 450.0]]);
     board.camera.center_x = 630.0;
     board.camera.center_y = 90.0;
     board.camera.zoom = 0.85;
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));
-    // A última caixa abre seleccionada: os quatro pontos azuis estão à vista desde o início.
-    board_view::select(hero, ids.last().copied());
+    // A seta com o ponto de ajuste abre seleccionada: o ponto oco e as bolinhas do meio à vista.
+    board_view::select(hero, [bent]);
 }

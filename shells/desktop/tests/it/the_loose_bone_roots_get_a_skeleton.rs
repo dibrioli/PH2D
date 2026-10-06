@@ -15,7 +15,7 @@ fn the_loose_roots_are_adopted_before_the_mode_families() {
         .collect::<Vec<_>>()
         .join("\n");
     let porta = src
-        .find("loose::adopt_loose_roots(sim)")
+        .find("loose::adopt_loose_roots(sim,")
         .expect("a porta das raízes soltas não corre no quadro");
     let familia = src
         .find("skeleton_mode::Family::new(")

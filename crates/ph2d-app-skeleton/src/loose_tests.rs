@@ -28,86 +28,105 @@ fn osso(sim: &mut SimWorld, pos: [f32; 2], rot: f32, pai: Option<Entity>) -> Ent
     e
 }
 
-/// SONDA (A15) — o erro, ao bit, de pôr o esqueleto adoptado junto à raiz. Variantes sobre a mesma
-/// varredura: `0` = na identidade (hoje); `1` = esqueleto em `T` = translação local da raiz e raiz
-/// em `0`; `2` = esqueleto em `T = L + d` (`d` até 60: o repouso ou uma chave guardados, que não
-/// são a pose de agora) e raiz em `L − T` — o rebase de um valor guardado.
+/// Os sete números do mundo de `e`, com o zero sem sinal (o único desvio que o `compose` admite).
+fn mundo(sim: &SimWorld, e: Entity) -> [u32; 7] {
+    let t = ph2d_ecs::world_transform(sim.world(), e).expect("mundo");
+    [
+        t.translation.x,
+        t.translation.y,
+        t.rotation,
+        t.scale.x,
+        t.scale.y,
+        t.skew_x,
+        t.skew_y,
+    ]
+    .map(|v| (v + 0.0).to_bits())
+}
+
+/// ⭐⭐⭐ GATE (A15) — **o esqueleto adoptado tem a origem na cabeça da raiz e a pose AO BIT** —
+/// 4 000 raízes (de topo e dentro de grupos com escala e skew, raiz com escala e skew), três ossos
+/// cada. Medido antes da cura (sonda de `16abdf7cb`): esqueleto em `T = L` e raiz em `0` = 0 de
+/// 12 000 fora do bit; rebasear por outro `T` (`L − T`) = 5 055 de 12 000, pior 2 560 ULP.
 #[test]
-#[ignore = "sonda de medição (A15): --ignored --nocapture"]
-fn diag_a15_o_erro_de_mover_o_esqueleto_para_a_raiz() {
+fn the_adopted_skeleton_sits_on_the_root_and_the_pose_stays_to_the_bit() {
     use ph2d_core::Vec2;
-    fn bits(t: &Transform) -> [u32; 7] {
-        [
-            t.translation.x.to_bits(),
-            t.translation.y.to_bits(),
-            t.rotation.to_bits(),
-            t.scale.x.to_bits(),
-            t.scale.y.to_bits(),
-            t.skew_x.to_bits(),
-            t.skew_y.to_bits(),
-        ]
-    }
-    fn ulp(a: u32, b: u32) -> u32 {
-        (a as i32).wrapping_sub(b as i32).unsigned_abs()
-    }
-    for variante in 0..3 {
-        let mut rng = 0x9E37_79B9_7F4A_7C15_u64;
-        let mut f = |lo: f32, hi: f32| {
-            rng ^= rng << 13;
-            rng ^= rng >> 7;
-            rng ^= rng << 17;
-            lo + (hi - lo) * ((rng >> 40) as f32 / (1u64 << 24) as f32)
-        };
-        let (mut ossos, mut errados, mut pior) = (0usize, 0usize, 0u32);
-        for k in 0..4000 {
-            let mut sim = SimWorld::default();
-            let pai = (k % 2 == 1).then(|| {
-                let t = Transform {
-                    translation: Vec2::new(f(-900.0, 900.0), f(-900.0, 900.0)),
-                    rotation: f(-3.2, 3.2),
-                    scale: Vec2::new(f(0.2, 3.0), f(0.2, 3.0)),
-                    skew_x: if k % 4 == 3 { f(-0.5, 0.5) } else { 0.0 },
-                    skew_y: if k % 4 == 3 { f(-0.5, 0.5) } else { 0.0 },
-                };
-                sim.world_mut().spawn(t).id()
-            });
-            let raiz = osso(&mut sim, [f(-2000.0, 2000.0), f(-2000.0, 2000.0)], f(-3.2, 3.2), pai);
-            if k % 3 == 0 {
-                let mut t = sim.world_mut().get_mut::<Transform>(raiz).expect("raiz");
-                t.scale = Vec2::new(f(0.3, 2.5), f(0.3, 2.5));
-                t.skew_x = f(-0.4, 0.4);
-            }
-            let o2 = osso(&mut sim, [f(1.0, 40.0), f(-5.0, 5.0)], f(-3.2, 3.2), Some(raiz));
-            let o3 = osso(&mut sim, [f(1.0, 40.0), f(-5.0, 5.0)], f(-3.2, 3.2), Some(o2));
-            let todos = [raiz, o2, o3];
-            let antes: Vec<[u32; 7]> = todos
-                .iter()
-                .map(|e| bits(&ph2d_ecs::world_transform(sim.world(), *e).expect("mundo")))
-                .collect();
-            let novos = adopt_loose_roots(&mut sim);
-            let esq = Entity::from_bits(novos[0]);
-            let l = sim.world().get::<Transform>(raiz).expect("raiz").translation;
-            let (t, resto) = match variante {
-                0 => (Vec2::new(0.0, 0.0), l),
-                1 => (l, Vec2::new(0.0, 0.0)),
-                _ => {
-                    let t = Vec2::new(l.x + f(-60.0, 60.0), l.y + f(-60.0, 60.0));
-                    (t, Vec2::new(l.x - t.x, l.y - t.y))
-                }
+    let mut rng = 0x9E37_79B9_7F4A_7C15_u64;
+    let mut f = |lo: f32, hi: f32| {
+        rng ^= rng << 13;
+        rng ^= rng >> 7;
+        rng ^= rng << 17;
+        lo + (hi - lo) * ((rng >> 40) as f32 / (1u64 << 24) as f32)
+    };
+    let doc = TimelineDoc::default();
+    for k in 0..4000 {
+        let mut sim = SimWorld::default();
+        let pai = (k % 2 == 1).then(|| {
+            let t = Transform {
+                translation: Vec2::new(f(-900.0, 900.0), f(-900.0, 900.0)),
+                rotation: f(-3.2, 3.2),
+                scale: Vec2::new(f(0.2, 3.0), f(0.2, 3.0)),
+                skew_x: if k % 4 == 3 { f(-0.5, 0.5) } else { 0.0 },
+                skew_y: if k % 4 == 3 { f(-0.5, 0.5) } else { 0.0 },
             };
-            sim.world_mut().get_mut::<Transform>(esq).expect("esq").translation = t;
-            sim.world_mut().get_mut::<Transform>(raiz).expect("raiz").translation = resto;
-            for (e, a) in todos.iter().zip(&antes) {
-                let d = bits(&ph2d_ecs::world_transform(sim.world(), *e).expect("mundo"));
-                ossos += 1;
-                if d != *a {
-                    errados += 1;
-                }
-                pior = pior.max(d.iter().zip(a).map(|(x, y)| ulp(*x, *y)).max().unwrap_or(0));
-            }
+            sim.world_mut().spawn(t).id()
+        });
+        let l = [f(-2000.0, 2000.0), f(-2000.0, 2000.0)];
+        let raiz = osso(&mut sim, l, f(-3.2, 3.2), pai);
+        if k % 3 == 0 {
+            let mut t = sim.world_mut().get_mut::<Transform>(raiz).expect("raiz");
+            t.scale = Vec2::new(f(0.3, 2.5), f(0.3, 2.5));
+            t.skew_x = f(-0.4, 0.4);
         }
-        eprintln!("A15 variante {variante}: ossos {ossos} · fora do bit {errados} · pior ULP {pior}");
+        let o2 = osso(&mut sim, [f(1.0, 40.0), f(-5.0, 5.0)], f(-3.2, 3.2), Some(raiz));
+        let o3 = osso(&mut sim, [f(1.0, 40.0), f(-5.0, 5.0)], f(-3.2, 3.2), Some(o2));
+        let antes = [raiz, o2, o3].map(|e| mundo(&sim, e));
+        let esq = Entity::from_bits(adopt_loose_roots(&mut sim, &doc)[0]);
+        assert_eq!(
+            sim.world().get::<Transform>(esq).expect("esq").translation,
+            Vec2::new(l[0], l[1]),
+            "a origem do esqueleto não ficou na raiz ({k})"
+        );
+        assert_eq!(
+            [raiz, o2, o3].map(|e| mundo(&sim, e)),
+            antes,
+            "a pose saiu do bit ({k})"
+        );
     }
+}
+
+/// ⭐⭐ GATE (A15) — **onde mover a origem não seria exacto, o esqueleto fica na identidade**: o
+/// repouso guardado noutro sítio e a posição na timeline. Controlo: o repouso IGUAL à pose vai com
+/// ela (fica `0` na raiz) e repô-lo devolve o mesmo mundo.
+#[test]
+fn a_root_whose_place_is_stored_elsewhere_keeps_the_skeleton_at_identity() {
+    let adopta = |rest: Option<[f32; 2]>, animada: bool| {
+        let mut sim = SimWorld::default();
+        let raiz = osso(&mut sim, [30.0, -12.5], 0.3, None);
+        if let Some(r) = rest {
+            let mut b = BoneRest::de(&Transform::IDENTITY);
+            b.translation = r;
+            b.rotation = 0.3;
+            sim.world_mut().entity_mut(raiz).insert(b);
+        }
+        let mut doc = TimelineDoc::default();
+        if animada {
+            doc.bind(raiz.to_bits(), ph2d_timeline::PropKind::TranslationY);
+        }
+        let esq = Entity::from_bits(adopt_loose_roots(&mut sim, &doc)[0]);
+        let t = sim.world().get::<Transform>(esq).expect("esq").translation;
+        (sim, raiz, [t.x, t.y])
+    };
+    assert_eq!(adopta(None, false).2, [30.0, -12.5], "controlo: sem nada guardado");
+    assert_eq!(adopta(Some([1.0, 2.0]), false).2, [0.0, 0.0], "repouso noutro sítio");
+    assert_eq!(adopta(None, true).2, [0.0, 0.0], "posição na timeline");
+    let (mut sim, raiz, t) = adopta(Some([30.0, -12.5]), false);
+    assert_eq!(t, [30.0, -12.5], "o repouso igual à pose vai com ela");
+    let antes = mundo(&sim, raiz);
+    let rest = *sim.world().get::<BoneRest>(raiz).expect("repouso");
+    assert_eq!(rest.translation, [0.0, 0.0]);
+    let mut tr = sim.world_mut().get_mut::<Transform>(raiz).expect("raiz");
+    rest.aplica(&mut tr);
+    assert_eq!(mundo(&sim, raiz), antes, "repor o repouso moveu a raiz");
 }
 
 /// ⭐⭐⭐ **Um projecto de antes do A14 abre com um esqueleto por raiz, e a pose AO BIT** — duas
@@ -132,7 +151,7 @@ fn an_old_project_opens_with_one_skeleton_per_root_and_the_pose_to_the_bit() {
     let c = osso(&mut sim, [0.0, 0.0], 0.0, Some(ja));
     let antes = ph2d_skeleton_live::skin_live::bone_polylines(&sim);
 
-    let novos = adopt_loose_roots(&mut sim);
+    let novos = adopt_loose_roots(&mut sim, &TimelineDoc::default());
     assert_eq!(novos.len(), 2, "uma raiz solta, um esqueleto");
     let w = sim.world();
     let dono = |e: Entity| ph2d_skeleton_ecs::skeleton_of(w, e).map(Entity::to_bits);
@@ -166,7 +185,7 @@ fn an_old_project_opens_with_one_skeleton_per_root_and_the_pose_to_the_bit() {
         "a pose de algum osso mudou — a migração mexeu no desenho"
     );
     assert!(
-        adopt_loose_roots(&mut sim).is_empty(),
+        adopt_loose_roots(&mut sim, &TimelineDoc::default()).is_empty(),
         "controlo: a 2.ª passagem não cria nada"
     );
 }

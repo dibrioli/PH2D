@@ -13,7 +13,7 @@
 > código em `b1a6f9b07`). Sculpt, Model e Render já não existem: tudo o que este plano diz deles (§1–§4)
 > é HISTÓRIA. Hoje: `ObjectMode` = Object · Paint · Draw · Edit; famílias com modos = Painter (Image ▸
 > Paint), Flip (Draw · Edit), Vector (Edit; cada forma é um objecto desde 05/10, e o Edit é do TIPO);
-> cenas `PH2D_OBJECT_MODE_SMOKE=1|4|6|7`.
+> cenas `PH2D_OBJECT_MODE_SMOKE=1|4|6|7|8`; Image = Object · Paint · Edit (o IMG saiu, 05/10).
 
 ## §0 — Isto já foi DECIDIDO em parte (30/08), e o plano não o re-litiga
 
@@ -193,7 +193,7 @@ sozinho (§6.5).
 | ~~Sculpt (malha) · Model (SDF)~~ | ⛔ saíram com o 3D (ADR-0179, 05/10) | — |
 | Vector (a forma) | Object · **Edit** ✅ — cada forma é um objecto (F3 ▸ Vector, 2.ª volta, 05/10) | `ph2d-app-vec` (o Edit tem o painel inteiro; criar = *Add ▸ Vector Drawing*, nada nasce até ao 1.º traço) |
 | Flip | Object · **Draw** · **Edit** | `ph2d-app-flip` |
-| Image | Object · **Paint** (⛔ o Mask foi retirado pelo dono, 04/10) | `ph2d-app-painter` |
+| Image | Object · **Paint** · **Edit** (as ferramentas de imagem, 05/10; ⛔ o Mask foi retirado pelo dono, 04/10) | `ph2d-app-painter` |
 | Câmara, corpo de física, áudio, HUD… | **só Object** | Inspector |
 
 ⛔ O `Paint` do vetor fica FORA: a feature não existe (D6, correcção 2).
@@ -402,6 +402,16 @@ sozinho (§6.5).
     `HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_O_CTRL_TAB_E_O_MASK.md`.
 - **F4 — Layouts:** o campo opcional *«modo ao abrir»* (§3.3) e a limpeza dos toggles de módulo
   que viraram modos.
+  - ✅ **O campo existe** (`CanvasOwner::Mode` — Draw ▸ Paint, Flip ▸ Draw); a aba Vector fica
+    `CanvasOwner::Tool("vector")`, que já é o *Add ▸ Vector Drawing* (arma a ferramenta; a forma
+    seleccionada entra em Edit pela porta antiga) — um `Mode(Edit)` abriria o Edit do Flip com um
+    desenho Flip activo, porque o Flip também declara Edit.
+  - ✅ **O IMG virou Image ▸ Edit (05/10)**, decisão do dono: *«Vira modo da imagem»*.
+    `ph2d_app_painter::image_edit_mode::Family` (do TIPO, `joins`, `heir`); o `image_edit.mode_on`
+    é o ESPELHO do modo; o botão IMG, a linha do menu Window e o `ModuleTruth::ImageMode` saíram.
+    Smoke `PH2D_OBJECT_MODE_SMOKE=8`. O seletor de uma imagem: Object · Paint · Edit.
+  - Os outros interruptores da barra (PHYS · TOK · UI · Bones · Tags) **não são modos**: abrem
+    painéis de MUNDO (pedidos do dono, 27/07–09/09) — ficam.
 
 ⚠️ **Custo e janela:** foi uma obra de várias ondas, feita na própria `line/UIUX` (F1–F3 integradas
 a 04/10; a recomendação de uma `line/ObjectModes` à parte não se seguiu).

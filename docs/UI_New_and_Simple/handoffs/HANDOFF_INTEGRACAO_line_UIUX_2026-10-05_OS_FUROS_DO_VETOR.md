@@ -7,11 +7,12 @@
 > origem: [`HANDOFF_CONTINUACAO_…_2026-10-05_OS_FUROS_DO_VETOR.md`](HANDOFF_CONTINUACAO_line_UIUX_2026-10-05_OS_FUROS_DO_VETOR.md) §2.
 
 - **Branch** `line/UIUX` · **base (merge-base = `main`)** `5d596eaaf` · **HEAD** = o commit deste
-  ficheiro. `git cherry main HEAD` = **18 `+`** (19 com este doc); `HEAD..main` = 0. Nada integrado.
+  ficheiro. `git cherry main HEAD` = **23 `+`** com este doc (a 1.ª redacção dele, `8310dc52c`,
+  incluída); `HEAD..main` = 0. Nada integrado. ⚠️ O §5b é a 2.ª leva (depois do smoke do dono).
 
 ## §0 — Para o `CLAUDE.md` §5.1
 
-- **UI/UX:** «Último:» → este ficheiro; smoke `PH2D_OBJECT_MODE_SMOKE=1|4|6|7`.
+- **UI/UX:** «Último:» → este ficheiro; smoke `PH2D_OBJECT_MODE_SMOKE=1|4|6|7|8`; «Image = Object · Paint · Edit (o IMG saiu)».
 - **Vector + Esqueleto:** «cada forma é um objecto; o Edit é do TIPO (`Tab`)» (≤ 700 bytes, gate
   `architecture_claude_md_cabe_no_orcamento`).
 
@@ -145,16 +146,82 @@ por gate); o `Tab`/`Ctrl+Tab`/`Ctrl+Space` pelo teclado real (o despacho vive na
 **Errado:** depois do Weld o topo diz «Object Mode»; o clique na ponta cria «Path 1»; clicar noutra
 forma não faz nada; clicar na imagem dá o aviso de cadeado.
 
+**Smoke do dono: APROVADO (05/10)** sobre `8310dc52c` (*«smoke ok»*).
+
+## §5b — Depois do smoke: o que estava aberto (ordem do dono, 05/10: *«siga para o que está em aberto»*)
+
+| commit | o quê |
+|---|---|
+| `b92cba820` | o Node que falha o vetor escolhe o objecto de outro tipo; o `Tab` só do modo (nós com `]`/`[`) |
+| `1fcdc40e7` | Image ▸ Edit: o IMG vira o modo Edit da imagem; o botão sai |
+| `63478a171` | fecho: o controlo do espelho (mutação M1) |
+
+**Duas decisões do dono (05/10), perguntadas com o que se mediu:**
+- *«Tab sempre troca o modo»* — o defeito MEDIDO: no Node, um braço `KeyCode::Tab`
+  (`keyboard_cadeia.rs`) percorria os nós e consumia a tecla, logo em Edit com o Node o `Tab` não
+  saía do modo. Os nós andam agora com `]` (frente) e `[` (trás); o `[`/`]` do Painter (tamanho do
+  pincel) só consome com o Painter em mãos, e corre antes.
+- O botão IMG *«vira modo da imagem»* — `ph2d_app_painter::image_edit_mode::Family` declara
+  (Image, Edit): do TIPO (todas as imagens; `joins` — o *Equalize Sizes* trabalha sobre várias), com
+  `heir`. O `image_edit.mode_on` (que a fila das ferramentas de imagem, o `activation_gate` e o canvas
+  lêem) é o ESPELHO do modo (`mirror`, na `fase_object_mode` depois do quadro); quem larga a ferramenta
+  de imagem fora do Edit continua a ser a `fase_image_tools_mode_and_pills` (que também limpa a
+  pré-visualização do Bg Removal — por isso o `leave` da família não larga nada). Saíram: o pill IMG, a
+  linha *Image Tools* do menu Window (13 → 12 linhas; `the_window_menu_reaches_every_module`
+  actualizado), `ModuleTruth::ImageMode` (`MODULE_TRUTHS` 18 → 17), o toggle, o id `TOPBAR_IMAGE_TOOLS`
+  (o `…_BACKDROP` da fila fica), 5 chaves i18n, o parâmetro `active` dos chips da barra (ficou morto) e
+  os testes `click_on_image_tools_pill_toggles_mode`, `the_image_tools_chip_shows_the_mode_in_every_family`.
+  O split da barra clássica 7 → 6 (nenhum pill muda de lado). O composite smoke entra em Paint pelo modo.
+
+**A regra «outro tipo ⇒ Object» chegou ao Node** (sem pergunta: é a regra do dono):
+`vector_mode::another_kind_under` (pura) + `App::vetor_node_escolhe_outro_tipo` pela porta única do
+pick (`hover_highlight::pick_objects_at`). Os modos de DESENHAR não perguntam (desenhar por cima de
+uma imagem é o uso).
+
+**Fundação:** `ModeFamily::heir(mode, locked, tools)` — recebe a entidade trancada (assinatura nova,
+ainda não integrada).
+
+**Gates novos:** `ph2d-app-painter` `image_edit_mode::tests::{the_image_offers_edit_and_edit_is_the_image_tools,
+the_image_edit_holds_every_image_and_another_kind_leaves_it}` · `ph2d-app-vec`
+`furos_tests::a_node_miss_picks_the_object_of_another_kind_underneath` · shell `tests/it`
+`the_mode_keys_are_wired::{only_the_mode_owns_the_tab, ctrl_space_toggles_the_zen}` (fecha o «gate de
+teclado precisa da App»: o território do input tem UM braço `KeyCode::Tab`) e
+`the_node_miss_picks_another_kind`; `the_node_selection_scale_is_wired::brackets_and_select_all_reach_the_pen_in_node_mode`
+(era `tab_and_…`). `mode_drive_tests.rs` passou o tecto de 700 LOC com o gate do tipo → partido em
+`mode_drive_kind_tests.rs`.
+
+**Fecho da 2.ª leva:** gate batched (`verificador`, BASE `5d596eaaf`, HEAD `1fcdc40e7`, `load` 15–29):
+nextest-impacted **17 927 / 17 927** (com as features dos painéis), check `deny` e clippy `-D warnings`
+do workspace verdes, fmt, censos 12/12 (114/114), doc-index, `the_shell_only_shrinks`,
+`architecture_workspace_file_loc_cap` — tudo verde. **Mutação: 8/8** depois de `63478a171` (a M1, o
+espelho ler só «há modo», sobrevivia — gate de controlo acrescentado, re-mutada ⇒ RED); as outras 7
+(o tipo e a herdeira da imagem, o `whole_kind` e o filtro do `another_kind_under`, a chamada no Node,
+o `Tab` no Node, o `mode_key` do `Tab`) sangraram à 1.ª.
+**Foto** (`PH2D_OBJECT_MODE_SMOKE=8`, conferida): «Canvas» seleccionado, a fila TRIM · SQUAR · BGRMV ·
+SIZE · PAD · CEQ · EQSZ · RASTR · UPSC na barra, o seletor aberto com Object Mode · Paint Mode ·
+**Edit Mode**.
+
+**Smoke do dono, 2.ª leva (lista técnica):**
+1. `cd ~/Documentos/Projetos/PH2D/Worktrees/line-UIUX && ./target/smoke/ph2d-host-desktop`
+2. Ctrl+N (imagem nova), seleccioná-la, seletor do topo ▸ «Edit Mode»: aparece a fila das
+   ferramentas de imagem; o botão IMG já não existe (nem no menu Window).
+3. Seletor ▸ «Object Mode»: a fila some.
+4. Vetor em «Edit Mode» com «Node»: `Tab` volta a «Object Mode»; `]`/`[` andam de ponto em ponto.
+5. Vetor em «Edit Mode» com «Node», clicar na imagem: fica seleccionada, «Object Mode».
+
 ## §6 — O que fica ABERTO
 
-- Clicar num objecto de outro tipo só sai do Edit pelo **Select** (é ele que deixa o clique ir ao
-  pick de objecto); em Node e nos modos de desenho o clique é da ferramenta (desenhar por cima de uma
-  imagem é o uso). Se o dono o quiser também no Node, é um hit-test de objecto no ramo do Node.
-- A booleana com SÓ duas formas e o resultado a nascer um quadro depois ainda repete o aviso «Edit
-  Mode» (o modo cai e re-entra); medido: na cena 6 o resultado ganhou entidade no mesmo `sync` e a
-  herdeira segurou-o.
-- Do anterior: layouts F4; o gate de teclado (`Tab`/`Ctrl+Tab`/`Ctrl+Space`) precisa da `App`;
-  spec/02 F/G/H/I.
+- A booleana com SÓ duas formas cujo resultado nascesse um quadro depois repetiria o aviso «Edit
+  Mode»; **medido que não acontece**: o resultado ganha entidade no mesmo `sync` que apaga as duas, e a
+  herdeira segura o Edit (cena 6, registo temporário).
+- spec/02: **G** (esvaziar os painéis — o censo `quantas_entradas_tem_cada_painel` põe na frente, por
+  comandos, `inspector` 314 (grande por direito), `tokens` 110, `physics` 60, `vector` 45; cada um pede
+  o destino de cada comando, decisão de produto por painel); **H** (separar layout de paleta) sem trava
+  desde 20/09; **I** (temas): a pergunta viva é se os 4 clássicos sobrevivem ao dia em que o
+  `PH2D_UI_NEW` sair — do dono, e só nesse dia. O *«como partir o `DrawMode`»* do spec/02 §5.1 ficou
+  respondido pelo dono: a partição `EDIT_TOOLS` foi recusada (04/10) e o Edit é do TIPO (05/10) — as
+  ferramentas todas vivem no Edit.
+- As layouts F4: o campo *«modo ao abrir»* existe; a aba Vector fica `Tool("vector")` (ver spec/06 F4).
 
 ## §7 — Perfil do laço do agente
 
@@ -171,5 +238,6 @@ forma não faz nada; clicar na imagem dá o aviso de cadeado.
 
 ```
 ▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.25s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
 ```
+(2.ª corrida, sobre `63478a171` + este doc.)

@@ -678,7 +678,7 @@ pub fn attach_skin_meshes(
 #[must_use]
 pub fn skinned_mesh_of(sim: &SimWorld, e: Entity) -> Option<SkinnedMesh> {
     let skin = sim.world().get::<ph2d_skeleton_ecs::SkinBind>(e)?;
-    let m: SkinnedMesh = postcard::from_bytes(&skin.source).ok()?;
+    let m = crate::skinned_mesh::le_malha(&skin.source)?;
     m.valida().then_some(m)
 }
 

@@ -97,7 +97,18 @@ pub fn bind_image(
     // desenham a mesma malha) e a densidade fica congelada no FICHEIRO. ⇒ a malha assada é
     // **derivada** e vive num memo por bind ([`crate::skin_bake_cache`]), que é também onde a placa
     // a vai querer. *Estado derivado guardado no documento é o que envenena o undo.*
-    let guardada = crate::skinned_mesh::SkinnedMesh { mesh: malha, pesos };
+    // ⭐⭐ A5-a: onde há tinta, para a costura medir o vão entre a ARTE (a malha passa dela).
+    let mascara = crate::skin_image_arte::Mascara::do_alfa(
+        &alfa,
+        celula[0],
+        celula[1],
+        crate::skin_image_arte::TINTA_CHEIA,
+    );
+    let guardada = crate::skinned_mesh::SkinnedMesh {
+        mesh: malha,
+        pesos,
+        mascara: Some(mascara),
+    };
     let Ok(bytes) = postcard::to_allocvec(&guardada) else {
         return false;
     };

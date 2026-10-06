@@ -28,6 +28,8 @@ struct Palco {
     crua: ph2d_skeleton_live::skinned_mesh::SkinnedMesh,
     /// A profundidade de cada coluna na corrente (a coluna vem por `to_bits`, não pela corrente).
     prof: Vec<f64>,
+    /// Onde há tinta (A5-a), guardada pelo bind.
+    mascara: Option<ph2d_skeleton_live::skin_image_arte::Mascara>,
 }
 
 fn palco((g1, g2): (f32, f32)) -> Palco {
@@ -81,18 +83,39 @@ fn palco((g1, g2): (f32, f32)) -> Palco {
             skin,
             &ph2d_skeleton_live::skin_live::bone_index(&sim),
         ),
+        mascara: m.mascara,
         mesh: m.mesh,
         crua,
     }
 }
 
-/// A malha desenhada pela porta do produto — `costura` liga a costura (os anéis da borda).
+/// As bordas que o produto guarda para esta malha (`bordas_da`): os anéis e, com `arte`, o anel da
+/// arte sobre a máscara do bind (A5-a); sem `costura`, nenhumas.
+fn bordas(
+    p: &Palco,
+    costura: bool,
+    arte: bool,
+) -> ph2d_skeleton_live::skin_image_arte::BordasDaMalha {
+    if !costura {
+        return ph2d_skeleton_live::skin_image_arte::BordasDaMalha::default();
+    }
+    ph2d_skeleton_live::skin_image_arte::BordasDaMalha::da(
+        &p.mesh,
+        p.mascara.as_ref().filter(|_| arte),
+    )
+}
+
+/// A malha desenhada pela porta do produto — `costura` liga a costura (com o anel da arte).
 fn desenhada(p: &Palco, costura: bool, placa: bool) -> SpriteMesh {
-    let aneis = if costura {
-        ph2d_skeleton_live::skin_image_fecho::aneis_da_borda(&p.mesh.tris)
-    } else {
-        Vec::new()
-    };
+    desenhada_com(p, &bordas(p, costura, true), placa)
+}
+
+/// A malha desenhada com as `bordas` dadas — o CONTROLO do A5-a passa a costura sem a arte.
+fn desenhada_com(
+    p: &Palco,
+    aneis: &ph2d_skeleton_live::skin_image_arte::BordasDaMalha,
+    placa: bool,
+) -> SpriteMesh {
     ph2d_skeleton_live::skin_image_fecho::malha_desenhada_com(
         p.mesh.clone(),
         p.p2l,
@@ -100,7 +123,7 @@ fn desenhada(p: &Palco, costura: bool, placa: bool) -> SpriteMesh {
         &p.pesos,
         p.quad,
         &p.correcoes,
-        &aneis,
+        aneis,
         placa,
     )
     .expect("a malha desenha-se")
@@ -256,8 +279,7 @@ fn acrescentados(p: &Palco) -> Vec<([f32; 2], [f32; 2])> {
 fn area_cosida(p: &Palco) -> f64 {
     let (sem, com) = (desenhada(p, false, false), desenhada(p, true, false));
     let px2 = f64::from(PPM).powi(2);
-    com.tris[sem.tris.len()..]
-        .iter()
+    cosidos(&sem, &com)
         .map(|t| {
             let q = t.map(|i| {
                 [
@@ -273,13 +295,14 @@ fn area_cosida(p: &Palco) -> f64 {
         .sum()
 }
 
-/// ⭐⭐⭐ **A TINTA da costura é a das BEIRAS** — cada pedaço cosido (`4` pontos: dois da beira que
-/// cose, dois da outra) parte de uma beira com arte (pelo menos dois texels com alfa `> 0`).
+/// ⭐⭐⭐ **A TINTA da costura é a das BEIRAS** — cada pedaço cosido são DUAS metades de `4` pontos,
+/// cada uma a esticar a cor da SUA beira até ao meio do vão (A5-a: um quadrilátero só misturava a
+/// UV dos dois membros e apanhava as pintas entre elas — FOTOGRAFADO na cúspide). Cada metade tem a
+/// mesma UV nos dois pontos de cada ponta e parte de uma beira com arte (alfa `> 0` nos seus dois
+/// pontos de beira, ou — onde a beira é a escada transparente da tampa — no da outra metade).
 ///
-/// ⚠️ Não «os quatro»: a outra ponta pode cair na ESCADA da grelha à volta da tampa redonda, que é
-/// margem transparente — medido na pose do report, o texel `(586, 1)` com alfa `0` —, e aí a costura
-/// esmaece até ela (fotografado: sem névoa). ⛔ Sem isto, uma UV errada (o canto da imagem,
-/// transparente) deixava o vão cosido com NADA e todos os gates de geometria verdes.
+/// ⛔ Sem isto, uma UV errada (o canto da imagem, transparente) deixava o vão cosido com NADA e
+/// todos os gates de geometria verdes.
 #[test]
 fn a_tinta_da_costura_e_a_das_beiras() {
     let px = pixels();
@@ -291,41 +314,63 @@ fn a_tinta_da_costura_e_a_das_beiras() {
         reason = "texel"
     )]
     let texel = |t: f32, n: u32| ((t * n as f32) as u32).min(n - 1);
-    for pedaco in novos.chunks(4) {
-        let com_arte = pedaco
-            .iter()
-            .filter(|(_, uv)| {
-                let (x, y) = (texel(uv[0], IMG_W), texel(uv[1], IMG_H));
-                px[((y * IMG_W + x) * 4 + 3) as usize] > 0
-            })
-            .count();
+    let arte = |uv: [f32; 2]| {
+        let (x, y) = (texel(uv[0], IMG_W), texel(uv[1], IMG_H));
+        px[((y * IMG_W + x) * 4 + 3) as usize] > 0
+    };
+    assert_eq!(novos.len() % 8, 0, "pedaços de duas metades de 4 pontos");
+    for pedaco in novos.chunks(8) {
+        for metade in pedaco.chunks(4) {
+            // [beira a, beira b, meio b, meio a]: a UV do meio é a da beira do mesmo lado.
+            assert_eq!(metade[0].1, metade[3].1, "a metade mistura UVs: {pedaco:?}");
+            assert_eq!(metade[1].1, metade[2].1, "a metade mistura UVs: {pedaco:?}");
+        }
+        let com_arte = pedaco.iter().filter(|(_, uv)| arte(*uv)).count();
         assert!(
-            com_arte >= 2,
+            com_arte >= 4,
             "um pedaço cosido sem beira de arte: {pedaco:?}"
         );
     }
 }
 
-/// ⭐⭐⭐ **Nenhuma pose à volta do report deixa o fio** — e é a resposta ao *«ora redonda ora
-/// pontuda»* do dono: a costura é contínua na pose, logo a varredura fina não pode ter UMA pose com
-/// fundo entalado. Alcance `1 px`: só um vão mais fino que `2 px` conta (a costura cose até `2`
-/// texels, e a `100 %` um texel é um pixel); a baía de um «V» é mais larga e não conta.
+/// ⭐⭐⭐ **Nenhuma pose à volta do report deixa mais VÃO que a lei de antes, e na cúspide fica
+/// menos no total** — a lei é contínua na pose (o *«ora redonda ora pontuda»* do dono). Régua do VÃO
+/// FIXO ([`reguas::vao_aberto`]): o vão é o da malha SEM costura (o fecho a `1 px` da tinta, menos
+/// a tinta) e conta-se o que dele cada lei deixa sem tinta — mais tinta nunca sobe a conta. O
+/// CONTROLO é a lei de antes (a costura sobre a borda da MALHA, a de um bind sem máscara).
+///
+/// Medido (27 poses, amostras de `1/4` px): cúspide `1852` contra `2368`, risquinho `75` contra
+/// `161`; sem costura `3114` e `720`. ⛔ A régua de antes (fio na VERTICAL a `1 px`, `buracos_de`)
+/// premiava o vão fechado EM PARTE: lia `12` contra `4` a `−149,5°`, onde o vão fixo lê `44` contra
+/// `54`.
 #[test]
-fn nenhuma_pose_a_volta_do_report_deixa_o_fio() {
-    let mut com_fio = Vec::new();
-    for k in 0..=24 {
-        let g2 = -150.0 + 0.5 * k as f32;
-        let p = palco((36.0, g2));
-        let sem = buracos(&desenhada(&p, false, false), JANELA_DO_VAO, 1.0);
-        let com = buracos(&desenhada(&p, true, false), JANELA_DO_VAO, 1.0);
-        if com > 0 {
-            com_fio.push((g2, sem, com));
+fn nenhuma_pose_a_volta_do_report_deixa_mais_fio_que_a_lei_de_antes() {
+    const CUSPIDE: [f64; 4] = [-1.8, 0.3, -0.5, 0.75];
+    let mut poses: Vec<f32> = (0..=24).map(|k| -150.0 + 0.5 * k as f32).collect();
+    poses.extend([-155.0, -160.0]);
+    for (janela, nome) in [(JANELA_DO_VAO, "risquinho"), (CUSPIDE, "cúspide")] {
+        let mut total = [0; 3];
+        for &g2 in &poses {
+            let p = palco((36.0, g2));
+            let sem = desenhada(&p, false, false);
+            let antes = desenhada_com(&p, &bordas(&p, true, false), false);
+            let agora = desenhada(&p, true, false);
+            let [s, v, n] = vao_aberto(&sem, [&sem, &antes, &agora], janela);
+            assert!(
+                n <= v,
+                "{nome} (36°, {g2}°): a lei deixa {n} amostras de vão, a de antes {v}"
+            );
+            total = [total[0] + s, total[1] + v, total[2] + n];
+        }
+        let [s, v, n] = total;
+        println!("  {nome}: vão — sem costura {s}, lei de antes {v}, lei {n}");
+        assert!(v < s, "o CONTROLO: a lei de antes não fecha nada na {nome}");
+        if nome == "cúspide" {
+            assert!(n < v, "{nome}: a lei deixa {n}, a de antes {v}");
+        } else {
+            assert!(n <= v, "{nome}: a lei deixa {n}, a de antes {v}");
         }
     }
-    assert!(
-        com_fio.is_empty(),
-        "(pose, sem costura, com costura): {com_fio:?}"
-    );
 }
 
 /// ⭐⭐⭐ **A costura nunca cose mais que `VAO_MAXIMO_EM_TEXELS`** — as pontas de cada troço caem
@@ -345,17 +390,29 @@ fn a_costura_nunca_passa_dos_dois_texels() {
     }
 }
 
-/// ⭐⭐ **Onde os membros se SOBREPÕEM nada se cose por cima da tinta** — a costura só liga bordas
-/// que se encaram de FORA. ⛔ Medido sem esse teste: `5`–`6` de `10` centros cosidos sobre tinta
-/// de `−150°` a `−160°`, e `83` de `150` a `−144°`.
+/// ⭐⭐⭐ **Onde os membros se sobrepõem, a costura não tapa À VISTA a tinta de outro membro** —
+/// cada triângulo cosido entra à profundidade do SEU membro, e a metade do membro de trás fica por
+/// baixo da tinta do da frente. Régua que conhece a ORDEM ([`reguas::visiveis_sobre_tinta`]). O
+/// CONTROLO é a mesma malha com a costura no FIM (a ordem de antes): medido `4`, `2` e `3` amostras
+/// a `−144,5°`, `−145,5°` e `−147,5°`. ⛔ A régua geométrica de antes (centros cosidos sobre tinta)
+/// era cega à ordem e ficava vermelha com a lei certa.
 #[test]
 fn onde_os_membros_se_sobrepoem_nada_se_cose_por_cima() {
-    for g2 in [-144.0, -150.0, -155.0, -160.0] {
-        let (sobre, de) = cosidos_sobre_tinta(&palco((36.0, g2)));
+    for g2 in [-144.5, -145.5, -147.5, -155.0, -160.0] {
+        let p = palco((36.0, g2));
+        let (sem, com) = (desenhada(&p, false, false), desenhada(&p, true, false));
+        let vistas = visiveis_sobre_tinta(&sem, &com);
         assert_eq!(
-            sobre, 0,
-            "(36°, {g2}°): {sobre} de {de} centros cosidos sobre tinta"
+            vistas, 0,
+            "(36°, {g2}°): {vistas} amostras de tinta tapadas"
         );
+        if g2 > -150.0 {
+            let controlo = visiveis_sobre_tinta(&sem, &no_fim(&sem, &com));
+            assert!(
+                controlo > 0,
+                "(36°, {g2}°): o CONTROLO (costura no fim) não tapa nada"
+            );
+        }
     }
 }
 
@@ -507,65 +564,6 @@ fn sem_vao_a_malha_sai_ao_bit() {
     );
 }
 
-/// Quantos centros de triângulo COSIDOS caem em cima de tinta da malha sem costura — e de quantos.
-fn cosidos_sobre_tinta(p: &Palco) -> (usize, usize) {
-    let (sem, com) = (desenhada(p, false, false), desenhada(p, true, false));
-    let mut sobre = 0;
-    let novos = &com.tris[sem.tris.len()..];
-    for t in novos {
-        let c = t.iter().fold([0.0, 0.0], |a, &i| {
-            [
-                a[0] + f64::from(com.local[i as usize][0]) / 3.0,
-                a[1] + f64::from(com.local[i as usize][1]) / 3.0,
-            ]
-        });
-        let h = 1e-4;
-        if buracos(&sem, [c[0] - h, c[1] - h, c[0] + h, c[1] + h], 0.0) == 0 && tinta_em(&sem, c) {
-            sobre += 1;
-        }
-    }
-    (sobre, novos.len())
-}
-
-/// Há tinta da malha `m` no ponto `q`?
-fn tinta_em(m: &SpriteMesh, q: [f64; 2]) -> bool {
-    let p = |i: u32| {
-        [
-            f64::from(m.local[i as usize][0]),
-            f64::from(m.local[i as usize][1]),
-        ]
-    };
-    let alfa = alfa_da_arte();
-    m.tris.iter().any(|t| {
-        let (a, b, c) = (p(t[0]), p(t[1]), p(t[2]));
-        if !dentro(q, a, b, c) {
-            return false;
-        }
-        let area = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
-        if area == 0.0 {
-            return false;
-        }
-        let b1 = ((q[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (q[1] - a[1])) / area;
-        let b2 = ((b[0] - a[0]) * (q[1] - a[1]) - (q[0] - a[0]) * (b[1] - a[1])) / area;
-        let w = [1.0 - b1 - b2, b1, b2];
-        let (mut u, mut v) = (0.0, 0.0);
-        for k in 0..3 {
-            u += w[k] * f64::from(m.uv[t[k] as usize][0]);
-            v += w[k] * f64::from(m.uv[t[k] as usize][1]);
-        }
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "texel"
-        )]
-        let (x, y) = (
-            ((u * f64::from(IMG_W)) as u32).min(IMG_W - 1),
-            ((v * f64::from(IMG_H)) as u32).min(IMG_H - 1),
-        );
-        alfa[(y * IMG_W + x) as usize] >= 128
-    })
-}
-
 /// O maior vão (em texels) que um pedaço cosido atravessa nas pontas — `|pa − qa|` e `|pb − qb|` dos
 /// quatro pontos `[pa, pb, qb, qa]` de cada pedaço.
 fn maior_vao_cosido(p: &Palco) -> f64 {
@@ -582,6 +580,10 @@ fn maior_vao_cosido(p: &Palco) -> f64 {
         })
         .fold(0.0, f64::max)
 }
+
+#[path = "smoke_bone_par_fresta_reguas.rs"]
+mod reguas;
+use reguas::*;
 
 #[cfg(test)]
 #[path = "smoke_bone_par_fresta_sondas.rs"]

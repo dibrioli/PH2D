@@ -27,7 +27,10 @@
 use std::collections::BTreeMap;
 
 use ph2d_ecs::{Anchor, ConnectorEnd, Entity, Name, SimWorld, Transform, VecConnector};
-use ph2d_vec_connect::{Aabb, Dir, EndSpec, RouteInput, RouteKind, route, side_towards};
+use ph2d_vec_connect::{
+    Aabb, Dir, EndSpec, ROI_PAD_K, RouteInput, RouteKind, exit_point, obstacles_in_play, port_side,
+    route,
+};
 use ph2d_vec_scene::{
     VecPathId, VecScene, VecXforms, boundary_hit, round_polyline, smooth_polyline, xform_of,
 };
@@ -41,20 +44,11 @@ pub mod walls;
 
 /// O lado por onde cada ponta saiu no frame ANTERIOR (`[start, end]`), por conector.
 ///
-/// É a memória da histerese de [`side_towards`]: sem ela, um alvo parado **em cima da
+/// É a memória da histerese de [`ph2d_vec_connect::side_towards`]: sem ela, um alvo parado **em cima da
 /// diagonal** da caixa faz os dois lados empatarem, e o menor tremor do arrasto troca a saída
 /// a cada quadro. Runtime-only (não vai para o save nem para o undo) — o pior que um cache
 /// perdido causa é a linha escolher o lado do zero, uma vez.
 pub type SideCache = BTreeMap<VecPathId, [Option<Dir>; 2]>;
-
-/// O quanto o spread pode deslizar ao longo da face, como fração da meia-extensão dela. A saída
-/// tem de continuar **na face**: passando disto o ponto escorrega pela quina, e a linha parece
-/// brotar do canto da caixa em vez de sair dela.
-const SPREAD_FACE_K: f64 = 0.45;
-
-/// O quanto a região de interesse se estende além das duas caixas, em múltiplos do jetty — a
-/// folga em que uma forma ainda consegue empurrar a rota.
-const ROI_PAD_K: f64 = 3.0;
 
 /// A folga entre a forma e a ponta da linha. **Zero**: a linha ENCOSTA no contorno — é o que
 /// faz a ponta de seta apontar para a forma, e não para perto dela. (O recuo visual da seta é
@@ -72,13 +66,6 @@ struct EndBox {
 impl EndBox {
     fn center(&self) -> [f64; 2] {
         self.bbox.center()
-    }
-    /// Meias-extensões da caixa (`0` para uma ponta solta — [`side_towards`] clampa).
-    fn half(&self) -> (f64, f64) {
-        (
-            (self.bbox.max[0] - self.bbox.min[0]) * 0.5,
-            (self.bbox.max[1] - self.bbox.min[1]) * 0.5,
-        )
     }
 }
 
@@ -142,56 +129,30 @@ fn endpoint(
     prev: Option<Dir>,
     spread: f64,
 ) -> ([f64; 2], Dir) {
-    let c = me.center();
-    let (hw, hh) = me.half();
-    let d = [other_center[0] - c[0], other_center[1] - c[1]];
-
     // Uma PORTA fixa (o ímã do Figma) já É um ponto na borda: ela não procura saída — e por
     // isso o spread não a toca. Quem fixou a porta quer a linha exatamente ali.
     if let (Anchor::Port { u, v }, Some(id)) = (me.anchor, me.path)
         && let Some(p) = port_world(scene, xforms, id, f64::from(u), f64::from(v))
     {
-        let away = [p[0] - c[0], p[1] - c[1]];
-        return (p, side_towards(away, hw, hh, prev));
+        return (p, port_side(me.bbox, p, prev));
     }
-
-    let side = side_towards(d, hw, hh, prev);
-    let ray = if kind == RouteKind::Straight {
-        d
-    } else {
-        side.vec()
-    };
-    let n = perp(ray);
-
-    let Some(id) = me.path else {
-        // Ponta solta: não há face por onde deslizar, então o spread desloca o ponto direto.
-        return ([c[0] + n[0] * spread, c[1] + n[1] * spread], side);
-    };
-
-    // O deslize é limitado pela FACE: além disso a saída escorrega pela quina.
-    let limit = SPREAD_FACE_K * (n[0].abs() * hw + n[1].abs() * hh);
-    let s = spread.clamp(-limit, limit);
-    let from = [c[0] + n[0] * s, c[1] + n[1] * s];
-
-    let at = scene
-        .paths()
-        .iter()
-        .find(|p| p.id == id)
-        .and_then(|p| boundary_hit(p, xform_of(xforms, id).0, from, ray, BOUNDARY_GAP))
-        // Forma degenerada (sem contorno fechado: uma reta, um traço da caneta) — o contorno
-        // não cruza nada. Cai na caixa, que é o que o draw.io faz SEMPRE.
-        .unwrap_or_else(|| bbox_exit(me.bbox, from, ray));
-    (at, side)
-}
-
-/// A normal unitária de `v` (girada 90° à esquerda). `[0, 0]` para um vetor degenerado — e aí o
-/// spread simplesmente não desloca nada, que é o certo: não há face definida.
-fn perp(v: [f64; 2]) -> [f64; 2] {
-    let l = v[0].hypot(v[1]);
-    if l < 1e-12 {
-        return [0.0, 0.0];
-    }
-    [-v[1] / l, v[0] / l]
+    // Forma degenerada (sem contorno fechado: uma reta, um traço da caneta) — o `hit` não cruza
+    // nada e a saída cai na caixa, que é o que o draw.io faz SEMPRE.
+    let path = me
+        .path
+        .and_then(|id| scene.paths().iter().find(|p| p.id == id));
+    exit_point(
+        me.bbox,
+        me.path.is_some(),
+        other_center,
+        kind,
+        prev,
+        spread,
+        |from, ray| {
+            let p = path?;
+            boundary_hit(p, xform_of(xforms, p.id).0, from, ray, BOUNDARY_GAP)
+        },
+    )
 }
 
 /// O ponto de uma porta `(u, v)` normalizada na caixa LOCAL da forma, levado ao mundo. Local ⇒
@@ -212,26 +173,6 @@ fn port_world(
     let (lo, hi) = scene.path_curve_bbox(id)?;
     let local = [lo[0] + (hi[0] - lo[0]) * u, lo[1] + (hi[1] - lo[1]) * v];
     Some(xform_of(xforms, id).apply(local))
-}
-
-/// Onde o raio `from + t·dir` SAI da caixa (o slab de maior `t`). O fallback do
-/// `boundary_hit`: sem contorno fechado não há borda de verdade, e a caixa é a melhor
-/// aproximação — nunca o centro, que deixaria a linha por baixo da forma.
-fn bbox_exit(b: Aabb, from: [f64; 2], dir: [f64; 2]) -> [f64; 2] {
-    let mut t = f64::INFINITY;
-    for i in 0..2 {
-        if dir[i].abs() > 1e-12 {
-            let edge = if dir[i] > 0.0 { b.max[i] } else { b.min[i] };
-            let tt = (edge - from[i]) / dir[i];
-            if tt >= 0.0 {
-                t = t.min(tt);
-            }
-        }
-    }
-    if !t.is_finite() {
-        return from;
-    }
-    [from[0] + dir[0] * t, from[1] + dir[1] * t]
 }
 
 /// O jetty automático desta rota.
@@ -326,7 +267,7 @@ fn cook(
     // **As duas pontas deslizam para lados OPOSTOS da linha** (`spread` e `−spread`): as normais
     // das duas faces apontam uma contra a outra, então o mesmo sinal as moveria em direções
     // contrárias no mundo — e o conector sairia torto em vez de paralelo.
-    let obstacles = walls::obstacles_in_play(shapes, a.bbox, b.bbox, ROI_PAD_K * jetty);
+    let obstacles = obstacles_in_play(shapes, a.bbox, b.bbox, ROI_PAD_K * jetty);
 
     // Um LAÇO não se roteia, e waypoints não fazem sentido nele — ele é construído.
     if conn.is_self_loop() {

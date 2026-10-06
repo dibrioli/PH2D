@@ -72,6 +72,7 @@ pub(crate) fn read_v1(bytes: &[u8]) -> Result<BoardSet, String> {
                     .collect(),
                 next_id: b.doc.next_id,
                 top_z: b.doc.top_z,
+                rev: Default::default(),
             },
         })
         .collect();

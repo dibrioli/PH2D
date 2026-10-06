@@ -1,9 +1,11 @@
 //! **Escrever dentro de uma forma** — o texto é o da forma (o documento muda letra a letra, e a
 //! forma cresce para baixo quando ele não cabe); o desfazer guarda a edição inteira como UM passo.
+//! Numa seta, o mesmo no RÓTULO, centrado no meio da rota (W2).
 
 use ph2d_board_geom::{height_for_text, text_origin, text_rect};
 use ph2d_board_layout::TextEdit;
 use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, History};
+use ph2d_board_route::{LABEL_WRAP, label_origin};
 use ph2d_text::TextSystem;
 
 use crate::{Editor, Pointer, TextKey, TextOverlay, live};
@@ -16,31 +18,79 @@ pub(crate) struct Editing {
     edit: TextEdit,
 }
 
-/// A largura de quebra e o tamanho da letra de `el`, para o moldado.
+/// O tamanho da letra e a largura de quebra de `el`, para o moldado.
 fn metrics(el: &Element) -> Option<(f32, f32)> {
-    let s = el.shape()?;
-    let [_, _, w, _] = text_rect(s.kind, el.w, el.h);
-    Some((s.style.font_size as f32, w as f32))
+    let w = match el.shape() {
+        Some(s) => text_rect(s.kind, el.w, el.h)[2],
+        None => LABEL_WRAP,
+    };
+    Some((el.style().font_size as f32, w as f32))
+}
+
+/// O texto de `el` (o da forma, ou o rótulo da seta).
+fn text_of(el: &Element) -> String {
+    match (el.shape(), el.connector()) {
+        (Some(s), _) => s.text.clone(),
+        (_, Some(c)) => c.label.clone(),
+        _ => String::new(),
+    }
+}
+
+/// Onde começa o bloco de texto, nas coordenadas da caixa de `el`. Numa seta a caixa é o próprio
+/// mundo (`x = y = 0`, sem rotação) e o bloco centra-se no meio `mid` da rota.
+fn origin(el: &Element, block_h: f64, mid: Option<[f64; 2]>) -> Option<[f64; 2]> {
+    match el.shape() {
+        Some(s) => Some(text_origin(s.kind, el.w, el.h, block_h)),
+        None => mid.map(|m| label_origin(m, block_h)),
+    }
 }
 
 impl Editing {
     /// Mundo → espaço do texto (origem no início do bloco).
-    fn text_point(&mut self, el: &Element, ts: &mut TextSystem, world: [f64; 2]) -> (f32, f32) {
+    fn text_point(
+        &mut self,
+        el: &Element,
+        ts: &mut TextSystem,
+        world: [f64; 2],
+        mid: Option<[f64; 2]>,
+    ) -> (f32, f32) {
         let [ux, uy] = el.unrotate(world);
-        let kind = el.shape().map(|s| s.kind).expect("só se edita uma forma");
         let block_h = f64::from(self.edit.layout(ts).height());
-        let [ox, oy] = text_origin(kind, el.w, el.h, block_h);
+        let [ox, oy] = origin(el, block_h, mid).unwrap_or([0.0, 0.0]);
         ((ux - el.x - ox) as f32, (uy - el.y - oy) as f32)
     }
 
-    pub(crate) fn overlay(&mut self, doc: &BoardDoc, ts: &mut TextSystem) -> Option<TextOverlay> {
+    /// `world` cai na zona de escrever de `el` (o contorno da forma, ou o bloco do rótulo)?
+    fn contains(
+        &mut self,
+        el: &Element,
+        ts: &mut TextSystem,
+        world: [f64; 2],
+        mid: Option<[f64; 2]>,
+    ) -> bool {
+        if el.shape().is_some() {
+            return ph2d_board_geom::hit(el, world, 0.0);
+        }
+        let layout = self.edit.layout(ts);
+        let block_h = f64::from(layout.height()).max(el.style().font_size);
+        let Some([x, y]) = mid.map(|m| label_origin(m, block_h)) else {
+            return false;
+        };
+        world[0] >= x && world[0] <= x + LABEL_WRAP && world[1] >= y && world[1] <= y + block_h
+    }
+
+    pub(crate) fn overlay(
+        &mut self,
+        doc: &BoardDoc,
+        ts: &mut TextSystem,
+        mid: Option<[f64; 2]>,
+    ) -> Option<TextOverlay> {
         let el = doc.get(self.id)?;
-        let kind = el.shape()?.kind;
         let block_h = f64::from(self.edit.layout(ts).height());
         let (selection, caret) = self.edit.decorations(1.0);
         Some(TextOverlay {
             element: self.id,
-            origin: text_origin(kind, el.w, el.h, block_h),
+            origin: origin(el, block_h, mid)?,
             selection,
             caret,
         })
@@ -62,14 +112,15 @@ impl Editor {
         let Some((size, width)) = metrics(&el) else {
             return false;
         };
-        let text = el.shape().map_or(String::new(), |s| s.text.clone());
+        let text = text_of(&el);
         let mut e = Editing {
             id,
             original: el.clone(),
             edit: TextEdit::new(ts, &text, size, width),
         };
         if let Some(world) = at {
-            let (x, y) = e.text_point(&el, ts, world);
+            let mid = self.routes(doc).get(id).map(|r| r.mid);
+            let (x, y) = e.text_point(&el, ts, world, mid);
             e.edit.click(ts, x, y, false);
         }
         self.selection = std::iter::once(id).collect();
@@ -138,10 +189,15 @@ impl Editor {
         let Some(mut el) = doc.get(e.id).cloned() else {
             return;
         };
+        let text = e.edit.text();
+        if let Some(c) = el.connector_mut() {
+            c.label = text;
+            live(doc, el);
+            return;
+        }
         let Some(kind) = el.shape().map(|s| s.kind) else {
             return;
         };
-        let text = e.edit.text();
         if let Some(s) = el.shape_mut() {
             s.text = text;
         }
@@ -159,15 +215,17 @@ impl Editor {
         ts: &mut TextSystem,
         p: Pointer,
     ) -> bool {
-        let Some(e) = self.editing.as_mut() else {
+        let Some(id) = self.editing.as_ref().map(|e| e.id) else {
             return false;
         };
-        let Some(el) = doc.get(e.id).cloned() else {
+        let Some(el) = doc.get(id).cloned() else {
             self.editing = None;
             return false;
         };
-        if ph2d_board_geom::hit(&el, p.world, 0.0) {
-            let (x, y) = e.text_point(&el, ts, p.world);
+        let mid = self.routes(doc).get(id).map(|r| r.mid);
+        let e = self.editing.as_mut().expect("visto acima");
+        if e.contains(&el, ts, p.world, mid) {
+            let (x, y) = e.text_point(&el, ts, p.world, mid);
             e.edit.click(ts, x, y, p.mods.shift);
             return true;
         }
@@ -176,26 +234,31 @@ impl Editor {
     }
 
     pub(crate) fn text_drag(&mut self, ts: &mut TextSystem, doc: &BoardDoc, p: Pointer) {
-        let Some(e) = self.editing.as_mut() else {
+        let Some(id) = self.editing.as_ref().map(|e| e.id) else {
             return;
         };
-        let Some(el) = doc.get(e.id).cloned() else {
+        let Some(el) = doc.get(id).cloned() else {
             return;
         };
-        let (x, y) = e.text_point(&el, ts, p.world);
+        let mid = self.routes(doc).get(id).map(|r| r.mid);
+        let e = self.editing.as_mut().expect("visto acima");
+        let (x, y) = e.text_point(&el, ts, p.world, mid);
         e.edit.drag_to(ts, x, y);
     }
 
     /// Duplo-clique: numa forma, escreve nela com o cursor onde se clicou (numa palavra,
     /// selecciona-a se já se estava a escrever ali). `false` = não havia forma.
     pub fn double_click(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem, p: Pointer) -> bool {
-        if let Some(e) = self.editing.as_mut()
-            && let Some(el) = doc.get(e.id).cloned()
-            && ph2d_board_geom::hit(&el, p.world, 0.0)
+        if let Some(id) = self.editing.as_ref().map(|e| e.id)
+            && let Some(el) = doc.get(id).cloned()
         {
-            let (x, y) = e.text_point(&el, ts, p.world);
-            e.edit.select_word_at(ts, x, y);
-            return true;
+            let mid = self.routes(doc).get(id).map(|r| r.mid);
+            let e = self.editing.as_mut().expect("visto acima");
+            if e.contains(&el, ts, p.world, mid) {
+                let (x, y) = e.text_point(&el, ts, p.world, mid);
+                e.edit.select_word_at(ts, x, y);
+                return true;
+            }
         }
         let Some(id) = self.hit(doc, p) else {
             return false;

@@ -355,3 +355,117 @@ fn the_style_bar_does_not_cover_the_rotate_knob() {
         );
     }
 }
+
+// ── setas (W2) ───────────────────────────────────────────────────────────────────────────────
+
+use ph2d_board_model::{End, Head, Route};
+
+impl T {
+    /// Duas caixas pelo atalho `R`, em fracções da área.
+    fn two_boxes(&mut self) {
+        for (x0, x1) in [(0.2, 0.32), (0.6, 0.72)] {
+            self.key(BoardKey::Char('r'), Modifiers::default(), Some("r"));
+            let (a, b) = (self.at(x0, 0.4), self.at(x1, 0.5));
+            self.drag(a, b);
+        }
+    }
+
+    fn arrows(&self) -> Vec<Element> {
+        self.elements()
+            .into_iter()
+            .filter(|el| el.connector().is_some())
+            .collect()
+    }
+
+    /// O ponto azul `i` (0 cima · 1 direita · 2 baixo · 3 esquerda) no ecrã, como o pintor o pôs.
+    fn dot(&mut self, i: usize) -> (f32, f32) {
+        let area = board_view::area_of(self.hero.last_canvas);
+        let ts = &mut self.ts;
+        let (board, live) = self.hero.documents.active_parts().unwrap();
+        let ed = live.editor.as_mut().unwrap();
+        let (at, dir) = ed.overlay(&board.doc, ts).dots[i];
+        let [x, y] = board.camera.to_screen(area, at);
+        let d = ed.metrics().dot;
+        ((x + dir[0] * d) as f32, (y + dir[1] * d) as f32)
+    }
+}
+
+/// ⭐ A ferramenta Seta da barra liga duas caixas arrastando de uma à outra; a barra de estilo da
+/// seta troca a rota e a ponta; `Ctrl+Z` desfaz a ponta.
+#[test]
+fn the_arrow_tool_links_two_boxes_and_the_bar_changes_route_and_tip() {
+    let mut t = T::new();
+    t.two_boxes();
+    t.click_bar(Item::Tool(Tool::Connector));
+    let (a, b) = (t.at(0.26, 0.45), t.at(0.66, 0.45));
+    t.drag(a, b);
+    let arrows = t.arrows();
+    assert_eq!(arrows.len(), 1, "a ferramenta da barra não ligou");
+    let c = arrows[0].connector().unwrap();
+    assert!(
+        c.ends().iter().all(|e| matches!(e, End::Bound { .. })),
+        "as duas pontas presas: {:?}",
+        c.ends()
+    );
+    t.click_bar(Item::Route(Route::Curved));
+    t.click_bar(Item::Head(1, Head::Triangle));
+    let c = t.arrows()[0].connector().cloned().unwrap();
+    assert_eq!((c.route, c.heads[1]), (Route::Curved, Head::Triangle));
+    assert!(t.key(BoardKey::Char('z'), CTRL, None));
+    assert_eq!(t.arrows()[0].connector().unwrap().heads[1], Head::Arrow);
+}
+
+/// ⭐ O ponto azul da direita cria a caixa seguinte já ligada; `Ctrl+→` cria a próxima.
+#[test]
+fn the_blue_dot_and_ctrl_arrow_grow_the_flow() {
+    let mut t = T::new();
+    t.key(BoardKey::Char('r'), Modifiers::default(), Some("r"));
+    let (a, b) = (t.at(0.2, 0.4), t.at(0.3, 0.5));
+    t.drag(a, b);
+    let p = t.dot(1);
+    t.drag(p, p);
+    assert_eq!(t.elements().len(), 3, "a caixa nova e a seta");
+    assert_eq!(t.arrows().len(), 1);
+    assert!(t.key(BoardKey::Right, CTRL, None), "Ctrl+→ é do quadro");
+    assert_eq!(t.elements().len(), 5);
+    assert_eq!(t.arrows().len(), 2);
+}
+
+/// Passear o rato por cima de uma caixa (sem botão) mostra os pontos azuis dela.
+#[test]
+fn hovering_a_box_shows_its_blue_dots() {
+    let mut t = T::new();
+    t.key(BoardKey::Char('r'), Modifiers::default(), Some("r"));
+    let (a, b) = (t.at(0.2, 0.4), t.at(0.3, 0.5));
+    t.drag(a, b);
+    t.key(BoardKey::Escape, Modifiers::default(), None);
+    let mid = t.at(0.25, 0.45);
+    let (h, ts, c) = (&mut t.hero, &mut t.ts, &mut t.clock);
+    assert!(
+        !board_view::pointer_move(h, inp(ts, c), mid.0, mid.1),
+        "passear não é gesto: o movimento segue para a interface"
+    );
+    let (board, live) = t.hero.documents.active_parts().unwrap();
+    let o = live.editor.as_mut().unwrap().overlay(&board.doc, &mut t.ts);
+    assert_eq!(o.dots.len(), 4);
+}
+
+/// A barra de estilo não tapa o ponto azul de CIMA.
+#[test]
+fn the_style_bar_does_not_cover_the_top_blue_dot() {
+    let mut t = T::new();
+    t.key(BoardKey::Char('r'), Modifiers::default(), Some("r"));
+    let (a, b) = (t.at(0.4, 0.5), t.at(0.6, 0.6));
+    t.drag(a, b);
+    let (x, y) = t.dot(0);
+    assert!(t.hero.hit_index.hit(x, y).and_then(item_of).is_none());
+}
+
+/// `A` escolhe a seta.
+#[test]
+fn the_a_key_picks_the_arrow_tool() {
+    let mut t = T::new();
+    assert!(t.key(BoardKey::Char('a'), Modifiers::default(), Some("a")));
+    let ed = t.hero.documents.live.editor.as_ref().unwrap();
+    assert_eq!(ed.tool, Tool::Connector);
+}

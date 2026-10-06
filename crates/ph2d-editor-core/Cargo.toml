@@ -53,6 +53,7 @@ ph2d-input            = { path = "../ph2d-input" }
 ph2d-board-model      = { path = "../ph2d-board-model" }
 ph2d-board-render     = { path = "../ph2d-board-render" }
 ph2d-board-edit       = { path = "../ph2d-board-edit" }
+ph2d-board-route      = { path = "../ph2d-board-route" }
 ph2d-board-geom       = { path = "../ph2d-board-geom" }
 ph2d-vector           = { path = "../ph2d-vector" }
 ph2d-text             = { path = "../ph2d-text" }

@@ -1,6 +1,7 @@
-//! ⭐ **As barras do quadro** (MiroClone, W1) — a barra CURTA de ferramentas (decisão do dono 4)
+//! ⭐ **As barras do quadro** (MiroClone, W1–W2) — a barra CURTA de ferramentas (decisão do dono 4)
 //! encostada à esquerda da área, a grelha de todas as formas que ela abre, e a barra de ESTILO que
-//! flutua por cima da selecção (preenchimento, contorno, espessura, traço, cantos, opacidade, letra).
+//! flutua por cima da selecção (preenchimento, contorno, espessura, traço, cantos, opacidade, letra;
+//! numa seta, a rota e as pontas em vez do preenchimento e dos cantos).
 //!
 //! ⚠️ Os ids são DERIVADOS (salto XOR + índice na tabela [`items`]), como os das abas de quadro: a
 //! tabela é a única fonte, e `populate` regista-os todos (pintado ⇒ clicável).
@@ -16,7 +17,8 @@ use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_board_edit::{Editor, Frame, Tool};
-use ph2d_board_model::{Dash, Rgba, Shape, ShapeType, Style};
+use ph2d_board_model::{Connector, Dash, Head, Rgba, Route, Shape, ShapeType, Style};
+use ph2d_board_route::Dir;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
@@ -49,12 +51,35 @@ pub enum Item {
     Round(bool),
     Opacity(usize),
     Font(usize),
+    Route(Route),
+    /// `(0 = início · 1 = fim, desenho)`.
+    Head(usize, Head),
+}
+
+/// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
+/// oito do catálogo — as de UML entram pelo ficheiro, não pela barra estreita.)
+const HEADS: [Head; 5] = [
+    Head::None,
+    Head::Arrow,
+    Head::Triangle,
+    Head::Circle,
+    Head::Bar,
+];
+const ROUTES: [Route; 3] = [Route::Straight, Route::Elbow, Route::Curved];
+
+/// O que está seleccionado decide que grupos a barra de estilo mostra.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Selected {
+    Shapes,
+    Arrows,
+    Both,
 }
 
 /// Os atalhos da barra curta, na ordem em que se pintam.
-const TOOLBAR: [Item; 7] = [
+const TOOLBAR: [Item; 8] = [
     Item::Tool(Tool::Select),
     Item::Tool(Tool::Hand),
+    Item::Tool(Tool::Connector),
     Item::Tool(Tool::Shape(ShapeType::Rectangle)),
     Item::Tool(Tool::Shape(ShapeType::Ellipse)),
     Item::Tool(Tool::Shape(ShapeType::Diamond)),
@@ -67,30 +92,71 @@ const TOOLBAR: [Item; 7] = [
 pub fn items() -> Vec<Item> {
     let mut v: Vec<Item> = TOOLBAR.to_vec();
     v.extend(ShapeType::ALL.iter().map(|t| Item::Pick(*t)));
-    v.extend(style_groups().into_iter().flatten());
+    for it in [Selected::Shapes, Selected::Arrows]
+        .into_iter()
+        .flat_map(style_groups)
+        .flatten()
+    {
+        if !v.contains(&it) {
+            v.push(it);
+        }
+    }
     v
 }
 
-/// Os grupos da barra de estilo, da esquerda para a direita.
-fn style_groups() -> Vec<Vec<Item>> {
-    vec![
-        std::iter::once(Item::Fill(None))
-            .chain(PASTELS.map(|i| Item::Fill(Some(i))))
-            .collect(),
-        [Item::Stroke(None), Item::Stroke(Some(None))]
-            .into_iter()
-            .chain(VIVIDS.map(|i| Item::Stroke(Some(Some(i)))))
-            .collect(),
-        (0..WIDTHS.len()).map(Item::Width).collect(),
-        vec![
-            Item::Dash(Dash::Solid),
-            Item::Dash(Dash::Dashed),
-            Item::Dash(Dash::Dotted),
+/// Os grupos da barra de estilo, da esquerda para a direita, para o que está seleccionado.
+#[must_use]
+pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
+    let fill: Vec<Item> = std::iter::once(Item::Fill(None))
+        .chain(PASTELS.map(|i| Item::Fill(Some(i))))
+        .collect();
+    let stroke: Vec<Item> = [Item::Stroke(None), Item::Stroke(Some(None))]
+        .into_iter()
+        .chain(VIVIDS.map(|i| Item::Stroke(Some(Some(i)))))
+        .collect();
+    let width: Vec<Item> = (0..WIDTHS.len()).map(Item::Width).collect();
+    let dash = vec![
+        Item::Dash(Dash::Solid),
+        Item::Dash(Dash::Dashed),
+        Item::Dash(Dash::Dotted),
+    ];
+    let opacity: Vec<Item> = (0..OPACITIES.len()).map(Item::Opacity).collect();
+    let font: Vec<Item> = (0..FONT_SIZES.len()).map(Item::Font).collect();
+    match sel {
+        Selected::Shapes => vec![
+            fill,
+            stroke,
+            width,
+            dash,
+            vec![Item::Round(false), Item::Round(true)],
+            opacity,
+            font,
         ],
-        vec![Item::Round(false), Item::Round(true)],
-        (0..OPACITIES.len()).map(Item::Opacity).collect(),
-        (0..FONT_SIZES.len()).map(Item::Font).collect(),
-    ]
+        Selected::Arrows => vec![
+            // Uma seta sem traço não se vê: o «sem contorno» não entra.
+            stroke
+                .into_iter()
+                .filter(|it| *it != Item::Stroke(None))
+                .collect(),
+            width,
+            dash,
+            ROUTES.iter().map(|r| Item::Route(*r)).collect(),
+            HEADS.iter().map(|h| Item::Head(0, *h)).collect(),
+            HEADS.iter().map(|h| Item::Head(1, *h)).collect(),
+            opacity,
+            font,
+        ],
+        Selected::Both => vec![
+            stroke
+                .into_iter()
+                .filter(|it| *it != Item::Stroke(None))
+                .collect(),
+            width,
+            dash,
+            opacity,
+            font,
+        ],
+    }
 }
 
 /// O id do controlo `item`.
@@ -128,6 +194,11 @@ fn tooltip_key(it: Item) -> Option<&'static str> {
     Some(match it {
         Item::Tool(Tool::Select) => "board.tool.select",
         Item::Tool(Tool::Hand) => "board.tool.hand",
+        Item::Tool(Tool::Connector) => "board.tool.arrow",
+        Item::Route(Route::Straight) => "board.route.straight",
+        Item::Route(Route::Elbow) => "board.route.elbow",
+        Item::Route(Route::Curved) => "board.route.curved",
+        Item::Head(i, h) => return head_key(i, h),
         Item::Tool(Tool::Shape(ShapeType::Rectangle)) => "board.tool.rectangle",
         Item::Tool(Tool::Shape(ShapeType::Ellipse)) => "board.tool.ellipse",
         Item::Tool(Tool::Shape(ShapeType::Diamond)) => "board.tool.diamond",
@@ -144,6 +215,27 @@ fn tooltip_key(it: Item) -> Option<&'static str> {
         Item::Opacity(_) => "board.style.opacity",
         Item::Font(_) => "board.style.font",
     })
+}
+
+fn head_key(which: usize, h: Head) -> Option<&'static str> {
+    let keys = if which == 0 {
+        [
+            "board.head.start.none",
+            "board.head.start.arrow",
+            "board.head.start.triangle",
+            "board.head.start.circle",
+            "board.head.start.bar",
+        ]
+    } else {
+        [
+            "board.head.end.none",
+            "board.head.end.arrow",
+            "board.head.end.triangle",
+            "board.head.end.circle",
+            "board.head.end.bar",
+        ]
+    };
+    HEADS.iter().position(|x| *x == h).map(|i| keys[i])
 }
 
 fn shape_key(it: Item) -> Option<&'static str> {
@@ -226,10 +318,10 @@ pub fn shapes_rects(area: Rect) -> Vec<(Item, Rect)> {
 /// A barra de estilo por cima de `sel` (o rectângulo da selecção no ecrã), presa dentro de `area`;
 /// por baixo da selecção quando não cabe por cima.
 #[must_use]
-pub fn style_rects(area: Rect, sel: Rect) -> Vec<(Item, Rect)> {
+pub fn style_rects(area: Rect, sel: Rect, what: Selected) -> Vec<(Item, Rect)> {
     let (s, g) = (Spacing::Xl.px(), gap());
     let sep = Spacing::Sm.px();
-    let groups = style_groups();
+    let groups = style_groups(what);
     let n: usize = groups.iter().map(Vec::len).sum();
     let width = n as f32 * (s + g) + (groups.len() - 1) as f32 * sep;
     let above = sel.y - s - Spacing::Lg.px();
@@ -268,10 +360,12 @@ pub fn paint(
     let ed = super::board_view::editor(&mut live.editor, theme);
     let tool = ed.tool;
     let sel_style = selected_style(ed, &board.doc);
-    let frame = (!ed.is_busy() && !ed.is_editing_text())
-        .then(|| ed.frame(&board.doc))
+    let arrow = selected_arrow(ed, &board.doc);
+    let what = selected_kind(ed, &board.doc);
+    let area_w = super::board_view::area_of(area);
+    let sel_box = (!ed.is_busy() && !ed.is_editing_text())
+        .then(|| selection_box(ed, &board.doc, &board.camera, area_w))
         .flatten();
-    let camera = board.camera;
     let tools = toolbar_rects(area);
     paint_panel(scene, &tools, theme);
     for (it, r) in tools {
@@ -305,19 +399,19 @@ pub fn paint(
             );
         }
     }
-    let (Some(f), Some(style)) = (frame, sel_style) else {
+    let (Some(mut sel), Some(style), Some(what)) = (sel_box, sel_style, what) else {
         return;
     };
-    // A pega de RODAR fica acima da moldura: a barra sobe acima dela (na foto de 06/10 tapava-a).
+    // A pega de RODAR e os pontos azuis ficam acima da moldura: a barra sobe acima deles (na foto
+    // de 06/10 tapava a pega).
     let m = super::board_view::metrics();
-    let knob = (m.rotate_offset + m.handle) as f32;
-    let mut sel = screen_box(&f, &camera, super::board_view::area_of(area));
+    let knob = (m.dot + m.handle) as f32;
     sel.y -= knob;
     sel.h += knob;
-    let bar = style_rects(area, sel);
+    let bar = style_rects(area, sel, what);
     paint_panel(scene, &bar, theme);
     for (it, r) in bar {
-        let on = is_current(it, &style, theme);
+        let on = is_current(it, &style, arrow.as_ref(), theme);
         paint_item(
             scene,
             text_system,
@@ -331,11 +425,62 @@ pub fn paint(
     }
 }
 
-/// O estilo da primeira forma seleccionada (a barra mostra-o como «o actual»).
+/// O estilo do primeiro seleccionado (a barra mostra-o como «o actual»).
 fn selected_style(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> Option<Style> {
     ed.selection()
         .iter()
-        .find_map(|id| doc.get(*id)?.shape().map(|s| s.style.clone()))
+        .find_map(|id| doc.get(*id).map(|el| el.style().clone()))
+}
+
+/// A primeira seta seleccionada (a rota e as pontas «actuais»).
+fn selected_arrow(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> Option<Connector> {
+    ed.selection()
+        .iter()
+        .find_map(|id| doc.get(*id)?.connector().cloned())
+}
+
+/// Formas, setas ou as duas?
+fn selected_kind(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> Option<Selected> {
+    let els: Vec<_> = ed
+        .selection()
+        .iter()
+        .filter_map(|id| doc.get(*id))
+        .collect();
+    let arrows = els.iter().any(|el| el.connector().is_some());
+    let shapes = els.iter().any(|el| el.shape().is_some());
+    match (shapes, arrows) {
+        (true, false) => Some(Selected::Shapes),
+        (false, true) => Some(Selected::Arrows),
+        (true, true) => Some(Selected::Both),
+        (false, false) => None,
+    }
+}
+
+/// A caixa no ecrã da selecção: a moldura das formas e as rotas das setas.
+fn selection_box(
+    ed: &mut Editor,
+    doc: &ph2d_board_model::BoardDoc,
+    camera: &ph2d_board_model::Camera,
+    area: [f64; 4],
+) -> Option<Rect> {
+    let frame = ed.frame(doc).map(|f| screen_box(&f, camera, area));
+    let ids: Vec<_> = ed.selection().iter().copied().collect();
+    let routes = ed.routes(doc);
+    let wires = ids.iter().filter_map(|id| routes.get(*id)).map(|r| {
+        let a = camera.to_screen(area, [r.bbox[0], r.bbox[1]]);
+        let b = camera.to_screen(area, [r.bbox[2], r.bbox[3]]);
+        Rect::new(
+            a[0] as f32,
+            a[1] as f32,
+            (b[0] - a[0]) as f32,
+            (b[1] - a[1]) as f32,
+        )
+    });
+    frame.into_iter().chain(wires).reduce(|a, b| {
+        let (x0, y0) = (a.x.min(b.x), a.y.min(b.y));
+        let (x1, y1) = ((a.x + a.w).max(b.x + b.w), (a.y + a.h).max(b.y + b.h));
+        Rect::new(x0, y0, x1 - x0, y1 - y0)
+    })
 }
 
 /// A caixa no ecrã que contém uma moldura rodada.
@@ -395,8 +540,10 @@ fn doc_color(Rgba([r, g, b, a]): Rgba) -> Color {
 }
 
 /// O item corresponde ao estilo actual da selecção?
-fn is_current(it: Item, s: &Style, theme: Theme) -> bool {
+fn is_current(it: Item, s: &Style, arrow: Option<&Connector>, theme: Theme) -> bool {
     match it {
+        Item::Route(r) => arrow.is_some_and(|c| c.route == r),
+        Item::Head(i, h) => arrow.is_some_and(|c| c.heads[i] == h),
         Item::Fill(None) => s.fill.is_none(),
         Item::Fill(Some(_)) => s.fill == swatch(it, theme),
         Item::Stroke(None) => s.stroke.is_none(),
@@ -463,6 +610,25 @@ fn paint_item(
             StrokeToken::Default.px(),
         ),
         Item::Tool(Tool::Shape(t)) | Item::Pick(t) => shape_icon(scene, t, inner, fg, line, false),
+        Item::Tool(Tool::Connector) => {
+            arrow_icon(
+                scene,
+                inner,
+                fg,
+                line,
+                Route::Straight,
+                Connector::DEFAULT_HEADS,
+            );
+        }
+        Item::Route(rt) => arrow_icon(scene, inner, fg, line, rt, [Head::None, Head::None]),
+        Item::Head(i, h) => {
+            let heads = if i == 0 {
+                [h, Head::None]
+            } else {
+                [Head::None, h]
+            };
+            arrow_icon(scene, inner, fg, line, Route::Straight, heads);
+        }
         Item::Fill(_) | Item::Stroke(_) => {
             match swatch(it, theme) {
                 Some(c) => {
@@ -530,6 +696,38 @@ fn stroke(scene: &mut VectorScene, p: &ph2d_vector::BezPath, c: Color, w: f64, d
     scene
         .inner_mut()
         .stroke(&s, Affine::IDENTITY, &Brush::Solid(c), None, p);
+}
+
+/// O ícone de uma seta: a MESMA geometria que o quadro desenha (`ph2d_board_route::drawn`), de
+/// canto a canto de `r` — recta na diagonal, cotovelo/curva em Z.
+fn arrow_icon(scene: &mut VectorScene, r: Rect, c: Color, w: f64, route: Route, heads: [Head; 2]) {
+    let (x0, y0) = (f64::from(r.x), f64::from(r.y + r.h));
+    let (x1, y1) = (f64::from(r.x + r.w), f64::from(r.y));
+    let pts = match route {
+        Route::Straight => vec![[x0, y0], [x1, y1]],
+        Route::Elbow | Route::Curved => {
+            let mx = (x0 + x1) / 2.0;
+            vec![[x0, y0], [mx, y0], [mx, y1], [x1, y1]]
+        }
+    };
+    let routed = ph2d_board_route::Routed::from_points(pts, route, [Dir::East, Dir::West]);
+    let d = ph2d_board_route::drawn(&routed, heads, w);
+    let brush = Brush::Solid(c);
+    let s = Stroke::new(w)
+        .with_caps(ph2d_vector::Cap::Round)
+        .with_join(ph2d_vector::Join::Round);
+    scene
+        .inner_mut()
+        .stroke(&s, Affine::IDENTITY, &brush, None, &d.line);
+    for (head, filled) in &d.heads {
+        if *filled {
+            scene.fill_path(head, &brush, Affine::IDENTITY);
+        } else {
+            scene
+                .inner_mut()
+                .stroke(&s, Affine::IDENTITY, &brush, None, head);
+        }
+    }
 }
 
 /// O ícone de uma forma: o contorno dela, encaixado em `r`.
@@ -603,6 +801,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         Item::Round(r) => ed.set_style(doc, history, |s| s.round = r),
         Item::Opacity(i) => ed.set_style(doc, history, |s| s.opacity = OPACITIES[i]),
         Item::Font(i) => ed.set_style(doc, history, |s| s.font_size = FONT_SIZES[i]),
+        Item::Route(r) => ed.set_route(doc, history, r),
+        Item::Head(i, h) => ed.set_head(doc, history, i, h),
         Item::MoreShapes => {}
     }
     true

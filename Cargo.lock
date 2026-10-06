@@ -5149,6 +5149,7 @@ dependencies = [
  "ph2d-board-geom",
  "ph2d-board-layout",
  "ph2d-board-model",
+ "ph2d-board-route",
  "ph2d-text",
 ]
 
@@ -5187,12 +5188,27 @@ dependencies = [
  "ph2d-board-geom",
  "ph2d-board-layout",
  "ph2d-board-model",
+ "ph2d-board-route",
  "ph2d-gpu",
  "ph2d-render",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-vec-connect",
+ "ph2d-vec-render",
  "ph2d-vector",
  "wgpu",
+]
+
+[[package]]
+name = "ph2d-board-route"
+version = "0.0.0"
+dependencies = [
+ "ph2d-board-geom",
+ "ph2d-board-model",
+ "ph2d-vec-connect",
+ "ph2d-vec-render",
+ "ph2d-vec-scene",
+ "ph2d-vector",
 ]
 
 [[package]]
@@ -5274,6 +5290,7 @@ dependencies = [
  "ph2d-board-geom",
  "ph2d-board-model",
  "ph2d-board-render",
+ "ph2d-board-route",
  "ph2d-chrome-sync",
  "ph2d-color",
  "ph2d-component-desc",

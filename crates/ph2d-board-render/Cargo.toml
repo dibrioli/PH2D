@@ -15,11 +15,14 @@ ph2d-board-model = { path = "../ph2d-board-model" }
 ph2d-board-geom = { path = "../ph2d-board-geom" }
 ph2d-board-layout = { path = "../ph2d-board-layout" }
 ph2d-board-edit = { path = "../ph2d-board-edit" }
+ph2d-board-route = { path = "../ph2d-board-route" }
+ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
 
 [dev-dependencies]
+ph2d-vec-connect = { path = "../ph2d-vec-connect" }
 # A régua da PLACA (`tests/it/measure_gpu_raster_cost.rs`): o dispositivo da casa e o `VelloPass` do
 # PRODUTO (o dono do anti-aliasing), nunca um `vello::Renderer` montado no teste. Sem ciclo:
 # `ph2d-render` só chega a esta crate pelas dev-deps dele.

@@ -63,6 +63,13 @@ pub use route::route;
 
 mod loops;
 
+/// Por onde cada ponta sai e que formas a rota enxerga — as leis antes do A\*.
+mod ends;
+pub use ends::{
+    ROI_PAD_K, SPREAD_FACE_K, bbox_exit, exit_point, obstacles_in_play, obstacles_in_play_near,
+    port_side,
+};
+
 /// **Por qual lado a linha sai** (a âncora flutuante): o quadrante da diagonal da CAIXA, com
 /// histerese para a saída não piscar quando o alvo passa pela diagonal.
 mod side;
@@ -207,7 +214,7 @@ pub struct RouteInput<'a> {
     /// recusava as arestas que os atravessam; ele nunca soube quantos eram.
     ///
     /// O chamador é que precisa **podar**: o grafo tem `(2n+3)²` nós, então uma forma no canto
-    /// oposto da tela encareceria toda rota do documento. Ver `connector_live::obstacles_in_play`.
+    /// oposto da tela encareceria toda rota do documento. Ver [`obstacles_in_play`].
     pub obstacles: &'a [Aabb],
     /// Abertura do LAÇO, e **só** dele: dois conectores que voltam para a mesma forma saem em
     /// leque em vez de um por baixo do outro.

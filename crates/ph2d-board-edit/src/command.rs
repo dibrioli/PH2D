@@ -58,15 +58,20 @@ impl Editor {
                 self.begin_text(doc, ts, id, None)
             }
             Command::Delete => {
-                let ops: Vec<BoardOp> = self
-                    .selection
-                    .iter()
-                    .map(|id| BoardOp::Delete(*id))
-                    .collect();
+                // As setas que ficam e se prendiam ao que sai soltam-se onde estão (no MESMO passo).
+                let gone = self.selection.clone();
+                let mut ops = self.release_ends(doc, &gone);
+                ops.extend(gone.iter().map(|id| BoardOp::Delete(*id)));
                 self.selection.clear();
-                let any = !ops.is_empty();
+                let any = !gone.is_empty();
                 history.apply(doc, ops);
                 any
+            }
+            Command::Grow(dir) => {
+                let [id] = self.selection.iter().copied().collect::<Vec<_>>()[..] else {
+                    return false;
+                };
+                self.grow(doc, history, id, dir)
             }
             Command::Cut => {
                 self.copy(doc);
@@ -82,8 +87,7 @@ impl Editor {
                     .into_iter()
                     .map(|el| {
                         let mut el = el.clone();
-                        el.x += d[0];
-                        el.y += d[1];
+                        el.translate(d);
                         BoardOp::Put(el)
                     })
                     .collect();
@@ -92,7 +96,8 @@ impl Editor {
                 any
             }
             Command::Duplicate => {
-                let src: Vec<Element> = self.selected(doc).into_iter().cloned().collect();
+                let mut src: Vec<Element> = self.selected(doc).into_iter().cloned().collect();
+                self.detach_outside(doc, &mut src);
                 self.place_copies(doc, history, &src, 1)
             }
             Command::Paste => {
@@ -104,7 +109,9 @@ impl Editor {
     }
 
     fn copy(&mut self, doc: &BoardDoc) {
-        self.clipboard = self.selected(doc).into_iter().cloned().collect();
+        let mut els: Vec<Element> = self.selected(doc).into_iter().cloned().collect();
+        self.detach_outside(doc, &mut els);
+        self.clipboard = els;
         self.pastes = 0;
     }
 
@@ -121,18 +128,21 @@ impl Editor {
         }
         let off = self.metrics.paste_offset * f64::from(steps);
         let mut ids = BTreeSet::new();
-        let ops = src
+        let mut map = std::collections::BTreeMap::new();
+        let mut copies: Vec<Element> = src
             .iter()
             .map(|o| {
                 let mut el = o.clone();
                 el.id = doc.mint_id();
+                map.insert(o.id, el.id);
                 el.version = 0;
-                el.x += off;
-                el.y += off;
+                el.translate([off, off]);
                 ids.insert(el.id);
                 el
             })
-            .collect::<Vec<_>>()
+            .collect();
+        crate::wire::remap(&mut copies, &map);
+        let ops = copies
             .into_iter()
             .map(|mut el| {
                 el.z = doc.z_on_top();

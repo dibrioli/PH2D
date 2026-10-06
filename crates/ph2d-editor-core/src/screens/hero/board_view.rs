@@ -64,6 +64,9 @@ pub fn metrics() -> Metrics {
         drag: f64::from(crate::interaction::TAB_DRAG_THRESHOLD_PX),
         click_size: ph2d_board_edit::CLICK_SIZE,
         paste_offset: ph2d_board_edit::PASTE_OFFSET,
+        bind: f64::from(Spacing::Lg.px()),
+        // Longe da pega de rodar (`Xl` acima do topo): o ponto de cima não lhe rouba o clique.
+        dot: f64::from(Spacing::Xl3.px()),
     }
 }
 
@@ -211,13 +214,21 @@ pub fn pointer_move(hero: &mut HeroScreen, input: Input<'_>, x: f32, y: f32) -> 
         return true;
     }
     let area = area_of(hero.last_canvas);
+    let over = inside(hero.last_canvas, x, y);
     let Some((board, live)) = hero.documents.active_parts() else {
         return false;
     };
-    let Some(ed) = live.editor.as_mut().filter(|e| e.is_busy()) else {
+    let p = world_pointer(board, area, x, y, input.mods);
+    let Some(ed) = live.editor.as_mut() else {
         return false;
     };
-    let p = world_pointer(board, area, x, y, input.mods);
+    if !ed.is_busy() {
+        // Sem botão: só os pontos azuis da forma por baixo (o movimento segue para a interface).
+        if over {
+            ed.hover(&board.doc, p);
+        }
+        return false;
+    }
     ed.pointer_move(&mut board.doc, input.text, p);
     true
 }

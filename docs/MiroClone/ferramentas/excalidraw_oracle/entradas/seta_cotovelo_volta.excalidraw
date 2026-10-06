@@ -1,0 +1,49 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "ph2d-miroclone-oracle-input",
+  "ph2d_note": "esqueleto: seta elbowed:true que sai pela DIREITA da origem e entra pela ESQUERDA de um destino que está à ESQUERDA e abaixo — obriga a volta; mede o recuo (o 'jetty') antes de dobrar",
+  "elements": [
+    {
+      "type": "rectangle",
+      "id": "origem",
+      "x": 300,
+      "y": 60,
+      "width": 140,
+      "height": 90,
+      "label": {
+        "text": "origem"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "destino",
+      "x": 40,
+      "y": 300,
+      "width": 140,
+      "height": 90,
+      "label": {
+        "text": "destino"
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "cotovelo",
+      "x": 440,
+      "y": 105,
+      "width": -400,
+      "height": 240,
+      "elbowed": true,
+      "start": {
+        "id": "origem"
+      },
+      "end": {
+        "id": "destino"
+      }
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+}

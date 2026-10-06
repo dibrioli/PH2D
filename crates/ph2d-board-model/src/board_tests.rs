@@ -109,3 +109,68 @@ const V1_BYTES: &[u8] = &[
     0, 0, 240, 63, 1, 1, 1, 0, 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64, 0,
     0, 0, 0, 0, 0, 8, 64, 0, 0, 0, 0, 0, 0, 16, 64, 2, 97, 48, 1, 0, 0, 1, 1, 2, 97, 48, 1,
 ];
+
+/// Uma seta (W2) grava-se e lê-se: pontas presas e soltas, rota, pontas de seta, rótulo. A variante
+/// entrou no FIM do `ElementKind` — o formato 2 não sobe, e um ficheiro só de formas lê-se igual.
+#[test]
+fn an_arrow_round_trips_through_the_bytes() {
+    use crate::{Anchor, Connector, End, Head, Route};
+    let mut set = BoardSet::default();
+    let a = set.create("Fluxo".into());
+    let doc = &mut set.get_mut(a).unwrap().doc;
+    let ink = Rgba([1, 2, 3, 255]);
+    let shape = Shape {
+        kind: ShapeType::Rectangle,
+        style: Style::new(None, Some(ink), ink),
+        text: String::new(),
+    };
+    let box_el = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [0.0, 0.0, 10.0, 10.0]);
+    let target = box_el.id;
+    BoardOp::Put(box_el).apply(doc);
+    let mut c = Connector::new(
+        End::Bound {
+            target,
+            anchor: Anchor::Fixed([1.0, 0.5]),
+        },
+        End::Free([40.0, -3.5]),
+        Route::Curved,
+        Style::new(None, Some(ink), ink),
+    );
+    c.heads = [Head::Circle, Head::Triangle];
+    c.label = "sim".into();
+    let arrow = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
+    BoardOp::Put(arrow).apply(doc);
+    let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert_eq!(back, set);
+    assert_eq!(FORMAT_VERSION, 2);
+}
+
+/// A revisão da sessão muda a cada operação aplicada e nunca se repete entre documentos (a cache de
+/// rotas confia nisso para não confundir dois quadros).
+#[test]
+fn the_session_revision_moves_with_each_op_and_is_unique() {
+    let mut set = BoardSet::default();
+    let (a, b) = (set.create("A".into()), set.create("B".into()));
+    let (ra, rb) = (set.get(a).unwrap().doc.rev(), set.get(b).unwrap().doc.rev());
+    assert_ne!(ra, rb);
+    let doc = &mut set.get_mut(a).unwrap().doc;
+    let ink = Rgba([0, 0, 0, 255]);
+    let shape = Shape {
+        kind: ShapeType::Rectangle,
+        style: Style::new(None, Some(ink), ink),
+        text: String::new(),
+    };
+    let el = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [0.0, 0.0, 1.0, 1.0]);
+    let id = el.id;
+    BoardOp::Put(el).apply(doc);
+    assert_ne!(doc.rev(), ra);
+    let r = doc.rev();
+    assert!(BoardOp::Delete(id).apply(doc).is_some());
+    assert_ne!(doc.rev(), r);
+    let r = doc.rev();
+    assert!(
+        BoardOp::Delete(id).apply(doc).is_none(),
+        "já apagado: nada mudou"
+    );
+    assert_eq!(doc.rev(), r, "uma op que não muda nada não mexe na revisão");
+}

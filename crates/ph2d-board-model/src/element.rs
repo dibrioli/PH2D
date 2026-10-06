@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::FracKey;
+use crate::{Connector, End, FracKey};
 
 /// Identidade de um elemento dentro do seu quadro. Nunca reusada (as lápides guardam-na).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -54,6 +54,8 @@ impl Rgba {
 pub enum ElementKind {
     /// Uma forma com estilo e (talvez) texto dentro.
     Shape(Shape),
+    /// Uma seta entre duas pontas (W2). A caixa `x, y, w, h` não se usa: a geometria é a rota.
+    Connector(Connector),
 }
 
 /// Uma forma do quadro: o contorno, o estilo e o texto que vive DENTRO dela (centrado, com quebra).
@@ -205,6 +207,24 @@ impl Element {
         }
     }
 
+    /// Uma seta nova (a caixa fica a zero: a geometria é a rota derivada).
+    #[must_use]
+    pub fn new_connector(id: ElementId, z: FracKey, c: Connector) -> Self {
+        Self {
+            id,
+            kind: ElementKind::Connector(c),
+            x: 0.0,
+            y: 0.0,
+            w: 0.0,
+            h: 0.0,
+            angle: 0.0,
+            z,
+            version: 0,
+            nonce: 0,
+            deleted: false,
+        }
+    }
+
     #[must_use]
     pub fn center(&self) -> [f64; 2] {
         [self.x + self.w / 2.0, self.y + self.h / 2.0]
@@ -248,12 +268,63 @@ impl Element {
     pub fn shape(&self) -> Option<&Shape> {
         match &self.kind {
             ElementKind::Shape(s) => Some(s),
+            ElementKind::Connector(_) => None,
         }
     }
 
     pub fn shape_mut(&mut self) -> Option<&mut Shape> {
         match &mut self.kind {
             ElementKind::Shape(s) => Some(s),
+            ElementKind::Connector(_) => None,
+        }
+    }
+
+    /// A seta, se é uma.
+    #[must_use]
+    pub fn connector(&self) -> Option<&Connector> {
+        match &self.kind {
+            ElementKind::Connector(c) => Some(c),
+            ElementKind::Shape(_) => None,
+        }
+    }
+
+    pub fn connector_mut(&mut self) -> Option<&mut Connector> {
+        match &mut self.kind {
+            ElementKind::Connector(c) => Some(c),
+            ElementKind::Shape(_) => None,
+        }
+    }
+
+    /// O estilo, seja de uma forma ou de uma seta.
+    #[must_use]
+    pub fn style(&self) -> &Style {
+        match &self.kind {
+            ElementKind::Shape(s) => &s.style,
+            ElementKind::Connector(c) => &c.style,
+        }
+    }
+
+    pub fn style_mut(&mut self) -> &mut Style {
+        match &mut self.kind {
+            ElementKind::Shape(s) => &mut s.style,
+            ElementKind::Connector(c) => &mut c.style,
+        }
+    }
+
+    /// Desloca o elemento por `d` (mundo). Numa seta, só as pontas SOLTAS — as presas seguem a forma.
+    pub fn translate(&mut self, d: [f64; 2]) {
+        match &mut self.kind {
+            ElementKind::Shape(_) => {
+                self.x += d[0];
+                self.y += d[1];
+            }
+            ElementKind::Connector(c) => {
+                for e in [&mut c.start, &mut c.end] {
+                    if let End::Free(p) = e {
+                        *p = [p[0] + d[0], p[1] + d[1]];
+                    }
+                }
+            }
         }
     }
 }
@@ -277,9 +348,46 @@ pub struct BoardDoc {
     /// A maior chave de z que já entrou (lápides incluídas) — o `z_on_top` em O(1). Só sobe: uma
     /// chave acima de um elemento apagado continua acima de todos os vivos.
     pub(crate) top_z: Option<FracKey>,
+    /// A revisão da SESSÃO (não vai para o ficheiro): muda a cada operação aplicada.
+    #[serde(skip)]
+    pub(crate) rev: Rev,
+}
+
+/// ⭐ **Revisão de um documento nesta sessão** — o «mudou alguma coisa?» em O(1) dos caches
+/// derivados (as rotas das setas). Tirada de um contador GLOBAL do processo: dois documentos
+/// distintos nunca partilham uma (um cache que passa de um quadro a outro não confunde os dois),
+/// e um documento lido de bytes nasce com uma nova. Não é conteúdo: duas revisões são sempre
+/// «iguais» para o `PartialEq` do documento.
+#[derive(Clone, Copy, Debug)]
+pub struct Rev(u64);
+
+static NEXT_REV: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+impl Rev {
+    pub(crate) fn fresh() -> Self {
+        Self(NEXT_REV.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+    }
+}
+
+impl Default for Rev {
+    fn default() -> Self {
+        Self::fresh()
+    }
+}
+
+impl PartialEq for Rev {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
 }
 
 impl BoardDoc {
+    /// A revisão desta sessão: muda a cada operação aplicada (e só então).
+    #[must_use]
+    pub fn rev(&self) -> u64 {
+        self.rev.0
+    }
+
     /// Um id ainda não usado neste quadro.
     pub fn mint_id(&mut self) -> ElementId {
         self.next_id += 1;
@@ -290,6 +398,11 @@ impl BoardDoc {
     #[must_use]
     pub fn get(&self, id: ElementId) -> Option<&Element> {
         self.elements.get(&id).filter(|e| !e.deleted)
+    }
+
+    /// Os elementos vivos, por id (sem ordenar por z).
+    pub fn live(&self) -> impl Iterator<Item = &Element> {
+        self.elements.values().filter(|e| !e.deleted)
     }
 
     /// Os elementos vivos, de trás para a frente (ordem de desenho).

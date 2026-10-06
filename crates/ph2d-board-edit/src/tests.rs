@@ -15,6 +15,8 @@ fn metrics() -> Metrics {
         drag: 3.0,
         click_size: [160.0, 100.0],
         paste_offset: 10.0,
+        bind: 8.0,
+        dot: 40.0,
     }
 }
 
@@ -518,4 +520,289 @@ fn shift_on_a_corner_follows_the_axis_stretched_most() {
     );
     let e = w.el(id);
     assert_eq!([e.w, e.h], [300.0, 150.0], "o vertical (×3) não mandou");
+}
+
+// ── setas (W2) ───────────────────────────────────────────────────────────────────────────────
+
+use ph2d_board_model::{Anchor, End, Head, Route};
+
+impl World {
+    fn arrow_drag(&mut self, from: [f64; 2], to: [f64; 2], m: Mods) -> Option<ElementId> {
+        self.ed.tool = Tool::Connector;
+        self.drag(from, to, m);
+        let id = *self.ed.selection().iter().next()?;
+        self.el(id).connector().is_some().then_some(id)
+    }
+
+    fn ends(&self, id: ElementId) -> [End; 2] {
+        self.el(id).connector().expect("é seta").ends()
+    }
+}
+
+/// ⭐ Arrastar a ferramenta Seta do miolo de uma forma ao miolo de outra liga as duas ao CENTRO,
+/// selecciona a seta, volta à selecção — e desfazer tira-a.
+#[test]
+fn dragging_the_arrow_tool_from_a_shape_to_another_binds_both_centers() {
+    let mut w = world();
+    let a = w.rect([0.0, 0.0, 160.0, 100.0]);
+    let b = w.rect([400.0, 0.0, 160.0, 100.0]);
+    let id = w
+        .arrow_drag([80.0, 50.0], [480.0, 50.0], NONE)
+        .expect("nasceu uma seta");
+    let center = |target| End::Bound {
+        target,
+        anchor: Anchor::Center,
+    };
+    assert_eq!(w.ends(id), [center(a), center(b)]);
+    assert_eq!(w.ed.tool, Tool::Select);
+    assert_eq!(
+        w.el(id).connector().unwrap().heads,
+        [Head::None, Head::Arrow]
+    );
+    assert!(w.cmd(Command::Undo));
+    assert!(w.doc.get(id).is_none());
+    assert_eq!(w.doc.live_len(), 2);
+}
+
+/// Largada na faixa junto ao contorno, a ponta fica num PONTO FIXO (colado ao meio do lado).
+#[test]
+fn an_end_dropped_near_the_outline_is_a_fixed_point() {
+    let mut w = world();
+    let a = w.rect([0.0, 0.0, 160.0, 100.0]);
+    let b = w.rect([400.0, 0.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [403.0, 52.0], NONE).unwrap();
+    assert_eq!(
+        w.ends(id)[1],
+        End::Bound {
+            target: b,
+            anchor: Anchor::Fixed([0.0, 0.5])
+        }
+    );
+    let _ = a;
+}
+
+/// ⭐ `Ctrl` solta: com ele, a ponta fica no vazio mesmo sobre uma forma.
+#[test]
+fn ctrl_keeps_the_end_loose_over_a_shape() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    let b = w.rect([400.0, 0.0, 160.0, 100.0]);
+    let id = w.arrow_drag([-200.0, 50.0], [480.0, 50.0], CTRL).unwrap();
+    assert_eq!(
+        w.ends(id),
+        [End::Free([-200.0, 50.0]), End::Free([480.0, 50.0])]
+    );
+    let _ = b;
+}
+
+/// Durante o arrasto, a forma por baixo realça-se (o alvo do overlay).
+#[test]
+fn the_shape_under_the_dragged_end_is_highlighted() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    let b = w.rect([400.0, 0.0, 160.0, 100.0]);
+    w.ed.tool = Tool::Connector;
+    w.ed.pointer_down(&mut w.doc, &mut w.h, &mut w.ts, at(80.0, 50.0, NONE), VIEW);
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(300.0, 50.0, NONE));
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(480.0, 50.0, NONE));
+    let o = w.ed.overlay(&w.doc, &mut w.ts);
+    assert_eq!(
+        o.target,
+        Some(Target {
+            element: b,
+            fixed: None
+        })
+    );
+}
+
+/// ⭐ Mover uma caixa: a seta presa a ela segue-a (a rota refaz-se, o documento da seta não muda).
+#[test]
+fn moving_a_box_moves_the_arrow_end_with_it() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    let b = w.rect([400.0, 0.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [480.0, 50.0], NONE).unwrap();
+    let before = w.ed.routes(&w.doc).get(id).unwrap().ends()[1];
+    let saved = w.el(id).clone();
+    w.ed.select(&w.doc, [b]);
+    w.drag([480.0, 50.0], [480.0, 350.0], CTRL);
+    let after = w.ed.routes(&w.doc).get(id).unwrap().ends()[1];
+    assert_ne!(before, after);
+    assert!(after[1] >= 300.0, "a ponta foi com a caixa: {after:?}");
+    assert_eq!(
+        w.el(id).connector(),
+        saved.connector(),
+        "a seta não precisou de mudar"
+    );
+}
+
+/// Arrastar a PONTA de uma seta seleccionada religa-a a outra forma (UM passo).
+#[test]
+fn dragging_an_end_handle_rebinds_it() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    w.rect([400.0, 0.0, 160.0, 100.0]);
+    let c = w.rect([400.0, 300.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [480.0, 50.0], NONE).unwrap();
+    let tip = w.ed.routes(&w.doc).get(id).unwrap().ends()[1];
+    w.drag(tip, [480.0, 350.0], NONE);
+    assert_eq!(
+        w.ends(id)[1],
+        End::Bound {
+            target: c,
+            anchor: Anchor::Center
+        }
+    );
+    assert!(w.cmd(Command::Undo));
+    assert_ne!(
+        w.ends(id)[1],
+        End::Bound {
+            target: c,
+            anchor: Anchor::Center
+        }
+    );
+}
+
+/// ⭐ Os pontos azuis: clicar no da direita cria a forma seguinte já ligada, seleccionada.
+#[test]
+fn clicking_a_blue_dot_creates_the_next_shape_already_linked() {
+    let mut w = world();
+    let a = w.rect([0.0, 0.0, 160.0, 100.0]);
+    let o = w.ed.overlay(&w.doc, &mut w.ts);
+    assert_eq!(o.dots.len(), 4, "a forma seleccionada mostra os quatro");
+    let (at_side, dir) = o.dots[1];
+    let p = [at_side[0] + dir[0] * 40.0, at_side[1] + dir[1] * 40.0];
+    w.click(p, NONE);
+    assert_eq!(w.doc.live_len(), 3, "a forma nova e a seta");
+    let new = *w.ed.selection().iter().next().unwrap();
+    let n = w.el(new);
+    assert_eq!([n.x, n.y, n.w, n.h], [160.0 + NEXT_GAP, 0.0, 160.0, 100.0]);
+    let wire = w.doc.live().find(|el| el.connector().is_some()).unwrap();
+    let ends = wire.connector().unwrap().ends();
+    assert!(
+        matches!(ends, [End::Bound { target: s, .. }, End::Bound { target: t, .. }] if s == a && t == new)
+    );
+    assert!(w.cmd(Command::Undo));
+    assert_eq!(w.doc.live_len(), 1, "UM passo tira as duas");
+}
+
+/// `Ctrl+seta` faz o mesmo pelo teclado, e salta por cima de uma forma que já ocupa o sítio.
+#[test]
+fn ctrl_arrow_grows_the_flow_and_skips_an_occupied_place() {
+    let mut w = world();
+    let a = w.rect([0.0, 0.0, 160.0, 100.0]);
+    w.rect([0.0, 100.0 + NEXT_GAP, 160.0, 100.0]);
+    w.ed.select(&w.doc, [a]);
+    assert!(w.cmd(Command::Grow([0.0, 1.0])));
+    let new = *w.ed.selection().iter().next().unwrap();
+    let n = w.el(new);
+    assert_eq!(
+        n.y,
+        2.0 * (100.0 + NEXT_GAP),
+        "o sítio estava ocupado: salta um passo"
+    );
+}
+
+/// ⭐ Apagar uma forma solta a ponta da seta ONDE ESTAVA — e desfazer prende-a outra vez.
+#[test]
+fn deleting_a_shape_releases_the_arrow_end_in_place() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    let b = w.rect([400.0, 0.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [480.0, 50.0], NONE).unwrap();
+    let tip = w.ed.routes(&w.doc).get(id).unwrap().ends()[1];
+    w.ed.select(&w.doc, [b]);
+    w.cmd(Command::Delete);
+    assert_eq!(w.ends(id)[1], End::Free(tip));
+    w.cmd(Command::Undo);
+    assert!(matches!(w.ends(id)[1], End::Bound { target, .. } if target == b));
+}
+
+/// Duplicar duas formas e a seta entre elas: a cópia da seta liga as CÓPIAS.
+#[test]
+fn duplicating_shapes_with_their_arrow_links_the_copies() {
+    let mut w = world();
+    let a = w.rect([0.0, 0.0, 160.0, 100.0]);
+    let b = w.rect([400.0, 0.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [480.0, 50.0], NONE).unwrap();
+    w.ed.select(&w.doc, [a, b, id]);
+    w.cmd(Command::Duplicate);
+    let copies: Vec<ElementId> = w.ed.selection().iter().copied().collect();
+    let wire = copies
+        .iter()
+        .find(|c| w.el(**c).connector().is_some())
+        .unwrap();
+    for t in w.el(*wire).connector().unwrap().targets() {
+        assert!(copies.contains(&t), "a cópia da seta prende-se às cópias");
+    }
+}
+
+/// Uma seta sozinha copiada solta as pontas onde estão (não fica presa às formas do original).
+#[test]
+fn copying_an_arrow_alone_frees_its_ends() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    w.rect([400.0, 0.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [480.0, 50.0], NONE).unwrap();
+    w.cmd(Command::Duplicate);
+    let copy = *w.ed.selection().iter().next().unwrap();
+    assert_ne!(copy, id);
+    assert!(w.ends(copy).iter().all(|e| matches!(e, End::Free(_))));
+}
+
+/// Clicar na LINHA de uma seta selecciona-a; a rota e as pontas aparecem no overlay.
+#[test]
+fn clicking_the_line_selects_the_arrow() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    w.rect([400.0, 0.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [480.0, 50.0], NONE).unwrap();
+    w.cmd(Command::Escape);
+    w.click([280.0, 51.0], NONE);
+    assert_eq!(
+        w.ed.selection().iter().copied().collect::<Vec<_>>(),
+        vec![id]
+    );
+    let o = w.ed.overlay(&w.doc, &mut w.ts);
+    assert_eq!(o.wires.len(), 1);
+    assert!(
+        o.frame.is_none(),
+        "uma seta não tem moldura de redimensionar"
+    );
+}
+
+/// A rota, as pontas e o rótulo pela barra/teclado.
+#[test]
+fn route_heads_and_label_change_the_selected_arrow() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    w.rect([400.0, 300.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [480.0, 350.0], NONE).unwrap();
+    w.ed.set_route(&mut w.doc, &mut w.h, Route::Curved);
+    w.ed.set_head(&mut w.doc, &mut w.h, 0, Head::Circle);
+    let c = w.el(id).connector().unwrap();
+    assert_eq!((c.route, c.heads[0]), (Route::Curved, Head::Circle));
+    assert!(w.cmd(Command::EditText), "Enter escreve no rótulo");
+    w.ed.text_input(&mut w.doc, &mut w.ts, "sim");
+    w.ed.text_key(&mut w.doc, &mut w.h, &mut w.ts, TextKey::Commit);
+    assert_eq!(w.el(id).connector().unwrap().label, "sim");
+    assert!(w.cmd(Command::Undo));
+    assert_eq!(
+        w.el(id).connector().unwrap().label,
+        "",
+        "a escrita é UM passo"
+    );
+}
+
+/// O rótulo de nascença das setas: a largura de quebra é a de uma caixa de nascença.
+#[test]
+fn the_label_wraps_at_the_click_width() {
+    assert_eq!(ph2d_board_route::LABEL_WRAP, CLICK_SIZE[0]);
+}
+
+/// Os pontos azuis ficam LONGE da pega de rodar (senão a de cima rouba-lhe o clique).
+#[test]
+fn the_top_dot_clears_the_rotate_knob() {
+    let m = metrics();
+    assert!(m.dot - m.rotate_offset >= 2.0 * m.handle);
 }

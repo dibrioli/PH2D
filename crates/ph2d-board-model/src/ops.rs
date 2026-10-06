@@ -18,6 +18,14 @@ impl BoardOp {
     /// Aplica a operação e devolve a que a desfaz. `None` = não mudou nada (id desconhecido ou já
     /// apagado) — quem chama não empilha um passo de undo vazio.
     pub fn apply(self, doc: &mut BoardDoc) -> Option<BoardOp> {
+        let inverse = self.apply_inner(doc);
+        if inverse.is_some() {
+            doc.rev = crate::element::Rev::fresh();
+        }
+        inverse
+    }
+
+    fn apply_inner(self, doc: &mut BoardDoc) -> Option<BoardOp> {
         match self {
             BoardOp::Put(mut el) => {
                 let prev = doc.elements.get(&el.id).cloned();

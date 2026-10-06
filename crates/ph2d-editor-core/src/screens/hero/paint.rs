@@ -234,18 +234,13 @@ pub fn paint_hero_screen(
         let area = super::board_view::area_of(r);
         let theme = hero.theme;
         if let Some((board, live)) = hero.documents.active_parts() {
-            ph2d_board_render::paint(
-                board,
-                area,
-                scene,
-                theme,
-                text_system,
-                &mut live.render_cache,
-            );
-            if let Some(ed) = live.editor.as_mut() {
-                let overlay = ed.overlay(&board.doc, text_system);
-                ph2d_board_render::paint_overlay(board, area, scene, theme, &overlay, ed.metrics());
-            }
+            // As rotas das setas vêm do editor: uma cache, a mesma que o clique lê.
+            let ed = super::board_view::editor(&mut live.editor, theme);
+            let routes = ed.routes(&board.doc);
+            let cache = &mut live.render_cache;
+            ph2d_board_render::paint(board, area, scene, theme, text_system, cache, routes);
+            let overlay = ed.overlay(&board.doc, text_system);
+            ph2d_board_render::paint_overlay(board, area, scene, theme, &overlay, ed.metrics());
         }
         super::board_bar::paint(hero, r, scene, text_system);
         // Pintar e agarrar leem o MESMO rect (o `board_view` lê o `last_canvas`).

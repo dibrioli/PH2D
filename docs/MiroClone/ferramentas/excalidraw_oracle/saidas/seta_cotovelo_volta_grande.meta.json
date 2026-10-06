@@ -1,0 +1,50 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-06T20:38:05.732Z",
+  "input": "seta_cotovelo_volta_grande.excalidraw",
+  "input_sha256": "a4e64cb062d30ff0f48de6cf4d2eb90d70b07f3e9de886cb72fba8b2ffdfd89a",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": {
+    "what": "<Excalidraw> montado; formas das pontas das setas elbowed seleccionadas e empurradas ArrowRight+ArrowLeft; cena lida por excalidrawAPI.getSceneElements",
+    "nudged": [
+      "origem",
+      "destino"
+    ]
+  },
+  "png_bytes": 47035,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [
+    "\"Comic Shanns\"",
+    "\"Liberation Sans\"",
+    "\"Lilita One\"",
+    "Assistant",
+    "Cascadia",
+    "Excalifont",
+    "Nunito",
+    "Virgil"
+  ],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "seta_cotovelo_volta_grande.svg": "85a1e38292dd411ed91084167f3555f9ec9a486a8aac8b5a5db82e3fb2270c0d",
+    "seta_cotovelo_volta_grande.png": "ad70d6658224d3f97baddc3b710c062621d7a6a8cae4f25eb9edb9526b74b7ae",
+    "seta_cotovelo_volta_grande.restored.json": "7ceebb12d3ba0cb2e64d8ac236c2a315f2186630855c92af5b0ad40bdf6bb10b",
+    "seta_cotovelo_volta_grande.editor.svg": "ebad6a4b6a3d47e7dd16a8fe5d25555e1d715ffeeafcac589c5480b2f437f324",
+    "seta_cotovelo_volta_grande.editor.png": "9daaae6e514f0bfd4795b44a4729ffd0ee36606d16d384f5439e5461a4ff751a",
+    "seta_cotovelo_volta_grande.editor.json": "54c7614d161f08f291ca67c9e3cdc0b7858c1b6e10d6c30e7980f1c96c858c21"
+  }
+}

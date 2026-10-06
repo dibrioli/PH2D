@@ -143,49 +143,6 @@ pub fn shape_boxes(
         .collect()
 }
 
-/// **Os obstáculos que ESTA rota precisa enxergar.**
-///
-/// Passar o documento inteiro seria correto e caro: o grafo de visibilidade tem `(2n+3)²` nós,
-/// então cada forma do desenho encareceria TODA rota — inclusive a que liga duas caixas vizinhas no
-/// canto oposto da tela. A poda por região devolve o custo ao tamanho do problema: numa rota curta
-/// sobram duas ou três caixas, e o grafo volta a ter dezenas de nós.
-///
-/// # A região CRESCE — e é por isso que isto é um ponto fixo, não um filtro
-///
-/// O filtro ingênuo (pegue quem cruza o corredor entre as duas pontas) tem um furo: uma forma que
-/// atravessa a borda do corredor obriga a linha a **contorná-la**, e o contorno vai até a borda
-/// OPOSTA dessa forma — que está fora do corredor original, possivelmente colada em OUTRA forma,
-/// que o filtro descartou. A linha atravessaria essa segunda forma, e o desvio pareceria
-/// simplesmente quebrado.
-///
-/// Então a seleção é iterativa: quem cruza a região entra, a região engole a caixa de quem entrou,
-/// repete. Termina sempre (o conjunto só cresce, e é finito) e converge em uma ou duas passadas num
-/// diagrama de verdade. Num diagrama denso ela pega tudo — que é a resposta **certa**, e o preço de
-/// estar certo.
-#[must_use]
-pub fn obstacles_in_play(shapes: &[Aabb], a: Aabb, b: Aabb, pad: f64) -> Vec<Aabb> {
-    let mut roi = a.union(b).inflate(pad);
-    let mut taken = vec![false; shapes.len()];
-    loop {
-        let mut grew = false;
-        for (i, s) in shapes.iter().enumerate() {
-            if !taken[i] && roi.overlaps(*s) {
-                taken[i] = true;
-                roi = roi.union(s.inflate(pad));
-                grew = true;
-            }
-        }
-        if !grew {
-            break;
-        }
-    }
-    shapes
-        .iter()
-        .zip(&taken)
-        .filter_map(|(s, &t)| t.then_some(*s))
-        .collect()
-}
-
 #[cfg(test)]
 #[path = "connector_walls_tests.rs"]
 mod tests;

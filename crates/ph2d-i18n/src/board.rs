@@ -23,6 +23,22 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.tool.ellipse" => "Ellipse (O)",
         "board.tool.diamond" => "Diamond (D)",
         "board.tool.more" => "More shapes",
+        "board.tool.arrow" => {
+            "Arrow (A) — drag from one shape to another; hold Ctrl to leave the end loose"
+        }
+        "board.route.straight" => "Straight",
+        "board.route.elbow" => "Elbow — goes around the shapes in the way",
+        "board.route.curved" => "Curved — goes around the shapes in the way",
+        "board.head.start.none" => "Start: no tip",
+        "board.head.start.arrow" => "Start: arrow",
+        "board.head.start.triangle" => "Start: triangle",
+        "board.head.start.circle" => "Start: dot",
+        "board.head.start.bar" => "Start: bar",
+        "board.head.end.none" => "End: no tip",
+        "board.head.end.arrow" => "End: arrow",
+        "board.head.end.triangle" => "End: triangle",
+        "board.head.end.circle" => "End: dot",
+        "board.head.end.bar" => "End: bar",
         "board.shape.rectangle" => "Rectangle",
         "board.shape.ellipse" => "Ellipse",
         "board.shape.diamond" => "Diamond — decision",
@@ -60,6 +76,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.good_idea" => "Good idea?",
         "board.smoke.build" => "Build it",
         "board.smoke.end" => "Done",
+        "board.smoke.yes" => "yes",
+        "board.smoke.no" => "no",
+        "board.smoke.skip" => "skip",
+        "board.smoke.notes" => "Notes — move me into an arrow's way",
         _ => return None,
     })
 }

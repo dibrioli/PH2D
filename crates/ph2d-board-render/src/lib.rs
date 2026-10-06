@@ -1,6 +1,7 @@
 //! **Desenhar um quadro** (MiroClone) numa área do ecrã: o fundo, a grelha de pontos, as formas
-//! vivas em ordem de z (contorno, estilo, rotação, texto dentro) e, por cima, o que o editor diz
-//! (moldura e pegas, selecção por arrasto, guias, cursor do texto).
+//! e as setas vivas em ordem de z (contorno, estilo, rotação, texto dentro; rota, pontas, rótulo) e,
+//! por cima, o que o editor diz (moldura e pegas, selecção por arrasto, guias, cursor do texto, as
+//! pontas da seta seleccionada, a forma onde a seta se vai prender, os pontos azuis).
 //!
 //! ⚠️ Reconstrói a cena a cada quadro, recortando ao ecrã; o texto moldado vem da [`TextCache`].
 //! As réguas (`tests/it/measure_*`) dizem quando isso deixa de chegar.
@@ -11,11 +12,13 @@ use std::collections::BTreeMap;
 
 use ph2d_board_geom::Outline;
 use ph2d_board_layout::TextCache;
-use ph2d_board_model::{Area, Board, Camera, Dash, Element, Rgba, Shape, ShapeType};
+use ph2d_board_model::{Area, Board, Camera, Connector, Dash, Element, Rgba, Shape, ShapeType};
+use ph2d_board_route::{LABEL_WRAP, RouteCache, Routed, label_origin};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme};
 use ph2d_vector::{
-    Affine, BezPath, Brush, Cap, Color, Point, Rect, Shape as _, Stroke, VectorScene, VelloBlend,
+    Affine, BezPath, Brush, Cap, Color, Join, Point, Rect, Shape as _, Stroke, VectorScene,
+    VelloBlend,
 };
 
 /// Abaixo deste tamanho no ecrã (px) a letra não se lê: cada linha vira um traço (o «greeking»
@@ -80,7 +83,9 @@ pub fn view(camera: &Camera, area: Area) -> Affine {
         * Affine::translate((-camera.center_x, -camera.center_y))
 }
 
-/// Pinta `board` em `area` (`[x, y, w, h]` em px de ecrã).
+/// Pinta `board` em `area` (`[x, y, w, h]` em px de ecrã). `routes` = as rotas das setas de
+/// `board.doc`, já em dia (`ph2d_board_edit::Editor::routes`).
+#[allow(clippy::too_many_arguments)]
 pub fn paint(
     board: &Board,
     area: Area,
@@ -88,6 +93,7 @@ pub fn paint(
     theme: Theme,
     ts: &mut TextSystem,
     cache: &mut RenderCache,
+    routes: &RouteCache,
 ) {
     let [x, y, w, h] = area;
     if !(w > 0.0 && h > 0.0) {
@@ -105,6 +111,26 @@ pub fn paint(
     let v = view(&board.camera, area);
     let zoom = board.camera.zoom;
     for el in board.doc.live_in_z_order() {
+        if let Some(c) = el.connector() {
+            if let Some(r) = routes.get(el.id) {
+                let [bx0, by0, bx1, by1] = r.bbox;
+                // A ponta de seta sai até 4 comprimentos de traço da rota; o rótulo, meia quebra.
+                let head = c.style.stroke_width * ph2d_board_route::HEAD_SCALE * 4.0;
+                let pad = if c.label.is_empty() {
+                    head
+                } else {
+                    head.max(LABEL_WRAP / 2.0)
+                };
+                let a = board.camera.to_screen(area, [bx0 - pad, by0 - pad]);
+                let b = board.camera.to_screen(area, [bx1 + pad, by1 + pad]);
+                if Rect::new(a[0], a[1], b[0], b[1]).intersect(clip).area() > 0.0 {
+                    let ink = Brush::Solid(token(ColorToken::Bg1, theme));
+                    let at = (board.id.0, el.id.0);
+                    paint_connector(scene, c, r, v, zoom, ts, cache, at, &ink);
+                }
+            }
+            continue;
+        }
         let [ax0, ay0, ax1, ay1] = el.aabb();
         let a = board.camera.to_screen(area, [ax0, ay0]);
         let b = board.camera.to_screen(area, [ax1, ay1]);
@@ -195,6 +221,100 @@ fn paint_shape(
     }
 }
 
+/// ⭐ **Uma seta**: a linha (no traço do estilo, com pontas e dobras redondas — as do Excalidraw,
+/// `stroke-linecap="round"`), as pontas de seta (cheias pintam, vazadas traçam a linha contínua) e
+/// o rótulo a meio da rota, sobre um recorte do fundo (a linha não lhe passa por baixo).
+#[allow(clippy::too_many_arguments)]
+fn paint_connector(
+    scene: &mut VectorScene,
+    c: &Connector,
+    r: &Routed,
+    v: Affine,
+    zoom: f64,
+    ts: &mut TextSystem,
+    cache: &mut RenderCache,
+    owner: (u64, u64),
+    paper: &Brush,
+) {
+    let st = &c.style;
+    let faded = st.opacity < 100;
+    if faded {
+        let [x0, y0, x1, y1] = r.bbox;
+        let pad = st.stroke_width * ph2d_board_route::HEAD_SCALE * 4.0;
+        scene.push_object_layer(
+            &Rect::from_points(
+                v * Point::new(x0 - pad, y0 - pad),
+                v * Point::new(x1 + pad, y1 + pad),
+            ),
+            VelloBlend::default(),
+            f32::from(st.opacity) / 100.0,
+        );
+    }
+    let [x0, y0, x1, y1] = r.bbox;
+    if (x1 - x0).max(y1 - y0) * zoom < DOT_PX {
+        // Uma seta de poucos px: o traço de ponta a ponta, sem curva nem pontas (o nível de detalhe
+        // das formas, `DOT_PX`).
+        if let Some(color) = st.stroke {
+            let [a, b] = r.ends();
+            let mut p = BezPath::new();
+            p.move_to(point(a));
+            p.line_to(point(b));
+            let line = Stroke::new(st.stroke_width);
+            scene
+                .inner_mut()
+                .stroke(&line, v, &Brush::Solid(doc_color(color)), None, &p);
+        }
+        if faded {
+            scene.pop_layer();
+        }
+        return;
+    }
+    if let Some(color) = st.stroke.filter(|_| st.stroke_width > 0.0) {
+        let d = ph2d_board_route::drawn(r, c.heads, st.stroke_width);
+        let brush = Brush::Solid(doc_color(color));
+        let line = style_stroke(st.stroke_width, st.dash)
+            .with_caps(Cap::Round)
+            .with_join(Join::Round);
+        scene.inner_mut().stroke(&line, v, &brush, None, &d.line);
+        let solid = Stroke::new(st.stroke_width)
+            .with_caps(Cap::Round)
+            .with_join(Join::Round);
+        for (head, filled) in &d.heads {
+            if *filled {
+                scene.fill_path(head, &brush, v);
+            } else {
+                scene.inner_mut().stroke(&solid, v, &brush, None, head);
+            }
+        }
+    }
+    let font_px = st.font_size * zoom;
+    if !c.label.is_empty() && font_px >= GREEK_MIN_PX {
+        let layout = cache
+            .text
+            .get(ts, owner, &c.label, st.font_size as f32, LABEL_WRAP as f32);
+        let [ox, oy] = label_origin(r.mid, f64::from(layout.height()));
+        let at = v * Affine::translate((ox, oy));
+        let bars = ph2d_board_layout::line_bars(layout);
+        let knock = bars
+            .bounding_box()
+            .inflate(st.font_size * LABEL_PAD, st.font_size * LABEL_PAD);
+        scene.fill_path(&knock.to_path(0.1), paper, at);
+        if font_px >= READ_PX {
+            ph2d_board_layout::paint(scene, layout, at, doc_color(st.text_color));
+        } else {
+            let Rgba([r8, g8, b8, _]) = st.text_color;
+            let c = Color::from_rgba8(r8, g8, b8, 255).with_alpha(GREEK_ALPHA);
+            scene.fill_path(&bars, &Brush::Solid(c), at);
+        }
+    }
+    if faded {
+        scene.pop_layer();
+    }
+}
+
+/// A folga do recorte do rótulo à volta do texto, em fracção da letra.
+const LABEL_PAD: f64 = 0.25;
+
 /// O traço de uma forma: contínuo, tracejado ou pontilhado (com pontas redondas, para o ponto ser
 /// um ponto). Comprimentos em unidades do mundo, proporcionais à espessura.
 #[must_use]
@@ -278,6 +398,37 @@ pub fn paint_overlay(
         p.move_to(v * Point::new(g.a[0], g.a[1]));
         p.line_to(v * Point::new(g.b[0], g.b[1]));
         line(scene, &p, guide, thin);
+    }
+    if let Some(t) = &overlay.target
+        && let Some(o) = board
+            .doc
+            .get(t.element)
+            .and_then(ph2d_board_geom::world_outline)
+    {
+        let thick = f64::from(StrokeToken::Thick.px());
+        line(scene, &(v * o.fill), accent, thick);
+        if let Some(p) = t.fixed {
+            let dot = ph2d_vector::Circle::new(v * point(p), metrics.handle / 2.0).to_path(0.1);
+            scene.fill_path(&dot, &Brush::Solid(accent), Affine::IDENTITY);
+        }
+    }
+    let paper = Brush::Solid(token(ColorToken::Bg1, theme));
+    for w in &overlay.wires {
+        let path = v * ph2d_vec_render::build_bezpath(&w.path);
+        line(scene, &path, accent, thin);
+        for e in w.ends {
+            let c = ph2d_vector::Circle::new(v * point(e), metrics.handle / 2.0).to_path(0.1);
+            scene.fill_path(&c, &paper, Affine::IDENTITY);
+            line(scene, &c, accent, thin);
+        }
+    }
+    for (at, dir) in &overlay.dots {
+        let c = v * point(*at);
+        let p = Point::new(c.x + dir[0] * metrics.dot, c.y + dir[1] * metrics.dot);
+        // Do tamanho do alcance do clique (`Editor::dot_at`): o que se vê é o que se agarra.
+        let dot = ph2d_vector::Circle::new(p, metrics.handle).to_path(0.1);
+        scene.fill_path(&dot, &Brush::Solid(accent), Affine::IDENTITY);
+        line(scene, &dot, token(ColorToken::Bg1, theme), thin);
     }
     if let Some(f) = &overlay.frame {
         line(scene, &frame_path(f, &v), accent, thin);

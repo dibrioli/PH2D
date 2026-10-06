@@ -8,7 +8,9 @@
 
 use ph2d_board_model::{Element, Shape, ShapeType};
 use ph2d_vec_scene::{ShapeKind, cook};
-use ph2d_vector::{Affine, BezPath, ParamCurveNearest, PathSeg, Point, Shape as _};
+use ph2d_vector::{
+    Affine, BezPath, Line, ParamCurve, ParamCurveNearest, PathSeg, Point, Shape as _,
+};
 
 /// Folga entre o texto e a caixa onde ele vive, em unidades do mundo.
 pub const TEXT_PADDING: f64 = 5.0;
@@ -250,6 +252,58 @@ pub fn hit(el: &Element, p: [f64; 2], tol: f64) -> bool {
         .segments()
         .chain(o.lines.segments())
         .any(|s: PathSeg| s.nearest(local, 1e-3).distance_sq <= tol * tol)
+}
+
+/// Onde o raio `from + t·dir` (mundo) SAI do contorno de `el`: o cruzamento de MAIOR `t` — numa
+/// forma côncava (estrela, nuvem) o raio entra e sai várias vezes, e só o último garante que a
+/// linha saiu de vez (a lei do `ph2d_vec_scene::boundary_hit`, aqui sobre a curva exacta).
+/// `None` = o raio não cruza o contorno (ou não é uma forma).
+#[must_use]
+pub fn ray_exit(el: &Element, from: [f64; 2], dir: [f64; 2]) -> Option<[f64; 2]> {
+    let o = world_outline(el)?;
+    let len = dir[0].hypot(dir[1]);
+    if len < 1e-12 {
+        return None;
+    }
+    let d = [dir[0] / len, dir[1] / len];
+    let [x0, y0, x1, y1] = el.aabb();
+    let c = el.center();
+    // Mais longe que qualquer ponto da forma, visto de `from`.
+    let reach = (x1 - x0).hypot(y1 - y0) + (from[0] - c[0]).hypot(from[1] - c[1]) + 1.0;
+    let line = Line::new(
+        Point::new(from[0], from[1]),
+        Point::new(from[0] + d[0] * reach, from[1] + d[1] * reach),
+    );
+    let t = o
+        .fill
+        .segments()
+        .flat_map(|s| s.intersect_line(line))
+        .map(|h| h.line_t)
+        .fold(None, |best: Option<f64>, t| {
+            Some(best.map_or(t, |b| b.max(t)))
+        })?;
+    Some([from[0] + d[0] * t * reach, from[1] + d[1] * t * reach])
+}
+
+/// O ponto do contorno de `el` mais perto de `p` (mundo) e a distância até ele.
+#[must_use]
+pub fn nearest_on_outline(el: &Element, p: [f64; 2]) -> Option<([f64; 2], f64)> {
+    let o = world_outline(el)?;
+    let q = Point::new(p[0], p[1]);
+    o.fill
+        .segments()
+        .map(|s| {
+            let n = s.nearest(q, 1e-6);
+            (s.eval(n.t), n.distance_sq)
+        })
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(pt, d2)| ([pt.x, pt.y], d2.sqrt()))
+}
+
+/// `p` (mundo) está dentro do contorno de `el`?
+#[must_use]
+pub fn inside(el: &Element, p: [f64; 2]) -> bool {
+    world_outline(el).is_some_and(|o| o.fill.contains(Point::new(p[0], p[1])))
 }
 
 #[cfg(test)]

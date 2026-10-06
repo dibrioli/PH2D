@@ -3,7 +3,9 @@
 
 use std::collections::BTreeSet;
 
-use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, History, ShapeType, rotate_about};
+use ph2d_board_model::{
+    Anchor, BoardDoc, BoardOp, Element, ElementId, End, History, ShapeType, rotate_about,
+};
 use ph2d_text::TextSystem;
 
 use crate::snap::{Guide, snap_box};
@@ -62,6 +64,25 @@ pub(crate) enum Gesture {
     },
     /// Arrastar dentro do texto em edição: selecciona texto.
     Text,
+    /// Uma seta nova: da ferramenta Seta, ou de um ponto azul (`dot` = a direcção dele — largar sem
+    /// arrastar cria a forma seguinte).
+    Connect {
+        start: End,
+        from: [f64; 2],
+        id: Option<ElementId>,
+        /// A forma onde a ponta de fim se vai prender (o realce).
+        target: Option<(ElementId, Anchor)>,
+        /// A forma de onde a seta sai: a ponta de fim não se prende de volta a ela.
+        origin: Option<ElementId>,
+        dot: Option<[f64; 2]>,
+    },
+    /// Arrastar uma ponta de uma seta seleccionada.
+    EndDrag {
+        id: ElementId,
+        which: usize,
+        original: Element,
+        target: Option<(ElementId, Anchor)>,
+    },
 }
 
 impl Gesture {
@@ -104,25 +125,31 @@ fn intersects(a: &[f64; 4], b: &[f64; 4]) -> bool {
     a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3]
 }
 
-/// As caixas dos elementos vivos, menos `skip`, que tocam a vista — os alvos das guias.
+/// As caixas das formas vivas, menos `skip`, que tocam a vista — os alvos das guias.
 fn targets(doc: &BoardDoc, skip: &BTreeSet<ElementId>, view: [f64; 4]) -> Vec<[f64; 4]> {
-    doc.live_in_z_order()
-        .into_iter()
-        .filter(|el| !skip.contains(&el.id))
+    doc.live()
+        .filter(|el| el.shape().is_some() && !skip.contains(&el.id))
         .map(Element::aabb)
         .filter(|b| intersects(b, &view))
         .collect()
 }
 
 impl Editor {
-    /// O elemento de cima em `p` (o que um clique apanha).
-    #[must_use]
-    pub fn hit(&self, doc: &BoardDoc, p: Pointer) -> Option<ElementId> {
+    /// O elemento de cima em `p` (o que um clique apanha): uma forma pelo contorno, uma seta pela
+    /// linha (a menos de meia pega, mais meia espessura).
+    pub fn hit(&mut self, doc: &BoardDoc, p: Pointer) -> Option<ElementId> {
         let tol = self.metrics.handle / 2.0 * p.px;
+        self.routes.sync(doc);
+        let routes = &self.routes;
         doc.live_in_z_order()
             .into_iter()
             .rev()
-            .find(|el| ph2d_board_geom::hit(el, p.world, tol))
+            .find(|el| match el.connector() {
+                Some(c) => routes
+                    .get(el.id)
+                    .is_some_and(|r| r.distance(p.world) <= tol + c.style.stroke_width / 2.0),
+                None => ph2d_board_geom::hit(el, p.world, tol),
+            })
             .map(|el| el.id)
     }
 
@@ -161,11 +188,34 @@ impl Editor {
                 });
                 return Down::Taken;
             }
+            Tool::Connector => {
+                self.gesture = Some(self.begin_connect(doc, p, None, None));
+                return Down::Taken;
+            }
             Tool::Select => {}
+        }
+        if let Some((shape, dir)) = self.dot_at(doc, p) {
+            self.gesture = Some(self.begin_connect(doc, p, Some(shape), Some(dir)));
+            return Down::Taken;
+        }
+        if let Some((id, which)) = self.end_handle_at(doc, p) {
+            let original = doc.get(id).cloned().expect("a pega é de uma seta viva");
+            self.gesture = Some(Gesture::EndDrag {
+                id,
+                which,
+                original,
+                target: None,
+            });
+            return Down::Taken;
         }
         if let Some(h) = self.handle_at(doc, p) {
             let frame = self.frame(doc).expect("há pega, há moldura");
-            let originals: Vec<Element> = self.selected(doc).into_iter().cloned().collect();
+            let originals: Vec<Element> = self
+                .selected(doc)
+                .into_iter()
+                .filter(|el| el.shape().is_some())
+                .cloned()
+                .collect();
             self.gesture = Some(match h {
                 Handle::Rotate => Gesture::Rotate {
                     frame,
@@ -231,6 +281,8 @@ impl Editor {
         let snap = (!p.mods.ctrl).then_some(self.metrics.snap * p.px);
         match &mut g {
             Gesture::Text => self.text_drag(ts, doc, p),
+            Gesture::Connect { .. } => self.connect_move(doc, &mut g, p),
+            Gesture::EndDrag { .. } => self.end_drag_move(doc, &mut g, p),
             Gesture::Marquee {
                 start,
                 cur,
@@ -241,8 +293,13 @@ impl Editor {
                 *active |= dist(*start, *cur) > drag;
                 if *active {
                     let r = rect(*start, *cur);
-                    let inside = doc.live_in_z_order().into_iter().filter(|el| {
-                        let b = el.aabb();
+                    self.routes.sync(doc);
+                    let routes = &self.routes;
+                    let inside = doc.live().filter(|el| {
+                        let b = match el.connector() {
+                            Some(_) => routes.get(el.id).map_or([f64::NAN; 4], |r| r.bbox),
+                            None => el.aabb(),
+                        };
                         b[0] >= r[0] && b[1] >= r[1] && b[2] <= r[2] && b[3] <= r[3]
                     });
                     self.selection = base.iter().copied().chain(inside.map(|el| el.id)).collect();
@@ -281,8 +338,9 @@ impl Editor {
                     }
                 }
                 guides.clear();
-                if let Some(tol) = snap {
-                    let b = union_aabb(originals.iter());
+                let shapes = originals.iter().filter(|o| o.shape().is_some());
+                if let Some(tol) = snap.filter(|_| shapes.clone().next().is_some()) {
+                    let b = union_aabb(shapes);
                     let moved = [b[0] + d[0], b[1] + d[1], b[2] + d[0], b[3] + d[1]];
                     let (s, g2) = snap_box(moved, targets, tol);
                     d = [d[0] + s[0], d[1] + s[1]];
@@ -290,8 +348,7 @@ impl Editor {
                 }
                 for o in originals.iter() {
                     let mut el = o.clone();
-                    el.x += d[0];
-                    el.y += d[1];
+                    el.translate(d);
                     live(doc, el);
                 }
             }
@@ -386,6 +443,10 @@ impl Editor {
         };
         match g {
             Gesture::Text | Gesture::Marquee { .. } => {}
+            g @ Gesture::Connect { .. } => self.connect_up(doc, history, g),
+            Gesture::EndDrag { original, .. } => {
+                history.record(undo_ops(doc, std::slice::from_ref(&original)));
+            }
             Gesture::Move {
                 originals,
                 active,
@@ -449,7 +510,12 @@ impl Editor {
                     let _ = op.apply(doc);
                 }
             }
-            Gesture::Create { id: Some(id), .. } => {
+            Gesture::EndDrag { original, .. } => {
+                for op in undo_ops(doc, std::slice::from_ref(&original)) {
+                    let _ = op.apply(doc);
+                }
+            }
+            Gesture::Create { id: Some(id), .. } | Gesture::Connect { id: Some(id), .. } => {
                 let _ = BoardOp::Delete(id).apply(doc);
             }
             Gesture::Marquee { base, .. } => self.selection = base,
@@ -458,15 +524,23 @@ impl Editor {
         true
     }
 
-    /// Cópias vivas de `els` (ids novos, à frente de tudo, na mesma ordem relativa); devolve os ids.
+    /// Cópias vivas de `els` (ids novos, à frente de tudo, na mesma ordem relativa; as setas presas
+    /// às cópias); devolve os ids.
     fn duplicate_live(&mut self, doc: &mut BoardDoc, els: &[Element]) -> Vec<ElementId> {
-        let ids: Vec<ElementId> = els
-            .iter()
-            .map(|o| {
-                let mut el = o.clone();
-                el.id = doc.mint_id();
+        let mut copies = els.to_vec();
+        self.detach_outside(doc, &mut copies);
+        let mut map = std::collections::BTreeMap::new();
+        for el in &mut copies {
+            let id = doc.mint_id();
+            map.insert(el.id, id);
+            el.id = id;
+            el.version = 0;
+        }
+        crate::wire::remap(&mut copies, &map);
+        let ids: Vec<ElementId> = copies
+            .into_iter()
+            .map(|mut el| {
                 el.z = doc.z_on_top();
-                el.version = 0;
                 let id = el.id;
                 live(doc, el);
                 id

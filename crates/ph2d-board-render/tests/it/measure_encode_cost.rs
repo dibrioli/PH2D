@@ -109,7 +109,11 @@ pub(super) fn one_frame(
     cache: &mut RenderCache,
 ) {
     scene.reset();
-    ph2d_board_render::paint(&set.boards()[0], AREA, scene, Theme::Forge, ts, cache);
+    let board = &set.boards()[0];
+    // Estas cenas não têm setas: a cache vazia é a resposta certa, e o custo dela não entra na
+    // régua das formas (as setas medem-se em `measure_route_cost`).
+    let routes = ph2d_board_route::RouteCache::default();
+    ph2d_board_render::paint(board, AREA, scene, Theme::Forge, ts, cache, &routes);
 }
 
 #[test]

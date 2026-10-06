@@ -12,10 +12,14 @@ mod command;
 mod gesture;
 mod snap;
 mod text;
+mod wire;
 
 use std::collections::BTreeSet;
 
-use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, History, Shape, ShapeType, Style};
+use ph2d_board_model::{
+    BoardDoc, BoardOp, Element, ElementId, Head, History, Route, Shape, ShapeType, Style,
+};
+use ph2d_board_route::RouteCache;
 use ph2d_text::TextSystem;
 
 pub use gesture::Down;
@@ -34,6 +38,10 @@ pub const FONT_SIZES: [f64; 4] = [16.0, 20.0, 28.0, 36.0];
 pub const STROKE_WIDTHS: [f64; 3] = [1.0, 2.0, 4.0];
 /// O empurrão das setas (mundo): normal e com `Shift` — o do Figma.
 pub const NUDGE: [f64; 2] = [1.0, 10.0];
+/// O vão entre uma forma e a seguinte que um ponto azul (ou `Ctrl+seta`) cria já ligada, em
+/// unidades do MUNDO: metade da largura de uma caixa de nascença ([`CLICK_SIZE`]) — o passo de um
+/// fluxograma, com espaço para a seta e para a ponta dela.
+pub const NEXT_GAP: f64 = CLICK_SIZE[0] / 2.0;
 
 /// A ferramenta activa.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -42,6 +50,8 @@ pub enum Tool {
     /// Arrastar move a vista (quem move a câmara é o editor; aqui só se diz que é a mão).
     Hand,
     Shape(ShapeType),
+    /// A seta: arrastar de uma forma (ou do vazio) até outra liga-as.
+    Connector,
 }
 
 /// Modificadores no instante do evento.
@@ -78,6 +88,11 @@ pub struct Metrics {
     pub click_size: [f64; 2],
     /// Desvio de cada colagem/duplicação, em unidades do MUNDO.
     pub paste_offset: f64,
+    /// A faixa junto ao contorno de uma forma onde uma ponta de seta se prende a um PONTO FIXO (no
+    /// miolo, ao centro) — e até onde, por fora, ela ainda se prende.
+    pub bind: f64,
+    /// A distância dos pontos azuis de criação rápida ao lado da forma.
+    pub dot: f64,
 }
 
 /// Um lado ou canto da moldura de selecção — `(sx, sy)` em `{-1, 0, 1}²`.
@@ -191,6 +206,28 @@ pub struct Overlay {
     /// O texto em edição: o elemento, os rectângulos da selecção e o do cursor, no espaço do
     /// texto (origem no início do bloco, [`ph2d_board_geom::text_origin`]).
     pub text: Option<TextOverlay>,
+    /// As setas seleccionadas: a linha (realce) e as duas pontas (pegas).
+    pub wires: Vec<Wire>,
+    /// A forma onde a ponta arrastada se vai prender (realce), e o ponto fixo, se é um.
+    pub target: Option<Target>,
+    /// Os pontos azuis de criação rápida: o meio do lado (mundo) e a direcção para fora (unitária)
+    /// — quem desenha afasta-os `Metrics::dot` px do lado, no ecrã.
+    pub dots: Vec<([f64; 2], [f64; 2])>,
+}
+
+/// Uma seta seleccionada, como o realce a desenha.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Wire {
+    pub path: ph2d_board_route::VecPath,
+    pub ends: [[f64; 2]; 2],
+}
+
+/// A forma alvo de uma ligação em curso.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Target {
+    pub element: ElementId,
+    /// `Some` = presa a um ponto fixo (mundo); `None` = ao centro.
+    pub fixed: Option<[f64; 2]>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -217,9 +254,12 @@ pub enum Command {
     Copy,
     Cut,
     Paste,
-    /// Começa a escrever na forma seleccionada (se é uma só).
+    /// Começa a escrever na forma seleccionada (se é uma só) — ou no rótulo da seta.
     EditText,
     Tool(Tool),
+    /// `Ctrl+seta`: cria a forma seguinte, já ligada, do lado `(dx, dy)` (unitário) da única forma
+    /// seleccionada — e selecciona-a, para a próxima seguir dela.
+    Grow([f64; 2]),
 }
 
 /// Uma tecla dentro do texto em edição.
@@ -244,9 +284,15 @@ pub enum TextKey {
 /// O editor de um quadro.
 pub struct Editor {
     pub tool: Tool,
-    /// O estilo da PRÓXIMA forma criada (o último escolhido na barra de estilo).
+    /// O estilo da PRÓXIMA forma (e seta) criada — o último escolhido na barra de estilo.
     pub style: Style,
+    /// A rota e as pontas da PRÓXIMA seta.
+    pub route: Route,
+    pub heads: [Head; 2],
     metrics: Metrics,
+    routes: RouteCache,
+    /// A forma sob o ponteiro (os pontos azuis dela aparecem).
+    hover: Option<ElementId>,
     selection: BTreeSet<ElementId>,
     gesture: Option<gesture::Gesture>,
     editing: Option<text::Editing>,
@@ -260,7 +306,11 @@ impl Editor {
         Self {
             tool: Tool::Select,
             style,
+            route: Route::default(),
+            heads: ph2d_board_model::Connector::DEFAULT_HEADS,
             metrics,
+            routes: RouteCache::default(),
+            hover: None,
             selection: BTreeSet::new(),
             gesture: None,
             editing: None,
@@ -272,6 +322,12 @@ impl Editor {
     #[must_use]
     pub fn metrics(&self) -> &Metrics {
         &self.metrics
+    }
+
+    /// As rotas das setas de `doc`, em dia (o desenho lê-as daqui: uma cache, uma verdade).
+    pub fn routes(&mut self, doc: &BoardDoc) -> &RouteCache {
+        self.routes.sync(doc);
+        &self.routes
     }
 
     /// Os seleccionados, por id.
@@ -323,10 +379,12 @@ impl Editor {
         v
     }
 
-    /// A moldura das pegas: a caixa rodada de um elemento só, ou a caixa alinhada de vários.
+    /// A moldura das pegas: a caixa rodada de uma forma só, ou a caixa alinhada de várias. As setas
+    /// não entram (têm as pegas das pontas).
     #[must_use]
     pub fn frame(&self, doc: &BoardDoc) -> Option<Frame> {
-        let sel = self.selected(doc);
+        let mut sel = self.selected(doc);
+        sel.retain(|el| el.shape().is_some());
         match sel.as_slice() {
             [] => None,
             [one] => Some(Frame::of(one)),
@@ -353,9 +411,39 @@ impl Editor {
         let ops = self
             .selected(doc)
             .into_iter()
+            .map(|el| {
+                let mut el = el.clone();
+                change(el.style_mut());
+                BoardOp::Put(el)
+            })
+            .collect();
+        history.apply(doc, ops);
+    }
+
+    /// Troca a rota das setas seleccionadas (UM passo) e guarda-a para as próximas.
+    pub fn set_route(&mut self, doc: &mut BoardDoc, history: &mut History, r: Route) {
+        self.route = r;
+        self.change_connectors(doc, history, |c| c.route = r);
+    }
+
+    /// Troca a ponta `which` (`0` início, `1` fim) das setas seleccionadas e guarda-a.
+    pub fn set_head(&mut self, doc: &mut BoardDoc, history: &mut History, which: usize, h: Head) {
+        self.heads[which] = h;
+        self.change_connectors(doc, history, |c| c.heads[which] = h);
+    }
+
+    fn change_connectors(
+        &mut self,
+        doc: &mut BoardDoc,
+        history: &mut History,
+        change: impl Fn(&mut ph2d_board_model::Connector),
+    ) {
+        let ops = self
+            .selected(doc)
+            .into_iter()
             .filter_map(|el| {
                 let mut el = el.clone();
-                change(&mut el.shape_mut()?.style);
+                change(el.connector_mut()?);
                 Some(BoardOp::Put(el))
             })
             .collect();
@@ -378,14 +466,31 @@ impl Editor {
 
     /// O que desenhar por cima do quadro agora.
     pub fn overlay(&mut self, doc: &BoardDoc, ts: &mut TextSystem) -> Overlay {
-        let text = self.editing.as_mut().and_then(|e| e.overlay(doc, ts));
+        self.routes.sync(doc);
+        let mid = self.label_mid(doc);
+        let text = self.editing.as_mut().and_then(|e| e.overlay(doc, ts, mid));
         let editing = text.is_some();
         let sel = self.selected(doc);
+        let shapes: Vec<&&Element> = sel.iter().filter(|el| el.shape().is_some()).collect();
         Overlay {
             boxes: if sel.len() > 1 {
-                sel.iter().map(|el| Frame::of(el)).collect()
+                shapes.iter().map(|el| Frame::of(el)).collect()
             } else {
                 Vec::new()
+            },
+            wires: sel
+                .iter()
+                .filter_map(|el| self.routes.get(el.id))
+                .map(|r| Wire {
+                    path: r.path.clone(),
+                    ends: r.ends(),
+                })
+                .collect(),
+            target: self.gesture.as_ref().and_then(|g| g.target(doc)),
+            dots: if editing || self.gesture.is_some() {
+                Vec::new()
+            } else {
+                self.dots(doc)
             },
             frame: if editing { None } else { self.frame(doc) },
             marquee: self.gesture.as_ref().and_then(gesture::Gesture::marquee),
@@ -396,6 +501,13 @@ impl Editor {
                 .unwrap_or_default(),
             text,
         }
+    }
+
+    /// Onde vive o rótulo da seta em edição (o meio da rota), se se edita uma.
+    fn label_mid(&self, doc: &BoardDoc) -> Option<[f64; 2]> {
+        let id = self.editing.as_ref()?.id;
+        doc.get(id)?.connector()?;
+        self.routes.get(id).map(|r| r.mid)
     }
 
     /// Uma forma nova (com o estilo actual) na caixa dada, à frente de tudo.

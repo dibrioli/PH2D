@@ -150,6 +150,11 @@ pub fn key(
         (BoardKey::Right, false) => Some(Command::Nudge([nudge, 0.0])),
         (BoardKey::Up, false) => Some(Command::Nudge([0.0, -nudge])),
         (BoardKey::Down, false) => Some(Command::Nudge([0.0, nudge])),
+        // `Ctrl+seta`: a forma seguinte, já ligada, desse lado (o idioma do Excalidraw).
+        (BoardKey::Left, true) => Some(Command::Grow([-1.0, 0.0])),
+        (BoardKey::Right, true) => Some(Command::Grow([1.0, 0.0])),
+        (BoardKey::Up, true) => Some(Command::Grow([0.0, -1.0])),
+        (BoardKey::Down, true) => Some(Command::Grow([0.0, 1.0])),
         (BoardKey::Char(c), false) if !mods.alt => tool_key(c).map(Command::Tool),
         _ => None,
     };
@@ -204,7 +209,7 @@ fn text_move(k: BoardKey, ctrl: bool) -> Move {
 }
 
 /// Os atalhos de uma tecla (os que o Miro e o Excalidraw partilham, plano 01 §4.6): `V`/`1`
-/// seleccionar · `H` mão · `R`/`2` rectângulo · `D`/`3` losango · `O`/`4` elipse.
+/// seleccionar · `H` mão · `R`/`2` rectângulo · `D`/`3` losango · `O`/`4` elipse · `A`/`5` seta.
 #[must_use]
 pub fn tool_key(c: char) -> Option<Tool> {
     Some(match c {
@@ -213,6 +218,7 @@ pub fn tool_key(c: char) -> Option<Tool> {
         'r' | '2' => Tool::Shape(ShapeType::Rectangle),
         'd' | '3' => Tool::Shape(ShapeType::Diamond),
         'o' | '4' => Tool::Shape(ShapeType::Ellipse),
+        'a' | '5' => Tool::Connector,
         _ => return None,
     })
 }

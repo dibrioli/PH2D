@@ -3,9 +3,13 @@
 //! | n | o que ensina |
 //! |---|---|
 //! | 1 | as abas: dois quadros já criados e o 1.º aberto, com uma grelha de rectângulos coloridos — a roda dá zoom à volta do cursor, arrastar move a vista, `Scene` devolve a cena |
+//! | 3 | as SETAS (W2): o mesmo fluxograma LIGADO por setas em cotovelo (presas ao centro: seguem as caixas), o «sim» com rótulo, o «não» que volta atrás por baixo e o «saltar» que passa por cima de duas caixas (presas a pontos fixos, com rótulo), uma nota para arrastar para o caminho de uma seta (ela desvia), e a última caixa seleccionada com os quatro pontos azuis — clicar no da direita cria a seguinte já ligada (`Ctrl+→` também) |
 //! | 2 | as FORMAS (W1): um fluxograma com texto dentro (início → recolher ideias → «boa ideia?» → construir → fim), um passo rodado, um tracejado e um meio transparente; por baixo, o catálogo das 18 formas com o nome de cada uma — seleccionar, mover, redimensionar, rodar, duplo-clique para escrever, a barra curta à esquerda e a de estilo por cima da selecção |
 
-use ph2d_board_model::{BoardOp, BoardSet, Dash, Element, Rgba, Shape, ShapeType};
+use ph2d_board_model::{
+    Anchor, BoardDoc, BoardOp, BoardSet, Connector, Dash, Element, ElementId, End, Rgba, Route,
+    Shape, ShapeType, Style,
+};
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::screens::hero::board_view::{self, default_style};
 use ph2d_editor_core::screens::hero::{board_bar, document_tabs};
@@ -15,7 +19,7 @@ use ph2d_tokens::{ColorToken, Spacing};
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 2,
+    max_level: 3,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -29,7 +33,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
     match level {
         1 => scene_two_boards(hero),
         2 => scene_shapes(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=2)"),
+        3 => scene_arrows(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=3)"),
     }
 }
 
@@ -160,4 +165,131 @@ fn scene_shapes(hero: &mut HeroScreen) {
     hero.documents.activate(Some(id));
     // O losango abre seleccionado: as pegas e a barra de estilo estão à vista desde o início.
     board_view::select(hero, decision);
+}
+
+/// Uma forma com texto no quadro; devolve o id.
+fn put_shape(
+    doc: &mut BoardDoc,
+    kind: ShapeType,
+    style: Style,
+    key: &str,
+    bx: [f64; 4],
+) -> ElementId {
+    let shape = Shape {
+        kind,
+        style,
+        text: ph2d_i18n::tr(key).to_owned(),
+    };
+    let el = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, bx);
+    let id = el.id;
+    BoardOp::Put(el).apply(doc);
+    id
+}
+
+/// Uma seta em cotovelo entre duas pontas, com rótulo (`""` = sem).
+fn put_arrow(doc: &mut BoardDoc, a: End, b: End, style: &Style, label: &str) {
+    let mut c = Connector::new(a, b, Route::Elbow, style.clone());
+    c.style.fill = None;
+    if !label.is_empty() {
+        c.label = ph2d_i18n::tr(label).to_owned();
+    }
+    let el = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
+    BoardOp::Put(el).apply(doc);
+}
+
+/// Cena 3 — as setas da W2: o fluxograma da cena 2 LIGADO, com o «não» a voltar atrás e uma nota.
+fn scene_arrows(hero: &mut HeroScreen) {
+    let mut set = BoardSet::default();
+    let id = set.create(default_name(1));
+    let board = set.get_mut(id).expect("acabou de nascer");
+    let base = default_style(hero.theme);
+    let doc = &mut board.doc;
+    let tinted = |i: usize, kind: ShapeType| {
+        let mut s = base.clone();
+        let fill = Rgba(HIGHLIGHTER_RGBA[i]);
+        s.fill = Some(fill);
+        s.text_color = fill.readable_ink();
+        s.round = kind == ShapeType::Rectangle;
+        s
+    };
+    // (forma, texto, cor, x, largura, altura) — a fila, da esquerda para a direita, centrada em y = 0.
+    let flow = [
+        (ShapeType::Pill, "board.smoke.start", 2, 0.0, 160.0, 80.0),
+        (
+            ShapeType::Rectangle,
+            "board.smoke.collect",
+            0,
+            260.0,
+            180.0,
+            90.0,
+        ),
+        (
+            ShapeType::Diamond,
+            "board.smoke.good_idea",
+            3,
+            540.0,
+            180.0,
+            140.0,
+        ),
+        (
+            ShapeType::Rectangle,
+            "board.smoke.build",
+            4,
+            820.0,
+            180.0,
+            90.0,
+        ),
+        (ShapeType::Pill, "board.smoke.end", 1, 1100.0, 160.0, 80.0),
+    ];
+    let ids: Vec<ElementId> = flow
+        .iter()
+        .map(|&(kind, key, tone, x, w, h)| {
+            put_shape(doc, kind, tinted(tone, kind), key, [x, -h / 2.0, w, h])
+        })
+        .collect();
+    let center = |target| End::Bound {
+        target,
+        anchor: Anchor::Center,
+    };
+    let fixed = |target, uv| End::Bound {
+        target,
+        anchor: Anchor::Fixed(uv),
+    };
+    for (i, w) in ids.windows(2).enumerate() {
+        let label = if i == 2 { "board.smoke.yes" } else { "" };
+        put_arrow(doc, center(w[0]), center(w[1]), &base, label);
+    }
+    // O «saltar»: do topo do início ao topo do construir — passa POR CIMA das duas do meio (o
+    // desvio: no Excalidraw a mesma seta atravessa-as).
+    put_arrow(
+        doc,
+        fixed(ids[0], [0.5, 0.0]),
+        fixed(ids[3], [0.5, 0.0]),
+        &base,
+        "board.smoke.skip",
+    );
+    // O «não»: de baixo do losango ao fundo da recolha — a volta por baixo da fila.
+    put_arrow(
+        doc,
+        fixed(ids[2], [0.5, 1.0]),
+        fixed(ids[1], [0.5, 1.0]),
+        &base,
+        "board.smoke.no",
+    );
+    // A nota: uma caixa solta por baixo, para arrastar para o caminho de uma seta.
+    let note = tinted(2, ShapeType::Rectangle);
+    put_shape(
+        doc,
+        ShapeType::Rectangle,
+        note,
+        "board.smoke.notes",
+        [420.0, 230.0, 300.0, 80.0],
+    );
+    board.camera.center_x = 630.0;
+    board.camera.center_y = 90.0;
+    board.camera.zoom = 0.85;
+    document_tabs::load(hero, set);
+    hero.documents.activate(Some(id));
+    // A última caixa abre seleccionada: os quatro pontos azuis estão à vista desde o início.
+    board_view::select(hero, ids.last().copied());
 }

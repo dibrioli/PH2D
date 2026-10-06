@@ -9,6 +9,7 @@
 
 mod board;
 mod camera;
+mod connector;
 mod element;
 mod frac;
 mod history;
@@ -17,6 +18,7 @@ mod ops;
 
 pub use board::{Board, BoardId, BoardSet, Camera, FORMAT_VERSION};
 pub use camera::{Area, ZOOM_RANGE};
+pub use connector::{Anchor, Connector, End, Head, Route};
 pub use element::{
     BoardDoc, Dash, Element, ElementId, ElementKind, Rgba, Shape, ShapeType, Style, rotate_about,
 };

@@ -1,0 +1,49 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "ph2d-miroclone-oracle-input",
+  "ph2d_note": "esqueleto: a MESMA volta de seta_cotovelo_volta com as caixas 2x maiores (280x180) — o recuo antes de dobrar é fixo ou proporcional?",
+  "elements": [
+    {
+      "type": "rectangle",
+      "id": "origem",
+      "x": 600,
+      "y": 60,
+      "width": 280,
+      "height": 180,
+      "label": {
+        "text": "origem"
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "destino",
+      "x": 40,
+      "y": 520,
+      "width": 280,
+      "height": 180,
+      "label": {
+        "text": "destino"
+      }
+    },
+    {
+      "type": "arrow",
+      "id": "cotovelo",
+      "x": 880,
+      "y": 150,
+      "width": -840,
+      "height": 460,
+      "elbowed": true,
+      "start": {
+        "id": "origem"
+      },
+      "end": {
+        "id": "destino"
+      }
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+}

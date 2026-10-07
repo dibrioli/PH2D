@@ -45,8 +45,10 @@ pub const PASTE_OFFSET: f64 = 10.0;
 
 /// Os tamanhos de letra que a barra oferece (mundo): P · M · G · GG — os do Excalidraw.
 pub const FONT_SIZES: [f64; 4] = [16.0, 20.0, 28.0, 36.0];
-/// As espessuras de contorno oferecidas (mundo): fina · normal · grossa — as do Excalidraw.
-pub const STROKE_WIDTHS: [f64; 3] = [1.0, 2.0, 4.0];
+/// As espessuras de contorno oferecidas (mundo): as do Excalidraw (fina 1 · grossa 2 · muito grossa 4)
+/// e, à frente, uma AINDA MAIS FINA, 0,5 — ordem do dono (07/10: *«a opção mais fina deve ser ainda
+/// mais fina»*), a de nascença ([`ph2d_board_model::DEFAULT_STROKE_WIDTH`]).
+pub const STROKE_WIDTHS: [f64; 4] = [0.5, 1.0, 2.0, 4.0];
 /// O empurrão das setas (mundo): normal e com `Shift` — o do Figma.
 pub const NUDGE: [f64; 2] = [1.0, 10.0];
 /// O vão entre uma forma e a seguinte que um ponto azul (ou `Ctrl+seta`) cria já ligada, em

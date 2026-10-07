@@ -16,6 +16,7 @@ ph2d-board-geom = { path = "../ph2d-board-geom" }
 ph2d-board-layout = { path = "../ph2d-board-layout" }
 ph2d-board-edit = { path = "../ph2d-board-edit" }
 ph2d-board-route = { path = "../ph2d-board-route" }
+ph2d-board-rough = { path = "../ph2d-board-rough" }
 ph2d-vec-render = { path = "../ph2d-vec-render" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }

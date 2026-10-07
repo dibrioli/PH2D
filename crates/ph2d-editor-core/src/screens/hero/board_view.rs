@@ -67,6 +67,7 @@ pub fn metrics() -> Metrics {
         bind: f64::from(Spacing::Lg.px()),
         // Longe da pega de rodar (`Xl` acima do topo): o ponto de cima não lhe rouba o clique.
         dot: f64::from(Spacing::Xl3.px()),
+        eraser: f64::from(Spacing::Md.px()),
     }
 }
 
@@ -80,7 +81,11 @@ pub fn default_style(theme: Theme) -> Style {
 
 /// O editor (criado no 1.º uso). Recebe só o CAMPO, para o resto do estado ficar livre.
 pub(crate) fn editor(slot: &mut Option<Editor>, theme: Theme) -> &mut Editor {
-    slot.get_or_insert_with(|| Editor::new(default_style(theme), metrics()))
+    slot.get_or_insert_with(|| {
+        let mut ed = Editor::new(default_style(theme), metrics());
+        ed.pen = super::board_bar::pen_box(theme);
+        ed
+    })
 }
 
 /// Selecciona `ids` no quadro activo (as cenas de smoke abrem com a selecção à vista).
@@ -188,6 +193,8 @@ pub fn pointer(
             live.last_down = (!double).then_some((input.now_ns, [x, y]));
             let history = live.histories.entry(board.id).or_default();
             let ed = editor(&mut live.editor, theme);
+            // O que nasce num quadro em rascunho nasce à mão (W4).
+            ed.style.sketch = board.sketch;
             if double && ed.double_click(&mut board.doc, history, input.text, p) {
                 return true;
             }

@@ -17,6 +17,7 @@ fn metrics() -> Metrics {
         paste_offset: 10.0,
         bind: 8.0,
         dot: 40.0,
+        eraser: 10.0,
     }
 }
 
@@ -941,3 +942,6 @@ fn dropping_a_point_on_its_neighbour_deletes_it() {
 
 #[path = "notes_tests.rs"]
 mod notes;
+
+#[path = "ink_tests.rs"]
+mod ink;

@@ -197,7 +197,10 @@ pub fn key(
         return taken();
     }
     let command = command.or(match k {
-        BoardKey::Char(c) if !ctrl && !mods.alt => tool_key(c).map(Command::Tool),
+        BoardKey::Char(c) if !ctrl && !mods.alt => tool_key(c).map(|t| match t {
+            Tool::Pen(_) => Command::Tool(Tool::Pen(ed.pen.last)),
+            t => Command::Tool(t),
+        }),
         _ => None,
     });
     if let Some(c) = command {
@@ -263,7 +266,9 @@ fn text_move(k: BoardKey, ctrl: bool) -> Move {
 
 /// Os atalhos de uma tecla (os que o Miro e o Excalidraw partilham, plano 01 §4.6): `V`/`1`
 /// seleccionar · `H` mão · `R`/`2` rectângulo · `D`/`3` losango · `O`/`4` elipse · `A`/`5` seta ·
-/// `N` nota (o do Miro; a quadrada — a forma da próxima vem da barra).
+/// `N` nota (o do Miro; a quadrada — a forma da próxima vem da barra) · `P` caneta e `E` borracha
+/// (os do Miro, help «Keyboard shortcuts») · `K` laser (o do Excalidraw; o Miro não o tem). O `P`
+/// devolve [`ph2d_board_model::Pen::Pen`]: quem chama troca-o pela última caneta usada.
 #[must_use]
 pub fn tool_key(c: char) -> Option<Tool> {
     Some(match c {
@@ -274,6 +279,9 @@ pub fn tool_key(c: char) -> Option<Tool> {
         'o' | '4' => Tool::Shape(ShapeType::Ellipse),
         'a' | '5' => Tool::Connector,
         'n' => Tool::Shape(ShapeType::Sticky),
+        'p' => Tool::Pen(ph2d_board_model::Pen::Pen),
+        'e' => Tool::Eraser { precise: false },
+        'k' => Tool::Laser,
         _ => return None,
     })
 }

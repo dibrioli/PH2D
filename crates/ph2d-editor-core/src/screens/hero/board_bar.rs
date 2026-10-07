@@ -33,14 +33,19 @@ const SALT: u64 = 0xb0a2_d7ab_5ba2_0000;
 mod look;
 pub use look::shape_name_key;
 use look::{
-    arrow_icon, selected_arrow, selected_kind, selected_style, selection_box, shape_icon, stroke,
-    tooltip_key,
+    arrow_icon, paint_panel, selected_arrow, selected_kind, selected_style, selection_box,
+    shape_icon, stroke, tooltip_key,
 };
 
 /// As notas e o texto (W3, módulo filho: o ficheiro estava no tecto de LOC).
 #[path = "board_bar_notes.rs"]
 mod notes;
 pub use notes::{flyout_open, flyout_rects};
+
+/// A caneta e o rascunho (W4, módulo filho: o ficheiro estava no tecto de LOC).
+#[path = "board_bar_pen.rs"]
+mod pen;
+pub use pen::{PenItem, pen_box};
 
 use ph2d_board_edit::{FONT_SIZES, STROKE_WIDTHS as WIDTHS};
 /// As opacidades oferecidas (%).
@@ -79,6 +84,10 @@ pub enum Item {
     Mark(ph2d_board_model::Mark),
     /// A cor da letra de uma FORMA: `None` = a da forma; `Some(i)` = a forte `i` do marcador.
     TextColor(Option<usize>),
+    /// Um controlo da caneta (W4).
+    Pen(PenItem),
+    /// O botão «Rascunho ↔ Final»: a selecção, ou o quadro inteiro sem selecção.
+    Sketch,
 }
 
 /// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
@@ -104,20 +113,24 @@ pub enum Selected {
     TextNote,
     /// A escrever numa forma.
     TextShape,
+    /// Só traços da caneta.
+    Ink,
 }
 
 /// Os atalhos da barra curta, na ordem em que se pintam (a Nota logo a seguir à mão: é o coração
 /// do brainstorm).
-const TOOLBAR: [Item; 9] = [
+const TOOLBAR: [Item; 11] = [
     Item::Tool(Tool::Select),
     Item::Tool(Tool::Hand),
     Item::Tool(Tool::Shape(ShapeType::Sticky)),
     Item::Tool(Tool::Connector),
+    pen::PEN_TOOL,
     Item::Tool(Tool::Shape(ShapeType::Rectangle)),
     Item::Tool(Tool::Shape(ShapeType::Ellipse)),
     Item::Tool(Tool::Shape(ShapeType::Diamond)),
     Item::Tool(Tool::Shape(ShapeType::Triangle)),
     Item::MoreShapes,
+    Item::Sketch,
 ];
 
 /// ⭐ **A tabela** — todo controlo das barras, por grupo da barra de estilo. O índice é o id.
@@ -126,11 +139,13 @@ pub fn items() -> Vec<Item> {
     let mut v: Vec<Item> = TOOLBAR.to_vec();
     v.extend(ShapeType::ALL.iter().map(|t| Item::Pick(*t)));
     v.extend(notes::flyout_items());
+    v.extend(pen::flyout_items());
     for it in [
         Selected::Shapes,
         Selected::Arrows,
         Selected::Notes,
         Selected::TextShape,
+        Selected::Ink,
     ]
     .into_iter()
     .flat_map(style_groups)
@@ -201,6 +216,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
         Selected::Notes => notes::note_groups(),
         Selected::TextNote => notes::text_groups(false),
         Selected::TextShape => notes::text_groups(true),
+        Selected::Ink => pen::ink_groups(),
     }
 }
 
@@ -354,10 +370,13 @@ pub fn paint(
     let tools = toolbar_rects(area);
     paint_panel(scene, &tools, theme);
     let note_tool = Item::Tool(Tool::Shape(ShapeType::Sticky));
+    let sketch_on = look::sketch_on(ed, &board.doc, board.sketch);
     for (it, r) in tools {
         let on = matches!(it, Item::Tool(t) if t == tool)
             || (it == Item::MoreShapes && shapes_open)
-            || (it == note_tool && notes::flyout_open(tool));
+            || (it == note_tool && notes::flyout_open(tool))
+            || (it == pen::PEN_TOOL && pen::flyout_open(tool))
+            || (it == Item::Sketch && sketch_on);
         paint_item(
             scene,
             text_system,
@@ -390,6 +409,10 @@ pub fn paint(
         let (hit, store) = (&mut hero.hit_index, &hero.store);
         notes::paint_flyout(scene, text_system, theme, hit, store, area, tool, &now);
     }
+    if pen::flyout_open(tool) {
+        let (hit, store) = (&mut hero.hit_index, &hero.store);
+        pen::paint_flyout(scene, text_system, theme, hit, store, area, ed);
+    }
     let (Some(mut sel), Some(style), Some(what)) = (sel_box, sel_style, what) else {
         return;
     };
@@ -403,6 +426,7 @@ pub fn paint(
     paint_panel(scene, &bar, theme);
     for (it, r) in bar {
         let on = notes::is_current(it, Some(&style), &now)
+            .or_else(|| pen::is_current(it, ed, Some(style.stroke_width), theme))
             .unwrap_or_else(|| is_current(it, &style, arrow.as_ref(), theme));
         paint_item(
             scene,
@@ -415,32 +439,6 @@ pub fn paint(
             on,
         );
     }
-}
-
-fn paint_panel(scene: &mut VectorScene, rects: &[(Item, Rect)], theme: Theme) {
-    let Some(first) = rects.first().map(|(_, r)| *r) else {
-        return;
-    };
-    let (mut x0, mut y0, mut x1, mut y1) = (first.x, first.y, first.x + first.w, first.y + first.h);
-    for (_, r) in rects {
-        x0 = x0.min(r.x);
-        y0 = y0.min(r.y);
-        x1 = x1.max(r.x + r.w);
-        y1 = y1.max(r.y + r.h);
-    }
-    let pad = Spacing::Xs.px();
-    let panel = Rect::new(x0 - pad, y0 - pad, x1 - x0 + 2.0 * pad, y1 - y0 + 2.0 * pad);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, panel, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        panel,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
 }
 
 /// A cor de documento de um item de cor.
@@ -517,7 +515,9 @@ fn paint_item(
         r.h - 2.0 * inset,
     );
     let line = f64::from(StrokeToken::Default.px());
-    if notes::paint_icon(scene, text_system, theme, it, r, inner, fg, line) {
+    if notes::paint_icon(scene, text_system, theme, it, r, inner, fg, line)
+        || pen::paint_icon(scene, theme, it, inner, fg, line)
+    {
         hit_index.register(id, r);
         return;
     }
@@ -617,7 +617,10 @@ fn paint_item(
         | Item::NoteWide(_)
         | Item::Bulk
         | Item::Mark(_)
-        | Item::TextColor(_) => {}
+        | Item::TextColor(_)
+        | Item::Tool(Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser)
+        | Item::Pen(_)
+        | Item::Sketch => {}
     }
     hit_index.register(id, r);
 }
@@ -641,8 +644,9 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let history = live.histories.entry(board.id).or_default();
     let ed = super::board_view::editor(&mut live.editor, theme);
     let center = [board.camera.center_x, board.camera.center_y];
-    let doc = &mut board.doc;
-    if notes::apply(ed, doc, history, it, center) {
+    let (doc, sketch) = (&mut board.doc, &mut board.sketch);
+    if notes::apply(ed, doc, history, it, center) || pen::apply(ed, doc, history, sketch, theme, it)
+    {
         return true;
     }
     match it {
@@ -681,7 +685,9 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         | Item::NoteWide(_)
         | Item::Bulk
         | Item::Mark(_)
-        | Item::TextColor(_) => {}
+        | Item::TextColor(_)
+        | Item::Pen(_)
+        | Item::Sketch => {}
     }
     true
 }

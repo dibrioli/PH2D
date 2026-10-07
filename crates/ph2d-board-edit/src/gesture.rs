@@ -170,6 +170,7 @@ impl Editor {
                 Some(c) => routes
                     .get(el.id)
                     .is_some_and(|r| r.distance(p.world) <= tol + c.style.stroke_width / 2.0),
+                None if el.ink().is_some() => crate::ink::ink_hit(el, p.world, tol),
                 None => ph2d_board_geom::hit(el, p.world, tol),
             })
             .map(|el| el.id)
@@ -198,6 +199,9 @@ impl Editor {
             self.gesture = Some(Gesture::Text);
             return Down::Taken;
         }
+        if self.ink_down(doc, p) {
+            return Down::Taken;
+        }
         match self.tool {
             Tool::Hand => return Down::Pan,
             Tool::Shape(kind) => {
@@ -214,7 +218,7 @@ impl Editor {
                 self.gesture = Some(self.begin_connect(doc, p, None, None));
                 return Down::Taken;
             }
-            Tool::Select => {}
+            Tool::Select | Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser => {}
         }
         if let Some((shape, dir)) = self.dot_at(doc, p) {
             self.gesture = Some(self.begin_connect(doc, p, Some(shape), Some(dir)));
@@ -252,7 +256,7 @@ impl Editor {
             let originals: Vec<Element> = self
                 .selected(doc)
                 .into_iter()
-                .filter(|el| el.shape().is_some())
+                .filter(|el| el.connector().is_none())
                 .cloned()
                 .collect();
             self.gesture = Some(match h {
@@ -328,6 +332,9 @@ impl Editor {
 
     /// O ponteiro andou (com o botão em baixo).
     pub fn pointer_move(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem, p: Pointer) {
+        if self.ink_move(doc, p) {
+            return;
+        }
         let Some(mut g) = self.gesture.take() else {
             return;
         };
@@ -534,6 +541,9 @@ impl Editor {
 
     /// Largar o botão: o gesto acaba e vira UM passo de desfazer.
     pub fn pointer_up(&mut self, doc: &mut BoardDoc, history: &mut History, p: Pointer) {
+        if self.ink_up(doc, history, p) {
+            return;
+        }
         let Some(g) = self.gesture.take() else {
             return;
         };
@@ -590,6 +600,9 @@ impl Editor {
 
     /// `Esc` a meio de um gesto: devolve o documento ao início dele. `false` = não havia gesto.
     pub fn cancel_gesture(&mut self, doc: &mut BoardDoc) -> bool {
+        if self.ink_cancel(doc) {
+            return true;
+        }
         let Some(g) = self.gesture.take() else {
             return false;
         };

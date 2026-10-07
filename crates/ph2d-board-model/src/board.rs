@@ -7,8 +7,9 @@ use crate::BoardDoc;
 
 /// Versão do formato de [`BoardSet::to_bytes`]. postcard é posicional: qualquer campo novo sobe-a,
 /// e as anteriores continuam a ler-se (`legacy.rs`). 2 = formas com estilo, texto e rotação (W1);
-/// 3 = o texto das formas com estilo por trecho (W3).
-pub const FORMAT_VERSION: u32 = 3;
+/// 3 = o texto das formas com estilo por trecho (W3); 4 = o rascunho (`Style::sketch`,
+/// `Board::sketch`) e os traços da caneta (W4).
+pub const FORMAT_VERSION: u32 = 4;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -40,6 +41,8 @@ pub struct Board {
     pub name: String,
     pub camera: Camera,
     pub doc: BoardDoc,
+    /// O quadro está em RASCUNHO: o que nasce nele nasce à mão (W4).
+    pub sketch: bool,
 }
 
 /// Todos os quadros do projecto, na ordem das abas.
@@ -98,6 +101,7 @@ impl BoardSet {
             name,
             camera: Camera::default(),
             doc: BoardDoc::default(),
+            sketch: false,
         });
         id
     }
@@ -157,6 +161,7 @@ impl BoardSet {
             FORMAT_VERSION => postcard::from_bytes(bytes).map_err(|e| e.to_string()),
             1 => crate::legacy::read_v1(bytes),
             2 => crate::legacy::read_v2(bytes),
+            3 => crate::legacy::read_v3(bytes),
             v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
     }

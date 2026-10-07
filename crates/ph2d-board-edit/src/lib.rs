@@ -10,6 +10,7 @@
 
 mod command;
 mod gesture;
+mod ink;
 mod notes;
 mod notes_layout;
 mod resize;
@@ -18,6 +19,7 @@ mod text;
 mod wire;
 
 use std::collections::BTreeSet;
+use std::time::Instant;
 
 use ph2d_board_model::{
     BoardDoc, BoardOp, Element, ElementId, Head, History, Route, Shape, ShapeType, Style,
@@ -26,6 +28,7 @@ use ph2d_board_route::RouteCache;
 use ph2d_text::TextSystem;
 
 pub use gesture::Down;
+pub use ink::{LASER_LIFE, PEN_WIDTHS, PenBox, PenPreset, point_segment, world_points};
 pub use notes::{
     NOTE_DEFAULT_SIZE, NOTE_GAP_K, NOTE_SCALES, NoteStyle, grid_layout, note_scale, note_size,
     parse_cells, reading_order,
@@ -59,6 +62,14 @@ pub enum Tool {
     Shape(ShapeType),
     /// A seta: arrastar de uma forma (ou do vazio) até outra liga-as.
     Connector,
+    /// A caneta ou o marcador (W4): arrastar desenha um traço.
+    Pen(ph2d_board_model::Pen),
+    /// A borracha: apaga os traços da caneta que tocar; `precise` = só o pedaço por onde passa.
+    Eraser {
+        precise: bool,
+    },
+    /// O ponteiro laser: um rasto que se apaga sozinho, fora do documento.
+    Laser,
 }
 
 /// Modificadores no instante do evento.
@@ -100,6 +111,8 @@ pub struct Metrics {
     pub bind: f64,
     /// A distância dos pontos azuis de criação rápida ao lado da forma.
     pub dot: f64,
+    /// O raio da borracha.
+    pub eraser: f64,
 }
 
 /// Um lado ou canto da moldura de selecção — `(sx, sy)` em `{-1, 0, 1}²`.
@@ -223,6 +236,10 @@ pub struct Overlay {
     /// A pega de ARRUMAR EM GRELHA (uma selecção de duas ou mais notas): o canto superior direito
     /// da moldura (mundo) — quem desenha afasta-a [`grid_handle_offset`] px dele, na diagonal.
     pub grid: Option<[f64; 2]>,
+    /// O rasto do laser: cada ponto (mundo) com a vida que lhe resta (`1` novo → `0` a sumir).
+    pub laser: Vec<([f64; 2], f64)>,
+    /// O centro do anel da borracha (mundo) — o raio é `Metrics::eraser` px de ecrã.
+    pub eraser: Option<[f64; 2]>,
 }
 
 /// Quanto a pega de arrumar em grelha se afasta (px de ecrã, nos dois eixos) do canto superior
@@ -335,6 +352,12 @@ pub struct Editor {
     /// O texto que a última cópia de elementos pôs na área de transferência do sistema — um
     /// `Ctrl+V` com OUTRO texto lá é uma colagem de fora (uma planilha).
     copied_text: Option<String>,
+    /// As predefinições das canetas.
+    pub pen: PenBox,
+    ink: Option<ink::InkGesture>,
+    laser: Vec<([f64; 2], Instant)>,
+    /// O último ponto do ponteiro no quadro (o anel da borracha).
+    cursor: Option<[f64; 2]>,
 }
 
 impl Editor {
@@ -358,6 +381,10 @@ impl Editor {
             unfitted: Vec::new(),
             resync: false,
             copied_text: None,
+            pen: PenBox::default(),
+            ink: None,
+            laser: Vec::new(),
+            cursor: None,
         }
     }
 
@@ -381,7 +408,7 @@ impl Editor {
     /// Um gesto do ponteiro está em curso (o editor quer os Move e o Up).
     #[must_use]
     pub fn is_busy(&self) -> bool {
-        self.gesture.is_some()
+        self.gesture.is_some() || self.ink.is_some()
     }
 
     /// A escrever dentro de uma forma (as teclas são do texto).
@@ -421,12 +448,12 @@ impl Editor {
         v
     }
 
-    /// A moldura das pegas: a caixa rodada de uma forma só, ou a caixa alinhada de várias. As setas
-    /// não entram (têm as pegas das pontas).
+    /// A moldura das pegas: a caixa rodada de uma forma (ou traço) só, ou a caixa alinhada de
+    /// várias. As setas não entram (têm as pegas das pontas).
     #[must_use]
     pub fn frame(&self, doc: &BoardDoc) -> Option<Frame> {
         let mut sel = self.selected(doc);
-        sel.retain(|el| el.shape().is_some());
+        sel.retain(|el| el.connector().is_none());
         match sel.as_slice() {
             [] => None,
             [one] => Some(Frame::of(one)),
@@ -460,6 +487,46 @@ impl Editor {
             })
             .collect();
         history.apply(doc, ops);
+    }
+
+    /// ⭐ **O botão «Rascunho ↔ Final»** (W4): com selecção, troca as formas e setas dela; sem
+    /// selecção, o quadro INTEIRO — e devolve o modo novo do quadro (`Some`), que é também o das
+    /// formas que nascerem. Fica tudo à mão se havia alguma final, e final se já estava tudo à mão.
+    /// As notas e os traços da caneta não entram: são papel e mão por natureza. UM passo.
+    pub fn toggle_sketch(
+        &mut self,
+        doc: &mut BoardDoc,
+        history: &mut History,
+        board: bool,
+    ) -> Option<bool> {
+        let whole = self.selection.is_empty();
+        let targets: Vec<&Element> = if whole {
+            doc.live_in_z_order()
+        } else {
+            self.selected(doc)
+        }
+        .into_iter()
+        .filter(|el| sketchable(el))
+        .collect();
+        let on = if targets.is_empty() {
+            !board
+        } else {
+            !targets.iter().all(|el| el.style().sketch)
+        };
+        let ops = targets
+            .into_iter()
+            .filter(|el| el.style().sketch != on)
+            .map(|el| {
+                let mut el = el.clone();
+                el.style_mut().sketch = on;
+                BoardOp::Put(el)
+            })
+            .collect();
+        history.apply(doc, ops);
+        whole.then(|| {
+            self.style.sketch = on;
+            on
+        })
     }
 
     /// Troca a rota das setas seleccionadas (UM passo) e guarda-a para as próximas.
@@ -517,7 +584,7 @@ impl Editor {
         let text = self.editing.as_mut().and_then(|e| e.overlay(doc, ts, mid));
         let editing = text.is_some();
         let sel = self.selected(doc);
-        let shapes: Vec<&&Element> = sel.iter().filter(|el| el.shape().is_some()).collect();
+        let shapes: Vec<&&Element> = sel.iter().filter(|el| el.connector().is_none()).collect();
         Overlay {
             boxes: if sel.len() > 1 {
                 shapes.iter().map(|el| Frame::of(el)).collect()
@@ -555,6 +622,10 @@ impl Editor {
                 .map(gesture::Gesture::guides)
                 .unwrap_or_default(),
             text,
+            laser: self.laser_trail(Instant::now()),
+            eraser: matches!(self.tool, Tool::Eraser { .. })
+                .then_some(self.cursor)
+                .flatten(),
         }
     }
 
@@ -578,6 +649,12 @@ impl Editor {
         };
         Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, bx)
     }
+}
+
+/// O botão «Rascunho ↔ Final» mexe neste elemento? As formas (menos as notas) e as setas.
+#[must_use]
+pub fn sketchable(el: &Element) -> bool {
+    el.connector().is_some() || el.shape().is_some_and(|s| !s.kind.is_note())
 }
 
 /// A caixa alinhada que contém todos `els` (rodados): `[x0, y0, x1, y1]`.

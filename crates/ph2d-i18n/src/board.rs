@@ -23,6 +23,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.tool.ellipse" => "Ellipse (O)",
         "board.tool.diamond" => "Diamond (D)",
         "board.tool.more" => "More shapes",
+        "board.tool.pen" => "Pen (P) — draw, highlight, erase (E), laser pointer (K)",
+        "board.sketch" => {
+            "Sketch ↔ Final — hand-drawn look for the selection, or the whole board when nothing is selected"
+        }
+        "board.pen.pen" => "Pen",
+        "board.pen.highlighter" => "Highlighter",
+        "board.pen.eraser" => "Eraser (E) — erases whole pen strokes",
+        "board.pen.eraser_precise" => "Precision eraser — erases only where it passes",
+        "board.pen.laser" => "Laser pointer (K) — a trail that fades away",
+        "board.pen.preset" => "Preset",
+        "board.pen.color" => "Color of this preset",
+        "board.pen.width" => "Thickness",
         "board.tool.arrow" => {
             "Arrow (A) — drag from one shape to another; hold Ctrl to leave the end loose"
         }

@@ -201,7 +201,7 @@ fn an_arrow_round_trips_through_the_bytes() {
     BoardOp::Put(arrow).apply(doc);
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(back, set);
-    assert_eq!(FORMAT_VERSION, 3);
+    assert_eq!(FORMAT_VERSION, 4);
 }
 
 /// A revisão da sessão muda a cada operação aplicada e nunca se repete entre documentos (a cache de
@@ -232,4 +232,73 @@ fn the_session_revision_moves_with_each_op_and_is_unique() {
         "já apagado: nada mudou"
     );
     assert_eq!(doc.rev(), r, "uma op que não muda nada não mexe na revisão");
+}
+
+/// ⭐ Um ficheiro do formato 3 (W3) continua a abrir — gravado pelo build de `ea38b5e61` (o último
+/// do formato 3): um rectângulo rodado com cantos redondos e texto com trechos, uma nota laranja e
+/// uma seta curva presa ao rectângulo, com rótulo e um ponto de ajuste. Tudo nasce FINAL.
+#[test]
+fn a_format_3_file_still_opens_and_everything_in_it_is_final() {
+    let set = BoardSet::from_bytes(V3_BYTES).expect("o formato 3 lê-se");
+    let b = &set.boards()[0];
+    assert_eq!(b.name, "Esboço");
+    assert_eq!(b.camera.zoom, 1.5);
+    assert!(!b.sketch);
+    let els = b.doc.live_in_z_order();
+    assert_eq!(els.len(), 3);
+    let r = els[0].shape().expect("forma");
+    assert_eq!(r.kind, ShapeType::Rectangle);
+    assert_eq!(r.text.as_str(), "fazer o quê");
+    assert_eq!(r.text.spans().len(), 2, "os trechos sobrevivem");
+    assert!(r.style.round);
+    assert_eq!(els[0].angle, 0.25);
+    assert_eq!(els[1].shape().expect("nota").kind, ShapeType::Sticky);
+    let c = els[2].connector().expect("seta");
+    assert_eq!(c.label, "sim");
+    assert_eq!(c.waypoints, vec![[300.0, 250.0]]);
+    assert!(els.iter().all(|e| !e.style().sketch));
+    let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert_eq!(
+        back, set,
+        "relido e regravado no formato actual, fica igual"
+    );
+}
+
+/// Gravados pelo build do formato 3 (`ea38b5e61`, um teste temporário que escreveu `to_bytes`).
+const V3_BYTES: &[u8] = include_bytes!("../fixtures/format_v3.bin");
+
+/// O rascunho (do quadro e de um elemento) e um traço da caneta gravam-se e lêem-se.
+#[test]
+fn sketch_and_a_pen_stroke_round_trip_through_the_bytes() {
+    let mut set = BoardSet::default();
+    let a = set.create("Caneta".into());
+    let board = set.get_mut(a).unwrap();
+    board.sketch = true;
+    let doc = &mut board.doc;
+    let ink = Rgba([1, 2, 3, 255]);
+    let mut style = Style::new(None, Some(ink), ink);
+    style.sketch = true;
+    let shape = Shape {
+        kind: ShapeType::Ellipse,
+        style: style.clone(),
+        text: RichText::default(),
+    };
+    let id = doc.mint_id();
+    BoardOp::Put(Element::new_shape(
+        id,
+        doc.z_on_top(),
+        shape,
+        [0.0, 0.0, 50.0, 30.0],
+    ))
+    .apply(doc);
+    let (stroke, bx) = crate::Ink::from_world(
+        &[[10.0, 10.0, 0.5], [30.0, 12.0, 0.7], [50.0, 40.0, 0.4]],
+        Style::new(None, Some(ink), ink),
+        crate::Pen::Highlighter,
+        true,
+    );
+    let id = doc.mint_id();
+    BoardOp::Put(Element::new_ink(id, doc.z_on_top(), stroke, bx)).apply(doc);
+    let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert_eq!(back, set);
 }

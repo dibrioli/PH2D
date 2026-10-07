@@ -13,6 +13,7 @@ mod connector;
 mod element;
 mod frac;
 mod history;
+mod ink;
 mod legacy;
 mod ops;
 mod rich;
@@ -25,6 +26,7 @@ pub use element::{
 };
 pub use frac::FracKey;
 pub use history::{History, MAX_STEPS};
+pub use ink::{Ink, Pen};
 pub use ops::{BoardOp, apply_batch};
 pub use rich::{Mark, Marks, RichText, Span};
 

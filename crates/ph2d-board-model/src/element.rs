@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Connector, End, FracKey, RichText};
+use crate::{Connector, End, FracKey, Ink, RichText};
 
 /// Identidade de um elemento dentro do seu quadro. Nunca reusada (as lápides guardam-na).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -57,6 +57,8 @@ pub enum ElementKind {
     /// Uma seta entre duas pontas (W2). A caixa `x, y, w, h` não se usa: a geometria é a rota.
     /// Numa caixa: com ela inline o `BoardOp::Put` passava os 200 bytes do `large_enum_variant`.
     Connector(Box<Connector>),
+    /// Um traço da caneta ou do marcador (W4): os pontos vivem na caixa `x, y, w, h`.
+    Ink(Box<Ink>),
 }
 
 /// Uma forma do quadro: o contorno, o estilo e o texto que vive DENTRO dela (centrado, com quebra).
@@ -175,6 +177,9 @@ pub struct Style {
     pub opacity: u8,
     pub text_color: Rgba,
     pub font_size: f64,
+    /// ⭐ **Rascunho**: o contorno desenha-se À MÃO (o rough.js, com a semente do elemento); `false`
+    /// = o traço final. W4 — o botão «Rascunho ↔ Final».
+    pub sketch: bool,
 }
 
 /// Um elemento. Os quatro últimos campos são a gramática da colaboração (Etapa 2).
@@ -213,6 +218,7 @@ impl Style {
             opacity: 100,
             text_color,
             font_size: crate::DEFAULT_FONT_SIZE,
+            sketch: false,
         }
     }
 }
@@ -236,6 +242,33 @@ impl Element {
         }
     }
 
+    /// Um traço novo na caixa que [`Ink::from_world`] deu.
+    #[must_use]
+    pub fn new_ink(id: ElementId, z: FracKey, ink: Ink, [x, y, w, h]: [f64; 4]) -> Self {
+        Self {
+            id,
+            kind: ElementKind::Ink(Box::new(ink)),
+            x,
+            y,
+            w,
+            h,
+            angle: 0.0,
+            z,
+            version: 0,
+            nonce: 0,
+            deleted: false,
+        }
+    }
+
+    /// O traço da caneta, se é um.
+    #[must_use]
+    pub fn ink(&self) -> Option<&Ink> {
+        match &self.kind {
+            ElementKind::Ink(i) => Some(i),
+            _ => None,
+        }
+    }
+
     /// Uma seta nova (a caixa fica a zero: a geometria é a rota derivada).
     #[must_use]
     pub fn new_connector(id: ElementId, z: FracKey, c: Connector) -> Self {
@@ -252,6 +285,17 @@ impl Element {
             nonce: 0,
             deleted: false,
         }
+    }
+
+    /// ⭐ A **semente** do traço à mão deste elemento (W4): tirada do id (splitmix64), em
+    /// `1..2³¹` — a mesma a cada desenho e em cada máquina, sem campo no ficheiro; uma cópia tem
+    /// outro id e treme de outra maneira (como no Excalidraw, que sorteia uma semente nova).
+    #[must_use]
+    pub fn seed(&self) -> u32 {
+        let mut z = self.id.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        ((z ^ (z >> 31)) as u32 & 0x7fff_ffff).max(1)
     }
 
     #[must_use]
@@ -297,14 +341,14 @@ impl Element {
     pub fn shape(&self) -> Option<&Shape> {
         match &self.kind {
             ElementKind::Shape(s) => Some(s),
-            ElementKind::Connector(_) => None,
+            _ => None,
         }
     }
 
     pub fn shape_mut(&mut self) -> Option<&mut Shape> {
         match &mut self.kind {
             ElementKind::Shape(s) => Some(s),
-            ElementKind::Connector(_) => None,
+            _ => None,
         }
     }
 
@@ -313,14 +357,14 @@ impl Element {
     pub fn connector(&self) -> Option<&Connector> {
         match &self.kind {
             ElementKind::Connector(c) => Some(c),
-            ElementKind::Shape(_) => None,
+            _ => None,
         }
     }
 
     pub fn connector_mut(&mut self) -> Option<&mut Connector> {
         match &mut self.kind {
             ElementKind::Connector(c) => Some(c),
-            ElementKind::Shape(_) => None,
+            _ => None,
         }
     }
 
@@ -330,6 +374,7 @@ impl Element {
         match &self.kind {
             ElementKind::Shape(s) => &s.style,
             ElementKind::Connector(c) => &c.style,
+            ElementKind::Ink(i) => &i.style,
         }
     }
 
@@ -337,6 +382,7 @@ impl Element {
         match &mut self.kind {
             ElementKind::Shape(s) => &mut s.style,
             ElementKind::Connector(c) => &mut c.style,
+            ElementKind::Ink(i) => &mut i.style,
         }
     }
 
@@ -344,7 +390,7 @@ impl Element {
     /// presas seguem a forma.
     pub fn translate(&mut self, d: [f64; 2]) {
         match &mut self.kind {
-            ElementKind::Shape(_) => {
+            ElementKind::Shape(_) | ElementKind::Ink(_) => {
                 self.x += d[0];
                 self.y += d[1];
             }

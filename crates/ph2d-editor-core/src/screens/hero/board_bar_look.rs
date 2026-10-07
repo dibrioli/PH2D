@@ -7,7 +7,8 @@ use crate::zones::Rect;
 use ph2d_board_edit::{Editor, Frame, Tool};
 use ph2d_board_model::{Connector, Dash, Head, Rgba, Route, Shape, ShapeType, Style};
 use ph2d_board_route::Dir;
-use ph2d_tokens::Spacing;
+use crate::paint::{fill_rounded_rect, resolve};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::{Affine, Brush, Color, Stroke, VectorScene};
 
 /// O tamanho da ponta nos ícones: o de nascença do catálogo (`Marker`, 1×).
@@ -15,7 +16,7 @@ const ICON_HEAD_SCALE: f64 = 1.0;
 
 /// O balão de cada controlo (o nome e, quando há, o atalho de uma tecla).
 pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
-    if let Some(k) = super::notes::tooltip_key(it) {
+    if let Some(k) = super::notes::tooltip_key(it).or_else(|| super::pen::tooltip_key(it)) {
         return Some(k);
     }
     Some(match it {
@@ -46,7 +47,10 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         | Item::NoteWide(_)
         | Item::Bulk
         | Item::Mark(_)
-        | Item::TextColor(_) => return None,
+        | Item::TextColor(_)
+        | Item::Tool(Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser)
+        | Item::Pen(_)
+        | Item::Sketch => return None,
     })
 }
 
@@ -132,11 +136,28 @@ pub(super) fn selected_kind(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> Op
         .collect();
     let arrows = els.iter().any(|el| el.connector().is_some());
     let shapes = els.iter().any(|el| el.shape().is_some());
+    let inks = els.iter().any(|el| el.ink().is_some());
     match (shapes, arrows) {
         (true, false) => Some(Selected::Shapes),
         (false, true) => Some(Selected::Arrows),
         (true, true) => Some(Selected::Both),
-        (false, false) => None,
+        (false, false) => inks.then_some(Selected::Ink),
+    }
+}
+
+/// O botão «Rascunho ↔ Final» aceso: com selecção, se tudo o que ele troca nela está à mão; sem
+/// selecção, o modo do quadro.
+pub(super) fn sketch_on(ed: &Editor, doc: &ph2d_board_model::BoardDoc, board: bool) -> bool {
+    let sel: Vec<_> = ed
+        .selection()
+        .iter()
+        .filter_map(|id| doc.get(*id))
+        .filter(|el| ph2d_board_edit::sketchable(el))
+        .collect();
+    if ed.selection().is_empty() {
+        board
+    } else {
+        !sel.is_empty() && sel.iter().all(|el| el.style().sketch)
     }
 }
 
@@ -256,4 +277,30 @@ pub(super) fn shape_icon(
             .inner_mut()
             .stroke(&s, at, &Brush::Solid(c), None, &o.lines);
     }
+}
+
+pub(super) fn paint_panel(scene: &mut VectorScene, rects: &[(Item, Rect)], theme: Theme) {
+    let Some(first) = rects.first().map(|(_, r)| *r) else {
+        return;
+    };
+    let (mut x0, mut y0, mut x1, mut y1) = (first.x, first.y, first.x + first.w, first.y + first.h);
+    for (_, r) in rects {
+        x0 = x0.min(r.x);
+        y0 = y0.min(r.y);
+        x1 = x1.max(r.x + r.w);
+        y1 = y1.max(r.y + r.h);
+    }
+    let pad = Spacing::Xs.px();
+    let panel = Rect::new(x0 - pad, y0 - pad, x1 - x0 + 2.0 * pad, y1 - y0 + 2.0 * pad);
+    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
+    fill_rounded_rect(scene, panel, radius, resolve(ColorToken::BgElev, theme));
+    crate::paint::stroke_frame(
+        scene,
+        panel,
+        radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
 }

@@ -386,6 +386,7 @@ impl Editor {
     /// O ponteiro passeia (sem botão): a forma por baixo mostra os pontos azuis. Fica a mesma
     /// enquanto o ponteiro está na zona dos pontos dela — senão eles fugiam antes do clique.
     pub fn hover(&mut self, doc: &BoardDoc, p: Pointer) {
+        self.cursor = Some(p.world);
         if self.gesture.is_some() || self.tool != crate::Tool::Select {
             self.hover = None;
             return;

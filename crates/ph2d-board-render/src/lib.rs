@@ -6,6 +6,10 @@
 //! ⚠️ Reconstrói a cena a cada quadro, recortando ao ecrã; o texto moldado vem da [`TextCache`].
 //! As réguas (`tests/it/measure_*`) dizem quando isso deixa de chegar.
 
+mod sketch;
+
+pub use sketch::{HIGHLIGHTER_ALPHA, ink_outline};
+
 use ph2d_board_edit::{Frame, Handle, Metrics, Overlay};
 use ph2d_board_geom::{outline, text_origin, text_rect, to_world};
 use std::collections::BTreeMap;
@@ -46,27 +50,36 @@ type OutlineKey = (ShapeType, u64, u64, bool);
 pub struct RenderCache {
     pub text: TextCache,
     outlines: BTreeMap<(u64, u64), (OutlineKey, Outline, u64)>,
+    sketch: sketch::SketchCache,
     frame: u64,
 }
 
-impl RenderCache {
-    fn outline(&mut self, owner: (u64, u64), shape: &Shape, w: f64, h: f64) -> &Outline {
-        let key = (shape.kind, w.to_bits(), h.to_bits(), shape.style.round);
-        let frame = self.frame;
-        let e = self
-            .outlines
-            .entry(owner)
-            .or_insert_with(|| (key, outline(shape, w, h), frame));
-        if e.0 != key {
-            *e = (key, outline(shape, w, h), frame);
-        }
-        e.2 = frame;
-        &e.1
+/// O contorno guardado de `owner` (refeito se a forma mudou) — uma função sobre o CAMPO, para o
+/// desenho poder ao mesmo tempo escrever noutro campo da cache (o rascunho).
+fn cached_outline<'a>(
+    outlines: &'a mut BTreeMap<(u64, u64), (OutlineKey, Outline, u64)>,
+    frame: u64,
+    owner: (u64, u64),
+    shape: &Shape,
+    w: f64,
+    h: f64,
+) -> &'a Outline {
+    let key = (shape.kind, w.to_bits(), h.to_bits(), shape.style.round);
+    let e = outlines
+        .entry(owner)
+        .or_insert_with(|| (key, outline(shape, w, h), frame));
+    if e.0 != key {
+        *e = (key, outline(shape, w, h), frame);
     }
+    e.2 = frame;
+    &e.1
+}
 
+impl RenderCache {
     fn end_frame(&mut self) {
         self.text.end_frame();
         self.frame += 1;
+        self.sketch.end_frame(self.frame);
         if self.frame.is_multiple_of(KEEP_FRAMES) {
             let cut = self.frame.saturating_sub(KEEP_FRAMES);
             self.outlines.retain(|_, e| e.2 >= cut);
@@ -158,7 +171,7 @@ pub fn paint(
                     let ink = Brush::Solid(token(ColorToken::Bg1, theme));
                     let at = (board.id.0, el.id.0);
                     let s = sel_of(el.id);
-                    paint_connector(scene, c, r, v, zoom, ts, cache, at, &ink, s);
+                    paint_connector(scene, el, c, r, v, zoom, ts, cache, at, &ink, s);
                 }
             }
             continue;
@@ -170,11 +183,23 @@ pub fn paint(
         if r.intersect(clip).area() <= 0.0 {
             continue;
         }
+        if let Some(ink) = el.ink() {
+            if r.width().max(r.height()) < DOT_PX {
+                if let Some(c) = ink.style.stroke {
+                    scene.fill_rect(r, doc_color(c));
+                }
+            } else {
+                let (t, at) = (v * to_world(el), (board.id.0, el.id.0));
+                sketch::paint_ink(scene, &mut cache.sketch, cache.frame, at, el, ink, t);
+            }
+            continue;
+        }
         let Some(shape) = el.shape() else {
             continue;
         };
         let st = &shape.style;
-        let plain = el.angle == 0.0 && st.opacity == 100 && st.stroke.is_none() && !st.round;
+        let plain =
+            el.angle == 0.0 && st.opacity == 100 && st.stroke.is_none() && !st.round && !st.sketch;
         if r.width().max(r.height()) < DOT_PX
             || (plain && shape.kind == ShapeType::Rectangle && shape.text.is_empty())
         {
@@ -229,16 +254,21 @@ fn paint_shape(
     if shape.kind.is_note() {
         paint_note_under(scene, el, shape, t);
     }
-    let o = cache.outline((board, el.id.0), shape, el.w, el.h);
-    if let Some(c) = st.fill {
-        scene.fill_path(&o.fill, &Brush::Solid(doc_color(c)), t);
-    }
-    if let Some(c) = st.stroke.filter(|_| st.stroke_width > 0.0) {
-        let stroke = style_stroke(st.stroke_width, st.dash);
-        let brush = Brush::Solid(doc_color(c));
-        scene.inner_mut().stroke(&stroke, t, &brush, None, &o.fill);
-        if !o.lines.is_empty() {
-            scene.inner_mut().stroke(&stroke, t, &brush, None, &o.lines);
+    let (frame, at) = (cache.frame, (board, el.id.0));
+    let o = cached_outline(&mut cache.outlines, frame, at, shape, el.w, el.h);
+    if st.sketch && !shape.kind.is_note() {
+        sketch::paint_shape(scene, &mut cache.sketch, frame, at, el, shape.kind, o, t);
+    } else {
+        if let Some(c) = st.fill {
+            scene.fill_path(&o.fill, &Brush::Solid(doc_color(c)), t);
+        }
+        if let Some(c) = st.stroke.filter(|_| st.stroke_width > 0.0) {
+            let stroke = style_stroke(st.stroke_width, st.dash);
+            let brush = Brush::Solid(doc_color(c));
+            scene.inner_mut().stroke(&stroke, t, &brush, None, &o.fill);
+            if !o.lines.is_empty() {
+                scene.inner_mut().stroke(&stroke, t, &brush, None, &o.lines);
+            }
         }
     }
     let font_px = st.font_size * zoom;
@@ -319,6 +349,7 @@ fn paint_note_under(scene: &mut VectorScene, el: &Element, shape: &Shape, t: Aff
 #[allow(clippy::too_many_arguments)]
 fn paint_connector(
     scene: &mut VectorScene,
+    el: &Element,
     c: &Connector,
     r: &Routed,
     v: Affine,
@@ -362,7 +393,11 @@ fn paint_connector(
         }
         return;
     }
-    if let Some(color) = st.stroke.filter(|_| st.stroke_width > 0.0) {
+    if st.sketch && st.stroke.is_some() && st.stroke_width > 0.0 {
+        let d = ph2d_board_route::drawn(r, c.heads, st.stroke_width);
+        let frame = cache.frame;
+        sketch::paint_connector(scene, &mut cache.sketch, frame, owner, el, &d, v);
+    } else if let Some(color) = st.stroke.filter(|_| st.stroke_width > 0.0) {
         let d = ph2d_board_route::drawn(r, c.heads, st.stroke_width);
         let brush = Brush::Solid(doc_color(color));
         let line = style_stroke(st.stroke_width, st.dash)
@@ -567,6 +602,11 @@ pub fn paint_overlay(
             let dot = ph2d_vector::Circle::new(Point::new(c.x + sx * q, c.y + sy * q), q / 2.0);
             scene.fill_path(&dot.to_path(0.1), &Brush::Solid(accent), Affine::IDENTITY);
         }
+    }
+    sketch::paint_laser(scene, &overlay.laser, v, theme, f64::from(Spacing::Xs.px()));
+    if let Some(c) = overlay.eraser {
+        let ring = ph2d_vector::Circle::new(v * point(c), metrics.eraser).to_path(0.1);
+        line(scene, &ring, token(ColorToken::Text2, theme), thin);
     }
     scene.pop_layer();
 }

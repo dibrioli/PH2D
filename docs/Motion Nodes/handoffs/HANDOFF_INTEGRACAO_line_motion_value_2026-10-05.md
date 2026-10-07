@@ -468,3 +468,28 @@ a `=115` com a bola da rampa a `Rolling 0,1` (`e13`/`e15`). Ver o §16 do smoke 
    rolamento DENTRO do solver — e o único que o rapier oferece (o motor) foi recusado pela pilha.
 2. **Um oráculo externo** para a pilha com rolamento (o Box2D `3.1.1` está no repositório `extra`, MIT, não
    instalado — pede a senha do dono; e a lei dele é por PAR, a que esta casa mediu e recusou). Não corrido.
+
+## §17 — A 9.ª onda (07/10): o aberto do §16, num bloco
+
+Smoke do §16 **APROVADO** pelo dono (07/10: *«smoke ok. vamos resolver o que está em aberto»*). Números, tabelas e
+recusas: [doc 121 §9.24](../121_as_formas_na_placa.md). Base `a46c4c200` (o main não andou).
+
+| item do §16 | o que ficou |
+|---|---|
+| **1. a rampa perto do limiar** | ✅ **mecanismo provado e cinco variantes RECUSADAS por medição; a lei fica.** A `0,15` desce pouco porque a trava espera `0,2` s (`0,294 × 0,81 = 0,238`, medido `0,241`); a `0,2` desce demais porque o travão a rolar é `clamp(L)` enquanto o momento é pequeno. O travão inteiro aplicado de fora do solver PRENDE a bola (`0,020` a `0,1`); soltar mais cedo pelo sentido do pedido devolve o pisca-pisca ou faz a pilha de `0,25` desabar (`62°`). E o oráculo (o rolamento DENTRO do solver) também se afasta da teoria perto do limiar, para o outro lado (`0,023` contra `0,059` a `0,2`) |
+| **2. o oráculo externo** | ✅ **corrido:** o Box2D `3.1.1` (MIT; o pacote do `extra` baixado com a assinatura conferida, NADA instalado — não precisou da senha do dono) sobre as posições iniciais exportadas da nossa cena, onze realizações ([`oraculo_box2d_rolamento/`](../ferramentas/oraculo_box2d_rolamento/README.md), fixture com cabeçalho). A unidade do `rollingResistance` é a nossa. ⭐ **Nas pilhas o Box2D tem o «defeito» do prompt de 06/10:** discos com rolamento giram MAIS na queda que sem ele (`0,05`: `198°` contra `77°`) — é das pilhas com rolamento, não da nossa trava; a nossa lei é a mais calma a `0,1`/`0,25`. ⚠️ Não é gate de paridade: a lei dele é por PAR (recusada para nós) |
+| **3. o app a `4 096`** | ✅ **`61`–`70` fps em todas as janelas** fora do arranque, nas duas placas, carga `1,9`–`3,8`; Motion `≤ 4,6` ms; a sonda sem vídeo igual à de 06/10 (`2,7`–`3,0` ms com a pilha formada). A 1.ª leitura a carga `14` dava `51`–`57` — não vale |
+
+**Superfície de colisão (o integrador mede):** `ph2d-app-motion` — `motion_state_pilha_demo_discos_diag.rs` (a sonda
+`exporta_a_pilha_para_o_oraculo`), `motion_state_material_demo_tests.rs` (o comentário do gate da rampa);
+`docs/Motion Nodes/ferramentas/oraculo_box2d_rolamento/` (NOVO: `main.c`, `corre.sh`, `README.md`, a fixture). O
+produto NÃO mudou nesta onda (a chave das variantes saiu antes do commit). `Cargo.lock`: não muda.
+
+**Fecho corrido** (o diff desta onda é uma sonda `#[ignore]`, um comentário e docs): clippy `ph2d-app-motion`
+`--all-targets --all-features -D warnings` ✓ · `fmt` ✓ · os gates da rampa, das pilhas de discos e da `=115`
+`13/13` · censos `12/12` · `doc-index` ✓. O fecho batched completo da linha é o do §16 (`18 773/18 773`, código
+igual).
+
+**⏳ O QUE FICA ABERTO:** nada desta família. ⚠️ Registado (não é aberto): a rampa perto do limiar segue a
+teoria a `±0,07` (o gate aceita `±0,06` a `0,1`/`0,15`/`0,2`); uma lei exacta ali pede o rolamento dentro do solver,
+e o único que o rapier oferece (o motor) foi recusado pela pilha (§9.23). Integrar só por ordem do dono.

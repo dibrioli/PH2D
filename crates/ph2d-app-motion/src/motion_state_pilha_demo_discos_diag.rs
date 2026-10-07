@@ -378,3 +378,39 @@ fn probe_o_mecanismo_por_rolamento() {
         (de, de + 60),
     );
 }
+
+/// ⭐ **SONDA — as entradas do ORÁCULO** (doc 121 §9.24): as posições iniciais dos discos da taça
+/// da direita em cada uma das [`realizacoes`], o centro e o raio da taça, para o
+/// `oraculo_box2d_rolamento` correr a MESMA pilha. E, ao lado, as réguas da nossa lei por `Rolling`.
+#[test]
+#[ignore = "sonda de medicao"]
+fn exporta_a_pilha_para_o_oraculo() {
+    // ⚠️ O `cargo test` corre na pasta da CRATE: o caminho de omissão é o `target/` da worktree.
+    let saida = std::env::var("PH2D_ORACULO_DIR").unwrap_or_else(|_| {
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../target/prova/onda9/oraculo"
+        )
+        .into()
+    });
+    std::fs::create_dir_all(&saida).expect("a pasta");
+    let discos = [(ph2d_node_motion_shape::param::COLLIDER_SHAPE, 1.0)];
+    for (k, e) in realizacoes().enumerate() {
+        let q = marcha_eps(e, Some(0.0), 1, &discos);
+        let mut t = format!(
+            "# taca {} {} {} raio_disco {}\n",
+            super::VAO,
+            super::TACA_Y,
+            super::TACA_R,
+            R
+        );
+        for p in &q[0].p {
+            t += &format!("{} {}\n", p[0], p[1]);
+        }
+        std::fs::write(format!("{saida}/pilha_{k:02}.txt"), t).expect("escreve");
+    }
+    for rolar in [0.0_f32, 0.05, 0.1, 0.15, 0.25] {
+        let (m, p, r, d, _) = rodada(rolar, &discos);
+        eprintln!("  NOSSA discos {rolar} | {m:.1} · {p:.1} | {r:.1} · {d:.3}");
+    }
+}

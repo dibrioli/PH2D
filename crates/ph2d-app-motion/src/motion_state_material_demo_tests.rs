@@ -547,7 +547,9 @@ fn the_rolling_friction_locks_the_ball_on_the_ramp() {
 /// `12°` (`tg = 0,213`) em `2` s, a distância contra a de `Rolling 0`, ao lado da teoria
 /// `(tg θ − μr) / tg θ`. A trava que voltava a trancar logo que o giro de um passo cabia na
 /// capacidade deixava-a a `0,019` com qualquer `Rolling` (`0,1` · `0,15` · `0,2`); medido com a lei de
-/// hoje: `0,556` · `0,241` · `0,103` (teoria `0,530` · `0,294` · `0,059`).
+/// hoje: `0,556` · `0,241` · `0,103` (teoria `0,530` · `0,294` · `0,059`). O oráculo (Box2D, o rolamento
+/// DENTRO do solver, §9.24) dá `0,485` · `0,243` · `0,023`: perto do limiar nem ele segue a teoria — a
+/// barra é a teoria, e a folga é a do oráculo.
 #[test]
 fn a_ball_rolls_down_a_ramp_steeper_than_its_rolling() {
     let desceu = |rolar: f32| {

@@ -1,0 +1,10 @@
+# oraculo Box2D 3.1.1 (MIT) — doc 121 §9.24; entradas: target/prova/onda9/oraculo (a sonda exporta_a_pilha_para_o_oraculo, 11 realizacoes); escala do rr 1,1233 = limiar/tg 12; 2026-10-07
+RAMPA raio 0.2: solta 1.1129 · limiar rr 0.2388 (tg 12 = 0.2126; tg·raio = 0.0425)
+RAMPA raio 0.2, rr = mu·(limiar/tg): · 0.05: 0.737 (0.765) · 0.1: 0.485 (0.530) · 0.15: 0.243 (0.294) · 0.2: 0.023 (0.059) · 0.21: 0.020 (0.012) · 0.5: 0.018 (0.000)
+RAMPA raio 0.11: solta 1.1127 · limiar rr 0.2394 (tg 12 = 0.2126; tg·raio = 0.0234)
+RAMPA raio 0.11, rr = mu·(limiar/tg): · 0.05: 0.737 (0.765) · 0.1: 0.485 (0.530) · 0.15: 0.242 (0.294) · 0.2: 0.023 (0.059) · 0.21: 0.020 (0.012) · 0.5: 0.018 (0.000)
+BOX2D discos 0 (rr 0) | 77.3 · 133.8 | 9.7 · 0.014 | 11 realizacoes
+BOX2D discos 0.05 (rr 0.056165) | 197.6 · 252.6 | 75.7 · 0.140 | 11 realizacoes
+BOX2D discos 0.1 (rr 0.11233) | 115.1 · 155.1 | 103.7 · 0.203 | 11 realizacoes
+BOX2D discos 0.15 (rr 0.168495) | 111.4 · 112.5 | 0.0 · 0.000 | 11 realizacoes
+BOX2D discos 0.25 (rr 0.280825) | 103.1 · 127.9 | 75.9 · 0.144 | 11 realizacoes

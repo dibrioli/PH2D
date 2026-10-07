@@ -90,3 +90,4 @@ Para eles ficou uma tabela derivada da ESTRUTURA do nosso rig (o osso que COBRE 
 pontos principais; o que PARTE dela, para os outros), conferida contra a tabela escrita à mão do
 primeiro boneco: **38 de 43** batem, e das 5 que diferem **3 são ossos FIXOS** (movem-se igual) e 2
 são uma junta que o primeiro boneco não tem.
+- ⭐⭐ **ANTES DE CHAMAR DEFEITO A «O BOTÃO FAZ PIOR QUE SEM ELE», CORRA O ORÁCULO** — «um `Rolling` baixo faz a pilha de discos girar MAIS que sem ele» foi tratado dois dias como defeito da trava; o Box2D (rolamento DENTRO do solver), sobre as MESMAS posições iniciais exportadas da nossa cena, gira `198°` a `0,05` contra `77°` sem o botão — é das pilhas com rolamento. E o pacote do oráculo baixa-se com a ASSINATURA conferida contra uma cópia do chaveiro do pacman: não precisou da senha do dono (doc 121 §9.24, 07/10).

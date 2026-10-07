@@ -2840,3 +2840,52 @@ nada mais — com o `Rolling` a `0` (a `=114` de sempre) o passo é o mesmo.
 e monótona; a de antes `0,019`) · `the_rolling_lock_does_not_flicker_in_a_pile_of_discs` (onze realizações: trocas
 `≤ 8`/s — antes `21` —, queda mediana `≤ 21°`). Mutações `m17` (solta ao 2.º), `m18` (tranca mesmo a acelerar), `m19`
 (sem o `QUASE`).
+
+### §9.24 — O ABERTO DO §9.23, num bloco (2026-10-07, depois do smoke aprovado: *«vamos resolver o que está em aberto»*)
+
+Os três itens (a rampa perto do limiar, o oráculo externo, o app a `4 096` não re-medido) numa rodada: as variantes
+da trava atrás de uma chave POR FIO (retirada antes do fecho), o Box2D a correr as MESMAS entradas, e o app em
+`release` com a carga medida ao lado. ⚠️ O mecanismo da rampa foi LIDO antes de construir (os números do §9.23 e o
+código) e só depois virou variantes — escrito aqui depois da rodada, na mesma janela.
+
+**(1) A rampa perto do limiar — o mecanismo, provado pela conta:** a `0,15` a bola desce `0,241` contra `0,294` da
+teoria porque a trava espera `12` passos (`0,2` s) antes de soltar: `0,294 × (1,8/2)² = 0,238`. A `0,2`/`0,21` ela
+desce DEMAIS (`0,103`/`0,080` contra `0,059`/`0,012`): depois de soltar, o travão a rolar é `clamp(L, ±cap)`, e
+enquanto o momento é pequeno ele trava MENOS que a capacidade com o binário dos contactos ainda a empurrar.
+
+| variante (`11` realizações nas pilhas) | rampa `0,1`·`0,15`·`0,2`·`0,21` (teoria `0,530`·`0,294`·`0,059`·`0,012`) | discos `0,1` queda · assente · trocas | discos `0,25` assente | caixas `0,1` trocas |
+|---|---|---|---|---|
+| **hoje** (solta ao 12.º, travão `clamp(L)`) | **`0,556`·`0,241`·`0,103`·`0,080`** | **`5,6`·`41` · `11,6°` · `3,8`** | **`1,0°`** | **`6,6`** |
+| travão com a capacidade INTEIRA enquanto acelera | `0,020`·`0,336`·`0,020`·`0,020` — prende | `22`·`53` · `3,3°` · `3,9` | `0,0°` | `6,6` |
+| solta ao 2.º excesso do MESMO sentido + travão inteiro | `0,024`·`0,336`·`0,024`·`0,024` — prende | `4,3`·`43` · `100°` · `17` | `0,0°` | `34` |
+| idem ao 4.º · ao 8.º | prende (`0,022` · `0,020` a `0,1`) | `1,5`·`23` · `18,5°` · `9,2` · `2,4`·`30` · `10,9°` · `5,5` | `0,0°` | `16` · `9,2` |
+| solta ao 4.º do mesmo sentido, travão de hoje | `0,556`·`0,277`·`0,114`·`0,086` | `12`·`66` · `7,5°` · `8,7` | **`62°`** (`0,31` u) | `15` |
+
+⇒ ⛔ **recusadas as cinco.** O travão inteiro aplicado de FORA do solver (antes do passo) inverte o giro dentro do
+passo e a trava volta a fechar — a bola fica presa onde devia rolar; soltar mais cedo pelo sentido do pedido devolve
+o pisca-pisca. **A lei de hoje fica.**
+
+**(2) O oráculo — o Box2D `3.1.1` a correr as MESMAS entradas** ([`oraculo_box2d_rolamento/`](ferramentas/oraculo_box2d_rolamento/README.md):
+licença MIT conferida no pacote; o pacote do `extra` baixado e com a ASSINATURA conferida, sem instalar nada; as
+posições iniciais das onze realizações exportadas da nossa cena; fixture `box2d_2026-10-07.txt`). O Box2D resolve o
+rolamento DENTRO do solver, mas POR PAR (a lei que esta casa mediu e recusou para si):
+
+| | rampa `0,1`·`0,15`·`0,2`·`0,21` | discos `0` queda · assente | `0,05` | `0,1` | `0,15` | `0,25` |
+|---|---|---|---|---|---|---|
+| teoria | `0,530`·`0,294`·`0,059`·`0,012` | — | — | — | — | — |
+| **Box2D** (rr alinhado ao limiar: `×1,123`) | `0,485`·`0,243`·`0,023`·`0,020` | `77`·`134` · `9,7°` | `198`·`253` · `76°` | `115`·`155` · `104°` | `111`·`113` · `0°` | `103`·`128` · `76°` |
+| **nós** | `0,556`·`0,241`·`0,103`·`0,080` | `131`·`225` · `21°` | `116`·`199` · `210°` | `5,6`·`41` · `11,6°` | `84`·`105` · `85°` | `0,3`·`0,6` · `1,0°` |
+
+⇒ **o limiar do Box2D não depende do raio** (`0,2388` a raio `0,2`, `0,2394` a `0,11`): a unidade do `rollingResistance`
+é a nossa (`rr · N · raio`). **Perto do limiar nem o solver de referência segue a teoria** (a `0,2` `0,023` contra
+`0,059` — erra para o OUTRO lado: prende cedo). ⭐ **E nas pilhas o Box2D mostra o «defeito» do prompt de 06/10**:
+com o rolamento os discos giram MAIS na queda do que sem ele (`0,05`: `198°` contra `77°`; `0,25`: `103°`), e não é
+monótono. ⇒ *«um `Rolling` baixo faz a pilha girar mais»* é propriedade das pilhas com rolamento (encostas que só o
+atrito de rolar segura e que desabam), não da nossa trava; a nossa lei é a MAIS CALMA das duas em `0,1`/`0,25`.
+
+**(3) O app a `4 096` por taça** (`[motion-quadro]`, `release`, `40` s = a queda inteira de `15` s duas vezes,
+`target/prova/onda9/app/`): com a carga a `1,9`–`3,8`, **`61`–`70` fps em todas as janelas** fora do arranque (o
+1.º meio segundo), nas duas placas; o Motion `≤ 4,6` ms de mediana. A sonda sem vídeo (`custo_por_fase_da_queda`):
+`1,9`·`3,0`·`3,0`·`2,8`·`2,7` ms por fase de `3` s — a de 06/10 era `2,3`·`2,9`·`2,9`·`2,7`·`2,8`. ⚠️ A 1.ª
+leitura (carga `14 → 10`, logo depois da compilação) dava janelas de `51`–`57` fps e o Motion a `6`–`9` ms — a mesma
+lição do §9.21: a medição do app não vale acima de `load ~5`. Em discos com `Rolling 0,1`: `60`+ fps fora do arranque.

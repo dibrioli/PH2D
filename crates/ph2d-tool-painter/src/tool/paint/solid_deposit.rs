@@ -568,6 +568,25 @@ fn blend_solid_row(row: usize, dst: &mut [u8], mut mask: Option<&mut [u8]>, b: &
             continue;
         }
         let p = (b.x0 + cx) * 4;
+        let da = u32::from(dst[p + 3]);
+        if da < 255 {
+            // O `over` de ALFA DIRECTO sobre um destino translúcido — a camada transparente do papel
+            // (smoke do dono 2026-10-06): a cor pesa pelo alfa de cada lado, ou a tinta escurecia
+            // misturada com o preto transparente por baixo (`[132, 18, 18]` contra `[220, 30, 30]`).
+            let (wa, wd) = (a * 255, da * (255 - a));
+            for ch in 0..3 {
+                let d = u32::from(dst[p + ch]);
+                #[allow(clippy::cast_possible_truncation)]
+                {
+                    dst[p + ch] = ((b.rgb[ch] * wa + d * wd + (wa + wd) / 2) / (wa + wd)) as u8;
+                }
+            }
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                dst[p + 3] = ((wa + wd + 127) / 255) as u8;
+            }
+            continue;
+        }
         for ch in 0..3 {
             let d = u32::from(dst[p + ch]);
             #[allow(clippy::cast_possible_truncation)]
@@ -575,7 +594,6 @@ fn blend_solid_row(row: usize, dst: &mut [u8], mut mask: Option<&mut [u8]>, b: &
                 dst[p + ch] = ((b.rgb[ch] * a + d * (255 - a)) / 255) as u8;
             }
         }
-        let da = u32::from(dst[p + 3]);
         #[allow(clippy::cast_possible_truncation)]
         {
             dst[p + 3] = (a + da * (255 - a) / 255) as u8;

@@ -512,6 +512,12 @@ impl Editor {
         s.text.color(0..s.text.len()).or(Some(None))
     }
 
+    /// `ids` ajustam a altura ao texto no próximo desenho (quem os pôs no documento não tinha o
+    /// moldador — uma cena montada por código, um ficheiro acabado de abrir).
+    pub fn fit_later(&mut self, ids: impl IntoIterator<Item = ElementId>) {
+        self.unfitted.extend(ids);
+    }
+
     /// O elemento em edição de texto, se há um.
     #[must_use]
     pub fn editing_id(&self) -> Option<ElementId> {

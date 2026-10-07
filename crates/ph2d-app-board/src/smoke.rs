@@ -4,11 +4,12 @@
 //! |---|---|
 //! | 1 | as abas: dois quadros já criados e o 1.º aberto, com uma grelha de rectângulos coloridos — a roda dá zoom à volta do cursor, arrastar move a vista, `Scene` devolve a cena |
 //! | 3 | as SETAS (W2): o mesmo fluxograma LIGADO por setas CURVAS (as do Miro: presas ao centro, seguem as caixas), o «sim» com rótulo, o «não» que volta por baixo e o «saltar» em arco por cima (presas a pontos fixos, com rótulo), e uma nota ligada a «mais tarde» por uma seta com UM ponto de ajuste, seleccionada — o ponto oco arrasta-se, a bolinha a meio de cada trecho cria outro, duplo-clique apaga; numa caixa, os pontos azuis criam a seguinte já ligada (`Ctrl+→` também) |
+//! | 4 | as NOTAS (W3): uma fila de ideias (a do meio com negrito, itálico, sublinhado e riscado), uma nota que CRESCEU com o texto, os tamanhos P · M · G e a larga, as 16 cores do Miro, uma PILHA de onde se arrastam notas, uma forma com uma palavra a vermelho, e um monte desarrumado SELECCIONADO — a pega de quatro pontos (canto de cima à direita) arruma-o em grelha; `N` é a ferramenta Nota, escrever com uma nota seleccionada escreve nela, `Tab` faz a seguinte |
 //! | 2 | as FORMAS (W1): um fluxograma com texto dentro (início → recolher ideias → «boa ideia?» → construir → fim), um passo rodado, um tracejado e um meio transparente; por baixo, o catálogo das 18 formas com o nome de cada uma — seleccionar, mover, redimensionar, rodar, duplo-clique para escrever, a barra curta à esquerda e a de estilo por cima da selecção |
 
 use ph2d_board_model::{
-    Anchor, BoardDoc, BoardOp, BoardSet, Connector, Dash, Element, ElementId, End, Rgba, Route,
-    Shape, ShapeType, Style,
+    Anchor, BoardDoc, BoardOp, BoardSet, Connector, Dash, Element, ElementId, End, Mark, Rgba,
+    RichText, Route, STICKY_COLORS, STICKY_SIDE, STICKY_WIDE, Shape, ShapeType, Style,
 };
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::screens::hero::board_view::{self, default_style};
@@ -19,7 +20,7 @@ use ph2d_tokens::{ColorToken, Spacing};
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 3,
+    max_level: 4,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -34,7 +35,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         1 => scene_two_boards(hero),
         2 => scene_shapes(hero),
         3 => scene_arrows(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=3)"),
+        4 => scene_notes(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=4)"),
     }
 }
 
@@ -316,4 +318,186 @@ fn scene_arrows(hero: &mut HeroScreen) {
     hero.documents.activate(Some(id));
     // A seta com o ponto de ajuste abre seleccionada: o ponto oco e as bolinhas do meio à vista.
     board_view::select(hero, [bent]);
+}
+
+/// Uma nota de cor `c` (índice das 16), do tipo `kind`, com o canto em `[x, y]` e largura `w`; a
+/// letra escala com a largura (a M tem a de nascença). Devolve o id.
+fn put_note(
+    doc: &mut BoardDoc,
+    kind: ShapeType,
+    c: usize,
+    text: RichText,
+    [x, y, w]: [f64; 3],
+) -> ElementId {
+    let fill = Rgba(STICKY_COLORS[c]);
+    let base = if kind == ShapeType::StickyWide {
+        STICKY_WIDE
+    } else {
+        STICKY_SIDE
+    };
+    let mut style = Style::new(Some(fill), None, fill.readable_ink());
+    style.font_size = ph2d_board_model::DEFAULT_FONT_SIZE * w / base;
+    let h = w * kind.note_aspect().unwrap_or(1.0);
+    let el = Element::new_shape(
+        doc.mint_id(),
+        doc.z_on_top(),
+        Shape { kind, style, text },
+        [x, y, w, h],
+    );
+    let id = el.id;
+    BoardOp::Put(el).apply(doc);
+    id
+}
+
+fn note_text(key: &str) -> RichText {
+    RichText::plain(ph2d_i18n::tr(key))
+}
+
+/// Cena 4 — as NOTAS da W3 (o coração do brainstorm), no idioma do Miro.
+fn scene_notes(hero: &mut HeroScreen) {
+    let mut set = BoardSet::default();
+    let id = set.create(default_name(1));
+    let board = set.get_mut(id).expect("acabou de nascer");
+    let doc = &mut board.doc;
+    let m = STICKY_SIDE;
+    let gap = m * 0.1;
+    let (sticky, wide) = (ShapeType::Sticky, ShapeType::StickyWide);
+    // A fila de ideias (a do meio ensina as quatro marcas do texto, uma por linha).
+    let mut marked = String::new();
+    let mut ranges = Vec::new();
+    for (i, (key, mark)) in [
+        ("board.smoke.note.bold", Mark::Bold),
+        ("board.smoke.note.italic", Mark::Italic),
+        ("board.smoke.note.underline", Mark::Underline),
+        ("board.smoke.note.strike", Mark::Strike),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if i > 0 {
+            marked.push('\n');
+        }
+        let start = marked.len();
+        marked.push_str(ph2d_i18n::tr(key));
+        ranges.push((start..marked.len(), mark));
+    }
+    let mut rich = RichText::plain(&marked);
+    for (r, mark) in ranges {
+        rich.toggle(r, mark);
+    }
+    let row = [
+        note_text("board.smoke.note.type"),
+        rich,
+        note_text("board.smoke.note.tab"),
+    ];
+    let mut fit = Vec::new();
+    for (i, text) in row.into_iter().enumerate() {
+        let x = i as f64 * (m + gap);
+        fit.push(put_note(doc, sticky, 1, text, [x, 0.0, m]));
+    }
+    // A que CRESCEU para baixo com o texto (a decisão 2 do dono).
+    let grown = put_note(
+        doc,
+        sticky,
+        8,
+        note_text("board.smoke.note.grows"),
+        [3.0 * (m + gap) + 2.0 * gap, 0.0, m],
+    );
+    fit.push(grown);
+    // A pilha (laranja), com o que ela faz escrito por baixo.
+    let sx = 4.0 * (m + gap) + 4.0 * gap;
+    put_note(
+        doc,
+        ShapeType::StickyStack,
+        3,
+        RichText::default(),
+        [sx, 0.0, m],
+    );
+    let mut hint = default_style(hero.theme);
+    hint.stroke = None;
+    put_shape(
+        doc,
+        ShapeType::Rectangle,
+        hint.clone(),
+        "board.smoke.note.stack",
+        [sx - gap, m + 2.0 * gap, m + 3.0 * gap, 70.0],
+    );
+    // Os tamanhos P · M · G e a larga, alinhados por baixo.
+    let y2 = 2.2 * m;
+    let mut x = 0.0;
+    for (scale, key) in [
+        (0.75, "board.smoke.note.small"),
+        (1.0, "board.smoke.note.medium"),
+        (1.5, "board.smoke.note.large"),
+    ] {
+        let w = m * scale;
+        put_note(doc, sticky, 4, note_text(key), [x, y2, w]);
+        x += w + gap;
+    }
+    put_note(
+        doc,
+        wide,
+        12,
+        note_text("board.smoke.note.wide"),
+        [x, y2, STICKY_WIDE],
+    );
+    // As 16 cores do Miro, pequenas, em duas linhas de oito.
+    let y3 = y2 + 1.5 * m + 3.0 * gap;
+    let small = m * 0.5;
+    for c in 0..STICKY_COLORS.len() {
+        let (col, r) = ((c % 8) as f64, (c / 8) as f64);
+        put_note(
+            doc,
+            sticky,
+            c,
+            RichText::default(),
+            [col * (small + gap), y3 + r * (small + gap), small],
+        );
+    }
+    // Uma FORMA guarda a cor da letra por trecho (as notas do Miro não).
+    let mut shape_style = default_style(hero.theme);
+    shape_style.round = true;
+    let s = put_shape(
+        doc,
+        ShapeType::Rectangle,
+        shape_style,
+        "board.smoke.note.red_word",
+        [sx + m + 4.0 * gap, 0.0, 260.0, 110.0],
+    );
+    if let Some(sh) = doc.get(s).and_then(|e| e.shape()).cloned() {
+        let mut sh = sh;
+        let word = ph2d_i18n::tr("board.smoke.note.red");
+        if let Some(at) = sh.text.as_str().find(word) {
+            let red = Some(Rgba(STICKY_COLORS[11]));
+            sh.text.restyle(at..at + word.len(), |mk| mk.color = red);
+            let mut el = doc.get(s).cloned().expect("acabou de entrar");
+            el.kind = ph2d_board_model::ElementKind::Shape(sh);
+            BoardOp::Put(el).apply(doc);
+        }
+    }
+    // O monte DESARRUMADO, seleccionado: a pega de quatro pontos arruma-o.
+    let mx = sx + m + 4.0 * gap;
+    let my = 1.3 * m;
+    let messy = [
+        (0.0, 30.0, 6, "board.smoke.note.m1"),
+        (230.0, -10.0, 9, "board.smoke.note.m2"),
+        (480.0, 60.0, 13, "board.smoke.note.m3"),
+        (60.0, 260.0, 5, "board.smoke.note.m4"),
+        (330.0, 230.0, 10, "board.smoke.note.m5"),
+        (560.0, 300.0, 7, "board.smoke.note.m6"),
+    ];
+    let pile: Vec<ElementId> = messy
+        .iter()
+        .map(|&(dx, dy, c, key)| {
+            put_note(doc, sticky, c, note_text(key), [mx + dx, my + dy, m * 0.9])
+        })
+        .collect();
+    fit.extend(pile.iter().copied());
+    board.camera.center_x = 980.0;
+    board.camera.center_y = 430.0;
+    board.camera.zoom = 0.62;
+    document_tabs::load(hero, set);
+    hero.documents.activate(Some(id));
+    board_view::fit_later(hero, fit);
+    board_view::select(hero, pile);
 }

@@ -102,6 +102,30 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.skip" => "skip",
         "board.smoke.later" => "Later",
         "board.smoke.notes" => "Notes — drag the dots on my arrow",
+        "board.smoke.note.type" => "Select a note and just type",
+        "board.smoke.note.bold" => "bold",
+        "board.smoke.note.italic" => "italic",
+        "board.smoke.note.underline" => "underline",
+        "board.smoke.note.strike" => "strike",
+        "board.smoke.note.tab" => "Tab makes the next note →",
+        "board.smoke.note.grows" => {
+            "This note GREW: a note grows down with its text instead of shrinking the letters, so a \
+             long idea stays easy to read from far away. Delete some of this text and the note goes \
+             back to its square size."
+        }
+        "board.smoke.note.stack" => "Drag a new note off the stack",
+        "board.smoke.note.small" => "S",
+        "board.smoke.note.medium" => "M",
+        "board.smoke.note.large" => "L",
+        "board.smoke.note.wide" => "Wide note",
+        "board.smoke.note.red_word" => "Shapes can have a red word",
+        "board.smoke.note.red" => "red",
+        "board.smoke.note.m1" => "Arrange us",
+        "board.smoke.note.m2" => "Drag the four dots",
+        "board.smoke.note.m3" => "up there",
+        "board.smoke.note.m4" => "to the right",
+        "board.smoke.note.m5" => "or to the left",
+        "board.smoke.note.m6" => "Ctrl+Z undoes it",
         _ => return None,
     })
 }

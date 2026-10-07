@@ -91,6 +91,18 @@ pub fn select(hero: &mut HeroScreen, ids: impl IntoIterator<Item = ph2d_board_mo
     }
 }
 
+/// As formas e notas `ids` do quadro activo ajustam a altura ao texto no próximo desenho (uma cena
+/// de smoke montada por código não tem o moldador).
+pub fn fit_later(
+    hero: &mut HeroScreen,
+    ids: impl IntoIterator<Item = ph2d_board_model::ElementId>,
+) {
+    let theme = hero.theme;
+    if let Some((_, live)) = hero.documents.active_parts() {
+        editor(&mut live.editor, theme).fit_later(ids);
+    }
+}
+
 /// Ecrã → ponteiro no mundo do quadro.
 fn world_pointer(board: &Board, area: Area, x: f32, y: f32, mods: Modifiers) -> Pointer {
     Pointer {

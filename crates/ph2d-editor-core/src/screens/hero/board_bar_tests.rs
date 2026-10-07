@@ -481,3 +481,6 @@ fn the_a_key_picks_the_arrow_tool() {
 
 #[path = "board_bar_notes_tests.rs"]
 mod notes;
+
+#[path = "board_bar_pen_tests.rs"]
+mod pen;

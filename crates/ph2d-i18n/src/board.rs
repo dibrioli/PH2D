@@ -104,6 +104,19 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.font.m" => "M",
         "board.font.l" => "L",
         "board.font.xl" => "XL",
+        "board.smoke.pen.start" => "Start",
+        "board.smoke.pen.idea" => "An idea",
+        "board.smoke.pen.worth" => "Worth it?",
+        "board.smoke.pen.do" => "Do it",
+        "board.smoke.pen.later" => "Later",
+        "board.smoke.pen.yes" => "yes",
+        "board.smoke.pen.no" => "no",
+        "board.smoke.pen.hint_sketch" => {
+            "The wavy button at the bottom of the left bar switches the whole board between Sketch and Final — or only the selection"
+        }
+        "board.smoke.pen.hint_pen" => {
+            "The pen is in hand: draw. Its panel has the highlighter, the erasers (E) and the laser pointer (K)"
+        }
         "board.smoke.start" => "Start",
         "board.smoke.collect" => "Collect ideas from the team",
         "board.smoke.good_idea" => "Good idea?",

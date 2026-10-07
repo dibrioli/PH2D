@@ -128,13 +128,17 @@ fn collect(sets: Vec<OpSet>, into: &mut Rough) {
 }
 
 /// As opções do rough.js de um elemento: a mão do Excalidraw «artista» (`roughness 1`, `bowing 1`),
-/// a espessura do estilo, as riscas no preenchimento (o guardanapo) e a SEMENTE do elemento.
+/// a espessura do estilo, o preenchimento CHEIO de borda tremida e a SEMENTE do elemento.
+///
+/// ⛔ As riscas (`hachure`) não: a cor da letra de uma forma lê-se sobre o PREENCHIMENTO, e entre as
+/// riscas está o quadro — a mesma letra ficava ilegível num dos dois (foto da cena 5, 07/10: branca
+/// sobre riscas pastel num quadro escuro). Cheio, a letra lê-se igual em rascunho e em final.
 fn options(el: &Element, st: &Style, fill: bool) -> rough::Options {
     rough::Options {
         seed: el.seed(),
         stroke_width: st.stroke_width.max(1.0),
         fill: fill && st.fill.is_some(),
-        fill_style: FillStyle::Hachure,
+        fill_style: FillStyle::Solid,
         stroke: st.stroke.is_some() && st.stroke_width > 0.0,
         ..rough::Options::default()
     }
@@ -358,3 +362,7 @@ pub(crate) fn paint_laser(
         );
     }
 }
+
+#[cfg(test)]
+#[path = "sketch_tests.rs"]
+mod tests;

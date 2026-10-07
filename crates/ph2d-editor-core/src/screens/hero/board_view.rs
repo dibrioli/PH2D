@@ -108,6 +108,14 @@ pub fn fit_later(
     }
 }
 
+/// Põe a ferramenta `tool` na mão no quadro activo (a cena de smoke da caneta abre com ela).
+pub fn set_tool(hero: &mut HeroScreen, tool: ph2d_board_edit::Tool) {
+    let theme = hero.theme;
+    if let Some((_, live)) = hero.documents.active_parts() {
+        editor(&mut live.editor, theme).tool = tool;
+    }
+}
+
 /// Ecrã → ponteiro no mundo do quadro.
 fn world_pointer(board: &Board, area: Area, x: f32, y: f32, mods: Modifiers) -> Pointer {
     Pointer {

@@ -76,7 +76,6 @@ pub(super) fn flyout_items() -> Vec<Item> {
         .flatten()
         .chain((0..PEN_WIDTHS.len()).map(PenItem::InkWidth))
         .map(Item::Pen)
-        .chain([PEN_TOOL, Item::Sketch])
         .collect()
 }
 

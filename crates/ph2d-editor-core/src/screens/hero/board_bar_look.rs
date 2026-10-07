@@ -3,11 +3,11 @@
 //! seta desenhados com a MESMA geometria do quadro.
 
 use super::{HEADS, Item, Selected};
+use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
 use ph2d_board_edit::{Editor, Frame, Tool};
 use ph2d_board_model::{Connector, Dash, Head, Rgba, Route, Shape, ShapeType, Style};
 use ph2d_board_route::Dir;
-use crate::paint::{fill_rounded_rect, resolve};
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::{Affine, Brush, Color, Stroke, VectorScene};
 

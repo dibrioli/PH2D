@@ -5,6 +5,7 @@
 //! | 1 | as abas: dois quadros já criados e o 1.º aberto, com uma grelha de rectângulos coloridos — a roda dá zoom à volta do cursor, arrastar move a vista, `Scene` devolve a cena |
 //! | 3 | as SETAS (W2): o mesmo fluxograma LIGADO por setas CURVAS (as do Miro: presas ao centro, seguem as caixas), o «sim» com rótulo, o «não» que volta por baixo e o «saltar» em arco por cima (presas a pontos fixos, com rótulo), e uma nota ligada a «mais tarde» por uma seta com UM ponto de ajuste, seleccionada — o ponto oco arrasta-se, a bolinha a meio de cada trecho cria outro, duplo-clique apaga; numa caixa, os pontos azuis criam a seguinte já ligada (`Ctrl+→` também) |
 //! | 4 | as NOTAS (W3): uma fila de ideias (a do meio com negrito, itálico, sublinhado e riscado), uma nota que CRESCEU com o texto, os tamanhos P · M · G e a larga, as 16 cores do Miro, uma PILHA de onde se arrastam notas, uma forma com uma palavra a vermelho, e um monte desarrumado SELECCIONADO — a pega de quatro pontos (canto de cima à direita) arruma-o em grelha; `N` é a ferramenta Nota, escrever com uma nota seleccionada escreve nela, `Tab` faz a seguinte |
+//! | 5 | a CANETA e o RASCUNHO (W4): o fluxograma num quadro em RASCUNHO (formas e setas à mão, preenchimentos às riscas) com desenhos da caneta por cima — uma volta vermelha, o marcador amarelo, um visto — e a caneta já na mão (o painel dela aberto: caneta, marcador, as duas borrachas, o laser, as três predefinições, a cor e a espessura); o botão ondulado ao fundo da barra da esquerda troca o quadro inteiro (ou a selecção) para FINAL e de volta; `P` caneta · `E` borracha · `K` laser |
 //! | 2 | as FORMAS (W1): um fluxograma com texto dentro (início → recolher ideias → «boa ideia?» → construir → fim), um passo rodado, um tracejado e um meio transparente; por baixo, o catálogo das 18 formas com o nome de cada uma — seleccionar, mover, redimensionar, rodar, duplo-clique para escrever, a barra curta à esquerda e a de estilo por cima da selecção |
 
 use ph2d_board_model::{
@@ -17,10 +18,14 @@ use ph2d_editor_core::screens::hero::{board_bar, document_tabs};
 use ph2d_editor_core::widget::panel_chrome::HIGHLIGHTER_RGBA;
 use ph2d_tokens::{ColorToken, Spacing};
 
+/// A cena 5 (W4), num ficheiro filho.
+#[path = "smoke_pen.rs"]
+mod pen;
+
 /// O roteador desta família — o maior nível que o `match` de [`stage_armed_smokes`] responde.
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_BOARD_SMOKE",
-    max_level: 4,
+    max_level: 5,
 }];
 
 /// Encena o que o dono armou por variável de ambiente. Inerte sem ela.
@@ -36,7 +41,8 @@ pub fn stage_armed_smokes(hero: &mut HeroScreen) {
         2 => scene_shapes(hero),
         3 => scene_arrows(hero),
         4 => scene_notes(hero),
-        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=4)"),
+        5 => pen::scene_pen(hero),
+        _ => eprintln!("[board] PH2D_BOARD_SMOKE={level}: não há esta cena (1..=5)"),
     }
 }
 

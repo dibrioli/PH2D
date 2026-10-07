@@ -9,8 +9,8 @@
 
 - Branch `line/MiroClone`, worktree `Worktrees/line-MiroClone`, base `a46c4c200` (o `main` não andou).
 - Commits da W4: `76cc80019` (a porta + o oráculo + a fixture do formato 3), `92e22c360` (caneta,
-  borrachas, laser, rascunho), `87b9e70eb` (cena 5 e testes) + os do fecho. Diff da linha
-  `a46c4c200..HEAD`.
+  borrachas, laser, rascunho), `87b9e70eb` (cena 5 e testes), `6cb588998` (a letra à mão, pedida pelo
+  dono), `708088516`/`4f09d5921` (portão), `48773e0ff` (mutação). Diff da linha `a46c4c200..HEAD`.
 - ⏳ **Smoke do dono por fazer** (§5).
 
 ## §1 — As leis e de onde vêm
@@ -51,7 +51,28 @@ endpoint de busca com `/en-us/` no caminho dá **404** desde a W3 — usar `…/
   (`board_bar_pen_tests.rs`).
 - Cena 5 fotografada 3×: a 1.ª com riscas (a letra sumia — §6), a 2.ª cheia, a 3.ª em FINAL por troca
   temporária (A/B: o rascunho lê-se como tal).
-- ⏳ Portão batched, prova de mutação, binário do smoke quente: preenchidos no fecho (abaixo).
+- Cena 5 refotografada com a letra à mão (formas e rótulos das setas em Virgil; as instruções, em
+  final, ficam na Inter).
+- **Portão batched** sobre `a46c4c200..HEAD` (três rodadas, agente `verificador`): `nextest-impacted`
+  17 145/17 146 — o vermelho é `ph2d-tool-painter …the_mask_stroke_cost_does_not_follow_the_canvas`
+  (relógio, crate sem diff), 3/3 verde sozinho a `load ~11` ⇒ flake de carga, não desta linha;
+  clippy `-D warnings --all-targets` nas 9 crates tocadas limpo; `fmt --all --check` limpo;
+  `censos-da-arvore-combinada.sh` 12/12. O que as rodadas apanharam: números e uma cor soltos no
+  painel da caneta (o censo lê LINHA a linha — uma marca no topo de uma tabela não a cobre), 6 avisos
+  do clippy na porta, e o `fn hand` inserido ENTRE o comentário do `TextEdit::new` e o `new` (o
+  comentário e o `#[must_use]` passaram a ser da função errada — o clippy viu o atributo repetido).
+- **Prova de mutação 16/17** (agente `mutacao`, 15 filtros com controlo verde): **M1** (a borracha só
+  vê traços: `.filter(ink)`) é EQUIVALENTE — `touches` já dá `false` sem pontos de traço; fica como
+  lei à vista e pré-filtro barato. **M12** (largura sem pressão) e **M16** (`ed.style.sketch =
+  board.sketch`) eram BURACOS: a fixture tinha pressão constante 0,5 (afinar ou não dava o mesmo) e
+  nenhum teste abria um quadro já em rascunho — tapados (pressão 0,1→0,9; `a_board_already_in_sketch…`)
+  e re-mutados: sangram.
+- Testes novos ao todo: 2 do documento, 11 da edição, 3 do desenho, 1 da letra, 6 pelo ecrã.
+- `agent-loop-profile.sh` (20 sessões): paralelismo 1,11 ✗ · respostas/sessão 232 ✓ · `test:check`
+  3,5× ✗ · `Edit` 33 % ✗ (edições por `python3` com `assert` de contagem — duas vezes o `assert` parou
+  um script inteiro antes de escrever) · contexto relido 509 mil ✗ · início 61 mil ✓.
+- `target/*/incremental` reclamado (**22 GB**). Binário `smoke` quente, 2.ª corrida:
+  `Finished \`smoke\` profile [optimized] target(s) in 0.28s`, zero `Compiling`.
 
 ## §4 — ⏳ O que fica aberto (por ordem)
 

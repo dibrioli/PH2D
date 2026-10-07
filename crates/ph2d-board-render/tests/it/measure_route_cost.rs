@@ -107,6 +107,7 @@ fn measure_route_cost() {
                     &mut ts,
                     render,
                     routes,
+                    None,
                 );
             }
             per[i][3].push(ms(t) / FRAMES as f64);

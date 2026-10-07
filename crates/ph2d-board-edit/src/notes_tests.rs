@@ -118,7 +118,11 @@ fn a_note_grows_down_with_its_text_and_shrinks_back_to_its_birth_height() {
     assert!(w.el(id).h > STICKY_SIDE * 1.5);
     w.ed.begin_text(&mut w.doc, &mut w.ts, id, None);
     w.key(TextKey::Backspace { word: false });
-    assert_eq!(w.el(id).h, STICKY_SIDE, "ficou presa à altura de quando se abriu");
+    assert_eq!(
+        w.el(id).h,
+        STICKY_SIDE,
+        "ficou presa à altura de quando se abriu"
+    );
 }
 
 #[test]

@@ -83,8 +83,28 @@ pub fn view(camera: &Camera, area: Area) -> Affine {
         * Affine::translate((-camera.center_x, -camera.center_y))
 }
 
+/// A selecção do texto em edição, pintada POR BAIXO das letras dele (o idioma da caixa de texto da
+/// interface) num tom TRANSLÚCIDO: por cima e opaca tapava o texto e a cor da nota (smoke da W3).
+struct TextSel<'a> {
+    rects: &'a [[f64; 4]],
+    brush: Brush,
+}
+
+impl TextSel<'_> {
+    fn paint(&self, scene: &mut VectorScene, at: Affine) {
+        for r in self.rects {
+            scene.fill_path(
+                &Rect::new(r[0], r[1], r[2], r[3]).to_path(0.1),
+                &self.brush,
+                at,
+            );
+        }
+    }
+}
+
 /// Pinta `board` em `area` (`[x, y, w, h]` em px de ecrã). `routes` = as rotas das setas de
-/// `board.doc`, já em dia (`ph2d_board_edit::Editor::routes`).
+/// `board.doc`, já em dia (`ph2d_board_edit::Editor::routes`); `text` = o texto em edição (a
+/// selecção dele pinta-se debaixo das letras), do `Overlay` do editor.
 #[allow(clippy::too_many_arguments)]
 pub fn paint(
     board: &Board,
@@ -94,7 +114,18 @@ pub fn paint(
     ts: &mut TextSystem,
     cache: &mut RenderCache,
     routes: &RouteCache,
+    text: Option<&ph2d_board_edit::TextOverlay>,
 ) {
+    let sel = text.map(|t| {
+        (
+            t.element,
+            TextSel {
+                rects: &t.selection,
+                brush: Brush::Solid(token(ColorToken::GraphMarquee, theme)),
+            },
+        )
+    });
+    let sel_of = |id| sel.as_ref().filter(|(e, _)| *e == id).map(|(_, s)| s);
     let [x, y, w, h] = area;
     if !(w > 0.0 && h > 0.0) {
         return;
@@ -126,7 +157,8 @@ pub fn paint(
                 if Rect::new(a[0], a[1], b[0], b[1]).intersect(clip).area() > 0.0 {
                     let ink = Brush::Solid(token(ColorToken::Bg1, theme));
                     let at = (board.id.0, el.id.0);
-                    paint_connector(scene, c, r, v, zoom, ts, cache, at, &ink);
+                    let s = sel_of(el.id);
+                    paint_connector(scene, c, r, v, zoom, ts, cache, at, &ink, s);
                 }
             }
             continue;
@@ -152,7 +184,17 @@ pub fn paint(
             }
             continue;
         }
-        paint_shape(scene, el, shape, v, zoom, ts, cache, board.id.0);
+        paint_shape(
+            scene,
+            el,
+            shape,
+            v,
+            zoom,
+            ts,
+            cache,
+            board.id.0,
+            sel_of(el.id),
+        );
     }
     scene.pop_layer();
     cache.end_frame();
@@ -168,6 +210,7 @@ fn paint_shape(
     ts: &mut TextSystem,
     cache: &mut RenderCache,
     board: u64,
+    sel: Option<&TextSel<'_>>,
 ) {
     let st = &shape.style;
     let t = v * to_world(el);
@@ -210,6 +253,9 @@ fn paint_shape(
         );
         let [ox, oy] = text_origin(shape.kind, el.w, el.h, f64::from(layout.height()));
         let at = t * Affine::translate((ox, oy));
+        if let Some(sel) = sel {
+            sel.paint(scene, at);
+        }
         if font_px >= READ_PX {
             ph2d_board_layout::paint(scene, layout, at, doc_color(st.text_color));
         } else {
@@ -281,6 +327,7 @@ fn paint_connector(
     cache: &mut RenderCache,
     owner: (u64, u64),
     paper: &Brush,
+    sel: Option<&TextSel<'_>>,
 ) {
     let st = &c.style;
     let faded = st.opacity < 100;
@@ -350,6 +397,9 @@ fn paint_connector(
             .bounding_box()
             .inflate(st.font_size * LABEL_PAD, st.font_size * LABEL_PAD);
         scene.fill_path(&knock.to_path(0.1), paper, at);
+        if let Some(sel) = sel {
+            sel.paint(scene, at);
+        }
         if font_px >= READ_PX {
             ph2d_board_layout::paint(scene, layout, at, doc_color(st.text_color));
         } else {
@@ -412,14 +462,7 @@ pub fn paint_overlay(
         && let Some(el) = board.doc.get(t.element)
     {
         let to_screen = v * to_world(el) * Affine::translate((t.origin[0], t.origin[1]));
-        let soft = Brush::Solid(token(ColorToken::AccentSoft, theme));
-        for r in &t.selection {
-            scene.fill_path(
-                &Rect::new(r[0], r[1], r[2], r[3]).to_path(0.1),
-                &soft,
-                to_screen,
-            );
-        }
+        // A selecção do texto pinta-se no quadro, DEBAIXO das letras (`paint`); aqui só o cursor.
         if let Some(c) = t.caret {
             // O cursor tem a espessura de UM px de ecrã a qualquer zoom.
             let mid = (c[0] + c[2]) / 2.0;
@@ -436,9 +479,11 @@ pub fn paint_overlay(
         let p0 = v * Point::new(r[0], r[1]);
         let p1 = v * Point::new(r[2], r[3]);
         let rect = Rect::from_points(p0, p1).to_path(0.1);
+        // TRANSLÚCIDA por contrato (`GraphMarquee`): a faixa passa por cima do que selecciona, e a
+        // `AccentSoft` opaca tapava as formas e o texto (smoke da W3).
         scene.fill_path(
             &rect,
-            &Brush::Solid(token(ColorToken::AccentSoft, theme)),
+            &Brush::Solid(token(ColorToken::GraphMarquee, theme)),
             Affine::IDENTITY,
         );
         line(scene, &rect, accent, thin);

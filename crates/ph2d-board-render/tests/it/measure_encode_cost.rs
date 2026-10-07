@@ -176,7 +176,7 @@ pub(super) fn one_frame(
 ) {
     scene.reset();
     let board = &set.boards()[0];
-    ph2d_board_render::paint(board, AREA, scene, Theme::Forge, ts, cache, routes);
+    ph2d_board_render::paint(board, AREA, scene, Theme::Forge, ts, cache, routes, None);
 }
 
 #[test]

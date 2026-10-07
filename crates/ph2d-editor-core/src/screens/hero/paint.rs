@@ -241,7 +241,8 @@ pub fn paint_hero_screen(
             let overlay = ed.overlay(&mut board.doc, text_system);
             let routes = ed.routes(&board.doc);
             let cache = &mut live.render_cache;
-            ph2d_board_render::paint(board, area, scene, theme, text_system, cache, routes);
+            let text = overlay.text.as_ref();
+            ph2d_board_render::paint(board, area, scene, theme, text_system, cache, routes, text);
             ph2d_board_render::paint_overlay(board, area, scene, theme, &overlay, ed.metrics());
         }
         super::board_bar::paint(hero, r, scene, text_system);

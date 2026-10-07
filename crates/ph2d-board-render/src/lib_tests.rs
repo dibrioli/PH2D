@@ -58,3 +58,19 @@ fn dots_sit_on_world_multiples_of_the_step() {
     assert!((w[0] / step - (w[0] / step).round()).abs() < 1e-9);
     assert!((w[1] / step - (w[1] / step).round()).abs() < 1e-9);
 }
+
+/// ⛔ Smoke da W3 (06/10, capturas do dono): a selecção do texto e a faixa de seleccionar por arrasto
+/// eram `AccentSoft` OPACA pintada POR CIMA — tapavam as notas e o texto. Agora a faixa é a
+/// `GraphMarquee` (translúcida por contrato) e a selecção do texto pinta-se debaixo das letras.
+#[test]
+fn the_board_never_paints_an_opaque_selection_over_its_content() {
+    let src = include_str!("lib.rs");
+    assert!(
+        !src.contains("ColorToken::AccentSoft"),
+        "o desenho do quadro voltou a pintar com a AccentSoft (opaca)"
+    );
+    for theme in ph2d_tokens::Theme::ALL {
+        let a = ph2d_tokens::ColorToken::GraphMarquee.resolve(theme).a;
+        assert!(a < 128, "{theme:?}: a faixa de seleccionar tapa (alfa {a})");
+    }
+}

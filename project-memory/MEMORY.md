@@ -81,7 +81,7 @@
 - 📚 [Ship / CI / integração: mais (23) lições](reference_topic_ship_ci_integration_lessons.md)
 
 ## Auditoria (famílias — 2 saltos)
-- ⛔⛔ [Régua de vão unidireccional pune o fecho parcial](feedback_a_one_direction_gap_ruler_punishes_partial_closing.md) · [o OBJECTIVO da régua pode contradizer o produto; continuidade entre poses vizinhas](feedback_a_ruler_objective_can_contradict_the_product.md)
+- ⛔⛔ [Régua de vão num sentido pune fecho parcial](feedback_a_one_direction_gap_ruler_punishes_partial_closing.md) · [OBJECTIVO da régua × produto](feedback_a_ruler_objective_can_contradict_the_product.md)
 - ⛔ [`touch` não mede uma edição; `--timings` dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
 
 - ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)

@@ -450,7 +450,7 @@ fn fecha(
         let u0 = ponta(fonte[0], fonte[n0 - 1]);
         let u1 = ponta(fonte[n1.saturating_sub(2)], fonte[n1 - 1]);
         anda_para_a_frente(c, u0, 0.0, 0.25) && anda_para_a_frente(c, u1, 0.75, 1.0)
-    }
+    } && curva_como_a_fonte(&fonte, c)
 }
 
 /// A derivada de `c` projectada em `u` é `≥ 0` em todo `t ∈ [t0, t1]`? — exacta: a projecção é
@@ -578,6 +578,11 @@ impl kurbo::ParamCurveFit for Assado<'_> {
 mod refino;
 pub use refino::{REFINO_DO_PRODUTO, Refino};
 
+/// A13 — a cúbica não aperta mais que a fonte, num irmão pelo tecto de LOC.
+#[path = "curva_segundo_corpo_aperto.rs"]
+mod aperto;
+use aperto::curva_como_a_fonte;
+
 #[cfg(test)]
 #[path = "curva_segundo_corpo_espeto_tests.rs"]
 mod espeto_tests;
@@ -585,6 +590,7 @@ mod espeto_tests;
 #[cfg(test)]
 mod tests {
     use super::Assado;
+
     /// ⭐⭐⭐ **GATE — O BAKE INTERPOLA, E A TANGENTE DELE É A DERIVADA DE VERDADE.**
     ///
     /// ⛔⛔ **A segunda metade não é zelo:** o cabeçalho da [`ph2d_vec_envelope::Warp`] mede o sintoma

@@ -105,7 +105,8 @@ fn a_tampa_da_junta_nao_salta_com_a_pose() {
         let rs = raizes(&sim);
         assert_eq!(rs.len(), 2, "a =6 tem dois esqueletos");
         let mut agora = (g1, g2);
-        let mut antes: Vec<Option<(Vec<Vec<[f64; 2]>>, Vec<Vec<[f64; 2]>>)>> = vec![None, None];
+        type Quadro = (Vec<Vec<[f64; 2]>>, Vec<Vec<[f64; 2]>>);
+        let mut antes: Vec<Option<Quadro>> = vec![None, None];
         for &(a, b) in poses {
             for r in &rs {
                 crate::smoke_bone_par::dobra_duas(&mut sim, *r, a - agora.0, b - agora.1);

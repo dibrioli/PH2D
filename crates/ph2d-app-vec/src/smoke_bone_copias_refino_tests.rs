@@ -22,18 +22,18 @@ fn bits(p: &ph2d_vec_scene::VecPath) -> Vec<u64> {
 ///
 /// Sem o refino o ajuste corta a tampa por uma corda: a imagem EXACTA do contorno fica até
 /// `0,2663`–`0,2898` fora do desenho e `6`–`8` células onde ela pinta ficam sem cor (o CONTROLO).
-/// Com o refino pelos pesos (`passo = 0,025`), o afastamento medido (`0,0066` · `0,0045` · `0,0066` ·
-/// `0,0077`) mais a folga que o próprio ajuste aceita (`2 ×` a tolerância, a do `fecha`), e nenhuma
+/// Com o refino pelos pesos (`passo = 0,025`, pesos interpolados; o `fecha` que recusa o bico), o
+/// afastamento medido (`0,0090` · `0,0067` · `0,0062` · `0,0082`) mais a folga que o próprio ajuste aceita (`2 ×` a tolerância, a do `fecha`), e nenhuma
 /// célula a faltar — só a cancelação de camadas de sinais opostos (grau `0`) fica, e essa é a
 /// verdade.
 #[test]
 fn a_tampa_da_junta_dobrada_nao_perde_cor() {
     let refino = ph2d_vec_skin::curva::REFINO_DO_PRODUTO;
     for ((g1, g2), medido) in [
-        ((170.0, 110.0), 0.0066),
-        ((170.0, 140.0), 0.0045),
-        ((170.0, 150.0), 0.0066),
-        ((170.0, 170.0), 0.0077),
+        ((170.0, 110.0), 0.0090),
+        ((170.0, 140.0), 0.0067),
+        ((170.0, 150.0), 0.0062),
+        ((170.0, 170.0), 0.0082),
     ] {
         let (sim, scene, st, ids) = cena(g1, g2);
         let b = Barra::de(&sim, &st, ids[0]);

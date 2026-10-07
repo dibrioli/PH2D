@@ -375,7 +375,10 @@ fn candidatos() -> Vec<(String, Option<Refino>)> {
 /// ⭐ **A régua da CONTINUIDADE** — as três varreduras de `0,1°` (a cena presa UMA vez e só a pose
 /// a mudar), as duas barras e as duas juntas: para cada lei, cada passo dá `(Δ desenho, Δ verdade)`
 /// na tampa (Hausdorff entre quadros vizinhos). Devolve, por lei, todos os pares.
-pub(crate) fn continuidade(leis: &[Option<Refino>]) -> Vec<Vec<(f64, f64, (f32, f32))>> {
+/// `(Δ desenho, Δ verdade, pose)` de cada passo.
+pub(crate) type Passo = (f64, f64, (f32, f32));
+
+pub(crate) fn continuidade(leis: &[Option<Refino>]) -> Vec<Vec<Passo>> {
     let mut pares = vec![Vec::new(); leis.len()];
     let varreduras: [Vec<(f32, f32)>; 3] = [
         (0..=250u16)

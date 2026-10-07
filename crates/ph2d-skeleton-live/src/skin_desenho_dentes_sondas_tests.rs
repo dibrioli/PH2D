@@ -14,7 +14,11 @@ use ph2d_vec_skin::curva::{Bake, CampoIndexado, Refino};
 use std::fmt::Write as _;
 
 /// O bake do braço a `(primeira, segunda)` com `refino`, e as quinas do artista.
-fn entrada(primeira: f32, segunda: f32, refino: Option<Refino>) -> (VecPath, Vec<([f64; 2], f64)>) {
+pub(super) fn entrada(
+    primeira: f32,
+    segunda: f32,
+    refino: Option<Refino>,
+) -> (VecPath, Vec<([f64; 2], f64)>) {
     let (mut sim, _scene, map, id, ossos) =
         crate::barra_da_cena_tests_support::braco_da_dobra_forte(0.3);
     for (k, g) in [(1, primeira), (2, -segunda)] {
@@ -23,13 +27,21 @@ fn entrada(primeira: f32, segunda: f32, refino: Option<Refino>) -> (VecPath, Vec
             .expect("Transform")
             .rotation += g.to_radians();
     }
-    let e = ph2d_ecs::Entity::from_bits(map[&id]);
+    assa_na(&sim, ph2d_ecs::Entity::from_bits(map[&id]), refino)
+}
+
+/// O bake da forma presa `e` (a lei do produto, com `refino`) e as quinas do artista.
+pub(super) fn assa_na(
+    sim: &ph2d_ecs::SimWorld,
+    e: ph2d_ecs::Entity,
+    refino: Option<Refino>,
+) -> (VecPath, Vec<([f64; 2], f64)>) {
     let skin = sim
         .world()
         .get::<ph2d_skeleton_ecs::SkinBind>(e)
         .expect("bind")
         .clone();
-    let pele = crate::skin_live::skin_of(&sim, e).expect("pele");
+    let pele = crate::skin_live::skin_of(sim, e).expect("pele");
     let prep = lida(e.to_bits(), &skin).expect("fonte");
     let g = &prep.guardado;
     let pesos = skin.pesos_do_quadro(if g.valida() { &g.pesos } else { &[] });
@@ -246,21 +258,17 @@ fn svg(nome: &str, camadas: &[(&[VecVertex], &str, f64)], centro: [f64; 2], lado
 #[test]
 #[ignore = "sonda: imprime e escreve SVG"]
 fn diag_os_dentes_passo_a_passo() {
-    let casos: [(&str, f32, f32, Option<Refino>); 5] = [
+    let casos: [(&str, f32, f32, Option<Refino>); 6] = [
         (
             "p025_178_m130",
             178.0,
             -130.0,
             Some(Refino { passo: 0.025 }),
         ),
-        ("p025_178_m28", 178.0, -28.0, Some(Refino { passo: 0.025 })),
+        ("p025_178_m4", 178.0, -4.0, Some(Refino { passo: 0.025 })),
         ("p06_176_20", 176.0, 20.0, Some(Refino { passo: 0.06 })),
-        (
-            "p045_178_m130_controlo",
-            178.0,
-            -130.0,
-            Some(Refino { passo: 0.045 }),
-        ),
+        ("p06_178_m178", 178.0, -178.0, Some(Refino { passo: 0.06 })),
+        ("p03_132_m178", 132.0, -178.0, Some(Refino { passo: 0.03 })),
         ("off_178_m130_controlo", 178.0, -130.0, None),
     ];
     for (nome, p1, p2, refino) in casos {
@@ -303,6 +311,23 @@ fn diag_os_dentes_passo_a_passo() {
             ("6 abertura", &s6),
             ("7 fecho", &s7),
         ];
+        {
+            let (_, i, _) = pior_no(&s7);
+            let n = s7.len();
+            for k in [(i + n - 1) % n, i, (i + 1) % n] {
+                let v = s7[k];
+                println!(
+                    "   s7 nó {k}: âncora ({:.6},{:.6}) entra ({:+.2e},{:+.2e}) sai ({:+.2e},{:+.2e}) vira {:.1}°",
+                    v.anchor[0],
+                    v.anchor[1],
+                    v.in_handle[0] - v.anchor[0],
+                    v.in_handle[1] - v.anchor[1],
+                    v.out_handle[0] - v.anchor[0],
+                    v.out_handle[1] - v.anchor[1],
+                    ph2d_vec_boolean::overlap::viragem_do_vertice(&s7, k).unwrap_or(0.0)
+                );
+            }
+        }
         let mut primeiro: Option<usize> = None;
         for (k, (rot, v)) in passos.iter().enumerate() {
             let (a, i, p) = pior_no(v);
@@ -454,6 +479,74 @@ fn diag_a_identidade_fora_do_contacto() {
             }
             menor
         };
+        // As corridas que a BOLA toca: arestas côncavas (lado de fora) entre amostras (32 por
+        // segmento, como ela) mais apertadas que `0,99 r`, com a viragem somada.
+        {
+            let v = &sem.verts;
+            let nn = v.len();
+            let mut am: Vec<([f64; 2], [f64; 2], usize, f64)> = Vec::new();
+            for k in 0..nn {
+                let (a, b) = (v[k], v[(k + 1) % nn]);
+                let q = [a.anchor, a.out_handle, b.in_handle, b.anchor];
+                for i in 0..=32 {
+                    let t = f64::from(i) / 32.0;
+                    let s1 = 1.0 - t;
+                    let p = [0, 1].map(|j| {
+                        s1 * s1 * s1 * q[0][j]
+                            + 3.0 * s1 * s1 * t * q[1][j]
+                            + 3.0 * s1 * t * t * q[2][j]
+                            + t * t * t * q[3][j]
+                    });
+                    let d = [0, 1].map(|j| {
+                        3.0 * (s1 * s1 * (q[1][j] - q[0][j])
+                            + 2.0 * s1 * t * (q[2][j] - q[1][j])
+                            + t * t * (q[3][j] - q[2][j]))
+                    });
+                    let l = d[0].hypot(d[1]).max(1e-300);
+                    am.push((p, [d[0] / l, d[1] / l], k, t));
+                }
+            }
+            let m = am.len();
+            let area2: f64 = (0..m)
+                .map(|i| am[i].0[0] * am[(i + 1) % m].0[1] - am[(i + 1) % m].0[0] * am[i].0[1])
+                .sum();
+            let sinal = area2.signum();
+            let mut corrida: Vec<(usize, f64, f64)> = Vec::new();
+            let fecha_corrida = |c: &mut Vec<(usize, f64, f64)>| {
+                if !c.is_empty() {
+                    let giro: f64 = c.iter().map(|x| x.1).sum();
+                    if 2.0 * raio * (0.5 * giro.min(3.1)).tan() >= solda {
+                        let (e0, e1) = (c[0].0, c[c.len() - 1].0);
+                        println!(
+                            "     corrida da bola: {} arestas · viragem {:.1}° · de seg {} t={:.3} a seg {} t={:.3} · ({:.4},{:.4}) · menor raio da corda {:.4} ({:.2} r)",
+                            c.len(),
+                            giro.to_degrees(),
+                            am[e0].2,
+                            am[e0].3,
+                            am[e1].2,
+                            am[e1].3,
+                            am[e0].0[0],
+                            am[e0].0[1],
+                            c.iter().map(|x| x.2).fold(f64::MAX, f64::min),
+                            c.iter().map(|x| x.2).fold(f64::MAX, f64::min) / raio
+                        );
+                    }
+                    c.clear();
+                }
+            };
+            for e in 0..m {
+                let (a, b) = (am[e], am[(e + 1) % m]);
+                let dth =
+                    (a.1[0] * b.1[1] - a.1[1] * b.1[0]).atan2(a.1[0] * b.1[0] + a.1[1] * b.1[1]);
+                let corda = (b.0[0] - a.0[0]).hypot(b.0[1] - a.0[1]);
+                if dth * sinal < -1e-9 && corda < 0.99 * raio * dth.abs() {
+                    corrida.push((e, dth.abs(), corda / dth.abs().max(1e-300)));
+                } else {
+                    fecha_corrida(&mut corrida);
+                }
+            }
+            fecha_corrida(&mut corrida);
+        }
         let rm = raio_min(&sem.verts);
         println!(
             "     o menor raio de curvatura de todo o assado {:.4} ({:.2} r) no segmento {} t={:.3}",

@@ -65,3 +65,22 @@ desfazer (`ModelSnapshot`), o ficheiro (`PaintedDocument` — degrau do `PROJECT
 `python3 scripts/schema-recount.py`), a escrita da aguada (`watercolor_render.rs` deixa de fazer o
 `un-premultiply`) e a borracha (apaga o filtro também). Custo a medir: o quadro de um desenho novo a
 2048² e 4096² (o #45 está em `0,25` ms Digital · `1,34` Aquarela por movimento).
+
+## 5. Feito (2026-10-07, ordem do dono: *«sim. faça»*) — BUGS #46
+
+- **O encaixe, medido antes** (`vidro_tests::diag_a_aguada_como_vidrado`, 12 casos): «cor + alfa + filtro
+  em [0, 1]» não cabe em `~40 %` dos texels com corpo (erro no branco até `52` níveis, cortando a cor ou
+  o filtro); o alfa por canal em `u8` com o píxel de sempre ao lado erra `≤ 1`. Foi esse.
+- **A lei que o código executa** (`compositor::vidro`): `mostrado = W − t·(1 − papel)`, `W` a pilha sobre
+  o branco, `t` o produto de `1 − alfa_c` camada a camada — em tons de ecrã (ADR-0177), na passada do
+  compositor. Sem vidro, ou com o papel branco, é «cobrir com transparência», ao byte.
+- **O SELO**: o vidro guarda o píxel que a aguada escreveu; qualquer outro pincel que o reescreva
+  devolve o texel à lei de um alfa. Nenhum outro pincel precisou de conhecer o plano.
+- **A óptica sobre dois chãos** é a forma de Curtis especificar um pigmento (sobre o branco e sobre o
+  preto). Medido contra esse oráculo: pior `2` níveis (o piso), nos 24 casos do gate.
+- ⚠️ **Não é linear no chão, e fica decidido sobre o branco de referência:** a presença de tinta que pesa
+  o `Pigment` e a re-molhagem molhado sobre molhado (o oráculo do preto mede-a contra o preto: `8`
+  níveis). E com corpo 0 só um pigmento de canais 0/255 é filtro puro: a óptica do PH2D devolve
+  `pigmento·(1 − T)`, um azul `30,60,220` sobe o azul do papel castanho pelo que o próprio pigmento
+  devolve (o oráculo concorda).
+- Custo e gates: BUGS #46.

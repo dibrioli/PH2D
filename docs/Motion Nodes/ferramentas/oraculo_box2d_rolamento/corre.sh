@@ -9,7 +9,7 @@
 # uso: bash corre.sh <pasta com pilha_XX.txt (a sonda `exporta_a_pilha_para_o_oraculo`)> [saida]
 set -euo pipefail
 AQUI="$(cd "$(dirname "$0")" && pwd)"
-RAIZ="$(cd "$AQUI/../../.." && pwd)"
+RAIZ="$(cd "$AQUI/../../../.." && pwd)"
 PASTA="${1:?pasta com pilha_XX.txt}"
 SAIDA="${2:-$RAIZ/target/prova/onda9/oraculo/box2d.txt}"
 D="$RAIZ/target/oraculo_box2d"

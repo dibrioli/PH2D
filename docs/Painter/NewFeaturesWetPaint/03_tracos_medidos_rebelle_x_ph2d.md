@@ -1,7 +1,7 @@
 # 03 — Os mesmos gestos nos dois programas, medidos com a mesma régua (2026-10-07)
 
 > **Pergunta:** *porque é que o traço do Rebelle é superior em algumas características?* Responde-se
-> EXECUTANDO (método §1): os cinco gestos da nossa sonda (`crates/ph2d-tool-painter/tests/sonda_tracos_por_meio.rs`)
+> EXECUTANDO (método §1): os cinco gestos da nossa sonda (`crates/ph2d-tool-painter/tests/it/sonda_gestos.rs`)
 > foram enviados ao Rebelle pela porta oficial WebSocket (eventos Motion IO com pressão) e pintados pelos
 > nossos quatro meios; as duas pranchas foram medidas por [`ferramentas/mede_traco.py`](ferramentas/mede_traco.py).
 > As leis que isto fundamenta estão no [01 §2](01_o_que_o_rebelle_tem_e_nos_nao.md); aqui ficam a bancada,

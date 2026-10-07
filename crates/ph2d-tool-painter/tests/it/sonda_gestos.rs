@@ -1,29 +1,14 @@
-//! **Sonda (ignorada): o MESMO gesto nos quatro meios, gravado em PNG** — a metade NOSSA da comparação
-//! com o oráculo Rebelle 8 (`docs/Painter/NewFeaturesWetPaint/`, 2026-10-07).
-//!
-//! Cada meio recebe uma tela 1000×640 branca e cinco gestos iguais aos que o Rebelle recebe pela
-//! porta WebSocket (`ferramentas/gera_eventos.py` → `ferramentas/ws_eventos.mjs`, um evento por
-//! mensagem; a injecção de rato não pinta): um traço recto a passo de rato (3 px por evento), uma
-//! curva em S, um traço com rampa de pressão, um traço RÁPIDO (25 px por evento) e um cruzamento com
-//! outra cor. A régua é a mesma dos dois lados:
-//! `docs/Painter/NewFeaturesWetPaint/ferramentas/mede_traco.py`.
-//!
-//! ```text
-//! PH2D_SONDA_OUT=/tmp/x cargo test -p ph2d-tool-painter --profile smoke --test sonda_tracos_por_meio -- --ignored --nocapture
-//! ```
-//!
-//! Escreve `<meio>.ppm` (P6) — o PNG faz-se fora, com `magick`. Sem pacote novo.
+//! Os cinco gestos da bancada Rebelle × PH2D (`docs/Painter/NewFeaturesWetPaint/03`), numa tela
+//! 1000×640 branca: um só desenho para a sonda (`sonda_tracos_por_meio`) e para a cerca
+//! (`os_outros_meios_nao_mudam`). Os mesmos gestos vão ao Rebelle pela porta WebSocket
+//! (`ferramentas/gera_eventos.py`); mudar uma conta aqui muda as duas metades da comparação.
 
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_tool_painter::{PaintMedia, PainterTool};
-use std::io::Write;
 
-const W: u32 = 1000;
-const H: u32 = 640;
-/// O tamanho de fábrica da sonda; `PH2D_SONDA_SIZE` sobrepõe-no (o Rebelle recebe `size_px` 40 e mede 42 px de
-/// largura; o nosso 40 mede 58–72 — a comparação iguala a LARGURA MEDIDA, não o número).
-const BRUSH_PX: f32 = 40.0;
+pub const W: u32 = 1000;
+pub const H: u32 = 640;
 const AZUL: [u8; 3] = [23, 101, 179];
 const VERMELHO: [u8; 3] = [191, 0, 18];
 
@@ -76,14 +61,11 @@ fn curva_s(x0: f32, x1: f32, cy: f32, amp: f32) -> Vec<[f32; 2]> {
         .collect()
 }
 
-fn pinta(meio: PaintMedia) -> (Vec<u8>, u32, u32) {
+/// A cena inteira num meio, com o pincel de fábrica dele a `size` px: devolve `run_full()` (RGBA8).
+pub fn pinta(meio: PaintMedia, size: f32) -> (Vec<u8>, u32, u32) {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (W * H * 4) as usize], W, H);
     t.set_paint_media(meio);
-    let size = std::env::var("PH2D_SONDA_SIZE")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(BRUSH_PX);
     t.set_brush_size_px(size);
     t.set_brush_strength(1.0);
     t.set_brush_color_srgb8(AZUL);
@@ -108,41 +90,9 @@ fn pinta(meio: PaintMedia) -> (Vec<u8>, u32, u32) {
     t.run_full()
 }
 
-fn escreve_ppm(path: &std::path::Path, rgba: &[u8], w: u32, h: u32) {
-    assert_eq!(rgba.len(), (w * h * 4) as usize, "run_full devolve RGBA8");
-    let mut f = std::fs::File::create(path).expect("ppm");
-    write!(f, "P6\n{w} {h}\n255\n").unwrap();
-    let mut rgb = Vec::with_capacity((w * h * 3) as usize);
-    for px in rgba.chunks_exact(4) {
-        rgb.extend_from_slice(&px[..3]);
-    }
-    f.write_all(&rgb).unwrap();
-}
-
-#[test]
-#[ignore = "sonda: grava PNGs para a comparação com o oráculo; corre-se à mão"]
-fn os_mesmos_gestos_nos_quatro_meios() {
-    let out = std::env::var("PH2D_SONDA_OUT").unwrap_or_else(|_| {
-        std::env::temp_dir()
-            .join("ph2d_sonda_tracos")
-            .display()
-            .to_string()
-    });
-    std::fs::create_dir_all(&out).unwrap();
-    for (nome, meio) in [
-        ("digital", PaintMedia::Digital),
-        ("watercolor", PaintMedia::Watercolor),
-        ("impasto", PaintMedia::Impasto),
-        ("wetpaint", PaintMedia::WetPaint),
-    ] {
-        let t0 = std::time::Instant::now();
-        let (px, w, h) = pinta(meio);
-        let p = std::path::Path::new(&out).join(format!("{nome}.ppm"));
-        escreve_ppm(&p, &px, w, h);
-        println!(
-            "[sonda] {nome:<10} {w}x{h} → {} ({:.1} s)",
-            p.display(),
-            t0.elapsed().as_secs_f32()
-        );
-    }
+/// FNV-1a de 64 bits — o mesmo hash dos outros gates de pixels desta crate.
+pub fn fnv1a(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, &b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3)
+    })
 }

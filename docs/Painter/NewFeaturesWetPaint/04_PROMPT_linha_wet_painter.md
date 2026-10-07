@@ -31,7 +31,7 @@ e vira gate; nada dele se lê nem se copia (texturas, Mixbox).
 4. Código: `crates/ph2d-wet-paint/src/{brush,trail,flow,solver,drying,paper,render,tuning}.rs`,
    `crates/ph2d-tool-painter/src/tool/paint/{wetpaint.rs,wetpaint_settings.rs,wetpaint_commit.rs,wetpaint/}`,
    `crates/ph2d-panel-wet-tuning/`, a secção Wet Paint de `ph2d-panel-painter-layers`, e a sonda
-   `crates/ph2d-tool-painter/tests/sonda_tracos_por_meio.rs`.
+   `crates/ph2d-tool-painter/tests/it/sonda_tracos_por_meio.rs`.
 
 ## A cerca (gate red-first, antes do 1.º commit)
 

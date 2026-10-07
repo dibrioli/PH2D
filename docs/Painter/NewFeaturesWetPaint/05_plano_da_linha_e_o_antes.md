@@ -57,17 +57,27 @@ Digital/Watercolor/Impasto a 40: 58 / 68 / 72 px de largura (o mesmo número, qu
 | **W7** | caminho água 0 sem solver (lápis, carvão, pastel, giz, marcador, airbrush); Water como volume | a prancha dos 8 meios dentro do vale nas 7 métricas (barra com os dois lados) |
 | **W8** | painel: browser + volumes + Stroke/Bristles/Paint/Paper + Tilt + Blow, i18n, tokens | censo sem controlo morto; cada knob com mutação que «morde» |
 
-## §4 — Decisões que são do dono (perguntadas em 07/10)
+## §4 — Decisões do dono (07/10)
 
-1. **A largura prometida vale para os secos?** O Rebelle, a `size_px 40`, entrega 41–42 px nos meios de
-   tinta mas **30 (lápis 8B), 17 (pastel), 18 (marcador), 26 (airbrush)**: a textura e a orla comem a
-   largura. O 04 pede «pedido = medido ± 2 em todos os presets» — mais forte que o oráculo. Proposta: a
-   promessa vale para TODOS (o número no painel é o que se vê); a comparação da W7 com o Rebelle nos secos
-   faz-se a largura MEDIDA igual, não ao número.
-2. **Rotação da caneta (barrel).** Exige campo novo no `CanvasPointer` (contrato `Tool=12`, gate
-   `architecture_tool_contract_surface`). Só serve a canetas com rotação (ex.: Wacom Art Pen). Proposta:
-   W6 entrega None/Follow/PenTilt sem tocar no contrato; PenRotation fica como pedido de ADR separado se o
-   dono tiver a caneta.
+1. ✅ **A largura prometida vale para TODAS as mídias, secas incluídas** (dono: «SIM»). O Rebelle, a
+   `size_px 40`, entrega 41–42 px nos meios de tinta mas **30 (lápis 8B), 17 (pastel), 18 (marcador), 26
+   (airbrush)**: a textura e a orla comem a largura. Nós não: o número no painel é a largura medida ± 2 px.
+   ⇒ a comparação da W7 com o Rebelle nos secos faz-se a largura MEDIDA igual, não ao número.
+2. ✅ **Sem rotação da caneta (barrel)** (dono: «por enquanto ficamos sem rotação»). O `CanvasPointer`
+   (contrato congelado) não muda; a W6 entrega None / FollowTrajectory / PenTilt. A mesa de teste do dono
+   é uma **Wacom Intuos5 Touch** (pressão 2048 níveis + inclinação; sem barrel — a única caneta Wacom com
+   barrel, a Art Pen, está descontinuada; Huion/XP-Pen não o têm). Reabrir = ADR próprio.
+
+## §4b — Estado
+
+- ✅ **Cerca** (07/10): `tests/it/os_outros_meios_nao_mudam.rs` (FNV dos pixels da sonda a 28; perfis
+  `test` e `smoke` iguais; 0,7 s) + `ferramentas/cerca.sh` (ficheiros protegidos só ganham linhas).
+  Mutações: `impasto_light.rs:48 DEPTH_UNIT_PX` 16→17 ✗ impasto · `watercolor_render.rs:40 SS0` 0,12→0,13 ✗
+  watercolor · `ph2d-painter-brush/src/falloff.rs:115` Smooth 3,0→3,1 ✗ digital · controlo
+  `ph2d-wet-paint/src/brush.rs:21 BRISTLE_SEED` +1 ⇒ cerca VERDE com o Wet Paint mudado (fnv
+  `0x2c12…` → `0xaa36…`). `cerca.sh`: linha alterada ✗, só acrescentar ✓.
+- A sonda passou para o binário único `tests/it/` (era `tests/*.rs` solto); os gestos vivem em
+  `tests/it/sonda_gestos.rs`; os bytes dos quatro meios não mudaram com a mudança de sítio.
 
 ## §5 — Ritmo
 

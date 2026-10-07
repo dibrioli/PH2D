@@ -10,3 +10,6 @@
 
 mod a_luz_do_impasto_e_a_de_antes_da_poda;
 mod measure_undo_capacity;
+mod os_outros_meios_nao_mudam;
+mod sonda_gestos;
+mod sonda_tracos_por_meio;

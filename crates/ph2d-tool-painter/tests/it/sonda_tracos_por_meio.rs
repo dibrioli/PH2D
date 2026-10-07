@@ -1,0 +1,63 @@
+//! **Sonda (ignorada): o MESMO gesto nos quatro meios, gravado em PPM** — a metade NOSSA da comparação
+//! com o oráculo Rebelle 8 (`docs/Painter/NewFeaturesWetPaint/`, 2026-10-07).
+//!
+//! Os gestos são os de `sonda_gestos` (os mesmos que o Rebelle recebe pela porta WebSocket). A régua
+//! é a mesma dos dois lados: `docs/Painter/NewFeaturesWetPaint/ferramentas/mede_traco.py`.
+//!
+//! ```text
+//! PH2D_SONDA_OUT=/tmp/x PH2D_SONDA_SIZE=28 cargo test -p ph2d-tool-painter --profile smoke --test it \
+//!     sonda_tracos_por_meio -- --ignored --nocapture
+//! ```
+//!
+//! Escreve `<meio>.ppm` (P6) e imprime o FNV-1a de cada um — o PNG faz-se fora, com `magick`.
+
+use super::sonda_gestos::{fnv1a, pinta};
+use ph2d_tool_painter::PaintMedia;
+use std::io::Write;
+
+/// O tamanho de fábrica da sonda; `PH2D_SONDA_SIZE` sobrepõe-no (o Rebelle recebe `size_px` 40).
+const BRUSH_PX: f32 = 40.0;
+
+fn escreve_ppm(path: &std::path::Path, rgba: &[u8], w: u32, h: u32) {
+    assert_eq!(rgba.len(), (w * h * 4) as usize, "run_full devolve RGBA8");
+    let mut f = std::fs::File::create(path).expect("ppm");
+    write!(f, "P6\n{w} {h}\n255\n").unwrap();
+    let mut rgb = Vec::with_capacity((w * h * 3) as usize);
+    for px in rgba.chunks_exact(4) {
+        rgb.extend_from_slice(&px[..3]);
+    }
+    f.write_all(&rgb).unwrap();
+}
+
+#[test]
+#[ignore = "sonda: grava PPMs para a comparação com o oráculo; corre-se à mão"]
+fn os_mesmos_gestos_nos_quatro_meios() {
+    let out = std::env::var("PH2D_SONDA_OUT").unwrap_or_else(|_| {
+        std::env::temp_dir()
+            .join("ph2d_sonda_tracos")
+            .display()
+            .to_string()
+    });
+    let size = std::env::var("PH2D_SONDA_SIZE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(BRUSH_PX);
+    std::fs::create_dir_all(&out).unwrap();
+    for (nome, meio) in [
+        ("digital", PaintMedia::Digital),
+        ("watercolor", PaintMedia::Watercolor),
+        ("impasto", PaintMedia::Impasto),
+        ("wetpaint", PaintMedia::WetPaint),
+    ] {
+        let t0 = std::time::Instant::now();
+        let (px, w, h) = pinta(meio, size);
+        let p = std::path::Path::new(&out).join(format!("{nome}.ppm"));
+        escreve_ppm(&p, &px, w, h);
+        println!(
+            "[sonda] {nome:<10} {w}x{h} fnv {:#018x} → {} ({:.1} s)",
+            fnv1a(&px),
+            p.display(),
+            t0.elapsed().as_secs_f32()
+        );
+    }
+}

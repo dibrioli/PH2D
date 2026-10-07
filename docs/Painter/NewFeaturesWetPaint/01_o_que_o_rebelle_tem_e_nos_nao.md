@@ -357,4 +357,4 @@ python3 mede_traco.py c.png --crop 20,60,580,120 --label …
 ```
 
 Cópias dos scripts em [`ferramentas/`](ferramentas/). Os eventos são os mesmos gestos de
-`tests/sonda_tracos_por_meio.rs`; `SET_RANDOM_SEED 7` dos dois lados quando a nossa semente existir (W1).
+`tests/it/sonda_gestos.rs`; `SET_RANDOM_SEED 7` dos dois lados quando a nossa semente existir (W1).

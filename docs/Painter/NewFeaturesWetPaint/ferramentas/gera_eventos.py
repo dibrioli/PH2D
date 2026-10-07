@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Gera os eventos Motion IO (JSON) do Rebelle para os MESMOS cinco gestos da sonda do PH2D
-(`crates/ph2d-tool-painter/tests/sonda_tracos_por_meio.rs`): recto a passo de rato (3 px), curva em S,
+(`crates/ph2d-tool-painter/tests/it/sonda_gestos.rs`): recto a passo de rato (3 px), curva em S,
 rampa de pressão 0,15→1→0,15, traço RÁPIDO (25 px por evento) e um cruzamento vermelho.
 
 uso: gera_eventos.py <TOOL> <preset|-> <pasta_saida_windows> <nome> [--size_px N] [--sim N] [--paper P] [--seed S]

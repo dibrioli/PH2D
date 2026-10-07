@@ -1,5 +1,5 @@
 #!/bin/bash
-# Os MESMOS gestos da sonda do PH2D (tests/sonda_tracos_por_meio.rs) numa ferramenta do Rebelle.
+# Os MESMOS gestos da sonda do PH2D (tests/it/sonda_gestos.rs) numa ferramenta do Rebelle.
 # uso: tracos_rebelle.sh <x do ícone da ferramenta> <Size a escrever> <nome>   — tela 1280x720 a 100 %,
 # canto da tela no ECRÃ = (340, 208). Fotografa em t0 e t8 e desfaz os 5 traços.
 O="$HOME/Apps/rebelle/oraculo"; TX=$1; SZ=$2; NM=$3

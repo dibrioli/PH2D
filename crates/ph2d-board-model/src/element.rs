@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Connector, End, FracKey};
+use crate::{Connector, End, FracKey, RichText};
 
 /// Identidade de um elemento dentro do seu quadro. Nunca reusada (as lápides guardam-na).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -64,8 +64,8 @@ pub enum ElementKind {
 pub struct Shape {
     pub kind: ShapeType,
     pub style: Style,
-    /// Texto do artista (pode ter `\n`). Vazio = sem texto.
-    pub text: String,
+    /// Texto do artista (pode ter `\n`), com o estilo por trecho. Vazio = sem texto.
+    pub text: RichText,
 }
 
 /// O contorno de uma forma — o catálogo de quadro (básicas + fluxograma ISO 5807 + as de nota).
@@ -98,10 +98,38 @@ pub enum ShapeType {
     Cloud,
     Star,
     ArrowRight,
+    /// Nota adesiva QUADRADA (W3): cor do Miro, sem contorno, com sombra; cresce para baixo com o
+    /// texto (decisão 2 do dono) e escreve-se ao seleccionar.
+    Sticky,
+    /// Pilha de notas (W3): arrastar dela tira uma nota nova da cor e do tamanho dela.
+    StickyStack,
+    /// Nota LARGA (o `rectangle` do Miro: 350 × 199).
+    StickyWide,
 }
 
 impl ShapeType {
-    /// Todas, na ordem do enum — a que a UI oferece.
+    /// Uma nota ou uma pilha de notas (não entram na grelha das formas).
+    #[must_use]
+    pub fn is_note(self) -> bool {
+        matches!(
+            self,
+            ShapeType::Sticky | ShapeType::StickyStack | ShapeType::StickyWide
+        )
+    }
+
+    /// A altura de nascença de uma nota por unidade de LARGURA (a nota nunca encolhe abaixo dela, e
+    /// redimensionar mantém-na): `1` na quadrada e na pilha, `199 / 350` na larga. `None` = não é
+    /// nota.
+    #[must_use]
+    pub fn note_aspect(self) -> Option<f64> {
+        match self {
+            ShapeType::Sticky | ShapeType::StickyStack => Some(1.0),
+            ShapeType::StickyWide => Some(crate::STICKY_SIDE / crate::STICKY_WIDE),
+            _ => None,
+        }
+    }
+
+    /// As FORMAS, na ordem do enum — a grelha que a UI oferece (as notas têm botão próprio).
     pub const ALL: &'static [ShapeType] = &[
         ShapeType::Rectangle,
         ShapeType::Ellipse,

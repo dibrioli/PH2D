@@ -198,7 +198,7 @@ fn paint_shape(
     let font_px = st.font_size * zoom;
     if !shape.text.is_empty() && font_px >= GREEK_MIN_PX {
         let [_, _, tw, _] = text_rect(shape.kind, el.w, el.h);
-        let layout = cache.text.get(
+        let layout = cache.text.get_rich(
             ts,
             (board, el.id.0),
             &shape.text,
@@ -291,7 +291,7 @@ fn paint_connector(
     if !c.label.is_empty() && font_px >= GREEK_MIN_PX {
         let layout = cache
             .text
-            .get(ts, owner, &c.label, st.font_size as f32, LABEL_WRAP as f32);
+            .get(ts, owner, &c.label, &[], st.font_size as f32, LABEL_WRAP as f32);
         let [ox, oy] = label_origin(r.mid, f64::from(layout.height()));
         let at = v * Affine::translate((ox, oy));
         let bars = ph2d_board_layout::line_bars(layout);

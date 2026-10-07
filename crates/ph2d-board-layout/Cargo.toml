@@ -13,6 +13,7 @@ authors.workspace = true
 # O texto do Quadro: moldar (quebra + centrado) em unidades do MUNDO, guardar o moldado, desenhá-lo a
 # qualquer zoom. Mesma parley do `ph2d-text` (os contextos vêm dele).
 parley = "0.11.1"
+ph2d-board-model = { path = "../ph2d-board-model" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-vector = { path = "../ph2d-vector" }
 

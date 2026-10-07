@@ -1,27 +1,47 @@
 //! **O texto do Quadro** (MiroClone, W1): moldado em unidades do MUNDO (quebra à largura da caixa da
-//! forma, centrado), guardado moldado, e desenhado a qualquer zoom e rotação pela transformação.
+//! forma, centrado), guardado moldado, e desenhado a qualquer zoom e rotação pela transformação. Na
+//! W3, com estilo por TRECHO ([`RichText`]): negrito, itálico, sublinhado, riscado e cor.
 //!
 //! ⚠️ **Não passa pelo `TextSystem::layout`**: aquele aplica o estilo da INTERFACE (escala e peso que
 //! o artista escolhe para os menus). O texto de um quadro é DOCUMENTO — o tamanho é o que está
-//! gravado na forma. Os contextos do parley e a fonte da casa vêm de [`TextSystem::contexts`].
+//! gravado na forma. A fonte da casa vem de [`TextSystem::contexts`]; o contexto de moldar é deste
+//! crate, porque o pincel é a cor do trecho ([`Ink`]).
 //!
-//! ⚠️ **Moldar custa** (dezenas de µs por texto curto): 10 mil formas com texto remoldadas a cada
-//! quadro seriam centenas de ms. A [`TextCache`] guarda o moldado por dono e só remolda quando o
-//! texto, o tamanho ou a largura mudam.
+//! ⚠️ Medido 06/10 (`tests::bold_is_a_real_weight_and_italic_a_skew`): a Inter da casa é VARIÁVEL —
+//! o negrito é o eixo `wght` 700 (as coordenadas vão no desenho); itálico ela não tem, e o parley
+//! devolve uma inclinação SINTÉTICA de 14° que o desenho aplica a cada glifo.
+//!
+//! ⚠️ **Moldar custa** (dezenas de µs por texto curto): a [`TextCache`] guarda o moldado por dono e
+//! só remolda quando o texto, os trechos, o tamanho ou a largura mudam.
+
+mod edit;
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use parley::{
-    Alignment, AlignmentOptions, FontFamily, FontWeight, Layout, OverflowWrap, PlainEditor,
-    PositionedLayoutItem, StyleProperty,
+    Alignment, AlignmentOptions, FontFamily, FontStyle, FontWeight, Layout, LayoutContext,
+    OverflowWrap, PositionedLayoutItem, StyleProperty,
 };
+use ph2d_board_model::{RichText, Rgba, Span};
 use ph2d_text::TextSystem;
-use ph2d_vector::{Affine, Color, Fill, Glyph, Shape as _, VectorScene};
+use ph2d_vector::{Affine, BezPath, Brush, Color, Fill, Glyph, Rect, Shape as _, VectorScene};
 
-/// Moldar `text` a `font_size` (mundo), com quebra em `max_width` (mundo), centrado.
-pub fn shape(ts: &mut TextSystem, text: &str, font_size: f32, max_width: f32) -> Layout<()> {
-    let (fcx, lcx, stack) = ts.contexts();
+pub use edit::{Move, TextEdit};
+
+/// O pincel de um trecho: a sua cor, ou `None` = a tinta da forma.
+pub type Ink = Option<Rgba>;
+
+/// Moldar `text` com `spans` a `font_size` (mundo), com quebra em `max_width` (mundo), centrado.
+pub fn shape(
+    ts: &mut TextSystem,
+    lcx: &mut LayoutContext<Ink>,
+    text: &str,
+    spans: &[Span],
+    font_size: f32,
+    max_width: f32,
+) -> Layout<Ink> {
+    let (fcx, _, stack) = ts.contexts();
     let mut b = lcx.ranged_builder(fcx, text, 1.0, false);
     b.push_default(StyleProperty::FontFamily(FontFamily::Source(
         Cow::Borrowed(stack),
@@ -30,27 +50,66 @@ pub fn shape(ts: &mut TextSystem, text: &str, font_size: f32, max_width: f32) ->
     b.push_default(StyleProperty::FontWeight(FontWeight::NORMAL));
     // Uma palavra maior que a forma quebra a meio em vez de sair por ela.
     b.push_default(StyleProperty::OverflowWrap(OverflowWrap::Anywhere));
-    let mut layout: Layout<()> = b.build(text);
+    for s in spans {
+        let (r, m) = (s.range(), s.marks);
+        if m.bold {
+            b.push(StyleProperty::FontWeight(FontWeight::BOLD), r.clone());
+        }
+        if m.italic {
+            b.push(StyleProperty::FontStyle(FontStyle::Italic), r.clone());
+        }
+        if m.underline {
+            b.push(StyleProperty::Underline(true), r.clone());
+        }
+        if m.strike {
+            b.push(StyleProperty::Strikethrough(true), r.clone());
+        }
+        if m.color.is_some() {
+            b.push(StyleProperty::Brush(m.color), r);
+        }
+    }
+    let mut layout: Layout<Ink> = b.build(text);
     layout.break_all_lines(Some(max_width.max(1.0)));
     layout.align(Alignment::Center, AlignmentOptions::default());
     layout
 }
 
+/// A altura (mundo) de `text` moldado a `font_size` com quebra em `max_width` — a conta do «a
+/// forma cresce» para quem não guarda o moldado.
+pub fn text_height(ts: &mut TextSystem, text: &RichText, font_size: f32, max_width: f32) -> f32 {
+    let mut lcx = LayoutContext::new();
+    shape(ts, &mut lcx, text.as_str(), text.spans(), font_size, max_width).height()
+}
+
+/// A cor de documento → a do desenho.
+#[must_use]
+pub fn doc_color(Rgba([r, g, b, a]): Rgba) -> Color {
+    Color::from_rgba8(r, g, b, a) // LITERAL-COLOR-OK: cor do DOCUMENTO (dado do artista), não da UI
+}
+
 /// Desenha `layout` com `transform` (do espaço do texto — origem no canto superior esquerdo do
-/// bloco, em unidades do mundo — para o ecrã).
-pub fn paint(scene: &mut VectorScene, layout: &Layout<()>, transform: Affine, color: Color) {
-    let inner = scene.inner_mut();
+/// bloco, em unidades do mundo — para o ecrã); `ink` é a tinta da forma (a dos trechos sem cor).
+pub fn paint(scene: &mut VectorScene, layout: &Layout<Ink>, transform: Affine, ink: Color) {
     for line in layout.lines() {
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(run) = item else {
                 continue;
             };
+            let style = run.style();
+            let color = style.brush.map_or(ink, doc_color);
             let r = run.run();
-            inner
+            // O itálico SINTÉTICO (a Inter não o tem): a inclinação que o parley escolheu.
+            let skew = r
+                .synthesis()
+                .skew()
+                .map(|deg| Affine::skew(f64::from(deg).to_radians().tan(), 0.0));
+            scene
+                .inner_mut()
                 .draw_glyphs(r.font())
                 .font_size(r.font_size())
                 .hint(false)
                 .normalized_coords(r.normalized_coords())
+                .glyph_transform(skew)
                 .brush(color)
                 .transform(transform)
                 .draw(
@@ -61,6 +120,30 @@ pub fn paint(scene: &mut VectorScene, layout: &Layout<()>, transform: Affine, co
                         y: g.y,
                     }),
                 );
+            let m = r.metrics();
+            let (x0, x1) = (run.offset(), run.offset() + run.advance());
+            let mut bar = |offset: f32, size: f32| {
+                let y = run.baseline() - offset;
+                let rect = Rect::new(
+                    f64::from(x0),
+                    f64::from(y),
+                    f64::from(x1),
+                    f64::from(y + size),
+                );
+                scene.fill_path(&rect.to_path(0.1), &Brush::Solid(color), transform);
+            };
+            if let Some(u) = &style.underline {
+                bar(
+                    u.offset.unwrap_or(m.underline_offset),
+                    u.size.unwrap_or(m.underline_size),
+                );
+            }
+            if let Some(s) = &style.strikethrough {
+                bar(
+                    s.offset.unwrap_or(m.strikethrough_offset),
+                    s.size.unwrap_or(m.strikethrough_size),
+                );
+            }
         }
     }
 }
@@ -68,8 +151,8 @@ pub fn paint(scene: &mut VectorScene, layout: &Layout<()>, transform: Affine, co
 /// Uma barra por linha (a largura e a altura do x da linha), num só caminho — o que se desenha no
 /// lugar do texto quando a letra é pequena demais para ler.
 #[must_use]
-pub fn line_bars(layout: &Layout<()>) -> ph2d_vector::BezPath {
-    let mut p = ph2d_vector::BezPath::new();
+pub fn line_bars(layout: &Layout<Ink>) -> BezPath {
+    let mut p = BezPath::new();
     for line in layout.lines() {
         let m = line.metrics();
         let x0 = f64::from(m.offset);
@@ -77,7 +160,7 @@ pub fn line_bars(layout: &Layout<()>) -> ph2d_vector::BezPath {
         let y1 = f64::from(m.baseline);
         let y0 = y1 - f64::from(m.ascent) * 0.6;
         if w > 0.0 {
-            p.extend(ph2d_vector::Rect::new(x0, y0, x0 + w, y1).path_elements(0.1));
+            p.extend(Rect::new(x0, y0, x0 + w, y1).path_elements(0.1));
         }
     }
     p
@@ -88,45 +171,62 @@ const KEEP_FRAMES: u64 = 120;
 
 struct Entry {
     text: String,
+    spans: Vec<Span>,
     size_bits: u32,
     width_bits: u32,
-    layout: Layout<()>,
+    layout: Layout<Ink>,
     used: u64,
 }
 
 /// O moldado de cada dono (uma forma de um quadro), refeito só quando muda.
 #[derive(Default)]
 pub struct TextCache {
+    lcx: LayoutContext<Ink>,
     map: BTreeMap<(u64, u64), Entry>,
     frame: u64,
     shaped: u64,
 }
 
 impl TextCache {
-    /// O moldado de `owner`, moldando outra vez só se o texto, o tamanho ou a largura mudaram.
+    /// O moldado de `owner` para um texto com trechos ([`RichText`]).
+    pub fn get_rich(
+        &mut self,
+        ts: &mut TextSystem,
+        owner: (u64, u64),
+        text: &RichText,
+        font_size: f32,
+        max_width: f32,
+    ) -> &Layout<Ink> {
+        self.get(ts, owner, text.as_str(), text.spans(), font_size, max_width)
+    }
+
+    /// O moldado de `owner`, moldando outra vez só se o texto, os trechos, o tamanho ou a largura
+    /// mudaram.
     pub fn get(
         &mut self,
         ts: &mut TextSystem,
         owner: (u64, u64),
         text: &str,
+        spans: &[Span],
         font_size: f32,
         max_width: f32,
-    ) -> &Layout<()> {
+    ) -> &Layout<Ink> {
         let frame = self.frame;
         let (sb, wb) = (font_size.to_bits(), max_width.to_bits());
-        let stale = self
-            .map
-            .get(&owner)
-            .is_none_or(|e| e.text != text || e.size_bits != sb || e.width_bits != wb);
+        let stale = self.map.get(&owner).is_none_or(|e| {
+            e.text != text || e.spans != spans || e.size_bits != sb || e.width_bits != wb
+        });
         if stale {
             self.shaped += 1;
+            let layout = shape(ts, &mut self.lcx, text, spans, font_size, max_width);
             self.map.insert(
                 owner,
                 Entry {
                     text: text.to_owned(),
+                    spans: spans.to_vec(),
                     size_bits: sb,
                     width_bits: wb,
-                    layout: shape(ts, text, font_size, max_width),
+                    layout,
                     used: frame,
                 },
             );
@@ -159,166 +259,6 @@ impl TextCache {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
-    }
-}
-
-/// ⭐ **Editar o texto de uma forma** — o `PlainEditor` do parley (cursor, selecção, palavras,
-/// linhas, apagar) moldado como o texto desenhado ([`shape`]): mesma fonte, tamanho, largura e
-/// centrado, para o que se edita ser o que se vê.
-pub struct TextEdit {
-    editor: PlainEditor<()>,
-}
-
-/// Um movimento do cursor (com `extend` = Shift, a selecção cresce em vez de colapsar).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Move {
-    Left,
-    Right,
-    WordLeft,
-    WordRight,
-    Up,
-    Down,
-    LineStart,
-    LineEnd,
-    TextStart,
-    TextEnd,
-}
-
-impl TextEdit {
-    /// Abre `text` para edição com tudo seleccionado (escrever substitui; uma seta colapsa).
-    #[must_use]
-    pub fn new(ts: &mut TextSystem, text: &str, font_size: f32, max_width: f32) -> Self {
-        let mut editor = PlainEditor::new(font_size);
-        let (_, _, stack) = ts.contexts();
-        let styles = editor.edit_styles();
-        styles.insert(StyleProperty::FontFamily(FontFamily::Source(Cow::Owned(
-            stack.to_owned(),
-        ))));
-        styles.insert(StyleProperty::FontWeight(FontWeight::NORMAL));
-        styles.insert(StyleProperty::OverflowWrap(OverflowWrap::Anywhere));
-        editor.set_quantize(false);
-        editor.set_alignment(Alignment::Center);
-        editor.set_width(Some(max_width.max(1.0)));
-        editor.set_text(text);
-        let mut e = Self { editor };
-        e.with(ts, |d| d.select_all());
-        e
-    }
-
-    fn with(
-        &mut self,
-        ts: &mut TextSystem,
-        f: impl FnOnce(&mut parley::PlainEditorDriver<'_, ()>),
-    ) {
-        let (fcx, lcx, _) = ts.contexts();
-        f(&mut self.editor.driver(fcx, lcx));
-    }
-
-    #[must_use]
-    pub fn text(&self) -> String {
-        self.editor.raw_text().to_owned()
-    }
-
-    /// A largura de quebra mudou (a forma foi redimensionada).
-    pub fn set_width(&mut self, max_width: f32) {
-        self.editor.set_width(Some(max_width.max(1.0)));
-    }
-
-    pub fn insert(&mut self, ts: &mut TextSystem, s: &str) {
-        self.with(ts, |d| d.insert_or_replace_selection(s));
-    }
-
-    pub fn backspace(&mut self, ts: &mut TextSystem, word: bool) {
-        self.with(ts, |d| {
-            if word {
-                d.backdelete_word()
-            } else {
-                d.backdelete()
-            }
-        });
-    }
-
-    pub fn delete(&mut self, ts: &mut TextSystem, word: bool) {
-        self.with(ts, |d| if word { d.delete_word() } else { d.delete() });
-    }
-
-    pub fn select_all(&mut self, ts: &mut TextSystem) {
-        self.with(ts, |d| d.select_all());
-    }
-
-    /// O texto seleccionado (para copiar), se há selecção.
-    #[must_use]
-    pub fn selected(&self) -> Option<String> {
-        self.editor.selected_text().map(str::to_owned)
-    }
-
-    pub fn motion(&mut self, ts: &mut TextSystem, m: Move, extend: bool) {
-        self.with(ts, |d| match (m, extend) {
-            (Move::Left, false) => d.move_left(),
-            (Move::Left, true) => d.select_left(),
-            (Move::Right, false) => d.move_right(),
-            (Move::Right, true) => d.select_right(),
-            (Move::WordLeft, false) => d.move_word_left(),
-            (Move::WordLeft, true) => d.select_word_left(),
-            (Move::WordRight, false) => d.move_word_right(),
-            (Move::WordRight, true) => d.select_word_right(),
-            (Move::Up, false) => d.move_up(),
-            (Move::Up, true) => d.select_up(),
-            (Move::Down, false) => d.move_down(),
-            (Move::Down, true) => d.select_down(),
-            (Move::LineStart, false) => d.move_to_line_start(),
-            (Move::LineStart, true) => d.select_to_line_start(),
-            (Move::LineEnd, false) => d.move_to_line_end(),
-            (Move::LineEnd, true) => d.select_to_line_end(),
-            (Move::TextStart, false) => d.move_to_text_start(),
-            (Move::TextStart, true) => d.select_to_text_start(),
-            (Move::TextEnd, false) => d.move_to_text_end(),
-            (Move::TextEnd, true) => d.select_to_text_end(),
-        });
-    }
-
-    /// Um clique em `(x, y)` (espaço do texto). `extend` = Shift.
-    pub fn click(&mut self, ts: &mut TextSystem, x: f32, y: f32, extend: bool) {
-        self.with(ts, |d| {
-            if extend {
-                d.shift_click_extension(x, y);
-            } else {
-                d.move_to_point(x, y);
-            }
-        });
-    }
-
-    /// Arrastar com o botão em baixo: a selecção vai até `(x, y)`.
-    pub fn drag_to(&mut self, ts: &mut TextSystem, x: f32, y: f32) {
-        self.with(ts, |d| d.extend_selection_to_point(x, y));
-    }
-
-    /// Duplo-clique: a palavra em `(x, y)`.
-    pub fn select_word_at(&mut self, ts: &mut TextSystem, x: f32, y: f32) {
-        self.with(ts, |d| d.select_word_at_point(x, y));
-    }
-
-    /// O moldado actual (refeito se o texto mudou).
-    pub fn layout(&mut self, ts: &mut TextSystem) -> &Layout<()> {
-        let (fcx, lcx, _) = ts.contexts();
-        self.editor.layout(fcx, lcx)
-    }
-
-    /// Os rectângulos da selecção e o do cursor, `[x0, y0, x1, y1]` no espaço do texto. Pede
-    /// [`Self::layout`] antes (é ele que põe o moldado em dia).
-    #[must_use]
-    pub fn decorations(&self, caret_w: f32) -> (Vec<[f64; 4]>, Option<[f64; 4]>) {
-        let sel = self
-            .editor
-            .selection_geometry()
-            .into_iter()
-            .map(|(b, _)| [b.x0, b.y0, b.x1, b.y1])
-            .collect();
-        let caret = self
-            .editor
-            .cursor_geometry(caret_w)
-            .map(|b| [b.x0, b.y0, b.x1, b.y1]);
-        (sel, caret)
     }
 }
 

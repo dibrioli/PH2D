@@ -338,7 +338,7 @@ fn a_box_moved_near_another_snaps_to_its_edge_with_a_guide_and_ctrl_turns_it_off
     w.ed.pointer_move(&mut w.doc, &mut w.ts, at(128.0, 225.0, NONE));
     assert_eq!(w.el(b).x, 100.0);
     assert!(
-        !w.ed.overlay(&w.doc, &mut w.ts).guides.is_empty(),
+        !w.ed.overlay(&mut w.doc, &mut w.ts).guides.is_empty(),
         "colou sem guia"
     );
     w.ed.pointer_up(&mut w.doc, &mut w.h, at(128.0, 225.0, NONE));
@@ -371,17 +371,17 @@ fn double_click_writes_inside_the_text_wraps_the_shape_grows_and_undo_is_one_ste
     );
     let e = w.el(id);
     assert_eq!(
-        e.shape().unwrap().text,
+        e.shape().unwrap().text.as_str(),
         "uma ideia comprida que precisa de várias linhas"
     );
     assert!(e.h > 40.0, "a forma não cresceu: {}", e.h);
     assert!(
-        w.ed.overlay(&w.doc, &mut w.ts)
+        w.ed.overlay(&mut w.doc, &mut w.ts)
             .text
             .is_some_and(|t| t.caret.is_some())
     );
     assert!(
-        w.ed.overlay(&w.doc, &mut w.ts).frame.is_none(),
+        w.ed.overlay(&mut w.doc, &mut w.ts).frame.is_none(),
         "pegas por cima do texto"
     );
     w.ed.text_key(&mut w.doc, &mut w.h, &mut w.ts, TextKey::Commit);
@@ -605,7 +605,7 @@ fn the_shape_under_the_dragged_end_is_highlighted() {
     w.ed.pointer_down(&mut w.doc, &mut w.h, &mut w.ts, at(80.0, 50.0, NONE), VIEW);
     w.ed.pointer_move(&mut w.doc, &mut w.ts, at(300.0, 50.0, NONE));
     w.ed.pointer_move(&mut w.doc, &mut w.ts, at(480.0, 50.0, NONE));
-    let o = w.ed.overlay(&w.doc, &mut w.ts);
+    let o = w.ed.overlay(&mut w.doc, &mut w.ts);
     assert_eq!(
         o.target,
         Some(Target {
@@ -668,7 +668,7 @@ fn dragging_an_end_handle_rebinds_it() {
 fn clicking_a_blue_dot_creates_the_next_shape_already_linked() {
     let mut w = world();
     let a = w.rect([0.0, 0.0, 160.0, 100.0]);
-    let o = w.ed.overlay(&w.doc, &mut w.ts);
+    let o = w.ed.overlay(&mut w.doc, &mut w.ts);
     assert_eq!(o.dots.len(), 4, "a forma seleccionada mostra os quatro");
     let (at_side, dir) = o.dots[1];
     let p = [at_side[0] + dir[0] * 40.0, at_side[1] + dir[1] * 40.0];
@@ -763,7 +763,7 @@ fn clicking_the_line_selects_the_arrow() {
         w.ed.selection().iter().copied().collect::<Vec<_>>(),
         vec![id]
     );
-    let o = w.ed.overlay(&w.doc, &mut w.ts);
+    let o = w.ed.overlay(&mut w.doc, &mut w.ts);
     assert_eq!(o.wires.len(), 1);
     assert!(
         o.frame.is_none(),
@@ -816,7 +816,7 @@ fn dragging_the_middle_handle_bends_the_arrow_through_a_new_point() {
     w.rect([0.0, 0.0, 160.0, 100.0]);
     w.rect([400.0, 0.0, 160.0, 100.0]);
     let id = w.arrow_drag([80.0, 50.0], [480.0, 50.0], NONE).unwrap();
-    let mid = w.ed.overlay(&w.doc, &mut w.ts).wires[0].mids[0];
+    let mid = w.ed.overlay(&mut w.doc, &mut w.ts).wires[0].mids[0];
     w.click(mid, NONE);
     assert!(
         w.el(id).connector().unwrap().waypoints.is_empty(),
@@ -875,13 +875,13 @@ fn bending_the_second_leg_inserts_the_point_in_route_order() {
     let mut el = w.el(id).clone();
     el.connector_mut().unwrap().waypoints = vec![[200.0, 300.0]];
     w.h.apply(&mut w.doc, vec![BoardOp::Put(el)]);
-    let mid = w.ed.overlay(&w.doc, &mut w.ts).wires[0].mids[1];
+    let mid = w.ed.overlay(&mut w.doc, &mut w.ts).wires[0].mids[1];
     w.drag(mid, [500.0, 300.0], NONE);
     assert_eq!(
         w.el(id).connector().unwrap().waypoints,
         vec![[200.0, 300.0], [500.0, 300.0]]
     );
-    let mid0 = w.ed.overlay(&w.doc, &mut w.ts).wires[0].mids[0];
+    let mid0 = w.ed.overlay(&mut w.doc, &mut w.ts).wires[0].mids[0];
     w.drag(mid0, [100.0, 400.0], NONE);
     assert_eq!(
         w.el(id).connector().unwrap().waypoints,
@@ -938,3 +938,6 @@ fn dropping_a_point_on_its_neighbour_deletes_it() {
         vec![[500.0, 300.0]]
     );
 }
+
+#[path = "notes_tests.rs"]
+mod notes;

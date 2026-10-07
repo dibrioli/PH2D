@@ -236,10 +236,12 @@ pub fn paint_hero_screen(
         if let Some((board, live)) = hero.documents.active_parts() {
             // As rotas das setas vêm do editor: uma cache, a mesma que o clique lê.
             let ed = super::board_view::editor(&mut live.editor, theme);
+            // O que se desenha por cima vem ANTES: ele ajusta as notas que nasceram por ajustar,
+            // e o quadro desenha-as já com a altura certa.
+            let overlay = ed.overlay(&mut board.doc, text_system);
             let routes = ed.routes(&board.doc);
             let cache = &mut live.render_cache;
             ph2d_board_render::paint(board, area, scene, theme, text_system, cache, routes);
-            let overlay = ed.overlay(&board.doc, text_system);
             ph2d_board_render::paint_overlay(board, area, scene, theme, &overlay, ed.metrics());
         }
         super::board_bar::paint(hero, r, scene, text_system);

@@ -29,7 +29,7 @@ fn rect(doc: &mut BoardDoc, [x, y, w, h]: [f64; 4]) -> ElementId {
     let shape = Shape {
         kind: ShapeType::Rectangle,
         style: Style::new(None, Some(ink), ink),
-        text: String::new(),
+        text: Default::default(),
     };
     let el = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [x, y, w, h]);
     let id = el.id;

@@ -54,7 +54,11 @@ pub fn outline(shape: &Shape, w: f64, h: f64) -> Outline {
         lines: BezPath::new(),
     };
     match shape.kind {
-        ShapeType::Rectangle => Outline {
+        // A nota e a pilha são rectângulos (o desenho põe a sombra e as folhas por baixo).
+        ShapeType::Rectangle
+        | ShapeType::Sticky
+        | ShapeType::StickyStack
+        | ShapeType::StickyWide => Outline {
             fill: if round {
                 rounded_rect(w, h, corner_radius(w.min(h)))
             } else {
@@ -84,7 +88,10 @@ pub fn outline(shape: &Shape, w: f64, h: f64) -> Outline {
 /// A forma do catálogo vectorial que desenha cada tipo do quadro (as três daqui não passam).
 fn vec_kind(t: ShapeType) -> ShapeKind {
     match t {
-        ShapeType::Rectangle => ShapeKind::Rectangle,
+        ShapeType::Rectangle
+        | ShapeType::Sticky
+        | ShapeType::StickyStack
+        | ShapeType::StickyWide => ShapeKind::Rectangle,
         ShapeType::Ellipse => ShapeKind::Ellipse,
         ShapeType::Diamond => ShapeKind::Diamond,
         ShapeType::Triangle => ShapeKind::Polygon,
@@ -167,7 +174,10 @@ pub fn text_frame(t: ShapeType) -> [f64; 4] {
     // 1/2 − 1/(2√2): o rectângulo inscrito numa elipse com a mesma proporção.
     const IN_ELLIPSE: f64 = 0.146_446_609_406_726_24;
     match t {
-        ShapeType::Rectangle => [0.0, 0.0, 1.0, 1.0],
+        ShapeType::Rectangle
+        | ShapeType::Sticky
+        | ShapeType::StickyStack
+        | ShapeType::StickyWide => [0.0, 0.0, 1.0, 1.0],
         ShapeType::Ellipse => [IN_ELLIPSE, IN_ELLIPSE, 1.0 - IN_ELLIPSE, 1.0 - IN_ELLIPSE],
         ShapeType::Diamond => [0.25, 0.25, 0.75, 0.75],
         ShapeType::Triangle => [0.25, 0.5, 0.75, 1.0],

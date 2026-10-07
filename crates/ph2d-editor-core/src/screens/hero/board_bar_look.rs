@@ -91,6 +91,9 @@ pub fn shape_name_key(t: ShapeType) -> &'static str {
         ShapeType::Cloud => "board.shape.cloud",
         ShapeType::Star => "board.shape.star",
         ShapeType::ArrowRight => "board.shape.arrow",
+        ShapeType::Sticky => "board.shape.sticky",
+        ShapeType::StickyWide => "board.shape.sticky_wide",
+        ShapeType::StickyStack => "board.shape.sticky_stack",
     }
 }
 
@@ -227,7 +230,7 @@ pub(super) fn shape_icon(
     let shape = Shape {
         kind: t,
         style,
-        text: String::new(),
+        text: Default::default(),
     };
     let (bw, bh) = (f64::from(r.w), f64::from(r.h - Spacing::Xs.px()));
     let o = ph2d_board_geom::outline(&shape, bw, bh);

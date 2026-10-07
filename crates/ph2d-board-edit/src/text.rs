@@ -4,7 +4,7 @@
 
 use ph2d_board_geom::{height_for_text, text_origin, text_rect};
 use ph2d_board_layout::TextEdit;
-use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, History};
+use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, History, RichText};
 use ph2d_board_route::{LABEL_WRAP, label_origin};
 use ph2d_text::TextSystem;
 
@@ -15,7 +15,7 @@ pub(crate) struct Editing {
     /// O elemento como estava ao começar — o passo de desfazer, e a altura abaixo da qual a forma
     /// não encolhe.
     original: Element,
-    edit: TextEdit,
+    pub(crate) edit: TextEdit,
 }
 
 /// O tamanho da letra e a largura de quebra de `el`, para o moldado.
@@ -27,12 +27,12 @@ fn metrics(el: &Element) -> Option<(f32, f32)> {
     Some((el.style().font_size as f32, w as f32))
 }
 
-/// O texto de `el` (o da forma, ou o rótulo da seta).
-fn text_of(el: &Element) -> String {
+/// O texto de `el` (o da forma, com os trechos, ou o rótulo da seta).
+fn text_of(el: &Element) -> RichText {
     match (el.shape(), el.connector()) {
         (Some(s), _) => s.text.clone(),
-        (_, Some(c)) => c.label.clone(),
-        _ => String::new(),
+        (_, Some(c)) => RichText::plain(&c.label),
+        _ => RichText::default(),
     }
 }
 
@@ -109,6 +109,13 @@ impl Editor {
         let Some(el) = doc.get(id).cloned() else {
             return false;
         };
+        // A pilha de notas não tem texto: dela tiram-se notas.
+        if el
+            .shape()
+            .is_some_and(|s| s.kind == ph2d_board_model::ShapeType::StickyStack)
+        {
+            return false;
+        }
         let Some((size, width)) = metrics(&el) else {
             return false;
         };
@@ -170,28 +177,53 @@ impl Editor {
         self.editing.as_ref().and_then(|e| e.edit.selected())
     }
 
-    /// Termina a edição: o que mudou vira UM passo de desfazer.
+    /// Termina a edição: o que mudou vira UM passo de desfazer. No rascunho do modo em massa, as
+    /// linhas viram notas.
     pub fn commit_text(&mut self, doc: &mut BoardDoc, history: &mut History) {
         let Some(e) = self.editing.take() else {
             return;
         };
+        if self.bulk == Some(e.id) {
+            self.finish_bulk(doc, history, e.id);
+            return;
+        }
         if doc.get(e.id).is_some_and(|now| *now != e.original) {
             history.record(vec![BoardOp::Put(e.original)]);
         }
         let _ = doc;
     }
 
-    /// Escreve o texto da edição na forma e faz a forma crescer (ou voltar) à altura que ele pede.
-    fn sync(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem) {
+    /// Move o cursor do texto em edição (sem estender a selecção).
+    pub(crate) fn text_key_motion(&mut self, ts: &mut TextSystem, m: crate::Move) {
+        if let Some(e) = self.editing.as_mut() {
+            e.edit.motion(ts, m, false);
+        }
+    }
+
+    /// Ajusta ao texto a altura das notas que nasceram sem o moldador à mão.
+    pub(crate) fn fit_pending(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem) {
+        for id in std::mem::take(&mut self.unfitted) {
+            if let Some(mut el) = doc.get(id).cloned() {
+                let h = crate::notes::fitted_height(ts, &el);
+                if h != el.h {
+                    el.h = h;
+                    live(doc, el);
+                }
+            }
+        }
+    }
+
+    /// Escreve o texto da edição na forma e faz a forma crescer (ou voltar) à altura que ele pede —
+    /// numa nota, nunca abaixo da de nascença; numa forma, da de quando começou a edição.
+    pub(crate) fn sync(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem) {
         let Some(e) = self.editing.as_mut() else {
             return;
         };
         let Some(mut el) = doc.get(e.id).cloned() else {
             return;
         };
-        let text = e.edit.text();
         if let Some(c) = el.connector_mut() {
-            c.label = text;
+            c.label = e.edit.text();
             live(doc, el);
             return;
         }
@@ -199,10 +231,11 @@ impl Editor {
             return;
         };
         if let Some(s) = el.shape_mut() {
-            s.text = text;
+            s.text = e.edit.rich().clone();
         }
         let block_h = f64::from(e.edit.layout(ts).height());
-        el.h = height_for_text(kind, e.original.h, block_h);
+        let floor = kind.note_aspect().map_or(e.original.h, |a| el.w * a);
+        el.h = height_for_text(kind, floor, block_h);
         live(doc, el);
     }
 

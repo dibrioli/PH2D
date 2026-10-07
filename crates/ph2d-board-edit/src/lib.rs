@@ -10,6 +10,7 @@
 
 mod command;
 mod gesture;
+mod notes;
 mod snap;
 mod text;
 mod wire;
@@ -23,6 +24,10 @@ use ph2d_board_route::RouteCache;
 use ph2d_text::TextSystem;
 
 pub use gesture::Down;
+pub use notes::{
+    NOTE_DEFAULT_SIZE, NOTE_GAP_K, NOTE_SCALES, NoteStyle, grid_layout, note_scale, note_size,
+    parse_cells, reading_order,
+};
 pub use ph2d_board_layout::Move;
 pub use snap::Guide;
 
@@ -213,6 +218,16 @@ pub struct Overlay {
     /// Os pontos azuis de criação rápida: o meio do lado (mundo) e a direcção para fora (unitária)
     /// — quem desenha afasta-os `Metrics::dot` px do lado, no ecrã.
     pub dots: Vec<([f64; 2], [f64; 2])>,
+    /// A pega de ARRUMAR EM GRELHA (uma selecção de duas ou mais notas): o canto superior direito
+    /// da moldura (mundo) — quem desenha afasta-a [`grid_handle_offset`] px dele, na diagonal.
+    pub grid: Option<[f64; 2]>,
+}
+
+/// Quanto a pega de arrumar em grelha se afasta (px de ecrã, nos dois eixos) do canto superior
+/// direito da moldura: fora da pega de redimensionar e ao lado da de rodar.
+#[must_use]
+pub fn grid_handle_offset(m: &Metrics) -> f64 {
+    m.handle + m.rotate_offset / 2.0
 }
 
 /// Uma seta seleccionada, como o realce a desenha.
@@ -260,6 +275,9 @@ pub enum Command {
     Paste,
     /// Começa a escrever na forma seleccionada (se é uma só) — ou no rótulo da seta.
     EditText,
+    /// Liga ou desliga uma marca do texto (`Ctrl+B`/`I`/`U`, `Ctrl+Shift+X`): no texto seleccionado
+    /// a escrever, ou no texto inteiro das formas seleccionadas.
+    Mark(ph2d_board_model::Mark),
     Tool(Tool),
     /// `Ctrl+seta`: cria a forma seguinte, já ligada, do lado `(dx, dy)` (unitário) da única forma
     /// seleccionada — e selecciona-a, para a próxima seguir dela.
@@ -302,6 +320,16 @@ pub struct Editor {
     editing: Option<text::Editing>,
     clipboard: Vec<Element>,
     pastes: u32,
+    /// Como nasce a próxima nota.
+    pub notes: NoteStyle,
+    /// O rascunho do modo em massa, se está aberto.
+    bulk: Option<ElementId>,
+    /// Notas nascidas sem o moldador à mão (o fim do modo em massa ao trocar de aba): a altura delas
+    /// ajusta-se ao texto no próximo [`Editor::overlay`].
+    unfitted: Vec<ElementId>,
+    /// O texto que a última cópia de elementos pôs na área de transferência do sistema — um
+    /// `Ctrl+V` com OUTRO texto lá é uma colagem de fora (uma planilha).
+    copied_text: Option<String>,
 }
 
 impl Editor {
@@ -320,6 +348,10 @@ impl Editor {
             editing: None,
             clipboard: Vec::new(),
             pastes: 0,
+            notes: NoteStyle::default(),
+            bulk: None,
+            unfitted: Vec::new(),
+            copied_text: None,
         }
     }
 
@@ -469,7 +501,8 @@ impl Editor {
     }
 
     /// O que desenhar por cima do quadro agora.
-    pub fn overlay(&mut self, doc: &BoardDoc, ts: &mut TextSystem) -> Overlay {
+    pub fn overlay(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem) -> Overlay {
+        self.fit_pending(doc, ts);
         self.routes.sync(doc);
         let mid = self.label_mid(doc);
         let text = self.editing.as_mut().and_then(|e| e.overlay(doc, ts, mid));
@@ -499,6 +532,13 @@ impl Editor {
                 self.dots(doc)
             },
             frame: if editing { None } else { self.frame(doc) },
+            grid: if editing || self.gesture.is_some() {
+                None
+            } else {
+                self.selected_notes(doc)
+                    .and_then(|_| self.frame(doc))
+                    .map(|f| [f.center[0] + f.w / 2.0, f.center[1] - f.h / 2.0])
+            },
             marquee: self.gesture.as_ref().and_then(gesture::Gesture::marquee),
             guides: self
                 .gesture
@@ -516,12 +556,16 @@ impl Editor {
         self.routes.get(id).map(|r| r.mid)
     }
 
-    /// Uma forma nova (com o estilo actual) na caixa dada, à frente de tudo.
+    /// Uma forma nova (com o estilo actual) na caixa dada, à frente de tudo — ou uma nota (com o
+    /// estilo das notas).
     fn new_shape(&self, doc: &mut BoardDoc, kind: ShapeType, bx: [f64; 4]) -> Element {
+        if kind.is_note() {
+            return self.new_note(doc, kind, bx);
+        }
         let shape = Shape {
             kind,
             style: self.style.clone(),
-            text: String::new(),
+            text: Default::default(),
         };
         Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, bx)
     }

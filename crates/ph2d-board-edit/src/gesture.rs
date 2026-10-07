@@ -91,6 +91,19 @@ pub(crate) enum Gesture {
         original: Element,
         target: Option<(ElementId, Anchor)>,
     },
+    /// A pega de arrumar em grelha: as notas em ordem de leitura, quantas colunas o ponteiro pede.
+    Grid {
+        originals: Vec<Element>,
+        ordered: Vec<Element>,
+        cols: usize,
+    },
+    /// Carregar numa pilha de notas (não seleccionada): arrastar tira uma nota nova; largar sem
+    /// arrastar selecciona a pilha.
+    Peel {
+        stack: Element,
+        start: [f64; 2],
+        targets: Vec<[f64; 4]>,
+    },
 }
 
 impl Gesture {
@@ -221,6 +234,18 @@ impl Editor {
             };
             return Down::Taken;
         }
+        if let Some(g) = self.grid_handle(doc, p.px)
+            && dist(g, p.world) <= self.metrics.handle * p.px
+        {
+            let originals = self.selected_notes(doc).expect("há pega, há notas");
+            let ordered = crate::notes::reading_order(&originals);
+            self.gesture = Some(Gesture::Grid {
+                originals,
+                ordered,
+                cols: 0,
+            });
+            return Down::Taken;
+        }
         if let Some(h) = self.handle_at(doc, p) {
             let frame = self.frame(doc).expect("há pega, há moldura");
             let originals: Vec<Element> = self
@@ -246,6 +271,21 @@ impl Editor {
             return Down::Taken;
         }
         match self.hit(doc, p) {
+            Some(id)
+                if !p.mods.shift
+                    && !self.selection.contains(&id)
+                    && doc
+                        .get(id)
+                        .and_then(Element::shape)
+                        .is_some_and(|s| s.kind == ShapeType::StickyStack) =>
+            {
+                let stack = doc.get(id).cloned().expect("acabou de ser apanhada");
+                self.gesture = Some(Gesture::Peel {
+                    stack,
+                    start: p.world,
+                    targets: targets(doc, &BTreeSet::new(), view),
+                });
+            }
             Some(id) => {
                 let was = self.selection.contains(&id);
                 let mut collapse_to = None;
@@ -293,6 +333,38 @@ impl Editor {
         let drag = self.metrics.drag * p.px;
         let snap = (!p.mods.ctrl).then_some(self.metrics.snap * p.px);
         match &mut g {
+            Gesture::Peel {
+                stack,
+                start,
+                targets,
+            } => {
+                if dist(*start, p.world) <= drag {
+                    self.gesture = Some(g);
+                    return;
+                }
+                // Tira a nota de cima da pilha e passa a arrastá-la (largar = UM passo: apagá-la).
+                let note = self.peel(doc, stack);
+                let id = note.id;
+                live(doc, note.clone());
+                self.selection = BTreeSet::from([id]);
+                self.gesture = Some(Gesture::Move {
+                    start: *start,
+                    originals: vec![note],
+                    targets: std::mem::take(targets),
+                    active: true,
+                    copies: vec![id],
+                    collapse_to: None,
+                    guides: Vec::new(),
+                });
+                return self.pointer_move(doc, ts, p);
+            }
+            Gesture::Grid { ordered, cols, .. } => {
+                let n = Editor::grid_columns(ordered, p.world[0]);
+                if n != *cols {
+                    *cols = n;
+                    self.arrange(doc, ordered, n);
+                }
+            }
             Gesture::Text => self.text_drag(ts, doc, p),
             Gesture::Connect { .. } => self.connect_move(doc, &mut g, p),
             Gesture::EndDrag { .. } => self.end_drag_move(doc, &mut g, p),
@@ -380,7 +452,10 @@ impl Editor {
                     world = [world[0] + s[0], world[1] + s[1]];
                     *guides = g2;
                 }
-                let uniform = originals.len() > 1 && originals.iter().any(|o| !axis_angle(o.angle));
+                // As notas escalam inteiras, com a letra (o Miro): a proporção não muda.
+                let uniform = (originals.len() > 1
+                    && originals.iter().any(|o| !axis_angle(o.angle)))
+                    || originals.iter().any(is_note);
                 let mods = Mods {
                     shift: p.mods.shift || uniform,
                     ..p.mods
@@ -430,10 +505,16 @@ impl Editor {
                     world = [world[0] + s[0], world[1] + s[1]];
                     *guides = g2;
                 }
-                let bx = drag_box(*start, world, p.mods);
+                let mut bx = drag_box(*start, world, p.mods);
+                if let Some(a) = kind.note_aspect() {
+                    bx[3] = bx[2] * a;
+                }
                 let el = match *id {
                     Some(existing) => doc.get(existing).cloned().map(|mut el| {
                         [el.x, el.y, el.w, el.h] = bx;
+                        if kind.is_note() {
+                            el.style_mut().font_size = crate::notes::note_font(*kind, bx[2]);
+                        }
                         el
                     }),
                     None => {
@@ -457,6 +538,8 @@ impl Editor {
         };
         match g {
             Gesture::Text | Gesture::Marquee { .. } => {}
+            Gesture::Peel { stack, .. } => self.selection = BTreeSet::from([stack.id]),
+            Gesture::Grid { originals, .. } => history.record(undo_ops(doc, &originals)),
             g @ Gesture::Connect { .. } => self.connect_up(doc, history, g),
             g @ Gesture::Bend { .. } => self.bend_up(doc, history, g, p),
             Gesture::EndDrag { original, .. } => {
@@ -487,7 +570,11 @@ impl Editor {
             } => {
                 let id = id.unwrap_or_else(|| {
                     let [w, h] = self.metrics.click_size;
-                    let bx = [start[0] - w / 2.0, start[1] - h / 2.0, w, h];
+                    let bx = if kind.is_note() {
+                        self.note_box(kind, start)
+                    } else {
+                        [start[0] - w / 2.0, start[1] - h / 2.0, w, h]
+                    };
                     let el = self.new_shape(doc, kind, bx);
                     let id = el.id;
                     live(doc, el);
@@ -519,7 +606,9 @@ impl Editor {
                     }
                 }
             }
-            Gesture::Resize { originals, .. } | Gesture::Rotate { originals, .. } => {
+            Gesture::Resize { originals, .. }
+            | Gesture::Rotate { originals, .. }
+            | Gesture::Grid { originals, .. } => {
                 for op in undo_ops(doc, &originals) {
                     let _ = op.apply(doc);
                 }
@@ -571,6 +660,10 @@ fn undo_ops(doc: &BoardDoc, originals: &[Element]) -> Vec<BoardOp> {
         .filter(|o| doc.get(o.id).is_some_and(|now| !same_pose(now, o)))
         .map(|o| BoardOp::Put(o.clone()))
         .collect()
+}
+
+fn is_note(el: &Element) -> bool {
+    el.shape().is_some_and(|s| s.kind.is_note())
 }
 
 fn same_pose(a: &Element, b: &Element) -> bool {
@@ -655,12 +748,19 @@ pub(crate) fn resize_frame(f: Frame, dir: Dir, l: [f64; 2], m: Mods) -> Frame {
 /// Os elementos de uma moldura `old` que passou a `new`. Um elemento só segue a moldura (é ela);
 /// vários escalam as posições e os tamanhos com ela (a moldura de vários não roda).
 fn resized(originals: &[Element], old: Frame, new: Frame) -> Vec<Element> {
+    // A letra de uma nota escala com ela (a nota inteira cresce, não só a caixa).
+    let font = |el: &mut Element, o: &Element| {
+        if is_note(o) && o.w > 0.0 {
+            el.style_mut().font_size = o.style().font_size * el.w / o.w;
+        }
+    };
     if let [one] = originals {
         let mut el = one.clone();
         el.w = new.w;
         el.h = new.h;
         el.x = new.center[0] - new.w / 2.0;
         el.y = new.center[1] - new.h / 2.0;
+        font(&mut el, one);
         return vec![el];
     }
     let (kx, ky) = (
@@ -681,6 +781,7 @@ fn resized(originals: &[Element], old: Frame, new: Frame) -> Vec<Element> {
             el.h = (o.h * fy).max(MIN_SIDE);
             el.x = nc[0] - el.w / 2.0;
             el.y = nc[1] - el.h / 2.0;
+            font(&mut el, o);
             el
         })
         .collect()

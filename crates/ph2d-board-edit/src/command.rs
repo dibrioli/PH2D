@@ -47,6 +47,7 @@ impl Editor {
                 self.tool = t;
                 true
             }
+            Command::Mark(m) => self.toggle_mark(doc, history, ts, m),
             Command::SelectAll => {
                 self.selection = doc.live_in_z_order().iter().map(|el| el.id).collect();
                 true
@@ -111,8 +112,35 @@ impl Editor {
     fn copy(&mut self, doc: &BoardDoc) {
         let mut els: Vec<Element> = self.selected(doc).into_iter().cloned().collect();
         self.detach_outside(doc, &mut els);
+        // O texto deles (um por linha) vai também para fora do app — e é a marca que separa um
+        // `Ctrl+V` destes elementos de um de fora.
+        let text: Vec<&str> = els
+            .iter()
+            .filter_map(|el| match (el.shape(), el.connector()) {
+                (Some(s), _) => Some(s.text.as_str()),
+                (_, Some(c)) => Some(c.label.as_str()),
+                _ => None,
+            })
+            .filter(|t| !t.is_empty())
+            .collect();
+        self.copied_text = Some(text.join("\n"));
         self.clipboard = els;
         self.pastes = 0;
+    }
+
+    /// O texto que a última cópia de elementos deu à área de transferência do sistema.
+    #[must_use]
+    pub fn copied_text(&self) -> Option<&str> {
+        self.copied_text.as_deref()
+    }
+
+    /// ⭐ Um `Ctrl+V` com `system` (o texto da área de transferência do sistema) é uma colagem de
+    /// FORA (uma planilha, um texto) — e não os elementos copiados no quadro? É, se há texto e não é
+    /// o que a última cópia lá pôs (ou se não há elementos copiados).
+    #[must_use]
+    pub fn is_foreign_paste(&self, system: &str) -> bool {
+        !system.trim().is_empty()
+            && (self.clipboard.is_empty() || self.copied_text.as_deref() != Some(system))
     }
 
     /// Cópias de `src` desviadas `steps × paste_offset`, à frente de tudo, seleccionadas — UM passo.

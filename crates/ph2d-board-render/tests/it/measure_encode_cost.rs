@@ -76,7 +76,7 @@ pub(super) fn board_with((n, mix): (usize, Mix)) -> BoardSet {
             Mix::Rects => Shape {
                 kind: ShapeType::Rectangle,
                 style: Style::new(Some(ORANGE), None, ink),
-                text: String::new(),
+                text: Default::default(),
             },
             Mix::Shapes | Mix::ShapesNear | Mix::Flow => {
                 let kind = [ShapeType::Rectangle, ShapeType::Ellipse, ShapeType::Diamond][i % 3];
@@ -130,7 +130,7 @@ pub(super) fn flow(n: usize) -> BoardSet {
         let shape = Shape {
             kind: [ShapeType::Rectangle, ShapeType::Ellipse, ShapeType::Diamond][i % 3],
             style: style.clone(),
-            text: String::new(),
+            text: Default::default(),
         };
         let bx = [col * FLOW_STEP[0], row * FLOW_STEP[1], 160.0, 100.0];
         let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), shape, bx);

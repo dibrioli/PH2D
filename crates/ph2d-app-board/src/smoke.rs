@@ -61,7 +61,7 @@ fn scene_two_boards(hero: &mut HeroScreen) {
             let shape = Shape {
                 kind: ShapeType::Rectangle,
                 style,
-                text: String::new(),
+                text: Default::default(),
             };
             let bx = [
                 f64::from(col) * (cell + gap) - 3.0 * (cell + gap),
@@ -123,7 +123,7 @@ fn scene_shapes(hero: &mut HeroScreen) {
         let shape = Shape {
             kind,
             style,
-            text: ph2d_i18n::tr(key).to_owned(),
+            text: ph2d_i18n::tr(key).into(),
         };
         let h = if kind == ShapeType::Diamond {
             140.0
@@ -152,7 +152,7 @@ fn scene_shapes(hero: &mut HeroScreen) {
         let shape = Shape {
             kind: *kind,
             style,
-            text: ph2d_i18n::tr(board_bar::shape_name_key(*kind)).to_owned(),
+            text: ph2d_i18n::tr(board_bar::shape_name_key(*kind)).into(),
         };
         let bx = [col * 190.0, 240.0 + row * 140.0, 160.0, 110.0];
         let el = Element::new_shape(board.doc.mint_id(), board.doc.z_on_top(), shape, bx);
@@ -178,7 +178,7 @@ fn put_shape(
     let shape = Shape {
         kind,
         style,
-        text: ph2d_i18n::tr(key).to_owned(),
+        text: ph2d_i18n::tr(key).into(),
     };
     let el = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, bx);
     let id = el.id;

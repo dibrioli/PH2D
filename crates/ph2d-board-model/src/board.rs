@@ -6,8 +6,9 @@ use serde::{Deserialize, Serialize};
 use crate::BoardDoc;
 
 /// Versão do formato de [`BoardSet::to_bytes`]. postcard é posicional: qualquer campo novo sobe-a,
-/// e a anterior continua a ler-se (`legacy.rs`). 2 = formas com estilo, texto e rotação (W1).
-pub const FORMAT_VERSION: u32 = 2;
+/// e as anteriores continuam a ler-se (`legacy.rs`). 2 = formas com estilo, texto e rotação (W1);
+/// 3 = o texto das formas com estilo por trecho (W3).
+pub const FORMAT_VERSION: u32 = 3;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -155,6 +156,7 @@ impl BoardSet {
         match version {
             FORMAT_VERSION => postcard::from_bytes(bytes).map_err(|e| e.to_string()),
             1 => crate::legacy::read_v1(bytes),
+            2 => crate::legacy::read_v2(bytes),
             v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
     }

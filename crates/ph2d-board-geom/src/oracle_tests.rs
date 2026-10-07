@@ -163,7 +163,7 @@ fn shape(kind: ShapeType, round: bool) -> Shape {
     Shape {
         kind,
         style,
-        text: String::new(),
+        text: Default::default(),
     }
 }
 

@@ -1,0 +1,29 @@
+# FONTE: https://developers.miro.com/docs/stickynote_stickynote-1 (documentação oficial do Miro)
+# OBTIDO: 2026-10-06 por `curl -sL` e
+#   grep -oE '\[`[a-z_]+`\]\(https://www.color-hex.com/color/[0-9a-f]{6}\)'
+# É o conteúdo do Miro, não um valor nosso: as cores das notas do quadro (`STICKY_COLORS`) e as
+# medidas (`STICKY_SQUARE`, `STICKY_RECT_W`) vêm daqui, pela ordem da enumeração `fillColor`.
+# Help center (06/10): «There are 16 colors available for sticky notes… (no custom colors)»;
+# «The text color can't be changed on sticky notes».
+
+fillColor (ordem da documentação):
+gray          f5f6f8
+light_yellow  fff9b1   (default)
+yellow        f5d128
+orange        ff9d48
+light_green   d5f692
+green         c9df56
+dark_green    93d275
+cyan          67c6c0
+light_pink    ffcee0
+pink          ea94bb
+violet        c6a2d2
+red           f0939d
+light_blue    a6ccf5
+blue          6cd8fa
+dark_blue     9ea9ff
+black         000000
+
+shape: square (default) | rectangle
+width default: square "199 dp" · rectangle "350 dp"
+height default: "228 dp (it includes the sticky note shadow)"

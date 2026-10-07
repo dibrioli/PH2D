@@ -1,5 +1,61 @@
 use super::{BoardSet, Camera, FORMAT_VERSION};
-use crate::{BoardOp, Element, Rgba, Shape, ShapeType, Style};
+use crate::{BoardOp, Element, Rgba, RichText, Shape, ShapeType, Style};
+
+/// ⭐ Um ficheiro do formato 2 (W1–W2: o texto era uma `String`) continua a abrir — os bytes abaixo
+/// foram gravados por esse build (`d8a331ec3`): um quadro «Ideias» com uma pílula rodada, cantos
+/// redondos, com «olá» dentro, e uma seta em cotovelo presa a ela, com rótulo e um ponto de ajuste.
+#[test]
+fn a_format_2_file_still_opens_with_its_text_and_arrow() {
+    let set = BoardSet::from_bytes(V2_BYTES).expect("o formato 2 lê-se");
+    let b = &set.boards()[0];
+    assert_eq!(b.name, "Ideias");
+    let els = b.doc.live_in_z_order();
+    assert_eq!(els.len(), 2);
+    let s = els[0].shape().expect("a 1.ª é a forma");
+    assert_eq!(s.kind, ShapeType::Pill);
+    assert_eq!(s.text.as_str(), "olá");
+    assert!(s.text.spans().is_empty());
+    assert!(s.style.round);
+    assert_eq!(els[0].angle, 0.5);
+    let c = els[1].connector().expect("a 2.ª é a seta");
+    assert_eq!(c.label, "sim");
+    assert_eq!(c.waypoints, vec![[5.0, 6.0]]);
+    let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert_eq!(
+        back, set,
+        "relido e regravado no formato actual, fica igual"
+    );
+}
+
+/// Gravados pelo build do formato 2 (as fontes de `d8a331ec3` compiladas à parte, `BoardSet::to_bytes`
+/// escrito para o ficheiro) — nunca copiados à mão (uma cópia à mão de 251 números saiu com 253).
+const V2_BYTES: &[u8] = include_bytes!("../fixtures/format_v2.bin");
+
+/// O texto com trechos (W3) e uma nota grava-se e lê-se.
+#[test]
+fn rich_text_and_a_sticky_round_trip_through_the_bytes() {
+    let mut set = BoardSet::default();
+    let a = set.create("Notas".into());
+    let doc = &mut set.get_mut(a).unwrap().doc;
+    let ink = Rgba([1, 2, 3, 255]);
+    let mut text = RichText::plain("uma boa ideia");
+    text.toggle(4..7, crate::Mark::Bold);
+    text.restyle(8..13, |m| m.color = Some(Rgba([200, 0, 0, 255])));
+    let shape = Shape {
+        kind: ShapeType::Sticky,
+        style: Style::new(Some(Rgba(crate::STICKY_COLORS[2])), None, ink),
+        text,
+    };
+    let el = Element::new_shape(
+        doc.mint_id(),
+        doc.z_on_top(),
+        shape,
+        [0.0, 0.0, 199.0, 199.0],
+    );
+    BoardOp::Put(el).apply(doc);
+    let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert_eq!(back, set);
+}
 
 #[test]
 fn tabs_keep_their_order_through_create_duplicate_move_and_remove() {
@@ -100,7 +156,10 @@ fn a_format_1_file_still_opens_as_rectangles() {
     assert_eq!(s.style.fill, Some(Rgba([1, 2, 3, 4])));
     assert!(s.text.is_empty());
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
-    assert_eq!(back, set, "relido e regravado no formato 2, fica igual");
+    assert_eq!(
+        back, set,
+        "relido e regravado no formato actual, fica igual"
+    );
 }
 
 /// Gravados pelo build do formato 1 (`e74c81f32`, `BoardSet::to_bytes`), não reescritos à mão.
@@ -122,7 +181,7 @@ fn an_arrow_round_trips_through_the_bytes() {
     let shape = Shape {
         kind: ShapeType::Rectangle,
         style: Style::new(None, Some(ink), ink),
-        text: String::new(),
+        text: RichText::default(),
     };
     let box_el = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [0.0, 0.0, 10.0, 10.0]);
     let target = box_el.id;
@@ -142,7 +201,7 @@ fn an_arrow_round_trips_through_the_bytes() {
     BoardOp::Put(arrow).apply(doc);
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(back, set);
-    assert_eq!(FORMAT_VERSION, 2);
+    assert_eq!(FORMAT_VERSION, 3);
 }
 
 /// A revisão da sessão muda a cada operação aplicada e nunca se repete entre documentos (a cache de
@@ -158,7 +217,7 @@ fn the_session_revision_moves_with_each_op_and_is_unique() {
     let shape = Shape {
         kind: ShapeType::Rectangle,
         style: Style::new(None, Some(ink), ink),
-        text: String::new(),
+        text: RichText::default(),
     };
     let el = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [0.0, 0.0, 1.0, 1.0]);
     let id = el.id;

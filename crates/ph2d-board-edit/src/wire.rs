@@ -425,7 +425,7 @@ impl Editor {
         next.z = doc.z_on_top();
         next.version = 0;
         if let Some(sh) = next.shape_mut() {
-            sh.text.clear();
+            sh.text = Default::default();
         }
         let free = |el: &Element, doc: &BoardDoc| {
             let b = el.aabb();

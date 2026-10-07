@@ -6,7 +6,7 @@ fn rect(doc: &mut BoardDoc, x: f64) -> Element {
     let shape = Shape {
         kind: ShapeType::Rectangle,
         style: Style::new(Some(ink), None, ink),
-        text: String::new(),
+        text: Default::default(),
     };
     Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [x, 0.0, 10.0, 10.0])
 }

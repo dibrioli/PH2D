@@ -2509,3 +2509,81 @@ mutação (o arnês `docs/Components/ferramentas/mutacao_navegacao_w18_2026-10-0
 o heurístico de volta ao global, a cota do «à vista» desligada, a queixa calada); o smoke do dono: as cenas
 `=5` e `=6` iguais na tela (fotografadas), e o painel a mostrar a queixa nova numa área estreita (passos
 numerados no handoff); o handoff de integração da W18 ATUALIZADO (a linha leva W15–W19), o §5 do CLAUDE.md.
+
+### §28.6 — H e V feitos: UMA cota (`ph2d_nav::cota`), quatro leitores
+
+**A lei** (provada no doc-comment de `crates/ph2d-nav/src/cota.rs`): `K` = os polígonos que custam `< 1`, `w` o
+menor custo; um caminho de comprimento `≥ ℓ` custa `≥ w·ℓ + (1 − w)·min(ℓ, d(a, K) + d(K, b))` — fora de `K` paga
+`≥ 1` por metro e anda pelo menos a ida e a volta. Vale para qualquer número de áreas baratas (`K` é a união),
+com `d` medido até à CAIXA de cada polígono (índice `NavMesh::caixas`, por área); sem área barata na malha é `ℓ`
+ao bit; é CONSISTENTE (1-Lipschitz fora de `K`, `w` por metro dentro). Uma função (`inferior`), lida por:
+o heurístico (`push_interval`, as raízes prometidas — cada raiz guarda o seu `d`), a saída cedo da fase geral e o
+atalho do mesmo polígono (`polyanya_fatias.rs`), a poda dos atalhos (`link.rs`) e o «alvo à vista» (`agent::a_vista`).
+O CONTROLO é `Polyanya::set_cota_global(true)` (`D = 0`: a cota da W7).
+
+**Medido** (`crates/ph2d-navmesh/examples/medir_cota_w19.rs`, perfil `smoke`, as versões intercaladas no mesmo
+processo, o mínimo de 5, load `1,4` — `target/prova/w19/medir_cota_final.txt`):
+
+| a cena grande, `60` consultas | expandidos / consulta | trabalho / consulta | ms (mín) | custo total |
+|---|---|---|---|---|
+| sem estrada (a tabela sem o `0,3`) | `24 176` | `45 752` | `367,6` | `3 822,527372` |
+| com a estrada, cota global (a de hoje) | `85 766` | `250 875` | `1 808,7` | `3 822,527372` |
+| **com a estrada, cota nova** | **`24 232`** | **`45 860`** | **`376,7`** | `3 822,527372` |
+
+Kill-criterion H: `24 232 / 24 176 = 1,002` (`≤ 1,1`) ✓; custo igual ao dígito ✓. As cenas `30 × 20` com áreas
+caras E baratas (`3 × 4` tabelas, `432` pares contra o oráculo a `0,1 m`): máx `1,000795` do oráculo (o mesmo
+par com a cota global); igual à global ao bit em `431` — num a nova acha um caminho MAIS barato (`−1,48e-4`,
+abaixo do oráculo; a global ficava `1,2e-4` ACIMA dele: o polimento a meio de uma ordem de pops diferente). ⚠️ O
+kill-criterion dizia «igual ao dígito»: este par não o é, e a diferença é para o lado do óptimo — escrito aqui em
+vez de mudar o critério. Expandidos `1,3–3,6×` menos em todas as tabelas. A procura em fatias = a inteira ao bit
+com áreas baratas (o gate `fatias` corre agora também a cena com elas).
+
+V: um perseguidor em campo aberto com uma estrada a `Cost 0.3` a `5 m` (`nav_custo::uma_area_barata_longe_nao_desliga_o_alvo_a_vista`):
+trabalho de procura `0 · 0` (sem / com a estrada; a recta, sem procura) — a regra da W16 dava `11 → 112`; o
+CONTROLO (a estrada paralela a `0,9 m`, onde ir e voltar compensa) procura (`194`) e anda nela (`78` tiques). O
+gate cruzado (`cota::quando_a_vista_diz_sim_nenhum_caminho_e_mais_barato`): `114` SIM numa tabela com áreas
+baratas, nenhum abaixo do oráculo; `9` NÃO onde a barata perto vence. O gate `agent_tests:377` continua a recusar
+a barata entre os dois e ganhou o caso longe (SIM).
+
+### §28.7 — Q feito: a ponte publica, o Inspector diz
+
+**Medido antes do desenho:** a pergunta precisa do raio de cada corpo e da forma da área NA PONTE (o raio da
+malha é o da chave, `⌈r·256⌉/256`; a forma vem da pose de obstáculo). Responder no Inspector seria uma segunda
+cópia da lei do raio e da forma. ⇒ `PhysicsBridge::publica_areas_estreitas` (em `nav_custo.rs`, chamada pelo
+`publica_navegacao`): para cada área com `Cost < 1` não proibida, o menor raio das malhas construídas para o qual
+`ph2d_navmesh::inflate::some_na_malha` (a MESMA erosão, raio e lados da construção — `Params::lados_do_disco`, a
+porta que `chao_e_areas` e `tiles` passaram a usar) é vazia ⇒ `NavCostAreaNow { too_narrow_for }`, DERIVADO e não
+registado (o precedente do `NavNow`), ausente quando cabe. `InspectorNavCostArea::too_narrow_for` →
+`CostAreaQueixa::MaisEstreitaQueOCorpo` (depois da forma e do corpo que anda; só barata e não proibida) → a frase
+`panel.inspector.nav.area_narrower_than_body` com o raio (`tr_with`). ⚠️ Como o `NavNow`, ausente antes do 1.º
+tique: a queixa aparece com o relógio a andar.
+
+**A cena `=7`** (`nav_smoke_estreita.rs`): a mesma estrada em U a `0.3`, larga (`0,8 m`) à esquerda e estreita
+(`0,4 m`) à direita; o corredor da esquerda anda `1 499` tiques nela (desvio `2,29 m`), o da direita sobe a direito
+(desvio `0,02`); o CONTROLO (as duas a `Cost 1`) vai a direito dos dois lados. A `Narrow Road` vem escolhida com a
+secção aberta — fotografada com a frase pintada (`target/prova/w19/foto/cena7_{a_meio,fim}.png`). A cena ensina
+melhor que um passo «encolha o colisor»: o desenho da estrada não acompanharia o colisor (a cena mentiria). A
+secção 12 do `03_navegacao.pdf`.
+
+### §28.8 — A prova
+
+**Mutação** (`docs/Components/ferramentas/mutacao_navegacao_w19_2026-10-07.py`, o motor da W15–W18): **`15 / 15`**
+sangram, `0` defeitos de arnês, checksums iguais. 1.ª corrida `12 / 15`: sobreviveram **H1** e **H2** (o heurístico
+e a saída cedo pela cota global) — a régua «sem a estrada» usava a MESMA tabela com o `0,3`, e uma mutação que
+esquece a geometria inflava os dois lados por igual; a régua passou a ser o mundo sem estrada nenhuma — e **H5** (a
+poda dos atalhos pela recta), que nenhuma fixtura alcançava: gates dirigidos novos
+(`cota::com_a_estrada_longe_a_saida_cedo_poupa_a_ponderada` — os nós EXACTOS da tabela sem a estrada;
+`cota::o_atalho_que_acaba_numa_estrada_barata_nao_e_podado` — a pé `6,792`, pelo atalho `5,600`) e o gate de força
+bruta dos atalhos em cenas aleatórias. A 2.ª corrida do grupo `COTA`: `5 / 5`.
+
+| ⛔ Recusas MEDIDAS (W19) | medido | porquê |
+|---|---|---|
+| a queixa calculada no Inspector a partir do mundo | — (desenho) | duas cópias da lei do raio da malha e da forma do obstáculo |
+| ensinar a queixa por «encolha o colisor da Road» na cena 6 | — | o desenho não acompanha o colisor: a cena mostraria uma estrada larga que não faz nada |
+
+### §28.9 — ⏳ O que fica
+
+- O que a §27.10 deixou (o crítico do tique, quem persegue sem o alvo à vista na lama cerrada, a procura
+  ponderada no tecto do desenho) — sem mudança.
+- `d(x, K)` varre as caixas de todos os polígonos baratos por raiz: barato com poucas áreas (as cenas do dono); um
+  mundo com milhares de polígonos baratos pediria uma grelha das caixas — por medir quando existir uma cena assim.

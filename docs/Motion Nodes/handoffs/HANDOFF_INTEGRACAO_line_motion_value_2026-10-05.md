@@ -493,3 +493,59 @@ igual).
 **⏳ O QUE FICA ABERTO:** nada desta família. ⚠️ Registado (não é aberto): a rampa perto do limiar segue a
 teoria a `±0,07` (o gate aceita `±0,06` a `0,1`/`0,15`/`0,2`); uma lei exacta ali pede o rolamento dentro do solver,
 e o único que o rapier oferece (o motor) foi recusado pela pilha (§9.23). Integrar só por ordem do dono.
+
+## §18 — A 10.ª onda (07/10): os ABERTOS do ciclo 6, num ciclo
+
+Ordem do dono (07/10): *«resolver num único ciclo o Ciclo 6 completo»*. Estado medido, desenho, critério de abandono
+e resultado de cada item: [doc 110 §14](../110_ciclo_6_valor_e_pulso.md). Base `a46c4c200` (o main não andou); commits
+desta onda `7257b737e` · `cd5f23179` · `bdaf1f8fa` · (docs) · `6ca487037` · este.
+
+| item | o que ficou |
+|---|---|
+| **1. W1(b) — porta ≠ 0** | ✅ duas espécies: o COMPLEMENTO de um `Compact` (`StreamOp::Compact.complement`, `died`/`pulse` do `sim.lifetime`, a mesma varredura e a mesma leitura de 8 bytes) e a PORTA PROJECTADA (`ProjectedPort` + `KernelResolver::projected_ports`: o `carry` do `pulse.counter`). `GpuSource::StagePort(nó, porta)`. Censo PELA PORTA DO PRODUTO (corrigido: planeava sem os fios): **60 → 65** cenas inteiras na placa (`=24 =25 =26 =27 =117`); presas por porta ≠ 0 **4 → 0** |
+| **2. o condutor na placa** | ✅ `plan_with_device_drivers` (porta NOVA; a `plan()` sem mapa é a lei antiga ao bit) + cópia de 4 bytes `v[0]` → uniform; só consumidores de mapa puro. CPU-lado −37 % num condutor caro; zero leituras de volta |
+| **3. W3b — três chaves** | ✅ ficam, com catraca (`ph2d-editor-core` `architecture_as_chaves_partilhadas_nao_ganham_leitor_partilhado`: 0 leituras partilhadas em 3 840 ficheiros) |
+| **4. as cópias** | ⛔ recusado por medição (5 consumidores fazem do comprimento significado; a costura custa `0,002 ms`); o censo achou e curou `value.wrap` (1→N) e `motion.distribute_radial` (`spin` → `ReadBroadcast`) |
+| **5. o relógio** | ✅ `sonda_o_relogio_do_ciclo_6` pela porta do produto (`motion_bridge::quadro::coze_o_quadro`, partida do `dispatch`): fio `0,051` · sem fio `0,053` · fio a derrubar `0,134` ms (`2,6×`) |
+| **6. a barra a um ULP** | ✅ era o `value.noise` em espaço de índice; o gate do slope mede em espaço de mundo (vale `6,2e-6`/`5,0e-4`); o comparador já não engole NaN |
+| **7. o consumidor do pulso** | ✅ `sim.spawn` com pulso na placa (`SourceRows.fired: FiredBirth`); 531/999/12 891 nascidos ao bit nas três cadeias (os fogos incluídos) |
+
+**Achados curados no caminho:** a placa HERDAVA o `age` ao nascer (`SourceRows::not_inherited`); um documento
+inteiro na placa com `pulse.signal` gritava errado (a bomba avança o `pre` do cone das tomadas sem fronteira, e a
+ponte marcha-o quando há sinais — `a_ponte_na_placa_grita_o_que_a_cpu_grita`); a `=116` dizia `102 400` peças e
+um engasgo que não existe (legenda, anúncio e tutorial 06 §7 refeitos).
+
+**Superfície de colisão (o integrador mede):**
+- ⚠️ **foundational, aditiva:** `ph2d-nodegraph` (`stream_op_meta.rs`: campos NOVOS em `StreamOp::Compact`
+  — `complement` — e `StreamOp::SourceRows` — `fired`, `not_inherited` —; `gpu.rs`: `ProjectedPort` e o método
+  com omissão `KernelResolver::projected_ports`). ⛔ **Qualquer linha que construa um `StreamOp::Compact` ou
+  `StreamOp::SourceRows` por literal não compila depois do merge** — os construtores de hoje (`motion.cull`,
+  `sim.lifetime`, os seis `SourceRows`: `fx.drop_shadow`, `fx.rgb_split`, `motion.clone`, `motion.duplicator`,
+  `motion.kaleidoscope`, `motion.mirror`, e o `sim.spawn`) foram atualizados aqui; um novo de outra linha leva
+  `complement: &[]` / `fired: None, not_inherited: &[]`. Contratos congelados (§6): nenhum tocado
+  (`NodeOp`/`OpResolver`/`NodeManifest` intactos).
+- `ph2d-node-registry` (`lib.rs` 699/700: um campo; `gpu_channels.rs`: `register_projected_ports`).
+- `ph2d-gpu-cook`: `plan.rs` cortado (`plan_forma.rs` NOVO, `plan_condutor.rs` NOVO), `lib.rs`, `encode.rs`
+  (`create_pipeline` mudou-se para cá), `estado.rs`, `stream_op.rs` (concat/junção → `stream_op_concat.rs`, o
+  `Carry` → `stream_op_carry.rs`, NOVOS `stream_op_complemento.rs`, `stream_op_disparo.rs`), `debug_read.rs`;
+  testes `gpu_cpu_parity*.rs`, `gpu_stream_ops*.rs`.
+- `ph2d-eval-motion` (`lib.rs`, `scrub.rs`: uma condição cada).
+- `ph2d-app-motion`: `motion_bridge.rs` (o fim do `dispatch` → `motion_bridge_quadro.rs`), `motion_bridge_gpu.rs`
+  (os valores dirigidos → `motion_bridge_gpu_dirigidos.rs`), `motion_state.rs`/`motion_state_verbos.rs` (dois
+  campos: `driven_gpu`, `condutores_na_placa`), a `=116` e o anúncio dela, o censo de rota, sondas e gates.
+- nós: `pulse-counter`, `sim-lifetime`, `sim-spawn`, `value-wrap`, `motion-distribute-radial`, `motion-cull` e os
+  seis `SourceRows`. `ph2d-editor-core` (a catraca), `ph2d-label-census` (`so_codigo_de_produto` público),
+  `shells/desktop/tests/it/the_gpu_cook_recusal_placement.rs`.
+- docs: doc 110 §14, doc 103 §5 (nota de 07/10), tutorial 06 (fonte + PDF). `Cargo.lock`: não muda.
+
+**Fecho corrido (sobre o diff acumulado):** `nextest-impacted` (base `a46c4c200`) **19 542/19 542**; suíte da
+placa `334/335` — o vermelho é `gpu_collide::crossing_the_reach_boundary_does_not_step_the_cost`, o candidato à
+família de flakes de carga que o doc 110 §6 já nomeava (2/2 sozinho, a `load 9` e a `load 35`; zero linhas
+desta onda no teste ou no nó) — ⇒ **pedido ao integrador: promovê-lo à lista** (`FLAKES_DE_CARGA.md`); clippy
+`--all-targets -D warnings` nas crates tocadas ✓; `fmt --all --check` ✓; censos `114/114` ✓; `doc-index` ✓.
+**Provas de mutação: 16/16 sangraram** (14 do lote + as duas metades da cura dos sinais). Smoke fotografado em
+`--release`: `=117`, `=27`, `=116` — as três `device: o plano inteiro (fully-GPU)`.
+
+**⏳ O QUE FICA ABERTO (nomeado, fora da lista do ciclo 6):** preparar `value.attribute` + `value.reduce` na placa
+custa ~`0,09 ms` de CPU por quadro (é o que come o ganho do item 2 na parede); o gate de paridade do `pulse.beat`
+só corre 6 tiques e nunca chega aos empates batida-tique da fixtura decimal. Integrar só por ordem do dono.

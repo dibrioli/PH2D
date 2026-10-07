@@ -1,0 +1,178 @@
+{
+  "caso": "C4_rodado_topo",
+  "pergunta": "alinhar ao topo com um rodado",
+  "cena": "c4",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "Rot",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 500,
+          "y": 300,
+          "width": 120,
+          "height": 40,
+          "angle": 0.5,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Ref",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 537,
+          "y": 450,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "select",
+      "acao": {
+        "do": "select",
+        "ids": [
+          "Rot",
+          "Ref"
+        ]
+      },
+      "elementos": [
+        {
+          "id": "Rot",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 500,
+          "y": 300,
+          "width": 120,
+          "height": 40,
+          "angle": 0.5,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Ref",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 537,
+          "y": 450,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "Ref",
+          "Rot"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "key",
+      "acao": {
+        "do": "key",
+        "key": "Control+Shift+ArrowUp"
+      },
+      "elementos": [
+        {
+          "id": "Rot",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 500,
+          "y": 300,
+          "width": 120,
+          "height": 40,
+          "angle": 0.5,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Ref",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 537,
+          "y": 273.6828164459404,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "Ref",
+          "Rot"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

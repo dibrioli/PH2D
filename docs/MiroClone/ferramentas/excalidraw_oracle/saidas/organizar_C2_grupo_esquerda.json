@@ -1,0 +1,326 @@
+{
+  "caso": "C2_grupo_esquerda",
+  "pergunta": "grupo + solto, alinhar a esquerda: o grupo move como unidade?",
+  "cena": "c2",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "Ga",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 400,
+          "y": 250,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [
+            "g1"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Gb",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 450,
+          "y": 350,
+          "width": 61,
+          "height": 97,
+          "angle": 0,
+          "groupIds": [
+            "g1"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Lc",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 337,
+          "y": 520,
+          "width": 173,
+          "height": 41,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "clique_grupo",
+      "acao": {
+        "do": "click",
+        "at": [
+          456,
+          285
+        ],
+        "rotulo": "clique_grupo"
+      },
+      "elementos": [
+        {
+          "id": "Ga",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 400,
+          "y": 250,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [
+            "g1"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Gb",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 450,
+          "y": 350,
+          "width": 61,
+          "height": 97,
+          "angle": 0,
+          "groupIds": [
+            "g1"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Lc",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 337,
+          "y": 520,
+          "width": 173,
+          "height": 41,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "Ga",
+          "Gb"
+        ],
+        "selectedGroupIds": [
+          "g1"
+        ],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "shift_clique_solto",
+      "acao": {
+        "do": "click",
+        "at": [
+          423,
+          540
+        ],
+        "shift": true,
+        "rotulo": "shift_clique_solto"
+      },
+      "elementos": [
+        {
+          "id": "Ga",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 400,
+          "y": 250,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [
+            "g1"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Gb",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 450,
+          "y": 350,
+          "width": 61,
+          "height": 97,
+          "angle": 0,
+          "groupIds": [
+            "g1"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Lc",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 337,
+          "y": 520,
+          "width": 173,
+          "height": 41,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "Ga",
+          "Gb",
+          "Lc"
+        ],
+        "selectedGroupIds": [
+          "g1"
+        ],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 3,
+      "rotulo": "key",
+      "acao": {
+        "do": "key",
+        "key": "Control+Shift+ArrowLeft"
+      },
+      "elementos": [
+        {
+          "id": "Ga",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 337,
+          "y": 250,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [
+            "g1"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Gb",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 387,
+          "y": 350,
+          "width": 61,
+          "height": 97,
+          "angle": 0,
+          "groupIds": [
+            "g1"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Lc",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 337,
+          "y": 520,
+          "width": 173,
+          "height": 41,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "Ga",
+          "Gb",
+          "Lc"
+        ],
+        "selectedGroupIds": [
+          "g1"
+        ],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

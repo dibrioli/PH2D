@@ -1,0 +1,554 @@
+{
+  "caso": "A1b_retangulo_desenhado_na_moldura",
+  "pergunta": "rectangulo desenhado (R) dentro / a cruzar a borda com centro dentro / centro fora -> frameId?",
+  "cena": "a_moldura",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "tool",
+      "acao": {
+        "do": "tool",
+        "key": "r"
+      },
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "rectangle",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "dentro",
+      "acao": {
+        "do": "drag",
+        "from": [
+          450,
+          260
+        ],
+        "to": [
+          563,
+          331
+        ],
+        "rotulo": "dentro"
+      },
+      "elementos": [
+        {
+          "id": "sTHnkZ18DZdJw-4AR6Od6",
+          "type": "rectangle",
+          "name": null,
+          "index": "Zz",
+          "x": 450,
+          "y": 260,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "sTHnkZ18DZdJw-4AR6Od6"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 3,
+      "rotulo": "tool",
+      "acao": {
+        "do": "tool",
+        "key": "r"
+      },
+      "elementos": [
+        {
+          "id": "sTHnkZ18DZdJw-4AR6Od6",
+          "type": "rectangle",
+          "name": null,
+          "index": "Zz",
+          "x": 450,
+          "y": 260,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "rectangle",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 4,
+      "rotulo": "cruza_centro_dentro",
+      "acao": {
+        "do": "drag",
+        "from": [
+          700,
+          400
+        ],
+        "to": [
+          850,
+          470
+        ],
+        "rotulo": "cruza_centro_dentro"
+      },
+      "elementos": [
+        {
+          "id": "sTHnkZ18DZdJw-4AR6Od6",
+          "type": "rectangle",
+          "name": null,
+          "index": "Zz",
+          "x": 450,
+          "y": 260,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "WHzFDJKNgLYnBSVsdtrLh",
+          "type": "rectangle",
+          "name": null,
+          "index": "ZzV",
+          "x": 700,
+          "y": 400,
+          "width": 150,
+          "height": 70,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "WHzFDJKNgLYnBSVsdtrLh"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 5,
+      "rotulo": "tool",
+      "acao": {
+        "do": "tool",
+        "key": "r"
+      },
+      "elementos": [
+        {
+          "id": "sTHnkZ18DZdJw-4AR6Od6",
+          "type": "rectangle",
+          "name": null,
+          "index": "Zz",
+          "x": 450,
+          "y": 260,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "WHzFDJKNgLYnBSVsdtrLh",
+          "type": "rectangle",
+          "name": null,
+          "index": "ZzV",
+          "x": 700,
+          "y": 400,
+          "width": 150,
+          "height": 70,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "rectangle",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 6,
+      "rotulo": "cruza_centro_fora",
+      "acao": {
+        "do": "drag",
+        "from": [
+          760,
+          280
+        ],
+        "to": [
+          880,
+          330
+        ],
+        "rotulo": "cruza_centro_fora"
+      },
+      "elementos": [
+        {
+          "id": "sTHnkZ18DZdJw-4AR6Od6",
+          "type": "rectangle",
+          "name": null,
+          "index": "Zz",
+          "x": 450,
+          "y": 260,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "WHzFDJKNgLYnBSVsdtrLh",
+          "type": "rectangle",
+          "name": null,
+          "index": "ZzV",
+          "x": 700,
+          "y": 400,
+          "width": 150,
+          "height": 70,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "trvsCo7TLJORF3ZGNXm1g",
+          "type": "rectangle",
+          "name": null,
+          "index": "Zzl",
+          "x": 760,
+          "y": 280,
+          "width": 120,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "trvsCo7TLJORF3ZGNXm1g"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

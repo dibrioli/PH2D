@@ -1,0 +1,456 @@
+{
+  "caso": "A10_recorte_e_titulo",
+  "pergunta": "filho que cruza a borda e recortado? titulo: onde e de que tamanho",
+  "cena": "a_recorte",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "F10",
+          "type": "frame",
+          "name": "Quadro A10",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 200,
+          "height": 150,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 550,
+          "y": 300,
+          "width": 120,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F10",
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "desselecciona",
+      "acao": {
+        "do": "click",
+        "at": [
+          1100,
+          700
+        ],
+        "rotulo": "desselecciona"
+      },
+      "elementos": [
+        {
+          "id": "F10",
+          "type": "frame",
+          "name": "Quadro A10",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 200,
+          "height": 150,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 550,
+          "y": 300,
+          "width": 120,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F10",
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "png_exportado",
+      "acao": {
+        "do": "pixeis",
+        "fonte": "exportacao",
+        "cor": [
+          224,
+          49,
+          49
+        ],
+        "tol": 40,
+        "faixa": [
+          0,
+          0,
+          220,
+          30
+        ],
+        "rotulo": "png_exportado"
+      },
+      "pixeis": {
+        "fonte": "exportacao",
+        "largura": 220,
+        "altura": 190,
+        "cor": {
+          "n": 3264,
+          "x0": 146,
+          "y0": 103,
+          "x1": 209,
+          "y1": 153
+        },
+        "faixa": {
+          "rect": [
+            0,
+            0,
+            220,
+            30
+          ],
+          "naoBranco": {
+            "n": 517,
+            "x0": 10,
+            "y0": 12,
+            "x1": 202,
+            "y1": 29
+          }
+        },
+        "ficheiro": "organizar_A10_recorte_e_titulo.png"
+      },
+      "elementos": [
+        {
+          "id": "F10",
+          "type": "frame",
+          "name": "Quadro A10",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 200,
+          "height": 150,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 550,
+          "y": 300,
+          "width": 120,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F10",
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 3,
+      "rotulo": "canvas_editor",
+      "acao": {
+        "do": "pixeis",
+        "fonte": "editor",
+        "cor": [
+          224,
+          49,
+          49
+        ],
+        "tol": 40,
+        "faixa": [
+          413,
+          170,
+          800,
+          227
+        ],
+        "rotulo": "canvas_editor"
+      },
+      "pixeis": {
+        "fonte": "editor",
+        "largura": 1280,
+        "altura": 800,
+        "cor": {
+          "n": 3326,
+          "x0": 549,
+          "y0": 299,
+          "x1": 612,
+          "y1": 350
+        },
+        "faixa": {
+          "rect": [
+            413,
+            170,
+            800,
+            227
+          ],
+          "naoBranco": {
+            "n": 190,
+            "x0": 418,
+            "y0": 226,
+            "x1": 607,
+            "y1": 226
+          }
+        }
+      },
+      "elementos": [
+        {
+          "id": "F10",
+          "type": "frame",
+          "name": "Quadro A10",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 200,
+          "height": 150,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 550,
+          "y": 300,
+          "width": 120,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F10",
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 4,
+      "rotulo": "svg_exportado",
+      "acao": {
+        "do": "svg",
+        "rotulo": "svg_exportado"
+      },
+      "svg": {
+        "viewBox": "0 0 220 190.5",
+        "width": "220",
+        "height": "190.5",
+        "clipPaths": [
+          "<rect transform=\"translate(10 30.5) rotate(0 100 75)\" width=\"200\" height=\"150\" rx=\"8\" ry=\"8\"></rect>"
+        ],
+        "clipPathRefs": 0,
+        "texts": [
+          {
+            "text": "Quadro A10",
+            "x": "0",
+            "y": "12.5302734375",
+            "fontSize": "14px",
+            "fontFamily": "Helvetica, Segoe UI Emoji"
+          }
+        ],
+        "ficheiro": "organizar_A10_recorte_e_titulo.svg"
+      },
+      "elementos": [
+        {
+          "id": "F10",
+          "type": "frame",
+          "name": "Quadro A10",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 200,
+          "height": 150,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 550,
+          "y": 300,
+          "width": 120,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F10",
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 5,
+      "rotulo": "titulo_no_dom",
+      "acao": {
+        "do": "dom_texto",
+        "texto": "Quadro A10",
+        "rotulo": "titulo_no_dom"
+      },
+      "dom": [
+        {
+          "tag": "div",
+          "classe": "",
+          "rect": [
+            413,
+            206.5,
+            69,
+            17.5
+          ],
+          "fontSize": "14px",
+          "fontFamily": "Assistant, system-ui, BlinkMacSystemFont, -apple-system, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "fontWeight": "400",
+          "lineHeight": "17.5px",
+          "color": "rgb(153, 153, 153)"
+        }
+      ],
+      "elementos": [
+        {
+          "id": "F10",
+          "type": "frame",
+          "name": "Quadro A10",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 200,
+          "height": 150,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 550,
+          "y": 300,
+          "width": 120,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F10",
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

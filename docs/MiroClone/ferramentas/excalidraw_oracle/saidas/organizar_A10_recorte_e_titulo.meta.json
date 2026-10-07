@@ -1,0 +1,24 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-07T23:09:24.492Z",
+  "input": "organizar_casos.json",
+  "input_sha256": "5d2100ba05f65c9b6a82ba03773304e4a2f195e58e7fad5e2015a3e86ecbcb11",
+  "case_sha256": "6ade40f2e667c4572c8d5fa87c430edb52e2c3fda0640687e9f3e66046958023",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "case_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "editor": "<Excalidraw> montado (excalidrawAPI: updateScene para seleccionar/scroll 0/zoom 1, getSceneElementsIncludingDeleted, getAppState); rato e teclado do Playwright; janela 1280×800, deviceScaleFactor 1",
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "organizar_A10_recorte_e_titulo.json": "93c7b8cb387c32794f8c6a452dfe697cc21854d93bda67af863ffe9635913403",
+    "organizar_A10_recorte_e_titulo.png": "9dd72d476cc366c1dbd076faeda7833a24460ed48974b53c984e73dca618db08",
+    "organizar_A10_recorte_e_titulo.svg": "aaa490e27bbbc4d2b44efb187d03d0238ced87631281f352bde511e325e3e9a3"
+  }
+}

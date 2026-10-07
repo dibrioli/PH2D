@@ -1,0 +1,275 @@
+{
+  "caso": "C3_distribui_h",
+  "pergunta": "distribuir horizontalmente 4 larguras e vaos desiguais: vaos iguais ou centros iguais?",
+  "cena": "c3",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "D1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 337,
+          "y": 300,
+          "width": 41,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "D2",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 413,
+          "y": 280,
+          "width": 113,
+          "height": 90,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "D3",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 601,
+          "y": 310,
+          "width": 29,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "D4",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 700,
+          "y": 295,
+          "width": 87,
+          "height": 70,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "select",
+      "acao": {
+        "do": "select",
+        "ids": [
+          "D1",
+          "D2",
+          "D3",
+          "D4"
+        ]
+      },
+      "elementos": [
+        {
+          "id": "D1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 337,
+          "y": 300,
+          "width": 41,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "D2",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 413,
+          "y": 280,
+          "width": 113,
+          "height": 90,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "D3",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 601,
+          "y": 310,
+          "width": 29,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "D4",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 700,
+          "y": 295,
+          "width": 87,
+          "height": 70,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "D1",
+          "D2",
+          "D3",
+          "D4"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "botao",
+      "acao": {
+        "do": "botao",
+        "re": "distribute horizontally"
+      },
+      "botao": "Distribute horizontally | Distribute horizontally — Alt+H",
+      "elementos": [
+        {
+          "id": "D1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 337,
+          "y": 300,
+          "width": 41,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "D2",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 438,
+          "y": 280,
+          "width": 113,
+          "height": 90,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "D3",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 611,
+          "y": 310,
+          "width": 29,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "D4",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 700,
+          "y": 295,
+          "width": 87,
+          "height": 70,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "D1",
+          "D2",
+          "D3",
+          "D4"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

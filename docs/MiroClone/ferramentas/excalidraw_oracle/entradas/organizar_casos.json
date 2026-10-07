@@ -1,0 +1,2659 @@
+{
+ "cenas": {
+  "a_desenho": {
+   "elements": [
+    {
+     "id": "R_dentro",
+     "type": "rectangle",
+     "x": 437,
+     "y": 263,
+     "width": 113,
+     "height": 71,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "R_metade",
+     "type": "rectangle",
+     "x": 737,
+     "y": 300,
+     "width": 120,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "R_centro",
+     "type": "rectangle",
+     "x": 610,
+     "y": 437,
+     "width": 97,
+     "height": 113,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "R_canto",
+     "type": "rectangle",
+     "x": 397,
+     "y": 487,
+     "width": 31,
+     "height": 29,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "R_fora",
+     "type": "rectangle",
+     "x": 900,
+     "y": 600,
+     "width": 50,
+     "height": 50,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "a_moldura": {
+   "elements": [
+    {
+     "id": "F",
+     "type": "frame",
+     "name": "Moldura",
+     "x": 413,
+     "y": 227,
+     "width": 384,
+     "height": 273,
+     "angle": 0,
+     "strokeColor": "#bbb",
+     "backgroundColor": "transparent",
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "R_fora",
+     "type": "rectangle",
+     "x": 900,
+     "y": 300,
+     "width": 80,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "a_moldura_filho": {
+   "elements": [
+    {
+     "id": "F",
+     "type": "frame",
+     "name": "Moldura",
+     "x": 413,
+     "y": 227,
+     "width": 384,
+     "height": 273,
+     "angle": 0,
+     "strokeColor": "#bbb",
+     "backgroundColor": "transparent",
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "R_filho",
+     "type": "rectangle",
+     "x": 520,
+     "y": 300,
+     "width": 80,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "a_moldura_dois_filhos": {
+   "elements": [
+    {
+     "id": "F",
+     "type": "frame",
+     "name": "Moldura",
+     "x": 413,
+     "y": 227,
+     "width": 384,
+     "height": 273,
+     "angle": 0,
+     "strokeColor": "#bbb",
+     "backgroundColor": "transparent",
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "C1",
+     "type": "rectangle",
+     "x": 450,
+     "y": 260,
+     "width": 113,
+     "height": 71,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "C2",
+     "type": "rectangle",
+     "x": 620,
+     "y": 380,
+     "width": 97,
+     "height": 83,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "O",
+     "type": "rectangle",
+     "x": 900,
+     "y": 300,
+     "width": 80,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "a_redimensiona": {
+   "elements": [
+    {
+     "id": "F",
+     "type": "frame",
+     "name": "Moldura",
+     "x": 413,
+     "y": 227,
+     "width": 384,
+     "height": 273,
+     "angle": 0,
+     "strokeColor": "#bbb",
+     "backgroundColor": "transparent",
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "R_in",
+     "type": "rectangle",
+     "x": 450,
+     "y": 260,
+     "width": 113,
+     "height": 71,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "R_parcial",
+     "type": "rectangle",
+     "x": 600,
+     "y": 300,
+     "width": 90,
+     "height": 50,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "R_borda",
+     "type": "rectangle",
+     "x": 700,
+     "y": 400,
+     "width": 80,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "a_moldura_pequena": {
+   "elements": [
+    {
+     "id": "G",
+     "type": "frame",
+     "name": "Pequena",
+     "x": 450,
+     "y": 260,
+     "width": 150,
+     "height": 140,
+     "angle": 0,
+     "strokeColor": "#bbb",
+     "backgroundColor": "transparent",
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "a_recorte": {
+   "elements": [
+    {
+     "id": "F10",
+     "type": "frame",
+     "name": "Quadro A10",
+     "x": 413,
+     "y": 227,
+     "width": 200,
+     "height": 150,
+     "angle": 0,
+     "strokeColor": "#bbb",
+     "backgroundColor": "transparent",
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "C",
+     "type": "rectangle",
+     "x": 550,
+     "y": 300,
+     "width": 120,
+     "height": 50,
+     "angle": 0,
+     "strokeColor": "#e03131",
+     "backgroundColor": "#e03131",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F10",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "a_api": {
+   "elements": [
+    {
+     "type": "frame",
+     "id": "FA",
+     "name": "API",
+     "children": [
+      "K1",
+      "K2"
+     ]
+    },
+    {
+     "type": "rectangle",
+     "id": "K1",
+     "x": 437,
+     "y": 263,
+     "width": 113,
+     "height": 71
+    },
+    {
+     "type": "rectangle",
+     "id": "K2",
+     "x": 600,
+     "y": 330,
+     "width": 97,
+     "height": 83
+    },
+    {
+     "type": "frame",
+     "id": "FX",
+     "name": "API explicita",
+     "x": 313,
+     "y": 550,
+     "width": 200,
+     "height": 100,
+     "children": [
+      "K3"
+     ]
+    },
+    {
+     "type": "rectangle",
+     "id": "K3",
+     "x": 900,
+     "y": 600,
+     "width": 50,
+     "height": 40
+    },
+    {
+     "type": "frame",
+     "id": "FV",
+     "name": "API vazia",
+     "x": 1000,
+     "y": 150,
+     "width": 120,
+     "height": 90,
+     "children": []
+    },
+    {
+     "type": "rectangle",
+     "id": "K4",
+     "x": 1020,
+     "y": 170,
+     "width": 40,
+     "height": 30
+    }
+   ]
+  },
+  "b": {
+   "elements": [
+    {
+     "id": "R1",
+     "type": "rectangle",
+     "x": 400,
+     "y": 250,
+     "width": 113,
+     "height": 71,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "R2",
+     "type": "rectangle",
+     "x": 600,
+     "y": 263,
+     "width": 97,
+     "height": 83,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "R3",
+     "type": "rectangle",
+     "x": 800,
+     "y": 300,
+     "width": 60,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "c1": {
+   "elements": [
+    {
+     "id": "Ra",
+     "type": "rectangle",
+     "x": 400,
+     "y": 250,
+     "width": 113,
+     "height": 71,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "Rb",
+     "type": "rectangle",
+     "x": 537,
+     "y": 380,
+     "width": 61,
+     "height": 97,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "Rc",
+     "type": "rectangle",
+     "x": 459,
+     "y": 520,
+     "width": 173,
+     "height": 41,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "c2": {
+   "elements": [
+    {
+     "id": "Ga",
+     "type": "rectangle",
+     "x": 400,
+     "y": 250,
+     "width": 113,
+     "height": 71,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [
+      "g1"
+     ],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "Gb",
+     "type": "rectangle",
+     "x": 450,
+     "y": 350,
+     "width": 61,
+     "height": 97,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [
+      "g1"
+     ],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "Lc",
+     "type": "rectangle",
+     "x": 337,
+     "y": 520,
+     "width": 173,
+     "height": 41,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "c3": {
+   "elements": [
+    {
+     "id": "D1",
+     "type": "rectangle",
+     "x": 337,
+     "y": 300,
+     "width": 41,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "D2",
+     "type": "rectangle",
+     "x": 413,
+     "y": 280,
+     "width": 113,
+     "height": 90,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "D3",
+     "type": "rectangle",
+     "x": 601,
+     "y": 310,
+     "width": 29,
+     "height": 50,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "D4",
+     "type": "rectangle",
+     "x": 700,
+     "y": 295,
+     "width": 87,
+     "height": 70,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "c4": {
+   "elements": [
+    {
+     "id": "Rot",
+     "type": "rectangle",
+     "x": 500,
+     "y": 300,
+     "width": 120,
+     "height": 40,
+     "angle": 0.5,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "Ref",
+     "type": "rectangle",
+     "x": 537,
+     "y": 450,
+     "width": 80,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "d": {
+   "elements": [
+    {
+     "id": "E0",
+     "type": "rectangle",
+     "x": 400,
+     "y": 250,
+     "width": 100,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E1",
+     "type": "rectangle",
+     "x": 700,
+     "y": 250,
+     "width": 80,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E2",
+     "type": "rectangle",
+     "x": 450,
+     "y": 290,
+     "width": 100,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E3",
+     "type": "rectangle",
+     "x": 900,
+     "y": 400,
+     "width": 60,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E4",
+     "type": "rectangle",
+     "x": 470,
+     "y": 300,
+     "width": 60,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "d_grupo": {
+   "elements": [
+    {
+     "id": "E0",
+     "type": "rectangle",
+     "x": 400,
+     "y": 250,
+     "width": 100,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E1",
+     "type": "rectangle",
+     "x": 700,
+     "y": 250,
+     "width": 80,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E2",
+     "type": "rectangle",
+     "x": 450,
+     "y": 290,
+     "width": 100,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [
+      "g"
+     ],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E3",
+     "type": "rectangle",
+     "x": 520,
+     "y": 320,
+     "width": 60,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [
+      "g"
+     ],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E4",
+     "type": "rectangle",
+     "x": 470,
+     "y": 300,
+     "width": 60,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "d_moldura": {
+   "elements": [
+    {
+     "id": "C1",
+     "type": "rectangle",
+     "x": 450,
+     "y": 260,
+     "width": 113,
+     "height": 71,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "C2",
+     "type": "rectangle",
+     "x": 600,
+     "y": 300,
+     "width": 97,
+     "height": 83,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "F",
+     "type": "frame",
+     "name": "Moldura",
+     "x": 413,
+     "y": 227,
+     "width": 384,
+     "height": 273,
+     "angle": 0,
+     "strokeColor": "#bbb",
+     "backgroundColor": "transparent",
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "O",
+     "type": "rectangle",
+     "x": 900,
+     "y": 300,
+     "width": 80,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "e": {
+   "elements": [
+    {
+     "id": "L",
+     "type": "rectangle",
+     "x": 437,
+     "y": 263,
+     "width": 113,
+     "height": 71,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "U",
+     "type": "rectangle",
+     "x": 650,
+     "y": 300,
+     "width": 97,
+     "height": 83,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "d_grupo_seguinte": {
+   "elements": [
+    {
+     "id": "E0",
+     "type": "rectangle",
+     "x": 400,
+     "y": 250,
+     "width": 100,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E2",
+     "type": "rectangle",
+     "x": 450,
+     "y": 290,
+     "width": 100,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [
+      "g"
+     ],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E3",
+     "type": "rectangle",
+     "x": 520,
+     "y": 320,
+     "width": 60,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [
+      "g"
+     ],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E1",
+     "type": "rectangle",
+     "x": 700,
+     "y": 250,
+     "width": 80,
+     "height": 80,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "E4",
+     "type": "rectangle",
+     "x": 470,
+     "y": 300,
+     "width": 60,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "d_moldura_primeiro": {
+   "elements": [
+    {
+     "id": "F",
+     "type": "frame",
+     "name": "Moldura",
+     "x": 413,
+     "y": 227,
+     "width": 384,
+     "height": 273,
+     "angle": 0,
+     "strokeColor": "#bbb",
+     "backgroundColor": "transparent",
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "C1",
+     "type": "rectangle",
+     "x": 450,
+     "y": 260,
+     "width": 113,
+     "height": 71,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "C2",
+     "type": "rectangle",
+     "x": 600,
+     "y": 300,
+     "width": 97,
+     "height": 83,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "O",
+     "type": "rectangle",
+     "x": 900,
+     "y": 300,
+     "width": 80,
+     "height": 60,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "a_api_aninhada": {
+   "elements": [
+    {
+     "id": "F",
+     "type": "frame",
+     "name": "Moldura",
+     "x": 413,
+     "y": 227,
+     "width": 384,
+     "height": 273,
+     "angle": 0,
+     "strokeColor": "#bbb",
+     "backgroundColor": "transparent",
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "G",
+     "type": "frame",
+     "name": "Pequena",
+     "x": 450,
+     "y": 260,
+     "width": 150,
+     "height": 140,
+     "angle": 0,
+     "strokeColor": "#bbb",
+     "backgroundColor": "transparent",
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "C1",
+     "type": "rectangle",
+     "x": 470,
+     "y": 290,
+     "width": 60,
+     "height": 40,
+     "angle": 0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "G",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  }
+ },
+ "casos": [
+  {
+   "nome": "A0_api_children",
+   "cena": "a_api",
+   "pergunta": "convertToExcalidrawElements com frame.children: frameId, caixa da moldura",
+   "passos": []
+  },
+  {
+   "nome": "A1_A3_ferramenta_moldura",
+   "cena": "a_desenho",
+   "pergunta": "moldura desenhada (F) sobre formas: dentro, metade, centro dentro, canto, fora -> frameId?",
+   "passos": [
+    {
+     "do": "tool",
+     "key": "f"
+    },
+    {
+     "do": "drag",
+     "from": [
+      413,
+      227
+     ],
+     "to": [
+      797,
+      500
+     ],
+     "rotulo": "desenha_moldura"
+    }
+   ]
+  },
+  {
+   "nome": "A1b_retangulo_desenhado_na_moldura",
+   "cena": "a_moldura",
+   "pergunta": "rectangulo desenhado (R) dentro / a cruzar a borda com centro dentro / centro fora -> frameId?",
+   "passos": [
+    {
+     "do": "tool",
+     "key": "r"
+    },
+    {
+     "do": "drag",
+     "from": [
+      450,
+      260
+     ],
+     "to": [
+      563,
+      331
+     ],
+     "rotulo": "dentro"
+    },
+    {
+     "do": "tool",
+     "key": "r"
+    },
+    {
+     "do": "drag",
+     "from": [
+      700,
+      400
+     ],
+     "to": [
+      850,
+      470
+     ],
+     "rotulo": "cruza_centro_dentro"
+    },
+    {
+     "do": "tool",
+     "key": "r"
+    },
+    {
+     "do": "drag",
+     "from": [
+      760,
+      280
+     ],
+     "to": [
+      880,
+      330
+     ],
+     "rotulo": "cruza_centro_fora"
+    }
+   ]
+  },
+  {
+   "nome": "A1c_retangulo_comeca_fora",
+   "cena": "a_moldura",
+   "pergunta": "rectangulo desenhado de fora para dentro (mesma caixa que cruza_centro_fora, ponto inicial fora)",
+   "passos": [
+    {
+     "do": "tool",
+     "key": "r"
+    },
+    {
+     "do": "drag",
+     "from": [
+      880,
+      330
+     ],
+     "to": [
+      760,
+      280
+     ],
+     "rotulo": "desenha"
+    }
+   ]
+  },
+  {
+   "nome": "A1d_retangulo_comeca_dentro_quase_fora",
+   "cena": "a_moldura",
+   "pergunta": "rectangulo 780..900 x 480..560 desenhado a partir de DENTRO (sobreposicao 17x20, centro fora)",
+   "passos": [
+    {
+     "do": "tool",
+     "key": "r"
+    },
+    {
+     "do": "drag",
+     "from": [
+      780,
+      480
+     ],
+     "to": [
+      900,
+      560
+     ],
+     "rotulo": "desenha"
+    }
+   ]
+  },
+  {
+   "nome": "A1e_retangulo_comeca_fora_quase_fora",
+   "cena": "a_moldura",
+   "pergunta": "a mesma caixa desenhada a partir de FORA",
+   "passos": [
+    {
+     "do": "tool",
+     "key": "r"
+    },
+    {
+     "do": "drag",
+     "from": [
+      900,
+      560
+     ],
+     "to": [
+      780,
+      480
+     ],
+     "rotulo": "desenha"
+    }
+   ]
+  },
+  {
+   "nome": "A4_ponteiro_dentro_centro_fora",
+   "cena": "a_moldura",
+   "pergunta": "agarrado na borda esquerda: largado com o ponteiro dentro (792) e o centro fora (827)",
+   "passos": [
+    {
+     "do": "drag",
+     "from": [
+      905,
+      330
+     ],
+     "to": [
+      792,
+      330
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "A4_ponteiro_fora_centro_dentro",
+   "cena": "a_moldura",
+   "pergunta": "agarrado na borda direita: ponteiro fora (805), centro dentro (770)",
+   "passos": [
+    {
+     "do": "drag",
+     "from": [
+      975,
+      330
+     ],
+     "to": [
+      805,
+      330
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "A4_canto_centro_dentro",
+   "cena": "a_moldura",
+   "pergunta": "largado no canto SE com o centro dentro (787,490) mas so 41,7 % da area dentro",
+   "passos": [
+    {
+     "do": "drag",
+     "from": [
+      940,
+      330
+     ],
+     "to": [
+      787,
+      490
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "A4_entra_total",
+   "cena": "a_moldura",
+   "pergunta": "arrastar de fora para totalmente dentro",
+   "passos": [
+    {
+     "do": "drag",
+     "from": [
+      940,
+      330
+     ],
+     "to": [
+      560,
+      330
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "A4_entra_centro_dentro",
+   "cena": "a_moldura",
+   "pergunta": "arrastar para cruzar a borda com o centro dentro",
+   "passos": [
+    {
+     "do": "drag",
+     "from": [
+      940,
+      330
+     ],
+     "to": [
+      790,
+      330
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "A4_entra_centro_fora",
+   "cena": "a_moldura",
+   "pergunta": "arrastar para cruzar a borda com o centro fora",
+   "passos": [
+    {
+     "do": "drag",
+     "from": [
+      940,
+      330
+     ],
+     "to": [
+      820,
+      330
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "A5_sai_total",
+   "cena": "a_moldura_filho",
+   "pergunta": "filho arrastado para totalmente fora",
+   "passos": [
+    {
+     "do": "drag",
+     "from": [
+      560,
+      330
+     ],
+     "to": [
+      940,
+      330
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "A5_sai_centro_dentro",
+   "cena": "a_moldura_filho",
+   "pergunta": "filho arrastado a cruzar a borda, centro dentro",
+   "passos": [
+    {
+     "do": "drag",
+     "from": [
+      560,
+      330
+     ],
+     "to": [
+      770,
+      330
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "A5_sai_centro_fora",
+   "cena": "a_moldura_filho",
+   "pergunta": "filho arrastado a cruzar a borda, centro fora",
+   "passos": [
+    {
+     "do": "drag",
+     "from": [
+      560,
+      330
+     ],
+     "to": [
+      820,
+      330
+     ]
+    }
+   ]
+  },
+  {
+   "nome": "A6_move_moldura",
+   "cena": "a_moldura_dois_filhos",
+   "pergunta": "mover a moldura (setas, Shift+seta, arrastar o titulo): filhos movem pelo mesmo delta?",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "F"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "ArrowRight",
+     "vezes": 3,
+     "rotulo": "seta_direita_x3"
+    },
+    {
+     "do": "key",
+     "key": "ArrowDown",
+     "rotulo": "seta_baixo"
+    },
+    {
+     "do": "key",
+     "key": "Shift+ArrowRight",
+     "rotulo": "shift_seta_direita"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona"
+    },
+    {
+     "do": "click",
+     "at": [
+      433,
+      216
+     ],
+     "rotulo": "clique_titulo"
+    },
+    {
+     "do": "drag",
+     "from": [
+      433,
+      216
+     ],
+     "to": [
+      470,
+      235
+     ],
+     "rotulo": "arrasta_titulo"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona2"
+    },
+    {
+     "do": "click",
+     "at": [
+      600,
+      250
+     ],
+     "rotulo": "clique_dentro_vazio"
+    }
+   ]
+  },
+  {
+   "nome": "A7_apaga_moldura",
+   "cena": "a_moldura_dois_filhos",
+   "pergunta": "apagar a moldura: filhos?",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "F"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Delete"
+    }
+   ]
+  },
+  {
+   "nome": "A8_redimensiona_moldura",
+   "cena": "a_redimensiona",
+   "pergunta": "encolher a moldura pelo canto SE para (650,380): filho que fica fora / parcial",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "F"
+     ]
+    },
+    {
+     "do": "drag",
+     "from": [
+      801,
+      504
+     ],
+     "to": [
+      654,
+      384
+     ],
+     "rotulo": "puxa_canto_se"
+    }
+   ]
+  },
+  {
+   "nome": "A9_moldura_dentro_de_moldura",
+   "cena": "a_moldura",
+   "pergunta": "desenhar moldura dentro de outra",
+   "passos": [
+    {
+     "do": "tool",
+     "key": "f"
+    },
+    {
+     "do": "drag",
+     "from": [
+      450,
+      260
+     ],
+     "to": [
+      600,
+      400
+     ],
+     "rotulo": "desenha_dentro"
+    }
+   ]
+  },
+  {
+   "nome": "A9b_moldura_em_volta_de_moldura",
+   "cena": "a_moldura_pequena",
+   "pergunta": "desenhar moldura em volta de outra",
+   "passos": [
+    {
+     "do": "tool",
+     "key": "f"
+    },
+    {
+     "do": "drag",
+     "from": [
+      400,
+      210
+     ],
+     "to": [
+      820,
+      520
+     ],
+     "rotulo": "desenha_em_volta"
+    }
+   ]
+  },
+  {
+   "nome": "A9c_api_moldura_com_frameId",
+   "cena": "a_api_aninhada",
+   "pergunta": "moldura G com frameId=F na entrada: o restore guarda? mover F leva G?",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "F"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "ArrowRight",
+     "vezes": 3,
+     "rotulo": "seta_direita_x3"
+    }
+   ]
+  },
+  {
+   "nome": "A10_recorte_e_titulo",
+   "cena": "a_recorte",
+   "pergunta": "filho que cruza a borda e recortado? titulo: onde e de que tamanho",
+   "passos": [
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona"
+    },
+    {
+     "do": "pixeis",
+     "fonte": "exportacao",
+     "cor": [
+      224,
+      49,
+      49
+     ],
+     "tol": 40,
+     "faixa": [
+      0,
+      0,
+      220,
+      30
+     ],
+     "rotulo": "png_exportado"
+    },
+    {
+     "do": "pixeis",
+     "fonte": "editor",
+     "cor": [
+      224,
+      49,
+      49
+     ],
+     "tol": 40,
+     "faixa": [
+      413,
+      170,
+      800,
+      227
+     ],
+     "rotulo": "canvas_editor"
+    },
+    {
+     "do": "svg",
+     "rotulo": "svg_exportado"
+    },
+    {
+     "do": "dom_texto",
+     "texto": "Quadro A10",
+     "rotulo": "titulo_no_dom"
+    }
+   ]
+  },
+  {
+   "nome": "B_grupos",
+   "cena": "b",
+   "pergunta": "agrupar, clicar membro, duplo clique, grupo de grupo, desagrupar",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "R1",
+      "R2"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+g",
+     "rotulo": "B1_agrupa"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona"
+    },
+    {
+     "do": "click",
+     "at": [
+      456,
+      285
+     ],
+     "rotulo": "B2_clique_membro"
+    },
+    {
+     "do": "dblclick",
+     "at": [
+      456,
+      285
+     ],
+     "rotulo": "B3_duplo_clique"
+    },
+    {
+     "do": "key",
+     "key": "Escape",
+     "rotulo": "escape"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona2"
+    },
+    {
+     "do": "click",
+     "at": [
+      456,
+      285
+     ],
+     "rotulo": "clique_grupo"
+    },
+    {
+     "do": "click",
+     "at": [
+      830,
+      330
+     ],
+     "shift": true,
+     "rotulo": "shift_clique_R3"
+    },
+    {
+     "do": "key",
+     "key": "Control+g",
+     "rotulo": "B4_agrupa_grupo"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona3"
+    },
+    {
+     "do": "click",
+     "at": [
+      456,
+      285
+     ],
+     "rotulo": "B4_clique_membro"
+    },
+    {
+     "do": "dblclick",
+     "at": [
+      456,
+      285
+     ],
+     "rotulo": "B4_duplo_clique"
+    },
+    {
+     "do": "dblclick",
+     "at": [
+      456,
+      285
+     ],
+     "rotulo": "B4_duplo_clique2"
+    },
+    {
+     "do": "key",
+     "key": "Escape",
+     "rotulo": "escape2"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona4"
+    },
+    {
+     "do": "click",
+     "at": [
+      456,
+      285
+     ],
+     "rotulo": "clique_grupo_externo"
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+g",
+     "rotulo": "B5_desagrupa"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona5"
+    },
+    {
+     "do": "click",
+     "at": [
+      456,
+      285
+     ],
+     "rotulo": "B5_clique_membro"
+    }
+   ]
+  },
+  {
+   "nome": "C1_esquerda",
+   "cena": "c1",
+   "pergunta": "alinhar a esquerda 3 rectangulos",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "Ra",
+      "Rb",
+      "Rc"
+     ]
+    },
+    {
+     "do": "botoes",
+     "rotulo": "botoes_do_painel"
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+ArrowLeft"
+    }
+   ]
+  },
+  {
+   "nome": "C1_direita",
+   "cena": "c1",
+   "pergunta": "alinhar a direita",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "Ra",
+      "Rb",
+      "Rc"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+ArrowRight"
+    }
+   ]
+  },
+  {
+   "nome": "C1_topo",
+   "cena": "c1",
+   "pergunta": "alinhar ao topo",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "Ra",
+      "Rb",
+      "Rc"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+ArrowUp"
+    }
+   ]
+  },
+  {
+   "nome": "C1_fundo",
+   "cena": "c1",
+   "pergunta": "alinhar ao fundo",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "Ra",
+      "Rb",
+      "Rc"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+ArrowDown"
+    }
+   ]
+  },
+  {
+   "nome": "C1_centro_h",
+   "cena": "c1",
+   "pergunta": "centrar horizontalmente (botao)",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "Ra",
+      "Rb",
+      "Rc"
+     ]
+    },
+    {
+     "do": "botao",
+     "re": "center horizontally"
+    }
+   ]
+  },
+  {
+   "nome": "C1_centro_v",
+   "cena": "c1",
+   "pergunta": "centrar verticalmente (botao)",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "Ra",
+      "Rb",
+      "Rc"
+     ]
+    },
+    {
+     "do": "botao",
+     "re": "center vertically"
+    }
+   ]
+  },
+  {
+   "nome": "C2_grupo_esquerda",
+   "cena": "c2",
+   "pergunta": "grupo + solto, alinhar a esquerda: o grupo move como unidade?",
+   "passos": [
+    {
+     "do": "click",
+     "at": [
+      456,
+      285
+     ],
+     "rotulo": "clique_grupo"
+    },
+    {
+     "do": "click",
+     "at": [
+      423,
+      540
+     ],
+     "shift": true,
+     "rotulo": "shift_clique_solto"
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+ArrowLeft"
+    }
+   ]
+  },
+  {
+   "nome": "C2_grupo_direita",
+   "cena": "c2",
+   "pergunta": "grupo + solto, alinhar a direita",
+   "passos": [
+    {
+     "do": "click",
+     "at": [
+      456,
+      285
+     ],
+     "rotulo": "clique_grupo"
+    },
+    {
+     "do": "click",
+     "at": [
+      423,
+      540
+     ],
+     "shift": true,
+     "rotulo": "shift_clique_solto"
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+ArrowRight"
+    }
+   ]
+  },
+  {
+   "nome": "C3_distribui_h",
+   "cena": "c3",
+   "pergunta": "distribuir horizontalmente 4 larguras e vaos desiguais: vaos iguais ou centros iguais?",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "D1",
+      "D2",
+      "D3",
+      "D4"
+     ]
+    },
+    {
+     "do": "botao",
+     "re": "distribute horizontally"
+    }
+   ]
+  },
+  {
+   "nome": "C3b_distribui_h_atalho",
+   "cena": "c3",
+   "pergunta": "o mesmo por Alt+H",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "D1",
+      "D2",
+      "D3",
+      "D4"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Alt+h"
+    }
+   ]
+  },
+  {
+   "nome": "C4_rodado_esquerda",
+   "cena": "c4",
+   "pergunta": "alinhar a esquerda com um rodado (0.5 rad): caixa rodada (AABB)?",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "Rot",
+      "Ref"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+ArrowLeft"
+    }
+   ]
+  },
+  {
+   "nome": "C4_rodado_topo",
+   "cena": "c4",
+   "pergunta": "alinhar ao topo com um rodado",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "Rot",
+      "Ref"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+ArrowUp"
+    }
+   ]
+  },
+  {
+   "nome": "D1_frente_um",
+   "cena": "d",
+   "pergunta": "Ctrl+] em E0 (o seguinte E1 nao sobrepoe; E2 sobrepoe)",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "E0"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+BracketRight"
+    }
+   ]
+  },
+  {
+   "nome": "D1b_frente_um_isolado",
+   "cena": "d",
+   "pergunta": "Ctrl+] em E1 (nao sobrepoe ninguem)",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "E1"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+BracketRight"
+    }
+   ]
+  },
+  {
+   "nome": "D2_tras_um",
+   "cena": "d",
+   "pergunta": "Ctrl+[ em E4 (o anterior E3 nao sobrepoe; E2 sobrepoe)",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "E4"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+BracketLeft"
+    }
+   ]
+  },
+  {
+   "nome": "D3_frente_tudo",
+   "cena": "d",
+   "pergunta": "Ctrl+Shift+] em E1",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "E1"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+BracketRight"
+    }
+   ]
+  },
+  {
+   "nome": "D4_tras_tudo",
+   "cena": "d",
+   "pergunta": "Ctrl+Shift+[ em E3",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "E3"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+BracketLeft"
+    }
+   ]
+  },
+  {
+   "nome": "D5_vizinho_antes_do_grupo",
+   "cena": "d_grupo",
+   "pergunta": "Ctrl+] em E0 (a seguir: E1, depois o grupo g)",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "E0"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+BracketRight"
+    }
+   ]
+  },
+  {
+   "nome": "D5a_salta_grupo_frente",
+   "cena": "d_grupo_seguinte",
+   "pergunta": "Ctrl+] em E0 com o grupo g logo a seguir: salta o grupo inteiro?",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "E0"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+BracketRight"
+    }
+   ]
+  },
+  {
+   "nome": "D5a2_salta_grupo_tras",
+   "cena": "d_grupo_seguinte",
+   "pergunta": "Ctrl+[ em E1 com o grupo g logo antes",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "E1"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+BracketLeft"
+    }
+   ]
+  },
+  {
+   "nome": "D5b_membro_frente_tudo",
+   "cena": "d_grupo",
+   "pergunta": "dentro do grupo (duplo clique em E2), Ctrl+Shift+]: o grupo fica contiguo?",
+   "passos": [
+    {
+     "do": "dblclick",
+     "at": [
+      460,
+      365
+     ],
+     "rotulo": "entra_grupo"
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+BracketRight"
+    }
+   ]
+  },
+  {
+   "nome": "D5c_membro_tras_tudo",
+   "cena": "d_grupo",
+   "pergunta": "dentro do grupo, E3 Ctrl+Shift+[",
+   "passos": [
+    {
+     "do": "dblclick",
+     "at": [
+      575,
+      375
+     ],
+     "rotulo": "entra_grupo"
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+BracketLeft"
+    }
+   ]
+  },
+  {
+   "nome": "D6_filho_para_tras",
+   "cena": "d_moldura",
+   "pergunta": "ordem moldura/filhos; filho Ctrl+Shift+[ fica atras da moldura?",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "C2"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+BracketLeft"
+    }
+   ]
+  },
+  {
+   "nome": "D6b_moldura_para_frente",
+   "cena": "d_moldura",
+   "pergunta": "moldura Ctrl+Shift+]: filhos acompanham?",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "F"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+BracketRight"
+    }
+   ]
+  },
+  {
+   "nome": "D6c_filho_para_frente",
+   "cena": "d_moldura",
+   "pergunta": "filho Ctrl+Shift+]: passa a frente de O (fora da moldura)?",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "C1"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+BracketRight"
+    }
+   ]
+  },
+  {
+   "nome": "D6d_moldura_primeiro_filho_tras_tudo",
+   "cena": "d_moldura_primeiro",
+   "pergunta": "moldura ANTES dos filhos; filho Ctrl+Shift+[ passa para tras da moldura?",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "C2"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+BracketLeft"
+    }
+   ]
+  },
+  {
+   "nome": "D6e_moldura_primeiro_filho_tras_um",
+   "cena": "d_moldura_primeiro",
+   "pergunta": "moldura antes dos filhos; C1 (logo a seguir a F) Ctrl+[",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "C1"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+BracketLeft"
+    }
+   ]
+  },
+  {
+   "nome": "E_cadeado",
+   "cena": "e",
+   "pergunta": "cadeado: clique, laco, arrastar, Ctrl+A",
+   "passos": [
+    {
+     "do": "select",
+     "ids": [
+      "L"
+     ]
+    },
+    {
+     "do": "key",
+     "key": "Control+Shift+l",
+     "rotulo": "tranca"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona"
+    },
+    {
+     "do": "click",
+     "at": [
+      493,
+      298
+     ],
+     "rotulo": "E1_clique"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona2"
+    },
+    {
+     "do": "drag",
+     "from": [
+      400,
+      230
+     ],
+     "to": [
+      580,
+      370
+     ],
+     "rotulo": "E1_laco_so_L"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona3"
+    },
+    {
+     "do": "drag",
+     "from": [
+      400,
+      230
+     ],
+     "to": [
+      780,
+      420
+     ],
+     "rotulo": "E1_laco_L_e_U"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona4"
+    },
+    {
+     "do": "drag",
+     "from": [
+      493,
+      298
+     ],
+     "to": [
+      553,
+      338
+     ],
+     "rotulo": "E1_arrasta_L"
+    },
+    {
+     "do": "click",
+     "at": [
+      1100,
+      700
+     ],
+     "rotulo": "desselecciona5"
+    },
+    {
+     "do": "key",
+     "key": "Control+a",
+     "rotulo": "E2_ctrl_a"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,194 @@
+{
+  "caso": "A1c_retangulo_comeca_fora",
+  "pergunta": "rectangulo desenhado de fora para dentro (mesma caixa que cruza_centro_fora, ponto inicial fora)",
+  "cena": "a_moldura",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "tool",
+      "acao": {
+        "do": "tool",
+        "key": "r"
+      },
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "rectangle",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "desenha",
+      "acao": {
+        "do": "drag",
+        "from": [
+          880,
+          330
+        ],
+        "to": [
+          760,
+          280
+        ],
+        "rotulo": "desenha"
+      },
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "_vY6m2F94nuH_5rG3h5v3",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 760,
+          "y": 280,
+          "width": 120,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "_vY6m2F94nuH_5rG3h5v3"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

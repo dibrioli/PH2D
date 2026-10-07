@@ -1,0 +1,273 @@
+{
+  "caso": "A8_redimensiona_moldura",
+  "pergunta": "encolher a moldura pelo canto SE para (650,380): filho que fica fora / parcial",
+  "cena": "a_redimensiona",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_in",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 450,
+          "y": 260,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_parcial",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 600,
+          "y": 300,
+          "width": 90,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_borda",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 700,
+          "y": 400,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "select",
+      "acao": {
+        "do": "select",
+        "ids": [
+          "F"
+        ]
+      },
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_in",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 450,
+          "y": 260,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_parcial",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 600,
+          "y": 300,
+          "width": 90,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_borda",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 700,
+          "y": 400,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "F"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "puxa_canto_se",
+      "acao": {
+        "do": "drag",
+        "from": [
+          801,
+          504
+        ],
+        "to": [
+          654,
+          384
+        ],
+        "rotulo": "puxa_canto_se"
+      },
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 237,
+          "height": 153,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_in",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 450,
+          "y": 260,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_parcial",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 600,
+          "y": 300,
+          "width": 90,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_borda",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 700,
+          "y": 400,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "F"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

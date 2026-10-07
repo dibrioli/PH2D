@@ -1,0 +1,375 @@
+{
+  "caso": "C1_esquerda",
+  "pergunta": "alinhar a esquerda 3 rectangulos",
+  "cena": "c1",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "Ra",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 400,
+          "y": 250,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Rb",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 537,
+          "y": 380,
+          "width": 61,
+          "height": 97,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Rc",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 459,
+          "y": 520,
+          "width": 173,
+          "height": 41,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "select",
+      "acao": {
+        "do": "select",
+        "ids": [
+          "Ra",
+          "Rb",
+          "Rc"
+        ]
+      },
+      "elementos": [
+        {
+          "id": "Ra",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 400,
+          "y": 250,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Rb",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 537,
+          "y": 380,
+          "width": 61,
+          "height": 97,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Rc",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 459,
+          "y": 520,
+          "width": 173,
+          "height": 41,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "Ra",
+          "Rb",
+          "Rc"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "botoes_do_painel",
+      "acao": {
+        "do": "botoes",
+        "rotulo": "botoes_do_painel"
+      },
+      "botoes": [
+        " | #1971c2",
+        " | #1e1e1e",
+        " | #2f9e44",
+        " | #a5d8ff",
+        " | #b2f2bb",
+        " | #e03131",
+        " | #f08c00",
+        " | #ffc9c9",
+        " | #ffec99",
+        " | Architect",
+        " | Arrow — A or 5",
+        " | Artist",
+        " | Bold",
+        " | Bring forward — Ctrl+]",
+        " | Bring to front — Ctrl+Shift+]",
+        " | Cartoonist",
+        " | Cross-hatch",
+        " | Dashed",
+        " | Diamond — D or 3",
+        " | Dotted",
+        " | Draw — P or 7",
+        " | Ellipse — O or 4",
+        " | Eraser — E or 0",
+        " | Extra bold",
+        " | Hachure (Alt-Click)",
+        " | Hand (panning tool) — H",
+        " | Insert image — 9",
+        " | Keep selected tool active after drawing — Q",
+        " | Library",
+        " | Line — L or 6",
+        " | More tools",
+        " | Rectangle — R or 2",
+        " | Round",
+        " | Selection — V or 1",
+        " | Send backward — Ctrl+[",
+        " | Send to back — Ctrl+Shift+[",
+        " | Sharp",
+        " | Solid",
+        " | Text — T or 8",
+        " | Thin",
+        " | transparent",
+        "Align bottom | Align bottom — Ctrl+Shift+Down",
+        "Align left | Align left — Ctrl+Shift+Left",
+        "Align right | Align right — Ctrl+Shift+Right",
+        "Align top | Align top — Ctrl+Shift+Up",
+        "Arrow | ",
+        "Background | Show background color picker",
+        "Center horizontally | Center horizontally",
+        "Center vertically | Center vertically",
+        "Delete | Delete",
+        "Diamond | ",
+        "Distribute horizontally | Distribute horizontally — Alt+H",
+        "Distribute vertically | Distribute vertically — Alt+V",
+        "Draw | ",
+        "Duplicate | Duplicate — Ctrl+D",
+        "Ellipse | ",
+        "Eraser | ",
+        "Group selection | Group selection — Ctrl+G",
+        "Hand (panning tool) — H | ",
+        "Help | Help — ?",
+        "Insert image | ",
+        "Keep selected tool active after drawing | ",
+        "Library | ",
+        "Line | ",
+        "Rectangle | ",
+        "Redo | ",
+        "Reset zoom | Reset zoom",
+        "Selection | ",
+        "Stroke | Show stroke color picker",
+        "Text | ",
+        "Undo | ",
+        "Zoom in | Zoom in — Ctrl++",
+        "Zoom out | Zoom out — Ctrl+-"
+      ],
+      "elementos": [
+        {
+          "id": "Ra",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 400,
+          "y": 250,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Rb",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 537,
+          "y": 380,
+          "width": 61,
+          "height": 97,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Rc",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 459,
+          "y": 520,
+          "width": 173,
+          "height": 41,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "Ra",
+          "Rb",
+          "Rc"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 3,
+      "rotulo": "key",
+      "acao": {
+        "do": "key",
+        "key": "Control+Shift+ArrowLeft"
+      },
+      "elementos": [
+        {
+          "id": "Ra",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 400,
+          "y": 250,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Rb",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 400,
+          "y": 380,
+          "width": 61,
+          "height": 97,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "Rc",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 400,
+          "y": 520,
+          "width": 173,
+          "height": 41,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "Ra",
+          "Rb",
+          "Rc"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

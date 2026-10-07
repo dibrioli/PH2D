@@ -1,0 +1,22 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-07T23:09:03.547Z",
+  "input": "organizar_casos.json",
+  "input_sha256": "5d2100ba05f65c9b6a82ba03773304e4a2f195e58e7fad5e2015a3e86ecbcb11",
+  "case_sha256": "2aae166f4211befee1f5751eade5170e592f4d2b7285aa388044a285db1e9c35",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "case_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "editor": "<Excalidraw> montado (excalidrawAPI: updateScene para seleccionar/scroll 0/zoom 1, getSceneElementsIncludingDeleted, getAppState); rato e teclado do Playwright; janela 1280×800, deviceScaleFactor 1",
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "organizar_A4_entra_centro_dentro.json": "79ee23f2e14d97af9b0b306ab9e0ade515db322ae955db391894760aace2adf3"
+  }
+}

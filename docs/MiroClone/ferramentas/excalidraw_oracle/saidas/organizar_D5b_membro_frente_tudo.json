@@ -1,0 +1,324 @@
+{
+  "caso": "D5b_membro_frente_tudo",
+  "pergunta": "dentro do grupo (duplo clique em E2), Ctrl+Shift+]: o grupo fica contiguo?",
+  "cena": "d_grupo",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "E0",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 400,
+          "y": 250,
+          "width": 100,
+          "height": 80,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 700,
+          "y": 250,
+          "width": 80,
+          "height": 80,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E2",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 450,
+          "y": 290,
+          "width": 100,
+          "height": 80,
+          "angle": 0,
+          "groupIds": [
+            "g"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E3",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 520,
+          "y": 320,
+          "width": 60,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [
+            "g"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E4",
+          "type": "rectangle",
+          "name": null,
+          "index": "a4",
+          "x": 470,
+          "y": 300,
+          "width": 60,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "entra_grupo",
+      "acao": {
+        "do": "dblclick",
+        "at": [
+          460,
+          365
+        ],
+        "rotulo": "entra_grupo"
+      },
+      "elementos": [
+        {
+          "id": "E0",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 400,
+          "y": 250,
+          "width": 100,
+          "height": 80,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 700,
+          "y": 250,
+          "width": 80,
+          "height": 80,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E2",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 450,
+          "y": 290,
+          "width": 100,
+          "height": 80,
+          "angle": 0,
+          "groupIds": [
+            "g"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E3",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 520,
+          "y": 320,
+          "width": 60,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [
+            "g"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E4",
+          "type": "rectangle",
+          "name": null,
+          "index": "a4",
+          "x": 470,
+          "y": 300,
+          "width": 60,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "E2"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": "g",
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "key",
+      "acao": {
+        "do": "key",
+        "key": "Control+Shift+BracketRight"
+      },
+      "elementos": [
+        {
+          "id": "E0",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 400,
+          "y": 250,
+          "width": 100,
+          "height": 80,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 700,
+          "y": 250,
+          "width": 80,
+          "height": 80,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E3",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 520,
+          "y": 320,
+          "width": 60,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [
+            "g"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E2",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3V",
+          "x": 450,
+          "y": 290,
+          "width": 100,
+          "height": 80,
+          "angle": 0,
+          "groupIds": [
+            "g"
+          ],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "E4",
+          "type": "rectangle",
+          "name": null,
+          "index": "a4",
+          "x": 470,
+          "y": 300,
+          "width": 60,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "E2"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": "g",
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

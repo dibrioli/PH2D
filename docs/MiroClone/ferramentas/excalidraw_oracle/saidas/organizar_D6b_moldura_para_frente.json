@@ -1,0 +1,265 @@
+{
+  "caso": "D6b_moldura_para_frente",
+  "pergunta": "moldura Ctrl+Shift+]: filhos acompanham?",
+  "cena": "d_moldura",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "C1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 450,
+          "y": 260,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C2",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 600,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a2",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "O",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "select",
+      "acao": {
+        "do": "select",
+        "ids": [
+          "F"
+        ]
+      },
+      "elementos": [
+        {
+          "id": "C1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 450,
+          "y": 260,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C2",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 600,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a2",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "O",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "F"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "key",
+      "acao": {
+        "do": "key",
+        "key": "Control+Shift+BracketRight"
+      },
+      "elementos": [
+        {
+          "id": "O",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a4",
+          "x": 450,
+          "y": 260,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C2",
+          "type": "rectangle",
+          "name": null,
+          "index": "a5",
+          "x": 600,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a6",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "F"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

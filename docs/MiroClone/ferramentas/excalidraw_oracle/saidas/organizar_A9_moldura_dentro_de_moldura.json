@@ -1,0 +1,194 @@
+{
+  "caso": "A9_moldura_dentro_de_moldura",
+  "pergunta": "desenhar moldura dentro de outra",
+  "cena": "a_moldura",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "tool",
+      "acao": {
+        "do": "tool",
+        "key": "f"
+      },
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "frame",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "desenha_dentro",
+      "acao": {
+        "do": "drag",
+        "from": [
+          450,
+          260
+        ],
+        "to": [
+          600,
+          400
+        ],
+        "rotulo": "desenha_dentro"
+      },
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 900,
+          "y": 300,
+          "width": 80,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "0O2I_HTDA7aHf1OtJZG5I",
+          "type": "frame",
+          "name": null,
+          "index": "a2",
+          "x": 450,
+          "y": 260,
+          "width": 150,
+          "height": 140,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "0O2I_HTDA7aHf1OtJZG5I"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

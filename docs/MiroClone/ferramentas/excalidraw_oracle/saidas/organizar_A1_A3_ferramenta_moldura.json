@@ -1,0 +1,329 @@
+{
+  "caso": "A1_A3_ferramenta_moldura",
+  "pergunta": "moldura desenhada (F) sobre formas: dentro, metade, centro dentro, canto, fora -> frameId?",
+  "cena": "a_desenho",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "R_dentro",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_metade",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 737,
+          "y": 300,
+          "width": 120,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_centro",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 610,
+          "y": 437,
+          "width": 97,
+          "height": 113,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_canto",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 397,
+          "y": 487,
+          "width": 31,
+          "height": 29,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a4",
+          "x": 900,
+          "y": 600,
+          "width": 50,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "tool",
+      "acao": {
+        "do": "tool",
+        "key": "f"
+      },
+      "elementos": [
+        {
+          "id": "R_dentro",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_metade",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 737,
+          "y": 300,
+          "width": 120,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_centro",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 610,
+          "y": 437,
+          "width": 97,
+          "height": 113,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_canto",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 397,
+          "y": 487,
+          "width": 31,
+          "height": 29,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a4",
+          "x": 900,
+          "y": 600,
+          "width": 50,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "frame",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "desenha_moldura",
+      "acao": {
+        "do": "drag",
+        "from": [
+          413,
+          227
+        ],
+        "to": [
+          797,
+          500
+        ],
+        "rotulo": "desenha_moldura"
+      },
+      "elementos": [
+        {
+          "id": "R_dentro",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "aTfGCijsIqwhuzCBzAbOZ",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_metade",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 737,
+          "y": 300,
+          "width": 120,
+          "height": 60,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_centro",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 610,
+          "y": 437,
+          "width": 97,
+          "height": 113,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_canto",
+          "type": "rectangle",
+          "name": null,
+          "index": "a3",
+          "x": 397,
+          "y": 487,
+          "width": 31,
+          "height": 29,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "R_fora",
+          "type": "rectangle",
+          "name": null,
+          "index": "a4",
+          "x": 900,
+          "y": 600,
+          "width": 50,
+          "height": 50,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "aTfGCijsIqwhuzCBzAbOZ",
+          "type": "frame",
+          "name": null,
+          "index": "a5",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "aTfGCijsIqwhuzCBzAbOZ"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

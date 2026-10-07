@@ -1,0 +1,222 @@
+{
+  "caso": "A9c_api_moldura_com_frameId",
+  "pergunta": "moldura G com frameId=F na entrada: o restore guarda? mover F leva G?",
+  "cena": "a_api_aninhada",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "G",
+          "type": "frame",
+          "name": "Pequena",
+          "index": "a1",
+          "x": 450,
+          "y": 260,
+          "width": 150,
+          "height": 140,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 470,
+          "y": 290,
+          "width": 60,
+          "height": 40,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "G",
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "select",
+      "acao": {
+        "do": "select",
+        "ids": [
+          "F"
+        ]
+      },
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 413,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "G",
+          "type": "frame",
+          "name": "Pequena",
+          "index": "a1",
+          "x": 450,
+          "y": 260,
+          "width": 150,
+          "height": 140,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 470,
+          "y": 290,
+          "width": 60,
+          "height": 40,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "G",
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "F"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "seta_direita_x3",
+      "acao": {
+        "do": "key",
+        "key": "ArrowRight",
+        "vezes": 3,
+        "rotulo": "seta_direita_x3"
+      },
+      "elementos": [
+        {
+          "id": "F",
+          "type": "frame",
+          "name": "Moldura",
+          "index": "a0",
+          "x": 416,
+          "y": 227,
+          "width": 384,
+          "height": 273,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "G",
+          "type": "frame",
+          "name": "Pequena",
+          "index": "a1",
+          "x": 453,
+          "y": 260,
+          "width": 150,
+          "height": 140,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "F",
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "C1",
+          "type": "rectangle",
+          "name": null,
+          "index": "a2",
+          "x": 470,
+          "y": 290,
+          "width": 60,
+          "height": 40,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": "G",
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "F"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

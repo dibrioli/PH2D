@@ -32,9 +32,18 @@ pub(super) enum Mix {
     /// O fluxograma da W2: N formas 160×100 com o vão de nascença e N/10 setas CURVAS (a de nascença) entre
     /// vizinhas, presas ao centro (`measure_route_cost`), com a vista a enquadrar tudo.
     Flow,
+    /// A mistura `Shapes` em RASCUNHO (o traço à mão do rough.js, cache por elemento já quente), a
+    /// enquadrar tudo (W5: o rascunho de quadro grande nunca tinha sido medido).
+    Sketch,
+    /// Notas M (199) com uma palavra, nas 16 cores, numa grelha com o vão do `Tab`, a vista a
+    /// enquadrar o quadro inteiro — o brainstorm grande visto de longe (o caso do nível de detalhe).
+    Notes,
+    /// As MESMAS notas com a vista a pôr a letra de nascença (20) a 5 px: abaixo do `READ_PX`, a
+    /// letra é risca, mas a nota inteira (sombra, cor) ainda se desenha.
+    NotesMid,
 }
 
-pub(super) const SCENES: [(usize, Mix); 12] = [
+pub(super) const SCENES: [(usize, Mix); 21] = [
     (1_000, Mix::Rects),
     (10_000, Mix::Rects),
     (100_000, Mix::Rects),
@@ -47,7 +56,21 @@ pub(super) const SCENES: [(usize, Mix); 12] = [
     (1_000, Mix::Flow),
     (10_000, Mix::Flow),
     (100_000, Mix::Flow),
+    (1_000, Mix::Sketch),
+    (10_000, Mix::Sketch),
+    (100_000, Mix::Sketch),
+    (1_000, Mix::Notes),
+    (10_000, Mix::Notes),
+    (100_000, Mix::Notes),
+    (1_000, Mix::NotesMid),
+    (10_000, Mix::NotesMid),
+    (100_000, Mix::NotesMid),
 ];
+/// Passo da grelha das notas: o lado M e o vão de uma nota feita com `Tab` (um décimo do lado; ⚠️ o
+/// do Miro está por medir, §10.2 do handoff de integração).
+const NOTE_STEP: f64 = ph2d_board_model::STICKY_SIDE * 1.1;
+/// O tamanho da letra a que a vista `NotesMid` põe a de nascença.
+const MID_FONT_PX: f64 = 5.0;
 /// Passo da grelha do fluxograma: a caixa 160×100 e o vão de um fluxograma (o `NEXT_GAP` do
 /// editor, 80).
 const FLOW_STEP: [f64; 2] = [240.0, 180.0];
@@ -65,6 +88,9 @@ pub(super) fn board_with((n, mix): (usize, Mix)) -> BoardSet {
     if mix == Mix::Flow {
         return flow(n);
     }
+    if matches!(mix, Mix::Notes | Mix::NotesMid) {
+        return notes(n, mix == Mix::NotesMid);
+    }
     let mut set = BoardSet::default();
     let id = set.create(format!("{n}"));
     let b = set.get_mut(id).unwrap();
@@ -78,12 +104,13 @@ pub(super) fn board_with((n, mix): (usize, Mix)) -> BoardSet {
                 style: Style::new(Some(ORANGE), None, ink),
                 text: Default::default(),
             },
-            Mix::Shapes | Mix::ShapesNear | Mix::Flow => {
+            _ => {
                 let kind = [ShapeType::Rectangle, ShapeType::Ellipse, ShapeType::Diamond][i % 3];
                 let mut style = Style::new(Some(ORANGE), Some(ink), ink);
                 style.round = i % 2 == 0;
                 style.stroke_width = 1.0;
                 style.font_size = FONT;
+                style.sketch = mix == Mix::Sketch;
                 Shape {
                     kind,
                     style,
@@ -109,6 +136,40 @@ pub(super) fn board_with((n, mix): (usize, Mix)) -> BoardSet {
             NEAR_FONT_PX / FONT
         } else {
             1000.0 / (side * 30.0)
+        },
+    };
+    set
+}
+
+/// N notas M com uma palavra, nas 16 cores; a vista enquadra tudo, ou (`mid`) põe a letra a
+/// `MID_FONT_PX` no centro do quadro.
+pub(super) fn notes(n: usize, mid: bool) -> BoardSet {
+    use ph2d_board_model::{DEFAULT_FONT_SIZE, STICKY_COLORS, STICKY_SIDE};
+    let mut set = BoardSet::default();
+    let id = set.create(format!("{n}"));
+    let b = set.get_mut(id).unwrap();
+    let side = (n as f64).sqrt().ceil();
+    for i in 0..n {
+        let (row, col) = ((i as f64 / side).floor(), (i as f64 % side));
+        let fill = Rgba(STICKY_COLORS[i % STICKY_COLORS.len()]);
+        let style = Style::new(Some(fill), None, fill.readable_ink());
+        let shape = Shape {
+            kind: ShapeType::Sticky,
+            style,
+            text: format!("ideia {i}").into(),
+        };
+        let bx = [col * NOTE_STEP, row * NOTE_STEP, STICKY_SIDE, STICKY_SIDE];
+        let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), shape, bx);
+        BoardOp::Put(el).apply(&mut b.doc);
+    }
+    let w = side * NOTE_STEP;
+    b.camera = Camera {
+        center_x: w / 2.0,
+        center_y: w / 2.0,
+        zoom: if mid {
+            MID_FONT_PX / DEFAULT_FONT_SIZE
+        } else {
+            1000.0 / w
         },
     };
     set
@@ -212,6 +273,43 @@ fn measure_board_encode_cost() {
     println!("loadavg: {}", load.trim());
     println!("| N | cena | mínimo ms/quadro | mediana |");
     for (k, (n, mix)) in SCENES.iter().enumerate() {
+        let mut v = per[k].clone();
+        v.sort_by(f64::total_cmp);
+        println!("| {n} | {mix:?} | {:.3} | {:.3} |", v[0], v[v.len() / 2]);
+    }
+}
+
+/// A 1.ª imagem de um quadro aberto agora (cache VAZIA: contornos, texto moldado e o traço à mão de
+/// cada elemento por gerar) — o rascunho contra a mesma mistura em final, que é o controlo.
+#[test]
+#[ignore = "régua: corre-se à mão em --release (ver o cabeçalho)"]
+fn measure_board_first_frame_cost() {
+    const COLD: [(usize, Mix); 6] = [
+        (1_000, Mix::Shapes),
+        (10_000, Mix::Shapes),
+        (100_000, Mix::Shapes),
+        (1_000, Mix::Sketch),
+        (10_000, Mix::Sketch),
+        (100_000, Mix::Sketch),
+    ];
+    let boards: Vec<BoardSet> = COLD.iter().map(|&sc| board_with(sc)).collect();
+    let routes: Vec<RouteCache> = boards.iter().map(routes_of).collect();
+    let mut scene = VectorScene::new();
+    let mut per: Vec<Vec<f64>> = vec![Vec::new(); COLD.len()];
+    for round in 0..ROUNDS {
+        for k in 0..COLD.len() {
+            let i = (k + round) % COLD.len();
+            // Um `TextSystem` novo também: o moldado de cada palavra é parte do quadro que abre.
+            let (mut ts, mut cache) = (TextSystem::without_system_fonts(), RenderCache::default());
+            let t = Instant::now();
+            one_frame(&boards[i], &mut scene, &mut ts, &mut cache, &routes[i]);
+            per[i].push(t.elapsed().as_secs_f64() * 1e3);
+        }
+    }
+    let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!("loadavg: {}", load.trim());
+    println!("| N | cena | 1.ª imagem mín ms | mediana |");
+    for (k, (n, mix)) in COLD.iter().enumerate() {
         let mut v = per[k].clone();
         v.sort_by(f64::total_cmp);
         println!("| {n} | {mix:?} | {:.3} | {:.3} |", v[0], v[v.len() / 2]);

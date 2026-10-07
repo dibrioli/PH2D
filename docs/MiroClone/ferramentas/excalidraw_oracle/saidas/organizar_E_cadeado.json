@@ -1,0 +1,779 @@
+{
+  "caso": "E_cadeado",
+  "pergunta": "cadeado: clique, laco, arrastar, Ctrl+A",
+  "cena": "e",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "select",
+      "acao": {
+        "do": "select",
+        "ids": [
+          "L"
+        ]
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "L"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "tranca",
+      "acao": {
+        "do": "key",
+        "key": "Control+Shift+l",
+        "rotulo": "tranca"
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": true,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "L"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 3,
+      "rotulo": "desselecciona",
+      "acao": {
+        "do": "click",
+        "at": [
+          1100,
+          700
+        ],
+        "rotulo": "desselecciona"
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": true,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 4,
+      "rotulo": "E1_clique",
+      "acao": {
+        "do": "click",
+        "at": [
+          493,
+          298
+        ],
+        "rotulo": "E1_clique"
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": true,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 5,
+      "rotulo": "desselecciona2",
+      "acao": {
+        "do": "click",
+        "at": [
+          1100,
+          700
+        ],
+        "rotulo": "desselecciona2"
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": true,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 6,
+      "rotulo": "E1_laco_so_L",
+      "acao": {
+        "do": "drag",
+        "from": [
+          400,
+          230
+        ],
+        "to": [
+          580,
+          370
+        ],
+        "rotulo": "E1_laco_so_L"
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": true,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 7,
+      "rotulo": "desselecciona3",
+      "acao": {
+        "do": "click",
+        "at": [
+          1100,
+          700
+        ],
+        "rotulo": "desselecciona3"
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": true,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 8,
+      "rotulo": "E1_laco_L_e_U",
+      "acao": {
+        "do": "drag",
+        "from": [
+          400,
+          230
+        ],
+        "to": [
+          780,
+          420
+        ],
+        "rotulo": "E1_laco_L_e_U"
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": true,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "U"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 9,
+      "rotulo": "desselecciona4",
+      "acao": {
+        "do": "click",
+        "at": [
+          1100,
+          700
+        ],
+        "rotulo": "desselecciona4"
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": true,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 10,
+      "rotulo": "E1_arrasta_L",
+      "acao": {
+        "do": "drag",
+        "from": [
+          493,
+          298
+        ],
+        "to": [
+          553,
+          338
+        ],
+        "rotulo": "E1_arrasta_L"
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": true,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 11,
+      "rotulo": "desselecciona5",
+      "acao": {
+        "do": "click",
+        "at": [
+          1100,
+          700
+        ],
+        "rotulo": "desselecciona5"
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": true,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 12,
+      "rotulo": "E2_ctrl_a",
+      "acao": {
+        "do": "key",
+        "key": "Control+a",
+        "rotulo": "E2_ctrl_a"
+      },
+      "elementos": [
+        {
+          "id": "L",
+          "type": "rectangle",
+          "name": null,
+          "index": "a0",
+          "x": 437,
+          "y": 263,
+          "width": 113,
+          "height": 71,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": true,
+          "isDeleted": false
+        },
+        {
+          "id": "U",
+          "type": "rectangle",
+          "name": null,
+          "index": "a1",
+          "x": 650,
+          "y": 300,
+          "width": 97,
+          "height": 83,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "U"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

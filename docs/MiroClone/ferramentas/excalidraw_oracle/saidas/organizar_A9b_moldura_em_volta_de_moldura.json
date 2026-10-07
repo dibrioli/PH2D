@@ -1,0 +1,149 @@
+{
+  "caso": "A9b_moldura_em_volta_de_moldura",
+  "pergunta": "desenhar moldura em volta de outra",
+  "cena": "a_moldura_pequena",
+  "passos": [
+    {
+      "passo": 0,
+      "rotulo": "montado",
+      "acao": null,
+      "elementos": [
+        {
+          "id": "G",
+          "type": "frame",
+          "name": "Pequena",
+          "index": "a0",
+          "x": 450,
+          "y": 260,
+          "width": 150,
+          "height": 140,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 1,
+      "rotulo": "tool",
+      "acao": {
+        "do": "tool",
+        "key": "f"
+      },
+      "elementos": [
+        {
+          "id": "G",
+          "type": "frame",
+          "name": "Pequena",
+          "index": "a0",
+          "x": 450,
+          "y": 260,
+          "width": 150,
+          "height": 140,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "frame",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "passo": 2,
+      "rotulo": "desenha_em_volta",
+      "acao": {
+        "do": "drag",
+        "from": [
+          400,
+          210
+        ],
+        "to": [
+          820,
+          520
+        ],
+        "rotulo": "desenha_em_volta"
+      },
+      "elementos": [
+        {
+          "id": "G",
+          "type": "frame",
+          "name": "Pequena",
+          "index": "a0",
+          "x": 450,
+          "y": 260,
+          "width": 150,
+          "height": 140,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        },
+        {
+          "id": "ewa2z4bN-xxLI0F7WbHki",
+          "type": "frame",
+          "name": null,
+          "index": "a1",
+          "x": 400,
+          "y": 210,
+          "width": 420,
+          "height": 310,
+          "angle": 0,
+          "groupIds": [],
+          "frameId": null,
+          "locked": false,
+          "isDeleted": false
+        }
+      ],
+      "appState": {
+        "selectedElementIds": [
+          "ewa2z4bN-xxLI0F7WbHki"
+        ],
+        "selectedGroupIds": [],
+        "editingGroupId": null,
+        "activeTool": "selection",
+        "scroll": [
+          0,
+          0
+        ],
+        "zoom": 1,
+        "offset": [
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

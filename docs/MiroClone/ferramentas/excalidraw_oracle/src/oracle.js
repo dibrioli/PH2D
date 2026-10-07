@@ -137,6 +137,12 @@ window.oracle.editorRead = async () => {
   const blob = await exportToBlob({ elements, appState: { ...appState, exportScale: 2 }, files: null, mimeType: "image/png", exportPadding: 10 });
   return { elements, svg: new XMLSerializer().serializeToString(svgEl), pngBase64: await blobToBase64(blob) };
 };
+// W5 (corre_organizar.mjs): o excalidrawAPI do editor montado, para o rato/teclado do Playwright
+// agirem sobre ele e a cena ser lida entre passos; e desmontar sem exportar.
+window.oracle.editorApi = () => (editor ? editor.api : null);
+window.oracle.editorUnmount = () => {
+  if (editor) { editor.root.unmount(); editor.host.remove(); editor = null; }
+};
 // As funções públicas cruas, para sondas ad hoc (page.evaluate).
 window.oracle.api = { exportToSvg, exportToBlob, restoreElements, convertToExcalidrawElements };
 window.oracleReady = true;

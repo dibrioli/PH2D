@@ -114,3 +114,65 @@ iguais às fixtures de `saidas/`. `--sem-semente` desliga a semente (diagnóstic
   - **Elipse** (`formas_contorno_elipse`): elipse verdadeira — 73 cúbicas, desvio máx **0,075 un.**
     da analítica em 300×160 (0,004 no círculo 120×120). O traço é a linha central (`stroke-width 2`);
     cada `<g>` leva `translate(x − minX + 10, …)` (`exportPadding 10`).
+
+### W5 — organizar (molduras, grupos, alinhar, ordem, cadeado): `corre_organizar.mjs`, editor montado
+
+```bash
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/corre_organizar.mjs \
+  [--fotos <pasta>] [--so <caso>] docs/MiroClone/ferramentas/excalidraw_oracle/entradas/organizar_casos.json \
+  docs/MiroClone/ferramentas/excalidraw_oracle/saidas
+```
+
+Monta o `<Excalidraw>` (1280×800, zoom 1, scroll 0) com as cenas de `organizar_casos.json`, age com o
+rato/teclado do Playwright (selecção inicial pelo `updateScene`) e grava a cena ANTES e DEPOIS de cada
+passo em `saidas/organizar_<caso>.json` (x, y, w, h, ângulo, `groupIds`, `frameId`, `index`, `locked`,
+`isDeleted`, selecção, `editingGroupId`) + `.meta.json`. Precisa do `src/oracle.js` com
+`editorApi`/`editorUnmount` (07/10: re-correr `instala.sh`). **Determinismo:** duas corridas dos 51
+casos = **104/104 ficheiros idênticos** (o `.meta.json` sem o campo `date`).
+
+- **Moldura, quem é filho** (o `frameId`): **desenhar a moldura** (`F`) por cima de formas só adopta as
+  **totalmente dentro** (metade, centro dentro e canto ficam `null`; `A1_A3`). **Desenhar uma forma**:
+  decide o **ponto onde o arrasto COMEÇA** — começa dentro ⇒ filho mesmo com o centro fora e 17×20 de
+  sobreposição (`A1b`, `A1d`); começa fora ⇒ não, mesmo a cruzar (`A1c`, `A1e`); o filho novo entra na
+  ordem **logo antes** da moldura (`Zz` < `a0`). **Arrastar** (entrar e sair): decide o **ponteiro ao
+  largar**, não o centro nem a área — ponteiro dentro e centro fora ⇒ filho (`A4_ponteiro_dentro_centro_fora`);
+  ponteiro fora e centro dentro ⇒ não (`A4_ponteiro_fora_centro_dentro`); 41,7 % da área no canto com o
+  ponteiro dentro ⇒ filho (`A4_canto_centro_dentro`); sair a cruzar com o ponteiro dentro mantém (`A5_*`).
+  Arrastar para dentro NÃO muda o `index` (o filho fica depois da moldura). Montar uma cena não adopta
+  ninguém pela geometria.
+- **API `convertToExcalidrawElements`**: moldura com `children` e sem caixa ⇒ caixa dos filhos **+10** de
+  cada lado (`A0`: filhos 437..697×263..413 ⇒ 427,253,280×170); com caixa dada, os `children` ficam filhos
+  mesmo FORA dela; sem `children` ⇒ **excepção** (`forEach` de `undefined`) — tem de ser `[]`.
+- **Mover a moldura** leva os filhos pelo **mesmo delta** (seta 1, Shift+seta 5, arrastar o título +37,+19;
+  `A6`); clicar no título OU no vazio de dentro selecciona a moldura. **Apagar** a moldura: os filhos
+  **ficam**, com `frameId` a `null`, e ficam seleccionados (`A7`). **Encolher** pelo canto: quem fica
+  totalmente fora perde o `frameId`; quem cruza a borda nova com o centro dentro mantém (`A8`).
+- **Molduras não se aninham na UI**: desenhar uma dentro de outra ou à volta de outra ⇒ `frameId null`
+  nas duas (`A9`, `A9b`). Pela API o `frameId` numa moldura sobrevive ao restore, mas mover a de fora
+  leva só a de dentro, **não os netos** (`A9c`) — estado incoerente, não copiar.
+- **Recorte e título** (`A10`): o filho que cruza a borda é **recortado** na moldura — no PNG exportado
+  (vermelho em x 549..612 de cena, borda em 613; o resto dos 120 cortado), no canvas do editor (idem) e
+  no SVG (`clipPath` = rectângulo da moldura com `rx 8`). A exportação enquadra a MOLDURA, não a união.
+  O título no editor é um `div` do DOM: **14 px** Assistant, cor `#999`, `line-height` 17,5, em
+  `x = frame.x`, fundo a **3 px** acima da borda (206,5..224 para y 227); no SVG `<text>` 14 px Helvetica e
+  uma faixa de **20,5** acima da moldura.
+- **Grupos** (`B_grupos`): Ctrl+G dá um id novo a cada membro; clicar num membro selecciona o **grupo
+  inteiro** (`selectedGroupIds`); duplo clique entra (`editingGroupId`) e selecciona só o membro; Escape
+  NÃO sai (só um clique no vazio). Grupo de grupo: `groupIds` = **[interior, exterior]** (o mais externo
+  no FIM); clique ⇒ exterior; 1.º duplo clique ⇒ o grupo interior; 2.º ⇒ o membro. Ctrl+Shift+G tira só
+  o **mais externo**.
+- **Alinhar** (`C1_*`): referência = **caixa da selecção** (esquerda 400 = min x; direita 632; topo 250;
+  fundo 561; centro h 516 e v 405,5 pelo botão). Grupo + solto (`C2_*`): o grupo move **como unidade**
+  (desvios internos guardados; Ga 400→337, Gb 450→387). Rodado 0,5 rad (`C4_*`): usa a **AABB rodada**
+  (o outro vai a x 497,76 e y 273,68, não a 500/300). **Distribuir** (`C3_*`, botão = Alt+H): **vãos
+  iguais**, extremos fixos — 4 larguras 41/113/29/87 em 337..787 ⇒ vão **60** (D2 413→438, D3 601→611).
+- **Ordem** (`D*`): Ctrl+]/Ctrl+[ trocam com o **vizinho na lista**, sobreponha ou não (`D1`, `D1b`,
+  `D2`); um **grupo vizinho é saltado inteiro** (`D5a`, `D5a2`); dentro do grupo (duplo clique) a frente/
+  trás fica **dentro do bloco do grupo**, que continua contíguo (`D5b`, `D5c`). Só o elemento movido
+  recebe `index` novo (ex. `a1V`). Molduras: a ordem da entrada é guardada (filhos antes ou depois da
+  moldura); Ctrl+Shift+[ num filho manda-o para o fundo absoluto, **atrás da moldura** (`D6`, `D6d`);
+  Ctrl+[ num filho logo a seguir à moldura **não faz nada** (`D6e`); Ctrl+Shift+] num filho pára **logo
+  depois da moldura** (não passa `O`, `D6c`); Ctrl+Shift+] na moldura leva **moldura + filhos** em bloco
+  para o topo, filhos antes dela (`D6b`).
+- **Cadeado** (`E_cadeado`, Ctrl+Shift+L): o trancado **não** se selecciona por clique nem por laço (o
+  laço sobre os dois apanha só o outro), arrastar sobre ele **não o move**, e **Ctrl+A o exclui**.

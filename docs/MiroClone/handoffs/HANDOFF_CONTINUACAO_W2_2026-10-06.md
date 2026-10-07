@@ -74,6 +74,14 @@
   ferramenta `Edit` **33 %** ✗ — esta janela editou muito por `python3` com `assert` de contagem (falha
   alto, mas é a lei do §2 que diz `Edit`); a próxima janela: `Edit` primeiro.
 
+- Gate re-corrido depois das curas do tremer (HEAD `0b817658b`): clippy, check, fmt, typos, censos,
+  machete, standalone-optional, workflow-packages verdes; `nextest-impacted` 17 080/17 081 — o vermelho
+  era o controlo do gate do VECTOR `label_live::a_label_on_a_connector_sits_at_the_arclength_middle_of_the_route`:
+  a montagem dele dava um Z cuja dobra encostava ao jetty pelo MESMO empate mal decidido que fazia o
+  quadro tremer; com o desempate a funcionar o Z ficou simétrico e o controlo «arco ≠ contagem» deixou
+  de morder. Montagem refeita num L verdadeiro (caixa alta + caixa larga) — 12/12 do `label_live`.
+  ⚠️ O integrador: o `f_key` muda rotas do VECTOR também (para o centro do vão, que é a lei documentada).
+
 ## §3 — ⏳ O que fica aberto (por ordem)
 
 1. ~~Smoke do dono~~ ✅ aprovado 06/10.

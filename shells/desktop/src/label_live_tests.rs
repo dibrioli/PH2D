@@ -268,12 +268,15 @@ fn moving_the_host_shape_drags_the_label_along() {
 #[test]
 fn a_label_on_a_connector_sits_at_the_arclength_middle_of_the_route() {
     let mut d = Doc::new();
-    // Duas caixas em L, com as pernas MUITO desiguais — de propósito. A rota que sai daqui é
-    // `[2, 0.5] → [2.175, 0.5] → [2.175, 9.5] → [30, 9.5]`: um toco de jetty, um degrau de 9 e
-    // um corredor de 27.8. É essa desigualdade que separa a resposta certa (arco) da preguiçosa
-    // (contagem) — em duas caixas simétricas as duas coincidem, e o gate não provaria nada.
-    let a = d.shape([0.0, 0.0], [2.0, 1.0]);
-    let b = d.shape([30.0, 9.0], [32.0, 10.0]);
+    // Duas caixas em L, com as pernas desiguais — de propósito: uma ALTA (sai pela lateral) e uma
+    // LARGA (entra por baixo), uma perna de ~29 e outra de ~20. É essa desigualdade que separa a
+    // resposta certa (arco) da preguiçosa (contagem) — numa rota simétrica as duas coincidem, e o
+    // gate não provaria nada. ⚠️ A montagem antiga (duas caixas baixas desalinhadas) dava um Z cuja
+    // dobra ENCOSTAVA ao jetty por um empate de custo decidido pelo arredondamento; com o
+    // desempate pela centralidade a funcionar (`ph2d-vec-connect::route::f_key`, 06/10) o Z ficou
+    // simétrico e o controlo abaixo deixou de morder.
+    let a = d.shape([0.0, 0.0], [2.0, 20.0]);
+    let b = d.shape([20.0, 30.0], [42.0, 31.0]);
     let conn = d.connector(a, b);
     let label = d.label([50.0, 50.0], [51.0, 50.4], conn);
 

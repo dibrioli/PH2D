@@ -113,3 +113,4 @@ torna a morte visível depois. ⭐ Aqui o defeito foi apanhado por uma régua no
 - ⛔⛔ [Luz com alfa 0 morre num tonemap que divide pela cobertura — o `fx.glow` com formas na placa não brilhava desde a W2](feedback_light_with_zero_alpha_dies_in_a_divide_by_alpha_tonemap.md)
 - ⛔⛔ [Despacho dimensionado pela RESERVA paga um fio morto por lugar não escrito — `15,5×` nas tracejadas, que escreviam MENOS arestas](feedback_a_dispatch_sized_by_a_worst_case_reservation_pays_dead_threads.md)
 - ⛔⛔ [Sob escala fracionária, `.round()` no espaço LÓGICO cai entre píxeis do ecrã — texto 43 % mais macio a 125 %; arredonde por `ui_scale::ao_pixel`](feedback_rounding_in_logical_space_under_a_fractional_scale_blurs.md)
+- ⛔⛔ [Variante nova lida por acessores `Option` (`_ => None`) compila e é IGNORADA — o traço da caneta não se desenhava nem clicava (W4, 07/10)](feedback_a_new_variant_behind_option_accessors_compiles_and_is_ignored.md)

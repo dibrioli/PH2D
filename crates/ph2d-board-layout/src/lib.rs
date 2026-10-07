@@ -33,6 +33,8 @@ pub use edit::{Move, TextEdit};
 pub type Ink = Option<Rgba>;
 
 /// Moldar `text` com `spans` a `font_size` (mundo), com quebra em `max_width` (mundo), centrado.
+/// `hand` = na letra À MÃO ([`ph2d_text::HAND_FAMILY`], o rascunho), com a da interface por trás
+/// para o que ela não tiver.
 pub fn shape(
     ts: &mut TextSystem,
     lcx: &mut LayoutContext<Ink>,
@@ -40,12 +42,16 @@ pub fn shape(
     spans: &[Span],
     font_size: f32,
     max_width: f32,
+    hand: bool,
 ) -> Layout<Ink> {
     let (fcx, _, stack) = ts.contexts();
+    let stack = if hand {
+        Cow::Owned(format!("{}, {stack}", ph2d_text::HAND_FAMILY))
+    } else {
+        Cow::Borrowed(stack)
+    };
     let mut b = lcx.ranged_builder(fcx, text, 1.0, false);
-    b.push_default(StyleProperty::FontFamily(FontFamily::Source(
-        Cow::Borrowed(stack),
-    )));
+    b.push_default(StyleProperty::FontFamily(FontFamily::Source(stack)));
     b.push_default(StyleProperty::FontSize(font_size));
     b.push_default(StyleProperty::FontWeight(FontWeight::NORMAL));
     // Uma palavra maior que a forma quebra a meio em vez de sair por ela.
@@ -75,7 +81,7 @@ pub fn shape(
 }
 
 /// A altura (mundo) de `text` moldado a `font_size` com quebra em `max_width` — a conta do «a
-/// forma cresce» para quem não guarda o moldado.
+/// forma cresce» para quem não guarda o moldado — as NOTAS, que nunca estão à mão.
 pub fn text_height(ts: &mut TextSystem, text: &RichText, font_size: f32, max_width: f32) -> f32 {
     let mut lcx = LayoutContext::new();
     shape(
@@ -85,6 +91,7 @@ pub fn text_height(ts: &mut TextSystem, text: &RichText, font_size: f32, max_wid
         text.spans(),
         font_size,
         max_width,
+        false,
     )
     .height()
 }
@@ -182,6 +189,7 @@ struct Entry {
     spans: Vec<Span>,
     size_bits: u32,
     width_bits: u32,
+    hand: bool,
     layout: Layout<Ink>,
     used: u64,
 }
@@ -204,12 +212,22 @@ impl TextCache {
         text: &RichText,
         font_size: f32,
         max_width: f32,
+        hand: bool,
     ) -> &Layout<Ink> {
-        self.get(ts, owner, text.as_str(), text.spans(), font_size, max_width)
+        self.get(
+            ts,
+            owner,
+            text.as_str(),
+            text.spans(),
+            font_size,
+            max_width,
+            hand,
+        )
     }
 
-    /// O moldado de `owner`, moldando outra vez só se o texto, os trechos, o tamanho ou a largura
-    /// mudaram.
+    /// O moldado de `owner`, moldando outra vez só se o texto, os trechos, o tamanho, a largura ou a
+    /// letra (à mão ou não) mudaram.
+    #[allow(clippy::too_many_arguments)]
     pub fn get(
         &mut self,
         ts: &mut TextSystem,
@@ -218,15 +236,20 @@ impl TextCache {
         spans: &[Span],
         font_size: f32,
         max_width: f32,
+        hand: bool,
     ) -> &Layout<Ink> {
         let frame = self.frame;
         let (sb, wb) = (font_size.to_bits(), max_width.to_bits());
         let stale = self.map.get(&owner).is_none_or(|e| {
-            e.text != text || e.spans != spans || e.size_bits != sb || e.width_bits != wb
+            e.text != text
+                || e.spans != spans
+                || e.size_bits != sb
+                || e.width_bits != wb
+                || e.hand != hand
         });
         if stale {
             self.shaped += 1;
-            let layout = shape(ts, &mut self.lcx, text, spans, font_size, max_width);
+            let layout = shape(ts, &mut self.lcx, text, spans, font_size, max_width, hand);
             self.map.insert(
                 owner,
                 Entry {
@@ -234,6 +257,7 @@ impl TextCache {
                     spans: spans.to_vec(),
                     size_bits: sb,
                     width_bits: wb,
+                    hand,
                     layout,
                     used: frame,
                 },

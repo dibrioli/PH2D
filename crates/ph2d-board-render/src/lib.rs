@@ -280,6 +280,7 @@ fn paint_shape(
             &shape.text,
             st.font_size as f32,
             tw as f32,
+            ph2d_board_edit::hand_lettered(el),
         );
         let [ox, oy] = text_origin(shape.kind, el.w, el.h, f64::from(layout.height()));
         let at = t * Affine::translate((ox, oy));
@@ -424,6 +425,7 @@ fn paint_connector(
             &[],
             st.font_size as f32,
             LABEL_WRAP as f32,
+            ph2d_board_edit::hand_lettered(el),
         );
         let [ox, oy] = label_origin(r.mid, f64::from(layout.height()));
         let at = v * Affine::translate((ox, oy));

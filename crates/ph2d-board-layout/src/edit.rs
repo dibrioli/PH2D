@@ -44,12 +44,22 @@ pub struct TextEdit {
     dirty: bool,
     /// Abriu com TUDO seleccionado e ainda não moldou: a selecção resolve-se no próximo uso.
     all: bool,
+    /// Na letra à mão (o texto de uma forma em rascunho) — a MESMA que o desenho usa.
+    hand: bool,
 }
 
 impl TextEdit {
     /// Abre `text` para edição com tudo seleccionado (escrever substitui; uma seta colapsa). Molda
     /// no primeiro uso — quem abre (um botão da barra) pode não ter o moldador à mão.
     #[must_use]
+    /// Na letra à mão (`true`) — a de uma forma em rascunho.
+    #[must_use]
+    pub fn hand(mut self, hand: bool) -> Self {
+        self.hand = hand;
+        self.dirty = true;
+        self
+    }
+
     pub fn new(text: &RichText, font_size: f32, max_width: f32) -> Self {
         Self {
             rich: text.clone(),
@@ -61,6 +71,7 @@ impl TextEdit {
             layout: Layout::new(),
             dirty: true,
             all: true,
+            hand: false,
         }
     }
 
@@ -97,6 +108,7 @@ impl TextEdit {
             self.rich.spans(),
             self.font_size,
             self.width,
+            self.hand,
         );
         self.sel = self.sel.refresh(&self.layout);
     }

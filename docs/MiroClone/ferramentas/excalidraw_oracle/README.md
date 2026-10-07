@@ -34,7 +34,12 @@ entradas de `portas.json` e grava `saidas/portas_rough.json` (os `sets` de cada 
 semente que o lado Rust usa) e `saidas/portas_freehand.json` (passo 1 `getStrokePoints`, passo 2
 `getStrokeOutlinePoints`). Gate: `ph2d-board-rough::oracle_tests` (29 + 11 casos, tolerância 1e-9).
 
-Fontes servidas pela página: as do `dist/prod/fonts` do pacote (Excalifont/Virgil OFL-1.1; as outras
+⛔ **Corrigido 07/10 (triagem por artefacto):** a `Excalifont` instalada diz *«Copyright (c) 2024 by
+Excalidraw. All rights reserved.»* e não traz licença (nem na tabela `name`, nem no pacote) — NÃO
+embarca. A `Virgil` traz a SIL OFL 1.1 na tabela `name` (sem «Reserved Font Name» declarado): é a letra
+à mão do rascunho (`crates/ph2d-text/fonts/Virgil-*`).
+
+Fontes servidas pela página: as do `dist/prod/fonts` do pacote (Virgil OFL-1.1; a Excalifont sem licença no artefacto; as outras
 **não triadas** — não embarcar nenhuma sem triar).
 
 ## Uso

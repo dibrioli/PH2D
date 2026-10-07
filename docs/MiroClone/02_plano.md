@@ -306,6 +306,21 @@ Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um bra
 - Traço à mão com semente por elemento; o botão troca o quadro (ou a selecção) entre rascunho e final.
 - **Oráculo:** caminhos do rough.js por elemento com a MESMA semente; contorno do perfect-freehand — por passo.
 - **Dono vê:** o mesmo diagrama em «guardanapo» e em «apresentação» com um clique.
+- **Estado (07/10):** feita, por aprovar no smoke do dono. Crate `ph2d-board-rough`: o rough.js 4.6.4
+  (+ hachure-fill, points-on-curve/path, path-data-parser) e o perfect-freehand 1.2.0, MIT, com os
+  avisos em `LICENSE-THIRD-PARTY.md`; conferidos POR PASSO contra as bibliotecas corridas no Node
+  (`ferramentas/excalidraw_oracle/corre_portas.mjs` → `saidas/portas_*.json`, 29 + 11 casos, 1e-9). As
+  leis da caneta são as do Miro (`ferramentas/miro_caneta_notas.txt`): `P` caneta e `E` borracha, que
+  ficam na mão; caneta e marcador com três predefinições de cor e espessura; a borracha apaga só
+  desenho da caneta, o traço inteiro, e a de precisão só por onde passa; largura CONSTANTE (o Miro não
+  varia com a pressão). O laser (`K`) e o rascunho são do Excalidraw (o Miro não os tem no help).
+  Formato do ficheiro 4 (`Style::sketch`, `Board::sketch`, `ElementKind::Ink`; o 3 lê-se, fixture do
+  build antigo). Semente = o id do elemento (splitmix64). Em rascunho, o texto das formas e os
+  rótulos das setas escrevem-se na `Virgil` (OFL, embutida em `ph2d-text`; pedido do dono 07/10).
+  Smoke `PH2D_BOARD_SMOKE=5`.
+  ⚠️ **A pressão da mesa NÃO chega ao app**: o `winit 0.30.13` não a entrega no Linux nem no Windows
+  (medido em 12/08, nota em `shells/desktop/src/vec_app_bridge.rs`); o traço grava `pressure: false` e
+  passa a afinar sozinho quando o caminho do tablet existir (decisão de dependência do dono).
 
 ### W5 — Organizar
 - **Frames**: levam os filhos, nome e cor, aninháveis, pertença visível; painel de Frames.
@@ -379,6 +394,11 @@ trouxe (§5.0: cena que ensina o contrário é pior que nenhuma), fotografada an
 | a curva = o cotovelo suavizado (o `RouteKind::Curved` do vectorial) | ⛔ **ordem do dono (06/10)**: «curvas exageradas»; a curva é a do Miro — uma cúbica perpendicular às faces com o braço medido na captura dele (`END_ARM`) |
 | ler o código do Excalidraw para portar o render | ⛔ §0.9 — corre-se. A porta do rough.js e do perfect-freehand é a **permissiva** (MIT, com aviso) e confere-se por passo contra o oráculo |
 | fontes do Excalidraw além da Excalifont/Virgil | ⚠️ não triadas — nenhuma embarca sem triagem |
+| a letra à mão do rascunho na `Excalifont` (a actual do Excalidraw) | ⛔ **triagem por artefacto (07/10)**: o ficheiro instalado diz «All rights reserved» e não traz licença. A do rascunho é a `Virgil` (OFL 1.1 na própria fonte), pedida pelo dono (07/10): formas e rótulos de setas em rascunho escrevem-se nela, com a da interface por trás; o desenho e o editor de texto medem na MESMA (`hand_lettered`) |
+| o rascunho com preenchimento às RISCAS (`hachure`, o guardanapo do Excalidraw) | ⛔ **foto da cena 5 (07/10)**: a cor da letra lê-se sobre o PREENCHIMENTO, e entre as riscas está o quadro — num quadro escuro a letra clara sumia nas riscas pastel e a escura sumiria no fundo. O rascunho preenche CHEIO com a borda tremida (`FillStyle::Solid` do rough.js): a letra lê-se igual nos dois modos |
+| a caneta a afinar pela VELOCIDADE (o `simulatePressure` do perfect-freehand, o que o Excalidraw faz com o rato) | ⛔ o Miro não varia a largura (ideia «Open» na comunidade dele, 7583: *«All lines end up having the same width»*): sem pressão medida, `thinning 0` |
+| a semente guardada no ficheiro (o `seed` do Excalidraw) | ⛔ desnecessária: `Element::seed` tira-a do id (splitmix64) — a mesma em cada máquina, sem campo nem migração; uma cópia tem outro id e treme de outra maneira (como no Excalidraw) |
+| o botão do rascunho a mexer nas NOTAS e nos traços da caneta | ⛔ seria um controlo morto nelas (a nota é papel, o traço já é mão): o botão só troca formas e setas |
 | rede na Etapa 1 | ⛔ decisão do dono (Etapa 2) |
 | texto rico: o `PlainEditor` do parley para editar texto com trechos | ⛔ **medido** (06/10): o parley MOLDA trechos (`RangedBuilder::push` por intervalo) e a `Selection`/`Cursor` servem qualquer moldado — mas o `PlainEditor` tem UM estilo para o texto todo: um trecho a negrito (mais largo) punha o cursor fora das letras. ⇒ editor próprio (`ph2d-board-layout::TextEdit`) sobre a `Selection` do parley, com os passos de apagar dele (Apache-2.0/MIT) |
 | itálico pela face da fonte | ⛔ **medido** (06/10): a Inter da casa é variável só no PESO (o negrito é o eixo `wght` 700, coordenadas no desenho); itálico não tem, e o parley devolve uma inclinação SINTÉTICA de 14° — o desenho aplica-a a cada glifo (`glyph_transform`). Gate `bold_is_a_real_weight_and_italic_a_skew` |

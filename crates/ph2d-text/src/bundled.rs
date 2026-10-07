@@ -38,6 +38,14 @@ const NOTO_SANS_TTF: &[u8] = include_bytes!("../fonts/NotoSansVariable.ttf");
 /// Fonte: <https://github.com/google/fonts/tree/main/ofl/atkinsonhyperlegiblenext>.
 const ATKINSON_TTF: &[u8] = include_bytes!("../fonts/AtkinsonHyperlegibleNextVariable.ttf");
 
+/// ⭐ **Virgil (SIL OFL 1.1)** — a letra À MÃO do Quadro: o texto das formas e setas em RASCUNHO
+/// (MiroClone W4, pedido do dono 07/10). Do artefacto instalado do Excalidraw 0.18.1, convertida de
+/// woff2 para TTF (licença e origem em `fonts/Virgil-LICENSE.txt`). ⛔ A Excalifont, a letra actual
+/// do Excalidraw, não: o ficheiro instalado diz «All rights reserved» e não traz licença.
+const VIRGIL_TTF: &[u8] = include_bytes!("../fonts/Virgil-Regular.ttf");
+/// O nome com que a Virgil é registada (forçado, como as da interface).
+pub const HAND_FAMILY: &str = "PH2D Virgil";
+
 /// ⭐⭐⭐ **As fontes EMBUTIDAS, pela ordem de [`ph2d_tokens::UiFont::ALL`]** — os bytes e o nome
 /// de família com que cada uma é REGISTADA.
 ///
@@ -85,6 +93,14 @@ pub fn displayed_font_px(nominal: f32) -> f32 {
 /// `"<nome><cauda>"`, ou `"sans-serif"` quando o registo não produziu família (bytes rejeitados):
 /// o arranque nunca entra em pânico por causa de uma fonte.
 pub(crate) fn register_bundled(font_context: &mut FontContext, tail: &str) -> [String; 3] {
+    // A letra do DOCUMENTO (não é escolha da interface): só se regista, quem a pede nomeia-a.
+    font_context.collection.register_fonts(
+        Blob::new(Arc::new(VIRGIL_TTF)),
+        Some(FontInfoOverride {
+            family_name: Some(HAND_FAMILY),
+            ..Default::default()
+        }),
+    );
     BUNDLED.map(|(bytes, family)| {
         let blob = Blob::new(Arc::new(bytes));
         let override_info = FontInfoOverride {

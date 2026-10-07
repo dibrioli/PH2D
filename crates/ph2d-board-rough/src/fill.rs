@@ -30,7 +30,7 @@ fn hachure_ops(polys: &mut [Vec<P>], o: &Options, hachure_angle: f64, r: &mut Ra
     }
     gap = gap.max(0.1);
     let mut skip = 1.0;
-    if o.roughness >= 1.0 && r.next() > 0.7 {
+    if o.roughness >= 1.0 && r.next_unit() > 0.7 {
         skip = gap;
     }
     let mut ops = Vec::new();
@@ -125,7 +125,7 @@ fn straight_lines(polys: &[Vec<P>], gap: f64, step: f64) -> Vec<[P; 2]> {
         active.retain(|e| e.ymax > y);
         active.sort_by(|a, b| sign_cmp(a.x, b.x));
         if (step != 1.0 || iteration % gap == 0.0) && active.len() > 1 {
-            for pair in active.chunks_exact(2) {
+            for pair in active.as_chunks::<2>().0 {
                 lines.push([[js_round(pair[0].x), y], [js_round(pair[1].x), y]]);
             }
         }

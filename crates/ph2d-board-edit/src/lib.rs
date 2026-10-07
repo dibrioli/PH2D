@@ -35,6 +35,7 @@ pub use notes::{
 };
 pub use ph2d_board_layout::Move;
 pub use snap::Guide;
+pub use text::hand_lettered;
 
 /// Tamanho de uma forma criada com um clique (sem arrastar), em unidades do MUNDO — o formato
 /// paisagem de uma caixa de fluxograma.

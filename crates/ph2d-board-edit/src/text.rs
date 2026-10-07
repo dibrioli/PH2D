@@ -137,11 +137,12 @@ impl Editor {
             return false;
         };
         let text = text_of(&el);
+        let hand = hand_lettered(&el);
         self.selection = std::iter::once(id).collect();
         self.editing = Some(Editing {
             id,
             original: el,
-            edit: TextEdit::new(&text, size, width),
+            edit: TextEdit::new(&text, size, width).hand(hand),
         });
         true
     }
@@ -320,4 +321,10 @@ impl Editor {
         self.gesture = None;
         self.begin_text(doc, ts, id, Some(p.world))
     }
+}
+
+/// O texto de `el` desenha-se na letra à mão? (uma forma ou seta em rascunho; nunca uma nota)
+#[must_use]
+pub fn hand_lettered(el: &Element) -> bool {
+    el.style().sketch && crate::sketchable(el)
 }

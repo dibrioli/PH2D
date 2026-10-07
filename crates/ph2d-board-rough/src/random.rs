@@ -15,7 +15,8 @@ impl Random {
         }
     }
 
-    pub fn next(&mut self) -> f64 {
+    /// O `next()` do rough.js: o próximo número em `[0, 1)`.
+    pub fn next_unit(&mut self) -> f64 {
         self.seed = 48271i32.wrapping_mul(self.seed);
         f64::from(0x7fff_ffff & self.seed) / 2_147_483_648.0
     }

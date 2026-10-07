@@ -44,6 +44,19 @@ const ICON_LASER_DOT: f32 = 0.18; // LITERAL-PX-OK: raio do ponto, fracção do 
 const ICON_PRECISE_DOT: f32 = 0.12; // LITERAL-PX-OK: raio do ponto
 /// A espessura desenhada da mais fina e da mais grossa, em fracção do miolo.
 const ICON_WIDTH_RANGE: [f32; 2] = [0.08, 0.6]; // LITERAL-PX-OK: glifo das espessuras
+/// A linha ondulada do botão do rascunho: os pontos de duas cúbicas, em fracções do miolo `(x, y)`.
+const ICON_WAVE: [[f64; 2]; 7] = [
+    // LITERAL-PX-OK: desenho do glifo (duas ondas a ¼ da altura do meio)
+    [0.0, 0.5],
+    [1.0 / 6.0, 0.25],
+    [1.0 / 3.0, 0.75],
+    [0.5, 0.5],
+    [2.0 / 3.0, 0.25],
+    [5.0 / 6.0, 0.75],
+    [1.0, 0.5],
+];
+/// A tolerância de achatar os círculos dos glifos (px).
+const PATH_TOLERANCE: f64 = 0.1; // LITERAL-PX-OK: precisão do achatamento
 
 fn kinds() -> [PenItem; 5] {
     [
@@ -213,7 +226,8 @@ fn stroke_line(scene: &mut VectorScene, p: &BezPath, c: Color, width: f64) {
 
 fn circle(scene: &mut VectorScene, cx: f32, cy: f32, r: f32, c: Color) {
     use ph2d_vector::Shape as _;
-    let path = ph2d_vector::Circle::new((f64::from(cx), f64::from(cy)), f64::from(r)).to_path(0.1);
+    let path = ph2d_vector::Circle::new((f64::from(cx), f64::from(cy)), f64::from(r))
+        .to_path(PATH_TOLERANCE);
     scene.fill_path(
         &path,
         &ph2d_vector::Brush::Solid(c),
@@ -264,8 +278,7 @@ pub(super) fn paint_icon(
             }
         }
         Item::Pen(PenItem::Laser) => {
-            let red = ColorToken::Danger.resolve(theme);
-            let red = Color::from_rgba8(red.r, red.g, red.b, red.a);
+            let red = crate::paint::resolve(ColorToken::Danger, theme);
             let r = inner.w * ICON_LASER_DOT;
             let mut tail = BezPath::new();
             tail.move_to((f64::from(inner.x), f64::from(inner.y + inner.h)));
@@ -285,20 +298,17 @@ pub(super) fn paint_icon(
         Item::Pen(PenItem::Width(i) | PenItem::InkWidth(i)) => mid(scene, width_px(i, inner), fg),
         Item::Sketch => {
             // Uma linha tremida: o «à mão».
-            let (x0, w) = (f64::from(inner.x), f64::from(inner.w));
-            let (y, a) = (f64::from(cy), f64::from(inner.h) / 4.0);
+            let at = |[fx, fy]: [f64; 2]| {
+                (
+                    f64::from(inner.x) + fx * f64::from(inner.w),
+                    f64::from(inner.y) + fy * f64::from(inner.h),
+                )
+            };
+            let w = ICON_WAVE;
             let mut p = BezPath::new();
-            p.move_to((x0, y));
-            p.curve_to(
-                (x0 + w / 6.0, y - a),
-                (x0 + w / 3.0, y + a),
-                (x0 + w / 2.0, y),
-            );
-            p.curve_to(
-                (x0 + w * 2.0 / 3.0, y - a),
-                (x0 + w * 5.0 / 6.0, y + a),
-                (x0 + w, y),
-            );
+            p.move_to(at(w[0]));
+            p.curve_to(at(w[1]), at(w[2]), at(w[3]));
+            p.curve_to(at(w[4]), at(w[5]), at(w[6]));
             stroke_line(scene, &p, fg, line);
         }
         _ => return false,

@@ -56,7 +56,11 @@ fn the_pen_draws_one_stroke_through_the_pointer_and_one_undo_step_removes_it() {
     assert_eq!(el.style().stroke, Some(preset.color));
     assert_eq!(el.style().stroke_width, preset.width);
     assert!(!el.ink().unwrap().pressure, "o rato não mede a pressão");
-    assert_eq!(w.ed.tool, Tool::Pen(Pen::Pen), "a caneta fica na mão (Miro)");
+    assert_eq!(
+        w.ed.tool,
+        Tool::Pen(Pen::Pen),
+        "a caneta fica na mão (Miro)"
+    );
     assert!(w.cmd(Command::Undo));
     assert!(w.inks().is_empty());
     assert!(w.cmd(Command::Redo));
@@ -72,7 +76,11 @@ fn the_highlighter_draws_with_its_own_preset() {
     let el = w.inks()[0];
     assert_eq!(el.ink().unwrap().pen, Pen::Highlighter);
     assert_eq!(el.style().stroke_width, 24.0);
-    assert_eq!(w.ed.pen.last, Pen::Highlighter, "o `P` volta a pegar no marcador");
+    assert_eq!(
+        w.ed.pen.last,
+        Pen::Highlighter,
+        "o `P` volta a pegar no marcador"
+    );
 }
 
 #[test]
@@ -87,7 +95,10 @@ fn the_eraser_deletes_whole_pen_strokes_it_touches_and_nothing_else() {
     w.stroke(&[[100.0, -40.0], [100.0, 40.0], [100.0, 120.0]]);
     assert!(w.doc.get(a).is_none(), "o traço tocado sai INTEIRO");
     assert!(w.doc.get(b).is_some(), "o que não tocou fica");
-    assert!(w.doc.get(shape).is_some(), "a borracha apaga só desenho da caneta (Miro)");
+    assert!(
+        w.doc.get(shape).is_some(),
+        "a borracha apaga só desenho da caneta (Miro)"
+    );
     assert!(w.cmd(Command::Undo), "UM passo");
     assert_eq!(World::content(&w.doc), before);
 }
@@ -105,18 +116,31 @@ fn the_precision_eraser_cuts_only_where_it_passes_and_undo_puts_the_stroke_back(
     let reach = w.ed.metrics().eraser * PX + w.ed.pen.current(Pen::Pen).width / 2.0;
     for p in &pieces {
         for q in crate::world_points(p) {
-            assert!((q[0] - 100.0).abs() > reach - 1e-9, "nenhum ponto ficou debaixo da borracha");
+            assert!(
+                (q[0] - 100.0).abs() > reach - 1e-9,
+                "nenhum ponto ficou debaixo da borracha"
+            );
         }
     }
-    let xs: Vec<f64> = pieces.iter().map(|p| crate::world_points(p)[0][0]).collect();
-    assert!(xs.contains(&0.0), "o pedaço da esquerda começa onde o traço começava");
+    let xs: Vec<f64> = pieces
+        .iter()
+        .map(|p| crate::world_points(p)[0][0])
+        .collect();
+    assert!(
+        xs.contains(&0.0),
+        "o pedaço da esquerda começa onde o traço começava"
+    );
     // Uma 2.ª passagem no mesmo gesto corta um pedaço que o gesto criou: continua UM passo.
     w.stroke(&[[30.0, -40.0], [30.0, 40.0]]);
     assert_eq!(w.inks().len(), 3);
     assert!(w.cmd(Command::Undo));
     assert_eq!(w.inks().len(), 2);
     assert!(w.cmd(Command::Undo));
-    assert_eq!(World::content(&w.doc), before, "o traço volta inteiro, com o mesmo id");
+    assert_eq!(
+        World::content(&w.doc),
+        before,
+        "o traço volta inteiro, com o mesmo id"
+    );
 }
 
 #[test]
@@ -131,7 +155,10 @@ fn the_laser_never_touches_the_document_and_its_trail_fades_away() {
     let trail = w.ed.laser_trail(now);
     assert!(trail.len() >= 3);
     assert!(trail.iter().all(|(_, life)| *life > 0.0 && *life <= 1.0));
-    assert!(w.ed.laser_trail(now + crate::LASER_LIFE).is_empty(), "um segundo depois sumiu");
+    assert!(
+        w.ed.laser_trail(now + crate::LASER_LIFE).is_empty(),
+        "um segundo depois sumiu"
+    );
 }
 
 #[test]
@@ -155,12 +182,18 @@ fn a_stroke_is_selected_by_clicking_on_it_and_moves_like_a_shape() {
     w.click([55.0, 130.0], NONE);
     assert!(w.ed.selection().is_empty(), "ao lado do traço não apanha");
     w.click([55.0, 101.0], NONE);
-    assert_eq!(w.ed.selection().iter().copied().collect::<Vec<_>>(), vec![a]);
+    assert_eq!(
+        w.ed.selection().iter().copied().collect::<Vec<_>>(),
+        vec![a]
+    );
     assert!(w.ed.frame(&w.doc).is_some(), "um traço tem moldura e pegas");
     let x0 = w.el(a).x;
     w.drag([55.0, 101.0], [75.0, 141.0], NONE);
     assert!(close(w.el(a).x, x0 + 20.0));
-    assert!(close(crate::world_points(w.el(a))[0][1], 140.0), "os pontos vão com a caixa");
+    assert!(
+        close(crate::world_points(w.el(a))[0][1], 140.0),
+        "os pontos vão com a caixa"
+    );
 }
 
 #[test]
@@ -180,9 +213,15 @@ fn the_sketch_button_flips_the_selection_or_else_the_whole_board_but_never_notes
     w.ed.select(&w.doc, []);
     assert_eq!(w.ed.toggle_sketch(&mut w.doc, &mut w.h, false), Some(true));
     assert!(w.el(r1).style().sketch && w.el(r2).style().sketch);
-    assert!(!w.el(note).style().sketch && !w.el(ink).style().sketch, "a nota é papel; a caneta já é mão");
+    assert!(
+        !w.el(note).style().sketch && !w.el(ink).style().sketch,
+        "a nota é papel; a caneta já é mão"
+    );
     let r3 = w.rect([0.0, 200.0, 100.0, 60.0]);
-    assert!(w.el(r3).style().sketch, "num quadro em rascunho as formas nascem à mão");
+    assert!(
+        w.el(r3).style().sketch,
+        "num quadro em rascunho as formas nascem à mão"
+    );
     // E volta: tudo à mão ⇒ final.
     w.ed.select(&w.doc, []);
     assert_eq!(w.ed.toggle_sketch(&mut w.doc, &mut w.h, true), Some(false));
@@ -198,5 +237,8 @@ fn the_eraser_ring_follows_the_pointer_only_with_an_eraser_in_hand() {
     assert_eq!(w.ed.overlay(&mut w.doc, &mut w.ts).eraser, None);
     w.ed.tool = Tool::Eraser { precise: true };
     w.ed.hover(&w.doc, at(30.0, 40.0, NONE));
-    assert_eq!(w.ed.overlay(&mut w.doc, &mut w.ts).eraser, Some([30.0, 40.0]));
+    assert_eq!(
+        w.ed.overlay(&mut w.doc, &mut w.ts).eraser,
+        Some([30.0, 40.0])
+    );
 }

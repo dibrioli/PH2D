@@ -4,7 +4,7 @@ use ph2d_board_model::{Mark, Marks};
 
 fn plain(ts: &mut TextSystem, text: &str, size: f32, width: f32) -> Layout<Ink> {
     let mut lcx = LayoutContext::new();
-    shape(ts, &mut lcx, text, &[], size, width)
+    shape(ts, &mut lcx, text, &[], size, width, false)
 }
 
 #[test]
@@ -27,16 +27,16 @@ fn the_cache_reshapes_only_when_something_changed() {
     let mut ts = TextSystem::without_system_fonts();
     let mut c = TextCache::default();
     for _ in 0..10 {
-        c.get(&mut ts, (1, 1), "olá", &[], 20.0, 100.0);
+        c.get(&mut ts, (1, 1), "olá", &[], 20.0, 100.0, false);
         c.end_frame();
     }
     assert_eq!(c.shaped(), 1, "um ecrã parado remoldou");
-    c.get(&mut ts, (1, 1), "olá!", &[], 20.0, 100.0);
-    c.get(&mut ts, (1, 1), "olá!", &[], 20.0, 120.0);
+    c.get(&mut ts, (1, 1), "olá!", &[], 20.0, 100.0, false);
+    c.get(&mut ts, (1, 1), "olá!", &[], 20.0, 120.0, false);
     assert_eq!(c.shaped(), 3);
     let mut bold = RichText::plain("olá!");
     bold.toggle(0..1, Mark::Bold);
-    c.get_rich(&mut ts, (1, 1), &bold, 20.0, 120.0);
+    c.get_rich(&mut ts, (1, 1), &bold, 20.0, 120.0, false);
     assert_eq!(c.shaped(), 4, "um trecho novo é texto novo");
     for _ in 0..(KEEP_FRAMES * 2) {
         c.end_frame();
@@ -54,7 +54,7 @@ fn bold_is_a_real_weight_and_italic_a_skew() {
     rich.toggle(7..14, Mark::Bold);
     rich.toggle(15..22, Mark::Italic);
     let mut lcx = LayoutContext::new();
-    let l = shape(&mut ts, &mut lcx, rich.as_str(), rich.spans(), 20.0, 1000.0);
+    let l = shape(&mut ts, &mut lcx, rich.as_str(), rich.spans(), 20.0, 1000.0, false);
     let mut seen = Vec::new();
     for line in l.lines() {
         for item in line.items() {
@@ -176,4 +176,27 @@ fn a_colour_paints_only_the_selection() {
     assert_eq!(e.rich().color(0..1), Some(None));
     e.select_all(&mut ts);
     assert_eq!(e.color(), None, "duas cores na selecção");
+}
+
+/// ⭐ O RASCUNHO escreve na letra à mão (a Virgil embutida — outra face, não a de reserva), a cache
+/// remolda quando a forma troca de modo, e o editor de texto mede na MESMA letra que o desenho (o
+/// cursor cai nas letras que se vêem).
+#[test]
+fn the_sketch_letters_are_the_hand_face_in_the_drawing_and_in_the_editor() {
+    let mut ts = TextSystem::without_system_fonts();
+    let text = RichText::plain("Worth it? ação");
+    let mut lcx = LayoutContext::new();
+    let plain_w = shape(&mut ts, &mut lcx, text.as_str(), &[], 20.0, 1000.0, false).width();
+    let hand_w = shape(&mut ts, &mut lcx, text.as_str(), &[], 20.0, 1000.0, true).width();
+    assert!((plain_w - hand_w).abs() > 1.0, "a letra à mão mede o mesmo que a da interface: {plain_w} = {hand_w}");
+    let mut c = TextCache::default();
+    c.get_rich(&mut ts, (1, 1), &text, 20.0, 1000.0, false);
+    let n = c.shaped();
+    c.get_rich(&mut ts, (1, 1), &text, 20.0, 1000.0, false);
+    assert_eq!(c.shaped(), n, "sem mudança, sem remoldar");
+    let w = c.get_rich(&mut ts, (1, 1), &text, 20.0, 1000.0, true).width();
+    assert_eq!(c.shaped(), n + 1, "trocar para rascunho remolda");
+    assert_eq!(w, hand_w);
+    let mut e = TextEdit::new(&text, 20.0, 1000.0).hand(true);
+    assert_eq!(e.layout(&mut ts).width(), hand_w, "o editor mede na letra do desenho");
 }

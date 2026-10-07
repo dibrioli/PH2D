@@ -260,7 +260,7 @@ fn merged_shape(ops: Vec<Op>) -> Vec<Op> {
 }
 
 fn offset(min: f64, max: f64, o: &Options, r: &mut Random, gain: f64) -> f64 {
-    o.roughness * gain * ((r.next() * (max - min)) + min)
+    o.roughness * gain * ((r.next_unit() * (max - min)) + min)
 }
 
 fn offset_opt(x: f64, o: &Options, r: &mut Random, gain: f64) -> f64 {
@@ -311,14 +311,14 @@ fn line_ops(
         off = length / 10.0;
     }
     let half = off / 2.0;
-    let diverge = 0.2 + r.next() * 0.2;
+    let diverge = 0.2 + r.next_unit() * 0.2;
     let mid_x = o.bowing * o.max_randomness_offset * (y2 - y1) / 200.0;
     let mid_y = o.bowing * o.max_randomness_offset * (x1 - x2) / 200.0;
     let mid_x = offset_opt(mid_x, o, r, gain);
     let mid_y = offset_opt(mid_y, o, r, gain);
     let keep = o.preserve_vertices;
     let amount = if overlay { half } else { off };
-    let mut jitter = |r: &mut Random| offset_opt(amount, o, r, gain);
+    let jitter = |r: &mut Random| offset_opt(amount, o, r, gain);
     let start = [
         x1 + if keep { 0.0 } else { jitter(r) },
         y1 + if keep { 0.0 } else { jitter(r) },
@@ -380,7 +380,7 @@ fn curve_ops(points: &[P], o: &Options, r: &mut Random) -> Vec<Op> {
 }
 
 fn curve_with_offset(points: &[P], off: f64, o: &Options, r: &mut Random) -> Vec<Op> {
-    let mut jittered = |p: P, r: &mut Random| {
+    let jittered = |p: P, r: &mut Random| {
         [
             p[0] + offset_opt(off, o, r, 1.0),
             p[1] + offset_opt(off, o, r, 1.0),
@@ -501,7 +501,7 @@ fn ellipse_points(
         all.push([cx + rx * 0f64.cos(), cy + ry * 0f64.sin()]);
         all.push([cx + rx * increment.cos(), cy + ry * increment.sin()]);
     } else {
-        let mut jit = |r: &mut Random| offset_opt(off, o, r, 1.0);
+        let jit = |r: &mut Random| offset_opt(off, o, r, 1.0);
         let rad = offset_opt(0.5, o, r, 1.0) - (PI / 2.0);
         all.push([
             jit(r) + cx + 0.9 * rx * (rad - increment).cos(),
@@ -609,7 +609,7 @@ fn solid_fill_polygon(polys: &[Vec<P>], o: &Options, r: &mut Random) -> OpSet {
     let off = o.max_randomness_offset;
     for points in polys {
         if points.len() > 2 {
-            let mut jit = |q: P, r: &mut Random| {
+            let jit = |q: P, r: &mut Random| {
                 [
                     q[0] + offset_opt(off, o, r, 1.0),
                     q[1] + offset_opt(off, o, r, 1.0),

@@ -31,6 +31,9 @@ mod measure_commit_cost; // …e de que é feito o CUSTO: fork, pen-up, commit, 
 mod measure_dirty_overclaim;
 #[path = "measure_gpu_frontier.rs"]
 mod measure_gpu_frontier; // o pool dos cinco planos do traço escreve o que a alocação escrevia
+/// O papel existe desde o primeiro instante (pedido do dono 2026-10-06, BUGS #45).
+#[path = "papel_nasce_tests.rs"]
+mod papel_nasce_tests;
 /// O fio claro dos traços pintados antes do papel (decisão do dono, 2026-10-06, BUGS #42).
 #[path = "papel_orla_tests.rs"]
 mod papel_orla_tests;

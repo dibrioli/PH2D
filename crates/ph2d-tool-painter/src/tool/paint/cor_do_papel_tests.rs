@@ -256,7 +256,7 @@ fn a_cor_do_papel_muda_ao_vivo_e_desfaz_num_passo() {
 }
 
 /// **O PAPEL VIAJA COM O DOCUMENTO** — trocar de sprite e voltar devolve o papel ao seu documento, e
-/// o outro nasce sem ele.
+/// o outro (uma sprite branca) nasce com o papel BRANCO, nunca com o do vizinho (BUGS #45).
 #[test]
 fn o_papel_viaja_com_o_documento() {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
@@ -269,7 +269,11 @@ fn o_papel_viaja_com_o_documento() {
     ));
     assert_eq!(t.papel(), Some(CREME));
     t.bind_document(2, branco(), 64, 64);
-    assert_eq!(t.papel(), None, "o outro documento herdou o papel");
+    assert_eq!(
+        t.papel(),
+        Some([255, 255, 255]),
+        "o outro documento herdou o papel"
+    );
     t.bind_document(1, branco(), 64, 64);
     assert_eq!(
         t.papel(),
@@ -387,10 +391,13 @@ fn a_regiao_suja_compoe_sobre_o_papel() {
     );
 }
 
-/// **NA AGUADA O PAPEL É O CHÃO ÓPTICO** — o mesmo traço sobre o papel aplicado e sobre uma camada de
-/// baixo pintada com a cor do papel dá a mesma imagem, ao byte: a óptica vê o papel como vê a camada.
+/// **NA AGUADA O PAPEL NÃO ENTRA NA TINTA** (BUGS #45; era «o papel é o chão óptico», #39) — o mesmo
+/// traço sobre o papel creme e sobre o branco deixa a MESMA camada, e o creme mostra-a «coberta com
+/// transparência» (`sobre_o_papel`, a lei do Rebelle, doc 47). Com o papel no chão óptico a aguada
+/// guardava o papel na tinta: `2 024` texels diferiam da camada da mesma cor, e escurecer o papel
+/// depois dava `0,74` do escurecimento (pior `62`). A tinta de uma camada de BAIXO continua a ser o chão.
 #[test]
-fn na_aguada_o_papel_e_o_chao_optico() {
+fn na_aguada_o_papel_nao_entra_na_tinta() {
     use ph2d_editor_core::tool::{PanelEvent, Tool};
     let traco = |t: &mut PainterTool| {
         t.set_brush_color_srgb8([30, 60, 220]);
@@ -408,26 +415,27 @@ fn na_aguada_o_papel_e_o_chao_optico() {
         "230,200,150".into(),
     ));
     traco(&mut a);
-    let mut b = tool(128, PaintMedia::Watercolor, 10.0);
-    let creme: Vec<u8> = (0..128 * 128)
-        .flat_map(|_| [CREME[0], CREME[1], CREME[2], 255])
-        .collect();
-    b.add_raster_layer_with_pixels("papel", creme)
-        .expect("a camada de baixo");
-    b.add_raster_layer("tinta").expect("a camada da tinta");
+    let mut b = PainterTool::default();
+    b.bind_document(1, vec![255u8; 128 * 128 * 4], 128, 128);
+    b.set_paint_media(PaintMedia::Watercolor);
+    b.set_brush_size_px(10.0);
     traco(&mut b);
-    a.invalidate_composite();
-    b.invalidate_composite();
-    let (pa, _, _) = a.take_preview_arc().expect("a");
-    let (pb, _, _) = b.take_preview_arc().expect("b");
-    let difere = pa
-        .chunks(4)
-        .zip(pb.chunks(4))
-        .filter(|(x, y)| x != y)
-        .count();
+    let pior = |x: &[u8], y: &[u8]| x.iter().zip(y).map(|(p, q)| p.abs_diff(*q)).max();
     assert_eq!(
-        difere, 0,
-        "a aguada sobre o papel difere da aguada sobre a camada da mesma cor"
+        pior(&a.canvas_rgba, &b.canvas_rgba),
+        Some(0),
+        "o papel entrou na tinta da aguada"
+    );
+    a.invalidate_composite();
+    let (pa, _, _) = a.take_preview_arc().expect("a");
+    let mut sobre_o_creme = b.canvas_rgba.to_vec();
+    for px in sobre_o_creme.as_chunks_mut::<4>().0 {
+        crate::tool::papel::sobre_o_papel(px, CREME);
+    }
+    assert_eq!(
+        pior(&pa, &sobre_o_creme),
+        Some(0),
+        "o creme não mostra a aguada coberta com transparência"
     );
     assert!(
         pa.chunks(4).any(|p| p[2] > p[0] + 20),

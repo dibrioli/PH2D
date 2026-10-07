@@ -266,3 +266,87 @@ fn measure_o_quadro_com_papel_nos_dois_produtores() {
     let leitura = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     eprintln!("[papel] loadavg {}", leitura.trim());
 }
+
+/// **O quadro de um desenho NOVO no Impasto** (BUGS #45): um desenho novo nasce com papel branco e a
+/// camada transparente, e o Impasto com relevo é a pista de GPU — que agora compõe sobre o papel. A
+/// arte branca de antes (a tela branca opaca, sem papel) contra o desenho novo, por movimento, a 2048²
+/// e 4096², no mesmo processo, três rodadas intercaladas: o mínimo das medianas, a mediana ao lado.
+///
+/// `cargo test -p ph2d-app-painter --profile smoke --lib measure_o_quadro_do_impasto_num_desenho_novo -- --ignored --nocapture --test-threads=1`
+#[test]
+#[ignore = "perf measurement (GPU adapter) — run with --ignored"]
+fn measure_o_quadro_do_impasto_num_desenho_novo() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter on this machine — nothing to measure");
+        return;
+    };
+    fn por_move(ctx: &ph2d_gpu::GpuContext, size: u32, novo: bool) -> (f64, bool) {
+        let mut renderer = ph2d_render::SpriteRenderer::new(
+            ctx.clone(),
+            ph2d_render::GameRt::FORMAT,
+            ph2d_render::TextureAtlas::dummy(ctx),
+            8,
+        );
+        let mut t = impasto_tool(size);
+        if novo {
+            t.bind_document(1, vec![255u8; (size * size * 4) as usize], size, size);
+        }
+        assert_eq!(t.papel().is_some(), novo, "controlo: a porta");
+        let (mut session, mut preview, mut toasts) =
+            (None, None, ph2d_editor_core::toast::ToastQueue::default());
+        let mut preview_gpu: Option<PainterPreviewGpu> = None;
+        let mid = (size / 2) as f32;
+        t.on_canvas_pointer(cp([60.0, mid], PointerPhase::Down));
+        let mut owns = true;
+        let mut moves = Vec::new();
+        for i in 1..=20u32 {
+            let x = 60.0 + 40.0 * (i as f32);
+            let t0 = std::time::Instant::now();
+            t.on_canvas_pointer(cp([x, mid], PointerPhase::Move));
+            owns &= app_frame(
+                &mut renderer,
+                &mut t,
+                &mut session,
+                &mut preview,
+                &mut preview_gpu,
+                &mut toasts,
+            );
+            let _ = ctx.device.poll(wgpu::PollType::wait_indefinitely());
+            moves.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        moves.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        (moves[moves.len() / 2], owns)
+    }
+    let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    eprintln!("\n[impasto-novo] loadavg {}", carga().trim());
+    let lados = [2048u32, 4096];
+    let (mut arte, mut novo) = (vec![Vec::new(); 2], vec![Vec::new(); 2]);
+    let mut gpu_produz = [[true; 2]; 2];
+    for _rodada in 0..3 {
+        for (k, &lado) in lados.iter().enumerate() {
+            let (a, oa) = por_move(&gpu, lado, false);
+            let (n, on) = por_move(&gpu, lado, true);
+            arte[k].push(a);
+            novo[k].push(n);
+            gpu_produz[k][0] &= oa;
+            gpu_produz[k][1] &= on;
+        }
+    }
+    let mm = |v: &mut Vec<f64>| {
+        v.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        (v[0], v[v.len() / 2])
+    };
+    eprintln!(
+        "[impasto-novo] lado   arte branca ms (mín · med)   novo ms (mín · med)   novo/arte   gpu produz"
+    );
+    for (k, &lado) in lados.iter().enumerate() {
+        let (am, ad) = mm(&mut arte[k]);
+        let (nm, nd) = mm(&mut novo[k]);
+        eprintln!(
+            "[impasto-novo] {lado:<6} {am:>7.3} · {ad:>7.3}             {nm:>7.3} · {nd:>7.3}       {:>5.2}×     {:?}",
+            nm / am.max(1e-6),
+            gpu_produz[k]
+        );
+    }
+    eprintln!("[impasto-novo] loadavg {}", carga().trim());
+}

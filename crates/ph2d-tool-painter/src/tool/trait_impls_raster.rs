@@ -24,7 +24,7 @@ impl RasterEditTool for PainterTool {
         self.layers = LayerStack::new();
         self.layers.add_raster("Layer 1", width, height);
         self.images.clear();
-        self.papel = None; // um documento novo nasce sem papel
+        self.papel = None; // a fonte crua É a camada; o papel nasce na porta do documento (`bind_document`)
         self.layer_pixel_versions.clear();
         let active = self.layers.active();
         self.bump_layer_pixels(active);
@@ -89,6 +89,7 @@ impl RasterEditTool for PainterTool {
                 images: &self.images,
             };
             let mut c = composite(&self.layers, &src, w, h);
+            self.compoe_sobre_o_papel(&mut c, Region { x: 0, y: 0, w, h });
             self.apply_mask_overlay(&mut c); // tint the protected region (no-op without a scratch)
             c
         };

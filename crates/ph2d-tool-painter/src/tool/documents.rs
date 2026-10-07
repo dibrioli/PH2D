@@ -116,7 +116,7 @@ impl PainterTool {
             // Same sprite re-pushed: only re-seed when there is no work to lose, so an external
             // image-tool edit still updates the canvas without flattening our own layers.
             if self.doc_is_disposable() {
-                self.set_source(rgba, width, height);
+                self.abre_a_sprite(rgba, width, height);
             }
             return;
         }
@@ -137,7 +137,7 @@ impl PainterTool {
         self.bound_doc = Some(entity);
         match self.doc_cache.remove(&entity) {
             Some(doc) => self.restore_doc(doc), // bring back its cached multi-layer stack
-            None => self.set_source(rgba, width, height), // fresh (or the sprite's flat texture)
+            None => self.abre_a_sprite(rgba, width, height), // fresh (or the sprite's flat texture)
         }
     }
 
@@ -168,7 +168,17 @@ impl PainterTool {
     /// the next sprite switch — the pixels came back (baked, with the light in them) and the relief did
     /// not, so the artist could no longer edit the thickness of paint they were looking at.
     fn doc_is_disposable(&self) -> bool {
-        self.is_trivial_stack() && self.heights.is_empty() && self.papel.is_none()
+        // O papel branco de uma tela que nasceu branca reconstrói-se da sprite enquanto a camada estiver
+        // vazia; com tinta, o alfa dela só vive aqui (BUGS #45).
+        self.preview_layer_stack_is_trivial()
+            && self.heights.is_empty()
+            && match self.papel {
+                None => true,
+                Some(p) => {
+                    p == crate::tool::papel::PAPEL_BRANCO
+                        && crate::tool::papel::camada_vazia(&self.canvas_rgba)
+                }
+            }
     }
 
     /// Move the current working document out into a [`StashedDoc`] (leaving the painter's live fields

@@ -311,24 +311,19 @@ fn watercolor_ground_is_the_real_backdrop_not_a_virtual_cream() {
     }
 }
 
-/// **T3-cinza (doc 11 §5 F1) — the rewet presence is ground-relative:** with the document PAPER
-/// COLOUR set to the same mid-gray as the canvas, a plain gray canvas IS the paper — nothing to
-/// lift, so Wet must not brighten the wash's interior. (A gray canvas under the default WHITE
-/// paper is legitimately liftable paint — Rebelle rewets a gray fill the same way; the paper
-/// colour field is exactly how the artist declares "this gray is my paper".) The old global-cream
-/// reference had no such control and read ANY non-cream ground as paint.
+/// **T3-cinza (doc 11 §5 F1) — the rewet reads no paint on the PAPER, whatever its colour:** a new
+/// drawing (transparent layer) on a mid-gray paper has nothing to lift, so Wet must not brighten the
+/// wash's interior. Since BUGS #45 the paper never enters the paint: it is not a gray LAYER declared
+/// as paper any more (that layer is a gray fill, liftable paint — Rebelle rewets a gray fill the same
+/// way), it is the document paper under an empty layer.
 #[test]
 fn watercolor_wet_reads_no_paint_on_a_paper_colored_ground() {
     fn run(wet: f32) -> PainterTool {
         let size = 96u32;
-        let mut src = vec![0u8; (size * size * 4) as usize];
-        for px4 in src.as_chunks_mut::<4>().0.iter_mut() {
-            px4.copy_from_slice(&[100, 100, 100, 255]); // uniform mid-gray, no paint anywhere
-        }
         let mut t = PainterTool::default();
-        t.set_source(src, size, size);
-        t.set_paper_color_rgb8(100, 100, 100); // declare the gray as the document paper…
-        t.aplica_o_papel(); // …by the button (2026-10-05): the gray canvas has no pure white to lift
+        t.bind_document(1, vec![255u8; (size * size * 4) as usize], size, size);
+        t.set_paper_color_rgb8(100, 100, 100); // the document paper is mid-gray…
+        t.aplica_o_papel(); // …under the new drawing's empty layer
         t.paint.brush = BrushSpec {
             radius_px: 10.0,
             hardness: 1.0,

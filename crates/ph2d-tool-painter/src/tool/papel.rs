@@ -16,10 +16,42 @@
 //! miolo fica) — e as seguintes repintam-no ao vivo; o arrasto inteiro é um passo de desfazer.
 //! Pintar e depois escolher o papel dá a imagem de escolher o papel e depois pintar, ±1 nível (BUGS
 //! #42: antes só o branco PURO saía, e a orla AA guardava a mistura — um fio claro sobre papel de cor).
+//!
+//! **O papel existe desde o primeiro instante** (BUGS #45, o estado da arte medido no Rebelle, doc 47):
+//! uma sprite toda branca nasce papel branco com a camada VAZIA ([`PainterTool::abre_a_sprite`]), então
+//! cada traço guarda o alfa do pincel e escurecer o papel depois dá o mesmo que pintar sobre ele; e o
+//! papel nunca entra na tinta, nem como o chão óptico da aguada ([`PainterTool::cor_do_chao`]). A
+//! separação acima fica para a arte que chegou branca.
 
 use super::PainterTool;
 use crate::compositor::Region;
 use std::sync::Arc;
+
+/// O papel de um desenho novo.
+pub(crate) const PAPEL_BRANCO: [u8; 3] = [255, 255, 255];
+
+/// **Uma tela inteiramente branca opaca é papel branco sem tinta** — a porta onde uma sprite vira
+/// documento ([`PainterTool::abre_a_sprite`]) guarda-a assim: camada transparente sobre o papel
+/// branco, que se mostra e se assa igual ao byte, e cada traço guarda o alfa que o pincel lhe deu (o
+/// Rebelle, doc 47). Uma tela com qualquer outro píxel é arte, e fica como chegou ([`separa_o_branco`]).
+pub(crate) fn e_papel_em_branco(
+    rgba: &[u8], // COLOR-RAW-OK: o plano RGBA8 cru da sprite (o do `set_source`)
+) -> bool {
+    use rayon::prelude::*;
+    !rgba.is_empty() && rgba.par_chunks(FATIA).all(|c| c.iter().all(|&b| b == 255))
+}
+
+/// A camada não tem tinta nenhuma (todo alfa a zero).
+pub(crate) fn camada_vazia(rgba: &[u8], // COLOR-RAW-OK: o plano RGBA8 cru da camada
+) -> bool {
+    use rayon::prelude::*;
+    rgba.par_chunks(FATIA)
+        .all(|c| c.as_chunks::<4>().0.iter().all(|px| px[3] == 0))
+}
+
+/// A fatia das varreduras da tela inteira em `rayon` (múltipla de 4): abrir uma sprite de 4096² em
+/// branco custava `16` ms num núcleo (`diag_o_quadro_de_um_desenho_novo`).
+const FATIA: usize = 1 << 18;
 
 /// **A lei única: um píxel RGBA8 (alfa direito) SOBRE o papel `p`** — opaco no fim. Inteira, com
 /// arredondamento ao mais próximo, para ser a mesma em toda porta.
@@ -170,6 +202,28 @@ pub(crate) fn separa_o_branco(rgba: &mut [u8], w: usize, h: usize) {
 }
 
 impl PainterTool {
+    /// **A sprite vira documento** — a porta de [`Self::bind_document`] (o produto: o *New Image…* em
+    /// branco, a troca de sprite, o merge). Uma sprite toda branca opaca nasce papel branco sem tinta
+    /// ([`e_papel_em_branco`], BUGS #45); qualquer outra é a camada, sem papel, como o
+    /// [`super::RasterEditTool::set_source`] cru.
+    pub(crate) fn abre_a_sprite(
+        &mut self,
+        mut rgba: Vec<u8>, // COLOR-RAW-OK: a fonte crua do `set_source`
+        w: u32,
+        h: u32,
+    ) {
+        use super::RasterEditTool;
+        let em_branco = e_papel_em_branco(&rgba);
+        if em_branco {
+            use rayon::prelude::*;
+            rgba.par_chunks_mut(FATIA).for_each(|c| c.fill(0));
+        }
+        self.set_source(rgba, w, h);
+        if em_branco {
+            self.papel = Some(PAPEL_BRANCO);
+        }
+    }
+
     /// O papel do documento ligado (`None` = sem papel: o composite é o de sempre, ao byte).
     #[must_use]
     pub fn papel(&self) -> Option<[u8; 3]> {
@@ -188,11 +242,13 @@ impl PainterTool {
         }
     }
 
-    /// A cor do chão que a óptica da aquarela vê onde nada está pintado por baixo: o papel, ou o
-    /// branco de sempre quando o documento não tem papel.
+    /// A cor do chão que a óptica da aquarela vê onde nada está pintado por baixo: o BRANCO de
+    /// referência, com qualquer papel. O papel nunca entra na tinta — a aguada guarda o alfa dela e o
+    /// papel compõe-se por baixo, então mudar o papel depois dá o mesmo que pintar sobre ele (BUGS #45;
+    /// com o papel no chão, a aguada pintada no branco escurecia `0,735` do que devia, pior `62`).
     #[must_use]
     pub(crate) fn cor_do_chao(&self) -> [u8; 3] {
-        self.papel.unwrap_or([255, 255, 255])
+        PAPEL_BRANCO
     }
 
     /// **Aplica o papel com a cor do seletor** — a porta programática (o produto aplica pelo próprio

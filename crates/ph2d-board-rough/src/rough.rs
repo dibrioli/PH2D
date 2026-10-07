@@ -130,7 +130,12 @@ pub fn line(x1: f64, y1: f64, x2: f64, y2: f64, o: &Options) -> Vec<OpSet> {
 /// `RoughGenerator.rectangle` (`x, y` = canto de cima à esquerda).
 pub fn rectangle(x: f64, y: f64, width: f64, height: f64, o: &Options) -> Vec<OpSet> {
     let r = &mut Random::new(o.seed);
-    let points = vec![[x, y], [x + width, y], [x + width, y + height], [x, y + height]];
+    let points = vec![
+        [x, y],
+        [x + width, y],
+        [x + width, y + height],
+        [x, y + height],
+    ];
     let outline = linear_path_ops(&points, true, o, r);
     closed_fill_then_stroke(vec![points], outline, o, r)
 }
@@ -142,7 +147,12 @@ pub fn polygon(points: &[P], o: &Options) -> Vec<OpSet> {
     closed_fill_then_stroke(vec![points.to_vec()], outline, o, r)
 }
 
-fn closed_fill_then_stroke(polys: Vec<Vec<P>>, outline: Vec<Op>, o: &Options, r: &mut Random) -> Vec<OpSet> {
+fn closed_fill_then_stroke(
+    polys: Vec<Vec<P>>,
+    outline: Vec<Op>,
+    o: &Options,
+    r: &mut Random,
+) -> Vec<OpSet> {
     let mut sets = Vec::new();
     if o.fill {
         sets.push(if o.fill_style == FillStyle::Solid {
@@ -257,7 +267,15 @@ fn offset_opt(x: f64, o: &Options, r: &mut Random, gain: f64) -> f64 {
     offset(-x, x, o, r, gain)
 }
 
-pub(crate) fn double_line(x1: f64, y1: f64, x2: f64, y2: f64, o: &Options, r: &mut Random, filling: bool) -> Vec<Op> {
+pub(crate) fn double_line(
+    x1: f64,
+    y1: f64,
+    x2: f64,
+    y2: f64,
+    o: &Options,
+    r: &mut Random,
+    filling: bool,
+) -> Vec<Op> {
     let single = if filling {
         o.disable_multi_stroke_fill
     } else {
@@ -270,7 +288,15 @@ pub(crate) fn double_line(x1: f64, y1: f64, x2: f64, y2: f64, o: &Options, r: &m
     ops
 }
 
-fn line_ops(x1: f64, y1: f64, x2: f64, y2: f64, o: &Options, r: &mut Random, overlay: bool) -> Vec<Op> {
+fn line_ops(
+    x1: f64,
+    y1: f64,
+    x2: f64,
+    y2: f64,
+    o: &Options,
+    r: &mut Random,
+    overlay: bool,
+) -> Vec<Op> {
     let length_sq = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
     let length = length_sq.sqrt();
     let gain = if length < 200.0 {
@@ -325,7 +351,15 @@ fn linear_path_ops(points: &[P], close: bool, o: &Options, r: &mut Random) -> Ve
         }
         ops
     } else if len == 2 {
-        double_line(points[0][0], points[0][1], points[1][0], points[1][1], o, r, false)
+        double_line(
+            points[0][0],
+            points[0][1],
+            points[1][0],
+            points[1][1],
+            o,
+            r,
+            false,
+        )
     } else {
         Vec::new()
     }
@@ -335,13 +369,23 @@ fn curve_ops(points: &[P], o: &Options, r: &mut Random) -> Vec<Op> {
     let mut ops = curve_with_offset(points, 1.0 * (1.0 + o.roughness * 0.2), o, r);
     if !o.disable_multi_stroke {
         let altered = &mut Random::new(o.seed.wrapping_add(1));
-        ops.extend(curve_with_offset(points, 1.5 * (1.0 + o.roughness * 0.22), o, altered));
+        ops.extend(curve_with_offset(
+            points,
+            1.5 * (1.0 + o.roughness * 0.22),
+            o,
+            altered,
+        ));
     }
     ops
 }
 
 fn curve_with_offset(points: &[P], off: f64, o: &Options, r: &mut Random) -> Vec<Op> {
-    let mut jittered = |p: P, r: &mut Random| [p[0] + offset_opt(off, o, r, 1.0), p[1] + offset_opt(off, o, r, 1.0)];
+    let mut jittered = |p: P, r: &mut Random| {
+        [
+            p[0] + offset_opt(off, o, r, 1.0),
+            p[1] + offset_opt(off, o, r, 1.0),
+        ]
+    };
     let mut ps = vec![jittered(points[0], r), jittered(points[0], r)];
     for i in 1..points.len() {
         ps.push(jittered(points[i], r));
@@ -377,7 +421,15 @@ fn catmull_rom(points: &[P], o: &Options, r: &mut Random) -> Vec<Op> {
         ops.push(Op::Move(points[1]));
         ops.push(Op::Cubic(points[1], points[2], points[2]));
     } else if len == 2 {
-        ops.extend(double_line(points[0][0], points[0][1], points[1][0], points[1][1], o, r, false));
+        ops.extend(double_line(
+            points[0][0],
+            points[0][1],
+            points[1][0],
+            points[1][1],
+            o,
+            r,
+            false,
+        ));
     }
     ops
 }
@@ -406,7 +458,13 @@ fn ellipse_params(width: f64, height: f64, o: &Options, r: &mut Random) -> Ellip
     EllipseParams { increment, rx, ry }
 }
 
-fn ellipse_with_params(x: f64, y: f64, o: &Options, p: EllipseParams, r: &mut Random) -> (Vec<P>, Vec<Op>) {
+fn ellipse_with_params(
+    x: f64,
+    y: f64,
+    o: &Options,
+    p: EllipseParams,
+    r: &mut Random,
+) -> (Vec<P>, Vec<Op>) {
     let inner = offset(0.4, 1.0, o, r, 1.0);
     let overlap = p.increment * offset(0.1, inner, o, r, 1.0);
     let (ap1, cp1) = ellipse_points(p, x, y, 1.0, overlap, o, r);
@@ -418,7 +476,15 @@ fn ellipse_with_params(x: f64, y: f64, o: &Options, p: EllipseParams, r: &mut Ra
     (cp1, ops)
 }
 
-fn ellipse_points(p: EllipseParams, cx: f64, cy: f64, off: f64, overlap: f64, o: &Options, r: &mut Random) -> (Vec<P>, Vec<P>) {
+fn ellipse_points(
+    p: EllipseParams,
+    cx: f64,
+    cy: f64,
+    off: f64,
+    overlap: f64,
+    o: &Options,
+    r: &mut Random,
+) -> (Vec<P>, Vec<P>) {
     let EllipseParams { increment, rx, ry } = p;
     let mut core = Vec::new();
     let mut all = Vec::new();
@@ -444,7 +510,10 @@ fn ellipse_points(p: EllipseParams, cx: f64, cy: f64, off: f64, overlap: f64, o:
         let end = PI * 2.0 + rad - 0.01;
         let mut angle = rad;
         while angle < end {
-            let q = [jit(r) + cx + rx * angle.cos(), jit(r) + cy + ry * angle.sin()];
+            let q = [
+                jit(r) + cx + rx * angle.cos(),
+                jit(r) + cy + ry * angle.sin(),
+            ];
             core.push(q);
             all.push(q);
             angle += increment;
@@ -485,7 +554,9 @@ fn svg_path_ops(segs: &[Seg], o: &Options, r: &mut Random) -> Vec<Op> {
                 current = p;
             }
             Seg::Z => {
-                ops.extend(double_line(current[0], current[1], first[0], first[1], o, r, false));
+                ops.extend(double_line(
+                    current[0], current[1], first[0], first[1], o, r, false,
+                ));
                 current = first;
             }
             Seg::Q(..) => unreachable!("normalize converte Q em C"),
@@ -515,10 +586,19 @@ fn bezier_to(c1: P, c2: P, p: P, current: P, o: &Options, r: &mut Random) -> Vec
         let f = if keep {
             p
         } else {
-            [p[0] + offset_opt(ro, o, r, 1.0), p[1] + offset_opt(ro, o, r, 1.0)]
+            [
+                p[0] + offset_opt(ro, o, r, 1.0),
+                p[1] + offset_opt(ro, o, r, 1.0),
+            ]
         };
-        let a = [c1[0] + offset_opt(ro, o, r, 1.0), c1[1] + offset_opt(ro, o, r, 1.0)];
-        let b = [c2[0] + offset_opt(ro, o, r, 1.0), c2[1] + offset_opt(ro, o, r, 1.0)];
+        let a = [
+            c1[0] + offset_opt(ro, o, r, 1.0),
+            c1[1] + offset_opt(ro, o, r, 1.0),
+        ];
+        let b = [
+            c2[0] + offset_opt(ro, o, r, 1.0),
+            c2[1] + offset_opt(ro, o, r, 1.0),
+        ];
         ops.push(Op::Cubic(a, b, f));
     }
     ops
@@ -529,7 +609,12 @@ fn solid_fill_polygon(polys: &[Vec<P>], o: &Options, r: &mut Random) -> OpSet {
     let off = o.max_randomness_offset;
     for points in polys {
         if points.len() > 2 {
-            let mut jit = |q: P, r: &mut Random| [q[0] + offset_opt(off, o, r, 1.0), q[1] + offset_opt(off, o, r, 1.0)];
+            let mut jit = |q: P, r: &mut Random| {
+                [
+                    q[0] + offset_opt(off, o, r, 1.0),
+                    q[1] + offset_opt(off, o, r, 1.0),
+                ]
+            };
             ops.push(Op::Move(jit(points[0], r)));
             for &q in &points[1..] {
                 ops.push(Op::Line(jit(q, r)));

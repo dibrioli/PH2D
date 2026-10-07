@@ -150,7 +150,11 @@ pub fn stroke_points(input: &[Input], o: &Options) -> Vec<StrokePoint> {
         let first = [pts[0].x, pts[0].y];
         for i in 1..5 {
             let [x, y] = lrp(first, [last.x, last.y], f64::from(i) / 4.0);
-            pts.push(Input { x, y, pressure: None });
+            pts.push(Input {
+                x,
+                y,
+                pressure: None,
+            });
         }
     }
     if pts.len() == 1 {
@@ -261,7 +265,8 @@ pub fn outline(points: &[StrokePoint], o: &Options) -> Vec<P> {
             if o.simulate_pressure {
                 let sp = (distance / size).min(1.0);
                 let rp = (1.0 - sp).min(1.0);
-                pressure = (prev_pressure + (rp - prev_pressure) * (sp * RATE_OF_PRESSURE_CHANGE)).min(1.0);
+                pressure = (prev_pressure + (rp - prev_pressure) * (sp * RATE_OF_PRESSURE_CHANGE))
+                    .min(1.0);
             }
             r = radius(size, o.thinning, pressure);
         } else {
@@ -283,8 +288,16 @@ pub fn outline(points: &[StrokePoint], o: &Options) -> Vec<P> {
             1.0
         };
         r = (r * ts.min(te)).max(0.01);
-        let next_vector = if i < n - 1 { points[i + 1].vector } else { vector };
-        let next_dpr = if i < n - 1 { dot(vector, next_vector) } else { 1.0 };
+        let next_vector = if i < n - 1 {
+            points[i + 1].vector
+        } else {
+            vector
+        };
+        let next_dpr = if i < n - 1 {
+            dot(vector, next_vector)
+        } else {
+            1.0
+        };
         let prev_dpr = dot(vector, prev_vector);
         let is_point_sharp = prev_dpr < 0.0 && !is_prev_sharp;
         let is_next_sharp = next_dpr < 0.0;
@@ -339,7 +352,11 @@ pub fn outline(points: &[StrokePoint], o: &Options) -> Vec<P> {
     let mut end_cap = Vec::new();
     if n == 1 {
         if taper_start == 0.0 && taper_end == 0.0 || o.last {
-            let start = prj(first, uni(per(sub(first, last))), -first_radius.filter(|&v| v != 0.0).unwrap_or(r));
+            let start = prj(
+                first,
+                uni(per(sub(first, last))),
+                -first_radius.filter(|&v| v != 0.0).unwrap_or(r),
+            );
             let step = 1.0 / 13.0;
             let mut dot_pts = Vec::new();
             let mut t = step;
@@ -364,7 +381,12 @@ pub fn outline(points: &[StrokePoint], o: &Options) -> Vec<P> {
                 let corners = sub(l0, r0);
                 let o1 = mul(corners, 0.5);
                 let o2 = mul(corners, 0.51);
-                start_cap.extend([sub(first, o1), sub(first, o2), add(first, o2), add(first, o1)]);
+                start_cap.extend([
+                    sub(first, o1),
+                    sub(first, o2),
+                    add(first, o2),
+                    add(first, o1),
+                ]);
             }
         }
         let direction = per(neg(points[n - 1].vector));

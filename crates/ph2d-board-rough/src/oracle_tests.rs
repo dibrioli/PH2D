@@ -9,9 +9,13 @@ use serde_json::Value;
 use crate::freehand::{self, End, Input, Taper};
 use crate::rough::{self, FillStyle, Op, Options, Seg, SetKind};
 
-const INPUT: &str = include_str!("../../../docs/MiroClone/ferramentas/excalidraw_oracle/entradas/portas.json");
-const ROUGH: &str = include_str!("../../../docs/MiroClone/ferramentas/excalidraw_oracle/saidas/portas_rough.json");
-const FREEHAND: &str = include_str!("../../../docs/MiroClone/ferramentas/excalidraw_oracle/saidas/portas_freehand.json");
+const INPUT: &str =
+    include_str!("../../../docs/MiroClone/ferramentas/excalidraw_oracle/entradas/portas.json");
+const ROUGH: &str =
+    include_str!("../../../docs/MiroClone/ferramentas/excalidraw_oracle/saidas/portas_rough.json");
+const FREEHAND: &str = include_str!(
+    "../../../docs/MiroClone/ferramentas/excalidraw_oracle/saidas/portas_freehand.json"
+);
 
 fn close(a: f64, b: f64) -> bool {
     (a - b).abs() <= 1e-9 * a.abs().max(b.abs()).max(1.0)
@@ -26,7 +30,11 @@ fn point(v: &Value) -> [f64; 2] {
 }
 
 fn points(v: &Value) -> Vec<[f64; 2]> {
-    v.as_array().expect("lista de pontos").iter().map(point).collect()
+    v.as_array()
+        .expect("lista de pontos")
+        .iter()
+        .map(point)
+        .collect()
 }
 
 fn options(v: &Value) -> Options {
@@ -67,7 +75,11 @@ fn parse_path(d: &str) -> Vec<Seg> {
     let mut tokens: Vec<&str> = d.split_whitespace().collect();
     tokens.reverse();
     while let Some(cmd) = tokens.pop() {
-        let mut take = |k: usize| -> Vec<f64> { (0..k).map(|_| tokens.pop().expect("número").parse().expect("número")).collect() };
+        let mut take = |k: usize| -> Vec<f64> {
+            (0..k)
+                .map(|_| tokens.pop().expect("número").parse().expect("número"))
+                .collect()
+        };
         out.push(match cmd {
             "M" => {
                 let v = take(2);
@@ -144,7 +156,11 @@ fn every_rough_case_matches_the_oracle_op_by_op_with_the_same_seed() {
                 let wop = wop.as_array().expect("op");
                 assert_eq!(gname, wop[0], "{name}: set {si} op {oi}");
                 for (k, (x, y)) in gnums.iter().zip(&wop[1..]).enumerate() {
-                    assert!(close(*x, num(y)), "{name}: set {si} op {oi} [{k}]: {x} ≠ oráculo {}", num(y));
+                    assert!(
+                        close(*x, num(y)),
+                        "{name}: set {si} op {oi} [{k}]: {x} ≠ oráculo {}",
+                        num(y)
+                    );
                 }
             }
         }
@@ -215,23 +231,45 @@ fn every_freehand_case_matches_the_oracle_in_both_steps() {
         let wsp = want["stroke_points"].as_array().expect("passo 1");
         assert_eq!(sp.len(), wsp.len(), "{name}: passo 1, número de pontos");
         for (i, (g, w)) in sp.iter().zip(wsp).enumerate() {
-            let got = [g.point[0], g.point[1], g.pressure, g.vector[0], g.vector[1], g.distance, g.running_length];
+            let got = [
+                g.point[0],
+                g.point[1],
+                g.pressure,
+                g.vector[0],
+                g.vector[1],
+                g.distance,
+                g.running_length,
+            ];
             for (k, x) in got.iter().enumerate() {
-                assert!(close(*x, num(&w[k])), "{name}: passo 1 ponto {i} campo {k}: {x} ≠ oráculo {}", num(&w[k]));
+                assert!(
+                    close(*x, num(&w[k])),
+                    "{name}: passo 1 ponto {i} campo {k}: {x} ≠ oráculo {}",
+                    num(&w[k])
+                );
             }
         }
         let outline = freehand::outline(&sp, &o);
         let wo = points(&want["outline"]);
-        assert_eq!(outline.len(), wo.len(), "{name}: passo 2, número de pontos do contorno");
+        assert_eq!(
+            outline.len(),
+            wo.len(),
+            "{name}: passo 2, número de pontos do contorno"
+        );
         for (i, (g, w)) in outline.iter().zip(&wo).enumerate() {
-            assert!(close(g[0], w[0]) && close(g[1], w[1]), "{name}: passo 2 ponto {i}: {g:?} ≠ oráculo {w:?}");
+            assert!(
+                close(g[0], w[0]) && close(g[1], w[1]),
+                "{name}: passo 2 ponto {i}: {g:?} ≠ oráculo {w:?}"
+            );
         }
     }
 }
 
 #[test]
 fn the_same_seed_draws_the_same_stroke_and_another_seed_another() {
-    let o = |seed| Options { seed, ..Options::default() };
+    let o = |seed| Options {
+        seed,
+        ..Options::default()
+    };
     let a = rough::rectangle(0.0, 0.0, 100.0, 60.0, &o(7));
     assert_eq!(a, rough::rectangle(0.0, 0.0, 100.0, 60.0, &o(7)));
     assert_ne!(a, rough::rectangle(0.0, 0.0, 100.0, 60.0, &o(8)));

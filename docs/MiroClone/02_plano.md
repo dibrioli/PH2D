@@ -298,7 +298,7 @@ Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um bra
   de texto de FORA = uma nota por célula na grelha das células; a pega de quatro pontos arruma uma
   selecção de notas em colunas. Texto com **negrito, itálico, sublinhado, riscado** por trecho
   (`Ctrl+B/I/U`, `Ctrl+Shift+X`, e na barra) e **cor da letra por trecho nas FORMAS** (as notas do
-  Miro não a mudam). Formato do ficheiro 3 (o 2 lê-se). Smoke `PH2D_BOARD_SMOKE=4`. ⏳ smoke do dono;
+  Miro não a mudam). Formato do ficheiro 3 (o 2 lê-se). Smoke `PH2D_BOARD_SMOKE=4`. ✅ **Smoke aprovado pelo dono (06/10)**;
   ⚠️ P/G, o vão entre notas e a sombra **por medir** numa captura do Miro.
 
 ### W4 — Caneta e o botão «Rascunho ↔ Final»

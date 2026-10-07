@@ -17,6 +17,7 @@
   translúcida; gate `the_board_never_paints_an_opaque_selection_over_its_content`. ⚠️ Não fotografado:
   a foto não conduz um arrasto nem uma edição (os eventos sintéticos não chegam à tela virtual) — a
   confirmação é o 2.º olhar do dono. ⏳ As capturas do Miro (§4.1) continuam pedidas.
+- ✅ **Smoke da W3 APROVADO pelo dono (06/10, 2.ª rodada: «smoke OK»)**, a selecção translúcida incluída.
 
 ## §1 — As leis do Miro e de onde vêm (memória `feedback_the_owners_reference_product_decides_the_law`)
 
@@ -76,7 +77,7 @@ Pesquisa (agente, help.miro.com pela API pública de artigos + developers.miro.c
 
 ## §4 — ⏳ O que fica aberto (por ordem)
 
-1. **Smoke do dono** (§5) — e, nele, PEDIR as capturas do Miro que fecham o que está por medir:
+1. ~~Smoke do dono~~ ✅ aprovado 06/10. Continuam PEDIDAS as capturas do Miro que fecham o que está por medir:
    (a) três notas P/M/G lado a lado, (b) duas notas feitas com `Tab`, (c) uma nota sobre fundo branco
    (a sombra), (d) a pega de quatro pontos de uma selecção. Medir pela régua de `ferramentas/`, nunca
    a olho (§6 do plano).

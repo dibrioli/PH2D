@@ -151,7 +151,12 @@ pub fn disc_tile_pixels(side: u32) -> Vec<ph2d_color::SrgbRgba> {
         for x in 0..side {
             let (dx, dy) = (x as f32 + 0.5 - c, y as f32 + 0.5 - c);
             let a = (r - (dx * dx + dy * dy).sqrt() + 0.5).clamp(0.0, 1.0);
-            px.push(ph2d_color::SrgbRgba::new(0xff, 0xff, 0xff, (a * 255.0).round() as u8));
+            px.push(ph2d_color::SrgbRgba::new(
+                0xff,
+                0xff,
+                0xff,
+                (a * 255.0).round() as u8,
+            ));
         }
     }
     px

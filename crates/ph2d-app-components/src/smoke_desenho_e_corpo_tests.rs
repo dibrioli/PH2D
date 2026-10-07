@@ -136,8 +136,16 @@ fn monta(env: &str, nivel: u32) -> SimWorld {
 /// O que o desenho ocupa, no referencial local do corpo.
 #[derive(Clone, Copy)]
 enum Desenho {
-    Retangulo { c: [f32; 2], w: f32, h: f32, rot: f32 },
-    Disco { c: [f32; 2], r: f32 },
+    Retangulo {
+        c: [f32; 2],
+        w: f32,
+        h: f32,
+        rot: f32,
+    },
+    Disco {
+        c: [f32; 2],
+        r: f32,
+    },
 }
 
 fn desenho(s: &Sprite, desloc: [f32; 2], rot: f32, escala: [f32; 2]) -> Desenho {
@@ -175,29 +183,39 @@ fn dist_segmento(p: [f32; 2], hh: f32) -> f32 {
 /// Quanto o desenho sai do corpo (≤ 0 = dentro).
 fn excesso(d: Desenho, corpo: ColliderShape) -> f32 {
     match (d, corpo) {
-        (Desenho::Retangulo { c, w, h, rot }, ColliderShape::Ball { radius }) => cantos(c, w, h, rot)
-            .iter()
-            .map(|p| p[0].hypot(p[1]) - radius)
-            .fold(f32::MIN, f32::max),
+        (Desenho::Retangulo { c, w, h, rot }, ColliderShape::Ball { radius }) => {
+            cantos(c, w, h, rot)
+                .iter()
+                .map(|p| p[0].hypot(p[1]) - radius)
+                .fold(f32::MIN, f32::max)
+        }
         (Desenho::Retangulo { c, w, h, rot }, ColliderShape::Cuboid { half_x, half_y }) => {
             let k = cantos(c, w, h, rot);
             let mx = k.iter().map(|p| p[0].abs()).fold(0.0, f32::max);
             let my = k.iter().map(|p| p[1].abs()).fold(0.0, f32::max);
             (mx - half_x).max(my - half_y)
         }
-        (Desenho::Retangulo { c, w, h, rot }, ColliderShape::Capsule { half_height, radius }) => {
-            cantos(c, w, h, rot)
-                .iter()
-                .map(|p| dist_segmento(*p, half_height) - radius)
-                .fold(f32::MIN, f32::max)
-        }
+        (
+            Desenho::Retangulo { c, w, h, rot },
+            ColliderShape::Capsule {
+                half_height,
+                radius,
+            },
+        ) => cantos(c, w, h, rot)
+            .iter()
+            .map(|p| dist_segmento(*p, half_height) - radius)
+            .fold(f32::MIN, f32::max),
         (Desenho::Disco { c, r }, ColliderShape::Ball { radius }) => c[0].hypot(c[1]) + r - radius,
         (Desenho::Disco { c, r }, ColliderShape::Cuboid { half_x, half_y }) => {
             (c[0].abs() + r - half_x).max(c[1].abs() + r - half_y)
         }
-        (Desenho::Disco { c, r }, ColliderShape::Capsule { half_height, radius }) => {
-            dist_segmento(c, half_height) + r - radius
-        }
+        (
+            Desenho::Disco { c, r },
+            ColliderShape::Capsule {
+                half_height,
+                radius,
+            },
+        ) => dist_segmento(c, half_height) + r - radius,
     }
 }
 
@@ -205,9 +223,10 @@ fn area_corpo(c: ColliderShape) -> f32 {
     match c {
         ColliderShape::Ball { radius } => std::f32::consts::PI * radius * radius,
         ColliderShape::Cuboid { half_x, half_y } => 4.0 * half_x * half_y,
-        ColliderShape::Capsule { half_height, radius } => {
-            4.0 * half_height * radius + std::f32::consts::PI * radius * radius
-        }
+        ColliderShape::Capsule {
+            half_height,
+            radius,
+        } => 4.0 * half_height * radius + std::f32::consts::PI * radius * radius,
     }
 }
 
@@ -220,16 +239,29 @@ fn area_desenho(d: Desenho) -> f32 {
 
 fn txt_desenho(d: Desenho) -> String {
     match d {
-        Desenho::Retangulo { c, w, h, .. } => format!("quadrado {w:.3}x{h:.3} em ({:.3},{:.3})", c[0], c[1]),
-        Desenho::Disco { c, r } => format!("disco {:.3}x{:.3} em ({:.3},{:.3})", 2.0 * r, 2.0 * r, c[0], c[1]),
+        Desenho::Retangulo { c, w, h, .. } => {
+            format!("quadrado {w:.3}x{h:.3} em ({:.3},{:.3})", c[0], c[1])
+        }
+        Desenho::Disco { c, r } => format!(
+            "disco {:.3}x{:.3} em ({:.3},{:.3})",
+            2.0 * r,
+            2.0 * r,
+            c[0],
+            c[1]
+        ),
     }
 }
 
 fn txt_corpo(c: ColliderShape) -> String {
     match c {
         ColliderShape::Ball { radius } => format!("Ball r={radius:.3}"),
-        ColliderShape::Cuboid { half_x, half_y } => format!("Cuboid {:.3}x{:.3}", 2.0 * half_x, 2.0 * half_y),
-        ColliderShape::Capsule { half_height, radius } => {
+        ColliderShape::Cuboid { half_x, half_y } => {
+            format!("Cuboid {:.3}x{:.3}", 2.0 * half_x, 2.0 * half_y)
+        }
+        ColliderShape::Capsule {
+            half_height,
+            radius,
+        } => {
             format!("Capsule hh={half_height:.3} r={radius:.3}")
         }
     }
@@ -246,7 +278,9 @@ struct Varredura {
 fn varre(world: &World) -> Varredura {
     let mut v = Varredura::default();
     for er in world.iter_entities() {
-        let Some(sprite) = er.get::<Sprite>() else { continue };
+        let Some(sprite) = er.get::<Sprite>() else {
+            continue;
+        };
         let t = er.get::<Transform>().copied();
         let nome = er
             .get::<Name>()
@@ -254,10 +288,16 @@ fn varre(world: &World) -> Varredura {
         // O corpo e o referencial em que o desenho se confronta com ele.
         let (corpo, d) = if let Some(col) = er.get::<Collider>() {
             (col.shape, desenho(sprite, [0.0, 0.0], 0.0, [1.0, 1.0]))
-        } else if let Some(pai) = er.get::<ChildOf>().and_then(|p| world.get::<Collider>(p.parent())) {
+        } else if let Some(pai) = er
+            .get::<ChildOf>()
+            .and_then(|p| world.get::<Collider>(p.parent()))
+        {
             let t = t.unwrap_or_default();
             let esc = [t.scale.x, t.scale.y];
-            (pai.shape, desenho(sprite, [t.translation.x, t.translation.y], t.rotation, esc))
+            (
+                pai.shape,
+                desenho(sprite, [t.translation.x, t.translation.y], t.rotation, esc),
+            )
         } else {
             continue;
         };
@@ -272,7 +312,9 @@ fn varre(world: &World) -> Varredura {
         if let Desenho::Retangulo { w, h, .. } = d
             && matches!(sprite.source, SpriteSource::Atlas { key } if key == DISC_TILE_KEY)
         {
-            v.foras.push(format!("{nome} · DISC_TILE_KEY elipse {w:.3}x{h:.3} (bounding rect conferido)"));
+            v.foras.push(format!(
+                "{nome} · DISC_TILE_KEY elipse {w:.3}x{h:.3} (bounding rect conferido)"
+            ));
         }
         v.corpos += 1;
         let ex = excesso(d, corpo);
@@ -302,7 +344,10 @@ fn nenhuma_cena_de_smoke_desenha_fora_do_corpo() {
     for rt in crate::FAMILY.routers {
         for nivel in 1..=rt.max_level {
             esperadas += 1;
-            if let Some((_, _, porque)) = SEM_CORPOS.iter().find(|(e, n, _)| *e == rt.env && *n == nivel) {
+            if let Some((_, _, porque)) = SEM_CORPOS
+                .iter()
+                .find(|(e, n, _)| *e == rt.env && *n == nivel)
+            {
                 eprintln!("[censo] {}={nivel} saltada de proposito: {porque}", rt.env);
                 continue;
             }
@@ -315,10 +360,21 @@ fn nenhuma_cena_de_smoke_desenha_fora_do_corpo() {
         }
     }
     eprintln!("[censo] cenas={cenas} corpos={corpos}");
-    eprintln!("[censo] corpo muito maior que o desenho ({}):\n{}", folgas.len(), folgas.join("\n"));
-    assert_eq!(cenas, esperadas - SEM_CORPOS.len(), "cenas montadas != declaradas");
+    eprintln!(
+        "[censo] corpo muito maior que o desenho ({}):\n{}",
+        folgas.len(),
+        folgas.join("\n")
+    );
+    assert_eq!(
+        cenas,
+        esperadas - SEM_CORPOS.len(),
+        "cenas montadas != declaradas"
+    );
     // Chão MEDIDO em 05/10: um construtor que monta o vazio reprova aqui.
-    assert!(corpos >= PISO_DE_CORPOS, "corpos={corpos} < piso {PISO_DE_CORPOS}");
+    assert!(
+        corpos >= PISO_DE_CORPOS,
+        "corpos={corpos} < piso {PISO_DE_CORPOS}"
+    );
     assert!(
         ofensores.is_empty(),
         "{} desenhos saem do corpo:\n{}",
@@ -335,7 +391,10 @@ const PISO_DE_CORPOS: usize = 139;
 fn o_censo_ve_um_quadrado_sobre_uma_bola_e_aceita_o_disco() {
     let mut sim = SimWorld::new();
     let w = sim.world_mut();
-    let col = |shape| Collider { shape, ..Collider::default() };
+    let col = |shape| Collider {
+        shape,
+        ..Collider::default()
+    };
     let branco = ph2d_render::WHITE_TILE_KEY;
     w.spawn((
         Name("quadrado-sobre-bola".into()),
@@ -350,10 +409,16 @@ fn o_censo_ve_um_quadrado_sobre_uma_bola_e_aceita_o_disco() {
     w.spawn((
         Name("quadrado-sobre-caixa".into()),
         Sprite::atlas(branco, [0.45, 0.45], [1.0; 4]),
-        col(ColliderShape::Cuboid { half_x: 0.225, half_y: 0.225 }),
+        col(ColliderShape::Cuboid {
+            half_x: 0.225,
+            half_y: 0.225,
+        }),
     ));
     let pai = w
-        .spawn((Name("pai".into()), col(ColliderShape::Ball { radius: 0.35 })))
+        .spawn((
+            Name("pai".into()),
+            col(ColliderShape::Ball { radius: 0.35 }),
+        ))
         .id();
     w.spawn((
         Name("filho-sobressai".into()),
@@ -363,7 +428,10 @@ fn o_censo_ve_um_quadrado_sobre_uma_bola_e_aceita_o_disco() {
     ));
     let f = foras(sim.world());
     assert_eq!(f.len(), 2, "{f:#?}");
-    assert!(f.iter().any(|l| l.contains("quadrado-sobre-bola")), "{f:#?}");
+    assert!(
+        f.iter().any(|l| l.contains("quadrado-sobre-bola")),
+        "{f:#?}"
+    );
     assert!(f.iter().any(|l| l.contains("filho-sobressai")), "{f:#?}");
 }
 
@@ -388,10 +456,17 @@ fn todo_roteador_que_a_shell_le_esta_na_familia() {
             }
         }
     }
-    assert!(lidas.len() >= PISO_DE_ROTEADORES, "so {} roteadores lidos: {lidas:?}", lidas.len());
+    assert!(
+        lidas.len() >= PISO_DE_ROTEADORES,
+        "so {} roteadores lidos: {lidas:?}",
+        lidas.len()
+    );
     let fora: Vec<_> = lidas
         .iter()
         .filter(|e| !crate::FAMILY.routers.iter().any(|r| r.env == e.as_str()))
         .collect();
-    assert!(fora.is_empty(), "a shell le roteadores que FAMILY nao declara: {fora:?}");
+    assert!(
+        fora.is_empty(),
+        "a shell le roteadores que FAMILY nao declara: {fora:?}"
+    );
 }

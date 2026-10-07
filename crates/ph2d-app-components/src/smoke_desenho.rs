@@ -8,9 +8,9 @@
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
+use ph2d_core::Vec2;
 use ph2d_ecs::{ChildOf, Name, Transform, Visibility};
 use ph2d_render::{DISC_TILE_KEY, Sprite, WHITE_TILE_KEY};
-use ph2d_core::Vec2;
 
 /// Um disco de raio `raio` (diâmetro `2·raio`).
 pub(crate) fn disco(raio: f32, rgba: [f32; 4]) -> Sprite {

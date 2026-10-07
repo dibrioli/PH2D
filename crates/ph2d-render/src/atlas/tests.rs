@@ -429,7 +429,9 @@ fn white_tile_is_opaque_white_and_never_collides_with_import_keys() {
         return;
     };
     let mut atlas = TextureAtlas::dummy(&gpu);
-    let uv = atlas.insert_reserved_tiles(&gpu).expect("the reserved tiles fit");
+    let uv = atlas
+        .insert_reserved_tiles(&gpu)
+        .expect("the reserved tiles fit");
     // (plano 30 §25, A) The disc comes with it, at its own side.
     let disc = atlas.region(DISC_TILE_KEY).expect("the disc is registered");
     assert_eq!((disc.w, disc.h), (DISC_TILE_PX, DISC_TILE_PX));

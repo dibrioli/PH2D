@@ -199,6 +199,9 @@ fn bulk_mode_turns_each_line_into_a_note_in_a_row_as_one_step() {
         "em fila"
     );
     assert!(notes[0].x < notes[1].x && notes[1].x < notes[2].x);
+    // A linha em branco não deixa um buraco na fila (o vão entre as três é o mesmo).
+    let step = notes[1].x - notes[0].x;
+    assert!(close(notes[2].x - notes[1].x, step), "buraco na fila");
     assert_eq!(w.ed.selection().len(), 3);
     assert!(w.cmd(Command::Undo));
     assert_eq!(w.doc.live_len(), 0, "UM passo, e o rascunho não volta");

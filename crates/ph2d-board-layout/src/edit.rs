@@ -141,7 +141,6 @@ impl TextEdit {
         let marks = self
             .typing
             .unwrap_or_else(|| self.rich.typing_marks(range.start));
-        let typing = self.typing;
         self.rich.replace(range.clone(), s, marks);
         self.relayout(ts);
         let end = range.start + s.len();
@@ -151,8 +150,9 @@ impl TextEdit {
             Affinity::Upstream
         };
         self.sel = self.cursor(end, affinity);
-        // As marcas pedidas para escrever continuam enquanto se escreve.
-        self.typing = typing.filter(|_| !s.is_empty());
+        // O que se escreveu já tem as marcas pedidas, e o carácter seguinte herda-as do anterior
+        // (`typing_marks`): guardá-las aqui seria uma segunda fonte (a prova de mutação M8 mostrou-o).
+        self.typing = None;
     }
 
     pub fn insert(&mut self, ts: &mut TextSystem, s: &str) {

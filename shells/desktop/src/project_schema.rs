@@ -425,7 +425,7 @@
 ///
 /// `ph2d_skeleton_ecs::Skeleton` passa a REGISTADO (o registo do esqueleto `7 → 8`; o ECS e os dois
 /// espelhos NÃO se mexem — o esqueleto regista os seus, como a física). ⛔ **Sem degrau de migração**,
-/// pela decisão de sempre — um v184 é recusado em voz alta. Os ossos soltos que um projecto antigo
+/// pela decisão de sempre — um v186 é recusado em voz alta. Os ossos soltos que um projecto antigo
 /// traria ganham cada raiz o seu esqueleto no 1.º quadro (`ph2d_app_skeleton::loose`, pose ao bit):
 /// é essa a porta, como a das formas soltas no `182`.
 ///

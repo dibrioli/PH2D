@@ -301,7 +301,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `ProjectFile`, ZERO componentes registados. A tripla NÃO vê este degrau.
         // ⚠️ **`186` em 2026-10-07** (`line/PainterWatercolor`, 05/10 → 07/10) — o PAPEL e o VIDRO do
         // documento pintado: `PaintedDocument::papel` e `::vidros` no fim. A tripla NÃO vê este degrau.
-        // ⚠️ **`185` em 2026-10-05** (`line/Vector`, A14) — o ESQUELETO é um objecto: `Skeleton`
+        // ⚠️ **`187` em 2026-10-07** (`line/Vector`, A14, escrito `185` a 05/10) — o ESQUELETO é um objecto: `Skeleton`
         // REGISTADO (esqueleto `7 → 8`, ECS e espelhos `0`). A tripla NÃO vê este degrau.
         (187, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \

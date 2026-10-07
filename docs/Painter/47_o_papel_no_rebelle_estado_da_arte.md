@@ -85,3 +85,10 @@ O `separa_o_branco` continua só para desenhos que já nasceram brancos (a arte 
 
 ⚠️ A MEDIR antes de construir: o alfa que a Aquarela e o Wet Paint do PH2D depositam numa camada
 transparente com o pincel de fábrica (o Rebelle a Opacity 50 deposita `0,50`).
+
+✅ **Feito (2026-10-07, BUGS #45):** a sprite toda branca nasce papel branco com a camada vazia (a porta
+do documento, `abre_a_sprite`), e o chão óptico da Aquarela passou a ser o branco de referência com
+qualquer papel (com o papel no chão, mesmo na camada transparente a ordem importava: `0,735`, pior
+`62`). Escurecer o papel depois = pintar sobre ele, pior `0` níveis nos quatro meios, `0` pontos
+brancos no Wet Paint. Medido o alfa do PH2D: Digital e Impasto = a Strength; Aquarela `0,70` no miolo
+e Wet Paint `0,90`, a qualquer Strength (não a leem — #41).

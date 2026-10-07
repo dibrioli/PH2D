@@ -472,7 +472,7 @@ fn ik_rows(r: &mut RowCtx, y: f32) -> f32 {
 ///
 /// ⚠️ **O SUJEITO É A SELECÇÃO DE FORMAS, não o osso em foco** — é isso que faz dela uma escolha
 /// *por desenho*, e é por isso que os dois ids vivem em
-/// [`ph2d_tool_vector::ids::VECTOR_BONE_ON_SELECTION`]. ⇒ ela é pintada com o *Release*, ao lado
+/// [`ph2d_editor_core::ids::VECTOR_BONE_ON_SELECTION`]. ⇒ ela é pintada com o *Release*, ao lado
 /// das outras duas coisas que agem sobre o que está escolhido, e **só quando há algo preso**:
 /// *sem pele não há lei de pele, e um selector sem sujeito é a classe de controlo morto que o
 /// `CLAUDE.md` §5.0 nomeia.*

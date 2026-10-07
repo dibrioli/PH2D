@@ -21,7 +21,6 @@ authors.workspace = true
 # os pinta.
 
 [dependencies]
-ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 # ⭐ O verbo do osso e o pincel de peso (A14: sairam da ferramenta Vector).
 ph2d-tool-bone = { path = "../ph2d-tool-bone" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }

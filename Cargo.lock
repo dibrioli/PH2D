@@ -4899,7 +4899,6 @@ dependencies = [
  "ph2d-timeline-persist",
  "ph2d-timeline-preview",
  "ph2d-tool-bone",
- "ph2d-tool-vector",
  "ph2d-unique-name",
  "ph2d-vec-edit",
  "ph2d-vec-entities",
@@ -7818,7 +7817,6 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-tool-bone",
  "ph2d-tool-registry",
- "ph2d-tool-vector",
  "ph2d-ui-testkit",
 ]
 
@@ -8679,7 +8677,6 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-core",
  "ph2d-editor-core",
- "ph2d-skeleton",
  "ph2d-symmetry",
  "ph2d-tool-registry",
  "ph2d-vec-edit",

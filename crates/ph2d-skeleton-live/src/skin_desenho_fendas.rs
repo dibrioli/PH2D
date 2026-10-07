@@ -437,14 +437,18 @@ fn sem_as_fendas(v: &[VecVertex], fendas: &[(usize, usize)]) -> Vec<VecVertex> {
     let mut dupla: Vec<VecVertex> = v.iter().chain(v).copied().collect();
     dupla.push(v[0]);
     let mut saida: Vec<VecVertex> = Vec::new();
-    for (i, &(_, ue)) in ordem.iter().enumerate() {
+    for (i, &(_, u_fim)) in ordem.iter().enumerate() {
         // Do fim desta ao início da seguinte (a última volta até à 1.ª).
-        let us = ordem[(i + 1) % ordem.len()].0;
+        let u_ini = ordem[(i + 1) % ordem.len()].0;
         #[expect(clippy::cast_precision_loss, reason = "parâmetro do contorno")]
-        let fim = if us > ue { us } else { us + m as f64 };
+        let fim = if u_ini > u_fim {
+            u_ini
+        } else {
+            u_ini + m as f64
+        };
         // As pontas de um recorte são cantos (alças sobre a âncora): a boca sai recta.
         saida.extend(
-            super::super::frente::recorta(&dupla, ue, fim)
+            super::super::frente::recorta(&dupla, u_fim, fim)
                 .into_iter()
                 .map(|(x, _)| x),
         );

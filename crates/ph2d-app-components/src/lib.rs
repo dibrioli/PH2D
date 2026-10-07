@@ -136,12 +136,12 @@ pub mod nav_rota;
 /// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — as duas cenas do dono.
 /// ⭐⭐⭐ A NAVEGAÇÃO (plano 30, W3) — `PH2D_NAV_SMOKE=1`.
 pub mod nav_smoke;
+pub mod nav_smoke_estreita;
 pub mod nav_smoke_guarda;
 pub mod nav_smoke_lama;
 pub mod nav_smoke_lava;
 pub mod nav_smoke_porta;
 pub mod nav_smoke_usos;
-pub mod nav_smoke_estreita;
 /// O vazio e os objectos de JOGO no menu Add de objectos (spec/06 F1).
 pub mod object_add;
 /// O modo do objecto activo, com o tipo pelo marcador (spec/06 F2).

@@ -33,7 +33,7 @@ pub struct Plano {
 
 #[derive(Debug)]
 enum Etapa {
-    Atalhos(Atalhos),
+    Atalhos(Box<Atalhos>),
     Directo { c: Custos, partial: bool },
 }
 
@@ -67,14 +67,14 @@ impl Plano {
             pos,
             s,
             t,
-            etapa: Etapa::Atalhos(Atalhos::new(mesh, &sem_atalhos, s.0, t)),
+            etapa: Etapa::Atalhos(Box::new(Atalhos::new(mesh, &sem_atalhos, s.0, t))),
         };
         // (W7) Com atalhos, o alvo pode estar noutra ilha e ser alcançável (um teleporte liga-as): o
         // grafo dos atalhos tenta o ponto mais perto dele em QUALQUER ilha; sem caminho, o de sempre.
         if !q.links.is_empty()
             && let Some((t_any, _)) = mesh.nearest_point(t, None)
         {
-            plano.etapa = Etapa::Atalhos(Atalhos::new(mesh, q, s.0, t_any));
+            plano.etapa = Etapa::Atalhos(Box::new(Atalhos::new(mesh, q, s.0, t_any)));
             return Ok(plano);
         }
         match plano.directo(mesh, q) {

@@ -24,8 +24,8 @@ use ph2d_editor_core::nav_edits::{
     InspectorNavRegion, NAV_AREA_COST_MIN, NavAgora, NavAlvoModo, NavEstado, NavFieldEdit,
 };
 use ph2d_physics_ecs::{
-    BodyKind, Collider, Health, NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavStatus,
-    NavTarget, PlatformPlayer, RigidBody, TopDownPlayer,
+    BodyKind, Collider, Health, NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion,
+    NavStatus, NavTarget, PlatformPlayer, RigidBody, TopDownPlayer,
 };
 
 /// O estado da ponte, no vocabulário do painel.

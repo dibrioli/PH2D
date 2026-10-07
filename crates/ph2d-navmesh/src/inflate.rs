@@ -76,7 +76,13 @@ pub fn recua(area: &crate::Area, r: f64, corner: Corner, n: u32) -> Vec<P> {
 /// erosão, o mesmo raio e os mesmos lados que a construção ([`recua`]).
 #[must_use]
 pub fn some_na_malha(area: &crate::Area, params: &crate::Params) -> bool {
-    area.dentro && erode(&area.shape, params.agent_radius.max(0.0), params.lados_do_disco()).is_empty()
+    area.dentro
+        && erode(
+            &area.shape,
+            params.agent_radius.max(0.0),
+            params.lados_do_disco(),
+        )
+        .is_empty()
 }
 
 /// ⭐ (W18) A forma ENCOLHIDA pelo raio: onde o CENTRO de um disco de raio `r` o deixa inteiro dentro dela.

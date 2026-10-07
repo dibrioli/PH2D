@@ -83,11 +83,11 @@ pub use components::{
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, Damage, DampMode,
     DampingOverride, Dominance, GravityScale, Health, HealthBar, HealthNow, InitialVelocity,
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NavAgent,
-    NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute, NavTarget, NoWallCling, OnHit,
-    OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion,
-    PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals, Resistance, RigidBody, RopeStops,
-    SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide,
-    kind_key, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute, NavTarget, NoWallCling,
+    OnHit, OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals,
+    ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals, Resistance,
+    RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface,
+    WestonAxle, WrapSide, kind_key, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,

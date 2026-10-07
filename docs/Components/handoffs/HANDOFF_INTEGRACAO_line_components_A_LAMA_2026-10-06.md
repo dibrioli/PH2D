@@ -1,19 +1,23 @@
-# HANDOFF DE INTEGRAÇÃO — `line/components`: A LAMA (navegação W18) — 2026-10-06
+# HANDOFF DE INTEGRAÇÃO — `line/components`: A LAMA E A COTA (navegação W18 + W19) — 2026-10-06/07
 
-> Plano e resultados: [`30_plano_navegacao.md`](../30_plano_navegacao.md) §27 (os kill-criteria §27.1–§27.3, a
-> cena §27.4, as rodadas §27.5–§27.6, os vereditos §27.7, as recusas §27.8, o aberto §27.10). A linha ainda
+> Plano e resultados: [`30_plano_navegacao.md`](../30_plano_navegacao.md) §27 (W18: os kill-criteria §27.1–§27.3, a
+> cena §27.4, as rodadas §27.5–§27.6, os vereditos §27.7, as recusas §27.8, o aberto §27.10) e §28 (W19: os
+> achados da auditoria §28.1–§28.5, os resultados §28.6–§28.8, o aberto §28.9). A linha ainda
 > leva a W15, a W16 e a W17 inteiras, por integrar: os handoffs delas,
 > [`O_TIQUE_DEPOIS_DA_PORTA`](HANDOFF_INTEGRACAO_line_components_O_TIQUE_DEPOIS_DA_PORTA_2026-10-05.md),
 > [`O_DESENHO_E_O_CORPO`](HANDOFF_INTEGRACAO_line_components_O_DESENHO_E_O_CORPO_2026-10-05.md) e
 > [`OS_TRES_ABERTOS_MEDIDOS`](HANDOFF_INTEGRACAO_line_components_OS_TRES_ABERTOS_MEDIDOS_2026-10-06.md),
-> continuam válidos para a parte delas — este acrescenta a W18 por cima.
+> continuam válidos para a parte delas — este acrescenta a W18 e a W19 por cima.
 
 ## §0 — O `--ff-only` deve passar limpo
 
 - Base `main` `a46c4c200` (o `main` não andou; o `git rebase main` do início foi vazio). NADA integrado desde
   `5d596eaaf`: W15, W16, W17 e a W18 — `359dc42a3` (o plano §27, antes do código) · `702819e48` (o estado
   medido, com as alavancas) · `da21b95c6` (as alavancas saem) · `d8ef0527a` (a cena, o tutorial, o plano) ·
-  `ea306c7ca` (o fecho) — e o deste handoff.
+  `ea306c7ca` (o fecho) · `a45a65b69`/`fb18873f8`/`a9fbdac97` (o canto, a cena 6, a área barata por dentro);
+  e a W19 — `085d9d196` (o plano §28, antes do código) · `d1c142990` (a cota, a queixa, os textos) · `c1e9a4f70`
+  (fmt) · `ecbfd512c` (a cena 7, os gates dirigidos, o arnês) · `eaad9c7d2` · `26053f9fc` (a sonda) · `63a1c394e`
+  (o plano §28.6–§28.9) — e o deste handoff.
 - Nenhum ADR novo (o máximo continua `0180`, da W16).
 
 ## §1 — Superfície de colisão (a W18)
@@ -33,6 +37,26 @@
 Zero crate, zero pacote no `Cargo.lock`, zero i18n, zero componente, `PROJECT_SCHEMA` intocado. O
 `AgentRuntime` ganhou um campo — ele vai no anel (`ControllerMemory::nav`), não no ficheiro do projecto.
 
+## §1b — Superfície de colisão (a W19)
+
+| ficheiro | o quê |
+|---|---|
+| `ph2d-nav/src/cota.rs` | NOVO: a cota inferior (`inferior`, `Cota`) — o heurístico, a saída cedo, a poda dos atalhos e o «à vista» |
+| `ph2d-nav/src/mesh.rs`, `blocos_junta.rs` | `NavMesh::caixas` (a caixa de cada polígono de área, por área) e `caixas_da_area`; as duas portas de construção preenchem-no; `diferenca` compara-o |
+| `ph2d-nav/src/polyanya.rs`, `polyanya_custo.rs`, `polyanya_fatias.rs`, `link.rs`, `agent.rs`, `lib.rs` | os quatro leitores da cota; `Root::d`; `Polyanya::set_cota_global` (o CONTROLO); `a_vista` sem a regra «toda a tabela `≥ 1`» |
+| `ph2d-navmesh/src/inflate.rs`, `lib.rs`, `tiles.rs` | `inflate::some_na_malha`; `Params::lados_do_disco` (a porta que a construção e os mosaicos passaram a usar) |
+| `ph2d-physics-ecs/src/components/nav.rs`, `components.rs`, `lib.rs` | `NavCostAreaNow` (DERIVADO, NÃO registado — o precedente do `NavNow`) |
+| `ph2d-physics-ecs/src/bridge/nav_custo.rs`, `nav.rs` (`+1` linha, `685/700`) | `publica_areas_estreitas`, chamada do `publica_navegacao` |
+| `ph2d-editor-core/src/nav_edits.rs`, `ph2d-app-components/src/nav_inspector.rs`, `ph2d-panel-inspector/src/sections/nav_custo.rs`, `ph2d-i18n/src/inspector_nav.rs` | `too_narrow_for`, `CostAreaQueixa::MaisEstreitaQueOCorpo`, a frase `panel.inspector.nav.area_narrower_than_body` (com o raio) |
+| `ph2d-app-components/src/nav_smoke_estreita.rs` + `_tests.rs` (NOVOS), `nav_smoke.rs` (`CENAS = 7`, o braço `7`), `nav_smoke_usos.rs` (3 helpers `pub(crate)`), `lib.rs` | a cena `=7` |
+| `ph2d-physics-ecs/src/components/nav.rs:135`, `bridge/nav_custo.rs:6` | os dois doc-comments que mentiam (§28.4) |
+| testes: `ph2d-navmesh/tests/it/{cota.rs (NOVO), dominancia.rs, fatias.rs, main.rs}`, `ph2d-physics-ecs/tests/it/nav_custo.rs`, `ph2d-nav/src/agent_tests.rs`, `ph2d-editor-core/src/nav_edits_tests.rs`, `ph2d-panel-inspector/tests/it/a_seccao_nav_custo_esta_viva.rs`, `ph2d-panel-registry-init/tests/it/o_inspector_armado.rs`, `ph2d-app-components/src/nav_inspector_tests.rs` | os gates (§4b) |
+| `fmt` só: `smoke_desenho*.rs`, `ph2d-render/src/atlas/{mod,tests}.rs`, `nav_desvio.rs`, `nav_tests.rs`, `tests/it/{nav_desvio_largo,nav_fatias,nav_mundo}.rs`, `examples/medir_replaneio.rs` | ficheiros da linha (W15–W18) que o `cargo fmt` reprovava |
+| `docs/Components/30_plano_navegacao.md` §27.10–§27.11 (corrigidos) e §28 · `tutoriais/src/03_navegacao.html` + `.pdf` (secção 12 nova) · `ferramentas/mutacao_navegacao_w19_2026-10-07.py` · `ph2d-navmesh/examples/medir_cota_w19.rs` | o plano, o tutorial, a mutação, a sonda |
+
+Zero crate, zero pacote no `Cargo.lock`, `PROJECT_SCHEMA` intocado (o `NavCostAreaNow` não é registado), UMA
+chave i18n nova.
+
 ## §2 — O que a W18 traz
 
 | item | veredito | o quê |
@@ -44,6 +68,15 @@ Zero crate, zero pacote no `Cargo.lock`, zero i18n, zero componente, `PROJECT_SC
 | **A** o tecto do caminho crítico | ✗ recusa medida | T1 e T3 cumprem o crítico (`20` · `40 mil`) e REPROVAM a vivacidade (a procura nunca acaba numa malha que muda de 2 em 2 tiques — a aritmética: a fatia tem de ser `≥ W/K`); T2 é vivo e deixa o crítico igual (`80 mil`). Sem tecto, o A4 fica recusa |
 | **C** menos nós na ponderada | ✗ recusa medida | a dominância de hoje JÁ está no tecto do que frentes anteriores cortam (o tecto amostrado: `0,04 %`); o heurístico toca `6–16 %` dos nós; a fase geral `~10 %` do tempo |
 
+## §2b — O que a W19 traz (a auditoria de duas lentes, num ciclo)
+
+| item | veredito | o quê |
+|---|---|---|
+| **H** o heurístico com uma área barata | ✓ | UMA estrada barata num canto pesava em TODA procura (a cota escalava pelo menor custo da tabela): `85 766 → 24 232` nós por consulta (`1,002×` o mundo sem estrada; kill `≤ 1,1`), `1 808,7 → 376,7 ms` nas `60` consultas da cena grande (`4,8×`, load `1,4`), custo igual ao dígito. A cota conta cada área barata pela DISTÂNCIA até ela (prova no doc-comment de `cota.rs`) |
+| **V** o «alvo à vista» | ✓ | desligava-se no mundo inteiro com um custo `< 1` na tabela; agora só quando uma área barata pode encurtar a recta — a MESMA função `inferior` |
+| **Q** a área barata mais estreita que o corpo | ✓ | a ponte publica `NavCostAreaNow` (a mesma erosão da malha), o Inspector diz *«Narrower than the body that walks it (radius 0.25 m)…»*; a cena `=7` mostra-o |
+| **D** os textos que mentiam + fmt | ✓ | `nav.rs:135`, `nav_custo.rs:6`, plano §27.10–§27.11; fmt limpo nos ficheiros da linha |
+
 ## §3 — ⏳ O que fica ABERTO
 
 - **O crítico do tique** chega a `orçamento · 2^k` (`80 mil` a `10` e `50` agentes na cena de stress) — o preço
@@ -51,8 +84,10 @@ Zero crate, zero pacote no `Cargo.lock`, zero i18n, zero componente, `PROJECT_SC
   Fechado como escolha medida, não como dívida.
 - **Quem persegue sem o alvo à vista** na lama cerrada (máx `30` tiques a `200` agentes): o A4 só cabe com um
   tecto que a vivacidade não deixa.
-- **Uma área mais barata que o chão** (`Cost < 1`): o caminho segue a berma por FORA, porque a área recua
-  pelo raio como um obstáculo (plano §27.11, §27.10). Decisão de desenho por abrir; o tutorial avisa o dono.
+- ~~**Uma área mais barata que o chão**~~ — curada na W18 (`a9fbdac97`, `Area::dentro`); os achados da auditoria
+  sobre ela fecharam na W19.
+- (W19, §28.9) `d(x, K)` varre as caixas de todos os polígonos baratos por raiz: barato nas cenas de hoje; um
+  mundo com milhares de polígonos baratos pediria uma grelha das caixas — por medir quando existir.
 - **A procura ponderada** está no tecto deste desenho; metade do tempo pediria OUTRA procura.
 - (de antes, sem mudança) a versão web: aprovada pelo dono, ESTACIONADA.
 
@@ -79,6 +114,31 @@ Zero crate, zero pacote no `Cargo.lock`, zero i18n, zero componente, `PROJECT_SC
   clippy `--workspace --all-targets -D warnings` limpo · fmt limpo nos ficheiros da W18 —
   `target/prova/w18/gate_{nextest,clippy}.txt`. Load `5` antes e `18–20` durante.
 
+## §4b — A prova de fecho da W19
+
+- **As medições** (`target/prova/w19/`): `medir_cota_final.txt` (H, load `1,4`), `medir_cota_1.txt` (a 1.ª rodada,
+  load `5–10`: só as colunas de trabalho), as fotos `foto/cena{5,6,7}_{a_meio,fim}.png`. ⚠️ As fotos da W18 da
+  cena 6 eram da 1.ª versão (`Rough Ground`), anteriores a `a9fbdac97`; as da W19 são a cena de hoje (a `Road`).
+  A cena 5 bate com a W18 (`0,2–0,4 %` dos pixels: o relógio da timeline).
+- **Gates novos:** `cota::{uma_area_barata_longe_nao_pesa_na_procura, a_cota_nunca_encarece_um_caminho_e_o_oraculo_confirma,
+  quando_a_vista_diz_sim_nenhum_caminho_e_mais_barato, com_atalhos_a_poda_pela_cota_nunca_perde_o_mais_barato,
+  o_atalho_que_acaba_numa_estrada_barata_nao_e_podado, com_a_estrada_longe_a_saida_cedo_poupa_a_ponderada}` ·
+  `fatias::a_procura_em_fatias_e_a_procura_inteira_ao_bit` (agora com áreas baratas) ·
+  `nav_custo::{uma_area_barata_longe_nao_desliga_o_alvo_a_vista, a_ponte_publica_a_area_barata_mais_estreita_que_o_corpo}` ·
+  `nav_edits::tests::a_area_barata_mais_estreita_que_o_corpo_queixa_se` ·
+  `a_seccao_nav_custo_esta_viva::a_area_barata_mais_estreita_que_o_corpo_diz_se_no_painel` ·
+  `nav_smoke_estreita::tests::{a_larga_anda_se_a_estreita_nao_faz_nada, a_estreita_queixa_se_e_a_larga_nao, a_cena_tem_as_pecas_que_o_roteiro_nomeia}`.
+- **Mutação** ([`mutacao_navegacao_w19_2026-10-07.py`](../ferramentas/mutacao_navegacao_w19_2026-10-07.py)):
+  **`15 / 15`** sangram, `0` defeitos de arnês, checksums iguais — H1–H5 (a cota), V1–V2 (o «à vista»), Q1–Q5 (a
+  queixa), S1–S3 (a cena). A 1.ª corrida deu `12 / 15` (H1, H2, H5 sobreviveram — plano §28.8): a régua «sem a
+  estrada» passou a ser o mundo sem estrada nenhuma, e dois gates dirigidos nasceram. `target/prova/w19/mutacao_w19{,_cota}.txt`.
+- **Gate batched** (sobre o merge-base, W15–W19 juntas): `nextest-impacted` **`16 672 / 16 672`** (`90,9 s`, `9 706` saltados) ·
+  clippy `--workspace --all-targets -D warnings` limpo · fmt limpo nos ficheiros da linha —
+  `target/prova/w19/gate_{nextest,clippy}_2.txt`. A 1.ª corrida do clippy reprovou dois achados da W19, curados
+  antes da 2.ª: `large_enum_variant` no `plano::Etapa` (o `Atalhos` ganhou o `Vec` das distâncias: `Box`) e um
+  `assert!` constante no teste da cena 7 (o `const` do módulo já o garante). Load `9` antes e `28` depois (outras
+  linhas na máquina): nenhum teste reprovou, logo nenhum a confirmar sozinho.
+
 ## §5 — O smoke
 
 ⏳ **Smoke do dono: por fazer** (a cena `=5`, fotografada antes: `target/prova/w18/foto/cena5_a_meio.png` — à
@@ -98,10 +158,17 @@ esquerda os três DENTRO da lama clara a subir a direito, à direita os três a 
 E a cena 6 (fotografada: `cena6_{a_meio,fim}.png`; a secção 11 do PDF):
 
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_NAV_SMOKE=6 cargo run -p ph2d-host-desktop --profile smoke`
-2. Só olhar os quatro: o 1 segue a estrada escura em U (as pedras à volta custam `4`); o 2 vai à ponte; o 3
+2. Só olhar os quatro: o 1 segue a estrada escura em U (a `Road`, `Cost 0.3`, com o corpo em cima dela); o 2 vai à ponte; o 3
    contorna o canteiro verde; o 4 contorna a luz amarela pela sombra da direita.
-3. O `Rough Ground` vem escolhido: `Espaço` logo no início, `Cost` = `1`, `Espaço` — o 1 corta a direito.
-4. Deu errado se algum vermelho pisa as pedras, a água, o canteiro ou a luz.
+3. A `Road` comprida vem escolhida: `Espaço` logo no início, `Cost` = `1`, `Espaço` — o 1 corta a direito.
+4. Deu errado se o 1 anda ao lado da estrada e não em cima dela, ou algum vermelho pisa a água, o canteiro ou a luz.
+
+E a cena 7 (W19; fotografada: `target/prova/w19/foto/cena7_{a_meio,fim}.png`; a secção 12 do PDF):
+
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_NAV_SMOKE=7 cargo run -p ph2d-host-desktop --profile smoke`
+2. Só olhar: à esquerda o vermelho segue a estrada escura LARGA em U; à direita sobe a direito, ignorando a fina.
+3. O Inspector (a `Narrow Road` escolhida, `Nav Cost Area` aberta): em amarelo *«Narrower than the body that walks it (radius 0.25 m)…»*.
+4. Deu errado se o da esquerda corta a direito, o da direita vai à fina, ou o aviso não aparece.
 
 O binário compilado (a 2.ª corrida, colada), depois de `rm -rf target/*/incremental` (`3,6 G` do `debug`, `1,6 G`
 do `smoke`):

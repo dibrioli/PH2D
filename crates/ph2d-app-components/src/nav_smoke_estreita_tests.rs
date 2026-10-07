@@ -155,8 +155,5 @@ fn a_cena_tem_as_pecas_que_o_roteiro_nomeia() {
         assert_eq!(w.get::<Name>(e).map(Name::as_str), Some(nome));
         assert_eq!(w.get::<NavCostArea>(e).map(|a| a.cost), Some(CUSTO_ESTRADA));
     }
-    assert!(
-        ESTREITA < 2.0 * RAIO,
-        "a estreita é mais estreita que o corpo"
-    );
+    // (Que a estreita é mais estreita que o corpo garante-o o `const` do módulo, em compilação.)
 }

@@ -452,7 +452,9 @@ fn a_area_o_atalho_e_o_dano_vao_e_voltam() {
     assert_eq!(estreita(&sim), None);
     sim.world_mut()
         .entity_mut(lama)
-        .insert(ph2d_physics_ecs::NavCostAreaNow { too_narrow_for: 0.3 });
+        .insert(ph2d_physics_ecs::NavCostAreaNow {
+            too_narrow_for: 0.3,
+        });
     assert_eq!(estreita(&sim), Some(0.3));
     sim.world_mut()
         .entity_mut(lama)

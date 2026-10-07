@@ -236,9 +236,27 @@ fn a_area_barata_mais_estreita_que_o_corpo_queixa_se() {
     };
     assert_eq!(larga.queixa(), None, "o CONTROLO: larga, cala-se");
     for (c, porque) in [
-        (InspectorNavCostArea { cost: 1.0, ..estreita }, "Cost 1"),
-        (InspectorNavCostArea { cost: 4.0, ..estreita }, "cara"),
-        (InspectorNavCostArea { forbidden: true, ..estreita }, "proibida"),
+        (
+            InspectorNavCostArea {
+                cost: 1.0,
+                ..estreita
+            },
+            "Cost 1",
+        ),
+        (
+            InspectorNavCostArea {
+                cost: 4.0,
+                ..estreita
+            },
+            "cara",
+        ),
+        (
+            InspectorNavCostArea {
+                forbidden: true,
+                ..estreita
+            },
+            "proibida",
+        ),
     ] {
         assert_eq!(c.queixa(), None, "{porque}: a queixa não vale");
     }

@@ -157,6 +157,20 @@ mutação que tira o teto da rota do painel derruba **três** gates.
 
 ## Índice dos 35 FECHADOS — o mecanismo de cada um, em uma linha
 
+### #37 — *«aos saltos / sem permanecer arredondada»*: o refino que eu pus saltava, e a PONTA era a lei da pele ✅ 2026-10-07
+
+**Sintoma (smoke 2, `PH2D_VEC_BONE_SMOKE=6`, `170/170` e `170/140`):** a volta de fora da dobra apertada anda aos saltos quando se arrasta o osso, e não fica arredondada. **As duas primeiras causas que se pensaram enganaram** (a hipótese *NonZero* e a camada virada, 06/10; e depois «a amostragem»).
+
+**Mecanismo (dois, medidos):** (a) **SALTOS** = o refino local `k = 2` do A13 (`5d9acc3c2`): um limiar binário liga/desliga pontos de corte com a pose — `0,041` (`124×` a mudança real) a `160,1 → 160,2`; nenhum gate comparava poses vizinhas. (b) **PONTA** = a lei da pele: o contorno em ponta é a aresta da CÓPIA do *Repeater* a `0,019/0,128` das juntas; a média circular dos ângulos aperta a volta junto ao pivô (taxa `2·tan(g/2)` a `w = ½`, `7,7×` a linear a `170°`); a aresta da própria barra era redonda. LBS/DQS (Blender, oráculo sem cabeça) também apontam.
+
+**Cura (decisão do dono: «Arredondar»):** mistura de MEIO ÂNGULO (`905971af4`, `PH2D_SKIN_ANGULO=circulo` repõe a antiga), amostragem uniforme `×2` sem refino (`a888b0318`), e as curas da cadeia dos dentes (`6a7ef0a03`, `c32a0d330`). Raio da tampa da cópia `0,028 → 0,166`/`0,166 → 0,307`. **Gate:** continuidade entre poses VIZINHAS conduzida pela entrada do PRODUTO (`recook_desenhando`; chão `0,0015`, produto `0,0000`, controlo `0,0214`), varredura do braço 0 más em 16 110, paridade CPU↔GPU `2e-6` e `0 px` na placa. Detalhe: fila §F65.
+
+### #36 — *«partes da imagem onde a influência é de um osso grudam juntando-se à parte do outro osso»*: a COSTURA fez, e a lei antiga também ✅ 2026-10-07
+
+**Sintoma (smoke 1, `PH2D_VEC_BONE_SMOKE=4` `DOBRA=36 DOBRA2=-144`):** a imagem de um membro estica-se para o do outro. **Causa (medida no caminho real, `=4` bind + `attach_skin_meshes`):** a costura — a 5.ª lei (anel da arte) cosia a cúspide tangente da tampa redonda e deixava uma ponte (calombo rosa) + uma fenda aberta; a lei antiga já colava a corrida `−1,21…−0,99` (F48). A hipótese dos PESOS caiu (nós da tampa `≥ 0,999` do osso da ponta, o membro de baixo com peso `0` da ponta). **Decisão do dono: «sempre grudou, nunca foi corrigido; o certo é que mesmo se sobrepondo não puxe nada da imagem cuja influência é do outro osso».**
+
+**Cura (`3f32ffaa3`):** sai TODA a costura entre membros de imagem presa; cada membro desenha só a sua imagem, a sobreposição vai por `ordena_pelo_osso`; `SkinnedMesh` volta a `{mesh, pesos}`. **Gate:** `nada_de_um_membro_e_puxado_para_o_outro` (`=4` caminho real, 18 poses; vermelho no HEAD anterior em `14/18`: `9327` triângulos contra `9091`). Aceite: onde dois membros só se tocam pode ver-se um fio fino. ⛔ A régua do «fio» (fechar toda a amostra de vão) contradizia o produto.
+
 ### #35 — *«se não estiver no modo transform do osso não é possível selecioná-lo»*: o C7 copiou o Blender e o osso deixou de ter porta em Object ✅ 2026-10-06
 
 **Sintoma** (dono, 2.º report do smoke da A14): o osso só se escolhia no Transform (Pose), e lá o
@@ -529,3 +543,5 @@ devolve para poder ser medido.
 | 32 | *«Add IK não funciona»*: dois botões novos na seção e a **allowlist do painel** escrita à mão — a MESMA rota do #29, na 4ª vez, com o aviso *«a lição do bug #29 é literalmente esta linha»* escrito TRÊS linhas acima. ⛔ E o `seam_*` que existe para isto ficou verde: a **população dele** também era uma lista à mão. ⇒ a cura é uma TABELA com três consumidores, nunca uma advertência melhor. | 2026-09-07 |
 | 33 | O `Smooth` desenhava **«micro irregularidades»**: o refinamento seguia com fidelidade um campo com um VINCO por aresta do bind (pesos lidos em linha recta, P1) — e o gate do botão media contra esse mesmo campo. Cura na lei dos ATRIBUTOS (Hermite sobre gradientes recuperados). | 2026-09-16 |
 | 28 | O **Build duplicava**: a sobra de uma forma tocada era `fonte − pintado`, e isso inclui o que está **escondido por baixo** das outras — ela re-criava, com a área EXACTA, as formas que o gesto não tocou. ⚠️ E a régua dos gates comparava geometria **local** com pontos de **mundo**, então ela pinava o defeito em vez de o acusar. | 2026-09-05 |
+| 36 | *«partes da imagem grudam»*: a **costura** entre membros (5.ª lei e a antiga) puxava imagem do outro osso; o dono decidiu NENHUMA costura. | 2026-10-07 |
+| 37 | *«aos saltos / sem arredondar»*: o refino `k = 2` por limiar saltava com a pose e a ponta era a média circular dos ângulos da pele ⇒ meio ângulo + amostragem uniforme. | 2026-10-07 |

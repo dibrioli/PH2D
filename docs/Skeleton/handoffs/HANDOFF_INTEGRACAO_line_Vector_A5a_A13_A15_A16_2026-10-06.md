@@ -183,3 +183,29 @@ Comando base: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && c
   nunca devolve o lugar, as 3 recusas + 2 controlos; mutação M1–M7 todas vermelhas. *Registo de antes:*
   o anel ficava na origem.
 - **A18** ⛔ medida e recusada (07/10) — ver §4 e fila §F65.
+
+## 8. INTEGRAÇÃO no `main` (07/10, `integ/Vector-2026-10-07`)
+
+- **Base:** `main` = `e40ade754` (UIUX rebaseada, motion-value, MiroClone e PainterWatercolor já dentro). Replay só dos
+  `63` commits PRÓPRIOS (`git rebase --onto main 71056d29f`); os da UIUX antiga ficaram de fora por igualdade. `line/Vector`
+  intacta como referência. `git range-diff 71056d29f..line/Vector main..integ/Vector-2026-10-07`: `60` iguais (`=`) e
+  `3` com o contexto movido (`!`) — o `55afae394` (A14/C5) e o `fe5d8f189` (A14/C9) por conflito resolvido, o `7a95107d5`
+  (A16) só pelo contexto do `mode_drive.rs` (`heir`/`born` da UIUX); nenhum outro ficheiro mudou. Zero marcadores
+  (incl. `|||||||`) em todos os commits.
+- **Conflitos (2 paragens, índice `:1/:2/:3`):** `architecture_no_authoring_tool_shares_the_canvas_with_a_box.rs`
+  (`RAMOS`: ficam `board_view::pointer(` da MiroClone E `ramo_ferramenta_osso(`; `AUTORAS` ganha `"bone"`);
+  `fase_object_mode.rs` (as duas famílias: `[paint, flip, vector, skeleton, image_edit]`);
+  `project_schema.rs`/`_tests.rs` (`python3 scripts/schema-recount.py 187`).
+- **Recontagens:** `PROJECT_SCHEMA` `184 → 185` (escrito) → **`186 → 187`** (escada, tripla `(187, 13, 22)` e rótulos);
+  `ObjectMode::ALL` `4 → 5` (a soma não conflitou); `ObjectKind::ALL` `5 → 6`; famílias do quadro `3 → 4` e pares D6
+  `4 → 6` (`every_object_mode_has_a_composed_family`); registo do esqueleto `7 → 8`, ECS `105`/espelhos `106`/`106`
+  (inalterados); índice da memória `22 187 → 21 972` bytes (a entrada da régua desceu verbatim para a família da Régua,
+  `203 → 204`).
+- **Curas de integração:** (1) o gate `a_bone_click_in_object_offers_the_bone_then_its_skeleton` achava `pick_objects_at(`
+  na função NOVA da UIUX (`vetor_node_escolhe_outro_tipo`), antes do osso — agulha ancorada em `fn ramo_gizmo_pick(`;
+  (2) `rustfmt` da lista de cinco famílias; (3) rótulos do degrau.
+- **Portões (árvore combinada):** `check --workspace --all-targets` com avisos como erro ✓ · `clippy --workspace
+  --all-targets -D warnings` ✓ · `fmt --check` ✓ · `nextest-impacted` `17 198` (1 vermelho = a cura 1, depois verde) ·
+  `--workspace` `24 488/24 488` · `ph2d-editor-core --test it` `536/536` (inclui `the_shell_only_shrinks`, o índice da
+  memória e o `CLAUDE.md`) · `file_loc_caps`/`fn_loc_caps` `6/6` · `censos-da-arvore-combinada.sh` `114/114` (12 de 12
+  censos) · GPU real (`PH2D_GPU=1`) `sprite_mesh_gpu` `4/4` e `skin_image_gpu` `8/8`, sem «gate saltado».

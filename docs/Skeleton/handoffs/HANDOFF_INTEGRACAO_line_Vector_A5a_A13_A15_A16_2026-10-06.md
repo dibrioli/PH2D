@@ -20,7 +20,8 @@
 - Commits-chave. 1.ª onda: `16abdf7cb`/`7a95107d5` (A16) · `7fd187694` (A15) · `5b97431cf`/`5d9acc3c2`
   (A13, depois substituído) · `496af6cdd` (A5-a, depois removido) · `cbae7cd25` · `12a9c7c97`. 2.ª onda:
   `3f32ffaa3` (sem costura entre membros) · `905971af4` (meio ângulo) · `e07efbdff` · `6a7ef0a03` ·
-  `c32a0d330` · `d6e15d3e7` · `a888b0318` (produto final) · `a96d73ee0` (gates da mutação).
+  `c32a0d330` · `d6e15d3e7` · `a888b0318` (produto final) · `a96d73ee0` (gates da mutação). 3.ª parte:
+  `98f0ca428` (A17).
 - Ramos de experiência guardados: `a5a-lei`, `exp/a5a-lado`, `exp/a5a-marching`, `exp/a13-tiques`,
   `exp/a13-continuidade`, `exp/a13-uniao`, `a13-lei`, `exp/a13-matriz`.
 - Integrar: `/pd-integracao line/Vector`, só por ordem do dono.
@@ -38,7 +39,9 @@
 | `crates/ph2d-vec-skin/` | amostragem; vs `5d9acc3c2^` igual ao bit (o refino saiu) | lei |
 | `crates/ph2d-skeleton-live/` (muitos) | `skin_desenho_amostras.rs`; `skinned_mesh.rs` volta a `{mesh, pesos}`; SAEM `skin_image_costura.rs`/`skin_image_arte.rs`, `le_malha`, os gates da costura | lei |
 | `crates/ph2d-app-vec/` | cenas/sondas de teste `smoke_bone_copias_*` (fresta e réguas SAÍRAM) | teste |
-| `shells/desktop/` | `render_loop/fase_object_mode.rs` (passa `&self.timeline.doc`), `tests/it/the_loose_bone_roots_get_a_skeleton.rs` (agulha `loose::adopt_loose_roots(sim,`) | shell |
+| **`crates/ph2d-timeline/`** (A17) | `place_owner.rs` NOVO, `binding.rs` (`TargetBinding::moved`, `#[serde(skip)]`), `history.rs` (`docs_mut`), `lib.rs` | ⚠️ crate do módulo TIMELINE (partilhada): declare; sem `DOC_VERSION` |
+| `crates/ph2d-timeline-persist/src/lib.rs`, `ph2d-app-skeleton` (`loose_track_tests.rs` novo, dev-dep `ph2d-timeline-persist`), `Cargo.lock` | A17 | persistência/teste |
+| `shells/desktop/` | `render_loop/fase_object_mode.rs` (passa `&mut self.timeline` — A17), `tests/it/the_loose_bone_roots_get_a_skeleton.rs` (agulha `loose::adopt_loose_roots(sim,`) | shell |
 
 - Contrato congelado (§6): **nenhum**. **`PROJECT_SCHEMA`: SEM degrau** (a `SkinnedMesh` voltou à forma
   antiga; a máscara da 1.ª onda nunca chega ao ficheiro). Sem registos, ADR nem cena nova.
@@ -54,6 +57,9 @@
   um fio fino: são os contornos reais (decisão do dono 07/10).
 - **A13:** a volta de fora de uma dobra apertada é REDONDA e anda sem saltos ao arrastar o osso; todas as
   dobras ficam um pouco mais cheias (o «Arredondar» do dono). A cor enche até à borda (vão `0,0067–0,0080`).
+- **A17 ✅** uma raiz com a posição animada (X/Y/Position na timeline): o anel do esqueleto também vai
+  para a cabeça do 1.º osso e a faixa de posição passa a ser do esqueleto; a pose fica igual ao bit.
+- **A18 (fica como estava)** na dobra extrema pode ver-se um pontinho de traço dentro da cor.
 - **A15 ✅** o anel de mover de cada esqueleto antigo fica na cabeça do 1.º osso.
 - **A16 ✅** `Tab`/seletor *Mode* com um osso escolhido mantém o osso.
 
@@ -80,13 +86,15 @@
 
 ## 4. ABERTO
 
-- **A18** pontas livres do traço na ABA da dobra extrema (`≥ ~170°`, já a `110°` uma): `Posada::tapado`
-  conta triângulos virados e vizinhos da mesma folha; L1 e L2 medidas e recusadas (`exp/a13-tiques`,
-  `2038739fb`). **Pergunta de produto ao dono:** deixar, ou desenhar o vinco da aba como linha.
+- **A18 ⛔ medida e recusada (07/10): fica a lei de hoje — um pontinho na dobra extrema.** O dono
+  decidiu «desenhar a linha da dobra … antes de fazer, meço e mostro a foto», depois «corrija se a
+  correção é o melhor a fazer»; medida a lei, não é. Detalhe e tabela na fila §F65 (A18). O que a tornaria
+  viável (não construído): vinco a partir da malha fina em vez da grelha (custo) e uma decisão de produto
+  sobre a aba poder cobrir a borda de dentro do membro da frente.
 - Só ACIMA da densidade do produto `×4`: um nó de `17,9°` em `(36,118)` da bola de fecho (gate da banda
   do braço aberto) e o gate de identidade fora do contacto falha a `×4`.
-- **A17** raiz com posição ANIMADA: o anel fica na origem; re-alvejar a faixa de translação é exacto mas
-  muda as linhas da timeline — pergunta de produto, não feita.
+- (A17 fechado, ver §7.) Recusas do A17 (lei antiga, esqueleto na identidade): *Time Remap* na raiz,
+  auto-orientar a *Position* dela, e qualquer fórmula que leia a posição da raiz pelo nome.
 - Flip com ossos: excluído pelo dono. O precedente divergente do olho (sprites × esqueleto/Flip): herdado.
 
 ## 5. A linha do `CLAUDE.md` §5 (para o integrador; não toquei no ficheiro)
@@ -117,7 +125,7 @@ Comando base: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && c
 4. Deu errado se: a volta fica em ponta, o contorno salta ao arrastar, ou sobra uma faixa sem cor. Uma
    pontinha de traço solta dentro da cor, na dobra mais apertada, é CONHECIDA (vou perguntar-lhe sobre ela).
 
-(Os smokes 6.3 `=3` e 6.4 `=7`, ponto de mover e `Tab` com osso, estão aprovados.)
+(Os quatro smokes foram aprovados pelo dono a 07/10: «SMoke OK». O pontinho de traço do 6.2 é o A18, medido e deixado como está.)
 
 ## 7. LISTA VIVA dos abertos (copiada da continuação, actualizada)
 
@@ -139,7 +147,14 @@ Comando base: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && c
   da raiz, pose ao bit; 0/12 000 fora do bit). *Registo de antes:* o anel caía na origem.
 - **A16** ✅ FEITO `7a95107d5`, **aprovado 07/10** (`keeps_parts_selected` + `restore_parts`, só anexo).
   *Registo de antes:* `Tab`→Edit com um osso escolhido trocava a selecção pelo esqueleto.
-- **A17** raiz com posição animada: o anel fica na origem; medir se re-alvejar a translação serve o
-  artista — pergunta de produto.
-- **A18** pontas livres do traço na aba da dobra extrema — ⏳ aguarda o dono (deixar, ou desenhar o vinco
-  da aba como linha); ver §4.
+- **A17** ✅ FEITO `98f0ca428` (dono: «sim»): raiz solta com faixas de translação — o esqueleto vai para
+  `L`, a raiz para `0`, e as ligações X/Y/Position são RE-ALVEJADAS para o esqueleto no documento e em
+  cada foto de undo da timeline (id da faixa mantido: chaves, trajecto, repouso da ligação e semente da
+  expressão viajam); rotação/escala/enviesamento ficam na raiz; o `BoneRest` de translação da raiz viaja
+  com a faixa (vira 0): repor + aplicar = mundo de antes da adopção, ao bit. Undo: `TargetBinding::moved`
+  (só de sessão) + `rehome_moved_places` no `upkeep` — o undo global devolve a faixa ao osso, o redo ao
+  esqueleto; apagar esse esqueleto com a raiz viva devolve a faixa ao osso. Gates: pose ao bit em 600
+  cenas × 6 tempos, repor ao repouso, ida e volta de gravar/carregar, undo/redo global, o undo da timeline
+  nunca devolve o lugar, as 3 recusas + 2 controlos; mutação M1–M7 todas vermelhas. *Registo de antes:*
+  o anel ficava na origem.
+- **A18** ⛔ medida e recusada (07/10) — ver §4 e fila §F65.

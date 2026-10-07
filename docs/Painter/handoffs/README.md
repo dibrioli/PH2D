@@ -86,6 +86,7 @@
 | 2026-08-15 | ◆ | [HANDOFF_INTEGRACAO_line_Painter_MESTRE_2026-08-15.md](HANDOFF_INTEGRACAO_line_Painter_MESTRE_2026-08-15.md) | integração | HANDOFF DE INTEGRAÇÃO — line/Painter MESTRE (2026-08-15) |
 | 2026-09-20 |  | [HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-09-20.md](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-09-20.md) | trabalho | Diário da `line/PainterWatercolor` (§39–§43 vivas; §1–§38 no [arquivo](../../archive/docs-2026-09-24/painter/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-09-20.md)) |
 | 2026-09-25 |  | [HANDOFF_INTEGRACAO_line_PainterWatercolor_A_LINHA_2026-09-25.md](HANDOFF_INTEGRACAO_line_PainterWatercolor_A_LINHA_2026-09-25.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/PainterWatercolor`, a linha inteira |
+| 2026-10-07 | ◆ | [HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-07.md](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-10-07.md) | integração | `line/PainterWatercolor`: o papel é do documento e a aguada é um filtro (BUGS #35–#46, docs 47–48) |
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

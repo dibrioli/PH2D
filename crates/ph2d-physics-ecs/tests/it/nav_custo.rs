@@ -500,16 +500,19 @@ fn a_ponte_publica_a_area_barata_mais_estreita_que_o_corpo() {
         let mut sim = SimWorld::new();
         regiao(&mut sim);
         let e = caixa(&mut sim, "Estrada", (0.0, 2.0), (4.0, meia_largura), true);
-        sim.world_mut()
-            .entity_mut(e)
-            .insert(NavCostArea { cost: custo, forbidden: false });
+        sim.world_mut().entity_mut(e).insert(NavCostArea {
+            cost: custo,
+            forbidden: false,
+        });
         marco(&mut sim, "Alvo", (5.0, -3.0));
         if com_agente {
             agente(&mut sim, (-5.0, -3.0), "Alvo");
         }
         let mut b = PhysicsBridge::new();
         corre(&mut sim, &mut b, e, 3);
-        sim.world().get::<ph2d_physics_ecs::NavCostAreaNow>(e).map(|n| n.too_narrow_for)
+        sim.world()
+            .get::<ph2d_physics_ecs::NavCostAreaNow>(e)
+            .map(|n| n.too_narrow_for)
     };
     // O raio da malha, na grelha da chave dela (`1/256 m`, para CIMA): `0,3 → 77/256`.
     let raio_da_malha = (R * 256.0).ceil() / 256.0;
@@ -519,7 +522,11 @@ fn a_ponte_publica_a_area_barata_mais_estreita_que_o_corpo() {
         "a estreita barata leva o raio do corpo"
     );
     assert_eq!(corre_com(0.6, 0.3, true), None, "o CONTROLO: larga, cabe");
-    assert_eq!(corre_com(0.2, 4.0, true), None, "o CONTROLO: estreita mas cara, vale");
+    assert_eq!(
+        corre_com(0.2, 4.0, true),
+        None,
+        "o CONTROLO: estreita mas cara, vale"
+    );
     assert_eq!(corre_com(0.2, 0.3, false), None, "o CONTROLO: ninguém anda");
 }
 

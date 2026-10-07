@@ -45,7 +45,28 @@ Pesquisa (agente, help.miro.com pela API pública de artigos + developers.miro.c
 
 ## §3 — Prova à saída
 
-⏳ (preenchido no fecho)
+- Gate batched sobre a linha (base `a46c4c200`), 1.ª corrida: fmt ✗ (2 linhas), clippy ✗
+  (`clone_on_copy` no `edit.rs`), `nextest-impacted` não compilou (a régua `measure_encode_cost` com
+  `String`); `typos`, machete, standalone-optional, workflow-packages, censos-da-árvore-combinada
+  (12/12), `adr-index`, `doc-index` ✓. 2.ª: **17 117/17 120** — os 3 vermelhos: LOC do `board_bar.rs`
+  705/700, 14 números soltos nos ícones novos (`no_magic_numeric`), «undoes» lido como português pelo
+  censo de idioma (`load` 37 — confirmados sozinhos, não eram flakes). Curados em `e09fc3af2`; re-corridos
+  os três + os 20 da barra + clippy das crates tocadas + fmt: verdes. Clippy da workspace
+  (`--all-targets --features ph2d-spike/bevy_ecs -D warnings`) verde.
+- **Prova de mutação 14/14** (agente `mutacao`, cada filtro com controlo ≥ 1 teste, verde antes): 12
+  sangraram à 1.ª; **M8** (guardar as marcas de escrever depois de inserir) era EQUIVALENTE — o carácter
+  seguinte herda-as do anterior — e o código redundante saiu; **M14** (o filtro das linhas em branco do
+  modo em massa) era buraco do teste, que só via a ordem — agora afirma a fila sem buraco, re-mutado:
+  sangra. ⚠️ O desenho do itálico (o `glyph_transform`) não tem gate: a prova é a foto (as letras inclinam
+  para a direita).
+- Testes novos: 3 do documento, 8 do texto (`ph2d-board-layout`, incl. a MEDIDA do negrito/itálico), 17
+  das notas (`ph2d-board-edit`), 7 pelo caminho real do ecrã (`board_bar_notes_tests.rs`).
+- Cena 4 fotografada 3× (a 1.ª mostrou a nota «que cresceu» sem crescer).
+- `target/*/incremental` reclamado (**37 GB**). Binário `smoke` quente, 2.ª corrida:
+  `Finished \`smoke\` profile [optimized] target(s) in 0.20s`, zero `Compiling`.
+- `agent-loop-profile.sh` (20 sessões): paralelismo 1,09 ✗ · respostas/sessão 240 ✓ · `test:check`
+  3,5× ✗ · `Edit` 34 % ✗ (esta janela editou muito por `python3` com `assert` de contagem — três vezes
+  o `assert` apanhou um trecho que já não casava) · contexto relido 453 mil ✗ · início 62 mil ✓.
 
 ## §4 — ⏳ O que fica aberto (por ordem)
 
@@ -65,7 +86,24 @@ Pesquisa (agente, help.miro.com pela API pública de artigos + developers.miro.c
 
 `cd ~/Documentos/Projetos/PH2D/Worktrees/line-MiroClone && PH2D_BOARD_SMOKE=4 ./target/smoke/ph2d-host-desktop`
 
-(passos no relatório ao dono; os mesmos aqui no fecho)
+1. Abre o **Board 1** com a W3: uma fila de notas amarelas, a rosa que CRESCEU, a pilha laranja, P/M/G
+   e a larga, as 16 cores, a forma com «red» a vermelho, e o monte à direita **já seleccionado** (a barra
+   de estilo das notas por cima, e a pega redonda com quatro pontos no canto de cima à direita).
+2. **Arrumar:** arraste a pega de quatro pontos para a esquerda e para a direita — as seis notas
+   arrumam-se em mais ou menos colunas; `Ctrl+Z` devolve o monte.
+3. **Escrever:** clique uma vez na nota «Select a note and just type» e escreva — o texto entra no fim.
+   Carregue em `Tab` — nasce a nota seguinte à direita, da mesma cor, já a escrever. `Esc` termina.
+4. **Criar:** carregue em `N` (ou no 3.º botão da barra da esquerda, a nota com a ponta dobrada): abre
+   o painel — escolha uma cor e um tamanho e clique no quadro.
+5. **Em massa:** no painel, o botão das três riscas — escreva várias ideias com `Enter` entre elas e
+   carregue `Esc`: uma nota por linha, em fila.
+6. **Pilha:** arraste a partir da pilha laranja — sai uma nota nova; um clique só selecciona a pilha.
+7. **Texto:** na nota «bold/italic…», `Enter`, seleccione uma palavra (`Ctrl+Shift+←`) e use **B I U S**
+   na barra (ou `Ctrl+B/I/U`, `Ctrl+Shift+X`).
+8. **Planilha:** copie umas células de uma folha de cálculo e `Ctrl+V` no quadro — uma nota por célula.
+9. **Errado se:** escrever numa nota seleccionada não escrever (ou apagar o que lá estava), o `Tab` não
+   criar a seguinte, a nota encolher a letra em vez de crescer, a pega não arrumar, ou `Ctrl+Z` não
+   desfizer cada passo.
 
 ## §6 — O que custou e não se repete
 

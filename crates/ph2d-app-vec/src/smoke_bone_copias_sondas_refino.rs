@@ -11,6 +11,21 @@ pub(crate) fn cena(
     g1: f32,
     g2: f32,
 ) -> (SimWorld, VecScene, crate::state::VecState, Vec<VecPathId>) {
+    let (sim, scene, st, ids, _) = cena_com_raizes(g1, g2);
+    (sim, scene, st, ids)
+}
+
+/// A [`cena`] com a raiz do esqueleto de cada barra (para a dobrar de novo sem prender outra vez).
+pub(crate) fn cena_com_raizes(
+    g1: f32,
+    g2: f32,
+) -> (
+    SimWorld,
+    VecScene,
+    crate::state::VecState,
+    Vec<VecPathId>,
+    Vec<Entity>,
+) {
     let mut sim = SimWorld::default();
     let mut scene = VecScene::new();
     let mut st = crate::state::VecState::default();
@@ -25,7 +40,8 @@ pub(crate) fn cena(
         crate::smoke_bone_par::dobra_duas(&mut sim, raiz.expect("raiz"), g1, g2);
     }
     let ids = pend.iter().map(|p| p.0).collect();
-    (sim, scene, st, ids)
+    let raizes = pend.iter().map(|p| p.1.expect("raiz")).collect();
+    (sim, scene, st, ids, raizes)
 }
 
 /// O que o bake do produto lê para uma barra presa: a pele, a fonte (só fechados) e a tabela.
@@ -219,8 +235,8 @@ pub(crate) fn regua(
 /// Sem refino, e `k ∈ {2, 3}`.
 fn leis() -> Vec<(String, Option<Refino>)> {
     let mut v = vec![("sem".to_string(), None)];
-    for k in [2.0, 3.0] {
-        v.push((format!("k{k}"), Some(Refino { k })));
+    for passo in [0.1, 0.05, 0.025] {
+        v.push((format!("peso {passo}"), Some(Refino { passo })));
     }
     v
 }
@@ -286,3 +302,6 @@ fn diag_a13_as_leis_de_refino_na_barra() {
 
 #[path = "smoke_bone_copias_refino_tests.rs"]
 mod gates;
+
+#[path = "smoke_bone_copias_continuidade_tests.rs"]
+mod continuidade;

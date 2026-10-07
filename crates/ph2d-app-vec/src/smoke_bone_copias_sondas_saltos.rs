@@ -175,7 +175,7 @@ fn foto(
 }
 
 /// As leis comparadas.
-const LEIS: [(&str, Option<Refino>); 2] = [("k2", REFINO_DO_PRODUTO), ("off", None)];
+const LEIS: [(&str, Option<Refino>); 2] = [("produto", REFINO_DO_PRODUTO), ("off", None)];
 
 fn graus(base: f32, passo: f32, i: u16) -> f32 {
     base + passo * f32::from(i)
@@ -360,4 +360,91 @@ fn diag_a_redondeza_e_as_fotos() {
         }
     }
     println!("fotos em {saida}");
+}
+
+/// As leis comparadas na CONTINUIDADE: sem refino, o de hoje e os candidatos que não dependem
+/// da pose.
+fn candidatos() -> Vec<(String, Option<Refino>)> {
+    let mut v = vec![("sem".to_string(), None)];
+    for passo in [0.1, 0.05, 0.025] {
+        v.push((format!("peso {passo}"), Some(Refino { passo })));
+    }
+    v
+}
+
+/// ⭐ **A régua da CONTINUIDADE** — as três varreduras de `0,1°` (a cena presa UMA vez e só a pose
+/// a mudar), as duas barras e as duas juntas: para cada lei, cada passo dá `(Δ desenho, Δ verdade)`
+/// na tampa (Hausdorff entre quadros vizinhos). Devolve, por lei, todos os pares.
+pub(crate) fn continuidade(leis: &[Option<Refino>]) -> Vec<Vec<(f64, f64, (f32, f32))>> {
+    let mut pares = vec![Vec::new(); leis.len()];
+    let varreduras: [Vec<(f32, f32)>; 3] = [
+        (0..=250u16)
+            .map(|i| (graus(150.0, 0.1, i), 140.0))
+            .collect(),
+        (0..=250u16)
+            .map(|i| (graus(150.0, 0.1, i), 170.0))
+            .collect(),
+        (0..=250u16)
+            .map(|i| (170.0, graus(150.0, 0.1, i)))
+            .collect(),
+    ];
+    for poses in &varreduras {
+        let (g1, g2) = poses[0];
+        let (mut sim, _, st, ids, raizes) = super::refino::cena_com_raizes(g1, g2);
+        let mut agora = (g1, g2);
+        type Quadro = (Vec<Vec<[f64; 2]>>, Vec<Vec<Vec<[f64; 2]>>>);
+        let mut antes: Vec<Option<Quadro>> = vec![None, None];
+        for &(a, b) in poses {
+            for r in &raizes {
+                crate::smoke_bone_par::dobra_duas(&mut sim, *r, a - agora.0, b - agora.1);
+            }
+            agora = (a, b);
+            for barra in 0..2 {
+                let br = Barra::de(&sim, &st, ids[barra]);
+                let verdade = br.imagem(128);
+                let ds: Vec<Vec<Vec<[f64; 2]>>> = leis.iter().map(|l| desenho(&br, *l).0).collect();
+                if let Some((v0, d0)) = &antes[barra] {
+                    for jm in juntas(&sim, barra).iter().take(2) {
+                        let dv = haus_na_tampa(&verdade, v0, *jm);
+                        for (li, d) in ds.iter().enumerate() {
+                            pares[li].push((haus_na_tampa(d, &d0[li], *jm), dv, (a, b)));
+                        }
+                    }
+                }
+                antes[barra] = Some((verdade, ds));
+            }
+        }
+    }
+    pares
+}
+
+/// ⭐ **SONDA — a continuidade por lei**: o pior salto acima da verdade, a pior razão (com o salto
+/// acima de `5e-4`) e o maior `Δ desenho`. Corra em `--release`.
+#[test]
+#[ignore = "sonda: imprime; corra em --release"]
+fn diag_a_continuidade_por_lei() {
+    let ls = candidatos();
+    let leis: Vec<Option<Refino>> = ls.iter().map(|x| x.1).collect();
+    let pares = continuidade(&leis);
+    for ((nome, _), p) in ls.iter().zip(&pares) {
+        let exc = p
+            .iter()
+            .max_by(|x, y| (x.0 - x.1).total_cmp(&(y.0 - y.1)))
+            .expect("passos");
+        let razao = p
+            .iter()
+            .filter(|x| x.0 > 5e-4)
+            .map(|x| (x.0 / x.1.max(1e-12), x.2))
+            .max_by(|x, y| x.0.total_cmp(&y.0));
+        let dmax = p.iter().map(|x| x.0).fold(0.0, f64::max);
+        let vmax = p.iter().map(|x| x.1).fold(0.0, f64::max);
+        println!(
+            "{nome:>10}: pior salto {:.4} acima da verdade em {:?} · pior razão {:?} · Δ desenho máx {dmax:.4} \
+             (verdade máx {vmax:.4}) · {} passos",
+            exc.0 - exc.1,
+            exc.2,
+            razao.map(|r| (format!("{:.1}", r.0), r.1)),
+            p.len()
+        );
+    }
 }

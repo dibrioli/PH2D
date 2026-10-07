@@ -9,8 +9,8 @@ use ph2d_vec_skin::curva::Refino;
 /// Sem refino, e `k ∈ {2, 3}`.
 fn leis() -> Vec<(String, Option<Refino>)> {
     let mut v = vec![("sem".to_string(), None)];
-    for k in [2.0, 3.0] {
-        v.push((format!("k{k}"), Some(Refino { k })));
+    for passo in [0.1, 0.05, 0.025] {
+        v.push((format!("peso {passo}"), Some(Refino { passo })));
     }
     v
 }

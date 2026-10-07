@@ -562,7 +562,7 @@ fn mede(hatch: bool, g1: f32, g2: f32, refino: Option<Refino>) -> String {
     format!(
         "  {g1}/{g2} barra {} refino {}: {todos} trechos, {curtos} curtos (< 1,5 larguras)\n{s}",
         u8::from(hatch),
-        refino.map_or("off".into(), |r| format!("k{}", r.k))
+        refino.map_or("off".into(), |r| format!("{r:?}"))
     )
 }
 

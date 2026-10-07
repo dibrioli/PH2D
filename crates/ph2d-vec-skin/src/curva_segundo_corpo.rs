@@ -36,8 +36,8 @@ pub struct Bake {
     pub amostras: usize,
     /// A tolerância de Fréchet do [`kurbo::fit_to_bezpath`].
     pub tolerancia: f64,
-    /// ⭐ O refino LOCAL onde a pose estica o contorno ([`Refino`], A13) — `None` é a amostragem
-    /// uniforme de antes, a referência dos gates.
+    /// ⭐ O refino onde os PESOS variam ([`Refino`], A13) — `None` é a amostragem uniforme de
+    /// antes, a referência dos gates.
     pub refino: Option<Refino>,
 }
 
@@ -326,7 +326,7 @@ pub fn assa_a_pele_com_nos(
             };
             // ⭐ O BAKE: um número FIXO de pontos, com a leitura barata — e, com o [`Refino`], os
             // pontos a mais onde a pose ESTICA o contorno.
-            let (assado, nos_t) = refino::amostra(&s, amostras, tolerancia, refino);
+            let (assado, nos_t) = refino::amostra(&s, amostras, refino);
             if k == 0 {
                 inicio = assado[0];
             }

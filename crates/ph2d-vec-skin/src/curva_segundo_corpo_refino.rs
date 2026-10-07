@@ -1,33 +1,33 @@
-//! ⭐ **O REFINO LOCAL do bake** (A13, 2026-10-06) — pontos a mais só onde a pose ESTICA o contorno.
+//! ⭐ **O REFINO do bake pelos PESOS** (A13, 2026-10-06) — pontos a mais onde os pesos VARIAM ao
+//! longo do segmento (as zonas de mistura das juntas), decididos no REPOUSO e nunca pela pose.
 //!
-//! A `=6` com uma junta a `170°`: as amostras uniformes caem SOBRE a curva verdadeira (`2e-4`), mas
-//! a tampa de fora da junta fica ENTRE duas delas e o ajuste corta-a por uma corda — até `0,28` de
-//! cor que falta. Amostrar mais por igual não serve (piora o máximo, cabeçalho de
-//! [`super::refit_pelo_bake`]): a cura é partir só o intervalo cujo comprimento POSTO passa de
-//! `k × mediana` do segmento. Sem nenhum partido o bake é o uniforme, ao bit.
+//! A `=6` com uma junta a `170°`: as amostras uniformes caem sobre a curva verdadeira, mas a tampa
+//! de fora da junta fica ENTRE duas e o ajuste corta-a por uma corda (`0,27`). Amostrar mais por
+//! igual não serve ([`super::refit_pelo_bake`]). A 1.ª cura partia o intervalo cujo comprimento
+//! POSTO passasse de `2 ×` a mediana — e o conjunto de amostras mudava com a pose: o desenho saltava
+//! `0,041` num passo de `0,1°` com a verdade a mexer `0,0003` (report do dono, «aos saltos»).
+//! Aqui o conjunto só depende da fonte e do campo: o desenho é contínuo na pose.
 //!
-//! ⛔ Medido e recusado (a tabela vive no commit da A13): o factor UNIFORME por segmento
-//! (`⌈máx/mediana⌉`; `2,5×` o custo, nunca ao bit, e faz renascer o gancho do
-//! `skin_desenho_zona_tests`) e os nós por CORDA (`α = 1` e `α = ½`, Barry–Goldman), piores que o
-//! `t` da fonte contra o padrão-ouro e mais caros.
+//! ⛔ Medido e recusado (as tabelas vivem nos commits da A13): o esticão posto (`k = 2`, saltos),
+//! o factor uniforme por segmento, os nós por corda (cordal, centrípeta) e a zona fixa (`Δw > ε`
+//! em `m` pedaços: `m = 4` corta a tampa a `0,028`, `m = 8` custa mais `30 %` que esta lei).
 
 use super::{Assado, Point, SegmentoDaPele, Vec2};
+use kurbo::ParamCurve;
 
-/// ⭐ **O refino local** — parte cada intervalo uniforme cujo comprimento POSTO passa de
-/// `k × mediana` do segmento, ao meio, até caber.
+/// ⭐ **O refino pelos pesos** — cada intervalo uniforme parte-se em `⌈Δw / passo⌉` pedaços iguais
+/// em `t`, com `Δw` a maior variação de um peso de mistura entre as suas pontas EM REPOUSO.
 ///
-/// O único chão é de PRECISÃO: nunca abaixo da tolerância do ajuste (um intervalo posto mais curto
-/// que ela não muda o que ele aceita) nem da resolução do `f64` (um `t` que já não se parte).
+/// O número de pedaços não tem tecto: `Δw ≤ 1` ⇒ no máximo `⌈1 / passo⌉`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Refino {
-    /// O múltiplo da mediana acima do qual um intervalo posto se parte.
-    pub k: f64,
+    /// A variação de peso por pedaço.
+    pub passo: f64,
 }
 
-/// ⭐ **O refino do PRODUTO** (A13): `k = 2` com o `t` da fonte venceu `k = 3` e os nós por corda
-/// (cordal, centrípeta) no padrão-ouro e na tampa da `=6` (de `0,27` a `0,036`). A tabela está no
-/// commit da A13; as sondas `diag_a13_*` refazem-na.
-pub const REFINO_DO_PRODUTO: Option<Refino> = Some(Refino { k: 2.0 });
+/// ⭐ **O refino do PRODUTO**: `passo = 0,025` (a tampa da `=6` a `170°` fica a `0,0045`–`0,0077`
+/// da verdade, contra `0,018`–`0,028` a `0,05`; tabela no commit da A13, sondas `diag_a13_*`).
+pub const REFINO_DO_PRODUTO: Option<Refino> = Some(Refino { passo: 0.025 });
 
 /// O `t` da amostra `i` de `m` — a MESMA expressão de sempre (o bit do caso uniforme depende dela).
 #[expect(clippy::cast_precision_loss, reason = "i <= m, um punhado")]
@@ -36,60 +36,72 @@ fn t_de(i: usize, m: usize) -> f64 {
 }
 
 /// As amostras de um segmento e, quando o refino partiu algum intervalo, os NÓS delas — o `t` da
-/// fonte de cada uma (`None` = uniformes, e então o bake é o de sempre).
+/// fonte de cada uma (`None` = uniformes, e então o bake é o de sempre, ao bit).
 pub(super) fn amostra(
     s: &SegmentoDaPele<'_>,
     amostras: usize,
-    tolerancia: f64,
     refino: Option<Refino>,
 ) -> (Vec<Point>, Option<Vec<f64>>) {
-    let base: Vec<Point> = (0..=amostras).map(|i| s.ponto(t_de(i, amostras))).collect();
-    let Some(Refino { k }) = refino else {
-        return (base, None);
-    };
-    let mut l: Vec<f64> = base.windows(2).map(|w| (w[1] - w[0]).hypot()).collect();
-    l.sort_by(f64::total_cmp);
-    let limiar = (k * l.get(l.len() / 2).copied().unwrap_or(0.0)).max(tolerancia);
-    let (mut pts, mut ts) = (vec![base[0]], vec![0.0]);
-    for i in 0..amostras {
-        parte(
-            &|t| s.ponto(t),
-            (t_de(i, amostras), base[i]),
-            (t_de(i + 1, amostras), base[i + 1]),
-            limiar,
-            &mut pts,
-            &mut ts,
+    let Some(Refino { passo }) = refino else {
+        return (
+            (0..=amostras).map(|i| s.ponto(t_de(i, amostras))).collect(),
+            None,
         );
+    };
+    // O `ponto` de cada amostra, aberto: os pesos ficam para a decisão (ao bit o `ponto`).
+    let base: Vec<(Vec<f64>, Point)> = (0..=amostras)
+        .map(|i| {
+            let t = t_de(i, amostras);
+            let c = s.src.eval(t);
+            let p = [c.x, c.y];
+            let w = s.pesos(p, t);
+            let q = s.mistura(p, &w);
+            (w, q)
+        })
+        .collect();
+    let pedacos: Vec<u32> = base
+        .windows(2)
+        .map(|par| {
+            let dw = par[0]
+                .0
+                .iter()
+                .zip(&par[1].0)
+                .map(|(a, b)| (b - a).abs())
+                .fold(0.0, f64::max);
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "Δw ≤ 1 ⇒ ⌈Δw/passo⌉ pequeno"
+            )]
+            let m = (dw / passo).ceil() as u32;
+            m.max(1)
+        })
+        .collect();
+    if pedacos.iter().all(|m| *m == 1) {
+        return (base.into_iter().map(|x| x.1).collect(), None);
     }
-    if pts.len() == base.len() {
-        (base, None)
-    } else {
-        (pts, Some(ts))
+    let (mut pts, mut ts) = (vec![base[0].1], vec![0.0]);
+    for (i, &m) in pedacos.iter().enumerate() {
+        let (t0, t1) = (t_de(i, amostras), t_de(i + 1, amostras));
+        for j in 1..m {
+            let f = f64::from(j) / f64::from(m);
+            let t = t0 + (t1 - t0) * f;
+            let c = s.src.eval(t);
+            // Os pesos do pedaço são a MISTURA dos das pontas: a amostra a mais resolve a GEOMETRIA
+            // da pose sem resolver os bicos do campo abaixo do passo uniforme.
+            let w: Vec<f64> = base[i]
+                .0
+                .iter()
+                .zip(&base[i + 1].0)
+                .map(|(a, b)| (b - a).mul_add(f, *a))
+                .collect();
+            pts.push(s.mistura([c.x, c.y], &w));
+            ts.push(t);
+        }
+        pts.push(base[i + 1].1);
+        ts.push(t1);
     }
-}
-
-/// Parte `[a, b]` ao meio enquanto o comprimento POSTO passar do `limiar`; empurra `b` (e os do
-/// meio) em ordem. `ponto` é o segmento posto (uma porta e não o segmento: o gate da terminação
-/// alimenta-a com um salto).
-fn parte(
-    ponto: &dyn Fn(f64) -> Point,
-    a: (f64, Point),
-    b: (f64, Point),
-    limiar: f64,
-    pts: &mut Vec<Point>,
-    ts: &mut Vec<f64>,
-) {
-    let tm = 0.5 * (a.0 + b.0);
-    // Um `NaN` não parte. O `tm` que coincide com uma ponta é o fim da resolução.
-    let longo = (b.1 - a.1).hypot() > limiar;
-    if longo && tm > a.0 && tm < b.0 {
-        let m = (tm, ponto(tm));
-        parte(ponto, a, m, limiar, pts, ts);
-        parte(ponto, m, b, limiar, pts, ts);
-    } else {
-        pts.push(b.1);
-        ts.push(b.0);
-    }
+    (pts, Some(ts))
 }
 
 /// O intervalo de nós `[nos[i], nos[i+1]]` que contém `t` (o último fecha à direita).
@@ -284,36 +296,88 @@ mod tests {
         );
     }
 
-    /// ⭐ GATE — **o chão de precisão é o FIM da recursão**: um segmento posto com um SALTO entre dois
-    /// `t` a um ulp um do outro (nenhum partir o encurta) termina, com os nós em ordem e o salto entre
-    /// dois `t` vizinhos. ⚠️ A sonda conta as chamadas e pára aos `1 000`: sem o chão a recursão não
-    /// tem fundo, e o teste tem de ficar VERMELHO e não rebentar a pilha.
-    #[test]
-    fn um_salto_no_segmento_posto_termina_no_chao_de_precisao() {
-        const SALTO: f64 = 0.3;
-        let chamadas = std::cell::Cell::new(0_u32);
-        let ponto = |t: f64| {
-            chamadas.set(chamadas.get() + 1);
-            assert!(chamadas.get() < 1_000, "a recursão não terminou em {t}");
-            Point::new(if t < SALTO { 0.0 } else { 10.0 }, 0.0)
-        };
-        let (mut pts, mut ts) = (vec![ponto(0.0)], vec![0.0]);
-        parte(
-            &ponto,
-            (0.0, pts[0]),
-            (1.0, ponto(1.0)),
+    /// Um osso deitado no `+X` de `(x0, 0)` a `(x0 + len, 0)`, rodado `rot` em torno da raiz.
+    fn osso(x0: f64, len: f64, rot: f64) -> ph2d_skeleton::SkinBone {
+        use ph2d_skeleton::Xform;
+        let (c, s) = (rot.cos(), rot.sin());
+        ph2d_skeleton::SkinBone::new(
+            Xform([1.0, 0.0, 0.0, 1.0, x0, 0.0]),
+            len,
             1.0,
-            &mut pts,
-            &mut ts,
+            Xform([c, s, -s, c, x0, 0.0]),
+            Xform::IDENTITY,
+        )
+        .expect("repouso não singular")
+    }
+
+    fn bits(p: &ph2d_vec_scene::VecPath) -> Vec<u64> {
+        p.verts_all()
+            .flat_map(|v| [v.anchor, v.in_handle, v.out_handle])
+            .flat_map(|q| q.map(f64::to_bits))
+            .collect()
+    }
+
+    /// ⭐⭐ GATE — **onde nenhum peso varia, o refino é o bake uniforme AO BIT.** Uma forma presa a UM
+    /// osso tem peso `1` em todo ponto (medido aqui: `Δw = 0`), logo nenhum intervalo se parte. O
+    /// CONTROLO: a mesma asserção com DOIS ossos (a junta a meio) tem de falhar.
+    #[test]
+    fn sem_peso_que_varie_o_refino_e_ao_bit_o_bake_uniforme() {
+        let fonte = ph2d_vec_scene::cook(
+            ph2d_vec_scene::ShapeKind::Rectangle,
+            [0.0, 0.0],
+            [40.0, 10.0],
+            &[],
         );
-        assert_eq!(pts.len(), ts.len());
-        assert!(ts.windows(2).all(|w| w[0] < w[1]), "nós fora de ordem");
-        assert_eq!(ts.last(), Some(&1.0));
-        let k = pts
-            .windows(2)
-            .position(|w| (w[1] - w[0]).hypot() > 1.0)
-            .expect("o salto fica entre dois nós");
-        assert!(ts[k] < SALTO && ts[k + 1] >= SALTO);
-        assert_eq!(ts[k].next_up(), ts[k + 1], "o salto não chegou ao ulp");
+        let um = ph2d_skeleton::Skin::new(vec![osso(0.0, 40.0, 0.5)]).expect("1 osso");
+        let dois = ph2d_skeleton::Skin::new(vec![osso(0.0, 20.0, 0.0), osso(20.0, 20.0, 0.8)])
+            .expect("2 ossos");
+        let assa = |pele: &ph2d_skeleton::Skin, refino: Option<Refino>| {
+            super::super::assa_a_pele(
+                pele,
+                &fonte,
+                &[],
+                &[],
+                true,
+                super::super::CampoIndexado::default(),
+                super::super::Bake {
+                    amostras: 16,
+                    tolerancia: 3e-4 * 41.2,
+                    refino,
+                },
+            )
+        };
+        let variacao = |pele: &ph2d_skeleton::Skin| {
+            let mut w0 = pele.scratch();
+            let mut w1 = pele.scratch();
+            (0..400)
+                .map(|i| {
+                    let x = 40.0 * f64::from(i) / 400.0;
+                    pele.weights_corrected([x, 0.0], None, &mut w0, &[]);
+                    pele.weights_corrected([x + 0.1, 0.0], None, &mut w1, &[]);
+                    w0.iter()
+                        .zip(&w1)
+                        .map(|(a, b)| (b - a).abs())
+                        .fold(0.0, f64::max)
+                })
+                .fold(0.0, f64::max)
+        };
+        assert!(
+            variacao(&um) == 0.0,
+            "a fixtura de UM osso tem um peso que varia"
+        );
+        assert_eq!(
+            bits(&assa(&um, REFINO_DO_PRODUTO)),
+            bits(&assa(&um, None)),
+            "sem peso que varie o refino mexeu no bake"
+        );
+        assert!(
+            variacao(&dois) > 0.0,
+            "o CONTROLO: dois ossos e nenhum peso varia"
+        );
+        assert_ne!(
+            bits(&assa(&dois, REFINO_DO_PRODUTO)),
+            bits(&assa(&dois, None)),
+            "o CONTROLO: com a junta a meio o refino não partiu nada"
+        );
     }
 }

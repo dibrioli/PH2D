@@ -175,3 +175,19 @@ fn a_selected_stroke_gets_the_ink_style_bar_and_its_width() {
         "as próximas formas não herdam a espessura da caneta"
     );
 }
+
+/// Um quadro que JÁ está em rascunho (aberto de um ficheiro, ou outra aba) faz nascer as formas à
+/// mão — o editor é partilhado entre quadros, e o modo vem do quadro a cada clique.
+#[test]
+fn a_board_already_in_sketch_makes_new_shapes_sketched() {
+    let mut t = T::new();
+    t.hero.documents.active_board_mut().unwrap().sketch = true;
+    t.press('r');
+    t.drag(t.at(0.2, 0.2), t.at(0.35, 0.35));
+    let els = t.elements();
+    assert_eq!(els.len(), 1);
+    assert!(
+        els[0].style().sketch,
+        "a forma nasceu final num quadro em rascunho"
+    );
+}

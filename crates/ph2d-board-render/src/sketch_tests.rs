@@ -8,7 +8,10 @@ fn stroke(width: f64, pressure: bool) -> (Element, Ink) {
     let ink_color = Rgba([10, 10, 10, 255]);
     let mut style = Style::new(None, Some(ink_color), ink_color);
     style.stroke_width = width;
-    let pts: Vec<[f64; 3]> = (0..=40).map(|i| [f64::from(i) * 5.0, 100.0, 0.5]).collect();
+    // A pressão VARIA (0,1 → 0,9): sem ela medida, a largura não pode segui-la.
+    let pts: Vec<[f64; 3]> = (0..=40)
+        .map(|i| [f64::from(i) * 5.0, 100.0, 0.1 + 0.8 * f64::from(i) / 40.0])
+        .collect();
     let (ink, bx) = Ink::from_world(&pts, style, Pen::Pen, pressure);
     let el = Element::new_ink(ElementId(1), FracKey::between(None, None), ink.clone(), bx);
     (el, ink)

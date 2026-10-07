@@ -88,6 +88,7 @@ fn cena(seed: u64, w: f64, h: f64, n: usize, m: usize) -> (Vec<Shape>, Vec<Area>
             Area {
                 shape,
                 id: (i + 1) as u16,
+                dentro: false,
             }
         })
         .collect();

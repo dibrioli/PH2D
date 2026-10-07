@@ -81,12 +81,17 @@ pub struct BuildStats {
     pub polygons: usize,
 }
 
-/// (W7) Uma ÁREA DE CUSTO: a forma (recuada pelo raio do agente, como um obstáculo — o corpo sente-a
-/// quando lhe toca) e o número que a malha guarda em cada polígono dela (`0` é o chão comum).
+/// (W7) Uma ÁREA DE CUSTO: a forma e o número que a malha guarda em cada polígono dela (`0` é o chão
+/// comum). ⭐ (W18) A lei: **o custo de uma posição é o MAIOR debaixo do corpo** — uma área mais cara que o
+/// chão recua para FORA pelo raio (o corpo paga-a quando lhe toca); uma mais BARATA, para DENTRO
+/// ([`dentro`](Self::dentro): o desconto só com o corpo inteiro nela). Medido antes (plano 30 §27.11): com a
+/// estrada a `Cost 0.3` recuada para fora, o caminho seguia a berma por fora, a `0,25 m` dela.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Area {
     pub shape: Shape,
     pub id: u16,
+    /// Recua para DENTRO (uma área mais barata que o chão) — [`inflate::erode`].
+    pub dentro: bool,
 }
 
 /// A malha e o que custou.
@@ -155,7 +160,7 @@ pub(crate) fn chao_e_areas(
     };
     let aneis_das_areas: Vec<(Vec<lattice::P>, u16)> = areas
         .iter()
-        .map(|a| (inflate::inflate(&a.shape, r, params.corner, n), a.id))
+        .map(|a| (inflate::recua(a, r, params.corner, n), a.id))
         .collect();
     Some((walk, aneis_das_areas))
 }

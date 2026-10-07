@@ -1,4 +1,5 @@
-//! ⭐⭐⭐ **Smoke da W18 — a LAMA** (plano 30 §27.1). `PH2D_NAV_SMOKE=5`.
+//! ⭐⭐⭐ **Smoke da W18 — as ÁREAS DE CUSTO** (plano 30 §27.1). `PH2D_NAV_SMOKE=5`. (Para o dono o nome é
+//! «área de custo», o do componente `Nav Cost Area` — nunca «lama», que é só um exemplo de uso.)
 //!
 //! # A cena: **duas pistas iguais, uma lama leve e uma pesada**
 //!
@@ -146,8 +147,8 @@ pub fn montar(world: &mut World) -> Lama {
         },
         Transform::from_translation(c),
     ));
-    let leve = faixa(world, "Light Mud", -1.0, CUSTO_LEVE, LEVE_RGBA);
-    let pesada = faixa(world, "Heavy Mud", 1.0, CUSTO_PESADA, PESADA_RGBA);
+    let leve = faixa(world, "Low Cost Area", -1.0, CUSTO_LEVE, LEVE_RGBA);
+    let pesada = faixa(world, "High Cost Area", 1.0, CUSTO_PESADA, PESADA_RGBA);
     let pista = |world: &mut World, lado: f32, letra: char| {
         let mut k = 0;
         NASCEM_X.map(|x| {
@@ -189,12 +190,13 @@ pub fn montar(world: &mut World) -> Lama {
 /// A linha do terminal da cena.
 pub fn anuncia() {
     println!(
-        "[nav-smoke] =5 a LAMA. Duas pistas iguais: a da esquerda tem lama LEVE (castanho claro, Cost 2), \
-         a da direita lama PESADA (castanho escuro, Cost 10). Cada VERMELHO anda para a sua bandeira \
-         VERDE: os tres da esquerda atravessam a lama leve a direito, os tres da direita dao a volta pela \
-         passagem junto a parede. A lama nao atrasa o corpo: diz quanto vale cada metro na hora de \
-         escolher o caminho. A lama pesada esta' escolhida: pare o relogio (Espaco), ponha o Cost dela \
-         em 2 no Inspector, solte o relogio, e os da direita cortam pela lama"
+        "[nav-smoke] =5 as AREAS DE CUSTO. Duas pistas iguais: a da esquerda tem uma area BARATA (Low Cost \
+         Area, castanho claro, Cost 2), a da direita uma CARA (High Cost Area, castanho escuro, Cost 10). \
+         Cada VERMELHO anda para a sua bandeira VERDE: os tres da esquerda atravessam a area barata a \
+         direito, os tres da direita dao a volta pela passagem junto a parede. A area nao atrasa o corpo: \
+         diz quanto vale cada metro na hora de escolher o caminho. A High Cost Area esta' escolhida: pare \
+         o relogio (Espaco), ponha o Cost dela em 2 no Inspector, solte o relogio, e os da direita cortam \
+         por ela"
     );
 }
 

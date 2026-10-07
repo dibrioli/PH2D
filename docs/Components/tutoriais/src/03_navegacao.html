@@ -286,15 +286,17 @@ quer ver. Troque o número no fim do comando: <code>PH2D_NAV_SMOKE=1</code> a <c
   <tr><td><code>4</code></td><td>o <b>rio de lava</b> e dois portais: o inimigo com
       <code class="ui">Avoid Harm</code> não pisa a lava, e <code class="ui">Nav Link</code> leva-o de um
       portal ao outro</td></tr>
-  <tr><td><code>5</code></td><td>a <b>lama</b>: duas pistas iguais, uma lama leve e uma pesada — a secção
-      10</td></tr>
-  <tr><td><code>6</code></td><td>a <b>lama nos jogos</b>: quatro usos lado a lado — a secção 11</td></tr>
+  <tr><td><code>5</code></td><td>as <b>áreas de custo</b>: duas pistas iguais, uma área barata e uma cara —
+      a secção 10</td></tr>
+  <tr><td><code>6</code></td><td>as <b>áreas de custo nos jogos</b>: quatro usos lado a lado — a secção 11</td></tr>
 </table>
 
-<h2>10 · A lama — <code class="ui">Nav Cost Area</code></h2>
-<p>Uma lama <b>não atrasa</b> quem passa por ela: diz ao inimigo <b>quanto vale cada metro ali</b> na hora de
-escolher o caminho. Com <code class="ui">Cost</code> <code>2</code>, um metro de lama vale dois de chão; com
-<code class="ui">Cost</code> <code>10</code>, vale dez. Ele faz a conta e escolhe: atravessar, ou dar a volta.</p>
+<h2>10 · Áreas de custo — <code class="ui">Nav Cost Area</code></h2>
+<p>Uma <b>área de custo</b> é uma forma no chão que diz ao inimigo <b>quanto vale cada metro ali</b> na hora
+de escolher o caminho. Ela <b>não atrasa</b> quem passa por ela: só muda a decisão. Com
+<code class="ui">Cost</code> <code>2</code>, um metro ali vale dois de chão; com <code class="ui">Cost</code>
+<code>10</code>, vale dez; com <code class="ui">Cost</code> <code>0.3</code>, vale menos que o chão, e o
+inimigo PREFERE passar por lá. Ele soma tudo e escolhe o caminho mais barato — não o mais curto.</p>
 <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components &amp;&amp; env PH2D_NAV_SMOKE=5 cargo run -p ph2d-host-desktop --profile smoke</div>
 <svg viewBox="0 0 640 230" style="width:100%;margin:6px 0;background:#17161c;border-radius:8px">
   <g font-family="Inter,system-ui" font-size="11">
@@ -302,9 +304,9 @@ escolher o caminho. Com <code class="ui">Cost</code> <code>2</code>, um metro de
     <rect x="317" y="70" width="6" height="140" fill="#616675"/>
     <text x="330" y="200" fill="#6f6a7d">a parede do meio</text>
     <rect x="80" y="110" width="236" height="30" fill="#d5bc98"/>
-    <text x="198" y="129" fill="#1a1420" text-anchor="middle" font-weight="700">Light Mud · Cost 2</text>
+    <text x="198" y="129" fill="#1a1420" text-anchor="middle" font-weight="700">Low Cost Area · Cost 2</text>
     <rect x="324" y="110" width="236" height="30" fill="#a9845c"/>
-    <text x="442" y="129" fill="#1a1420" text-anchor="middle" font-weight="700">Heavy Mud · Cost 10</text>
+    <text x="442" y="129" fill="#1a1420" text-anchor="middle" font-weight="700">High Cost Area · Cost 10</text>
     <text x="590" y="40" fill="#a9a3b8" text-anchor="middle">passagem</text>
     <text x="50" y="40" fill="#a9a3b8" text-anchor="middle">passagem</text>
     <rect x="200" y="60" width="12" height="12" fill="#5cc770"/>
@@ -320,40 +322,40 @@ escolher o caminho. Com <code class="ui">Cost</code> <code>2</code>, um metro de
 </svg>
 <table>
   <tr><th>na tela</th><th>é</th></tr>
-  <tr><td>a faixa castanha <b>clara</b>, à esquerda</td><td>a <b>Light Mud</b>, com <code class="ui">Cost</code> <code>2</code></td></tr>
-  <tr><td>a faixa castanha <b>escura</b>, à direita</td><td>a <b>Heavy Mud</b>, com <code class="ui">Cost</code> <code>10</code> — as duas do mesmo tamanho</td></tr>
+  <tr><td>a faixa castanha <b>clara</b>, à esquerda</td><td>a <b>Low Cost Area</b>, com <code class="ui">Cost</code> <code>2</code></td></tr>
+  <tr><td>a faixa castanha <b>escura</b>, à direita</td><td>a <b>High Cost Area</b>, com <code class="ui">Cost</code> <code>10</code> — as duas do mesmo tamanho</td></tr>
   <tr><td>os seis círculos vermelhos, em baixo</td><td>o MESMO inimigo, seis vezes; cada um anda para a sua bandeira</td></tr>
   <tr><td>os quadrados verdes</td><td>as bandeiras (o alvo de cada um)</td></tr>
   <tr><td>a linha azul de cada um</td><td>o caminho que ele escolheu</td></tr>
 </table>
 <ol class="steps">
   <li><b>Corra o comando e só olhe.</b>
-      <div class="out">Os três da esquerda sobem <b>a direito pela lama clara</b>: dar a volta pela passagem
-      custaria mais. Os três da direita vão até à passagem junto à parede e <b>dão a volta</b> à lama escura.</div></li>
-  <li><b>A lama escura já vem escolhida</b>: no Inspector, à direita, a secção
+      <div class="out">Os três da esquerda sobem <b>a direito pela área clara</b>: dar a volta pela passagem
+      custaria mais. Os três da direita vão até à passagem junto à parede e <b>dão a volta</b> à área escura.</div></li>
+  <li><b>A High Cost Area já vem escolhida</b>: no Inspector, à direita, a secção
       <code class="ui">Nav Cost Area</code> está aberta e mostra <code class="ui">Cost</code> em <code>10</code>.</li>
   <li><b>Feche e corra o comando outra vez.</b> Logo no início, aperte <kbd>Espaço</kbd> (o relógio para),
-      ponha o <code class="ui">Cost</code> da lama escura em <code>2</code> e aperte <kbd>Espaço</kbd> de novo.
-      <div class="out">Os da direita <b>viram e cortam pela lama escura</b>, como os da esquerda. O que
+      ponha o <code class="ui">Cost</code> da área escura em <code>2</code> e aperte <kbd>Espaço</kbd> de novo.
+      <div class="out">Os da direita <b>viram e cortam pela área escura</b>, como os da esquerda. O que
       nasceu mais perto da passagem pode continuar pela volta: para ele a volta é curta.</div></li>
   <li><b>Marque o visto de <code class="ui">Forbidden</code></b>.
-      <div class="out">A lama vira uma zona onde <b>ninguém entra</b>: a linha do <code class="ui">Cost</code>
+      <div class="out">A área vira uma zona onde <b>ninguém entra</b>: a linha do <code class="ui">Cost</code>
       some, porque já não conta.</div></li>
 </ol>
 
-<h2>11 · A lama nos jogos — quatro usos</h2>
+<h2>11 · As áreas de custo nos jogos — quatro usos</h2>
 <p>A mesma peça, <code class="ui">Nav Cost Area</code>, faz quatro coisas diferentes num jogo. Em todas,
 <b>a área é uma forma com colisor</b> (marque o <i>sensor</i>, para não ser parede) e o componente diz quanto
-custa cada metro dentro dela. Quem anda faz a conta e escolhe o caminho mais barato — não o mais curto.</p>
+custa cada metro dentro dela.</p>
 <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components &amp;&amp; env PH2D_NAV_SMOKE=6 cargo run -p ph2d-host-desktop --profile smoke</div>
 <table>
   <tr><th>na tela</th><th>o uso num jogo</th><th>como se configura</th><th>o que o vermelho faz</th></tr>
-  <tr><td>1 · a <b>estrada</b> escura em U, com <b>Rough Ground</b> (pedras) à volta</td>
-      <td>estradas e trilhos: os inimigos andam pelos caminhos e não a corta-mato</td>
-      <td>o terreno à volta com <code class="ui">Cost</code> <code>4</code>; a estrada é chão normal</td>
-      <td>segue a estrada, mesmo dando a volta</td></tr>
+  <tr><td>1 · a <b>Road</b> escura em U</td>
+      <td>estradas e trilhos: os inimigos preferem os caminhos e não andam a corta-mato</td>
+      <td>a estrada com <code class="ui">Cost</code> <code>0.3</code> (mais barata que o chão)</td>
+      <td>segue a estrada, com o corpo em cima dela, mesmo dando a volta</td></tr>
   <tr><td>2 · o <b>River</b> azul e a <b>Bridge</b></td>
-      <td>água, pântano, neve funda: dá para atravessar, mas é caro</td>
+      <td>água, pântano, lama, neve funda: dá para atravessar, mas é caro</td>
       <td>o rio com <code class="ui">Cost</code> <code>6</code>; a ponte é um vão sem área</td>
       <td>vai até à ponte</td></tr>
   <tr><td>3 · o <b>Garden</b> verde</td>
@@ -368,19 +370,21 @@ custa cada metro dentro dela. Quem anda faz a conta e escolhe o caminho mais bar
 <ol class="steps">
   <li><b>Corra o comando e olhe os quatro.</b>
       <div class="out">Cada vermelho vai para a sua bandeira verde, e cada um faz o desvio da tabela.</div></li>
-  <li><b>O Rough Ground já vem escolhido</b>, com a secção <code class="ui">Nav Cost Area</code> aberta. Pare o
-      relógio (<kbd>Espaço</kbd>), ponha o <code class="ui">Cost</code> em <code>1</code> e solte o relógio.
-      <div class="out">As pedras passam a ser chão normal: o vermelho 1 corta a direito pelo meio.</div></li>
+  <li><b>A Road da esquerda já vem escolhida</b>, com a secção <code class="ui">Nav Cost Area</code> aberta.
+      Feche, corra de novo, pare o relógio (<kbd>Espaço</kbd>) logo no início, ponha o
+      <code class="ui">Cost</code> em <code>1</code> e solte o relógio.
+      <div class="out">Aquela parte da estrada passa a valer o mesmo que o chão: o vermelho 1 corta a direito
+      pelo meio.</div></li>
   <li><b>Feche e corra de novo.</b> Logo no início, pare o relógio, <b>escolha o Garden</b> (na lista à
       esquerda), tire o visto de <code class="ui">Forbidden</code> e solte o relógio.
       <div class="out">O canteiro passa a ser chão: o vermelho 3 atravessa-o a direito.</div></li>
 </ol>
-<div class="note"><b>Como escolher o número:</b> <code>1</code> é o chão. <code>2</code> a <code>3</code>: o
-inimigo só atravessa se a volta for longa. <code>5</code> a <code>10</code>: quase sempre dá a volta. Para
-<b>nunca</b>, use <code class="ui">Forbidden</code>. A lama <b>não atrasa</b> o corpo — se quiser que ele ande
-devagar lá dentro, isso é outra peça. ⚠️ Um <code class="ui">Cost</code> abaixo de <code>1</code> (um atalho
-preferido) existe, mas hoje o inimigo anda encostado à borda dele e não por cima: ponha o custo no terreno à
-volta, como no exemplo 1.</div>
+<div class="note"><b>Como escolher o número:</b> <code>1</code> é o chão. Abaixo de <code>1</code>: um caminho
+que ele prefere (só conta com o corpo inteiro em cima). <code>2</code> a <code>3</code>: o inimigo só
+atravessa se a volta for longa. <code>5</code> a <code>10</code>: quase sempre dá a volta. Para <b>nunca</b>,
+use <code class="ui">Forbidden</code>. Uma área cara conta mal o corpo lhe TOCA; uma barata, só com o corpo
+INTEIRO nela. A área <b>não atrasa</b> o corpo — se quiser que ele ande devagar lá dentro, isso é outra
+peça.</div>
 
 <h2>12 · Os avisos, e o que cada um quer dizer</h2>
 <table>
@@ -418,14 +422,15 @@ volta, como no exemplo 1.</div>
       do herói, ou perde vida lá dentro.</li>
   <li><b>Os morcegos não seguem o herói</b>, ou um que morde não some.</li>
   <li><b>Depois de o herói morrer</b>, os morcegos novos não dão a volta ao muro.</li>
-  <li><b>Na cena da lama</b> (<code>=5</code>): algum vermelho da direita pisa a lama escura com o
+  <li><b>Na cena das áreas de custo</b> (<code>=5</code>): algum vermelho da direita pisa a área escura com o
       <code class="ui">Cost</code> em <code>10</code>; ou os da esquerda dão a volta em vez de atravessar a clara;
       ou, depois de pôr o <code class="ui">Cost</code> em <code>2</code>, nenhum da direita muda de caminho.</li>
-  <li><b>Na cena dos usos</b> (<code>=6</code>): algum vermelho pisa as pedras, a água, o canteiro ou a luz; ou,
-      com o <code class="ui">Cost</code> das pedras em <code>1</code>, o vermelho 1 continua a dar a volta.</li>
+  <li><b>Na cena dos usos</b> (<code>=6</code>): o vermelho 1 anda ao lado da estrada e não em cima dela; algum
+      vermelho pisa a água, o canteiro ou a luz; ou, com o <code class="ui">Cost</code> da estrada em
+      <code>1</code>, o vermelho 1 continua a dar a volta.</li>
 </ul>
 
 <footer>PH2D · Componentes · plano 30, Navegação · cena de teste <code>PH2D_VIDA_SMOKE=4</code> ·
 as cenas da família: <code>PH2D_NAV_SMOKE=1</code> o labirinto · <code>=2</code> a porta ·
-<code>=3</code> o guarda · <code>=4</code> o rio de lava · <code>=5</code> a lama · <code>=6</code> a lama nos jogos</footer>
+<code>=3</code> o guarda · <code>=4</code> o rio de lava · <code>=5</code> as áreas de custo · <code>=6</code> as áreas de custo nos jogos</footer>
 

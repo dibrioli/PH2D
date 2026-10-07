@@ -371,6 +371,7 @@ fn a_triangulacao_e_a_fusao_de_agora_sao_as_de_antes_ao_bit() {
             .map(|k| Area {
                 shape: forma(&mut r, k + 1),
                 id: (k + 1) as u16,
+                dentro: false,
             })
             .collect();
         let p = Params {

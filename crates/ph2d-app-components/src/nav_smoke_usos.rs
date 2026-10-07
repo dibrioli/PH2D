@@ -1,4 +1,4 @@
-//! ⭐⭐⭐ **Smoke da W18 — a lama nos JOGOS** (plano 30 §27.11). `PH2D_NAV_SMOKE=6`.
+//! ⭐⭐⭐ **Smoke da W18 — as áreas de custo nos JOGOS** (plano 30 §27.11). `PH2D_NAV_SMOKE=6`.
 //!
 //! # A cena: **quatro usos de uma `Nav Cost Area`, lado a lado**
 //!
@@ -7,17 +7,17 @@
 //!
 //! | corredor | a área | o que tem de acontecer |
 //! |---|---|---|
-//! | 1 | `Rough Ground` (pedregoso, `Cost 4`) à volta de uma estrada em U (chão normal) | **segue a estrada** em vez de cortar a direito pelas pedras |
+//! | 1 | `Road` (escura, `Cost 0.3`) — uma estrada em U, mais BARATA que o chão | **segue a estrada, com o corpo por cima dela**, em vez de cortar a direito |
 //! | 2 | `River` (azul, `Cost 6`) — um rio de lado a lado, menos a `Bridge` | **vai à ponte**: atravessar a água custaria muito mais |
 //! | 3 | `Garden` (verde, `Forbidden`) — um canteiro no meio | **dá a volta**: ninguém entra, e não há parede nenhuma |
 //! | 4 | `Guard Light` (amarelo, `Cost 8`) — a luz de um guarda | **contorna a luz** pela sombra (furtividade) |
 //!
-//! ⚠️ O `Rough Ground` vem escolhido: ponha o `Cost` dele em `1` (chão normal) e o corredor 1 corta a
-//! direito.
+//! ⚠️ A `Road` comprida (a da esquerda) vem escolhida: ponha o `Cost` dela em `1` e o corredor 1 corta a
+//! direito pelo meio.
 //!
-//! ⛔ (medido) A estrada como área BARATA (`Cost 0.3`) não ensina: a área conta a partir do CORPO (recuada
-//! pelo raio, a lei da W7), e o caminho mais barato segue a berma por FORA — o corredor andava ao lado da
-//! estrada, encostado (`0,25–0,27 m` do centro à estrada). O custo vai no terreno à volta.
+//! ⭐ A estrada barata só ensina com a lei da W18 (`ph2d_navmesh::Area::dentro`): uma área mais barata que
+//! o chão recua para DENTRO, e o desconto vale com o corpo inteiro nela. Antes (a área recuada para fora,
+//! como a lama) o corredor seguia a berma POR FORA, a `0,25–0,27 m` dela (plano 30 §27.11).
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, Transform, World};
@@ -29,7 +29,6 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use crate::nav_smoke::{CENTRO, MEIO_RECINTO, Y_CHAO, parede, perseguidor};
 
 const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
-const TERRENO_RGBA: [f32; 4] = [0.50, 0.42, 0.30, 1.0];
 const ESTRADA_RGBA: [f32; 4] = [0.07, 0.07, 0.08, 1.0];
 const RIO_RGBA: [f32; 4] = [0.22, 0.42, 0.75, 1.0];
 const PONTE_RGBA: [f32; 4] = [0.62, 0.46, 0.30, 1.0];
@@ -51,8 +50,8 @@ pub const BANDEIRA_Y: f32 = 3.1;
 /// A faixa do meio de cada corredor (rio, canteiro, luz).
 pub const MEIO_Y: f32 = 0.8;
 
-pub const CUSTO_TERRENO: f32 = 4.0;
-/// A largura da estrada em U (o centro de um corpo de `0,25` anda numa faixa de `0,3`).
+pub const CUSTO_ESTRADA: f32 = 0.3;
+/// A largura da estrada em U (o centro de um corpo de `0,25` inteiro nela anda numa faixa de `0,3`).
 pub const ESTRADA: f32 = 0.8;
 pub const CUSTO_RIO: f32 = 6.0;
 pub const CUSTO_LUZ: f32 = 8.0;
@@ -65,7 +64,8 @@ pub const DESVIO_DA_LUZ: f32 = 0.3;
 
 /// As peças da cena `=6`.
 pub struct Usos {
-    pub terreno: Entity,
+    /// A tira comprida da estrada (a da esquerda) — a escolhida.
+    pub estrada: Entity,
     pub rio: Entity,
     pub jardim: Entity,
     pub luz: Entity,
@@ -99,17 +99,18 @@ fn estrada_y() -> (f32, f32) {
 }
 
 impl Usos {
-    /// Os rectângulos (centro, meias-medidas) do terreno, do rio e do canteiro — a régua dos gates. O
-    /// terreno é o corredor 1 menos a estrada em U (em baixo, à esquerda, em cima).
+    /// As três tiras da estrada em U (centro, meias-medidas): a de baixo, a da esquerda (da parede de
+    /// baixo à de cima — as tiras encolhidas pelo raio tocam-se nos cantos) e a de cima.
     #[must_use]
-    pub fn terreno_rect() -> ([f32; 2], [f32; 2]) {
+    pub fn estrada_rects() -> [([f32; 2], [f32; 2]); 3] {
         let [x0, x1] = corredor(0);
-        let (y0, y1) = (Y_CHAO + ESTRADA, CENTRO[1] + MEIO_RECINTO[1] - ESTRADA);
-        let a = x0 + ESTRADA;
-        (
-            [0.5 * (a + x1), 0.5 * (y0 + y1)],
-            [0.5 * (x1 - a), 0.5 * (y1 - y0)],
-        )
+        let (yb, yt) = estrada_y();
+        let (topo, h) = (CENTRO[1] + MEIO_RECINTO[1], 0.5 * ESTRADA);
+        [
+            ([0.5 * (x0 + x1), yb], [0.5 * (x1 - x0), h]),
+            ([x0 + h, 0.5 * (Y_CHAO + topo)], [h, 0.5 * (topo - Y_CHAO)]),
+            ([0.5 * (x0 + x1), yt], [0.5 * (x1 - x0), h]),
+        ]
     }
     #[must_use]
     pub fn rio_rect() -> ([f32; 2], [f32; 2]) {
@@ -210,26 +211,18 @@ pub fn montar(world: &mut World) -> Usos {
         },
         Transform::from_translation(c),
     ));
-    // 1 — a estrada em U é o CHÃO (custo `1`, só o desenho); o terreno à volta é que custa.
-    let [x0, x1] = corredor(0);
-    let (yb, yt) = estrada_y();
-    let (largo, alto) = ([x1 - x0, ESTRADA], [ESTRADA, yt - yb]);
-    desenho(world, "Road", [0.5 * (x0 + x1), yb], largo, ESTRADA_RGBA);
-    desenho(
+    // 1 — a estrada em U, mais BARATA que o chão.
+    let [baixo, comprida, cima] = Usos::estrada_rects();
+    caixa(
         world,
-        "Road",
-        [x0 + 0.5 * ESTRADA, 0.5 * (yb + yt)],
-        alto,
+        "Road Bottom",
+        baixo,
+        custo(CUSTO_ESTRADA),
         ESTRADA_RGBA,
     );
-    desenho(world, "Road", [0.5 * (x0 + x1), yt], largo, ESTRADA_RGBA);
-    let terreno = caixa(
-        world,
-        "Rough Ground",
-        Usos::terreno_rect(),
-        custo(CUSTO_TERRENO),
-        TERRENO_RGBA,
-    );
+    let estrada = caixa(world, "Road", comprida, custo(CUSTO_ESTRADA), ESTRADA_RGBA);
+    caixa(world, "Road Top", cima, custo(CUSTO_ESTRADA), ESTRADA_RGBA);
+    let (yb, yt) = estrada_y();
     // 2 — o rio, e a ponte: só o desenho do vão sem água (o chão).
     let rio = caixa(world, "River", Usos::rio_rect(), custo(CUSTO_RIO), RIO_RGBA);
     let [_, r1] = corredor(1);
@@ -299,7 +292,7 @@ pub fn montar(world: &mut World) -> Usos {
         r
     });
     Usos {
-        terreno,
+        estrada,
         rio,
         jardim,
         luz,
@@ -310,11 +303,11 @@ pub fn montar(world: &mut World) -> Usos {
 /// A linha do terminal da cena.
 pub fn anuncia() {
     println!(
-        "[nav-smoke] =6 a LAMA NOS JOGOS: quatro corredores, o mesmo agente em cada um. 1 a ESTRADA: o \
-         terreno a' volta e' pedregoso (Rough Ground, Cost 4) e o vermelho segue a estrada em U. 2 o RIO \
-         (Cost 6): vai a' PONTE. 3 o CANTEIRO (Forbidden): da' a volta, sem parede nenhuma. 4 a LUZ DO \
-         GUARDA (Cost 8): contorna-a pela sombra. O Rough Ground esta' escolhido: ponha o Cost dele em 1 \
-         e o corredor 1 corta a direito"
+        "[nav-smoke] =6 as AREAS DE CUSTO NOS JOGOS: quatro corredores, o mesmo agente em cada um. 1 a \
+         ESTRADA (Road, Cost 0.3, mais barata que o chao): o vermelho segue-a por cima. 2 o RIO (Cost 6): \
+         vai a' PONTE. 3 o CANTEIRO (Forbidden): da' a volta, sem parede nenhuma. 4 a LUZ DO GUARDA \
+         (Cost 8): contorna-a pela sombra. A Road da esquerda esta' escolhida: ponha o Cost dela em 1 e o \
+         corredor 1 corta a direito"
     );
 }
 

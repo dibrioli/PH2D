@@ -26,6 +26,7 @@ fn lama_no_meio() -> NavMesh {
         &[Area {
             shape: quadrado([10.0, 6.0], 3.0),
             id: 1,
+            dentro: false,
         }],
         &Params::default(),
     )
@@ -105,6 +106,7 @@ fn a_refraccao_obedece_a_snell() {
         &[Area {
             shape: Shape::Convex(vec![[10.0, -1.0], [21.0, -1.0], [21.0, 13.0], [10.0, 13.0]]),
             id: 1,
+            dentro: false,
         }],
         &Params::default(),
     )
@@ -152,6 +154,7 @@ fn a_volta_num_canto_de_custo_nao_reinunda_a_vizinhanca() {
                 radius: 3.0,
             },
             id: 1,
+            dentro: false,
         }],
         &Params::default(),
     )

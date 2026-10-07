@@ -330,8 +330,8 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
         crate::nav_smoke_usos::anuncia();
         return Montada {
             nivel: 6,
-            // ⭐ O TERRENO escolhido: o `Cost` dele a `1` e o corredor 1 corta a direito.
-            escolhido: u.terreno,
+            // ⭐ A ESTRADA escolhida: o `Cost` dela a `1` e o corredor 1 corta a direito.
+            escolhido: u.estrada,
             labirinto: None,
             porta: None,
             guarda: None,

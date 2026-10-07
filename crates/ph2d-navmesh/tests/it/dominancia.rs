@@ -66,6 +66,7 @@ pub(super) fn cena(seed: u64) -> NavMesh {
             Area {
                 shape,
                 id: (i + 1) as u16,
+                dentro: false,
             }
         })
         .collect();

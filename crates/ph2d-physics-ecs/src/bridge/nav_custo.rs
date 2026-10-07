@@ -79,6 +79,7 @@ impl PhysicsBridge {
                 Area {
                     shape,
                     id: (i + 1) as u16,
+                    dentro: custo < 1.0,
                 }
             })
             .collect();

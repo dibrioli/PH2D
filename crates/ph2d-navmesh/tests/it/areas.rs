@@ -34,6 +34,7 @@ pub fn areas(rng: &mut Lcg, n: usize, w: f64, h: f64) -> Vec<Area> {
             Area {
                 shape,
                 id: (i + 1) as u16,
+                dentro: false,
             }
         })
         .collect()
@@ -155,6 +156,7 @@ fn a_fronteira_de_uma_area_e_passagem_e_nunca_parede() {
     let ars = [Area {
         shape: Shape::Convex(vec![[8.0, -1.0], [12.0, -1.0], [12.0, 11.0], [8.0, 11.0]]),
         id: 3,
+        dentro: false,
     }];
     let b =
         build_with_areas(&retangulo(20.0, 10.0), &[], &ars, &Params::default()).expect("constrói");
@@ -208,4 +210,56 @@ fn cem_cenas_com_areas_nenhuma_recusa() {
         construidas >= 90,
         "só {construidas} cenas tiveram áreas na malha"
     );
+}
+
+/// ⭐ (W18) **A erosão de uma área mais barata** (`inflate::erode`): todo vértice fica DENTRO da forma e a
+/// pelo menos um raio de cada borda (o corpo inteiro nela); a forma mais estreita que o corpo não dá área
+/// nenhuma. Caixa rodada, círculo e cápsula.
+#[test]
+fn a_area_mais_barata_encolhe_pelo_raio_para_dentro() {
+    use ph2d_navmesh::lattice::to_world;
+    let r = 0.25;
+    let caixa = Shape::Convex(vec![[0.0, 0.0], [3.0, 1.0], [2.6, 2.2], [-0.4, 1.2]]);
+    let anel = inflate::erode(&caixa, r, DISK_SIDES);
+    assert!(anel.len() >= 3, "a caixa larga encolhe para uma área");
+    let Shape::Convex(pts) = &caixa else {
+        unreachable!()
+    };
+    for &p in &anel {
+        let w = to_world(p);
+        for i in 0..pts.len() {
+            let (a, b) = (pts[i], pts[(i + 1) % pts.len()]);
+            let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+            // A distância com sinal à recta da aresta (positiva para dentro, a forma anti-horária).
+            let d = (dx * (w[1] - a[1]) - dy * (w[0] - a[0])) / dx.hypot(dy);
+            assert!(
+                d >= r - 1e-9,
+                "um vértice a {d} de uma borda (o raio é {r})"
+            );
+        }
+    }
+    let circulo = Shape::Circle {
+        center: [5.0, 5.0],
+        radius: 0.9,
+    };
+    for &p in &inflate::erode(&circulo, r, DISK_SIDES) {
+        let w = to_world(p);
+        let d = (w[0] - 5.0).hypot(w[1] - 5.0);
+        assert!(d <= 0.9 - r + 1e-9, "o círculo encolhido sai do raio {d}");
+    }
+    let capsula = Shape::Capsule {
+        a: [0.0, 0.0],
+        b: [2.0, 0.0],
+        radius: 0.5,
+    };
+    assert!(inflate::erode(&capsula, r, DISK_SIDES).len() >= 3);
+    // Mais estreitas que o corpo (`2r = 0,5`): nada.
+    let tira = Shape::Convex(vec![[0.0, 0.0], [4.0, 0.0], [4.0, 0.45], [0.0, 0.45]]);
+    assert!(inflate::erode(&tira, r, DISK_SIDES).is_empty());
+    let fina = Shape::Capsule {
+        a: [0.0, 0.0],
+        b: [2.0, 0.0],
+        radius: 0.2,
+    };
+    assert!(inflate::erode(&fina, r, DISK_SIDES).is_empty());
 }

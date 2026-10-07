@@ -259,6 +259,7 @@ fn a_montagem_por_blocos_e_a_montagem_inteira_ao_bit() {
         let areas = vec![Area {
             shape: forma(&mut r),
             id: 1,
+            dentro: false,
         }];
         let mut t = TiledMesh::new(p, lado);
         let mut pb = ph2d_orca::ParedesPorBlocos::new();
@@ -450,6 +451,7 @@ fn os_mosaicos_feitos_em_paralelo_sao_os_de_uma_thread_ao_bit() {
         .map(|i| Area {
             shape: caixa(&mut r, (1.0, 3.0)),
             id: i + 1,
+            dentro: false,
         })
         .collect();
     // As mudanças: cinco obstáculos espalhados mexem, depois uma lama, depois saem dois.

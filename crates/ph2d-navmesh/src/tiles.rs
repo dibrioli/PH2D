@@ -188,7 +188,11 @@ impl TiledMesh {
         assin.iter().for_each(|&a| h.u64(a));
         let assin_areas: Vec<u64> = areas
             .iter()
-            .map(|a| assinatura(&a.shape) ^ u64::from(a.id).rotate_left(17))
+            .map(|a| {
+                assinatura(&a.shape)
+                    ^ u64::from(a.id).rotate_left(17)
+                    ^ u64::from(a.dentro).rotate_left(41)
+            })
             .collect();
         if !areas.is_empty() {
             h.byte(0xA7);
@@ -369,7 +373,7 @@ impl TiledMesh {
         let aneis_das_areas: Vec<(Vec<P>, u16)> = areas
             .iter()
             .map(|a| {
-                let anel = inflate::inflate(&a.shape, r, self.params.corner, n);
+                let anel = inflate::recua(a, r, self.params.corner, n);
                 (corta(&anel, lo, hi), a.id)
             })
             .collect();

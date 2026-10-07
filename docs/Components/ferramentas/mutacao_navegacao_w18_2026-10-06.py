@@ -4,7 +4,7 @@ os atalhos mudaram desde que o caminho foi planeado).
 
 O motor e os quatro controlos são os da W15/W16, copiados verbatim (cada grupo corre só os observadores
 dele, `OBS_DO_GRUPO`; o controlo limpo corre todos).
-Selectores: `MUTA_SO=L1,C2` · `MUTA_G=LAMA` (LAMA | CUSTO | CANTO | USOS).
+Selectores: `MUTA_SO=L1,C2` · `MUTA_G=LAMA` (LAMA | CUSTO | CANTO | USOS | DENTRO).
 """
 import hashlib, os, re, subprocess, sys
 
@@ -15,6 +15,9 @@ AG = 'crates/ph2d-nav/src/agent.rs'
 FI = 'crates/ph2d-physics-ecs/src/bridge/nav_fila.rs'
 NAV = 'crates/ph2d-physics-ecs/src/bridge/nav.rs'
 USOS = 'crates/ph2d-app-components/src/nav_smoke_usos.rs'
+CUSTO_PONTE = 'crates/ph2d-physics-ecs/src/bridge/nav_custo.rs'
+INFLATE = 'crates/ph2d-navmesh/src/inflate.rs'
+TILES = 'crates/ph2d-navmesh/src/tiles.rs'
 
 OBS = {
     'COMP': (['cargo', 'test', '-p', 'ph2d-app-components', '--lib'],
@@ -25,15 +28,21 @@ OBS = {
               'nav_smoke_lama::tests::nenhum_corredor_volta_atras_para_um_canto',
               'nav_smoke_usos::tests::cada_uso_muda_o_caminho_e_o_controlo_corta_a_direito',
               'nav_smoke_usos::tests::a_cena_tem_as_pecas_que_o_roteiro_nomeia',
+              'nav_smoke_usos::tests::com_a_road_escolhida_a_1_o_corredor_1_corta_a_direito',
               'smoke_desenho_e_corpo_tests::nenhuma_cena_de_smoke_desenha_fora_do_corpo']),
     'IT': (['cargo', 'test', '-p', 'ph2d-physics-ecs', '--test', 'it'],
-           ['nav_custo::mexer_no_custo_refaz_o_caminho_de_quem_anda']),
+           ['nav_custo::mexer_no_custo_refaz_o_caminho_de_quem_anda',
+            'nav_custo::uma_area_mais_barata_anda_se_por_dentro',
+            'nav_custo::um_custo_que_atravessa_o_1_troca_o_recuo_da_area']),
+    'NAVMESH': (['cargo', 'test', '-p', 'ph2d-navmesh', '--test', 'it'],
+                ['areas::a_area_mais_barata_encolhe_pelo_raio_para_dentro']),
 }
 OBS_DO_GRUPO = {
     'LAMA': ['COMP'],
     'CUSTO': ['IT', 'COMP'],
     'CANTO': ['COMP'],
     'USOS': ['COMP'],
+    'DENTRO': ['IT', 'NAVMESH', 'COMP'],
 }
 
 # (nome, grupo, ficheiro, âncora, substituição)
@@ -71,8 +80,8 @@ M = [
     ('K1 o canto só no passo do executor (o R2 do report do dono)', 'CANTO', AG,
      'pub const ALCANCE_DO_CANTO: f64 = 0.1;',
      'pub const ALCANCE_DO_CANTO: f64 = 0.0;'),
-    ('U1 as pedras custam como o chão', 'USOS', USOS,
-     'pub const CUSTO_TERRENO: f32 = 4.0;', 'pub const CUSTO_TERRENO: f32 = 1.0;'),
+    ('U1 a estrada custa como o chão', 'USOS', USOS,
+     'pub const CUSTO_ESTRADA: f32 = 0.3;', 'pub const CUSTO_ESTRADA: f32 = 1.0;'),
     ('U2 o rio custa como o chão', 'USOS', USOS,
      'pub const CUSTO_RIO: f32 = 6.0;', 'pub const CUSTO_RIO: f32 = 1.0;'),
     ('U3 o canteiro deixa de ser proibido', 'USOS', USOS,
@@ -81,6 +90,14 @@ M = [
      'pub const CUSTO_LUZ: f32 = 8.0;', 'pub const CUSTO_LUZ: f32 = 1.0;'),
     ('U5 o roteador sem a cena 6', 'USOS', NS,
      '    if nivel == 6 {', '    if nivel == 66 {'),
+    ('D1 a ponte nunca marca uma área barata', 'DENTRO', CUSTO_PONTE,
+     'dentro: custo < 1.0,', 'dentro: false,'),
+    ('D2 a malha ignora o recuo para dentro', 'DENTRO', INFLATE,
+     '    if area.dentro {', '    if false {'),
+    ('D3 o mosaico não se refaz quando o recuo troca', 'DENTRO', TILES,
+     '                    ^ u64::from(a.dentro).rotate_left(41)\n', ''),
+    ('D4 a erosão sai da forma', 'DENTRO', INFLATE,
+     '        let k = raio - margin;', '        let k = raio + margin;'),
 ]
 
 so = set(os.environ['MUTA_SO'].split(',')) if os.environ.get('MUTA_SO') else None

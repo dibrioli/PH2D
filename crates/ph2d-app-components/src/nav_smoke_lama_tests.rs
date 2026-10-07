@@ -102,8 +102,8 @@ fn a_cena_tem_as_pecas_que_o_roteiro_nomeia() {
     let mut q = sim.world_mut().try_query::<&Name>().expect("nomes");
     let n: Vec<String> = q.iter(sim.world()).map(|n| n.as_str().to_owned()).collect();
     for peca in [
-        "Light Mud",
-        "Heavy Mud",
+        "Low Cost Area",
+        "High Cost Area",
         "Wall Middle",
         "Runner L1",
         "Runner R3",

@@ -324,6 +324,109 @@ fn mexer_no_custo_refaz_o_caminho_de_quem_anda() {
     );
 }
 
+/// ⭐ (W18) **Uma área MAIS BARATA que o chão anda-se por DENTRO** — o corpo inteiro nela (a lei: o custo de
+/// uma posição é o MAIOR debaixo do corpo; `ph2d_navmesh::Area::dentro`). Uma estrada em ∩ a `Cost 0.3`
+/// por cima do alvo: o agente sobe por ela e desce, com o corpo DENTRO de uma das três tiras. Medido antes
+/// da lei: a área recuava para FORA e o caminho seguia a berma por fora (`0,25 m` dela, a cena `=6`). O
+/// CONTROLO: a mesma estrada a `Cost 1` — vai a direito, por baixo dela.
+#[test]
+fn uma_area_mais_barata_anda_se_por_dentro() {
+    const TIRAS: [((f32, f32), (f32, f32)); 3] = [
+        ((-5.0, 2.3), (0.4, 1.7)),
+        ((0.0, 3.6), (5.4, 0.4)),
+        ((5.0, 2.3), (0.4, 1.7)),
+    ];
+    // Quanto o centro está DENTRO da tira (negativo = fora).
+    let fundo = |p: (f32, f32), (c, h): ((f32, f32), (f32, f32))| {
+        (h.0 - (p.0 - c.0).abs()).min(h.1 - (p.1 - c.1).abs())
+    };
+    let corre_com = |custo: f32| {
+        let mut sim = SimWorld::new();
+        regiao(&mut sim);
+        for (i, &(c, h)) in TIRAS.iter().enumerate() {
+            let e = caixa(&mut sim, &format!("Estrada {i}"), c, h, true);
+            sim.world_mut().entity_mut(e).insert(NavCostArea {
+                cost: custo,
+                forbidden: false,
+            });
+        }
+        marco(&mut sim, "Alvo", (5.0, 0.0));
+        let quem = agente(&mut sim, (-5.0, 0.0), "Alvo");
+        let mut b = PhysicsBridge::new();
+        let caminho = corre(&mut sim, &mut b, quem, 900);
+        let chegou = b.nav_agent(quem).map(|r| r.status) == Some(Status::Arrived);
+        let por_cima = caminho
+            .iter()
+            .filter(|&&p| TIRAS.iter().any(|&t| fundo(p, t) >= R - 0.02))
+            .count();
+        let alto = caminho.iter().map(|p| p.1).fold(f32::MIN, f32::max);
+        (por_cima, alto, chegou)
+    };
+    let (por_cima, alto, chegou) = corre_com(0.3);
+    let (por_cima_ctl, alto_ctl, _) = corre_com(1.0);
+    eprintln!(
+        "Cost 0.3: {por_cima} tiques com o corpo inteiro na estrada, subiu a {alto:.2} · CONTROLO: {por_cima_ctl}, {alto_ctl:.2}"
+    );
+    assert!(chegou, "não chegou ao alvo");
+    assert!(alto > 3.0, "a fixtura: o caminho barato é pela estrada de cima ({alto})");
+    assert!(
+        por_cima >= 60,
+        "o corpo não andou POR CIMA da estrada ({por_cima} tiques)"
+    );
+    assert!(
+        por_cima_ctl == 0 && alto_ctl < 0.5,
+        "o CONTROLO subiu à estrada ({por_cima_ctl} tiques, {alto_ctl})"
+    );
+}
+
+/// ⭐ (W18) **Um custo que atravessa o `1` com o agente a andar troca o recuo da área** — de DENTRO (barata:
+/// o corpo inteiro nela) para FORA (cara: o corpo paga-a quando lhe toca), e o mosaico refaz-se (a
+/// assinatura dele leva `Area::dentro`). A lama a `0.3` atravessa-se a direito; no tique `20`, ainda antes
+/// dela, passa a `10`: ele contorna-a sem lhe TOCAR com o corpo. Sem a malha refeita, o custo `10` ficava na
+/// área encolhida e o corpo passava pela margem dela.
+#[test]
+fn um_custo_que_atravessa_o_1_troca_o_recuo_da_area() {
+    let (c, h) = ((0.0, 0.0), (1.5, 2.0));
+    let corre_com = |muda: bool| {
+        let (mut sim, mut b, quem) = cena_lama(NavCostArea {
+            cost: 0.3,
+            forbidden: false,
+        });
+        let lama = sim
+            .world_mut()
+            .query::<(Entity, &NavCostArea)>()
+            .iter(sim.world())
+            .map(|(e, _)| e)
+            .next()
+            .expect("a lama");
+        let antes = corre(&mut sim, &mut b, quem, 20);
+        if muda && let Some(mut a) = sim.world_mut().get_mut::<NavCostArea>(lama) {
+            a.cost = 10.0;
+        }
+        let depois: Vec<(f32, f32)> = (21..=600)
+            .map(|t| {
+                b.dispatch(&mut sim, true, t);
+                pos(&sim, quem)
+            })
+            .collect();
+        let chegou = b.nav_agent(quem).map(|r| r.status) == Some(Status::Arrived);
+        let mais_perto = depois
+            .iter()
+            .map(|&p| ao_rect(p, c, h))
+            .fold(f32::MAX, f32::min);
+        (pisou(&antes, c, h), mais_perto, chegou)
+    };
+    let (antes, mais_perto, chegou) = corre_com(true);
+    assert!(!antes, "a fixtura: no tique 20 ainda não chegou à lama");
+    assert!(chegou, "não chegou ao alvo");
+    assert!(
+        mais_perto >= R - 0.02,
+        "o corpo tocou a lama a 10 (o centro a {mais_perto} dela; o raio é {R})"
+    );
+    let (_, mais_perto_ctl, _) = corre_com(false);
+    assert_eq!(mais_perto_ctl, 0.0, "o CONTROLO (a 0.3) não a atravessou");
+}
+
 /// Duas salas separadas por uma parede maciça, um portal em cada uma.
 fn cena_portal(com_atalho: bool) -> (SimWorld, PhysicsBridge, Entity, Entity) {
     let mut sim = SimWorld::new();

@@ -61,6 +61,44 @@ pub fn inflate(shape: &Shape, r: f64, corner: Corner, n: u32) -> Vec<P> {
     }
 }
 
+/// ⭐ (W18) Uma ÁREA de custo pelo raio do agente: para FORA ([`inflate`]) ou, uma mais barata que o chão,
+/// para DENTRO ([`erode`]) — a lei de [`crate::Area`].
+pub fn recua(area: &crate::Area, r: f64, corner: Corner, n: u32) -> Vec<P> {
+    if area.dentro {
+        erode(&area.shape, r, n)
+    } else {
+        inflate(&area.shape, r, corner, n)
+    }
+}
+
+/// ⭐ (W18) A forma ENCOLHIDA pelo raio: onde o CENTRO de um disco de raio `r` o deixa inteiro dentro dela.
+/// CONTIDA na verdadeira (o polígono do disco é INSCRITO, e uma unidade da grelha de margem) — o desconto
+/// de uma área mais barata nunca vale com o corpo a sair dela. Vazio se nenhum corpo cabe.
+pub fn erode(shape: &Shape, r: f64, n: u32) -> Vec<P> {
+    let (dirs, _) = disk_dirs(n);
+    let margin = 1.0 / SCALE;
+    let inscrito = |pts: &[V2], raio: f64| {
+        if raio <= margin {
+            return Vec::new();
+        }
+        let k = raio - margin;
+        let anel: Vec<P> = pts
+            .iter()
+            .flat_map(|&p| {
+                dirs.iter()
+                    .map(move |&d| to_lattice([p[0] + d[0] * k, p[1] + d[1] * k]))
+            })
+            .collect();
+        hull(anel)
+    };
+    let anel = match shape {
+        Shape::Circle { center, radius } => inscrito(&[*center], radius - r),
+        Shape::Capsule { a, b, radius } => inscrito(&[*a, *b], radius - r),
+        Shape::Convex(pts) => inset_region(pts, r.max(0.0) + margin),
+    };
+    if anel.len() < 3 { Vec::new() } else { anel }
+}
+
 /// O fecho de `{pᵢ + R·uₖ}`: a soma de Minkowski de um convexo com o polígono circunscrito.
 fn sum_with_disk(pts: &[V2], r: f64, dirs: &[V2], sec: f64, margin: f64) -> Vec<P> {
     if r <= 0.0 {

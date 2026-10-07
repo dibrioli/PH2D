@@ -222,6 +222,7 @@ impl PainterTool {
         self.heights = doc.heights;
         self.mats = doc.mats;
         self.vidros = doc.vidros;
+        self.vidro_congelado = Default::default();
         self.covers = doc.covers;
         self.papel = doc.papel;
         self.drop_live_relief();

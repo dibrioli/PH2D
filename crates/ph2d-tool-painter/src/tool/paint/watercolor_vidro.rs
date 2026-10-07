@@ -9,8 +9,8 @@ use super::*;
 use crate::compositor::vidro::Vidro;
 use std::sync::Weak;
 
-/// A base congelada e o vidro dela.
-type BaseCongelada = (Weak<Vec<u8>>, Arc<Vec<Vidro>>);
+/// A base congelada (e a camada) e o vidro dela.
+pub(super) type BaseCongelada = (Weak<Vec<u8>>, RtLayerId, Arc<Vec<Vidro>>);
 /// O plano do vidro aberto para escrita e o vidro congelado da base.
 pub(super) type PlanoEBase = (Arc<Vec<Vidro>>, Arc<Vec<Vidro>>);
 /// O chão (o `Weak` dele) e o chão preto que lhe corresponde (`None` = o preto puro).
@@ -20,7 +20,10 @@ type ChaoCongelado = (Weak<Vec<u8>>, Option<Arc<Vec<u8>>>);
 /// seguramos), então uma base nova congela de novo e a mesma base de uma sessão molhada reaproveita.
 #[derive(Default)]
 pub(crate) struct VidroCongelado {
-    base: Option<BaseCongelada>,
+    /// A base da aguada e a do Wet Paint, cada uma no seu lugar: os dois meios podem ter sessões vivas
+    /// ao mesmo tempo, e um lugar só voltava a congelar a partir de um plano já escrito.
+    pub(super) aguada: Option<BaseCongelada>,
+    pub(super) molhada: Option<BaseCongelada>,
     chao_preto: Option<ChaoCongelado>,
 }
 
@@ -48,8 +51,13 @@ impl PainterTool {
             .active()
             .filter(|&id| !self.layers.is_mask(id))?;
         let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
-        let (plano, vbase) =
-            abre_o_vidro(&mut self.vidros, &mut self.vidro_congelado, camada, n, base)?;
+        let (plano, vbase) = abre_o_vidro(
+            &mut self.vidros,
+            &mut self.vidro_congelado.aguada,
+            camada,
+            n,
+            base,
+        )?;
         let fresca = |w: &Weak<Vec<u8>>, a: &Arc<Vec<u8>>| Weak::ptr_eq(w, &Arc::downgrade(a));
         let chao_preto = match &self.vidro_congelado.chao_preto {
             Some((w, c)) if fresca(w, backdrop) => c.clone(),
@@ -136,17 +144,11 @@ impl PainterTool {
                     );
                     c = Some(c.map_or((x, x), |(a, b)| (a.min(x), b.max(x))));
                 }
-                c.map(|(a, b)| (a, b, y))
+                c.map(|(a, b)| (a, b, y, y))
             })
             .filter_map(|c| c)
-            .reduce_with(|p, q| (p.0.min(q.0), p.1.max(q.1), p.2.max(q.2)));
-        let lo = (y0..y1).find(|&y| {
-            (x0..x1).any(|x| {
-                pantes[(y * w + x) * 4..(y * w + x) * 4 + 4]
-                    != tela[(y * w + x) * 4..(y * w + x) * 4 + 4]
-            })
-        })?;
-        caixa.map(|(a, b, hi)| Region {
+            .reduce_with(|p, q| (p.0.min(q.0), p.1.max(q.1), p.2.min(q.2), p.3.max(q.3)));
+        caixa.map(|(a, b, lo, hi)| Region {
             x: a as u32,
             y: lo as u32,
             w: (b - a + 1) as u32,
@@ -224,7 +226,7 @@ fn cobertura_do_over(o: &[u8], px: &[u8], cor: [f32; 3]) -> f32 {
 /// campos e não por `&mut self`: o composite do Wet Paint chama-o com a sessão emprestada.
 pub(super) fn abre_o_vidro(
     vidros: &mut crate::compositor::vidro::Vidros,
-    congelado: &mut VidroCongelado,
+    congelado: &mut Option<BaseCongelada>,
     camada: RtLayerId,
     n: usize,
     base: &Arc<Vec<u8>>,
@@ -236,10 +238,14 @@ pub(super) fn abre_o_vidro(
         .remove(&camada)
         .filter(|p| p.len() == n)
         .unwrap_or_else(|| Arc::new(vec![[0u8; 7]; n]));
-    let vbase = match &congelado.base {
-        Some((w, v)) if Weak::ptr_eq(w, &Arc::downgrade(base)) && v.len() == n => Arc::clone(v),
+    let vbase = match congelado {
+        Some((w, c, v))
+            if *c == camada && Weak::ptr_eq(w, &Arc::downgrade(base)) && v.len() == n =>
+        {
+            Arc::clone(v)
+        }
         _ => {
-            congelado.base = Some((Arc::downgrade(base), Arc::clone(&plano)));
+            *congelado = Some((Arc::downgrade(base), camada, Arc::clone(&plano)));
             Arc::clone(&plano)
         }
     };

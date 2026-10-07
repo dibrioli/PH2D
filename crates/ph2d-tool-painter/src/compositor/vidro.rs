@@ -140,3 +140,59 @@ pub(crate) fn composite_region_sobre_o_papel(
         });
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compositor::{LayerImage, MapPixelSource};
+
+    /// **Um desfoque por cima da aguada não leva a transparência do papel acima de 1** (auditoria do
+    /// fecho, F1): o ajuste espacial muda a cobertura, e a ABSORÇÃO de cada canal segue-a — escalar a
+    /// transparência passava de 1 no canal que o vidro deixa passar (pontos escuros na borda
+    /// desfocada sobre o papel de cor).
+    #[test]
+    fn um_desfoque_por_cima_da_aguada_nao_leva_o_papel_acima_de_um() {
+        use ph2d_painter_effects::adjustments::AdjustmentKind;
+        let (w, h) = (24u32, 8u32);
+        let mut s = LayerStack::new();
+        let base = s.add_raster("aguada", w, h).expect("a camada");
+        let desfoque = s
+            .add_adjustment(AdjustmentKind::GaussianBlur)
+            .expect("o desfoque");
+        s.adjustment_mut(desfoque).expect("o ajuste").params =
+            ph2d_painter_effects::adjustments::AdjustmentParams::GaussianBlur(
+                ph2d_painter_effects::adjustments::GaussianBlurParams { radius: 3.0 },
+            );
+        let n = (w * h) as usize;
+        let mut rgba = vec![0u8; n * 4];
+        let mut plano = vec![[0u8; 7]; n];
+        for y in 0..h as usize {
+            for x in 0..12 {
+                let i = y * w as usize + x;
+                let px = [255, 84, 84, 168];
+                rgba[i * 4..i * 4 + 4].copy_from_slice(&px);
+                plano[i] = sela(px, [20, 168, 168]); // o vermelho passa, o verde e o azul não
+            }
+        }
+        let mut src = MapPixelSource::default();
+        src.insert(
+            base,
+            LayerImage {
+                width: w,
+                height: h,
+                rgba8: rgba,
+            },
+        );
+        let vidros: Vidros = [(base, Arc::new(plano))].into_iter().collect();
+        let regiao = Region { x: 0, y: 0, w, h };
+        let (_, t) =
+            super::super::compose::composite_region_linear(&s, &src, w, h, regiao, Some(&vidros));
+        let t = t.expect("a transparência");
+        let pior = t.iter().flatten().copied().fold(0.0f32, f32::max);
+        assert!(pior <= 1.0, "a transparência do papel passou de 1: {pior}");
+        assert!(
+            t.iter().any(|c| c[0] > c[1] + 0.1),
+            "controlo: o vidro deixa passar o vermelho mais que o verde"
+        );
+    }
+}

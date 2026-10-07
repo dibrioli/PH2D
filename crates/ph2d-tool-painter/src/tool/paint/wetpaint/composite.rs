@@ -155,7 +155,7 @@ impl PainterTool {
         let vidro = camada.and_then(|c| {
             super::watercolor_vidro::abre_o_vidro(
                 &mut self.vidros,
-                &mut self.vidro_congelado,
+                &mut self.vidro_congelado.molhada,
                 c,
                 w * h,
                 &sess.base,
@@ -292,7 +292,16 @@ impl PainterTool {
                         // buffer, served by `wet_splat_gates`' wet-session arm).
                         row[lo + 3] = base[o + 3];
                     }
-                    if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase) {
+                    if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase)
+                        && alock_on
+                    {
+                        // Com o alfa preso à base a cobertura não muda: o texel novo, os alfas da base.
+                        let px4 = [row[lo], row[lo + 1], row[lo + 2], row[lo + 3]];
+                        v[px] = crate::compositor::vidro::sela(
+                            px4,
+                            crate::compositor::vidro::alfas(&base[o..o + 4], &b[o / 4]),
+                        );
+                    } else if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase) {
                         let antes = crate::compositor::vidro::alfas(&base[o..o + 4], &b[o / 4]);
                         let px4 = [row[lo], row[lo + 1], row[lo + 2], row[lo + 3]];
                         v[px] = crate::compositor::vidro::sela(

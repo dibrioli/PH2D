@@ -56,6 +56,7 @@ impl RasterEditTool for PainterTool {
         self.covers.clear();
         self.mats.clear(); // o material é da tinta DAQUELE documento — some com ela
         self.vidros.clear(); // ...e o vidro, que sela os píxeis dele
+        self.vidro_congelado = Default::default();
         self.drop_live_relief();
         self.layers_revision = self.layers_revision.wrapping_add(1);
         // A different working canvas — undo/redo over the OLD model is meaningless on the NEW one.

@@ -409,22 +409,15 @@
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
 ///
-/// # `185 → 186` — **o PAPEL do documento pintado** (`line/PainterWatercolor`, 2026-10-05; integrada sobre o `185` dos quadros em 2026-10-07)
+/// # `185 → 186` — **o PAPEL e o VIDRO do documento pintado** (`line/PainterWatercolor`, 2026-10-05 → 07;
+/// integrada sobre o `185` dos quadros em 2026-10-07)
 ///
-/// `PaintedDocument` ganha `papel: Option<[u8; 3]>` no FIM (pedido do dono: a cor do papel nos quatro
-/// meios, invisível nas camadas). As migrações congeladas (v95, v128) passam a ler o documento pelo
-/// `PaintedDocumentSemPapel` (o layout de antes) e nascem sem papel. ⛔ **Sem degrau de migração**,
-/// pela decisão de sempre — um v185 é recusado em voz alta.
-///
-/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-///
-/// # `186 → 187` — **o VIDRO da aguada** (`line/PainterWatercolor`, 2026-10-07)
-///
-/// `PaintedDocument` ganha `vidros` no FIM (pedido do dono: o estado da arte do vidrado — a aguada é
-/// um filtro sobre o papel de cor, doc 48, BUGS #46): o alfa de cada canal dos texels que a aguada
-/// pintou, selado com o píxel. As migrações congeladas (v95, v128) continuam a ler pelo
-/// `PaintedDocumentSemPapel` e nascem sem vidro. ⛔ **Sem degrau de migração**, pela decisão de
-/// sempre — um v186 é recusado em voz alta.
+/// `PaintedDocument` ganha, no FIM, `papel: Option<[u8; 3]>` (pedido do dono: a cor do papel nos
+/// quatro meios, invisível nas camadas) e `vidros` — o alfa de cada canal dos texels que a aguada
+/// pintou, selado com o píxel (o estado da arte do vidrado: a aguada é um filtro sobre o papel de
+/// cor, doc 48, BUGS #46). As migrações congeladas (v95, v128) passam a ler o documento pelo
+/// `PaintedDocumentSemPapel` (o layout de antes) e nascem sem papel e sem vidro. ⛔ **Sem degrau de
+/// migração**, pela decisão de sempre — um v185 é recusado em voz alta.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 187;
+pub(crate) const PROJECT_SCHEMA: u32 = 186;

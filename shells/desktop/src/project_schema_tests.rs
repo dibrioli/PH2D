@@ -299,11 +299,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `VecObject` deixa o registo (ECS `-1`, espelhos `-1`). A tripla NÃO vê este degrau.
         // ⚠️ **`185` em 2026-10-07** (`line/MiroClone`, W0) — os QUADROS: `boards: Vec<u8>` no fim do
         // `ProjectFile`, ZERO componentes registados. A tripla NÃO vê este degrau.
-        // ⚠️ **`186` em 2026-10-07** (`line/PainterWatercolor`, nascida 05/10) — o PAPEL do documento pintado:
-        // `PaintedDocument::papel` no fim. A tripla NÃO vê este degrau.
-        // ⚠️ **`187` em 2026-10-07** (`line/PainterWatercolor`) — o VIDRO da aguada:
-        // `PaintedDocument::vidros` no fim. A tripla NÃO vê este degrau.
-        (187, 13, 22),
+        // ⚠️ **`186` em 2026-10-07** (`line/PainterWatercolor`, 05/10 → 07/10) — o PAPEL e o VIDRO do
+        // documento pintado: `PaintedDocument::papel` e `::vidros` no fim. A tripla NÃO vê este degrau.
+        (186, 13, 22),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

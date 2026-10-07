@@ -620,11 +620,11 @@ impl PainterTool {
                     // Paint gates (selection / protection): keep-lerp the painted bytes toward the
                     // frozen base — the canvas gates' exact restore semantics, warp/diffusion-proof
                     // (see the gate hoist above the loop). Ungated (default) writes paint verbatim.
-                    let mut tocado = alock_on;
+                    let mut mantem = 1.0f32;
                     if gate_on {
                         let keep = watercolor_accum::splat_keep(gsel, gprot, None, gy * fw + gx);
                         if keep < 1.0 {
-                            tocado = true;
+                            mantem = keep;
                             for (c, p) in px.iter_mut().enumerate() {
                                 let painted = f32::from(*p);
                                 let orig = f32::from(base[gi + c]);
@@ -643,14 +643,21 @@ impl PainterTool {
                     row[gx * 4 + 1] = px[1];
                     row[gx * 4 + 2] = px[2];
                     row[gx * 4 + 3] = px[3];
-                    // Um texel que a seleção, a proteção ou o alpha-lock retocou fica com o vidro da base
-                    // (o selo não bate: o texel é tinta de um alfa só).
+                    // A seleção e a proteção misturam o texel com a base por `keep`: os alfas misturam-se
+                    // na mesma proporção. Com o alpha-lock a cobertura não muda: os alfas são os da base.
                     if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase) {
-                        v[gx] = if tocado {
-                            b[gy * fw + gx]
+                        let da_base =
+                            crate::compositor::vidro::alfas(&base[gi..gi + 4], &b[gy * fw + gx]);
+                        let alfas = if alock_on {
+                            da_base
                         } else {
-                            vidro_do(px, b)
+                            let novo = vidro_do(px, b);
+                            core::array::from_fn(|c| {
+                                let (a0, a1) = (f32::from(da_base[c]), f32::from(novo[4 + c]));
+                                (a0 + (a1 - a0) * mantem).round() as u8
+                            })
                         };
+                        v[gx] = crate::compositor::vidro::sela(px, alfas);
                     }
                 }
             });

@@ -611,14 +611,16 @@ fn composite_into(
                                 base[2] + (result[2] - base[2]) * t,
                                 base[3] + (result[3] - base[3]) * t,
                             ];
-                            // A cobertura espalhou-se: o papel por baixo segue-a (na proporção).
+                            // A cobertura espalhou-se: a ABSORÇÃO de cada canal segue-a na proporção do
+                            // alfa (escalar a transparência passaria de 1 num canal que o vidro deixa
+                            // passar — pontos escuros na borda desfocada).
                             if let Some((_, tp)) = vidro.as_mut() {
-                                let (de, para) = (1.0 - base[3], 1.0 - acc[i][3]);
+                                let (a0, a1) = (base[3], acc[i][3]);
                                 for tc in tp[i].iter_mut() {
-                                    *tc = if de > 1e-4 {
-                                        *tc * para / de
+                                    *tc = if a0 > 1e-4 {
+                                        (1.0 - (1.0 - *tc) * a1 / a0).clamp(0.0, 1.0)
                                     } else {
-                                        tc.max(para)
+                                        tc.min(1.0 - a1)
                                     };
                                 }
                             }

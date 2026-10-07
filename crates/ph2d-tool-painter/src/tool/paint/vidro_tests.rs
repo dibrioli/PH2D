@@ -514,3 +514,31 @@ fn diag_o_preco_do_vidro() {
     }
     eprintln!("[vidro] loadavg {}", carga().trim());
 }
+
+/// **A SELEÇÃO TAMBÉM GUARDA O VIDRO** (auditoria do fecho): uma aguada que atravessa a borda de uma
+/// seleção — fora dela o texel volta à base, e o vidro com ele. No papel castanho, a metade de fora da
+/// seleção mostra só o papel (e a aguada pinta a de dentro).
+#[test]
+fn a_selecao_tambem_guarda_o_vidro() {
+    let mut t = novo(PaintMedia::Watercolor, 14.0);
+    t.set_rect_selection(0, 0, 64, LADO as u32);
+    t.set_brush_color_srgb8([255, 0, 0]);
+    pinta_com_a_cor(&mut t, 1.0, &(GESTOS[0].1)());
+    escolhe_o_papel(&mut t, PAPEL);
+    let a = imagem(&mut t);
+    let fora = (0..LADO)
+        .flat_map(|y| (66..LADO).map(move |x| (y * LADO + x) * 4))
+        .map(|k| {
+            (0..3)
+                .map(|c| a[k + c].abs_diff(PAPEL[c]))
+                .max()
+                .unwrap_or(0)
+        })
+        .max()
+        .unwrap_or(0);
+    assert!(fora <= 1, "fora da seleção o papel escureceu {fora} níveis");
+    let dentro = (0..LADO)
+        .flat_map(|y| (20..60).map(move |x| (y * LADO + x) * 4))
+        .any(|k| a[k..k + 3] != PAPEL);
+    assert!(dentro, "controlo: dentro da seleção a aguada pintou");
+}

@@ -301,3 +301,76 @@ fn corre_sem_traco() -> Vec<u8> {
     escolhe_o_papel(&mut t, PAPEL);
     imagem(&mut t)
 }
+
+/// **COM O ALFA PRESO, O WET PAINT DEIXA O VIDRO DA AGUADA COMO ESTAVA** (auditoria do fecho, R3): o
+/// alpha-lock deposita a cor na tinta que já existe sem mudar a cobertura — o texel fica com o vidro
+/// da base, como na aguada.
+#[test]
+fn com_o_alfa_preso_o_wet_paint_deixa_o_vidro() {
+    let mut t = novo(PaintMedia::Watercolor, 14.0);
+    t.set_brush_color_srgb8([255, 0, 0]);
+    pinta_com_a_cor(&mut t, 1.0, &(GESTOS[2].1)());
+    t.dry_session_now();
+    let camada = t.layers.active().expect("a camada");
+    t.set_layer_alpha_locked(camada, true);
+    let (antes, vantes) = (t.canvas_rgba.to_vec(), t.vidros[&camada].clone());
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    t.set_brush_size_px(16.0);
+    t.set_brush_color_srgb8([30, 60, 220]);
+    let pts = (GESTOS[1].1)();
+    t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+    for p in &pts[1..] {
+        t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+        t.paint_tick(1.0 / 60.0);
+    }
+    let v = &t.vidros[&camada];
+    let mut tocados = 0;
+    for k in 0..LADO * LADO {
+        if antes[k * 4..k * 4 + 4] == t.canvas_rgba[k * 4..k * 4 + 4] {
+            continue;
+        }
+        tocados += 1;
+        assert_eq!(
+            crate::compositor::vidro::alfas(&t.canvas_rgba[k * 4..k * 4 + 4], &v[k]),
+            crate::compositor::vidro::alfas(&antes[k * 4..k * 4 + 4], &vantes[k]),
+            "texel {k}: com o alfa preso o Wet Paint mudou o vidro"
+        );
+    }
+    assert!(
+        tocados > 50,
+        "controlo: o fluido tingiu a aguada ({tocados} texels)"
+    );
+}
+
+/// **COM O ALFA PRESO, A AGUADA POR CIMA DE UMA AGUADA SECA DEIXA O VIDRO DELA** (auditoria do fecho):
+/// a cor deposita-se na tinta que existe sem mudar a cobertura — o texel novo, os alfas da base.
+#[test]
+fn com_o_alfa_preso_a_aguada_deixa_o_vidro() {
+    let mut t = novo(PaintMedia::Watercolor, 14.0);
+    t.set_brush_color_srgb8([255, 0, 0]);
+    pinta_com_a_cor(&mut t, 1.0, &(GESTOS[2].1)());
+    t.dry_session_now();
+    let camada = t.layers.active().expect("a camada");
+    t.set_layer_alpha_locked(camada, true);
+    let (antes, vantes) = (t.canvas_rgba.to_vec(), t.vidros[&camada].clone());
+    t.set_brush_color_srgb8([30, 60, 220]);
+    pinta_com_a_cor(&mut t, 1.0, &(GESTOS[1].1)());
+    let v = &t.vidros[&camada];
+    let mut tocados = 0;
+    for k in 0..LADO * LADO {
+        if antes[k * 4..k * 4 + 4] == t.canvas_rgba[k * 4..k * 4 + 4] {
+            continue;
+        }
+        tocados += 1;
+        assert_eq!(
+            crate::compositor::vidro::alfas(&t.canvas_rgba[k * 4..k * 4 + 4], &v[k]),
+            crate::compositor::vidro::alfas(&antes[k * 4..k * 4 + 4], &vantes[k]),
+            "texel {k}: com o alfa preso a aguada mudou o vidro"
+        );
+    }
+    assert!(
+        tocados > 50,
+        "controlo: a aguada tingiu a de baixo ({tocados} texels)"
+    );
+}

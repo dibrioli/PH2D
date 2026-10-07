@@ -1,0 +1,32 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-07T17:12:52.342Z",
+  "input": "rascunho_setas.excalidraw",
+  "input_sha256": "781fbd078a22f4a309065c5adafc185d396456237f9d5c9c4b6f1f547b28eb32",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 22920,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "rascunho_setas.svg": "df4b6a6b0ee3ce7eac5c5d5447678549da4eb6152b8cee5ef9176168fb26f103",
+    "rascunho_setas.png": "153675e945403017c8a27ae84c9bc1cd2c6678cdbbae8ae1b75648b302498f69",
+    "rascunho_setas.restored.json": "9e7151e1076779ba63072ea1deb1932297aaa0c819f33efd5e2497ad909e759c"
+  }
+}

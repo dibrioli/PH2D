@@ -5199,6 +5199,7 @@ dependencies = [
  "ph2d-vec-connect",
  "ph2d-vec-render",
  "ph2d-vector",
+ "serde_json",
  "wgpu",
 ]
 

@@ -1,0 +1,32 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-07T17:12:52.036Z",
+  "input": "rascunho_espessuras.excalidraw",
+  "input_sha256": "33ad489bccdb9e3774d2f226028c717a6036f9358b83fb1c9936594eef2033a5",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 28394,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "rascunho_espessuras.svg": "9170c82e11027b1dc3191f932078054c0a251c34ba6bbaf38ab31b3285c55709",
+    "rascunho_espessuras.png": "ece7b3358c11fa5a34b77ef67184251c7959c866da19be8bc364cdc2eff00a07",
+    "rascunho_espessuras.restored.json": "0c196ec3fa630144394bb9e82e542a20d898dfb6ad0b60364ea447e3ccf21a25"
+  }
+}

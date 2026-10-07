@@ -1,0 +1,194 @@
+{
+ "type": "excalidraw",
+ "version": 2,
+ "source": "ph2d-miroclone-oracle-input",
+ "ph2d_note": "W4: setas em roughness 1 \u2014 recta, curva de 3 pontos, quebrada sem arredondar, e uma linha",
+ "elements": [
+  {
+   "id": "r50",
+   "type": "arrow",
+   "x": 40,
+   "y": 40,
+   "width": 300,
+   "height": 0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "seed": 5301,
+   "version": 1,
+   "versionNonce": 9050,
+   "isDeleted": false,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 2
+   },
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     300,
+     0
+    ]
+   ],
+   "startBinding": null,
+   "endBinding": null,
+   "startArrowhead": null,
+   "endArrowhead": "arrow",
+   "lastCommittedPoint": null
+  },
+  {
+   "id": "r51",
+   "type": "arrow",
+   "x": 40,
+   "y": 200,
+   "width": 300,
+   "height": 80,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "seed": 5302,
+   "version": 1,
+   "versionNonce": 9051,
+   "isDeleted": false,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 2
+   },
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     150,
+     -80
+    ],
+    [
+     300,
+     0
+    ]
+   ],
+   "startBinding": null,
+   "endBinding": null,
+   "startArrowhead": null,
+   "endArrowhead": "arrow",
+   "lastCommittedPoint": null
+  },
+  {
+   "id": "r52",
+   "type": "arrow",
+   "x": 40,
+   "y": 360,
+   "width": 300,
+   "height": 80,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "seed": 5303,
+   "version": 1,
+   "versionNonce": 9052,
+   "isDeleted": false,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     150,
+     -80
+    ],
+    [
+     300,
+     0
+    ]
+   ],
+   "startBinding": null,
+   "endBinding": null,
+   "startArrowhead": null,
+   "endArrowhead": "arrow",
+   "lastCommittedPoint": null
+  },
+  {
+   "id": "r53",
+   "type": "line",
+   "x": 40,
+   "y": 480,
+   "width": 300,
+   "height": 120,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "seed": 5304,
+   "version": 1,
+   "versionNonce": 9053,
+   "isDeleted": false,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 2
+   },
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     300,
+     120
+    ]
+   ],
+   "startBinding": null,
+   "endBinding": null,
+   "startArrowhead": null,
+   "endArrowhead": null,
+   "lastCommittedPoint": null
+  }
+ ],
+ "appState": {
+  "viewBackgroundColor": "#ffffff"
+ },
+ "files": {}
+}

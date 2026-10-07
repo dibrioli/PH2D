@@ -13,7 +13,10 @@ use ph2d_board_model::{Element, Ink, Pen, Rgba, ShapeType, Style};
 use ph2d_board_rough::freehand;
 use ph2d_board_rough::rough::{self, FillStyle, Op, OpSet, Seg, SetKind};
 use ph2d_tokens::{ColorToken, Theme};
-use ph2d_vector::{Affine, BezPath, Brush, Cap, Color, Join, PathEl, Point, Stroke, VectorScene};
+use ph2d_vector::{
+    Affine, BezPath, Brush, Cap, Color, Join, ParamCurve, PathEl, PathSeg, Point, Stroke,
+    VectorScene,
+};
 
 use crate::{KEEP_FRAMES, doc_color, style_stroke};
 
@@ -127,15 +130,36 @@ fn collect(sets: Vec<OpSet>, into: &mut Rough) {
     }
 }
 
-/// As opções do rough.js de um elemento: a mão do Excalidraw «artista» (`roughness 1`, `bowing 1`),
-/// a espessura do estilo, o preenchimento CHEIO de borda tremida e a SEMENTE do elemento.
+/// O tremor do rascunho: o «artista» do Excalidraw.
+const ROUGHNESS: f64 = 1.0;
+
+/// ⭐ O tremor EFECTIVO de uma forma `w × h` — **medido** no Excalidraw 0.18.1 por ajuste exacto do
+/// `d` dos SVG dele com a mesma semente (`ferramentas/excalidraw_oracle/ajuste/`, entradas
+/// `rascunho_tamanhos`/`limiar*`, 07/10): METADE quando o lado maior é < 50 ou o lado menor é < 20
+/// (49×49 metade, 51×51 inteiro; 19×300 metade, 20×300 inteiro; 60×49 inteiro). Abaixo de 10 o
+/// Excalidraw faz outra coisa (8×8 ≈ ⅓) — não se mediu mais: não há formas tão pequenas no quadro.
+#[must_use]
+pub fn hand_roughness(w: f64, h: f64) -> f64 {
+    let (lo, hi) = (w.abs().min(h.abs()), w.abs().max(h.abs()));
+    if hi < 50.0 || lo < 20.0 {
+        ROUGHNESS * 0.5
+    } else {
+        ROUGHNESS
+    }
+}
+
+/// As opções do rough.js de uma FORMA `w × h`: as do Excalidraw, medidas (as mesmas do `d` dele,
+/// carácter a carácter) — o tremor do tamanho ([`hand_roughness`]), os VÉRTICES PRESOS com tremor
+/// < 2 (as esquinas encontram-se em vez de se cruzarem), a espessura do estilo, a semente.
 ///
-/// ⛔ As riscas (`hachure`) não: a cor da letra de uma forma lê-se sobre o PREENCHIMENTO, e entre as
-/// riscas está o quadro — a mesma letra ficava ilegível num dos dois (foto da cena 5, 07/10: branca
-/// sobre riscas pastel num quadro escuro). Cheio, a letra lê-se igual em rascunho e em final.
-fn options(el: &Element, st: &Style, fill: bool) -> rough::Options {
+/// ⛔ O preenchimento às riscas (`hachure`) não: a cor da letra lê-se sobre o PREENCHIMENTO, e entre
+/// as riscas está o quadro (foto da cena 5, 07/10). Cheio, a letra lê-se igual nos dois modos.
+#[must_use]
+pub fn hand_options(seed: u32, roughness: f64, st: &Style, fill: bool) -> rough::Options {
     rough::Options {
-        seed: el.seed(),
+        seed,
+        roughness,
+        preserve_vertices: roughness < 2.0,
         stroke_width: st.stroke_width.max(1.0),
         fill: fill && st.fill.is_some(),
         fill_style: FillStyle::Solid,
@@ -144,23 +168,105 @@ fn options(el: &Element, st: &Style, fill: bool) -> rough::Options {
     }
 }
 
+/// O rectângulo de cantos redondos como o Excalidraw o percorre (medido, `rascunho_cantos`): a
+/// partir do fim do canto de cima à esquerda, quadráticas com o controlo no vértice, raio
+/// [`ph2d_board_geom::corner_radius`].
+fn rounded_rect(w: f64, h: f64) -> Vec<Seg> {
+    let r = ph2d_board_geom::corner_radius(w.min(h));
+    vec![
+        Seg::M([r, 0.0]),
+        Seg::L([w - r, 0.0]),
+        Seg::Q([w, 0.0], [w, r]),
+        Seg::L([w, h - r]),
+        Seg::Q([w, h], [w - r, h]),
+        Seg::L([r, h]),
+        Seg::Q([0.0, h], [0.0, h - r]),
+        Seg::L([0.0, r]),
+        Seg::Q([0.0, 0.0], [r, 0.0]),
+    ]
+}
+
+/// ⭐ Os sets do rascunho de uma forma na caixa LOCAL `w × h`, pelas primitivas do Excalidraw
+/// (medidas): o rectângulo pelo `rectangle` (ou o caminho de cantos redondos), a elipse pelo
+/// `ellipse` com `curveFitting 1`, o losango pelo `polygon` dos quatro vértices; as formas que o
+/// Excalidraw não tem, pelo `path` do contorno, com as mesmas opções.
+#[must_use]
+pub fn hand_shape(
+    kind: ShapeType,
+    round: bool,
+    w: f64,
+    h: f64,
+    o: &Outline,
+    opts: &rough::Options,
+) -> Vec<OpSet> {
+    match (kind, round) {
+        (ShapeType::Rectangle, false) => rough::rectangle(0.0, 0.0, w, h, opts),
+        (ShapeType::Rectangle, true) => rough::path(&rounded_rect(w, h), opts),
+        (ShapeType::Ellipse, _) => rough::ellipse(
+            w / 2.0,
+            h / 2.0,
+            w,
+            h,
+            &rough::Options {
+                curve_fitting: 1.0,
+                ..opts.clone()
+            },
+        ),
+        (ShapeType::Diamond, false) => rough::polygon(
+            &[[w / 2.0, 0.0], [w, h / 2.0], [w / 2.0, h], [0.0, h / 2.0]],
+            opts,
+        ),
+        _ => rough::path(&segs(&o.fill), opts),
+    }
+}
+
 /// O rascunho de uma forma, na caixa LOCAL dela.
 fn rough_shape(el: &Element, kind: ShapeType, st: &Style, o: &Outline) -> Rough {
     let mut r = Rough::default();
-    let opts = options(el, st, true);
-    let sets = if kind == ShapeType::Ellipse {
-        rough::ellipse(el.w / 2.0, el.h / 2.0, el.w, el.h, &opts)
-    } else {
-        rough::path(&segs(&o.fill), &opts)
-    };
-    collect(sets, &mut r);
+    let rough = hand_roughness(el.w, el.h);
+    let opts = hand_options(el.seed(), rough, st, true);
+    collect(hand_shape(kind, st.round, el.w, el.h, o, &opts), &mut r);
     if !o.lines.is_empty() {
         collect(
-            rough::path(&segs(&o.lines), &options(el, st, false)),
+            rough::path(&segs(&o.lines), &hand_options(el.seed(), rough, st, false)),
             &mut r,
         );
     }
     r
+}
+
+/// ⭐ Os sets do rascunho de uma LINHA aberta (a rota de uma seta), pelas primitivas do Excalidraw
+/// (medidas, `rascunho_setas`): só segmentos ⇒ `linearPath` com os vértices presos; com curvas ⇒ a
+/// `curve` pelos pontos (três por cúbica — a curva do Excalidraw passa pelos pontos dela). O tremor
+/// é o inteiro: numa seta o Excalidraw não o reduz pelo tamanho (300×0 treme como 300×300).
+#[must_use]
+pub fn hand_line(path: &BezPath, opts: &rough::Options) -> Vec<OpSet> {
+    let mut pts: Vec<[f64; 2]> = Vec::new();
+    let mut curved = false;
+    for seg in path.segments() {
+        if pts.is_empty() {
+            let p = seg.start();
+            pts.push([p.x, p.y]);
+        }
+        match seg {
+            PathSeg::Line(l) => pts.push([l.p1.x, l.p1.y]),
+            other => {
+                curved = true;
+                for t in [1.0 / 3.0, 2.0 / 3.0, 1.0] {
+                    let p = other.eval(t);
+                    pts.push([p.x, p.y]);
+                }
+            }
+        }
+    }
+    if pts.len() < 2 {
+        return Vec::new();
+    }
+    if curved {
+        rough::curve(&pts, opts)
+    } else {
+        rough::linear_path(&pts, opts)
+    }
 }
 
 /// ⭐ Pinta uma forma em RASCUNHO (o preenchimento e o contorno; o texto é de quem chama).
@@ -235,11 +341,8 @@ pub(crate) fn paint_connector(
     });
     let r = cached(&mut cache.rough, owner, key, frame, || {
         let mut r = Rough::default();
-        let line = rough::Options {
-            fill: false,
-            ..options(el, st, false)
-        };
-        collect(rough::path(&segs(&d.line), &line), &mut r);
+        let line = hand_options(el.seed(), ROUGHNESS, st, false);
+        collect(hand_line(&d.line, &line), &mut r);
         for (i, (p, filled)) in d.heads.iter().enumerate() {
             let o = rough::Options {
                 seed: line.seed.wrapping_add(i as u32 + 1),
@@ -367,3 +470,7 @@ pub(crate) fn paint_laser(
 #[cfg(test)]
 #[path = "sketch_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "sketch_oracle_tests.rs"]
+mod oracle_tests;

@@ -1,0 +1,32 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-07T17:12:52.191Z",
+  "input": "rascunho_cantos.excalidraw",
+  "input_sha256": "04208ad955661b3620dd96e87efa7c6b15d17ff7c8245c0f1052b95a45767ac4",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 30342,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "rascunho_cantos.svg": "998569239f4a70415d0c893bb9e8bed6db78ee2554f557caf25c6fcae994b6ef",
+    "rascunho_cantos.png": "643f5d26dee68a6d7b41d140ac06ab0206a625510123f6cc4886dc12da9851c4",
+    "rascunho_cantos.restored.json": "150c95e85957b89cdd4f7aed9970c6f8a644390cf0fe888a1f5fde820486727c"
+  }
+}

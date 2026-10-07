@@ -62,6 +62,17 @@ iguais às fixtures de `saidas/`. `--sem-semente` desliga a semente (diagnóstic
 
 ## O que já mediu
 
+- ⭐ **As opções do rough.js que o Excalidraw usa no rascunho** (W4, 07/10 — depois do smoke do dono:
+  *«os traços não ficaram tão naturais e belos como do Excalidraw»*). Ajuste EXACTO do `d` (duas
+  casas) dos SVG com sementes fixas (`ajuste/ajusta.mjs`, `ajusta2.mjs`, `cantos.mjs`, `setas.mjs`;
+  entradas `rascunho_*`): **vértices presos** com tremor < 2 (`preserveVertices`); a elipse com
+  `curveFitting 1`; o losango com os vértices a `⌊w/2⌋+1` (um desvio dele); **o tremor a METADE** quando
+  o lado maior < 50 ou o lado menor < 20 (49×49 / 51×51, 19×300 / 20×300, 60×49 inteiro; abaixo de 10
+  outra regra, não medida); a espessura não o muda; o rectângulo de cantos redondos é o caminho de
+  quadráticas a partir de `(r, 0)`; as setas: arredondada = `curve` pelos pontos, de cantos vivos =
+  `linearPath` com os vértices presos, tremor inteiro qualquer que seja o tamanho. Gate:
+  `ph2d-board-render::sketch::oracle_tests` (≥ 50 formas e 4 setas, número a número).
+
 - **A seta em cotovelo NÃO desvia de um obstáculo não ligado:** `seta_cotovelo_obstaculo` — origem
   `(40,160,140×90)`, obstáculo `(280,120,120×170)`, destino `(500,160,140×90)` ⇒ a rota é
   `[[0,0],[320,0]]`, uma recta **através** do obstáculo. Com as caixas desalinhadas

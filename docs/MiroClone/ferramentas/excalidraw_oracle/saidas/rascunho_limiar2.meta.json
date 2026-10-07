@@ -1,0 +1,32 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-07T17:14:00.514Z",
+  "input": "rascunho_limiar2.excalidraw",
+  "input_sha256": "69468b5119e571e42c9ec70fff613dd3737fa9e337d4c1c8192f37ef9d729a4d",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "input_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "api": [
+    "convertToExcalidrawElements(regenerateIds:false) se houver esqueletos",
+    "restoreElements(repairBindings:true)",
+    "exportToSvg(exportPadding:10)",
+    "exportToBlob(image/png, exportScale:2, exportPadding:10)"
+  ],
+  "editor_step": null,
+  "png_bytes": 48108,
+  "png_omitted_over_300KB": false,
+  "fonts_loaded": [],
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "rascunho_limiar2.svg": "e95565ba6c029b5314b3331d297ce1da628a6ede0bd99cd3d81bad6c1361016a",
+    "rascunho_limiar2.png": "787ec9c826cca285034a38c64d03efb4c596e232fc22a6419948158aa745484e",
+    "rascunho_limiar2.restored.json": "4c0786cd4979ca3e46eee485ceb64de1039aaf942fd2428524c3bca6a9505949"
+  }
+}

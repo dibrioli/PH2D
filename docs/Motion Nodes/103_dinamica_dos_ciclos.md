@@ -137,6 +137,19 @@ inventada. Contagens do registry em 2026-09-05.
 | 11 ✅ ([doc 119](119_ciclo_11_a_placa_com_varias_saidas.md)) | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o alvo medido (doc 117) era a cerca de ÂMBITO do multi-sink; ela SAIU (W1–W4) e a varredura achou **três** defeitos de produto que ela escondia, curados. Pela porta do produto, **`95` de `126`** cenas vão à placa. ✅ smoke do dono aprovado na cena `PH2D_MOTION_OBJ_SMOKE=16` (2026-09-23) | (varredura) | — |
 | **12** ([doc 120](120_ciclo_12_os_tectos_confortaveis.md)) | ⚡ **OS TETOS CONFORTÁVEIS** — medido com FORMA e SIMULAÇÃO, nas duas placas (a integrada é o proxy de telemóvel), cena `PH2D_MOTION_OBJ_SMOKE=17`: confortável ≥`65 536` imagens / `32 768` estrelas no desktop, ~`49 152` / ~`16 384` no proxy; acima do limite há um **penhasco** (dívida de tiques). Recomendação técnica: **ficar em `32 768`** até o carimbo ir à placa. ⭐ **E o carimbo FOI à placa** (§8.4–§8.6): o custo das imagens deixou de crescer com o número, e no proxy de telemóvel o Motion a `32 768` foi de `7,30` para **`0,72 ms`** | ✅ **o tecto fica em `32 768`** (o dono mandou seguir sem o mudar) · smokes do dono **aprovados** (§8.5 as imagens e as marcas das posições · §8.6 os cartões, `0,56 ms` de Motion na máquina dele) | — |
 
+> ⚠️ **Estado em 2026-10-07 — os ABERTOS do ciclo 6 fecharam** ([doc 110 §14](110_ciclo_6_valor_e_pulso.md)),
+> por ordem do dono (*«resolver num único ciclo o Ciclo 6 completo»*). A **W1(b)** fechou com DUAS
+> espécies de porta ≠ 0 (o complemento de um `Compact` e a porta projectada do `carry`) e, com ela,
+> o **`sim.spawn` com pulso** na placa (o consumidor que o §8.6 do doc 110 dava como «wave de
+> substrato»): pela porta do produto, **60 → 65** cenas inteiras na placa, a `=117` incluída. O
+> **condutor na placa** foi feito (CPU −37 % num condutor caro). A **W3b** ficou como estava, com
+> CATRACA (zero consumidores partilhados, medido). As **102 400 cópias** (hoje `32 761`) foram
+> RECUSADAS por medição: o comprimento é significado em 5 consumidores, e a costura custa
+> `0,002 ms`. O **RELÓGIO** mediu-se pela porta do produto: o fio custa ~0 na placa e o caminho
+> antigo `2,6×` (não `50×` — esse era de 4,19 M partículas). O vermelho a um ULP era o
+> `value.noise` em espaço de índice; o gate passou a medir o slope. ⏳ Fica nomeado: preparar
+> `value.attribute` + `value.reduce` na placa custa ~0,09 ms de CPU por quadro (doc 110 §14.2).
+>
 > ⚠️ **Estado em 2026-09-20.** O ciclo **9** FECHOU — o dono correu a cena `=120`, seguiu o
 > [tutorial 09](tutoriais/09_coisas_que_se_seguram.pdf) e aprovou (*«smoke OK»*); os **oito** pedidos
 > que ele devolveu pelo caminho estão no [doc 114 §15](114_ciclo_9_rig_e_corpos_moles.md), com a
@@ -198,7 +211,7 @@ inventada. Contagens do registry em 2026-09-05.
 > a **W3b** (três chaves que respondem a perguntas diferentes: `clamp`, `step`, `value` — §9.7) · o
 > **RELÓGIO** da W5 (a residência está medida em `32 de 35`; o tempo não, pela mesma falta de máquina
 > calma do ciclo 5 — §11.5) · e o `value.cursor`/`value.table` a emitirem **102 400 cópias do mesmo
-> número** (§11.4). ⭐ **E os nove `pulse.*` estão no dispositivo sem consumidor**: os três que os
+> número** (§11.4) — ✅ **todos fechados ou recusados com número em 07/10** (nota acima). ⭐ **E os nove `pulse.*` estão no dispositivo sem consumidor**: os três que os
 > gastariam são o `sim.spawn` (contagem de nascimento dependente de dados — wave de substrato), o
 > `motion.strobe` e o `motion.step`, e **os dois últimos são do ciclo 7** ⇒ *o ganho da W2 é cobrado
 > pelo grupo seguinte, não por este* (§8.6).

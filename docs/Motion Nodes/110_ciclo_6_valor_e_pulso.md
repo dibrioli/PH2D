@@ -991,3 +991,50 @@ sorteio da probabilidade é a MESMA busca de posto que o kernel já faz para a t
 `grid → pulse.beat → sim.spawn` `fully_gpu`, paridade ao bit (ids, linhas, colunas herdadas, `vel`),
 e o gate que afirmava a recusa vira o gate da cura (com a nota reescrita, §0.0). **Abandono:** se o
 `vel` não sair ao bit (o trig), o nó fica na CPU com o desvio medido escrito aqui.
+
+### §14.2 — O que se mediu e o que se fez (07/10)
+
+> ⚠️ **Duas correcções ao §14.1, ditas antes do resultado:** o (4) mudou de desenho por medição (o
+> comprimento É significado em 5 consumidores — ver abaixo), e o critério do `vel` no (7) passou
+> de *«ao bit»* para *«o ε do seno parabólico da casa»* (a placa pode fundir `a·b + c`, e o
+> `motion.emitter` vive com o mesmo ε desde sempre). Os dois estão escritos aqui, não escondidos.
+
+**A régua primeiro (1′).** O censo de rota passou a planear pela PORTA DO PRODUTO
+(`plano_do_produto`, a mesma função que o `cook_gpu` chama — uma porta, dois chamadores). Só
+isso moveu três cenas (`=116` e `=65` sobem a inteiras; `=117` sobe a híbrida). E ganhou a secção
+*«portas ≠ 0 na ancestralidade»* — a população real eram **4 cenas, e nenhuma era só do
+`sim.lifetime`**: `=25`, `=26` e a **`=117` do próprio ciclo** estavam presas pelo `carry` do
+`pulse.counter`, e a `=27` pelo `sim.lifetime → sim.spawn`.
+
+| # | resultado | número | gates |
+|---|---|---|---|
+| 1 | ✅ **duas espécies de porta ≠ 0**: o COMPLEMENTO de um `Compact` (`died`/`pulse` do `sim.lifetime`: o passe `rows[i − scan[i]] = i` sobre a MESMA varredura, contagem `n − total` da MESMA leitura de 8 bytes) e a PORTA PROJECTADA (`ProjectedPort`: o kernel do `pulse.counter` escreve `cp_carry`, o sequenciador tira-o da porta 0 e entrega-o na 1 como `pulse`). Um `pre` de porta ≠ 0 recua sempre (o estado só guarda a porta 0) | censo pela porta do produto: **60 → 65** cenas inteiras na placa (`=24 =25 =26 =27 =117`); presas por porta ≠ 0: **4 → 0**; os mortos saem **byte a byte** (96 tiques); o `carry` ao bit nos três modos, com reset | `the_dead_port_is_claimed_by_the_device` · `a_delayed_edge_from_a_complement_port_still_recedes` · `the_dead_leave_on_the_device_as_they_were` · `a_counter_with_its_carry_wired_stays_on_the_device` · `parity_pulse_counter_carry` |
+| 2 | ✅ **o condutor na placa**, por uma porta NOVA (`plan_with_device_drivers`; a `plan()` com mapa vazio continua a lei antiga ao bit): o condutor é estágio antes do consumidor, e o sequenciador copia 4 bytes (`v[0]`) para o campo do uniform depois do `write_buffer`. Só para um consumidor de MAPA PURO (nenhuma lei do hospedeiro lê o param — critério estrutural, o `motion.move` com variantes fica de fora). **Zero leituras de volta; a CPU não coze o condutor** | condutor caro (`reduce(Mean)` do comprimento de `P` de uma grelha viva no tecto), mesmo processo: CPU-lado **0,199 → 0,125 ms** (−37 %); parede com a espera da placa **0,287 → 0,265** (−8 %: a média passa a correr na placa) | `the_device_driver_is_staged_before_its_consumer` · `a_param_a_host_law_reads_is_never_device_driven` · `the_device_driver_reaches_the_uniform_without_the_cpu` · `an_expensive_driver_reaches_the_uniform_without_the_cpu` · `an_empty_device_driver_leaves_the_override_like_the_cpu` · `the_wire_s_driver_never_takes_the_cpu_round_trip` |
+| 3 | ✅ **as chaves FICAM, com catraca** (decisão do §14.1 (3)) | 3 840 ficheiros varridos, **0** leituras partilhadas; mutação a sangrar | `nenhuma_das_tres_chaves_e_lida_por_nome_fora_do_dono` (+ o controlo do precedente `substeps` e o do detector) |
+| 4 | ⛔ **o comprimento NÃO muda — recusado por duas medições.** (a) O CENSO dos 72 consumidores de valor (derivado do registo): **5 dão outra resposta a `1` que a `N` cópias, e não por defeito — o comprimento É o significado** (`pulse.compare`/`pulse.on_change` disparam um evento POR PEÇA; `value.reduce` soma/conta linhas, na CPU e na placa). Logo a porta `in` do cursor/tabela diz *«um por peça»* e não é morta. (b) A cura que sobrava era o TRANSPORTE (1 número a atravessar, expandido na placa) — e a costura de `32 761` cópias custa **0,002 ms** por quadro (0,073 × 0,071) | — | `every_value_port_reads_a_length_one_field_as_its_n_copies` (a lista dos 5 é exacta: um novo reprova, uma cura também) |
+| 4′ | ✅ o censo achou DOIS defeitos de verdade, curados: o `value.wrap` tomava o comprimento só da entrada e perdia a faixa por peça com uma entrada de `1` (a regra 1→N da casa); o `motion.distribute_radial` lia o `spin` com `Read` sob uma lei de contagem (comprimento `1` julgado AUSENTE na placa) → `ReadBroadcast` | — | `the_range_ports_make_the_fold_per_instance` · o censo |
+| 5 | ✅ **o relógio, pela porta do produto** (`sonda_o_relogio_do_ciclo_6`: variantes no mesmo processo, blocos rodados, o mínimo; o controlo imprime a rota e quem coze cada condutor). A sequência do quadro saiu do `dispatch` para `coze_o_quadro` — a ponte e a sonda chamam a MESMA | o pano do fio no tecto (`32 761`): **0,051 ms** na placa · **0,053** sem o fio (dirigir um param custa ~0) · **0,134** com o fio a derrubar para a CPU (**2,6×**, o caminho de antes da W1a) | — (sonda) |
+| 6 | ✅ **a barra estava a medir o `value.noise`, não o `value.slope`**: em espaço de ÍNDICE a coordenada da rede cresce com `i` (~128–512 nas últimas linhas) e o ruído diverge até `6,9e-5` lá; o slope só o multiplica (`2,3 × max|dnoise| = 1,0501e-4`). O fixture passou a espaço de MUNDO e a barra `1e-4` ficou no VALE: piso **6,2e-6**, menor mutação do kernel **5,0e-4** (16× acima do ruído, 5× abaixo do defeito). E o comparador engolia NaN (`f32::max` devolve o acumulado): um defeito só-NaN passava | os vizinhos com a mesma barra vivem 6,5× a 200× abaixo dela | `value_slope_kernel_matches_the_cpu_on_the_device` · `o_desvio_nao_engole_um_nan` · `probe_value_slope_parity_in_ulps` |
+| 7 | ✅ **o nascimento por pulso na placa** (`FiredBirth`): a porta lateral ganha a linha original (`iota`), é COMPACTADA pelo predicado (a mesma varredura do `Compact`), e um SEGUNDO kernel coze os nascidos do pulso na janela da lei DELE — que vê só a LARGURA `F` das linhas que dispararam; concatenado depois da taxa. Com o pulso ligado a taxa usa a variante de período pela metade (a escolha é estrutural, decidida pela forma do plano) | metrónomo: **531** nascidos do pulso ao bit; rajada+sorteio+empurrão: **999**, `vel` a `6e-8`; **fogos** (`died → template`, `pulse → pulse`): **12 891**, `vel` a `1,5e-6` | `the_chain_that_opened_the_wave_is_now_claimed_by_the_device` · `the_pulse_births_the_same_ids_at_the_same_rows` · `the_pulse_burst_draws_and_kicks_the_same_survivors` · `the_fireworks_are_born_on_the_device_as_on_the_cpu` · `a_pulse_longer_than_the_template_fires_only_its_rows` · `the_two_rate_spans_are_the_eval_s_spans` |
+
+**Três achados que o caminho trouxe, e o que se fez com eles:**
+
+- ⛔⛔ **A placa HERDAVA o `age` do modelo ao nascer, e a CPU não** (o `newborns` descarta `id` e
+  `age`). Latente desde a ADR-0136, porque nenhum modelo de spawn trazia `age`; os FOGOS trazem
+  (os mortos são o modelo) e os filhos nasceriam velhos na placa. Curado no contrato
+  (`SourceRows::not_inherited`), e é o CONJUNTO de colunas do gate dos fogos que o apanha.
+- ⚠️ **O fio da navalha do `pulse.beat` é provocado pelos parâmetros decimais da fixtura**: em
+  aritmética racional EXACTA, `0,0537` e `0,0031` sobre a grelha de 1/60 s dão empates
+  batida-tique nos tiques 36 e 72 (linhas 3 e 6) — e aí `f32` e `f64` arredondam para lados
+  opostos (a divergência que o próprio nó declara). A paridade do spawn salta esses tiques
+  (contados: 4 em 91) porque o spawn não tem estado; ⚠️ o gate de paridade do `pulse.beat` só
+  corre 6 tiques e nunca chega a eles.
+- ⚠️ **Preparar os passes de `value.attribute` + `value.reduce` na placa custa ~0,09 ms de CPU
+  por quadro** (0,125 contra 0,033 do condutor constante) — é ele, e não a placa, que come o
+  ganho do (2). Medido e NOMEADO aqui; não é desta lista.
+
+**E as frases que deixaram de ser verdade, corrigidas na origem:** a legenda da `=116` e o anúncio
+dela diziam `102 400 peças` (a cena produz `32 761` desde o tecto do dono) e prometiam que, com o
+interruptor desligado, *«o pano fica pesado, a respiração engasga»* — medido, `0,13` contra `0,05`
+ms, nada que se veja a 60 fps. Os dois lêem agora a contagem do tecto, e o tutorial 06 (§7) foi
+refeito com o custo medido.

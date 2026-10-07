@@ -1,8 +1,9 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`: A5-a, A13, A15 e A16, duas ondas (2026-10-06/07)
 
 > Leitor: o agente integrador (e a próxima LLM da linha). Nada aqui foi integrado nem enviado. Smoke do
-> dono: **3 (A15) «OK» e 4 (A16) «parece OK» ⇒ aprovados 07/10**; os smokes 1 e 2 deram dois reports
-> (BUGS #36 e #37), curados na 2.ª onda e por voltar a fotografar/smokar. Mecanismo, medições e recusas:
+> dono: **os quatro APROVADOS a 07/10** — 3 (A15) «OK», 4 (A16) «parece OK»; 1 e 2 deram dois reports
+> (BUGS #36 e #37), curados na 2.ª onda e re-smokados: «SMoke OK». Depois: A17 feito, A18 medido e
+> recusado (§4). Mecanismo, medições e recusas:
 > fila [`01_a_fila.md`](../01_a_fila.md) §F65. Continuação que esta fecha:
 > [`…_CONTINUACAO_A5a_A13_A15_A16_2026-10-06.md`](HANDOFF_line_Vector_CONTINUACAO_A5a_A13_A15_A16_2026-10-06.md).
 > ⚠️ **A 1.ª onda de A5-a (anel+ordem) e de A13 (refino `k = 2`) foi SUBSTITUÍDA**: o que está no código é
@@ -10,8 +11,10 @@
 
 ## 0. Onde está e o que fazer
 
-- Worktree `Worktrees/line-Vector`, ramo `line/Vector`, HEAD `a96d73ee0`; base `0910f5315`
-  (`git log --oneline 0910f5315..line/Vector`).
+- Worktree `Worktrees/line-Vector`, ramo `line/Vector`, HEAD `8234d83db` (ou o commit deste texto);
+  base `0910f5315` (`git log --oneline 0910f5315..line/Vector`). Gate batched verde em `a888b0318`
+  (2.ª onda) e em `98f0ca428` (A17: nextest-impacted 15 713/15 713, clippy `--workspace`, fmt,
+  editor-core `it` 529, `file_loc_caps`/`fn_loc_caps`, censos 114/114).
 - Sobre DUAS ondas ainda por integrar, que entram juntas: F60–F63
   [`…_A_PONTA_DO_VINCO_E_AS_PASSAGENS_2026-10-05.md`](HANDOFF_INTEGRACAO_line_Vector_A_PONTA_DO_VINCO_E_AS_PASSAGENS_2026-10-05.md)
   e F64 [`…_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md`](HANDOFF_INTEGRACAO_line_Vector_O_ESQUELETO_E_UM_OBJECTO_2026-10-05.md)
@@ -25,6 +28,28 @@
 - Ramos de experiência guardados: `a5a-lei`, `exp/a5a-lado`, `exp/a5a-marching`, `exp/a13-tiques`,
   `exp/a13-continuidade`, `exp/a13-uniao`, `a13-lei`, `exp/a13-matriz`.
 - Integrar: `/pd-integracao line/Vector`, só por ordem do dono.
+
+### 0.1 ⚠️ A UIUX ANDOU depois do empilhamento (medido 07/10)
+
+A `line/Vector` assenta em `71056d29f`; a `line/UIUX` está em `842067844` (+13 commits, o handoff dela é
+[`HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md`](../../UI_New_and_Simple/handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-04_PARA_O_MAIN.md)).
+Ordem: UIUX → `main`; depois `git rebase main` AQUI. Ficheiros tocados pelas DUAS desde `71056d29f`
+(o resto não se cruza):
+
+| ficheiro | UIUX | Vector | como resolver |
+|---|---|---|---|
+| `ph2d-editor-core/src/screens/hero/mode_drive.rs` | +65/−11: `holds_the_whole_kind`, `heir`, re-tranca do nascido por `enter_with` | +28: `keeps_parts_selected` + `restore_parts` em `Step::Enter` | os DOIS anexos ficam; o `restore_parts` corre depois do `enter_with` que entrar, e o gate `entering_edit_or_pose_keeps_the_chosen_bone` (+2 irmãos) diz se a ordem ficou certa |
+| `ph2d-editor-core/src/object_mode.rs` | +15: `whole_kind` | `ObjectMode::Pose`, `ALL` 4 → 5 | os dois; `ALL` CONTA-SE no código |
+| `ph2d-app-registry-init/tests/it/every_object_mode_has_a_composed_family.rs` | −24 | famílias `3 → 4`, pares D6 `4 → 6` | ⚠️ número que SOMA: reconte sobre a árvore combinada, nunca escolha |
+| `shells/desktop/src/render_loop/fase_object_mode.rs` | +8 | porta das raízes soltas com `&mut self.timeline` (A17) | os dois; agulha do gate textual `loose::adopt_loose_roots(sim,` |
+| `shells/desktop/src/input_dispatch/despacho_clique_pick.rs` | +41 | +16 (`bone_pick::objects_at`) | os dois |
+| `shells/desktop/src/input_dispatch/despacho_clique_vetor_premido.rs` | +11/−17 | −95 (o osso saiu para `despacho_clique_osso.rs`) | aplicar a mudança da UIUX sobre o ficheiro já sem o osso |
+| `shells/desktop/tests/it/main.rs` | +2 | +5 | os dois (`mod`) |
+
+`PROJECT_SCHEMA`: a onda F64 subiu `184 → 185`; se a UIUX também subir, o degrau reconta-se no rebase
+(`python3 scripts/schema-recount.py`). Esta 3.ª onda não sobe nada. Depois do rebase: gate batched da
+árvore combinada + `the_shell_only_shrinks` (as duas linhas mexem na shell) + os gates GPU da pele
+(`PH2D_GPU=1`, `ph2d-render` `sprite_mesh_gpu`, `ph2d-skeleton-live` `skin_image_gpu`).
 
 ## 1. Superfície de colisão
 

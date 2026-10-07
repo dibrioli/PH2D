@@ -443,8 +443,16 @@ fn rola(
                 centro: c,
             }
         };
-        if let Some(k) = candidatos.iter().find(|k| vazia(k.5)) {
-            return Some(refina(k));
+        // ⭐ O arco da bola é sempre o CURTO (`< π`): ela fica de fora e o trecho que troca está
+        // entre os toques do lado dela. Um candidato cujo arco daria meia volta ou mais não pousa.
+        let curto = |v: &Vao| varredura(&verts, v, -sinal) < std::f64::consts::PI;
+        if let Some(v) = candidatos
+            .iter()
+            .filter(|k| vazia(k.5))
+            .map(refina)
+            .find(curto)
+        {
+            return Some(v);
         }
         // ⭐ F46 (o fundo do vinco do braço dobrado de volta, medido a `(176°, 142°)`): quando a bola
         // pousa nas duas paredes de um canal que se fecha, o centro tirado das CORDAS amostradas
@@ -452,7 +460,10 @@ fn rola(
         // candidatos liam-se ocupados: o canal inteiro ficava aberto até ao fundo. ⇒ só quando
         // nenhum passa, cada candidato é julgado pelo centro EXACTO. ⚠️ A ordem é load-bearing: com
         // um candidato vazio pelas cordas a resposta é a de sempre, ao bit.
-        candidatos.iter().map(refina).find(|v| vazia(v.centro))
+        candidatos
+            .iter()
+            .map(refina)
+            .find(|v| vazia(v.centro) && curto(v))
     };
     let ponto = |seg: usize, t: f64| segmento(&verts, seg).eval(t);
     let g = |seg: usize, t: f64| seg as f64 + t;
@@ -574,7 +585,7 @@ fn rola(
                 };
                 pedacos.push((c, origem));
             }
-            arco(&verts, &v, &mut pedacos);
+            arco(&verts, &v, -sinal, &mut pedacos);
             seg = v.seg_b;
             t = v.t_b;
         } else {
@@ -616,17 +627,25 @@ fn rola(
 }
 
 /// O arco da bola de `v` em pedaços de no máximo `45°`, tangente à curva nos dois toques.
-fn arco(verts: &[VecVertex], v: &Vao, pedacos: &mut Vec<(CubicBez, Option<usize>)>) {
+/// A volta (em radianos, `[0, 2π)`) que o arco do vão `v` dá à volta do centro, no sentido `giro`.
+fn varredura(verts: &[VecVertex], v: &Vao, giro: f64) -> f64 {
     let a = segmento(verts, v.seg_a).eval(v.t_a);
     let b = segmento(verts, v.seg_b).eval(v.t_b);
-    let ta = tangente(verts, v.seg_a, v.t_a);
+    let c = v.centro;
+    (((b - c).atan2() - (a - c).atan2()) * giro).rem_euclid(std::f64::consts::TAU)
+}
+
+/// O arco do vão `v`. ⭐ O sentido vem do LADO do contorno em que a bola está (`giro = −sinal`:
+/// com a bola à direita do avanço, o arco roda no sentido horário) — e não da tangente no toque,
+/// que num toque em NÓ é a de saída dele e trocava de sinal numa cavidade que alarga para o fundo
+/// (o arco dava a volta longa, A13). Sobre um toque liso as duas leis coincidem.
+fn arco(verts: &[VecVertex], v: &Vao, giro: f64, pedacos: &mut Vec<(CubicBez, Option<usize>)>) {
+    let a = segmento(verts, v.seg_a).eval(v.t_a);
+    let b = segmento(verts, v.seg_b).eval(v.t_b);
     let c = v.centro;
     let (ra, rb) = ((a - c).hypot(), (b - c).hypot());
-    // O sentido de rotação é o que sai de `a` na tangente da curva.
-    let giro = if (a - c).cross(ta) >= 0.0 { 1.0 } else { -1.0 };
-    let (ang_a, ang_b) = ((a - c).atan2(), (b - c).atan2());
-    let tau = std::f64::consts::TAU;
-    let varre = ((ang_b - ang_a) * giro).rem_euclid(tau);
+    let ang_a = (a - c).atan2();
+    let varre = varredura(verts, v, giro);
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     // ⚠️ Pedaços de `45°` e não de `90°`: a curvatura da cúbica de um quarto de círculo desce a
     // `0,992` do raio (medido), colada ao limiar [`APERTO`], e rolar a bola outra vez lia o arco

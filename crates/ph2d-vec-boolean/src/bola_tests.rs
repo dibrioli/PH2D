@@ -419,3 +419,45 @@ fn uma_fenda_de_boca_estreita_e_fechada() {
         "a boca da fenda larga saiu — o fecho enche o que a bola alcança"
     );
 }
+
+/// ⭐⭐ **GATE — a cavidade de boca estreita e fundo LARGO é fechada pelo arco CURTO** (A13, o dente
+/// do braço dobrado de volta com o bake denso, medido a `(178°, −130°)`: boca `0,42 r`). A bola pousa
+/// nos dois nós CONVEXOS da boca; o sentido do arco vinha da tangente da curva no toque, que num nó
+/// é a de SAÍDA — dentro de uma cavidade que alarga para o fundo ela aponta para fora do lado certo,
+/// e o arco dava a volta LONGA (`~330°`): um laço por fora e um nó de `~168°` na boca.
+///
+/// ⚠️ O CONTROLO: a mesma boca com as paredes a direito (a fenda do F46) já fechava pelo arco curto.
+#[test]
+fn uma_cavidade_que_alarga_para_o_fundo_e_fechada_pelo_arco_curto() {
+    let fora = [[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]];
+    for (nome, fundo_largo) in [("cavidade", 1.2 * RAIO), ("fenda (controlo)", 0.42 * RAIO)] {
+        let boca = 0.42 * RAIO;
+        let (e, d) = (2.0 - 0.5 * boca, 2.0 + 0.5 * boca);
+        let (fe, fd) = (2.0 - 0.5 * fundo_largo, 2.0 + 0.5 * fundo_largo);
+        let fundo = 1.5 * RAIO;
+        let cav = [[d, 3.0], [fd, 3.0 - fundo], [fe, 3.0 - fundo], [e, 3.0]];
+        let mut ps: Vec<P> = vec![[0.0, 0.0], [4.0, 0.0], [4.0, 3.0]];
+        ps.extend(cav);
+        ps.push([0.0, 3.0]);
+        let v = cantos(&ps);
+        let s = rola_a_bola(v.clone(), &com_viragem(&fora, &v), RAIO, SOLDA);
+        let cavidade = 0.5 * (boca + fundo_largo) * fundo;
+        let ganho = area(&s) - area(&v);
+        let pior = (0..s.len())
+            .filter(|&i| !fora.contains(&s[i].anchor))
+            .filter_map(|i| crate::overlap::viragem_do_vertice(&s, i))
+            .fold(0.0, f64::max);
+        assert!(
+            s.iter().all(|q| q.anchor != cav[1] && q.anchor != cav[2]),
+            "{nome}: o fundo ficou"
+        );
+        assert!(
+            (ganho - cavidade).abs() < 0.2 * RAIO * RAIO,
+            "{nome}: a área cresceu {ganho} contra a cavidade {cavidade} — o arco deu a volta longa"
+        );
+        assert!(
+            pior < crate::overlap::PAREDE_MINIMA,
+            "{nome}: um nó do fecho vira {pior}°"
+        );
+    }
+}

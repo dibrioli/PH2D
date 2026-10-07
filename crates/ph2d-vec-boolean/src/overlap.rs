@@ -88,13 +88,27 @@ pub fn resolve_overlap(path: &VecPath) -> Option<VecPath> {
     let caixa = bez.bounding_box();
     let diagonal = caixa.width().hypot(caixa.height());
     let solda = SOLDA_DA_QUINA * diagonal;
-    let mut contornos = groups
+    let mut contornos: Vec<Vec<VecVertex>> = groups
         .iter()
         .flatten()
         .filter_map(crate::verts_from_bez)
         .map(|v| solda_os_segmentos_curtos(v, solda))
-        .filter(|v| v.len() >= 3);
-    let outer = contornos.next()?;
+        .filter(|v| v.len() >= 3)
+        .collect();
+    // ⭐ O contorno de FORA é o de MAIOR área, e não o primeiro que o motor devolve (A13: com o
+    // bake denso a 1.ª região saía uma lasca de `3` nós e a silhueta inteira ia para os buracos).
+    let area_de = |v: &Vec<VecVertex>| {
+        crate::area(&VecPath {
+            verts: v.clone(),
+            closed: true,
+            ..VecPath::default()
+        })
+        .abs()
+    };
+    let i_fora = (0..contornos.len())
+        .max_by(|&a, &b| area_de(&contornos[a]).total_cmp(&area_de(&contornos[b])))?;
+    let outer = contornos.remove(i_fora);
+    let contornos = contornos.into_iter();
     // ⭐ **As LASCAS saem** (F50-f, 2026-10-03): uma ponta de espessura nula (a agulha de um *Bloat*
     // forte, os dois lados coincidentes) deixa ilhas de área `~1e-16`, e o traço desenha cada uma
     // como um risco solto. A régua é a do [`crate::expand::drop_slivers`] — relativa à área.
@@ -190,6 +204,11 @@ pub fn silhueta_da_pele(path: &VecPath, quinas: &[([f64; 2], f64)]) -> Option<Ve
     // para os RESTOS da união, que já foram soldados antes; um pedaço curto RECORTADO de uma curva
     // lisa tem as tangentes dela, não uma arbitrária.
     out.verts = rolado;
+    // ⭐ A13: uma alça a RUÍDO da âncora (`≤ solda / 100`) passa a ela — o fecho pode deixar, colada a
+    // um toque, uma alça de `~1e-5` noutra direcção, e a junta do traço lia uma quina de `80°` sobre
+    // um segmento de `0,07` solda. Os arcos da bola têm alças `≥ 0,03 r` (um vão mais curto que a
+    // solda não se troca), `33×` acima.
+    limpa_as_alcas(&mut out.verts, 0.01 * solda);
     // ⭐ F44: as ILHAS que a união deixa (um membro a fechar-se sobre outro) são buracos, e o
     // vinco de um buraco é o canto dele — a bola rola por DENTRO de cada uma. Medido antes da
     // cura: com o contorno de fora a `1,4°` no pior nó, as ilhas viravam até `153°`. ⚠️ Uma ilha

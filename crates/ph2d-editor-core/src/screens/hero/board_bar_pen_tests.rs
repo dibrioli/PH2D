@@ -292,3 +292,75 @@ fn a_hanging_gesture_never_swallows_a_click_on_another_tool() {
     assert!(t.key(BoardKey::Char('z'), CTRL, None));
     assert!(t.inks().is_empty(), "UM passo desfaz o traço");
 }
+
+/// ⭐ **Nenhum botão das barras do quadro mora numa zona que a SHELL trata antes delas** — a faixa
+/// das réguas (o gesto das guias), a costura e o botão de reabrir de uma doca: são geométricos e
+/// correm ANTES do clique de chrome (`input_dispatch::on_mouse_input`). Report do dono (07/10):
+/// *«o Select é inseleccionável; toda a barra tem problemas»* — com as réguas ligadas, a faixa
+/// invisível de 20 px cobria a borda da barra, e uma guia da cena roubava o clique em todo o
+/// comprimento dela. A cura: um quadro activo não tem réguas (`rulers_live`).
+#[test]
+fn no_shell_gesture_zone_sits_on_a_board_bar_button() {
+    let mut t = T::new();
+    t.hero.view.rulers_visible = true;
+    t.paint();
+    assert!(
+        !t.hero.rulers_live(),
+        "um quadro activo não tem réguas — nem a faixa nem as guias"
+    );
+    let mut rects = Vec::new();
+    for open in [
+        None,
+        Some(Item::Tool(Tool::Pen(Pen::Pen))),
+        Some(Item::Tool(Tool::Shape(ShapeType::Sticky))),
+        Some(Item::MoreShapes),
+    ] {
+        if let Some(it) = open {
+            t.click_bar(it);
+        }
+        let area = crate::screens::hero::board_view::area(t.hero.last_layout.as_ref().unwrap());
+        rects.extend(toolbar_rects(area));
+        rects.extend(
+            super::flyout_rects(area)
+                .into_iter()
+                .filter(|_| open == Some(Item::Tool(Tool::Shape(ShapeType::Sticky)))),
+        );
+        rects.extend(
+            super::pen::flyout_rects(area)
+                .into_iter()
+                .filter(|_| open == Some(Item::Tool(Tool::Pen(Pen::Pen)))),
+        );
+        rects.extend(
+            shapes_rects(area)
+                .into_iter()
+                .filter(|_| open == Some(Item::MoreShapes)),
+        );
+    }
+    assert!(
+        rects.len() > 40,
+        "a régua cobre as barras e os painéis: {}",
+        rects.len()
+    );
+    let layout = t.hero.last_layout.clone().unwrap();
+    for (it, r) in rects {
+        for p in [
+            (r.x + 1.0, r.y + 1.0),
+            (r.x + r.w / 2.0, r.y + r.h / 2.0),
+            (r.x + r.w - 1.0, r.y + r.h - 1.0),
+        ] {
+            assert!(
+                layout.dock_seam_at(p).is_none(),
+                "{it:?} em {p:?}: a costura da doca rouba-o"
+            );
+            assert!(
+                layout.dock_reopen_at(p).is_none(),
+                "{it:?} em {p:?}: o reabrir da doca rouba-o"
+            );
+            let band = t.hero.rulers_live() && crate::ruler::hit(t.hero.last_canvas, p).is_some();
+            assert!(!band, "{it:?} em {p:?}: a faixa da régua rouba-o");
+        }
+    }
+    // E a cena continua com as réguas do artista.
+    t.hero.documents.activate(None);
+    assert!(t.hero.rulers_live());
+}

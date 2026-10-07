@@ -506,13 +506,12 @@ fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
     // réguas **e** decide o recuo do `last_content` que o módulo 3D habita. ⛔ Se cada metade
     // perguntasse por si, um quadro publicaria um recuo de `20 px` contra uma régua que não foi
     // pintada — a mesma doença de duas metades a divergir, com o sinal trocado.
-    // ⚠️ Desde 2026-10-05 (MiroClone) ela pergunta também *«a aba activa é a cena?»* — um quadro
-    // não tem réguas, logo também não recua a área. Continua a ser UMA condição (espaços normalizados).
+    // ⚠️ *«A aba activa é a cena?»* (MiroClone) mora DENTRO de `rulers_live` desde 07/10: aqui só
+    // no paint, o gesto da shell via faixas invisíveis sobre a barra do quadro (report do dono).
     let flat: String = src.split_whitespace().collect::<Vec<_>>().join(" ");
     assert!(
         flat.contains(
-            "let rulers_on = hero.rulers_live() && hero.grid.view.is_some() && \
-             hero.documents.active().is_none();"
+            "let rulers_on = hero.rulers_live() && hero.grid.view.is_some();"
         ),
         "a condição das réguas deixou de ser UMA — quem pinta e quem recua a área têm de ler a \
          mesma resposta"

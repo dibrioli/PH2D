@@ -221,8 +221,8 @@ pub fn paint_hero_screen(
     // `rulers_live()` sozinho, um quadro sem `grid.view` publicaria um recuo de `20 px` contra uma
     // régua que não chegou a ser pintada. *Um rect que promete um recuo que a tela não tem é a
     // mesma doença de duas metades a divergir, com o sinal trocado.*
-    let rulers_on =
-        hero.rulers_live() && hero.grid.view.is_some() && hero.documents.active().is_none();
+    // («Sem quadro activo» mora DENTRO da porta: o gesto da shell pergunta a mesma.)
+    let rulers_on = hero.rulers_live() && hero.grid.view.is_some();
     hero.last_content = crate::ruler::content(layout.draw_area, rulers_on);
     // E o layout INTEIRO, para o gesto de largura das colunas ler os mesmos rects (ver o
     // doc do campo).

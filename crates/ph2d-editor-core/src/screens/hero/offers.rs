@@ -35,8 +35,13 @@ impl HeroScreen {
     /// **As réguas estão vivas neste frame?** — a PORTA ÚNICA da W6.2, perguntada pelo paint
     /// (para desenhar as faixas) e pelo gesto (para decidir se um press nelas cria uma guia).
     ///
-    /// **UMA condição: o interruptor do artista** (`view.rulers_visible`), que é também o *lock*
-    /// das guias.
+    /// **Duas condições, numa porta só: o interruptor do artista** (`view.rulers_visible`, que é
+    /// também o *lock* das guias) **e a aba activa ser a CENA** — um quadro (MiroClone) não tem
+    /// réguas nem guias. ⛔ Report do dono (07/10, *«o Select é inseleccionável; toda a barra tem
+    /// problemas»*): a 2.ª condição entrou em 05/10 só no PAINT; o gesto da shell continuava a ver
+    /// faixas e guias INVISÍVEIS sobre a área do quadro — e a barra de ferramentas dele mora
+    /// encostada a essa borda: um clique no botão criava (ou agarrava) uma guia e nunca chegava ao
+    /// botão. O portão que devia apanhá-lo só conferia que as duas metades CITAVAM esta porta.
     ///
     /// ⛔⛔ **Havia uma segunda — «a ferramenta vetorial em mãos» — e ela CAIU em 2026-08-30, por
     /// ordem do Enio:** *«as réguas devem funcionar em todos os modos e layouts, e não apenas
@@ -63,6 +68,6 @@ impl HeroScreen {
     /// **esta** função, e a faixa em si tem a porta [`crate::ruler::live_bands`].
     #[must_use]
     pub fn rulers_live(&self) -> bool {
-        self.view.rulers_visible
+        self.view.rulers_visible && self.documents.active().is_none()
     }
 }

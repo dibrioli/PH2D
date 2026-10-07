@@ -45,9 +45,13 @@ pub struct PaintedDocument {
     pub mats: BTreeMap<RtLayerId, Vec<MaterialBytes>>,
     /// Tamanho do canvas em pixels.
     pub size: (u32, u32),
-    /// O PAPEL do documento ([`crate::tool::papel`]): a cor sob as camadas, ou `None`. ⚠️ O ÚLTIMO
-    /// campo: o postcard é posicional (degrau `183 → 184` do `PROJECT_SCHEMA`).
+    /// O PAPEL do documento ([`crate::tool::papel`]): a cor sob as camadas, ou `None` (degrau
+    /// `183 → 184` do `PROJECT_SCHEMA`).
     pub papel: Option<[u8; 3]>,
+    /// O VIDRO por camada ([`crate::compositor::vidro`]): sem ele, reabrir o quadro devolveria a aguada
+    /// de um alfa só, e o papel de cor deixaria de a escurecer como filtro. ⚠️ O ÚLTIMO campo: o
+    /// postcard é posicional (degrau `184 → 185` do `PROJECT_SCHEMA`).
+    pub vidros: BTreeMap<RtLayerId, Vec<crate::compositor::vidro::Vidro>>,
 }
 
 /// **O documento pintado como os esquemas ANTERIORES ao papel o guardavam** — o tipo das migrações
@@ -77,6 +81,7 @@ impl From<PaintedDocumentSemPapel> for PaintedDocument {
             mats: d.mats,
             size: d.size,
             papel: None,
+            vidros: BTreeMap::new(),
         }
     }
 }
@@ -122,6 +127,11 @@ impl PainterTool {
                     .collect(),
                 size: self.source_size,
                 papel: self.papel,
+                vidros: self
+                    .vidros
+                    .iter()
+                    .map(|(k, v)| (*k, v.as_ref().clone()))
+                    .collect(),
             });
         }
         for (bits, doc) in &self.doc_cache {

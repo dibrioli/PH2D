@@ -62,6 +62,7 @@ impl ModelSnapshot {
             heights: _,
             covers: _,
             mats: _,
+            vidros: _,
             canvas_rgba: _,
             mask_scratch: _,
             selection_mask: _,

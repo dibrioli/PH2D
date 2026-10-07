@@ -23,6 +23,7 @@ impl PainterTool {
             heights: self.heights.clone(),
             covers: self.covers.clone(),
             mats: self.mats.clone(),
+            vidros: self.vidros.clone(),
             // Este snapshot SEGURA o relevo; quem o descreve sem segurar é
             // [`Self::snapshot_model_eliding_relief`].
             relief_elided: crate::undo::elide::ElidedRelief::default(),
@@ -115,6 +116,7 @@ impl PainterTool {
         self.heights = m.heights;
         self.covers = m.covers;
         self.mats = m.mats;
+        self.vidros = m.vidros;
         // The live-edit buffer describes a stroke on a ground that no longer exists — forget it, or the
         // next Depth drag would rebuild an undone stroke out of thin air.
         self.drop_live_relief();

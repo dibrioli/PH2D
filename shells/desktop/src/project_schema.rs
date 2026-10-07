@@ -417,4 +417,14 @@
 /// pela decisão de sempre — um v185 é recusado em voz alta.
 ///
 /// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
-pub(crate) const PROJECT_SCHEMA: u32 = 186;
+///
+/// # `186 → 187` — **o VIDRO da aguada** (`line/PainterWatercolor`, 2026-10-07)
+///
+/// `PaintedDocument` ganha `vidros` no FIM (pedido do dono: o estado da arte do vidrado — a aguada é
+/// um filtro sobre o papel de cor, doc 48, BUGS #46): o alfa de cada canal dos texels que a aguada
+/// pintou, selado com o píxel. As migrações congeladas (v95, v128) continuam a ler pelo
+/// `PaintedDocumentSemPapel` e nascem sem vidro. ⛔ **Sem degrau de migração**, pela decisão de
+/// sempre — um v186 é recusado em voz alta.
+///
+/// ⚠️ **A tripla NÃO vê este degrau** — nem a forma do `FlipDoc` nem a da `VecScene` mudam.
+pub(crate) const PROJECT_SCHEMA: u32 = 187;

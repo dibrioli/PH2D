@@ -18,7 +18,7 @@ pub fn composite(
         w: width,
         h: height,
     };
-    let acc = composite_region_linear(stack, src, width, height, region);
+    let (acc, _) = composite_region_linear(stack, src, width, height, region, None);
     encode(&acc)
 }
 
@@ -34,7 +34,7 @@ pub fn composite_region(
     height: u32,
     region: Region,
 ) -> Vec<u8> {
-    let acc = composite_region_linear(stack, src, width, height, region);
+    let (acc, _) = composite_region_linear(stack, src, width, height, region, None);
     encode(&acc)
 }
 
@@ -89,6 +89,7 @@ pub fn composite_with_cache(
         height,
         0,
         Some(cache),
+        None,
     );
     encode(&acc)
 }
@@ -168,7 +169,7 @@ pub fn composite_below(
     let mut acc = vec![g; (width as usize) * (height as usize)];
     for ids in slices {
         composite_into(
-            &mut acc, ids, stack, src, width, 0, 0, width, height, 0, None,
+            &mut acc, ids, stack, src, width, 0, 0, width, height, 0, None, None,
         );
     }
     encode(&acc)
@@ -265,18 +266,21 @@ fn has_spatial_adjustment(stack: &LayerStack, ids: &[LayerId]) -> bool {
 /// Composite `region` into a freshly-allocated linear accumulator
 /// (`region.w * region.h` entries, row-major). Clamps the region to the
 /// canvas bounds.
-fn composite_region_linear(
+/// Devolve o acumulador e, com `vidros`, a transparência por canal do papel (o fundo da pilha).
+pub(super) fn composite_region_linear(
     stack: &LayerStack,
     src: &(impl LayerPixelSource + Sync),
     width: u32,
     height: u32,
     region: Region,
-) -> Vec<[f32; 4]> {
+    vidros: Option<&super::vidro::Vidros>,
+) -> (Vec<[f32; 4]>, Option<Vec<[f32; 3]>>) {
     let rx = region.x.min(width);
     let ry = region.y.min(height);
     let rw = region.w.min(width - rx);
     let rh = region.h.min(height - ry);
     let mut acc = vec![[0.0f32; 4]; (rw as usize) * (rh as usize)];
+    let mut t = vidros.map(|_| vec![[1.0f32; 3]; acc.len()]);
     // Per-pixel compositing is spatially independent → split the region's rows into disjoint bands
     // across the cores (bit-identical to the serial walk; each band runs the same bottom→top layer
     // walk over its own rows). This was the painter's biggest per-frame cost on a non-trivial doc
@@ -305,17 +309,25 @@ fn composite_region_linear(
             rh,
             0,
             None,
+            vidros.zip(t.as_deref_mut()),
         );
-        return acc;
+        return (acc, t);
     }
     let rpb = (rh as usize).div_ceil(threads);
+    let band_px = rpb * (rw as usize);
+    let mut t_bands: Vec<Option<&mut [[f32; 3]]>> = match t.as_deref_mut() {
+        Some(tt) => tt.chunks_mut(band_px).map(Some).collect(),
+        None => (0..acc.len().div_ceil(band_px)).map(|_| None).collect(),
+    };
     std::thread::scope(|s| {
         let handles: Vec<_> = acc
-            .chunks_mut(rpb * (rw as usize))
+            .chunks_mut(band_px)
+            .zip(t_bands.iter_mut())
             .enumerate()
-            .map(|(bi, band)| {
+            .map(|(bi, (band, tb))| {
                 let band_ry = ry + (bi * rpb) as u32;
                 let band_rh = (band.len() / (rw as usize)) as u32;
+                let tb = tb.take();
                 s.spawn(move || {
                     composite_into(
                         band,
@@ -329,6 +341,7 @@ fn composite_region_linear(
                         band_rh,
                         0,
                         None,
+                        vidros.zip(tb),
                     );
                 })
             })
@@ -337,7 +350,8 @@ fn composite_region_linear(
             h.join().expect("composite band panicked");
         }
     });
-    acc
+    drop(t_bands);
+    (acc, t)
 }
 
 /// Blend the layers in `ids` (top-to-bottom) over `acc`, restricted to the
@@ -356,6 +370,7 @@ fn composite_into(
     rh: u32,
     depth: usize,
     mut cache: Option<&mut CompositorCache>,
+    mut vidro: Option<(&super::vidro::Vidros, &mut [[f32; 3]])>,
 ) {
     // Defense-in-depth (audit W3): never recurse past the group-nesting cap,
     // even if a (future deserialized / forged) stack smuggles a cycle or an
@@ -409,7 +424,7 @@ fn composite_into(
                 // T3.6: a clipping layer paints only where its clip base is
                 // opaque — multiply its alpha by the base's straight alpha.
                 let clip = if layer.clipping { clip_base } else { None };
-                blend_window(acc, rx, ry, rw, rh, mode, opacity, |gx, gy| {
+                let sample = |gx: u32, gy: u32| {
                     let idx = (gy * canvas_w + gx) as usize;
                     let mut s = decode(rgba, idx);
                     if let Some((mrgba, inverted)) = mask {
@@ -420,7 +435,27 @@ fn composite_into(
                         s[3] *= base[idx * 4 + 3] as f32 / 255.0;
                     }
                     s
-                });
+                };
+                blend_window(acc, rx, ry, rw, rh, mode, opacity, &sample);
+                // O papel atravessa esta camada canal a canal (o vidro só no modo Normal: os outros
+                // modos não são um filtro sobre o que está por baixo).
+                if let Some((planos, t)) = vidro.as_mut() {
+                    let plano = planos
+                        .get(&id)
+                        .filter(|p| mode == BlendMode::Normal && p.len() * 4 >= rgba.len());
+                    for ly in 0..rh {
+                        for lx in 0..rw {
+                            let (gx, gy) = (rx + lx, ry + ly);
+                            let idx = (gy * canvas_w + gx) as usize;
+                            super::vidro::atravessa(
+                                &mut t[(ly * rw + lx) as usize],
+                                sample(gx, gy)[3] * opacity,
+                                &rgba[idx * 4..idx * 4 + 4],
+                                plano.map(|p| &p[idx]),
+                            );
+                        }
+                    }
+                }
                 // A NON-clipping raster becomes the clip base for the layers
                 // above it; a clipping raster chains to the same base.
                 if !layer.clipping {
@@ -431,6 +466,7 @@ fn composite_into(
                 // Composite the children into their own sub-window, then
                 // blend that as a single layer (group blend/opacity).
                 let mut sub = vec![[0.0f32; 4]; (rw as usize) * (rh as usize)];
+                let mut sub_t = vidro.as_ref().map(|_| vec![[1.0f32; 3]; sub.len()]);
                 composite_into(
                     &mut sub,
                     &g.children,
@@ -443,12 +479,26 @@ fn composite_into(
                     rh,
                     depth + 1,
                     None,
+                    vidro.as_ref().map(|v| v.0).zip(sub_t.as_deref_mut()),
                 );
                 blend_window(acc, rx, ry, rw, rh, mode, opacity, |gx, gy| {
                     let lx = gx - rx;
                     let ly = gy - ry;
                     sub[(ly * rw + lx) as usize]
                 });
+                // O grupo inteiro é uma camada: no modo Normal cada canal tira o alfa do canal dele.
+                if let (Some((_, t)), Some(st)) = (vidro.as_mut(), sub_t.as_ref()) {
+                    for (i, tc) in t.iter_mut().enumerate() {
+                        for c in 0..3 {
+                            let a = if mode == BlendMode::Normal {
+                                1.0 - st[i][c]
+                            } else {
+                                sub[i][3]
+                            };
+                            tc[c] *= 1.0 - a * opacity;
+                        }
+                    }
+                }
                 // A group is not a raster clip base — it breaks the clip chain.
                 clip_base = None;
             }
@@ -548,6 +598,13 @@ fn composite_into(
                                 base[2] + (result[2] - base[2]) * t,
                                 base[3] + (result[3] - base[3]) * t,
                             ];
+                            // A cobertura espalhou-se: o papel por baixo segue-a (na proporção).
+                            if let Some((_, tp)) = vidro.as_mut() {
+                                let (de, para) = (1.0 - base[3], 1.0 - acc[i][3]);
+                                for tc in tp[i].iter_mut() {
+                                    *tc = if de > 1e-4 { *tc * para / de } else { tc.max(para) };
+                                }
+                            }
                         } else {
                             // Per-pixel colour adjustment: it changes the COLOUR the
                             // pixel has, never its coverage — so the mode mixes the two

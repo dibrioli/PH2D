@@ -172,6 +172,7 @@ impl PainterTool {
         // Drop `images` entries for any layer that no longer exists.
         let alive: std::collections::BTreeSet<RtLayerId> = self.layers.all_ids().collect();
         self.images.retain(|lid, _| alive.contains(lid));
+        self.vidros.retain(|lid, _| alive.contains(lid));
         if was_active {
             // The deleted layer's working buffer is discarded with it; load the
             // NEW active's pixels into `canvas_rgba` (transparent if none).
@@ -215,6 +216,9 @@ impl PainterTool {
             .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
         let new_id = self.layers.duplicate(id)?; // sets active = new_id
         self.images.remove(&new_id); // active lives in canvas_rgba
+        if let Some(v) = self.vidros.get(&id).cloned() {
+            self.vidros.insert(new_id, v); // a cópia sela os mesmos píxeis
+        }
         self.replace_canvas(Arc::new(src_pixels));
         self.commit_structural_edit(undo_before);
         self.reset_selection_to(new_id);

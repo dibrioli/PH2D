@@ -55,6 +55,7 @@ impl RasterEditTool for PainterTool {
         self.heights.clear();
         self.covers.clear();
         self.mats.clear(); // o material é da tinta DAQUELE documento — some com ela
+        self.vidros.clear(); // ...e o vidro, que sela os píxeis dele
         self.drop_live_relief();
         self.layers_revision = self.layers_revision.wrapping_add(1);
         // A different working canvas — undo/redo over the OLD model is meaningless on the NEW one.
@@ -88,8 +89,12 @@ impl RasterEditTool for PainterTool {
                 active_rgba: &self.canvas_rgba,
                 images: &self.images,
             };
-            let mut c = composite(&self.layers, &src, w, h);
-            self.compoe_sobre_o_papel(&mut c, Region { x: 0, y: 0, w, h });
+            let full = Region { x: 0, y: 0, w, h };
+            let mut c = self.composto_pelo_vidro(&src, full).unwrap_or_else(|| {
+                let mut c = composite(&self.layers, &src, w, h);
+                self.compoe_sobre_o_papel(&mut c, full);
+                c
+            });
             self.apply_mask_overlay(&mut c); // tint the protected region (no-op without a scratch)
             c
         };
@@ -122,8 +127,11 @@ impl RasterEditTool for PainterTool {
                 active_rgba: &self.canvas_rgba,
                 images: &self.images,
             };
-            let mut rgba = composite(&self.layers, &src, w, h);
-            self.compoe_sobre_o_papel(&mut rgba, full);
+            let mut rgba = self.composto_pelo_vidro(&src, full).unwrap_or_else(|| {
+                let mut c = composite(&self.layers, &src, w, h);
+                self.compoe_sobre_o_papel(&mut c, full);
+                c
+            });
             self.apply_impasto_light(&mut rgba, full);
             return (rgba, w, h);
         }

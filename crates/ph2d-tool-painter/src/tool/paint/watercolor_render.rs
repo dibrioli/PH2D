@@ -20,6 +20,7 @@
 //! All per-pixel math is table lookups + sums/mults (HR-5) — LUTs in [`super::watercolor_lut`], the
 //! integer-hash value noise in [`super::watercolor_field`]; no transcendental runs in the hot loop.
 
+mod aparencia; // a óptica de um texel como função do chão (LOC split; o vidro a avalia 2×)
 mod diag; // o envelope de diagnóstico do composite (LOC split)
 mod pigment; // a COR do pigmento por pixel (LOC split, por assunto)
 mod window;
@@ -513,66 +514,13 @@ impl PainterTool {
                     );
 
                     // Effective base: the layer over the REAL ground (a transparent layer attenuates what
-                    // is beneath it; an opaque base uses only itself), joined in TONES OF THE SCREEN like
-                    // the compositor (ADR-0177); the optics below run on it in linear light.
+                    // is beneath it), joined in TONES OF THE SCREEN like the compositor (ADR-0177); the
+                    // optics run on it in linear light ([`aparencia`]).
                     let ab = f32::from(base[gi + 3]) / 255.0;
-                    let ground_lin = [
-                        lut.s2l[ground[gi] as usize],
-                        lut.s2l[ground[gi + 1] as usize],
-                        lut.s2l[ground[gi + 2] as usize],
-                    ];
-                    let ground_enc = [ground[gi], ground[gi + 1], ground[gi + 2]].map(f32::from);
-                    let base_app_enc: [f32; 3] = core::array::from_fn(|c| {
-                        (f32::from(base[gi + c]) * ab + ground_enc[c] * (1.0 - ab)) / 255.0
+                    let chao = [ground[gi], ground[gi + 1], ground[gi + 2]];
+                    let base_sobre: [f32; 3] = core::array::from_fn(|c| {
+                        (f32::from(base[gi + c]) * ab + f32::from(chao[c]) * (1.0 - ab)) / 255.0
                     });
-                    let ground_enc = ground_enc.map(|g| g / 255.0);
-                    let mut sb = base_app_enc.map(ph2d_color::srgb::srgb_to_linear_unit);
-                    // Wet-on-wet LIFT ([`apply_wet_lift`]): rewetting walks the base's pigment toward the
-                    // LOCAL ground in log space (`lift` already moisture-scaled — a dried spot won't lift).
-                    apply_wet_lift(&mut sb, &ground_lin, lift, lut);
-                    // BODY / OPACITY (doc 13 #17): pure Beer–Lambert only subtracts, so a light-valued
-                    // pigment barely deposits ("azul e amarelo quase não aparecem"). Body lays the pigment's
-                    // OWN colour over the transmittance result ([`watercolor_lut::Luts::body_cov`]; `0` ⇒ no-op).
-                    let body_cov = lut.body_cov(st_opacity, od);
-                    let mut rgb = [0u8; 3];
-                    let mut t_lum = 0.0f32;
-                    let mut t_min = 1.0f32;
-                    // Extra alpha the BODY-shifted appearance needs to stay in gamut (0 when body off, so
-                    // `cov_a` is byte-identical). Body lays the pigment's own colour, which can push a
-                    // channel PAST the `1 − t_min` floor the un-premultiply assumes — over white the most-
-                    // absorbed channel drops below `ground·(1−a)` and `L` clamps (a 22-byte flatten error).
-                    let mut a_body = 0.0f32;
-                    const LUM: [f32; 3] = [0.2126, 0.7152, 0.0722];
-                    for c in 0..3 {
-                        let t = lut.transmittance(pig[c], od);
-                        let optical = sb[c] * t + lut.s2l[pig[c] as usize] * (1.0 - t);
-                        // Hide the substrate under the pigment's own colour by `body_cov` (0 ⇒ optical).
-                        let lin = optical + (lut.s2l[pig[c] as usize] - optical) * body_cov;
-                        rgb[c] = lut.l2s_byte(lin);
-                        if body_cov > 0.0 {
-                            // Keep the un-premultiply in gamut: body can push a channel past the `1 − t_min`
-                            // floor. Uses the quantised `app` the un-premultiply reads ([`gamut_alpha`]).
-                            a_body =
-                                a_body.max(gamut_alpha(f32::from(rgb[c]) / 255.0, ground_enc[c]));
-                        }
-                        t_lum += LUM[c] * t;
-                        t_min = t_min.min(t);
-                    }
-                    // Perceptual film opacity — how much pigment sits here; drives the deposited alpha and
-                    // the subtractive (RYB) paint-mix amount over the base paint.
-                    let film_a = (1.0 - t_lum).clamp(0.0, 1.0);
-                    // The subtractive wet-on-wet MIX — the wash's pigment blending with the paint beneath
-                    // like real paint. It is "o segredo" of the good wet-on-wet look (Enio 2026-07-06), so
-                    // **Wet drives it too**: `max(Pigment's Mix, wet × paint-presence)` — a wet wash mixes
-                    // with what it rewets even with Pigment unchecked (inert on blank canvas, like the
-                    // lift); the checkbox + Mix slider still set the floor and are the only source when
-                    // Wet is 0 (byte-identical default preserved). The blend reads the LIFTED base (`sb`)
-                    // where the rewet lightened it — mixing against the raw base would paint the lift
-                    // right back over.
-                    // Water does NOT drive the RYB paint-mix: a water pool has no pigment of its
-                    // own to blend (its tint is the dissolve), and `water = 1` pushed the mix to
-                    // full-replace — territory where `ryb_mix` degenerates (OPT-2's documented
-                    // defect; the smoke's navy-blue ring). Wet keeps driving it as before.
                     // ⚠️ O `Pigment` só mistura com TINTA: sobre papel a presença é 0 e o botão
                     // ligado não desbota a lavagem ([`super::watercolor_mistura`], medido 2026-09-24).
                     let tinta = if st.pigment_mix > 0.0 {
@@ -580,55 +528,18 @@ impl PainterTool {
                     } else {
                         0.0
                     };
-                    let pelo_botao = st.pigment_mix * tinta;
-                    let pela_agua = st_wet_px * wet_paint;
-                    let mix_amt = pelo_botao.max(pela_agua);
-                    if mix_amt > 0.0 {
-                        // The (possibly lifted) base APPEARANCE over the ground — for an opaque base with
-                        // no lift this is the raw base bytes exactly (`l2s(s2l(b)) == b`); for a
-                        // transparent one it is the ground showing through (the old raw-bytes read was
-                        // black there).
-                        let mix_base = [
-                            f32::from(lut.l2s_byte(sb[0])) / 255.0,
-                            f32::from(lut.l2s_byte(sb[1])) / 255.0,
-                            f32::from(lut.l2s_byte(sb[2])) / 255.0,
-                        ];
-                        // ⭐ **DUAS leis, uma por termo** ([`super::watercolor_mistura::alvo_sobre_seco`]):
-                        // o botão `Pigment` mistura pela lei do Wet Paint (K–M, a ordem do dono de
-                        // 2026-09-20), e a água que molha a tinta seca continua RYB, porque o K–M
-                        // apaga o clarear do soak (medido duas vezes, a razão está na porta). ⚠️ Tinta
-                        // molhada sobre tinta molhada NÃO passa aqui: mistura-se no depósito
-                        // ([`super::watercolor_mistura::deposita`] — ali os dois parceiros são pigmento).
-                        let mixed = super::watercolor_mistura::alvo_sobre_seco(
-                            mix_base,
-                            [
-                                f32::from(pig[0]) / 255.0,
-                                f32::from(pig[1]) / 255.0,
-                                f32::from(pig[2]) / 255.0,
-                            ],
-                            film_a,
-                            pelo_botao,
-                            pela_agua,
-                        );
-                        for c in 0..3 {
-                            let sub = (mixed[c].clamp(0.0, 1.0) * 255.0 + 0.5).clamp(0.0, 255.0);
-                            rgb[c] =
-                                (f32::from(rgb[c]) + (sub - f32::from(rgb[c])) * mix_amt) as u8;
-                        }
-                    }
-                    // Screen-space AA alpha (`aa_coverage` — 1.0 everywhere but a thin stroke's steep
-                    // rim): composite the wash's target APPEARANCE over the base-over-ground appearance
-                    // by the texel's fractional silhouette coverage, in the compositor's space (tones
-                    // of the screen) and BEFORE the un-premultiply — a byte-level lerp on the stored
-                    // straight-alpha pixels broke the flatten equality on a transparent layer (the
-                    // stored L is not an appearance).
-                    if aa_alpha < 1.0 {
-                        for c in 0..3 {
-                            let app = f32::from(rgb[c]) / 255.0;
-                            let v = app * aa_alpha + base_app_enc[c] * (1.0 - aa_alpha);
-                            rgb[c] = (v.clamp(0.0, 1.0) * 255.0).round() as u8;
-                        }
-                    }
+                    let optica = aparencia::Optica {
+                        pig,
+                        od,
+                        body_cov: lut.body_cov(st_opacity, od),
+                        lift,
+                        pelo_botao: st.pigment_mix * tinta,
+                        pela_agua: st_wet_px * wet_paint,
+                        aa_alpha,
+                    };
+                    let aparencia::Aparencia { rgb, t_min, a_body } =
+                        aparencia::aparencia(&optica, base_sobre, chao, lut);
+                    let ground_enc = chao.map(|g| f32::from(g) / 255.0);
                     // Coverage alpha = the STRONGEST per-channel absorption (`1 − min_c T_c`), not the
                     // luminance film: the un-premultiply below needs `a ≥ 1 − T_c` on EVERY channel or
                     // the solve leaves gamut and clamps (a red wash's G/B absorb far more than the

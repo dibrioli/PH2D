@@ -100,6 +100,9 @@ pub struct ModelSnapshot {
     /// coverage under the upper one's material — the paint underneath comes back wearing the wrong
     /// gloss. `undoing_a_stroke_restores_the_material_underneath_it`.
     pub mats: BTreeMap<RtLayerId, Arc<Vec<ph2d_painter_brush::material::MaterialBytes>>>,
+    /// **O VIDRO** por camada (`PainterTool::vidros`) — volta com o desfazer, junto com os píxeis que ele
+    /// sela.
+    pub vidros: crate::compositor::vidro::Vidros,
     /// **O TERCEIRO estado do relevo:** as camadas que este snapshot DESCREVE sem SEGURAR — ver
     /// [`ElidedRelief`], que é onde o porquê está escrito. Vazio = ele segura o que tem.
     ///

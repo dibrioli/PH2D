@@ -67,6 +67,8 @@ pub(crate) struct PlaneDeltas {
     heights: StoredMap<f32>,
     covers: StoredMap<u8>,
     mats: StoredMap<MaterialBytes>,
+    /// O vidro por camada (`[u8; 7]` por texel, um por pixel).
+    vidros: StoredMap<crate::compositor::vidro::Vidro>,
     mask_scratch: StoredPlane<u8>,
     selection_mask: StoredPlane<u8>,
     selection_crisp: StoredPlane<u8>,
@@ -111,6 +113,7 @@ impl PlaneDeltas {
             heights,
             covers,
             mats,
+            vidros,
             mask_scratch,
             selection_mask,
             selection_crisp,
@@ -136,6 +139,7 @@ impl PlaneDeltas {
         c.add_map(heights);
         c.add_map(covers);
         c.add_map(mats);
+        c.add_map(vidros);
         c.add(mask_scratch.reach());
         c.add(selection_mask.reach());
         c.add(selection_crisp.reach());
@@ -182,6 +186,7 @@ impl PlaneDeltas {
                 win_rgba,
             ),
             images: StoredImages::split(&mut before.images, &mut after.images),
+            vidros: StoredMap::split(&mut before.vidros, &mut after.vidros, s.scalar, win_scalar),
             heights,
             covers,
             mats,
@@ -404,6 +409,7 @@ impl PlaneDeltas {
         out.heights = self.heights.side(&live.heights, b)?;
         out.covers = self.covers.side(&live.covers, b)?;
         out.mats = self.mats.side(&live.mats, b)?;
+        out.vidros = self.vidros.side(&cursor.vidros, b)?;
         out.mask_scratch = self.mask_scratch.side(&cursor.mask_scratch, b)?;
         out.selection_mask = self.selection_mask.side(&cursor.selection_mask, b)?;
         out.selection_crisp = self.selection_crisp.side(&cursor.selection_crisp, b)?;
@@ -470,6 +476,7 @@ impl PlaneDeltas {
             + self.heights.heap_bytes()
             + self.covers.heap_bytes()
             + self.mats.heap_bytes()
+            + self.vidros.heap_bytes()
             + self.mask_scratch.heap_bytes()
             + self.selection_mask.heap_bytes()
             + self.selection_crisp.heap_bytes()

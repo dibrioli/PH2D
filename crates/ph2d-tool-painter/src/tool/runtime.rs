@@ -239,8 +239,12 @@ impl PainterTool {
             active_rgba: &self.canvas_rgba,
             images: &self.images,
         };
-        let mut rgba = composite(&self.layers, &src, w, h);
-        self.compoe_sobre_o_papel(&mut rgba, Region { x: 0, y: 0, w, h });
+        let full = Region { x: 0, y: 0, w, h };
+        let mut rgba = self.composto_pelo_vidro(&src, full).unwrap_or_else(|| {
+            let mut c = composite(&self.layers, &src, w, h);
+            self.compoe_sobre_o_papel(&mut c, full);
+            c
+        });
         // ⚠️ **O relevo entra AQUI, e pela mesma função que o BAKE chama.**
         //
         // Esta porta responde *"com o que este documento se parece?"* para o Grain, o Paper e a
@@ -377,20 +381,22 @@ impl PainterTool {
         // drop Enio reported), when only a dab-sized rect changed.
         match (self.composited.is_some(), dirty) {
             (true, Some(bbox)) => {
-                let region = {
+                let mut region = {
                     let src = ToolPixelSource {
                         active_id: active,
                         active_rgba: &self.canvas_rgba,
                         images: &self.images,
                     };
-                    composite_region(&self.layers, &src, w, h, bbox)
+                    self.composto_pelo_vidro(&src, bbox).unwrap_or_else(|| {
+                        let mut c = composite_region(&self.layers, &src, w, h, bbox);
+                        self.compoe_sobre_o_papel(&mut c, bbox);
+                        c
+                    })
                 };
                 // Impasto: light the FRESHLY-composited region (never the cache — lighting is not
                 // idempotent, and re-lighting the cached pixels would compound the shading a little
                 // more every frame). The normal reads across the region's edge into the full height
                 // field, so the border is lit exactly as a full recompose would light it.
-                let mut region = region;
-                self.compoe_sobre_o_papel(&mut region, bbox);
                 self.apply_impasto_light(&mut region, bbox);
                 // Mask overlay: re-tint ONLY this region by the (dab-updated) scratch coverage — the
                 // partial twin of the full arm's `apply_mask_overlay`, same per-pixel kernel, no-op
@@ -424,17 +430,27 @@ impl PainterTool {
                     active_rgba: &self.canvas_rgba,
                     images: &self.images,
                 };
-                let mut composed =
-                    if std::mem::take(&mut self.adjustment_cache_pending) && !stroke_dirtied {
-                        // Adjustment slider-drag: restart from the cut-point cache —
-                        // bit-identical to a full `composite` (gate
-                        // `cache_matches_full_recompose`).
-                        composite_with_cache(&self.layers, &src, w, h, &mut self.compositor_cache)
-                    } else {
-                        self.compositor_cache.invalidate_from(active, &self.layers);
-                        composite(&self.layers, &src, w, h)
-                    };
-                self.compoe_sobre_o_papel(&mut composed, Region { x: 0, y: 0, w, h });
+                let full = Region { x: 0, y: 0, w, h };
+                let mut composed = if let Some(v) = self.composto_pelo_vidro(&src, full) {
+                    // O vidro sob papel de cor: uma passada só (o cache dos cortes não guarda a
+                    // transparência por canal).
+                    self.adjustment_cache_pending = false;
+                    self.compositor_cache.invalidate_from(active, &self.layers);
+                    v
+                } else {
+                    let mut c =
+                        if std::mem::take(&mut self.adjustment_cache_pending) && !stroke_dirtied {
+                            // Adjustment slider-drag: restart from the cut-point cache —
+                            // bit-identical to a full `composite` (gate
+                            // `cache_matches_full_recompose`).
+                            composite_with_cache(&self.layers, &src, w, h, &mut self.compositor_cache)
+                        } else {
+                            self.compositor_cache.invalidate_from(active, &self.layers);
+                            composite(&self.layers, &src, w, h)
+                        };
+                    self.compoe_sobre_o_papel(&mut c, full);
+                    c
+                };
                 // Impasto: light the whole freshly-composited canvas (see the dirty-rect lane above).
                 self.apply_impasto_light(&mut composed, Region { x: 0, y: 0, w, h });
                 // Mask overlay: tint the composite by the active mask's coverage (no-op otherwise).

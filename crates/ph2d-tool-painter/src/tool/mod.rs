@@ -174,6 +174,10 @@ pub struct PainterTool {
     /// A layer with relief but NO material entry (a document from before this existed) reads as
     /// [`ph2d_painter_brush::material::Material::NEUTRAL`], which is the pass as it shaded then.
     mats: BTreeMap<RtLayerId, Arc<Vec<MaterialBytes>>>,
+    /// **O VIDRO** por camada ([`crate::compositor::vidro`]): o alfa de cada canal dos texels que a
+    /// aguada pintou, selado com o píxel — o papel de cor atravessa-os canal a canal (doc 48). Preguiçoso
+    /// como o relevo: só as camadas onde a aguada pintou.
+    vidros: crate::compositor::vidro::Vidros,
     /// **O papel do documento** ([`papel`]): a cor sob as camadas, ou `None` (sem papel).
     papel: Option<[u8; 3]>,
     /// The live **protection session** — see [`GateSession`]. Canvas-shaped, so it lives here beside
@@ -363,6 +367,7 @@ impl Default for PainterTool {
             heights: BTreeMap::new(),
             covers: BTreeMap::new(),
             mats: BTreeMap::new(),
+            vidros: BTreeMap::new(),
             papel: None,
             gate: None,
             mask_scratch_gen: 0,

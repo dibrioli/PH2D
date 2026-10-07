@@ -8,6 +8,7 @@ fn model(active_px: u8) -> ModelSnapshot {
         images: BTreeMap::new(),
         heights: BTreeMap::new(),
         mats: BTreeMap::new(),
+        vidros: BTreeMap::new(),
         covers: BTreeMap::new(),
         relief_elided: crate::undo::elide::ElidedRelief::default(),
         canvas_rgba: Arc::new(vec![active_px; 16]),
@@ -376,6 +377,7 @@ fn model_all_planes(seed: u8) -> ModelSnapshot {
     m.heights = [(layer, floats(seed))].into_iter().collect();
     m.covers = [(layer, bytes(seed))].into_iter().collect();
     m.mats = [(layer, mats(seed))].into_iter().collect();
+    m.vidros = [(layer, mats(seed.wrapping_add(14)))].into_iter().collect();
     m.mask_scratch = rgba(seed.wrapping_add(1));
     m.selection_mask = bytes(seed.wrapping_add(2));
     m.selection_crisp = bytes(seed.wrapping_add(3));
@@ -421,6 +423,7 @@ fn assert_same_planes(got: &ModelSnapshot, want: &ModelSnapshot, what: &str) {
     assert_eq!(got.heights, want.heights, "{what}: heights");
     assert_eq!(got.covers, want.covers, "{what}: covers");
     assert_eq!(got.mats, want.mats, "{what}: mats");
+    assert_eq!(got.vidros, want.vidros, "{what}: vidros");
     assert_eq!(got.mask_scratch, want.mask_scratch, "{what}: mask_scratch");
     assert_eq!(
         got.selection_mask, want.selection_mask,

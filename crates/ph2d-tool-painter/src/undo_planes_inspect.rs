@@ -47,6 +47,7 @@ impl PlaneDeltas {
             heights,
             covers,
             mats,
+            vidros,
             mask_scratch,
             selection_mask,
             selection_crisp,
@@ -77,6 +78,10 @@ impl PlaneDeltas {
             format!(
                 "m={}",
                 map(mats.entries().map(StoredEntry::reach).collect())
+            ),
+            format!(
+                "v={}",
+                map(vidros.entries().map(StoredEntry::reach).collect())
             ),
         ];
         for (n, r) in [
@@ -153,6 +158,7 @@ impl PlaneDeltas {
         map(&mut d, "heights", &a.heights, &b.heights);
         map(&mut d, "covers", &a.covers, &b.covers);
         map(&mut d, "mats", &a.mats, &b.mats);
+        map(&mut d, "vidros", &a.vidros, &b.vidros);
         plane(&mut d, "mask_scratch", &a.mask_scratch, &b.mask_scratch);
         plane(
             &mut d,

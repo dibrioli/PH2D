@@ -242,6 +242,27 @@ impl PainterTool {
         }
     }
 
+    /// **A região `r` sobre o papel PELO VIDRO** ([`crate::compositor::vidro`]): `Some` quando o papel é
+    /// de cor e a aguada pintou (o papel atravessa cada canal pelo alfa dele); `None` = a porta de
+    /// sempre (o composite e [`Self::compoe_sobre_o_papel`]), ao byte.
+    pub(crate) fn composto_pelo_vidro(
+        &self,
+        src: &super::internal::ToolPixelSource<'_>,
+        r: Region,
+    ) -> Option<Vec<u8>> {
+        let p = self
+            .papel
+            .filter(|&p| p != PAPEL_BRANCO && !self.vidros.is_empty())?;
+        Some(crate::compositor::composite_region_sobre_o_papel(
+            &self.layers,
+            src,
+            &self.vidros,
+            self.source_size,
+            r,
+            p,
+        ))
+    }
+
     /// A cor do chão que a óptica da aquarela vê onde nada está pintado por baixo: o BRANCO de
     /// referência, com qualquer papel. O papel nunca entra na tinta — a aguada guarda o alfa dela e o
     /// papel compõe-se por baixo, então mudar o papel depois dá o mesmo que pintar sobre ele (BUGS #45;

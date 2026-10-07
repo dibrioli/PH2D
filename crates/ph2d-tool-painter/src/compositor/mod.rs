@@ -135,6 +135,8 @@ mod oraculo_gimp_tests;
 mod oraculo_vizinhanca_tests;
 #[cfg(test)]
 mod tests;
+pub mod vidro;
 pub use cache::CompositorCache;
+pub(crate) use vidro::composite_region_sobre_o_papel;
 pub use compose::{composite, composite_below, composite_region, composite_with_cache};
 pub use gpu_ops::flatten_for_gpu;

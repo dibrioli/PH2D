@@ -74,8 +74,11 @@ desfazer (`ModelSnapshot`), o ficheiro (`PaintedDocument` — degrau do `PROJECT
 - **A lei que o código executa** (`compositor::vidro`): `mostrado = W − t·(1 − papel)`, `W` a pilha sobre
   o branco, `t` o produto de `1 − alfa_c` camada a camada — em tons de ecrã (ADR-0177), na passada do
   compositor. Sem vidro, ou com o papel branco, é «cobrir com transparência», ao byte.
-- **O SELO**: o vidro guarda o píxel que a aguada escreveu; qualquer outro pincel que o reescreva
-  devolve o texel à lei de um alfa. Nenhum outro pincel precisou de conhecer o plano.
+- **O SELO**: o vidro guarda o píxel que a aguada escreveu. Selo intacto: os alfas são exactos. Outro
+  pincel que reescreva o texel CONTINUA o vidro (2.ª volta, BUGS #46): o Wet Paint pelo `pa` do fluido,
+  o Digital/Impasto pela cobertura do traço (o tecto, ou o `over` resolvido), e na leitura um selo
+  partido infere cobertura (o alfa subiu) ou borracha (desceu). ⛔ Voltar à lei de um alfa NÃO é
+  neutro sobre o papel de cor — foi o contorno claro.
 - **A óptica sobre dois chãos** é a forma de Curtis especificar um pigmento (sobre o branco e sobre o
   preto). Medido contra esse oráculo: pior `2` níveis (o piso), nos 24 casos do gate.
 - ⚠️ **Não é linear no chão, e fica decidido sobre o branco de referência:** a presença de tinta que pesa

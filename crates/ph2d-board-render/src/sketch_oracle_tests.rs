@@ -128,7 +128,7 @@ fn every_sketched_shape_is_the_one_excalidraw_draws_with_the_same_seed() {
             // As DUAS passagens do Excalidraw (a terceira do quadro é nossa).
             let opts = rough::Options {
                 passes: 2,
-                ..hand_options(seed, hand_roughness(w, h, round, false), &st, true)
+                ..hand_options(seed, adjust_roughness(1.0, w, h, round, false), &st, true)
             };
             let got = if kind == ShapeType::Diamond {
                 // O losango do Excalidraw tem os vértices a `⌊w/2⌋+1` (o dele, não lei: o nosso é ao
@@ -176,7 +176,12 @@ fn sketched_arrows_are_the_lines_excalidraw_draws_with_the_same_seed() {
             let (w, h) = (e["width"].as_f64().unwrap(), e["height"].as_f64().unwrap());
             let opts = rough::Options {
                 passes: 2,
-                ..hand_options(seed, hand_roughness(w, h, false, true), &style(e), false)
+                ..hand_options(
+                    seed,
+                    adjust_roughness(1.0, w, h, false, true),
+                    &style(e),
+                    false,
+                )
             };
             let got = if e["roundness"].is_null() {
                 let mut p = BezPath::new();
@@ -228,4 +233,20 @@ fn the_board_draws_every_line_three_times() {
         .filter(|o| matches!(o, Op::Move(_)))
         .count();
     assert_eq!(moves, 4 * 3, "quatro arestas, três passagens cada");
+}
+
+/// O tremor do quadro é o pedido pelo dono (1,5), abaixo de 2 (os vértices continuam presos).
+#[test]
+fn the_board_trembles_more_than_the_artist_and_keeps_its_corners() {
+    assert_eq!(hand_roughness(160.0, 120.0, false, false), 1.5);
+    let ink = Rgba([30, 30, 30, 255]);
+    assert!(
+        hand_options(
+            1,
+            hand_roughness(160.0, 120.0, false, false),
+            &Style::new(None, Some(ink), ink),
+            false
+        )
+        .preserve_vertices
+    );
 }

@@ -130,14 +130,16 @@ fn collect(sets: Vec<OpSet>, into: &mut Rough) {
     }
 }
 
-/// O tremor do rascunho: o «artista» do Excalidraw.
-const ROUGHNESS: f64 = 1.0;
+/// O tremor do rascunho: entre o «artista» (1) e o «cartunista» (2) do Excalidraw — ordem do dono
+/// (07/10: *«linhas um pouco mais irregulares, irregularidades mais intensas»*). Abaixo de 2, para os
+/// vértices continuarem PRESOS (no 2 as esquinas cruzam-se — o que o dono recusou antes).
+pub const ROUGHNESS: f64 = 1.5;
 /// Passagens de cada traço: TRÊS — ordem do dono (07/10: *«a linha parece dar 2 voltas por
 /// desenho; coloque 3»*). As duas primeiras são as do Excalidraw (o portão do oráculo confere-as),
 /// a terceira junta-se com sorteio próprio (`ph2d_board_rough::rough::Options::passes`).
 pub const HAND_PASSES: u8 = 3;
 
-/// ⭐ O tremor EFECTIVO de um elemento `w × h` — o `adjustRoughness` do Excalidraw 0.18.1, MEDIDO
+/// ⭐ O tremor EFECTIVO de um elemento `w × h` no quadro (a lei abaixo sobre [`ROUGHNESS`]) — o `adjustRoughness` do Excalidraw 0.18.1, MEDIDO
 /// primeiro por ajuste exacto do `d` dos SVG dele (`ferramentas/excalidraw_oracle/ajuste/`, entradas
 /// `rascunho_*`: 49×49 metade, 51×51 inteiro; 19×300 metade, 20×300 inteiro; 8×8 um terço) e depois
 /// lido no código dele (`dist/dev`, por ordem do dono, 07/10), que acrescentou os ramos que a amostra
@@ -146,11 +148,18 @@ pub const HAND_PASSES: u8 = 3;
 /// dividir por 2 (por 3 abaixo de 10), no máximo 2,5.
 #[must_use]
 pub fn hand_roughness(w: f64, h: f64, round: bool, linear: bool) -> f64 {
+    adjust_roughness(ROUGHNESS, w, h, round, linear)
+}
+
+/// A lei do Excalidraw para um tremor de base `base` qualquer (o `adjustRoughness` dele) — o que o
+/// portão do oráculo confere com o `base` das saídas gravadas (1).
+#[must_use]
+pub fn adjust_roughness(base: f64, w: f64, h: f64, round: bool, linear: bool) -> f64 {
     let (lo, hi) = (w.abs().min(h.abs()), w.abs().max(h.abs()));
     if (lo >= 20.0 && hi >= 50.0) || (lo >= 15.0 && round) || (linear && hi >= 50.0) {
-        ROUGHNESS
+        base
     } else {
-        (ROUGHNESS / if hi < 10.0 { 3.0 } else { 2.0 }).min(2.5)
+        (base / if hi < 10.0 { 3.0 } else { 2.0 }).min(2.5)
     }
 }
 

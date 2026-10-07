@@ -24,9 +24,10 @@
 //!
 //! # A regra de preenchimento
 //!
-//! `|soma corrida|` limitada a 1 é a regra **não-zero**: um laço que se cruza fica cheio, e dois
-//! contornos de sentidos opostos furam um ao outro. É a regra que o SVG e o Illustrator usam por
-//! default, e é a que faz um gesto solto ler como uma mancha em vez de um xadrez.
+//! `|soma corrida|` limitada a 1 é a regra **não-zero**: um laço que se cruza fica cheio. Dois
+//! contornos de sentidos opostos anulam-se nela — e o buraco que isso abre num rabisco que volta
+//! para trás É da mancha (decisão do dono, 2026-10-06): o que o gesto CERCA enche
+//! ([`crate::solid_cercado`]).
 
 /// A cobertura de uma região fechada, `0..=255` por pixel, sobre uma janela `w × h` cuja origem
 /// (canto superior-esquerdo, em pixels de canvas) é `origin`.
@@ -43,6 +44,23 @@
 pub fn fill_coverage(loops: &[Vec<[f32; 2]>], w: usize, h: usize, origin: [f32; 2]) -> Vec<u8> {
     // Piso do pool MEDIDO — ver [`PAR_MIN_AREA`]. A escolha mora AQUI, e a rota em
     // [`fill_coverage_routed`], para um gate poder pedir as duas sobre a MESMA entrada.
+    let mut out = fill_coverage_sem_cercado(loops, w, h, origin);
+    // O que o gesto CERCA enche, também onde a regra não-zero anula dois sentidos opostos (o rabisco
+    // que volta para trás). Classificado na caixa inteira dos laços, nunca na janela.
+    if let Some(c) = crate::solid_cercado::Cercado::de(loops) {
+        c.enche(&mut out, w, h, origin);
+    }
+    out
+}
+
+/// A regra não-zero SEM o que o gesto cerca — o `fill_coverage` de antes de 2026-10-06, a base que o
+/// gate `sem_vazio_cercado_nada_muda` compara.
+pub(crate) fn fill_coverage_sem_cercado(
+    loops: &[Vec<[f32; 2]>],
+    w: usize,
+    h: usize,
+    origin: [f32; 2],
+) -> Vec<u8> {
     fill_coverage_routed(loops, w, h, origin, w * h >= PAR_MIN_AREA)
 }
 

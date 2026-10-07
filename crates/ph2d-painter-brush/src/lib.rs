@@ -98,6 +98,8 @@ pub mod smear_field;
 /// **A FORMA SÓLIDA** — o caminho fechado do gesto vira região preenchida, com cobertura exata
 /// por área (o `Style: Solid` do plano 38 §5.2).
 pub mod solid;
+/// O que o gesto do Solid CERCA — os buracos que a regra não-zero abre num rabisco que volta para trás.
+mod solid_cercado;
 pub mod spec;
 mod spec_default;
 mod spec_frame;

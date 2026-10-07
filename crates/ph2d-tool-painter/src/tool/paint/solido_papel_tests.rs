@@ -130,6 +130,11 @@ fn diag_o_solid_com_papel() {
 
 /// Os píxeis vazios que NÃO se ligam à borda da tela por outros vazios (4-vizinhança): cercados.
 pub(super) fn cercados(w: usize, h: usize, vazio: impl Fn(usize) -> bool) -> usize {
+    onde_cercados(w, h, vazio).len()
+}
+
+/// Os índices dos píxeis vazios cercados (ver [`cercados`]).
+fn onde_cercados(w: usize, h: usize, vazio: impl Fn(usize) -> bool) -> Vec<usize> {
     let mut fora = vec![false; w * h];
     let mut fila: Vec<usize> = (0..w * h)
         .filter(|&i| {
@@ -153,7 +158,7 @@ pub(super) fn cercados(w: usize, h: usize, vazio: impl Fn(usize) -> bool) -> usi
             }
         }
     }
-    (0..w * h).filter(|&i| vazio(i) && !fora[i]).count()
+    (0..w * h).filter(|&i| vazio(i) && !fora[i]).collect()
 }
 
 /// ⭐ **COM PAPEL, A MANCHA DO SOLID TEM A TINTA DO TRAÇO** (smoke do dono 2026-10-06, foto: o miolo
@@ -227,4 +232,197 @@ fn o_over_da_mancha_num_destino_translucido() {
     // Opaco: `(c·a + d·(255 − a)) / 255` truncado, a lei aprovada sobre o branco —
     // `(220·128 + 255·127)/255 = 237`, `(30·128 + 255·127)/255 = 142`.
     assert_eq!(corre([255, 255, 255, 255]), [237, 142, 142, 255]);
+}
+
+/// ⭐ **O SOLID ENCHE O QUE O RABISCO CERCA** (decisão do dono 2026-10-06: *«então vamos corrigir»*,
+/// nos quatro meios) — um rabisco que se cruza e volta para trás em sentidos opostos não deixa nenhum
+/// píxel de BURACO (vazio cercado, os 8 vizinhos vazios) cercado pelo gesto, com papel e no branco.
+/// Vermelho antes (regra não-zero, vazios cercados): Digital `3 113`, Impasto `3 022`, Aquarela
+/// `3 265`, Wet Paint `4 139`.
+#[test]
+fn o_solid_enche_o_que_o_rabisco_cerca() {
+    for meio in [
+        PaintMedia::Digital,
+        PaintMedia::Impasto,
+        PaintMedia::Watercolor,
+        PaintMedia::WetPaint,
+    ] {
+        for com_papel in [true, false] {
+            let mut t = tool(LADO as u32, meio, 10.0);
+            t.set_brush_color_srgb8(TINTA);
+            t.paint.brush.style_solid = true;
+            if com_papel {
+                papel(&mut t);
+            }
+            gesto(&mut t, &rabisco());
+            for _ in 0..30 {
+                t.paint_tick(1.0 / 30.0);
+            }
+            let c = &t.canvas_rgba;
+            let vazio = |i: usize| {
+                if com_papel {
+                    c[i * 4 + 3] == 0
+                } else {
+                    c[i * 4..i * 4 + 3] == [255, 255, 255]
+                }
+            };
+            assert!(
+                (0..LADO * LADO).filter(|&i| !vazio(i)).count() > 3000,
+                "controlo: {meio:?}: o rabisco pintou"
+            );
+            // Um BURACO: vazio cercado com os 8 vizinhos vazios. ⚠️ O Wet Paint deixa `24`–`41` píxeis
+            // vazios SOLTOS na orla macia do fluido (numa elipse simples também, com e sem papel —
+            // `diag_os_vazios_do_wet_paint`): a textura da borda dele, não um buraco da mancha.
+            let vazio8 = |i: usize| {
+                let (x, y) = (i % LADO, i / LADO);
+                x > 0
+                    && y > 0
+                    && x + 1 < LADO
+                    && y + 1 < LADO
+                    && (0..3).all(|dy| (0..3).all(|dx| vazio((y + dy - 1) * LADO + x + dx - 1)))
+            };
+            let buracos = onde_cercados(LADO, LADO, vazio)
+                .into_iter()
+                .filter(|&i| vazio8(i))
+                .count();
+            assert_eq!(
+                buracos, 0,
+                "{meio:?} papel {com_papel}: {buracos} píxeis de buraco cercados pelo gesto"
+            );
+        }
+    }
+}
+
+/// SONDA — os vazios cercados do Wet Paint num rabisco e numa elipse SIMPLES (sem buraco na regra),
+/// com e sem papel, e onde estão.
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_os_vazios_do_wet_paint() {
+    for (nome, pts) in [("rabisco", rabisco()), ("elipse", elipse())] {
+        for com_papel in [true, false] {
+            let mut t = tool(LADO as u32, PaintMedia::WetPaint, 10.0);
+            t.set_brush_color_srgb8(TINTA);
+            t.paint.brush.style_solid = true;
+            if com_papel {
+                papel(&mut t);
+            }
+            gesto(&mut t, &pts);
+            for _ in 0..30 {
+                t.paint_tick(1.0 / 30.0);
+            }
+            let c = t.canvas_rgba.clone();
+            let vazio = |i: usize| {
+                if com_papel {
+                    c[i * 4 + 3] == 0
+                } else {
+                    c[i * 4..i * 4 + 3] == [255, 255, 255]
+                }
+            };
+            let n = cercados(LADO, LADO, &vazio);
+            let alguns: Vec<(usize, usize, [u8; 4])> = onde_cercados(LADO, LADO, &vazio)
+                .into_iter()
+                .take(10)
+                .map(|i| {
+                    let viz = [
+                        c[(i + 1) * 4],
+                        c[(i + 1) * 4 + 1],
+                        c[(i + 1) * 4 + 2],
+                        c[(i + 1) * 4 + 3],
+                    ];
+                    (i % LADO, i / LADO, viz)
+                })
+                .collect();
+            eprintln!(
+                "Wet Paint {nome} papel {com_papel}: {n} cercados · onde (x, y, o vizinho da direita) {alguns:?}"
+            );
+        }
+    }
+}
+
+/// SONDA — os laços que o Solid enche para o rabisco: quantos, quantos pontos, a área de cada um, e
+/// os primeiros pontos contra o gesto.
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_os_lacos_do_rabisco() {
+    let mut t = tool(LADO as u32, PaintMedia::Digital, 10.0);
+    t.paint.brush.style_solid = true;
+    let pts = rabisco();
+    t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+    for p in &pts[1..60] {
+        t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+    }
+    let lacos = t.solid_fill_loops();
+    for l in &lacos {
+        let area: f32 = (0..l.len())
+            .map(|i| {
+                let (a, b) = (l[i], l[(i + 1) % l.len()]);
+                a[0] * b[1] - b[0] * a[1]
+            })
+            .sum::<f32>()
+            / 2.0;
+        eprintln!(
+            "laço: {} pontos · área {area:.1} · primeiros {:?}",
+            l.len(),
+            &l[..4.min(l.len())]
+        );
+    }
+    eprintln!("gesto (60 eventos): primeiros {:?}", &pts[..4]);
+}
+
+/// O winding dos laços no centro do píxel `(x, y)` (raio para a direita).
+fn winding(lacos: &[Vec<[f32; 2]>], x: usize, y: usize) -> i32 {
+    #[allow(clippy::cast_precision_loss)]
+    let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
+    let mut w = 0;
+    for l in lacos {
+        for i in 0..l.len() {
+            let (a, b) = (l[i], l[(i + 1) % l.len()]);
+            if (a[1] <= py) != (b[1] <= py) {
+                let xi = a[0] + (b[0] - a[0]) * (py - a[1]) / (b[1] - a[1]);
+                if xi > px {
+                    w += if b[1] > a[1] { 1 } else { -1 };
+                }
+            }
+        }
+    }
+    w
+}
+
+/// SONDA — de que são os vazios cercados do rabisco: buracos da REGRA (winding 0 cercado pelo
+/// polígono) ou BOLSOS que o traço grosso fecha (winding 0 ligado ao exterior pelo polígono)?
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_de_que_sao_os_vazios() {
+    for (nome, n) in [("meia volta", 60usize), ("rabisco inteiro", 121)] {
+        let mut t = tool(LADO as u32, PaintMedia::Digital, 10.0);
+        t.paint.brush.style_solid = true;
+        let pts = rabisco();
+        t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+        for p in &pts[1..n] {
+            t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+        }
+        let lacos = t.solid_fill_loops();
+        t.on_canvas_pointer(cp(pts[n - 1], PointerPhase::Up));
+        let w0 = |i: usize| winding(&lacos, i % LADO, i / LADO) == 0;
+        let regra = onde_cercados(LADO, LADO, &w0).len();
+        let c = t.canvas_rgba.clone();
+        let vazio = |i: usize| c[i * 4..i * 4 + 3] == [255, 255, 255];
+        let vazios = onde_cercados(LADO, LADO, &vazio);
+        let dentro = vazios.iter().filter(|&&i| !w0(i)).count();
+        let caixa = vazios
+            .iter()
+            .fold((usize::MAX, usize::MAX, 0, 0), |(a, b, c, d), &i| {
+                (
+                    a.min(i % LADO),
+                    b.min(i / LADO),
+                    c.max(i % LADO),
+                    d.max(i / LADO),
+                )
+            });
+        eprintln!(
+            "{nome}: {} laço(s) · buracos da regra {regra} · vazios cercados pela tinta {} (dentro do laço final: {dentro}) · caixa dos vazios {caixa:?}",
+            lacos.len(),
+            vazios.len()
+        );
+    }
 }

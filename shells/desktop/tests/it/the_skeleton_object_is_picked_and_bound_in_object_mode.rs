@@ -16,7 +16,12 @@ fn code_only(rel: &str) -> String {
 
 #[test]
 fn a_bone_click_in_object_offers_the_bone_then_its_skeleton() {
-    let src = code_only("src/input_dispatch/despacho_clique_pick.rs");
+    let todo = code_only("src/input_dispatch/despacho_clique_pick.rs");
+    // ⚠️ A ordem mede-se DENTRO do pick de canvas: a UIUX pôs antes dele o `vetor_node_escolhe_outro_tipo`,
+    // que também chama `pick_objects_at(` — a agulha global apontava para a função errada (integração 07/10).
+    let src = &todo[todo
+        .find("fn ramo_gizmo_pick(")
+        .expect("controlo: o pick de canvas")..];
     let pick = src
         .find("pick_objects_at(")
         .expect("controlo: a porta do pick de objecto");

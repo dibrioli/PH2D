@@ -14,8 +14,6 @@
 //! - colar uma PLANILHA = uma nota por célula, na grelha das células (help «Paste as sticky notes»);
 //! - a pega de quatro pontos de uma selecção de notas arruma-as em linhas e colunas.
 
-use std::collections::BTreeSet;
-
 use ph2d_board_geom::{height_for_text, text_rect};
 use ph2d_board_model::{
     BoardDoc, BoardOp, Dash, Element, ElementId, History, Mark, Rgba, RichText, STICKY_COLORS,
@@ -24,6 +22,8 @@ use ph2d_board_model::{
 use ph2d_text::TextSystem;
 
 use crate::{Editor, live};
+
+pub use crate::notes_layout::{grid_layout, parse_cells, reading_order};
 
 /// Os tamanhos P · M · G de uma nota, em múltiplos da de nascença do Miro ([`STICKY_SIDE`]).
 /// ⚠️ **P e G por medir**: o Miro tem o menu de tamanho (moderador, 09/11/2024) e não publica as
@@ -110,114 +110,19 @@ fn writable(el: &Element) -> bool {
         .is_some_and(|s| matches!(s.kind, ShapeType::Sticky | ShapeType::StickyWide))
 }
 
-/// A altura que `el` (nota) pede: a de nascença (largura × proporção), ou mais, se o texto não cabe.
+/// A altura que `el` pede para o texto caber: numa nota, a de nascença (largura × proporção) ou
+/// mais; numa forma, a que tem ou mais (uma forma só cresce).
 pub(crate) fn fitted_height(ts: &mut TextSystem, el: &Element) -> f64 {
     let Some(s) = el.shape() else {
         return el.h;
     };
-    let Some(aspect) = s.kind.note_aspect() else {
-        return el.h;
-    };
-    let base = el.w * aspect;
+    let base = s.kind.note_aspect().map_or(el.h, |a| el.w * a);
     if s.text.is_empty() {
         return base;
     }
     let tw = text_rect(s.kind, el.w, base)[2];
     let block = ph2d_board_layout::text_height(ts, &s.text, s.style.font_size as f32, tw as f32);
     height_for_text(s.kind, base, f64::from(block))
-}
-
-/// As posições `[x, y]` de `sizes` (`[w, h]`) em `cols` colunas a partir de `origin`, com `gap`
-/// entre elas: cada coluna da largura da maior, cada linha da altura da maior dela.
-#[must_use]
-pub fn grid_layout(sizes: &[[f64; 2]], cols: usize, origin: [f64; 2], gap: f64) -> Vec<[f64; 2]> {
-    let cols = cols.max(1);
-    let col_w = sizes.iter().map(|s| s[0]).fold(0.0, f64::max);
-    let mut out = Vec::with_capacity(sizes.len());
-    let mut y = origin[1];
-    for row in sizes.chunks(cols) {
-        for (c, _) in row.iter().enumerate() {
-            out.push([origin[0] + c as f64 * (col_w + gap), y]);
-        }
-        y += row.iter().map(|s| s[1]).fold(0.0, f64::max) + gap;
-    }
-    out
-}
-
-/// Os elementos por ordem de LEITURA: linhas de cima para baixo (uma linha nova começa quando o
-/// centro desce mais de meia altura abaixo do primeiro da linha), cada linha da esquerda à direita.
-#[must_use]
-pub fn reading_order(els: &[Element]) -> Vec<Element> {
-    let mut v = els.to_vec();
-    v.sort_by(|a, b| a.center()[1].total_cmp(&b.center()[1]));
-    let mut rows: Vec<Vec<Element>> = Vec::new();
-    for el in v {
-        match rows.last_mut() {
-            Some(row) if el.center()[1] <= row[0].center()[1] + row[0].h / 2.0 => row.push(el),
-            _ => rows.push(vec![el]),
-        }
-    }
-    rows.into_iter()
-        .flat_map(|mut r| {
-            r.sort_by(|a, b| a.center()[0].total_cmp(&b.center()[0]));
-            r
-        })
-        .collect()
-}
-
-/// ⭐ **Uma planilha colada** (o texto que o Excel e as Folhas põem na área de transferência):
-/// linhas por `\n`, células por `\t`; uma célula entre aspas pode ter `\n` e `\t` dentro, e `""` é
-/// uma aspa. Devolve as linhas com as suas células.
-#[must_use]
-pub fn parse_cells(text: &str) -> Vec<Vec<String>> {
-    let mut rows = vec![Vec::new()];
-    let mut cell = String::new();
-    let mut chars = text.chars().peekable();
-    let mut quoted = false;
-    let mut at_start = true;
-    while let Some(ch) = chars.next() {
-        if quoted {
-            match ch {
-                '"' if chars.peek() == Some(&'"') => {
-                    chars.next();
-                    cell.push('"');
-                }
-                '"' => quoted = false,
-                _ => cell.push(ch),
-            }
-            continue;
-        }
-        match ch {
-            '"' if at_start => {
-                quoted = true;
-                at_start = false;
-            }
-            '\t' => {
-                rows.last_mut()
-                    .expect("há sempre uma")
-                    .push(std::mem::take(&mut cell));
-                at_start = true;
-            }
-            '\r' if chars.peek() == Some(&'\n') => {}
-            '\n' | '\r' => {
-                rows.last_mut()
-                    .expect("há sempre uma")
-                    .push(std::mem::take(&mut cell));
-                rows.push(Vec::new());
-                at_start = true;
-            }
-            _ => {
-                cell.push(ch);
-                at_start = false;
-            }
-        }
-    }
-    rows.last_mut().expect("há sempre uma").push(cell);
-    // A última linha vazia de quem termina em `\n` não é uma linha.
-    while rows.last().is_some_and(|r| r.iter().all(String::is_empty)) {
-        rows.pop();
-    }
-    rows
 }
 
 impl Editor {
@@ -270,12 +175,7 @@ impl Editor {
     /// ⭐ **`Tab` (ou `Ctrl+D`) a escrever numa nota**: termina-a e cria a seguinte à DIREITA — mesma
     /// cor, tamanho e forma, sem texto, no primeiro sítio livre — já a escrever. `false` = não se
     /// escrevia numa nota.
-    pub fn next_note(
-        &mut self,
-        doc: &mut BoardDoc,
-        history: &mut History,
-        ts: &mut TextSystem,
-    ) -> bool {
+    pub fn next_note(&mut self, doc: &mut BoardDoc, history: &mut History) -> bool {
         let Some(id) = self.editing.as_ref().map(|e| e.id) else {
             return false;
         };
@@ -312,19 +212,13 @@ impl Editor {
         let nid = next.id;
         live(doc, next);
         history.record(vec![BoardOp::Delete(nid)]);
-        self.begin_text(doc, ts, nid, None)
+        self.open_text(doc, nid)
     }
 
     /// ⭐ **O modo EM MASSA** — um rascunho tracejado (uma nota larga, fora do desfazer) centrado em
     /// `c`, já a escrever: uma ideia por linha. Ao terminar (`Esc`, `Ctrl+Enter`, clicar fora), cada
     /// linha com texto vira uma nota, em fila, e o rascunho sai — UM passo.
-    pub fn begin_bulk(
-        &mut self,
-        doc: &mut BoardDoc,
-        history: &mut History,
-        ts: &mut TextSystem,
-        c: [f64; 2],
-    ) -> bool {
+    pub fn begin_bulk(&mut self, doc: &mut BoardDoc, history: &mut History, c: [f64; 2]) -> bool {
         self.commit_text(doc, history);
         self.cancel_gesture(doc);
         let kind = ShapeType::StickyWide;
@@ -343,7 +237,7 @@ impl Editor {
         let id = el.id;
         live(doc, el);
         self.bulk = Some(id);
-        self.begin_text(doc, ts, id, None)
+        self.open_text(doc, id)
     }
 
     /// O rascunho em massa terminou: as linhas viram notas (UM passo), o rascunho sai. A altura das
@@ -488,13 +382,7 @@ impl Editor {
 
     /// Quadrada ↔ larga, nas notas seleccionadas (e nas próximas), com a mesma escala: a largura
     /// muda, a altura volta a caber o texto — UM passo.
-    pub fn set_note_wide(
-        &mut self,
-        doc: &mut BoardDoc,
-        history: &mut History,
-        ts: &mut TextSystem,
-        wide: bool,
-    ) {
+    pub fn set_note_wide(&mut self, doc: &mut BoardDoc, history: &mut History, wide: bool) {
         self.notes.wide = wide;
         let kind = self.notes.kind();
         let ops = self
@@ -508,26 +396,45 @@ impl Editor {
                 el.shape_mut()?.kind = kind;
                 el.w = base_width(kind) * s;
                 el.x = cx - el.w / 2.0;
-                el.h = fitted_height(ts, &el);
+                el.h = el.w * kind.note_aspect().unwrap_or(1.0);
                 Some(BoardOp::Put(el))
             })
-            .collect();
+            .collect::<Vec<_>>();
+        self.refit(&ops);
         history.apply(doc, ops);
+    }
+
+    /// Os elementos de `ops` ajustam a altura ao texto no próximo desenho (quem mudou o estilo não
+    /// tinha o moldador à mão — um clique na barra).
+    fn refit(&mut self, ops: &[BoardOp]) {
+        self.unfitted.extend(ops.iter().filter_map(|op| match op {
+            BoardOp::Put(el) => Some(el.id),
+            BoardOp::Delete(_) => None,
+        }));
+    }
+
+    /// O texto em edição mudou de estilo: vai já para a forma; a altura ajusta-se no próximo
+    /// desenho.
+    fn restyled_while_editing(&mut self, doc: &mut BoardDoc) {
+        let Some(e) = self.editing.as_ref() else {
+            return;
+        };
+        if let Some(mut el) = doc.get(e.id).cloned()
+            && let Some(s) = el.shape_mut()
+        {
+            s.text = e.edit.rich().clone();
+            live(doc, el);
+        }
+        self.resync = true;
     }
 
     /// ⭐ Liga ou desliga `mark` — no texto seleccionado se se está a escrever (ao vivo: o passo de
     /// desfazer é o da edição); senão no texto INTEIRO das formas e notas seleccionadas, UM passo
     /// (se todas já a têm em tudo, desliga).
-    pub fn toggle_mark(
-        &mut self,
-        doc: &mut BoardDoc,
-        history: &mut History,
-        ts: &mut TextSystem,
-        mark: Mark,
-    ) -> bool {
+    pub fn toggle_mark(&mut self, doc: &mut BoardDoc, history: &mut History, mark: Mark) -> bool {
         if let Some(e) = self.editing.as_mut() {
-            e.edit.toggle(ts, mark);
-            self.sync(doc, ts);
+            e.edit.toggle(mark);
+            self.restyled_while_editing(doc);
             return true;
         }
         let texts: Vec<&Element> = self
@@ -551,7 +458,8 @@ impl Editor {
                 t.restyle(0..n, |m| mark.set(m, on));
                 BoardOp::Put(el)
             })
-            .collect();
+            .collect::<Vec<_>>();
+        self.refit(&ops);
         history.apply(doc, ops);
         true
     }
@@ -573,16 +481,10 @@ impl Editor {
 
     /// A cor do texto (`None` = a tinta da forma) — no texto seleccionado se se está a escrever;
     /// senão no texto inteiro das FORMAS seleccionadas (as notas do Miro não mudam a cor da letra).
-    pub fn set_text_color(
-        &mut self,
-        doc: &mut BoardDoc,
-        history: &mut History,
-        ts: &mut TextSystem,
-        c: Option<Rgba>,
-    ) {
+    pub fn set_text_color(&mut self, doc: &mut BoardDoc, history: &mut History, c: Option<Rgba>) {
         if let Some(e) = self.editing.as_mut() {
-            e.edit.set_color(ts, c);
-            self.sync(doc, ts);
+            e.edit.set_color(c);
+            self.restyled_while_editing(doc);
             return;
         }
         let ops = self
@@ -680,10 +582,4 @@ fn free(el: &Element, doc: &BoardDoc) -> bool {
         let a = o.aabb();
         a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]
     })
-}
-
-/// Os ids de `els`.
-#[must_use]
-pub fn ids(els: &[Element]) -> BTreeSet<ElementId> {
-    els.iter().map(|e| e.id).collect()
 }

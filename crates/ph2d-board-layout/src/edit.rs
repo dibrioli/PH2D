@@ -9,7 +9,7 @@
 use std::ops::Range;
 
 use parley::{Affinity, Cursor, Layout, LayoutContext, Selection};
-use ph2d_board_model::{Mark, Marks, RichText, Rgba};
+use ph2d_board_model::{Mark, Marks, Rgba, RichText};
 use ph2d_text::TextSystem;
 
 use crate::Ink;
@@ -40,13 +40,18 @@ pub struct TextEdit {
     width: f32,
     lcx: LayoutContext<Ink>,
     layout: Layout<Ink>,
+    /// O texto (ou o estilo) mudou sem o moldador à mão: remolda no próximo uso.
+    dirty: bool,
+    /// Abriu com TUDO seleccionado e ainda não moldou: a selecção resolve-se no próximo uso.
+    all: bool,
 }
 
 impl TextEdit {
-    /// Abre `text` para edição com tudo seleccionado (escrever substitui; uma seta colapsa).
+    /// Abre `text` para edição com tudo seleccionado (escrever substitui; uma seta colapsa). Molda
+    /// no primeiro uso — quem abre (um botão da barra) pode não ter o moldador à mão.
     #[must_use]
-    pub fn new(ts: &mut TextSystem, text: &RichText, font_size: f32, max_width: f32) -> Self {
-        let mut e = Self {
+    pub fn new(text: &RichText, font_size: f32, max_width: f32) -> Self {
+        Self {
             rich: text.clone(),
             sel: Selection::default(),
             typing: None,
@@ -54,13 +59,37 @@ impl TextEdit {
             width: max_width.max(1.0),
             lcx: LayoutContext::new(),
             layout: Layout::new(),
-        };
-        e.relayout(ts);
-        e.select_all(ts);
-        e
+            dirty: true,
+            all: true,
+        }
+    }
+
+    /// Molda o que ficou por moldar (e resolve o «tudo seleccionado» de quem abriu).
+    fn ensure(&mut self, ts: &mut TextSystem) {
+        if self.dirty {
+            self.relayout(ts);
+        }
+        if self.all {
+            self.all = false;
+            self.sel = Selection::from_byte_index(&self.layout, 0, Affinity::default()).move_lines(
+                &self.layout,
+                isize::MAX,
+                true,
+            );
+        }
+    }
+
+    /// Os bytes seleccionados, mesmo antes do primeiro moldar.
+    fn sel_range(&self) -> Range<usize> {
+        if self.all {
+            0..self.rich.len()
+        } else {
+            self.sel.text_range()
+        }
     }
 
     fn relayout(&mut self, ts: &mut TextSystem) {
+        self.dirty = false;
         self.layout = crate::shape(
             ts,
             &mut self.lcx,
@@ -97,7 +126,7 @@ impl TextEdit {
     /// Os bytes seleccionados (vazio = só o cursor).
     #[must_use]
     pub fn range(&self) -> Range<usize> {
-        self.sel.text_range()
+        self.sel_range()
     }
 
     /// A largura de quebra mudou (a forma foi redimensionada).
@@ -108,6 +137,7 @@ impl TextEdit {
 
     /// Troca `range` por `s` (com as marcas de escrever ali) e põe o cursor no fim.
     fn replace(&mut self, ts: &mut TextSystem, range: Range<usize>, s: &str) {
+        self.ensure(ts);
         let marks = self
             .typing
             .unwrap_or_else(|| self.rich.typing_marks(range.start));
@@ -126,11 +156,13 @@ impl TextEdit {
     }
 
     pub fn insert(&mut self, ts: &mut TextSystem, s: &str) {
+        self.ensure(ts);
         self.replace(ts, self.sel.text_range(), s);
     }
 
     /// Apaga a selecção, ou o grafema (a palavra, com `word`) antes do cursor.
     pub fn backspace(&mut self, ts: &mut TextSystem, word: bool) {
+        self.ensure(ts);
         if !self.sel.is_collapsed() {
             return self.replace(ts, self.sel.text_range(), "");
         }
@@ -162,6 +194,7 @@ impl TextEdit {
 
     /// Apaga a selecção, ou o grafema (a palavra, com `word`) depois do cursor.
     pub fn delete(&mut self, ts: &mut TextSystem, word: bool) {
+        self.ensure(ts);
         if !self.sel.is_collapsed() {
             return self.replace(ts, self.sel.text_range(), "");
         }
@@ -183,14 +216,19 @@ impl TextEdit {
         }
     }
 
-    pub fn select_all(&mut self, _ts: &mut TextSystem) {
-        let all = Selection::from_byte_index(&self.layout, 0, Affinity::default())
-            .move_lines(&self.layout, isize::MAX, true);
+    pub fn select_all(&mut self, ts: &mut TextSystem) {
+        self.ensure(ts);
+        let all = Selection::from_byte_index(&self.layout, 0, Affinity::default()).move_lines(
+            &self.layout,
+            isize::MAX,
+            true,
+        );
         self.set_sel(all);
     }
 
     /// Selecciona `range` (bytes).
-    pub fn select_range(&mut self, range: Range<usize>) {
+    pub fn select_range(&mut self, ts: &mut TextSystem, range: Range<usize>) {
+        self.ensure(ts);
         let a = Cursor::from_byte_index(&self.layout, range.start, Affinity::Downstream);
         let b = Cursor::from_byte_index(&self.layout, range.end, Affinity::Upstream);
         self.set_sel(Selection::new(a, b));
@@ -199,11 +237,12 @@ impl TextEdit {
     /// O texto seleccionado (para copiar), se há selecção.
     #[must_use]
     pub fn selected(&self) -> Option<String> {
-        let r = self.sel.text_range();
+        let r = self.sel_range();
         (!r.is_empty()).then(|| self.rich.as_str()[r].to_owned())
     }
 
-    pub fn motion(&mut self, _ts: &mut TextSystem, m: Move, extend: bool) {
+    pub fn motion(&mut self, ts: &mut TextSystem, m: Move, extend: bool) {
+        self.ensure(ts);
         let l = &self.layout;
         let s = &self.sel;
         let end = |at: usize, aff| -> Selection {
@@ -226,7 +265,8 @@ impl TextEdit {
     }
 
     /// Um clique em `(x, y)` (espaço do texto). `extend` = Shift.
-    pub fn click(&mut self, _ts: &mut TextSystem, x: f32, y: f32, extend: bool) {
+    pub fn click(&mut self, ts: &mut TextSystem, x: f32, y: f32, extend: bool) {
+        self.ensure(ts);
         let sel = if extend {
             self.sel.shift_click_extension(&self.layout, x, y)
         } else {
@@ -236,20 +276,22 @@ impl TextEdit {
     }
 
     /// Arrastar com o botão em baixo: a selecção vai até `(x, y)`.
-    pub fn drag_to(&mut self, _ts: &mut TextSystem, x: f32, y: f32) {
+    pub fn drag_to(&mut self, ts: &mut TextSystem, x: f32, y: f32) {
+        self.ensure(ts);
         let sel = self.sel.extend_to_point(&self.layout, x, y);
         self.set_sel(sel);
     }
 
     /// Duplo-clique: a palavra em `(x, y)`.
-    pub fn select_word_at(&mut self, _ts: &mut TextSystem, x: f32, y: f32) {
+    pub fn select_word_at(&mut self, ts: &mut TextSystem, x: f32, y: f32) {
+        self.ensure(ts);
         self.set_sel(Selection::word_from_point(&self.layout, x, y));
     }
 
     /// ⭐ Liga ou desliga `mark` na selecção (o Ctrl+B dos editores: se toda a selecção a tem,
-    /// desliga). Sem selecção, vale para o que se escrever a seguir.
-    pub fn toggle(&mut self, ts: &mut TextSystem, mark: Mark) {
-        let r = self.sel.text_range();
+    /// desliga). Sem selecção, vale para o que se escrever a seguir. Remolda no próximo uso.
+    pub fn toggle(&mut self, mark: Mark) {
+        let r = self.sel_range();
         if r.is_empty() {
             let mut m = self.marks_here();
             let on = !mark.get(&m);
@@ -258,12 +300,12 @@ impl TextEdit {
             return;
         }
         self.rich.toggle(r, mark);
-        self.relayout(ts);
+        self.dirty = true;
     }
 
     /// Pinta a selecção com `color` (`None` = a tinta da forma). Sem selecção, o que se escrever.
-    pub fn set_color(&mut self, ts: &mut TextSystem, color: Option<Rgba>) {
-        let r = self.sel.text_range();
+    pub fn set_color(&mut self, color: Option<Rgba>) {
+        let r = self.sel_range();
         if r.is_empty() {
             let mut m = self.marks_here();
             m.color = color;
@@ -271,13 +313,13 @@ impl TextEdit {
             return;
         }
         self.rich.restyle(r, |m| m.color = color);
-        self.relayout(ts);
+        self.dirty = true;
     }
 
     /// A marca está ligada na selecção (em TODA) — ou para o que se escrever, sem selecção?
     #[must_use]
     pub fn has(&self, mark: Mark) -> bool {
-        let r = self.sel.text_range();
+        let r = self.sel_range();
         if r.is_empty() {
             return mark.get(&self.marks_here());
         }
@@ -287,7 +329,7 @@ impl TextEdit {
     /// A cor única da selecção (`Some(None)` = a da forma; `None` = várias).
     #[must_use]
     pub fn color(&self) -> Option<Option<Rgba>> {
-        let r = self.sel.text_range();
+        let r = self.sel_range();
         if r.is_empty() {
             return Some(self.marks_here().color);
         }
@@ -296,15 +338,17 @@ impl TextEdit {
 
     fn marks_here(&self) -> Marks {
         self.typing
-            .unwrap_or_else(|| self.rich.typing_marks(self.sel.focus().index()))
+            .unwrap_or_else(|| self.rich.typing_marks(self.sel_range().end))
     }
 
-    /// O moldado actual.
-    pub fn layout(&mut self, _ts: &mut TextSystem) -> &Layout<Ink> {
+    /// O moldado actual (remoldado se o estilo mudou).
+    pub fn layout(&mut self, ts: &mut TextSystem) -> &Layout<Ink> {
+        self.ensure(ts);
         &self.layout
     }
 
-    /// Os rectângulos da selecção e o do cursor, `[x0, y0, x1, y1]` no espaço do texto.
+    /// Os rectângulos da selecção e o do cursor, `[x0, y0, x1, y1]` no espaço do texto. Pede
+    /// [`Self::layout`] antes (é ele que põe o moldado em dia).
     #[must_use]
     pub fn decorations(&self, caret_w: f32) -> (Vec<[f64; 4]>, Option<[f64; 4]>) {
         let sel = self

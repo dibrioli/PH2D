@@ -15,6 +15,9 @@ const ICON_HEAD_SCALE: f64 = 1.0;
 
 /// O balão de cada controlo (o nome e, quando há, o atalho de uma tecla).
 pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
+    if let Some(k) = super::notes::tooltip_key(it) {
+        return Some(k);
+    }
     Some(match it {
         Item::Tool(Tool::Select) => "board.tool.select",
         Item::Tool(Tool::Hand) => "board.tool.hand",
@@ -38,6 +41,12 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         Item::Round(true) => "board.style.round",
         Item::Opacity(_) => "board.style.opacity",
         Item::Font(_) => "board.style.font",
+        Item::NoteColor(_)
+        | Item::NoteSize(_)
+        | Item::NoteWide(_)
+        | Item::Bulk
+        | Item::Mark(_)
+        | Item::TextColor(_) => return None,
     })
 }
 
@@ -113,6 +122,9 @@ pub(super) fn selected_arrow(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> O
 
 /// Formas, setas ou as duas?
 pub(super) fn selected_kind(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> Option<Selected> {
+    if let Some(k) = super::notes::selected_kind(ed, doc) {
+        return k;
+    }
     let els: Vec<_> = ed
         .selection()
         .iter()

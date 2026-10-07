@@ -57,6 +57,7 @@ fn board_key(code: KeyCode) -> BoardKey {
         KeyCode::Home => BoardKey::Home,
         KeyCode::End => BoardKey::End,
         KeyCode::Space => BoardKey::Space,
+        KeyCode::Tab => BoardKey::Tab,
         _ => BoardKey::Other,
     }
 }

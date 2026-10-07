@@ -3,7 +3,7 @@
 
 use std::collections::BTreeSet;
 
-use ph2d_board_model::{BoardDoc, BoardOp, Element, History};
+use ph2d_board_model::{BoardDoc, BoardOp, Element, History, ShapeType};
 use ph2d_text::TextSystem;
 
 use crate::{Command, Editor, Tool};
@@ -44,10 +44,16 @@ impl Editor {
                 false
             }
             Command::Tool(t) => {
-                self.tool = t;
+                // A nota nasce da forma escolhida por último (quadrada ou larga).
+                self.tool = match t {
+                    Tool::Shape(ShapeType::Sticky | ShapeType::StickyWide) => {
+                        Tool::Shape(self.notes.kind())
+                    }
+                    t => t,
+                };
                 true
             }
-            Command::Mark(m) => self.toggle_mark(doc, history, ts, m),
+            Command::Mark(m) => self.toggle_mark(doc, history, m),
             Command::SelectAll => {
                 self.selection = doc.live_in_z_order().iter().map(|el| el.id).collect();
                 true

@@ -11,6 +11,8 @@
 mod command;
 mod gesture;
 mod notes;
+mod notes_layout;
+mod resize;
 mod snap;
 mod text;
 mod wire;
@@ -327,6 +329,9 @@ pub struct Editor {
     /// Notas nascidas sem o moldador à mão (o fim do modo em massa ao trocar de aba): a altura delas
     /// ajusta-se ao texto no próximo [`Editor::overlay`].
     unfitted: Vec<ElementId>,
+    /// O estilo do texto em edição mudou sem o moldador (um clique na barra): a forma ajusta-se ao
+    /// texto no próximo [`Editor::overlay`].
+    resync: bool,
     /// O texto que a última cópia de elementos pôs na área de transferência do sistema — um
     /// `Ctrl+V` com OUTRO texto lá é uma colagem de fora (uma planilha).
     copied_text: Option<String>,
@@ -351,6 +356,7 @@ impl Editor {
             notes: NoteStyle::default(),
             bulk: None,
             unfitted: Vec::new(),
+            resync: false,
             copied_text: None,
         }
     }
@@ -502,6 +508,9 @@ impl Editor {
 
     /// O que desenhar por cima do quadro agora.
     pub fn overlay(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem) -> Overlay {
+        if std::mem::take(&mut self.resync) {
+            self.sync(doc, ts);
+        }
         self.fit_pending(doc, ts);
         self.routes.sync(doc);
         let mid = self.label_mid(doc);

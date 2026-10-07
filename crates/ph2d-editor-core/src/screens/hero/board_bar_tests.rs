@@ -205,7 +205,7 @@ fn one_letter_shortcuts_delete_and_typing_belong_to_the_board() {
     assert!(t.key(BoardKey::Enter, Modifiers::default(), None));
     assert!(t.key(BoardKey::Char('h'), Modifiers::default(), Some("H")));
     assert!(t.key(BoardKey::Char('i'), Modifiers::default(), Some("i")));
-    assert_eq!(t.elements()[0].shape().unwrap().text, "Hi");
+    assert_eq!(t.elements()[0].shape().unwrap().text.as_str(), "Hi");
     assert!(
         t.key(BoardKey::Escape, Modifiers::default(), None),
         "o Esc não terminou o texto"
@@ -256,7 +256,7 @@ fn a_double_click_on_a_shape_writes_in_it() {
         t.key(BoardKey::Char('o'), Modifiers::default(), Some("o")),
         "a letra não foi do texto"
     );
-    assert_eq!(t.elements()[0].shape().unwrap().text, "o");
+    assert_eq!(t.elements()[0].shape().unwrap().text.as_str(), "o");
     assert_eq!(
         t.hero.documents.live.editor.as_ref().unwrap().tool,
         Tool::Select,
@@ -383,7 +383,7 @@ impl T {
         let ts = &mut self.ts;
         let (board, live) = self.hero.documents.active_parts().unwrap();
         let ed = live.editor.as_mut().unwrap();
-        let (at, dir) = ed.overlay(&board.doc, ts).dots[i];
+        let (at, dir) = ed.overlay(&mut board.doc, ts).dots[i];
         let [x, y] = board.camera.to_screen(area, at);
         let d = ed.metrics().dot;
         ((x + dir[0] * d) as f32, (y + dir[1] * d) as f32)
@@ -451,7 +451,11 @@ fn hovering_a_box_shows_its_blue_dots() {
         "passear não é gesto: o movimento segue para a interface"
     );
     let (board, live) = t.hero.documents.active_parts().unwrap();
-    let o = live.editor.as_mut().unwrap().overlay(&board.doc, &mut t.ts);
+    let o = live
+        .editor
+        .as_mut()
+        .unwrap()
+        .overlay(&mut board.doc, &mut t.ts);
     assert_eq!(o.dots.len(), 4);
 }
 
@@ -474,3 +478,6 @@ fn the_a_key_picks_the_arrow_tool() {
     let ed = t.hero.documents.live.editor.as_ref().unwrap();
     assert_eq!(ed.tool, Tool::Connector);
 }
+
+#[path = "board_bar_notes_tests.rs"]
+mod notes;

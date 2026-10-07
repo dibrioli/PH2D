@@ -37,6 +37,11 @@ use look::{
     tooltip_key,
 };
 
+/// As notas e o texto (W3, módulo filho: o ficheiro estava no tecto de LOC).
+#[path = "board_bar_notes.rs"]
+mod notes;
+pub use notes::{flyout_open, flyout_rects};
+
 use ph2d_board_edit::{FONT_SIZES, STROKE_WIDTHS as WIDTHS};
 /// As opacidades oferecidas (%).
 const OPACITIES: [u8; 4] = [25, 50, 75, 100];
@@ -62,6 +67,18 @@ pub enum Item {
     Route(Route),
     /// `(0 = início · 1 = fim, desenho)`.
     Head(usize, Head),
+    /// A cor `i` das 16 das notas do Miro (`STICKY_COLORS`).
+    NoteColor(usize),
+    /// O tamanho P/M/G das notas (`NOTE_SCALES`).
+    NoteSize(usize),
+    /// Nota quadrada (`false`) ou larga (`true`).
+    NoteWide(bool),
+    /// O modo EM MASSA: uma ideia por linha, cada linha uma nota.
+    Bulk,
+    /// Negrito, itálico, sublinhado, riscado.
+    Mark(ph2d_board_model::Mark),
+    /// A cor da letra de uma FORMA: `None` = a da forma; `Some(i)` = a forte `i` do marcador.
+    TextColor(Option<usize>),
 }
 
 /// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
@@ -81,12 +98,20 @@ pub enum Selected {
     Shapes,
     Arrows,
     Both,
+    /// Só notas (ou pilhas).
+    Notes,
+    /// A escrever numa nota.
+    TextNote,
+    /// A escrever numa forma.
+    TextShape,
 }
 
-/// Os atalhos da barra curta, na ordem em que se pintam.
-const TOOLBAR: [Item; 8] = [
+/// Os atalhos da barra curta, na ordem em que se pintam (a Nota logo a seguir à mão: é o coração
+/// do brainstorm).
+const TOOLBAR: [Item; 9] = [
     Item::Tool(Tool::Select),
     Item::Tool(Tool::Hand),
+    Item::Tool(Tool::Shape(ShapeType::Sticky)),
     Item::Tool(Tool::Connector),
     Item::Tool(Tool::Shape(ShapeType::Rectangle)),
     Item::Tool(Tool::Shape(ShapeType::Ellipse)),
@@ -100,10 +125,16 @@ const TOOLBAR: [Item; 8] = [
 pub fn items() -> Vec<Item> {
     let mut v: Vec<Item> = TOOLBAR.to_vec();
     v.extend(ShapeType::ALL.iter().map(|t| Item::Pick(*t)));
-    for it in [Selected::Shapes, Selected::Arrows]
-        .into_iter()
-        .flat_map(style_groups)
-        .flatten()
+    v.extend(notes::flyout_items());
+    for it in [
+        Selected::Shapes,
+        Selected::Arrows,
+        Selected::Notes,
+        Selected::TextShape,
+    ]
+    .into_iter()
+    .flat_map(style_groups)
+    .flatten()
     {
         if !v.contains(&it) {
             v.push(it);
@@ -139,7 +170,10 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
             vec![Item::Round(false), Item::Round(true)],
             opacity,
             font,
-        ],
+        ]
+        .into_iter()
+        .chain(notes::shape_text_groups())
+        .collect(),
         Selected::Arrows => vec![
             // Uma seta sem traço não se vê: o «sem contorno» não entra.
             stroke
@@ -164,6 +198,9 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
             opacity,
             font,
         ],
+        Selected::Notes => notes::note_groups(),
+        Selected::TextNote => notes::text_groups(false),
+        Selected::TextShape => notes::text_groups(true),
     }
 }
 
@@ -249,27 +286,46 @@ pub fn style_rects(area: Rect, sel: Rect, what: Selected) -> Vec<(Item, Rect)> {
     let (s, g) = (Spacing::Xl.px(), gap());
     let sep = Spacing::Sm.px();
     let groups = style_groups(what);
+    // Um grupo de mais de `ROW_MAX` (as 16 cores das notas) vai em DUAS linhas; os outros ficam a
+    // meio da altura.
+    let cols = |len: usize| if len > ROW_MAX { len.div_ceil(2) } else { len };
+    let rows = if groups.iter().any(|gr| gr.len() > ROW_MAX) {
+        2.0
+    } else {
+        1.0
+    };
+    let bar_h = rows * s + (rows - 1.0) * g;
     let n: usize = groups.iter().map(Vec::len).sum();
-    let width = n as f32 * (s + g) + (groups.len() - 1) as f32 * sep;
-    let above = sel.y - s - Spacing::Lg.px();
+    let width = groups.iter().map(|gr| cols(gr.len())).sum::<usize>() as f32 * (s + g)
+        + (groups.len() - 1) as f32 * sep;
+    let above = sel.y - bar_h - Spacing::Lg.px();
     let y = if above >= area.y {
         above
     } else {
-        (sel.y + sel.h + Spacing::Lg.px()).min(area.y + area.h - s)
+        (sel.y + sel.h + Spacing::Lg.px()).min(area.y + area.h - bar_h)
     };
     let mut x = (sel.x + sel.w / 2.0 - width / 2.0)
         .max(area.x)
         .min(area.x + area.w - width);
     let mut out = Vec::with_capacity(n);
     for grp in groups {
-        for it in grp {
-            out.push((it, Rect::new(x, y, s, s)));
-            x += s + g;
+        let c = cols(grp.len());
+        let y0 = if c < grp.len() {
+            y
+        } else {
+            y + (bar_h - s) / 2.0
+        };
+        for (i, it) in grp.into_iter().enumerate() {
+            let (col, row) = ((i % c) as f32, (i / c) as f32);
+            out.push((it, Rect::new(x + col * (s + g), y0 + row * (s + g), s, s)));
         }
-        x += sep;
+        x += c as f32 * (s + g) + sep;
     }
     out
 }
+
+/// Quantos controlos um grupo da barra de estilo leva numa linha só.
+const ROW_MAX: usize = 8;
 
 /// ⭐ Pinta as barras do quadro activo. `area` é a área do quadro no ecrã.
 #[allow(clippy::too_many_arguments)]
@@ -289,15 +345,19 @@ pub fn paint(
     let sel_style = selected_style(ed, &board.doc);
     let arrow = selected_arrow(ed, &board.doc);
     let what = selected_kind(ed, &board.doc);
+    let now = notes::Now::of(ed, &board.doc);
     let area_w = super::board_view::area_of(area);
-    let sel_box = (!ed.is_busy() && !ed.is_editing_text())
+    // A escrever, a barra fica (as marcas do texto); só um arrasto a esconde.
+    let sel_box = (!ed.is_busy())
         .then(|| selection_box(ed, &board.doc, &board.camera, area_w))
         .flatten();
     let tools = toolbar_rects(area);
     paint_panel(scene, &tools, theme);
+    let note_tool = Item::Tool(Tool::Shape(ShapeType::Sticky));
     for (it, r) in tools {
-        let on =
-            matches!(it, Item::Tool(t) if t == tool) || (it == Item::MoreShapes && shapes_open);
+        let on = matches!(it, Item::Tool(t) if t == tool)
+            || (it == Item::MoreShapes && shapes_open)
+            || (it == note_tool && notes::flyout_open(tool));
         paint_item(
             scene,
             text_system,
@@ -326,6 +386,24 @@ pub fn paint(
             );
         }
     }
+    if notes::flyout_open(tool) {
+        let grid = flyout_rects(area);
+        paint_panel(scene, &grid, theme);
+        for (it, r) in grid {
+            let on = matches!(it, Item::Tool(t) if t == tool)
+                || notes::is_current(it, None, &now).unwrap_or(false);
+            paint_item(
+                scene,
+                text_system,
+                theme,
+                &mut hero.hit_index,
+                &hero.store,
+                it,
+                r,
+                on,
+            );
+        }
+    }
     let (Some(mut sel), Some(style), Some(what)) = (sel_box, sel_style, what) else {
         return;
     };
@@ -338,7 +416,8 @@ pub fn paint(
     let bar = style_rects(area, sel, what);
     paint_panel(scene, &bar, theme);
     for (it, r) in bar {
-        let on = is_current(it, &style, arrow.as_ref(), theme);
+        let on = notes::is_current(it, Some(&style), &now)
+            .unwrap_or_else(|| is_current(it, &style, arrow.as_ref(), theme));
         paint_item(
             scene,
             text_system,
@@ -452,6 +531,10 @@ fn paint_item(
         r.h - 2.0 * inset,
     );
     let line = f64::from(StrokeToken::Default.px());
+    if notes::paint_icon(scene, text_system, theme, it, r, inner, fg, line) {
+        hit_index.register(id, r);
+        return;
+    }
     match it {
         Item::Tool(Tool::Select) => {
             paint_icon(scene, IconId::Select, inner, fg, StrokeToken::Default.px())
@@ -543,6 +626,12 @@ fn paint_item(
             ][i]);
             paint_text_centered(text_system, scene, label, r, TypeToken::Sm.px(), fg);
         }
+        Item::NoteColor(_)
+        | Item::NoteSize(_)
+        | Item::NoteWide(_)
+        | Item::Bulk
+        | Item::Mark(_)
+        | Item::TextColor(_) => {}
     }
     hit_index.register(id, r);
 }
@@ -565,7 +654,11 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     };
     let history = live.histories.entry(board.id).or_default();
     let ed = super::board_view::editor(&mut live.editor, theme);
+    let center = [board.camera.center_x, board.camera.center_y];
     let doc = &mut board.doc;
+    if notes::apply(ed, doc, history, it, center) {
+        return true;
+    }
     match it {
         Item::Tool(t) => ed.tool = t,
         Item::Pick(t) => {
@@ -596,7 +689,13 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         Item::Font(i) => ed.set_style(doc, history, |s| s.font_size = FONT_SIZES[i]),
         Item::Route(r) => ed.set_route(doc, history, r),
         Item::Head(i, h) => ed.set_head(doc, history, i, h),
-        Item::MoreShapes => {}
+        Item::MoreShapes
+        | Item::NoteColor(_)
+        | Item::NoteSize(_)
+        | Item::NoteWide(_)
+        | Item::Bulk
+        | Item::Mark(_)
+        | Item::TextColor(_) => {}
     }
     true
 }

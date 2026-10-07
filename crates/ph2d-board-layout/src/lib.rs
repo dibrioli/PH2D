@@ -23,7 +23,7 @@ use parley::{
     Alignment, AlignmentOptions, FontFamily, FontStyle, FontWeight, Layout, LayoutContext,
     OverflowWrap, PositionedLayoutItem, StyleProperty,
 };
-use ph2d_board_model::{RichText, Rgba, Span};
+use ph2d_board_model::{Rgba, RichText, Span};
 use ph2d_text::TextSystem;
 use ph2d_vector::{Affine, BezPath, Brush, Color, Fill, Glyph, Rect, Shape as _, VectorScene};
 
@@ -78,7 +78,15 @@ pub fn shape(
 /// forma cresce» para quem não guarda o moldado.
 pub fn text_height(ts: &mut TextSystem, text: &RichText, font_size: f32, max_width: f32) -> f32 {
     let mut lcx = LayoutContext::new();
-    shape(ts, &mut lcx, text.as_str(), text.spans(), font_size, max_width).height()
+    shape(
+        ts,
+        &mut lcx,
+        text.as_str(),
+        text.spans(),
+        font_size,
+        max_width,
+    )
+    .height()
 }
 
 /// A cor de documento → a do desenho.

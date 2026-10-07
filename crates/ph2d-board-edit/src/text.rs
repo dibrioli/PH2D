@@ -106,6 +106,23 @@ impl Editor {
         id: ElementId,
         at: Option<[f64; 2]>,
     ) -> bool {
+        if !self.open_text(doc, id) {
+            return false;
+        }
+        if let Some(world) = at
+            && let Some(el) = doc.get(id).cloned()
+        {
+            let mid = self.routes(doc).get(id).map(|r| r.mid);
+            let e = self.editing.as_mut().expect("acabou de abrir");
+            let (x, y) = e.text_point(&el, ts, world, mid);
+            e.edit.click(ts, x, y, false);
+        }
+        true
+    }
+
+    /// Começa a escrever em `id` com o texto todo seleccionado — sem o moldador (molda no primeiro
+    /// uso): o que um botão da barra pode pedir.
+    pub(crate) fn open_text(&mut self, doc: &BoardDoc, id: ElementId) -> bool {
         let Some(el) = doc.get(id).cloned() else {
             return false;
         };
@@ -120,18 +137,12 @@ impl Editor {
             return false;
         };
         let text = text_of(&el);
-        let mut e = Editing {
-            id,
-            original: el.clone(),
-            edit: TextEdit::new(ts, &text, size, width),
-        };
-        if let Some(world) = at {
-            let mid = self.routes(doc).get(id).map(|r| r.mid);
-            let (x, y) = e.text_point(&el, ts, world, mid);
-            e.edit.click(ts, x, y, false);
-        }
         self.selection = std::iter::once(id).collect();
-        self.editing = Some(e);
+        self.editing = Some(Editing {
+            id,
+            original: el,
+            edit: TextEdit::new(&text, size, width),
+        });
         true
     }
 

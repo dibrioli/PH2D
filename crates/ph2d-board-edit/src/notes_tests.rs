@@ -8,7 +8,12 @@ impl World {
     fn note(&mut self, c: [f64; 2]) -> ElementId {
         self.ed.tool = Tool::Shape(ShapeType::Sticky);
         self.click(c, NONE);
-        *self.ed.selection().iter().next().expect("nasceu seleccionada")
+        *self
+            .ed
+            .selection()
+            .iter()
+            .next()
+            .expect("nasceu seleccionada")
     }
 
     fn text(&self, id: ElementId) -> String {
@@ -20,7 +25,8 @@ impl World {
     }
 
     fn key(&mut self, k: TextKey) {
-        self.ed.text_key(&mut self.doc, &mut self.h, &mut self.ts, k);
+        self.ed
+            .text_key(&mut self.doc, &mut self.h, &mut self.ts, k);
     }
 }
 
@@ -29,10 +35,16 @@ fn a_click_with_the_note_tool_makes_the_miro_default_note() {
     let mut w = world();
     let id = w.note([0.0, 0.0]);
     let el = w.el(id);
-    assert_eq!([el.x, el.y, el.w, el.h], [-99.5, -99.5, STICKY_SIDE, STICKY_SIDE]);
+    assert_eq!(
+        [el.x, el.y, el.w, el.h],
+        [-99.5, -99.5, STICKY_SIDE, STICKY_SIDE]
+    );
     let s = el.shape().unwrap();
     assert_eq!(s.kind, ShapeType::Sticky);
-    assert_eq!(s.style.fill, Some(Rgba(STICKY_COLORS[STICKY_DEFAULT_COLOR])));
+    assert_eq!(
+        s.style.fill,
+        Some(Rgba(STICKY_COLORS[STICKY_DEFAULT_COLOR]))
+    );
     assert_eq!(s.style.stroke, None, "a nota do Miro não tem contorno");
     assert_eq!(s.style.font_size, ph2d_board_model::DEFAULT_FONT_SIZE);
     assert_eq!(w.ed.tool, Tool::Select);
@@ -52,7 +64,11 @@ fn the_last_colour_and_size_chosen_are_the_next_notes() {
     assert!(close(el.w, STICKY_SIDE * NOTE_SCALES[2]), "{}", el.w);
     assert!(close(el.style().font_size, 20.0 * NOTE_SCALES[2]));
     let b = w.note([1000.0, 0.0]);
-    assert_eq!(w.el(b).style().fill, Some(red), "a próxima nasce da última cor");
+    assert_eq!(
+        w.el(b).style().fill,
+        Some(red),
+        "a próxima nasce da última cor"
+    );
     assert!(close(w.el(b).w, STICKY_SIDE * NOTE_SCALES[2]));
 }
 
@@ -87,7 +103,11 @@ fn a_note_grows_down_with_its_text_and_shrinks_back_to_its_birth_height() {
     }
     let grown = w.el(id).h;
     assert!(grown > STICKY_SIDE * 1.5, "não cresceu: {grown}");
-    assert_eq!(w.el(id).w, STICKY_SIDE, "cresce na VERTICAL (decisão 2 do dono)");
+    assert_eq!(
+        w.el(id).w,
+        STICKY_SIDE,
+        "cresce na VERTICAL (decisão 2 do dono)"
+    );
     assert_eq!(w.el(id).y, top, "o topo fica");
     w.key(TextKey::SelectAll);
     w.key(TextKey::Backspace { word: false });
@@ -101,7 +121,7 @@ fn tab_while_writing_makes_the_next_note_to_the_right_already_writing() {
     w.ed.notes.color = red;
     let a = w.note([0.0, 0.0]);
     w.ed.type_into_note(&mut w.doc, &mut w.ts, "um");
-    assert!(w.ed.next_note(&mut w.doc, &mut w.h, &mut w.ts));
+    assert!(w.ed.next_note(&mut w.doc, &mut w.h));
     let b = w.ed.editing_id().expect("já a escrever na seguinte");
     assert_ne!(a, b);
     let (ea, eb) = (w.el(a).clone(), w.el(b).clone());
@@ -110,7 +130,12 @@ fn tab_while_writing_makes_the_next_note_to_the_right_already_writing() {
     assert_eq!(eb.style().fill, Some(red));
     assert_eq!([eb.w, eb.h, eb.y], [ea.w, ea.h, ea.y]);
     let gap = STICKY_SIDE * NOTE_GAP_K;
-    assert!(close(eb.x, ea.x + ea.w + gap), "{} vs {}", eb.x, ea.x + ea.w + gap);
+    assert!(
+        close(eb.x, ea.x + ea.w + gap),
+        "{} vs {}",
+        eb.x,
+        ea.x + ea.w + gap
+    );
     w.write("dois");
     w.key(TextKey::Commit);
     // Três passos: o texto da 1.ª, a 2.ª nascer, o texto da 2.ª.
@@ -130,33 +155,48 @@ fn tab_skips_a_place_already_taken() {
     w.rect([x_next + 10.0, 0.0, 50.0, 50.0]);
     w.ed.select(&w.doc, [a]);
     w.ed.type_into_note(&mut w.doc, &mut w.ts, "x");
-    w.ed.next_note(&mut w.doc, &mut w.h, &mut w.ts);
+    w.ed.next_note(&mut w.doc, &mut w.h);
     let b = w.ed.editing_id().unwrap();
-    assert!(w.el(b).x > x_next + 50.0, "caiu em cima da caixa: {}", w.el(b).x);
+    assert!(
+        w.el(b).x > x_next + 50.0,
+        "caiu em cima da caixa: {}",
+        w.el(b).x
+    );
 }
 
 #[test]
 fn bulk_mode_turns_each_line_into_a_note_in_a_row_as_one_step() {
     let mut w = world();
-    assert!(w.ed.begin_bulk(&mut w.doc, &mut w.h, &mut w.ts, [0.0, 0.0]));
+    assert!(w.ed.begin_bulk(&mut w.doc, &mut w.h, [0.0, 0.0]));
     assert_eq!(w.doc.live_len(), 1, "o rascunho");
     w.write("primeira\nsegunda\n\n  terceira  ");
     w.key(TextKey::Commit);
     let notes = w.doc.live_in_z_order();
-    assert_eq!(notes.len(), 3, "o rascunho saiu e cada linha com texto é uma nota");
+    assert_eq!(
+        notes.len(),
+        3,
+        "o rascunho saiu e cada linha com texto é uma nota"
+    );
     let texts: Vec<String> = notes
         .iter()
         .map(|e| e.shape().unwrap().text.as_str().to_owned())
         .collect();
     assert_eq!(texts, ["primeira", "segunda", "terceira"]);
-    assert!(notes.iter().all(|e| e.shape().unwrap().kind == ShapeType::Sticky));
-    assert!(notes[0].y == notes[1].y && notes[1].y == notes[2].y, "em fila");
+    assert!(
+        notes
+            .iter()
+            .all(|e| e.shape().unwrap().kind == ShapeType::Sticky)
+    );
+    assert!(
+        notes[0].y == notes[1].y && notes[1].y == notes[2].y,
+        "em fila"
+    );
     assert!(notes[0].x < notes[1].x && notes[1].x < notes[2].x);
     assert_eq!(w.ed.selection().len(), 3);
     assert!(w.cmd(Command::Undo));
     assert_eq!(w.doc.live_len(), 0, "UM passo, e o rascunho não volta");
     // Um rascunho vazio não deixa nada nem passo.
-    w.ed.begin_bulk(&mut w.doc, &mut w.h, &mut w.ts, [0.0, 0.0]);
+    w.ed.begin_bulk(&mut w.doc, &mut w.h, [0.0, 0.0]);
     w.key(TextKey::Commit);
     assert_eq!(w.doc.live_len(), 0);
     assert!(!w.cmd(Command::Undo));
@@ -165,7 +205,7 @@ fn bulk_mode_turns_each_line_into_a_note_in_a_row_as_one_step() {
 #[test]
 fn a_long_bulk_line_fits_its_note_on_the_next_frame() {
     let mut w = world();
-    w.ed.begin_bulk(&mut w.doc, &mut w.h, &mut w.ts, [0.0, 0.0]);
+    w.ed.begin_bulk(&mut w.doc, &mut w.h, [0.0, 0.0]);
     w.write(&"palavra ".repeat(60));
     w.key(TextKey::Commit);
     let id = *w.ed.selection().iter().next().unwrap();
@@ -199,7 +239,10 @@ fn pasting_a_spreadsheet_makes_one_note_per_cell_on_the_cells_grid() {
     assert_eq!(w.ed.selection().len(), 3);
     assert!(w.cmd(Command::Undo));
     assert_eq!(w.doc.live_len(), 0);
-    assert!(!w.ed.paste_cells(&mut w.doc, &mut w.h, &mut w.ts, "\t\n\t", [0.0, 0.0]));
+    assert!(
+        !w.ed
+            .paste_cells(&mut w.doc, &mut w.h, &mut w.ts, "\t\n\t", [0.0, 0.0])
+    );
 }
 
 #[test]
@@ -264,7 +307,10 @@ fn dragging_from_a_stack_takes_a_new_note_and_a_click_selects_the_stack() {
     // Um clique sem arrastar só selecciona a pilha; a seguir arrastá-la move-a.
     w.ed.select(&w.doc, []);
     w.click([0.0, 0.0], NONE);
-    assert_eq!(w.ed.selection().iter().copied().collect::<Vec<_>>(), [stack]);
+    assert_eq!(
+        w.ed.selection().iter().copied().collect::<Vec<_>>(),
+        [stack]
+    );
     w.drag([0.0, 0.0], [100.0, 0.0], NONE);
     assert!(close(w.el(stack).center()[0], 100.0));
     // E a pilha não se escreve.
@@ -279,7 +325,12 @@ fn resizing_a_note_keeps_its_shape_and_scales_the_letter() {
     // A pega do canto inferior direito, puxada só na horizontal.
     w.drag([e.x + e.w, e.y + e.h], [e.x + 2.0 * e.w, e.y + e.h], NONE);
     let r = w.el(id);
-    assert!(close(r.w, 2.0 * STICKY_SIDE) && close(r.h, 2.0 * STICKY_SIDE), "{} × {}", r.w, r.h);
+    assert!(
+        close(r.w, 2.0 * STICKY_SIDE) && close(r.h, 2.0 * STICKY_SIDE),
+        "{} × {}",
+        r.w,
+        r.h
+    );
     assert!(close(r.style().font_size, 40.0));
 }
 
@@ -287,11 +338,15 @@ fn resizing_a_note_keeps_its_shape_and_scales_the_letter() {
 fn square_and_wide_switch_the_width_and_keep_the_scale() {
     let mut w = world();
     let id = w.note([0.0, 0.0]);
-    w.ed.set_note_wide(&mut w.doc, &mut w.h, &mut w.ts, true);
+    w.ed.set_note_wide(&mut w.doc, &mut w.h, true);
+    let _ = w.ed.overlay(&mut w.doc, &mut w.ts);
     let e = w.el(id);
     assert_eq!(e.shape().unwrap().kind, ShapeType::StickyWide);
     assert!(close(e.w, STICKY_WIDE));
-    assert!(close(e.h, STICKY_SIDE), "a larga do Miro tem a altura da quadrada");
+    assert!(
+        close(e.h, STICKY_SIDE),
+        "a larga do Miro tem a altura da quadrada"
+    );
     assert!(close(e.center()[0], 0.0), "troca à volta do centro");
     assert_eq!(note_size(e), Some(NOTE_DEFAULT_SIZE));
 }

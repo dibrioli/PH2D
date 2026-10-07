@@ -8,7 +8,7 @@
 use super::HeroScreen;
 pub use ph2d_board_edit::Command;
 use ph2d_board_edit::{Move, TextKey, Tool};
-use ph2d_board_model::ShapeType;
+use ph2d_board_model::{Mark, ShapeType};
 use ph2d_host::Modifiers;
 use ph2d_text::TextSystem;
 
@@ -28,6 +28,7 @@ pub enum BoardKey {
     Home,
     End,
     Space,
+    Tab,
     Other,
 }
 
@@ -74,10 +75,20 @@ pub fn key(
         return KeyOutcome::default();
     }
     let ctrl = mods.ctrl || mods.meta;
+    let center = [board.camera.center_x, board.camera.center_y];
     let history = live.histories.entry(board.id).or_default();
     let ed = super::board_view::editor(&mut live.editor, theme);
     let doc = &mut board.doc;
+    if ctrl && let Some(m) = mark_key(k, mods) {
+        ed.command(doc, history, ts, Command::Mark(m));
+        return taken();
+    }
     if editing {
+        // `Tab` (ou `Ctrl+D`, o staff do Miro) a escrever numa nota: a seguinte à direita.
+        if k == BoardKey::Tab || (ctrl && k == BoardKey::Char('d')) {
+            ed.next_note(doc, history);
+            return taken();
+        }
         let word = ctrl || mods.alt;
         let tk = match k {
             BoardKey::Escape => Some(TextKey::Commit),
@@ -140,9 +151,27 @@ pub fn key(
         (BoardKey::Char('z' | 'y'), true) => Some(chord_undo(k, mods)),
         (BoardKey::Char('d'), true) => Some(Command::Duplicate),
         (BoardKey::Char('a'), true) => Some(Command::SelectAll),
-        (BoardKey::Char('c'), true) => Some(Command::Copy),
-        (BoardKey::Char('x'), true) => Some(Command::Cut),
-        (BoardKey::Char('v'), true) => Some(Command::Paste),
+        (BoardKey::Char('c' | 'x'), true) => {
+            let c = if k == BoardKey::Char('c') {
+                Command::Copy
+            } else {
+                Command::Cut
+            };
+            ed.command(doc, history, ts, c);
+            // O texto dos elementos vai também para fora do app (e marca a cópia como do quadro).
+            return KeyOutcome {
+                consumed: true,
+                copy: ed.copied_text().map(str::to_owned),
+            };
+        }
+        (BoardKey::Char('v'), true) => {
+            // Texto de FORA (uma planilha) = uma nota por célula; senão, os elementos copiados.
+            if let Some(p) = paste.as_deref().filter(|p| ed.is_foreign_paste(p)) {
+                ed.paste_cells(doc, history, ts, p, center);
+                return taken();
+            }
+            Some(Command::Paste)
+        }
         (BoardKey::Delete | BoardKey::Backspace, false) => Some(Command::Delete),
         (BoardKey::Escape, false) => Some(Command::Escape),
         (BoardKey::Enter, false) => Some(Command::EditText),
@@ -155,23 +184,47 @@ pub fn key(
         (BoardKey::Right, true) => Some(Command::Grow([1.0, 0.0])),
         (BoardKey::Up, true) => Some(Command::Grow([0.0, -1.0])),
         (BoardKey::Down, true) => Some(Command::Grow([0.0, 1.0])),
-        (BoardKey::Char(c), false) if !mods.alt => tool_key(c).map(Command::Tool),
         _ => None,
     };
+    // ⭐ Escrever com UMA nota seleccionada escreve nela (o idioma do Miro nas notas) — mesmo uma
+    // letra que é atalho; numa forma, a letra continua atalho (recusa da W1, plano §6).
+    if command.is_none()
+        && !ctrl
+        && !mods.alt
+        && let Some(t) = text.filter(|t| !t.chars().any(char::is_control))
+        && ed.type_into_note(doc, ts, t)
+    {
+        return taken();
+    }
+    let command = command.or(match k {
+        BoardKey::Char(c) if !ctrl && !mods.alt => tool_key(c).map(Command::Tool),
+        _ => None,
+    });
     if let Some(c) = command {
         // ⚠️ Um atalho de uma tecla que o quadro reconhece é SEMPRE dele — mesmo sem efeito
         // (`Esc` sem nada seleccionado): deixá-lo cair faria a cena reagir por baixo.
         let _ = ed.command(doc, history, ts, c);
         return taken();
     }
-    // ⚠️ Uma letra solta é ATALHO, nunca texto (o idioma do Excalidraw): para escrever numa forma,
-    // `Enter` ou duplo-clique. Com «escrever começa a edição», desenhar uma forma e carregar `R`
-    // para a seguinte escreveria «r» dentro dela. Uma letra que o quadro não usa também não é da
-    // cena (ela está por baixo, escondida).
+    // ⚠️ Numa FORMA uma letra solta é ATALHO, nunca texto (o idioma do Excalidraw): para escrever,
+    // `Enter` ou duplo-clique. Uma letra que o quadro não usa também não é da cena (ela está por
+    // baixo, escondida) — nem o `Tab`, que lá troca o modo do objecto.
     KeyOutcome {
-        consumed: matches!(k, BoardKey::Char(_)) && !ctrl && !mods.alt,
+        consumed: (matches!(k, BoardKey::Char(_)) && !ctrl && !mods.alt) || k == BoardKey::Tab,
         copy: None,
     }
+}
+
+/// `Ctrl+B` negrito · `Ctrl+I` itálico · `Ctrl+U` sublinhado · `Ctrl+Shift+X` riscado (o do Miro e
+/// das Folhas do Google).
+fn mark_key(k: BoardKey, mods: Modifiers) -> Option<Mark> {
+    Some(match (k, mods.shift) {
+        (BoardKey::Char('b'), false) => Mark::Bold,
+        (BoardKey::Char('i'), false) => Mark::Italic,
+        (BoardKey::Char('u'), false) => Mark::Underline,
+        (BoardKey::Char('x'), true) => Mark::Strike,
+        _ => return None,
+    })
 }
 
 fn chord_undo(k: BoardKey, mods: Modifiers) -> Command {
@@ -209,7 +262,8 @@ fn text_move(k: BoardKey, ctrl: bool) -> Move {
 }
 
 /// Os atalhos de uma tecla (os que o Miro e o Excalidraw partilham, plano 01 §4.6): `V`/`1`
-/// seleccionar · `H` mão · `R`/`2` rectângulo · `D`/`3` losango · `O`/`4` elipse · `A`/`5` seta.
+/// seleccionar · `H` mão · `R`/`2` rectângulo · `D`/`3` losango · `O`/`4` elipse · `A`/`5` seta ·
+/// `N` nota (o do Miro; a quadrada — a forma da próxima vem da barra).
 #[must_use]
 pub fn tool_key(c: char) -> Option<Tool> {
     Some(match c {
@@ -219,6 +273,7 @@ pub fn tool_key(c: char) -> Option<Tool> {
         'd' | '3' => Tool::Shape(ShapeType::Diamond),
         'o' | '4' => Tool::Shape(ShapeType::Ellipse),
         'a' | '5' => Tool::Connector,
+        'n' => Tool::Shape(ShapeType::Sticky),
         _ => return None,
     })
 }

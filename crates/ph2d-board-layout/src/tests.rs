@@ -68,9 +68,15 @@ fn bold_is_a_real_weight_and_italic_a_skew() {
             }
         }
     }
-    let bold = seen.iter().find(|s| s.0 == (7..14)).expect("um trecho a negrito");
+    let bold = seen
+        .iter()
+        .find(|s| s.0 == (7..14))
+        .expect("um trecho a negrito");
     assert!(bold.1, "o negrito não mexeu no eixo do peso");
-    let it = seen.iter().find(|s| s.0 == (15..22)).expect("um trecho itálico");
+    let it = seen
+        .iter()
+        .find(|s| s.0 == (15..22))
+        .expect("um trecho itálico");
     assert!(
         it.2.is_some_and(|deg| deg > 5.0),
         "sem inclinação: {:?}",
@@ -86,21 +92,27 @@ fn a_bold_word_is_wider_and_the_caret_follows_it() {
     let w_plain = plain(&mut ts, "mmmm", 20.0, 1000.0).width();
     let mut rich = RichText::plain("mmmm");
     rich.toggle(0..4, Mark::Bold);
-    let mut e = TextEdit::new(&mut ts, &rich, 20.0, 1000.0);
+    let mut e = TextEdit::new(&rich, 20.0, 1000.0);
     e.motion(&mut ts, Move::TextEnd, false);
     let (_, caret) = e.decorations(1.0);
     let x = caret.expect("cursor")[0] as f32;
     let w_bold = e.layout(&mut ts).width();
-    assert!(w_bold > w_plain * 1.03, "o negrito não alargou: {w_plain} → {w_bold}");
+    assert!(
+        w_bold > w_plain * 1.03,
+        "o negrito não alargou: {w_plain} → {w_bold}"
+    );
     // Centrado: o fim do texto está a meio + metade da largura do NEGRITO, não do simples.
     let expected = (1000.0 + w_bold) / 2.0;
-    assert!((x - expected).abs() < 1.5, "cursor em {x}, o fim do negrito em {expected}");
+    assert!(
+        (x - expected).abs() < 1.5,
+        "cursor em {x}, o fim do negrito em {expected}"
+    );
 }
 
 #[test]
 fn editing_starts_with_everything_selected_and_typing_replaces_it() {
     let mut ts = TextSystem::without_system_fonts();
-    let mut e = TextEdit::new(&mut ts, &RichText::plain("antigo"), 20.0, 200.0);
+    let mut e = TextEdit::new(&RichText::plain("antigo"), 20.0, 200.0);
     assert_eq!(e.selected().as_deref(), Some("antigo"));
     e.insert(&mut ts, "novo");
     assert_eq!(e.text(), "novo");
@@ -117,7 +129,7 @@ fn editing_starts_with_everything_selected_and_typing_replaces_it() {
 #[test]
 fn backspace_takes_one_character_and_ctrl_backspace_a_word() {
     let mut ts = TextSystem::without_system_fonts();
-    let mut e = TextEdit::new(&mut ts, &RichText::plain("uma ideia só"), 20.0, 400.0);
+    let mut e = TextEdit::new(&RichText::plain("uma ideia só"), 20.0, 400.0);
     e.motion(&mut ts, Move::TextEnd, false);
     e.backspace(&mut ts, false);
     assert_eq!(e.text(), "uma ideia s", "o «ó» tem 2 bytes e sai inteiro");
@@ -132,20 +144,24 @@ fn backspace_takes_one_character_and_ctrl_backspace_a_word() {
 #[test]
 fn ctrl_b_on_a_selection_bolds_it_and_without_one_bolds_what_comes_next() {
     let mut ts = TextSystem::without_system_fonts();
-    let mut e = TextEdit::new(&mut ts, &RichText::plain("uma ideia"), 20.0, 400.0);
-    e.select_range(4..9);
-    e.toggle(&mut ts, Mark::Bold);
+    let mut e = TextEdit::new(&RichText::plain("uma ideia"), 20.0, 400.0);
+    e.select_range(&mut ts, 4..9);
+    e.toggle(Mark::Bold);
     assert!(e.has(Mark::Bold));
     assert_eq!(e.rich().spans()[0].range(), 4..9);
     // Sem selecção, no fim: o negrito do «ideia» continua no que se escreve…
     e.motion(&mut ts, Move::TextEnd, false);
     assert!(e.has(Mark::Bold));
     // … até um Ctrl+B desligar para o que vem a seguir.
-    e.toggle(&mut ts, Mark::Bold);
+    e.toggle(Mark::Bold);
     assert!(!e.has(Mark::Bold));
     e.insert(&mut ts, " nova");
     assert_eq!(e.text(), "uma ideia nova");
-    assert_eq!(e.rich().spans()[0].range(), 4..9, "o « nova» entrou sem negrito");
+    assert_eq!(
+        e.rich().spans()[0].range(),
+        4..9,
+        "o « nova» entrou sem negrito"
+    );
     assert_eq!(e.rich().marks_at(10), Marks::default());
 }
 
@@ -153,9 +169,9 @@ fn ctrl_b_on_a_selection_bolds_it_and_without_one_bolds_what_comes_next() {
 fn a_colour_paints_only_the_selection() {
     let mut ts = TextSystem::without_system_fonts();
     let red = Some(Rgba([200, 0, 0, 255]));
-    let mut e = TextEdit::new(&mut ts, &RichText::plain("abc"), 20.0, 400.0);
-    e.select_range(1..2);
-    e.set_color(&mut ts, red);
+    let mut e = TextEdit::new(&RichText::plain("abc"), 20.0, 400.0);
+    e.select_range(&mut ts, 1..2);
+    e.set_color(red);
     assert_eq!(e.color(), Some(red));
     assert_eq!(e.rich().color(0..1), Some(None));
     e.select_all(&mut ts);

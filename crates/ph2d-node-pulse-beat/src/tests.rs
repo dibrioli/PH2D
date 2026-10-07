@@ -13,7 +13,7 @@ fn beats(ticks: u64, period: f32, offset: f32) -> Vec<f64> {
     let mut fired = Vec::new();
     for i in 0..ticks {
         let t = i as f64 / 60.0;
-        state = step(1, &[cycle_index(t, period, offset, 0.0)], 0.0, &state);
+        state = step(1, &[cycle_index(t, period, offset, 0.0, 0)], 0.0, &state);
         if let Some(Column::Scalar(v)) = state.get(PULSE_COL)
             && v[0] > 0.5
         {
@@ -76,8 +76,8 @@ fn a_degenerate_period_is_clamped_not_divided_by_zero() {
     let fired = beats(10, 0.0, 0.0);
     assert!(fired.len() == 10, "every tick crosses ≥1 clamped boundary");
     for t in [0.0, 1.0, -3.0] {
-        assert!(cycle_index(t, 0.0, 0.0, 0.0).is_finite());
-        assert!(cycle_index(t, -1.0, 0.0, 0.0).is_finite());
+        assert!(cycle_index(t, 0.0, 0.0, 0.0, 0).is_finite());
+        assert!(cycle_index(t, -1.0, 0.0, 0.0, 0).is_finite());
     }
 }
 
@@ -99,7 +99,7 @@ fn a_paused_playhead_does_not_retrigger() {
     let mut state = Stream::new(1);
     let mut total = 0.0;
     for _ in 0..5 {
-        state = step(1, &[cycle_index(1.25, 1.0, 0.0, 0.0)], 0.0, &state);
+        state = step(1, &[cycle_index(1.25, 1.0, 0.0, 0.0, 0)], 0.0, &state);
         if let Some(Column::Scalar(v)) = state.get(PULSE_COL) {
             total += v[0];
         }
@@ -122,7 +122,7 @@ fn beats_rows(ticks: u64, n: usize, period: f32, stagger: f32, count: f32) -> Ve
     for i in 0..ticks {
         let t = i as f64 / 60.0;
         let ks: Vec<f32> = (0..n)
-            .map(|r| cycle_index(t, period, 0.0, r as f32 * stagger))
+            .map(|r| cycle_index(t, period, 0.0, stagger, r))
             .collect();
         state = step(n, &ks, count, &state);
         if let Some(Column::Scalar(v)) = state.get(PULSE_COL) {
@@ -216,7 +216,7 @@ fn bpm_is_the_same_ruler_the_period_uses() {
     assert_eq!(seconds_per_beat(0.0, 0.37, 999.0), 0.37);
     // O degenerado: `inf`, não NaN, e o índice do ciclo continua finito.
     assert!(seconds_per_beat(1.0, 1.0, 0.0).is_infinite());
-    assert!(cycle_index(9.0, seconds_per_beat(1.0, 1.0, 0.0), 0.0, 0.0).is_finite());
+    assert!(cycle_index(9.0, seconds_per_beat(1.0, 1.0, 0.0), 0.0, 0.0, 0).is_finite());
 }
 
 /// **O TETO DIGITÁVEL DO PERÍODO ESTÁ MUITO ACIMA DO SLIDER** — o defeito da

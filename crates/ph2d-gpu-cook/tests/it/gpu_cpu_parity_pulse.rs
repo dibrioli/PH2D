@@ -663,7 +663,13 @@ fn parity_pulse_counter_carry() {
     }
 }
 
+/// Tiques da fixtura do metrónomo: os empates batida-tique da decimal caem nos `36` e `72`.
+const TIQUES_DO_METRONOMO: usize = 91;
+
 /// ⭐⭐⭐ **O METRÓNOMO — e com ele a cadeia que a W2 mediu passa a ser do dispositivo.**
+///
+/// ⭐ Desde 07/10 (doc 122 §2) a fixtura corre INTEIRA, empates incluídos: o compasso decide-se no
+/// hospedeiro e a paridade é exacta. Até ali corria `6` tiques e nunca chegava aos empates.
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn parity_pulse_beat() {
@@ -672,7 +678,7 @@ fn parity_pulse_beat() {
         return;
     };
     let reg = registry();
-    let voltas = paridade(
+    let voltas = paridade_por(
         &gpu,
         &reg,
         "pulse.beat",
@@ -692,8 +698,39 @@ fn parity_pulse_beat() {
             bt
         },
         "pulse",
+        TIQUES_DO_METRONOMO,
     );
     nao_e_vazio("pulse.beat", &voltas);
+}
+
+/// ⭐ **O fio da navalha REDONDO** — `period = 0,05` sobre a grelha de `1/60`: uma batida cai EM
+/// CIMA de um tique a cada três, que é o empate que o `f32` da placa decidia para o outro lado.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn parity_pulse_beat_on_the_tick() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let voltas = paridade_por(
+        &gpu,
+        &reg,
+        "pulse.beat redondo",
+        |g| {
+            let grid = g.add_node("motion.grid");
+            g.set_param(grid, "rows", 4.0);
+            g.set_param(grid, "cols", 4.0);
+            let bt = g.add_node("pulse.beat");
+            g.set_param(bt, "period", 0.05);
+            liga(g, (grid, 0), (bt, 0), false);
+            liga(g, (bt, 0), (bt, 1), true);
+            bt
+        },
+        "pulse",
+        TIQUES_DO_METRONOMO,
+    );
+    nao_e_vazio("pulse.beat redondo", &voltas);
 }
 
 /// ⭐⭐⭐ **A CADEIA QUE ABRIU A W2 É DO DISPOSITIVO** (doc 110 §14.1 (7), 07/10).

@@ -36,7 +36,7 @@ use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, CountLawCtx, DerivedUniform, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -168,11 +168,10 @@ fn seconds_per_beat(mode: f32, period: f32, bpm: f32) -> f32 {
 /// identidade `0`, e uma cena que arrancasse com `k = 0` nascia **muda**.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
-        let bt_raw = select(params.period, 60.0 / params.bpm, params.time_mode >= 0.5);\n\
-        // `f32::max(MIN)` do Rust devolve MIN para NaN; o `max` da WGSL nao promete isso.\n\
-        let bt_per = select(BEAT_MIN_PERIOD, bt_raw, bt_raw >= BEAT_MIN_PERIOD);\n\
-        let bt_shift = f32(i) * params.phase_stagger;\n\
-        let bt_k = floor((params.playhead - params.offset - bt_shift) / bt_per);\n\
+        // O compasso do quadro vem do hospedeiro (`compasso`, em f64): aqui so' `*`, `-` e\n\
+        // `floor`, e o produto e' exacto (o `bt_sc` tem SC_BITS bits) -- o empate decide-se\n\
+        // como na CPU, fundido ou nao.\n\
+        let bt_k = params.bt_k0 + floor(params.bt_frac - f32(i) * params.bt_sc);\n\
         // `primed` e' GLOBAL -- o elemento 0, como o `v.first()` da CPU.\n\
         let bt_primed = read_state_beat_primed(0u) > 0.5;\n\
         let bt_fire = !bt_primed || !HAS_state_beat_cycle\n\
@@ -191,8 +190,6 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         write_beat_cycle(i, bt_k);\n\
         write_beat_primed(i, 1.0);\n",
     wgsl_lib: "\
-        // O gemeo de [`MIN_PERIOD`]. Os dois literais movem-se juntos ou a paridade acusa.\n\
-        const BEAT_MIN_PERIOD: f32 = 1e-3;\n\
         // Rust `f32::round` = meio para LONGE do zero; o `round` da WGSL e' meio-par.\n\
         fn bt_round(x: f32) -> f32 {\n\
         \x20   return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
@@ -227,6 +224,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "bpm",
         "phase_stagger",
         "count",
+        BT_K0,
+        BT_FRAC,
+        BT_SC,
     ],
     count_law: None,
     variant_by_param: None,
@@ -250,15 +250,64 @@ fn in_window(k: f32, count: f32) -> bool {
     k >= 0.0 && k < count.round()
 }
 
-/// The beat-grid cycle index at playhead `t`: `floor((t − offset)/period)`.
-/// `f64` division — the playhead is `f64`, and hours of runtime stay exact.
+/// ⭐⭐⭐ **O COMPASSO DO QUADRO — decidido UMA vez, no hospedeiro, em `f64`** (doc 122 §2).
 ///
-/// ⚠️ **`shift` é a fase DESTA LINHA** (`i · phase_stagger`), somada ao `offset`
-/// antes da divisão. Com `phase_stagger = 0` ela vale `0` para toda linha e a
-/// expressão é literalmente a que estava aqui — o `- 0.0` de um `f64` é exacto.
-fn cycle_index(t: f64, period: f32, offset: f32, shift: f32) -> f32 {
-    let period = period.max(MIN_PERIOD) as f64;
-    ((t - offset as f64 - shift as f64) / period).floor() as f32
+/// O índice da linha `i` é `k₀ + ⌊frac − i·sc⌋`, com `u = (t − offset)/period` partido em
+/// `k₀ = ⌊u⌋` e `frac = u − k₀ ∈ [0, 1)`, e `sc = phase_stagger/period` (a fase por linha, em
+/// ciclos). As DUAS rotas leem estes três números — a CPU daqui, a placa pelos uniforms derivados
+/// ([`DERIVADOS`]) — e o resto é `×`, `−` e `⌊⌋` em `f32`, exactos ou correctamente arredondados
+/// na WGSL: o empate batida-tique decide-se pela MESMA aritmética nos dois lados.
+///
+/// ⚠️ **O `sc` leva [`SC_BITS`] bits significativos** e é por isso que a placa não pode fundir
+/// (FMA) o produto com a subtracção para outro lado: `i · sc` é EXACTO para `i < 2^(24 − SC_BITS)`,
+/// e um produto exacto dá o mesmo arredondamento fundido ou não. O preço é a fase por linha
+/// quantizada a `≤ 2^−SC_BITS` relativos (`0,4 %`), que nenhum olho vê.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Compasso {
+    k0: f32,
+    frac: f32,
+    sc: f32,
+}
+
+/// Os bits significativos do `sc` — ver [`Compasso`].
+const SC_BITS: u32 = 7;
+// O produto `i · sc` só é exacto enquanto o índice da linha cabe nos bits que sobram.
+const _: () = assert!(
+    ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO <= 1 << (24 - SC_BITS),
+    "o tecto de instancias passou o que o `sc` do pulse.beat cobre: baixe SC_BITS"
+);
+
+/// O maior `f32` abaixo de `1` — a fracção de um `u` a um ULP do inteiro seguinte arredondaria
+/// para `1,0` e o `⌊⌋` subiria um ciclo que a divisão em `f64` não subiu.
+const ABAIXO_DE_UM: f32 = 1.0 - f32::EPSILON / 2.0;
+
+/// `x` arredondado a [`SC_BITS`] bits significativos (ao mais próximo; um transporte para o
+/// expoente é o arredondamento certo).
+fn quantiza(x: f32) -> f32 {
+    if x == 0.0 || !x.is_finite() {
+        return x;
+    }
+    let cai = 24 - SC_BITS;
+    let meio = 1u32 << (cai - 1);
+    f32::from_bits((x.to_bits() + meio) & !((1u32 << cai) - 1))
+}
+
+fn compasso(t: f64, period: f32, offset: f32, stagger: f32) -> Compasso {
+    let period = f64::from(period.max(MIN_PERIOD));
+    let u = (t - f64::from(offset)) / period;
+    let k0 = u.floor();
+    Compasso {
+        k0: k0 as f32,
+        frac: ((u - k0) as f32).min(ABAIXO_DE_UM),
+        sc: quantiza((f64::from(stagger) / period) as f32),
+    }
+}
+
+/// The beat-grid cycle index of row `row` at playhead `t` — `⌊(t − offset − row·stagger)/period⌋`
+/// pela aritmética do [`Compasso`]. Com `phase_stagger = 0` é `⌊u⌋` em `f64`, ao bit o que sempre foi.
+fn cycle_index(t: f64, period: f32, offset: f32, stagger: f32, row: usize) -> f32 {
+    let c = compasso(t, period, offset, stagger);
+    c.k0 + (c.frac - row as f32 * c.sc).floor()
 }
 
 /// One tick: a row fires iff ITS cycle index moved since the carried one — or on
@@ -313,7 +362,7 @@ impl NodeOp for PulseBeat {
         let t = ctx.playhead();
         let n = ctx.input(0).count();
         let ks: Vec<f32> = (0..n)
-            .map(|i| cycle_index(t, period, offset, i as f32 * stagger))
+            .map(|i| cycle_index(t, period, offset, stagger, i))
             .collect();
         let out = step(n, &ks, count, ctx.input(1));
         ctx.emit(out);
@@ -322,9 +371,45 @@ impl NodeOp for PulseBeat {
 
 /// Register this node with the runtime registry. Called (via codegen) from
 /// `ph2d-node-registry-init::register_all_nodes`.
+/// Os três slots do [`Compasso`] — nomes que só a derivação conhece.
+const BT_K0: &str = "bt_k0";
+const BT_FRAC: &str = "bt_frac";
+const BT_SC: &str = "bt_sc";
+
+/// O [`Compasso`] do quadro, pelos params CRUS e pelo `playhead` em `f64` do hospedeiro.
+fn compasso_do(c: &CountLawCtx<'_>) -> Compasso {
+    let period = seconds_per_beat(
+        (c.param)("time_mode"),
+        (c.param)("period"),
+        (c.param)("bpm"),
+    );
+    compasso(
+        c.playhead,
+        period,
+        (c.param)("offset"),
+        (c.param)("phase_stagger"),
+    )
+}
+
+static DERIVADOS: &[DerivedUniform] = &[
+    DerivedUniform {
+        param: BT_K0,
+        derive: |c| compasso_do(c).k0,
+    },
+    DerivedUniform {
+        param: BT_FRAC,
+        derive: |c| compasso_do(c).frac,
+    },
+    DerivedUniform {
+        param: BT_SC,
+        derive: |c| compasso_do(c).sc,
+    },
+];
+
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseBeat))?;
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_derived_uniforms(MANIFEST.id, DERIVADOS);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

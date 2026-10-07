@@ -73,11 +73,10 @@ fn fogos(g: &mut Graph) -> (NodeId, Option<NodeId>) {
 /// Marcha as DUAS rotas `ticks` tiques e compara a corrente do `sp` em cada um. Devolve quantos
 /// nasceram do pulso e quantos da taxa, somados (o controlo de não-vacuidade é de quem chama).
 ///
-/// ⚠️ **O fio da navalha do METRÓNOMO não é do spawn.** O `pulse.beat` declara a divergência dele
-/// (a placa conta o instante em `f32`): quando uma batida cai a um ULP de um tique, as rotas
-/// discordam por um tique INTEIRO. O spawn não tem estado, logo cada tique é independente: onde o
-/// pulso que as duas rotas RECEBERAM difere, o tique conta-se e salta-se — e o gate exige que
-/// sejam raros e que os comparados tenham nascimentos do pulso.
+/// ⭐ **Nenhum tique se salta** (doc 122 §2): o pulso que as duas rotas RECEBEM é o mesmo ao bit em
+/// todo tique, empates batida-tique incluídos — o compasso do `pulse.beat` decide-se no hospedeiro
+/// em `f64` e as duas rotas fazem a mesma aritmética exacta. Até 07/10 a placa contava o instante
+/// em `f32`, e esta fixtura decimal saltava `4` de `91` tiques.
 fn paridade(
     rotulo: &str,
     monta: impl Fn(&mut Graph) -> (NodeId, Option<NodeId>),
@@ -96,7 +95,7 @@ fn paridade(
     let mut cook = Cook::new();
     let mut gc = GpuCook::new();
     gc.retain_streams_for_debug(true);
-    let (mut do_pulso, mut da_taxa, mut pior_vel, mut navalha) = (0usize, 0usize, 0.0f32, 0u64);
+    let (mut do_pulso, mut da_taxa, mut pior_vel) = (0usize, 0usize, 0.0f32);
     for t in 0..=ticks {
         let playhead = t as f64 * DT;
         let cpu = cook.cook(&g, &reg, sp, playhead).expect("cpu");
@@ -127,10 +126,11 @@ fn paridade(
             c.len() == d.len() && c.iter().zip(&d).all(|(a, b)| a.to_bits() == b.to_bits())
         });
         cook.advance_tick(&g, &reg, playhead).expect("cpu tick");
-        if !mesma_entrada {
-            navalha += 1;
-            continue;
-        }
+        assert!(
+            mesma_entrada,
+            "{rotulo}: tique {t} -- o pulso que as duas rotas receberam difere (o compasso do \
+             pulse.beat, doc 122 §2)"
+        );
         let n = cpu.count();
         let mut nomes_cpu: Vec<String> = cpu.columns().map(|(k, _)| k.clone()).collect();
         nomes_cpu.sort();
@@ -194,14 +194,7 @@ fn paridade(
             }
         }
     }
-    eprintln!(
-        "{rotulo}: {do_pulso} do pulso · {da_taxa} da taxa · pior |Δvel| {pior_vel:e} · \
-         {navalha} tique(s) no fio da navalha do metrónomo"
-    );
-    assert!(
-        navalha * 20 <= ticks,
-        "{rotulo}: {navalha} tiques no fio da navalha — a fixtura vive nele"
-    );
+    eprintln!("{rotulo}: {do_pulso} do pulso · {da_taxa} da taxa · pior |Δvel| {pior_vel:e}");
     (do_pulso, da_taxa)
 }
 

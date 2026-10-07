@@ -47,7 +47,7 @@ use writer::{write_project, write_project_art, write_project_boards, write_proje
 
 /// O documento de uma animação: uma track em `hero`, com o `wire_id` (a identidade do objeto)
 /// carimbado como o save carimba. Devolve os bytes que o arquivo de projeto carregaria.
-/// Dois quadros com nome e um com a vista mexida — o fixture dos QUADROS (v184).
+/// Dois quadros com nome e um com a vista mexida — o fixture dos QUADROS (v185).
 fn two_boards() -> ph2d_editor_core::documents::BoardSet {
     let mut set = ph2d_editor_core::documents::BoardSet::default();
     let a = set.create("Retro".into());
@@ -428,7 +428,7 @@ fn project_file_round_trips_through_postcard() {
     assert_eq!(
         boards,
         two_boards(),
-        "os QUADROS atravessaram o arquivo (v184)"
+        "os QUADROS atravessaram o arquivo (v185)"
     );
     // ⭐ **O INPUT MAP atravessa o arquivo** (v97) — e a afirmação é CAMPO A CAMPO, não um
     // `assert_eq!` do mapa inteiro: um igual de estrutura passaria se os dois lados fossem o
@@ -566,7 +566,7 @@ fn an_unreadable_animation_refuses_the_whole_file_and_leaves_the_session_alone()
 #[path = "project_pattern_art_tests.rs"]
 mod pattern_art;
 
-/// **Os QUADROS no arquivo** (MiroClone, v184) — filho pela mesma razão: as fixtures são as portas.
+/// **Os QUADROS no arquivo** (MiroClone, v185) — filho pela mesma razão: as fixtures são as portas.
 #[path = "project_boards_tests.rs"]
 mod boards;
 

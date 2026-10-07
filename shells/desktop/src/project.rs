@@ -167,7 +167,7 @@ pub(crate) struct ProjectFile {
     ///
     /// Vazio num projecto sem padrão nenhum. Ver [`crate::project_texture_pattern`].
     pub(crate) pattern_art: Vec<u8>,
-    /// **Os QUADROS** (MiroClone, v184) — as abas de documento, cada uma com o seu conteúdo e vista
+    /// **Os QUADROS** (MiroClone, v185) — as abas de documento, cada uma com o seu conteúdo e vista
     /// (`ph2d_board_model::BoardSet::to_bytes`). `Vec<u8>` opaco com versão PRÓPRIA lá dentro, o
     /// precedente do `timeline`. ⚠️ **O último campo**: a posição é o formato.
     pub(crate) boards: Vec<u8>,

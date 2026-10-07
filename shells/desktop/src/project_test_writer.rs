@@ -28,7 +28,7 @@ pub(super) fn write_project_art(
     write_project_boards(path, schema, timeline, pattern_art, Vec::new());
 }
 
-/// O mesmo, com os bytes dos **QUADROS** — o último campo do arquivo (v184, MiroClone).
+/// O mesmo, com os bytes dos **QUADROS** — o último campo do arquivo (v185, MiroClone).
 pub(super) fn write_project_boards(
     path: &std::path::Path,
     schema: u32,

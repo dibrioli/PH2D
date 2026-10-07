@@ -222,7 +222,7 @@ impl GpuCook {
         // the exact order `codegen::kernel_module` assigned.
         let plans = codegen::plan_bindings(bindings, present);
         let mut new_cols: Vec<(String, GpuColumn)> = Vec::new();
-        let mut entries: Vec<wgpu::BindGroupEntry> = Vec::new();
+        let mut entries: Vec<(u32, &wgpu::Buffer)> = Vec::new();
         // (entries borrow buffers; collect the write buffers first)
         let mut write_buffers: Vec<(usize, GpuColumn)> = Vec::new();
         for (i, (b, (_, write))) in bindings.iter().zip(&plans).enumerate() {
@@ -233,61 +233,40 @@ impl GpuCook {
             }
         }
         let uniform = &self.uniforms[stage_idx];
-        entries.push(wgpu::BindGroupEntry {
-            binding: 0,
-            resource: uniform.as_entire_binding(),
-        });
+        entries.push((0, &uniform));
         let mut slot = 1u32;
         for (b, (read, _)) in bindings.iter().zip(&plans) {
             if matches!(read, Some(BindingPlan::ReadBuffer)) {
                 let col = inputs[b.port].cols.get(b.column).expect("presence checked");
-                entries.push(wgpu::BindGroupEntry {
-                    binding: slot,
-                    resource: col.buffer.as_entire_binding(),
-                });
+                entries.push((slot, &col.buffer));
                 slot += 1;
             }
         }
         for (i, col) in &write_buffers {
-            entries.push(wgpu::BindGroupEntry {
-                binding: slot,
-                resource: col.buffer.as_entire_binding(),
-            });
+            entries.push((slot, &col.buffer));
             slot += 1;
             new_cols.push((bindings[*i].column.to_string(), col.clone()));
         }
         // The grid arrays, appended LAST — the exact order `kernel_module` gave
         // `grid_starts` then `grid_sorted` their slots.
         if let Some((_, gb)) = grid {
-            entries.push(wgpu::BindGroupEntry {
-                binding: slot,
-                resource: gb.starts.as_entire_binding(),
-            });
+            entries.push((slot, &gb.starts));
             slot += 1;
-            entries.push(wgpu::BindGroupEntry {
-                binding: slot,
-                resource: gb.sorted.as_entire_binding(),
-            });
+            entries.push((slot, &gb.sorted));
             slot += 1;
         }
         // The reduction results, LAST — the exact order `kernel_module` declared
         // them (spec order, after the grid). One buffer per spec; the sequencer
         // filled them into this same encoder before this pass.
         for buf in reduces.1 {
-            entries.push(wgpu::BindGroupEntry {
-                binding: slot,
-                resource: buf.as_entire_binding(),
-            });
+            entries.push((slot, &buf));
             slot += 1;
         }
         // The LUT tables, LAST of all — the exact order `kernel_module` declared
         // them (spec order, after the reductions). One buffer per spec; the
         // sequencer filled each from a text param before this pass.
         for buf in luts.1 {
-            entries.push(wgpu::BindGroupEntry {
-                binding: slot,
-                resource: buf.as_entire_binding(),
-            });
+            entries.push((slot, &buf));
             slot += 1;
         }
         let _ = slot;
@@ -296,11 +275,8 @@ impl GpuCook {
             .get(&key)
             .expect("inserted above")
             .pipeline;
-        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-gpu-cook stage"),
-            layout: &pipeline.get_bind_group_layout(0),
-            entries: &entries,
-        });
+        // ⭐ A ligação GUARDADA entre quadros (doc 122 §3): os mesmos buffers, o mesmo objecto.
+        let bind_group = self.ligacoes.grupo(gpu, pipeline, &entries);
 
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {

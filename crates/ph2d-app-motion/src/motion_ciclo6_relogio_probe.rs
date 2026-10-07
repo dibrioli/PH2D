@@ -315,3 +315,48 @@ fn sonda_o_relogio_do_ciclo_6() {
         eprintln!("  {:<26} {:>9.3} {:>9.3}", v.nome, a[0], a[a.len() / 2]);
     }
 }
+
+/// ⭐ **AS LIGAÇÕES GUARDADAS, A QUENTE × A FRIO** (doc 122 §3/§5) — o condutor caro e o constante,
+/// cada um com a memória de ligações viva («quente», o produto) e esquecida antes de cada quadro
+/// («frio», o custo de antes pelo MESMO código), intercalados em blocos rodados; o resumo é o MÍNIMO.
+/// `PH2D_SONDA_SEM_ESPERA=1` para o lado da CPU só.
+#[test]
+#[ignore = "sonda de relógio, não um gate — `-- --ignored --nocapture`"]
+fn sonda_as_ligacoes_guardadas() {
+    let gpu = GpuContext::new(GpuContext::default_instance(), None).expect("placa");
+    let nomes = ["condutor caro · placa", "condutor const · placa"];
+    let mut cs: Vec<Corrida> = nomes
+        .iter()
+        .map(|n| Corrida::nova(&gpu, VARIANTES.iter().find(|v| v.nome == *n).unwrap()))
+        .collect();
+    let mut amostras = vec![Vec::new(); 4];
+    for r in 0..9 {
+        for k in 0..4 {
+            let i = (k + r) % 4;
+            let (c, frio) = (i / 2, i % 2 == 1);
+            let mut tot = 0.0;
+            for _ in 0..40 {
+                if frio {
+                    cs[c].m.gpu_cook.esquece_as_ligacoes();
+                }
+                tot += cs[c].quadro(&gpu);
+            }
+            amostras[i].push(tot / 40.0);
+        }
+    }
+    for i in 0..4 {
+        let a = &mut amostras[i];
+        a.sort_by(|x, y| x.partial_cmp(y).unwrap());
+        eprintln!(
+            "ligacoes {:<24} {:<6} min {:.4} med {:.4}",
+            nomes[i / 2],
+            if i % 2 == 1 { "frio" } else { "quente" },
+            a[0],
+            a[a.len() / 2]
+        );
+    }
+    eprintln!(
+        "ligacoes vivas (caro): {:?}",
+        cs[0].m.gpu_cook.ligacoes_vivas()
+    );
+}

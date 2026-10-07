@@ -138,6 +138,16 @@ impl Grid {
         }
     }
 
+    /// Uma viragem das memórias do scan — ver [`crate::ligacoes::Ligacoes::vira`].
+    pub(crate) fn vira(&self) {
+        self.scan.vira();
+    }
+
+    /// Esquece as memórias do scan — a variante «a frio» da sonda.
+    pub(crate) fn esquece(&self) {
+        self.scan.esquece();
+    }
+
     /// Build the grid over `pos` (`n` × `vec2<f32>`, cell size `cell`). Encodes
     /// into `encoder`; transients land in `scratch` (keep it alive until submit).
     /// The returned `starts`/`sorted` buffers are the caller's to bind or read.

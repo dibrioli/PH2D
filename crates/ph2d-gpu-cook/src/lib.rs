@@ -64,6 +64,7 @@ mod gather;
 pub mod grid;
 pub mod instances;
 mod lifecycle;
+mod ligacoes;
 pub mod lower;
 pub mod lower_forma;
 pub use formas::GpuFormas;
@@ -232,6 +233,7 @@ impl GpuCook {
         self.stream_op_hold.clear();
         self.stream_op_hold_bufs.clear();
         self.pool.reclaim();
+        self.vira_as_ligacoes();
 
         // As costuras que atravessam — e as que NÃO voltam a atravessar (ciclo 8, W1).
         let uploaded = self.enviar_costuras(gpu, boundary_streams);
@@ -659,7 +661,10 @@ impl GpuCook {
             default_size,
             styles,
         )?;
+        // ⭐ A leitura dos cartões vai no MESMO submit (doc 122 §5) — ver `crate::tap_voo`.
+        let tap = self.tap_no_cozimento(gpu, &mut encoder);
         gpu.queue.submit(Some(encoder.finish()));
+        self.tap_depois_do_submit(tap);
 
         // D1 — the ping-pong: hold the `Arc`s of every node a `pre` edge reads,
         // by the SAME rule the CPU pump uses (`Cook::advance_tick_scoped`

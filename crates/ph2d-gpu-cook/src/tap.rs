@@ -118,9 +118,49 @@ pub(crate) struct TapPipeline {
     /// RTX a encomendar a leitura da escada — mais do que a leitura inteira. Um `write_buffer` por
     /// quadro, e cada coluna lê a sua fatia alinhada.
     params: Option<wgpu::Buffer>,
+    /// ⭐ O destino, a leitura (`MAP_READ`) e as ligações por coluna, GUARDADOS entre quadros
+    /// (doc 122 §5): recriados só quando o tamanho muda. A leitura persistente é só a da leitura
+    /// SEM ESPERA — uma em voo de cada vez, e desmapeada antes do pedido seguinte.
+    dst: Option<wgpu::Buffer>,
+    staging: Option<wgpu::Buffer>,
+    ligacoes: crate::ligacoes::Ligacoes,
+}
+
+/// Um buffer persistente do tamanho EXACTO `bytes` — o mesmo enquanto o tamanho não mudar.
+fn do_tamanho(
+    gpu: &GpuContext,
+    slot: &mut Option<wgpu::Buffer>,
+    bytes: u64,
+    usage: wgpu::BufferUsages,
+    label: &'static str,
+) -> wgpu::Buffer {
+    if slot.as_ref().is_none_or(|b| b.size() != bytes) {
+        *slot = Some(gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(label),
+            size: bytes,
+            usage,
+            mapped_at_creation: false,
+        }));
+    }
+    slot.clone().expect("acabou de ser garantido")
 }
 
 impl TapPipeline {
+    /// ⛔ **Larga a leitura `MAP_READ` guardada** — chamada quando uma leitura em voo morre SEM ser
+    /// lida (descartada, ou o mapeamento recusado): ela continua mapeada ou por mapear, e o pedido
+    /// seguinte que a reusasse pediria um segundo `map_async` sobre ela (`Buffer is already mapped`,
+    /// o pânico do wgpu que o gate `um_quadro_da_cpu_descarta_a_leitura_da_placa` apanhou).
+    pub(crate) fn solta_a_leitura(&mut self) {
+        self.staging = None;
+    }
+
+    /// Esquece o destino, a leitura e as ligações guardados — a variante «a frio» da sonda.
+    pub(crate) fn esquece(&mut self) {
+        self.dst = None;
+        self.staging = None;
+        self.ligacoes.esquece();
+    }
+
     /// Built through the crate's own [`crate::create_pipeline`] with an AUTO
     /// layout, like every other pipeline here — a hand-written
     /// `BindGroupLayout` would be a second description of a binding set the
@@ -132,6 +172,9 @@ impl TapPipeline {
             pipeline,
             layout,
             params: None,
+            dst: None,
+            staging: None,
+            ligacoes: crate::ligacoes::Ligacoes::default(),
         }
     }
 }
@@ -152,7 +195,7 @@ impl GpuCook {
     /// calls this inside the same frame as the cook and before the next
     /// [`crate::BufferPool::reclaim`].
     pub fn tap(&mut self, gpu: &GpuContext, samples: u32) -> Option<BTreeMap<NodeId, Stream>> {
-        let (staging, slots) = self.encomenda_tap(gpu, samples)?;
+        let (staging, slots) = self.encomenda_tap(gpu, samples, false)?;
         let slice = staging.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |r| {
@@ -163,13 +206,35 @@ impl GpuCook {
         Some(le_tap(&staging, &slots))
     }
 
-    /// **A metade que ENCOMENDA** — codifica o gather e submete-o, e devolve o buffer de leitura
-    /// ainda por mapear mais o mapa das colunas. Partilhada pelo [`Self::tap`] síncrono e pela
-    /// leitura sem espera ([`crate::tap_voo`]), para as duas lerem exactamente as mesmas amostras.
+    /// **A metade que ENCOMENDA** — codifica o gather num encoder SEU e submete-o. Partilhada pelo
+    /// [`Self::tap`] síncrono e pelo arranque da leitura sem espera ([`crate::tap_voo`]); no
+    /// regime, a leitura vai no submit do PRÓPRIO cozimento ([`Self::codifica_tap`], doc 122 §5).
+    /// `persistente`: a leitura `MAP_READ` guardada (só a sem espera).
     pub(crate) fn encomenda_tap(
         &mut self,
         gpu: &GpuContext,
         samples: u32,
+        persistente: bool,
+    ) -> Option<(wgpu::Buffer, Vec<Slot>)> {
+        let mut encoder = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("ph2d-gpu-cook tap"),
+            });
+        let feito = self.codifica_tap(gpu, &mut encoder, samples, persistente)?;
+        gpu.queue.submit(Some(encoder.finish()));
+        Some(feito)
+    }
+
+    /// **A metade que CODIFICA** — o gather de todas as colunas e a cópia para a leitura, no
+    /// `encoder` dado; devolve a leitura ainda por mapear e o mapa das colunas. As duas portas
+    /// acima e o cozimento leem exactamente as mesmas amostras por aqui.
+    pub(crate) fn codifica_tap(
+        &mut self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        samples: u32,
+        persistente: bool,
     ) -> Option<(wgpu::Buffer, Vec<Slot>)> {
         let streams: Vec<(NodeId, &GpuStream)> =
             self.tap_streams.iter().map(|(n, s)| (*n, s)).collect();
@@ -234,17 +299,13 @@ impl GpuCook {
         }
         gpu.queue.write_buffer(params_buf, 0, &empacotado);
         let bytes = u64::from(total) * 4;
-        let dst = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-gpu-cook tap dst"),
-            size: bytes,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-        let mut encoder = gpu
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("ph2d-gpu-cook tap"),
-            });
+        let dst = do_tamanho(
+            gpu,
+            &mut pipe.dst,
+            bytes,
+            wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            "ph2d-gpu-cook tap dst",
+        );
         // One pass, one dispatch per column — all inside a single encoder, so the
         // whole tap is one submit no matter how many nodes are being watched.
         {
@@ -262,41 +323,44 @@ impl GpuCook {
                 let col = stream
                     .get(&slot.column)
                     .expect("slot came from this stream");
-                let fatia = wgpu::BufferBinding {
-                    buffer: params_buf,
-                    offset: k as u64 * passo,
-                    size: std::num::NonZeroU64::new(16),
-                };
-                let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("ph2d-gpu-cook tap bg"),
-                    layout: &pipe.layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::Buffer(fatia),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: col.buffer.as_entire_binding(),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 2,
-                            resource: dst.as_entire_binding(),
-                        },
+                let bg = pipe.ligacoes.grupo_de_fatias(
+                    gpu,
+                    &pipe.pipeline,
+                    Some(&pipe.layout),
+                    &[
+                        (
+                            0,
+                            params_buf,
+                            k as u64 * passo,
+                            std::num::NonZeroU64::new(16),
+                        ),
+                        (1, &col.buffer, 0, None),
+                        (2, &dst, 0, None),
                     ],
-                });
+                );
                 pass.set_bind_group(0, &bg, &[]);
                 pass.dispatch_workgroups(slot.samples.div_ceil(64), 1, 1);
             }
         }
-        let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-gpu-cook tap staging"),
-            size: bytes,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
+        let uso = wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ;
+        let staging = if persistente {
+            do_tamanho(
+                gpu,
+                &mut pipe.staging,
+                bytes,
+                uso,
+                "ph2d-gpu-cook tap staging",
+            )
+        } else {
+            gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ph2d-gpu-cook tap staging"),
+                size: bytes,
+                usage: uso,
+                mapped_at_creation: false,
+            })
+        };
         encoder.copy_buffer_to_buffer(&dst, 0, &staging, 0, bytes);
-        gpu.queue.submit(Some(encoder.finish()));
+        pipe.ligacoes.vira();
         Some((staging, slots))
     }
 }

@@ -77,6 +77,9 @@ const WG: u32 = codegen::WORKGROUP_SIZE;
 /// The fixed pipelines of this module, compiled on first use and reused every
 /// cook (the tap/grid pattern — `GpuCook` is `Default` and has no device).
 pub(crate) struct StreamOpPipes {
+    /// Os uniforms e as ligações dos passes, GUARDADOS entre quadros (doc 122 §3 —
+    /// [`crate::ligacoes`]). `Mutex` porque os passes são `&self`.
+    ligacoes: std::sync::Mutex<crate::ligacoes::Ligacoes>,
     scan: Scan,
     /// `scan_data[i] = u32(flags[i])` — the predicate writes its verdict as an
     /// ordinary `f32` column (so it IS an ordinary kernel); the scan wants ints.
@@ -212,6 +215,7 @@ impl StreamOpPipes {
              }}\n"
         );
         StreamOpPipes {
+            ligacoes: std::sync::Mutex::default(),
             fill: create_pipeline(gpu, &fill, "ph2d-stream-op fill"),
             scan: Scan::new(gpu),
             convert: create_pipeline(gpu, &convert, "ph2d-stream-op convert"),
@@ -238,6 +242,22 @@ impl StreamOpPipes {
         }
     }
 
+    /// Uma viragem das memórias — ver [`crate::ligacoes::Ligacoes::vira`].
+    pub(crate) fn vira(&self) {
+        if let Ok(mut l) = self.ligacoes.lock() {
+            l.vira();
+        }
+        self.scan.vira();
+    }
+
+    /// Esquece as memórias — a variante «a frio» da sonda.
+    pub(crate) fn esquece(&self) {
+        if let Ok(mut l) = self.ligacoes.lock() {
+            l.esquece();
+        }
+        self.scan.esquece();
+    }
+
     /// Encode one identity FILL over a region ([`FillRegion`]).
     fn fill(
         &self,
@@ -246,12 +266,6 @@ impl StreamOpPipes {
         r: FillRegion<'_>,
         hold: &mut Vec<wgpu::Buffer>,
     ) {
-        let uni = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-stream-op fill u"),
-            size: 32,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
         let mut bytes = [0u8; 32];
         bytes[0..4].copy_from_slice(&r.n.to_le_bytes());
         bytes[4..8].copy_from_slice(&r.words.to_le_bytes());
@@ -259,21 +273,12 @@ impl StreamOpPipes {
         for (k, v) in r.value.iter().enumerate() {
             bytes[16 + 4 * k..20 + 4 * k].copy_from_slice(&v.to_le_bytes());
         }
-        gpu.queue.write_buffer(&uni, 0, &bytes);
-        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-stream-op fill bg"),
-            layout: &self.fill.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uni.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: r.dst.as_entire_binding(),
-                },
-            ],
-        });
+        let (uni, bind_group) = {
+            let mut l = self.ligacoes.lock().expect("stream-op ligacoes");
+            let uni = l.uniforme(gpu, &bytes);
+            let g = l.grupo(gpu, &self.fill, &[(0, &uni), (1, r.dst)]);
+            (uni, g)
+        };
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("ph2d-stream-op fill"),
@@ -301,32 +306,20 @@ impl StreamOpPipes {
         buffers: &[&wgpu::Buffer],
         hold: &mut Vec<wgpu::Buffer>,
     ) {
-        let uni = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-stream-op u"),
-            size: 16,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
         let mut bytes = [0u8; 12];
         bytes[0..4].copy_from_slice(&n.to_le_bytes());
         bytes[4..8].copy_from_slice(&stride.to_le_bytes());
         bytes[8..12].copy_from_slice(&lane.to_le_bytes());
-        gpu.queue.write_buffer(&uni, 0, &bytes);
-        let mut entries = vec![wgpu::BindGroupEntry {
-            binding: 0,
-            resource: uni.as_entire_binding(),
-        }];
-        for (k, b) in buffers.iter().enumerate() {
-            entries.push(wgpu::BindGroupEntry {
-                binding: (k + 1) as u32,
-                resource: b.as_entire_binding(),
-            });
-        }
-        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-stream-op"),
-            layout: &pipeline.get_bind_group_layout(0),
-            entries: &entries,
-        });
+        let (uni, bind_group) = {
+            let mut l = self.ligacoes.lock().expect("stream-op ligacoes");
+            let uni = l.uniforme(gpu, &bytes);
+            let mut entradas: Vec<(u32, &wgpu::Buffer)> = vec![(0, &uni)];
+            for (k, b) in buffers.iter().enumerate() {
+                entradas.push(((k + 1) as u32, *b));
+            }
+            let g = l.grupo(gpu, pipeline, &entradas);
+            (uni.clone(), g)
+        };
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("ph2d-stream-op"),

@@ -118,6 +118,9 @@ pub struct Reduce {
     max: wgpu::ComputePipeline,
     min: wgpu::ComputePipeline,
     sum: wgpu::ComputePipeline,
+    /// Os uniforms `n`, as ligações e os níveis, GUARDADOS entre quadros (doc 122 §3 —
+    /// [`crate::ligacoes`]). `Mutex` porque a API é `&self`.
+    caches: std::sync::Mutex<(crate::ligacoes::Ligacoes, crate::ligacoes::Rascunhos)>,
 }
 
 /// Transient buffers a reduction run allocates (the per-level partial arrays and
@@ -134,6 +137,22 @@ impl Reduce {
             max: create_pipeline(gpu, reduce_wgsl(ReduceOp::Max), "ph2d-reduce max"),
             min: create_pipeline(gpu, reduce_wgsl(ReduceOp::Min), "ph2d-reduce min"),
             sum: create_pipeline(gpu, reduce_wgsl(ReduceOp::Sum), "ph2d-reduce sum"),
+            caches: std::sync::Mutex::default(),
+        }
+    }
+
+    /// Uma viragem das memórias — ver [`crate::ligacoes::Ligacoes::vira`].
+    pub(crate) fn vira(&self) {
+        if let Ok(mut c) = self.caches.lock() {
+            c.0.vira();
+        }
+    }
+
+    /// Esquece as memórias — a variante «a frio» da sonda.
+    pub(crate) fn esquece(&self) {
+        if let Ok(mut c) = self.caches.lock() {
+            c.0.esquece();
+            c.1.esquece();
         }
     }
 
@@ -169,19 +188,35 @@ impl Reduce {
         out: &wgpu::Buffer,
         scratch: &mut ReduceScratch,
     ) {
+        self.reduce_nivel(gpu, encoder, op, data, n, out, scratch, 0);
+    }
+
+    /// Um nível da redução. ⚠️ O nível `k` escreve o rascunho de classe `k` e o seguinte lê-o:
+    /// [`crate::ligacoes::Rascunhos`] separa-os por `nivel`, nunca o mesmo buffer dos dois lados.
+    #[allow(clippy::too_many_arguments)]
+    fn reduce_nivel(
+        &self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        op: ReduceOp,
+        data: &wgpu::Buffer,
+        n: u32,
+        out: &wgpu::Buffer,
+        scratch: &mut ReduceScratch,
+        nivel: u32,
+    ) {
         if n == 0 {
             return;
         }
         let num_blocks = n.div_ceil(WG);
 
-        // `n` in a uniform (padded to 16 B — the safe uniform-binding minimum).
-        let uni = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-reduce n"),
-            size: 16,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        gpu.queue.write_buffer(&uni, 0, &n.to_le_bytes());
+        // `n` in a uniform — o MESMO buffer enquanto `n` for o mesmo (doc 122 §3).
+        let uni = self
+            .caches
+            .lock()
+            .expect("reduce caches")
+            .0
+            .uniforme(gpu, &n.to_le_bytes());
 
         if num_blocks == 1 {
             // One block folds the whole thing — write straight to the caller's
@@ -194,14 +229,23 @@ impl Reduce {
 
         // One partial per block, then reduce THOSE the same way. Depth is
         // `log_WG(n)`: two levels already reach 65 536² = 4 G elements.
-        let level = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-reduce level"),
-            size: u64::from(num_blocks) * 4,
-            usage: wgpu::BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
+        let level =
+            self.caches
+                .lock()
+                .expect("reduce caches")
+                .1
+                .de(gpu, nivel, u64::from(num_blocks) * 4);
         self.pass(gpu, encoder, op, &uni, data, &level, num_blocks);
-        self.reduce_into(gpu, encoder, op, &level, num_blocks, out, scratch);
+        self.reduce_nivel(
+            gpu,
+            encoder,
+            op,
+            &level,
+            num_blocks,
+            out,
+            scratch,
+            nivel + 1,
+        );
 
         scratch.buffers.push(uni);
         scratch.buffers.push(level);
@@ -221,24 +265,11 @@ impl Reduce {
         num_blocks: u32,
     ) {
         let pipeline = self.pipeline(op);
-        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-reduce"),
-            layout: &pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uni.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: data.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: out.as_entire_binding(),
-                },
-            ],
-        });
+        let bind_group = self.caches.lock().expect("reduce caches").0.grupo(
+            gpu,
+            pipeline,
+            &[(0, uni), (1, data), (2, out)],
+        );
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("ph2d-reduce"),
             timestamp_writes: None,

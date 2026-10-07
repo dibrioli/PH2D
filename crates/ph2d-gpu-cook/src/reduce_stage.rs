@@ -229,14 +229,10 @@ impl GpuCook {
             // As declaradas ANTES desta — as únicas que ela pode ler, e a razão de a ordem
             // da lista do nó ser contrato.
             let earlier: Vec<&ReduceSpec> = specs[..si].iter().collect();
-            let result = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("ph2d-reduce result"),
-                size: 4,
-                usage: wgpu::BufferUsages::STORAGE
-                    | wgpu::BufferUsages::COPY_SRC
-                    | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+            // Do pool (as mesmas identidades quadro a quadro), e não um buffer novo por quadro —
+            // as ligações que o lêem ficam GUARDADAS (doc 122 §3).
+            let result_arc = self.pool.acquire(gpu, 4);
+            let result: wgpu::Buffer = (*result_arc).clone();
             // **Seed with the operator's empty answer.** The fold below always
             // writes when `n > 0` (and the cook never reaches a stage with
             // `count == 0`), so this is not load-bearing for a healthy frame —
@@ -283,33 +279,20 @@ impl GpuCook {
                 let at = 4 + j * 4;
                 uni[at..at + 4].copy_from_slice(&v.to_le_bytes());
             }
-            let uniform = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("ph2d-reduce map uniform"),
-                size: UNIFORM_BYTES,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-            gpu.queue.write_buffer(&uniform, 0, &uni);
+            let uniform = self.ligacoes.uniforme(gpu, &uni);
 
             let pipeline = &self
                 .kernel_pipelines
                 .get(&key)
                 .expect("inserted above")
                 .pipeline;
-            let mut entries = vec![wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform.as_entire_binding(),
-            }];
+            // The entries follow `present`, exactly as `map_module`'s declarations do — the two
+            // are read from the same flag so they cannot drift.
+            let mut entries: Vec<(u32, &wgpu::Buffer)> = vec![(0, &uniform)];
             if let Some(src) = src.as_ref() {
-                entries.push(wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: src.as_entire_binding(),
-                });
+                entries.push((1, src));
             }
-            entries.push(wgpu::BindGroupEntry {
-                binding: 2,
-                resource: scratch_buf.as_entire_binding(),
-            });
+            entries.push((2, &scratch_buf));
             // Os resultados das anteriores, na MESMA ordem em que o módulo os declara —
             // `out.buffers` está indexado por spec, e `si` é o índice desta.
             for (k, buf) in out
@@ -321,19 +304,9 @@ impl GpuCook {
                 .map(|(b, _)| b)
                 .enumerate()
             {
-                entries.push(wgpu::BindGroupEntry {
-                    binding: 3 + u32::try_from(k).expect("poucas reducoes"),
-                    resource: buf.as_entire_binding(),
-                });
+                entries.push((3 + u32::try_from(k).expect("poucas reducoes"), buf));
             }
-            let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("ph2d-reduce map"),
-                layout: &pipeline.get_bind_group_layout(0),
-                // The entries follow `present`, exactly as `map_module`'s
-                // declarations do — the two are read from the same flag so they
-                // cannot drift.
-                entries: &entries,
-            });
+            let bind_group = self.ligacoes.grupo(gpu, pipeline, &entries);
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("ph2d-reduce map"),

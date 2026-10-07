@@ -188,9 +188,81 @@ fn sem_nada_a_amostrar_a_leitura_antiga_e_esquecida() {
     // que o cartão mostraria os números de antes do rebobinar.
     g.set_param(grid, "rows", 12.0);
     coze(&mut gc, &g);
+    // ⚠️ Desde o doc 122 §5 a leitura vai no submit do COZIMENTO: quando esta chamada chega, ela
+    // pode já estar pronta. O que não pode é ser a de ANTES do rebobinar — que foi esquecida no
+    // vazio, logo qualquer leitura aqui tem de ter sido RECOLHIDA agora.
+    let depois = gc.tap_sem_espera(&gpu, s);
     assert!(
-        gc.tap_sem_espera(&gpu, s).is_none(),
-        "a 1.a leitura depois do vazio ainda esta' em voo — devolver algo aqui e' devolver a de \
-         ANTES do rebobinar"
+        depois.is_none() || gc.tap_fresca(),
+        "a 1.a leitura depois do vazio ou ainda esta' em voo ou e' NOVA — devolver uma velha e' \
+         devolver a de ANTES do rebobinar"
+    );
+}
+
+/// ⭐ **A leitura vai no SUBMIT DO COZIMENTO** (doc 122 §5): depois do arranque, um cozimento com
+/// pedido deixa a leitura em voo SEM nova chamada — foi ele que a codificou — e o que ela recolhe
+/// é, ao bit, o que o `tap` síncrono lê desse cozimento.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn o_cozimento_leva_a_leitura_no_seu_submit() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 16.0);
+    g.set_param(grid, "cols", 16.0);
+    let osc = g.add_node("motion.oscillator");
+    g.set_param(osc, "channel", 1.0);
+    g.set_param(osc, "amplitude", 0.9);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, osc);
+    connect(&mut g, osc, out);
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(plan.is_fully_gpu());
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    let coze = |gc: &mut ph2d_gpu_cook::GpuCook, t: f64| {
+        gc.cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(t),
+            [0.0, 0.0, 1.0, 1.0],
+            [0.1, 0.1],
+            SinkStyle::PLAIN,
+        )
+        .expect("cozimento na placa");
+    };
+    let s = ph2d_gpu_cook::tap::TAP_SAMPLES;
+    // O arranque: o 1.º cozimento não tinha pedido.
+    coze(&mut gc, 0.1);
+    assert!(
+        !gc.tap_em_voo(),
+        "CONTROLO: sem pedido o cozimento nao le nada"
+    );
+    let _ = gc.tap_sem_espera(&gpu, s);
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    assert!(gc.tap_sem_espera(&gpu, s).is_some(), "o arranque recolhe");
+    assert!(!gc.tap_em_voo(), "e nao encomenda outro por conta propria");
+    // O regime: o cozimento codifica a leitura.
+    coze(&mut gc, 0.7);
+    assert!(
+        gc.tap_em_voo(),
+        "com pedido, o COZIMENTO deixou a leitura em voo — ela foi no submit dele"
+    );
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+    let recolhida = gc.tap_sem_espera(&gpu, s).expect("recolhe");
+    assert!(gc.tap_fresca(), "e e' nova");
+    let sincrona = gc
+        .tap(&gpu, s)
+        .expect("o tap sincrono le o mesmo cozimento");
+    assert_eq!(
+        recolhida, sincrona,
+        "as MESMAS amostras deste cozimento, ao bit"
     );
 }

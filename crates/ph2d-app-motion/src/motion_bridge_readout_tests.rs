@@ -361,6 +361,12 @@ fn um_quadro_da_cpu_descarta_a_leitura_da_placa() {
         return;
     };
     let _ = tap_de_dois_quadros(&mut motion, &gpu);
+    // Desde o doc 122 §5 a leitura seguinte vai no submit do COZIMENTO seguinte.
+    let scopes = Default::default();
+    assert!(matches!(
+        super::super::gpu::cook_gpu(&mut motion, &gpu, 2, 1.0 / 60.0, &scopes),
+        super::super::gpu::GpuOutcome::Handled
+    ));
     assert!(
         motion.gpu_cook.tap_em_voo(),
         "CONTROLO: o quadro da placa deixa a leitura seguinte encomendada"

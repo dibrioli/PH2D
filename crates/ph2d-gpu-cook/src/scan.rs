@@ -99,6 +99,9 @@ fn add_wgsl() -> &'static str {
 pub struct Scan {
     block: wgpu::ComputePipeline,
     add: wgpu::ComputePipeline,
+    /// Os uniforms `n`, as ligações e as somas por bloco, GUARDADOS entre quadros (doc 122 §3 —
+    /// [`crate::ligacoes`]). `Mutex` porque a API é `&self`.
+    caches: std::sync::Mutex<(crate::ligacoes::Ligacoes, crate::ligacoes::Rascunhos)>,
 }
 
 /// Transient buffers a scan run allocates (block-sum arrays + `n` uniforms). The
@@ -114,6 +117,22 @@ impl Scan {
         Scan {
             block: create_pipeline(gpu, block_wgsl(), "ph2d-scan block"),
             add: create_pipeline(gpu, add_wgsl(), "ph2d-scan add"),
+            caches: std::sync::Mutex::default(),
+        }
+    }
+
+    /// Uma viragem das memórias — ver [`crate::ligacoes::Ligacoes::vira`].
+    pub(crate) fn vira(&self) {
+        if let Ok(mut c) = self.caches.lock() {
+            c.0.vira();
+        }
+    }
+
+    /// Esquece as memórias — a variante «a frio» da sonda.
+    pub(crate) fn esquece(&self) {
+        if let Ok(mut c) = self.caches.lock() {
+            c.0.esquece();
+            c.1.esquece();
         }
     }
 
@@ -128,27 +147,33 @@ impl Scan {
         n: u32,
         scratch: &mut ScanScratch,
     ) {
+        self.exclusive_nivel(gpu, encoder, data, n, scratch, 0);
+    }
+
+    /// Um nível do scan. ⚠️ As somas do nível `k` vivem até à volta da recursão (o passe `add`
+    /// lê-as): classes de [`crate::ligacoes::Rascunhos`] separadas por `nivel`.
+    fn exclusive_nivel(
+        &self,
+        gpu: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        data: &wgpu::Buffer,
+        n: u32,
+        scratch: &mut ScanScratch,
+        nivel: u32,
+    ) {
         if n == 0 {
             return;
         }
         let num_blocks = n.div_ceil(WG);
 
-        // `n` in a uniform (padded to 16 B — the safe uniform-binding minimum).
-        let uni = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-scan n"),
-            size: 16,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        gpu.queue.write_buffer(&uni, 0, &n.to_le_bytes());
-
-        // One total per block — recursively scanned when there is more than one.
-        let block_sums = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-scan block_sums"),
-            size: u64::from(num_blocks) * 4,
-            usage: wgpu::BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
+        // `n` in a uniform — o MESMO buffer enquanto `n` for o mesmo (doc 122 §3); e uma soma
+        // por bloco, recursivamente varrida quando há mais de uma.
+        let (uni, block_sums) = {
+            let mut c = self.caches.lock().expect("scan caches");
+            let uni = c.0.uniforme(gpu, &n.to_le_bytes());
+            let somas = c.1.de(gpu, nivel, u64::from(num_blocks) * 4);
+            (uni, somas)
+        };
 
         self.pass(
             gpu,
@@ -165,7 +190,7 @@ impl Scan {
             // them back in. The recursion borrows `scratch` too — its buffers pile
             // in alongside ours; order does not matter, they only need to outlive
             // the submit.
-            self.exclusive(gpu, encoder, &block_sums, num_blocks, scratch);
+            self.exclusive_nivel(gpu, encoder, &block_sums, num_blocks, scratch, nivel + 1);
             self.pass(gpu, encoder, &self.add, &uni, data, &block_sums, num_blocks);
         }
 
@@ -186,24 +211,11 @@ impl Scan {
         block_sums: &wgpu::Buffer,
         num_blocks: u32,
     ) {
-        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-scan"),
-            layout: &pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uni.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: data.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: block_sums.as_entire_binding(),
-                },
-            ],
-        });
+        let bind_group = self.caches.lock().expect("scan caches").0.grupo(
+            gpu,
+            pipeline,
+            &[(0, uni), (1, data), (2, block_sums)],
+        );
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("ph2d-scan"),
             timestamp_writes: None,

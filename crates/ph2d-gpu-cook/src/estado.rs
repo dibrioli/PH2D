@@ -153,6 +153,9 @@ pub struct GpuCook {
     /// The whole-stream reduction service (the deformer channel), built on first
     /// use like the grid — `Option` because `GpuCook` is `Default`.
     pub(crate) reduce: Option<reduce::Reduce>,
+    /// As ligações e os uniforms das etapas, GUARDADOS entre quadros (doc 122 §3 do Motion —
+    /// [`crate::ligacoes`]).
+    pub(crate) ligacoes: crate::ligacoes::Ligacoes,
     /// The reduce map passes' N-sized scratch, held until this cook's submit —
     /// the same window as [`Self::grid_hold`], for the same reason. Pooled
     /// column buffers are `Arc`, the per-pass uniforms are owned, so both shapes

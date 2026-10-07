@@ -285,6 +285,58 @@ pub fn ray_exit(el: &Element, from: [f64; 2], dir: [f64; 2]) -> Option<[f64; 2]>
     Some([from[0] + d[0] * t * reach, from[1] + d[1] * t * reach])
 }
 
+/// ⭐ **A normal do contorno de `el` em `p`** (mundo, unitária, para FORA) — a direcção em que uma seta
+/// curva encaixa na forma (5.º smoke do dono, 06/10: «a seta na direcção da normal da curva da forma
+/// onde se encaixa»). Numa junção LISA entre dois segmentos (o arredondado de um canto, a costura de
+/// uma elipse) é a média; num CANTO vivo (o vértice de um losango) não há normal única ⇒ `None`, e
+/// quem chama fica com a direcção do lado.
+#[must_use]
+pub fn outline_normal(el: &Element, p: [f64; 2]) -> Option<[f64; 2]> {
+    /// Tangentes que diferem mais do que isto (graus) fazem um canto, não uma curva.
+    const CORNER_DEG: f64 = 15.0;
+    const H: f64 = 1e-4;
+    let o = world_outline(el)?;
+    let q = Point::new(p[0], p[1]);
+    let segs: Vec<PathSeg> = o.fill.segments().collect();
+    let (i, t) = segs
+        .iter()
+        .enumerate()
+        .map(|(i, s)| (i, s.nearest(q, 1e-9)))
+        .min_by(|a, b| a.1.distance_sq.total_cmp(&b.1.distance_sq))
+        .map(|(i, n)| (i, n.t))?;
+    let tangent = |s: &PathSeg, t: f64| {
+        let (a, b) = ((t - H).max(0.0), (t + H).min(1.0));
+        let v = s.eval(b) - s.eval(a);
+        let l = v.hypot();
+        (l > 1e-12).then(|| ph2d_vector::Vec2::new(v.x / l, v.y / l))
+    };
+    let at = |pt: Point| (pt - q).hypot() < 1e-6;
+    let tan = if t > H && t < 1.0 - H {
+        tangent(&segs[i], t)?
+    } else {
+        // Numa junção: o segmento que chega e o que parte.
+        let incoming = segs.iter().find(|s| at(s.end()))?;
+        let outgoing = segs.iter().find(|s| at(s.start()))?;
+        let (a, b) = (tangent(incoming, 1.0)?, tangent(outgoing, 0.0)?);
+        if a.dot(b).clamp(-1.0, 1.0).acos().to_degrees() > CORNER_DEG {
+            return None;
+        }
+        let m = a + b;
+        ph2d_vector::Vec2::new(m.x / m.hypot(), m.y / m.hypot())
+    };
+    let n = [-tan.y, tan.x];
+    // Para FORA: um passo ao longo da normal sai do preenchimento.
+    let probe = Point::new(
+        p[0] + n[0] * 1e-3 * (1.0 + el.w.max(el.h)),
+        p[1] + n[1] * 1e-3 * (1.0 + el.w.max(el.h)),
+    );
+    Some(if o.fill.contains(probe) {
+        [-n[0], -n[1]]
+    } else {
+        n
+    })
+}
+
 /// O ponto do contorno de `el` mais perto de `p` (mundo) e a distância até ele.
 #[must_use]
 pub fn nearest_on_outline(el: &Element, p: [f64; 2]) -> Option<([f64; 2], f64)> {

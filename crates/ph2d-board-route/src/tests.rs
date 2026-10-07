@@ -530,3 +530,29 @@ fn under_a_head_the_curve_ends_in_a_straight_stem_and_the_head_is_straight() {
         "o V torto: {l:?} {rr:?}"
     );
 }
+
+/// ⭐ A seta CURVA encaixa na NORMAL do contorno onde se prende: num ponto fixo de um círculo, a
+/// haste e a cabeça apontam para o centro dele (5.º smoke do dono, 06/10).
+#[test]
+fn a_curved_arrow_meets_a_round_shape_along_its_normal() {
+    let mut doc = BoardDoc::default();
+    let a = shape(&mut doc, ShapeType::Rectangle, [-400.0, 0.0, 160.0, 100.0]);
+    let circle = shape(&mut doc, ShapeType::Ellipse, [0.0, 0.0, 200.0, 200.0]);
+    let k = std::f64::consts::FRAC_1_SQRT_2;
+    let uv = [0.5 - 0.5 * k, 0.5 - 0.5 * k];
+    let end = End::Bound {
+        target: circle,
+        anchor: Anchor::Fixed(uv),
+    };
+    let id = link(&mut doc, center(a), end, Route::Curved);
+    let mut cache = RouteCache::default();
+    cache.sync(&doc);
+    let v = &cache.get(id).unwrap().path.verts;
+    let (tip, base) = (v[v.len() - 1].anchor, v[v.len() - 2].anchor);
+    let dir = [(base[0] - tip[0]), (base[1] - tip[1])];
+    let l = dir[0].hypot(dir[1]);
+    assert!(
+        (dir[0] / l + k).abs() < 1e-3 && (dir[1] / l + k).abs() < 1e-3,
+        "a haste sai na normal (para cima e para a esquerda): {dir:?}"
+    );
+}

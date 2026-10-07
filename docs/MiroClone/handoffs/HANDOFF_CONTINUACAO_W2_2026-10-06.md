@@ -21,6 +21,9 @@
 - O 4.º smoke (06/10): *«curvatura OK»*; *«seta aberta ainda com problemas»* (o «V» virava de lado
   numa curva que dobrava à chegada). Curado depois de `13c428729`: haste recta debaixo de cada cabeça
   (`Routed::curved_with_stems`, `stems`; a chave da cache leva as hastes).
+- O 5.º smoke (06/10): *«permita a seta ficar na direcção da normal da curva da forma onde se
+  encaixa»* (num círculo/pill a seta chegava na horizontal). Curado depois de `1179e4d5b`: a curva
+  encaixa na normal do contorno (`outline_normal`; canto vivo ⇒ a do lado).
 - ⏳ **Smoke da W2 refeita por fazer pelo dono** — passos no §5.
 
 ## §1 — As peças

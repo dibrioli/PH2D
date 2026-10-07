@@ -144,3 +144,26 @@ fn flowchart_symbols_are_the_right_way_up() {
     let cy = o(ShapeType::Cylinder).lines.bounding_box();
     assert!(cy.y1 < h / 2.0, "a tampa está em baixo: {cy:?}");
 }
+
+/// ⭐ A normal do contorno: radial num círculo, a do lado no meio de um rectângulo, nenhuma num
+/// vértice de losango (canto vivo) — e sempre para FORA.
+#[test]
+fn the_outline_normal_is_radial_on_a_circle_and_absent_at_a_sharp_corner() {
+    let c = el(ShapeType::Ellipse, [0.0, 0.0, 200.0, 200.0], 0.0);
+    let k = std::f64::consts::FRAC_1_SQRT_2;
+    let p = [100.0 - 100.0 * k, 100.0 - 100.0 * k];
+    let n = outline_normal(&c, p).expect("a elipse é lisa");
+    assert!(
+        (n[0] + k).abs() < 1e-3 && (n[1] + k).abs() < 1e-3,
+        "radial para fora: {n:?}"
+    );
+    let r = el(ShapeType::Rectangle, [0.0, 0.0, 200.0, 100.0], 0.0);
+    let n = outline_normal(&r, [200.0, 50.0]).unwrap();
+    assert!((n[0] - 1.0).abs() < 1e-6 && n[1].abs() < 1e-6, "{n:?}");
+    let d = el(ShapeType::Diamond, [0.0, 0.0, 200.0, 100.0], 0.0);
+    assert_eq!(
+        outline_normal(&d, [0.0, 50.0]),
+        None,
+        "o vértice do losango é um canto"
+    );
+}

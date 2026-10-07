@@ -113,9 +113,13 @@ impl Routed {
     /// forma) e dali segue RECTA até à ponta — a cabeça da seta assenta sempre direita sobre a haste,
     /// por mais apertada que a curva chegue. ⛔ Sem haste, uma curva que dobra nos últimos píxeis
     /// virava a cabeça de lado (4.º smoke do dono, 06/10: o «V» torto à entrada do «Later»).
-    fn curved_with_stems(stations: Vec<[f64; 2]>, sides: [Dir; 2], stems: [f64; 2]) -> Self {
+    fn curved_with_stems(
+        stations: Vec<[f64; 2]>,
+        sides: [Dir; 2],
+        d: [[f64; 2]; 2],
+        stems: [f64; 2],
+    ) -> Self {
         let n = stations.len();
-        let d = sides.map(Dir::vec);
         let fits = if n == 2 {
             dist(stations[0], stations[1]) > stems[0] + stems[1]
         } else {
@@ -123,7 +127,9 @@ impl Routed {
                 && dist(stations[n - 2], stations[n - 1]) > stems[1]
         };
         if !fits || stems == [0.0; 2] {
-            return Self::from_points(stations, Route::Curved, sides);
+            let verts = curve(&stations, d);
+            let breaks: Vec<usize> = (0..n).collect();
+            return Self::assemble(stations, verts, &breaks, sides);
         }
         let mut inner = stations.clone();
         let out = |p: [f64; 2], v: [f64; 2], s: f64| [p[0] + v[0] * s, p[1] + v[1] * s];
@@ -478,7 +484,17 @@ pub(crate) fn compute(
     stations.extend_from_slice(waypoints);
     stations.push(p1);
     match kind {
-        Route::Curved => return Routed::curved_with_stems(stations, [d0, d1], stems),
+        Route::Curved => {
+            // A curva encaixa na NORMAL do contorno (num canto vivo, na direcção do lado).
+            let normal = |e: &Resolved<'_>, p: [f64; 2], side: Dir| match *e {
+                Resolved::Shape(el, _) => {
+                    ph2d_board_geom::outline_normal(el, p).unwrap_or(side.vec())
+                }
+                Resolved::Point(_) => side.vec(),
+            };
+            let d = [normal(ends[0], p0, d0), normal(ends[1], p1, d1)];
+            return Routed::curved_with_stems(stations, [d0, d1], d, stems);
+        }
         Route::Straight => return Routed::from_points(stations, kind, [d0, d1]),
         Route::Elbow => {}
     }

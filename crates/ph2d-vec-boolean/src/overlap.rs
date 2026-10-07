@@ -173,6 +173,8 @@ pub fn silhueta_da_pele(path: &VecPath, quinas: &[([f64; 2], f64)]) -> Option<Ve
     let mut desenho = path.clone();
     desenho.verts = crate::gancho::desfaz_os_ganchos(path.verts.clone(), quinas, solda);
     let unido = resolve_overlap(&desenho).map(|mut u| {
+        // ⭐ A13: o LAÇO que a união deixa num cruzamento das duas peles ([`crate::laco`]).
+        u.verts = crate::laco::tira_os_lacos(std::mem::take(&mut u.verts), raio);
         u.verts = crate::gancho::desfaz_os_ganchos(std::mem::take(&mut u.verts), quinas, solda);
         // ⭐ F46: e o ESPORÃO — o pedaço que volta pelo próprio caminho ([`crate::esporao`]).
         u.verts = crate::esporao::tira_os_esporoes(std::mem::take(&mut u.verts), quinas, solda);

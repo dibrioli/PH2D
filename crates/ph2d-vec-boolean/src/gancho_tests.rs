@@ -163,3 +163,46 @@ fn o_recuo_sobre_o_proprio_caminho_sai_ate_ao_tamanho_da_bola() {
     );
     assert_eq!(desfaz_os_ganchos(de_lado.clone(), &[], tol), de_lado);
 }
+
+#[path = "gancho_esporao_fixtura_tests.rs"]
+mod esporao;
+
+/// ⭐⭐ **GATE — desfazer um gancho nunca acrescenta um cruzamento** (A13). Na saída da união do braço
+/// a `(160°, 134°)` (fixtura despejada), a ponta de um esporão vira `171,6°`; a Hermite que parte
+/// pela tangente de chegada dava a volta e cortava o flanco de ida (um laço que nenhuma passagem
+/// seguinte tira — o dente de `178,4°` da silhueta). O contorno sai sem cruzar-se, como entrou.
+#[test]
+fn desfazer_um_gancho_nunca_acrescenta_um_cruzamento() {
+    let vs: Vec<VecVertex> = esporao::VERTS
+        .iter()
+        .map(|[a, i, o]| v(*a, *i, *o))
+        .collect();
+    let cubicas = |x: &[VecVertex]| -> Vec<Vec<P>> {
+        let n = x.len();
+        (0..n)
+            .map(|j| {
+                let jb = (j + 1) % n;
+                amostras(&[x[j].anchor, x[j].out_handle, x[jb].in_handle, x[jb].anchor])
+            })
+            .collect()
+    };
+    let auto = |x: &[VecVertex]| -> usize {
+        let cs = cubicas(x);
+        (0..cs.len())
+            .map(|j| {
+                let resto: Vec<Vec<P>> = (0..cs.len())
+                    .filter(|&i| i != j)
+                    .map(|i| cs[i].clone())
+                    .collect();
+                cruzamentos(&cs[j], &resto)
+            })
+            .sum()
+    };
+    assert_eq!(auto(&vs), 0, "a saída da união não se cruza");
+    let depois = desfaz_os_ganchos(vs, esporao::QUINAS, esporao::SOLDA);
+    assert_eq!(
+        auto(&depois),
+        0,
+        "o desfazer dos ganchos cruzou o contorno — o laço na ponta do esporão"
+    );
+}

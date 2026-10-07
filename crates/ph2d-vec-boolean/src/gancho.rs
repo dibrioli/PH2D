@@ -109,6 +109,34 @@ fn hausdorff_no_contorno(velha: &[P], nova: &[P], resto: &[Vec<P>]) -> f64 {
     lado(velha, nova).max(lado(nova, velha))
 }
 
+/// Quantas vezes a polilinha `x` cruza as do `resto` — só cruzamentos PRÓPRIOS (no interior dos
+/// dois segmentos): o toque nos nós partilhados com os vizinhos não conta.
+fn cruzamentos(x: &[P], resto: &[Vec<P>]) -> usize {
+    let cruza = |a: P, b: P, c: P, d: P| {
+        let (r, s) = ([b[0] - a[0], b[1] - a[1]], [d[0] - c[0], d[1] - c[1]]);
+        let den = r[0] * s[1] - r[1] * s[0];
+        if den.abs() < 1e-300 {
+            return false;
+        }
+        let q = [c[0] - a[0], c[1] - a[1]];
+        let (u, w) = (
+            (q[0] * s[1] - q[1] * s[0]) / den,
+            (q[0] * r[1] - q[1] * r[0]) / den,
+        );
+        const E: f64 = 1e-9;
+        u > E && u < 1.0 - E && w > E && w < 1.0 - E
+    };
+    x.windows(2)
+        .map(|a| {
+            resto
+                .iter()
+                .flat_map(|y| y.windows(2))
+                .filter(|b| cruza(a[0], a[1], b[0], b[1]))
+                .count()
+        })
+        .sum()
+}
+
 /// A direcção de `a` para `b` — ou `None` se a distância for ruído que a PLACA não vê.
 ///
 /// ⛔ **O limiar é a precisão do `f32` À ESCALA das coordenadas, nunca um epsilon absoluto:** quem
@@ -216,6 +244,19 @@ pub fn desfaz_os_ganchos(
             continue;
         }
         let velha = amostras(&c);
+        let resto: Vec<Vec<P>> = (0..n)
+            .filter(|&j| j != k)
+            .map(|j| {
+                let jb = (j + 1) % n;
+                amostras(&[
+                    verts[j].anchor,
+                    verts[j].out_handle,
+                    verts[jb].in_handle,
+                    verts[jb].anchor,
+                ])
+            })
+            .collect();
+        let cruzava = cruzamentos(&velha, &resto);
         let partidas = [antes, inicio(&c)];
         let chegadas = [fim(&c), depois];
         let melhor = partidas
@@ -224,6 +265,11 @@ pub fn desfaz_os_ganchos(
             .flat_map(|&t0| chegadas.iter().flatten().map(move |&t3| (t0, t3)))
             .map(|(t0, t3)| hermite(c[0], t0, t3, c[3]))
             .filter(|h| !dobra(antes, h, depois))
+            // ⭐ A13: desfazer um gancho nunca acrescenta um cruzamento. Medido no braço a
+            // `(160°, 134°)`: a Hermite que parte pela tangente de chegada dá a volta na ponta de um
+            // esporão de `0,034` e corta o flanco de ida — um laço de área zero que nem o esporão
+            // (flancos a `1,8` soldas) nem a bola (nenhum par de paralelas se cruza) tiram: `178°`.
+            .filter(|h| cruzamentos(&amostras(h), &resto) <= cruzava)
             .map(|h| (hausdorff(&velha, &amostras(&h)), h))
             .min_by(|a, b| a.0.total_cmp(&b.0));
         let aceita = |d: f64, h: &[P; 4]| {
@@ -233,18 +279,6 @@ pub fn desfaz_os_ganchos(
             if d > RECUO_SOBRE_SI * tol {
                 return false;
             }
-            let resto: Vec<Vec<P>> = (0..n)
-                .filter(|&j| j != k)
-                .map(|j| {
-                    let jb = (j + 1) % n;
-                    amostras(&[
-                        verts[j].anchor,
-                        verts[j].out_handle,
-                        verts[jb].in_handle,
-                        verts[jb].anchor,
-                    ])
-                })
-                .collect();
             hausdorff_no_contorno(&velha, &amostras(h), &resto) <= tol
         };
         if let Some((d, h)) = melhor

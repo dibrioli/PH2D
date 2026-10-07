@@ -40,6 +40,9 @@ impl PainterTool {
         let (w, h) = self.source_size;
         let (w, h) = (w as usize, h as usize);
         let (gate_sel, gate_prot, gate_alock) = self.wet_splat_gates();
+        let camada = self.layers.active().filter(|&id| !self.layers.is_mask(id));
+        #[cfg(test)]
+        let camada = camada.filter(|_| !self.sem_vidro);
         let visual = ph2d_wet_paint::render::PigmentVisual {
             paper: self.paint.wetpaint.paper_visual,
             km_glaze: self.paint.wetpaint.km_glaze,
@@ -145,6 +148,32 @@ impl PainterTool {
         let gprot: Option<&[u8]> = gate_prot.as_deref().map(Vec::as_slice);
         let gate_on = gsel.is_some() || gprot.is_some();
         let alock_on = gate_alock.is_some();
+        // O VIDRO de uma aguada por baixo (doc 48): o fluido cobre-a por `pa` e cada canal atenua-se
+        // ([`crate::compositor::vidro::cobre`]), a partir do vidro da base congelada da sessão. Só numa
+        // camada que JÁ tem vidro: sem aguada o alfa único é exacto, e o plano não nasce aqui.
+        let camada = camada.filter(|c| self.vidros.contains_key(c));
+        let vidro = camada.and_then(|c| {
+            super::watercolor_vidro::abre_o_vidro(
+                &mut self.vidros,
+                &mut self.vidro_congelado,
+                c,
+                w * h,
+                &sess.base,
+            )
+            .map(|(p, b)| (c, p, b))
+        });
+        let (vcamada, mut vplano, vbase) = match vidro {
+            Some((c, p, b)) => (Some(c), Some(p), Some(b)),
+            None => (None, None, None),
+        };
+        let vbase: Option<&[crate::compositor::vidro::Vidro]> = vbase.as_deref().map(Vec::as_slice);
+        let vlinhas: Vec<Option<&mut [crate::compositor::vidro::Vidro]>> = match vplano.as_mut() {
+            Some(p) => Arc::get_mut(p).expect("o plano é só deste quadro")[py0 * w..py1 * w]
+                .chunks_mut(w)
+                .map(Some)
+                .collect(),
+            None => (py0..py1).map(|_| None).collect(),
+        };
         let canvas = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -173,8 +202,9 @@ impl PainterTool {
         let one_cell_per_pixel = sampler.is_identity();
         canvas[py0 * stride..py1 * stride]
             .par_chunks_mut(stride)
+            .zip(vlinhas.into_par_iter())
             .enumerate()
-            .for_each(|(k, row)| {
+            .for_each(|(k, (row, mut vrow))| {
                 let py = py0 + k;
                 let gb = py * stride;
                 // A metade-`y` do amostrador, resolvida UMA vez por linha.
@@ -213,8 +243,12 @@ impl PainterTool {
                         // Base verbatim — the gates keep-lerp TOWARD the base, so
                         // they are exact no-ops on this branch.
                         row[lo..lo + 4].copy_from_slice(&base[o..o + 4]);
+                        if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase) {
+                            v[px] = b[o / 4];
+                        }
                         continue;
                     }
+                    let mut cobertura = pa;
                     if modo == ph2d_painter_brush::BrushBlend::Mix {
                         let ba = base[o + 3] as f32 / 255.0;
                         let oa = pa + ba * (1.0 - pa);
@@ -242,6 +276,7 @@ impl PainterTool {
                     if gate_on {
                         let keep = super::watercolor_accum::splat_keep(gsel, gprot, None, o / 4);
                         if keep < 1.0 {
+                            cobertura *= keep;
                             for c in 0..4 {
                                 let painted = f32::from(row[lo + c]);
                                 let orig = f32::from(base[o + c]);
@@ -257,8 +292,19 @@ impl PainterTool {
                         // buffer, served by `wet_splat_gates`' wet-session arm).
                         row[lo + 3] = base[o + 3];
                     }
+                    if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase) {
+                        let antes = crate::compositor::vidro::alfas(&base[o..o + 4], &b[o / 4]);
+                        let px4 = [row[lo], row[lo + 1], row[lo + 2], row[lo + 3]];
+                        v[px] = crate::compositor::vidro::sela(
+                            px4,
+                            crate::compositor::vidro::cobre(antes, cobertura),
+                        );
+                    }
                 }
             });
+        if let (Some(c), Some(p)) = (vcamada, vplano) {
+            self.vidros.insert(c, p);
+        }
         #[cfg(test)]
         split::note_pixel(t_pixel.elapsed());
         if veil {

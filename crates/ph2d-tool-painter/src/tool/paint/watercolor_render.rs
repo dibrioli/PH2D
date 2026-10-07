@@ -583,8 +583,7 @@ impl PainterTool {
                     let vidro_do = |px: [u8; 4], b: &[crate::compositor::vidro::Vidro]| {
                         let i = gy * fw + gx;
                         let cb = vchao.map_or([0u8; 3], |g| [g[gi], g[gi + 1], g[gi + 2]]);
-                        let ab_c = crate::compositor::vidro::alfas(&base[gi..gi + 4], &b[i])
-                            .unwrap_or([base[gi + 3]; 3]);
+                        let ab_c = crate::compositor::vidro::alfas(&base[gi..gi + 4], &b[i]);
                         let base_preto: [f32; 3] = core::array::from_fn(|c| {
                             base_sobre[c]
                                 - (1.0 - f32::from(ab_c[c]) / 255.0)

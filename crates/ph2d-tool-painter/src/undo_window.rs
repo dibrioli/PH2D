@@ -57,6 +57,17 @@ impl WriteWindow {
         }
     }
 
+    /// **A região que tudo o que se escreveu desde o último commit declarou** — `None` quando nada a
+    /// declarou ou algum acesso ficou por declarar (então quem pergunta varre a tela, como o commit).
+    #[must_use]
+    pub const fn declarada(&self) -> Option<Region> {
+        if self.undeclared == 0 {
+            self.rect
+        } else {
+            None
+        }
+    }
+
     /// Quantos acessos de escrita seguem abertos sem dizer onde escreveram.
     ///
     /// Readout de diagnóstico: enquanto for > 0 o commit **varre**, então este é o número que separa

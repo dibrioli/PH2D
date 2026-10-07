@@ -17,7 +17,7 @@ use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 /// em `u8` — pior `2` níveis, num texel opaco de corpo 1.
 const PISO: i32 = 2;
 /// O papel castanho da foto do dono.
-const PAPEL: [u8; 3] = [153, 121, 91];
+pub(super) const PAPEL: [u8; 3] = [153, 121, 91];
 const CORES: [[u8; 3]; 4] = [[255, 0, 0], [220, 40, 40], [30, 60, 220], [240, 200, 40]];
 const CORPOS: [f32; 3] = [0.0, 0.4, 1.0];
 
@@ -426,7 +426,7 @@ fn a_previsualizacao_que_se_move_devolve_o_vidro_da_base() {
 #[test]
 #[ignore = "medição"]
 fn diag_o_preco_do_vidro() {
-    fn por_move(meio: PaintMedia, lado: u32, vidro: bool) -> (f64, f64, f64) {
+    fn por_move(meio: PaintMedia, lado: u32, vidro: bool) -> (f64, f64, f64, f64) {
         let mut t = PainterTool {
             sem_vidro: !vidro,
             ..Default::default()
@@ -460,10 +460,12 @@ fn diag_o_preco_do_vidro() {
             let _ = t.take_preview_arc();
             ms.push(t0.elapsed().as_secs_f64() * 1e3);
         }
+        let t0 = std::time::Instant::now();
         t.on_canvas_pointer(cp([500.0, mid + 10.0], PointerPhase::Up));
+        let largar = t0.elapsed().as_secs_f64() * 1e3;
         let primeiro = toque + ms[0];
         ms.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
-        (ms[ms.len() / 2], primeiro, quadro_do_papel)
+        (ms[ms.len() / 2], primeiro, quadro_do_papel, largar)
     }
     let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     eprintln!("\n[vidro] loadavg {}", carga().trim());
@@ -474,10 +476,13 @@ fn diag_o_preco_do_vidro() {
     let (mut sem, mut com) = (vec![Vec::new(); casos.len()], vec![Vec::new(); casos.len()]);
     let (mut sem1, mut com1) = (vec![Vec::new(); casos.len()], vec![Vec::new(); casos.len()]);
     let (mut semp, mut comp) = (vec![Vec::new(); casos.len()], vec![Vec::new(); casos.len()]);
+    let (mut seml, mut coml) = (vec![Vec::new(); casos.len()], vec![Vec::new(); casos.len()]);
     for _ in 0..3 {
         for (k, &(meio, lado)) in casos.iter().enumerate() {
-            let (s, s1, sp) = por_move(meio, lado, false);
-            let (c, c1, cpp) = por_move(meio, lado, true);
+            let (s, s1, sp, sl) = por_move(meio, lado, false);
+            let (c, c1, cpp, cl) = por_move(meio, lado, true);
+            seml[k].push(sl);
+            coml[k].push(cl);
             semp[k].push(sp);
             comp[k].push(cpp);
             sem[k].push(s);
@@ -500,8 +505,10 @@ fn diag_o_preco_do_vidro() {
         let (c1, _) = mm(&mut com1[k]);
         let (sp, _) = mm(&mut semp[k]);
         let (cpp, _) = mm(&mut comp[k]);
+        let (sl, _) = mm(&mut seml[k]);
+        let (cl, _) = mm(&mut coml[k]);
         eprintln!(
-            "[vidro] {meio:<11?} {lado:<6} {sm:>7.3} · {sd:>7.3}            {cm:>7.3} · {cd:>7.3}            {:>5.2}×   toque + 1.º movimento {s1:.2} → {c1:.2} ms · quadro da troca de papel {sp:.1} → {cpp:.1} ms",
+            "[vidro] {meio:<11?} {lado:<6} {sm:>7.3} · {sd:>7.3}            {cm:>7.3} · {cd:>7.3}            {:>5.2}×   toque + 1.º movimento {s1:.2} → {c1:.2} ms · quadro da troca de papel {sp:.1} → {cpp:.1} ms · largar {sl:.2} → {cl:.2} ms",
             cm / sm.max(1e-6)
         );
     }

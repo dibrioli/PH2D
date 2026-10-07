@@ -368,6 +368,8 @@ impl PainterTool {
         // Dirty-rect fast lane: when a valid full composite is cached AND only a
         // known bbox changed, recomposite ONLY that region and blit it into the
         // cache — O(N×bbox) vs O(N×W×H). Otherwise do a full recompose.
+        // O VIDRO segue o traço aberto antes de o quadro o compor sobre o papel de cor (doc 48).
+        self.segue_o_vidro_no_quadro();
         let dirty = self.dirty_rect.take();
         let stroke_dirtied = dirty.is_some();
         // A live Mask scratch does NOT force the full path. Its protection-overlay tint is PER-PIXEL

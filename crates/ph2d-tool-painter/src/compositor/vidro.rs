@@ -12,9 +12,12 @@
 //! com `W` a pilha sobre o branco e `t` o produto, camada a camada, de `1 − alfa` de cada canal. Sem
 //! vidro `t = 1 − alfa` e isto é «cobrir com transparência» (`sobre_o_papel`), a lei de sempre.
 //!
-//! ⭐ **O selo é o que torna o plano seguro sem que nenhum outro pincel o conheça:** se outra
-//! ferramenta reescreve o píxel (o Digital por cima, a borracha, o borrar, o transformar), o selo deixa
-//! de bater e o texel volta a ser tinta de um alfa só — a lei de antes, nunca uma errada.
+//! ⭐ **O selo é o que deixa o plano valer sem que nenhum outro pincel o conheça:** com o selo intacto
+//! os alfas são exactos; quando outra ferramenta reescreveu o píxel ([`alfas`]), o vidro CONTINUA o
+//! que ela fez — o que subiu o alfa cobriu (cada canal atenua-se pela fracção coberta, a lei do
+//! `over`), o que o desceu apagou (os alfas escalam). ⛔ Voltar à lei de um alfa NÃO é neutro sobre o
+//! papel de cor: é a aguada acesa — foi o contorno claro do Wet Paint, do Digital e do Impasto por
+//! cima de uma aguada (smoke do dono 2026-10-07, BUGS #46).
 
 use super::{LayerId, LayerPixelSource, Region};
 use crate::layers::LayerStack;
@@ -34,12 +37,44 @@ pub fn sela(px: [u8; 4], alfas: [u8; 3]) -> Vidro {
     [px[0], px[1], px[2], px[3], alfas[0], alfas[1], alfas[2]]
 }
 
-/// Os alfas por canal do píxel `px` (RGBA), se o vidro ainda é dele; `None` se outro pincel o
-/// reescreveu (o texel é tinta de um alfa só).
+/// **Os alfas por canal do píxel `px` (RGBA)** pelo vidro `v`. Selo intacto: os do vidro. Outro pincel
+/// reescreveu o píxel: o alfa que SUBIU de `a` para `a'` é uma cobertura `f = (a' − a)/(1 − a)` por
+/// cima, e cada canal passa a `1 − (1 − a_c)·(1 − f)` (com `a = 1` a cobertura lê-se pela maior mudança
+/// de cor, o seu mínimo); o que DESCEU é uma borracha, e os alfas escalam por `a'/a`. Um vidro nunca
+/// selado (zeros) dá o alfa único do píxel, exacto.
 #[inline]
 #[must_use]
-pub fn alfas(px: &[u8], v: &Vidro) -> Option<[u8; 3]> {
-    (px[..4] == v[..4]).then_some([v[4], v[5], v[6]])
+pub fn alfas(px: &[u8], v: &Vidro) -> [u8; 3] {
+    let ac = [v[4], v[5], v[6]];
+    if px[..4] == v[..4] {
+        return ac;
+    }
+    let (a0, a1) = (f32::from(v[3]) / 255.0, f32::from(px[3]) / 255.0);
+    if a1 < a0 {
+        let k = a1 / a0;
+        return ac.map(|c| (f32::from(c) * k).round() as u8);
+    }
+    let f = if a0 < 1.0 {
+        (a1 - a0) / (1.0 - a0)
+    } else {
+        (0..3)
+            .map(|c| px[c].abs_diff(v[c]))
+            .max()
+            .map_or(0.0, |d| f32::from(d) / 255.0)
+    };
+    cobre(ac, f)
+}
+
+/// **Uma cobertura `f` por cima** (o `over`: `antes·(1 − f) + cor·f`): cada canal deixa passar
+/// `1 − f` do que deixava — `1 − (1 − a_c)·(1 − f)`.
+#[inline]
+#[must_use]
+pub fn cobre(ac: [u8; 3], f: f32) -> [u8; 3] {
+    let f = f.clamp(0.0, 1.0);
+    ac.map(|c| {
+        let a = 1.0 - (1.0 - f32::from(c) / 255.0) * (1.0 - f);
+        (a.clamp(0.0, 1.0) * 255.0).round() as u8
+    })
 }
 
 /// Atualiza a transparência por canal `t` de um texel com a camada por cima: `k` é o factor da
@@ -49,7 +84,7 @@ pub fn alfas(px: &[u8], v: &Vidro) -> Option<[u8; 3]> {
 /// de cor se vê.
 #[inline]
 pub(crate) fn atravessa(t: &mut [f32; 3], k: f32, px: &[u8], v: Option<&Vidro>) {
-    match v.and_then(|v| alfas(px, v)) {
+    match v.map(|v| alfas(px, v)) {
         Some(ac) => {
             for c in 0..3 {
                 t[c] *= 1.0 - (f32::from(ac[c]) / 255.0 * k).min(1.0);

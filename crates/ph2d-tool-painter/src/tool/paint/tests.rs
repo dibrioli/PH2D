@@ -64,6 +64,9 @@ mod thread_deposit_tests;
 #[path = "thread_probe.rs"]
 mod thread_probe; // W3/W4 do plano 38: o custo por evento que os tetos do Sketchy e do Wire EXIGEM
 /// A aguada é um filtro sobre o papel de cor (doc 48, BUGS #46).
+/// Outro pincel por cima da aguada continua o vidro dela (BUGS #46, 2.ª volta).
+#[path = "vidro_por_cima_tests.rs"]
+mod vidro_por_cima_tests;
 #[path = "vidro_tests.rs"]
 mod vidro_tests;
 /// Os fios (Sketchy · Wire · degraus do Ribbon) na aguada (doc 46 §2-7).

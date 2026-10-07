@@ -502,6 +502,13 @@ impl PainterTool {
         self.paint.watercolor_base = None; // defensive: the render-path drops it on commit already
         self.paint.wet_backdrop = None; // the ground is per-stroke (the stack below may change)
         self.paint.wet_soak_pos = None;
+        // O VIDRO de uma aguada por baixo segue o que este traço cobriu (doc 48), antes de o desfazer
+        // fotografar o depois; no papel de cor o quadro refaz a caixa.
+        if let Some(r) = self.continua_o_vidro_do_traco(None)
+            && self.papel_atravessa_vidro()
+        {
+            self.mark_dirty(r);
+        }
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
         }

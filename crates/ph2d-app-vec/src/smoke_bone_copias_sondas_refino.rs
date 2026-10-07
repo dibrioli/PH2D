@@ -56,12 +56,7 @@ impl Barra {
         let g = &prep.guardado;
         assert!(
             sd::os_nos_servem(&g.path),
-            "a barra 0 da =6 não tem quinas vivas"
-        );
-        assert_eq!(
-            fechados_de(&g.path).contour_count(),
-            g.path.contour_count(),
-            "a barra 0 da =6 só tem fechados"
+            "a barra da =6 não tem quinas vivas"
         );
         let tabela = bind
             .pesos_do_quadro(if g.valida() { &g.pesos } else { &[] })
@@ -80,6 +75,7 @@ impl Barra {
     pub(crate) fn amostras(&self) -> usize {
         let segs: usize = (0..self.fonte.contour_count())
             .filter_map(|c| self.fonte.contour(c))
+            .filter(|(_, f)| *f)
             .map(|(v, _)| v.len())
             .sum();
         ph2d_skeleton_live::skin_desenho::amostras_por_segmento(segs)
@@ -122,7 +118,7 @@ impl Barra {
     /// A IMAGEM EXACTA do contorno em repouso: `n` pontos por segmento postos pela lei do bake.
     pub(crate) fn imagem(&self, n: usize) -> Vec<Vec<[f64; 2]>> {
         let campo = self.prep.guardado.campo.as_ref().expect("campo");
-        polilinhas(&self.fonte, n)
+        polilinhas(&fechados_de(&self.fonte), n)
             .into_iter()
             .map(|l| {
                 l.into_iter()

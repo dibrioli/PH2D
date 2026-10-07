@@ -43,8 +43,13 @@ impl crate::App {
         );
         let world = sim.world();
         let mut image_edit = ph2d_app_painter::image_edit_mode::Family::new(world);
-        let families: &mut [&mut dyn ModeFamily] =
-            &mut [&mut paint, &mut flip, &mut vector, &mut skeleton, &mut image_edit];
+        let families: &mut [&mut dyn ModeFamily] = &mut [
+            &mut paint,
+            &mut flip,
+            &mut vector,
+            &mut skeleton,
+            &mut image_edit,
+        ];
         if ph2d_app_components::object_mode::drive(world, families, tools, hero, toasts, request) {
             self.title_dirty = true;
         }

@@ -2352,7 +2352,15 @@ Os tectos, medidos no mesmo processo (custo contra o de hoje igual ao bit em tod
 
 ### §27.9 — A prova
 
-(No fecho: o gate batched, a mutação, a foto.)
+Gates novos: `a_leve_atravessa_se_a_pesada_contorna_se` · `com_o_cost_em_2_os_da_direita_cortam_pela_lama` ·
+`a_cena_tem_as_pecas_que_o_roteiro_nomeia` (com a secção que a shell abre) · `o_cenas_conta_os_niveis_do_roteador`
+· `mexer_no_custo_refaz_o_caminho_de_quem_anda`. Mutação **10 / 10**
+([`mutacao_navegacao_w18_2026-10-06.py`](ferramentas/mutacao_navegacao_w18_2026-10-06.py), o motor da W15):
+L1 a pesada a custar o mesmo · L2 a faixa sem a área · L3 o roteador sem a `5` · L4 a secção do agente aberta ·
+L5 `CENAS = 4` (sobreviveria sem o gate do roteador, escrito para ela) · L6 a lama desenhada maior que o corpo ·
+C1 sem o 5.º motivo · C2 o caminho instalado sem guardar os custos · C3/C4 a assinatura a zero. Gate batched:
+`nextest-impacted` `15 782 / 15 783` (a falha, o tutorial a marcar `Cost 2` como rótulo de tela, curada e
+re-corrida) · clippy limpo. As fotos: `target/prova/w18/foto/cena5_{a_meio,fim}.png`.
 
 ### §27.10 — ⏳ O que fica
 

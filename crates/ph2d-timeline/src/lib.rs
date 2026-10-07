@@ -49,6 +49,7 @@ pub mod onion;
 pub mod path;
 pub mod path_convert;
 pub mod persist;
+mod place_owner;
 pub mod pose;
 pub mod prop;
 /// ⭐ **Veio da shell na integração de 2026-09-16** — a catraca `the_shell_only_shrinks`
@@ -109,6 +110,7 @@ pub use onion::{OnionMode, OnionSettings};
 pub use path::{MotionPath, PathAnchor, PathSample, TangentKind};
 pub use path_convert::{ConversionReport, PositionKeyMode};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
+pub use place_owner::{PLACE_PROPS, PlaceMove, PlaceMoveRefusal, rehome_moved_places};
 pub use pose::{animated_entities, entity_key_times, pose_at, world_pose_at, world_pose_at_into};
 pub use prop::{Algebra, PropKind};
 pub use refusal::{KeyRefusal, NestRefusal};

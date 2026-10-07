@@ -24,7 +24,7 @@ impl crate::App {
             return;
         };
         // ⭐ A raiz de ossos sem esqueleto ganha um (A14): projectos antigos, cenas, o 1.º *Create*.
-        if !ph2d_app_skeleton::loose::adopt_loose_roots(sim, &self.timeline.doc).is_empty() {
+        if !ph2d_app_skeleton::loose::adopt_loose_roots(sim, &mut self.timeline).is_empty() {
             self.title_dirty = true;
         }
         let request = request

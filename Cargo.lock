@@ -4896,6 +4896,7 @@ dependencies = [
  "ph2d-skeleton-live",
  "ph2d-skeleton-render",
  "ph2d-timeline",
+ "ph2d-timeline-persist",
  "ph2d-timeline-preview",
  "ph2d-tool-bone",
  "ph2d-tool-vector",

@@ -159,6 +159,17 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
             |bits| wire_of(world, bits),
             |w| by_wire.get(&w.0).copied().flatten(),
         );
+        // ⭐ A17 — o lugar que mudou de dono atravessa o undo GLOBAL: ENTRE a cura e a purga, que
+        // senão apagava a track de um dono que o undo desfez.
+        ph2d_timeline::rehome_moved_places(
+            timeline,
+            |w| by_wire.get(&w.0).copied().flatten(),
+            |bits| {
+                Entity::try_from_bits(bits)
+                    .and_then(|e| world.get::<ph2d_ecs::ChildOf>(e))
+                    .map(|c| c.parent().to_bits())
+            },
+        );
     }
     // ⭐ Quem AINDA depende de um clip pelo nome — hoje, os ossos inteligentes. A varredura corre
     // sobre o mundo que já está na mão, e só quando não sobra binding nenhuma (ver o `purge`).

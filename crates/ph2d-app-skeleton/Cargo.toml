@@ -71,6 +71,9 @@ ph2d-skeleton-live = { path = "../ph2d-skeleton-live", features = ["test-support
 # ⚠️ E o aviso é o caro: sem esta linha o erro lido é *«no method named `is_empty`»* sobre um método
 # que está **à vista no ficheiro que o erro cita**.
 ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
+# ⭐ A17: a ida-e-volta do ficheiro e o `upkeep` (cura, volta a casa, purga) que os gates da raiz
+# animada atravessam.
+ph2d-timeline-persist = { path = "../ph2d-timeline-persist" }
 
 # ⚠️ **Do tamanho do que ATRAVESSA a fronteira, e nada mais** (HOWTO §2.5). Aqui atravessa **UMA**
 # fixtura: o `bone_gesture::test_segment`, que o `skeleton_shell_seam_tests` da shell usa para medir

@@ -102,6 +102,11 @@ pub struct TargetBinding {
     /// nenhuma. Appended (`DOC_VERSION` 14 -> 15).
     #[serde(default)]
     pub expr: Option<String>,
+    /// **De onde veio o lugar** (A17, [`crate::PlaceMove`]): só sessão, nunca gravado — é o
+    /// que deixa o undo GLOBAL (que repõe o mundo e não o documento) devolver uma track da
+    /// posição a casa.
+    #[serde(skip)]
+    pub moved: Option<crate::PlaceMove>,
 }
 
 impl crate::doc::TimelineDoc {
@@ -149,6 +154,7 @@ impl TargetBinding {
             rest: None,         // captured on the first live apply (see the field)
             auto_orient: false, // opt-in: girar sem pedido reescreve a pose autorada
             expr: None,         // driven by keyframes until a formula is authored (v15)
+            moved: None,        // o lugar é do próprio objecto (A17)
         }
     }
 

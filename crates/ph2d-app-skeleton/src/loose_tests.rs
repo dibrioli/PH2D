@@ -2,7 +2,7 @@
 
 use super::*;
 
-fn osso(sim: &mut SimWorld, pos: [f32; 2], rot: f32, pai: Option<Entity>) -> Entity {
+pub(super) fn osso(sim: &mut SimWorld, pos: [f32; 2], rot: f32, pai: Option<Entity>) -> Entity {
     let e = sim
         .world_mut()
         .spawn((
@@ -29,7 +29,7 @@ fn osso(sim: &mut SimWorld, pos: [f32; 2], rot: f32, pai: Option<Entity>) -> Ent
 }
 
 /// Os sete números do mundo de `e`, com o zero sem sinal (o único desvio que o `compose` admite).
-fn mundo(sim: &SimWorld, e: Entity) -> [u32; 7] {
+pub(super) fn mundo(sim: &SimWorld, e: Entity) -> [u32; 7] {
     let t = ph2d_ecs::world_transform(sim.world(), e).expect("mundo");
     [
         t.translation.x,
@@ -57,7 +57,7 @@ fn the_adopted_skeleton_sits_on_the_root_and_the_pose_stays_to_the_bit() {
         rng ^= rng << 17;
         lo + (hi - lo) * ((rng >> 40) as f32 / (1u64 << 24) as f32)
     };
-    let doc = TimelineDoc::default();
+    let mut tl = TimelineState::new();
     for k in 0..4000 {
         let mut sim = SimWorld::default();
         let pai = (k % 2 == 1).then(|| {
@@ -90,7 +90,7 @@ fn the_adopted_skeleton_sits_on_the_root_and_the_pose_stays_to_the_bit() {
             Some(o2),
         );
         let antes = [raiz, o2, o3].map(|e| mundo(&sim, e));
-        let esq = Entity::from_bits(adopt_loose_roots(&mut sim, &doc)[0]);
+        let esq = Entity::from_bits(adopt_loose_roots(&mut sim, &mut tl)[0]);
         assert_eq!(
             sim.world().get::<Transform>(esq).expect("esq").translation,
             Vec2::new(l[0], l[1]),
@@ -104,12 +104,14 @@ fn the_adopted_skeleton_sits_on_the_root_and_the_pose_stays_to_the_bit() {
     }
 }
 
-/// ⭐⭐ GATE (A15) — **onde mover a origem não seria exacto, o esqueleto fica na identidade**: o
-/// repouso guardado noutro sítio e a posição na timeline (CADA uma das três propriedades da posição,
-/// sozinha, deixa também a raiz intocada). Controlo: o repouso IGUAL à pose vai com ela (fica `0` na
-/// raiz) e repô-lo devolve o mesmo mundo.
+/// ⭐⭐ GATE (A15, reescrito no A17) — **o repouso guardado noutro sítio deixa o esqueleto na
+/// identidade; a posição na timeline VAI com ele.** Até ao A17 as duas metades eram a mesma lei
+/// (identidade); o dono decidiu (07/10) que a track da posição muda para o esqueleto — então CADA
+/// uma das três propriedades da posição, sozinha, põe o esqueleto em `L`, a raiz em `0` e a binding
+/// no esqueleto. O repouso noutro sítio SEM track continua na identidade (rebasear sai do bit).
+/// Controlo: o repouso IGUAL à pose vai com ela (fica `0` na raiz) e repô-lo devolve o mesmo mundo.
 #[test]
-fn a_root_whose_place_is_stored_elsewhere_keeps_the_skeleton_at_identity() {
+fn a_root_whose_rest_is_elsewhere_keeps_identity_and_a_bound_place_goes_with_the_skeleton() {
     let adopta = |rest: Option<[f32; 2]>, animada: Option<ph2d_timeline::PropKind>| {
         let mut sim = SimWorld::default();
         let raiz = osso(&mut sim, [30.0, -12.5], 0.3, None);
@@ -119,36 +121,51 @@ fn a_root_whose_place_is_stored_elsewhere_keeps_the_skeleton_at_identity() {
             b.rotation = 0.3;
             sim.world_mut().entity_mut(raiz).insert(b);
         }
-        let mut doc = TimelineDoc::default();
+        let mut tl = TimelineState::new();
         if let Some(p) = animada {
-            doc.bind(raiz.to_bits(), p);
+            tl.doc.bind(raiz.to_bits(), p);
         }
-        let esq = Entity::from_bits(adopt_loose_roots(&mut sim, &doc)[0]);
+        let esq = Entity::from_bits(adopt_loose_roots(&mut sim, &mut tl)[0]);
         let t = sim.world().get::<Transform>(esq).expect("esq").translation;
-        (sim, raiz, [t.x, t.y])
+        (sim, tl, raiz, esq, [t.x, t.y])
     };
     assert_eq!(
-        adopta(None, None).2,
+        adopta(None, None).4,
         [30.0, -12.5],
         "controlo: sem nada guardado"
     );
     assert_eq!(
-        adopta(Some([1.0, 2.0]), None).2,
+        adopta(Some([1.0, 2.0]), None).4,
         [0.0, 0.0],
         "repouso noutro sítio"
     );
     use ph2d_timeline::PropKind as P;
     for p in [P::TranslationX, P::TranslationY, P::Position] {
-        let (sim, raiz, t) = adopta(None, Some(p));
-        assert_eq!(t, [0.0, 0.0], "{p:?} na timeline moveu o esqueleto");
+        let (sim, tl, raiz, esq, t) = adopta(Some([1.0, 2.0]), Some(p));
+        assert_eq!(
+            t,
+            [30.0, -12.5],
+            "{p:?} na timeline não levou o esqueleto à raiz"
+        );
         let l = sim
             .world()
             .get::<Transform>(raiz)
             .expect("raiz")
             .translation;
-        assert_eq!([l.x, l.y], [30.0, -12.5], "{p:?} na timeline mexeu na raiz");
+        assert_eq!([l.x, l.y], [0.0, 0.0], "{p:?}: a raiz não ficou na origem");
+        let r = sim.world().get::<BoneRest>(raiz).expect("repouso");
+        assert_eq!(
+            r.translation,
+            [0.0, 0.0],
+            "{p:?}: o repouso da posição não foi com a track"
+        );
+        assert!(
+            tl.doc.binding_for(esq.to_bits(), p).is_some()
+                && tl.doc.binding_for(raiz.to_bits(), p).is_none(),
+            "{p:?}: a track não mudou para o esqueleto"
+        );
     }
-    let (mut sim, raiz, t) = adopta(Some([30.0, -12.5]), None);
+    let (mut sim, _, raiz, _, t) = adopta(Some([30.0, -12.5]), None);
     assert_eq!(t, [30.0, -12.5], "o repouso igual à pose vai com ela");
     let antes = mundo(&sim, raiz);
     let rest = *sim.world().get::<BoneRest>(raiz).expect("repouso");
@@ -180,7 +197,7 @@ fn an_old_project_opens_with_one_skeleton_per_root_and_the_pose_to_the_bit() {
     let c = osso(&mut sim, [0.0, 0.0], 0.0, Some(ja));
     let antes = ph2d_skeleton_live::skin_live::bone_polylines(&sim);
 
-    let novos = adopt_loose_roots(&mut sim, &TimelineDoc::default());
+    let novos = adopt_loose_roots(&mut sim, &mut TimelineState::new());
     assert_eq!(novos.len(), 2, "uma raiz solta, um esqueleto");
     let w = sim.world();
     let dono = |e: Entity| ph2d_skeleton_ecs::skeleton_of(w, e).map(Entity::to_bits);
@@ -214,7 +231,7 @@ fn an_old_project_opens_with_one_skeleton_per_root_and_the_pose_to_the_bit() {
         "a pose de algum osso mudou — a migração mexeu no desenho"
     );
     assert!(
-        adopt_loose_roots(&mut sim, &TimelineDoc::default()).is_empty(),
+        adopt_loose_roots(&mut sim, &mut TimelineState::new()).is_empty(),
         "controlo: a 2.ª passagem não cria nada"
     );
 }

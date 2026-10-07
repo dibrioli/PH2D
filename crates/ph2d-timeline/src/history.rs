@@ -76,6 +76,16 @@ impl TimelineHistory {
         !self.redo.is_empty()
     }
 
+    /// Toda fotografia guardada, mutável — para uma mudança de IDENTIDADE que não é um passo
+    /// (a binding que muda de dono, [`crate::place_owner`]): ela tem de valer em todo passado a
+    /// que o Ctrl+Z pode voltar.
+    pub fn docs_mut(&mut self) -> impl Iterator<Item = &mut TimelineDoc> {
+        self.undo
+            .iter_mut()
+            .chain(self.redo.iter_mut())
+            .chain(self.pending.iter_mut())
+    }
+
     /// Undo: return the previous doc; push `current` onto redo.
     pub fn undo(&mut self, current: &TimelineDoc) -> Option<TimelineDoc> {
         let prev = self.undo.pop()?;

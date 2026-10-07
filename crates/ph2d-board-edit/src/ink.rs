@@ -188,6 +188,18 @@ impl Editor {
         true
     }
 
+    /// Fecha um gesto da caneta SEM acrescentar ponto (o largar perdeu-se): o traço fica como está,
+    /// num passo de desfazer. `false` = não havia.
+    pub(crate) fn ink_finish(&mut self, doc: &mut BoardDoc, history: &mut History) -> bool {
+        match self.ink.take() {
+            Some(InkGesture::Draw { id, .. }) => history.record(vec![BoardOp::Delete(id)]),
+            Some(g @ InkGesture::Erase { .. }) => history.record(erase_inverse(doc, g)),
+            Some(InkGesture::Laser) => {}
+            None => return false,
+        }
+        true
+    }
+
     /// `Esc` a meio de um gesto da caneta: o documento volta ao início dele, sem passo.
     pub(crate) fn ink_cancel(&mut self, doc: &mut BoardDoc) -> bool {
         match self.ink.take() {

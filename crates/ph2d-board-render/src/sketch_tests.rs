@@ -101,3 +101,47 @@ fn the_sketch_stays_close_to_the_true_outline() {
         assert!((got - want).abs() < 8.0, "{got} longe de {want}");
     }
 }
+
+/// ⭐ A TINTA DO TEMA (smoke do dono, 07/10): a tinta de nascença desenha-se `#1e1e1e` num quadro
+/// claro e no texto do tema num escuro — em TODOS os temas; uma cor escolhida pelo artista nunca
+/// muda, nem o texto dentro de uma forma preenchida (lê-se contra o preenchimento).
+#[test]
+fn the_default_ink_is_near_black_on_light_boards_and_the_themes_text_on_dark_ones() {
+    use ph2d_tokens::{ColorToken, Theme};
+    let ink = Rgba(ph2d_board_model::DEFAULT_INK);
+    let red = Rgba([200, 30, 30, 255]);
+    let mut lights = 0;
+    for theme in Theme::ALL {
+        let bg = ColorToken::Bg1.resolve(theme);
+        let light = Rgba([bg.r, bg.g, bg.b, 255]).luminance() >= 0.5;
+        let t = crate::ThemeInk::of(theme);
+        let drawn = t.color(ink).to_rgba8();
+        let want = if light {
+            lights += 1;
+            [30, 30, 30, 255]
+        } else {
+            let c = ColorToken::Text1.resolve(theme);
+            [c.r, c.g, c.b, c.a]
+        };
+        assert_eq!([drawn.r, drawn.g, drawn.b, drawn.a], want, "{theme:?}");
+        let r = t.color(red).to_rgba8();
+        assert_eq!(
+            [r.r, r.g, r.b],
+            [200, 30, 30],
+            "{theme:?}: a cor do artista mudou"
+        );
+        let mut filled = Style::new(Some(Rgba([250, 230, 150, 255])), Some(ink), ink);
+        let on_fill = t.text(&filled).to_rgba8();
+        assert_eq!(
+            [on_fill.r, on_fill.g, on_fill.b],
+            [30, 30, 30],
+            "{theme:?}: texto sobre preenchimento"
+        );
+        filled.fill = None;
+        assert_eq!(t.text(&filled), t.color(ink));
+    }
+    assert!(
+        lights > 0 && lights < Theme::ALL.len(),
+        "há temas claros e escuros na régua"
+    );
+}

@@ -599,6 +599,14 @@ impl Editor {
     }
 
     /// `Esc` a meio de um gesto: devolve o documento ao início dele. `false` = não havia gesto.
+    /// ⭐ Fecha um gesto PENDURADO — um cujo largar nunca chegou (a shell entregou-o a outro, ou ele
+    /// caiu fora da janela): o traço da caneta guarda-se tal como está (um passo); outro gesto volta
+    /// ao início dele. Quem chama é a vista, antes de um carregar que o gesto não pode engolir (um
+    /// botão da barra). `false` = não havia gesto.
+    pub fn finish_gesture(&mut self, doc: &mut BoardDoc, history: &mut History) -> bool {
+        self.ink_finish(doc, history) || self.cancel_gesture(doc)
+    }
+
     pub fn cancel_gesture(&mut self, doc: &mut BoardDoc) -> bool {
         if self.ink_cancel(doc) {
             return true;

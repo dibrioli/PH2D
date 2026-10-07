@@ -35,6 +35,8 @@ pub(crate) struct Rough {
 
 #[derive(Default)]
 pub(crate) struct SketchCache {
+    /// A tinta do tema desta imagem (posta pelo `paint`).
+    pub(crate) ink: crate::ThemeInk,
     rough: BTreeMap<(u64, u64), (u64, Rough, u64)>,
     inks: BTreeMap<(u64, u64), (u64, BezPath, u64)>,
 }
@@ -306,13 +308,14 @@ pub(crate) fn paint_shape(
         [el.w, el.h, st.stroke_width].map(f64::to_bits).hash(h);
         (st.fill.is_some(), st.stroke.is_some(), st.round).hash(h);
     });
+    let ink = cache.ink;
     let r = cached(&mut cache.rough, owner, key, frame, || {
         rough_shape(el, kind, st, o)
     });
-    paint_rough(scene, r, st, t);
+    paint_rough(scene, r, st, t, ink);
 }
 
-fn paint_rough(scene: &mut VectorScene, r: &Rough, st: &Style, t: Affine) {
+fn paint_rough(scene: &mut VectorScene, r: &Rough, st: &Style, t: Affine, ink: crate::ThemeInk) {
     if let Some(c) = st.fill {
         let brush = Brush::Solid(doc_color(c));
         if !r.fill.is_empty() {
@@ -333,7 +336,7 @@ fn paint_rough(scene: &mut VectorScene, r: &Rough, st: &Style, t: Affine) {
             .with_join(Join::Round);
         scene
             .inner_mut()
-            .stroke(&line, t, &Brush::Solid(doc_color(c)), None, &r.line);
+            .stroke(&line, t, &Brush::Solid(ink.color(c)), None, &r.line);
     }
 }
 
@@ -377,7 +380,7 @@ pub(crate) fn paint_connector(
     let Some(c) = st.stroke else {
         return;
     };
-    let brush = Brush::Solid(doc_color(c));
+    let brush = Brush::Solid(cache.ink.color(c));
     if !r.fill.is_empty() {
         scene.fill_path(&r.fill, &brush, v);
     }
@@ -447,15 +450,17 @@ pub(crate) fn paint_ink(
     let path = cached(&mut cache.inks, owner, key, frame, || {
         ink_outline(ink, el.w, el.h)
     });
-    let Some(Rgba([r, g, b, a])) = ink.style.stroke else {
+    let Some(stroke) = ink.style.stroke else {
         return;
     };
-    let mut alpha = f32::from(a) / 255.0 * f32::from(ink.style.opacity) / 100.0;
+    let mut alpha = f32::from(stroke.0[3]) / 255.0 * f32::from(ink.style.opacity) / 100.0;
     if ink.pen == Pen::Highlighter {
         alpha *= HIGHLIGHTER_ALPHA;
     }
-    // LITERAL-COLOR-OK: cor do DOCUMENTO (a do traço), com a transparência do marcador.
-    let c = Color::from_rgba8(r, g, b, 255).with_alpha(alpha);
+    let c = cache
+        .ink
+        .color(Rgba([stroke.0[0], stroke.0[1], stroke.0[2], 255]))
+        .with_alpha(alpha);
     scene.fill_path(path, &Brush::Solid(c), t);
 }
 

@@ -71,18 +71,19 @@ pub fn metrics() -> Metrics {
     }
 }
 
-/// O estilo de nascença de uma forma: sem preenchimento, contorno e letra na tinta do tema.
+/// O estilo de nascença de uma forma: sem preenchimento, contorno e letra na TINTA DO DOCUMENTO
+/// ([`ph2d_board_model::DEFAULT_INK`]) — nunca a do tema em que nasceu: quem desenha resolve-a pelo
+/// tema de cada momento ([`ph2d_board_render::ThemeInk`]; smoke do dono, 07/10).
 #[must_use]
-pub fn default_style(theme: Theme) -> Style {
-    let c = ColorToken::Text1.resolve(theme);
-    let ink = Rgba([c.r, c.g, c.b, c.a]);
+pub fn default_style() -> Style {
+    let ink = Rgba(ph2d_board_model::DEFAULT_INK);
     Style::new(None, Some(ink), ink)
 }
 
 /// O editor (criado no 1.º uso). Recebe só o CAMPO, para o resto do estado ficar livre.
 pub(crate) fn editor(slot: &mut Option<Editor>, theme: Theme) -> &mut Editor {
     slot.get_or_insert_with(|| {
-        let mut ed = Editor::new(default_style(theme), metrics());
+        let mut ed = Editor::new(default_style(), metrics());
         ed.pen = super::board_bar::pen_box(theme);
         ed
     })
@@ -201,15 +202,33 @@ pub fn pointer(
             live.last_down = (!double).then_some((input.now_ns, [x, y]));
             let history = live.histories.entry(board.id).or_default();
             let ed = editor(&mut live.editor, theme);
+            // Um gesto pendurado fecha-se antes de o novo começar.
+            ed.finish_gesture(&mut board.doc, history);
             // O que nasce num quadro em rascunho nasce à mão (W4).
             ed.style.sketch = board.sketch;
             if double && ed.double_click(&mut board.doc, history, input.text, p) {
+                live.gesture = ed.is_busy();
                 return true;
             }
             if ed.pointer_down(&mut board.doc, history, input.text, p, view) == Down::Pan {
+                live.gesture = false;
                 return pan(hero);
             }
+            live.gesture = ed.is_busy();
             true
+        }
+        PointerKind::Down => {
+            // Um carregar FORA do quadro (um botão da barra, um painel): um gesto pendurado fecha-se
+            // aqui — senão o largar deste clique ia para ele e o botão nunca recebia o clique.
+            if let Some((board, live)) = hero.documents.active_parts()
+                && let Some(ed) = live.editor.as_mut()
+                && ed.is_busy()
+            {
+                let history = live.histories.entry(board.id).or_default();
+                ed.finish_gesture(&mut board.doc, history);
+                live.gesture = false;
+            }
+            false
         }
         PointerKind::Up => {
             if hero.documents.pan_from.take().is_some() {
@@ -220,6 +239,10 @@ pub fn pointer(
             };
             let p = world_pointer(board, area, x, y, input.mods);
             let history = live.histories.entry(board.id).or_default();
+            // O largar só é do quadro se o carregar foi.
+            if !std::mem::take(&mut live.gesture) {
+                return false;
+            }
             let Some(ed) = live.editor.as_mut().filter(|e| e.is_busy()) else {
                 return false;
             };
@@ -246,10 +269,11 @@ pub fn pointer_move(hero: &mut HeroScreen, input: Input<'_>, x: f32, y: f32) -> 
         return false;
     };
     let p = world_pointer(board, area, x, y, input.mods);
+    let gesture = live.gesture;
     let Some(ed) = live.editor.as_mut() else {
         return false;
     };
-    if !ed.is_busy() {
+    if !ed.is_busy() || !gesture {
         // Sem botão: só os pontos azuis da forma por baixo (o movimento segue para a interface).
         if over {
             ed.hover(&board.doc, p);

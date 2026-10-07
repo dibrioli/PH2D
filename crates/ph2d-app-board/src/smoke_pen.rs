@@ -49,7 +49,7 @@ pub(super) fn scene_pen(hero: &mut HeroScreen) {
     let board = set.get_mut(id).expect("acabou de nascer");
     board.sketch = true;
     let doc = &mut board.doc;
-    let mut style = default_style(hero.theme);
+    let mut style = default_style();
     style.sketch = true;
     let fill = |i: usize| {
         let mut s = style.clone();
@@ -104,7 +104,7 @@ pub(super) fn scene_pen(hero: &mut HeroScreen) {
     put_arrow(doc, at(worth), at(doit), &style, "board.smoke.pen.yes", &[]);
     put_arrow(doc, at(worth), at(later), &style, "board.smoke.pen.no", &[]);
     // As instruções, sem contorno (texto solto, em FINAL: o que se lê não treme).
-    let mut hint = default_style(hero.theme);
+    let mut hint = default_style();
     hint.stroke = None;
     put_shape(
         doc,

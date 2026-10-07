@@ -214,7 +214,7 @@ pub(super) fn paint_flyout(
             let w = PEN_WIDTHS.iter().position(|w| *w == p.width).unwrap_or(0);
             let rad = width_px(w, inner) as f32 / 2.0 + inner.h * ICON_PRECISE_DOT;
             let (cx, cy) = (inner.x + inner.w / 2.0, inner.y + inner.h / 2.0);
-            circle(scene, cx, cy, rad, doc_color(p.color));
+            circle(scene, cx, cy, rad, super::shown(p.color, theme));
         }
     }
 }
@@ -292,7 +292,7 @@ pub(super) fn paint_icon(
         Item::Pen(PenItem::Preset(_)) => {}
         Item::Pen(PenItem::Color(c)) => {
             let dot = crate::paint::frame_radius(theme, Radius::Sm.px());
-            fill_rounded_rect(scene, inner, dot, doc_color(color(c, theme)));
+            fill_rounded_rect(scene, inner, dot, super::shown(color(c, theme), theme));
         }
         Item::Pen(PenItem::Width(i) | PenItem::InkWidth(i)) => mid(scene, width_px(i, inner), fg),
         Item::Sketch => {

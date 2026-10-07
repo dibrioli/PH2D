@@ -43,6 +43,10 @@ pub(crate) struct BoardLive {
     pub(crate) space: bool,
     /// A grelha de todas as formas, aberta pelo «mais formas» da barra curta.
     pub(crate) shapes_open: bool,
+    /// ⭐ O quadro TOMOU o carregar do gesto em curso: só então o largar e o mover são dele. Um gesto
+    /// sem esta marca está PENDURADO (o largar perdeu-se) e nunca engole o clique de um botão
+    /// (report do dono, 07/10: *«com a caneta não consigo clicar noutra ferramenta até apertar Esc»*).
+    pub(crate) gesture: bool,
 }
 
 impl std::fmt::Debug for BoardLive {

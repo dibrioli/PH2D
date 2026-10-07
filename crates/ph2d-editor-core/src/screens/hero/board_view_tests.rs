@@ -121,3 +121,13 @@ fn a_press_on_chrome_over_the_area_is_not_the_boards() {
     ));
     assert!(hero.documents.pan_from.is_none());
 }
+
+/// O estilo de nascença grava a TINTA DO DOCUMENTO (nunca a do tema em que a forma nasceu): uma cena
+/// aberta num tema escuro tem de se ler no claro (smoke do dono, 07/10).
+#[test]
+fn the_default_style_stores_the_document_ink_not_the_theme_one() {
+    let ink = ph2d_board_model::Rgba(ph2d_board_model::DEFAULT_INK);
+    let s = super::default_style();
+    assert_eq!(s.stroke, Some(ink));
+    assert_eq!(s.text_color, ink);
+}

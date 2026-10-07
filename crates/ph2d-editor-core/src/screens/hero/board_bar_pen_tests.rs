@@ -191,3 +191,104 @@ fn a_board_already_in_sketch_makes_new_shapes_sketched() {
         "a forma nasceu final num quadro em rascunho"
     );
 }
+
+impl T {
+    /// ⭐ Um clique num botão das barras PELA ORDEM DA SHELL (`input_dispatch::on_mouse_input`): o
+    /// carregar e o largar passam PRIMEIRO pelo quadro (`board_view::pointer`), e só o que ele não
+    /// tomar chega à barra. (O `click_bar` fala directamente com a barra e salta esse passo — por isso
+    /// nunca viu o defeito de 07/10.)
+    fn shell_click_bar(&mut self, item: Item) {
+        let id = node(item);
+        let (x, y) = self
+            .find(id)
+            .unwrap_or_else(|| panic!("{item:?} não está pintado"));
+        let on_canvas =
+            self.hero.chrome_panel_at(x, y).is_none() && self.hero.chrome_hit(x, y).is_none();
+        assert!(!on_canvas, "um botão da barra não é quadro");
+        let arena = Bump::new();
+        for kind in [PointerKind::Down, PointerKind::Up] {
+            let (h, ts, c) = (&mut self.hero, &mut self.ts, &mut self.clock);
+            let took =
+                board_view::pointer(h, inp(ts, c), kind, PointerButton::Primary, x, y, on_canvas);
+            if !took {
+                let ev = self.hero.handle_pointer(ptr(kind, x, y), &arena).to_vec();
+                for e in ev {
+                    self.hero.apply_event(e);
+                }
+            }
+        }
+        self.paint();
+    }
+
+    /// Carregar no quadro e arrastar SEM largar — o largar perdeu-se (foi para outro, ou caiu fora).
+    fn press_and_drag_without_release(&mut self, a: (f32, f32), b: (f32, f32)) {
+        let (h, ts, c) = (&mut self.hero, &mut self.ts, &mut self.clock);
+        let p = PointerButton::Primary;
+        assert!(board_view::pointer(
+            h,
+            inp(ts, c),
+            PointerKind::Down,
+            p,
+            a.0,
+            a.1,
+            true
+        ));
+        board_view::pointer_move(h, inp(ts, c), (a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0);
+        board_view::pointer_move(h, inp(ts, c), b.0, b.1);
+        self.paint();
+    }
+}
+
+/// O caminho da shell, sem nada perdido: caneta → desenhar → outra ferramenta.
+#[test]
+fn after_drawing_with_the_pen_another_tool_is_one_click_away() {
+    let mut t = T::new();
+    t.shell_click_bar(Item::Tool(Tool::Pen(Pen::Pen)));
+    t.drag(t.at(0.3, 0.5), t.at(0.6, 0.55));
+    t.shell_click_bar(Item::Tool(Tool::Select));
+    assert_eq!(t.tool(), Tool::Select);
+}
+
+/// ⭐ Report do dono (07/10): *«se uma ferramenta como a caneta estiver seleccionada, não consigo
+/// clicar directamente noutra ferramenta até apertar Esc»*. Um gesto cujo largar se perdeu ficava
+/// PENDURADO, e o largar do clique seguinte ia para ele — o botão nunca recebia o clique. Agora o
+/// carregar num botão fecha o gesto (o traço fica, num passo de desfazer) e o clique é do botão; e
+/// o rato a passear depois já não prolonga o traço.
+#[test]
+fn a_hanging_gesture_never_swallows_a_click_on_another_tool() {
+    for tool in [
+        Item::Tool(Tool::Pen(Pen::Pen)),
+        Item::Pen(PenItem::Eraser(false)),
+        Item::Pen(PenItem::Laser),
+        Item::Tool(Tool::Shape(ShapeType::Rectangle)),
+        Item::Tool(Tool::Shape(ShapeType::Sticky)),
+    ] {
+        let mut t = T::new();
+        t.shell_click_bar(Item::Tool(Tool::Pen(Pen::Pen)));
+        if tool != Item::Tool(Tool::Pen(Pen::Pen)) {
+            t.shell_click_bar(tool);
+        }
+        t.press_and_drag_without_release(t.at(0.3, 0.5), t.at(0.6, 0.55));
+        t.shell_click_bar(Item::Tool(Tool::Select));
+        assert_eq!(
+            t.tool(),
+            Tool::Select,
+            "{tool:?}: o clique no Select foi engolido"
+        );
+        let ed = t.hero.documents.live.editor.as_ref().unwrap();
+        assert!(!ed.is_busy(), "{tool:?}: o gesto continua pendurado");
+    }
+    // A caneta: o traço pendurado fica (um passo), e mexer o rato depois não o prolonga.
+    let mut t = T::new();
+    t.shell_click_bar(Item::Tool(Tool::Pen(Pen::Pen)));
+    t.press_and_drag_without_release(t.at(0.3, 0.5), t.at(0.6, 0.55));
+    t.shell_click_bar(Item::Tool(Tool::Select));
+    let points = |t: &T| t.inks()[0].ink().unwrap().points.len();
+    let n = points(&t);
+    assert_eq!(t.inks().len(), 1, "o traço ficou");
+    let (h, ts, c) = (&mut t.hero, &mut t.ts, &mut t.clock);
+    board_view::pointer_move(h, inp(ts, c), 900.0, 700.0);
+    assert_eq!(points(&t), n, "o rato solto prolongou o traço");
+    assert!(t.key(BoardKey::Char('z'), CTRL, None));
+    assert!(t.inks().is_empty(), "UM passo desfaz o traço");
+}

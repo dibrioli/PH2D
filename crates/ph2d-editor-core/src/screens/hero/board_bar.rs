@@ -450,9 +450,14 @@ fn swatch(it: Item, theme: Theme) -> Option<Rgba> {
     }
 }
 
-fn ink(theme: Theme) -> Rgba {
-    let c = ColorToken::Text1.resolve(theme);
-    Rgba([c.r, c.g, c.b, c.a])
+/// A tinta «do tema» das barras: a do DOCUMENTO, que o quadro desenha pelo tema de cada momento.
+fn ink(_theme: Theme) -> Rgba {
+    Rgba(ph2d_board_model::DEFAULT_INK)
+}
+
+/// Como o quadro desenhará a cor `c` neste tema (o quadradinho mostra o que o quadro vai mostrar).
+fn shown(c: Rgba, theme: Theme) -> Color {
+    ph2d_board_render::ThemeInk::of(theme).color(c)
 }
 
 fn doc_color(Rgba([r, g, b, a]): Rgba) -> Color {
@@ -559,7 +564,7 @@ fn paint_item(
             match swatch(it, theme) {
                 Some(c) => {
                     let dot = crate::paint::frame_radius(theme, Radius::Sm.px());
-                    fill_rounded_rect(scene, inner, dot, doc_color(c));
+                    fill_rounded_rect(scene, inner, dot, shown(c, theme));
                 }
                 // «Nenhum»: o quadrado vazio cortado pela diagonal.
                 None => {
@@ -660,7 +665,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             // (sem fundo, a do tema — a mesma do quadro).
             let c = swatch(it, theme);
             let ink = c.map_or_else(
-                || super::board_view::default_style(theme).text_color,
+                || super::board_view::default_style().text_color,
                 Rgba::readable_ink,
             );
             ed.set_style(doc, history, |s| {

@@ -49,6 +49,8 @@ type OutlineKey = (ShapeType, u64, u64, bool);
 #[derive(Default)]
 pub struct RenderCache {
     pub text: TextCache,
+    /// A tinta do tema desta imagem ([`ThemeInk`]), posta no início de cada [`paint`].
+    ink: ThemeInk,
     outlines: BTreeMap<(u64, u64), (OutlineKey, Outline, u64)>,
     sketch: sketch::SketchCache,
     frame: u64,
@@ -83,6 +85,56 @@ impl RenderCache {
         if self.frame.is_multiple_of(KEEP_FRAMES) {
             let cut = self.frame.saturating_sub(KEEP_FRAMES);
             self.outlines.retain(|_, e| e.2 >= cut);
+        }
+    }
+}
+
+/// ⭐ **A TINTA DO TEMA** — smoke do dono (07/10): *«em temas claros linhas e fontes deveriam por
+/// padrão ser pretas ou muito escuras»*. A tinta de nascença do quadro é UMA cor do documento,
+/// [`ph2d_board_model::DEFAULT_INK`] (`#1e1e1e`, a do Excalidraw), e nunca a do tema em que a forma
+/// nasceu (a cena aberta no escuro gravava tinta clara e ficava ilegível no claro). Desenha-se tal como
+/// é num quadro de fundo CLARO, e com o texto do tema (`text-1`) num de fundo ESCURO — o idioma do
+/// Excalidraw. Claro ou escuro decide-o a luminância do fundo (`bg-1`), o que vale para os 12 temas.
+/// ⚠️ O texto dentro de uma forma PREENCHIDA lê-se contra o preenchimento, não contra o quadro: não muda.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ThemeInk {
+    dark: bool,
+    light: Color,
+}
+
+impl Default for ThemeInk {
+    fn default() -> Self {
+        Self::of(Theme::default())
+    }
+}
+
+impl ThemeInk {
+    #[must_use]
+    pub fn of(theme: Theme) -> Self {
+        let b = ColorToken::Bg1.resolve(theme);
+        Self {
+            dark: Rgba([b.r, b.g, b.b, 255]).luminance() < 0.5,
+            light: token(ColorToken::Text1, theme),
+        }
+    }
+
+    /// A cor de um traço (ou de um texto sobre o quadro) com a tinta `c`.
+    #[must_use]
+    pub fn color(self, c: Rgba) -> Color {
+        if self.dark && c.0 == ph2d_board_model::DEFAULT_INK {
+            self.light.with_alpha(f32::from(c.0[3]) / 255.0)
+        } else {
+            doc_color(c)
+        }
+    }
+
+    /// A cor do texto de uma forma: sobre o quadro segue o tema; sobre um preenchimento, não.
+    #[must_use]
+    pub fn text(self, st: &ph2d_board_model::Style) -> Color {
+        if st.fill.is_some() {
+            doc_color(st.text_color)
+        } else {
+            self.color(st.text_color)
         }
     }
 }
@@ -144,6 +196,8 @@ pub fn paint(
         return;
     }
     let clip = Rect::new(x, y, x + w, y + h);
+    cache.ink = ThemeInk::of(theme);
+    cache.sketch.ink = cache.ink;
     scene.push_clip(&clip);
     scene.fill_rect(clip, token(ColorToken::Bg1, theme));
     let dots = dot_grid(&board.camera, area);
@@ -187,7 +241,7 @@ pub fn paint(
         if let Some(ink) = el.ink() {
             if r.width().max(r.height()) < DOT_PX {
                 if let Some(c) = ink.style.stroke {
-                    scene.fill_rect(r, doc_color(c));
+                    scene.fill_rect(r, cache.ink.color(c));
                 }
             } else {
                 let (t, at) = (v * to_world(el), (board.id.0, el.id.0));
@@ -205,8 +259,9 @@ pub fn paint(
             || (plain && shape.kind == ShapeType::Rectangle && shape.text.is_empty())
         {
             // Um ponto de cor, ou o rectângulo cheio sem mais nada: o caminho rápido da W0.
-            if let Some(c) = st.fill.or(st.stroke) {
-                scene.fill_rect(r, doc_color(c));
+            let ink = cache.ink;
+            if let Some(c) = st.fill.map(doc_color).or(st.stroke.map(|c| ink.color(c))) {
+                scene.fill_rect(r, c);
             }
             continue;
         }
@@ -265,7 +320,7 @@ fn paint_shape(
         }
         if let Some(c) = st.stroke.filter(|_| st.stroke_width > 0.0) {
             let stroke = style_stroke(st.stroke_width, st.dash);
-            let brush = Brush::Solid(doc_color(c));
+            let brush = Brush::Solid(cache.ink.color(c));
             scene.inner_mut().stroke(&stroke, t, &brush, None, &o.fill);
             if !o.lines.is_empty() {
                 scene.inner_mut().stroke(&stroke, t, &brush, None, &o.lines);
@@ -273,6 +328,7 @@ fn paint_shape(
         }
     }
     let font_px = st.font_size * zoom;
+    let text_ink = cache.ink.text(st);
     if !shape.text.is_empty() && font_px >= GREEK_MIN_PX {
         let [_, _, tw, _] = text_rect(shape.kind, el.w, el.h);
         let layout = cache.text.get_rich(
@@ -289,11 +345,10 @@ fn paint_shape(
             sel.paint(scene, at);
         }
         if font_px >= READ_PX {
-            ph2d_board_layout::paint(scene, layout, at, doc_color(st.text_color));
+            ph2d_board_layout::paint(scene, layout, at, text_ink);
         } else {
             let bars = ph2d_board_layout::line_bars(layout);
-            let Rgba([r, g, b, _]) = st.text_color;
-            let c = Color::from_rgba8(r, g, b, 255).with_alpha(GREEK_ALPHA);
+            let c = text_ink.with_alpha(GREEK_ALPHA);
             scene.fill_path(&bars, &Brush::Solid(c), at);
         }
     }
@@ -388,7 +443,7 @@ fn paint_connector(
             let line = Stroke::new(st.stroke_width);
             scene
                 .inner_mut()
-                .stroke(&line, v, &Brush::Solid(doc_color(color)), None, &p);
+                .stroke(&line, v, &Brush::Solid(cache.ink.color(color)), None, &p);
         }
         if faded {
             scene.pop_layer();
@@ -401,7 +456,7 @@ fn paint_connector(
         sketch::paint_connector(scene, &mut cache.sketch, frame, owner, el, &d, v);
     } else if let Some(color) = st.stroke.filter(|_| st.stroke_width > 0.0) {
         let d = ph2d_board_route::drawn(r, c.heads, st.stroke_width);
-        let brush = Brush::Solid(doc_color(color));
+        let brush = Brush::Solid(cache.ink.color(color));
         let line = style_stroke(st.stroke_width, st.dash)
             .with_caps(Cap::Round)
             .with_join(Join::Round);
@@ -418,6 +473,8 @@ fn paint_connector(
         }
     }
     let font_px = st.font_size * zoom;
+    // O rótulo assenta num recorte do FUNDO do quadro: segue a tinta do tema.
+    let label_ink = cache.ink.color(st.text_color);
     if !c.label.is_empty() && font_px >= GREEK_MIN_PX {
         let layout = cache.text.get(
             ts,
@@ -439,10 +496,9 @@ fn paint_connector(
             sel.paint(scene, at);
         }
         if font_px >= READ_PX {
-            ph2d_board_layout::paint(scene, layout, at, doc_color(st.text_color));
+            ph2d_board_layout::paint(scene, layout, at, label_ink);
         } else {
-            let Rgba([r8, g8, b8, _]) = st.text_color;
-            let c = Color::from_rgba8(r8, g8, b8, 255).with_alpha(GREEK_ALPHA);
+            let c = label_ink.with_alpha(GREEK_ALPHA);
             scene.fill_path(&bars, &Brush::Solid(c), at);
         }
     }

@@ -63,7 +63,7 @@ fn scene_two_boards(hero: &mut HeroScreen) {
     for row in 0..4_u8 {
         for col in 0..6_u8 {
             let c = tones[usize::from((row + col) % 4)].resolve(hero.theme);
-            let mut style = default_style(hero.theme);
+            let mut style = default_style();
             style.fill = Some(Rgba([c.r, c.g, c.b, c.a]));
             style.stroke = None;
             let shape = Shape {
@@ -94,7 +94,7 @@ fn scene_shapes(hero: &mut HeroScreen) {
     let mut set = BoardSet::default();
     let id = set.create(default_name(1));
     let board = set.get_mut(id).expect("acabou de nascer");
-    let base = default_style(hero.theme);
+    let base = default_style();
     let pastel = |i: usize| Some(Rgba(HIGHLIGHTER_RGBA[i]));
     // (forma, texto, preenchimento, x) — a fila do fluxograma, da esquerda para a direita.
     let flow = [
@@ -221,7 +221,7 @@ fn scene_arrows(hero: &mut HeroScreen) {
     let mut set = BoardSet::default();
     let id = set.create(default_name(1));
     let board = set.get_mut(id).expect("acabou de nascer");
-    let base = default_style(hero.theme);
+    let base = default_style();
     let doc = &mut board.doc;
     let tinted = |i: usize, kind: ShapeType| {
         let mut s = base.clone();
@@ -419,7 +419,7 @@ fn scene_notes(hero: &mut HeroScreen) {
         RichText::default(),
         [sx, 0.0, m],
     );
-    let mut hint = default_style(hero.theme);
+    let mut hint = default_style();
     hint.stroke = None;
     put_shape(
         doc,
@@ -461,7 +461,7 @@ fn scene_notes(hero: &mut HeroScreen) {
         );
     }
     // Uma FORMA guarda a cor da letra por trecho (as notas do Miro não).
-    let mut shape_style = default_style(hero.theme);
+    let mut shape_style = default_style();
     shape_style.round = true;
     let s = put_shape(
         doc,

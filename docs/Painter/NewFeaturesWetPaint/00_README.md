@@ -21,6 +21,7 @@
 
 | Doc | O que tem |
 |---|---|
+| [05_plano_da_linha_e_o_antes.md](05_plano_da_linha_e_o_antes.md) | **O tracker da linha**: o «antes» do Wet Paint medido e reproduzido, onde cada onda entra no código, a barra de cada gate tirada do vale, e as duas decisões do dono |
 | [04_PROMPT_linha_wet_painter.md](04_PROMPT_linha_wet_painter.md) | **O prompt da linha `line/WetPainter`**: objectivo, leituras, a cerca (os outros meios byte-idênticos), as ondas W0–W8 re-apontadas ao Wet Paint com o gate de cada uma, as regras |
 | [01_o_que_o_rebelle_tem_e_nos_nao.md](01_o_que_o_rebelle_tem_e_nos_nao.md) | A avaliação paralela: inventário dos dois lados, a tabela de lacunas por família, **porque o traço dele é superior** (as sete leis medidas e as refutadas), e o **plano de implementação** por onda, com gates |
 | [02_presets_para_wet_painter.md](02_presets_para_wet_painter.md) | Como o Rebelle configura cada meio (esquema de 200 parâmetros, lido de 281 presets de fábrica), a tradução para o nosso `BrushSpec`, o **formato de preset** proposto e os **presets de arranque de cada mídia** |

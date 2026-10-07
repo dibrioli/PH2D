@@ -4,7 +4,7 @@ os atalhos mudaram desde que o caminho foi planeado).
 
 O motor e os quatro controlos são os da W15/W16, copiados verbatim (cada grupo corre só os observadores
 dele, `OBS_DO_GRUPO`; o controlo limpo corre todos).
-Selectores: `MUTA_SO=L1,C2` · `MUTA_G=LAMA` (LAMA | CUSTO | CANTO).
+Selectores: `MUTA_SO=L1,C2` · `MUTA_G=LAMA` (LAMA | CUSTO | CANTO | USOS).
 """
 import hashlib, os, re, subprocess, sys
 
@@ -14,6 +14,7 @@ NS = 'crates/ph2d-app-components/src/nav_smoke.rs'
 AG = 'crates/ph2d-nav/src/agent.rs'
 FI = 'crates/ph2d-physics-ecs/src/bridge/nav_fila.rs'
 NAV = 'crates/ph2d-physics-ecs/src/bridge/nav.rs'
+USOS = 'crates/ph2d-app-components/src/nav_smoke_usos.rs'
 
 OBS = {
     'COMP': (['cargo', 'test', '-p', 'ph2d-app-components', '--lib'],
@@ -22,6 +23,8 @@ OBS = {
               'nav_smoke_lama::tests::a_cena_tem_as_pecas_que_o_roteiro_nomeia',
               'nav_smoke::tests::o_cenas_conta_os_niveis_do_roteador',
               'nav_smoke_lama::tests::nenhum_corredor_volta_atras_para_um_canto',
+              'nav_smoke_usos::tests::cada_uso_muda_o_caminho_e_o_controlo_corta_a_direito',
+              'nav_smoke_usos::tests::a_cena_tem_as_pecas_que_o_roteiro_nomeia',
               'smoke_desenho_e_corpo_tests::nenhuma_cena_de_smoke_desenha_fora_do_corpo']),
     'IT': (['cargo', 'test', '-p', 'ph2d-physics-ecs', '--test', 'it'],
            ['nav_custo::mexer_no_custo_refaz_o_caminho_de_quem_anda']),
@@ -30,6 +33,7 @@ OBS_DO_GRUPO = {
     'LAMA': ['COMP'],
     'CUSTO': ['IT', 'COMP'],
     'CANTO': ['COMP'],
+    'USOS': ['COMP'],
 }
 
 # (nome, grupo, ficheiro, âncora, substituição)
@@ -44,11 +48,11 @@ M = [
      '    if nivel == 5 {',
      '    if nivel == 55 {'),
     ('L4 a shell abre a secção do agente', 'LAMA', NS,
-     '        if self.lama.is_some() {',
+     '        if self.lama.is_some() || self.usos.is_some() {',
      '        if false {'),
-    ('L5 o CENAS fica em 4', 'LAMA', NS,
-     'pub const CENAS: u32 = 5;',
-     'pub const CENAS: u32 = 4;'),
+    ('L5 o CENAS fica uma abaixo', 'LAMA', NS,
+     'pub const CENAS: u32 = 6;',
+     'pub const CENAS: u32 = 5;'),
     ('L6 a lama desenhada maior que o corpo', 'LAMA', LAMA,
      '            Sprite::atlas(WHITE_TILE_KEY, [h[0] * 2.0, h[1] * 2.0], cor),',
      '            Sprite::atlas(WHITE_TILE_KEY, [h[0] * 2.0, h[1] * 2.6], cor),'),
@@ -67,6 +71,16 @@ M = [
     ('K1 o canto só no passo do executor (o R2 do report do dono)', 'CANTO', AG,
      'pub const ALCANCE_DO_CANTO: f64 = 0.1;',
      'pub const ALCANCE_DO_CANTO: f64 = 0.0;'),
+    ('U1 as pedras custam como o chão', 'USOS', USOS,
+     'pub const CUSTO_TERRENO: f32 = 4.0;', 'pub const CUSTO_TERRENO: f32 = 1.0;'),
+    ('U2 o rio custa como o chão', 'USOS', USOS,
+     'pub const CUSTO_RIO: f32 = 6.0;', 'pub const CUSTO_RIO: f32 = 1.0;'),
+    ('U3 o canteiro deixa de ser proibido', 'USOS', USOS,
+     '            forbidden: true,', '            forbidden: false,'),
+    ('U4 a luz custa como o chão', 'USOS', USOS,
+     'pub const CUSTO_LUZ: f32 = 8.0;', 'pub const CUSTO_LUZ: f32 = 1.0;'),
+    ('U5 o roteador sem a cena 6', 'USOS', NS,
+     '    if nivel == 6 {', '    if nivel == 66 {'),
 ]
 
 so = set(os.environ['MUTA_SO'].split(',')) if os.environ.get('MUTA_SO') else None

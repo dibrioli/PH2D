@@ -1,6 +1,6 @@
 //! ⭐⭐⭐ **Smoke da NAVEGAÇÃO** (plano 30, W3). `PH2D_NAV_SMOKE=1` (e `=2`, o DESVIO da W5:
 //! [`crate::nav_smoke_porta`]; e `=3`, O GUARDA da W6: [`crate::nav_smoke_guarda`]; e `=4`, A LAVA E
-//! O PORTAL da W7: [`crate::nav_smoke_lava`]; e `=5`, A LAMA da W18: [`crate::nav_smoke_lama`]).
+//! O PORTAL da W7: [`crate::nav_smoke_lava`]; e `=5`, A LAMA da W18: [`crate::nav_smoke_lama`]; e `=6`, a lama nos JOGOS: [`crate::nav_smoke_usos`]).
 //!
 //! # A cena: **o labirinto em S, e três perseguidores**
 //!
@@ -34,7 +34,7 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_topdown::{TopDownLaw, direction::DirectionMode};
 
 /// ⭐⭐ **Quantas cenas este roteador serve** — contado do `match` do [`montar`].
-pub const CENAS: u32 = 5;
+pub const CENAS: u32 = 6;
 
 const PAREDE_RGBA: [f32; 4] = [0.38, 0.40, 0.46, 1.0];
 const CHAO_RGBA: [f32; 4] = [0.16, 0.18, 0.22, 1.0];
@@ -86,14 +86,16 @@ pub struct Montada {
     pub lava: Option<crate::nav_smoke_lava::Lava>,
     /// As peças da cena `=5` (W18).
     pub lama: Option<crate::nav_smoke_lama::Lama>,
+    /// As peças da cena `=6` (W18, a lama nos jogos).
+    pub usos: Option<crate::nav_smoke_usos::Usos>,
 }
 
 impl Montada {
     /// ⭐ A secção do Inspector que o roteiro manda ler — a shell abre-a (a política fecha toda secção
-    /// viva menos o Transform). Na `=5` o escolhido é a lama, e o passo é o `Cost` dela.
+    /// viva menos o Transform). Na `=5` e na `=6` o escolhido é uma área, e o passo é o `Cost` dela.
     #[must_use]
     pub fn secao_do_roteiro(&self) -> ph2d_editor_core::ids::NodeId {
-        if self.lama.is_some() {
+        if self.lama.is_some() || self.usos.is_some() {
             ph2d_editor_core::ids::INSP_LIVE_NAV_COST_AREA_SECTION
         } else {
             ph2d_editor_core::ids::INSP_LIVE_NAV_AGENT_SECTION
@@ -317,11 +319,27 @@ fn cena_um(world: &mut World) -> Montada {
         guarda: None,
         lava: None,
         lama: None,
+        usos: None,
     }
 }
 
 /// **Monta a cena `nivel`** — o roteador.
 pub fn montar(world: &mut World, nivel: u32) -> Montada {
+    if nivel == 6 {
+        let u = crate::nav_smoke_usos::montar(world);
+        crate::nav_smoke_usos::anuncia();
+        return Montada {
+            nivel: 6,
+            // ⭐ O TERRENO escolhido: o `Cost` dele a `1` e o corredor 1 corta a direito.
+            escolhido: u.terreno,
+            labirinto: None,
+            porta: None,
+            guarda: None,
+            lava: None,
+            lama: None,
+            usos: Some(u),
+        };
+    }
     if nivel == 5 {
         let l = crate::nav_smoke_lama::montar(world);
         crate::nav_smoke_lama::anuncia();
@@ -334,6 +352,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
             guarda: None,
             lava: None,
             lama: Some(l),
+            usos: None,
         };
     }
     if nivel == 4 {
@@ -348,6 +367,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
             guarda: None,
             lava: Some(l),
             lama: None,
+            usos: None,
         };
     }
     if nivel == 2 {
@@ -367,6 +387,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
             guarda: None,
             lava: None,
             lama: None,
+            usos: None,
         };
     }
     let m = cena_um(world);
@@ -408,6 +429,7 @@ pub fn monta_tres(
         guarda: Some(g),
         lava: None,
         lama: None,
+        usos: None,
     }
 }
 

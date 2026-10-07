@@ -289,6 +289,8 @@ quer ver. Troque o número no fim do comando: <code>PH2D_NAV_SMOKE=1</code> a <c
   <tr><td><code>5</code></td><td>as <b>áreas de custo</b>: duas pistas iguais, uma área barata e uma cara —
       a secção 10</td></tr>
   <tr><td><code>6</code></td><td>as <b>áreas de custo nos jogos</b>: quatro usos lado a lado — a secção 11</td></tr>
+  <tr><td><code>7</code></td><td>a <b>estrada mais estreita que o corpo</b>: a larga anda-se, a estreita não
+      faz nada, e o painel diz porquê — a secção 12</td></tr>
 </table>
 
 <h2>10 · Áreas de custo — <code class="ui">Nav Cost Area</code></h2>
@@ -386,7 +388,24 @@ use <code class="ui">Forbidden</code>. Uma área cara conta mal o corpo lhe TOCA
 INTEIRO nela. A área <b>não atrasa</b> o corpo — se quiser que ele ande devagar lá dentro, isso é outra
 peça.</div>
 
-<h2>12 · Os avisos, e o que cada um quer dizer</h2>
+<h2>12 · A estrada mais estreita que o corpo</h2>
+<p>Uma área mais barata que o chão só conta com o corpo <b>inteiro</b> em cima dela. Se ela for mais estreita
+que o corpo de quem anda, nenhum corpo cabe — e ela <b>não faz nada</b>. O painel avisa.</p>
+<div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components &amp;&amp; env PH2D_NAV_SMOKE=7 cargo run -p ph2d-host-desktop --profile smoke</div>
+<ol class="steps">
+  <li><b>Corra o comando e olhe os dois corredores.</b> Os dois têm a mesma estrada escura em U, com
+      <code class="ui">Cost</code> <code>0.3</code>.
+      <div class="out">À esquerda (<b>Wide Road</b>, larga) o vermelho segue a estrada, dando a volta. À direita
+      (<b>Narrow Road</b>, a faixa fina junto às paredes) o vermelho sobe a direito, como se ela não
+      existisse.</div></li>
+  <li><b>Olhe o Inspector, à direita.</b> A <b>Narrow Road</b> já vem escolhida, com a secção
+      <code class="ui">Nav Cost Area</code> aberta.
+      <div class="out">Em amarelo: <code class="ui">Narrower than the body that walks it</code> — e o raio do
+      corpo que não cabe (<code>0.25 m</code>). A cura é alargá-la: mais larga que o corpo inteiro (aqui,
+      mais de <code>0.5 m</code>).</div></li>
+</ol>
+
+<h2>13 · Os avisos, e o que cada um quer dizer</h2>
 <table>
   <tr><th>o painel diz</th><th>quer dizer</th><th>o que fazer</th></tr>
   <tr><td><code class="ui">No target</code></td><td>o Target está em None</td>
@@ -411,9 +430,12 @@ peça.</div>
   <tr><td><code class="ui">nothing hurts it, so it avoids nothing</code></td>
       <td>sem <code class="ui">Health</code>, nada o fere, e o Avoid Harm não tem o que evitar</td>
       <td>nada — é só informação</td></tr>
+  <tr><td><code class="ui">Narrower than the body that walks it</code></td>
+      <td>uma área mais barata que o chão onde nenhum corpo cabe inteiro: ela não muda caminho nenhum</td>
+      <td>alargue-a (mais que o dobro do raio que o aviso diz)</td></tr>
 </table>
 
-<h2>13 · Como saber que deu errado</h2>
+<h2>14 · Como saber que deu errado</h2>
 <ul class="cal">
   <li><b>Um morcego fica preso contra o muro</b>, ou passa através dele.</li>
   <li><b>Um morcego pisa a lava</b> com o <code class="ui">Avoid Harm</code> ligado — ou, com ele
@@ -428,9 +450,12 @@ peça.</div>
   <li><b>Na cena dos usos</b> (<code>=6</code>): o vermelho 1 anda ao lado da estrada e não em cima dela; algum
       vermelho pisa a água, o canteiro ou a luz; ou, com o <code class="ui">Cost</code> da estrada em
       <code>1</code>, o vermelho 1 continua a dar a volta.</li>
+  <li><b>Na cena da estrada estreita</b> (<code>=7</code>): o vermelho da esquerda corta a direito em vez de
+      seguir a estrada larga; o da direita vai à estrada fina; ou o aviso amarelo não aparece no Inspector.</li>
 </ul>
 
 <footer>PH2D · Componentes · plano 30, Navegação · cena de teste <code>PH2D_VIDA_SMOKE=4</code> ·
 as cenas da família: <code>PH2D_NAV_SMOKE=1</code> o labirinto · <code>=2</code> a porta ·
-<code>=3</code> o guarda · <code>=4</code> o rio de lava · <code>=5</code> as áreas de custo · <code>=6</code> as áreas de custo nos jogos</footer>
+<code>=3</code> o guarda · <code>=4</code> o rio de lava · <code>=5</code> as áreas de custo · <code>=6</code> as áreas de custo nos jogos · <code>=7</code> a estrada
+mais estreita que o corpo</footer>
 

@@ -129,7 +129,7 @@ impl Usos {
     }
 }
 
-fn caixa(
+pub(crate) fn caixa(
     world: &mut World,
     nome: &str,
     r: ([f32; 2], [f32; 2]),
@@ -159,7 +159,7 @@ fn caixa(
 }
 
 /// Um desenho sem corpo (a estrada, a ponte, as bandeiras).
-fn desenho(world: &mut World, nome: &str, c: [f32; 2], tam: [f32; 2], cor: [f32; 4]) {
+pub(crate) fn desenho(world: &mut World, nome: &str, c: [f32; 2], tam: [f32; 2], cor: [f32; 4]) {
     world.spawn((
         Name::new(nome),
         Sprite::atlas(WHITE_TILE_KEY, tam, cor),
@@ -167,7 +167,7 @@ fn desenho(world: &mut World, nome: &str, c: [f32; 2], tam: [f32; 2], cor: [f32;
     ));
 }
 
-fn custo(cost: f32) -> NavCostArea {
+pub(crate) fn custo(cost: f32) -> NavCostArea {
     NavCostArea {
         cost,
         forbidden: false,

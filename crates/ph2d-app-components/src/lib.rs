@@ -141,6 +141,7 @@ pub mod nav_smoke_lama;
 pub mod nav_smoke_lava;
 pub mod nav_smoke_porta;
 pub mod nav_smoke_usos;
+pub mod nav_smoke_estreita;
 /// O vazio e os objectos de JOGO no menu Add de objectos (spec/06 F1).
 pub mod object_add;
 /// O modo do objecto activo, com o tipo pelo marcador (spec/06 F2).

@@ -24,6 +24,12 @@
 - O 5.º smoke (06/10): *«permita a seta ficar na direcção da normal da curva da forma onde se
   encaixa»* (num círculo/pill a seta chegava na horizontal). Curado depois de `1179e4d5b`: a curva
   encaixa na normal do contorno (`outline_normal`; canto vivo ⇒ a do lado).
+- O 6.º smoke (06/10): *«smoke OK. As setas rectangulares ainda são bem nervosas e tremem ao serem
+  ajustadas»* + *«permita deletar pontos de edição arrastando um sobre o outro»*. Sonda
+  (`jitter_probe.rs`) mediu o tremer e três causas, curadas depois de `0aad8e5eb`: o A\* ordenava pelo
+  custo cru (empates decididos pelo arredondamento — `f_key` no `ph2d-vec-connect`, o Vector ganha o
+  mesmo), o recuo de 40 num vão curto (`facing_jetty`), e o trecho a contornar a forma da outra ponta.
+  E largar um ponto sobre o vizinho (ou uma ponta) funde-o (`bend_up`).
 - ⏳ **Smoke da W2 refeita por fazer pelo dono** — passos no §5.
 
 ## §1 — As peças

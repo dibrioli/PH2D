@@ -458,7 +458,7 @@ impl Editor {
         match g {
             Gesture::Text | Gesture::Marquee { .. } => {}
             g @ Gesture::Connect { .. } => self.connect_up(doc, history, g),
-            g @ Gesture::Bend { .. } => self.bend_up(doc, history, g),
+            g @ Gesture::Bend { .. } => self.bend_up(doc, history, g, p),
             Gesture::EndDrag { original, .. } => {
                 history.record(undo_ops(doc, std::slice::from_ref(&original)));
             }
@@ -498,7 +498,6 @@ impl Editor {
                 self.tool = Tool::Select;
             }
         }
-        let _ = p;
     }
 
     /// `Esc` a meio de um gesto: devolve o documento ao início dele. `false` = não havia gesto.

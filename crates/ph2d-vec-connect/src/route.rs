@@ -137,14 +137,28 @@ impl Ord for State {
         // fundo"), o `tb` nunca era consultado — as duas rotas têm o mesmo `f` e `g`
         // DIFERENTE, porque a que hugueia a caixa esconde uma dobra no stub final (ela entra
         // no `h`, não no `g`). O `g` decidia sozinho, e decidia pelo feio.
-        other
-            .f
-            .total_cmp(&self.f)
+        //
+        // ⛔ **E o `f` compara-se ARREDONDADO** ([`f_key`]): duas rotas de custo igual chegam com
+        // uma diferença de arredondamento (~1e-13) que, comparada crua, decidia sozinha — e
+        // decidia ao acaso a cada passo de um arrasto: a dobra saltava do meio do vão para o
+        // recuo e de volta (6.º smoke do Quadro, 06/10: 846 saltos > 5 un. em 3 600 passos).
+        f_key(other.f)
+            .cmp(&f_key(self.f))
             .then(other.tb.total_cmp(&self.tb))
             .then(other.node.cmp(&self.node))
             .then(other.dir.cmp(&self.dir))
     }
 }
+
+/// O custo como chave de ordem: arredondado a [`F_QUANTUM`] — abaixo disso duas rotas EMPATAM e
+/// decide o desempate pela centralidade.
+fn f_key(f: f64) -> i64 {
+    (f / F_QUANTUM).round() as i64
+}
+
+/// Um milionésimo de unidade do mundo: muito acima do erro de arredondamento das somas de uma rota
+/// (~1e-13) e muito abaixo de qualquer diferença de custo que se veja.
+const F_QUANTUM: f64 = 1e-6;
 
 impl PartialOrd for State {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {

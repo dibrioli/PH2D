@@ -498,13 +498,10 @@ pub(crate) fn compute(
         Route::Straight => return Routed::from_points(stations, kind, [d0, d1]),
         Route::Elbow => {}
     }
-    // O cotovelo: cada trecho entre estações pelo roteador, com só as DUAS formas da seta por
-    // obstáculo. Um ponto de ajuste é uma ponta solta no meio (sai rumo à estação seguinte).
-    let walls: Vec<Aabb> = ends
-        .iter()
-        .filter(|e| matches!(e, Resolved::Shape(..)))
-        .map(|e| e.bbox())
-        .collect();
+    // O cotovelo: cada trecho entre estações pelo roteador; por obstáculo, só a forma da PONTA em
+    // que o trecho encosta (6.º smoke do dono, 06/10: contornar a outra fazia voltas que saltavam).
+    // Um ponto de ajuste é uma ponta solta no meio (sai rumo à estação seguinte).
+    let wall = |e: &Resolved<'_>| matches!(e, Resolved::Shape(..)).then(|| e.bbox());
     let self_loop = match (ends[0], ends[1]) {
         (Resolved::Shape(a, _), Resolved::Shape(b, _)) if a.id == b.id && waypoints.is_empty() => {
             Some(aabb(a))
@@ -521,11 +518,19 @@ pub(crate) fn compute(
         let (a, b) = (stations[i], stations[i + 1]);
         let da = if i == 0 { d0 } else { toward(a, b) };
         let db = if i + 1 == last { d1 } else { toward(b, a) };
+        let walls: Vec<Aabb> = [
+            (i == 0).then_some(ends[0]),
+            (i + 1 == last).then_some(ends[1]),
+        ]
+        .into_iter()
+        .flatten()
+        .filter_map(wall)
+        .collect();
         let leg = route(&RouteInput {
             start: EndSpec { at: a, dir: da },
             end: EndSpec { at: b, dir: db },
             kind: RouteKind::Orthogonal,
-            jetty: JETTY,
+            jetty: facing_jetty(a, da, b, db),
             obstacles: &walls,
             spread,
             self_loop,
@@ -535,6 +540,23 @@ pub(crate) fn compute(
     }
     let verts = pts.iter().map(|p| VecVertex::corner(*p)).collect();
     Routed::assemble(stations, verts, &breaks, [d0, d1])
+}
+
+/// ⭐ **O recuo de um trecho cujas duas saídas se OLHAM** (opostas, com a chegada à frente da partida):
+/// metade do vão, no máximo [`JETTY`] — a dobra fica a meio dele. ⛔ Com o recuo fixo de 40 num vão
+/// menor que 80 os dois recuos cruzavam-se e a rota dava voltas que mudavam de forma a cada passo
+/// do arrasto (6.º smoke do dono, 06/10: «as setas rectangulares tremem»). Fora disso, o medido.
+fn facing_jetty(a: [f64; 2], da: Dir, b: [f64; 2], db: Dir) -> f64 {
+    if db != da.opposite() {
+        return JETTY;
+    }
+    let v = da.vec();
+    let gap = (b[0] - a[0]) * v[0] + (b[1] - a[1]) * v[1];
+    if gap > 0.0 {
+        (gap / 2.0).min(JETTY)
+    } else {
+        JETTY
+    }
 }
 
 /// ⭐ **A curva do Miro** pelas estações: em cada PONTA a tangente é a da saída (perpendicular à
@@ -636,6 +658,8 @@ pub(crate) fn resolve<'a>(
     }
 }
 
+#[cfg(test)]
+mod jitter_probe;
 #[cfg(test)]
 mod oracle_tests;
 #[cfg(test)]

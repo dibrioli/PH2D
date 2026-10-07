@@ -244,17 +244,48 @@ impl Editor {
     }
 
     /// Largar o ponto: UM passo de desfazer. Um toque no meio sem arrastar não cria ponto nenhum.
-    pub(crate) fn bend_up(&mut self, doc: &mut BoardDoc, history: &mut History, g: Gesture) {
+    ///
+    /// ⭐ Largado em cima de uma estação VIZINHA (o ponto de trás ou da frente, ou uma ponta da
+    /// seta), o ponto FUNDE-SE nela e some (7.º pedido do dono, 06/10: «deletar pontos arrastando um
+    /// sobre o outro» — o idioma do Miro).
+    pub(crate) fn bend_up(
+        &mut self,
+        doc: &mut BoardDoc,
+        history: &mut History,
+        g: Gesture,
+        p: Pointer,
+    ) {
         let Gesture::Bend {
-            moved, original, ..
+            id,
+            index,
+            moved,
+            original,
+            ..
         } = g
         else {
             return;
         };
-        if moved {
-            history.record(vec![BoardOp::Put(original)]);
-        } else {
+        if !moved {
             let _ = BoardOp::Put(original).apply(doc);
+            return;
+        }
+        let reach = self.metrics.handle * p.px;
+        let merges = self.routes(doc).get(id).is_some_and(|r| {
+            // O ponto `index` é a estação `index + 1`; as vizinhas são a de trás e a da frente.
+            let me = r.stations[index + 1];
+            [r.stations[index], r.stations[index + 2]]
+                .iter()
+                .any(|n| dist(*n, me) <= reach)
+        });
+        if merges && let Some(mut el) = doc.get(id).cloned() {
+            if let Some(c) = el.connector_mut() {
+                c.waypoints.remove(index);
+            }
+            live(doc, el);
+        }
+        // Um ponto criado no meio e largado logo na vizinha não muda nada: não é passo.
+        if doc.get(id).is_some_and(|now| now.kind != original.kind) {
+            history.record(vec![BoardOp::Put(original)]);
         }
     }
 

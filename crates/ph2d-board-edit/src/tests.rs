@@ -903,3 +903,38 @@ fn moving_a_loose_arrow_carries_its_points() {
     assert_eq!(c.waypoints, vec![[160.0, 105.0]]);
     assert_eq!(c.ends(), [End::Free([10.0, 5.0]), End::Free([310.0, 5.0])]);
 }
+
+/// ⭐ Arrastar um ponto de ajuste para cima do VIZINHO (outro ponto, ou uma ponta) funde-o: o ponto
+/// some, UM passo de desfazer devolve-o (pedido do dono, 06/10 — o idioma do Miro).
+#[test]
+fn dropping_a_point_on_its_neighbour_deletes_it() {
+    let mut w = world();
+    w.rect([0.0, 0.0, 160.0, 100.0]);
+    w.rect([600.0, 0.0, 160.0, 100.0]);
+    let id = w.arrow_drag([80.0, 50.0], [680.0, 50.0], NONE).unwrap();
+    let mut el = w.el(id).clone();
+    el.connector_mut().unwrap().waypoints = vec![[300.0, 250.0], [450.0, 250.0]];
+    w.h.apply(&mut w.doc, vec![BoardOp::Put(el)]);
+    // O 1.º ponto largado em cima do 2.º: funde-se.
+    w.drag([300.0, 250.0], [452.0, 251.0], NONE);
+    assert_eq!(
+        w.el(id).connector().unwrap().waypoints,
+        vec![[450.0, 250.0]]
+    );
+    // O que sobra largado em cima da PONTA de fim: funde-se também.
+    let tip = w.ed.routes(&w.doc).get(id).unwrap().ends()[1];
+    w.drag([450.0, 250.0], [tip[0] + 2.0, tip[1]], NONE);
+    assert!(w.el(id).connector().unwrap().waypoints.is_empty());
+    assert!(w.cmd(Command::Undo));
+    assert_eq!(
+        w.el(id).connector().unwrap().waypoints,
+        vec![[450.0, 250.0]],
+        "UM passo por fusão"
+    );
+    // Largado LONGE do vizinho, fica.
+    w.drag([450.0, 250.0], [500.0, 300.0], NONE);
+    assert_eq!(
+        w.el(id).connector().unwrap().waypoints,
+        vec![[500.0, 300.0]]
+    );
+}

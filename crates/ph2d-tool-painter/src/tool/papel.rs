@@ -242,6 +242,15 @@ impl PainterTool {
         }
     }
 
+    /// **O papel de cor atravessa o vidro da aguada** — a saída compõe-se pela passada com a
+    /// transparência por canal ([`Self::composto_pelo_vidro`]). O produtor de GPU não a conhece, e
+    /// recusa-se enquanto isto for verdade (a CPU produz, como com a proteção).
+    #[must_use]
+    pub fn papel_atravessa_vidro(&self) -> bool {
+        self.papel
+            .is_some_and(|p| p != PAPEL_BRANCO && !self.vidros.is_empty())
+    }
+
     /// **A região `r` sobre o papel PELO VIDRO** ([`crate::compositor::vidro`]): `Some` quando o papel é
     /// de cor e a aguada pintou (o papel atravessa cada canal pelo alfa dele); `None` = a porta de
     /// sempre (o composite e [`Self::compoe_sobre_o_papel`]), ao byte.
@@ -250,9 +259,7 @@ impl PainterTool {
         src: &super::internal::ToolPixelSource<'_>,
         r: Region,
     ) -> Option<Vec<u8>> {
-        let p = self
-            .papel
-            .filter(|&p| p != PAPEL_BRANCO && !self.vidros.is_empty())?;
+        let p = self.papel.filter(|_| self.papel_atravessa_vidro())?;
         Some(crate::compositor::composite_region_sobre_o_papel(
             &self.layers,
             src,

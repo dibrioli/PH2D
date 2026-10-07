@@ -120,8 +120,13 @@ impl PainterTool {
     /// (the mask shows through its parent, so the ground under the parent is what the eye sees).
     /// Runs once per stroke (pen-down); `composite_below` handles an unknown anchor (plain paper).
     fn build_wet_backdrop(&self) -> Vec<u8> {
+        self.build_wet_backdrop_sobre(self.cor_do_chao())
+    }
+
+    /// O mesmo chão sobre um papel `paper` qualquer — o vidro pede-o sobre o PRETO
+    /// ([`super::watercolor_vidro`]).
+    pub(super) fn build_wet_backdrop_sobre(&self, paper: [u8; 3]) -> Vec<u8> {
         let (w, h) = self.source_size;
-        let paper = self.cor_do_chao();
         let anchor = self.layers.active().and_then(|id| {
             if self.layers.is_mask(id) {
                 // The mask isn't in the z-order — resolve the raster that owns it.

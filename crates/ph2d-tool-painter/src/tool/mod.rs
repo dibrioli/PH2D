@@ -178,6 +178,11 @@ pub struct PainterTool {
     /// aguada pintou, selado com o píxel — o papel de cor atravessa-os canal a canal (doc 48). Preguiçoso
     /// como o relevo: só as camadas onde a aguada pintou.
     vidros: crate::compositor::vidro::Vidros,
+    /// O vidro da BASE da aguada e o chão preto, congelados por base ([`paint::watercolor_vidro`]).
+    vidro_congelado: paint::watercolor_vidro::VidroCongelado,
+    /// A ablação do vidro (só testes): a aguada não o escreve — a lei de um alfa só, a de antes.
+    #[cfg(test)]
+    pub(crate) sem_vidro: bool,
     /// **O papel do documento** ([`papel`]): a cor sob as camadas, ou `None` (sem papel).
     papel: Option<[u8; 3]>,
     /// The live **protection session** — see [`GateSession`]. Canvas-shaped, so it lives here beside
@@ -368,6 +373,9 @@ impl Default for PainterTool {
             covers: BTreeMap::new(),
             mats: BTreeMap::new(),
             vidros: BTreeMap::new(),
+            vidro_congelado: Default::default(),
+            #[cfg(test)]
+            sem_vidro: false,
             papel: None,
             gate: None,
             mask_scratch_gen: 0,

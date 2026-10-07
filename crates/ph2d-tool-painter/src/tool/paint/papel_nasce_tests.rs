@@ -10,20 +10,20 @@ use crate::tool::PainterTool;
 use crate::tool::paint::media::PaintMedia;
 use ph2d_editor_core::tool::{CanvasPaintTool, PanelEvent, PointerPhase, RasterEditTool, Tool};
 
-const LADO: usize = 128;
-const MEIOS: [PaintMedia; 4] = [
+pub(super) const LADO: usize = 128;
+pub(super) const MEIOS: [PaintMedia; 4] = [
     PaintMedia::Digital,
     PaintMedia::Watercolor,
     PaintMedia::Impasto,
     PaintMedia::WetPaint,
 ];
-const BRANCO: [u8; 3] = [255, 255, 255];
+pub(super) const BRANCO: [u8; 3] = [255, 255, 255];
 /// O castanho do papel do Rebelle (doc 47) — escuro: é onde «não escureceu» e o branco mais aparecem.
-const CASTANHO: [u8; 3] = [112, 88, 52];
+pub(super) const CASTANHO: [u8; 3] = [112, 88, 52];
 const TINTA: [u8; 3] = [30, 60, 220];
 
 /// Escolhe o papel pela porta do produto: o seletor da cor do papel.
-fn escolhe_o_papel(t: &mut PainterTool, p: [u8; 3]) {
+pub(super) fn escolhe_o_papel(t: &mut PainterTool, p: [u8; 3]) {
     t.handle_panel_event(PanelEvent::SelectOption(
         crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
         format!("{},{},{}", p[0], p[1], p[2]),
@@ -31,9 +31,9 @@ fn escolhe_o_papel(t: &mut PainterTool, p: [u8; 3]) {
 }
 
 /// Um gesto: nome e pontos (um evento por ponto, um quadro por evento).
-type Gesto = (&'static str, fn() -> Vec<[f32; 2]>);
+pub(super) type Gesto = (&'static str, fn() -> Vec<[f32; 2]>);
 
-const GESTOS: [Gesto; 3] = [
+pub(super) const GESTOS: [Gesto; 3] = [
     ("horizontal", || {
         (0..=22)
             .map(|k| [20.0 + 4.0 * k as f32, 64.5 + 0.3 * (k % 3) as f32])
@@ -69,10 +69,15 @@ const GESTOS: [Gesto; 3] = [
     }),
 ];
 
-/// O gesto com o relógio do Wet Paint fixo, e 30 quadros parados depois do pen-up.
-fn pinta(t: &mut PainterTool, strength: f32, pts: &[[f32; 2]]) {
-    t.set_wet_relogio_fixo(true);
+/// O gesto com a tinta de fábrica destes gates ([`TINTA`]).
+pub(super) fn pinta(t: &mut PainterTool, strength: f32, pts: &[[f32; 2]]) {
     t.set_brush_color_srgb8(TINTA);
+    pinta_com_a_cor(t, strength, pts);
+}
+
+/// O gesto com o relógio do Wet Paint fixo, e 30 quadros parados depois do pen-up, na cor do pincel.
+pub(super) fn pinta_com_a_cor(t: &mut PainterTool, strength: f32, pts: &[[f32; 2]]) {
+    t.set_wet_relogio_fixo(true);
     t.paint.brush.strength = strength;
     t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
     for p in &pts[1..] {
@@ -86,7 +91,7 @@ fn pinta(t: &mut PainterTool, strength: f32, pts: &[[f32; 2]]) {
 }
 
 /// **Um desenho NOVO pela porta do produto** — a sprite branca do *New Image…* ligada ao pintor.
-fn novo(meio: PaintMedia, raio: f32) -> PainterTool {
+pub(super) fn novo(meio: PaintMedia, raio: f32) -> PainterTool {
     let mut t = PainterTool::default();
     t.bind_document(1, vec![255u8; LADO * LADO * 4], LADO as u32, LADO as u32);
     t.set_paint_media(meio);
@@ -100,17 +105,17 @@ fn arte_branca(meio: PaintMedia, raio: f32) -> PainterTool {
 }
 
 /// A imagem que o produto mostra.
-fn imagem(t: &mut PainterTool) -> Vec<u8> {
+pub(super) fn imagem(t: &mut PainterTool) -> Vec<u8> {
     t.invalidate_composite();
     t.take_preview_arc().expect("o preview").0.to_vec()
 }
 
-fn lum(p: &[u8]) -> f32 {
+pub(super) fn lum(p: &[u8]) -> f32 {
     0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2])
 }
 
 /// Pior diferença (níveis) e quantos bytes passam de `tol`, entre duas imagens.
-fn compara(a: &[u8], b: &[u8], tol: u8) -> (u8, usize) {
+pub(super) fn compara(a: &[u8], b: &[u8], tol: u8) -> (u8, usize) {
     a.iter().zip(b).fold((0, 0), |(pior, n), (x, y)| {
         let d = x.abs_diff(*y);
         (pior.max(d), n + usize::from(d > tol))
@@ -527,64 +532,4 @@ fn no_desenho_novo_o_desfazer_da_cor_volta_ao_papel_branco() {
         "o papel tocou a camada"
     );
     assert!(imagem(&mut t).chunks(4).all(|p| p == [255, 255, 255, 255]));
-}
-
-/// SONDA — **a aguada vermelha no papel castanho parece fluorescente** (smoke do dono, 2026-10-07, com
-/// foto: miolo `230,95,85` sobre o papel `153,121,91`). Por meio, o texel do miolo: o que a camada
-/// guarda (cor, alfa), o que se mostra no branco e no castanho, e — nos texels pintados — quantos se
-/// mostram com o VERMELHO acima do papel por mais de 20 (luz que um filtro não tem) e a média desse
-/// excesso. A referência física é o filtro: o que se mostra no branco multiplicado pelo papel.
-/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_a_aguada_vermelha_no_castanho -- --ignored --nocapture`
-#[test]
-#[ignore = "diagnóstico"]
-fn diag_a_aguada_vermelha_no_castanho() {
-    const PAPEL: [u8; 3] = [153, 121, 91];
-    for cor in [[255u8, 0, 0], [220, 40, 40]] {
-        for (meio, s) in [
-            (PaintMedia::Watercolor, 1.0f32),
-            (PaintMedia::Digital, 0.5),
-            (PaintMedia::WetPaint, 1.0),
-        ] {
-            let mut t = novo(meio, 14.0);
-            t.set_wet_relogio_fixo(true);
-            t.set_brush_color_srgb8(cor);
-            t.paint.brush.strength = s;
-            let pts = (GESTOS[0].1)();
-            t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
-            for p in &pts[1..] {
-                t.on_canvas_pointer(cp(*p, PointerPhase::Move));
-                t.paint_tick(1.0 / 60.0);
-            }
-            t.on_canvas_pointer(cp(*pts.last().expect("pontos"), PointerPhase::Up));
-            for _ in 0..30 {
-                t.paint_tick(1.0 / 60.0);
-            }
-            let branco = imagem(&mut t);
-            escolhe_o_papel(&mut t, PAPEL);
-            let castanho = imagem(&mut t);
-            let i = (64 * LADO + 64) * 4;
-            let (mut n, mut acima, mut excesso) = (0usize, 0usize, 0.0f32);
-            for k in 0..LADO * LADO {
-                if t.canvas_rgba[k * 4 + 3] < 8 {
-                    continue;
-                }
-                n += 1;
-                let d = f32::from(castanho[k * 4]) - f32::from(PAPEL[0]);
-                if d > 20.0 {
-                    acima += 1;
-                    excesso += d;
-                }
-            }
-            let filtro: Vec<u8> = (0..3)
-                .map(|c| (u32::from(branco[i + c]) * u32::from(PAPEL[c]) / 255) as u8)
-                .collect();
-            eprintln!(
-                "[fluor] cor {cor:?} {meio:<10?} s {s}: camada {:?} · no branco {:?} · no castanho {:?} · filtro {filtro:?} · R acima do papel +20: {acima}/{n} (média +{:.0})",
-                &t.canvas_rgba[i..i + 4],
-                &branco[i..i + 3],
-                &castanho[i..i + 3],
-                excesso / acima.max(1) as f32
-            );
-        }
-    }
 }

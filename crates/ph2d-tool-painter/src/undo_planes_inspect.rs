@@ -2,7 +2,7 @@
 //! o de alcance e as divergências de dois snapshots. Só de teste e debug; filho de `undo_planes` para
 //! ver os campos, e cortado de lá pelo tecto de LOC, POR ASSUNTO.
 
-use super::{PlaneDeltas, RtLayerId};
+use super::PlaneDeltas;
 
 impl PlaneDeltas {
     /// **A VARIANTE de cada plano canvas-shaped, por nome** — o instrumento da §5.66 §4.
@@ -138,8 +138,8 @@ impl PlaneDeltas {
         fn map<T: PartialEq>(
             out: &mut Vec<&'static str>,
             name: &'static str,
-            x: &std::collections::BTreeMap<RtLayerId, std::sync::Arc<Vec<T>>>,
-            y: &std::collections::BTreeMap<RtLayerId, std::sync::Arc<Vec<T>>>,
+            x: &std::collections::BTreeMap<super::RtLayerId, std::sync::Arc<Vec<T>>>,
+            y: &std::collections::BTreeMap<super::RtLayerId, std::sync::Arc<Vec<T>>>,
         ) {
             if x.len() != y.len() || x.keys().ne(y.keys()) {
                 out.push(name);

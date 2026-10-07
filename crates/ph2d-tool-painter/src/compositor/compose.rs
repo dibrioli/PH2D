@@ -280,7 +280,12 @@ pub(super) fn composite_region_linear(
     let rw = region.w.min(width - rx);
     let rh = region.h.min(height - ry);
     let mut acc = vec![[0.0f32; 4]; (rw as usize) * (rh as usize)];
-    let mut t = vidros.map(|_| vec![[1.0f32; 3]; acc.len()]);
+    // A transparência do papel nasce 1 (nada por cima): o enchimento em paralelo (`plane_copy`).
+    let mut t = vidros.map(|_| {
+        let mut t = Vec::new();
+        crate::plane_copy::size_to(&mut t, acc.len(), [1.0f32; 3]);
+        t
+    });
     // Per-pixel compositing is spatially independent → split the region's rows into disjoint bands
     // across the cores (bit-identical to the serial walk; each band runs the same bottom→top layer
     // walk over its own rows). This was the painter's biggest per-frame cost on a non-trivial doc
@@ -436,7 +441,15 @@ fn composite_into(
                     }
                     s
                 };
-                blend_window(acc, rx, ry, rw, rh, mode, opacity, &sample);
+                // O MESMO factor (máscara × recorte), à parte: o vidro precisa dele num texel de alfa 0.
+                let fator = |idx: usize| {
+                    let m = mask.map_or(1.0, |(mrgba, inverted)| {
+                        let v = mask_value(mrgba, idx);
+                        if inverted { 1.0 - v } else { v }
+                    });
+                    m * clip.map_or(1.0, |base| base[idx * 4 + 3] as f32 / 255.0)
+                };
+                blend_window(acc, rx, ry, rw, rh, mode, opacity, sample);
                 // O papel atravessa esta camada canal a canal (o vidro só no modo Normal: os outros
                 // modos não são um filtro sobre o que está por baixo).
                 if let Some((planos, t)) = vidro.as_mut() {
@@ -449,7 +462,7 @@ fn composite_into(
                             let idx = (gy * canvas_w + gx) as usize;
                             super::vidro::atravessa(
                                 &mut t[(ly * rw + lx) as usize],
-                                sample(gx, gy)[3] * opacity,
+                                fator(idx) * opacity,
                                 &rgba[idx * 4..idx * 4 + 4],
                                 plano.map(|p| &p[idx]),
                             );
@@ -602,7 +615,11 @@ fn composite_into(
                             if let Some((_, tp)) = vidro.as_mut() {
                                 let (de, para) = (1.0 - base[3], 1.0 - acc[i][3]);
                                 for tc in tp[i].iter_mut() {
-                                    *tc = if de > 1e-4 { *tc * para / de } else { tc.max(para) };
+                                    *tc = if de > 1e-4 {
+                                        *tc * para / de
+                                    } else {
+                                        tc.max(para)
+                                    };
                                 }
                             }
                         } else {

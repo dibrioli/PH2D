@@ -42,21 +42,21 @@ pub fn alfas(px: &[u8], v: &Vidro) -> Option<[u8; 3]> {
     (px[..4] == v[..4]).then_some([v[4], v[5], v[6]])
 }
 
-/// Atualiza a transparência por canal `t` de um texel com a camada por cima: `alfa` é o alfa do
-/// texel já com a máscara, o recorte e a opacidade; `px` o píxel e `v` o vidro dele. Um texel sem vidro
-/// (ou cujo selo não bate) tira `alfa` dos três canais; com vidro, cada canal tira o SEU alfa, na
-/// mesma proporção.
+/// Atualiza a transparência por canal `t` de um texel com a camada por cima: `k` é o factor da
+/// máscara, do recorte e da opacidade; `px` o píxel e `v` o vidro dele. Um texel sem vidro (ou cujo selo
+/// não bate) tira `alfa·k` dos três canais; com vidro, cada canal tira o SEU alfa — também num texel de
+/// alfa 0, a orla de pigmento que sobre o branco se anula (o que devolve = o que tira) e sobre o papel
+/// de cor se vê.
 #[inline]
-pub(crate) fn atravessa(t: &mut [f32; 3], alfa: f32, px: &[u8], v: Option<&Vidro>) {
-    let a = f32::from(px[3]) / 255.0;
+pub(crate) fn atravessa(t: &mut [f32; 3], k: f32, px: &[u8], v: Option<&Vidro>) {
     match v.and_then(|v| alfas(px, v)) {
-        Some(ac) if a > 0.0 => {
-            let k = alfa / a;
+        Some(ac) => {
             for c in 0..3 {
                 t[c] *= 1.0 - (f32::from(ac[c]) / 255.0 * k).min(1.0);
             }
         }
-        _ => {
+        None => {
+            let alfa = f32::from(px[3]) / 255.0 * k;
             for tc in t.iter_mut() {
                 *tc *= 1.0 - alfa;
             }
@@ -90,11 +90,18 @@ pub(crate) fn composite_region_sobre_o_papel(
     region: Region,
     papel: [u8; 3],
 ) -> Vec<u8> {
-    let (acc, t) = super::compose::composite_region_linear(stack, src, width, height, region, Some(vidros));
+    let (acc, t) =
+        super::compose::composite_region_linear(stack, src, width, height, region, Some(vidros));
     let t = t.expect("a passada com vidro devolve a transparência");
+    use rayon::prelude::*;
     let mut out = vec![0u8; acc.len() * 4];
-    for ((px, a), tc) in out.as_chunks_mut::<4>().0.iter_mut().zip(&acc).zip(&t) {
-        *px = sobre_o_papel(*a, *tc, papel);
-    }
+    out.par_chunks_mut(4 * 4096)
+        .zip(acc.par_chunks(4096))
+        .zip(t.par_chunks(4096))
+        .for_each(|((o, a), tc)| {
+            for ((px, a), tc) in o.as_chunks_mut::<4>().0.iter_mut().zip(a).zip(tc) {
+                *px = sobre_o_papel(*a, *tc, papel);
+            }
+        });
     out
 }

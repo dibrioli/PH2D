@@ -29,8 +29,8 @@ pub(in crate::tool::paint) use window::ponto_na_janela;
 
 use super::watercolor_field::*;
 use super::watercolor_rewet_px::{
-    apply_wet_lift, blur_of, build_style_field, build_wet_field, params_differ, rewet_px,
-    sample_wet_field, style_at,
+    blur_of, build_style_field, build_wet_field, params_differ, rewet_px, sample_wet_field,
+    style_at,
 };
 use super::*;
 use rayon::prelude::*;
@@ -111,6 +111,8 @@ impl PainterTool {
             &self.paint.brush,
         );
 
+        // O VIDRO (doc 48): o plano da camada sai do mapa ANTES dos empréstimos do laço.
+        let vidro = self.vidro_do_quadro(&base_arc, &backdrop_arc);
         let lut = luts();
         let brush = &self.paint.brush;
         let base = &**base_arc;
@@ -289,10 +291,24 @@ impl PainterTool {
         // function of immutable inputs — no cross-pixel reduction, no shared mutable state, no
         // RNG — so disjoint rows over the pool are BYTE-IDENTICAL to the serial loop (IEEE-754
         // per-op determinism); each task writes only its own row.
+        let (vcamada, mut vplano, vbase, vchao) = match vidro {
+            Some(v) => (Some(v.camada), Some(v.plano), Some(v.base), v.chao_preto),
+            None => (None, None, None, None),
+        };
+        let vbase: Option<&[crate::compositor::vidro::Vidro]> = vbase.as_deref().map(Vec::as_slice);
+        let vchao: Option<&[u8]> = vchao.as_deref().map(Vec::as_slice);
+        let vlinhas: Vec<Option<&mut [crate::compositor::vidro::Vidro]>> = match vplano.as_mut() {
+            Some(p) => Arc::get_mut(p).expect("o plano é só deste quadro")[y0 * fw..y1 * fw]
+                .chunks_mut(fw)
+                .map(Some)
+                .collect(),
+            None => (y0..y1).map(|_| None).collect(),
+        };
         out[y0 * fw * 4..y1 * fw * 4]
             .par_chunks_mut(fw * 4)
+            .zip(vlinhas.into_par_iter())
             .enumerate()
-            .for_each(|(by, row)| {
+            .for_each(|(by, (row, mut vrow))| {
                 let gy = y0 + by;
                 let ly = (gy - ry0) as f32;
                 let (bx0, bx1) = window::vao_da_linha(linhas, gy, pad, (x0, bw));
@@ -375,6 +391,9 @@ impl PainterTool {
                         row[gx * 4 + 1] = base[gi + 1];
                         row[gx * 4 + 2] = base[gi + 2];
                         row[gx * 4 + 3] = base[gi + 3];
+                        if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase) {
+                            v[gx] = b[gy * fw + gx]; // e o vidro da base com ela
+                        }
                         continue;
                     }
                     // Warped canvas-space indices — shared by the tip-density / pigment-reserve /
@@ -558,12 +577,37 @@ impl PainterTool {
                     // (the old path) baked the ground INTO the pixels: over a white backdrop the wash
                     // carried a permanent cream cast ("puxa para o bege", Enio 2026-07-06). Opaque base
                     // ⇒ a = 1 ⇒ L = appearance.
+                    // O VIDRO deste texel (doc 48): a mesma óptica sobre o chão PRETO, com a base posta
+                    // sobre ele pelo vidro DELA; o que muda de um chão ao outro, canal a canal, é o que
+                    // o chão atravessa ([`super::watercolor_vidro::alfas_do_vidro`]).
+                    let vidro_do = |px: [u8; 4], b: &[crate::compositor::vidro::Vidro]| {
+                        let i = gy * fw + gx;
+                        let cb = vchao.map_or([0u8; 3], |g| [g[gi], g[gi + 1], g[gi + 2]]);
+                        let ab_c = crate::compositor::vidro::alfas(&base[gi..gi + 4], &b[i])
+                            .unwrap_or([base[gi + 3]; 3]);
+                        let base_preto: [f32; 3] = core::array::from_fn(|c| {
+                            base_sobre[c]
+                                - (1.0 - f32::from(ab_c[c]) / 255.0)
+                                    * (f32::from(chao[c]) - f32::from(cb[c]))
+                                    / 255.0
+                        });
+                        let preto = aparencia::aparencia(&optica, base_preto, cb, lut).rgb;
+                        crate::compositor::vidro::sela(
+                            px,
+                            super::watercolor_vidro::alfas_do_vidro(rgb, preto, chao, cb, px[3]),
+                        )
+                    };
                     if out_a <= f32::EPSILON {
-                        // No film and no base: the layer stays untouched (appearance == ground).
+                        // No film and no base: the layer stays untouched (appearance == ground) — mas a
+                        // orla que sobre o branco se anula pode ver-se sobre o papel de cor: o vidro sela-a.
                         row[gx * 4] = base[gi];
                         row[gx * 4 + 1] = base[gi + 1];
                         row[gx * 4 + 2] = base[gi + 2];
                         row[gx * 4 + 3] = base[gi + 3];
+                        if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase) {
+                            v[gx] =
+                                vidro_do([base[gi], base[gi + 1], base[gi + 2], base[gi + 3]], b);
+                        }
                         continue;
                     }
                     let inv_a = 1.0 / out_a;
@@ -577,9 +621,11 @@ impl PainterTool {
                     // Paint gates (selection / protection): keep-lerp the painted bytes toward the
                     // frozen base — the canvas gates' exact restore semantics, warp/diffusion-proof
                     // (see the gate hoist above the loop). Ungated (default) writes paint verbatim.
+                    let mut tocado = alock_on;
                     if gate_on {
                         let keep = watercolor_accum::splat_keep(gsel, gprot, None, gy * fw + gx);
                         if keep < 1.0 {
+                            tocado = true;
                             for (c, p) in px.iter_mut().enumerate() {
                                 let painted = f32::from(*p);
                                 let orig = f32::from(base[gi + c]);
@@ -598,8 +644,20 @@ impl PainterTool {
                     row[gx * 4 + 1] = px[1];
                     row[gx * 4 + 2] = px[2];
                     row[gx * 4 + 3] = px[3];
+                    // Um texel que a seleção, a proteção ou o alpha-lock retocou fica com o vidro da base
+                    // (o selo não bate: o texel é tinta de um alfa só).
+                    if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase) {
+                        v[gx] = if tocado {
+                            b[gy * fw + gx]
+                        } else {
+                            vidro_do(px, b)
+                        };
+                    }
                 }
             });
+        if let (Some(c), Some(p)) = (vcamada, vplano) {
+            self.devolve_o_vidro(c, p);
+        }
         self.paint.wet_reserve_cache = reserve.and_then(watercolor_reserve::ReserveFields::devolve);
         self.mark_dirty(region);
         if commit {

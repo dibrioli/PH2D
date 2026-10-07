@@ -248,3 +248,56 @@ fn com_papel_a_gpu_produz() {
         "uma camada lisa com papel fica na pista parcial da CPU (medida mais rápida)"
     );
 }
+
+/// **Com o VIDRO da aguada sob papel de cor a CPU produz** (doc 48, BUGS #46): o compositor da GPU só
+/// conhece um alfa por texel, e mostraria a aguada que soma luz ao papel. Um desenho novo (papel branco)
+/// esculpido e com uma aguada continua na GPU; o papel castanho tira-o dela; sem aguada, o castanho
+/// não tira.
+#[test]
+fn com_vidro_sob_papel_de_cor_a_cpu_produz() {
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, Tool};
+    let cp = |pos: [f32; 2], phase: PointerPhase| CanvasPointer {
+        pos,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    let castanho = |t: &mut PainterTool| {
+        t.handle_panel_event(PanelEvent::SelectOption(
+            ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+            "153,121,91".into(),
+        ));
+    };
+    let esculpido = || {
+        let mut t = PainterTool::default();
+        t.bind_document(1, vec![255u8; 48 * 48 * 4], 48, 48);
+        t.toggle_brush_impasto();
+        t.set_brush_impasto_depth(0.8);
+        t.set_brush_size_px(9.0);
+        t.on_canvas_pointer(cp([14.0, 24.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([34.0, 24.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([34.0, 24.0], PointerPhase::Up));
+        t
+    };
+    let mut t = esculpido();
+    t.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
+    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([38.0, 12.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([38.0, 12.0], PointerPhase::Up));
+    assert!(
+        gpu_eligible(&t).is_some(),
+        "precondition: esculpido, com aguada, no papel branco, a GPU produz"
+    );
+    castanho(&mut t);
+    assert!(t.papel_atravessa_vidro(), "controlo: a aguada deixou vidro");
+    assert!(
+        gpu_eligible(&t).is_none(),
+        "com o vidro sob o papel castanho a GPU mostraria a aguada de um alfa só"
+    );
+    let mut sem_aguada = esculpido();
+    castanho(&mut sem_aguada);
+    assert!(
+        gpu_eligible(&sem_aguada).is_some(),
+        "sem aguada o papel castanho não tira o documento da GPU"
+    );
+}

@@ -438,16 +438,17 @@ impl PainterTool {
                     self.compositor_cache.invalidate_from(active, &self.layers);
                     v
                 } else {
-                    let mut c =
-                        if std::mem::take(&mut self.adjustment_cache_pending) && !stroke_dirtied {
-                            // Adjustment slider-drag: restart from the cut-point cache —
-                            // bit-identical to a full `composite` (gate
-                            // `cache_matches_full_recompose`).
-                            composite_with_cache(&self.layers, &src, w, h, &mut self.compositor_cache)
-                        } else {
-                            self.compositor_cache.invalidate_from(active, &self.layers);
-                            composite(&self.layers, &src, w, h)
-                        };
+                    let mut c = if std::mem::take(&mut self.adjustment_cache_pending)
+                        && !stroke_dirtied
+                    {
+                        // Adjustment slider-drag: restart from the cut-point cache —
+                        // bit-identical to a full `composite` (gate
+                        // `cache_matches_full_recompose`).
+                        composite_with_cache(&self.layers, &src, w, h, &mut self.compositor_cache)
+                    } else {
+                        self.compositor_cache.invalidate_from(active, &self.layers);
+                        composite(&self.layers, &src, w, h)
+                    };
                     self.compoe_sobre_o_papel(&mut c, full);
                     c
                 };

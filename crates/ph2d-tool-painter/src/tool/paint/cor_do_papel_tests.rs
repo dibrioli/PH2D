@@ -428,14 +428,15 @@ fn na_aguada_o_papel_nao_entra_na_tinta() {
     );
     a.invalidate_composite();
     let (pa, _, _) = a.take_preview_arc().expect("a");
-    let mut sobre_o_creme = b.canvas_rgba.to_vec();
-    for px in sobre_o_creme.as_chunks_mut::<4>().0 {
-        crate::tool::papel::sobre_o_papel(px, CREME);
-    }
-    assert_eq!(
-        pior(&pa, &sobre_o_creme),
-        Some(0),
-        "o creme não mostra a aguada coberta com transparência"
+    b.handle_panel_event(PanelEvent::SelectOption(
+        crate::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+        "230,200,150".into(),
+    ));
+    b.invalidate_composite();
+    let (pb, _, _) = b.take_preview_arc().expect("b");
+    assert!(
+        pior(&pa, &pb).is_some_and(|d| d <= 1),
+        "o creme não mostra a mesma aguada pintada antes ou depois dele"
     );
     assert!(
         pa.chunks(4).any(|p| p[2] > p[0] + 20),

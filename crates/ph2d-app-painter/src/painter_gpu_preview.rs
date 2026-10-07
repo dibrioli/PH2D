@@ -253,6 +253,12 @@ fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     if painter.mask_scratch_active() {
         return None;
     }
+    // ⚠️ **O VIDRO da aguada sob papel de cor** (doc 48): o papel atravessa cada canal pelo alfa dele,
+    // e o compositor da GPU só conhece um alfa por texel — compô-lo ali mostraria a aguada de antes
+    // (a que soma luz ao papel). Enquanto isto for verdade a CPU produz, como com a proteção acima.
+    if painter.papel_atravessa_vidro() {
+        return None;
+    }
     ph2d_tool_painter::flatten_for_gpu(painter.layers())
 }
 

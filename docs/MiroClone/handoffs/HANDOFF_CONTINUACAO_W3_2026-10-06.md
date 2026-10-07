@@ -10,7 +10,13 @@
 - Branch `line/MiroClone`, worktree `Worktrees/line-MiroClone`, base `a46c4c200` (o `main` não andou).
 - Commits da W3: `770fda0d2` (documento + texto + editor), `7a022b524` (interface), `729538c3a`
   (cena 4) + os do fecho. Diff da linha `a46c4c200..HEAD`.
-- ⏳ **Smoke do dono por fazer** (passos no §5). Não houve smoke intermédio nesta onda.
+- **1.º smoke do dono (06/10): «Restante Smoke Ok»**, com UM defeito em duas capturas: *«a seleção e
+  a multiseleção estão cobrindo os objetos e texto (são opacas)»* — a selecção do texto e a faixa de
+  seleccionar eram `AccentSoft` opaca no overlay. Curado em `da7cc0ed5`: a selecção do texto pinta-se
+  no quadro DEBAIXO das letras (`TextSel` no `ph2d-board-render::paint`), a faixa é a `GraphMarquee`
+  translúcida; gate `the_board_never_paints_an_opaque_selection_over_its_content`. ⚠️ Não fotografado:
+  a foto não conduz um arrasto nem uma edição (os eventos sintéticos não chegam à tela virtual) — a
+  confirmação é o 2.º olhar do dono. ⏳ As capturas do Miro (§4.1) continuam pedidas.
 
 ## §1 — As leis do Miro e de onde vêm (memória `feedback_the_owners_reference_product_decides_the_law`)
 

@@ -21,7 +21,8 @@
 | ficheiro | o quê |
 |---|---|
 | `ph2d-app-components/src/nav_smoke_lama.rs` + `_tests.rs` | NOVOS: a cena `=5` e os gates dela |
-| `ph2d-app-components/src/nav_smoke.rs` (+ `_tests.rs`), `lib.rs` | o roteador: braço `5`, `CENAS = 5`, `Montada::lama`, `Montada::secao_do_roteiro`; `pub mod nav_smoke_lama` |
+| `ph2d-app-components/src/nav_smoke_usos.rs` + `_tests.rs` | NOVOS: a cena `=6` (a lama nos jogos) e os gates dela |
+| `ph2d-app-components/src/nav_smoke.rs` (+ `_tests.rs`), `lib.rs` | o roteador: braços `5` e `6`, `CENAS = 6`, `Montada::{lama, usos}`, `Montada::secao_do_roteiro`; `pub mod nav_smoke_{lama,usos}` |
 | `shells/desktop/src/components_scenes_suplentes.rs` | UMA linha trocada (`let sec = montada.secao_do_roteiro();`) — zero linhas a mais |
 | `ph2d-nav/src/agent.rs` | `AgentRuntime::custos_do_caminho`, `Vez::custos`, o 5.º motivo de replaneio; `ALCANCE_DO_CANTO` (a aceitação de um canto) |
 | `ph2d-physics-ecs/src/bridge/nav.rs` | a assinatura dos custos passa ao `Vez`; o `struct Vez` da ponte MUDOU-SE para `nav_fila.rs` (`694 → 684` linhas) |
@@ -39,6 +40,7 @@ Zero crate, zero pacote no `Cargo.lock`, zero i18n, zero componente, `PROJECT_SC
 | **S** a cena da lama (`PH2D_NAV_SMOKE=5`) | ✓ | duas pistas iguais, `Light Mud` (`Cost 2`) e `Heavy Mud` (`Cost 10`, escolhida, a secção `Nav Cost Area` aberta); três corredores por pista: a leve atravessa-se, a pesada contorna-se. Gates pela cena real com o CONTROLO (as duas a `1`: cruzam as duas) |
 | ⭐ **o `Cost` ao vivo** (achado pela cena) | ✓ curado | mexer no `Cost` com o agente a ANDAR era um controlo morto (`10 → 2`: `0` procuras novas; só `→ 1` mudava algo, a lama a sair da malha). O 5.º motivo de replaneio: a assinatura dos custos e dos atalhos mudou desde que o caminho foi planeado — paga do orçamento como as outras procuras; um `Nav Link` posto/tirado entra pela mesma porta |
 | ⭐ **o canto alcançado** (report do dono: *«o R2 entra na quina da lama»*) | ✓ curado | um canto alcança-se também a `0,1` do raio (`ALCANCE_DO_CANTO`), não só no passo do executor (`1,3 cm` a `0,8 m/s`): o R2, empurrado `2–5 cm` na passagem, voltava atrás `109` tiques até o centro entrar na lama. Igual ao bit na cena de stress (lá o passo já passa a fracção). Plano §27.9b |
+| ⭐ **a cena 6, a lama nos jogos** (pedido do dono) | ✓ | quatro usos lado a lado — pedras à volta de uma estrada (`Cost 4`), rio com ponte (`Cost 6`), canteiro `Forbidden`, a luz de um guarda (`Cost 8`) — cada um com o CONTROLO. A estrada como área BARATA foi medida e recusada para a cena (o corredor anda pela berma de fora: plano §27.11) |
 | **A** o tecto do caminho crítico | ✗ recusa medida | T1 e T3 cumprem o crítico (`20` · `40 mil`) e REPROVAM a vivacidade (a procura nunca acaba numa malha que muda de 2 em 2 tiques — a aritmética: a fatia tem de ser `≥ W/K`); T2 é vivo e deixa o crítico igual (`80 mil`). Sem tecto, o A4 fica recusa |
 | **C** menos nós na ponderada | ✗ recusa medida | a dominância de hoje JÁ está no tecto do que frentes anteriores cortam (o tecto amostrado: `0,04 %`); o heurístico toca `6–16 %` dos nós; a fase geral `~10 %` do tempo |
 
@@ -49,6 +51,8 @@ Zero crate, zero pacote no `Cargo.lock`, zero i18n, zero componente, `PROJECT_SC
   Fechado como escolha medida, não como dívida.
 - **Quem persegue sem o alvo à vista** na lama cerrada (máx `30` tiques a `200` agentes): o A4 só cabe com um
   tecto que a vivacidade não deixa.
+- **Uma área mais barata que o chão** (`Cost < 1`): o caminho segue a berma por FORA, porque a área recua
+  pelo raio como um obstáculo (plano §27.11, §27.10). Decisão de desenho por abrir; o tutorial avisa o dono.
 - **A procura ponderada** está no tecto deste desenho; metade do tempo pediria OUTRA procura.
 - (de antes, sem mudança) a versão web: aprovada pelo dono, ESTACIONADA.
 
@@ -60,14 +64,16 @@ Zero crate, zero pacote no `Cargo.lock`, zero i18n, zero componente, `PROJECT_SC
   `diag_nos_tempo_geral.txt` (C), as fotos `foto/cena5_{a_meio,fim}.png`.
 - **Gates novos:** `nav_smoke_lama::tests::{a_leve_atravessa_se_a_pesada_contorna_se,
   com_o_cost_em_2_os_da_direita_cortam_pela_lama, a_cena_tem_as_pecas_que_o_roteiro_nomeia,
-  nenhum_corredor_volta_atras_para_um_canto}` ·
+  nenhum_corredor_volta_atras_para_um_canto}` · `nav_smoke_usos::tests::{cada_uso_muda_o_caminho_e_o_controlo_corta_a_direito,
+  a_cena_tem_as_pecas_que_o_roteiro_nomeia}` ·
   `nav_smoke::tests::o_cenas_conta_os_niveis_do_roteador` · `nav_custo::mexer_no_custo_refaz_o_caminho_de_quem_anda`.
 - **Mutação** ([`mutacao_navegacao_w18_2026-10-06.py`](../ferramentas/mutacao_navegacao_w18_2026-10-06.py), o
-  motor da W15/W16): **`11 / 11`** sangram, `0` defeitos de arnês, checksums iguais —
+  motor da W15/W16): **`16 / 16`** sangram, `0` defeitos de arnês, checksums iguais —
   L1–L6 (a cena: o custo, a área, o roteador, a secção aberta, `CENAS`, o desenho), C1–C4 (o 5.º motivo, o
-  registo no caminho instalado, a assinatura, a ponte) e K1 (o canto só no passo do executor). `L5` (`CENAS = 4`) só sangra pelo gate novo do roteador.
+  registo no caminho instalado, a assinatura, a ponte), K1 (o canto só no passo do executor) e U1–U5 (a
+  cena 6: os custos a `1`, o canteiro sem `Forbidden`, o roteador). `L5` (`CENAS = 4`) só sangra pelo gate novo do roteador.
 - **Gate batched** (sobre o merge-base, W15–W18 juntas, depois da cura do canto): `nextest-impacted`
-  **`15 785 / 15 785`** (`104,5 s`, `1` lento: `ph2d-skeleton-live`, de outra família) — a 1.ª corrida deu
+  **`15 787 / 15 787`** (`92,3 s`, com a cena 6) — a 1.ª corrida deu
   `15 782 / 15 783`: `o_tutorial_da_navegacao_so_cita_rotulos_que_o_painel_pinta` (o tutorial marcava `Cost 2` e
   os nomes das lamas como rótulos de tela), curada em `ea306c7ca` ·
   clippy `--workspace --all-targets -D warnings` limpo · fmt limpo nos ficheiros da W18 —
@@ -88,6 +94,14 @@ esquerda os três DENTRO da lama clara a subir a direito, à direita os três a 
    passagem pode seguir a volta).
 4. Deu errado se: algum da direita pisa a escura com `Cost 10`; os da esquerda contornam a clara; ou, com `Cost 2`,
    nenhum da direita muda de caminho.
+
+E a cena 6 (fotografada: `cena6_{a_meio,fim}.png`; a secção 11 do PDF):
+
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && env PH2D_NAV_SMOKE=6 cargo run -p ph2d-host-desktop --profile smoke`
+2. Só olhar os quatro: o 1 segue a estrada escura em U (as pedras à volta custam `4`); o 2 vai à ponte; o 3
+   contorna o canteiro verde; o 4 contorna a luz amarela pela sombra da direita.
+3. O `Rough Ground` vem escolhido: `Espaço` logo no início, `Cost` = `1`, `Espaço` — o 1 corta a direito.
+4. Deu errado se algum vermelho pisa as pedras, a água, o canteiro ou a luz.
 
 O binário compilado (a 2.ª corrida, colada), depois de `rm -rf target/*/incremental` (`3,6 G` do `debug`, `1,6 G`
 do `smoke`):

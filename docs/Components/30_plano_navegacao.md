@@ -2388,6 +2388,29 @@ quina não é atravessar»*, §27.4) — exactamente onde o dono viu o R2 entrar
 menos de um raio da faixa, `2 cm` de folga), e um gate novo, `nenhum_corredor_volta_atras_para_um_canto`
 (todos os seis, `≤ 2` tiques a afastar-se do canto seguinte). Mutação `K1` (a fracção a `0`): sangra nos dois.
 
+### §27.11 — A cena 6: a lama nos JOGOS (pedido do dono, 06/10: *«explique para que serve num game… monte uma cena com vários exemplos»*)
+
+`PH2D_NAV_SMOKE=6` (`nav_smoke_usos.rs`): quatro corredores de `2,7 m`, o mesmo agente (`r = 0,25`, `0,8 m/s`)
+em cada um, a sua bandeira em cima. O gate pela cena real com o CONTROLO (todas as áreas a `Cost 1`, nenhuma
+proibida — o centro atravessa as quatro):
+
+| uso | a área | medido: o centro à área (mín; o corpo fora = `≥ 0,23`) |
+|---|---|---|
+| 1 estradas e trilhos | `Rough Ground` (`Cost 4`) à volta de uma estrada em U (chão) | `0,23` |
+| 2 água / pântano | `River` (`Cost 6`), a `Bridge` é o vão sem área | `0,25` |
+| 3 zona onde nunca entra | `Garden` (`Forbidden`) | `0,25` |
+| 4 furtividade | `Guard Light` (bola, `Cost 8`) | `0,25` |
+
+| achado | medido | cura |
+|---|---|---|
+| ⛔ a estrada como área BARATA (`Cost 0.3`, o uso «óbvio») | o corredor andava pela berma de FORA (`0,25–0,27 m` do centro à estrada): a área conta a partir do corpo (a lei da W7, a área recuada pelo raio) e qualquer ponto a um raio dela já tem o desconto | o custo no terreno à volta; o tutorial diz o limite ao dono |
+| a luz centrada | as duas sombras com `0,49 m` para um corpo de `0,5`: o corredor raspava a luz (`0,20`) | a luz `0,3 m` à esquerda (`DESVIO_DA_LUZ`) |
+| a estrada `[0,30 · 0,31 · 0,34]` | invisível na foto contra o chão | asfalto escuro |
+
+Mutação `U1–U5` (os custos a `1`, o canteiro sem `Forbidden`, o roteador sem a `6`): sangram. Fotos:
+`target/prova/w18/foto/cena6_{a_meio,fim}.png`. A secção 11 do `03_navegacao.pdf` ensina os quatro usos e
+como escolher o número.
+
 ### §27.10 — ⏳ O que fica
 
 - **O crítico do tique** chega a `orçamento · 2^k` (`80 mil` a `10` e `50` agentes na cena de stress) — é o preço
@@ -2395,5 +2418,9 @@ menos de um raio da faixa, `2 cm` de folga), e um gate novo, `nenhum_corredor_vo
   parta (§27.5).
 - **Quem persegue sem o alvo à vista**, na lama cerrada: máx `30` tiques a `200` agentes — o A4 que o leva a `4`
   só cabe com um tecto que a vivacidade não deixa.
+- **Uma área MAIS BARATA que o chão** (`Cost < 1`, a estrada que se prefere): a área recua pelo raio como um
+  obstáculo, e o caminho segue a berma por fora (§27.11). A cura é a área barata recuar para DENTRO (o corpo
+  inteiro nela) — muda a malha por custo, contra o desenho da W7 (o custo só na consulta): decisão de desenho
+  por abrir, com o oráculo (Godot conta o CENTRO no polígono da região).
 - **A procura ponderada** fica no que é: a dominância no tecto, o resto é o A* deste desenho. Metade do tempo
   pediria OUTRO desenho (outra procura), não outra alavanca.

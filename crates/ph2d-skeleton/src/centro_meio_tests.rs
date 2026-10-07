@@ -179,3 +179,50 @@ fn numa_ramificacao_a_volta_vem_do_vizinho_da_junta() {
         d.to_degrees()
     );
 }
+
+/// ⭐⭐ **GATE — a volta dos meios no ESPELHO** (pai a `−170°`, filho a `+170°`): desdobrado pela
+/// junta o filho vai a `−190°` (a janela ALTA, `t − base > π`), e a meio caminho roda `180°`. ⛔ Sem
+/// ela os meios crus (`−85°`, `85°`) dariam `0°` — o irmão de cima só exercita a janela BAIXA.
+#[test]
+fn a_volta_dos_meios_no_espelho_usa_a_janela_alta() {
+    let j2 = {
+        let (s, c) = ((-170.0_f64).to_radians()).sin_cos();
+        [-2.0 + 2.0 * c, 2.0 * s]
+    };
+    let k = Skin::new(vec![
+        osso(
+            [-2.0, 0.0],
+            [0.0, 0.0],
+            (-170.0_f64).to_radians(),
+            [-2.0, 0.0],
+        ),
+        osso([0.0, 0.0], [2.0, 0.0], 170.0_f64.to_radians(), j2),
+    ])
+    .expect("pele");
+    let t = rodou(&k, &[0.5, 0.5], MisturaDoAngulo::MeioAngulo, [0.0; 2], j2);
+    assert!((t.abs() - PI).abs() < 1e-9, "rodou {}°", t.to_degrees());
+}
+
+/// ⭐⭐ **GATE — a árvore das juntas é a MÍNIMA.** Cadeia `A (0°) → B (120°) → C (240°)`, juntas só
+/// em `A–B` e `B–C` (`A` e `C` a `2` de distância). Pela árvore mínima `C` desdobra contra `B`
+/// (`240°`) e o meio de `B` e `C` roda `180°`; ⛔ uma árvore pela MAIOR distância ligava `C` a `A`
+/// (`−120°`) e o mesmo ponto rodava `0°`.
+#[test]
+fn a_arvore_das_juntas_e_a_minima() {
+    let (s, c) = (120.0_f64.to_radians()).sin_cos();
+    let j2 = [2.0 * c, 2.0 * s];
+    let k = Skin::new(vec![
+        osso([-2.0, 0.0], [0.0, 0.0], 0.0, [-2.0, 0.0]),
+        osso([0.0, 0.0], [2.0, 0.0], 120.0_f64.to_radians(), [0.0, 0.0]),
+        osso([2.0, 0.0], [4.0, 0.0], 240.0_f64.to_radians(), j2),
+    ])
+    .expect("pele");
+    let t = rodou(
+        &k,
+        &[0.0, 0.5, 0.5],
+        MisturaDoAngulo::MeioAngulo,
+        [2.0, 0.0],
+        j2,
+    );
+    assert!((t.abs() - PI).abs() < 1e-9, "rodou {}°", t.to_degrees());
+}

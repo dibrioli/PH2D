@@ -461,3 +461,42 @@ fn uma_cavidade_que_alarga_para_o_fundo_e_fechada_pelo_arco_curto() {
         );
     }
 }
+
+/// ⭐⭐ **GATE — o arco da bola é sempre o CURTO** (A13). Uma câmara mais larga que a bola atrás de um
+/// lábio de `0,3 r` com uma boca de `0,42 r`: o primeiro candidato VAZIO de cada canto da câmara é a
+/// bola DENTRO dela, pousada nos dois nós de baixo da boca, e o arco dela dá a volta longa (`~336°`).
+/// A regra `< π` recusa-o; a bola pousa por CIMA da boca e a câmara fecha inteira. ⛔ Sem a regra o
+/// contorno de fora leva o círculo da bola de dentro e a câmara fica quase toda aberta.
+#[test]
+fn o_arco_da_bola_nunca_da_a_volta_longa() {
+    let fora = [[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]];
+    let (t, m, a, h) = (0.05 * RAIO, 0.42 * RAIO, 1.4 * RAIO, 2.0 * RAIO);
+    let (x, y) = (2.0, 3.0);
+    let ps = [
+        fora[0],
+        fora[1],
+        fora[2],
+        [x + 0.5 * m, y],
+        [x + 0.5 * m, y - t],
+        [x + a, y - t],
+        [x + a, y - t - h],
+        [x - a, y - t - h],
+        [x - a, y - t],
+        [x - 0.5 * m, y - t],
+        [x - 0.5 * m, y],
+        fora[3],
+    ];
+    let v = cantos(&ps);
+    let s = rola_a_bola(v.clone(), &com_viragem(&fora, &v), RAIO, SOLDA);
+    let cavidade = 2.0 * a * h + m * t;
+    let falta = 12.0 - area(&s);
+    assert!(
+        (12.0 - area(&v) - cavidade).abs() < 1e-12,
+        "a fixtura mudou de cavidade"
+    );
+    assert!(
+        falta < 1e-2 * cavidade,
+        "a câmara ficou {:.1} % aberta — o arco deu a volta longa",
+        100.0 * falta / cavidade
+    );
+}

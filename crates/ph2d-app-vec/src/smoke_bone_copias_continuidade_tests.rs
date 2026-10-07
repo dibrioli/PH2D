@@ -3,10 +3,10 @@
 //! de `0,1°`: na tampa de fora de cada junta (a menos de `0,6` dela, do lado oposto aos membros), a
 //! mudança do DESENHO entre quadros vizinhos (Hausdorff) contra a da imagem EXACTA do contorno.
 //!
-//! A lei: `Δ desenho ≤ Δ verdade + CHAO`. A amostragem do produto é uniforme (não depende da pose),
-//! e o chão é o maior excesso MEDIDO nas janelas e nas três varreduras inteiras (sonda
-//! `diag_a_continuidade_por_lei`). ⛔ O CONTROLO é um orçamento que muda com a pose (o mecanismo do
-//! refino pelo esticão posto, que saltava `0,041`/`0,144`): ele tem de passar do chão.
+//! A lei: `Δ desenho ≤ Δ verdade + CHAO`, com o desenho o que o QUADRO entrega
+//! ([`ph2d_skeleton_live::skin_live::recook_desenhando`]) — a régua não reconstrói o orçamento do
+//! bake, lê o do produto. ⛔ O CONTROLO é a réplica do bake com um orçamento que muda com a pose (o
+//! mecanismo do refino pelo esticão posto, que saltava `0,041`/`0,144`): ele tem de passar do chão.
 
 use super::super::a13::{dist_pl, fechados_de};
 use super::*;
@@ -75,12 +75,23 @@ fn na_tampa(a: &[Vec<[f64; 2]>], b: &[Vec<[f64; 2]>], (j, m): ([f64; 2], [f64; 2
     lado(a, b).max(lado(b, a))
 }
 
-/// O maior excesso medido do produto: `0,0013` nas três varreduras inteiras (`3 000` passos) e
-/// `0,0000` nas janelas; o controlo salta `0,0214` nas janelas e `0,0224` nas varreduras.
+/// O maior excesso medido do produto: `0,0013` nas três varreduras inteiras (`3 000` passos, sonda
+/// `diag_a_continuidade_por_lei`) e `0,0000` nas quatro janelas pelo quadro; o controlo salta
+/// `0,0214`, e um orçamento que troca a `89°` de dobra salta `0,0029` em `(89°, 89°)`.
 const CHAO: f64 = 0.0015;
 
-/// O pior `(excesso, pose, barra)` de `amostragem` nas janelas do gate.
-fn pior_salto(amostragem: super::super::saltos::Amostragem) -> (f64, (f32, f32), usize) {
+/// De onde vem o desenho de cada quadro: o PRODUTO, ou a réplica do bake com um orçamento por pose
+/// (só a do CONTROLO).
+#[derive(Clone, Copy)]
+enum Fonte {
+    Produto,
+    Replica(super::super::saltos::Amostragem),
+}
+
+/// O pior `(excesso, pose, barra)` de `fonte` nas janelas do gate. ⚠️ A janela das duas juntas a
+/// cruzar `89°` é a das fotos da F41 (`84°`–`89°`): um orçamento que dependesse da dobra trocava
+/// ali.
+fn pior_salto(fonte: Fonte) -> (f64, (f32, f32), usize) {
     let passo = |a: f32, b: f32| -> Vec<f32> {
         (0..=((b - a) * 10.0).round() as u16)
             .map(|i| a + 0.1 * f32::from(i))
@@ -99,11 +110,12 @@ fn pior_salto(amostragem: super::super::saltos::Amostragem) -> (f64, (f32, f32),
             .into_iter()
             .map(|g| (g, 170.0))
             .collect(),
+        passo(88.5, 89.5).into_iter().map(|g| (g, g)).collect(),
     ];
     let mut pior = (0.0_f64, (0.0, 0.0), 0);
     for poses in &janelas {
         let (g1, g2) = poses[0];
-        let (mut sim, _, st, ids) = cena(g1, g2);
+        let (mut sim, scene, st, ids) = cena(g1, g2);
         let rs = raizes(&sim);
         assert_eq!(rs.len(), 2, "a =6 tem dois esqueletos");
         let mut agora = (g1, g2);
@@ -114,10 +126,22 @@ fn pior_salto(amostragem: super::super::saltos::Amostragem) -> (f64, (f32, f32),
                 crate::smoke_bone_par::dobra_duas(&mut sim, *r, a - agora.0, b - agora.1);
             }
             agora = (a, b);
+            let quadro = matches!(fonte, Fonte::Produto).then(|| {
+                ph2d_skeleton_live::skin_live::recook_desenhando(&sim, &mut scene.clone())
+            });
             for barra in 0..2 {
                 let br = Barra::de(&sim, &st, ids[barra]);
                 let verdade = br.imagem(128);
-                let desenho = polilinhas(&fechados_de(&br.assa(amostragem((a, b)))), 64);
+                let assado = match (&quadro, fonte) {
+                    (Some(q), _) => q
+                        .get(&ids[barra])
+                        .expect("a barra tem desenho")
+                        .forma
+                        .clone(),
+                    (None, Fonte::Replica(orcamento)) => br.assa(orcamento((a, b))),
+                    (None, Fonte::Produto) => unreachable!("o produto tem quadro"),
+                };
+                let desenho = polilinhas(&fechados_de(&assado), 64);
                 if let Some((v0, d0)) = &antes[barra] {
                     for jm in juntas(&sim, barra) {
                         let excesso = na_tampa(&desenho, d0, jm) - na_tampa(&verdade, v0, jm);
@@ -135,9 +159,10 @@ fn pior_salto(amostragem: super::super::saltos::Amostragem) -> (f64, (f32, f32),
 
 #[test]
 fn a_tampa_da_junta_nao_salta_com_a_pose() {
-    use super::super::saltos::{amostragem_do_produto, amostragem_que_muda_com_a_pose};
-    let pior = pior_salto(amostragem_do_produto);
-    let ctl = pior_salto(amostragem_que_muda_com_a_pose);
+    let pior = pior_salto(Fonte::Produto);
+    let ctl = pior_salto(Fonte::Replica(
+        super::super::saltos::amostragem_que_muda_com_a_pose,
+    ));
     println!(
         "  pior salto acima da verdade: {:.4} em {:?}, barra {} · controlo {:.4} em {:?}",
         pior.0, pior.1, pior.2, ctl.0, ctl.1
@@ -149,8 +174,8 @@ fn a_tampa_da_junta_nao_salta_com_a_pose() {
     );
     assert!(
         pior.0 <= CHAO,
-        "a tampa da junta salta {:.4} acima da verdade em {:?} (barra {}) — o conjunto de amostras \
-         do bake mudou com a pose",
+        "a tampa da junta salta {:.4} acima da verdade em {:?} (barra {}) — o desenho do quadro \
+         mudou de amostragem com a pose",
         pior.0,
         pior.1,
         pior.2

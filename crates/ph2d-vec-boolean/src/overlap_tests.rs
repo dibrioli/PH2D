@@ -320,3 +320,52 @@ fn a_abertura_nao_come_a_ponta_desenhada() {
         "sem quinas as pontas ficaram — a abertura não actua e o gate não mede a parede"
     );
 }
+
+/// ⭐⭐ **GATE — o contorno de FORA da união é o de MAIOR área** (A13: com o bake denso a 1.ª região
+/// saía uma lasca de `3` nós e a silhueta inteira ia para os buracos). A fixtura é um oito com o
+/// lóbulo pequeno por BAIXO, que o motor devolve PRIMEIRO.
+#[test]
+fn o_contorno_de_fora_da_uniao_e_o_de_maior_area() {
+    let p = poligono(&[
+        [0.0, 0.0],
+        [1.4, 0.0],
+        [1.6, -0.2],
+        [1.4, -0.2],
+        [1.6, 0.0],
+        [4.0, 0.0],
+        [4.0, 3.0],
+        [0.0, 3.0],
+    ]);
+    let area_de = |v: Vec<VecVertex>| {
+        crate::area(&VecPath {
+            verts: v,
+            closed: true,
+            ..VecPath::default()
+        })
+        .abs()
+    };
+    let grupos = crate::binary_grouped(
+        &crate::to_bez(&p),
+        &BezPath::new(),
+        LsFillRule::NonZero,
+        BinaryOp::Union,
+    )
+    .expect("união");
+    let areas: Vec<f64> = grupos
+        .iter()
+        .flatten()
+        .filter_map(crate::verts_from_bez)
+        .map(area_de)
+        .collect();
+    let maior = areas.iter().copied().fold(0.0, f64::max);
+    assert!(
+        areas.len() >= 2 && areas[0] < 1e-2 * maior,
+        "a fixtura deixou de pôr a lasca primeiro: {areas:?}"
+    );
+    let u = resolve_overlap(&p).expect("o oito cruza-se");
+    let fora = area_de(u.verts);
+    assert!(
+        (fora - maior).abs() < 1e-9 * maior,
+        "o contorno de fora tem área {fora} contra a maior {maior}"
+    );
+}

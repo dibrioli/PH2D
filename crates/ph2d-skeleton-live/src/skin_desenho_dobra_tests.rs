@@ -200,6 +200,36 @@ fn diag_a_varredura_da_dobra() {
     eprintln!("poses={poses} maus={maus}");
 }
 
+/// ⭐⭐ **GATE — nenhuma alça fica a RUÍDO da âncora na silhueta** (A13: o fecho deixava, colada a um
+/// toque, uma alça de `~1e-5` noutra direcção, e a junta do traço lia uma quina de `80°` num
+/// segmento de `0,07` solda). Toda alça da saída está na âncora ou além de `solda / 100`. As poses
+/// são as da varredura a passo `4` onde o fecho as deixa (`1`–`3` por pose, `318` de `4 050` poses)
+/// e a `(178°, −178°)` do report (com o bake uniforme de `1024` ela já não as deixa).
+#[test]
+fn nenhuma_alca_fica_a_ruido_da_ancora() {
+    for (primeira, segunda) in [
+        (178.0_f32, -178.0_f32),
+        (4.0, 102.0),
+        (16.0, -90.0),
+        (28.0, -82.0),
+        (144.0, -10.0),
+        (172.0, -90.0),
+    ] {
+        let (sem, com) = braco_em(primeira, segunda);
+        let tol = 0.01 * ph2d_vec_boolean::overlap::SOLDA_DA_QUINA * dentes::caixa_diag(&sem);
+        let d = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]);
+        for (i, v) in com.verts.iter().enumerate() {
+            for h in [v.in_handle, v.out_handle] {
+                let l = d(h, v.anchor);
+                assert!(
+                    l == 0.0 || l > tol,
+                    "({primeira}°, {segunda}°): o nó {i} tem uma alça de {l:e} (tol {tol:e})"
+                );
+            }
+        }
+    }
+}
+
 #[path = "skin_desenho_dentes_sondas_tests.rs"]
 mod dentes;
 

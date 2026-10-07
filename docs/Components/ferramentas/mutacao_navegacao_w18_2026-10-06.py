@@ -4,7 +4,7 @@ os atalhos mudaram desde que o caminho foi planeado).
 
 O motor e os quatro controlos são os da W15/W16, copiados verbatim (cada grupo corre só os observadores
 dele, `OBS_DO_GRUPO`; o controlo limpo corre todos).
-Selectores: `MUTA_SO=L1,C2` · `MUTA_G=LAMA` (LAMA | CUSTO).
+Selectores: `MUTA_SO=L1,C2` · `MUTA_G=LAMA` (LAMA | CUSTO | CANTO).
 """
 import hashlib, os, re, subprocess, sys
 
@@ -21,6 +21,7 @@ OBS = {
               'nav_smoke_lama::tests::com_o_cost_em_2_os_da_direita_cortam_pela_lama',
               'nav_smoke_lama::tests::a_cena_tem_as_pecas_que_o_roteiro_nomeia',
               'nav_smoke::tests::o_cenas_conta_os_niveis_do_roteador',
+              'nav_smoke_lama::tests::nenhum_corredor_volta_atras_para_um_canto',
               'smoke_desenho_e_corpo_tests::nenhuma_cena_de_smoke_desenha_fora_do_corpo']),
     'IT': (['cargo', 'test', '-p', 'ph2d-physics-ecs', '--test', 'it'],
            ['nav_custo::mexer_no_custo_refaz_o_caminho_de_quem_anda']),
@@ -28,6 +29,7 @@ OBS = {
 OBS_DO_GRUPO = {
     'LAMA': ['COMP'],
     'CUSTO': ['IT', 'COMP'],
+    'CANTO': ['COMP'],
 }
 
 # (nome, grupo, ficheiro, âncora, substituição)
@@ -62,6 +64,9 @@ M = [
     ('C4 a ponte não passa a assinatura', 'CUSTO', NAV,
      '                custos: assinatura_dos_custos,',
      '                custos: 0,'),
+    ('K1 o canto só no passo do executor (o R2 do report do dono)', 'CANTO', AG,
+     'pub const ALCANCE_DO_CANTO: f64 = 0.1;',
+     'pub const ALCANCE_DO_CANTO: f64 = 0.0;'),
 ]
 
 so = set(os.environ['MUTA_SO'].split(',')) if os.environ.get('MUTA_SO') else None

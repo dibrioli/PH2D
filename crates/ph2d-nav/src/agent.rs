@@ -127,6 +127,20 @@ pub struct AgentRuntime {
     pub custos_do_caminho: u64,
 }
 
+/// ⭐ (W18, report do dono 06/10: *«o R2 tem uma movimentação bizarra, entrando na quina da lama»*) **Um canto
+/// alcança-se também a esta fracção do RAIO do corpo** — não só no passo do executor (Q5). A `0,8 m/s` o
+/// passo é `1,3 cm`: um corpo que o desvio empurra `2–5 cm` nunca acertava no canto e passava `109` tiques a
+/// voltar para trás contra quem vinha atrás, até o centro entrar na lama. Medido na cena `PH2D_NAV_SMOKE=5`
+/// (o mínimo do centro à lama pesada · tiques a afastar-se do canto · a chegada do R2):
+///
+/// | fracção | à lama | a afastar-se | chegada |
+/// |---|---|---|---|
+/// | `0` (o passo, antes) | `0,00` | `109` | `456` |
+/// | **`0,1`** | **`0,345`** | **`0`** | **`430`** |
+/// | `0,25` | `0,32` | `0` | `429` |
+/// | `0,5` | `0,27` (corta o canto) | `0` | `426` |
+pub const ALCANCE_DO_CANTO: f64 = 0.1;
+
 /// (W15) **A fatia de uma procura que já recomeçou `k` vezes seguidas:** `pode · 2^k`. ⚠️ Medido e
 /// recusado, nesta ordem (plano 30 §23.5): recomeçar INTEIRA ao 1.º recomeço (`47` procuras e `5,1 M` de
 /// trabalho num tique, a `50` agentes na lama — uma porta recomeça TODAS as procuras a meio daquela
@@ -421,7 +435,7 @@ pub fn step_in_turn(
     }
 
     // ── Avançar os pontos alcançados (Q5) — e os atalhos (W7) ─────────────────
-    let accept = (cfg.speed * dt).max(EPS);
+    let accept = (cfg.speed * dt).max(ALCANCE_DO_CANTO * cfg.radius).max(EPS);
     let mut crossed = None;
     let alcance = |rt: &AgentRuntime| {
         if rt.hop_at(rt.next).is_some() {

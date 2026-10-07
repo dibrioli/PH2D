@@ -275,3 +275,27 @@ Fora de ciclo, da abertura da linha:
 ✗ contexto relido por passo (media)         514 mil   alvo: <= 250 mil
 ✓ contexto no inicio da sessao               61 mil   alvo: <= 80 mil
 ```
+
+## §11 — A integração (2026-10-07, ordem do dono: *«integre sua linha ao main… confira se Motion nodes já entrou»*)
+
+- **Pré-condição:** a `line/motion-value` já estava no `main` (`211a4b541` = tip dela). Única linha
+  desta rodada ⇒ a ordem não se mede.
+- **Rebase** em `integ/PainterWatercolor-2026-10-07` sobre `main@211a4b541`, com `merge=text` nos
+  ficheiros da escada, da tripla, do `project_migrate.rs` e do `CLAUDE.md` enquanto durou (tirado no
+  fim). Sobreposição textual: só esses quatro ficheiros; o `project_migrate.rs` fundiu limpo.
+- ⚠️ **O `main` já estava em `185`, não em `184`** (o `184` do objecto vetorial e o `185` dos quadros da
+  `line/MiroClone`) — o §2/§10 acima envelheceu. Três conflitos de schema, resolvidos por estágio:
+  - commit do papel: `python3 scripts/schema-recount.py 186` (`183→184` ⇒ `185→186`);
+  - commit `vidro (1/3)`: `schema-recount.py 187` (`184→185` ⇒ `186→187`);
+  - commit do colapso (`fecho(auditoria)`): escada e tripla do `main` + **um** degrau `185 → 186`
+    (papel + vidro), escrito sobre `git show main:` — o resultado final é o que a linha queria, um
+    número acima.
+  O «um vNNN é recusado» da prosa foi corrigido à mão nos três (o script não o toca).
+- **`CLAUDE.md` §5.1:** a entrada do Painter vem da linha; a do Vector, do `main` («cada forma é um
+  objecto»).
+- **Prova do rebase** (`cmp.sh`, multiconjunto `+/-` por ficheiro, controlo positivo = pares
+  trocados diferem): **29 de 32** commits iguais ao original; os 3 diferentes diferem SÓ nas linhas
+  do degrau recontado.
+- **Árvore combinada:** clippy `-D warnings --all-targets` nas 7 crates da linha + `ph2d-host-desktop`
+  limpo; `cargo fmt --check` limpo; depois `foundational-integrate.sh` (check do workspace com
+  avisos negados + `nextest-impacted` contra o `main`) antes do `--ff-only`.

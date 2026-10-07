@@ -341,7 +341,7 @@ fn no_shell_gesture_zone_sits_on_a_board_bar_button() {
         "a régua cobre as barras e os painéis: {}",
         rects.len()
     );
-    let layout = t.hero.last_layout.clone().unwrap();
+    let layout = t.hero.last_layout.unwrap();
     for (it, r) in rects {
         for p in [
             (r.x + 1.0, r.y + 1.0),

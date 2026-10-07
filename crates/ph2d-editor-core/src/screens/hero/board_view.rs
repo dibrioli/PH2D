@@ -12,7 +12,7 @@ use ph2d_board_edit::{Down, Editor, Metrics, Mods, Pointer};
 use ph2d_board_model::{Area, Board, Rgba, Style};
 use ph2d_host::{Modifiers, PointerButton, PointerKind};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, Theme};
+use ph2d_tokens::{Spacing, Theme};
 
 /// Factor de zoom por linha de roda: o MESMO da câmara da cena (`input_dispatch::on_mouse_wheel`).
 const WHEEL_ZOOM_PER_LINE: f64 = 0.9; // LITERAL-PX-OK: factor por linha, espelho da roda da cena

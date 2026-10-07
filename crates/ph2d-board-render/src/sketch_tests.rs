@@ -2,7 +2,7 @@
 
 use super::*;
 use ph2d_board_model::{ElementId, FracKey, Shape};
-use ph2d_vector::{ParamCurve as _, Shape as _};
+use ph2d_vector::Shape as _;
 
 fn stroke(width: f64, pressure: bool) -> (Element, Ink) {
     let ink_color = Rgba([10, 10, 10, 255]);

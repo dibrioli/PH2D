@@ -3,7 +3,7 @@
 //! e a cor e a espessura da predefinição activa (o Miro edita-as com duplo-clique; aqui estão à
 //! vista) —, a barra de estilo de uma selecção de traços, e o botão «Rascunho ↔ Final».
 
-use super::{Item, btn_px, doc_color, gap, toolbar_rects};
+use super::{Item, btn_px, gap, toolbar_rects};
 use crate::icons::IconId;
 use crate::paint::{fill_rounded_rect, paint_icon as icon};
 use crate::widget::panel_chrome::HIGHLIGHTER_RGBA;
@@ -332,7 +332,9 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
     })
 }
 
-/// Um clique num controlo da caneta (ou do rascunho). `false` = não é daqui. `sketch` = o modo do
+/// Um clique num controlo da caneta (ou do rascunho). `false` = não é daqui. Escolher uma
+/// predefinição, uma cor ou uma espessura PEGA na caneta (com a borracha ou o laser na mão também):
+/// quem escolhe a tinta quer desenhar com ela. `sketch` = o modo do
 /// quadro (o botão sem selecção troca-o).
 pub(super) fn apply(
     ed: &mut Editor,

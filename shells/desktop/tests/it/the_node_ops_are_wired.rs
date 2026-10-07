@@ -510,9 +510,7 @@ fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
     // no paint, o gesto da shell via faixas invisíveis sobre a barra do quadro (report do dono).
     let flat: String = src.split_whitespace().collect::<Vec<_>>().join(" ");
     assert!(
-        flat.contains(
-            "let rulers_on = hero.rulers_live() && hero.grid.view.is_some();"
-        ),
+        flat.contains("let rulers_on = hero.rulers_live() && hero.grid.view.is_some();"),
         "a condição das réguas deixou de ser UMA — quem pinta e quem recua a área têm de ler a \
          mesma resposta"
     );

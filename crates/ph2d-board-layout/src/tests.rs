@@ -54,7 +54,15 @@ fn bold_is_a_real_weight_and_italic_a_skew() {
     rich.toggle(7..14, Mark::Bold);
     rich.toggle(15..22, Mark::Italic);
     let mut lcx = LayoutContext::new();
-    let l = shape(&mut ts, &mut lcx, rich.as_str(), rich.spans(), 20.0, 1000.0, false);
+    let l = shape(
+        &mut ts,
+        &mut lcx,
+        rich.as_str(),
+        rich.spans(),
+        20.0,
+        1000.0,
+        false,
+    );
     let mut seen = Vec::new();
     for line in l.lines() {
         for item in line.items() {
@@ -188,15 +196,24 @@ fn the_sketch_letters_are_the_hand_face_in_the_drawing_and_in_the_editor() {
     let mut lcx = LayoutContext::new();
     let plain_w = shape(&mut ts, &mut lcx, text.as_str(), &[], 20.0, 1000.0, false).width();
     let hand_w = shape(&mut ts, &mut lcx, text.as_str(), &[], 20.0, 1000.0, true).width();
-    assert!((plain_w - hand_w).abs() > 1.0, "a letra à mão mede o mesmo que a da interface: {plain_w} = {hand_w}");
+    assert!(
+        (plain_w - hand_w).abs() > 1.0,
+        "a letra à mão mede o mesmo que a da interface: {plain_w} = {hand_w}"
+    );
     let mut c = TextCache::default();
     c.get_rich(&mut ts, (1, 1), &text, 20.0, 1000.0, false);
     let n = c.shaped();
     c.get_rich(&mut ts, (1, 1), &text, 20.0, 1000.0, false);
     assert_eq!(c.shaped(), n, "sem mudança, sem remoldar");
-    let w = c.get_rich(&mut ts, (1, 1), &text, 20.0, 1000.0, true).width();
+    let w = c
+        .get_rich(&mut ts, (1, 1), &text, 20.0, 1000.0, true)
+        .width();
     assert_eq!(c.shaped(), n + 1, "trocar para rascunho remolda");
     assert_eq!(w, hand_w);
     let mut e = TextEdit::new(&text, 20.0, 1000.0).hand(true);
-    assert_eq!(e.layout(&mut ts).width(), hand_w, "o editor mede na letra do desenho");
+    assert_eq!(
+        e.layout(&mut ts).width(),
+        hand_w,
+        "o editor mede na letra do desenho"
+    );
 }

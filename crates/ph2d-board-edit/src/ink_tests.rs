@@ -242,3 +242,37 @@ fn the_eraser_ring_follows_the_pointer_only_with_an_eraser_in_hand() {
         Some([30.0, 40.0])
     );
 }
+
+/// A borracha de PRECISÃO a passar ENTRE dois pontos afastados de um traço (uma recta desenhada
+/// depressa tem poucos pontos) corta-o na mesma: o traço subdivide-se antes de cortar.
+#[test]
+fn the_precision_eraser_cuts_a_sparse_stroke_between_its_points() {
+    let mut w = world();
+    w.ed.tool = Tool::Pen(Pen::Pen);
+    w.stroke(&[[0.0, 0.0], [200.0, 0.0]]);
+    w.ed.tool = Tool::Eraser { precise: true };
+    w.stroke(&[[100.0, -40.0], [100.0, 40.0]]);
+    assert_eq!(
+        w.inks().len(),
+        2,
+        "a recta de dois pontos partiu-se em dois"
+    );
+}
+
+/// A letra à mão decide-se numa porta só (`hand_lettered`, que o desenho e o editor de texto leem):
+/// formas e setas em rascunho sim; em final não; uma nota nunca, mesmo marcada.
+#[test]
+fn only_sketched_shapes_and_arrows_are_hand_lettered() {
+    let mut w = world();
+    let r = w.rect([0.0, 0.0, 100.0, 60.0]);
+    assert!(!crate::hand_lettered(w.el(r)));
+    w.ed.select(&w.doc, []);
+    w.ed.toggle_sketch(&mut w.doc, &mut w.h, false);
+    assert!(crate::hand_lettered(w.el(r)));
+    w.ed.tool = Tool::Shape(ShapeType::Sticky);
+    w.click([400.0, 0.0], NONE);
+    let note = *w.ed.selection().iter().next().unwrap();
+    let mut el = w.el(note).clone();
+    el.style_mut().sketch = true;
+    assert!(!crate::hand_lettered(&el), "a nota é papel");
+}

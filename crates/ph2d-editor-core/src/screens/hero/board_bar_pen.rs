@@ -46,13 +46,12 @@ const ICON_PRECISE_DOT: f32 = 0.12; // LITERAL-PX-OK: raio do ponto
 const ICON_WIDTH_RANGE: [f32; 2] = [0.08, 0.6]; // LITERAL-PX-OK: glifo das espessuras
 /// A linha ondulada do botão do rascunho: os pontos de duas cúbicas, em fracções do miolo `(x, y)`.
 const ICON_WAVE: [[f64; 2]; 7] = [
-    // LITERAL-PX-OK: desenho do glifo (duas ondas a ¼ da altura do meio)
     [0.0, 0.5],
-    [1.0 / 6.0, 0.25],
-    [1.0 / 3.0, 0.75],
+    [1.0 / 6.0, 0.25], // LITERAL-PX-OK: desenho do glifo (onda a ¼ da altura do meio)
+    [1.0 / 3.0, 0.75], // LITERAL-PX-OK: desenho do glifo
     [0.5, 0.5],
-    [2.0 / 3.0, 0.25],
-    [5.0 / 6.0, 0.75],
+    [2.0 / 3.0, 0.25], // LITERAL-PX-OK: desenho do glifo
+    [5.0 / 6.0, 0.75], // LITERAL-PX-OK: desenho do glifo
     [1.0, 0.5],
 ];
 /// A tolerância de achatar os círculos dos glifos (px).

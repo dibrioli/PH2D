@@ -52,14 +52,6 @@ impl TextEdit {
     /// Abre `text` para edição com tudo seleccionado (escrever substitui; uma seta colapsa). Molda
     /// no primeiro uso — quem abre (um botão da barra) pode não ter o moldador à mão.
     #[must_use]
-    /// Na letra à mão (`true`) — a de uma forma em rascunho.
-    #[must_use]
-    pub fn hand(mut self, hand: bool) -> Self {
-        self.hand = hand;
-        self.dirty = true;
-        self
-    }
-
     pub fn new(text: &RichText, font_size: f32, max_width: f32) -> Self {
         Self {
             rich: text.clone(),
@@ -73,6 +65,14 @@ impl TextEdit {
             all: true,
             hand: false,
         }
+    }
+
+    /// Na letra à mão (`true`) — a de uma forma em rascunho.
+    #[must_use]
+    pub fn hand(mut self, hand: bool) -> Self {
+        self.hand = hand;
+        self.dirty = true;
+        self
     }
 
     /// Molda o que ficou por moldar (e resolve o «tudo seleccionado» de quem abriu).

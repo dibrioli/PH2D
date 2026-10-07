@@ -173,6 +173,9 @@ pub mod paint_stack;
 /// código DESTA família, e o sítio dele é aqui.
 #[cfg(test)]
 mod pattern_seam_probe;
+#[cfg(test)]
+#[path = "sonda_tampa_redonda_tests.rs"]
+mod sonda_tampa_redonda_tests;
 pub mod pick;
 pub mod shape_live;
 pub mod smoke_appearance;

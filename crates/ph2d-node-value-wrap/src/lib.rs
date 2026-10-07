@@ -288,12 +288,14 @@ impl NodeOp for ValueWrap {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
         };
-        let n = input.len();
-        // Unary map — the field's length is preserved exactly.
-        let out: Vec<f32> = input
-            .iter()
-            .enumerate()
-            .map(|(i, &v)| wrap_one(v, at(&lo_field, i, lo), at(&hi_field, i, hi), mode))
+        // Unary map — the field's length is preserved, and a length-1 input BROADCASTS over a
+        // per-element range (the house 1→N rule; doc 110 §14.1 (4) found it dropping the range).
+        let n = match input.len() {
+            1 => lo_field.len().max(hi_field.len()).max(1),
+            k => k,
+        };
+        let out: Vec<f32> = (0..n)
+            .map(|i| wrap_one(at(&input, i, 0.0), at(&lo_field, i, lo), at(&hi_field, i, hi), mode))
             .collect();
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(out)));
     }

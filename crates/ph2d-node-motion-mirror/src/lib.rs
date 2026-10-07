@@ -351,7 +351,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_gpu_kernel(MANIFEST.id, kernel::GPU_KERNEL);
     reg.register_stream_op(
         MANIFEST.id,
-        ph2d_nodegraph::gpu::StreamOp::SourceRows { port: 0 },
+        ph2d_nodegraph::gpu::StreamOp::SourceRows {
+        port: 0,
+        fired: None,
+        not_inherited: &[],
+    },
     );
     // A linha de espelho é o centroide da ENTRADA — as duas somas da porta do pivô.
     reg.register_reduces(MANIFEST.id, ph2d_nodegraph::pivot::CENTROID_REDUCES);

@@ -48,6 +48,14 @@ impl GpuCook {
         }
     }
 
+    /// Os nomes das colunas que `node` levou no último cozimento (com o retain ligado) — o
+    /// CONJUNTO, que é o que um gate de forma compara (uma coluna a mais também diverge).
+    pub fn debug_column_names(&self, node: NodeId) -> Option<Vec<String>> {
+        self.debug_streams
+            .get(&node)
+            .map(|s| s.cols.keys().cloned().collect())
+    }
+
     /// Read `node`'s scalar `column` back — `None` unless
     /// [`Self::retain_streams_for_debug`] was on for the last cook and that node
     /// staged and carried the column. This is the VALUE-stream reader.

@@ -6,8 +6,8 @@
 
 use crate::NodeRegistry;
 use ph2d_nodegraph::gpu::{
-    DerivedUniform, GpuAlgorithm, GpuKernel, GridSpec, KernelResolver, LutSpec, ReduceSpec,
-    StateSelect, StreamOp,
+    DerivedUniform, GpuAlgorithm, GpuKernel, GridSpec, KernelResolver, LutSpec, ProjectedPort,
+    ReduceSpec, StateSelect, StreamOp,
 };
 use ph2d_nodegraph::node::NodeTypeId;
 
@@ -88,6 +88,11 @@ impl NodeRegistry {
     pub fn register_derived_uniforms(&mut self, id: NodeTypeId, specs: &'static [DerivedUniform]) {
         self.derived_uniforms.insert(id, specs);
     }
+
+    /// Declara as saídas ≠ 0 projectadas do estágio ([`ProjectedPort`], doc 110 §14.1 (1)).
+    pub fn register_projected_ports(&mut self, id: NodeTypeId, ports: &'static [ProjectedPort]) {
+        self.projected_ports.insert(id, ports);
+    }
 }
 
 impl KernelResolver for NodeRegistry {
@@ -129,5 +134,9 @@ impl KernelResolver for NodeRegistry {
 
     fn derived_uniforms(&self, ty: NodeTypeId) -> &'static [DerivedUniform] {
         self.derived_uniforms.get(&ty).copied().unwrap_or(&[])
+    }
+
+    fn projected_ports(&self, ty: NodeTypeId) -> &'static [ProjectedPort] {
+        self.projected_ports.get(&ty).copied().unwrap_or(&[])
     }
 }

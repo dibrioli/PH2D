@@ -52,6 +52,16 @@ pub fn sem_comentarios(src: &str) -> String {
     crate::source::strip_comments(src).into_iter().collect()
 }
 
+/// O fonte de PRODUTO: [`sem_comentarios`] e, além disso, todo item sob `#[cfg(test)]` escrito
+/// dentro do ficheiro apagado — para quem pergunta *«o produto LÊ isto?»*. As linhas ficam onde
+/// estavam. (O ficheiro inteiro de teste é a pergunta do [`crate::cfg_test`], feita ao pai.)
+#[must_use]
+pub fn so_codigo_de_produto(src: &str) -> String {
+    let mut code = crate::source::strip_comments(src);
+    crate::source::blank_cfg_test_items(&mut code);
+    code.into_iter().collect()
+}
+
 /// Por que porta o literal sai da crate.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Publicacao {

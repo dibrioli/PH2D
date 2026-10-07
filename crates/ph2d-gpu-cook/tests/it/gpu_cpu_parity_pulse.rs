@@ -100,6 +100,18 @@ fn paridade(
     monta: impl Fn(&mut Graph) -> NodeId,
     coluna: &str,
 ) -> Vec<Vec<f32>> {
+    paridade_por(gpu, reg, rotulo, monta, coluna, VOLTAS)
+}
+
+/// A [`paridade`] com o número de voltas à escolha — o `carry` só dispara depois de um CICLO.
+fn paridade_por(
+    gpu: &GpuContext,
+    reg: &NodeRegistry,
+    rotulo: &str,
+    monta: impl Fn(&mut Graph) -> NodeId,
+    coluna: &str,
+    voltas: usize,
+) -> Vec<Vec<f32>> {
     let mut g = Graph::new();
     let sink = monta(&mut g);
     g.validate(reg).expect("a cadeia é bem tipada");
@@ -114,7 +126,7 @@ fn paridade(
     let mut gc = GpuCook::new();
     gc.retain_streams_for_debug(true);
     let mut cpu_todas = Vec::new();
-    for volta in 0..VOLTAS {
+    for volta in 0..voltas {
         let t = volta as f64 * DT;
         let cpu = cook.cook(&g, reg, sink, t).expect("cpu cook");
         let cpu_col: Vec<f32> = match cpu[0].as_stream().get(coluna) {
@@ -563,44 +575,92 @@ fn parity_pulse_counter() {
     }
 }
 
-/// ⛔⛔ **E COM O CARRY LIGADO ELE RECUA** — a porta ≠ 0, que é a metade (b) da W1.
-///
-/// ⚠️ **Um estágio de GPU produz UM buffer** (`GpuStage` guarda um `node`, nunca um `(nó, porta)`),
-/// e sem esta recusa um consumidor do `carry` receberia a porta **0**: a corrente errada, em
-/// silêncio. A recusa já existia no planeador e **nomeava este nó**; o que faltava era o kernel
-/// para ela proteger — logo é agora que ela passa a ter efeito, e é agora que ela precisa de gate.
+/// ⭐⭐ **E COM O CARRY LIGADO ELE FICA NO DISPOSITIVO** (doc 110 §14.1 (1)) — o `carry` é uma
+/// porta PROJECTADA do estágio: o kernel escreve-o e o sequenciador entrega-o na porta 1. Até
+/// 07/10 este gate afirmava a RECUSA (um estágio produzia um buffer só), e era ela que deixava a
+/// cena `=117` do ciclo 6 meio na CPU.
 #[test]
-fn a_counter_with_its_carry_wired_is_refused_by_the_planner() {
+fn a_counter_with_its_carry_wired_stays_on_the_device() {
     let reg = registry();
-    let monta = |carry: bool| {
-        let mut g = Graph::new();
-        let grid = g.add_node("motion.grid");
-        let bt = g.add_node("pulse.beat");
-        liga(&mut g, (grid, 0), (bt, 0), false);
-        liga(&mut g, (bt, 0), (bt, 1), true);
-        let ct = g.add_node("pulse.counter");
-        liga(&mut g, (bt, 0), (ct, 0), false);
-        liga(&mut g, (ct, 0), (ct, 1), true);
-        if carry {
-            let ct2 = g.add_node("pulse.counter");
-            // A porta 1 do PRIMEIRO contador -- o divisor de relógio clássico.
-            liga(&mut g, (ct, 1), (ct2, 0), false);
-            liga(&mut g, (ct2, 0), (ct2, 1), true);
-            let s = ct2;
-            return (g, s);
-        }
-        (g, ct)
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let bt = g.add_node("pulse.beat");
+    liga(&mut g, (grid, 0), (bt, 0), false);
+    liga(&mut g, (bt, 0), (bt, 1), true);
+    let ct = g.add_node("pulse.counter");
+    liga(&mut g, (bt, 0), (ct, 0), false);
+    liga(&mut g, (ct, 0), (ct, 1), true);
+    // A porta 1 do PRIMEIRO contador -- o divisor de relógio clássico.
+    let ct2 = g.add_node("pulse.counter");
+    liga(&mut g, (ct, 1), (ct2, 0), false);
+    liga(&mut g, (ct2, 0), (ct2, 1), true);
+    let plano = plan(&g, &reg, &reg, ct2);
+    assert!(plano.is_fully_gpu(), "fronteiras: {:?}", plano.boundaries);
+    let st = plano
+        .stages
+        .iter()
+        .find(|s| s.node == ct2)
+        .expect("ct2 é estágio");
+    assert_eq!(
+        st.inputs.first(),
+        Some(&ph2d_gpu_cook::GpuSource::StagePort(ct, 1)),
+        "o segundo contador lê o CARRY -- um `Stage(ct)` seria o valor, em silêncio"
+    );
+}
+
+/// ⭐⭐⭐ **O CARRY sai da placa como da CPU**, nos três modos, e com um RESET ligado: a lei
+/// (`carry_fired`) é *«o ciclo do tique cru mudou, e um reset nunca acende»*, e uma fixtura sem
+/// reset deixaria a segunda metade sem prova.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn parity_pulse_counter_carry() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
     };
-    let (g, sink) = monta(false);
-    assert!(
-        plan(&g, &reg, &reg, sink).is_fully_gpu(),
-        "com o carry solto a cadeia e' do dispositivo"
-    );
-    let (g, sink) = monta(true);
-    assert!(
-        !plan(&g, &reg, &reg, sink).is_fully_gpu(),
-        "com o carry LIGADO o planeador tem de recuar -- um estagio produz UM buffer"
-    );
+    let reg = registry();
+    for (modo, nome) in [(0.0, "Wrap"), (1.0, "Clamp"), (2.0, "Zigzag")] {
+        let voltas = paridade_por(
+            &gpu,
+            &reg,
+            &format!("pulse.counter.carry({nome})"),
+            |g| {
+                let src = fonte(g);
+                let cmp = g.add_node("pulse.compare");
+                g.set_param(cmp, "rise", 0.4321);
+                g.set_param(cmp, "fall", 0.1777);
+                g.set_param(cmp, "edge", 2.0);
+                liga(g, (src, 0), (cmp, 0), false);
+                liga(g, (cmp, 0), (cmp, 1), true);
+                // O reset: um segundo comparador, mais alto — dispara raramente, e às vezes
+                // no MESMO tique de uma volta.
+                let rst = g.add_node("pulse.compare");
+                g.set_param(rst, "rise", 0.93);
+                g.set_param(rst, "fall", 0.5);
+                liga(g, (src, 0), (rst, 0), false);
+                liga(g, (rst, 0), (rst, 1), true);
+                let ct = g.add_node("pulse.counter");
+                g.set_param(ct, "count_max", 2.0);
+                g.set_param(ct, "mode", modo);
+                liga(g, (cmp, 0), (ct, 0), false);
+                liga(g, (ct, 0), (ct, 1), true);
+                liga(g, (rst, 0), (ct, 2), false);
+                let sig = g.add_node("pulse.signal");
+                liga(g, (ct, 1), (sig, 0), false);
+                sig
+            },
+            "pulse",
+            120,
+        );
+        if nome == "Clamp" {
+            assert!(
+                voltas.iter().flatten().all(|&x| x == 0.0),
+                "o Clamp nao tem ciclo -- o carry nunca acende"
+            );
+        } else {
+            nao_e_vazio(&format!("carry({nome})"), &voltas);
+        }
+    }
 }
 
 /// ⭐⭐⭐ **O METRÓNOMO — e com ele a cadeia que a W2 mediu passa a ser do dispositivo.**
@@ -636,24 +696,15 @@ fn parity_pulse_beat() {
     nao_e_vazio("pulse.beat", &voltas);
 }
 
-/// ⛔⛔⛔ **A CADEIA QUE ABRIU A W2 CONTINUA BLOQUEADA — e por OUTRA coisa. Este gate é o registo.**
+/// ⭐⭐⭐ **A CADEIA QUE ABRIU A W2 É DO DISPOSITIVO** (doc 110 §14.1 (7), 07/10).
 ///
 /// A medição que abriu a wave mediu `grid → beat → sim.spawn(pulse) → output` com a fronteira em
-/// **`sim.spawn:0`**: a simulação inteira na CPU por causa do metrónomo. Com os nove `pulse.*` no
-/// dispositivo, o metrónomo deixou de ser a causa — **e a cadeia continua a recuar**, porque o
-/// `sim.spawn` declara um `ColumnAccess::RefuseIfPresent` sobre a coluna `pulse` da porta 1.
-///
-/// ⚠️⚠️ **A justificação ESCRITA daquela recusa era *«a família `pulse.*` não tem kernel nenhum,
-/// logo a cadeia que alimenta esta porta já é uma fronteira»* — e esta wave dissolveu-a.** O que
-/// segura a recusa hoje é a OUTRA perna, que estava no mesmo comentário: um nascimento por pulso
-/// nasce **na linha que disparou**, e a contagem disso é dado — mas o `CountLawCtx` proíbe por
-/// escrito olhar para o CONTEÚDO de uma entrada (*«a law may only ask how WIDE its inputs are»*),
-/// porque isso seria um readback. ⇒ **é uma wave de substrato**, não um kernel que falte.
-///
-/// ⚠️ **Este gate reprova no dia em que alguém curar o `sim.spawn`** — e é isso que ele existe para
-/// fazer: obrigar quem o curar a vir aqui apagar a nota que deixou de ser verdade.
+/// **`sim.spawn:0`**. A W2 tirou o metrónomo da causa (os nove `pulse.*` com kernel); o que ficou
+/// foi o próprio spawn, cuja contagem de nascimento por pulso é DADO (as linhas que dispararam).
+/// ⇒ a cura foi a da casa para um dado: a MESMA varredura e a mesma leitura de 8 bytes do
+/// `Compact` (`FiredBirth`), e a lei de contagem continua a perguntar só LARGURAS.
 #[test]
-fn the_chain_that_opened_the_wave_is_blocked_by_the_spawn_and_no_longer_by_the_metronome() {
+fn the_chain_that_opened_the_wave_is_now_claimed_by_the_device() {
     let mut reg = registry();
     ph2d_node_motion_output::register(&mut reg).unwrap();
     ph2d_node_sim_spawn::register(&mut reg).unwrap();
@@ -672,8 +723,7 @@ fn the_chain_that_opened_the_wave_is_blocked_by_the_spawn_and_no_longer_by_the_m
         liga(&mut g, (sp, 0), (out, 0), false);
         (g, out)
     };
-    // ⚠️ **O CONTROLO vem primeiro, e é ele que nomeia o culpado.** Sem a porta de pulso fiada o
-    // `sim.spawn` É do dispositivo — logo o que recua não é o spawn nem o metrónomo: é a PORTA.
+    // Sem a porta de pulso: o caminho de sempre (só a taxa).
     let (g, out) = monta(false);
     let plano = plan(&g, &reg, &reg, out);
     assert!(
@@ -686,9 +736,9 @@ fn the_chain_that_opened_the_wave_is_blocked_by_the_spawn_and_no_longer_by_the_m
     let (g, out) = monta(true);
     let plano = plan(&g, &reg, &reg, out);
     assert!(
-        !plano.is_fully_gpu(),
-        "o `sim.spawn` RECUSA a porta `pulse` (nascimento na linha que disparou) -- se isto passou \
-         a ser verdade, a recusa foi curada e a nota deste gate tem de ser reescrita"
+        plano.is_fully_gpu(),
+        "com o pulso ligado o `sim.spawn` fica no dispositivo: {:?}",
+        plano.boundaries
     );
 
     // ⭐ **E o metrónomo, esse, já é do dispositivo** — a metade que esta wave comprou, afirmada

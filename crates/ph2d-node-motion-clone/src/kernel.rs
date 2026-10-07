@@ -204,7 +204,11 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
 /// `CLAUDE.md` §6 fica intacto.
 pub(crate) fn regista(reg: &mut NodeRegistry) {
     reg.register_gpu_kernel(super::MANIFEST.id, GPU_KERNEL);
-    reg.register_stream_op(super::MANIFEST.id, StreamOp::SourceRows { port: 0 });
+    reg.register_stream_op(super::MANIFEST.id, StreamOp::SourceRows {
+        port: 0,
+        fired: None,
+        not_inherited: &[],
+    });
     reg.register_derived_uniforms(super::MANIFEST.id, DERIVADOS);
 }
 

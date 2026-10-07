@@ -537,7 +537,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // the template's columns. NOT `register_dense_window`: a spawn's output ids
     // are this tick's window only — downstream state pairing is the zone's job.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
-    reg.register_stream_op(MANIFEST.id, StreamOp::SourceRows { port: 0 });
+    reg.register_stream_op(
+        MANIFEST.id,
+        StreamOp::SourceRows {
+            port: 0,
+            fired: Some(kernel::NASCIMENTO_POR_PULSO),
+            not_inherited: &["id", "age"],
+        },
+    );
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

@@ -6,14 +6,9 @@
 //! The per-element MAP is the [`GpuKernel`]'s job and stays in `encode.rs`; what
 //! lives here is everything whose OUTPUT is not shaped like its input:
 //!
-//! - [`GpuCook::encode_compact`] — order-preserving filter: a predicate kernel
-//!   (a plain [`GpuKernel`] writing [`KEEP_FLAG_COL`]) → exclusive scan (the
-//!   counting-sort's own [`Scan`]) → survivors scatter their row → every column
-//!   gathered dense. **The one readback on a frame path**: the survivor count is
-//!   8 bytes, read at the compaction seam by splitting the submit — the bounded
-//!   kind (`debug_read`'s measured rule), constant in N. Order is preserved
-//!   because the CPU preserves it on purpose (`sim.lifetime`: reshuffling per
-//!   tick would flicker every index-based consumer).
+//! - [`GpuCook::encode_compact`] — order-preserving filter (predicate → scan →
+//!   scatter → gather), with the ONE bounded readback on a frame path (8 bytes);
+//!   its complement (the removed rows) comes from the same scan ([`complemento`]).
 //! - [`GpuCook::encode_source_gather`] — a [`StreamOp::SourceRows`] kernel wrote
 //!   [`ROWS_COL`] (+ its own columns); the template's remaining columns are
 //!   gathered at those rows, so a newborn inherits whatever the template
@@ -32,13 +27,21 @@ use crate::{
 };
 use ph2d_gpu::GpuContext;
 use ph2d_nodegraph::gpu::{
-    ConcatFill, DerivedUniform, GpuKernel, KEEP_FLAG_COL, ROWS_COL, ReduceSpec, SourceWindow,
+    DerivedUniform, GpuKernel, KEEP_FLAG_COL, ROWS_COL, ReduceSpec, SourceWindow,
 };
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::NodeManifest;
-use ph2d_nodegraph::port::Dim;
 use std::collections::BTreeMap;
 
+#[path = "stream_op_carry.rs"]
+mod carry;
+#[path = "stream_op_complemento.rs"]
+mod complemento;
+#[path = "stream_op_concat.rs"]
+mod concat;
+#[path = "stream_op_disparo.rs"]
+mod disparo;
+pub(crate) use carry::Carregado;
 #[path = "stream_op_project.rs"]
 mod project;
 
@@ -112,6 +115,10 @@ pub(crate) struct StreamOpPipes {
     /// fonte que não a tem (a junção de um `Carry`, ciclo 7). Uniform próprio: ele leva um
     /// `vec4`, que o `U` dos outros não tem.
     fill: wgpu::ComputePipeline,
+    /// O *scatter* das linhas REMOVIDAS ([`complemento`]).
+    complement_rows: wgpu::ComputePipeline,
+    /// `dst[i] = f32(i)` — a linha original de cada disparo ([`disparo`]).
+    iota: wgpu::ComputePipeline,
 }
 
 /// A região que um [`StreamOpPipes::fill`] escreve.
@@ -209,6 +216,12 @@ impl StreamOpPipes {
             scan: Scan::new(gpu),
             convert: create_pipeline(gpu, &convert, "ph2d-stream-op convert"),
             rows: create_pipeline(gpu, &rows, "ph2d-stream-op rows"),
+            iota: create_pipeline(gpu, &disparo::iota_module(), "ph2d-stream-op iota"),
+            complement_rows: create_pipeline(
+                gpu,
+                &complemento::rows_module(),
+                "ph2d-stream-op complement rows",
+            ),
             gather_u32: create_pipeline(
                 gpu,
                 &gather_module("u32", "rows[i]"),
@@ -347,11 +360,12 @@ impl GpuCook {
         inputs: &[GpuStream],
         port: usize,
         extras: PredicateExtras<'_>,
-    ) -> Result<GpuStream, GpuCookError> {
+        complement: &[ph2d_nodegraph::gpu::ComplementPort],
+    ) -> Result<(GpuStream, Vec<(u16, GpuStream)>), GpuCookError> {
         let src = inputs.get(port).cloned().unwrap_or_default();
         let n = src.count;
         if n == 0 {
-            return Ok(GpuStream::default());
+            return Ok((GpuStream::default(), Vec::new()));
         }
         // The same refusals the main path applies before any dispatch — the
         // predicate is a dispatch like any other, and skipping them here would
@@ -475,8 +489,7 @@ impl GpuCook {
                 }),
         );
         gpu.queue.submit(Some(done.finish()));
-        // `hold`/`scratch`/locals may drop now — wgpu keeps submitted resources
-        // alive until the device is done with them.
+        // wgpu keeps submitted resources alive until the device is done with them.
         drop(hold);
         drop(scratch);
         let slice = staging.slice(..);
@@ -497,8 +510,15 @@ impl GpuCook {
         };
         staging.unmap();
         let total = scan_last + u32::from(flag_last >= 0.5);
+        let removidas = complemento::Varredura {
+            src: &src,
+            flags: &flags,
+            scan: &scan_buf,
+            total,
+        };
+        let removidas = self.encode_complement(gpu, encoder, removidas, complement);
         if total == 0 {
-            return Ok(GpuStream::default());
+            return Ok((GpuStream::default(), removidas));
         }
 
         // 6. Gather EVERY column of the source at the dense rows — the whole
@@ -534,14 +554,14 @@ impl GpuCook {
         }
         self.stream_op_hold.append(&mut hold);
         self.stream_op_hold_bufs.push(rows_buf);
-        Ok(out)
+        Ok((out, removidas))
     }
 
     /// Gather the template's remaining columns at the [`ROWS_COL`] a
     /// [`ph2d_nodegraph::gpu::StreamOp::SourceRows`] kernel wrote (ADR-0136):
     /// a newborn inherits every template column the kernel did not write itself
-    /// (the CPU's `newborns` copies all-but-`id`). No readback — the count was
-    /// the count law's.
+    /// (the CPU's `newborns` copies all-but-`id`), minus the ones the op says a
+    /// newborn does NOT inherit (`skip`). No readback — the count was the count law's.
     pub(crate) fn encode_source_gather(
         &mut self,
         gpu: &GpuContext,
@@ -549,6 +569,7 @@ impl GpuCook {
         out: GpuStream,
         template: Option<&GpuStream>,
         count: u32,
+        skip: &[&str],
     ) -> GpuStream {
         let Some(rows) = out.cols.get(ROWS_COL).map(|c| c.buffer.clone()) else {
             debug_assert!(false, "SourceRows kernel wrote no {ROWS_COL}");
@@ -563,7 +584,7 @@ impl GpuCook {
         let gathered: Vec<(String, GpuColumn)> = tpl
             .cols
             .iter()
-            .filter(|(name, _)| !out.cols.contains_key(*name))
+            .filter(|(name, _)| !out.cols.contains_key(*name) && !skip.contains(&name.as_str()))
             .map(|(name, col)| {
                 let stride = stream::element_stride(col.dim);
                 let dst = self.pool.acquire(gpu, u64::from(count) * stride);
@@ -596,92 +617,6 @@ impl GpuCook {
         }
         for (name, col) in gathered {
             out.cols.insert(name, col);
-        }
-        self.stream_op_hold.append(&mut hold);
-        out
-    }
-
-    /// `motion.combine` (ADR-0136): the listed ports laid end to end — column
-    /// union, first-seen dim as the prototype, zeros where an input lacks the
-    /// column **or carries it at another dim** (the CPU's variant-match rule).
-    /// Pure copies and clears; the count is a host-side sum.
-    pub(crate) fn encode_concat(
-        &mut self,
-        gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
-        ports: &[usize],
-        inputs: &[GpuStream],
-    ) -> GpuStream {
-        let fontes: Vec<&GpuStream> = ports.iter().filter_map(|p| inputs.get(*p)).collect();
-        self.encode_join(gpu, encoder, &fontes, &[])
-    }
-
-    /// **A junção** — as fontes, pela ordem, ponta a ponta: a união das colunas, a dimensão
-    /// da PRIMEIRA fonte não-vazia que a tem como protótipo, e onde uma fonte não a tem (ou a
-    /// tem noutra dimensão) a IDENTIDADE que as `fills` dão — zeros quando nenhuma a nomeia
-    /// (o `motion.combine`), o `default_for` da CPU num `Carry` (ciclo 7: um `size`/`tint` a
-    /// zero apagava o eco). Fontes vazias saltam-se (a regra de snapshot da CPU).
-    pub(crate) fn encode_join(
-        &mut self,
-        gpu: &GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
-        fontes: &[&GpuStream],
-        fills: &[ConcatFill],
-    ) -> GpuStream {
-        let live: Vec<&GpuStream> = fontes.iter().copied().filter(|s| s.count > 0).collect();
-        let total64: u64 = live.iter().map(|s| u64::from(s.count)).sum();
-        let total = total64.min(u64::from(u32::MAX)) as u32;
-        if total == 0 {
-            return GpuStream::default();
-        }
-        // Ordered column union: the prototype dim is the FIRST live input
-        // carrying the name (the CPU's `find_map` over snaps).
-        let mut protos: Vec<(String, Dim)> = Vec::new();
-        for s in &live {
-            for (name, col) in &s.cols {
-                if !protos.iter().any(|(n, _)| n == name) {
-                    protos.push((name.clone(), col.dim));
-                }
-            }
-        }
-        let mut out = GpuStream {
-            count: total,
-            cols: BTreeMap::new(),
-        };
-        let mut hold: Vec<wgpu::Buffer> = Vec::new();
-        for (name, dim) in protos {
-            let stride = stream::element_stride(dim);
-            let dst = self.pool.acquire(gpu, u64::from(total) * stride);
-            let identidade = ConcatFill::of(fills, &name, dim);
-            let mut off: u64 = 0;
-            for s in &live {
-                let bytes = u64::from(s.count) * stride;
-                match s.cols.get(&name) {
-                    Some(c) if c.dim == dim => {
-                        encoder.copy_buffer_to_buffer(&c.buffer, 0, &dst, off, bytes);
-                    }
-                    _ if identidade == [0.0; 4] => encoder.clear_buffer(&dst, off, Some(bytes)),
-                    _ => {
-                        let pipes = self
-                            .stream_op_pipes
-                            .get_or_insert_with(|| StreamOpPipes::new(gpu));
-                        pipes.fill(
-                            gpu,
-                            encoder,
-                            FillRegion {
-                                dst: &dst,
-                                n: s.count,
-                                words: (stride / 4) as u32,
-                                first: (off / stride) as u32,
-                                value: identidade,
-                            },
-                            &mut hold,
-                        );
-                    }
-                }
-                off += bytes;
-            }
-            out.cols.insert(name, GpuColumn { buffer: dst, dim });
         }
         self.stream_op_hold.append(&mut hold);
         out

@@ -138,6 +138,7 @@ pub struct NodeRegistry {
     luts: BTreeMap<NodeTypeId, &'static [LutSpec]>,
     /// Ciclo 7 — os params cujo slot do uniform é derivado no hospedeiro ([`DerivedUniform`]).
     derived_uniforms: BTreeMap<NodeTypeId, &'static [DerivedUniform]>,
+    projected_ports: BTreeMap<NodeTypeId, &'static [ph2d_nodegraph::gpu::ProjectedPort]>,
     /// **Os tipos que NÃO são para o artista** (doc 89, folha 17) — fixturas de teste e
     /// templates de fan-out que existem no registo porque o motor precisa deles, e que a
     /// paleta não deve oferecer.

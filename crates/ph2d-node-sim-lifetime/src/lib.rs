@@ -37,7 +37,9 @@ use ph2d_node_registry::{
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, KEEP_FLAG_COL, StreamOp};
+use ph2d_nodegraph::gpu::{
+    ColumnAccess, ColumnBinding, Complement, ComplementPort, GpuKernel, KEEP_FLAG_COL, StreamOp,
+};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -336,6 +338,17 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         StreamOp::Compact {
             port: 0,
             predicate: GPU_PREDICATE,
+            // `died` e `pulse` são as linhas que o predicado tirou (o `gone` do `reap`).
+            complement: &[
+                ComplementPort {
+                    port: 1,
+                    carries: Complement::Rows,
+                },
+                ComplementPort {
+                    port: 2,
+                    carries: Complement::Event(PULSE_COL),
+                },
+            ],
         },
     );
     reg.register_ui(

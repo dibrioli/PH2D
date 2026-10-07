@@ -40,7 +40,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, ProjectedPort};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -61,6 +61,14 @@ const VALUE_COL: &str = "v";
 const TICK_COL: &str = "count_tick";
 /// Last tick's pulse value, carried on the `pre` self-loop for edge detection.
 const PREV_COL: &str = "count_prev";
+/// O carry, como o kernel o escreve — sai da porta 0 para a porta `carry` como [`PULSE_COL`].
+const CARRY_COL: &str = "cp_carry";
+/// A porta `carry` (1) é uma projecção do estágio (doc 110 §14.1 (1)).
+static PORTAS_PROJECTADAS: &[ProjectedPort] = &[ProjectedPort {
+    port: 1,
+    column: CARRY_COL,
+    as_name: PULSE_COL,
+}];
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -135,12 +143,9 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 
 /// ⭐ **O KERNEL** (ADR-0126) — a porta WGSL do [`step`], para a saída **`out`**.
 ///
-/// ⚠️⚠️ **Ele não calcula o CARRY, e isso não é uma lacuna — é a fronteira do substrato.** Um
-/// estágio de GPU produz **um** buffer: o `GpuStage` guarda um `node`, nunca um `(nó, porta)`, e o
-/// planeador **recusa** qualquer nó cuja porta ≠ 0 esteja ligada (a metade (b) da W1, doc 102 §W1).
-/// Logo: carry ligado ⇒ o nó recua para a CPU inteiro, e a resposta continua certa; carry solto ⇒
-/// o dispositivo reivindica-o. *A recusa já existia e nomeava este nó pelo nome — o que não havia
-/// era o kernel para ela proteger.*
+/// ⭐ **E calcula o CARRY** (doc 110 §14.1 (1)): ele escreve [`CARRY_COL`], que o sequenciador
+/// tira da porta 0 e entrega na porta `carry` como `pulse` ([`PORTAS_PROJECTADAS`]). Até 07/10 a
+/// porta ligada derrubava o nó inteiro para a CPU — e com ele a cena `=117` do ciclo 6.
 ///
 /// ⚠️ **A aritmética é INTEIRA dos dois lados** (Euclidiana, HR-5: zero transcendentes). O `%` e o
 /// `/` da WGSL sobre `i32` têm exactamente o sinal e o truncamento do Rust, então `rem_euclid` e
@@ -167,7 +172,11 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let ct_n = max(ct_int(params.count_max), 1);\n\
         write_v(i, f32(ct_shown(ct_int(ct_t), ct_n, ct_mode_of(params.mode))));\n\
         write_count_tick(i, ct_t);\n\
-        write_count_prev(i, ct_p);\n",
+        write_count_prev(i, ct_p);\n\
+        // O `carry_fired`: o ciclo do tique cru mudou, e um reset nunca acende.\n\
+        let ct_per = ct_period(ct_n, ct_mode_of(params.mode));\n\
+        let ct_cross = ct_per > 0 && ct_div_e(ct_int(ct_t), ct_per) != ct_div_e(ct_int(ct_prev), ct_per);\n\
+        write_cp_carry(i, select(0.0, 1.0, ct_cross && !ct_reset));\n",
     wgsl_lib: "\
         // Rust `f32::round` = meio para LONGE do zero; o `round` da WGSL e' meio-par.\n\
         fn ct_round(x: f32) -> f32 {\n\
@@ -195,6 +204,12 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   if (r == 2.0) { return 2; }\n\
         \x20   return 0;\n\
         }\n\
+        // O gemeo de `cycle_period` (`0` = sem ciclo: o `Clamp` para).\n\
+        fn ct_period(n: i32, mode: i32) -> i32 {\n\
+        \x20   if (mode == 1) { return 0; }\n\
+        \x20   if (mode == 2) { return select(0, 2 * (n - 1), n > 1); }\n\
+        \x20   return n;\n\
+        }\n\
         // O gemeo de `displayed`.\n\
         fn ct_shown(tick: i32, n: i32, mode: i32) -> i32 {\n\
         \x20   if (mode == 1) { return clamp(tick, 0, n - 1); }\n\
@@ -216,6 +231,13 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
         ColumnBinding {
             column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: CARRY_COL,
             dim: Dim::Scalar,
             access: ColumnAccess::Write,
             identity: [0.0; 4],
@@ -485,6 +507,7 @@ impl NodeOp for PulseCounter {
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseCounter))?;
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    reg.register_projected_ports(MANIFEST.id, PORTAS_PROJECTADAS);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

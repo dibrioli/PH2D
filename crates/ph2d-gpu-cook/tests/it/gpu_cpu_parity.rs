@@ -3826,6 +3826,16 @@ fn column_is_nonzero(cpu: &ph2d_nodegraph::attr::Stream, column: &str) -> bool {
     }
 }
 
+/// `|a − b|`, com um NaN de UM lado a valer INFINITO — o `f32::max` de uma dobra devolve o
+/// acumulado diante de um NaN, e um defeito que só produzisse NaN passava (doc 110 §14.2 (6)).
+fn desvio(a: f32, b: f32) -> f32 {
+    if a.to_bits() == b.to_bits() {
+        return 0.0;
+    }
+    let d = (a - b).abs();
+    if d.is_nan() { f32::INFINITY } else { d }
+}
+
 /// Compare one column of a staged node against the CPU's stream, whatever its
 /// width — the readers are typed, so a gate that needs to follow a PARAM to its
 /// column would otherwise have to branch on the type at every call site.
@@ -3845,7 +3855,7 @@ fn compare_column(
             assert_eq!(g.len(), c.len(), "{column}: element count");
             g.iter()
                 .zip(c)
-                .map(|(a, b)| (a - b).abs())
+                .map(|(a, b)| desvio(*a, *b))
                 .fold(0.0, f32::max)
         }
         Some(Column::Vec2(c)) => {
@@ -3855,7 +3865,7 @@ fn compare_column(
             assert_eq!(g.len(), c.len(), "{column}: element count");
             g.iter()
                 .zip(c)
-                .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+                .map(|(a, b)| desvio(a[0], b[0]).max(desvio(a[1], b[1])))
                 .fold(0.0, f32::max)
         }
         Some(Column::Vec4(c)) => {
@@ -3865,7 +3875,7 @@ fn compare_column(
             assert_eq!(g.len(), c.len(), "{column}: element count");
             g.iter()
                 .zip(c)
-                .map(|(a, b)| (0..4).map(|k| (a[k] - b[k]).abs()).fold(0.0, f32::max))
+                .map(|(a, b)| (0..4).map(|k| desvio(a[k], b[k])).fold(0.0, f32::max))
                 .fold(0.0, f32::max)
         }
         _ => panic!("the CPU emitted no `{column}`"),
@@ -5003,9 +5013,11 @@ fn value_time_kernel_matches_the_cpu_on_the_device() {
 /// is **`value.noise`, not a ramp** — a ramp's slope is a flat CONSTANT that a
 /// producer returning a constant would still pass; noise makes the slope VARY per
 /// instance, so the per-element neighbour arithmetic (the centred difference, the
-/// one-sided edges, the span divide) is what the parity pins. The noise is itself
-/// bit-comparable CPU↔GPU (its own parity gate), and a subtraction of two ε-close
-/// neighbours stays ε. `scale = 2.3` amplifies the small slope into a visible Y
+/// one-sided edges, the span divide) is what the parity pins. ⚠️ The noise runs in WORLD
+/// space (`space = 1`): in INDEX space its lattice coordinate grows with `i` (~128–512 at
+/// the last rows) and the noise ITSELF diverges up to `6,9e-5` there — the `1,05e-4` red of
+/// 08–10/2026 was that, not this kernel (doc 110 §14.2 (6): floor `6,2e-6`, smallest kernel
+/// mutation `5,0e-4`, so `1e-4` sits in the valley). `scale = 2.3` amplifies the small slope into a visible Y
 /// drive; the device result matches the CPU term for term. `is_fully_gpu` PROVES
 /// the chain dispatches (no silent CPU fallback).
 #[test]
@@ -5025,6 +5037,7 @@ fn value_slope_kernel_matches_the_cpu_on_the_device() {
     g.set_param(vn, "roughness", 0.55);
     g.set_param(vn, "amplitude", 1.9);
     g.set_param(vn, "seed", 4.0);
+    g.set_param(vn, "space", 1.0); // World — the gate measures the SLOPE, not the noise's precision
     connect(&mut g, grid, vn); // a jagged field whose slope varies per instance
     let slope = g.add_node("value.slope");
     g.set_param(slope, "scale", 2.3); // amplify the small derivative into a visible drive
@@ -5067,14 +5080,6 @@ fn value_slope_kernel_matches_the_cpu_on_the_device() {
     .expect("gpu cook");
     let worst = compare_column(&gpu, &gc, drive, cpu[0].as_stream(), "P");
     eprintln!("value.slope → drive(Y): col P, max |d| = {worst:e}");
-    // ⚠️ **VERMELHO NESTA MÁQUINA, e NÃO é da linha que o encontrou** (`line/motion-value`,
-    // 2026-08-11): mede **1,05023384e-4** contra a barra de 1e-4 — 5% acima, no fio da navalha.
-    // Atribuído por ABLAÇÃO, não por suspeita: a única mudança daquela linha no motor de cook é
-    // uma RECUSA no `eligible` (nó com aresta saindo de porta ≠ 0 sai do device), e removê-la
-    // deixa este teste falhando no MESMO número. `value.slope`, o kernel e este arquivo não são
-    // tocados por ela. A política do repo é explícita (o compositor declara que runtime não é
-    // bit-idêntico entre backends — FMA), então uma barra de 1e-4 num kernel de derivada é
-    // sensível a driver/hardware: quem for calibrá-la precisa do número em mais de uma máquina.
     assert!(worst < 1e-4, "col P, max |d| = {worst:e}");
     assert!(
         column_is_nonzero(cpu[0].as_stream(), "P"),

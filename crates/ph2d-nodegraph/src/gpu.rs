@@ -23,7 +23,10 @@ pub use crate::column::{ColumnAccess, ColumnBinding};
 
 pub use crate::algorithm_meta::GpuAlgorithm;
 pub use crate::reduce_meta::{ReduceOp, ReduceSpec};
-pub use crate::stream_op_meta::{ConcatFill, KEEP_FLAG_COL, ROWS_COL, StreamOp};
+pub use crate::stream_op_meta::{
+    Complement, ComplementPort, ConcatFill, FIRED_ROW_COL, FiredBirth, KEEP_FLAG_COL, ROWS_COL,
+    StreamOp,
+};
 
 /// Everything a node's **count law** may look at. Dispatch size must be known
 /// host-side, so this is evaluated on the CPU at cook time.
@@ -389,6 +392,17 @@ pub struct LutSpec {
 ///
 /// Dados puros e `'static`, canal lateral como o [`LutSpec`]: um kernel que não declare nenhum não
 /// muda um byte.
+/// **Uma saída ≠ 0 que é uma PROJECÇÃO do estágio** (doc 110 §14.1 (1)): o kernel escreve
+/// `column`, que NÃO viaja na porta 0, e ela sai na porta `port` com o nome `as_name` — a mesma
+/// contagem e a mesma ordem (o `carry` do `pulse.counter`). Uma porta ≠ 0 que nenhuma declaração
+/// cubra faz o nó recuar.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct ProjectedPort {
+    pub port: u16,
+    pub column: &'static str,
+    pub as_name: &'static str,
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct DerivedUniform {
     /// O param declarado cujo slot do uniform recebe o valor derivado.
@@ -487,6 +501,11 @@ pub trait KernelResolver {
     /// Os params cujo slot do uniform é DERIVADO no hospedeiro ([`DerivedUniform`]). Vazio por
     /// omissão, pela mesma razão que [`Self::luts`].
     fn derived_uniforms(&self, _ty: NodeTypeId) -> &'static [DerivedUniform] {
+        &[]
+    }
+
+    /// As saídas ≠ 0 projectadas do estágio ([`ProjectedPort`]). Vazio por omissão.
+    fn projected_ports(&self, _ty: NodeTypeId) -> &'static [ProjectedPort] {
         &[]
     }
 

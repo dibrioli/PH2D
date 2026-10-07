@@ -325,6 +325,7 @@ fn motion_route_census() {
     let (mut multi_total, mut multi_todos_gpu, mut multi_alguns_gpu) = (0u32, 0u32, 0u32);
     let mut porques: std::collections::BTreeMap<&'static str, Vec<u32>> =
         std::collections::BTreeMap::new();
+    let mut portas: Vec<super::census_portas::Achado> = Vec::new();
     for level in 1..=MAX_DEMO_LEVEL {
         let mut state = MotionState::new();
         let sinks =
@@ -333,14 +334,11 @@ fn motion_route_census() {
             continue;
         }
         let scopes = ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
-        // ⭐ O plano da UNIÃO das saídas (doc 119 W3) — o que a ponte pede desde o ciclo 11.
-        let plan = ph2d_gpu_cook::plan_driven_many(
-            &state.doc.graph,
-            &state.registry,
-            &state.registry,
-            &sinks,
-            &ph2d_gpu_cook::DrivenParams::new(),
-        );
+        // ⭐⭐ **A PORTA DO PRODUTO** (`plano_do_produto`, a MESMA do `cook_gpu`) no 1.º quadro:
+        // com o mapa VAZIO o censo contava na CPU as cenas cujo fio de valor a placa toma (07/10).
+        state.sinks = sinks.clone();
+        crate::motion_externals::publish_all(&mut state, 0.0);
+        let plan = crate::motion_bridge::gpu::plano_do_produto(&mut state, 0.0);
         let estilos: Vec<_> = sinks
             .iter()
             .map(|&s| ph2d_eval_motion::sink_style(&state.doc.graph, s))
@@ -370,6 +368,10 @@ fn motion_route_census() {
             GpuRoute::Cpu => "5. CPU: fronteira sem estágio que despache",
         };
         porques.entry(porque).or_default().push(level);
+        if porque != "1. device inteiro" {
+            let achado = super::census_portas::portas_nao_zero(&state, &sinks);
+            portas.push((level, porque, achado));
+        }
         // ⭐⭐ **O que a escada do multi-sink CUSTA a levantar**: se cada sink, planeado
         // SOZINHO, já é reclamado pelo device, então a barreira não é o trabalho — é só a
         // COMPOSIÇÃO de dois planos num buffer. Sem este número, «F2+ territory» é uma nota
@@ -416,6 +418,7 @@ fn motion_route_census() {
         "  cenas multi-sink │ {multi_total}   ·   TODOS os sinks ja seriam device │ {multi_todos_gpu} ({:.1}%)   ·   alguns │ {multi_alguns_gpu}",
         multi_todos_gpu as f64 * 100.0 / multi_total.max(1) as f64
     );
+    super::census_portas::imprime(&portas);
 }
 
 /// **EM QUE CENA E EM QUE NÓ o balão de perda aparece** — a sonda que o report do Enio de

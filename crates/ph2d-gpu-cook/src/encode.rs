@@ -14,7 +14,7 @@
 use crate::gather::{column_present, gather_key_port, gather_prev_n};
 use crate::grid::{Grid, GridBuffers};
 use crate::plan::resolve_param;
-use crate::{CachedPipeline, GpuColumn, GpuCook, GpuStream, codegen, create_pipeline, stream};
+use crate::{CachedPipeline, GpuColumn, GpuCook, GpuStream, codegen, stream};
 use ph2d_gpu::GpuContext;
 use ph2d_nodegraph::gpu::{
     ColumnBinding, DerivedUniform, GpuKernel, GridSpec, LutSpec, ReduceSpec, SourceWindow,
@@ -421,4 +421,23 @@ impl GpuCook {
             }
         }
     }
+}
+
+/// Compile one compute pipeline (entry `main`, layout AUTO) — the door every fixed pass uses.
+pub(crate) fn create_pipeline(gpu: &GpuContext, wgsl: &str, label: &str) -> wgpu::ComputePipeline {
+    let module = gpu
+        .device
+        .create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some(label),
+            source: wgpu::ShaderSource::Wgsl(wgsl.into()),
+        });
+    gpu.device
+        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some(label),
+            layout: None,
+            module: &module,
+            entry_point: Some("main"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None,
+        })
 }

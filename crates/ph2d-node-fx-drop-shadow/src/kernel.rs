@@ -280,7 +280,11 @@ pub(crate) static GPU_KERNEL: GpuKernel = GpuKernel {
 /// **Regista o caminho do dispositivo** — o kernel e a reunião de molde.
 pub(crate) fn regista(reg: &mut NodeRegistry) {
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
-    reg.register_stream_op(MANIFEST.id, StreamOp::SourceRows { port: 0 });
+    reg.register_stream_op(MANIFEST.id, StreamOp::SourceRows {
+        port: 0,
+        fired: None,
+        not_inherited: &[],
+    });
 }
 
 #[cfg(test)]

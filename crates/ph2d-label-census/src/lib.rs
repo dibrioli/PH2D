@@ -53,7 +53,9 @@ mod lexical;
 pub mod portugues;
 mod source;
 
-pub use fronteira::{Publicacao, Publicado, published_names, sem_comentarios};
+pub use fronteira::{
+    Publicacao, Publicado, published_names, sem_comentarios, so_codigo_de_produto,
+};
 pub use lexical::{
     Cegueira, Literal, blind_literals_in, cegueira, is_language, language_literals,
     language_literals_in,

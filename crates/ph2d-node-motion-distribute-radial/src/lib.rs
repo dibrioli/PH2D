@@ -227,6 +227,10 @@ fn ring_counts(count: usize, rings: usize) -> Vec<usize> {
 /// ⚠️ **O `spin` lê-se no ÍNDICE 0**, como o `eval` faz (`v.first()`), e não por elemento: este
 /// nó gira o leque INTEIRO, não cada pétala. Ler `read_v(i)` daria outro produto no dia em que
 /// alguém ligasse ali um campo por-elemento.
+///
+/// ⚠️ **`ReadBroadcast`, não `Read`**: o despacho é a lei de contagem (`count`), não o comprimento
+/// do `spin`; um `Read` julgava AUSENTE um `spin` de comprimento `1` (um `value.lfo` cru) e girava
+/// `0` na placa onde a CPU gira `v[0]` (censo do comprimento `1`, doc 110 §14.1 item 4).
 const RADIAL_BINDINGS: &[ColumnBinding] = &[
     ColumnBinding {
         column: "P",
@@ -238,7 +242,7 @@ const RADIAL_BINDINGS: &[ColumnBinding] = &[
     ColumnBinding {
         column: VALUE_COL,
         dim: Dim::Scalar,
-        access: ColumnAccess::Read,
+        access: ColumnAccess::ReadBroadcast,
         identity: [0.0; 4],
         port: 0,
     },
@@ -265,7 +269,7 @@ const RADIAL_BINDINGS_ALIGN: &[ColumnBinding] = &[
     ColumnBinding {
         column: VALUE_COL,
         dim: Dim::Scalar,
-        access: ColumnAccess::Read,
+        access: ColumnAccess::ReadBroadcast,
         identity: [0.0; 4],
         port: 0,
     },

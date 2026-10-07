@@ -42,6 +42,7 @@ mod arch_safe_clamp_only;
 mod arch_shape_slot_uses_the_shape_door;
 mod architecture_a_lei_partilhada_dos_nos_vive_numa_porta;
 mod architecture_adr_numbers_are_unique;
+mod architecture_as_chaves_partilhadas_nao_ganham_leitor_partilhado;
 mod architecture_chrome_dispatch_in_sync;
 mod architecture_claude_md_cabe_no_orcamento;
 mod architecture_color_rows_use_the_door;

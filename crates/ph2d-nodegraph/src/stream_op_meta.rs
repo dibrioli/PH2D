@@ -46,6 +46,10 @@ pub enum StreamOp {
         /// The predicate kernel: reads its declared bindings, writes
         /// [`KEEP_FLAG_COL`] (`1.0` keep / `0.0` drop) per element.
         predicate: GpuKernel,
+        /// As saídas ≠ 0 que levam o COMPLEMENTO — as linhas que o predicado tirou (doc 110
+        /// §14.1 (1)). A mesma varredura as acha e a mesma leitura de 8 bytes as conta
+        /// (`n − total`); uma porta ≠ 0 que não esteja aqui faz o nó recuar.
+        complement: &'static [ComplementPort],
     },
     /// **Birth by template gather** (`sim.spawn`): the node's registered kernel
     /// (whose `count_law` sizes the dispatch — this is why [`CountLawCtx`] has
@@ -56,6 +60,12 @@ pub enum StreamOp {
     SourceRows {
         /// The port carrying the template stream.
         port: usize,
+        /// O SEGUNDO nascimento, o das linhas que DISPARAM ([`FiredBirth`]) — o `pulse` do
+        /// `sim.spawn` (doc 110 §14.1 (7)). `None` = só a lei de contagem.
+        fired: Option<FiredBirth>,
+        /// As colunas do modelo que o recém-nascido NÃO herda (o `newborns` do `sim.spawn`
+        /// descarta `id` e `age`: quem nasce não traz a idade do pai).
+        not_inherited: &'static [&'static str],
     },
     /// **Concatenation** (`motion.combine`): the listed input ports, in order,
     /// laid end to end — column union, an input lacking a column (or carrying it
@@ -112,6 +122,56 @@ pub enum StreamOp {
         /// O que corre sobre a porta viva nesse caso.
         identity_kernel: GpuKernel,
     },
+}
+
+/// **O nascimento nas linhas que DISPARAM** ([`StreamOp::SourceRows`], doc 110 §14.1 (7)).
+///
+/// Activo quando a porta `port` traz, PROVAVELMENTE (a forma do plano), a coluna `column` — o
+/// mesmo facto que a CPU pergunta à corrente. Então o estágio é a CONCATENAÇÃO de dois nascimentos:
+/// 1. o da taxa, pelo `rate_kernel` (a variante do kernel do nó para este caso);
+/// 2. o das linhas que dispararam: o `predicate` (um [`KEEP_FLAG_COL`] sobre a porta lateral, como
+///    num `Compact`) é varrido, e a contagem `F` volta pela MESMA leitura de 8 bytes; a porta passa
+///    a ser uma corrente de `F` linhas com [`FIRED_ROW_COL`] = a linha original de cada disparo, e
+///    o `kernel` corre na janela da lei de contagem DELE — que pergunta só LARGURAS, como toda lei.
+#[derive(Copy, Clone, Debug)]
+pub struct FiredBirth {
+    /// A porta lateral (o `pulse`).
+    pub port: usize,
+    /// A coluna cuja presença a activa.
+    pub column: &'static str,
+    /// Escreve [`KEEP_FLAG_COL`]: `1` = esta linha disparou (e conta).
+    pub predicate: GpuKernel,
+    /// O kernel da taxa quando o segundo nascimento está activo.
+    pub rate_kernel: GpuKernel,
+    /// O kernel do segundo nascimento (escreve [`ROWS_COL`] e as suas colunas).
+    pub kernel: GpuKernel,
+    /// Os uniforms derivados do predicado e do `kernel`, sobre as contagens com a porta lateral
+    /// JÁ compactada (a largura `F`).
+    pub derived: &'static [crate::gpu::DerivedUniform],
+}
+
+/// A coluna que leva, em cada disparo, a linha ORIGINAL da porta lateral (`f32`, exacta abaixo
+/// de `ID_WRAP`) — o que o kernel de um [`FiredBirth`] lê com `SourceRead`.
+pub const FIRED_ROW_COL: &str = "cp_fired";
+
+/// Uma saída ≠ 0 de um [`StreamOp::Compact`] e o que ela leva das linhas REMOVIDAS, na ordem
+/// original (a da CPU: o laço que as separa é o mesmo).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct ComplementPort {
+    /// A porta de saída do nó.
+    pub port: u16,
+    /// O que ela leva.
+    pub carries: Complement,
+}
+
+/// O que uma [`ComplementPort`] leva.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Complement {
+    /// As linhas removidas TAL E QUAL — todas as colunas da porta filtrada, antes do kernel do
+    /// nó (o `died` do `sim.lifetime`: o cadáver sai como era).
+    Rows,
+    /// Só uma coluna escalar com `1.0` por linha removida — um EVENTO (o `pulse`).
+    Event(&'static str),
 }
 
 /// **A identidade de UMA coluna numa junção** ([`StreamOp::Carry`]) — o `default_for` da CPU.

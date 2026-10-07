@@ -330,6 +330,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         StreamOp::Compact {
             port: 0,
             predicate: GPU_PREDICATE,
+            complement: &[],
         },
     );
     reg.register_ui(

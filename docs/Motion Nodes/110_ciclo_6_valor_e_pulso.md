@@ -900,3 +900,94 @@ saem do catálogo (`PortSpec { ty: PULSE }` do lado da ENTRADA, ⛔ nunca de uma
 
 ⚠️ **O `sim.lifetime` NÃO está na lista, e é o engano fácil:** o `pulse` dele é uma **saída** (*«esta
 linha morreu»*), não uma entrada — os dois lêem-se iguais num `grep` por `"pulse"`.
+
+---
+
+## §14 — O FECHO DOS ABERTOS (2026-10-07)
+
+> Ordem do dono, 07/10: *«resolver num único ciclo o Ciclo 6 completo»*. O ciclo está ✅ desde 15/09
+> (§13); o que fecha aqui é a LISTA de abertos — sete, contando os quatro da nota do doc 103 §5 e os
+> três que este doc deixou escritos (o condutor na placa, o vermelho a um ULP, o consumidor do pulso).
+> ⚠️ **Escrito ANTES de construir**, com o estado medido no código de hoje (três semanas e várias ondas
+> passaram por estas crates). Cada item diz a barra e o critério de abandono; o resultado vem nas
+> subsecções seguintes, que o substituem por número.
+
+### §14.0 — O estado MEDIDO em 07/10, antes de uma linha
+
+| # | aberto | estado no código de 07/10 | número |
+|---|---|---|---|
+| 1 | W1(b) — porta ≠ 0 | **aberto**: a recusa vive em [`plan.rs`](../../crates/ph2d-gpu-cook/src/plan.rs) (`e.from.1 != 0`), `StreamOp::Compact` não tem complemento, `GpuSource::Stage` não tem porta | população: `sim.lifetime` (`died`=1, `pulse`=2) e `pulse.counter` (`carry`=1, que o kernel NÃO calcula) |
+| 1′ | ⛔ a RÉGUA do item 1 | o `motion_route_census` planeia com o mapa de fios **VAZIO** — não é a porta do produto: a `=116` e a `=117` contam-se «CPU» e no app correm na placa | 58 inteiras · 57 híbridas · 11 «fronteira sem estágio» · 1 escopo · 1 pede CPU (128 cenas) |
+| 2 | o condutor na placa | **zero leituras de volta hoje** — o condutor é COZIDO na CPU (`valores_dirigidos`) e o número entra pelo uniform. A «volta pela CPU» é uma cozedura, não um *readback* | e existe condutor CARO no catálogo: `value.reduce`/`percentile`/`median`/`normalize` leem o fluxo inteiro |
+| 3 | W3b — três chaves | **zero consumidores partilhados** (varrido: bomba, cozedor, avaliação, kit, painel, timeline, shell); rótulos chaveados por `(tipo, param)`; e o `value` do `value.table` é um param de **TEXTO** (o nome da coluna) — nem é o mesmo mapa do `value` numérico do `value.number` | 0 |
+| 4 | as cópias do mesmo número | **aberto, e o número MUDOU**: a grelha tem lado máximo `181` desde `d60a8398c` (o tecto de 32 768 por nó, ordem do dono) | **32 761** cópias (era 102 400) |
+| 5 | o relógio do ciclo | **sem instrumento** — a sonda do preço foi apagada (§6) | — |
+| 6 | o vermelho a um ULP | **o mesmo número, ao bit**, de 11/08 e de 15/09; a barra é a do commit do próprio kernel (`85def0fa2`, 26/07), nunca recalibrada | `1,05023384e-4` contra `1e-4` |
+| 7 | o consumidor do pulso | `sim.spawn` **ainda recusa** a porta `pulse` (`RefuseIfPresent`, [`kernel.rs`](../../crates/ph2d-node-sim-spawn/src/kernel.rs)); o `motion.strobe` JÁ tem kernel (ciclo 7), o `motion.step` não | o gate `the_chain_that_opened_the_wave_is_blocked_by_the_spawn_and_no_longer_by_the_metronome` afirma a recusa |
+
+### §14.1 — O desenho e o critério de abandono de cada um
+
+**(1) O complemento de um `Compact`.** `StreamOp::Compact` ganha `complement: &[ComplementPort]` —
+cada porta diz o que leva: `Rows` (as linhas que o predicado tirou, TODAS as colunas, como o `died`)
+ou `Event(col)` (uma coluna de `1.0`, como o `pulse`). Na placa é a **mesma** varredura: o passe novo
+escreve `crow[i − scan[i]] = i` onde a bandeira é `0`, e a contagem é `n − total` da MESMA leitura de
+8 bytes — zero leituras a mais. No plano: `GpuSource::StagePort(nó, porta)` (variante NOVA; o
+`Stage(nó)` continua a ser a porta 0, logo nenhum `match` que existe muda de sentido), a recusa
+`e.from.1 != 0` fica só para a porta que o nó NÃO declara (o `carry` do `pulse.counter` continua a
+recuar), e a forma da saída passa a ser por porta. **Barra:** `spawn → lifetime → died/pulse → …`
+`fully_gpu`, paridade CPU × placa ao bit nas duas portas, e o censo ANTES/DEPOIS pela porta do
+produto (1′ curado primeiro). **Abandono:** se pedir uma segunda leitura de volta, ou mais que um
+passe além do *gather* por coluna.
+
+**(2) O condutor na placa.** O número só pode ficar na placa quando ele **só entra no uniform**: um
+param que uma lei do hospedeiro lê (a contagem, a variante, o `applicable`, as varreduras) precisa
+dele na CPU. Desenho: o plano passa a caminhar também as fontes dos params; um condutor elegível vira
+estágio ANTES do consumidor, e o consumidor guarda `(param, condutor)`; o sequenciador copia 4 bytes
+(`v[0]` do condutor → o campo do param no uniform do consumidor) quando a contagem do condutor é
+`≥ 1` — `0` deixa o override/default que o uniform já tem, que é a lei do `None` (§6). ⚠️ Um param
+que o hospedeiro lê sem o plano saber tem de RECUAR, nunca dar o número velho: a porta
+`resolve_param` é única, e ela recusa o quadro se lhe pedirem um nome dirigido pela placa. **Série
+declarada:** o critério deste item é o PREÇO do condutor caro na CPU, que só o instrumento do (5)
+mede — logo o (5) vem antes. **Abandono:** se um condutor caro (`value.reduce` sobre a grelha a
+mexer-se, no tecto) custar na CPU menos de `0,1 ms` por quadro, a cura não compra nada e fica recusada
+com esse número.
+
+**(3) As três chaves: FICAM, com catraca.** Medido: zero consumidores partilhados; a regra da memória
+[chave e texto](../../project-memory/feedback_a_key_and_a_text_of_the_same_type_is_a_defect_waiting.md)
+manda perguntar *«alguém faz o caminho INVERSO a partir desta string?»* — e faz: o documento gravado
+lê o nome de volta. O nome é DADO (formato de ficheiro); a palavra que o artista lê já é outra coisa
+(`node.<tipo>.param.<p>`, e já difere: *Increment* × *Step*). ⇒ renomear + migrar pagaria um degrau
+do `PROJECT_SCHEMA` (número que soma entre linhas: colide com toda linha aberta), uma migração por
+tipo de nó e a reescrita das cenas — e compraria **zero**, porque nenhum leitor confunde os dois.
+**A catraca:** fora das crates donas, dos testes e das cenas, o número de leituras de param POR NOME
+destas três chaves é `0`; o primeiro reprova e manda ler esta secção (o dia em que vira um
+`substeps`, a cura passa a ser obrigatória e com migração).
+
+**(4) O comprimento `1`.** Primeiro o CENSO dos consumidores de VALOR, derivado do registo (toda
+porta de entrada `Instances·Scalar`), cada um provado a dar o MESMO resultado com o campo de
+comprimento `1` e com `N` cópias — na CPU e, se tem kernel, na placa. Só então o `value.cursor` e o
+`value.table` emitem `1`. ⚠️ **E a porta `in` deles fica MORTA** (ela só servia para dar o
+comprimento) — um encaixe que não faz nada no cartão é um controlo que mente; o destino dela decide-se
+pelo que acontece a um documento gravado com um fio nela. **Barra:** a costura `32 761 → 1`, a `=117`
+e o tutorial 06 ao bit. **Abandono:** um consumidor que não difunda e cuja cura não caiba nesta onda —
+fica nomeado e o comprimento NÃO muda.
+
+**(5) O relógio.** Uma sonda intercalada no MESMO processo (o método do
+[MEDIR_VELOCIDADE](../DevOps/MEDIR_VELOCIDADE.md)), pela porta do produto (a ponte), sobre a cena do
+fio no tecto: variantes = a rota da placa com o fio, a rota da CPU (o interruptor do §6 como flag em
+execução, não variável de ambiente), e o condutor caro. **O controlo:** cada variante imprime a rota
+que a ponte registou — a metade «placa» tem de ler `FullyGpu`, senão a linha não conta.
+
+**(6) A barra a um ULP.** Medir por estágio (`noise.v`, `slope.v`, `drive.P`) e em ULPs da grandeza
+de cada coluna; a barra decide-se pelo VALE entre o ruído medido (o pior desvio legítimo) e o defeito
+mais pequeno que ela tem de apanhar (uma mutação real do kernel) — nunca subindo o número até passar.
+
+**(7) O nascimento por pulso na placa.** É um `Compact` disfarçado: as linhas do modelo que
+dispararam saem da mesma varredura (bandeira `pulse > 0,5` → *scan* → as linhas densas), a contagem
+`F` vem pela MESMA leitura de 8 bytes do `Compact` (precedente com preço medido), e daí em diante tudo
+é do hospedeiro como na taxa: `C = min(F·burst, 256)` candidatos, os ids são função do tique, e o
+sorteio da probabilidade é a MESMA busca de posto que o kernel já faz para a taxa. O empurrão
+(`burst_speed`) usa o gêmeo WGSL do `cos_sin_cycles` que o `motion.emitter` já tem. **Barra:**
+`grid → pulse.beat → sim.spawn` `fully_gpu`, paridade ao bit (ids, linhas, colunas herdadas, `vel`),
+e o gate que afirmava a recusa vira o gate da cura (com a nota reescrita, §0.0). **Abandono:** se o
+`vel` não sair ao bit (o trig), o nó fica na CPU com o desvio medido escrito aqui.

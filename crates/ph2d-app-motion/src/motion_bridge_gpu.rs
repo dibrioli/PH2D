@@ -250,6 +250,21 @@ pub(crate) fn valores_dirigidos(
     fora
 }
 
+/// ⭐⭐ **O PLANO QUE A PONTE PEDE, neste instante** — a porta ÚNICA do [`cook_gpu`] e do censo de
+/// rota (`motion_route_census`): um censo que planeia com o mapa VAZIO conta como CPU as cenas
+/// cujo fio de valor o dispositivo toma (medido em 07/10: `=116`, `=117`). As CHAVES dirigidas
+/// decidem quem é encenado; o instante vive aqui dentro, longe dos valores por tique do laço.
+pub(crate) fn plano_do_produto(motion: &mut MotionState, playhead: f64) -> ph2d_gpu_cook::GpuPlan {
+    let dirigidos = valores_dirigidos(motion, playhead);
+    ph2d_gpu_cook::plan_driven_many(
+        &motion.doc.graph,
+        &motion.registry,
+        &motion.registry,
+        &motion.sinks,
+        &dirigidos,
+    )
+}
+
 /// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0126).
 ///
 /// Unless `PH2D_GPU_COOK=0`, an unscoped document cooks on the GPU — ONE sink or
@@ -370,22 +385,12 @@ pub(super) fn cook_gpu(
     // a cadeia inteira para a CPU. ⚠️ **As CHAVES é que decidem o plano** (quem é encenado) e os
     // VALORES é que entram no uniform — e o plano deriva-se uma vez, porque quem tem fio não muda
     // dentro do quadro; os valores, esses, re-derivam-se por tique no laço abaixo.
-    // ⚠️⚠️ **O instante do PLANO vive dentro deste bloco, e isso é a cerca.** Os valores do laço
-    // abaixo são de OUTRO instante (um por tique), e uma mutação que lá passasse este congelava a
+    // ⚠️⚠️ **O instante do PLANO vive dentro de [`plano_do_produto`], e isso é a cerca.** Os
+    // valores do laço abaixo são de OUTRO instante (um por tique), e passar-lhes este congelava a
     // animação no primeiro sub-passo — com a cena a mexer-se, que é a forma mais cara de estar
     // errado. Fora de escopo, ela deixa de ser escrevível: *o erro que não compila não precisa de
     // gate.*
-    let plan = {
-        let alvo_ph = target as f64 * fixed_dt;
-        let dirigidos_do_plano = valores_dirigidos(motion, alvo_ph);
-        ph2d_gpu_cook::plan_driven_many(
-            &motion.doc.graph,
-            &motion.registry,
-            &motion.registry,
-            &motion.sinks,
-            &dirigidos_do_plano,
-        )
-    };
+    let plan = plano_do_produto(motion, target as f64 * fixed_dt);
     // Como este sink DESENHA (doc 89, folha 17): blend · pivô · filtro · ordem. Lido da
     // porta ÚNICA — a MESMA que o pump da CPU pergunta no laço de sinks —, e resolvido
     // AQUI, ao lado do sink que o plano escolheu: um segundo leitor teria liberdade de

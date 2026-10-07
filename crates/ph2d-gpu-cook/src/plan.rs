@@ -9,7 +9,7 @@
 //! wasted fallback (a coverable chain cooked on the CPU).
 
 use ph2d_nodegraph::cook::OpResolver;
-use ph2d_nodegraph::gpu::KernelResolver;
+use ph2d_nodegraph::gpu::{Complement, FiredBirth, KernelResolver, StreamOp};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::{NodeManifest, NodeTypeId};
 use std::collections::{BTreeMap, BTreeSet};
@@ -19,6 +19,9 @@ use std::collections::{BTreeMap, BTreeSet};
 pub enum GpuSource {
     /// Another planned stage's output, threaded GPU-side (the common case).
     Stage(NodeId),
+    /// A saída ≠ 0 de um estágio — o COMPLEMENTO de um `Compact` que a declara (doc 110 §14.1
+    /// (1)). `Stage(n)` continua a ser a porta 0.
+    StagePort(NodeId, usize),
     /// A CPU-cooked stream, uploaded once at the seam: `(node, out_port)`.
     Boundary(NodeId, usize),
     /// The **previous tick's** output of a planned node — a `pre` edge (D1).
@@ -134,7 +137,7 @@ impl GpuPlan {
         while let Some(s) = cur {
             budget = budget.checked_sub(1)?;
             cur = match s.inputs.first() {
-                Some(GpuSource::Stage(node)) => stage_of(*node),
+                Some(GpuSource::Stage(node) | GpuSource::StagePort(node, _)) => stage_of(*node),
                 Some(GpuSource::Boundary(node, _)) => return Some(*node),
                 _ => None,
             };
@@ -167,7 +170,7 @@ impl GpuPlan {
             };
             cur = match s.inputs.first() {
                 // Port 0 threads GPU-side to another stage — keep walking.
-                Some(GpuSource::Stage(node)) => stage_of(*node),
+                Some(GpuSource::Stage(node) | GpuSource::StagePort(node, _)) => stage_of(*node),
                 // Boundary / Prev / Empty / no input — the object path ends here.
                 _ => None,
             };
@@ -224,8 +227,8 @@ fn output_shape(
             None => (BTreeSet::new(), false),
             // A `pre` stop: last tick's stream, which the walk has not derived.
             Some((_, _, true)) => return None,
-            Some((src, _, false)) => {
-                let s = output_shape(graph, ops, kernels, src, budget, driven)?;
+            Some((src, sp, false)) => {
+                let s = edge_shape(graph, ops, kernels, (src, sp), budget, driven)?;
                 (s.cols, s.dense)
             }
         },
@@ -251,17 +254,39 @@ fn output_shape(
                 match graph.input_edge(node, *p) {
                     None => {}
                     Some((_, _, true)) => return None,
-                    Some((src, _, false)) => {
-                        cols.extend(output_shape(graph, ops, kernels, src, budget, driven)?.cols);
+                    Some((src, sp, false)) => {
+                        cols.extend(
+                            edge_shape(graph, ops, kernels, (src, sp), budget, driven)?.cols,
+                        );
                     }
                 }
             }
             return Some(Shape { cols, dense: false });
         }
+        // SourceRows: the base IS the template whose columns the newborns inherit — minus the
+        // ones they do NOT inherit —, plus the kernel's writes (and, with the second birth
+        // active, its kernel's too — doc 110 §14.1 (7)); `cp_rows` is popped after the loop.
+        Some(StreamOp::SourceRows {
+            fired,
+            not_inherited,
+            ..
+        }) => {
+            for c in *not_inherited {
+                cols.remove(c);
+            }
+            if let Some(f) = fired.filter(|f| fired_active(graph, ops, kernels, node, f, driven)) {
+                let param = |name: &str| resolve_param(graph, node, manifest, name, driven);
+                cols.extend(
+                    f.kernel
+                        .resolve(&param)
+                        .bindings
+                        .iter()
+                        .filter_map(|b| b.access.writes(false).then_some(b.column)),
+                );
+            }
+        }
         // Compact: the base's columns survive (filtered, not reshaped) and the
         // node's own kernel writes ride on top — the plain rules below.
-        // SourceRows: the base IS the template whose columns the newborns
-        // inherit, plus the kernel's writes; `cp_rows` is popped after the loop.
         Some(_) | None => {}
     }
     // The set this node will ACTUALLY bind — a param-dependent kernel writes a
@@ -278,8 +303,12 @@ fn output_shape(
             cols.insert(b.column);
         }
     }
-    // A SourceRows kernel's rows column is machinery, never output (ADR-0136).
+    // A SourceRows kernel's rows column is machinery, never output (ADR-0136); a projected
+    // column leaves on its own port.
     cols.remove(ph2d_nodegraph::gpu::ROWS_COL);
+    for pp in kernels.projected_ports(inst.type_id()) {
+        cols.remove(pp.column);
+    }
     // The dense id window (ADR-0130) flows on the port-0 base: a source that
     // emits one keeps it unconditionally (`inputs.is_empty()`), a transformer
     // only if it preserves AND its base already was dense. Anything that does not
@@ -288,6 +317,85 @@ fn output_shape(
     let dense =
         kernels.keeps_dense_window(inst.type_id()) && (manifest.inputs.is_empty() || dense_in);
     Some(Shape { cols, dense })
+}
+
+/// A forma da saída `port` de `node` — a porta 0 é a [`output_shape`]; uma porta ≠ 0 só é
+/// provável quando é o complemento declarado de um `Compact` (doc 110 §14.1 (1)): `Rows` leva as
+/// colunas da porta filtrada tal e qual, `Event(c)` só a coluna `c`. Nunca uma janela densa.
+fn edge_shape(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    (node, port): (NodeId, usize),
+    budget: u32,
+    driven: &DrivenParams,
+) -> Option<Shape> {
+    if port == 0 {
+        return output_shape(graph, ops, kernels, node, budget, driven);
+    }
+    let budget = budget.checked_sub(1)?;
+    let ty = graph.node(node)?.type_id();
+    if let Some(pp) = kernels
+        .projected_ports(ty)
+        .iter()
+        .find(|p| usize::from(p.port) == port)
+    {
+        return Some(Shape {
+            cols: BTreeSet::from([pp.as_name]),
+            dense: false,
+        });
+    }
+    let Some(StreamOp::Compact {
+        port: filtrada,
+        complement,
+        ..
+    }) = kernels.stream_op(ty)
+    else {
+        return None;
+    };
+    let cols = match complement
+        .iter()
+        .find(|c| usize::from(c.port) == port)?
+        .carries
+    {
+        Complement::Event(col) => BTreeSet::from([col]),
+        Complement::Rows => match graph.input_edge(node, *filtrada) {
+            None => BTreeSet::new(),
+            Some((_, _, true)) => return None,
+            Some((src, sp, false)) => {
+                edge_shape(graph, ops, kernels, (src, sp), budget, driven)?.cols
+            }
+        },
+    };
+    Some(Shape { cols, dense: false })
+}
+
+/// **O segundo nascimento está activo?** — a porta lateral traz, PROVAVELMENTE, a coluna dele (o
+/// mesmo facto que a CPU pergunta à corrente: com produtores que emitem sempre as colunas que
+/// declaram, o provável e o presente coincidem). Público ao sequenciador, que escolhe a variante.
+pub(crate) fn fired_active(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    node: NodeId,
+    f: &FiredBirth,
+    driven: &DrivenParams,
+) -> bool {
+    match graph.input_edge(node, f.port) {
+        Some((src, sp, false)) => edge_shape(graph, ops, kernels, (src, sp), SHAPE_DEPTH, driven)
+            .is_some_and(|s| s.cols.contains(f.column)),
+        _ => false,
+    }
+}
+
+/// As portas ≠ 0 que o estágio de `ty` sabe produzir — o complemento de um `Compact` ou uma
+/// projecção do kernel.
+fn declares_port(kernels: &dyn KernelResolver, ty: NodeTypeId, port: u16) -> bool {
+    kernels.projected_ports(ty).iter().any(|p| p.port == port)
+        || matches!(
+            kernels.stream_op(ty),
+            Some(StreamOp::Compact { complement, .. }) if complement.iter().any(|c| c.port == port)
+        )
 }
 
 /// The proven shape of a node's output stream: which columns it carries, and
@@ -361,23 +469,31 @@ fn eligible(
             return false;
         }
     }
-    // **A GPU stage produces ONE buffer.** [`GpuStage`] holds a `node`, never a
-    // `(node, port)`, and `source_of` resolves an input to `GpuSource::Stage(src)`
-    // with the port dropped — so a consumer reading port 1 of a staged node would
-    // be handed port **0**: the wrong stream, silently, which is the one thing
-    // this planner exists not to do.
-    //
-    // ⚠️ It never came up before 2026-08-10 because the two facts never met: the
-    // only multi-output node in the repo (`pulse.counter`'s `carry`) has no
-    // kernel. `sim.lifetime`'s death event is the first node that is both, and
-    // the refusal is written HERE rather than in that node because the next one
-    // must be born covered — an enumeration of nodes is what rots.
-    if graph
-        .edges()
-        .iter()
-        .any(|e| e.from.0 == node && e.from.1 != 0)
-    {
+    // **Uma porta ≠ 0 só é encenável quando o nó a DECLARA** (o complemento de um `Compact`,
+    // doc 110 §14.1 (1)): qualquer outra seria o buffer da porta 0 entregue em silêncio. A
+    // recusa vive AQUI e não num nó, para o próximo nascer coberto (`pulse.counter`: o kernel
+    // não calcula o `carry`, e recua). E um fio ATRASADO de porta ≠ 0 recua sempre: o estado
+    // do quadro anterior (`GpuSource::Prev`) só guarda a porta 0.
+    if graph.edges().iter().any(|e| {
+        e.from.0 == node
+            && e.from.1 != 0
+            && (e.delayed || !declares_port(kernels, inst.type_id(), e.from.1))
+    }) {
         return false;
+    }
+    // O segundo nascimento decide-se pela FORMA da porta lateral (`fired_active`): ligada, ela
+    // tem de ser provável, e um `pre` nela recua (o estado só guarda a porta 0 — e a forma dele
+    // não se deriva).
+    if let Some(StreamOp::SourceRows { fired: Some(f), .. }) = kernels.stream_op(inst.type_id()) {
+        match graph.input_edge(node, f.port) {
+            None => {}
+            Some((_, _, true)) => return false,
+            Some((src, sp, false)) => {
+                if edge_shape(graph, ops, kernels, (src, sp), SHAPE_DEPTH, driven).is_none() {
+                    return false;
+                }
+            }
+        }
     }
     // A generator must say how many elements it emits (dispatch is host-sized).
     if manifest.inputs.is_empty() && kernel.count_law.is_none() && !kernel.is_passthrough() {
@@ -426,8 +542,8 @@ fn eligible(
         let known = match graph.input_edge(node, b.port) {
             None => Some(BTreeSet::new()),
             Some((_, _, true)) => None,
-            Some((src, _, false)) => {
-                output_shape(graph, ops, kernels, src, SHAPE_DEPTH, driven).map(|s| s.cols)
+            Some((src, sp, false)) => {
+                edge_shape(graph, ops, kernels, (src, sp), SHAPE_DEPTH, driven).map(|s| s.cols)
             }
         };
         match known {
@@ -452,8 +568,10 @@ fn eligible(
         let shape = match graph.input_edge(node, b.port) {
             None => Some((BTreeSet::new(), false)),
             Some((_, _, true)) => None,
-            Some((src, _, false)) => output_shape(graph, ops, kernels, src, SHAPE_DEPTH, driven)
-                .map(|s| (s.cols, s.dense)),
+            Some((src, sp, false)) => {
+                edge_shape(graph, ops, kernels, (src, sp), SHAPE_DEPTH, driven)
+                    .map(|s| (s.cols, s.dense))
+            }
         };
         match shape {
             None => return false,
@@ -576,7 +694,12 @@ impl Walk<'_> {
                 ) =>
             {
                 self.accept(src, ty);
-                GpuSource::Stage(src)
+                // `eligible` só admitiu um `src` com fio de porta ≠ 0 se ele a declara.
+                if out_port == 0 {
+                    GpuSource::Stage(src)
+                } else {
+                    GpuSource::StagePort(src, out_port)
+                }
             }
             _ => {
                 self.boundaries.push((src, out_port));

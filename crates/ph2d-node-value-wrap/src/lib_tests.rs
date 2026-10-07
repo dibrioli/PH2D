@@ -333,6 +333,10 @@ fn the_range_ports_make_the_fold_per_instance() {
         vec![0.0, 1.0, 3.0, 3.0],
         "cada elemento dobra na SUA faixa: 3 mod [1,2,4,8]"
     );
+    // ⭐ E UMA entrada sobre uma faixa POR PEÇA difunde-se (a regra 1→N): o mesmo que `n`
+    // cópias dela — até 07/10 saía UM elemento, com a faixa da linha 0.
+    let one = fold_with(&[3.0], &[0.0, 0.0, 0.0, 0.0], &[1.0, 2.0, 4.0, 8.0], 0.0, 1.0);
+    assert_eq!(one, per, "uma entrada de comprimento 1 vale para o campo todo");
     // ⛔ E a prova estrutural: entradas iguais + faixa uniforme = saídas iguais.
     for hi in [1.0_f32, 2.0, 4.0, 8.0] {
         let uniform = fold_with(&same, &[], &[], 0.0, hi);

@@ -55,6 +55,7 @@ mod costura;
 mod count;
 pub mod debug_read;
 mod encode;
+pub(crate) use encode::create_pipeline;
 pub mod error;
 mod estado;
 pub mod field_name;
@@ -241,12 +242,15 @@ impl GpuCook {
         // Every claimed node's output, threaded in topological order. The plan
         // named each input's source, so this is a lookup, never a search.
         let mut streams: BTreeMap<NodeId, GpuStream> = BTreeMap::new();
+        // As saídas ≠ 0 (o complemento de um `Compact`), por `(nó, porta)`.
+        let mut side: BTreeMap<(NodeId, usize), GpuStream> = BTreeMap::new();
         for (stage_idx, stage) in plan.stages.iter().enumerate() {
             let mut inputs: Vec<GpuStream> = stage
                 .inputs
                 .iter()
                 .map(|src| match src {
                     GpuSource::Stage(n) => streams.get(n).cloned().unwrap_or_default(),
+                    GpuSource::StagePort(n, p) => side.get(&(*n, *p)).cloned().unwrap_or_default(),
                     GpuSource::Boundary(n, _) => uploaded.get(n).cloned().unwrap_or_default(),
                     // Tick 0 (or a re-plan): no state yet — the empty stream,
                     // which is exactly what the CPU's `pre` reads then, and what
@@ -314,6 +318,7 @@ impl GpuCook {
             // passthrough branch — a Concat/Project registers PASSTHROUGH, and
             // that branch would forward port 0 instead.
             let mut source_port: Option<usize> = None;
+            let mut nao_herda: &[&str] = &[];
             match kernels.stream_op(stage.ty) {
                 Some(ph2d_nodegraph::gpu::StreamOp::Concat { ports }) => {
                     let out = self.encode_concat(gpu, &mut encoder, ports, &inputs);
@@ -337,12 +342,16 @@ impl GpuCook {
                     streams.insert(stage.node, out);
                     continue;
                 }
-                Some(ph2d_nodegraph::gpu::StreamOp::Compact { port, predicate }) => {
+                Some(ph2d_nodegraph::gpu::StreamOp::Compact {
+                    port,
+                    predicate,
+                    complement,
+                }) => {
                     // Filter the port's stream BEFORE the node's own kernel — the
                     // kernel (`sim.lifetime`'s `life` writer) runs on survivors.
                     // The predicate gets its own uniform slot, disjoint from the
                     // stage range and the lowering's (`plan.stages.len()`).
-                    let compacted = self.encode_compact(
+                    let (compacted, removidas) = self.encode_compact(
                         gpu,
                         &mut encoder,
                         plan.stages.len() + 1 + stage_idx,
@@ -355,7 +364,11 @@ impl GpuCook {
                         &inputs,
                         *port,
                         stream_op::PredicateExtras::NONE,
+                        complement,
                     )?;
+                    for (p, s) in removidas {
+                        side.insert((stage.node, usize::from(p)), s);
+                    }
                     if *port < inputs.len() {
                         inputs[*port] = compacted.clone();
                     }
@@ -363,78 +376,52 @@ impl GpuCook {
                         base = compacted;
                     }
                 }
-                Some(ph2d_nodegraph::gpu::StreamOp::Carry {
-                    state_port,
-                    live_port,
-                    predicate,
-                    predicate_reduces,
-                    fills,
-                    identity,
-                    identity_kernel,
-                }) => {
-                    let derived = kernels.derived_uniforms(stage.ty);
-                    let param =
-                        |name: &str| resolve_param(graph, stage.node, manifest, name, &self.driven);
-                    let ctx = ph2d_nodegraph::gpu::CountLawCtx {
-                        inputs: &raw_counts,
-                        param: &param,
-                        playhead,
-                        dt,
-                    };
-                    if identity(&ctx) {
-                        // O caso em que a CPU devolve a entrada viva: o kernel do caso corre sobre
-                        // ela (a base é a porta 0, que TEM de ser a viva).
-                        kernel = identity_kernel;
-                    } else {
-                        // 1. As reduções do predicado, sobre o estado CRU; 2. o filtro; 3. a
-                        // junção. O kernel do nó corre depois, sobre a junção.
-                        let shared = kernels.wgsl_shared(stage.ty);
-                        let pred_red = self.run_reduces(
-                            gpu,
-                            &mut encoder,
-                            predicate_reduces,
-                            &inputs,
-                            graph,
-                            stage.node,
-                            manifest,
-                            shared,
-                        );
-                        let carried = self.encode_compact(
-                            gpu,
-                            &mut encoder,
-                            plan.stages.len() + 1 + stage_idx,
-                            predicate,
-                            graph,
-                            stage.node,
-                            manifest,
-                            playhead,
-                            dt,
-                            &inputs,
-                            *state_port,
-                            stream_op::PredicateExtras {
-                                reduces: (predicate_reduces, &pred_red.buffers),
-                                shared,
-                                derived: (derived, &raw_counts),
-                            },
-                        )?;
-                        self.reduce_results_hold.push(pred_red);
-                        let live = inputs.get(*live_port).cloned().unwrap_or_default();
-                        let joined = self.encode_join(gpu, &mut encoder, &[&carried, &live], fills);
-                        if *state_port < inputs.len() {
-                            inputs[*state_port] = carried;
-                        }
-                        if *live_port < inputs.len() {
-                            inputs[*live_port] = joined.clone();
-                        }
-                        base = joined;
+                Some(op @ ph2d_nodegraph::gpu::StreamOp::Carry { .. }) => {
+                    let slot = plan.stages.len() + 1 + stage_idx;
+                    let no = (graph, stage.node, stage.ty, manifest);
+                    match self.encode_carry(
+                        gpu,
+                        &mut encoder,
+                        slot,
+                        op,
+                        kernels,
+                        no,
+                        (playhead, dt),
+                        (&mut inputs, &raw_counts),
+                    )? {
+                        stream_op::Carregado::Identidade(k) => kernel = k,
+                        stream_op::Carregado::Junto(j) => base = j,
                     }
                 }
-                Some(ph2d_nodegraph::gpu::StreamOp::SourceRows { port }) => {
+                Some(ph2d_nodegraph::gpu::StreamOp::SourceRows {
+                    port,
+                    fired,
+                    not_inherited,
+                }) => {
+                    // O segundo nascimento (doc 110 §14.1 (7)) é um estágio próprio.
+                    if let Some(f) = fired.filter(|f| {
+                        plan::fired_active(graph, ops, kernels, stage.node, f, &self.driven)
+                    }) {
+                        let n = plan.stages.len() + 1;
+                        let out = self.encode_disparo(
+                            gpu,
+                            &mut encoder,
+                            [stage_idx, n + stage_idx, 2 * n + stage_idx],
+                            &f,
+                            (*port, not_inherited),
+                            (graph, stage.node, manifest),
+                            (playhead, dt),
+                            (&inputs, &raw_counts),
+                        )?;
+                        streams.insert(stage.node, out);
+                        continue;
+                    }
                     // The kernel writes ROWS_COL + its own columns on a FRESH
                     // base — riding the template would hand the output the
                     // template's other columns un-gathered, at template length.
                     base = GpuStream::default();
                     source_port = Some(*port);
+                    nao_herda = not_inherited;
                 }
                 None => {}
             }
@@ -621,7 +608,25 @@ impl GpuCook {
             // columns at them so the newborns inherit the whole vocabulary
             // (ADR-0136 — the CPU's `newborns` copies every column but `id`).
             if let Some(p) = source_port {
-                out = self.encode_source_gather(gpu, &mut encoder, out, inputs.get(p), count);
+                out = self.encode_source_gather(
+                    gpu,
+                    &mut encoder,
+                    out,
+                    inputs.get(p),
+                    count,
+                    nao_herda,
+                );
+            }
+            // As colunas projectadas saem da porta 0 para a porta delas (doc 110 §14.1 (1)).
+            for pp in kernels.projected_ports(stage.ty) {
+                if let Some(col) = out.cols.remove(pp.column) {
+                    let cols = BTreeMap::from([(pp.as_name.to_string(), col)]);
+                    let s = GpuStream {
+                        count: out.count,
+                        cols,
+                    };
+                    side.insert((stage.node, usize::from(pp.port)), s);
+                }
             }
             streams.insert(stage.node, out);
         }
@@ -673,22 +678,4 @@ impl GpuCook {
         drop(streams);
         Ok(count)
     }
-}
-
-pub(crate) fn create_pipeline(gpu: &GpuContext, wgsl: &str, label: &str) -> wgpu::ComputePipeline {
-    let module = gpu
-        .device
-        .create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some(label),
-            source: wgpu::ShaderSource::Wgsl(wgsl.into()),
-        });
-    gpu.device
-        .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some(label),
-            layout: None,
-            module: &module,
-            entry_point: Some("main"),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            cache: None,
-        })
 }

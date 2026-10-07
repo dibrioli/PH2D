@@ -677,6 +677,9 @@ mod tests;
 #[path = "motion_state_demo_router_census.rs"]
 mod census;
 #[cfg(test)]
+#[path = "motion_state_demo_router_census_portas.rs"]
+mod census_portas;
+#[cfg(test)]
 #[path = "motion_state_demo_router_census_da_lei.rs"]
 mod census_da_lei;
 #[cfg(test)]

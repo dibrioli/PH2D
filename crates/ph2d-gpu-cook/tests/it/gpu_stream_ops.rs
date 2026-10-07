@@ -17,7 +17,7 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_render::RenderInstance;
 use ph2d_render::SinkStyle;
 
-fn try_headless_gpu() -> Option<GpuContext> {
+pub(crate) fn try_headless_gpu() -> Option<GpuContext> {
     use std::sync::OnceLock;
     static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
     SHARED
@@ -25,7 +25,7 @@ fn try_headless_gpu() -> Option<GpuContext> {
         .clone()
 }
 
-fn registry() -> NodeRegistry {
+pub(crate) fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();
     ph2d_node_motion_grid::register(&mut reg).unwrap();
     ph2d_node_motion_output::register(&mut reg).unwrap();
@@ -99,7 +99,7 @@ fn assert_parity_tint(label: &str, cpu: &[RenderInstance], gpu: &[RenderInstance
 
 /// One CPU frame at `playhead` (the canonical lowering), advancing the tick so
 /// a sequential graph marches.
-fn cpu_frame(
+pub(crate) fn cpu_frame(
     cook: &mut Cook,
     g: &Graph,
     reg: &NodeRegistry,
@@ -126,7 +126,7 @@ fn cpu_frame(
 /// asserting the plan claimed everything and that the populations agree at
 /// EVERY tick (the trajectory, not the endpoint: a wrong compaction can
 /// re-converge — the W1.5 lesson, applied to counts).
-fn parity_over_ticks(
+pub(crate) fn parity_over_ticks(
     label: &str,
     g: &Graph,
     reg: &NodeRegistry,

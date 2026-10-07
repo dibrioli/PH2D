@@ -154,13 +154,10 @@ fn seconds_per_beat(mode: f32, period: f32, bpm: f32) -> f32 {
 /// ⚠️ **Nada é lido da porta 0.** O [`eval`] da CPU só lhe pergunta o COMPRIMENTO, e a saída dele
 /// é um stream novo; ligar uma coluna aqui seria o kernel a ler o que a lei não lê.
 ///
-/// ⚠️⚠️ **DIVERGÊNCIA DECLARADA — o índice do ciclo é um `floor`, e o `playhead` do dispositivo é
-/// `f32`.** A [`cycle_index`] da CPU divide em `f64` de propósito (*«horas de execução ficam
-/// exactas»*); o uniform do módulo gerado carrega o instante em `f32`. As duas rotas só podem
-/// discordar quando `t` cai **dentro de um ULP** do instante de uma batida — e aí discordam por um
-/// TIQUE inteiro, não por ε, porque a saída é uma comparação (`prev ≠ k`) e uma comparação não tem
-/// ε. É a mesma família do *fio da navalha* que o `gpu_cpu_parity_pulse` mede no `pulse.compare`, e
-/// a CPU continua a ser o caminho canónico (ADR-0126).
+/// ⭐⭐ **Sem divergência nos empates batida-tique** (doc 122 §2): o índice do ciclo é um `floor`, e
+/// até 07/10 a placa dividia o `playhead` em `f32` — a um ULP de uma batida as rotas discordavam
+/// por um TIQUE inteiro. Agora o [`Compasso`] é decidido no hospedeiro em `f64` e chega como
+/// uniforms derivados; o corpo só faz a mesma aritmética exacta que a [`cycle_index`] da CPU.
 ///
 /// ⚠️ **Uma linha SEM história dispara**, e é preciso dizê-lo em WGSL: o `prev.get(i) != Some(k)`
 /// da CPU é verdadeiro tanto quando o índice mudou como quando a coluna **não existe** — daí o

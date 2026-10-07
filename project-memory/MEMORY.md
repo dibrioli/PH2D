@@ -81,7 +81,6 @@
 - 📚 [Ship / CI / integração: mais (23) lições](reference_topic_ship_ci_integration_lessons.md)
 
 ## Auditoria (famílias — 2 saltos)
-- ⛔⛔ [Régua de vão num sentido pune fecho parcial](feedback_a_one_direction_gap_ruler_punishes_partial_closing.md) · [OBJECTIVO da régua × produto](feedback_a_ruler_objective_can_contradict_the_product.md)
 - ⛔ [`touch` não mede uma edição; `--timings` dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
 
 - ⛔ [Grelha nunca cai num conjunto de MEDIDA NULA — os pontos PÕEM-SE](feedback_a_grid_never_lands_on_a_measure_zero_set_so_it_reports_it_clean.md)
@@ -107,7 +106,7 @@
 - [Teste Cascadeur (ossos 2D fora do repo); a rede neural só pelo rato simulado](project_teste_cascadeur_2d_bones_testbed.md)
 - [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)
 - [Física do impasto/sculpt (10)](reference_topic_impasto_physics.md)
-- ⭐ [**Como uma RÉGUA mente** — a família (203)](reference_topic_measurement_discipline.md)
+- ⭐ [**Como uma RÉGUA mente** — a família (204)](reference_topic_measurement_discipline.md)
 - ⛔⛔⛔ [Uma régua enviesada manda a wave seguinte para onde ela própria está errada](feedback_a_biased_ruler_sends_work_to_where_it_is_itself_wrong.md)
 - ⛔ [Régua de vazamento cuja máscara usa o predicado DO PRODUTO lê 0,00 % sobre o defeito](feedback_a_leak_ruler_masked_by_the_products_own_predicate_hides_the_leak.md)
 - ⛔⛔ [Sweep da parede VERDE sobre espec que TRADUZIA o alvo](feedback_a_sweep_in_one_language_does_not_prove_filtering_in_another.md)

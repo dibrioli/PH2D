@@ -106,6 +106,23 @@ fn vello_center() -> [f32; 2] {
 /// `(mundo da 1.ª sprite, mundo do 1.º vector, quantas sprites, quantos vetores)`.
 type Sample = ([f32; 2], [f32; 2], usize, usize);
 static SAMPLE: std::sync::Mutex<Option<Sample>> = std::sync::Mutex::new(None);
+/// `(quantas sprites, quantas formas)` que o cozimento DO DISPOSITIVO escreveu nos buffers dele.
+/// `Some` ⇔ o quadro foi à placa: o mundo dessas cópias não volta à CPU, e sem esta amostra a
+/// linha lia `de 0` e jurava que não havia forma (Bug #14 do Motion, doc 122 §1).
+static DEVICE: std::sync::Mutex<Option<(usize, usize)>> = std::sync::Mutex::new(None);
+
+/// O quadro foi cozido NA PLACA — ver [`DEVICE`]. Apaga a amostra da CPU, que seria velha.
+pub fn note_device(sprites: usize, formas: usize) {
+    if !on() {
+        return;
+    }
+    if let Ok(mut g) = DEVICE.lock() {
+        *g = Some((sprites, formas));
+    }
+    if let Ok(mut g) = SAMPLE.lock() {
+        *g = None;
+    }
+}
 
 /// Chamado depois do cozimento, com a 1.ª instância de cada rota.
 pub fn note_instances(sprites: &[ph2d_render::RenderInstance], vectors: &[[f32; 2]]) {
@@ -116,6 +133,9 @@ pub fn note_instances(sprites: &[ph2d_render::RenderInstance], vectors: &[[f32; 
     let v = vectors.first().copied().unwrap_or([f32::NAN; 2]);
     if let Ok(mut g) = SAMPLE.lock() {
         *g = Some((s, v, sprites.len(), vectors.len()));
+    }
+    if let Ok(mut g) = DEVICE.lock() {
+        *g = None;
     }
 }
 
@@ -156,12 +176,19 @@ pub fn frame(
             .ok()
             .and_then(|g| *g)
             .unwrap_or(([f32::NAN; 2], [f32::NAN; 2], 0, 0));
+    let placa = DEVICE
+        .lock()
+        .ok()
+        .and_then(|g| *g)
+        .map_or_else(String::new, |(s, f)| {
+            format!(" · PLACA: {s} sprites e {f} formas no buffer do cozimento (mundo nao lido)")
+        });
     eprintln!(
         "[pan.diag] centro ({:.4}, {:.4}) altura {:.3} | janela {w:.0}x{h:.0} motion={motion_active} \
          | subrect pedido [{}] aplicado [{}]{caiu} \
          | origem: sprite ({:.2}, {:.2}) vector ({:.2}, {:.2}) flip ({:.2}, {:.2}) \
          | Δvector ({:.3}, {:.3}) Δflip ({:.3}, {:.3}) Δcam ({:.4}, {:.4}) \
-         | MUNDO sprite[0] ({:.4}, {:.4}) de {ns} · vector[0] ({:.4}, {:.4}) de {nv}",
+         | MUNDO sprite[0] ({:.4}, {:.4}) de {ns} · vector[0] ({:.4}, {:.4}) de {nv}{placa}",
         cam.center[0],
         cam.center[1],
         cam.height_world,

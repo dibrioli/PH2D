@@ -75,6 +75,13 @@ pub(crate) fn coze_o_quadro(
     {
         // ⭐ A origem de cada objecto Motion, na placa (doc ObjectsAndComponents 01 §13).
         crate::motion_objeto::origem::aplica_gpu(motion, gpu);
+        if ph2d_pan_diag::on() {
+            let c = &motion.gpu_cook;
+            ph2d_pan_diag::note_device(
+                c.instances().map_or(0, |i| i.len() as usize),
+                c.formas().map_or(0, |f| f.len() as usize),
+            );
+        }
         return;
     }
 

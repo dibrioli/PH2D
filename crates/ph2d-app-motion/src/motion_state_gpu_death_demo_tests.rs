@@ -15,6 +15,17 @@ fn registry() -> NodeRegistry {
     reg
 }
 
+/// **A ZONA** — a população da simulação. ⚠️ Desde 07/10 a saída carimba uma estrela em cada
+/// centelha, e a estrela (`source.shape`) só existe com as membranas da ponte publicadas; a lei
+/// que estes gates medem é a do nascimento, que vive na zona (o que o carimbo recebe).
+fn zona(doc: &MotionDoc, sink: ph2d_nodegraph::graph::NodeId) -> ph2d_nodegraph::graph::NodeId {
+    let carimbo = doc.graph.input_edge(sink, 0).expect("o sink tem entrada").0;
+    doc.graph
+        .input_edge(carimbo, 1)
+        .expect("o carimbo tem pontos")
+        .0
+}
+
 /// A população, quadro a quadro, do documento REAL da cena.
 fn population(secs: f64) -> Vec<usize> {
     let reg = registry();
@@ -24,7 +35,9 @@ fn population(secs: f64) -> Vec<usize> {
     let mut n = Vec::new();
     for k in 0..=((secs * 60.0) as u64) {
         let t = k as f64 / 60.0;
-        let s = cook.cook(&doc.graph, &reg, sinks[0], t).expect("cozinha")[0]
+        let s = cook
+            .cook(&doc.graph, &reg, zona(&doc, sinks[0]), t)
+            .expect("cozinha")[0]
             .as_stream()
             .clone();
         n.push(s.count());
@@ -128,7 +141,9 @@ fn the_siblings_of_a_burst_fly_apart() {
     let mut distinct = 0usize;
     for k in 0..=100u64 {
         let t = k as f64 / 60.0;
-        let s = cook.cook(&doc.graph, &reg, sinks[0], t).expect("cozinha")[0]
+        let s = cook
+            .cook(&doc.graph, &reg, zona(&doc, sinks[0]), t)
+            .expect("cozinha")[0]
             .as_stream()
             .clone();
         if k == 100 {
@@ -187,7 +202,9 @@ fn probe_siblings() {
     let mut cook = Cook::new();
     for k in 0..=150u64 {
         let t = k as f64 / 60.0;
-        let s = cook.cook(&doc.graph, &reg, sinks[0], t).expect("cozinha")[0]
+        let s = cook
+            .cook(&doc.graph, &reg, zona(&doc, sinks[0]), t)
+            .expect("cozinha")[0]
             .as_stream()
             .clone();
         if (66..=70).contains(&k) || k == 90 || k == 120 || k == 150 {
@@ -208,5 +225,81 @@ fn probe_siblings() {
             }
         }
         cook.advance_tick(&doc.graph, &reg, t).expect("avança");
+    }
+}
+
+/// Pixels acesos por estrela abaixo dos quais a centelha não se LÊ como estrela. Uma estrela de
+/// seis pontas de raio `r` px acende `~1,5·r²`: `~18` a `0,07` (o Bug #14) e `~175` a `0,22`.
+const PIXELS_POR_ESTRELA_MIN: usize = 80;
+
+/// ⛔ **Bug #14 — as estrelas da SAÍDA da zona LÊEM-SE no ecrã**, pela porta do produto: o quadro
+/// cozido por `coze_o_quadro`, a placa de formas decidida com a MESMA pergunta do host
+/// (`fase_vector_bands.rs`: o buffer do dispositivo se o cozimento é vivo, senão as
+/// `vector_instances`) e desenhada à escala da câmera do produto (`48 px` por unidade).
+///
+/// ⚠️ O defeito não era perda nenhuma: as duas rotas entregam as estrelas em todo quadro. Era o
+/// TAMANHO (`~3 px`), e a sonda `PH2D_PAN_DIAG` cega à rota do dispositivo que o «confirmou».
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_sparks_draw_legible_stars_on_both_routes() {
+    use crate::motion_shape_placa::PlacaDeFormas;
+    use crate::motion_shape_placa::gpu_tests::{LADO, compara, le_a_camada};
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        return;
+    };
+    let k = 48.0;
+    let camara = ph2d_vector::Affine::translate((f64::from(LADO) * 0.5, f64::from(LADO) * 0.5))
+        * ph2d_vector::Affine::scale_non_uniform(k, -k);
+    for placa in [false, true] {
+        let mut m = crate::motion_state::MotionState::new();
+        m.gpu_enabled = placa;
+        m.sinks = build_gpu_death_demo_document(&mut m.doc, &m.registry).expect("a cena");
+        let mut playhead = ph2d_core::Playhead::new(1.0 / 60.0);
+        for quadro in 1..=3u64 {
+            playhead.seek(quadro as f64 / 60.0);
+            crate::motion_bridge::quadro::coze_o_quadro(&mut m, &gpu, &playhead, 1.0 / 60.0);
+            let rota = m.route_said.unwrap_or("");
+            assert_eq!(rota.starts_with("device"), placa, "a rota tomada: {rota}");
+            let mut p = PlacaDeFormas::default();
+            let dispositivo = m.gpu_cook.formas().filter(|_| m.gpu_live);
+            let n = dispositivo.map_or(m.pump.vector_instances.len(), |f| f.len() as usize);
+            let decidiu = match dispositivo {
+                Some(f) => p.decide_do_dispositivo(
+                    true,
+                    f.len(),
+                    &m.formas_no_dispositivo,
+                    &m.shape_store,
+                    &mut m.placa_geometrias,
+                    camara,
+                ),
+                None => p.decide(
+                    true,
+                    &m.pump.vector_instances,
+                    &m.shape_store,
+                    &mut m.placa_geometrias,
+                    camara,
+                ),
+            };
+            assert!(
+                decidiu,
+                "placa={placa} q={quadro}: a placa recusou as estrelas"
+            );
+            let buffer = m
+                .gpu_cook
+                .formas()
+                .filter(|_| m.gpu_live)
+                .map(|f| f.buffer());
+            p.desenha(&gpu, (LADO, LADO), &m.placa_geometrias, buffer)
+                .expect("a placa desenha");
+            let camada = le_a_camada(&gpu, &p);
+            let acesos = compara(&camada, &camada).2;
+            assert_eq!(n, 3, "as três centelhas antes do 1.º estouro");
+            assert!(
+                acesos >= n * PIXELS_POR_ESTRELA_MIN,
+                "placa={placa} q={quadro}: {acesos} pixels para {n} estrelas — uma estrela de \
+                 ~{} px por cópia não se lê",
+                acesos / n.max(1)
+            );
+        }
     }
 }

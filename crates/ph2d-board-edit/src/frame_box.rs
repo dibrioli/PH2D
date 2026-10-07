@@ -4,7 +4,7 @@
 
 use ph2d_board_model::Element;
 
-use crate::{Dir, Handle, Metrics};
+use crate::{Handle, Metrics};
 
 /// Uma caixa rodada: o centro, o tamanho e o ângulo (mundo).
 #[derive(Clone, Copy, Debug, PartialEq)]

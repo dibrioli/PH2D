@@ -136,7 +136,7 @@ fn group_members_are_the_ones_that_carry_the_group() {
     rect(&mut doc, None, [0.0; 4]);
     for id in [a, b] {
         let mut el = doc.get(id).unwrap().clone();
-        el.groups.push(g);
+        el.groups_mut().push(g);
         BoardOp::Put(el).apply(&mut doc);
     }
     assert_eq!(doc.group_members(g), vec![a, b]);

@@ -325,8 +325,8 @@ fn a_format_4_file_still_opens_and_everything_in_it_is_loose() {
     assert_eq!(els[2].connector().expect("seta").label, "depois");
     assert!(els[3].ink().is_some(), "o traço da caneta continua traço");
     for e in &els {
-        assert!(e.frame.is_none() && e.groups.is_empty() && !e.locked);
-        assert!(e.link.is_none() && e.tags.is_empty());
+        assert!(e.frame.is_none() && e.groups().is_empty() && !e.locked());
+        assert!(e.link().is_none() && e.tags().is_empty());
     }
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(back, set, "relido e regravado no formato actual, fica igual");
@@ -357,10 +357,10 @@ fn frames_groups_lock_link_and_tags_round_trip_through_the_bytes() {
     };
     let mut note = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [20.0, 20.0, 50.0, 50.0]);
     note.frame = Some(inner.id);
-    note.groups = vec![doc.mint_group(), doc.mint_group()];
-    note.locked = true;
-    note.link = Some(outer.id);
-    note.tags = vec![crate::Tag { name: "urgente".into(), color: Rgba([200, 0, 0, 255]) }];
+    *note.groups_mut() = vec![doc.mint_group(), doc.mint_group()];
+    note.set_locked(true);
+    note.set_link(Some(outer.id));
+    *note.tags_mut() = vec![crate::Tag { name: "urgente".into(), color: Rgba([200, 0, 0, 255]) }];
     for e in [outer, inner, note] {
         BoardOp::Put(e).apply(doc);
     }

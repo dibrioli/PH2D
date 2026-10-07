@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Connector, End, Frame, FracKey, GroupId, Ink, RichText, Tag};
+use crate::{Connector, End, Frame, FracKey, Ink, Org, RichText};
 
 /// Identidade de um elemento dentro do seu quadro. Nunca reusada (as lápides guardam-na).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -200,14 +200,11 @@ pub struct Element {
     pub z: FracKey,
     /// W5 — o frame mais interior que o contém (`None` = solto no quadro). Ver `organize.rs`.
     pub frame: Option<ElementId>,
-    /// W5 — os grupos a que pertence, do de DENTRO ao de FORA (o `groupIds` do Excalidraw).
-    pub groups: Vec<GroupId>,
-    /// W5 — travado: não se move, não se edita, não se apaga; fora do laço e do `Ctrl+A`.
-    pub locked: bool,
-    /// W5 — o elemento para onde este leva (o «Link to» do Miro: um só por elemento).
-    pub link: Option<ElementId>,
-    /// W5 — as etiquetas (só as notas as mostram; até [`crate::MAX_TAGS`]).
-    pub tags: Vec<Tag>,
+    /// W5 — grupos, travar, link e etiquetas: numa caixa que só existe quando algum se usa
+    /// ([`crate::Org`], pelos acessores `groups()`, `locked()`…). ⛔ Medido (07/10): os quatro no
+    /// elemento eram +81 bytes em CADA um, e 100 mil rectângulos à vista iam de ~6 a ~7,5 ms por
+    /// imagem (a régua com o elemento antigo + 81 bytes de enchimento dá o mesmo).
+    pub org: Option<Box<Org>>,
     /// Sobe a cada mudança deste elemento.
     pub version: u64,
     /// Desempate entre duas mudanças com a mesma `version` (Etapa 2).
@@ -248,10 +245,7 @@ impl Element {
             angle: 0.0,
             z,
             frame: None,
-            groups: Vec::new(),
-            locked: false,
-            link: None,
-            tags: Vec::new(),
+            org: None,
             version: 0,
             nonce: 0,
             deleted: false,
@@ -329,6 +323,12 @@ impl Element {
     /// A caixa alinhada aos eixos que contém o elemento rodado: `[x0, y0, x1, y1]`.
     #[must_use]
     pub fn aabb(&self) -> [f64; 4] {
+        // Sem rotação, a caixa é a própria — sem os quatro senos e cossenos dos cantos. ⛔ Medido
+        // (07/10, W5): o desenho pede-a duas vezes por elemento; com a trigonometria, 100 mil
+        // rectângulos à vista iam de ~6 a ~10 ms por imagem.
+        if self.angle == 0.0 {
+            return [self.x, self.y, self.x + self.w, self.y + self.h];
+        }
         let c = self.corners();
         let fold =
             |f: fn(f64, f64) -> f64, i: usize, init: f64| c.iter().map(|p| p[i]).fold(init, f);
@@ -436,6 +436,12 @@ pub struct BoardDoc {
     /// A revisão da SESSÃO (não vai para o ficheiro): muda a cada operação aplicada.
     #[serde(skip)]
     pub(crate) rev: Rev,
+    /// Os ids dos frames VIVOS (W5), mantidos pelas ops — o desenho e os gestos perguntam pelos
+    /// frames sem passar pelo quadro inteiro. ⛔ Medido (07/10): duas passagens a mais pelos 100 mil
+    /// vivos para os achar eram ~1 ms por imagem num quadro SEM frames. Não vai para o ficheiro:
+    /// refaz-se ao ler ([`BoardDoc::reindex`]).
+    #[serde(skip)]
+    pub(crate) frames: std::collections::BTreeSet<ElementId>,
 }
 
 /// ⭐ **Revisão de um documento nesta sessão** — o «mudou alguma coisa?» em O(1) dos caches

@@ -56,7 +56,7 @@ impl Editor {
             Command::Mark(m) => self.toggle_mark(doc, history, m),
             Command::SelectAll => {
                 // Os travados ficam de fora (o Miro e o oráculo E).
-                self.selection = doc.live().filter(|el| !el.locked).map(|el| el.id).collect();
+                self.selection = doc.live().filter(|el| !el.locked()).map(|el| el.id).collect();
                 true
             }
             Command::EditText => {
@@ -75,7 +75,7 @@ impl Editor {
                 }
                 let gone: BTreeSet<ElementId> = crate::organize::with_descendants(doc, &free)
                     .into_iter()
-                    .filter(|id| doc.get(*id).is_some_and(|el| !el.locked))
+                    .filter(|id| doc.get(*id).is_some_and(|el| !el.locked()))
                     .collect();
                 let mut ops = self.release_ends(doc, &gone);
                 ops.extend(gone.iter().map(|id| BoardOp::Delete(*id)));
@@ -235,10 +235,10 @@ pub(crate) fn remap_organize(
         if let Some(f) = el.frame.and_then(|f| map.get(&f)) {
             el.frame = Some(*f);
         }
-        if let Some(l) = el.link.and_then(|l| map.get(&l)) {
-            el.link = Some(*l);
+        if let Some(l) = el.link().and_then(|l| map.get(&l)) {
+            el.set_link(Some(*l));
         }
-        for g in &mut el.groups {
+        for g in el.groups_mut() {
             *g = *groups.entry(*g).or_insert_with(|| doc.mint_group());
         }
     }

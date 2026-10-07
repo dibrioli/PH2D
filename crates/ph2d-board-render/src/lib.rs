@@ -6,10 +6,12 @@
 //! ⚠️ Reconstrói a cena a cada quadro, recortando ao ecrã; o texto moldado vem da [`TextCache`].
 //! As réguas (`tests/it/measure_*`) dizem quando isso deixa de chegar.
 
+mod frames;
 mod grid;
 mod sketch;
 mod theme_ink;
 
+pub use frames::{Detail, FRAME_TITLE_ONLY_PX};
 pub use grid::{dot_grid, grid_step_world};
 pub use theme_ink::ThemeInk;
 
@@ -59,6 +61,8 @@ pub struct RenderCache {
     outlines: BTreeMap<(u64, u64), (OutlineKey, Outline, u64)>,
     sketch: sketch::SketchCache,
     frame: u64,
+    /// O nível de detalhe de longe (W5) — parâmetro para as réguas compararem variantes.
+    pub detail: Detail,
 }
 
 /// O contorno guardado de `owner` (refeito se a forma mudou) — uma função sobre o CAMPO, para o
@@ -163,7 +167,23 @@ pub fn paint(
     );
     let v = view(&board.camera, area);
     let zoom = board.camera.zoom;
+    let frames = frames::visible(board, area, clip);
+    let shown: std::collections::BTreeSet<_> = frames.iter().map(|(f, _)| f.id).collect();
+    let far = frames::paint_backs(scene, &frames, theme, cache.detail);
+    let mut clips = frames::Clips::default();
+    let chains = frames::Chains::new(&board.doc, &shown, &far);
+    let framed = board.doc.has_frames();
     for el in board.doc.live_in_z_order() {
+        if framed {
+            if el.as_frame().is_some() {
+                continue;
+            }
+            // Dentro de um frame fora de vista (o recorte esconde-o) ou de longe (só o título).
+            let Some(chain) = chains.of(el) else {
+                continue;
+            };
+            clips.enter(scene, board, area, chain);
+        }
         if let Some(c) = el.connector() {
             if let Some(r) = routes.get(el.id) {
                 let [bx0, by0, bx1, by1] = r.bbox;
@@ -208,6 +228,13 @@ pub fn paint(
             continue;
         };
         let st = &shape.style;
+        // De longe uma nota é um bloco da cor dela (W5, [`Detail::note_blocks`]).
+        if cache.detail.note_blocks && shape.kind.is_note() && st.font_size * zoom < READ_PX {
+            if let Some(c) = st.fill {
+                scene.fill_rect(r, doc_color(c));
+            }
+            continue;
+        }
         let plain =
             el.angle == 0.0 && st.opacity == 100 && st.stroke.is_none() && !st.round && !st.sketch;
         if r.width().max(r.height()) < DOT_PX
@@ -232,6 +259,8 @@ pub fn paint(
             sel_of(el.id),
         );
     }
+    clips.close(scene);
+    frames::paint_titles(scene, ts, cache, board.id.0, &frames, theme);
     scene.pop_layer();
     cache.end_frame();
 }

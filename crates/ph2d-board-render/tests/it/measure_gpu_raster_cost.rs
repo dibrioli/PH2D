@@ -27,7 +27,7 @@ use ph2d_vector::{Color, VectorScene};
 use std::time::Instant;
 
 /// O alvo em pixels — a `AREA` da régua de CPU (o teste confere).
-const SIZE: (u32, u32) = (1920, 1080);
+pub(super) const SIZE: (u32, u32) = (1920, 1080);
 /// O enchimento: `FILL_COPIES` cópias de `FILL_BYTES` na placa antes do marcador de início.
 const FILL_BYTES: u64 = 128 << 20;
 const FILL_COPIES: usize = 16;
@@ -139,7 +139,7 @@ impl Stamps {
 }
 
 /// Um render sem marcadores, da chamada até a fila esvaziar (ms de parede).
-fn wall_frame(gpu: &GpuContext, pass: &mut VelloPass, scene: &VectorScene) -> f64 {
+pub(super) fn wall_frame(gpu: &GpuContext, pass: &mut VelloPass, scene: &VectorScene) -> f64 {
     let t = Instant::now();
     pass.render_to_intermediate(gpu, scene.inner(), SIZE, Color::TRANSPARENT)
         .expect("o Vello desenha");
@@ -162,7 +162,7 @@ fn orange_area(rgba: &[u8]) -> f64 {
         .sum()
 }
 
-fn min_med(v: &[f64]) -> (f64, f64) {
+pub(super) fn min_med(v: &[f64]) -> (f64, f64) {
     let mut v = v.to_vec();
     v.sort_by(f64::total_cmp);
     (v[0], v[v.len() / 2])

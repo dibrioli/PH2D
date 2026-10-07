@@ -315,3 +315,48 @@ fn measure_board_first_frame_cost() {
         println!("| {n} | {mix:?} | {:.3} | {:.3} |", v[0], v[v.len() / 2]);
     }
 }
+
+/// Quanto custa UMA passagem pelos vivos de um quadro de 100 mil (a procurar frames) contra a
+/// imagem inteira — a atribuição do chão das cenas grandes (W5).
+#[test]
+#[ignore = "régua: corre-se à mão em --release (ver o cabeçalho)"]
+fn measure_one_pass_over_the_board() {
+    for (name, sc) in [("100 mil à vista", (100_000, Mix::Rects)), ("100 mil de perto", (100_000, Mix::ShapesNear))] {
+        println!("== {name}");
+        one_pass(board_with(sc));
+    }
+}
+
+fn one_pass(set: BoardSet) {
+    let routes = routes_of(&set);
+    let doc = &set.boards()[0].doc;
+    let mut scene = VectorScene::new();
+    let mut ts = TextSystem::without_system_fonts();
+    let mut cache = RenderCache::default();
+    one_frame(&set, &mut scene, &mut ts, &mut cache, &routes);
+    let mut per = [Vec::new(), Vec::new(), Vec::new()];
+    for round in 0..ROUNDS {
+        for k in 0..3 {
+            let i = (k + round) % 3;
+            let t = Instant::now();
+            for _ in 0..FRAMES {
+                match i {
+                    0 => one_frame(&set, &mut scene, &mut ts, &mut cache, &routes),
+                    1 => {
+                        std::hint::black_box(doc.live().filter(|e| e.as_frame().is_some()).count());
+                    }
+                    _ => {
+                        std::hint::black_box(doc.live_in_z_order().len());
+                    }
+                }
+            }
+            per[i].push(t.elapsed().as_secs_f64() * 1e3 / FRAMES as f64);
+        }
+    }
+    let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!("loadavg: {}", load.trim());
+    for (name, v) in ["imagem inteira", "uma passagem pelos vivos", "vivos ordenados"].iter().zip(&mut per) {
+        v.sort_by(f64::total_cmp);
+        println!("| {name} | {:.3} | {:.3} |", v[0], v[v.len() / 2]);
+    }
+}

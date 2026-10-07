@@ -310,7 +310,7 @@ impl Editor {
                 // Fora do grupo em que se entrou, sai-se dele (oráculo B).
                 self.entered = self
                     .entered
-                    .filter(|g| doc.get(id).is_some_and(|el| el.groups.contains(g)));
+                    .filter(|g| doc.get(id).is_some_and(|el| el.groups().contains(g)));
                 let pick = self.pick(doc, id);
                 let was = self.selection.contains(&id);
                 let mut collapse_to = None;
@@ -413,7 +413,7 @@ impl Editor {
                     // Os travados ficam de fora (o Miro); quem é de um grupo traz o grupo.
                     let inside: Vec<ElementId> = doc
                         .live()
-                        .filter(|el| !el.locked)
+                        .filter(|el| !el.locked())
                         .filter(|el| {
                             let b = match el.connector() {
                                 Some(_) => routes.get(el.id).map_or([f64::NAN; 4], |r| r.bbox),

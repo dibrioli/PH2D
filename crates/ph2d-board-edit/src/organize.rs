@@ -66,7 +66,7 @@ impl Notice {
     pub fn key(self) -> &'static str {
         match self {
             Notice::GroupAcrossFrames => "board.notice.group_across_frames",
-            Notice::Locked => "board.notice.locked",
+            Notice::Locked => "board.notice.locked()",
         }
     }
 }
@@ -88,10 +88,10 @@ impl Editor {
     fn pick_group(&self, el: &Element) -> Option<GroupId> {
         let inside = self
             .entered
-            .and_then(|g| el.groups.iter().position(|x| *x == g));
+            .and_then(|g| el.groups().iter().position(|x| *x == g));
         match inside {
             Some(0) => None,
-            Some(i) => Some(el.groups[i - 1]),
+            Some(i) => Some(el.groups()[i - 1]),
             None => el.outer_group(),
         }
     }
@@ -121,7 +121,7 @@ impl Editor {
     pub(crate) fn movable(&self, doc: &BoardDoc) -> Vec<Element> {
         self.selected(doc)
             .into_iter()
-            .filter(|el| !el.locked)
+            .filter(|el| !el.locked())
             .cloned()
             .collect()
     }
@@ -144,7 +144,7 @@ impl Editor {
             .iter()
             .filter_map(|id| doc.get(*id).cloned())
             .map(|mut el| {
-                el.groups.push(g);
+                el.groups_mut().push(g);
                 BoardOp::Put(el)
             })
             .collect();
@@ -158,10 +158,10 @@ impl Editor {
         let ops: Vec<BoardOp> = self
             .selected(doc)
             .into_iter()
-            .filter(|el| !el.groups.is_empty())
+            .filter(|el| !el.groups().is_empty())
             .map(|el| {
                 let mut el = el.clone();
-                el.groups.pop();
+                el.groups_mut().pop();
                 BoardOp::Put(el)
             })
             .collect();
@@ -177,13 +177,13 @@ impl Editor {
         if sel.is_empty() {
             return false;
         }
-        let on = !sel.iter().all(|el| el.locked);
+        let on = !sel.iter().all(|el| el.locked());
         let ops = sel
             .into_iter()
-            .filter(|el| el.locked != on)
+            .filter(|el| el.locked() != on)
             .map(|el| {
                 let mut el = el.clone();
-                el.locked = on;
+                el.set_locked(on);
                 BoardOp::Put(el)
             })
             .collect();
@@ -310,7 +310,7 @@ impl Editor {
     fn units(&self, doc: &BoardDoc) -> Vec<Unit> {
         let mut by_key: BTreeMap<UnitKey, Vec<ElementId>> = BTreeMap::new();
         for el in self.selected(doc) {
-            if el.locked || el.connector().is_some() {
+            if el.locked() || el.connector().is_some() {
                 continue;
             }
             let key = match el.outer_group() {
@@ -360,7 +360,7 @@ impl Editor {
         crate::organize::with_descendants(doc, &free)
             .into_iter()
             .filter_map(|id| doc.get(id))
-            .filter(|el| !el.locked)
+            .filter(|el| !el.locked())
             .cloned()
             .collect()
     }
@@ -476,7 +476,7 @@ fn step_slot(
     };
     // Um vizinho de um grupo salta-se inteiro (oráculo D5a).
     let block: Vec<&&Element> = match pass.outer_group() {
-        Some(g) => others.iter().filter(|e| e.groups.contains(&g)).collect(),
+        Some(g) => others.iter().filter(|e| e.groups().contains(&g)).collect(),
         None => vec![pass],
     };
     if forward {

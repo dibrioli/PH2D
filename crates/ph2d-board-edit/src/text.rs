@@ -106,7 +106,7 @@ impl Editor {
         id: ElementId,
         at: Option<[f64; 2]>,
     ) -> bool {
-        if doc.get(id).is_some_and(|el| el.locked) {
+        if doc.get(id).is_some_and(|el| el.locked()) {
             self.notice = Some(crate::Notice::Locked);
             return false;
         }

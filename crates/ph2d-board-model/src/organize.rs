@@ -23,6 +23,23 @@ pub struct Tag {
     pub color: Rgba,
 }
 
+/// O que organiza um elemento além da casa: grupos, travar, link, etiquetas — raros, por isso numa
+/// caixa à parte ([`Element::org`] é `None` em quase todos).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Org {
+    /// Os grupos, do de DENTRO ao de FORA (o `groupIds` do Excalidraw).
+    pub groups: Vec<GroupId>,
+    /// Travado: não se move, não se edita, não se apaga; fora do laço e do `Ctrl+A`.
+    pub locked: bool,
+    /// O elemento para onde este leva (o «Link to» do Miro: um só por elemento).
+    pub link: Option<ElementId>,
+    /// As etiquetas (só as notas as mostram; até [`MAX_TAGS`]).
+    pub tags: Vec<Tag>,
+}
+
+/// A cor de nascença de um frame (o Miro: *«The default color of a frame is white»*).
+pub const FRAME_FILL: [u8; 4] = [255, 255, 255, 255];
+
 /// Quantas etiquetas uma nota leva (help do Miro, «Sticky notes»: *«up to 8 tags to each sticky»*).
 pub const MAX_TAGS: usize = 8;
 
@@ -60,7 +77,53 @@ impl Element {
     /// O grupo de FORA (o que um clique selecciona), se há.
     #[must_use]
     pub fn outer_group(&self) -> Option<GroupId> {
-        self.groups.last().copied()
+        self.groups().last().copied()
+    }
+
+    /// Os grupos, do de dentro ao de fora.
+    #[must_use]
+    pub fn groups(&self) -> &[GroupId] {
+        self.org.as_ref().map_or(&[], |o| &o.groups)
+    }
+
+    #[must_use]
+    pub fn locked(&self) -> bool {
+        self.org.as_ref().is_some_and(|o| o.locked)
+    }
+
+    #[must_use]
+    pub fn link(&self) -> Option<ElementId> {
+        self.org.as_ref().and_then(|o| o.link)
+    }
+
+    #[must_use]
+    pub fn tags(&self) -> &[Tag] {
+        self.org.as_ref().map_or(&[], |o| &o.tags)
+    }
+
+    /// A caixa de organizar, criada no primeiro uso.
+    pub fn org_mut(&mut self) -> &mut Org {
+        self.org.get_or_insert_with(Box::default)
+    }
+
+    pub fn groups_mut(&mut self) -> &mut Vec<GroupId> {
+        &mut self.org_mut().groups
+    }
+
+    pub fn set_locked(&mut self, on: bool) {
+        if on || self.org.is_some() {
+            self.org_mut().locked = on;
+        }
+    }
+
+    pub fn set_link(&mut self, to: Option<ElementId>) {
+        if to.is_some() || self.org.is_some() {
+            self.org_mut().link = to;
+        }
+    }
+
+    pub fn tags_mut(&mut self) -> &mut Vec<Tag> {
+        &mut self.org_mut().tags
     }
 
     /// A caixa (sem rotação: um frame nunca roda) contém `p`.
@@ -78,6 +141,27 @@ impl Element {
 }
 
 impl BoardDoc {
+    /// Refaz o índice dos frames (depois de ler de bytes).
+    pub(crate) fn reindex(&mut self) {
+        self.frames = self
+            .elements
+            .values()
+            .filter(|e| !e.deleted && e.as_frame().is_some())
+            .map(|e| e.id)
+            .collect();
+    }
+
+    /// Há algum frame vivo? (O desenho salta o andaime dos frames num quadro sem nenhum.)
+    #[must_use]
+    pub fn has_frames(&self) -> bool {
+        !self.frames.is_empty()
+    }
+
+    /// Os frames vivos, por id (o índice: sem passar pelo quadro inteiro).
+    pub fn frames(&self) -> impl Iterator<Item = &Element> {
+        self.frames.iter().filter_map(|id| self.get(*id))
+    }
+
     /// Quantos frames há por fora de `id` (0 = no quadro).
     #[must_use]
     pub fn frame_depth(&self, id: ElementId) -> usize {
@@ -125,8 +209,8 @@ impl BoardDoc {
     /// de `skip` e do que vive dentro de `skip`.
     #[must_use]
     pub fn deepest_frame_at(&self, p: [f64; 2], skip: &BTreeSet<ElementId>) -> Option<ElementId> {
-        self.live()
-            .filter(|e| e.as_frame().is_some() && e.box_contains(p) && !skip.contains(&e.id))
+        self.frames()
+            .filter(|e| e.box_contains(p) && !skip.contains(&e.id))
             .map(|e| (self.frame_chain(e.id), e))
             .filter(|(chain, _)| !chain.iter().any(|f| skip.contains(f)))
             .max_by(|(ca, a), (cb, b)| ca.len().cmp(&cb.len()).then(a.z.cmp(&b.z)))
@@ -138,8 +222,7 @@ impl BoardDoc {
     #[must_use]
     pub fn frames_in_draw_order(&self) -> Vec<&Element> {
         let mut v: Vec<(usize, &Element)> = self
-            .live()
-            .filter(|e| e.as_frame().is_some())
+            .frames()
             .map(|e| (self.frame_depth(e.id), e))
             .collect();
         v.sort_by(|(da, a), (db, b)| da.cmp(db).then(a.z.cmp(&b.z)).then(a.id.cmp(&b.id)));
@@ -149,7 +232,7 @@ impl BoardDoc {
     /// Os frames vivos na ordem do painel de Frames (o `z`).
     #[must_use]
     pub fn frames_in_panel_order(&self) -> Vec<&Element> {
-        let mut v: Vec<&Element> = self.live().filter(|e| e.as_frame().is_some()).collect();
+        let mut v: Vec<&Element> = self.frames().collect();
         v.sort_by(|a, b| a.z.cmp(&b.z).then(a.id.cmp(&b.id)));
         v
     }
@@ -158,7 +241,7 @@ impl BoardDoc {
     #[must_use]
     pub fn group_members(&self, g: GroupId) -> Vec<ElementId> {
         self.live()
-            .filter(|e| e.groups.contains(&g))
+            .filter(|e| e.groups().contains(&g))
             .map(|e| e.id)
             .collect()
     }

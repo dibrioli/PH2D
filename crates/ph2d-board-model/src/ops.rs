@@ -38,6 +38,11 @@ impl BoardOp {
                     doc.top_z = Some(el.z.clone());
                 }
                 let id = el.id;
+                if el.as_frame().is_some() && !el.deleted {
+                    doc.frames.insert(id);
+                } else {
+                    doc.frames.remove(&id);
+                }
                 doc.elements.insert(id, el);
                 Some(match prev {
                     Some(p) if !p.deleted => BoardOp::Put(p),
@@ -49,6 +54,7 @@ impl BoardOp {
                 let before = el.clone();
                 el.deleted = true;
                 el.version += 1;
+                doc.frames.remove(&id);
                 Some(BoardOp::Put(before))
             }
         }

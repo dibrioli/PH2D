@@ -159,7 +159,14 @@ impl BoardSet {
         // A versão é o 1.º campo: lê-se sozinha, e decide com que structs ler o resto.
         let (version, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
         match version {
-            FORMAT_VERSION => postcard::from_bytes(bytes).map_err(|e| e.to_string()),
+            FORMAT_VERSION => postcard::from_bytes(bytes)
+                .map(|mut set: Self| {
+                    for b in &mut set.boards {
+                        b.doc.reindex();
+                    }
+                    set
+                })
+                .map_err(|e| e.to_string()),
             1 => crate::legacy::read_v1(bytes),
             2 => crate::legacy::read_v2(bytes),
             3 => crate::legacy::read_v3(bytes),

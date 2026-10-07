@@ -206,8 +206,8 @@ fn a_click_picks_the_outer_group_and_a_double_click_enters_one_level() {
     assert!(w.cmd(Command::Group));
     w.ed.select(&w.doc, [a, b, c]);
     assert!(w.cmd(Command::Group));
-    let (inner, outer): (GroupId, GroupId) = (w.el(a).groups[0], w.el(a).groups[1]);
-    assert_eq!(w.el(c).groups, vec![outer], "[de dentro, de fora]");
+    let (inner, outer): (GroupId, GroupId) = (w.el(a).groups()[0], w.el(a).groups()[1]);
+    assert_eq!(w.el(c).groups(), vec![outer], "[de dentro, de fora]");
     w.click([-500.0, -500.0], NONE);
     w.click([25.0, 25.0], NONE);
     assert_eq!(w.ed.selection().len(), 3, "o clique apanha o grupo de fora");
@@ -219,8 +219,8 @@ fn a_click_picks_the_outer_group_and_a_double_click_enters_one_level() {
     w.click([25.0, 25.0], NONE);
     assert_eq!(w.ed.selection().len(), 3, "o vazio saiu do grupo");
     assert!(w.cmd(Command::Ungroup));
-    assert_eq!(w.el(a).groups, vec![inner]);
-    assert!(w.el(c).groups.is_empty());
+    assert_eq!(w.el(a).groups(), vec![inner]);
+    assert!(w.el(c).groups().is_empty());
 }
 
 /// Um grupo arrasta-se inteiro por um clique num membro.
@@ -249,7 +249,7 @@ fn grouping_across_frames_is_refused_with_a_notice() {
     w.ed.select(&w.doc, [inside, outside]);
     assert!(!w.cmd(Command::Group));
     assert_eq!(w.ed.take_notice(), Some(Notice::GroupAcrossFrames));
-    assert!(w.el(inside).groups.is_empty());
+    assert!(w.el(inside).groups().is_empty());
 }
 
 /// ⭐ Travado (o Miro + oráculo E): o clique selecciona-o mas o arrasto não o move, o laço e o
@@ -261,7 +261,7 @@ fn a_locked_element_cannot_be_moved_deleted_or_written_and_marquee_skips_it() {
     let free = put_rect(&mut w, [100.0, 0.0, 50.0, 50.0]);
     w.ed.select(&w.doc, [l]);
     assert!(w.cmd(Command::Lock));
-    assert!(w.el(l).locked);
+    assert!(w.el(l).locked());
     w.click([-500.0, -500.0], NONE);
     w.drag([25.0, 25.0], [25.0, 225.0], CTRL);
     assert_eq!(w.el(l).y, 0.0, "não se moveu");
@@ -277,7 +277,7 @@ fn a_locked_element_cannot_be_moved_deleted_or_written_and_marquee_skips_it() {
     assert_eq!(*w.ed.selection(), BTreeSet::from([free]), "o Ctrl+A também");
     w.ed.select(&w.doc, [l]);
     assert!(w.cmd(Command::Lock), "o mesmo atalho destrava");
-    assert!(!w.el(l).locked);
+    assert!(!w.el(l).locked());
 }
 
 /// ⭐ Oráculo A1: o frame desenhado adopta só o que lhe fica INTEIRO dentro — no MESMO passo.
@@ -403,7 +403,7 @@ fn duplicating_a_frame_copies_its_contents_into_the_copy() {
     let b = w.rect([200.0, 100.0, 40.0, 40.0]);
     w.ed.select(&w.doc, [a, b]);
     assert!(w.cmd(Command::Group));
-    let g = w.el(a).groups[0];
+    let g = w.el(a).groups()[0];
     w.ed.select(&w.doc, [f]);
     assert!(w.cmd(Command::Duplicate));
     let copy = *w.ed.selection().iter().next().unwrap();
@@ -411,7 +411,7 @@ fn duplicating_a_frame_copies_its_contents_into_the_copy() {
     let inside = w.doc.descendants(copy);
     assert_eq!(inside.len(), 2, "as duas cópias vivem na cópia do frame");
     for id in inside {
-        assert_eq!(w.el(id).groups.len(), 1);
-        assert_ne!(w.el(id).groups[0], g, "um grupo novo");
+        assert_eq!(w.el(id).groups().len(), 1);
+        assert_ne!(w.el(id).groups()[0], g, "um grupo novo");
     }
 }

@@ -194,6 +194,8 @@ fn doc_old<E>(d: DocOld<E>, element: &impl Fn(E) -> Element) -> BoardDoc {
         next_id: d.next_id,
         top_z: d.top_z,
         rev: Default::default(),
+        // Os formatos 1–4 não tinham frames.
+        frames: Default::default(),
     }
 }
 

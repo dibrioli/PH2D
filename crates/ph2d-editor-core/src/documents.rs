@@ -47,6 +47,9 @@ pub(crate) struct BoardLive {
     /// sem esta marca está PENDURADO (o largar perdeu-se) e nunca engole o clique de um botão
     /// (report do dono, 07/10: *«com a caneta não consigo clicar noutra ferramenta até apertar Esc»*).
     pub(crate) gesture: bool,
+    /// A última recusa do editor (a chave i18n da frase) e quando chegou — o quadro pinta-a por
+    /// cima dele enquanto é fresca (W5: nunca só o terminal).
+    pub(crate) notice: Option<(&'static str, std::time::Instant)>,
 }
 
 impl std::fmt::Debug for BoardLive {

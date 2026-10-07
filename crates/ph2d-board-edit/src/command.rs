@@ -118,12 +118,12 @@ impl Editor {
                 self.detach_outside(doc, &mut src);
                 self.place_copies(doc, history, &src, 1)
             }
-            Command::Group => self.group(doc, history),
-            Command::Ungroup => self.ungroup(doc, history),
-            Command::Lock => self.toggle_lock(doc, history),
-            Command::Order(o) => self.reorder(doc, history, o),
-            Command::Align(a) => self.align(doc, history, a),
-            Command::Distribute(ax) => self.distribute(doc, history, ax),
+            Command::Group
+            | Command::Ungroup
+            | Command::Lock
+            | Command::Order(_)
+            | Command::Align(_)
+            | Command::Distribute(_) => self.organize(doc, history, c),
             Command::Paste => {
                 self.pastes += 1;
                 let src = self.clipboard.clone();
@@ -210,6 +210,20 @@ impl Editor {
 }
 
 impl Editor {
+    /// As ordens de ORGANIZAR (W5) — sem o moldador de texto, o que um botão da barra pode pedir.
+    /// `false` = não fez nada (ou não é uma delas).
+    pub fn organize(&mut self, doc: &mut BoardDoc, history: &mut History, c: Command) -> bool {
+        match c {
+            Command::Group => self.group(doc, history),
+            Command::Ungroup => self.ungroup(doc, history),
+            Command::Lock => self.toggle_lock(doc, history),
+            Command::Order(o) => self.reorder(doc, history, o),
+            Command::Align(a) => self.align(doc, history, a),
+            Command::Distribute(ax) => self.distribute(doc, history, ax),
+            _ => false,
+        }
+    }
+
     /// Os seleccionados e o que vive dentro dos frames entre eles, em ordem de z (o que uma cópia
     /// leva: copiar um frame copia o conteúdo).
     fn selected_with_contents(&self, doc: &BoardDoc) -> Vec<Element> {

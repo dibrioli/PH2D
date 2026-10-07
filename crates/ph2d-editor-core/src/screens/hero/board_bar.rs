@@ -42,6 +42,17 @@ use look::{
 mod notes;
 pub use notes::{flyout_open, flyout_rects};
 
+/// Onde fica cada controlo (módulo filho: o ficheiro estava no tecto de LOC).
+#[path = "board_bar_layout.rs"]
+mod layout;
+pub use layout::{shapes_rects, style_rects, toolbar_rects};
+use layout::{btn_px, gap};
+
+/// Organizar (W5, módulo filho): o Frame, agrupar, travar, ordem, alinhar e o aviso das recusas.
+#[path = "board_bar_organize.rs"]
+mod organize;
+pub use organize::OrgItem;
+
 /// A caneta e o rascunho (W4, módulo filho: o ficheiro estava no tecto de LOC).
 #[path = "board_bar_pen.rs"]
 mod pen;
@@ -88,6 +99,8 @@ pub enum Item {
     Pen(PenItem),
     /// O botão «Rascunho ↔ Final»: a selecção, ou o quadro inteiro sem selecção.
     Sketch,
+    /// Organizar (W5): agrupar, travar, ordem, alinhar, a cor de um frame.
+    Organize(OrgItem),
 }
 
 /// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
@@ -115,14 +128,17 @@ pub enum Selected {
     TextShape,
     /// Só traços da caneta.
     Ink,
+    /// Só frames (W5).
+    Frames,
 }
 
 /// Os atalhos da barra curta, na ordem em que se pintam (a Nota logo a seguir à mão: é o coração
 /// do brainstorm).
-const TOOLBAR: [Item; 11] = [
+const TOOLBAR: [Item; 12] = [
     Item::Tool(Tool::Select),
     Item::Tool(Tool::Hand),
     Item::Tool(Tool::Shape(ShapeType::Sticky)),
+    organize::FRAME_TOOL,
     Item::Tool(Tool::Connector),
     pen::PEN_TOOL,
     Item::Tool(Tool::Shape(ShapeType::Rectangle)),
@@ -146,6 +162,7 @@ pub fn items() -> Vec<Item> {
         Selected::Notes,
         Selected::TextShape,
         Selected::Ink,
+        Selected::Frames,
     ]
     .into_iter()
     .flat_map(style_groups)
@@ -176,7 +193,8 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
     ];
     let opacity: Vec<Item> = (0..OPACITIES.len()).map(Item::Opacity).collect();
     let font: Vec<Item> = (0..FONT_SIZES.len()).map(Item::Font).collect();
-    match sel {
+    let org = organize::groups(sel);
+    let mut groups: Vec<Vec<Item>> = match sel {
         Selected::Shapes => vec![
             fill,
             stroke,
@@ -217,7 +235,10 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
         Selected::TextNote => notes::text_groups(false),
         Selected::TextShape => notes::text_groups(true),
         Selected::Ink => pen::ink_groups(),
-    }
+        Selected::Frames => vec![organize::frame_fill_group()],
+    };
+    groups.extend(org);
+    groups
 }
 
 /// O id do controlo `item`.
@@ -250,54 +271,6 @@ pub fn populate(store: &mut WidgetStore) {
     }
 }
 
-// ⭐ A GEOMETRIA e o BOTÃO são do widget genérico ([`super::float_bar`]) — o Vetor pinta a coluna e
-// a barra da seleção dele pela MESMA conta. Aqui fica a tabela do Quadro e a cara de cada item.
-use super::float_bar::{button_px as btn_px, gap};
-
-/// O rectângulo de cada atalho da barra curta, de cima para baixo, encostado à esquerda de `area`.
-#[must_use]
-pub fn toolbar_rects(area: Rect) -> Vec<(Item, Rect)> {
-    TOOLBAR
-        .iter()
-        .copied()
-        .zip(super::float_bar::column_rects(area, &[TOOLBAR.len()]))
-        .collect()
-}
-
-/// A grelha de todas as formas, à direita do botão «mais formas» (três colunas).
-#[must_use]
-pub fn shapes_rects(area: Rect) -> Vec<(Item, Rect)> {
-    let more = toolbar_rects(area)
-        .into_iter()
-        .find(|(it, _)| *it == Item::MoreShapes)
-        .map(|(_, r)| r)
-        .expect("a barra tem o «mais formas»");
-    let grid = super::float_bar::grid_rects(area, more, ShapeType::ALL.len(), 3);
-    ShapeType::ALL
-        .iter()
-        .map(|t| Item::Pick(*t))
-        .zip(grid)
-        .collect()
-}
-
-/// A barra de estilo por cima de `sel` (o rectângulo da selecção no ecrã), presa dentro de `area`;
-/// por baixo da selecção quando não cabe por cima.
-#[must_use]
-pub fn style_rects(area: Rect, sel: Rect, what: Selected) -> Vec<(Item, Rect)> {
-    let groups = style_groups(what);
-    let sizes: Vec<usize> = groups.iter().map(Vec::len).collect();
-    groups
-        .into_iter()
-        .flatten()
-        .zip(super::float_bar::strip_rects(
-            area,
-            sel,
-            &sizes,
-            super::float_bar::strip_button_px(),
-        ))
-        .collect()
-}
-
 /// ⭐ Pinta as barras do quadro activo. `area` é a área do quadro no ecrã.
 #[allow(clippy::too_many_arguments)]
 pub fn paint(
@@ -317,6 +290,13 @@ pub fn paint(
     let arrow = selected_arrow(ed, &board.doc);
     let what = selected_kind(ed, &board.doc);
     let now = notes::Now::of(ed, &board.doc);
+    let org = organize::Now::of(ed, &board.doc);
+    if let Some(n) = ed.take_notice() {
+        live.notice = Some((n.key(), std::time::Instant::now()));
+    }
+    let notice = live
+        .notice
+        .filter(|(_, t)| t.elapsed().as_secs_f32() < crate::toast::Toast::DEFAULT_TTL_S);
     let area_w = super::board_view::area_of(area);
     // A escrever, a barra fica (as marcas do texto); só um arrasto a esconde.
     let sel_box = (!ed.is_busy())
@@ -331,7 +311,8 @@ pub fn paint(
             || (it == Item::MoreShapes && shapes_open)
             || (it == note_tool && notes::flyout_open(tool))
             || (it == pen::PEN_TOOL && pen::flyout_open(tool))
-            || (it == Item::Sketch && sketch_on);
+            || (it == Item::Sketch && sketch_on)
+            || (it == organize::FRAME_TOOL && tool == Tool::Frame);
         paint_item(
             scene,
             text_system,
@@ -368,6 +349,9 @@ pub fn paint(
         let (hit, store) = (&mut hero.hit_index, &hero.store);
         pen::paint_flyout(scene, text_system, theme, hit, store, area, ed);
     }
+    if let Some((key, _)) = notice {
+        organize::paint_notice(scene, text_system, theme, area, key);
+    }
     let (Some(mut sel), Some(style), Some(what)) = (sel_box, sel_style, what) else {
         return;
     };
@@ -377,10 +361,17 @@ pub fn paint(
     let knob = (m.dot + m.handle) as f32;
     sel.y -= knob;
     sel.h += knob;
-    let bar = style_rects(area, sel, what);
+    let groups: Vec<Vec<Item>> = style_groups(what)
+        .into_iter()
+        .map(|g| g.into_iter().filter(|it| org.shows(*it) != Some(false)).collect())
+        .filter(|g: &Vec<Item>| !g.is_empty())
+        .collect();
+    let bar = layout::style_rects_of(area, sel, groups);
     paint_panel(scene, &bar, theme);
     for (it, r) in bar {
-        let on = notes::is_current(it, Some(&style), &now)
+        let on = org
+            .is_on(it, style.fill)
+            .or_else(|| notes::is_current(it, Some(&style), &now))
             .or_else(|| pen::is_current(it, ed, Some(style.stroke_width), theme))
             .unwrap_or_else(|| is_current(it, &style, arrow.as_ref(), theme));
         paint_item(
@@ -456,6 +447,7 @@ fn paint_item(
     let line = f64::from(StrokeToken::Default.px());
     if notes::paint_icon(scene, text_system, theme, it, r, inner, fg, line)
         || pen::paint_icon(scene, theme, it, inner, fg, line)
+        || organize::paint_icon(scene, theme, it, inner, fg, line)
     {
         return;
     }
@@ -556,9 +548,10 @@ fn paint_item(
         | Item::Bulk
         | Item::Mark(_)
         | Item::TextColor(_)
-        | Item::Tool(Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser)
+        | Item::Tool(Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::Frame)
         | Item::Pen(_)
-        | Item::Sketch => {}
+        | Item::Sketch
+        | Item::Organize(_) => {}
     }
 }
 
@@ -582,8 +575,13 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let ed = super::board_view::editor(&mut live.editor, theme);
     let center = [board.camera.center_x, board.camera.center_y];
     let (doc, sketch) = (&mut board.doc, &mut board.sketch);
-    if notes::apply(ed, doc, history, it, center) || pen::apply(ed, doc, history, sketch, theme, it)
+    if notes::apply(ed, doc, history, it, center)
+        || pen::apply(ed, doc, history, sketch, theme, it)
+        || organize::apply(ed, doc, history, it)
     {
+        if let Some(n) = ed.take_notice() {
+            live.notice = Some((n.key(), std::time::Instant::now()));
+        }
         return true;
     }
     match it {
@@ -624,7 +622,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         | Item::Mark(_)
         | Item::TextColor(_)
         | Item::Pen(_)
-        | Item::Sketch => {}
+        | Item::Sketch
+        | Item::Organize(_) => {}
     }
     true
 }

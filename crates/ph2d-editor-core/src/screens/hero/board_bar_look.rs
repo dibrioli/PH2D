@@ -15,7 +15,10 @@ const ICON_HEAD_SCALE: f64 = 1.0;
 
 /// O balão de cada controlo (o nome e, quando há, o atalho de uma tecla).
 pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
-    if let Some(k) = super::notes::tooltip_key(it).or_else(|| super::pen::tooltip_key(it)) {
+    if let Some(k) = super::notes::tooltip_key(it)
+        .or_else(|| super::pen::tooltip_key(it))
+        .or_else(|| super::organize::tooltip_key(it))
+    {
         return Some(k);
     }
     Some(match it {
@@ -47,9 +50,10 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         | Item::Bulk
         | Item::Mark(_)
         | Item::TextColor(_)
-        | Item::Tool(Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser)
+        | Item::Tool(Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::Frame)
         | Item::Pen(_)
-        | Item::Sketch => return None,
+        | Item::Sketch
+        | Item::Organize(_) => return None,
     })
 }
 
@@ -133,6 +137,9 @@ pub(super) fn selected_kind(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> Op
         .iter()
         .filter_map(|id| doc.get(*id))
         .collect();
+    if !els.is_empty() && els.iter().all(|el| el.as_frame().is_some()) {
+        return Some(Selected::Frames);
+    }
     let arrows = els.iter().any(|el| el.connector().is_some());
     let shapes = els.iter().any(|el| el.shape().is_some());
     let inks = els.iter().any(|el| el.ink().is_some());

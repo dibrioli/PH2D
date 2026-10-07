@@ -484,3 +484,6 @@ mod notes;
 
 #[path = "board_bar_pen_tests.rs"]
 mod pen;
+
+#[path = "board_bar_organize_tests.rs"]
+mod organize;

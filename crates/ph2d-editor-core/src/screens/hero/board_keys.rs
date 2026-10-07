@@ -29,6 +29,8 @@ pub enum BoardKey {
     End,
     Space,
     Tab,
+    PageUp,
+    PageDown,
     Other,
 }
 
@@ -147,7 +149,7 @@ pub fn key(
         return taken();
     }
     let nudge = ph2d_board_edit::NUDGE[usize::from(mods.shift)];
-    let command = match (k, ctrl) {
+    let command = organize_key(k, ctrl, mods.shift).or(match (k, ctrl) {
         (BoardKey::Char('z' | 'y'), true) => Some(chord_undo(k, mods)),
         (BoardKey::Char('d'), true) => Some(Command::Duplicate),
         (BoardKey::Char('a'), true) => Some(Command::SelectAll),
@@ -185,7 +187,7 @@ pub fn key(
         (BoardKey::Up, true) => Some(Command::Grow([0.0, -1.0])),
         (BoardKey::Down, true) => Some(Command::Grow([0.0, 1.0])),
         _ => None,
-    };
+    });
     // ⭐ Escrever com UMA nota seleccionada escreve nela (o idioma do Miro nas notas) — mesmo uma
     // letra que é atalho; numa forma, a letra continua atalho (recusa da W1, plano §6).
     if command.is_none()
@@ -230,6 +232,28 @@ fn mark_key(k: BoardKey, mods: Modifiers) -> Option<Mark> {
     })
 }
 
+/// ⭐ **As teclas de organizar** (W5): `Ctrl+G` agrupa e `Ctrl+Shift+G` desagrupa, `Ctrl+Shift+L`
+/// trava (as do Miro, help «Shortcuts and hotkeys»); `PgUp`/`PgDn` à frente/atrás de tudo e com
+/// `Shift` um passo (as do Miro); `Ctrl+Shift+seta` alinha (as do Excalidraw, oráculo C1 — o Miro
+/// não tem). Vêm ANTES do `Ctrl+seta` da forma seguinte.
+fn organize_key(k: BoardKey, ctrl: bool, shift: bool) -> Option<Command> {
+    use ph2d_board_edit::{Align, Order};
+    Some(match (k, ctrl, shift) {
+        (BoardKey::Char('g'), true, false) => Command::Group,
+        (BoardKey::Char('g'), true, true) => Command::Ungroup,
+        (BoardKey::Char('l'), true, true) => Command::Lock,
+        (BoardKey::PageUp, false, false) => Command::Order(Order::Front),
+        (BoardKey::PageUp, false, true) => Command::Order(Order::Forward),
+        (BoardKey::PageDown, false, false) => Command::Order(Order::Back),
+        (BoardKey::PageDown, false, true) => Command::Order(Order::Backward),
+        (BoardKey::Left, true, true) => Command::Align(Align::Left),
+        (BoardKey::Right, true, true) => Command::Align(Align::Right),
+        (BoardKey::Up, true, true) => Command::Align(Align::Top),
+        (BoardKey::Down, true, true) => Command::Align(Align::Bottom),
+        _ => return None,
+    })
+}
+
 fn chord_undo(k: BoardKey, mods: Modifiers) -> Command {
     if k == BoardKey::Char('y') || mods.shift {
         Command::Redo
@@ -268,7 +292,8 @@ fn text_move(k: BoardKey, ctrl: bool) -> Move {
 /// seleccionar · `H` mão · `R`/`2` rectângulo · `D`/`3` losango · `O`/`4` elipse · `A`/`5` seta ·
 /// `N` nota (o do Miro; a quadrada — a forma da próxima vem da barra) · `P` caneta e `E` borracha
 /// (os do Miro, help «Keyboard shortcuts») · `K` laser (o do Excalidraw; o Miro não o tem). O `P`
-/// devolve [`ph2d_board_model::Pen::Pen`]: quem chama troca-o pela última caneta usada.
+/// devolve [`ph2d_board_model::Pen::Pen`]: quem chama troca-o pela última caneta usada. `F` o frame
+/// (o do Miro).
 #[must_use]
 pub fn tool_key(c: char) -> Option<Tool> {
     Some(match c {
@@ -282,6 +307,7 @@ pub fn tool_key(c: char) -> Option<Tool> {
         'p' => Tool::Pen(ph2d_board_model::Pen::Pen),
         'e' => Tool::Eraser { precise: false },
         'k' => Tool::Laser,
+        'f' => Tool::Frame,
         _ => return None,
     })
 }

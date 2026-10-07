@@ -68,6 +68,7 @@ pub fn metrics() -> Metrics {
         // Longe da pega de rodar (`Xl` acima do topo): o ponto de cima não lhe rouba o clique.
         dot: f64::from(Spacing::Xl3.px()),
         eraser: f64::from(Spacing::Md.px()),
+        frame_title: f64::from(Spacing::Xl.px()),
     }
 }
 
@@ -85,6 +86,7 @@ pub(crate) fn editor(slot: &mut Option<Editor>, theme: Theme) -> &mut Editor {
     slot.get_or_insert_with(|| {
         let mut ed = Editor::new(default_style(), metrics());
         ed.pen = super::board_bar::pen_box(theme);
+        ed.frame_name = |n| ph2d_i18n::tr_with("board.frame.default_name", &[("n", &n)]);
         ed
     })
 }

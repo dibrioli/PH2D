@@ -553,3 +553,24 @@ carimbadas a partir da SAÍDA de uma zona de simulação não aparecem no ecrã 
 desenha; bissecção feita; a `=27` ficou sem forma por isso); preparar `value.attribute` + `value.reduce` na placa
 custa ~`0,09 ms` de CPU por quadro (é o que come o ganho do item 2 na parede); o gate de paridade do `pulse.beat`
 só corre 6 tiques e nunca chega aos empates batida-tique da fixtura decimal. Integrar só por ordem do dono.
+
+## §19 — INTEGRADA no `main` (07/10, por ordem do dono, depois da MiroClone)
+
+- **Ordem:** a MiroClone fechou em `126845087`; esta linha entrou a seguir, sozinha (nada a medir par-a-par).
+  `collision-surface`: 4 ficheiros nos dois lados (`Cargo.lock`, `CLAUDE.md`, `MEMORY.md`, a família
+  `reference_topic_code_pattern_gotchas`); schemas, registo de componentes e contratos §6 intocados; sem ADR.
+- **Rebase** sobre `126845087`, 73 commits: dois conflitos, ambos na memória (os dois lados acrescentaram
+  à mesma família). Resolvidos pela UNIÃO e pela CONTAGEM do ficheiro (`26 → 28` main, `→ 27/28` linha ⇒
+  `30` reais), nunca por um dos lados. `range-diff`: só a contagem e o contexto do `Cargo.lock` mudaram.
+- **Gate da árvore combinada** (`foundational-integrate.sh`): sync/registos ✓, `check --workspace
+  --all-targets` com avisos negados ✓, `nextest-impacted` **19 757/19 758** — o vermelho foi
+  `o_indice_cabe_no_orcamento_do_carregador`: o `MEMORY.md` SOMADO passava o tecto (`22 109 > 22 000`),
+  e nenhuma das duas linhas o passava sozinha. Cura: a entrada do rapier desceu verbatim para a família de
+  Arquitetura (`19 → 20`, contada); índice `21 972`; os 4 gates da memória verdes.
+- **Pedido do §18 cumprido:** `gpu_collide::crossing_the_reach_boundary_does_not_step_the_cost` promovido à
+  família de flakes de carga — as DUAS escritas (`FLAKES_DE_CARGA.md` + a faixa do `.config/nextest.toml`).
+- **Fusão `--ff-only`** no primário: as edições de memória POR COMITAR de outras sessões (índice + uma
+  versão maior do `feedback_killing_the_parent…`, que esta linha comita) foram guardadas, a fusão feita e
+  elas reaplicadas por cima — nada perdido. ⚠️ Com elas o `MEMORY.md` do primário fica em `22 583` bytes:
+  quem as comitar tem de descer entradas antes (o gate reprova).
+- **Sem push.** O `main` segue à frente do `origin`; o ship é só por ordem do dono.

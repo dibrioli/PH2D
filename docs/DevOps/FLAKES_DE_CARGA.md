@@ -71,6 +71,7 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `the_ui_clock_does_not_allocate_per_frame` | [`ph2d-editor-core`](../../crates/ph2d-editor-core/tests/ui_motion_no_alloc.rs) | contagem de alocações |
 | `tres_bonecos_tres_amplitudes_e_o_rapido_acende_a_lampada` | [`ph2d-app-components`](../../crates/ph2d-app-components/src/script_smoke_tests.rs) | prazo de um quadro por gancho (Luau) |
 | `riding_the_path_costs_about_twice_the_straight_layout` | [`shells/desktop`](../../shells/desktop/src/text_path_smoke.rs) | razão de relógios |
+| `crossing_the_reach_boundary_does_not_step_the_cost` | [`ph2d-gpu-cook`](../../crates/ph2d-gpu-cook/tests/it/gpu_collide.rs) | razão de relógios (vermelho na suíte da placa no fecho da `line/motion-value` de 07/10 a `load ~35`, zero linhas da onda no teste ou no nó; sozinho `2/2` a `load 9` e `35`) |
 
 Uma família entra por padrão e não por nome: `test(/orcamento::the_fit_/)` (`ph2d-app-flip`).
 

@@ -1,23 +1,23 @@
-//! A13 (sonda) — o MECANISMO dos dentes da silhueta com o bake refinado pelos pesos: o braço da
+//! A13 (sonda) — o MECANISMO dos dentes da silhueta a cada densidade do bake: o braço da
 //! dobra forte (o dos gates `o_braco_dobrado_de_volta_nao_deixa_dentes`), passo a passo pela
 //! [`ph2d_vec_boolean::silhueta_da_pele`] (gancho → união → gancho → esporão → fecho → abertura →
 //! fecho), com a viragem máxima depois de cada passo e as estatísticas da entrada.
 
 use super::super::super::super::{
-    TOLERANCIA_DA_DIAGONAL, amostras_por_segmento, diagonal as diagonal_do_bake, lida,
-    os_nos_servem, quinas_do_artista, segmentos,
+    AMOSTRAS_POR_FORMA, TOLERANCIA_DA_DIAGONAL, amostras_no_orcamento,
+    diagonal as diagonal_do_bake, lida, os_nos_servem, quinas_do_artista, segmentos,
 };
 use super::braco_em;
 use ph2d_vec_boolean::overlap::{PAREDE_MINIMA, RAIO_DO_VINCO, SOLDA_DA_QUINA};
 use ph2d_vec_scene::{VecPath, VecVertex};
-use ph2d_vec_skin::curva::{Bake, CampoIndexado, Refino};
+use ph2d_vec_skin::curva::{Bake, CampoIndexado};
 use std::fmt::Write as _;
 
-/// O bake do braço a `(primeira, segunda)` com `refino`, e as quinas do artista.
+/// O bake do braço a `(primeira, segunda)` com `por_forma` amostras por forma, e as quinas do artista.
 pub(super) fn entrada(
     primeira: f32,
     segunda: f32,
-    refino: Option<Refino>,
+    por_forma: usize,
 ) -> (VecPath, Vec<([f64; 2], f64)>) {
     let (mut sim, _scene, map, id, ossos) =
         crate::barra_da_cena_tests_support::braco_da_dobra_forte(0.3);
@@ -27,14 +27,49 @@ pub(super) fn entrada(
             .expect("Transform")
             .rotation += g.to_radians();
     }
-    assa_na(&sim, ph2d_ecs::Entity::from_bits(map[&id]), refino)
+    assa_na(&sim, ph2d_ecs::Entity::from_bits(map[&id]), por_forma)
 }
 
-/// O bake da forma presa `e` (a lei do produto, com `refino`) e as quinas do artista.
+/// A [`entrada`] com a pele na lei do ângulo `lei` — a porta dos CONTROLOS que precisam do fenómeno
+/// da média em círculo (o meio-ângulo do produto espalha a volta e o gancho e a cunha da união não
+/// se formam).
+pub(super) fn entrada_na_lei(
+    primeira: f32,
+    segunda: f32,
+    por_forma: usize,
+    lei: ph2d_skeleton::MisturaDoAngulo,
+) -> (VecPath, Vec<([f64; 2], f64)>) {
+    let (mut sim, _scene, map, id, ossos) =
+        crate::barra_da_cena_tests_support::braco_da_dobra_forte(0.3);
+    for (k, g) in [(1, primeira), (2, -segunda)] {
+        sim.world_mut()
+            .get_mut::<ph2d_ecs::Transform>(ossos[k])
+            .expect("Transform")
+            .rotation += g.to_radians();
+    }
+    assa_na_com(
+        &sim,
+        ph2d_ecs::Entity::from_bits(map[&id]),
+        por_forma,
+        Some(lei),
+    )
+}
+
+/// O bake da forma presa `e` (a lei do produto, com `por_forma` amostras por forma) e as quinas.
 pub(super) fn assa_na(
     sim: &ph2d_ecs::SimWorld,
     e: ph2d_ecs::Entity,
-    refino: Option<Refino>,
+    por_forma: usize,
+) -> (VecPath, Vec<([f64; 2], f64)>) {
+    assa_na_com(sim, e, por_forma, None)
+}
+
+/// [`assa_na`] com a lei do ângulo trocada (`None` = a do produto).
+fn assa_na_com(
+    sim: &ph2d_ecs::SimWorld,
+    e: ph2d_ecs::Entity,
+    por_forma: usize,
+    lei: Option<ph2d_skeleton::MisturaDoAngulo>,
 ) -> (VecPath, Vec<([f64; 2], f64)>) {
     let skin = sim
         .world()
@@ -42,6 +77,10 @@ pub(super) fn assa_na(
         .expect("bind")
         .clone();
     let pele = crate::skin_live::skin_of(sim, e).expect("pele");
+    let pele = match lei {
+        Some(l) => ph2d_skeleton::Skin::com_mistura(pele.bones().to_vec(), l).expect("pele"),
+        None => pele,
+    };
     let prep = lida(e.to_bits(), &skin).expect("fonte");
     let g = &prep.guardado;
     let pesos = skin.pesos_do_quadro(if g.valida() { &g.pesos } else { &[] });
@@ -63,9 +102,8 @@ pub(super) fn assa_na(
             suave: None,
         },
         Bake {
-            amostras: amostras_por_segmento(segmentos(&f)),
+            amostras: amostras_no_orcamento(segmentos(&f), por_forma),
             tolerancia: TOLERANCIA_DA_DIAGONAL * diagonal_do_bake(&f),
-            refino,
         },
     );
     (d, quinas_do_artista(&f, nos))
@@ -117,7 +155,7 @@ fn caixa(p: &VecPath) -> [f64; 4] {
     c
 }
 
-fn caixa_diag(p: &VecPath) -> f64 {
+pub(super) fn caixa_diag(p: &VecPath) -> f64 {
     let c = caixa(p);
     (c[2] - c[0]).hypot(c[3] - c[1])
 }
@@ -258,22 +296,19 @@ fn svg(nome: &str, camadas: &[(&[VecVertex], &str, f64)], centro: [f64; 2], lado
 #[test]
 #[ignore = "sonda: imprime e escreve SVG"]
 fn diag_os_dentes_passo_a_passo() {
-    let casos: [(&str, f32, f32, Option<Refino>); 6] = [
-        (
-            "p025_178_m130",
-            178.0,
-            -130.0,
-            Some(Refino { passo: 0.025 }),
-        ),
-        ("p025_178_m4", 178.0, -4.0, Some(Refino { passo: 0.025 })),
-        ("p06_176_20", 176.0, 20.0, Some(Refino { passo: 0.06 })),
-        ("p06_178_m178", 178.0, -178.0, Some(Refino { passo: 0.06 })),
-        ("p03_132_m178", 132.0, -178.0, Some(Refino { passo: 0.03 })),
-        ("off_178_m130_controlo", 178.0, -130.0, None),
+    let p = AMOSTRAS_POR_FORMA;
+    let casos: [(&str, f32, f32, usize); 7] = [
+        ("x4_36_118", 36.0, 118.0, 2 * p),
+        ("x2_22_130", 22.0, 130.0, p),
+        ("x2_24_130", 24.0, 130.0, p),
+        ("x2_160_134", 160.0, 134.0, p),
+        ("x2_176_92", 176.0, 92.0, p),
+        ("x1_176_92", 176.0, 92.0, p / 2),
+        ("x4_160_134", 160.0, 134.0, 2 * p),
     ];
-    for (nome, p1, p2, refino) in casos {
-        let (d, quinas) = entrada(p1, p2, refino);
-        if refino == ph2d_vec_skin::curva::REFINO_DO_PRODUTO {
+    for (nome, p1, p2, por_forma) in casos {
+        let (d, quinas) = entrada(p1, p2, por_forma);
+        if por_forma == AMOSTRAS_POR_FORMA {
             let (sem, _) = braco_em(p1, p2);
             assert_eq!(sem.verts, d.verts, "a sonda refaz o bake do produto");
         }
@@ -326,6 +361,32 @@ fn diag_os_dentes_passo_a_passo() {
                     v.out_handle[1] - v.anchor[1],
                     ph2d_vec_boolean::overlap::viragem_do_vertice(&s7, k).unwrap_or(0.0)
                 );
+            }
+        }
+        if let Ok(dir) = std::env::var("SONDA_DESPEJO") {
+            // A entrada do fecho (depois do esporão), em literal Rust, para uma fixtura.
+            let mut t = format!(
+                "// {nome} solda {solda:e} raio {raio:e}\nconst QUINAS: &[([f64; 2], f64)] = &{quinas:?};\nconst VERTS: &[[[f64; 2]; 3]] = &[\n"
+            );
+            for v in &s4 {
+                let _ = writeln!(
+                    t,
+                    "    [{:?}, {:?}, {:?}],",
+                    v.anchor, v.in_handle, v.out_handle
+                );
+            }
+            t.push_str("];\n");
+            std::fs::write(format!("{dir}/{nome}.rs"), t).expect("despejo");
+            for (rot, vv) in [("s2", &s2), ("s3", &s3)] {
+                let mut t = String::new();
+                for v in vv {
+                    let _ = writeln!(
+                        t,
+                        "    [{:?}, {:?}, {:?}],",
+                        v.anchor, v.in_handle, v.out_handle
+                    );
+                }
+                std::fs::write(format!("{dir}/{nome}_{rot}.txt"), t).expect("despejo");
             }
         }
         let mut primeiro: Option<usize> = None;
@@ -442,7 +503,7 @@ fn diag_os_dentes_passo_a_passo() {
 }
 
 /// ⭐ **SONDA — a identidade fora do contacto** (`numa_dobra_forte_o_desenho_nao_se_cruza`): a `45°`
-/// e `60°` em C, o que a silhueta muda no desenho sem contacto (com o refino do PRODUTO desta árvore).
+/// e `60°` em C, o que a silhueta muda no desenho sem contacto (com a amostragem do PRODUTO).
 #[test]
 #[ignore = "sonda: imprime e escreve SVG"]
 fn diag_a_identidade_fora_do_contacto() {

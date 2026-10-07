@@ -219,16 +219,19 @@ fn a_fusao_cede_a_quem_ja_la_estava_e_assa_a_pose() {
 fn a_reparticao_das_amostras_e_a_medida() {
     assert_eq!(
         amostras_por_segmento(8),
-        64,
-        "a barra de 8 nós é o ponto medido de 64"
+        128,
+        "a barra de 8 nós: o ponto medido de 64, dobrado sob o meio-ângulo"
     );
     assert_eq!(
         amostras_por_segmento(54),
-        16,
-        "a fonte de 54 nós é o ponto medido de 16"
+        32,
+        "a fonte de 54 nós: o ponto medido de 16, dobrado"
     );
-    assert_eq!(amostras_por_segmento(0), 64);
-    assert_eq!(amostras_por_segmento(1), 64);
+    assert_eq!(amostras_por_segmento(0), 128);
+    assert_eq!(amostras_por_segmento(1), 128);
+    // O orçamento de antes (a régua da densidade) dá a repartição de antes.
+    assert_eq!(super::amostras_no_orcamento(8, 512), 64);
+    assert_eq!(super::amostras_no_orcamento(54, 512), 16);
 }
 
 /// Os quadros da barra da cena dobrada a `graus` — com e sem a silhueta do contacto.

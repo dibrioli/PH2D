@@ -318,7 +318,6 @@ fn diag_d_o_preco_do_segundo_corpo() {
                     ph2d_vec_skin::curva::Bake {
                         amostras: am,
                         tolerancia: frac * diag,
-                        refino: None,
                     },
                 )
             };
@@ -401,7 +400,7 @@ fn diag_d_o_preco_do_segundo_corpo() {
     mostra("2.º corpo sobre 8 nós · C¹", &f8(), relogio(&f8));
     // ⭐⭐⭐ **A PERGUNTA QUE MUDA A ARQUITECTURA:** e se o BAKE substituísse a subdivisão do bind?
     // O artista ficava com os `8` pontos que desenhou, e o desenho com os que a tolerância pedir.
-    for am in [16_usize, 32, 64, 128] {
+    for am in [16_usize, 32, 64, 128, 256] {
         let fb = || {
             ph2d_vec_skin::curva::refit_pelo_bake(
                 &pele,
@@ -416,7 +415,6 @@ fn diag_d_o_preco_do_segundo_corpo() {
                 ph2d_vec_skin::curva::Bake {
                     amostras: am,
                     tolerancia: 0.0003 * diag,
-                    refino: None,
                 },
             )
         };

@@ -3,11 +3,10 @@
 //! de `0,1°`: na tampa de fora de cada junta (a menos de `0,6` dela, do lado oposto aos membros), a
 //! mudança do DESENHO entre quadros vizinhos (Hausdorff) contra a da imagem EXACTA do contorno.
 //!
-//! A lei: `Δ desenho ≤ Δ verdade + 0,0025`. O chão é o maior excesso MEDIDO com o refino pelos
-//! pesos nas três varreduras inteiras (`g1 150…175` com `g2 140`/`170`, `g2 150…175` com `g1 170`,
-//! as duas barras: `0,0024`, sonda `diag_a_continuidade_por_lei`). ⛔ O CONTROLO é o refino pelo
-//! esticão posto (`k = 2`, até 2026-10-06): `0,041` a `170/160,2` e `0,144` a `170/174,9` — as
-//! janelas abaixo são as dele.
+//! A lei: `Δ desenho ≤ Δ verdade + CHAO`. A amostragem do produto é uniforme (não depende da pose),
+//! e o chão é o maior excesso MEDIDO nas janelas e nas três varreduras inteiras (sonda
+//! `diag_a_continuidade_por_lei`). ⛔ O CONTROLO é um orçamento que muda com a pose (o mecanismo do
+//! refino pelo esticão posto, que saltava `0,041`/`0,144`): ele tem de passar do chão.
 
 use super::super::a13::{dist_pl, fechados_de};
 use super::*;
@@ -76,9 +75,12 @@ fn na_tampa(a: &[Vec<[f64; 2]>], b: &[Vec<[f64; 2]>], (j, m): ([f64; 2], [f64; 2
     lado(a, b).max(lado(b, a))
 }
 
-#[test]
-fn a_tampa_da_junta_nao_salta_com_a_pose() {
-    let refino = ph2d_vec_skin::curva::REFINO_DO_PRODUTO;
+/// O maior excesso medido do produto: `0,0013` nas três varreduras inteiras (`3 000` passos) e
+/// `0,0000` nas janelas; o controlo salta `0,0214` nas janelas e `0,0224` nas varreduras.
+const CHAO: f64 = 0.0015;
+
+/// O pior `(excesso, pose, barra)` de `amostragem` nas janelas do gate.
+fn pior_salto(amostragem: super::super::saltos::Amostragem) -> (f64, (f32, f32), usize) {
     let passo = |a: f32, b: f32| -> Vec<f32> {
         (0..=((b - a) * 10.0).round() as u16)
             .map(|i| a + 0.1 * f32::from(i))
@@ -115,7 +117,7 @@ fn a_tampa_da_junta_nao_salta_com_a_pose() {
             for barra in 0..2 {
                 let br = Barra::de(&sim, &st, ids[barra]);
                 let verdade = br.imagem(128);
-                let desenho = polilinhas(&fechados_de(&br.assa(refino)), 64);
+                let desenho = polilinhas(&fechados_de(&br.assa(amostragem((a, b)))), 64);
                 if let Some((v0, d0)) = &antes[barra] {
                     for jm in juntas(&sim, barra) {
                         let excesso = na_tampa(&desenho, d0, jm) - na_tampa(&verdade, v0, jm);
@@ -128,12 +130,25 @@ fn a_tampa_da_junta_nao_salta_com_a_pose() {
             }
         }
     }
+    pior
+}
+
+#[test]
+fn a_tampa_da_junta_nao_salta_com_a_pose() {
+    use super::super::saltos::{amostragem_do_produto, amostragem_que_muda_com_a_pose};
+    let pior = pior_salto(amostragem_do_produto);
+    let ctl = pior_salto(amostragem_que_muda_com_a_pose);
     println!(
-        "  pior salto acima da verdade: {:.4} em {:?}, barra {}",
-        pior.0, pior.1, pior.2
+        "  pior salto acima da verdade: {:.4} em {:?}, barra {} · controlo {:.4} em {:?}",
+        pior.0, pior.1, pior.2, ctl.0, ctl.1
     );
     assert!(
-        pior.0 <= 0.0025,
+        ctl.0 > 2.0 * CHAO,
+        "o CONTROLO (orçamento que muda com a pose) salta só {:.4} — a régua deixou de ver saltos",
+        ctl.0
+    );
+    assert!(
+        pior.0 <= CHAO,
         "a tampa da junta salta {:.4} acima da verdade em {:?} (barra {}) — o conjunto de amostras \
          do bake mudou com a pose",
         pior.0,

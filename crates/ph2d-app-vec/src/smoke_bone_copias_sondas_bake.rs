@@ -1,9 +1,10 @@
-//! A13 — o REFINO LOCAL do bake na barra `0` da `=6` (a sem riscas): a régua (a imagem EXACTA do
-//! contorno em repouso contra o desenho), a sonda das leis e, no irmão, os gates.
+//! A13 — o BAKE na barra `0` da `=6` (a sem riscas): a régua (a imagem EXACTA do contorno em repouso
+//! contra o desenho), a sonda das densidades e das leis do ângulo e, nos irmãos, os gates.
 
 use super::a13::{dist_pl, fechados_de, voltas};
 use super::*;
-use ph2d_vec_skin::curva::{Bake, CampoIndexado, Refino};
+use ph2d_skeleton::MisturaDoAngulo;
+use ph2d_vec_skin::curva::{Bake, CampoIndexado};
 use std::rc::Rc;
 
 /// A `=6` presa e dobrada em S a `g1`/`g2`.
@@ -87,14 +88,28 @@ impl Barra {
         }
     }
 
-    /// As amostras por segmento do bake do produto (só fechados: um segmento por nó).
-    pub(crate) fn amostras(&self) -> usize {
+    /// A mesma barra com a pele noutra lei do ângulo (o CONTROLO das réguas da A13: a média em
+    /// círculo corta a tampa da junta).
+    pub(crate) fn com_lei(&self, lei: ph2d_skeleton::MisturaDoAngulo) -> Self {
+        Self {
+            pele: ph2d_skeleton::Skin::com_mistura(self.pele.bones().to_vec(), lei).expect("pele"),
+            prep: Rc::clone(&self.prep),
+            fonte: self.fonte.clone(),
+            tabela: self.tabela.clone(),
+            correcoes: self.correcoes.clone(),
+            t: self.t,
+        }
+    }
+
+    /// As amostras por segmento do bake com `por_forma` amostras por forma (só fechados: um
+    /// segmento por nó).
+    pub(crate) fn amostras(&self, por_forma: usize) -> usize {
         let segs: usize = (0..self.fonte.contour_count())
             .filter_map(|c| self.fonte.contour(c))
             .filter(|(_, f)| *f)
             .map(|(v, _)| v.len())
             .sum();
-        ph2d_skeleton_live::skin_desenho::amostras_por_segmento(segs)
+        ph2d_skeleton_live::skin_desenho::amostras_no_orcamento(segs, por_forma)
     }
 
     /// A tolerância do ajuste do bake do produto (fracção da diagonal das âncoras e alças).
@@ -110,8 +125,8 @@ impl Barra {
             * (hi[0] - lo[0]).hypot(hi[1] - lo[1])
     }
 
-    /// O bake do produto com `refino` (a contagem e a tolerância do `skin_desenho`).
-    pub(crate) fn assa(&self, refino: Option<Refino>) -> ph2d_vec_scene::VecPath {
+    /// O bake com `por_forma` amostras por forma (a tolerância do `skin_desenho`).
+    pub(crate) fn assa(&self, por_forma: usize) -> ph2d_vec_scene::VecPath {
         ph2d_vec_skin::curva::assa_a_pele(
             &self.pele,
             &self.fonte,
@@ -124,9 +139,8 @@ impl Barra {
                 suave: None,
             },
             Bake {
-                amostras: self.amostras(),
+                amostras: self.amostras(por_forma),
                 tolerancia: self.tolerancia(),
-                refino,
             },
         )
     }
@@ -232,11 +246,14 @@ pub(crate) fn regua(
     (gap, falta)
 }
 
-/// Sem refino, e `k ∈ {2, 3}`.
-fn leis() -> Vec<(String, Option<Refino>)> {
-    let mut v = vec![("sem".to_string(), None)];
-    for passo in [0.1, 0.05, 0.025] {
-        v.push((format!("peso {passo}"), Some(Refino { passo })));
+/// As leis comparadas: o ângulo (círculo · meio) × o orçamento por forma.
+fn leis() -> Vec<(String, MisturaDoAngulo, usize)> {
+    let p = ph2d_skeleton_live::skin_desenho::AMOSTRAS_POR_FORMA;
+    let mut v = Vec::new();
+    for lei in [MisturaDoAngulo::Circulo, MisturaDoAngulo::MeioAngulo] {
+        for por_forma in [p / 2, p, 2 * p] {
+            v.push((format!("{lei:?} {por_forma}"), lei, por_forma));
+        }
     }
     v
 }
@@ -250,11 +267,11 @@ fn carga() -> String {
         .join(" ")
 }
 
-/// ⭐ **SONDA — as leis de refino na barra `0` da `=6`**: a régua A13 a `170°`, e (em `--release`)
+/// ⭐ **SONDA — as leis do bake na barra `0` da `=6`**: a régua A13 a `170°`, e (em `--release`)
 /// nós e µs por bake, mínimo de `5` rondas intercaladas, com a carga ao lado.
 #[test]
 #[ignore = "sonda: imprime; o relógio só vale em --release"]
-fn diag_a13_as_leis_de_refino_na_barra() {
+fn diag_a13_as_leis_do_bake_na_barra() {
     for (g1, g2) in [
         (170f32, 110f32),
         (170.0, 140.0),
@@ -263,44 +280,45 @@ fn diag_a13_as_leis_de_refino_na_barra() {
     ] {
         let (sim, _, st, ids) = cena(g1, g2);
         let b = Barra::de(&sim, &st, ids[0]);
-        let img = b.imagem(256);
         println!("{g1}/{g2}:");
-        for (nome, lei) in leis() {
-            let (gap, falta) = regua(&img, &b.assa(lei), b.t);
-            println!("    {nome:>10}: afastamento {gap:.4} · células que faltam {falta}");
+        for (nome, lei, por_forma) in leis() {
+            let bl = b.com_lei(lei);
+            let (gap, falta) = regua(&bl.imagem(256), &bl.assa(por_forma), b.t);
+            println!("    {nome:>16}: afastamento {gap:.4} · células que faltam {falta}");
         }
     }
     for (g1, g2) in [(90f32, 90f32), (110.0, 110.0), (170.0, 140.0)] {
         let (sim, _, st, ids) = cena(g1, g2);
         let b = Barra::de(&sim, &st, ids[0]);
-        let ls = leis();
-        let feitos: Vec<_> = ls.iter().map(|(_, l)| b.assa(*l)).collect();
+        let ls: Vec<(String, Barra, usize)> = leis()
+            .into_iter()
+            .map(|(n, l, p)| (n, b.com_lei(l), p))
+            .collect();
         let mut us = vec![f64::MAX; ls.len()];
         let antes = carga();
         for _ in 0..5 {
-            for (k, (_, l)) in ls.iter().enumerate() {
+            for (k, (_, bl, p)) in ls.iter().enumerate() {
                 let t = std::time::Instant::now();
                 let mut n = 0u32;
                 while t.elapsed().as_millis() < 40 {
-                    std::hint::black_box(b.assa(*l));
+                    std::hint::black_box(bl.assa(*p));
                     n += 1;
                 }
                 us[k] = us[k].min(t.elapsed().as_secs_f64() * 1e6 / f64::from(n));
             }
         }
         println!("{g1}/{g2} · carga {antes} → {}", carga());
-        for (k, (nome, _)) in ls.iter().enumerate() {
+        for (k, (nome, bl, p)) in ls.iter().enumerate() {
             println!(
-                "    {nome:>10}: {:>4} nós · {:>7.1} µs · ao bit do sem: {}",
-                feitos[k].verts_all().count(),
-                us[k],
-                feitos[k] == feitos[0]
+                "    {nome:>16}: {:>4} nós · {:>7.1} µs",
+                bl.assa(*p).verts_all().count(),
+                us[k]
             );
         }
     }
 }
 
-#[path = "smoke_bone_copias_refino_tests.rs"]
+#[path = "smoke_bone_copias_tampa_tests.rs"]
 mod gates;
 
 #[path = "smoke_bone_copias_continuidade_tests.rs"]

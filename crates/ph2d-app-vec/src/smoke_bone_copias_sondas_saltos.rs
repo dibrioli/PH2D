@@ -4,9 +4,9 @@
 //! quadro a quadro de um e de outro numa varredura fina da dobra, e o raio de curvatura mínimo.
 
 use super::a13::{dist_pl, fechados_de};
-use super::refino::{Barra, cena};
+use super::bake::{Barra, cena};
 use super::*;
-use ph2d_vec_skin::curva::{REFINO_DO_PRODUTO, Refino};
+use ph2d_skeleton_live::skin_desenho::AMOSTRAS_POR_FORMA;
 
 /// O raio da janela da tampa, em unidades da cena (a barra tem `0,75` de largura).
 const R: f64 = 0.6;
@@ -126,9 +126,9 @@ fn raio_min(pl: &[Vec<[f64; 2]>], jm: ([f64; 2], [f64; 2])) -> f64 {
     melhor
 }
 
-/// O desenho fechado de `b` com `refino`, em polilinha.
-fn desenho(b: &Barra, refino: Option<Refino>) -> (Vec<Vec<[f64; 2]>>, usize) {
-    let d = b.assa(refino);
+/// O desenho fechado de `b` com `por_forma` amostras por forma, em polilinha.
+fn desenho(b: &Barra, por_forma: usize) -> (Vec<Vec<[f64; 2]>>, usize) {
+    let d = b.assa(por_forma);
     (polilinhas(&fechados_de(&d), 64), d.verts_all().count())
 }
 
@@ -149,13 +149,13 @@ fn svg_pl(pl: &[Vec<[f64; 2]>], cor: &str, w: f64) -> String {
     s
 }
 
-/// A janela `±0,8` em volta da junta `j`: a verdade (azul fino), o desenho com o refino (vermelho)
-/// e sem ele (verde).
+/// A janela `±0,8` em volta da junta `j`: a verdade (azul fino), o desenho do produto (vermelho)
+/// e o de metade das amostras (verde).
 fn foto(
     j: [f64; 2],
     verdade: &[Vec<[f64; 2]>],
-    k2: &[Vec<[f64; 2]>],
-    off: &[Vec<[f64; 2]>],
+    prod: &[Vec<[f64; 2]>],
+    metade: &[Vec<[f64; 2]>],
     titulo: &str,
 ) -> String {
     let (x0, y0, l) = (j[0] - 0.8, -j[1] - 0.8, 1.6);
@@ -164,8 +164,8 @@ fn foto(
          <rect x='{x0}' y='{y0}' width='{l}' height='{l}' fill='white'/>{}{}{}\
          <circle cx='{}' cy='{}' r='0.01' fill='black'/>\
          <text x='{}' y='{}' font-size='0.06' fill='black'>{titulo}</text></svg>",
-        svg_pl(off, "#2a9d2a", 0.012),
-        svg_pl(k2, "#d00000", 0.008),
+        svg_pl(metade, "#2a9d2a", 0.012),
+        svg_pl(prod, "#d00000", 0.008),
         svg_pl(verdade, "#1e66ff", 0.004),
         j[0],
         -j[1],
@@ -175,7 +175,10 @@ fn foto(
 }
 
 /// As leis comparadas.
-const LEIS: [(&str, Option<Refino>); 2] = [("produto", REFINO_DO_PRODUTO), ("off", None)];
+const LEIS: [(&str, usize); 2] = [
+    ("produto", AMOSTRAS_POR_FORMA),
+    ("metade", AMOSTRAS_POR_FORMA / 2),
+];
 
 fn graus(base: f32, passo: f32, i: u16) -> f32 {
     base + passo * f32::from(i)
@@ -301,18 +304,18 @@ fn diag_a_redondeza_e_as_fotos() {
         for (barra, id) in ids.iter().enumerate() {
             let b = Barra::de(&sim, &st, *id);
             let verdade = b.imagem(512);
-            let (k2, _) = desenho(&b, REFINO_DO_PRODUTO);
-            let (off, _) = desenho(&b, None);
+            let (prod, _) = desenho(&b, AMOSTRAS_POR_FORMA);
+            let (metade, _) = desenho(&b, AMOSTRAS_POR_FORMA / 2);
             for (ji, jm) in juntas(&sim, barra).iter().enumerate().take(2) {
                 println!(
-                    "{g1}/{g2} barra {barra} junta {} · raio mínimo na tampa: verdade {:.4} · k2 {:.4} · \
-                     off {:.4} · desvio à verdade k2 {:.4} off {:.4}",
+                    "{g1}/{g2} barra {barra} junta {} · raio mínimo na tampa: verdade {:.4} · prod {:.4} · \
+                     metade {:.4} · desvio à verdade prod {:.4} metade {:.4}",
                     ji + 1,
                     raio_min(&verdade, *jm),
-                    raio_min(&k2, *jm),
-                    raio_min(&off, *jm),
-                    haus_na_tampa(&k2, &verdade, *jm),
-                    haus_na_tampa(&off, &verdade, *jm)
+                    raio_min(&prod, *jm),
+                    raio_min(&metade, *jm),
+                    haus_na_tampa(&prod, &verdade, *jm),
+                    haus_na_tampa(&metade, &verdade, *jm)
                 );
                 if barra == 0 {
                     let f = format!("{saida}/tampa_{g1}_{g2}_junta{}.svg", ji + 1);
@@ -321,8 +324,8 @@ fn diag_a_redondeza_e_as_fotos() {
                         foto(
                             jm.0,
                             &verdade,
-                            &k2,
-                            &off,
+                            &prod,
+                            &metade,
                             &format!("{g1}/{g2} junta {}", ji + 1),
                         ),
                     )
@@ -341,8 +344,8 @@ fn diag_a_redondeza_e_as_fotos() {
             let (sim, _, st, ids) = cena(g1, g2);
             let b = Barra::de(&sim, &st, ids[0]);
             let verdade = b.imagem(512);
-            let (k2, _) = desenho(&b, REFINO_DO_PRODUTO);
-            let (off, _) = desenho(&b, None);
+            let (prod, _) = desenho(&b, AMOSTRAS_POR_FORMA);
+            let (metade, _) = desenho(&b, AMOSTRAS_POR_FORMA / 2);
             for (ji, jm) in juntas(&sim, 0).iter().enumerate().take(2) {
                 let f = format!("{saida}/folha_{rotulo}_j{}_{i:02}.svg", ji + 1);
                 std::fs::write(
@@ -350,8 +353,8 @@ fn diag_a_redondeza_e_as_fotos() {
                     foto(
                         jm.0,
                         &verdade,
-                        &k2,
-                        &off,
+                        &prod,
+                        &metade,
                         &format!("{g1:.1}/{g2:.1} j{}", ji + 1),
                     ),
                 )
@@ -362,14 +365,35 @@ fn diag_a_redondeza_e_as_fotos() {
     println!("fotos em {saida}");
 }
 
-/// As leis comparadas na CONTINUIDADE: sem refino, o de hoje e os candidatos que não dependem
-/// da pose.
-fn candidatos() -> Vec<(String, Option<Refino>)> {
-    let mut v = vec![("sem".to_string(), None)];
-    for passo in [0.1, 0.05, 0.025] {
-        v.push((format!("peso {passo}"), Some(Refino { passo })));
+/// Uma amostragem como função da POSE: o orçamento por forma em cada `(g1, g2)`.
+pub(crate) type Amostragem = fn((f32, f32)) -> usize;
+
+/// ⛔ O CONTROLO da continuidade: o orçamento troca entre o do produto e metade a cada `0,1°` — o
+/// conjunto de amostras muda com a pose, que é o mecanismo do refino pelo esticão posto (A13).
+pub(crate) fn amostragem_que_muda_com_a_pose((a, b): (f32, f32)) -> usize {
+    #[expect(clippy::cast_possible_truncation, reason = "graus, finitos")]
+    let passo = ((a + b) * 10.0).round() as i64;
+    if passo % 2 == 0 {
+        AMOSTRAS_POR_FORMA
+    } else {
+        AMOSTRAS_POR_FORMA / 2
     }
-    v
+}
+
+/// O produto: o orçamento não depende da pose.
+pub(crate) fn amostragem_do_produto(_: (f32, f32)) -> usize {
+    AMOSTRAS_POR_FORMA
+}
+
+/// As leis comparadas na CONTINUIDADE.
+fn candidatos() -> Vec<(String, Amostragem)> {
+    vec![
+        ("produto".to_string(), amostragem_do_produto as Amostragem),
+        (
+            "muda com a pose".to_string(),
+            amostragem_que_muda_com_a_pose,
+        ),
+    ]
 }
 
 /// ⭐ **A régua da CONTINUIDADE** — as três varreduras de `0,1°` (a cena presa UMA vez e só a pose
@@ -378,7 +402,7 @@ fn candidatos() -> Vec<(String, Option<Refino>)> {
 /// `(Δ desenho, Δ verdade, pose)` de cada passo.
 pub(crate) type Passo = (f64, f64, (f32, f32));
 
-pub(crate) fn continuidade(leis: &[Option<Refino>]) -> Vec<Vec<Passo>> {
+pub(crate) fn continuidade(leis: &[Amostragem]) -> Vec<Vec<Passo>> {
     let mut pares = vec![Vec::new(); leis.len()];
     let varreduras: [Vec<(f32, f32)>; 3] = [
         (0..=250u16)
@@ -393,7 +417,7 @@ pub(crate) fn continuidade(leis: &[Option<Refino>]) -> Vec<Vec<Passo>> {
     ];
     for poses in &varreduras {
         let (g1, g2) = poses[0];
-        let (mut sim, _, st, ids, raizes) = super::refino::cena_com_raizes(g1, g2);
+        let (mut sim, _, st, ids, raizes) = super::bake::cena_com_raizes(g1, g2);
         let mut agora = (g1, g2);
         type Quadro = (Vec<Vec<[f64; 2]>>, Vec<Vec<Vec<[f64; 2]>>>);
         let mut antes: Vec<Option<Quadro>> = vec![None, None];
@@ -405,7 +429,8 @@ pub(crate) fn continuidade(leis: &[Option<Refino>]) -> Vec<Vec<Passo>> {
             for barra in 0..2 {
                 let br = Barra::de(&sim, &st, ids[barra]);
                 let verdade = br.imagem(128);
-                let ds: Vec<Vec<Vec<[f64; 2]>>> = leis.iter().map(|l| desenho(&br, *l).0).collect();
+                let ds: Vec<Vec<Vec<[f64; 2]>>> =
+                    leis.iter().map(|l| desenho(&br, l((a, b))).0).collect();
                 if let Some((v0, d0)) = &antes[barra] {
                     for jm in juntas(&sim, barra).iter().take(2) {
                         let dv = haus_na_tampa(&verdade, v0, *jm);
@@ -427,7 +452,7 @@ pub(crate) fn continuidade(leis: &[Option<Refino>]) -> Vec<Vec<Passo>> {
 #[ignore = "sonda: imprime; corra em --release"]
 fn diag_a_continuidade_por_lei() {
     let ls = candidatos();
-    let leis: Vec<Option<Refino>> = ls.iter().map(|x| x.1).collect();
+    let leis: Vec<Amostragem> = ls.iter().map(|x| x.1).collect();
     let pares = continuidade(&leis);
     for ((nome, _), p) in ls.iter().zip(&pares) {
         let exc = p

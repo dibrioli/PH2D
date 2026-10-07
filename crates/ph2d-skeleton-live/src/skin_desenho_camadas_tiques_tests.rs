@@ -5,13 +5,14 @@
 //! (triângulos rectos · malha fina do produto · malha a `1 %`).
 
 use super::super::{
-    TOLERANCIA_DA_DIAGONAL, amostras_por_segmento, diagonal, frente, lida, os_nos_servem, segmentos,
+    AMOSTRAS_POR_FORMA, TOLERANCIA_DA_DIAGONAL, amostras_no_orcamento, diagonal, frente, lida,
+    os_nos_servem, segmentos,
 };
 use super::cruza::Bordas;
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_vec_scene::effect::{FxEntry, PathEffect};
 use ph2d_vec_scene::{ShapeKind, VecPath, VecPathId, VecScene, VecVertex};
-use ph2d_vec_skin::curva::{Bake, CampoIndexado, REFINO_DO_PRODUTO, Refino};
+use ph2d_vec_skin::curva::{Bake, CampoIndexado};
 
 const L: f64 = 4.5;
 const T: f64 = 0.75;
@@ -255,10 +256,10 @@ fn recorte(w: &[VecVertex], u0: f64, u1: f64) -> Vec<VecVertex> {
     p
 }
 
-/// A medida de uma barra numa pose, com um refino — uma linha por trecho cortado curto (`< 1,5`
+/// A medida de uma barra numa pose, com `por_forma` amostras por forma — uma linha por trecho cortado curto (`< 1,5`
 /// larguras) e o resumo.
 #[expect(clippy::too_many_lines, reason = "sonda")]
-fn mede(hatch: bool, g1: f32, g2: f32, refino: Option<Refino>) -> String {
+fn mede(hatch: bool, g1: f32, g2: f32, por_forma: usize) -> String {
     use std::fmt::Write as _;
     let (sim, scene, e, id) = barra(hatch, g1, g2);
     let produto = crate::skin_live::recook_leis(
@@ -301,22 +302,21 @@ fn mede(hatch: bool, g1: f32, g2: f32, refino: Option<Refino>) -> String {
             suave: None,
         },
         Bake {
-            amostras: amostras_por_segmento(segmentos(&f)),
+            amostras: amostras_no_orcamento(segmentos(&f), por_forma),
             tolerancia: TOLERANCIA_DA_DIAGONAL * diagonal(&f),
-            refino,
         },
     );
     let Some(cortes) =
         frente::cortes_dos_fechados(&f, (campo, indice), (&pele, &correcoes, true), &ordem)
     else {
         return format!(
-            "  {g1}/{g2} barra {} {refino:?}: nada tapado\n",
+            "  {g1}/{g2} barra {} {por_forma}: nada tapado\n",
             u8::from(hatch)
         );
     };
     let traco = super::traco_sobre_o_assado(&d, &nos, &f, &cortes).expect("traço");
     let vis = &produto[&id];
-    if refino == REFINO_DO_PRODUTO {
+    if por_forma == AMOSTRAS_POR_FORMA {
         assert_eq!(
             bits(&vis.forma),
             bits(&d),
@@ -560,14 +560,13 @@ fn mede(hatch: bool, g1: f32, g2: f32, refino: Option<Refino>) -> String {
         );
     }
     format!(
-        "  {g1}/{g2} barra {} refino {}: {todos} trechos, {curtos} curtos (< 1,5 larguras)\n{s}",
-        u8::from(hatch),
-        refino.map_or("off".into(), |r| format!("{r:?}"))
+        "  {g1}/{g2} barra {} {por_forma} amostras: {todos} trechos, {curtos} curtos (< 1,5 larguras)\n{s}",
+        u8::from(hatch)
     )
 }
 
 /// ⭐ **SONDA — A13: os tiques soltos do traço** a `110/110` (controlo) e `170/{110,140,150,170}`,
-/// nas duas barras, com o refino do produto e sem ele.
+/// nas duas barras, com a amostragem do produto e a de metade.
 #[test]
 #[ignore = "sonda: imprime"]
 fn diag_a13_os_tiques_soltos_do_traco() {
@@ -579,9 +578,9 @@ fn diag_a13_os_tiques_soltos_do_traco() {
         (170.0, 170.0),
     ] {
         for hatch in [false, true] {
-            for refino in [REFINO_DO_PRODUTO, None] {
+            for por_forma in [AMOSTRAS_POR_FORMA, AMOSTRAS_POR_FORMA / 2] {
                 let linha = std::thread::scope(|s| {
-                    s.spawn(|| mede(hatch, g1, g2, refino))
+                    s.spawn(|| mede(hatch, g1, g2, por_forma))
                         .join()
                         .expect("thread")
                 });

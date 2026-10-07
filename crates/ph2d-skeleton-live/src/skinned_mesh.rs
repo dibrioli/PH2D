@@ -322,11 +322,6 @@ mod rive_tests;
 #[path = "skinned_mesh_rive_sondas_tests.rs"]
 mod rive_sondas_tests;
 
-/// A13 — as leis de refino do bake contra o padrão-ouro (sonda).
-#[cfg(test)]
-#[path = "skinned_mesh_refino_sondas_tests.rs"]
-mod refino_sondas_tests;
-
 /// ⭐⭐⭐ **O DESENHO FIEL contra o padrão-ouro, pela porta do PRODUTO** (2026-09-29) — ver
 /// [`crate::skin_desenho`].
 #[cfg(test)]

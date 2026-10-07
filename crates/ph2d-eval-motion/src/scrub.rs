@@ -71,7 +71,7 @@ impl MotionCookPump {
             self.ring.regista(t, &self.cook);
             self.substep_declared_zones(graph, ops, playhead);
             self.cook_target_into(graph, ops, target, playhead, scopes);
-            if !target.has_work() {
+            if !target.has_work() && self.taps.is_empty() {
                 break;
             }
             // Advance the `pre` feedback exactly as the forward pump does — so

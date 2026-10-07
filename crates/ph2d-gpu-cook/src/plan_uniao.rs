@@ -153,8 +153,7 @@ fn plan_forbidding(
                     sink,
                     &walk.claimed,
                     forbidden,
-                    driven,
-                    condutores,
+                    (driven, condutores),
                 ) =>
             {
                 walk.accept(sink, ty);

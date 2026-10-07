@@ -1017,7 +1017,18 @@ isso moveu três cenas (`=116` e `=65` sobem a inteiras; `=117` sobe a híbrida)
 | 6 | ✅ **a barra estava a medir o `value.noise`, não o `value.slope`**: em espaço de ÍNDICE a coordenada da rede cresce com `i` (~128–512 nas últimas linhas) e o ruído diverge até `6,9e-5` lá; o slope só o multiplica (`2,3 × max|dnoise| = 1,0501e-4`). O fixture passou a espaço de MUNDO e a barra `1e-4` ficou no VALE: piso **6,2e-6**, menor mutação do kernel **5,0e-4** (16× acima do ruído, 5× abaixo do defeito). E o comparador engolia NaN (`f32::max` devolve o acumulado): um defeito só-NaN passava | os vizinhos com a mesma barra vivem 6,5× a 200× abaixo dela | `value_slope_kernel_matches_the_cpu_on_the_device` · `o_desvio_nao_engole_um_nan` · `probe_value_slope_parity_in_ulps` |
 | 7 | ✅ **o nascimento por pulso na placa** (`FiredBirth`): a porta lateral ganha a linha original (`iota`), é COMPACTADA pelo predicado (a mesma varredura do `Compact`), e um SEGUNDO kernel coze os nascidos do pulso na janela da lei DELE — que vê só a LARGURA `F` das linhas que dispararam; concatenado depois da taxa. Com o pulso ligado a taxa usa a variante de período pela metade (a escolha é estrutural, decidida pela forma do plano) | metrónomo: **531** nascidos do pulso ao bit; rajada+sorteio+empurrão: **999**, `vel` a `6e-8`; **fogos** (`died → template`, `pulse → pulse`): **12 891**, `vel` a `1,5e-6` | `the_chain_that_opened_the_wave_is_now_claimed_by_the_device` · `the_pulse_births_the_same_ids_at_the_same_rows` · `the_pulse_burst_draws_and_kicks_the_same_survivors` · `the_fireworks_are_born_on_the_device_as_on_the_cpu` · `a_pulse_longer_than_the_template_fires_only_its_rows` · `the_two_rate_spans_are_the_eval_s_spans` |
 
-**Três achados que o caminho trouxe, e o que se fez com eles:**
+**Quatro achados que o caminho trouxe, e o que se fez com eles:**
+
+- ⛔⛔⛔ **Um documento INTEIRO na placa com um `pulse.signal` gritava errado** (o gate batched o
+  apanhou: a `=26` gritava a cada tique em vez de a cada volta do contador). O `pulse.signal`
+  tem kernel desde a W2 deste ciclo, logo «um grafo com sinal nunca é 100 % placa» deixou de ser
+  verdade em 14/09 sem ninguém o dizer; a `=26` escapava POR ACASO (o `carry` derrubava o contador
+  — a cura do (1) tirou-lhe o acaso). Na rota inteira-na-placa a ponte só «cozia as tomadas sem
+  marchar»: o `pre` do cone delas nunca avançava. ⇒ duas metades: a bomba avança o `pre` do cone
+  das tomadas também quando não há fronteira (`has_work() || taps`, nos laços de avanço e de
+  scrub), e a ponte, com tomadas de SINAL, MARCHA o cone delas em cada tique devido (a marcha da
+  rota híbrida, com zero fronteiras). Gate pela ponte real com placa:
+  `a_ponte_na_placa_grita_o_que_a_cpu_grita` (as duas metades sangram sem a cura).
 
 - ⛔⛔ **A placa HERDAVA o `age` do modelo ao nascer, e a CPU não** (o `newborns` descarta `id` e
   `age`). Latente desde a ADR-0136, porque nenhum modelo de spawn trazia `age`; os FOGOS trazem

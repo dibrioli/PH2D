@@ -47,7 +47,7 @@ pub(super) fn na_placa(
     (port == 0
         && entra_no_uniform
         && mapa_puro(kernels, ty, k)
-        && eligible(graph, ops, kernels, src, claimed, forbidden, driven, true))
+        && eligible(graph, ops, kernels, src, claimed, forbidden, (driven, true)))
     .then_some(src)
 }
 

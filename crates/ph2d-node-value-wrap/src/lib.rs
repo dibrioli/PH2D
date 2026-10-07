@@ -295,7 +295,14 @@ impl NodeOp for ValueWrap {
             k => k,
         };
         let out: Vec<f32> = (0..n)
-            .map(|i| wrap_one(at(&input, i, 0.0), at(&lo_field, i, lo), at(&hi_field, i, hi), mode))
+            .map(|i| {
+                wrap_one(
+                    at(&input, i, 0.0),
+                    at(&lo_field, i, lo),
+                    at(&hi_field, i, hi),
+                    mode,
+                )
+            })
             .collect();
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(out)));
     }

@@ -369,7 +369,9 @@ impl MotionCookPump {
         }
         self.substep_declared_zones(graph, ops, playhead);
         self.cook_target_into(graph, ops, target, playhead, scopes);
-        if target.has_work() {
+        // ⚠️ E com TOMADAS só (sem fronteiras): o cone delas também é estado (doc 110 §14.2 —
+        // os sinais de um documento inteiro na placa).
+        if target.has_work() || !self.taps.is_empty() {
             // Advance the 1-tick `pre` feedback once per cooked frame — ONCE for
             // the whole graph, not per sink. Para FRONTEIRAS só o cone delas e das tomadas:
             // a porta é a MESMA do scrub (ver `marcha`).

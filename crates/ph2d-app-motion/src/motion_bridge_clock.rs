@@ -104,7 +104,8 @@ mod tests {
     /// chips, o `hand_input_to_players`).
     #[test]
     fn o_quadro_marca_so_o_ultimo_tique_como_desenhado() {
-        const PONTE: &str = include_str!("motion_bridge.rs");
+        // O laço saiu do `dispatch` para a porta do quadro em 07/10 (doc 110 §14.1 (5)).
+        const PONTE: &str = include_str!("motion_bridge_quadro.rs");
         // O PISO DE POPULAÇÃO: sem o laço, o resto deste gate não afirma nada.
         assert!(
             PONTE.contains("for tick in tiques {"),

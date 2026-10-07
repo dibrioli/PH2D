@@ -12,6 +12,9 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_render::SinkStyle;
 
 const EPS: f32 = 1e-4;
+
+/// A coluna `size` do sink nas duas rotas, num instante: `(cpu, placa)`.
+type Par = (Vec<[f32; 2]>, Vec<[f32; 2]>);
 const INSTANTES: [f64; 4] = [0.1, 0.37, 0.8, 1.3];
 
 fn try_headless_gpu() -> Option<GpuContext> {
@@ -119,7 +122,7 @@ fn a_param_a_host_law_reads_is_never_device_driven() {
 }
 
 /// As duas rotas, sem a CPU entregar valor nenhum à placa: a coluna `P` do sink em cada instante.
-fn nas_duas(g: &Graph, reg: &NodeRegistry, out: NodeId) -> Vec<(Vec<[f32; 2]>, Vec<[f32; 2]>)> {
+fn nas_duas(g: &Graph, reg: &NodeRegistry, out: NodeId) -> Vec<Par> {
     let gpu = try_headless_gpu().expect("placa");
     let p = plan_with_device_drivers(g, reg, reg, &[out], &DrivenParams::new());
     assert!(p.is_fully_gpu(), "fronteiras: {:?}", p.boundaries);
@@ -152,7 +155,7 @@ fn nas_duas(g: &Graph, reg: &NodeRegistry, out: NodeId) -> Vec<(Vec<[f32; 2]>, V
         .collect()
 }
 
-fn pior(pares: &[(Vec<[f32; 2]>, Vec<[f32; 2]>)]) -> f32 {
+fn pior(pares: &[Par]) -> f32 {
     pares
         .iter()
         .flat_map(|(a, b)| {

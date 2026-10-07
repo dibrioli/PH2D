@@ -114,7 +114,7 @@ fn the_scene_needs_the_shell_to_land_the_fan() {
         );
     }
     // E a fonte que prova que o shell o faz.
-    let src = include_str!("motion_bridge.rs");
+    let src = include_str!("motion_bridge_quadro.rs");
     assert!(
         src.contains("ph2d_node_motion_clone::fan::time_fans"),
         "o shell tem de pousar o terceiro leque"

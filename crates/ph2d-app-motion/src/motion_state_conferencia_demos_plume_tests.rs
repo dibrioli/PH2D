@@ -169,7 +169,8 @@ fn without_the_fan_every_row_draws_the_same_plume() {
 /// **O shell POUSA o leque do emissor** — o gate de FONTE da costura.
 #[test]
 fn the_shell_lays_the_emitters_fan_beside_the_trails() {
-    let src = include_str!("motion_bridge.rs");
+    // A sequência do quadro mora na porta dele desde 07/10 (doc 110 §14.1 (5)).
+    let src = include_str!("motion_bridge_quadro.rs");
     assert!(
         src.contains("ph2d_node_motion_emitter::time_fans"),
         "o render_loop tem de montar o leque do emissor"

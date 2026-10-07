@@ -195,8 +195,7 @@ fn eligible(
     node: NodeId,
     claimed: &BTreeSet<NodeId>,
     forbidden: &BTreeSet<NodeId>,
-    driven: &DrivenParams,
-    condutores: bool,
+    (driven, condutores): (&DrivenParams, bool),
 ) -> bool {
     // A node the RETREAT forbade (`plan`): a partially-claimed sim loop drops its
     // `pre`-source here so the loop recedes to the pump while a render suffix
@@ -256,11 +255,12 @@ fn eligible(
         match graph.input_edge(node, f.port) {
             None => {}
             Some((_, _, true)) => return false,
-            Some((src, sp, false)) => {
-                if edge_shape(graph, ops, kernels, (src, sp), SHAPE_DEPTH, driven).is_none() {
-                    return false;
-                }
+            Some((src, sp, false))
+                if edge_shape(graph, ops, kernels, (src, sp), SHAPE_DEPTH, driven).is_none() =>
+            {
+                return false;
             }
+            Some(_) => {}
         }
     }
     // A generator must say how many elements it emits (dispatch is host-sized).
@@ -488,8 +488,7 @@ impl Walk<'_> {
                     src,
                     &self.claimed,
                     self.forbidden,
-                    self.driven,
-                    self.condutores,
+                    (self.driven, self.condutores),
                 ) =>
             {
                 self.accept(src, ty);

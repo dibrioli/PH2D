@@ -226,16 +226,14 @@ fn as_duas_rotas_de_cook_gritam_a_mesma_coisa() {
     );
 }
 
-/// **A cena `=26` de facto planeja HÍBRIDA** — a premissa do gate acima, medida em vez de
-/// suposta.
-///
-/// ⚠️ Sem ela, o irmão acima vira verde por vácuo no dia em que um kernel novo cobrir a família
-/// `pulse.*`: as duas rotas continuariam concordando, e a que o produto toma teria mudado sem
-/// ninguém saber. E o CONTROLE é o outro lado: um `pulse.signal` **não tem kernel**, então um
-/// documento que o contenha nunca é 100% GPU — é isso que garante que a bomba marcha, e com ela
-/// a tomada.
+/// **A cena `=26` é INTEIRA na placa desde 07/10** (doc 110 §14.2) — a premissa dos gates acima,
+/// medida em vez de suposta. ⛔ Até lá ela era híbrida POR ACASO: o `carry` do `pulse.counter`
+/// derrubava o contador para a CPU, e a marcha da bomba gritava. O `pulse.signal` tem kernel desde
+/// a W2 do ciclo 6, logo «um grafo com sinal nunca é 100 % placa» deixou de ser verdade sem
+/// ninguém o dizer. ⇒ o grito de um documento inteiro na placa vem da marcha do CONE das tomadas
+/// (zero fronteiras), e é isso que o irmão acima compara com a CPU.
 #[test]
-fn a_cena_do_grito_planeja_hibrida_e_nunca_e_100_por_cento_gpu() {
+fn a_cena_do_grito_e_inteira_na_placa_e_as_tomadas_marcham() {
     let mut motion = MotionState::new();
     motion.sinks = build_gpu_signal_demo_document(&mut motion.doc, &motion.registry)
         .expect("a cena é bem tipada");
@@ -245,17 +243,49 @@ fn a_cena_do_grito_planeja_hibrida_e_nunca_e_100_por_cento_gpu() {
         &motion.registry,
         motion.sinks[0],
     );
+    assert!(plan.is_fully_gpu(), "fronteiras: {:?}", plan.boundaries);
     assert!(
-        !plan.boundaries.is_empty(),
-        "um grafo com `pulse.signal` (sem kernel) SEMPRE deixa fronteira de CPU"
+        !signal_nodes(&motion.doc.graph).is_empty(),
+        "e ela tem tomada de sinal — senão o irmão compara dois silêncios"
     );
-    assert!(
-        plan.dispatching_stages(&motion.registry) >= 1,
-        "e o sufixo despacha, o que faz a rota ser Híbrida e não Cpu"
-    );
-    eprintln!(
-        "[rota] boundaries={:?} dispatching={}",
-        plan.boundaries.iter().map(|(n, _)| n.0).collect::<Vec<_>>(),
-        plan.dispatching_stages(&motion.registry)
+}
+
+/// ⭐⭐ **PELA PONTE, COM PLACA: a `=26` inteira no dispositivo grita o que a CPU grita** — o
+/// quadro do produto (`coze_o_quadro`), quatro segundos, a lista inteira (nome e tique).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_ponte_na_placa_grita_o_que_a_cpu_grita() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        return;
+    };
+    let cpu = shouts_of(build_gpu_signal_demo_document, 4.0, Rota::Cpu, |_| {});
+    let mut motion = MotionState::new();
+    motion.sinks = build_gpu_signal_demo_document(&mut motion.doc, &motion.registry)
+        .expect("a cena é bem tipada");
+    motion.signal_taps = signal_nodes(&motion.doc.graph);
+    let mut playhead = ph2d_core::Playhead::new(1.0 / FPS);
+    let mut placa = Vec::new();
+    for tick in 0..=((4.0 * FPS) as u64) {
+        playhead.seek(tick as f64 / FPS);
+        motion.pump.set_taps(&motion.signal_taps.clone());
+        motion.pump.clear_tap_fires();
+        motion.signals_out.clear();
+        crate::motion_bridge::quadro::coze_o_quadro(&mut motion, &gpu, &playhead, 1.0 / FPS);
+        assert_eq!(
+            motion.route_said,
+            Some("device: o plano inteiro (fully-GPU)"),
+            "a cena tem de correr INTEIRA na placa"
+        );
+        collect_signals(&mut motion);
+        placa.extend(std::mem::take(&mut motion.signals_out));
+    }
+    let resumo = |v: &[MotionSignalOut]| -> Vec<(String, u64)> {
+        v.iter().map(|s| (s.name.clone(), s.tick)).collect()
+    };
+    assert!(!cpu.is_empty());
+    assert_eq!(
+        resumo(&cpu),
+        resumo(&placa),
+        "a placa não pode mudar o que o grafo grita"
     );
 }

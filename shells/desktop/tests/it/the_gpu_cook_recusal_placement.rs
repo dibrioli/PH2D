@@ -64,8 +64,11 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
     // é a espécie boa de gate partido.*
     // ⚠️ **E de novo no doc 119 W3:** a ponte passou a planear a UNIÃO das saídas
     // (`plan_driven_many`). Reprovou alto outra vez, que é a espécie boa.
+    // ⚠️ **E no doc 110 §14 (07/10):** o plano passou a ser UMA porta com três chamadores (o
+    // `cook_gpu`, o censo de rota e a sonda do relógio) — `plano_do_produto`, que escolhe entre a
+    // porta dos condutores na placa e a `plan_driven_many`.
     let plan = body
-        .find("ph2d_gpu_cook::plan_driven_many(")
+        .find("plano_do_produto(")
         .expect("cook_gpu still plans");
     let changes_count = body
         .find("suffix_changes_count(")
@@ -88,13 +91,23 @@ fn the_recusals_run_in_the_right_place_relative_to_the_plan() {
     // ⭐ **E a derivação dos valores dirigidos roda DEPOIS das recusas** (doc 110 §3): ela COZE as
     // sub-árvores dos condutores na CPU, e fazê-lo num grafo que vai recusar de qualquer maneira
     // seria trabalho deitado fora em todo quadro de uma cena vectorial viva.
-    let dirigidos = body
+    // ⚠️ Desde o doc 110 §14 (07/10) a derivação para o plano vive DENTRO do `plano_do_produto`
+    // (a porta única): o «depois das recusas» é o `plan > live_*` acima, e o «antes do plano» é
+    // provado lá, no corpo da porta.
+    let porta =
+        fs::read_to_string("../../crates/ph2d-app-motion/src/motion_bridge_gpu_dirigidos.rs")
+            .expect("motion_bridge_gpu_dirigidos.rs");
+    let porta = porta
+        .split_once("pub(crate) fn plano_do_produto_para(")
+        .expect("a porta do plano existe")
+        .1;
+    let dirigidos = porta
         .find("valores_dirigidos(")
-        .expect("cook_gpu deriva os valores dos params dirigidos");
+        .expect("a porta do plano deriva os valores dos params dirigidos");
+    let planeia = porta.find("porta(").expect("a porta do plano planeia");
     assert!(
-        dirigidos > live_vector && dirigidos > live_geo && dirigidos < plan,
-        "os valores dirigidos derivam-se depois das recusas e antes do plano \
-         (dirigidos@{dirigidos} vs shape@{live_vector}, object@{live_geo}, plan@{plan})"
+        dirigidos < planeia,
+        "os valores dirigidos derivam-se antes do plano (dirigidos@{dirigidos} vs plano@{planeia})"
     );
 
     // ⭐ **As duas recusas do multi-sink** (doc 119 W3/W4) PRECISAM do plano — uma compara as saídas

@@ -283,11 +283,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // READS its template (via `ColumnAccess::SourceRead`). Side metadata on the
     // registry; the frozen node contract is untouched.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
-    reg.register_stream_op(MANIFEST.id, StreamOp::SourceRows {
-        port: 0,
-        fired: None,
-        not_inherited: &[],
-    });
+    reg.register_stream_op(
+        MANIFEST.id,
+        StreamOp::SourceRows {
+            port: 0,
+            fired: None,
+            not_inherited: &[],
+        },
+    );
     // Ciclo 3 W1: o par `Sum(v.x)`/`Sum(v.y)` da porta do pivô — é o que faz o modo
     // `Centroid` correr no dispositivo em vez de derrubar a cadeia para a CPU.
     reg.register_reduces(MANIFEST.id, ph2d_nodegraph::pivot::CENTROID_REDUCES);

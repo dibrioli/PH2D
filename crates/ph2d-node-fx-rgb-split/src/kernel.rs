@@ -160,10 +160,13 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
 /// centroide (o par `Sum(P.x)`/`Sum(P.y)` do pivô, que correm antes do passe por elemento).
 pub(crate) fn regista(reg: &mut NodeRegistry) {
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
-    reg.register_stream_op(MANIFEST.id, StreamOp::SourceRows {
-        port: 0,
-        fired: None,
-        not_inherited: &[],
-    });
+    reg.register_stream_op(
+        MANIFEST.id,
+        StreamOp::SourceRows {
+            port: 0,
+            fired: None,
+            not_inherited: &[],
+        },
+    );
     reg.register_reduces(MANIFEST.id, ph2d_nodegraph::pivot::CENTROID_REDUCES);
 }

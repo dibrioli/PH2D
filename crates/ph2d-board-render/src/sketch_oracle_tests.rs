@@ -125,7 +125,11 @@ fn every_sketched_shape_is_the_one_excalidraw_draws_with_the_same_seed() {
                 ..style(e)
             };
             let seed = e["seed"].as_u64().unwrap() as u32;
-            let opts = hand_options(seed, hand_roughness(w, h, round, false), &st, true);
+            // As DUAS passagens do Excalidraw (a terceira do quadro é nossa).
+            let opts = rough::Options {
+                passes: 2,
+                ..hand_options(seed, hand_roughness(w, h, round, false), &st, true)
+            };
             let got = if kind == ShapeType::Diamond {
                 // O losango do Excalidraw tem os vértices a `⌊w/2⌋+1` (o dele, não lei: o nosso é ao
                 // meio) — aqui confere-se a LEI das opções sobre os vértices dele.
@@ -170,7 +174,10 @@ fn sketched_arrows_are_the_lines_excalidraw_draws_with_the_same_seed() {
                 .collect();
             let seed = e["seed"].as_u64().unwrap() as u32;
             let (w, h) = (e["width"].as_f64().unwrap(), e["height"].as_f64().unwrap());
-            let opts = hand_options(seed, hand_roughness(w, h, false, true), &style(e), false);
+            let opts = rough::Options {
+                passes: 2,
+                ..hand_options(seed, hand_roughness(w, h, false, true), &style(e), false)
+            };
             let got = if e["roundness"].is_null() {
                 let mut p = BezPath::new();
                 p.move_to((pts[0][0], pts[0][1]));
@@ -190,4 +197,35 @@ fn sketched_arrows_are_the_lines_excalidraw_draws_with_the_same_seed() {
         }
     }
     assert!(checked >= 6, "as setas do oráculo: {checked}");
+}
+
+/// O quadro desenha cada traço com TRÊS passagens (ordem do dono, 07/10) — nunca as duas do
+/// Excalidraw sozinhas.
+#[test]
+fn the_board_draws_every_line_three_times() {
+    let ink = Rgba([30, 30, 30, 255]);
+    let st = Style::new(None, Some(ink), ink);
+    assert_eq!(hand_options(1, ROUGHNESS, &st, false).passes, 3);
+    let sets = hand_shape(
+        ShapeType::Rectangle,
+        false,
+        160.0,
+        120.0,
+        &ph2d_board_geom::outline(
+            &Shape {
+                kind: ShapeType::Rectangle,
+                style: st.clone(),
+                text: Default::default(),
+            },
+            160.0,
+            120.0,
+        ),
+        &hand_options(1, ROUGHNESS, &st, false),
+    );
+    let moves = sets[0]
+        .ops
+        .iter()
+        .filter(|o| matches!(o, Op::Move(_)))
+        .count();
+    assert_eq!(moves, 4 * 3, "quatro arestas, três passagens cada");
 }

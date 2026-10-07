@@ -44,6 +44,10 @@ pub struct Options {
     pub fill_shape_roughness_gain: f64,
     /// `false` = `stroke: 'none'` (só o preenchimento entra nos sets).
     pub stroke: bool,
+    /// Passagens de cada traço: `2` é o rough.js (e o Excalidraw); `3` acrescenta uma terceira com um
+    /// sorteio PRÓPRIO ([`Random::fork`], ou a semente `+ 2` numa curva) — as duas primeiras ficam as
+    /// do rough.js, ao último número. Só o traço: o preenchimento não muda.
+    pub passes: u8,
 }
 
 impl Default for Options {
@@ -66,6 +70,7 @@ impl Default for Options {
             preserve_vertices: false,
             fill_shape_roughness_gain: 0.8,
             stroke: true,
+            passes: 2,
         }
     }
 }
@@ -284,6 +289,9 @@ pub(crate) fn double_line(
     let mut ops = line_ops(x1, y1, x2, y2, o, r, false);
     if !single {
         ops.extend(line_ops(x1, y1, x2, y2, o, r, true));
+        if !filling && o.passes > 2 {
+            ops.extend(line_ops(x1, y1, x2, y2, o, &mut r.fork(), true));
+        }
     }
     ops
 }
@@ -375,6 +383,15 @@ fn curve_ops(points: &[P], o: &Options, r: &mut Random) -> Vec<Op> {
             o,
             altered,
         ));
+        if o.passes > 2 {
+            let third = &mut Random::new(o.seed.wrapping_add(2));
+            ops.extend(curve_with_offset(
+                points,
+                1.25 * (1.0 + o.roughness * 0.21),
+                o,
+                third,
+            ));
+        }
     }
     ops
 }
@@ -472,6 +489,11 @@ fn ellipse_with_params(
     if !o.disable_multi_stroke && o.roughness != 0.0 {
         let (ap2, _) = ellipse_points(p, x, y, 1.5, 0.0, o, r);
         ops.extend(catmull_rom(&ap2, o, r));
+        if o.passes > 2 {
+            let f = &mut r.fork();
+            let (ap3, _) = ellipse_points(p, x, y, 1.25, 0.0, o, f);
+            ops.extend(catmull_rom(&ap3, o, f));
+        }
     }
     (cp1, ops)
 }
@@ -583,6 +605,36 @@ fn bezier_to(c1: P, c2: P, p: P, current: P, o: &Options, r: &mut Random) -> Vec
             let my = current[1] + offset_opt(ros[0], o, r, 1.0);
             ops.push(Op::Move([mx, my]));
         }
+        let f = if keep {
+            p
+        } else {
+            [
+                p[0] + offset_opt(ro, o, r, 1.0),
+                p[1] + offset_opt(ro, o, r, 1.0),
+            ]
+        };
+        let a = [
+            c1[0] + offset_opt(ro, o, r, 1.0),
+            c1[1] + offset_opt(ro, o, r, 1.0),
+        ];
+        let b = [
+            c2[0] + offset_opt(ro, o, r, 1.0),
+            c2[1] + offset_opt(ro, o, r, 1.0),
+        ];
+        ops.push(Op::Cubic(a, b, f));
+    }
+    if !o.disable_multi_stroke && o.passes > 2 {
+        let r = &mut r.fork();
+        let ro = ros[1];
+        let start = if keep {
+            current
+        } else {
+            [
+                current[0] + offset_opt(ros[0], o, r, 1.0),
+                current[1] + offset_opt(ros[0], o, r, 1.0),
+            ]
+        };
+        ops.push(Op::Move(start));
         let f = if keep {
             p
         } else {

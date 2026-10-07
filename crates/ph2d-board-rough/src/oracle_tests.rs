@@ -274,3 +274,71 @@ fn the_same_seed_draws_the_same_stroke_and_another_seed_another() {
     assert_eq!(a, rough::rectangle(0.0, 0.0, 100.0, 60.0, &o(7)));
     assert_ne!(a, rough::rectangle(0.0, 0.0, 100.0, 60.0, &o(8)));
 }
+
+/// ⭐ A TERCEIRA passagem (ordem do dono, 07/10: *«a linha dá 2 voltas por desenho; coloque 3»*)
+/// junta-se SEM mexer nas duas do rough.js: tirando-a, sobra o traço do rough.js ao último número.
+#[test]
+fn a_third_pass_adds_a_stroke_and_keeps_the_two_of_rough_js() {
+    let two = |seed| Options {
+        seed,
+        ..Options::default()
+    };
+    let three = |seed| Options {
+        passes: 3,
+        ..two(seed)
+    };
+    // Segmentos: cada aresta traz um par (move + cúbica) a mais, a seguir às duas dela.
+    let (a, b) = (
+        rough::rectangle(0.0, 0.0, 160.0, 120.0, &two(9)),
+        rough::rectangle(0.0, 0.0, 160.0, 120.0, &three(9)),
+    );
+    let edges = 4;
+    assert_eq!(b[0].ops.len(), a[0].ops.len() / 2 * 3);
+    for e in 0..edges {
+        assert_eq!(
+            b[0].ops[e * 6..e * 6 + 4],
+            a[0].ops[e * 4..e * 4 + 4],
+            "aresta {e}: as duas do rough.js"
+        );
+        assert_ne!(
+            b[0].ops[e * 6 + 4..e * 6 + 6],
+            a[0].ops[e * 4..e * 4 + 2],
+            "a terceira é outra mão"
+        );
+    }
+    // Elipse, curva e caminho de cúbicas: a terceira vem no FIM, o começo é o do rough.js.
+    for (x, y) in [
+        (
+            rough::ellipse(80.0, 60.0, 160.0, 120.0, &two(5)),
+            rough::ellipse(80.0, 60.0, 160.0, 120.0, &three(5)),
+        ),
+        (
+            rough::curve(&[[0.0, 0.0], [80.0, 40.0], [160.0, 0.0]], &two(6)),
+            rough::curve(&[[0.0, 0.0], [80.0, 40.0], [160.0, 0.0]], &three(6)),
+        ),
+        (
+            rough::path(
+                &[
+                    Seg::M([0.0, 0.0]),
+                    Seg::C([40.0, 0.0], [80.0, 60.0], [120.0, 60.0]),
+                ],
+                &two(7),
+            ),
+            rough::path(
+                &[
+                    Seg::M([0.0, 0.0]),
+                    Seg::C([40.0, 0.0], [80.0, 60.0], [120.0, 60.0]),
+                ],
+                &three(7),
+            ),
+        ),
+    ] {
+        let (x, y) = (&x.last().unwrap().ops, &y.last().unwrap().ops);
+        assert!(y.len() > x.len(), "há uma passagem a mais");
+        assert_eq!(
+            &y[..x.len()],
+            &x[..],
+            "as duas primeiras são as do rough.js"
+        );
+    }
+}

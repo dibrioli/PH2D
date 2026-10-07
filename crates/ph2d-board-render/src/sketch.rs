@@ -132,6 +132,10 @@ fn collect(sets: Vec<OpSet>, into: &mut Rough) {
 
 /// O tremor do rascunho: o «artista» do Excalidraw.
 const ROUGHNESS: f64 = 1.0;
+/// Passagens de cada traço: TRÊS — ordem do dono (07/10: *«a linha parece dar 2 voltas por
+/// desenho; coloque 3»*). As duas primeiras são as do Excalidraw (o portão do oráculo confere-as),
+/// a terceira junta-se com sorteio próprio (`ph2d_board_rough::rough::Options::passes`).
+pub const HAND_PASSES: u8 = 3;
 
 /// ⭐ O tremor EFECTIVO de um elemento `w × h` — o `adjustRoughness` do Excalidraw 0.18.1, MEDIDO
 /// primeiro por ajuste exacto do `d` dos SVG dele (`ferramentas/excalidraw_oracle/ajuste/`, entradas
@@ -164,6 +168,7 @@ pub fn hand_options(seed: u32, roughness: f64, st: &Style, fill: bool) -> rough:
         preserve_vertices: roughness < 2.0,
         // Tracejado e pontilhado: um traço só (dois sobrepunham os traços — o do Excalidraw).
         disable_multi_stroke: st.dash != ph2d_board_model::Dash::Solid,
+        passes: HAND_PASSES,
         stroke_width: st.stroke_width,
         fill: fill && st.fill.is_some(),
         fill_style: FillStyle::Solid,

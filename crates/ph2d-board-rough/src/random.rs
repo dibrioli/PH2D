@@ -15,6 +15,13 @@ impl Random {
         }
     }
 
+    /// Outro gerador tirado do estado DESTE, sem o fazer andar — o sorteio de uma passagem a mais
+    /// (ver `Options::passes`), que assim não muda as duas do rough.js.
+    #[must_use]
+    pub fn fork(&self) -> Random {
+        Random::new((self.seed ^ 0x2545_f491) as u32)
+    }
+
     /// O `next()` do rough.js: o próximo número em `[0, 1)`.
     pub fn next_unit(&mut self) -> f64 {
         self.seed = 48271i32.wrapping_mul(self.seed);

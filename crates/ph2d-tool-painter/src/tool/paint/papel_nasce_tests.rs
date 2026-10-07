@@ -528,3 +528,63 @@ fn no_desenho_novo_o_desfazer_da_cor_volta_ao_papel_branco() {
     );
     assert!(imagem(&mut t).chunks(4).all(|p| p == [255, 255, 255, 255]));
 }
+
+/// SONDA — **a aguada vermelha no papel castanho parece fluorescente** (smoke do dono, 2026-10-07, com
+/// foto: miolo `230,95,85` sobre o papel `153,121,91`). Por meio, o texel do miolo: o que a camada
+/// guarda (cor, alfa), o que se mostra no branco e no castanho, e — nos texels pintados — quantos se
+/// mostram com o VERMELHO acima do papel por mais de 20 (luz que um filtro não tem) e a média desse
+/// excesso. A referência física é o filtro: o que se mostra no branco multiplicado pelo papel.
+/// `cargo test -p ph2d-tool-painter --profile smoke --lib diag_a_aguada_vermelha_no_castanho -- --ignored --nocapture`
+#[test]
+#[ignore = "diagnóstico"]
+fn diag_a_aguada_vermelha_no_castanho() {
+    const PAPEL: [u8; 3] = [153, 121, 91];
+    for cor in [[255u8, 0, 0], [220, 40, 40]] {
+        for (meio, s) in [
+            (PaintMedia::Watercolor, 1.0f32),
+            (PaintMedia::Digital, 0.5),
+            (PaintMedia::WetPaint, 1.0),
+        ] {
+            let mut t = novo(meio, 14.0);
+            t.set_wet_relogio_fixo(true);
+            t.set_brush_color_srgb8(cor);
+            t.paint.brush.strength = s;
+            let pts = (GESTOS[0].1)();
+            t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+            for p in &pts[1..] {
+                t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+                t.paint_tick(1.0 / 60.0);
+            }
+            t.on_canvas_pointer(cp(*pts.last().expect("pontos"), PointerPhase::Up));
+            for _ in 0..30 {
+                t.paint_tick(1.0 / 60.0);
+            }
+            let branco = imagem(&mut t);
+            escolhe_o_papel(&mut t, PAPEL);
+            let castanho = imagem(&mut t);
+            let i = (64 * LADO + 64) * 4;
+            let (mut n, mut acima, mut excesso) = (0usize, 0usize, 0.0f32);
+            for k in 0..LADO * LADO {
+                if t.canvas_rgba[k * 4 + 3] < 8 {
+                    continue;
+                }
+                n += 1;
+                let d = f32::from(castanho[k * 4]) - f32::from(PAPEL[0]);
+                if d > 20.0 {
+                    acima += 1;
+                    excesso += d;
+                }
+            }
+            let filtro: Vec<u8> = (0..3)
+                .map(|c| (u32::from(branco[i + c]) * u32::from(PAPEL[c]) / 255) as u8)
+                .collect();
+            eprintln!(
+                "[fluor] cor {cor:?} {meio:<10?} s {s}: camada {:?} · no branco {:?} · no castanho {:?} · filtro {filtro:?} · R acima do papel +20: {acima}/{n} (média +{:.0})",
+                &t.canvas_rgba[i..i + 4],
+                &branco[i..i + 3],
+                &castanho[i..i + 3],
+                excesso / acima.max(1) as f32
+            );
+        }
+    }
+}

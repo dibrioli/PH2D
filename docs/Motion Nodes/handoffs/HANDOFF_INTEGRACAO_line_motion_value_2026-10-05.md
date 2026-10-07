@@ -423,3 +423,48 @@ puro gasta `6`–`9` ms nessa pilha).
 **Decisão do dono (06/10):** *«por enquanto deixamos assim»* — `16 384` por taça com a pilha formada fica nos `~30`
 fps; o contacto no dispositivo NÃO entra agora (o item da placa fica registado como adiado pelo dono, com os números
 do doc 121 §9.22, não como recusa medida).
+
+## §16 — A 8.ª onda (06/10): os discos com `Rolling` baixo — avalanche ou a trava a alternar?
+
+Prompt: [`HANDOFF_CONTINUACAO_line_motion_value_2026-10-06_ROLAMENTO_DISCOS.md`](HANDOFF_CONTINUACAO_line_motion_value_2026-10-06_ROLAMENTO_DISCOS.md).
+Desenho escrito antes, rodadas, tabelas e recusas: [doc 121 §9.23](../121_as_formas_na_placa.md). Commit `838384182`
+(código, gates, sondas, mutações) · o seguinte (docs, memória). Base `a46c4c200` (o main não andou).
+
+| item do prompt | o que ficou |
+|---|---|
+| **(1) provar ou refutar a leitura** | ✅ **as duas, por partes.** Na árvore de hoje o `104°` não reproduzia: a tabela do §9.21 foi medida com a taça numa POLILINHA (passou a segmentos no mesmo commit) — com a polilinha de volta, `103,6°`/`10,7°` ao bit, e era UM disco solto a rolar `0,73` u (avalanche). Mas com ONZE realizações o defeito existe na taça de hoje (pior queda `152°`; a `0,05` gira mais que sem o botão), e a régua «trancado = `spin == 0`» era cega: a trava PISCAVA `20`–`39` vezes por peça por segundo na pilha assente (referência `Lock Rotation`: `0,000` u de deslize) ⇒ defeito da trava, na pilha assente |
+| **(2) a cura** | ✅ a trava solta ao **12.º** excesso seguido (`EXCESSOS_PARA_SOLTAR`) e só TRANCA quem **não acelerou** no passo, ou quem mal se mexeu (`|L| ≤ 25 %` da capacidade, `QUASE`). ⛔ **Recusados por medição:** o motor angular do rapier (o candidato do prompt: queda `58°` de mediana, a pilha a rastejar, caixas paradas a tremer), o binário CONTRA o pedido no passo que solta, a folga no limiar, soltar ao 3.º/8.º, «só quem não acelera» sem o `QUASE` |
+| **os `210°` dos discos `0,05` assentes** | ✅ provado (`probe_o_mecanismo_por_rolamento`): UM disco a rolar `0,41` u monte abaixo (caminho `1,11×` o giro vezes o raio, `0 %` no lugar); os outros `≤ 1,2°` — avalanche (sem o botão os discos chegam logo ao fundo) |
+| **⚠️ um defeito que o prompt não nomeava** | a bola numa rampa MAIS inclinada que o `Rolling` dela ficava PRESA (`0,020` da descida a `0,1`/`0,15`/`0,2`; teoria `0,530`/`0,294`/`0,059`) — com a lei de antes também; nenhum gate media a faixa `0 < μr < tg θ`. Agora `0,556`/`0,241`/`0,103`; a `0,5` presa (`0,018`) |
+| **(3) kill-criteria** | ✗ *discos `0,1` `120..180` `≤ 21°`* na PIOR das onze (`41°`; a mediana `5,6°`) — e essa queda é um disco a ROLAR `0,10` u por um monte de `37°` (avalanche; `Rolling 0,1` só segura até `5,7°`); o `21°` saiu de UMA realização da taça antiga. ✓ caixas `0,25`/`0,75`; ⚠️ discos `0,25` `0° → 0,6°` (pior queda) e `1,0°` assente; ✓ tempos da taça `±2 %`; ✓ rampa `0,5` `0,0201`; ✓ os gates da pilha; ✓ duas corridas iguais ao bit; ✓ o recuo seguido de Play (corrida limpa da mutação). ⚠️ O app a `4 096` não foi re-medido: com `Rolling 0` (a `=114` de sempre) o passo só ganha a leitura de um `ω` por peça — ver o fecho |
+
+**Gates novos:** `a_ball_rolls_down_a_ramp_steeper_than_its_rolling` (`material_demo_tests.rs`) ·
+`the_rolling_lock_does_not_flicker_in_a_pile_of_discs` (`pilha_demo_tests.rs`, onze realizações, `~5,6` s em debug).
+**Mutações** ([`mutacao_a_onda_5_2026-10-06.py`](../ferramentas/mutacao_a_onda_5_2026-10-06.py), `m17` solta ao 2.º ·
+`m18` tranca a acelerar · `m19` sem o `QUASE`): **`19/19` sangram**, pré-voo `19/19`, corrida limpa `62` verdes
+(`target/prova/onda8/mutacao.txt`). A `m7` (a trava nunca fecha) passa a sangrar também no gate novo da rampa.
+
+**Fecho corrido** (HEAD `838384182`, o código comitado): `nextest-impacted` (`BASE=a46c4c200`) **`18 773/18 773`** ·
+`check --workspace --all-targets` (avisos negados) ✓ · clippy `ph2d-contact-world`/`ph2d-app-motion`/`ph2d-node-sim-step`
+`-D warnings` ✓ · `fmt` ✓ · censos `12/12` · standalone · workflow · `adr-index` · `doc-index` · `archive-index` ·
+`machete` ✓ · `tests/it` da `ph2d-contact-world` `1/1`. Depois dele só a sonda `0,05` (teste `#[ignore]`; clippy da crate ✓).
+
+**Superfície de colisão (o integrador mede):** `ph2d-contact-world` — `rolar.rs` (`EXCESSOS_PARA_SOLTAR = 12`, `QUASE`
+novo, as tabelas), `lib.rs` (`w_antes`, a condição de trancar); `ph2d-app-motion` — `motion_state_pilha_demo.rs`
+(`Medida.discos`/`rolar`, a porta `PH2D_PILHA_DISCOS`/`PH2D_PILHA_ROLAR`, o índice `Circle` perguntado ao registo, o
+`mod discos_diag`), `motion_state_material_demo.rs` (a porta `PH2D_RAMPA_ROLAR`), `motion_state_pilha_demo_discos_diag.rs`
+(NOVO: a marcha única, as réguas do mecanismo, `rodada`/`realizacoes`), `motion_state_pilha_demo_giro_diag.rs`
+(`perfil_com` passa a usar a marcha única: `−98` linhas), os dois `*_tests.rs`. Foundational: nenhum. Shell: não
+tocada. `Cargo.lock`: não muda. **Env novas (portas de medição, nenhuma muda o produto sem elas):** `PH2D_PILHA_DISCOS`,
+`PH2D_PILHA_ROLAR`, `PH2D_RAMPA_ROLAR`.
+
+**Smoke (o dono), fotografado** (`target/prova/onda8/smoke/`, `release`, `1930 × 1040`): a `=114` em discos com
+`Rolling 0,1` — a grelha de discos (`e14.5`), o monte assente e arredondado na taça da direita (`e16`), `59` fps;
+a `=115` com a bola da rampa a `Rolling 0,1` (`e13`/`e15`). Ver o §16 do smoke abaixo (passos ao dono no relatório).
+
+**⏳ O QUE FICA ABERTO:**
+1. **A rampa perto do limiar:** a `0,2` (logo abaixo de `tg 12° = 0,213`) a bola desce `0,103` da solta contra `0,059`
+   da teoria (`1,7×`), a `0,15` `0,241` contra `0,294`. O gate aceita `±0,06`. Uma lei exacta perto do limiar pede o
+   rolamento DENTRO do solver — e o único que o rapier oferece (o motor) foi recusado pela pilha.
+2. **Um oráculo externo** para a pilha com rolamento (o Box2D `3.1.1` está no repositório `extra`, MIT, não
+   instalado — pede a senha do dono; e a lei dele é por PAR, a que esta casa mediu e recusou). Não corrido.

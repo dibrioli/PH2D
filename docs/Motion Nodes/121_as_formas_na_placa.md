@@ -2730,3 +2730,113 @@ puro, `16 384` formada): dormir NÃO ajuda (a pilha é uma ilha só e nunca ador
 `2`–`3` iterações em vez de `4` tiram `20`–`30 %`; o próprio rapier gasta `6`–`9` ms nessa pilha. ⇒ **o item da placa
 REABRE**: `16 384` por taça a `60` fps com a pilha formada pede o contacto no dispositivo (um solver da família do
 Box2D na placa: contactos persistentes e aquecimento), ou aceitar `~30` fps nessa escala.
+
+### §9.23 — OS DISCOS COM `Rolling` BAIXO: avalanche ou a trava a alternar? (2026-10-06, escrito ANTES de construir)
+
+O defeito (o item 2 do aberto de 06/10): a `=114` em discos com `Rolling 0,1` roda `104°` na janela `120..180` contra
+`10,7°` sem o botão (`0,25`/`0,75`: `0°`), e depois assenta como sem ele. A leitura do §9.21 (3) — *«um monte inclinado
+que desaba enquanto assenta»* — NÃO foi provada. Mecanismo antes da cura.
+
+**As duas hipóteses e o que cada uma prevê** (a sonda `probe_avalanche_ou_trava`, discos da taça da direita, por disco
+e por tique, na janela `120..180`):
+
+| régua | AVALANCHE (física, fica) | A TRAVA A ALTERNAR (defeito) |
+|---|---|---|
+| deslocamento sobre a superfície contra `Σ|Δθ|·R` dos discos que mais rodam | `≈ 1` (rolar desce `Δθ·R`) | `≪ 1` (gira no lugar) |
+| trocas trancar/destrancar por disco por segundo (`spin == 0` ⇔ trancado à saída do passo) | poucas, no início da descida | muitas, sem descida |
+| a inclinação do topo do monte em `120 · 150 · 180` | maior com o botão, e CAI na janela | igual à de sem o botão |
+| ⭐ a MESMA cena com o rolamento resolvido DENTRO do solver (abaixo) | o mesmo rodopio (a física é a mesma) | o rodopio cai para perto do de sem o botão |
+
+⭐ **A última linha é o discriminador mais forte**, e por isso o candidato a cura entra na MESMA rodada (`CLAUDE.md`
+§0.10): uma lei sem trancar nem destrancar é a referência que diz quanto do `104°` é física.
+
+**O candidato — o rolamento DENTRO do solver pelo motor angular do próprio rapier:** uma junta genérica sem eixos
+trancados entre cada peça com `Rolling` e um corpo FIXO do mundo, com um motor no eixo angular de velocidade-alvo `0`,
+amortecimento rígido e força máxima `capacidade / dt` (o rapier converte em impulso `força · dt`: o tecto do impulso
+por passo é a `capacidade` `Σ μr·λn·|braço|` do passo anterior, a mesma de hoje). O solver resolve-o nas iterações
+dele junto com os contactos: parada enquanto o binário pedido cabe, binário constante quando passa — Coulomb nas duas
+fases sem uma decisão fora do solver. Entra atrás de uma chave POR FIO só para a rodada (como a prova do §9.20).
+
+**A rodada (uma compilação `release`, as duas leis no mesmo processo):** caixas e discos `Rolling 0 · 0,1 · 0,25 ·
+0,75` (o perfil das três janelas, rodopio e tremor); as réguas do mecanismo acima; a bola da rampa da `=115` e a bola
+que pára nos tempos da taça; o custo do tique a `4 096` e `16 384` por taça com `Rolling 0,1` (com o botão a `0` não
+nasce junta nenhuma — o custo de hoje não muda).
+
+**Kill-criteria (os do prompt, escritos antes):** discos `Rolling 0,1` em `120..180` `≤ 21°` (`2×` o de sem o
+botão); e NENHUMA regressão — a tabela das caixas e dos discos a `0,25`/`0,75` do `rolar.rs`, a bola que pára nos
+tempos da taça `±2 %`, a rampa da `=115` `< 0,035`, os gates da pilha, `4 096` por taça a `60` fps na queda inteira
+(`[motion-quadro]`, `release`), duas corridas iguais ao bit, o recuo seguido de Play ao bit. ⚠️ Se a referência DENTRO
+do solver der o mesmo rodopio, a leitura do §9.21 fica PROVADA e a lei de hoje fica (recusa medida do motor, com o
+número).
+
+**§9.23 — o resultado** (`release`, a `=114` com `duration` `12` s, `1` sub-passo; sondas em
+[`motion_state_pilha_demo_discos_diag.rs`](../../crates/ph2d-app-motion/src/motion_state_pilha_demo_discos_diag.rs);
+as rodadas com as leis atrás de uma chave POR FIO, retirada antes do fecho; `target/prova/onda8/`).
+
+**1. Na árvore de hoje o defeito do prompt NÃO reproduzia — e a ablação disse porquê.** A realização central dava
+discos `Rolling 0,1` `2,5°` contra `191°` sem o botão. A tabela do §9.21 (3) foi medida com a taça numa POLILINHA; ela
+passou a um segmento por lado no MESMO commit (`12d3f220d`). Com a polilinha de volta (a mesma chave): `103,6°` e
+`10,7°` — os números do prompt, ao bit. E nesse caso o mecanismo era um disco SOLTO a rolar `0,73` u monte abaixo
+(nunca trancou; `0 %` de giro no lugar) — avalanche, a leitura do §9.21.
+
+**2. Uma queda só não mede: com ONZE realizações (a grelha deslocada `±0,003` u) o defeito existe na taça de hoje.**
+A lei de antes (destranca ao 2.º excesso): discos `0,1` queda mediana `1,8°` mas a PIOR `152°`; a `0,05` gira MAIS que
+sem o botão (`225°` contra `131°` de mediana). Cinco realizações não o viram.
+
+**3. ⛔ A régua «trancado = `spin == 0` à saída» estava CEGA:** a peça que solta, roda um passo e volta a trancar sai
+com `spin` `0` em todos os tiques. A régua certa é «o passo não rodou a peça» (o `rot` igual ao bit). Com ela: na
+pilha ASSENTE a trava trocava `20`–`39` vezes por peça por segundo (caixas e discos, `Rolling 0,05`–`0,25`), a pilha
+rastejava, e uma em onze desabava tarde (`75°`, `0,18` u). Referência: discos com `Lock Rotation` (sem trava nenhuma a
+ligar e desligar) — `0,000` u de deslize. ⇒ **é a trava a alternar (defeito), na pilha assente; na queda é avalanche.**
+
+**4. ⛔ E um defeito que nenhum gate via: a bola numa rampa MAIS inclinada que o `Rolling` dela ficava presa.** A
+`=115` (rampa de `12°`, `tg = 0,213`), `2` s, a distância contra a de `Rolling 0`: `0,1` · `0,15` · `0,2` deviam dar
+`0,530` · `0,294` · `0,059` (teoria `(tg θ − μr)/tg θ`) e davam `0,020` em todos. Mecanismo (lido no código e medido):
+depois de soltar, o 1.º passo dá sempre à peça um giro pequeno, que cabe na capacidade — e ela voltava a trancar.
+
+**As leis medidas (a rodada inteira, as mesmas onze realizações; queda = rodopio `120..180` mediana · pior; assente =
+depois do `240`, o pior rodopio, deslize e trocas/s):**
+
+| trava | rampa `0,1`·`0,15`·`0,2`·`0,5` | discos `0,05` queda · assente | discos `0,1` queda · assente · trocas | caixas `0,1`·`0,25` assente (trocas) |
+|---|---|---|---|---|
+| (sem o botão) | `1` | `131`·`225` · `21°` | (o mesmo) | — |
+| solta ao 2.º, tranca com `|L| ≤ cap` (a de antes) | `0,020` em todas | `225`·`295` · `117°` | `1,8`·`152` · `75°` · `21` | `1,4°`·`1,2°` (`35`·`21`) |
+| solta ao 3.º | — | `189`·`271` · `71°` | `1,0`·`1,2` · `1,7°` · `5,4` | `2,5°`·`0,7°` |
+| solta ao 8.º | — | `1,4`·`137` · `88°` | `0,4`·`0,4` · `0,5°` · `1,5` | `1,1°`·`0,8°` |
+| solta ao 12.º | `0,019` em todas | `1,4`·`170` · `11°` | `0,3`·`0,3` · `0,4°` · `1,1` | `0,6°`·`0,5°` (`6,6`·`2,8`) |
+| 12.º e só tranca quem NÃO acelerou | `0,556`·`0,241`·`0,103`·`0,019` | `40`·`53` · `293°` | `35`·`80` · `32°` · `4,0` | `1,7°`·`3,4°` |
+| **12.º, e tranca quem não acelerou OU mal se mexeu (`|L| ≤ 25 %` da capacidade)** | **`0,556`·`0,241`·`0,103`·`0,018`** | **`116`·`199` · `210°`** | **`5,6`·`41` · `11,6°` · `3,8`** | **`0,9°`·`0,6°` (`6,6`·`3,5`)** |
+| idem `10 %` · `50 %` | igual · a `0,15`/`0,2` volta a prender | `115`·`181` · `144`·`257°` | `6,3`·`16` · `47°` · `1,6`·`102` · `28°` | — |
+| ⛔ folga no limiar `×1,25` · `×2` (5 realizações) | — | — | pior `153` · `138°` | — |
+| ⛔ o passo que solta com o binário CONTRA o pedido | prende a `0,15`/`0,2` (`0,026`) | — | `36`·`62` · `13°` | — |
+| ⛔ o motor angular do rapier (o rolamento DENTRO do solver: junta genérica a um corpo fixo, velocidade-alvo `0`, força `capacidade/dt`) | — | — | `58`·`110` · `28°` | tremor `0,013`–`0,016` (antes `0`) |
+
+**ADOPTADA** (`ph2d-contact-world/src/rolar.rs`: `EXCESSOS_PARA_SOLTAR = 12`, `QUASE = 0,25`; `lib.rs`: o `ω` de antes
+do passo): a única que acerta a rampa (a `0,1` `0,556` contra `0,530`; a `0,5` presa `0,018`) E deixa a pilha assente
+calma (trocas `21 → 3,8` nos discos, `35 → 6,6` nas caixas; caixas assentes `≤ 1,2°`). As piores quedas que restam
+(`41°` a `0,1`; as medianas de `84°`/`65°` a `0,15`/`0,2`) são, cada uma, UM disco a ROLAR `0,10`–`0,20` u por um monte
+de `37°` (o caminho `1,24×` o giro vezes o raio, `0 %` de giro no lugar, `3` trocas) — avalanche: `Rolling 0,1` só
+segura até `5,7°`. ⚠️ Por isso a mediana não é monótona no `Rolling` (`0,1` `5,6°`, `0,15` `84°`, `0,25` `0,3°`): o
+rodopio é o MÁXIMO sobre as peças e conta se esse disco cai dentro da janela. O mesmo nos `210°` dos discos `0,05`
+assentes: UM disco a rolar `0,41` u (caminho `1,11×`), os outros `≤ 1,2°`.
+
+**O fecho** (HEAD `838384182`): `nextest-impacted` (`BASE=a46c4c200`) `18 773/18 773` · `check --workspace
+--all-targets` com avisos negados ✓ · clippy das `3` crates `-D warnings` ✓ · `fmt` ✓ · censos `12/12` · standalone ·
+workflow · `adr-index` · `doc-index` · `archive-index` · `machete` ✓ · `tests/it` da `ph2d-contact-world` `1/1`.
+
+**O motor do rapier fica RECUSADO por medição** (pior que a lei de hoje na queda E assente, e a pilha de caixas parada
+passa a tremer); o custo dele a `4 096`/`16 384` não foi medido (a sonda de relógio ficou escrita e não correu: a lei
+caiu antes, pela física).
+
+**Os kill-criteria do §9.23:** ✗ *discos `0,1` em `120..180` `≤ 21°`* pela PIOR realização (`41°`; a mediana `5,6°`) —
+o critério foi escrito sobre UMA realização da taça antiga (`10,7°` sem o botão; com onze, sem o botão dá `131°` de
+mediana) e a pior que sobra é avalanche (o próprio critério manda ficar); ✓ caixas `0,25`/`0,75` (`0,6°`/`0,0°`
+assentes, antes `1,2°`/`0,1°`); ⚠️ discos `0,25`: de `0,0°` a `0,3°`·`0,6°` na queda e `1,0°` assente (o gate
+`420..480 ≤ 1°` passa); ✓ a bola que pára nos tempos da taça (`±2 %`); ✓ a rampa a `0,5` (`0,0201 < 0,035`); ✓ duas
+corridas iguais ao bit (a tabela final e a da rodada dão os mesmos números); o custo: a lei nova lê um `ω` por peça e
+nada mais — com o `Rolling` a `0` (a `=114` de sempre) o passo é o mesmo.
+
+**Gates novos:** `a_ball_rolls_down_a_ramp_steeper_than_its_rolling` (a rampa a `0,1`·`0,15`·`0,2`, `±0,06` da teoria
+e monótona; a de antes `0,019`) · `the_rolling_lock_does_not_flicker_in_a_pile_of_discs` (onze realizações: trocas
+`≤ 8`/s — antes `21` —, queda mediana `≤ 21°`). Mutações `m17` (solta ao 2.º), `m18` (tranca mesmo a acelerar), `m19`
+(sem o `QUASE`).

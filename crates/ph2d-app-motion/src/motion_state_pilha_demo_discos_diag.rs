@@ -360,4 +360,21 @@ fn probe_o_mecanismo_por_rolamento() {
             (240, 300),
         );
     }
+    // E a pior janela ASSENTE dos discos `0,05` (onde o resumo lia `210°`).
+    let mut pior = (0.0_f32, 0.0_f32, 0_usize);
+    for e in realizacoes() {
+        let q = marcha_eps(e, Some(0.05), 490, &discos);
+        for (de, r, _) in perfil_de(&q).into_iter().filter(|x| x.0 >= 240) {
+            if r > pior.0 {
+                pior = (r, e, de);
+            }
+        }
+    }
+    let (r, e, de) = pior;
+    let q = marcha_eps(e, Some(0.05), 490, &discos);
+    imprime_mecanismo_em(
+        &format!("discos 0,05 · eps {e} · {de}..{} ({r:.1}°)", de + 60),
+        &q,
+        (de, de + 60),
+    );
 }

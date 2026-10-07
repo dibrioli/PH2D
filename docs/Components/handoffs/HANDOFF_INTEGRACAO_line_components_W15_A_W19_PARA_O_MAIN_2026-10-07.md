@@ -10,11 +10,12 @@
 
 ## §0 — O estado para o merge
 
-- Worktree `Worktrees/line-components`, branch `line/components`, HEAD **`34f950397`**.
+- Worktree `Worktrees/line-components`, branch `line/components`: o código e as provas fecham em **`34f950397`**;
+  por cima, só os commits deste handoff (docs).
 - Merge-base **`a46c4c200`** = o `main` de hoje (07/10). Se o `main` não andou, o `git merge --ff-only
   line/components` passa limpo. Se andou: `git rebase main` na linha primeiro, e a recontagem do §2 contra o
   `main` DO DIA.
-- **48 commits, 108 ficheiros**, NADA integrado desde `5d596eaaf` (o fecho da W14).
+- **48 commits e 108 ficheiros até `34f950397`** (mais os deste handoff), NADA integrado desde `5d596eaaf` (o fecho da W14).
 - Smoke do dono: **todas as ondas aprovadas** — W15 (05/10, cenas `NAV=3,4`, `VIDA=4`, depois de dois reports
   curados), W16 e W17 (06/10), W18 (cena `NAV=5`, 06/10, depois da cura do «R2 na quina»; cena `NAV=6`, 07/10) e
   W19 (cena `NAV=7`, 07/10).

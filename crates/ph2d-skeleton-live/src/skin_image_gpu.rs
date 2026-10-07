@@ -71,10 +71,9 @@ pub fn a_placa_posa() -> bool {
 /// `None` quando a UV não fecha (um `size` com lado nulo), exactamente como o irmão.
 ///
 /// ⛔⛔⛔ **COM UMA LEI DE ÂNGULO QUE O SHADER NÃO EXPRIME, ELA DELEGA NA CPU** — e a delegação
-/// vive AQUI, dentro da porta, nunca no chamador. O `sprite.wgsl` faz a média em CÍRCULO e recebe
-/// `(cos θ, sin θ)` por osso; a média DESDOBRADA precisa do ângulo como número **REAL** (é a volta
-/// que ela escolhe que a define), logo o payload de hoje não a exprime — dois ossos a `+170°` e
-/// `−170°` chegam ao shader indistinguíveis de `+170°` e `+190°`.
+/// vive AQUI, dentro da porta, nunca no chamador. O `sprite.wgsl` faz o MEIO-ÂNGULO (a lei do
+/// produto) e recebe `(cos θ̃/2, sin θ̃/2)` por osso; a média em círculo de antes e a DESDOBRADA
+/// (que precisa do ângulo como número REAL ao longo da lista) não cabem nesse payload.
 ///
 /// ⚠️⚠️ **A 1.ª redacção devolvia `None` e isso era um DEFEITO, não uma recusa:** o chamador faz
 /// `continue` num `None`, logo a imagem não era deformada **de todo** — *«a placa não exprime»* e
@@ -83,7 +82,6 @@ pub fn a_placa_posa() -> bool {
 /// única forma de o chamador não poder errar.
 ///
 /// ⇒ *o caminho lento não define o produto, mas uma imagem lenta é melhor que uma imagem ERRADA.*
-/// Pôr a lei no shader é wave própria — ela custa um `f32` por osso no payload.
 #[must_use]
 pub fn sprite_mesh_para_a_placa(
     mesh: Mesh2d,
@@ -94,7 +92,7 @@ pub fn sprite_mesh_para_a_placa(
     size: [f32; 2],
     correcoes: &[Correccao],
 ) -> Option<SpriteMesh> {
-    if pele.mistura() != ph2d_skeleton::MisturaDoAngulo::Circulo {
+    if pele.mistura() != ph2d_skeleton::MisturaDoAngulo::MeioAngulo {
         return crate::skin_image::posed_sprite_mesh_corrigida(
             mesh, p2l, pele, pesos, anchor, size, correcoes,
         );
@@ -143,10 +141,10 @@ pub fn sprite_mesh_para_a_placa(
         .map(|b| std::array::from_fn(|k| b.pose.0[k] as f32))
         .collect();
     // ⭐⭐⭐ **As duas tabelas da lei NÃO-linear saem da crate que a implementa** — a das juntas dos
-    // eixos de REPOUSO e a dos ângulos da pose. ⛔ Derivá-las aqui seria a segunda resposta a
+    // eixos de REPOUSO e a dos MEIOS ângulos da pose, desdobrados pela árvore das juntas. ⛔ Derivá-las aqui seria a segunda resposta a
     // *«por onde estes dois ossos se encontram»*, e o `junta` é `pub(crate)` lá de propósito.
     let juntas: Vec<[f32; 2]> = pele.tabela_de_juntas().into_iter().map(f32_de).collect();
-    let angulos: Vec<[f32; 2]> = pele.angulos_das_poses().into_iter().map(f32_de).collect();
+    let angulos: Vec<[f32; 2]> = pele.meios_angulos().into_iter().map(f32_de).collect();
     Some(SpriteMesh {
         local: repouso,
         uv,

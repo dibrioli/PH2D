@@ -173,9 +173,6 @@ pub mod paint_stack;
 /// código DESTA família, e o sítio dele é aqui.
 #[cfg(test)]
 mod pattern_seam_probe;
-#[cfg(test)]
-#[path = "sonda_tampa_redonda_tests.rs"]
-mod sonda_tampa_redonda_tests;
 pub mod pick;
 pub mod shape_live;
 pub mod smoke_appearance;
@@ -191,6 +188,12 @@ pub mod smoke_bone_media;
 pub mod smoke_bone_modos;
 pub mod smoke_bone_paint;
 pub mod smoke_bone_par;
+#[cfg(test)]
+#[path = "sonda_tampa_redonda_tests.rs"]
+mod sonda_tampa_redonda_tests;
+#[cfg(test)]
+#[path = "tampa_redonda_tests.rs"]
+mod tampa_redonda_tests;
 
 /// A lei do AUTO LAYOUT de uma forma — veio da shell na integracao de 2026-09-20,
 /// por CORTE da catraca `the_shell_only_shrinks` (ADR-0153: o passe publica ONDE as

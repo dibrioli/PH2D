@@ -195,6 +195,8 @@ pub struct Skin {
     /// A [`Skin::tabela_de_juntas`], calculada na 1.ª mistura que a pede (`O(n²)` — só quando há
     /// pontos a misturar).
     juntas: std::sync::OnceLock<Vec<[f64; 2]>>,
+    /// Os [`Skin::meios_angulos`], calculados na 1.ª mistura de meio-ângulo que os pede.
+    meios: std::sync::OnceLock<Vec<[f64; 2]>>,
     /// Qual lei resolve o ângulo médio da mistura. Ver [`centro::MisturaDoAngulo`].
     ///
     /// ⚠️ **Ela vive na PELE e não num argumento do [`Skin::blend`]** porque a escolha é de quem
@@ -213,7 +215,7 @@ impl Skin {
     /// `None` sem osso nenhum — uma pele vazia não é a identidade, é a **ausência** de pele, e o
     /// chamador tem de deixar a forma em paz em vez de a passar por um mapa que não existe.
     ///
-    /// A lei do ângulo é a de omissão ([`centro::MisturaDoAngulo::Circulo`]); quem quer a outra usa
+    /// A lei do ângulo é a de omissão ([`centro::MisturaDoAngulo::MeioAngulo`]); quem quer outra usa
     /// a [`Skin::com_mistura`].
     #[must_use]
     pub fn new(bones: Vec<SkinBone>) -> Option<Self> {
@@ -234,14 +236,15 @@ impl Skin {
             bones,
             angulos,
             juntas: std::sync::OnceLock::new(),
+            meios: std::sync::OnceLock::new(),
             mistura,
         })
     }
 
     /// Que lei do ângulo esta pele usa.
     ///
-    /// ⚠️ **O caminho do DISPOSITIVO pergunta-lhe isto**: o shader implementa a média em círculo e
-    /// mais nenhuma, logo com a outra lei ligada ele **recusa** o quadro e a CPU pinta.
+    /// ⚠️ **O caminho do DISPOSITIVO pergunta-lhe isto**: o shader implementa o meio-ângulo e mais
+    /// nenhuma, logo com outra lei ligada ele **recusa** o quadro e a CPU pinta.
     #[must_use]
     pub fn mistura(&self) -> centro::MisturaDoAngulo {
         self.mistura

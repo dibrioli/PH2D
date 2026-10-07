@@ -4,10 +4,12 @@
 //! corte é por RESPONSABILIDADE: aquele re-coze a forma a cada quadro e este responde a UMA
 //! pergunta, *«que lei mistura as rotações?»*. ⛔ Nunca por uma entrada no `FILE_OVERAGE_OK`.
 
-/// ⭐⭐⭐ **A LEI DO ÂNGULO QUE O PRODUTO USA** — `PH2D_SKIN_ANGULO=1` liga a média DESDOBRADA.
+/// ⭐⭐⭐ **A LEI DO ÂNGULO QUE O PRODUTO USA** — por omissão o MEIO-ÂNGULO
+/// ([`ph2d_skeleton::MisturaDoAngulo::MeioAngulo`], ordem do dono de 2026-10-06, «Arredondar»);
+/// `PH2D_SKIN_ANGULO=circulo` volta à média em círculo de antes e `PH2D_SKIN_ANGULO=1` liga a média
+/// DESDOBRADA. As duas alternativas posam a imagem na CPU (o shader exprime só o meio-ângulo).
 ///
-/// Ela nasce **DESLIGADA**, e a lei da casa é essa: *tudo o que é novo shipa desligado*. Com ela a
-/// `0` (ou ausente) a saída é **byte-idêntica** à de sempre, e há gate a afirmá-lo.
+/// # A média DESDOBRADA (2026-09-20) — medida contra a média em círculo
 ///
 /// # ⛔⛔⛔ O que ela compra — e ela é MUITO menor do que a 1.ª leitura dizia
 ///
@@ -61,18 +63,15 @@
 /// `var_os` por ponto seria uma syscall dentro do laço do desenho, e a lei viaja daí para baixo
 /// **na própria [`Skin`]**, nunca num estado global mutável.
 ///
-/// ⛔ **O caminho do DISPOSITIVO recusa-se a desenhar com ela** ([`crate::skin_image_gpu`]): o
-/// shader implementa a média em círculo e mais nenhuma, logo a alternativa seria uma imagem
-/// **errada** em vez de uma imagem lenta.
+/// ⛔ **O caminho do DISPOSITIVO delega na CPU com as duas alternativas** ([`crate::skin_image_gpu`]):
+/// o shader implementa o meio-ângulo e mais nenhuma, e uma imagem lenta é melhor que uma ERRADA.
 #[must_use]
 pub fn mistura_do_ambiente() -> ph2d_skeleton::MisturaDoAngulo {
     use ph2d_skeleton::MisturaDoAngulo;
     static ESCOLHA: std::sync::OnceLock<MisturaDoAngulo> = std::sync::OnceLock::new();
-    *ESCOLHA.get_or_init(|| {
-        if std::env::var("PH2D_SKIN_ANGULO").as_deref() == Ok("1") {
-            MisturaDoAngulo::Desdobrado
-        } else {
-            MisturaDoAngulo::Circulo
-        }
+    *ESCOLHA.get_or_init(|| match std::env::var("PH2D_SKIN_ANGULO").as_deref() {
+        Ok("1") => MisturaDoAngulo::Desdobrado,
+        Ok("circulo") => MisturaDoAngulo::Circulo,
+        _ => MisturaDoAngulo::MeioAngulo,
     })
 }

@@ -362,33 +362,38 @@ fn cadeia3_angulos(j1: f64, j2: f64, fim: f64, t: [f64; 3]) -> Skin {
     .expect("tres ossos")
 }
 
-/// ⭐⭐⭐ **A OMISSÃO É BYTE-IDÊNTICA — a lei nova shipa DESLIGADA.**
+/// ⭐⭐⭐ **A OMISSÃO É O MEIO-ÂNGULO, ao bit** (ordem do dono de 2026-10-06; até ali era o círculo).
 ///
-/// ⚠️ **As três metades, e nenhuma basta:** a pele que a [`Skin::new`] devolve escolhe o CÍRCULO ·
-/// o [`Skin::blend`] dela é **bit a bit** o [`Skin::blend_com`] com o círculo · e a lei
-/// **desdobrada existe e dá OUTRA coisa** nesta mesma fixtura. *Sem a terceira, uma implementação
-/// que ignorasse o parâmetro passaria as duas primeiras.*
+/// ⚠️ **As três metades, e nenhuma basta:** a pele que a [`Skin::new`] devolve escolhe o
+/// MEIO-ÂNGULO · o [`Skin::blend`] dela é **bit a bit** o [`Skin::blend_com`] com ele · e o círculo
+/// e a desdobrada **existem e dão OUTRA coisa** nesta mesma fixtura. *Sem a terceira, uma
+/// implementação que ignorasse o parâmetro passaria as duas primeiras.*
 #[test]
-fn a_omissao_e_o_circulo_e_e_byte_identica() {
+fn a_omissao_e_o_meio_angulo_e_e_byte_identica() {
     let k = cadeia3(2.0, 5.0, 7.0, 2.4, 4.8);
-    assert_eq!(k.mistura(), MisturaDoAngulo::Circulo);
+    assert_eq!(k.mistura(), MisturaDoAngulo::MeioAngulo);
     let w = [0.5, 0.3, 0.2];
-    let mut mexeu = false;
+    let mut mexeu = [false; 2];
     for x in [[1.0, 0.7], [3.0, -0.4], [6.5, 0.2], [0.0, 0.0]] {
         let a = k.blend(x, &w);
-        let b = k.blend_com(x, &w, MisturaDoAngulo::Circulo);
+        let b = k.blend_com(x, &w, MisturaDoAngulo::MeioAngulo);
         assert_eq!(
             a.to_bits_pair(),
             b.to_bits_pair(),
-            "em {x:?} a omissão não é o círculo"
+            "em {x:?} a omissão não é o meio-ângulo"
         );
-        let d = k.blend_com(x, &w, MisturaDoAngulo::Desdobrado);
-        mexeu |= (d[0] - a[0]).hypot(d[1] - a[1]) > 1e-9;
+        for (m, lei) in mexeu
+            .iter_mut()
+            .zip([MisturaDoAngulo::Circulo, MisturaDoAngulo::Desdobrado])
+        {
+            let d = k.blend_com(x, &w, lei);
+            *m |= (d[0] - a[0]).hypot(d[1] - a[1]) > 1e-9;
+        }
     }
     assert!(
-        mexeu,
-        "a lei desdobrada devolveu o MESMO que a de círculo em toda a fixtura — \
-         ou ela não está ligada, ou esta fixtura não a distingue"
+        mexeu.iter().all(|m| *m),
+        "o círculo ou a desdobrada devolveram o MESMO que o meio-ângulo em toda a fixtura — \
+         ou o parâmetro não está ligado, ou esta fixtura não os distingue"
     );
 }
 

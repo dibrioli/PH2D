@@ -408,28 +408,36 @@ fn uma_tabela_de_juntas_truncada_e_recusada() {
 /// **de todo** — *«a placa não exprime esta lei»* e *«esta coisa não tem pele»* liam-se no mesmo
 /// byte, e o artista veria a arte em REPOUSO por cima de um esqueleto dobrado.
 ///
-/// ⚠️ **As três metades, e nenhuma basta:** com a lei nova a porta devolve a malha **POSADA** e
-/// ela é **bit a bit** a da CPU (1) e **não** traz a tabela do dispositivo (2); e com a lei de
-/// omissão ela continua a entregar o payload da placa (3), senão isto teria desligado a F9.
+/// ⚠️ **As três metades, e nenhuma basta:** com uma lei que o shader não exprime (a desdobrada e,
+/// desde 2026-10-06, a média em círculo) a porta devolve a malha **POSADA** e ela é **bit a bit** a
+/// da CPU (1) e **não** traz a tabela do dispositivo (2); e com a lei de omissão (o meio-ângulo)
+/// ela continua a entregar o payload da placa (3), senão isto teria desligado a F9.
 #[test]
 fn com_uma_lei_que_o_shader_nao_exprime_a_placa_entrega_a_da_cpu() {
     use ph2d_skeleton::MisturaDoAngulo;
-    let (pesos, p2l) = (tabela(), p2l());
     let ossos = pele().bones().to_vec();
-    let desd = Skin::com_mistura(ossos.clone(), MisturaDoAngulo::Desdobrado).expect("pele");
-    let circ = Skin::com_mistura(ossos, MisturaDoAngulo::Circulo).expect("pele");
+    let omissao = Skin::com_mistura(ossos.clone(), MisturaDoAngulo::MeioAngulo).expect("pele");
+    assert_eq!(pele().mistura(), MisturaDoAngulo::MeioAngulo);
+    for lei in [MisturaDoAngulo::Desdobrado, MisturaDoAngulo::Circulo] {
+        let outra = Skin::com_mistura(ossos.clone(), lei).expect("pele");
+        a_porta_entrega_a_da_cpu(&outra, &omissao);
+    }
+}
+
+fn a_porta_entrega_a_da_cpu(outra: &Skin, omissao: &Skin) {
+    let (pesos, p2l) = (tabela(), p2l());
 
     let cpu = crate::skin_image::posed_sprite_mesh_corrigida(
         malha(),
         p2l,
-        &desd,
+        outra,
         &pesos,
         ANCHOR,
         SIZE,
         &[],
     )
     .expect("a CPU posa");
-    let porta = sprite_mesh_para_a_placa(malha(), p2l, &desd, &pesos, ANCHOR, SIZE, &[])
+    let porta = sprite_mesh_para_a_placa(malha(), p2l, outra, &pesos, ANCHOR, SIZE, &[])
         .expect("a porta entrega a da CPU");
 
     // (1) BIT A BIT — um epsilon aqui deixaria passar «quase a mesma lei».
@@ -446,7 +454,7 @@ fn com_uma_lei_que_o_shader_nao_exprime_a_placa_entrega_a_da_cpu() {
         "a porta entregou a malha da CPU E a tabela da placa — o vértice seria posado DUAS vezes"
     );
     // (3) ⚠️ O CONTROLO: com a lei de omissão nada disto arma.
-    let placa = sprite_mesh_para_a_placa(malha(), p2l, &circ, &pesos, ANCHOR, SIZE, &[])
+    let placa = sprite_mesh_para_a_placa(malha(), p2l, omissao, &pesos, ANCHOR, SIZE, &[])
         .expect("a placa recebe");
     assert!(
         placa.skin.is_some(),

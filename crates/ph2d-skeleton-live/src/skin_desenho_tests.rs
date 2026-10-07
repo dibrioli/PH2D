@@ -675,3 +675,6 @@ fn nenhum_vinco_da_silhueta_fica_em_quina() {
 
 #[path = "skin_desenho_zona_tests.rs"]
 mod zona;
+
+#[path = "skin_desenho_varrimento_tests.rs"]
+mod varrimento;

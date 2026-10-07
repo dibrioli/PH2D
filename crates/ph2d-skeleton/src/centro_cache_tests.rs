@@ -57,7 +57,10 @@ type Ponto = ([f64; 2], [f64; 3]);
 
 /// Pontos e pesos de uma cadeia de três ossos (pesos com dois e três ossos a mandar).
 fn amostra() -> (Skin, Vec<Ponto>) {
+    // A referência por ponto ([`antiga`]) é a média em CÍRCULO, que desde 2026-10-06 não é a
+    // omissão — a pele é pedida com ela.
     let k = super::centro_tests::cadeia3(10.0, 20.0, 30.0, 0.7, -1.9);
+    let k = Skin::com_mistura(k.bones().to_vec(), MisturaDoAngulo::Circulo).expect("pele");
     let mut v = Vec::new();
     for i in 0..400_u32 {
         let x = f64::from(i) * 0.075;

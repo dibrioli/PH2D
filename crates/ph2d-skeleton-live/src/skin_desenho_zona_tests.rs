@@ -585,3 +585,7 @@ fn nas_ilhas_a_bola_rola_por_dentro() {
 
 #[path = "skin_desenho_dobra_tests.rs"]
 mod dobra;
+
+#[cfg(test)]
+#[path = "skin_desenho_esporao_sondas_tests.rs"]
+mod esporao_sondas;

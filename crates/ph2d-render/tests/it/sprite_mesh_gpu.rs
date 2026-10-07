@@ -407,7 +407,8 @@ fn com_pele(m: &mut SpriteMesh, rad: f32, junta: [f32; 2]) {
         ossos,
         afins: vec![[1.0, 0.0, 0.0, 1.0, 0.0, 0.0], rodado],
         juntas: vec![junta; 4],
-        angulos: vec![[1.0, 0.0], [co, si]],
+        // O payload leva o MEIO ângulo (`MisturaDoAngulo::MeioAngulo`, desde 2026-10-06).
+        angulos: vec![[1.0, 0.0], [(rad * 0.5).cos(), (rad * 0.5).sin()]],
     });
 }
 

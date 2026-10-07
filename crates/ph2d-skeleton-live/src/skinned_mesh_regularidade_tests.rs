@@ -260,6 +260,19 @@ fn diag_b_desenha_o_vector_contra_a_imagem() {
 /// ⇒ *a mesma dobra espremida em um quinto do contorno faz um canto muito mais duro.* Um campo
 /// BBW é **localizado por construção** — é isso que o torna correcto, e é isso que vinca.
 ///
+/// ⭐⭐ **Re-medido com a lei do MEIO-ÂNGULO (2026-10-06)** — a mesma fixtura, a mesma régua:
+///
+/// | | círculo: com / sem o campo | **meio-ângulo**: com / sem o campo |
+/// |---|---:|---:|
+/// | `1` sub-osso | `164,7°` / `149,8°` | **`76,8°`** / `69,7°` |
+/// | `4` sub-ossos | `61,3°` / `29,3°` | `61,3°` / `28,6°` |
+/// | a passagem (u de contorno) | `0,98` / `5,53` | `0,98` / `5,53` |
+///
+/// ⇒ a passagem é da lei do PESO e não muda; o canto de um sub-osso era a média em círculo a
+/// concentrar a volta nessa passagem estreita (`2·tan(g/2)` contra `4·tan(g/4)`), e cai para metade.
+/// Os sub-ossos dão quase o mesmo nas duas leis (cada um roda pouco). As metades (1), (3) e (4)
+/// afirmam a tabela nova.
+///
 /// ⚠️ **E a hipótese ÓBVIA caiu antes desta**: eu esperava vincos no peso (o campo é linear por
 /// triângulo, logo a derivada dele salta em cada aresta). Medida a 2.ª diferença do peso ao longo
 /// do contorno, o campo é **mais liso** que a euclidiana (`9,7e-14` contra `5,0e-5` no p50).
@@ -281,9 +294,9 @@ fn o_campo_estreita_a_passagem_e_e_isso_que_faz_o_canto() {
 
     // (1) A fixtura contém o fenómeno que o dono fotografou.
     assert!(
-        um_com > 140.0,
-        "com um sub-osso e o campo ligado o contorno devia ter a quina do report (~155°) \
-         e leu {um_com:.1}° — esta fixtura deixou de conter o fenómeno"
+        um_com > 60.0 && um_com > um_sem,
+        "com um sub-osso e o campo ligado o contorno devia ter uma quina (76,8° no meio-ângulo, \
+         164,7° no círculo) e mais dura que sem o campo; leu {um_com:.1}° contra {um_sem:.1}°"
     );
     // (2) ⛔ O CAMPO PIORA O CANTO, e a régua é a LARGURA DA PASSAGEM e não o ângulo.
     //
@@ -316,10 +329,10 @@ fn o_campo_estreita_a_passagem_e_e_isso_que_faz_o_canto() {
          {ls:.4} para {lc:.4} u de contorno — se isto deixar de ser verdade, a prosa acima tem \
          de ser reescrita"
     );
-    // (3) Repartir a dobra corta a quina para menos de metade, com campo e sem ele.
+    // (3) Repartir a dobra corta a quina nas duas colunas — para menos de metade sem o campo.
     assert!(
-        q4_com < um_com * 0.5 && q4_sem < um_sem * 0.5,
-        "repartir por 4 sub-ossos devia cortar a quina para menos de metade nas DUAS colunas \
+        q4_com < um_com && q4_sem < um_sem * 0.5,
+        "repartir por 4 sub-ossos devia cortar a quina nas DUAS colunas \
          ({um_com:.1}→{q4_com:.1} com campo, {um_sem:.1}→{q4_sem:.1} sem)"
     );
     // (4) ⭐ E o melhor de todos é a COMBINAÇÃO, que é o que se responde ao dono.
@@ -328,7 +341,7 @@ fn o_campo_estreita_a_passagem_e_e_isso_que_faz_o_canto() {
     // em S pela dobra em C (`155,3°` contra `158,7°` — a pose do dono é fidelidade à cena dele,
     // não o que faz o canto). Ver `diag_b_as_duas_escolhas_que_a_mutacao_nao_mata`.
     assert!(
-        q4_sem < um_com * 0.25,
+        q4_sem < um_com * 0.5,
         "a combinação (repartir + campo desligado) devia ser a melhor de longe e leu \
          {q4_sem:.1}° contra os {um_com:.1}° de hoje"
     );
@@ -539,11 +552,14 @@ fn diag_b_os_botoes_que_o_artista_tem() {
 /// escreve `4`, **não vê diferença nenhuma**, e não tem razão para reparar que nasceu uma fileira
 /// por baixo. É a espécie *«aceita e mente»* que o `CLAUDE.md` §5.0 nomeia, com uma volta a mais.
 ///
-/// | o que se carrega | a pior quina |
-/// |---|---:|
-/// | o que nasce | `155,3°` |
-/// | só escrever `Segments` `2`, `4` ou `8` | **`155,3°` — o MESMO** |
-/// | `Segments 4` **+** *Curve Handles: From Chain* | **`61,7°`** |
+/// | o que se carrega | a pior quina (círculo) | **meio-ângulo** (2026-10-06) |
+/// |---|---:|---:|
+/// | o que nasce | `155,3°` | `76,8°` |
+/// | só escrever `Segments` `2`, `4` ou `8` | **`155,3°` — o MESMO** | **o MESMO** |
+/// | `Segments 4` **+** *Curve Handles: From Chain* | **`61,7°`** | `61,3°` |
+///
+/// ⚠️ Com o meio-ângulo o que nasce já perde metade da quina, e as alças cortam o resto em `20 %`
+/// (não em mais de metade, como contra os `155°` do círculo).
 #[test]
 fn o_numero_de_segmentos_sozinho_nao_move_um_bit() {
     let mut p = b_palco(true);
@@ -568,7 +584,7 @@ fn o_numero_de_segmentos_sozinho_nao_move_um_bit() {
         }
     }
 
-    // (2) ⭐ E com a fileira que só aparece depois, ela vale mais de metade da quina.
+    // (2) ⭐ E com a fileira que só aparece depois, a quina desce (`76,8°` → `61,3°`).
     p.reparte_com(4, true);
     p.dobra_em_s(90.0);
     let com_alcas = pior_quina(&b_amostra(&p.produto(true, true)));
@@ -577,9 +593,8 @@ fn o_numero_de_segmentos_sozinho_nao_move_um_bit() {
         "  quina: o que nasce {q0:.1}° · Segments 4 sozinho {q0:.1}° (ao bit) · com as alças {com_alcas:.1}°"
     );
     assert!(
-        com_alcas < q0 * 0.5,
-        "as duas juntas deviam cortar a quina para menos de metade e foram de {q0:.1}° para \
-         {com_alcas:.1}°"
+        com_alcas < q0 * 0.9,
+        "as alças deviam cortar a quina e foram de {q0:.1}° para {com_alcas:.1}°"
     );
 }
 

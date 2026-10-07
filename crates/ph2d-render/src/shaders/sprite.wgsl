@@ -111,8 +111,8 @@ fn posa_pela_pele(vi: u32, qp: vec2<f32>) -> vec2<f32> {
     if (den <= 0.0) { return mistura_linear(w, b, qp); }
     let c = num / den;
 
-    // O ÂNGULO: média em CÍRCULO, nunca `Σ w·θ` — os ângulos vêm de um `atan2` e saltam em meia
-    // volta. ⛔ A degenerescência dela (duas poses a `180°` com pesos iguais) cai na linear.
+    // O ÂNGULO: o MEIO-ÂNGULO (`MisturaDoAngulo::MeioAngulo`) — `ang` traz `(cos θ̃/2, sin θ̃/2)`,
+    // a média em círculo deles e o DOBRO do argumento. ⛔ A soma nula cai na linear.
     var sx = 0.0;
     var sy = 0.0;
     var soma = 0.0;
@@ -124,9 +124,9 @@ fn posa_pela_pele(vi: u32, qp: vec2<f32>) -> vec2<f32> {
         soma = soma + w[k];
     }
     if (soma == 0.0 || (sx == 0.0 && sy == 0.0)) { return mistura_linear(w, b, qp); }
-    let nrm = sqrt(sx * sx + sy * sy);
-    let co = sx / nrm;
-    let si = sy / nrm;
+    let n2 = fma(sx, sx, sy * sy);
+    let co = fma(sx, sx, -(sy * sy)) / n2;
+    let si = 2.0 * sx * sy / n2;
 
     let base = mistura_linear(w, b, c);
     let d = qp - c;

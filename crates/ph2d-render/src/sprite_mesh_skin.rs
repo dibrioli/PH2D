@@ -43,8 +43,9 @@
 //! # ⭐⭐⭐ O que a placa recebe
 //!
 //! `p' = R(θ̄)·(p − c) + Σ ŵ_i · (M_i · c)`, com `c` a média dos pares de juntas pesada por `w_i·w_j`
-//! e `θ̄` a média em CÍRCULO dos ângulos das poses. ⇒ por vértice viajam `K` pesos e `K` índices; por
-//! BIND, a tabela `n × n` de juntas; por QUADRO, `N` afins mais `N` pares `(cos θ, sin θ)`.
+//! e `θ̄` o MEIO-ÂNGULO das poses (o dobro do argumento da média dos meios). ⇒ por vértice viajam
+//! `K` pesos e `K` índices; por BIND, a tabela `n × n` de juntas; por QUADRO, `N` afins mais `N`
+//! pares `(cos θ̃/2, sin θ̃/2)`.
 //!
 //! ⚠️ **As duas tabelas novas são do BIND e do QUADRO, nunca do vértice** — a das juntas sai dos
 //! eixos de REPOUSO ([`ph2d_skeleton::Skin::tabela_de_juntas`]) e os ângulos da pose. *A dobra
@@ -101,8 +102,9 @@ pub struct SpriteMeshSkin {
     /// ⛔ **Vazia ⇒ a lei cai na mistura LINEAR**, que é o controlo — e o
     /// [`Self::valida`] recusa a pele antes disso.
     pub juntas: Vec<[f32; 2]>,
-    /// ⭐ **`(cos θ_i, sin θ_i)` por osso**, com `θ_i` o ângulo da parte linear da pose
-    /// ([`ph2d_skeleton::Skin::angulos_das_poses`]).
+    /// ⭐ **`(cos θ̃_i/2, sin θ̃_i/2)` por osso** — o MEIO ângulo da parte linear da pose,
+    /// desdobrado pela árvore das juntas ([`ph2d_skeleton::Skin::meios_angulos`]). A lei mistura-os
+    /// em círculo e DOBRA o argumento (`MisturaDoAngulo::MeioAngulo`).
     ///
     /// ⚠️ **Resolvido do afim CRU e não do conjugado:** o shader recebe os afins já levados ao
     /// espaço do quad, e o `atan2` deles daria outro ângulo.
@@ -139,8 +141,8 @@ impl SpriteMeshSkin {
     /// não-finito. *A guarda é sobre os DADOS, não sobre a aritmética.*
     ///
     /// ⛔ **As três degenerescências caem na mistura LINEAR**, exactamente como a lei original:
-    /// nenhum PAR de ossos (não há junta), soma de pesos nula, e a média em círculo a cancelar-se
-    /// (duas poses a `180°` com pesos iguais).
+    /// nenhum PAR de ossos (não há junta), soma de pesos nula, e a média dos meios a cancelar-se
+    /// (duas poses a `360°` desdobrados com pesos iguais).
     #[must_use]
     pub fn posa(&self, v: usize, p: [f32; 2]) -> [f32; 2] {
         let (Some(w), Some(b)) = (self.pesos.get(v), self.ossos.get(v)) else {
@@ -164,8 +166,9 @@ impl SpriteMeshSkin {
         if soma == 0.0 || (sx == 0.0 && sy == 0.0) {
             return self.linear(w, b, p);
         }
-        let n = sx.hypot(sy);
-        let (co, si) = (sx / n, sy / n);
+        // O dobro do argumento da média dos MEIOS ângulos: `(s_x² − s_y², 2·s_x·s_y) / |s|²`.
+        let n2 = sx.mul_add(sx, sy * sy);
+        let (co, si) = (sx.mul_add(sx, -(sy * sy)) / n2, 2.0 * sx * sy / n2);
         let base = self.linear(w, b, c);
         let d = [p[0] - c[0], p[1] - c[1]];
         [

@@ -8,9 +8,9 @@ use ph2d_ecs::{Entity, SimWorld};
 use ph2d_skeleton::{MisturaDoAngulo, Skin};
 use ph2d_vec_scene::VecScene;
 
-type P = [f64; 2];
+pub(crate) type P = [f64; 2];
 
-fn cena(
+pub(crate) fn cena(
     g1: f32,
     g2: f32,
 ) -> (
@@ -32,14 +32,18 @@ fn cena(
     (sim, st, ids)
 }
 
-struct Lado {
-    pele: Skin,
-    prep: std::rc::Rc<ph2d_skeleton_live::skin_desenho::Preparado>,
+pub(crate) struct Lado {
+    pub(crate) pele: Skin,
+    pub(crate) prep: std::rc::Rc<ph2d_skeleton_live::skin_desenho::Preparado>,
     cor: Vec<ph2d_skeleton::Correccao>,
 }
 
 impl Lado {
-    fn de(sim: &SimWorld, st: &crate::state::VecState, id: ph2d_vec_scene::VecPathId) -> Self {
+    pub(crate) fn de(
+        sim: &SimWorld,
+        st: &crate::state::VecState,
+        id: ph2d_vec_scene::VecPathId,
+    ) -> Self {
         let e = st
             .entities
             .get(&id)
@@ -56,7 +60,7 @@ impl Lado {
             cor: bind.correcoes_resolvidas(),
         }
     }
-    fn pesos(&self, p: P) -> Vec<f64> {
+    pub(crate) fn pesos(&self, p: P) -> Vec<f64> {
         let campo = self.prep.guardado.campo.as_ref().expect("campo");
         let mut q = p;
         let linha = loop {
@@ -145,7 +149,7 @@ fn suave(t: f64) -> f64 {
 }
 
 /// Uma junta da barra 0: `(x da junta, x do início do osso PAI em repouso, y de FORA, y de DENTRO)`.
-const JUNTAS: [(f64, f64, f64, f64); 2] = [
+pub(crate) const JUNTAS: [(f64, f64, f64, f64); 2] = [
     (-3.225, -4.475, -0.975, -0.225),
     (-1.975, -3.225, -0.225, -0.975),
 ];
@@ -385,7 +389,7 @@ fn diag_as_copias_e_a_distancia_a_junta() {
 
 /// ⭐ O RAIO DA TAMPA, robusto a quinas pequenas fora dela: o arco onde a curva faz os 80 % do meio
 /// da sua viragem total, a dividir por essa viragem. Um arco de raio `R` dá `R`; um bico dá `≈ 0`.
-fn raio_da_tampa(pl: &[P]) -> (f64, f64) {
+pub(crate) fn raio_da_tampa(pl: &[P]) -> (f64, f64) {
     const H: f64 = 0.002;
     let mut r: Vec<P> = vec![pl[0]];
     let mut falta = H;
@@ -587,6 +591,82 @@ fn diag_as_leis_na_aresta_da_copia() {
                 linha += &format!(" {nome} laços {} espessura {esp:.3} ·", cruzamentos(&pd));
             }
             println!("{linha}");
+        }
+    }
+}
+
+/// Os pares de segmentos que se cruzam: `(i, j)` com `i < j`.
+fn pares_que_cruzam(pl: &[P]) -> Vec<(usize, usize)> {
+    let o = |p: P, q: P, r: P| (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+    let mut v = Vec::new();
+    for i in 0..pl.len() - 1 {
+        for j in i + 2..pl.len() - 1 {
+            let (a, b, c, d) = (pl[i], pl[i + 1], pl[j], pl[j + 1]);
+            if o(a, b, c) * o(a, b, d) < 0.0 && o(c, d, a) * o(c, d, b) < 0.0 {
+                v.push((i, j));
+            }
+        }
+    }
+    v
+}
+
+/// ⭐ **SONDA — o LAÇO da aresta de DENTRO.** `=6`, dobra `(g, g)` de `0` a `175` (passo `1`), as
+/// duas juntas: a aresta de dentro da barra (`|x − J| ≤ 0,6`) posta pela lei em círculo e pela de
+/// meio-ângulo; em cada laço, onde ele está e o `θ̄′·h` ali.
+#[test]
+#[ignore = "sonda: imprime; corra em --release"]
+fn diag_o_laco_de_dentro() {
+    for gi in 0..=175u16 {
+        let g = f32::from(gi);
+        let (sim, st, ids) = cena(g, g);
+        let l = Lado::de(&sim, &st, ids[0]);
+        let pele = &l.pele;
+        for (ji, (xj, _, _, yd)) in JUNTAS.iter().enumerate() {
+            let dentro: Vec<P> = (0..=600)
+                .map(|i| [xj - 0.6 + 0.002 * f64::from(i), *yd])
+                .collect();
+            let ws: Vec<Vec<f64>> = dentro.iter().map(|p| l.pesos(*p)).collect();
+            for (nome, lei) in [
+                ("circ", MisturaDoAngulo::Circulo),
+                ("meio", MisturaDoAngulo::MeioAngulo),
+            ] {
+                let pd: Vec<P> = dentro
+                    .iter()
+                    .zip(&ws)
+                    .map(|(p, w)| pele.blend_com(*p, w, lei))
+                    .collect();
+                let pares = pares_que_cruzam(&pd);
+                if pares.is_empty() {
+                    continue;
+                }
+                // O ângulo médio (da própria lei) por diferença: o ângulo do segmento posto menos o
+                // do segmento em repouso (horizontal).
+                let ang = |i: usize| (pd[i + 1][1] - pd[i][1]).atan2(pd[i + 1][0] - pd[i][0]);
+                let txt: Vec<String> = pares
+                    .iter()
+                    .take(3)
+                    .map(|&(i, j)| {
+                        format!("x−J {:+.3}×{:+.3}", dentro[i][0] - xj, dentro[j][0] - xj)
+                    })
+                    .collect();
+                // Onde o segmento posto anda PARA TRÁS (o seu ângulo a mais de 90° do vizinho de fora).
+                let tras: Vec<f64> = (0..pd.len() - 1)
+                    .filter(|&i| {
+                        let a = ang(i) - ang(0);
+                        a.cos() < 0.0 && ang(pd.len() - 2).cos() * 0.0 == 0.0
+                    })
+                    .map(|i| dentro[i][0] - xj)
+                    .collect();
+                println!(
+                    "{g}/{g} junta {} {nome}: {} cruzamentos — {} · troço «para trás» x−J [{:+.3},{:+.3}] ({} segs)",
+                    ji + 1,
+                    pares.len(),
+                    txt.join(" "),
+                    tras.first().copied().unwrap_or(f64::NAN),
+                    tras.last().copied().unwrap_or(f64::NAN),
+                    tras.len()
+                );
+            }
         }
     }
 }

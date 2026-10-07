@@ -77,12 +77,24 @@ use crate::{Skin, SkinBone};
 /// acaso; esta lei escolhe o CENTRO). A saída que ninguém tinha corrido é trocar a média em
 /// CÍRCULO por uma média LINEAR sobre os ângulos **DESDOBRADOS** ao longo da cadeia.
 ///
-/// ⚠️ **Ela nasce DESLIGADA** ([`MisturaDoAngulo::Circulo`] é o `Default`) e o caminho de omissão
-/// é **byte-idêntico**, com gate a afirmá-lo.
+/// ⚠️ Ela nasceu DESLIGADA e continua atrás de `PH2D_SKIN_ANGULO=1`.
+///
+/// # ⭐⭐⭐ A lei do PRODUTO desde 2026-10-06 é o MEIO-ÂNGULO
+///
+/// Report do dono (`=6` a `170`): *«a parte externa da junta … sem permanecer arredondada»*. A
+/// média em [`MisturaDoAngulo::Circulo`] concentra a volta onde os pesos se igualam:
+/// `dθ̄/dw|½ = 2·tan(g/2)` — `7,7×` a taxa linear a `170°`, `15×` a `175°` —, e uma aresta a `d`
+/// da junta fecha numa tampa de raio `≈ d` (a cópia da `=6`: `0,028` a `170°`). O meio-ângulo
+/// (o ângulo de um *dual quaternion*, em torno da MESMA junta) taxa `4·tan(g/4)`: `1,24×` a
+/// `170°`. Medição e oráculo: `docs/Skeleton/handoffs/` e a sonda `sonda_tampa_redonda_tests`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum MisturaDoAngulo {
-    /// `atan2(Σ w sin θ, Σ w cos θ)` — o que o produto ship, e o que o shader implementa.
+    /// ⭐ **O PRODUTO.** `θ̄ = 2·arg Σ wᵢ·e^{i·θ̃ᵢ/2}`, com `θ̃ᵢ` o ângulo de cada osso DESDOBRADO
+    /// pela árvore das juntas ([`Skin::meios_angulos`]). Implementado também no shader.
     #[default]
+    MeioAngulo,
+    /// `atan2(Σ w sin θ, Σ w cos θ)` — a lei até 2026-10-06; `PH2D_SKIN_ANGULO=circulo` volta a ela
+    /// (o caminho do dispositivo então delega na CPU).
     Circulo,
     /// `Σ w θ̃`, com `θ̃` o ângulo escolhido na volta mais próxima do osso ANTERIOR da cadeia.
     ///
@@ -166,15 +178,79 @@ impl Skin {
         t
     }
 
-    /// ⭐⭐ **O `(cos θ, sin θ)` de cada osso**, com `θ` o [`SkinBone::angulo_da_pose`].
+    /// ⭐⭐⭐ **O `(cos θ̃/2, sin θ̃/2)` de cada osso** — o que a [`MisturaDoAngulo::MeioAngulo`]
+    /// mistura, e o que o payload do dispositivo leva.
     ///
-    /// ⚠️ **O par sai daqui já resolvido, e não do afim:** o shader precisa do ângulo da parte
-    /// linear CRUA, e o afim que ele recebe está **conjugado** para o espaço do quad — o `atan2`
-    /// dele daria outro ângulo. ⛔ *Uma grandeza que se lê antes da conjugação não se re-deriva
-    /// depois dela.*
+    /// `θ̃` é o [`SkinBone::angulo_da_pose`] **desdobrado pela árvore das juntas**: a árvore geradora
+    /// mínima pela distância entre pontas de repouso (ossos que partilham uma junta ligam a `0`), e
+    /// cada osso escolhe a volta a menos de `π` do vizinho por onde entrou. ⚠️ Metade de um ângulo
+    /// depende da VOLTA (`θ` e `θ + 2π` dão meios opostos): sem isto dois ossos a `+170°` e `−170°`
+    /// (`20°` de dobra real) teriam meios a `170°` um do outro e a mistura iria pelo lado de fora.
+    /// ⛔ Não é a ordem da LISTA (a do [`MisturaDoAngulo::Desdobrado`]): numa ramificação o osso
+    /// anterior da lista pode ser de outro ramo. A escolha da volta da raiz não importa — somar `2π`
+    /// a todos nega todos os meios, e o dobro do argumento fica.
+    ///
+    /// ⚠️ **Sai daqui já resolvido, e não do afim:** o shader recebe o afim **conjugado** para o
+    /// espaço do quad, e o `atan2` dele daria outro ângulo.
+    ///
+    /// Custo `O(n²)`, por pele (do QUADRO: os ângulos mudam com a pose).
     #[must_use]
-    pub fn angulos_das_poses(&self) -> Vec<[f64; 2]> {
-        self.angulos.iter().map(|&(_, c, s)| [c, s]).collect()
+    pub fn meios_angulos(&self) -> Vec<[f64; 2]> {
+        self.meios
+            .get_or_init(|| self.desdobra_pelas_juntas())
+            .clone()
+    }
+
+    fn desdobra_pelas_juntas(&self) -> Vec<[f64; 2]> {
+        let n = self.bones.len();
+        let pontas: Vec<([f64; 2], [f64; 2])> =
+            self.bones.iter().map(SkinBone::eixo_do_sub).collect();
+        let dist = |i: usize, j: usize| {
+            let (a, b) = (pontas[i], pontas[j]);
+            let d = |p: [f64; 2], q: [f64; 2]| (p[0] - q[0]).hypot(p[1] - q[1]);
+            d(a.0, b.0)
+                .min(d(a.0, b.1))
+                .min(d(a.1, b.0))
+                .min(d(a.1, b.1))
+        };
+        let mut real: Vec<f64> = self.angulos.iter().map(|a| a.0).collect();
+        let mut dentro = vec![false; n];
+        // Prim: `perto[k]` = (distância à árvore, por que osso).
+        let mut perto: Vec<(f64, usize)> = vec![(f64::INFINITY, 0); n];
+        let mut atual = 0;
+        for _ in 0..n {
+            dentro[atual] = true;
+            for k in 0..n {
+                if !dentro[k] {
+                    let d = dist(atual, k);
+                    if d < perto[k].0 {
+                        perto[k] = (d, atual);
+                    }
+                }
+            }
+            let Some(prox) = (0..n)
+                .filter(|&k| !dentro[k])
+                .min_by(|&a, &b| perto[a].0.total_cmp(&perto[b].0))
+            else {
+                break;
+            };
+            let base = real[perto[prox].1];
+            let mut t = real[prox];
+            while t - base > std::f64::consts::PI {
+                t -= std::f64::consts::TAU;
+            }
+            while t - base <= -std::f64::consts::PI {
+                t += std::f64::consts::TAU;
+            }
+            real[prox] = t;
+            atual = prox;
+        }
+        real.iter()
+            .map(|t| {
+                let (s, c) = (t * 0.5).sin_cos();
+                [c, s]
+            })
+            .collect()
     }
 
     /// ⭐⭐⭐ **O CENTRO EM TORNO DO QUAL UM PONTO COM ESTES PESOS RODA.**
@@ -217,13 +293,12 @@ impl Skin {
     ///
     /// `p' = R(θ̄)·(p − c) + Σ wᵢ Mᵢ(c)`
     ///
-    /// ⚠️ **O ângulo é a média em CÍRCULO por omissão** (`atan2(Σ w sin, Σ w cos)`), e não a soma
-    /// `Σ w θ`: os ângulos vêm de um `atan2` e vivem em `(−π, π]`, logo somá-los **crus** salta
-    /// quando um osso passa meia volta. ⭐ A saída que os soma **DESDOBRADOS** existe desde
-    /// 2026-09-20 e é a [`MisturaDoAngulo::Desdobrado`], ligada por
-    /// `ph2d_skeleton_live::skin_live::mistura_do_ambiente`.
+    /// ⚠️ **O ângulo é o MEIO-ÂNGULO por omissão** (`2·arg Σ w·e^{iθ̃/2}`, ver
+    /// [`MisturaDoAngulo::MeioAngulo`]), e não a soma `Σ w θ`: os ângulos vêm de um `atan2` e vivem
+    /// em `(−π, π]`, logo somá-los **crus** salta quando um osso passa meia volta. As alternativas
+    /// ligam-se por `ph2d_skeleton_live::mistura_do_angulo::mistura_do_ambiente`.
     ///
-    /// ⛔⛔⛔ **E a degenerescência que esta prosa declarava NÃO é alcançável:** ela dizia que com
+    /// ⛔⛔⛔ **Na média em CÍRCULO a degenerescência que esta prosa declarava NÃO é alcançável:** ela dizia que com
     /// duas rotações a `180°` exactas e pesos iguais *«a soma é zero e a lei cai na mistura
     /// linear»*. Medido — `sin(π)` em `f64` vale **`1,2246e-16`**, logo `Σ w sin` é
     /// `+6,123234e-17`, a guarda `sx == 0 && sy == 0` **nunca arma**, e o `atan2` devolve **`+90°`:
@@ -268,6 +343,23 @@ impl Skin {
     /// voltas diferentes, e a arte rasgava na fronteira entre eles.
     fn direccao_media(&self, w: &[f64], lei: MisturaDoAngulo) -> Option<(f64, f64)> {
         match lei {
+            MisturaDoAngulo::MeioAngulo => {
+                let meios = self.meios.get_or_init(|| self.desdobra_pelas_juntas());
+                let (mut hx, mut hy) = (0.0_f64, 0.0_f64);
+                for (m, &peso) in meios.iter().zip(w.iter()) {
+                    if peso == 0.0 {
+                        continue;
+                    }
+                    hx = peso.mul_add(m[0], hx);
+                    hy = peso.mul_add(m[1], hy);
+                }
+                let n2 = hx.mul_add(hx, hy * hy);
+                if n2 == 0.0 || !n2.is_finite() {
+                    return None;
+                }
+                // O dobro do argumento sem trigonometria: `(h_x² − h_y², 2·h_x·h_y) / |h|²`.
+                Some((hx.mul_add(hx, -(hy * hy)) / n2, 2.0 * hx * hy / n2))
+            }
             MisturaDoAngulo::Circulo => {
                 let (mut sx, mut sy, mut soma) = (0.0_f64, 0.0_f64, 0.0_f64);
                 for (&(_, co, si), &peso) in self.angulos.iter().zip(w.iter()) {
@@ -312,6 +404,9 @@ impl Skin {
 #[cfg(test)]
 #[path = "centro_cache_tests.rs"]
 mod centro_cache_tests;
+#[cfg(test)]
+#[path = "centro_meio_tests.rs"]
+mod centro_meio_tests;
 #[cfg(test)]
 #[path = "centro_tests.rs"]
 mod centro_tests;

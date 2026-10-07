@@ -195,11 +195,15 @@ fn pontas(d: &SkinDesenhado) -> Vec<f64> {
 
 /// ⭐⭐⭐ **GATE — nenhuma ponta de corte fica a um TIQUE do cruzamento** (`0,05`–`1` largura), de
 /// `110°` a `170°`. ⛔ **O CONTROLO:** sem o encaixe há tiques (MEDIDO na `=6`: `0,13`–`0,98`).
+///
+/// ⚠️ De `10` em `10` graus desde a lei do meio-ângulo (2026-10-06): com ela os tiques sem o
+/// encaixe caem a `120°`, `136°`–`142°`, `152°` e `156°`–`164°` (`1`/`1`/`5` a `120`/`140`/`160`), e
+/// a régua de `20` em `20` (`110`/`130`/`150`/`170`, `0`/`2`/`2`/`0` no círculo) passava ENTRE eles.
 #[test]
 fn nenhuma_ponta_de_corte_fica_a_um_tique_do_cruzamento() {
     let tiques = |v: &[f64]| v.iter().filter(|d| **d > 0.05 && **d < 1.0).count();
     let (mut com, mut sem, mut no_cruzamento) = (0, 0, 0);
-    for graus in [110f32, 130.0, 150.0, 170.0] {
+    for graus in [110f32, 120.0, 130.0, 140.0, 150.0, 160.0, 170.0] {
         let (antes, depois) = (
             pontas(&desenho(graus, true)),
             pontas(&desenho(graus, false)),

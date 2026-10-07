@@ -502,7 +502,7 @@ desta onda `7257b737e` · `cd5f23179` · `bdaf1f8fa` · (docs) · `6ca487037` ·
 
 | item | o que ficou |
 |---|---|
-| **1. W1(b) — porta ≠ 0** | ✅ duas espécies: o COMPLEMENTO de um `Compact` (`StreamOp::Compact.complement`, `died`/`pulse` do `sim.lifetime`, a mesma varredura e a mesma leitura de 8 bytes) e a PORTA PROJECTADA (`ProjectedPort` + `KernelResolver::projected_ports`: o `carry` do `pulse.counter`). `GpuSource::StagePort(nó, porta)`. Censo PELA PORTA DO PRODUTO (corrigido: planeava sem os fios): **60 → 63** cenas inteiras na placa (`=24 =25 =26`; a `=27` e a `=117` sobem até híbridas — com as ESTRELAS do smoke a forma vem da CPU); presas por porta ≠ 0 **4 → 0** |
+| **1. W1(b) — porta ≠ 0** | ✅ duas espécies: o COMPLEMENTO de um `Compact` (`StreamOp::Compact.complement`, `died`/`pulse` do `sim.lifetime`, a mesma varredura e a mesma leitura de 8 bytes) e a PORTA PROJECTADA (`ProjectedPort` + `KernelResolver::projected_ports`: o `carry` do `pulse.counter`). `GpuSource::StagePort(nó, porta)`. Censo PELA PORTA DO PRODUTO (corrigido: planeava sem os fios): **60 → 64** cenas inteiras na placa (`=24 =25 =26 =27`; a `=117` sobe a híbrida — com as ESTRELAS do smoke a forma vem da CPU); presas por porta ≠ 0 **4 → 0** |
 | **2. o condutor na placa** | ✅ `plan_with_device_drivers` (porta NOVA; a `plan()` sem mapa é a lei antiga ao bit) + cópia de 4 bytes `v[0]` → uniform; só consumidores de mapa puro. CPU-lado −37 % num condutor caro; zero leituras de volta |
 | **3. W3b — três chaves** | ✅ ficam, com catraca (`ph2d-editor-core` `architecture_as_chaves_partilhadas_nao_ganham_leitor_partilhado`: 0 leituras partilhadas em 3 840 ficheiros) |
 | **4. as cópias** | ⛔ recusado por medição (5 consumidores fazem do comprimento significado; a costura custa `0,002 ms`); o censo achou e curou `value.wrap` (1→N) e `motion.distribute_radial` (`spin` → `ReadBroadcast`) |
@@ -543,11 +543,13 @@ placa `334/335` — o vermelho é `gpu_collide::crossing_the_reach_boundary_does
 família de flakes de carga que o doc 110 §6 já nomeava (2/2 sozinho, a `load 9` e a `load 35`; zero linhas
 desta onda no teste ou no nó) — ⇒ **pedido ao integrador: promovê-lo à lista** (`FLAKES_DE_CARGA.md`); clippy
 `--all-targets -D warnings` nas crates tocadas ✓; `fmt --all --check` ✓; censos `114/114` ✓; `doc-index` ✓.
-**Provas de mutação: 16/16 sangraram** (14 do lote + as duas metades da cura dos sinais). Smoke: a `=117` e a `=27`
-ganharam ESTRELAS depois do report do dono (*«vejo apenas gizmos. eles não piscam»*) — rota `HIBRIDO` (a
+**Provas de mutação: 16/16 sangraram** (14 do lote + as duas metades da cura dos sinais). Smoke: a `=117`
+ganhou ESTRELAS depois do report do dono (*«vejo apenas gizmos. eles não piscam»*) — rota `HIBRIDO` (a
 forma vem da CPU); gate `the_bottom_cloths_flash_on_the_device_like_on_the_cpu` (as duas rotas piscam nas mesmas
 batidas). Os gates que usavam a `=117` como cena «só posições» (`ponto_gizmo_tests`) passaram à `=6`.
 
-**⏳ O QUE FICA ABERTO (nomeado, fora da lista do ciclo 6):** preparar `value.attribute` + `value.reduce` na placa
+**⏳ O QUE FICA ABERTO (nomeado, fora da lista do ciclo 6):** ⛔ [Bug #14](../BUGS_motion_nodes.md) — formas
+carimbadas a partir da SAÍDA de uma zona de simulação não aparecem no ecrã (o cozimento produ-las, o app não as
+desenha; bissecção feita; a `=27` ficou sem forma por isso); preparar `value.attribute` + `value.reduce` na placa
 custa ~`0,09 ms` de CPU por quadro (é o que come o ganho do item 2 na parede); o gate de paridade do `pulse.beat`
 só corre 6 tiques e nunca chega aos empates batida-tique da fixtura decimal. Integrar só por ordem do dono.

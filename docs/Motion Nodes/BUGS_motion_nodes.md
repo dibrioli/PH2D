@@ -1351,3 +1351,26 @@ centrar sempre · não re-enquadrar · re-enquadrar a vista mexida).
    muda a caixa, e uma medida do regime errado lê-se como «outra coisa a tapar».
 2. ⛔ **Um cálculo feito UMA vez no 1.º quadro herda a geometria provisória do 1.º quadro.** Meça o
    retângulo nos dois primeiros quadros antes de culpar a geometria.
+
+## Bug #14 — formas carimbadas a partir da SAÍDA de uma zona de simulação não aparecem no ecrã (ABERTO, 07/10)
+
+### Sintoma
+O dono pediu formas no smoke do ciclo 6 (*«vejo apenas gizmos»*). Na `=27` (a centelha que estoura:
+`grid → scale → sim.zone(…lifetime → spawn…) → output`) pus `source.shape(estrela) → motion.duplicator`
+entre a zona e a saída — e o app **não desenha nada**: nem estrela, nem a cruz de posição. Nas duas rotas
+(`PH2D_GPU_COOK=0` também). O app regista `[formas] 3 copias de 1 geometrias pela PLACA` UMA vez.
+
+### O que a medição disse
+- **Pela porta do produto em teste** (`coze_o_quadro`, 180 quadros, placa e CPU): as 3 estrelas existem
+  em todos os quadros, com posição (`±2,6`), tamanho (`0,22`) e cor certos, e as duas rotas concordam ao
+  elemento (o gate esteve escrito: `the_fireworks_draw_the_same_stars_on_both_routes`).
+- **Bissecção no app** (`--release`, foto): o MESMO carimbo ligado às SEMENTES (antes da zona) desenha as
+  três estrelas; ligado à SAÍDA da zona não desenha nada.
+- `PH2D_PAN_DIAG=1`: nos quadros seguintes ao primeiro o app não tem forma nenhuma para desenhar.
+⇒ a diferença está entre o `coze_o_quadro` e o desenho (o que o `dispatch` faz à volta dele com uma zona
+de simulação, ou o passe das formas) — **não** no cozimento.
+
+### Estado
+A `=27` ficou como estava (só posições). O smoke do ciclo 6 é a `=117`, que carimba e funciona. Próximo
+passo: repetir a corrida do gate pelo `dispatch` inteiro (com `HeroScreen`) ou instrumentar o passe das
+formas quadro a quadro na `=27` com o carimbo depois da zona.

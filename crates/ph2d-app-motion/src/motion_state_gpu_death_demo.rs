@@ -114,17 +114,9 @@ pub(super) fn build_gpu_death_demo_document(
     g.set_param(spawn, "burst", BURST);
     g.set_param(spawn, "burst_speed", BURST_SPEED);
     let combine = g.add_node("motion.combine");
-    // ⭐ **Uma ESTRELA em cada centelha** — sem forma a saída desenha só as cruzes de posição
-    // (report do dono, 07/10). O carimbo de fábrica corre na placa; a simulação não muda.
-    let estrela = g.add_node("source.shape");
-    g.set_param(estrela, ph2d_node_motion_shape::param::KIND, 5.0);
-    g.set_param(estrela, ph2d_node_motion_shape::param::SIZE, 0.07);
-    let carimbo = g.add_node("motion.duplicator");
-    g.set_pos(estrela, Pos { x: 650.0, y: 80.0 });
-    g.set_pos(carimbo, Pos { x: 820.0, y: 120.0 });
     let out = g.add_node("motion.output");
 
-    for (i, n) in [grid, scale, zone].into_iter().enumerate() {
+    for (i, n) in [grid, scale, zone, out].into_iter().enumerate() {
         g.set_pos(
             n,
             Pos {
@@ -142,13 +134,6 @@ pub(super) fn build_gpu_death_demo_document(
             },
         );
     }
-    g.set_pos(
-        out,
-        Pos {
-            x: 1000.0,
-            y: 200.0,
-        },
-    );
     // O nascimento fica ABAIXO do lifetime: é dele que ele se alimenta.
     g.set_pos(spawn, Pos { x: 590.0, y: 520.0 });
 
@@ -168,9 +153,7 @@ pub(super) fn build_gpu_death_demo_document(
         (life, 0, combine, 0),
         (spawn, 0, combine, 1),
         (combine, 0, zone, 1),
-        (estrela, 0, carimbo, 0),
-        (zone, 0, carimbo, 1),
-        (carimbo, 0, out, 0),
+        (zone, 0, out, 0),
     ] {
         let delayed = (a, b) == (zone, wind);
         g.connect(Edge {

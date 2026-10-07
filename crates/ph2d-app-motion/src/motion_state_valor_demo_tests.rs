@@ -13,6 +13,9 @@ use ph2d_nodegraph::attr::Column;
 fn cena() -> (MotionState, Vec<NodeId>) {
     let mut m = MotionState::new();
     let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");
+    // As MEMBRANAS, como a ponte antes de cozer: sem elas a estrela (`source.shape`) sai vazia.
+    m.sinks = sinks.clone();
+    crate::motion_externals::publish_all(&mut m, 0.0);
     (m, sinks)
 }
 
@@ -314,5 +317,105 @@ fn the_four_figures_the_tutorial_shows_exist_and_differ() {
                 nomes[i], nomes[j]
             );
         }
+    }
+}
+
+/// ⭐⭐ **OS PANOS DE BAIXO PISCAM NA PLACA** (report do dono, 07/10: *«eles não piscam»*) — pela
+/// porta do produto (`coze_o_quadro`), com placa: em cada quadro conta quantas peças de cada pano de
+/// baixo estão ACESAS (o clarão incha o tamanho `0,9`), e compara com a MESMA conta na CPU.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_bottom_cloths_flash_on_the_device_like_on_the_cpu() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        return;
+    };
+    // Por quadro, os tamanhos das estrelas de baixo-esquerda e baixo-direita, numa rota.
+    let tamanhos = |placa: bool| -> Vec<(Vec<f32>, Vec<f32>)> {
+        let mut m = MotionState::new();
+        m.gpu_enabled = placa;
+        m.sinks = build(&mut m.doc, &m.registry).expect("a cena");
+        let mut playhead = ph2d_core::Playhead::new(1.0 / 60.0);
+        (1..=180u64)
+            .map(|k| {
+                playhead.seek(k as f64 / 60.0);
+                crate::motion_bridge::quadro::coze_o_quadro(&mut m, &gpu, &playhead, 1.0 / 60.0);
+                // As ESTRELAS desenhadas: `(posição, tamanho)` — as formas vectoriais na CPU, o
+                // buffer das formas na placa (palavras `pos` 0-1 · `size` 2-3, `lower_forma`).
+                let formas: Vec<([f32; 2], f32)> = if placa {
+                    // HÍBRIDA: a estrela (`source.shape`, um elemento fixo) vem da CPU; o resto
+                    // — carimbo, número, instante — corre na placa.
+                    let rota = m.route_said.unwrap_or("");
+                    assert!(
+                        rota.starts_with("device"),
+                        "a cena tem de correr na placa: {rota}"
+                    );
+                    let w = ph2d_gpu_cook::read_formas(&gpu, m.gpu_cook.formas().expect("placa"));
+                    let f = |k: u32| f32::from_bits(k);
+                    w.chunks(16)
+                        .map(|c| ([f(c[0]), f(c[1])], f(c[2])))
+                        .collect()
+                } else {
+                    m.pump
+                        .vector_instances
+                        .iter()
+                        .map(|v| (v.world_pos, v.size[0]))
+                        .collect()
+                };
+                assert_eq!(formas.len(), 4 * 36, "quatro panos de 36 estrelas");
+                let lado = |esq: bool| -> Vec<f32> {
+                    formas
+                        .iter()
+                        .filter(|(p, _)| p[1] < 0.0 && (p[0] < 0.0) == esq)
+                        .map(|f| f.1)
+                        .collect()
+                };
+                (lado(true), lado(false))
+            })
+            .collect()
+    };
+    // Os quadros em que um pano de baixo ACENDE (o clarão incha `0,9`): acima de `1,3×` o repouso,
+    // que é o menor tamanho que ele teve em toda a corrida.
+    let acende = |v: &[(Vec<f32>, Vec<f32>)], esq: bool| -> Vec<usize> {
+        let de = |q: &(Vec<f32>, Vec<f32>)| if esq { q.0.clone() } else { q.1.clone() };
+        let repouso = v.iter().flat_map(de).fold(f32::INFINITY, f32::min);
+        let aceso: Vec<bool> = v
+            .iter()
+            .map(|q| de(q).iter().all(|s| *s > repouso * 1.3))
+            .collect();
+        // Sem o último quadro: uma batida que uma rota acende nele a outra acenderia fora da janela.
+        (1..aceso.len() - 1)
+            .filter(|&k| aceso[k] && !aceso[k - 1])
+            .collect()
+    };
+    let (cpu, placa) = (tamanhos(false), tamanhos(true));
+    let (e, d) = (acende(&placa, true), acende(&placa, false));
+    eprintln!("placa acende: esquerda {e:?} · direita {d:?}");
+    eprintln!(
+        "cpu   acende: esquerda {:?} · direita {:?}",
+        acende(&cpu, true),
+        acende(&cpu, false)
+    );
+    assert!(
+        e.len() >= 4,
+        "o pano de baixo à ESQUERDA pisca a cada batida (0,6 s): {e:?}"
+    );
+    assert!(
+        !d.is_empty() && d.len() < e.len(),
+        "o da DIREITA pisca a cada QUATRO: {d:?}"
+    );
+    // ⚠️ A batida de `0,6 s` cai EXACTAMENTE num quadro (36/60), e aí a placa (`f32`) e a CPU
+    // (`f64`) arredondam o empate para lados opostos — a divergência que o `pulse.beat` declara.
+    // ⇒ as mesmas batidas, a no máximo UM quadro (16 ms).
+    for (esq, p) in [(true, &e), (false, &d)] {
+        let c = acende(&cpu, esq);
+        assert_eq!(
+            c.len(),
+            p.len(),
+            "as mesmas batidas nas duas rotas: cpu {c:?} placa {p:?}"
+        );
+        assert!(
+            c.iter().zip(p.iter()).all(|(a, b)| a.abs_diff(*b) <= 1),
+            "cpu {c:?} placa {p:?}"
+        );
     }
 }

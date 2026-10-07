@@ -100,6 +100,29 @@ fn pano(doc: &mut MotionDoc, centro: [f32; 2], x: f32, y: f32) -> NodeId {
     mv
 }
 
+/// O `kind` da forma carimbada: uma ESTRELA (lê-se a inchar e a mudar de cor de longe).
+const ESTRELA: f32 = 5.0;
+/// O raio da estrela, à medida do vão (`0,42`): cheia sem tocar na vizinha.
+const RAIO: f32 = 0.16;
+
+/// ⭐ **Uma ESTRELA em cada ponto do pano** (o carimbo de fábrica, que corre na placa). ⛔ Sem
+/// forma a saída desenha só as cruzes de posição — o clarão incha e colore peças que não estão no
+/// ecrã (report do dono, 07/10: *«vejo apenas gizmos. eles não piscam»*). ⇒ carimbar PRIMEIRO e
+/// agir DEPOIS: o número e o instante mexem no tamanho e na cor das estrelas.
+fn carimbo(doc: &mut MotionDoc, pontos: NodeId, x: f32, y: f32) -> Option<NodeId> {
+    let forma = doc.graph.add_node("source.shape");
+    doc.graph
+        .set_param(forma, ph2d_node_motion_shape::param::KIND, ESTRELA);
+    doc.graph
+        .set_param(forma, ph2d_node_motion_shape::param::SIZE, RAIO);
+    let dup = doc.graph.add_node("motion.duplicator");
+    liga(doc, (forma, 0), (dup, 0), false)?;
+    liga(doc, (pontos, 0), (dup, 1), false)?;
+    doc.graph.set_pos(forma, Pos { x, y: y - 50.0 });
+    doc.graph.set_pos(dup, Pos { x: x + 170.0, y });
+    Some(dup)
+}
+
 /// Monta a cena. Devolve os quatro sinks.
 pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     let mut sinks = Vec::new();
@@ -108,7 +131,8 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     for (k, com_degrau) in [(0usize, false), (1, true)].into_iter() {
         let lado = if k == 0 { -AFASTA_X } else { AFASTA_X };
         let y_grafo = if k == 0 { -260.0 } else { -60.0 };
-        let base = pano(doc, [lado, AFASTA_Y], -520.0, y_grafo);
+        let pontos = pano(doc, [lado, AFASTA_Y], -720.0, y_grafo);
+        let base = carimbo(doc, pontos, -380.0, y_grafo)?;
         let escala = doc.graph.add_node("motion.scale");
         let saida = doc.graph.add_node("motion.output");
         let lfo = doc.graph.add_node("value.lfo");
@@ -163,10 +187,11 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
     for (k, com_contador) in [(0usize, false), (1, true)].into_iter() {
         let lado = if k == 0 { -AFASTA_X } else { AFASTA_X };
         let y_grafo = if k == 0 { 160.0 } else { 380.0 };
-        let base = pano(doc, [lado, -AFASTA_Y], -520.0, y_grafo);
+        let pontos = pano(doc, [lado, -AFASTA_Y], -720.0, y_grafo);
+        let base = carimbo(doc, pontos, -380.0, y_grafo)?;
         let batida = doc.graph.add_node("pulse.beat");
         doc.graph.set_param(batida, "period", BATIDA);
-        liga(doc, (base, 0), (batida, 0), false)?;
+        liga(doc, (pontos, 0), (batida, 0), false)?;
         // ⚠️ O `pre` do metrónomo é o que faz dele um metrónomo: sem a memória do ciclo
         // anterior ele não sabe que a batida MUDOU, e dispara em todo o tique.
         liga(doc, (batida, 0), (batida, 1), true)?;

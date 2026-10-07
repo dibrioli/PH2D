@@ -15,6 +15,17 @@ fn registry() -> NodeRegistry {
     reg
 }
 
+/// **A ZONA** — a população da simulação. ⚠️ Desde 07/10 a saída carimba uma estrela em cada
+/// centelha, e a estrela (`source.shape`) só existe com as membranas da ponte publicadas; a lei
+/// que estes gates medem é a do nascimento, que vive na zona (o que o carimbo recebe).
+fn zona(doc: &MotionDoc, sink: ph2d_nodegraph::graph::NodeId) -> ph2d_nodegraph::graph::NodeId {
+    let carimbo = doc.graph.input_edge(sink, 0).expect("o sink tem entrada").0;
+    doc.graph
+        .input_edge(carimbo, 1)
+        .expect("o carimbo tem pontos")
+        .0
+}
+
 /// A população, quadro a quadro, do documento REAL da cena.
 fn population(secs: f64) -> Vec<usize> {
     let reg = registry();
@@ -24,7 +35,9 @@ fn population(secs: f64) -> Vec<usize> {
     let mut n = Vec::new();
     for k in 0..=((secs * 60.0) as u64) {
         let t = k as f64 / 60.0;
-        let s = cook.cook(&doc.graph, &reg, sinks[0], t).expect("cozinha")[0]
+        let s = cook
+            .cook(&doc.graph, &reg, zona(&doc, sinks[0]), t)
+            .expect("cozinha")[0]
             .as_stream()
             .clone();
         n.push(s.count());
@@ -128,7 +141,9 @@ fn the_siblings_of_a_burst_fly_apart() {
     let mut distinct = 0usize;
     for k in 0..=100u64 {
         let t = k as f64 / 60.0;
-        let s = cook.cook(&doc.graph, &reg, sinks[0], t).expect("cozinha")[0]
+        let s = cook
+            .cook(&doc.graph, &reg, zona(&doc, sinks[0]), t)
+            .expect("cozinha")[0]
             .as_stream()
             .clone();
         if k == 100 {
@@ -187,7 +202,9 @@ fn probe_siblings() {
     let mut cook = Cook::new();
     for k in 0..=150u64 {
         let t = k as f64 / 60.0;
-        let s = cook.cook(&doc.graph, &reg, sinks[0], t).expect("cozinha")[0]
+        let s = cook
+            .cook(&doc.graph, &reg, zona(&doc, sinks[0]), t)
+            .expect("cozinha")[0]
             .as_stream()
             .clone();
         if (66..=70).contains(&k) || k == 90 || k == 120 || k == 150 {

@@ -26,3 +26,12 @@ pela ROTA (o censo punha-a na placa), que é uma propriedade interna e não diz 
 - A regra está também no `CLAUDE.md` §0.8 e no doc 103 §1 (os sítios lidos ao escrever um smoke).
 
 Relacionado: [[a-smoke-for-the-owner-explains-what-each-thing-on-screen-is]].
+
+⛔⛔⛔ **TERCEIRA VEZ (07/10, ciclo 6 — os abertos):** mandei a `=117` e a `=27` sem forma, COM fotos
+tiradas — e as fotos mostravam as cruzes azuis finas (os gizmos) e eu li-as como peças. *«vc não
+colocou shapes nos grafos. vejo apenas gizmos. eles não piscam»*. ⇒ **ao olhar a foto: cruzes finas
+= gizmo = NADA desenhado.** E um efeito de aparência (clarão, tamanho, cor) numa corrente sem forma
+age sobre peças que não existem: o gate de «pisca» media **zero acesas nas duas rotas**. A cura é
+carimbar a forma ANTES do efeito (`source.shape` → `motion.duplicator` → efeito → saída), e a medida
+lê as FORMAS desenhadas (`vector_instances` na CPU, `read_formas` na placa).
+

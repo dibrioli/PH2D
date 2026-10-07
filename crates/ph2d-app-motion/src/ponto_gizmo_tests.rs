@@ -37,7 +37,7 @@ fn nuvem(n: usize) -> Stream {
 #[test]
 fn uma_grelha_sem_forma_vira_gizmo_de_pontos() {
     let mut m = MotionState::new();
-    let sinks = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry).0;
+    let sinks = crate::motion_demo_legend::monta("6", &mut m.doc, &m.registry).0;
     assert!(!sinks.is_empty(), "a fixtura tem de montar sinks");
     m.sinks = sinks.clone();
 
@@ -69,7 +69,7 @@ fn uma_grelha_sem_forma_vira_gizmo_de_pontos() {
 #[test]
 fn sem_a_ferramenta_motion_nao_ha_gizmo() {
     let mut m = MotionState::new();
-    let sinks = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry).0;
+    let sinks = crate::motion_demo_legend::monta("6", &mut m.doc, &m.registry).0;
     m.sinks = sinks.clone();
     m.pump.set_taps(&taps_for(&m, true));
     coze(&mut m, &sinks);
@@ -534,7 +534,7 @@ fn a_marca_de_um_ponto_e_uma_cruz_e_nao_um_anel() {
 #[test]
 fn com_a_lei_desligada_nao_ha_gizmo() {
     let mut m = MotionState::new();
-    let sinks = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry).0;
+    let sinks = crate::motion_demo_legend::monta("6", &mut m.doc, &m.registry).0;
     m.sinks = sinks.clone();
     m.pump.set_taps(&taps_for(&m, true));
     coze(&mut m, &sinks);
@@ -559,7 +559,7 @@ fn com_a_lei_desligada_nao_ha_gizmo() {
 #[test]
 fn com_a_lei_desligada_o_gizmo_nao_pede_tomadas() {
     let mut m = MotionState::new();
-    let sinks = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry).0;
+    let sinks = crate::motion_demo_legend::monta("6", &mut m.doc, &m.registry).0;
     m.sinks = sinks.clone();
     assert!(
         !taps_for(&m, true).is_empty(),

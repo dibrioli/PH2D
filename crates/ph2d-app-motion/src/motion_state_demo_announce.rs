@@ -414,7 +414,7 @@ pub(super) fn aparencia() {
 /// ensina a LEI (o que um nó a mais faz ao número e ao instante que já lá estavam).
 pub(super) fn valor() {
     eprintln!(
-        "[cena 117] UM NUMERO QUE MANDA EM TUDO. Quatro panos de 36 pecas. Em cada par
+        "[cena 117] UM NUMERO QUE MANDA EM TUDO. Quatro panos de 36 ESTRELAS. Em cada par
   muda UM CARTAO -- o pano, o tamanho e o ritmo sao os mesmos dos dois lados.
 
   1. Carregue em PLAY. Sem isto os quatro panos ficam parados e iguais.

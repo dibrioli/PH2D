@@ -77,3 +77,10 @@ comete**.
 Relacionadas: [[feedback_mutate_the_code_not_just_the_test]] ·
 [[feedback_tool_unit_green_integration_dead]] ·
 [[feedback_painted_is_not_populated_paint_gate]]
+
+**Caso 05/10 (navegação W15): mudar o SIGNIFICADO de um knob esvazia a fixtura dos gates que o usam, e
+eles continuam verdes.** O orçamento `1` queria dizer «um agente por tique»; com a procura em fatias passou a
+querer dizer «uma unidade de trabalho por tique» — o gate do scrub (orçamento `1`) ficou sem nenhum agente com
+caminho no tique do replay, e as mutações da cura do determinismo (S1/S2) SOBREVIVERAM. Só a prova de mutação o
+mostrou. **Como aplicar:** ao mudar o que um parâmetro significa, liste os gates que o passam com um valor
+literal e verifique por asserção que a fixtura de cada um ainda CONTÉM o fenómeno (`assert!` «a fixtura: …»).

@@ -18,6 +18,11 @@ sessão. A casa já sabia metade (*«matar quem lançou NÃO mata o teste — el
 --user`»*, DIRETIVA_IMPLEMENTACAO §5), e foi exactamente essa reparentação que transformou o gesto
 de limpeza num logout.
 
+⭐ **Desde 05/10 é GATE, não só nota:** a regra **R4** do `.claude/hooks/tecto-de-recursos.sh` recusa o
+`kill` de um pai calculado, de um PID da sessão (systemd --user, KWin, Plasma, VS Code, Claude), os
+`pkill`/`killall` deles e os logouts; prova em `tecto-de-recursos.prova.sh` (o comando EXACTO do
+incidente é um dos casos) e `docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md` §5.
+
 **How to apply:** NUNCA `kill $(ps -o ppid= …)`. Para parar uma corrida: mate o PID dela e o grupo
 (`kill -- -<pgid>`), ou pare o scope da linha (`systemctl --user stop 'ph2d-run-*.scope'` /
 `systemctl --user list-units 'ph2d*'`). Antes de qualquer `kill` de um PID calculado, confira

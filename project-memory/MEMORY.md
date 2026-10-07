@@ -18,6 +18,7 @@
 ## Perfil & referência
 - [Corpus da pesquisa ossos+vetor (23/09), fora do repo](reference_vector_bones_research_corpus_2026_09_23.md)
 - [Enio (dibrioli): dono/decisor; o dev é a LLM](user_role.md)
+- ⭐ [Dono decidiu (06/10): o PH2D TERÁ versão no navegador, mas NÃO agora — 1.º degrau: AVIF fora do `wasm32`](project_web_shell_decided_by_owner_2026_10_06.md)
 - [Onde mora cada coisa — tabela verificada](reference_canonical_files.md)
 - [GPU tests headless (evidência velha Mac/Metal)](reference_gpu_tests_run_headless_metal.md)
 - [transcripts medem o agente — agent-loop-profile.sh](reference_session_transcripts_are_a_measurable_instrument.md)
@@ -26,7 +27,7 @@
 - [VSCode morre por OOMPolicy=stop](project_vscode_dies_by_oompolicy_not_by_choice.md) · [bypass recusado; 2 chaves claudeCode.*](reference_vscode_extension_refuses_bypass_and_edits_always_prompt_in_default.md)
 - [Projetos num disco DEDICADO de 2TB](project_projects_live_on_a_dedicated_2tb_disk.md) · [target em tmpfs: «File exists» pós-boot](feedback_a_tmpfs_backed_target_reports_file_exists_not_broken_link.md)
 - [Disco cheio → mold SIGBUS](project_disk_full_corrupts_objects_mold_sigbus.md) · [«cheio» = metadata btrfs](project_btrfs_metadata_starved_not_disk_full_2026_08_22.md)
-- Apps instalados: ⭐ [MotionBricks (Apache-2.0), headless](reference_motionbricks_oracle_installed.md) · [LTX Desktop: vídeo IA local](reference_ltx_desktop_video_gen_installed.md)
+- Apps instalados: ⭐ [MotionBricks (Apache-2.0), headless](reference_motionbricks_oracle_installed.md) · [LTX Desktop: vídeo IA local](reference_ltx_desktop_video_gen_installed.md) · [Rebelle 8 (teste 30 d) sob Wine](reference_rebelle_trial_installed_under_wine.md)
 - [Prompt Deck](reference_prompt_deck_app.md) · [~/Apps invisíveis ao cachy-update](reference_manual_apps_in_home_apps_are_invisible_to_cachy_update.md) · [atalho global Plasma 6](reference_kde_plasma6_global_shortcut.md)
 - [HISTÓRICO: aquarela/wash (19)](reference_topic_watercolor_historical.md)
 - HISTÓRICO: 3D (saiu do PH2D, ADR-0179; código em `b1a6f9b07`) — [campo implícito/SDF (24)](reference_topic_implicit_field_laws.md) · [quad remesh (20)](reference_topic_quad_remesh_rulers.md) · [MagicaCSG](reference_magicacsg_installed_under_wine.md) · [viés NDC](feedback_a_depth_bias_constant_in_ndc_is_not_constant_in_the_world.md) · [BSDF×albedo](feedback_a_per_texel_albedo_is_the_base_color_never_a_factor_at_the_end.md)
@@ -77,7 +78,7 @@
 - [TRÊS membros novos da família de flakes de carga (o 3.º passa 3/3 a `load 19` ⇒ o discriminador é o FAN-OUT, não o relógio)](reference_flip_fit_cache_ratio_is_a_load_flake.md)
 - [Cadência de processo + CI (19)](reference_topic_process_cadence.md)
 - ⛔ [`sccache` herdava o cadeado da placa — `9>&-`](feedback_a_daemon_born_under_the_gpu_door_inherits_its_lock.md)
-- 📚 [Ship / CI / integração: mais (22) lições](reference_topic_ship_ci_integration_lessons.md)
+- 📚 [Ship / CI / integração: mais (23) lições](reference_topic_ship_ci_integration_lessons.md)
 
 ## Auditoria (famílias — 2 saltos)
 - ⛔ [`touch` não mede uma edição; `--timings` dobra sob contenção](feedback_a_touch_does_not_measure_an_edit_and_timings_inflate_under_contention.md)
@@ -135,11 +136,9 @@
 - ⛔ [Renomear um símbolo por NOME destrói a PROSA que o cita — num repo onde o porquê vive em doc-comments, a memória histórica é a vítima mais comum](feedback_a_rename_by_name_cannot_tell_an_address_from_a_memory.md)
 - ⛔⛔ [Apagar um item deixa o `#[cfg]` dele a gatear o VIZINHO — e com a feature ligada por omissão nenhuma build da CI o vê](feedback_an_orphaned_cfg_attaches_to_the_next_item_and_the_default_build_is_blind.md)
 - ⛔ [O dono de um id de BARRA DE ROLAGEM é o DESPACHO — declarado no painel, o polegar pinta e nunca se agarra (há um vivo: o painel de ossos)](feedback_the_owner_of_a_scrollbar_id_is_the_dispatch.md)
-- ⛔⛔ [DOIS laços escritos à mão que têm de concordar (avanço e replay) esquecem toda lei nova num deles — 3× na mesma ponte, 2 achadas por report do dono](feedback_two_hand_written_loops_that_must_agree_need_one_door.md)
-- ⛔⛔ [O que o undo NÃO fotografa o undo também não REPÕE — um relógio corrido, uma fábrica esgotada e uma SEMENTE sobreviviam ao Reset](feedback_what_the_undo_does_not_photograph_the_undo_does_not_restore.md)
 - ⛔ [O oráculo ensina a PERGUNTA; a resposta depende da natureza da SUA entrada — um NÍVEL e um EVENTO pedem paragens opostas](feedback_an_oracle_teaches_the_question_the_answer_depends_on_your_input_kind.md)
 - ⛔ [Um EVENTO lido como ESTADO acerta pelo tempo que ninguém o apagar — a etiqueta dependia de o relógio estar a andar](feedback_an_event_read_as_state_is_right_for_as_long_as_nobody_clears_it.md)
-- 📚 [Padrões de código (gotchas silenciosos): mais (30) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
+- 📚 [Padrões de código (gotchas silenciosos): mais (33) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 
 ## Arquitetura / norte / perf
 - ⛔ [REGRA DO DONO: editar pixels ou tamanho/margem = imagem SEM a dobra (exceto Liquify, cor, filtros); tamanho/margem SOLTA dos ossos](project_pixel_tools_flatten_bone_bound_art.md)

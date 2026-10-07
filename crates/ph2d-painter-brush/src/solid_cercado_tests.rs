@@ -368,10 +368,8 @@ fn o_buraco_enche_sem_costura_e_o_contorno_de_fora_nao_muda() {
         let (x, y) = ((i % LADO) as i64, (i / LADO) as i64);
         (-1i64..=1)
             .flat_map(move |dy| (-1i64..=1).map(move |dx| (x + dx, y + dy)))
-            .filter_map(|(vx, vy)| {
-                (vx >= 0 && vy >= 0 && vx < LADO as i64 && vy < LADO as i64)
-                    .then(|| vy as usize * LADO + vx as usize)
-            })
+            .filter(|&(vx, vy)| vx >= 0 && vy >= 0 && vx < LADO as i64 && vy < LADO as i64)
+            .map(|(vx, vy)| vy as usize * LADO + vx as usize)
     };
     let e_buraco = |i: usize| buracos.binary_search(&i).is_ok();
     let (mut costura, mut contorno) = (0, 0);

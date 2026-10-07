@@ -88,9 +88,9 @@ pub(crate) struct Cercado {
 impl Cercado {
     /// A classificação dos `loops`, ou `None` se nenhum cerca vazio nenhum.
     pub(crate) fn de(loops: &[Vec<[f32; 2]>]) -> Option<Arc<Self>> {
+        type Memo = Option<(Vec<Vec<[f32; 2]>>, Option<Arc<Cercado>>)>;
         thread_local! {
-            static ULTIMO: std::cell::RefCell<Option<(Vec<Vec<[f32; 2]>>, Option<Arc<Cercado>>)>> =
-                const { std::cell::RefCell::new(None) };
+            static ULTIMO: std::cell::RefCell<Memo> = const { std::cell::RefCell::new(None) };
         }
         ULTIMO.with(|u| {
             if let Some((l, c)) = u.borrow().as_ref()
@@ -187,9 +187,9 @@ fn furo(l: &[[f32; 2]]) -> Option<Furo> {
     // A folga de 1 px põe a 1.ª e a última coluna livres em TODA linha, ligadas na vertical à
     // primeira e à última linha: semeá-las basta (semear os lados é equivalente — mutação provada).
     for y in [0, h - 1] {
-        for k in 0..livres[y].len() {
-            if !fora[y][k] {
-                fora[y][k] = true;
+        for (k, f) in fora[y].iter_mut().enumerate() {
+            if !*f {
+                *f = true;
                 pilha.push((y, k));
             }
         }
@@ -342,10 +342,10 @@ fn cruzamentos(lacos: &[&[[f32; 2]]], caixa: Caixa) -> Vec<Vec<(f32, i32)>> {
                 (p[1] - 0.5).ceil().max(0.0) as usize,
                 ((q[1] - 0.5).ceil().max(0.0) as usize).min(h),
             );
-            for y in y_de..y_ate {
+            for (y, linha) in cruza.iter_mut().enumerate().take(y_ate).skip(y_de) {
                 #[allow(clippy::cast_precision_loss)]
                 let yc = y as f32 + 0.5;
-                cruza[y].push((p[0] + (q[0] - p[0]) * (yc - p[1]) / (q[1] - p[1]), dir));
+                linha.push((p[0] + (q[0] - p[0]) * (yc - p[1]) / (q[1] - p[1]), dir));
             }
         }
     }

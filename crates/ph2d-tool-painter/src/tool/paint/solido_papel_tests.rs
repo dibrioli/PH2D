@@ -318,8 +318,8 @@ fn diag_os_vazios_do_wet_paint() {
                     c[i * 4..i * 4 + 3] == [255, 255, 255]
                 }
             };
-            let n = cercados(LADO, LADO, &vazio);
-            let alguns: Vec<(usize, usize, [u8; 4])> = onde_cercados(LADO, LADO, &vazio)
+            let n = cercados(LADO, LADO, vazio);
+            let alguns: Vec<(usize, usize, [u8; 4])> = onde_cercados(LADO, LADO, vazio)
                 .into_iter()
                 .take(10)
                 .map(|i| {
@@ -404,10 +404,10 @@ fn diag_de_que_sao_os_vazios() {
         let lacos = t.solid_fill_loops();
         t.on_canvas_pointer(cp(pts[n - 1], PointerPhase::Up));
         let w0 = |i: usize| winding(&lacos, i % LADO, i / LADO) == 0;
-        let regra = onde_cercados(LADO, LADO, &w0).len();
+        let regra = onde_cercados(LADO, LADO, w0).len();
         let c = t.canvas_rgba.clone();
         let vazio = |i: usize| c[i * 4..i * 4 + 3] == [255, 255, 255];
-        let vazios = onde_cercados(LADO, LADO, &vazio);
+        let vazios = onde_cercados(LADO, LADO, vazio);
         let dentro = vazios.iter().filter(|&&i| !w0(i)).count();
         let caixa = vazios
             .iter()

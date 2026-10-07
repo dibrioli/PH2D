@@ -498,7 +498,7 @@ e o único que o rapier oferece (o motor) foi recusado pela pilha (§9.23). Inte
 
 Ordem do dono (07/10): *«resolver num único ciclo o Ciclo 6 completo»*. Estado medido, desenho, critério de abandono
 e resultado de cada item: [doc 110 §14](../110_ciclo_6_valor_e_pulso.md). Base `a46c4c200` (o main não andou); commits
-desta onda `7257b737e` · `cd5f23179` · `bdaf1f8fa` · (docs) · `6ca487037` · este.
+desta onda `7257b737e` · `cd5f23179` · `bdaf1f8fa` · (docs) · `05f92f165` · `6ca487037` · `0dc494bf4` · `19e20fa02` · `561d4ec23` · este.
 
 | item | o que ficou |
 |---|---|

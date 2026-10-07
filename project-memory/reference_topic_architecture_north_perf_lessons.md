@@ -34,6 +34,7 @@ metadata:
 - ⛔⛔⛔ [Comutar duas leis por um LIMIAR não dá um salto: dá CHATTER — ajuste a DIFERENÇA, que é zero onde nada há a corrigir](feedback_a_boolean_over_a_continuous_quantity_is_a_step.md)
 
 - ⭐⭐⭐ **Quando um MECANISMO está completo e o produto não o usa, o que falta é uma POLÍTICA — e o sítio onde ela mora mede-se em gates partidos** (2026-09-21, o Inspector): a dobra de secção tinha tudo (chevron, clique, animação, recorte) e **nenhuma secção nascia dobrada**, logo o painel desenhava `2,5`–`6,5` ecrãs contra uma dobra de `880 px`. ⚠️ Posta no `Panel::populate` do painel, a política reprovou **342** gates da crate dele; movida para a porta de arranque do EDITOR, **4**. ⇒ *o painel declara o que PODE mostrar; quem compõe o editor declara como ele ABRE* — e o painel nem conhece a altura da janela. ⛔ E o valor de fábrica não foi escolhido: o orçamento da dobra dá para UMA secção, e medidas uma a uma só a `Transform` cabe (`849 px`; a `Render` no lugar dela dá `1 000`).
+- ⭐ [DONO 06/10: a colisão do Motion passa ao rapier (oráculo: ~20-30× por algoritmo)](project_motion_collision_moves_to_rapier.md)
 ## ⭐⭐⭐ Um caminho DERIVADO pode trocar a contagem de pontos; o caminho do ARTISTA não (2026-09-20)
 
 Report do dono: *«como é que o `Effects: Arc` com tão poucos pontos fica tão perfeito?»*

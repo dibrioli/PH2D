@@ -142,7 +142,6 @@
 - 📚 [Padrões de código (gotchas silenciosos): mais (30) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 
 ## Arquitetura / norte / perf
-- ⭐ [DONO 06/10: a colisão do Motion passa ao rapier (oráculo: ~20-30× por algoritmo)](project_motion_collision_moves_to_rapier.md)
 - ⛔ [REGRA DO DONO: editar pixels ou tamanho/margem = imagem SEM a dobra (exceto Liquify, cor, filtros); tamanho/margem SOLTA dos ossos](project_pixel_tools_flatten_bone_bound_art.md)
 - [Blindagem Fase 0 — ph2d-ui-testkit](project_blindagem_phase0_2026_06_20.md)
 - [Pintura voltou](project_painter_brush_came_back_cleanroom.md) = [clean-room Blender](project_blender_texture_paint_reference.md) + [Texture Layer](project_texture_layer_design.md)
@@ -156,7 +155,7 @@
 - [Não otimize prematuro (100k @ 60Hz)](project_m5_perf_validated.md) · [gates de velocidade](project_perf_audit_2026_05_19.md)
 - [Perf do Painter (3)](reference_topic_painter_perf.md) · [spatial GPU reconcilia vs CPU](project_painter_w4_spatial_gpu_bloom_sh.md)
 - [HISTÓRICO: Painter no teto — premissa dissolvida](project_painter_core_files_at_loc_cap.md) · [8GB = full-gate ~10min](project_solo_coord_backlog_ship_2026_05_29.md)
-- 📚 [Arquitetura / norte / perf: mais (19) lições — ⭐⭐⭐ e as secções de 20/09: caminho DERIVADO × do ARTISTA · pontos no PRENDER · ASSAR e ajustar (7,7×)](reference_topic_architecture_north_perf_lessons.md)
+- 📚 [Arquitetura / norte / perf: mais (20) lições — ⭐⭐⭐ e as secções de 20/09: caminho DERIVADO × do ARTISTA · pontos no PRENDER · ASSAR e ajustar (7,7×)](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (18)](reference_topic_fixture_discipline.md)
 - [Provas de mutação (42) — 4 controlos, pré-voo das âncoras, `local` em tudo · ⛔ cercas em SEQUÊNCIA · agulha-FRAGMENTO](reference_topic_mutation_proofs.md)
 - ⛔⛔ [Atribuição VELHA de um vermelho não cobre o suspeito de HOJE — abla o teu e confirma o número AO BIT](feedback_an_old_attribution_is_worth_more_after_ablating_todays_suspect.md)

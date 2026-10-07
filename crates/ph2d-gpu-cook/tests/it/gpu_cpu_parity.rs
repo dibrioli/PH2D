@@ -3836,6 +3836,20 @@ fn desvio(a: f32, b: f32) -> f32 {
     if d.is_nan() { f32::INFINITY } else { d }
 }
 
+/// O comparador não engole um NaN (doc 110 §14.2 (6)): de um lado só é INFINITO, dos dois com
+/// os mesmos bits é concordância, e a dobra pelo máximo leva-o.
+#[test]
+fn o_desvio_nao_engole_um_nan() {
+    assert_eq!(desvio(f32::NAN, 1.0), f32::INFINITY);
+    assert_eq!(desvio(1.0, f32::NAN), f32::INFINITY);
+    assert_eq!(desvio(f32::NAN, f32::NAN), 0.0);
+    assert_eq!(desvio(2.0, 1.5), 0.5);
+    let pior = [desvio(0.1, 0.1), desvio(f32::NAN, 0.3)]
+        .into_iter()
+        .fold(0.0, f32::max);
+    assert_eq!(pior, f32::INFINITY);
+}
+
 /// Compare one column of a staged node against the CPU's stream, whatever its
 /// width — the readers are typed, so a gate that needs to follow a PARAM to its
 /// column would otherwise have to branch on the type at every call site.

@@ -3,9 +3,11 @@
 //!
 //! ## O que ela encena
 //!
-//! Um pano de **102 400 peças** e **um fio**: um `value.lfo` a comandar o tamanho de todas elas.
-//! É a cadeia mais simples que existe com um nó de valor — e era exactamente ela que, até esta
-//! wave, trocava o caminho de `3,85 ms` pelo de `195,9 ms` **por causa do fio**.
+//! Um pano no TECTO da grelha (`LADO_MAX_DE_GRELHA²`, hoje **32 761 peças**) e **um fio**: um
+//! `value.lfo` a comandar o tamanho de todas elas. É a cadeia mais simples que existe com um nó de
+//! valor — e era exactamente ela que, até à W1a, ia para a CPU **por causa do fio**. Medido a
+//! 07/10 pela porta do produto (doc 110 §14.2 (5)): `0,051 ms` por quadro na placa, `0,134` com o
+//! fio a derrubá-la (`2,6×`) — invisível a 60 fps; o que a cena ensina é a ROTA, no terminal.
 //!
 //! ⚠️ **A cena não tem A/B de quadrantes, e é de propósito:** o que mudou não é uma aparência, é
 //! **onde a cena corre**. Os dois lados da comparação não cabem no mesmo ecrã — eles são a MESMA
@@ -13,13 +15,13 @@
 //! duas metades estaria a ensinar que isto é uma questão de desenho.*
 //!
 //! ⚠️ **E é por isso que ela é GRANDE.** A `=111`..`=115` têm dezenas de peças porque ensinam uma
-//! LEI; esta ensina um CUSTO, e um custo de `50×` sobre dez peças não se vê. O número de peças é o
-//! sujeito, não o cenário.
+//! LEI; esta ensina um CUSTO, e o custo cresce com as peças. ⛔ O `50×` que aqui esteve era de
+//! 4,19 M partículas (doc 98), que o tecto por nó já não deixa num nó só.
 //!
 //! ## Porquê o `scale` e não o `move`
 //!
 //! O tamanho é a propriedade que se lê **sem referência**: uma peça maior vê-se sozinha, enquanto
-//! uma peça deslocada precisa de saber de onde partiu. Com 102 400 delas a respirar juntas, o fio
+//! uma peça deslocada precisa de saber de onde partiu. Com o pano inteiro a respirar junto, o fio
 //! está à vista em qualquer quadro parado.
 
 use crate::motion_demo_legend::Caption;
@@ -27,18 +29,11 @@ use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::NodeId;
 
-/// ⛔⛔⛔ **O lado do pano DESCEU de `320` para `128` em 2026-09-22, por ordem do dono** (*«vamos
-/// efetivar o limite de 16 384»*): a grelha clampa o PRODUTO, logo um `320` escrito continuaria a
-/// entregar `16 384` e a cena diria `102 400` em toda a prosa dela. ⚠️ *Uma cena que anuncia uma
-/// população que ela não produz ensina o contrário do que acontece* (§5.0) — por isso ele é hoje
-/// **derivado** do tecto.
-///
-/// ⚠️ **E a cena perdeu o SUJEITO que a justificava**, como a `=126` da mesma ordem: as `102 400`
-/// peças eram o ponto (*«um custo de `50×` sobre dez peças não se vê»*), e a `16 384` a margem
-/// encolhe. *Ela não ficou errada — ficou a mostrar menos do que existia para mostrar.*
-///
-/// ⚠️ O lado de `320 × 320 = 102 400` era a mesma contagem das tabelas do doc 98, para que
-/// o que se vê aqui e o que lá está medido sejam o MESMO número de objectos.
+/// ⛔⛔⛔ **O lado do pano é DERIVADO do tecto** (ordens do dono de 2026-09-22 e seguintes: hoje
+/// `181`, `32 761` peças): a grelha clampa o PRODUTO, logo um lado escrito à mão deixaria a cena a
+/// anunciar uma população que ela não produz — e a legenda, o anúncio e o tutorial estiveram a
+/// dizer `102 400` até 07/10 (doc 110 §14.2 (5)). *Uma cena que anuncia o que não produz ensina o
+/// contrário do que acontece* (§5.0): os três lêem daqui.
 const LADO: f32 = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
 /// O vão entre peças. ⚠️ Apertado de propósito: a `320` de lado, um vão folgado põe o pano fora do
 /// alcance do zoom e a cena ensinaria *«não aparece nada»*.
@@ -53,8 +48,20 @@ const AMPLITUDE: f32 = 0.6;
 pub(super) fn captions() -> Vec<Caption> {
     vec![Caption::new(
         [0.0, -2.6],
-        "102 400 pecas, UM fio: o Value LFO manda no tamanho de todas",
+        format!(
+            "{} pecas, UM fio: o Value LFO manda no tamanho de todas",
+            pecas()
+        ),
     )]
+}
+
+/// Quantas peças o pano tem, com o separador de milhares que o dono lê (`32 761`).
+pub(super) fn pecas() -> String {
+    let n = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA * ph2d_nodegraph::node::LADO_MAX_DE_GRELHA;
+    match n {
+        0..1000 => n.to_string(),
+        _ => format!("{} {:03}", n / 1000, n % 1000),
+    }
 }
 
 /// Monta a cena. Devolve o sink.

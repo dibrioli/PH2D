@@ -694,3 +694,37 @@ fn the_probability_reaches_the_siblings_of_a_burst() {
         "metade das irmãs: {half} de {whole} = {frac:.3}"
     );
 }
+
+/// **Com o pulso ligado, a TAXA vive na metade de baixo — no dispositivo também** (doc 110 §14.1
+/// (7)). A paridade nunca o vê: só se nota depois de `2²³` nascimentos. ⇒ a lei, dos dois lados:
+/// o WGSL de cada variante embrulha no período DELA, e a janela também.
+#[test]
+fn the_two_rate_spans_are_the_eval_s_spans() {
+    use ph2d_nodegraph::gpu::ID_WRAP;
+    assert!(kernel::GPU_KERNEL.wgsl.contains("% 16777216u"));
+    assert!(!kernel::GPU_KERNEL.wgsl.contains("% 8388608u"));
+    assert!(kernel::GPU_KERNEL_COM_PULSO.wgsl.contains("% 8388608u"));
+    assert!(!kernel::GPU_KERNEL_COM_PULSO.wgsl.contains("% 16777216u"));
+    assert_eq!(ID_WRAP, 16_777_216);
+    assert_eq!(PULSE_ID_BASE, 8_388_608);
+    // Uma ordinal entre os dois períodos: as duas janelas começam em sítios DIFERENTES.
+    let (rate, t, dt) = (4_000_000.0_f64, 2.2_f64, 1.0 / FPS);
+    let raw = born_in(rate, t, dt);
+    assert!(raw.start > PULSE_ID_BASE && raw.end < ID_WRAP);
+    let param = |name: &str| match name {
+        "rate" => rate as f32,
+        "probability" => 1.0,
+        _ => 0.0,
+    };
+    let ctx = ph2d_nodegraph::gpu::CountLawCtx {
+        inputs: &[6, 3],
+        param: &param,
+        playhead: t,
+        dt,
+    };
+    let base = kernel::GPU_KERNEL.count_law.expect("lei")(&ctx);
+    let pulso = kernel::GPU_KERNEL_COM_PULSO.count_law.expect("lei")(&ctx);
+    assert_eq!(base.first, raw.start % ID_WRAP);
+    assert_eq!(pulso.first, raw.start % PULSE_ID_BASE);
+    assert_ne!(base.first, pulso.first);
+}

@@ -236,3 +236,25 @@ fn the_fireworks_are_born_on_the_device_as_on_the_cpu() {
     let (pulso, _) = paridade("fogos", fogos, 120);
     assert!(pulso > 0, "fixtura: ninguém nasceu de uma morte em 2 s");
 }
+
+/// ⭐ **Um pulso MAIS LONGO que o modelo só dispara nas linhas do modelo** — o `pulse_born` da CPU
+/// varre `0..n` do MODELO. O metrónomo corre sobre 20 linhas e o modelo tem 6: as 14 de cima
+/// disparam e não podem dar à luz (é a cláusula `i < cp_tpl_n` do predicado).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_pulse_longer_than_the_template_fires_only_its_rows() {
+    let (pulso, _) = paridade(
+        "pulso longo",
+        |g| {
+            let (sp, bt) = metronomo(g, 2.0, 1.0, 0.0);
+            let tpl = g.add_node("motion.grid");
+            g.set_param(tpl, "rows", 2.0);
+            g.set_param(tpl, "cols", 3.0);
+            g.disconnect(sp, 0).expect("o modelo estava ligado");
+            fio(g, (tpl, 0), (sp, 0), false);
+            (sp, bt)
+        },
+        90,
+    );
+    assert!(pulso > 0, "fixtura: nasceram {pulso} do pulso");
+}

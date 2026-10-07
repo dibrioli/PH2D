@@ -218,26 +218,29 @@ pub(super) fn pilha() {
 /// é só um pano a respirar.
 pub(super) fn fio() {
     eprintln!(
-        "[cena 116] UM NUMERO QUE MANDA EM TUDO. Um pano de 102 400 pecas, e UM fio: o
+        "[cena 116] UM NUMERO QUE MANDA EM TUDO. Um pano de {pecas} pecas, e UM fio: o
   cartao `LFO` manda no tamanho de todas elas.
 
   1. Carregue em PLAY. O pano inteiro RESPIRA -- as pecas crescem e encolhem juntas.
   2. Olhe o terminal de onde abriu o app, ABAIXO deste texto. Ha' uma linha colada a`
      margem esquerda que comeca por `[motion-route]`, e ela tem de acabar em
-     `device: o plano inteiro`. E' essa linha que diz que as 102 400 pecas estao a ser
+     `device: o plano inteiro`. E' essa linha que diz que as {pecas} pecas estao a ser
      feitas pela PLACA GRAFICA.
      (i) As linhas que aparecem AQUI DENTRO, recuadas, sao este texto a citar -- a de
          verdade e' a que esta' encostada a` margem, mais abaixo.
   3. Feche o app e abra OUTRA VEZ com o interruptor desta mudanca desligado (o comando
      esta' no relatorio). A cena e' a MESMA -- o mesmo pano, o mesmo fio.
-  4. Compare: a linha colada a` margem passa a comecar por `[motion-route] CPU:` e o
-     pano fica pesado -- a respiracao engasga em vez de ser lisa.
+  4. Compare: a linha colada a` margem passa a comecar por `[motion-route] CPU:`. O
+     pano respira IGUAL -- a diferenca nao se ve a olho neste tamanho.
      (i) Era isto que acontecia ANTES desta mudanca, em toda cena com um fio de valor:
-         a ligacao sozinha mandava o trabalho inteiro para o processador.
+         a ligacao sozinha mandava o trabalho inteiro para o processador. Medido: 2,6
+         vezes mais caro aqui (0,13 contra 0,05 milesimos de segundo por quadro), e o
+         custo cresce com o numero de pecas.
 
   DEU ERRADO se: o pano nao respirar; se o terminal nao disser NADA em nenhuma das duas
-  corridas (o registo de rota nao esta' ligado -- confira a variavel); se as duas corridas
-  disserem a MESMA coisa; ou se a cena com o interruptor LIGADO for a lenta."
+  corridas (o registo de rota nao esta' ligado -- confira a variavel); ou se as duas
+  corridas disserem a MESMA coisa.",
+        pecas = super::fio_demo::pecas()
     );
 }
 

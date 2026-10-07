@@ -2424,3 +2424,89 @@ como escolher o número.
   por abrir, com o oráculo (Godot conta o CENTRO no polígono da região).
 - **A procura ponderada** fica no que é: a dominância no tecto, o resto é o A* deste desenho. Metade do tempo
   pediria OUTRO desenho (outra procura), não outra alavanca.
+
+## §28 — W19 (aberta em 2026-10-07): os achados da auditoria de duas lentes, num ciclo (CLAUDE.md §0.10)
+
+**Ordem do dono (07/10):** *«corrigir tudo num ciclo»*, depois da auditoria (correção + costura de UI) pedida
+sobre o sistema da navegação. A costura do painel saiu COMPLETA (os `19` campos das quatro secções nos 7
+sítios; a sequência «pare o relógio, mude o `Cost`, solte» chega ao mundo da ponte —
+`fase_inspector_commits.rs:323`, sem rebobinar). Os achados são de CORREÇÃO. As sondas que os mediram foram
+apagadas; os números estão em `target/prova/w18/auditoria_sonda_{wmin,a_vista}.txt`.
+
+**Contexto da W18 que a W19 herda** (commits `702819e48..a9fbdac97`): a lei do recuo das áreas — *o custo de
+uma posição é o MAIOR debaixo do corpo*: uma área mais cara que o chão recua para FORA pelo raio, uma mais
+BARATA (`Cost < 1`) para DENTRO (`ph2d_navmesh::Area::dentro`, `inflate::erode`, a ponte põe
+`dentro: custo < 1.0`); o 5.º motivo de replaneio (`AgentRuntime::custos_do_caminho`); `ALCANCE_DO_CANTO`;
+as cenas `=5` (Low/High Cost Area) e `=6` (estrada barata em U, rio com ponte, canteiro proibido, a luz do
+guarda). O nome para o dono é **«área de custo»** (`Nav Cost Area`), nunca «lama».
+
+### §28.1 — H: o heurístico de TODA procura ponderada escala pelo MENOR custo do mundo
+
+**Medido:** `wmin` é o mínimo da TABELA inteira (`polyanya_fatias.rs:39` e `:156`, `link.rs:113`). Na cena
+grande da `medir_custo` (`100 × 100 m`, `1 000` caixas, `100` lamas a `4`, `60` consultas), UMA estrada de
+`2 × 2 m` a `0,3` num canto longe de todas: `24 176 → 85 744` nós por consulta (`3,5×`), `369 → 1 788 ms`
+(`4,8×`), o custo das respostas IGUAL. E a saída cedo da fase geral (`c0 ≤ wmin · comprimento`) deixa de
+disparar: toda consulta corre a ponderada. Existe desde a W7; a W18 tornou a área barata útil e o tutorial
+ensina-a.
+
+**O desenho (a escolher pela medida, com a prova de admissibilidade ESCRITA no doc-comment):** um heurístico
+que conta cada área mais barata que o chão pela DISTÂNCIA até ela — p.ex. `h(n) = min(|n t|,
+min_A [ d(n, A) + w_A · 0 + d(A, t) ] )` com os troços fora das áreas baratas ao custo mínimo de FORA delas
+(cuidado com várias áreas baratas: o limite tem de valer para qualquer caminho que passe por várias) — e a
+saída cedo pela mesma cota. Alternativas a medir no MESMO processo, se a primeira não cumprir.
+
+**Kill-criterion:** na sonda (reconstrua-a: a cena grande, as `60` consultas, com e sem a estrada longe) os nós
+com a estrada longe `≤ 1,1 ×` os sem ela; o custo de TODAS as respostas igual ao dígito ao de hoje (e contra o
+oráculo ponderado nas cenas `30 × 20` da `medir_custo`, a todos os pesos, com áreas BARATAS incluídas — a
+fixtura de hoje só tem caras); a procura em fatias = a inteira ao bit; os gates da dominância verdes.
+
+### §28.2 — V: o «alvo à vista» desliga-se em TODO o mundo com uma área barata em qualquer sítio
+
+**Medido:** `a_vista` (`agent.rs:575`) exige `q.costs.iter().all(|&c| c >= 1.0)` sobre a tabela inteira. Um
+perseguidor em campo aberto, o alvo à vista, uma estrada de `1,2 m` a `5 m` dali: o trabalho de procura
+`11 → 112` (`10×`). O gate `agent_tests.rs:377` FIXA o comportamento (a premissa da prova da W16 — *todo caminho
+custa pelo menos o que mede* — cai com custos `< 1`), e nenhum mede o preço dessa cautela.
+
+**O desenho:** a recta continua a resposta quando nenhuma área barata a pode encurtar — uma cota inferior do
+custo de qualquer caminho que entre numa área barata `A` (`≥` a recta ⇒ a recta vence), escrita e provada no
+doc-comment; a mesma família de cota que o §28.1 (uma lei, duas portas não: uma função só para as duas).
+
+**Kill-criterion:** um gate novo — a estrada longe (fora do caminho) mantém o atalho (o trabalho `≤ 1,1 ×` o sem
+ela); o gate `:377` (a área barata ENTRE os dois) continua a recusar a recta; e um gate cruzado: em `N` cenas
+aleatórias com áreas baratas e caras, sempre que `a_vista` diz SIM a procura ponderada devolve o MESMO custo
+(o oráculo é a procura, não a função sob teste).
+
+### §28.3 — Q: uma área barata mais estreita que o corpo não faz nada, e o painel cala-se
+
+**Mecanismo:** com a erosão (W18), uma área barata mais estreita que `2 r` some da malha daquele raio (uma
+estrada de `0,4 m` para um corpo de `0,25`). `CostAreaQueixa` (`nav_edits.rs:345`) só conhece `SemForma` e
+`CorpoQueAnda`. É um controlo morto *para aquele raio* (a mesma estrada serve um corpo pequeno e não um grande).
+
+**Kill-criterion:** uma queixa nova (a frase em `ph2d-i18n`, com os censos verdes) — *«mais estreita que o
+corpo de quem anda (raio X)»* — quando a erosão é vazia para o raio de ALGUM `NavAgent` do mundo, só em áreas
+com `Cost < 1` (uma cara estreita continua a valer); o teste da porta em `nav_edits_tests.rs` (com o CONTROLO:
+larga, nenhuma queixa) e o de costura em `ph2d-panel-inspector/tests/it/a_seccao_nav_custo_esta_viva.rs` (a
+frase PINTADA). Medir antes se a pergunta precisa do mundo (os raios dos agentes) e onde isso já existe.
+
+### §28.4 — D: textos que contradizem o código (o leitor é a próxima LLM)
+
+- `ph2d-physics-ecs/src/components/nav.rs:135` — *«a lama que atrasa»* (não atrasa) e *«recuada pelo raio de
+  cada agente como um obstáculo»* (uma barata recua para dentro).
+- `ph2d-physics-ecs/src/bridge/nav_custo.rs:6` — *«mexer nele não refaz malha nenhuma»* (refaz quando o custo
+  atravessa o `1`: `Area::dentro` vai na assinatura do mosaico, `tiles.rs:194`).
+- Este plano, §27.10 e §27.11, e o handoff `HANDOFF_INTEGRACAO_line_components_A_LAMA_2026-10-06.md` §3 — dão
+  a área barata como aberta e o exemplo 1 da `=6` como «Rough Ground»: escrever a cura (`Area::dentro`, a
+  medida: o gate `nav_custo::uma_area_mais_barata_anda_se_por_dentro` dá `0` tiques com a lei antiga e `129`
+  com a nova) e a cena real.
+- o `cargo fmt` reprova `ph2d-physics-ecs/tests/it/nav_custo.rs:368` (um `assert!` a partir).
+
+**Kill-criterion:** um `grep` pelas frases velhas devolve zero fora das tabelas históricas; o fmt limpo nos
+ficheiros da linha.
+
+### §28.5 — A prova (planeada)
+
+Gate batched 1× (`BASE=a46c4c200 nextest-impacted` + clippy `--workspace --all-targets -D warnings`); a
+mutação (o arnês `docs/Components/ferramentas/mutacao_navegacao_w18_2026-10-06.py` cresce com um grupo por item:
+o heurístico de volta ao global, a cota do «à vista» desligada, a queixa calada); o smoke do dono: as cenas
+`=5` e `=6` iguais na tela (fotografadas), e o painel a mostrar a queixa nova numa área estreita (passos
+numerados no handoff); o handoff de integração da W18 ATUALIZADO (a linha leva W15–W19), o §5 do CLAUDE.md.

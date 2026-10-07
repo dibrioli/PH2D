@@ -39,9 +39,11 @@ OS ABERTOS (a lista inteira — feche TODOS ou recuse cada um por medição, com
      `1` (um `Read` simples no dispositivo julga-o ausente; o `ReadBroadcast` existe por isso). ⇒ CENSO de todos os
      consumidores de valor (do registo, nunca uma lista à mão), cada um provado a difundir na CPU E na placa, e só
      então o comprimento muda. Barra: a costura `102 400 → 1`, a cena `=117` e os tutoriais ao bit.
- (5) O RELÓGIO do ciclo (doc 110 §11.5 e o §6: a sonda `probe_the_price_of_driving_one_param` está escrita «à espera
-     de máquina calma»). Hoje mede-se pelo método intercalado (CLAUDE.md §2), sem esperar calma: device × CPU no MESMO
-     processo — o §11.5 diz que isso pede um `GpuContext` no arnês, wave nomeada no §6; construa-a.
+ (5) O RELÓGIO do ciclo (doc 110 §11.5). ⛔ A sonda `probe_the_price_of_driving_one_param` foi APAGADA (doc 110 §6:
+     os dois lados dela corriam o cozedor da CPU — media outro programa e devolvia um `1,21×` plausível); não a
+     procure nem a ressuscite. O instrumento novo é device × CPU no MESMO processo, intercalado, o mínimo (CLAUDE.md
+     §2), pela porta do produto — e o §6/§11.5 dizem que isso pede um `GpuContext` no arnês, a wave nomeada; construa-a,
+     com um controlo que prove que a metade «device» corre MESMO na placa (o registo de rota da cena `=116`).
  (6) O gate `#[ignore]` de paridade que vive a um ULP da barra (doc 110 §6, «Um VERMELHO pré-existente»): meça com o
      autor da barra ao lado (o histórico do ficheiro) e decida a barra pelo vale dos dois lados, ou cure a causa.
  (7) Confira o §8.6 («o que isto ainda NÃO compra»): os `pulse.*` no dispositivo e os consumidores deles — o

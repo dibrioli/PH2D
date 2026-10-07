@@ -17,6 +17,23 @@ as saídas como fixtures. Só API pública: `exportToSvg`, `exportToBlob`, `rest
 | `esbuild` | 0.28.2 | MIT |
 | Chromium do Playwright | build 1243 | BSD-3 (Chromium) |
 
+As dependências do `roughjs` que o crate `ph2d-board-rough` PORTA (W4, triadas pelo `LICENSE` de cada
+artefacto em 2026-10-07; os textos estão em `crates/ph2d-board-rough/LICENSE-THIRD-PARTY.md`):
+`hachure-fill` 0.5.2 · `points-on-curve` 0.2.0 (a de dentro do `roughjs`) · `points-on-path` 0.2.1 ·
+`path-data-parser` 0.1.0 — todas MIT.
+
+### As portas (W4): `corre_portas.mjs`, sem navegador
+
+```bash
+node docs/MiroClone/ferramentas/excalidraw_oracle/corre_portas.mjs \
+  docs/MiroClone/ferramentas/excalidraw_oracle/entradas/portas.json docs/MiroClone/ferramentas/excalidraw_oracle/saidas
+```
+
+Corre o `roughjs` (o `generator` do bundle CJS) e o `perfect-freehand` directamente no Node sobre as
+entradas de `portas.json` e grava `saidas/portas_rough.json` (os `sets` de cada caso, com a MESMA
+semente que o lado Rust usa) e `saidas/portas_freehand.json` (passo 1 `getStrokePoints`, passo 2
+`getStrokeOutlinePoints`). Gate: `ph2d-board-rough::oracle_tests` (29 + 11 casos, tolerância 1e-9).
+
 Fontes servidas pela página: as do `dist/prod/fonts` do pacote (Excalifont/Virgil OFL-1.1; as outras
 **não triadas** — não embarcar nenhuma sem triar).
 

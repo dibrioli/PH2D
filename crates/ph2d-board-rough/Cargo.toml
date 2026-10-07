@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-board-rough"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O traço à mão (porta do rough.js 4.6.4 + hachure-fill 0.5.2 + points-on-curve/points-on-path/
+# path-data-parser, MIT) e o contorno do desenho livre (porta do perfect-freehand 1.2.0, MIT) do
+# Quadro. Pura: só `f64`, sem dependências — quem desenha converte as ops para `BezPath`.
+[dependencies]
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

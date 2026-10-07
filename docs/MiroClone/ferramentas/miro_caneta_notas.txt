@@ -1,0 +1,102 @@
+MIRO — caneta, borracha, laser, estilo à mão, atalhos. Notas brutas.
+Data da colheita: 2026-10-07
+Pasta de trabalho (fontes brutas): scratchpad/miro/ (arts.json = 652 artigos en-us; *.html = páginas comunidade/miro.com)
+
+COMANDOS USADOS
+- NOTA: o endpoint com locale no caminho da busca DEVOLVE 404 hoje:
+    curl -sL "https://help.miro.com/api/v2/help_center/en-us/articles/search.json?query=pen"  -> 404 RecordNotFound
+  Funcionam:
+    curl -sL "https://help.miro.com/api/v2/help_center/articles/search.json?query=<termos>"           (busca, sem locale no caminho)
+    curl -sL "https://help.miro.com/api/v2/help_center/en-us/articles.json?per_page=100&page=<1..7>"  (lista TODOS os 652 artigos en-us, com body)
+  Método: baixei os 652 artigos e fiz grep local no body (pen, highlighter, eraser, laser, pressure, smooth, stroke,
+  sketch, hand-drawn, pointer, Engage, Bring everyone...). help.miro.com/hc/... (HTML) dá 403 Cloudflare -> só a API.
+- Comunidade / miro.com: curl -sL -A "Mozilla/5.0" <url>  (+ WebSearch para achar as URLs)
+- Excalidraw: curl -sL https://raw.githubusercontent.com/excalidraw/excalidraw/master/packages/excalidraw/components/HelpDialog.tsx | grep -n laser
+
+=====================================================================
+FONTE A — "Pen"  https://help.miro.com/hc/en-us/articles/360017730573-Pen  (id 360017730573, updated_at 2026-09-15)
+- "Available on: browser version, Desktop app, Tablet app"
+- "You can use any type of pen tools - Apple Pencil, Surface Pen, Samsung S Pen, etc. - on any type of device that is compatible with Miro."
+- "Click the Pen tool or press P on the keyboard to start using the tool. Use presets to easily switch from one color and thickness to another."
+- "Use Highlighter to annotate mockups and make meetings more engaging."
+- "Take advantage of smart drawing and easily create shapes, sticky notes, and connection lines."
+- "You can create up to three presets for pen, highlighter, and smart drawing (three different presets per tool). Double click a preset to edit it by changing the color and thickness."
+- "To delete a drawing, choose Eraser under the smart drawing icon and swipe across the drawings while holding down the mouse button. Note that the eraser removes pen drawings only. You can also select drawings with the Select tool and erase them using the Delete key on your keyboard."
+- "If you need to erase part of a drawing, you can use the Precision eraser tool. Just select the tool, then click and hold while going over the part of the drawing you want to erase."
+- "Lasso tool is super helpful for selecting and moving hand-drawn or any other objects on the board."
+- "To stop using the pen, eraser, or lasso tool, simply switch to any other tool or to the select tool on the toolbar."
+- FAQ: "Does Miro support converting handwriting to text? No, this isn't yet available. However, ... the option to convert handwriting to text is supported on certain iPad models with Apple Pencil and Scribble."
+- FAQ: "Can I adjust the transparency of the highlighter? This isn't currently possible."
+- FAQ: "How do I draw a straight line? You can use a connection line or create a straight line in the smart drawing mode."
+- FAQ: "Can I delete a pen preset? No, but you can easily change the color and thickness of it."
+- (vídeo embutido: https://www.youtube.com/embed/1do19MJmzSI — "enhanced stylus support"; não transcrito)
+
+FONTE B — "Smart drawing"  https://help.miro.com/hc/en-us/articles/360017572014-Smart-drawing  (updated_at 2026-09-08)
+- "The smart drawing mode automatically converts your pencil drawings into accurate shapes, sticky notes, and lines."
+- "Available on: browser, Desktop app, Tablet app, Mobile app"
+- "To start/stop using smart drawing choose the pen tool in the toolbar and switch to smart drawing. Start drawing without breaking the line, one stroke counts as one object. We recommend working at 100% zoom level."
+- "Check what objects are recognizable by double-clicking the smart drawing icon."
+- "Use presets to create objects of different color and thickness. You can create up to 3 presets and edit them whenever you need."
+- "To erase smart objects scribble over them. Make sure you cover at least 50% of the object otherwise it won't be erased."
+- "Please note that the default eraser works only with standard pen drawings, not with smart objects."
+- "To leave the smart drawing mode and switch to free drawing, choose pen or highlighter."
+
+FONTE C — "Shortcuts and hotkeys"  https://help.miro.com/hc/en-us/articles/360017731033-Shortcuts-and-hotkeys  (updated_at 2026-09-15)
+- "You can also open the shortcut list by pressing F1"
+- "You can use the 1-9 number keys to switch between tools on the toolbar, in their default order. You can't remap the numbered hotkeys."
+- Tools (Windows / Mac iguais): select tool/hand mode V / H · text T · sticky notes N · shapes S · rectangle R · oval O ·
+  connection line, arrow L · card D · pen P · eraser E · comment C · frame F · minimap M · Command palette Ctrl/Cmd+K ·
+  undo Ctrl/Cmd+Z · redo Ctrl/Cmd+Shift+Z · Show/hide comments Shift+C · toggle grid G · move canvas Space+drag ·
+  group Ctrl/Cmd+G · ungroup Ctrl/Cmd+Shift+G · delete Backspace/Delete · deselect/switch to cursor Esc
+- NÃO há K, highlighter, lasso, laser nem smart drawing na tabela.
+- "Single key shortcuts can be disabled to help with the use of assistive technologies."
+
+FONTE D — "Toolbars"  https://help.miro.com/hc/en-us/articles/360017730553-Toolbars
+- "All tools (except pen, eraser, lasso, and comments) are one-time. This means that once you use the tool, it will be switched back to Select."
+
+FONTE E — "Tablet app"  https://help.miro.com/hc/en-us/articles/360017731633-Tablet-app
+- "When you draw with a Stylus, it's automatically recognized as a pen. Simply use your fingers to select and move objects, and your Stylus when using pen tools. You can always change this behavior by toggling off Only draw with Stylus in Settings > Preferences."
+- "The full range of functionality for stylus (which includes standard touch-like events, drawing with the pen tool, and palm rejection) is supported on iPad used in combination with Apple Pencil and Android tablets used with Samsung S Pen."
+
+FONTE F — "Interactive displays"  https://help.miro.com/hc/en-us/articles/360017572794-Interactive-displays
+- "If you use an active Stylus when working in Miro, you are automatically switched to our Pen tool. This mode activates palm rejection and the ability to navigate with finger. To disable this mode (to start drawing with fingers), reload the board or stop using the digital pen for 10 minutes."
+- "By default, there will only be the most used tools: sticky notes, shapes, text, lines, pen, highlighter, and eraser."
+
+FONTE G — "Troubleshooting mobile and tablet device issues"  https://help.miro.com/hc/en-us/articles/360021113559
+- "Switching between pen and eraser by double-tapping is a native feature supported by 2nd generation of Apple Pencils, rather than something developed by Miro specifically."
+
+FONTE H — "Board performance and loading issues"  https://help.miro.com/hc/en-us/articles/360013588560
+- "Pen drawings (because those are vector graphics which are hard to render)"
+
+FONTE I — "Export Miro diagrams to Visio"  https://help.miro.com/hc/en-us/articles/37623598174354
+- "Freehand drawing — Exported with limitations — Freehand drawings look less smooth. Pen and marker strokes are redrawn as short straight lines."
+
+FONTE J — "Miro AI reference"  https://help.miro.com/hc/en-us/articles/20970362792210
+- "Smart drawings — Converts a pencil drawing into a line, shape, or sticky note. — Miro proprietary model"
+
+FONTE K — "Shapes"  https://help.miro.com/hc/en-us/articles/360017730713-Shapes
+- Opções de estilo listadas: "Border Style Thickness ... Opacity ... Corner Style Rounded Corners ... Border Color ... Shape Fill Color" — nenhuma opção "sketch"/"hand-drawn".
+
+FONTE L — "Attention management"  https://help.miro.com/hc/en-us/articles/360013358479
+- "The Bring everyone to me functionality allows you to easily direct all collaborators to the specific area of the board you want them to focus on. When you activate this feature, auto-following is enabled for all participants"
+FONTE M — "Interactive Presentation Mode"  https://help.miro.com/hc/en-us/articles/8512850754962
+- "Click to zoom: Spotlight content during your presentation. Simply click to zoom in on any frame."
+FONTE N — "Presentation mode"  https://help.miro.com/hc/en-us/articles/34307373858450
+- "Participant tools optionally provide ... Sticky note Shapes Text Pen Stickers Comments"
+
+LASER — help center: busca API "laser" = 0 resultados; grep nos 652 artigos en-us = 0 ocorrências de "laser".
+FONTE O (1.ª parte, MARKETING, não help) — https://miro.com/meetings-and-workshops/meeting-facilitation-best-practices/  ("Last updated: May 1, 2026")
+- "Laser Pointer: This lets a facilitator direct the group's attention to a specific area on a complex canvas without confusion. It's the digital equivalent of walking to a whiteboard and pointing"
+- "Features in Miro Engage, like the built-in Timer, Voting, Laser Pointer, and Private Mode, map directly onto established meeting facilitation best practices"
+  (sem atalho, sem duração do rasto, sem cor, sem visibilidade — e o artigo de help "Engage activities" (31128769674130) não menciona laser.)
+
+COMUNIDADE (3.ª fonte — opinião de utilizadores, NÃO documentação)
+- https://community.miro.com/ask-the-community-45/laser-pointer-13492 (27/05/2023, utilizador): "I believe there is no Laser pointer feature on Miro." ; moderador voluntário: "While there is no explicit laser pointer tool, ... if collaborator cursors are on, the participants could see exactly where the facilitator is…"
+- https://community.miro.com/ideas/laser-pointer-11720 — ideia em estado "Open"; Mironeer, 22/09/2024: "A laser pointer tool with a hotkey would definitely be a useful feature"
+- https://community.miro.com/ideas/a-drawing-tool-that-automatically-disappears-after-a-while-presentation-marker-221 — "Open", 87 votos; Mironeer 07/10/2024: "Our team is reviewing this, and it is open for votes"
+- https://community.miro.com/ideas/pen-adjust-stroke-thickness-by-pen-pressure-7583 — "Open"; "All lines end up having the same width. If Miro's pen support were to factor in the pencil's pressure, it'd look much better."
+- https://community.miro.com/ideas/different-styling-especially-sketch-or-sloppy-line-style-as-an-option-11993 — "Open", 41 votos; "Currently, using Caveat, it is possible to get a hand-drawn look-and-feel for text, but not for shapes and connectors."
+
+EXCALIDRAW (origem do K)
+- packages/excalidraw/components/HelpDialog.tsx:189  <Shortcut label={t("toolBar.laser")} shortcuts={[KEYS.K]} />
+  https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/HelpDialog.tsx

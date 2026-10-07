@@ -72,10 +72,10 @@ fn diag_a_ponta_do_vinco_converge() {
             (Some(4), None),
             (Some(8), None),
             (Some(16), None),
+            (None, Some(0.0125)),
+            (None, Some(0.025)),
             (None, Some(0.05)),
             (None, Some(0.1)),
-            (None, Some(0.2)),
-            (None, Some(0.4)),
         ] {
             let t0 = std::time::Instant::now();
             let d = desenho_tol(graus, div, tol);
@@ -124,9 +124,9 @@ fn diag_o_preco_da_malha_fina() {
     );
     let variantes: [(&str, Option<usize>, Option<f64>); 4] = [
         ("campo", Some(1), None),
-        ("tol 0,05", None, Some(0.05)),
+        ("tol 0,0125", None, Some(0.0125)),
+        ("tol 0,025", None, Some(0.025)),
         ("tol 0,1", None, Some(0.1)),
-        ("tol 0,2", None, Some(0.2)),
     ];
     let mut n = 0_u32;
     for (pa, pb) in [(110f32, 150f32), (160.0, 175.0), (0.0, 30.0)] {
@@ -250,13 +250,14 @@ fn diag_a_foto_do_vinco() {
 }
 
 /// ⭐⭐⭐ **GATE — a ponta do traço na ponta do VINCO converge** (A10): a lei fica a menos de `0,03`
-/// largura da malha fina de lado `16` em `150°…175°` (MEDIDO `≤ 0,019`), com as mesmas pontas.
-/// ⛔ **OS CONTROLOS:** a malha do campo (lado `1`) passa de `0,5` (MEDIDO `2,11` a `160°`) e o 1.º
-/// degrau sozinho (lado `2`) passa de `0,03` (MEDIDO `0,06` a `150°`) — sem o 2.º, uma lei que não
-/// refinasse além do 1.º degrau passava (mutação sobrevivente).
+/// largura da malha fina de lado `16` em `150°…175°` (MEDIDO `≤ 0,012` sob o meio-ângulo), com as
+/// mesmas pontas. ⛔ **OS CONTROLOS:** a malha do campo (lado `1`) passa de `0,25` (MEDIDO
+/// `0,33`–`0,37`; `2,11` sob o círculo), o 1.º degrau sozinho (lado `2`) passa de `0,03` (MEDIDO
+/// `0,06`–`0,12`) e a tolerância de antes (`0,1` largura) também (MEDIDO `0,032` a `150°`, `0,118`
+/// a `170°`): sob o meio-ângulo ela parava no lado `4`.
 #[test]
 fn a_ponta_do_vinco_converge_para_a_pele_exacta() {
-    let (mut pior_campo, mut pior_degrau) = (0.0_f64, 0.0_f64);
+    let (mut pior_campo, mut pior_degrau, mut pior_tol) = (0.0_f64, 0.0_f64, 0.0_f64);
     for graus in [150f32, 160.0, 170.0, 175.0] {
         let refe = pontas(&desenho(graus, Some(16)));
         let maior = |p: &[[f64; 2]]| {
@@ -279,13 +280,18 @@ fn a_ponta_do_vinco_converge_para_a_pele_exacta() {
         );
         pior_campo = pior_campo.max(maior(&pontas(&desenho(graus, Some(1)))));
         pior_degrau = pior_degrau.max(maior(&pontas(&desenho(graus, Some(2)))));
+        pior_tol = pior_tol.max(maior(&pontas(&desenho_tol(graus, None, Some(0.1)))));
     }
+    assert!(
+        pior_tol > 0.03,
+        "controlo morto: a tolerância de 0,1 largura já acertava ({pior_tol:.3})"
+    );
     assert!(
         pior_degrau > 0.03,
         "controlo morto: o 1.º degrau já acertava ({pior_degrau:.3})"
     );
     assert!(
-        pior_campo > 0.5,
+        pior_campo > 0.25,
         "controlo morto: a malha do campo já acertava ({pior_campo:.3})"
     );
 }

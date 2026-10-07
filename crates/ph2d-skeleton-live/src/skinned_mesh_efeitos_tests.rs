@@ -590,9 +590,12 @@ fn o_contorno_de_um_hatch_tambem_se_une_e_as_riscas_ficam() {
 ///
 /// O *Bloat* `+60` põe pontas que dão a volta dentro de um só segmento, e o bake (passo fixo,
 /// tangente de Catmull-Rom) saía em traços rectos de lado na ponta: `0,48` a `30°`, `0,92` a `60°`
-/// longe do ideal. Partidas as voltas em nós ([`crate::skin_desenho_voltas`]): `≤ 0,02`. ⚠️ A régua
-/// amostra o repouso JÁ partido — sobre os segmentos inteiros (que vão a `~3,6` da âncora) a
-/// polilinha de `12` amostras lia `0,025` em repouso, só de corda.
+/// longe do ideal. Partidas as voltas em nós ([`crate::skin_desenho_voltas`]): `≤ 0,02`.
+///
+/// ⚠️ A régua: o ideal DENSO (`192` por segmento do repouso já partido) e só onde ele existe
+/// ([`b_longe_do_ideal`]). A `12` por segmento as cordas dele cruzavam o buraco do domínio na ponta do
+/// *Bloat* (`(−5,0, 1,85)`, `2` amostras a `48`/seg): o desenho media-se contra uma corda, e o erro
+/// CRESCIA com a densidade do bake (`0,0324 → 0,0408` a `1×`/`4×`) — era a corda, não o desenho.
 #[test]
 fn um_bloat_positivo_forte_nao_solta_linhas_ao_dobrar() {
     let pilha = vec![FxEntry::new(PathEffect::Bloat(
@@ -602,16 +605,30 @@ fn um_bloat_positivo_forte_nao_solta_linhas_ao_dobrar() {
     caminho_mut(&mut p.scene, p.id).effects = pilha.clone();
     let repouso = crate::skin_desenho_voltas::parte_nas_voltas(repouso_com(&p, &pilha));
     let no_repouso = voltas(&repouso);
+    let skin = p
+        .sim
+        .world()
+        .get::<ph2d_skeleton_ecs::SkinBind>(p.alvo)
+        .expect("pele")
+        .clone();
+    let eixos =
+        crate::skin_live::eixos_do_bind(&p.sim, &skin, &crate::skin_live::bone_index(&p.sim));
+    let campo = ph2d_vec_skin::pesos::campo_do_caminho(&repouso, &eixos)
+        .expect("o solver responde sobre o contorno cozido");
     for graus in [0.0_f32, 30.0, 60.0, 90.0] {
         p.dobra_em_s(graus);
         let pele = p.pele();
-        let ouro = ouro_do_cozido(&p, &pele, &repouso);
+        let ouro: Vec<([f64; 2], bool)> = b_amostra_com(&repouso, 192)
+            .into_iter()
+            .map(|x| b_ouro_pt(&pele, &campo, &p.correcoes, x))
+            .collect();
         let d = crate::skin_live::recook_leis(&p.sim, &mut p.scene.clone(), so_o_bake())
             .remove(&p.id)
             .expect("desenho");
-        let (_, _, fora) = b_perfil(&b_amostra_com(&d, POR_SEG), &ouro);
+        let (fora, buracos) = b_longe_do_ideal(&b_amostra_com(&d, 48), &ouro);
         println!(
-            "  {graus:>4}°: o desenho afasta-se {fora:.4} do ideal · voltas {}",
+            "  {graus:>4}°: o desenho afasta-se {fora:.4} do ideal · {buracos} amostras do ideal \
+             fora do domínio · voltas {}",
             voltas(&d)
         );
         assert!(

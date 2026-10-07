@@ -617,3 +617,29 @@ pub(super) fn b_chao_com(
     }
     (poli, pior, por_seg_erro)
 }
+
+/// O afastamento do desenho ao ideal SÓ onde o ideal existe. `ouro` é o ideal amostrado denso com,
+/// por ponto, se ele está no DOMÍNIO do campo; uma amostra do desenho cujo ponto do ideal mais perto
+/// é um buraco do domínio (ou a beira dele) não é julgada — ali não há lei, e o ideal extrapola o
+/// vértice mais próximo enquanto o bake mistura as linhas dos nós. `(máx, buracos)`.
+pub(super) fn b_longe_do_ideal(desenho: &[[f64; 2]], ouro: &[([f64; 2], bool)]) -> (f64, usize) {
+    let n = ouro.len();
+    let ok = |i: usize| ouro[i % n].1;
+    let mut pior = 0.0_f64;
+    for q in desenho {
+        let (k, _) = ouro
+            .iter()
+            .enumerate()
+            .map(|(k, o)| (k, (o.0[0] - q[0]).hypot(o.0[1] - q[1])))
+            .fold((0, f64::MAX), |a, b| if b.1 < a.1 { b } else { a });
+        if !(ok(k) && ok(k + 1) && ok(k + n - 1)) {
+            continue;
+        }
+        let d = [k + n - 1, k]
+            .into_iter()
+            .map(|i| b_dist(*q, &[ouro[i % n].0, ouro[(i + 1) % n].0]))
+            .fold(f64::MAX, f64::min);
+        pior = pior.max(d);
+    }
+    (pior, ouro.iter().filter(|o| !o.1).count())
+}

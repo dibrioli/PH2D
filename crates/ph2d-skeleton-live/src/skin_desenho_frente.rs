@@ -34,7 +34,10 @@ thread_local! {
 }
 
 /// O desvio admitido entre a pele exacta e a malha fina, em larguras do traço (A10, fila §F60).
-const TOL_EM_LARGURAS: f64 = 0.1;
+/// `0,1 → 0,0125` com a lei do meio-ângulo (A13): a volta espalhada pela zona dos pesos deixa o meio
+/// de cada aresta perto da recta e a `0,1` a malha parava no lado `4` com a ponta do vinco a
+/// `0,032`–`0,118` larguras; a `0,0125`, `≤ 0,012`, por `+6 %`–`+16 %` do recorte (tabela no commit).
+const TOL_EM_LARGURAS: f64 = 0.0125;
 
 /// A malha do campo POSADA neste quadro, com a chave de cada triângulo e uma grelha por caixa.
 struct Posada<'a> {

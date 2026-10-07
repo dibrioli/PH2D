@@ -141,7 +141,7 @@ chave i18n nova.
 
 ## §5 — O smoke
 
-⏳ **Smoke do dono: por fazer** (a cena `=5`, fotografada antes: `target/prova/w18/foto/cena5_a_meio.png` — à
+⏳ **Smoke do dono:** a cena 5 aprovada (06/10, depois da cura do canto); as cenas 6 e 7 por fazer — (a cena `=5`, fotografada antes: `target/prova/w18/foto/cena5_a_meio.png` — à
 esquerda os três DENTRO da lama clara a subir a direito, à direita os três a contornar pela passagem;
 `cena5_fim.png` — os seis nas bandeiras, nenhum na lama escura). O roteiro é a página 10 do
 `03_navegacao.pdf`:
@@ -170,21 +170,21 @@ E a cena 7 (W19; fotografada: `target/prova/w19/foto/cena7_{a_meio,fim}.png`; a 
 3. O Inspector (a `Narrow Road` escolhida, `Nav Cost Area` aberta): em amarelo *«Narrower than the body that walks it (radius 0.25 m)…»*.
 4. Deu errado se o da esquerda corta a direito, o da direita vai à fina, ou o aviso não aparece.
 
-O binário compilado (a 2.ª corrida, colada), depois de `rm -rf target/*/incremental` (`3,6 G` do `debug`, `1,6 G`
-do `smoke`):
+O binário compilado no fecho da W19 (a 2.ª corrida, colada), depois de `rm -rf target/*/incremental` (`12 G` do
+`debug`, `2,7 G` do `smoke`):
 
 ```
 ▸ linha line_components · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.20s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
 ```
 
-O perfil do laço do agente (`bash scripts/agent-loop-profile.sh`), no fecho:
+O perfil do laço do agente (`bash scripts/agent-loop-profile.sh`), no fecho da W19:
 
 ```
-  ✗ paralelismo de ferramenta              1.09/passo   alvo: >= 1,5  (6% dos passos com 2+ chamadas)
-  ✓ respostas por sessao (mediana)                292   alvo: <= 800  (uma janela nova por onda de trabalho)
-  ✗ cargo test : cargo check                919 : 254   alvo: <= 1,0  razao 3.6x (baseline: 4,3x)
-  ✗ edicoes pela ferramenta Edit                  33%   alvo: >= 80%  (1724 por script; baseline: 48%)
-  ✗ contexto relido por passo (media)         445 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
-  ✓ contexto no inicio da sessao               62 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
+  ✗ paralelismo de ferramenta              1.11/passo   alvo: >= 1,5  (7% dos passos com 2+ chamadas)
+  ✓ respostas por sessao (mediana)                241   alvo: <= 800  (uma janela nova por onda de trabalho)
+  ✗ cargo test : cargo check                657 : 181   alvo: <= 1,0  razao 3.6x (baseline: 4,3x)
+  ✗ edicoes pela ferramenta Edit                  33%   alvo: >= 80%  (2254 por script; baseline: 48%)
+  ✗ contexto relido por passo (media)         505 mil   alvo: <= 250 mil  (set/2026: 606 mil — 82% do custo)
+  ✓ contexto no inicio da sessao               61 mil   alvo: <= 80 mil  (02/10: 380 mil, CLAUDE.md a 710 KB)
 ```

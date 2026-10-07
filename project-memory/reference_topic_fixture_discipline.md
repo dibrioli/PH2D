@@ -47,3 +47,5 @@ lados), a fixtura **varre** esse parâmetro — e o valor «natural» que vem à
 número a lei depende, e teste longe dele.*
 
 - ⛔⛔⛔ [Fixtura SIMÉTRICA aprova uma lei que não distingue nada — 4× numa wave; o sinal é o parâmetro não ter efeito](feedback_a_symmetric_fixture_approves_a_law_that_distinguishes_nothing.md)
+
+- ⛔⛔ [Fixture de BYTES de um formato antigo = o ficheiro que o build antigo GRAVOU, nunca uma lista copiada à mão (251 → 253 e 257)](feedback_a_byte_fixture_is_the_old_builds_file_never_a_hand_copy.md)

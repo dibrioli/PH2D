@@ -288,6 +288,18 @@ Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um bra
   célula**; pega que arruma uma selecção em grelha.
 - Texto com **negrito/itálico/cor por trecho** (o Excalidraw não tem — queixa dele).
 - **Dono vê:** encher o quadro de ideias depressa e arrumá-las.
+- **Estado em 2026-10-06 (W3, commits `770fda0d2..`):** ✅ a nota no idioma do MIRO, cada lei com a
+  fonte dele (`ferramentas/miro_api_notas.txt` + o handoff da W3): `N` e o botão Nota na barra curta,
+  com o painel (as **16 cores** da documentação do Miro, P/M/G, quadrada 199 / larga 350, a pilha, o
+  modo em massa); a última cor/tamanho valem para a próxima; **cresce para baixo** e volta à altura de
+  nascença; redimensionar mantém a proporção e leva a letra; **escrever com uma nota seleccionada
+  escreve nela** (no fim); `Tab`/`Ctrl+D` a escrever faz a seguinte à direita já a escrever; modo em
+  massa (uma ideia por linha → uma fila de notas, UM passo); a pilha (arrastar tira uma nota); `Ctrl+V`
+  de texto de FORA = uma nota por célula na grelha das células; a pega de quatro pontos arruma uma
+  selecção de notas em colunas. Texto com **negrito, itálico, sublinhado, riscado** por trecho
+  (`Ctrl+B/I/U`, `Ctrl+Shift+X`, e na barra) e **cor da letra por trecho nas FORMAS** (as notas do
+  Miro não a mudam). Formato do ficheiro 3 (o 2 lê-se). Smoke `PH2D_BOARD_SMOKE=4`. ⏳ smoke do dono;
+  ⚠️ P/G, o vão entre notas e a sombra **por medir** numa captura do Miro.
 
 ### W4 — Caneta e o botão «Rascunho ↔ Final»
 - Desenho livre com pressão da mesa digitalizadora; borracha; ponteiro laser (`K`).
@@ -368,7 +380,13 @@ trouxe (§5.0: cena que ensina o contrário é pior que nenhuma), fotografada an
 | ler o código do Excalidraw para portar o render | ⛔ §0.9 — corre-se. A porta do rough.js e do perfect-freehand é a **permissiva** (MIT, com aviso) e confere-se por passo contra o oráculo |
 | fontes do Excalidraw além da Excalifont/Virgil | ⚠️ não triadas — nenhuma embarca sem triagem |
 | rede na Etapa 1 | ⛔ decisão do dono (Etapa 2) |
-| texto rico: parley tem estilo por trecho? | ⚠️ a medir na W3 antes de desenhar |
+| texto rico: o `PlainEditor` do parley para editar texto com trechos | ⛔ **medido** (06/10): o parley MOLDA trechos (`RangedBuilder::push` por intervalo) e a `Selection`/`Cursor` servem qualquer moldado — mas o `PlainEditor` tem UM estilo para o texto todo: um trecho a negrito (mais largo) punha o cursor fora das letras. ⇒ editor próprio (`ph2d-board-layout::TextEdit`) sobre a `Selection` do parley, com os passos de apagar dele (Apache-2.0/MIT) |
+| itálico pela face da fonte | ⛔ **medido** (06/10): a Inter da casa é variável só no PESO (o negrito é o eixo `wght` 700, coordenadas no desenho); itálico não tem, e o parley devolve uma inclinação SINTÉTICA de 14° — o desenho aplica-a a cada glifo (`glyph_transform`). Gate `bold_is_a_real_weight_and_italic_a_skew` |
+| cor da letra numa NOTA | ⛔ o Miro não deixa (help «Fonts»: *«The text color can't be changed on sticky notes»*): a barra de uma nota não a oferece; a de uma FORMA sim, por trecho |
+| a letra da nota a ENCOLHER para caber (o *Auto font size* do Miro) | ⛔ decisão 2 do dono: a nota cresce para baixo (o FigJam) e volta à altura de nascença quando o texto sai |
+| escrever numa nota seleccionada SUBSTITUI o texto | ⛔ por escolha (o help do Miro diz «select it and start typing» sem dizer qual): escrever ACRESCENTA no fim — uma tecla nunca apaga uma ideia. A confirmar no smoke do dono |
+| copiar à mão os 251 bytes de um ficheiro do formato antigo para o teste | ⛔ medido (06/10): duas cópias saíram com 253 e 257 números e o teste «passava» a ler lixo. A fixture é o FICHEIRO gravado pelo build antigo (fontes de `d8a331ec3` compiladas à parte), lido por `include_bytes!` |
+| os tamanhos P/G, o vão entre notas e a sombra | ⚠️ por medir: o Miro não os publica (o M = 199 e a larga = 350 são da documentação dele). Uma captura do dono com as três lado a lado, duas notas feitas com `Tab` e uma nota sobre fundo branco fecha-os pela régua de `ferramentas/` |
 | a região de obstáculos de uma rota SEM tecto (a lei do vectorial) | ⛔ medido (06/10): num quadro denso cada seta via o quadro INTEIRO (1 000/1 000, 10 000/10 000). Morreu com o desvio (linha acima); fica a lição para quem o quiser de volta: precisa de tecto |
 | o `0.5001` do `fixedPoint` (e o `105.009` da rota) do oráculo | ⛔ desempate dele, não lei: o nosso meio de lado é `0.5` exacto (gate com tolerância 0,01) |
 | a ponta `arrow` com a abertura do Excalidraw (~20°) | ⛔ fica a do catálogo de pontas do vectorial (26,6°): uma lei de pontas para o app; o TAMANHO é o medido (`HEAD_SCALE`) |

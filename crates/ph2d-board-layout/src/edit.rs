@@ -171,7 +171,7 @@ impl TextEdit {
         let start = if word {
             focus.previous_logical_word(&self.layout).index()
         } else {
-            let Some(cluster) = focus.logical_clusters(&self.layout)[0].clone() else {
+            let Some(cluster) = focus.logical_clusters(&self.layout)[0] else {
                 return;
             };
             let r = cluster.text_range();

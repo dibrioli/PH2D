@@ -87,7 +87,7 @@ pub(super) fn board_with((n, mix): (usize, Mix)) -> BoardSet {
                 Shape {
                     kind,
                     style,
-                    text: format!("ideia {i}"),
+                    text: format!("ideia {i}").into(),
                 }
             }
         };

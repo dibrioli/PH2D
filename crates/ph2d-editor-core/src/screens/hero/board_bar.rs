@@ -387,22 +387,8 @@ pub fn paint(
         }
     }
     if notes::flyout_open(tool) {
-        let grid = flyout_rects(area);
-        paint_panel(scene, &grid, theme);
-        for (it, r) in grid {
-            let on = matches!(it, Item::Tool(t) if t == tool)
-                || notes::is_current(it, None, &now).unwrap_or(false);
-            paint_item(
-                scene,
-                text_system,
-                theme,
-                &mut hero.hit_index,
-                &hero.store,
-                it,
-                r,
-                on,
-            );
-        }
+        let (hit, store) = (&mut hero.hit_index, &hero.store);
+        notes::paint_flyout(scene, text_system, theme, hit, store, area, tool, &now);
     }
     let (Some(mut sel), Some(style), Some(what)) = (sel_box, sel_style, what) else {
         return;

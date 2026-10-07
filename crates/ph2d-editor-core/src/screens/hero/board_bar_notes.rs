@@ -16,6 +16,16 @@ use ph2d_vector::{Color, VectorScene};
 const MARKS: [Mark; 4] = [Mark::Bold, Mark::Italic, Mark::Underline, Mark::Strike];
 /// Colunas do painel da ferramenta Nota (as 16 cores em 4 × 4).
 const FLYOUT_COLS: usize = 4;
+/// As proporções dos ÍCONES daqui, em fracções do miolo do botão — o desenho do glifo, não
+/// espaçamento da interface.
+const ICON_SHAPE_H: f32 = 0.6; // LITERAL-PX-OK: altura do glifo quadrada/larga
+const ICON_LINE_STEP: f32 = 0.25; // LITERAL-PX-OK: três linhas a ¼, ½ e ¾ do miolo
+const ICON_UNDERLINE_Y: f32 = 0.92; // LITERAL-PX-OK: o traço do «U» encostado ao fundo
+const ICON_MARK_X: [f32; 2] = [0.25, 0.75]; // LITERAL-PX-OK: o traço do «U»/«S» na metade do meio
+const ICON_SWATCH_BAR: f32 = 0.15; // LITERAL-PX-OK: a barra de cor debaixo do «A»
+const ICON_NOTE_SIDE: [f32; 2] = [0.9, 0.75]; // LITERAL-PX-OK: a nota, e a de cima da pilha
+const ICON_STACK_STEP: f32 = 0.15; // LITERAL-PX-OK: quanto cada folha da pilha espreita
+const ICON_FOLD: f32 = 0.3; // LITERAL-PX-OK: a ponta dobrada da nota
 
 /// O painel da ferramenta Nota, na ordem da grelha.
 pub(super) fn flyout_items() -> Vec<Item> {
@@ -66,6 +76,27 @@ pub fn flyout_rects(area: Rect) -> Vec<(Item, Rect)> {
     place(all[colors..sizes].to_vec(), &mut out);
     place(all[sizes..].to_vec(), &mut out);
     out
+}
+
+/// Pinta o painel da ferramenta Nota (aberto): «actual» é o da PRÓXIMA nota.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_flyout(
+    scene: &mut VectorScene,
+    ts: &mut ph2d_text::TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit: &mut crate::interaction::HitIndex,
+    store: &crate::interaction::WidgetStore,
+    area: Rect,
+    tool: Tool,
+    now: &Now,
+) {
+    let grid = flyout_rects(area);
+    super::paint_panel(scene, &grid, theme);
+    for (it, r) in grid {
+        let on =
+            matches!(it, Item::Tool(t) if t == tool) || is_current(it, None, now).unwrap_or(false);
+        super::paint_item(scene, ts, theme, hit, store, it, r, on);
+    }
 }
 
 fn marks() -> Vec<Item> {
@@ -235,8 +266,9 @@ pub(super) fn paint_icon(
         }
         Item::NoteWide(wide) => {
             // A quadrada e a larga com a proporção do Miro (199 × 199 e 350 × 199).
-            let h = inner.h * 0.6;
-            let w = if wide { h * 350.0 / 199.0 } else { h }.min(inner.w);
+            let h = inner.h * ICON_SHAPE_H;
+            let aspect = (ph2d_board_model::STICKY_WIDE / ph2d_board_model::STICKY_SIDE) as f32;
+            let w = if wide { h * aspect } else { h }.min(inner.w);
             let b = Rect::new(
                 inner.x + (inner.w - w) / 2.0,
                 inner.y + (inner.h - h) / 2.0,
@@ -254,7 +286,7 @@ pub(super) fn paint_icon(
         Item::Bulk => {
             // Três ideias, uma por linha.
             for k in 0..3 {
-                let y = inner.y + inner.h * (0.25 + 0.25 * k as f32);
+                let y = inner.y + inner.h * ICON_LINE_STEP * (1 + k) as f32;
                 let mut p = ph2d_vector::BezPath::new();
                 p.move_to((f64::from(inner.x), f64::from(y)));
                 p.line_to((f64::from(inner.x + inner.w), f64::from(y)));
@@ -270,21 +302,23 @@ pub(super) fn paint_icon(
             };
             paint_text_centered(ts, scene, tr(key), r, TypeToken::Md.px(), fg);
             let y = match m {
-                Mark::Underline => Some(inner.y + inner.h * 0.92),
-                Mark::Strike => Some(inner.y + inner.h * 0.5),
+                Mark::Underline => Some(inner.y + inner.h * ICON_UNDERLINE_Y),
+                Mark::Strike => Some(inner.y + inner.h / 2.0),
                 _ => None,
             };
             if let Some(y) = y {
                 let mut p = ph2d_vector::BezPath::new();
-                p.move_to((f64::from(inner.x + inner.w * 0.25), f64::from(y)));
-                p.line_to((f64::from(inner.x + inner.w * 0.75), f64::from(y)));
+                let [a, b] = ICON_MARK_X.map(|f| f64::from(inner.x + inner.w * f));
+                p.move_to((a, f64::from(y)));
+                p.line_to((b, f64::from(y)));
                 super::stroke(scene, &p, fg, line, ph2d_board_model::Dash::Solid);
             }
         }
         Item::TextColor(c) => {
             let ink = c.map_or(fg, |i| doc_color(Rgba(HIGHLIGHTER_RGBA[i])));
             paint_text_centered(ts, scene, tr("board.text.a"), r, TypeToken::Md.px(), ink);
-            let bar = Rect::new(inner.x, inner.y + inner.h * 0.85, inner.w, inner.h * 0.15);
+            let bh = inner.h * ICON_SWATCH_BAR;
+            let bar = Rect::new(inner.x, inner.y + inner.h - bh, inner.w, bh);
             fill_rounded_rect(scene, bar, 0.0, ink);
         }
         _ => return false,
@@ -306,16 +340,16 @@ fn rect_path(r: Rect) -> ph2d_vector::BezPath {
 
 /// A nota: um quadrado com a ponta de baixo dobrada; a pilha, duas folhas por baixo dela.
 fn note_icon(scene: &mut VectorScene, r: Rect, c: Color, w: f64, stack: bool) {
-    let side = r.w.min(r.h) * if stack { 0.75 } else { 0.9 };
+    let side = r.w.min(r.h) * ICON_NOTE_SIDE[usize::from(stack)];
     let (x0, y0) = (r.x + (r.w - side) / 2.0, r.y + (r.h - side) / 2.0);
     if stack {
-        let d = side * 0.15;
+        let d = side * ICON_STACK_STEP;
         for k in [2.0, 1.0] {
             let b = Rect::new(x0 + d * k, y0 + d * k, side, side);
             super::stroke(scene, &rect_path(b), c, w, ph2d_board_model::Dash::Solid);
         }
     }
-    let fold = side * 0.3;
+    let fold = side * ICON_FOLD;
     let (x0, y0, x1, y1) = (
         f64::from(x0),
         f64::from(y0),

@@ -245,7 +245,12 @@ fn paint_note_under(scene: &mut VectorScene, el: &Element, shape: &Shape, t: Aff
     // LITERAL-COLOR-OK: a sombra é aspecto do DOCUMENTO (a mesma em qualquer tema, como a do Miro).
     let shadow = Color::from_rgba8(0, 0, 0, 56);
     let drop = side * NOTE_SHADOW_DROP;
-    let body = Rect::new(side * 0.02, drop, el.w - side * 0.02, el.h + reach + drop * 0.4);
+    let body = Rect::new(
+        side * 0.02,
+        drop,
+        el.w - side * 0.02,
+        el.h + reach + drop * 0.4,
+    );
     scene
         .inner_mut()
         .draw_blurred_rounded_rect(t, body, shadow, 0.0, side * NOTE_SHADOW_BLUR);
@@ -330,9 +335,14 @@ fn paint_connector(
     }
     let font_px = st.font_size * zoom;
     if !c.label.is_empty() && font_px >= GREEK_MIN_PX {
-        let layout = cache
-            .text
-            .get(ts, owner, &c.label, &[], st.font_size as f32, LABEL_WRAP as f32);
+        let layout = cache.text.get(
+            ts,
+            owner,
+            &c.label,
+            &[],
+            st.font_size as f32,
+            LABEL_WRAP as f32,
+        );
         let [ox, oy] = label_origin(r.mid, f64::from(layout.height()));
         let at = v * Affine::translate((ox, oy));
         let bars = ph2d_board_layout::line_bars(layout);

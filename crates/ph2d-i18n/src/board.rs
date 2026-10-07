@@ -125,7 +125,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.note.m3" => "up there",
         "board.smoke.note.m4" => "to the right",
         "board.smoke.note.m5" => "or to the left",
-        "board.smoke.note.m6" => "Ctrl+Z undoes it",
+        "board.smoke.note.m6" => "Ctrl+Z puts us back",
         _ => return None,
     })
 }

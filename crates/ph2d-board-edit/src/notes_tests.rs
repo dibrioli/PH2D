@@ -112,6 +112,13 @@ fn a_note_grows_down_with_its_text_and_shrinks_back_to_its_birth_height() {
     w.key(TextKey::SelectAll);
     w.key(TextKey::Backspace { word: false });
     assert_eq!(w.el(id).h, STICKY_SIDE, "volta à altura de nascença");
+    // E numa nota que JÁ cresceu numa edição anterior: a de nascença, não a de quando se abriu.
+    w.write(&"comprida ".repeat(40));
+    w.key(TextKey::Commit);
+    assert!(w.el(id).h > STICKY_SIDE * 1.5);
+    w.ed.begin_text(&mut w.doc, &mut w.ts, id, None);
+    w.key(TextKey::Backspace { word: false });
+    assert_eq!(w.el(id).h, STICKY_SIDE, "ficou presa à altura de quando se abriu");
 }
 
 #[test]

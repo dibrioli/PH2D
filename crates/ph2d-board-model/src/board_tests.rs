@@ -201,7 +201,7 @@ fn an_arrow_round_trips_through_the_bytes() {
     BoardOp::Put(arrow).apply(doc);
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(back, set);
-    assert_eq!(FORMAT_VERSION, 4);
+    assert_eq!(FORMAT_VERSION, 5);
 }
 
 /// A revisão da sessão muda a cada operação aplicada e nunca se repete entre documentos (a cache de
@@ -299,6 +299,71 @@ fn sketch_and_a_pen_stroke_round_trip_through_the_bytes() {
     );
     let id = doc.mint_id();
     BoardOp::Put(Element::new_ink(id, doc.z_on_top(), stroke, bx)).apply(doc);
+    let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert_eq!(back, set);
+}
+
+/// ⭐ Um ficheiro do formato 4 (W4) continua a abrir — gravado pelo build de `90856427c` (o último
+/// do formato 4): um quadro em rascunho com um rectângulo rodado à mão com texto a negrito, uma nota,
+/// uma seta curva presa aos dois com rótulo e ponto de ajuste, e um traço da caneta. Tudo nasce
+/// solto (sem frame nem grupo), destravado, sem link nem etiquetas. ⚠️ O traço tem de voltar TRAÇO:
+/// é o que a variante `Frame` posta antes de `Ink` no enum teria lido como frame.
+#[test]
+fn a_format_4_file_still_opens_and_everything_in_it_is_loose() {
+    let set = BoardSet::from_bytes(V4_BYTES).expect("o formato 4 lê-se");
+    let b = &set.boards()[0];
+    assert_eq!(b.name, "Mesa");
+    assert_eq!(b.camera.zoom, 0.75);
+    assert!(b.sketch);
+    let els = b.doc.live_in_z_order();
+    assert_eq!(els.len(), 4);
+    let r = els[0].shape().expect("forma");
+    assert_eq!(r.text.as_str(), "plano A");
+    assert!(r.style.sketch && r.style.round);
+    assert_eq!(els[0].angle, 0.125);
+    assert_eq!(els[1].shape().expect("nota").kind, ShapeType::Sticky);
+    assert_eq!(els[2].connector().expect("seta").label, "depois");
+    assert!(els[3].ink().is_some(), "o traço da caneta continua traço");
+    for e in &els {
+        assert!(e.frame.is_none() && e.groups.is_empty() && !e.locked);
+        assert!(e.link.is_none() && e.tags.is_empty());
+    }
+    let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
+    assert_eq!(back, set, "relido e regravado no formato actual, fica igual");
+}
+
+/// Gravados pelo build do formato 4 (`90856427c`, um teste temporário que escreveu `to_bytes`).
+const V4_BYTES: &[u8] = include_bytes!("../fixtures/format_v4.bin");
+
+/// Os campos de organizar (W5) gravam-se e lêem-se: um frame dentro de outro, um elemento num
+/// grupo de dois níveis, travado, com link e etiquetas.
+#[test]
+fn frames_groups_lock_link_and_tags_round_trip_through_the_bytes() {
+    let mut set = BoardSet::default();
+    let a = set.create("Org".into());
+    let doc = &mut set.get_mut(a).unwrap().doc;
+    let ink = Rgba([1, 2, 3, 255]);
+    let frame = |name: &str| crate::Frame {
+        name: name.into(),
+        style: Style::new(Some(Rgba([255, 255, 255, 255])), None, ink),
+    };
+    let outer = Element::new_frame(doc.mint_id(), doc.z_on_top(), frame("fora"), [0.0, 0.0, 500.0, 400.0]);
+    let mut inner = Element::new_frame(doc.mint_id(), doc.z_on_top(), frame("dentro"), [10.0, 10.0, 200.0, 200.0]);
+    inner.frame = Some(outer.id);
+    let shape = Shape {
+        kind: ShapeType::Sticky,
+        style: Style::new(Some(ink), None, ink),
+        text: RichText::default(),
+    };
+    let mut note = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [20.0, 20.0, 50.0, 50.0]);
+    note.frame = Some(inner.id);
+    note.groups = vec![doc.mint_group(), doc.mint_group()];
+    note.locked = true;
+    note.link = Some(outer.id);
+    note.tags = vec![crate::Tag { name: "urgente".into(), color: Rgba([200, 0, 0, 255]) }];
+    for e in [outer, inner, note] {
+        BoardOp::Put(e).apply(doc);
+    }
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
     assert_eq!(back, set);
 }

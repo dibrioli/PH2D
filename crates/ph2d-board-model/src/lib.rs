@@ -16,6 +16,7 @@ mod history;
 mod ink;
 mod legacy;
 mod ops;
+mod organize;
 mod rich;
 
 pub use board::{Board, BoardId, BoardSet, Camera, FORMAT_VERSION};
@@ -28,6 +29,7 @@ pub use frac::FracKey;
 pub use history::{History, MAX_STEPS};
 pub use ink::{Ink, Pen};
 pub use ops::{BoardOp, apply_batch};
+pub use organize::{Frame, GroupId, MAX_TAGS, Tag};
 pub use rich::{Mark, Marks, RichText, Span};
 
 /// Espessura do contorno de uma forma nova, em unidades do mundo: a MAIS FINA que o quadro oferece,

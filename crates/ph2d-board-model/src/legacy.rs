@@ -5,6 +5,7 @@
 //!   preenchimento, sem contorno nem texto, e ângulo zero.
 //! - 2 (W1–W2): o texto das formas era uma `String` — vira um [`RichText`] sem trechos.
 //! - 3 (W3): sem rascunho (`Style::sketch`, `Board::sketch`) nem traços da caneta — tudo final.
+//! - 4 (W4): sem os campos de organizar (`frame`, `groups`, `locked`, `link`, `tags`) — tudo solto.
 //!
 //! Do 1 ao 3 o elemento, o documento e o quadro têm a mesma forma a menos do que o elemento É:
 //! [`Old`] é genérico nisso.
@@ -176,37 +177,68 @@ fn read_old<E: for<'de> Deserialize<'de>>(
             id: b.id,
             name: b.name,
             camera: b.camera,
-            doc: BoardDoc {
-                elements: b
-                    .doc
-                    .elements
-                    .into_iter()
-                    .map(|(id, e)| (id, element(e)))
-                    .collect(),
-                next_id: b.doc.next_id,
-                top_z: b.doc.top_z,
-                rev: Default::default(),
-            },
+            doc: doc_old(b.doc, &element),
             sketch: false,
         })
         .collect();
     Ok(BoardSet::from_parts(boards, old.next_id))
 }
 
-fn element_old<K: Into<ElementKind>>(e: ElementOld<K>) -> Element {
-    Element {
-        id: e.id,
-        kind: e.kind.into(),
-        x: e.x,
-        y: e.y,
-        w: e.w,
-        h: e.h,
-        angle: e.angle,
-        z: e.z,
-        version: e.version,
-        nonce: e.nonce,
-        deleted: e.deleted,
+fn doc_old<E>(d: DocOld<E>, element: &impl Fn(E) -> Element) -> BoardDoc {
+    BoardDoc {
+        elements: d
+            .elements
+            .into_iter()
+            .map(|(id, e)| (id, element(e)))
+            .collect(),
+        next_id: d.next_id,
+        top_z: d.top_z,
+        rev: Default::default(),
     }
+}
+
+/// O quadro do formato 4: já com o rascunho (`sketch`).
+#[derive(Deserialize)]
+struct BoardV4 {
+    id: BoardId,
+    name: String,
+    camera: Camera,
+    doc: DocOld<ElementOld<ElementKind>>,
+    sketch: bool,
+}
+
+#[derive(Deserialize)]
+struct SetV4 {
+    _version: u32,
+    boards: Vec<BoardV4>,
+    next_id: u64,
+}
+
+/// Os bytes de um `BoardSet` no formato 4 (W4), já no formato actual: o elemento era o de hoje sem
+/// os campos de organizar (W5) — tudo nasce solto, sem grupo, destravado, sem link nem etiquetas.
+/// ⚠️ O `ElementKind` lê-se com o enum ACTUAL: o `Frame` entrou no FIM, e os índices 0..=2 do
+/// formato 4 continuam a ser `Shape`, `Connector`, `Ink`.
+pub(crate) fn read_v4(bytes: &[u8]) -> Result<BoardSet, String> {
+    let old: SetV4 = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
+    let boards = old
+        .boards
+        .into_iter()
+        .map(|b| Board {
+            id: b.id,
+            name: b.name,
+            camera: b.camera,
+            doc: doc_old(b.doc, &element_old),
+            sketch: b.sketch,
+        })
+        .collect();
+    Ok(BoardSet::from_parts(boards, old.next_id))
+}
+
+fn element_old<K: Into<ElementKind>>(e: ElementOld<K>) -> Element {
+    let mut el = Element::bare(e.id, e.z, e.kind.into(), [e.x, e.y, e.w, e.h]);
+    el.angle = e.angle;
+    (el.version, el.nonce, el.deleted) = (e.version, e.nonce, e.deleted);
+    el
 }
 
 /// Os bytes de um `BoardSet` no formato 3, já no formato actual.
@@ -247,21 +279,12 @@ fn element_v1(e: ElementV1) -> Element {
     let KindV1::Rect { fill } = e.kind;
     // O formato 1 não tinha texto: a tinta e o tamanho são os de nascença do quadro.
     let style = Style::new(Some(fill), None, Rgba(crate::DEFAULT_INK));
-    Element {
-        id: e.id,
-        kind: ElementKind::Shape(Shape {
-            kind: ShapeType::Rectangle,
-            style,
-            text: RichText::default(),
-        }),
-        x: e.x,
-        y: e.y,
-        w: e.w,
-        h: e.h,
-        angle: 0.0,
-        z: e.z,
-        version: e.version,
-        nonce: e.nonce,
-        deleted: e.deleted,
-    }
+    let shape = Shape {
+        kind: ShapeType::Rectangle,
+        style,
+        text: RichText::default(),
+    };
+    let mut el = Element::bare(e.id, e.z, ElementKind::Shape(shape), [e.x, e.y, e.w, e.h]);
+    (el.version, el.nonce, el.deleted) = (e.version, e.nonce, e.deleted);
+    el
 }

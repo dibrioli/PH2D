@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Connector, End, FracKey, Ink, RichText};
+use crate::{Connector, End, Frame, FracKey, GroupId, Ink, RichText, Tag};
 
 /// Identidade de um elemento dentro do seu quadro. Nunca reusada (as lápides guardam-na).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -59,6 +59,8 @@ pub enum ElementKind {
     Connector(Box<Connector>),
     /// Um traço da caneta ou do marcador (W4): os pontos vivem na caixa `x, y, w, h`.
     Ink(Box<Ink>),
+    /// Um frame (W5): leva os filhos, tem nome e cor, fica atrás dos objectos.
+    Frame(Frame),
 }
 
 /// Uma forma do quadro: o contorno, o estilo e o texto que vive DENTRO dela (centrado, com quebra).
@@ -196,6 +198,16 @@ pub struct Element {
     pub angle: f64,
     /// Ordem em z.
     pub z: FracKey,
+    /// W5 — o frame mais interior que o contém (`None` = solto no quadro). Ver `organize.rs`.
+    pub frame: Option<ElementId>,
+    /// W5 — os grupos a que pertence, do de DENTRO ao de FORA (o `groupIds` do Excalidraw).
+    pub groups: Vec<GroupId>,
+    /// W5 — travado: não se move, não se edita, não se apaga; fora do laço e do `Ctrl+A`.
+    pub locked: bool,
+    /// W5 — o elemento para onde este leva (o «Link to» do Miro: um só por elemento).
+    pub link: Option<ElementId>,
+    /// W5 — as etiquetas (só as notas as mostram; até [`crate::MAX_TAGS`]).
+    pub tags: Vec<Tag>,
     /// Sobe a cada mudança deste elemento.
     pub version: u64,
     /// Desempate entre duas mudanças com a mesma `version` (Etapa 2).
@@ -224,40 +236,44 @@ impl Style {
 }
 
 impl Element {
-    /// Uma forma nova, sem rotação, na caixa `[x, y, w, h]`.
-    #[must_use]
-    pub fn new_shape(id: ElementId, z: FracKey, shape: Shape, [x, y, w, h]: [f64; 4]) -> Self {
+    /// Um elemento de nascença: sem rotação, solto (sem frame, grupo, link nem etiquetas), destravado.
+    pub(crate) fn bare(id: ElementId, z: FracKey, kind: ElementKind, [x, y, w, h]: [f64; 4]) -> Self {
         Self {
             id,
-            kind: ElementKind::Shape(shape),
+            kind,
             x,
             y,
             w,
             h,
             angle: 0.0,
             z,
+            frame: None,
+            groups: Vec::new(),
+            locked: false,
+            link: None,
+            tags: Vec::new(),
             version: 0,
             nonce: 0,
             deleted: false,
         }
     }
 
+    /// Um frame novo na caixa `[x, y, w, h]` (um frame nunca roda).
+    #[must_use]
+    pub fn new_frame(id: ElementId, z: FracKey, frame: Frame, bx: [f64; 4]) -> Self {
+        Self::bare(id, z, ElementKind::Frame(frame), bx)
+    }
+
+    /// Uma forma nova, sem rotação, na caixa `[x, y, w, h]`.
+    #[must_use]
+    pub fn new_shape(id: ElementId, z: FracKey, shape: Shape, [x, y, w, h]: [f64; 4]) -> Self {
+        Self::bare(id, z, ElementKind::Shape(shape), [x, y, w, h])
+    }
+
     /// Um traço novo na caixa que [`Ink::from_world`] deu.
     #[must_use]
     pub fn new_ink(id: ElementId, z: FracKey, ink: Ink, [x, y, w, h]: [f64; 4]) -> Self {
-        Self {
-            id,
-            kind: ElementKind::Ink(Box::new(ink)),
-            x,
-            y,
-            w,
-            h,
-            angle: 0.0,
-            z,
-            version: 0,
-            nonce: 0,
-            deleted: false,
-        }
+        Self::bare(id, z, ElementKind::Ink(Box::new(ink)), [x, y, w, h])
     }
 
     /// O traço da caneta, se é um.
@@ -272,19 +288,7 @@ impl Element {
     /// Uma seta nova (a caixa fica a zero: a geometria é a rota derivada).
     #[must_use]
     pub fn new_connector(id: ElementId, z: FracKey, c: Connector) -> Self {
-        Self {
-            id,
-            kind: ElementKind::Connector(Box::new(c)),
-            x: 0.0,
-            y: 0.0,
-            w: 0.0,
-            h: 0.0,
-            angle: 0.0,
-            z,
-            version: 0,
-            nonce: 0,
-            deleted: false,
-        }
+        Self::bare(id, z, ElementKind::Connector(Box::new(c)), [0.0; 4])
     }
 
     /// ⭐ A **semente** do traço à mão deste elemento (W4): tirada do id (splitmix64), em
@@ -375,6 +379,7 @@ impl Element {
             ElementKind::Shape(s) => &s.style,
             ElementKind::Connector(c) => &c.style,
             ElementKind::Ink(i) => &i.style,
+            ElementKind::Frame(f) => &f.style,
         }
     }
 
@@ -383,6 +388,7 @@ impl Element {
             ElementKind::Shape(s) => &mut s.style,
             ElementKind::Connector(c) => &mut c.style,
             ElementKind::Ink(i) => &mut i.style,
+            ElementKind::Frame(f) => &mut f.style,
         }
     }
 
@@ -390,7 +396,7 @@ impl Element {
     /// presas seguem a forma.
     pub fn translate(&mut self, d: [f64; 2]) {
         match &mut self.kind {
-            ElementKind::Shape(_) | ElementKind::Ink(_) => {
+            ElementKind::Shape(_) | ElementKind::Ink(_) | ElementKind::Frame(_) => {
                 self.x += d[0];
                 self.y += d[1];
             }

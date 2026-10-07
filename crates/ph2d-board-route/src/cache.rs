@@ -39,6 +39,8 @@ struct Key {
     ends: [EndKey; 2],
     waypoints: Vec<[f64; 2]>,
     spread: f64,
+    /// As hastes debaixo das pontas de seta (dependem das pontas e da espessura).
+    stems: [f64; 2],
 }
 
 #[derive(Debug)]
@@ -164,6 +166,7 @@ impl RouteCache {
             ends: [end_key(&ends[0]), end_key(&ends[1])],
             waypoints: c.waypoints.clone(),
             spread,
+            stems: crate::stems(c),
         };
         let entry = match prev {
             Some(e) if e.key == key => e,
@@ -171,7 +174,7 @@ impl RouteCache {
                 self.rerouted += 1;
                 let sides = prev.map_or([None; 2], |e| e.routed.sides.map(Some));
                 let ends = [&ends[0], &ends[1]];
-                let routed = compute(ends, c.route, &c.waypoints, sides, spread);
+                let routed = compute(ends, c.route, &c.waypoints, sides, spread, key.stems);
                 Entry { key, routed }
             }
         };

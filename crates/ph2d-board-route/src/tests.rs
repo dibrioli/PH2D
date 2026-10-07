@@ -34,6 +34,13 @@ fn link(doc: &mut BoardDoc, a: End, b: End, route: Route) -> ElementId {
     id
 }
 
+/// Tira as pontas de seta (a curva pura, sem as hastes debaixo delas).
+fn bare(doc: &mut BoardDoc, id: ElementId) {
+    let mut el = doc.get(id).unwrap().clone();
+    el.connector_mut().unwrap().heads = [Head::None; 2];
+    BoardOp::Put(el).apply(doc);
+}
+
 fn moved(doc: &mut BoardDoc, id: ElementId, d: [f64; 2]) {
     let mut el = doc.get(id).unwrap().clone();
     el.translate(d);
@@ -279,6 +286,7 @@ fn the_curve_is_one_cubic_leaving_and_entering_perpendicular_with_half_the_gap()
     let right = shape(&mut doc, ShapeType::Rectangle, [714.0, 106.0, 442.0, 188.0]);
     let left = shape(&mut doc, ShapeType::Rectangle, [67.0, 250.0, 341.0, 206.0]);
     let id = link(&mut doc, center(right), center(left), Route::Curved);
+    bare(&mut doc, id);
     let mut cache = RouteCache::default();
     cache.sync(&doc);
     let r = cache.get(id).unwrap();
@@ -454,6 +462,7 @@ fn a_waypoint_arm_is_the_measured_fraction_of_each_leg() {
         Route::Curved,
         Style::new(None, Some(ink()), ink()),
     );
+    c.heads = [Head::None; 2];
     c.waypoints = vec![[200.0, 150.0]];
     let el = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
     let id = el.id;
@@ -468,5 +477,56 @@ fn a_waypoint_arm_is_the_measured_fraction_of_each_leg() {
     );
     assert!(
         (v.in_handle[0] - (200.0 - 100.0)).abs() < 1e-9 && (v.in_handle[1] - 150.0).abs() < 1e-9
+    );
+}
+
+/// ⭐ Debaixo de cada ponta de seta a curva acaba numa HASTE recta, perpendicular à forma, do
+/// comprimento da cabeça — por mais apertada que a curva chegue, o «V» fica direito (4.º smoke do
+/// dono, 06/10: uma curva que dobrava nos últimos píxeis virava o «V» de lado).
+#[test]
+fn under_a_head_the_curve_ends_in_a_straight_stem_and_the_head_is_straight() {
+    use ph2d_vector::{ParamCurve, Point};
+    let mut doc = BoardDoc::default();
+    let a = shape(&mut doc, ShapeType::Rectangle, [0.0, 0.0, 160.0, 100.0]);
+    let b = shape(&mut doc, ShapeType::Pill, [400.0, 0.0, 160.0, 100.0]);
+    let fixed = |t, uv| End::Bound {
+        target: t,
+        anchor: Anchor::Fixed(uv),
+    };
+    // Entra por BAIXO do «Later», vinda de um ponto à esquerda e mais acima: a curva tem de dobrar.
+    let mut c = Connector::new(
+        fixed(a, [0.5, 1.0]),
+        fixed(b, [0.5, 1.0]),
+        Route::Curved,
+        Style::new(None, Some(ink()), ink()),
+    );
+    c.waypoints = vec![[300.0, 130.0]];
+    let el = Element::new_connector(doc.mint_id(), doc.z_on_top(), c);
+    let id = el.id;
+    BoardOp::Put(el).apply(&mut doc);
+    let mut cache = RouteCache::default();
+    cache.sync(&doc);
+    let r = cache.get(id).unwrap();
+    let w = 2.0;
+    let stem = marker(Head::Triangle).inset(HEAD_SCALE) * w;
+    let v = &r.path.verts;
+    let (tip, before) = (v[v.len() - 1].anchor, v[v.len() - 2].anchor);
+    assert_eq!(tip, [480.0, 100.0]);
+    assert!(
+        (before[0] - 480.0).abs() < 1e-9 && (before[1] - (100.0 + stem)).abs() < 1e-9,
+        "a haste: {before:?}"
+    );
+    // O «V» é simétrico à volta do eixo vertical do bico.
+    let d = drawn(r, [Head::None, Head::Arrow], w);
+    let wings: Vec<Point> = d.heads[0]
+        .0
+        .segments()
+        .flat_map(|s| [s.start(), s.end()])
+        .filter(|p| (*p - Point::new(480.0, 100.0)).hypot() > 1.0)
+        .collect();
+    let (l, rr) = (wings.first().unwrap(), wings.last().unwrap());
+    assert!(
+        (l.y - rr.y).abs() < 1e-6 && ((l.x + rr.x) / 2.0 - 480.0).abs() < 1e-6,
+        "o V torto: {l:?} {rr:?}"
     );
 }

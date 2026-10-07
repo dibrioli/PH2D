@@ -109,6 +109,41 @@ impl Routed {
         Self::assemble(stations, verts, &breaks, sides)
     }
 
+    /// ⭐ **A curva com HASTE**: ela acaba a `stems[k]` da ponta `k` (sobre a saída, perpendicular à
+    /// forma) e dali segue RECTA até à ponta — a cabeça da seta assenta sempre direita sobre a haste,
+    /// por mais apertada que a curva chegue. ⛔ Sem haste, uma curva que dobra nos últimos píxeis
+    /// virava a cabeça de lado (4.º smoke do dono, 06/10: o «V» torto à entrada do «Later»).
+    fn curved_with_stems(stations: Vec<[f64; 2]>, sides: [Dir; 2], stems: [f64; 2]) -> Self {
+        let n = stations.len();
+        let d = sides.map(Dir::vec);
+        let fits = if n == 2 {
+            dist(stations[0], stations[1]) > stems[0] + stems[1]
+        } else {
+            dist(stations[0], stations[1]) > stems[0]
+                && dist(stations[n - 2], stations[n - 1]) > stems[1]
+        };
+        if !fits || stems == [0.0; 2] {
+            return Self::from_points(stations, Route::Curved, sides);
+        }
+        let mut inner = stations.clone();
+        let out = |p: [f64; 2], v: [f64; 2], s: f64| [p[0] + v[0] * s, p[1] + v[1] * s];
+        inner[0] = out(stations[0], d[0], stems[0]);
+        inner[n - 1] = out(stations[n - 1], d[1], stems[1]);
+        let mut verts = curve(&inner, d);
+        let mut breaks: Vec<usize> = (0..n).collect();
+        if stems[0] > 0.0 {
+            verts.insert(0, VecVertex::corner(stations[0]));
+            for b in breaks.iter_mut().skip(1) {
+                *b += 1;
+            }
+        }
+        if stems[1] > 0.0 {
+            verts.push(VecVertex::corner(stations[n - 1]));
+            breaks[n - 1] = verts.len() - 1;
+        }
+        Self::assemble(stations, verts, &breaks, sides)
+    }
+
     /// `verts` = o caminho; `breaks[k]` = o índice do vértice da estação `k`.
     fn assemble(
         stations: Vec<[f64; 2]>,
@@ -177,6 +212,18 @@ pub struct Drawn {
     pub line: BezPath,
     /// `(contorno, preenchida?)` — preenchida se pinta, senão traça.
     pub heads: Vec<(BezPath, bool)>,
+}
+
+/// O comprimento da HASTE recta debaixo de cada ponta de seta da seta `c` (ver
+/// `Routed::curved_with_stems`): o comprimento da cabeça (o recuo dela, e no mínimo o de um triângulo
+/// — o «V» não recua a linha mas tem o mesmo comprimento). Sem cabeça, sem haste.
+#[must_use]
+pub fn stems(c: &ph2d_board_model::Connector) -> [f64; 2] {
+    let depth = Marker::Triangle.inset(HEAD_SCALE);
+    c.heads.map(|h| match h {
+        Head::None => 0.0,
+        h => marker(h).inset(HEAD_SCALE).max(depth) * c.style.stroke_width,
+    })
 }
 
 /// O catálogo de pontas que desenha cada [`Head`].
@@ -416,6 +463,7 @@ pub(crate) fn compute(
     waypoints: &[[f64; 2]],
     prev: [Option<Dir>; 2],
     spread: f64,
+    stems: [f64; 2],
 ) -> Routed {
     let rk = match kind {
         Route::Straight => RouteKind::Straight,
@@ -429,8 +477,10 @@ pub(crate) fn compute(
     let mut stations = vec![p0];
     stations.extend_from_slice(waypoints);
     stations.push(p1);
-    if kind != Route::Elbow {
-        return Routed::from_points(stations, kind, [d0, d1]);
+    match kind {
+        Route::Curved => return Routed::curved_with_stems(stations, [d0, d1], stems),
+        Route::Straight => return Routed::from_points(stations, kind, [d0, d1]),
+        Route::Elbow => {}
     }
     // O cotovelo: cada trecho entre estações pelo roteador, com só as DUAS formas da seta por
     // obstáculo. Um ponto de ajuste é uma ponta solta no meio (sai rumo à estação seguinte).

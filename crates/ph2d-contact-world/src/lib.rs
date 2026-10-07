@@ -344,6 +344,7 @@ pub fn passo(
     realinha(m, &ids, &specs);
     let mut depois = Vec::new();
     let mut antes_do_passo: Vec<Option<Rotation>> = vec![None; n];
+    let mut w_antes = vec![0.0_f32; n];
     for i in 0..n {
         let Some(spec) = specs[i] else { continue };
         if pedido.dt[i] < dt && m.corpos[i].is_none() {
@@ -352,6 +353,9 @@ pub fn passo(
         }
         escreve(m, i, ids[i], &spec, estado, dt);
         antes_do_passo[i] = m.corpos[i].as_ref().map(|c| *m.bodies[c.corpo].rotation());
+        w_antes[i] = m.corpos[i]
+            .as_ref()
+            .map_or(0.0, |c| m.bodies[c.corpo].angvel());
     }
     // O índice das linhas por `id` — só o gancho do salto por peça o lê.
     let indice: BTreeMap<u32, usize> = if m.fixos.values().any(|f| f.varia) {
@@ -425,9 +429,13 @@ pub fn passo(
                     c.excessos = 0;
                 }
             } else if cap > 0.0 && c.spec.inercia_inv > 0.0 {
-                // O rolamento pára-a neste passo ⇒ fase PARADA (o giro que sobra é zero).
+                // O rolamento pára-a neste passo e ela não acelerou (ou mal se mexeu) ⇒ fase PARADA
+                // (o giro que sobra é zero) — ver [`rolar::QUASE`].
                 let b = &mut m.bodies[c.corpo];
-                if (b.angvel() / c.spec.inercia_inv).abs() <= cap {
+                let momento = (b.angvel() / c.spec.inercia_inv).abs();
+                if momento <= cap
+                    && (b.angvel().abs() <= w_antes[i].abs() || momento <= rolar::QUASE * cap)
+                {
                     c.presa = true;
                     b.set_angvel(0.0, false);
                 }

@@ -546,10 +546,10 @@ fn a_taca_da_medida_contem_a_grelha_de_partida() {
     }
 }
 
-/// ⭐⭐ **Uma pilha de DISCOS com `Rolling 0,25` ASSENTA** — a trava do rolamento destranca só ao 2.º
-/// excesso seguido (`ph2d-contact-world`, `EXCESSOS_PARA_SOLTAR`): ao 1.º ela alternava trancar e
-/// destrancar e a pilha parada girava `26,4°` na janela `420..480`; ao 2.º, `0,00` (doc 121 §9.20,
-/// a rodada das variantes da trava).
+/// ⭐⭐ **Uma pilha de DISCOS com `Rolling 0,25` ASSENTA** — a trava do rolamento destranca só depois
+/// de vários excessos seguidos (`ph2d-contact-world`, `EXCESSOS_PARA_SOLTAR`): ao 1.º ela alternava
+/// trancar e destrancar e a pilha parada girava `26,4°` na janela `420..480`; ao 2.º, `0,00` (doc
+/// 121 §9.20, a rodada das variantes da trava; o `12` de hoje, §9.23).
 #[test]
 fn a_pile_of_discs_with_rolling_settles() {
     let discos = [(ph2d_node_motion_shape::param::COLLIDER_SHAPE, 1.0)];
@@ -562,6 +562,26 @@ fn a_pile_of_discs_with_rolling_settles() {
     assert!(
         tarde <= 1.0,
         "a pilha de discos com Rolling 0,25 ainda gira {tarde:.2} graus na janela 420..480"
+    );
+}
+
+/// ⭐⭐ **A trava do `Rolling` não PISCA numa pilha de discos** (doc 121 §9.23) — os discos `Rolling
+/// 0,1` nas ONZE realizações: depois do `240` cada disco troca entre trancado e livre no máximo `8`
+/// vezes por segundo, e a queda (`120..180`) gira na mediana `≤ 21°`. A trava que destrancava ao 2.º
+/// excesso trocava `21` vezes por disco por segundo, uma queda girava `152°` e uma pilha assente
+/// desabava (`75°`); hoje `3,8` trocas e `5,6°` de mediana. ⚠️ A PIOR queda não é barra: um disco a
+/// rolar por um monte de `37°` (`41°`) é a física — `Rolling 0,1` só segura até `5,7°`.
+#[test]
+fn the_rolling_lock_does_not_flicker_in_a_pile_of_discs() {
+    let discos = [(ph2d_node_motion_shape::param::COLLIDER_SHAPE, 1.0)];
+    let (mediana, _, _, _, trocas) = super::discos_diag::rodada(0.1, &discos);
+    assert!(
+        trocas <= 8.0,
+        "discos Rolling 0,1 assentes: a trava troca {trocas:.1} vezes por disco por segundo"
+    );
+    assert!(
+        mediana <= 21.0,
+        "discos Rolling 0,1: a queda mediana gira {mediana:.1} graus em 120..180"
     );
 }
 

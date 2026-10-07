@@ -223,6 +223,15 @@ pub(super) fn build(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeI
         g.set_param(forma, param::COLLIDER_SHAPE, colisor_redondo);
         // ⭐ **O que a cena pergunta** — um número por quadrante, e mais nada muda.
         g.set_param(forma, param::FRICTION, q.atrito);
+        // Porta de MEDIÇÃO (doc 121 §9.23): `PH2D_RAMPA_ROLAR=<μr>` escreve o `Rolling` da bola que ROLA
+        // na rampa — o que o dono escreve à mão no cartão; a foto do smoke não clica.
+        if i == 1
+            && let Some(r) = std::env::var("PH2D_RAMPA_ROLAR")
+                .ok()
+                .and_then(|v| v.parse::<f32>().ok())
+        {
+            g.set_param(forma, param::ROLLING, r);
+        }
         g.set_param(forma, param::BOUNCE, q.salto);
         // ⚠️ **O TRACEJADO é o que torna a rotação visível** — ver o cabeçalho.
         g.set_param(forma, param::STROKE_WIDTH, RAIO * 0.28);

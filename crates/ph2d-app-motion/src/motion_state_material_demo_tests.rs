@@ -542,3 +542,36 @@ fn the_rolling_friction_locks_the_ball_on_the_ramp() {
         "e a diferença tem de ser à vista: {solta} contra {presa}"
     );
 }
+
+/// ⭐⭐ **Uma bola numa rampa MAIS inclinada que o `Rolling` dela ROLA** (doc 121 §9.23) — a rampa de
+/// `12°` (`tg = 0,213`) em `2` s, a distância contra a de `Rolling 0`, ao lado da teoria
+/// `(tg θ − μr) / tg θ`. A trava que voltava a trancar logo que o giro de um passo cabia na
+/// capacidade deixava-a a `0,019` com qualquer `Rolling` (`0,1` · `0,15` · `0,2`); medido com a lei de
+/// hoje: `0,556` · `0,241` · `0,103` (teoria `0,530` · `0,294` · `0,059`).
+#[test]
+fn a_ball_rolls_down_a_ramp_steeper_than_its_rolling() {
+    let desceu = |rolar: f32| {
+        let c = corre(2.0, |s, formas| {
+            s.doc.graph.set_param(formas[1], param::ROLLING, rolar);
+        });
+        let (a, b) = (c.inicio[1][0], c.fim[1][0]);
+        ((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt()
+    };
+    let solta = desceu(0.0);
+    let tan = 12.0_f32.to_radians().tan();
+    let mut antes = 1.0_f32;
+    for rolar in [0.1_f32, 0.15, 0.2] {
+        let razao = desceu(rolar) / solta;
+        let teoria = (tan - rolar) / tan;
+        eprintln!("  rampa │ Rolling {rolar}: {razao:.3} da solta (teoria {teoria:.3})");
+        assert!(
+            (razao - teoria).abs() <= 0.06,
+            "Rolling {rolar} abaixo de tg 12°: a bola tem de rolar {teoria:.3} da solta, e rolou {razao:.3}"
+        );
+        assert!(
+            razao < antes,
+            "mais Rolling, menos descida: {razao} depois de {antes}"
+        );
+        antes = razao;
+    }
+}

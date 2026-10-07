@@ -27,20 +27,52 @@
 //!
 //! Só a trava estática dá o repouso EXACTO, porque é a única que fica dentro do solver.
 
-/// **A trava destranca só ao 2.º excesso SEGUIDO** do binário pedido (doc 121 §9.20, a rodada das
-/// variantes, `1` sub-passo; o rodopio somado das três janelas `120..180 · 240..300 · 420..480`):
+/// **A trava destranca só ao 12.º excesso SEGUIDO** do binário pedido (`0,2` s a `60` Hz) — doc 121
+/// §9.23. Numa peça TRANCADA o binário que os contactos pedem é estaticamente indeterminado (vários
+/// apoios, o aquecimento do solver) e salta acima e abaixo da capacidade de passo para passo; ao 2.º
+/// excesso a pilha assente trocava `20`–`39` vezes por peça por segundo, rastejava, e uma queda em
+/// onze desabava. Rodada (a `=114`, `1` sub-passo, `11` realizações; queda = o rodopio de `120..180`,
+/// mediana · pior; assente = o pior rodopio e o pior deslize por janela depois do `240`):
 ///
-/// | regra | caixas `0,1` · `0,25` | discos `0,1` · `0,25` |
-/// |---|---|---|
-/// | destranca ao 1.º excesso | `3,7°` · `4,4°` | `69°` · `44°` |
-/// | **ao 2.º seguido** | **`3,2°` · `3,9°`** (tremor `0`) | `110°` · **`0°`** |
-/// | só tranca se os contactos não pedem giro | `5,9°` · `2,8°` | `320°` · `90°` |
-/// | espera `4` passos depois de destrancar | `2,7°` · `7,1°` | `273°` · `85°` |
+/// | soltar ao | discos `0,05` queda · assente | discos `0,1` queda · assente | caixas `0,1` assente (trocas/s) |
+/// |---|---|---|---|
+/// | sem o botão (`Rolling 0`) | `131` · `225` · `21°` | (o mesmo) | — |
+/// | 2.º (a de antes) | `225` · `295` · `117°` | `1,8` · **`152`** · `75°`/`0,18` u | `1,4°` (`35`) |
+/// | 3.º | `189` · `271` · `71°` | `1,0` · `1,2` · `1,7°` | `2,5°` (`24`) |
+/// | 8.º | `1,4` · `137` · `88°` | `0,4` · `0,4` · `0,5°` | `1,1°` (`9,5`) |
+/// | **12.º** | **`1,4` · `170` · `11°`** | **`0,3` · `0,3` · `0,4°`** | **`0,6°` (`6,6`)** |
 ///
-/// ⚠️ Os discos a `0,1` agitam na QUEDA em todas (`104°` na 1.ª janela contra `10,7` sem o botão) e
-/// assentam como sem ele nas outras (`3,1°` contra `2,4°`): leitura — um monte de discos com
-/// rolamento fica inclinado e desaba enquanto assenta; sem rolamento eles rolam logo ao fundo.
-pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 2;
+/// ⇒ só o `12` nunca gira mais que sem o botão (na queda e assente); a `0,15`/`0,25`/`0,75` os
+/// discos ficam a `0` com todos. ⚠️ O preço: uma peça cujo binário passa a capacidade de VERDADE
+/// começa a rolar `0,2` s depois. ⛔ Medidos e recusados na mesma rodada: a folga no limiar
+/// (`×1,25`, `×2`: discos `0,1` pior queda `153`/`138°`), o passo que solta com o binário CONTRA o
+/// pedido (queda `36°` de mediana) e o motor angular do rapier (o rolamento dentro do solver:
+/// `58°` de mediana e a pilha a rastejar, `28°`) — a tabela no doc.
+///
+/// A rodada de 06/10 (§9.21, ainda com a taça numa polilinha): ao 1.º excesso `69°`/`44°` (discos
+/// `0,1`/`0,25`), só trancar sem giro pedido `320°`/`90°`, esperar `4` passos `273°`/`85°`.
+pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 12;
+
+/// **E só TRANCA quem não acelerou no passo** (`|ω| ≤ |ω antes|`) — ou quem mal se mexeu (o momento
+/// `≤ QUASE ·` a capacidade). Trancar logo que o giro de um passo cabe na capacidade prendia uma bola
+/// numa rampa MAIS inclinada que o `Rolling` dela: ao soltar, o 1.º passo dá-lhe sempre um giro
+/// pequeno, e ela voltava a trancar — a de antes (ao 2.º e ao 12.º excesso) deixava-a a `2 %` da
+/// descida. A rampa da `=115` (`12°`, `2` s; a distância contra a de `Rolling 0`, teoria
+/// `(tg θ − μr) / tg θ`) e as pilhas (a tabela de cima, `11` realizações):
+///
+/// | trava | rampa `0,1` · `0,15` · `0,2` · `0,5` | discos `0,1` queda · assente | caixas `0,1` · `0,25` assente |
+/// |---|---|---|---|
+/// | (teoria) | `0,530` · `0,294` · `0,059` · `0` | — | — |
+/// | tranca com o momento `≤` capacidade | `0,019` · `0,019` · `0,019` · `0,018` | `0,3` · `0,3` · `0,4°` | `0,6°` · `0,5°` |
+/// | só quem não acelera | `0,556` · `0,241` · `0,103` · `0,019` | `35` · `80` · `32°` | `1,7°` · `3,4°` |
+/// | **e quem mal se mexeu (`25 %`)** | **`0,556` · `0,241` · `0,103` · `0,018`** | **`5,6` · `41` · `11,6°`** | **`0,9°` · `0,6°`** |
+/// | idem com `10 %` · `50 %` | igual · a `0,15` volta a prender | `6,3` · `16` · `47°` · `1,6` · `102` · `28°` | — |
+///
+/// ⇒ a pior queda dos discos `0,1` (`41°`) é um disco a ROLAR `0,10` u por um monte de `37°` (o
+/// caminho `1,2×` o giro vezes o raio, `0 %` de giro no lugar) — avalanche, a física: `Rolling 0,1`
+/// só segura até `5,7°`. ⛔ O passo que solta com o binário CONTRA o pedido volta a prender a bola a
+/// `0,15`/`0,2` (`0,026`).
+pub(crate) const QUASE: f32 = 0.25;
 
 use rapier2d::prelude::*;
 use std::collections::BTreeMap;

@@ -43,6 +43,8 @@ const ROWS: f32 = 5.0;
 
 /// Porta de MEDIÇÃO (doc 121 §9.18 D — a recusa do doc 115 expira aos milhares): `PH2D_PILHA_LADO=k`
 /// põe `k × k` peças em cada taça; `PH2D_PILHA_COLIDE=0` desliga o `Collide` (a MESMA cena pela placa).
+/// `PH2D_PILHA_DISCOS=1` e `PH2D_PILHA_ROLAR=<μr>` escrevem no cartão o que o dono escreve à mão
+/// (`Collider Shape = Circle`, `Rolling`) — a foto do smoke do doc 121 §9.23, que não clica.
 ///
 /// ⚠️ §9.19 (5): a TAÇA cresce com a pilha. Com o raio de `25` peças, `4 096` não cabiam (`198` u² de
 /// quadrados numa taça de `10`): nasciam todas sobrepostas, o contacto não assentava e o quadro media a
@@ -55,6 +57,9 @@ pub(super) struct Medida {
     vao: f32,
     /// Quanto dura cada queda — ver [`duracao_de`].
     duracao: f32,
+    /// O `Collider Shape = Circle` e o `Rolling` escritos no cartão (`false`/`None`: os de omissão).
+    discos: bool,
+    rolar: Option<f32>,
 }
 
 /// ⭐ **A queda dura o que a pilha leva a ASSENTAR** (report do dono, 06/10: *«a animação não dura o
@@ -86,7 +91,13 @@ fn medida() -> Medida {
         .and_then(|v| v.parse::<f32>().ok())
         .filter(|k| *k >= 1.0);
     let colide = !std::env::var("PH2D_PILHA_COLIDE").is_ok_and(|v| v == "0");
-    medida_de(lado, colide)
+    Medida {
+        discos: std::env::var("PH2D_PILHA_DISCOS").is_ok_and(|v| v == "1"),
+        rolar: std::env::var("PH2D_PILHA_ROLAR")
+            .ok()
+            .and_then(|v| v.parse::<f32>().ok()),
+        ..medida_de(lado, colide)
+    }
 }
 
 /// A medida de `lado × lado` peças por taça (`None`: a cena do smoke).
@@ -100,6 +111,8 @@ pub(super) fn medida_de(lado: Option<f32>, colide: bool) -> Medida {
         raio,
         vao: raio + (VAO - TACA_R),
         duracao: duracao_de(lado),
+        discos: false,
+        rolar: None,
     }
 }
 /// O meio-lado de cada quadrado (o `size` do `source.shape`: a geometria nasce em raio 1).
@@ -171,6 +184,7 @@ pub(super) fn build_com(
     let taca = super::sim_demo::indice_de(reg, "sim.collide", "shape", "Bowl")?;
     let quadrado = super::sim_demo::indice_de(reg, "source.shape", "kind", "Square")?;
     let em_laco = super::sim_demo::indice_de(reg, "sim.zone", "mode", "Loop")?;
+    let redondo = super::sim_demo::indice_de(reg, "source.shape", param::COLLIDER_SHAPE, "Circle")?;
 
     let (linhas, colunas, com_colisor) = (m.linhas, m.colunas, m.colide);
     let mut metade = |x: f32, colide: bool, y_linha: f32| -> Option<NodeId> {
@@ -182,6 +196,12 @@ pub(super) fn build_com(
         // ⭐ A pergunta inteira da cena — só nesta metade.
         if colide {
             g.set_param(forma, param::COLLIDE, 1.0);
+        }
+        if m.discos {
+            g.set_param(forma, param::COLLIDER_SHAPE, redondo);
+        }
+        if let Some(r) = m.rolar {
+            g.set_param(forma, param::ROLLING, r);
         }
 
         let grid = g.add_node("motion.grid");
@@ -360,3 +380,8 @@ mod salto_diag;
 #[cfg(test)]
 #[path = "motion_state_pilha_demo_giro_diag.rs"]
 mod giro_diag;
+
+/// As sondas dos DISCOS com `Rolling` baixo (doc 121 §9.23) — ver o cabeçalho delas.
+#[cfg(test)]
+#[path = "motion_state_pilha_demo_discos_diag.rs"]
+mod discos_diag;

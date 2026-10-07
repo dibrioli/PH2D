@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Prova de mutação da 5.ª e da 6.ª ondas do doc 121 (§9.20–§9.21): o contacto das formas do Motion pelo motor da casa.
+"""Prova de mutação da 5.ª à 8.ª ondas do doc 121 (§9.20–§9.23): o contacto das formas do Motion pelo motor da casa.
 
 Cada mutação tem de SANGRAR nas suites que ela nomeia:
   MUNDO  `ph2d-contact-world` (lib + tests/it)      (o mundo: renascer, recibo, ângulo, recém-nascidos, bytes)
   PASSO  `ph2d-node-sim-step --lib`                  (o passo: a declaração consumida, a velocidade, o rolamento)
   TACA   `ph2d-node-sim-collide --lib mundo_tests`   (o aperto de mão do `sim.collide`)
   RECUO  `ph2d-app-motion --lib recuo_tests`         (o recuo seguido de Play ao bit, as voltas do Loop)
-  RAMPA  `ph2d-app-motion --lib material_demo`       (a bola da `=115` trava na rampa)
+  RAMPA  `ph2d-app-motion --lib material_demo`       (a bola da `=115` trava na rampa, e rola abaixo de tg θ)
+  DISCOS `ph2d-app-motion --lib pile_of_discs`       (a pilha de discos assenta; a trava não pisca)
 
 Controlos: pré-voo (cada âncora casa o nº esperado de vezes) · corrida LIMPA verde de todas as suites com
 população > 0 · mutação que não compila é defeito do arnês · zero testes aborta. Restaura por cópia + touch (o cargo
@@ -30,7 +31,7 @@ SUITES = {
     "TACA": ["cargo", "test", "-p", "ph2d-node-sim-collide", "--lib", "mundo_tests"],
     "RECUO": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "recuo_tests"],
     "RAMPA": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "material_demo"],
-    "DISCOS": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "a_pile_of_discs_with_rolling_settles"],
+    "DISCOS": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "pile_of_discs"],
     "DURA": ["cargo", "test", "-p", "ph2d-app-motion", "--lib", "--release", "the_pile_stops_before_the_fall_restarts"],
 }
 
@@ -71,12 +72,20 @@ MUTS = [
         "        Some(m) => (m.atrito, m.salto, CoefficientCombineRule::Max),", 1)]),
     # A 6.ª onda (06/10, a continuação): a trava destranca ao 2.º excesso, e o mundo some sem colisor.
     ("m14 a trava destranca ao 1.o excesso", ["DISCOS"], [(ROLAR,
-        "pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 2;", "pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 1;", 1)]),
+        "pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 12;", "pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 1;", 1)]),
     ("m15 o mundo fica sem colisor", ["RECUO"], [(MUNDO,
         "        *mundo = None;\n        return None;\n", "        return None;\n", 1)]),
     # O report de 06/10 («a animação não dura o suficiente»): a queda dura o que a pilha leva a assentar.
     ("m16 a queda de 256 dura os 3 s do smoke", ["DURA"], [(PILHA,
         "        Some(k) if k >= 16.0 => 8.0,", "        Some(k) if k >= 16.0 => DURACAO,", 1)]),
+    # A 8.ª onda (§9.23): os discos com Rolling baixo — a trava solta ao 12.º excesso e só tranca quem não acelera.
+    ("m17 a trava solta ao 2.o excesso (a de antes)", ["DISCOS"], [(ROLAR,
+        "pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 12;", "pub(crate) const EXCESSOS_PARA_SOLTAR: u8 = 2;", 1)]),
+    ("m18 tranca mesmo a acelerar", ["RAMPA"], [(MUNDO,
+        "                    && (b.angvel().abs() <= w_antes[i].abs() || momento <= rolar::QUASE * cap)\n",
+        "", 1)]),
+    ("m19 so tranca quem nao acelera (sem o quase)", ["DISCOS"], [(ROLAR,
+        "pub(crate) const QUASE: f32 = 0.25;", "pub(crate) const QUASE: f32 = 0.0;", 1)]),
 ]
 
 

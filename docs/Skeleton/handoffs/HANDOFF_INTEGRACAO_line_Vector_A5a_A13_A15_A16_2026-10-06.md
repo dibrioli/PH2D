@@ -95,7 +95,7 @@
 - **Vector + Esqueleto** — motor vetorial nativo kurbo/Vello ([ADR-0108](docs/architecture/decisions/0108-vector-reposition-rive-referenced-native-editor-first.md)), crates `ph2d-app-vec`/`ph2d-app-skeleton`; o esqueleto é um objecto (Object·Edit·Pose); a pele mistura o MEIO ângulo. Smokes `PH2D_BUILD_SMOKE=<n>` · `PH2D_VEC_BONE_SMOKE=<n>`. Último: [handoff 07/10](docs/Skeleton/handoffs/HANDOFF_INTEGRACAO_line_Vector_A5a_A13_A15_A16_2026-10-06.md) · [docs](docs/Vector%20Module/README.md) · [BUGS](docs/Vector%20Module/BUGS_vector.md) · [história](docs/archive/estado-2026-10-02/vector.md)
 ```
 
-## 6. Smoke (o dono) — 3 e 4 ✅ aprovados; 1 e 2 a refazer depois da 2.ª onda
+## 6. Smoke (o dono) — ✅ APROVADO: 3 e 4 a 07/10; 1 e 2 refeitos depois da 2.ª onda, «SMoke OK» (07/10)
 
 Comando base: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && cargo run --profile smoke -p ph2d-host-desktop`
 (com as variáveis à frente).

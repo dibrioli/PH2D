@@ -66,7 +66,7 @@ diz onde ler o mecanismo:
 
 ---
 
-### F65 — ✅ **A5-a + A13 + A15 + A16, DUAS ONDAS (06–07/10): SEM COSTURA ENTRE MEMBROS · PELE DE MEIO ÂNGULO · AMOSTRAGEM UNIFORME ×2 · O ESQUELETO NA RAIZ · O OSSO ESCOLHIDO AO ENTRAR** (ordem do dono 06/10: *«com exceção de Flip, vamos corrigir todos os outros na mesma rodada de uma vez»*; 07/10: smoke 3 «OK», 4 «parece OK», e dois reports nos smokes 1 e 2) — `16abdf7cb`…`a96d73ee0` (base `0910f5315`) — handoff [`…_A5a_A13_A15_A16_2026-10-06.md`](handoffs/HANDOFF_INTEGRACAO_line_Vector_A5a_A13_A15_A16_2026-10-06.md)
+### F65 — ✅ **A5-a + A13 + A15 + A16, DUAS ONDAS (06–07/10): SEM COSTURA ENTRE MEMBROS · PELE DE MEIO ÂNGULO · AMOSTRAGEM UNIFORME ×2 · O ESQUELETO NA RAIZ · O OSSO ESCOLHIDO AO ENTRAR** (ordem do dono 06/10: *«com exceção de Flip, vamos corrigir todos os outros na mesma rodada de uma vez»*; 07/10: smoke 3 «OK», 4 «parece OK», e dois reports nos smokes 1 e 2; refeitos depois da 2.ª onda: ✅ smoke do dono APROVADO, «SMoke OK») — `16abdf7cb`…`a96d73ee0` (base `0910f5315`) — handoff [`…_A5a_A13_A15_A16_2026-10-06.md`](handoffs/HANDOFF_INTEGRACAO_line_Vector_A5a_A13_A15_A16_2026-10-06.md)
 
 > ⚠️ **2.ª ONDA (07/10) — o que a 1.ª onda construiu para A5-a e A13 foi SUBSTITUÍDO.** A lei do anel+ordem do A5-a e o refino `k = 2` do A13 aparecem abaixo marcados `⛔ SUBSTITUÍDO`: as medições ficam como história e recusas. **A15 e A16 ✅ aprovados pelo dono (07/10).** Bugs do dono com mecanismo: [`BUGS_vector.md`](<../Vector Module/BUGS_vector.md>) #36 e #37.
 

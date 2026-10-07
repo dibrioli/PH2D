@@ -2354,13 +2354,39 @@ Os tectos, medidos no mesmo processo (custo contra o de hoje igual ao bit em tod
 
 Gates novos: `a_leve_atravessa_se_a_pesada_contorna_se` · `com_o_cost_em_2_os_da_direita_cortam_pela_lama` ·
 `a_cena_tem_as_pecas_que_o_roteiro_nomeia` (com a secção que a shell abre) · `o_cenas_conta_os_niveis_do_roteador`
-· `mexer_no_custo_refaz_o_caminho_de_quem_anda`. Mutação **10 / 10**
+· `mexer_no_custo_refaz_o_caminho_de_quem_anda`. Mutação **11 / 11** (com o `K1` da §27.9b)
 ([`mutacao_navegacao_w18_2026-10-06.py`](ferramentas/mutacao_navegacao_w18_2026-10-06.py), o motor da W15):
 L1 a pesada a custar o mesmo · L2 a faixa sem a área · L3 o roteador sem a `5` · L4 a secção do agente aberta ·
 L5 `CENAS = 4` (sobreviveria sem o gate do roteador, escrito para ela) · L6 a lama desenhada maior que o corpo ·
 C1 sem o 5.º motivo · C2 o caminho instalado sem guardar os custos · C3/C4 a assinatura a zero. Gate batched:
 `nextest-impacted` `15 782 / 15 783` (a falha, o tutorial a marcar `Cost 2` como rótulo de tela, curada e
 re-corrida) · clippy limpo. As fotos: `target/prova/w18/foto/cena5_{a_meio,fim}.png`.
+
+### §27.9b — O report do dono (06/10): *«o runner R2 tem uma movimentação bizarra, entrando na quina da lama»*
+
+**O mecanismo** (traçado tique a tique): na passagem, entre o R1 que sobe atrás e o R3 à frente, o desvio
+empurra o R2 `4 cm` para dentro da margem da lama; ele replaneia, e o 1.º ponto do caminho novo é a SAÍDA da
+margem, a `4 cm` dele. Um canto alcançava-se só no passo do executor (Q5: `velocidade × dt` = `1,3 cm` a
+`0,8 m/s`) — o R2, empurrado `2–5 cm`, nunca acertava: `109` tiques a andar PARA LONGE do canto seguinte (de
+volta, contra o R1), e o desvio dos dois levou-o para a quina, o centro DENTRO da lama.
+
+**A cura:** `ph2d_nav::agent::ALCANCE_DO_CANTO` — um canto alcança-se também a `0,1` do raio do corpo (o
+irmão do `alcance_de_atalho` da W7, que é um raio). Medido na cena (`SONDA` no mesmo teste, a fracção a variar):
+
+| fracção | centro à lama pesada (mín, 3 corredores) | tiques a afastar-se do canto | chegada do R2 |
+|---|---|---|---|
+| `0` (antes) | `0,35 · 0,00 · 0,35` | `0 · 109 · 0` | `456` |
+| **`0,1`** | **`0,345 · 0,347 · 0,347`** | **`0`** | **`430`** |
+| `0,25` | `0,32 · 0,34 · 0,34` | `0` | `429` |
+| `0,5` | `0,27 · 0,32 · 0,30` (corta o canto) | `0` | `426` |
+
+Na cena de stress (`medir_replaneio`, `target/prova/w18/medir_replaneio_alcance.txt`) as colunas de trabalho, a
+`falta` e o `0` sem caminho ficam IGUAIS ao bit: lá o passo (`≥ 4 m/s`) já passa a fracção.
+
+⛔ **A régua que escondia o defeito:** o gate da cena descontava a quina do lado da passagem (*«contornar a
+quina não é atravessar»*, §27.4) — exactamente onde o dono viu o R2 entrar. Agora mede o CORPO (o centro nunca a
+menos de um raio da faixa, `2 cm` de folga), e um gate novo, `nenhum_corredor_volta_atras_para_um_canto`
+(todos os seis, `≤ 2` tiques a afastar-se do canto seguinte). Mutação `K1` (a fracção a `0`): sangra nos dois.
 
 ### §27.10 — ⏳ O que fica
 

@@ -104,5 +104,9 @@ fn o_cenas_conta_os_niveis_do_roteador() {
         assert_eq!(montar(sim.world_mut(), n).nivel, n, "o nível {n}");
     }
     let mut sim = SimWorld::new();
-    assert_eq!(montar(sim.world_mut(), CENAS + 1).nivel, 1, "há um nível depois de CENAS");
+    assert_eq!(
+        montar(sim.world_mut(), CENAS + 1).nivel,
+        1,
+        "há um nível depois de CENAS"
+    );
 }

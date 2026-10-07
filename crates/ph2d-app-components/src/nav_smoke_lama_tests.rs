@@ -44,7 +44,8 @@ fn corre(custos: Option<f32>) -> ([usize; 2], [usize; 2], [usize; 2]) {
     }
     let mut bridge = PhysicsBridge::new();
     let pistas = [(l.na_leve, -1.0), (l.na_pesada, 1.0)];
-    let (mut atravessou, mut pisou, mut chegou) = ([[false; 3]; 2], [[false; 3]; 2], [[false; 3]; 2]);
+    let (mut atravessou, mut pisou, mut chegou) =
+        ([[false; 3]; 2], [[false; 3]; 2], [[false; 3]; 2]);
     for t in 1..=900u64 {
         bridge.dispatch(&mut sim, true, t);
         for (k, (quem, lado)) in pistas.iter().enumerate() {
@@ -169,7 +170,11 @@ fn nenhum_corredor_volta_atras_para_um_canto() {
     let mut bridge = PhysicsBridge::new();
     let quem: Vec<Entity> = l.na_leve.iter().chain(&l.na_pesada).copied().collect();
     let pos = |sim: &SimWorld, e| {
-        let p = sim.world().get::<Transform>(e).expect("o corpo").translation;
+        let p = sim
+            .world()
+            .get::<Transform>(e)
+            .expect("o corpo")
+            .translation;
         [f64::from(p.x), f64::from(p.y)]
     };
     let mut antes: Vec<[f64; 2]> = quem.iter().map(|&e| pos(&sim, e)).collect();
@@ -188,5 +193,8 @@ fn nenhum_corredor_volta_atras_para_um_canto() {
             antes[i] = p;
         }
     }
-    assert!(afasta.iter().all(|&n| n <= 2), "tiques a afastar-se do canto seguinte: {afasta:?}");
+    assert!(
+        afasta.iter().all(|&n| n <= 2),
+        "tiques a afastar-se do canto seguinte: {afasta:?}"
+    );
 }

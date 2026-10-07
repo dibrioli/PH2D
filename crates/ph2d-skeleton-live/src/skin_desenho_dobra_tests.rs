@@ -182,15 +182,24 @@ fn diag_a_varredura_da_dobra() {
 fn diag_iso_margens() {
     let mut poses: Vec<(f32, f32)> = Vec::new();
     for a in [160_u16, 165, 170, 172, 174, 176, 178] {
-        poses.extend((0..=356_u16).step_by(6).map(|b| (f32::from(a), f32::from(b) - 178.0)));
+        poses.extend(
+            (0..=356_u16)
+                .step_by(6)
+                .map(|b| (f32::from(a), f32::from(b) - 178.0)),
+        );
     }
     let mut pior = (0.0, (0.0, 0.0));
     let mut acima = 0;
     for (p, s) in poses {
         let (sem0, com) = braco_em(p, s);
         let v = viragem_maxima(&com);
-        if v >= ph2d_vec_boolean::overlap::PAREDE_MINIMA && acima < 0 {
-            println!("   ({p},{s}): com {v:.1}° · o assado sem a união {:.1}° · nós {} → {}", viragem_maxima(&sem0), sem0.verts.len(), com.verts.len());
+        if v >= ph2d_vec_boolean::overlap::PAREDE_MINIMA && acima < 3 {
+            println!(
+                "   ({p},{s}): com {v:.1}° · o assado sem a união {:.1}° · nós {} → {}",
+                viragem_maxima(&sem0),
+                sem0.verts.len(),
+                com.verts.len()
+            );
         }
         acima += usize::from(v >= ph2d_vec_boolean::overlap::PAREDE_MINIMA);
         if v > pior.0 {
@@ -205,7 +214,10 @@ fn diag_iso_margens() {
     );
     let u = ph2d_vec_boolean::resolve_overlap(&sem).expect("toca");
     let g = ph2d_vec_boolean::gancho::desfaz_os_ganchos(u.verts.clone(), &[], solda);
-    let so_bola = VecPath { verts: ph2d_vec_boolean::bola::rola_a_bola(g, &[], raio, solda), ..u };
+    let so_bola = VecPath {
+        verts: ph2d_vec_boolean::bola::rola_a_bola(g, &[], raio, solda),
+        ..u
+    };
     println!(
         "MARGENS: parede {} · dentes: pior {:.1}° em {:?}, {} poses acima · cunha sem aparar {:.1}°",
         ph2d_vec_boolean::overlap::PAREDE_MINIMA,
@@ -215,3 +227,6 @@ fn diag_iso_margens() {
         viragem_maxima(&so_bola)
     );
 }
+
+#[path = "skin_desenho_dentes_sondas_tests.rs"]
+mod dentes;

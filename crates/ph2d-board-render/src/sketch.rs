@@ -47,13 +47,13 @@ impl SketchCache {
 }
 
 /// O valor guardado de `owner` se a chave é a mesma; senão refaz-se com `make`.
-fn cached<'a, V>(
-    map: &'a mut BTreeMap<(u64, u64), (u64, V, u64)>,
+fn cached<V>(
+    map: &mut BTreeMap<(u64, u64), (u64, V, u64)>,
     owner: (u64, u64),
     key: u64,
     frame: u64,
     make: impl FnOnce() -> V,
-) -> &'a V {
+) -> &V {
     use std::collections::btree_map::Entry;
     let e = match map.entry(owner) {
         Entry::Occupied(o) => {
@@ -164,6 +164,7 @@ fn rough_shape(el: &Element, kind: ShapeType, st: &Style, o: &Outline) -> Rough 
 }
 
 /// ⭐ Pinta uma forma em RASCUNHO (o preenchimento e o contorno; o texto é de quem chama).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_shape(
     scene: &mut VectorScene,
     cache: &mut SketchCache,

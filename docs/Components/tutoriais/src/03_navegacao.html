@@ -292,8 +292,8 @@ quer ver. Troque o número no fim do comando: <code>PH2D_NAV_SMOKE=1</code> a <c
 
 <h2>10 · A lama — <code class="ui">Nav Cost Area</code></h2>
 <p>Uma lama <b>não atrasa</b> quem passa por ela: diz ao inimigo <b>quanto vale cada metro ali</b> na hora de
-escolher o caminho. Com <code class="ui">Cost 2</code>, um metro de lama vale dois de chão; com
-<code class="ui">Cost 10</code>, vale dez. Ele faz a conta e escolhe: atravessar, ou dar a volta.</p>
+escolher o caminho. Com <code class="ui">Cost</code> <code>2</code>, um metro de lama vale dois de chão; com
+<code class="ui">Cost</code> <code>10</code>, vale dez. Ele faz a conta e escolhe: atravessar, ou dar a volta.</p>
 <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components &amp;&amp; env PH2D_NAV_SMOKE=5 cargo run -p ph2d-host-desktop --profile smoke</div>
 <svg viewBox="0 0 640 230" style="width:100%;margin:6px 0;background:#17161c;border-radius:8px">
   <g font-family="Inter,system-ui" font-size="11">
@@ -319,8 +319,8 @@ escolher o caminho. Com <code class="ui">Cost 2</code>, um metro de lama vale do
 </svg>
 <table>
   <tr><th>na tela</th><th>é</th></tr>
-  <tr><td>a faixa castanha <b>clara</b>, à esquerda</td><td>a <code class="ui">Light Mud</code>, com <code class="ui">Cost 2</code></td></tr>
-  <tr><td>a faixa castanha <b>escura</b>, à direita</td><td>a <code class="ui">Heavy Mud</code>, com <code class="ui">Cost 10</code> — as duas do mesmo tamanho</td></tr>
+  <tr><td>a faixa castanha <b>clara</b>, à esquerda</td><td>a <b>Light Mud</b>, com <code class="ui">Cost</code> <code>2</code></td></tr>
+  <tr><td>a faixa castanha <b>escura</b>, à direita</td><td>a <b>Heavy Mud</b>, com <code class="ui">Cost</code> <code>10</code> — as duas do mesmo tamanho</td></tr>
   <tr><td>os seis círculos vermelhos, em baixo</td><td>o MESMO inimigo, seis vezes; cada um anda para a sua bandeira</td></tr>
   <tr><td>os quadrados verdes</td><td>as bandeiras (o alvo de cada um)</td></tr>
   <tr><td>a linha azul de cada um</td><td>o caminho que ele escolheu</td></tr>

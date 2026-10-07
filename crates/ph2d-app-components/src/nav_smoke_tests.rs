@@ -93,3 +93,16 @@ fn a_cena_contem_o_fenomeno() {
         "o controlo em linha recta chegou ao herói — a cena não precisa de navegação"
     );
 }
+
+/// ⭐ **O `CENAS` é CONTADO do roteador** — cada nível que o [`montar`] serve devolve-se a si próprio, e
+/// o seguinte cai no `=1` (a `=3` monta pela `montar_cena`, com o contexto vectorial). Um `CENAS` a
+/// menos esconderia a última cena do censo do desenho e da família.
+#[test]
+fn o_cenas_conta_os_niveis_do_roteador() {
+    for n in (1..=CENAS).filter(|&n| n != 3) {
+        let mut sim = SimWorld::new();
+        assert_eq!(montar(sim.world_mut(), n).nivel, n, "o nível {n}");
+    }
+    let mut sim = SimWorld::new();
+    assert_eq!(montar(sim.world_mut(), CENAS + 1).nivel, 1, "há um nível depois de CENAS");
+}

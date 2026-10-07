@@ -46,9 +46,9 @@ use ph2d_navmesh::TiledMesh;
 use ph2d_physics::{BodyDesc, ShapeDesc};
 
 use super::PhysicsBridge;
-use fila::Vez;
 use crate::PlayerInput;
 use crate::components::{NavAgent, NavRegion, NavTarget, PlatformPlayer, TopDownPlayer};
+use fila::Vez;
 
 /// A resolução do raio na chave da malha: `1/256 m`.
 pub(super) const RAIO_POR_METRO: f32 = 256.0;

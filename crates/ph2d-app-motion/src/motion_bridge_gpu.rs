@@ -210,7 +210,7 @@ pub(crate) fn valores_dirigidos(
     // exactamente a lei de antes dela: sem valores, nenhum nó com fio é encenado
     // (`plan::DrivenParams`). É por isso que ele é uma bissecção honesta e não um segundo
     // caminho — *o caso vazio já era o produto.*
-    if std::env::var_os("PH2D_MOTION_DRIVEN_GPU").is_some_and(|v| v == "0") {
+    if !motion.driven_gpu {
         return fora;
     }
     if motion.doc.graph.all_param_sources().is_empty() {
@@ -218,12 +218,24 @@ pub(crate) fn valores_dirigidos(
     }
     // ⚠️ **Fotografados ANTES de cozer:** o `cook` toma o `motion` emprestado mutavelmente, e o
     // `all_param_sources` é uma leitura dele — os dois empréstimos não vivem juntos.
+    // ⭐ Os que a placa coze ficam de fora (doc 110 §14.1 (2)) — o plano encena-os; cozê-los
+    // aqui seria a volta pela CPU que a cura existe para tirar.
+    let na_placa = if motion.condutores_na_placa {
+        ph2d_gpu_cook::device_driven_params(&motion.doc.graph, &motion.registry, &motion.registry)
+    } else {
+        Default::default()
+    };
     let fios: Vec<FioDeParam> = motion
         .doc
         .graph
         .all_param_sources()
         .iter()
-        .map(|(n, m)| (*n, m.iter().map(|(p, s)| (p.clone(), *s)).collect()))
+        .map(|(n, m)| {
+            let fora_da_placa = m
+                .iter()
+                .filter(|(p, _)| !na_placa.contains(&(*n, (*p).clone())));
+            (*n, fora_da_placa.map(|(p, s)| (p.clone(), *s)).collect())
+        })
         .collect();
     for (node, params) in fios {
         for (param, (src, port)) in params {
@@ -255,12 +267,29 @@ pub(crate) fn valores_dirigidos(
 /// cujo fio de valor o dispositivo toma (medido em 07/10: `=116`, `=117`). As CHAVES dirigidas
 /// decidem quem é encenado; o instante vive aqui dentro, longe dos valores por tique do laço.
 pub(crate) fn plano_do_produto(motion: &mut MotionState, playhead: f64) -> ph2d_gpu_cook::GpuPlan {
+    let sinks = motion.sinks.clone();
+    plano_do_produto_para(motion, &sinks, playhead)
+}
+
+/// [`plano_do_produto`] para saídas à escolha — a porta dos gates e das sondas que montam uma
+/// cadeia com o sink deles. ⭐ Com os fios ligados é a porta dos CONDUTORES NA PLACA (doc 110
+/// §14.1 (2)): o `valores_dirigidos` já não coze o que a placa coze, e o plano encena-o.
+pub(crate) fn plano_do_produto_para(
+    motion: &mut MotionState,
+    sinks: &[ph2d_nodegraph::graph::NodeId],
+    playhead: f64,
+) -> ph2d_gpu_cook::GpuPlan {
     let dirigidos = valores_dirigidos(motion, playhead);
-    ph2d_gpu_cook::plan_driven_many(
+    let porta = if motion.driven_gpu && motion.condutores_na_placa {
+        ph2d_gpu_cook::plan_with_device_drivers
+    } else {
+        ph2d_gpu_cook::plan_driven_many
+    };
+    porta(
         &motion.doc.graph,
         &motion.registry,
         &motion.registry,
-        &motion.sinks,
+        sinks,
         &dirigidos,
     )
 }

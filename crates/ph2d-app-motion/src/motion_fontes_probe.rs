@@ -158,9 +158,7 @@ fn probe_does_a_source_chain_stay_on_the_device() {
             eprintln!("  {no:<22} | a saida 0 nao liga a um `Scale` (outro tipo de porta)");
             return;
         }
-        let dirigidos = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
-        let plano =
-            ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, o, &dirigidos);
+        let plano = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[o], 0.0);
         let costuras: Vec<String> = plano
             .boundaries
             .iter()

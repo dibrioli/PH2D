@@ -18,6 +18,7 @@ mod gpu_collide;
 mod gpu_cpu_parity;
 mod gpu_cpu_parity_arith;
 mod gpu_cpu_parity_clone;
+mod gpu_cpu_parity_condutor;
 mod gpu_cpu_parity_curve;
 mod gpu_cpu_parity_deform;
 mod gpu_cpu_parity_driven;

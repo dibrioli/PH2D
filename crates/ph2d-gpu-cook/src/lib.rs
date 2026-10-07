@@ -89,7 +89,10 @@ pub mod voronoi;
 pub use debug_read::{read_formas, read_instances};
 pub use error::GpuCookError;
 pub use instances::GpuInstances;
-pub use plan::{DrivenParams, GpuPlan, GpuSource, GpuStage, plan, plan_driven, plan_driven_many};
+pub use plan::{
+    DrivenParams, GpuPlan, GpuSource, GpuStage, device_driven_params, plan, plan_driven,
+    plan_driven_many, plan_with_device_drivers,
+};
 pub use ring::GpuCheckpointRing;
 pub use stream::{BufferPool, GpuColumn, GpuStream};
 
@@ -523,6 +526,9 @@ impl GpuCook {
             // loop (unlike the grid and the reductions, which a sweep invalidates).
             let lut_specs = kernels.luts(stage.ty);
             let mut lut_buffers = self.build_luts(gpu, lut_specs, graph, stage.node);
+            // ⭐ Os números que a placa dirige (doc 110 §14.1 (2)) — copiados no despacho.
+            self.copias_do_estagio =
+                encode::copias_dos_condutores(plan, stage.node, kernel, &streams);
             let mut out = base.clone();
             for _ in 0..sweeps {
                 // The grid is rebuilt from the CURRENT positions every sweep — a

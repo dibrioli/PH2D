@@ -20,9 +20,7 @@ fn cena() -> (MotionState, NodeId) {
 #[test]
 fn the_wire_scene_is_claimed_by_the_device() {
     let (mut m, sink) = cena();
-    let dirigidos = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
-    let plano =
-        ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, sink, &dirigidos);
+    let plano = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0);
     assert!(
         plano.is_fully_gpu(),
         "a `=116` tem de ser reivindicada de ponta a ponta -- e' o assunto dela: {:?}",
@@ -38,11 +36,41 @@ fn the_wire_scene_is_claimed_by_the_device() {
 /// devolve.
 #[test]
 fn with_the_switch_off_the_same_scene_falls_to_the_cpu() {
-    let (m, sink) = cena();
-    let plano = ph2d_gpu_cook::plan(&m.doc.graph, &m.registry, &m.registry, sink);
+    let (mut m, sink) = cena();
+    m.driven_gpu = false; // o `PH2D_MOTION_DRIVEN_GPU=0`, pela porta do produto
+    let plano = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0);
     assert!(
         !plano.is_fully_gpu(),
         "sem os valores a cena TEM de cair -- senao as duas corridas do anuncio sao iguais"
+    );
+}
+
+/// ⭐⭐ **O CONDUTOR NÃO PASSA PELA CPU** (doc 110 §14.1 (2)): o `value.lfo` da cena é cozido pela
+/// PLACA e o número dele vai direto ao uniform do `motion.scale` — a ponte não o põe no mapa dos
+/// valores, e a CPU não o coze (a memória dela fica sem ele).
+#[test]
+fn the_wire_s_driver_never_takes_the_cpu_round_trip() {
+    let (mut m, sink) = cena();
+    let (escala, lfo) = {
+        let fios = m.doc.graph.all_param_sources();
+        let (no, ps) = fios.iter().next().expect("o fio");
+        (*no, ps.values().next().expect("o condutor").0)
+    };
+    let valores = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
+    assert!(
+        valores.get(&escala).is_none_or(|v| v.is_empty()),
+        "a ponte coze o condutor na CPU: {valores:?}"
+    );
+    assert!(
+        m.pump.cook.peek(lfo).is_none(),
+        "a memória da CPU tem o condutor -- alguém o cozeu lá"
+    );
+    let plano = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0);
+    assert!(plano.is_fully_gpu(), "{:?}", plano.boundaries);
+    assert_eq!(
+        plano.device_drivers.get(&escala).map(Vec::len),
+        Some(1),
+        "o plano encena o condutor e entrega-o ao uniform"
     );
 }
 
@@ -145,10 +173,8 @@ fn probe_what_the_shape_costs() {
             .expect("coze");
         let ms = t.elapsed().as_secs_f64() * 1e3;
         let n = saida[0].as_stream().count();
-        let dirigidos = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
         let no_device =
-            ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, sink, &dirigidos)
-                .is_fully_gpu();
+            crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[sink], 0.0).is_fully_gpu();
         eprintln!(
             "  {rotulo:<22} | {n:>9} | {ms:>6.2} ms | {}",
             if no_device { "dispositivo" } else { "⛔ CPU" }

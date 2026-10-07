@@ -88,6 +88,9 @@ pub use motion_param_intent::{MotionParamIntent, drain_param_intents, push_param
 /// isso que ele se moveu limpo: o painel PINTAVA-o, não o definia.
 pub mod motion_param_rows;
 pub use motion_param_rows::*;
+/// O RELÓGIO do ciclo 6 — placa × CPU no MESMO processo, pela porta do produto (doc 110 §14.1 (5)).
+#[cfg(test)]
+mod motion_ciclo6_relogio_probe;
 /// ⭐ O COLISOR DECLARADO contra os DUPLICADORES — a ordem do dono de 2026-09-17 (doc 114 §12).
 #[cfg(test)]
 pub mod motion_colisor_duplicador_probe;
@@ -156,12 +159,12 @@ pub mod motion_sim_probe;
 #[cfg(test)]
 pub mod motion_stamp_cost_probe;
 pub mod motion_state;
-/// A auditoria do grupo do ciclo 6 (VALOR & PULSO) — `#[cfg(test)]`, não entra no bin.
-#[cfg(test)]
-pub mod motion_valor_probe;
 /// O censo do comprimento `1` dos consumidores de VALOR (doc 110 §14.1 item 4).
 #[cfg(test)]
 mod motion_valor_comprimento_census;
+/// A auditoria do grupo do ciclo 6 (VALOR & PULSO) — `#[cfg(test)]`, não entra no bin.
+#[cfg(test)]
+pub mod motion_valor_probe;
 
 // ─── as duas âncoras que eram módulos de TOPO da shell e são código desta família ─────
 /// ⭐ **O gizmo dos CAMPOS na tela.** Ele lê `MotionState` e `motion_bridge::params`, logo nunca

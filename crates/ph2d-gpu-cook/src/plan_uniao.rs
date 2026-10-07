@@ -7,7 +7,7 @@ use super::{DrivenParams, GpuPlan, Walk, eligible};
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::gpu::KernelResolver;
 use ph2d_nodegraph::graph::{Graph, NodeId};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Claim the GPU-runnable part of `sink`'s chain (see the crate docs). Pure and
 /// cheap — a walk of the graph, no GPU objects — so calling it every frame is
@@ -57,7 +57,30 @@ pub fn plan_driven_many(
     sinks: &[NodeId],
     driven: &DrivenParams,
 ) -> GpuPlan {
-    plan_forbidding(graph, ops, kernels, sinks, &BTreeSet::new(), driven)
+    plan_forbidding(
+        graph,
+        ops,
+        kernels,
+        sinks,
+        &BTreeSet::new(),
+        (driven, false),
+    )
+}
+
+/// ⭐⭐ [`plan_driven_many`] **com os condutores na placa** (doc 110 §14.1 (2)): um fio cujo
+/// condutor a placa coze (ver [`super::device_driven_params`]) já não precisa do número da CPU — o
+/// condutor vira estágio e o `v[0]` dele é copiado para o uniform. ⚠️ **Porta NOVA e não uma
+/// mudança da antiga:** a [`plan`] com o mapa vazio continua a ser a lei de antes da W1a, ao bit
+/// (o gate `a_driven_param_puts_the_boundary_at_the_driven_node`), e o interruptor
+/// `PH2D_MOTION_DRIVEN_GPU=0` continua a ser uma bissecção honesta.
+pub fn plan_with_device_drivers(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    sinks: &[NodeId],
+    driven: &DrivenParams,
+) -> GpuPlan {
+    plan_forbidding(graph, ops, kernels, sinks, &BTreeSet::new(), (driven, true))
 }
 
 /// [`plan`], with a set of nodes forced to be boundaries — the retreat mechanism
@@ -105,7 +128,7 @@ fn plan_forbidding(
     kernels: &dyn KernelResolver,
     sinks: &[NodeId],
     forbidden: &BTreeSet<NodeId>,
-    driven: &DrivenParams,
+    (driven, condutores): (&DrivenParams, bool),
 ) -> GpuPlan {
     let mut walk = Walk {
         graph,
@@ -116,11 +139,24 @@ fn plan_forbidding(
         claimed: BTreeSet::new(),
         forbidden,
         driven,
+        device_drivers: BTreeMap::new(),
+        condutores,
     };
     let mut staged_sinks = Vec::with_capacity(sinks.len());
     for &sink in sinks {
         match graph.node(sink).map(|i| i.type_id()) {
-            Some(ty) if eligible(graph, ops, kernels, sink, &walk.claimed, forbidden, driven) => {
+            Some(ty)
+                if eligible(
+                    graph,
+                    ops,
+                    kernels,
+                    sink,
+                    &walk.claimed,
+                    forbidden,
+                    driven,
+                    condutores,
+                ) =>
+            {
                 walk.accept(sink, ty);
                 staged_sinks.push(sink);
             }
@@ -134,6 +170,7 @@ fn plan_forbidding(
             boundaries: walk.boundaries,
             stages: Vec::new(),
             sinks: Vec::new(),
+            device_drivers: BTreeMap::new(),
         };
     }
 
@@ -177,7 +214,7 @@ fn plan_forbidding(
             .iter()
             .fold(false, |g, n| next.insert(*n) | g);
         if grew {
-            return plan_forbidding(graph, ops, kernels, sinks, &next, driven);
+            return plan_forbidding(graph, ops, kernels, sinks, &next, (driven, condutores));
         }
         // No progress possible (a forbidden node still staged — cannot happen,
         // `eligible` refuses it): fall back to the whole refusal.
@@ -185,6 +222,7 @@ fn plan_forbidding(
             boundaries: sinks.iter().map(|&s| (s, 0)).collect(),
             stages: Vec::new(),
             sinks: Vec::new(),
+            device_drivers: BTreeMap::new(),
         };
     }
 
@@ -192,5 +230,6 @@ fn plan_forbidding(
         boundaries: walk.boundaries,
         stages: walk.stages,
         sinks: staged_sinks,
+        device_drivers: walk.device_drivers,
     }
 }

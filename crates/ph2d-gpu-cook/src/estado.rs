@@ -175,6 +175,9 @@ pub struct GpuCook {
     /// cook, like [`Self::grid_hold`].
     pub(crate) stream_op_hold: Vec<wgpu::Buffer>,
     pub(crate) stream_op_hold_bufs: Vec<std::sync::Arc<wgpu::Buffer>>,
+    /// As cópias `v[0]` do condutor → campo do uniform que o PRÓXIMO despacho de kernel faz
+    /// (doc 110 §14.1 (2)): `(byte do uniform, buffer do condutor)`. Esvaziadas por ele.
+    pub(crate) copias_do_estagio: Vec<(u64, std::sync::Arc<wgpu::Buffer>)>,
     /// The engine-algorithm pipelines (ADR-0139), built on first use like the
     /// stream ops — `Option` because `GpuCook` is `Default`.
     pub(crate) voronoi_pipes: Option<voronoi::VoronoiPipes>,

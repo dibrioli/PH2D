@@ -211,6 +211,12 @@ impl GpuCook {
         }
         let uniform = self.uniform_slot(gpu, stage_idx);
         gpu.queue.write_buffer(uniform, 0, &uni);
+        // Por cima do valor de omissão: o `v[0]` do condutor na placa (§14.1 (2)). O
+        // `write_buffer` aplica-se no submit ANTES dos comandos, logo a cópia ganha-lhe.
+        let uniform = &self.uniforms[stage_idx];
+        for (at, src) in std::mem::take(&mut self.copias_do_estagio) {
+            encoder.copy_buffer_to_buffer(&src, 0, uniform, at, 4);
+        }
 
         // Bind group: uniform, then read buffers, then fresh write buffers —
         // the exact order `codegen::kernel_module` assigned.
@@ -440,4 +446,30 @@ pub(crate) fn create_pipeline(gpu: &GpuContext, wgsl: &str, label: &str) -> wgpu
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache: None,
         })
+}
+
+/// **As cópias dos condutores na placa** de um estágio (doc 110 §14.1 (2)): para cada param que
+/// o [`crate::GpuPlan::device_drivers`] lhe dá, o `v[0]` do condutor para o campo do param. Um
+/// condutor VAZIO (ou sem `v` escalar) não copia nada — o uniform fica com o override/default,
+/// que é exactamente o que o `driven_value` da CPU devolve para ele.
+pub(crate) fn copias_dos_condutores(
+    plan: &crate::GpuPlan,
+    node: NodeId,
+    kernel: &GpuKernel,
+    streams: &std::collections::BTreeMap<NodeId, GpuStream>,
+) -> Vec<(u64, std::sync::Arc<wgpu::Buffer>)> {
+    let Some(fios) = plan.device_drivers.get(&node) else {
+        return Vec::new();
+    };
+    fios.iter()
+        .filter_map(|(p, drv)| {
+            let k = kernel.params.iter().position(|q| q == p)?;
+            let s = streams.get(drv).filter(|s| s.count > 0)?;
+            let col = s
+                .cols
+                .get(ph2d_nodegraph::attr::VALUE_COLUMN)
+                .filter(|c| c.dim == ph2d_nodegraph::port::Dim::Scalar)?;
+            Some(((PARAMS_AT + 4 * k) as u64, col.buffer.clone()))
+        })
+        .collect()
 }

@@ -73,6 +73,10 @@ impl MotionState {
             // suspected device-path bug against the canonical path, which stays
             // the CPU's (ADR-0126 — the replay-hash never runs on a GPU).
             gpu_enabled: gpu_enabled_from_env(std::env::var("PH2D_GPU_COOK").ok().as_deref()),
+            driven_gpu: gpu_enabled_from_env(
+                std::env::var("PH2D_MOTION_DRIVEN_GPU").ok().as_deref(),
+            ),
+            condutores_na_placa: true,
             cpu_pedida: demo_router::cena_pede_a_cpu(),
             // Filled each active frame by the bridge from the GPU tap (`None` until
             // then, and on every CPU-cooked frame).

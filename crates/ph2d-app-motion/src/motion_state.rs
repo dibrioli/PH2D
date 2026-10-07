@@ -374,6 +374,12 @@ pub struct MotionState {
     /// `PH2D_GPU_COOK=0` opts back out. The CPU pump remains the CANONICAL
     /// path either way (replay-hash, parity oracles — ADR-0126).
     pub gpu_enabled: bool,
+    /// O interruptor dos FIOS na placa (doc 110 §6, `PH2D_MOTION_DRIVEN_GPU=0`) — lido uma vez,
+    /// para a sonda do relógio o poder comutar no MESMO processo (doc 110 §14.1 (5)).
+    pub driven_gpu: bool,
+    /// Os CONDUTORES cozidos pela placa (doc 110 §14.1 (2)) — `false` volta à W1a (a CPU coze o
+    /// condutor e entrega o número). Comutável em processo, para a sonda do relógio.
+    pub condutores_na_placa: bool,
     /// ⭐ **A CENA que pede a CPU, e o motivo dito em voz alta** (doc 119 W3) — `None` em todo
     /// documento de artista. Existe porque uma cena de demonstração pode ensinar um modo que SÓ o
     /// cozimento da CPU tem (a `=107`, o *Skip Unused Inputs*): até ao ciclo 11 ela punha-se lá

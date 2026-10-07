@@ -118,8 +118,7 @@ fn cadeia_no_dispositivo_com(no: &str, param: Option<(&str, f32)>) -> bool {
             })
             .expect("fio");
     }
-    let dirigidos = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
-    ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, o, &dirigidos).is_fully_gpu()
+    crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[o], 0.0).is_fully_gpu()
 }
 
 /// ⭐⭐⭐ **A CATRACA DA ROTA DO GRUPO** (ciclo 7, doc 112 §3) — um nó do grupo no caminho do
@@ -276,9 +275,7 @@ fn probe_does_an_fx_chain_stay_on_the_device() {
             }
         };
         liga(&mut m, (ultimo, 0), (o, 0));
-        let dirigidos = crate::motion_bridge::gpu::valores_dirigidos(&mut m, 0.0);
-        let plano =
-            ph2d_gpu_cook::plan_driven(&m.doc.graph, &m.registry, &m.registry, o, &dirigidos);
+        let plano = crate::motion_bridge::gpu::plano_do_produto_para(&mut m, &[o], 0.0);
         let costuras: Vec<String> = plano
             .boundaries
             .iter()

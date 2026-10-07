@@ -41,6 +41,7 @@
 
 use super::{Kind, NONE, NoPath, Node, Path, Polyanya, Root};
 use crate::cost::{cost_of, segment_cost};
+use crate::cota::inferior;
 use crate::geom::{EPS, V2, dist, dot, lerp, same, sub};
 use crate::mesh::NavMesh;
 
@@ -234,7 +235,12 @@ impl Polyanya {
     /// ⭐ A raiz entra no heap como PROMESSA, com o limite inferior `g + w_min·|x − t|` — só gera os
     /// filhos quando sai, e as que ficam para lá do custo da resposta nunca custam nada.
     fn promete(&mut self, p: Pendente, t: V2) {
-        let f = p.g + self.wmin * dist(p.x, t);
+        let f = p.g
+            + inferior(
+                self.cota.w(),
+                dist(p.x, t),
+                self.cota.distancia(p.x) + self.d_alvo,
+            );
         let idx = self.pendentes.len() as u32;
         self.pendentes.push(p);
         self.push(
@@ -276,6 +282,7 @@ impl Polyanya {
             prev: p.prev,
             w_in: p.w_in,
             range: Some(lado.range),
+            d: self.cota.distancia(x),
         });
         self.push_from_point(mesh, ri, into, None, t);
         let slide = p.slide;
@@ -351,6 +358,7 @@ impl Polyanya {
             prev,
             w_in,
             range: Some(range),
+            d: self.cota.distancia(pv),
         });
         for &q in mesh.polys_at_vertex(v) {
             self.push_from_point(mesh, ri, q, Some(v), t);
@@ -511,6 +519,12 @@ impl Polyanya {
     /// O CONTROLO da sonda e dos gates: a procura ponderada sem a dominância entre frentes (W9).
     pub fn set_front_dominance(&mut self, on: bool) {
         self.sem_dominancia = !on;
+    }
+
+    /// (W19, sonda) `true` volta à cota GLOBAL da W7 (o heurístico e a saída cedo pelo menor custo da
+    /// tabela, sem a distância às áreas baratas).
+    pub fn set_cota_global(&mut self, on: bool) {
+        self.sonda_cota_global = on;
     }
 
     /// A sonda e os gates escolhem outro passo da grelha (`None` volta ao do produto).

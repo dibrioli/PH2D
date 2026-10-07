@@ -14,6 +14,7 @@
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
+use crate::cota::{Cota, inferior};
 use crate::geom::{V2, dist, ord_key};
 use crate::mesh::NavMesh;
 use crate::polyanya::fatias::Custos;
@@ -73,7 +74,9 @@ pub(crate) struct Atalhos {
     dirigidos: Vec<(V2, V2, Link)>,
     s: V2,
     t: V2,
+    /// (W19) O menor custo e a distância de cada nó às áreas baratas: a cota de um troço ([`crate::cota`]).
     wmin: f64,
+    d: Vec<f64>,
     best: Vec<f64>,
     /// De onde se chegou a cada nó, e o troço (os pontos) que lá trouxe — `None` = o atalho.
     prev: Vec<Option<(usize, Option<Vec<V2>>)>>,
@@ -106,11 +109,17 @@ impl Atalhos {
         let mut heap = BinaryHeap::new();
         best[0] = 0.0;
         heap.push(Reverse((ord_key(0.0), 0usize)));
+        let cota = Cota::nova(mesh, q.costs, false);
+        let mut d = vec![cota.distancia(s), cota.distancia(t)];
+        for (a, b, _) in &dirigidos {
+            d.extend([cota.distancia(*a), cota.distancia(*b)]);
+        }
         Self {
             dirigidos,
             s,
             t,
-            wmin: q.costs.iter().copied().fold(1.0, f64::min),
+            wmin: cota.w(),
+            d,
             best,
             prev: vec![None; n],
             done: vec![false; n],
@@ -164,7 +173,12 @@ impl Atalhos {
                     v += 1;
                     if !(atual == 1 || e_entrada(atual))
                         || self.done[atual]
-                        || self.best[u] + self.wmin * dist(self.ponto(u), self.ponto(atual))
+                        || self.best[u]
+                            + inferior(
+                                self.wmin,
+                                dist(self.ponto(u), self.ponto(atual)),
+                                self.d[u] + self.d[atual],
+                            )
                             >= self.best[atual]
                     {
                         continue;

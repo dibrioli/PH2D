@@ -825,8 +825,16 @@ struct DuasPortas {
 
 impl ph2d_physics_ecs::SceneAtTick for DuasPortas {
     fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool {
-        poe(sim, self.b, if tick >= 29 { (0.0, 0.0) } else { (30.0, 30.0) });
-        poe(sim, self.a, if tick < 60 { (-6.5, 4.5) } else { (30.0, 30.0) });
+        poe(
+            sim,
+            self.b,
+            if tick >= 29 { (0.0, 0.0) } else { (30.0, 30.0) },
+        );
+        poe(
+            sim,
+            self.a,
+            if tick < 60 { (-6.5, 4.5) } else { (30.0, 30.0) },
+        );
         true
     }
 }
@@ -849,17 +857,39 @@ fn um_scrub_com_a_zona_de_outra_porta_no_fim_devolve_a_mesma_corrida() {
     let de_la: Vec<Entity> = (0..2)
         .map(|i| {
             let y = -5.0 + 1.0 * i as f32;
-            agente(&mut sim, &format!("Da direita {i}"), (1.5, y), NavTarget::Point([7.0, y + 9.0]))
+            agente(
+                &mut sim,
+                &format!("Da direita {i}"),
+                (1.5, y),
+                NavTarget::Point([7.0, y + 9.0]),
+            )
         })
         .collect();
     corpo(&mut sim, "Baixo", BodyKind::Static, (0.0, -3.5), (0.3, 2.5));
     corpo(&mut sim, "Cima", BodyKind::Static, (0.0, 2.5), (0.3, 1.5));
-    let b_porta = corpo(&mut sim, "Porta B", BodyKind::Kinematic, (30.0, 30.0), (0.3, 1.2));
-    let a_porta = corpo(&mut sim, "Porta A", BodyKind::Kinematic, (-6.5, 4.5), (0.5, 0.5));
+    let b_porta = corpo(
+        &mut sim,
+        "Porta B",
+        BodyKind::Kinematic,
+        (30.0, 30.0),
+        (0.3, 1.2),
+    );
+    let a_porta = corpo(
+        &mut sim,
+        "Porta A",
+        BodyKind::Kinematic,
+        (-6.5, 4.5),
+        (0.5, 0.5),
+    );
     let guardas: Vec<Entity> = (0..4)
         .map(|i| {
             let (x, y) = (-7.0 + 1.0 * i as f32, -1.0 + 0.6 * i as f32);
-            agente(&mut sim, &format!("Guarda {i}"), (x, y), NavTarget::Point([6.0, -0.5]))
+            agente(
+                &mut sim,
+                &format!("Guarda {i}"),
+                (x, y),
+                NavTarget::Point([6.0, -0.5]),
+            )
         })
         .collect();
     let quem: Vec<Entity> = de_la.iter().chain(&guardas).copied().collect();
@@ -877,7 +907,8 @@ fn um_scrub_com_a_zona_de_outra_porta_no_fim_devolve_a_mesma_corrida() {
             .collect::<Vec<_>>()
     };
     let mut primeira = Vec::new();
-    let (mut pelo_atalho_no_ancora, mut no_ancora, mut servidos_no_31) = (0, Vec::new(), Vec::new());
+    let (mut pelo_atalho_no_ancora, mut no_ancora, mut servidos_no_31) =
+        (0, Vec::new(), Vec::new());
     for t in 1..=FIM {
         if t == 30 {
             // Um orçamento de DUAS procuras dos guardas, e as procuras em série.

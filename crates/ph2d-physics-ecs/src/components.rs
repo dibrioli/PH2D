@@ -269,7 +269,9 @@ pub use area::{
 };
 pub use health::{Damage, Health, HealthNow, OnHit, RESISTANCES_MAX, Resistance, kind_key};
 pub use health_bar::HealthBar;
-pub use nav::{NavAgent, NavCostArea, NavLink, NavNow, NavRegion, NavRoute, NavTarget};
+pub use nav::{
+    NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute, NavTarget,
+};
 pub use overrides::{
     Ccd, CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,

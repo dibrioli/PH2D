@@ -587,13 +587,22 @@ fn perseguir_a_vista(vista: bool, poca: bool) -> (usize, bool) {
     }
     let heroi = sim
         .world_mut()
-        .spawn((Name::new("Herói"), Transform::from_translation(Vec2::new(4.0, 5.0))))
+        .spawn((
+            Name::new("Herói"),
+            Transform::from_translation(Vec2::new(4.0, 5.0)),
+        ))
         .id();
     let nome = ph2d_ecs::stable_name_id("Herói");
     let quem: Vec<Entity> = (0..8)
         .map(|i| {
             let em = (-7.6, -5.6 + 0.4 * i as f32);
-            agente(&mut sim, &format!("S{i}"), em, NavTarget::Named(nome), false)
+            agente(
+                &mut sim,
+                &format!("S{i}"),
+                em,
+                NavTarget::Named(nome),
+                false,
+            )
         })
         .collect();
     let mut b = PhysicsBridge::new();
@@ -606,7 +615,11 @@ fn perseguir_a_vista(vista: bool, poca: bool) -> (usize, bool) {
     let (mut espera, mut recta) = (0, true);
     for t in 2..=40 {
         b.dispatch_with_scene(&mut sim, true, t, &mut cena);
-        let h = sim.world().get::<Transform>(heroi).expect("o herói").translation;
+        let h = sim
+            .world()
+            .get::<Transform>(heroi)
+            .expect("o herói")
+            .translation;
         for &e in &quem {
             let r = b.nav_agent(e).expect("um agente");
             espera += usize::from(r.a_meio.is_some() || r.owed > 0);

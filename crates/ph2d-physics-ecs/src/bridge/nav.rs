@@ -519,6 +519,7 @@ impl PhysicsBridge {
     /// ⚠️ **Só escreve quando MUDA**, e quem a ponte não conduz perde o readout: um agente sem memória
     /// (antes do 1.º tique, ou saltado por não ter mover) não tem número de agora.
     pub(super) fn publica_navegacao(&self, sim: &mut SimWorld) {
+        self.publica_areas_estreitas(sim);
         let w = sim.world_mut();
         let mut velhos: Vec<Entity> = Vec::new();
         if let Some(mut q) = w.try_query::<(Entity, &crate::NavNow)>() {

@@ -324,6 +324,8 @@ pub struct InspectorNavCostArea {
     pub has_shape: bool,
     /// O corpo é `Dynamic` — só um corpo parado (estático, ou cinemático quieto) recorta a malha.
     pub body_moves: bool,
+    /// (W19) O raio do menor corpo que não cabe nela (`NavCostAreaNow`, da ponte) — `None` = cabe.
+    pub too_narrow_for: Option<f32>,
 }
 
 impl InspectorNavCostArea {
@@ -336,6 +338,10 @@ impl InspectorNavCostArea {
         if self.body_moves {
             return Some(CostAreaQueixa::CorpoQueAnda);
         }
+        // Só uma BARATA recua para dentro (uma cara estreita continua a valer: o corpo paga-a ao tocar).
+        if !self.forbidden && self.cost < 1.0 && self.too_narrow_for.is_some() {
+            return Some(CostAreaQueixa::MaisEstreitaQueOCorpo);
+        }
         None
     }
 }
@@ -347,6 +353,9 @@ pub enum CostAreaQueixa {
     SemForma,
     /// Um corpo `Dynamic` nunca é um obstáculo parado — a ponte salta-o.
     CorpoQueAnda,
+    /// (W19) Mais BARATA que o chão e mais estreita que o corpo de quem anda: nenhum corpo cabe inteiro
+    /// nela, e ela não muda caminho nenhum (o raio em [`InspectorNavCostArea::too_narrow_for`]).
+    MaisEstreitaQueOCorpo,
 }
 
 /// ⭐ (W7) **Os campos do ATALHO** — a entrada é esta entidade; a saída, quem tem o nome.

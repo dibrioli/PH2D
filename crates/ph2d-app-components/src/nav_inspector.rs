@@ -24,7 +24,7 @@ use ph2d_editor_core::nav_edits::{
     InspectorNavRegion, NAV_AREA_COST_MIN, NavAgora, NavAlvoModo, NavEstado, NavFieldEdit,
 };
 use ph2d_physics_ecs::{
-    BodyKind, Collider, Health, NavAgent, NavCostArea, NavLink, NavNow, NavRegion, NavStatus,
+    BodyKind, Collider, Health, NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavStatus,
     NavTarget, PlatformPlayer, RigidBody, TopDownPlayer,
 };
 
@@ -165,6 +165,7 @@ pub fn build_info(
             // forma, e só um corpo PARADO a recorta (um `Dynamic` nunca é obstáculo).
             has_shape: corpo.is_some() && world.get::<Collider>(e).is_some(),
             body_moves: corpo.is_some_and(|b| b.kind == BodyKind::Dynamic),
+            too_narrow_for: world.get::<NavCostAreaNow>(e).map(|n| n.too_narrow_for),
         }
     });
     let link = world.get::<NavLink>(e).map(|l| {

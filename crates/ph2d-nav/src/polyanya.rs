@@ -52,6 +52,7 @@
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
+use crate::cota::{Cota, inferior};
 use crate::geom::{EPS, V2, dist, dist_to_segment, lerp, ord_key, orient, same, side_dist, sub};
 use crate::mesh::NavMesh;
 
@@ -118,6 +119,8 @@ struct Root {
     /// (W7) Uma raiz de fronteira: o pedaço `[L, R]` da aresta onde ela pode deslizar no polimento
     /// (o que a raiz anterior VÊ pela região de `w_in`).
     range: Option<(V2, V2)>,
+    /// (W19) A distância às áreas baratas ([`Cota::distancia`]).
+    d: f64,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -168,10 +171,13 @@ pub struct Polyanya {
     /// O alvo da procura em curso (W15: uma procura em fatias continua noutra chamada).
     alvo: V2,
     seq: u64,
-    /// (W7) A tabela de custos desta consulta, o menor deles (o heurístico escala por ele) e as
-    /// podas das raízes de fronteira — ver `polyanya_custo.rs`.
+    /// (W7) A tabela de custos desta consulta, a cota que faz o heurístico (W19: `cota.rs`) com a
+    /// distância do alvo às áreas baratas, e as podas das raízes de fronteira — ver `polyanya_custo.rs`.
     costs: Vec<f64>,
-    wmin: f64,
+    cota: Cota,
+    d_alvo: f64,
+    /// (W19, sonda) A cota global da W7 (`D = 0`): o heurístico escala pelo menor custo da tabela.
+    sonda_cota_global: bool,
     steiner_g: std::collections::BTreeMap<(u32, u32, u32, u32), f64>,
     ponta_g: std::collections::BTreeMap<(u32, u32, u32), Vec<(f64, f64)>>,
     fan_g: Vec<f64>,
@@ -270,7 +276,8 @@ impl Polyanya {
         }
     }
 
-    /// ⚠️ O heurístico escala pelo MENOR custo da tabela (admissível); sem áreas é `× 1`, ao bit.
+    /// ⚠️ O heurístico é a [`inferior`] sobre o geométrico (admissível e consistente, `cota.rs`); sem
+    /// área barata é o geométrico, ao bit.
     #[allow(clippy::too_many_arguments)]
     fn push_interval(
         &mut self,
@@ -283,7 +290,12 @@ impl Polyanya {
         t: V2,
     ) {
         let r = self.roots[root as usize];
-        let f = r.g + self.wmin * heuristic(r.p, left, right, t);
+        let f = r.g
+            + inferior(
+                self.cota.w(),
+                heuristic(r.p, left, right, t),
+                r.d + self.d_alvo,
+            );
         self.push(
             f,
             Node {
@@ -411,6 +423,7 @@ impl Polyanya {
             prev: root,
             w_in: cw,
             range: None,
+            d: self.cota.distancia(pv),
         });
         let rho = r.p;
 

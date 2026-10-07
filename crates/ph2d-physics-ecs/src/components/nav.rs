@@ -132,8 +132,10 @@ impl Default for NavAgent {
     }
 }
 
-/// ⭐ (W7) **Uma ÁREA DE CUSTO** — a lama que atrasa, a zona que nenhum agente pisa. A forma é o
-/// colisor desta entidade (sensor ou não), recuada pelo raio de cada agente como um obstáculo.
+/// ⭐ (W7) **Uma ÁREA DE CUSTO** — o terreno que o caminho evita (`Cost > 1`) ou prefere (`< 1`), a zona
+/// que nenhum agente pisa. Não muda a VELOCIDADE: muda o caminho. A forma é o colisor desta entidade
+/// (sensor ou não), e conta debaixo do CORPO de cada agente (W18: o custo de uma posição é o maior debaixo
+/// dele) — uma área cara recua para FORA pelo raio, uma barata para DENTRO (`ph2d_navmesh::Area::dentro`).
 ///
 /// ⚠️ **Proibida não é um custo infinito, é um FURO** na malha: as ilhas, o ponto alcançável mais
 /// perto e as paredes do desvio leem a malha, e com um custo infinito todos eles mentiriam.
@@ -228,4 +230,15 @@ pub struct NavNow {
     /// lhe cortou o pedido (`1` = ninguém o travou — as paredes sozinhas não contam; `≤ 0` = parado,
     /// ou a recuar, para dar passagem).
     pub avanco: f32,
+}
+
+/// ⭐ (W19, plano 30 §28.3) **Uma área BARATA que nenhum corpo cabe** — publicada pela ponte no fim de
+/// todo `dispatch` (como o [`NavNow`]): o menor raio, entre os agentes que ela conduz, para o qual a área
+/// encolhida pelo raio (`ph2d_navmesh::inflate::some_na_malha`) não sobra. Para esse corpo ela não faz
+/// nada — e o Inspector di-lo. ⛔ DERIVADO e NÃO registado, pela razão do `NavNow`; ausente quando cabe
+/// em todos, numa área cara ou proibida, e antes do 1.º tique.
+#[derive(Component, Clone, Copy, Debug, PartialEq)]
+pub struct NavCostAreaNow {
+    /// O raio (metros) do menor corpo que não cabe nela.
+    pub too_narrow_for: f32,
 }

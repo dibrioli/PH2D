@@ -171,7 +171,10 @@ fn o_caminho_contorna_um_corpo_pela_tangente_do_lado_mais_curto() {
     let quina = [2.9_f64, -1.5];
     let (wx, wy) = (quina[0] + 6.0, quina[1]);
     let afast = (wx * d[1] - wy * d[0]).abs();
-    assert!((afast - r).abs() < 1e-9, "a tangente passa a {afast} da quina");
+    assert!(
+        (afast - r).abs() < 1e-9,
+        "a tangente passa a {afast} da quina"
+    );
     assert!(((d[0] * d[0] + d[1] * d[1]).sqrt() - 1.0).abs() < 1e-12);
     let d = desvio::contorna([-6.0, 0.4], [1.0, 0.0], 12.0, r, &b).expect("no caminho");
     assert!(d[1] > 0.0, "acima do eixo, pela esquerda: {d:?}");

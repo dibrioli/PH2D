@@ -368,7 +368,10 @@ fn uma_area_mais_barata_anda_se_por_dentro() {
         "Cost 0.3: {por_cima} tiques com o corpo inteiro na estrada, subiu a {alto:.2} · CONTROLO: {por_cima_ctl}, {alto_ctl:.2}"
     );
     assert!(chegou, "não chegou ao alvo");
-    assert!(alto > 3.0, "a fixtura: o caminho barato é pela estrada de cima ({alto})");
+    assert!(
+        alto > 3.0,
+        "a fixtura: o caminho barato é pela estrada de cima ({alto})"
+    );
     assert!(
         por_cima >= 60,
         "o corpo não andou POR CIMA da estrada ({por_cima} tiques)"
@@ -425,6 +428,99 @@ fn um_custo_que_atravessa_o_1_troca_o_recuo_da_area() {
     );
     let (_, mais_perto_ctl, _) = corre_com(false);
     assert_eq!(mais_perto_ctl, 0.0, "o CONTROLO (a 0.3) não a atravessou");
+}
+
+/// ⭐ (W19, plano 30 §28.2) **Uma área barata LONGE não desliga o «alvo à vista»** — um perseguidor em
+/// campo aberto atrás de um alvo que anda, uma estrada a `Cost 0.3` a `5 m` do caminho. Medido antes (a
+/// tabela com um custo `< 1` desligava a recta no mundo inteiro): o trabalho de procura `11 → 112`. Com a
+/// cota (`ph2d_nav::cota`): o mesmo que sem a estrada (a recta, sem procura). O CONTROLO: a mesma estrada
+/// paralela ao caminho a `0,9 m` dele — ir até ela e voltar compensa, a recta não é a resposta, a procura
+/// corre e ele anda por ela.
+#[test]
+fn uma_area_barata_longe_nao_desliga_o_alvo_a_vista() {
+    let corre_com = |estrada: Option<((f32, f32), (f32, f32))>| {
+        let mut sim = SimWorld::new();
+        regiao(&mut sim);
+        if let Some((c, h)) = estrada {
+            let e = caixa(&mut sim, "Estrada", c, h, true);
+            sim.world_mut().entity_mut(e).insert(NavCostArea {
+                cost: 0.3,
+                forbidden: false,
+            });
+        }
+        let alvo = marco(&mut sim, "Alvo", (-2.0, -4.0));
+        let quem = agente(&mut sim, (-7.0, -4.0), "Alvo");
+        let mut b = PhysicsBridge::new();
+        let (mut trabalho, mut na_estrada) = (0u64, 0usize);
+        for t in 1..=420u64 {
+            if t % 30 == 0
+                && let Some(mut tr) = sim.world_mut().get_mut::<Transform>(alvo)
+            {
+                tr.translation.x += 0.5;
+            }
+            b.dispatch(&mut sim, true, t);
+            trabalho += b.nav_search_work();
+            let p = pos(&sim, quem);
+            na_estrada += usize::from(estrada.is_some_and(|(c, h)| ao_rect(p, c, h) == 0.0));
+        }
+        (
+            trabalho,
+            na_estrada,
+            b.nav_agent(quem).map_or(0, |r| r.searches),
+        )
+    };
+    let (sem, _, procuras) = corre_com(None);
+    let (longe, _, procuras_longe) = corre_com(Some(((1.0, 1.6), (4.0, 0.6))));
+    let (ctl, na_estrada_ctl, _) = corre_com(Some(((0.0, -2.8), (6.0, 0.6))));
+    eprintln!(
+        "trabalho de procura: sem a estrada {sem} ({procuras} procuras) · longe {longe} ({procuras_longe}) · CONTROLO paralela {ctl}, {na_estrada_ctl} tiques nela"
+    );
+    assert!(
+        procuras >= 8,
+        "a fixtura: o alvo anda e ele replaneia ({procuras})"
+    );
+    assert!(
+        longe as f64 <= 1.1 * sem as f64,
+        "a estrada longe pesou na procura: {sem} → {longe}"
+    );
+    // Medido: `0 · 0 · 194`, `78` tiques com o centro na estrada paralela.
+    assert!(
+        ctl > 2 * sem.max(1) && na_estrada_ctl >= 40,
+        "o CONTROLO: a estrada no caminho pede a procura e anda-se ({ctl}, {na_estrada_ctl} tiques)"
+    );
+}
+
+/// ⭐ (W19, plano 30 §28.3) **A ponte diz que área BARATA é mais estreita que o corpo** (`NavCostAreaNow`)
+/// — pela mesma erosão que faz a malha. Uma estrada de `0,4 m` para um corpo de raio `0,3`: some da malha
+/// dele, e o mundo leva o raio. Os CONTROLOS: a mesma estrada LARGA (`1,2 m`) e a mesma estreita mas CARA
+/// (recua para fora: vale) não levam nada; e sem agente nenhum, nada.
+#[test]
+fn a_ponte_publica_a_area_barata_mais_estreita_que_o_corpo() {
+    let corre_com = |meia_largura: f32, custo: f32, com_agente: bool| {
+        let mut sim = SimWorld::new();
+        regiao(&mut sim);
+        let e = caixa(&mut sim, "Estrada", (0.0, 2.0), (4.0, meia_largura), true);
+        sim.world_mut()
+            .entity_mut(e)
+            .insert(NavCostArea { cost: custo, forbidden: false });
+        marco(&mut sim, "Alvo", (5.0, -3.0));
+        if com_agente {
+            agente(&mut sim, (-5.0, -3.0), "Alvo");
+        }
+        let mut b = PhysicsBridge::new();
+        corre(&mut sim, &mut b, e, 3);
+        sim.world().get::<ph2d_physics_ecs::NavCostAreaNow>(e).map(|n| n.too_narrow_for)
+    };
+    // O raio da malha, na grelha da chave dela (`1/256 m`, para CIMA): `0,3 → 77/256`.
+    let raio_da_malha = (R * 256.0).ceil() / 256.0;
+    assert_eq!(
+        corre_com(0.2, 0.3, true),
+        Some(raio_da_malha),
+        "a estreita barata leva o raio do corpo"
+    );
+    assert_eq!(corre_com(0.6, 0.3, true), None, "o CONTROLO: larga, cabe");
+    assert_eq!(corre_com(0.2, 4.0, true), None, "o CONTROLO: estreita mas cara, vale");
+    assert_eq!(corre_com(0.2, 0.3, false), None, "o CONTROLO: ninguém anda");
 }
 
 /// Duas salas separadas por uma parede maciça, um portal em cada uma.

@@ -53,6 +53,14 @@ pub struct Params {
     pub merge: bool,
 }
 
+impl Params {
+    /// Os lados do disco que a construção usa (a potência de dois `≥ 4`).
+    #[must_use]
+    pub fn lados_do_disco(&self) -> u32 {
+        self.disk_sides.max(4).next_power_of_two()
+    }
+}
+
 impl Default for Params {
     fn default() -> Self {
         Self {
@@ -140,7 +148,7 @@ pub(crate) fn chao_e_areas(
     areas: &[Area],
     params: &Params,
 ) -> Option<(Paths64, Vec<(Vec<lattice::P>, u16)>)> {
-    let n = params.disk_sides.max(4).next_power_of_two();
+    let n = params.lados_do_disco();
     let r = params.agent_radius.max(0.0);
     let reg = inflate::inset_region(region, r);
     if reg.len() < 3 {

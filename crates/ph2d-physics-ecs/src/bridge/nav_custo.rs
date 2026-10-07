@@ -4,7 +4,8 @@
 //! # Três fontes, e a pergunta de cada agente: «que malha é a minha, e quanto custa cada área?»
 //!
 //! - **`NavCostArea` finita** → uma ÁREA da malha, igual para todos; o custo vai na CONSULTA
-//!   (`ph2d_nav::Query`), logo mexer nele não refaz malha nenhuma.
+//!   (`ph2d_nav::Query`), logo mexer nele não refaz a malha — SALVO quando atravessa o `1`: o recuo
+//!   troca de FORA para DENTRO (W18, `Area::dentro`, que vai na assinatura do mosaico).
 //! - **`NavCostArea` proibida** → um FURO para todos.
 //! - **Um `Damage` parado que MAGOA este agente** (`Damage::magoa`: a equipa, e o tipo que o
 //!   `Health` dele sente) → um FURO só para ELE — a decisão do dono (plano 30 §11.1). Sem `Health`
@@ -16,15 +17,16 @@
 //! ⚠️ A forma é o colisor PRINCIPAL do corpo (sensor ou não), pela pose de um obstáculo: estático, ou
 //! cinemático PARADO — uma zona que anda não recorta (a lei do W6).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_nav::Link;
-use ph2d_navmesh::{Area, Shape};
+use ph2d_navmesh::{Area, Params, Shape};
 
+use super::RAIO_POR_METRO;
 use super::malha::forma;
 use crate::bridge::PhysicsBridge;
-use crate::components::{Damage, Health, NavCostArea, NavLink};
+use crate::components::{Damage, Health, NavCostArea, NavCostAreaNow, NavLink};
 
 /// O que custa e o que fere NESTE tique.
 pub(super) struct Custos {
@@ -145,6 +147,62 @@ impl PhysicsBridge {
             quem.insert(e.index_u32(), e);
         }
         (out, quem)
+    }
+
+    /// ⭐ (W19, plano 30 §28.3) **Publica as áreas BARATAS onde um corpo não cabe** ([`NavCostAreaNow`]):
+    /// para cada raio das malhas que a ponte construiu (os dos agentes que ela conduz, já na grelha da
+    /// chave), a mesma erosão que a malha faz. Só escreve quando muda.
+    pub(super) fn publica_areas_estreitas(&self, sim: &mut SimWorld) {
+        let raios: BTreeSet<u32> = self.nav.meshes.keys().map(|k| k.1).collect();
+        let mut estreitas: BTreeMap<Entity, f32> = BTreeMap::new();
+        let world = sim.world();
+        for (&e, b) in &self.bodies {
+            let Some(a) = world.get::<NavCostArea>(e) else {
+                continue;
+            };
+            if a.forbidden || a.cost >= 1.0 {
+                continue;
+            }
+            let Some((d, rot)) = self.pose_de_obstaculo(b.kind, b.handle, &b.rest) else {
+                continue;
+            };
+            let area = Area {
+                shape: forma(&d, rot),
+                id: 1,
+                dentro: true,
+            };
+            let menor = raios.iter().map(|&r| r as f32 / RAIO_POR_METRO).find(|&r| {
+                let params = Params {
+                    agent_radius: f64::from(r),
+                    ..Params::default()
+                };
+                ph2d_navmesh::inflate::some_na_malha(&area, &params)
+            });
+            if let Some(r) = menor {
+                estreitas.insert(e, r);
+            }
+        }
+        let w = sim.world_mut();
+        let mut velhas: Vec<Entity> = Vec::new();
+        if let Some(mut q) = w.try_query::<(Entity, &NavCostAreaNow)>() {
+            velhas.extend(
+                q.iter(w)
+                    .filter(|(e, _)| !estreitas.contains_key(e))
+                    .map(|(e, _)| e),
+            );
+        }
+        for e in velhas {
+            w.entity_mut(e).remove::<NavCostAreaNow>();
+        }
+        for (e, r) in estreitas {
+            let agora = NavCostAreaNow { too_narrow_for: r };
+            let Ok(mut em) = w.get_entity_mut(e) else {
+                continue;
+            };
+            if em.get::<NavCostAreaNow>() != Some(&agora) {
+                em.insert(agora);
+            }
+        }
     }
 }
 

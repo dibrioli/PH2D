@@ -226,7 +226,9 @@ pub(super) fn junta(m: &MalhaPorBlocos) -> Result<(NavMesh, Vec<FaixaDeParedes>)
             });
         }
     }
+    let caixas = crate::mesh::caixas_das_areas(&verts, &ring_off, &ring, &area);
     let malha = NavMesh {
+        caixas,
         verts,
         ring_off,
         ring,

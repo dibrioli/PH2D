@@ -1161,6 +1161,7 @@ fn arma_o_top20() {
             forbidden: false,
             has_shape: false,
             body_moves: false,
+            too_narrow_for: None,
         }),
         link: Some(InspectorNavLink {
             to_nome: String::new(),

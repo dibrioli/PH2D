@@ -565,15 +565,15 @@ fn transition(prev: Status, s: Status) -> Option<Event> {
     }
 }
 
-/// ⭐ (plano 30 §25, C2) **O alvo está À VISTA**: a recta `a → b` anda-se dentro da malha com o custo do
-/// comprimento (não cruza área nenhuma acima de `1`), nenhum custo da tabela é menor que `1` e não há
-/// atalhos — então nenhum caminho é mais curto que ela (todo caminho mede pelo menos a recta e custa pelo
-/// menos o que mede), e a procura devolveria a mesma recta.
+/// ⭐ (plano 30 §25, C2) **O alvo está À VISTA**: a recta `a → b` anda-se dentro da malha e não custa
+/// mais que a COTA de qualquer caminho de `a` a `b` (W19, [`crate::cota`]: uma área barata só a bate se a
+/// ida e a volta até ela couberem no comprimento), e não há atalhos (um teletransporte podia) — então a
+/// procura devolveria o mesmo custo.
 #[must_use]
 pub fn a_vista(mesh: &NavMesh, q: &Query<'_>, a: V2, b: V2) -> bool {
     q.links.is_empty()
-        && q.costs.iter().all(|&c| c >= 1.0)
-        && crate::cost::segment_cost(mesh, q.costs, a, b).is_some_and(|c| c <= dist(a, b) + EPS)
+        && crate::cost::segment_cost(mesh, q.costs, a, b)
+            .is_some_and(|c| c <= crate::cota::Cota::nova(mesh, q.costs, false).entre(a, b) + EPS)
 }
 
 /// (W15) Esquece a procura a meio (o agente chegou, ficou sem alvo ou sem malha, ou as entradas mudaram).

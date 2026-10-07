@@ -2396,14 +2396,14 @@ proibida — o centro atravessa as quatro):
 
 | uso | a área | medido: o centro à área (mín; o corpo fora = `≥ 0,23`) |
 |---|---|---|
-| 1 estradas e trilhos | `Rough Ground` (`Cost 4`) à volta de uma estrada em U (chão) | `0,23` |
+| 1 estradas e trilhos | `Rough Ground` (`Cost 4`) à volta de uma estrada em U (chão) — ⚠️ a 1.ª versão; a cena REAL, depois da cura (`a9fbdac97`), é a `Road` (`Cost 0.3`, as três tiras `Road`/`Road Top`/`Road Bottom`) andada com o corpo inteiro nela | `0,23` |
 | 2 água / pântano | `River` (`Cost 6`), a `Bridge` é o vão sem área | `0,25` |
 | 3 zona onde nunca entra | `Garden` (`Forbidden`) | `0,25` |
 | 4 furtividade | `Guard Light` (bola, `Cost 8`) | `0,25` |
 
 | achado | medido | cura |
 |---|---|---|
-| ⛔ a estrada como área BARATA (`Cost 0.3`, o uso «óbvio») | o corredor andava pela berma de FORA (`0,25–0,27 m` do centro à estrada): a área conta a partir do corpo (a lei da W7, a área recuada pelo raio) e qualquer ponto a um raio dela já tem o desconto | o custo no terreno à volta; o tutorial diz o limite ao dono |
+| ⛔ a estrada como área BARATA (`Cost 0.3`, o uso «óbvio») | o corredor andava pela berma de FORA (`0,25–0,27 m` do centro à estrada): a área conta a partir do corpo (a lei da W7, a área recuada pelo raio) e qualquer ponto a um raio dela já tem o desconto | 1.º: o custo no terreno à volta. ✓ **Curado depois** (`a9fbdac97`): a área barata recua para DENTRO (`ph2d_navmesh::Area::dentro`, `inflate::erode`) e a cena volta à `Road` a `0.3` — gate `nav_custo::uma_area_mais_barata_anda_se_por_dentro`: `0` tiques com o corpo na estrada pela lei antiga, `129` pela nova |
 | a luz centrada | as duas sombras com `0,49 m` para um corpo de `0,5`: o corredor raspava a luz (`0,20`) | a luz `0,3 m` à esquerda (`DESVIO_DA_LUZ`) |
 | a estrada `[0,30 · 0,31 · 0,34]` | invisível na foto contra o chão | asfalto escuro |
 
@@ -2418,10 +2418,9 @@ como escolher o número.
   parta (§27.5).
 - **Quem persegue sem o alvo à vista**, na lama cerrada: máx `30` tiques a `200` agentes — o A4 que o leva a `4`
   só cabe com um tecto que a vivacidade não deixa.
-- **Uma área MAIS BARATA que o chão** (`Cost < 1`, a estrada que se prefere): a área recua pelo raio como um
-  obstáculo, e o caminho segue a berma por fora (§27.11). A cura é a área barata recuar para DENTRO (o corpo
-  inteiro nela) — muda a malha por custo, contra o desenho da W7 (o custo só na consulta): decisão de desenho
-  por abrir, com o oráculo (Godot conta o CENTRO no polígono da região).
+- ~~**Uma área MAIS BARATA que o chão** (`Cost < 1`): o caminho seguia a berma por fora (§27.11).~~ ✓ **Curado
+  na própria W18** (`a9fbdac97`): a área barata recua para DENTRO (`Area::dentro`); a malha muda quando o custo
+  atravessa o `1` (o `dentro` vai na assinatura do mosaico). Os achados da auditoria sobre ela: §28.
 - **A procura ponderada** fica no que é: a dominância no tecto, o resto é o A* deste desenho. Metade do tempo
   pediria OUTRO desenho (outra procura), não outra alavanca.
 

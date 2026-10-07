@@ -199,6 +199,7 @@ fn a_queixa_da_area_vai_da_forma_ao_corpo_que_anda() {
         forbidden: false,
         has_shape: true,
         body_moves: false,
+        too_narrow_for: None,
     };
     assert_eq!(boa.queixa(), None);
     let anda = InspectorNavCostArea {
@@ -211,6 +212,41 @@ fn a_queixa_da_area_vai_da_forma_ao_corpo_que_anda() {
         ..anda
     };
     assert_eq!(sem.queixa(), Some(CostAreaQueixa::SemForma));
+}
+
+/// ⭐ (W19, plano 30 §28.3) **A área BARATA mais estreita que o corpo queixa-se** — só barata (uma cara
+/// estreita vale: o corpo paga-a ao tocar), só não proibida, e depois das queixas da forma e do corpo.
+/// O CONTROLO: a mesma barata LARGA (sem o raio da ponte) cala-se.
+#[test]
+fn a_area_barata_mais_estreita_que_o_corpo_queixa_se() {
+    let estreita = InspectorNavCostArea {
+        cost: 0.3,
+        forbidden: false,
+        has_shape: true,
+        body_moves: false,
+        too_narrow_for: Some(0.25),
+    };
+    assert_eq!(
+        estreita.queixa(),
+        Some(CostAreaQueixa::MaisEstreitaQueOCorpo)
+    );
+    let larga = InspectorNavCostArea {
+        too_narrow_for: None,
+        ..estreita
+    };
+    assert_eq!(larga.queixa(), None, "o CONTROLO: larga, cala-se");
+    for (c, porque) in [
+        (InspectorNavCostArea { cost: 1.0, ..estreita }, "Cost 1"),
+        (InspectorNavCostArea { cost: 4.0, ..estreita }, "cara"),
+        (InspectorNavCostArea { forbidden: true, ..estreita }, "proibida"),
+    ] {
+        assert_eq!(c.queixa(), None, "{porque}: a queixa não vale");
+    }
+    let anda = InspectorNavCostArea {
+        body_moves: true,
+        ..estreita
+    };
+    assert_eq!(anda.queixa(), Some(CostAreaQueixa::CorpoQueAnda));
 }
 
 /// ⭐ (W7) **O atalho tem duas formas de não levar a lado nenhum**, e a perdida vem primeiro.

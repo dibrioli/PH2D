@@ -81,6 +81,9 @@ pub struct NavMesh {
     /// A ÁREA de cada polígono (`0` = o chão comum). A malha diz ONDE; quanto custa atravessar cada
     /// área é da consulta (W7) — dois agentes com tabelas diferentes partilham a mesma malha.
     pub(crate) area: Vec<u16>,
+    /// (W19) A caixa de cada polígono FORA do chão comum, por ordem de `(área, polígono)` — a
+    /// [`crate::cota::Cota`] acha nela as áreas mais baratas que o chão sem varrer a malha.
+    pub(crate) caixas: Vec<(u16, [V2; 2])>,
     /// As arestas de parede, `(de, para)` no sentido do polígono que as tem.
     pub(crate) walls: Vec<(u32, u32)>,
     pub(crate) grid: Localizador,
@@ -267,6 +270,7 @@ impl NavMesh {
 
         let (min, max) = bounds(&verts, &ring);
         let grid = Localizador::Uma(Grid::build(&verts, &ring_off, &ring, min, max));
+        let caixas = caixas_das_areas(&verts, &ring_off, &ring, &area);
         Ok(NavMesh {
             verts,
             ring_off,
@@ -278,6 +282,7 @@ impl NavMesh {
             vert_polys,
             island,
             islands,
+            caixas,
             area,
             walls,
             grid,
@@ -347,6 +352,13 @@ impl NavMesh {
         self.area[poly as usize]
     }
 
+    /// (W19) As caixas dos polígonos da área `a` (`a ≠ 0`; vazio se nenhum polígono a tem).
+    pub(crate) fn caixas_da_area(&self, a: u16) -> &[(u16, [V2; 2])] {
+        let lo = self.caixas.partition_point(|c| c.0 < a);
+        let hi = self.caixas.partition_point(|c| c.0 <= a);
+        &self.caixas[lo..hi]
+    }
+
     /// Há algum polígono fora do chão comum? (Sem nenhum, a procura uniforme é a resposta exacta.)
     pub fn has_areas(&self) -> bool {
         self.area.iter().any(|&a| a != 0)
@@ -392,6 +404,15 @@ impl NavMesh {
             (self.island != o.island, "island"),
             (self.islands != o.islands, "islands"),
             (self.area != o.area, "area"),
+            (
+                self.caixas.len() != o.caixas.len()
+                    || self
+                        .caixas
+                        .iter()
+                        .zip(&o.caixas)
+                        .any(|(x, y)| x.0 != y.0 || !bits(&x.1, &y.1)),
+                "caixas",
+            ),
             (self.walls != o.walls, "walls"),
             (!bits(&[self.min, self.max], &[o.min, o.max]), "bounds"),
         ]
@@ -514,6 +535,25 @@ pub(crate) fn poly_area2(verts: &[V2], ring: &[u32]) -> f64 {
         a += p[0] * q[1] - q[0] * p[1];
     }
     a
+}
+
+/// As caixas dos polígonos fora do chão comum, por `(área, polígono)` (ver [`NavMesh::caixas`]).
+pub(crate) fn caixas_das_areas(
+    verts: &[V2],
+    ring_off: &[u32],
+    ring: &[u32],
+    area: &[u16],
+) -> Vec<(u16, [V2; 2])> {
+    let mut v: Vec<(u16, [V2; 2])> = (0..area.len())
+        .filter(|&p| area[p] != 0)
+        .map(|p| {
+            let (lo, hi) = bounds(verts, &ring[ring_off[p] as usize..ring_off[p + 1] as usize]);
+            (area[p], [lo, hi])
+        })
+        .collect();
+    // Estável: dentro da mesma área, a ordem dos polígonos.
+    v.sort_by_key(|c| c.0);
+    v
 }
 
 fn bounds(verts: &[V2], ring: &[u32]) -> (V2, V2) {

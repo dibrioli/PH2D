@@ -5,6 +5,8 @@
 //!
 //! - *Avoid Harm* num agente sem `Health`: nada o fere, logo ele não evita nada.
 //! - Uma área sem colisor não tem forma; num corpo `Dynamic` a ponte não a vê (só recorta parada).
+//! - (W19) Uma área BARATA mais estreita que o corpo de quem anda: nenhum corpo cabe nela (o raio vem da
+//!   ponte, `NavCostAreaNow`).
 //! - Uma área PROIBIDA é um furo: o custo deixa de ser lido, e a linha dele sai (um controlo morto).
 //! - Um atalho sem saída, ou com uma saída que ninguém tem, não leva a lado nenhum.
 //!
@@ -23,6 +25,7 @@ const fn chave_da_area(q: CostAreaQueixa) -> &'static str {
     match q {
         CostAreaQueixa::SemForma => "panel.inspector.nav.area_needs_a_collider",
         CostAreaQueixa::CorpoQueAnda => "panel.inspector.nav.area_body_moves",
+        CostAreaQueixa::MaisEstreitaQueOCorpo => "panel.inspector.nav.area_narrower_than_body",
     }
 }
 
@@ -124,6 +127,7 @@ pub(crate) fn paint_nav_cost_area_section(
         Err(y) => return y,
     };
     if let Some(q) = c.queixa() {
+        let raio = format!("{:.2}", c.too_narrow_for.unwrap_or(0.0));
         cur_y = super::rows::aviso(
             scene,
             text_system,
@@ -131,7 +135,7 @@ pub(crate) fn paint_nav_cost_area_section(
             x,
             w,
             cur_y,
-            tr(chave_da_area(q)),
+            &ph2d_i18n::tr_with(chave_da_area(q), &[("radius", &raio)]),
             ColorToken::Warn,
         );
     }

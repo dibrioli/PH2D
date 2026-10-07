@@ -8,9 +8,9 @@ use ph2d_nav::{NavMesh, Polyanya, V2};
 use ph2d_navmesh::{Area, Params, Shape, build_with_areas};
 
 /// O gerador da sonda `examples/medir_custo.rs`, ao número (a mesma semente dá a mesma cena).
-struct Lcg(u64);
+pub(super) struct Lcg(pub(super) u64);
 impl Lcg {
-    fn next(&mut self) -> f64 {
+    pub(super) fn next(&mut self) -> f64 {
         self.0 = self
             .0
             .wrapping_mul(6_364_136_223_846_793_005)
@@ -37,6 +37,12 @@ fn caixa(r: &mut Lcg, c: V2, hmin: f64, hmax: f64) -> Shape {
 
 /// A cena `30 × 20` da sonda: 10 obstáculos e 4 lamas (ids `1..=4`).
 pub(super) fn cena(seed: u64) -> NavMesh {
+    cena_com(seed, &[], None)
+}
+
+/// (W19) A mesma, com as áreas de `baratas` a recuar para DENTRO (as que a tabela põe abaixo de `1`) e,
+/// se pedida, uma ESTRADA quadrada (id `5`, também para dentro) de centro e meio-lado dados.
+pub(super) fn cena_com(seed: u64, baratas: &[u16], estrada: Option<(V2, f64)>) -> NavMesh {
     let (w, h) = (30.0, 20.0);
     let mut r = Lcg(seed);
     let obs: Vec<Shape> = (0..10)
@@ -52,7 +58,7 @@ pub(super) fn cena(seed: u64) -> NavMesh {
             }
         })
         .collect();
-    let areas: Vec<Area> = (0..4)
+    let mut areas: Vec<Area> = (0..4)
         .map(|i| {
             let c = [r.next() * w, r.next() * h];
             let shape = if i % 2 == 0 {
@@ -63,13 +69,26 @@ pub(super) fn cena(seed: u64) -> NavMesh {
                     radius: 1.0 + r.next() * 3.0,
                 }
             };
+            let id = (i + 1) as u16;
             Area {
                 shape,
-                id: (i + 1) as u16,
-                dentro: false,
+                id,
+                dentro: baratas.contains(&id),
             }
         })
         .collect();
+    if let Some((c, m)) = estrada {
+        areas.push(Area {
+            shape: Shape::Convex(vec![
+                [c[0] - m, c[1] - m],
+                [c[0] + m, c[1] - m],
+                [c[0] + m, c[1] + m],
+                [c[0] - m, c[1] + m],
+            ]),
+            id: 5,
+            dentro: true,
+        });
+    }
     let params = Params {
         agent_radius: 0.4,
         ..Params::default()

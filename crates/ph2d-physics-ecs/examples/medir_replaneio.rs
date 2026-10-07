@@ -263,7 +263,8 @@ impl Seguidos {
         if agora {
             *s += 1;
         } else if *s > 0 {
-            (self.max, self.soma, self.n) = (self.max.max(*s), self.soma + u64::from(*s), self.n + 1);
+            (self.max, self.soma, self.n) =
+                (self.max.max(*s), self.soma + u64::from(*s), self.n + 1);
             *s = 0;
         }
     }

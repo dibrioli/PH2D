@@ -356,7 +356,7 @@ impl TiledMesh {
                 false,
             );
         }
-        let n = self.params.disk_sides.max(4).next_power_of_two();
+        let n = self.params.lados_do_disco();
         let r = self.params.agent_radius.max(0.0);
         let buracos: Paths64 = obs
             .iter()

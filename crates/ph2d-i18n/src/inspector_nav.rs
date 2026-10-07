@@ -107,6 +107,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.nav.area_body_moves" => {
             "A Dynamic body moves \u{2014} make it Static so the area stays put."
         }
+        "panel.inspector.nav.area_narrower_than_body" => {
+            "Narrower than the body that walks it (radius {radius} m) \u{2014} it never fits inside, so nobody takes it. Make it wider."
+        }
         "panel.inspector.nav.nav_link" => "Nav Link",
         "panel.inspector.nav.link_exit" => "Exit",
         "panel.inspector.nav.exit_object_name_u" => "exit object name\u{2026}",

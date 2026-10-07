@@ -57,6 +57,7 @@ fn area(forbidden: bool) -> InspectorNavCostArea {
         forbidden,
         has_shape: true,
         body_moves: false,
+        too_narrow_for: None,
     }
 }
 
@@ -326,6 +327,33 @@ fn frases(i: InspectorNavInfo) -> Vec<String> {
     });
     set_current_inspector_nav(None);
     avisos.into_iter().map(|a| a.texto).collect()
+}
+
+/// ⭐ (W19, plano 30 §28.3) **A área BARATA mais estreita que o corpo diz-se NO PAINEL**, com o raio — e
+/// cala-se larga (o CONTROLO) e cara.
+#[test]
+fn a_area_barata_mais_estreita_que_o_corpo_diz_se_no_painel() {
+    let frase = ph2d_i18n::tr_with(
+        "panel.inspector.nav.area_narrower_than_body",
+        &[("radius", &"0.25")],
+    );
+    assert!(frase.contains("0.25"), "a frase leva o raio: {frase}");
+    let mut c = area(false);
+    c.too_narrow_for = Some(0.25);
+    assert!(
+        frases(info(None, Some(c), None)).contains(&frase),
+        "a estreita barata não se disse"
+    );
+    let larga = area(false);
+    assert!(
+        !frases(info(None, Some(larga), None)).contains(&frase),
+        "o CONTROLO: larga, cala-se"
+    );
+    c.cost = 4.0;
+    assert!(
+        !frases(info(None, Some(c), None)).contains(&frase),
+        "cara: a queixa não vale"
+    );
 }
 
 /// ⭐⭐⭐ **Cada caixa que não faz nada DIZ porquê, NO PAINEL** — e cala-se quando faz.

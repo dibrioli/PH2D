@@ -5,6 +5,7 @@ mod areas;
 mod atalhos;
 mod cena;
 mod contra_o_exacto;
+mod cota;
 mod custo;
 mod determinismo;
 mod dominancia;

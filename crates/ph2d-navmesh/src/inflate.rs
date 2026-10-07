@@ -71,6 +71,14 @@ pub fn recua(area: &crate::Area, r: f64, corner: Corner, n: u32) -> Vec<P> {
     }
 }
 
+/// ⭐ (W19, plano 30 §28.3) Uma área que recua para DENTRO e NÃO SOBRA na malha deste raio — nenhum corpo
+/// cabe inteiro nela, logo ela não muda caminho nenhum (um controlo morto para quem tem este raio). A mesma
+/// erosão, o mesmo raio e os mesmos lados que a construção ([`recua`]).
+#[must_use]
+pub fn some_na_malha(area: &crate::Area, params: &crate::Params) -> bool {
+    area.dentro && erode(&area.shape, params.agent_radius.max(0.0), params.lados_do_disco()).is_empty()
+}
+
 /// ⭐ (W18) A forma ENCOLHIDA pelo raio: onde o CENTRO de um disco de raio `r` o deixa inteiro dentro dela.
 /// CONTIDA na verdadeira (o polígono do disco é INSCRITO, e uma unidade da grelha de margem) — o desconto
 /// de uma área mais barata nunca vale com o corpo a sair dela. Vazio se nenhum corpo cabe.

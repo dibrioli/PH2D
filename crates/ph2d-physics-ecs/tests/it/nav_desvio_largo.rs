@@ -95,7 +95,11 @@ fn corrida(
 /// sentido, continua a passar.
 #[test]
 fn um_corpo_largo_que_vem_de_frente_e_contornado() {
-    let parado = |hy| corrida(hy, 3.0, 0.0, true, true).0.expect("o CONTROLO parado chega");
+    let parado = |hy| {
+        corrida(hy, 3.0, 0.0, true, true)
+            .0
+            .expect("o CONTROLO parado chega")
+    };
     let mut lenta_sem_contorno = None;
     for (nome, hy, vx) in [
         ("1,2 m a 0,3 m/s", 0.6, -0.3),
@@ -117,7 +121,10 @@ fn um_corpo_largo_que_vem_de_frente_e_contornado() {
         assert!(recuo <= 0.0, "{nome}: empurrado {recuo} m para trás");
         // A tangente fica FORA do que o desvio proíbe (engordada pela folga dele): ele quase nunca corta
         // o pedido. Medido: `0 · 0 · 7` tiques; a tangente sem a folga, `51 · 58 · 95`.
-        assert!(cortes <= 10, "{nome}: o desvio cortou o pedido em {cortes} tiques");
+        assert!(
+            cortes <= 10,
+            "{nome}: o desvio cortou o pedido em {cortes} tiques"
+        );
         if hy == 1.5 && vx == -0.3 {
             lenta_sem_contorno = sem_contorno.map(|t| (t, controlo));
         }

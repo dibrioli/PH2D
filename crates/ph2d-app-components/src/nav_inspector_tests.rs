@@ -442,6 +442,22 @@ fn a_area_o_atalho_e_o_dano_vao_e_voltam() {
             .expect("a secção da área");
         assert_eq!((c.cost, c.forbidden), (custo, proibida), "{edit:?}");
     }
+    // (W19) O raio que a ponte publicou chega ao instantâneo, e sai com ele.
+    let estreita = |sim: &SimWorld| {
+        build_info(sim.world(), lama.to_bits(), 1, true)
+            .and_then(|i| i.cost_area)
+            .expect("a secção da área")
+            .too_narrow_for
+    };
+    assert_eq!(estreita(&sim), None);
+    sim.world_mut()
+        .entity_mut(lama)
+        .insert(ph2d_physics_ecs::NavCostAreaNow { too_narrow_for: 0.3 });
+    assert_eq!(estreita(&sim), Some(0.3));
+    sim.world_mut()
+        .entity_mut(lama)
+        .remove::<ph2d_physics_ecs::NavCostAreaNow>();
+    assert_eq!(estreita(&sim), None);
 
     // O atalho.
     for edit in [

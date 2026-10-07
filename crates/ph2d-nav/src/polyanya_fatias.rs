@@ -12,6 +12,7 @@ use std::cmp::Reverse;
 
 use super::{Kind, NONE, NoPath, Node, Path, Polyanya, Root};
 use crate::cost::{cost_of, path_cost};
+use crate::cota::{Cota, inferior};
 use crate::geom::{EPS, V2, dist};
 use crate::mesh::NavMesh;
 
@@ -36,7 +37,8 @@ impl Polyanya {
         self.alvo = t;
         self.costs.clear();
         self.costs.extend_from_slice(costs);
-        self.wmin = costs.iter().copied().fold(1.0, f64::min);
+        self.cota.refaz(mesh, costs, self.sonda_cota_global);
+        self.d_alvo = self.cota.distancia(t);
         let mut ps = Vec::new();
         mesh.locate_all(s, &mut ps);
         if ps.is_empty() {
@@ -47,15 +49,18 @@ impl Polyanya {
             return Some(Err(NoPath::TargetOff));
         }
         // No mesmo polígono: a direito (convexo), ao custo do mais barato que tem os dois. ⚠️ (W7) Só
-        // é a resposta se nenhuma área custa MENOS: dentro da lama, sair e contornar pode ser mais
-        // barato (medido) — então a recta é uma candidata no heap, como qualquer outra.
+        // é a resposta se nenhum caminho pode custar MENOS (a cota, W19): dentro da lama, sair e
+        // contornar pode ser mais barato (medido) — então a recta é uma candidata no heap, como
+        // qualquer outra.
         let directo = ps
             .iter()
             .filter(|p| self.target_polys.binary_search(p).is_ok())
             .map(|&p| self.cost(mesh, p))
             .reduce(f64::min);
+        let l = dist(s, t);
         if let Some(c) = directo
-            && c <= self.wmin
+            && (c <= self.cota.w()
+                || c * l <= inferior(self.cota.w(), l, self.cota.distancia(s) + self.d_alvo))
         {
             return Some(Ok(Path {
                 points: vec![s, t],
@@ -79,6 +84,7 @@ impl Polyanya {
             prev: NONE,
             w_in: 0.0,
             range: None,
+            d: self.cota.distancia(s),
         });
         if let Some(c) = directo {
             self.push(
@@ -139,8 +145,14 @@ pub(crate) struct Custos {
 #[derive(Debug)]
 enum Fase {
     Inteira,
-    Geral { wmin: f64 },
-    Ponderada { geral: Path },
+    /// O mínimo da tabela e `D` da partida e do alvo ([`crate::cota`]).
+    Geral {
+        w: f64,
+        d_fora: f64,
+    },
+    Ponderada {
+        geral: Path,
+    },
 }
 
 impl Custos {
@@ -153,7 +165,8 @@ impl Custos {
         t: V2,
     ) -> Result<Self, Result<Path, NoPath>> {
         search.stats.searches += 1;
-        let wmin = costs.iter().copied().fold(1.0, f64::min);
+        let cota = Cota::nova(mesh, costs, search.sonda_cota_global);
+        let (wmin, d_fora) = (cota.w(), cota.distancia(s) + cota.distancia(t));
         // (W14) Uma tabela toda a `1` (a da ponte sem lama é `[1.0]`) é uniforme sem varrer a malha.
         let uniforme = costs.iter().all(|&c| c == 1.0)
             || (0..mesh.poly_count() as u32).all(|p| cost_of(costs, mesh.area_id(p)) == wmin);
@@ -169,28 +182,28 @@ impl Custos {
         }
         match search.begin(mesh, &[], s, t) {
             Some(Err(e)) => Err(Err(e)),
-            Some(Ok(p0)) => Self::depois_da_geral(search, mesh, costs, (s, t), wmin, p0),
+            Some(Ok(p0)) => Self::depois_da_geral(search, mesh, costs, (s, t), (wmin, d_fora), p0),
             None => Ok(Self {
                 s,
                 t,
-                fase: Fase::Geral { wmin },
+                fase: Fase::Geral { w: wmin, d_fora },
             }),
         }
     }
 
-    /// A geral acabou: se ela não toca nada mais caro que o mínimo, é o óptimo; senão começa a
-    /// ponderada.
+    /// A geral acabou: se ela não custa mais que a cota de qualquer caminho (o comprimento dela é o
+    /// mínimo geométrico), é o óptimo; senão começa a ponderada.
     fn depois_da_geral(
         search: &mut Polyanya,
         mesh: &NavMesh,
         costs: &[f64],
         (s, t): (V2, V2),
-        wmin: f64,
+        (w, d_fora): (f64, f64),
         p0: Path,
     ) -> Result<Self, Result<Path, NoPath>> {
         let c0 = path_cost(mesh, costs, &p0.points).unwrap_or(f64::INFINITY);
         let geral = Path { cost: c0, ..p0 };
-        if c0 <= wmin * geral.length * (1.0 + 1e-12) + EPS {
+        if c0 <= inferior(w, geral.length, d_fora) * (1.0 + 1e-12) + EPS {
             return Err(Ok(geral));
         }
         search.dominancia = !search.sem_dominancia;
@@ -222,12 +235,12 @@ impl Custos {
                         Fatia::Falta => None,
                     };
                 }
-                &Fase::Geral { wmin } => match search.resume(mesh, ate) {
+                &Fase::Geral { w, d_fora } => match search.resume(mesh, ate) {
                     Fatia::Falta => return None,
                     Fatia::Feita(Err(e)) => return Some(Err(e)),
                     Fatia::Feita(Ok(p0)) => {
-                        match Self::depois_da_geral(search, mesh, costs, (self.s, self.t), wmin, p0)
-                        {
+                        let st = (self.s, self.t);
+                        match Self::depois_da_geral(search, mesh, costs, st, (w, d_fora), p0) {
                             Err(r) => return Some(r),
                             Ok(seguinte) => *self = seguinte,
                         }

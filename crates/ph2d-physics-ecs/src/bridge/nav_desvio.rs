@@ -167,7 +167,10 @@ impl PhysicsBridge {
                         let (vx, vy) = (vel[0] - w * ry, vel[1] + w * rx);
                         m.max((vx * vx + vy * vy).sqrt())
                     });
-                    contornar.push((pts.clone(), u * ph2d_orca::Params::PRODUCT.time_horizon_walls));
+                    contornar.push((
+                        pts.clone(),
+                        u * ph2d_orca::Params::PRODUCT.time_horizon_walls,
+                    ));
                 }
                 if !poligonos.is_empty() {
                     moveis.push(ph2d_orca::Movel {
@@ -197,7 +200,11 @@ impl PhysicsBridge {
             corpos[k].ignores = p.alvo.and_then(|a| indice.get(&a).copied());
             // ⭐ (plano 30 §25, B) O caminho até ao próximo canto atravessa um corpo que anda (a malha
             // não o tem): aponta à tangente dele, do lado escolhido.
-            let canto = self.nav.agents.get(&p.entity).and_then(|rt| rt.path.get(rt.next));
+            let canto = self
+                .nav
+                .agents
+                .get(&p.entity)
+                .and_then(|rt| rt.path.get(rt.next));
             if self.nav.sonda.contorno
                 && p.avoidance
                 && let Some(&g) = canto
@@ -429,13 +436,12 @@ fn distancia_do_troco(a: V2, b: V2, w: &[V2]) -> f64 {
     let mut menor = distancia_ao_poligono(w, a).min(distancia_ao_poligono(w, b));
     for i in 0..n {
         let (p, q) = (w[i], w[(i + 1) % n]);
-        let lado = |o: V2, x: V2, y: V2| (x[0] - o[0]) * (y[1] - o[1]) - (x[1] - o[1]) * (y[0] - o[0]);
+        let lado =
+            |o: V2, x: V2, y: V2| (x[0] - o[0]) * (y[1] - o[1]) - (x[1] - o[1]) * (y[0] - o[0]);
         if lado(a, b, p) * lado(a, b, q) < 0.0 && lado(p, q, a) * lado(p, q, b) < 0.0 {
             return 0.0;
         }
-        menor = menor
-            .min(ao_troco(p, a, b))
-            .min(ao_troco(q, a, b));
+        menor = menor.min(ao_troco(p, a, b)).min(ao_troco(q, a, b));
     }
     menor
 }

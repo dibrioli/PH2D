@@ -343,8 +343,8 @@ fn a_ultima_procura_guarda_o_trabalho_e_nao_os_nos() {
 }
 
 /// ⭐ (plano 30 §25, C2) **O alvo À VISTA** só quando a recta é mesmo o caminho mais curto: dentro da
-/// malha, sem custo acima de `1` no caminho, sem custo abaixo de `1` na tabela (uma estrada podia ser
-/// mais curta pelo custo) e sem atalhos (um teletransporte podia). Três faixas com a do meio na área `1`.
+/// malha, sem custo acima de `1` no caminho, nenhuma área barata ao alcance (W19: a cota, `cota.rs`) e
+/// sem atalhos (um teletransporte podia). Três faixas com a do meio na área `1`.
 #[test]
 fn o_alvo_a_vista_e_so_a_recta_que_nenhum_caminho_bate() {
     let v = vec![
@@ -373,9 +373,16 @@ fn o_alvo_a_vista_e_so_a_recta_que_nenhum_caminho_bate() {
     assert!(!a_vista(&m, &q(&[1.0, 4.0], &[]), [0.5, 0.5], [3.5, 3.5]));
     // A recta dentro de uma faixa sem lama, com a lama a `4` noutra: à vista.
     assert!(a_vista(&m, &q(&[1.0, 4.0], &[]), [0.5, 0.5], [0.5, 3.5]));
-    // Uma área mais BARATA que `1` em qualquer sítio da tabela, ou um atalho: nunca.
+    // (W19) Uma área mais BARATA perto (a ida e a volta até ela cabem no comprimento: `0,5 + 0,5 < 3`)
+    // pode vencer a recta: não. Longe (`0,5 + 0,5 ≥ 1`), a recta vence: sim. Um atalho: nunca.
     assert!(!a_vista(&m, &q(&[1.0, 0.5], &[]), [0.5, 0.5], [0.5, 3.5]));
-    assert!(!a_vista(&m, &q(&[1.0, 1.0], &atalho), [0.5, 0.5], [0.5, 3.5]));
+    assert!(a_vista(&m, &q(&[1.0, 0.5], &[]), [0.5, 0.5], [0.5, 1.5]));
+    assert!(!a_vista(
+        &m,
+        &q(&[1.0, 1.0], &atalho),
+        [0.5, 0.5],
+        [0.5, 3.5]
+    ));
     // Fora da malha (uma parede pelo meio): nunca.
     let a = anel();
     assert!(!a_vista(&a, &q(&[], &[]), [0.5, 0.5], [3.5, 3.5]));

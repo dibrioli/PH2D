@@ -83,7 +83,7 @@ pub use components::{
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, Damage, DampMode,
     DampingOverride, Dominance, GravityScale, Health, HealthBar, HealthNow, InitialVelocity,
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NavAgent,
-    NavCostArea, NavLink, NavNow, NavRegion, NavRoute, NavTarget, NoWallCling, OnHit,
+    NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute, NavTarget, NoWallCling, OnHit,
     OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion,
     PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals, Resistance, RigidBody, RopeStops,
     SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide,

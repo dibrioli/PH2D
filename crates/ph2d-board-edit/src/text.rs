@@ -106,6 +106,10 @@ impl Editor {
         id: ElementId,
         at: Option<[f64; 2]>,
     ) -> bool {
+        if doc.get(id).is_some_and(|el| el.locked) {
+            self.notice = Some(crate::Notice::Locked);
+            return false;
+        }
         if !self.open_text(doc, id) {
             return false;
         }
@@ -319,6 +323,11 @@ impl Editor {
             return false;
         };
         self.gesture = None;
+        // Num membro de um grupo seleccionado, o duplo-clique entra um nível (oráculo B); só no
+        // elemento sozinho é que escreve.
+        if self.enter_group(doc, id) {
+            return true;
+        }
         self.begin_text(doc, ts, id, Some(p.world))
     }
 }

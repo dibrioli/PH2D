@@ -9,10 +9,13 @@
 //! verdade) e guarda o passo de desfazer só ao largar, com o estado do início do gesto.
 
 mod command;
+mod frame_box;
 mod gesture;
+mod gesture_end;
 mod ink;
 mod notes;
 mod notes_layout;
+mod organize;
 mod resize;
 mod snap;
 mod text;
@@ -27,12 +30,14 @@ use ph2d_board_model::{
 use ph2d_board_route::RouteCache;
 use ph2d_text::TextSystem;
 
+pub use frame_box::Frame;
 pub use gesture::Down;
 pub use ink::{LASER_LIFE, PEN_WIDTHS, PenBox, PenPreset, point_segment, world_points};
 pub use notes::{
     NOTE_DEFAULT_SIZE, NOTE_GAP_K, NOTE_SCALES, NoteStyle, grid_layout, note_scale, note_size,
     parse_cells, reading_order,
 };
+pub use organize::{Align, Axis, Notice, Order};
 pub use ph2d_board_layout::Move;
 pub use snap::Guide;
 pub use text::hand_lettered;
@@ -55,6 +60,9 @@ pub const NUDGE: [f64; 2] = [1.0, 10.0];
 /// unidades do MUNDO: metade da largura de uma caixa de nascença ([`CLICK_SIZE`]) — o passo de um
 /// fluxograma, com espaço para a seta e para a ponta dela.
 pub const NEXT_GAP: f64 = CLICK_SIZE[0] / 2.0;
+/// Um frame posto com um clique (sem arrastar), em unidades do MUNDO: 16:9, cinco caixas de nascença
+/// de largo. ⚠️ O tamanho de nascença do Miro está por medir (o help só diz que há predefinições).
+pub const FRAME_CLICK_SIZE: [f64; 2] = [CLICK_SIZE[0] * 5.0, CLICK_SIZE[0] * 5.0 * 9.0 / 16.0];
 
 /// A ferramenta activa.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -73,6 +81,8 @@ pub enum Tool {
     },
     /// O ponteiro laser: um rasto que se apaga sozinho, fora do documento.
     Laser,
+    /// O frame (W5, tecla `F` do Miro): arrastar desenha um; um clique põe um do tamanho de nascença.
+    Frame,
 }
 
 /// Modificadores no instante do evento.
@@ -116,6 +126,9 @@ pub struct Metrics {
     pub dot: f64,
     /// O raio da borracha.
     pub eraser: f64,
+    /// A altura da faixa do TÍTULO de um frame, por cima dele (agarra-se por ali e pela borda — o
+    /// Miro: *«Click and drag the frame's border or title»*).
+    pub frame_title: f64,
 }
 
 /// Um lado ou canto da moldura de selecção — `(sx, sy)` em `{-1, 0, 1}²`.
@@ -163,57 +176,6 @@ impl Dir {
 pub enum Handle {
     Resize(Dir),
     Rotate,
-}
-
-/// Uma caixa rodada: o centro, o tamanho e o ângulo (mundo).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Frame {
-    pub center: [f64; 2],
-    pub w: f64,
-    pub h: f64,
-    pub angle: f64,
-}
-
-impl Frame {
-    #[must_use]
-    pub fn of(el: &Element) -> Self {
-        Self {
-            center: el.center(),
-            w: el.w,
-            h: el.h,
-            angle: el.angle,
-        }
-    }
-
-    /// Ponto local (relativo ao centro, antes de rodar) → mundo.
-    #[must_use]
-    pub fn point(&self, local: [f64; 2]) -> [f64; 2] {
-        let (s, c) = self.angle.sin_cos();
-        [
-            self.center[0] + local[0] * c - local[1] * s,
-            self.center[1] + local[0] * s + local[1] * c,
-        ]
-    }
-
-    /// Mundo → ponto local (relativo ao centro, antes de rodar).
-    #[must_use]
-    pub fn local(&self, world: [f64; 2]) -> [f64; 2] {
-        let (s, c) = (-self.angle).sin_cos();
-        let (dx, dy) = (world[0] - self.center[0], world[1] - self.center[1]);
-        [dx * c - dy * s, dx * s + dy * c]
-    }
-
-    /// Onde está a pega `h` (mundo), com `px` = um px de ecrã e as medidas da interface.
-    #[must_use]
-    pub fn handle(&self, h: Handle, px: f64, m: &Metrics) -> [f64; 2] {
-        match h {
-            Handle::Resize(d) => {
-                let (sx, sy) = d.sign();
-                self.point([sx * self.w / 2.0, sy * self.h / 2.0])
-            }
-            Handle::Rotate => self.point([0.0, -self.h / 2.0 - m.rotate_offset * px]),
-        }
-    }
 }
 
 /// O que se desenha por cima do quadro, no MUNDO (quem desenha converte para o ecrã).
@@ -304,6 +266,15 @@ pub enum Command {
     /// `Ctrl+seta`: cria a forma seguinte, já ligada, do lado `(dx, dy)` (unitário) da única forma
     /// seleccionada — e selecciona-a, para a próxima seguir dela.
     Grow([f64; 2]),
+    /// `Ctrl+G` agrupa · `Ctrl+Shift+G` desagrupa (W5).
+    Group,
+    Ungroup,
+    /// `Ctrl+Shift+L`: trava ou destrava a selecção (W5).
+    Lock,
+    /// `PgUp`/`PgDn` (com `Shift`, um passo): a ordem de desenho (W5).
+    Order(Order),
+    Align(Align),
+    Distribute(Axis),
 }
 
 /// Uma tecla dentro do texto em edição.
@@ -361,6 +332,12 @@ pub struct Editor {
     laser: Vec<([f64; 2], Instant)>,
     /// O último ponto do ponteiro no quadro (o anel da borracha).
     cursor: Option<[f64; 2]>,
+    /// O grupo em que se entrou com duplo-clique (W5): um clique selecciona o nível abaixo dele.
+    entered: Option<ph2d_board_model::GroupId>,
+    /// A última recusa, para a vista a mostrar (e a esvaziar com [`Editor::take_notice`]).
+    notice: Option<Notice>,
+    /// O nome de nascença do frame `n` (1, 2, …) — a vista dá-o já traduzido.
+    pub frame_name: fn(usize) -> String,
 }
 
 impl Editor {
@@ -388,6 +365,9 @@ impl Editor {
             ink: None,
             laser: Vec::new(),
             cursor: None,
+            entered: None,
+            notice: None,
+            frame_name: |n| n.to_string(),
         }
     }
 
@@ -400,6 +380,11 @@ impl Editor {
     pub fn routes(&mut self, doc: &BoardDoc) -> &RouteCache {
         self.routes.sync(doc);
         &self.routes
+    }
+
+    /// A última recusa (para a vista a mostrar como aviso), esvaziando-a.
+    pub fn take_notice(&mut self) -> Option<Notice> {
+        self.notice.take()
     }
 
     /// Os seleccionados, por id.

@@ -9,6 +9,7 @@ use ph2d_board_model::{
 use ph2d_text::TextSystem;
 
 use crate::resize::{axis_angle, drag_box, resize_frame, resized};
+use crate::gesture_end::undo_ops;
 use crate::snap::{Guide, snap_box};
 use crate::{Dir, Editor, Frame, Handle, Mods, Pointer, Tool, live, union_aabb};
 
@@ -58,6 +59,8 @@ pub(crate) enum Gesture {
     },
     Create {
         kind: ShapeType,
+        /// A ferramenta Frame (o `kind` não conta).
+        frame: bool,
         start: [f64; 2],
         id: Option<ElementId>,
         targets: Vec<[f64; 4]>,
@@ -163,9 +166,11 @@ impl Editor {
         let tol = self.metrics.handle / 2.0 * p.px;
         self.routes.sync(doc);
         let routes = &self.routes;
-        doc.live_in_z_order()
+        let found = doc
+            .live_in_z_order()
             .into_iter()
             .rev()
+            .filter(|el| el.as_frame().is_none())
             .find(|el| match el.connector() {
                 Some(c) => routes
                     .get(el.id)
@@ -173,7 +178,8 @@ impl Editor {
                 None if el.ink().is_some() => crate::ink::ink_hit(el, p.world, tol),
                 None => ph2d_board_geom::hit(el, p.world, tol),
             })
-            .map(|el| el.id)
+            .map(|el| el.id);
+        found.or_else(|| self.frame_hit(doc, p))
     }
 
     /// A pega da moldura em `p`, se há selecção.
@@ -204,9 +210,14 @@ impl Editor {
         }
         match self.tool {
             Tool::Hand => return Down::Pan,
-            Tool::Shape(kind) => {
+            Tool::Shape(_) | Tool::Frame => {
+                let (kind, frame) = match self.tool {
+                    Tool::Shape(k) => (k, false),
+                    _ => (ShapeType::Rectangle, true),
+                };
                 self.gesture = Some(Gesture::Create {
                     kind,
+                    frame,
                     start: p.world,
                     id: None,
                     targets: targets(doc, &BTreeSet::new(), view),
@@ -254,11 +265,15 @@ impl Editor {
         if let Some(h) = self.handle_at(doc, p) {
             let frame = self.frame(doc).expect("há pega, há moldura");
             let originals: Vec<Element> = self
-                .selected(doc)
+                .movable(doc)
                 .into_iter()
                 .filter(|el| el.connector().is_none())
-                .cloned()
+                .filter(|el| h != Handle::Rotate || el.as_frame().is_none())
                 .collect();
+            if originals.is_empty() {
+                self.notice = Some(crate::Notice::Locked);
+                return Down::Taken;
+            }
             self.gesture = Some(match h {
                 Handle::Rotate => Gesture::Rotate {
                     frame,
@@ -292,22 +307,27 @@ impl Editor {
                 });
             }
             Some(id) => {
+                // Fora do grupo em que se entrou, sai-se dele (oráculo B).
+                self.entered = self
+                    .entered
+                    .filter(|g| doc.get(id).is_some_and(|el| el.groups.contains(g)));
+                let pick = self.pick(doc, id);
                 let was = self.selection.contains(&id);
                 let mut collapse_to = None;
                 if p.mods.shift {
                     if was {
-                        self.selection.remove(&id);
+                        self.selection.retain(|i| !pick.contains(i));
                         return Down::Taken;
                     }
-                    self.selection.insert(id);
+                    self.selection.extend(pick);
                 } else if !was {
-                    self.selection = BTreeSet::from([id]);
-                } else if self.selection.len() > 1 {
+                    self.selection = pick;
+                } else if self.selection.len() > pick.len() {
                     collapse_to = Some(id);
                 }
                 self.gesture = Some(Gesture::Move {
                     start: p.world,
-                    originals: self.selected(doc).into_iter().cloned().collect(),
+                    originals: self.moving(doc),
                     targets: targets(doc, &self.selection, view),
                     active: false,
                     copies: Vec::new(),
@@ -318,6 +338,7 @@ impl Editor {
             None => {
                 if !p.mods.shift {
                     self.selection.clear();
+                    self.leave_groups();
                 }
                 self.gesture = Some(Gesture::Marquee {
                     start: p.world,
@@ -389,14 +410,22 @@ impl Editor {
                     let r = rect(*start, *cur);
                     self.routes.sync(doc);
                     let routes = &self.routes;
-                    let inside = doc.live().filter(|el| {
-                        let b = match el.connector() {
-                            Some(_) => routes.get(el.id).map_or([f64::NAN; 4], |r| r.bbox),
-                            None => el.aabb(),
-                        };
-                        b[0] >= r[0] && b[1] >= r[1] && b[2] <= r[2] && b[3] <= r[3]
-                    });
-                    self.selection = base.iter().copied().chain(inside.map(|el| el.id)).collect();
+                    // Os travados ficam de fora (o Miro); quem é de um grupo traz o grupo.
+                    let inside: Vec<ElementId> = doc
+                        .live()
+                        .filter(|el| !el.locked)
+                        .filter(|el| {
+                            let b = match el.connector() {
+                                Some(_) => routes.get(el.id).map_or([f64::NAN; 4], |r| r.bbox),
+                                None => el.aabb(),
+                            };
+                            b[0] >= r[0] && b[1] >= r[1] && b[2] <= r[2] && b[3] <= r[3]
+                        })
+                        .map(|el| el.id)
+                        .collect();
+                    let picked: Vec<ElementId> =
+                        inside.into_iter().flat_map(|id| self.pick(doc, id)).collect();
+                    self.selection = base.iter().copied().chain(picked).collect();
                 }
             }
             Gesture::Move {
@@ -414,6 +443,9 @@ impl Editor {
                 }
                 if !*active {
                     *active = true;
+                    if originals.is_empty() {
+                        self.notice = Some(crate::Notice::Locked);
+                    }
                     if p.mods.alt {
                         *copies = self.duplicate_live(doc, originals);
                         let copy_state: Vec<Element> = copies
@@ -497,6 +529,7 @@ impl Editor {
             }
             Gesture::Create {
                 kind,
+                frame,
                 start,
                 id,
                 targets,
@@ -514,7 +547,7 @@ impl Editor {
                     *guides = g2;
                 }
                 let mut bx = drag_box(*start, world, p.mods);
-                if let Some(a) = kind.note_aspect() {
+                if let Some(a) = kind.note_aspect().filter(|_| !*frame) {
                     bx[3] = bx[2] * a;
                 }
                 let el = match *id {
@@ -526,7 +559,7 @@ impl Editor {
                         el
                     }),
                     None => {
-                        let el = self.new_shape(doc, *kind, bx);
+                        let el = self.born(doc, *kind, *frame, *start, bx);
                         *id = Some(el.id);
                         Some(el)
                     }
@@ -565,129 +598,78 @@ impl Editor {
             } => {
                 if !active {
                     if let Some(id) = collapse_to {
-                        self.selection = BTreeSet::from([id]);
+                        self.selection = self.pick(doc, id);
                     }
-                } else if copies.is_empty() {
+                    return;
+                }
+                // A casa decide-a o PONTEIRO ao largar (oráculo A4/A5).
+                let moved: BTreeSet<ElementId> = if copies.is_empty() {
+                    originals.iter().map(|o| o.id).collect()
+                } else {
+                    copies.iter().copied().collect()
+                };
+                let roots = crate::organize::roots_of(doc, &moved);
+                for el in crate::organize::rehome_on_drop(doc, &roots, p.world) {
+                    live(doc, el);
+                }
+                if copies.is_empty() {
                     history.record(undo_ops(doc, &originals));
                 } else {
                     history.record(copies.into_iter().rev().map(BoardOp::Delete).collect());
                 }
             }
-            Gesture::Resize { originals, .. } | Gesture::Rotate { originals, .. } => {
+            Gesture::Resize { originals, .. } => {
+                // Um frame redimensionado adopta o que lhe fica inteiro dentro e solta o filho que
+                // ficou inteiro fora (oráculo A8) — no MESMO passo.
+                let mut undo = undo_ops(doc, &originals);
+                for f in originals.iter().filter(|o| o.as_frame().is_some()) {
+                    crate::organize::settle_live(doc, f.id, &mut undo);
+                }
+                history.record(undo);
+            }
+            Gesture::Rotate { originals, .. } => {
                 history.record(undo_ops(doc, &originals));
             }
             Gesture::Create {
-                kind, start, id, ..
+                kind,
+                frame,
+                start,
+                id,
+                ..
             } => {
                 let id = id.unwrap_or_else(|| {
-                    let [w, h] = self.metrics.click_size;
-                    let bx = if kind.is_note() {
+                    let [w, h] = if frame {
+                        crate::FRAME_CLICK_SIZE
+                    } else {
+                        self.metrics.click_size
+                    };
+                    let bx = if kind.is_note() && !frame {
                         self.note_box(kind, start)
                     } else {
                         [start[0] - w / 2.0, start[1] - h / 2.0, w, h]
                     };
-                    let el = self.new_shape(doc, kind, bx);
+                    let el = self.born(doc, kind, frame, start, bx);
                     let id = el.id;
                     live(doc, el);
                     id
                 });
-                history.record(vec![BoardOp::Delete(id)]);
+                let mut undo = vec![BoardOp::Delete(id)];
+                if frame {
+                    // O frame desenhado adopta o que lhe ficou inteiro dentro (oráculo A1).
+                    crate::organize::settle_live(doc, id, &mut undo);
+                }
+                history.record(undo);
                 self.selection = BTreeSet::from([id]);
                 self.tool = Tool::Select;
             }
         }
     }
-
-    /// `Esc` a meio de um gesto: devolve o documento ao início dele. `false` = não havia gesto.
-    /// ⭐ Fecha um gesto PENDURADO — um cujo largar nunca chegou (a shell entregou-o a outro, ou ele
-    /// caiu fora da janela): o traço da caneta guarda-se tal como está (um passo); outro gesto volta
-    /// ao início dele. Quem chama é a vista, antes de um carregar que o gesto não pode engolir (um
-    /// botão da barra). `false` = não havia gesto.
-    pub fn finish_gesture(&mut self, doc: &mut BoardDoc, history: &mut History) -> bool {
-        self.ink_finish(doc, history) || self.cancel_gesture(doc)
-    }
-
-    pub fn cancel_gesture(&mut self, doc: &mut BoardDoc) -> bool {
-        if self.ink_cancel(doc) {
-            return true;
-        }
-        let Some(g) = self.gesture.take() else {
-            return false;
-        };
-        match g {
-            Gesture::Move {
-                originals, copies, ..
-            } => {
-                if copies.is_empty() {
-                    for op in undo_ops(doc, &originals) {
-                        let _ = op.apply(doc);
-                    }
-                } else {
-                    for id in copies {
-                        let _ = BoardOp::Delete(id).apply(doc);
-                    }
-                }
-            }
-            Gesture::Resize { originals, .. }
-            | Gesture::Rotate { originals, .. }
-            | Gesture::Grid { originals, .. } => {
-                for op in undo_ops(doc, &originals) {
-                    let _ = op.apply(doc);
-                }
-            }
-            Gesture::EndDrag { original, .. } | Gesture::Bend { original, .. } => {
-                let _ = BoardOp::Put(original).apply(doc);
-            }
-            Gesture::Create { id: Some(id), .. } | Gesture::Connect { id: Some(id), .. } => {
-                let _ = BoardOp::Delete(id).apply(doc);
-            }
-            Gesture::Marquee { base, .. } => self.selection = base,
-            _ => {}
-        }
-        true
-    }
-
-    /// Cópias vivas de `els` (ids novos, à frente de tudo, na mesma ordem relativa; as setas presas
-    /// às cópias); devolve os ids.
-    fn duplicate_live(&mut self, doc: &mut BoardDoc, els: &[Element]) -> Vec<ElementId> {
-        let mut copies = els.to_vec();
-        self.detach_outside(doc, &mut copies);
-        let mut map = std::collections::BTreeMap::new();
-        for el in &mut copies {
-            let id = doc.mint_id();
-            map.insert(el.id, id);
-            el.id = id;
-            el.version = 0;
-        }
-        crate::wire::remap(&mut copies, &map);
-        let ids: Vec<ElementId> = copies
-            .into_iter()
-            .map(|mut el| {
-                el.z = doc.z_on_top();
-                let id = el.id;
-                live(doc, el);
-                id
-            })
-            .collect();
-        self.selection = ids.iter().copied().collect();
-        ids
-    }
-}
-
-/// O lote que devolve o documento ao início do gesto («pôr os originais») — só dos que mudaram:
-/// um arrasto que voltou ao sítio não é passo. NÃO o aplica: é o passo que o `History` guarda.
-fn undo_ops(doc: &BoardDoc, originals: &[Element]) -> Vec<BoardOp> {
-    originals
-        .iter()
-        .filter(|o| doc.get(o.id).is_some_and(|now| !same_pose(now, o)))
-        .map(|o| BoardOp::Put(o.clone()))
-        .collect()
 }
 
 pub(crate) fn is_note(el: &Element) -> bool {
     el.shape().is_some_and(|s| s.kind.is_note())
 }
 
-fn same_pose(a: &Element, b: &Element) -> bool {
+pub(crate) fn same_pose(a: &Element, b: &Element) -> bool {
     a.x == b.x && a.y == b.y && a.w == b.w && a.h == b.h && a.angle == b.angle && a.kind == b.kind
 }

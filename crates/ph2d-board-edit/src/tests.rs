@@ -18,6 +18,7 @@ fn metrics() -> Metrics {
         bind: 8.0,
         dot: 40.0,
         eraser: 10.0,
+        frame_title: 20.0,
     }
 }
 
@@ -945,3 +946,6 @@ mod notes;
 
 #[path = "ink_tests.rs"]
 mod ink;
+
+#[path = "organize_tests.rs"]
+mod organize;

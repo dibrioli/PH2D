@@ -3,7 +3,7 @@
 
 use std::collections::BTreeSet;
 
-use ph2d_board_model::{BoardDoc, BoardOp, Element, History, ShapeType};
+use ph2d_board_model::{BoardDoc, BoardOp, Element, ElementId, History, ShapeType};
 use ph2d_text::TextSystem;
 
 use crate::{Command, Editor, Tool};
@@ -55,7 +55,8 @@ impl Editor {
             }
             Command::Mark(m) => self.toggle_mark(doc, history, m),
             Command::SelectAll => {
-                self.selection = doc.live_in_z_order().iter().map(|el| el.id).collect();
+                // Os travados ficam de fora (o Miro e o oráculo E).
+                self.selection = doc.live().filter(|el| !el.locked).map(|el| el.id).collect();
                 true
             }
             Command::EditText => {
@@ -66,7 +67,16 @@ impl Editor {
             }
             Command::Delete => {
                 // As setas que ficam e se prendiam ao que sai soltam-se onde estão (no MESMO passo).
-                let gone = self.selection.clone();
+                // Os travados ficam; um frame leva tudo o que vive dentro dele (menos o travado, que
+                // fica solto onde está).
+                let free: Vec<ElementId> = self.movable(doc).iter().map(|el| el.id).collect();
+                if free.len() < self.selection.len() {
+                    self.notice = Some(crate::Notice::Locked);
+                }
+                let gone: BTreeSet<ElementId> = crate::organize::with_descendants(doc, &free)
+                    .into_iter()
+                    .filter(|id| doc.get(*id).is_some_and(|el| !el.locked))
+                    .collect();
                 let mut ops = self.release_ends(doc, &gone);
                 ops.extend(gone.iter().map(|id| BoardOp::Delete(*id)));
                 self.selection.clear();
@@ -89,9 +99,10 @@ impl Editor {
                 !self.clipboard.is_empty()
             }
             Command::Nudge(d) => {
-                let ops: Vec<BoardOp> = self
-                    .selected(doc)
+                let free: Vec<ElementId> = self.movable(doc).iter().map(|el| el.id).collect();
+                let ops: Vec<BoardOp> = crate::organize::with_descendants(doc, &free)
                     .into_iter()
+                    .filter_map(|id| doc.get(id))
                     .map(|el| {
                         let mut el = el.clone();
                         el.translate(d);
@@ -103,10 +114,16 @@ impl Editor {
                 any
             }
             Command::Duplicate => {
-                let mut src: Vec<Element> = self.selected(doc).into_iter().cloned().collect();
+                let mut src = self.selected_with_contents(doc);
                 self.detach_outside(doc, &mut src);
                 self.place_copies(doc, history, &src, 1)
             }
+            Command::Group => self.group(doc, history),
+            Command::Ungroup => self.ungroup(doc, history),
+            Command::Lock => self.toggle_lock(doc, history),
+            Command::Order(o) => self.reorder(doc, history, o),
+            Command::Align(a) => self.align(doc, history, a),
+            Command::Distribute(ax) => self.distribute(doc, history, ax),
             Command::Paste => {
                 self.pastes += 1;
                 let src = self.clipboard.clone();
@@ -116,7 +133,7 @@ impl Editor {
     }
 
     fn copy(&mut self, doc: &BoardDoc) {
-        let mut els: Vec<Element> = self.selected(doc).into_iter().cloned().collect();
+        let mut els = self.selected_with_contents(doc);
         self.detach_outside(doc, &mut els);
         // O texto deles (um por linha) vai também para fora do app — e é a marca que separa um
         // `Ctrl+V` destes elementos de um de fora.
@@ -176,6 +193,7 @@ impl Editor {
             })
             .collect();
         crate::wire::remap(&mut copies, &map);
+        remap_organize(doc, &mut copies, &map);
         let ops = copies
             .into_iter()
             .map(|mut el| {
@@ -188,5 +206,40 @@ impl Editor {
         history.record(ops.iter().rev().map(|el| BoardOp::Delete(el.id)).collect());
         self.selection = ids;
         true
+    }
+}
+
+impl Editor {
+    /// Os seleccionados e o que vive dentro dos frames entre eles, em ordem de z (o que uma cópia
+    /// leva: copiar um frame copia o conteúdo).
+    fn selected_with_contents(&self, doc: &BoardDoc) -> Vec<Element> {
+        let ids: Vec<ElementId> = self.selection.iter().copied().collect();
+        let mut v: Vec<Element> = crate::organize::with_descendants(doc, &ids)
+            .into_iter()
+            .filter_map(|id| doc.get(id).cloned())
+            .collect();
+        v.sort_by(|a, b| a.z.cmp(&b.z));
+        v
+    }
+}
+
+/// As cópias ficam nos frames COPIADOS (ou na casa do original, se o frame dele não veio) e em
+/// grupos NOVOS — uma cópia de um grupo é outro grupo; o link para um copiado aponta a cópia.
+pub(crate) fn remap_organize(
+    doc: &mut BoardDoc,
+    copies: &mut [Element],
+    map: &std::collections::BTreeMap<ElementId, ElementId>,
+) {
+    let mut groups = std::collections::BTreeMap::new();
+    for el in copies.iter_mut() {
+        if let Some(f) = el.frame.and_then(|f| map.get(&f)) {
+            el.frame = Some(*f);
+        }
+        if let Some(l) = el.link.and_then(|l| map.get(&l)) {
+            el.link = Some(*l);
+        }
+        for g in &mut el.groups {
+            *g = *groups.entry(*g).or_insert_with(|| doc.mint_group());
+        }
     }
 }

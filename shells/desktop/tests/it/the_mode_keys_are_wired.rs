@@ -6,17 +6,36 @@
 //! ⛔ O defeito que ele apanhou (05/10): no modo Node do vetor um braço `KeyCode::Tab` percorria os
 //! nós e CONSUMIA a tecla — em Edit com o Node, o `Tab` não saía do modo. ⇒ o `Tab` tem UM dono.
 
-/// Mutação que tem de sangrar: um segundo braço `KeyCode::Tab` em qualquer ficheiro do input; ou o
-/// braço do modo deixar de chamar o `mode_key`.
+/// ⚠️ A ÚNICA excepção é a tradução do QUADRO (`keyboard_board.rs`, MiroClone): com uma aba de quadro
+/// activa a cena está escondida e o teclado é do quadro (o `Tab` lá é a nota seguinte, como no Miro);
+/// sem quadro activo essa porta devolve `false` antes de ler a tecla.
+///
+/// Mutação que tem de sangrar: um segundo braço `KeyCode::Tab` em qualquer outro ficheiro do input;
+/// o quadro tomar o teclado sem quadro activo; ou o braço do modo deixar de chamar o `mode_key`.
 #[test]
 fn only_the_mode_owns_the_tab() {
+    const BOARD: &str = "input_dispatch/keyboard_board.rs";
     let all = crate::input_text::territory();
-    let arms: Vec<usize> = all.match_indices("KeyCode::Tab").map(|(i, _)| i).collect();
-    assert_eq!(
-        arms.len(),
-        1,
-        "o `Tab` tem mais de um dono no input (ou nenhum): {} bracos",
-        arms.len()
+    let mut arms: Vec<(&str, usize)> = Vec::new();
+    let mut board = "";
+    for chunk in all.split("// [[ficheiro ").skip(1) {
+        let (name, body) = chunk.split_once("]]\n").expect("o marcador do ficheiro");
+        if name == BOARD {
+            board = body;
+        }
+        let n = body.matches("KeyCode::Tab").count();
+        if n > 0 {
+            arms.push((name, n));
+        }
+    }
+    let scene: Vec<_> = arms.iter().filter(|(f, _)| *f != BOARD).collect();
+    assert!(
+        scene.len() == 1 && scene[0].1 == 1,
+        "o `Tab` tem mais de um dono no input (ou nenhum): {arms:?}"
+    );
+    assert!(
+        board.contains("if hero.documents.active().is_none() {\n            return false;"),
+        "o quadro toma o teclado (e o `Tab`) sem um quadro activo"
     );
     let handlers = crate::input_text::handlers();
     let arm = handlers

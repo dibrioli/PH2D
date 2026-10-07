@@ -176,3 +176,18 @@ não a entrega em desktop); quadros gravados ANTES de 07/10 num tema escuro guar
 
 `target/*/incremental` reclamado; binário `smoke` quente; `pgrep -af 'ph2d|cargo|rustc'` sem processos da
 linha (conferido no fecho).
+
+## 11. Integração no `main` (07/10, por ordem do dono: depois de Components e UI/UX)
+
+- Rebase sobre `331699d48` (UIUX 07/10). Conflitos: `project_schema{,_tests}.rs` e `CLAUDE.md` §5.1,
+  resolvidos pelos estágios. ⚠️ **O degrau dos quadros é agora `184 → 185`** (o UIUX levou o `184`, o
+  objecto vetorial); tripla `(185, 13, 22)`; a prosa `v184` dos testes/`ProjectFile` seguiu (`81378bbb8`).
+  O §2/§3 acima ainda dizem `183 → 184` — é o retrato da linha antes da fusão.
+- `git range-diff`: 66 de 68 commits idênticos; os 2 diferentes são os dois conflitos.
+- Semântico que só a árvore COMBINADA via: o gate do UIUX `only_the_mode_owns_the_tab` (um único braço
+  `KeyCode::Tab` no input) contava a tradução do teclado do quadro. Correcto por desenho — com um
+  quadro activo a cena está escondida e o `Tab` é a nota seguinte. O gate passou a isentar só
+  `input_dispatch/keyboard_board.rs` E a exigir a guarda «sem quadro activo ⇒ `false`»; mutação 2/2
+  (guarda apagada · segundo braço noutro ficheiro) + controlo verde.
+- Clippy `--workspace --all-targets -D warnings` limpo; `foundational-integrate.sh` 1.ª corrida:
+  17 188/17 189 (o gate acima).

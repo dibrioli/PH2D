@@ -88,8 +88,7 @@ printf "  %s%-34s %6s   (base: %s)\n" "$M" "  └ tripla do gate" "${TRI_A:-—}
 num "VEC_SCENE_SCHEMA"      "crates/ph2d-vec-scene/src/schema.rs crates/ph2d-vec-scene/src/lib.rs" 'VEC_SCENE_SCHEMA_VERSION: u32 = [0-9]+'
 num "FLIP_SCHEMA"           "crates/ph2d-flip/src/lib.rs"                'FLIP_SCHEMA_VERSION: u32 = [0-9]+'
 num "DOC_VERSION (timeline)" "crates/ph2d-timeline/src/doc.rs"           'DOC_VERSION: u32 = [0-9]+'
-# o 4.º número que SOMA entre linhas e funde MUDO (CLAUDE.md §5 3D Modeling): não estava aqui.
-num "FIELD_DOC_VERSION"     "crates/ph2d-field/src/lib.rs"               'FIELD_DOC_VERSION: u32 = [0-9]+'
+# (o `FIELD_DOC_VERSION` saiu com a `ph2d-field`, ADR-0179 — o número já não existe, a sonda também não)
 if git diff --name-only "$MB"..HEAD | grep -qE 'shells/desktop/src/project'; then
   echo "  ⚠️  esta linha TOCA project*.rs — a escada e a tripla moram em arquivos IRMÃOS;"
   echo "      um degrau escrito no arquivo errado funde LIMPO e evapora."

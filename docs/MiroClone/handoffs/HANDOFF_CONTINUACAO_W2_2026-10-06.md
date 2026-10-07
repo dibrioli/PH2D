@@ -30,7 +30,7 @@
   custo cru (empates decididos pelo arredondamento — `f_key` no `ph2d-vec-connect`, o Vector ganha o
   mesmo), o recuo de 40 num vão curto (`facing_jetty`), e o trecho a contornar a forma da outra ponta.
   E largar um ponto sobre o vizinho (ou uma ponta) funde-o (`bend_up`).
-- ⏳ **Smoke da W2 refeita por fazer pelo dono** — passos no §5.
+- ✅ **Smoke da W2 APROVADO pelo dono (06/10, 7.ª rodada)** — passos no §5.
 
 ## §1 — As peças
 
@@ -76,7 +76,7 @@
 
 ## §3 — ⏳ O que fica aberto (por ordem)
 
-1. **Smoke do dono** da W2 refeita (§5).
+1. ~~Smoke do dono~~ ✅ aprovado 06/10.
 2. **W3 — notas adesivas** (plano §3).
 3. Da W2, não pedidos: o cotovelo ainda não tem a pega «arrastar o SEGMENTO» do Miro (os pontos de ajuste
    valem nele, mas são pontos); o rótulo não se arrasta ao longo da linha; as 3 pontas de UML existem no

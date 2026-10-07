@@ -280,7 +280,7 @@ Ordem pensada para o quadro ser **usável cedo**: depois da W3 já se faz um bra
   solta as pontas onde estão; copiar/duplicar religa as cópias. ⛔ **Nenhuma seta reage a outra forma**
   (ordem do dono, 06/10). Cache de rota por diferença (§2.3). Oráculo (§4): `fixedPoint`, Z a meio do
   vão, volta com recuo 40 medido, caixa do meio ignorada como no oráculo. Smoke `PH2D_BOARD_SMOKE=3`.
-  ⏳ smoke do dono.
+  ✅ **Smoke aprovado pelo dono (06/10).**
 
 ### W3 — Notas adesivas (o coração do brainstorm)
 - Sticky (`N`): paleta de cores, três tamanhos, **cresce na vertical**; `Tab` cria a seguinte à direita

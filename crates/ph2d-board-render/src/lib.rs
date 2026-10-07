@@ -6,7 +6,12 @@
 //! ⚠️ Reconstrói a cena a cada quadro, recortando ao ecrã; o texto moldado vem da [`TextCache`].
 //! As réguas (`tests/it/measure_*`) dizem quando isso deixa de chegar.
 
+mod grid;
 mod sketch;
+mod theme_ink;
+
+pub use grid::{dot_grid, grid_step_world};
+pub use theme_ink::ThemeInk;
 
 pub use sketch::{HIGHLIGHTER_ALPHA, ink_outline};
 
@@ -85,56 +90,6 @@ impl RenderCache {
         if self.frame.is_multiple_of(KEEP_FRAMES) {
             let cut = self.frame.saturating_sub(KEEP_FRAMES);
             self.outlines.retain(|_, e| e.2 >= cut);
-        }
-    }
-}
-
-/// ⭐ **A TINTA DO TEMA** — smoke do dono (07/10): *«em temas claros linhas e fontes deveriam por
-/// padrão ser pretas ou muito escuras»*. A tinta de nascença do quadro é UMA cor do documento,
-/// [`ph2d_board_model::DEFAULT_INK`] (`#1e1e1e`, a do Excalidraw), e nunca a do tema em que a forma
-/// nasceu (a cena aberta no escuro gravava tinta clara e ficava ilegível no claro). Desenha-se tal como
-/// é num quadro de fundo CLARO, e com o texto do tema (`text-1`) num de fundo ESCURO — o idioma do
-/// Excalidraw. Claro ou escuro decide-o a luminância do fundo (`bg-1`), o que vale para os 12 temas.
-/// ⚠️ O texto dentro de uma forma PREENCHIDA lê-se contra o preenchimento, não contra o quadro: não muda.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ThemeInk {
-    dark: bool,
-    light: Color,
-}
-
-impl Default for ThemeInk {
-    fn default() -> Self {
-        Self::of(Theme::default())
-    }
-}
-
-impl ThemeInk {
-    #[must_use]
-    pub fn of(theme: Theme) -> Self {
-        let b = ColorToken::Bg1.resolve(theme);
-        Self {
-            dark: Rgba([b.r, b.g, b.b, 255]).luminance() < 0.5,
-            light: token(ColorToken::Text1, theme),
-        }
-    }
-
-    /// A cor de um traço (ou de um texto sobre o quadro) com a tinta `c`.
-    #[must_use]
-    pub fn color(self, c: Rgba) -> Color {
-        if self.dark && c.0 == ph2d_board_model::DEFAULT_INK {
-            self.light.with_alpha(f32::from(c.0[3]) / 255.0)
-        } else {
-            doc_color(c)
-        }
-    }
-
-    /// A cor do texto de uma forma: sobre o quadro segue o tema; sobre um preenchimento, não.
-    #[must_use]
-    pub fn text(self, st: &ph2d_board_model::Style) -> Color {
-        if st.fill.is_some() {
-            doc_color(st.text_color)
-        } else {
-            self.color(st.text_color)
         }
     }
 }
@@ -695,44 +650,6 @@ fn frame_path(f: &Frame, v: &Affine) -> BezPath {
     }
     p.close_path();
     p
-}
-
-/// O passo da grelha no MUNDO para esta vista: parte do passo de base e dobra/divide por 2 até o
-/// espaçamento no ecrã ficar em `[mínimo, 2·mínimo)` — a mesma densidade de pontos em qualquer zoom.
-#[must_use]
-pub fn grid_step_world(camera: &Camera) -> f64 {
-    let min_px = f64::from(Spacing::Xl.px());
-    let mut step = f64::from(Spacing::Xl2.px());
-    while step * camera.zoom < min_px {
-        step *= 2.0;
-    }
-    while step * camera.zoom >= 2.0 * min_px {
-        step /= 2.0;
-    }
-    step
-}
-
-/// Os pontos da grelha visíveis em `area`, como UM caminho (uma chamada de preenchimento).
-#[must_use]
-pub fn dot_grid(camera: &Camera, area: Area) -> BezPath {
-    let [x, y, w, h] = area;
-    let step = grid_step_world(camera);
-    let half = f64::from(Spacing::Xxs.px()) / 2.0;
-    let lo = camera.to_world(area, [x, y]);
-    let hi = camera.to_world(area, [x + w, y + h]);
-    let mut path = BezPath::new();
-    let mut gx = (lo[0] / step).ceil() * step;
-    while gx <= hi[0] {
-        let mut gy = (lo[1] / step).ceil() * step;
-        while gy <= hi[1] {
-            let [sx, sy] = camera.to_screen(area, [gx, gy]);
-            let dot = Rect::new(sx - half, sy - half, sx + half, sy + half);
-            path.extend(dot.path_elements(0.1));
-            gy += step;
-        }
-        gx += step;
-    }
-    path
 }
 
 fn token(t: ColorToken, theme: Theme) -> Color {

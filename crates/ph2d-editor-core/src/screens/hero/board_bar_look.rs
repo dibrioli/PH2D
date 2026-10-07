@@ -304,3 +304,13 @@ pub(super) fn paint_panel(scene: &mut VectorScene, rects: &[(Item, Rect)], theme
         resolve(ColorToken::Border, theme),
     );
 }
+
+/// A tinta «do tema» das barras: a do DOCUMENTO, que o quadro desenha pelo tema de cada momento.
+pub(super) fn ink(_theme: Theme) -> Rgba {
+    Rgba(ph2d_board_model::DEFAULT_INK)
+}
+
+/// Como o quadro desenhará a cor `c` neste tema (o quadradinho mostra o que o quadro vai mostrar).
+pub(super) fn shown(c: Rgba, theme: Theme) -> Color {
+    ph2d_board_render::ThemeInk::of(theme).color(c)
+}

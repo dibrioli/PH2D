@@ -33,8 +33,8 @@ const SALT: u64 = 0xb0a2_d7ab_5ba2_0000;
 mod look;
 pub use look::shape_name_key;
 use look::{
-    arrow_icon, paint_panel, selected_arrow, selected_kind, selected_style, selection_box,
-    shape_icon, stroke, tooltip_key,
+    arrow_icon, ink, paint_panel, selected_arrow, selected_kind, selected_style, selection_box,
+    shape_icon, shown, stroke, tooltip_key,
 };
 
 /// As notas e o texto (W3, módulo filho: o ficheiro estava no tecto de LOC).
@@ -448,16 +448,6 @@ fn swatch(it: Item, theme: Theme) -> Option<Rgba> {
         Item::Stroke(Some(None)) => Some(ink(theme)),
         _ => None,
     }
-}
-
-/// A tinta «do tema» das barras: a do DOCUMENTO, que o quadro desenha pelo tema de cada momento.
-fn ink(_theme: Theme) -> Rgba {
-    Rgba(ph2d_board_model::DEFAULT_INK)
-}
-
-/// Como o quadro desenhará a cor `c` neste tema (o quadradinho mostra o que o quadro vai mostrar).
-fn shown(c: Rgba, theme: Theme) -> Color {
-    ph2d_board_render::ThemeInk::of(theme).color(c)
 }
 
 fn doc_color(Rgba([r, g, b, a]): Rgba) -> Color {

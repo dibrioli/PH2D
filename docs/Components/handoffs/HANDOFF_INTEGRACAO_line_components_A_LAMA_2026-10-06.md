@@ -141,7 +141,8 @@ chave i18n nova.
 
 ## §5 — O smoke
 
-⏳ **Smoke do dono:** a cena 5 aprovada (06/10, depois da cura do canto); as cenas 6 e 7 por fazer — (a cena `=5`, fotografada antes: `target/prova/w18/foto/cena5_a_meio.png` — à
+✓ **Smoke do dono:** a cena 5 aprovada (06/10, depois da cura do canto); a cena 7 (a W19, os passos abaixo)
+aprovada a 07/10 (*«smoke ok»*); a 6 sem report próprio — (a cena `=5`, fotografada antes: `target/prova/w18/foto/cena5_a_meio.png` — à
 esquerda os três DENTRO da lama clara a subir a direito, à direita os três a contornar pela passagem;
 `cena5_fim.png` — os seis nas bandeiras, nenhum na lama escura). O roteiro é a página 10 do
 `03_navegacao.pdf`:

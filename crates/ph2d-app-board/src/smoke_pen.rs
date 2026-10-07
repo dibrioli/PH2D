@@ -155,9 +155,37 @@ pub(super) fn scene_pen(hero: &mut HeroScreen) {
         [col(3.0) + w + 80.0, 0.0],
     ];
     put_ink(doc, &tick, green, 6.0, Pen::Pen);
+    // As três formas da captura do dono (07/10, `capturas_excalidraw/formas_finas_do_dono.png`),
+    // sem preenchimento, na espessura FINA de nascença: o rascunho ao lado do que ele mostrou.
+    let mut bare = style.clone();
+    bare.fill = None;
+    let mut round = bare.clone();
+    round.round = true;
+    let y0 = 560.0;
+    put_shape(
+        doc,
+        ShapeType::Ellipse,
+        bare,
+        "",
+        [col(0.0), y0 + 110.0, 345.0, 188.0],
+    );
+    put_shape(
+        doc,
+        ShapeType::Rectangle,
+        round.clone(),
+        "",
+        [col(1.2), y0, 288.0, 100.0],
+    );
+    put_shape(
+        doc,
+        ShapeType::Diamond,
+        round,
+        "",
+        [col(2.3), y0 + 128.0, 100.0, 128.0],
+    );
     board.camera.center_x = col(1.5) + w / 2.0;
-    board.camera.center_y = 200.0;
-    board.camera.zoom = 0.85;
+    board.camera.center_y = 380.0;
+    board.camera.zoom = 0.7;
     document_tabs::load(hero, set);
     hero.documents.activate(Some(id));
     board_view::set_tool(hero, Tool::Pen(Pen::Pen));

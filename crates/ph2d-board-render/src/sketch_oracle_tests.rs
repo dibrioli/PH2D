@@ -13,8 +13,16 @@ macro_rules! saida {
     ($n:literal) => {
         (
             $n,
-            include_str!(concat!("../../../docs/MiroClone/ferramentas/excalidraw_oracle/saidas/", $n, ".restored.json")),
-            include_str!(concat!("../../../docs/MiroClone/ferramentas/excalidraw_oracle/saidas/", $n, ".svg")),
+            include_str!(concat!(
+                "../../../docs/MiroClone/ferramentas/excalidraw_oracle/saidas/",
+                $n,
+                ".restored.json"
+            )),
+            include_str!(concat!(
+                "../../../docs/MiroClone/ferramentas/excalidraw_oracle/saidas/",
+                $n,
+                ".svg"
+            )),
         )
     };
 }
@@ -56,7 +64,10 @@ fn same(name: &str, got: &[OpSet], want: &[Vec<f64>]) {
         assert_eq!(g.len(), w.len(), "{name}: traço {k}, número de valores");
         for (i, (a, b)) in g.iter().zip(w).enumerate() {
             // O SVG tem duas casas: o nosso valor arredondado tem de ser o dele.
-            assert!((a - b).abs() <= 0.005 + 1e-9, "{name}: traço {k} valor {i}: {a} ≠ Excalidraw {b}");
+            assert!(
+                (a - b).abs() <= 0.005 + 1e-9,
+                "{name}: traço {k} valor {i}: {a} ≠ Excalidraw {b}"
+            );
         }
     }
 }
@@ -69,7 +80,7 @@ fn style(e: &Value) -> Style {
     s
 }
 
-const SHAPES: [(&str, &str, &str); 9] = [
+const SHAPES: [(&str, &str, &str); 10] = [
     saida!("formas_retangulo"),
     saida!("formas_elipse"),
     saida!("formas_losango"),
@@ -79,6 +90,7 @@ const SHAPES: [(&str, &str, &str); 9] = [
     saida!("rascunho_limiar3"),
     saida!("rascunho_espessuras"),
     saida!("rascunho_cantos"),
+    saida!("rascunho_ramos"),
 ];
 
 /// ⭐ As formas: o tremor do tamanho, os vértices presos, a elipse, o rectângulo de cantos redondos
@@ -98,20 +110,33 @@ fn every_sketched_shape_is_the_one_excalidraw_draws_with_the_same_seed() {
                 "diamond" if !round => ShapeType::Diamond,
                 _ => continue,
             };
-            // O produto só desenha o «artista» cheio; abaixo de 10 o Excalidraw faz outra coisa.
-            if e["roughness"] != 1 || e["fillStyle"] != "solid" || w.max(h) < 10.0 {
+            // O produto só desenha o «artista» cheio.
+            if e["roughness"] != 1 || e["fillStyle"] != "solid" {
                 continue;
             }
-            let st = Style { round, ..style(e) };
+            let dash = match e["strokeStyle"].as_str() {
+                Some("dashed") => ph2d_board_model::Dash::Dashed,
+                Some("dotted") => ph2d_board_model::Dash::Dotted,
+                _ => ph2d_board_model::Dash::Solid,
+            };
+            let st = Style {
+                round,
+                dash,
+                ..style(e)
+            };
             let seed = e["seed"].as_u64().unwrap() as u32;
-            let opts = hand_options(seed, hand_roughness(w, h), &st, true);
+            let opts = hand_options(seed, hand_roughness(w, h, round, false), &st, true);
             let got = if kind == ShapeType::Diamond {
                 // O losango do Excalidraw tem os vértices a `⌊w/2⌋+1` (o dele, não lei: o nosso é ao
                 // meio) — aqui confere-se a LEI das opções sobre os vértices dele.
                 let (tx, ry) = ((w / 2.0).floor() + 1.0, (h / 2.0).floor() + 1.0);
                 rough::polygon(&[[tx, 0.0], [w, ry], [tx, h], [0.0, ry]], &opts)
             } else {
-                let shape = Shape { kind, style: st.clone(), text: Default::default() };
+                let shape = Shape {
+                    kind,
+                    style: st.clone(),
+                    text: Default::default(),
+                };
                 let o = ph2d_board_geom::outline(&shape, w, h);
                 hand_shape(kind, round, w, h, &o, &opts)
             };
@@ -119,35 +144,50 @@ fn every_sketched_shape_is_the_one_excalidraw_draws_with_the_same_seed() {
             checked += 1;
         }
     }
-    assert!(checked >= 50, "a cobertura do oráculo não encolhe: {checked}");
+    assert!(
+        checked >= 50,
+        "a cobertura do oráculo não encolhe: {checked}"
+    );
 }
 
 /// ⭐ As setas: a de cantos vivos é segmentos com os vértices presos, a arredondada é a curva pelos
-/// pontos; o tremor é o inteiro, qualquer que seja o tamanho.
+/// pontos; o tremor é o de uma LINHA (inteiro a partir de 50, metade numa seta de 40).
 #[test]
 fn sketched_arrows_are_the_lines_excalidraw_draws_with_the_same_seed() {
-    let (_, restored, svg) = saida!("rascunho_setas");
-    let els: Vec<Value> = serde_json::from_str(restored).expect("elementos");
-    let groups = svg_groups(svg);
-    for (e, want) in els.iter().zip(&groups) {
-        let pts: Vec<[f64; 2]> = e["points"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|p| [p[0].as_f64().unwrap(), p[1].as_f64().unwrap()])
-            .collect();
-        let seed = e["seed"].as_u64().unwrap() as u32;
-        let opts = hand_options(seed, ROUGHNESS, &style(e), false);
-        let got = if e["roundness"].is_null() {
-            let mut p = BezPath::new();
-            p.move_to((pts[0][0], pts[0][1]));
-            for q in &pts[1..] {
-                p.line_to((q[0], q[1]));
+    let mut checked = 0;
+    for (_, restored, svg) in [saida!("rascunho_setas"), saida!("rascunho_ramos")] {
+        let els: Vec<Value> = serde_json::from_str(restored).expect("elementos");
+        let groups = svg_groups(svg);
+        for (e, want) in els.iter().zip(&groups) {
+            if !matches!(e["type"].as_str(), Some("arrow" | "line")) {
+                continue;
             }
-            hand_line(&p, &opts)
-        } else {
-            rough::curve(&pts, &opts)
-        };
-        same(&format!("seta {} pontos", pts.len()), &got, &want[..1]);
+            let pts: Vec<[f64; 2]> = e["points"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|p| [p[0].as_f64().unwrap(), p[1].as_f64().unwrap()])
+                .collect();
+            let seed = e["seed"].as_u64().unwrap() as u32;
+            let (w, h) = (e["width"].as_f64().unwrap(), e["height"].as_f64().unwrap());
+            let opts = hand_options(seed, hand_roughness(w, h, false, true), &style(e), false);
+            let got = if e["roundness"].is_null() {
+                let mut p = BezPath::new();
+                p.move_to((pts[0][0], pts[0][1]));
+                for q in &pts[1..] {
+                    p.line_to((q[0], q[1]));
+                }
+                hand_line(&p, &opts)
+            } else {
+                rough::curve(&pts, &opts)
+            };
+            same(
+                &format!("seta {} pontos {w}×{h}", pts.len()),
+                &got,
+                &want[..1],
+            );
+            checked += 1;
+        }
     }
+    assert!(checked >= 6, "as setas do oráculo: {checked}");
 }

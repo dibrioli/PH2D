@@ -159,7 +159,8 @@ pub fn paint(
             if let Some(r) = routes.get(el.id) {
                 let [bx0, by0, bx1, by1] = r.bbox;
                 // A ponta de seta sai até 4 comprimentos de traço da rota; o rótulo, meia quebra.
-                let head = c.style.stroke_width * ph2d_board_route::HEAD_SCALE * 4.0;
+                let w = c.style.stroke_width;
+                let head = w * ph2d_board_route::head_scale(w) * 4.0;
                 let pad = if c.label.is_empty() {
                     head
                 } else {
@@ -365,7 +366,7 @@ fn paint_connector(
     let faded = st.opacity < 100;
     if faded {
         let [x0, y0, x1, y1] = r.bbox;
-        let pad = st.stroke_width * ph2d_board_route::HEAD_SCALE * 4.0;
+        let pad = st.stroke_width * ph2d_board_route::head_scale(st.stroke_width) * 4.0;
         scene.push_object_layer(
             &Rect::from_points(
                 v * Point::new(x0 - pad, y0 - pad),

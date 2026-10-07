@@ -30,9 +30,11 @@ pub use ink::{Ink, Pen};
 pub use ops::{BoardOp, apply_batch};
 pub use rich::{Mark, Marks, RichText, Span};
 
-/// Espessura do contorno de uma forma nova, em unidades do mundo — a do Excalidraw (medida no
-/// oráculo: `strokeWidth: 2`).
-pub const DEFAULT_STROKE_WIDTH: f64 = 2.0;
+/// Espessura do contorno de uma forma nova, em unidades do mundo: a FINA do Excalidraw
+/// (`STROKE_WIDTH.thin = 1`) — ordem do dono (07/10, captura `capturas_excalidraw/
+/// formas_finas_do_dono.png`: *«a espessura padrão deve ser a mais fina»*). A de nascença do
+/// Excalidraw é a `bold` (2), medida no oráculo na W1.
+pub const DEFAULT_STROKE_WIDTH: f64 = 1.0;
 /// Tamanho do texto de uma forma nova, em unidades do mundo — o «M» do Excalidraw (oráculo:
 /// `fontSize: 20`).
 pub const DEFAULT_FONT_SIZE: f64 = 20.0;

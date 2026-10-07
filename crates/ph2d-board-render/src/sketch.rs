@@ -133,18 +133,20 @@ fn collect(sets: Vec<OpSet>, into: &mut Rough) {
 /// O tremor do rascunho: o «artista» do Excalidraw.
 const ROUGHNESS: f64 = 1.0;
 
-/// ⭐ O tremor EFECTIVO de uma forma `w × h` — **medido** no Excalidraw 0.18.1 por ajuste exacto do
-/// `d` dos SVG dele com a mesma semente (`ferramentas/excalidraw_oracle/ajuste/`, entradas
-/// `rascunho_tamanhos`/`limiar*`, 07/10): METADE quando o lado maior é < 50 ou o lado menor é < 20
-/// (49×49 metade, 51×51 inteiro; 19×300 metade, 20×300 inteiro; 60×49 inteiro). Abaixo de 10 o
-/// Excalidraw faz outra coisa (8×8 ≈ ⅓) — não se mediu mais: não há formas tão pequenas no quadro.
+/// ⭐ O tremor EFECTIVO de um elemento `w × h` — o `adjustRoughness` do Excalidraw 0.18.1, MEDIDO
+/// primeiro por ajuste exacto do `d` dos SVG dele (`ferramentas/excalidraw_oracle/ajuste/`, entradas
+/// `rascunho_*`: 49×49 metade, 51×51 inteiro; 19×300 metade, 20×300 inteiro; 8×8 um terço) e depois
+/// lido no código dele (`dist/dev`, por ordem do dono, 07/10), que acrescentou os ramos que a amostra
+/// não tinha: INTEIRO quando os dois lados são grandes (menor ≥ 20 e maior ≥ 50), ou a forma é
+/// redonda com o menor ≥ 15, ou é uma LINHA (`linear`, as setas) com o maior ≥ 50; senão o tremor a
+/// dividir por 2 (por 3 abaixo de 10), no máximo 2,5.
 #[must_use]
-pub fn hand_roughness(w: f64, h: f64) -> f64 {
+pub fn hand_roughness(w: f64, h: f64, round: bool, linear: bool) -> f64 {
     let (lo, hi) = (w.abs().min(h.abs()), w.abs().max(h.abs()));
-    if hi < 50.0 || lo < 20.0 {
-        ROUGHNESS * 0.5
-    } else {
+    if (lo >= 20.0 && hi >= 50.0) || (lo >= 15.0 && round) || (linear && hi >= 50.0) {
         ROUGHNESS
+    } else {
+        (ROUGHNESS / if hi < 10.0 { 3.0 } else { 2.0 }).min(2.5)
     }
 }
 
@@ -160,7 +162,9 @@ pub fn hand_options(seed: u32, roughness: f64, st: &Style, fill: bool) -> rough:
         seed,
         roughness,
         preserve_vertices: roughness < 2.0,
-        stroke_width: st.stroke_width.max(1.0),
+        // Tracejado e pontilhado: um traço só (dois sobrepunham os traços — o do Excalidraw).
+        disable_multi_stroke: st.dash != ph2d_board_model::Dash::Solid,
+        stroke_width: st.stroke_width,
         fill: fill && st.fill.is_some(),
         fill_style: FillStyle::Solid,
         stroke: st.stroke.is_some() && st.stroke_width > 0.0,
@@ -223,7 +227,7 @@ pub fn hand_shape(
 /// O rascunho de uma forma, na caixa LOCAL dela.
 fn rough_shape(el: &Element, kind: ShapeType, st: &Style, o: &Outline) -> Rough {
     let mut r = Rough::default();
-    let rough = hand_roughness(el.w, el.h);
+    let rough = hand_roughness(el.w, el.h, st.round, false);
     let opts = hand_options(el.seed(), rough, st, true);
     collect(hand_shape(kind, st.round, el.w, el.h, o, &opts), &mut r);
     if !o.lines.is_empty() {
@@ -238,7 +242,7 @@ fn rough_shape(el: &Element, kind: ShapeType, st: &Style, o: &Outline) -> Rough 
 /// ⭐ Os sets do rascunho de uma LINHA aberta (a rota de uma seta), pelas primitivas do Excalidraw
 /// (medidas, `rascunho_setas`): só segmentos ⇒ `linearPath` com os vértices presos; com curvas ⇒ a
 /// `curve` pelos pontos (três por cúbica — a curva do Excalidraw passa pelos pontos dela). O tremor
-/// é o inteiro: numa seta o Excalidraw não o reduz pelo tamanho (300×0 treme como 300×300).
+/// é o de uma LINHA ([`hand_roughness`] com `linear`): inteiro a partir de 50 de comprimento.
 #[must_use]
 pub fn hand_line(path: &BezPath, opts: &rough::Options) -> Vec<OpSet> {
     let mut pts: Vec<[f64; 2]> = Vec::new();
@@ -341,7 +345,9 @@ pub(crate) fn paint_connector(
     });
     let r = cached(&mut cache.rough, owner, key, frame, || {
         let mut r = Rough::default();
-        let line = hand_options(el.seed(), ROUGHNESS, st, false);
+        let b = ph2d_vector::Shape::bounding_box(&d.line);
+        let rough = hand_roughness(b.width(), b.height(), false, true);
+        let line = hand_options(el.seed(), rough, st, false);
         collect(hand_line(&d.line, &line), &mut r);
         for (i, (p, filled)) in d.heads.iter().enumerate() {
             let o = rough::Options {

@@ -70,7 +70,12 @@ iguais às fixtures de `saidas/`. `--sem-semente` desliga a semente (diagnóstic
   o lado maior < 50 ou o lado menor < 20 (49×49 / 51×51, 19×300 / 20×300, 60×49 inteiro; abaixo de 10
   outra regra, não medida); a espessura não o muda; o rectângulo de cantos redondos é o caminho de
   quadráticas a partir de `(r, 0)`; as setas: arredondada = `curve` pelos pontos, de cantos vivos =
-  `linearPath` com os vértices presos, tremor inteiro qualquer que seja o tamanho. Gate:
+  `linearPath` com os vértices presos. **Depois lido no código dele** (`dist/dev`, por ordem do dono
+  07/10): o `adjustRoughness` confirma a regra e acrescenta os ramos (redonda com o menor ≥ 15 e
+  linhas com o maior ≥ 50 ficam inteiras; abaixo de 10 divide por 3); o tracejado desliga o traço
+  duplo e soma 0,5 à espessura; `STROKE_WIDTH` = fina 1 · grossa 2 · muito grossa 4 (a de nascença é
+  2 — no quadro passa a 1, ordem do dono); a ponta `arrow` tem 25 de comprimento a 20°, sem depender
+  da espessura (`getArrowheadSize`). Entradas `rascunho_ramos`. Gate:
   `ph2d-board-render::sketch::oracle_tests` (≥ 50 formas e 4 setas, número a número).
 
 - **A seta em cotovelo NÃO desvia de um obstáculo não ligado:** `seta_cotovelo_obstaculo` — origem

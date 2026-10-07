@@ -63,6 +63,17 @@ pub const POINT_ARM: f64 = 0.4;
 /// ⚠️ A abertura é a do catálogo (26,6° de meia-abertura contra os ~20° do Excalidraw): uma lei de
 /// pontas para o app inteiro vale mais que copiar o ângulo.
 pub const HEAD_SCALE: f64 = 2.94;
+/// A espessura a que [`HEAD_SCALE`] foi medido.
+const HEAD_MEASURED_WIDTH: f64 = 2.0;
+
+/// ⭐ O tamanho da ponta para a espessura `width`: o MESMO comprimento em qualquer espessura — a
+/// ponta do Excalidraw não cresce com o traço (`getArrowheadSize`: 25 para a `arrow`, lido no código
+/// dele por ordem do dono, 07/10; os 23,49 medidos são `25 · cos 20°`). Com o traço fino de nascença
+/// a ponta proporcional ficava com metade.
+#[must_use]
+pub fn head_scale(width: f64) -> f64 {
+    HEAD_SCALE * HEAD_MEASURED_WIDTH / width.max(f64::EPSILON)
+}
 
 /// A largura de quebra do rótulo de uma seta (mundo): a de uma caixa de nascença do editor
 /// (`ph2d_board_edit::CLICK_SIZE`, gate lá) — um rótulo é um título curto, não um parágrafo.
@@ -225,10 +236,11 @@ pub struct Drawn {
 /// — o «V» não recua a linha mas tem o mesmo comprimento). Sem cabeça, sem haste.
 #[must_use]
 pub fn stems(c: &ph2d_board_model::Connector) -> [f64; 2] {
-    let depth = Marker::Triangle.inset(HEAD_SCALE);
+    let w = c.style.stroke_width;
+    let depth = Marker::Triangle.inset(head_scale(w));
     c.heads.map(|h| match h {
         Head::None => 0.0,
-        h => marker(h).inset(HEAD_SCALE).max(depth) * c.style.stroke_width,
+        h => marker(h).inset(head_scale(w)).max(depth) * w,
     })
 }
 
@@ -251,7 +263,7 @@ pub fn marker(h: Head) -> Marker {
 /// aponta para a forma) e a linha recuada o que a ponta tapa (`Marker::inset`).
 #[must_use]
 pub fn drawn(r: &Routed, heads: [Head; 2], width: f64) -> Drawn {
-    drawn_at(r, heads, width, HEAD_SCALE)
+    drawn_at(r, heads, width, head_scale(width))
 }
 
 /// [`drawn`] com o tamanho da ponta `scale` (os ÍCONES da barra: a ponta do quadro, em 16 px, não

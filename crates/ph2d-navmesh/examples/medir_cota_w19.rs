@@ -159,23 +159,25 @@ fn grande(params: &Params) {
             pares.push((a, z));
         }
     }
-    let versoes: [(&str, &NavMesh, bool); 4] = [
-        ("sem estrada · cota global", &sem, true),
-        ("sem estrada · cota nova  ", &sem, false),
-        ("com estrada · cota global", &com, true),
-        ("com estrada · cota nova  ", &com, false),
+    // A régua «sem ela» é o mundo SEM estrada nenhuma: a malha E a tabela sem o `0,3`.
+    let sem_tabela = &costs[..101];
+    let versoes: [(&str, &NavMesh, bool, &[f64]); 4] = [
+        ("sem estrada (sem o 0,3)  ", &sem, false, sem_tabela),
+        ("sem estrada · cota global", &sem, true, &costs),
+        ("com estrada · cota global", &com, true, &costs),
+        ("com estrada · cota nova  ", &com, false, &costs),
     ];
     let mut ms = [f64::INFINITY; 4];
     let mut medidas = [(0u64, 0u64, 0u64, 0.0f64); 4];
     for _ in 0..5 {
-        for (k, &(_, m, global)) in versoes.iter().enumerate() {
+        for (k, &(_, m, global, costs)) in versoes.iter().enumerate() {
             let mut s = Polyanya::new();
             s.set_cota_global(global);
             let mut total = 0.0;
             let i0 = Instant::now();
             for &(a, z) in &pares {
                 total += s
-                    .find_path_costs(m, &costs, a, z)
+                    .find_path_costs(m, costs, a, z)
                     .map_or(f64::NAN, |p| p.cost);
             }
             ms[k] = ms[k].min(i0.elapsed().as_secs_f64() * 1e3);
@@ -187,7 +189,7 @@ fn grande(params: &Params) {
         "   {:>26} | {:>10} | {:>10} | {:>10} | {:>8} | {:>12}",
         "versão", "expandidos", "gerados", "trabalho", "ms (mín)", "custo total"
     );
-    for (k, (nome, _, _)) in versoes.iter().enumerate() {
+    for (k, (nome, _, _, _)) in versoes.iter().enumerate() {
         let (e, g, w, c) = medidas[k];
         println!(
             "   {nome:>26} | {:>10} | {:>10} | {:>10} | {:>8.1} | {c:>12.6}",
@@ -197,8 +199,17 @@ fn grande(params: &Params) {
             ms[k]
         );
     }
-    let razao = medidas[3].0 as f64 / medidas[1].0 as f64;
-    println!("   kill-criterion: expandidos com/sem a estrada (cota nova) = {razao:.3} (≤ 1,1)");
+    let razao = medidas[3].0 as f64 / medidas[0].0 as f64;
+    let antes = medidas[2].0 as f64 / medidas[0].0 as f64;
+    println!(
+        "   kill-criterion: expandidos com/sem a estrada = {razao:.3} (≤ 1,1); com a cota global era {antes:.2}"
+    );
+    println!(
+        "   relógio com a estrada: {:.1} → {:.1} ms ({:.1}×)",
+        ms[2],
+        ms[3],
+        ms[2] / ms[3]
+    );
 }
 
 /// 2. As cenas `30 × 20` com áreas caras e baratas: o custo contra o oráculo e contra a cota global.

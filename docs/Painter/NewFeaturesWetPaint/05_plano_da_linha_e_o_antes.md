@@ -166,6 +166,11 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     traço FINAL ao vivo e animam uma vez ao sossegar; nunca pisca para o vazio.
   - **Mutações 9/10 sangram**; a que sobreviveu (apagar `tool = Paint` na cena) era EQUIVALENTE — a cena
     não leva a ferramenta molhada — e a linha saiu; o gate do Smear fica contra quem a meter na cena.
+- 🔎 **Gotas: a lei do Rebelle medida** (08/10, pedido do dono) — [06](06_gotas_rebelle_x_ph2d.md): no
+  Rebelle a gravidade NÃO é do pincel (0 de 281 presets); o escorrimento é da TELA (Tilt, desligado por
+  omissão) e a forma das gotas é do PAPEL (Create Drips/Size/Length); a água de fábrica da aquarela é 9–49.
+  O nosso: Gravity por pincel, dial ligado por omissão, pente de dedos curtos em vez de 1–2 gotas longas; os
+  knobs escondidos `extFingering`/`extRivulets` não fazem gotas. A proposta (§5) espera a decisão do dono.
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
 
 ## §5 — A próxima janela (W2)

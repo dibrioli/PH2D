@@ -115,7 +115,8 @@ dá 41–42 px nos quatro meios «de tinta» — é um defeito de coerência nos
 8. **Pincel sujo (L5) — NÃO medido.** O gesto de cruzamento é um flat de lado (4 px) e a amostra não distingue
    `oildirty` de `oil` (80/37/40 nas duas). A lei vem do manual e dos presets (136/281 em Paint & Mix); a bancada
    que a mede ainda não existe: um traço redondo a cruzar outro, e depois um terceiro traço fora, lendo a cor.
-9. **Água como volume que corre, gotas, blow, tilt da tela** — não medidos (gestos horizontais, sem tilt de tela).
+9. **Água como volume que corre, gotas, blow, tilt da tela** — não medidos aqui. ✅ As GOTAS e o tilt da tela
+   mediram-se em 08/10: [06](06_gotas_rebelle_x_ph2d.md). Blow e a água como volume continuam por medir.
 
 ## §4 — O que medir a seguir (a bancada que falta, por onda do 01 §4)
 

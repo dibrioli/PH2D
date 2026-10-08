@@ -198,10 +198,18 @@ fn two_travelling_fingers_pan_and_pinch_and_never_undo() {
             }
         ]
     );
-    // Levantar depressa NÃO desfaz: só o botão do meio levanta.
-    let mut out = t.feed(1, TouchPhase::End, [160.0, 100.0], 6 * MS, None);
-    out.extend(t.feed(2, TouchPhase::End, [280.0, 100.0], 7 * MS, None));
-    assert_eq!(out, vec![TouchOut::NavEnd], "um pan que levantou desfez");
+    // Levantar depressa NÃO desfaz: só o botão do meio levanta — e levanta no PRIMEIRO dedo a
+    // sair (um dedo sozinho não navega; o botão do meio não fica pousado à espera).
+    assert_eq!(
+        t.feed(1, TouchPhase::End, [160.0, 100.0], 6 * MS, None),
+        vec![TouchOut::NavEnd],
+        "o botão do meio ficou pousado com um dedo só"
+    );
+    assert!(
+        t.feed(2, TouchPhase::End, [280.0, 100.0], 7 * MS, None)
+            .is_empty(),
+        "um pan que levantou desfez"
+    );
     assert!(t.tick(8 * MS).is_empty(), "navegou depois de levantar");
 
     // O CONTROLO, do outro lado da fronteira: o mesmo contacto, dentro da folga, desfaz.

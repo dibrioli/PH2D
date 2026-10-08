@@ -244,7 +244,9 @@ impl TouchGestures {
         let held = self
             .chips
             .values()
-            .fold(TouchMods::default(), |m, &(c, _)| m.or(TouchMods::default().toggled(c)));
+            .fold(TouchMods::default(), |m, &(c, _)| {
+                m.or(TouchMods::default().toggled(c))
+            });
         fingers.or(held).or(self.locked)
     }
 

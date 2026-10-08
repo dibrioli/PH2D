@@ -12,15 +12,22 @@ fn g() -> TouchGestures {
 #[test]
 fn the_drawing_finger_presses_at_its_origin_once_it_travels() {
     let mut t = g();
-    assert!(t.feed(1, TouchPhase::Start, [100.0, 100.0], 0, None).is_empty());
     assert!(
-        t.feed(1, TouchPhase::Move, [104.0, 100.0], MS, None).is_empty(),
+        t.feed(1, TouchPhase::Start, [100.0, 100.0], 0, None)
+            .is_empty()
+    );
+    assert!(
+        t.feed(1, TouchPhase::Move, [104.0, 100.0], MS, None)
+            .is_empty(),
         "dentro da folga já desenhou"
     );
     let out = t.feed(1, TouchPhase::Move, [130.0, 100.0], 2 * MS, None);
     assert_eq!(
         out,
-        vec![TouchOut::Press([100.0, 100.0]), TouchOut::Drag([130.0, 100.0])]
+        vec![
+            TouchOut::Press([100.0, 100.0]),
+            TouchOut::Drag([130.0, 100.0])
+        ]
     );
     let out = t.feed(1, TouchPhase::End, [140.0, 100.0], 3 * MS, None);
     assert_eq!(out, vec![TouchOut::Release([130.0, 100.0])]);
@@ -34,7 +41,10 @@ fn a_short_tap_is_a_click() {
     let out = t.feed(1, TouchPhase::End, [51.0, 60.0], 80 * MS, None);
     assert_eq!(
         out,
-        vec![TouchOut::Press([50.0, 60.0]), TouchOut::Release([50.0, 60.0])]
+        vec![
+            TouchOut::Press([50.0, 60.0]),
+            TouchOut::Release([50.0, 60.0])
+        ]
     );
 }
 
@@ -48,9 +58,15 @@ fn extra_fingers_are_shift_then_shift_alt_while_drawing() {
     t.feed(1, TouchPhase::Move, [40.0, 0.0], MS, None);
     assert_eq!(t.modifiers(), TouchMods::default());
     t.feed(2, TouchPhase::Start, [500.0, 500.0], 2 * MS, None);
-    assert!(t.modifiers().shift && !t.modifiers().alt, "+1 dedo não é Shift");
+    assert!(
+        t.modifiers().shift && !t.modifiers().alt,
+        "+1 dedo não é Shift"
+    );
     t.feed(3, TouchPhase::Start, [520.0, 500.0], 3 * MS, None);
-    assert!(t.modifiers().shift && t.modifiers().alt, "+2 dedos não é Shift+Alt");
+    assert!(
+        t.modifiers().shift && t.modifiers().alt,
+        "+2 dedos não é Shift+Alt"
+    );
     assert_eq!(
         t.feed(1, TouchPhase::Move, [60.0, 0.0], 4 * MS, None),
         vec![TouchOut::Drag([60.0, 0.0])],
@@ -64,7 +80,11 @@ fn extra_fingers_are_shift_then_shift_alt_while_drawing() {
     let mut c = g();
     c.feed(1, TouchPhase::Start, [0.0, 0.0], 0, None);
     c.feed(2, TouchPhase::Start, [30.0, 0.0], MS, None);
-    assert_eq!(c.modifiers(), TouchMods::default(), "o controlo: virou Shift");
+    assert_eq!(
+        c.modifiers(),
+        TouchMods::default(),
+        "o controlo: virou Shift"
+    );
 }
 
 /// ⭐ **Toque de 2 dedos desfaz, 3 refaz, 4 foca — e nenhum traço nasce.**
@@ -97,12 +117,18 @@ fn a_moving_or_slow_multi_finger_contact_is_not_a_tap() {
     t.feed(2, TouchPhase::Start, [40.0, 0.0], 0, None);
     t.feed(2, TouchPhase::Move, [90.0, 0.0], MS, None);
     t.feed(1, TouchPhase::End, [0.0, 0.0], 2 * MS, None);
-    assert!(t.feed(2, TouchPhase::End, [90.0, 0.0], 3 * MS, None).is_empty());
+    assert!(
+        t.feed(2, TouchPhase::End, [90.0, 0.0], 3 * MS, None)
+            .is_empty()
+    );
     let mut t = g();
     t.feed(1, TouchPhase::Start, [0.0, 0.0], 0, None);
     t.feed(2, TouchPhase::Start, [40.0, 0.0], 0, None);
     t.feed(1, TouchPhase::End, [0.0, 0.0], LONG_PRESS_NS, None);
-    assert!(t.feed(2, TouchPhase::End, [40.0, 0.0], LONG_PRESS_NS, None).is_empty());
+    assert!(
+        t.feed(2, TouchPhase::End, [40.0, 0.0], LONG_PRESS_NS, None)
+            .is_empty()
+    );
 }
 
 /// ⭐ **Tocar e segurar abre o menu de contexto — no relógio, sem outro evento — e soltar depois
@@ -117,11 +143,18 @@ fn touch_and_hold_opens_the_context_menu() {
         Some(TouchOut::ContextMenu([70.0, 80.0]))
     );
     assert_eq!(t.tick(LONG_PRESS_NS * 2), None, "abriu duas vezes");
-    assert!(t.feed(1, TouchPhase::End, [70.0, 80.0], LONG_PRESS_NS * 2, None).is_empty());
+    assert!(
+        t.feed(1, TouchPhase::End, [70.0, 80.0], LONG_PRESS_NS * 2, None)
+            .is_empty()
+    );
     let mut c = g();
     c.feed(1, TouchPhase::Start, [70.0, 80.0], 0, None);
     c.feed(1, TouchPhase::Move, [120.0, 80.0], MS, None);
-    assert_eq!(c.tick(LONG_PRESS_NS), None, "o controlo: um traço abriu o menu");
+    assert_eq!(
+        c.tick(LONG_PRESS_NS),
+        None,
+        "o controlo: um traço abriu o menu"
+    );
 }
 
 /// ⭐ **O widget: segurar = segurar, tocar = travar — e o dedo nele não conta como dedo extra.**
@@ -139,7 +172,13 @@ fn the_widget_holds_while_pressed_and_locks_on_a_tap() {
     t.feed(9, TouchPhase::End, [5.0, 5.0], 90 * MS, None);
     assert!(t.locked().shift, "tocar não travou");
     // Com o Shift preso por um dedo, outro dedo desenha sozinho — não é gesto.
-    t.feed(8, TouchPhase::Start, [5.0, 5.0], 0, Some(crate::ids::TOUCH_MOD_ALT));
+    t.feed(
+        8,
+        TouchPhase::Start,
+        [5.0, 5.0],
+        0,
+        Some(crate::ids::TOUCH_MOD_ALT),
+    );
     t.feed(1, TouchPhase::Start, [300.0, 300.0], 0, None);
     let out = t.feed(1, TouchPhase::Move, [340.0, 300.0], MS, None);
     assert_eq!(out.first(), Some(&TouchOut::Press([300.0, 300.0])));

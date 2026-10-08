@@ -377,7 +377,6 @@ mod project_texture_pattern;
 /// pelo teto de LOC, cortado por assunto.
 mod project_tokens;
 mod radial_input;
-mod touch_input;
 mod render_loop;
 /// ⭐⭐⭐ **A janela em que a CENA vive** — a porta única de todo mapeamento mundo↔tela do chrome.
 /// ⛔ A lei está escrita desde 07/25 e foi paga TRÊS vezes curando um consumidor de cada vez.
@@ -398,6 +397,7 @@ mod signal_smoke;
 mod signal_table_smoke;
 mod sim_populate;
 mod sizing_smoke;
+mod touch_input;
 /// ⭐⭐⭐ **A ÂNCORA, viva**: a restrição de cinemática inversa que persiste, resolvida por quadro.
 pub(crate) use ph2d_app_skeleton::goal as skeleton_goal;
 /// ⭐⭐⭐ **O ESQUELETO, vivo** (estudo 42 item 5): a forma presa aos ossos, re-cozida por quadro.

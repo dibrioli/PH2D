@@ -27,13 +27,27 @@ fn bars() -> ToolBars {
 fn left_handed_moves_the_column_and_the_widget_to_the_right() {
     let mid = AREA.x + AREA.w * 0.5;
     for (left_handed, right_side) in [(true, true), (false, false)] {
-        let col = crate::screens::hero::float_bar::tool_bars::placed(&bars(), AREA, true, false, left_handed);
+        let col = crate::screens::hero::float_bar::tool_bars::placed(
+            &bars(),
+            AREA,
+            true,
+            false,
+            left_handed,
+        );
         assert!(!col.is_empty());
         for (_, r) in &col {
-            assert_eq!(r.x > mid, right_side, "canhoto={left_handed}: coluna em {r:?}");
+            assert_eq!(
+                r.x > mid,
+                right_side,
+                "canhoto={left_handed}: coluna em {r:?}"
+            );
         }
         for r in rects(AREA, true, left_handed) {
-            assert_eq!(r.x > mid, right_side, "canhoto={left_handed}: widget em {r:?}");
+            assert_eq!(
+                r.x > mid,
+                right_side,
+                "canhoto={left_handed}: widget em {r:?}"
+            );
         }
     }
 }
@@ -44,7 +58,10 @@ fn the_widget_sits_beside_the_column_never_under_it() {
     let col = crate::screens::hero::float_bar::tool_bars::placed(&bars(), AREA, true, false, false);
     let right = col.iter().map(|(_, r)| r.x + r.w).fold(0.0, f32::max);
     for r in rects(AREA, true, false) {
-        assert!(r.x >= right, "o widget ({r:?}) começa antes do fim da coluna ({right})");
+        assert!(
+            r.x >= right,
+            "o widget ({r:?}) começa antes do fim da coluna ({right})"
+        );
     }
 }
 
@@ -52,16 +69,24 @@ fn the_widget_sits_beside_the_column_never_under_it() {
 #[test]
 fn a_click_locks_a_modifier_and_the_focus_row_asks_for_focus() {
     let mut hero = HeroScreen::new(crate::NodeId(1));
-    assert!(!hero.store.touch().widget_visible(), "nasceu à vista sem toque");
+    assert!(
+        !hero.store.touch().widget_visible(),
+        "nasceu à vista sem toque"
+    );
     assert!(hero.apply_event(WidgetEvent::Click(ids::TOUCH_MOD_SHIFT)));
     assert!(hero.store.touch().locked().shift, "o clique não travou");
     assert!(hero.store.touch().widget_visible(), "travado e escondido");
     assert!(hero.apply_event(WidgetEvent::Click(ids::TOUCH_MOD_SHIFT)));
-    assert!(!hero.store.touch().locked().shift, "o 2.º clique não destravou");
+    assert!(
+        !hero.store.touch().locked().shift,
+        "o 2.º clique não destravou"
+    );
     let _ = hero.bus.drain().count();
     assert!(hero.apply_event(WidgetEvent::Click(ids::MENUBAR_VIEW_FOCUS)));
     assert!(
-        hero.bus.drain().any(|a| matches!(a, EditorAction::FocusMode)),
+        hero.bus
+            .drain()
+            .any(|a| matches!(a, EditorAction::FocusMode)),
         "a linha do modo foco não chegou à shell"
     );
 }

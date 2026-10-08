@@ -163,7 +163,11 @@ mod tests {
                 acesos += 1;
             }
             antes = l;
-            assert_eq!(s.flashing(true), Some((NodeId(7), 1.0)), "o reduzido piscou");
+            assert_eq!(
+                s.flashing(true),
+                Some((NodeId(7), 1.0)),
+                "o reduzido piscou"
+            );
         }
         assert_eq!(acesos + 1, 3, "pulsos ≠ 3");
         s.note_clock(5_000 * ms + 1_200 * ms);

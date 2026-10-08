@@ -327,11 +327,11 @@ pub fn paint_swatch(
     }
 }
 
+#[path = "flash.rs"]
+pub mod flash;
 /// O cliente do Vetor (e de qualquer módulo que publique [`crate::interaction::ToolBars`]).
 #[path = "tool_bars.rs"]
 pub mod tool_bars;
-#[path = "flash.rs"]
-pub mod flash;
 #[path = "touch_mods.rs"]
 pub mod touch_mods;
 

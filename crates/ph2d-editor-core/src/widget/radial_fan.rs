@@ -159,7 +159,14 @@ pub fn paint_fan(
     for (j, child) in parent.children.iter().enumerate() {
         let o = fan_offset(j, k, out);
         let at = [fc[0] + o[0], fc[1] + o[1]];
-        paint_label(scene, text_system, theme, at, &child.label, fan.hot == Some(j));
+        paint_label(
+            scene,
+            text_system,
+            theme,
+            at,
+            &child.label,
+            fan.hot == Some(j),
+        );
     }
 }
 

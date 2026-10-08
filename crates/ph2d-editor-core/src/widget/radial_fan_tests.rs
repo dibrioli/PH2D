@@ -80,14 +80,26 @@ fn a_family_is_never_a_command() {
     let o = item_offset(2, 7);
     point(&mut open, [C[0] + o[0] * 0.6, C[1] + o[1] * 0.6]);
     assert_eq!(open.hot, Some(2), "a família não acendeu");
-    assert_eq!(chosen(&open), None, "soltar na família executou alguma coisa");
+    assert_eq!(
+        chosen(&open),
+        None,
+        "soltar na família executou alguma coisa"
+    );
     let fc = fan_center(&open, 2);
     point(&mut open, fc);
     assert!(open.fan.is_some(), "atravessar o anel não abriu o leque");
-    assert_eq!(chosen(&open), None, "a zona morta do leque executou alguma coisa");
+    assert_eq!(
+        chosen(&open),
+        None,
+        "a zona morta do leque executou alguma coisa"
+    );
     let o = item_offset(1, 7);
     point(&mut open, [C[0] + o[0] * 0.6, C[1] + o[1] * 0.6]);
-    assert_eq!(chosen(&open).map(|c| c.id), Some(NodeId(5001)), "o controlo");
+    assert_eq!(
+        chosen(&open).map(|c| c.id),
+        Some(NodeId(5001)),
+        "o controlo"
+    );
 }
 
 /// **VOLTAR PARA DENTRO DO ANEL FECHA O LEQUE** — é o gesto de desistir da família.
@@ -100,7 +112,10 @@ fn coming_back_inside_the_ring_closes_the_fan() {
     point(&mut open, t);
     assert!(open.fan.is_some_and(|f| f.hot == Some(0)));
     point(&mut open, C);
-    assert_eq!(open.fan, None, "o leque ficou aberto com o ponteiro no centro");
+    assert_eq!(
+        open.fan, None,
+        "o leque ficou aberto com o ponteiro no centro"
+    );
     assert_eq!(chosen(&open), None, "o centro escolheu um filho");
 }
 

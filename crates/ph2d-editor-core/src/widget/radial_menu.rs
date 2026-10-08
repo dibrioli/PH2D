@@ -195,7 +195,14 @@ pub fn paint_radial_menu(
         }
         let o = item_offset(i, n);
         let at = [open.center[0] + o[0], open.center[1] + o[1]];
-        paint_label(scene, text_system, theme, at, &item.label, open.hot == Some(i));
+        paint_label(
+            scene,
+            text_system,
+            theme,
+            at,
+            &item.label,
+            open.hot == Some(i),
+        );
     }
     super::radial_fan::paint_fan(open, scene, text_system, theme);
 }

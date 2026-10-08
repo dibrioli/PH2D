@@ -258,7 +258,10 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 19] = [
         ids::MENUBAR_VIEW_SELECTION_ACTIONS,
         ModuleTruth::SelectionActions,
     ),
-    (ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM, ModuleTruth::ToolRowBottom),
+    (
+        ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM,
+        ModuleTruth::ToolRowBottom,
+    ),
     // ⭐⭐⭐ **As duas colunas** (2026-09-19) — ver `ModuleTruth::Column`.
     (
         ids::MENUBAR_VIEW_COLUMN_LEFT,

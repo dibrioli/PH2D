@@ -43,7 +43,10 @@ impl App {
         if matches!(
             (
                 state,
-                matches!(physical_key, PhysicalKey::Code(KeyCode::KeyP | KeyCode::KeyJ))
+                matches!(
+                    physical_key,
+                    PhysicalKey::Code(KeyCode::KeyP | KeyCode::KeyJ)
+                )
             ),
             (ElementState::Released, true)
         ) {

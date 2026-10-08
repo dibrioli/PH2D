@@ -82,7 +82,11 @@ pub fn groups(store: &WidgetStore) -> Vec<PaletteGroup> {
             sub(None, flyout.map(button_item), &mut seen),
         ],
     ));
-    let row = bars.row_lead.iter().chain(&bars.row_tail).filter_map(row_item);
+    let row = bars
+        .row_lead
+        .iter()
+        .chain(&bars.row_tail)
+        .filter_map(row_item);
     let mut top = vec![sub(None, row, &mut seen)];
     for m in store.area_menus() {
         top.push(sub(
@@ -91,7 +95,11 @@ pub fn groups(store: &WidgetStore) -> Vec<PaletteGroup> {
             &mut seen,
         ));
     }
-    out.extend(group("chrome.palette.top_bar", ColorToken::NodeCatTransform, top));
+    out.extend(group(
+        "chrome.palette.top_bar",
+        ColorToken::NodeCatTransform,
+        top,
+    ));
     out.extend(group(
         "chrome.palette.near_selection",
         ColorToken::NodeCatFx,

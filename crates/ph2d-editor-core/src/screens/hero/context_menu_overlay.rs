@@ -178,7 +178,13 @@ pub fn paint_context_menu_overlay(
     // tamanho de um comando, e a conta antiga (`ROW_H * len`) deixaria a coluna a transbordar do
     // cartão exactamente pela altura dos riscos.
     let total_h = rows.iter().map(MenuRow::h).sum::<f32>() + pad_y() * 2.0;
-    let rect = clamp_to_viewport(req.x, anchor_y(store, req, total_h), MENU_W, total_h, viewport);
+    let rect = clamp_to_viewport(
+        req.x,
+        anchor_y(store, req, total_h),
+        MENU_W,
+        total_h,
+        viewport,
+    );
 
     // Floating panel: BgElev fill + Border stroke + Md radius.
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());

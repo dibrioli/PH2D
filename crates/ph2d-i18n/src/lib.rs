@@ -57,6 +57,8 @@ mod chrome_menus;
 mod chrome_panes;
 /// As strings da BARRA DE FERRAMENTAS (o rail esquerdo e a fila horizontal).
 mod chrome_rail;
+/// O alcance das barras (D10, F4–F5): o radial por famílias, a paleta que ensina, o toque.
+mod chrome_reach;
 /// ⭐⭐ **As palavras do MOTOR DA CENA** (`ph2d-ecs`) — a 7.ª fatia da fronteira dos motores, e a
 /// primeira achada por um instrumento.
 mod ecs_scene;
@@ -83,8 +85,6 @@ mod shell_media;
 mod timeline;
 mod vector;
 mod vector_bars;
-/// O alcance das barras (D10, F4–F5): o radial por famílias, a paleta que ensina, o toque.
-mod chrome_reach;
 /// As strings que o MOTOR publica para o painel de Vector (efeitos, filtros, misturas).
 mod vector_engine;
 

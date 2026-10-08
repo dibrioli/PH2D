@@ -26,7 +26,13 @@ const LABELS: [&str; 3] = [
 pub fn rects(area: Rect, has_column: bool, left_handed: bool) -> [Rect; 3] {
     let (s, g, m) = (button_px(), gap(), Spacing::Md.px());
     let w = 2.0 * s;
-    let x0 = area.x + m + if has_column { s + Spacing::Sm.px() } else { 0.0 };
+    let x0 = area.x
+        + m
+        + if has_column {
+            s + Spacing::Sm.px()
+        } else {
+            0.0
+        };
     let y = area.y + area.h - m - s;
     std::array::from_fn(|i| {
         #[allow(clippy::cast_precision_loss)]

@@ -120,12 +120,15 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
             } else {
                 // A mesma régua do teste de ponteiro real: o `X` abre o seletor em vez de ir ao
                 // barramento, e fixar/desligar a ④ são do chrome.
-                hero.bus.drain().any(|a| {
-                    matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if i == id)
-                }) || hero.store.picker_target().is_some()
+                hero.bus.drain().any(
+                    |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(i)) if i == id),
+                ) || hero.store.picker_target().is_some()
                     || [ids::SELECTION_ACTIONS_PIN, ids::SELECTION_ACTIONS_OFF].contains(&id)
             };
-            assert!(chegou, "{mode:?}: «{label}» escolhido na paleta não chegou ao painel");
+            assert!(
+                chegou,
+                "{mode:?}: «{label}» escolhido na paleta não chegou ao painel"
+            );
             // ⚠️ O quadro seguinte REPUBLICA as barras, como o app faz: uma linha-interruptor troca
             // de id ao ser executada, e o piscar não pode depender do id de antes (a foto de 08/10).
             hero.store.set_picker_target(None);
@@ -141,7 +144,10 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
             medidos += 1;
         }
     }
-    assert!(medidos > 100, "só {medidos} comandos medidos — a paleta não viu as barras");
+    assert!(
+        medidos > 100,
+        "só {medidos} comandos medidos — a paleta não viu as barras"
+    );
     assert!(campos > 0, "o controlo: nenhuma fila tinha campo numérico");
 }
 
@@ -167,7 +173,10 @@ fn every_column_tool_is_two_strokes_away_in_the_radial() {
                 if it.id == id {
                     Some((i, None))
                 } else {
-                    it.children.iter().position(|ch| ch.id == id).map(|j| (i, Some(j)))
+                    it.children
+                        .iter()
+                        .position(|ch| ch.id == id)
+                        .map(|j| (i, Some(j)))
                 }
             })
             .unwrap_or_else(|| panic!("«{key}» não está no radial"));
@@ -188,9 +197,9 @@ fn every_column_tool_is_two_strokes_away_in_the_radial() {
         let _ = hero.bus.drain().count();
         global_palette::route_global_pick(&mut hero, item.id);
         assert!(
-            hero.bus
-                .drain()
-                .any(|a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(x)) if x == id)),
+            hero.bus.drain().any(
+                |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(x)) if x == id)
+            ),
             "«{key}» escolhido no radial não chegou ao painel"
         );
     }

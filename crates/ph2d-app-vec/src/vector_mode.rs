@@ -374,7 +374,10 @@ pub fn smoke_step(
                 _ => 9,
             };
             WELD.store(u8::from(scene.as_deref() == Ok("7")), Ordering::Relaxed);
-            BARS.store(u8::from(matches!(scene.as_deref(), Ok("9" | "10"))), Ordering::Relaxed);
+            BARS.store(
+                u8::from(matches!(scene.as_deref(), Ok("9" | "10"))),
+                Ordering::Relaxed,
+            );
             REACH.store(u8::from(scene.as_deref() == Ok("10")), Ordering::Relaxed);
             STAGE.store(want, Ordering::Relaxed);
             want
@@ -451,7 +454,11 @@ pub fn smoke_step(
         {
             let both: Vec<VecPathId> = vec.entities.keys().copied().collect();
             vec.pen.select_many(&both);
-            go(if REACH.load(Ordering::Relaxed) == 1 { 30 } else { 9 });
+            go(if REACH.load(Ordering::Relaxed) == 1 {
+                30
+            } else {
+                9
+            });
         }
         // A cena 10 (F4): a roda e a paleta que ensina — `vector_mode_reach`.
         s @ 30..=32 => {

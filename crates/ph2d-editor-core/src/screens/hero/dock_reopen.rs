@@ -18,8 +18,8 @@
 use super::HeroScreen;
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::screens::layout::{DockSide, HeroLayout};
-use ph2d_a11y::NodeId;
 use crate::zones::Rect;
+use ph2d_a11y::NodeId;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::VectorScene;
 
@@ -113,7 +113,12 @@ pub fn paint_strip_icons(hero: &HeroScreen, layout: &HeroLayout, scene: &mut Vec
 }
 
 /// F5: um toque na faixa reabre a coluna — e o painel do ícone tocado vem à FRENTE do encaixe.
-pub fn open_from_strip(hero: &mut HeroScreen, layout: &HeroLayout, side: DockSide, p: [f32; 2]) -> bool {
+pub fn open_from_strip(
+    hero: &mut HeroScreen,
+    layout: &HeroLayout,
+    side: DockSide,
+    p: [f32; 2],
+) -> bool {
     let pick = strip_icons(hero, layout, side)
         .into_iter()
         .find(|(_, _, r)| p[0] >= r.x && p[0] < r.x + r.w && p[1] >= r.y && p[1] < r.y + r.h)

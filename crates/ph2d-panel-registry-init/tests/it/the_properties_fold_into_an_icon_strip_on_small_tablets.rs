@@ -59,7 +59,12 @@ fn on_small_tablets_the_properties_start_as_an_icon_strip() {
         assert!(!icons.is_empty(), "{vp:?}: a faixa está vazia");
         let (pick, _, r) = *icons.last().expect("um ícone");
         let p = [r.x + r.w * 0.5, r.y + r.h * 0.5];
-        assert!(dock_reopen::open_from_strip(&mut hero, &layout, DockSide::Right, p));
+        assert!(dock_reopen::open_from_strip(
+            &mut hero,
+            &layout,
+            DockSide::Right,
+            p
+        ));
         assert!(!dock_columns::is_closed(&hero, DockSide::Right));
         let front = ph2d_editor_core::screens::slot::Slot::ALL
             .into_iter()
@@ -68,7 +73,10 @@ fn on_small_tablets_the_properties_start_as_an_icon_strip() {
         assert!(front, "{vp:?}: o ícone tocado não veio à frente");
         // UMA vez por sessão: aberto pelo artista, o quadro seguinte não o recolhe outra vez.
         pinta(&mut hero, vp, &mut ts);
-        assert!(!dock_columns::is_closed(&hero, DockSide::Right), "{vp:?}: recolheu de novo");
+        assert!(
+            !dock_columns::is_closed(&hero, DockSide::Right),
+            "{vp:?}: recolheu de novo"
+        );
     }
 }
 
@@ -79,8 +87,14 @@ fn at_the_reference_and_on_the_desktop_nothing_changes() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     for vp in [Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H), DONO] {
         let hero = hero_em(vp, &mut ts);
-        assert!(!dock_columns::is_closed(&hero, DockSide::Right), "{vp:?}: recolheu");
+        assert!(
+            !dock_columns::is_closed(&hero, DockSide::Right),
+            "{vp:?}: recolheu"
+        );
         assert!((closed_reserve_px(vp.w) - DOCK_SEAM_PX).abs() < f32::EPSILON);
     }
-    assert!(closed_reserve_px(IPAD_11.w) > DOCK_SEAM_PX, "o controlo do controlo");
+    assert!(
+        closed_reserve_px(IPAD_11.w) > DOCK_SEAM_PX,
+        "o controlo do controlo"
+    );
 }

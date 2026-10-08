@@ -78,12 +78,22 @@ fn chip_e_linha(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) -> Vec<(R
         down(hero, r);
         pinta(hero, ts);
         let rows: Vec<NodeId> = if chip == ids::TOOL_BAR_OVERFLOW {
-            hero.store.tool_overflow().iter().filter_map(|e| e.node_id()).collect()
+            hero.store
+                .tool_overflow()
+                .iter()
+                .filter_map(|e| e.node_id())
+                .collect()
         } else {
             (0..ids::MAX_AREA_MENUS)
                 .find(|&s| ids::area_menu_button(s) == chip)
                 .and_then(|s| u8::try_from(s).ok())
-                .map(|s| hero.store.area_menu_rows(s).iter().filter_map(|e| e.node_id()).collect())
+                .map(|s| {
+                    hero.store
+                        .area_menu_rows(s)
+                        .iter()
+                        .filter_map(|e| e.node_id())
+                        .collect()
+                })
                 .unwrap_or_default()
         };
         if let Some(row) = rows.iter().find_map(|&id| hero.hit_index.rect_for(id)) {
@@ -112,7 +122,11 @@ fn at_the_bottom_the_row_sits_below_the_area_and_its_menus_grow_up() {
         );
         pares.extend(chip_e_linha(&mut hero, &mut ts));
     }
-    assert!(pares.len() >= 2, "o `⋯` e um pulldown — só {} medidos", pares.len());
+    assert!(
+        pares.len() >= 2,
+        "o `⋯` e um pulldown — só {} medidos",
+        pares.len()
+    );
     for (chip, row) in pares {
         assert!(
             row.y + row.h <= chip.y + 0.5,
@@ -134,6 +148,9 @@ fn at_the_top_the_same_menus_open_below() {
     }
     assert!(pares.len() >= 2);
     for (chip, row) in pares {
-        assert!(row.y >= chip.y + chip.h - 0.5, "em cima, o menu abriu por cima do chip");
+        assert!(
+            row.y >= chip.y + chip.h - 0.5,
+            "em cima, o menu abriu por cima do chip"
+        );
     }
 }

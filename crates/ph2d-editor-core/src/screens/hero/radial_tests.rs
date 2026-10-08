@@ -144,7 +144,11 @@ fn a_module_column_enters_whole_two_strokes_deep() {
     ]);
     let model = from_column(&column);
     assert_eq!(model.len(), 7, "seis grupos e a porta");
-    assert_eq!(model.last().map(|i| i.id), Some(RADIAL_MORE), "a porta não é a última");
+    assert_eq!(
+        model.last().map(|i| i.id),
+        Some(RADIAL_MORE),
+        "a porta não é a última"
+    );
     let leaves: Vec<NodeId> = model
         .iter()
         .flat_map(|i| {

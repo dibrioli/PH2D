@@ -145,7 +145,9 @@ impl crate::App {
         };
         // F5: na FAIXA de ícones (janela estreita), o ícone tocado vem à frente.
         match layout {
-            Some(l) => ph2d_editor_core::screens::hero::dock_reopen::open_from_strip(hero, &l, side, p),
+            Some(l) => {
+                ph2d_editor_core::screens::hero::dock_reopen::open_from_strip(hero, &l, side, p)
+            }
             None => dock_columns::open(hero, side),
         }
     }

@@ -22,9 +22,7 @@ pub fn level_at(store: &WidgetStore, steady: bool, slot: NodeId) -> Option<f32> 
         .tool_overflow()
         .iter()
         .any(|e| e.node_id().is_some_and(|n| n == id || Some(n) == pill));
-    let home = slot == id
-        || Some(slot) == pill
-        || (slot == ids::TOOL_BAR_OVERFLOW && behind_more);
+    let home = slot == id || Some(slot) == pill || (slot == ids::TOOL_BAR_OVERFLOW && behind_more);
     home.then_some(level)
 }
 

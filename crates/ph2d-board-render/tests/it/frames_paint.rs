@@ -286,3 +286,41 @@ fn a_rotated_frame_paints_rotated() {
     );
     assert!(px.is(320, 150, WHITE), "o miolo do frame rodado");
 }
+
+/// ⛔ Smoke do dono (08/10): de longe a nota é um bloco — e o bloco ficava DIREITO numa nota
+/// rodada. Rodada 45°, o canto da caixa por rodar é quadro, o meio é a cor da nota.
+#[test]
+fn a_far_rotated_note_is_a_rotated_block() {
+    let Some(mut g) = gpu() else {
+        return;
+    };
+    let mut set = BoardSet::default();
+    let id = set.create("r".into());
+    let b = set.get_mut(id).unwrap();
+    let fill = Rgba(STICKY_COLORS[3]);
+    let note = Shape {
+        kind: ShapeType::Sticky,
+        style: Style::new(Some(fill), None, fill.readable_ink()),
+        text: "longe".into(),
+    };
+    let mut el = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        note,
+        [0.0, 0.0, 400.0, 400.0],
+    );
+    el.angle = std::f64::consts::FRAC_PI_4;
+    BoardOp::Put(el).apply(&mut b.doc);
+    // Letra 20 a 0,25 = 5 px (< READ_PX): bloco. A nota tem 100 px; o centro em (320, 240).
+    b.camera = Camera {
+        center_x: 200.0,
+        center_y: 200.0,
+        zoom: 0.25,
+    };
+    let px = render(&mut g, &set, Detail::default());
+    assert!(px.is(320, 240, fill), "o miolo é a cor da nota");
+    assert!(
+        !px.is(274, 194, fill),
+        "o canto da caixa SEM rodar pintou-se: o bloco não rodou"
+    );
+}

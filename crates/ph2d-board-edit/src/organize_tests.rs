@@ -669,3 +669,27 @@ fn dropping_in_place_but_in_another_frame_is_undoable() {
     assert!(w.cmd(Command::Undo));
     assert_eq!(w.el(r).frame, Some(f), "o desfazer não devolveu a casa");
 }
+
+/// ⛔ Smoke do dono (08/10): arrastar um frame acendia as guias dos objectos DENTRO dele — que
+/// andam com ele. O centro do frame (x 300) coincide com a borda de um filho: com o defeito, um
+/// arrasto de 5 colava de volta a 0.
+#[test]
+fn dragging_a_frame_does_not_snap_to_its_own_children() {
+    let mut w = world();
+    let f = frame(&mut w, [0.0, 0.0], [600.0, 600.0]);
+    let a = put_rect(&mut w, [300.0, 100.0, 40.0, 40.0]);
+    let mut el = w.el(a).clone();
+    el.frame = Some(f);
+    BoardOp::Put(el).apply(&mut w.doc);
+    w.click([-500.0, -500.0], NONE);
+    w.ed.pointer_down(&mut w.doc, &mut w.h, &mut w.ts, at(50.0, 450.0, NONE), VIEW);
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(50.0, 500.0, NONE));
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(55.0, 500.0, NONE));
+    assert!(
+        w.ed.overlay(&mut w.doc, &mut w.ts).guides.is_empty(),
+        "guias acesas pelos filhos"
+    );
+    w.ed.pointer_up(&mut w.doc, &mut w.h, at(55.0, 500.0, NONE));
+    assert_eq!(w.el(f).x, 5.0, "o frame colou ao próprio filho");
+    assert_eq!(w.el(a).x, 305.0);
+}

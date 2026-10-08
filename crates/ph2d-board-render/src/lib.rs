@@ -241,8 +241,11 @@ pub fn paint(
         let st = &shape.style;
         // De longe uma nota é um bloco da cor dela (W5, [`Detail::note_blocks`]).
         if cache.detail.note_blocks && shape.kind.is_note() && st.font_size * zoom < READ_PX {
+            // O bloco roda com a nota (smoke do dono, 08/10: de longe as notas de um frame rodado
+            // ficavam direitas).
             if let Some(c) = st.fill {
-                scene.fill_rect(r, doc_color(c));
+                let block = Rect::new(0.0, 0.0, el.w, el.h).to_path(0.1);
+                scene.fill_path(&block, &Brush::Solid(doc_color(c)), v * to_world(el));
             }
             continue;
         }

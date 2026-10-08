@@ -334,10 +334,15 @@ impl Editor {
                 } else if self.selection.len() > pick.len() {
                     collapse_to = Some(id);
                 }
+                // As guias alinham com o que FICA: o que se move (os de dentro de um frame
+                // arrastado também) não é alvo — smoke do dono, 08/10: arrastar um frame alinhava-o
+                // com os próprios filhos.
+                let originals = self.moving(doc);
+                let going: BTreeSet<ElementId> = originals.iter().map(|o| o.id).collect();
                 self.gesture = Some(Gesture::Move {
                     start: p.world,
-                    originals: self.moving(doc),
-                    targets: targets(doc, &self.selection, view),
+                    targets: targets(doc, &going, view),
+                    originals,
                     active: false,
                     copies: Vec::new(),
                     collapse_to,

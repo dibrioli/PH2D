@@ -8,7 +8,7 @@
 - **Branch** `line/UIUX` (worktree `Worktrees/line-UIUX`) · **base (merge-base = `main`)** `2a925859d`
   (a linha tinha sido integrada e reaberta sobre o `main`; `git cherry` = 0 no início).
 - Commits: `f6217180a` docs (estudo + plano + D10, trazidos do primário) · `afae11474` a obra ·
-  `GATE_COMMIT` curas do gate e o fecho (este doc).
+  `10c1fd0eb` curas do gate + fecho documental · `3dd997a61` clippy · e o commit deste doc.
 
 ## §0 — Para o `CLAUDE.md` §5.1 (≤ 700 bytes; gate `architecture_claude_md_cabe_no_orcamento`)
 
@@ -105,7 +105,21 @@ já pintam (o gate *uma porta* só vê as barras).
 
 ## §5 — Gate final
 
-GATE_REPORT
+Atestado do `verificador` sobre `10c1fd0eb` (+ a cura `3dd997a61`, clippy do workspace limpo a seguir),
+`load` 118 → 31 durante a corrida:
+- `fmt --check` ✓ · `CARGO_BUILD_WARNINGS=deny check --workspace --all-targets` ✓ · clippy como o
+  `ship.sh` (`--features ph2d-spike/bevy_ecs -- -D warnings`) ✓.
+- `nextest-impacted` (`BASE=2a925859d`, `NO_FAIL_FAST=1`): **16 769 / 16 769**.
+- Censos da árvore 12/12 (114/114) · `doc-index --check` ✓ · `panel_files_under_loc_cap`,
+  `workspace_src_files_under_loc_cap` ✓.
+- Catraca da shell `the_shell_only_shrinks`: **185 674 / TECTO 189 041** (folga 3 367). Delta da linha
+  sobre a base (185 537): **+137 = +46 em `src`** (a costura das letras, o braço do conta-gotas, dois
+  campos da persistência; `vec_text_toggle_mode` saiu) **+ 91 em `tests`**.
+- **Mutação 15/15 a sangrar** (agente `mutacao`, verde visto antes de cada uma, árvore limpa no fim):
+  a tabela da ① (Eyedropper), a lâmina do Corte, a simetria radial, controlo sem casa (Reverse),
+  porta do painel (Swap), id pintado duas vezes, dobra por omissão, hit do botão, fixar, prioridade da
+  fila (a largura ia ao `⋯` no mini), tecla do Balde, ferramenta temporária, cedência à timeline,
+  rodapé só no layout Vetor, e a cura do `in_use_item`.
 
 ## §6 — Smoke do dono
 
@@ -122,4 +136,7 @@ Ver o relatório ao dono (passos numerados). Foto: [`depois_01`](../vetor_nova_u
 
 ## §8 — Binário de smoke (2.ª corrida)
 
-SMOKE_BUILD
+```
+▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.26s
+```

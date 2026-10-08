@@ -12,7 +12,12 @@
 > **F0–F3 ENTREGUES na `line/UIUX` (07/10)** — handoff
 > [`HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_NOVA_UI_DO_VETOR.md`](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_NOVA_UI_DO_VETOR.md),
 > foto do «depois» em [`fotos/depois_01`](fotos/depois_01_cena9_caneta_na_mao_com_duas_formas.png),
-> smoke `PH2D_OBJECT_MODE_SMOKE=9`. Abertos: F4 e F5 (depois do smoke do dono).
+> smoke `PH2D_OBJECT_MODE_SMOKE=9`. **F4–F5 (08/10)**: a roda saiu (D10.2), a paleta que ensina e o
+> toque ficaram — [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F4_F5_ALCANCE_E_TOQUE.md).
+> **F6 (08/10)**: dois dedos arrastam a vista e a pinça dá zoom à volta deles, cena `=11`, foto
+> [`fotos/f6_01`](fotos/f6_01_cena11_dois_dedos_arrastam_e_aproximam.png) —
+> [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F6_NAVEGAR_COM_OS_DEDOS.md).
+> Aberto: o QuickShape (oráculo por instalar — decisão do dono).
 
 ## O roteador
 
@@ -22,6 +27,7 @@
 | ⭐ **O estudo** — os cinco lugares em que todo app amado converge, por que o Affinity é o modelo (e onde ele tropeçou), o que os apps de iPad sabem, as armadilhas que todos pagaram, e o teclado partilhado | [`02_estudo_os_apps_amados.md`](02_estudo_os_apps_amados.md) |
 | ⭐⭐ **O plano** — os desenhos alvo (desktop e iPad), a tabela de destino das 41 secções, as peças e onde vivem, as fases F0–F5 com gates, o que fica de fora, e **as decisões do Enio** (respondidas) | [`03_plano.md`](03_plano.md) |
 | ⭐ **O prompt da próxima janela** — F4 (radial, `Ctrl+K` que ensina) e F5 (iPad), com o estado da linha e as lições de F0–F3 | [`04_prompt_F4_F5.md`](04_prompt_F4_F5.md) |
+| O prompt de F6 — navegar com os dedos, o QuickShape à espera do oráculo, a ponte do toque | [`05_prompt_F6_toque_completo.md`](05_prompt_F6_toque_completo.md) |
 | As fontes, com URL por afirmação | [`referencias/R1_affinity.md`](referencias/R1_affinity.md) · [`R2_figma_sketch_penpot_graphite.md`](referencias/R2_figma_sketch_penpot_graphite.md) · [`R3_illustrator_curve_rive_inkscape.md`](referencias/R3_illustrator_curve_rive_inkscape.md) · [`R4_apps_de_ipad.md`](referencias/R4_apps_de_ipad.md) |
 | As fotos do «antes» e o precedente interno (a barra curta e a barra de estilo do Quadro) | [`fotos/`](fotos/) |
 

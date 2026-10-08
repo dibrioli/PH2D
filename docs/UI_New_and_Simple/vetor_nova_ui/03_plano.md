@@ -193,6 +193,20 @@ ir ao Enio.
 - Barras laterais espelháveis para **canhotos** (com esse nome).
 - ⛔ Todo gesto com uma porta visível ao lado.
 
+### F6 — Navegar com os dedos (entregue 08/10)
+
+- **2 dedos que ANDAM = arrastar a vista; pinça = zoom à volta do ponto entre os dedos** (R4 #11,
+  universal). Pelas portas do rato — o botão do MEIO e a RODA — nunca uma 2.ª câmera; o zoom à
+  volta de um ponto é um pan pela porta do pan (`Camera2d::anchor_pan_px`).
+- A fronteira com o toque de 2 dedos (desfazer) é a FOLGA do UIKit: um toque que andou não desfaz,
+  um pan que não andou não move. A navegação publica-se **uma vez por quadro**, com todos os dedos
+  já no sítio (publicar por evento compõe zooms à volta de dois pontos — medido na foto).
+- ⛔ Sem rotação da vista (a câmera 2D não tem rotação — medido) e sem «quick-pinch encaixa no ecrã»
+  (não existe *enquadrar tudo* no app — pergunta ao dono, não invenção).
+- Smoke: cena `PH2D_OBJECT_MODE_SMOKE=11` (contactos sintéticos sobre as formas da cena 9),
+  foto [`fotos/f6_01`](fotos/f6_01_cena11_dois_dedos_arrastam_e_aproximam.png). O QuickShape
+  continua PARADO (oráculo por instalar — decisão do dono).
+
 ## §5 — O que NÃO entra (e porquê)
 
 | recusado | porquê |

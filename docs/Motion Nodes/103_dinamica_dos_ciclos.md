@@ -147,8 +147,9 @@ inventada. Contagens do registry em 2026-09-05.
 > `0,34–0,42 ms` do doc 120 não reproduz: era `0,045–0,058`, o `submit` próprio `0,019`). ⭐ E a
 > tabela do tecto de `32 768` foi MEDIDA de novo com o carimbo na placa (§4): no desktop a imagem
 > fecha o quadro com `1 048 576` e a estrela com `524 288`; no proxy de telemóvel a estrela é a que
-> aperta (`32 768` confortável, `~49 152` limite). ⏳ **O número do tecto é do dono** — recomendação
-> técnica `65 536` (doc 122 §4.3); nada mudou.
+> aperta (`32 768` confortável, `~49 152` limite). ✅ **O dono decidiu em 08/10: o tecto FICA em
+> `32 768`** (doc 122 §4.3). Os abertos que restam vão ao ciclo 14
+> ([prompt](handoffs/HANDOFF_CONTINUACAO_line_motion_value_2026-10-08_CICLO_14.md)).
 >
 > ⚠️ **Estado em 2026-10-07 — os ABERTOS do ciclo 6 fecharam** ([doc 110 §14](110_ciclo_6_valor_e_pulso.md)),
 > por ordem do dono (*«resolver num único ciclo o Ciclo 6 completo»*). A **W1(b)** fechou com DUAS

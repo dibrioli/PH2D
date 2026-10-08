@@ -77,8 +77,9 @@ cada criação de `BindGroup`/uniform — um conflito aqui resolve-se mantendo a
 
 ## §7 — O que fica ABERTO
 
-- **O número do tecto** — decisão do dono (doc 122 §4.3); a cura a sério nomeada é um tecto POR
-  DISPOSITIVO, não feito.
+- ✅ **O número do tecto — DECIDIDO pelo dono em 08/10: fica em `32 768`** (doc 122 §4.3); o tecto
+  por dispositivo fica fora. Os restantes abertos abaixo vão ao ciclo 14:
+  [prompt](HANDOFF_CONTINUACAO_line_motion_value_2026-10-08_CICLO_14.md).
 - A sonda `PH2D_PAN_DIAG` diz a rota da placa mas não lê o MUNDO das cópias do dispositivo (seria uma
   descarga por quadro) — nomeado, não pedido.
 - A imunidade do `pulse.beat` a FMA não tem régua nesta máquina (mutação 3, §5).

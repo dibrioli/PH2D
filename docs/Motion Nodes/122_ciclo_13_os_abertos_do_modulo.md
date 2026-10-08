@@ -200,7 +200,9 @@ a sério é um tecto por DISPOSITIVO (o recurso que limita, medido pela placa qu
 não feito. ⚠️ O `pulse.beat` prende o tecto a `≤ 131 072` (§2): subir além disso pede baixar o
 `SC_BITS` no mesmo passo.
 
-⏳ **A decisão é do dono** (ele mandou manter o `32 768` em 24/09). Nada foi mudado.
+> **2026-10-08, decisão do dono: *«o limite fica como está»*** — o tecto **fica em `32 768`** (a saída
+> A). A tabela acima é a nota de hoje; quem mover o número reconfere-a (`CLAUDE.md` §0.0). O tecto por
+> DISPOSITIVO fica fora (decisão de produto: o número não muda).
 
 ## §5 — A leitura de volta: `0,34–0,42 ms` não reproduz; o `submit` próprio sai
 

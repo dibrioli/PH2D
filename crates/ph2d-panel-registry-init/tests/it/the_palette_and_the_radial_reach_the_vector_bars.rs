@@ -85,6 +85,8 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
     let mut medidos = 0usize;
     let mut campos = 0usize;
     for &mode in DrawMode::ALL {
+        ph2d_panel_vector::set_current_snap(false);
+        ph2d_panel_vector::set_current_snap_position(false, false);
         let hero = com_barras(mode, &mut ts);
         let bars = hero.store.tool_bars().cloned().expect("publicadas");
         let groups = global_palette_bars::groups(&hero.store);

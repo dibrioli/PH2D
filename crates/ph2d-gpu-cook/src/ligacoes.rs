@@ -18,7 +18,7 @@
 //! Um buffer que o pool continua a dar é visto em cada viragem; o que saiu de uso morre ao fim de
 //! [`IDADE_MAX`] viragens.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use ph2d_gpu::GpuContext;
 
@@ -26,7 +26,7 @@ use ph2d_gpu::GpuContext;
 /// tique cozido, e os buffers alternam com período `2`: `8` cobre os dois com folga.
 pub(crate) const IDADE_MAX: u64 = 8;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct ChaveGrupo {
     pipeline: wgpu::ComputePipeline,
     entradas: Vec<(u32, wgpu::Buffer, u64, Option<std::num::NonZeroU64>)>,
@@ -37,8 +37,8 @@ pub(crate) type Fatia<'a> = (u32, &'a wgpu::Buffer, u64, Option<std::num::NonZer
 
 #[derive(Default)]
 pub(crate) struct Ligacoes {
-    uniformes: HashMap<Vec<u8>, (wgpu::Buffer, u64)>,
-    grupos: HashMap<ChaveGrupo, (wgpu::BindGroup, u64)>,
+    uniformes: BTreeMap<Vec<u8>, (wgpu::Buffer, u64)>,
+    grupos: BTreeMap<ChaveGrupo, (wgpu::BindGroup, u64)>,
     viragem: u64,
 }
 
@@ -151,7 +151,7 @@ impl Ligacoes {
 /// e é o chamador que as separa (`nivel`).
 #[derive(Default)]
 pub(crate) struct Rascunhos {
-    por_classe: HashMap<(u32, u64), wgpu::Buffer>,
+    por_classe: BTreeMap<(u32, u64), wgpu::Buffer>,
 }
 
 impl Rascunhos {

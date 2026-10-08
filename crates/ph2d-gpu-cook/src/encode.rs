@@ -233,7 +233,7 @@ impl GpuCook {
             }
         }
         let uniform = &self.uniforms[stage_idx];
-        entries.push((0, &uniform));
+        entries.push((0, uniform));
         let mut slot = 1u32;
         for (b, (read, _)) in bindings.iter().zip(&plans) {
             if matches!(read, Some(BindingPlan::ReadBuffer)) {
@@ -259,14 +259,14 @@ impl GpuCook {
         // them (spec order, after the grid). One buffer per spec; the sequencer
         // filled them into this same encoder before this pass.
         for buf in reduces.1 {
-            entries.push((slot, &buf));
+            entries.push((slot, buf));
             slot += 1;
         }
         // The LUT tables, LAST of all — the exact order `kernel_module` declared
         // them (spec order, after the reductions). One buffer per spec; the
         // sequencer filled each from a text param before this pass.
         for buf in luts.1 {
-            entries.push((slot, &buf));
+            entries.push((slot, buf));
             slot += 1;
         }
         let _ = slot;

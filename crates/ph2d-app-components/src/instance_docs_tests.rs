@@ -338,7 +338,8 @@ fn duplicating_a_group_gives_its_vector_children_their_own_paths() {
         // deslocamento do objecto na cena é medido por `the_duplicate_lands_beside_its_source`.
         [0.0, 0.0],
     )
-    .expect("duplicou");
+    .expect("duplicou")
+    .root;
     let copy_id = sim
         .world()
         .get::<VecPathRef>(piece(&sim, copy, "Plate"))

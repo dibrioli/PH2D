@@ -69,3 +69,5 @@ mod menus_timeline;
 pub use menus_timeline::*;
 mod timeline;
 pub use timeline::*;
+mod timeline_animation;
+pub use timeline_animation::*;

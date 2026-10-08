@@ -134,3 +134,25 @@ fn a_oferta_da_animacao_a_espada_e_as_chaves_vao_para_ela() {
     assert_eq!(com_a_chave, [st.doc.active_index()]);
     assert!(st.doc.clip_belongs_to(com_a_chave[0], ESPADA));
 }
+
+#[test]
+fn o_menu_tira_a_animacao_do_dono_em_vista() {
+    let _ = ph2d_panel_timeline::drain_intents();
+    let mut st = documento();
+    let mut ph = playhead();
+    animation_view::follow(&mut st, &mut ph, Some(HEROI), &[]);
+    publica(&mut st, &[(SCENE, ""), (HEROI, "Herói")], None);
+
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut panel = TimelinePanelState::default();
+    clica(&mut host, &mut panel, ids::TIMELINE_ANIM_DD);
+    let pedidos = clica(&mut host, &mut panel, ids::TIMELINE_ANIM_OPT[2]);
+    assert_eq!(pedidos, [TimelineIntent::Animation(AnimationIntent::Remove(HEROI))]);
+    for p in pedidos {
+        apply_intent(&mut st, &mut ph, p);
+    }
+    assert!(!st.doc.has_animation(HEROI));
+    assert_eq!(st.view.owner, SCENE, "a vista volta à Cena");
+    apply_intent(&mut st, &mut ph, TimelineIntent::Undo);
+    assert!(st.doc.has_animation(HEROI), "e o Ctrl+Z da timeline devolve-a");
+}

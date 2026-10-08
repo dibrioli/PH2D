@@ -74,6 +74,14 @@ impl Panel for HierarchyPanel {
     }
 }
 
+/// ⭐ **A entrada da raiz Cena** — a porta pela qual a shell lhe dá CONTEÚDO (a Animação da cena):
+/// a Cena não é entidade, então o conteúdo dela viaja numa entrada com o id
+/// [`ids::HIER_SCENE_ROW`], que o [`sync_from_hierarchy`] reconhece.
+#[must_use]
+pub fn scene_entry() -> ph2d_editor_core::screens::hero::fixture::HierarchyEntity {
+    rows::scene_row(false)
+}
+
 /// Inject host-supplied live entity rows into the hierarchy panel
 /// (ADR-0025 M14.4a). Each call:
 ///

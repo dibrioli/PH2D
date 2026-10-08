@@ -16,6 +16,7 @@ pub(super) fn publish_hierarchy(
     sim: &SimWorld,
     bool_badges: &std::collections::BTreeMap<u64, &'static str>,
     registry: &ph2d_ecs::scene::ComponentRegistry,
+    timeline: &ph2d_timeline::TimelineState,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -71,7 +72,14 @@ pub(super) fn publish_hierarchy(
             if let Some(bits) = live.bridge.entity_for(*id) {
                 entry.components = icons.of_entity(sim.world(), bits);
                 entry.content = hero.gizmo.content_of(bits).to_vec();
+                ph2d_panel_timeline::hier::declare_in_row(timeline, bits, &mut entry.components, &mut entry.content);
             }
+        }
+        // A Animação da CENA é conteúdo da raiz, que não é entidade: vai na entrada com o id dela.
+        if let Some(clips) = ph2d_panel_timeline::hier::clips_content(timeline, ph2d_timeline::SCENE) {
+            let mut scene = ph2d_panel_hierarchy::scene_entry();
+            scene.content.push(clips);
+            entries.insert(ph2d_panel_hierarchy::ids::HIER_SCENE_ROW, scene);
         }
         // Fase 0 hotfix: mark every multi-selection row's
         // `HierarchyEntity.selected` BEFORE the panel paints, so

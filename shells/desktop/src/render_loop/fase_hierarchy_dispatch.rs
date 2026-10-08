@@ -114,6 +114,7 @@ impl crate::App {
             &mut duplicate_made,
             component_registry,
             &mut self.instance_echo,
+            &mut self.timeline,
         ) {
             self.title_dirty = true;
         }

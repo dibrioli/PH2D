@@ -25,6 +25,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // The «Animation of» chip (ObjectsAndComponents 01 §6): whose animation the panel shows.
         "panel.timeline.animation_of" => "Animation: {name}",
         "panel.timeline.animation_add" => "Add animation to {name}",
+        "panel.timeline.animation_remove" => "Remove animation from {name}",
         // **Where the open container's interior actually plays, in SCENE seconds.**
         // Inside a container the ruler counts the INTERIOR while the transport chip keeps
         // showing the scene's second, so two different numbers sit on screen at once. The

@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_a11y::NodeId;
 use ph2d_component_desc::ComponentCategory;
-use ph2d_editor_core::hier_rows::RowRole;
+use ph2d_editor_core::hier_rows::{ContentGroup, RowRole};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::screens::hero::fixture::HierarchyEntity;
@@ -49,61 +49,76 @@ pub(crate) fn expand(
 ) -> (Vec<NodeId>, BTreeMap<NodeId, HierarchyEntity>) {
     let mut order = Vec::with_capacity(ordered.len() + 1);
     let mut out = BTreeMap::new();
+    // O conteúdo da CENA (a Animação da cena) chega numa entrada com o id da raiz — a Cena não é
+    // entidade, então a shell não tem outra porta para o declarar.
+    let scene_content = entries
+        .remove(&HIER_SCENE_ROW)
+        .map(|e| e.content)
+        .unwrap_or_default();
     let anything_selected = entries.values().any(|e| e.selected);
     order.push(HIER_SCENE_ROW);
     out.insert(HIER_SCENE_ROW, scene_row(!anything_selected));
+    push_content(&mut order, &mut out, HIER_SCENE_ROW, 0, !anything_selected, &scene_content);
     for &id in ordered {
         let Some(mut owner) = entries.remove(&id) else {
             continue;
         };
         owner.indent = owner.indent.saturating_add(1);
         let content = std::mem::take(&mut owner.content);
-        let base = owner.indent;
-        let owner_selected = owner.selected;
+        let (base, owner_selected) = (owner.indent, owner.selected);
         order.push(id);
         out.insert(id, owner);
-        for (g, group) in content.iter().enumerate() {
-            let Ok(g) = u8::try_from(g) else { break };
-            let head = hier_content_row(id, g, None);
-            order.push(head);
-            out.insert(
-                head,
-                synthetic(
-                    ph2d_i18n::tr_with(group.label_key, &[("n", &group.items.len())]),
-                    group.icon,
-                    base.saturating_add(1),
-                    RowRole::ContentGroup {
-                        owner: id,
-                        group: g,
-                    },
-                    false,
-                ),
-            );
-            for item in &group.items {
-                let row = hier_content_row(id, g, Some(item.key));
-                order.push(row);
-                out.insert(
-                    row,
-                    synthetic(
-                        item.name.clone(),
-                        group.item_icon,
-                        base.saturating_add(2).saturating_add(item.depth),
-                        RowRole::ContentItem {
-                            owner: id,
-                            group: g,
-                            key: item.key,
-                            mode: group.mode,
-                        },
-                        owner_selected && item.active,
-                    ),
-                );
-            }
-        }
+        push_content(&mut order, &mut out, id, base, owner_selected, &content);
     }
     (order, out)
 }
 
-fn scene_row(selected: bool) -> HierarchyEntity {
+/// As sub-linhas de conteúdo de `id`, logo a seguir à linha dele.
+fn push_content(
+    order: &mut Vec<NodeId>,
+    out: &mut BTreeMap<NodeId, HierarchyEntity>,
+    id: NodeId,
+    base: u8,
+    owner_selected: bool,
+    content: &[ContentGroup],
+) {
+    for (g, group) in content.iter().enumerate() {
+        let Ok(g) = u8::try_from(g) else { break };
+        let head = hier_content_row(id, g, None);
+        order.push(head);
+        out.insert(
+            head,
+            synthetic(
+                ph2d_i18n::tr_with(group.label_key, &[("n", &group.items.len())]),
+                group.icon,
+                base.saturating_add(1),
+                RowRole::ContentGroup { owner: id, group: g },
+                false,
+            ),
+        );
+        for item in &group.items {
+            let row = hier_content_row(id, g, Some(item.key));
+            order.push(row);
+            out.insert(
+                row,
+                synthetic(
+                    item.name.clone(),
+                    group.item_icon,
+                    base.saturating_add(2).saturating_add(item.depth),
+                    RowRole::ContentItem {
+                        owner: id,
+                        group: g,
+                        key: item.key,
+                        opens: group.opens,
+                    },
+                    owner_selected && item.active,
+                ),
+            );
+        }
+    }
+}
+
+pub(crate) fn scene_row(selected: bool) -> HierarchyEntity {
     let mut row = synthetic(
         ph2d_i18n::tr("hier_rows.scene").to_string(),
         IconId::Scene,
@@ -198,7 +213,7 @@ mod tests {
             label_key: "hier_rows.content.layers",
             icon: IconId::Layers,
             item_icon: IconId::Layer,
-            mode: ObjectMode::Paint,
+            opens: ph2d_editor_core::hier_rows::ContentOpens::Mode(ObjectMode::Paint),
             items: vec![ContentItem {
                 key: 7,
                 name: "Tinta".into(),

@@ -73,7 +73,7 @@ fn the_whole_gesture_opens_filters_and_reveals() {
     let mut hero = HeroScreen::new(NodeId(1));
     let mut target: Option<u64> = None;
 
-    crate::component_attach::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target);
+    crate::component_attach::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target, &|_| false);
     assert_eq!(target, Some(bits), "a paleta tem de lembrar quem pediu");
     assert!(hero.store.command_palette_open());
     let closed = labels(&hero);
@@ -92,7 +92,7 @@ fn the_whole_gesture_opens_filters_and_reveals() {
     hero.store.command_palette_push_char('s');
     hero.store.command_palette_push_char('l');
     hero.store.flip_command_palette_toggle();
-    crate::component_attach::refresh_palette_on_toggle(&mut hero, &sim, &reg, target);
+    crate::component_attach::refresh_palette_on_toggle(&mut hero, &sim, &reg, target, &|_| false);
 
     assert_eq!(
         hero.store.command_palette_query(),
@@ -129,16 +129,16 @@ fn the_box_goes_both_ways() {
     let reg = registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let mut target: Option<u64> = None;
-    crate::component_attach::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target);
+    crate::component_attach::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target, &|_| false);
     let closed = labels(&hero).len();
 
     hero.store.flip_command_palette_toggle();
-    crate::component_attach::refresh_palette_on_toggle(&mut hero, &sim, &reg, target);
+    crate::component_attach::refresh_palette_on_toggle(&mut hero, &sim, &reg, target, &|_| false);
     let opened = labels(&hero).len();
     assert!(opened > closed);
 
     hero.store.flip_command_palette_toggle();
-    crate::component_attach::refresh_palette_on_toggle(&mut hero, &sim, &reg, target);
+    crate::component_attach::refresh_palette_on_toggle(&mut hero, &sim, &reg, target, &|_| false);
     assert_eq!(labels(&hero).len(), closed, "a caixa nao voltou atras");
 }
 
@@ -152,7 +152,7 @@ fn a_pick_that_is_not_mine_is_left_alone() {
     let reg = registry();
     let mut hero = HeroScreen::new(NodeId(1));
     let mut target: Option<u64> = None;
-    crate::component_attach::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target);
+    crate::component_attach::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target, &|_| false);
 
     let foreign = ph2d_tool_registry::hash_node_id("motion.boids");
     hero.store.set_command_pick(foreign);
@@ -165,4 +165,36 @@ fn a_pick_that_is_not_mine_is_left_alone() {
         Some(foreign),
         "o pick alheio tem de ficar no canal para quem o sabe executar"
     );
+}
+
+/// ⭐ **«Animation» na paleta** (doc ObjectsAndComponents 01 §6): oferecida a quem não a tem, à
+/// cabeça da família dela; o pick dela é da Timeline (a shell), nunca do anexar ao mundo.
+#[test]
+fn a_animacao_e_oferecida_a_quem_nao_a_tem_e_o_pick_e_da_timeline() {
+    let mut sim = SimWorld::new();
+    let bits = image(&mut sim);
+    let reg = registry();
+    let animation = ph2d_i18n::tr("app.components.component_palette.animation").to_string();
+    let mut hero = HeroScreen::new(NodeId(1));
+    let mut target: Option<u64> = None;
+    crate::component_attach::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target, &|_| true);
+    assert!(!labels(&hero).contains(&animation), "quem já a tem não a vê");
+
+    let mut hero = HeroScreen::new(NodeId(1));
+    crate::component_attach::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target, &|_| false);
+    let model = hero.store.command_palette_model().expect("a paleta abriu").clone();
+    let group = model
+        .groups
+        .iter()
+        .find(|g| g.subs.iter().any(|s| s.items.iter().any(|i| i.label == animation)))
+        .expect("«Animation» não foi oferecida");
+    assert_eq!(group.subs[0].items[0].label, animation, "à cabeça da família");
+
+    hero.store.set_command_pick(crate::component_palette::ANIMATION_ITEM);
+    assert!(
+        crate::component_attach::route_pick(&mut hero, &mut target).is_none(),
+        "o anexar ao mundo reclamou um item que não é componente do mundo"
+    );
+    assert_eq!(crate::component_attach::take_animation_pick(&mut hero, &mut target), Some(bits));
+    assert_eq!(target, None, "o alvo é consumido como no pick normal");
 }

@@ -25,29 +25,46 @@ pub(crate) fn width(_snap: &TimelineViewSnapshot) -> f32 {
     ANIM_DD_W
 }
 
-fn label_of(bits: u64, name: &str) -> String {
-    let who = if bits == SCENE {
+/// O nome que o menu mostra: «Scene», o `Name` do objecto, ou o id curto de quem não tem nome.
+fn who(bits: u64, name: &str) -> String {
+    if bits == SCENE {
         ph2d_i18n::tr("hier_rows.scene").to_string()
     } else if name.is_empty() {
         format!("#{}", bits & 0xffff)
     } else {
         name.to_string()
-    };
-    ph2d_i18n::tr("panel.timeline.animation_of").replace("{name}", &who)
+    }
 }
 
-/// **As opções, na ordem do ▾**: as escolhas do cabeçalho, depois a oferta. O valor é a linha;
-/// [`pick_at`] lê de volta o que ela é.
-pub(crate) fn options(snap: &TimelineViewSnapshot) -> Vec<DropdownOption<usize>> {
+/// **As linhas do ▾, por ordem**: as escolhas do cabeçalho, a oferta de dar Animação ao
+/// seleccionado, e tirar a do dono em vista (se for um objecto). Uma porta, dois leitores — o
+/// pintor e o clique ([`pick_at`]) —, para a linha pintada e a escolhida nunca discordarem.
+fn rows(snap: &TimelineViewSnapshot) -> Vec<(String, IconId, AnimationIntent)> {
     let h = &snap.animation;
-    let mut out: Vec<DropdownOption<usize>> = h
+    let mut out: Vec<(String, IconId, AnimationIntent)> = h
         .choices
         .iter()
-        .map(|(bits, name)| (label_of(*bits, name), IconId::Film))
-        .chain(h.offer.iter().map(|(bits, name)| {
-            let who = if name.is_empty() { format!("#{}", bits & 0xffff) } else { name.clone() };
-            (ph2d_i18n::tr("panel.timeline.animation_add").replace("{name}", &who), IconId::Plus)
-        }))
+        .map(|(bits, name)| {
+            let label = ph2d_i18n::tr_with("panel.timeline.animation_of", &[("name", &who(*bits, name))]);
+            (label, IconId::Film, AnimationIntent::Show(*bits))
+        })
+        .collect();
+    if let Some((bits, name)) = &h.offer {
+        let label = ph2d_i18n::tr_with("panel.timeline.animation_add", &[("name", &who(*bits, name))]);
+        out.push((label, IconId::Plus, AnimationIntent::Add(*bits)));
+    }
+    if let Some((bits, name)) = h.choices.iter().find(|(b, _)| *b == h.owner && *b != SCENE) {
+        let label = ph2d_i18n::tr_with("panel.timeline.animation_remove", &[("name", &who(*bits, name))]);
+        out.push((label, IconId::Trash, AnimationIntent::Remove(*bits)));
+    }
+    out
+}
+
+/// **As opções, na ordem do ▾** — o valor é a linha.
+pub(crate) fn options(snap: &TimelineViewSnapshot) -> Vec<DropdownOption<usize>> {
+    let mut out: Vec<DropdownOption<usize>> = rows(snap)
+        .into_iter()
+        .map(|(label, icon, _)| (label, icon))
         .zip(ids::TIMELINE_ANIM_OPT)
         .enumerate()
         .map(|(i, ((label, icon), id))| DropdownOption::new(id, i, label).with_icon(icon))
@@ -104,13 +121,7 @@ pub(crate) fn paint_popover(ctx: &mut PaintCtx, theme: Theme, snap: &TimelineVie
 /// O que a opção `id` pede.
 fn pick_at(snap: &TimelineViewSnapshot, id: ph2d_a11y::NodeId) -> Option<AnimationIntent> {
     let row = ids::TIMELINE_ANIM_OPT.iter().position(|&o| o == id)?;
-    let h = &snap.animation;
-    match h.choices.get(row) {
-        Some((bits, _)) => Some(AnimationIntent::Show(*bits)),
-        None => (row == h.choices.len())
-            .then_some(h.offer.as_ref()?)
-            .map(|(bits, _)| AnimationIntent::Add(*bits)),
-    }
+    rows(snap).get(row).map(|(_, _, a)| *a)
 }
 
 /// O evento é deste chip?

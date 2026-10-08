@@ -7,6 +7,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ph2d-migrar-texto:begin
         "hier_rows.scene" => "Scene",
         "hier_rows.content.layers" => "Layers ({n})",
+        "hier_rows.content.clips" => "Clips ({n})",
         "hier_rows.content_gone" => "That piece is no longer there",
         // ph2d-migrar-texto:end
         _ => return None,

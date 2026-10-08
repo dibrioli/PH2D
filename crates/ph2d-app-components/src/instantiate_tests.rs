@@ -67,6 +67,7 @@ fn duplicate(
         },
         TEST_STEP,
     )
+    .map(|d| d.root)
 }
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {

@@ -29,6 +29,8 @@ ph2d-vector = { path = "../ph2d-vector" }
 # The read-model the panel paints (`TimelineViewSnapshot`).
 ph2d-anim = { path = "../ph2d-anim" }
 ph2d-timeline = { path = "../ph2d-timeline" }
+# A família do ícone 🎞 que a Animação põe na linha da Hierarquia (`hier.rs`) — folha, sem deps.
+ph2d-component-desc = { path = "../ph2d-component-desc" }
 # `PointerButton` on the dope-sheet gesture (filter drags to the primary button).
 ph2d-host = { path = "../ph2d-host" }
 # UI strings (HR-15) — chrome labels routed through `tr()` (W2.E9).

@@ -252,4 +252,13 @@ pub enum HierRequest {
         mode: crate::object_mode::ObjectMode,
         key: u64,
     },
+
+    /// ⭐ Uma sub-linha de conteúdo que se edita num PAINEL ([`crate::hier_rows::ContentOpens::Panel`]):
+    /// os clips da Animação (doc ObjectsAndComponents 01 §6). O painel já está aberto; a shell
+    /// entrega-lhe a peça `key` do dono `owner` (a raiz Cena = a Animação da cena).
+    OpenContentInPanel {
+        owner: ph2d_a11y::NodeId,
+        panel: &'static str,
+        key: u64,
+    },
 }

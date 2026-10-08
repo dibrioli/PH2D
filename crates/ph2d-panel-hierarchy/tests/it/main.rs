@@ -13,6 +13,7 @@ mod hierarchy_selection_by_identity;
 mod hierarchy_sync_round_trip;
 mod o_selo_de_uma_linha_cabe_no_selo;
 mod seam;
+mod the_clips_of_an_animation;
 mod the_hierarchy_row_inset_is_the_owners_two;
 mod the_new_rows_of_the_hierarchy;
 mod the_rows_of_the_list_touch;

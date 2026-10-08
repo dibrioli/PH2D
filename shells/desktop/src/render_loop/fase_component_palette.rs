@@ -10,6 +10,9 @@ impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_component_palette(&mut self, add_component_for: Option<u64>) {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
+        // A Animação de um objecto vive na Timeline, não no mundo (doc ObjectsAndComponents 01 §6).
+        let doc = &self.timeline.doc;
+        let has_animation = |b: u64| doc.has_animation(b);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -41,6 +44,7 @@ impl crate::App {
             component_registry,
             add_component_for,
             component_palette_target,
+            &has_animation,
         );
         // ⭐ **A caixa *Show all*** — o widget vira o estado dele e avisa; quem reconstrói o
         // modelo é quem abriu a paleta (só ele sabe o que «mostrar tudo» quer dizer).
@@ -49,9 +53,12 @@ impl crate::App {
             sim,
             component_registry,
             *component_palette_target,
+            &has_animation,
         );
         // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e por isso o alvo vive no
         // `AppGfx` em vez de num local deste laço.
+        let animation_for =
+            ph2d_app_components::component_attach::take_animation_pick(hero, component_palette_target);
         let picked =
             ph2d_app_components::component_attach::route_pick(hero, component_palette_target);
         ph2d_app_components::component_attach::attach_picked(
@@ -63,5 +70,10 @@ impl crate::App {
             ph2d_app_physics::physics_seed::COMPONENT_SEEDS,
             toasts,
         );
+        if let Some(bits) = animation_for {
+            use ph2d_timeline::{AnimationIntent, TimelineIntent};
+            self.timeline_intents
+                .push(TimelineIntent::Animation(AnimationIntent::Add(bits)));
+        }
     }
 }

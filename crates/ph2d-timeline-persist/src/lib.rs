@@ -50,7 +50,7 @@
 use ph2d_ecs::{Entity, Name, StableId, World};
 
 mod animation;
-pub use animation::{follow_selection, publish_animation_header};
+pub use animation::{copy_animations, follow_selection, publish_animation_header};
 use ph2d_timeline::{
     TimelineState, WireId, refresh_and_heal_bindings, resolve_entities, stamp_wire_ids,
 };

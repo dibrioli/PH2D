@@ -91,6 +91,7 @@ pub mod tab;
 mod tracks;
 mod tracks_value;
 mod transport;
+pub mod hier;
 mod transport_animation;
 mod transport_clips;
 mod transport_tabs;

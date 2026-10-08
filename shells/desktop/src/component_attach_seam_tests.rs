@@ -39,6 +39,7 @@ fn picking_an_item_leaves_the_component_in_the_scene() {
         &reg,
         Some(bits),
         &mut target,
+        &|_| false,
     );
 
     hero.store

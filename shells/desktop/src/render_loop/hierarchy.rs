@@ -107,6 +107,8 @@ pub(super) fn dispatch(
     // ⭐ O eco do mestre (ADR-0164 / F4.4) — o *Revert* tem de o esquecer naquela chave, senão o
     // override renasce no quadro seguinte. Ver `instance_sync::revert_override`.
     echo: &mut ph2d_app_components::instance_sync::MasterEcho,
+    // ⭐ A Animação por objecto — a cópia de um *Duplicate* leva a dela (doc ObjectsAndComponents 01 §6).
+    timeline: &mut ph2d_timeline::TimelineState,
 ) -> bool {
     let mut title_dirty = false;
 
@@ -150,6 +152,7 @@ pub(super) fn dispatch(
             vec_pen,
             duplicate_made,
             registry,
+            timeline,
         );
     }
     if let Some(row) = add_child_row

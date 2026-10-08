@@ -26,13 +26,22 @@ pub enum RowRole {
     Scene,
     /// O cabeçalho de um grupo de conteúdo (*Layers (3)*), recolhido por omissão.
     ContentGroup { owner: NodeId, group: u8 },
-    /// Uma peça do conteúdo; clicar abre `mode` (o do grupo) com ela em mãos.
+    /// Uma peça do conteúdo; clicar abre-a onde o grupo diz ([`ContentOpens`]).
     ContentItem {
         owner: NodeId,
         group: u8,
         key: u64,
-        mode: ObjectMode,
+        opens: ContentOpens,
     },
+}
+
+/// **Onde uma peça de conteúdo se edita.**
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ContentOpens {
+    /// Num modo do objecto — as camadas (Paint, Draw): o `drive` entra nele com a peça em mãos.
+    Mode(ObjectMode),
+    /// Num painel — os clips da Animação abrem a Timeline (doc 01 §6); a `key` é o que ele abre.
+    Panel(&'static str),
 }
 
 /// Uma peça do conteúdo — `key` é o id DA FAMÍLIA (camada do Painter, camada do Flip…), opaco aqui.
@@ -53,8 +62,8 @@ pub struct ContentGroup {
     pub label_key: &'static str,
     pub icon: IconId,
     pub item_icon: IconId,
-    /// O modo em que se edita uma peça deste grupo.
-    pub mode: ObjectMode,
+    /// Onde se edita uma peça deste grupo.
+    pub opens: ContentOpens,
     pub items: Vec<ContentItem>,
 }
 

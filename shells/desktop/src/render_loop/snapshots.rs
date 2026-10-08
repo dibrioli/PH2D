@@ -178,6 +178,8 @@ pub(super) fn publish(
     projectile_over: &[u64],
     // ⭐⭐⭐ O que cada RAIO vê (suplente #21) — ver o parâmetro homónimo do publicador.
     ray_hits: &[(u64, u64, f32)],
+    // ⭐ A Animação por objecto — quem tem clips (o 🎞) e quais (o conteúdo da linha).
+    timeline: &ph2d_timeline::TimelineState,
 ) {
     #[cfg(feature = "panel-hierarchy")]
     publish_hierarchy(
@@ -187,6 +189,7 @@ pub(super) fn publish(
         sim,
         bool_badges,
         component_registry,
+        timeline,
     );
     hud::publish(
         hero,

@@ -63,3 +63,23 @@ pub fn publish_animation_header(view: &mut TimelineViewSnapshot, timeline: &Time
         header.offer = Some((sel, name_of(world, sel)));
     }
 }
+
+/// ⭐ **A cópia de um objecto leva a Animação PRÓPRIA** (escolha do dono, 08/10): cada original da
+/// sub-árvore copiada que tem Animação dá a sua à cópia, com as tracks reapontadas para os objectos
+/// da cópia (`pairs` = `(original, cópia)`). UM passo do undo da timeline. Devolve quantos clips.
+pub fn copy_animations(timeline: &mut TimelineState, pairs: &[(u64, u64)]) -> usize {
+    let owners: Vec<(u64, u64)> = pairs
+        .iter()
+        .copied()
+        .filter(|(src, _)| timeline.doc.has_animation(*src))
+        .collect();
+    if owners.is_empty() {
+        return 0;
+    }
+    timeline.history.push(timeline.doc.clone());
+    let remap = |e: u64| pairs.iter().find(|(s, _)| *s == e).map(|(_, d)| *d);
+    owners
+        .iter()
+        .map(|(src, dst)| timeline.doc.copy_animation(*src, *dst, remap))
+        .sum()
+}

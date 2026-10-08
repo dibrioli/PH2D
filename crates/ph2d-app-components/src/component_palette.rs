@@ -238,6 +238,43 @@ pub(crate) fn build(
 ///
 /// ⚠️ **Varre o CATÁLOGO, não uma lista à mão** — uma segunda lista aqui envelheceria no primeiro
 /// componente novo, e o sintoma seria *"o item aparece e não faz nada"*.
+/// ⭐ **O item «Animation»** (doc ObjectsAndComponents 01 §6) — não é um componente do MUNDO: a
+/// Animação de um objecto é o conjunto dos clips dele na Timeline, então escolhê-lo pede à
+/// Timeline o primeiro clip (a shell, por [`crate::component_attach::take_animation_pick`]).
+pub const ANIMATION_ITEM: NodeId = item_id("timeline.animation");
+
+/// Põe o item «Animation» à cabeça da família Animation — criando-a, no lugar dela na ordem da
+/// paleta, se nenhum componente do catálogo a abriu.
+pub(crate) fn offer_animation(model: &mut PaletteModel) {
+    let item = PaletteItem {
+        label: ph2d_i18n::tr("app.components.component_palette.animation").to_string(),
+        id: ANIMATION_ITEM,
+    };
+    let title = cat_title(C::Animation);
+    if let Some(g) = model.groups.iter_mut().find(|g| g.title == title) {
+        match g.subs.first_mut() {
+            Some(s) if s.title.is_none() => s.items.insert(0, item),
+            _ => g.subs.insert(0, PaletteSub { title: None, items: vec![item] }),
+        }
+        return;
+    }
+    let rank = |t: &str| C::ALL.iter().position(|c| cat_title(*c) == t);
+    let me = rank(title);
+    let at = model
+        .groups
+        .iter()
+        .position(|g| rank(&g.title) > me)
+        .unwrap_or(model.groups.len());
+    model.groups.insert(
+        at,
+        PaletteGroup {
+            title: title.to_string(),
+            color: cat_token(C::Animation),
+            subs: vec![PaletteSub { title: None, items: vec![item] }],
+        },
+    );
+}
+
 #[must_use]
 pub(crate) fn name_of_pick(id: NodeId) -> Option<&'static str> {
     ph2d_component_desc::all()

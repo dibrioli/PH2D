@@ -288,7 +288,7 @@ pub fn duplicate_subtree(
     src: Entity,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
     step: [f32; 2],
-) -> Option<Entity> {
+) -> Option<Duplicated> {
     let parent = sim.world().get::<ph2d_ecs::ChildOf>(src).map(|c| c.0);
     let base = sim
         .world()
@@ -340,7 +340,25 @@ pub fn duplicate_subtree(
     ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
     // A cópia de um mestre é um mestre: as peças dela têm de ser marcadas já.
     ph2d_ecs::assign_master_pieces(sim.world_mut());
-    Some(copy.root)
+    Some(Duplicated {
+        root: copy.root,
+        pairs: copy
+            .entities
+            .iter()
+            .map(|(s, d)| (s.to_bits(), d.to_bits()))
+            .collect(),
+    })
+}
+
+/// **O que um *Duplicate* devolve**: a raiz da cópia e o par `(original, cópia)` de cada entidade
+/// — o que os documentos POR OBJECTO que vivem fora do mundo (a Animação na Timeline, doc
+/// ObjectsAndComponents 01 §6) precisam para seguir a cópia.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Duplicated {
+    /// A raiz da cópia.
+    pub root: Entity,
+    /// `(bits do original, bits da cópia)`, por entidade da sub-árvore.
+    pub pairs: Vec<(u64, u64)>,
 }
 
 /// ⭐⭐ **Materializa UMA peça do mestre dentro de uma instância** (ADR-0164 / F5.1).

@@ -23,6 +23,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.components.component_attach.no_such_entity" => "No such entity",
         "app.components.component_palette.show_all" => "Show all",
         "app.components.component_palette.add_component" => "Add Component",
+        // ObjectsAndComponents 01 §6 — the object's own Animation (its clips in the Timeline).
+        "app.components.component_palette.animation" => "Animation",
         "app.components.component_palette.not_for_this_object_type" => "Not for this object type",
         "app.components.component_palette.not_for_this_object_type_2" => {
             "  \u{2014}  not for this object type"

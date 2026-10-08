@@ -193,6 +193,8 @@ impl crate::App {
             // deixou. ⚠️ Ele vem do `PhysicsState` e não da ponte: o Inspector não a alcança.
             &projectile_over,
             &ray_hits,
+            // ⭐ A Animação por objecto (doc ObjectsAndComponents 01 §6): o 🎞 e os clips na Hierarquia.
+            &self.timeline,
         );
         // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9) — fase-filha própria; ver o `mod tags_snapshot`.
         #[cfg(feature = "panel-tags")]

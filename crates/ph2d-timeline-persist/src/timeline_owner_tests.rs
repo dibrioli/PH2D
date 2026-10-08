@@ -60,3 +60,23 @@ fn apagar_o_objecto_leva_a_animacao_dele_e_o_undo_da_timeline_a_devolve() {
     assert!(!upkeep(&mut timeline, sim.world_mut()));
     assert!(timeline.doc.has_animation(volta), "a animação voltou com o objecto");
 }
+
+#[test]
+fn duplicar_da_a_copia_clips_proprios_num_passo_do_undo() {
+    let mut timeline = TimelineState::new();
+    let (heroi, braco, copia, braco2) = (7_u64, 8_u64, 17_u64, 18_u64);
+    timeline.doc.add_clip_for("andar".into(), heroi).unwrap();
+    timeline.doc.add_clip_for("acenar".into(), braco).unwrap();
+    let antes = timeline.doc.clips().len();
+
+    let n = copy_animations(&mut timeline, &[(heroi, copia), (braco, braco2)]);
+    assert_eq!(n, 2, "o Herói e o braço — cada um a sua");
+    assert!(timeline.doc.has_animation(copia) && timeline.doc.has_animation(braco2));
+    assert_eq!(timeline.doc.clips_of(heroi).count(), 1, "o original fica como estava");
+
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    apply_intent(&mut timeline, &mut ph, I::Undo);
+    assert_eq!(timeline.doc.clips().len(), antes, "um Ctrl+Z da timeline desfaz a cópia inteira");
+
+    assert_eq!(copy_animations(&mut timeline, &[(99, 100)]), 0, "sem Animação, nada");
+}

@@ -63,6 +63,8 @@ pub fn open_palette_if_asked(
     // um invariante que ninguém impõe, e o precedente da casa (a biblioteca do Motion guarda o
     // `library_open`) é guardar o contexto. Um dia em que o scrim mude, isto continua certo.
     target: &mut Option<u64>,
+    // Quem já tem Animação na Timeline (a paleta não volta a oferecê-la).
+    has_animation: &dyn Fn(u64) -> bool,
 ) {
     let Some(bits) = asked_for else {
         return;
@@ -78,7 +80,7 @@ pub fn open_palette_if_asked(
     // artista que a abre para pôr um componente quer ver o que serve. O estado da caixa não
     // sobrevive ao fecho de propósito.
     hero.store
-        .open_command_palette(model_for(sim, registry, bits, false));
+        .open_command_palette(model_for(sim, registry, bits, false, !has_animation(bits)));
     *target = Some(bits);
 }
 
@@ -92,6 +94,7 @@ fn model_for(
     registry: &ComponentRegistry,
     bits: u64,
     show_all: bool,
+    offer_animation: bool,
 ) -> ph2d_editor_core::widget::command_palette::PaletteModel {
     let world = sim.world();
     let entity = ph2d_ecs::Entity::from_bits(bits);
@@ -105,7 +108,22 @@ fn model_for(
             .get_by_id(ph2d_ecs::scene::stable_type_id(name))
             .is_some_and(|e| e.insert_default.is_some())
     };
-    crate::component_palette::build(kind, &present, &can_build, show_all)
+    let mut model = crate::component_palette::build(kind, &present, &can_build, show_all);
+    if offer_animation {
+        crate::component_palette::offer_animation(&mut model);
+    }
+    model
+}
+
+/// **O pick do item «Animation»** — `Some(objecto)` para a shell pedir à Timeline a Animação dele.
+/// Dreno CONDICIONAL, como o [`route_pick`]: o canal tem outros consumidores.
+#[must_use]
+pub fn take_animation_pick(hero: &mut HeroScreen, target: &mut Option<u64>) -> Option<u64> {
+    let bits = (*target)?;
+    hero.store
+        .take_command_pick_if(|id| id == crate::component_palette::ANIMATION_ITEM)?;
+    *target = None;
+    Some(bits)
 }
 
 /// ⭐ **A caixa *Show all* foi virada ⇒ reconstrói o modelo** (ADR-0166 / F3).
@@ -121,6 +139,7 @@ pub fn refresh_palette_on_toggle(
     sim: &SimWorld,
     registry: &ComponentRegistry,
     target: Option<u64>,
+    has_animation: &dyn Fn(u64) -> bool,
 ) {
     if !hero.store.take_command_palette_toggled() {
         return;
@@ -130,7 +149,7 @@ pub fn refresh_palette_on_toggle(
     };
     let show_all = hero.store.command_palette_toggle_on();
     hero.store
-        .set_command_palette_model(model_for(sim, registry, bits, show_all));
+        .set_command_palette_model(model_for(sim, registry, bits, show_all, !has_animation(bits)));
 }
 
 /// **Drena o pick da paleta** e devolve `(entidade, nome canónico)`.

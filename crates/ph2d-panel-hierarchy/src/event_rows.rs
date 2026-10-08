@@ -3,7 +3,7 @@
 //! dos objectos (selecção por linha, renomear, enquadrar).
 
 use ph2d_editor_core::action_bus::{EditorAction, HierRequest, SelectModifier};
-use ph2d_editor_core::hier_rows::RowRole;
+use ph2d_editor_core::hier_rows::{ContentOpens, RowRole};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
@@ -51,12 +51,37 @@ fn click(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> Option<Even
             Some(EventOutcome::Consumed)
         }
         RowRole::ContentItem {
-            owner, key, mode, ..
+            owner,
+            key,
+            opens: ContentOpens::Mode(mode),
+            ..
         } => {
             host.bus_mut()
                 .push(EditorAction::Hierarchy(HierRequest::OpenContent {
                     owner,
                     mode,
+                    key,
+                }));
+            Some(EventOutcome::Consumed)
+        }
+        // Num painel (os clips → a Timeline): o dono fica seleccionado, como no ícone, e o painel
+        // abre-se aqui; a peça é a shell que a entrega.
+        RowRole::ContentItem {
+            owner,
+            key,
+            opens: ContentOpens::Panel(panel),
+            ..
+        } => {
+            if owner != crate::ids::HIER_SCENE_ROW
+                && let Some(entry) = state::live_entry_for(owner)
+            {
+                select_row(host, owner, &entry);
+            }
+            host.set_panel_visible(panel, true);
+            host.bus_mut()
+                .push(EditorAction::Hierarchy(HierRequest::OpenContentInPanel {
+                    owner,
+                    panel,
                     key,
                 }));
             Some(EventOutcome::Consumed)
@@ -83,18 +108,8 @@ fn component_icon_at(
     })
 }
 
-/// ⭐ O ícone da Cena abre o painel que É o cartão daquele componente; o de um objecto selecciona-o
-/// e pede ao Inspector o cartão da família (doc 01 §7.1).
-fn component_click(
-    host: &mut dyn PanelHostInternal,
-    row: ph2d_a11y::NodeId,
-    category: ph2d_component_desc::ComponentCategory,
-    entry: &HierarchyEntity,
-) -> Option<EventOutcome> {
-    if entry.role == RowRole::Scene {
-        host.set_panel_visible(crate::rows::scene_panel_of(category)?, true);
-        return Some(EventOutcome::Consumed);
-    }
+/// Selecciona a linha `row` (o que um clique no nome faz) — a porta do ícone e do conteúdo.
+fn select_row(host: &mut dyn PanelHostInternal, row: ph2d_a11y::NodeId, entry: &HierarchyEntity) {
     host.bus_mut()
         .push(EditorAction::Hierarchy(HierRequest::SelectRow {
             row,
@@ -108,6 +123,30 @@ fn component_click(
             .unwrap_or_else(|| ph2d_i18n::tr("panel.hierarchy.badge.entity").to_string()),
         world_pos: (0.0, 0.0),
     });
+}
+
+/// ⭐ O ícone da Cena abre o painel que É o cartão daquele componente; o de um objecto selecciona-o
+/// e pede ao Inspector o cartão da família (doc 01 §7.1).
+fn component_click(
+    host: &mut dyn PanelHostInternal,
+    row: ph2d_a11y::NodeId,
+    category: ph2d_component_desc::ComponentCategory,
+    entry: &HierarchyEntity,
+) -> Option<EventOutcome> {
+    if entry.role == RowRole::Scene {
+        host.set_panel_visible(crate::rows::scene_panel_of(category)?, true);
+        return Some(EventOutcome::Consumed);
+    }
+    select_row(host, row, entry);
+    // O cartão de um componente que se edita num PAINEL é o painel (a Animação → a Timeline, que
+    // segue a selecção); o Inspector fica para os que têm cartão.
+    if let Some(panel) = entry.content.iter().find_map(|g| match g.opens {
+        ContentOpens::Panel(p) if category == ph2d_component_desc::ComponentCategory::Animation => Some(p),
+        _ => None,
+    }) {
+        host.set_panel_visible(panel, true);
+        return Some(EventOutcome::Consumed);
+    }
     host.store_mut()
         .request_inspector_reveal(category, entry.name.clone());
     host.set_panel_visible("inspector", true);

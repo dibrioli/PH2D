@@ -184,7 +184,7 @@ impl ModeFamily for Family<'_> {
                 label_key: "hier_rows.content.layers",
                 icon: IconId::Layers,
                 item_icon: IconId::Layer,
-                mode: ObjectMode::Draw,
+                opens: ph2d_editor_core::hier_rows::ContentOpens::Mode(ObjectMode::Draw),
                 items,
             });
         }

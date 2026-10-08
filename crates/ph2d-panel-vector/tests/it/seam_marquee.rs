@@ -23,7 +23,6 @@ const VIEWPORT: Rect = Rect {
     h: 900.0,
 };
 
-
 fn arm(mode: DrawMode, marquee: MarqueeShape) {
     set_current_vector_style(Some(VectorStyleSnapshot {
         mode,
@@ -31,7 +30,6 @@ fn arm(mode: DrawMode, marquee: MarqueeShape) {
         ..VectorStyleSnapshot::default()
     }));
 }
-
 
 /// **Fora do modo Node os chips NÃO existem** — a metade da ausência.
 ///
@@ -63,4 +61,3 @@ fn the_marquee_chips_do_not_exist_outside_the_node_mode() {
         }
     }
 }
-

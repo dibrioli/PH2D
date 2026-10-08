@@ -103,12 +103,11 @@ pub fn bar_split(
         crate::icons::IconId::MoreHorizontal,
     )
     .with_sub("");
-    // ⛔⛔ **O corte pergunta o MESMO que o pintor** — *a fila com esta entrada e o `⋯` fica numa
-    // linha?* — pela mesma função ([`crate::widget::horizontal_lines`]). Medido em 2026-10-07 (D10,
-    // a fila do lápis com a simetria radial no iPad 12,9"): a soma deste laço (`along + gap +
-    // advance`, com `≤`) e a da porta (`along += gap; along += advance`, com `>`) arredondam
-    // diferente num encaixe EXACTO de `730 px`, e o `⋯` cabia aqui e quebrava de linha lá — onde a
-    // faixa o cortava e ele ficava INVISÍVEL. *Duas contas da mesma pergunta divergem no limite.*
+    // ⭐ **O corte pergunta o MESMO que o pintor** — *a fila com esta entrada e o `⋯` fica numa
+    // linha?* — pela mesma função ([`crate::widget::horizontal_lines`]), e não por uma soma própria
+    // (`along + gap + advance` com `≤`, contra o `along += gap; along += advance` com `>` da porta):
+    // duas contas da mesma pergunta arredondam diferente num encaixe exacto, e quem decide o que se
+    // VÊ é o pintor — um `⋯` que coubesse aqui e quebrasse lá ficaria cortado pela faixa (D10, 07/10).
     let one_line = |fits: &[crate::widget::ToolRailEntry], next: &crate::widget::ToolRailEntry| {
         let mut probe: Vec<crate::widget::ToolRailEntry> = fits.to_vec();
         probe.push(next.clone());
@@ -116,7 +115,8 @@ pub fn bar_split(
             probe.pop();
         }
         probe.push(more.clone());
-        crate::widget::horizontal_lines(&ToolRail::new(NodeId(203), "", probe), content_w, size) <= 1
+        crate::widget::horizontal_lines(&ToolRail::new(NodeId(203), "", probe), content_w, size)
+            <= 1
     };
     let mut fits: Vec<crate::widget::ToolRailEntry> = Vec::new();
     let mut over: Vec<crate::widget::ToolRailEntry> = Vec::new();

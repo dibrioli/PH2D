@@ -40,6 +40,7 @@ pub use contour_params::{
     accel_to_track as contour_accel_to_track, d_to_track as contour_d_to_track,
     steps_to_track as contour_steps_to_track,
 };
+pub mod bars;
 mod event;
 mod font_dropdown;
 /// **O PICKER de ícone** — a lista de glifos de um `IconButton`, cada linha desenhando o
@@ -47,13 +48,12 @@ mod font_dropdown;
 mod icon_dropdown;
 pub mod ids;
 pub mod nomes_do_motor;
-pub mod bars;
+mod paint;
 /// O catálogo de formas: os contornos cozidos que o flyout da coluna ① mostra (D10).
 mod shape_outlines;
 /// A escala dos segmentos da SIMETRIA (o campo vive na fila ②, D10).
 pub(crate) mod symmetry_segments;
 pub mod tool_keys;
-mod paint;
 
 /// **As portas do TEXTURE PATTERN que a shell precisa** (plano 33, W5): o id de cada chip e o
 /// índice que ele nomeia, nos DOIS sentidos.

@@ -69,7 +69,6 @@ fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
     );
 }
 
-
 /// **Os dois chips de recorte e os quatro presets**, com uma moldura selecionada.
 ///
 /// ⚠️ A publicação é a premissa: sem ela a seção não é pintada e o `painted_rect` devolve `None`

@@ -27,8 +27,6 @@ use std::sync::Once;
 /// O corpo inteiro do painel cabe — ver o `paint_in`.
 const TALL_VIEWPORT_H: f32 = HERO_VIEWPORT_H * 4.0;
 
-
-
 fn hero_with_vector_panel() -> HeroScreen {
     static INIT: Once = Once::new();
     ph2d_editor_core::test_support::ensure_panel_registry();
@@ -68,11 +66,6 @@ fn snap_of(mode: DrawMode) -> VectorStyleSnapshot {
     }
 }
 
-
-
-
-
-
 /// ⚠️⚠️ **A OUTRA METADE DO MESMO REPORT, e ela não é sobre a ferramenta: é sobre a SELEÇÃO.**
 ///
 /// A seção *Effects* punha a guarda **depois** do cabeçalho — então sem caminho selecionado o
@@ -100,7 +93,6 @@ fn a_section_header_never_promises_a_body_that_is_not_there() {
     ));
     ph2d_panel_vector::set_current_effects(false, false, &[], Vec::new());
 }
-
 
 /// ⛔⛔ **AS DUAS QUE NÃO PODEM SUMIR, e a razão é uma SEGUNDA SELEÇÃO INVISÍVEL.**
 ///

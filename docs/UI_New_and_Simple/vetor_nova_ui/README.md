@@ -9,7 +9,10 @@
 > **Estado: plano DECIDIDO (07/10)** — ferramentas flutuando à esquerda · opções em cima · teclas do
 > **Illustrator** (o padrão mais aceito, medido) · barra de ações junto da seleção **ligada** no desktop e
 > no iPad · Hierarquia onde está ([`03_plano.md`](03_plano.md) §6, [`../00_DECISOES_DO_ENIO.md`](../00_DECISOES_DO_ENIO.md) D10).
-> Próximo passo: abrir a linha da F0–F3. Nenhum código foi escrito.
+> **F0–F3 ENTREGUES na `line/UIUX` (07/10)** — handoff
+> [`HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_NOVA_UI_DO_VETOR.md`](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_NOVA_UI_DO_VETOR.md),
+> foto do «depois» em [`fotos/depois_01`](fotos/depois_01_cena9_caneta_na_mao_com_duas_formas.png),
+> smoke `PH2D_OBJECT_MODE_SMOKE=9`. Abertos: F4 e F5 (depois do smoke do dono).
 
 ## O roteador
 

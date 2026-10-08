@@ -343,12 +343,24 @@ impl crate::App {
             && let PhysicalKey::Code(code) = physical_key
             && let Some(chord) = crate::keymap::winit_to_input_keycode(code).and_then(|k| {
                 let m = self.modifiers;
-                ph2d_app_vec::tool_keys::chord(k, m.shift_key(), m.control_key(), m.alt_key(), m.super_key())
+                ph2d_app_vec::tool_keys::chord(
+                    k,
+                    m.shift_key(),
+                    m.control_key(),
+                    m.alt_key(),
+                    m.super_key(),
+                )
             })
         {
             let pressed = state == ElementState::Pressed;
             let mode = self.vec.draw_config.mode;
-            match ph2d_app_vec::tool_keys::key(&mut self.vec.tool_hold, chord, pressed, repeat, mode) {
+            match ph2d_app_vec::tool_keys::key(
+                &mut self.vec.tool_hold,
+                chord,
+                pressed,
+                repeat,
+                mode,
+            ) {
                 Some(ph2d_app_vec::tool_keys::KeyOutcome::Clicks(ids)) => {
                     if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                         for id in ids {

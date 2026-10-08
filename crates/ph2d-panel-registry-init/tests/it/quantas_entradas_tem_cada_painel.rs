@@ -2129,7 +2129,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.
-    ("vector", 1262.0),
+    // ⬇️ `1 262 → 880` em 2026-10-07 (D10, a nova UI do Vector): o GESTO saiu do painel — a fileira
+    //    TOOL foi para a coluna ①, o catálogo para o flyout dela, Pencil/Symmetry/Snap para a fila ②
+    //    — e Contêiner/Interação/Avançado nascem RECOLHIDOS. Medido pelo gate.
+    ("vector", 880.0),
     // ⬆️ `1 281 → 1 317` em 2026-09-30, e NÃO é uma secção a nascer aberta: o painel passou a CARTÕES por secção (era
     //    um risco entre elas): cada fronteira à vista paga o vão entre cartões em vez do separador,
     //    e o último cartão fecha-se com a folga dele.

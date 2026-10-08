@@ -144,7 +144,6 @@ impl BodyCtx<'_> {
         self.with_rows(|r| r.segmented(label, opts, y))
     }
 
-
     /// Make / Release Compound — a 2-across row closing the Boolean section. Merging
     /// closed paths into one compound is how a hole is authored by hand (draw a
     /// contour inside another, merge, and `EvenOdd` vacates the inner region).

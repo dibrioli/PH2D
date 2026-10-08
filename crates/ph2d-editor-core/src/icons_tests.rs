@@ -117,9 +117,8 @@ fn every_path_string_parses() {
     for id in ALL_ICONS {
         for (i, cmd) in id.cmds().iter().enumerate() {
             if let IconCmd::Path(d) = cmd {
-                BezPath::from_svg(d).unwrap_or_else(|e| {
-                    panic!("{id:?} cmd[{i}] = {d:?} failed to parse: {e:?}")
-                });
+                BezPath::from_svg(d)
+                    .unwrap_or_else(|e| panic!("{id:?} cmd[{i}] = {d:?} failed to parse: {e:?}"));
             }
         }
     }

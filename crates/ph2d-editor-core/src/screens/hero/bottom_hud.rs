@@ -217,13 +217,24 @@ mod module_hint_tests {
         };
         store.set_tool_bars(Some(bars));
         store.set_active_layout(TaskLayout::Drawing2d);
-        assert_eq!(module_hint(&store), None, "fora do layout Vetor o rodapé é de motor");
+        assert_eq!(
+            module_hint(&store),
+            None,
+            "fora do layout Vetor o rodapé é de motor"
+        );
         store.set_active_layout(TaskLayout::Vector);
         assert_eq!(
             module_hint(&store),
-            Some(("Click: corner".to_owned(), vec!["x 1 px  y 2 px".to_owned()]))
+            Some((
+                "Click: corner".to_owned(),
+                vec!["x 1 px  y 2 px".to_owned()]
+            ))
         );
         store.set_tool_bars(None);
-        assert_eq!(module_hint(&store), None, "sem barras publicadas não há dica");
+        assert_eq!(
+            module_hint(&store),
+            None,
+            "sem barras publicadas não há dica"
+        );
     }
 }

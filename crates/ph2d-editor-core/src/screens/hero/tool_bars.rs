@@ -63,16 +63,23 @@ pub fn placed(
         out.push((b.clone(), r));
     }
     if let (Some((_, items)), Some(a)) = (&bars.flyout, anchor) {
-        out.extend(items.iter().cloned().zip(grid_rects(area, a, items.len(), 3)));
+        out.extend(
+            items
+                .iter()
+                .cloned()
+                .zip(grid_rects(area, a, items.len(), 3)),
+        );
     }
     let has_actions = bars.actions.iter().any(|g| !g.is_empty());
     if has_actions && !actions_off && (pinned || bars.selection.is_some()) {
         let mut groups = bars.actions.clone();
         groups.push(chrome_group(pinned));
         let sizes: Vec<usize> = groups.iter().map(Vec::len).collect();
+        // Os ícones da ④ lêem-se ao lado da COLUNA, não ao das caras do Quadro (foto da cena 9).
+        let s = super::button_px();
         let rects = match bars.selection {
-            Some(sel) if !pinned => strip_rects(area, sel, &sizes),
-            _ => pinned_strip_rects(area, &sizes),
+            Some(sel) if !pinned => strip_rects(area, sel, &sizes, s),
+            _ => pinned_strip_rects(area, &sizes, s),
         };
         out.extend(groups.into_iter().flatten().zip(rects));
     }
@@ -91,7 +98,11 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, _text: 
     // Os fundos primeiro, por bloco (a coluna, o flyout, a ④): cada um é um painel.
     let n_col: usize = bars.column.iter().map(Vec::len).sum();
     let n_fly = bars.flyout.as_ref().map_or(0, |(_, f)| f.len());
-    let blocks = [(0, n_col), (n_col, n_col + n_fly), (n_col + n_fly, all.len())];
+    let blocks = [
+        (0, n_col),
+        (n_col, n_col + n_fly),
+        (n_col + n_fly, all.len()),
+    ];
     for (a, b) in blocks {
         if a < b && b <= all.len() {
             paint_panel(scene, all[a..b].iter().map(|(_, r)| *r), theme);
@@ -109,10 +120,12 @@ fn face(hero: &mut HeroScreen, scene: &mut VectorScene, theme: Theme, b: &BarBut
         &mut hero.hit_index,
         &hero.store,
         theme,
-        b.id,
-        r,
-        b.on,
-        b.family.tint(),
+        super::Btn {
+            id: b.id,
+            rect: r,
+            on: b.on,
+            tint: b.family.tint(),
+        },
     );
     match &b.face {
         BarFace::Icon(icon) => paint_icon(scene, *icon, inner(r), fg, StrokeToken::Default.px()),

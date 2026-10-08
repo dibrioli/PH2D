@@ -55,4 +55,3 @@ pub fn set_current_guides(snap: bool) {
 pub(crate) fn current_snap_guides() -> bool {
     CURRENT_SNAP_GUIDES.with(|c| c.get())
 }
-

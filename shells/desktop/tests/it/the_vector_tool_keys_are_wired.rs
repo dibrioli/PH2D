@@ -9,13 +9,28 @@
 //! Mutações que têm de sangrar: o ramo deixar de chamar o `tool_keys::key` ou o `tool_keys::chord`;
 //! perder a cedência à timeline (o `K` voltaria a roubar a chave); um `KeyCode::KeyU` de volta.
 
+/// O `keyboard_cadeia.rs` como está no disco — pelo `territory()` (o `file()` apaga os corpos dos
+/// `ramo_*`, onde o bloco mora), recortado ao marcador do ficheiro: o resto do território tem
+/// `KeyCode::KeyU` legítimos (o normalizador `keymap.rs`, o Quadro).
+fn cadeia() -> String {
+    let all = crate::input_text::territory();
+    all.split("// [[ficheiro ")
+        .find_map(|c| {
+            let (name, body) = c.split_once("]]\n")?;
+            (name == "input_dispatch/keyboard_cadeia.rs").then(|| body.to_owned())
+        })
+        .expect("o território já não traz o keyboard_cadeia.rs")
+}
+
 #[test]
 fn the_vector_letters_go_to_the_illustrator_table() {
-    let src = crate::input_text::file("input_dispatch/keyboard_cadeia.rs");
+    let src = cadeia();
     let at = src
         .find("ph2d_app_vec::tool_keys::key(")
         .expect("o ramo do vetor não chama a aplicação da tabela");
-    let block = &src[src[..at].rfind("if self.vector_keys_live()").expect("a guarda do vetor")..at];
+    let block = &src[src[..at]
+        .rfind("if self.vector_keys_live()")
+        .expect("a guarda do vetor")..at];
     assert!(
         block.contains("!self.cursor_over_timeline()"),
         "as letras do vetor deixaram de ceder à timeline (o `K` roubaria a chave)"
@@ -28,7 +43,11 @@ fn the_vector_letters_go_to_the_illustrator_table() {
         block.contains("winit_to_input_keycode"),
         "a letra não sai do normalizador da casa"
     );
-    for velha in ["KeyCode::KeyU", "PathfinderOp::Union", "vec_text_toggle_mode"] {
+    for velha in [
+        "KeyCode::KeyU",
+        "PathfinderOp::Union",
+        "vec_text_toggle_mode",
+    ] {
         assert!(
             !src.contains(velha),
             "`{velha}` voltou à cadeia — a letra decide-se na tabela, e as booleanas moram em Ctrl+Alt"
@@ -40,9 +59,11 @@ fn the_vector_letters_go_to_the_illustrator_table() {
 /// temporária nunca volta (soltar a tecla não chegaria à crate).
 #[test]
 fn the_release_reaches_the_temporary_tool() {
-    let src = crate::input_text::file("input_dispatch/keyboard_cadeia.rs");
+    let src = cadeia();
     let at = src.find("ph2d_app_vec::tool_keys::key(").expect("o ramo");
-    let start = src[..at].rfind("if self.vector_keys_live()").expect("a guarda");
+    let start = src[..at]
+        .rfind("if self.vector_keys_live()")
+        .expect("a guarda");
     let guard = &src[start..at];
     assert!(
         !guard.contains("state == ElementState::Pressed\n"),

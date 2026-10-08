@@ -11,23 +11,41 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         // ph2d-migrar-texto:begin
         "panel.vector.mode.eyedropper" => "Eyedropper",
-        "panel.vector.hint.select" => "Click: pick \u{00b7} Shift+click: add \u{00b7} Drag: move, scale or rotate",
-        "panel.vector.hint.node" => "Click: point \u{00b7} Shift+click: add \u{00b7} Drag empty: marquee \u{00b7} Alt on a handle: break it",
-        "panel.vector.hint.pen" => "Click: corner \u{00b7} Drag: curve \u{00b7} Alt: free handle \u{00b7} Esc: finish",
+        "panel.vector.hint.select" => {
+            "Click: pick \u{00b7} Shift+click: add \u{00b7} Drag: move, scale or rotate"
+        }
+        "panel.vector.hint.node" => {
+            "Click: point \u{00b7} Shift+click: add \u{00b7} Drag empty: marquee \u{00b7} Alt on a handle: break it"
+        }
+        "panel.vector.hint.pen" => {
+            "Click: corner \u{00b7} Drag: curve \u{00b7} Alt: free handle \u{00b7} Esc: finish"
+        }
         "panel.vector.hint.pencil" => "Drag: draw \u{00b7} Right-click or Esc: cancel",
-        "panel.vector.hint.shape" => "Drag: size \u{00b7} Shift: even \u{00b7} Alt: from the centre \u{00b7} Esc: cancel",
+        "panel.vector.hint.shape" => {
+            "Drag: size \u{00b7} Shift: even \u{00b7} Alt: from the centre \u{00b7} Esc: cancel"
+        }
         "panel.vector.hint.text" => "Click: place the cursor \u{00b7} Type \u{00b7} Esc: finish",
-        "panel.vector.hint.build" => "Shift+click: pick shapes \u{00b7} Drag: merge regions \u{00b7} Alt: remove \u{00b7} Esc: cancel",
+        "panel.vector.hint.build" => {
+            "Shift+click: pick shapes \u{00b7} Drag: merge regions \u{00b7} Alt: remove \u{00b7} Esc: cancel"
+        }
         "panel.vector.hint.connect" => "Press on a shape and drag to another: connect them",
-        "panel.vector.hint.pickblend" => "Click a closed shape: add it \u{00b7} Click again: remove it",
+        "panel.vector.hint.pickblend" => {
+            "Click a closed shape: add it \u{00b7} Click again: remove it"
+        }
         "panel.vector.hint.fillet" => "Drag a corner: round it",
         "panel.vector.hint.chamfer" => "Drag a corner: cut it straight",
-        "panel.vector.hint.width" => "Click the line: add a stop \u{00b7} Drag a stop: width \u{00b7} Right-click: delete it",
+        "panel.vector.hint.width" => {
+            "Click the line: add a stop \u{00b7} Drag a stop: width \u{00b7} Right-click: delete it"
+        }
         "panel.vector.hint.trim" => "Click the red piece: remove it",
         "panel.vector.hint.bucket" => "Click the lit region: fill it",
         "panel.vector.hint.cut" => "Click and drag a blade like the Pen \u{00b7} Esc: finish",
-        "panel.vector.hint.frame" => "Drag: a frame \u{00b7} Shift: even \u{00b7} Alt: from the centre",
-        "panel.vector.hint.eyedropper" => "Click a shape: take its fill and stroke \u{00b7} the selection gets them too",
+        "panel.vector.hint.frame" => {
+            "Drag: a frame \u{00b7} Shift: even \u{00b7} Alt: from the centre"
+        }
+        "panel.vector.hint.eyedropper" => {
+            "Click a shape: take its fill and stroke \u{00b7} the selection gets them too"
+        }
         // As legendas por cima dos chips da fila (curtas: o gate de elisão mede-as).
         "panel.vector.bar.sub.fill" => "FILL",
         "panel.vector.bar.sub.stroke" => "LINE",

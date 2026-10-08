@@ -31,7 +31,6 @@
 //! `dhat-rs`.
 
 mod area_menu;
-mod tool_bars;
 pub mod dispatch;
 pub mod drag;
 /// ⭐ **O que ATRAVESSA um painel** (plano `docs/Components/07`, B1) — a carga de um arrasto que
@@ -42,6 +41,7 @@ pub mod fling;
 pub mod flip_strip;
 pub mod hit;
 pub mod state;
+mod tool_bars;
 pub mod types;
 mod types_blender;
 mod types_menu;

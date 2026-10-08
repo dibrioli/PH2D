@@ -18,7 +18,10 @@ use ph2d_tokens::ColorToken;
 pub enum BarFace {
     Icon(IconId),
     /// Uma amostra de cor; `None` = sem tinta. `ring` = lê-se como CONTORNO (o miolo é o painel).
-    Swatch { rgba: Option<[u8; 4]>, ring: bool },
+    Swatch {
+        rgba: Option<[u8; 4]>,
+        ring: bool,
+    },
     /// O CONTORNO de uma forma, num quadrado unitário (`0..1`, y para baixo) — a mesma geometria
     /// que o módulo desenha, nunca um segundo desenho (a lei da barra do Quadro).
     Outline(ph2d_vector::BezPath),

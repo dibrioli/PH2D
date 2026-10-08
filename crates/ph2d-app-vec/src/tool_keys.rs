@@ -96,7 +96,9 @@ pub fn key(
         // Soltar: só a tecla segurada interessa, e só se chegou a repetir (segurada, não tocada).
         let h = hold.take_if(|h| h.chord.letter == chord.letter)?;
         if h.held && h.prev != mode {
-            return Some(KeyOutcome::Clicks(vec![ph2d_panel_vector::bars::mode_id(h.prev)?]));
+            return Some(KeyOutcome::Clicks(vec![ph2d_panel_vector::bars::mode_id(
+                h.prev,
+            )?]));
         }
         return Some(KeyOutcome::Swallow);
     }
@@ -108,7 +110,10 @@ pub fn key(
         return Some(KeyOutcome::Swallow);
     }
     // Só as ferramentas são temporárias; a cor e as booleanas são verbos de um toque.
-    if matches!(action, KeyAction::Mode(_) | KeyAction::ShapeRect | KeyAction::ShapeEllipse) {
+    if matches!(
+        action,
+        KeyAction::Mode(_) | KeyAction::ShapeRect | KeyAction::ShapeEllipse
+    ) {
         *hold = Some(Hold {
             chord,
             prev: mode,

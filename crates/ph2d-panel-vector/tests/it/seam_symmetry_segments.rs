@@ -33,8 +33,6 @@ use ph2d_ui_testkit::MockPanelHost;
 use ph2d_vec_scene::symmetry::{SymmetrySpec, symmetry_paths};
 use ph2d_vec_scene::{VecPath, VecVertex};
 
-
-
 /// Publica o que a shell publicaria: simetria LIGADA em **Radial** — sem isto a fileira de
 /// Segments nem é pintada (o `Enable` gateia a secção, e o Radial é o único tipo que a mostra).
 fn publica_radial() {
@@ -128,7 +126,6 @@ fn the_segments_slider_delivers_its_count_to_the_rosette() {
     }
     ph2d_panel_vector::set_current_vector_style(None);
 }
-
 
 /// ⭐ **A outra mão: DIGITAR no chip também chega à rosácea, e NENHUM dos dois eventos fica órfão.**
 ///

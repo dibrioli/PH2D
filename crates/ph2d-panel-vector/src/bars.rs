@@ -12,37 +12,143 @@
 //! `1 051 px` e o iPad 12,9" dá `730`). Por isso o gesto entra À FRENTE dos chips do gizmo.
 
 use crate::tool_keys;
+#[path = "bars_row.rs"]
+mod row;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::interaction::{AreaMenu, BarButton, BarFace, BarFamily, ToolBars, WidgetStore};
+use ph2d_editor_core::interaction::{
+    AreaMenu, BarButton, BarFace, BarFamily, ToolBars, WidgetStore,
+};
 use ph2d_editor_core::widget::ToolRailEntry;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::ids;
-use ph2d_tool_vector::params::{VertexSel, VertexType};
 use ph2d_tool_vector::{DrawMode, VectorStyleSnapshot};
+use row::{area_menus, gesture_chips, style_chips, symmetry_chips};
 use std::cell::Cell;
 
 /// ① **A coluna**, por família — a forma de cada ferramenta é o ícone dela, a cor é a família.
 /// `(modo, id, ícone, família, chave do nome)`.
 pub const TOOLS: [(DrawMode, NodeId, IconId, BarFamily, &str); 17] = [
-    (DrawMode::Select, ids::VECTOR_MODE_SELECT, IconId::Select, BarFamily::Neutral, "panel.vector.mode.select"),
-    (DrawMode::Node, ids::VECTOR_MODE_NODE, IconId::VectorNode, BarFamily::Neutral, "panel.vector.mode.node"),
-    (DrawMode::Pen, ids::VECTOR_MODE_PEN, IconId::VectorPen, BarFamily::Draw, "panel.vector.mode.pen"),
-    (DrawMode::Pencil, ids::VECTOR_MODE_PENCIL, IconId::VectorPencil, BarFamily::Draw, "panel.vector.mode.pencil"),
-    (DrawMode::Shape, ids::VECTOR_MODE_SHAPE, IconId::VectorShape, BarFamily::Draw, "panel.vector.mode.shape"),
-    (DrawMode::Text, ids::VECTOR_MODE_TEXT, IconId::Text, BarFamily::Draw, "panel.vector.mode.text"),
-    (DrawMode::Build, ids::VECTOR_MODE_BUILD, IconId::VectorBuild, BarFamily::Build, "panel.vector.mode.build"),
-    (DrawMode::Connect, ids::VECTOR_MODE_CONNECT, IconId::VectorConnect, BarFamily::Build, "panel.vector.mode.connect"),
-    (DrawMode::Bucket, ids::VECTOR_MODE_BUCKET, IconId::VectorBucket, BarFamily::Build, "panel.vector.mode.bucket"),
-    (DrawMode::Frame, ids::VECTOR_MODE_FRAME, IconId::VectorFrame, BarFamily::Build, "panel.vector.mode.frame"),
-    (DrawMode::Cut, ids::VECTOR_MODE_CUT, IconId::Knife, BarFamily::Carve, "panel.vector.mode.cut"),
-    (DrawMode::Trim, ids::VECTOR_MODE_TRIM, IconId::VectorTrim, BarFamily::Carve, "panel.vector.mode.trim"),
-    (DrawMode::Fillet, ids::VECTOR_MODE_FILLET, IconId::VectorFillet, BarFamily::Carve, "panel.vector.mode.fillet"),
-    (DrawMode::Chamfer, ids::VECTOR_MODE_CHAMFER, IconId::VectorChamfer, BarFamily::Carve, "panel.vector.mode.chamfer"),
-    (DrawMode::Width, ids::VECTOR_MODE_WIDTH, IconId::VectorWidth, BarFamily::Stroke, "panel.vector.mode.width"),
-    (DrawMode::PickBlend, ids::VECTOR_MODE_PICKBLEND, IconId::VectorBlend, BarFamily::Stroke, "panel.vector.blend.pick_shapes"),
-    (DrawMode::Eyedropper, ids::VECTOR_MODE_EYEDROPPER, IconId::Eyedropper, BarFamily::Stroke, "panel.vector.mode.eyedropper"),
+    (
+        DrawMode::Select,
+        ids::VECTOR_MODE_SELECT,
+        IconId::Select,
+        BarFamily::Neutral,
+        "panel.vector.mode.select",
+    ),
+    (
+        DrawMode::Node,
+        ids::VECTOR_MODE_NODE,
+        IconId::VectorNode,
+        BarFamily::Neutral,
+        "panel.vector.mode.node",
+    ),
+    (
+        DrawMode::Pen,
+        ids::VECTOR_MODE_PEN,
+        IconId::VectorPen,
+        BarFamily::Draw,
+        "panel.vector.mode.pen",
+    ),
+    (
+        DrawMode::Pencil,
+        ids::VECTOR_MODE_PENCIL,
+        IconId::VectorPencil,
+        BarFamily::Draw,
+        "panel.vector.mode.pencil",
+    ),
+    (
+        DrawMode::Shape,
+        ids::VECTOR_MODE_SHAPE,
+        IconId::VectorShape,
+        BarFamily::Draw,
+        "panel.vector.mode.shape",
+    ),
+    (
+        DrawMode::Text,
+        ids::VECTOR_MODE_TEXT,
+        IconId::Text,
+        BarFamily::Draw,
+        "panel.vector.mode.text",
+    ),
+    (
+        DrawMode::Build,
+        ids::VECTOR_MODE_BUILD,
+        IconId::VectorBuild,
+        BarFamily::Build,
+        "panel.vector.mode.build",
+    ),
+    (
+        DrawMode::Connect,
+        ids::VECTOR_MODE_CONNECT,
+        IconId::VectorConnect,
+        BarFamily::Build,
+        "panel.vector.mode.connect",
+    ),
+    (
+        DrawMode::Bucket,
+        ids::VECTOR_MODE_BUCKET,
+        IconId::VectorBucket,
+        BarFamily::Build,
+        "panel.vector.mode.bucket",
+    ),
+    (
+        DrawMode::Frame,
+        ids::VECTOR_MODE_FRAME,
+        IconId::VectorFrame,
+        BarFamily::Build,
+        "panel.vector.mode.frame",
+    ),
+    (
+        DrawMode::Cut,
+        ids::VECTOR_MODE_CUT,
+        IconId::Knife,
+        BarFamily::Carve,
+        "panel.vector.mode.cut",
+    ),
+    (
+        DrawMode::Trim,
+        ids::VECTOR_MODE_TRIM,
+        IconId::VectorTrim,
+        BarFamily::Carve,
+        "panel.vector.mode.trim",
+    ),
+    (
+        DrawMode::Fillet,
+        ids::VECTOR_MODE_FILLET,
+        IconId::VectorFillet,
+        BarFamily::Carve,
+        "panel.vector.mode.fillet",
+    ),
+    (
+        DrawMode::Chamfer,
+        ids::VECTOR_MODE_CHAMFER,
+        IconId::VectorChamfer,
+        BarFamily::Carve,
+        "panel.vector.mode.chamfer",
+    ),
+    (
+        DrawMode::Width,
+        ids::VECTOR_MODE_WIDTH,
+        IconId::VectorWidth,
+        BarFamily::Stroke,
+        "panel.vector.mode.width",
+    ),
+    (
+        DrawMode::PickBlend,
+        ids::VECTOR_MODE_PICKBLEND,
+        IconId::VectorBlend,
+        BarFamily::Stroke,
+        "panel.vector.blend.pick_shapes",
+    ),
+    (
+        DrawMode::Eyedropper,
+        ids::VECTOR_MODE_EYEDROPPER,
+        IconId::Eyedropper,
+        BarFamily::Stroke,
+        "panel.vector.mode.eyedropper",
+    ),
 ];
 
 /// O id do botão de um modo na coluna — `None` só se a tabela perdeu o modo (o gate o acusa).
@@ -133,10 +239,28 @@ fn column(snap: &VectorStyleSnapshot, focus_stroke: bool) -> Vec<Vec<BarButton>>
         on,
         family: BarFamily::Neutral,
     };
-    let chord = |l| Some(tool_keys::Chord { letter: l, shift: false, ctrl_alt: false });
+    let chord = |l| {
+        Some(tool_keys::Chord {
+            letter: l,
+            shift: false,
+            ctrl_alt: false,
+        })
+    };
     groups.push(vec![
-        swatch(ids::VECTOR_FILL_SWATCH, snap.fill, false, "panel.vector.bar.fill", !focus_stroke),
-        swatch(ids::VECTOR_STROKE_SWATCH, snap.stroke, true, "panel.vector.bar.stroke", focus_stroke),
+        swatch(
+            ids::VECTOR_FILL_SWATCH,
+            snap.fill,
+            false,
+            "panel.vector.bar.fill",
+            !focus_stroke,
+        ),
+        swatch(
+            ids::VECTOR_STROKE_SWATCH,
+            snap.stroke,
+            true,
+            "panel.vector.bar.stroke",
+            focus_stroke,
+        ),
         button(
             ids::VECTOR_COLOUR_FOCUS,
             IconId::ChevronDown,
@@ -149,7 +273,11 @@ fn column(snap: &VectorStyleSnapshot, focus_stroke: bool) -> Vec<Vec<BarButton>>
             IconId::PathReverse,
             named(
                 "panel.vector.bar.swap",
-                Some(tool_keys::Chord { letter: 'x', shift: true, ctrl_alt: false }),
+                Some(tool_keys::Chord {
+                    letter: 'x',
+                    shift: true,
+                    ctrl_alt: false,
+                }),
             ),
             false,
             BarFamily::Neutral,
@@ -182,118 +310,6 @@ fn shape_flyout(snap: &VectorStyleSnapshot) -> Vec<BarButton> {
         .collect()
 }
 
-fn chip(id: NodeId, key: &str, active: bool) -> ToolRailEntry {
-    let e = ToolRailEntry::compound(id, tr(key), tr(key), "");
-    if active { e.active() } else { e }
-}
-
-fn icon_chip(id: NodeId, key: &str, icon: IconId, active: bool) -> ToolRailEntry {
-    let e = ToolRailEntry::icon(id, tr(key), icon);
-    if active { e.active() } else { e }
-}
-
-/// ② a cor e a largura — o padrão nº 1 do Affinity (a amostra abre a cor ali mesmo).
-fn style_chips(snap: &VectorStyleSnapshot) -> Vec<ToolRailEntry> {
-    vec![
-        ToolRailEntry::swatch(ids::VECTOR_FILL_SWATCH, tr("panel.vector.bar.fill"), snap.fill)
-            .with_sub(tr("panel.vector.bar.sub.fill")),
-        ToolRailEntry::swatch(ids::VECTOR_STROKE_SWATCH, tr("panel.vector.bar.stroke"), snap.stroke)
-            .with_sub(tr("panel.vector.bar.sub.stroke")),
-        ToolRailEntry::number(
-            ids::VECTOR_WIDTH_NUM,
-            tr("panel.vector.bar.width"),
-            tr("panel.vector.bar.sub.width"),
-            None,
-        ),
-    ]
-}
-
-/// ② as opções do GESTO que está na mão — à frente dos chips do gizmo (prioridade).
-fn gesture_chips(snap: &VectorStyleSnapshot, sel: usize, verts: usize) -> Vec<ToolRailEntry> {
-    let mut v = Vec::new();
-    match snap.mode {
-        DrawMode::Node => {
-            use ph2d_tool_vector::params::MarqueeShape;
-            v.push(icon_chip(ids::VECTOR_MARQUEE_BOX, "panel.vector.marquee.box", IconId::MarqueeBox, snap.marquee == MarqueeShape::Box));
-            v.push(icon_chip(ids::VECTOR_MARQUEE_LASSO, "panel.vector.marquee.lasso", IconId::MarqueeLasso, snap.marquee == MarqueeShape::Lasso));
-            if verts > 0 {
-                let ty = crate::state::current_vertex_type();
-                let is = |k| ty == Some(VertexSel::Uniform(k));
-                v.push(ToolRailEntry::Divider);
-                v.push(icon_chip(ids::VECTOR_VERT_CORNER, "panel.vector.vertex.corner", IconId::VertexCorner, is(VertexType::Corner)));
-                v.push(icon_chip(ids::VECTOR_VERT_SMOOTH, "panel.vector.vertex.smooth", IconId::VertexSmooth, is(VertexType::Smooth)));
-                v.push(icon_chip(ids::VECTOR_VERT_SYMMETRIC, "panel.vector.vertex.symm", IconId::VertexSymmetric, is(VertexType::Symmetric)));
-            }
-            if sel > 0 {
-                v.push(ToolRailEntry::Divider);
-                if sel >= 2 {
-                    v.push(icon_chip(crate::ids::VECTOR_PATH_JOIN, "panel.vector.arrange.join", IconId::PathJoin, false));
-                }
-                let closed = crate::state::current_path_closed() == Some(true);
-                v.push(icon_chip(crate::ids::VECTOR_PATH_CLOSE, "panel.vector.arrange.close_path", IconId::PathClose, closed));
-                v.push(icon_chip(crate::ids::VECTOR_PATH_REVERSE, "panel.vector.arrange.reverse", IconId::PathReverse, false));
-                v.push(icon_chip(crate::ids::VECTOR_PATH_WELD, "panel.vector.arrange.weld", IconId::PathWeld, false));
-            }
-        }
-        DrawMode::Pencil => {
-            use ph2d_vec_edit::pencil_width::WidthSource as Ws;
-            v.push(ToolRailEntry::number(
-                ids::VECTOR_PENCIL_FIDELITY_NUM,
-                tr("panel.vector.pencil.fidelity"),
-                tr("panel.vector.bar.sub.fidelity"),
-                None,
-            ));
-            v.push(ToolRailEntry::number(
-                ids::VECTOR_PENCIL_STABILIZER_NUM,
-                tr("panel.vector.pencil.stabilizer"),
-                tr("panel.vector.bar.sub.stabilizer"),
-                None,
-            ));
-            let src = snap.pencil_width_source;
-            v.push(chip(ids::VECTOR_PENCIL_W_UNIFORM, "panel.vector.pencil.width.uniform", src == Ws::Uniform));
-            v.push(chip(ids::VECTOR_PENCIL_W_SPEED, "panel.vector.pencil.width.speed", src == Ws::Speed));
-            v.push(chip(ids::VECTOR_PENCIL_W_PRESSURE, "panel.vector.pencil.width.pressure", src == Ws::Pressure));
-        }
-        DrawMode::Cut if crate::state::cut_line_exists() => {
-            v.push(chip(crate::ids::VECTOR_CUT_APPLY, "panel.vector.cut.apply", false));
-            v.push(chip(crate::ids::VECTOR_CUT_DISCARD, "panel.vector.cut.discard", false));
-        }
-        _ => {}
-    }
-    v
-}
-
-/// ② a SIMETRIA — opção das ferramentas que desenham (cauda: sai antes do gesto e da cor).
-fn symmetry_chips(snap: &VectorStyleSnapshot) -> Vec<ToolRailEntry> {
-    use ph2d_symmetry::SymmetryKind;
-    if !crate::section_scope::AUTHORS_GEOMETRY.contains(&snap.mode) && !snap.symmetry.on {
-        return Vec::new();
-    }
-    let sym = snap.symmetry;
-    let toggle = if sym.on { ids::VECTOR_SYM_OFF } else { ids::VECTOR_SYM_ON };
-    let mut v = vec![chip(toggle, "panel.vector.bar.symmetry", sym.on)];
-    if sym.on {
-        for k in SymmetryKind::ALL {
-            v.push(chip(ph2d_tool_vector::params::symmetry_kind_id(*k), k.label_key(), *k == sym.kind));
-        }
-        if sym.kind == SymmetryKind::Radial {
-            v.push(ToolRailEntry::number(
-                ids::VECTOR_SYM_SEGMENTS_NUM,
-                tr("panel.vector.symmetry.segments"),
-                tr("panel.vector.bar.sub.segments"),
-                None,
-            ));
-        } else {
-            let fuse = if sym.fuse { ids::VECTOR_SYM_FUSE_OFF } else { ids::VECTOR_SYM_FUSE_ON };
-            v.push(chip(fuse, "panel.vector.symmetry.fuse", sym.fuse));
-        }
-        if crate::state_symmetry::symmetry_live_count() > 0 {
-            v.push(chip(ids::VECTOR_SYM_APPLY, "panel.vector.symmetry.apply", false));
-        }
-    }
-    v
-}
-
 /// As ferramentas de clique PRECISO sobre a arte: com uma delas na mão a barra ④ não aparece — a
 /// barra pousa junto da seleção, e ali ela roubaria o clique que a ferramenta existe para dar.
 const PRECISE: [DrawMode; 10] = [
@@ -319,76 +335,79 @@ fn actions(mode: DrawMode, sel: usize) -> Vec<Vec<BarButton>> {
     let mut out = Vec::new();
     if sel >= 2 {
         out.push(vec![
-            b(crate::ids::VECTOR_BOOL_UNION, IconId::BoolUnion, "panel.vector.bool.union"),
-            b(crate::ids::VECTOR_BOOL_SUBTRACT, IconId::BoolSubtract, "panel.vector.bool.subtract"),
-            b(crate::ids::VECTOR_BOOL_INTERSECT, IconId::BoolIntersect, "panel.vector.bool.intersect"),
-            b(crate::ids::VECTOR_BOOL_EXCLUDE, IconId::BoolExclude, "panel.vector.bool.exclude"),
+            b(
+                crate::ids::VECTOR_BOOL_UNION,
+                IconId::BoolUnion,
+                "panel.vector.bool.union",
+            ),
+            b(
+                crate::ids::VECTOR_BOOL_SUBTRACT,
+                IconId::BoolSubtract,
+                "panel.vector.bool.subtract",
+            ),
+            b(
+                crate::ids::VECTOR_BOOL_INTERSECT,
+                IconId::BoolIntersect,
+                "panel.vector.bool.intersect",
+            ),
+            b(
+                crate::ids::VECTOR_BOOL_EXCLUDE,
+                IconId::BoolExclude,
+                "panel.vector.bool.exclude",
+            ),
         ]);
     }
     out.push(vec![
-        b(crate::ids::VECTOR_ARRANGE_DUPLICATE, IconId::Duplicate, "panel.vector.arrange.duplicate"),
-        b(ids::VECTOR_ARRANGE_TO_FRONT, IconId::ArrangeFront, "panel.vector.arrange.to_front"),
-        b(ids::VECTOR_ARRANGE_TO_BACK, IconId::ArrangeBack, "panel.vector.arrange.to_back"),
-        b(ids::VECTOR_ARRANGE_FLIP_H, IconId::FlipH, "panel.vector.arrange.flip_h"),
-        b(ids::VECTOR_ARRANGE_FLIP_V, IconId::FlipV, "panel.vector.arrange.flip_v"),
+        b(
+            crate::ids::VECTOR_ARRANGE_DUPLICATE,
+            IconId::Duplicate,
+            "panel.vector.arrange.duplicate",
+        ),
+        b(
+            ids::VECTOR_ARRANGE_TO_FRONT,
+            IconId::ArrangeFront,
+            "panel.vector.arrange.to_front",
+        ),
+        b(
+            ids::VECTOR_ARRANGE_TO_BACK,
+            IconId::ArrangeBack,
+            "panel.vector.arrange.to_back",
+        ),
+        b(
+            ids::VECTOR_ARRANGE_FLIP_H,
+            IconId::FlipH,
+            "panel.vector.arrange.flip_h",
+        ),
+        b(
+            ids::VECTOR_ARRANGE_FLIP_V,
+            IconId::FlipV,
+            "panel.vector.arrange.flip_v",
+        ),
     ]);
     if mode != DrawMode::Node {
         let mut path = Vec::new();
         if crate::state::convertible() {
-            path.push(b(crate::ids::VECTOR_CONVERT_TO_CURVES, IconId::ConvertCurves, "panel.vector.arrange.convert_to_curves"));
+            path.push(b(
+                crate::ids::VECTOR_CONVERT_TO_CURVES,
+                IconId::ConvertCurves,
+                "panel.vector.arrange.convert_to_curves",
+            ));
         }
         if sel >= 2 {
-            path.push(b(crate::ids::VECTOR_PATH_JOIN, IconId::PathJoin, "panel.vector.arrange.join"));
+            path.push(b(
+                crate::ids::VECTOR_PATH_JOIN,
+                IconId::PathJoin,
+                "panel.vector.arrange.join",
+            ));
         }
-        path.push(b(crate::ids::VECTOR_PATH_WELD, IconId::PathWeld, "panel.vector.arrange.weld"));
+        path.push(b(
+            crate::ids::VECTOR_PATH_WELD,
+            IconId::PathWeld,
+            "panel.vector.arrange.weld",
+        ));
         out.push(path);
     }
     out
-}
-
-/// ② os pulldowns do módulo: o ENCAIXE (sempre) e o ⚙ do CAMINHO (com seleção, no Select/Node).
-fn area_menus(mode: DrawMode, sel: usize) -> Vec<AreaMenu> {
-    let toggle = |on: bool, on_id: NodeId, off_id: NodeId, key: &str| {
-        let e = ToolRailEntry::icon(if on { off_id } else { on_id }, tr(key), IconId::SnapMagnet);
-        if on { e.active() } else { e }
-    };
-    let snap_on = crate::state::current_snap();
-    let mut menus = vec![AreaMenu {
-        label: tr("panel.vector.bar.snap").to_owned(),
-        face: tr(if snap_on { "panel.vector.bar.snap_on" } else { "panel.vector.bar.snap_off" })
-            .to_owned(),
-        faces: vec![
-            tr("panel.vector.bar.snap_on").to_owned(),
-            tr("panel.vector.bar.snap_off").to_owned(),
-        ],
-        rows: vec![
-            toggle(snap_on, ph2d_editor_core::ids::VECTOR_SNAP_ON, crate::ids::VECTOR_SNAP_OFF, "panel.vector.bar.snap.shapes"),
-            toggle(crate::state::current_snap_path(), crate::ids::VECTOR_SNAP_PATH_ON, crate::ids::VECTOR_SNAP_PATH_OFF, "panel.vector.bar.snap.path"),
-            toggle(crate::state::current_snap_crossings(), crate::ids::VECTOR_SNAP_CROSS_ON, crate::ids::VECTOR_SNAP_CROSS_OFF, "panel.vector.bar.snap.crossings"),
-            toggle(crate::state::current_snap_guides(), crate::ids::VECTOR_SNAP_GUIDES_ON, crate::ids::VECTOR_SNAP_GUIDES_OFF, "panel.vector.bar.snap.guides"),
-        ],
-    }];
-    if sel > 0 && matches!(mode, DrawMode::Select | DrawMode::Node) {
-        let row = |id, key: &str| ToolRailEntry::compound(id, tr(key), tr(key), "");
-        let mut rows = vec![
-            row(ids::VECTOR_PATH_SMOOTH, "panel.vector.arrange.smooth"),
-            row(ids::VECTOR_PATH_SHARPEN, "panel.vector.arrange.sharpen"),
-            row(ids::VECTOR_PATH_SIMPLIFY, "panel.vector.arrange.simplify"),
-            row(ids::VECTOR_PATH_SUBDIVIDE, "panel.vector.arrange.subdivide"),
-        ];
-        // No Select o Fechar e o Inverter não estão na ② (são do Node): moram aqui.
-        if mode == DrawMode::Select {
-            rows.push(row(crate::ids::VECTOR_PATH_CLOSE, "panel.vector.arrange.close_path"));
-            rows.push(row(crate::ids::VECTOR_PATH_REVERSE, "panel.vector.arrange.reverse"));
-        }
-        menus.push(AreaMenu {
-            label: tr("panel.vector.bar.path").to_owned(),
-            face: tr("panel.vector.bar.path").to_owned(),
-            faces: Vec::new(),
-            rows,
-        });
-    }
-    menus
 }
 
 /// ⭐ **As barras deste quadro** — o que a crate do vetor publica no store em todo quadro em que
@@ -412,8 +431,9 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
     // funciona na fila (as amostras e todos os campos, os da simetria incluídos); depois os botões
     // do gesto, que atrás do `⋯` continuam clicáveis; na cauda os botões da simetria.
     let is_field = |e: &ToolRailEntry| matches!(e, ToolRailEntry::Number { .. });
-    let (mut fields, gesture): (Vec<_>, Vec<_>) =
-        gesture_chips(&snap, sel, verts).into_iter().partition(is_field);
+    let (mut fields, gesture): (Vec<_>, Vec<_>) = gesture_chips(&snap, sel, verts)
+        .into_iter()
+        .partition(is_field);
     let (sym_fields, sym_chips): (Vec<_>, Vec<_>) =
         symmetry_chips(&snap).into_iter().partition(is_field);
     fields.extend(sym_fields);
@@ -429,7 +449,8 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
     }
     ToolBars {
         column: column(&snap, focus),
-        flyout: (snap.mode == DrawMode::Shape).then(|| (ids::VECTOR_MODE_SHAPE, shape_flyout(&snap))),
+        flyout: (snap.mode == DrawMode::Shape)
+            .then(|| (ids::VECTOR_MODE_SHAPE, shape_flyout(&snap))),
         row_lead,
         row_tail: sym_chips,
         actions: actions(snap.mode, sel),

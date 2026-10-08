@@ -75,7 +75,14 @@ pub(crate) fn thumb_outline(index: usize) -> Option<BezPath> {
         }
         let c = t.bbox.center();
         // y do mundo para CIMA → y do ecrã para BAIXO (a mesma inversão do `thumb_affine`).
-        let to_unit = Affine::new([1.0 / side, 0.0, 0.0, -1.0 / side, 0.5 - c.x / side, 0.5 + c.y / side]);
+        let to_unit = Affine::new([
+            1.0 / side,
+            0.0,
+            0.0,
+            -1.0 / side,
+            0.5 - c.x / side,
+            0.5 + c.y / side,
+        ]);
         let mut out = to_unit * t.fill.clone();
         out.extend(to_unit * t.lines.clone());
         Some(out)
@@ -112,7 +119,10 @@ mod tests {
             "o ápice tem de ficar acima da base"
         );
         let b = path.bounding_box();
-        assert!(b.y0 >= -1e-6 && b.y1 <= 1.0 + 1e-6, "o cone vazou o quadrado: {b:?}");
+        assert!(
+            b.y0 >= -1e-6 && b.y1 <= 1.0 + 1e-6,
+            "o cone vazou o quadrado: {b:?}"
+        );
     }
 
     /// Toda forma do catálogo cabe no quadrado unitário — senão pinta por cima do botão vizinho.

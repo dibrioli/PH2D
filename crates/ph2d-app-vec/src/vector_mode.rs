@@ -430,20 +430,23 @@ pub fn smoke_step(
             draw_shape(vec, scene, ShapeKind::Ellipse, [-0.6, 0.4], 0.7);
             go(if bars { 20 } else { 5 });
         }
-        // D10: as duas seleccionadas e a Caneta pelo clique do botão dela na coluna ①.
+        // D10: a Caneta pelo clique do botão dela na coluna ① (a troca de ferramenta reduz a
+        // seleção ao caminho que a caneta continua — por isso a seleção das duas vem DEPOIS).
         20 if edit && shapes == 2 => {
-            let both: Vec<VecPathId> = vec.entities.keys().copied().collect();
-            vec.pen.select_many(&both);
             hero.apply_event(ph2d_editor_core::interaction::WidgetEvent::Click(
                 ph2d_tool_vector::ids::VECTOR_MODE_PEN,
             ));
             go(21);
         }
-        21 if hero
-            .store
-            .tool_bars()
-            .is_some_and(|b| b.column.iter().flatten().any(|x| x.on && x.id == ph2d_tool_vector::ids::VECTOR_MODE_PEN)) =>
+        21 if hero.store.tool_bars().is_some_and(|b| {
+            b.column
+                .iter()
+                .flatten()
+                .any(|x| x.on && x.id == ph2d_tool_vector::ids::VECTOR_MODE_PEN)
+        }) =>
         {
+            let both: Vec<VecPathId> = vec.entities.keys().copied().collect();
+            vec.pen.select_many(&both);
             go(9);
         }
         5 if edit && shapes == 2 && vec.edit.objects.first().copied() == newest => {

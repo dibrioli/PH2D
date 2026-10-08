@@ -376,5 +376,13 @@ pub fn publish(
         );
     }
     // ⭐ D10: as barras (① ② ④ ⑤) — DEPOIS de tudo o que o painel recebe neste quadro.
-    crate::bars_publish::publish(hero, scene, pen, xforms, vector_active, snap.on, px_to_world);
+    crate::bars_publish::publish(
+        hero,
+        scene,
+        pen,
+        xforms,
+        vector_active,
+        snap.on,
+        px_to_world,
+    );
 }

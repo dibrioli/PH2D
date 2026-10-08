@@ -62,6 +62,9 @@ pub struct Layout {
     /// ⭐ A altura AUTORADA da faixa do fundo — a irmã VERTICAL das duas de cima (a costura do
     /// topo do timeline escreve-a). Ver `WidgetStore::dock_bottom_h`.
     pub dock_h_bottom: Option<f32>,
+    /// ④ A barra de ações da seleção (D10): desligada e fixada são escolhas do artista, por layout.
+    pub actions_off: bool,
+    pub actions_pinned: bool,
 }
 
 /// ⭐⭐ **O FICHEIRO INTEIRO** — qual layout está activo, e a arrumação de cada um.
@@ -150,6 +153,14 @@ pub fn serialize_section(l: &Layout) -> String {
     if let Some(h) = l.dock_h_bottom {
         let _ = writeln!(s, "dock_h_bottom={h}");
     }
+    for (on, key) in [
+        (l.actions_off, "selection_actions_off"),
+        (l.actions_pinned, "selection_actions_pinned"),
+    ] {
+        if on {
+            let _ = writeln!(s, "{key}=1");
+        }
+    }
     for id in &l.open {
         let _ = writeln!(s, "open.{id}=1");
     }
@@ -203,6 +214,8 @@ pub fn parse(text: &str) -> Layout {
             "dock_w_left" => l.dock_w_left = value.parse().ok(),
             "dock_w_right" => l.dock_w_right = value.parse().ok(),
             "dock_h_bottom" => l.dock_h_bottom = value.parse().ok(),
+            "selection_actions_off" => l.actions_off = value == "1",
+            "selection_actions_pinned" => l.actions_pinned = value == "1",
             "tab_order" => {
                 l.tab_order = value
                     .split(',')
@@ -321,6 +334,8 @@ pub fn hash(l: &Layout) -> u64 {
             feed(b);
         }
     }
+    feed(u8::from(l.actions_off));
+    feed(u8::from(l.actions_pinned));
     h
 }
 
@@ -409,6 +424,8 @@ pub fn current(hero: &ph2d_editor_core::HeroScreen) -> Layout {
         dock_w_left: hero.store.dock_width_choice(DockSide::Left),
         dock_w_right: hero.store.dock_width_choice(DockSide::Right),
         dock_h_bottom: hero.store.dock_bottom_h_choice(),
+        actions_off: hero.store.selection_actions_off(),
+        actions_pinned: hero.store.selection_actions_pinned(),
     }
 }
 
@@ -483,6 +500,8 @@ pub fn install(hero: &mut ph2d_editor_core::HeroScreen, l: &Layout) {
     if let Some(h) = l.dock_h_bottom {
         hero.store.set_dock_bottom_h(h);
     }
+    hero.store.set_selection_actions_off(l.actions_off);
+    hero.store.set_selection_actions_pinned(l.actions_pinned);
 }
 
 /// ⭐⭐ **GRAVA se mudou** — chamado **no QUADRO**, depois do `paint_hero_screen`.

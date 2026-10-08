@@ -53,6 +53,9 @@ mod tests {
         let (fill, stroke) = sample(&scene, &vec.pen, [0.0, 0.0], 0.1).expect("o centro é a forma");
         assert_eq!(fill, Some([200, 30, 40, 255]));
         assert_eq!(stroke, Some([10, 220, 30, 255]));
-        assert!(sample(&scene, &vec.pen, [9.0, 9.0], 0.1).is_none(), "o vazio não tem cor");
+        assert!(
+            sample(&scene, &vec.pen, [9.0, 9.0], 0.1).is_none(),
+            "o vazio não tem cor"
+        );
     }
 }

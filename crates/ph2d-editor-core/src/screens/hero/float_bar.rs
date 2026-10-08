@@ -101,7 +101,10 @@ pub fn grid_rects(area: Rect, anchor: Rect, n: usize, cols: usize) -> Vec<Rect> 
     let rows = n.div_ceil(cols) as f32;
     let h = rows * s + (rows - 1.0).max(0.0) * g;
     let x0 = anchor.x + anchor.w + Spacing::Sm.px();
-    let y0 = anchor.y.min(area.y + area.h - h - Spacing::Md.px()).max(area.y);
+    let y0 = anchor
+        .y
+        .min(area.y + area.h - h - Spacing::Md.px())
+        .max(area.y);
     (0..n)
         .map(|i| {
             let (col, row) = ((i % cols) as f32, (i / cols) as f32);
@@ -115,9 +118,9 @@ fn strip_cols(len: usize) -> usize {
     if len > ROW_MAX { len.div_ceil(2) } else { len }
 }
 
-/// A largura e a altura da barra junto da seleção para estes grupos.
-fn strip_extent(groups: &[usize]) -> (f32, f32) {
-    let (s, g) = (strip_button_px(), gap());
+/// A largura e a altura da barra junto da seleção para estes grupos, com botões de lado `s`.
+fn strip_extent(groups: &[usize], s: f32) -> (f32, f32) {
+    let g = gap();
     let rows = if groups.iter().any(|&n| n > ROW_MAX) {
         2.0
     } else {
@@ -130,8 +133,8 @@ fn strip_extent(groups: &[usize]) -> (f32, f32) {
 }
 
 /// Os rectângulos dos grupos a partir do canto `(x, y)` de uma barra de altura `bar_h`.
-fn strip_from(x: f32, y: f32, bar_h: f32, groups: &[usize]) -> Vec<Rect> {
-    let (s, g) = (strip_button_px(), gap());
+fn strip_from(x: f32, y: f32, bar_h: f32, groups: &[usize], s: f32) -> Vec<Rect> {
+    let g = gap();
     let mut x = x;
     let mut out = Vec::with_capacity(groups.iter().sum());
     for &n in groups.iter().filter(|&&n| n > 0) {
@@ -147,10 +150,14 @@ fn strip_from(x: f32, y: f32, bar_h: f32, groups: &[usize]) -> Vec<Rect> {
 }
 
 /// ⭐ **A barra junto da seleção**: por cima de `sel` (a seleção no ecrã), presa dentro de
-/// `area`; por baixo quando não cabe por cima. Um rectângulo por botão, grupo a grupo.
+/// `area`; por baixo quando não cabe por cima. Um rectângulo por botão (de lado `s`), grupo a grupo.
+///
+/// ⚠️ O lado é do CLIENTE: as caras do Quadro (amostras, traços, letras) lêem-se a
+/// [`strip_button_px`]; os ÍCONES da ④ do vetor não (medido na foto da cena 9, 07/10: `12 px` de
+/// ícone ilegíveis) e usam o [`button_px`] da coluna.
 #[must_use]
-pub fn strip_rects(area: Rect, sel: Rect, groups: &[usize]) -> Vec<Rect> {
-    let (width, bar_h) = strip_extent(groups);
+pub fn strip_rects(area: Rect, sel: Rect, groups: &[usize], s: f32) -> Vec<Rect> {
+    let (width, bar_h) = strip_extent(groups, s);
     let above = sel.y - bar_h - Spacing::Lg.px();
     let y = if above >= area.y {
         above
@@ -160,16 +167,16 @@ pub fn strip_rects(area: Rect, sel: Rect, groups: &[usize]) -> Vec<Rect> {
     let x = (sel.x + sel.w / 2.0 - width / 2.0)
         .max(area.x)
         .min(area.x + area.w - width);
-    strip_from(x, y, bar_h, groups)
+    strip_from(x, y, bar_h, groups, s)
 }
 
 /// ⭐ **A mesma barra, FIXADA**: no topo da área, ao centro. Deixa de seguir a seleção — e por
 /// isso nunca tapa a arte que se está a editar (a lição da *Contextual Task Bar*, estudo §4).
 #[must_use]
-pub fn pinned_strip_rects(area: Rect, groups: &[usize]) -> Vec<Rect> {
-    let (width, bar_h) = strip_extent(groups);
+pub fn pinned_strip_rects(area: Rect, groups: &[usize], s: f32) -> Vec<Rect> {
+    let (width, bar_h) = strip_extent(groups, s);
     let x = (area.x + area.w / 2.0 - width / 2.0).max(area.x);
-    strip_from(x, area.y + Spacing::Md.px(), bar_h, groups)
+    strip_from(x, area.y + Spacing::Md.px(), bar_h, groups, s)
 }
 
 /// O fundo (elevado, com moldura) por baixo de um conjunto de botões.
@@ -202,30 +209,41 @@ pub fn inner(r: Rect) -> Rect {
     )
 }
 
-/// ⭐ **O botão**: o fundo do estado (ligado · hover), o ALVO no `HitIndex`, e a tinta da cara.
-/// `tint` é a cor da cara em repouso (a família do botão); ligado, a cara vai ao acento.
+/// Um botão das barras: o id, onde cai, se está aceso e a tinta da cara em repouso (a família).
+#[derive(Clone, Copy, Debug)]
+pub struct Btn {
+    pub id: NodeId,
+    pub rect: Rect,
+    pub on: bool,
+    pub tint: ColorToken,
+}
+
+/// ⭐ **O botão**: o fundo do estado (ligado · hover), o ALVO no `HitIndex`, e a tinta da cara —
+/// a `tint` em repouso, o acento quando ligado.
 pub fn paint_button(
     scene: &mut VectorScene,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     theme: Theme,
-    id: NodeId,
-    r: Rect,
-    on: bool,
-    tint: ColorToken,
+    b: Btn,
 ) -> Color {
     let hover = matches!(
-        store.button_state(id),
+        store.button_state(b.id),
         Some(ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused)
     );
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    if on {
-        fill_rounded_rect(scene, r, radius, resolve(ColorToken::AccentSoft, theme));
+    if b.on {
+        fill_rounded_rect(
+            scene,
+            b.rect,
+            radius,
+            resolve(ColorToken::AccentSoft, theme),
+        );
     } else if hover {
-        fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg2, theme));
+        fill_rounded_rect(scene, b.rect, radius, resolve(ColorToken::Bg2, theme));
     }
-    hit_index.register(id, r);
-    resolve(if on { ColorToken::Accent } else { tint }, theme)
+    hit_index.register(b.id, b.rect);
+    resolve(if b.on { ColorToken::Accent } else { b.tint }, theme)
 }
 
 /// ⭐ **Uma amostra de cor** no miolo `inner`: o quadrado cheio, ou o vazio cortado pela diagonal

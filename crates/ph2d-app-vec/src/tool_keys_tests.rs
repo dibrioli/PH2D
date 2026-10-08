@@ -59,12 +59,19 @@ fn the_booleans_moved_to_ctrl_alt() {
         key(&mut hold, u, true, false, DrawMode::Select),
         Some(KeyOutcome::Boolean(ph2d_vec_boolean::PathfinderOp::Union))
     );
-    assert_eq!(chord(0x55, false, true, false, false), None, "Ctrl sozinho não é do vetor");
+    assert_eq!(
+        chord(0x55, false, true, false, false),
+        None,
+        "Ctrl sozinho não é do vetor"
+    );
     assert_eq!(key(&mut hold, c('u'), true, false, DrawMode::Select), None);
 }
 
 #[test]
 fn only_letters_make_chords() {
-    assert!(chord(0x31, false, false, false, false).is_none(), "um dígito não é tecla do vetor");
+    assert!(
+        chord(0x31, false, false, false, false).is_none(),
+        "um dígito não é tecla do vetor"
+    );
     assert!(chord(0xF702, false, false, false, false).is_none());
 }

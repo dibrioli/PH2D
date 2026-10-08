@@ -63,11 +63,11 @@ pub mod tool_bar;
 pub mod topbar;
 
 pub mod board_bar;
-pub mod float_bar;
 pub mod board_keys;
 pub mod board_view;
 pub mod document_tabs;
 pub mod document_tabs_menu;
+pub mod float_bar;
 mod inspector_model;
 /// ⭐ O modelo da secção TIMERS (TOP-20 #2, W3) — irmão por CAP de LOC.
 /// ⭐ O modelo da secção SIGNAL ACTIONS (TOP-20 #5, W3) — irmão por CAP de LOC.

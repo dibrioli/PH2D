@@ -4,7 +4,8 @@
 > (registo: [`../00_DECISOES_DO_ENIO.md`](../00_DECISOES_DO_ENIO.md) D10). Descende de
 > [`01_o_estado_atual.md`](01_o_estado_atual.md) (o que temos, medido) e de
 > [`02_estudo_os_apps_amados.md`](02_estudo_os_apps_amados.md) (o que os outros fazem, com fontes).
-> Nenhuma linha de código foi escrita.
+> **F0–F3 entregues em 07/10** (`line/UIUX`) — o que foi medido e decidido na obra está no
+> [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_NOVA_UI_DO_VETOR.md) §1–§2.
 
 ## §0 — A ideia numa frase
 

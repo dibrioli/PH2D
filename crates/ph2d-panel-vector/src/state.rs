@@ -132,8 +132,8 @@ pub use ui_states_state::{UiStatesState, set_ui_states_state};
 #[path = "state_pending_dd.rs"]
 mod pending_dd;
 pub(crate) use pending_dd::{
-    set_pending_blend_dd, set_pending_font_dd, set_pending_marker_dd,
-    take_pending_blend_dd, take_pending_font_dd, take_pending_marker_dd,
+    set_pending_blend_dd, set_pending_font_dd, set_pending_marker_dd, take_pending_blend_dd,
+    take_pending_font_dd, take_pending_marker_dd,
 };
 
 /// **AS SETAS do Morph da seleção** (plano 32 W4) — que arestas a máquina tem, e qual delas a cena
@@ -429,7 +429,8 @@ pub use envelope::{
 #[path = "state_slot_index.rs"]
 mod slot_index;
 pub(crate) use slot_index::{
-    font_option_index, marker_option, shape_choice_index, shape_field_index, shape_index, text_axis_index,
+    font_option_index, marker_option, shape_choice_index, shape_field_index, shape_index,
+    text_axis_index,
 };
 
 // ⛔ **O estado do ESQUELETO saiu daqui** (2026-09-09) — ele mudou-se com a secção para a

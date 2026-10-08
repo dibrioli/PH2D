@@ -700,7 +700,6 @@ fn every_section_header_is_registered_as_collapsible() {
     }
 }
 
-
 /// **Gate do seam do CONECTOR.** Os três campos (Route / Jetty / Spread) editam a RELAÇÃO,
 /// que vive no `VecConnector` de cada conector SELECIONADO — não no Style da tool. Logo a
 /// prova do seam é a mesma dos botões de documento: cada edição tem de chegar ao bus como
@@ -2372,7 +2371,6 @@ fn the_selection_reach_buttons_reach_the_bus_when_clicked() {
     }
 }
 
-
 /// **O Join NÃO é oferecido com um caminho só** — a metade de AUSÊNCIA, e é ela que impede o
 /// segundo botão de "fechar". Sem este gate, oferecer o Join sempre passaria despercebido: ele
 /// devolveria `false` em silêncio, que é a forma exata de um botão morto.
@@ -2432,9 +2430,6 @@ fn clicking_the_cut_pill_reaches_the_tool() {
         "o clique chegou ao bus mas nao virou modo -- falta o arm em `handle_panel_event`"
     );
 }
-
-
-
 
 /// **Os OITO botões do Pathfinder respondem a um PONTEIRO real** (plano 25 §8, W5).
 ///
@@ -2522,7 +2517,6 @@ fn symmetry_rects(
     host.paint::<VectorPanel>(&mut st, VIEWPORT)
 }
 
-
 /// **O par `Enable` e o `Apply` chegam ao barramento** — os três ids que não são tipo, pela mesma
 /// prova em três degraus (pintado · vivo sob o mouse · consumido e drenado).
 #[test]
@@ -2553,9 +2547,6 @@ fn the_enable_pair_and_the_apply_reach_the_bus() {
     ph2d_panel_vector::state_symmetry::set_symmetry_live_count(0);
     ph2d_panel_vector::set_current_vector_style(None);
 }
-
-
-
 
 /// ⭐⭐ **OS SEGMENTOS DO VERBO DO OSSO JÁ NÃO TOCAM NA FERRAMENTA VECTOR** (A14, 05/10).
 ///

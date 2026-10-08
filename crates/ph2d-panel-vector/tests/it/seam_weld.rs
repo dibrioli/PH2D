@@ -25,8 +25,6 @@ const VIEWPORT: Rect = Rect {
     h: 4000.0,
 };
 
-
-
 /// ⛔ **Com a selecção VAZIA o botão não existe** — a metade da ausência.
 ///
 /// A seção Path é um COMANDO sobre a selecção (`section_scope::WHEN_SELECTED`): sem alvo, ela seria

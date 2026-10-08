@@ -8,9 +8,6 @@
 
 use ph2d_editor_core::tool::PanelEvent;
 
-
-
-
 /// ⭐ **E o clique arma o modo do BALDE, não o do vizinho.**
 ///
 /// ⚠️ A cadeia de guardas do `apply_panel_event` é escrita à mão, e um `id` copiado da linha de

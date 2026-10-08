@@ -21,7 +21,6 @@ const VIEWPORT: Rect = Rect {
     h: 900.0,
 };
 
-
 /// Publica o modo que a shell publicaria — sem isto a seção não é pintada e não há knob a clicar.
 fn publish_mode(mode: ph2d_tool_vector::DrawMode) {
     ph2d_panel_vector::state::set_current_vector_style(Some(
@@ -31,8 +30,6 @@ fn publish_mode(mode: ph2d_tool_vector::DrawMode) {
         },
     ));
 }
-
-
 
 /// **A seção só existe no modo Pencil** — noutro modo os dois knobs não são nem pintados.
 ///
@@ -56,7 +53,6 @@ fn the_pencil_section_is_absent_outside_pencil_mode() {
         );
     }
 }
-
 
 /// **A fileira de Width some fora do modo Pencil**, como o resto da seção — três chips que
 /// descrevem como uma mão livre é capturada, oferecidos onde não há mão livre, são três controles

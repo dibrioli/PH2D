@@ -531,10 +531,16 @@ mod tests {
         let w = [3.5, -1.25];
         let s = view.world_to_screen(w);
         let back = view.screen_to_world(s);
-        assert!((back[0] - w[0]).abs() < 1e-3 && (back[1] - w[1]).abs() < 1e-3, "{back:?}");
+        assert!(
+            (back[0] - w[0]).abs() < 1e-3 && (back[1] - w[1]).abs() < 1e-3,
+            "{back:?}"
+        );
         let alto = view.world_to_screen([0.0, 5.0]);
         let baixo = view.world_to_screen([0.0, -5.0]);
-        assert!(alto[1] < baixo[1], "o y do mundo cresce para cima e o do ecrã para baixo");
+        assert!(
+            alto[1] < baixo[1],
+            "o y do mundo cresce para cima e o do ecrã para baixo"
+        );
         let centro = view.world_to_screen([1.0, 2.0]);
         assert!((centro[0] - 800.0).abs() < 1e-3 && (centro[1] - 450.0).abs() < 1e-3);
     }

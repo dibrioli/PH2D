@@ -289,7 +289,12 @@ pub fn style_rects(area: Rect, sel: Rect, what: Selected) -> Vec<(Item, Rect)> {
     groups
         .into_iter()
         .flatten()
-        .zip(super::float_bar::strip_rects(area, sel, &sizes))
+        .zip(super::float_bar::strip_rects(
+            area,
+            sel,
+            &sizes,
+            super::float_bar::strip_button_px(),
+        ))
         .collect()
 }
 
@@ -439,10 +444,12 @@ fn paint_item(
         hit_index,
         store,
         theme,
-        id,
-        r,
-        on,
-        ColorToken::Text2,
+        super::float_bar::Btn {
+            id,
+            rect: r,
+            on,
+            tint: ColorToken::Text2,
+        },
     );
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     let inner = super::float_bar::inner(r);

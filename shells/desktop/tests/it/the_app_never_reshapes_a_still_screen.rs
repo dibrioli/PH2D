@@ -36,12 +36,26 @@ const VIEWPORT: Rect = Rect {
 fn a_still_frame_with_every_panel_open_shapes_no_text() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut h = HeroScreen::new(ph2d_editor_core::NodeId(1));
-    // ⚠️ **O chrome legado (`F9`) também, e a razão é o controlo de vacuidade abaixo** (2026-10-02):
-    //    quando as legendas da fila deixaram de ser cortadas (`M…`, `S…`), a elisão deixou de moldar
-    //    os prefixos de cada uma e o app caiu de >`1 024` para `1 021` textos — abaixo do tecto que
-    //    esta fixtura existe para passar. O chrome legado é conteúdo REAL do app (a barra do topo e
-    //    o trilho), não enchimento.
-    h.view.legacy_chrome = true;
+    // ⚠️ **O chrome legado (`F9`) SAIU da fixtura em 2026-10-07 (D10)** — entrou a 02/10 só para
+    //    passar o tecto (`1 021` textos), e a fila de ferramentas, que é o ecrã REAL, nem era pintada
+    //    com ele ligado. Hoje a fila leva o produtor do vetor (abaixo) e o app molda `1 043`.
+    // ⚠️ **E as BARRAS do vetor publicadas** (D10, 2026-10-07): seis secções do painel Vector (o
+    //    gesto) mudaram-se para a fila ② — sem elas a fixtura caía para `1 007` textos. O texto não
+    //    sumiu, mudou de sítio: a fila do lápis com a simetria radial é o que o artista vê no lugar.
+    ph2d_panel_vector::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot {
+        mode: ph2d_tool_vector::DrawMode::Pencil,
+        symmetry: ph2d_vec_scene::symmetry::SymmetryStyle {
+            on: true,
+            kind: ph2d_vec_scene::symmetry::SymmetryKind::Radial,
+            ..ph2d_vec_scene::symmetry::SymmetryStyle::default()
+        },
+        ..ph2d_tool_vector::VectorStyleSnapshot::default()
+    }));
+    let barras = ph2d_panel_vector::bars::tool_bars(&h.store, None, Vec::new());
+    h.store.set_tool_bars(Some(barras));
+    h.store
+        .set_area_commands(ph2d_panel_vector::bars::module_menus(), Vec::new());
+
     // ⚠️ **E o menu Add aberto, pela mesma razão** (2026-10-04): a F3 do Vector tirou o pill VECTOR
     //    e a fileira do painel passou a mostrar só as ferramentas do modo — `1 014` textos. A paleta
     //    do `+` é conteúdo real do app, e é a que o artista abre para criar.

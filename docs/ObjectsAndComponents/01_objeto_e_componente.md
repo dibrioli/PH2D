@@ -228,3 +228,17 @@ Handoff: [`HANDOFF_INTEGRACAO_line_ObjectsAndComponents_2026-10-08.md`](handoffs
 **O custo que a Cena cobra:** todo objecto desce um nível (12 px de nome). É o do Godot e do Outliner
 do Blender; os censos de rótulo continuam verdes porque a fixtura armada perdeu a «Scene Root» falsa
 que já simulava esta raiz.
+
+## §12 — Onda 2 entregue (08/10): F4, a Animação por objecto
+
+Handoff: [`HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda2_2026-10-08.md`](handoffs/HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda2_2026-10-08.md).
+Escolhas do dono (08/10): **a chave vai para a animação do cabeçalho**; **a cópia leva clips próprios**.
+
+| plano | o que ficou | porquê (medido) |
+|---|---|---|
+| §6 «documento por `StableId`» (precedente `painted`) | **UM `TimelineDoc`**, e cada clip tem DONO (`NamedClip.owner`: `None` = Cena) | 216 ficheiros contam com um documento só; o undo da timeline é um; a Cena arruma clips de qualquer objecto no Arrange dela. N documentos seriam a «segunda Timeline» do §10 |
+| §8 F4 «`PROJECT_SCHEMA` sobe» | **não sobe** (187); sobe o `DOC_VERSION` do blob, 18 → 19 | o blob tem versão própria (`project_schema_history.rs:51`); e a v18 **migra** (`doc_v18.rs`), a 1.ª desta escada que não recusa, provada contra uma fixtura gravada antes da v19 |
+| §5 «Animação» componente (cartão no Inspector) | componente **derivado** do documento (tem ⇔ é dono de ≥ 1 clip); o cartão É a Timeline; Add Component ▸ *Animation*; tirar = ▾ *Remove animation from X* | um marcador no ECS ao lado dos clips teria duas pilhas de undo a discordar; o catálogo exige tipo registado (gate de órfãos) |
+| §6 «Clipes como conteúdo» via `ModeFamily::content` | a Timeline não é família de modo ⇒ `ContentOpens::{Mode, Panel}` e a Timeline declara o grupo (`ph2d-panel-timeline/src/hier.rs`); a Cena recebe conteúdo pela entrada `HIER_SCENE_ROW` | `family()` só acha uma família pelo MODO (`mode_drive.rs:155`) |
+| `MAX_CLIPS` (16) do documento | **por animação** (o recurso é o seletor, que mostra uma); o documento pára no `u16` do strip | e o seletor de acções do osso inteligente passou a listar a animação onde o osso vive — o pool fixo de 16 já não cabia o documento |
+| — | o dope sheet lista o que a animação em vista anima (+ bindings ainda sem chave) | a foto do smoke mostrou o Inimigo (Cena) nas linhas do Herói |

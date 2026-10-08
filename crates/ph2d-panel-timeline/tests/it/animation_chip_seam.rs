@@ -202,3 +202,30 @@ fn o_menu_tira_a_animacao_do_dono_em_vista() {
         "e o Ctrl+Z da timeline devolve-a"
     );
 }
+
+/// O «+» cria o clip na animação EM VISTA — com o Herói em vista, o clip novo é dele e a Cena não
+/// ganha nada (a mutação `add_clip_for(name, SCENE)` sobrevivia a toda a suíte, que corria na Cena).
+#[test]
+fn o_mais_cria_o_clip_na_animacao_em_vista() {
+    let _ = ph2d_panel_timeline::drain_intents();
+    let mut st = documento();
+    let mut ph = playhead();
+    animation_view::follow(&mut st, &mut ph, Some(HEROI), &[]);
+    publica(&mut st, &[(SCENE, ""), (HEROI, "Herói")], None);
+    let cena_antes = st.doc.clips_of(SCENE).count();
+
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut panel = TimelinePanelState::default();
+    let pedidos = clica(&mut host, &mut panel, ids::TIMELINE_ADD_CLIP);
+    assert_eq!(pedidos, [TimelineIntent::AddClip]);
+    for p in pedidos {
+        apply_intent(&mut st, &mut ph, p);
+    }
+    assert_eq!(st.doc.clips_of(HEROI).count(), 3, "o clip novo é do Herói");
+    assert_eq!(
+        st.doc.clips_of(SCENE).count(),
+        cena_antes,
+        "a Cena não ganhou nada"
+    );
+    assert!(st.doc.clip_belongs_to(st.doc.active_index(), HEROI));
+}

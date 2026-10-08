@@ -87,7 +87,7 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_eighteen() {
+fn schema_version_is_nineteen() {
     // v2 = per-key roving flags appended to the track payload.
     // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
     //      `loop_ping_pong`, appended) — a loop belongs to the animation it
@@ -145,10 +145,13 @@ fn schema_version_is_eighteen() {
     //      (`Quad InOut` dá 0,125 onde ele dá 0,15625): guardar um preset reescreveria a
     //      forma de todo fade já autorado. `None` é byte-idêntico ao v17 — o
     //      `fade_fingerprint` é quem afirma isso.
+    // v19 = cada clip tem DONO (`NamedClip.owner`, doc ObjectsAndComponents 01 §6) — o
+    //      PRIMEIRO degrau que MIGRA: um v18 abre com todos os clips na Cena (`doc_v18.rs`,
+    //      provado contra a fixtura em `clip_owner.rs`).
     // Postcard is positional: an older blob must be REJECTED by the version gate,
-    // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 18);
-    assert_eq!(TimelineDoc::new().version, 18);
+    // not misread field-for-field (v18 is the one exception, read by a frozen image).
+    assert_eq!(DOC_VERSION, 19);
+    assert_eq!(TimelineDoc::new().version, 19);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and

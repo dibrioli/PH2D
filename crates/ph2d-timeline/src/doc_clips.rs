@@ -23,9 +23,13 @@ impl TimelineDoc {
     /// ⚠️ **The name is COERCED unique** ([`Self::unique_clip_name`]) — a Smart Bone references a
     /// clip by name, so two clips sharing one make that control run the wrong animation, silently.
     pub fn add_clip(&mut self, name: String) -> usize {
-        if self.clips.len() >= MAX_CLIPS {
-            return self.active_clip;
-        }
+        self.add_clip_for(name, owner::SCENE)
+            .unwrap_or(self.active_clip)
+    }
+
+    /// The clip itself, with no cap and no owner (the Scene's) — the one door both
+    /// [`Self::add_clip`] and [`Self::add_clip_for`] go through.
+    pub(super) fn push_clip(&mut self, name: String) -> usize {
         let name = self.unique_clip_name(&name, None);
         self.clips.push(NamedClip {
             name,
@@ -38,6 +42,7 @@ impl TimelineDoc {
             expr: BTreeMap::new(),
             // Em BRANCO: um clip novo não herda trajetória nenhuma (ver o campo).
             paths: BTreeMap::new(),
+            owner: None,
         });
         self.clips.len() - 1
     }
@@ -85,10 +90,12 @@ impl TimelineDoc {
     /// original. Its loop travels too — a loop is a property of the animation it
     /// brackets, so a copy of the animation has the same one.
     pub fn duplicate_clip(&mut self, index: usize) -> Option<usize> {
-        if self.clips.len() >= MAX_CLIPS {
+        let src = self.clips.get(index)?;
+        if self.clips_of(self.view_key(index)).count() >= MAX_CLIPS
+            || self.clips.len() > usize::from(u16::MAX)
+        {
             return None;
         }
-        let src = self.clips.get(index)?;
         let copy = NamedClip {
             name: self.fresh_copy_name(&src.name),
             clip: src.clip.clone(),
@@ -105,6 +112,8 @@ impl TimelineDoc {
             expr: src.expr.clone(),
             // A trajetória viaja: uma cópia da animação percorre a mesma jornada.
             paths: src.paths.clone(),
+            // E o dono: a variação é da mesma animação.
+            owner: src.owner,
         };
         self.clips.push(copy);
         Some(self.clips.len() - 1)
@@ -157,7 +166,7 @@ impl TimelineDoc {
     /// ⛔ Warning instead would leave the artist holding a document he cannot repair by renaming
     /// (both names are equally valid), which is the shape of a refusal with extra steps.
     #[must_use]
-    fn unique_clip_name(&self, wanted: &str, except: Option<usize>) -> String {
+    pub(super) fn unique_clip_name(&self, wanted: &str, except: Option<usize>) -> String {
         let taken = |name: &str| {
             self.clips
                 .iter()
@@ -180,13 +189,16 @@ impl TimelineDoc {
 
     /// Delete clip `index`, returning `true` if it went.
     ///
-    /// **The last clip never goes** — a document must always have one to edit, and
-    /// an empty `clips` would make `active_clip()` panic on the very next frame.
+    /// **The Scene's last clip never goes** — a document must always have one to edit, and
+    /// an empty `clips` would make `active_clip()` panic on the very next frame. An OBJECT's
+    /// last clip does go: that is its Animation component leaving ([`Self::remove_animation`]).
     /// The active index follows the deletion (it shifts down with the clips above
     /// it, and clamps if it WAS the deleted one), so the caller never has to
     /// repair it.
     pub fn remove_clip(&mut self, index: usize) -> bool {
-        if self.clips.len() <= 1 || index >= self.clips.len() {
+        if index >= self.clips.len()
+            || (self.clips[index].owner.is_none() && self.clips_of(owner::SCENE).count() <= 1)
+        {
             return false;
         }
         self.clips.remove(index);

@@ -107,12 +107,17 @@ mod clip_paths;
 /// os bytes dele passam a significar outra coisa a partir dali. Recusado no load, como
 /// todo bump deste documento desde o ADR-0133.
 ///
+/// v19: **cada clip tem DONO** (`NamedClip.owner`, doc ObjectsAndComponents 01 §6): `None` = a
+/// Cena, `Some` = o objecto cujo componente Animação o contém. ⭐ O PRIMEIRO degrau que
+/// **migra** em vez de recusar: um v18 abre com todos os clips da Cena, zero perda
+/// (`doc_v18.rs`, provado contra `tests/fixtures/timeline_doc_v18.bin`).
+///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
 /// [ADR-0143]: ../../../docs/architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md
 /// [ADR-0144]: ../../../docs/architecture/decisions/0144-timeline-expressions-frozen-ir-separate-post-composition-pass.md
 /// [ADR-0151]: ../../../docs/architecture/decisions/0151-timeline-expressions-are-per-clip-so-a-strip-windows-them.md
-pub const DOC_VERSION: u32 = 18;
+pub const DOC_VERSION: u32 = 19;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -216,6 +221,9 @@ pub struct NamedClip {
     /// Apêndice posicional ⇒ `DOC_VERSION` 16 -> 17.
     #[serde(default)]
     pub paths: BTreeMap<AnimTarget, crate::path::MotionPath>,
+    /// **De quem é esta animação**: `None` = a Cena; `Some` = o objecto (o componente Animação
+    /// dele é o conjunto dos clips que o nomeiam). Apêndice ⇒ `DOC_VERSION` 18 -> 19.
+    pub owner: Option<ClipOwner>,
 }
 
 /// The editable timeline document (see module docs).
@@ -293,6 +301,7 @@ impl TimelineDoc {
                 length_override: None,
                 expr: BTreeMap::new(),
                 paths: BTreeMap::new(),
+                owner: None,
             }],
             active_clip: 0,
             bindings: Vec::new(),
@@ -382,7 +391,10 @@ impl TimelineDoc {
     /// this build does not understand. The loaded bindings have null `entity`
     /// bits — resolve them with [`crate::resolve_entities`].
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
-        let doc: TimelineDoc = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
+        let doc: TimelineDoc = match postcard::take_from_bytes::<u32>(bytes) {
+            Ok((v18::VERSION, _)) => v18::migrate(bytes)?,
+            _ => postcard::from_bytes(bytes).map_err(|e| e.to_string())?,
+        };
         if doc.version != DOC_VERSION {
             return Err(format!(
                 "timeline schema version {} != {DOC_VERSION}",
@@ -542,3 +554,13 @@ mod loops;
 /// reads the private `scratch` field. Split out under the 700-LOC cap (ADR-0152 W6).
 #[path = "doc_scratch.rs"]
 mod scratch;
+
+/// **O dono de cada clip** (v19) — o componente Animação de um objecto é o conjunto dos clips
+/// que o nomeiam. Filho, pela mesma razão do `clips`: lê os campos privados.
+#[path = "doc_owner.rs"]
+mod owner;
+pub use owner::{ClipOwner, SCENE};
+
+/// **A migração v18 → v19** — o único leitor de bytes antigos deste documento.
+#[path = "doc_v18.rs"]
+mod v18;

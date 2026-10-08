@@ -88,7 +88,8 @@ pub use autokey::{
 pub use binding::{TargetBinding, WireId};
 pub use clipboard::{ClipboardKey, TimelineClipboard};
 pub use doc::{
-    DEFAULT_DURATION_SECONDS, DEFAULT_FPS, DOC_VERSION, MAX_CLIPS, Marker, NamedClip, TimelineDoc,
+    ClipOwner, DEFAULT_DURATION_SECONDS, DEFAULT_FPS, DOC_VERSION, MAX_CLIPS, Marker, NamedClip, SCENE,
+    TimelineDoc,
 };
 pub use doc_path::AutoOrient;
 /// A porta única do `__seed`. Pública porque o gate que a vigia

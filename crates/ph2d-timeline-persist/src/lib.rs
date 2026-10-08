@@ -126,7 +126,15 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
     // física chama isto em vez de contar com outro sistema. Idempotente e sem alocação quando
     // não há nada a atribuir (`collect` de um iterador vazio não toca no heap).
     ph2d_ecs::assign_missing_stable_ids(world);
-    let any_missing = timeline.doc.bindings().iter().any(|b| b.missing);
+    // O DONO de um clip morre com o objecto — a liveness das bindings é do apply; a do dono é
+    // daqui, que é quem tem o mundo e a cura (doc_owner.rs).
+    for o in timeline.doc.clip_owners_mut() {
+        if !o.missing {
+            o.missing = !Entity::try_from_bits(o.entity).is_some_and(|e| world.get_entity(e).is_ok());
+        }
+    }
+    let any_missing = timeline.doc.bindings().iter().any(|b| b.missing)
+        || timeline.doc.clips().iter().any(|c| c.owner.is_some_and(|o| o.missing));
     // `None` no valor = chave AMBÍGUA — só possível na chave legada (o nome).
     let by_wire: std::collections::BTreeMap<u64, Option<u64>> = if any_missing {
         let mut m: std::collections::BTreeMap<u64, Option<u64>> = std::collections::BTreeMap::new();
@@ -199,7 +207,14 @@ fn purge_the_dead(
         .filter(|b| b.missing && by_wire.get(&b.wire_id.0) != Some(&None))
         .map(|b| b.target)
         .collect();
-    if dead.is_empty() {
+    // O mesmo critério para o DONO de um clip: a animação de um objecto morto sai com ele.
+    let is_dead = |o: &ph2d_timeline::ClipOwner| o.missing && by_wire.get(&o.wire_id.0) != Some(&None);
+    let dead_owner = timeline
+        .doc
+        .clips()
+        .iter()
+        .any(|c| c.owner.as_ref().is_some_and(is_dead));
+    if dead.is_empty() && !dead_owner {
         return false;
     }
     // ONE timeline-undo step for the whole purge (reset included): the recovery
@@ -207,12 +222,19 @@ fn purge_the_dead(
     // same name) + timeline Ctrl+Z (the doc returns, bindings dormant) — and
     // the heal above recolors them on the next frame.
     timeline.history.push(timeline.doc.clone());
+    let dead_bindings = dead.len();
     for target in dead {
         timeline.doc.purge_binding(target);
     }
+    timeline.doc.purge_dead_owners(is_dead);
     // Purged targets may be selected; a selection into removed tracks is stale.
     timeline.selection.clear();
-    if !timeline.doc.bindings().is_empty() {
+    // Só uma binding purgada torna a composição rançosa; a animação de um objecto que saiu sem
+    // chaves não deixa nada na Cena (doc_owner.rs).
+    if dead_bindings == 0
+        || !timeline.doc.bindings().is_empty()
+        || timeline.doc.clips().iter().any(|c| c.owner.is_some())
+    {
         return false; // other objects still animated: their work is untouchable
     }
     // ⛔⛔ **E o reset NÃO acontece enquanto um motor NOMEAR um clip** (auditoria de 2026-09-08).
@@ -372,3 +394,8 @@ mod tests;
 #[cfg(test)]
 #[path = "timeline_publish_tests.rs"]
 mod publish_tests;
+
+/// ⚠️ Irmão de [`tests`] pelo mesmo teto — o DONO de cada clip (a Animação por objecto).
+#[cfg(test)]
+#[path = "timeline_owner_tests.rs"]
+mod owner_tests;

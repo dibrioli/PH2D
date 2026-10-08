@@ -32,6 +32,13 @@ pub fn stamp_wire_ids(doc: &mut TimelineDoc, wire_of: impl Fn(u64) -> WireId) {
             b.wire_id = w;
         }
     }
+    // O dono de um clip tem a MESMA vida e a mesma guarda (doc_owner.rs).
+    for o in doc.clip_owners_mut() {
+        let w = wire_of(o.entity);
+        if !w.is_null() {
+            o.wire_id = w;
+        }
+    }
 }
 
 /// After loading, resolve each binding's live `entity` from its serialized
@@ -69,6 +76,11 @@ pub fn resolve_entities(doc: &mut TimelineDoc, entity_of: impl Fn(WireId) -> Opt
             }
         }
     }
+    for o in doc.clip_owners_mut() {
+        let e = (!o.wire_id.is_null()).then(|| entity_of(o.wire_id)).flatten();
+        o.entity = e.unwrap_or(0);
+        o.missing = e.is_none();
+    }
     resolved
 }
 
@@ -105,6 +117,19 @@ pub fn refresh_and_heal_bindings(
             b.entity = entity;
             b.missing = false;
             healed += 1;
+        }
+    }
+    for o in doc.clip_owners_mut() {
+        if !o.missing {
+            let w = wire_of(o.entity);
+            if !w.is_null() {
+                o.wire_id = w;
+            }
+        } else if !o.wire_id.is_null()
+            && let Some(entity) = entity_of(o.wire_id)
+        {
+            o.entity = entity;
+            o.missing = false;
         }
     }
     healed

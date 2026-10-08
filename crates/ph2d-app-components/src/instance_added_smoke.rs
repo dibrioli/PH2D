@@ -46,7 +46,7 @@ pub fn instance_smoke_added(cx: &mut crate::scene_ctx::SceneCtx) {
     }
     .label();
     println!(
-        "[instance smoke 6] montado: {} robos iguais, todos do componente 'Robot'",
+        "[instance smoke 6] montado: {} robos iguais, todos do prefab 'Robot'",
         copies.len()
     );
     // ⛔⛔ **A linha que aqui esteve era FALSA** (medido em 2026-09-06): uma receita **não é

@@ -149,7 +149,10 @@ pub fn added_pieces(sim: &mut SimWorld, root: Entity) -> Vec<AddedPiece> {
                 master,
                 master_name: by_id
                     .get(&master)
-                    .map_or_else(|| "component".to_string(), |&m| named(sim, m)),
+                    .map_or_else(
+                        || ph2d_i18n::tr("asset.kind.component").to_string(),
+                        |&m| named(sim, m),
+                    ),
             });
             // ⛔ **Não desce**: a sub-árvore inteira vai junto quando esta linha for aplicada.
         }

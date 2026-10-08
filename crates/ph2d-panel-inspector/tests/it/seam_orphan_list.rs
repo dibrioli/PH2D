@@ -116,7 +116,7 @@ fn the_line_names_the_piece_that_died() {
 fn the_clear_button_counts_exactly_the_lines_it_will_erase() {
     let i = info(vec![orphan("Sprite", "Arm"), orphan("Transform", "Leg")]);
     assert_eq!(i.orphans(), i.orphan_rows.len());
-    assert_eq!(i.summary(), "Follows the component \u{b7} 2 unused");
+    assert_eq!(i.summary(), "Follows the prefab \u{b7} 2 unused");
 }
 
 /// ⛔⛔⛔ **O NOME DA PEÇA é do ARTISTA, e a linha dele avança um `line` fixo.**
@@ -388,13 +388,13 @@ fn the_apply_row_names_the_piece_and_the_recipe() {
 #[test]
 fn the_summary_counts_the_pieces_added_and_removed() {
     let mut i = info(Vec::new());
-    assert_eq!(i.summary(), "Follows the component");
+    assert_eq!(i.summary(), "Follows the prefab");
     i.added_rows = vec![added("Hat", 11, "Robot")];
-    assert_eq!(i.summary(), "Follows the component \u{b7} 1 added");
+    assert_eq!(i.summary(), "Follows the prefab \u{b7} 1 added");
     i.removed_rows = vec![removed("Arm", 22), removed("Leg", 33)];
     assert_eq!(
         i.summary(),
-        "Follows the component \u{b7} 1 added \u{b7} 2 removed",
+        "Follows the prefab \u{b7} 1 added \u{b7} 2 removed",
         "o resumo nao conta as pecas acrescentadas e recusadas"
     );
 }

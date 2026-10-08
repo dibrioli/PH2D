@@ -103,7 +103,7 @@ fn announce(cx: &crate::scene_ctx::SceneCtx) {
     let h = BOX[3] - BOX[1];
     eprintln!(
         "[component] cena montada: {} formas — um botao de DUAS pecas ({w:.1}x{h:.1}) e um \
-         quadrado de controle. NENHUM componente criado.",
+         quadrado de controle. NENHUM prefab criado.",
         cx.vec_scene.paths().len()
     );
     eprintln!("[component] o roteiro (pegue a ferramenta VECTOR primeiro):");

@@ -96,7 +96,7 @@ importar-para-catálogo).
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-components && cargo run -p ph2d-host-desktop --release
 ```
-1. Faça dois ou três componentes (botão direito na linha → **Make Component**).
+1. Faça dois ou três prefabs (botão direito na linha → **Make Prefab**).
 2. Abra **Assets** na barra de cima.
 3. **O que tem de acontecer:** os seus componentes aparecem com **miniatura**, e as imagens que você
    importou aparecem ao lado.

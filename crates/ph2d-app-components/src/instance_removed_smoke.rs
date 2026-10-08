@@ -101,7 +101,7 @@ pub fn instance_smoke_removed(cx: &mut crate::scene_ctx::SceneCtx) {
     };
     let (_master, copies) = spawn_robot_scene(cx.sim, cx.registry, &mut docs);
     println!(
-        "[instance smoke 5] montado: {} robos iguais, todos do componente 'Robot'",
+        "[instance smoke 5] montado: {} robos iguais, todos do prefab 'Robot'",
         copies.len()
     );
     // ⛔⛔ **A linha que aqui esteve era FALSA** (medido em 2026-09-06): uma receita **não é

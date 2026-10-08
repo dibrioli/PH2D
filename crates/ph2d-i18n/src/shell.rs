@@ -72,7 +72,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.asset_drop_apply.texture_applied" => "Texture applied",
         "shell.asset_index_build.pieces" => "{n} pieces",
         "shell.asset_index_build.n1_piece" => "1 piece",
-        "shell.asset_index_build.component" => "Component {stable_id}",
+        "shell.asset_index_build.component" => "Prefab {stable_id}",
         "shell.envelope_live.envelope" => "Envelope",
         "shell.hero_bridge.prf" => "PRF",
         "shell.hierarchy.moved_into_a_prefab_it" => {
@@ -178,7 +178,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.fase_bus_inspector.dropped_1_unused" => "Dropped 1 unused override",
         "shell.fase_bus_inspector.put_the_piece_back_it" => {
-            "Put the piece back \u{2014} it returns as the component has it"
+            "Put the piece back \u{2014} it returns as the prefab has it"
         }
         "shell.fase_bus_inspector.cleared_unused" => "Cleared {n} unused override(s)",
         "shell.fase_hierarchy_group_merge.merge_sprites_right" => {
@@ -211,7 +211,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "That is not a copy of a prefab"
         }
         "shell.fase_recipe_and_asset_verbs.these_components_are" => {
-            "These components are not related \u{2014} switching would lose every override"
+            "These prefabs are not related \u{2014} switching would lose every override"
         }
         "shell.fase_recipe_and_asset_verbs.switched_variant" => {
             "Switched variant \u{2014} {overrides_kept} override(s) kept"
@@ -223,7 +223,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "That is not a piece of a copy"
         }
         "shell.fase_recipe_and_asset_verbs.that_piece_came_from" => {
-            "That piece came from the component \u{2014} it is already in it"
+            "That piece came from the prefab \u{2014} it is already in it"
         }
         "shell.fase_recipe_and_asset_verbs.added_piece_s_to_every" => {
             "Added {pieces} piece(s) to \u{201c}{name}\u{201d} \u{2014} every copy gets them"
@@ -282,7 +282,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Duplicated inside the prefab — it shows while the prefab is selected"
         }
         "shell.hierarchy_duplicate.duplicated_as_a_plain" => {
-            "Duplicated as a plain object — use Make Component for a second component"
+            "Duplicated as a plain object — use Make Prefab for a second prefab"
         }
         "shell.hierarchy_duplicate.duplicated_shape" => "Duplicated shape",
         "shell.hierarchy_rename.renamed_to" => "Renamed to {final_name}",
@@ -351,7 +351,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.inspector_commits_sprite.sprite_encode_failed" => "Sprite encode failed: {e}",
         "shell.inspector_commits_sprite.sprite_commit_failed" => "Sprite commit failed: {e}",
         "shell.inspector_commits_sprite.editor_queue_full" => "Editor queue full: {e}",
-        "shell.inspector_instance.component_no_longer_in" => "(component no longer in this build)",
+        "shell.inspector_instance.component_no_longer_in" => "(prefab no longer in this build)",
         "shell.inspector_strategy.strategy_commit_failed" => "Strategy commit failed: {e}",
         "shell.inspector_strategy.editor_queue_full" => "Editor queue full: {e}",
         "shell.inspector_strategy.sprite_encode_failed" => "Sprite encode failed: {e}",

@@ -518,6 +518,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.paper.relief" => "Relief",
         "panel.painter_layers.paper.roughness" => "Roughness",
         "panel.painter_layers.paper.create_drips" => "Create Drips",
+        "panel.painter_layers.paper.easy_drips" => "Easy Drips",
         "panel.painter_layers.paper.drip_size" => "Drip Size",
         "panel.painter_layers.paper.drip_length" => "Drip Length",
         "panel.painter_layers.paper.paper" => "Paper",

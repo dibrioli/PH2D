@@ -382,6 +382,12 @@ impl PainterTool {
                 self.set_gotas(g);
                 true
             }
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_DRIPS_EASY => {
+                let mut g = self.gotas();
+                g.easy = !g.easy;
+                self.set_gotas(g);
+                true
+            }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_TILT_TOGGLE => {
                 // Flips WITHOUT losing the dial's direction (the model).
                 self.paint.wetpaint.tilt_on = !self.paint.wetpaint.tilt_on;

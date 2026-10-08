@@ -67,6 +67,7 @@ struct GotasNoFio {
     create: bool,
     size: u8,
     length: u8,
+    easy: bool,
 }
 
 /// **O documento pintado como os esquemas `186`/`187` o guardavam** — com o papel e o vidro, sem as
@@ -395,6 +396,7 @@ mod tests {
             create: false,
             size: 9,
             length: 2,
+            easy: true,
         };
         assert_ne!(
             gotas,

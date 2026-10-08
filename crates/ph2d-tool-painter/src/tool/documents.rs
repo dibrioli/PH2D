@@ -405,6 +405,7 @@ mod tests {
             create: false,
             size: 9,
             length: 2,
+            easy: true,
         };
         let mut t = PainterTool::default();
         t.bind_document(1, vec![255u8; 8 * 8 * 4], 8, 8);

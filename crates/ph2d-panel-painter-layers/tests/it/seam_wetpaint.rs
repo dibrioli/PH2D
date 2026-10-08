@@ -583,6 +583,7 @@ fn as_gotas_do_papel_atravessam_o_painel_ate_ao_documento() {
     let armed = aberto(&wet);
     for id in [
         ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIPS_CREATE,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIPS_EASY,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIP_SIZE,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIP_LENGTH,
     ] {
@@ -604,11 +605,14 @@ fn as_gotas_do_papel_atravessam_o_painel_ate_ao_documento() {
     let mut st = PainterLayersPanelState;
     let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let cria = ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIPS_CREATE;
-    assert_eq!(
-        host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(cria)),
-        EventOutcome::Consumed,
-        "Create Drips morreu no painel"
-    );
+    let facil = ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIPS_EASY;
+    for id in [cria, facil] {
+        assert_eq!(
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(id)),
+            EventOutcome::Consumed,
+            "a caixa {id:?} morreu no painel"
+        );
+    }
     for id in [
         ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIP_SIZE,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIP_LENGTH,
@@ -627,12 +631,14 @@ fn as_gotas_do_papel_atravessam_o_painel_ate_ao_documento() {
             _ => None,
         })
         .collect();
-    assert!(
-        eventos
-            .iter()
-            .any(|e| matches!(e, PanelEvent::Click(i) if *i == cria)),
-        "Create Drips nunca chegou ao bus: {actions:?}"
-    );
+    for id in [cria, facil] {
+        assert!(
+            eventos
+                .iter()
+                .any(|e| matches!(e, PanelEvent::Click(i) if *i == id)),
+            "a caixa {id:?} nunca chegou ao bus: {actions:?}"
+        );
+    }
     // O tool recebe os eventos do bus (o clique) e as edições com valores reais.
     for e in eventos {
         if matches!(e, PanelEvent::Click(_)) {
@@ -653,6 +659,7 @@ fn as_gotas_do_papel_atravessam_o_painel_ate_ao_documento() {
             create: false,
             size: 9,
             length: 10,
+            easy: true,
         },
         "o papel do documento não recebeu as gotas (Length 12 grampeia em 10)"
     );

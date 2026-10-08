@@ -252,6 +252,14 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     do traço contra 40–52 % do Rebelle, e o rasto passou a ser a tinta por célula com o gate do fio pálido
     (que a `TRAIL_TINT` 0,2 sangra); e o tecto «o fio não escurece», EQUIVALENTE (sem beber,
     `pigmento / células` é constante por construção) — saiu.
+  - ✅ **Easy Drips** (pedido do dono 08/10: *«deixe as duas versões funcionando com um checkbox»*):
+    `DripPaper::easy`, a caixa na secção Paper ao lado de Create Drips. Ligada, o papel segura menos
+    (`HOLD_EASY = 0,00277`, o meio geométrico entre o traço de água 0,2 da bancada, `0,0014`, e o Wet
+    Round, `0,0055`) e absorve menos o fio (a película na mesma razão): o Wet Round de fábrica pinga
+    **255 px** na máxima (Rebelle 302), nada a meio, o Dry Brush nunca. ⚠️ O Wet Wash pinga também — ele
+    junta MAIS na orla (`0,0062`) que o Round, e nenhum limiar separa os dois (no Rebelle o Wash Round não
+    pinga). Gate `com_easy_drips_o_wet_round_de_fabrica_pinga_como_o_round_do_rebelle` (mutação «o hold
+    ignora `easy`» ✗ 0 px). Persistido no mesmo degrau 188 (o campo entra no `GotasNoFio`).
   - **Censo dos controlos**: as três rows esmaecem com a tela abaixo do ângulo mínimo (`GotasDaTela`) e
     Size/Length com Create Drips off (`FormaDaGota`); a linha «o ângulo do carimbo não muda a tinta da
     água» saiu — com a tela direita ele MUDA (a água a correr apagava a diferença).

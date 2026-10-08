@@ -300,6 +300,16 @@ fn paint_drip_rows(
         "panel.painter_layers.paper.create_drips",
         g.create,
     );
+    y = paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIPS_EASY,
+        "panel.painter_layers.paper.easy_drips",
+        g.easy,
+    );
     let sec = seccao_do_papel(ctx);
     let (min, max) = (
         f32::from(ph2d_tool_painter::DripPaper::MIN),

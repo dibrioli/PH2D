@@ -21,12 +21,14 @@ use crate::par::{self, Rows};
 use crate::sim::Params;
 
 /// As gotas do PAPEL (Rebelle *Visual Settings → Watercolor Behavior*): criar sim/não, tamanho e
-/// comprimento em `1..=10`, `5` por omissão — os do Rebelle.
+/// comprimento em `1..=10`, `5` por omissão — os do Rebelle — e o papel que segura MENOS (`easy`,
+/// pedido do dono 08/10: as duas versões, por uma caixa — ver [`HOLD_EASY`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DripPaper {
     pub create: bool,
     pub size: u8,
     pub length: u8,
+    pub easy: bool,
 }
 
 impl DripPaper {
@@ -36,6 +38,7 @@ impl DripPaper {
         create: true,
         size: 5,
         length: 5,
+        easy: false,
     };
 
     /// O mesmo papel com `size`/`length` dentro de `MIN..=MAX`.
@@ -45,6 +48,7 @@ impl DripPaper {
             create: self.create,
             size: self.size.clamp(Self::MIN, Self::MAX),
             length: self.length.clamp(Self::MIN, Self::MAX),
+            easy: self.easy,
         }
     }
 }
@@ -98,6 +102,13 @@ const SLIDE: f64 = 0.014_14;
 /// O que o papel SEGURA, em `gravidade × água` da orla: acima disto (e do [`SLIDE`]) a gota solta-se.
 /// Medido na inclinação máxima: a água 0,7 chega a `0,1405`, a 0,4 a `0,0109`; o meio geométrico.
 const HOLD: f64 = 0.039;
+/// **O papel que segura menos** (`DripPaper::easy`): no Rebelle o Round de fábrica (água 29) pinga 302 px
+/// com a tela no máximo e o nosso Wet Round (0,29) não — a bancada dele com água 40 não pinga, logo um
+/// limiar só não dá as duas respostas, e o dono quis as DUAS versões por uma caixa. Medido na máxima: o
+/// Wet Round chega a `0,0055`, o Wet Wash a `0,0062`, o traço da bancada de água 0,2 a `0,0014` e o Wet
+/// Dry Brush a `0`; o meio geométrico entre `0,0014` e `0,0055`. ⚠️ O Wash pinga também (nenhum limiar
+/// separa o Round do Wash: o Wash junta MAIS na orla). O ângulo mínimo ([`SLIDE`]) não muda.
+const HOLD_EASY: f64 = 0.002_77;
 /// Fração do excesso da orla (sobre o que o papel segura) que a gota bebe por passo.
 const FEED: f64 = 0.25;
 /// **A tinta do fio**: cada célula do rasto assenta esta fração do pigmento (assente + em suspensão) que a
@@ -289,9 +300,9 @@ fn walk_edge(
     out
 }
 
-/// O rasto total de uma gota cuja bacia chegou à pontuação `score` (`gravidade × água`).
-fn run_for(score: f64, length: u8) -> f64 {
-    RUN_5 * (f64::from(length) / 5.0).powf(RUN_LEN) * (score / HOLD).max(1.0).powf(RUN_WATER)
+/// O rasto total de uma gota cuja bacia chegou a `acima` vezes o que o papel segura.
+fn run_for(acima: f64, length: u8) -> f64 {
+    RUN_5 * (f64::from(length) / 5.0).powf(RUN_LEN) * acima.max(1.0).powf(RUN_WATER)
 }
 
 /// **Um passo das gotas** — nascer (num passo em quatro), beber da bacia, descer e assentar o rasto.
@@ -305,13 +316,13 @@ pub fn drip_pass(g: &mut Grid, p: &Params, grav: [f64; 2], paper: DripPaper, n: 
     }
     let paper = paper.clamped();
     let reach = CATCH_PER_SIZE * f64::from(paper.size);
-    let hold = HOLD / mag;
+    let hold = if paper.easy { HOLD_EASY } else { HOLD } / mag;
     if n.is_multiple_of(4) && mag >= SLIDE {
-        spawn(g, nx, ny, mag, hold, reach, paper.length);
+        spawn(g, nx, ny, hold, reach, paper.length);
     }
     let mut drips = std::mem::take(&mut g.drips);
     for d in drips.iter_mut().filter(|d| d.alive()) {
-        let bebeu = feed(g, d, nx, ny, mag, hold, reach, paper.length);
+        let bebeu = feed(g, d, nx, ny, hold, reach, paper.length);
         advance(g, p, d, nx, ny, mag, paper, bebeu);
     }
     g.drips = drips;
@@ -319,7 +330,7 @@ pub fn drip_pass(g: &mut Grid, p: &Params, grav: [f64; 2], paper: DripPaper, n: 
 
 /// As orlas que passaram o que o papel segura, pela ordem (mais água primeiro, depois o índice); cada
 /// uma fora da bacia de toda gota deste episódio vira uma gota nova.
-fn spawn(g: &mut Grid, nx: f64, ny: f64, mag: f64, hold: f64, reach: f64, length: u8) {
+fn spawn(g: &mut Grid, nx: f64, ny: f64, hold: f64, reach: f64, length: u8) {
     let s = g.s;
     let (by0, by1) = (g.by0, g.by1);
     if by0 > by1 {
@@ -368,7 +379,7 @@ fn spawn(g: &mut Grid, nx: f64, ny: f64, mag: f64, hold: f64, reach: f64, length
         let basin = walk_edge(g, (x, y), nx, ny, reach, |_| {});
         let i = x as usize + y as usize * g.s;
         let tint = TRAIL_TINT * (f64::from(g.sett[i]) + f64::from(g.susp[i]));
-        let run = run_for(mag * f, length);
+        let run = run_for(f / hold, length);
         g.drips.push(Drip {
             x: fx,
             y: fy,
@@ -388,16 +399,7 @@ fn spawn(g: &mut Grid, nx: f64, ny: f64, mag: f64, hold: f64, reach: f64, length
 
 /// A gota bebe o excesso das orlas da sua bacia (a caminhada [`walk_edge`] a partir da origem); a bacia
 /// mais forte que ela já bebeu alonga o rasto que lhe falta.
-fn feed(
-    g: &mut Grid,
-    d: &mut Drip,
-    nx: f64,
-    ny: f64,
-    mag: f64,
-    hold: f64,
-    reach: f64,
-    length: u8,
-) -> bool {
+fn feed(g: &mut Grid, d: &mut Drip, nx: f64, ny: f64, hold: f64, reach: f64, length: u8) -> bool {
     let mut bebeu = false;
     let mut orla = Vec::new();
     let o = (d.ox.round() as i32, d.oy.round() as i32);
@@ -424,7 +426,7 @@ fn feed(
         g.film[i] = (f - dw) as f32;
         g.susp[i] = (g.susp[i] as f64 - dm) as f32;
     }
-    let run = run_for(mag * best, length);
+    let run = run_for(best / hold, length);
     if run > d.run {
         d.run_left += run - d.run;
         d.run = run;
@@ -451,7 +453,13 @@ fn advance(
     let celulas: i32 = (0..d.run_left.ceil() as i32)
         .map(|k| largura(d.run_left - f64::from(k)))
         .sum();
-    if d.water < TRAIL_FILM {
+    // O papel que segura menos (`easy`) também absorve menos o fio, na mesma proporção.
+    let pelicula = if paper.easy {
+        TRAIL_FILM * HOLD_EASY / HOLD
+    } else {
+        TRAIL_FILM
+    };
+    if d.water < pelicula {
         // Ainda não bebeu o bastante para a próxima célula: a cabeça espera pela bacia.
         return;
     }
@@ -495,7 +503,7 @@ fn advance(
     let dm = por_celula * f64::from(w);
     d.run_left = (d.run_left - 1.0).max(0.0);
     settle(g, p, cx, cy, w, nx, ny, dm, d.rgb);
-    d.water -= TRAIL_FILM;
+    d.water -= pelicula;
     d.pigment -= dm;
     if d.run_left == 0.0 {
         d.water = 0.0;

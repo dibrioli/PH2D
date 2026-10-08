@@ -101,6 +101,7 @@ fn the_paper_drips_round_trip_through_the_project_file() {
         create: false,
         size: 9,
         length: 2,
+        easy: true,
     };
     let doc = ph2d_tool_painter::PaintedDocument {
         id: 2,

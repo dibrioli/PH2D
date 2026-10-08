@@ -256,6 +256,7 @@ fn papel(t: &mut PainterTool, create: bool, size: u8, length: u8) {
         create,
         size,
         length,
+        easy: false,
     });
 }
 
@@ -300,4 +301,60 @@ fn com_size_e_length_a_10_o_funil_chega_ao_fundo() {
     for c in 0..2 {
         assert!(g[c] >= 450, "água {}: {} px (≥ 450)", AGUAS[c], g[c]);
     }
+}
+
+/// Um traço do pincel de FÁBRICA `nome` (Size px 40), na tela inclinada `anel`, com as gotas `easy` ou
+/// não: a gota mais longa abaixo dele, depois de 30 s.
+fn traco_de_fabrica(nome: &str, anel: u8, easy: bool) -> u32 {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let b = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
+    let e = b
+        .entradas
+        .iter()
+        .find(|e| e.preset.parametros.name == nome)
+        .expect("o pincel de fábrica");
+    let mut t = tela();
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    inclina(&mut t, Some(anel));
+    t.set_gotas(ph2d_wet_paint::drips::DripPaper {
+        easy,
+        ..ph2d_wet_paint::drips::DripPaper::DEFAULT
+    });
+    assert!(t.wet_preset_aplicar(&e.preset).is_empty());
+    t.wet_preset_aplicar_volumes(&Volumes {
+        size_px: Some(40.0),
+        ..Volumes::default()
+    });
+    t.set_brush_color_srgb8([23, 101, 179]);
+    t.on_canvas_pointer(ponto(60.0, PointerPhase::Down));
+    for k in 1..=50 {
+        t.on_canvas_pointer(ponto(60.0 + 3.0 * k as f32, PointerPhase::Move));
+        t.on_tick(8.0);
+    }
+    t.on_canvas_pointer(ponto(210.0, PointerPhase::Up));
+    for _ in 0..30 * 60 {
+        t.on_tick(1000.0 / 60.0);
+    }
+    let px = t.run_full().0;
+    gota_mais_longa(&px, 0)
+}
+
+/// **As duas versões do papel** (pedido do dono 08/10): com «Easy Drips» o Wet Round de fábrica pinga na
+/// tela no máximo como o Round do Rebelle (302 px); sem a caixa, não (a lei da bancada). A meio, nada
+/// pinga nas duas; o Dry Brush nunca. Mutação que sangra: o `hold` do motor a ignorar `easy`.
+#[test]
+fn com_easy_drips_o_wet_round_de_fabrica_pinga_como_o_round_do_rebelle() {
+    let sem = traco_de_fabrica("Wet Round", 8, false);
+    let com = traco_de_fabrica("Wet Round", 8, true);
+    let meio = traco_de_fabrica("Wet Round", 4, true);
+    let seco = traco_de_fabrica("Wet Dry Brush", 8, true);
+    println!("[gotas] Wet Round: sem a caixa {sem} · com {com} · a meio {meio} · Dry Brush {seco}");
+    assert_eq!(sem, 0, "sem Easy Drips o Wet Round não pinga");
+    assert!(
+        com >= 250,
+        "com Easy Drips o Wet Round pinga {com} px (Rebelle 302)"
+    );
+    assert_eq!(meio, 0, "a meia inclinação nada pinga, nem com Easy Drips");
+    assert_eq!(seco, 0, "o Dry Brush não tem água para pingar");
 }

@@ -75,7 +75,7 @@ pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.
-pub const PAINTER_WETPAINT_CLICKS: [NodeId; 20] = [
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 21] = [
     PAINTER_WETPAINT_RESET,
     PAINTER_WETPAINT_TOOL_IDS[0],
     PAINTER_WETPAINT_TOOL_IDS[1],
@@ -92,6 +92,7 @@ pub const PAINTER_WETPAINT_CLICKS: [NodeId; 20] = [
     PAINTER_WETPAINT_PAPER_VISUAL,
     PAINTER_WETPAINT_TUNING,
     PAINTER_WETPAINT_DRIPS_CREATE,
+    PAINTER_WETPAINT_DRIPS_EASY,
     super::PAINTER_WETPAINT_PRESET_BUTTONS[0],
     super::PAINTER_WETPAINT_PRESET_BUTTONS[1],
     super::PAINTER_WETPAINT_PRESET_BUTTONS[2],
@@ -147,6 +148,10 @@ pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_
 /// gravity is the CANVAS's (the tilt dial), never the brush's.
 pub const PAINTER_WETPAINT_DRIPS_CREATE: NodeId =
     hash_node_id("painter_paper.wetpaint_drips_create");
+
+/// **Easy Drips** (W1b, pedido do dono 08/10) — o papel que segura MENOS: os pincéis de pouca água (o
+/// Wet Round e o Wet Wash de fábrica) também pingam com a tela no máximo, como o Round do Rebelle.
+pub const PAINTER_WETPAINT_DRIPS_EASY: NodeId = hash_node_id("painter_paper.wetpaint_drips_easy");
 
 /// **Drip Size** (W1b) — the paper's drip width and catchment, `1..=10` (default `5`).
 pub const PAINTER_WETPAINT_DRIP_SIZE: NodeId = hash_node_id("painter_paper.wetpaint_drip_size");

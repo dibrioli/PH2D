@@ -220,6 +220,7 @@ fn measure_drip_pass_cost() {
             create: true,
             size: 10,
             length: 10,
+            easy: false,
         }));
         let mut sem = monta(None);
         // [lado] → tempos por passo: (estágio final, advect, passo inteiro)

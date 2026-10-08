@@ -76,10 +76,12 @@ impl Dependente {
             Dependente::ToothDoDigital => &[ids::PAINTER_WATERCOLOR_PAPER_DEPTH],
             Dependente::GotasDaTela => &[
                 ids::PAINTER_WETPAINT_DRIPS_CREATE,
+                ids::PAINTER_WETPAINT_DRIPS_EASY,
                 ids::PAINTER_WETPAINT_DRIP_SIZE,
                 ids::PAINTER_WETPAINT_DRIP_LENGTH,
             ],
             Dependente::FormaDaGota => &[
+                ids::PAINTER_WETPAINT_DRIPS_EASY,
                 ids::PAINTER_WETPAINT_DRIP_SIZE,
                 ids::PAINTER_WETPAINT_DRIP_LENGTH,
             ],

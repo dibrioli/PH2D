@@ -296,6 +296,7 @@ pub(crate) const PAPER: &[&str] = &[
     "panel.painter_layers.paper.relief",
     "panel.painter_layers.paper.roughness",
     "panel.painter_layers.paper.create_drips",
+    "panel.painter_layers.paper.easy_drips",
     "panel.painter_layers.paper.drip_size",
     "panel.painter_layers.paper.drip_length",
 ];

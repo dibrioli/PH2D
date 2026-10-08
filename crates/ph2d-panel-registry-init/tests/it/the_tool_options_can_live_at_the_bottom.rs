@@ -170,3 +170,40 @@ fn at_the_top_the_same_menus_open_below() {
         );
     }
 }
+
+/// ⭐ **O flyout de grupo do Painter (Formas) sobe com a fila embaixo** — ele é posto à mão por baixo
+/// do chip (sem o encaixe ao ecrã que os menus têm), então sem a lei dele cairia fora da área.
+/// O CONTROLO: com a fila em cima, desce.
+#[test]
+fn the_painter_flyout_climbs_when_the_row_is_at_the_bottom() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    for bottom in [true, false] {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.image_edit.mode_on = true;
+        hero.image_edit.active_tool_id = Some("painter");
+        hero.store.set_tool_row_bottom(bottom);
+        hero.store.set_painter_shapes_flyout_open(true);
+        let mut scene = ph2d_vector::VectorScene::new();
+        let vp = Rect::new(0.0, 0.0, 1930.0, 1040.0);
+        paint_hero_screen(&mut hero, vp, &mut scene, &mut ts);
+        let mut scene = ph2d_vector::VectorScene::new();
+        paint_hero_screen(&mut hero, vp, &mut scene, &mut ts);
+        let bar = hero.last_layout.expect("layout").tool_bar;
+        let chip = hero
+            .hit_index
+            .rect_for(ids::PAINTER_RAIL_SHAPE_FREEHAND)
+            .expect("o flyout das formas não foi pintado");
+        if bottom {
+            assert!(
+                chip.y + chip.h <= bar.y + 0.5,
+                "embaixo, o flyout desceu: {chip:?} × {bar:?}"
+            );
+        } else {
+            assert!(
+                chip.y >= bar.y + bar.h - 0.5,
+                "em cima, o flyout subiu: {chip:?} × {bar:?}"
+            );
+        }
+    }
+}

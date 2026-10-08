@@ -92,9 +92,9 @@ tiveram o vermelho-primeiro sobre a árvore de partida (o disco velho, as tabela
 - **Bug #15** — o colisor no laço de um corpo mole não segura a distância mínima (pior par não vizinho
   `0,21` contra `0,56`); nunca segurou. A cura é um desenho do `motion.collide` (ignorar pares ligados
   por restrição) — fora do âmbito; o gate mede a lei que vale (a extensão, `+20 %`).
-- **Decisão do dono**: o `motion.soft_body` aceita lado `512` (`262 144` pontos num nó), acima do tecto de
-  `32 768` por nó que o dono fixou em 08/10. O tutorial 09 cita-o (`2,26 ms`), e é verdade hoje.
-  Recomendação técnica: o lado dele passar a `LADO_MAX_DE_GRELHA` (`181`) como os distribuidores.
+- ✅ **Decidido pelo dono em 08/10**: o `motion.soft_body` passa a respeitar o tecto de `32 768` (hoje vai
+  a lado `512`, `262 144` pontos), e o Bug #15 cura-se pelo padrão-ouro — os dois vão ao ciclo 15:
+  [prompt](HANDOFF_CONTINUACAO_line_motion_value_2026-10-08_CICLO_15.md).
 
 ## §8 — Smoke e binário
 

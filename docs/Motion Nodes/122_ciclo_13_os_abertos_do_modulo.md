@@ -69,7 +69,10 @@ fundido ou não. O preço é a fase por linha quantizada a `≤ 0,4 %`. Um `cons
 **Gates:** `parity_pulse_beat` corre os `91` tiques (era `6`); `parity_pulse_beat_on_the_tick` (período
 `0,05`, empate a cada três); a paridade do nascimento por pulso (`gpu_stream_ops_disparo`) deixa de
 SALTAR tiques (eram `4` de `91`) e exige o mesmo pulso em todos. **Mutação:** a lei `f32` antiga no WGSL
-sangra nas duas fixturas (volta `1`, linha `52`; volta `3`, linha `0` — o empate redondo).
+sangra nas duas fixturas (volta `1`, linha `52`; volta `3`, linha `0` — o empate redondo). ⚠️ **A
+quantização do `sc` SOBREVIVE à mutação** (sem ela os gates continuam verdes): nesta placa o produto
+não fundido cai do mesmo lado. A imunidade a FMA é uma lei de construção SEM régua nesta máquina —
+nomeada, não provada.
 
 ## §3 — O preparo da placa: as ligações GUARDADAS entre quadros
 

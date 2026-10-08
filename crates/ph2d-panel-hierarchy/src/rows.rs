@@ -58,7 +58,14 @@ pub(crate) fn expand(
     let anything_selected = entries.values().any(|e| e.selected);
     order.push(HIER_SCENE_ROW);
     out.insert(HIER_SCENE_ROW, scene_row(!anything_selected));
-    push_content(&mut order, &mut out, HIER_SCENE_ROW, 0, !anything_selected, &scene_content);
+    push_content(
+        &mut order,
+        &mut out,
+        HIER_SCENE_ROW,
+        0,
+        !anything_selected,
+        &scene_content,
+    );
     for &id in ordered {
         let Some(mut owner) = entries.remove(&id) else {
             continue;
@@ -92,7 +99,10 @@ fn push_content(
                 ph2d_i18n::tr_with(group.label_key, &[("n", &group.items.len())]),
                 group.icon,
                 base.saturating_add(1),
-                RowRole::ContentGroup { owner: id, group: g },
+                RowRole::ContentGroup {
+                    owner: id,
+                    group: g,
+                },
                 false,
             ),
         );

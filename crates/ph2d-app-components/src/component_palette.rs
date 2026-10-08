@@ -254,7 +254,13 @@ pub(crate) fn offer_animation(model: &mut PaletteModel) {
     if let Some(g) = model.groups.iter_mut().find(|g| g.title == title) {
         match g.subs.first_mut() {
             Some(s) if s.title.is_none() => s.items.insert(0, item),
-            _ => g.subs.insert(0, PaletteSub { title: None, items: vec![item] }),
+            _ => g.subs.insert(
+                0,
+                PaletteSub {
+                    title: None,
+                    items: vec![item],
+                },
+            ),
         }
         return;
     }
@@ -270,7 +276,10 @@ pub(crate) fn offer_animation(model: &mut PaletteModel) {
         PaletteGroup {
             title: title.to_string(),
             color: cat_token(C::Animation),
-            subs: vec![PaletteSub { title: None, items: vec![item] }],
+            subs: vec![PaletteSub {
+                title: None,
+                items: vec![item],
+            }],
         },
     );
 }

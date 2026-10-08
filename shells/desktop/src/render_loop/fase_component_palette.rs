@@ -57,8 +57,10 @@ impl crate::App {
         );
         // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e por isso o alvo vive no
         // `AppGfx` em vez de num local deste laço.
-        let animation_for =
-            ph2d_app_components::component_attach::take_animation_pick(hero, component_palette_target);
+        let animation_for = ph2d_app_components::component_attach::take_animation_pick(
+            hero,
+            component_palette_target,
+        );
         let picked =
             ph2d_app_components::component_attach::route_pick(hero, component_palette_target);
         ph2d_app_components::component_attach::attach_picked(

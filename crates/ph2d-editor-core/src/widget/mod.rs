@@ -108,7 +108,7 @@ pub use dropdown::{
     DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, DropdownState, chip_border_color,
     dropdown_chevron_size, dropdown_chip_width_for, dropdown_feel, dropdown_label_budget,
     opaque as resolve_opaque, paint_dropdown, paint_dropdown_chip, paint_dropdown_popover,
-    paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
+    paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled, popover_width_for,
 };
 pub use segmented_layout::{segment_rects_for, wrapped_cells_for};
 // ⭐ A MESMA conta que o grupo adaptativo faz, para a porta da escolha medir sem pintar

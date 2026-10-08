@@ -145,11 +145,13 @@ impl crate::App {
                 }
             }
             // ⭐ Um clip na Hierarquia (doc 01 §6): a Timeline mostra a animação do dono, nele.
-            EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::OpenContentInPanel {
-                owner,
-                panel: ph2d_editor_core::screens::hero::PANEL_TIMELINE,
-                key,
-            }) => {
+            EditorAction::Hierarchy(
+                ph2d_editor_core::action_bus::HierRequest::OpenContentInPanel {
+                    owner,
+                    panel: ph2d_editor_core::screens::hero::PANEL_TIMELINE,
+                    key,
+                },
+            ) => {
                 let live = self.gfx.as_ref().and_then(|g| g.hero_live.as_ref());
                 let bits = if owner == ph2d_panel_hierarchy::ids::HIER_SCENE_ROW {
                     Some(ph2d_timeline::SCENE)
@@ -160,7 +162,8 @@ impl crate::App {
                     use ph2d_timeline::{AnimationIntent, TimelineIntent};
                     self.timeline_intents
                         .push(TimelineIntent::Animation(AnimationIntent::Show(bits)));
-                    self.timeline_intents.push(TimelineIntent::SetActiveClip { index });
+                    self.timeline_intents
+                        .push(TimelineIntent::SetActiveClip { index });
                 }
             }
             other => return Some(other),

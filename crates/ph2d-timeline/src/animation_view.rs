@@ -64,7 +64,12 @@ pub fn owner_for(state: &TimelineState, selected: Option<u64>, ancestors: &[u64]
 
 /// **O passo de cada quadro** (antes dos pedidos do painel): a vista segue a selecção, salvo o ▾
 /// fixado sobre ESTA selecção.
-pub fn follow(state: &mut TimelineState, playhead: &mut Playhead, selected: Option<u64>, ancestors: &[u64]) {
+pub fn follow(
+    state: &mut TimelineState,
+    playhead: &mut Playhead,
+    selected: Option<u64>,
+    ancestors: &[u64],
+) {
     let sel = selected.unwrap_or(SCENE);
     state.view.selected = sel;
     let wanted = match state.view.pin {
@@ -79,7 +84,11 @@ pub fn follow(state: &mut TimelineState, playhead: &mut Playhead, selected: Opti
 
 /// Põe `owner` em vista; o clip activo passa a ser um dele (o primeiro), se ainda não for.
 fn show(state: &mut TimelineState, playhead: &mut Playhead, owner: u64) {
-    let owner = if owner == SCENE || state.doc.has_animation(owner) { owner } else { SCENE };
+    let owner = if owner == SCENE || state.doc.has_animation(owner) {
+        owner
+    } else {
+        SCENE
+    };
     state.view.owner = owner;
     if state.doc.clip_belongs_to(state.doc.active_index(), owner) {
         return;
@@ -125,6 +134,26 @@ pub(crate) fn apply(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             show(state, playhead, SCENE);
         }
     }
+}
+
+/// **A linha da binding `target` é desta animação?** Sim se algum clip dela tem a track — ou se
+/// NENHUM clip a tem (uma binding nova, à espera da 1.ª chave, aparece em qualquer vista). O dope
+/// sheet do Herói não lista o que só a Cena anima, e vice-versa.
+pub(crate) fn row_belongs(
+    doc: &crate::TimelineDoc,
+    owner: u64,
+    target: ph2d_anim::AnimTarget,
+) -> bool {
+    let mut keyed_somewhere = false;
+    for (i, c) in doc.clips().iter().enumerate() {
+        if c.clip.track(target).is_some() {
+            if doc.clip_belongs_to(i, owner) {
+                return true;
+            }
+            keyed_somewhere = true;
+        }
+    }
+    !keyed_somewhere
 }
 
 /// A lista do seletor: os clips da animação em vista, com o índice do documento de cada um.

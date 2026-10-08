@@ -141,7 +141,9 @@ fn component_click(
     // O cartão de um componente que se edita num PAINEL é o painel (a Animação → a Timeline, que
     // segue a selecção); o Inspector fica para os que têm cartão.
     if let Some(panel) = entry.content.iter().find_map(|g| match g.opens {
-        ContentOpens::Panel(p) if category == ph2d_component_desc::ComponentCategory::Animation => Some(p),
+        ContentOpens::Panel(p) if category == ph2d_component_desc::ComponentCategory::Animation => {
+            Some(p)
+        }
         _ => None,
     }) {
         host.set_panel_visible(panel, true);

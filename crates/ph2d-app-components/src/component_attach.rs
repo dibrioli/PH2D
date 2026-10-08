@@ -148,8 +148,13 @@ pub fn refresh_palette_on_toggle(
         return;
     };
     let show_all = hero.store.command_palette_toggle_on();
-    hero.store
-        .set_command_palette_model(model_for(sim, registry, bits, show_all, !has_animation(bits)));
+    hero.store.set_command_palette_model(model_for(
+        sim,
+        registry,
+        bits,
+        show_all,
+        !has_animation(bits),
+    ));
 }
 
 /// **Drena o pick da paleta** e devolve `(entidade, nome canónico)`.

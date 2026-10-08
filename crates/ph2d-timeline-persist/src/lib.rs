@@ -133,11 +133,16 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
     // daqui, que é quem tem o mundo e a cura (doc_owner.rs).
     for o in timeline.doc.clip_owners_mut() {
         if !o.missing {
-            o.missing = !Entity::try_from_bits(o.entity).is_some_and(|e| world.get_entity(e).is_ok());
+            o.missing =
+                !Entity::try_from_bits(o.entity).is_some_and(|e| world.get_entity(e).is_ok());
         }
     }
     let any_missing = timeline.doc.bindings().iter().any(|b| b.missing)
-        || timeline.doc.clips().iter().any(|c| c.owner.is_some_and(|o| o.missing));
+        || timeline
+            .doc
+            .clips()
+            .iter()
+            .any(|c| c.owner.is_some_and(|o| o.missing));
     // `None` no valor = chave AMBÍGUA — só possível na chave legada (o nome).
     let by_wire: std::collections::BTreeMap<u64, Option<u64>> = if any_missing {
         let mut m: std::collections::BTreeMap<u64, Option<u64>> = std::collections::BTreeMap::new();
@@ -211,7 +216,8 @@ fn purge_the_dead(
         .map(|b| b.target)
         .collect();
     // O mesmo critério para o DONO de um clip: a animação de um objecto morto sai com ele.
-    let is_dead = |o: &ph2d_timeline::ClipOwner| o.missing && by_wire.get(&o.wire_id.0) != Some(&None);
+    let is_dead =
+        |o: &ph2d_timeline::ClipOwner| o.missing && by_wire.get(&o.wire_id.0) != Some(&None);
     let dead_owner = timeline
         .doc
         .clips()

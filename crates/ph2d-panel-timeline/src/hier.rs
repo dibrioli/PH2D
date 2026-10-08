@@ -47,6 +47,11 @@ pub fn declare_in_row(
     let Some(group) = clips_content(timeline, bits) else {
         return;
     };
-    *components = row_categories(components.iter().copied().chain([ComponentCategory::Animation]));
+    *components = row_categories(
+        components
+            .iter()
+            .copied()
+            .chain([ComponentCategory::Animation]),
+    );
     content.push(group);
 }

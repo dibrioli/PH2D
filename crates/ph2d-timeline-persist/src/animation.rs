@@ -26,7 +26,12 @@ fn ancestors(world: &World, bits: u64) -> Vec<u64> {
 }
 
 /// **O passo de cada quadro, antes dos pedidos do painel:** a Timeline segue a selecção.
-pub fn follow_selection(timeline: &mut TimelineState, playhead: &mut Playhead, world: &World, selected: Option<u64>) {
+pub fn follow_selection(
+    timeline: &mut TimelineState,
+    playhead: &mut Playhead,
+    world: &World,
+    selected: Option<u64>,
+) {
     let chain = selected.map(|s| ancestors(world, s)).unwrap_or_default();
     ph2d_timeline::animation_view::follow(timeline, playhead, selected, &chain);
 }
@@ -41,7 +46,11 @@ fn name_of(world: &World, bits: u64) -> String {
 /// **Enche o cabeçalho** depois do `rebuild`: o dono em vista, as escolhas do ▾ (a Cena, os
 /// ancestrais com Animação de fora para dentro, o seleccionado se tiver uma) e a oferta de
 /// criar a Animação no seleccionado que não a tem.
-pub fn publish_animation_header(view: &mut TimelineViewSnapshot, timeline: &TimelineState, world: &World) {
+pub fn publish_animation_header(
+    view: &mut TimelineViewSnapshot,
+    timeline: &TimelineState,
+    world: &World,
+) {
     let header = &mut view.animation;
     header.owner = timeline.view.owner;
     header.choices.clear();

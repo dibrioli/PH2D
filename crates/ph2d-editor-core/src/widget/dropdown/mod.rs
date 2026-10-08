@@ -82,6 +82,20 @@ fn option_icon_split(row: Rect, has_icon: bool) -> (Rect, Rect) {
     )
 }
 
+/// **A largura de uma lista em que cabe um rótulo de `text_w`** — o inverso do
+/// [`option_icon_split`]: o recuo do painel dos dois lados, o glifo, e a folga de
+/// [`Spacing::Lg`] de cada lado para o nome centrado não encostar. Para um chip mais estreito que
+/// o que a lista diz (o «Add animation to …» da Timeline).
+#[must_use]
+pub fn popover_width_for(text_w: f32, has_icon: bool) -> f32 {
+    let glyph = if has_icon {
+        POPOVER_PANEL_PAD_X + Spacing::Xs.px() + TypeToken::Base.px()
+    } else {
+        0.0
+    };
+    (POPOVER_PANEL_PAD_X * 2.0 + glyph + text_w + Spacing::Lg.px() * 2.0).ceil()
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum DropdownState {
     #[default]

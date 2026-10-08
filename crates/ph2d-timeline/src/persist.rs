@@ -77,7 +77,9 @@ pub fn resolve_entities(doc: &mut TimelineDoc, entity_of: impl Fn(WireId) -> Opt
         }
     }
     for o in doc.clip_owners_mut() {
-        let e = (!o.wire_id.is_null()).then(|| entity_of(o.wire_id)).flatten();
+        let e = (!o.wire_id.is_null())
+            .then(|| entity_of(o.wire_id))
+            .flatten();
         o.entity = e.unwrap_or(0);
         o.missing = e.is_none();
     }

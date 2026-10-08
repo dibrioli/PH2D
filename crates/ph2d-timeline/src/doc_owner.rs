@@ -103,7 +103,11 @@ impl TimelineDoc {
         let doomed: Vec<usize> = (0..self.clips.len())
             .filter(|&i| self.clips[i].owner.as_ref().is_some_and(&dead))
             .collect();
-        doomed.iter().rev().filter(|&&i| self.remove_clip(i)).count()
+        doomed
+            .iter()
+            .rev()
+            .filter(|&&i| self.remove_clip(i))
+            .count()
     }
 
     /// **A cópia de um objecto leva a animação dele** (escolha do dono, 08/10: cópia PRÓPRIA):
@@ -111,20 +115,34 @@ impl TimelineDoc {
     /// (`remap` responde os bits novos) passa a animar o novo, por uma binding nova com os
     /// mesmos ajustes. Track de objecto de fora da cópia continua no alvo original. Devolve
     /// quantos clips se copiaram.
-    pub fn copy_animation(&mut self, from: u64, to: u64, remap: impl Fn(u64) -> Option<u64>) -> usize {
+    pub fn copy_animation(
+        &mut self,
+        from: u64,
+        to: u64,
+        remap: impl Fn(u64) -> Option<u64>,
+    ) -> usize {
         let src: Vec<usize> = self.clips_of(from).collect();
         let mut alvo: BTreeMap<AnimTarget, AnimTarget> = BTreeMap::new();
         let mut copied = 0;
         for i in src {
-            let Some(j) = self.duplicate_clip(i) else { break };
+            let Some(j) = self.duplicate_clip(i) else {
+                break;
+            };
             self.clips[j].name = self.unique_clip_name(&self.clips[i].name.clone(), Some(j));
             self.clips[j].owner = Some(ClipOwner::live(to));
-            let targets: Vec<AnimTarget> = self.clips[j].clip.tracks().iter().map(|(t, _)| *t).collect();
+            let targets: Vec<AnimTarget> = self.clips[j]
+                .clip
+                .tracks()
+                .iter()
+                .map(|(t, _)| *t)
+                .collect();
             for t in targets {
                 let novo = match alvo.get(&t) {
                     Some(n) => *n,
                     None => {
-                        let Some(n) = self.rebind_for_copy(t, &remap) else { continue };
+                        let Some(n) = self.rebind_for_copy(t, &remap) else {
+                            continue;
+                        };
                         alvo.insert(t, n);
                         n
                     }
@@ -148,7 +166,11 @@ impl TimelineDoc {
 
     /// Uma binding nova, igual à de `target`, sobre o objecto que `remap` dá — `None` quando o
     /// objecto da binding não está na cópia.
-    fn rebind_for_copy(&mut self, target: AnimTarget, remap: &impl Fn(u64) -> Option<u64>) -> Option<AnimTarget> {
+    fn rebind_for_copy(
+        &mut self,
+        target: AnimTarget,
+        remap: &impl Fn(u64) -> Option<u64>,
+    ) -> Option<AnimTarget> {
         let b = self.binding(target)?;
         let entity = remap(b.entity)?;
         let mut nova = b.clone();

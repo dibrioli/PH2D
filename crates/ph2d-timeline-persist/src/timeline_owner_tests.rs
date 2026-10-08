@@ -28,8 +28,15 @@ fn a_animacao_de_um_objecto_atravessa_o_ficheiro_e_reencontra_o_dono() {
     let mut loaded = install_from_project(&bytes).unwrap();
     assert!(!loaded.doc.has_animation(h2), "chega destacado");
     assert!(!upkeep(&mut loaded, sim2.world_mut()), "curar não é reset");
-    assert!(loaded.doc.clip_belongs_to(andar, h2), "o clip reencontra o Herói desta sessão");
-    assert_eq!(loaded.doc.clips_of(SCENE).count(), 1, "a Cena continua com a dela");
+    assert!(
+        loaded.doc.clip_belongs_to(andar, h2),
+        "o clip reencontra o Herói desta sessão"
+    );
+    assert_eq!(
+        loaded.doc.clips_of(SCENE).count(),
+        1,
+        "a Cena continua com a dela"
+    );
 }
 
 #[test]
@@ -43,8 +50,15 @@ fn apagar_o_objecto_leva_a_animacao_dele_e_o_undo_da_timeline_a_devolve() {
     let id = *sim.world().get::<StableId>(e).unwrap();
 
     sim.world_mut().despawn(e);
-    assert!(!upkeep(&mut timeline, sim.world_mut()), "sem chaves, a Cena não reinicia");
-    assert_eq!(timeline.doc.clips().len(), 1, "a animação saiu com o objecto");
+    assert!(
+        !upkeep(&mut timeline, sim.world_mut()),
+        "sem chaves, a Cena não reinicia"
+    );
+    assert_eq!(
+        timeline.doc.clips().len(),
+        1,
+        "a animação saiu com o objecto"
+    );
     assert!(timeline.history.can_undo(), "num passo do undo da timeline");
 
     // O caminho de volta é o das tracks: Ctrl+Z global (o objecto volta, o MESMO `StableId`,
@@ -58,7 +72,10 @@ fn apagar_o_objecto_leva_a_animacao_dele_e_o_undo_da_timeline_a_devolve() {
         .to_bits();
     assert_ne!(volta, h);
     assert!(!upkeep(&mut timeline, sim.world_mut()));
-    assert!(timeline.doc.has_animation(volta), "a animação voltou com o objecto");
+    assert!(
+        timeline.doc.has_animation(volta),
+        "a animação voltou com o objecto"
+    );
 }
 
 #[test]
@@ -72,11 +89,23 @@ fn duplicar_da_a_copia_clips_proprios_num_passo_do_undo() {
     let n = copy_animations(&mut timeline, &[(heroi, copia), (braco, braco2)]);
     assert_eq!(n, 2, "o Herói e o braço — cada um a sua");
     assert!(timeline.doc.has_animation(copia) && timeline.doc.has_animation(braco2));
-    assert_eq!(timeline.doc.clips_of(heroi).count(), 1, "o original fica como estava");
+    assert_eq!(
+        timeline.doc.clips_of(heroi).count(),
+        1,
+        "o original fica como estava"
+    );
 
     let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
     apply_intent(&mut timeline, &mut ph, I::Undo);
-    assert_eq!(timeline.doc.clips().len(), antes, "um Ctrl+Z da timeline desfaz a cópia inteira");
+    assert_eq!(
+        timeline.doc.clips().len(),
+        antes,
+        "um Ctrl+Z da timeline desfaz a cópia inteira"
+    );
 
-    assert_eq!(copy_animations(&mut timeline, &[(99, 100)]), 0, "sem Animação, nada");
+    assert_eq!(
+        copy_animations(&mut timeline, &[(99, 100)]),
+        0,
+        "sem Animação, nada"
+    );
 }

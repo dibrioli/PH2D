@@ -617,7 +617,7 @@ impl TimelineViewSnapshot {
         let clip = doc.active_clip();
         let mut rows = 0;
         for b in doc.bindings() {
-            if b.missing {
+            if b.missing || !crate::animation_view::row_belongs(doc, state.view.owner, b.target) {
                 continue;
             }
             if self.tracks.len() == rows {

@@ -9,7 +9,9 @@
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, PanelHostInternal};
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip, paint_dropdown_popover};
+use ph2d_editor_core::widget::{
+    Dropdown, DropdownOption, paint_dropdown_chip, paint_dropdown_popover,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{AnimationIntent, SCENE, TimelineIntent, TimelineViewSnapshot};
 use ph2d_tokens::{ROW_H_PX, Theme};
@@ -18,7 +20,7 @@ use crate::ids;
 use crate::state;
 use crate::transport::ClipChip;
 
-const ANIM_DD_W: f32 = 156.0; // LITERAL-PX-OK: animation-owner chip width
+const ANIM_DD_W: f32 = 200.0; // LITERAL-PX-OK: fits «Animation: Scene» (measured in the smoke photo); longer names elide, the list shows them whole
 
 /// Quanto o chip ocupa na barra.
 pub(crate) fn width(_snap: &TimelineViewSnapshot) -> f32 {
@@ -45,16 +47,25 @@ fn rows(snap: &TimelineViewSnapshot) -> Vec<(String, IconId, AnimationIntent)> {
         .choices
         .iter()
         .map(|(bits, name)| {
-            let label = ph2d_i18n::tr_with("panel.timeline.animation_of", &[("name", &who(*bits, name))]);
+            let label = ph2d_i18n::tr_with(
+                "panel.timeline.animation_of",
+                &[("name", &who(*bits, name))],
+            );
             (label, IconId::Film, AnimationIntent::Show(*bits))
         })
         .collect();
     if let Some((bits, name)) = &h.offer {
-        let label = ph2d_i18n::tr_with("panel.timeline.animation_add", &[("name", &who(*bits, name))]);
+        let label = ph2d_i18n::tr_with(
+            "panel.timeline.animation_add",
+            &[("name", &who(*bits, name))],
+        );
         out.push((label, IconId::Plus, AnimationIntent::Add(*bits)));
     }
     if let Some((bits, name)) = h.choices.iter().find(|(b, _)| *b == h.owner && *b != SCENE) {
-        let label = ph2d_i18n::tr_with("panel.timeline.animation_remove", &[("name", &who(*bits, name))]);
+        let label = ph2d_i18n::tr_with(
+            "panel.timeline.animation_remove",
+            &[("name", &who(*bits, name))],
+        );
         out.push((label, IconId::Trash, AnimationIntent::Remove(*bits)));
     }
     out
@@ -89,15 +100,29 @@ fn dropdown(snap: &TimelineViewSnapshot, open: bool) -> Dropdown<usize> {
 }
 
 /// O chip, na barra.
-pub(crate) fn chip(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32, snap: &TimelineViewSnapshot) -> Option<ClipChip> {
+pub(crate) fn chip(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    x: f32,
+    y: f32,
+    snap: &TimelineViewSnapshot,
+) -> Option<ClipChip> {
     let rect = Rect::new(x, y, ANIM_DD_W, ROW_H_PX);
-    ctx.host.hit_index_mut().register(ids::TIMELINE_ANIM_DD, rect);
+    ctx.host
+        .hit_index_mut()
+        .register(ids::TIMELINE_ANIM_DD, rect);
     let open = matches!(
         ctx.host.store().get(ids::TIMELINE_ANIM_DD),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
     let visual = ctx.host.store().dropdown_visual(ids::TIMELINE_ANIM_DD);
-    paint_dropdown_chip(&dropdown(snap, open).visual(visual), rect, ctx.scene, ctx.text_system, theme);
+    paint_dropdown_chip(
+        &dropdown(snap, open).visual(visual),
+        rect,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
     Some(ClipChip {
         id: ids::TIMELINE_ANIM_DD,
         rect,
@@ -107,11 +132,32 @@ pub(crate) fn chip(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32, snap: &Time
 
 /// A lista aberta — no passo adiado, por cima do dope sheet. Regista cada opção (o rect só se
 /// conhece aqui) e publica o popover para o clique de fora o fechar.
-pub(crate) fn paint_popover(ctx: &mut PaintCtx, theme: Theme, snap: &TimelineViewSnapshot, chip: Rect) {
+pub(crate) fn paint_popover(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    snap: &TimelineViewSnapshot,
+    chip: Rect,
+) {
     let dd = dropdown(snap, true);
+    // A lista diz mais que o chip («Add animation to Inimigo»): ela toma a largura do rótulo
+    // mais largo, e o mesmo rect ancora a pintura, os cliques e o fecho por fora.
+    let text_w = ph2d_editor_core::paint::label_column_width(
+        ctx.text_system,
+        ph2d_tokens::TypeToken::Base.px(),
+        dd.options.iter().map(|o| o.label.as_str()),
+    );
+    let chip = Rect::new(
+        chip.x,
+        chip.y,
+        chip.w
+            .max(ph2d_editor_core::widget::popover_width_for(text_w, true)),
+        chip.h,
+    );
     paint_dropdown_popover(&dd, chip, ctx.scene, ctx.text_system, theme);
     for (i, opt) in dd.options.iter().enumerate() {
-        ctx.host.hit_index_mut().register(opt.id, dd.option_rect(chip, i));
+        ctx.host
+            .hit_index_mut()
+            .register(opt.id, dd.option_rect(chip, i));
     }
     ctx.host
         .store_mut()
@@ -140,7 +186,9 @@ pub(crate) fn apply_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
         state::push_intent(TimelineIntent::Animation(a));
     }
     if let Some(InteractiveState::Dropdown {
-        open, selected_index, ..
+        open,
+        selected_index,
+        ..
     }) = host.store_mut().get_mut(ids::TIMELINE_ANIM_DD)
     {
         *open = false;

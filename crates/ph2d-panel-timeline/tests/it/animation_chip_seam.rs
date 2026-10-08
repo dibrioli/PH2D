@@ -28,7 +28,11 @@ fn documento() -> TimelineState {
 }
 
 /// O que a shell publica: o `rebuild` e o cabeçalho (cujos nomes viriam do mundo).
-fn publica(st: &mut TimelineState, choices: &[(u64, &str)], offer: Option<(u64, &str)>) -> TimelineViewSnapshot {
+fn publica(
+    st: &mut TimelineState,
+    choices: &[(u64, &str)],
+    offer: Option<(u64, &str)>,
+) -> TimelineViewSnapshot {
     let mut snap = TimelineViewSnapshot::default();
     snap.rebuild(st, &playhead(), false);
     snap.animation.owner = st.view.owner;
@@ -39,7 +43,11 @@ fn publica(st: &mut TimelineState, choices: &[(u64, &str)], offer: Option<(u64, 
 }
 
 /// Pinta, acha `id` e clica no meio dele; devolve os pedidos que chegaram ao documento.
-fn clica(host: &mut MockPanelHost, state: &mut TimelinePanelState, id: ph2d_editor_core::NodeId) -> Vec<TimelineIntent> {
+fn clica(
+    host: &mut MockPanelHost,
+    state: &mut TimelinePanelState,
+    id: ph2d_editor_core::NodeId,
+) -> Vec<TimelineIntent> {
     let regs = host.paint::<TimelinePanel>(state, VIEWPORT);
     let r = regs
         .iter()
@@ -59,13 +67,23 @@ fn o_chip_segue_o_heroi_e_o_menu_volta_a_cena() {
     let mut ph = playhead();
     animation_view::follow(&mut st, &mut ph, Some(HEROI), &[]);
     let snap = publica(&mut st, &[(SCENE, ""), (HEROI, "Herói")], None);
-    assert_eq!(snap.clips, ["andar", "pular"], "o seletor mostra só a animação do Herói");
+    assert_eq!(
+        snap.clips,
+        ["andar", "pular"],
+        "o seletor mostra só a animação do Herói"
+    );
 
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut panel = TimelinePanelState::default();
-    assert!(clica(&mut host, &mut panel, ids::TIMELINE_ANIM_DD).is_empty(), "abrir não é editar");
+    assert!(
+        clica(&mut host, &mut panel, ids::TIMELINE_ANIM_DD).is_empty(),
+        "abrir não é editar"
+    );
     let pedidos = clica(&mut host, &mut panel, ids::TIMELINE_ANIM_OPT[0]);
-    assert_eq!(pedidos, [TimelineIntent::Animation(AnimationIntent::Show(SCENE))]);
+    assert_eq!(
+        pedidos,
+        [TimelineIntent::Animation(AnimationIntent::Show(SCENE))]
+    );
 
     for p in pedidos {
         apply_intent(&mut st, &mut ph, p);
@@ -91,7 +109,12 @@ fn escolher_um_clip_da_lista_fala_no_indice_do_documento() {
     let mut panel = TimelinePanelState::default();
     clica(&mut host, &mut panel, ids::TIMELINE_CLIP_DD);
     let pedidos = clica(&mut host, &mut panel, ids::TIMELINE_CLIP_OPT[1]);
-    let pular = st.doc.clips().iter().position(|c| c.name == "pular").unwrap();
+    let pular = st
+        .doc
+        .clips()
+        .iter()
+        .position(|c| c.name == "pular")
+        .unwrap();
     assert_eq!(pedidos, [TimelineIntent::SetActiveClip { index: pular }]);
 }
 
@@ -101,19 +124,32 @@ fn a_oferta_da_animacao_a_espada_e_as_chaves_vao_para_ela() {
     let mut st = documento();
     let mut ph = playhead();
     animation_view::follow(&mut st, &mut ph, Some(ESPADA), &[HEROI]);
-    assert_eq!(st.view.owner, HEROI, "a Espada sem Animação mostra a do pai");
-    publica(&mut st, &[(SCENE, ""), (HEROI, "Herói")], Some((ESPADA, "Espada")));
+    assert_eq!(
+        st.view.owner, HEROI,
+        "a Espada sem Animação mostra a do pai"
+    );
+    publica(
+        &mut st,
+        &[(SCENE, ""), (HEROI, "Herói")],
+        Some((ESPADA, "Espada")),
+    );
 
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut panel = TimelinePanelState::default();
     clica(&mut host, &mut panel, ids::TIMELINE_ANIM_DD);
     let pedidos = clica(&mut host, &mut panel, ids::TIMELINE_ANIM_OPT[2]);
-    assert_eq!(pedidos, [TimelineIntent::Animation(AnimationIntent::Add(ESPADA))]);
+    assert_eq!(
+        pedidos,
+        [TimelineIntent::Animation(AnimationIntent::Add(ESPADA))]
+    );
     for p in pedidos {
         apply_intent(&mut st, &mut ph, p);
     }
     assert!(st.doc.has_animation(ESPADA));
-    assert!(st.doc.clip_belongs_to(st.doc.active_index(), ESPADA), "o clip activo é o novo");
+    assert!(
+        st.doc.clip_belongs_to(st.doc.active_index(), ESPADA),
+        "o clip activo é o novo"
+    );
 
     // A escolha 1 do dono: a chave vai para a animação do cabeçalho.
     apply_intent(
@@ -127,7 +163,11 @@ fn a_oferta_da_animacao_a_espada_e_as_chaves_vao_para_ela() {
             interp: ph2d_anim::Interp::Linear,
         },
     );
-    let alvo = st.doc.binding_for(ESPADA, ph2d_timeline::PropKind::Rotation).unwrap().target;
+    let alvo = st
+        .doc
+        .binding_for(ESPADA, ph2d_timeline::PropKind::Rotation)
+        .unwrap()
+        .target;
     let com_a_chave: Vec<usize> = (0..st.doc.clips().len())
         .filter(|&i| st.doc.clips()[i].clip.track(alvo).is_some())
         .collect();
@@ -147,12 +187,18 @@ fn o_menu_tira_a_animacao_do_dono_em_vista() {
     let mut panel = TimelinePanelState::default();
     clica(&mut host, &mut panel, ids::TIMELINE_ANIM_DD);
     let pedidos = clica(&mut host, &mut panel, ids::TIMELINE_ANIM_OPT[2]);
-    assert_eq!(pedidos, [TimelineIntent::Animation(AnimationIntent::Remove(HEROI))]);
+    assert_eq!(
+        pedidos,
+        [TimelineIntent::Animation(AnimationIntent::Remove(HEROI))]
+    );
     for p in pedidos {
         apply_intent(&mut st, &mut ph, p);
     }
     assert!(!st.doc.has_animation(HEROI));
     assert_eq!(st.view.owner, SCENE, "a vista volta à Cena");
     apply_intent(&mut st, &mut ph, TimelineIntent::Undo);
-    assert!(st.doc.has_animation(HEROI), "e o Ctrl+Z da timeline devolve-a");
+    assert!(
+        st.doc.has_animation(HEROI),
+        "e o Ctrl+Z da timeline devolve-a"
+    );
 }

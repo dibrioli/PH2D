@@ -65,7 +65,10 @@ fn click(host: &mut MockPanelHost, state: &mut HierarchyState, id: NodeId) {
         .copied()
         .unwrap_or_else(|| panic!("{id:?} não foi pintado"));
     let events = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
-    assert!(events.contains(&WidgetEvent::Click(id)), "{id:?}: {events:?}");
+    assert!(
+        events.contains(&WidgetEvent::Click(id)),
+        "{id:?}: {events:?}"
+    );
     for ev in events {
         host.apply_panel_event::<HierarchyPanel>(state, ev);
     }
@@ -100,15 +103,23 @@ fn a_cena_mostra_a_animacao_dela_e_o_clip_nao_mexe_na_seleccao() {
     let (mut host, mut state) = host();
     let head = hier_content_row(HIER_SCENE_ROW, 0, None);
     click(&mut host, &mut state, head);
-    click(&mut host, &mut state, hier_content_row(HIER_SCENE_ROW, 0, Some(0)));
+    click(
+        &mut host,
+        &mut state,
+        hier_content_row(HIER_SCENE_ROW, 0, Some(0)),
+    );
     let actions = host.drained_actions();
-    assert!(actions.contains(&EditorAction::Hierarchy(HierRequest::OpenContentInPanel {
-        owner: HIER_SCENE_ROW,
-        panel: PANEL_TIMELINE,
-        key: 0,
-    })));
     assert!(
-        !actions.iter().any(|a| matches!(a, EditorAction::Hierarchy(HierRequest::SelectRow { .. }))),
+        actions.contains(&EditorAction::Hierarchy(HierRequest::OpenContentInPanel {
+            owner: HIER_SCENE_ROW,
+            panel: PANEL_TIMELINE,
+            key: 0,
+        }))
+    );
+    assert!(
+        !actions
+            .iter()
+            .any(|a| matches!(a, EditorAction::Hierarchy(HierRequest::SelectRow { .. }))),
         "a Cena não é linha de objecto: {actions:?}"
     );
 }
@@ -116,8 +127,15 @@ fn a_cena_mostra_a_animacao_dela_e_o_clip_nao_mexe_na_seleccao() {
 #[test]
 fn o_icone_da_animacao_de_um_objecto_leva_a_timeline() {
     let (mut host, mut state) = host();
-    click(&mut host, &mut state, hier_component_icon(HEROI, ComponentCategory::Animation));
-    assert!(host.panel_visible(PANEL_TIMELINE), "o 🎞 do Herói não abriu a Timeline");
+    click(
+        &mut host,
+        &mut state,
+        hier_component_icon(HEROI, ComponentCategory::Animation),
+    );
+    assert!(
+        host.panel_visible(PANEL_TIMELINE),
+        "o 🎞 do Herói não abriu a Timeline"
+    );
     assert!(
         host.store().inspector_reveal().is_none(),
         "o cartão da Animação é a Timeline, não um cartão do Inspector"

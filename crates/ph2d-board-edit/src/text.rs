@@ -249,6 +249,16 @@ impl Editor {
         if let Some(s) = el.shape_mut() {
             s.text = e.edit.rich().clone();
         }
+        if el.mind().is_some() {
+            // Um nó de mapa cresce de LADO com o texto (M15) e o mapa abre espaço ao vivo.
+            let fitted = crate::mindmap::refit(ts, &el);
+            let tw = text_rect(kind, fitted.w, fitted.h)[2];
+            e.edit.set_width(ts, tw as f32);
+            let id = fitted.id;
+            live(doc, fitted);
+            crate::mindmap::settle_live(doc, id);
+            return;
+        }
         let block_h = f64::from(e.edit.layout(ts).height());
         let floor = kind.note_aspect().map_or(e.original.h, |a| el.w * a);
         el.h = height_for_text(kind, floor, block_h);

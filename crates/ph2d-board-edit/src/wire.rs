@@ -352,6 +352,10 @@ impl Editor {
             },
             _ => return Vec::new(),
         };
+        // Um nó de mapa mental tem o «+» do mapa (W6), não os pontos azuis.
+        if el.mind().is_some() {
+            return Vec::new();
+        }
         let f = Frame::of(el);
         [[0.0, -1.0], [1.0, 0.0], [0.0, 1.0], [-1.0, 0.0]]
             .into_iter()

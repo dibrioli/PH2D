@@ -201,6 +201,9 @@ impl Editor {
             self.link_click(doc, history, target);
             return Down::Taken;
         }
+        if self.mind_pointer_down(doc, history, ts, p) {
+            return Down::Taken;
+        }
         match self.tool {
             Tool::Hand => return Down::Pan,
             Tool::Shape(_) | Tool::Frame => {
@@ -222,7 +225,7 @@ impl Editor {
                 self.gesture = Some(self.begin_connect(doc, p, None, None));
                 return Down::Taken;
             }
-            Tool::Select | Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser => {}
+            Tool::Select | Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::MindMap => {}
         }
         if let Some((shape, dir)) = self.dot_at(doc, p) {
             self.gesture = Some(self.begin_connect(doc, p, Some(shape), Some(dir)));
@@ -465,7 +468,8 @@ impl Editor {
                 }
                 guides.clear();
                 targets.follow(doc, p.world);
-                if let Some(tol) = snap {
+                let laid = self.mind_drag_move(doc, originals, copies, p.world);
+                if let Some(tol) = snap.filter(|_| !laid) {
                     let (s, g2) = targets.snap_moving(d, tol, free);
                     d = [d[0] + s[0], d[1] + s[1]];
                     *guides = g2;
@@ -594,6 +598,9 @@ impl Editor {
                         self.selection = self.pick(doc, id);
                     }
                     return;
+                }
+                if let Some(l) = self.mind_lead_of(doc, &originals, &copies) {
+                    return self.mind_drop(doc, history, l, &originals, &copies, p);
                 }
                 // A casa decide-a o PONTEIRO ao largar (oráculo A4/A5).
                 let moved: BTreeSet<ElementId> = if copies.is_empty() {

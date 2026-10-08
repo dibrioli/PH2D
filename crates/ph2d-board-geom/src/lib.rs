@@ -216,6 +216,14 @@ pub fn height_for_text(t: ShapeType, h: f64, text_h: f64) -> f64 {
     h.max(need)
 }
 
+/// A largura que a forma precisa para uma linha de largura `text_w` caber na caixa do texto dela sem
+/// quebrar (W6: um nó de mapa mental cresce de lado com o texto).
+#[must_use]
+pub fn width_for_text(t: ShapeType, text_w: f64) -> f64 {
+    let [fx0, _, fx1, _] = text_frame(t);
+    (text_w + 2.0 * TEXT_PADDING) / (fx1 - fx0)
+}
+
 /// Onde começa o bloco de texto (local): a caixa do texto, com o bloco centrado na vertical quando
 /// cabe (quando não cabe, a forma cresce — [`height_for_text`] — e o topo encosta).
 #[must_use]

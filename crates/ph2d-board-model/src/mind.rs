@@ -463,6 +463,53 @@ pub fn settle(doc: &mut BoardDoc, roots: &BTreeSet<ElementId>) -> Vec<BoardOp> {
     inverse
 }
 
+/// A altura do selo de um ramo recolhido, em letras do mapa (M10: o número escondido, numa caixa da
+/// cor do ramo do lado de fora do nó — nos GIFs do help do Miro, da altura de uma linha).
+pub const MIND_BADGE_H: f64 = 1.25;
+/// O vão entre o nó e o selo, e entre o nó e o «+», em letras do mapa.
+pub const MIND_BADGE_GAP: f64 = 0.5;
+
+/// O lado de FORA de `id` no seu mapa: `(nível, sinal)` — o eixo dos níveis (`true` = vertical) e
+/// para onde o ramo cresce (`+1` depois, `-1` antes). A raiz cresce para os dois.
+#[must_use]
+pub fn outward(doc: &BoardDoc, id: ElementId) -> (bool, f64) {
+    let vertical = doc
+        .mind_root(id)
+        .and_then(|r| doc.node(r))
+        .is_some_and(|(_, m)| m.vertical);
+    let sign = match doc.mind_side(id) {
+        Side::After => 1.0,
+        Side::Before => -1.0,
+    };
+    (vertical, sign)
+}
+
+/// ⭐ **O selo de um nó recolhido** `[x, y, w, h]` (mundo): do lado de fora, centrado na faixa, da
+/// altura de [`MIND_BADGE_H`] letras e largo para `digits` algarismos — a MESMA conta para o desenho
+/// e para o clique que expande.
+#[must_use]
+pub fn badge_rect(doc: &BoardDoc, id: ElementId, digits: usize) -> Option<[f64; 4]> {
+    let el = doc.get(id)?;
+    let font = el.style().font_size;
+    let h = MIND_BADGE_H * font;
+    let w = h.max(font * (0.4 + 0.6 * digits as f64));
+    let gap = MIND_BADGE_GAP * font;
+    let (vertical, sign) = outward(doc, id);
+    let [cx, cy] = el.center();
+    Some(match (vertical, sign > 0.0) {
+        (false, true) => [el.x + el.w + gap, cy - h / 2.0, w, h],
+        (false, false) => [el.x - gap - w, cy - h / 2.0, w, h],
+        (true, true) => [cx - w / 2.0, el.y + el.h + gap, w, h],
+        (true, false) => [cx - w / 2.0, el.y - gap - h, w, h],
+    })
+}
+
+/// Quantos descendentes de `id` o recolher esconde.
+#[must_use]
+pub fn hidden_count(doc: &BoardDoc, id: ElementId) -> usize {
+    doc.mind_descendants(id).len()
+}
+
 /// As raízes dos mapas a que `id` pertence AGORA (a dele e a dos filhos, se ficaram órfãos).
 pub(crate) fn roots_of(doc: &BoardDoc, id: ElementId, into: &mut BTreeSet<ElementId>) {
     if let Some(r) = doc.mind_root(id) {

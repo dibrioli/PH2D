@@ -3,6 +3,7 @@
 
 use super::*;
 use ph2d_board_model::{ElementId, Rgba};
+use ph2d_text::TextSystem;
 
 const PX: f64 = 1.0;
 const VIEW: [f64; 4] = [-10_000.0, -10_000.0, 10_000.0, 10_000.0];

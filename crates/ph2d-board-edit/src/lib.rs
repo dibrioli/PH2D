@@ -15,6 +15,7 @@ mod gesture_end;
 mod guides;
 mod ink;
 mod links_tags;
+mod mindmap;
 mod notes;
 mod notes_layout;
 mod organize;
@@ -31,9 +32,9 @@ use ph2d_board_model::{
     BoardDoc, BoardOp, Element, ElementId, Head, History, Route, Shape, ShapeType, Style,
 };
 use ph2d_board_route::RouteCache;
-use ph2d_text::TextSystem;
 
 pub use frame_box::Frame;
+pub use mindmap::{digits, node_size};
 pub use gesture::Down;
 pub use ink::{LASER_LIFE, PEN_WIDTHS, PenBox, PenPreset, point_segment, world_points};
 pub use notes::{
@@ -87,6 +88,8 @@ pub enum Tool {
     Laser,
     /// O frame (W5, tecla `F` do Miro): arrastar desenha um; um clique põe um do tamanho de nascença.
     Frame,
+    /// O mapa mental (W6): um clique põe a raiz de um mapa novo, já a escrever.
+    MindMap,
 }
 
 /// Modificadores no instante do evento.
@@ -217,6 +220,15 @@ pub enum Command {
     Link,
     Align(Align),
     Distribute(Axis),
+    /// Mapa mental (W6): `Tab` = o filho · `Enter` a escrever = o irmão logo depois · as setas andam
+    /// pela árvore (`(dx, dy)` unitário) · `Ctrl+/` recolhe ou expande · o auto layout do nó · a
+    /// direcção do mapa.
+    MindChild,
+    MindSibling,
+    MindNav([f64; 2]),
+    MindCollapse,
+    MindAuto,
+    MindVertical,
 }
 
 /// Uma tecla dentro do texto em edição.
@@ -282,6 +294,8 @@ pub struct Editor {
     notice: Option<Notice>,
     /// O nome de nascença do frame `n` (1, 2, …) — a vista dá-o já traduzido.
     pub frame_name: fn(usize) -> String,
+    /// O nó onde o arrasto de um nó de mapa o largaria como filho (o realce, W6).
+    mind_drop: Option<ElementId>,
 }
 
 impl Editor {
@@ -313,6 +327,7 @@ impl Editor {
             linking: false,
             notice: None,
             frame_name: |n| n.to_string(),
+            mind_drop: None,
         }
     }
 

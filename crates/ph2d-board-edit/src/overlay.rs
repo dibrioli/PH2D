@@ -37,6 +37,10 @@ pub struct Overlay {
     pub laser: Vec<([f64; 2], f64)>,
     /// O centro do anel da borracha (mundo) — o raio é `Metrics::eraser` px de ecrã.
     pub eraser: Option<[f64; 2]>,
+    /// Os «+» do nó de mapa seleccionado (W6): o meio do lado de fora e a direcção, como os `dots`.
+    pub mind_plus: Vec<([f64; 2], [f64; 2])>,
+    /// A caixa `[x, y, w, h]` do nó onde o arrasto largaria o nó de mapa como filho (o realce).
+    pub mind_drop: Option<[f64; 4]>,
 }
 
 /// Quanto a pega de arrumar em grelha se afasta (px de ecrã, nos dois eixos) do canto superior
@@ -129,6 +133,17 @@ impl Editor {
             eraser: matches!(self.tool, Tool::Eraser { .. })
                 .then_some(self.cursor)
                 .flatten(),
+            mind_plus: if self.gesture.is_some() {
+                Vec::new()
+            } else {
+                self.mind_plus(doc).into_iter().map(|(a, d, _)| (a, d)).collect()
+            },
+            mind_drop: self
+                .gesture
+                .as_ref()
+                .and(self.mind_drop)
+                .and_then(|id| doc.get(id))
+                .map(|e| [e.x, e.y, e.w, e.h]),
         }
     }
 

@@ -86,7 +86,9 @@ impl Editor {
                     .collect();
                 let mut ops = self.release_ends(doc, &gone);
                 ops.extend(gone.iter().map(|id| BoardOp::Delete(*id)));
-                self.selection.clear();
+                // M9: apagar um nó de mapa passa a selecção ao pai.
+                let parent = self.mind_focus(doc).and_then(|n| doc.mind_parent(n));
+                self.selection = parent.into_iter().collect();
                 let any = !gone.is_empty();
                 history.apply(doc, ops);
                 any
@@ -131,7 +133,13 @@ impl Editor {
             | Command::Order(_)
             | Command::Align(_)
             | Command::Distribute(_)
-            | Command::Link => self.organize(doc, history, c),
+            | Command::Link
+            | Command::MindNav(_)
+            | Command::MindCollapse
+            | Command::MindAuto
+            | Command::MindVertical => self.organize(doc, history, c),
+            Command::MindChild => self.mind_child(doc, history, ts, None),
+            Command::MindSibling => self.mind_sibling(doc, history, ts),
             Command::Paste => {
                 self.pastes += 1;
                 let src = self.clipboard.clone();
@@ -212,6 +220,9 @@ impl Editor {
             })
             .collect::<Vec<_>>();
         history.record(ops.iter().rev().map(|el| BoardOp::Delete(el.id)).collect());
+        for el in &ops {
+            crate::mindmap::settle_live(doc, el.id);
+        }
         self.selection = ids;
         true
     }
@@ -228,6 +239,10 @@ impl Editor {
             Command::Order(o) => self.reorder(doc, history, o),
             Command::Align(a) => self.align(doc, history, a),
             Command::Distribute(ax) => self.distribute(doc, history, ax),
+            Command::MindNav(d) => self.mind_nav(doc, d),
+            Command::MindCollapse => self.mind_collapse(doc, history, None),
+            Command::MindAuto => self.mind_toggle(doc, history, false),
+            Command::MindVertical => self.mind_toggle(doc, history, true),
             Command::Link => self.link_command(doc, history),
             _ => false,
         }
@@ -260,6 +275,12 @@ pub(crate) fn remap_organize(
         }
         if let Some(l) = el.link().and_then(|l| map.get(&l)) {
             el.set_link(Some(*l));
+        }
+        // Um nó copiado com o pai fica debaixo da cópia dele; sem o pai, é irmão do original (W6).
+        if let Some(m) = el.mind_mut()
+            && let Some(p) = m.parent.and_then(|p| map.get(&p))
+        {
+            m.parent = Some(*p);
         }
         for g in el.groups_mut() {
             *g = *groups.entry(*g).or_insert_with(|| doc.mint_group());

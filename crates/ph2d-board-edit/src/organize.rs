@@ -483,6 +483,10 @@ pub(crate) fn with_descendants(doc: &BoardDoc, ids: &[ElementId]) -> BTreeSet<El
         if doc.get(*id).is_some_and(|e| e.as_frame().is_some()) {
             out.extend(doc.descendants(*id));
         }
+        // Um nó de mapa mental leva o ramo dele (W6, M9/M12): apagar, mover, copiar.
+        if doc.get(*id).is_some_and(|e| e.mind().is_some()) {
+            out.extend(doc.mind_descendants(*id));
+        }
     }
     out
 }

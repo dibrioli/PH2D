@@ -142,3 +142,24 @@ pub(super) fn decode_texture_ramp_alpha_option(id: NodeId) -> Option<u8> {
     (0..RampAlphaMode::COUNT)
         .find(|&m| ph2d_tool_painter::ids::painter_brush_texture_ramp_alpha_option_id(m) == id)
 }
+
+/// Decode a Wet Painter **policy** popover option id → its index in `Politica::TODAS`.
+pub(super) fn decode_wet_policy_option(id: NodeId) -> Option<u8> {
+    (0..ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_POLICY_COUNT)
+        .find(|&i| ph2d_tool_painter::ids::painter_wetpaint_policy_option_id(i) == id)
+}
+
+fn decode_wet_quick(vol: usize, id: NodeId) -> Option<u8> {
+    (0..ph2d_tool_painter::ids::vol_quick_values(vol).len() as u8)
+        .find(|&i| ph2d_tool_painter::ids::painter_wetpaint_vol_quick_option_id(vol, i) == id)
+}
+
+/// Decode a **Size px** quick-value option id → its index in `VOL_QUICK_SIZE_PX`.
+pub(super) fn decode_wet_quick_size_option(id: NodeId) -> Option<u8> {
+    decode_wet_quick(0, id)
+}
+
+/// Decode a **Water** quick-value option id → its index in `VOL_QUICK_UNIT`.
+pub(super) fn decode_wet_quick_water_option(id: NodeId) -> Option<u8> {
+    decode_wet_quick(1, id)
+}

@@ -148,7 +148,9 @@ impl std::fmt::Display for Erro {
             Erro::NaoEPng => write!(f, "não é um PNG"),
             Erro::ChunkCorrompido(c) => write!(f, "chunk {c} corrompido"),
             Erro::SemParametros => write!(f, "PNG sem os parâmetros do pincel (ph2d-brush)"),
-            Erro::SchemaFuturo(s) => write!(f, "schema {s} é de uma versão mais nova (esta lê {SCHEMA})"),
+            Erro::SchemaFuturo(s) => {
+                write!(f, "schema {s} é de uma versão mais nova (esta lê {SCHEMA})")
+            }
             Erro::Json(e) => write!(f, "parâmetros ilegíveis: {e}"),
             Erro::MiniaturaIlegivel(e) => write!(f, "miniatura ilegível: {e}"),
             Erro::Disco(e) => write!(f, "disco: {e}"),

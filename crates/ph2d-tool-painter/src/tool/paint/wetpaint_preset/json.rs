@@ -6,7 +6,8 @@
 
 use ph2d_painter_brush::{
     BrushBlend, BrushSpec, Falloff, FalloffCurve, FalloffPoint, FootprintCurve, HandleType,
-    JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, TextureKind, TextureMapping, TextureSettings,
+    JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, TextureKind, TextureMapping,
+    TextureSettings,
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;

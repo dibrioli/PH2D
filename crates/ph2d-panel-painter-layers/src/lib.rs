@@ -90,6 +90,7 @@ mod paint_watercolor;
 mod paint_watercolor_flow;
 mod paint_watercolor_paper;
 mod paint_wetpaint;
+mod paint_wetpaint_presets; // W1: o navegador de presets do Wet Painter + os volumes vivos
 mod paint_wetpaint_tilt; // doc 22: the TILT dial (polar pad) of the Wet Paint section
 mod plano_corpo; // quais secções do corpo se arrastam, quais ficam, e o cabeçalho de cada
 mod populate;
@@ -105,6 +106,7 @@ pub mod seccoes;
 pub mod state;
 mod state_dropdowns;
 mod state_ramp;
+mod state_wet_presets; // W1: a vista dos presets que a ponte publica
 pub mod stroke_method_offer; // the Method dropdown's narrowing law — pure, gate-tested from `tests/`
 
 pub use state::{
@@ -115,6 +117,7 @@ pub use state::{
     set_current_layers, set_current_mask_grayscale_view, set_current_selection,
     set_selected_falloff_point,
 };
+pub use state_wet_presets::{VistaPreset, VistaPresets, set_current_wet_presets};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

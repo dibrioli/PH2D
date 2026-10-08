@@ -83,7 +83,14 @@ pub(crate) fn paint_brush_body(
     // Basic) — and "Sync with other tools" under it. Off (default) = this tool keeps its own
     // settings; on = all paint tools share them (the panel where it's checked seeds the others).
     plano.bloco(move |ctx, theme, y| {
-        let y = paint_preset_row(ctx, theme, x, content_w, y, brush);
+        // No Wet Paint a fileira «Preset» é o navegador do Wet Painter (W1) + os volumes vivos.
+        let y = if brush.wetpaint {
+            crate::paint_wetpaint_presets::paint_wetpaint_presets(
+                ctx, theme, x, content_w, y, brush,
+            )
+        } else {
+            paint_preset_row(ctx, theme, x, content_w, y, brush)
+        };
         crate::paint_brush_top::paint_checkbox_row(
             ctx,
             theme,
@@ -173,17 +180,21 @@ fn paint_top_basics(
     }
 
     // 3. Size + 4. Strength — canonical slider + editable numeric chip (Widget-Gallery look).
-    y = paint_slider_chip_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        tr("panel.painter_layers.brush.size"),
-        ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_CHIP,
-        brush.size_norm,
-    );
+    //    ⚠️ No Wet Paint o Size é o volume «Size px» do topo (o DIÂMETRO do anel, W1): um segundo
+    //    controlo do mesmo raio, em escala normalizada, seriam duas portas para uma pergunta.
+    if !brush.wetpaint {
+        y = paint_slider_chip_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            tr("panel.painter_layers.brush.size"),
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_CHIP,
+            brush.size_norm,
+        );
+    }
     // Strength — the single opacity slider. Hidden when the Composite Brush is on: its per-layer
     // Strength sliders (in the card below) replace it. Also hidden in Inpaint (the heal has no opacity).
     //
@@ -306,6 +317,7 @@ fn paint_top_basics(
 /// dropdown is never clipped to the scrolling viewport. The chip rects were stashed during
 /// [`paint_brush_body`] (already at their scrolled positions).
 pub(crate) fn paint_brush_popovers(ctx: &mut PaintCtx, theme: ph2d_tokens::Theme) {
+    crate::paint_wetpaint_presets::paint_wetpaint_presets_popovers(ctx, theme);
     if let Some((chip_rect, cur)) = state::take_pending_brush_preset_dd() {
         paint_dropdown_popover(
             ctx,

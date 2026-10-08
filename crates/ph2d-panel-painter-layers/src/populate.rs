@@ -538,7 +538,11 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_MODE,
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_INTERP,
         ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
-    ] {
+    ]
+    .into_iter()
+    // O bloco de presets do Wet Painter (W1): Preset · política · os valores rápidos dos volumes.
+    .chain(ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_DROPDOWNS)
+    {
         store.register(
             id,
             InteractiveState::Dropdown {

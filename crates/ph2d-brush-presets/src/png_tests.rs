@@ -17,7 +17,11 @@ fn filtrar(img: &[u8], w: usize, h: usize, bpp: usize, filtro: u8) -> Vec<u8> {
         out.push(filtro);
         for i in 0..linha {
             let x = img[y * linha + i];
-            let a = if i >= bpp { img[y * linha + i - bpp] } else { 0 };
+            let a = if i >= bpp {
+                img[y * linha + i - bpp]
+            } else {
+                0
+            };
             let b = if y > 0 { img[(y - 1) * linha + i] } else { 0 };
             let c = if y > 0 && i >= bpp {
                 img[(y - 1) * linha + i - bpp]

@@ -27,6 +27,9 @@ ph2d-render = { path = "../ph2d-render" }
 # O MOTOR de pintura. Os `arm_brush_once` dos roteadores recebem um `&mut PainterTool` —
 # eles preparam a cena, nunca escolhem o meio (gate `no_painter_smoke_forces_a_medium`).
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }
+# Os presets do Wet Painter em ficheiro (W1): a ponte `painter_bridge_presets.rs` é a dona do disco.
+# Opcional com o painel: sem o painel não há quem peça um preset.
+ph2d-brush-presets = { path = "../ph2d-brush-presets", optional = true }
 # `Affine` — a lei da tolerância de agarrar uma alça mede a escala do afim.
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
@@ -62,7 +65,7 @@ rfd = "0.17"
 ph2d-panel-painter-layers = { path = "../ph2d-panel-painter-layers", optional = true }
 
 [features]
-panel-painter-layers = ["dep:ph2d-panel-painter-layers"]
+panel-painter-layers = ["dep:ph2d-panel-painter-layers", "dep:ph2d-brush-presets"]
 
 [dev-dependencies]
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).

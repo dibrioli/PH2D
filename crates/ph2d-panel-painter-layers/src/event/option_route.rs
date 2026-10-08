@@ -10,7 +10,8 @@ use super::decode::{
     decode_shape_follow_option, decode_shape_kind_option, decode_shape_ramp_alpha_option,
     decode_shape_ramp_interp_option, decode_shape_ramp_mode_option, decode_stroke_method_option,
     decode_texture_kind_option, decode_texture_mapping_option, decode_texture_ramp_alpha_option,
-    decode_texture_ramp_interp_option, decode_texture_ramp_mode_option,
+    decode_texture_ramp_interp_option, decode_texture_ramp_mode_option, decode_wet_policy_option,
+    decode_wet_quick_size_option, decode_wet_quick_water_option,
 };
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids as core_ids;
@@ -27,7 +28,7 @@ pub(super) fn route_brush_dropdown_option(
     host: &mut dyn PanelHostInternal,
     id: ph2d_a11y::NodeId,
 ) -> Option<bool> {
-    let routes: [OptionRoute; 20] = [
+    let routes: [OptionRoute; 23] = [
         (
             decode_brush_preset_option,
             ph2d_tool_painter::ids::PAINTER_BRUSH_PRESET,
@@ -107,6 +108,18 @@ pub(super) fn route_brush_dropdown_option(
         (
             decode_shape_ramp_alpha_option,
             ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_ALPHA_MODE,
+        ),
+        (
+            decode_wet_policy_option,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_PRESET_POLICY,
+        ),
+        (
+            decode_wet_quick_size_option,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_VOL_QUICK[0],
+        ),
+        (
+            decode_wet_quick_water_option,
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_VOL_QUICK[1],
         ),
     ];
     routes.iter().find_map(|&(decode, target)| {

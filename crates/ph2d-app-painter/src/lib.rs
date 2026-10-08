@@ -80,6 +80,8 @@ pub mod painter_bridge_op_badges;
 /// `painter_bridge` for the HR-18 file-LOC cap.
 pub mod painter_bridge_overlays;
 pub mod painter_bridge_phases;
+#[cfg(feature = "panel-painter-layers")]
+mod painter_bridge_presets; // W1: os presets do Wet Painter — o disco e a biblioteca
 /// Os previews do painel do pincel (Grain · Shape · Paper · Flow), cortados do `painter_bridge` —
 /// atrás da MESMA feature que o bloco de onde saíram (sem o painel não há a quem publicar).
 #[cfg(feature = "panel-painter-layers")]

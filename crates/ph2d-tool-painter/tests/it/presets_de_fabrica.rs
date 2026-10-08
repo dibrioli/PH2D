@@ -10,7 +10,9 @@
 //! ```
 
 use super::sonda_gestos::{fnv1a, largura_mediana, traco_recto_com};
-use ph2d_brush_presets::{Biblioteca, Origem, Parametros, Preset, caminho_relativo, escrever, gravar, ler};
+use ph2d_brush_presets::{
+    Biblioteca, Origem, Parametros, Preset, caminho_relativo, escrever, gravar, ler,
+};
 use ph2d_tool_painter::{
     MEIO_DO_PRESET, MOTOR_DOS_PRESETS, PaintMedia, PainterTool, WetKnobs, miniatura_do_preset,
 };
@@ -46,10 +48,54 @@ struct Receita {
 }
 
 const RECEITAS: [Receita; PRESETS_DE_FABRICA] = [
-    Receita { nome: "Wet Round", water: 1.0, pigment: 800.0, pickup: 1.0, gate: 0.4, evaporation: 1.0, edge: 1.0, gravity: 1.0, bristle_size: 2.0, bristle_count: 2000.0 },
-    Receita { nome: "Wet Wash", water: 1.0, pigment: 400.0, pickup: 0.6, gate: 0.3, evaporation: 0.7, edge: 0.75, gravity: 0.6, bristle_size: 3.0, bristle_count: 3000.0 },
-    Receita { nome: "Wet Dry Brush", water: 0.2, pigment: 1200.0, pickup: 1.6, gate: 0.6, evaporation: 1.5, edge: 1.125, gravity: 0.4, bristle_size: 1.5, bristle_count: 1500.0 },
-    Receita { nome: "Wet Drip", water: 1.0, pigment: 600.0, pickup: 0.8, gate: 0.2, evaporation: 0.6, edge: 1.0, gravity: 2.0, bristle_size: 2.0, bristle_count: 2000.0 },
+    Receita {
+        nome: "Wet Round",
+        water: 1.0,
+        pigment: 800.0,
+        pickup: 1.0,
+        gate: 0.4,
+        evaporation: 1.0,
+        edge: 1.0,
+        gravity: 1.0,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+    },
+    Receita {
+        nome: "Wet Wash",
+        water: 1.0,
+        pigment: 400.0,
+        pickup: 0.6,
+        gate: 0.3,
+        evaporation: 0.7,
+        edge: 0.75,
+        gravity: 0.6,
+        bristle_size: 3.0,
+        bristle_count: 3000.0,
+    },
+    Receita {
+        nome: "Wet Dry Brush",
+        water: 0.2,
+        pigment: 1200.0,
+        pickup: 1.6,
+        gate: 0.6,
+        evaporation: 1.5,
+        edge: 1.125,
+        gravity: 0.4,
+        bristle_size: 1.5,
+        bristle_count: 1500.0,
+    },
+    Receita {
+        nome: "Wet Drip",
+        water: 1.0,
+        pigment: 600.0,
+        pickup: 0.8,
+        gate: 0.2,
+        evaporation: 0.6,
+        edge: 1.0,
+        gravity: 2.0,
+        bristle_size: 2.0,
+        bristle_count: 2000.0,
+    },
 ];
 
 /// O pincel de fábrica do meio inteiro, com os knobs da receita. Tamanho e opacidade NÃO são fixados
@@ -72,7 +118,10 @@ fn parametros(r: &Receita) -> Parametros {
         ("bristleSize", r.bristle_size),
         ("bristleCount", r.bristle_count),
     ] {
-        assert!(p.engine.insert(chave.to_owned(), v).is_some(), "knob {chave} existe");
+        assert!(
+            p.engine.insert(chave.to_owned(), v).is_some(),
+            "knob {chave} existe"
+        );
     }
     p
 }
@@ -143,7 +192,11 @@ fn ficheiros_de_fabrica() -> Vec<(String, Vec<u8>)> {
 #[test]
 fn the_factory_presets_are_counted() {
     let b = Biblioteca::carregar(&raiz(), None);
-    assert!(b.erros.is_empty(), "ficheiros de fábrica ilegíveis: {:?}", b.erros);
+    assert!(
+        b.erros.is_empty(),
+        "ficheiros de fábrica ilegíveis: {:?}",
+        b.erros
+    );
     assert_eq!(
         b.entradas.len(),
         PRESETS_DE_FABRICA,
@@ -153,7 +206,11 @@ fn the_factory_presets_are_counted() {
         assert_eq!(e.partes()[0], MOTOR_DOS_PRESETS, "{}", e.relativo);
         assert_eq!(e.preset.parametros.media, MEIO_DO_PRESET, "{}", e.relativo);
         assert_eq!(e.preset.origem, Origem::Fabrica, "{}", e.relativo);
-        assert_eq!(e.partes()[3], e.preset.parametros.name, "o nome do ficheiro é o do preset");
+        assert_eq!(
+            e.partes()[3],
+            e.preset.parametros.name,
+            "o nome do ficheiro é o do preset"
+        );
     }
 }
 
@@ -189,7 +246,10 @@ fn a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje() {
     // O leitor DECIDE: dois presets diferentes pintam miniaturas diferentes.
     for (i, (ra, a)) in vistas.iter().enumerate() {
         for (rb, b) in &vistas[i + 1..] {
-            assert_ne!(a, b, "{ra} e {rb} pintam igual: um knob do preset não tem leitor");
+            assert_ne!(
+                a, b,
+                "{ra} e {rb} pintam igual: um knob do preset não tem leitor"
+            );
         }
     }
 }

@@ -37,4 +37,5 @@ mod seam_taper;
 mod seam_texture_colors;
 mod seam_watercolor_cards;
 mod seam_watercolor_flow; // as linhas da forma da borda: Flow, Size, Angle, Paper Edge (BUGS #31)
-mod seam_wetpaint;
+mod seam_wet_presets;
+mod seam_wetpaint; // W1: o navegador de presets e os volumes do Wet Painter, pelo ponteiro

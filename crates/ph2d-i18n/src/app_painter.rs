@@ -19,6 +19,23 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.painter.painter_bridge_assets.brush_shape_loaded" => "Brush shape loaded",
         "app.painter.painter_bridge_assets.texture_load_failed" => "Texture load failed: {e}",
         "app.painter.painter_bridge_assets.brush_texture_loaded" => "Brush texture loaded",
+        "app.painter.presets.saved" => "Preset saved: {name}",
+        "app.painter.presets.save_failed" => "The preset could not be saved: {e}",
+        "app.painter.presets.unreadable" => {
+            "{n} preset files could not be read (names in the terminal)"
+        }
+        "app.painter.presets.state_unreadable" => {
+            "Preset favorites and recents could not be read: {e}"
+        }
+        "app.painter.presets.state_save_failed" => {
+            "Preset favorites and recents could not be saved: {e}"
+        }
+        "app.painter.presets.texture_unreadable" => {
+            "Preset {name}: its {id} image could not be read, the slot stays empty"
+        }
+        "app.painter.presets.no_user_folder" => "No folder for your presets (HOME is not set)",
+        "app.painter.presets.new_name" => "My brush",
+        "app.painter.presets.group" => "{media} · {group}",
         "app.painter.painter_bridge_assets.not_an_rgba_image" => "not an RGBA image",
         "app.painter.painter_bridge_assets.asset_missing" => "asset missing",
         "app.painter.painter_bridge_assets.decode" => "decode: {e}",

@@ -259,6 +259,10 @@ pub fn dispatch(
         if painter.take_brush_shape_image_request() {
             load_brush_shape_image(painter, asset_db, toasts);
         }
+        // Os presets do Wet Painter (W1): a biblioteca abre na 1.ª vez que o Wet Paint está armado,
+        // o pedido do painel é atendido aqui (o disco é da ponte) e a vista é publicada.
+        #[cfg(feature = "panel-painter-layers")]
+        crate::painter_bridge_presets::drive(painter, painter.wetpaint_armed(), toasts);
         // Selection-drift invalidation (mirror of drive_preview_cache).
         if let (Some(existing), Some(sel)) = (painter_preview.as_ref(), hero.gizmo.selection)
             && existing.entity_bits != sel

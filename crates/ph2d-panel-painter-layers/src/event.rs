@@ -506,6 +506,12 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             shape_layer_picker::on_blend_option(host, id);
             Some(true)
         }
+        // Um preset do navegador do Wet Painter (o valor é o caminho na biblioteca, não um u8).
+        WidgetEvent::Click(id) if crate::paint_wetpaint_presets::preset_escolhido(id).is_some() => {
+            let rel = crate::paint_wetpaint_presets::preset_escolhido(id).unwrap_or_default();
+            crate::paint_wetpaint_presets::escolher_preset(host, rel);
+            Some(true)
+        }
         // A dropdown popover option was picked → close the chip + apply (table-driven, see `option_route`).
         WidgetEvent::Click(id) => option_route::route_brush_dropdown_option(host, id),
         // Custom-falloff 2-D drag: `CurvePoint` stashed `(parent, ch, idx, x, y)` → forward `idx:x:y`.

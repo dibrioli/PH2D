@@ -338,6 +338,9 @@ impl PainterTool {
         event: &ph2d_editor_core::tool::PanelEvent,
     ) -> bool {
         use ph2d_editor_core::tool::PanelEvent;
+        if self.route_wet_preset_event(event) {
+            return true;
+        }
         match event {
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_RESET => {
                 self.reset_brush_wetpaint();

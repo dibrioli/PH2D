@@ -10,12 +10,12 @@ use super::*;
 use ph2d_brush_presets::{Miniatura, Origem};
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+use ph2d_painter_brush::height_modes::{DepthSource, DrawTo};
+use ph2d_painter_brush::taper::Taper;
 use ph2d_painter_brush::{
     BrushBlend, BrushSpec, Falloff, FalloffCurve, FalloffPoint, FootprintCurve, HandleType,
     JitterUnit, TextureMapping, TextureSettings,
 };
-use ph2d_painter_brush::height_modes::{DepthSource, DrawTo};
-use ph2d_painter_brush::taper::Taper;
 use ph2d_wet_paint::tuning::Knob;
 use std::collections::BTreeSet;
 
@@ -37,9 +37,17 @@ fn todo_campo_do_pincel_tem_destino() {
         .collect();
     let dentro: BTreeSet<&str> = CAMPOS_DO_PINCEL.iter().copied().collect();
     let fora: BTreeSet<&str> = CAMPOS_FORA.iter().map(|(c, _)| *c).collect();
-    assert_eq!(dentro.len(), CAMPOS_DO_PINCEL.len(), "repetido em CAMPOS_DO_PINCEL");
+    assert_eq!(
+        dentro.len(),
+        CAMPOS_DO_PINCEL.len(),
+        "repetido em CAMPOS_DO_PINCEL"
+    );
     assert_eq!(fora.len(), CAMPOS_FORA.len(), "repetido em CAMPOS_FORA");
-    assert!(dentro.is_disjoint(&fora), "um campo nas duas listas: {:?}", dentro.intersection(&fora));
+    assert!(
+        dentro.is_disjoint(&fora),
+        "um campo nas duas listas: {:?}",
+        dentro.intersection(&fora)
+    );
     let declarados: BTreeSet<&str> = dentro.union(&fora).copied().collect();
     assert_eq!(
         campos.difference(&declarados).collect::<Vec<_>>(),
@@ -72,9 +80,24 @@ fn pincel_mexido() -> BrushSpec {
         params: [0.4, 0.6, 0.55, 0.5, 0.3, 0.7],
     };
     let curva = FalloffCurve::from_points(&[
-        FalloffPoint { id: 0, x: 0.0, y: 1.0, handle: HandleType::Auto },
-        FalloffPoint { id: 3, x: 0.45, y: 0.8, handle: HandleType::Vector },
-        FalloffPoint { id: 1, x: 1.0, y: 0.0, handle: HandleType::Auto },
+        FalloffPoint {
+            id: 0,
+            x: 0.0,
+            y: 1.0,
+            handle: HandleType::Auto,
+        },
+        FalloffPoint {
+            id: 3,
+            x: 0.45,
+            y: 0.8,
+            handle: HandleType::Vector,
+        },
+        FalloffPoint {
+            id: 1,
+            x: 1.0,
+            y: 0.0,
+            handle: HandleType::Auto,
+        },
     ])
     .unwrap();
     BrushSpec {
@@ -92,7 +115,11 @@ fn pincel_mexido() -> BrushSpec {
         spray_count: 2,
         input_samples: 3,
         stabilizer: 0.25,
-        taper: Taper { start: 1.5, tip_start: 0.2, opacity: 0.4 },
+        taper: Taper {
+            start: 1.5,
+            tip_start: 0.2,
+            opacity: 0.4,
+        },
         texture: tex(3, 30),
         grain_depth: 0.6,
         shape: tex(5, 45),
@@ -204,8 +231,14 @@ fn ferramenta_mexida() -> PainterTool {
     let grao = t.paint.brush.texture;
     t.set_brush_shape_image(mascara(17, 13, 0), 17, 13);
     t.set_brush_texture_image(mascara(32, 32, 5), 32, 32);
-    t.paint.brush.shape = TextureSettings { kind: TextureKind::Image, ..forma };
-    t.paint.brush.texture = TextureSettings { kind: TextureKind::Image, ..grao };
+    t.paint.brush.shape = TextureSettings {
+        kind: TextureKind::Image,
+        ..forma
+    };
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Image,
+        ..grao
+    };
     let k = &mut t.paint.wetpaint.knobs;
     k.set(Knob::PigmentPerDab, 1200.0);
     k.set(Knob::Pickup, 0.02);
@@ -229,7 +262,11 @@ fn pinta(t: &mut PainterTool) -> Vec<u8> {
     t.on_canvas_pointer(p(20.0, 0.2, PointerPhase::Down));
     for k in 1..=66 {
         let x = 20.0 + 3.0 * k as f32;
-        t.on_canvas_pointer(p(x, 0.2 + 0.8 * (k as f32 / 66.0 * std::f32::consts::PI).sin(), PointerPhase::Move));
+        t.on_canvas_pointer(p(
+            x,
+            0.2 + 0.8 * (k as f32 / 66.0 * std::f32::consts::PI).sin(),
+            PointerPhase::Move,
+        ));
         t.on_tick(8.0);
     }
     t.on_canvas_pointer(p(218.0, 0.2, PointerPhase::Up));
@@ -243,7 +280,11 @@ fn pelo_ficheiro(prm: Parametros, texturas: BTreeMap<String, Vec<u8>>) -> Preset
     let p = Preset {
         parametros: prm,
         origem: Origem::Utilizador,
-        miniatura: Miniatura { largura: 1, altura: 1, rgba: vec![255; 4] },
+        miniatura: Miniatura {
+            largura: 1,
+            altura: 1,
+            rgba: vec![255; 4],
+        },
         texturas,
     };
     ph2d_brush_presets::ler(&ph2d_brush_presets::escrever(&p).unwrap()).unwrap()
@@ -262,8 +303,15 @@ fn o_pincel_guardado_pinta_o_mesmo_traco() {
     let mut a = a;
     let px_a = pinta(&mut a);
     let px_b = pinta(&mut b);
-    let diferentes = px_a.chunks(4).zip(px_b.chunks(4)).filter(|(x, y)| x != y).count();
-    assert_eq!(diferentes, 0, "{diferentes} px diferem: o preset não leva tudo o que o traço lê, ou um campo de fora o muda");
+    let diferentes = px_a
+        .chunks(4)
+        .zip(px_b.chunks(4))
+        .filter(|(x, y)| x != y)
+        .count();
+    assert_eq!(
+        diferentes, 0,
+        "{diferentes} px diferem: o preset não leva tudo o que o traço lê, ou um campo de fora o muda"
+    );
 
     // Controlo: a mesma ferramenta nova SEM o preset pinta outro traço (o gesto é sensível ao pincel).
     let px_c = pinta(&mut ferramenta());
@@ -286,8 +334,10 @@ fn capturar_o_aplicado_devolve_o_mesmo_preset() {
 #[test]
 fn campos_de_ondas_futuras_sobrevivem_a_captura() {
     let mut base = Parametros::novo(MEIO_DO_PRESET, "Teste", "Futuro");
-    base.extra.insert("dual_brush".into(), serde_json::json!({"count": 3}));
-    base.brush.insert("bristle_thin".into(), serde_json::json!(0.52));
+    base.extra
+        .insert("dual_brush".into(), serde_json::json!({"count": 3}));
+    base.brush
+        .insert("bristle_thin".into(), serde_json::json!(0.52));
     base.engine.insert("oiliness".into(), 0.8);
     base.volumes.pressure = Some(0.7);
     let (p, _) = ferramenta().wet_preset_capturar(&base);
@@ -310,6 +360,30 @@ fn os_volumes_sao_o_que_o_painel_mostra() {
     assert_eq!(t.paint.brush.strength, 0.5);
     assert_eq!(t.paint.wetpaint.knobs.water, 0.25);
     let v = t.wet_preset_volumes();
-    assert_eq!((v.size_px, v.opacity, v.water), (Some(40.0), Some(0.5), Some(0.25)));
+    assert_eq!(
+        (v.size_px, v.opacity, v.water),
+        (Some(40.0), Some(0.5), Some(0.25))
+    );
 }
 
+/// O painel mostra um volume só quando o traço o LÊ. A Opacity (a força) não tem leitor no Wet Paint
+/// (dono, 2026-08-12: escondida pela mesma medição): quando a W5 lhe der um, este gate fica vermelho e
+/// o volume Opacity entra no painel. O Water e o Size são lidos — o controlo do gesto.
+#[test]
+fn a_opacidade_nao_tem_leitor_no_wet_paint() {
+    let traco = |f: &dyn Fn(&mut PainterTool)| {
+        let mut t = ferramenta();
+        f(&mut t);
+        pinta(&mut t)
+    };
+    let fraca = traco(&|t| t.set_brush_strength(0.25));
+    let forte = traco(&|t| t.set_brush_strength(0.95));
+    assert_eq!(
+        fraca, forte,
+        "a força ganhou leitor no Wet Paint: o volume Opacity entra no painel"
+    );
+    let seca = traco(&|t| t.paint.wetpaint.knobs.water = 0.2);
+    assert_ne!(seca, forte, "controlo: o Water é lido");
+    let grossa = traco(&|t| t.set_brush_size_px(20.0));
+    assert_ne!(grossa, forte, "controlo: o Size é lido");
+}

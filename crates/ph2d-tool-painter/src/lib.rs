@@ -131,6 +131,10 @@ pub use ph2d_painter_brush::{
     // law, so the picture and the paint cannot drift -- see `ph2d_painter_brush::taper`.
     taper::{MAX_TAPER_DIAMETERS, Taper},
 };
+pub use tool::paint::wetpaint_preset::{
+    CAMPOS_DO_PINCEL, CAMPOS_FORA, DIAMETRO_DA_MINIATURA, MEIO_DO_PRESET, MOTOR_DOS_PRESETS,
+    PedidoPreset, miniatura_do_preset,
+};
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
@@ -144,10 +148,6 @@ pub use tool::{
     render_classic_flow_preview, set_pending_select_mods,
 };
 pub use tool::{DICA_DO_PARAMETRO, Dependente, Inercias};
-pub use tool::paint::wetpaint_preset::{
-    CAMPOS_DO_PINCEL, CAMPOS_FORA, DIAMETRO_DA_MINIATURA, MEIO_DO_PRESET, MOTOR_DOS_PRESETS,
-    miniatura_do_preset,
-};
 pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController, history_budget_bytes};
 
 use ph2d_a11y::Role;

@@ -142,6 +142,8 @@ pub(crate) struct WetPaintState {
     /// 2026-10-03): um gate que pergunta «este controlo muda a tinta?» precisa da mesma tinta duas vezes.
     /// A miniatura de um preset (`wetpaint_preset_miniatura.rs`) pinta por ele pela mesma razão.
     pub(super) relogio_fixo: Option<f64>,
+    /// O pedido do bloco de presets que espera a ponte da app (o disco é dela, não do tool).
+    pub(super) preset_pedido: Option<super::wetpaint_preset::PedidoPreset>,
 }
 
 impl Default for WetPaintState {
@@ -165,6 +167,7 @@ impl Default for WetPaintState {
             grid_ratio: grid_map::DEFAULT_RATIO,
             flow_ratio: 1,
             relogio_fixo: None,
+            preset_pedido: None,
         }
     }
 }

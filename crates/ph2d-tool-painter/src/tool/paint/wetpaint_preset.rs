@@ -8,10 +8,10 @@
 //! ([`CAMPOS_FORA`], cada um com o porquê). Todo campo do `BrushSpec` está numa das duas listas, e o
 //! gate `o_pincel_guardado_pinta_o_mesmo_traco` prova que os de fora não mudam o traço.
 
+use super::brush_settings::BrushTextureImage;
 use super::*;
 use ph2d_brush_presets::{Parametros, Preset, SCHEMA, Volumes, escrever_textura, ler_textura};
 use ph2d_painter_brush::TextureKind;
-use super::brush_settings::BrushTextureImage;
 use ph2d_wet_paint::tuning::KNOB_DEFS;
 use std::collections::BTreeMap;
 
@@ -64,7 +64,8 @@ pub const CAMPOS_DO_PINCEL: [&str; 28] = [
 ];
 
 const VOLUME: &str = "volume do topo (Size px = 2·raio, Opacity = força)";
-const DA_OBRA: &str = "da obra, não do pincel (a cor e o papel são do documento; a simetria é da tela)";
+const DA_OBRA: &str =
+    "da obra, não do pincel (a cor e o papel são do documento; a simetria é da tela)";
 const DO_GESTO: &str = "do gesto (o método do traço e o cartão Line), não do pincel";
 const DO_MEIO: &str = "a porta do meio (`set_paint_media`) é a dona";
 const DO_SCULPT: &str = "canal derivado do Sculpt (`sculpt_panel.rs`)";
@@ -168,7 +169,104 @@ const FERRAMENTAS: [WetTool; 6] = [
     WetTool::Blow,
 ];
 
+/// O que o bloco de presets do painel pediu e só a ponte da app pode fazer (disco, biblioteca, a
+/// política dos volumes). O tool regista; `ph2d-app-painter/src/painter_bridge_presets.rs` executa.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PedidoPreset {
+    /// Escolher o preset neste caminho da biblioteca.
+    Escolher(String),
+    AlternarFavorito,
+    GuardarComoNovo,
+    GuardarComoPadrao,
+    Repor,
+    /// A política dos volumes, pelo índice em `Politica::TODAS`.
+    Politica(u8),
+}
+
 impl PainterTool {
+    /// Os controlos do bloco de presets: os botões e as escolhas viram um [`PedidoPreset`]; os volumes
+    /// e os seus valores rápidos aplicam-se aqui mesmo (não tocam no disco).
+    pub(crate) fn route_wet_preset_event(
+        &mut self,
+        event: &ph2d_editor_core::tool::PanelEvent,
+    ) -> bool {
+        use crate::ids;
+        use ph2d_editor_core::tool::PanelEvent;
+        let pedido = match event {
+            PanelEvent::Click(id) if *id == ids::PAINTER_WETPAINT_PRESET_FAVORITE => {
+                PedidoPreset::AlternarFavorito
+            }
+            PanelEvent::Click(id) if *id == ids::PAINTER_WETPAINT_PRESET_SAVE_NEW => {
+                PedidoPreset::GuardarComoNovo
+            }
+            PanelEvent::Click(id) if *id == ids::PAINTER_WETPAINT_PRESET_SAVE_DEFAULT => {
+                PedidoPreset::GuardarComoPadrao
+            }
+            PanelEvent::Click(id) if *id == ids::PAINTER_WETPAINT_PRESET_RESET => {
+                PedidoPreset::Repor
+            }
+            PanelEvent::SelectOption(id, rel) if *id == ids::PAINTER_WETPAINT_PRESET => {
+                PedidoPreset::Escolher(rel.clone())
+            }
+            PanelEvent::SelectOption(id, v) if *id == ids::PAINTER_WETPAINT_PRESET_POLICY => {
+                match v.parse::<u8>() {
+                    Ok(i) if i < ids::PAINTER_WETPAINT_PRESET_POLICY_COUNT => {
+                        PedidoPreset::Politica(i)
+                    }
+                    _ => return false,
+                }
+            }
+            PanelEvent::SelectOption(id, v) if ids::PAINTER_WETPAINT_VOL_QUICK.contains(id) => {
+                let vol = ids::PAINTER_WETPAINT_VOL_QUICK
+                    .iter()
+                    .position(|q| q == id)
+                    .unwrap_or(0);
+                let Some(&x) = v
+                    .parse::<usize>()
+                    .ok()
+                    .and_then(|i| ids::vol_quick_values(vol).get(i))
+                else {
+                    return false;
+                };
+                self.aplicar_volume(vol, f64::from(x));
+                return true;
+            }
+            PanelEvent::SetValue(id, v) if *id == ids::PAINTER_WETPAINT_VOL_SIZE => {
+                self.aplicar_volume(0, *v);
+                return true;
+            }
+            _ => return false,
+        };
+        self.paint.wetpaint.preset_pedido = Some(pedido);
+        true
+    }
+
+    /// Um volume VIVO pelo índice do painel (Size px · Water).
+    fn aplicar_volume(&mut self, vol: usize, x: f64) {
+        let v = match vol {
+            0 => Volumes {
+                size_px: Some(x),
+                ..Volumes::default()
+            },
+            _ => Volumes {
+                water: Some(x),
+                ..Volumes::default()
+            },
+        };
+        self.wet_preset_aplicar_volumes(&v);
+    }
+
+    /// O Wet Paint está armado (a ponte abre a biblioteca na primeira vez que estiver).
+    #[must_use]
+    pub fn wetpaint_armed(&self) -> bool {
+        self.paint.wetpaint.armed
+    }
+
+    /// Tira (e limpa) o pedido do bloco de presets — a ponte da app chama-o a cada quadro.
+    pub fn take_wet_preset_request(&mut self) -> Option<PedidoPreset> {
+        self.paint.wetpaint.preset_pedido.take()
+    }
+
     /// **Aplica um preset do Wet Painter**: arma o meio, põe o pincel (os campos que o preset não fixa
     /// voltam ao de fábrica — um preset é o pincel inteiro, não um delta), os knobs, as máscaras, o modo
     /// e os volumes que ele fixa. Volume ausente = o de agora (o tamanho do artista sobrevive à troca).
@@ -200,17 +298,17 @@ impl PainterTool {
             }
         }
         if let Some(&v) = prm.engine.get(CHAVE_ERASE) {
-            k.erase = if v.is_nan() { k.erase } else { v.clamp(0.0, 1.0) };
+            k.erase = if v.is_nan() {
+                k.erase
+            } else {
+                v.clamp(0.0, 1.0)
+            };
         }
         k.water = water;
         self.paint.wetpaint.knobs = k;
 
-        if let Some(t) = prm
-            .paint_mode
-            .as_deref()
-            .and_then(|m| FERRAMENTAS.iter().find(|t| format!("{t:?}") == m))
-        {
-            self.pick_wet_tool(indice_da_ferramenta(*t));
+        if let Some(m) = prm.paint_mode.as_deref() {
+            self.wet_preset_aplicar_modo(m);
         }
         self.wet_preset_aplicar_volumes(&prm.volumes);
         falhas
@@ -227,6 +325,13 @@ impl PainterTool {
         }
         if let Some(w) = v.water.filter(|w| w.is_finite()) {
             self.paint.wetpaint.knobs.water = w.clamp(0.0, 1.0);
+        }
+    }
+
+    /// O modo (a ferramenta molhada) pelo nome que o preset guarda; um nome desconhecido não muda nada.
+    pub fn wet_preset_aplicar_modo(&mut self, modo: &str) {
+        if let Some(t) = FERRAMENTAS.iter().find(|t| format!("{t:?}") == modo) {
+            self.pick_wet_tool(indice_da_ferramenta(*t));
         }
     }
 
@@ -250,7 +355,10 @@ impl PainterTool {
     /// **Captura o pincel de agora** sobre `base` (o preset de onde ele veio): os campos que esta versão
     /// conhece são reescritos; os de ondas futuras que `base` trazia sobrevivem.
     #[must_use]
-    pub fn wet_preset_capturar(&self, base: &Parametros) -> (Parametros, BTreeMap<String, Vec<u8>>) {
+    pub fn wet_preset_capturar(
+        &self,
+        base: &Parametros,
+    ) -> (Parametros, BTreeMap<String, Vec<u8>>) {
         let mut p = base.clone();
         p.schema = SCHEMA;
         MEIO_DO_PRESET.clone_into(&mut p.media);

@@ -213,7 +213,11 @@ fn desfiltrar(h: &Cabecalho, cru: &[u8]) -> Result<Vec<u8>, Erro> {
         let filtro = cru[y * (linha + 1)];
         let src = &cru[y * (linha + 1) + 1..(y + 1) * (linha + 1)];
         let (antes, resto) = img.split_at_mut(y * linha);
-        let acima: &[u8] = if y == 0 { &[] } else { &antes[(y - 1) * linha..] };
+        let acima: &[u8] = if y == 0 {
+            &[]
+        } else {
+            &antes[(y - 1) * linha..]
+        };
         let cur = &mut resto[..linha];
         for i in 0..linha {
             let a = if i >= bpp { cur[i - bpp] } else { 0 };

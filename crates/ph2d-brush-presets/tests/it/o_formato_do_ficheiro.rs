@@ -7,7 +7,12 @@ fn miniatura(lado: u32) -> Miniatura {
     let rgba = (0..lado * lado)
         .flat_map(|i| {
             let (x, y) = (i % lado, i / lado);
-            [(x * 7) as u8, (y * 5) as u8, ((x ^ y) * 3) as u8, 200 + (x % 50) as u8]
+            [
+                (x * 7) as u8,
+                (y * 5) as u8,
+                ((x ^ y) * 3) as u8,
+                200 + (x % 50) as u8,
+            ]
         })
         .collect();
     Miniatura {
@@ -129,7 +134,10 @@ fn um_preset_minimo_le_se_com_nada_fixado() {
     assert_eq!(p.parametros.group, "");
     assert_eq!(p.parametros.volumes, Default::default());
     assert!(p.parametros.engine.is_empty() && p.parametros.brush.is_empty());
-    assert_eq!(p.miniatura.rgba, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 9, 7, 7, 7, 7]);
+    assert_eq!(
+        p.miniatura.rgba,
+        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 9, 7, 7, 7, 7]
+    );
 }
 
 #[test]
@@ -137,7 +145,9 @@ fn as_recusas_dizem_porque() {
     assert_eq!(ler(b"GIF89a"), Err(Erro::NaoEPng));
     assert_eq!(ler(&png_com(None)), Err(Erro::SemParametros));
     assert_eq!(
-        ler(&png_com(Some(r#"{"schema": 2, "media": "WetPaint", "name": "x"}"#))),
+        ler(&png_com(Some(
+            r#"{"schema": 2, "media": "WetPaint", "name": "x"}"#
+        ))),
         Err(Erro::SchemaFuturo(2))
     );
     assert!(matches!(

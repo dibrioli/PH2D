@@ -10,8 +10,17 @@
 //! ```
 //!
 //! Escreve `<meio>.ppm` (P6) e imprime o FNV-1a de cada um — o PNG faz-se fora, com `magick`.
+//!
+//! **Por preset do Wet Painter** (W1): `PH2D_SONDA_PRESET=<nome>|todos` pinta a mesma cena com cada
+//! preset de fábrica (`assets/brushes/WetPainter/`), no relógio fixo, e escreve `<nome>.ppm`:
+//!
+//! ```text
+//! PH2D_SONDA_OUT=/tmp/x PH2D_SONDA_PRESET=todos cargo test -p ph2d-tool-painter --profile smoke \
+//!     --test it sonda_tracos_por_meio::os_presets_do_wet_painter -- --ignored --nocapture
+//! ```
+//! O preset que não fixa o tamanho pinta ao raio `PH2D_SONDA_SIZE` (ou 40, o dos meios).
 
-use super::sonda_gestos::{fnv1a, pinta};
+use super::sonda_gestos::{fnv1a, pinta, pinta_cena, tela};
 use ph2d_tool_painter::PaintMedia;
 use std::io::Write;
 
@@ -60,4 +69,58 @@ fn os_mesmos_gestos_nos_quatro_meios() {
             t0.elapsed().as_secs_f32()
         );
     }
+}
+
+#[test]
+#[ignore = "sonda: grava um PPM por preset do Wet Painter; corre-se à mão"]
+fn os_presets_do_wet_painter() {
+    let Ok(qual) = std::env::var("PH2D_SONDA_PRESET") else {
+        println!("[sonda] PH2D_SONDA_PRESET=<nome>|todos");
+        return;
+    };
+    let out = std::env::var("PH2D_SONDA_OUT").unwrap_or_else(|_| {
+        std::env::temp_dir()
+            .join("ph2d_sonda_presets")
+            .display()
+            .to_string()
+    });
+    let size = std::env::var("PH2D_SONDA_SIZE")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok());
+    std::fs::create_dir_all(&out).unwrap();
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let bib = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
+    assert!(bib.erros.is_empty(), "{:?}", bib.erros);
+    let mut n = 0;
+    for e in &bib.entradas {
+        let nome = &e.preset.parametros.name;
+        if qual != "todos" && qual != *nome {
+            continue;
+        }
+        n += 1;
+        let mut t = tela();
+        t.set_wet_relogio_fixo(true);
+        assert!(t.wet_preset_aplicar(&e.preset).is_empty());
+        if let Some(r) = size.or(e
+            .preset
+            .parametros
+            .volumes
+            .size_px
+            .is_none()
+            .then_some(BRUSH_PX))
+        {
+            t.set_brush_size_px(r);
+        }
+        let t0 = std::time::Instant::now();
+        let (px, w, h) = pinta_cena(&mut t);
+        let p = std::path::Path::new(&out).join(format!("{nome}.ppm"));
+        escreve_ppm(&p, &px, w, h);
+        println!(
+            "[sonda] {nome:<14} {w}x{h} fnv {:#018x} → {} ({:.1} s)",
+            fnv1a(&px),
+            p.display(),
+            t0.elapsed().as_secs_f32()
+        );
+    }
+    assert!(n > 0, "nenhum preset de fábrica chamado {qual:?}");
 }

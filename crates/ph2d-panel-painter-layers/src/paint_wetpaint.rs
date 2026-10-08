@@ -105,16 +105,8 @@ pub(crate) fn paint_wetpaint_section(
         // The TILT dial (the model's polar pad, copied faithfully).
         y = crate::paint_wetpaint_tilt::paint_tilt_card(ctx, theme, x, content_w, y, &brush);
         let k = brush.wet_knobs;
-        let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 7] = [
-            (
-                "panel.painter_layers.wetpaint.water",
-                ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER,
-                k.water as f32,
-                0.0,
-                1.0,
-                number_field::FINE_STEP,
-                2,
-            ),
+        // O Water é um VOLUME do topo (W1, `paint_wetpaint_presets.rs`): um só controlo por facto.
+        let rows: [(&str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 6] = [
             (
                 "panel.painter_layers.wetpaint.pigment",
                 ph2d_tool_painter::ids::PAINTER_WETPAINT_PIGMENT,

@@ -41,5 +41,7 @@ mod painter_watercolor;
 pub use painter_watercolor::*;
 mod painter_wetpaint;
 pub use painter_wetpaint::*;
+mod painter_wetpaint_presets;
+pub use painter_wetpaint_presets::*;
 mod wet_tuning;
 pub use wet_tuning::*;

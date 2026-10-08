@@ -38,23 +38,37 @@ fn o_do_utilizador_sobrepoe_e_o_reset_volta_a_fabrica() {
     let mut meu = preset("Wet Round", Origem::Utilizador);
     meu.parametros.volumes.size_px = Some(12.0);
     gravar(&uti, &a, &meu).unwrap();
-    std::fs::write(uti.join("WetPainter/Watercolor/Fluid/partido.ph2d-brush.png"), b"x").unwrap();
+    std::fs::write(
+        uti.join("WetPainter/Watercolor/Fluid/partido.ph2d-brush.png"),
+        b"x",
+    )
+    .unwrap();
 
     let bib = Biblioteca::carregar(&fab, Some(&uti));
     let rels: Vec<&str> = bib.entradas.iter().map(|e| e.relativo.as_str()).collect();
-    assert_eq!(rels, [a.as_str(), b.as_str()], "ordenados; o partido fica de fora");
+    assert_eq!(
+        rels,
+        [a.as_str(), b.as_str()],
+        "ordenados; o partido fica de fora"
+    );
     let ea = bib.procurar(&a).unwrap();
     assert_eq!(ea.origem, Origem::Utilizador);
     assert!(ea.tem_fabrica);
     assert_eq!(ea.preset.parametros.volumes.size_px, Some(12.0));
-    assert_eq!(ea.partes(), ["WetPainter", "Watercolor", "Fluid", "Wet Round"]);
+    assert_eq!(
+        ea.partes(),
+        ["WetPainter", "Watercolor", "Fluid", "Wet Round"]
+    );
     assert_eq!(bib.erros.len(), 1, "o ilegível é dito, não engolido");
 
     apagar(&uti, &a).unwrap();
     apagar(&uti, &a).unwrap(); // ausente não é erro
     let bib = Biblioteca::carregar(&fab, Some(&uti));
     assert_eq!(bib.procurar(&a).unwrap().origem, Origem::Fabrica);
-    assert_eq!(bib.procurar(&a).unwrap().preset.parametros.volumes, Volumes::default());
+    assert_eq!(
+        bib.procurar(&a).unwrap().preset.parametros.volumes,
+        Volumes::default()
+    );
 }
 
 #[test]
@@ -69,7 +83,10 @@ fn guardar_como_novo_nunca_esmaga_um_nome() {
         bib.nome_livre("WetPainter", "Watercolor", "Fluid", "Wet Round"),
         "Wet Round 3"
     );
-    assert_eq!(bib.nome_livre("WetPainter", "Watercolor", "Fluid", "Outro"), "Outro");
+    assert_eq!(
+        bib.nome_livre("WetPainter", "Watercolor", "Fluid", "Outro"),
+        "Outro"
+    );
 }
 
 #[test]

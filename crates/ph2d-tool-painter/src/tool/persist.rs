@@ -20,6 +20,7 @@ use crate::layers::LayerStack;
 use crate::tool::PainterTool;
 use crate::tool::RtLayerId;
 use ph2d_painter_brush::material::MaterialBytes;
+use ph2d_wet_paint::drips::DripPaper;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -48,9 +49,59 @@ pub struct PaintedDocument {
     /// O PAPEL do documento ([`crate::tool::papel`]): a cor sob as camadas, ou `None`.
     pub papel: Option<[u8; 3]>,
     /// O VIDRO por camada ([`crate::compositor::vidro`]): sem ele, reabrir o quadro devolveria a aguada
-    /// de um alfa só, e o papel de cor deixaria de a escurecer como filtro. ⚠️ O ÚLTIMO campo: o
-    /// postcard é posicional (o papel e o vidro: degrau `183 → 184` do `PROJECT_SCHEMA`).
+    /// de um alfa só, e o papel de cor deixaria de a escurecer como filtro. (O papel e o vidro: degrau
+    /// `185 → 186` do `PROJECT_SCHEMA`.)
     pub vidros: BTreeMap<RtLayerId, Vec<crate::compositor::vidro::Vidro>>,
+    /// As GOTAS do papel (W1b: Create Drips · Drip Size · Drip Length) — do documento, como o papel.
+    /// ⚠️ O ÚLTIMO campo: o postcard é posicional (degrau `187 → 188` do `PROJECT_SCHEMA`).
+    #[serde(with = "GotasNoFio")]
+    pub gotas: DripPaper,
+}
+
+/// **A forma das gotas no DISCO.** O `ph2d-wet-paint` é a física pura e não fala serde; o fio vive
+/// aqui, ao lado do documento que o grava (`serde(remote)`: o campo continua a ser o tipo vivo).
+/// ⚠️ A ordem dos campos É o formato.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(remote = "DripPaper")]
+struct GotasNoFio {
+    create: bool,
+    size: u8,
+    length: u8,
+}
+
+/// **O documento pintado como os esquemas `186`/`187` o guardavam** — com o papel e o vidro, sem as
+/// gotas: o tipo da migração congelada `ProjectFileV187` da shell. Posicional é posicional: o campo
+/// novo do fim faria um documento antigo ler os bytes do seguinte.
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+pub struct PaintedDocumentSemGotas {
+    pub id: u32,
+    pub layers: LayerStack,
+    pub canvas_rgba: Vec<u8>,
+    pub images: BTreeMap<RtLayerId, LayerImage>,
+    pub heights: BTreeMap<RtLayerId, Vec<f32>>,
+    pub covers: BTreeMap<RtLayerId, Vec<u8>>,
+    pub mats: BTreeMap<RtLayerId, Vec<MaterialBytes>>,
+    pub size: (u32, u32),
+    pub papel: Option<[u8; 3]>,
+    pub vidros: BTreeMap<RtLayerId, Vec<crate::compositor::vidro::Vidro>>,
+}
+
+impl From<PaintedDocumentSemGotas> for PaintedDocument {
+    fn from(d: PaintedDocumentSemGotas) -> Self {
+        Self {
+            id: d.id,
+            layers: d.layers,
+            canvas_rgba: d.canvas_rgba,
+            images: d.images,
+            heights: d.heights,
+            covers: d.covers,
+            mats: d.mats,
+            size: d.size,
+            papel: d.papel,
+            vidros: d.vidros,
+            gotas: DripPaper::DEFAULT,
+        }
+    }
 }
 
 /// **O documento pintado como os esquemas ANTERIORES ao papel o guardavam** — o tipo das migrações
@@ -81,6 +132,7 @@ impl From<PaintedDocumentSemPapel> for PaintedDocument {
             size: d.size,
             papel: None,
             vidros: BTreeMap::new(),
+            gotas: DripPaper::DEFAULT,
         }
     }
 }
@@ -131,6 +183,7 @@ impl PainterTool {
                     .iter()
                     .map(|(k, v)| (*k, v.as_ref().clone()))
                     .collect(),
+                gotas: self.gotas,
             });
         }
         for (bits, doc) in &self.doc_cache {
@@ -325,6 +378,92 @@ mod tests {
             restored.impasto_composite,
             crate::layers::ReliefComposite::Level,
             "…and so did how it meets the relief below it"
+        );
+    }
+
+    /// As GOTAS do papel (W1b) são do DOCUMENTO, como o papel: sobrevivem ao disco e voltam com ele.
+    ///
+    /// **Mutações que devem sangrar:** o `collect_documents`/`to_painted` a escrever `DEFAULT` · o
+    /// `from_painted` a não as devolver.
+    #[test]
+    fn the_paper_drips_survive_the_disk_with_their_document() {
+        use ph2d_wet_paint::drips::DripPaper;
+        const A: u64 = 7;
+        const B: u64 = 999_001;
+        const DOC: u32 = 3;
+        let gotas = DripPaper {
+            create: false,
+            size: 9,
+            length: 2,
+        };
+        assert_ne!(
+            gotas,
+            DripPaper::DEFAULT,
+            "fixture: tem de diferir do default"
+        );
+
+        let mut t = PainterTool::default();
+        t.bind_document(A, vec![255u8; 16 * 16 * 4], 16, 16);
+        t.set_gotas(gotas);
+        let ids: BTreeMap<u64, u32> = [(A, DOC)].into_iter().collect();
+        let docs = t.collect_documents(&ids);
+        assert_eq!(docs.len(), 1);
+        let bytes = postcard::to_allocvec(&docs).expect("serializa");
+        let back: Vec<PaintedDocument> = postcard::from_bytes(&bytes).expect("le de volta");
+        assert_eq!(back, docs, "o mesmo documento, byte a byte");
+
+        let mut t2 = PainterTool::default();
+        assert_eq!(
+            t2.gotas(),
+            DripPaper::DEFAULT,
+            "um tool novo nasce com as gotas default"
+        );
+        t2.install_document(B, back.into_iter().next().expect("o documento"));
+        t2.baked_document_pixels(B)
+            .expect("o documento carregado compõe");
+        assert_eq!(
+            t2.gotas(),
+            gotas,
+            "as gotas do papel voltaram com o documento"
+        );
+    }
+
+    /// ⛔ **Um documento gravado ANTES das gotas** (schema `187`) lê-se pelo tipo congelado e nasce
+    /// com `DripPaper::DEFAULT`; o tipo vivo NÃO o lê (o controlo: sem ele o degrau não seria preciso).
+    #[test]
+    fn a_document_written_before_the_drips_reads_with_the_default_drips() {
+        use ph2d_wet_paint::drips::DripPaper;
+        // O layout `187`, campo a campo — nunca pelo tipo congelado (a cerca dos BYTES do repo).
+        let antigo = (
+            5u32,
+            LayerStack::default(),
+            vec![1u8, 2, 3, 4],
+            BTreeMap::<RtLayerId, LayerImage>::new(),
+            BTreeMap::<RtLayerId, Vec<f32>>::new(),
+            BTreeMap::<RtLayerId, Vec<u8>>::new(),
+            BTreeMap::<RtLayerId, Vec<MaterialBytes>>::new(),
+            (1u32, 1u32),
+            Some([10u8, 20, 30]),
+            BTreeMap::<RtLayerId, Vec<crate::compositor::vidro::Vidro>>::new(),
+        );
+        let bytes = postcard::to_allocvec(&vec![antigo]).expect("serializa um 187");
+        assert!(
+            postcard::from_bytes::<Vec<PaintedDocument>>(&bytes).is_err(),
+            "o tipo VIVO leu um documento 187 — então o degrau 187 → 188 não seria preciso"
+        );
+        let lidos: Vec<PaintedDocumentSemGotas> =
+            postcard::from_bytes(&bytes).expect("um 187 lê-se pelo tipo congelado");
+        let doc: PaintedDocument = lidos.into_iter().next().expect("um").into();
+        assert_eq!(doc.id, 5);
+        assert_eq!(
+            doc.papel,
+            Some([10, 20, 30]),
+            "o papel atravessa a migração"
+        );
+        assert_eq!(
+            doc.gotas,
+            DripPaper::DEFAULT,
+            "um 187 não tem gotas a dizer"
         );
     }
 }

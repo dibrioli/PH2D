@@ -85,6 +85,19 @@ deste vale:
 Entra como **W1b**, antes da W2: as quatro partes num bloco (mesma família — a água; §0.10). A W7 fica com
 o resto da água (água como volume com `length_water_reduction`, Blow).
 
+## §5b — Feito (W1b, 08/10) — o nosso DEPOIS, na mesma bancada
+
+A bancada virou gate (`tests/it/gotas_pela_lei_do_rebelle.rs`); a lei e onde vive cada peça estão no
+[05 §4b](05_plano_da_linha_e_o_antes.md). Gota mais longa abaixo do traço (px), 30 s:
+
+| tela | água 1,0 | 0,7 | 0,4 | 0,2 | Rebelle |
+|---|---|---|---|---|---|
+| direita (a de fábrica, desde a W1b) | 0 | 0 | 0 | 0 | 0 |
+| meia | 0 | 0 | 0 | 0 | 0 |
+| máxima | 296 (fios de 1 px) | 260 | 0 | 0 | 283 · 249 · 0 · 0 |
+| máxima, Create Drips off | 0 (orla de baixo 3,0× a de cima) | 0 (2,1×) | 0 | 0 | 0 (3,1× · 2,3×) |
+| máxima, Size/Length 10/10 | 464 (funil) | 464 | 0 | 0 | 463 · 465 |
+
 ## §6 — Como repetir
 
 ```

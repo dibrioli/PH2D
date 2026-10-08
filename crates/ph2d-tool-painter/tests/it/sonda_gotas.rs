@@ -1,13 +1,14 @@
 //! **Sonda (ignorada): a bancada das GOTAS, a nossa metade** (doc 06). Os mesmos quatro traços que
 //! `ferramentas/gotas.py` manda ao Rebelle — 150 px a 40 px de diâmetro, pressão 1, água 1,0 / 0,7 / 0,4 /
-//! 0,2 — numa tela branca 1000×640, no relógio fixo, em três inclinações: a de FÁBRICA do nosso dial, sem
-//! inclinação e no máximo. Mede a gota mais longa abaixo de cada traço (a régua do doc 06: tinta =
+//! 0,2 — numa tela branca 1000×640, no relógio fixo, em três inclinações: a de FÁBRICA do nosso dial (desde
+//! a W1b, a tela DIREITA), a meio e no máximo. A versão rápida e gateada é `gotas_pela_lei_do_rebelle`. Mede a gota mais longa abaixo de cada traço (a régua do doc 06: tinta =
 //! `255 − min(rgb) > 25`) a 2 s e a 30 s, e grava `gotas_<variante>_<t>.ppm` em `PH2D_SONDA_OUT`.
 //!
 //! ```text
 //! PH2D_SONDA_OUT=/tmp/x cargo test -p ph2d-tool-painter --profile smoke --test it sonda_gotas -- --ignored --nocapture
 //! ```
 
+use super::gotas_pela_lei_do_rebelle::inclina;
 use super::sonda_gestos::{H, W, tela};
 use ph2d_brush_presets::Volumes;
 use ph2d_editor_core::Tool;
@@ -78,12 +79,8 @@ fn sonda_gotas() {
     };
     let variantes: [Variante<'_>; 6] = [
         ("fabrica", &|_| {}),
-        ("sem_tilt", &|t| {
-            t.handle_panel_event(PanelEvent::Click(ids::PAINTER_WETPAINT_TILT_TOGGLE));
-        }),
-        ("tilt_max", &|t| {
-            t.handle_panel_event(PanelEvent::SetValue(ids::PAINTER_WETPAINT_TILT_RING, 8.0));
-        }),
+        ("tilt_meio", &|t| inclina(t, Some(4))),
+        ("tilt_max", &|t| inclina(t, Some(8))),
         ("controlo", &|t| fios(t, 0.0, 15.0)),
         ("fios_15", &|t| fios(t, 1.0, 15.0)),
         ("fios_40", &|t| fios(t, 1.0, 40.0)),

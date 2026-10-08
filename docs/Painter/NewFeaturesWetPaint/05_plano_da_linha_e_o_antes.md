@@ -84,7 +84,7 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
 | **cerca** | `the_other_media_are_untouched` (diff vs merge-base) + fixture `fixtures/sonda_28/{digital,watercolor,impasto}.ppm` com cabeçalho | sha256 iguais; mutação num dos três meios reprova |
 | **W0** ✅ | as 12 fotos do Rebelle em `fixtures/rebelle/` com cabeçalho; `mede_todos.sh` sem caminho de scratchpad; a régua em Rust; a lei raio → largura medida e diagnosticada (§1.1). `PH2D_SONDA_PRESET` passa para a W1 (antes dela não há presets) | o gate de largura passa para a W2 (§1.1) |
 | **W1** ✅ | crate `ph2d-brush-presets` (`*.ph2d-brush.png`), fábrica em `assets/brushes/WetPainter/`, navegador + os volumes VIVOS (Size px, Water; Opacity/Pressure/Length sem leitor ⇒ fora) | round-trip ao byte; presets contados; campo desconhecido não falha; miniatura = a do motor; o pincel guardado pinta o mesmo traço ao byte |
-| **W1b** (08/10) | **as gotas pela lei do Rebelle** ([06](06_gotas_rebelle_x_ph2d.md)): a gravidade sai do pincel e vai para a TELA (o dial de inclinação, **desligado** de fábrica); Create Drips · Drip Size · Drip Length passam a ser do PAPEL (a obra); a água de fábrica dos presets desce para a faixa do Rebelle; o MECANISMO da gota no motor (ficheiro irmão do solver) | a bancada do 06 (`sonda_gotas` + `ferramentas/gota*`): tela direita ou inclinação a meio ⇒ **0**; inclinação máx. ⇒ gota **≥ 250 px** nos traços de água ≥ 0,7 e **0** nos de 0,4 e 0,2, **1–2 gotas por traço, ≤ 4 px de largura** (Rebelle 249–283 px, 1–3 px); Create Drips off ⇒ 0 e a orla de baixo escura; Size/Length 10/10 ⇒ ≥ 450 px em funil (Rebelle 463–465) · nenhum preset leva `gravity` · controlo: knobs das gotas no neutro e inclinação desligada ⇒ o traço de hoje ao byte |
+| **W1b** ✅ (08/10) | **as gotas pela lei do Rebelle** ([06](06_gotas_rebelle_x_ph2d.md)): a gravidade sai do pincel e vai para a TELA (o dial de inclinação, **desligado** de fábrica); Create Drips · Drip Size · Drip Length passam a ser do PAPEL (a obra); a água de fábrica dos presets desce para a faixa do Rebelle; o MECANISMO da gota no motor (ficheiro irmão do solver) | a bancada do 06 (`sonda_gotas` + `ferramentas/gota*`): tela direita ou inclinação a meio ⇒ **0**; inclinação máx. ⇒ gota **≥ 250 px** nos traços de água ≥ 0,7 e **0** nos de 0,4 e 0,2, **1–2 gotas por traço, ≤ 4 px de largura** (Rebelle 249–283 px, 1–3 px); Create Drips off ⇒ 0 e a orla de baixo escura; Size/Length 10/10 ⇒ ≥ 450 px em funil (Rebelle 463–465) · nenhum preset leva `gravity` · controlo: knobs das gotas no neutro e inclinação desligada ⇒ o traço de hoje ao byte |
 | **W2** | fios com pressão Perlin, largura ondulante, oscilação, Thin/Thick/Edges, Random Span, ruído HSLuv — e a **largura prometida** (§1.1: o raio do motor sai da tabela do preset, em `stamp_dabs_wetpaint`) | **largura = 2·raio ± 2 px** em raios fora da tabela, de 2 a 300 (hoje 0,25–0,60 × e o buraco 11–15) · a 40 px: **5 ≤ textura ≤ 10 %** (hoje 12–14 ✗; Rebelle óleo 5,9, express 9) · **CV ≤ 0,02** (hoje 0,031 ✗; dele 0,011) · **período < 15 %** (hoje 16 % ✗; dele 9 %) · controlo: knobs a 0 ⇒ PNG de hoje ao byte |
 | **W3** | campo de altura no grid (fios Add/Remove), oleosidade = viscosidade, luz do Impasto por porta livre | óleo: borda/miolo **0,8–0,9** (hoje 0,52 ✗; dele 0,87) e textura na banda da W2; acrílico: largura A = B |
 | **W4** | lei do papel do fluido (força × pressão, contraste, scratch, fundo que fura, `PaperBehaviour` × 5 papéis) | lápis 8B: textura **≥ 8 %**, borda/miolo **< 0,5** (dele 9,1 / 0,32; não temos lápis) |
@@ -177,15 +177,93 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   omissão) e a forma das gotas é do PAPEL (Create Drips/Size/Length); a água de fábrica da aquarela é 9–49.
   O nosso: Gravity por pincel, dial ligado por omissão, pente de dedos curtos em vez de 1–2 gotas longas; os
   knobs escondidos `extFingering`/`extRivulets` não fazem gotas. ✅ **Decidido** (§4.3): onda W1b.
+- ✅ **W1b — as gotas pela lei do Rebelle** (08/10) — onde vive cada coisa:
+  - **Motor** — `ph2d-wet-paint/src/drips.rs` (ficheiro irmão; o solver não cresceu): `DripPaper`
+    {create, size, length} (1–10, 5), a **linha de contacto** `pin_downhill` (entre o `prepare_rows` e o
+    `outflow_rows` do advect de Jacobi: célula ativa SECA perde a componente de descida do `uv` — a massa
+    fica exacta porque saída e transporte leem o mesmo `uv`) e a **gota** `drip_pass` (no estágio final do
+    passo, o da cadência: o teste dos seis pontos de retoma fica). `Sim::gotas: Option<DripPaper>` —
+    `None` no boot (o port 1:1: fingerprints intactos), o tool empurra sempre `Some`. Sem gravidade as
+    duas peças são INERTES ao bit. `Grid::drips` viaja no snapshot; `Grid::drip_dirty` junta-se ao sujo
+    nas DUAS portas do passo (`step_simulation`, `step_stage` — `merge_drip_dirty`).
+  - **A lei da gota (medida, constantes com a tabela no `drips.rs`)**: a orla de baixo é célula molhada com
+    8 células SECAS a jusante (não um buraco da franja); a gota solta-se quando a tela passa o ângulo
+    mínimo `SLIDE` (meio geométrico entre a meia e a máxima: anéis 6–8) **e** `gravidade × água da orla >
+    HOLD = 0,039` (meio geométrico entre 0,7 = `0,1405` e 0,4 = `0,0109` na máxima). ⛔ Um só limiar de
+    peso NÃO separa: na meia inclinação a água 1,0 junta MAIS na orla (`0,180`) que a 0,7 na máxima
+    (`0,141`) — o Rebelle só pinga na máxima ⇒ o ângulo é uma condição própria. A gota bebe 25 % do
+    excesso das orlas da SUA bacia (`walk_edge`: a orla seguida coluna a coluna, ±`15·Size` px, até 3
+    colunas sem orla), desce a 1 px/passo na máxima, e o rasto é `270·(Length/5)^1,6·(bacia/HOLD)^0,1` px;
+    cada célula do rasto assenta `0,045 ×` o pigmento da orla onde a gota nasceu (o fio é PÁLIDO e
+    uniforme — Rebelle: 40–52 % do escuro do traço; com o pigmento da gota espalhado o nosso dava 82–95 %
+    e o funil escurecia ao estreitar), a cabeça espera pela tinta da fileira enquanto a orla ainda dá, e
+    quando deixa de dar o resto reparte-se igual pelo que falta (clareia até à ponta, nunca se corta); a
+    largura é `0,08·Size²·(falta/total)²` (o funil). Uma bacia não volta a pingar no mesmo episódio molhado, e nada nasce DENTRO da bacia de uma
+    gota (os buracos de uma poça a escoar: eram centenas de gotas natimortas).
+  - **Tela** — o dial é a porta ÚNICA: nasce DESLIGADO (o tool e o Reset; o motor continua a nascer ligado
+    e o reconcile empurra o desligado — `the_tool_default_reaches_the_engine_exactly` reescrito de
+    propósito). A gravidade da tela é `Knob::Gravity = 0,01` no `WetKnobs::DEFAULT` (o anel 8 = ×2 = o
+    Rebelle no máximo: a orla sem gotas dá baixo/cima **3,03 / 2,11** contra **3,07 / 2,28** dele; a
+    `0,005` de antes dava 1,64 / 1,24). A fileira Gravity saiu da secção e da tabela de ajuste
+    (`KNOBS_DA_OBRA` em `wetpaint_preset.rs`: não se captura nem se aplica; o painel de ajuste filtra-a).
+  - **Papel** — `PainterTool::gotas` ao lado do `papel` (`papel.rs`: `gotas()`/`set_gotas()`), na secção
+    Paper só no Wet Paint (`paint_watercolor_paper.rs::paint_drip_rows`; ids
+    `PAINTER_WETPAINT_DRIPS_CREATE` em `PAINTER_WETPAINT_CLICKS`, `_DRIP_SIZE`/`_DRIP_LENGTH` em
+    `PAINTER_WETPAINT_FIELDS`). Persistem com o documento: `PaintedDocument.gotas` (último campo, 3 bytes,
+    `serde(remote)` — o motor não tem serde), degrau **187 → 188** com migração (`ProjectFileV187`,
+    `PaintedDocumentSemGotas`: um 187 abre com as gotas de fábrica). O preview vivo segue-as
+    (`CenaDoPreview`/`ChaveDoPreview`).
+  - **Fábrica** — a água do Rebelle (Wet Round 0,29 · Wash 0,24 · Dry Brush 0,09 · Drip 0,49), sem
+    `gravity`; regerada (`a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` ficou vermelho e voltou verde
+    no mesmo commit). ⚠️ O Wet Drip a 0,49 fica no vale (0,4 não pinga, 0,7 pinga): decisão do dono pendente
+    se deve pingar com a tela no máximo.
+  - **A bancada como gate** (`tests/it/gotas_pela_lei_do_rebelle.rs`, 1000×640, 30 s, ~11 s as cinco):
+
+    | caso | água 1,0 | 0,7 | 0,4 | 0,2 | Rebelle |
+    |---|---|---|---|---|---|
+    | tela direita | 0 | 0 | 0 | 0 | 0 — e o traço de antes AO BYTE (fnv `0xafa3…b7fa`) |
+    | meia inclinação | 0 | 0 | 0 | 0 | 0 |
+    | máxima | **296** px, 2 fios de 1 px, pálidos e uniformes | **260**, 2 de 1 px | 0 | 0 | 283 · 249 · 0 · 0 (1–3 px) |
+    | Create Drips off | 0 · orla baixo/cima 3,0× | 0 · 2,1× | 0 | 0 | 0 · 3,1× · 2,3× (direita: ~1×) |
+    | Size/Length 10/10 | **464** (funil 7 px → 1) | **464** | 0 | 0 | 463 · 465 |
+
+  - **Custo a 4096²** (`ph2d-wet-paint/tests/it/drips.rs::measure_drip_pass_cost`, `smoke`, as duas
+    variantes intercaladas no mesmo processo, Size/Length 10/10):
+
+    | cena | estágio das gotas p50 / p99 / máx | advect com / sem a linha de contacto (p50) | load |
+    |---|---|---|---|
+    | 1.ª tentativa (varredura em CAIXA por gota), três poças | 6,1 / 13,5 / **15,5 ms** ✗ | — | 8,5 |
+    | 2.ª (a orla seguida, `walk_edge`), três poças, 30–36 gotas | 0,24 / 0,78–0,87 / **0,99–1,62 ms** ✓ | 3,7 / 3,9 ms | 4,1–5,6 |
+    | 2.ª, a tela INTEIRA molhada (16 M células, sem gotas) | 0,002 / 2,2 / 4,3 ms | 74,6 / 73,4 ms | 17,8 → 41 (INVÁLIDO) |
+    | 2.ª final (tinta por célula), três poças, 30 gotas | 0,27 / 0,74 / **0,76 ms** ✓ | 3,55 / 3,77 ms | 6,6 → 11 |
+    | 2.ª final, a tela INTEIRA molhada | 0,001 / 1,49 / **1,49 ms** ✓ | 70,4 / 68,9 ms | 6,6 → 11 |
+
+    ✅ O pior tick das gotas fica ≤ 2 ms a 4096² na 2.ª tentativa (a varredura das orlas e a linha de
+    contacto correm por linhas em paralelo; a bacia é a orla seguida, não uma caixa). Os 4,3 ms eram a
+    carga de outras linhas (load 17–41). A linha de contacto custa ~1,5 % do advect.
+  - **Mutações (17 sangram de 19; controlos verdes antes):** sem o ângulo mínimo ✗ meia · sem linha de contacto
+    ✗ Create Drips off + motor · `HOLD` 0,005 ✗ água 0,4 · `FRONT_DRY` 1 ✗ funil 10/10 · bacia desligada ✗
+    1–2 fios · sem `merge_drip_dirty` no `step_stage` ✗ · sem `drip_pass` ✗ bancada + determinismo · tool
+    a nascer inclinado ✗ `the_tool_default…` · Reset inclinado ✗ · `knob_da_obra` falso ✗ · sem o
+    reconcile das gotas ✗ · chave do preview sem gotas ✗ · sem o clique Create Drips ✗ seam · rows não
+    pintadas ✗ seam · tabela de ajuste sem o filtro ✗ · lei `GotasDaTela` falsa ✗ censo · `TRAIL_TINT`
+    0,2 ✗ fio pálido (0,93). Sobreviveram duas, e as duas mudaram o código: a forma ANTIGA do rasto
+    (`pigmento·película/água`) passava em todos os gates de comprimento — a medição mostrou o fio a 82–95 %
+    do traço contra 40–52 % do Rebelle, e o rasto passou a ser a tinta por célula com o gate do fio pálido
+    (que a `TRAIL_TINT` 0,2 sangra); e o tecto «o fio não escurece», EQUIVALENTE (sem beber,
+    `pigmento / células` é constante por construção) — saiu.
+  - **Censo dos controlos**: as três rows esmaecem com a tela abaixo do ângulo mínimo (`GotasDaTela`) e
+    Size/Length com Create Drips off (`FormaDaGota`); a linha «o ângulo do carimbo não muda a tinta da
+    água» saiu — com a tela direita ele MUDA (a água a correr apagava a diferença).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
+  ⚠️ Para o integrador: o degrau 187 → 188 tem migração (`ProjectFileV187`, braço `187 =>` em
+  `project_load_read.rs`) — se o main passar de 187 antes, os dois movem-se à mão (o `schema-recount.py`
+  só reconta a escada e a tripla).
 
-## §5 — A próxima janela (W1b — as gotas; depois a W2)
+## §5 — A próxima janela (a W2)
 
-O prompt inteiro: [07_PROMPT_janela_W1b_gotas.md](07_PROMPT_janela_W1b_gotas.md). Em resumo: as quatro
-partes do 06 §5 num bloco, com a bancada do 06 como gate, a fábrica regerada e as fixtures do Rebelle já
-gravadas (o oráculo só se reabre se uma medição nova for precisa — pelos `gotas_*.sh`).
-
-Depois da W1b, a W2:
+A W1b fechou (§4b; o prompt dela: [07](07_PROMPT_janela_W1b_gotas.md)). Pendente do dono: o Wet Drip a
+0,49 pinga ou não com a tela no máximo. A W2:
 
 1. Fase 0 do [MODELO_TROCA_DE_AGENTE](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md), a
    cerca e `os_outros_meios_nao_mudam` verdes antes de tocar em produto.

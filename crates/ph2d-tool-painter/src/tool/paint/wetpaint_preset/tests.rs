@@ -387,3 +387,47 @@ fn a_opacidade_nao_tem_leitor_no_wet_paint() {
     let grossa = traco(&|t| t.set_brush_size_px(20.0));
     assert_ne!(grossa, forte, "controlo: o Size é lido");
 }
+
+/// ⛔ W1b: os knobs da OBRA ([`KNOBS_DA_OBRA`]: a gravidade é da tela) nem se capturam nem se aplicam —
+/// um preset antigo que a traga não mexe na inclinação da obra. Mutação que sangra: `knob_da_obra` a
+/// devolver `false` (na captura ou na aplicação).
+#[test]
+fn um_preset_nao_leva_nem_aplica_os_knobs_da_obra() {
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::WetPaint);
+    let obra = t.paint.wetpaint.knobs.get(Knob::Gravity);
+    let (p, _) = t.wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, "g", "n"));
+    assert!(
+        !p.engine.contains_key("gravity"),
+        "a captura levou a gravidade"
+    );
+    assert!(
+        p.engine.contains_key("pickup"),
+        "controlo: os do pincel vão"
+    );
+
+    let mut antigo = p.clone();
+    antigo.engine.insert("gravity".into(), 0.05);
+    antigo.engine.insert("pickup".into(), 0.1);
+    let falhas = t.wet_preset_aplicar(&Preset {
+        parametros: antigo,
+        origem: Origem::Fabrica,
+        miniatura: Miniatura {
+            largura: 1,
+            altura: 1,
+            rgba: vec![255; 4],
+        },
+        texturas: Default::default(),
+    });
+    assert!(falhas.is_empty());
+    assert_eq!(
+        t.paint.wetpaint.knobs.get(Knob::Gravity),
+        obra,
+        "o preset mexeu na gravidade da obra"
+    );
+    assert_eq!(
+        t.paint.wetpaint.knobs.get(Knob::Pickup),
+        0.1,
+        "controlo: o do pincel aplica-se"
+    );
+}

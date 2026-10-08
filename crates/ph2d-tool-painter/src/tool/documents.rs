@@ -33,6 +33,8 @@ pub(crate) struct StashedDoc {
     vidros: crate::compositor::vidro::Vidros,
     /// O papel do documento ([`crate::tool::papel`]) — viaja com ele.
     papel: Option<[u8; 3]>,
+    /// As gotas do papel — do documento, como o papel.
+    gotas: ph2d_wet_paint::drips::DripPaper,
     layer_pixel_versions: BTreeMap<RtLayerId, u64>,
     source_size: (u32, u32),
     undo: crate::undo::UndoController,
@@ -73,6 +75,7 @@ impl StashedDoc {
             size: self.source_size,
             vidros: unshare(&self.vidros),
             papel: self.papel,
+            gotas: self.gotas,
         }
     }
 
@@ -92,6 +95,7 @@ impl StashedDoc {
             mats: reshare(doc.mats),
             vidros: reshare(doc.vidros),
             papel: doc.papel,
+            gotas: doc.gotas.clamped(), // o disco não é de confiança: a faixa é a do setter
             // Rebuilt on demand: a version cache and a fresh history. (`bump_layer_pixels` re-stamps
             // the versions the first time the compositor asks.)
             layer_pixel_versions: BTreeMap::new(),
@@ -182,6 +186,7 @@ impl PainterTool {
         // vazia; com tinta, o alfa dela só vive aqui (BUGS #45).
         self.preview_layer_stack_is_trivial()
             && self.heights.is_empty()
+            && self.gotas == ph2d_wet_paint::drips::DripPaper::DEFAULT // a sprite não as reconstrói
             && match self.papel {
                 None => true,
                 Some(p) => {
@@ -204,6 +209,7 @@ impl PainterTool {
             mats: std::mem::take(&mut self.mats),
             vidros: std::mem::take(&mut self.vidros),
             papel: self.papel.take(),
+            gotas: std::mem::take(&mut self.gotas), // o próximo documento nasce com as default
             layer_pixel_versions: std::mem::take(&mut self.layer_pixel_versions),
             source_size: self.source_size,
             undo: std::mem::take(&mut self.undo),
@@ -231,6 +237,7 @@ impl PainterTool {
         self.vidro_congelado = Default::default();
         self.covers = doc.covers;
         self.papel = doc.papel;
+        self.gotas = doc.gotas;
         self.drop_live_relief();
         // The stack and the relief travelled together, so the `has_relief` flags arrive already true —
         // EXCEPT for a document that came off disk from a build that never sculpted it. Re-deriving is
@@ -387,6 +394,29 @@ mod tests {
             (64, 64),
             "sprite 1's canvas size is restored"
         );
+    }
+
+    /// As GOTAS do papel são do documento: trocar de sprite não as empresta ao seguinte, e voltar
+    /// devolve-as — mesmo numa tela de uma camada só (gotas não-default tornam-na não-descartável).
+    #[test]
+    fn the_paper_drips_travel_with_their_document_across_a_switch() {
+        use ph2d_wet_paint::drips::DripPaper;
+        let gotas = DripPaper {
+            create: false,
+            size: 9,
+            length: 2,
+        };
+        let mut t = PainterTool::default();
+        t.bind_document(1, vec![255u8; 8 * 8 * 4], 8, 8);
+        t.set_gotas(gotas);
+        t.bind_document(2, vec![0u8; 8 * 8 * 4], 8, 8);
+        assert_eq!(
+            t.gotas(),
+            DripPaper::DEFAULT,
+            "o sprite 2 não herda as gotas do 1"
+        );
+        t.bind_document(1, vec![255u8; 8 * 8 * 4], 8, 8);
+        assert_eq!(t.gotas(), gotas, "as gotas do sprite 1 voltaram com ele");
     }
 
     /// A sculpted document keeps its RELIEF across sprite switches — and, the sharper half, does not

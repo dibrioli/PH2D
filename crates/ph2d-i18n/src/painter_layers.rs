@@ -46,6 +46,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.charge_below_full" => "Acts when Charge is below 100%",
         "panel.painter_layers.inerte.grain_chosen" => "Acts when a Grain is chosen",
         "panel.painter_layers.inerte.eraser_on" => "Acts with the Eraser",
+        "panel.painter_layers.inerte.canvas_tilted" => {
+            "Acts when the canvas is tilted past halfway"
+        }
+        "panel.painter_layers.inerte.create_drips_on" => "Acts with Create Drips on",
         "panel.painter_layers.inerte.wet_paint_tool" => "Acts with the Paint tool and the Eraser",
         "panel.painter_layers.inerte.detail_above_minimum" => {
             "Acts when Detail is above its minimum"
@@ -513,6 +517,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.watercolor.pigment" => "Pigment",
         "panel.painter_layers.paper.relief" => "Relief",
         "panel.painter_layers.paper.roughness" => "Roughness",
+        "panel.painter_layers.paper.create_drips" => "Create Drips",
+        "panel.painter_layers.paper.drip_size" => "Drip Size",
+        "panel.painter_layers.paper.drip_length" => "Drip Length",
         "panel.painter_layers.paper.paper" => "Paper",
         "panel.painter_layers.paper.angle" => "Angle",
         "panel.painter_layers.paper.offset" => "Offset",
@@ -552,7 +559,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.pickup" => "Pickup",
         "panel.painter_layers.wetpaint.dry_speed" => "Dry Speed",
         "panel.painter_layers.wetpaint.edge_darkening" => "Edge Darkening",
-        "panel.painter_layers.wetpaint.gravity" => "Gravity",
         "panel.painter_layers.wetpaint.erase_strength" => "Erase Strength",
         "panel.painter_layers.wetpaint.canvas_actions" => "Wet canvas actions",
         "panel.painter_layers.wetpaint.wet_canvas" => "Wet canvas",

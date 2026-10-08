@@ -44,6 +44,9 @@ const fn painter_default_knobs() -> [f64; KNOB_COUNT] {
     k[Knob::Felt as usize] = 0.03; // LITERAL-OK: wet-paint product default (Enio), engine boot 0.01
     k[Knob::BristleSize as usize] = 2.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 1.0
     k[Knob::BristleCount as usize] = 2000.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 950
+    // A gravidade da TELA (W1b): o dial no máximo (anel 8 = ×2) = a inclinação máxima do Rebelle, medida
+    // pela orla sem gotas (doc 05 §4b: baixo/cima 3,03 / 2,11 contra 3,07 / 2,28). Não é do pincel.
+    k[Knob::Gravity as usize] = 0.01; // LITERAL-OK: canvas tilt calibration (W1b), engine boot 0.005
     k
 }
 
@@ -124,11 +127,6 @@ impl WetKnobs {
     pub fn edge_darkening(&self) -> f64 {
         self.get(Knob::EdgeDarkening)
     }
-    /// Gravity magnitude — the run/drip pull (`Knob::Gravity`).
-    #[must_use]
-    pub fn gravity(&self) -> f64 {
-        self.get(Knob::Gravity)
-    }
 }
 
 impl Default for WetKnobs {
@@ -204,7 +202,7 @@ impl PainterTool {
         let w = &mut self.paint.wetpaint;
         w.knobs = WetKnobs::default();
         w.tool = WetTool::default();
-        w.tilt_on = true;
+        w.tilt_on = false;
         w.tilt_ring = 4;
         w.tilt_spoke = 3;
         w.km_mixing = false;
@@ -216,6 +214,17 @@ impl PainterTool {
         if need_recomposite {
             self.wet_recomposite_full();
         }
+    }
+
+    /// A inclinação AUTORADA solta gotas? — o mesmo vetor que o reconcile dá ao motor (`Sim::gravity`:
+    /// knob da gravidade × anel/4, ligado) contra o ângulo mínimo do motor.
+    pub(crate) fn wet_tilt_lets_drips_slide(&self) -> bool {
+        let w = &self.paint.wetpaint;
+        w.tilt_on
+            && ph2d_wet_paint::drips::can_slide([
+                0.0,
+                w.knobs.get(Knob::Gravity) * f64::from(w.tilt_ring) / 4.0,
+            ])
     }
 
     /// The authored knob values (the panel snapshot's source).
@@ -303,6 +312,20 @@ impl PainterTool {
             self.set_wet_flow_ratio(v);
             return true;
         }
+        // As gotas são do PAPEL (o dono é o `PainterTool`, ao lado do papel), não dos knobs do pincel.
+        if id == crate::ids::PAINTER_WETPAINT_DRIP_SIZE
+            || id == crate::ids::PAINTER_WETPAINT_DRIP_LENGTH
+        {
+            let mut g = self.gotas();
+            let n = v.round().clamp(1.0, 10.0) as u8;
+            if id == crate::ids::PAINTER_WETPAINT_DRIP_SIZE {
+                g.size = n;
+            } else {
+                g.length = n;
+            }
+            self.set_gotas(g);
+            return true;
+        }
         let w = &mut self.paint.wetpaint;
         let k = &mut w.knobs;
         match id {
@@ -311,7 +334,6 @@ impl PainterTool {
             x if x == crate::ids::PAINTER_WETPAINT_PICKUP => k.set(Knob::Pickup, v),
             x if x == crate::ids::PAINTER_WETPAINT_DRY_SPEED => k.set(Knob::Evaporation, v),
             x if x == crate::ids::PAINTER_WETPAINT_EDGE => k.set(Knob::EdgeDarkening, v),
-            x if x == crate::ids::PAINTER_WETPAINT_GRAVITY => k.set(Knob::Gravity, v),
             x if x == crate::ids::PAINTER_WETPAINT_ERASE => k.erase = v.clamp(0.0, 1.0),
             // The tilt dial's two carriers (the pad converts its 2D drag to
             // ring/spoke and forwards them here). Touching the dial turns
@@ -352,6 +374,12 @@ impl PainterTool {
                     .position(|t| t == id)
                     .unwrap_or(0);
                 self.pick_wet_tool(index);
+                true
+            }
+            PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_DRIPS_CREATE => {
+                let mut g = self.gotas();
+                g.create = !g.create;
+                self.set_gotas(g);
                 true
             }
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_WETPAINT_TILT_TOGGLE => {

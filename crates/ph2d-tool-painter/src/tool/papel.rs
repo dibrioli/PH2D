@@ -230,6 +230,17 @@ impl PainterTool {
         self.papel
     }
 
+    /// As gotas do papel (W1b) — o que o Wet Paint lê para a forma das gotas.
+    #[must_use]
+    pub fn gotas(&self) -> ph2d_wet_paint::drips::DripPaper {
+        self.gotas
+    }
+
+    /// Escreve as gotas do papel (fora de `1..=10` grampeia); a sessão viva as recebe no próximo tique.
+    pub fn set_gotas(&mut self, g: ph2d_wet_paint::drips::DripPaper) {
+        self.gotas = g.clamped();
+    }
+
     /// **Compõe a região `r` do composite `rgba` (do tamanho da região) sobre o papel** — a porta
     /// que toda saída do documento chama ENTRE o composite e a luz do relevo.
     pub(crate) fn compoe_sobre_o_papel(&self, rgba: &mut [u8], r: Region) {

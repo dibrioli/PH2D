@@ -461,6 +461,8 @@ pub struct BrushSettings {
     pub wet_tilt_on: bool,
     pub wet_tilt_ring: u8,
     pub wet_tilt_spoke: u8,
+    /// As gotas do PAPEL do documento (W1b): Create Drips · Drip Size · Drip Length.
+    pub wet_gotas: ph2d_wet_paint::drips::DripPaper,
     /// Show-wet display overlay (never baked).
     pub wet_show_wet: bool,
     /// Paper checkbox — the tooth is visually part of the painting.

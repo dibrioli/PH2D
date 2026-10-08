@@ -28,10 +28,14 @@ pub enum Dependente {
     DepthSourceGrain,
     EraseDaAgua,
     ToothDoDigital,
+    /// As gotas do papel (W1b): só agem com a tela inclinada o bastante para uma gota deslizar.
+    GotasDaTela,
+    /// O tamanho e o comprimento da gota: só agem com Create Drips ligado.
+    FormaDaGota,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 14] = [
+    pub const TODOS: [Dependente; 16] = [
         Dependente::TaperTip,
         Dependente::TaperOpacity,
         Dependente::Accumulate,
@@ -46,6 +50,8 @@ impl Dependente {
         Dependente::DepthSourceGrain,
         Dependente::EraseDaAgua,
         Dependente::ToothDoDigital,
+        Dependente::GotasDaTela,
+        Dependente::FormaDaGota,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -68,6 +74,15 @@ impl Dependente {
             Dependente::DepthSourceGrain => &[ids::PAINTER_IMPASTO_SOURCE_GRAIN],
             Dependente::EraseDaAgua => &[ids::PAINTER_WETPAINT_ERASE],
             Dependente::ToothDoDigital => &[ids::PAINTER_WATERCOLOR_PAPER_DEPTH],
+            Dependente::GotasDaTela => &[
+                ids::PAINTER_WETPAINT_DRIPS_CREATE,
+                ids::PAINTER_WETPAINT_DRIP_SIZE,
+                ids::PAINTER_WETPAINT_DRIP_LENGTH,
+            ],
+            Dependente::FormaDaGota => &[
+                ids::PAINTER_WETPAINT_DRIP_SIZE,
+                ids::PAINTER_WETPAINT_DRIP_LENGTH,
+            ],
         }
     }
 
@@ -90,6 +105,8 @@ impl Dependente {
             Dependente::DepthSourceGrain => "panel.painter_layers.inerte.grain_chosen",
             Dependente::EraseDaAgua => "panel.painter_layers.inerte.eraser_on",
             Dependente::ToothDoDigital => "panel.painter_layers.inerte.relief_and_no_grain",
+            Dependente::GotasDaTela => "panel.painter_layers.inerte.canvas_tilted",
+            Dependente::FormaDaGota => "panel.painter_layers.inerte.create_drips_on",
         }
     }
 
@@ -210,6 +227,16 @@ impl PainterTool {
                 Dependente::ToothDoDigital,
                 matches!(self.paint_media(), super::media::PaintMedia::Digital)
                     && !self.papel_pode_ser_grain(),
+            ),
+            // As gotas são do PAPEL, mas quem as solta é a TELA: sem inclinação bastante (o ângulo
+            // mínimo do motor, `drips::can_slide`) nenhuma das três muda a tinta.
+            (
+                Dependente::GotasDaTela,
+                agua && !self.wet_tilt_lets_drips_slide(),
+            ),
+            (
+                Dependente::FormaDaGota,
+                agua && self.wet_tilt_lets_drips_slide() && !self.gotas.create,
             ),
         ];
         Inercias {

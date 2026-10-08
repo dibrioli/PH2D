@@ -214,6 +214,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.project_load.project_migrated_from_128_without_sculpture" => {
             "Project migrated from format 128 to {PROJECT_SCHEMA} \u{00b7} its 3D sculpture was left out (3D is no longer part of PH2D)"
         }
+        "shell.project_load.project_refused_format_187" => {
+            "Project refused: format 187 file is unreadable ({e})"
+        }
+        "shell.project_load.project_migrated_from_187" => {
+            "Project migrated from format 187 to {PROJECT_SCHEMA}"
+        }
         "shell.project_save.project_save_failed" => "Project save FAILED: {e}",
         "shell.project_save.project_saved_kb" => {
             "Project saved · {bytes} KB · {n} animation track(s)"

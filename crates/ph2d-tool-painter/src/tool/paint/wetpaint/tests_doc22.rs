@@ -94,7 +94,16 @@ fn the_tool_default_reaches_the_engine_exactly() {
             def.key
         );
     }
-    assert!(e.sim.tilt_on);
+    // ⚠️ REESCRITO DE PROPÓSITO (W1b, 08/10): era `assert!(e.sim.tilt_on)` — o boot do tool igualava o do
+    // motor (ligado) e o reconcile da inclinação era um no-op pregado. Desde a lei do Rebelle a TELA nasce
+    // DIREITA (doc `NewFeaturesWetPaint/06` §5): o motor continua a nascer ligado (o port 1:1, cujo
+    // fingerprint não muda) e o reconcile EMPURRA o desligado — não é mais um no-op, e este gate é quem o
+    // prova (a direção e a escala chegam iguais: só o `on` mudou).
+    assert!(
+        !e.sim.tilt_on,
+        "a tela nasce direita: nada corre até o artista a inclinar"
+    );
+    assert_eq!(e.sim.gotas, Some(ph2d_wet_paint::drips::DripPaper::DEFAULT));
     assert_eq!(e.sim.tilt_dir_x.to_bits(), 0.0f64.to_bits());
     assert_eq!(e.sim.tilt_dir_y.to_bits(), 1.0f64.to_bits());
     assert_eq!(e.sim.tilt_scale.to_bits(), 1.0f64.to_bits());
@@ -131,6 +140,11 @@ fn the_reconcile_baseline_is_the_engines_own_boot() {
     }
     // The product default DIFFERS from the baseline, so the reconcile does real work (not a no-op).
     assert_ne!(WetKnobs::DEFAULT, WetKnobs::ENGINE_BOOT);
+    // W1b: a inclinação do baseline é a do motor (LIGADA) e a do tool é DESLIGADA — o reconcile empurra-a;
+    // e o motor nasce SEM a lei das gotas (`None`), que o tool empurra sempre (`Some`, o papel).
+    assert_eq!(WetEngineFacts::BOOT.tilt, (true, 4, 3));
+    assert!(sess.engine.sim.tilt_on && sess.engine.sim.gotas.is_none());
+    assert!(!t.paint.wetpaint.tilt_on);
 }
 
 /// The five Wet Paint knob defaults Enio chose (2026-07-22) — pinned so they cannot silently drift, and
@@ -145,6 +159,9 @@ fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
     assert_eq!(d.get(Knob::Felt), 0.03);
     assert_eq!(d.get(Knob::BristleSize), 2.0);
     assert_eq!(d.get(Knob::BristleCount), 2000.0);
+    // W1b: a gravidade da TELA (o dial no máximo = o Rebelle no máximo, medido) — não é do dono nem do
+    // pincel, mas também não é o boot do motor.
+    assert_eq!(d.get(Knob::Gravity), 0.01);
     let boot = knob_defaults();
     for def in KNOB_DEFS.iter() {
         let is_enios = matches!(
@@ -154,6 +171,7 @@ fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
                 | Knob::Felt
                 | Knob::BristleSize
                 | Knob::BristleCount
+                | Knob::Gravity
         );
         if !is_enios {
             assert_eq!(
@@ -599,7 +617,7 @@ fn the_section_reset_restores_the_whole_section() {
     assert!(w.armed, "o Reset não troca o meio");
     assert_eq!(w.knobs, WetKnobs::DEFAULT);
     assert_eq!(w.tool, WetTool::Paint);
-    assert!(w.tilt_on);
+    assert!(!w.tilt_on, "o Reset endireita a tela (W1b)");
     assert_eq!((w.tilt_ring, w.tilt_spoke), (4, 3));
     assert!(!w.show_wet && !w.paper_visual && !w.km_mixing && !w.km_glaze);
     assert!(!w.tuning_open);

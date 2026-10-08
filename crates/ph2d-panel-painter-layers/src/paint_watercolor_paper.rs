@@ -163,6 +163,11 @@ pub(crate) fn paint_paper_section(
         }
         y = paint_paper_color_row(ctx, theme, x, content_w, y, brush);
     }
+    // ── As GOTAS do papel (W1b, Rebelle *Watercolor Behavior*) — só o Wet Paint as lê, logo só nele
+    //    se oferecem. A gravidade é da TELA (o dial de inclinação); aqui é a FORMA da gota. ──
+    if brush.wetpaint {
+        y = paint_drip_rows(ctx, theme, x, content_w, y, brush);
+    }
     let kind = TextureKind::from_u8(brush.paper_kind);
     // ── Kind picker ──
     let (ny, open) = paint_dropdown_row(
@@ -273,6 +278,62 @@ pub(crate) fn paint_paper_section(
     );
     let out = number_field::paint_num_params(ctx, theme, x, content_w, y, &pp, sec);
     crate::paint_brush_top::end_fold(ctx, fold, out)
+}
+
+/// As três rows das gotas do papel: Create Drips · Drip Size · Drip Length (`1..=10`). Devolve o `y`.
+fn paint_drip_rows(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let g = brush.wet_gotas;
+    let mut y = paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIPS_CREATE,
+        "panel.painter_layers.paper.create_drips",
+        g.create,
+    );
+    let sec = seccao_do_papel(ctx);
+    let (min, max) = (
+        f32::from(ph2d_tool_painter::DripPaper::MIN),
+        f32::from(ph2d_tool_painter::DripPaper::MAX),
+    );
+    for (chave, id, v) in [
+        (
+            "panel.painter_layers.paper.drip_size",
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIP_SIZE,
+            g.size,
+        ),
+        (
+            "panel.painter_layers.paper.drip_length",
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_DRIP_LENGTH,
+            g.length,
+        ),
+    ] {
+        y = number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            tr(chave),
+            id,
+            f32::from(v),
+            min,
+            max,
+            1.0,
+            0,
+            sec,
+        );
+    }
+    y
 }
 
 /// sRGB `f32` triple → 8-bit (mirror of `paint_brush::encode_rgb`, private there).

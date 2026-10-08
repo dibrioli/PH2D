@@ -69,6 +69,13 @@ pub fn rows() -> &'static [TuneRow] {
             .iter()
             .enumerate()
             .filter(|(_, d)| d.group != KnobGroup::Hidden)
+            // Os knobs da OBRA (a gravidade é da tela: o dial de inclinação é a porta ÚNICA) não são
+            // fileiras do ajuste do pincel.
+            .filter(|(_, d)| {
+                !ph2d_tool_painter::KNOBS_DA_OBRA
+                    .iter()
+                    .any(|(k, _)| *k == d.knob)
+            })
             .map(|(i, d)| TuneRow {
                 key: d.key,
                 knob: i,
@@ -185,17 +192,23 @@ mod tests {
         }
     }
 
-    /// 42 visible knobs (14 Paint — incl. Staining, promoted out of Hidden
-    /// by doc 23 — + 7 Water + 10 Physics + 5 Tools — incl. the doc-23
+    /// 41 visible knobs (14 Paint — incl. Staining, promoted out of Hidden
+    /// by doc 23 — + 7 Water + 9 Physics + 5 Tools — incl. the doc-23
     /// Rewet lift — + 5 Paper + the PaperVisibility master) — the
-    /// registry's visible surface, whole.
+    /// registry's visible surface, whole, MINUS the knobs of the WORK
+    /// (`KNOBS_DA_OBRA`, W1b: the gravity is the canvas's, and its one door is
+    /// the tilt dial — a Tuning row would be a second).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 42);
+        assert_eq!(rows().len(), 41);
+        assert!(
+            rows().iter().all(|r| r.key != "gravity"),
+            "a gravidade voltou a ser uma fileira do pincel"
+        );
         for g in [
             (KnobGroup::Paint, 14),
             (KnobGroup::Water, 7),
-            (KnobGroup::Physics, 10),
+            (KnobGroup::Physics, 9),
             (KnobGroup::Tools, 5),
             (KnobGroup::Paper, 6),
         ] {

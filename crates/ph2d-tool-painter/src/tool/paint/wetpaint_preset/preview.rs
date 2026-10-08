@@ -32,8 +32,8 @@ const QUADROS_DO_TRACO: u32 = 24;
 const TICKS_POR_QUADRO: u32 = 10;
 
 /// Tudo o que decide como o traço FICA na tela: o pincel (o `BrushSpec`, os knobs, as máscaras) e a obra
-/// (o papel de cor, o papel do pincel e a imagem dele, o relevo do substrato, e o estado autorado do
-/// fluido: inclinação, grade, mistura, o papel visível). Opaco e `Send`: a ponte só o leva à thread.
+/// (o papel de cor e as gotas dele, o papel do pincel e a imagem dele, o relevo do substrato, e o estado
+/// autorado do fluido: inclinação, grade, mistura, o papel visível). Opaco e `Send`: a ponte só o leva à thread.
 #[derive(Clone)]
 pub struct CenaDoPreview {
     brush: BrushSpec,
@@ -49,6 +49,7 @@ pub struct CenaDoPreview {
     km_glaze: bool,
     show_wet: bool,
     tilt: (bool, u8, u8),
+    gotas: ph2d_wet_paint::drips::DripPaper,
     grids: (u8, u8),
 }
 
@@ -63,6 +64,7 @@ pub struct ChaveDoPreview {
     substrato: (f32, f32),
     flags: (bool, bool, bool, bool),
     tilt: (bool, u8, u8),
+    gotas: ph2d_wet_paint::drips::DripPaper,
     grids: (u8, u8),
 }
 
@@ -85,6 +87,7 @@ impl PainterTool {
             km_glaze: w.km_glaze,
             show_wet: w.show_wet,
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
+            gotas: self.gotas,
             grids: (w.grid_ratio, w.flow_ratio),
         }
     }
@@ -105,6 +108,7 @@ impl PainterTool {
             substrato: (self.paint.substrate_depth, self.paint.substrate_rough),
             flags: (w.paper_visual, w.km_mixing, w.km_glaze, w.show_wet),
             tilt: (w.tilt_on, w.tilt_ring, w.tilt_spoke),
+            gotas: self.gotas,
             grids: (w.grid_ratio, w.flow_ratio),
         }
     }
@@ -128,6 +132,7 @@ impl PainterTool {
         }
         self.sync_paper_across_slots();
         self.papel = c.papel;
+        self.gotas = c.gotas;
         self.paint.substrate_depth = c.substrate_depth;
         self.paint.substrate_rough = c.substrate_rough;
         let w = &mut self.paint.wetpaint;

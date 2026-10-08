@@ -295,6 +295,9 @@ pub(crate) const PAPER: &[&str] = &[
     "panel.painter_layers.paper.tooth",
     "panel.painter_layers.paper.relief",
     "panel.painter_layers.paper.roughness",
+    "panel.painter_layers.paper.create_drips",
+    "panel.painter_layers.paper.drip_size",
+    "panel.painter_layers.paper.drip_length",
 ];
 /// *Color Ramp*.
 pub(crate) const RAMP: &[&str] = &["panel.painter_layers.ramp.use_color_ramp"];
@@ -392,7 +395,6 @@ pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_layers.wetpaint.pickup",
     "panel.painter_layers.wetpaint.dry_speed",
     "panel.painter_layers.wetpaint.edge_darkening",
-    "panel.painter_layers.wetpaint.gravity",
     "panel.painter_layers.wetpaint.erase_strength",
 ];
 

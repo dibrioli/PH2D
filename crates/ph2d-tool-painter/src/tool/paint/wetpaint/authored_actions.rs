@@ -17,6 +17,7 @@ impl PainterTool {
                 .brush
                 .paper_depth
                 .clamp(0.0, ph2d_painter_brush::PAPER_TOOTH_MAX),
+            gotas: Some(self.gotas),
         }
     }
 

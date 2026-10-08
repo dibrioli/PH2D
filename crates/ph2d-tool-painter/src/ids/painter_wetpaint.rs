@@ -75,7 +75,7 @@ pub const PAINTER_WETPAINT_TUNING: NodeId = hash_node_id("painter_brush.wetpaint
 /// The Wet Paint **Click** ids — ONE membership check for the panel's click forward in its
 /// `event.rs` (the allowlist without which a painted, registered checkbox is dead under the
 /// mouse) and for the populate loop.
-pub const PAINTER_WETPAINT_CLICKS: [NodeId; 19] = [
+pub const PAINTER_WETPAINT_CLICKS: [NodeId; 20] = [
     PAINTER_WETPAINT_RESET,
     PAINTER_WETPAINT_TOOL_IDS[0],
     PAINTER_WETPAINT_TOOL_IDS[1],
@@ -91,6 +91,7 @@ pub const PAINTER_WETPAINT_CLICKS: [NodeId; 19] = [
     PAINTER_WETPAINT_SHOWWET,
     PAINTER_WETPAINT_PAPER_VISUAL,
     PAINTER_WETPAINT_TUNING,
+    PAINTER_WETPAINT_DRIPS_CREATE,
     super::PAINTER_WETPAINT_PRESET_BUTTONS[0],
     super::PAINTER_WETPAINT_PRESET_BUTTONS[1],
     super::PAINTER_WETPAINT_PRESET_BUTTONS[2],
@@ -138,15 +139,30 @@ pub const PAINTER_WETPAINT_DRY_SPEED: NodeId = hash_node_id("painter_brush.wetpa
 /// **Edge Darkening** — the watercolor signature rim (knob `edgeDarkening`, default `50`).
 pub const PAINTER_WETPAINT_EDGE: NodeId = hash_node_id("painter_brush.wetpaint_edge");
 
-/// **Gravity** — the run/drip pull (knob `gravity`, default `0.005`; direction stays straight down).
-pub const PAINTER_WETPAINT_GRAVITY: NodeId = hash_node_id("painter_brush.wetpaint_gravity");
-
 /// **Erase Strength** — the wet eraser's lift per pass (engine `sliders.erase`, boot `0.4`).
 pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_erase");
 
+/// **Create Drips** (W1b) — the document PAPER's drips on/off (Rebelle *Watercolor Behavior*); a
+/// checkbox in the Paper section, offered while the medium is Wet Paint. ⛔ There is no Gravity row: the
+/// gravity is the CANVAS's (the tilt dial), never the brush's.
+pub const PAINTER_WETPAINT_DRIPS_CREATE: NodeId =
+    hash_node_id("painter_paper.wetpaint_drips_create");
+
+/// **Drip Size** (W1b) — the paper's drip width and catchment, `1..=10` (default `5`).
+pub const PAINTER_WETPAINT_DRIP_SIZE: NodeId = hash_node_id("painter_paper.wetpaint_drip_size");
+
+/// **Drip Length** (W1b) — how far the paper's drips run, `1..=10` (default `5`).
+pub const PAINTER_WETPAINT_DRIP_LENGTH: NodeId = hash_node_id("painter_paper.wetpaint_drip_length");
+
+/// As gotas do PAPEL (W1b) — os campos numéricos da secção Paper no Wet Paint (fora do cartão da água:
+/// a secção nasce recolhida). Mesma pertença que [`PAINTER_WETPAINT_FIELDS`]: o `SetValue` do painel
+/// (`number_field::is_param_field`), o `populate` e a rota do tool.
+pub const PAINTER_WETPAINT_DRIP_FIELDS: [NodeId; 2] =
+    [PAINTER_WETPAINT_DRIP_SIZE, PAINTER_WETPAINT_DRIP_LENGTH];
+
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 10] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 9] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -154,7 +170,6 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 10] = [
     PAINTER_WETPAINT_PICKUP,
     PAINTER_WETPAINT_DRY_SPEED,
     PAINTER_WETPAINT_EDGE,
-    PAINTER_WETPAINT_GRAVITY,
     PAINTER_WETPAINT_ERASE,
     super::PAINTER_WETPAINT_VOL_SIZE,
 ];

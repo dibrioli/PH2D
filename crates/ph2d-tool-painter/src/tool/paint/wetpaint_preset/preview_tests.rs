@@ -95,7 +95,7 @@ fn o_preview_mostra_o_dente_do_papel() {
 fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
     let base = molhado();
     let ultimo_base = quadros(&base).pop().unwrap();
-    let casos: [Caso<'_>; 10] = [
+    let casos: [Caso<'_>; 13] = [
         (
             "pigmento",
             &|t| t.paint.wetpaint.knobs.set(Knob::PigmentPerDab, 1500.0),
@@ -119,6 +119,11 @@ fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
             false,
         ),
         ("inclinação", &|t| t.paint.wetpaint.tilt_spoke = 0, false),
+        // As gotas do PAPEL (W1b): só pingam com a tela inclinada e depois de a orla encher (mais que os
+        // 2 s do preview) — a chave tem de as ver; a tinta, a bancada das gotas a mede.
+        ("criar gotas", &|t| t.gotas.create = false, false),
+        ("tamanho da gota", &|t| t.gotas.size = 9, false),
+        ("comprimento da gota", &|t| t.gotas.length = 2, false),
         ("grade", &|t| t.paint.wetpaint.grid_ratio = 3, true),
         (
             "forma",

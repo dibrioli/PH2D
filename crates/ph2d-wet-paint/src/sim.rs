@@ -64,6 +64,11 @@ pub struct Sim {
     pub tilt_scale: f64,
     /// Tests may pin an exact vector.
     pub gravity_override: Option<[f64; 2]>,
+    /// **A lei das gotas do PAPEL** ([`crate::drips`], W1b): `Some` = a linha de contacto + as gotas
+    /// (com `create` desligado, só a linha de contacto — a orla escurece, sem fios). `None` (o boot) = o
+    /// port 1:1 da referência, cujo fingerprint não muda. Só a rota de Jacobi (`order_invariant`) a
+    /// aplica: o Gauss-Seidel é a referência congelada.
+    pub gotas: Option<crate::drips::DripPaper>,
     /// Experimental color routing (K–M pigment mixing checkbox).
     pub km_mixing: bool,
     /// Force-skip every SPEC §17 extension code path (neutrality test §18.10).
@@ -132,6 +137,7 @@ impl Default for Sim {
             tilt_dir_y: 1.0,
             tilt_scale: 1.0,
             gravity_override: None,
+            gotas: None,
             km_mixing: false,
             ext_bypass: false,
             order_invariant: true,
@@ -256,6 +262,10 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             if n.is_multiple_of(2) {
                 rebuild_active_region(g);
                 if !g.has_fluid {
+                    // A água secou: o episódio das gotas acaba (as em voo assentam onde estão).
+                    if !g.drips.is_empty() {
+                        crate::drips::settle_all(g, &c.p);
+                    }
                     // Aborta o passo: nada de cadência, nada de cursor.
                     return Some(false);
                 }
@@ -297,7 +307,9 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             }
         }
         3 => {
-            c.vmax = if sim.order_invariant {
+            c.vmax = if sim.order_invariant && sim.gotas.is_some() {
+                crate::solver::advect_jacobi_pinned(g, &c.p, c.grav[0], c.grav[1])
+            } else if sim.order_invariant {
                 crate::solver::advect_jacobi(g, &c.p, c.grav[0], c.grav[1])
             } else {
                 advect(g, &c.p, c.grav[0], c.grav[1])
@@ -311,6 +323,11 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             }
         }
         _ => {
+            // As gotas (W1b) moram no estágio da cadência, o mais leve: o custo delas é medido à parte
+            // (`measure_drip_pass_cost`) e não muda o pior estágio.
+            if let Some(paper) = sim.gotas {
+                crate::drips::drip_pass(g, &c.p, c.grav, paper, n);
+            }
             // Adaptive drying cadence for the NEXT frames, from this advection's max
             // velocity component: calm water dries faster per pass, flowing water is
             // dried gently but often.

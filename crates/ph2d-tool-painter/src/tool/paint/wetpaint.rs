@@ -105,8 +105,11 @@ pub(crate) struct WetPaintState {
     /// rail eraser's other view.
     pub(super) tool: WetTool,
     /// The tilt DIAL (doc 22): on/off + ring (0..8, magnitude `ring/4`) +
-    /// spoke (0..11, 30° steps). Boot = the model's boot = the engine's
-    /// boot: ON, straight down, half radius (gate-pinned no-op reconcile).
+    /// spoke (0..11, 30° steps) — the ONLY door to «does the paint run, where, how much» (W1b: the
+    /// gravity is the CANVAS's, never the brush's — Rebelle law, doc `NewFeaturesWetPaint/06`). Boot =
+    /// OFF (the canvas comes upright: nothing runs until the artist tilts it), straight down, half
+    /// radius. ⚠️ The engine still boots ON (the 1:1 reference port), so the first reconcile pushes OFF
+    /// — `the_tool_default_reaches_the_engine_exactly` pins it.
     pub(super) tilt_on: bool,
     pub(super) tilt_ring: u8,
     pub(super) tilt_spoke: u8,
@@ -156,7 +159,7 @@ impl Default for WetPaintState {
             pending_deposit: Vec::new(),
             deposit_pass: false,
             tool: WetTool::default(),
-            tilt_on: true,
+            tilt_on: false,
             tilt_ring: 4,
             tilt_spoke: 3,
             show_wet: false,

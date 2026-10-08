@@ -344,6 +344,53 @@ fn migrate_game_camera_blobs(world: &mut ph2d_ecs::scene::WorldSnapshot) -> Sign
     out
 }
 
+// ── v187 → v188: as GOTAS do papel (degrau em `crate::project_schema`) ───────────────────────────
+
+/// O ficheiro como a `187` o guardava: o documento pintado SEM as gotas. Os outros campos são os
+/// tipos VIVOS (a mesma cerca do [`ProjectFileV128`]: quem guarda isto são os BYTES de
+/// `project_gotas_tests`, nunca o tipo).
+///
+/// ⚠️ A ordem dos campos **é** o formato (postcard é posicional). Não a reordene.
+#[derive(serde::Deserialize)]
+pub(crate) struct ProjectFileV187 {
+    pub(crate) state: ProjectState,
+    pub(crate) assets: Vec<crate::project::SavedAsset>,
+    pub(crate) painted: Vec<ph2d_tool_painter::tool::persist::PaintedDocumentSemGotas>,
+    pub(crate) motion: String,
+    pub(crate) timeline: Vec<u8>,
+    pub(crate) physics: ph2d_physics_ecs::PhysicsSettings,
+    pub(crate) tokens: Vec<crate::project_tokens::SavedToken>,
+    pub(crate) settings: crate::project_settings::SavedSettings,
+    pub(crate) player_tape: ph2d_physics_ecs::TapeWire,
+    pub(crate) sprite_pixels: Vec<u8>,
+    pub(crate) stable_id_counter: u64,
+    pub(crate) input_map: ph2d_input::InputMap,
+    pub(crate) pattern_art: Vec<u8>,
+    pub(crate) boards: Vec<u8>,
+}
+
+/// **v187 → o schema CORRENTE.** Cada documento pintado nasce com `DripPaper::DEFAULT` — o que um
+/// ficheiro gravado antes das gotas significava; tudo o resto viaja intacto.
+#[must_use]
+pub(crate) fn migrate_v187_to_v188(old: ProjectFileV187) -> crate::project::ProjectFile {
+    crate::project::ProjectFile {
+        state: old.state,
+        assets: old.assets,
+        painted: old.painted.into_iter().map(Into::into).collect(),
+        motion: old.motion,
+        timeline: old.timeline,
+        physics: old.physics,
+        tokens: old.tokens,
+        settings: old.settings,
+        player_tape: old.player_tape,
+        sprite_pixels: old.sprite_pixels,
+        stable_id_counter: old.stable_id_counter,
+        input_map: old.input_map,
+        pattern_art: old.pattern_art,
+        boards: old.boards,
+    }
+}
+
 #[cfg(test)]
 #[path = "project_migrate_tests.rs"]
 mod tests;

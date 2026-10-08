@@ -46,10 +46,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.inerte.charge_below_full" => "Acts when Charge is below 100%",
         "panel.painter_layers.inerte.grain_chosen" => "Acts when a Grain is chosen",
         "panel.painter_layers.inerte.eraser_on" => "Acts with the Eraser",
-        "panel.painter_layers.inerte.canvas_tilted" => {
-            "Acts when the canvas is tilted past halfway"
+        "panel.painter_layers.inerte.canvas_tilted" => "Acts when the canvas is tilted",
+        "panel.painter_layers.inerte.create_drips_on" => {
+            "Acts with Create Drips on and the canvas tilted past halfway"
         }
-        "panel.painter_layers.inerte.create_drips_on" => "Acts with Create Drips on",
         "panel.painter_layers.inerte.wet_paint_tool" => "Acts with the Paint tool and the Eraser",
         "panel.painter_layers.inerte.detail_above_minimum" => {
             "Acts when Detail is above its minimum"

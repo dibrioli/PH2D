@@ -9,9 +9,10 @@ use ph2d_wet_paint::painter::Engine;
 use ph2d_wet_paint::tuning::Knob;
 use std::time::Instant;
 
-/// O dial do painter no máximo (anel 8 = escala 2 sobre a gravidade da tela, `0,02`), para baixo.
+/// O dial do painter no máximo (anel 8 = escala 2 sobre a gravidade do motor, `0,005`; a lei das gotas
+/// multiplica-a por `DRIP_LAW_GRAVITY`), para baixo.
 fn inclina(e: &mut Engine, ligada: bool) {
-    e.set_knob(Knob::Gravity, 0.02);
+    e.set_knob(Knob::Gravity, 0.005);
     e.sim.tilt_on = ligada;
     e.sim.tilt_dir_x = 0.0;
     e.sim.tilt_dir_y = 1.0;
@@ -79,8 +80,8 @@ fn sem_gravidade_a_lei_das_gotas_e_inerte_ao_bit() {
     );
 }
 
-/// Com a tela inclinada, a linha de contacto muda o traço (o leitor decide), segura a tinta na orla sem
-/// Create Drips, e com ele a gota desce.
+/// Com a tela inclinada: Create Drips OFF é o motor de antes ao bit; ON, a linha de contacto segura a
+/// mancha e a gota desce.
 #[test]
 fn com_a_tela_inclinada_a_linha_de_contacto_segura_e_a_gota_desce() {
     let mut sem_lei = cena(None, true);
@@ -95,14 +96,10 @@ fn com_a_tela_inclinada_a_linha_de_contacto_segura_e_a_gota_desce() {
     for e in [&mut sem_lei, &mut sem_fios, &mut com_fios] {
         passos(e, 1200);
     }
+    // Create Drips OFF = o escorrimento natural do motor, ao bit (o dono quis o de antes de volta).
     assert!(
-        bits(&sem_lei) != bits(&sem_fios),
-        "a linha de contacto não mudou nada"
-    );
-    assert!(
-        fundo(&sem_fios) < 110,
-        "sem Create Drips a tinta desceu a {}",
-        fundo(&sem_fios)
+        bits(&sem_lei) == bits(&sem_fios),
+        "Create Drips off não é o motor de antes ao bit"
     );
     assert!(
         fundo(&com_fios) > 250,

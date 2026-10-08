@@ -28,9 +28,10 @@ pub enum Dependente {
     DepthSourceGrain,
     EraseDaAgua,
     ToothDoDigital,
-    /// As gotas do papel (W1b): só agem com a tela inclinada o bastante para uma gota deslizar.
+    /// Create Drips (W1b): escolhe entre o escorrimento natural e a lei das gotas — só não age com a
+    /// tela direita.
     GotasDaTela,
-    /// O tamanho e o comprimento da gota: só agem com Create Drips ligado.
+    /// Easy · Size · Length: só agem com Create Drips ligado E a tela inclinada o bastante.
     FormaDaGota,
 }
 
@@ -74,12 +75,7 @@ impl Dependente {
             Dependente::DepthSourceGrain => &[ids::PAINTER_IMPASTO_SOURCE_GRAIN],
             Dependente::EraseDaAgua => &[ids::PAINTER_WETPAINT_ERASE],
             Dependente::ToothDoDigital => &[ids::PAINTER_WATERCOLOR_PAPER_DEPTH],
-            Dependente::GotasDaTela => &[
-                ids::PAINTER_WETPAINT_DRIPS_CREATE,
-                ids::PAINTER_WETPAINT_DRIPS_EASY,
-                ids::PAINTER_WETPAINT_DRIP_SIZE,
-                ids::PAINTER_WETPAINT_DRIP_LENGTH,
-            ],
+            Dependente::GotasDaTela => &[ids::PAINTER_WETPAINT_DRIPS_CREATE],
             Dependente::FormaDaGota => &[
                 ids::PAINTER_WETPAINT_DRIPS_EASY,
                 ids::PAINTER_WETPAINT_DRIP_SIZE,
@@ -230,15 +226,16 @@ impl PainterTool {
                 matches!(self.paint_media(), super::media::PaintMedia::Digital)
                     && !self.papel_pode_ser_grain(),
             ),
-            // As gotas são do PAPEL, mas quem as solta é a TELA: sem inclinação bastante (o ângulo
-            // mínimo do motor, `drips::can_slide`) nenhuma das três muda a tinta.
+            // Create Drips escolhe entre o escorrimento natural e a lei das gotas: só não age com a tela
+            // direita. A forma da gota (Easy, Size, Length) age só com a lei ligada E a tela inclinada o
+            // bastante para uma gota deslizar (o ângulo mínimo do motor, `drips::can_slide`).
             (
                 Dependente::GotasDaTela,
-                agua && !self.wet_tilt_lets_drips_slide(),
+                agua && !self.paint.wetpaint.tilt_on,
             ),
             (
                 Dependente::FormaDaGota,
-                agua && self.wet_tilt_lets_drips_slide() && !self.gotas.create,
+                agua && (!self.gotas.create || !self.wet_tilt_lets_drips_slide()),
             ),
         ];
         Inercias {

@@ -90,6 +90,12 @@ impl Drip {
     }
 }
 
+/// **A força da tela da lei das gotas**, em vezes a gravidade do motor (`Knob::Gravity`, `0,005` no
+/// boot): com a linha de contacto a água não incha para fora da mancha, e para a orla escurecer como no
+/// Rebelle (baixo/cima 3,03 / 2,12 contra 3,07 / 2,28) a tela pesa 4×. Só com Create Drips ligado: sem
+/// ele a gravidade é a do motor de sempre e o escorrimento é o NATURAL (o dono quis-o de volta, 08/10).
+pub const DRIP_LAW_GRAVITY: f64 = 4.0;
+
 /// Água abaixo disto é papel SECO (a mesma fronteira do fingering do solver).
 pub const DRY_FILM: f64 = 0.01;
 

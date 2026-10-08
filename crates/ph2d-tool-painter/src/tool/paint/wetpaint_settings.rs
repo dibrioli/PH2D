@@ -44,10 +44,6 @@ const fn painter_default_knobs() -> [f64; KNOB_COUNT] {
     k[Knob::Felt as usize] = 0.03; // LITERAL-OK: wet-paint product default (Enio), engine boot 0.01
     k[Knob::BristleSize as usize] = 2.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 1.0
     k[Knob::BristleCount as usize] = 2000.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 950
-    // A gravidade da TELA (W1b): o dial no máximo (anel 8 = ×2) = a inclinação máxima do Rebelle, medida
-    // pela orla sem gotas com a linha de contacto final (doc 05 §4b: baixo/cima 3,03 / 2,12 contra
-    // 3,07 / 2,28). Não é do pincel.
-    k[Knob::Gravity as usize] = 0.02; // LITERAL-OK: canvas tilt calibration (W1b), engine boot 0.005
     k
 }
 
@@ -217,14 +213,15 @@ impl PainterTool {
         }
     }
 
-    /// A inclinação AUTORADA solta gotas? — o mesmo vetor que o reconcile dá ao motor (`Sim::gravity`:
-    /// knob da gravidade × anel/4, ligado) contra o ângulo mínimo do motor.
+    /// A inclinação AUTORADA solta gotas? — o mesmo vetor que o motor usa com a lei das gotas
+    /// (`Sim::gravity`: knob da gravidade × anel/4 × a força da lei, ligado) contra o ângulo mínimo.
     pub(crate) fn wet_tilt_lets_drips_slide(&self) -> bool {
         let w = &self.paint.wetpaint;
         w.tilt_on
             && ph2d_wet_paint::drips::can_slide([
                 0.0,
-                w.knobs.get(Knob::Gravity) * f64::from(w.tilt_ring) / 4.0,
+                w.knobs.get(Knob::Gravity) * f64::from(w.tilt_ring) / 4.0
+                    * ph2d_wet_paint::drips::DRIP_LAW_GRAVITY,
             ])
     }
 

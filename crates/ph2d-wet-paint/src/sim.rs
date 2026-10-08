@@ -64,9 +64,9 @@ pub struct Sim {
     pub tilt_scale: f64,
     /// Tests may pin an exact vector.
     pub gravity_override: Option<[f64; 2]>,
-    /// **A lei das gotas do PAPEL** ([`crate::drips`], W1b): `Some` = a linha de contacto + as gotas
-    /// (com `create` desligado, só a linha de contacto — a orla escurece, sem fios). `None` (o boot) = o
-    /// port 1:1 da referência, cujo fingerprint não muda. Só a rota de Jacobi (`order_invariant`) a
+    /// **A lei das gotas do PAPEL** ([`crate::drips`], W1b): `Some` com `create` = a linha de contacto +
+    /// as gotas (a lei do Rebelle); `create` desligado = o escorrimento NATURAL do motor, igual a `None`
+    /// (o boot, o port 1:1 da referência, cujo fingerprint não muda). Só a rota de Jacobi (`order_invariant`) a
     /// aplica: o Gauss-Seidel é a referência congelada.
     pub gotas: Option<crate::drips::DripPaper>,
     /// Experimental color routing (K–M pigment mixing checkbox).
@@ -194,7 +194,12 @@ impl Sim {
         if !self.tilt_on {
             return [0.0, 0.0];
         }
-        let mag = tuning.get(Knob::Gravity) * self.tilt_scale;
+        let mut mag = tuning.get(Knob::Gravity) * self.tilt_scale;
+        if self.gotas.is_some_and(|p| p.create) {
+            // A lei das gotas (Create Drips) tem a SUA tela, calibrada contra o Rebelle; sem ela, a
+            // gravidade é a do motor de sempre — o escorrimento natural, ao byte.
+            mag *= crate::drips::DRIP_LAW_GRAVITY;
+        }
         [self.tilt_dir_x * mag, self.tilt_dir_y * mag]
     }
 
@@ -305,7 +310,9 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             }
         }
         3 => {
-            c.vmax = if sim.order_invariant && sim.gotas.is_some() {
+            // A linha de contacto só com Create Drips LIGADO: desligado, o escorrimento é o NATURAL do
+            // motor (a água sai pela orla e corre livre — o que o dono tinha antes e quis de volta, 08/10).
+            c.vmax = if sim.order_invariant && sim.gotas.is_some_and(|p| p.create) {
                 crate::solver::advect_jacobi_pinned(g, &c.p, c.grav[0], c.grav[1])
             } else if sim.order_invariant {
                 crate::solver::advect_jacobi(g, &c.p, c.grav[0], c.grav[1])

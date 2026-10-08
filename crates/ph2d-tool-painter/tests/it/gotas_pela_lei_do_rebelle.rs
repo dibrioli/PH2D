@@ -260,21 +260,23 @@ fn papel(t: &mut PainterTool, create: bool, size: u8, length: u8) {
     });
 }
 
-/// Create Drips desligado: nenhum fio, mas o pigmento desce para a orla de baixo (Rebelle: baixo/cima
-/// 2,3–3,1 nos dois traços molhados; tela direita ~1 — a barra 1,5 fica no vale).
+/// ⛔ **Create Drips desligado = o escorrimento NATURAL de antes, ao byte** (o dono, 08/10: *«vc aniquilou
+/// aquele escorrimento bonito e natural de todos os traços com essa barreira??»*). Sem a caixa não há linha
+/// de contacto, nem gotas, nem a força da lei: o motor de antes da W1b. As impressões são as que a bancada
+/// mediu no início da W1b, com o código de antes (tela a meio = o boot de antes; no máximo). Reescrito de
+/// propósito: a 1.ª forma afirmava a orla escura do Rebelle sem fios.
 #[test]
-fn sem_create_drips_a_orla_de_baixo_escurece_e_nada_pinga() {
-    let px = bancada(30, &|t| {
-        papel(t, false, 5, 5);
-        inclina(t, Some(8));
-    });
-    let g = relata("sem_gotas", &px);
-    assert_eq!(g, [0; 4], "Create Drips off: nenhum fio");
-    for (c, agua) in AGUAS.iter().enumerate().take(2) {
-        let (cima, baixo) = orlas(&px, c);
-        assert!(
-            baixo >= 1.5 * cima,
-            "água {agua}: orla de baixo {baixo:.1} contra cima {cima:.1} (≥ 1,5×)"
+fn sem_create_drips_e_o_escorrimento_natural_de_antes_ao_byte() {
+    for (anel, antes) in [(4u8, 0x7cc9_cb10_e563_6d0e_u64), (8, 0x0747_7714_36bc_3d4e)] {
+        let px = bancada(30, &|t| {
+            papel(t, false, 5, 5);
+            inclina(t, Some(anel));
+        });
+        relata(&format!("natural_{anel}"), &px);
+        assert_eq!(
+            fnv(&px),
+            antes,
+            "anel {anel}: não é o escorrimento de antes"
         );
     }
 }
@@ -369,26 +371,34 @@ fn com_a_tela_inclinada_a_mancha_guarda_a_forma_e_nao_faz_pente() {
     use super::sonda_gotas_do_dono::{cena_com, fios_na_linha};
     const W1: usize = super::sonda_gotas_do_dono::W as usize;
     use ph2d_wet_paint::drips::DripPaper;
-    let sem = DripPaper {
-        create: false,
-        ..DripPaper::DEFAULT
-    };
-    let direita = cena_com("Wet Round", 140.0, 1.0, None, sem);
-    let inclinada = cena_com("Wet Round", 140.0, 1.0, Some(8), sem);
-    // A tinta da tela inclinada FORA da mancha da direita alargada 4 px (acima da linha 640): pêlos
-    // soltos da franja somam poucos px; um degrau, milhares. Medido: 5 px agora, 26 433 com a 1.ª forma
-    // da linha de contacto (o report do dono) — a barra 300 fica no vale.
+    let direita = cena_com("Wet Round", 140.0, 1.0, None, DripPaper::DEFAULT);
+    let inclinada = cena_com("Wet Round", 140.0, 1.0, Some(8), DripPaper::DEFAULT);
+    // A tinta da tela inclinada FORA da mancha da direita alargada 4 px (acima da linha 640), só em
+    // corridas horizontais LARGAS (≥ 8 px): os fios (≤ 4 px) e os pêlos soltos não contam; um degrau
+    // ou uma base plana, milhares. A barra 300 fica no vale medido (0 contra 26 433 com a 1.ª forma).
     let tinta = |px: &[u8], x: usize, y: usize| {
         let i = (y * W1 + x) * 4;
         255 - px[i..i + 3].iter().copied().min().unwrap_or(255) > 25
     };
-    let fora = (4..636usize)
-        .flat_map(|y| (4..W1 - 4).map(move |x| (x, y)))
-        .filter(|&(x, y)| {
-            tinta(&inclinada, x, y)
-                && !(y - 4..=y + 4).any(|yy| (x - 4..=x + 4).any(|xx| tinta(&direita, xx, yy)))
-        })
-        .count();
+    let mut fora = 0usize;
+    for y in 4..636usize {
+        let mut corrida = 0usize;
+        for x in 4..W1 - 4 {
+            let solto = tinta(&inclinada, x, y)
+                && !(y - 4..=y + 4).any(|yy| (x - 4..=x + 4).any(|xx| tinta(&direita, xx, yy)));
+            if solto {
+                corrida += 1;
+            } else {
+                if corrida >= 8 {
+                    fora += corrida;
+                }
+                corrida = 0;
+            }
+        }
+        if corrida >= 8 {
+            fora += corrida;
+        }
+    }
     if let Ok(out) = std::env::var("PH2D_SONDA_OUT") {
         for (nome, px) in [("s_direita", &direita), ("s_inclinada", &inclinada)] {
             let (w, h) = (super::sonda_gotas_do_dono::W, super::sonda_gotas_do_dono::H);
@@ -399,8 +409,7 @@ fn com_a_tela_inclinada_a_mancha_guarda_a_forma_e_nao_faz_pente() {
             std::fs::write(format!("{out}/{nome}.ppm"), f).unwrap();
         }
     }
-    let com = cena_com("Wet Round", 140.0, 1.0, Some(8), DripPaper::DEFAULT);
-    let fios = fios_na_linha(&com, 700);
+    let fios = fios_na_linha(&inclinada, 700);
     println!("[gotas] o S: {fora} px de tinta fora da mancha · {fios} fios a y = 700");
     assert!(
         fora <= 300,

@@ -299,6 +299,17 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   0 com a barreira firme. ABERTO: suavizar a borda sem a abrir (p. ex. difusão lateral do pigmento
   SUSPENSO ao longo da orla, `ExtDiffusion` do solver, ou um dente da borda à meia-célula) — decisão do
   dono se vale a 3.ª tentativa.
+- ✅ **4.ª ronda — o escorrimento natural de volta** (dono, 08/10: *«vc aniquilou aquele escorrimento
+  bonito e natural de todos os traços com essa barreira??»*). **Create Drips desligado = o motor de antes
+  da W1b, AO BYTE** (sem linha de contacto, sem gotas, sem a força da lei): gate
+  `sem_create_drips_e_o_escorrimento_natural_de_antes_ao_byte` contra as impressões que a bancada mediu
+  com o código de antes (`0x7cc9…6d0e` a meio, `0x0747…3d4e` no máximo). A força da tela da lei passou a
+  ser `DRIP_LAW_GRAVITY = 4×` sobre o `Knob::Gravity` do motor (`0,005`, de volta ao boot) e SÓ com
+  Create Drips ligado — a calibração da lei não mudou (0,005 × 4 = 0,02). O esmaecido: Create Drips só
+  não age com a tela direita; Easy/Size/Length só agem com a lei ligada e a tela além do ângulo mínimo.
+  A prova dos degraus corre agora com as gotas ligadas e conta só corridas largas (≥ 8 px) fora da
+  mancha. Mutações: a barreira sem a caixa ✗ natural; a força da lei a 1× ✗ 4 da bancada.
+  ⚠️ Pendente do dono: qual nasce ligado — hoje Create Drips nasce LIGADO (a lei do Rebelle).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   ⚠️ Para o integrador: o degrau 187 → 188 tem migração (`ProjectFileV187`, braço `187 =>` em
   `project_load_read.rs`) — se o main passar de 187 antes, os dois movem-se à mão (o `schema-recount.py`

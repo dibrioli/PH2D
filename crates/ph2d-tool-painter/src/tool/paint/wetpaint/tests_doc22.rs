@@ -159,9 +159,6 @@ fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
     assert_eq!(d.get(Knob::Felt), 0.03);
     assert_eq!(d.get(Knob::BristleSize), 2.0);
     assert_eq!(d.get(Knob::BristleCount), 2000.0);
-    // W1b: a gravidade da TELA (o dial no máximo = o Rebelle no máximo, medido) — não é do dono nem do
-    // pincel, mas também não é o boot do motor.
-    assert_eq!(d.get(Knob::Gravity), 0.02);
     let boot = knob_defaults();
     for def in KNOB_DEFS.iter() {
         let is_enios = matches!(
@@ -171,7 +168,6 @@ fn the_wet_paint_knob_defaults_are_the_ones_enio_chose() {
                 | Knob::Felt
                 | Knob::BristleSize
                 | Knob::BristleCount
-                | Knob::Gravity
         );
         if !is_enios {
             assert_eq!(

@@ -164,7 +164,7 @@ Depois do `rm -rf target/*/incremental` (47 GB) — `bash scripts/ph2d-run.sh ca
 
 ```
 ▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.33s
+    Finished `smoke` profile [optimized] target(s) in 0.27s
 ```
 
 ## §10 — `agent-loop-profile.sh`

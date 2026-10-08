@@ -213,14 +213,7 @@ impl Editor {
                     frame,
                     start: p.world,
                     id: None,
-                    targets: Snapper::new(
-                        doc,
-                        &BTreeSet::new(),
-                        view,
-                        &[],
-                        None,
-                        &BTreeSet::from([doc.deepest_frame_at(p.world, &BTreeSet::new())]),
-                    ),
+                    targets: self.snap_create(doc, view, p.world),
                     guides: Vec::new(),
                 });
                 return Down::Taken;
@@ -279,28 +272,18 @@ impl Editor {
                 return Down::Taken;
             }
             self.gesture = Some(match h {
-                Handle::Rotate => {
-                    let going = originals.iter().map(|o| o.id).collect();
-                    Gesture::Rotate {
-                        frame,
-                        start: p.world,
-                        targets: Snapper::new(doc, &going, view, &[], None, &self.homes(doc)),
-                        originals,
-                        guides: Vec::new(),
-                    }
-                }
+                Handle::Rotate => Gesture::Rotate {
+                    frame,
+                    start: p.world,
+                    targets: self.snap_rotate(doc, view, &originals),
+                    originals,
+                    guides: Vec::new(),
+                },
                 Handle::Resize(dir) => Gesture::Resize {
                     dir,
                     frame,
                     originals,
-                    targets: Snapper::new(
-                        doc,
-                        &self.selection,
-                        view,
-                        &[],
-                        Some(frame.angle),
-                        &self.homes(doc),
-                    ),
+                    targets: self.snap_resize(doc, view, &frame),
                     guides: Vec::new(),
                 },
             });
@@ -341,18 +324,10 @@ impl Editor {
                 } else if self.selection.len() > pick.len() {
                     collapse_to = Some(id);
                 }
-                // As guias alinham com o que FICA: o que se move (os de dentro de um frame
-                // arrastado também) não é alvo — smoke do dono, 08/10: arrastar um frame alinhava-o
-                // com os próprios filhos.
                 let originals = self.moving(doc);
-                let going: BTreeSet<ElementId> = originals.iter().map(|o| o.id).collect();
-                // Encaixa-se a caixa das RAÍZES (um frame arrastado é a dele, não a dos filhos).
-                let roots = self.movable(doc);
-                let movers: Vec<&Element> =
-                    roots.iter().filter(|el| el.connector().is_none()).collect();
                 self.gesture = Some(Gesture::Move {
                     start: p.world,
-                    targets: Snapper::new(doc, &going, view, &movers, None, &self.homes(doc)),
+                    targets: self.snap_move(doc, view, p.world, &originals),
                     originals,
                     active: false,
                     copies: Vec::new(),
@@ -397,8 +372,7 @@ impl Editor {
                 let id = note.id;
                 live(doc, note.clone());
                 self.selection = BTreeSet::from([id]);
-                let homes = BTreeSet::from([note.frame]);
-                let targets = Snapper::new(doc, &self.selection, *view, &[&note], None, &homes);
+                let targets = self.snap_move(doc, *view, p.world, std::slice::from_ref(&note));
                 self.gesture = Some(Gesture::Move {
                     start: *start,
                     originals: vec![note],
@@ -478,19 +452,21 @@ impl Editor {
                             .filter_map(|id| doc.get(*id).cloned())
                             .collect();
                         *originals = copy_state;
+                        // Os originais ficam: passam a ser alvos (alinhar a cópia com eles).
+                        targets.reskip(doc, copies.iter().copied().collect());
                     }
                 }
                 let mut d = [p.world[0] - start[0], p.world[1] - start[1]];
+                let mut free = [true; 2];
                 if p.mods.shift {
-                    if d[0].abs() > d[1].abs() {
-                        d[1] = 0.0;
-                    } else {
-                        d[0] = 0.0;
-                    }
+                    let k = usize::from(d[0].abs() > d[1].abs());
+                    d[k] = 0.0;
+                    free[k] = false;
                 }
                 guides.clear();
+                targets.follow(doc, p.world);
                 if let Some(tol) = snap {
-                    let (s, g2) = targets.snap_moving(d, tol);
+                    let (s, g2) = targets.snap_moving(d, tol, free);
                     d = [d[0] + s[0], d[1] + s[1]];
                     *guides = g2;
                 }
@@ -507,17 +483,18 @@ impl Editor {
                 targets,
                 guides,
             } => {
-                let mut world = p.world;
-                guides.clear();
-                if let Some(tol) = snap {
-                    let (s, g2) = targets.snap_point(world, tol);
-                    world = [world[0] + s[0], world[1] + s[1]];
-                    *guides = g2;
-                }
                 // As notas escalam inteiras, com a letra (o Miro): a proporção não muda.
                 let uniform = (originals.len() > 1
                     && originals.iter().any(|o| !axis_angle(o.angle)))
                     || originals.iter().any(is_note);
+                let mut world = p.world;
+                guides.clear();
+                // Em proporção a pega não fica onde o ponteiro a pôs: a guia mentiria.
+                if let Some(tol) = snap.filter(|_| !p.mods.shift && !uniform) {
+                    let (s, g2) = targets.snap_handle(world, tol, dir.sign(), frame.angle);
+                    world = [world[0] + s[0], world[1] + s[1]];
+                    *guides = g2;
+                }
                 let mods = Mods {
                     shift: p.mods.shift || uniform,
                     ..p.mods
@@ -554,8 +531,11 @@ impl Editor {
                 }
                 let mut world = p.world;
                 guides.clear();
-                if let Some(tol) = snap {
-                    let (s, g2) = targets.snap_point(world, tol);
+                // `Shift` faz um quadrado e a nota tem a proporção dela: o ponteiro só manda na
+                // largura (na nota) ou em nada (no quadrado).
+                let note = kind.note_aspect().is_some() && !*frame;
+                if let Some(tol) = snap.filter(|_| !p.mods.shift) {
+                    let (s, g2) = targets.snap_point(world, tol, [true, !note]);
                     world = [world[0] + s[0], world[1] + s[1]];
                     *guides = g2;
                 }

@@ -276,13 +276,13 @@ fn rotate_to(w: &mut World, b: ElementId, radius: f64, deg: f64, m: Mods) -> Vec
     g
 }
 
-/// A tolerância do ângulo é em px no ARCO do ponteiro: 1,5° a 300 do centro são 7,9 px (> 6) — não
+/// A tolerância do ângulo é em px no ARCO do ponteiro: 1,5° a 400 do centro são 10,5 px (> 8) — não
 /// encaixa; e o `Ctrl` suspende-o como suspende as guias.
 #[test]
 fn the_angle_snap_is_measured_on_the_arc_and_ctrl_suspends_it() {
     for (radius, m, snaps) in [
         (100.0, NONE, true),
-        (300.0, NONE, false),
+        (400.0, NONE, false),
         (100.0, CTRL, false),
     ] {
         let mut w = world();
@@ -508,4 +508,180 @@ fn a_child_does_not_snap_to_what_lives_outside_its_frame() {
     drag_by(&mut w, [125.0, 228.0], [-4.0, 0.0]);
     assert_eq!(w.el(c).y, 203.0, "colou no de fora");
     assert_eq!(w.el(c).x, 96.0);
+}
+
+/// Perto do CENTRO o arco é o do canto mais longe (meia diagonal 58): 20° do alvo não encaixa — com
+/// o arco do ponteiro (raio 10) a tolerância chegava aos 45° e tudo colava.
+#[test]
+fn near_the_centre_the_angle_tolerance_is_the_corner_arc() {
+    let mut w = world();
+    rect(&mut w, centred([400.0, 0.0], [100.0, 60.0]), 0.0, None);
+    let b = rect(&mut w, centred([0.0, 0.0], [100.0, 60.0]), 0.0, None);
+    w.ed.select(&w.doc, [b]);
+    let knob = crate::Frame::of(w.el(b)).handle(Handle::Rotate, PX, &metrics());
+    let a0 = knob[1].atan2(knob[0]);
+    let p = |r: f64, d: f64| at(r * (a0 + d * DEG).cos(), r * (a0 + d * DEG).sin(), NONE);
+    w.ed.pointer_down(
+        &mut w.doc,
+        &mut w.h,
+        &mut w.ts,
+        at(knob[0], knob[1], NONE),
+        VIEW,
+    );
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, p(60.0, 10.0));
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, p(10.0, 20.0));
+    w.ed.pointer_up(&mut w.doc, &mut w.h, p(10.0, 20.0));
+    assert!(
+        (w.el(b).angle / DEG - 20.0).abs() < 1e-6,
+        "{}°",
+        w.el(b).angle / DEG
+    );
+}
+
+/// Rodar VÁRIOS ao mesmo ângulo (30°) encaixa o ângulo DELES no do alvo (45°): uma volta de ~14°.
+#[test]
+fn rotating_several_snaps_their_common_angle() {
+    let mut w = world();
+    rect(
+        &mut w,
+        centred([800.0, 0.0], [100.0, 60.0]),
+        45.0 * DEG,
+        None,
+    );
+    let a = rect(&mut w, centred([0.0, 0.0], [100.0, 60.0]), 30.0 * DEG, None);
+    let b = rect(
+        &mut w,
+        centred([200.0, 0.0], [100.0, 60.0]),
+        30.0 * DEG,
+        None,
+    );
+    w.ed.select(&w.doc, [a, b]);
+    let f = w.ed.frame(&w.doc).expect("há selecção");
+    let knob = f.handle(Handle::Rotate, PX, &metrics());
+    let c = f.center;
+    let r = 150.0;
+    let a0 = (knob[1] - c[1]).atan2(knob[0] - c[0]);
+    let p = |d: f64| {
+        at(
+            c[0] + r * (a0 + d * DEG).cos(),
+            c[1] + r * (a0 + d * DEG).sin(),
+            NONE,
+        )
+    };
+    w.ed.pointer_down(
+        &mut w.doc,
+        &mut w.h,
+        &mut w.ts,
+        at(knob[0], knob[1], NONE),
+        VIEW,
+    );
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, p(7.0));
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, p(14.0));
+    w.ed.pointer_up(&mut w.doc, &mut w.h, p(14.0));
+    for id in [a, b] {
+        assert!(
+            (w.el(id).angle / DEG - 45.0).abs() < 1e-6,
+            "{}°",
+            w.el(id).angle / DEG
+        );
+    }
+}
+
+/// `Alt`+arrastar: os ORIGINAIS ficam e são alvo — a cópia alinha com o original (3 px no topo).
+#[test]
+fn an_alt_copy_aligns_with_its_original() {
+    let mut w = world();
+    let a = rect(&mut w, [0.0, 0.0, 100.0, 50.0], 0.0, None);
+    w.drag([50.0, 25.0], [200.0, 28.0], ALT);
+    let copy = w.doc.live().find(|el| el.id != a).map(|el| el.id).unwrap();
+    assert_eq!((w.el(a).x, w.el(a).y), (0.0, 0.0), "o original ficou");
+    assert_eq!(w.el(copy).y, 0.0, "a cópia não alinhou com o original");
+}
+
+/// `Shift` trava o arrasto num eixo: o encaixe não o destrava (o topo de um alvo a 5 px fica).
+#[test]
+fn shift_keeps_the_axis_lock_while_snapping() {
+    let mut w = world();
+    rect(&mut w, [300.0, 5.0, 100.0, 50.0], 0.0, None);
+    let b = rect(&mut w, [0.0, 0.0, 100.0, 50.0], 0.0, None);
+    w.drag([50.0, 25.0], [150.0, 25.0], SHIFT);
+    assert_eq!((w.el(b).x, w.el(b).y), (100.0, 0.0));
+}
+
+/// A casa é a do PONTEIRO (é ela que o largar decide): arrastar um solto para dentro de um frame
+/// alinha-o com os filhos dele.
+#[test]
+fn dragging_into_a_frame_aligns_with_its_children() {
+    let mut w = world();
+    let f = board_frame(&mut w, [0.0, 0.0, 1000.0, 800.0], 0.0);
+    rect(&mut w, [200.0, 100.0, 80.0, 40.0], 0.0, Some(f));
+    let b = rect(&mut w, [1203.0, 500.0, 60.0, 60.0], 0.0, None);
+    drag_by(&mut w, [1233.0, 530.0], [-1000.0, 0.0]);
+    assert_eq!(w.el(b).frame, Some(f));
+    assert_eq!(w.el(b).x, 200.0, "não alinhou com o filho");
+}
+
+/// Um PONTO não tem vãos: o canto de uma forma a nascer entre dois vizinhos não «centra».
+#[test]
+fn a_shape_being_drawn_has_no_equal_spacing() {
+    let mut w = world();
+    rect(&mut w, [0.0, 0.0, 100.0, 60.0], 0.0, None);
+    rect(&mut w, [300.0, 0.0, 100.0, 60.0], 0.0, None);
+    w.ed.tool = Tool::Shape(ShapeType::Rectangle);
+    w.drag([150.0, -200.0], [196.0, 30.0], NONE);
+    let n = (*w.doc.live_in_z_order().last().unwrap()).clone();
+    assert_eq!(n.x + n.w, 196.0);
+}
+
+/// Em proporção (`Shift` a criar) o ponteiro não manda nos dois lados: sem guia que minta.
+#[test]
+fn a_square_being_drawn_does_not_snap() {
+    let mut w = world();
+    rect(&mut w, [0.0, 0.0, 100.0, 60.0], 0.0, None);
+    w.ed.tool = Tool::Shape(ShapeType::Rectangle);
+    w.ed.pointer_down(
+        &mut w.doc,
+        &mut w.h,
+        &mut w.ts,
+        at(500.0, 500.0, SHIFT),
+        VIEW,
+    );
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(520.0, 530.0, SHIFT));
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(597.0, 640.0, SHIFT));
+    assert!(guides(&mut w).is_empty());
+    w.ed.pointer_up(&mut w.doc, &mut w.h, at(597.0, 640.0, SHIFT));
+}
+
+/// A pega de um LADO só encaixa o eixo dela: a de E não cola em y (nem desenha a guia de y).
+#[test]
+fn a_side_handle_snaps_only_its_own_axis() {
+    let mut w = world();
+    rect(&mut w, [500.0, 3.0, 100.0, 47.0], 0.0, None);
+    let b = rect(&mut w, [0.0, 0.0, 100.0, 50.0], 0.0, None);
+    w.ed.select(&w.doc, [b]);
+    let knob = crate::Frame::of(w.el(b)).handle(Handle::Resize(Dir::E), PX, &metrics());
+    w.ed.pointer_down(
+        &mut w.doc,
+        &mut w.h,
+        &mut w.ts,
+        at(knob[0], knob[1], NONE),
+        VIEW,
+    );
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(150.0, 25.0, NONE));
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(200.0, 23.0, NONE));
+    let g = guides(&mut w);
+    w.ed.pointer_up(&mut w.doc, &mut w.h, at(200.0, 23.0, NONE));
+    assert!(g.iter().all(|g| g.a[0] == g.b[0]), "guia de y: {g:?}");
+    assert_eq!([w.el(b).y, w.el(b).h], [0.0, 50.0]);
+}
+
+/// Um PAR só conta se os dois partilham a fila: A e B em faixas diferentes não dão vão a copiar.
+#[test]
+fn a_pair_that_does_not_share_a_row_gives_no_gap() {
+    let mut w = world();
+    rect(&mut w, [0.0, 0.0, 100.0, 60.0], 0.0, None);
+    rect(&mut w, [140.0, 100.0, 100.0, 60.0], 0.0, None);
+    let c = rect(&mut w, [283.0, 50.0, 100.0, 70.0], 0.0, None);
+    drag_by(&mut w, [333.0, 85.0], [-4.0, 0.0]);
+    assert_eq!(w.el(c).x, 279.0);
 }

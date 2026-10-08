@@ -5,8 +5,8 @@
 //! - Cada referencial é uma família de eixos: o do MUNDO (todas as caixas envolventes) e, se quem se
 //!   move está rodado, o DELE — onde só entram os alvos ao mesmo ângulo (mod 90°), pelas caixas
 //!   rodadas. A lei de [`snap_box`] é a mesma nos dois; o próprio ganha quando encaixa.
-//! - Rodar encaixa no ângulo de um alvo à vista (mod 90°), com a tolerância medida em px no ARCO
-//!   do ponteiro.
+//! - Rodar encaixa no ângulo de um alvo da casa (mod 90°), com a tolerância medida em px no ARCO do
+//!   ponteiro ou do canto mais longe, o maior.
 
 use std::collections::BTreeSet;
 use std::f64::consts::{FRAC_PI_2, PI};
@@ -29,7 +29,7 @@ fn reduced(angle: f64) -> f64 {
     if FRAC_PI_2 - a < SAME_AXES { 0.0 } else { a }
 }
 
-pub(crate) fn same_axes(a: f64, b: f64) -> bool {
+fn same_axes(a: f64, b: f64) -> bool {
     let d = (reduced(a) - reduced(b)).abs();
     d < SAME_AXES || FRAC_PI_2 - d < SAME_AXES
 }
@@ -96,10 +96,10 @@ struct Family {
 }
 
 impl Family {
-    /// O encaixe dos pontos `pts` (já deslocados) neste referencial, com o deslocamento e as guias
-    /// devolvidos no MUNDO.
-    fn snap(&self, pts: impl IntoIterator<Item = [f64; 2]>, tol: f64) -> Snap {
-        let s = snap_box(self.axes.stops(pts), &self.boxes, tol);
+    /// O encaixe dos pontos `pts` (já deslocados) neste referencial, nos eixos `free` dele, com o
+    /// deslocamento e as guias devolvidos no MUNDO.
+    fn snap(&self, pts: impl IntoIterator<Item = [f64; 2]>, tol: f64, free: [bool; 2]) -> Snap {
+        let s = snap_box(self.axes.stops(pts), &self.boxes, tol, free);
         Snap {
             delta: self.axes.world(s.delta),
             best: s.best,
@@ -122,12 +122,19 @@ struct Turn {
     reach: f64,
 }
 
-/// ⭐ Os alvos de um gesto, recolhidos ao carregar.
+/// ⭐ Os alvos de um gesto: recolhidos ao carregar, e de novo quando a CASA debaixo do ponteiro
+/// muda (é ela que o largar decide) ou quando o `Alt` deixa os originais no sítio.
 pub(crate) struct Snapper {
+    skip: BTreeSet<ElementId>,
+    view: [f64; 4],
+    homes: BTreeSet<Option<ElementId>>,
+    /// Os eixos próprios (um ângulo não recto), se quem se move os tem.
+    angle: Option<f64>,
+    /// O ângulo comum de quem se move (recto incluído): a base do encaixe do ângulo.
+    base: Option<f64>,
     /// Os cantos de quem se move, no início do gesto.
     corners: Vec<[f64; 2]>,
     world: Family,
-    /// Os eixos de quem se move, quando está rodado (tudo o que se move ao mesmo ângulo).
     own: Option<Family>,
     turns: Vec<Turn>,
 }
@@ -136,82 +143,145 @@ fn intersects(a: &[f64; 4], b: &[f64; 4]) -> bool {
     a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3]
 }
 
-/// O ângulo comum (não recto) de `els`, se o têm.
-fn common_angle(els: &[&Element]) -> Option<f64> {
+/// O ângulo de `els` se TODOS têm os mesmos eixos (mod 90°).
+fn common_axes(els: &[&Element]) -> Option<f64> {
     let first = els.first()?.angle;
-    (reduced(first) != 0.0 && els.iter().all(|e| same_axes(e.angle, first))).then_some(first)
+    els.iter()
+        .all(|e| same_axes(e.angle, first))
+        .then_some(first)
 }
 
 impl Snapper {
-    /// Os alvos à vista (`view`), menos `skip`, que vivem numa das `homes` (o frame de quem se move,
-    /// ou `None` = solto no quadro) — e esses frames. `movers` são as caixas que se encaixam (as
-    /// raízes do que se move), `angle` os eixos próprios a juntar (os de um rodado a redimensionar).
+    /// Os alvos à vista (`view`), menos `skip`, que vivem numa das `homes` (o frame onde se vai
+    /// largar, ou `None` = solto no quadro) — e esses frames. `movers` são as caixas que se
+    /// encaixam (as raízes do que se move), `angle` os eixos próprios a juntar (os de um rodado a
+    /// redimensionar).
     pub(crate) fn new(
         doc: &BoardDoc,
-        skip: &BTreeSet<ElementId>,
+        skip: BTreeSet<ElementId>,
         view: [f64; 4],
         movers: &[&Element],
         angle: Option<f64>,
-        homes: &BTreeSet<Option<ElementId>>,
+        homes: BTreeSet<Option<ElementId>>,
     ) -> Self {
-        let angle = angle
-            .filter(|a| reduced(*a) != 0.0)
-            .or_else(|| common_angle(movers));
-        let mut world = Family {
-            axes: Axes::WORLD,
-            boxes: Vec::new(),
+        let base = common_axes(movers);
+        let mut s = Self {
+            skip,
+            view,
+            homes,
+            angle: angle.or(base).filter(|a| reduced(*a) != 0.0),
+            base,
+            corners: movers.iter().flat_map(|e| e.corners()).collect(),
+            world: Family {
+                axes: Axes::WORLD,
+                boxes: Vec::new(),
+            },
+            own: None,
+            turns: Vec::new(),
         };
-        let mut own = angle.map(|a| Family {
+        s.collect(doc);
+        s
+    }
+
+    fn collect(&mut self, doc: &BoardDoc) {
+        self.world.boxes.clear();
+        self.turns.clear();
+        self.own = self.angle.map(|a| Family {
             axes: Axes::of(a),
             boxes: Vec::new(),
         });
-        let mut turns = Vec::new();
         for el in doc.live() {
-            let home = homes.contains(&el.frame) || homes.contains(&Some(el.id));
-            if el.connector().is_some() || skip.contains(&el.id) || !home {
+            let home = self.homes.contains(&el.frame) || self.homes.contains(&Some(el.id));
+            if el.connector().is_some() || self.skip.contains(&el.id) || !home {
                 continue;
             }
             let b = el.aabb();
-            if !intersects(&b, &view) {
+            if !intersects(&b, &self.view) {
                 continue;
             }
-            world.boxes.push(if el.angle == 0.0 {
-                Stops::rect(b)
-            } else {
-                Axes::WORLD.stops(el.corners())
-            });
-            if let (Some(f), Some(a)) = (own.as_mut(), angle)
-                && same_axes(el.angle, a)
-            {
-                f.boxes.push(f.axes.stops(el.corners()));
+            // Ao MESMO ângulo de quem se move, um alvo conta só nos eixos próprios: canto a canto no
+            // ecrã, dois rodados iguais dão alinhamentos que não se vêem (o gate da cena 7).
+            match (self.own.as_mut(), self.angle) {
+                (Some(f), Some(a)) if same_axes(el.angle, a) => {
+                    f.boxes.push(f.axes.stops(el.corners()));
+                }
+                _ if el.angle == 0.0 => self.world.boxes.push(Stops::rect(b)),
+                _ => self.world.boxes.push(Axes::WORLD.stops(el.corners())),
             }
-            turns.push(Turn {
+            self.turns.push(Turn {
                 angle: reduced(el.angle),
                 center: el.center(),
                 reach: el.w.hypot(el.h) / 2.0,
             });
         }
-        Self {
-            corners: movers.iter().flat_map(|e| e.corners()).collect(),
-            world,
-            own,
-            turns,
+    }
+
+    /// O ponteiro em `p`: se o frame onde se largaria mudou, os alvos passam a ser os dessa casa.
+    pub(crate) fn follow(&mut self, doc: &BoardDoc, p: [f64; 2]) {
+        let homes = BTreeSet::from([doc.deepest_frame_at(p, &self.skip)]);
+        if homes != self.homes {
+            self.homes = homes;
+            self.collect(doc);
         }
     }
 
-    /// O encaixe de quem se move, deslocado de `d`: o deslocamento que falta e as guias — nos eixos
-    /// PRÓPRIOS de um rodado quando lá há encaixe (é neles que o artista o vê); senão nos do mundo.
-    pub(crate) fn snap_moving(&self, d: [f64; 2], tol: f64) -> ([f64; 2], Vec<Guide>) {
+    /// O `Alt` duplicou: quem se move passa a ser `skip` (as cópias) e os originais viram alvos.
+    pub(crate) fn reskip(&mut self, doc: &BoardDoc, skip: BTreeSet<ElementId>) {
+        self.skip = skip;
+        self.collect(doc);
+    }
+
+    /// O encaixe de quem se move, deslocado de `d`, nos eixos do mundo `free` (o `Shift` trava um):
+    /// o deslocamento que falta e as guias — nos eixos PRÓPRIOS de um rodado quando lá há encaixe
+    /// (é neles que o artista o vê); senão nos do mundo. Travado, só o mundo, no eixo livre.
+    pub(crate) fn snap_moving(
+        &self,
+        d: [f64; 2],
+        tol: f64,
+        free: [bool; 2],
+    ) -> ([f64; 2], Vec<Guide>) {
         if self.corners.is_empty() {
             return ([0.0; 2], Vec::new());
         }
         let pts = || self.corners.iter().map(|c| [c[0] + d[0], c[1] + d[1]]);
-        self.best(|f| f.snap(pts(), tol))
+        if free != [true; 2] {
+            let s = self.world.snap(pts(), tol, free);
+            return (s.delta, s.guides);
+        }
+        self.best(|f| f.snap(pts(), tol, free))
     }
 
-    /// O encaixe de um PONTO (a pega a redimensionar, o canto de uma forma a nascer).
-    pub(crate) fn snap_point(&self, p: [f64; 2], tol: f64) -> ([f64; 2], Vec<Guide>) {
-        self.best(|f| f.snap([p], tol))
+    /// O encaixe de um PONTO (o canto de uma forma a nascer) nos eixos do mundo `free`.
+    pub(crate) fn snap_point(
+        &self,
+        p: [f64; 2],
+        tol: f64,
+        free: [bool; 2],
+    ) -> ([f64; 2], Vec<Guide>) {
+        let s = self.world.snap([p], tol, free);
+        (s.delta, s.guides)
+    }
+
+    /// O encaixe da pega `sign` (`Dir::sign`) de uma moldura rodada `angle`: só os eixos que a pega
+    /// mexe, nos eixos da moldura (os próprios, ou o mundo se ela é recta).
+    pub(crate) fn snap_handle(
+        &self,
+        p: [f64; 2],
+        tol: f64,
+        (sx, sy): (f64, f64),
+        angle: f64,
+    ) -> ([f64; 2], Vec<Guide>) {
+        let free = [sx != 0.0, sy != 0.0];
+        let s = match &self.own {
+            Some(f) => f.snap([p], tol, free),
+            None => {
+                // Rodada 90° (ou 270°), o lado da pega é o OUTRO eixo do mundo.
+                let quarter = (angle.rem_euclid(PI) - FRAC_PI_2).abs() < SAME_AXES;
+                let free = if quarter { [free[1], free[0]] } else { free };
+                self.world.snap([p], tol, free)
+            }
+        };
+        (s.delta, s.guides)
     }
 
     fn best(&self, snap: impl Fn(&Family) -> Snap) -> ([f64; 2], Vec<Guide>) {
@@ -225,7 +295,8 @@ impl Snapper {
     }
 
     /// O ângulo a SOMAR num gesto de rodar `frame` (de `start` até `p`) e as guias: com `Shift`,
-    /// passos de 15°; sem ele, o encaixe do ângulo (`tol` = `None` com `Ctrl`).
+    /// passos de 15° da moldura; sem ele, o encaixe do ângulo de quem roda (`tol` = `None` com
+    /// `Ctrl`; nenhum se rodam ângulos diferentes).
     pub(crate) fn turn(
         &self,
         frame: &Frame,
@@ -241,10 +312,15 @@ impl Snapper {
             let target = ((frame.angle + delta) / ROTATE_STEP).round() * ROTATE_STEP;
             return (target - frame.angle, Vec::new());
         }
-        let radius = (p.world[0] - c[0]).hypot(p.world[1] - c[1]);
+        // O arco medido é o do ponteiro ou o do canto mais longe, o MAIOR: perto do centro o canto
+        // continua a andar 8 px antes de encaixar.
         let reach = frame.w.hypot(frame.h) / 2.0;
-        tol.and_then(|tol| self.snap_angle(frame.angle + delta, c, reach, radius, tol))
-            .map_or((delta, Vec::new()), |(a, g)| (a - frame.angle, g))
+        let radius = (p.world[0] - c[0]).hypot(p.world[1] - c[1]).max(reach);
+        let (Some(tol), Some(base)) = (tol, self.base) else {
+            return (delta, Vec::new());
+        };
+        self.snap_angle(base + delta, c, reach, radius, tol)
+            .map_or((delta, Vec::new()), |(a, g)| (a - base, g))
     }
 
     /// ⭐ O encaixe do ÂNGULO: `angle` (de quem roda, com o centro `center` e a meia diagonal
@@ -296,9 +372,66 @@ impl Snapper {
 }
 
 impl crate::Editor {
-    /// As casas da selecção (o frame de cada seleccionado, ou `None`): os alvos de um gesto vivem
-    /// nelas (o tldraw G6: um filho prende ao irmão e ao frame, nunca ao que está fora).
-    pub(crate) fn homes(&self, doc: &BoardDoc) -> BTreeSet<Option<ElementId>> {
+    /// As casas da selecção (o frame de cada seleccionado, ou `None`).
+    fn homes(&self, doc: &BoardDoc) -> BTreeSet<Option<ElementId>> {
         self.selected(doc).iter().map(|el| el.frame).collect()
+    }
+
+    /// As raízes que rodam ou se movem (sem setas): a caixa delas é a que se encaixa.
+    fn roots<'a>(&self, doc: &'a BoardDoc) -> Vec<&'a Element> {
+        let mut v = self.selected(doc);
+        v.retain(|el| !el.locked() && el.connector().is_none());
+        v
+    }
+
+    /// Os alvos de uma forma a NASCER em `start`: a casa dela é o frame debaixo do início.
+    pub(crate) fn snap_create(&self, doc: &BoardDoc, view: [f64; 4], start: [f64; 2]) -> Snapper {
+        let home = doc.deepest_frame_at(start, &BTreeSet::new());
+        Snapper::new(
+            doc,
+            BTreeSet::new(),
+            view,
+            &[],
+            None,
+            BTreeSet::from([home]),
+        )
+    }
+
+    /// Os alvos de RODAR `originals` (a selecção e o que vive dentro dela).
+    pub(crate) fn snap_rotate(
+        &self,
+        doc: &BoardDoc,
+        view: [f64; 4],
+        originals: &[Element],
+    ) -> Snapper {
+        let going = originals.iter().map(|o| o.id).collect();
+        Snapper::new(doc, going, view, &self.roots(doc), None, self.homes(doc))
+    }
+
+    /// Os alvos de REDIMENSIONAR a moldura `frame`, nos eixos dela.
+    pub(crate) fn snap_resize(&self, doc: &BoardDoc, view: [f64; 4], frame: &Frame) -> Snapper {
+        let skip = self.selection.clone();
+        Snapper::new(doc, skip, view, &[], Some(frame.angle), self.homes(doc))
+    }
+
+    /// Os alvos de MOVER `originals` a partir de `p`: o que FICA (o que se move — os de dentro de
+    /// um frame arrastado também — não é alvo), na casa debaixo do ponteiro.
+    pub(crate) fn snap_move(
+        &self,
+        doc: &BoardDoc,
+        view: [f64; 4],
+        p: [f64; 2],
+        originals: &[Element],
+    ) -> Snapper {
+        let going: BTreeSet<ElementId> = originals.iter().map(|o| o.id).collect();
+        let home = doc.deepest_frame_at(p, &going);
+        Snapper::new(
+            doc,
+            going,
+            view,
+            &self.roots(doc),
+            None,
+            BTreeSet::from([home]),
+        )
     }
 }

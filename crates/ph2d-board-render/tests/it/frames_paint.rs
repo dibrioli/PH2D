@@ -362,7 +362,7 @@ fn a_rotated_guide_paints_along_the_rotated_edges() {
     let metrics = Metrics {
         handle: 8.0,
         rotate_offset: 24.0,
-        snap: 6.0,
+        snap: 8.0,
         drag: 3.0,
         click_size: [160.0, 100.0],
         paste_offset: 10.0,

@@ -51,14 +51,17 @@ pub(crate) struct Snap {
     pub guides: Vec<Guide>,
 }
 
-/// O deslocamento que leva `moving` a colar nos `targets` (por eixo, o mais perto dentro de `tol`),
-/// e as guias desse encaixe. `(0, 0)` e nenhuma guia quando nada está perto.
+/// O deslocamento que leva `moving` a colar nos `targets` (por eixo `free`, o mais perto dentro de
+/// `tol`), e as guias desse encaixe. `(0, 0)` e nenhuma guia quando nada está perto.
 #[must_use]
-pub(crate) fn snap_box(moving: Stops, targets: &[Stops], tol: f64) -> Snap {
+pub(crate) fn snap_box(moving: Stops, targets: &[Stops], tol: f64, free: [bool; 2]) -> Snap {
     let mut delta = [0.0; 2];
     let mut best = f64::INFINITY;
     let mut guides = Vec::new();
     for (axis, slot) in delta.iter_mut().enumerate() {
+        if !free[axis] {
+            continue;
+        }
         let mine = moving.along(axis);
         let found = targets
             .iter()
@@ -66,7 +69,11 @@ pub(crate) fn snap_box(moving: Stops, targets: &[Stops], tol: f64) -> Snap {
             .flat_map(|v| mine.iter().map(move |m| v - m))
             .filter(|d| d.abs() <= tol)
             .min_by(|a, b| a.abs().total_cmp(&b.abs()));
-        let gap = gap_snap(&moving.b, targets, axis, tol);
+        // Um PONTO (a pega, o canto de uma forma a nascer) não tem vãos: o que se mostraria seria
+        // uma caixa que não existe.
+        let gap = (moving.b[axis + 2] > moving.b[axis])
+            .then(|| gap_snap(&moving.b, targets, axis, tol))
+            .flatten();
         if let Some((d, g)) = gap.filter(|(g, _)| found.is_none_or(|e| g.abs() < e.abs())) {
             *slot = d;
             best = best.min(d.abs());
@@ -147,20 +154,24 @@ fn gap_snap(m: &[f64; 4], targets: &[Stops], axis: usize, tol: f64) -> Option<(f
         .map(|t| &t.b)
         .filter(|t| t[other] < m[other + 2] && m[other] < t[other + 2])
         .collect();
-    let before = |edge: f64| {
+    // O vizinho antes/depois de `edge`, na fila e a partilhar a faixa de `with` (um par só conta
+    // se os dois estão na mesma fila).
+    let shares =
+        |t: &[f64; 4], with: &[f64; 4]| t[other] < with[other + 2] && with[other] < t[other + 2];
+    let before = |edge: f64, with: &[f64; 4]| {
         row.iter()
             .copied()
-            .filter(|t| t[hi] <= edge)
+            .filter(|t| t[hi] <= edge && shares(t, with))
             .max_by(|a, b| a[hi].total_cmp(&b[hi]))
     };
-    let after = |edge: f64| {
+    let after = |edge: f64, with: &[f64; 4]| {
         row.iter()
             .copied()
-            .filter(|t| t[lo] >= edge)
+            .filter(|t| t[lo] >= edge && shares(t, with))
             .min_by(|a, b| a[lo].total_cmp(&b[lo]))
     };
     let c = (m[lo] + m[hi]) / 2.0;
-    let (l, r) = (before(c), after(c));
+    let (l, r) = (before(c, m), after(c, m));
     let at = |t: &[f64; 4]| mid(t, m, other);
     let mut found: Vec<(f64, Vec<Guide>)> = Vec::new();
     if let (Some(l), Some(r)) = (l, r) {
@@ -172,7 +183,7 @@ fn gap_snap(m: &[f64; 4], targets: &[Stops], axis: usize, tol: f64) -> Option<(f
         }
     }
     if let Some(l) = l
-        && let Some(l2) = before(l[lo])
+        && let Some(l2) = before(l[lo], l)
         && l[lo] > l2[hi]
     {
         let g = l[lo] - l2[hi];
@@ -183,7 +194,7 @@ fn gap_snap(m: &[f64; 4], targets: &[Stops], axis: usize, tol: f64) -> Option<(f
         ));
     }
     if let Some(r) = r
-        && let Some(r2) = after(r[hi])
+        && let Some(r2) = after(r[hi], r)
         && r2[lo] > r[hi]
     {
         let g = r2[lo] - r[hi];
@@ -211,7 +222,12 @@ mod tests {
             delta: d,
             best,
             guides: g,
-        } = snap_box(Stops::rect([103.0, 100.0, 153.0, 150.0]), &[target], 5.0);
+        } = snap_box(
+            Stops::rect([103.0, 100.0, 153.0, 150.0]),
+            &[target],
+            5.0,
+            [true; 2],
+        );
         assert_eq!((d, best), ([-3.0, 0.0], 3.0));
         // As duas bordas da caixa (50 de largo) caem nas bordas 100 e 150 do alvo: duas guias.
         assert_eq!(
@@ -232,9 +248,19 @@ mod tests {
     #[test]
     fn centres_snap_too_and_far_boxes_do_not() {
         let target = Stops::rect([0.0, 0.0, 100.0, 100.0]);
-        let s = snap_box(Stops::rect([30.0, 200.0, 72.0, 240.0]), &[target], 2.0);
+        let s = snap_box(
+            Stops::rect([30.0, 200.0, 72.0, 240.0]),
+            &[target],
+            2.0,
+            [true; 2],
+        );
         assert_eq!(s.delta, [-1.0, 0.0], "o centro 51 cola no centro 50");
-        let far = snap_box(Stops::rect([300.0, 300.0, 340.0, 340.0]), &[target], 2.0);
+        let far = snap_box(
+            Stops::rect([300.0, 300.0, 340.0, 340.0]),
+            &[target],
+            2.0,
+            [true; 2],
+        );
         assert_eq!(
             (far.delta, far.best, far.guides.len()),
             ([0.0, 0.0], f64::INFINITY, 0)

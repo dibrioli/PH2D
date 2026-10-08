@@ -189,6 +189,8 @@ pub struct Overlay {
     pub frame: Option<Frame>,
     /// O rectângulo da selecção por arrasto `[x0, y0, x1, y1]`.
     pub marquee: Option<[f64; 4]>,
+    /// As guias do encaixe: direitas, inclinadas (os eixos de um rodado), os vãos iguais e as duas do
+    /// ângulo a rodar.
     pub guides: Vec<Guide>,
     /// O texto em edição: o elemento, os rectângulos da selecção e o do cursor, no espaço do
     /// texto (origem no início do bloco, [`ph2d_board_geom::text_origin`]).

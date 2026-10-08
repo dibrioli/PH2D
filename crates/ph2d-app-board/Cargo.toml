@@ -19,5 +19,9 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 
+[dev-dependencies]
+# O gate da cena 7 conduz o editor do quadro (o texto das formas mede-se).
+ph2d-text = { path = "../ph2d-text" }
+
 [lints]
 workspace = true

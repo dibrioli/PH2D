@@ -29,7 +29,12 @@ fn tr(key: &str) -> String {
     ph2d_i18n::tr(key).to_owned()
 }
 
-fn frame(doc: &mut BoardDoc, name: &str, bx: [f64; 4], home: Option<ElementId>) -> ElementId {
+pub(super) fn frame(
+    doc: &mut BoardDoc,
+    name: &str,
+    bx: [f64; 4],
+    home: Option<ElementId>,
+) -> ElementId {
     let paper = Rgba(ph2d_board_model::FRAME_FILL);
     let f = Frame {
         name: name.to_owned(),

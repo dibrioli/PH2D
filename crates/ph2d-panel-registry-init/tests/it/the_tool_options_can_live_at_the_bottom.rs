@@ -12,10 +12,17 @@ use ph2d_editor_core::{HeroScreen, NodeId};
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_tool_vector::{DrawMode, VectorStyleSnapshot};
 
+/// A largura do iPad mini — onde o `⋯` da fila do Node existe (F0). ⚠️ A ALTURA é a do mini
+/// embaixo, e folgada no controlo de cima: lá um menu mais alto que o espaço por baixo é ENCAIXADO
+/// ao ecrã pela lei que já existia (`clamp_menu_to_viewport`), e o controlo mediria essa lei.
 fn pinta(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) {
     let mut scene = ph2d_vector::VectorScene::new();
-    // O iPad mini: onde o `⋯` da fila do Node existe (F0).
-    let vp = Rect::new(0.0, 0.0, 1133.0, 744.0);
+    let h = if hero.store.tool_row_bottom() {
+        744.0
+    } else {
+        1400.0
+    };
+    let vp = Rect::new(0.0, 0.0, 1133.0, h);
     paint_hero_screen(hero, vp, &mut scene, ts);
 }
 

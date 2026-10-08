@@ -428,11 +428,11 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
 
 /// As linhas de alternância que **não** vivem no menu *Window*: os dois painéis laterais
 /// (*Hierarchy*, *Inspector*), a régua, — desde 2026-09-19 — as duas COLUNAS, e — desde 2026-10-07
-/// (D10) — a barra de ações da seleção.
+/// (D10) — a barra de ações da seleção, e — desde 2026-10-08 (D10 F5) — a fila ② embaixo.
 ///
 /// ⚠️ Escritas como CONTAGEM porque a lista delas está no `is_toggle` acima — se lá aparecer mais
 /// uma, este número tem de subir no mesmo commit, e o gate diz qual é a diferença.
-const OUTSIDE_WINDOW_TOGGLES: usize = 6;
+const OUTSIDE_WINDOW_TOGGLES: usize = 7;
 
 /// **E a régua PUBLICA o estado dela**, porque quem pinta a marca não alcança o `HeroScreen`.
 #[test]

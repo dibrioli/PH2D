@@ -13,7 +13,8 @@ use winit::keyboard::ModifiersState;
 thread_local! {
     /// Os modificadores do TECLADO (só ele) — `App::modifiers` é este OU o toque. ⚠️ Aqui e não num
     /// campo do `App`: o `App` só larga campos (`the_app_only_sheds_fields`).
-    static KEYBOARD: std::cell::Cell<ModifiersState> = std::cell::Cell::new(ModifiersState::empty());
+    static KEYBOARD: std::cell::Cell<ModifiersState> =
+        const { std::cell::Cell::new(ModifiersState::empty()) };
 }
 
 /// O teclado mudou (o `ModifiersChanged` da janela).

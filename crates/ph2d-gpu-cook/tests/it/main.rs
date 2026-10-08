@@ -48,6 +48,7 @@ mod gpu_stream_ops_disparo;
 mod gpu_texture_id;
 mod gpu_voronoi;
 mod ligacoes_de_porta_template;
+mod ligacoes_guardadas;
 mod measure_static_orbit;
 mod node_key_uniform;
 mod plan_analysis;

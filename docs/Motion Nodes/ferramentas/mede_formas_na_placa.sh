@@ -10,7 +10,7 @@
 #
 # uso (dentro da worktree, com o `release` já construído):
 #   bash "docs/Motion Nodes/ferramentas/mede_formas_na_placa.sh" <dir-de-saida>
-# Ambiente: CELULAS (lista «placa:cena:n», ver abaixo; a `=114` lê o n como o lado da pilha) · COLIDE=1 · ESPERA=40 · FORMAS="0 1" (só "1" re-mede o lado da
+# Ambiente: TECTO_FORMA (a `=17`: 1 = estrela, a omissão; 0 = a imagem) · CELULAS (lista «placa:cena:n», ver abaixo; a `=114` lê o n como o lado da pilha) · COLIDE=1 · ESPERA=40 · FORMAS="0 1" (só "1" re-mede o lado da
 #           placa contra um «sem» já medido na mesma sessão) · TRACEJADOS="0" (a `=127` com `1`:
 #           `PH2D_TRACO_ESTICADO_TRACEJADO=1`) · VARIANTES="F:" (lista «nome:NOME=v,NOME=v», o valor é o de
 #           `PH2D_FORMAS_CONSTANTES`; vazio = o produto)
@@ -35,7 +35,8 @@ for cel in $CELULAS; do
     kv="PH2D_FLUID_PROFILE=1 PH2D_FORMAS_NA_PLACA=$formas"
     [ -n "$vlista" ] && kv="$kv PH2D_FORMAS_CONSTANTES=$vlista"
     if [ "$cena" = 17 ]; then
-      kv="$kv PH2D_MOTION_OBJ_SMOKE=17 PH2D_TECTO_FORMA=1 PH2D_TECTO_N=$n"
+      # `TECTO_FORMA=0`: a IMAGEM (`Particle`) em vez da estrela — a outra metade da tabela do doc 120/122.
+      kv="$kv PH2D_MOTION_OBJ_SMOKE=17 PH2D_TECTO_FORMA=${TECTO_FORMA:-1} PH2D_TECTO_N=$n"
     elif [ "$cena" = 114 ]; then
       # doc 121 §9.19 (5): a pilha com `n × n` peças por taça; `COLIDE=0` tira o `Collide` (a mesma cena sem contacto).
       # ⚠️ A cena NÃO cai neste roteiro (o relógio pode andar e a pilha fica no instante de partida — §9.19 (5)):
@@ -46,7 +47,7 @@ for cel in $CELULAS; do
       [ "$tr" = 1 ] && kv="$kv PH2D_TRACO_ESTICADO_TRACEJADO=1"
     fi
     [ "$placa" = igpu ] && kv="$kv $IGPU"
-    nome="$OUT/${placa}_c${cena}_n${n}_tr${tr}_formas${formas}_${vnome}"
+    nome="$OUT/${placa}_c${cena}_n${n}_tr${tr}_formas${formas}_${vnome}_forma${TECTO_FORMA:-1}"
     # ⛔ doc 121 §9.14: com a placa presa por outra linha a porta desiste e a célula sai sem quadros —
     # repete-se até `REPETE` vezes.
     tentativa=0

@@ -1352,7 +1352,7 @@ centrar sempre · não re-enquadrar · re-enquadrar a vista mexida).
 2. ⛔ **Um cálculo feito UMA vez no 1.º quadro herda a geometria provisória do 1.º quadro.** Meça o
    retângulo nos dois primeiros quadros antes de culpar a geometria.
 
-## Bug #14 — formas carimbadas a partir da SAÍDA de uma zona de simulação não aparecem no ecrã (ABERTO, 07/10)
+## Bug #14 — formas carimbadas a partir da SAÍDA de uma zona de simulação não aparecem no ecrã (✅ FECHADO 07/10 — NÃO era perda: o tamanho, e uma sonda cega)
 
 ### Sintoma
 O dono pediu formas no smoke do ciclo 6 (*«vejo apenas gizmos»*). Na `=27` (a centelha que estoura:
@@ -1370,7 +1370,21 @@ entre a zona e a saída — e o app **não desenha nada**: nem estrela, nem a cr
 ⇒ a diferença está entre o `coze_o_quadro` e o desenho (o que o `dispatch` faz à volta dele com uma zona
 de simulação, ou o passe das formas) — **não** no cozimento.
 
-### Estado
-A `=27` ficou como estava (só posições). O smoke do ciclo 6 é a `=117`, que carimba e funciona. Próximo
-passo: repetir a corrida do gate pelo `dispatch` inteiro (com `HeroScreen`) ou instrumentar o passe das
-formas quadro a quadro na `=27` com o carimbo depois da zona.
+### Estado (07/10, ciclo 13 — [doc 122 §1](122_ciclo_13_os_abertos_do_modulo.md))
+✅ **Fechado, e a «bissecção» acima estava errada nas duas metades.** Pela porta do produto as duas rotas
+entregam as estrelas em TODO quadro (buffer da placa lido palavra a palavra, `vector_instances` da CPU,
+parado, aos saltos, com as tomadas dos gizmos); a camada da placa pinta-as; no app, instrumentado, o
+passe decide e desenha em todo quadro. **A causa era o TAMANHO:** `0,07` em mundo é `~3 px` na câmera
+do produto (`48 px` por unidade) — três pontos que a foto ampliada mostra —, e a cruz de posição some
+quando o ponto tem forma. A cascata ainda sai do quadro aos `~3 s` (o `curl`), logo uma foto tardia
+não tem nada com qualquer tamanho. **E o `PH2D_PAN_DIAG` era cego à rota do dispositivo**: lia as
+`vector_instances`, vazias de propósito quando as formas vivem no buffer do cozimento, e imprimia
+`de 0` — lido como «o app não tem forma». **Cura:** `ESTRELA = 0,22` (`~10 px`); a sonda diz a rota
+da placa (`note_device`); gate `the_sparks_draw_legible_stars_on_both_routes` (vermelho a `0,07`);
+censo da família: `1` cena com carimbo a jusante de uma zona (a `=27`).
+
+### Lições
+- ⛔ **Uma sonda que lê UMA rota imprime zero sobre a outra** — e um zero lê-se como ausência. Antes de
+  acreditar numa ausência, pergunte à sonda POR QUE ROTA o quadro passou.
+- ⛔ **«Não aparece» tem um suspeito barato antes do caro: o tamanho EM PIXELS na câmera do produto.**
+  Um gate em unidades de mundo aprova uma forma de `3 px`; o gate desta cura mede pixels acesos.

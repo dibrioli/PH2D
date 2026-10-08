@@ -137,6 +137,19 @@ inventada. Contagens do registry em 2026-09-05.
 | 11 ✅ ([doc 119](119_ciclo_11_a_placa_com_varias_saidas.md)) | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o alvo medido (doc 117) era a cerca de ÂMBITO do multi-sink; ela SAIU (W1–W4) e a varredura achou **três** defeitos de produto que ela escondia, curados. Pela porta do produto, **`95` de `126`** cenas vão à placa. ✅ smoke do dono aprovado na cena `PH2D_MOTION_OBJ_SMOKE=16` (2026-09-23) | (varredura) | — |
 | **12** ([doc 120](120_ciclo_12_os_tectos_confortaveis.md)) | ⚡ **OS TETOS CONFORTÁVEIS** — medido com FORMA e SIMULAÇÃO, nas duas placas (a integrada é o proxy de telemóvel), cena `PH2D_MOTION_OBJ_SMOKE=17`: confortável ≥`65 536` imagens / `32 768` estrelas no desktop, ~`49 152` / ~`16 384` no proxy; acima do limite há um **penhasco** (dívida de tiques). Recomendação técnica: **ficar em `32 768`** até o carimbo ir à placa. ⭐ **E o carimbo FOI à placa** (§8.4–§8.6): o custo das imagens deixou de crescer com o número, e no proxy de telemóvel o Motion a `32 768` foi de `7,30` para **`0,72 ms`** | ✅ **o tecto fica em `32 768`** (o dono mandou seguir sem o mudar) · smokes do dono **aprovados** (§8.5 as imagens e as marcas das posições · §8.6 os cartões, `0,56 ms` de Motion na máquina dele) | — |
 
+> ⚠️ **Estado em 2026-10-07 (noite) — CICLO 13, os cinco abertos do módulo num ciclo**
+> ([doc 122](122_ciclo_13_os_abertos_do_modulo.md)). O Bug #14 **não era perda**: a estrela da `=27`
+> tinha `~3 px` e a sonda `PH2D_PAN_DIAG` era cega à rota do dispositivo (curadas as duas). O
+> `pulse.beat` decide o compasso no hospedeiro em `f64` e as duas rotas fazem a mesma aritmética
+> exacta (paridade AO BIT nos `91` tiques, empates incluídos). O preparo de `value.attribute` +
+> `value.reduce` caiu de `+0,070` para `+0,040 ms` (ligações, uniforms e rascunhos GUARDADOS entre
+> quadros, em todo o cozimento). A leitura dos cartões vai no MESMO `submit` do cozimento (o
+> `0,34–0,42 ms` do doc 120 não reproduz: era `0,045–0,058`, o `submit` próprio `0,019`). ⭐ E a
+> tabela do tecto de `32 768` foi MEDIDA de novo com o carimbo na placa (§4): no desktop a imagem
+> fecha o quadro com `1 048 576` e a estrela com `524 288`; no proxy de telemóvel a estrela é a que
+> aperta (`32 768` confortável, `~49 152` limite). ⏳ **O número do tecto é do dono** — recomendação
+> técnica `65 536` (doc 122 §4.3); nada mudou.
+>
 > ⚠️ **Estado em 2026-10-07 — os ABERTOS do ciclo 6 fecharam** ([doc 110 §14](110_ciclo_6_valor_e_pulso.md)),
 > por ordem do dono (*«resolver num único ciclo o Ciclo 6 completo»*). A **W1(b)** fechou com DUAS
 > espécies de porta ≠ 0 (o complemento de um `Compact` e a porta projectada do `carry`) e, com ela,

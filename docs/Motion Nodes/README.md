@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**132 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**133 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -136,6 +136,7 @@
 | 119 |   | [119_ciclo_11_a_placa_com_varias_saidas.md](119_ciclo_11_a_placa_com_varias_saidas.md) | — | 119 — CICLO 11: a placa com VÁRIAS saídas (2026-09-23) |
 | 120 |   | [120_ciclo_12_os_tectos_confortaveis.md](120_ciclo_12_os_tectos_confortaveis.md) | — | 120 — CICLO 12: os tectos confortáveis (2026-09-24) |
 | 121 |   | [121_as_formas_na_placa.md](121_as_formas_na_placa.md) | — | 121 — AS FORMAS NA PLACA: toda forma do Motion desenhada pelo dispositivo, nítida e sem custo por cópia |
+| 122 |   | [122_ciclo_13_os_abertos_do_modulo.md](122_ciclo_13_os_abertos_do_modulo.md) | — | 122 — CICLO 13: os cinco abertos do módulo, num ciclo |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

@@ -161,3 +161,16 @@ fn every_ui_scale_survives_a_round_trip() {
     }
     assert_eq!(parse("ui_scale=133\n").ui_scale, ph2d_tokens::UiScale::P100);
 }
+
+/// F5: o canhoto volta igual, e um ficheiro antigo (sem a chave) nasce destro.
+#[test]
+fn left_handed_round_trips_and_an_old_file_is_right_handed() {
+    for left_handed in [false, true] {
+        let p = Prefs {
+            left_handed,
+            ..Prefs::default()
+        };
+        assert_eq!(parse(&serialize(&p)), p);
+    }
+    assert!(!parse("ui_sound=1\n").left_handed);
+}

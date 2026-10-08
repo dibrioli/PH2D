@@ -9,12 +9,37 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::hier_rows::{RowRole, SCENE_COMPONENTS};
+use ph2d_component_desc::ComponentCategory;
+use ph2d_editor_core::hier_rows::RowRole;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::screens::hero::fixture::HierarchyEntity;
 
 use crate::ids::{HIER_SCENE_ROW, hier_content_row};
+
+/// ⭐ **Os componentes da CENA** (§4.6) e o painel que é o cartão de cada um: o mundo físico é o
+/// painel `physics` (ADR-0131 D8 — o mundo, não o corpo) e a animação da cena é a Timeline.
+///
+/// ⚠️ **Sem Mixer:** o `SceneAudio` é o livro das vozes que tocam, não dado do artista — medido em
+/// 08/10; a premissa do doc 01 §4.6 caiu.
+pub(crate) const SCENE_COMPONENTS: [(ComponentCategory, &str); 2] = [
+    (
+        ComponentCategory::Physics,
+        ph2d_editor_core::screens::hero::PANEL_PHYSICS,
+    ),
+    (
+        ComponentCategory::Animation,
+        ph2d_editor_core::screens::hero::PANEL_TIMELINE,
+    ),
+];
+
+/// O painel que é o cartão de um componente da Cena.
+pub(crate) fn scene_panel_of(category: ComponentCategory) -> Option<&'static str> {
+    SCENE_COMPONENTS
+        .iter()
+        .find(|(c, _)| *c == category)
+        .map(|(_, p)| *p)
+}
 
 /// A lista da shell, com a Cena à cabeça (tudo um nível abaixo dela) e o conteúdo de cada objecto
 /// logo a seguir à linha dele — antes dos filhos, que são PARTES e não conteúdo.
@@ -123,6 +148,16 @@ pub(crate) fn is_collapsed(store: &WidgetStore, id: NodeId, row: &HierarchyEntit
     }
 }
 
+/// Quantos OBJECTOS a lista tem — o contador do cabeçalho; a Cena e o conteúdo são linhas, não
+/// entidades.
+pub(crate) fn object_count(entries: &BTreeMap<NodeId, HierarchyEntity>) -> u32 {
+    let n = entries
+        .values()
+        .filter(|e| e.role == RowRole::Object)
+        .count();
+    u32::try_from(n).unwrap_or(u32::MAX)
+}
+
 /// Só os OBJECTOS — o conjunto que o arrasto, o menu e o renomear reconhecem como linha.
 pub(crate) fn object_rows(
     order: &[NodeId],
@@ -143,6 +178,16 @@ mod tests {
 
     fn object(name: &str, indent: u8) -> HierarchyEntity {
         synthetic(name.into(), IconId::Sprite, indent, RowRole::Object, false)
+    }
+
+    #[test]
+    fn todo_componente_da_cena_tem_icone() {
+        for (c, _) in SCENE_COMPONENTS {
+            assert!(
+                ph2d_editor_core::hier_rows::component_icon(c).is_some(),
+                "{c:?} sem ícone na linha da Cena"
+            );
+        }
     }
 
     #[test]
@@ -171,5 +216,10 @@ mod tests {
         assert_eq!(rows[&head].name, "Layers (1)");
         assert!(rows[&HIER_SCENE_ROW].selected, "nada seleccionado = a Cena");
         assert_eq!(object_rows(&order, &rows), BTreeSet::from([a, b]));
+        assert_eq!(
+            object_count(&rows),
+            2,
+            "o cabeçalho conta objectos, não linhas"
+        );
     }
 }

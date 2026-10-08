@@ -392,7 +392,7 @@ pub fn drive(
     for f in families.iter_mut() {
         f.content(tools, &mut content);
     }
-    hero.gizmo.mode.publish_content(content);
+    hero.gizmo.content = content;
     // 5. O seletor — em todo quadro, vazio incluído.
     let menu = hero.gizmo.mode.menu(&mut hero.store);
     hero.store.publish_mode_menu(menu);

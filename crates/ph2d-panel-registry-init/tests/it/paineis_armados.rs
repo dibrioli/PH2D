@@ -97,12 +97,13 @@ fn arma_a_arvore(store: &mut WidgetStore) {
     /// `(nome, recuo, selo, visível, trancado, grupo trancado)` — a linha da árvore como o
     /// artista a vê.
     type Linha = (&'static str, u8, Option<&'static str>, bool, bool, bool);
-    let linhas: [Linha; 6] = [
-        ("Scene Root", 0, None, true, false, false),
-        ("Hero (tall variant)", 1, Some("Prefab"), true, false, false),
+    // ⭐ Sem a «Scene Root» de fixtura desde 08/10: a raiz CENA é do PAINEL agora (doc 01 §4.6,
+    //    `rows::expand`), e ele põe tudo um nível abaixo dela — a árvore medida é a MESMA de antes.
+    let linhas: [Linha; 5] = [
+        ("Hero (tall variant)", 0, Some("Prefab"), true, false, false),
         (
             "Enemy Spawner · left wing",
-            1,
+            0,
             Some("Variant"),
             true,
             true,
@@ -110,14 +111,14 @@ fn arma_a_arvore(store: &mut WidgetStore) {
         ),
         (
             "Background Parallax Layer",
-            1,
+            0,
             Some("Overridden"),
             false,
             false,
             true,
         ),
-        ("Collision Geometry", 2, Some("Locked"), true, true, true),
-        ("Footsteps (audio source)", 2, None, true, false, false),
+        ("Collision Geometry", 1, Some("Locked"), true, true, true),
+        ("Footsteps (audio source)", 1, None, true, false, false),
     ];
     let ids: Vec<NodeId> = (0..linhas.len())
         .map(|i| NodeId(9_000 + i as u64))
@@ -135,7 +136,7 @@ fn arma_a_arvore(store: &mut WidgetStore) {
                     badge: selo.map(str::to_string),
                     swatch: Some([200, 120, 60, 255]),
                     visible: visivel,
-                    selected: indent == 1,
+                    selected: indent == 0,
                     hovered: false,
                     muted: !visivel,
                     locked: trancado,

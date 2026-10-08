@@ -26,7 +26,7 @@ pub(super) fn paint_hierarchy_head(
     let title = HierarchyPanel::TITLE.tr();
     let title_size = paint_panel_title(rect, title, 40.0, scene, text_system, theme); // LITERAL-PX-OK: Add-button reserve
     let (entities, components) = if let Some(live) = current_live_entries() {
-        let entity_count = live.len() as u32;
+        let entity_count = crate::rows::object_count(&live);
         let comp_count = current_component_count();
         (entity_count, comp_count)
     } else {

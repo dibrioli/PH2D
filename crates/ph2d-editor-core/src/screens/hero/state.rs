@@ -147,6 +147,9 @@ pub struct GizmoStateGroup {
     /// ⭐⭐ **O modo de edição do activo** (spec/06 F2) — ao lado da selecção que ele tranca. Ver
     /// [`crate::object_mode`].
     pub mode: crate::object_mode::ModeState,
+    /// ⭐ O CONTEÚDO que as famílias de modo declararam neste quadro (`mode_drive::drive`) — o que
+    /// a Hierarquia desdobra sob cada objecto ([`crate::hier_rows`]).
+    pub content: crate::hier_rows::ContentMap,
     /// M14.7 B: per-frame projection input for the gizmo painter.
     /// Host computes from `selection_bbox_world(present, selection)`
     /// plus current camera/window and pushes here just before
@@ -255,6 +258,12 @@ pub struct GizmoStateGroup {
 }
 
 impl GizmoStateGroup {
+    /// O conteúdo declarado para `entity` (vazio = a família não declara nenhum).
+    #[must_use]
+    pub fn content_of(&self, entity: u64) -> &[crate::hier_rows::ContentGroup] {
+        self.content.get(&entity).map_or(&[], Vec::as_slice)
+    }
+
     /// Iterates every selected sprite — primary first, then extras
     /// in insertion order. Empty iterator when nothing is selected.
     pub fn iter_selected(&self) -> impl Iterator<Item = u64> + '_ {

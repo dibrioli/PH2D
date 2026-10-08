@@ -70,7 +70,7 @@ pub(super) fn publish_hierarchy(
         for (id, entry) in &mut entries {
             if let Some(bits) = live.bridge.entity_for(*id) {
                 entry.components = icons.of_entity(sim.world(), bits);
-                entry.content = hero.gizmo.mode.content_of(bits).to_vec();
+                entry.content = hero.gizmo.content_of(bits).to_vec();
             }
         }
         // Fase 0 hotfix: mark every multi-selection row's

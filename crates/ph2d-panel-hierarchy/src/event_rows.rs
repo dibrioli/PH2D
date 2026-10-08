@@ -3,7 +3,7 @@
 //! dos objectos (selecção por linha, renomear, enquadrar).
 
 use ph2d_editor_core::action_bus::{EditorAction, HierRequest, SelectModifier};
-use ph2d_editor_core::hier_rows::{RowRole, scene_panel_of};
+use ph2d_editor_core::hier_rows::RowRole;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
@@ -92,7 +92,7 @@ fn component_click(
     entry: &HierarchyEntity,
 ) -> Option<EventOutcome> {
     if entry.role == RowRole::Scene {
-        host.set_panel_visible(scene_panel_of(category)?, true);
+        host.set_panel_visible(crate::rows::scene_panel_of(category)?, true);
         return Some(EventOutcome::Consumed);
     }
     host.bus_mut()

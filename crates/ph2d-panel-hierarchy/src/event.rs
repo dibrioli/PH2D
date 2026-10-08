@@ -345,18 +345,7 @@ pub(crate) fn apply_event(
         && id == ids::HIER_RENAME_INPUT
         && let Some(row) = state.rename_target_row.take()
     {
-        let buf = match host.store().get(ids::HIER_RENAME_INPUT) {
-            Some(InteractiveState::TextInput { text, .. }) => text.clone(),
-            _ => String::new(),
-        };
-        let trimmed = buf.trim().to_owned();
-        if !trimmed.is_empty() {
-            host.bus_mut()
-                .push(EditorAction::Hierarchy(HierRequest::RenameCommit {
-                    row,
-                    new_name: trimmed,
-                }));
-        }
+        commit_rename(host, row);
         return EventOutcome::Consumed;
     }
     // Inline-rename cancel (Esc) — drop rename mode, no commit.
@@ -374,21 +363,27 @@ pub(crate) fn apply_event(
         && id == ids::HIER_RENAME_INPUT
         && let Some(row) = state.rename_target_row.take()
     {
-        let buf = match host.store().get(ids::HIER_RENAME_INPUT) {
-            Some(InteractiveState::TextInput { text, .. }) => text.clone(),
-            _ => String::new(),
-        };
-        let trimmed = buf.trim().to_owned();
-        if !trimmed.is_empty() {
-            host.bus_mut()
-                .push(EditorAction::Hierarchy(HierRequest::RenameCommit {
-                    row,
-                    new_name: trimmed,
-                }));
-        }
+        commit_rename(host, row);
         return EventOutcome::Observed;
     }
     EventOutcome::Ignored
+}
+
+/// **Confirma o renomear** de `row` com o texto da caixa — a mesma porta para o Enter e para o
+/// Blur (a convenção do Finder). Texto vazio não renomeia.
+fn commit_rename(host: &mut dyn PanelHostInternal, row: ph2d_a11y::NodeId) {
+    let buf = match host.store().get(ids::HIER_RENAME_INPUT) {
+        Some(InteractiveState::TextInput { text, .. }) => text.clone(),
+        _ => String::new(),
+    };
+    let trimmed = buf.trim().to_owned();
+    if !trimmed.is_empty() {
+        host.bus_mut()
+            .push(EditorAction::Hierarchy(HierRequest::RenameCommit {
+                row,
+                new_name: trimmed,
+            }));
+    }
 }
 
 /// O selo de TIPO de uma linha que não traz o seu — a palavra vem da tabela (HR-15).

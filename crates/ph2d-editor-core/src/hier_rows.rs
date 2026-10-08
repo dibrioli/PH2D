@@ -104,31 +104,6 @@ pub fn row_categories(
         .collect()
 }
 
-/// ⭐ **Os componentes da CENA** (§4.6) e o painel que é o cartão de cada um: o mundo físico é o
-/// painel `physics` (ADR-0131 D8 — o mundo, não o corpo) e a animação da cena é a Timeline.
-///
-/// ⚠️ **Sem Mixer:** o `SceneAudio` é o livro das vozes que tocam, não dado do artista — medido
-/// em 08/10; a premissa do doc 01 §4.6 caiu.
-pub const SCENE_COMPONENTS: [(ComponentCategory, &str); 2] = [
-    (
-        ComponentCategory::Physics,
-        crate::screens::hero::PANEL_PHYSICS,
-    ),
-    (
-        ComponentCategory::Animation,
-        crate::screens::hero::PANEL_TIMELINE,
-    ),
-];
-
-/// O painel que é o cartão de um componente da Cena.
-#[must_use]
-pub fn scene_panel_of(category: ComponentCategory) -> Option<&'static str> {
-    SCENE_COMPONENTS
-        .iter()
-        .find(|(c, _)| *c == category)
-        .map(|(_, p)| *p)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -145,15 +120,5 @@ mod tests {
             got,
             vec![ComponentCategory::Physics, ComponentCategory::Audio]
         );
-    }
-
-    #[test]
-    fn todo_componente_da_cena_tem_icone() {
-        for (c, _) in SCENE_COMPONENTS {
-            assert!(
-                component_icon(c).is_some(),
-                "{c:?} sem ícone na linha da Cena"
-            );
-        }
     }
 }

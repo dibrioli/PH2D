@@ -98,7 +98,7 @@ fn the_section_names_the_overridden_component_of_this_piece() {
         .expect("a peca de uma copia tem a secao");
     assert_eq!(before.master_name, "Badge");
     assert!(
-        before.overridden.is_empty() && before.summary() == "Follows the component",
+        before.overridden.is_empty() && before.summary() == "Follows the prefab",
         "uma copia intacta ja' aparece com excepcoes: {before:?}"
     );
 

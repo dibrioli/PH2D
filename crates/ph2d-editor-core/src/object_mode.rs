@@ -94,7 +94,7 @@ pub enum ModeRequest {
     /// Uma aba de cima que pede um modo ao abrir (§3.3): entra se o activo o tiver, senão fica em
     /// Object com a ferramenta de omissão — ⛔ nunca cria um objecto (§6.5).
     Open(ObjectMode),
-    /// ⭐ Uma sub-linha de CONTEÚDO na Hierarquia ([`crate::hier_rows`]): selecciona `entity`, entra
+    /// ⭐ Uma sub-linha de CONTEÚDO na Hierarquia (`hier_rows`): selecciona `entity`, entra
     /// em `mode` e entrega `key` (a camada…) à família — o «clicar abre o modo certo» do doc 01 §4.3.
     OpenContent {
         entity: u64,
@@ -136,8 +136,6 @@ pub struct ModeState {
     part_gizmo: bool,
     /// O modo é do TIPO ([`crate::screens::hero::mode_drive::ModeFamily::holds_the_whole_kind`]).
     whole_kind: bool,
-    /// O conteúdo que as famílias declararam neste quadro ([`crate::hier_rows::ContentMap`]).
-    content: crate::hier_rows::ContentMap,
 }
 
 impl ModeState {
@@ -196,17 +194,6 @@ impl ModeState {
     /// ⭐ A família do modo em curso publica as partes da entidade dele (ver o campo).
     pub fn publish_parts(&mut self, parts: Option<Vec<u64>>) {
         self.parts = parts;
-    }
-
-    /// Publica o conteúdo de cada objecto — o que a Hierarquia desdobra em sub-linhas.
-    pub fn publish_content(&mut self, content: crate::hier_rows::ContentMap) {
-        self.content = content;
-    }
-
-    /// O conteúdo declarado para `entity` (vazio = a família não declara nenhum).
-    #[must_use]
-    pub fn content_of(&self, entity: u64) -> &[crate::hier_rows::ContentGroup] {
-        self.content.get(&entity).map_or(&[], Vec::as_slice)
     }
 
     /// Publica se as partes do modo em curso usam o gizmo de objecto.

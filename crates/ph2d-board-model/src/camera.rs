@@ -45,6 +45,21 @@ impl Camera {
         self.center_y += anchor[1] - moved[1];
     }
 
+    /// ⭐ **Enquadra** `bbox` (`[x0, y0, x1, y1]`, mundo) em `area`, com `margin` px de ecrã de cada
+    /// lado: o «zoom to fit» (`Alt+1`) e o «zoom to selected» (`Alt+2`) do Miro, e ir a um frame.
+    /// Uma caixa vazia ou não finita não faz nada.
+    pub fn fit(&mut self, area: Area, bbox: [f64; 4], margin: f64) {
+        let [x0, y0, x1, y1] = bbox;
+        if !(x0.is_finite() && y0.is_finite() && x1.is_finite() && y1.is_finite()) {
+            return;
+        }
+        let (bw, bh) = ((x1 - x0).max(f64::EPSILON), (y1 - y0).max(f64::EPSILON));
+        let (w, h) = ((area[2] - 2.0 * margin).max(1.0), (area[3] - 2.0 * margin).max(1.0));
+        self.zoom = (w / bw).min(h / bh).clamp(ZOOM_RANGE.0, ZOOM_RANGE.1);
+        self.center_x = (x0 + x1) / 2.0;
+        self.center_y = (y0 + y1) / 2.0;
+    }
+
     /// Arrasta a vista: o mundo segue o cursor por `(dx, dy)` px de ecrã.
     pub fn pan_by_screen(&mut self, dx: f64, dy: f64) {
         self.center_x -= dx / self.zoom;

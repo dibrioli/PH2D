@@ -568,6 +568,10 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.documents.live.shapes_open = !hero.documents.live.shapes_open;
         return true;
     }
+    if it == Item::Organize(OrgItem::Tag) {
+        super::board_nav::open_tag_field(hero);
+        return true;
+    }
     let Some((board, live)) = hero.documents.active_parts() else {
         return true;
     };

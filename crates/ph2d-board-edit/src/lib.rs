@@ -273,6 +273,8 @@ pub enum Command {
     Lock,
     /// `PgUp`/`PgDn` (com `Shift`, um passo): a ordem de desenho (W5).
     Order(Order),
+    /// `Ctrl+Alt+K`: liga a selecção a outro elemento (o próximo clique), ou tira-lhe o link.
+    Link,
     Align(Align),
     Distribute(Axis),
 }
@@ -334,6 +336,8 @@ pub struct Editor {
     cursor: Option<[f64; 2]>,
     /// O grupo em que se entrou com duplo-clique (W5): um clique selecciona o nível abaixo dele.
     entered: Option<ph2d_board_model::GroupId>,
+    /// O modo de ligar: o próximo clique escolhe o destino do link (W5).
+    linking: bool,
     /// A última recusa, para a vista a mostrar (e a esvaziar com [`Editor::take_notice`]).
     notice: Option<Notice>,
     /// O nome de nascença do frame `n` (1, 2, …) — a vista dá-o já traduzido.
@@ -366,6 +370,7 @@ impl Editor {
             laser: Vec::new(),
             cursor: None,
             entered: None,
+            linking: false,
             notice: None,
             frame_name: |n| n.to_string(),
         }

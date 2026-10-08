@@ -50,6 +50,8 @@ pub(crate) struct BoardLive {
     /// A última recusa do editor (a chave i18n da frase) e quando chegou — o quadro pinta-a por
     /// cima dele enquanto é fresca (W5: nunca só o terminal).
     pub(crate) notice: Option<(&'static str, std::time::Instant)>,
+    /// A navegação (W5): minimapa, painel de Frames, busca, etiquetas, links.
+    pub(crate) nav: crate::screens::hero::board_nav::Nav,
 }
 
 impl std::fmt::Debug for BoardLive {

@@ -28,6 +28,8 @@ pub enum OrgItem {
     Distribute(Axis),
     /// A cor de nascença de um frame (o branco do Miro) — para um frame pintado poder voltar a ela.
     Paper,
+    /// Pôr ou tirar uma etiqueta das notas seleccionadas (abre o campo).
+    Tag,
 }
 
 /// O botão do Frame na barra curta (tecla `F`, a do Miro).
@@ -53,6 +55,9 @@ fn order_group(sel: Selected) -> Vec<Item> {
     ];
     if sel != Selected::Frames {
         v.extend(ORDERS.map(|o| Item::Organize(OrgItem::Order(o))));
+    }
+    if sel == Selected::Notes {
+        v.push(Item::Organize(OrgItem::Tag));
     }
     v
 }
@@ -112,7 +117,7 @@ impl Now {
         Some(match o {
             OrgItem::Group => self.units > 1,
             OrgItem::Ungroup => self.any_group,
-            OrgItem::Lock | OrgItem::Order(_) | OrgItem::Paper => true,
+            OrgItem::Lock | OrgItem::Order(_) | OrgItem::Paper | OrgItem::Tag => true,
             OrgItem::Align(_) => self.units > 1,
             OrgItem::Distribute(_) => self.units > 2,
         })
@@ -151,6 +156,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
             OrgItem::Distribute(Axis::Horizontal) => "board.org.distribute_h",
             OrgItem::Distribute(Axis::Vertical) => "board.org.distribute_v",
             OrgItem::Paper => "board.org.paper",
+            OrgItem::Tag => "board.org.tag",
         },
         _ => return None,
     })
@@ -165,7 +171,7 @@ fn command(o: OrgItem) -> Command {
         OrgItem::Order(x) => Command::Order(x),
         OrgItem::Align(a) => Command::Align(a),
         OrgItem::Distribute(x) => Command::Distribute(x),
-        OrgItem::Paper => unreachable!("o papel é um estilo, não um comando"),
+        OrgItem::Paper | OrgItem::Tag => unreachable!("um estilo e um campo, não comandos"),
     }
 }
 
@@ -236,6 +242,7 @@ pub(super) fn paint_icon(
         Item::Organize(OrgItem::Group) => icon(scene, IconId::Group, inner, fg, w as f32),
         Item::Organize(OrgItem::Ungroup) => icon(scene, IconId::Ungroup, inner, fg, w as f32),
         Item::Organize(OrgItem::Lock) => icon(scene, IconId::Lock, inner, fg, w as f32),
+        Item::Organize(OrgItem::Tag) => icon(scene, IconId::Tag, inner, fg, w as f32),
         Item::Organize(OrgItem::Paper) => {
             let paper = ph2d_board_model::Rgba(ph2d_board_model::FRAME_FILL);
             let r = crate::paint::frame_radius(theme, Radius::Sm.px());

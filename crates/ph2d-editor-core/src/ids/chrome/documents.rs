@@ -9,6 +9,12 @@ pub const DOC_TAB_SCENE: NodeId = hash_node_id("doc_tab_scene");
 pub const DOC_TAB_NEW: NodeId = hash_node_id("doc_tab_new");
 /// O campo que ocupa o lugar da aba enquanto o quadro se renomeia (um de cada vez).
 pub const DOC_TAB_RENAME_INPUT: NodeId = hash_node_id("doc_tab_rename_input");
+/// A busca no quadro (`Ctrl+F`, W5).
+pub const BOARD_SEARCH_INPUT: NodeId = hash_node_id("board_search_input");
+/// O campo de pôr uma etiqueta nas notas seleccionadas (W5).
+pub const BOARD_TAG_INPUT: NodeId = hash_node_id("board_tag_input");
+/// O campo que ocupa a linha de um frame no painel de Frames enquanto ele se renomeia (W5).
+pub const BOARD_FRAME_RENAME_INPUT: NodeId = hash_node_id("board_frame_rename_input");
 /// Menu do botão direito numa aba de quadro.
 pub const CTX_MENU_BOARD_RENAME: NodeId = hash_node_id("ctx_menu_board_rename");
 pub const CTX_MENU_BOARD_DUPLICATE: NodeId = hash_node_id("ctx_menu_board_duplicate");

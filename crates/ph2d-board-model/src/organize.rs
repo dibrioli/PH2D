@@ -237,6 +237,17 @@ impl BoardDoc {
         v
     }
 
+    /// A caixa de TUDO o que está no quadro (as formas, as notas, os traços e os frames; as setas
+    /// vivem entre eles) — o que o minimapa mostra e o «zoom to fit» enquadra. `None` = vazio.
+    #[must_use]
+    pub fn extent(&self) -> Option<[f64; 4]> {
+        let mut it = self.live().filter(|e| e.connector().is_none()).map(Element::aabb);
+        let first = it.next()?;
+        Some(it.fold(first, |a, b| {
+            [a[0].min(b[0]), a[1].min(b[1]), a[2].max(b[2]), a[3].max(b[3])]
+        }))
+    }
+
     /// Os membros vivos do grupo `g`.
     #[must_use]
     pub fn group_members(&self, g: GroupId) -> Vec<ElementId> {

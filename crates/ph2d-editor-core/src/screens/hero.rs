@@ -61,6 +61,7 @@ pub mod tool_bar;
 pub mod topbar;
 
 pub mod board_bar;
+pub mod board_nav;
 pub mod board_keys;
 pub mod board_view;
 pub mod document_tabs;

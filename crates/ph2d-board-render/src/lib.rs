@@ -8,7 +8,9 @@
 
 mod frames;
 mod grid;
+mod note;
 mod sketch;
+mod tags;
 mod theme_ink;
 
 pub use frames::{Detail, FRAME_TITLE_ONLY_PX};
@@ -292,7 +294,7 @@ fn paint_shape(
         );
     }
     if shape.kind.is_note() {
-        paint_note_under(scene, el, shape, t);
+        note::paint_under(scene, el, shape, t);
     }
     let (frame, at) = (cache.frame, (board, el.id.0));
     let o = cached_outline(&mut cache.outlines, frame, at, shape, el.w, el.h);
@@ -336,51 +338,11 @@ fn paint_shape(
             scene.fill_path(&bars, &Brush::Solid(c), at);
         }
     }
+    if shape.kind.is_note() && !el.tags().is_empty() && font_px >= READ_PX {
+        tags::paint(scene, ts, &mut cache.text, board, el, st.font_size, t);
+    }
     if faded {
         scene.pop_layer();
-    }
-}
-
-/// A sombra de uma nota (a do Miro: a nota «descola» do quadro; a altura `228` da documentação dele
-/// inclui-a, `29` abaixo dos `199`), em fracções do lado. ⚠️ Forma por medir numa captura.
-const NOTE_SHADOW_DROP: f64 = 0.05;
-const NOTE_SHADOW_BLUR: f64 = 0.04;
-/// Quanto cada folha de baixo de uma PILHA espreita (fracção do lado), e quantas há.
-const STACK_STEP: f64 = 0.035;
-const STACK_SHEETS: u8 = 2;
-
-/// Por baixo de uma nota: a sombra; numa pilha, também as folhas de baixo, a espreitar.
-fn paint_note_under(scene: &mut VectorScene, el: &Element, shape: &Shape, t: Affine) {
-    let side = el.w.min(el.h);
-    let sheets = if shape.kind == ShapeType::StickyStack {
-        STACK_SHEETS
-    } else {
-        0
-    };
-    let step = side * STACK_STEP;
-    let reach = step * f64::from(sheets);
-    // LITERAL-COLOR-OK: a sombra é aspecto do DOCUMENTO (a mesma em qualquer tema, como a do Miro).
-    let shadow = Color::from_rgba8(0, 0, 0, 56);
-    let drop = side * NOTE_SHADOW_DROP;
-    let body = Rect::new(
-        side * 0.02,
-        drop,
-        el.w - side * 0.02,
-        el.h + reach + drop * 0.4,
-    );
-    scene
-        .inner_mut()
-        .draw_blurred_rounded_rect(t, body, shadow, 0.0, side * NOTE_SHADOW_BLUR);
-    let Some(Rgba([r, g, b, a])) = shape.style.fill else {
-        return;
-    };
-    for k in (1..=sheets).rev() {
-        let d = step * f64::from(k);
-        // Cada folha de baixo um pouco mais escura: lê-se como papel empilhado.
-        let shade = |c: u8| (f64::from(c) * (1.0 - 0.06 * f64::from(k))) as u8;
-        let c = Color::from_rgba8(shade(r), shade(g), shade(b), a); // LITERAL-COLOR-OK: cor do documento
-        let sheet = Rect::new(d, d, el.w + d, el.h + d).to_path(0.1);
-        scene.fill_path(&sheet, &Brush::Solid(c), t);
     }
 }
 

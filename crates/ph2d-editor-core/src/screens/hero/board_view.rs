@@ -174,6 +174,7 @@ pub fn pointer(
     let area = area_of(hero.last_canvas);
     let theme = hero.theme;
     match kind {
+        PointerKind::Down if on_canvas && super::board_nav::pointer_down(hero, x, y) => true,
         PointerKind::Down if on_canvas && inside(hero.last_canvas, x, y) => {
             // ⚠️ Tomar o Down antes do despacho herda a obrigação dele de largar o foco: sem isto o
             // campo de renomear uma aba (ou qualquer campo do chrome) ficava com o teclado.
@@ -233,7 +234,7 @@ pub fn pointer(
             false
         }
         PointerKind::Up => {
-            if hero.documents.pan_from.take().is_some() {
+            if hero.documents.pan_from.take().is_some() || super::board_nav::pointer_up(hero) {
                 return true;
             }
             let Some((board, live)) = hero.documents.active_parts() else {
@@ -257,6 +258,9 @@ pub fn pointer(
 
 /// O cursor mexeu-se. `true` = um arrasto do quadro (vista ou gesto) está em curso e consumiu-o.
 pub fn pointer_move(hero: &mut HeroScreen, input: Input<'_>, x: f32, y: f32) -> bool {
+    if super::board_nav::pointer_move(hero, x, y) {
+        return true;
+    }
     if let Some(from) = hero.documents.pan_from {
         let to = [f64::from(x), f64::from(y)];
         if let Some(board) = hero.documents.active_board_mut() {

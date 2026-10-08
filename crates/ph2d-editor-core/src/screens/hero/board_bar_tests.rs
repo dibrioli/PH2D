@@ -487,3 +487,6 @@ mod pen;
 
 #[path = "board_bar_organize_tests.rs"]
 mod organize;
+
+#[path = "board_nav_tests.rs"]
+mod nav;

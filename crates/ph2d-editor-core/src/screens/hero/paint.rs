@@ -245,6 +245,7 @@ pub fn paint_hero_screen(
             ph2d_board_render::paint(board, area, scene, theme, text_system, cache, routes, text);
             ph2d_board_render::paint_overlay(board, area, scene, theme, &overlay, ed.metrics());
         }
+        super::board_nav::paint(hero, r, scene, text_system);
         super::board_bar::paint(hero, r, scene, text_system);
         // Pintar e agarrar leem o MESMO rect (o `board_view` lê o `last_canvas`).
         hero.last_canvas = r;

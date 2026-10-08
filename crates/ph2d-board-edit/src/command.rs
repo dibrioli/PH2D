@@ -30,6 +30,9 @@ impl Editor {
                 done
             }
             Command::Escape => {
+                if std::mem::take(&mut self.linking) {
+                    return true;
+                }
                 if self.cancel_gesture(doc) {
                     return true;
                 }
@@ -123,7 +126,8 @@ impl Editor {
             | Command::Lock
             | Command::Order(_)
             | Command::Align(_)
-            | Command::Distribute(_) => self.organize(doc, history, c),
+            | Command::Distribute(_)
+            | Command::Link => self.organize(doc, history, c),
             Command::Paste => {
                 self.pastes += 1;
                 let src = self.clipboard.clone();
@@ -220,6 +224,7 @@ impl Editor {
             Command::Order(o) => self.reorder(doc, history, o),
             Command::Align(a) => self.align(doc, history, a),
             Command::Distribute(ax) => self.distribute(doc, history, ax),
+            Command::Link => self.link_command(doc, history),
             _ => false,
         }
     }

@@ -208,6 +208,11 @@ impl Editor {
         if self.ink_down(doc, p) {
             return Down::Taken;
         }
+        if self.linking {
+            let target = self.hit(doc, p);
+            self.link_click(doc, history, target);
+            return Down::Taken;
+        }
         match self.tool {
             Tool::Hand => return Down::Pan,
             Tool::Shape(_) | Tool::Frame => {

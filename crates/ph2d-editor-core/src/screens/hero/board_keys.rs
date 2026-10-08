@@ -64,6 +64,9 @@ pub fn key(
     if hero.documents.active().is_none() {
         return KeyOutcome::default();
     }
+    if pressed && let Some(out) = super::board_nav::key(hero, k, mods) {
+        return out;
+    }
     let theme = hero.theme;
     let Some((board, live)) = hero.documents.active_parts() else {
         return KeyOutcome::default();

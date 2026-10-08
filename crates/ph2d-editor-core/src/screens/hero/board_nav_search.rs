@@ -80,7 +80,7 @@ pub fn chip_node(i: usize) -> NodeId {
 
 fn chip_of(id: NodeId) -> Option<usize> {
     let v = id.0 ^ super::SALT_TAG_CHIP;
-    (v >= 1 && v < 1 << 16).then(|| v as usize - 1)
+    (1..1 << 16).contains(&v).then(|| v as usize - 1)
 }
 
 pub(super) fn open(hero: &mut HeroScreen) {

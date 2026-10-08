@@ -76,3 +76,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, text: &
             .set_tooltip(id, ph2d_i18n::tr("chrome.touch.tip").to_owned());
     }
 }
+
+#[cfg(test)]
+#[path = "touch_mods_tests.rs"]
+mod tests;

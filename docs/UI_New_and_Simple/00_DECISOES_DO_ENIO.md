@@ -495,6 +495,11 @@ não um conflito.
 ⚠️ A recusa de 31/08 (nenhuma faixa nova de altura) **continua de pé**: os cinco lugares cabem no
 que já se paga ou flutuam.
 
+**D10.1 (2026-10-08, F4):** com o vetor na mão o `P` é a Caneta (padrão Illustrator), e segurá-lo é
+a Caneta temporária — a roda (segurar `P`) ficava inalcançável. Perguntado ao dono com as letras
+livres medidas (`H J U`): ⭐ **`J` abre a roda** (*«J (Recomendado)»*). O `J` vale em todo o app;
+fora do vetor o `P` continua igual.
+
 ---
 
 ## O que estas seis decisões implicam, junto

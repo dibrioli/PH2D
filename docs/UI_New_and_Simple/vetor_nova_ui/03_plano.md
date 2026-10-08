@@ -6,6 +6,8 @@
 > [`02_estudo_os_apps_amados.md`](02_estudo_os_apps_amados.md) (o que os outros fazem, com fontes).
 > **F0–F3 entregues em 07/10** (`line/UIUX`) — o que foi medido e decidido na obra está no
 > [handoff](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-07_NOVA_UI_DO_VETOR.md) §1–§2.
+> **F4 e F5 entregues em 08/10**, menos o **QuickShape** (PARADO: nenhum oráculo permissivo que se
+> corra está instalado) — [handoff de 08/10](../handoffs/HANDOFF_INTEGRACAO_line_UIUX_2026-10-08_F4_F5_ALCANCE_E_TOQUE.md).
 
 ## §0 — A ideia numa frase
 

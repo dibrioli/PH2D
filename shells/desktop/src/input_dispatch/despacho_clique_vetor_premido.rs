@@ -427,10 +427,10 @@ impl crate::App {
             let tol = 10.0 * self.vec_px_to_world();
             if let Some(w) = self.vec_world_at(self.last_pointer)
                 && let Some(gfx) = self.gfx.as_mut()
-                && let Some((fill, stroke)) =
+                && let Some(c) =
                     ph2d_app_vec::eyedropper::sample(&gfx.vec_scene, &self.vec.pen, w, tol)
             {
-                ph2d_app_vec::vector_bridge::adopt_sample(&mut gfx.tools, fill, stroke);
+                ph2d_app_vec::vector_bridge::adopt_sample(&mut gfx.tools, c.fill, c.stroke);
             }
             return true;
         }

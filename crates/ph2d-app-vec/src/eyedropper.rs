@@ -9,16 +9,22 @@
 use ph2d_vec_edit::PenTool;
 use ph2d_vec_scene::VecScene;
 
+/// O que o conta-gotas leu de um caminho — cada cor `None` quando o caminho não a tem numa cor só.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Sample {
+    pub fill: Option<[u8; 4]>,
+    pub stroke: Option<[u8; 4]>,
+}
+
 /// As cores do caminho sob `world` (com a tolerância de clique de `tol_world`), ou `None` se o
-/// clique caiu no vazio. `(preenchimento, traço)` — cada um `None` quando o caminho não o tem
-/// numa cor só.
+/// clique caiu no vazio.
 #[must_use]
 pub fn sample(
     scene: &VecScene,
     pen: &PenTool,
     world: [f64; 2],
     tol_world: f64,
-) -> Option<(Option<[u8; 4]>, Option<[u8; 4]>)> {
+) -> Option<Sample> {
     let id = pen.path_at(scene, world, tol_world)?;
     let path = scene.paths().iter().find(|p| p.id == id)?;
     let fill = crate::vector_bridge::seed_fill_from_paint(path.fill.as_ref());
@@ -26,7 +32,7 @@ pub fn sample(
         let c = s.color();
         [c.r, c.g, c.b, c.a]
     });
-    Some((fill, stroke))
+    Some(Sample { fill, stroke })
 }
 
 #[cfg(test)]
@@ -50,9 +56,9 @@ mod tests {
             .on_press(&mut scene, kind, kind.defaults(), [-1.0, -1.0], 0.01, c);
         vec.shape.on_drag(&mut scene, [1.0, 1.0], c);
         vec.shape.on_release(&mut scene);
-        let (fill, stroke) = sample(&scene, &vec.pen, [0.0, 0.0], 0.1).expect("o centro é a forma");
-        assert_eq!(fill, Some([200, 30, 40, 255]));
-        assert_eq!(stroke, Some([10, 220, 30, 255]));
+        let got = sample(&scene, &vec.pen, [0.0, 0.0], 0.1).expect("o centro é a forma");
+        assert_eq!(got.fill, Some([200, 30, 40, 255]));
+        assert_eq!(got.stroke, Some([10, 220, 30, 255]));
         assert!(
             sample(&scene, &vec.pen, [9.0, 9.0], 0.1).is_none(),
             "o vazio não tem cor"

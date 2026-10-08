@@ -197,7 +197,7 @@ impl T {
     /// carregar e o largar passam PRIMEIRO pelo quadro (`board_view::pointer`), e só o que ele não
     /// tomar chega à barra. (O `click_bar` fala directamente com a barra e salta esse passo — por isso
     /// nunca viu o defeito de 07/10.)
-    fn shell_click_bar(&mut self, item: Item) {
+    pub(super) fn shell_click_bar(&mut self, item: Item) {
         let id = node(item);
         let (x, y) = self
             .find(id)
@@ -314,11 +314,17 @@ fn no_shell_gesture_zone_sits_on_a_board_bar_button() {
         Some(Item::Tool(Tool::Pen(Pen::Pen))),
         Some(Item::Tool(Tool::Shape(ShapeType::Sticky))),
         Some(Item::MoreShapes),
+        Some(super::super::mind::TEMPLATES),
     ] {
         if let Some(it) = open {
             t.click_bar(it);
         }
         let area = crate::screens::hero::board_view::area(t.hero.last_layout.as_ref().unwrap());
+        rects.extend(
+            super::super::mind::gallery_rects(area)
+                .into_iter()
+                .filter(|_| open == Some(super::super::mind::TEMPLATES)),
+        );
         rects.extend(toolbar_rects(area));
         rects.extend(
             super::flyout_rects(area)

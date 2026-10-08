@@ -52,6 +52,9 @@ pub use layout::{shapes_rects, style_rects, toolbar_rects};
 #[path = "board_bar_organize.rs"]
 mod organize;
 pub use organize::OrgItem;
+#[path = "board_bar_mind.rs"]
+mod mind;
+pub use mind::MindItem;
 
 /// A caneta e o rascunho (W4, módulo filho: o ficheiro estava no tecto de LOC).
 #[path = "board_bar_pen.rs"]
@@ -112,6 +115,8 @@ pub enum Item {
     Sketch,
     /// Organizar (W5): agrupar, travar, ordem, alinhar, a cor de um frame.
     Organize(OrgItem),
+    /// Planear (W6): os modelos e os controlos de um nó de mapa mental.
+    Mind(MindItem),
 }
 
 /// As pontas que a barra oferece: as do fluxograma e do diagrama de quadro. (O documento guarda as
@@ -141,14 +146,18 @@ pub enum Selected {
     Ink,
     /// Só frames (W5).
     Frames,
+    /// Um nó de mapa mental (W6).
+    Mind,
 }
 
 /// Os atalhos da barra curta, na ordem em que se pintam (a Nota logo a seguir à mão: é o coração
 /// do brainstorm).
-const TOOLBAR: [Item; 12] = [
+const TOOLBAR: [Item; 14] = [
     Item::Tool(Tool::Select),
     Item::Tool(Tool::Hand),
     Item::Tool(Tool::Shape(ShapeType::Sticky)),
+    mind::MIND_TOOL,
+    mind::TEMPLATES,
     organize::FRAME_TOOL,
     Item::Tool(Tool::Connector),
     pen::PEN_TOOL,
@@ -167,6 +176,7 @@ pub fn items() -> Vec<Item> {
     v.extend(ShapeType::ALL.iter().map(|t| Item::Pick(*t)));
     v.extend(notes::flyout_items());
     v.extend(pen::flyout_items());
+    v.extend(mind::flyout_items());
     for it in [
         Selected::Shapes,
         Selected::Arrows,
@@ -174,6 +184,7 @@ pub fn items() -> Vec<Item> {
         Selected::TextShape,
         Selected::Ink,
         Selected::Frames,
+        Selected::Mind,
     ]
     .into_iter()
     .flat_map(style_groups)
@@ -248,6 +259,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
         Selected::TextShape => notes::text_groups(true),
         Selected::Ink => pen::ink_groups(),
         Selected::Frames => vec![organize::frame_fill_group()],
+        Selected::Mind => return mind::groups(),
     };
     groups.extend(org);
     groups
@@ -293,6 +305,7 @@ pub fn paint(
 ) {
     let theme = hero.theme;
     let shapes_open = hero.documents.live.shapes_open;
+    let templates_open = hero.documents.live.templates_open;
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
@@ -324,7 +337,8 @@ pub fn paint(
             || (it == note_tool && notes::flyout_open(tool))
             || (it == pen::PEN_TOOL && pen::flyout_open(tool))
             || (it == Item::Sketch && sketch_on)
-            || (it == organize::FRAME_TOOL && tool == Tool::Frame);
+            || (it == organize::FRAME_TOOL && tool == Tool::Frame)
+            || mind::is_on(it, ed, &board.doc, templates_open) == Some(true);
         paint_item(
             scene,
             text_system,
@@ -361,6 +375,10 @@ pub fn paint(
         let (hit, store) = (&mut hero.hit_index, &hero.store);
         pen::paint_flyout(scene, text_system, theme, hit, store, area, ed);
     }
+    if templates_open {
+        let (hit, store) = (&mut hero.hit_index, &hero.store);
+        mind::paint_gallery(scene, text_system, theme, hit, store, area);
+    }
     if let Some((key, _)) = notice {
         organize::paint_notice(scene, text_system, theme, area, key);
     }
@@ -378,6 +396,7 @@ pub fn paint(
         .map(|g| {
             g.into_iter()
                 .filter(|it| org.shows(*it) != Some(false))
+                .filter(|it| mind::shows(*it, ed, &board.doc) != Some(false))
                 .collect()
         })
         .filter(|g: &Vec<Item>| !g.is_empty())
@@ -385,8 +404,8 @@ pub fn paint(
     let bar = layout::style_rects_of(area, sel, groups);
     paint_panel(scene, &bar, theme);
     for (it, r) in bar {
-        let on = org
-            .is_on(it, style.fill)
+        let on = mind::is_on(it, ed, &board.doc, templates_open)
+            .or_else(|| org.is_on(it, style.fill))
             .or_else(|| notes::is_current(it, Some(&style), &now))
             .or_else(|| pen::is_current(it, ed, Some(style.stroke_width), theme))
             .unwrap_or_else(|| is_current(it, &style, arrow.as_ref(), theme));
@@ -464,6 +483,7 @@ fn paint_item(
     if notes::paint_icon(scene, text_system, theme, it, r, inner, fg, line)
         || pen::paint_icon(scene, theme, it, inner, fg, line)
         || organize::paint_icon(scene, theme, it, inner, fg, line)
+        || mind::paint_icon(scene, text_system, it, r, inner, fg, line, on)
     {
         return;
     }
@@ -564,10 +584,13 @@ fn paint_item(
         | Item::Bulk
         | Item::Mark(_)
         | Item::TextColor(_)
-        | Item::Tool(Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::Frame)
+        | Item::Tool(
+            Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::Frame | Tool::MindMap,
+        )
         | Item::Pen(_)
         | Item::Sketch
-        | Item::Organize(_) => {}
+        | Item::Organize(_)
+        | Item::Mind(_) => {}
     }
 }
 
@@ -584,6 +607,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.documents.live.shapes_open = !hero.documents.live.shapes_open;
         return true;
     }
+    let live = &mut hero.documents.live;
+    live.templates_open = it == mind::TEMPLATES && !live.templates_open;
     if it == Item::Organize(OrgItem::Tag) {
         super::board_nav::open_tag_field(hero);
         return true;
@@ -598,6 +623,7 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if notes::apply(ed, doc, history, it, center)
         || pen::apply(ed, doc, history, sketch, theme, it)
         || organize::apply(ed, doc, history, it)
+        || mind::apply(ed, doc, history, it, center)
     {
         if let Some(n) = ed.take_notice() {
             live.notice = Some((n.key(), std::time::Instant::now()));
@@ -643,7 +669,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         | Item::TextColor(_)
         | Item::Pen(_)
         | Item::Sketch
-        | Item::Organize(_) => {}
+        | Item::Organize(_)
+        | Item::Mind(_) => {}
     }
     true
 }

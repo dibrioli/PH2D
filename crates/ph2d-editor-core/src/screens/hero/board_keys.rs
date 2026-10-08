@@ -89,6 +89,19 @@ pub fn key(
         return taken();
     }
     if editing {
+        // Mapa mental (W6, M6/M7): a escrever num NÓ, `Tab` = o filho e `Enter` = o irmão logo
+        // depois (`Shift+Enter` quebra a linha) — numa nota o `Tab` continua a ser a seguinte.
+        if ed.mind_focus(doc).is_some() && !ctrl {
+            let c = match k {
+                BoardKey::Tab => Some(Command::MindChild),
+                BoardKey::Enter if !mods.shift => Some(Command::MindSibling),
+                _ => None,
+            };
+            if let Some(c) = c {
+                ed.command(doc, history, ts, c);
+                return taken();
+            }
+        }
         // `Tab` (ou `Ctrl+D`, o staff do Miro) a escrever numa nota: a seguinte à direita.
         if k == BoardKey::Tab || (ctrl && k == BoardKey::Char('d')) {
             ed.next_note(doc, history);
@@ -149,6 +162,10 @@ pub fn key(
             ed.text_input(doc, ts, t);
             return taken();
         }
+        return taken();
+    }
+    if let Some(c) = mind_key(ed, doc, k, ctrl) {
+        let _ = ed.command(doc, history, ts, c);
         return taken();
     }
     let nudge = ph2d_board_edit::NUDGE[usize::from(mods.shift)];
@@ -220,6 +237,34 @@ pub fn key(
     KeyOutcome {
         consumed: (matches!(k, BoardKey::Char(_)) && !ctrl && !mods.alt) || k == BoardKey::Tab,
         copy: None,
+    }
+}
+
+/// ⭐ As teclas de um NÓ de mapa mental seleccionado (W6, `docs/MiroClone/04` M6/M8/M10): `Tab` = o
+/// filho · as setas andam pela árvore (em vez de empurrar: o layout manda no sítio) · `Ctrl+↑`
+/// recolhe e `Ctrl+↓` expande (o idioma dos outliners — a `/` do XMind não chega ao quadro).
+fn mind_key(
+    ed: &ph2d_board_edit::Editor,
+    doc: &ph2d_board_model::BoardDoc,
+    k: BoardKey,
+    ctrl: bool,
+) -> Option<Command> {
+    let id = ed.mind_focus(doc)?;
+    let collapsed = doc.get(id)?.mind()?.collapsed;
+    let arrow = match k {
+        BoardKey::Left => [-1.0, 0.0],
+        BoardKey::Right => [1.0, 0.0],
+        BoardKey::Up => [0.0, -1.0],
+        BoardKey::Down => [0.0, 1.0],
+        BoardKey::Tab if !ctrl => return Some(Command::MindChild),
+        _ => return None,
+    };
+    if !ctrl {
+        return Some(Command::MindNav(arrow));
+    }
+    match (k, collapsed) {
+        (BoardKey::Up, false) | (BoardKey::Down, true) => Some(Command::MindCollapse),
+        _ => None,
     }
 }
 

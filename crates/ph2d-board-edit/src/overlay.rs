@@ -78,7 +78,6 @@ pub struct TextOverlay {
     pub caret: Option<[f64; 4]>,
 }
 
-
 impl Editor {
     /// O que desenhar por cima do quadro agora.
     pub fn overlay(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem) -> Overlay {
@@ -136,7 +135,10 @@ impl Editor {
             mind_plus: if self.gesture.is_some() {
                 Vec::new()
             } else {
-                self.mind_plus(doc).into_iter().map(|(a, d, _)| (a, d)).collect()
+                self.mind_plus(doc)
+                    .into_iter()
+                    .map(|(a, d, _)| (a, d))
+                    .collect()
             },
             mind_drop: self
                 .gesture
@@ -153,5 +155,4 @@ impl Editor {
         doc.get(id)?.connector()?;
         self.routes.get(id).map(|r| r.mid)
     }
-
 }

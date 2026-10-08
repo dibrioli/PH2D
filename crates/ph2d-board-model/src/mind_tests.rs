@@ -57,7 +57,12 @@ impl Map {
             shape(ShapeType::Pill),
             [-83.0, -33.0, 166.0, 66.0],
         );
-        el.set_mind(Some(Mind::new(None, FracKey::between(None, None), Side::After, ink())));
+        el.set_mind(Some(Mind::new(
+            None,
+            FracKey::between(None, None),
+            Side::After,
+            ink(),
+        )));
         let mut m = Self {
             doc,
             h: History::default(),
@@ -157,7 +162,10 @@ fn the_parent_sits_in_the_middle_of_its_childrens_band() {
     let kids: Vec<ElementId> = (0..3).map(|_| m.add(a, Side::After)).collect();
     let mid = (m.cy(kids[0]) + m.cy(kids[2])) / 2.0;
     assert!((m.cy(a) - mid).abs() < R);
-    assert!((m.cy(a) - m.cy(root)).abs() < R, "um filho só fica à altura da raiz");
+    assert!(
+        (m.cy(a) - m.cy(root)).abs() < R,
+        "um filho só fica à altura da raiz"
+    );
 }
 
 /// M2: entre faixas de pais diferentes o vão é o mesmo que entre irmãos.
@@ -171,7 +179,10 @@ fn cousins_step_like_siblings() {
     let b1 = m.add(b, Side::After);
     let step = m.cy(a2) - m.cy(a1);
     assert!((step - (LINE_H + MIND_SIBLING_GAP)).abs() < R);
-    assert!((m.cy(b1) - m.cy(a2) - step).abs() < R, "primo a primo = irmão a irmão");
+    assert!(
+        (m.cy(b1) - m.cy(a2) - step).abs() < R,
+        "primo a primo = irmão a irmão"
+    );
 }
 
 /// M3: o filho começa um vão depois da borda de FORA do pai — e os filhos de pais com larguras
@@ -353,8 +364,38 @@ fn a_format_5_file_still_opens_and_nothing_in_it_is_a_mind_node() {
     assert_eq!(els[2].shape().unwrap().text.as_str(), "caixa");
     assert!(els.iter().all(|e| e.mind().is_none()));
     let back = crate::BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
-    assert_eq!(back, set, "relido e regravado no formato actual, fica igual");
+    assert_eq!(
+        back, set,
+        "relido e regravado no formato actual, fica igual"
+    );
 }
 
 /// Gravados pelo build do formato 5 (`ca8f35143`, um teste temporário que escreveu `to_bytes`).
 const V5_BYTES: &[u8] = include_bytes!("../fixtures/format_v5.bin");
+
+/// ⭐ M13: o ramo é a curva medida do Miro — da borda de fora do pai à de dentro do filho, a meia
+/// altura, tangentes horizontais, braço 0,39 do vão (40,5 em 104, cinco ramos da imagem, rms ≤ 0,97).
+#[test]
+fn a_branch_is_the_measured_miro_curve() {
+    let (mut m, root) = Map::new();
+    let a = m.add(root, Side::After);
+    let b = m.add(root, Side::Before);
+    let r = m.el(root).clone();
+    let [p0, p1, p2, p3] = branch(&m.doc, a).expect("um ramo");
+    assert!((p0[0] - (r.x + r.w)).abs() < R && (p0[1] - r.center()[1]).abs() < R);
+    assert!((p3[0] - m.el(a).x).abs() < R && (p3[1] - m.cy(a)).abs() < R);
+    assert!((p1[0] - p0[0] - MIND_ARM * MIND_LEVEL_GAP).abs() < R && p1[1] == p0[1]);
+    assert!((p3[0] - p2[0] - MIND_ARM * MIND_LEVEL_GAP).abs() < R && p2[1] == p3[1]);
+    assert!(
+        ((MIND_ARM * MIND_LEVEL_GAP) - 40.5).abs() < 0.2,
+        "o braço do Miro"
+    );
+    let [q0, _, _, q3] = branch(&m.doc, b).expect("o do outro lado");
+    assert!((q0[0] - r.x).abs() < R && (q3[0] - (m.el(b).x + m.el(b).w)).abs() < R);
+    assert!(branch(&m.doc, root).is_none());
+    m.edit(root, |el| el.mind_mut().unwrap().collapsed = true);
+    assert!(
+        branch(&m.doc, a).is_none(),
+        "um ramo escondido não se desenha"
+    );
+}

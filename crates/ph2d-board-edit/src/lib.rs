@@ -16,6 +16,7 @@ mod guides;
 mod ink;
 mod links_tags;
 mod mindmap;
+mod mindmap_drop;
 mod notes;
 mod notes_layout;
 mod organize;
@@ -35,9 +36,9 @@ use ph2d_board_model::{
 use ph2d_board_route::RouteCache;
 
 pub use frame_box::Frame;
-pub use mindmap::{digits, node_size};
 pub use gesture::Down;
 pub use ink::{LASER_LIFE, PEN_WIDTHS, PenBox, PenPreset, point_segment, world_points};
+pub use mindmap::{digits, node_size};
 pub use notes::{
     NOTE_DEFAULT_SIZE, NOTE_GAP_K, NOTE_SCALES, NoteStyle, grid_layout, note_scale, note_size,
     parse_cells, reading_order,

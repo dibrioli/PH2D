@@ -8,6 +8,7 @@
 
 mod frames;
 mod grid;
+mod mind;
 mod note;
 mod sketch;
 mod tags;
@@ -176,6 +177,7 @@ pub fn paint(
     let chains = frames::Chains::new(&board.doc, &shown, &far);
     let framed = board.doc.has_frames();
     let board_ink = cache.ink;
+    mind::paint_branches(scene, board, v, clip);
     for el in board.doc.live_in_z_order() {
         if framed {
             if el.as_frame().is_some() {
@@ -274,6 +276,7 @@ pub fn paint(
         );
     }
     clips.close(scene);
+    mind::paint_badges(scene, ts, cache, board, v);
     frames::paint_titles(scene, ts, cache, board, area, &frames, &chains, theme);
     scene.pop_layer();
     cache.end_frame();
@@ -585,6 +588,7 @@ pub fn paint_overlay(
         scene.fill_path(&dot, &Brush::Solid(accent), Affine::IDENTITY);
         line(scene, &dot, token(ColorToken::Bg1, theme), thin);
     }
+    mind::paint_overlay(scene, overlay, v, metrics, theme);
     if let Some(f) = &overlay.frame {
         line(scene, &frame_path(f, &v), accent, thin);
         let top = v * point(f.handle(handle_top(), px, metrics));

@@ -153,7 +153,10 @@ impl Editor {
         let [id] = self.selection.iter().copied().collect::<Vec<_>>()[..] else {
             return None;
         };
-        doc.get(id).filter(|el| writable(el)).map(|el| el.id)
+        // Um nó de mapa mental também (W6): seleccionado, escrever acrescenta ao texto dele.
+        doc.get(id)
+            .filter(|el| writable(el) || el.mind().is_some())
+            .map(|el| el.id)
     }
 
     /// Uma letra agora escreveria na nota seleccionada (e não é atalho) — quem tem atalhos de uma

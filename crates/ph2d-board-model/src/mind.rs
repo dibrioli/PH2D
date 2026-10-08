@@ -292,7 +292,12 @@ impl BoardDoc {
             .map(|e| e.id)
             .collect();
         for id in &ids {
-            if let Some(Some(p)) = self.elements.get(id).and_then(|e| e.mind()).map(|m| m.parent) {
+            if let Some(Some(p)) = self
+                .elements
+                .get(id)
+                .and_then(|e| e.mind())
+                .map(|m| m.parent)
+            {
                 self.minds.children.entry(p).or_default().insert(*id);
             }
         }
@@ -417,8 +422,7 @@ pub fn layout(doc: &BoardDoc, root: ElementId) -> Vec<(ElementId, [f64; 2])> {
             if g.is_empty() {
                 continue;
             }
-            let total: f64 =
-                g.iter().map(|c| band[c]).sum::<f64>() + gap * (g.len() - 1) as f64;
+            let total: f64 = g.iter().map(|c| band[c]).sum::<f64>() + gap * (g.len() - 1) as f64;
             let mut start = pc + sc / 2.0 - total / 2.0;
             for c in g {
                 let Some((ce, _)) = doc.node(c) else {
@@ -502,6 +506,51 @@ pub fn badge_rect(doc: &BoardDoc, id: ElementId, digits: usize) -> Option<[f64; 
         (true, true) => [cx - w / 2.0, el.y + el.h + gap, w, h],
         (true, false) => [cx - w / 2.0, el.y - gap - h, w, h],
     })
+}
+
+/// ⭐ **O ramo que chega a `child`** (M13): os quatro pontos da cúbica (mundo) — da borda de FORA do
+/// pai à de DENTRO do filho, a meia altura, com as tangentes no eixo dos níveis e o braço de
+/// [`MIND_ARM`] do vão. `None` = não há ramo (raiz, ou um dos dois escondido).
+#[must_use]
+pub fn branch(doc: &BoardDoc, child: ElementId) -> Option<[[f64; 2]; 4]> {
+    let parent = doc.mind_parent(child)?;
+    let (c, p) = (doc.get(child)?, doc.get(parent)?);
+    if c.is_hidden() || p.is_hidden() {
+        return None;
+    }
+    let (vertical, sign) = outward(doc, child);
+    let ax = Axes { vertical };
+    let ([pl, pc], [psl, psc]) = (ax.split([p.x, p.y]), ax.split([p.w, p.h]));
+    let ([cl, cc], [csl, csc]) = (ax.split([c.x, c.y]), ax.split([c.w, c.h]));
+    let (a, b) = if sign > 0.0 {
+        (pl + psl, cl)
+    } else {
+        (pl, cl + csl)
+    };
+    let (ya, yb) = (pc + psc / 2.0, cc + csc / 2.0);
+    let arm = MIND_ARM * (b - a);
+    Some([
+        ax.join([a, ya]),
+        ax.join([a + arm, ya]),
+        ax.join([b - arm, yb]),
+        ax.join([b, yb]),
+    ])
+}
+
+impl BoardDoc {
+    /// Há algum ramo de mapa mental (o desenho salta os ramos num quadro sem nenhum).
+    #[must_use]
+    pub fn has_mind_links(&self) -> bool {
+        !self.minds.children.is_empty()
+    }
+
+    /// Os pares `(pai, filho)` dos mapas mentais (o índice: sem passar pelo quadro inteiro).
+    pub fn mind_links(&self) -> impl Iterator<Item = (ElementId, ElementId)> + '_ {
+        self.minds
+            .children
+            .iter()
+            .flat_map(|(p, kids)| kids.iter().map(move |c| (*p, *c)))
+    }
 }
 
 /// Quantos descendentes de `id` o recolher esconde.

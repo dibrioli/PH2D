@@ -220,6 +220,11 @@ impl Editor {
     pub(crate) fn fit_pending(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem) {
         for id in std::mem::take(&mut self.unfitted) {
             if let Some(mut el) = doc.get(id).cloned() {
+                if el.mind().is_some() {
+                    live(doc, crate::mindmap::refit(ts, &el));
+                    crate::mindmap::settle_live(doc, id);
+                    continue;
+                }
                 let h = crate::notes::fitted_height(ts, &el);
                 if h != el.h {
                     el.h = h;

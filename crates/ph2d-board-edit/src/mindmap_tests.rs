@@ -77,7 +77,10 @@ impl W {
     }
 
     fn write(&mut self, s: &str) {
-        assert!(self.ed.text_input(&mut self.doc, &mut self.ts, s), "a escrever");
+        assert!(
+            self.ed.text_input(&mut self.doc, &mut self.ts, s),
+            "a escrever"
+        );
     }
 
     fn cmd(&mut self, c: Command) -> bool {
@@ -114,7 +117,8 @@ impl W {
         self.ed
             .pointer_down(&mut self.doc, &mut self.h, &mut self.ts, at(from, m), VIEW);
         let mid = [(from[0] + to[0]) / 2.0, (from[1] + to[1]) / 2.0];
-        self.ed.pointer_move(&mut self.doc, &mut self.ts, at(mid, m));
+        self.ed
+            .pointer_move(&mut self.doc, &mut self.ts, at(mid, m));
         self.ed.pointer_move(&mut self.doc, &mut self.ts, at(to, m));
         self.ed.pointer_up(&mut self.doc, &mut self.h, at(to, m));
     }
@@ -165,11 +169,18 @@ fn enter_adds_the_next_sibling_right_after() {
     assert!(w.cmd(Command::EditText));
     let b = w.sibling("B");
     assert_eq!(w.doc.mind_children(root), vec![a, b, c]);
-    assert!(w.cy(a) < w.cy(b) && w.cy(b) < w.cy(c), "o do meio fica no meio");
+    assert!(
+        w.cy(a) < w.cy(b) && w.cy(b) < w.cy(c),
+        "o do meio fica no meio"
+    );
     w.select(root);
     assert!(w.cmd(Command::EditText));
     let d = w.sibling("D");
-    assert_eq!(w.doc.mind_parent(d), Some(root), "na raiz, Enter dá um filho");
+    assert_eq!(
+        w.doc.mind_parent(d),
+        Some(root),
+        "na raiz, Enter dá um filho"
+    );
 }
 
 /// M15: o nó cresce de LADO com o texto; a linha nova (`Shift+Enter` → `Newline`) cresce para baixo.
@@ -180,12 +191,19 @@ fn a_node_grows_in_width_with_its_text() {
     let (w1, h1) = (w.el(a).w, w.el(a).h);
     w.write(" much longer text");
     assert!(w.el(a).w > w1 + 50.0);
-    assert!((w.el(a).h - h1).abs() < 1e-9, "uma linha continua uma linha");
+    assert!(
+        (w.el(a).h - h1).abs() < 1e-9,
+        "uma linha continua uma linha"
+    );
     w.ed.text_key(&mut w.doc, &mut w.h, &mut w.ts, TextKey::Newline);
     w.write("two");
     assert!(w.el(a).h > h1 + 10.0);
-    let gap = w.el(a).x - (w.el(w.doc.mind_parent(a).unwrap()).x + w.el(w.doc.mind_parent(a).unwrap()).w);
-    assert!((gap - ph2d_board_model::MIND_LEVEL_GAP).abs() < 1e-6, "o layout segue o tamanho");
+    let gap =
+        w.el(a).x - (w.el(w.doc.mind_parent(a).unwrap()).x + w.el(w.doc.mind_parent(a).unwrap()).w);
+    assert!(
+        (gap - ph2d_board_model::MIND_LEVEL_GAP).abs() < 1e-6,
+        "o layout segue o tamanho"
+    );
 }
 
 /// M5: `Tab` na raiz enche o lado mais leve; empate à direita.
@@ -203,7 +221,11 @@ fn tab_on_the_root_fills_the_lighter_side() {
     assert_eq!(side(&w, b), Side::Before);
     w.select(root);
     let c = w.child("C");
-    assert_eq!(side(&w, c), Side::Before, "A com dois filhos pesa mais que B");
+    assert_eq!(
+        side(&w, c),
+        Side::Before,
+        "A com dois filhos pesa mais que B"
+    );
     w.select(root);
     let d = w.child("D");
     assert_eq!(side(&w, d), Side::After);
@@ -234,7 +256,10 @@ fn arrows_walk_the_tree() {
     w.select(root);
     let c = w.child("C");
     w.select(root);
-    assert!(w.ed.mind_child(&mut w.doc, &mut w.h, &mut w.ts, Some(Side::After)), "o «+» da direita");
+    assert!(
+        w.ed.mind_child(&mut w.doc, &mut w.h, &mut w.ts, Some(Side::After)),
+        "o «+» da direita"
+    );
     w.write("B");
     let b = w.focus();
     let b1 = w.child("B1");
@@ -244,15 +269,27 @@ fn arrows_walk_the_tree() {
         assert!(w.cmd(Command::MindNav(d)));
         *w.sel().iter().next().unwrap()
     };
-    assert_eq!(go(&mut w, [1.0, 0.0]), a, "da raiz para a direita: o filho do meio desse lado");
+    assert_eq!(
+        go(&mut w, [1.0, 0.0]),
+        a,
+        "da raiz para a direita: o filho do meio desse lado"
+    );
     assert_eq!(go(&mut w, [1.0, 0.0]), a2, "para fora: o do meio");
     assert_eq!(go(&mut w, [0.0, 1.0]), a3);
-    assert_eq!(go(&mut w, [0.0, 1.0]), b1, "atravessa para o primo à mesma profundidade");
+    assert_eq!(
+        go(&mut w, [0.0, 1.0]),
+        b1,
+        "atravessa para o primo à mesma profundidade"
+    );
     assert_eq!(go(&mut w, [0.0, 1.0]), b1, "no fim fica");
     assert_eq!(go(&mut w, [-1.0, 0.0]), b, "para dentro: o pai");
     assert_eq!(go(&mut w, [-1.0, 0.0]), root);
     assert_eq!(go(&mut w, [-1.0, 0.0]), c, "o lado esquerdo");
-    assert_eq!(go(&mut w, [1.0, 0.0]), root, "do lado esquerdo, para a direita é para dentro");
+    assert_eq!(
+        go(&mut w, [1.0, 0.0]),
+        root,
+        "do lado esquerdo, para a direita é para dentro"
+    );
     let _ = a1;
 }
 
@@ -272,7 +309,10 @@ fn delete_takes_the_whole_branch_and_selects_the_parent() {
         assert!(w.doc.get(id).is_none());
     }
     assert_eq!(w.sel(), BTreeSet::from([root]));
-    assert!((w.cy(b) - w.cy(root)).abs() < 1e-9, "B sozinho do seu lado... ");
+    assert!(
+        (w.cy(b) - w.cy(root)).abs() < 1e-9,
+        "B sozinho do seu lado... "
+    );
     assert!(w.cmd(Command::Undo));
     assert!(w.doc.get(a2).is_some());
     let _ = by;
@@ -305,12 +345,11 @@ fn collapsing_hides_and_the_badge_expands() {
 fn the_plus_on_a_side_of_the_root_adds_there() {
     let (mut w, root) = W::new();
     w.select(root);
-    let (p, d, s) = w
-        .ed
-        .mind_plus(&w.doc)
-        .into_iter()
-        .find(|(_, _, s)| *s == Side::Before)
-        .expect("a raiz tem os dois «+»");
+    let (p, d, s) =
+        w.ed.mind_plus(&w.doc)
+            .into_iter()
+            .find(|(_, _, s)| *s == Side::Before)
+            .expect("a raiz tem os dois «+»");
     assert_eq!(s, Side::Before);
     w.click([p[0] + d[0] * 40.0, p[1] + d[1] * 40.0], NONE);
     let n = w.focus();
@@ -335,7 +374,10 @@ fn dropping_a_node_on_another_reparents_it() {
     w.drag(from, to, NONE);
     assert_eq!(w.doc.mind_parent(b1), Some(a));
     assert_eq!(w.doc.mind_children(a), vec![a1, b1]);
-    assert_eq!(w.el(b1).mind().unwrap().color, w.el(a).mind().unwrap().color);
+    assert_eq!(
+        w.el(b1).mind().unwrap().color,
+        w.el(a).mind().unwrap().color
+    );
     assert!(w.doc.mind_children(b).is_empty());
     assert!(w.cmd(Command::Undo));
     assert_eq!(w.doc.mind_parent(b1), Some(b), "UM passo de desfazer");
@@ -352,11 +394,13 @@ fn dropping_beside_siblings_reorders_without_guides() {
     w.select(a3);
     let from = w.el(a3).center();
     let to = [from[0], w.el(a1).y - 40.0];
-    w.ed
-        .pointer_down(&mut w.doc, &mut w.h, &mut w.ts, at(from, NONE), VIEW);
+    w.ed.pointer_down(&mut w.doc, &mut w.h, &mut w.ts, at(from, NONE), VIEW);
     w.ed.pointer_move(&mut w.doc, &mut w.ts, at([from[0], from[1] - 20.0], NONE));
     w.ed.pointer_move(&mut w.doc, &mut w.ts, at(to, NONE));
-    assert!(w.ed.overlay(&mut w.doc, &mut w.ts).guides.is_empty(), "as guias calam-se");
+    assert!(
+        w.ed.overlay(&mut w.doc, &mut w.ts).guides.is_empty(),
+        "as guias calam-se"
+    );
     w.ed.pointer_up(&mut w.doc, &mut w.h, at(to, NONE));
     assert_eq!(w.doc.mind_children(a), vec![a3, a1, a2]);
     assert!(w.cy(a3) < w.cy(a1));
@@ -399,7 +443,10 @@ fn a_pasted_branch_is_a_sibling_with_its_own_children() {
     let ck = w.doc.mind_children(copy);
     assert_eq!(ck.len(), 1);
     assert_ne!(ck[0], a1);
-    assert!((w.el(copy).x - w.el(a).x).abs() < 1e-9, "o layout põe-na na coluna dos irmãos");
+    assert!(
+        (w.el(copy).x - w.el(a).x).abs() < 1e-9,
+        "o layout põe-na na coluna dos irmãos"
+    );
 }
 
 /// A fronteira do `Tab` (W3 × W6): numa NOTA, «o filho» não existe — o `Tab` dela é a nota seguinte.

@@ -5,6 +5,7 @@ use ph2d_board_model::{End, Rgba};
 
 use super::*;
 use crate::{Command, Metrics};
+use ph2d_text::TextSystem;
 
 struct W {
     ed: Editor,
@@ -43,8 +44,12 @@ const CENTER: [f64; 2] = [1_000.0, -500.0];
 
 impl W {
     fn insert(&mut self, t: Template) -> Vec<ElementId> {
-        self.ed
-            .insert_template(&mut self.doc, &mut self.h, &mut self.ts, t, CENTER, &tr)
+        let ids = self
+            .ed
+            .insert_template(&mut self.doc, &mut self.h, t, CENTER, &tr);
+        // O moldador acerta os nós do mapa no próximo desenho.
+        let _ = self.ed.overlay(&mut self.doc, &mut self.ts);
+        ids
     }
 
     fn bbox(&self) -> [f64; 4] {
@@ -53,8 +58,20 @@ impl W {
             .filter(|e| e.connector().is_none())
             .map(Element::aabb)
             .fold(
-                [f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY],
-                |a, b| [a[0].min(b[0]), a[1].min(b[1]), a[2].max(b[2]), a[3].max(b[3])],
+                [
+                    f64::INFINITY,
+                    f64::INFINITY,
+                    f64::NEG_INFINITY,
+                    f64::NEG_INFINITY,
+                ],
+                |a, b| {
+                    [
+                        a[0].min(b[0]),
+                        a[1].min(b[1]),
+                        a[2].max(b[2]),
+                        a[3].max(b[3]),
+                    ]
+                },
             )
     }
 
@@ -82,7 +99,11 @@ fn every_template_lands_centred_selected_and_in_one_undo_step() {
         for el in w.doc.live() {
             if let Some(f) = el.frame {
                 let fr = w.doc.get(f).expect("o frame existe");
-                assert!(fr.box_contains_all_of(el), "{t:?}: {:?} sai do frame", el.id);
+                assert!(
+                    fr.box_contains_all_of(el),
+                    "{t:?}: {:?} sai do frame",
+                    el.id
+                );
             }
         }
         assert!(w.cmd_undo(), "{t:?}");
@@ -155,7 +176,13 @@ fn the_flowchart_is_bound_arrows_between_shapes() {
         let c = a.connector().unwrap();
         assert!(matches!(c.start, End::Bound { .. }) && matches!(c.end, End::Bound { .. }));
     }
-    assert_eq!(arrows.iter().filter(|a| !a.connector().unwrap().label.is_empty()).count(), 2);
+    assert_eq!(
+        arrows
+            .iter()
+            .filter(|a| !a.connector().unwrap().label.is_empty())
+            .count(),
+        2
+    );
 }
 
 /// T6: a persona, quatro estágios × cinco linhas de notas.
@@ -163,5 +190,8 @@ fn the_flowchart_is_bound_arrows_between_shapes() {
 fn the_journey_map_is_stages_by_rows() {
     let mut w = w();
     w.insert(Template::Journey);
-    assert_eq!(w.count(|e| e.shape().is_some_and(|s| s.kind == ShapeType::Sticky)), 1 + 4 * 5);
+    assert_eq!(
+        w.count(|e| e.shape().is_some_and(|s| s.kind == ShapeType::Sticky)),
+        1 + 4 * 5
+    );
 }

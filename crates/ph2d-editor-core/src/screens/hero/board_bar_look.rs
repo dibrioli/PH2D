@@ -18,6 +18,7 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
     if let Some(k) = super::notes::tooltip_key(it)
         .or_else(|| super::pen::tooltip_key(it))
         .or_else(|| super::organize::tooltip_key(it))
+        .or_else(|| super::mind::tooltip_key(it))
     {
         return Some(k);
     }
@@ -50,10 +51,13 @@ pub(super) fn tooltip_key(it: Item) -> Option<&'static str> {
         | Item::Bulk
         | Item::Mark(_)
         | Item::TextColor(_)
-        | Item::Tool(Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::Frame)
+        | Item::Tool(
+            Tool::Pen(_) | Tool::Eraser { .. } | Tool::Laser | Tool::Frame | Tool::MindMap,
+        )
         | Item::Pen(_)
         | Item::Sketch
-        | Item::Organize(_) => return None,
+        | Item::Organize(_)
+        | Item::Mind(_) => return None,
     })
 }
 
@@ -131,6 +135,9 @@ pub(super) fn selected_arrow(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> O
 pub(super) fn selected_kind(ed: &Editor, doc: &ph2d_board_model::BoardDoc) -> Option<Selected> {
     if let Some(k) = super::notes::selected_kind(ed, doc) {
         return k;
+    }
+    if let Some(k) = super::mind::selected_kind(ed, doc) {
+        return Some(k);
     }
     let els: Vec<_> = ed
         .selection()

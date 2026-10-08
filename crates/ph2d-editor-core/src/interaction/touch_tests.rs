@@ -171,38 +171,38 @@ fn two_travelling_fingers_pan_and_pinch_and_never_undo() {
             .is_empty(),
         "dentro da folga já navegou"
     );
-    // Além da folga: a referência semeia-se SEM salto — o botão do meio pousa, nada anda ainda.
-    assert_eq!(
-        t.feed(1, TouchPhase::Move, [120.0, 100.0], 3 * MS, None),
-        vec![TouchOut::NavBegin([160.0, 100.0])]
+    assert!(t.tick(2 * MS).is_empty(), "dentro da folga já navegou");
+    // Além da folga: a referência semeia-se SEM salto no QUADRO — o botão do meio pousa, nada
+    // anda ainda. (O evento em si nunca publica navegação: só o `tick`.)
+    assert!(
+        t.feed(1, TouchPhase::Move, [120.0, 100.0], 3 * MS, None)
+            .is_empty(),
+        "o evento publicou navegação; a lei é uma vez por quadro"
     );
-    // O dedo 2 afasta-se 40 pt: o meio anda 20 (pan) e o afastamento vai de 40 a 60 (o factor é
-    // 40/60 — aproxima), à volta do meio NOVO.
+    assert_eq!(t.tick(3 * MS), vec![TouchOut::NavBegin([160.0, 100.0])]);
+    // Os DOIS dedos andam 40 pt no mesmo quadro: um pan puro de 40 — sem o zoom espúrio que
+    // publicar a cada evento inventaria (cada dedo sozinho muda o afastamento).
+    t.feed(2, TouchPhase::Move, [240.0, 100.0], 4 * MS, None);
+    t.feed(1, TouchPhase::Move, [160.0, 100.0], 4 * MS, None);
+    assert_eq!(t.tick(4 * MS), vec![TouchOut::Pan([40.0, 0.0])]);
+    // Pinça: o dedo 2 afasta-se 40 pt — o meio anda 20 (pan) e o afastamento vai de 40 a 60 (o
+    // factor é 40/60: aproxima), à volta do meio NOVO.
+    t.feed(2, TouchPhase::Move, [280.0, 100.0], 5 * MS, None);
     assert_eq!(
-        t.feed(2, TouchPhase::Move, [240.0, 100.0], 4 * MS, None),
+        t.tick(5 * MS),
         vec![
             TouchOut::Pan([20.0, 0.0]),
             TouchOut::Zoom {
                 factor: 40.0 / 60.0,
-                about: [180.0, 100.0],
-            }
-        ]
-    );
-    // O dedo 1 segue-o 40 pt: o meio anda 20 e o afastamento volta a 40 (afasta: 60/40).
-    assert_eq!(
-        t.feed(1, TouchPhase::Move, [160.0, 100.0], 5 * MS, None),
-        vec![
-            TouchOut::Pan([20.0, 0.0]),
-            TouchOut::Zoom {
-                factor: 60.0 / 40.0,
-                about: [200.0, 100.0],
+                about: [220.0, 100.0],
             }
         ]
     );
     // Levantar depressa NÃO desfaz: só o botão do meio levanta.
     let mut out = t.feed(1, TouchPhase::End, [160.0, 100.0], 6 * MS, None);
-    out.extend(t.feed(2, TouchPhase::End, [240.0, 100.0], 7 * MS, None));
+    out.extend(t.feed(2, TouchPhase::End, [280.0, 100.0], 7 * MS, None));
     assert_eq!(out, vec![TouchOut::NavEnd], "um pan que levantou desfez");
+    assert!(t.tick(8 * MS).is_empty(), "navegou depois de levantar");
 
     // O CONTROLO, do outro lado da fronteira: o mesmo contacto, dentro da folga, desfaz.
     let mut c = g();
@@ -212,6 +212,7 @@ fn two_travelling_fingers_pan_and_pinch_and_never_undo() {
         c.feed(1, TouchPhase::Move, [106.0, 100.0], 2 * MS, None)
             .is_empty()
     );
+    assert!(c.tick(2 * MS).is_empty());
     let mut out = c.feed(1, TouchPhase::End, [106.0, 100.0], 7 * MS, None);
     out.extend(c.feed(2, TouchPhase::End, [200.0, 100.0], 8 * MS, None));
     assert_eq!(
@@ -228,35 +229,27 @@ fn a_finger_joining_or_leaving_mid_navigation_does_not_jump() {
     t.feed(1, TouchPhase::Start, [100.0, 100.0], 0, None);
     t.feed(2, TouchPhase::Start, [201.0, 100.0], MS, None);
     t.feed(1, TouchPhase::Move, [120.0, 100.0], 2 * MS, None);
+    assert_eq!(t.tick(2 * MS), vec![TouchOut::NavBegin([160.5, 100.0])]);
     // O 3.º dedo pousa longe: o ponto médio muda sem ninguém andar.
     t.feed(3, TouchPhase::Start, [501.0, 500.0], 3 * MS, None);
-    assert!(
-        t.feed(3, TouchPhase::Move, [501.0, 500.0], 4 * MS, None)
-            .is_empty(),
-        "o 3.º dedo fez a vista saltar"
-    );
+    t.feed(3, TouchPhase::Move, [501.0, 500.0], 4 * MS, None);
+    assert!(t.tick(4 * MS).is_empty(), "o 3.º dedo fez a vista saltar");
     // (120 + 201 + 501) / 3 = 274 → (120 + 201 + 531) / 3 = 284: exacto em f32.
-    assert_eq!(
-        t.feed(3, TouchPhase::Move, [531.0, 500.0], 5 * MS, None)
-            .first(),
-        Some(&TouchOut::Pan([10.0, 0.0]))
-    );
+    t.feed(3, TouchPhase::Move, [531.0, 500.0], 5 * MS, None);
+    assert_eq!(t.tick(5 * MS).first(), Some(&TouchOut::Pan([10.0, 0.0])));
     // Um dedo sai, dois ficam: ainda a navegar, sem salto.
     assert!(
         t.feed(3, TouchPhase::End, [531.0, 500.0], 6 * MS, None)
             .is_empty(),
         "sair do 3.º dedo acabou a navegação com dois dedos no vidro"
     );
+    t.feed(1, TouchPhase::Move, [120.0, 100.0], 7 * MS, None);
     assert!(
-        t.feed(1, TouchPhase::Move, [120.0, 100.0], 7 * MS, None)
-            .is_empty(),
+        t.tick(7 * MS).is_empty(),
         "o dedo que saiu fez a vista saltar"
     );
-    assert_eq!(
-        t.feed(1, TouchPhase::Move, [130.0, 100.0], 8 * MS, None)
-            .first(),
-        Some(&TouchOut::Pan([5.0, 0.0]))
-    );
+    t.feed(1, TouchPhase::Move, [130.0, 100.0], 8 * MS, None);
+    assert_eq!(t.tick(8 * MS).first(), Some(&TouchOut::Pan([5.0, 0.0])));
 }
 
 /// **Os contactos sintéticos (a cena de smoke) saem pelo `tick`**, a porta por onde a shell os aplica.
@@ -267,18 +260,27 @@ fn synthetic_contacts_are_delivered_by_the_tick() {
     t.feed_synthetic(2, TouchPhase::Start, [200.0, 100.0], MS);
     t.feed_synthetic(1, TouchPhase::Move, [120.0, 100.0], 2 * MS);
     t.feed_synthetic(1, TouchPhase::Move, [140.0, 100.0], 3 * MS);
+    // O quadro semeia com os dedos onde ESTÃO (140 e 200): meio 170, sem salto.
+    assert_eq!(t.tick(4 * MS), vec![TouchOut::NavBegin([170.0, 100.0])]);
+    t.feed_synthetic(1, TouchPhase::Move, [150.0, 100.0], 5 * MS);
     assert_eq!(
-        t.tick(4 * MS),
+        t.tick(5 * MS),
         vec![
-            TouchOut::NavBegin([160.0, 100.0]),
-            TouchOut::Pan([10.0, 0.0]),
+            TouchOut::Pan([5.0, 0.0]),
             TouchOut::Zoom {
-                factor: 40.0 / 30.0,
-                about: [170.0, 100.0],
+                factor: 30.0 / 25.0,
+                about: [175.0, 100.0],
             }
         ]
     );
-    assert!(t.tick(5 * MS).is_empty(), "o tick entregou duas vezes");
+    assert!(t.tick(6 * MS).is_empty(), "o tick entregou duas vezes");
+    // E os px viram pt pela escala anotada: a mesma posição, a 2 px/pt, é metade.
+    let mut h = g();
+    h.note_scale(2.0);
+    h.feed_synthetic(1, TouchPhase::Start, [100.0, 100.0], 0);
+    h.feed_synthetic(2, TouchPhase::Start, [200.0, 100.0], MS);
+    h.feed_synthetic(1, TouchPhase::Move, [140.0, 100.0], 2 * MS);
+    assert_eq!(h.tick(2 * MS), vec![TouchOut::NavBegin([85.0, 50.0])]);
 }
 
 /// ⭐ **O widget: segurar = segurar, tocar = travar — e o dedo nele não conta como dedo extra.**

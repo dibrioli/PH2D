@@ -138,6 +138,8 @@ pub struct TouchGestures {
     seen: bool,
     nav: Option<Nav>,
     navigating: bool,
+    /// Um dedo andou desde o último quadro: a navegação publica-se no `tick`.
+    nav_dirty: bool,
     /// O que os contactos SINTÉTICOS (uma cena de smoke) pediram e o `tick` ainda não entregou.
     pending: Vec<TouchOut>,
     /// px por pt, anotado pela shell: os contactos sintéticos chegam em px (o rect da área) e o
@@ -215,7 +217,16 @@ impl TouchGestures {
     }
 
     /// Dois (ou mais) dedos a andar: o ponto médio arrasta, o afastamento dá zoom.
+    ///
+    /// ⚠️ **Uma vez por QUADRO (do `tick`), nunca por evento.** Cada dedo chega num evento próprio;
+    /// publicar a cada um compõe um zoom à volta do ponto médio de UM dedo movido com outro à volta
+    /// do ponto médio dos dois — e a diferença é um arrasto espúrio de `δ²/4s` por quadro (medido na
+    /// foto da cena 11: a âncora fugia ~20 px). Com todos os dedos já no sítio, não há dois pontos.
     fn navigate(&mut self) -> Vec<TouchOut> {
+        if !(self.nav_dirty && self.gesture && !self.committed && self.fingers.len() >= 2) {
+            return Vec::new();
+        }
+        self.nav_dirty = false;
         let cur = self.cloud();
         let Some(prev) = self.nav.replace(cur) else {
             if self.navigating {
@@ -251,7 +262,8 @@ impl TouchGestures {
             self.moved = true;
         }
         if self.gesture && !self.committed && self.moved && self.fingers.len() >= 2 {
-            return self.navigate();
+            self.nav_dirty = true;
+            return Vec::new();
         }
         if self.primary != Some(id) || self.gesture || self.long_fired {
             return Vec::new();
@@ -316,6 +328,7 @@ impl TouchGestures {
         self.long_fired = false;
         self.nav = None;
         self.navigating = false;
+        self.nav_dirty = false;
     }
 
     /// O relógio, em todo quadro: entrega o que os contactos sintéticos pediram, e um dedo parado
@@ -323,6 +336,7 @@ impl TouchGestures {
     /// parado pode não mandar nenhum).
     pub fn tick(&mut self, now: u128) -> Vec<TouchOut> {
         let mut out = std::mem::take(&mut self.pending);
+        out.extend(self.navigate());
         if let Some(f) = self.primary.and_then(|p| self.fingers.get(&p)) {
             // (Um dedo único que andou além da folga já é traço: o `committed` cobre o «andou».)
             let still = !self.committed && !self.gesture && !self.long_fired;

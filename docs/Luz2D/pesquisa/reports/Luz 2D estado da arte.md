@@ -443,8 +443,14 @@ Os aparelhos formam uma matriz mínima por fabricante, um de gama média e um to
 | Qualcomm | Adreno 6xx, classe do Adreno 612 da #81152 | Adreno 740/750 |
 | Arm | Mali-G57/G68 | Immortalis-G715/G720 ou mais novo |
 
-Como referência entram a GPU da workstation e um iGPU. A lista de aparelhos que o dono tem de fato precisa
-ser confirmada antes da rodada.
+Como referência entram a GPU da workstation e um iGPU.
+
+**Aparelhos que o dono TEM (2026-10-08):** iPhone 13 (A15, sem RT — gama média Apple) · iPhone 16 (A18,
+com RT — topo Apple) · dois POCO, «5» e «8» (modelo exacto a confirmar: X5/F5/M5… decide se há Adreno e/ou
+Mali na matriz). Fase de celular **adiada pelo dono** («ainda é cedo»): o desenvolvimento e a primeira
+rodada correm no desktop, com o tráfego de memória por quadro **contado** por passe (ver abaixo), que não
+depende do aparelho. ⚠️ Simulador (iOS Simulator / emulador Android) corre na GPU do HOSPEDEIRO: serve para
+CORREÇÃO (a imagem, o shader compila no backend), nunca para tempo nem banda.
 
 Os critérios de abandono são decisões fixadas **antes** de medir. Eles vêm do orçamento declarado e da
 evidência citada. Não são limites no código.

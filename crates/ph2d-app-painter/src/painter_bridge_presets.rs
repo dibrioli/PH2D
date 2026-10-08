@@ -25,20 +25,6 @@ use std::sync::Arc;
 const MEIO_SEM_ORIGEM: &str = "Watercolor";
 const GRUPO_SEM_ORIGEM: &str = "User";
 
-/// A faixa da miniatura que o painel mostra: as linhas do meio, onde o S da miniatura passa.
-/// Recurso: a altura do painel (a miniatura inteira, quadrada, ocupava a coluna toda).
-fn faixa_da_miniatura(rgba: &[u8], w: u32, h: u32) -> (Arc<Vec<u8>>, u32, u32) {
-    let alto = h / 2;
-    let topo = (h - alto) / 2;
-    let linha = w as usize * 4;
-    let ini = topo as usize * linha;
-    (
-        Arc::new(rgba[ini..ini + alto as usize * linha].to_vec()),
-        w,
-        alto,
-    )
-}
-
 fn pasta_de_fabrica() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes")
 }
@@ -316,14 +302,6 @@ impl Presets {
                 }
             })
             .collect();
-        let miniatura = self
-            .aplicado
-            .as_deref()
-            .and_then(|r| self.bib.procurar(r))
-            .map(|e| {
-                let m = &e.preset.miniatura;
-                faixa_da_miniatura(&m.rgba, m.largura, m.altura)
-            });
         let politica = Politica::TODAS
             .iter()
             .position(|p| *p == self.estado.politica)
@@ -333,7 +311,6 @@ impl Presets {
             recentes: self.estado.recentes.clone(),
             ativo: self.aplicado.clone(),
             politica,
-            miniatura,
             ilegiveis: self.bib.erros.len(),
         });
     }

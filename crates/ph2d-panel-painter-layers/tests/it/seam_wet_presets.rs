@@ -11,7 +11,7 @@ use ph2d_editor_core::tool::Tool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
 use ph2d_panel_painter_layers::{
-    PainterLayersPanel, VistaPreset, VistaPresets, set_current_wet_presets,
+    PainterLayersPanel, VistaPreset, VistaPresets, set_current_wet_presets, set_current_wet_preview,
 };
 use ph2d_tool_painter::ids;
 use ph2d_tool_painter::{PaintMedia, PainterTool, PedidoPreset};
@@ -37,7 +37,6 @@ fn vista(ativo: Option<&str>) -> Arc<VistaPresets> {
         recentes: vec![ROUND.to_owned()],
         ativo: ativo.map(str::to_owned),
         politica: 0,
-        miniatura: Some((Arc::new(vec![200; 4 * 4 * 2]), 4, 2)),
         ilegiveis: 0,
     })
 }
@@ -252,4 +251,23 @@ fn fora_do_wet_paint_o_bloco_nao_aparece() {
         rect_of(&rects, ids::PAINTER_BRUSH_PRESET).is_some(),
         "o Preset dos meios fica"
     );
+}
+
+/// O preview VIVO ocupa a sua faixa por baixo do Favorite (e os botões descem com ela); sem quadro
+/// publicado não há faixa nenhuma. Com ou sem biblioteca.
+#[test]
+fn o_preview_vivo_tem_a_sua_faixa_no_bloco() {
+    let t = molhado();
+    set_current_wet_preview(None);
+    let (_, _, sem) = novo(&t, Some(ROUND));
+    set_current_wet_preview(Some((Arc::new(vec![200; 256 * 128 * 4]), 256, 128)));
+    let (_, _, com) = novo(&t, Some(ROUND));
+    let y = |r: &[(NodeId, Rect)]| rect_of(r, ids::PAINTER_WETPAINT_PRESET_SAVE_NEW).unwrap().y;
+    assert!(
+        y(&com) > y(&sem) + 40.0,
+        "a faixa do preview não ocupou lugar: {} → {}",
+        y(&sem),
+        y(&com)
+    );
+    set_current_wet_preview(None);
 }

@@ -1,6 +1,6 @@
 //! **O bloco de presets do Wet Painter** (W1, `docs/Painter/NewFeaturesWetPaint/02 §5`): no Wet Paint
 //! ele toma o lugar da fileira «Preset» dos meios. De cima para baixo: o chip Preset (o navegador:
-//! Favoritos · Recentes · os grupos, que são as pastas), Favorite, a miniatura do activo, Save as New ·
+//! Favoritos · Recentes · os grupos, que são as pastas), Favorite, o preview VIVO, Save as New ·
 //! Save as Default · Reset, os volumes VIVOS (Size px = o diâmetro do anel · Water) com os valores
 //! rápidos, e a política dos volumes. Opacity, Pressure e Length não têm leitor no Wet Paint: não
 //! aparecem (gate `a_opacidade_nao_tem_leitor_no_wet_paint`).
@@ -45,6 +45,8 @@ pub(crate) fn paint_wetpaint_presets(
     let mut y = y;
     if let Some(v) = vista.as_deref() {
         y = paint_navegador(ctx, theme, x, content_w, y, v);
+    } else {
+        y = paint_preview(ctx, x, content_w, y);
     }
     y = volume_row(
         ctx,
@@ -136,24 +138,7 @@ fn paint_navegador(
             a.favorito,
         );
     }
-    if let Some((px, w, h)) = &v.miniatura
-        && *w > 0
-    {
-        let alto = content_w * *h as f32 / *w as f32;
-        ctx.scene.draw_image_rgba(
-            px,
-            *w,
-            *h,
-            (
-                f64::from(x),
-                f64::from(y),
-                f64::from(x + content_w),
-                f64::from(y + alto),
-            ),
-            ImageQuality::Medium,
-        );
-        y += alto + ph2d_tokens::control_gap_px();
-    }
+    y = paint_preview(ctx, x, content_w, y);
     // Sem preset activo não há o que guardar por cima nem o que repor: só «Save as New».
     let mut botoes = vec![(
         ids::PAINTER_WETPAINT_PRESET_SAVE_NEW,
@@ -180,6 +165,28 @@ fn paint_navegador(
         &botoes,
         usize::MAX,
     )
+}
+
+/// O preview VIVO: o pincel de agora sobre a obra de agora, o quadro que a ponte publica (ela repinta-o
+/// numa thread a cada mudança e toca a animação do traço uma vez).
+fn paint_preview(ctx: &mut PaintCtx, x: f32, content_w: f32, y: f32) -> f32 {
+    let Some((px, w, h)) = st::current_wet_preview().filter(|(_, w, _)| *w > 0) else {
+        return y;
+    };
+    let alto = content_w * h as f32 / w as f32;
+    ctx.scene.draw_image_rgba(
+        &px,
+        w,
+        h,
+        (
+            f64::from(x),
+            f64::from(y),
+            f64::from(x + content_w),
+            f64::from(y + alto),
+        ),
+        ImageQuality::Medium,
+    );
+    y + alto + ph2d_tokens::control_gap_px()
 }
 
 /// Um volume: a fileira numérica e, à direita, o chip dos valores rápidos.

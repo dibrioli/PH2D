@@ -253,3 +253,27 @@ fn a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje() {
         }
     }
 }
+
+/// **Sonda de custo da miniatura** — o número que decide onde o preview vivo corre (no quadro ou numa
+/// thread). Mínimo de 5 corridas por preset, a tela inteira e só o traço (sem a água depois).
+#[test]
+#[ignore = "sonda: mede o custo de pintar a miniatura"]
+fn sonda_custo_da_miniatura() {
+    println!(
+        "[custo] load {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+    for (rel, b) in ficheiros_de_fabrica() {
+        let p = ler(&b).unwrap();
+        let min = (0..5)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                let _ = miniatura_do_preset(&p);
+                t0.elapsed().as_secs_f64() * 1e3
+            })
+            .fold(f64::INFINITY, f64::min);
+        println!("[custo] {rel:<60} {min:7.1} ms");
+    }
+}

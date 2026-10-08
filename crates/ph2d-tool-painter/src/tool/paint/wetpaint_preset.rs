@@ -17,10 +17,12 @@ use std::collections::BTreeMap;
 
 mod json;
 mod miniatura;
+mod preview;
 #[cfg(test)]
 mod tests;
 
 pub use miniatura::{DIAMETRO_DA_MINIATURA, miniatura_do_preset};
+pub use preview::{CenaDoPreview, ChaveDoPreview, pintar_preview};
 
 /// O meio-alvo de todo preset desta família (o `media` do JSON).
 pub const MEIO_DO_PRESET: &str = "WetPaint";

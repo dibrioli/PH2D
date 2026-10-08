@@ -82,6 +82,8 @@ pub mod painter_bridge_overlays;
 pub mod painter_bridge_phases;
 #[cfg(feature = "panel-painter-layers")]
 mod painter_bridge_presets; // W1: os presets do Wet Painter — o disco e a biblioteca
+#[cfg(feature = "panel-painter-layers")]
+mod painter_bridge_preview; // o preview VIVO do pincel (thread + a animação tocada uma vez)
 /// Os previews do painel do pincel (Grain · Shape · Paper · Flow), cortados do `painter_bridge` —
 /// atrás da MESMA feature que o bloco de onde saíram (sem o painel não há a quem publicar).
 #[cfg(feature = "panel-painter-layers")]

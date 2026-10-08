@@ -132,8 +132,8 @@ pub use ph2d_painter_brush::{
     taper::{MAX_TAPER_DIAMETERS, Taper},
 };
 pub use tool::paint::wetpaint_preset::{
-    CAMPOS_DO_PINCEL, CAMPOS_FORA, DIAMETRO_DA_MINIATURA, MEIO_DO_PRESET, MOTOR_DOS_PRESETS,
-    PedidoPreset, miniatura_do_preset,
+    CAMPOS_DO_PINCEL, CAMPOS_FORA, CenaDoPreview, ChaveDoPreview, DIAMETRO_DA_MINIATURA,
+    MEIO_DO_PRESET, MOTOR_DOS_PRESETS, PedidoPreset, miniatura_do_preset, pintar_preview,
 };
 pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,

@@ -27,8 +27,6 @@ pub struct VistaPresets {
     pub ativo: Option<String>,
     /// A política dos volumes, índice em `Politica::TODAS`.
     pub politica: u8,
-    /// A miniatura do activo, já recortada à faixa do traço: `(rgba, largura, altura)`.
-    pub miniatura: Option<(Arc<Vec<u8>>, u32, u32)>,
     /// Quantos ficheiros da biblioteca não se leram (o navegador di-lo; a ponte diz quais).
     pub ilegiveis: usize,
 }
@@ -40,11 +38,25 @@ impl VistaPresets {
     }
 }
 
+/// Um quadro do preview vivo: `(rgba, largura, altura)` da faixa do traço.
+pub type QuadroDoPreview = (Arc<Vec<u8>>, u32, u32);
+
 thread_local! {
     static CURRENT: RefCell<Option<Arc<VistaPresets>>> = const { RefCell::new(None) };
     pub(crate) static PENDING_PRESET_DD: Cell<Option<Rect>> = const { Cell::new(None) };
     pub(crate) static PENDING_POLICY_DD: Cell<Option<(Rect, u8)>> = const { Cell::new(None) };
     pub(crate) static PENDING_QUICK_DD: Cell<Option<(Rect, usize)>> = const { Cell::new(None) };
+    static PREVIEW: RefCell<Option<QuadroDoPreview>> = const { RefCell::new(None) };
+}
+
+/// Publica o quadro do preview VIVO do pincel (a ponte, quando o quadro muda): `(rgba, largura, altura)`
+/// da faixa do traço. Independe da biblioteca: é o pincel de agora sobre a obra de agora.
+pub fn set_current_wet_preview(q: Option<QuadroDoPreview>) {
+    PREVIEW.with(|c| *c.borrow_mut() = q);
+}
+
+pub(crate) fn current_wet_preview() -> Option<QuadroDoPreview> {
+    PREVIEW.with(|c| c.borrow().clone())
 }
 
 /// Publica a vista (a ponte, quando a biblioteca ou o estado mudam). `None` = sem biblioteca: o

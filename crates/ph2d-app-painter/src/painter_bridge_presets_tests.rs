@@ -49,7 +49,6 @@ fn escolher_poe_o_preset_no_pincel_e_lembra_o_ativo() {
     assert_eq!(knob(&t, "pigmentPerDab"), 400.0, "o Wash do 02 §6.9");
     assert_eq!(knob(&t, "bristleCount"), 3000.0);
     assert_eq!(p.vista.ativo.as_deref(), Some(WASH));
-    assert!(p.vista.miniatura.is_some(), "o activo mostra a miniatura");
     // Reaberto (outra sessão): o pincel abre com o Wash.
     let mut t2 = PainterTool::default();
     t2.set_paint_media(PaintMedia::WetPaint);

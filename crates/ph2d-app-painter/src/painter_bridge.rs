@@ -263,6 +263,11 @@ pub fn dispatch(
         // o pedido do painel é atendido aqui (o disco é da ponte) e a vista é publicada.
         #[cfg(feature = "panel-painter-layers")]
         crate::painter_bridge_presets::drive(painter, painter.wetpaint_armed(), toasts);
+        // O preview VIVO do pincel: repinta-se numa thread a cada mudança e anima uma vez.
+        #[cfg(feature = "panel-painter-layers")]
+        if painter.wetpaint_armed() {
+            crate::painter_bridge_preview::drive(painter);
+        }
         // Selection-drift invalidation (mirror of drive_preview_cache).
         if let (Some(existing), Some(sel)) = (painter_preview.as_ref(), hero.gizmo.selection)
             && existing.entity_bits != sel

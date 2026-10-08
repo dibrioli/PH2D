@@ -137,6 +137,19 @@ inventada. Contagens do registry em 2026-09-05.
 | 11 ✅ ([doc 119](119_ciclo_11_a_placa_com_varias_saidas.md)) | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o alvo medido (doc 117) era a cerca de ÂMBITO do multi-sink; ela SAIU (W1–W4) e a varredura achou **três** defeitos de produto que ela escondia, curados. Pela porta do produto, **`95` de `126`** cenas vão à placa. ✅ smoke do dono aprovado na cena `PH2D_MOTION_OBJ_SMOKE=16` (2026-09-23) | (varredura) | — |
 | **12** ([doc 120](120_ciclo_12_os_tectos_confortaveis.md)) | ⚡ **OS TETOS CONFORTÁVEIS** — medido com FORMA e SIMULAÇÃO, nas duas placas (a integrada é o proxy de telemóvel), cena `PH2D_MOTION_OBJ_SMOKE=17`: confortável ≥`65 536` imagens / `32 768` estrelas no desktop, ~`49 152` / ~`16 384` no proxy; acima do limite há um **penhasco** (dívida de tiques). Recomendação técnica: **ficar em `32 768`** até o carimbo ir à placa. ⭐ **E o carimbo FOI à placa** (§8.4–§8.6): o custo das imagens deixou de crescer com o número, e no proxy de telemóvel o Motion a `32 768` foi de `7,30` para **`0,72 ms`** | ✅ **o tecto fica em `32 768`** (o dono mandou seguir sem o mudar) · smokes do dono **aprovados** (§8.5 as imagens e as marcas das posições · §8.6 os cartões, `0,56 ms` de Motion na máquina dele) | — |
 
+> ⚠️ **Estado em 2026-10-08 — CICLO 14, os oito abertos que o ciclo 13 deixou**
+> ([doc 123](123_ciclo_14_os_oito_abertos.md)). A imunidade do `pulse.beat` a FMA ganhou régua de CPU
+> (o FMA da CPU) e uma fixtura na placa no fio; os nove geradores de figuras dos tutoriais partem-se em
+> produzir/escrever e um gate compara-os com o disco AO BYTE (vermelho com `7` figuras velhas); os
+> tutoriais `01`–`05` ganharam o gate do cartão (sete passos impossíveis curados) e as tabelas COLADAS
+> passaram a incluídas; as sondas velhas derivam das constantes de hoje; ⭐ **`45` arneses avançavam o
+> tique ANTES de cozer** (cada nó sequencial cozia duas vezes por tique) — postos na ordem do produto,
+> com gate de recorrência, e o que isso destapou foi curado (a guarda de NaN da mola deixava sair um
+> quadro não finito; a injecção da `=57`) ou registado (Bug #15, o colisor num corpo mole); a suíte da
+> placa separa `placa:` de `sonda:` (`scripts/motion-gate-placa.sh`); o SIGSEGV ao sair do `it` do
+> `ph2d-gpu-cook` era UM contexto de placa por ficheiro de teste (`8/8` contra `0/16` com um só, medido no mesmo binário); a `=27` fica à vista; o
+> `PH2D_PAN_DIAG` lê o mundo da cópia da placa pela leitura dos cartões.
+>
 > ⚠️ **Estado em 2026-10-07 (noite) — CICLO 13, os cinco abertos do módulo num ciclo**
 > ([doc 122](122_ciclo_13_os_abertos_do_modulo.md)). O Bug #14 **não era perda**: a estrela da `=27`
 > tinha `~3 px` e a sonda `PH2D_PAN_DIAG` era cega à rota do dispositivo (curadas as duas). O

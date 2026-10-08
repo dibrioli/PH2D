@@ -1388,3 +1388,29 @@ censo da família: `1` cena com carimbo a jusante de uma zona (a `=27`).
   acreditar numa ausência, pergunte à sonda POR QUE ROTA o quadro passou.
 - ⛔ **«Não aparece» tem um suspeito barato antes do caro: o tamanho EM PIXELS na câmera do produto.**
   Um gate em unidades de mundo aprova uma forma de `3 px`; o gate desta cura mede pixels acesos.
+
+## Bug #15 — o colisor no laço de um corpo mole não segura a distância mínima entre partículas (ABERTO — achado do ciclo 14)
+
+### O que se vê
+`motion.soft_body --pre--> motion.collide → soft_body.state` (o «raio de partícula» do doc 89, folha 03,
+fixtura `soft_body_radius` do `ph2d-node-registry-init`) faz o corpo INCHAR (`1,92 → 2,76` de extensão,
+`5 × 5`, `spacing 0,30`, `radius 0,28`), mas as partículas continuam a aproximar-se mais que o diâmetro:
+o par mais próximo DESCE (`0,3000 → 0,2890`), e à SAÍDA do colisor o pior par NÃO vizinho chega a
+`0,21` contra `0,56`.
+
+### Porque só agora
+O arnês avançava o tique ANTES de cozer e corria o colisor DUAS vezes por tique (um passo e um
+re-cozimento com `dt = 0`); ali o par mais próximo SUBIA (`0,3448`) e o gate *«o raio afasta o par mais
+próximo»* passava sobre um programa que o app não corre ([doc 123 §4](123_ciclo_14_os_oito_abertos.md)).
+
+### Mecanismo (medido)
+O colisor empurra TODOS os pares a menos de `2·radius`, os vizinhos de malha incluídos — e esses as
+molas seguram a `spacing < 2·radius` de propósito. As `8` iterações do colisor não convergem contra
+`25` partículas em que cada uma tem vizinhos sobrepostos; a pose desenhada é a do corpo depois de
+mais um passo de molas.
+
+### Estado
+⏳ **Aberto.** O gate passou a medir a lei que vale no produto (a extensão, `+20 %`); a distância
+mínima não é garantida, nem nunca foi. A cura de padrão-ouro é o colisor ignorar os pares ligados
+por restrição (o que os solvers de partículas com restrições fazem), e isso é um desenho do
+`motion.collide`, fora do âmbito do ciclo 14.

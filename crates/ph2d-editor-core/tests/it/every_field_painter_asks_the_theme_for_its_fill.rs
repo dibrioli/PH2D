@@ -103,12 +103,6 @@ const AINDA_O_CARTAO: &[&str] = &[
     // ⛔ A escada CLÁSSICA vive dentro da porta — é o valor que ela devolve quando o tema traça
     //    moldura de repouso, e ali `0/255` lê-se pela borda.
     "crates/ph2d-editor-core/src/widget/text_input/mod.rs",
-    // ⏳ **NOMEADO, e não é o mesmo caso:** o miolo do menu radial flutua sobre o CANVAS, e o
-    //    `Bg1` responde *também* a «de que cor é o canvas» (o doc do `derive::Roles::panel`
-    //    escreve-o). A porta afunda um degrau abaixo da pilha PAINEL/CARTÃO, que não é a
-    //    superfície debaixo deste. ⛔ Converter às cegas trocaria um defeito por outro — quem lhe
-    //    tocar mede primeiro contra o que está por baixo DELE.
-    "crates/ph2d-editor-core/src/widget/radial_menu.rs",
 ];
 
 /// ⭐⭐⭐ **Nenhum pintor de controlo enche com o token da superfície em que o controlo assenta.**

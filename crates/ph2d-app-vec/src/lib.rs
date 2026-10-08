@@ -153,7 +153,7 @@ pub mod vec_gizmo_view;
 pub mod vec_selection;
 pub mod vector_bridge;
 pub mod vector_mode;
-/// A cena 10 do modo (F4): a roda e a paleta que ensina.
+/// A cena 10 do modo (F4): a paleta que ensina.
 mod vector_mode_reach;
 pub mod widget_drive;
 pub mod widget_edit;

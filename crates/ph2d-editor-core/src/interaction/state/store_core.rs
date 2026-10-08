@@ -79,7 +79,6 @@ impl WidgetStore {
             input_map_captured: None,
             onion_modal: None,
             command_palette: None,
-            radial: None,
             command_pick: None,
             command_palette_query: String::new(),
             command_palette_toggled: false,

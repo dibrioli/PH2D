@@ -132,23 +132,6 @@ impl App {
             // para os modificadores, então hoje `Ctrl+K` insere um keyframe por acidente — nada o
             // documenta, e a tecla documentada é o `K` nu. Um arm guardado colocado ACIMA vence
             // (o `match` do Rust é ordenado), e o `K` nu fica exactamente como estava.
-            // ⭐ **O PIE MENU** (estudo de UI viva, E4): segurar `P` abre as ferramentas em OITO
-            // direcções sob o cursor; soltar escolhe.
-            //
-            // ⚠️ **`P` foi MEDIDO, não escolhido.** O botão do meio é o pan da câmara (o idioma do
-            // Blender, deliberado) e das 26 letras só **nove** estão livres sem modificador
-            // (H I J M N P U V Y) — o `Q` do Blender está tomado. `P` é *pie menu*, o nome real do
-            // widget, e sobrevive como mnemónica.
-            //
-            // ⚠️ Sobre o grafo do Motion o `P` é dele: aquele router já devolveu antes deste
-            // `match`, e esta lei não o alcança.
-            // ⚠️ Com o vetor na mão o `P` é a Caneta e a roda é o `J` — na cadeia DELE (D10.1).
-            KeyCode::KeyP if !cmd_chord => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
-                    let center = [self.last_pointer.0, self.last_pointer.1];
-                    crate::radial_input::open(hero, center, &mut gfx.toasts);
-                }
-            }
             KeyCode::KeyK if cmd_chord => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     crate::global_palette_input::open_global_palette(hero);

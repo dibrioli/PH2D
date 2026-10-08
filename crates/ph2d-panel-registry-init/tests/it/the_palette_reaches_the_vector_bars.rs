@@ -1,20 +1,15 @@
-//! ⭐⭐ **A paleta e o radial alcançam as barras do vetor** (D10, F4 — 08/10).
+//! ⭐⭐ **A paleta alcança as barras do vetor** (D10, F4 — 08/10).
 //!
 //! Com todos os painéis registados e as barras REAIS do vetor publicadas: todo comando que a paleta
 //! oferece das barras, escolhido, chega à porta do painel (ou abre o seletor, se é amostra) E pisca
-//! numa porta PINTADA neste quadro; e toda ferramenta da coluna ① está no radial, a dois gestos, e
-//! escolhê-la chega ao painel pelo mesmo router.
+//! numa porta PINTADA neste quadro.
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::screens::hero::float_bar::flash;
 use ph2d_editor_core::screens::hero::global_palette::{self, global_palette_bars};
-use ph2d_editor_core::screens::hero::radial;
 use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_editor_core::widget::{
-    radial_fan_center, radial_fan_offset, radial_item_offset, radial_outward,
-};
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{HeroScreen, NodeId};
 use ph2d_tool_vector::{DrawMode, VectorStyleSnapshot};
@@ -149,58 +144,4 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
         "só {medidos} comandos medidos — a paleta não viu as barras"
     );
     assert!(campos > 0, "o controlo: nenhuma fila tinha campo numérico");
-}
-
-/// ⭐⭐ **As 17 ferramentas da ① estão no radial, a dois gestos, e escolhê-las chega ao painel.**
-#[test]
-fn every_column_tool_is_two_strokes_away_in_the_radial() {
-    let _ = ph2d_panel_registry_init::register_all_panels();
-    let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    let mut hero = com_barras(DrawMode::Select, &mut ts);
-    let model = radial::build_radial_model(&hero);
-    assert_eq!(
-        model.last().map(|i| i.id),
-        Some(radial::RADIAL_MORE),
-        "a porta para a paleta não é o último sector"
-    );
-    let n = model.len();
-    let c = [700.0_f32, 500.0];
-    for (_, id, _, _, key) in ph2d_panel_vector::bars::TOOLS {
-        let (i, j) = model
-            .iter()
-            .enumerate()
-            .find_map(|(i, it)| {
-                if it.id == id {
-                    Some((i, None))
-                } else {
-                    it.children
-                        .iter()
-                        .position(|ch| ch.id == id)
-                        .map(|j| (i, Some(j)))
-                }
-            })
-            .unwrap_or_else(|| panic!("«{key}» não está no radial"));
-        assert!(hero.store.open_radial(c, model.clone()));
-        let o = radial_item_offset(i, n);
-        let mut p = [c[0] + o[0], c[1] + o[1]];
-        hero.store.radial_point(p);
-        if let Some(j) = j {
-            let open = hero.store.radial().cloned().expect("aberto");
-            let fc = radial_fan_center(&open, i);
-            let k = model[i].children.len();
-            let f = radial_fan_offset(j, k, radial_outward(i, n));
-            p = [fc[0] + f[0], fc[1] + f[1]];
-            hero.store.radial_point(p);
-        }
-        let item = hero.store.close_radial().expect("a soltura não escolheu");
-        assert_eq!(item.id, id, "«{key}»: a soltura escolheu outro");
-        let _ = hero.bus.drain().count();
-        global_palette::route_global_pick(&mut hero, item.id);
-        assert!(
-            hero.bus.drain().any(
-                |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(x)) if x == id)
-            ),
-            "«{key}» escolhido no radial não chegou ao painel"
-        );
-    }
 }

@@ -129,7 +129,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.input_handlers.colliders_hidden_b" => "Colliders hidden (B)",
         "shell.input_handlers.colliders_shown_b" => "Colliders shown (B)",
         "shell.input_handlers.theme" => "Theme · {id}",
-        "shell.input_handlers.no_tools_to_show_here" => "No tools to show here (P)",
         "shell.input_handlers.zen_mode_off_zones" => "Zen mode OFF (zones restored)",
         "shell.input_handlers.zen_mode_on_zones" => "Zen mode ON (zones collapsed)",
         // ⭐⭐⭐ **AS TRÊS RECUSAS DOS VERBOS DO OSSO** (2026-09-18) — elas vão para a TELA (a fila

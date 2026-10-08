@@ -381,8 +381,6 @@ mod fase_transform_ops;
 /// ⭐⭐⭐ **OS TWEENS** (suplente #22) — fase-filha da `fase_signal_outbox`, como a tabela e a
 /// fábrica, e pela mesma razão: um `Start Timer` publicado neste quadro tem de mexer NESTE quadro.
 mod fase_tweens;
-/// Fase do quadro: a poeira de impacto (as faíscas por cima do chrome).
-mod fase_ui_burst_paint;
 /// Fase do quadro: a transicao do hospedeiro.
 mod fase_ui_host_transition;
 /// Fase do quadro: a previa dos estados e mover com todos os estados.
@@ -559,8 +557,6 @@ impl crate::App {
         } else {
             self.fase_legacy_chrome(viewport);
         }
-
-        self.fase_ui_burst_paint();
 
         // Paint + present + title — extracted to `present.rs` sibling
         // method (Wave 3.2 stage A). Re-acquires self.gfx + self.host

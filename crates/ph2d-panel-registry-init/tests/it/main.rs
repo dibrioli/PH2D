@@ -37,7 +37,7 @@ mod the_area_hands_its_commands_to_the_bar_and_the_app_menu;
 mod the_mode_selector_answers_a_real_click;
 mod the_name_of_a_panel_has_one_source;
 #[cfg(feature = "panel-vector")]
-mod the_palette_and_the_radial_reach_the_vector_bars;
+mod the_palette_reaches_the_vector_bars;
 mod the_properties_fold_into_an_icon_strip_on_small_tablets;
 mod the_tab_and_the_menu_call_a_panel_the_same_thing;
 mod the_tool_bar_never_grows_and_the_rest_is_behind_the_dots;

@@ -235,7 +235,6 @@ mod the_tokens_panel_is_reachable_and_persisted;
 mod the_tree_settles_before_the_capture;
 mod the_trim_tool_owns_its_gesture;
 mod the_two_halves_read_the_glyph_through_one_door;
-mod the_ui_burst_is_wired;
 mod the_ui_motion_smoke_does_not_arm_the_character;
 mod the_ui_preference_survives_the_session;
 mod the_ui_state_machines_run_and_undo_waits;

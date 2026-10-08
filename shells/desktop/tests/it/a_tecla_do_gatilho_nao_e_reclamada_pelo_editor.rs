@@ -72,8 +72,8 @@ fn a_tecla_do_gatilho_nao_e_reclamada_pelo_editor() {
         "controlo: o `P` é o Probe do grafo — se ele sumiu, esta varredura mede outro ficheiro"
     );
     assert!(
-        HANDLERS.contains("KeyCode::KeyP"),
-        "controlo: o `P` é o menu radial do canvas — idem"
+        HANDLERS.contains("KeyCode::KeyM =>"),
+        "controlo: o `M` é o tema do canvas (o `P` do menu radial saiu a 08/10) — idem"
     );
 }
 
@@ -102,9 +102,11 @@ fn a_tecla_do_veneno_nao_e_reclamada_pelo_editor() {
         !HANDLERS.contains(&format!("KeyCode::Key{letra}")),
         "o `{letra}` passou a ser um atalho do canvas — idem"
     );
+    // ⚠️ O controlo era o `P` nos dois; desde 08/10 o menu de roda saiu (ordem do dono) e o `P`
+    // deixou o canvas — o controlo do canvas passa a ser o `M` (o tema).
     assert!(
-        DISPATCH.contains("KEY_KEY_P") && HANDLERS.contains("KeyCode::KeyP"),
-        "controlo: o `P` deixou de ser reclamado — esta varredura mede outro ficheiro"
+        DISPATCH.contains("KEY_KEY_P") && HANDLERS.contains("KeyCode::KeyM =>"),
+        "controlo: o `P` (grafo) ou o `M` (canvas) deixou de ser reclamado — esta varredura mede outro ficheiro"
     );
 }
 

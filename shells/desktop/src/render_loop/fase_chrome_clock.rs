@@ -48,11 +48,6 @@ impl crate::App {
         let ui_dt = ph2d_app_host::modal::chrome_dt(wall_dt, ph2d_app_host::modal::take_stall());
 
         zen.tick();
-        // ⚠️ **A poeira anda no relógio do CHROME** (`ui_dt`), e não no do quadro: um diálogo modal
-        // congela o laço, e uma faísca não pode envelhecer enquanto nada é desenhado — a mesma lei
-        // que o `ph2d_app_host::modal` já impõe aos toasts.
-        #[allow(clippy::cast_possible_truncation)]
-        self.ui_burst.tick(ui_dt as f32);
         // ⚠️ **A UI VIVA anda aqui, com o MESMO relógio dos toasts** — um segundo `Instant::now()`
         // para o chrome seria a segunda resposta a *"quanto durou o último quadro?"*, e a que o
         // artista vê seria a errada. O `ui_dt` **não** é esse segundo relógio: é o `wall_dt` com a

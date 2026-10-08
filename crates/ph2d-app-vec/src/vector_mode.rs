@@ -350,8 +350,8 @@ impl ModeFamily for Family<'_> {
 /// uma elipse, as DUAS seleccionadas, e a Caneta escolhida pelo MESMO clique que o botão dela na
 /// coluna ① dá — a foto mostra a coluna com a caneta acesa, a fila com as opções dela, a barra de
 /// ações por cima das duas formas e a dica da caneta no rodapé. Corre uma vez.
-/// `PH2D_OBJECT_MODE_SMOKE=10` (F4, 08/10): a 9, e depois a RODA com o leque de Draw aberto e a
-/// PALETA a fazer piscar o pulldown Snap — ver [`crate::vector_mode_reach`].
+/// `PH2D_OBJECT_MODE_SMOKE=10` (F4, 08/10): a 9, e depois a PALETA a fazer piscar o pulldown Snap —
+/// ver [`crate::vector_mode_reach`].
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -460,8 +460,8 @@ pub fn smoke_step(
                 9
             });
         }
-        // A cena 10 (F4): a roda e a paleta que ensina — `vector_mode_reach`.
-        s @ 30..=32 => {
+        // A cena 10 (F4): a paleta que ensina — `vector_mode_reach`.
+        s @ (30 | 32) => {
             if let Some(next) = crate::vector_mode_reach::step(s, hero) {
                 go(next);
             }

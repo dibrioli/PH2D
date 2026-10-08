@@ -42,31 +42,16 @@ pub enum BarFamily {
     Carve,
     /// O traço vivo (largura, mistura).
     Stroke,
-    /// A cor da ferramenta (amostras, trocar, repor).
-    Colour,
 }
 
 impl BarFamily {
-    /// O NOME da família — o sector do radial que a agrupa (F4). A chave; o pintor traduz.
-    #[must_use]
-    pub const fn name_key(self) -> &'static str {
-        match self {
-            Self::Neutral => "chrome.bars.family.select",
-            Self::Draw => "chrome.bars.family.draw",
-            Self::Build => "chrome.bars.family.build",
-            Self::Carve => "chrome.bars.family.carve",
-            Self::Stroke => "chrome.bars.family.stroke",
-            Self::Colour => "chrome.bars.family.colour",
-        }
-    }
-
     /// O matiz da família. ⚠️ São as cores CATEGÓRICAS da casa (as das categorias de nós) — a paleta
     /// que já foi calibrada para se distinguir em todo tema; uma quinta paleta seria um token novo
     /// sem calibração.
     #[must_use]
     pub const fn tint(self) -> ColorToken {
         match self {
-            Self::Neutral | Self::Colour => ColorToken::Text2,
+            Self::Neutral => ColorToken::Text2,
             Self::Draw => ColorToken::NodeCatSource,
             Self::Build => ColorToken::NodeCatTransform,
             Self::Carve => ColorToken::NodeCatFx,

@@ -237,7 +237,7 @@ fn column(snap: &VectorStyleSnapshot, focus_stroke: bool) -> Vec<Vec<BarButton>>
         },
         label: named(key, None),
         on,
-        family: BarFamily::Colour,
+        family: BarFamily::Neutral,
     };
     let chord = |l| {
         Some(tool_keys::Chord {
@@ -266,7 +266,7 @@ fn column(snap: &VectorStyleSnapshot, focus_stroke: bool) -> Vec<Vec<BarButton>>
             IconId::ChevronDown,
             named("panel.vector.bar.focus", chord('x')),
             false,
-            BarFamily::Colour,
+            BarFamily::Neutral,
         ),
         button(
             ids::VECTOR_COLOUR_SWAP,
@@ -280,14 +280,14 @@ fn column(snap: &VectorStyleSnapshot, focus_stroke: bool) -> Vec<Vec<BarButton>>
                 }),
             ),
             false,
-            BarFamily::Colour,
+            BarFamily::Neutral,
         ),
         button(
             ids::VECTOR_COLOUR_DEFAULT,
             IconId::Reset,
             named("panel.vector.bar.default", chord('d')),
             false,
-            BarFamily::Colour,
+            BarFamily::Neutral,
         ),
     ]);
     groups

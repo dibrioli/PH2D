@@ -376,7 +376,6 @@ mod project_texture_pattern;
 /// **A tabela de COR autorada viaja no arquivo** (plano UI/UX W6) — irmão de `project`
 /// pelo teto de LOC, cortado por assunto.
 mod project_tokens;
-mod radial_input;
 mod render_loop;
 /// ⭐⭐⭐ **A janela em que a CENA vive** — a porta única de todo mapeamento mundo↔tela do chrome.
 /// ⛔ A lei está escrita desde 07/25 e foi paga TRÊS vezes curando um consumidor de cada vez.
@@ -453,8 +452,6 @@ mod tokens_smoke;
 mod trim_smoke;
 /// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
 mod twist_smoke;
-/// A metade do CHROME da poeira de impacto — a lei vive na `ph2d-editor-core`.
-mod ui_burst_paint;
 /// ⭐ O smoke da UI VIVA (`PH2D_UI_MOTION_SMOKE`) — o carácter e a corda.
 /// A cena de smoke da **HIERARQUIA** de estados (`PH2D_BUILD_SMOKE=64`) — irmã de `build_smoke`.
 mod ui_nested_smoke;
@@ -734,7 +731,6 @@ impl App {
             prefab_cancel: None,
             prefab_cancel_pending: false,
             pending_ui_sound: None,
-            ui_burst: ph2d_editor_core::motion_burst::BurstField::default(),
             hover_outline: Vec::new(),
             dragging: None,
             title_dirty: true,

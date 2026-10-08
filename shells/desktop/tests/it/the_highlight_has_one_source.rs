@@ -216,7 +216,7 @@ fn the_ui_sound_never_follows_the_pointer() {
 
 /// ⛔ **OS SÍTIOS QUE ARMAM UM SOM SÃO ESTES, e nenhum outro.**
 ///
-/// ⚠️ A lista é a feature: cada entrada é uma coisa que **a mão fez** (uma escolha no pie menu, uma
+/// ⚠️ A lista é a feature: cada entrada é uma coisa que **a mão fez** (uma
 /// consolidação, um interruptor, uma recusa). Um sítio novo aqui é um ato deliberado — e um som que
 /// nasça noutro sítio, sem passar por esta lista, é a forma exacta de o app começar a comentar o
 /// que ele próprio decidiu.
@@ -224,7 +224,6 @@ fn the_ui_sound_never_follows_the_pointer() {
 fn only_the_listed_gestures_arm_a_sound() {
     // (ficheiro, quantos armamentos ele tem, o que eles CONFIRMAM)
     const ARMED: &[(&str, usize, &str)] = &[
-        ("src/radial_input.rs", 1, "escolher no pie menu"),
         (
             // ⭐ +1 (plano 32 W8): **fazer o conjunto de estados do Morph**. É deliberado e é da
             // mesma espécie do primeiro — um COMMIT: o clique cria um objecto, reparenta as formas

@@ -245,7 +245,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.file" => "File",
         "chrome.menu.open" => "Open",
         "chrome.menu.look" => "Look",
-        "chrome.radial.more" => "More...",
         "chrome.palette.search" => "Search",
         "chrome.palette.n_items" => "{n} items",
         // ph2d-migrar-texto:end

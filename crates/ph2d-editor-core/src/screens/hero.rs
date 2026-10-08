@@ -46,8 +46,6 @@ pub mod global_palette;
 pub mod grid_layer;
 pub(crate) mod menu_row_mark;
 pub mod panel_ids;
-/// O MODELO do menu radial (E4) — a vista de OITO direcções da mesma lista da paleta.
-pub mod radial;
 pub(crate) mod text_style_rows;
 /// ⭐ A tabela `id da linha ⇄ tema` do menu de tema (as duas famílias).
 pub mod theme_menu;

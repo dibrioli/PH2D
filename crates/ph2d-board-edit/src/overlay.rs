@@ -1,0 +1,142 @@
+//! **O que se desenha por cima do quadro** — a selecção, as pegas, as guias, o texto em edição, as
+//! setas seleccionadas, os pontos de criação rápida e os rastos (no MUNDO; quem desenha converte).
+
+use std::time::Instant;
+
+use ph2d_board_model::{BoardDoc, Element, ElementId};
+use ph2d_text::TextSystem;
+
+use crate::{Editor, Frame, Guide, Metrics, Tool, gesture};
+
+/// O que se desenha por cima do quadro, no MUNDO (quem desenha converte para o ecrã).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Overlay {
+    /// O contorno fino de cada elemento seleccionado.
+    pub boxes: Vec<Frame>,
+    /// A moldura com as pegas (`None` sem selecção, ou a escrever).
+    pub frame: Option<Frame>,
+    /// O rectângulo da selecção por arrasto `[x0, y0, x1, y1]`.
+    pub marquee: Option<[f64; 4]>,
+    /// As guias do encaixe: direitas, inclinadas (os eixos de um rodado), os vãos iguais e as duas do
+    /// ângulo a rodar.
+    pub guides: Vec<Guide>,
+    /// O texto em edição: o elemento, os rectângulos da selecção e o do cursor, no espaço do
+    /// texto (origem no início do bloco, [`ph2d_board_geom::text_origin`]).
+    pub text: Option<TextOverlay>,
+    /// As setas seleccionadas: a linha (realce) e as duas pontas (pegas).
+    pub wires: Vec<Wire>,
+    /// A forma onde a ponta arrastada se vai prender (realce), e o ponto fixo, se é um.
+    pub target: Option<Target>,
+    /// Os pontos azuis de criação rápida: o meio do lado (mundo) e a direcção para fora (unitária)
+    /// — quem desenha afasta-os `Metrics::dot` px do lado, no ecrã.
+    pub dots: Vec<([f64; 2], [f64; 2])>,
+    /// A pega de ARRUMAR EM GRELHA (uma selecção de duas ou mais notas): o canto superior direito
+    /// da moldura (mundo) — quem desenha afasta-a [`grid_handle_offset`] px dele, na diagonal.
+    pub grid: Option<[f64; 2]>,
+    /// O rasto do laser: cada ponto (mundo) com a vida que lhe resta (`1` novo → `0` a sumir).
+    pub laser: Vec<([f64; 2], f64)>,
+    /// O centro do anel da borracha (mundo) — o raio é `Metrics::eraser` px de ecrã.
+    pub eraser: Option<[f64; 2]>,
+}
+
+/// Quanto a pega de arrumar em grelha se afasta (px de ecrã, nos dois eixos) do canto superior
+/// direito da moldura: fora da pega de redimensionar e ao lado da de rodar.
+#[must_use]
+pub fn grid_handle_offset(m: &Metrics) -> f64 {
+    m.handle + m.rotate_offset / 2.0
+}
+
+/// Uma seta seleccionada, como o realce a desenha.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Wire {
+    pub path: ph2d_board_route::VecPath,
+    pub ends: [[f64; 2]; 2],
+    /// Os pontos de ajuste (círculos ocos: arrastam-se; duplo-clique apaga).
+    pub points: Vec<[f64; 2]>,
+    /// O meio de cada trecho (bolinhas cheias: arrastadas, criam um ponto ali).
+    pub mids: Vec<[f64; 2]>,
+}
+
+/// A forma alvo de uma ligação em curso.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Target {
+    pub element: ElementId,
+    /// `Some` = presa a um ponto fixo (mundo); `None` = ao centro.
+    pub fixed: Option<[f64; 2]>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TextOverlay {
+    pub element: ElementId,
+    /// Onde começa o bloco de texto, em coordenadas locais da caixa do elemento.
+    pub origin: [f64; 2],
+    pub selection: Vec<[f64; 4]>,
+    pub caret: Option<[f64; 4]>,
+}
+
+
+impl Editor {
+    /// O que desenhar por cima do quadro agora.
+    pub fn overlay(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem) -> Overlay {
+        if std::mem::take(&mut self.resync) {
+            self.sync(doc, ts);
+        }
+        self.fit_pending(doc, ts);
+        self.routes.sync(doc);
+        let mid = self.label_mid(doc);
+        let text = self.editing.as_mut().and_then(|e| e.overlay(doc, ts, mid));
+        let editing = text.is_some();
+        let sel = self.selected(doc);
+        let shapes: Vec<&&Element> = sel.iter().filter(|el| el.connector().is_none()).collect();
+        Overlay {
+            boxes: if sel.len() > 1 {
+                shapes.iter().map(|el| Frame::of(el)).collect()
+            } else {
+                Vec::new()
+            },
+            wires: sel
+                .iter()
+                .filter_map(|el| self.routes.get(el.id))
+                .map(|r| Wire {
+                    path: r.path.clone(),
+                    ends: r.ends(),
+                    points: r.waypoints().to_vec(),
+                    mids: r.leg_mids.clone(),
+                })
+                .collect(),
+            target: self.gesture.as_ref().and_then(|g| g.target(doc)),
+            dots: if editing || self.gesture.is_some() {
+                Vec::new()
+            } else {
+                self.dots(doc)
+            },
+            frame: if editing { None } else { self.frame(doc) },
+            grid: if editing || self.gesture.is_some() {
+                None
+            } else {
+                self.selected_notes(doc)
+                    .and_then(|_| self.frame(doc))
+                    .map(|f| [f.center[0] + f.w / 2.0, f.center[1] - f.h / 2.0])
+            },
+            marquee: self.gesture.as_ref().and_then(gesture::Gesture::marquee),
+            guides: self
+                .gesture
+                .as_ref()
+                .map(gesture::Gesture::guides)
+                .unwrap_or_default(),
+            text,
+            laser: self.laser_trail(Instant::now()),
+            eraser: matches!(self.tool, Tool::Eraser { .. })
+                .then_some(self.cursor)
+                .flatten(),
+        }
+    }
+
+    /// Onde vive o rótulo da seta em edição (o meio da rota), se se edita uma.
+    fn label_mid(&self, doc: &BoardDoc) -> Option<[f64; 2]> {
+        let id = self.editing.as_ref()?.id;
+        doc.get(id)?.connector()?;
+        self.routes.get(id).map(|r| r.mid)
+    }
+
+}

@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-light2d-ecs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A ponte, no molde da `ph2d-skeleton-ecs`: a crate possui os componentes da luz 2D e regista-os
+# pela própria porta (`register_light2d_components`), chamada no arranque da shell.
+ph2d-ecs = { path = "../ph2d-ecs" }
+# O `Sprite` (tamanho, âncora, tint) vive aqui — é dele que a coleta tira o quad de um sprite que
+# emite ou bloqueia. Plano: `docs/Luz2D/01_plano.md` §2.3.
+ph2d-render = { path = "../ph2d-render" }
+bevy_ecs = "0.19"
+serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

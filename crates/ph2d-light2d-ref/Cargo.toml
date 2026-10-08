@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-light2d-ref"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# Só a `CenaDeLuz`: o gabarito responde a MESMA pergunta que a GPU, pela mesma porta de entrada.
+ph2d-light2d-ecs = { path = "../ph2d-light2d-ecs" }
+
+[lints]
+workspace = true

@@ -6287,6 +6287,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-light2d-ecs"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-ecs",
+ "ph2d-render",
+ "serde",
+]
+
+[[package]]
+name = "ph2d-light2d-ref"
+version = "0.0.0"
+dependencies = [
+ "ph2d-light2d-ecs",
+]
+
+[[package]]
 name = "ph2d-loc-trend"
 version = "0.0.0"
 

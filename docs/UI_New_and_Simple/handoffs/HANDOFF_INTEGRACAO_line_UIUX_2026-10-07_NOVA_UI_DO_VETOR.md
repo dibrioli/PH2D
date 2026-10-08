@@ -129,8 +129,10 @@ Ver o relatório ao dono (passos numerados). Foto: [`depois_01`](../vetor_nova_u
 
 - **F4** (radial com a ① do vetor; `Ctrl+K` que mostra onde o comando mora) e **F5** (iPad:
   modificadores na tela, QuickShape, gestos) — próxima jornada, depois do smoke.
-- Os ícones da ① em 24 px (o tamanho da barra do Quadro); se o dono os quiser maiores, é o
-  `float_bar::button_px` (as duas barras mudam juntas).
+- ✅ **Ícones 50 % maiores (pedido do dono, 08/10, `f23bf3f9a`)**: a cara dos botões do vetor (①, ④,
+  flyout) desenha `1,5×` o miolo no MESMO botão de 24 px (`float_bar::module_face_rect`,
+  `MODULE_FACE_GROWTH`); o Quadro não mudou. Gate `a_module_icon_draws_half_again_bigger_inside_the_same_button`
+  (mutação `1.0` sangra; a 1.ª redacção comparava com a própria constante e a mutação sobrevivia).
 - A **ferramenta temporária** está provada por teste (tecla com/sem auto-repetição); só o smoke do
   dono diz se o atraso de repetição do SO dele é o limiar que ele espera.
 

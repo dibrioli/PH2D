@@ -11,7 +11,7 @@
 //! obra neutra (tela branca, sem papel).
 
 use super::super::brush_settings::BrushTextureImage;
-use crate::{PaintMedia, PainterTool, WetKnobs, WetTool};
+use crate::{PaintMedia, PainterTool, WetKnobs};
 use ph2d_brush_presets::LADO_MINIATURA;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
@@ -109,8 +109,9 @@ impl PainterTool {
         }
     }
 
-    /// Põe a cena num tool novo (o do preview). O traço é sempre o do PINCEL (`WetTool::Paint`): o
-    /// preview mostra o que o pincel deposita, também quando a ferramenta molhada activa é o Smear.
+    /// Põe a cena num tool novo (o do preview). O traço é sempre o do PINCEL (`WetTool::Paint`, o de
+    /// fábrica do tool novo): a cena NÃO leva a ferramenta molhada, e por isso o preview mostra o que o
+    /// pincel deposita também quando a activa é o Smear (gate `o_preview_pinta_o_pincel_mesmo_com…`).
     fn instalar_cena(&mut self, c: &CenaDoPreview) {
         let mut brush = c.brush;
         brush.radius_px = (brush.radius_px * 2.0).clamp(DIAMETRO_MIN, DIAMETRO_MAX) * 0.5;
@@ -131,7 +132,6 @@ impl PainterTool {
         self.paint.substrate_rough = c.substrate_rough;
         let w = &mut self.paint.wetpaint;
         w.knobs = c.knobs;
-        w.tool = WetTool::Paint;
         w.paper_visual = c.paper_visual;
         w.km_mixing = c.km_mixing;
         w.km_glaze = c.km_glaze;

@@ -1,6 +1,7 @@
 //! O preview vivo: anima, mostra a obra (o papel de cor e o dente), muda com cada parâmetro, desiste.
 
 use super::*;
+use crate::WetTool;
 use ph2d_painter_brush::{TextureKind, TextureMapping};
 use ph2d_wet_paint::tuning::Knob;
 

@@ -151,7 +151,22 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     complexo — curados) · nextest das 8 crates tocadas ✓ (apanhou a secção do «On preset change», que
     elidia a 220 px ⇒ «On switch», e «Watercolor»/«User» no HR-15 ⇒ excepção declarada: são PASTAS) ·
     `check --workspace --all-targets` ✓ · `architecture_*` ✓.
-  - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
+- ✅ **Preview VIVO do pincel** (08/10, pedido do dono: *«não se atualizam em tempo real… não consideram o
+  paper»*, `b1cc63d2f`): a faixa do painel deixou de ser a miniatura do FICHEIRO e passou a ser o pincel
+  de AGORA sobre a obra de AGORA.
+  - **Cena** (`wetpaint_preset/preview.rs`): o `BrushSpec`, os knobs, as máscaras, o papel de cor do
+    documento, o papel do pincel e a imagem dele, o relevo do substrato, inclinação, grade, mistura K–M, o
+    papel visível. **Chave** = os mesmos ingredientes, imagens pela VERSÃO. **Saída** = a do ecrã
+    (`take_preview_arc`: papel de cor, vidro, luz do relevo) — o papel aparece porque é a mesma porta. A
+    miniatura dos ficheiros é o último quadro do mesmo pintor sobre a obra neutra (bytes da fábrica
+    iguais, sem regerar).
+  - **Custo medido** (`sonda_custo_da_miniatura`, `smoke`, load 2): 33–80 ms por S ⇒ **thread própria**
+    (`ph2d-preview-pincel`, só o pedido mais recente conta) e os quadros **tocados** a 33 ms (a 80 ms a
+    animação não se via). Lei: mudança isolada anima já; mudanças a menos de 180 ms (um arrasto) mostram o
+    traço FINAL ao vivo e animam uma vez ao sossegar; nunca pisca para o vazio.
+  - **Mutações 9/10 sangram**; a que sobreviveu (apagar `tool = Paint` na cena) era EQUIVALENTE — a cena
+    não leva a ferramenta molhada — e a linha saiu; o gate do Smear fica contra quem a meter na cena.
+- **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
 
 ## §5 — A próxima janela (W2)
 

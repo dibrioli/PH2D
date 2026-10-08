@@ -187,13 +187,14 @@ lê-se de uma vez: <code>Acts As: Target Velocity</code>.</div>
 não todas ao mesmo tempo.</p>
 
 <ol class="steps" start="8" style="counter-reset:s 7">
-  <li>No cartão <code>Wind</code>, <b>abra a seção <code>Gust</code></b>
-      (clique no título dela).
-      <div class="out">Seis controlos aparecem, que estavam arrumados lá dentro.</div></li>
+  <li>No cartão <code>Wind</code>, ache a seção <code>Gust</code> — o título que
+      separa os controlos da rajada dos de cima.
+      <div class="out">Ela já vem <b>aberta</b>. Clicar no título dela <b>fecha</b> a
+      gaveta e esconde os controlos de dentro; outro clique abre de novo.</div></li>
   <li>Arraste <code>Gust</code>.
       <div class="out">A chuva passa a cair torta: umas peças adiantam-se, outras
       atrasam-se.</div></li>
-  <li>Abra a seção <code>Timing</code> e arraste <code>Gust Frequency</code>.
+  <li>Logo abaixo, na seção <code>Timing</code>, arraste <code>Gust Frequency</code>.
       <div class="out">A rajada fica mais nervosa ou mais lenta.</div></li>
 </ol>
 
@@ -275,8 +276,8 @@ no cartão da forma — a rampa, o chão, a taça e a gravidade são os mesmos.<
       tracejado gira como uma roda.</div>
       <div class="bad">Se as duas fizerem a mesma coisa, pare: é o material que
       não está a chegar à bola.</div></li>
-  <li>Clique no cartão <code>Friction 1: ROLA</code> e <b>abra a seção
-      <code>Collision</code></b>. Arraste <code>Friction</code> até <b>0</b>.
+  <li>Clique no cartão <code>Friction 1: ROLA</code> e desça até a seção
+      <code>Collision</code> — ela já vem aberta. Arraste <code>Friction</code> até <b>0</b>.
       <div class="out">A bola passa a escorregar sem virar, igual à da esquerda.
       Volte a 1 e ela volta a rolar.</div></li>
   <li><b>Arraste <code>Rolling Friction</code> até perto de 0,25.</b>
@@ -312,127 +313,9 @@ velocidade de rotação para ele travar.</div>
 cartão mostra quando você larga o nó, com a faixa e a unidade de cada
 controlo.</p>
 
-<!-- GERADO pelo gerador do tutorial. Nao editar a mao. -->
-<h4 id="p-collider">Collider</h4>
-<table class="params">
-<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
-<tr><td>Shape</td><td>Plane · Disc · Bowl · Box</td><td></td></tr>
-<tr><td>Offset</td><td>-1000 a 1000</td><td>px</td></tr>
-<tr><td>Angle</td><td>-180 a 180</td><td>deg</td></tr>
-<tr><td>Radius From</td><td>Auto · Fixed · Sprite Size</td><td></td></tr>
-<tr><td>Bounce</td><td>0 a 1</td><td></td></tr>
-<tr><td>Friction</td><td>0 a 1</td><td></td></tr>
-<tr><td>Restitution Randomness</td><td>0 a 1</td><td></td></tr>
-</table>
-<p class="soft">Só noutro modo: <b>Center X</b> aparece quando <b>Shape</b> é Disc ou Bowl ou Box · <b>Center Y</b> aparece quando <b>Shape</b> é Disc ou Bowl ou Box · <b>Radius</b> aparece quando <b>Shape</b> é Disc ou Bowl · <b>Box Width</b> aparece quando <b>Shape</b> é Box · <b>Box Height</b> aparece quando <b>Shape</b> é Box · <b>Particle Radius</b> aparece quando <b>Radius From</b> é Fixed · <b>Size Scale</b> aparece quando <b>Radius From</b> é Sprite Size.</p>
-<h4 id="p-wind">Wind</h4>
-<table class="params">
-<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
-<tr><td>Angle</td><td>0 a 360</td><td>deg</td></tr>
-<tr><td>Strength</td><td>0 a 40</td><td></td></tr>
-<tr><td>Acts As</td><td>Force · Target Velocity</td><td></td></tr>
-<tr><td>Gust</td><td>0 a 1</td><td></td></tr>
-<tr><td>Seed</td><td>0 a 100</td><td></td></tr>
-<tr><td>Octaves</td><td>1 a 4</td><td></td></tr>
-<tr><td>Noise Type</td><td>fBm · Turbulence · Ridged</td><td></td></tr>
-<tr><td>Gust Frequency</td><td>0.1 a 5</td><td></td></tr>
-<tr><td>Loop Period</td><td>0 a 20</td><td></td></tr>
-</table>
-<p class="soft">Só noutro modo: <b>Air Resistance</b> aparece quando <b>Acts As</b> é Target Velocity.</p>
-<h4 id="p-zone">Simulation Zone</h4>
-<table class="params">
-<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
-<tr><td>Substeps</td><td>1 a 16 <span class="soft">(digitável até 64)</span></td><td></td></tr>
-<tr><td>Start</td><td>0 a 10</td><td>s</td></tr>
-<tr><td>Life Cycle</td><td>Forever · Once · Loop</td><td></td></tr>
-</table>
-<p class="soft">Só noutro modo: <b>Duration</b> aparece quando <b>Life Cycle</b> é Once ou Loop · <b>Loop Delay</b> aparece quando <b>Life Cycle</b> é Loop.</p>
-<h4 id="p-step">Simulation Step</h4>
-<table class="params">
-<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
-<tr><td>Damping</td><td>0 a 1</td><td></td></tr>
-<tr><td>Speed Limit</td><td>0 a 4000</td><td>px</td></tr>
-<tr><td>Min Speed</td><td>0 a 4000</td><td>px</td></tr>
-<tr><td>Angular Damping</td><td>0 a 1</td><td></td></tr>
-</table>
-<h4 id="p-attractor">Attractor</h4>
-<table class="params">
-<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
-<tr><td>Strength</td><td>0 a 40</td><td></td></tr>
-<tr><td>Repel</td><td>liga / desliga</td><td></td></tr>
-<tr><td>Target X</td><td>-1000 a 1000</td><td>px</td></tr>
-<tr><td>Target Y</td><td>-1000 a 1000</td><td>px</td></tr>
-<tr><td>Target</td><td>Point · Stream</td><td></td></tr>
-<tr><td>Radius</td><td>10 a 2000 <span class="soft">(digitável até 209715187.5)</span></td><td>px</td></tr>
-<tr><td>Curve</td><td>Linear · Quad · Smooth · Smoother</td><td></td></tr>
-<tr><td>Min Distance</td><td>0 a 20</td><td></td></tr>
-<tr><td>Peak Distance</td><td>0 a 20</td><td></td></tr>
-<tr><td>Reversal Distance</td><td>0 a 20</td><td></td></tr>
-</table>
-<p class="soft">Só noutro modo: <b>Predict</b> aparece quando <b>Target</b> é Stream.</p>
-<h4 id="p-vortex">Vortex</h4>
-<table class="params">
-<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
-<tr><td>Center X</td><td>-1000 a 1000</td><td>px</td></tr>
-<tr><td>Center Y</td><td>-1000 a 1000</td><td>px</td></tr>
-<tr><td>Strength</td><td>0 a 40</td><td></td></tr>
-<tr><td>Radius</td><td>10 a 2000 <span class="soft">(digitável até 209715187.5)</span></td><td>px</td></tr>
-<tr><td>Curve</td><td>Linear · Quad · Smooth · Smoother</td><td></td></tr>
-<tr><td>Acts As</td><td>Force · Target Velocity</td><td></td></tr>
-<tr><td>Clockwise</td><td>liga / desliga</td><td></td></tr>
-</table>
-<p class="soft">Só noutro modo: <b>Air Resistance</b> aparece quando <b>Acts As</b> é Target Velocity.</p>
-<h4 id="p-curl">Curl Noise</h4>
-<table class="params">
-<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
-<tr><td>Strength</td><td>0 a 40</td><td></td></tr>
-<tr><td>Scale</td><td>0.01 a 3</td><td></td></tr>
-<tr><td>Octaves</td><td>1 a 4</td><td></td></tr>
-<tr><td>Seed</td><td>0 a 100</td><td></td></tr>
-<tr><td>Noise Type</td><td>fBm · Turbulence · Ridged</td><td></td></tr>
-<tr><td>Lacunarity</td><td>1 a 4</td><td></td></tr>
-<tr><td>Roughness</td><td>0 a 1</td><td></td></tr>
-<tr><td>Offset X</td><td>-20 a 20</td><td></td></tr>
-<tr><td>Offset Y</td><td>-20 a 20</td><td></td></tr>
-<tr><td>Speed</td><td>0 a 2 <span class="soft">(digitável até 5)</span></td><td></td></tr>
-<tr><td>Loop Period</td><td>0 a 20</td><td></td></tr>
-</table>
-<h4 id="p-drag">Drag</h4>
-<table class="params">
-<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
-<tr><td>Coefficient</td><td>0 a 10 <span class="soft">(digitável até 20)</span></td><td></td></tr>
-<tr><td>Drag X</td><td>0 a 3</td><td></td></tr>
-<tr><td>Drag Y</td><td>0 a 3</td><td></td></tr>
-</table>
-<h4 id="p-buoyancy">Buoyancy</h4>
-<table class="params">
-<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
-<tr><td>Level</td><td>-1000 a 1000</td><td>px</td></tr>
-<tr><td>Density</td><td>0 a 40</td><td></td></tr>
-<tr><td>Depth</td><td>1 a 300 <span class="soft">(digitável até 26214398.438)</span></td><td>px</td></tr>
-<tr><td>Drag</td><td>0 a 20</td><td></td></tr>
-<tr><td>Wave Amplitude</td><td>0 a 200</td><td>px</td></tr>
-<tr><td>Wave Length</td><td>5 a 2000</td><td>px</td></tr>
-<tr><td>Waves</td><td>1 a 4</td><td></td></tr>
-<tr><td>Wave Speed</td><td>-5 a 5</td><td></td></tr>
-</table>
-<h4 id="p-spawn">Spawn</h4>
-<table class="params">
-<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
-<tr><td>Rate</td><td>0 a 60 <span class="soft">(digitável até 15360)</span></td><td></td></tr>
-<tr><td>Scatter</td><td>liga / desliga</td><td></td></tr>
-<tr><td>Seed</td><td>0 a 9999</td><td></td></tr>
-<tr><td>Burst</td><td>0 a 32 <span class="soft">(digitável até 256)</span></td><td></td></tr>
-<tr><td>Burst Speed</td><td>0 a 8</td><td></td></tr>
-<tr><td>Probability</td><td>0 a 1</td><td></td></tr>
-</table>
-<h4 id="p-lifetime">Lifetime</h4>
-<table class="params">
-<tr><th>controlo</th><th>faixa</th><th>unidade</th></tr>
-<tr><td>Life</td><td>0 a 20</td><td>s</td></tr>
-<tr><td>Variance</td><td>0 a 1</td><td></td></tr>
-<tr><td>Seed</td><td>0 a 9999</td><td></td></tr>
-</table>
+<div class="params">
+<!--#include ../fig/params_sim.html-->
+</div>
 
 <footer>PH2D · Motion Nodes · tutorial 5 de 9 — ciclo da
 <b>simulação</b>. Cenas de smoke <code>PH2D_GPU_COOK_DEMO=113</code> (capítulos 1 a 5)

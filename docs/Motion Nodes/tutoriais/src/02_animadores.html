@@ -78,8 +78,8 @@
 <h1>O tempo entra no grafo
   <small>PH2D · Motion Nodes · tutorial 2 — os oito nós que fazem as coisas <b>andarem</b></small></h1>
 
-<p>No tutorial 1 você pôs um milhão de objetos na tela. Eles ficaram <em>parados</em>. Este
-tutorial é sobre a pergunta seguinte: <b>o que faz isso andar, e como eu mando nele?</b></p>
+<p>No tutorial 1 você pôs mais de trinta e dois mil objetos na tela e mudou <em>onde</em> eles
+ficam. Este tutorial é sobre a pergunta seguinte: <b>o que faz isso andar, e como eu mando nele?</b></p>
 
 <p>São oito nós, e todos respondem à mesma pergunta de jeitos diferentes: uma <b>onda</b>, um
 <b>tremor</b>, um <b>campo</b>, um <b>atraso por elemento</b>, uma <b>volta</b>, uma <b>mola</b>,
@@ -108,7 +108,7 @@ o cartão azul do meio, chamado <b>Oscillator</b>, é o assunto da próxima seç
 <code>PH2D_GPU_COOK_DEMO=1</code>.</p>
 
 <h2>2 · Deixe a cena contável</h2>
-<p>Dois milhões de pontos são bonitos e não deixam ver <em>o que</em> está acontecendo com cada
+<p>Trinta e dois mil pontos são bonitos e não deixam ver <em>o que</em> está acontecendo com cada
 um. Diminua antes de estudar.</p>
 <ol class="steps">
   <li><b>Aproxime o zoom</b> com a roda do mouse sobre o grafo, até ler as letras dentro dos
@@ -207,7 +207,7 @@ seguindo a <b>ordem</b> que você escolher e a <b>curva</b> que você escolher.<
       <div class="out">A fileira agora passa pelos dois.</div>
       <div class="bad">Se o fio não pegar, solte em cima do <b>corpo</b> do cartão de destino —
       ele encaixa sozinho na primeira entrada livre.</div></li>
-  <li><b>No cartão Stagger, ponha <code>Maximum</code> em <code>150</code></b> e olhe a
+  <li><b>No cartão Stagger, ponha <code>Max</code> em <code>150</code></b> e olhe a
       fileira.
       <div class="out">Ela sobe da esquerda para a direita: cada objeto recebe um pouco mais que
       o anterior.</div></li>
@@ -331,9 +331,12 @@ mundo — vizinhos leem quase o mesmo lugar do campo, então <b>andam juntos</b>
       <code>Stagger = 0.025</code>) e ponha um <code>Delay</code> depois do Oscillator.
       <div class="out">A onda continua, mas <b>mais baixa e atrasada</b>: é a figura acima, com
       a onda de entrada em cinza atrás.</div></li>
-  <li><b>Suba <code>Ticks</code>.</b>
+  <li><b>Suba <code>Rise</code>.</b>
       <div class="out">O atraso aumenta e o movimento fica mais macio — o nó vai <b>pesando o
-      passado</b> de cada objeto.</div></li>
+      passado</b> de cada objeto.</div>
+      <div class="out">Logo abaixo está <code>Fall</code>: em <code>0</code> a descida usa o
+      mesmo atraso do <code>Rise</code>; suba-o e a descida ganha um atraso só dela — sobe
+      depressa e desce devagar, como uma luz que acende de uma vez e apaga com calma.</div></li>
   <li><b>Clique em <code>Mode</code>.</b>
       <div class="out">Três: <code>Delay</code> (repete o passado exato), <code>Average</code>
       (a média de uma janela) e <code>Blend</code>, que é o padrão e o mais barato — ele só
@@ -373,21 +376,21 @@ um terço de segundo: aí 53 dos 10 000 diferem em <b>três centésimos de milé
 </ol>
 
 <h2>9 · O que isto custa</h2>
-<p>Medido nesta máquina com <b>100 000 objetos</b>, com a cena calma. A coluna
+<p>Medido nesta máquina com <b>32 761 objetos</b> (a grade de 181 por 181, o máximo de um nó), com a cena calma. A coluna
 <i>por quadro</i> é o que o nó custa enquanto a cena roda; a coluna <i>ao mexer</i> é o que ele
 custa quando algo muda e ele precisa refazer a conta. Um quadro a 60 por segundo tem
 <b>16,67 ms</b>.</p>
 
 <table>
   <tr><th>nó</th><th>na placa de vídeo?</th><th>ao mexer</th><th>por quadro</th></tr>
-  <tr><td>Oscillator</td><td>sim</td><td class="n">0,27 ms</td><td class="n">0,26 ms</td></tr>
-  <tr><td>Stagger</td><td>sim</td><td class="n">0,78 ms</td><td class="n"><b>0,00 ms</b></td></tr>
-  <tr><td>Orbit</td><td>sim</td><td class="n">0,78 ms</td><td class="n">0,63 ms</td></tr>
-  <tr><td>Spring</td><td>sim</td><td class="n">0,89 ms</td><td class="n">1,00 ms</td></tr>
-  <tr><td>LFO + Drive</td><td>sim</td><td class="n">1,02 ms</td><td class="n">0,85 ms</td></tr>
-  <tr><td>Delay</td><td><b>não</b></td><td class="n">1,08 ms</td><td class="n">1,02 ms</td></tr>
-  <tr><td>Wiggle</td><td>sim</td><td class="n">1,55 ms</td><td class="n">1,43 ms</td></tr>
-  <tr><td>Noise</td><td>sim</td><td class="n"><b>4,47 ms</b></td><td class="n">4,22 ms</td></tr>
+  <tr><td>Oscillator</td><td>sim</td><td class="n">0,05 ms</td><td class="n">0,10 ms</td></tr>
+  <tr><td>Stagger</td><td>sim</td><td class="n">0,24 ms</td><td class="n"><b>0,00 ms</b></td></tr>
+  <tr><td>Orbit</td><td>sim</td><td class="n">0,28 ms</td><td class="n">0,22 ms</td></tr>
+  <tr><td>Spring</td><td>sim</td><td class="n">0,26 ms</td><td class="n">0,35 ms</td></tr>
+  <tr><td>LFO + Drive</td><td>sim</td><td class="n">0,26 ms</td><td class="n">0,27 ms</td></tr>
+  <tr><td>Delay</td><td><b>não</b></td><td class="n">0,44 ms</td><td class="n">0,34 ms</td></tr>
+  <tr><td>Wiggle</td><td>sim</td><td class="n">0,58 ms</td><td class="n">0,48 ms</td></tr>
+  <tr><td>Noise</td><td>sim</td><td class="n"><b>1,04 ms</b></td><td class="n">1,01 ms</td></tr>
 </table>
 
 <div class="note"><b>Por que o Stagger custa zero por quadro.</b> O que ele produz <em>não muda
@@ -434,7 +437,7 @@ existe mas só aparece depois que você troca o modo que a linha nomeia.</p>
       bem saltitante; troque para <code>Time</code> e use <code>Bounce = 0</code></td></tr>
   <tr><td><code>Duration</code> e <code>Bounce</code> não existem no cartão</td><td>o
       <code>Mode</code> está em <code>Physics</code> — eles só aparecem em <code>Time</code></td></tr>
-  <tr><td>O Delay não faz nada</td><td><code>Ticks</code> em <code>0</code> é o ponto neutro: o
+  <tr><td>O Delay não faz nada</td><td><code>Rise</code> em <code>0</code> é o ponto neutro: o
       nó fica transparente de propósito</td></tr>
   <tr><td>O <code>Seed</code> do Stagger sumiu</td><td>ele só existe com
       <code>Order = Random</code></td></tr>

@@ -121,8 +121,8 @@ segundos.</p>
 corrente de <b>posições</b> — que é tudo o que estes cartões produzem — já não vira pixel sozinha:
 ela é uma lista de <em>onde</em>, e alguém tem de dizer <em>o quê</em>. Por isso cada um dos seis
 panos acaba em dois cartões que você vai ver em todos eles: um <code>Shape</code>, que é a peça, e
-um <code>Duplicator</code>, que a carimba em cada posição. É a <b>mesma</b> dupla que o tutorial 1
-usou para pôr um milhão de cópias na tela — aqui ela aparece seis vezes porque há seis correntes.
+um <code>Duplicator</code>, que a carimba em cada posição. É a dupla que veste <b>qualquer</b>
+corrente de posições — aqui ela aparece seis vezes porque há seis correntes.
 <br><br>Onde isto se nota: a fileira do <b>meio</b> veste <b>ossos</b> e não marcas, e é por isso
 que dá para ver <em>para que lado</em> cada peça da corrente aponta.</div>
 
@@ -154,17 +154,16 @@ para fora — as peças <b>engordam</b> com a altura da onda.</p>
       <code>Height Drives</code> de <code>Size</code> para <code>Y</code>.
       <div class="out">As peças deixam de engordar e passam a <b>subir e descer</b>. É a
       <em>mesma</em> onda, escrita noutro sítio. Volte a <code>Size</code> depois de ver.</div></li>
-  <li><b>Ainda no <code>Wave</code>, escreva nesta ordem</b>: <code>512</code> na linha
-      <code>Rows</code>, <code>512</code> em <code>Cols</code>, e <code>0.004</code> em
+  <li><b>Ainda no <code>Wave</code>, escreva nesta ordem</b>: <code>181</code> na linha
+      <code>Rows</code>, <code>181</code> em <code>Cols</code>, e <code>0.011</code> em
       <code>Spacing</code>.
-      <div class="out">O pano enche-se de <b>meio milhão</b> de células e a onda continua a correr
-      sem o programa engasgar.</div></li>
+      <div class="out">O pano enche-se de <b>32 761</b> células — o máximo de um nó — e a onda
+      continua a correr sem o programa engasgar.</div></li>
 </ol>
 
-<div class="note"><b>Até esta volta de trabalho aquele campo parava em 60 de cada lado.</b> O
-número não era de nenhum recurso — era um palpite. Medido, ele custa <b>0,06 %</b> de um quadro no
-tamanho antigo e <b>6 %</b> a 512×512. O irmão dele, o corpo mole, já permitia 512 e é
-<em>mais</em> caro: o cartão mais barato tinha o limite mais apertado.</div>
+<div class="note"><b>Aquele campo já parou em 60 de cada lado.</b> O número não era de nenhum
+recurso — era um palpite. Medido, ele custa <b>0,06 %</b> de um quadro no tamanho antigo e
+<b>0,6 %</b> a 181×181, o máximo que um nó faz hoje.</div>
 
 <h2>3 · No meio: quem segura</h2>
 
@@ -300,12 +299,12 @@ só têm caminho no processador. Isso não é um defeito escondido — é uma co
       <td class="n">0,055&nbsp;ms</td><td class="n">0,3&nbsp;%</td></tr>
   <tr><td><code>Wave</code></td><td>60×60 (o limite antigo)</td>
       <td class="n">0,010&nbsp;ms</td><td class="n">0,06&nbsp;%</td></tr>
-  <tr><td><code>Wave</code></td><td>512×512 (o limite de hoje)</td>
-      <td class="n">1,32&nbsp;ms</td><td class="n">7,9&nbsp;%</td></tr>
+  <tr><td><code>Wave</code></td><td>181×181 (o limite de hoje)</td>
+      <td class="n">0,095&nbsp;ms</td><td class="n">0,6&nbsp;%</td></tr>
   <tr><td><code>Soft Body</code></td><td>512×512</td>
       <td class="n">2,26&nbsp;ms</td><td class="n">13,6&nbsp;%</td></tr>
   <tr><td><code>Boids</code></td><td>3 600 no processador</td>
-      <td class="n"><b>13,77&nbsp;ms</b></td><td class="n"><b>82,6&nbsp;%</b></td></tr>
+      <td class="n"><b>10,87&nbsp;ms</b></td><td class="n"><b>65,2&nbsp;%</b></td></tr>
 </table>
 
 <div class="note"><b>A última linha é a que interessa, e é uma boa notícia.</b> O

@@ -269,13 +269,10 @@ muda — e foi o que esta volta de trabalho corrigiu.</p>
   <tr><td>voltar a ler a tabela</td><td class="n">6,05&nbsp;ms</td><td class="n">0,01&nbsp;ms</td></tr>
   <tr><td>preparar e enviar para a placa</td><td class="n">3,57&nbsp;ms</td><td class="n">1,61&nbsp;ms</td></tr>
   <tr><td><b>o quadro inteiro</b></td><td class="n"><b>9,62&nbsp;ms</b></td><td class="n"><b>1,62&nbsp;ms</b></td></tr>
-  <tr><td>a mesma quantidade de peças feita por um <code>Grid</code></td>
-      <td class="n">1,36&nbsp;ms</td><td class="n">1,41&nbsp;ms</td></tr>
 </table>
 
-<div class="note"><b>Um milhão de linhas de um ficheiro custa hoje o mesmo que um milhão de
-peças de uma grelha</b> — e um quadro tem 16,7 milésimos de segundo. Antes, a mesma tabela era
-sete vezes mais cara só por estar lá: o programa relia-a e reenviava-a a cada quadro, mesmo
+<div class="note"><b>Um milhão de linhas de um ficheiro custa hoje 1,6 milésimos de segundo por
+quadro</b> — e um quadro tem 16,7. Antes, a mesma tabela era seis vezes mais cara só por estar lá: o programa relia-a e reenviava-a a cada quadro, mesmo
 parada. Agora o preço é pago <b>quando alguma coisa muda</b>, e não por quadro.</div>
 
 <h2>8 · Se algo não bater</h2>

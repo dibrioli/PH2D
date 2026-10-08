@@ -180,9 +180,10 @@ própria nos sítios onde esteve, cada vez mais pequenas e mais apagadas.</p>
 </ol>
 
 <div class="note"><b>A cauda é feita de cópias, e as cópias contam.</b> 36 peças com 12
-gerações são 432 quadrados a desenhar. Com muitas peças a cauda <b>encurta sozinha</b> para
-caber na placa. O limite são dois milhões de cópias por quadro: com a cauda mais longa que o
-<code>Length</code> deixa, isso chega para cerca de sessenta e cinco mil peças.</div>
+gerações são 432 quadrados a desenhar. O limite são dois milhões de cópias por quadro: com a
+cauda mais longa que o <code>Length</code> deixa, isso chega para cerca de sessenta e cinco mil
+peças — o dobro do que um nó faz. Só se você juntar panos de vários nós e passar disso é que a
+cauda <b>encurta sozinha</b> para caber na placa.</div>
 
 <h2>4 · Em baixo: o tempo</h2>
 
@@ -279,27 +280,27 @@ Output»</em>.</div>
 
 <h2>7 · O que isto custa</h2>
 
-<p>Medido com <b>102 400 peças</b> (um pano de 320 por 320), com o computador calmo. «Linhas» é quanto a placa desenha: os cartões que fazem cópias multiplicam-nas.</p>
+<p>Medido com <b>32 761 peças</b> (um pano de 181 por 181, o máximo que um <code>Grid</code> faz). A placa e o processador correram alternados, quadro a quadro, e cada número é o mais rápido de 31 quadros. «Linhas» é quanto a placa desenha: os cartões que fazem cópias multiplicam-nas.</p>
 
 <table>
   <tr><th>cartão</th><th>linhas desenhadas</th><th class="n">placa</th><th class="n">processador</th></tr>
-  <tr><td><code>Tint</code></td><td class="n">102 400</td><td class="n">0,20&nbsp;ms</td><td class="n">1,77&nbsp;ms</td></tr>
-  <tr><td><code>Color Ramp</code></td><td class="n">102 400</td><td class="n">0,22&nbsp;ms</td><td class="n">2,84&nbsp;ms</td></tr>
-  <tr><td><code>Color Array</code></td><td class="n">102 400</td><td class="n">0,20&nbsp;ms</td><td class="n">1,90&nbsp;ms</td></tr>
-  <tr><td><code>Sub UV</code></td><td class="n">102 400</td><td class="n">0,21&nbsp;ms</td><td class="n">1,42&nbsp;ms</td></tr>
-  <tr><td><code>Strobe</code></td><td class="n">102 400</td><td class="n">0,22&nbsp;ms</td><td class="n">1,97&nbsp;ms</td></tr>
-  <tr><td><code>Slit Scan</code></td><td class="n">102 400</td><td class="n">0,43&nbsp;ms</td><td class="n">4,32&nbsp;ms</td></tr>
-  <tr><td><code>RGB Split</code> — a peça e duas franjas</td><td class="n">307 200</td><td class="n">1,09&nbsp;ms</td><td class="n">2,47&nbsp;ms</td></tr>
-  <tr><td><code>Trail</code> — a peça e oito cópias</td><td class="n">921 600</td><td class="n">2,35&nbsp;ms</td><td class="n">23,21&nbsp;ms</td></tr>
-  <tr><td><code>Drop Shadow</code> — a sombra macia são dezasseis cópias</td><td class="n">1 740 800</td><td class="n">3,05&nbsp;ms</td><td class="n">21,82&nbsp;ms</td></tr>
-  <tr><td><code>Glow</code> — o cartão só passa as peças; o brilho é desenhado depois, na imagem inteira</td><td class="n">102 400</td><td class="n">0,19&nbsp;ms</td><td class="n">0,34&nbsp;ms</td></tr>
+  <tr><td><code>Tint</code></td><td class="n">32 761</td><td class="n">0,12&nbsp;ms</td><td class="n">0,46&nbsp;ms</td></tr>
+  <tr><td><code>Color Ramp</code></td><td class="n">32 761</td><td class="n">0,12&nbsp;ms</td><td class="n">0,78&nbsp;ms</td></tr>
+  <tr><td><code>Color Array</code></td><td class="n">32 761</td><td class="n">0,11&nbsp;ms</td><td class="n">0,46&nbsp;ms</td></tr>
+  <tr><td><code>Sub UV</code></td><td class="n">32 761</td><td class="n">0,13&nbsp;ms</td><td class="n">0,31&nbsp;ms</td></tr>
+  <tr><td><code>Strobe</code></td><td class="n">32 761</td><td class="n">0,15&nbsp;ms</td><td class="n">0,34&nbsp;ms</td></tr>
+  <tr><td><code>Slit Scan</code></td><td class="n">32 761</td><td class="n">0,18&nbsp;ms</td><td class="n">0,57&nbsp;ms</td></tr>
+  <tr><td><code>RGB Split</code> — a peça e duas franjas</td><td class="n">98 283</td><td class="n">0,26&nbsp;ms</td><td class="n">0,61&nbsp;ms</td></tr>
+  <tr><td><code>Trail</code> — a peça e oito cópias</td><td class="n">294 849</td><td class="n">1,20&nbsp;ms</td><td class="n">5,70&nbsp;ms</td></tr>
+  <tr><td><code>Drop Shadow</code> — a sombra macia são dezasseis cópias</td><td class="n">556 937</td><td class="n">1,09&nbsp;ms</td><td class="n">6,47&nbsp;ms</td></tr>
+  <tr><td><code>Glow</code> — o cartão só passa as peças; o brilho é desenhado depois, na imagem inteira</td><td class="n">32 761</td><td class="n">0,10&nbsp;ms</td><td class="n">0,09&nbsp;ms</td></tr>
 </table>
 
-<div class="note"><b>Um quadro tem 16,7 milésimos de segundo.</b> Com cem mil peças, cada
-um destes cartões cabe várias vezes num quadro — e o processador, que faz a mesma conta como
-referência, é entre duas e treze vezes mais lento. Com <b>um milhão</b> de peças os dez continuam
-abaixo de 6 milésimos na placa — com a sombra macia e a cauda cortadas pelo limite de
-cópias, que é o que as mantém ali. <b>O <code>Slit Scan</code> era o mais caro dos dez:</b> com um milhão de peças ocupava um quadro inteiro sozinho (16 milésimos). Foi corrigido nesta volta e hoje custa 3,5.</div>
+<div class="note"><b>Um quadro tem 16,7 milésimos de segundo.</b> Com o pano mais cheio que um
+nó faz, cada um destes cartões cabe muitas vezes num quadro — mesmo a sombra macia, que desenha
+mais de meio milhão de linhas, fica perto de um milésimo na placa. O processador, que faz a mesma
+conta como referência, é até seis vezes mais lento; no <code>Glow</code> os dois empatam, porque
+o cartão só passa as peças e o brilho é desenhado depois.</div>
 
 <h2>8 · Se algo não bater</h2>
 

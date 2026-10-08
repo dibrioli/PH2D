@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>PH2D · Do primeiro objeto ao milhão</title>
+<title>PH2D · Do primeiro objeto ao máximo de um nó</title>
 <style>
   @page { size: A4; margin: 16mm 15mm; }
   :root {
@@ -67,13 +67,13 @@
            color:var(--t3); font-size:11px; }
 </style>
 
-<h1>Do primeiro objeto ao milhão
+<h1>Do primeiro objeto ao máximo de um nó
   <small>PH2D · Motion Nodes · tutorial 1 — os nós que <b>arranjam</b> as coisas na tela</small></h1>
 
 <p>Um grafo de Motion é uma linha de montagem: um nó <b>faz</b> os objetos, os do meio
 <b>mexem</b> neles, e o último <b>mostra</b>. Este tutorial é sobre o primeiro — os dez nós que
-decidem <em>onde as coisas ficam</em>. No fim você vai ter dois milhões de objetos se mexendo a
-60 quadros por segundo.</p>
+decidem <em>onde as coisas ficam</em>. No fim você vai ter mais de trinta e dois mil objetos se
+mexendo a 60 quadros por segundo — o máximo que um nó faz.</p>
 
 <div class="figs">
   <figure class="fig"><img src="../fig/grid.svg" alt="grade"><b>Grid</b>
@@ -92,15 +92,16 @@ cozinhada pelo mesmo motor que roda no app e gravada em seguida. Se um nó mudar
 segundos.</p>
 <div class="cmd">cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value &amp;&amp; env PH2D_GPU_COOK_DEMO=1 cargo run -p ph2d-host-desktop --release</div>
 <p class="out">Abre uma tela escura com uma <b>massa de pontos ondulando</b>. São
-<b>2 000 000</b> de objetos — 1250 linhas por 1600 colunas.</p>
+<b>32 761</b> objetos — 181 linhas por 181 colunas, o máximo que um Grid faz.</p>
 <p class="bad">Se a janela abrir vazia, o número da cena está errado: confira que você copiou
 <code>PH2D_GPU_COOK_DEMO=1</code>.</p>
 
 <h2>2 · O grafo, e o cartão de um nó</h2>
 <ol class="steps">
   <li><b>Olhe o painel do grafo</b> (a área com os cartões ligados por fios).
-      <div class="out">Três cartões: <b>Grid</b> (verde, faz os objetos), <b>Oscillator</b>
-      (azul, faz ondular) e <b>Output</b> (vermelho, mostra).</div></li>
+      <div class="out">Quatro cartões: <b>Grid</b> (verde, faz os objetos), <b>Oscillator</b>
+      (azul, faz ondular), <b>Move</b> (empurra tudo para o lado — aqui está em zero, parado) e
+      <b>Output</b> (vermelho, mostra).</div></li>
   <li><b>Aproxime o zoom</b> com a roda do mouse sobre o grafo, até conseguir ler as letras
       dentro dos cartões.
       <div class="out">Dentro de cada cartão aparecem os <b>controles</b>: um nome à esquerda,
@@ -113,11 +114,10 @@ segundos.</p>
   <div class="card-demo">
     <div class="h" style="background:var(--src)">Grid</div>
     <div class="rows">
-      <div class="r"><i style="width:64%"></i><span class="l">Rows</span><span class="n">1250</span></div>
-      <div class="r"><i style="width:80%"></i><span class="l">Columns</span><span class="n">1600</span></div>
-      <div class="r"><i style="width:8%"></i><span class="l">Gap X</span><span class="n">1.00</span></div>
-      <div class="r"><i style="width:8%"></i><span class="l">Gap Y</span><span class="n">1.00</span></div>
-      <div class="r"><span class="l">Shape</span><span class="n">Rect</span></div>
+      <div class="r"><i style="width:100%"></i><span class="l">Rows</span><span class="n">181</span></div>
+      <div class="r"><i style="width:100%"></i><span class="l">Columns</span><span class="n">181</span></div>
+      <div class="r"><i style="width:10%"></i><span class="l">Gap X</span><span class="n">1.00</span></div>
+      <div class="r"><i style="width:10%"></i><span class="l">Gap Y</span><span class="n">1.00</span></div>
     </div>
   </div>
   <div>
@@ -125,9 +125,9 @@ segundos.</p>
     <p><b>Arraste</b> em cima da barra: o número anda. Atravessar a largura do cartão vai do
     mínimo ao máximo daquele controle — por isso o quanto a barra está cheia é exatamente onde o
     número está.</p>
-    <p>Uma linha que mostra uma <b>palavra</b> entre duas setinhas (como
-    <code>Shape&nbsp;·&nbsp;Rect</code>) é uma <b>escolha</b>: as setinhas andam uma opção de cada
-    vez, e clicar na palavra <b>abre a lista inteira</b>.</p>
+    <p>Uma linha que mostra uma <b>palavra</b> entre duas setinhas (como a linha
+    <code>Wave</code> do cartão Oscillator, que mostra <code>Sine</code>) é uma <b>escolha</b>: as
+    setinhas andam uma opção de cada vez, e clicar na palavra <b>abre a lista inteira</b>.</p>
     <p><b>Para mover o nó</b>, arraste pelo <b>cabeçalho</b> colorido — o corpo agora é dos
     controles.</p>
   </div>
@@ -194,22 +194,30 @@ muito além — a coluna <i>digitável até</i> da tabela da seção 6 diz até 
     <figcaption>repete o que chega nele</figcaption></figure>
 </div>
 
-<h2>5 · O milhão</h2>
+<h2>5 · O máximo de um nó</h2>
 <ol class="steps">
   <li><b>Volte para o Grid</b> (ligue o fio dele no Oscillator outra vez, ou aperte
       <kbd>Ctrl</kbd>+<kbd>Z</kbd> até a espiral sumir).</li>
+  <li><b>Clique em <code>Rows</code>, digite <code>10</code> e aperte <kbd>Enter</kbd>.</b> Faça
+      o mesmo em <code>Columns</code>.
+      <div class="out">Cem objetos, uma grade que se conta.</div></li>
   <li><b>Suba <code>Rows</code> e <code>Columns</code> até o fim do arrasto.</b>
-      <div class="out">Centenas de milhares de objetos, e a tela continua fluida — porque o
-      <b>Grid roda na placa de vídeo</b>, não no processador.</div></li>
-  <li><b>Deixe rodando e olhe o canto.</b>
-      <div class="out">A cena de abertura tinha 2 milhões. Na placa, esse número custa
-      <b>3,85 ms</b> por quadro; no processador custaria <b>195,9 ms</b> — cinquenta vezes mais,
-      e não caberia num quadro.</div></li>
+      <div class="out">O arrasto para em <b>20</b>: são 400 objetos. O arrasto vai só até onde a
+      mão é útil — o resto se escreve.</div></li>
+  <li><b>Clique em <code>Rows</code>, digite <code>181</code> e aperte <kbd>Enter</kbd>.</b> Faça
+      o mesmo em <code>Columns</code>.
+      <div class="out">São <b>32 761</b> objetos, e a tela continua fluida — porque o <b>Grid
+      roda na placa de vídeo</b>, não no processador. A caixa não aceita mais que 181: um nó
+      nunca faz mais de 32 768 objetos.</div></li>
+  <li><b>Deixe rodando.</b>
+      <div class="out">Na placa, esses 32 761 objetos custam <b>0,11 ms</b> por quadro; no
+      processador custariam <b>0,25 ms</b> — mais que o dobro. Um quadro tem 16,7 ms, então
+      aqui os dois cabem folgados: a diferença pesa quando a cena empilha muitos nós.</div></li>
 </ol>
 
-<div class="note"><b>Nem todos os dez rodam na placa ainda.</b> Hoje são quatro: Grid,
-Fibonacci Spiral, Radial Array e Voronoi. Os outros funcionam igual, só que no processador — e
-você percebe quando o número fica muito alto.</div>
+<div class="note"><b>Nem todos os dez rodam na placa ainda.</b> Hoje são cinco: Grid,
+Fibonacci Spiral, Radial Array, Voronoi e Clone. Os outros funcionam igual, só que no
+processador.</div>
 
 <h2>6 · O que cada controle faz</h2>
 <p>Esta tabela é gerada do próprio app: se um nó ganhar um controle novo, ela ganha a linha
@@ -225,8 +233,10 @@ existe mas só aparece depois que você troca o modo que a linha nomeia.</p>
 <ol class="steps">
   <li><b>Anéis que não fecham.</b> No Radial Array, mexa em <code>Start Angle</code> e
       <code>End Angle</code> — em vez de um círculo você faz um leque.</li>
-  <li><b>Uma grade recortada.</b> No Grid, clique em <code>Shape</code> e escolha
-      <code>Circle</code>. A grade continua grade, mas só sobra o que cabe no disco.</li>
+  <li><b>Uma nuvem que rareia nas bordas.</b> Ponha um <code>Scatter</code> no lugar do Grid
+      (botão direito no vazio, e ligue-o no Oscillator como fez com a espiral) e suba
+      <code>Density Falloff</code>. Os pontos continuam espalhados, mas se juntam no meio e ficam
+      raros perto das bordas.</li>
   <li><b>Empilhe dois arranjos.</b> Ligue um Grid na entrada do <code>Clone</code>: cada ponto
       da grade vira uma fileira de cópias. É assim que se faz muito com pouco.</li>
 </ol>

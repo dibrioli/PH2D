@@ -269,12 +269,16 @@ impl Editor {
         }
         if let Some(h) = self.handle_at(doc, p) {
             let frame = self.frame(doc).expect("há pega, há moldura");
-            let originals: Vec<Element> = self
-                .movable(doc)
-                .into_iter()
-                .filter(|el| el.connector().is_none())
-                .filter(|el| h != Handle::Rotate || el.as_frame().is_none())
-                .collect();
+            // Rodar um frame roda o que vive dentro dele, à volta do mesmo centro; redimensioná-lo
+            // não escala os filhos (o oráculo A8).
+            let originals: Vec<Element> = if h == Handle::Rotate {
+                self.moving(doc)
+            } else {
+                self.movable(doc)
+            }
+            .into_iter()
+            .filter(|el| el.connector().is_none())
+            .collect();
             if originals.is_empty() {
                 self.notice = Some(crate::Notice::Locked);
                 return Down::Taken;

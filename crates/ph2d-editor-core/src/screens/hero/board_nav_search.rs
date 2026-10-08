@@ -5,6 +5,7 @@
 //! etiqueta nas notas seleccionadas (o botão da barra das notas).
 
 use super::{GO_CONTEXT, HeroScreen};
+use crate::icons::IconId;
 use crate::interaction::WidgetEvent;
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::zones::Rect;
@@ -117,18 +118,43 @@ fn refresh(hero: &mut HeroScreen) {
 }
 
 /// Vai ao resultado `current` e avança para o seguinte.
-fn go_next(hero: &mut HeroScreen) {
+/// Vai ao resultado seguinte (`forward`) ou ao anterior ao que está à vista. `current` é o
+/// PRÓXIMO a visitar; o que está à vista é o de antes dele.
+fn go(hero: &mut HeroScreen, forward: bool) {
     let area = super::super::board_view::area_of(hero.last_canvas);
     let Some((board, live)) = hero.documents.active_parts() else {
         return;
     };
     let n = &mut live.nav;
-    if n.results.is_empty() {
+    let len = n.results.len();
+    if len == 0 {
         return;
     }
-    let id = n.results[n.current % n.results.len()];
-    n.current = (n.current + 1) % n.results.len();
+    let target = if forward {
+        n.current % len
+    } else {
+        let shown = (n.current + len - 1) % len;
+        (shown + len - 1) % len
+    };
+    n.current = (target + 1) % len;
+    let id = n.results[target];
     super::go_to(board, area, id, GO_CONTEXT);
+}
+
+/// Os três botões à direita do campo: o anterior, o seguinte e limpar.
+const FIELD_BUTTONS: [(NodeId, IconId); 3] = [
+    (crate::ids::BOARD_SEARCH_PREV, IconId::ChevronUp),
+    (crate::ids::BOARD_SEARCH_NEXT, IconId::ChevronDown),
+    (crate::ids::BOARD_SEARCH_CLEAR, IconId::Close),
+];
+
+/// Os ids dos botões do campo e o balão de cada um (o `populate` regista-os).
+pub(super) fn field_buttons() -> [(NodeId, &'static str); 3] {
+    [
+        (crate::ids::BOARD_SEARCH_PREV, "board.nav.search_prev"),
+        (crate::ids::BOARD_SEARCH_NEXT, "board.nav.search_next"),
+        (crate::ids::BOARD_SEARCH_CLEAR, "board.nav.search_clear"),
+    ]
 }
 
 pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
@@ -136,8 +162,19 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     match event {
         WidgetEvent::TextChanged(id) if id == search => refresh(hero),
         WidgetEvent::Submit(id) if id == search => {
-            go_next(hero);
+            go(hero, true);
             hero.store.set_focus(Some(search));
+        }
+        WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id)
+            if id == crate::ids::BOARD_SEARCH_PREV || id == crate::ids::BOARD_SEARCH_NEXT =>
+        {
+            go(hero, id == crate::ids::BOARD_SEARCH_NEXT);
+        }
+        WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id)
+            if id == crate::ids::BOARD_SEARCH_CLEAR =>
+        {
+            super::open_field(&mut hero.store, search, String::new());
+            refresh(hero);
         }
         WidgetEvent::Cancel(id) if id == search => close(hero),
         WidgetEvent::Blur(id) if id == search => {}
@@ -213,6 +250,21 @@ pub(super) fn paint_fields(
             hit,
             store,
         );
+        let s = r.h;
+        let mut bx = r.x + r.w + Spacing::Xs.px();
+        let rects: Vec<Rect> = FIELD_BUTTONS
+            .iter()
+            .map(|_| {
+                let b = Rect::new(bx, r.y, s, s);
+                bx += s + Spacing::Xs.px();
+                b
+            })
+            .collect();
+        super::panel(scene, &rects, theme);
+        for ((id, icon), b) in FIELD_BUTTONS.iter().zip(&rects) {
+            let (hit, store) = (&mut hero.hit_index, &hero.store);
+            super::button(scene, hit, store, *id, *icon, *b, false, theme);
+        }
         let n = &hero.documents.live.nav;
         let count = ph2d_i18n::tr_with("board.nav.search_count", &[("n", &n.results.len())]);
         let pad = Spacing::Md.px();
@@ -220,7 +272,7 @@ pub(super) fn paint_fields(
             ts,
             scene,
             &count,
-            r.x + r.w + pad,
+            bx + pad,
             r.y + (r.h - font) / 2.0,
             font,
             area.w,

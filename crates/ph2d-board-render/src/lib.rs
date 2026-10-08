@@ -171,10 +171,11 @@ pub fn paint(
     let zoom = board.camera.zoom;
     let frames = frames::visible(board, area, clip);
     let shown: std::collections::BTreeSet<_> = frames.iter().map(|(f, _)| f.id).collect();
-    let far = frames::paint_backs(scene, &frames, theme, cache.detail);
+    let far = frames::paint_backs(scene, &frames, zoom, theme, cache.detail);
     let mut clips = frames::Clips::default();
     let chains = frames::Chains::new(&board.doc, &shown, &far);
     let framed = board.doc.has_frames();
+    let board_ink = cache.ink;
     for el in board.doc.live_in_z_order() {
         if framed {
             if el.as_frame().is_some() {
@@ -185,9 +186,17 @@ pub fn paint(
                 continue;
             };
             clips.enter(scene, board, area, chain);
+            // A tinta lê-se contra o fundo do frame onde o elemento vive, não contra o quadro.
+            cache.ink = frames::ink_inside(&board.doc, chain, board_ink);
+            cache.sketch.ink = cache.ink;
         }
         if let Some(c) = el.connector() {
             if let Some(r) = routes.get(el.id) {
+                if framed {
+                    // Uma seta não vive num frame: a tinta é a do frame debaixo do meio dela.
+                    cache.ink = frames::ink_at(&board.doc, r.mid, board_ink);
+                    cache.sketch.ink = cache.ink;
+                }
                 let [bx0, by0, bx1, by1] = r.bbox;
                 // A ponta de seta sai até 4 comprimentos de traço da rota; o rótulo, meia quebra.
                 let w = c.style.stroke_width;
@@ -262,7 +271,7 @@ pub fn paint(
         );
     }
     clips.close(scene);
-    frames::paint_titles(scene, ts, cache, board.id.0, &frames, &chains, theme);
+    frames::paint_titles(scene, ts, cache, board, area, &frames, &chains, theme);
     scene.pop_layer();
     cache.end_frame();
 }

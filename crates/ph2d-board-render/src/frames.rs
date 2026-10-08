@@ -12,9 +12,9 @@ use std::collections::BTreeSet;
 use ph2d_board_model::{Board, BoardDoc, Element, ElementId, RichText};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_vector::{Affine, Brush, Point, Rect, Shape as _, Stroke, VectorScene};
+use ph2d_vector::{Affine, BezPath, Brush, Point, Rect, Shape as _, Stroke, VectorScene};
 
-use crate::{RenderCache, doc_color, token};
+use crate::{RenderCache, ThemeInk, doc_color, token};
 
 /// ⭐ **O nível de detalhe** — os limiares do desenho de longe, em px de ECRÃ.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -40,28 +40,28 @@ impl Default for Detail {
 /// tabela no handoff W5 e na régua).
 pub const FRAME_TITLE_ONLY_PX: f64 = 96.0;
 
-/// A caixa de `el` no ecrã.
-pub(crate) fn screen_box(board: &Board, area: [f64; 4], el: &Element) -> Rect {
-    let a = board.camera.to_screen(area, [el.x, el.y]);
-    let b = board.camera.to_screen(area, [el.x + el.w, el.y + el.h]);
-    Rect::new(a[0], a[1], b[0], b[1])
+/// O contorno de `el` no ECRÃ — a caixa dele, rodada com ele (um frame roda como as formas).
+pub(crate) fn screen_shape(board: &Board, area: [f64; 4], el: &Element) -> BezPath {
+    let t = crate::view(&board.camera, area) * ph2d_board_geom::to_world(el);
+    t * Rect::new(0.0, 0.0, el.w, el.h).to_path(0.1)
 }
 
-/// Os frames à vista, na ordem de desenho, com a caixa deles no ecrã.
-pub(crate) fn visible(board: &Board, area: [f64; 4], clip: Rect) -> Vec<(&Element, Rect)> {
+/// Os frames à vista, na ordem de desenho, com o contorno deles no ecrã.
+pub(crate) fn visible(board: &Board, area: [f64; 4], clip: Rect) -> Vec<(&Element, BezPath)> {
     board
         .doc
         .frames_in_draw_order()
         .into_iter()
-        .map(|f| (f, screen_box(board, area, f)))
-        .filter(|(_, r)| r.intersect(clip).area() > 0.0)
+        .map(|f| (f, screen_shape(board, area, f)))
+        .filter(|(_, p)| p.bounding_box().intersect(clip).area() > 0.0)
         .collect()
 }
 
 /// O fundo e a borda de cada frame à vista; devolve os que, de tão pequenos, mostram só o título.
 pub(crate) fn paint_backs(
     scene: &mut VectorScene,
-    frames: &[(&Element, Rect)],
+    frames: &[(&Element, BezPath)],
+    zoom: f64,
     theme: Theme,
     detail: Detail,
 ) -> BTreeSet<ElementId> {
@@ -70,13 +70,13 @@ pub(crate) fn paint_backs(
     for (f, r) in frames {
         let st = f.style();
         if let Some(c) = st.fill {
-            scene.fill_rect(*r, doc_color(c));
+            scene.fill_path(r, &Brush::Solid(doc_color(c)), Affine::IDENTITY);
         }
         // A borda: o contorno do estilo do frame (a barra de cores serve-o como às formas), à
         // escala do quadro; sem contorno, o fio da interface que o separa do fundo.
         let (line, brush) = match st.stroke.filter(|_| st.stroke_width > 0.0) {
             Some(c) => {
-                let px = st.stroke_width * r.width() / f.w.max(f64::EPSILON);
+                let px = st.stroke_width * zoom;
                 (Stroke::new(px), Brush::Solid(doc_color(c)))
             }
             None => (
@@ -86,8 +86,8 @@ pub(crate) fn paint_backs(
         };
         scene
             .inner_mut()
-            .stroke(&line, Affine::IDENTITY, &brush, None, &r.to_path(0.1));
-        if r.height() < detail.frame_title_only_px {
+            .stroke(&line, Affine::IDENTITY, &brush, None, r);
+        if f.h * zoom < detail.frame_title_only_px {
             far.insert(f.id);
         }
     }
@@ -122,7 +122,7 @@ impl Clips {
         }
         for id in &chain[keep..] {
             if let Some(f) = board.doc.get(*id) {
-                scene.push_clip(&screen_box(board, area, f));
+                scene.push_clip(&screen_shape(board, area, f));
             }
             self.open.push(*id);
         }
@@ -182,31 +182,58 @@ pub(crate) fn paint_titles(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     cache: &mut RenderCache,
-    board_id: u64,
-    frames: &[(&Element, Rect)],
+    board: &Board,
+    area: [f64; 4],
+    frames: &[(&Element, BezPath)],
     chains: &Chains,
     theme: Theme,
 ) {
     let size = TypeToken::Sm.px();
     let gap = f64::from(Spacing::Xs.px());
     let ink = token(ColorToken::Text2, theme);
-    for (f, r) in frames {
+    for (f, _) in frames {
         let Some(frame) = f.as_frame() else {
             continue;
         };
+        let w = f.w * board.camera.zoom;
         // Dentro de um frame visto de longe (só o título dele) o título de dentro não se pinta.
-        if frame.name.is_empty() || r.width() <= 0.0 || chains.of(f).is_none() {
+        if frame.name.is_empty() || w <= 0.0 || chains.of(f).is_none() {
             continue;
         }
         let text = RichText::plain(&frame.name);
         let layout = cache
             .text
-            .get_rich(ts, (board_id, f.id.0), &text, size, f32::MAX, false);
+            .get_rich(ts, (board.id.0, f.id.0), &text, size, f32::MAX, false);
         let h = f64::from(layout.height());
-        let band = Rect::new(r.x0, r.y0 - gap - h, r.x1, r.y0);
-        scene.push_clip(&band);
-        let at = Affine::translate(Point::new(r.x0, r.y0 - gap - h).to_vec2());
-        ph2d_board_layout::paint(scene, layout, at, ink);
+        // Por cima do canto de cima à esquerda, ao longo da borda de cima — rodado com o frame.
+        let corner = board.camera.to_screen(area, f.rotate([f.x, f.y]));
+        let along = Affine::translate(Point::new(corner[0], corner[1]).to_vec2())
+            * Affine::rotate(f.angle)
+            * Affine::translate((0.0, -gap - h));
+        scene.push_clip(&(along * Rect::new(0.0, 0.0, w, h + gap).to_path(0.1)));
+        ph2d_board_layout::paint(scene, layout, along, ink);
         scene.pop_layer();
     }
+}
+
+/// A tinta de quem vive na cadeia `chain` (do de fora para dentro): a do fundo do frame mais
+/// INTERIOR que tem cor; sem nenhum, a do quadro.
+pub(crate) fn ink_inside(doc: &BoardDoc, chain: &[ElementId], board: ThemeInk) -> ThemeInk {
+    chain
+        .iter()
+        .rev()
+        .find_map(|f| doc.get(*f)?.style().fill)
+        .map_or(board, |c| board.over(c))
+}
+
+/// A tinta no ponto `p` do mundo: a do frame mais interior debaixo dele (uma seta, que não vive em
+/// frame nenhum, lê-se contra o que tem por baixo).
+pub(crate) fn ink_at(doc: &BoardDoc, p: [f64; 2], board: ThemeInk) -> ThemeInk {
+    let Some(f) = doc.deepest_frame_at(p, &BTreeSet::new()) else {
+        return board;
+    };
+    let mut chain = doc.frame_chain(f);
+    chain.reverse();
+    chain.push(f);
+    ink_inside(doc, &chain, board)
 }

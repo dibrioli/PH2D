@@ -64,6 +64,17 @@ const OPACITIES: [u8; 4] = [25, 50, 75, 100];
 /// Os preenchimentos claros (os pastéis do marcador) e as tintas fortes do contorno.
 const PASTELS: std::ops::Range<usize> = 0..5;
 const VIVIDS: std::ops::Range<usize> = 5..9;
+/// O PRETO do contorno (pedido do dono, 08/10: *«para setas e shapes não temos a opção de cor
+/// preta»*) — um índice depois das cores do marcador; é preto do DOCUMENTO, nunca a tinta do tema
+/// (que se desenha clara num quadro escuro).
+const BLACK: usize = HIGHLIGHTER_RGBA.len();
+// LITERAL-COLOR-OK: o preto do documento, uma cor do artista.
+const BLACK_RGBA: [u8; 4] = [0, 0, 0, 255];
+
+/// A cor de documento `i` das amostras: as do marcador e, a seguir, o preto.
+fn palette(i: usize) -> Rgba {
+    Rgba(HIGHLIGHTER_RGBA.get(i).copied().unwrap_or(BLACK_RGBA))
+}
 
 /// Um controlo das barras.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -184,6 +195,7 @@ pub fn style_groups(sel: Selected) -> Vec<Vec<Item>> {
     let stroke: Vec<Item> = [Item::Stroke(None), Item::Stroke(Some(None))]
         .into_iter()
         .chain(VIVIDS.map(|i| Item::Stroke(Some(Some(i)))))
+        .chain(std::iter::once(Item::Stroke(Some(Some(BLACK)))))
         .collect();
     let width: Vec<Item> = (0..WIDTHS.len()).map(Item::Width).collect();
     let dash = vec![
@@ -394,7 +406,7 @@ pub fn paint(
 /// A cor de documento de um item de cor.
 fn swatch(it: Item, theme: Theme) -> Option<Rgba> {
     match it {
-        Item::Fill(Some(i)) | Item::Stroke(Some(Some(i))) => Some(Rgba(HIGHLIGHTER_RGBA[i])),
+        Item::Fill(Some(i)) | Item::Stroke(Some(Some(i))) => Some(palette(i)),
         Item::Stroke(Some(None)) => Some(ink(theme)),
         _ => None,
     }

@@ -126,17 +126,21 @@ impl Element {
         &mut self.org_mut().tags
     }
 
-    /// A caixa (sem rotação: um frame nunca roda) contém `p`.
+    /// A caixa deste elemento (rodada com ele: um frame roda como as formas) contém `p`.
     #[must_use]
-    pub fn box_contains(&self, [px, py]: [f64; 2]) -> bool {
+    pub fn box_contains(&self, p: [f64; 2]) -> bool {
+        let [px, py] = if self.angle == 0.0 {
+            p
+        } else {
+            self.unrotate(p)
+        };
         px >= self.x && px <= self.x + self.w && py >= self.y && py <= self.y + self.h
     }
 
-    /// A caixa deste elemento contém INTEIRA a caixa envolvente (`aabb`) de `other`.
+    /// A caixa deste elemento (rodada) contém INTEIROS os quatro cantos de `other` (rodado).
     #[must_use]
     pub fn box_contains_all_of(&self, other: &Element) -> bool {
-        let [x0, y0, x1, y1] = other.aabb();
-        x0 >= self.x && y0 >= self.y && x1 <= self.x + self.w && y1 <= self.y + self.h
+        other.corners().into_iter().all(|c| self.box_contains(c))
     }
 }
 

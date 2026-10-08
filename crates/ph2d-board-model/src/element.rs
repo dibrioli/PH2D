@@ -322,7 +322,12 @@ impl Element {
     #[must_use]
     pub fn corners(&self) -> [[f64; 2]; 4] {
         let (x0, y0, x1, y1) = (self.x, self.y, self.x + self.w, self.y + self.h);
-        [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(|p| self.rotate(p))
+        let c = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+        // Sem rotação, os cantos exactos (a conta a 0° pode mexer no último dígito).
+        if self.angle == 0.0 {
+            return c;
+        }
+        c.map(|p| self.rotate(p))
     }
 
     /// A caixa alinhada aos eixos que contém o elemento rodado: `[x0, y0, x1, y1]`.

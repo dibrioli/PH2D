@@ -342,3 +342,40 @@ fn m_types_into_a_selected_note_instead_of_opening_the_minimap() {
     );
     assert_eq!(t.el(n).shape().unwrap().text.as_str(), "m");
 }
+
+/// Os botões do campo de busca (pedido do dono, 08/10): a seta de baixo vai ao seguinte, a de cima
+/// volta ao anterior, o × limpa o campo (e o realce).
+#[test]
+fn the_search_field_arrows_walk_the_results_and_the_x_clears_it() {
+    let mut t = T::new();
+    // Três, por ordem de leitura: com dois, «anterior» e «seguinte» caem no mesmo sítio.
+    let a = t.note("alvo um", [50_000.0, -90_000.0]);
+    let b = t.note("alvo dois", [-80_000.0, 0.0]);
+    let c = t.note("alvo três", [80_000.0, 90_000.0]);
+    t.paint();
+    assert!(t.key(BoardKey::Char('f'), CTRL, None));
+    t.type_into(crate::ids::BOARD_SEARCH_INPUT, "alvo");
+    assert_eq!(t.hero.documents.live.nav.results, vec![a, b, c]);
+    for want in [a, b, c] {
+        t.click_id(crate::ids::BOARD_SEARCH_NEXT, false);
+        assert!(
+            t.on_screen(t.el(want).center()),
+            "a seta de baixo anda pela ordem"
+        );
+    }
+    t.click_id(crate::ids::BOARD_SEARCH_PREV, false);
+    assert!(
+        t.on_screen(t.el(b).center()),
+        "a seta de cima volta ao ANTERIOR (o 2.º)"
+    );
+    assert!(!t.on_screen(t.el(a).center()) && !t.on_screen(t.el(c).center()));
+    t.click_id(crate::ids::BOARD_SEARCH_CLEAR, false);
+    assert_eq!(
+        board_nav::field_text_for_tests(&t.hero, crate::ids::BOARD_SEARCH_INPUT),
+        ""
+    );
+    assert!(
+        t.hero.documents.live.nav.results.is_empty(),
+        "limpar apaga os achados"
+    );
+}

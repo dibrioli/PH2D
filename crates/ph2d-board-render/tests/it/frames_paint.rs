@@ -195,3 +195,94 @@ fn a_far_note_is_a_flat_block_without_shadow() {
         "por baixo do bloco: o fundo do quadro"
     );
 }
+
+/// Um frame branco `(0,0) 200×200` (rodado de `angle`) e uma moldura de tinta de NASCENÇA
+/// (`DEFAULT_INK`, sem preenchimento) dentro dele e outra fora, no quadro.
+fn ink_scene(angle: f64) -> BoardSet {
+    let mut set = BoardSet::default();
+    let id = set.create("i".into());
+    let b = set.get_mut(id).unwrap();
+    let frame = Frame {
+        name: String::new(),
+        style: Style::new(Some(WHITE), None, RED),
+    };
+    let mut f = Element::new_frame(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        frame,
+        [0.0, 0.0, 200.0, 200.0],
+    );
+    f.angle = angle;
+    let fid = f.id;
+    BoardOp::Put(f).apply(&mut b.doc);
+    let ink = Rgba(ph2d_board_model::DEFAULT_INK);
+    for (x, home) in [(40.0, Some(fid)), (300.0, None)] {
+        let mut style = Style::new(None, Some(ink), ink);
+        style.stroke_width = 6.0;
+        let shape = Shape {
+            kind: ShapeType::Rectangle,
+            style,
+            text: Default::default(),
+        };
+        let mut el = Element::new_shape(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            shape,
+            [x, 40.0, 120.0, 120.0],
+        );
+        el.frame = home;
+        BoardOp::Put(el).apply(&mut b.doc);
+    }
+    b.camera = Camera {
+        center_x: 100.0,
+        center_y: 100.0,
+        zoom: 1.0,
+    };
+    set
+}
+
+fn luminance(p: [u8; 4]) -> u32 {
+    (u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2])) / 3
+}
+
+/// ⭐ Smoke do dono (08/10): no tema escuro a tinta de nascença desenha-se CLARA — e dentro de um
+/// frame branco sumia. Ela lê-se contra o fundo de onde o elemento vive: escura no frame branco,
+/// clara no quadro escuro.
+#[test]
+fn the_default_ink_reads_against_the_frame_it_lives_in() {
+    let Some(mut g) = gpu() else {
+        return;
+    };
+    // Zoom 1: o frame em 220..420 × 140..340; a borda esquerda da moldura de dentro em x 260, a de
+    // fora em x 520.
+    let px = render(&mut g, &ink_scene(0.0), Detail::default());
+    let inside = px.at(260, 240);
+    let outside = px.at(520, 240);
+    assert!(
+        luminance(inside) < 100,
+        "dentro do frame branco a tinta sumia: {inside:?}"
+    );
+    assert!(
+        luminance(outside) > 128,
+        "o tema é escuro: fora a tinta é clara ({outside:?})"
+    );
+}
+
+/// ⭐ Um frame RODA (ordem do dono, 08/10): o fundo desenha-se rodado — o canto da caixa por rodar
+/// fica no quadro, o meio da borda de cima rodada é branco.
+#[test]
+fn a_rotated_frame_paints_rotated() {
+    let Some(mut g) = gpu() else {
+        return;
+    };
+    let px = render(
+        &mut g,
+        &ink_scene(std::f64::consts::FRAC_PI_4),
+        Detail::default(),
+    );
+    assert!(
+        !px.is(225, 145, WHITE),
+        "o canto da caixa SEM rodar pintou-se"
+    );
+    assert!(px.is(320, 150, WHITE), "o miolo do frame rodado");
+}

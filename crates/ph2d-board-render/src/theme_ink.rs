@@ -35,6 +35,17 @@ impl ThemeInk {
         }
     }
 
+    /// A mesma tinta sobre um FUNDO do documento (o de um frame, W5): escuro ou claro decide-o a
+    /// luminância dele, não a do quadro — num frame branco num tema escuro a tinta de nascença
+    /// desenha-se escura (smoke do dono, 08/10: as formas e setas sumiam no frame branco).
+    #[must_use]
+    pub fn over(self, background: Rgba) -> Self {
+        Self {
+            dark: background.luminance() < 0.5,
+            light: self.light,
+        }
+    }
+
     /// A cor de um traço (ou de um texto sobre o quadro) com a tinta `c`.
     #[must_use]
     pub fn color(self, c: Rgba) -> Color {

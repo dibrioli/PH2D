@@ -194,3 +194,18 @@ fn a_selected_frame_offers_its_colours_and_the_paper_to_go_back() {
         Some(ph2d_board_model::Rgba(ph2d_board_model::FRAME_FILL))
     );
 }
+
+/// O PRETO no contorno (pedido do dono, 08/10) — preto do documento, nunca a tinta do tema.
+#[test]
+fn the_stroke_offers_black_and_it_is_document_black() {
+    let mut t = T::new();
+    assert!(t.key(BoardKey::Char('r'), NONE, Some("r")));
+    let (a, b) = (t.at(0.4, 0.4), t.at(0.6, 0.6));
+    t.drag(a, b);
+    let black = Item::Stroke(Some(Some(super::super::BLACK)));
+    t.click_bar(black);
+    assert_eq!(
+        t.elements()[0].style().stroke,
+        Some(ph2d_board_model::Rgba([0, 0, 0, 255]))
+    );
+}

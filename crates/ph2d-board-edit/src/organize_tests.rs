@@ -352,7 +352,11 @@ fn a_drawn_shape_lives_where_the_drag_started() {
     let inner = frame(&mut w, [20.0, 20.0], [120.0, 120.0]);
     assert_eq!(w.el(inner).frame, Some(f));
     let deep = w.rect([50.0, 50.0, 30.0, 30.0]);
-    assert_eq!(w.el(deep).frame, Some(inner), "vive no frame mais INTERIOR debaixo do início");
+    assert_eq!(
+        w.el(deep).frame,
+        Some(inner),
+        "vive no frame mais INTERIOR debaixo do início"
+    );
     let inside = w.rect([280.0, 280.0, 100.0, 100.0]);
     assert_eq!(w.el(inside).frame, Some(f), "começou dentro, acabou fora");
     let outside = w.rect([-50.0, -50.0, 100.0, 100.0]);
@@ -403,17 +407,75 @@ fn moving_a_frame_carries_everything_inside_at_any_depth() {
     assert_eq!(w.el(r).frame, Some(inner), "a casa dos de dentro não muda");
 }
 
-/// Carregar no VAZIO de dentro de um frame começa um laço (o frame agarra-se pela borda e pelo
-/// título — o Miro).
+/// ⭐ Carregar no VAZIO de dentro de um frame agarra o FRAME, como uma forma (ordem do dono, 08/10:
+/// *«transformar como as outras shapes clicando e arrastando dentro deles, desde que num espaço
+/// vazio»*) — o que está dentro ganha o clique; e o frame leva o que é dele, TRAVADO incluído
+/// (*«a nota com o cadeado não segue o frame»*).
 #[test]
-fn pressing_the_empty_inside_of_a_frame_starts_a_marquee() {
+fn pressing_the_empty_inside_of_a_frame_grabs_it_and_it_carries_even_the_locked() {
     let mut w = world();
     let f = frame(&mut w, [0.0, 0.0], [600.0, 600.0]);
     let a = w.rect([300.0, 300.0, 40.0, 40.0]);
+    let l = w.rect([100.0, 100.0, 40.0, 40.0]);
+    w.ed.select(&w.doc, [l]);
+    assert!(w.cmd(Command::Lock));
     w.click([-500.0, -500.0], NONE);
-    w.drag([250.0, 250.0], [400.0, 400.0], NONE);
-    assert_eq!(*w.ed.selection(), BTreeSet::from([a]));
-    assert_eq!(w.el(f).x, 0.0, "o frame não se mexeu");
+    w.click([320.0, 320.0], NONE);
+    assert_eq!(
+        *w.ed.selection(),
+        BTreeSet::from([a]),
+        "o que está dentro ganha o clique"
+    );
+    w.click([-500.0, -500.0], NONE);
+    w.drag([250.0, 250.0], [250.0, 350.0], CTRL);
+    assert!(
+        near(&ys(&w, &[f, a, l]), &[100.0, 400.0, 200.0]),
+        "o frame levou tudo, o travado também"
+    );
+    assert_eq!(w.el(l).frame, Some(f));
+    w.ed.select(&w.doc, [f]);
+    assert!(w.cmd(Command::Nudge([10.0, 0.0])));
+    assert!(
+        near(&xs(&w, &[f, l]), &[10.0, 110.0]),
+        "o empurrão também leva o travado"
+    );
+    assert!(w.cmd(Command::Undo) && w.cmd(Command::Undo));
+    assert!(
+        near(&ys(&w, &[f, l]), &[0.0, 100.0]),
+        "cada gesto, UM passo"
+    );
+}
+
+/// ⭐ Um frame RODA como as formas, e leva o que vive dentro à volta do mesmo centro; a casa dos
+/// de dentro continua a ser ele (a pertença lê a caixa RODADA).
+#[test]
+fn rotating_a_frame_turns_its_contents_with_it() {
+    let mut w = world();
+    let f = frame(&mut w, [0.0, 0.0], [400.0, 200.0]);
+    let a = w.rect([320.0, 80.0, 40.0, 40.0]);
+    w.ed.select(&w.doc, [f]);
+    let knob = crate::Frame::of(w.el(f)).handle(Handle::Rotate, PX, &metrics());
+    // Do topo para a direita do centro (200,100): um quarto de volta no sentido do relógio.
+    w.drag(knob, [200.0 + 300.0, 100.0], NONE);
+    let q = std::f64::consts::FRAC_PI_2;
+    assert!(
+        (w.el(f).angle - q).abs() < 1e-6,
+        "o frame rodou {}",
+        w.el(f).angle
+    );
+    assert!(
+        (w.el(a).angle - q).abs() < 1e-6,
+        "o de dentro rodou com ele"
+    );
+    let c = w.el(a).center();
+    assert!(
+        (c[0] - 200.0).abs() < 1e-6 && (c[1] - 240.0).abs() < 1e-6,
+        "{c:?}"
+    );
+    assert!(w.el(f).box_contains(c), "a caixa rodada contém-no");
+    assert_eq!(w.doc.deepest_frame_at(c, &BTreeSet::new()), Some(f));
+    assert!(w.cmd(Command::Undo));
+    assert_eq!(w.el(a).angle, 0.0, "UM passo");
 }
 
 /// ⭐ Apagar um frame leva tudo o que vive dentro dele (a lei da W5, o Miro), UM passo — menos o

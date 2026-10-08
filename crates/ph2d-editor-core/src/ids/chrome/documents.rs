@@ -11,6 +11,10 @@ pub const DOC_TAB_NEW: NodeId = hash_node_id("doc_tab_new");
 pub const DOC_TAB_RENAME_INPUT: NodeId = hash_node_id("doc_tab_rename_input");
 /// A busca no quadro (`Ctrl+F`, W5).
 pub const BOARD_SEARCH_INPUT: NodeId = hash_node_id("board_search_input");
+/// Os botões do campo de busca: o resultado anterior, o seguinte, limpar o campo.
+pub const BOARD_SEARCH_PREV: NodeId = hash_node_id("board_search_prev");
+pub const BOARD_SEARCH_NEXT: NodeId = hash_node_id("board_search_next");
+pub const BOARD_SEARCH_CLEAR: NodeId = hash_node_id("board_search_clear");
 /// O campo de pôr uma etiqueta nas notas seleccionadas (W5).
 pub const BOARD_TAG_INPUT: NodeId = hash_node_id("board_tag_input");
 /// O campo que ocupa a linha de um frame no painel de Frames enquanto ele se renomeia (W5).

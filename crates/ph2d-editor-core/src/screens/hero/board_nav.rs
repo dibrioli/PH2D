@@ -99,6 +99,10 @@ pub fn populate(store: &mut WidgetStore) {
         register(store, button_node(b));
         store.set_tooltip(button_node(b), ph2d_i18n::tr(button_key(b)));
     }
+    for (id, key) in search::field_buttons() {
+        register(store, id);
+        store.set_tooltip(id, ph2d_i18n::tr(key));
+    }
 }
 
 fn button_key(b: NavButton) -> &'static str {
@@ -503,6 +507,12 @@ pub(crate) fn field_text(store: &WidgetStore, id: NodeId) -> String {
         Some(InteractiveState::TextInput { text, .. }) => text.clone(),
         _ => String::new(),
     }
+}
+
+/// O texto de um campo (os testes da busca).
+#[cfg(test)]
+pub(crate) fn field_text_for_tests(hero: &HeroScreen, id: NodeId) -> String {
+    field_text(&hero.store, id)
 }
 
 /// Minimapa: o carregar no quadro, antes do editor. `true` = era no minimapa.

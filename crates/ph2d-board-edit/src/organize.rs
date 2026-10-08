@@ -472,33 +472,39 @@ impl Editor {
 }
 
 impl Editor {
-    /// ⭐ Um frame agarra-se pela BORDA ou pelo TÍTULO (o Miro), nunca pelo miolo: carregar no vazio
-    /// de dentro começa um laço — num brainstorm dentro de um frame é o gesto de todos os dias. O
-    /// mais interior primeiro (está por cima).
+    /// ⭐ Um frame agarra-se por QUALQUER sítio dele que esteja vazio — o miolo, a borda ou o título
+    /// por cima (ordem do dono, 08/10: *«transformar como as outras shapes clicando e arrastando
+    /// dentro deles, desde que num espaço vazio»*; antes era só borda e título, o Miro). Quem chama
+    /// pergunta-o DEPOIS dos objectos, por isso o que está dentro ganha. O mais interior primeiro.
     pub(crate) fn frame_hit(&self, doc: &BoardDoc, p: Pointer) -> Option<ElementId> {
         let tol = self.metrics.handle / 2.0 * p.px;
         let band = self.metrics.frame_title * p.px;
-        let [x, y] = p.world;
         doc.frames_in_draw_order()
             .into_iter()
             .rev()
             .find(|f| {
+                // No espaço do frame (rodado com ele).
+                let [x, y] = if f.angle == 0.0 {
+                    p.world
+                } else {
+                    f.unrotate(p.world)
+                };
                 let (x0, y0, x1, y1) = (f.x, f.y, f.x + f.w, f.y + f.h);
-                let near = x >= x0 - tol && x <= x1 + tol && y >= y0 - tol && y <= y1 + tol;
-                let deep = x > x0 + tol && x < x1 - tol && y > y0 + tol && y < y1 - tol;
+                let inside = x >= x0 - tol && x <= x1 + tol && y >= y0 - tol && y <= y1 + tol;
                 let title = x >= x0 && x <= x1 && y >= y0 - band && y <= y0;
-                (near && !deep) || title
+                inside || title
             })
             .map(|f| f.id)
     }
 
-    /// O que um arrasto da selecção leva: os destravados e tudo o que vive dentro dos frames deles.
+    /// O que um arrasto da selecção leva: os destravados e TUDO o que vive dentro dos frames deles —
+    /// travado incluído (o frame leva o que é dele; travar impede só de o mexer SOZINHO — smoke do
+    /// dono, 08/10: *«a nota com o cadeado não segue o frame»*).
     pub(crate) fn moving(&self, doc: &BoardDoc) -> Vec<Element> {
         let free: Vec<ElementId> = self.movable(doc).iter().map(|el| el.id).collect();
         crate::organize::with_descendants(doc, &free)
             .into_iter()
             .filter_map(|id| doc.get(id))
-            .filter(|el| !el.locked())
             .cloned()
             .collect()
     }

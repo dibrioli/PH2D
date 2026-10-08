@@ -148,4 +148,6 @@ Os arrastos não se fotografam (a sessão virtual ignora eventos sintéticos); o
 
 ## 10-bis. A máquina
 
-(preenchido no fecho: `target/*/incremental` reclamado e a 2.ª compilação do `smoke`.)
+`target/*/incremental` reclamado (19 G de `debug` + 3,8 G de `smoke`); binário `smoke` quente — 2.ª
+corrida: `Finished \`smoke\` profile [optimized] target(s) in 0.32s` (zero «Compiling»). Os quatro
+agentes de pesquisa/oráculo e os do portão terminaram; nenhum processo da linha fica a correr.

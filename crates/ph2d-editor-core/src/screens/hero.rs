@@ -438,14 +438,7 @@ impl HeroScreen {
             // Wave 5 stage B: 21 flat fields grouped into 6 sub-state
             // structs. Inspector + Hierarchy visible by default; stats
             // HUD + grid overlay visible; everything else off / None.
-            view: ViewState {
-                ui_mirrored: false,
-                stats_visible: true,
-                grid_visible: true,
-                rulers_visible: true,
-                legacy_chrome: false,
-                center_split: crate::screens::layout::CenterSplit::None,
-            },
+            view: ViewState::default(),
             panel_visibility: panel_ids::default_panel_visibility(),
             dock_closed: [None, None],
             image_edit: ImageEditState::default(),

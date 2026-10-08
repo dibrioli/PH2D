@@ -204,6 +204,15 @@ pub fn fallback(hero: &HeroScreen, side: DockSide) -> Vec<&'static str> {
 
 /// Há memória de um fecho deste lado? — a pergunta que a shell faz para saber se o gesto de
 /// reabrir devolve a largura ou cai no fallback.
+/// F5: os painéis que reabrir esta coluna devolveria — a memória do fecho, ou o [`fallback`]. A
+/// faixa de ícones mostra ESTES, e nenhum outro (a involução do fecho vale para ela também).
+#[must_use]
+pub fn reopens(hero: &HeroScreen, side: DockSide) -> Vec<&'static str> {
+    hero.dock_closed[idx(side)]
+        .as_ref()
+        .map_or_else(|| fallback(hero, side), |c| c.panels.clone())
+}
+
 #[must_use]
 pub fn has_memory(hero: &HeroScreen, side: DockSide) -> bool {
     hero.dock_closed[idx(side)].is_some()

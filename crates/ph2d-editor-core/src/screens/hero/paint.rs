@@ -130,6 +130,7 @@ pub fn paint_hero_screen(
     // ⭐ **E para a ROLAGEM** (D9): as alturas e os donos de barra que este quadro publicar são os
     // únicos que sobrevivem a ele — ver [`crate::interaction::WidgetStore::end_scroll_frame`].
     hero.store.begin_scroll_frame();
+    super::dock_reopen::collapse_when_compact(hero, viewport); // F5: o ③ em faixa no iPad 11"/mini
     // Publish the user-picked radius scale to the thread-local read
     // by `paint::fill_rounded_rect` / `stroke_rounded_rect`. Set
     // every frame so it stays in sync with the topbar's radius menu.
@@ -360,6 +361,7 @@ pub fn paint_hero_screen(
     // ⭐⭐ **A ALÇA de uma coluna fechada** — antes do rail, porque ela vive na margem e nada se
     //    sobrepõe a ela. Não pinta nada com as colunas abertas.
     super::dock_reopen::paint_dock_reopen(&layout, scene, hero.theme);
+    super::dock_reopen::paint_strip_icons(hero, &layout, scene);
     let painter_active = hero.rail_shows_painter_tools();
     if hero.view.legacy_chrome {
         paint_left_rail(

@@ -177,6 +177,18 @@ impl ChromeBands {
     }
 }
 
+/// ⭐ **Quanto uma coluna FECHADA reserva** — a alça que a traz de volta: os [`DOCK_SEAM_PX`], ou,
+/// abaixo da janela de referência (F5), a FAIXA de ícones. Uma porta só: a alça pinta isto e a
+/// área encolhe isto (uma alça mais larga que a reserva taparia a régua — o report de 2026-08-30).
+#[must_use]
+pub fn closed_reserve_px(viewport_w: f32) -> f32 {
+    if viewport_w < crate::screens::hero::HERO_VIEWPORT_W {
+        crate::screens::hero::dock_reopen::strip_px()
+    } else {
+        DOCK_SEAM_PX
+    }
+}
+
 /// **A faixa de agarre que redimensiona uma coluna** — a borda INTERIOR dela.
 ///
 /// ⭐ Enio, 2026-08-30: *«os painéis devem ser redimensionáveis para esquerda e para direita e com
@@ -270,12 +282,21 @@ impl HeroLayout {
         if occupied || col.w <= 0.0 || col.h <= 0.0 {
             return Rect::new(col.x, col.y, 0.0, 0.0);
         }
-        let w = DOCK_SEAM_PX.min(col.w);
+        // F5: abaixo da janela de REFERÊNCIA (o iPad 12,9" dos tokens) a alça é a FAIXA de ícones
+        // dos painéis que ela reabre (o *Studio* recolhido do Affinity) — `dock_reopen::strip_px`.
+        let w = closed_reserve_px(self.viewport.w).min(col.w);
         match side {
             // A borda EXTERIOR — o oposto da costura, que toma a interior.
             DockSide::Left => Rect::new(col.x, col.y, w, col.h),
             DockSide::Right => Rect::new(col.x + col.w - w, col.y, w, col.h),
         }
+    }
+
+    /// F5: a janela é mais estreita que a de REFERÊNCIA dos tokens (o iPad 12,9") — o iPad 11" e o
+    /// mini. *O app não sabe que é um iPad: sabe a largura.*
+    #[must_use]
+    pub fn compact(&self) -> bool {
+        self.viewport.w < crate::screens::hero::HERO_VIEWPORT_W
     }
 
     /// **Sobre qual ALÇA de reabertura está o ponteiro, se alguma.**

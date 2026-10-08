@@ -91,7 +91,7 @@ impl crate::App {
         //    toque e o arrasto: um toque reabre a coluna na largura que ela tinha; um arrasto
         //    reabre-a e continua a redimensioná-la, que é *puxar a borda de volta*.
         if let Some(side) = self.hero_layout().and_then(|l| l.dock_reopen_at((x, y)))
-            && self.open_column(side)
+            && self.open_column(side, [x, y])
         {
             // ⚠️ Capturada DEPOIS de reabrir: a largura de partida deste arrasto é a que a
             //    reabertura acabou de repor, e é essa que um fecho seguinte tem de guardar.
@@ -138,11 +138,16 @@ impl crate::App {
     }
 
     /// Reabre a coluna. A lei é a [`dock_columns::open`].
-    fn open_column(&mut self, side: DockSide) -> bool {
+    fn open_column(&mut self, side: DockSide, p: [f32; 2]) -> bool {
+        let layout = self.hero_layout();
         let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
             return false;
         };
-        dock_columns::open(hero, side)
+        // F5: na FAIXA de ícones (janela estreita), o ícone tocado vem à frente.
+        match layout {
+            Some(l) => ph2d_editor_core::screens::hero::dock_reopen::open_from_strip(hero, &l, side, p),
+            None => dock_columns::open(hero, side),
+        }
     }
 
     /// Release: fecha o arrasto. `true` se havia um.

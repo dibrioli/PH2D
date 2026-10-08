@@ -15,8 +15,10 @@
 //! ⚠️ **Ela não é chrome permanente:** só existe enquanto a coluna está fechada, e nesse estado ela
 //! substitui uma coluna de 304–308 px por uma de 6. O saldo é a medição inteira do `medicoes/06`.
 
+use super::HeroScreen;
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::screens::layout::{DockSide, HeroLayout};
+use ph2d_a11y::NodeId;
 use crate::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::VectorScene;
@@ -37,6 +39,10 @@ pub fn paint_dock_reopen(layout: &HeroLayout, scene: &mut VectorScene, theme: Th
         }
         // A faixa: o tom de uma superfície elevada, para se ler contra a área de desenho.
         fill_rounded_rect(scene, r, 0.0, resolve(ColorToken::BgElev, theme));
+        // F5: a FAIXA de ícones pinta os ícones dela (`paint_strip_icons`), não a marca.
+        if r.w > crate::screens::dock_seam::DOCK_SEAM_PX {
+            continue;
+        }
         // ⭐ Uma marca ao meio, na altura de uma linha — o bastante para dizer «puxa-me», sem
         //   pedir um ícone (que exigiria medir texto num sítio que não tem `TextSystem`).
         let mark_h = ph2d_tokens::ROW_H_PX;
@@ -52,6 +58,79 @@ pub fn paint_dock_reopen(layout: &HeroLayout, scene: &mut VectorScene, theme: Th
             ARROW_W * 0.5,
             resolve(ColorToken::Text3, theme),
         );
+    }
+}
+
+/// F5: a largura da FAIXA de ícones — um botão das barras e o respiro dos dois lados.
+#[must_use]
+pub fn strip_px() -> f32 {
+    super::float_bar::button_px() + 2.0 * ph2d_tokens::Spacing::Xs.px()
+}
+
+/// F5: os ícones da faixa de `side` — um por painel que reabrir devolve, de cima para baixo.
+#[must_use]
+pub fn strip_icons(
+    hero: &HeroScreen,
+    layout: &HeroLayout,
+    side: DockSide,
+) -> Vec<(NodeId, crate::icons::IconId, Rect)> {
+    let r = layout.dock_reopen(side);
+    if r.w <= crate::screens::dock_seam::DOCK_SEAM_PX {
+        return Vec::new();
+    }
+    let names = super::dock_columns::reopens(hero, side);
+    let (s, g, pad) = (
+        super::float_bar::button_px(),
+        super::float_bar::gap(),
+        ph2d_tokens::Spacing::Xs.px(),
+    );
+    let mut out = Vec::new();
+    crate::panel::with_registry_opt(|reg| {
+        for m in reg.panels().iter().map(|p| &p.manifest) {
+            if names.contains(&m.id) {
+                #[allow(clippy::cast_precision_loss)]
+                let y = r.y + pad + out.len() as f32 * (s + g);
+                out.push((m.panel_node_id, m.icon, Rect::new(r.x + pad, y, s, s)));
+            }
+        }
+    });
+    out
+}
+
+/// F5: pinta os ícones das faixas — a mesma tinta dos botões das barras em repouso.
+pub fn paint_strip_icons(hero: &HeroScreen, layout: &HeroLayout, scene: &mut VectorScene) {
+    for side in [DockSide::Left, DockSide::Right] {
+        for (_, icon, r) in strip_icons(hero, layout, side) {
+            crate::paint::paint_icon(
+                scene,
+                icon,
+                super::float_bar::inner(r),
+                resolve(ColorToken::Text2, hero.theme),
+                ph2d_tokens::StrokeToken::Default.px(),
+            );
+        }
+    }
+}
+
+/// F5: um toque na faixa reabre a coluna — e o painel do ícone tocado vem à FRENTE do encaixe.
+pub fn open_from_strip(hero: &mut HeroScreen, layout: &HeroLayout, side: DockSide, p: [f32; 2]) -> bool {
+    let pick = strip_icons(hero, layout, side)
+        .into_iter()
+        .find(|(_, _, r)| p[0] >= r.x && p[0] < r.x + r.w && p[1] >= r.y && p[1] < r.y + r.h)
+        .map(|(n, _, _)| n);
+    let opened = super::dock_columns::open(hero, side);
+    if opened && let Some(n) = pick {
+        hero.store.bump_panel_z(n);
+    }
+    opened
+}
+
+/// F5: abaixo da janela de referência o painel de propriedades (③) NASCE recolhido em faixa — uma
+/// vez por sessão: depois disso, aberto ou fechado é escolha do artista.
+pub fn collapse_when_compact(hero: &mut HeroScreen, viewport: Rect) {
+    if viewport.w < super::HERO_VIEWPORT_W && !hero.view.compact_collapsed {
+        hero.view.compact_collapsed = true;
+        super::dock_columns::close(hero, DockSide::Right, None);
     }
 }
 

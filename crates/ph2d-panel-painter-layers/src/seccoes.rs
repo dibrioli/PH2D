@@ -216,6 +216,12 @@ pub(crate) const BRUSH: &[&str] = &[
     "panel.painter_layers.brush.color",
     "panel.painter_layers.brush.paint_mode",
     "panel.painter_layers.brush.preset",
+    // O bloco de presets do Wet Painter (W1) toma o lugar do Preset no Wet Paint: o mesmo cartão.
+    "panel.painter_layers.wetpaint.preset",
+    "panel.painter_layers.wetpaint.preset_favorite",
+    "panel.painter_layers.wetpaint.preset_policy",
+    "panel.painter_layers.wetpaint.vol_size",
+    "panel.painter_layers.wetpaint.water",
 ];
 /// *Clone*.
 pub(crate) const CLONE: &[&str] = &["panel.painter_layers.clone.aligned"];
@@ -382,7 +388,6 @@ pub(crate) const WETPAINT: &[&str] = &[
 pub(crate) const WETPAINT_CARTAO: &[&str] = &[
     "panel.painter_layers.wetpaint.grid_size_px",
     "panel.painter_layers.wetpaint.flow_grid_x",
-    "panel.painter_layers.wetpaint.water",
     "panel.painter_layers.wetpaint.pigment",
     "panel.painter_layers.wetpaint.pickup",
     "panel.painter_layers.wetpaint.dry_speed",

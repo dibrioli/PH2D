@@ -49,7 +49,9 @@ fn os_cinco_filtros_desfazem_se_em_rgba_e_rgb() {
         let esperado: Vec<u8> = if canais == 4 {
             img.clone()
         } else {
-            img.chunks_exact(3)
+            img.as_chunks::<3>()
+                .0
+                .iter()
                 .flat_map(|p| [p[0], p[1], p[2], 255])
                 .collect()
         };

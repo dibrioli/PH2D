@@ -133,7 +133,7 @@ pub fn ler_textura(bytes: &[u8]) -> Result<(Vec<u8>, u32, u32), Erro> {
     let lum = if cab.canais == 1 {
         px
     } else {
-        px.chunks_exact(4).map(|p| p[0]).collect()
+        px.as_chunks::<4>().0.iter().map(|p| p[0]).collect()
     };
     Ok((lum, cab.largura, cab.altura))
 }
@@ -242,7 +242,9 @@ fn desfiltrar(h: &Cabecalho, cru: &[u8]) -> Result<Vec<u8>, Erro> {
         return Ok(img);
     }
     Ok(img
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .flat_map(|p| [p[0], p[1], p[2], 255])
         .collect())
 }
@@ -283,8 +285,11 @@ fn texto_itxt(d: &[u8]) -> Result<Option<Vec<u8>>, Erro> {
     }))
 }
 
+/// Um chunk lido: o tipo e os dados.
+type Chunk<'a> = ([u8; 4], &'a [u8]);
+
 /// Os chunks até ao `IEND`, com o CRC de cada um conferido.
-fn chunks(bytes: &[u8]) -> Result<Vec<([u8; 4], &[u8])>, Erro> {
+fn chunks(bytes: &[u8]) -> Result<Vec<Chunk<'_>>, Erro> {
     if bytes.len() < 8 || bytes[..8] != ASSINATURA {
         return Err(Erro::NaoEPng);
     }

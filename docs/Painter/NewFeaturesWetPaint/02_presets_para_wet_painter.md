@@ -264,6 +264,11 @@ texto) fazem; o artista arrasta-o, partilha-o e vê-o na pasta.
   tEXt  "ph2d-origin"       "factory" | "user" | "imported"
 ```
 
+> ⚠️ **Como ficou na W1** ([05 §4b](05_plano_da_linha_e_o_antes.md)): `iTXt` comprimido e não `zTXt` (o
+> `zTXt` é Latin-1, os nomes são UTF-8); texturas num chunk privado `phTx` (PNG cinzento), não base64; zlib
+> por `miniz_oxide`, não `flate2` (bytes estáveis por conjunto de build); os mapas `engine`/`brush` são por
+> NOME do campo.
+
 - **Onde:** fábrica em `assets/brushes/` (versionado, com gate de contagem — *«número que soma conta-se»*);
   do utilizador em `~/.local/share/ph2d/brushes/`; o painel lista os dois, grupos = pastas, ordem em
   `settings.ron` por pasta.

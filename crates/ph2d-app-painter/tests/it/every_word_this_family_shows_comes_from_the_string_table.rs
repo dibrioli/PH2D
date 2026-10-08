@@ -24,8 +24,20 @@ const FORA: &[Isento] = &[(
      `println!`) — diagnóstico de quem caça um engasgo, nunca ecrã",
 )];
 
-/// Nenhum literal-identificador sobra nesta crate — a lista existe para o dia em que sobrar.
-const NOT_LANGUAGE: &[Excecao] = &[];
+/// Os literais-identificadores desta crate, com o mecanismo.
+const NOT_LANGUAGE: &[Excecao] = &[
+    (
+        "painter_bridge_presets.rs",
+        "Watercolor",
+        "nome de PASTA no disco (a pasta do meio de um preset guardado sem origem): o caminho é a \
+         identidade durável do preset — favoritos e recentes guardam-no — e traduzi-lo mudava-a",
+    ),
+    (
+        "painter_bridge_presets.rs",
+        "User",
+        "nome de PASTA no disco (o grupo de um preset guardado sem origem), pela mesma razão",
+    ),
+];
 
 #[test]
 fn every_word_this_family_shows_comes_from_the_string_table() {

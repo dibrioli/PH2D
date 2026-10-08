@@ -46,6 +46,16 @@ nas mesmas imagens (wetpaint 28 / 140, digital 28, impasto 90: iguais).
   promessa da largura e o seu gate entram COM a W2**, medidos sobre o traço novo; a W1 guarda no preset a
   tabela raio → largura que a sonda gera (o motor muda ⇒ a tabela regera-se com o corpus de miniaturas).
 
+### §1.2 — A tabela 02 §6.9 em unidades do motor (W1, a fábrica)
+
+A tabela mistura escalas. **Pigment/dab, Paper Gate, Evaporation, Bristle Size/Count e Water** estão nas
+unidades do motor, e o «Wet Round» bate AO NÚMERO com o `WetKnobs::DEFAULT` (os cinco ajustes do dono de
+22/07). **Pickup, Edge Darkening e Gravity** estão em 0–1 e não cabem nas faixas do motor (Pickup 0,5 >
+máx 0,2; Gravity 0,5 > máx 0,05; Edge 0,8 contra o padrão 50 de 0–200). Lei adoptada: **o Wet Round É o
+padrão do dono, e essas três colunas são RAZÕES ao Wet Round** (Wash: Pickup ×0,6, Edge ×0,75, Gravity ×0,6;
+Dry Brush ×1,6 / ×1,125 / ×0,4; Drip ×0,8 / ×1 / ×2). Tamanho e opacidade não estão na tabela: a fábrica
+NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/presets_de_fabrica.rs::RECEITAS`.
+
 ## §2 — Onde o código entra (o mapa que decide a cerca)
 
 - O gesto vira carimbos no motor PARTILHADO (`stroke_lifecycle` → `dynamics`/`spec` → `stamp_route.rs:340
@@ -73,7 +83,7 @@ nas mesmas imagens (wetpaint 28 / 140, digital 28, impasto 90: iguais).
 |---|---|---|
 | **cerca** | `the_other_media_are_untouched` (diff vs merge-base) + fixture `fixtures/sonda_28/{digital,watercolor,impasto}.ppm` com cabeçalho | sha256 iguais; mutação num dos três meios reprova |
 | **W0** ✅ | as 12 fotos do Rebelle em `fixtures/rebelle/` com cabeçalho; `mede_todos.sh` sem caminho de scratchpad; a régua em Rust; a lei raio → largura medida e diagnosticada (§1.1). `PH2D_SONDA_PRESET` passa para a W1 (antes dela não há presets) | o gate de largura passa para a W2 (§1.1) |
-| **W1** | crate `ph2d-brush-presets` (`*.ph2d-brush.png`), fábrica em `assets/brushes/WetPainter/`, browser + 5 volumes | round-trip ao byte; presets contados; campo desconhecido não falha; miniatura por hash |
+| **W1** ✅ | crate `ph2d-brush-presets` (`*.ph2d-brush.png`), fábrica em `assets/brushes/WetPainter/`, navegador + os volumes VIVOS (Size px, Water; Opacity/Pressure/Length sem leitor ⇒ fora) | round-trip ao byte; presets contados; campo desconhecido não falha; miniatura = a do motor; o pincel guardado pinta o mesmo traço ao byte |
 | **W2** | fios com pressão Perlin, largura ondulante, oscilação, Thin/Thick/Edges, Random Span, ruído HSLuv — e a **largura prometida** (§1.1: o raio do motor sai da tabela do preset, em `stamp_dabs_wetpaint`) | **largura = 2·raio ± 2 px** em raios fora da tabela, de 2 a 300 (hoje 0,25–0,60 × e o buraco 11–15) · a 40 px: **5 ≤ textura ≤ 10 %** (hoje 12–14 ✗; Rebelle óleo 5,9, express 9) · **CV ≤ 0,02** (hoje 0,031 ✗; dele 0,011) · **período < 15 %** (hoje 16 % ✗; dele 9 %) · controlo: knobs a 0 ⇒ PNG de hoje ao byte |
 | **W3** | campo de altura no grid (fios Add/Remove), oleosidade = viscosidade, luz do Impasto por porta livre | óleo: borda/miolo **0,8–0,9** (hoje 0,52 ✗; dele 0,87) e textura na banda da W2; acrílico: largura A = B |
 | **W4** | lei do papel do fluido (força × pressão, contraste, scratch, fundo que fura, `PaperBehaviour` × 5 papéis) | lápis 8B: textura **≥ 8 %**, borda/miolo **< 0,5** (dele 9,1 / 0,32; não temos lápis) |
@@ -103,20 +113,49 @@ nas mesmas imagens (wetpaint 28 / 140, digital 28, impasto 90: iguais).
   `0x2c12…` → `0xaa36…`). `cerca.sh`: linha alterada ✗, só acrescentar ✓.
 - A sonda passou para o binário único `tests/it/` (era `tests/*.rs` solto); os gestos vivem em
   `tests/it/sonda_gestos.rs`; os bytes dos quatro meios não mudaram com a mudança de sítio.
+- ✅ **W1** (07/10, `5fcf7d826` + `c8824cd35`) — onde vive cada coisa:
+  - **Formato** — crate `ph2d-brush-presets` (só formato + biblioteca, não conhece o motor): PNG à mão,
+    parâmetros num `iTXt ph2d-brush` comprimido (⚠️ `iTXt` e não o `zTXt` do 02 §5: o `zTXt` é Latin-1 e os
+    nomes são UTF-8), origem num `tEXt`, texturas NOSSAS num chunk privado `phTx` (PNG cinzento). zlib por
+    `miniz_oxide` e **não** `flate2`: no lock o flate2 tem dois motores e a unificação de features escolhe-o
+    pelo conjunto do build — o mesmo preset sairia com bytes diferentes num `-p` e num `--workspace`.
+  - **Preset do Wet Painter** — `ph2d-tool-painter/src/tool/paint/wetpaint_preset.rs`: os knobs por CHAVE
+    do `KNOB_DEFS` + `erase`, os 28 campos do `BrushSpec` que o traço lê (`CAMPOS_DO_PINCEL`), as máscaras da
+    forma e do grão, o modo e os volumes; os outros 66 campos em `CAMPOS_FORA` com o porquê (o gate lê o
+    `spec.rs`: campo novo sem destino reprova). ⭐ O gate `o_pincel_guardado_pinta_o_mesmo_traco` (TODOS os
+    campos mexidos, pelo ficheiro, ao byte) foi visto vermelho por um defeito REAL: 3 153 px — `paper_depth`
+    estava fora e o traço lê-o (é a «Paper Texture Strength» por pincel do Rebelle).
+  - **Miniatura** = o S da bancada (rampa 0,15→1→0,15, 2 s de água) a 256², no relógio FIXO (renderização
+    fora do ecrã; o relógio fixo deixou de ser só `test-support`). Igual no perfil `test` e no `smoke`.
+  - **Fábrica** — `assets/brushes/WetPainter/Watercolor/Fluid/` (4, §1.2), gerador
+    `presets_de_fabrica::gera_os_presets_de_fabrica` (`PH2D_REGERA_PRESETS=1`); gates contados · ao byte ·
+    miniatura = a que o motor pinta hoje (o corpus de regressão: a W2 vai pô-lo vermelho e REGERÁ-LO de
+    propósito) · duas miniaturas nunca iguais. Tabela raio → largura por preset (a do Wet Round = §1.1).
+  - **Painel** — `ph2d-panel-painter-layers/src/paint_wetpaint_presets.rs`: no Wet Paint a fileira «Preset»
+    dos meios dá lugar ao navegador (Favoritos · Recentes · grupos), Favorite, miniatura, Save as New ·
+    Save as Default · Reset, os volumes VIVOS **Size px** (= diâmetro; o Size normalizado do topo sai no Wet
+    Paint) e **Water** (saiu da secção para o topo) com valores rápidos, e a política dos volumes.
+    ⛔ **Opacity fora**: a força não tem leitor no Wet Paint (dono 12/08; gate
+    `a_opacidade_nao_tem_leitor_no_wet_paint` fica vermelho quando tiver ⇒ o volume entra). Pressure e
+    Length entram com W6/W5.
+  - **Disco** — `ph2d-app-painter/src/painter_bridge_presets.rs` (feature do painel): o tool regista o
+    `PedidoPreset`, a ponte executa (biblioteca, `estado.json`, política, Save/Reset, avisos visíveis).
+  - **Sonda** `PH2D_SONDA_PRESET=<nome>|todos` em `tests/it/sonda_tracos_por_meio.rs`.
 
-## §5 — A próxima janela (W1)
+## §5 — A próxima janela (W2)
 
-1. Fase 0 do [MODELO_TROCA_DE_AGENTE](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md) e
-   `bash docs/Painter/NewFeaturesWetPaint/ferramentas/cerca.sh` (verde) + o teste
-   `os_outros_meios_nao_mudam` (verde) antes de tocar em produto.
-2. W1 pelo 02 §5: crate `ph2d-brush-presets`; o preset do Wet Painter = `WetKnobs` + o sub-conjunto do
-   `BrushSpec` que `stamp_dabs_wetpaint` lê + os campos das ondas seguintes (desconhecido não falha) + a
-   tabela raio → largura (§1.1). Sonda com `PH2D_SONDA_PRESET`.
-3. As sondas: `sonda_tracos_por_meio` (a cena do 03), `sonda_largura::{a_largura_que_se_ve_por_tamanho,
-   a_lei_densa_do_wet_paint, o_degrau_do_wet_paint}` — todas `--profile smoke --test it … -- --ignored`.
+1. Fase 0 do [MODELO_TROCA_DE_AGENTE](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md), a
+   cerca e `os_outros_meios_nao_mudam` verdes antes de tocar em produto.
+2. W2 pelo §3: fios com física própria em ficheiros irmãos `bristles_*.rs` (trail/solver no tecto), e a
+   **largura prometida** — o raio do motor sai da `width_table` do preset em `stamp_dabs_wetpaint`, com o
+   gate «largura = 2·raio ± 2 px» de 2 a 300. Os campos novos dos fios entram no preset (`CAMPOS_*` ou no
+   mapa `engine`) e na tabela.
+3. A W2 muda a lei do motor ⇒ `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` fica vermelho: é o
+   esperado; regere a fábrica (`PH2D_REGERA_PRESETS=1`) no mesmo commit da lei e diga-o no handoff.
+4. Barra das medições da W2 no §3 (textura 5–10 %, CV ≤ 0,02, período < 15 %), numa rodada só (§0.10).
 
 ## §6 — Ritmo
 
-Uma janela por onda (CLAUDE.md §2). Esta janela: cerca + W0 (+ W1 se couber). Medições de cada onda numa
+Uma janela por onda (CLAUDE.md §2). Janela 1: cerca + W0. Janela 2: W1. Medições de cada onda numa
 rodada só, intercaladas (§0.10); o oráculo só se reabre para as bancadas novas (W5 cruzamento, W4 papéis,
 W6 tilt), todas numa sessão do Rebelle.

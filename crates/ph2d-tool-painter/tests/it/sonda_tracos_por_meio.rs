@@ -32,7 +32,7 @@ fn escreve_ppm(path: &std::path::Path, rgba: &[u8], w: u32, h: u32) {
     let mut f = std::fs::File::create(path).expect("ppm");
     write!(f, "P6\n{w} {h}\n255\n").unwrap();
     let mut rgb = Vec::with_capacity((w * h * 3) as usize);
-    for px in rgba.chunks_exact(4) {
+    for px in rgba.as_chunks::<4>().0 {
         rgb.extend_from_slice(&px[..3]);
     }
     f.write_all(&rgb).unwrap();

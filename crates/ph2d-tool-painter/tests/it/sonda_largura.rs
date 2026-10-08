@@ -37,7 +37,9 @@ fn a_largura_que_se_ve_por_tamanho() {
             if let Some(dir) = &out {
                 let mut f = Vec::with_capacity((w * h * 3) as usize + 32);
                 f.extend_from_slice(format!("P6\n{w} {h}\n255\n").as_bytes());
-                px.chunks_exact(4)
+                px.as_chunks::<4>()
+                    .0
+                    .iter()
                     .for_each(|p| f.extend_from_slice(&p[..3]));
                 std::fs::create_dir_all(dir).unwrap();
                 std::fs::write(format!("{dir}/{nome}_{size}.ppm"), f).unwrap();

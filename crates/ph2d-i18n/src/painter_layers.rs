@@ -542,7 +542,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.preset_save_default" => "Save as Default",
         "panel.painter_layers.wetpaint.preset_reset" => "Reset",
         "panel.painter_layers.wetpaint.vol_size" => "Size px",
-        "panel.painter_layers.wetpaint.preset_policy" => "On preset change",
+        "panel.painter_layers.wetpaint.preset_policy" => "On switch",
         "panel.painter_layers.wetpaint.policy_volumes_and_mode" => "Keep volumes and mode",
         "panel.painter_layers.wetpaint.policy_volumes" => "Keep volumes",
         "panel.painter_layers.wetpaint.policy_none" => "Keep nothing",

@@ -2,7 +2,8 @@
 
 - **Onda 1 fechada** (F0+F1+F2+F3, a Hierarchy nova): [handoff de integração](HANDOFF_INTEGRACAO_line_ObjectsAndComponents_2026-10-08.md).
   O que entrou e as premissas que caíram: [doc 01 §11](../01_objeto_e_componente.md).
-- ⚠️ Antes de abrir a onda 2: a linha espera a integração da onda 1 (ordem do dono) — `git cherry main HEAD`.
+- ⚠️ A onda 1 pode ainda não estar no `main` (`git cherry main HEAD`): a onda 2 segue na MESMA branch,
+  por cima dela — o integrador leva as duas juntas. Smoke da onda 1 aprovado pelo dono em 08/10.
 
 ## Próxima onda (2): F4 — a Animação por objecto (doc 01 §6, escolha 9.1 = A)
 

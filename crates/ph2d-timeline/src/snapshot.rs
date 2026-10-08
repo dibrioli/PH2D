@@ -301,6 +301,10 @@ pub struct TimelineViewSnapshot {
     /// Every clip's author-visible name, in document order — the selector's list.
     /// Reused across rebuilds (clear + push).
     pub clips: Vec<String>,
+    /// O índice no DOCUMENTO de cada linha de [`Self::clips`] — a lista é a da animação em vista.
+    pub clip_index: Vec<usize>,
+    /// O cabeçalho *«Animação de: X ▾»* (a shell enche-o: os nomes vêm do mundo).
+    pub animation: crate::AnimationHeader,
     /// Every container, index-aligned with `TimelineDoc::containers()` (ADR-0133) — the
     /// source dropdown's other half.
     pub containers: Vec<ContainerView>,
@@ -346,7 +350,7 @@ pub struct TimelineViewSnapshot {
     /// Animate/Harmony gesture, which the research found is the 2D lineage (After Effects
     /// opens a new tab instead, and its users rebuild the lost context by hand).
     pub crumbs: Vec<(usize, String)>,
-    /// Index into [`Self::clips`] of the clip being edited.
+    /// The DOCUMENT index of the clip being edited — its row is [`Self::active_row`].
     pub active_clip: usize,
 }
 
@@ -449,11 +453,7 @@ impl TimelineViewSnapshot {
 
         // Clips (reuse buffer): names only — the panel never touches the curves of
         // a clip it is not showing.
-        self.clips.clear();
-        for c in doc.clips() {
-            self.clips.push(c.name.clone());
-        }
-        self.active_clip = doc.active_index();
+        crate::animation_view::fill_clips(self, state);
 
         // The clip stack. The blend windows are asked of the LANE, never recomputed
         // here — so the crossfade the panel DRAWS is literally the one the

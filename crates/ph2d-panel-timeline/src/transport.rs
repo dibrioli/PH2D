@@ -55,6 +55,8 @@ enum Item {
     /// document that never uses containers pays nothing and sees nothing — there is no trail
     /// to show until you are inside something.
     Crumbs,
+    /// «Animation: Hero ▾» — whose clips the next item lists (`transport_animation`).
+    Animation,
     Clips,
     Transport,
     ReverseKeys,
@@ -84,9 +86,10 @@ enum Item {
 // acrescentou `Physics` e a `line/anim-fixes` acrescentou `Crumbs` — as duas na
 // MESMA jornada, cada uma declarando 14. O valor certo (15) não estava em nenhum
 // dos dois lados do conflito.
-const ITEMS: [Item; 20] = [
+const ITEMS: [Item; 21] = [
     Item::Tabs,
     Item::Crumbs,
+    Item::Animation,
     Item::Clips,
     Item::Transport,
     Item::ReverseKeys,
@@ -130,6 +133,8 @@ const ITEMS: [Item; 20] = [
 /// (Enio, 2026-07-16: *"renomear o clip deve abrir a caixa de texto sobre o dropdown"*).
 #[derive(Clone, Copy)]
 pub(crate) struct ClipChip {
+    /// Which dropdown: the clip selector, or «Animation: Hero ▾».
+    pub id: ph2d_a11y::NodeId,
     /// The chip's rect — where the dropdown painted, this frame, at this width.
     pub rect: Rect,
     /// Its option list is open.
@@ -171,14 +176,14 @@ pub(crate) fn paint_bar(
     body: Rect,
     snap: &TimelineViewSnapshot,
     view: BarView,
-) -> (f32, Option<ClipChip>) {
+) -> (f32, Option<ClipChip>, Option<ClipChip>) {
     let gap = Spacing::Xs.px();
     let row_step = ph2d_tokens::row_pitch_px();
     // ⭐ UMA medição por quadro, partilhada pela régua do fluxo e pelos dez pintores — ver
     //   [`toggle_label_w`]. Medi-la dentro de cada célula daria a mesma resposta e pagaria
     //   dez vezes o preço; medi-la em dois sítios é como as duas passam a discordar.
     let label_col = toggle_label_w(ctx);
-    let mut clip_chip = None;
+    let (mut clip_chip, mut anim_chip) = (None, None);
     // Row 0 is the header strip; row 1+ are full-width rows in the body.
     let mut row = header;
     let mut body_rows = 0usize;
@@ -198,13 +203,15 @@ pub(crate) fn paint_bar(
             );
             x = row.x;
         }
-        if let Some(chip) = paint_item(ctx, theme, item, x, row.y, snap, view, label_col) {
-            clip_chip = Some(chip);
+        match paint_item(ctx, theme, item, x, row.y, snap, view, label_col) {
+            Some(c) if c.id == crate::ids::TIMELINE_ANIM_DD => anim_chip = Some(c),
+            Some(c) => clip_chip = Some(c),
+            None => {}
         }
         x += w + gap;
     }
 
-    (body.y + body_rows as f32 * row_step, clip_chip)
+    (body.y + body_rows as f32 * row_step, clip_chip, anim_chip)
 }
 
 /// How wide `item` paints. The single source the flow measures against — every
@@ -220,6 +227,7 @@ fn width(item: Item, snap: &TimelineViewSnapshot, view: BarView, label_col: f32)
         // they are the two ways to get a clip, and the difference between them is
         // whether it starts empty.
         Item::Crumbs => crate::breadcrumb::width(snap),
+        Item::Animation => crate::transport_animation::width(snap),
         Item::Clips => crate::transport_clips::width(snap, view.tab),
         // |< < >/|| > >| — five buttons, ONE body: four hairlines between them (2026-09-30).
         Item::Transport => {
@@ -387,6 +395,7 @@ fn paint_item(
     match item {
         Item::Tabs => crate::transport_tabs::paint(ctx, theme, x, y, view.tab, snap),
         Item::Crumbs => crate::breadcrumb::paint(ctx, theme, x, y, snap),
+        Item::Animation => return crate::transport_animation::chip(ctx, theme, x, y, snap),
         Item::Clips => return crate::transport_clips::cluster(ctx, theme, x, y, snap, view),
         Item::Transport => transport_row(ctx, theme, x, y, snap, view),
         // **I** — the active clip's keys, played backwards. Beside the transport it

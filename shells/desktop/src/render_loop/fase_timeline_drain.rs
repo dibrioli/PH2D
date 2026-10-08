@@ -51,6 +51,7 @@ impl crate::App {
                     | ph2d_timeline::TimelineIntent::SeekFrame(_)
             )
         });
+        ph2d_timeline_persist::follow_selection(&mut self.timeline, active_playhead, sim.world(), selected_now);
         let timeline_reset = timeline_bridge::run(
             sim.world_mut(),
             &mut self.timeline,
@@ -125,6 +126,7 @@ impl crate::App {
         // para os objetos por `wire_id` (o hash de um `Name`), nunca pelo nome. Sem isto o
         // dope-sheet rotula toda row como `#7294`.
         ph2d_timeline_persist::publish_object_names(&mut self.timeline_view, sim.world());
+        ph2d_timeline_persist::publish_animation_header(&mut self.timeline_view, &self.timeline, sim.world());
         // ...e QUANTO cada propriedade animada vale AGORA, para a row o mostrar (Enio, 2026-09-04).
         // ⚠️ **Depois do `timeline_bridge::run`**, que é quem escreve a pose deste quadro: lido
         // antes, o número atrasaria um quadro — e este é o sítio onde o mundo já está escrito.

@@ -28,6 +28,8 @@ use crate::state::SelectedKey;
 /// A single command from the timeline panel (or a headless test).
 #[derive(Debug, Clone, PartialEq)]
 pub enum TimelineIntent {
+    /// A animação de um objecto: mostrar, dar, tirar (`animation_view.rs`).
+    Animation(crate::AnimationIntent),
     // ── transport (drives the Playhead) ─────────────────────────────────────
     /// Start playback.
     Play,

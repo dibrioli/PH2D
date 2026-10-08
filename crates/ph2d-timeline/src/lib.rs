@@ -19,6 +19,8 @@
 //! entity's `Transform`); vector / painter / node-param resolvers plug in later
 //! as sibling modules following the same shape.
 
+pub mod animation_view;
+pub use animation_view::{AnimationHeader, AnimationIntent, AnimationView};
 pub mod apply;
 
 /// ⭐ **Aplicar UM clip fora do transporte** — irmão do `apply` pelo teto de LOC, cortado por

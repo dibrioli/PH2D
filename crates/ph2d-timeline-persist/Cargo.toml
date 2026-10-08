@@ -21,15 +21,14 @@ authors.workspace = true
 # sobre uma cena da shell (`nest_smoke::build_library`), logo mora com o que exercita (HOWTO §2.6).
 [dependencies]
 ph2d-anim = { path = "../ph2d-anim" }
+# O relógio: a animação em vista troca o clip activo e ressincroniza o loop dele.
+ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # ⚠️ Invisível enquanto vivia na shell (HOWTO §1.3): a purga pergunta quem ainda pede um clip
 # pelo NOME — os ossos inteligentes (`SmartBone`).
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 ph2d-timeline = { path = "../ph2d-timeline" }
 
-# ⚠️ Só as fixturas dos gates: o relógio (`ph2d-core`).
-[dev-dependencies]
-ph2d-core = { path = "../ph2d-core" }
 
 [lints]
 workspace = true

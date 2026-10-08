@@ -29,7 +29,7 @@ mod intent_apply_time;
 /// The loop-sync family (`sync_transport_loop`/`sync_container_loop`/`sync_loop`) — sibling
 /// module under the LOC cap.
 #[path = "intent_loop_sync.rs"]
-mod intent_loop_sync;
+pub(crate) mod intent_loop_sync;
 /// The post-edit invariant restoration (`settle`) — sibling module under the LOC cap.
 #[path = "intent_settle.rs"]
 mod intent_settle;
@@ -48,6 +48,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
     // the same answer (ADR-0133 §5).
     let host = state.edit_host();
     match intent {
+        I::Animation(a) => crate::animation_view::apply(state, playhead, a),
         // transport
         I::Play => playhead.play(),
         I::Pause => playhead.pause(),
@@ -372,9 +373,13 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             sync_loop(&state.doc, playhead, state.keys_mode);
         }
         I::AddClip => {
+            // O clip novo é da animação EM VISTA (doc ObjectsAndComponents 01 §6).
+            let owner = state.view.owner;
             edit(state, |doc, sel| {
                 let name = doc.fresh_clip_name();
-                let i = doc.add_clip(name);
+                let Some(i) = doc.add_clip_for(name, owner) else {
+                    return;
+                };
                 // A new clip opens as a 4 s composition, not a derived-0 one (Enio,
                 // 2026-07-23) — the same product default the first clip gets. The
                 // AUTHORING layer stamps it; the data `add_clip` stays derived.

@@ -233,6 +233,9 @@ pub struct TimelineState {
     /// edita por [`crate::TimelineIntent::SetOnion`]; o shell o LÊ para desenhar os
     /// fantasmas no passe de sprite.
     pub onion: crate::OnionSettings,
+    /// **De quem é a animação em vista** (doc ObjectsAndComponents 01 §6) — sessão, como
+    /// [`Self::flags`]; [`crate::animation_view::follow`] a mantém.
+    pub view: crate::AnimationView,
 }
 
 impl TimelineState {

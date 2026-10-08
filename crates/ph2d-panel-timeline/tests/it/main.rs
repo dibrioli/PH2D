@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_coluna_do_toggle_mede_a_lista;
+mod animation_chip_seam;
 mod buffer_curves_seam;
 mod close_button_seam;
 mod containers_tab_seam;

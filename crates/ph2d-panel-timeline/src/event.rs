@@ -266,6 +266,7 @@ pub(crate) fn apply_event(
         ev if crate::transport_clips::owns(&ev) => {
             crate::transport_clips::apply_event(state, host, ev)
         }
+        ev if crate::transport_animation::owns(&ev) => crate::transport_animation::apply_event(host, ev),
         _ => EventOutcome::Ignored,
     }
 }

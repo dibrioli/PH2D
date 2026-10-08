@@ -179,6 +179,18 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::TIMELINE_CLIP_OPT {
         button(store, id);
     }
+    // «Animation: Hero ▾» — the same chip + options shape as the clip selector.
+    store.register(
+        ids::TIMELINE_ANIM_DD,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: Some(0),
+        },
+    );
+    for id in ids::TIMELINE_ANIM_OPT {
+        button(store, id);
+    }
     button(store, ids::TIMELINE_ADD_CLIP);
     button(store, ids::TIMELINE_RENAME_CLIP);
     button(store, ids::TIMELINE_DELETE_CLIP);

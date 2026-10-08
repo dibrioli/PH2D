@@ -95,7 +95,11 @@ pub(crate) fn cluster(
         x = icon_button_in(ctx, theme, x, y, id, glyph, cell) + fio;
     }
 
-    Some(ClipChip { rect: chip, open })
+    Some(ClipChip {
+        id: ids::TIMELINE_CLIP_DD,
+        rect: chip,
+        open,
+    })
 }
 
 /// **What the dropdown offers, per tab** — the SOURCE selector (ADR-0133, amended
@@ -163,7 +167,7 @@ pub(crate) fn selected_source(
     let clips = snap.clips.len().min(ids::TIMELINE_CLIP_OPT.len());
     match view.source_container {
         Some(c) if view.tab != Tab::Keys => clips + c.min(ids::TIMELINE_CONT_OPT.len()),
-        _ => snap.active_clip.min(clips),
+        _ => snap.active_row().min(clips),
     }
 }
 
@@ -238,12 +242,15 @@ pub(crate) fn apply_event(
             // asking the derived answer now would show the previous selection for one frame.
             let mut row = None;
             match source_at(id) {
-                Some(Err(index)) => {
+                Some(Err(r)) => {
                     // A clip. The active clip lives in the DOCUMENT (editing keys is an edit),
-                    // so it round-trips as an intent — and the source's kind flips here.
-                    state::push_intent(TimelineIntent::SetActiveClip { index });
+                    // so it round-trips as an intent — and the source's kind flips here. The
+                    // list is the animation IN VIEW: the row names a document index.
+                    if let Some(&index) = snap.clip_index.get(r) {
+                        state::push_intent(TimelineIntent::SetActiveClip { index });
+                    }
                     state.source_container = None;
-                    row = Some(index);
+                    row = Some(r);
                 }
                 Some(Ok(index)) => {
                     // A container, as a thing to PLACE. Panel-local (picking a source is not
@@ -327,6 +334,7 @@ mod tests {
     fn snap() -> TimelineViewSnapshot {
         TimelineViewSnapshot {
             clips: vec!["Main".into(), "Run".into()],
+            clip_index: vec![0, 1],
             containers: vec![ContainerView {
                 name: "Walk".into(),
                 length: 2.0,

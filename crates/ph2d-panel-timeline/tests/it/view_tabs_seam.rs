@@ -86,6 +86,7 @@ fn keys_and_a_stack(clip_time: Option<f64>, playhead: f64) -> TimelineViewSnapsh
             }],
         }],
         clips: vec!["Left".into(), "Right".into()],
+        clip_index: vec![0, 1],
         active_clip: 1,
         ..TimelineViewSnapshot::default()
     }

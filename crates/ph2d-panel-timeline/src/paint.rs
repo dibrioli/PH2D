@@ -152,7 +152,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // The transport now flows BESIDE the title and only spills to a row of its own
     // when the panel is too narrow to hold it (Enio: "a timeline ficou apertada").
     let head_strip = geom::header_controls(rect, title_size);
-    let (after_transport, clip_dd_chip) = transport::paint_bar(
+    let (after_transport, clip_dd_chip, anim_dd_chip) = transport::paint_bar(
         ctx,
         theme,
         head_strip,
@@ -276,6 +276,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
             header,
             time_area: g.time_area,
             clip_dd_chip,
+            anim_dd_chip,
             // Where a CONTAINER's or a LANE's rename floats — its own row's label column.
             // At most one rename is open (`state.clip_rename` is a single slot), so the two
             // anchors are exclusive and `or` picks whichever kind is live.
@@ -350,6 +351,8 @@ struct Overlays {
     /// Where the clip dropdown's chip landed, and whether its list is open. The
     /// option popover and the rename field both hang off it.
     clip_dd_chip: Option<transport::ClipChip>,
+    /// The «Animation: Hero ▾» chip — its list floats the same way.
+    anim_dd_chip: Option<transport::ClipChip>,
     /// Where a CONTAINER's rename field goes, when one is open: its row in the Containers
     /// list. `None` for a clip rename, which floats over the chip instead.
     row_rename: Option<Rect>,
@@ -374,6 +377,9 @@ fn paint_overlays(
 ) {
     tracks::paint_add_track_popover(ctx, theme, o.header, state.add_track_open);
 
+    if let Some(c) = o.anim_dd_chip.filter(|c| c.open) {
+        crate::transport_animation::paint_popover(ctx, theme, snapshot, c.rect);
+    }
     if let Some(c) = o.clip_dd_chip.filter(|c| c.open) {
         let chip = c.rect;
         // The SAME doors the chip paints from, so the open list and the collapsed chip

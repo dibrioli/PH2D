@@ -126,7 +126,7 @@ pub(crate) fn paint(
 /// so the seeding and the commit cannot disagree about what is being renamed.
 fn current_name(snap: &TimelineViewSnapshot, cr: state::ClipRename) -> Option<&str> {
     match cr.kind {
-        state::RenameKind::Clip => snap.clips.get(cr.index).map(String::as_str),
+        state::RenameKind::Clip => snap.clip_name(cr.index),
         state::RenameKind::Container => snap.containers.get(cr.index).map(|c| c.name.as_str()),
         state::RenameKind::Lane => snap.lanes.get(cr.index).map(|l| l.name.as_str()),
     }

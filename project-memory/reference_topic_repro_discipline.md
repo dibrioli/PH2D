@@ -69,3 +69,4 @@ própria cena (`panel_visibility`, a selecção, o espaço de trabalho).
   sonda.* **Why:** o defeito vivia no ramo que só a cena do report toma. **How to apply:** antes de
   concluir «o motor está certo», corra a cena exacta do report nas rotas que o produto usa.
 - ⛔⛔ **O DEFEITO ATRIBUÍDO A UM COMPONENTE VARRE-SE ANTES DA CURA** — «o kurbo morde» era o Vello; o controlo positivo falhou e a varredura poupou a troca das marcas da placa ([[feedback_a_defect_attributed_to_a_component_is_swept_before_the_cure]], 05/10).
+- ⛔ **«NÃO APARECE» TEM UM SUSPEITO BARATO ANTES DO CARO: o TAMANHO EM PIXELS na câmera do produto** — a estrela de `0,07` em mundo eram `~3 px` (48 px/unidade); um gate em unidades de mundo aprova-a, o gate da cura conta pixels acesos ([doc 122](../docs/Motion%20Nodes/122_ciclo_13_os_abertos_do_modulo.md) §1, 07/10).

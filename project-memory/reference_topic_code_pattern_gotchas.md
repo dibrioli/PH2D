@@ -120,3 +120,5 @@ torna a morte visível depois. ⭐ Aqui o defeito foi apanhado por uma régua no
 - ⛔⛔ [DOIS laços escritos à mão que têm de concordar (avanço e replay) esquecem toda lei nova num deles — 3× na mesma ponte, 2 achadas por report do dono](feedback_two_hand_written_loops_that_must_agree_need_one_door.md)
 - ⛔⛔ [O que o undo NÃO fotografa o undo também não REPÕE — um relógio corrido, uma fábrica esgotada e uma SEMENTE sobreviviam ao Reset](feedback_what_the_undo_does_not_photograph_the_undo_does_not_restore.md)
 - ⛔⛔ [Composite por JANELA ≠ tela inteira se uma soma f32 depende da origem da janela (`lx+dx`, prefixos) — some na TELA](feedback_a_window_local_sum_rounds_at_the_window_scale.md)
+- ⛔⛔ [Uma linha-interruptor troca de id ao ser executada — guardar o id escolhido para o achar depois acha NADA no quadro seguinte (o Snap sem anel)](feedback_a_toggle_row_changes_its_id_when_executed.md)
+- ⛔⛔ [A porta da moldura (`stroke_frame`) no tema moderno ignora cor e alfa — realce passageiro por ela não aparece; gate de TINTA](feedback_the_theme_frame_door_ignores_colour_in_modern.md)

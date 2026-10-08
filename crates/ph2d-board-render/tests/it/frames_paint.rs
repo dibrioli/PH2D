@@ -324,3 +324,115 @@ fn a_far_rotated_note_is_a_rotated_block() {
         "o canto da caixa SEM rodar pintou-se: o bloco não rodou"
     );
 }
+
+/// ⭐ W5b: a guia de dois rectângulos rodados a 30° desenha-se NA linha inclinada das bordas — o
+/// gesto do editor produz a guia, a camada de cima pinta-a. Os pixels que a guia muda (contra o
+/// mesmo quadro sem ela) estão no meio dela; a 6 px para o lado, nada mudou.
+#[test]
+fn a_rotated_guide_paints_along_the_rotated_edges() {
+    use ph2d_board_edit::{Editor, Metrics, Mods, Overlay, Pointer};
+    let Some(mut g) = gpu() else {
+        return;
+    };
+    let t = 30f64.to_radians();
+    let (s, k) = t.sin_cos();
+    let local = |du: f64, dv: f64| [du * k - dv * s, du * s + dv * k];
+    let mut set = BoardSet::default();
+    let id = set.create("g".into());
+    let b = set.get_mut(id).unwrap();
+    let mut put = |c: [f64; 2], size: [f64; 2]| {
+        let shape = Shape {
+            kind: ShapeType::Rectangle,
+            style: Style::new(Some(WHITE), None, RED),
+            text: Default::default(),
+        };
+        let bx = [c[0] - size[0] / 2.0, c[1] - size[1] / 2.0, size[0], size[1]];
+        let mut el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), shape, bx);
+        el.angle = t;
+        BoardOp::Put(el).apply(&mut b.doc);
+    };
+    put([0.0, 0.0], [200.0, 100.0]);
+    let cb = local(-47.0, 210.0);
+    put(cb, [100.0, 60.0]);
+    b.camera = Camera {
+        center_x: 0.0,
+        center_y: 90.0,
+        zoom: 1.0,
+    };
+    let metrics = Metrics {
+        handle: 8.0,
+        rotate_offset: 24.0,
+        snap: 6.0,
+        drag: 3.0,
+        click_size: [160.0, 100.0],
+        paste_offset: 10.0,
+        bind: 8.0,
+        dot: 40.0,
+        eraser: 10.0,
+        frame_title: 20.0,
+    };
+    let mut ed = Editor::new(Style::new(Some(WHITE), None, RED), metrics);
+    let mut ts = TextSystem::without_system_fonts();
+    let mut h = ph2d_board_model::History::default();
+    let p = |x: f64, y: f64| Pointer {
+        world: [x, y],
+        px: 1.0,
+        mods: Mods::default(),
+    };
+    let view = [-1e4, -1e4, 1e4, 1e4];
+    ed.pointer_down(&mut b.doc, &mut h, &mut ts, p(cb[0], cb[1]), view);
+    ed.pointer_move(&mut b.doc, &mut ts, p(cb[0] - 2.0, cb[1]));
+    ed.pointer_move(&mut b.doc, &mut ts, p(cb[0] - 4.0, cb[1]));
+    let overlay = ed.overlay(&mut b.doc, &mut ts);
+    let edge = overlay
+        .guides
+        .iter()
+        .find(|g| {
+            let d = [g.b[0] - g.a[0], g.b[1] - g.a[1]];
+            (d[0] * k + d[1] * s).abs() < 1e-6 * d[0].hypot(d[1])
+        })
+        .copied()
+        .expect("a guia na linha inclinada");
+    let paint = |g: &mut (GpuContext, VelloPass), o: &Overlay| {
+        let (gpu, pass) = g;
+        let board = &set.boards()[0];
+        let mut routes = RouteCache::default();
+        routes.sync(&board.doc);
+        let mut scene = VectorScene::new();
+        let mut ts = TextSystem::without_system_fonts();
+        let mut cache = RenderCache::default();
+        ph2d_board_render::paint(
+            board,
+            AREA,
+            &mut scene,
+            Theme::Forge,
+            &mut ts,
+            &mut cache,
+            &routes,
+            None,
+        );
+        ph2d_board_render::paint_overlay(board, AREA, &mut scene, Theme::Forge, o, &metrics);
+        Px {
+            rgba: pass
+                .render_and_readback(&*gpu, scene.inner(), SIZE)
+                .expect("readback"),
+        }
+    };
+    let with = paint(&mut g, &overlay);
+    let without = paint(&mut g, &Overlay::default());
+    // O meio da guia e um ponto a 6 px para o lado (na perpendicular dela), no ecrã.
+    let m = [(edge.a[0] + edge.b[0]) / 2.0, (edge.a[1] + edge.b[1]) / 2.0];
+    let screen = |w: [f64; 2]| ((w[0] + 320.0) as u32, (w[1] - 90.0 + 240.0) as u32);
+    let (mx, my) = screen(m);
+    let (ox, oy) = screen([m[0] + 6.0 * k, m[1] + 6.0 * s]);
+    assert_ne!(
+        with.at(mx, my),
+        without.at(mx, my),
+        "a guia não passou no meio dela"
+    );
+    assert_eq!(
+        with.at(ox, oy),
+        without.at(ox, oy),
+        "a 6 px da linha inclinada a guia pintou"
+    );
+}

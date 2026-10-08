@@ -949,3 +949,6 @@ mod ink;
 
 #[path = "organize_tests.rs"]
 mod organize;
+
+#[path = "guides_tests.rs"]
+mod guides;

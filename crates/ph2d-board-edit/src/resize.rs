@@ -122,3 +122,13 @@ pub(crate) fn resized(originals: &[Element], old: Frame, new: Frame) -> Vec<Elem
         })
         .collect()
 }
+
+/// `o` rodado de `delta` à volta de `c` (o centro dele anda no arco, o ângulo soma).
+pub(crate) fn turned(o: &Element, c: [f64; 2], delta: f64) -> Element {
+    let mut el = o.clone();
+    let nc = ph2d_board_model::rotate_about(o.center(), c, delta);
+    el.x = nc[0] - el.w / 2.0;
+    el.y = nc[1] - el.h / 2.0;
+    el.angle = o.angle + delta;
+    el
+}

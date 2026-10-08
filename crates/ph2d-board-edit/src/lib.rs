@@ -12,6 +12,7 @@ mod command;
 mod frame_box;
 mod gesture;
 mod gesture_end;
+mod guides;
 mod ink;
 mod links_tags;
 mod notes;

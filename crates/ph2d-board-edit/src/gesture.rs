@@ -3,15 +3,14 @@
 
 use std::collections::BTreeSet;
 
-use ph2d_board_model::{
-    Anchor, BoardDoc, BoardOp, Element, ElementId, End, History, ShapeType, rotate_about,
-};
+use ph2d_board_model::{Anchor, BoardDoc, BoardOp, Element, ElementId, End, History, ShapeType};
 use ph2d_text::TextSystem;
 
 use crate::gesture_end::undo_ops;
+use crate::guides::Snapper;
 use crate::resize::{axis_angle, drag_box, resize_frame, resized};
-use crate::snap::{Guide, snap_box};
-use crate::{Dir, Editor, Frame, Handle, Mods, Pointer, Tool, live, union_aabb};
+use crate::snap::Guide;
+use crate::{Dir, Editor, Frame, Handle, Mods, Pointer, Tool, live};
 
 /// O que o carregar pede a quem chama.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -22,8 +21,6 @@ pub enum Down {
     Pan,
 }
 
-/// O passo do ângulo com `Shift` a rodar.
-const ROTATE_STEP: f64 = std::f64::consts::PI / 12.0;
 /// Lado mínimo de uma forma, em unidades do mundo.
 pub(crate) const MIN_SIDE: f64 = 1.0;
 
@@ -37,7 +34,7 @@ pub(crate) enum Gesture {
     Move {
         start: [f64; 2],
         originals: Vec<Element>,
-        targets: Vec<[f64; 4]>,
+        targets: Snapper,
         active: bool,
         /// As cópias de um arrasto com `Alt` (os originais ficam onde estavam).
         copies: Vec<ElementId>,
@@ -49,13 +46,15 @@ pub(crate) enum Gesture {
         dir: Dir,
         frame: Frame,
         originals: Vec<Element>,
-        targets: Vec<[f64; 4]>,
+        targets: Snapper,
         guides: Vec<Guide>,
     },
     Rotate {
         frame: Frame,
         start: [f64; 2],
         originals: Vec<Element>,
+        targets: Snapper,
+        guides: Vec<Guide>,
     },
     Create {
         kind: ShapeType,
@@ -63,7 +62,7 @@ pub(crate) enum Gesture {
         frame: bool,
         start: [f64; 2],
         id: Option<ElementId>,
-        targets: Vec<[f64; 4]>,
+        targets: Snapper,
         guides: Vec<Guide>,
     },
     /// Arrastar dentro do texto em edição: selecciona texto.
@@ -106,7 +105,8 @@ pub(crate) enum Gesture {
     Peel {
         stack: Element,
         start: [f64; 2],
-        targets: Vec<[f64; 4]>,
+        /// O mundo à vista (os alvos das guias recolhem-se quando a nota sai).
+        view: [f64; 4],
     },
 }
 
@@ -127,6 +127,7 @@ impl Gesture {
         match self {
             Gesture::Move { guides, .. }
             | Gesture::Resize { guides, .. }
+            | Gesture::Rotate { guides, .. }
             | Gesture::Create { guides, .. } => guides.clone(),
             _ => Vec::new(),
         }
@@ -144,19 +145,6 @@ pub(crate) fn rect(a: [f64; 2], b: [f64; 2]) -> [f64; 4] {
 
 fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {
     (a[0] - b[0]).hypot(a[1] - b[1])
-}
-
-fn intersects(a: &[f64; 4], b: &[f64; 4]) -> bool {
-    a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3]
-}
-
-/// As caixas das formas vivas, menos `skip`, que tocam a vista — os alvos das guias.
-fn targets(doc: &BoardDoc, skip: &BTreeSet<ElementId>, view: [f64; 4]) -> Vec<[f64; 4]> {
-    doc.live()
-        .filter(|el| el.shape().is_some() && !skip.contains(&el.id))
-        .map(Element::aabb)
-        .filter(|b| intersects(b, &view))
-        .collect()
 }
 
 impl Editor {
@@ -225,7 +213,7 @@ impl Editor {
                     frame,
                     start: p.world,
                     id: None,
-                    targets: targets(doc, &BTreeSet::new(), view),
+                    targets: Snapper::new(doc, &BTreeSet::new(), view, &[], None),
                     guides: Vec::new(),
                 });
                 return Down::Taken;
@@ -284,16 +272,21 @@ impl Editor {
                 return Down::Taken;
             }
             self.gesture = Some(match h {
-                Handle::Rotate => Gesture::Rotate {
-                    frame,
-                    start: p.world,
-                    originals,
-                },
+                Handle::Rotate => {
+                    let going = originals.iter().map(|o| o.id).collect();
+                    Gesture::Rotate {
+                        frame,
+                        start: p.world,
+                        targets: Snapper::new(doc, &going, view, &[], None),
+                        originals,
+                        guides: Vec::new(),
+                    }
+                }
                 Handle::Resize(dir) => Gesture::Resize {
                     dir,
                     frame,
                     originals,
-                    targets: targets(doc, &self.selection, view),
+                    targets: Snapper::new(doc, &self.selection, view, &[], Some(frame.angle)),
                     guides: Vec::new(),
                 },
             });
@@ -312,7 +305,7 @@ impl Editor {
                 self.gesture = Some(Gesture::Peel {
                     stack,
                     start: p.world,
-                    targets: targets(doc, &BTreeSet::new(), view),
+                    view,
                 });
             }
             Some(id) => {
@@ -339,9 +332,13 @@ impl Editor {
                 // com os próprios filhos.
                 let originals = self.moving(doc);
                 let going: BTreeSet<ElementId> = originals.iter().map(|o| o.id).collect();
+                // Encaixa-se a caixa das RAÍZES (um frame arrastado é a dele, não a dos filhos).
+                let roots = self.movable(doc);
+                let movers: Vec<&Element> =
+                    roots.iter().filter(|el| el.connector().is_none()).collect();
                 self.gesture = Some(Gesture::Move {
                     start: p.world,
-                    targets: targets(doc, &going, view),
+                    targets: Snapper::new(doc, &going, view, &movers, None),
                     originals,
                     active: false,
                     copies: Vec::new(),
@@ -376,11 +373,7 @@ impl Editor {
         let drag = self.metrics.drag * p.px;
         let snap = (!p.mods.ctrl).then_some(self.metrics.snap * p.px);
         match &mut g {
-            Gesture::Peel {
-                stack,
-                start,
-                targets,
-            } => {
+            Gesture::Peel { stack, start, view } => {
                 if dist(*start, p.world) <= drag {
                     self.gesture = Some(g);
                     return;
@@ -390,10 +383,11 @@ impl Editor {
                 let id = note.id;
                 live(doc, note.clone());
                 self.selection = BTreeSet::from([id]);
+                let targets = Snapper::new(doc, &self.selection, *view, &[&note], None);
                 self.gesture = Some(Gesture::Move {
                     start: *start,
                     originals: vec![note],
-                    targets: std::mem::take(targets),
+                    targets,
                     active: true,
                     copies: vec![id],
                     collapse_to: None,
@@ -480,11 +474,8 @@ impl Editor {
                     }
                 }
                 guides.clear();
-                let shapes = originals.iter().filter(|o| o.shape().is_some());
-                if let Some(tol) = snap.filter(|_| shapes.clone().next().is_some()) {
-                    let b = union_aabb(shapes);
-                    let moved = [b[0] + d[0], b[1] + d[1], b[2] + d[0], b[3] + d[1]];
-                    let (s, g2) = snap_box(moved, targets, tol);
+                if let Some(tol) = snap {
+                    let (s, g2) = targets.snap_moving(d, tol);
                     d = [d[0] + s[0], d[1] + s[1]];
                     *guides = g2;
                 }
@@ -503,8 +494,8 @@ impl Editor {
             } => {
                 let mut world = p.world;
                 guides.clear();
-                if let Some(tol) = snap.filter(|_| frame.angle == 0.0) {
-                    let (s, g2) = snap_box([world[0], world[1], world[0], world[1]], targets, tol);
+                if let Some(tol) = snap {
+                    let (s, g2) = targets.snap_point(world, tol);
                     world = [world[0] + s[0], world[1] + s[1]];
                     *guides = g2;
                 }
@@ -525,22 +516,13 @@ impl Editor {
                 frame,
                 start,
                 originals,
+                targets,
+                guides,
             } => {
-                let c = frame.center;
-                let a0 = (start[1] - c[1]).atan2(start[0] - c[0]);
-                let a1 = (p.world[1] - c[1]).atan2(p.world[0] - c[0]);
-                let mut delta = a1 - a0;
-                if p.mods.shift {
-                    let target = ((frame.angle + delta) / ROTATE_STEP).round() * ROTATE_STEP;
-                    delta = target - frame.angle;
-                }
+                let delta;
+                (delta, *guides) = targets.turn(frame, *start, p, snap);
                 for o in originals.iter() {
-                    let mut el = o.clone();
-                    let nc = rotate_about(o.center(), c, delta);
-                    el.x = nc[0] - el.w / 2.0;
-                    el.y = nc[1] - el.h / 2.0;
-                    el.angle = o.angle + delta;
-                    live(doc, el);
+                    live(doc, crate::resize::turned(o, frame.center, delta));
                 }
             }
             Gesture::Create {
@@ -558,7 +540,7 @@ impl Editor {
                 let mut world = p.world;
                 guides.clear();
                 if let Some(tol) = snap {
-                    let (s, g2) = snap_box([world[0], world[1], world[0], world[1]], targets, tol);
+                    let (s, g2) = targets.snap_point(world, tol);
                     world = [world[0] + s[0], world[1] + s[1]];
                     *guides = g2;
                 }

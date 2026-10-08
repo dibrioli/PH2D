@@ -4,3 +4,4 @@ mod measure_detail_cost;
 mod measure_encode_cost;
 mod measure_gpu_raster_cost;
 mod measure_route_cost;
+mod measure_snap_cost;

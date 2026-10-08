@@ -133,6 +133,10 @@ Ver o relatório ao dono (passos numerados). Foto: [`depois_01`](../vetor_nova_u
   flyout) desenha `1,5×` o miolo no MESMO botão de 24 px (`float_bar::module_face_rect`,
   `MODULE_FACE_GROWTH`); o Quadro não mudou. Gate `a_module_icon_draws_half_again_bigger_inside_the_same_button`
   (mutação `1.0` sangra; a 1.ª redacção comparava com a própria constante e a mutação sobrevivia).
+  ✅ **E mais 15 % (2.º pedido, 08/10: *«mais 10 a 20%»* — o meio; `fe34d6473`)**: `1,5 × 1,15 = 1,725`,
+  o desenho a `22,1 px` no botão de 24. A lei passou a ser a do DESENHO + traço dentro do botão (o
+  quadrado da cara pode passar dele: é o respiro invisível do pintor). Mutação `1.5` sangra. Os
+  contornos do flyout já ocupavam o botão inteiro e não mudaram.
 - A **ferramenta temporária** está provada por teste (tecla com/sem auto-repetição); só o smoke do
   dono diz se o atraso de repetição do SO dele é o limiar que ele espera.
 

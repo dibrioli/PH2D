@@ -1,0 +1,13 @@
+# Luz 2D
+
+Iluminação 2D de cena: tudo o que brilha ilumina, objetos marcados fazem sombra suave física, a luz
+rebate — com custo independente do número de luzes (Radiance Cascades). Linha `line/Luz2D`.
+
+| Doc | O quê |
+|---|---|
+| [01_plano.md](01_plano.md) | o desenho (uma porta por pergunta), contratos, UI, gates, smokes, ondas |
+| [pesquisa/reports/Luz 2D estado da arte.md](pesquisa/reports/Luz%202D%20estado%20da%20arte.md) | o estado da arte com fontes, a arquitetura em camadas, o plano de medição e os kill-criteria |
+| [pesquisa/research_notes/](pesquisa/research_notes/) | as sete notas de pesquisa por trás do relatório |
+| `handoffs/` | registro de sessão (nasce na primeira troca de janela) |
+
+⚠️ A crate `ph2d-light` é o rig de normais do **impasto** — não é esta luz.

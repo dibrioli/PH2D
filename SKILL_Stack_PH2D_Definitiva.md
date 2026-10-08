@@ -157,7 +157,7 @@ Versões verificadas em **2026-08-29** (pós-subida do stack; conferidas linha a
 | Rígidos | Rapier 2D | `rapier2d` | `0.35` (`default-features = false` + `dim2`/`f32`/**`std`**/`enhanced-determinism`) | Determinístico em modo lockstep, fixed timestep. M10. ⚠️ **O `std` é obrigatório e não é decoração:** sem ele a crate compila e **186 gates desaparecem sem erro nenhum**. ⚠️ **A matemática do rapier deixou de ser `nalgebra`:** da 0.35 em diante ele calcula em **`glam` via `glamx 0.3`** (é daí que vem a 2ª cópia de `glam` na linha do Math) |
 | Soft body / cloth / rope | XPBD próprio em compute | `ph2d-physics-soft` (planeada — **não criada**) | — | Müller 2020. Modo determinístico via fallback CPU (ver §11.5). M13+ |
 | Fluidos | FLIP/PIC híbrido em compute | `ph2d-fluids` (interno, **stub**) | — | Não-determinístico por padrão; opt-out em modos com rollback. M13+ |
-| Iluminação | Radiance Cascades 2D | `ph2d-light` (interno, **stub**) | — | Sannikov 2023; Holographic RC (2025) em roadmap. M13+ |
+| Iluminação | Radiance Cascades 2D | `ph2d-light2d-*` + `ph2d-app-light2d` (internas, **em construção** na `line/Luz2D`) | — | Sannikov 2023; Holographic RC (2025) como «Ultra». ⚠️ O `ph2d-light` existente é o rig de normais do **impasto**, não isto. Plano: [`docs/Luz2D/01_plano.md`](docs/Luz2D/01_plano.md) |
 | Scripting (gameplay) | Luau strict via mlua | `mlua` | `0.12` (feature `luau`) | Runtime por mundo; GC incremental p99 ~0.005ms (medido C10 sobre a `0.10` de então). Ratificado ADR-0019. M7 wired |
 | Hot path script | WASM | `wasmtime` | `48` | Winch (rápido instantiate) padrão; Cranelift opt-in para AAA. **Não wired no produto** — hoje só em `tests/spike/`; M13+ |
 | Networking transporte | QUIC | `quinn` | `0.11` (planejada) | Desktop/mobile. Não wired (`ph2d-net` planeada, **não criada**) |
@@ -236,7 +236,8 @@ _PH2D_definitiva/
 │   ├── ph2d-vector/              # ✅ M11 — vello 0.10 wrapper (VectorScene); re-exporta kurbo + peniko
 │   ├── ph2d-text/                # ✅ M11 — parley 0.11 wrapper (TextSystem)
 │   ├── ph2d-sdf/                 # ⏳ stub — SDFs animados, raymarching (M13+)
-│   ├── ph2d-light/               # ⏳ stub — Radiance Cascades (M13+)
+│   ├── ph2d-light/               # rig de 4 lâmpadas por normais do impasto (NÃO é a luz 2D)
+│   ├── ph2d-light2d-{ecs,ref,gpu}/ # ⏳ luz 2D: componentes+coleta · gabarito CPU · Radiance Cascades
 │   ├── ph2d-physics/             # ✅ M10 — rapier2d 0.35 + std + enhanced-determinism + cross-OS hash test
 │   ├── ph2d-physics-soft/        # ⏳ planeada, NÃO criada (o stub vazio saiu em 2026-09-12) — XPBD compute + fallback CPU (M13+)
 │   ├── ph2d-fluids/              # ⏳ stub — FLIP/PIC compute (M13+)
@@ -596,7 +597,7 @@ Para **edição vetorial**, use `ph2d-vector::Document` (Bézier paths + transfo
 **Licenciamento de fontes:** assets de fonte importados ganham campo `license` no manifest. MCP `asset_import` valida (ou recusa se ausente); release build falha se algum asset de fonte não tem licença declarada.
 
 ### 11.4 Iluminação (Radiance Cascades)
-Implementação segue **Sannikov 2023** (paper original, ExileCon). Roadmap: avaliar **Holographic Radiance Cascades** (Osborne et al., 2025) para reduzir penumbra de luzes distantes — em ADR-0009.
+Implementação segue **Sannikov 2023** (paper original, ExileCon), com *bilinear fix* e pré-média; **Holographic Radiance Cascades** (Freeman, Sannikov, Margel, 2025, arXiv 2505.02041) é o degrau «Ultra» de desktop e o juiz secundário. ⚠️ O «ADR-0009» que esta linha citava **nunca existiu** (medido 2026-10-08). Pesquisa com fontes: [`docs/Luz2D/pesquisa/reports/`](docs/Luz2D/pesquisa/reports/Luz%202D%20estado%20da%20arte.md) · plano: [`docs/Luz2D/01_plano.md`](docs/Luz2D/01_plano.md).
 
 Parâmetros default:
 - 6 cascades.

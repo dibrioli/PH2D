@@ -143,4 +143,6 @@ pub struct ToolBarsSlot {
     pub(crate) flash: Option<(NodeId, u128)>,
     /// F5: os dedos no vidro e o widget dos modificadores (flutua sobre a área como as barras).
     pub(crate) touch: crate::interaction::TouchGestures,
+    /// F5 (D10 decisão 2): a fila ② EMBAIXO da área — a opção de layout para tablet.
+    pub(crate) row_bottom: bool,
 }

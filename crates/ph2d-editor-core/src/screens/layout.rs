@@ -595,6 +595,18 @@ impl HeroLayout {
         self.draw_area.h = (strip.y - ph2d_tokens::area_gap_px() - self.draw_area.y).max(0.0);
     }
 
+    /// F5 (D10 decisão 2): a fila ② passa para BAIXO da área — a mesma faixa e a mesma altura, a
+    /// área sobe o que ela ocupava. ⚠️ Depois de todas as reservas do fundo (é a última): a fila
+    /// fica colada por baixo da área que sobrou, e não por baixo da janela.
+    pub fn move_tool_bar_to_bottom(&mut self) {
+        let (bar, area) = (self.tool_bar, self.draw_area);
+        if bar.h <= 0.0 {
+            return;
+        }
+        self.draw_area = Rect::new(area.x, bar.y, area.w, area.h);
+        self.tool_bar = Rect::new(bar.x, bar.y + area.h, bar.w, bar.h);
+    }
+
     /// **A região em que um popover flutuante pode nascer** — a BANDA DE CHROME, e nunca a janela
     /// inteira.
     ///

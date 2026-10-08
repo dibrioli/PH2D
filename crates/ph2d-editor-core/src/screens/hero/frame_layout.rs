@@ -131,5 +131,9 @@ pub(super) fn frame_layout(
     // fundo, de propósito: os dois MOVEM rects, e reservar antes reservaria sobre a geometria
     // errada — a mesma ordem que o `reserve_bottom_strip` já exigia acima.
     layout.reserve_slot_tabs(super::slot_tabs::counts(hero), super::slot_tabs::TAB_BAR_H);
+    // F5 (D10 decisão 2): a fila ② embaixo — a ÚLTIMA, depois de todas as reservas do fundo.
+    if hero.store.tool_row_bottom() {
+        layout.move_tool_bar_to_bottom();
+    }
     layout
 }

@@ -94,7 +94,7 @@ pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [
 /// ⚠️ Existe para o registo não ser uma lista escrita à mão ao lado da tabela de rows: quem
 /// acrescentar um verbo novo a um destes menus acrescenta-o aqui, e o gate
 /// `every_menu_bar_row_is_registered` reprova se esquecer.
-pub const OWN_ROWS: [NodeId; 10] = [
+pub const OWN_ROWS: [NodeId; 11] = [
     ids::MENUBAR_FILE_NEW,
     ids::MENUBAR_FILE_SCENES,
     ids::MENUBAR_EDIT_PREFERENCES,
@@ -105,6 +105,7 @@ pub const OWN_ROWS: [NodeId; 10] = [
     ids::MENUBAR_VIEW_COLUMN_LEFT,
     ids::MENUBAR_VIEW_COLUMN_RIGHT,
     ids::MENUBAR_VIEW_FOCUS,
+    ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM,
 ];
 
 /// Recuo da barra à esquerda, para o primeiro título não nascer colado à borda da janela.
@@ -202,6 +203,8 @@ pub enum ModuleTruth {
     Column(crate::screens::layout::DockSide),
     /// A barra de ações junto da seleção (D10 ④) está ligada? Aceso = a barra aparece.
     SelectionActions,
+    /// A fila ② está embaixo da área (F5)? Aceso = embaixo.
+    ToolRowBottom,
 }
 
 impl ModuleTruth {
@@ -214,13 +217,14 @@ impl ModuleTruth {
             Self::Rulers => hero.view.rulers_visible,
             Self::Column(side) => !super::dock_columns::is_closed(hero, side),
             Self::SelectionActions => !hero.store.selection_actions_off(),
+            Self::ToolRowBottom => hero.store.tool_row_bottom(),
         }
     }
 }
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 18] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 19] = [
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_PHYSICS, ModuleTruth::Panel("physics")),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09). ⚠️ O literal é o `Panel::ID` da
@@ -254,6 +258,7 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 18] = [
         ids::MENUBAR_VIEW_SELECTION_ACTIONS,
         ModuleTruth::SelectionActions,
     ),
+    (ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM, ModuleTruth::ToolRowBottom),
     // ⭐⭐⭐ **As duas colunas** (2026-09-19) — ver `ModuleTruth::Column`.
     (
         ids::MENUBAR_VIEW_COLUMN_LEFT,

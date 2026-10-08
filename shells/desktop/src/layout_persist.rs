@@ -65,6 +65,8 @@ pub struct Layout {
     /// ④ A barra de ações da seleção (D10): desligada e fixada são escolhas do artista, por layout.
     pub actions_off: bool,
     pub actions_pinned: bool,
+    /// F5: a fila ② embaixo da área (D10 decisão 2).
+    pub tool_row_bottom: bool,
 }
 
 /// ⭐⭐ **O FICHEIRO INTEIRO** — qual layout está activo, e a arrumação de cada um.
@@ -156,6 +158,7 @@ pub fn serialize_section(l: &Layout) -> String {
     for (on, key) in [
         (l.actions_off, "selection_actions_off"),
         (l.actions_pinned, "selection_actions_pinned"),
+        (l.tool_row_bottom, "tool_row_bottom"),
     ] {
         if on {
             let _ = writeln!(s, "{key}=1");
@@ -216,6 +219,7 @@ pub fn parse(text: &str) -> Layout {
             "dock_h_bottom" => l.dock_h_bottom = value.parse().ok(),
             "selection_actions_off" => l.actions_off = value == "1",
             "selection_actions_pinned" => l.actions_pinned = value == "1",
+            "tool_row_bottom" => l.tool_row_bottom = value == "1",
             "tab_order" => {
                 l.tab_order = value
                     .split(',')
@@ -336,6 +340,7 @@ pub fn hash(l: &Layout) -> u64 {
     }
     feed(u8::from(l.actions_off));
     feed(u8::from(l.actions_pinned));
+    feed(u8::from(l.tool_row_bottom));
     h
 }
 
@@ -426,6 +431,7 @@ pub fn current(hero: &ph2d_editor_core::HeroScreen) -> Layout {
         dock_h_bottom: hero.store.dock_bottom_h_choice(),
         actions_off: hero.store.selection_actions_off(),
         actions_pinned: hero.store.selection_actions_pinned(),
+        tool_row_bottom: hero.store.tool_row_bottom(),
     }
 }
 
@@ -502,6 +508,7 @@ pub fn install(hero: &mut ph2d_editor_core::HeroScreen, l: &Layout) {
     }
     hero.store.set_selection_actions_off(l.actions_off);
     hero.store.set_selection_actions_pinned(l.actions_pinned);
+    hero.store.set_tool_row_bottom(l.tool_row_bottom);
 }
 
 /// ⭐⭐ **GRAVA se mudou** — chamado **no QUADRO**, depois do `paint_hero_screen`.

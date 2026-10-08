@@ -18,6 +18,7 @@ fn sample() -> Layout {
         // ④ D10: a barra fixada viaja no ficheiro (e a desligada fica de fora: `false` não se escreve).
         actions_off: false,
         actions_pinned: true,
+        tool_row_bottom: true,
     }
 }
 
@@ -160,6 +161,7 @@ fn a_saved_arrangement_comes_back_but_a_forbidden_slot_does_not() {
             dock_h_bottom: None,
             actions_off: false,
             actions_pinned: false,
+            tool_row_bottom: false,
             dock_w_left: Some(281.0),
             dock_w_right: None,
         },
@@ -212,6 +214,7 @@ fn what_is_installed_is_what_gets_written_back() {
         dock_h_bottom: Some(210.0),
         actions_off: false,
         actions_pinned: false,
+        tool_row_bottom: false,
     };
     install(&mut hero, &before);
     assert_eq!(current(&hero), before, "a volta ao ficheiro perdeu algo");

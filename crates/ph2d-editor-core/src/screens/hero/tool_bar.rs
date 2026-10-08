@@ -376,7 +376,12 @@ fn paint_flyout_below(
         // ⚠️ O `CHIP_X_OFFSET_PX` que a coluna reserva para o rótulo rodado desloca o chip para a
         // direita; recuá-lo aqui mantém os chips do flyout alinhados com o chip que os abriu.
         anchor.x - crate::widget::CHIP_X_OFFSET_PX,
-        anchor.y + anchor.h + Spacing::Xs.px(),
+        // F5: com a fila embaixo, o flyout sobe.
+        if store.tool_row_bottom() {
+            anchor.y - Spacing::Xs.px() - rail.preferred_height(size)
+        } else {
+            anchor.y + anchor.h + Spacing::Xs.px()
+        },
         size.rail_width_px(),
         rail.preferred_height(size),
     );

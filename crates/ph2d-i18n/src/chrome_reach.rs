@@ -23,6 +23,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Hold: held while pressed \u{00b7} Tap: lock \u{00b7} Or rest 1 finger (Shift) or 2 (Shift+Alt) while drawing"
         }
         "chrome.menu.focus_mode" => "Focus mode \u{00b7} Ctrl+Space",
+        "chrome.menu.tool_row_bottom" => "Tool options at the bottom",
         // ph2d-migrar-texto:end
         _ => return None,
     })

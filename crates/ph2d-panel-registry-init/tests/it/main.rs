@@ -41,6 +41,7 @@ mod the_tool_bar_never_grows_and_the_rest_is_behind_the_dots;
 #[cfg(feature = "panel-vector")]
 mod the_palette_and_the_radial_reach_the_vector_bars;
 mod the_properties_fold_into_an_icon_strip_on_small_tablets;
+mod the_tool_options_can_live_at_the_bottom;
 mod the_vector_bars_answer_a_real_pointer;
 mod the_window_menu_reaches_every_module;
 mod ui_motion_frame_halves;

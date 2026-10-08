@@ -110,6 +110,16 @@ impl WidgetStore {
     pub fn touch_mut(&mut self) -> &mut crate::interaction::TouchGestures {
         &mut self.tool_bars.touch
     }
+
+    /// F5: a fila ② está EMBAIXO da área (*Ver ▸ Opções da ferramenta embaixo*)?
+    #[must_use]
+    pub fn tool_row_bottom(&self) -> bool {
+        self.tool_bars.row_bottom
+    }
+
+    pub fn set_tool_row_bottom(&mut self, bottom: bool) {
+        self.tool_bars.row_bottom = bottom;
+    }
 }
 
 #[cfg(test)]

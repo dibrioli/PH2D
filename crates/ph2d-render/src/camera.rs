@@ -124,6 +124,49 @@ impl Camera2d {
         (height_world * factor).clamp(Self::ZOOM_MIN_HEIGHT_WORLD, Self::ZOOM_MAX_HEIGHT_WORLD)
     }
 
+    /// Um entalhe da roda em pixels (`16 px` por linha).
+    pub const WHEEL_NOTCH_PX: f32 = 16.0;
+    /// O que um entalhe faz ao `height_world`: `0,9` (a roda para cima aproxima).
+    pub const WHEEL_ZOOM_PER_NOTCH: f32 = 0.9;
+
+    /// **A LEI da roda**: `dy_px` de roda (positivo = para cima) vira o factor do zoom.
+    #[must_use]
+    pub fn wheel_factor(dy_px: f32) -> f32 {
+        Self::WHEEL_ZOOM_PER_NOTCH.powf(dy_px / Self::WHEEL_NOTCH_PX)
+    }
+
+    /// A inversa de [`Self::wheel_factor`]: os `dy_px` de roda que dão `factor` — por onde a pinça
+    /// de dois dedos (F6) entra pela MESMA porta que a roda. Factor inválido ⇒ `0`.
+    #[must_use]
+    pub fn wheel_px_for(factor: f32) -> f32 {
+        if !factor.is_finite() || factor <= 0.0 {
+            return 0.0;
+        }
+        factor.ln() / Self::WHEEL_ZOOM_PER_NOTCH.ln() * Self::WHEEL_NOTCH_PX
+    }
+
+    /// **O arrasto (px) que mantém o mundo sob `at` parado quando o `height_world` vai de
+    /// `h_from` a `h_to`** — o zoom à volta de um ponto, dito como um pan pela porta do pan.
+    ///
+    /// `centre` é o centro da janela da cena em px e `h_live` o `height_world` com que o pan será
+    /// aplicado (o zoom pode ainda estar em voo: o destino muda já, o vivo chega depois). Sem
+    /// voo, `h_live == h_from`. Devolve o `(dx, dy)` para [`Self::pan_screen_delta`]; a conta é a
+    /// mesma nos dois eixos porque o pan já carrega o flip do Y.
+    #[must_use]
+    pub fn anchor_pan_px(
+        at: [f32; 2],
+        centre: [f32; 2],
+        h_from: f32,
+        h_to: f32,
+        h_live: f32,
+    ) -> [f32; 2] {
+        if !(h_live.is_finite() && h_live > 0.0 && h_from.is_finite() && h_to.is_finite()) {
+            return [0.0, 0.0];
+        }
+        let k = (h_to - h_from) / h_live;
+        [(at[0] - centre[0]) * k, (at[1] - centre[1]) * k]
+    }
+
     /// Pan the camera by a screen-pixel delta — interpreted as
     /// "user dragged the cursor by `(dx_px, dy_px)` and the world
     /// under the cursor should move with it" (i.e. world moves
@@ -652,5 +695,53 @@ mod tests {
         let win = WindowSize::new(800, 600);
         let [_, wy_top] = cam.screen_to_world((400.0, 0.0), win);
         assert!((wy_top - 2.5).abs() < 1e-4);
+    }
+
+    /// ⭐ **F6: o zoom à volta de um ponto, dito como um pan** — depois de `zoomed` + o arrasto de
+    /// `anchor_pan_px`, o mundo sob o ponto não mexeu; e o CONTROLO: sem o arrasto, mexeu.
+    #[test]
+    fn the_anchor_pan_keeps_the_world_under_the_finger_still() {
+        let win = WindowSize::new(800, 600);
+        let at = (650.0, 120.0);
+        let centre = [400.0, 300.0];
+        for factor in [0.5, 2.0, 0.7] {
+            let mut cam = Camera2d::new([1.0, -2.0], 10.0);
+            let before = cam.screen_to_world(at, win);
+            let h_from = cam.height_world;
+            cam.zoom(factor);
+            let h_to = cam.height_world;
+            let c = cam;
+            let [dx, dy] = Camera2d::anchor_pan_px([at.0, at.1], centre, h_from, h_to, h_to);
+            cam.pan_screen_delta(dx, dy, 800.0, 600.0);
+            let after = cam.screen_to_world(at, win);
+            assert!(
+                (after[0] - before[0]).abs() < 1e-3 && (after[1] - before[1]).abs() < 1e-3,
+                "factor {factor}: o mundo sob o dedo andou de {before:?} para {after:?}"
+            );
+            let bare = c.screen_to_world(at, win);
+            assert!(
+                (bare[0] - before[0]).abs() > 1e-2,
+                "o controlo: sem o arrasto o mundo sob o dedo não andou ({factor})"
+            );
+        }
+        assert_eq!(
+            Camera2d::anchor_pan_px([1.0, 1.0], [0.0, 0.0], 1.0, 2.0, 0.0),
+            [0.0, 0.0]
+        );
+    }
+
+    /// **A inversa da roda**: `wheel_px_for(wheel_factor(dy)) == dy`, e a pinça não inventa lei.
+    #[test]
+    fn the_pinch_enters_by_the_inverse_of_the_wheel_law() {
+        for dy in [16.0, -16.0, 5.0, -37.0] {
+            let back = Camera2d::wheel_px_for(Camera2d::wheel_factor(dy));
+            assert!((back - dy).abs() < 1e-3, "{dy} voltou como {back}");
+        }
+        assert_eq!(Camera2d::wheel_px_for(0.0), 0.0);
+        assert_eq!(Camera2d::wheel_px_for(f32::NAN), 0.0);
+        assert!(
+            Camera2d::wheel_factor(16.0) < 1.0,
+            "a roda para cima não aproxima"
+        );
     }
 }

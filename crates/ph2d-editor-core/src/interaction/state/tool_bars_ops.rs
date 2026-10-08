@@ -73,6 +73,13 @@ impl WidgetStore {
         self.tool_bars.clock_ns = now_ns;
     }
 
+    /// O último relógio anotado (ns) — o que uma cena de smoke dá aos contactos sintéticos, para
+    /// que o reconhecedor do toque meça o tempo com o MESMO relógio que a shell.
+    #[must_use]
+    pub fn clock_ns(&self) -> u128 {
+        self.tool_bars.clock_ns
+    }
+
     /// ⭐ **Faz PISCAR onde `id` mora** (F4, a paleta que ensina): todo pintor que mostra uma porta
     /// para `id` — o botão, o `⋯` que o guarda, o pulldown que o contém — desenha o anel.
     ///

@@ -154,6 +154,7 @@ pub mod vec_selection;
 pub mod vector_bridge;
 pub mod vector_mode;
 /// A cena 10 do modo (F4): a paleta que ensina.
+mod vector_mode_nav;
 mod vector_mode_reach;
 pub mod widget_drive;
 pub mod widget_edit;

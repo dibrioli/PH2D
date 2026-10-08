@@ -84,6 +84,26 @@ fn the_camera_pan_has_exactly_one_caller_and_it_is_the_door() {
 ///
 /// ⚠️ Um gate que só contasse chamadores passaria com ZERO — o pan removido. A segunda
 /// metade afirma que ele continua a existir.
+/// ⚠️ **A porta aplica o split; o despachante dá-lhe a janela INTEIRA.** A varredura de 09/09
+/// (`fbf6a0f30`) pôs `gfx.scene_window()` (já cortada) nesta chamada e, sob o split da Motion, o
+/// pan andava `h·t²` — apanhado em F6 (a pinça passa por esta porta).
+#[test]
+fn the_dispatcher_hands_the_pan_door_the_whole_window() {
+    let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
+    let call = src
+        .find("pan_scene_camera(&mut gfx.camera")
+        .expect("a chamada da porta sumiu do despachante");
+    let before = &src[call.saturating_sub(900)..call];
+    assert!(
+        before.contains("let size = gfx.surface.size();"),
+        "o despachante nao da' a janela INTEIRA a porta do pan (o split seria aplicado duas vezes)"
+    );
+    assert!(
+        !before.contains("let size = gfx.scene_window();"),
+        "o despachante volta a dar a janela JA' CORTADA a porta do pan"
+    );
+}
+
 #[test]
 fn the_pan_door_is_the_one_the_dispatcher_calls() {
     let door = mentions("pan_scene_camera");

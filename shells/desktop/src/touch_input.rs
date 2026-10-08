@@ -1,13 +1,17 @@
-//! **O TOQUE, do lado da shell** (F5, D10) — o contacto da janela entra no reconhecedor
+//! **O TOQUE, do lado da shell** (F5–F6, D10) — o contacto da janela entra no reconhecedor
 //! (`ph2d_editor_core::interaction::touch`, a lei e os gates), e o que ele pede sai pelas portas que
-//! o rato e as teclas JÁ usam: o botão do rato, o desfazer da barra, o `Ctrl+Space`, o clique direito.
+//! o rato e as teclas JÁ usam: o botão do rato, o desfazer da barra, o `Ctrl+Space`, o clique
+//! direito — e, para navegar com dois dedos (F6), o botão do MEIO e a RODA, nunca uma 2.ª câmera.
+//!
+//! ⚠️ A pinça dá zoom à volta do ponto entre os dedos; a roda dá zoom à volta do centro. A
+//! diferença é um pan (`Camera2d::anchor_pan_px`), e ele passa pela porta do pan: com o botão do
+//! meio pousado, o cursor anda o arrasto e volta ao sítio sem andar (o `pan_anchor` volta com ele).
 
 use ph2d_editor_core::interaction::touch::CHIPS;
 use ph2d_editor_core::interaction::{TouchOut, TouchPhase};
-use ph2d_editor_core::{Toast, ToastQueue, ZenMode};
-use ph2d_i18n::tr;
+use ph2d_render::Camera2d;
 use winit::dpi::PhysicalPosition;
-use winit::event::{ElementState, MouseButton, Touch};
+use winit::event::{ElementState, MouseButton, MouseScrollDelta, Touch};
 use winit::keyboard::ModifiersState;
 
 thread_local! {
@@ -20,19 +24,6 @@ thread_local! {
 /// O teclado mudou (o `ModifiersChanged` da janela).
 pub(crate) fn set_keyboard(state: ModifiersState) {
     KEYBOARD.with(|k| k.set(state));
-}
-
-/// ⭐ **O modo foco** — a porta ÚNICA do `Ctrl+Space`, de *Ver ▸ Modo foco* e do toque de 4 dedos.
-pub(crate) fn toggle_focus(zen: &mut ZenMode, toasts: &mut ToastQueue) -> bool {
-    if !zen.try_toggle() {
-        return false;
-    }
-    toasts.push(Toast::info(tr(if zen.is_active() {
-        "shell.input_handlers.zen_mode_on_zones"
-    } else {
-        "shell.input_handlers.zen_mode_off_zones"
-    })));
-    true
 }
 
 impl crate::App {
@@ -62,15 +53,22 @@ impl crate::App {
         self.apply_touch(outs);
     }
 
-    /// Em todo quadro: o tocar-e-segurar não espera por outro evento.
+    /// Em todo quadro: o tocar-e-segurar não espera por outro evento, e os contactos sintéticos de
+    /// uma cena de smoke saem por aqui.
     pub(crate) fn touch_tick(&mut self) {
         let now = Self::timestamp_ns();
-        let out = self
+        let s = self.touch_scale();
+        let outs = self
             .gfx
             .as_mut()
             .and_then(|g| g.hero_screen.as_mut())
-            .and_then(|h| h.store.touch_mut().tick(now));
-        self.apply_touch(out.into_iter().collect());
+            .map(|h| {
+                let t = h.store.touch_mut();
+                t.note_scale(s);
+                t.tick(now)
+            })
+            .unwrap_or_default();
+        self.apply_touch(outs);
     }
 
     fn apply_touch(&mut self, outs: Vec<TouchOut>) {
@@ -93,7 +91,7 @@ impl crate::App {
                 TouchOut::Redo => self.undo_button = Some(true),
                 TouchOut::Focus => {
                     if let Some(g) = self.gfx.as_mut() {
-                        self.title_dirty |= toggle_focus(&mut g.zen, &mut g.toasts);
+                        self.title_dirty |= g.zen.toggle_announced(&mut g.toasts);
                     }
                 }
                 TouchOut::ContextMenu(p) => {
@@ -101,9 +99,58 @@ impl crate::App {
                     self.on_mouse_input(ElementState::Pressed, MouseButton::Right);
                     self.on_mouse_input(ElementState::Released, MouseButton::Right);
                 }
+                TouchOut::NavBegin(p) => {
+                    self.on_cursor_moved(at(p));
+                    self.on_mouse_input(ElementState::Pressed, MouseButton::Middle);
+                }
+                TouchOut::Pan(d) => {
+                    let (x, y) = self.last_pointer;
+                    self.on_cursor_moved(PhysicalPosition::new(
+                        f64::from(x + d[0] * s),
+                        f64::from(y + d[1] * s),
+                    ));
+                }
+                TouchOut::Zoom { factor, about } => {
+                    self.pinch(factor, [about[0] * s, about[1] * s])
+                }
+                TouchOut::NavEnd => {
+                    self.on_mouse_input(ElementState::Released, MouseButton::Middle)
+                }
             }
         }
         self.sync_touch_modifiers();
+    }
+
+    /// A pinça: um entalhe de roda com o factor dela e, se a CENA o tomou, o arrasto que mantém o
+    /// mundo sob os dedos parado — pela porta do pan, com o botão do meio já pousado.
+    fn pinch(&mut self, factor: f32, about_px: [f32; 2]) {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return;
+        };
+        let live = gfx.camera.height_world;
+        let before = gfx.canvas_zoom.goal(live);
+        let dy = f64::from(Camera2d::wheel_px_for(factor));
+        self.on_mouse_wheel(MouseScrollDelta::PixelDelta(PhysicalPosition::new(0.0, dy)));
+        let Some(gfx) = self.gfx.as_ref() else {
+            return;
+        };
+        let after = gfx.canvas_zoom.goal(live);
+        if after == before {
+            // Um quadro, uma moldura ou a paleta tomou a roda, ou a câmera está no limite.
+            return;
+        }
+        let win = gfx.scene_window();
+        let centre = [win.width as f32 / 2.0, win.height as f32 / 2.0];
+        let [dx, dy] = Camera2d::anchor_pan_px(about_px, centre, before, after, live);
+        let anchor = self.last_pointer;
+        self.on_cursor_moved(PhysicalPosition::new(
+            f64::from(anchor.0 + dx),
+            f64::from(anchor.1 + dy),
+        ));
+        self.last_pointer = anchor;
+        if self.pan_anchor.is_some() {
+            self.pan_anchor = Some(anchor);
+        }
     }
 
     /// Os modificadores efectivos = o teclado OU o toque (dedos extra, widget segurado, travados).

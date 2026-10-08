@@ -366,19 +366,22 @@ pub fn smoke_step(
     static WELD: AtomicU8 = AtomicU8::new(0);
     static BARS: AtomicU8 = AtomicU8::new(0);
     static REACH: AtomicU8 = AtomicU8::new(0);
+    // A cena 11 (F6): os dedos navegam — estágios 40–41 em `vector_mode_nav`.
+    static NAV: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
             let scene = std::env::var("PH2D_OBJECT_MODE_SMOKE");
             let want = match scene.as_deref() {
-                Ok("6" | "7" | "9" | "10") => 1,
+                Ok("6" | "7" | "9" | "10" | "11") => 1,
                 _ => 9,
             };
             WELD.store(u8::from(scene.as_deref() == Ok("7")), Ordering::Relaxed);
             BARS.store(
-                u8::from(matches!(scene.as_deref(), Ok("9" | "10"))),
+                u8::from(matches!(scene.as_deref(), Ok("9" | "10" | "11"))),
                 Ordering::Relaxed,
             );
             REACH.store(u8::from(scene.as_deref() == Ok("10")), Ordering::Relaxed);
+            NAV.store(u8::from(scene.as_deref() == Ok("11")), Ordering::Relaxed);
             STAGE.store(want, Ordering::Relaxed);
             want
         }
@@ -456,6 +459,8 @@ pub fn smoke_step(
             vec.pen.select_many(&both);
             go(if REACH.load(Ordering::Relaxed) == 1 {
                 30
+            } else if NAV.load(Ordering::Relaxed) == 1 {
+                40
             } else {
                 9
             });
@@ -463,6 +468,12 @@ pub fn smoke_step(
         // A cena 10 (F4): a paleta que ensina — `vector_mode_reach`.
         s @ (30 | 32) => {
             if let Some(next) = crate::vector_mode_reach::step(s, hero) {
+                go(next);
+            }
+        }
+        // A cena 11 (F6): dois dedos arrastam a vista e dão zoom — `vector_mode_nav`.
+        s @ (40 | 41) => {
+            if let Some(next) = crate::vector_mode_nav::step(s, hero) {
                 go(next);
             }
         }

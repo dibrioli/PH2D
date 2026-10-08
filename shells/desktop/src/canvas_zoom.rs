@@ -142,6 +142,12 @@ impl CanvasZoom {
     pub(crate) fn target(self) -> Option<f32> {
         self.target
     }
+
+    /// Onde o zoom VAI estar: o destino em voo, ou o vivo quando a câmera não é deste módulo. É
+    /// sobre isto que a pinça (F6) mede o que o entalhe dela mudou.
+    pub(crate) fn goal(self, live: f32) -> f32 {
+        self.target.unwrap_or(live)
+    }
 }
 
 #[cfg(test)]

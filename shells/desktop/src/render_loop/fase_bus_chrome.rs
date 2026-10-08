@@ -123,7 +123,7 @@ impl crate::App {
             EditorAction::UndoStep { redo } => self.undo_button = Some(redo),
             // *Ver ▸ Modo foco* (F5): a mesma porta do `Ctrl+Space` e do toque de 4 dedos.
             EditorAction::FocusMode => {
-                self.title_dirty |= crate::touch_input::toggle_focus(zen, toasts);
+                self.title_dirty |= zen.toggle_announced(toasts);
             }
             other => return Some(other),
         }

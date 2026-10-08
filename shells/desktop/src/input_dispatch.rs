@@ -181,7 +181,10 @@ impl App {
         {
             let dx = self.last_pointer.0 - anchor.0;
             let dy = self.last_pointer.1 - anchor.1;
-            let size = gfx.scene_window();
+            // ⚠️ A janela INTEIRA: é a porta (`pan_scene_camera`) que aplica o split. A varredura
+            // de 09/09 (`fbf6a0f30`) pôs aqui a janela da cena e o split passava DUAS vezes
+            // (`h·t²`) — apanhado em F6, ao fazer a pinça passar por esta porta.
+            let size = gfx.surface.size();
             // ⚠️ **O mundo-por-pixel é o da CENA, não o da JANELA** (report do Enio,
             // 2026-08-25: *«no modo motion a imagem de referência sofre um drift no pan
             // com o mouse»*). Sob o split da tool Motion a cena renderiza num
@@ -349,8 +352,9 @@ impl App {
             return;
         }
         if !over_panel && let Some(gfx) = self.gfx.as_mut() {
-            // Wheel up (positive dy) zooms IN (smaller height_world).
-            let factor = 0.9_f32.powf(dy / 16.0);
+            // Wheel up (positive dy) zooms IN (smaller height_world). A lei vive na câmera: a
+            // pinça de dois dedos entra por aqui com a inversa dela (`wheel_px_for`).
+            let factor = ph2d_render::Camera2d::wheel_factor(dy);
             // ⚠️ **A roda escreve o DESTINO; quem move a câmera é o quadro** (`crate::canvas_zoom`).
             // O `camera.zoom(factor)` que morava aqui fazia do gesto mais repetido do app o único
             // movimento da tela que salta.

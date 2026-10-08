@@ -56,13 +56,14 @@ fn ctrl_space_toggles_the_zen() {
         .find("KeyCode::Space if cmd_chord =>")
         .expect("o braco do `Ctrl+Space` sumiu");
     // ⚠️ Desde 08/10 (F5) a porta é UMA para o `Ctrl+Space`, *Ver ▸ Modo foco* e o toque de 4
-    // dedos: o braço chama-a, e ela alterna o zen.
+    // dedos: o braço chama-a, e ela alterna o zen. Desde F6 ela vive na crate (`ZenMode`).
     assert!(
-        handlers[arm..arm + 160].contains("touch_input::toggle_focus(&mut gfx.zen"),
+        handlers[arm..arm + 160].contains("gfx.zen.toggle_announced(&mut gfx.toasts)"),
         "o `Ctrl+Space` nao chega a porta do modo foco"
     );
     assert!(
-        include_str!("../../src/touch_input.rs").contains("if !zen.try_toggle()"),
+        include_str!("../../../../crates/ph2d-editor-core/src/zen.rs")
+            .contains("if !self.try_toggle()"),
         "a porta do modo foco nao alterna o zen"
     );
 }

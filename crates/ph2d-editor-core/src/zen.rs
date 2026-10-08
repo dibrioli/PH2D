@@ -52,6 +52,20 @@ impl ZenMode {
         self.cooldown_frames = 0;
         true
     }
+
+    /// ⭐ **O modo foco, anunciado** — a porta ÚNICA do `Ctrl+Space`, de *Ver ▸ Modo foco* e do
+    /// toque de 4 dedos (F5): alterna e diz ao artista o que aconteceu. `true` = alternou.
+    pub fn toggle_announced(&mut self, toasts: &mut crate::ToastQueue) -> bool {
+        if !self.try_toggle() {
+            return false;
+        }
+        toasts.push(crate::Toast::info(ph2d_i18n::tr(if self.is_active() {
+            "shell.input_handlers.zen_mode_on_zones"
+        } else {
+            "shell.input_handlers.zen_mode_off_zones"
+        })));
+        true
+    }
 }
 
 #[cfg(test)]

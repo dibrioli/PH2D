@@ -1,0 +1,28 @@
+# Oráculo: Godot Engine v4.7.2.stable.arch_linux — taxonomia medida por --dump-extension-api
+classes 1036
+Node_descendentes 283
+Node2D_descendentes 50
+CanvasItem_descendentes 127
+Control_descendentes 75
+Resource_descendentes 416
+
+## Node2D (o que vive na árvore e tem posição 2D)
+AnimatableBody2D, AnimatedSprite2D, Area2D, AudioListener2D, AudioStreamPlayer2D, BackBufferCopy, Bone2D, CPUParticles2D, Camera2D, CanvasGroup, CanvasModulate, CharacterBody2D, CollisionObject2D, CollisionPolygon2D, CollisionShape2D, DampedSpringJoint2D, DirectionalLight2D, GPUParticles2D, GrooveJoint2D, Joint2D, Light2D, LightOccluder2D, Line2D, Marker2D, MeshInstance2D, MultiMeshInstance2D, NavigationLink2D, NavigationObstacle2D, NavigationRegion2D, Parallax2D, ParallaxLayer, Path2D, PathFollow2D, PhysicalBone2D, PhysicsBody2D, PinJoint2D, PointLight2D, Polygon2D, RayCast2D, RemoteTransform2D, RigidBody2D, ShapeCast2D, Skeleton2D, Sprite2D, StaticBody2D, TileMap, TileMapLayer, TouchScreenButton, VisibleOnScreenEnabler2D, VisibleOnScreenNotifier2D
+
+## Node sem desenho (não é CanvasItem) — o 'componente-como-nó'
+AnimationMixer, AnimationPlayer, AnimationTree, AudioStreamPlayer, CanvasLayer, HTTPRequest, InstancePlaceholder, MissingNode, MultiplayerSpawner, MultiplayerSynchronizer, NavigationAgent2D, ParallaxBackground, ResourcePreloader, ShaderGlobalsOverride, StatusIndicator, Timer, WorldEnvironment
+
+## Recursos que um jogo 2D toca (dados no Inspector / FileSystem, não na árvore)
+Animation (+0 subclasses)
+AnimationLibrary (+0 subclasses)
+SpriteFrames (+0 subclasses)
+Shape2D (+8 subclasses): CapsuleShape2D, CircleShape2D, ConcavePolygonShape2D, ConvexPolygonShape2D, RectangleShape2D, SegmentShape2D, SeparationRayShape2D, WorldBoundaryShape2D
+Texture2D (+19 subclasses): AnimatedTexture, AtlasTexture, CameraTexture, CanvasTexture, CompressedTexture2D, CurveTexture, CurveXYZTexture, DPITexture, DrawableTexture2D, ExternalTexture, GradientTexture1D, GradientTexture2D
+AudioStream (+10 subclasses): AudioStreamGenerator, AudioStreamInteractive, AudioStreamMP3, AudioStreamMicrophone, AudioStreamOggVorbis, AudioStreamPlaylist, AudioStreamPolyphonic, AudioStreamRandomizer, AudioStreamSynchronized, AudioStreamWAV
+Curve (+0 subclasses)
+Gradient (+0 subclasses)
+PhysicsMaterial (+0 subclasses)
+TileSet (+0 subclasses)
+PackedScene (+0 subclasses)
+Material (+12 subclasses): BaseMaterial3D, BlitMaterial, CanvasItemMaterial, FogMaterial, ORMMaterial3D, PanoramaSkyMaterial, ParticleProcessMaterial, PhysicalSkyMaterial, PlaceholderMaterial, ProceduralSkyMaterial, ShaderMaterial, StandardMaterial3D
+Theme (+0 subclasses)

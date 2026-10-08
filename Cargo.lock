@@ -7849,6 +7849,7 @@ dependencies = [
  "bumpalo",
  "ph2d-a11y",
  "ph2d-anim",
+ "ph2d-component-desc",
  "ph2d-core",
  "ph2d-editor-core",
  "ph2d-host",

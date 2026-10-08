@@ -726,7 +726,6 @@ impl App {
             resize_saved_present_mode: None,
             resize_settle_frames: 0,
             modifiers: ModifiersState::default(),
-            kb_modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
             hovered_object: None,
             prefab_stage_pending: None,
@@ -976,11 +975,8 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        // PR 9b of the convention-by-discovery migration: per-arm
-        // handlers live in `input_dispatch::App::on_<arm>`. This
-        // method is a pure dispatch table — adding a new arm is one
-        // line here + one method there. See
-        // `docs/Migracao/2026-05-convention-by-discovery.md`.
+        // A pure dispatch table (PR 9b): one arm here + one `input_dispatch::App::on_<arm>` method
+        // there — `docs/Migracao/2026-05-convention-by-discovery.md`.
         match event {
             WindowEvent::CloseRequested => self.on_close_request(event_loop),
             WindowEvent::Resized(size) => self.on_resized(size),

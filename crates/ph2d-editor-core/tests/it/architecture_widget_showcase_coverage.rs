@@ -25,6 +25,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (file slug under `widget/`, one-line reason).
 const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     (
+        "radial_fan",
+        "nao e' um widget: e' o LEQUE do `radial_menu` (D10 F4, 08/10) — a lei de uma familia que abre os filhos quando o ponteiro atravessa o anel, pintada pelo `paint_radial_menu` pela porta do rotulo dele. A galeria mostra o radial; a lei do leque prova-se em `widget::radial_fan::tests` (o filho desenhado e' o escolhido, a familia nunca executa, nenhum rotulo tapa outro) e ponta a ponta em `ph2d-panel-registry-init/tests/it/the_palette_and_the_radial_reach_the_vector_bars.rs`.",
+    ),
+    (
         "drag_ghost",
         "nao e' um widget: e' o FANTASMA de um cartao a ser arrastado (ordem do dono, 2026-09-30: *«permita ver o card sendo arrastado, menor e meio transparente»*) — ele so' existe enquanto o dedo segura uma pega, nao regista nada e nao tem estado. A galeria JA' o consome (as notas dela desenham-no ao arrastar a pega de uma nota), e a lei dele — escala a volta da PEGA, a pega sob o cursor — prova-se em `widget::drag_ghost::tests` e no gate de costura `ph2d-panel-inspector/tests/it/as_notas_tem_pega_e_menu.rs`, que medem a GEOMETRIA pintada.",
     ),

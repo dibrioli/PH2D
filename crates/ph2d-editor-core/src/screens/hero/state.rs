@@ -105,8 +105,6 @@ pub struct ViewState {
     /// (default `Horizontal { t: 0.55 }`) on tool-activate and back to `None` on
     /// deactivate; the graph toolbar's SplitH/SplitV chips flip the orientation.
     pub center_split: crate::screens::layout::CenterSplit,
-    /// F5: o ③ já nasceu recolhido nesta sessão (janela abaixo da referência) — uma vez só.
-    pub compact_collapsed: bool,
 }
 
 impl Default for ViewState {
@@ -118,7 +116,6 @@ impl Default for ViewState {
             rulers_visible: true,
             legacy_chrome: false,
             center_split: crate::screens::layout::CenterSplit::None,
-            compact_collapsed: false,
         }
     }
 }

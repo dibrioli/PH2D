@@ -12,6 +12,21 @@
 
 use ph2d_editor_core::screens::hero::radial;
 
+/// **ABRE A RODA** em `center` — a porta do `P` (fora do vetor) e do `J` (com o vetor na mão, D10.1).
+/// Sem ferramentas a mostrar, diz porquê em vez de não fazer nada.
+pub(crate) fn open(
+    hero: &mut ph2d_editor_core::HeroScreen,
+    center: [f32; 2],
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) {
+    let items = radial::build_radial_model(hero);
+    if !hero.store.open_radial(center, items) {
+        toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr(
+            "shell.input_handlers.no_tools_to_show_here",
+        )));
+    }
+}
+
 impl crate::App {
     /// **O ponteiro mexeu-se com o menu aberto** — acende o sector da direcção.
     ///

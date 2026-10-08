@@ -130,7 +130,6 @@ pub fn paint_hero_screen(
     // ⭐ **E para a ROLAGEM** (D9): as alturas e os donos de barra que este quadro publicar são os
     // únicos que sobrevivem a ele — ver [`crate::interaction::WidgetStore::end_scroll_frame`].
     hero.store.begin_scroll_frame();
-    super::dock_reopen::collapse_when_compact(hero, viewport); // F5: o ③ em faixa no iPad 11"/mini
     // Publish the user-picked radius scale to the thread-local read
     // by `paint::fill_rounded_rect` / `stroke_rounded_rect`. Set
     // every frame so it stays in sync with the topbar's radius menu.

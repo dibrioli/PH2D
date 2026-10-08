@@ -334,6 +334,19 @@ impl crate::App {
             return true;
         }
 
+        // D10.1 (dono, 08/10): com o vetor na mão a RODA é o `J` — o `P` é a Caneta. Só aqui: fora
+        // do vetor o `J` é a tecla do veneno da cena da vida.
+        if self.vector_keys_live()
+            && state == ElementState::Pressed
+            && !repeat
+            && physical_key == PhysicalKey::Code(KeyCode::KeyJ)
+            && let Some(g) = self.gfx.as_mut()
+            && let Some(hero) = g.hero_screen.as_mut()
+        {
+            let center = [self.last_pointer.0, self.last_pointer.1];
+            crate::radial_input::open(hero, center, &mut g.toasts);
+            return true;
+        }
         // ⭐ D10: as teclas do padrão ILLUSTRATOR (V A P N M L T · Shift+M/W/O · K W C I · X/Shift+X/D ·
         // Ctrl+Alt+U/I/D/X). A tabela é do painel e a aplicação da crate (`ph2d_app_vec::tool_keys`,
         // com a ferramenta temporária); aqui a tecla física só vira acorde. Sobre a timeline as

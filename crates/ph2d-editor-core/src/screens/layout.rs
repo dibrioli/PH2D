@@ -389,7 +389,7 @@ impl HeroLayout {
         //    abaixo já dizia porquê: «uma coluna fechada não é reservada, senão a régua ficaria a
         //    flutuar sobre o desenho» — e eu pus lá um controlo sem a reservar.*
         let gap = ph2d_tokens::area_gap_px();
-        let closed_reserve = crate::screens::dock_seam::closed_reserve_px(viewport.w);
+        let closed_reserve = crate::screens::dock_seam::DOCK_SEAM_PX;
         let area_x0 = if docks.left {
             left_col_right + gap
         } else {

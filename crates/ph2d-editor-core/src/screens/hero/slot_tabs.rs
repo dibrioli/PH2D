@@ -598,6 +598,8 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         return false;
     };
     if let Some(node) = panel_for_tab(id) {
+        // F5: o ícone da faixa do ③ recolhido É a aba — reabre a coluna antes.
+        super::dock_reopen::reopen_for(hero, node);
         hero.store.bump_panel_z(node);
         return true;
     }

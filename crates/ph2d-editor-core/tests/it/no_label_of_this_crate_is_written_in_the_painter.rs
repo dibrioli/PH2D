@@ -343,6 +343,8 @@ fn every_chrome_key_exists_on_both_sides() {
         "crates/ph2d-i18n/src/chrome.rs",
         "crates/ph2d-i18n/src/chrome_menus.rs",
         "crates/ph2d-i18n/src/chrome_rail.rs",
+        // D10 F4–F5 (08/10): o radial por famílias, a paleta que ensina, o toque.
+        "crates/ph2d-i18n/src/chrome_reach.rs",
         "crates/ph2d-i18n/src/chrome_panes.rs",
     ];
     let repo = repo_root();

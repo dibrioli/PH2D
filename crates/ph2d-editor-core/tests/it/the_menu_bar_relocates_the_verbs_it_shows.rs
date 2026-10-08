@@ -403,7 +403,9 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
                 || *id == ids::MENUBAR_VIEW_COLUMN_LEFT
                 || *id == ids::MENUBAR_VIEW_COLUMN_RIGHT
                 // ⭐ D10 (07/10): a barra de ações da seleção — ligada/desligada é um estado.
-                || *id == ids::MENUBAR_VIEW_SELECTION_ACTIONS;
+                || *id == ids::MENUBAR_VIEW_SELECTION_ACTIONS
+                // ⭐ D10 F5 (08/10): a fila ② embaixo — em cima/embaixo é um estado.
+                || *id == ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM;
             assert_eq!(
                 menu_bar::row_is_marked_by_button_state(*id),
                 is_toggle,

@@ -10,6 +10,17 @@ use winit::dpi::PhysicalPosition;
 use winit::event::{ElementState, MouseButton, Touch};
 use winit::keyboard::ModifiersState;
 
+thread_local! {
+    /// Os modificadores do TECLADO (só ele) — `App::modifiers` é este OU o toque. ⚠️ Aqui e não num
+    /// campo do `App`: o `App` só larga campos (`the_app_only_sheds_fields`).
+    static KEYBOARD: std::cell::Cell<ModifiersState> = std::cell::Cell::new(ModifiersState::empty());
+}
+
+/// O teclado mudou (o `ModifiersChanged` da janela).
+pub(crate) fn set_keyboard(state: ModifiersState) {
+    KEYBOARD.with(|k| k.set(state));
+}
+
 /// ⭐ **O modo foco** — a porta ÚNICA do `Ctrl+Space`, de *Ver ▸ Modo foco* e do toque de 4 dedos.
 pub(crate) fn toggle_focus(zen: &mut ZenMode, toasts: &mut ToastQueue) -> bool {
     if !zen.try_toggle() {
@@ -42,7 +53,7 @@ impl crate::App {
         let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
             return;
         };
-        let chip = hero.hit_index.hit(x, y).filter(|id| CHIPS.contains(id));
+        let chip = hero.chrome_hit(x, y).filter(|id| CHIPS.contains(id));
         let outs = hero
             .store
             .touch_mut()
@@ -102,7 +113,7 @@ impl crate::App {
             .and_then(|g| g.hero_screen.as_ref())
             .map(|h| h.store.touch().modifiers())
             .unwrap_or_default();
-        let mut want = self.kb_modifiers;
+        let mut want = KEYBOARD.with(std::cell::Cell::get);
         want.set(ModifiersState::SHIFT, want.shift_key() || t.shift);
         want.set(ModifiersState::ALT, want.alt_key() || t.alt);
         want.set(ModifiersState::CONTROL, want.control_key() || t.ctrl);

@@ -142,17 +142,11 @@ impl App {
             //
             // ⚠️ Sobre o grafo do Motion o `P` é dele: aquele router já devolveu antes deste
             // `match`, e esta lei não o alcança.
-            // ⚠️ Com o vetor na mão o `P` é a Caneta e a cadeia dele já devolveu: lá a roda é o `J`
-            // (decisão do dono, 08/10 — D10 F4); o `J` vale em todo o lado, o mesmo gesto.
-            KeyCode::KeyP | KeyCode::KeyJ if !cmd_chord => {
+            // ⚠️ Com o vetor na mão o `P` é a Caneta e a roda é o `J` — na cadeia DELE (D10.1).
+            KeyCode::KeyP if !cmd_chord => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
-                    let items = ph2d_editor_core::screens::hero::radial::build_radial_model(hero);
                     let center = [self.last_pointer.0, self.last_pointer.1];
-                    if !hero.store.open_radial(center, items) {
-                        gfx.toasts.push(Toast::info(tr(
-                            "shell.input_handlers.no_tools_to_show_here",
-                        )));
-                    }
+                    crate::radial_input::open(hero, center, &mut gfx.toasts);
                 }
             }
             KeyCode::KeyK if cmd_chord => {

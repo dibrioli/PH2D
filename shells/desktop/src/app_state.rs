@@ -182,8 +182,6 @@ pub(crate) struct App {
     /// Quiet-frame countdown before the saved present mode is restored (see `RESIZE_SETTLE_FRAMES`).
     pub(crate) resize_settle_frames: u32,
     pub(crate) modifiers: ModifiersState,
-    /// F5: só o teclado; `modifiers` = este OU o toque.
-    pub(crate) kb_modifiers: ModifiersState,
     pub(crate) last_pointer: (f32, f32),
     /// **O OBJECTO SOB O PONTEIRO neste quadro** (estudo de UI viva, C2), em bits de `Entity` —
     /// a resposta da porta única [`crate::App::hovered_object`], computada UMA vez por quadro.

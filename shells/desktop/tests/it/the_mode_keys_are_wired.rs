@@ -55,8 +55,14 @@ fn ctrl_space_toggles_the_zen() {
     let arm = handlers
         .find("KeyCode::Space if cmd_chord =>")
         .expect("o braco do `Ctrl+Space` sumiu");
+    // ⚠️ Desde 08/10 (F5) a porta é UMA para o `Ctrl+Space`, *Ver ▸ Modo foco* e o toque de 4
+    // dedos: o braço chama-a, e ela alterna o zen.
     assert!(
-        handlers[arm..arm + 120].contains("gfx.zen.try_toggle()"),
-        "o `Ctrl+Space` nao alterna o zen"
+        handlers[arm..arm + 160].contains("touch_input::toggle_focus(&mut gfx.zen"),
+        "o `Ctrl+Space` nao chega a porta do modo foco"
+    );
+    assert!(
+        include_str!("../../src/touch_input.rs").contains("if !zen.try_toggle()"),
+        "a porta do modo foco nao alterna o zen"
     );
 }

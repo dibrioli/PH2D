@@ -156,7 +156,7 @@ impl crate::App {
 
     pub(crate) fn on_modifiers_changed(&mut self, mods: winit::event::Modifiers) {
         // F5: o teclado é UMA das fontes; o toque soma-se (`touch_input::sync_touch_modifiers`).
-        self.kb_modifiers = mods.state();
+        crate::touch_input::set_keyboard(mods.state());
         let want = self.effective_modifiers();
         self.apply_modifiers(want);
     }

@@ -61,82 +61,104 @@ pub fn paint_dock_reopen(layout: &HeroLayout, scene: &mut VectorScene, theme: Th
     }
 }
 
-/// F5: a largura da FAIXA de ícones — um botão das barras e o respiro dos dois lados.
-#[must_use]
-pub fn strip_px() -> f32 {
-    super::float_bar::button_px() + 2.0 * ph2d_tokens::Spacing::Xs.px()
-}
-
-/// F5: os ícones da faixa de `side` — um por painel que reabrir devolve, de cima para baixo.
+/// ⭐ F5: **a FAIXA de ícones do ③ recolhido** (iPad 11" e mini — mais estreito que a janela de
+/// referência): um ícone por painel que reabrir devolve, numa coluna FLUTUANTE na borda da área do
+/// lado da coluna — como a ① (0 px de layout; a alça de 6 px continua). ⚠️ Reservá-la custava o piso
+/// medido do ecrã com as colunas fechadas (88,7 % → 86,0 % no iPad 11, o gate do `medicoes/06`).
+///
+/// Cada ícone é a ABA do painel (`slot_tabs::tab_node_id`): o clique reabre a coluna e traz o painel
+/// à frente pela porta das abas ([`reopen_for`]).
 #[must_use]
 pub fn strip_icons(
     hero: &HeroScreen,
     layout: &HeroLayout,
-    side: DockSide,
-) -> Vec<(NodeId, crate::icons::IconId, Rect)> {
-    let r = layout.dock_reopen(side);
-    if r.w <= crate::screens::dock_seam::DOCK_SEAM_PX {
+) -> Vec<(NodeId, crate::icons::IconId, crate::panel::TextKey, Rect)> {
+    let handle = layout.dock_reopen(DockSide::Right);
+    if !layout.compact() || handle.w <= 0.0 {
         return Vec::new();
     }
-    let names = super::dock_columns::reopens(hero, side);
-    let (s, g, pad) = (
-        super::float_bar::button_px(),
-        super::float_bar::gap(),
-        ph2d_tokens::Spacing::Xs.px(),
-    );
-    let mut out = Vec::new();
+    let names = super::dock_columns::reopens(hero, DockSide::Right);
+    let mut found = Vec::new();
     crate::panel::with_registry_opt(|reg| {
         for m in reg.panels().iter().map(|p| &p.manifest) {
             if names.contains(&m.id) {
-                #[allow(clippy::cast_precision_loss)]
-                let y = r.y + pad + out.len() as f32 * (s + g);
-                out.push((m.panel_node_id, m.icon, Rect::new(r.x + pad, y, s, s)));
+                found.push((
+                    super::slot_tabs::tab_node_id(m.panel_node_id),
+                    m.icon,
+                    m.title,
+                ));
             }
         }
     });
-    out
+    let area = layout.draw_area;
+    let right = handle.x > area.x + area.w * 0.5;
+    let rects = super::float_bar::column_rects(area, &[found.len()]);
+    found
+        .into_iter()
+        .zip(rects)
+        .map(|((id, icon, title), r)| {
+            let r = if right {
+                super::float_bar::mirrored(area, r)
+            } else {
+                r
+            };
+            (id, icon, title, r)
+        })
+        .collect()
 }
 
-/// F5: pinta os ícones das faixas — a mesma tinta dos botões das barras em repouso.
-pub fn paint_strip_icons(hero: &HeroScreen, layout: &HeroLayout, scene: &mut VectorScene) {
+/// F5: pinta a faixa (fundo, ícones, alvos e dicas com o NOME do painel).
+pub fn paint_strip_icons(hero: &mut HeroScreen, layout: &HeroLayout, scene: &mut VectorScene) {
+    let icons = strip_icons(hero, layout);
+    if icons.is_empty() {
+        return;
+    }
+    let theme = hero.theme;
+    super::float_bar::paint_panel(scene, icons.iter().map(|i| i.3), theme);
+    for (id, icon, title, r) in icons {
+        let fg = super::float_bar::paint_button(
+            scene,
+            &mut hero.hit_index,
+            &hero.store,
+            theme,
+            super::float_bar::Btn {
+                id,
+                rect: r,
+                on: false,
+                tint: ColorToken::Text2,
+            },
+        );
+        crate::paint::paint_icon(
+            scene,
+            icon,
+            super::float_bar::inner(r),
+            fg,
+            ph2d_tokens::StrokeToken::Default.px(),
+        );
+        hero.store.set_tooltip(id, title.tr().to_owned());
+    }
+}
+
+/// F5: a aba de um painel cuja coluna está RECOLHIDA (a faixa) reabre a coluna antes de o trazer à
+/// frente. `true` se reabriu.
+pub fn reopen_for(hero: &mut HeroScreen, panel_node: NodeId) -> bool {
     for side in [DockSide::Left, DockSide::Right] {
-        for (_, icon, r) in strip_icons(hero, layout, side) {
-            crate::paint::paint_icon(
-                scene,
-                icon,
-                super::float_bar::inner(r),
-                resolve(ColorToken::Text2, hero.theme),
-                ph2d_tokens::StrokeToken::Default.px(),
-            );
+        if !super::dock_columns::is_closed(hero, side) {
+            continue;
+        }
+        let mut hit = false;
+        let names = super::dock_columns::reopens(hero, side);
+        crate::panel::with_registry_opt(|reg| {
+            hit = reg
+                .panels()
+                .iter()
+                .any(|p| p.manifest.panel_node_id == panel_node && names.contains(&p.manifest.id));
+        });
+        if hit {
+            return super::dock_columns::open(hero, side);
         }
     }
-}
-
-/// F5: um toque na faixa reabre a coluna — e o painel do ícone tocado vem à FRENTE do encaixe.
-pub fn open_from_strip(
-    hero: &mut HeroScreen,
-    layout: &HeroLayout,
-    side: DockSide,
-    p: [f32; 2],
-) -> bool {
-    let pick = strip_icons(hero, layout, side)
-        .into_iter()
-        .find(|(_, _, r)| p[0] >= r.x && p[0] < r.x + r.w && p[1] >= r.y && p[1] < r.y + r.h)
-        .map(|(n, _, _)| n);
-    let opened = super::dock_columns::open(hero, side);
-    if opened && let Some(n) = pick {
-        hero.store.bump_panel_z(n);
-    }
-    opened
-}
-
-/// F5: abaixo da janela de referência o painel de propriedades (③) NASCE recolhido em faixa — uma
-/// vez por sessão: depois disso, aberto ou fechado é escolha do artista.
-pub fn collapse_when_compact(hero: &mut HeroScreen, viewport: Rect) {
-    if viewport.w < super::HERO_VIEWPORT_W && !hero.view.compact_collapsed {
-        hero.view.compact_collapsed = true;
-        super::dock_columns::close(hero, DockSide::Right, None);
-    }
+    false
 }
 
 #[cfg(test)]

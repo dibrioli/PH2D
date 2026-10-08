@@ -13,6 +13,7 @@ mod frame_box;
 mod gesture;
 mod gesture_end;
 mod ink;
+mod links_tags;
 mod notes;
 mod notes_layout;
 mod organize;

@@ -178,6 +178,7 @@ impl Chains {
 
 /// O título de cada frame à vista, por cima de tudo, no tamanho FIXO de ecrã, recortado à largura
 /// do frame.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_titles(
     scene: &mut VectorScene,
     ts: &mut TextSystem,

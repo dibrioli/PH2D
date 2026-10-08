@@ -637,7 +637,8 @@ fn a_shape_being_drawn_has_no_equal_spacing() {
 #[test]
 fn a_square_being_drawn_does_not_snap() {
     let mut w = world();
-    rect(&mut w, [0.0, 0.0, 100.0, 60.0], 0.0, None);
+    // A borda esquerda do alvo a 3 do ponteiro: sem a guarda do `Shift` colava e desenhava a guia.
+    rect(&mut w, [600.0, 0.0, 100.0, 60.0], 0.0, None);
     w.ed.tool = Tool::Shape(ShapeType::Rectangle);
     w.ed.pointer_down(
         &mut w.doc,

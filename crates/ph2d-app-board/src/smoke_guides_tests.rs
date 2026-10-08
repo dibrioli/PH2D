@@ -1,7 +1,7 @@
 //! ⭐ A cena 7 ENSINA o que acontece (lente de costura da W5b, 08/10: a 1.ª versão acendia primeiro
 //! o centro, guias direitas e o canto de um vizinho). Cada «arraste-me» é conduzido pelo editor real,
 //! com as medidas da interface (`board_view::metrics`, 8 px de encaixe), a zoom 1 e ao do enquadrar
-//! (~0,4): a 25 do fim NADA o fez saltar (fora da tolerância nos dois zooms, e já depois do limiar
+//! (~0,4): o arrasto pára 3 antes do fim, a 25 do fim NADA o fez saltar (fora da tolerância nos dois zooms, e já depois do limiar
 //! de arrasto, 10 a 2,5) e no fim fica o alinhamento que o texto promete.
 
 use super::*;
@@ -16,6 +16,9 @@ const PXS: [f64; 2] = [1.0, 2.5];
 /// A distância ao fim onde o arrasto ainda não pode acender nada (> 8 px × 2,5).
 const QUIET: f64 = 25.0;
 const R: f64 = 1e-6;
+/// O arrasto PÁRA 3 antes do alinhamento: só o encaixe o leva lá (largar no sítio exacto não prova
+/// nada — a prova de mutação apanhou-o: sem o espaçamento igual a lição continuava verde).
+const SHORT: f64 = OFF - 3.0;
 
 struct Run {
     ed: Editor,
@@ -136,7 +139,7 @@ fn every_lesson_teaches_its_own_alignment() {
         // 1 · B desliza ao longo dos 30°: a borda esquerda dele na linha inclinada da de A.
         let mut w = run(px);
         let (a, b) = (w.l.tilt_a, w.l.tilt_b);
-        let back = local([0.0, 0.0], TILT, -OFF, 0.0);
+        let back = local([0.0, 0.0], TILT, -SHORT, 0.0);
         let (jump, end) = w.drag(b, w.el(b).center(), back);
         assert!(jump.abs() < R, "px {px}: saltou {jump} antes da lição");
         assert!(
@@ -151,7 +154,7 @@ fn every_lesson_teaches_its_own_alignment() {
         // 3a · O 3.º da fila do frame rodado: o vão 80 vai a 40, nos eixos do frame.
         let mut w = run(px);
         let [_, k2, k3] = w.l.row;
-        let back = local([0.0, 0.0], FRAME_TILT, -OFF, 0.0);
+        let back = local([0.0, 0.0], FRAME_TILT, -SHORT, 0.0);
         let (jump, _) = w.drag(k3, w.el(k3).center(), back);
         assert!(jump.abs() < R, "px {px}: saltou {jump} antes da lição");
         let gap = along(w.el(k3), FRAME_TILT)[0] - along(w.el(k2), FRAME_TILT)[2];
@@ -160,7 +163,7 @@ fn every_lesson_teaches_its_own_alignment() {
         // 3b · O de baixo: a esquerda vai à do 1.º, nos eixos do frame.
         let mut w = run(px);
         let [k1, k4] = w.l.align;
-        let fwd = local([0.0, 0.0], FRAME_TILT, OFF, 0.0);
+        let fwd = local([0.0, 0.0], FRAME_TILT, SHORT, 0.0);
         let (jump, _) = w.drag(k4, w.el(k4).center(), fwd);
         assert!(jump.abs() < R, "px {px}: saltou {jump} antes da lição");
         let d = along(w.el(k4), FRAME_TILT)[0] - along(w.el(k1), FRAME_TILT)[0];
@@ -169,7 +172,7 @@ fn every_lesson_teaches_its_own_alignment() {
         // 4 · O 3.º da fila direita: o vão 100 vai a 60.
         let mut w = run(px);
         let c = w.l.spaced[2];
-        let (jump, _) = w.drag(c, w.el(c).center(), [-OFF, 0.0]);
+        let (jump, _) = w.drag(c, w.el(c).center(), [-SHORT, 0.0]);
         assert!(jump.abs() < R, "px {px}: saltou {jump} antes da lição");
         assert!((w.el(c).x - 1910.0).abs() < R, "px {px}: {}", w.el(c).x);
 
@@ -177,7 +180,7 @@ fn every_lesson_teaches_its_own_alignment() {
         let mut w = run(px);
         let [fa, fb] = w.l.frames;
         let grab = [w.el(fb).x + 50.0, w.el(fb).y + 400.0];
-        let (jump, _) = w.drag(fb, grab, [0.0, -OFF]);
+        let (jump, _) = w.drag(fb, grab, [0.0, -SHORT]);
         assert!(jump.abs() < R, "px {px}: saltou {jump} antes da lição");
         assert!(
             (w.el(fb).y - w.el(fa).y).abs() < R,

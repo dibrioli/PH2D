@@ -172,9 +172,15 @@ impl crate::App {
         // ⭐⭐⭐ **A lista de ACÇÕES, filtrada pelo ALVO** — é ela que responde *«qual
         // animação?»* na tela. ⚠️ Publicada **só** quando há um osso inteligente em foco:
         // sem sujeito ela seria um selector sem nada para escolher.
-        ph2d_panel_skeleton::set_current_bone_actions(smart.as_ref().map_or_else(Vec::new, |s| {
-            crate::skeleton_smart::actions_for(sim.world(), &self.timeline.doc, s)
-        }));
+        ph2d_panel_skeleton::set_current_bone_actions(
+            smart
+                .as_ref()
+                .zip(osso_em_foco)
+                .map_or_else(Vec::new, |(s, b)| {
+                    let osso = ph2d_ecs::Entity::from_bits(b);
+                    crate::skeleton_smart::actions_for(sim.world(), &self.timeline.doc, s, osso)
+                }),
+        );
         // ⭐⭐⭐ **QUEM PODE MANDAR NA PONTA da curva** — a lista inteira (rótulos incluídos) sai da
         // porta da família, que é a MESMA que o dreno lê para aplicar o clique: a posição é a
         // escolha, e uma segunda derivação aqui poria o artista a escolher um osso e outro a

@@ -60,7 +60,7 @@ fn the_action_list_narrows_to_the_chosen_object() {
     doc.set_active(0);
 
     let sem_alvo = ph2d_skeleton_ecs::SmartBone::default();
-    let todas = crate::smart::actions_for(sim.world(), &doc, &sem_alvo);
+    let todas = crate::smart::actions_for(sim.world(), &doc, &sem_alvo, Entity::PLACEHOLDER);
     assert_eq!(
         todas.len(),
         doc.clips().len(),
@@ -71,7 +71,7 @@ fn the_action_list_narrows_to_the_chosen_object() {
         target: "Driven".to_string(),
         ..ph2d_skeleton_ecs::SmartBone::default()
     };
-    let so_dele = crate::smart::actions_for(sim.world(), &doc, &com_alvo);
+    let so_dele = crate::smart::actions_for(sim.world(), &doc, &com_alvo, Entity::PLACEHOLDER);
     assert!(
         so_dele.iter().any(|n| n == "Correction"),
         "a acção que anima o alvo saiu da lista: {so_dele:?}"
@@ -103,7 +103,7 @@ fn a_filter_that_would_empty_the_list_does_not_apply() {
             ..ph2d_skeleton_ecs::SmartBone::default()
         };
         assert_eq!(
-            crate::smart::actions_for(sim.world(), &doc, &sb).len(),
+            crate::smart::actions_for(sim.world(), &doc, &sb, Entity::PLACEHOLDER).len(),
             n,
             "com o alvo {alvo:?} o filtro esvaziou a lista em vez de se desligar"
         );
@@ -146,7 +146,7 @@ fn the_chosen_position_resolves_against_the_list_the_panel_painted() {
         target: "Driven".to_string(),
         ..ph2d_skeleton_ecs::SmartBone::default()
     };
-    let lista = crate::smart::actions_for(sim.world(), &doc, &sb);
+    let lista = crate::smart::actions_for(sim.world(), &doc, &sb, Entity::PLACEHOLDER);
     assert_eq!(
         lista,
         vec!["Correction".to_string()],
@@ -160,14 +160,63 @@ fn the_chosen_position_resolves_against_the_list_the_panel_painted() {
          defeito não se manifesta"
     );
     assert_eq!(
-        crate::smart::action_at(sim.world(), &doc, &sb, 0).as_deref(),
+        crate::smart::action_at(sim.world(), &doc, &sb, Entity::PLACEHOLDER, 0).as_deref(),
         Some("Correction"),
         "a posição 0 devolveu o 1.º clip do DOCUMENTO em vez da 1.ª linha que o artista viu"
     );
     assert_eq!(
-        crate::smart::action_at(sim.world(), &doc, &sb, 1),
+        crate::smart::action_at(sim.world(), &doc, &sb, Entity::PLACEHOLDER, 1),
         None,
         "uma posição fora da lista pintada devolveu um nome — o pool de ids é fixo e maior que a \
          lista, então esta é a posição que um clique perdido produz"
+    );
+}
+
+/// ⭐ **O selector lista a ANIMAÇÃO onde o osso vive** (doc ObjectsAndComponents 01 §6): o tecto de
+/// clips passou a ser POR animação, e o documento pode ter mais que o pool de ids — um osso do
+/// esqueleto do Herói vê as acções do Herói, todas alcançáveis.
+#[test]
+fn o_osso_ve_as_accoes_da_animacao_onde_vive() {
+    let mut sim = SimWorld::new();
+    let heroi = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Herói")))
+        .id();
+    let osso = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Braço"),
+            ph2d_ecs::ChildOf(heroi),
+        ))
+        .id();
+    let mut doc = TimelineDoc::new();
+    for n in 0..ph2d_timeline::MAX_CLIPS {
+        doc.add_clip_for(format!("cena {n}"), ph2d_timeline::SCENE);
+        doc.add_clip_for(format!("herói {n}"), 7_777);
+    }
+    doc.add_clip_for("acenar".into(), heroi.to_bits()).unwrap();
+    assert!(
+        doc.clips().len() > ph2d_editor_core::ids::MAX_SMART_CLIPS,
+        "a premissa: o documento passa o pool"
+    );
+    let sb = ph2d_skeleton_ecs::SmartBone::default();
+    assert_eq!(
+        crate::smart::actions_for(sim.world(), &doc, &sb, osso),
+        vec!["acenar".to_string()]
+    );
+    assert_eq!(
+        crate::smart::actions_for(sim.world(), &doc, &sb, heroi).len(),
+        1,
+        "o próprio dono também"
+    );
+    let solto = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Solto")))
+        .id();
+    assert_eq!(
+        crate::smart::actions_for(sim.world(), &doc, &sb, solto).len(),
+        ph2d_timeline::MAX_CLIPS,
+        "sem animação na cadeia: a da Cena (o «Main» ficou de fora do tecto — 1 + 15)"
     );
 }

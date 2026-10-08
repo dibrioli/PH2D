@@ -72,14 +72,15 @@ pub fn set_target(sim: &mut SimWorld, osso: Entity, alvo: Entity) -> bool {
 ///
 /// ⚠️ O alvo resolve-se pelo **NOME** (a referência durável desta casa), o que custa uma varredura
 /// do mundo — paga só quando um controlo está em foco, que é um gesto interactivo.
+///
+/// ⭐ **E o universo é a ANIMAÇÃO onde o osso vive** (doc ObjectsAndComponents 01 §6): a do primeiro
+/// ancestral dele que tenha uma, ou a da Cena. O tecto de clips passou a ser POR animação, então o
+/// documento inteiro já não cabe no pool de [`ph2d_timeline::MAX_CLIPS`] ids — uma animação cabe.
 #[must_use]
-pub fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone) -> Vec<String> {
-    let todas = || {
-        doc.clips()
-            .iter()
-            .map(|c| c.name.clone())
-            .collect::<Vec<_>>()
-    };
+pub fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone, osso: Entity) -> Vec<String> {
+    let animacao = animation_of(world, doc, osso);
+    let nome = |i: usize| doc.clips()[i].name.clone();
+    let todas = || doc.clips_of(animacao).map(nome).collect::<Vec<_>>();
     if sb.target.is_empty() {
         return todas();
     }
@@ -97,10 +98,13 @@ pub fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone) -> Vec<Stri
         .map(|b| b.target)
         .collect();
     let filtradas: Vec<String> = doc
-        .clips()
-        .iter()
-        .filter(|c| alvos.iter().any(|t| c.clip.track(*t).is_some()))
-        .map(|c| c.name.clone())
+        .clips_of(animacao)
+        .filter(|&i| {
+            alvos
+                .iter()
+                .any(|t| doc.clips()[i].clip.track(*t).is_some())
+        })
+        .map(nome)
         .collect();
     if filtradas.is_empty() {
         todas()
@@ -122,8 +126,31 @@ pub fn actions_for(world: &World, doc: &TimelineDoc, sb: &SmartBone) -> Vec<Stri
 /// indexa é a MESMA porta que constrói ([`actions_for`]) — não uma segunda leitura que concorde por
 /// acidente enquanto ninguém filtrar.
 #[must_use]
-pub fn action_at(world: &World, doc: &TimelineDoc, sb: &SmartBone, i: usize) -> Option<String> {
-    actions_for(world, doc, sb).into_iter().nth(i)
+pub fn action_at(
+    world: &World,
+    doc: &TimelineDoc,
+    sb: &SmartBone,
+    osso: Entity,
+    i: usize,
+) -> Option<String> {
+    actions_for(world, doc, sb, osso).into_iter().nth(i)
+}
+
+/// A animação onde `osso` vive: a do primeiro da cadeia (ele incluído) que tenha uma, ou a da Cena.
+/// Pára num ciclo em vez de num número escolhido.
+fn animation_of(world: &World, doc: &TimelineDoc, osso: Entity) -> u64 {
+    let mut visto: Vec<Entity> = Vec::new();
+    let mut cur = Some(osso);
+    while let Some(e) = cur.filter(|e| !visto.contains(e)) {
+        if doc.has_animation(e.to_bits()) {
+            return e.to_bits();
+        }
+        visto.push(e);
+        cur = world
+            .get::<ph2d_ecs::ChildOf>(e)
+            .map(ph2d_ecs::ChildOf::parent);
+    }
+    ph2d_timeline::SCENE
 }
 
 /// ⭐⭐⭐ **ESCOLHER A ACÇÃO NA POSIÇÃO `i` DA LISTA PINTADA** — a porta que o dreno do painel chama.
@@ -144,7 +171,7 @@ pub fn choose_action(
     i: usize,
 ) -> Option<(String, bool)> {
     let sb = sim.world().get::<SmartBone>(osso)?.clone();
-    let nome = action_at(sim.world(), doc, &sb, i)?;
+    let nome = action_at(sim.world(), doc, &sb, osso, i)?;
     let aberta = doc
         .clips()
         .get(doc.active_index())

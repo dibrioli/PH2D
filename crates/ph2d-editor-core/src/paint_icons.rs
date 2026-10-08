@@ -72,7 +72,7 @@ pub fn paint_icon_path(
     stroke_width: f32,
 ) {
     const VIEWBOX: f64 = 24.0;
-    let pad = 2.0_f32.min(rect.w.min(rect.h) * 0.1);
+    let pad = icon_pad(rect.w.min(rect.h));
     let avail_w = (rect.w - pad * 2.0).max(0.0) as f64;
     let avail_h = (rect.h - pad * 2.0).max(0.0) as f64;
     if avail_w <= 0.0 || avail_h <= 0.0 {
@@ -94,4 +94,28 @@ pub fn paint_icon_path(
     scene
         .inner_mut()
         .stroke(&stroke, transform, &brush, None, path);
+}
+
+/// O respiro que [`paint_icon_path`] deixa à volta do ícone num rectângulo de lado `side`.
+#[must_use]
+pub fn icon_pad(side: f32) -> f32 {
+    2.0_f32.min(side * 0.1) // LITERAL-PX-OK: o respiro de sempre do ícone (2 px, ou 10 % do lado)
+}
+
+/// O lado do DESENHO de um ícone pintado num quadrado de lado `side` (o lado menos o respiro).
+#[must_use]
+pub fn icon_glyph_side(side: f32) -> f32 {
+    (side - 2.0 * icon_pad(side)).max(0.0)
+}
+
+/// O lado do quadrado em que um ícone desenha `glyph` px — a inversa de [`icon_glyph_side`].
+#[must_use]
+pub fn icon_side_for_glyph(glyph: f32) -> f32 {
+    // Com o respiro de 2 px (lado ≥ 20) o lado é o desenho + 4; abaixo, o respiro é 10 % do lado.
+    let fixed = glyph + 4.0; // LITERAL-PX-OK: 2 × o respiro máximo do `icon_pad`
+    if fixed * 0.1 >= 2.0 {
+        fixed
+    } else {
+        glyph / 0.8
+    } // LITERAL-PX-OK: 1 − 2 × 10 %
 }

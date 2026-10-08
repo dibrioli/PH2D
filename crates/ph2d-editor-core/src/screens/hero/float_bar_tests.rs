@@ -82,3 +82,29 @@ fn um_grupo_vazio_nao_abre_um_buraco() {
     let sem = strip_rects(a, sel, &[3, 2], strip_button_px());
     assert_eq!(com, sem);
 }
+
+/// ⭐ Os ícones do módulo desenham 50 % maiores (dono, 08/10) — e o botão e a barra não mexem.
+#[test]
+fn a_module_icon_draws_half_again_bigger_inside_the_same_button() {
+    use crate::paint::icon_glyph_side;
+    let r = Rect::new(10.0, 20.0, button_px(), button_px());
+    let antes = icon_glyph_side(inner(r).w);
+    let depois = icon_glyph_side(module_face_rect(r).w);
+    // ⚠️ O número do DONO escrito aqui, e não a constante: comparar com a própria constante
+    //    aprovava qualquer valor dela (a mutação `1.0` sobrevivia).
+    assert!(
+        (depois / antes - 1.5).abs() < 1e-3,
+        "o desenho cresceu {:.3}× (o dono pediu +50 %)",
+        depois / antes
+    );
+    let f = module_face_rect(r);
+    assert!(
+        f.x >= r.x && f.y >= r.y && f.x + f.w <= r.x + r.w && f.y + f.h <= r.y + r.h,
+        "a cara passou do botão: {f:?} em {r:?}"
+    );
+    assert_eq!(
+        column_rects(area(), &[3])[0].w,
+        button_px(),
+        "o botão não muda de tamanho"
+    );
+}

@@ -246,6 +246,26 @@ pub fn paint_button(
     resolve(if b.on { ColorToken::Accent } else { b.tint }, theme)
 }
 
+/// ⭐ **Quanto a cara de um botão do MÓDULO cresce sobre o miolo** — `1,5×` o desenho, sem mexer no
+/// botão nem na barra (Enio, 08/10: *«os ícones ficaram pequenos (…) vamos aumentar o tamanho deles
+/// em 50%»*). Num botão de `24 px` o desenho vai de `12,8` a `19,2 px` num quadrado de `23,2`: cabe.
+pub const MODULE_FACE_GROWTH: f32 = 1.5; // LITERAL-PX-OK: a RAZÃO pedida pelo dono (08/10), não um tamanho
+
+/// O quadrado, centrado no botão `r`, em que a cara de um botão do módulo se pinta: o ícone desenha
+/// [`MODULE_FACE_GROWTH`] vezes o que desenharia no [`inner`], e nunca passa do próprio botão.
+#[must_use]
+pub fn module_face_rect(r: Rect) -> Rect {
+    let m = inner(r);
+    let glyph = crate::paint::icon_glyph_side(m.w.min(m.h)) * MODULE_FACE_GROWTH;
+    let side = crate::paint::icon_side_for_glyph(glyph).min(r.w.min(r.h));
+    Rect::new(
+        r.x + (r.w - side) / 2.0,
+        r.y + (r.h - side) / 2.0,
+        side,
+        side,
+    )
+}
+
 /// ⭐ **Uma amostra de cor** no miolo `inner`: o quadrado cheio, ou o vazio cortado pela diagonal
 /// quando não há tinta; `ring` deixa só o ANEL (o contorno lê-se como contorno).
 pub fn paint_swatch(

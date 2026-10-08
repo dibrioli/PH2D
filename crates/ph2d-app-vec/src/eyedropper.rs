@@ -19,12 +19,7 @@ pub struct Sample {
 /// As cores do caminho sob `world` (com a tolerância de clique de `tol_world`), ou `None` se o
 /// clique caiu no vazio.
 #[must_use]
-pub fn sample(
-    scene: &VecScene,
-    pen: &PenTool,
-    world: [f64; 2],
-    tol_world: f64,
-) -> Option<Sample> {
+pub fn sample(scene: &VecScene, pen: &PenTool, world: [f64; 2], tol_world: f64) -> Option<Sample> {
     let id = pen.path_at(scene, world, tol_world)?;
     let path = scene.paths().iter().find(|p| p.id == id)?;
     let fill = crate::vector_bridge::seed_fill_from_paint(path.fill.as_ref());

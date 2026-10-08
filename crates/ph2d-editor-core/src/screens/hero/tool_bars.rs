@@ -128,10 +128,24 @@ fn face(hero: &mut HeroScreen, scene: &mut VectorScene, theme: Theme, b: &BarBut
         },
     );
     match &b.face {
-        BarFace::Icon(icon) => paint_icon(scene, *icon, inner(r), fg, StrokeToken::Default.px()),
+        BarFace::Icon(icon) => paint_icon(
+            scene,
+            *icon,
+            super::module_face_rect(r),
+            fg,
+            StrokeToken::Default.px(),
+        ),
         BarFace::Swatch { rgba, ring } => paint_swatch(scene, theme, inner(r), *rgba, *ring, fg),
         BarFace::Outline(path) => {
-            let i = inner(r);
+            // O contorno da forma cresce como os ícones (1,5× o miolo, preso ao botão).
+            let m = inner(r);
+            let side = (m.w.min(m.h) * super::MODULE_FACE_GROWTH).min(r.w.min(r.h));
+            let i = Rect::new(
+                r.x + (r.w - side) / 2.0,
+                r.y + (r.h - side) / 2.0,
+                side,
+                side,
+            );
             let at = ph2d_vector::Affine::translate((f64::from(i.x), f64::from(i.y)))
                 * ph2d_vector::Affine::scale_non_uniform(f64::from(i.w), f64::from(i.h));
             scene.inner_mut().stroke(

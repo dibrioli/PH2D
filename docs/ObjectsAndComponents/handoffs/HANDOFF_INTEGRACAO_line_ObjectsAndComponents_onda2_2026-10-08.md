@@ -162,7 +162,11 @@ Medidos com foto (`fotografa_cena.sh`):
 
 - `rm -rf target/*/incremental` e o build `smoke`, 2.ª corrida (ainda por fazer):
 
-<!-- BUILD_SMOKE_2A_SAIDA -->
+`rm -rf target/*/incremental` feito; `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida:
+
+```text
+    Finished `smoke` profile [optimized] target(s) in 0.41s
+```
 
 - `bash scripts/agent-loop-profile.sh` (20 sessões):
 

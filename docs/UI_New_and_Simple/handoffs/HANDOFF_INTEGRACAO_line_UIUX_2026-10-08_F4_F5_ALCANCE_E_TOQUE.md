@@ -161,7 +161,12 @@ Ver o relatório ao dono (passos numerados). Fotos: [`f4_01`](../vetor_nova_ui/f
 
 ## §9 — Binário de smoke (2.ª corrida)
 
-@@SMOKE@@
+Depois do `rm -rf target/*/incremental` (47 GB) — `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida:
+
+```
+▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.33s
+```
 
 ## §10 — `agent-loop-profile.sh`
 

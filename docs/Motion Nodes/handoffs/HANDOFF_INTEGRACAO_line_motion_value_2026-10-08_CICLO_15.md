@@ -72,6 +72,8 @@
 
 ## §8 — Smoke e binário
 
+✅ **Smoke do dono APROVADO (2026-10-08)** — a cena `=129` com o gesto do `Collide` do Shape.
+
 Smoke ao dono (em `--release`): a cena `=129` refeita pela decisão dele (a diferença entre as duas
 gelatinas é SÓ o `Collide` do Shape; o gesto é ligar o da esquerda), fotografada a `5`, `9` e `12 s`
 (`target/prova/c15/fotos/`), e o tutorial `09` (a tabela do custo e a nota «bolinhas que não se

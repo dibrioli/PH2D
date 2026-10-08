@@ -1,7 +1,7 @@
 //! O seletor de MODO + os PARÂMETROS da forma em foco + as seções de TEXTO.
 //!
 //! Módulo irmão de `paint_sections` (teto de 600 LOC por arquivo de painel). O CATÁLOGO
-//! de formas (categoria + grade de thumbnails) mora em `paint_catalog`.
+//! de formas mora no flyout da coluna ① (D10; os contornos: `shape_outlines`).
 //!
 //! **Seis modos** (ADR-0112 + o 5º pill da reforma + o **Connect**): **Select** (o gizmo
 //! manda) · **Node** (edita âncoras) · **Pen** (cria) · **Shape** (desenha a forma ATIVA
@@ -24,214 +24,17 @@ mod text_sections;
 
 use crate::paint_sections::BodyCtx;
 use crate::paint_sections::label_col_w;
-use crate::state;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::{
     paint_segmented_button, paint_segmented_button_in_group,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, Spacing, TypeToken};
+use ph2d_tokens::{ColorToken, TypeToken};
 use ph2d_tool_vector::VectorStyleSnapshot;
-use ph2d_tool_vector::params::{DrawMode, MarqueeShape};
 use ph2d_tool_vector::shapes;
 
 impl BodyCtx<'_> {
-    /// Seção **TOOL** — os seis modos, numa grade de 3 colunas
-    /// (`Select | Node | Pen` · `Shape | Text | Connect`).
-    pub(crate) fn tool_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-        let (y, collapsed) = self.section_header(
-            ph2d_tool_vector::ids::VECTOR_SECTION_TOOL,
-            tr("panel.vector.section.tool"),
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        let modes = [
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_SELECT,
-                tr("panel.vector.mode.select"),
-                DrawMode::Select,
-            ),
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_NODE,
-                tr("panel.vector.mode.node"),
-                DrawMode::Node,
-            ),
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_PEN,
-                tr("panel.vector.mode.pen"),
-                DrawMode::Pen,
-            ),
-            // **Lápis** — ao lado da caneta de propósito: são os dois gestos de PRODUZIR
-            // geometria à mão, e a vizinhança é o que faz o artista achar o novo.
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_PENCIL,
-                tr("panel.vector.mode.pencil"),
-                DrawMode::Pencil,
-            ),
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_SHAPE,
-                tr("panel.vector.mode.shape"),
-                DrawMode::Shape,
-            ),
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_TEXT,
-                tr("panel.vector.mode.text"),
-                DrawMode::Text,
-            ),
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_CONNECT,
-                tr("panel.vector.mode.connect"),
-                DrawMode::Connect,
-            ),
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_BUILD,
-                tr("panel.vector.mode.build"),
-                DrawMode::Build,
-            ),
-            // **Fillet / Chamfer** — o 9º e 10º pills: arredondar / chanfrar quina por
-            // clicar-e-arrastar. Consolidam a alça de raio (antes escondida no Node) e o toggle
-            // Chamfer (antes na seção Vertex) numa dupla de ferramentas explícitas.
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_FILLET,
-                tr("panel.vector.mode.fillet"),
-                DrawMode::Fillet,
-            ),
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_CHAMFER,
-                tr("panel.vector.mode.chamfer"),
-                DrawMode::Chamfer,
-            ),
-            // **Width** — ao lado dos pills de quina de propósito: os três editam um atributo
-            // VIVO de uma forma que já existe, apontando-a no canvas.
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_WIDTH,
-                tr("panel.vector.mode.width"),
-                DrawMode::Width,
-            ),
-            // **Corte** — o 13º pill, e fica no fim desta vizinhança de propósito: os quatro
-            // (Fillet · Chamfer · Width · Cut) editam uma forma que JÁ existe apontando-a no
-            // canvas, em vez de produzir geometria nova.
-            //
-            // ⚠️ Ele é UM pill onde havia dois (Tesoura + Faca). As duas produziam peças ABERTAS,
-            // e a lei do produto é que uma forma fechada cortada dá formas FECHADAS — então não
-            // eram duas ferramentas, eram duas metades de uma que não existia ainda.
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_CUT,
-                tr("panel.vector.mode.cut"),
-                DrawMode::Cut,
-            ),
-            // **Aparar** — o 15º pill, colado no Corte: os dois REMOVEM geometria, e ler-se um ao
-            // lado do outro é o que faz o artista perceber a diferença (o Corte pede uma lâmina
-            // autorada; o Trim usa o que já está na tela).
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_TRIM,
-                tr("panel.vector.mode.trim"),
-                DrawMode::Trim,
-            ),
-            // **Balde** (plano 40) — o 16º pill, ao lado do Trim: os dois apontam uma REGIÃO que já
-            // está na tela em vez de a autorar. Aquele remove o pedaço apontado, este preenche-o.
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_BUCKET,
-                tr("panel.vector.mode.bucket"),
-                DrawMode::Bucket,
-            ),
-            // **Moldura** — o 14º pill, e fica no FIM porque é o único que produz um CONTÊINER:
-            // os anteriores desenham ou editam uma forma, este cria o lugar onde as formas moram.
-            (
-                ph2d_tool_vector::ids::VECTOR_MODE_FRAME,
-                tr("panel.vector.mode.frame"),
-                DrawMode::Frame,
-            ),
-            // ⛔⛔ **O pill do OSSO SAIU desta fileira** (ordem do dono, 2026-09-09: *«vc deixou o
-            // botão Bones no Painel Vector — melhor tirar de lá»*). O `DrawMode::Bone` continua a
-            // existir (é o modo em que o arrasto faz e posa ossos); o que mudou é **por onde se
-            // entra nele**: os dois segmentos *Create* / *Transform* do painel de Bones. *Uma
-            // ferramenta cujo painel é outro não tem por que ocupar a fileira desta.*
-            // NOTA: o **Pick Shapes** (`VECTOR_MODE_PICKBLEND`) NÃO fica aqui — ele é uma etapa do
-            // Blend (escolher as formas na ordem), e mora na seção BLEND, ao lado do botão que as
-            // liga (ADR-0128 C2b). É um modo de tool, mas seu botão vive lá, não nesta fileira.
-        ];
-        let cols = 3usize;
-        let y = self.button_grid(y, cols, modes.len(), |i| {
-            let (id, label, m) = modes[i];
-            (id, label, snap.mode == m)
-        });
-        let y = self.cut_line_row(snap, y);
-        self.marquee_row(snap, y)
-    }
-
-    /// **A FORMA do marquee** — `Box | Lasso`, a região que o arrasto no vazio desenha.
-    ///
-    /// ⚠️ **Só no modo Node, e colado na fileira TOOL** — o mesmo desenho (e a mesma razão) da
-    /// linha do CORTE logo acima: o gesto COMEÇA no pill (estar em Node) e este par diz o que ele
-    /// faz; separar as duas metades por meia tela é como o artista arrasta um retângulo e nunca
-    /// descobre que havia um laço.
-    ///
-    /// ⚠️ **Aqui e não na seção VERTEX**, que seria o vizinho temático óbvio: aquela seção só
-    /// existe **com um vértice já selecionado** (`current_vertex_type()`), então um controle de
-    /// *como selecionar* moraria lá exatamente onde não se precisa dele — invisível no estado em
-    /// que o artista o procura, que é antes de ter selecionado o que quer que seja.
-    ///
-    /// O chip é a metade PEGAJOSA; o **Ctrl** troca a de um gesto só (`MarqueeShape::for_gesture`).
-    fn marquee_row(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-        if snap.mode != DrawMode::Node {
-            return y;
-        }
-        let m = snap.marquee;
-        self.segmented(
-            tr("panel.vector.marquee"),
-            &[
-                (
-                    ph2d_tool_vector::ids::VECTOR_MARQUEE_BOX,
-                    tr("panel.vector.marquee.box"),
-                    m == MarqueeShape::Box,
-                ),
-                (
-                    ph2d_tool_vector::ids::VECTOR_MARQUEE_LASSO,
-                    tr("panel.vector.marquee.lasso"),
-                    m == MarqueeShape::Lasso,
-                ),
-            ],
-            y,
-        )
-    }
-
-    /// **Os dois botões da LINHA DE CORTE** — executar e descartar.
-    ///
-    /// Ficam aqui, colados na fileira TOOL, e não numa seção própria lá em baixo: o gesto do
-    /// corte COMEÇA no pill (escolher `Cut`) e termina num botão, e separar as duas metades por
-    /// meia tela é como o artista desenha a lâmina e não descobre o que fazer com ela.
-    ///
-    /// ⚠️ **Só no modo Cut, e só com lâmina desenhada** — as duas condições (Enio, 2026-07-31:
-    /// *"as opções Cut e Discard Cut Line só aparecem se o botão Cut estiver checado"*).
-    ///
-    /// Um `Cut` sem linha não tem com que cortar e um `Discard` sem linha não tem o que descartar;
-    /// e fora do modo Cut os dois seriam controles de uma ferramenta que não está na mão. Pintados
-    /// assim seriam botões mudos no estado mais comum de todos — o defeito que o Average e os dois
-    /// pills desta wave já pagaram no mesmo dia.
-    fn cut_line_row(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-        if snap.mode != DrawMode::Cut || !state::cut_line_exists() {
-            return y;
-        }
-        let gap = Spacing::Xs.px();
-        let w = ((self.inner_w - gap) / 2.0).max(1.0);
-        self.row2(
-            w,
-            gap,
-            [
-                (crate::ids::VECTOR_CUT_APPLY, tr("panel.vector.cut.apply")),
-                (
-                    crate::ids::VECTOR_CUT_DISCARD,
-                    tr("panel.vector.cut.discard"),
-                ),
-            ],
-            y,
-        )
-    }
-
     pub(crate) fn shape_params_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let Some(focus) = crate::shape_focus::resolved(snap) else {
             return y;

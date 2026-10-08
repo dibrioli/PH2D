@@ -1,7 +1,7 @@
-//! ⭐⭐ **As NOVE listas que rolam deste painel ROLAM de ponta a ponta** — a prova partilhada
+//! ⭐⭐ **As OITO listas que rolam deste painel ROLAM de ponta a ponta** — a prova partilhada
 //! (`ph2d_ui_testkit::prova_que_a_lista_longa_rola`) sobre a função real de cada passe diferido,
-//! numa banda de painéis baixa onde até a lista mais curta (as sete famílias do catálogo)
-//! transborda. O picker de ícone e o de fonte pintam a linha deles pela mesma porta.
+//! numa banda de painéis baixa onde até a lista mais curta transborda (o popover das famílias do
+//! catálogo saiu com a D10). O picker de ícone e o de fonte pintam a linha deles pela mesma porta.
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::PaintCtx;
@@ -74,20 +74,6 @@ fn a_mistura_de_um_filtro_rola() {
         crate::paint_sections::filters_blend::paint_blend_popover(ctx, 0, CHIP, T);
     });
     crate::state::filters::set_filter_blend_names(Vec::new());
-}
-
-#[test]
-fn as_familias_do_catalogo_rolam() {
-    let opcoes: Vec<_> = (0..ph2d_tool_vector::shapes::ALL_GROUPS.len())
-        .map(ph2d_tool_vector::ids::vector_shape_group_id)
-        .collect();
-    prova(
-        ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD,
-        &opcoes,
-        |ctx| {
-            crate::paint_catalog::paint_group_popover(ctx, CHIP, T);
-        },
-    );
 }
 
 #[test]

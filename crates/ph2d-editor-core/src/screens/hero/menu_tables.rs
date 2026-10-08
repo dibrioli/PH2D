@@ -193,6 +193,10 @@ pub(super) const MENU_BAR_VIEW_ROWS: &[MenuRow] = &[
     menu_row(ids::RAIL_SHOW_HIERARCHY, "chrome.menu.hierarchy"),
     menu_row(ids::RAIL_SHOW_INSPECTOR, "chrome.menu.inspector"),
     menu_row(ids::MENUBAR_VIEW_RULERS, "chrome.menu.rulers"),
+    menu_row(
+        ids::MENUBAR_VIEW_SELECTION_ACTIONS,
+        "chrome.menu.selection_actions",
+    ),
     menu_row(ids::MENUBAR_VIEW_THEME, "chrome.menu.theme"),
     // ⭐⭐⭐ **O verbo de RECUPERAÇÃO mora aqui** (2026-09-07). Ele existia só dentro do
     // popup do TEMA, e o dono — a precisar dele depois de uma coluna lhe encher o ecrã de

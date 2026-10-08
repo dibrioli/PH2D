@@ -33,11 +33,9 @@ mod seam_marquee;
 mod seam_morph_states;
 mod seam_node_xy;
 mod seam_paint_stack;
-mod seam_pencil;
 mod seam_pencil_knobs;
 mod seam_resize_box;
 mod seam_signals;
-mod seam_snap;
 mod seam_spring;
 mod seam_stroke_paint;
 mod seam_stroke_present;
@@ -53,4 +51,16 @@ mod seam_weld;
 mod seam_widget;
 mod section_headers_are_collapsible;
 mod shape_params_visibility;
+mod the_bars_carry_the_gesture;
 mod the_panel_shows_what_the_tool_is_for;
+
+/// ⭐ **O host dos testes de costura, com TODAS as secções ABERTAS.**
+///
+/// ⚠️ D10 (07/10): Contêiner, Interação e Avançado nascem recolhidos no `populate`. Os testes de
+/// costura provam a FIAÇÃO de cada controlo (pintado ⇒ registado ⇒ despachado), não a dobra por
+/// omissão — essa tem gate próprio (`bars_and_folds::the_container_interaction_and_advanced_start_folded`).
+pub fn host_aberto() -> ph2d_ui_testkit::MockPanelHost {
+    let mut h = ph2d_ui_testkit::MockPanelHost::with_panel::<ph2d_panel_vector::VectorPanel>();
+    h.open_all_sections();
+    h
+}

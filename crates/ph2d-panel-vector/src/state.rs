@@ -8,7 +8,6 @@
 //! (Width slider, Fill-None) and the colour-picker read-back (Stroke / Fill
 //! swatches), so the panel holds no authoritative state.
 
-use ph2d_tool_vector::shapes::ShapeGroup;
 use ph2d_tool_vector::{VectorStyleSnapshot, VertexSel};
 use ph2d_vec_scene::ShapeKind;
 use ph2d_vec_text::TextAlign;
@@ -72,7 +71,7 @@ pub(crate) use stroke_state::{current_brush, stroke_paint_kind, stroke_present};
 #[path = "state_snap.rs"]
 mod snap_state;
 pub(crate) use snap_state::{
-    current_rulers, current_snap, current_snap_crossings, current_snap_guides, current_snap_path,
+    current_snap, current_snap_crossings, current_snap_guides, current_snap_path,
 };
 pub use snap_state::{set_current_guides, set_current_snap, set_current_snap_position};
 
@@ -133,8 +132,8 @@ pub use ui_states_state::{UiStatesState, set_ui_states_state};
 #[path = "state_pending_dd.rs"]
 mod pending_dd;
 pub(crate) use pending_dd::{
-    set_pending_blend_dd, set_pending_font_dd, set_pending_group_dd, set_pending_marker_dd,
-    take_pending_blend_dd, take_pending_font_dd, take_pending_group_dd, take_pending_marker_dd,
+    set_pending_blend_dd, set_pending_font_dd, set_pending_marker_dd,
+    take_pending_blend_dd, take_pending_font_dd, take_pending_marker_dd,
 };
 
 /// **AS SETAS do Morph da seleção** (plano 32 W4) — que arestas a máquina tem, e qual delas a cena
@@ -225,8 +224,6 @@ thread_local! {
     /// uma (os campos então a editam — Live Shape). `None` = sem forma viva na seleção;
     /// o foco vira a forma ATIVA do catálogo (o default do próximo traço).
     static CURRENT_SHAPE_FOCUS: Cell<Option<ShapeKind>> = const { Cell::new(None) };
-    /// A aba de família aberta no seletor. `None` = segue a forma ativa.
-    static CURRENT_SHAPE_GROUP: Cell<Option<ShapeGroup>> = const { Cell::new(None) };
     /// Semente ONE-SHOT dos sliders de texto `[size, weight, line_height, tracking]`,
     /// publicada quando o ALVO muda (sessão nova / outro objeto selecionado). O paint
     /// a consome e escreve no store — depois o store é a fonte (senão o seed brigaria
@@ -432,8 +429,7 @@ pub use envelope::{
 #[path = "state_slot_index.rs"]
 mod slot_index;
 pub(crate) use slot_index::{
-    font_option_index, marker_option, shape_choice_index, shape_field_index, shape_group_index,
-    shape_index, text_axis_index,
+    font_option_index, marker_option, shape_choice_index, shape_field_index, shape_index, text_axis_index,
 };
 
 // ⛔ **O estado do ESQUELETO saiu daqui** (2026-09-09) — ele mudou-se com a secção para a
@@ -486,15 +482,6 @@ pub(crate) fn current_shape_focus() -> Option<ShapeKind> {
     CURRENT_SHAPE_FOCUS.with(Cell::get)
 }
 
-/// A aba de família aberta (o painel a define no clique; `None` = segue a forma ativa).
-pub(crate) fn current_shape_group() -> Option<ShapeGroup> {
-    CURRENT_SHAPE_GROUP.with(Cell::get)
-}
-
-pub(crate) fn set_current_shape_group(g: Option<ShapeGroup>) {
-    CURRENT_SHAPE_GROUP.with(|c| c.set(g));
-}
-
 /// O paint consome a semente (uma vez) e escreve no store.
 pub(crate) fn take_text_seed() -> Option<[f64; 4]> {
     TEXT_SEED.with(|c| c.take())
@@ -543,26 +530,4 @@ pub(crate) fn with_font_previews<R>(f: impl FnOnce(&[FontPreview]) -> R) -> R {
 /// O popover pede à shell que construa as previews (quando ainda não há nenhuma).
 pub(crate) fn request_font_previews() {
     WANT_FONT_PREVIEWS.with(|c| c.set(true));
-}
-
-/// A família ATIVA do catálogo: a escolhida explicitamente, ou — sem escolha — a da forma
-/// ativa (voltar à tool mostra a família do que se está desenhando). Única verdade sobre
-/// isso: a grade, o chip e o popover leem daqui, senão os três discordariam.
-pub(crate) fn active_shape_group(active: ShapeKind) -> ShapeGroup {
-    current_shape_group().unwrap_or(ph2d_tool_vector::shapes::desc(active).group)
-}
-
-/// A chave i18n do rótulo de uma família. Vive AQUI (não em `ph2d-tool-vector::shapes`)
-/// porque a chave é vocabulário de UI do painel, e o catálogo é do domínio da tool.
-#[must_use]
-pub(crate) fn group_i18n_key(group: ShapeGroup) -> &'static str {
-    match group {
-        ShapeGroup::Basic => "panel.vector.group.basic",
-        ShapeGroup::Round => "panel.vector.group.round",
-        ShapeGroup::Arrows => "panel.vector.group.arrows",
-        ShapeGroup::Flow => "panel.vector.group.flow",
-        ShapeGroup::Bubbles => "panel.vector.group.bubbles",
-        ShapeGroup::Symbols => "panel.vector.group.symbols",
-        ShapeGroup::Iso => "panel.vector.group.iso",
-    }
 }

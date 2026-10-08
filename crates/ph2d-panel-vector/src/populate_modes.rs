@@ -41,6 +41,12 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_TRIM);
     // **Balde** (plano 40) — o 16º pill, e a mesma linha pela mesma razão.
     button(store, ph2d_tool_vector::ids::VECTOR_MODE_BUCKET);
+    // **Conta-gotas** (D10, tecla `I`) — pintado pela coluna ① e não pelo painel; a linha é a mesma.
+    button(store, ph2d_tool_vector::ids::VECTOR_MODE_EYEDROPPER);
+    // As três portas da cor da coluna ① (D10: `X` · `Shift+X` · `D`).
+    button(store, ph2d_tool_vector::ids::VECTOR_COLOUR_FOCUS);
+    button(store, ph2d_tool_vector::ids::VECTOR_COLOUR_SWAP);
+    button(store, ph2d_tool_vector::ids::VECTOR_COLOUR_DEFAULT);
     // **A FORMA do marquee** — o par colado na fileira TOOL. Sem estas duas linhas os chips
     // pintam, acendem sob o rato e o Click morre: a falha que o `wiring_parity` existe para pegar.
     button(store, ph2d_tool_vector::ids::VECTOR_MARQUEE_BOX);

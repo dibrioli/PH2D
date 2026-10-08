@@ -44,7 +44,7 @@ fn drain_into_tool(host: &mut MockPanelHost, tool: &mut VectorTool) -> bool {
 /// — exercising every site from `populate` to `stroke_width_px()`.
 #[test]
 fn width_slider_drag_reaches_tool_style() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
 
@@ -78,7 +78,7 @@ fn width_slider_drag_reaches_tool_style() {
 /// dragging it to 0 makes the fill invisible, through the seam.
 #[test]
 fn fill_opacity_slider_sets_alpha_through_seam() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
     assert_ne!(tool.fill_rgba()[3], 0, "precondition: default fill opaque");
@@ -110,7 +110,7 @@ fn fill_opacity_slider_sets_alpha_through_seam() {
 /// — exercising the mode arm in `event.rs` + `handle_panel_event`.
 #[test]
 fn mode_button_click_switches_tool_mode_through_seam() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
     // ADR-0112: a ferramenta abre na SELEÇÃO, como qualquer editor vetorial.
@@ -181,7 +181,7 @@ fn mode_button_click_switches_tool_mode_through_seam() {
 /// `handle_panel_event` → o modo da tool.
 #[test]
 fn clicking_connect_pill_reaches_the_tool() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
     assert_ne!(
@@ -248,7 +248,7 @@ fn the_three_align_chips_are_clickable_and_reach_the_tool() {
             StrokeAlign::Centre,
         ),
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -278,7 +278,7 @@ fn the_three_align_chips_are_clickable_and_reach_the_tool() {
 fn stroke_cap_dash_and_gap_reach_the_tool() {
     use ph2d_tool_vector::StrokeCap;
     use ph2d_tool_vector::params::{DASH_MAX, GAP_MAX};
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
 
@@ -320,7 +320,7 @@ fn stroke_cap_dash_and_gap_reach_the_tool() {
 #[test]
 fn every_shape_and_every_field_in_the_catalog_reaches_the_tool() {
     use ph2d_tool_vector::shapes;
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
 
@@ -398,7 +398,7 @@ fn every_marker_option_reaches_the_tool_and_closes_its_chip() {
     use ph2d_editor_core::panel::PanelHostInternal;
     use ph2d_vec_scene::{ALL_MARKERS, Marker};
 
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
     assert_eq!(
@@ -492,7 +492,7 @@ fn every_marker_option_reaches_the_tool_and_closes_its_chip() {
 
 #[test]
 fn boolean_button_click_forwards_to_the_bus_for_the_shell() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     let outcome = host.apply_panel_event::<VectorPanel>(
@@ -533,7 +533,7 @@ fn arrange_buttons_forward_to_the_bus_for_the_shell() {
         ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CW,
         ph2d_tool_vector::ids::VECTOR_ARRANGE_ROTATE_CCW,
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
 
         let outcome =
@@ -562,7 +562,7 @@ fn arrange_buttons_forward_to_the_bus_for_the_shell() {
 /// proof is that the panel forwards the `Click` onto the bus for the shell drain.
 #[test]
 fn vertex_type_button_click_forwards_to_the_bus_for_the_shell() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     let outcome = host.apply_panel_event::<VectorPanel>(
@@ -592,7 +592,7 @@ fn vertex_type_button_click_forwards_to_the_bus_for_the_shell() {
 /// panel forwards the `Click` onto the bus for the shell drain.
 #[test]
 fn delete_node_button_click_forwards_to_the_bus_for_the_shell() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     let outcome = host.apply_panel_event::<VectorPanel>(
@@ -633,7 +633,7 @@ fn delete_node_button_click_forwards_to_the_bus_for_the_shell() {
 /// nasceram vivos, e uma seção nova sem a marca sai vermelha.
 #[test]
 fn every_section_header_is_registered_as_collapsible() {
-    let host = MockPanelHost::with_panel::<VectorPanel>();
+    let host = crate::host_aberto();
     assert_eq!(
         ids::VECTOR_SECTIONS.len(),
         // +3 (2026-07-23): TEXTPATH e PATTERNPATH, que chegaram à `main` FORA da lista — os dois
@@ -685,7 +685,10 @@ fn every_section_header_is_registered_as_collapsible() {
         // **é** o cabeçalho: uma secção única lá dentro escreveria o nome duas vezes. ⚠️ O `41` foi
         // **CONTADO** (o gate imprimiu `left: 41`), como manda esta nota desde o `31` — *uma conta
         // que só sabe subir é uma conta que ninguém confere.*
-        41,
+        // ⛔ **−6 (2026-10-07, D10): o GESTO saiu do painel** — `Tool` → coluna ①; o catálogo `Shape`
+        // → flyout da ①; `Pencil`, `Symmetry`, `Snap` → fila ②; `Path` → ②/④/⚙. ⚠️ O `35` foi
+        // **CONTADO** (o gate imprimiu `left: 35`).
+        35,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {
@@ -697,61 +700,6 @@ fn every_section_header_is_registered_as_collapsible() {
     }
 }
 
-/// **A separação categoria ≠ tipo, pelo seam.** A categoria virou um `Dropdown` (widget
-/// visualmente distinto da grade de tipos). Escolher uma família no popover tem de (a)
-/// ser consumido pelo painel e (b) FECHAR o chip — o light-dismiss genérico não dispara
-/// aqui, porque o clique é DENTRO do popover. Sem o fecho manual o popover ficaria
-/// pendurado sobre o painel.
-#[test]
-fn picking_a_category_closes_the_dropdown_chip() {
-    use ph2d_editor_core::interaction::InteractiveState;
-    use ph2d_editor_core::panel::PanelHostInternal;
-    use ph2d_tool_vector::shapes;
-
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut panel_state = VectorPanelState;
-
-    for (i, _g) in shapes::ALL_GROUPS.iter().enumerate() {
-        // Abre o chip (o que o dispatch genérico faz num clique nele).
-        if let Some(InteractiveState::Dropdown { open, .. }) = host
-            .store_mut()
-            .get_mut(ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD)
-        {
-            *open = true;
-        } else {
-            panic!("VECTOR_SHAPE_GROUP_DD nao esta registrado como Dropdown no populate");
-        }
-
-        let outcome = host.apply_panel_event::<VectorPanel>(
-            &mut panel_state,
-            WidgetEvent::Click(ph2d_tool_vector::ids::vector_shape_group_id(i)),
-        );
-        assert_eq!(
-            outcome,
-            EventOutcome::Consumed,
-            "opcao de categoria {i} ignorada pelo painel"
-        );
-
-        match host
-            .store()
-            .get(ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD)
-        {
-            Some(InteractiveState::Dropdown {
-                open,
-                selected_index,
-                ..
-            }) => {
-                assert!(!open, "categoria {i}: o chip ficou ABERTO apos a escolha");
-                assert_eq!(
-                    *selected_index,
-                    Some(i),
-                    "categoria {i}: o chip nao registrou a familia escolhida"
-                );
-            }
-            _ => panic!("VECTOR_SHAPE_GROUP_DD deixou de ser um Dropdown"),
-        }
-    }
-}
 
 /// **Gate do seam do CONECTOR.** Os três campos (Route / Jetty / Spread) editam a RELAÇÃO,
 /// que vive no `VecConnector` de cada conector SELECIONADO — não no Style da tool. Logo a
@@ -766,7 +714,7 @@ fn picking_a_category_closes_the_dropdown_chip() {
 fn connector_fields_reach_the_bus_for_the_shell() {
     use ph2d_panel_vector::{ConnectorSnapshot, set_current_connector};
 
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     // Um conector selecionado (o que a shell publica a cada frame), em Orthogonal.
@@ -838,7 +786,7 @@ fn connector_fields_reach_the_bus_for_the_shell() {
 fn the_route_button_refuses_to_fire_without_a_connector_in_focus() {
     use ph2d_panel_vector::set_current_connector;
 
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     set_current_connector(None);
 
@@ -864,7 +812,7 @@ fn the_route_button_refuses_to_fire_without_a_connector_in_focus() {
 /// mirror of the Padding panel's Cancel.
 #[test]
 fn close_button_cancels_active_tool() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     let outcome = host.apply_panel_event::<VectorPanel>(
@@ -902,7 +850,7 @@ fn close_button_cancels_active_tool() {
 fn the_marker_head_controls_reach_the_tool() {
     use ph2d_vec_scene::Marker;
 
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
 
@@ -975,7 +923,7 @@ fn the_marker_head_controls_reach_the_tool() {
 /// mora a matemática — continua verde. É o modo mais fácil de entregar nada.
 #[test]
 fn clicking_build_pill_reaches_the_tool() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
     assert_ne!(tool.mode(), DrawMode::Build, "precondition: nao e Build");
@@ -1006,7 +954,7 @@ fn clicking_build_pill_reaches_the_tool() {
 /// fileira de modos, mas o seam é o mesmo id.)
 #[test]
 fn clicking_pick_button_reaches_the_tool() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
     assert_ne!(
@@ -1096,7 +1044,7 @@ fn every_envelope_command_button_reaches_the_bus_when_clicked() {
             "preset 2",
         ),
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -1148,7 +1096,7 @@ fn the_envelope_controls_are_not_offered_without_an_envelope() {
     };
     ph2d_panel_vector::set_current_has_envelope(false);
     ph2d_panel_vector::set_current_envelope_presets(&["Arc", "Flag", "Wave"], Some(0), 0.5);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     for (id, name) in [
         (ph2d_panel_vector::ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
@@ -1214,7 +1162,7 @@ fn every_blend_command_button_reaches_the_bus_when_clicked() {
         (ph2d_panel_vector::ids::VECTOR_BLEND_EXPAND, "Expand"),
         (ph2d_panel_vector::ids::VECTOR_BLEND_RELEASE, "Release"),
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -1259,7 +1207,7 @@ fn the_bend_slider_reaches_the_bus_in_document_units() {
     ph2d_panel_vector::set_current_has_envelope(true);
     ph2d_panel_vector::set_current_envelope_presets(&["Arc"], Some(0), 0.5);
     for (track, want) in [(0.0_f32, -1.0_f64), (0.5, 0.0), (1.0, 1.0)] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         host.set_slider_value(ph2d_panel_vector::ids::VECTOR_ENVELOPE_BEND, track);
         let outcome = host.apply_panel_event::<VectorPanel>(
@@ -1304,7 +1252,7 @@ fn the_bend_slider_is_not_offered_without_an_active_preset() {
         h: 4000.0,
     };
     ph2d_panel_vector::set_current_has_envelope(true);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     ph2d_panel_vector::set_current_envelope_presets(&["Arc", "Flag"], None, 0.5);
@@ -1361,7 +1309,7 @@ fn the_pins_controls_and_the_cage_controls_are_exclusive() {
     };
     ph2d_panel_vector::set_current_has_envelope(true);
     ph2d_panel_vector::set_current_envelope_presets(&["Arc", "Flag"], Some(0), 0.5);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     // Gesto de gaiola (Perspective): presets sim, Clear Pins não.
@@ -1500,7 +1448,7 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
 
     for (id, name) in targets {
         publish();
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -1540,7 +1488,7 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
         h: 4000.0,
     };
     ph2d_panel_vector::set_current_effects(false, false, &["Trim Path"], Vec::new());
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     assert!(
         host.painted_rect::<VectorPanel>(
@@ -1555,7 +1503,7 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
     // E COM alvo ele aparece — sem esta metade, "não oferece" ficaria verde com a seção
     // inteira apagada. [[feedback_absence_gate_needs_a_presence_sibling]]
     ph2d_panel_vector::set_current_effects(true, false, &["Trim Path"], Vec::new());
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     assert!(
         host.painted_rect::<VectorPanel>(
@@ -1588,7 +1536,7 @@ fn a_bound_shape_is_offered_no_effect() {
             falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
         };
         ph2d_panel_vector::set_current_effects(true, bound, &["Twist"], vec![row]);
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         [
             ph2d_tool_vector::ids::vector_fx_add_id(0),
@@ -1665,7 +1613,7 @@ fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
             falloff_role: ph2d_panel_vector::FalloffRole::NotFalloff,
         }],
     );
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     // Pintar é o que republica — o `populate` corre uma vez e não sabe que efeito caiu na linha.
     let _ = host.painted_rect::<VectorPanel>(
@@ -1795,7 +1743,7 @@ fn every_expand_control_reaches_its_destination_when_clicked() {
             true,
         ),
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -1861,7 +1809,7 @@ fn clicking_a_join_chip_records_that_join() {
         (ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_BEVEL, 2, "Bevel"),
         (ph2d_tool_vector::ids::VECTOR_EXPAND_JOIN_MITER, 0, "Miter"),
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -1906,7 +1854,7 @@ fn clicking_a_side_chip_records_that_side() {
         (ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_INNER, 1, "Inner"),
         (ph2d_tool_vector::ids::VECTOR_EXPAND_SIDE_BOTH, 2, "Both"),
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -1978,7 +1926,7 @@ fn every_text_on_path_control_reaches_the_bus_when_clicked() {
     ] {
         ph2d_panel_vector::set_current_textpath_can_link(!linked);
         ph2d_panel_vector::set_current_textpath(linked, 0.25, false);
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -2027,7 +1975,7 @@ fn the_text_on_path_section_offers_only_what_applies() {
         h: 4000.0,
     };
     let rect = |id| {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
     };
@@ -2120,7 +2068,7 @@ fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
     ] {
         ph2d_panel_vector::set_current_patternpath_can_link(!linked);
         ph2d_panel_vector::set_current_patternpath(linked, 0.25, 1.0, 1.0, 0.0, false, 0.0);
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -2158,7 +2106,7 @@ fn every_pattern_on_path_control_reaches_the_bus_when_clicked() {
         ph2d_panel_vector::set_current_patternpath_can_link(false);
         ph2d_panel_vector::set_current_patternpath_can_pick(true);
         ph2d_panel_vector::set_current_patternpath(false, 0.0, 1.0, 1.0, 0.0, false, 0.0);
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -2200,7 +2148,7 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
         h: 4000.0,
     };
     let rect = |id| {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
     };
@@ -2276,7 +2224,7 @@ fn the_pattern_on_path_section_offers_only_what_applies() {
 fn the_rotation_slider_reaches_the_bus_in_degrees() {
     ph2d_panel_vector::set_current_patternpath(true, 0.0, 1.0, 1.0, 0.0, false, 0.0);
     for (track, want) in [(0.0_f32, -180.0_f64), (0.5, 0.0), (1.0, 180.0)] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         host.set_slider_value(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_ROTATION, track);
         let outcome = host.apply_panel_event::<VectorPanel>(
@@ -2320,7 +2268,7 @@ fn the_rotation_row_is_reachable_by_a_pointer() {
         h: 4000.0,
     };
     ph2d_panel_vector::set_current_patternpath(true, 0.0, 1.0, 1.0, 0.0, false, 0.0);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let rects = host.paint::<VectorPanel>(&mut st, VIEWPORT);
     let r = rects
@@ -2347,7 +2295,7 @@ fn the_rotation_row_is_reachable_by_a_pointer() {
 #[test]
 fn the_spacing_floor_reaches_the_bus() {
     for (track, want) in [(0.0_f32, 0.01_f64), (1.0, 4.0)] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         host.set_slider_value(ph2d_panel_vector::ids::VECTOR_PATTERNPATH_SPACING, track);
         let _ = host.apply_panel_event::<VectorPanel>(
@@ -2392,7 +2340,7 @@ fn the_selection_reach_buttons_reach_the_bus_when_clicked() {
         ),
         (ph2d_panel_vector::ids::VECTOR_VERT_SEL_SAME, "Select Same"),
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         // ⚠️ A seção Vertex só existe com um VÉRTICE selecionado (o `state::current_vertex_type`),
         // e sem declarar essa premissa o `painted_rect` devolve `None` — o gate falharia sobre
@@ -2424,70 +2372,6 @@ fn the_selection_reach_buttons_reach_the_bus_when_clicked() {
     }
 }
 
-/// **As três operações de nó da W4 chegam ao barramento** — Join · Reverse · Average.
-///
-/// ⚠️ Cada uma declara a SUA premissa, e são diferentes: o Average vive na seção Vertex (que só
-/// existe com um vértice selecionado) e o Join só é oferecido com **2+ caminhos** selecionados —
-/// com um só, o `Close Path` logo acima já é a resposta, e um segundo botão para a mesma pergunta
-/// é a falha de duas-portas que esta linha passou a wave inteira a evitar. Sem declarar as
-/// premissas o `painted_rect` devolve `None` e o gate falharia sobre produto correto.
-#[test]
-fn the_node_ops_reach_the_bus_when_clicked() {
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 4000.0,
-    };
-    const SEC: u128 = 1_000_000_000;
-    for (id, name, needs_two) in [
-        (
-            ph2d_panel_vector::ids::VECTOR_VERT_AVERAGE,
-            "Average",
-            false,
-        ),
-        (
-            ph2d_panel_vector::ids::VECTOR_PATH_REVERSE,
-            "Reverse",
-            false,
-        ),
-        (ph2d_panel_vector::ids::VECTOR_PATH_JOIN, "Join", true),
-    ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
-        let mut panel_state = VectorPanelState;
-        ph2d_panel_vector::state::set_selected_vertex_type(Some(
-            ph2d_tool_vector::VertexSel::Uniform(ph2d_tool_vector::VertexType::Corner),
-        ));
-        ph2d_panel_vector::state::set_current_selection_count(if needs_two { 2 } else { 1 });
-        // ⚠️ O **Average** também exige DOIS (nós, desta vez): a seção Vertex aparece com um só, e
-        // um Average de um nó não tem o que mediar. Sem declarar esta premissa o `painted_rect`
-        // devolve `None` e o gate falharia sobre produto correto.
-        ph2d_panel_vector::state::set_current_vertex_count(2);
-        let r = host
-            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
-            .unwrap_or_else(|| panic!("o botao {name} nao foi PINTADO com area clicavel"));
-        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
-        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
-        assert!(
-            evs.iter()
-                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
-            "o ponteiro sobre {name} nao virou Click -- falta o `button()` no populate"
-        );
-        for ev in evs {
-            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
-        }
-        assert!(
-            host.drained_actions().into_iter().any(|a| matches!(
-                a,
-                EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id
-            )),
-            "o Click de {name} nao chegou ao bus -- falta a linha no event_clicks"
-        );
-    }
-    ph2d_panel_vector::state::set_current_selection_count(0);
-    ph2d_panel_vector::state::set_current_vertex_count(0);
-}
 
 /// **O Join NÃO é oferecido com um caminho só** — a metade de AUSÊNCIA, e é ela que impede o
 /// segundo botão de "fechar". Sem este gate, oferecer o Join sempre passaria despercebido: ele
@@ -2500,7 +2384,7 @@ fn the_join_button_is_not_offered_for_a_single_path() {
         w: 1600.0,
         h: 4000.0,
     };
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     ph2d_panel_vector::state::set_current_selection_count(1);
     assert!(
@@ -2524,7 +2408,7 @@ fn the_join_button_is_not_offered_for_a_single_path() {
 /// formas FECHADAS.
 #[test]
 fn clicking_the_cut_pill_reaches_the_tool() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
     assert_ne!(tool.mode(), DrawMode::Cut, "precondition: nao e Cut");
@@ -2549,159 +2433,8 @@ fn clicking_the_cut_pill_reaches_the_tool() {
     );
 }
 
-/// **TODO pill da fileira TOOL responde a um PONTEIRO real** — Down + Up de verdade, não um
-/// `WidgetEvent` sintético.
-///
-/// Um clique sintético **pula a checagem de focabilidade do store**: um id pintado e registado no
-/// `hit_index` mas ausente do `populate` fica *vivo aos olhos daquele gate e MORTO sob o mouse*.
-/// Foi assim que os dois pills de corte chegaram ao smoke pintados, acesos e mudos (*"botão não
-/// funciona"*, Enio) — e o gate que devia cobri-los, o `architecture_panel_wiring_parity`, é
-/// estruturalmente CEGO a eles: ele só coleta `.register(ids::LITERAL` direto, e estes são
-/// registados num LAÇO.
-///
-/// ⚠️ **A lista é enumerada à mão, e a exposição é essa:** um 13º modo que não entre aqui nasce
-/// descoberto. Não há como derivá-la — a tabela que o painel pinta é privada dele.
-#[test]
-fn every_tool_row_pill_answers_a_real_pointer() {
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 4000.0,
-    };
-    const SEC: u128 = 1_000_000_000;
-    let pills: [(ph2d_a11y::NodeId, &str); 12] = [
-        (ph2d_tool_vector::ids::VECTOR_MODE_SELECT, "Select"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_NODE, "Node"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_PEN, "Pen"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_PENCIL, "Pencil"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_SHAPE, "Shape"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_TEXT, "Text"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_CONNECT, "Connect"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_BUILD, "Build"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_FILLET, "Fillet"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_CHAMFER, "Chamfer"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_WIDTH, "Width"),
-        (ph2d_tool_vector::ids::VECTOR_MODE_CUT, "Cut"),
-    ];
-    let mut dead = Vec::new();
-    for (id, name) in pills {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
-        let mut panel_state = VectorPanelState;
-        let Some(r) = host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id) else {
-            dead.push(format!("{name} (nao PINTADO)"));
-            continue;
-        };
-        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
-        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
-        if !evs
-            .iter()
-            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id))
-        {
-            dead.push(format!(
-                "{name} (MORTO sob o mouse -- falta o `button()` no populate)"
-            ));
-        }
-    }
-    assert!(dead.is_empty(), "pills que nao respondem: {dead:?}");
-}
 
-/// **Os dois botões do corte só aparecem com o pill Cut escolhido** (Enio, 2026-07-31: *"as
-/// opções Cut e Discard Cut Line só aparecem se o botão Cut estiver checado"*).
-///
-/// As duas metades num gate só, porque as duas são o mesmo defeito visto de lados opostos:
-/// PRESENÇA (o gesto tem de ser alcançável quando é possível) e AUSÊNCIA (controles de uma
-/// ferramenta que não está na mão são ruído que o artista aprende a ignorar).
-///
-/// ⚠️ A terceira condição — a lâmina EXISTIR — é o gate irmão logo abaixo. São perguntas
-/// diferentes, e testá-las juntas deixaria passar quem esquecesse uma delas.
-#[test]
-fn the_cut_buttons_only_appear_with_the_cut_tool_in_hand() {
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 4000.0,
-    };
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut panel_state = VectorPanelState;
-    ph2d_panel_vector::state::set_cut_line_exists(true);
 
-    for (mode, want) in [
-        (DrawMode::Cut, true),
-        (DrawMode::Select, false),
-        (DrawMode::Pen, false),
-        (DrawMode::Node, false),
-    ] {
-        ph2d_panel_vector::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot {
-            mode,
-            ..ph2d_tool_vector::VectorStyleSnapshot::default()
-        }));
-        for id in [
-            ph2d_panel_vector::ids::VECTOR_CUT_APPLY,
-            ph2d_panel_vector::ids::VECTOR_CUT_DISCARD,
-        ] {
-            let painted = host
-                .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
-                .is_some();
-            assert_eq!(
-                painted,
-                want,
-                "modo {mode:?}: o botao do corte deveria estar {}",
-                if want { "PINTADO" } else { "AUSENTE" }
-            );
-        }
-    }
-    ph2d_panel_vector::state::set_cut_line_exists(false);
-    ph2d_panel_vector::set_current_vector_style(None);
-}
-
-/// **Sem lâmina desenhada, os dois botões não existem** — a outra condição.
-///
-/// Um `Cut` sem linha não tem com que cortar e um `Discard` sem linha não tem o que descartar:
-/// seriam dois botões mudos no estado em que o artista entra no modo.
-#[test]
-fn the_cut_buttons_need_a_blade_to_exist() {
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 4000.0,
-    };
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut panel_state = VectorPanelState;
-    ph2d_panel_vector::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot {
-        mode: DrawMode::Cut,
-        ..ph2d_tool_vector::VectorStyleSnapshot::default()
-    }));
-
-    ph2d_panel_vector::state::set_cut_line_exists(false);
-    for id in [
-        ph2d_panel_vector::ids::VECTOR_CUT_APPLY,
-        ph2d_panel_vector::ids::VECTOR_CUT_DISCARD,
-    ] {
-        assert!(
-            host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
-                .is_none(),
-            "o botao do corte foi pintado sem lamina nenhuma"
-        );
-    }
-    // E o controle: com lâmina, aparecem (senão este gate seria verde por vácuo).
-    ph2d_panel_vector::state::set_cut_line_exists(true);
-    for id in [
-        ph2d_panel_vector::ids::VECTOR_CUT_APPLY,
-        ph2d_panel_vector::ids::VECTOR_CUT_DISCARD,
-    ] {
-        assert!(
-            host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
-                .is_some(),
-            "com lamina desenhada o botao tem de aparecer"
-        );
-    }
-    ph2d_panel_vector::state::set_cut_line_exists(false);
-    ph2d_panel_vector::set_current_vector_style(None);
-}
 
 /// **Os OITO botões do Pathfinder respondem a um PONTEIRO real** (plano 25 §8, W5).
 ///
@@ -2740,7 +2473,7 @@ fn every_pathfinder_button_answers_a_real_pointer() {
     ];
     let mut dead = Vec::new();
     for (id, name) in ops {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let Some(r) = host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id) else {
             dead.push(format!("{name} (nao PINTADO)"));
@@ -2789,62 +2522,12 @@ fn symmetry_rects(
     host.paint::<VectorPanel>(&mut st, VIEWPORT)
 }
 
-/// **Os quatro tipos são pintados, vivos sob o mouse, E chegam ao BARRAMENTO.**
-///
-/// ⚠️ **São TRÊS condições, não uma — e a primeira versão deste gate provava só duas.** Ela parava
-/// em `click_at(...)` não-vazio, que responde *"o ponteiro alcança o widget?"* (o registro no
-/// `populate`) e **nada** sobre o `Click` virar `ToolPanelEvent`. O produto shipou com os ids fora
-/// da allowlist do `event_clicks`: o artista clicava *On*, nada acontecia, e o log dizia
-/// `[hero] unhandled event`. O gate estava VERDE.
-///
-/// Agora a terceira condição é afirmada onde ela vive: `EventOutcome::Consumed` (o painel
-/// encaminhou) **e** o `drain_into_tool` mudando o estado da tool (alguém do outro lado o
-/// consumiu). A fileira é percorrida a partir de `SymmetryKind::ALL`, então um tipo novo entra
-/// neste gate sozinho.
-#[test]
-fn every_symmetry_kind_chip_is_painted_and_alive() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let rects = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
-    for k in ph2d_symmetry::SymmetryKind::ALL {
-        let id = ph2d_tool_vector::params::symmetry_kind_id(*k);
-        let r = rects
-            .iter()
-            .find(|(n, _)| *n == id)
-            .map(|(_, r)| *r)
-            .unwrap_or_else(|| panic!("o chip de {:?} tem de ser pintado", k));
-        // (a) o ponteiro o alcança — a checagem de focabilidade mora no store.
-        let events = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
-        assert!(
-            !events.is_empty(),
-            "o chip de {k:?} está pintado e MORTO sob o mouse — falta o registro no `populate`"
-        );
-        // (b) e o clique vira `ToolPanelEvent`, que é outra pergunta e outra lista.
-        let mut st = VectorPanelState;
-        let mut tool = VectorTool::default();
-        let outcome = host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::Click(id));
-        assert_eq!(
-            outcome,
-            EventOutcome::Consumed,
-            "o chip de {k:?} não foi consumido — falta o id na allowlist do `event_clicks`"
-        );
-        assert!(
-            drain_into_tool(&mut host, &mut tool),
-            "o clique de {k:?} nunca virou ToolPanelEvent — o seam painel->tool está morto"
-        );
-        assert_eq!(
-            tool.ui_snapshot().symmetry.kind,
-            *k,
-            "e a tool tem de ficar com o tipo que foi clicado"
-        );
-    }
-    ph2d_panel_vector::set_current_vector_style(None);
-}
 
 /// **O par `Enable` e o `Apply` chegam ao barramento** — os três ids que não são tipo, pela mesma
 /// prova em três degraus (pintado · vivo sob o mouse · consumido e drenado).
 #[test]
 fn the_enable_pair_and_the_apply_reach_the_bus() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     ph2d_panel_vector::state_symmetry::set_symmetry_live_count(1);
     let _ = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
     for (id, name) in [
@@ -2871,107 +2554,8 @@ fn the_enable_pair_and_the_apply_reach_the_bus() {
     ph2d_panel_vector::set_current_vector_style(None);
 }
 
-/// **`Enable` gateia toda a seção** — a lei que o Enio estabeleceu no painel do impasto (*"esse
-/// card só aparece se enable estiver checado"*). Desarmado, os controles abaixo editariam o estilo
-/// de um espelho que não existe.
-#[test]
-fn the_enable_pair_gates_the_whole_symmetry_section() {
-    const VIEWPORT: Rect = Rect {
-        x: 0.0,
-        y: 0.0,
-        w: 1600.0,
-        h: 4000.0,
-    };
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    ph2d_panel_vector::set_current_vector_style(None);
-    let mut st = VectorPanelState;
-    let off = host.paint::<VectorPanel>(&mut st, VIEWPORT);
-    // Desarmada: o par Enable existe (é como se arma) e mais nada da seção.
-    assert!(
-        off.iter()
-            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_ON),
-        "o par Enable tem de existir desarmado — senão não há como armar"
-    );
-    for k in ph2d_symmetry::SymmetryKind::ALL {
-        let id = ph2d_tool_vector::params::symmetry_kind_id(*k);
-        assert!(
-            !off.iter().any(|(n, _)| *n == id),
-            "o chip de {k:?} não pode ser pintado com a simetria desarmada"
-        );
-    }
-    let on = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
-    assert!(
-        on.iter()
-            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_KIND_RADIAL),
-        "armada, os tipos aparecem"
-    );
-    ph2d_panel_vector::set_current_vector_style(None);
-}
 
-/// **Cada controle aparece só onde tem o que fazer.** `Segments` no Radial (num espelho a contagem
-/// é dois por definição) e `Fuse` nos espelhos (no Radial não há costura a fechar, e o kernel o
-/// ignora — oferecê-lo ali seriam dois chips que não fazem nada).
-#[test]
-fn segments_belongs_to_radial_and_fuse_to_the_mirrors() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let radial = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::Radial);
-    assert!(
-        radial
-            .iter()
-            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS),
-        "Radial mostra Segments"
-    );
-    assert!(
-        !radial
-            .iter()
-            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_FUSE_ON),
-        "Radial NÃO mostra Fuse — não há costura a fechar"
-    );
-    let mirror = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorY);
-    assert!(
-        mirror
-            .iter()
-            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_FUSE_ON),
-        "um espelho mostra Fuse"
-    );
-    assert!(
-        !mirror
-            .iter()
-            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS),
-        "um espelho NÃO mostra Segments — a contagem é dois por definição"
-    );
-    ph2d_panel_vector::set_current_vector_style(None);
-}
 
-/// **O `Apply` só é oferecido quando há o que consolidar.** A pergunta é feita à shell (só ela vê
-/// a cena); sem simetria viva na seleção, um *Apply* que não aplica nada é pior que *Apply*
-/// nenhum.
-#[test]
-fn the_apply_button_only_exists_when_something_is_live() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    ph2d_panel_vector::state_symmetry::set_symmetry_live_count(0);
-    let none = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
-    assert!(
-        !none
-            .iter()
-            .any(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_APPLY),
-        "sem simetria viva o Apply não é oferecido"
-    );
-    ph2d_panel_vector::state_symmetry::set_symmetry_live_count(1);
-    let some = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
-    let r = some
-        .iter()
-        .find(|(n, _)| *n == ph2d_tool_vector::ids::VECTOR_SYM_APPLY)
-        .map(|(_, r)| *r)
-        .expect("com simetria viva o Apply aparece");
-    let events = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
-    assert!(
-        !events.is_empty(),
-        "o Apply está pintado e MORTO sob o mouse"
-    );
-    ph2d_panel_vector::state_symmetry::set_symmetry_live_count(0);
-    ph2d_panel_vector::set_current_vector_style(None);
-}
 
 /// ⭐⭐ **OS SEGMENTOS DO VERBO DO OSSO JÁ NÃO TOCAM NA FERRAMENTA VECTOR** (A14, 05/10).
 ///

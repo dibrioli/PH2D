@@ -18,7 +18,8 @@
 //! # As três coisas de que uma seção pode falar
 //!
 //! 1. **O GESTO** — o que a ferramenta na mão vai PRODUZIR (a grade de formas, os knobs do lápis).
-//!    Fora do modo dela não há gesto nenhum a configurar: [`Scope::Modes`].
+//!    ⛔ **Desde a D10 (07/10) já não mora no painel**: a fila ② e a coluna ① são a casa dele
+//!    (`crate::bars`), e com ele saiu o escopo por modo.
 //! 2. **A SELEÇÃO** — o que já está na tela. A seleção SOBREVIVE à troca de ferramenta, então estas
 //!    valem em todo modo — e quase todas já se escondem sozinhas quando a seleção não as serve
 //!    (`state::current_*` devolve `None`). [`Scope::Always`].
@@ -41,8 +42,6 @@ pub(crate) enum Scope {
     /// Fala da SELEÇÃO ou do DOCUMENTO — vale em toda ferramenta. A seção continua livre para se
     /// esconder sozinha quando a seleção não a serve; esta tabela não opina sobre isso.
     Always,
-    /// Fala do GESTO — só nestes modos.
-    Modes(&'static [DrawMode]),
     /// ⭐⭐ **Fala de COMANDOS sobre a seleção** — e TODO controle dela morre numa guarda de
     /// seleção. Sem nada selecionado ela é um cabeçalho com botões que só sabem recusar.
     ///
@@ -60,6 +59,12 @@ pub(crate) enum Scope {
 /// vezes, que pôs a grade de formas na ferramenta Select.*
 pub(crate) const ALWAYS: Scope = Scope::Always;
 
+/// ⛔ **D10 (07/10): o GESTO saiu do painel.** As secções que falavam do gesto (`Tool`, o catálogo
+/// `Shape`, `Pencil`, `Symmetry`) mudaram-se para a fila ② e a coluna ① — o lugar cuja pergunta
+/// elas respondem (*como o gesto actua*) —, e o escopo por modo foi com elas: o painel só pinta o
+/// que a SELEÇÃO é. Esta lista continua aqui porque é a resposta a *quem desenha*, e a fila ②
+/// (`bars.rs`) pergunta-a para oferecer a simetria.
+///
 /// **Os modos que AUTORAM geometria nova** — onde uma opção de desenho (a simetria) tem sobre o
 /// que agir. ⛔ O Conector e o Corte também produzem caminhos, e ficam de fora de propósito: a
 /// geometria de um conector é DERIVADA de a quem as pontas se prendem, e uma lâmina de corte
@@ -71,31 +76,12 @@ pub(crate) const AUTHORS_GEOMETRY: &[DrawMode] = &[
     DrawMode::Frame,
 ];
 
-/// ⭐⭐ **A SIMETRIA — e a razão de ela não ser uma constante.**
-///
-/// Ela é uma opção de DESENHO (`symmetry_live`: *"funciona apenas para formas que serão desenhadas
-/// com a tool ligada"*, Enio 2026-08-01), logo pertence aos modos que autoram geometria.
-///
-/// ⛔⛔ **MAS o efeito dela SOBREVIVE à troca de ferramenta**, e o interruptor que a desliga é o
-/// único que existe: escondê-la por modo com ela LIGADA deixaria o artista a ver o eixo na tela e
-/// sem nada para o apagar — *um controlo cujo efeito sobrevive ao modo não pode ter o único
-/// interruptor escondido pelo modo*. Ligada, ela aparece em toda ferramenta.
-#[must_use]
-pub(crate) fn symmetry(snap: &ph2d_tool_vector::VectorStyleSnapshot) -> Scope {
-    if snap.symmetry.on {
-        Scope::Always
-    } else {
-        Scope::Modes(AUTHORS_GEOMETRY)
-    }
-}
-
 impl Scope {
-    /// A seção aparece com esta ferramenta na mão e esta seleção?
+    /// A seção aparece com esta seleção? (A ferramenta na mão já não decide — o gesto mora na ②.)
     #[must_use]
-    pub(crate) fn covers(self, mode: DrawMode, selecionadas: usize) -> bool {
+    pub(crate) fn covers(self, selecionadas: usize) -> bool {
         match self {
             Self::Always => true,
-            Self::Modes(ms) => ms.contains(&mode),
             Self::WhenSelected => selecionadas > 0,
         }
     }
@@ -117,8 +103,8 @@ pub(crate) const WHEN_SELECTED: Scope = Scope::WhenSelected;
 /// **Os modos em que o gesto DESENHA UMA FORMA do vocabulário paramétrico.**
 ///
 /// ⚠️ A Moldura entra: ela desenha um `RoundRect` (`DrawMode::shape_kind`), e é por isso que os
-/// campos de parâmetro fazem sentido nela mesmo sem nada selecionado. ⛔ A grade de tipos NÃO —
-/// a Moldura não escolhe do catálogo, e a grade dela é [`CATALOG`].
+/// campos de parâmetro fazem sentido nela mesmo sem nada selecionado. ⛔ O catálogo NÃO — a
+/// Moldura não escolhe do catálogo (o flyout da Forma é só do modo Forma, `crate::bars`).
 ///
 /// ⚠️⚠️ **`#[cfg(test)]`, e a razão é que ele é um ORÁCULO INDEPENDENTE, não uma fonte.** Quem
 /// responde no produto é o `DrawMode::shape_kind`, e o censo
@@ -128,42 +114,22 @@ pub(crate) const WHEN_SELECTED: Scope = Scope::WhenSelected;
 #[cfg(test)]
 pub(crate) const DRAWS_A_SHAPE: &[DrawMode] = &[DrawMode::Shape, DrawMode::Frame];
 
-/// **A grade de TIPOS de forma** — o report do Enio. Ela ARMA a forma que o próximo arrasto
-/// desenha; fora do modo Forma não há arrasto nenhum a armar, e o caminho de volta é o pill
-/// *Shape* da fileira TOOL, que nunca sai.
-pub(crate) const CATALOG: Scope = Scope::Modes(&[DrawMode::Shape]);
-
-/// **Os knobs do LÁPIS.** Já se escondiam sozinhos (a única das 39 que o fazia); a guarda mudou-se
-/// para cá para haver **uma** resposta à pergunta, e não 39 sítios onde ela pode faltar.
-pub(crate) const PENCIL: Scope = Scope::Modes(&[DrawMode::Pencil]);
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn always_covers_every_mode_and_modes_covers_only_its_own() {
-        assert!(Scope::Always.covers(DrawMode::Select, 0));
-        assert!(Scope::Always.covers(DrawMode::Cut, 0));
-        let so_forma = Scope::Modes(&[DrawMode::Shape]);
-        assert!(so_forma.covers(DrawMode::Shape, 0));
-        assert!(!so_forma.covers(DrawMode::Select, 0));
+    fn always_covers_with_or_without_a_selection() {
+        assert!(Scope::Always.covers(0));
+        assert!(Scope::Always.covers(5));
     }
 
     /// ⚠️ As duas perguntas são INDEPENDENTES: um comando sobre a seleção aparece em toda
     /// ferramenta — desde que haja o que comandar.
     #[test]
     fn a_selection_command_ignores_the_tool_and_only_asks_for_a_target() {
-        assert!(!Scope::WhenSelected.covers(DrawMode::Select, 0));
-        assert!(Scope::WhenSelected.covers(DrawMode::Select, 1));
-        assert!(Scope::WhenSelected.covers(DrawMode::Cut, 3));
-    }
-
-    /// ⚠️ **A lista vazia esconde a seção em TODA ferramenta** — é um estado alcançável e absurdo,
-    /// e o gate que o proíbe é o censo da tabela (`the_panel_shows_what_the_tool_is_for`), que
-    /// exige que toda seção seja alcançável por pelo menos um modo.
-    #[test]
-    fn an_empty_mode_list_reaches_nobody() {
-        assert!(!Scope::Modes(&[]).covers(DrawMode::Shape, 9));
+        assert!(!Scope::WhenSelected.covers(0));
+        assert!(Scope::WhenSelected.covers(1));
+        assert!(Scope::WhenSelected.covers(3));
     }
 }

@@ -257,6 +257,9 @@ pub fn paint_hero_screen(
             scene,
             text_system,
         );
+        // ① ④ as barras do módulo (D10), por cima da arte e dentro da área sem as réguas.
+        let content = hero.last_content;
+        super::float_bar::tool_bars::paint(hero, content, scene, text_system);
     }
     // ⛔ **O CHROME LEGADO** — os clusters de botões da barra e o trilho lateral. Fora por
     // omissão desde 2026-08-30 (Enio: *«pode tirar também os botões do topo para começarmos a
@@ -393,7 +396,17 @@ pub fn paint_hero_screen(
             &hero.motion,
         );
     }
-    if hero.view.stats_visible {
+    // ⑤ No layout do módulo, a pílula diz o que a ferramenta na mão faz (D10); nos outros, o motor.
+    if let Some((hint, readout)) = super::bottom_hud::module_hint(&hero.store) {
+        super::bottom_hud::paint_tool_hint_hud(
+            &layout,
+            scene,
+            text_system,
+            hero.theme,
+            &hint,
+            &readout,
+        );
+    } else if hero.view.stats_visible {
         paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);
     }
     // W2.T2.3: the Painter color swatch lives INSIDE the Painter sidebar

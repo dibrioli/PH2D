@@ -25,7 +25,6 @@
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_panel_vector::{TextAxisSlot, VectorPanel};
-use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
     x: 0.0,
@@ -58,7 +57,7 @@ fn publish_axes(n: usize) {
 #[test]
 fn the_panel_never_paints_an_axis_row_nobody_registers() {
     publish_axes(PUBLISHED);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
 
     let mut painted = Vec::new();
@@ -107,7 +106,7 @@ fn the_panel_never_paints_an_axis_row_nobody_registers() {
 #[test]
 fn a_font_with_two_axes_gets_exactly_two_rows() {
     publish_axes(2);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
 
     for i in 0..2 {

@@ -21,7 +21,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::{Appearance, PaintRow, VectorPanelState};
 use ph2d_panel_vector::{VectorPanel, ids, state};
-use ph2d_ui_testkit::MockPanelHost;
 use ph2d_vec_scene::BlendMode;
 
 // ⚠️ Alta de propósito: a porta da rolagem (`scroll_area`, spec `04_a_rolagem_unica`) recorta o
@@ -91,7 +90,7 @@ fn publica(layers: Vec<PaintRow>) {
 /// painel mas **pula a checagem de focabilidade no store** — as duas metades falham de maneiras
 /// diferentes e um gate que só faz uma delas fica verde sobre a outra.
 fn clica(id: ph2d_a11y::NodeId, what: &str) -> Vec<EditorAction> {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
@@ -169,7 +168,7 @@ fn opening_a_layer_paints_its_three_properties() {
         (ph2d_panel_vector::ids::VECTOR_PAINT_BLEND, "a mistura"),
     ];
     for (id, what) in props {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         assert!(
             host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
@@ -179,7 +178,7 @@ fn opening_a_layer_paints_its_three_properties() {
     }
     state::toggle_open_layer(0);
     for (id, what) in props {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         assert!(
             host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
@@ -203,7 +202,7 @@ fn the_layers_width_and_opacity_reach_the_bus() {
     state::toggle_open_layer(0);
 
     // A LARGURA — campo numérico, o valor viaja como o do Z-index (a mesma porta).
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH, 7.0);
     host.apply_panel_event::<VectorPanel>(
@@ -229,7 +228,7 @@ fn the_layers_width_and_opacity_reach_the_bus() {
     );
 
     // A OPACIDADE — slider, o valor viaja como TRACK `0..1`.
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.set_slider_value(ph2d_panel_vector::ids::VECTOR_PAINT_OPACITY, 0.25);
     host.apply_panel_event::<VectorPanel>(
@@ -272,7 +271,7 @@ fn the_layers_width_and_opacity_reach_the_bus() {
 fn the_width_field_shows_the_open_layers_width() {
     publica(vec![traco(9.0)]);
     state::toggle_open_layer(0);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_WIDTH, 1.0);
     host.painted_rect::<VectorPanel>(
@@ -305,7 +304,7 @@ fn the_width_field_shows_the_open_layers_width() {
 #[test]
 fn a_layer_swatch_opens_the_picker_instead_of_clicking() {
     publica(vec![traco(2.0)]);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let id = ids::vector_paint_swatch_id(0);
     let r = host
@@ -335,7 +334,7 @@ fn a_layer_swatch_opens_the_picker_instead_of_clicking() {
 #[test]
 fn a_layer_swatch_seeds_the_picker_with_that_layers_colour() {
     publica(vec![tinta(), traco(2.0)]);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::vector_paint_swatch_id(0));
     for (i, esperada) in [(0usize, tinta().color), (1usize, traco(2.0).color)] {
@@ -358,7 +357,7 @@ fn a_layer_swatch_seeds_the_picker_with_that_layers_colour() {
 fn the_layer_blend_chip_opens_and_the_pick_reaches_the_bus() {
     publica(vec![traco(2.0)]);
     state::toggle_open_layer(0);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(
@@ -427,7 +426,7 @@ fn the_layers_offset_reaches_the_bus_on_both_axes() {
         (ph2d_panel_vector::ids::VECTOR_PAINT_DX, 3.0, "x"),
         (ph2d_panel_vector::ids::VECTOR_PAINT_DY, -2.5, "y"),
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         host.set_number_value(id, valor);
         host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::ValueChanged(id));
@@ -458,7 +457,7 @@ fn the_layers_offset_reaches_the_bus_on_both_axes() {
 fn the_offset_pair_shows_on_a_fill_layer_where_the_width_does_not() {
     publica(vec![tinta()]);
     state::toggle_open_layer(0);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     for (id, what) in [
         (ph2d_panel_vector::ids::VECTOR_PAINT_DX, "o X"),
@@ -493,7 +492,7 @@ fn the_offset_fields_show_the_open_layers_offset() {
     linha.offset = [4.0, -1.5];
     publica(vec![linha]);
     state::toggle_open_layer(0);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_DX, 0.0);
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_DY, 0.0);
@@ -526,7 +525,7 @@ fn the_cad_offset_and_its_corner_reach_the_bus() {
     publica(vec![linha]);
     state::toggle_open_layer(0);
 
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_DILATE, -1.5);
     host.apply_panel_event::<VectorPanel>(
@@ -581,7 +580,7 @@ fn the_corner_row_appears_only_with_the_offset_armed() {
         linha.dilate = d;
         publica(vec![linha]);
         state::toggle_open_layer(0);
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         let visto = host
             .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_PAINT_JOIN_ROUND)
@@ -602,7 +601,7 @@ fn the_offset_field_shows_the_open_layers_dilate() {
     linha.dilate = 3.25;
     publica(vec![linha]);
     state::toggle_open_layer(0);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_PAINT_DILATE, 0.0);
     host.painted_rect::<VectorPanel>(

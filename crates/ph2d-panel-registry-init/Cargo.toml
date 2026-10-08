@@ -116,6 +116,10 @@ ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 # ⭐ A varredura das elisões (`nenhum_rotulo_do_app_pinta_nada`) pinta TODO painel do registo
 # pela porta do arnês. ⚠️ Aresta de DEV: o `architecture_cycle_prevention` lê `[dependencies]`.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# ⭐ Só para `the_vector_bars_answer_a_real_pointer` (D10): o retrato que a crate do vetor publica
+#    no painel leva o `DrawMode` e o `VectorStyleSnapshot` desta crate.
+ph2d-tool-vector = { path = "../ph2d-tool-vector" }
+ph2d-symmetry = { path = "../ph2d-symmetry" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 # ⭐ A régua registada das TABELAS de string — ela sabe ler as duas formas de declarar um par
 # (`"k" => "v"` e `("k", "v")`), que é o que o censo «a tabela sabe produzir isto?» precisa.

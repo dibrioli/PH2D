@@ -281,6 +281,30 @@ pub(crate) fn world_bounds(view: &GridView) -> (WorldBounds, f32) {
     (bounds, ppm_y)
 }
 
+impl GridView {
+    /// ⭐ Mundo → ecrã pela MESMA conta das réguas (a ida e a volta moram aqui ao lado). Quem
+    /// precisa de saber onde uma coisa do mundo cai no ecrã (a barra de ações da seleção, D10)
+    /// pergunta isto, e nunca reescreve a projeção.
+    #[must_use]
+    pub fn world_to_screen(&self, w: [f64; 2]) -> [f32; 2] {
+        let (b, _) = world_bounds(self);
+        [
+            world_to_screen_x(w[0] as f32, &b, self),
+            world_to_screen_y(w[1] as f32, &b, self),
+        ]
+    }
+
+    /// A inversa de [`Self::world_to_screen`].
+    #[must_use]
+    pub fn screen_to_world(&self, s: [f32; 2]) -> [f64; 2] {
+        let (b, _) = world_bounds(self);
+        [
+            f64::from(screen_to_world_x(s[0], &b, self)),
+            f64::from(screen_to_world_y(s[1], &b, self)),
+        ]
+    }
+}
+
 pub(crate) fn world_to_screen_x(wx: f32, bounds: &WorldBounds, view: &GridView) -> f32 {
     let t = (wx - bounds.left) / (bounds.right - bounds.left);
     t * view.window_w
@@ -491,5 +515,27 @@ mod tests {
         };
         let mut scene = VectorScene::new();
         paint_grid(&mut scene, Theme::Forge, &view, &GridConfig::default());
+    }
+
+    /// ⭐ D10: a barra de ações ancora-se na seleção pela projeção das RÉGUAS — a ida e a volta
+    /// têm de ser inversas, e o y do mundo (para cima) tem de virar o y do ecrã (para baixo).
+    #[test]
+    fn world_to_screen_and_back_round_trip_with_the_y_flip() {
+        let view = GridView {
+            camera_center: [1.0, 2.0],
+            camera_height_world: 10.0,
+            window_w: 1600.0,
+            window_h: 900.0,
+            canvas: Rect::new(0.0, 0.0, 1600.0, 900.0),
+        };
+        let w = [3.5, -1.25];
+        let s = view.world_to_screen(w);
+        let back = view.screen_to_world(s);
+        assert!((back[0] - w[0]).abs() < 1e-3 && (back[1] - w[1]).abs() < 1e-3, "{back:?}");
+        let alto = view.world_to_screen([0.0, 5.0]);
+        let baixo = view.world_to_screen([0.0, -5.0]);
+        assert!(alto[1] < baixo[1], "o y do mundo cresce para cima e o do ecrã para baixo");
+        let centro = view.world_to_screen([1.0, 2.0]);
+        assert!((centro[0] - 800.0).abs() < 1e-3 && (centro[1] - 450.0).abs() < 1e-3);
     }
 }

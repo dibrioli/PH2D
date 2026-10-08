@@ -107,6 +107,9 @@ pub enum ToolRailEntry {
         faces: Vec<String>,
         /// A largura na fila horizontal, medida por [`size_row_pulldowns`]; `0` ⇒ chip quadrado.
         row_w: f32,
+        /// Aceso pelo PRODUTOR (um chip de opção que diz *esta é a escolhida*), além do `Pressed`
+        /// do store — o mesmo campo que os chips de ícone têm.
+        active: bool,
     },
     /// A colour-swatch chip: the chip is filled with `color` (a live colour box) instead of an icon,
     /// with the same state border + vertical sub-label as [`Self::Icon`]. Used by the painter rail's Fill
@@ -133,6 +136,20 @@ pub enum ToolRailEntry {
         active: bool,
         sub: String,
     },
+    /// ⭐ **Um CAMPO NUMÉRICO na fila** — o chip numérico de um painel (`NumberInput` registado
+    /// pelo painel dono), pintado aqui com o rótulo à esquerda. O valor, o foco, a edição e as
+    /// setinhas são do STORE, pela mesma porta dos painéis: o painel recebe o `ValueChanged` do id
+    /// que já conhece. É o campo compacto do Affinity (*arrasta-se, digita-se, sem `+/−` imensos*).
+    Number {
+        id: NodeId,
+        label: String,
+        /// A legenda curta por cima do campo (como a dos chips: `FID`, `W`).
+        sub: String,
+        /// O que o chip mostra no lugar do número cru (unidade, por cento) — `None` = o número.
+        display: Option<String>,
+        /// A largura na fila (rótulo + chip), medida por [`size_row_pulldowns`]; `0` ⇒ o mínimo.
+        row_w: f32,
+    },
     Divider,
 }
 
@@ -148,7 +165,8 @@ impl ToolRailEntry {
             Self::Icon { id, .. }
             | Self::Compound { id, .. }
             | Self::Swatch { id, .. }
-            | Self::Glyph { id, .. } => Some(*id),
+            | Self::Glyph { id, .. }
+            | Self::Number { id, .. } => Some(*id),
             Self::Divider => None,
         }
     }
@@ -164,7 +182,8 @@ impl ToolRailEntry {
             Self::Icon { label, .. }
             | Self::Compound { label, .. }
             | Self::Swatch { label, .. }
-            | Self::Glyph { label, .. } => Some(label),
+            | Self::Glyph { label, .. }
+            | Self::Number { label, .. } => Some(label),
             Self::Divider => None,
         }
     }
@@ -216,6 +235,7 @@ impl ToolRailEntry {
             face,
             sub: sub.into(),
             row_w: 0.0,
+            active: false,
         }
     }
 
@@ -231,6 +251,22 @@ impl ToolRailEntry {
             }
         }
         self
+    }
+
+    /// Um campo numérico de painel na fila (ver [`Self::Number`]).
+    pub fn number(
+        id: NodeId,
+        label: impl Into<String>,
+        sub: impl Into<String>,
+        display: Option<String>,
+    ) -> Self {
+        Self::Number {
+            id,
+            label: label.into(),
+            sub: sub.into(),
+            display,
+            row_w: 0.0,
+        }
     }
 
     /// Um chip cujo ícone é um caminho de manifesto (as ferramentas de imagem).
@@ -254,7 +290,8 @@ impl ToolRailEntry {
         match &mut self {
             Self::Icon { active, .. }
             | Self::Swatch { active, .. }
-            | Self::Glyph { active, .. } => *active = true,
+            | Self::Glyph { active, .. }
+            | Self::Compound { active, .. } => *active = true,
             _ => {}
         }
         self
@@ -269,6 +306,7 @@ impl ToolRailEntry {
             Self::Compound { .. } => size.chip_px(),
             Self::Swatch { .. } => size.chip_px(),
             Self::Glyph { .. } => size.chip_px(),
+            Self::Number { .. } => size.chip_px(),
             Self::Divider => 1.0 + DIVIDER_GAP_PX * 2.0,
         }
     }
@@ -323,7 +361,8 @@ impl ToolRail {
             ToolRailEntry::Icon { id, .. }
             | ToolRailEntry::Compound { id, .. }
             | ToolRailEntry::Swatch { id, .. }
-            | ToolRailEntry::Glyph { id, .. } => Some(*id),
+            | ToolRailEntry::Glyph { id, .. }
+            | ToolRailEntry::Number { id, .. } => Some(*id),
             ToolRailEntry::Divider => None,
         });
         NodeBuilder::new(Role::Toolbar)
@@ -351,6 +390,14 @@ impl ToolRail {
                     .bounds(x, y, w, h)
                     .focusable(true)
                     .action(Action::Click)
+                    .build(),
+            ),
+            // O campo leva o a11y do chip numérico do painel dono (é o mesmo id).
+            ToolRailEntry::Number { id: _, label, .. } => Some(
+                NodeBuilder::new(Role::SpinButton)
+                    .label(label)
+                    .bounds(x, y, w, h)
+                    .focusable(true)
                     .build(),
             ),
             ToolRailEntry::Divider => None,

@@ -82,6 +82,7 @@ mod shell_media;
 /// As strings do painel TIMELINE — cortadas daqui pelo tecto de LOC (ver o cabeçalho delas).
 mod timeline;
 mod vector;
+mod vector_bars;
 /// As strings que o MOTOR publica para o painel de Vector (efeitos, filtros, misturas).
 mod vector_engine;
 
@@ -518,6 +519,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| blend_modes::tr(k))
             .or_else(|| quatro_motores::tr(k))
             .or_else(|| vector_engine::tr(k))
+            .or_else(|| vector_bars::tr(k))
             .or_else(|| shell::tr(k))
             .or_else(|| shell_media::tr(k))
             .or_else(|| app_components::tr(k))

@@ -174,6 +174,7 @@ mod the_loose_bone_roots_get_a_skeleton;
 mod the_marquee_shape_comes_from_one_door;
 mod the_math_is_installed_at_boot;
 mod the_mode_keys_are_wired;
+mod the_vector_tool_keys_are_wired;
 mod the_morph_fade_smoke_stages_a_fade_from_an_authored_pose;
 mod the_motion_images_sample_with_the_project_filter;
 mod the_motion_path_anchor_is_drawn_and_dragged;

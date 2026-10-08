@@ -84,6 +84,21 @@ impl VectorTool {
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_FRAME => {
                 self.mode = DrawMode::Frame;
             }
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_EYEDROPPER => {
+                self.mode = DrawMode::Eyedropper;
+            }
+            // **As portas da cor** (D10: `Shift+X` · `D`). Pelos MESMOS setters do seletor: marcam a
+            // cor como autorada e a crate do vetor aplica-a à seleção no mesmo quadro.
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_COLOUR_SWAP => {
+                let (fill, stroke) = (self.fill_rgba(), self.stroke_rgba());
+                self.set_fill_rgba(stroke);
+                self.set_stroke_rgba(fill);
+            }
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_COLOUR_DEFAULT => {
+                let fabrica = Self::default();
+                self.set_fill_rgba(fabrica.fill_rgba());
+                self.set_stroke_rgba(fabrica.stroke_rgba());
+            }
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MODE_PENCIL => {
                 self.mode = DrawMode::Pencil;
             }
@@ -286,6 +301,7 @@ mod tests {
             (crate::ids::VECTOR_MODE_BUCKET, DrawMode::Bucket),
             (crate::ids::VECTOR_MODE_CUT, DrawMode::Cut),
             (crate::ids::VECTOR_MODE_FRAME, DrawMode::Frame),
+            (crate::ids::VECTOR_MODE_EYEDROPPER, DrawMode::Eyedropper),
         ];
         for &(id, esperado) in pills {
             // ⚠️ Parte de OUTRO modo, senão o teste ficaria verde sobre um braço que não existe.

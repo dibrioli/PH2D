@@ -18,7 +18,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_panel_vector::{StrokePaintKind, VectorPanel, state};
-use ph2d_ui_testkit::MockPanelHost;
 
 // ⚠️ Alta de propósito: a porta da rolagem (`scroll_area`, spec `04_a_rolagem_unica`) recorta o
 // CLIQUE à banda do corpo, logo um controlo abaixo da dobra deixa de estar registado. A 900 px
@@ -44,13 +43,13 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 }
 
 fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
 }
 
 fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)

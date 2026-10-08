@@ -13,7 +13,6 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_panel_vector::{VectorPanel, state};
-use ph2d_ui_testkit::MockPanelHost;
 
 // ⚠️ Alta de propósito: a porta da rolagem (`scroll_area`, spec `04_a_rolagem_unica`) recorta o
 // CLIQUE à banda do corpo, logo um controlo abaixo da dobra deixa de estar registado. A 900 px
@@ -34,7 +33,7 @@ const VIEWPORT: Rect = Rect {
 fn to_back_y(z: Option<f32>) -> f32 {
     state::set_current_selection_count(1);
     state::set_z_index(z);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.painted_rect::<VectorPanel>(
         &mut st,
@@ -84,7 +83,7 @@ fn no_selection_paints_no_z_row() {
     // A metade nova: com a seleção VAZIA nem o `To Back` existe.
     state::set_current_selection_count(0);
     state::set_z_index(None);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     assert!(
         host.painted_rect::<VectorPanel>(
@@ -108,7 +107,7 @@ fn no_selection_paints_no_z_row() {
 fn the_z_field_answers_a_pointer() {
     state::set_current_selection_count(1);
     state::set_z_index(Some(3.0));
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ph2d_panel_vector::ids::VECTOR_ARRANGE_Z)
@@ -135,7 +134,7 @@ fn the_z_field_answers_a_pointer() {
 #[test]
 fn the_typed_z_reaches_the_bus() {
     state::set_z_index(Some(0.0));
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     // O que o teclado deixa no store antes de o dispatch emitir o `ValueChanged`.
     host.set_number_value(ph2d_panel_vector::ids::VECTOR_ARRANGE_Z, 5.0);

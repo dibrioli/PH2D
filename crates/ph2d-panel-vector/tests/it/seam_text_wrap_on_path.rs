@@ -29,7 +29,6 @@
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
     x: 0.0,
@@ -63,7 +62,7 @@ const WRAP_ROWS: [(&str, ph2d_a11y::NodeId); 3] = [
 #[test]
 fn a_free_standing_text_still_gets_its_wrap_rows() {
     publish(false);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     for (name, id) in WRAP_ROWS {
         assert!(
@@ -82,7 +81,7 @@ fn a_free_standing_text_still_gets_its_wrap_rows() {
 #[test]
 fn a_text_riding_a_path_is_not_offered_a_wrap_width() {
     publish(true);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     for (name, id) in WRAP_ROWS {
         assert!(

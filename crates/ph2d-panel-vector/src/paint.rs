@@ -83,10 +83,8 @@ fn seed_text_sliders(store: &mut ph2d_editor_core::interaction::WidgetStore) {
 /// **Regra:** o campo em FOCO nunca é semeado — senão o seed sobrescreveria a tecla que o
 /// usuário acabou de digitar / o arrasto em curso.
 fn seed_and_publish(store: &mut ph2d_editor_core::interaction::WidgetStore) {
-    // Mark the two colour swatches so a Down opens the shared OKLCH picker
-    // (generic `is_picker_swatch` dispatch). Idempotent — a set membership.
-    store.register_picker_swatch(ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH);
-    store.register_picker_swatch(ph2d_tool_vector::ids::VECTOR_FILL_SWATCH);
+    // (As duas amostras de cor marcam-se no `populate` — D10: elas também vivem na coluna ① e na
+    // fila ②, que pintam com o painel FECHADO.)
     // A cor-alvo do Contour é a TERCEIRA swatch do painel, e passa pela mesma porta: o Down abre
     // o picker OKLCH partilhado e a shell lê a escolha de volta (`vector_bridge`). Marcar aqui,
     // e não no `paint_contour`, porque este é o passe de sementes — e porque a marca é
@@ -432,14 +430,9 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     if let Some(chip_rect) = state::take_pending_font_dd() {
         crate::font_dropdown::paint(ctx, chip_rect, theme);
     }
-    // Idem para o popover de CATEGORIA do catálogo de formas: sem o passe diferido o
-    // `push_clip` do scroll o cortaria na borda da seção.
     // Idem para o picker de ÍCONE de um botão de ícone autorado (W8b §6.2).
     if let Some(chip_rect) = state::take_pending_icon_dd() {
         crate::icon_dropdown::paint(ctx, chip_rect, theme);
-    }
-    if let Some(chip_rect) = state::take_pending_group_dd() {
-        crate::paint_catalog::paint_group_popover(ctx, chip_rect, theme);
     }
     // Idem para o popover da PONTA do traço aberta (o slot diz qual dos dois seletores —
     // começo ou fim; só um pode estar aberto por vez).

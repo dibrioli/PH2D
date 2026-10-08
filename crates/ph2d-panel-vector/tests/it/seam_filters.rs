@@ -196,7 +196,7 @@ fn publish(rows: Vec<FilterRowView>) {
 
 /// Clica o widget `id` pelo caminho inteiro e diz se ele chegou ao bus como `Click`.
 fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -240,7 +240,7 @@ fn the_ramp_rail_is_offered_only_by_the_kind_that_carries_one() {
     const RAMPED: usize = 0;
     const PLAIN: usize = 1;
     for (kind, want) in [(RAMPED, true), (PLAIN, false)] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         ph2d_panel_vector::set_current_filter_can_add(true);
         ph2d_panel_vector::set_filter_kinds(kinds_table_with_ramp(RAMPED));
@@ -283,7 +283,7 @@ fn the_ramp_rail_is_offered_only_by_the_kind_that_carries_one() {
 /// stops é (a caixa de agarre), em vez de o afirmar em prosa.
 #[test]
 fn every_stop_handle_is_reachable_and_the_grabs_do_not_overlap() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     ph2d_panel_vector::set_current_filter_can_add(true);
     ph2d_panel_vector::set_filter_kinds(kinds_table_with_ramp(0));
@@ -338,7 +338,7 @@ fn kinds_table_real_gradient_map() -> Vec<FilterKindView> {
 /// **ARRASTAR um punho chega ao bus, no card do Gradient Map REAL.**
 #[test]
 fn dragging_a_stop_handle_works_on_the_real_gradient_map_card() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     ph2d_panel_vector::set_current_filter_can_add(true);
     ph2d_panel_vector::set_filter_kinds(kinds_table_real_gradient_map());
@@ -384,7 +384,7 @@ fn dragging_a_stop_handle_works_on_the_real_gradient_map_card() {
 #[test]
 fn both_handles_of_the_two_stop_default_are_draggable_including_the_right_edge() {
     for stop in [0usize, 1] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         ph2d_panel_vector::set_current_filter_can_add(true);
         ph2d_panel_vector::set_filter_kinds(kinds_table_real_gradient_map());
@@ -444,7 +444,7 @@ fn both_handles_of_the_two_stop_default_are_draggable_including_the_right_edge()
 /// SEQUÊNCIA leva a algum lugar) não é implicada pelas outras três.
 #[test]
 fn dragging_a_stop_handle_reaches_the_bus_with_a_new_position() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     ph2d_panel_vector::set_current_filter_can_add(true);
     ph2d_panel_vector::set_filter_kinds(kinds_table_with_ramp(0));
@@ -565,7 +565,7 @@ fn every_card_icon_reaches_the_bus_when_clicked() {
 #[test]
 fn the_arrows_at_the_ends_are_not_painted() {
     publish(vec![row(0), row(0)]);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     assert!(
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::filter_up_id(0))
@@ -590,7 +590,7 @@ fn a_row_paints_only_the_controls_its_kind_uses() {
     let table = kinds_table();
     for (kind, spec) in table.iter().enumerate() {
         publish(vec![row(u8::try_from(kind).expect("kind cabe em u8"))]);
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         let painted = |host: &mut MockPanelHost, st: &mut VectorPanelState, id| {
             host.painted_rect::<VectorPanel>(st, VIEWPORT, id).is_some()
@@ -716,7 +716,7 @@ fn the_filters_section_is_not_offered_without_a_shape() {
     ph2d_panel_vector::set_filter_kinds(kinds_table());
     ph2d_panel_vector::set_filter_blend_names(blend_names_table());
     ph2d_panel_vector::set_current_filters(Vec::new());
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     assert!(
         host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::filter_add_id(0))
@@ -736,7 +736,7 @@ fn the_filters_section_is_not_offered_without_a_shape() {
 #[test]
 fn the_colour_swatch_is_painted_and_is_a_picker_target() {
     publish(vec![row(1)]);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let id = ids::filter_color_id(0);
     assert!(
@@ -763,7 +763,7 @@ fn the_second_swatch_of_the_ramp_is_its_own_picker_target() {
         .position(|k| k.color_b_label.is_some())
         .expect("a tabela tem de ter um tipo de rampa");
     publish(vec![row(u8::try_from(duotone).expect("kind cabe em u8"))]);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let (a, b) = (ids::filter_color_id(0), ids::filter_color_b_id(0));
     assert_ne!(a, b, "as duas pontas nao podem partilhar o id");
@@ -800,7 +800,7 @@ fn the_blend_list_opens_and_every_law_reaches_the_bus() {
     // 1) O CHIP: clicá-lo abre a lista. É o dispatch genérico do `Dropdown`, então o que se prova
     //    aqui é que ele foi REGISTRADO como um (e não como botão, que abriria coisa nenhuma).
     publish(vec![row(COLOR_OVERLAY)]);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let chip = host
         .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::filter_blend_id(0))
@@ -818,7 +818,7 @@ fn the_blend_list_opens_and_every_law_reaches_the_bus() {
     let names = blend_names_table();
     for m in [0usize, 1, names.len() - 1] {
         publish(vec![row(COLOR_OVERLAY)]);
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         host.set_dropdown_open(ids::filter_blend_id(0), true);
         let id = ids::filter_blend_option_id(0, m);
@@ -851,7 +851,7 @@ fn the_blend_list_opens_and_every_law_reaches_the_bus() {
 #[test]
 fn the_blend_list_paints_nothing_while_it_is_closed() {
     publish(vec![row(8)]);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     for m in [0usize, 1, ids::MAX_FILTER_BLENDS - 1] {
         assert!(
@@ -883,7 +883,7 @@ fn the_three_noise_knobs_reach_the_bus_when_dragged() {
         ("Detail", ids::filter_detail_id(0)),
         ("Seed", ids::filter_seed_id(0)),
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         let rect = host
             .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
@@ -925,7 +925,7 @@ fn the_three_adjust_knobs_reach_the_bus_with_a_bipolar_map_when_dragged() {
         (ids::filter_bright_id(0), ids::filter_bright_num_id(0)),
     ] {
         for (frac, want_negative) in [(0.15_f32, true), (0.85, false)] {
-            let mut host = MockPanelHost::with_panel::<VectorPanel>();
+            let mut host = crate::host_aberto();
             let mut st = VectorPanelState;
             let rect = host
                 .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
@@ -986,7 +986,7 @@ fn the_grow_knob_reaches_the_bus_with_a_bipolar_map_when_dragged() {
     let id = ids::filter_grow_id(0);
     // 15% do trilho (bem à esquerda do meio) tem de virar um valor NEGATIVO; 85%, positivo.
     for (frac, want_negative) in [(0.15_f32, true), (0.85, false)] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         let rect = host
             .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)

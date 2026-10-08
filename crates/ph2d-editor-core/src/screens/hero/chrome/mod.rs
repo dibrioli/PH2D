@@ -75,6 +75,7 @@ mod rail_panels;
 mod rail_size;
 mod rail_tools;
 mod scene_picker;
+mod selection_actions;
 mod settings_angle;
 mod settings_filter;
 mod settings_font;
@@ -152,6 +153,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || view_toggles::apply(hero, event)
         || tool_bar_overflow::apply(hero, event)
         || object_mode_menu::apply(hero, event)
+        || selection_actions::apply(hero, event)
         || rail_tools::apply(hero, event)
         || rail_painter_tools::apply(hero, event)
         || rail_panels::apply(hero, event)

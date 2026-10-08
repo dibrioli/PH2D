@@ -15,9 +15,6 @@ thread_local! {
     static CURRENT_SNAP_CROSS: Cell<bool> = const { Cell::new(false) };
     /// O ímã das GUIAS (W6.2). Nasce LIGADO — num documento sem guias ele é inerte.
     static CURRENT_SNAP_GUIDES: Cell<bool> = const { Cell::new(true) };
-    /// As RÉGUAS à mostra (W6.2). Nasce LIGADO: elas são o gesto de onde as guias nascem, e
-    /// uma afordância que ninguém acha é uma que não existe.
-    static CURRENT_RULERS: Cell<bool> = const { Cell::new(true) };
 }
 
 /// Publish whether shape-snapping is on, so the Snap section reflects it.
@@ -48,14 +45,10 @@ pub(crate) fn current_snap_crossings() -> bool {
     CURRENT_SNAP_CROSS.with(|c| c.get())
 }
 
-/// Publish the two switches of the W6.2 — o ímã das GUIAS e a visibilidade das RÉGUAS.
-///
-/// ⚠️ São publicados juntos porque a seção os pinta juntos, mas respondem a perguntas
-/// diferentes: um decide se a guia ATRAI, o outro se ela pode ser MEXIDA (e se a faixa
-/// aparece). Colapsá-los faria esconder a régua desligar o ímã, que é o oposto do desejado.
-pub fn set_current_guides(snap: bool, rulers: bool) {
+/// Publica o ímã das GUIAS (W6.2). ⚠️ A visibilidade das RÉGUAS deixou de viajar aqui (D10): a
+/// secção Snap saiu do painel para o pulldown da fila, e a régua mora no menu *Ver*.
+pub fn set_current_guides(snap: bool) {
     CURRENT_SNAP_GUIDES.with(|c| c.set(snap));
-    CURRENT_RULERS.with(|c| c.set(rulers));
 }
 
 /// Whether snapping to document guides is on this frame.
@@ -63,7 +56,3 @@ pub(crate) fn current_snap_guides() -> bool {
     CURRENT_SNAP_GUIDES.with(|c| c.get())
 }
 
-/// Whether the canvas rulers are on screen this frame.
-pub(crate) fn current_rulers() -> bool {
-    CURRENT_RULERS.with(|c| c.get())
-}

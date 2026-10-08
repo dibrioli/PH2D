@@ -709,12 +709,28 @@ fn line_text(src: &str, off: usize) -> &str {
 }
 
 /// O texto está dentro de um item `use ...;`?
+/// O id está dentro de um item `use …;`?
+///
+/// ⛔⛔ **A 1.ª versão procurava `"use "` em qualquer sítio desde o último `;`** — e `fuse ` e
+/// `refuse ` contêm-no. Medido em 2026-10-07 (D10): o `VECTOR_SYM_FUSE_ON` lia-se MORTO com três
+/// consumidores vivos, porque os três tinham um `fuse = …` antes na mesma instrução (o braço do
+/// `tool_panel_event` é precedido pelo `self.symmetry.fuse = false` do braço anterior). ⇒ um item
+/// `use` reconhece-se pelo que ele É: uma LINHA que começa por `use`, `pub use` ou `pub(…) use`.
 fn in_use_item(src: &str, off: usize) -> bool {
     let from = floor_boundary(src, off.saturating_sub(2000));
     let seg = src.get(from..off).unwrap_or("");
-    let semi = seg.rfind(';').map_or(-1i64, |i| i as i64);
-    let usei = seg.rfind("use ").map_or(-1i64, |i| i as i64);
-    usei > semi
+    let after_semi = seg.rfind(';').map_or(seg, |i| &seg[i + 1..]);
+    after_semi.lines().any(|l| {
+        let t = l.trim_start();
+        let t = t
+            .strip_prefix("pub")
+            .map(|r| match r.strip_prefix('(') {
+                Some(inner) => inner.find(')').map_or(r, |c| &inner[c + 1..]),
+                None => r,
+            })
+            .map_or(t, str::trim_start);
+        t.starts_with("use ")
+    })
 }
 
 fn floor_boundary(src: &str, mut i: usize) -> usize {

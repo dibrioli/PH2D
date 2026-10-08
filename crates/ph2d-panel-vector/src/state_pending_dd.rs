@@ -17,8 +17,6 @@ thread_local! {
     /// Chip rect stashed by the body paint when the font dropdown is open, taken by
     /// the deferred popover pass so the list paints ON TOP of every section.
     static PENDING_FONT_DD: Cell<Option<Rect>> = const { Cell::new(None) };
-    /// Idem para o chip de CATEGORIA do catálogo de formas.
-    static PENDING_GROUP_DD: Cell<Option<Rect>> = const { Cell::new(None) };
     /// Idem para os chips de PONTA do traço — mas guardando também o SLOT (0 = começo, 1 = fim):
     /// os dois seletores compartilham o passe diferido, e o popover precisa saber de quem ele é.
     /// Só um fica aberto por vez (abrir o outro fecha este, pelo dispatch genérico do dropdown).
@@ -33,14 +31,6 @@ pub(crate) fn set_pending_font_dd(rect: Option<Rect>) {
 
 pub(crate) fn take_pending_font_dd() -> Option<Rect> {
     PENDING_FONT_DD.with(|c| c.take())
-}
-
-pub(crate) fn set_pending_group_dd(rect: Option<Rect>) {
-    PENDING_GROUP_DD.with(|c| c.set(rect));
-}
-
-pub(crate) fn take_pending_group_dd() -> Option<Rect> {
-    PENDING_GROUP_DD.with(|c| c.take())
 }
 
 pub(crate) fn set_pending_marker_dd(slot_rect: Option<(usize, Rect)>) {

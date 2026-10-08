@@ -48,6 +48,8 @@ pub fn dispatch_pointer_with_text<'frame>(
     arena: &'frame Bump,
 ) -> &'frame [WidgetEvent] {
     let mut events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
+    // ⑤ as coordenadas do rodapé leem daqui (D10).
+    store.note_pointer(event.x, event.y);
 
     // Each event is exactly one kind; route to the matching arm. `text_system`
     // is consumed by whichever arm needs real glyph layout (Move/Down); Up

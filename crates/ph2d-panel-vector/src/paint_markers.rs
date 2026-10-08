@@ -200,7 +200,7 @@ impl BodyCtx<'_> {
 }
 
 /// O popover de um seletor de ponta — pintado no passe DIFERIDO de `paint.rs`, POR CIMA
-/// de todas as seções. Espelho de `paint_catalog::paint_group_popover`: as opções são
+/// de todas as seções. (O popover de categoria do catálogo, que era o espelho deste, saiu com a D10.) As opções são
 /// `ALL_MARKERS` (dado, não código), registradas por índice.
 pub(crate) fn paint_marker_popover(ctx: &mut PaintCtx, slot: usize, chip: Rect, theme: Theme) {
     let id = marker_dd_id(slot);

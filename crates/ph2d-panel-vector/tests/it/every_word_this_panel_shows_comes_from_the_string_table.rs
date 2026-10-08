@@ -29,7 +29,13 @@ const TABLE: &str = "crates/ph2d-i18n/src/vector.rs";
 /// ⚠️ **Duas tabelas, um prefixo** (2026-09-16): os nomes que o motor publica moram na irmã
 /// `vector_engine.rs` (tecto de LOC e responsabilidade). Com uma só aqui, as 114 chaves
 /// `panel.vector.engine.*` liam-se «sem tradução».
-const TABLES: &[&str] = &[TABLE, "crates/ph2d-i18n/src/vector_engine.rs"];
+// ⚠️ `vector_bars.rs` (D10, 07/10): as chaves das barras do vetor — irmão pela razão do
+// `chrome_menus.rs`, e por isso declarado aqui, senão o censo não as via.
+const TABLES: &[&str] = &[
+    TABLE,
+    "crates/ph2d-i18n/src/vector_engine.rs",
+    "crates/ph2d-i18n/src/vector_bars.rs",
+];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.
 const NOT_LANGUAGE: &[(&str, &str, &str)] = &[];

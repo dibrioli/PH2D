@@ -13,13 +13,14 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::{VectorPanelState, WidgetSkinState};
 use ph2d_panel_vector::{VectorPanel, ids, state};
-use ph2d_ui_testkit::MockPanelHost;
 
+// ⚠️ D10 (07/10): o painel ordena-se pelo que a SELEÇÃO é, e esta secção desceu — a janela
+// do fixture é alta para ela caber (o teste mede a fiação dela, não a dobra nem a ordem).
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 900.0,
+    h: 4000.0,
 };
 const SEC: u128 = 1_000_000_000;
 
@@ -71,7 +72,7 @@ fn driving(sel: usize, bound: bool) -> WidgetSkinState {
 
 fn rect_under(st: WidgetSkinState, id: ph2d_a11y::NodeId) -> Option<Rect> {
     state::set_widget_skin_state(Some(st), 0);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
 }
@@ -79,7 +80,7 @@ fn rect_under(st: WidgetSkinState, id: ph2d_a11y::NodeId) -> Option<Rect> {
 /// Clica de verdade no widget `id` e exige que o Click chegue ao barramento.
 fn click_reaches_bus(st: WidgetSkinState, id: ph2d_a11y::NodeId, what: &str) {
     state::set_widget_skin_state(Some(st), 0);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -164,7 +165,7 @@ fn a_future_kind_offers_undressing_not_dressing() {
 #[test]
 fn no_state_no_section() {
     clear();
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     for id in [
         ids::VECTOR_SECTION_WIDGET,
@@ -226,7 +227,7 @@ fn the_bind_row_exists_only_where_it_means_something() {
 #[test]
 fn the_icon_picker_chip_is_alive_and_opens_the_list() {
     state::set_widget_skin_state(Some(iconed(None)), 0);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut ps = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut ps, VIEWPORT, ids::VECTOR_WIDGET_ICON_DD)
@@ -252,7 +253,7 @@ fn the_icon_picker_chip_is_alive_and_opens_the_list() {
 #[test]
 fn a_row_of_the_open_list_reaches_the_bus() {
     state::set_widget_skin_state(Some(iconed(Some("trash"))), 0);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut ps = VectorPanelState;
     // Pinta uma vez para o `populate` registar o chip, abre-o, e pinta outra vez: o popover só
     // existe no frame em que o chip está aberto.

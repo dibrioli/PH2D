@@ -47,6 +47,12 @@ mod font_dropdown;
 mod icon_dropdown;
 pub mod ids;
 pub mod nomes_do_motor;
+pub mod bars;
+/// O catálogo de formas: os contornos cozidos que o flyout da coluna ① mostra (D10).
+mod shape_outlines;
+/// A escala dos segmentos da SIMETRIA (o campo vive na fila ②, D10).
+pub(crate) mod symmetry_segments;
+pub mod tool_keys;
 mod paint;
 
 /// **As portas do TEXTURE PATTERN que a shell precisa** (plano 33, W5): o id de cada chip e o
@@ -138,29 +144,21 @@ mod paint_arrange;
 /// ⭐⭐⭐ O corpo como uma LISTA — ordem do artista e tema por secção (2026-09-30).
 mod paint_body_plan;
 mod paint_boolean;
-/// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
-mod paint_catalog;
 /// A seção **Clip** — o recorte, oferecido a qualquer forma vetorial FECHADA.
 mod paint_clip;
 mod paint_components;
 /// A seção do CONECTOR (Route / Jetty / Spread) — snapshot + seed + paint + evento.
 mod paint_connector;
-/// A seção FRAME — o contêiner (plano UI/UX W0), irmã de `paint_pencil`.
+/// A seção FRAME — o contêiner (plano UI/UX W0).
 mod paint_frame;
 mod paint_layout;
 /// As pontas do traço (arrowheads) — dois chips na seção Stroke + o popover diferido.
 mod paint_markers;
 mod paint_modes;
-/// A seção PATH (cortada de `paint_arrange`).
-mod paint_path_ops;
-/// A seção PENCIL — irmã de `paint_modes` pelo teto de 600 LOC dos painéis.
-mod paint_pencil;
 mod paint_rows;
 mod paint_sections;
 /// ⭐ **A LISTA da pilha de aparência** (v20) — irmão do acima pelo tecto de 600 LOC.
 mod paint_stack_rows;
-/// A seção SYMMETRY — a simetria de desenho (plano 25 W6.3), irmã de `paint_pencil`.
-pub(crate) mod paint_symmetry;
 mod paint_tokens;
 mod paint_widget;
 pub use paint_tokens::selected_row as selected_token_row;

@@ -26,7 +26,6 @@ use ph2d_panel_vector::state::{FillKind, VectorPanelState};
 use ph2d_panel_vector::{VectorPanel, state};
 use ph2d_text::TextSystem;
 use ph2d_tokens::TypeToken;
-use ph2d_ui_testkit::MockPanelHost;
 
 // ⚠️ Alta de propósito: a porta da rolagem (`scroll_area`, spec `04_a_rolagem_unica`) recorta o
 // CLIQUE à banda do corpo, logo um controlo abaixo da dobra deixa de estar registado. A 900 px
@@ -46,7 +45,7 @@ fn chip_rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
     // A fileira só sobe com um preenchimento publicado — sem isto o painel não desenha a secção e
     // o teste mediria a ausência dela.
     state::set_current_fill(Some(FillKind::Solid), None);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
 }

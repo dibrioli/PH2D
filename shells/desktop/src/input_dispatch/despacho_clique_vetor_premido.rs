@@ -421,6 +421,19 @@ impl crate::App {
             self.vec.pencil_hand.begin(self.last_pointer);
             return true;
         }
+        // **O conta-gotas** (D10, `I`): o clique copia as cores do caminho sob o cursor — a lei e a
+        // entrega moram na crate (`ph2d_app_vec::eyedropper`, `vector_bridge::adopt_sample`).
+        if self.vec.draw_config.mode == ph2d_tool_vector::DrawMode::Eyedropper {
+            let tol = 10.0 * self.vec_px_to_world();
+            if let Some(w) = self.vec_world_at(self.last_pointer)
+                && let Some(gfx) = self.gfx.as_mut()
+                && let Some((fill, stroke)) =
+                    ph2d_app_vec::eyedropper::sample(&gfx.vec_scene, &self.vec.pen, w, tol)
+            {
+                ph2d_app_vec::vector_bridge::adopt_sample(&mut gfx.tools, fill, stroke);
+            }
+            return true;
+        }
         // Modo Connect: a pressão abre o gesto do CONECTOR (sobre uma forma, a
         // ponta nasce presa a ela; no vazio, solta ali). Nada de pen/shape —
         // a linha de um conector não é autorada, é derivada.

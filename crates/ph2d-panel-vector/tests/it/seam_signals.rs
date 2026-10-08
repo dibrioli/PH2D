@@ -12,13 +12,14 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::{UiStatesState, VectorPanelState};
 use ph2d_panel_vector::{VectorPanel, ids};
-use ph2d_ui_testkit::MockPanelHost;
 
+// ⚠️ D10 (07/10): o painel ordena-se pelo que a SELEÇÃO é, e esta secção desceu — a janela
+// do fixture é alta para ela caber (o teste mede a fiação dela, não a dobra nem a ordem).
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 900.0,
+    h: 4000.0,
 };
 const SEC: u128 = 1_000_000_000;
 
@@ -59,7 +60,7 @@ fn arm(bindings: Vec<(String, usize)>) {
 #[test]
 fn every_binding_control_reaches_the_bus() {
     arm(vec![("open".into(), 1)]);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
 
     let targets = [
@@ -108,7 +109,7 @@ fn the_name_commits_on_enter_and_on_blur() {
     .enumerate()
     {
         arm(vec![("open".into(), 0)]);
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         // Pintar UMA vez é o que semeia o buffer a partir do texto autorado (o espelho).
         let _ = host.painted_rect::<VectorPanel>(
@@ -140,7 +141,7 @@ fn the_name_commits_on_enter_and_on_blur() {
 #[test]
 fn the_add_button_is_offered_below_the_pool_and_gone_at_it() {
     arm(vec![("a".into(), 0)]);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     assert!(
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_STATE_SIGNAL_ADD)
@@ -151,7 +152,7 @@ fn the_add_button_is_offered_below_the_pool_and_gone_at_it() {
     arm((0..ids::MAX_SIGNAL_BINDINGS)
         .map(|i| (format!("s{i}"), 0))
         .collect());
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     assert!(
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_STATE_SIGNAL_ADD)
@@ -181,7 +182,7 @@ fn the_table_closes_while_the_preview_runs() {
         move_all: Some(true),
         bindings: vec![("open".into(), 1)],
     }));
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     assert!(
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_STATE_SIGNAL_ADD)

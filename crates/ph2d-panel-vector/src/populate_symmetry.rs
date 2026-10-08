@@ -11,7 +11,7 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 use ph2d_symmetry::{SymmetryKind, SymmetryStyle};
 use ph2d_tool_vector::params::symmetry_kind_id;
 
-use crate::paint_symmetry::{SEGMENTS_OFFSET, SEGMENTS_SCALE, segments_to_track};
+use crate::symmetry_segments::{SEGMENTS_OFFSET, SEGMENTS_SCALE, segments_to_track};
 
 /// Os botões e o slider do modo simétrico.
 pub(super) fn symmetry_controls(store: &mut WidgetStore) {

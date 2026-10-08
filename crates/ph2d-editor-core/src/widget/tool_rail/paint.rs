@@ -182,12 +182,22 @@ pub fn paint_tool_rail_axis(
                     resolve(ColorToken::Text2, theme),
                 );
             }
-            ToolRailEntry::Compound { id, face, sub, .. } => {
+            ToolRailEntry::Compound {
+                id,
+                face,
+                sub,
+                active,
+                ..
+            } => {
                 let chip_rect = slot_rect;
                 // Halved 2026-05-24 (Lg → Sm, 12 → 6 px) per user
                 // feedback that rail buttons looked too bubbly.
                 let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-                let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
+                // Um chip de OPÇÃO aceso pelo produtor lê-se como premido (a escolha actual).
+                let state = match store.button_state(*id).unwrap_or(ButtonState::Normal) {
+                    ButtonState::Normal if *active => ButtonState::Pressed,
+                    s => s,
+                };
                 // ⚠️ **Esta variante estava FORA do eixo** (auditoria de 2026-08-23): das três
                 // do rail, só a `Tool` misturava — as outras duas resolviam a borda pelo estado
                 // DURO e saltavam ao lado da irmã, na mesma coluna.
@@ -366,6 +376,34 @@ pub fn paint_tool_rail_axis(
                     sub_font,
                     rect.x,
                     rest_rect,
+                    axis,
+                    resolve(ColorToken::Text2, theme),
+                );
+            }
+            // ⭐ O campo numérico: o MESMO chip dos painéis, lido do store (foco, buffer, cursor).
+            ToolRailEntry::Number {
+                id, sub, display, ..
+            } => {
+                let (state, buffer, caret, anchor) = store.number_chip_view(*id);
+                crate::widget::paint_number_chip(
+                    slot_rect,
+                    state,
+                    store.number_value(*id).unwrap_or(0.0),
+                    display.as_deref(),
+                    buffer,
+                    caret,
+                    anchor,
+                    scene,
+                    text_system,
+                    theme,
+                );
+                paint_sub_label(
+                    text_system,
+                    scene,
+                    sub,
+                    sub_font,
+                    rect.x,
+                    slot_rect,
                     axis,
                     resolve(ColorToken::Text2, theme),
                 );

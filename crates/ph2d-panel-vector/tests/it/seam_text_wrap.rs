@@ -12,13 +12,14 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_ui_testkit::MockPanelHost;
 
+// ⚠️ D10 (07/10): o painel ordena-se pelo que a SELEÇÃO é, e esta secção desceu — a janela
+// do fixture é alta para ela caber (o teste mede a fiação dela, não a dobra nem a ordem).
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 900.0,
+    h: 4000.0,
 };
 const SEC: u128 = 1_000_000_000;
 
@@ -54,7 +55,7 @@ fn both_width_chips_reach_the_bus() {
         ),
     ] {
         arm_text();
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -87,7 +88,7 @@ fn both_width_chips_reach_the_bus() {
 /// a presença deixaria passar um painel que o pinta sempre.
 #[test]
 fn the_width_slider_lives_only_in_fixed_mode() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     arm_text();
@@ -138,7 +139,7 @@ fn the_width_slider_lives_only_in_fixed_mode() {
 fn dragging_the_width_slider_reaches_the_bus() {
     arm_text();
     ph2d_panel_vector::set_current_text_wrap(Some(8.0));
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     host.set_slider_value(ph2d_panel_vector::ids::VECTOR_TEXT_WRAP_W, 0.75);
     let outcome = host.apply_panel_event::<VectorPanel>(

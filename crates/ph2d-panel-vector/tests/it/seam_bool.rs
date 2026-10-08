@@ -15,7 +15,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_panel_vector::{VectorPanel, ids, state};
-use ph2d_ui_testkit::MockPanelHost;
 
 // ⚠️ Alta de propósito: a porta da rolagem (`scroll_area`, spec `04_a_rolagem_unica`) recorta o
 // CLIQUE à banda do corpo, logo um controlo abaixo da dobra deixa de estar registado. A 900 px
@@ -46,7 +45,7 @@ fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
     // Envelope / Arrange / Path são COMANDOS sobre a seleção — todo controle delas morre numa
     // guarda de seleção — e somem inteiras com a seleção vazia (`section_scope::WHEN_SELECTED`).
     ph2d_panel_vector::state::set_current_selection_count(1);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -109,7 +108,7 @@ fn the_apply_button_appears_only_with_a_live_boolean_selected() {
     // Envelope / Arrange / Path são COMANDOS sobre a seleção — todo controle delas morre numa
     // guarda de seleção — e somem inteiras com a seleção vazia (`section_scope::WHEN_SELECTED`).
     ph2d_panel_vector::state::set_current_selection_count(1);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     state::set_bool_group_selected(false);
@@ -148,7 +147,7 @@ fn the_eight_ops_survive_the_live_mode() {
     // guarda de seleção — e somem inteiras com a seleção vazia (`section_scope::WHEN_SELECTED`).
     ph2d_panel_vector::state::set_current_selection_count(1);
     state::set_bool_live_on(true);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     for (id, what) in [
         (ids::VECTOR_BOOL_UNION, "Union"),
@@ -207,7 +206,7 @@ fn the_per_shape_row_appears_only_with_a_subject() {
     // Envelope / Arrange / Path são COMANDOS sobre a seleção — todo controle delas morre numa
     // guarda de seleção — e somem inteiras com a seleção vazia (`section_scope::WHEN_SELECTED`).
     ph2d_panel_vector::state::set_current_selection_count(1);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     state::set_bool_shape_row(None);

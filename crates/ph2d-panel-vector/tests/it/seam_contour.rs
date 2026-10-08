@@ -85,7 +85,7 @@ fn every_contour_button_reaches_the_bus() {
         } else {
             addable();
         }
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -119,7 +119,7 @@ fn every_contour_button_reaches_the_bus() {
 /// onde escrever — e é a que um gate escrito só com `assert!(pintou)` nunca faria.
 #[test]
 fn the_section_shows_the_button_or_the_controls_never_both() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     addable();
@@ -207,7 +207,7 @@ fn the_section_shows_the_button_or_the_controls_never_both() {
 fn the_section_is_absent_when_there_is_nothing_to_say() {
     ph2d_panel_vector::set_current_contour_can_add(false);
     ph2d_panel_vector::set_current_contour(false, 4.0, 0.0, 1.0, 1, 0, [255, 255, 255, 255]);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     for (id, name) in [
         (ids::VECTOR_SECTION_CONTOUR, "o cabecalho"),

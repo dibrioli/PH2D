@@ -13,13 +13,14 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::{ComponentState, VectorPanelState};
 use ph2d_panel_vector::{VectorPanel, ids, state};
-use ph2d_ui_testkit::MockPanelHost;
 
+// ⚠️ D10 (07/10): o painel ordena-se pelo que a SELEÇÃO é, e esta secção desceu — a janela
+// do fixture é alta para ela caber (o teste mede a fiação dela, não a dobra nem a ordem).
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 900.0,
+    h: 4000.0,
 };
 const SEC: u128 = 1_000_000_000;
 
@@ -65,7 +66,7 @@ fn instance_with_overrides() -> ComponentState {
 
 fn rect_under(st: ComponentState, id: ph2d_a11y::NodeId) -> Option<Rect> {
     state::set_component_state(Some(st));
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
 }
@@ -73,7 +74,7 @@ fn rect_under(st: ComponentState, id: ph2d_a11y::NodeId) -> Option<Rect> {
 /// Clica de verdade no widget `id` e exige que o Click chegue ao barramento.
 fn click_reaches_bus(st: ComponentState, id: ph2d_a11y::NodeId, what: &str) {
     state::set_component_state(Some(st));
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -222,7 +223,7 @@ fn update_main_and_swap_are_reachable_and_reach_the_bus() {
 #[test]
 fn the_section_is_not_painted_without_a_selection() {
     clear();
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     for id in [
         ids::VECTOR_SECTION_COMPONENT,

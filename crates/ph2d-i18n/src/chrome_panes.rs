@@ -49,6 +49,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.zone.mod" => "MOD",
         "chrome.canvas.wont_take_this" => "Won't take this",
         "chrome.hud.editor_statistics" => "Editor statistics",
+        "chrome.hud.tool_hint" => "What the tool in hand does",
         "chrome.hud.edit" => "EDIT",
         "chrome.hud.bodies" => "\u{2013} bodies",
         "chrome.hud.mb" => "\u{2013} MB",

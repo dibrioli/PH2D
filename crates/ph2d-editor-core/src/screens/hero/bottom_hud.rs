@@ -152,3 +152,78 @@ pub fn paint_bottom_hud(
     );
     paint_status_bar(&bar, rect, scene, text_system, theme);
 }
+
+/// ⑤ **O rodapé fala do módulo?** — a dica e as leituras, só no layout que o módulo É (o *Vetor*,
+/// D7) e só quando ele publicou uma dica; senão `None` e a pílula continua de motor.
+#[must_use]
+pub fn module_hint(store: &crate::interaction::WidgetStore) -> Option<(String, Vec<String>)> {
+    (store.active_layout() == crate::screens::task_layout::TaskLayout::Vector)
+        .then(|| store.tool_bars())
+        .flatten()
+        .filter(|b| !b.hint.is_empty())
+        .map(|b| (b.hint.clone(), b.readout.clone()))
+}
+
+/// ⭐ **⑤ O RODAPÉ DE UM MÓDULO** (D10): *que teclas valem agora?* — a dica da ferramenta na mão
+/// (o que o clique, o arrasto e os modificadores fazem) e as leituras do desenho (coordenadas,
+/// encaixe, zoom), no lugar das estatísticas de motor. Mesma pílula, mesmo sítio: 0 px novos.
+///
+/// ⚠️ Só no layout que o módulo É (o *Vetor*, D7): nos outros a pílula continua de motor.
+pub fn paint_tool_hint_hud(
+    layout: &HeroLayout,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hint: &str,
+    readout: &[String],
+) {
+    let mut segments = vec![
+        StatusSegment::new(hint.to_owned())
+            .dot(true)
+            .tone(SegmentTone::Neutral),
+    ];
+    segments.extend(
+        readout
+            .iter()
+            .map(|r| StatusSegment::new(r.clone()).tone(SegmentTone::Muted)),
+    );
+    let bar = StatusBar::new(NodeId(300), tr("chrome.hud.tool_hint"), segments);
+    let pref_w = bar
+        .preferred_width(text_system)
+        .min(layout.viewport.w - 40.0); // LITERAL-PX-OK: HUD viewport margin (chrome-specific)
+    let rect = Rect::new(
+        layout.viewport.x + (layout.viewport.w - pref_w) * 0.5,
+        layout.bottom_hud.y,
+        pref_w,
+        layout.bottom_hud.h,
+    );
+    paint_status_bar(&bar, rect, scene, text_system, theme);
+}
+
+#[cfg(test)]
+mod module_hint_tests {
+    use super::module_hint;
+    use crate::interaction::{ToolBars, WidgetStore};
+    use crate::screens::task_layout::TaskLayout;
+
+    /// ⑤ Só no layout Vetor, e só com dica: noutro layout, ou sem barras, a pílula é de motor.
+    #[test]
+    fn the_footer_speaks_for_the_module_only_in_its_layout() {
+        let mut store = WidgetStore::default();
+        let bars = ToolBars {
+            hint: "Click: corner".to_owned(),
+            readout: vec!["x 1 px  y 2 px".to_owned()],
+            ..ToolBars::default()
+        };
+        store.set_tool_bars(Some(bars));
+        store.set_active_layout(TaskLayout::Drawing2d);
+        assert_eq!(module_hint(&store), None, "fora do layout Vetor o rodapé é de motor");
+        store.set_active_layout(TaskLayout::Vector);
+        assert_eq!(
+            module_hint(&store),
+            Some(("Click: corner".to_owned(), vec!["x 1 px  y 2 px".to_owned()]))
+        );
+        store.set_tool_bars(None);
+        assert_eq!(module_hint(&store), None, "sem barras publicadas não há dica");
+    }
+}

@@ -11,13 +11,14 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::{UiStatesState, VectorPanelState};
-use ph2d_ui_testkit::MockPanelHost;
 
+// ⚠️ D10 (07/10): o painel ordena-se pelo que a SELEÇÃO é, e esta secção desceu — a janela
+// do fixture é alta para ela caber (o teste mede a fiação dela, não a dobra nem a ordem).
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 900.0,
+    h: 4000.0,
 };
 const SEC: u128 = 1_000_000_000;
 
@@ -58,7 +59,7 @@ fn arm(spring: Option<(f32, f32)>) {
 /// ⭐ **PRESENÇA e AUSÊNCIA: uma família de linhas de cada vez.**
 #[test]
 fn the_spring_rows_replace_the_duration_and_curve_rows() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
 
     arm(None);
@@ -130,7 +131,7 @@ fn the_spring_rows_replace_the_duration_and_curve_rows() {
 #[test]
 fn the_spring_checkbox_reaches_the_bus() {
     arm(None);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(
@@ -167,7 +168,7 @@ fn both_spring_knobs_reach_the_bus() {
         ph2d_panel_vector::ids::VECTOR_STATE_DAMPING,
     ] {
         arm(Some((12.0, 1.0)));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         host.set_slider_value(id, 0.75);
         host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::ValueChanged(id));

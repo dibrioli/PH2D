@@ -12,7 +12,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_tool_vector::{VertexSel, VertexType};
-use ph2d_ui_testkit::MockPanelHost;
 
 // ⚠️ Alta de propósito: a porta da rolagem (`scroll_area`, spec `04_a_rolagem_unica`) recorta o
 // CLIQUE à banda do corpo, logo um controlo abaixo da dobra deixa de estar registado. A 900 px
@@ -39,7 +38,7 @@ fn publish(pos: Option<[f64; 2]>) {
 #[test]
 fn the_node_coordinate_rows_are_painted_and_what_is_typed_reaches_the_bus() {
     publish(Some([12.0, 25.0]));
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     for (id, name) in [
@@ -84,7 +83,7 @@ fn the_node_coordinate_rows_are_painted_and_what_is_typed_reaches_the_bus() {
 #[test]
 fn without_a_median_the_rows_are_not_offered() {
     publish(None);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
 
     for (id, name) in [

@@ -319,13 +319,7 @@ pub(super) fn dispatch_down<'frame>(
     if let Some((id, _)) = hit
         && store.is_picker_swatch(id)
     {
-        let seed = store.widget_color(id).unwrap_or([0x88, 0x88, 0x88, 0xFF]);
-        store.set_widget_color(id, seed);
-        store.set_picker_target(Some(id));
-        store.set_blender_value(
-            crate::ids::INSP_BLENDER_PICKER,
-            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
-        );
+        store.open_picker_on(id);
         return;
     }
 

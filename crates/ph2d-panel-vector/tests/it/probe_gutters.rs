@@ -20,7 +20,6 @@
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::state::{LayoutFlow, LayoutItem, VectorPanelState};
 use ph2d_panel_vector::{VectorPanel, state};
-use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
     x: 0.0,
@@ -30,7 +29,7 @@ const VIEWPORT: Rect = Rect {
 };
 
 fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
 }

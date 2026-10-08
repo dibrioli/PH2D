@@ -1,4 +1,4 @@
-//! **A seção FRAME** do painel — irmã de [`super::paint_symmetry`] pelo teto de 600 LOC, e o corte
+//! **A seção FRAME** do painel — cortada do orquestrador pelo teto de 600 LOC, e o corte
 //! é o mesmo: aqui mora a seção de UM assunto.
 //!
 //! # O que ela NÃO tem, e é a decisão inteira

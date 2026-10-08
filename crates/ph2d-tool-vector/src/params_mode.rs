@@ -130,6 +130,10 @@ pub enum DrawMode {
     /// **produzir**, e a tela quer ser desenhada onde vai ficar. Converter uma forma que já existe
     /// (o *Frame selection* do Figma) é a outra metade, e não está construída.
     Frame,
+    /// **O CONTA-GOTAS** (tecla `I`, o padrão Illustrator — D10). Clicar num caminho copia o
+    /// preenchimento e o traço DELE para a ferramenta (o que se desenha a seguir) e para os
+    /// caminhos seleccionados — o *Eyedropper* do Illustrator, que copia a aparência inteira.
+    Eyedropper,
 }
 
 impl DrawMode {
@@ -160,6 +164,7 @@ impl DrawMode {
         Self::Bucket,
         Self::Cut,
         Self::Frame,
+        Self::Eyedropper,
     ];
 
     /// **A forma que ESTE modo desenha** — `None` quando o gesto não produz forma nenhuma.
@@ -276,10 +281,11 @@ mod all_tests {
                 | DrawMode::Trim
                 | DrawMode::Bucket
                 | DrawMode::Cut
-                | DrawMode::Frame => 1,
+                | DrawMode::Frame
+                | DrawMode::Eyedropper => 1,
             };
         }
-        assert_eq!(vistos, 16, "o vocabulario mudou — reveja quem o itera");
+        assert_eq!(vistos, 17, "o vocabulario mudou — reveja quem o itera");
         // …e sem repetidos: uma variante duplicada na lista faria todo censo medi-la duas vezes.
         let mut ordenada: Vec<String> = DrawMode::ALL.iter().map(|m| format!("{m:?}")).collect();
         ordenada.sort();

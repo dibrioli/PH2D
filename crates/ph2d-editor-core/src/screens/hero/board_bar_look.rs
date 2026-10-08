@@ -3,12 +3,11 @@
 //! seta desenhados com a MESMA geometria do quadro.
 
 use super::{HEADS, Item, Selected};
-use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
 use ph2d_board_edit::{Editor, Frame, Tool};
 use ph2d_board_model::{Connector, Dash, Head, Rgba, Route, Shape, ShapeType, Style};
 use ph2d_board_route::Dir;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
+use ph2d_tokens::{Spacing, Theme};
 use ph2d_vector::{Affine, Brush, Color, Stroke, VectorScene};
 
 /// O tamanho da ponta nos ícones: o de nascença do catálogo (`Marker`, 1×).
@@ -280,29 +279,7 @@ pub(super) fn shape_icon(
 }
 
 pub(super) fn paint_panel(scene: &mut VectorScene, rects: &[(Item, Rect)], theme: Theme) {
-    let Some(first) = rects.first().map(|(_, r)| *r) else {
-        return;
-    };
-    let (mut x0, mut y0, mut x1, mut y1) = (first.x, first.y, first.x + first.w, first.y + first.h);
-    for (_, r) in rects {
-        x0 = x0.min(r.x);
-        y0 = y0.min(r.y);
-        x1 = x1.max(r.x + r.w);
-        y1 = y1.max(r.y + r.h);
-    }
-    let pad = Spacing::Xs.px();
-    let panel = Rect::new(x0 - pad, y0 - pad, x1 - x0 + 2.0 * pad, y1 - y0 + 2.0 * pad);
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    fill_rounded_rect(scene, panel, radius, resolve(ColorToken::BgElev, theme));
-    crate::paint::stroke_frame(
-        scene,
-        panel,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
+    super::super::float_bar::paint_panel(scene, rects.iter().map(|(_, r)| *r), theme);
 }
 
 /// A tinta «do tema» das barras: a do DOCUMENTO, que o quadro desenha pelo tema de cada momento.

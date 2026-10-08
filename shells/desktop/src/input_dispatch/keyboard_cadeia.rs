@@ -334,28 +334,43 @@ impl crate::App {
             return true;
         }
 
-        // ADR-0108 Fase 1: modo vetorial (flag PH2D_VEC_PEN) — U/I/D/X fazem a
-        // booleana (Union/Intersect/Difference/Exclude) das 2 últimas regiões
-        // fechadas; Delete/Backspace apaga o path
-        // selecionado. Modo de teste dedicado (a pill/menu real entra no cutover,
-        // Fase R). Só sem modificadores, pra não colidir com atalhos.
+        // ⭐ D10: as teclas do padrão ILLUSTRATOR (V A P N M L T · Shift+M/W/O · K W C I · X/Shift+X/D ·
+        // Ctrl+Alt+U/I/D/X). A tabela é do painel e a aplicação da crate (`ph2d_app_vec::tool_keys`,
+        // com a ferramenta temporária); aqui a tecla física só vira acorde. Sobre a timeline as
+        // letras ficam dela (`K` = chave, `L` = painel).
+        if self.vector_keys_live()
+            && !self.cursor_over_timeline()
+            && let PhysicalKey::Code(code) = physical_key
+            && let Some(chord) = crate::keymap::winit_to_input_keycode(code).and_then(|k| {
+                let m = self.modifiers;
+                ph2d_app_vec::tool_keys::chord(k, m.shift_key(), m.control_key(), m.alt_key(), m.super_key())
+            })
+        {
+            let pressed = state == ElementState::Pressed;
+            let mode = self.vec.draw_config.mode;
+            match ph2d_app_vec::tool_keys::key(&mut self.vec.tool_hold, chord, pressed, repeat, mode) {
+                Some(ph2d_app_vec::tool_keys::KeyOutcome::Clicks(ids)) => {
+                    if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                        for id in ids {
+                            hero.apply_event(ph2d_editor_core::interaction::WidgetEvent::Click(id));
+                        }
+                    }
+                    return true;
+                }
+                Some(ph2d_app_vec::tool_keys::KeyOutcome::Boolean(op)) => {
+                    self.vec_boolean(op);
+                    return true;
+                }
+                Some(ph2d_app_vec::tool_keys::KeyOutcome::Swallow) => return true,
+                None => {}
+            }
+        }
         if self.vector_keys_live()
             && state == ElementState::Pressed
             && !repeat
             && self.modifiers.is_empty()
             && let PhysicalKey::Code(code) = physical_key
         {
-            let op = match code {
-                KeyCode::KeyU => Some(ph2d_vec_boolean::PathfinderOp::Union),
-                KeyCode::KeyI => Some(ph2d_vec_boolean::PathfinderOp::Intersect),
-                KeyCode::KeyD => Some(ph2d_vec_boolean::PathfinderOp::Subtract),
-                KeyCode::KeyX => Some(ph2d_vec_boolean::PathfinderOp::Exclude),
-                _ => None,
-            };
-            if let Some(op) = op {
-                self.vec_boolean(op);
-                return true;
-            }
             // Mesma regra de área do bloco de clipboard acima: com o mouse SOBRE a
             // timeline, Delete apaga o KEYFRAME (o bloco da timeline pega no fall-through),
             // não a forma. Sobre o canvas, apaga a forma/vértice.
@@ -363,13 +378,6 @@ impl crate::App {
                 && !self.cursor_over_timeline()
                 && self.vec_delete_selected_vertex_or_path()
             {
-                return true;
-            }
-            // Texto vetorial: `T` entra/sai do modo Text (atalho-padrão de ferramenta
-            // de texto). Enquanto uma sessão de texto está ATIVA, o `T` é capturado
-            // antes daqui (vira a letra digitada) — este ramo só troca o modo.
-            if code == KeyCode::KeyT {
-                self.vec_text_toggle_mode();
                 return true;
             }
         }

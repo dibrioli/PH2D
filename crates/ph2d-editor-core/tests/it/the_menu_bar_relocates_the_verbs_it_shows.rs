@@ -401,7 +401,9 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
                 //    alternância sem entrada no `MODULE_TRUTHS` é o menu a dizer a mesma coisa com
                 //    a coluna aberta e fechada, o defeito que ele pagou dezasseis vezes.
                 || *id == ids::MENUBAR_VIEW_COLUMN_LEFT
-                || *id == ids::MENUBAR_VIEW_COLUMN_RIGHT;
+                || *id == ids::MENUBAR_VIEW_COLUMN_RIGHT
+                // ⭐ D10 (07/10): a barra de ações da seleção — ligada/desligada é um estado.
+                || *id == ids::MENUBAR_VIEW_SELECTION_ACTIONS;
             assert_eq!(
                 menu_bar::row_is_marked_by_button_state(*id),
                 is_toggle,
@@ -423,11 +425,12 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
 }
 
 /// As linhas de alternância que **não** vivem no menu *Window*: os dois painéis laterais
-/// (*Hierarchy*, *Inspector*), a régua, e — desde 2026-09-19 — as duas COLUNAS.
+/// (*Hierarchy*, *Inspector*), a régua, — desde 2026-09-19 — as duas COLUNAS, e — desde 2026-10-07
+/// (D10) — a barra de ações da seleção.
 ///
 /// ⚠️ Escritas como CONTAGEM porque a lista delas está no `is_toggle` acima — se lá aparecer mais
 /// uma, este número tem de subir no mesmo commit, e o gate diz qual é a diferença.
-const OUTSIDE_WINDOW_TOGGLES: usize = 5;
+const OUTSIDE_WINDOW_TOGGLES: usize = 6;
 
 /// **E a régua PUBLICA o estado dela**, porque quem pinta a marca não alcança o `HeroScreen`.
 #[test]

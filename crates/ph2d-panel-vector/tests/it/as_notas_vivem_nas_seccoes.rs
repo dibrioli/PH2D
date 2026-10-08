@@ -8,7 +8,6 @@ use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
     x: 0.0,
@@ -32,7 +31,7 @@ fn a_vista(rects: &[(NodeId, Rect)]) -> Vec<(NodeId, Rect)> {
 /// sem o `cromo` ⇒ a nota cai no fim do corpo, abaixo de todas as secções.*
 #[test]
 fn a_nota_pinta_se_no_fim_da_sua_seccao_no_vector() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let antes = a_vista(&host.paint::<VectorPanel>(&mut st, VIEWPORT));
     assert!(

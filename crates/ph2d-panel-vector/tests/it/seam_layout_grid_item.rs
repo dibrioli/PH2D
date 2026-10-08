@@ -27,7 +27,6 @@
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::{LayoutFlow, LayoutItem, VectorPanelState};
-use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
     x: 0.0,
@@ -77,7 +76,7 @@ const ROWS: [(&str, ph2d_a11y::NodeId); 2] = [
 #[test]
 fn a_child_of_a_flex_frame_still_gets_grow_and_shrink() {
     publish(false);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     for (name, id) in ROWS {
         assert!(
@@ -96,7 +95,7 @@ fn a_child_of_a_flex_frame_still_gets_grow_and_shrink() {
 #[test]
 fn a_child_of_a_grid_frame_is_not_offered_grow_or_shrink() {
     publish(true);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     for (name, id) in ROWS {
         assert!(

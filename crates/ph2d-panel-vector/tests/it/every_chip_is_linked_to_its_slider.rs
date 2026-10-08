@@ -25,8 +25,7 @@
 //! `tests/number_input_mapped_link.rs`. Que o `ValueChanged(slider)` chega ao barramento é provado
 //! no `seam.rs` deste painel. Este gate fecha o elo que faltava entre os dois.)
 
-use ph2d_panel_vector::{VectorPanel, ids};
-use ph2d_ui_testkit::MockPanelHost;
+use ph2d_panel_vector::ids;
 
 /// Os pares `(slider, chip)` do painel. **Todo id `*_NUM` daqui é o chip de um slider** — os campos
 /// numéricos avulsos do painel (Transform X/Y/W/H) não usam o sufixo, então a regra é mecânica e a
@@ -106,7 +105,7 @@ const PAIRS: &[(&str, ph2d_a11y::NodeId, ph2d_a11y::NodeId)] = &[
 
 #[test]
 fn every_number_chip_is_linked_to_its_slider_in_both_directions() {
-    let host = MockPanelHost::with_panel::<VectorPanel>();
+    let host = crate::host_aberto();
     let store = host.store();
 
     let mut dead: Vec<&str> = Vec::new();

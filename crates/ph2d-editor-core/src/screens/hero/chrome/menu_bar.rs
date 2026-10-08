@@ -69,6 +69,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         hero.store.close_context_menu();
         return true;
+    } else if id == ids::MENUBAR_VIEW_SELECTION_ACTIONS {
+        let off = hero.store.selection_actions_off();
+        hero.store.set_selection_actions_off(!off);
+        hero.store.close_context_menu();
+        return true;
     } else if id == ids::MENUBAR_VIEW_RULERS {
         // ⚠️ **A régua é estado do HERO, não da ferramenta** — o mesmo campo que a caixa do painel
         // do vetor mexe. Duas portas, um valor.

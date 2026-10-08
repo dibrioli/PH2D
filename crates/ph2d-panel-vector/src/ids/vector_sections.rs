@@ -13,10 +13,9 @@ use ph2d_tool_vector::ids::{
     VECTOR_SECTION_ALIGN, VECTOR_SECTION_ARRANGE, VECTOR_SECTION_AXES, VECTOR_SECTION_BLEND,
     VECTOR_SECTION_BOOLEAN, VECTOR_SECTION_CONNECTOR, VECTOR_SECTION_EFFECTS,
     VECTOR_SECTION_ENVELOPE, VECTOR_SECTION_EXPAND, VECTOR_SECTION_FILL, VECTOR_SECTION_FILL_TYPE,
-    VECTOR_SECTION_FONT, VECTOR_SECTION_MORPH, VECTOR_SECTION_PARAGRAPH, VECTOR_SECTION_PATH,
-    VECTOR_SECTION_PENCIL, VECTOR_SECTION_SHAPE, VECTOR_SECTION_SHAPE_PARAMS, VECTOR_SECTION_SNAP,
-    VECTOR_SECTION_STROKE, VECTOR_SECTION_TEXT, VECTOR_SECTION_TOOL, VECTOR_SECTION_TRANSFORM,
-    VECTOR_SECTION_VERTEX,
+    VECTOR_SECTION_FONT, VECTOR_SECTION_MORPH, VECTOR_SECTION_PARAGRAPH,
+    VECTOR_SECTION_SHAPE_PARAMS, VECTOR_SECTION_STROKE, VECTOR_SECTION_TEXT,
+    VECTOR_SECTION_TRANSFORM, VECTOR_SECTION_VERTEX,
 };
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
@@ -34,13 +33,10 @@ use ph2d_tool_vector::ids::{
 /// `section_header` no fonte e cobra a correspondência — a lista escrita à mão num gate driftaria
 /// da tela exatamente como esta driftou.
 pub const VECTOR_SECTIONS: &[NodeId] = &[
-    VECTOR_SECTION_TOOL,
-    VECTOR_SECTION_SHAPE,
     VECTOR_SECTION_SHAPE_PARAMS,
     VECTOR_SECTION_STROKE,
     VECTOR_SECTION_FILL,
     VECTOR_SECTION_FILL_TYPE,
-    VECTOR_SECTION_SNAP,
     VECTOR_SECTION_TRANSFORM,
     // ⭐ A APARÊNCIA do objecto (estudo 42 item 2) — logo a seguir ao Transform, que é onde ela é
     // pintada: as duas descrevem a forma selecionada como um todo.
@@ -56,7 +52,6 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     VECTOR_SECTION_EFFECTS,
     VECTOR_SECTION_ALIGN,
     VECTOR_SECTION_ARRANGE,
-    VECTOR_SECTION_PATH,
     VECTOR_SECTION_TEXT,
     VECTOR_SECTION_FONT,
     VECTOR_SECTION_PARAGRAPH,
@@ -76,9 +71,7 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     // FX raster (plano 24) — distinto de EFFECTS (deformadores vetoriais, ADR-0132).
     super::VECTOR_SECTION_FILTERS,
     // O LÁPIS (plano 25 W1): Fidelity + Stabilizer.
-    VECTOR_SECTION_PENCIL,
     // A SIMETRIA de desenho (plano 25 §9 W6.3): um MODO, não um efeito.
-    ph2d_tool_vector::ids::VECTOR_SECTION_SYMMETRY,
     // A MOLDURA (plano UI/UX W0): o contêiner.
     ph2d_tool_vector::ids::VECTOR_SECTION_FRAME,
     // O RECORTE (2026-08-21): irmã da Frame, mas oferecida a QUALQUER forma fechada.

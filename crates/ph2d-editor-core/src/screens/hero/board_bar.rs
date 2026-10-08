@@ -250,27 +250,17 @@ pub fn populate(store: &mut WidgetStore) {
     }
 }
 
-fn btn_px() -> f32 {
-    Spacing::Xl2.px()
-}
-
-fn gap() -> f32 {
-    ph2d_tokens::control_gap_px()
-}
+// ⭐ A GEOMETRIA e o BOTÃO são do widget genérico ([`super::float_bar`]) — o Vetor pinta a coluna e
+// a barra da seleção dele pela MESMA conta. Aqui fica a tabela do Quadro e a cara de cada item.
+use super::float_bar::{button_px as btn_px, gap};
 
 /// O rectângulo de cada atalho da barra curta, de cima para baixo, encostado à esquerda de `area`.
 #[must_use]
 pub fn toolbar_rects(area: Rect) -> Vec<(Item, Rect)> {
-    let (s, g) = (btn_px(), gap());
-    let x = area.x + Spacing::Md.px();
-    let mut y = area.y + Spacing::Md.px();
     TOOLBAR
         .iter()
-        .map(|it| {
-            let r = Rect::new(x, y, s, s);
-            y += s + g;
-            (*it, r)
-        })
+        .copied()
+        .zip(super::float_bar::column_rects(area, &[TOOLBAR.len()]))
         .collect()
 }
 
@@ -282,16 +272,11 @@ pub fn shapes_rects(area: Rect) -> Vec<(Item, Rect)> {
         .find(|(it, _)| *it == Item::MoreShapes)
         .map(|(_, r)| r)
         .expect("a barra tem o «mais formas»");
-    let (s, g) = (btn_px(), gap());
-    let x0 = more.x + more.w + Spacing::Sm.px();
+    let grid = super::float_bar::grid_rects(area, more, ShapeType::ALL.len(), 3);
     ShapeType::ALL
         .iter()
-        .enumerate()
-        .map(|(i, t)| {
-            let (col, row) = ((i % 3) as f32, (i / 3) as f32);
-            let r = Rect::new(x0 + col * (s + g), more.y + row * (s + g), s, s);
-            (Item::Pick(*t), r)
-        })
+        .map(|t| Item::Pick(*t))
+        .zip(grid)
         .collect()
 }
 
@@ -299,49 +284,14 @@ pub fn shapes_rects(area: Rect) -> Vec<(Item, Rect)> {
 /// por baixo da selecção quando não cabe por cima.
 #[must_use]
 pub fn style_rects(area: Rect, sel: Rect, what: Selected) -> Vec<(Item, Rect)> {
-    let (s, g) = (Spacing::Xl.px(), gap());
-    let sep = Spacing::Sm.px();
     let groups = style_groups(what);
-    // Um grupo de mais de `ROW_MAX` (as 16 cores das notas) vai em DUAS linhas; os outros ficam a
-    // meio da altura.
-    let cols = |len: usize| if len > ROW_MAX { len.div_ceil(2) } else { len };
-    let rows = if groups.iter().any(|gr| gr.len() > ROW_MAX) {
-        2.0
-    } else {
-        1.0
-    };
-    let bar_h = rows * s + (rows - 1.0) * g;
-    let n: usize = groups.iter().map(Vec::len).sum();
-    let width = groups.iter().map(|gr| cols(gr.len())).sum::<usize>() as f32 * (s + g)
-        + (groups.len() - 1) as f32 * sep;
-    let above = sel.y - bar_h - Spacing::Lg.px();
-    let y = if above >= area.y {
-        above
-    } else {
-        (sel.y + sel.h + Spacing::Lg.px()).min(area.y + area.h - bar_h)
-    };
-    let mut x = (sel.x + sel.w / 2.0 - width / 2.0)
-        .max(area.x)
-        .min(area.x + area.w - width);
-    let mut out = Vec::with_capacity(n);
-    for grp in groups {
-        let c = cols(grp.len());
-        let y0 = if c < grp.len() {
-            y
-        } else {
-            y + (bar_h - s) / 2.0
-        };
-        for (i, it) in grp.into_iter().enumerate() {
-            let (col, row) = ((i % c) as f32, (i / c) as f32);
-            out.push((it, Rect::new(x + col * (s + g), y0 + row * (s + g), s, s)));
-        }
-        x += c as f32 * (s + g) + sep;
-    }
-    out
+    let sizes: Vec<usize> = groups.iter().map(Vec::len).collect();
+    groups
+        .into_iter()
+        .flatten()
+        .zip(super::float_bar::strip_rects(area, sel, &sizes))
+        .collect()
 }
-
-/// Quantos controlos um grupo da barra de estilo leva numa linha só.
-const ROW_MAX: usize = 8;
 
 /// ⭐ Pinta as barras do quadro activo. `area` é a área do quadro no ecrã.
 #[allow(clippy::too_many_arguments)]
@@ -484,36 +434,22 @@ fn paint_item(
     on: bool,
 ) {
     let id = node(it);
-    let hover = matches!(
-        store.button_state(id),
-        Some(ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused)
+    let fg = super::float_bar::paint_button(
+        scene,
+        hit_index,
+        store,
+        theme,
+        id,
+        r,
+        on,
+        ColorToken::Text2,
     );
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-    if on {
-        fill_rounded_rect(scene, r, radius, resolve(ColorToken::AccentSoft, theme));
-    } else if hover {
-        fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg2, theme));
-    }
-    let fg = resolve(
-        if on {
-            ColorToken::Accent
-        } else {
-            ColorToken::Text2
-        },
-        theme,
-    );
-    let inset = Spacing::Xs.px();
-    let inner = Rect::new(
-        r.x + inset,
-        r.y + inset,
-        r.w - 2.0 * inset,
-        r.h - 2.0 * inset,
-    );
+    let inner = super::float_bar::inner(r);
     let line = f64::from(StrokeToken::Default.px());
     if notes::paint_icon(scene, text_system, theme, it, r, inner, fg, line)
         || pen::paint_icon(scene, theme, it, inner, fg, line)
     {
-        hit_index.register(id, r);
         return;
     }
     match it {
@@ -617,7 +553,6 @@ fn paint_item(
         | Item::Pen(_)
         | Item::Sketch => {}
     }
-    hit_index.register(id, r);
 }
 
 /// ⭐ Os cliques nas barras. Corre no pré-despacho (ids derivados não chegam a um handler de chrome).

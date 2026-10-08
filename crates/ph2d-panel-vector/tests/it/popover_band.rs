@@ -119,12 +119,12 @@ fn the_first_row_of_the_token_picker_lands_on_the_panels_band() {
 
 /// **A porta é UMA** — nenhum popover deste painel clampa contra a janela.
 ///
-/// ⚠️ Arch-gate porque o defeito é de GEOMETRIA e nasce no sítio da chamada: são nove popovers e o
-/// décimo nasce com o defeito se a região for escrita de novo. Todos passam pela porta da fundação
+/// ⚠️ Arch-gate porque o defeito é de GEOMETRIA e nasce no sítio da chamada: são oito popovers (o da categoria do
+/// catálogo saiu com a D10) e o nono nasce com o defeito se a região for escrita de novo. Todos passam pela porta da fundação
 /// (`panel::paint_dropdown_list`), e a REGIÃO que lhe entregam é a banda do layout.
 #[test]
 fn no_popover_in_this_panel_clamps_against_the_window() {
-    const FILES: [(&str, &str); 9] = [
+    const FILES: [(&str, &str); 8] = [
         ("paint_tokens.rs", include_str!("../../src/paint_tokens.rs")),
         (
             "paint_filters_blend.rs",
@@ -133,10 +133,6 @@ fn no_popover_in_this_panel_clamps_against_the_window() {
         (
             "paint_markers.rs",
             include_str!("../../src/paint_markers.rs"),
-        ),
-        (
-            "paint_catalog.rs",
-            include_str!("../../src/paint_catalog.rs"),
         ),
         (
             "font_dropdown.rs",

@@ -27,15 +27,7 @@ use std::sync::Once;
 /// O corpo inteiro do painel cabe — ver o `paint_in`.
 const TALL_VIEWPORT_H: f32 = HERO_VIEWPORT_H * 4.0;
 
-const SRC: &str = include_str!("../../src/paint_sections.rs");
 
-/// **As ferramentas, DERIVADAS do vocabulário** ([`DrawMode::ALL`]).
-///
-/// ⚠️⚠️ **Era uma lista escrita à mão de 14, com um `assert_eq!(len, 14)` ao lado — e ela deixou
-/// passar o 15.º modo (o Trim) em SILÊNCIO.** A asserção media o comprimento da própria lista, logo
-/// concordava consigo mesma para sempre. *Um censo que se verifica contra a sua própria cópia não é
-/// um censo*: a população tem de vir de quem a define.
-const TODAS: &[DrawMode] = DrawMode::ALL;
 
 fn hero_with_vector_panel() -> HeroScreen {
     static INIT: Once = Once::new();
@@ -76,124 +68,10 @@ fn snap_of(mode: DrawMode) -> VectorStyleSnapshot {
     }
 }
 
-/// ⭐ **O REPORT, medido nas 14 ferramentas**: a grade de tipos de forma sobe na Forma e em mais
-/// nenhuma. O caminho de volta é o pill *Shape* da fileira TOOL, que nunca sai.
-#[test]
-fn the_shape_catalog_belongs_to_the_shape_tool_and_to_no_other() {
-    let mut hero = hero_with_vector_panel();
-    for &m in TODAS {
-        paint_in(&mut hero, snap_of(m));
-        assert_eq!(
-            painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_SHAPE),
-            m == DrawMode::Shape,
-            "a grade de formas na ferramenta {m:?}"
-        );
-    }
-}
 
-/// Os knobs do Lápis: a única seção que já se escondia, e a guarda mudou-se para a tabela para
-/// haver **uma** resposta à pergunta.
-#[test]
-fn the_pencil_knobs_belong_to_the_pencil() {
-    let mut hero = hero_with_vector_panel();
-    for &m in TODAS {
-        paint_in(&mut hero, snap_of(m));
-        assert_eq!(
-            painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_PENCIL),
-            m == DrawMode::Pencil,
-            "os knobs do lapis na ferramenta {m:?}"
-        );
-    }
-}
 
-/// ⭐⭐ **A SIMETRIA é a excepção que a regra precisa**: opção de desenho, logo pertence aos modos
-/// que autoram geometria — **mas o efeito dela sobrevive à troca de ferramenta**, e o interruptor
-/// que a desliga é o único que existe.
-///
-/// ⛔ Escondê-la por modo com ela LIGADA deixaria o artista a ver o eixo na tela e sem nada para o
-/// apagar. *Um controlo cujo efeito sobrevive ao modo não pode ter o único interruptor escondido
-/// pelo modo.*
-#[test]
-fn the_symmetry_hides_outside_drawing_but_never_while_it_is_on() {
-    let mut hero = hero_with_vector_panel();
-    let autoram = [
-        DrawMode::Pen,
-        DrawMode::Pencil,
-        DrawMode::Shape,
-        DrawMode::Frame,
-    ];
-    for &m in TODAS {
-        paint_in(&mut hero, snap_of(m));
-        assert_eq!(
-            painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_SYMMETRY),
-            autoram.contains(&m),
-            "a simetria DESLIGADA na ferramenta {m:?}"
-        );
-    }
-    // …e ligada, ela aparece em TODAS — inclusive nas que não desenham nada.
-    for &m in TODAS {
-        let mut snap = snap_of(m);
-        snap.symmetry.on = true;
-        paint_in(&mut hero, snap);
-        assert!(
-            painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_SYMMETRY),
-            "a simetria LIGADA sumiu na ferramenta {m:?} — e e' o unico interruptor que a desliga"
-        );
-    }
-}
 
-/// ⚠️ **A fileira TOOL nunca sai** — ela é o caminho de volta para toda seção que este escopo
-/// esconde. Sem ela, esconder a grade de formas trancaria o artista fora da ferramenta.
-#[test]
-fn the_tool_row_survives_every_scope() {
-    let mut hero = hero_with_vector_panel();
-    for &m in TODAS {
-        paint_in(&mut hero, snap_of(m));
-        assert!(
-            painted(&hero, ph2d_tool_vector::ids::VECTOR_SECTION_TOOL),
-            "a fileira TOOL sumiu na ferramenta {m:?}"
-        );
-    }
-}
 
-/// ⭐⭐⭐ **O CENSO: toda seção do corpo DECLARA de quem é.**
-///
-/// ⚠️ **Nem mais** — nenhuma secção entra no corpo sem passar pela lista do plano (`p.seccao`, que
-/// leva o escopo na assinatura); **nem menos** — toda secção do painel está na lista. *Um `Always`
-/// implícito, repetido 38 vezes, foi o que pôs a grade de formas na ferramenta Select*: a tabela só
-/// serve se ninguém puder entrar sem passar por ela.
-///
-/// ⭐ Desde 2026-09-30 o corpo é uma LISTA pintada pela ordem do artista (`paint_body_plan.rs`), e
-/// a excepção da `path_section` (que fechava a dobra à mão por ser a última) **deixou de existir**:
-/// com a ordem a mudar não há «a última», e o plano fecha o cartão no fim.
-#[test]
-fn every_body_section_declares_which_tool_it_belongs_to() {
-    const PLANO: &str = include_str!("../../src/paint_body_plan.rs");
-    let ini = PLANO
-        .find("pub(crate) fn corpo")
-        .expect("a lista natural do corpo");
-    let corpo = &PLANO[ini..];
-    let declaradas = corpo.matches("p.seccao(VECTOR_SECTION_").count();
-    assert!(
-        declaradas >= 41,
-        "so' {declaradas} secoes declaram o escopo"
-    );
-    // ⚠️ A metade "nem mais": o corpo não chama secção nenhuma fora da lista.
-    let ini = SRC
-        .find("pub(crate) fn paint_body")
-        .expect("o orquestrador do corpo");
-    let fim = SRC[ini..]
-        .find("fn close_fold")
-        .expect("o fim do orquestrador")
-        + ini;
-    let orquestrador = &SRC[ini..fim];
-    assert!(
-        !orquestrador.contains("_section(") && !orquestrador.contains("_style("),
-        "o paint_body chama uma secao directamente, fora da lista do plano"
-    );
-    // ⭐ A metade "nem menos" — toda secção do painel está na lista — é o gate unitário
-    //    `a_lista_do_corpo_e_toda_seccao_do_painel` (`paint_body_plan.rs`), que lê a lista viva.
-}
 
 /// ⚠️⚠️ **A OUTRA METADE DO MESMO REPORT, e ela não é sobre a ferramenta: é sobre a SELEÇÃO.**
 ///
@@ -223,43 +101,6 @@ fn a_section_header_never_promises_a_body_that_is_not_there() {
     ph2d_panel_vector::set_current_effects(false, false, &[], Vec::new());
 }
 
-/// ⭐⭐ **As CINCO seções que são comandos sobre a seleção somem quando não há o que comandar** —
-/// Boolean · Expand · Envelope · Arrange · Path.
-///
-/// ⚠️ Cada controle delas foi seguido do `paint` até ao consumidor: todos param numa guarda de
-/// seleção (`input_dispatch.rs:124/191/350/416/447/478/1142`, `vec_expand.rs:100`,
-/// `envelope_live.rs:147`, `node_ops.rs:145`). Com a seleção vazia elas eram cabeçalho e botões que
-/// só sabiam recusar.
-#[test]
-fn the_selection_commands_vanish_when_there_is_nothing_to_command() {
-    let mut hero = hero_with_vector_panel();
-    let comandos = [
-        ("Boolean", ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN),
-        ("Expand", ph2d_tool_vector::ids::VECTOR_SECTION_EXPAND),
-        ("Envelope", ph2d_tool_vector::ids::VECTOR_SECTION_ENVELOPE),
-        ("Arrange", ph2d_tool_vector::ids::VECTOR_SECTION_ARRANGE),
-        ("Path", ph2d_tool_vector::ids::VECTOR_SECTION_PATH),
-    ];
-    ph2d_panel_vector::set_current_selection_count(0);
-    paint_in(&mut hero, snap_of(DrawMode::Select));
-    for (nome, id) in comandos {
-        assert!(
-            !painted(&hero, id),
-            "a secao {nome} sobe com a selecao vazia — todo botao dela so' sabe recusar"
-        );
-    }
-    // Controle: com UM caminho selecionado as cinco voltam — senão este gate passaria por elas
-    // estarem mortas, e não pela lei.
-    ph2d_panel_vector::set_current_selection_count(1);
-    paint_in(&mut hero, snap_of(DrawMode::Select));
-    for (nome, id) in comandos {
-        assert!(
-            painted(&hero, id),
-            "a secao {nome} nao voltou com uma selecao"
-        );
-    }
-    ph2d_panel_vector::set_current_selection_count(0);
-}
 
 /// ⛔⛔ **AS DUAS QUE NÃO PODEM SUMIR, e a razão é uma SEGUNDA SELEÇÃO INVISÍVEL.**
 ///

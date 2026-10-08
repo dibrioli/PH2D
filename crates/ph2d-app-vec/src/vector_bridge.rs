@@ -35,7 +35,7 @@ use ph2d_vec_scene::VecScene;
 mod style;
 /// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
 /// **restiliza de verdade** em vez de contar caminhos — o artista vê cores, não listas.
-pub use style::{StrokeStyle, restyle_selected_strokes};
+pub use style::{StrokeStyle, restyle_selected_strokes, seed_fill_from_paint};
 use style::{
     apply_fill_colour, rgba, seed_style_from_selection, selected_grad_color,
     set_selected_grad_color,
@@ -45,6 +45,22 @@ use style::{
 /// downcast fica confinado a este bridge (allowlist da gate
 /// `no_downcast_to_concrete_tool_in_shell`); o resto do shell chama por aqui. No-op se
 /// a tool Vector não está no registry.
+/// ⭐ **O conta-gotas entrega as cores** (D10): pelos MESMOS setters do seletor, que marcam a cor
+/// como autorada e a aplicam à seleção neste quadro. `None` deixa aquela cor como está.
+pub fn adopt_sample(tools: &mut ToolRegistry, fill: Option<[u8; 4]>, stroke: Option<[u8; 4]>) {
+    if let Some(tool) = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
+        t.as_any_mut()
+            .downcast_mut::<ph2d_tool_vector::VectorTool>()
+    }) {
+        if let Some(c) = fill {
+            tool.set_fill_rgba(c);
+        }
+        if let Some(c) = stroke {
+            tool.set_stroke_rgba(c);
+        }
+    }
+}
+
 pub fn set_mode(tools: &mut ToolRegistry, mode: ph2d_tool_vector::DrawMode) {
     if let Some(tool) = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
         t.as_any_mut()

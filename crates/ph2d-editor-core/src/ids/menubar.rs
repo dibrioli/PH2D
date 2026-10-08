@@ -67,6 +67,8 @@ pub const MENUBAR_FILE_SCENES: NodeId = hash_node_id("menubar_file_scenes");
 /// vetor. Desde que as réguas valem em todos os modos (Enio, 2026-08-30) esse sítio deixou de
 /// fazer sentido como o único — a régua é chrome de canvas, e o menu *View* é a casa dela.
 pub const MENUBAR_VIEW_RULERS: NodeId = hash_node_id("menubar_view_rulers");
+/// ⭐ *Ver ▸ Selection Actions* — religa (ou desliga) a barra de ações junto da seleção (D10 ④).
+pub const MENUBAR_VIEW_SELECTION_ACTIONS: NodeId = hash_node_id("menubar_view_selection_actions");
 
 /// ⭐⭐ **REPOR A ARRUMAÇÃO** — devolve cada painel ao encaixe que ele declara, as colunas à largura
 /// de fábrica, e apaga o ficheiro `~/.ph2d/layout.txt`.

@@ -13,7 +13,8 @@ fn legenda(e: &ToolRailEntry) -> Option<&str> {
         ToolRailEntry::Icon { sub, .. }
         | ToolRailEntry::Compound { sub, .. }
         | ToolRailEntry::Swatch { sub, .. }
-        | ToolRailEntry::Glyph { sub, .. } => Some(sub.as_str()).filter(|s| !s.is_empty()),
+        | ToolRailEntry::Glyph { sub, .. }
+        | ToolRailEntry::Number { sub, .. } => Some(sub.as_str()).filter(|s| !s.is_empty()),
         ToolRailEntry::Divider => None,
     }
 }

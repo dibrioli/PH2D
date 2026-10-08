@@ -3,7 +3,7 @@
 //!
 //! # ⛔ Por que os gates que já existiam ficaram VERDES sobre ele
 //!
-//! O id aparecia em quatro sítios — o `ids`, o `populate_symmetry`, o `paint_symmetry` e o censo
+//! O id aparecia em quatro sítios — o `ids`, o `populate_symmetry`, o `paint_symmetry` (hoje `symmetry_segments` + a fila ②, D10) e o censo
 //! `the_painted_control_reaches_a_consumer` — e **os quatro eram declaração, registo ou pintura**.
 //! O ponteiro alcançava a barra, o chip mudava de número, e não havia braço de evento nenhum: a
 //! contagem que a rosácea desenha ficava pregada no `6` do default para sempre.
@@ -25,8 +25,6 @@
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::zones::Rect;
-use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_symmetry::{MAX_SEGMENTS, MIN_SEGMENTS, SymmetryKind, SymmetryStyle};
@@ -35,25 +33,7 @@ use ph2d_ui_testkit::MockPanelHost;
 use ph2d_vec_scene::symmetry::{SymmetrySpec, symmetry_paths};
 use ph2d_vec_scene::{VecPath, VecVertex};
 
-const VIEWPORT: Rect = Rect {
-    x: 0.0,
-    y: 0.0,
-    w: 1600.0,
-    h: 900.0,
-};
-const SEC: u128 = 1_000_000_000;
 
-fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
-    PointerEvent {
-        kind,
-        x,
-        y,
-        button: PointerButton::Primary,
-        source: PointerSource::Mouse,
-        pressure: 1.0,
-        timestamp_ns: t,
-    }
-}
 
 /// Publica o que a shell publicaria: simetria LIGADA em **Radial** — sem isto a fileira de
 /// Segments nem é pintada (o `Enable` gateia a secção, e o Radial é o único tipo que a mostra).
@@ -129,7 +109,7 @@ fn tool_em_radial() -> VectorTool {
 fn the_segments_slider_delivers_its_count_to_the_rosette() {
     publica_radial();
     for (track, esperado) in [(0.0_f32, MIN_SEGMENTS), (1.0, MAX_SEGMENTS)] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         let mut tool = tool_em_radial();
         host.set_slider_value(ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS, track);
@@ -149,72 +129,6 @@ fn the_segments_slider_delivers_its_count_to_the_rosette() {
     ph2d_panel_vector::set_current_vector_style(None);
 }
 
-/// ⭐⭐ **O número que o artista LÊ é o número que a rosácea DESENHA** — com um arrasto de ponteiro
-/// a sério, no meio do curso.
-///
-/// ⚠️ **Três condições independentes**, e o defeito matava a terceira sozinha:
-/// 1. o ponteiro alcança a barra (o `register` no `populate` — a checagem de focalizabilidade mora
-///    no store);
-/// 2. o gesto MOVE alguma coisa (senão as duas metades concordariam em `6` para sempre e o gate
-///    ficava verde sobre uma barra congelada);
-/// 3. e o chip e a geometria dizem o MESMO número.
-#[test]
-fn the_chip_readout_and_the_drawn_copies_agree_after_a_real_drag() {
-    publica_radial();
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut st = VectorPanelState;
-    let mut tool = tool_em_radial();
-    let r = host
-        .painted_rect::<VectorPanel>(
-            &mut st,
-            VIEWPORT,
-            ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS,
-        )
-        .expect("a barra de Segments tem de ser PINTADA com area clicavel no modo Radial");
-    let cy = r.y + r.h * 0.5;
-    host.dispatch_pointer_event(pointer(PointerKind::Down, r.x + r.w * 0.25, cy, SEC));
-    let mut evs = host.dispatch_pointer_event(pointer(
-        PointerKind::Move,
-        r.x + r.w * 0.8,
-        cy,
-        SEC + SEC / 100,
-    ));
-    evs.extend(host.dispatch_pointer_event(pointer(
-        PointerKind::Up,
-        r.x + r.w * 0.8,
-        cy,
-        SEC + SEC / 50,
-    )));
-    assert!(
-        evs.iter()
-            .any(|e| matches!(e, WidgetEvent::ValueChanged(c) if *c == ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS)),
-        "arrastar a barra nao produziu ValueChanged - ela esta' desenhada e nao existe para o \
-         dispatcher (falta o `register` no populate)"
-    );
-    for ev in evs {
-        host.apply_panel_event::<VectorPanel>(&mut st, ev);
-    }
-    dreno(&mut host, &mut tool);
-
-    let lido = host
-        .store()
-        .number_value(ph2d_tool_vector::ids::VECTOR_SYM_SEGMENTS_NUM)
-        .expect("o chip de Segments tem de estar registado")
-        .round() as usize;
-    let desenhado = copias_desenhadas(&tool);
-    assert_ne!(
-        desenhado,
-        SymmetryStyle::default().segments as usize,
-        "o arrasto nao moveu a contagem - ela ficou no default, que e' exactamente o sintoma do \
-         controlo morto (a barra anda, o numero muda, e a rosacea nao)"
-    );
-    assert_eq!(
-        desenhado, lido,
-        "o chip diz {lido} copias e o kernel desenhou {desenhado} - o painel e o desenho estao a \
-         responder a MESMA pergunta com dois numeros"
-    );
-    ph2d_panel_vector::set_current_vector_style(None);
-}
 
 /// ⭐ **A outra mão: DIGITAR no chip também chega à rosácea, e NENHUM dos dois eventos fica órfão.**
 ///
@@ -226,7 +140,7 @@ fn the_chip_readout_and_the_drawn_copies_agree_after_a_real_drag() {
 #[test]
 fn typing_a_count_into_the_chip_reaches_the_rosette() {
     publica_radial();
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let mut tool = tool_em_radial();
     let alvo = MAX_SEGMENTS - 1;

@@ -31,6 +31,7 @@
 //! `dhat-rs`.
 
 mod area_menu;
+mod tool_bars;
 pub mod dispatch;
 pub mod drag;
 /// ⭐ **O que ATRAVESSA um painel** (plano `docs/Components/07`, B1) — a carga de um arrasto que
@@ -80,5 +81,6 @@ pub use types::{
 };
 // `ContextMenuKind`/`Request` live with `TrackMenuKind` (the menu-kind vocabulary).
 pub use area_menu::{AreaMenu, AreaMenus};
+pub use tool_bars::{BarButton, BarFace, BarFamily, ToolBars, ToolBarsSlot};
 pub use types_menu::{ContextMenuKind, ContextMenuRequest, TrackMenuKind};
 pub use util::{format_number, hsv_to_color_value};

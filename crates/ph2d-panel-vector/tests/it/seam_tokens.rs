@@ -76,7 +76,7 @@ fn the_two_token_chips_are_reachable() {
         (ids::VECTOR_TOKEN_FILL, "o chip de Fill"),
         (ids::VECTOR_TOKEN_STROKE, "o chip de Stroke"),
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         assert_eq!(
             host.dropdown_is_open(chip),
@@ -106,7 +106,7 @@ fn choosing_a_token_reaches_the_bus() {
     state::set_token_bindings(Some(bound(None, None, true)));
     for (prop, what) in [(0_u16, "Fill"), (1, "Stroke")] {
         for (i, row) in [(0_usize, "soltar"), (1, "o primeiro token")] {
-            let mut host = MockPanelHost::with_panel::<VectorPanel>();
+            let mut host = crate::host_aberto();
             let mut st = VectorPanelState;
             let chip = if prop == 0 {
                 ids::VECTOR_TOKEN_FILL
@@ -135,7 +135,7 @@ fn choosing_a_token_reaches_the_bus() {
 #[test]
 fn the_token_rows_are_absent_without_a_selection() {
     state::set_token_bindings(None);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     for id in [ids::VECTOR_TOKEN_FILL, ids::VECTOR_TOKEN_STROKE] {
         assert!(
@@ -155,7 +155,7 @@ fn the_token_rows_are_absent_without_a_selection() {
 fn the_stroke_row_follows_the_stroke_and_the_fill_row_does_not() {
     for (stroke_exists, expect) in [(true, true), (false, false)] {
         state::set_token_bindings(Some(bound(None, None, stroke_exists)));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         assert_eq!(
             host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TOKEN_STROKE)
@@ -180,7 +180,7 @@ fn the_stroke_row_follows_the_stroke_and_the_fill_row_does_not() {
 #[test]
 fn every_option_the_picker_paints_is_registered() {
     state::set_token_bindings(Some(bound(None, None, true)));
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     host.set_dropdown_open(ids::VECTOR_TOKEN_FILL, true);
     let _ = host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TOKEN_FILL);
@@ -243,7 +243,7 @@ fn choosing_a_token_closes_the_chip() {
         (0_u16, ids::VECTOR_TOKEN_FILL),
         (1, ids::VECTOR_TOKEN_STROKE),
     ] {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         host.set_dropdown_open(chip, true);
         press(
@@ -328,7 +328,7 @@ fn the_slash_is_painted_for_every_covered_control_and_only_when_bound() {
 fn the_width_chip_follows_the_stroke() {
     for (stroke_exists, expect) in [(true, true), (false, false)] {
         state::set_token_bindings(Some(bound(None, None, stroke_exists)));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         assert_eq!(
             host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TOKEN_WIDTH)
@@ -354,7 +354,7 @@ fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
     state::set_frame_clip(None);
     state::set_frame_present(false);
     state::set_layout_flow(None);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     for id in [ids::VECTOR_TOKEN_GAP_MAIN, ids::VECTOR_TOKEN_GAP_CROSS] {
         assert!(
@@ -385,7 +385,7 @@ fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
             justify: ph2d_panel_vector::ids::VECTOR_LAYOUT_JUSTIFY_START,
             columns: 2.0,
         }));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         assert!(
             host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TOKEN_GAP_MAIN)
@@ -467,7 +467,7 @@ fn every_token_slot_is_alive_and_lists_its_own_table() {
     }));
 
     for slot in ids::TOKEN_SLOTS {
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         press(
             &mut host,

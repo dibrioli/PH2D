@@ -31,6 +31,8 @@ pub const VECTOR_MODE_TRIM: NodeId = hash_node_id("vector.mode.trim");
 /// ⭐⭐⭐ **Balde** — o 16º modo (plano 40). Vizinho do Trim e do Corte porque os três apontam uma
 /// REGIÃO que já está na tela em vez de a autorar: aqueles removem, este preenche.
 pub const VECTOR_MODE_BUCKET: NodeId = hash_node_id("vector.mode.bucket");
+/// **O conta-gotas** (tecla `I`, D10) — clicar num caminho copia o preenchimento e o traço dele.
+pub const VECTOR_MODE_EYEDROPPER: NodeId = hash_node_id("vector.mode.eyedropper");
 
 /// **Minus Back** — a forma da FRENTE menos a união de tudo o que está atrás.
 pub const VECTOR_BOOL_MINUS_BACK: NodeId = hash_node_id("vector.bool.minus_back");

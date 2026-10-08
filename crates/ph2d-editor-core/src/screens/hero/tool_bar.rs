@@ -93,25 +93,35 @@ pub fn bar_split(
     let rail = bar_rail(store, text_system, painter_active, image_tools_on);
     let size = store.rail_button_size();
     let content_w = (area_w - Spacing::Xs.px() * 2.0).max(0.0);
-    let gap = Spacing::Xs.px();
-    let chip = size.chip_px();
     // Cabe tudo? Então não há `⋯` nenhum — e um chip de transbordo vazio seria um controlo morto.
     if crate::widget::horizontal_lines(&rail, content_w, size) <= 1 {
         return (rail, Vec::new());
     }
-    let budget = (content_w - chip - gap).max(0.0);
+    let more = crate::widget::ToolRailEntry::icon(
+        ids::TOOL_BAR_OVERFLOW,
+        tr("chrome.tool_bar.more"),
+        crate::icons::IconId::MoreHorizontal,
+    )
+    .with_sub("");
+    // ⛔⛔ **O corte pergunta o MESMO que o pintor** — *a fila com esta entrada e o `⋯` fica numa
+    // linha?* — pela mesma função ([`crate::widget::horizontal_lines`]). Medido em 2026-10-07 (D10,
+    // a fila do lápis com a simetria radial no iPad 12,9"): a soma deste laço (`along + gap +
+    // advance`, com `≤`) e a da porta (`along += gap; along += advance`, com `>`) arredondam
+    // diferente num encaixe EXACTO de `730 px`, e o `⋯` cabia aqui e quebrava de linha lá — onde a
+    // faixa o cortava e ele ficava INVISÍVEL. *Duas contas da mesma pergunta divergem no limite.*
+    let one_line = |fits: &[crate::widget::ToolRailEntry], next: &crate::widget::ToolRailEntry| {
+        let mut probe: Vec<crate::widget::ToolRailEntry> = fits.to_vec();
+        probe.push(next.clone());
+        while matches!(probe.last(), Some(crate::widget::ToolRailEntry::Divider)) {
+            probe.pop();
+        }
+        probe.push(more.clone());
+        crate::widget::horizontal_lines(&ToolRail::new(NodeId(203), "", probe), content_w, size) <= 1
+    };
     let mut fits: Vec<crate::widget::ToolRailEntry> = Vec::new();
     let mut over: Vec<crate::widget::ToolRailEntry> = Vec::new();
-    let mut along = 0.0_f32;
     for entry in rail.entries {
-        let advance = crate::widget::entry_advance(&entry, chip, RailAxis::Horizontal);
-        let next = if fits.is_empty() {
-            advance
-        } else {
-            along + gap + advance
-        };
-        if over.is_empty() && next <= budget {
-            along = next;
+        if over.is_empty() && one_line(&fits, &entry) {
             fits.push(entry);
         } else {
             over.push(entry);
@@ -125,14 +135,7 @@ pub fn bar_split(
     while matches!(over.first(), Some(crate::widget::ToolRailEntry::Divider)) {
         over.remove(0);
     }
-    fits.push(
-        crate::widget::ToolRailEntry::icon(
-            ids::TOOL_BAR_OVERFLOW,
-            tr("chrome.tool_bar.more"),
-            crate::icons::IconId::MoreHorizontal,
-        )
-        .with_sub(""),
-    );
+    fits.push(more);
     (
         ToolRail::new(NodeId(203), tr("chrome.rail.editor_tools"), fits),
         over,
@@ -181,6 +184,22 @@ pub fn bar_rail(
     image_tools_on: bool,
 ) -> ToolRail {
     let mut entries = rail_entries(store, painter_active);
+    // ⭐⭐ **O PRODUTOR do módulo** ([`crate::interaction::ToolBars`], hoje o Vetor — D10 ②). A ORDEM
+    // é a PRIORIDADE DECLARADA, porque o `⋯` leva a cauda: as opções do gesto entram À FRENTE dos
+    // chips do gizmo (saem por último), e o resto atrás deles. Medido na F0 (07/10): em Edit + Node
+    // a fila pede `1 051 px` e um iPad 12,9" dá `730` — a ordem é que decide o que fica à mão.
+    if let Some(bars) = store.tool_bars() {
+        if !bars.row_lead.is_empty() {
+            let chips = std::mem::take(&mut entries);
+            entries.extend(bars.row_lead.iter().cloned());
+            entries.push(crate::widget::ToolRailEntry::Divider);
+            entries.extend(chips);
+        }
+        if !bars.row_tail.is_empty() {
+            entries.push(crate::widget::ToolRailEntry::Divider);
+            entries.extend(bars.row_tail.iter().cloned());
+        }
+    }
     if image_tools_on {
         let tools = super::topbar::image_tool_rail_entries(store);
         if !tools.is_empty() {

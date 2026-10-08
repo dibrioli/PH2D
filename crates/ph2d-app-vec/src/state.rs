@@ -78,6 +78,9 @@ pub struct VecState {
     /// A cena da APARÊNCIA do objecto (`PH2D_VEC_APPEARANCE_SMOKE`) já montou.
     pub appearance_smoke_done: bool,
 
+    /// A ferramenta SEGURADA pela tecla (D10, a temporária) — ver [`crate::tool_keys`].
+    pub tool_hold: Option<crate::tool_keys::Hold>,
+
     /// O **overlay ordenado** de TODOS os blends (passos + fontes reempilhadas, em z), cozido em
     /// MUNDO a cada frame pelo `blend_live::recook` e desenhado por
     /// `ph2d_vec_render::draw_blend_overlay`. Não está na cena (não é pickável) — é o que torna o

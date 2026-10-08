@@ -241,6 +241,16 @@ fn slider_chip_inner(
 /// plano estourava o teto de 200 LOC por função dos painéis.
 pub fn populate(store: &mut WidgetStore) {
     populate_sections(store);
+    // ⭐ D10 ③: Contêiner, Interação e Avançado nascem RECOLHIDOS — e só se o artista ainda não
+    // escolheu (a dobra dele manda, `set_collapsed_if_unchosen`). Recolhido, nunca escondido.
+    for id in crate::paint_body_plan::COLLAPSED_BY_DEFAULT {
+        store.set_collapsed_if_unchosen(id, true);
+    }
+    // ⭐ As duas amostras abrem o seletor partilhado num Down — marcadas AQUI e não no paint do
+    // painel, porque a coluna ① e a fila ② (D10) pintam-nas com o painel fechado. Uma pertença a
+    // conjunto, pelo tempo de vida do build.
+    store.register_picker_swatch(ph2d_tool_vector::ids::VECTOR_STROKE_SWATCH);
+    store.register_picker_swatch(ph2d_tool_vector::ids::VECTOR_FILL_SWATCH);
     populate_shape(store);
     ops::populate_ops(store);
     style::populate_style(store);
@@ -341,19 +351,6 @@ fn populate_shape(store: &mut WidgetStore) {
     for i in 0..shapes::SHAPES.len() {
         button(store, ph2d_tool_vector::ids::vector_shape_id(i));
     }
-    for i in 0..shapes::ALL_GROUPS.len() {
-        button(store, ph2d_tool_vector::ids::vector_shape_group_id(i));
-    }
-    // O chip de CATEGORIA (um `Dropdown`): abrir / fechar / roda vêm de graça do dispatch
-    // genérico. As OPÇÕES do popover são os botões de família acima.
-    store.register_if_absent(
-        ph2d_tool_vector::ids::VECTOR_SHAPE_GROUP_DD,
-        InteractiveState::Dropdown {
-            state: DropdownState::Normal,
-            open: false,
-            selected_index: None,
-        },
-    );
 
     // Os campos de parâmetro (`MAX_SHAPE_FIELD_SLOTS`): caixas numéricas genéricas. A
     // FAIXA de cada uma depende da forma em foco, então a shell a re-registra quando o

@@ -290,27 +290,6 @@ pub(crate) fn apply_event(
         {
             true
         }
-        // **Opção de CATEGORIA** (uma linha do popover do chip): a família é estado
-        // só-do-painel (não vira evento de tool). Fechamos o chip à mão — o light-dismiss
-        // genérico não dispara, porque o clique é DENTRO do popover (mesmo caminho do
-        // dropdown de fonte).
-        WidgetEvent::Click(id) if state::shape_group_index(id).is_some() => {
-            seam_reset_button(host, id);
-            let index = state::shape_group_index(id);
-            if let Some(g) = index.and_then(|i| ph2d_tool_vector::shapes::ALL_GROUPS.get(i)) {
-                state::set_current_shape_group(Some(*g));
-            }
-            if let Some(InteractiveState::Dropdown {
-                open,
-                selected_index,
-                ..
-            }) = host.store_mut().get_mut(tool_ids::VECTOR_SHAPE_GROUP_DD)
-            {
-                *open = false;
-                *selected_index = index;
-            }
-            true
-        }
         WidgetEvent::Click(id) if state::shape_index(id).is_some() => {
             seam_reset_button(host, id);
             host.bus_mut()
@@ -353,6 +332,12 @@ pub(crate) fn apply_event(
         // custaria ADR + Coord-only para dizer o que este já diz.
         WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if signal_name_row(id).is_some() => {
             signal_name_commit(host, id)
+        }
+        // **`X` — o foco da cor** (D10): passa ao outro swatch e abre o seletor nele.
+        WidgetEvent::Click(id) if id == tool_ids::VECTOR_COLOUR_FOCUS => {
+            let swatch = crate::bars::toggle_focus();
+            host.store_mut().open_picker_on(swatch);
+            true
         }
         WidgetEvent::Click(id) if forwards_plain_click(id) => {
             seam_reset_button(host, id);

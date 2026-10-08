@@ -51,6 +51,7 @@ mod store_census;
 mod store_core;
 mod store_hierarchy;
 mod timeline_ops;
+mod tool_bars_ops;
 mod widget_accessors;
 
 use ph2d_a11y::NodeId;
@@ -512,6 +513,7 @@ pub struct WidgetStore {
     /// **diz** fechado, e uma lista de 14 linhas com uma face só volta a ser o depósito da foto 3,
     /// mudado de sítio. O orçamento medido é `3` chips ([`crate::ids::area_menu_button`]).
     pub(super) area_menus: crate::interaction::AreaMenus,
+    pub(super) tool_bars: crate::interaction::ToolBarsSlot,
     /// ⭐⭐⭐ **O QUE O MÓDULO ACRESCENTA A UM MENU QUE JÁ EXISTE** — a metade 1 da **D2**.
     ///
     /// O corte da D2 é por **âmbito**: *vale em todo o app ⇒ barra global; vale só naquele editor

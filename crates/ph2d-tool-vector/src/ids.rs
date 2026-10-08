@@ -11,6 +11,8 @@
 
 mod vector;
 pub use vector::*;
+mod vector_colour;
+pub use vector_colour::*;
 mod vector_cut;
 pub use vector_cut::*;
 mod vector_frame;

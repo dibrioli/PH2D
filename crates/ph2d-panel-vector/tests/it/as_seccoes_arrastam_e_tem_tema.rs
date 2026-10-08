@@ -12,7 +12,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::VectorPanel;
 use ph2d_panel_vector::state::VectorPanelState;
-use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect {
     x: 0.0,
@@ -64,7 +63,7 @@ fn rect_of(rects: &[(NodeId, Rect)], id: NodeId) -> Rect {
 /// o menu aberto é o `CreateNote`.*
 #[test]
 fn o_botao_direito_no_titulo_abre_o_menu_de_tema_da_seccao() {
-    let mut h = MockPanelHost::with_panel::<VectorPanel>();
+    let mut h = crate::host_aberto();
     let mut st = VectorPanelState;
     let r = h.paint::<VectorPanel>(&mut st, VIEWPORT);
     let vista = a_vista(&r);
@@ -96,7 +95,7 @@ fn o_botao_direito_no_titulo_abre_o_menu_de_tema_da_seccao() {
 /// baixo.*
 #[test]
 fn arrastar_a_pega_poe_a_seccao_onde_se_larga() {
-    let mut h = MockPanelHost::with_panel::<VectorPanel>();
+    let mut h = crate::host_aberto();
     let mut st = VectorPanelState;
     let r = h.paint::<VectorPanel>(&mut st, VIEWPORT);
     let vista = a_vista(&r);

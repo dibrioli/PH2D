@@ -217,7 +217,9 @@ fn every_door_the_names_enter_by_translates_them() {
         // ⭐ As PORTAS do catálogo (2026-09-17) — cada uma é o único sítio por onde aquela família
         //   entra no painel. ⚠️ Em inglês a tabela diz o mesmo que o motor, logo apagar uma destas
         //   chamadas não muda um pixel e nenhum gate de glifos a veria.
-        ("paint_catalog.rs", &["nomes_do_motor::forma("][..]),
+        // ⚠️ D10 (07/10): o catálogo pinta-se no flyout da coluna ① — o nome da forma é a dica
+        //   do botão dela, e entra por `bars.rs`.
+        ("bars.rs", &["nomes_do_motor::forma("][..]),
         ("paint_modes.rs", &["nomes_do_motor::campo("][..]),
         ("paint_connector.rs", &["nomes_do_motor::conector("][..]),
         ("paint_frame.rs", &["nomes_do_motor::moldura("][..]),

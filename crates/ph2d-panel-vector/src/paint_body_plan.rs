@@ -17,7 +17,6 @@ use crate::paint_sections::BodyCtx;
 use crate::section_scope::Scope;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::section_plan::{self, Faixa, Fantasma};
-use ph2d_tool_vector::params::DrawMode;
 use ph2d_vector::VectorScene;
 
 /// Uma secção à espera: recebe o corpo e o `y`, e devolve o `y` seguinte.
@@ -25,14 +24,12 @@ type Tarefa<'s> = Box<dyn for<'b> FnOnce(&mut BodyCtx<'b>, f32) -> f32 + 's>;
 
 /// ⭐⭐ **As secções deste quadro, pela ordem NATURAL em que o corpo as declara.**
 pub(crate) struct Seccoes<'s> {
-    mode: DrawMode,
     itens: Vec<(NodeId, Scope, Tarefa<'s>)>,
 }
 
 impl<'s> Seccoes<'s> {
-    pub(crate) fn new(mode: DrawMode) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            mode,
             itens: Vec::with_capacity(48),
         }
     }
@@ -62,7 +59,7 @@ impl BodyCtx<'_> {
     /// FANTASMA que segue o cursor, pintado no fim por cima do corpo.
     pub(crate) fn corre(&mut self, seccoes: Seccoes<'_>, mut y: f32) -> f32 {
         let painel = self.theme;
-        let Seccoes { mode, mut itens } = seccoes;
+        let Seccoes { mut itens } = seccoes;
         let natural: Vec<NodeId> = itens.iter().map(|(id, _, _)| *id).collect();
         let ordem = section_plan::ordem(&natural, self.store);
         let arrastada = self
@@ -79,7 +76,7 @@ impl BodyCtx<'_> {
                 continue;
             };
             let (_, scope, tarefa) = itens.swap_remove(i);
-            if !scope.covers(mode, seleccao) {
+            if !scope.covers(seleccao) {
                 continue;
             }
             let tema = section_plan::tema_da_seccao(self.store, id, painel);
@@ -164,31 +161,112 @@ impl BodyCtx<'_> {
 /// ⭐ **Toda secção DECLARA de quem é** ([`crate::section_scope`], report do Enio de 2026-08-31:
 /// *"deixar no painel apenas o que é útil para a ferramenta em uso"*) — o gate
 /// `every_body_section_declares_which_tool_it_belongs_to` conta as duas metades.
+/// ⭐ D10 ③ — as secções que nascem RECOLHIDAS: Avançado (o resto das booleanas e do arranjo),
+/// Contêiner e Interação. Antes abriam ANTES do Stroke (foto `antes_01`): o `States`, com quatro
+/// linhas `Rec` e onze curvas, ocupava o meio do painel.
+pub(crate) const COLLAPSED_BY_DEFAULT: [NodeId; 10] = [
+    ph2d_tool_vector::ids::VECTOR_SECTION_BOOLEAN,
+    ph2d_tool_vector::ids::VECTOR_SECTION_ARRANGE,
+    ph2d_tool_vector::ids::VECTOR_SECTION_FRAME,
+    ph2d_tool_vector::ids::VECTOR_SECTION_CLIP,
+    crate::ids::VECTOR_SECTION_LAYOUT,
+    crate::ids::VECTOR_SECTION_ANCHORS,
+    crate::ids::VECTOR_SECTION_COMPONENT,
+    crate::ids::VECTOR_SECTION_WIDGET,
+    crate::ids::VECTOR_SECTION_STATES,
+    crate::ids::VECTOR_SECTION_MORPH_STATES,
+];
+
 pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Seccoes<'s> {
     #[allow(clippy::wildcard_imports)]
     use crate::ids::*;
     use crate::section_scope as scope;
     #[allow(clippy::wildcard_imports)]
     use ph2d_tool_vector::ids::*;
-    let mut p = Seccoes::new(snap.mode);
-    p.seccao(VECTOR_SECTION_TOOL, scope::ALWAYS, |b, y| {
-        b.tool_section(snap, y)
+    let mut p = Seccoes::new();
+    // ⛔ D10: `Tool` → coluna ①; o catálogo `Shape` → flyout da ①; `Pencil`, `Symmetry` e `Snap` →
+    // fila ②; `Path` → ② (no Node), ④ e o ⚙ (no Select). Saíram do painel na mesma obra: *um
+    // comando, uma porta*. O que fica é o que a SELEÇÃO é, por esta ordem.
+    // ③ o que a SELEÇÃO é (D10, `03_plano.md` §2) — Alinhar no topo (com seleção), a geometria, a aparência e a cor.
+    p.seccao(VECTOR_SECTION_ALIGN, scope::ALWAYS, |b, y| {
+        b.align_section(y)
     });
-    p.seccao(VECTOR_SECTION_SHAPE, scope::CATALOG, |b, y| {
-        b.shape_catalog_section(snap, y)
+    p.seccao(VECTOR_SECTION_TRANSFORM, scope::ALWAYS, |b, y| {
+        b.transform_section(y)
     });
-    // O LÁPIS entra entre a fileira TOOL e os parâmetros da forma: os três respondem "o que estou
-    // desenhando, e como". Some inteira fora do modo Pencil.
-    p.seccao(VECTOR_SECTION_PENCIL, scope::PENCIL, |b, y| {
-        b.pencil_section(snap, y)
+    p.seccao(VECTOR_SECTION_APPEARANCE, scope::ALWAYS, |b, y| {
+        b.appearance_section(y)
     });
-    // A SIMETRIA é uma OPÇÃO das ferramentas de desenho, então mora ao lado do que decide o que se
-    // desenha — e não entre os deformadores, que é onde ela estava quando era um efeito.
-    p.seccao(VECTOR_SECTION_SYMMETRY, scope::symmetry(snap), |b, y| {
-        b.symmetry_section(snap, y)
+    p.seccao(VECTOR_SECTION_FILL, scope::ALWAYS, |b, y| {
+        b.fill_style(snap, y)
     });
-    // A MOLDURA e o RECORTE são propriedades do OBJETO que se acabou de desenhar; o AUTO LAYOUT diz
-    // o que o contêiner FAZ com o conteúdo, e as ÂNCORAS são a outra metade da mesma pergunta.
+    p.seccao(VECTOR_SECTION_FILL_TYPE, scope::ALWAYS, |b, y| {
+        b.fill_type_section(y)
+    });
+    p.seccao(VECTOR_SECTION_TEXPAT, scope::ALWAYS, |b, y| {
+        b.texture_pattern_section(0, y)
+    });
+    p.seccao(VECTOR_SECTION_STROKE, scope::ALWAYS, |b, y| {
+        b.stroke_style(snap, y)
+    });
+    p.seccao(VECTOR_SECTION_TEXPAT_STROKE, scope::ALWAYS, |b, y| {
+        b.texture_pattern_section(1, y)
+    });
+    p.seccao(VECTOR_SECTION_BRUSH, scope::ALWAYS, |b, y| {
+        b.brush_section(y)
+    });
+    // O específico do TIPO seleccionado (cada uma some sozinha quando não é o tipo).
+    p.seccao(VECTOR_SECTION_SHAPE_PARAMS, scope::ALWAYS, |b, y| {
+        b.shape_params_section(snap, y)
+    });
+    p.seccao(VECTOR_SECTION_CONNECTOR, scope::ALWAYS, |b, y| {
+        b.connector_section(y)
+    });
+    p.seccao(VECTOR_SECTION_TEXT, scope::ALWAYS, |b, y| b.text_section(y));
+    p.seccao(VECTOR_SECTION_FONT, scope::ALWAYS, |b, y| b.font_section(y));
+    p.seccao(VECTOR_SECTION_PARAGRAPH, scope::ALWAYS, |b, y| {
+        b.paragraph_section(y)
+    });
+    p.seccao(VECTOR_SECTION_TEXTPATH, scope::ALWAYS, |b, y| {
+        b.textpath_section(y)
+    });
+    p.seccao(VECTOR_SECTION_AXES, scope::ALWAYS, |b, y| b.axes_section(y));
+    p.seccao(VECTOR_SECTION_VERTEX, scope::ALWAYS, |b, y| {
+        b.vertex_section(y)
+    });
+    // Efeitos.
+    p.seccao(VECTOR_SECTION_EFFECTS, scope::ALWAYS, |b, y| {
+        b.effects_section(y)
+    });
+    p.seccao(VECTOR_SECTION_FILTERS, scope::ALWAYS, |b, y| {
+        b.filters_section(y)
+    });
+    p.seccao(VECTOR_SECTION_EXPAND, scope::WHEN_SELECTED, |b, y| {
+        b.expand_section(y)
+    });
+    p.seccao(VECTOR_SECTION_BLEND, scope::ALWAYS, |b, y| {
+        b.blend_section(snap, y)
+    });
+    p.seccao(VECTOR_SECTION_MORPH, scope::ALWAYS, |b, y| {
+        b.morph_section(y)
+    });
+    p.seccao(VECTOR_SECTION_ENVELOPE, scope::WHEN_SELECTED, |b, y| {
+        b.envelope_section(y)
+    });
+    p.seccao(VECTOR_SECTION_PATTERNPATH, scope::ALWAYS, |b, y| {
+        b.patternpath_section(y)
+    });
+    p.seccao(VECTOR_SECTION_CONTOUR, scope::ALWAYS, |b, y| {
+        b.contour_section(y)
+    });
+    // ▸ Avançado — o resto das booleanas e do arranjo (os verbos frequentes estão na barra ④). Recolhido por omissão.
+    p.seccao(VECTOR_SECTION_BOOLEAN, scope::WHEN_SELECTED, |b, y| {
+        b.boolean_section(y)
+    });
+    p.seccao(VECTOR_SECTION_ARRANGE, scope::WHEN_SELECTED, |b, y| {
+        b.arrange_section(y)
+    });
+    // ▸ Contêiner — recolhido por omissão (antes abria ANTES do Stroke: foto `antes_01`).
     p.seccao(VECTOR_SECTION_FRAME, scope::ALWAYS, |b, y| {
         b.frame_section(y)
     });
@@ -199,8 +277,7 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     p.seccao(VECTOR_SECTION_ANCHORS, scope::ALWAYS, |b, y| {
         b.anchors_section(y)
     });
-    // OS COMPONENTES: uma instância é primeiro uma forma (pose, moldura, regra) e só depois uma
-    // cópia de outra coisa.
+    // ▸ Interação — recolhido por omissão.
     p.seccao(VECTOR_SECTION_COMPONENT, scope::ALWAYS, |b, y| {
         b.component_section(y)
     });
@@ -210,100 +287,8 @@ pub(crate) fn corpo<'s>(snap: &'s ph2d_tool_vector::VectorStyleSnapshot) -> Secc
     p.seccao(VECTOR_SECTION_STATES, scope::ALWAYS, |b, y| {
         b.ui_states_section(y)
     });
-    p.seccao(VECTOR_SECTION_SHAPE_PARAMS, scope::ALWAYS, |b, y| {
-        b.shape_params_section(snap, y)
-    });
-    // O CONECTOR seleccionado é irmã da secção acima: as duas respondem "o que é este objeto que eu
-    // seleccionei, e como o afino?".
-    p.seccao(VECTOR_SECTION_CONNECTOR, scope::ALWAYS, |b, y| {
-        b.connector_section(y)
-    });
-    p.seccao(VECTOR_SECTION_TEXT, scope::ALWAYS, |b, y| b.text_section(y));
-    p.seccao(VECTOR_SECTION_FONT, scope::ALWAYS, |b, y| b.font_section(y));
-    p.seccao(VECTOR_SECTION_PARAGRAPH, scope::ALWAYS, |b, y| {
-        b.paragraph_section(y)
-    });
-    // Text on Path fica com as outras secções de TEXTO: o artista procura-a onde afina o texto.
-    p.seccao(VECTOR_SECTION_TEXTPATH, scope::ALWAYS, |b, y| {
-        b.textpath_section(y)
-    });
-    p.seccao(VECTOR_SECTION_AXES, scope::ALWAYS, |b, y| b.axes_section(y));
-    p.seccao(VECTOR_SECTION_STROKE, scope::ALWAYS, |b, y| {
-        b.stroke_style(snap, y)
-    });
-    // ⭐⭐ A PATTERN do TRAÇO (tinta 1) — IRMÃ da *Stroke*, nunca aninhada (uma dobra não aninha), e
-    // a do PINCEL ao lado: as duas descrevem a mesma linha.
-    p.seccao(VECTOR_SECTION_TEXPAT_STROKE, scope::ALWAYS, |b, y| {
-        b.texture_pattern_section(1, y)
-    });
-    p.seccao(VECTOR_SECTION_BRUSH, scope::ALWAYS, |b, y| {
-        b.brush_section(y)
-    });
-    p.seccao(VECTOR_SECTION_FILL, scope::ALWAYS, |b, y| {
-        b.fill_style(snap, y)
-    });
-    p.seccao(VECTOR_SECTION_FILL_TYPE, scope::ALWAYS, |b, y| {
-        b.fill_type_section(y)
-    });
-    // A lei do PADRÃO fica colada ao selector que a escolhe (a tinta 0, o preenchimento).
-    p.seccao(VECTOR_SECTION_TEXPAT, scope::ALWAYS, |b, y| {
-        b.texture_pattern_section(0, y)
-    });
-    p.seccao(VECTOR_SECTION_SNAP, scope::ALWAYS, |b, y| b.snap_section(y));
-    p.seccao(VECTOR_SECTION_TRANSFORM, scope::ALWAYS, |b, y| {
-        b.transform_section(y)
-    });
-    // A APARÊNCIA (opacidade + mistura) descreve a forma seleccionada como um todo, como o
-    // Transform.
-    p.seccao(VECTOR_SECTION_APPEARANCE, scope::ALWAYS, |b, y| {
-        b.appearance_section(y)
-    });
-    p.seccao(VECTOR_SECTION_VERTEX, scope::ALWAYS, |b, y| {
-        b.vertex_section(y)
-    });
-    p.seccao(VECTOR_SECTION_BOOLEAN, scope::WHEN_SELECTED, |b, y| {
-        b.boolean_section(y)
-    });
-    // Expand é irmã da Boolean: comandos destrutivos sobre a seleção, mesmo motor.
-    p.seccao(VECTOR_SECTION_EXPAND, scope::WHEN_SELECTED, |b, y| {
-        b.expand_section(y)
-    });
-    p.seccao(VECTOR_SECTION_BLEND, scope::ALWAYS, |b, y| {
-        b.blend_section(snap, y)
-    });
-    p.seccao(VECTOR_SECTION_MORPH, scope::ALWAYS, |b, y| {
-        b.morph_section(y)
-    });
-    // A MÁQUINA do Morph — secção própria, logo abaixo da que cria o objecto.
     p.seccao(VECTOR_SECTION_MORPH_STATES, scope::ALWAYS, |b, y| {
         b.morph_states_section(y)
-    });
-    // O Envelope, o Pattern on Path e o Contour são a família da geometria DERIVADA de uma relação
-    // viva; Effects é a generalização deles e Filters a irmã de pixels.
-    p.seccao(VECTOR_SECTION_ENVELOPE, scope::WHEN_SELECTED, |b, y| {
-        b.envelope_section(y)
-    });
-    p.seccao(VECTOR_SECTION_PATTERNPATH, scope::ALWAYS, |b, y| {
-        b.patternpath_section(y)
-    });
-    p.seccao(VECTOR_SECTION_CONTOUR, scope::ALWAYS, |b, y| {
-        b.contour_section(y)
-    });
-    p.seccao(VECTOR_SECTION_EFFECTS, scope::ALWAYS, |b, y| {
-        b.effects_section(y)
-    });
-    p.seccao(VECTOR_SECTION_FILTERS, scope::ALWAYS, |b, y| {
-        b.filters_section(y)
-    });
-    p.seccao(VECTOR_SECTION_ALIGN, scope::ALWAYS, |b, y| {
-        b.align_section(y)
-    });
-    p.seccao(VECTOR_SECTION_ARRANGE, scope::WHEN_SELECTED, |b, y| {
-        b.arrange_section(y)
-    });
-    // ⭐ A Path deixou de ser a excepção que fechava a dobra à mão: o plano fecha o cartão no fim.
-    p.seccao(VECTOR_SECTION_PATH, scope::WHEN_SELECTED, |b, y| {
-        b.path_section(y)
     });
     p
 }

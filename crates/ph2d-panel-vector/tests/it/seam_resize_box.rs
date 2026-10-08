@@ -13,7 +13,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_panel_vector::{VectorPanel, state};
-use ph2d_ui_testkit::MockPanelHost;
 
 // ⚠️ Alta de propósito: a porta da rolagem (`scroll_area`, spec `04_a_rolagem_unica`) recorta o
 // CLIQUE à banda do corpo, logo um controlo abaixo da dobra deixa de estar registado. A 900 px
@@ -50,7 +49,7 @@ fn clear() {
 }
 
 fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
 }
@@ -64,7 +63,7 @@ fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
 fn the_resize_box_checkbox_is_reachable_and_reaches_the_bus_in_both_states() {
     for checked in [true, false] {
         arm(Some(checked));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut panel_state = VectorPanelState;
         let r = host
             .painted_rect::<VectorPanel>(

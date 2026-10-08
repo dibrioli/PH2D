@@ -17,13 +17,14 @@ use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_panel_vector::{VectorPanel, state};
 use ph2d_tool_vector::frames::DEVICE_PRESETS;
-use ph2d_ui_testkit::MockPanelHost;
 
+// ⚠️ D10 (07/10): o painel ordena-se pelo que a SELEÇÃO é, e esta secção desceu — a janela
+// do fixture é alta para ela caber (o teste mede a fiação dela, não a dobra nem a ordem).
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 1600.0,
-    h: 900.0,
+    h: 4000.0,
 };
 const SEC: u128 = 1_000_000_000;
 
@@ -41,7 +42,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 
 /// Clica de verdade no widget `id` e exige que o Click chegue ao barramento.
 fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -68,12 +69,6 @@ fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
     );
 }
 
-/// **O 14º pill.** Ele é o único caminho para criar uma moldura, então morto sob o mouse a wave
-/// inteira fica inalcançável.
-#[test]
-fn the_frame_pill_is_reachable_and_reaches_the_bus() {
-    click_reaches_bus(ph2d_tool_vector::ids::VECTOR_MODE_FRAME, "o pill Frame");
-}
 
 /// **Os dois chips de recorte e os quatro presets**, com uma moldura selecionada.
 ///
@@ -128,7 +123,7 @@ fn the_show_as_panel_switch_is_reachable_and_reaches_the_bus() {
 fn the_switch_shows_whether_the_panel_is_open() {
     state::set_frame_clip(Some(true));
     state::set_frame_present(true);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     for open in [false, true] {
         state::set_frame_panel_open(open);
@@ -155,7 +150,7 @@ fn the_switch_shows_whether_the_panel_is_open() {
 fn the_frame_section_is_absent_without_a_frame() {
     state::set_frame_clip(None);
     state::set_frame_present(false);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     for id in [
         ph2d_panel_vector::ids::VECTOR_FRAME_CLIP_OFF,

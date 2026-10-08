@@ -44,7 +44,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 }
 
 fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut panel_state = VectorPanelState;
     let r = host
         .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -119,7 +119,7 @@ fn adding_the_fifth_chip_left_the_other_four_alive() {
 #[test]
 fn the_five_chips_do_not_overlap() {
     state::set_current_fill(Some(FillKind::Solid), None);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     let mut rects: Vec<(&str, Rect)> = Vec::new();
     for (id, name) in [
@@ -154,7 +154,7 @@ fn the_five_chips_do_not_overlap() {
 #[ignore = "sonda: imprime a disposicao, nao afirma nada"]
 fn measure_the_fill_kind_row_layout() {
     state::set_current_fill(Some(FillKind::Solid), None);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     for (id, name) in [
         (ph2d_tool_vector::ids::VECTOR_FILL_KIND_SOLID, "Solid"),
@@ -235,7 +235,7 @@ fn the_section_vanishes_for_a_shape_without_a_pattern() {
     state::set_current_fill(Some(FillKind::Solid), None);
     state::set_current_texture_pattern(0, None);
     state::set_current_texture_pattern(1, None);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host = crate::host_aberto();
     let mut st = VectorPanelState;
     assert!(
         host.painted_rect::<VectorPanel>(
@@ -248,7 +248,7 @@ fn the_section_vanishes_for_a_shape_without_a_pattern() {
     );
     // Controlo: com padrão publicado, ela sobe — senão este gate passaria num painel partido.
     state::set_current_texture_pattern(0, Some(row(0)));
-    let mut host2 = MockPanelHost::with_panel::<VectorPanel>();
+    let mut host2 = crate::host_aberto();
     assert!(
         host2
             .painted_rect::<VectorPanel>(
@@ -274,7 +274,7 @@ fn the_offset_row_only_shows_for_brick_and_column() {
     let shows = |kind: u8| {
         state::set_current_fill(Some(FillKind::Pattern), None);
         state::set_current_texture_pattern(0, Some(row(kind)));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         host.painted_rect::<VectorPanel>(
             &mut st,
@@ -317,7 +317,7 @@ fn the_clamp_mode_hides_only_the_phase_which_is_the_one_it_does_not_read() {
         let mut r = row(1); // Brick: com desfasamento, para o Offset ter direito a aparecer
         r.mode = mode;
         state::set_current_texture_pattern(0, Some(r));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
             .is_some()
@@ -431,7 +431,7 @@ fn the_seam_hint_shows_only_where_it_has_a_subject() {
         r.mode = mode;
         r.wrap_seam_visible = visivel;
         state::set_current_texture_pattern(0, Some(r));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         let _ = host.painted_rect::<VectorPanel>(
             &mut st,
@@ -486,7 +486,7 @@ fn the_missing_art_hint_names_the_dead_link() {
             ph2d_vec_pattern::PatternArt::Ready
         };
         state::set_current_texture_pattern(0, Some(r));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         let _ = host.painted_rect::<VectorPanel>(
             &mut st,
@@ -521,7 +521,7 @@ fn the_missing_art_hint_sits_above_the_buttons_that_fix_it() {
             ph2d_vec_pattern::PatternArt::Ready
         };
         state::set_current_texture_pattern(0, Some(r));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         host.painted_rect::<VectorPanel>(
             &mut st,
@@ -571,7 +571,7 @@ fn the_hint_pushes_what_follows_it_through_every_line_it_wraps_to() {
             ph2d_vec_pattern::PatternArt::Ready
         };
         state::set_current_texture_pattern(0, Some(r));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
             .expect("o botao e' pintado")
@@ -616,7 +616,7 @@ fn measure_where_the_hint_wraps() {
                 ph2d_vec_pattern::PatternArt::Ready
             };
             state::set_current_texture_pattern(0, Some(r));
-            let mut host = MockPanelHost::with_panel::<VectorPanel>();
+            let mut host = crate::host_aberto();
             let mut st = VectorPanelState;
             host.painted_rect::<VectorPanel>(
                 &mut st,
@@ -661,7 +661,7 @@ fn a_pattern_with_no_art_yet_offers_both_doors_and_says_a_different_sentence() {
         let mut r = row(0);
         r.art = art;
         state::set_current_texture_pattern(0, Some(r));
-        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut host = crate::host_aberto();
         let mut st = VectorPanelState;
         let topo = |host: &mut MockPanelHost, st: &mut VectorPanelState, k| {
             host.painted_rect::<VectorPanel>(
@@ -752,7 +752,7 @@ fn every_pattern_slider_reaches_the_bus_when_it_is_dragged() {
             state::set_stroke_paint_kind(Some(ph2d_panel_vector::StrokePaintKind::Pattern));
             state::set_current_texture_pattern(slot, Some(row(0)));
             let id = ph2d_panel_vector::texture_pattern::kid(slot, k);
-            let mut host = MockPanelHost::with_panel::<VectorPanel>();
+            let mut host = crate::host_aberto();
             let mut st = VectorPanelState;
             host.set_slider_value(id, 0.85);
             let outcome =

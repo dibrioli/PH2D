@@ -30,12 +30,6 @@ pub(crate) fn shape_index(id: NodeId) -> Option<usize> {
         .find(|&i| ph2d_tool_vector::ids::vector_shape_id(i) == id)
 }
 
-/// Índice da família cujo id de aba é `id`.
-pub(crate) fn shape_group_index(id: NodeId) -> Option<usize> {
-    (0..ph2d_tool_vector::shapes::ALL_GROUPS.len())
-        .find(|&i| ph2d_tool_vector::ids::vector_shape_group_id(i) == id)
-}
-
 /// Índice do eixo de variação cujo id de campo é `id` (`None` se não for um). Casa
 /// contra o espaço fixo de slots (`MAX_TEXT_VARIATION_AXES`).
 pub(crate) fn text_axis_index(id: NodeId) -> Option<usize> {

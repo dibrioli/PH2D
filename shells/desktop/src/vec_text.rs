@@ -25,19 +25,6 @@ use crate::vec_glyph::{
 };
 
 impl crate::app_state::App {
-    /// Tecla `T` na tool Vector: entra no modo Text (de qualquer modo) ou, se já está
-    /// nele, finaliza a edição corrente e volta ao Select. Atalho-padrão de ferramenta
-    /// de texto; a mesma troca de modo do botão do painel (W1.3 passo 2).
-    pub(crate) fn vec_text_toggle_mode(&mut self) {
-        use ph2d_tool_vector::DrawMode;
-        if self.vec.draw_config.mode == DrawMode::Text {
-            self.vec_text_finish();
-            self.vec_set_draw_mode(DrawMode::Select);
-        } else {
-            self.vec_set_draw_mode(DrawMode::Text);
-        }
-    }
-
     /// Troca o modo de desenho da tool Vector (a tool é a dona; `vec_draw_config` é
     /// espelho). O downcast fica no `vector_bridge` (allowlist da gate de downcast).
     /// Espelha na hora para o mesmo frame já rotear certo.
@@ -206,7 +193,7 @@ pub(crate) fn axes_of(edit: &VecTextEdit) -> Vec<(ph2d_vector_font::AxisTag, f32
 /// sessão viva no Select regeneraria o texto INTEIRO a cada mudança de Style —
 /// atingindo letras NÃO-selecionadas e trocando as ids dos paths, com o que o gizmo
 /// de seleção (preso às entidades antigas) sumia (Enio 2026-07-11). O botão de modo do
-/// painel não passa por `vec_text_toggle_mode`, então o commit precisa ser por frame.
+/// painel (e a tecla `T`, que é um clique no mesmo botão — D10) não finaliza a sessão sozinho, então o commit precisa ser por frame.
 pub(crate) fn sync_active_text_style(
     edit: &mut Option<VecTextEdit>,
     mode: ph2d_tool_vector::DrawMode,

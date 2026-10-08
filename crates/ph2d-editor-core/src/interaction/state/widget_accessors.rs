@@ -82,6 +82,32 @@ impl WidgetStore {
     }
 
     /// Convenience: read button state.
+    /// O que um chip numérico pinta a partir do store: o estado, o buffer em edição, o cursor e a
+    /// âncora da seleção — o `Normal` vazio quando o id não é um `NumberInput`. ⚠️ Um acessor, e
+    /// não um `match` no pintor: o `widget` não pergunta pelas variantes do `interaction` (a catraca
+    /// `the_foundation_modules_form_a_dag`).
+    #[must_use]
+    pub fn number_chip_view(
+        &self,
+        id: NodeId,
+    ) -> (
+        crate::widget::TextInputState,
+        Option<&str>,
+        usize,
+        Option<usize>,
+    ) {
+        match self.get(id) {
+            Some(InteractiveState::NumberInput {
+                state,
+                buffer,
+                caret,
+                selection_anchor,
+                ..
+            }) => (*state, Some(buffer.as_str()), *caret, *selection_anchor),
+            _ => (crate::widget::TextInputState::Normal, None, 0, None),
+        }
+    }
+
     pub fn button_state(&self, id: NodeId) -> Option<ButtonState> {
         match self.states.get(&id) {
             Some(InteractiveState::Button { state }) => Some(*state),

@@ -18,6 +18,10 @@ pub const TOOL_HOME: NodeId = hash_node_id("tool_home");
 /// desenho, justamente quando o ecrã faz falta
 /// (`docs/UI_New_and_Simple/medicoes/06_o_orcamento_de_ecra_em_tablet.md`).
 pub const TOOL_BAR_OVERFLOW: NodeId = hash_node_id("tool_bar_overflow");
+/// ④ **Fixar** a barra de ações da seleção no topo da área (deixa de seguir a seleção).
+pub const SELECTION_ACTIONS_PIN: NodeId = hash_node_id("selection_actions_pin");
+/// ④ **Desligar** a barra de ações da seleção (*Ver ▸ Selection Actions* religa-a).
+pub const SELECTION_ACTIONS_OFF: NodeId = hash_node_id("selection_actions_off");
 /// ⭐⭐⭐ **UM PULLDOWN DA ÁREA** — os comandos do editor que tem o canvas, agrupados por LEITURA.
 ///
 /// É a metade 2 da **D2** (*cabeçalho por área*) a aterrar **onde já se paga altura**: a faixa

@@ -7800,10 +7800,12 @@ dependencies = [
  "ph2d-panel-wet-tuning",
  "ph2d-panel-widget-gallery",
  "ph2d-panel-widget-lab",
+ "ph2d-symmetry",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-painter",
  "ph2d-tool-registry",
+ "ph2d-tool-vector",
  "ph2d-ui-testkit",
  "ph2d-vector",
 ]

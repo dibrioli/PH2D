@@ -346,7 +346,10 @@ impl ModeFamily for Family<'_> {
 /// passa a ela) e o seletor aberto — a foto mostra um objecto só na Hierarquia, em Edit, COM o gizmo.
 /// `PH2D_OBJECT_MODE_SMOKE=7` (os furos, 05/10): duas linhas que se cruzam pela CANETA (o Edit passa
 /// à 2.ª) e o *Weld* do painel — a solda consome a 2.ª, e a foto mostra a REDE em Edit, com o gizmo.
-/// Corre uma vez.
+/// `PH2D_OBJECT_MODE_SMOKE=9` (a nova UI do vetor, D10 — 07/10): no layout *Vetor*, um rectângulo e
+/// uma elipse, as DUAS seleccionadas, e a Caneta escolhida pelo MESMO clique que o botão dela na
+/// coluna ① dá — a foto mostra a coluna com a caneta acesa, a fila com as opções dela, a barra de
+/// ações por cima das duas formas e a dica da caneta no rodapé. Corre uma vez.
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -359,20 +362,23 @@ pub fn smoke_step(
     // 13 = a 1.ª linha · 14 = a 2.ª · 15 = o Weld · 16 = o Edit na rede.
     static STAGE: AtomicU8 = AtomicU8::new(0);
     static WELD: AtomicU8 = AtomicU8::new(0);
+    static BARS: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
             let scene = std::env::var("PH2D_OBJECT_MODE_SMOKE");
             let want = match scene.as_deref() {
-                Ok("6" | "7") => 1,
+                Ok("6" | "7" | "9") => 1,
                 _ => 9,
             };
             WELD.store(u8::from(scene.as_deref() == Ok("7")), Ordering::Relaxed);
+            BARS.store(u8::from(scene.as_deref() == Ok("9")), Ordering::Relaxed);
             STAGE.store(want, Ordering::Relaxed);
             want
         }
         s => s,
     };
     let weld = WELD.load(Ordering::Relaxed) == 1;
+    let bars = BARS.load(Ordering::Relaxed) == 1;
     let go = |next| STAGE.store(next, Ordering::Relaxed);
     let edit = hero.gizmo.mode.current() == ObjectMode::Edit;
     let shapes = vec.entities.len();
@@ -380,6 +386,13 @@ pub fn smoke_step(
     let newest = vec.entities.values().last().copied();
     match stage {
         1 if hero.gizmo.mode.current() == ObjectMode::Object => {
+            if bars {
+                // O layout do vetor (D7) — é nele que o rodapé ⑤ diz o que a ferramenta faz.
+                ph2d_editor_core::screens::hero::layout_switch::apply(
+                    hero,
+                    ph2d_editor_core::screens::task_layout::TaskLayout::Vector,
+                );
+            }
             hero.store.set_command_pick(crate::object_add::VECTOR.id());
             go(2);
         }
@@ -415,7 +428,23 @@ pub fn smoke_step(
         }
         4 if edit && shapes == 1 => {
             draw_shape(vec, scene, ShapeKind::Ellipse, [-0.6, 0.4], 0.7);
-            go(5);
+            go(if bars { 20 } else { 5 });
+        }
+        // D10: as duas seleccionadas e a Caneta pelo clique do botão dela na coluna ①.
+        20 if edit && shapes == 2 => {
+            let both: Vec<VecPathId> = vec.entities.keys().copied().collect();
+            vec.pen.select_many(&both);
+            hero.apply_event(ph2d_editor_core::interaction::WidgetEvent::Click(
+                ph2d_tool_vector::ids::VECTOR_MODE_PEN,
+            ));
+            go(21);
+        }
+        21 if hero
+            .store
+            .tool_bars()
+            .is_some_and(|b| b.column.iter().flatten().any(|x| x.on && x.id == ph2d_tool_vector::ids::VECTOR_MODE_PEN)) =>
+        {
+            go(9);
         }
         5 if edit && shapes == 2 && vec.edit.objects.first().copied() == newest => {
             let both: Vec<VecPathId> = vec.entities.keys().copied().collect();

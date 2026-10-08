@@ -741,6 +741,7 @@ fn o_atalho_do_ponto_fixo_nao_muda_um_bit() {
         colisores: &c,
         pesos: &w,
         inv_inercia: &inv,
+        ligados: None,
     };
     const VARREDURAS: usize = 1024;
     let (mut atalho, mut sempre) = (p0.clone(), p0.clone());
@@ -821,6 +822,7 @@ fn uma_peca_largada_longe_nao_muda_um_bit() {
         colisores: &c,
         pesos: &w,
         inv_inercia: &inv,
+        ligados: None,
     };
     let (mut grelha, mut todos) = (longe.clone(), longe.clone());
     let (mut g_grelha, mut g_todos) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
@@ -864,6 +866,7 @@ fn o_paralelo_da_os_mesmos_bits_que_o_serie() {
         colisores: &c,
         pesos: &w,
         inv_inercia: &inv,
+        ligados: None,
     };
     let (mut serie, mut paralelo) = (p0.clone(), p0.clone());
     let (mut g_serie, mut g_par) = (vec![0.0; p0.len()], vec![0.0; p0.len()]);
@@ -930,6 +933,7 @@ fn parar_no_repouso_visivel_nao_muda_o_que_se_ve() {
         colisores: &c,
         pesos: &w,
         inv_inercia: &inv,
+        ligados: None,
     };
     let conta = |p: &[[f32; 2]]| {
         let mut k = 0;

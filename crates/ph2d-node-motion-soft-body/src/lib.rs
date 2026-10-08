@@ -71,10 +71,12 @@ mod params_ui;
 use params_ui::{PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 mod cluster;
 mod columns;
+mod contacto;
 mod layout;
 mod shape;
 use cluster::cluster_goals_weighted;
 use columns::{accel_col, falloff_col, inv_mass_col, scalar_col, value_head, vec2_col};
+use contacto::{Contacto, veste};
 use layout::BodyLayout;
 #[cfg(test)]
 use shape::{boundary_area, rest_shape};
@@ -305,6 +307,7 @@ fn step(
     layout: &BodyLayout,
     dt: f32,
     p: &Params,
+    contacto: Option<&Contacto>,
 ) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
     let rest = &layout.rest;
     let n = pos.len();
@@ -418,7 +421,7 @@ fn step(
         let pull = p.stiffness
             * inv_mass.get(i).copied().unwrap_or(1.0)
             * falloff.map_or(1.0, |f| f.get(i).copied().unwrap_or(1.0));
-        let mut np = if p.is_pinned(layout, i) || pull <= 0.0 {
+        out_pos[i] = if p.is_pinned(layout, i) || pull <= 0.0 {
             pred[i] // pinned particles stay exactly on the pin
         } else {
             [
@@ -426,6 +429,15 @@ fn step(
                 pred[i][1] + (goals[i][1] - pred[i][1]) * pull,
             ]
         };
+    }
+    // ⭐ **O CONTACTO DENTRO DO PASSO** (doc 124 §6, a decisão do dono): com o `Collide` do Shape
+    // ligado as peças separam-se AQUI — depois do casamento de forma e ANTES de a velocidade ser
+    // lida, logo o contacto fica na velocidade e sub-tica com o corpo (o que o `sim.step` faz).
+    if let Some(c) = contacto {
+        c.separa(&mut out_pos, layout, p, inv_mass);
+    }
+    for i in 0..n {
+        let mut np = out_pos[i];
         // Velocity from the position change (this is what jiggles).
         let mut nv = [
             (np[0] - pos[i][0]) / dt * keep,
@@ -485,6 +497,7 @@ fn simulate(
     playhead: f32,
     p: &Params,
     body: f32,
+    contacto: Option<&Contacto>,
 ) -> Stream {
     // ⚠️ **A porta GANHA quando tem alguma coisa.** Vazia (desligada, ou um
     // montante que ainda não cozinhou) cai na malha autorada — e cair para o
@@ -535,6 +548,7 @@ fn simulate(
                 &layout,
                 dt,
                 p,
+                contacto,
             );
             let emitted = pos.clone();
             (pos, vel, emitted, dt)
@@ -585,12 +599,31 @@ impl NodeOp for MotionSoftBody {
             value_head(&scalar_col(ctx.input(1), VALUE_COL)),
         ];
         let state = ctx.input(2);
-        let shape_in = vec2_col(ctx.input(3), "P");
+        let forma = ctx.input(3);
+        let shape_in = vec2_col(forma, "P");
         // A identidade do corpo é a do NÓ (estável, nunca reusada), `+ 1` para o `0` ficar
         // «nenhum corpo». ⚠️ Exacta num `f32` até `2^24` nós num grafo.
         #[expect(clippy::cast_precision_loss, reason = "a chave de um no' e' pequena")]
         let body = (ctx.node_key() as f32) + 1.0;
-        let out = simulate(anchor, state, &shape_in, playhead, &p, body);
+        // ⭐ As peças que chegam pela porta `shape` trazem o colisor que DECLARAM (o `Collide` do
+        // Shape) e a APARÊNCIA delas — ver o [`contacto`]. Sem porta (ou sem declaração), o corpo
+        // de sempre.
+        let pecas = shape_in.len() >= 3;
+        let contacto = pecas
+            .then(|| Contacto::de(forma, shape_in.len(), body))
+            .flatten();
+        let mut out = simulate(
+            anchor,
+            state,
+            &shape_in,
+            playhead,
+            &p,
+            body,
+            contacto.as_ref(),
+        );
+        if pecas && forma.count() == out.count() {
+            veste(&mut out, forma);
+        }
         ctx.emit(out);
     }
 }
@@ -599,6 +632,8 @@ impl NodeOp for MotionSoftBody {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionSoftBody))?;
+    // doc 124 §6: o corpo lê o colisor que as peças da porta `shape` declaram.
+    reg.register_declared_collider_reader(MANIFEST.id);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

@@ -122,7 +122,7 @@ pub mod passe;
 use ph2d_motion_kit::trig;
 mod varredura;
 
-pub use atrito::{Material, Pecas, Saida, materiais};
+pub use atrito::{Ligados, Material, Pecas, Saida, materiais};
 pub use par::{Manifesto, contato, disco_caixa, manifesto};
 
 /// Abaixo disto dois centros coincidem e a normal não existe (o `EPS` do `motion.collide`).
@@ -502,3 +502,7 @@ mod tests;
 #[cfg(test)]
 #[path = "custo_probe.rs"]
 mod custo_probe;
+
+#[cfg(test)]
+#[path = "ligados_tests.rs"]
+mod ligados_tests;

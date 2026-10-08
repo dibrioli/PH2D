@@ -202,6 +202,42 @@ pub struct Pecas<'a> {
     pub pesos: &'a [f32],
     /// Quanto cada peça roda por unidade de binário; `0` trava.
     pub inv_inercia: &'a [f32],
+    /// ⭐ **Os pares que um CORPO segura** (doc 124 §6): ver [`Ligados`]. `None` ⇒ todo par colide,
+    /// como sempre.
+    pub ligados: Option<Ligados<'a>>,
+}
+
+/// ⭐ **Quem um corpo já segura no REPOUSO não colide** (doc 124 §2/§6, o filtro de auto-colisão do
+/// FleX; o `collideConnected = false` do Box2D): um par do MESMO corpo (`corpo` igual e não nulo)
+/// cujos colisores JÁ SE SOBREPÕEM na pose de repouso é segurado pela restrição do corpo —
+/// empurrá-lo põe o contacto a lutar contra ela, e o corpo INCHA.
+///
+/// ⛔ **A pergunta é a sobreposição, pelo próprio motor, e não a soma dos alcances:** medido na cena
+/// `=129`, uma peça que declara uma CAIXA `0,28` tem alcance `0,40`, e a soma (`0,79`) deixava fora
+/// do contacto pares que no repouso estão a `0,6` e `0,67` — o corpo atravessava-se com o `Collide`
+/// ligado (`0,21` contra o diâmetro `0,56`).
+#[derive(Clone, Copy)]
+pub struct Ligados<'a> {
+    /// A pose de repouso de cada peça.
+    pub repouso: &'a [[f32; 2]],
+    /// A identidade do corpo de cada peça; `0` = nenhum.
+    pub corpo: &'a [f32],
+}
+
+impl Ligados<'_> {
+    /// O par `(a, b)` é segurado pelo corpo?
+    pub(crate) fn segura(&self, a: usize, b: usize, ca: &Colisor, cb: &Colisor) -> bool {
+        let (Some(&ka), Some(&kb)) = (self.corpo.get(a), self.corpo.get(b)) else {
+            return false;
+        };
+        if ka == 0.0 || ka != kb {
+            return false;
+        }
+        let (Some(&ra), Some(&rb)) = (self.repouso.get(a), self.repouso.get(b)) else {
+            return false;
+        };
+        crate::par::contato(ca, ra, cb, rb, true).is_some()
+    }
 }
 
 impl<'a> Pecas<'a> {
@@ -217,6 +253,16 @@ impl<'a> Pecas<'a> {
             colisores,
             pesos,
             inv_inercia,
+            ligados: None,
+        }
+    }
+
+    /// As mesmas peças, com os pares que um corpo segura FORA do contacto — ver [`Ligados`].
+    #[must_use]
+    pub fn com_ligados(self, repouso: &'a [[f32; 2]], corpo: &'a [f32]) -> Self {
+        Self {
+            ligados: Some(Ligados { repouso, corpo }),
+            ..self
         }
     }
 }

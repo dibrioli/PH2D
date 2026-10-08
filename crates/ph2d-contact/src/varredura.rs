@@ -32,6 +32,12 @@ pub(super) fn corrigida(
         let (Some(clo), Some(chi)) = (colisores[lo], colisores[hi]) else {
             continue;
         };
+        if let Some(l) = pecas.ligados
+            && let (Some(a), Some(b)) = (pecas.colisores[lo], pecas.colisores[hi])
+            && l.segura(lo, hi, &a, &b)
+        {
+            continue;
+        }
         // O par na ordem do PAR (ver o cabeçalho): a normal vai do menor para o maior.
         // ⭐⭐⭐ **O ENCOSTO DE DOIS PONTOS** (doc 111 §5.10): de caixa contra caixa o par entrega o
         // TRECHO, e cada extremo dele traz a PROFUNDIDADE dele. Ver [`Manifesto`].

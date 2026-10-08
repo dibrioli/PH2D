@@ -12,6 +12,8 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# O motor de contacto da casa — o corpo LÊ o colisor que as peças declaram (doc 124 §6).
+ph2d-contact = { path = "../ph2d-contact" }
 
 [lints]
 workspace = true

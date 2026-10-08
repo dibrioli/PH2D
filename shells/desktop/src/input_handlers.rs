@@ -126,15 +126,7 @@ impl App {
             }
             // ⚠️ Consumido mesmo no intervalo do zen: cair adiante tocaria a linha do tempo.
             KeyCode::Space if cmd_chord => {
-                if gfx.zen.try_toggle() {
-                    let msg = if gfx.zen.is_active() {
-                        tr("shell.input_handlers.zen_mode_on_zones")
-                    } else {
-                        tr("shell.input_handlers.zen_mode_off_zones")
-                    };
-                    gfx.toasts.push(Toast::info(msg));
-                    self.title_dirty = true;
-                }
+                self.title_dirty |= crate::touch_input::toggle_focus(&mut gfx.zen, &mut gfx.toasts);
             }
             // ⚠️ **ANTES do `KeyCode::KeyK` de baixo, e a ordem é a lei.** O arm do `K` não olha
             // para os modificadores, então hoje `Ctrl+K` insere um keyframe por acidente — nada o

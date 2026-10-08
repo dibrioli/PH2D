@@ -197,6 +197,8 @@ pub(super) const MENU_BAR_VIEW_ROWS: &[MenuRow] = &[
         ids::MENUBAR_VIEW_SELECTION_ACTIONS,
         "chrome.menu.selection_actions",
     ),
+    // F5: a porta VISÍVEL do toque de 4 dedos — um verbo (com o modo ligado a barra some).
+    menu_row(ids::MENUBAR_VIEW_FOCUS, "chrome.menu.focus_mode"),
     menu_row(ids::MENUBAR_VIEW_THEME, "chrome.menu.theme"),
     // ⭐⭐⭐ **O verbo de RECUPERAÇÃO mora aqui** (2026-09-07). Ele existia só dentro do
     // popup do TEMA, e o dono — a precisar dele depois de uma coluna lhe encher o ecrã de

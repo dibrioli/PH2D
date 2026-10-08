@@ -91,6 +91,7 @@ mod theme;
 mod timeline_segment;
 mod tokens_toggle;
 mod tool_bar_overflow;
+mod touch_mods;
 mod transport;
 mod view_toggles;
 // <ph2d-chrome-sync:end>
@@ -154,6 +155,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || tool_bar_overflow::apply(hero, event)
         || object_mode_menu::apply(hero, event)
         || selection_actions::apply(hero, event)
+        || touch_mods::apply(hero, event)
         || rail_tools::apply(hero, event)
         || rail_painter_tools::apply(hero, event)
         || rail_panels::apply(hero, event)

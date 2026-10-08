@@ -85,7 +85,7 @@ fn every_painted_column_and_action_button_answers_a_real_pointer() {
         publica(&mut hero, mode, 2, 0, Some(sel));
         pinta(&mut hero, &mut ts);
         let bars = hero.store.tool_bars().cloned().expect("publicadas");
-        for (b, r) in placed(&bars, hero.last_content, false, false) {
+        for (b, r) in placed(&bars, hero.last_content, false, false, false) {
             if hero.store.is_picker_swatch(b.id) {
                 // A amostra abre o seletor no Down — o despacho genérico da cor.
                 let _ = clica(&mut hero, r);

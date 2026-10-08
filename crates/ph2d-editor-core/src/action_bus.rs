@@ -155,6 +155,10 @@ pub enum EditorAction {
         redo: bool,
     },
 
+    /// *Ver ▸ Modo foco* (F5): alterna o modo foco — o estado é da shell (`ZenMode`), e o toque de
+    /// 4 dedos e o `Ctrl+Space` chegam à MESMA função dela.
+    FocusMode,
+
     /// Canvas multi-select event (Fase 0b). Raised by the desktop
     /// shell's canvas pick handler after resolving the click to its
     /// `entity_bits` and reading the OS modifier into a

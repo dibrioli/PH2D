@@ -260,6 +260,7 @@ pub fn paint_hero_screen(
         // ① ④ as barras do módulo (D10), por cima da arte e dentro da área sem as réguas.
         let content = hero.last_content;
         super::float_bar::tool_bars::paint(hero, content, scene, text_system);
+        super::float_bar::touch_mods::paint(hero, content, scene, text_system);
     }
     // ⛔ **O CHROME LEGADO** — os clusters de botões da barra e o trilho lateral. Fora por
     // omissão desde 2026-08-30 (Enio: *«pode tirar também os botões do topo para começarmos a

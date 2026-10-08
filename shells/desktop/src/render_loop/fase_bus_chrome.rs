@@ -89,7 +89,9 @@ impl crate::App {
         pd: &mut DrainOut,
     ) -> Option<EditorAction> {
         let gfx = self.gfx.as_mut()?;
-        let FrameGfx { tools, .. } = FrameGfx::of(gfx);
+        let FrameGfx {
+            tools, zen, toasts, ..
+        } = FrameGfx::of(gfx);
         match action {
             // ADR-0040 TG-B/TG-C: generic "cancel the active modal
             // tool". Switch back to the default tool and tear down
@@ -119,6 +121,10 @@ impl crate::App {
             // espera o fim do frame (`post_frame_undo`) porque `undo_or_redo`
             // precisa de `&mut self` e o `gfx` está emprestado aqui.
             EditorAction::UndoStep { redo } => self.undo_button = Some(redo),
+            // *Ver ▸ Modo foco* (F5): a mesma porta do `Ctrl+Space` e do toque de 4 dedos.
+            EditorAction::FocusMode => {
+                self.title_dirty |= crate::touch_input::toggle_focus(zen, toasts);
+            }
             other => return Some(other),
         }
         None

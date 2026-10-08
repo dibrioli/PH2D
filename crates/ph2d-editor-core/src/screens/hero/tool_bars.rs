@@ -45,12 +45,16 @@ fn chrome_group(pinned: bool) -> Vec<BarButton> {
 ///
 /// ⚠️ Uma função só: o pintor e o gate *todo botão pintado é despachado* leem a MESMA lista; uma
 /// segunda conta para o gate mediria a fórmula e não o produto.
+///
+/// ⭐ `left_handed` (F5, *Look ▸ Left-handed*): a coluna e o flyout passam para a borda DIREITA da
+/// área — o lado da mão livre de quem desenha com a esquerda (Procreate, Nomad). A ④ segue a seleção.
 #[must_use]
 pub fn placed(
     bars: &ToolBars,
     area: Rect,
     actions_off: bool,
     pinned: bool,
+    left_handed: bool,
 ) -> Vec<(BarButton, Rect)> {
     let mut out = Vec::new();
     let sizes: Vec<usize> = bars.column.iter().map(Vec::len).collect();
@@ -69,6 +73,11 @@ pub fn placed(
                 .cloned()
                 .zip(grid_rects(area, a, items.len(), 3)),
         );
+    }
+    if left_handed {
+        for (_, r) in &mut out {
+            *r = super::mirrored(area, *r);
+        }
     }
     let has_actions = bars.actions.iter().any(|g| !g.is_empty());
     if has_actions && !actions_off && (pinned || bars.selection.is_some()) {
@@ -94,7 +103,7 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, _text: 
     let theme = hero.theme;
     let off = hero.store.selection_actions_off();
     let pinned = hero.store.selection_actions_pinned();
-    let all = placed(&bars, area, off, pinned);
+    let all = placed(&bars, area, off, pinned, hero.view.ui_mirrored);
     // Os fundos primeiro, por bloco (a coluna, o flyout, a ④): cada um é um painel.
     let n_col: usize = bars.column.iter().map(Vec::len).sum();
     let n_fly = bars.flyout.as_ref().map_or(0, |(_, f)| f.len());

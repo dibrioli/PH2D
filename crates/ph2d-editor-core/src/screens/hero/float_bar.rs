@@ -70,6 +70,12 @@ pub fn column_rects(area: Rect, groups: &[usize]) -> Vec<Rect> {
     out
 }
 
+/// `r` espelhado na vertical do meio de `area` — a mão canhota (F5).
+#[must_use]
+pub fn mirrored(area: Rect, r: Rect) -> Rect {
+    Rect::new(area.x + area.w - (r.x - area.x) - r.w, r.y, r.w, r.h)
+}
+
 /// O rectângulo do painel que contém `rects`, com o respiro do fundo.
 #[must_use]
 pub fn panel_of(rects: impl IntoIterator<Item = Rect>) -> Option<Rect> {
@@ -326,6 +332,8 @@ pub fn paint_swatch(
 pub mod tool_bars;
 #[path = "flash.rs"]
 pub mod flash;
+#[path = "touch_mods.rs"]
+pub mod touch_mods;
 
 #[cfg(test)]
 #[path = "float_bar_tests.rs"]

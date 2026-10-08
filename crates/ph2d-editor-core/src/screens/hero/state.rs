@@ -63,9 +63,9 @@ pub struct ImageEditState {
 /// on `ph2d_panel_widget_gallery::WidgetGalleryState::rect`).
 #[derive(Clone, Debug)]
 pub struct ViewState {
-    /// When `true`, the Inspector and Hierarchy panels swap sides
-    /// (Inspector left, Hierarchy right). Toggled via the "Mirror UI"
-    /// entry in the theme context menu. Default `false`.
+    /// **Canhoto** (F5, D10): as colunas trocam de lado E a coluna ① de ferramentas e os
+    /// modificadores na tela passam para a borda direita da área (o lado da mão livre). *Look ▸
+    /// Left-handed* — o nome que o canhoto procura (o «Right-hand interface» do Procreate confunde).
     pub ui_mirrored: bool,
     /// Visibility of the bottom statistics HUD — toggled by the
     /// "Show Statistics" entry in the theme context menu. Default

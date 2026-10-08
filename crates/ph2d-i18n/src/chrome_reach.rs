@@ -16,6 +16,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.palette.left_bar" => "Left bar",
         "chrome.palette.top_bar" => "Top bar",
         "chrome.palette.near_selection" => "Next to the selection",
+        "chrome.touch.shift" => "Shift",
+        "chrome.touch.alt" => "Alt",
+        "chrome.touch.ctrl" => "Ctrl",
+        "chrome.touch.tip" => {
+            "Hold: held while pressed \u{00b7} Tap: lock \u{00b7} Or rest 1 finger (Shift) or 2 (Shift+Alt) while drawing"
+        }
+        "chrome.menu.focus_mode" => "Focus mode \u{00b7} Ctrl+Space",
         // ph2d-migrar-texto:end
         _ => return None,
     })

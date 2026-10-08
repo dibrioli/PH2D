@@ -189,6 +189,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SELECTION_ACTIONS_OFF,
     ]
     .into_iter()
+    .chain(crate::interaction::touch::CHIPS) // F5: os modificadores na tela (`touch_mods`)
     // ⭐ **Os pulldowns da ÁREA** — pelo mesmo motivo, e o gate de gesto é o mesmo.
     //
     // ⚠️ **Todos os `MAX_AREA_MENUS`, às cegas.** Registar só os que o módulo publicou HOJE faria o

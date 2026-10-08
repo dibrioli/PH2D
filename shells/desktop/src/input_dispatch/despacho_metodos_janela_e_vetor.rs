@@ -155,7 +155,15 @@ impl crate::App {
     }
 
     pub(crate) fn on_modifiers_changed(&mut self, mods: winit::event::Modifiers) {
-        self.modifiers = mods.state();
+        // F5: o teclado é UMA das fontes; o toque soma-se (`touch_input::sync_touch_modifiers`).
+        self.kb_modifiers = mods.state();
+        let want = self.effective_modifiers();
+        self.apply_modifiers(want);
+    }
+
+    /// Os modificadores efectivos mudaram: o store, a forma em curso.
+    pub(crate) fn apply_modifiers(&mut self, state: winit::keyboard::ModifiersState) {
+        self.modifiers = state;
         // M14.A: push the Shift state to the hero's WidgetStore so
         // `dispatch_pointer` Move can scale the NumberInput drag delta
         // correctly (Shift = fine adjustment). The ph2d-host

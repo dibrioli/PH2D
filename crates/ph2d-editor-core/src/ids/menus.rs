@@ -75,7 +75,7 @@ pub const CTX_MENU_RADIUS_ROUND: NodeId = hash_node_id("ctx_menu_radius_round");
 pub const CTX_MENU_RAIL_SIZE_SMALL: NodeId = hash_node_id("ctx_menu_rail_size_small");
 pub const CTX_MENU_RAIL_SIZE_MEDIUM: NodeId = hash_node_id("ctx_menu_rail_size_medium");
 pub const CTX_MENU_RAIL_SIZE_LARGE: NodeId = hash_node_id("ctx_menu_rail_size_large");
-/// "Mirror UI" entry in the theme menu — toggles
+/// "Left-handed" entry in the theme menu (era «Mirror UI») — toggles
 /// `HeroScreen::ui_mirrored`, which swaps Hierarchy ↔ Inspector
 /// horizontally.
 pub const CTX_MENU_MIRROR_UI: NodeId = hash_node_id("ctx_menu_mirror_ui");

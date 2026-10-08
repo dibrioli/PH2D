@@ -105,7 +105,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.rail_buttons_small" => "— Rail Buttons: Small",
         "chrome.menu.rail_buttons_medium" => "— Rail Buttons: Medium",
         "chrome.menu.rail_buttons_large" => "— Rail Buttons: Large",
-        "chrome.menu.mirror_ui" => "— Mirror UI",
+        "chrome.menu.mirror_ui" => "— Left-handed",
         "chrome.menu.show_statistics" => "— Show Statistics",
         "chrome.menu.reset_panel_layout" => "Reset Panel Layout",
         // ⭐⭐ **As duas colunas laterais** (2026-09-19) — os alternadores que o dono pediu em

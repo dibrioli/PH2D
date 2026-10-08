@@ -377,6 +377,7 @@ mod project_texture_pattern;
 /// pelo teto de LOC, cortado por assunto.
 mod project_tokens;
 mod radial_input;
+mod touch_input;
 mod render_loop;
 /// ⭐⭐⭐ **A janela em que a CENA vive** — a porta única de todo mapeamento mundo↔tela do chrome.
 /// ⛔ A lei está escrita desde 07/25 e foi paga TRÊS vezes curando um consumidor de cada vez.
@@ -725,6 +726,7 @@ impl App {
             resize_saved_present_mode: None,
             resize_settle_frames: 0,
             modifiers: ModifiersState::default(),
+            kb_modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
             hovered_object: None,
             prefab_stage_pending: None,
@@ -894,6 +896,7 @@ impl App {
         // §4.C — o PEDAÇO sob o cursor no modo Segment (hover). ANTES do render: o overlay
         // o lê no mesmo frame. Barato e guardado (só recomputa quando o cursor move).
         self.flip_segment_hover_refresh();
+        self.touch_tick();
         // A escolha da paleta de comandos GLOBAL, executada ANTES do render do frame — assim o
         // comando (pegar uma ferramenta, mostrar um painel) já está reflectido no que este frame
         // desenha, em vez de aparecer um quadro depois.
@@ -1001,6 +1004,7 @@ impl ApplicationHandler for App {
             WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),
             WindowEvent::MouseWheel { delta, .. } => self.on_mouse_wheel(delta),
             WindowEvent::MouseInput { state, button, .. } => self.on_mouse_input(state, button),
+            WindowEvent::Touch(t) => self.on_touch(t),
             WindowEvent::KeyboardInput { event, .. } => self.on_keyboard_input(event),
             WindowEvent::RedrawRequested => {
                 self.render_frame();

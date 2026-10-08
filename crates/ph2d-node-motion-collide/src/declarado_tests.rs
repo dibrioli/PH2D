@@ -76,7 +76,7 @@ fn a_caixa_declarada_separa_pela_forma_dela_e_nao_pelo_raio_do_cartao() {
     // ganhou» de «o motor novo separa mais».
     let disco = duas(0.1);
     let p = pos(&disco);
-    let sem = push_apart(&p, &[1.0, 1.0], &[0.3, 0.3], &[1.0, 1.0], 8, 1.0);
+    let sem = push_apart(&p, &[1.0, 1.0], &[0.3, 0.3], &[1.0, 1.0], None, 8, 1.0);
     let vao_disco = (sem[1][0] - sem[0][0]).abs();
     assert!(
         (vao_disco - 0.6).abs() < 0.05,

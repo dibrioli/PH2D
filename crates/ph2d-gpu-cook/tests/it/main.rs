@@ -15,6 +15,7 @@ mod gpu_boids;
 mod gpu_boids_scale;
 mod gpu_boundary_cache;
 mod gpu_collide;
+mod gpu_collide_corpos;
 mod gpu_cpu_parity;
 mod gpu_cpu_parity_arith;
 mod gpu_cpu_parity_clone;

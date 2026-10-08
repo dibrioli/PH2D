@@ -486,7 +486,8 @@ pub(super) fn sample_probe(
     // A GPU-resident cook does not feed the CPU memo this probe reads, and the
     // `cook` below is NOT a memo lookup when the memo is empty — it would run a
     // full CPU cook of the chain, every frame, beside a GPU that is already
-    // drawing it. At the fountain's 1,2 M that is ~50 ms of the frame, and the
+    // drawing it. At the 1,2 M the fountain ran before the per-node ceiling (doc 124)
+    // that was ~50 ms of the frame, and the
     // number it returns is cooked from a `pre` state the pump never marched: a
     // simulation that did not happen. Both halves are unacceptable, and they
     // have the same remedy — do not cook here.

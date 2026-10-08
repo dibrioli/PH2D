@@ -442,3 +442,253 @@ fn nenhum_no_emite_mais_do_que_o_tecto() {
         obsoletos.len()
     );
 }
+
+/// O piso de um param, como o artista o alcança: o digitável se houver, senão o fundo do slider.
+fn piso_do_param(
+    reg: &ph2d_node_registry::NodeRegistry,
+    id: ph2d_nodegraph::node::NodeTypeId,
+    param: &str,
+) -> f32 {
+    if let Some(m) = reg.param_hard_min(id, param) {
+        return m;
+    }
+    reg.param_ui(id)
+        .and_then(|h| h.iter().find(|h| h.param == param).map(|h| h.min))
+        .unwrap_or(0.0)
+}
+
+/// ⛔ **Os criadores cujo EXTREMO não se coze num gate, e o param que comanda a contagem deles.**
+/// Para estes o gate verifica o que eles DECLARAM (o tecto digitável do param ≤ o da casa) em vez de
+/// cozinhar: o `motion.voronoi` relaxa por Lloyd `O(pontos × amostras)` na CPU de referência, e
+/// com o `count` no tecto (`32 768`) a corrida não acabou em `10` minutos (doc 124 §1). ⚠️ É uma
+/// CATRACA com censo de obsolescência: um nome que deixe de ser criador reprova.
+const LENTOS_NO_EXTREMO: &[(&str, &str)] = &[("motion.voronoi", "count")];
+
+/// Cozinha `nome` num `Cook` NOVO no instante `t`, com `params` e [`LINHAS_DE_ENTRADA`] linhas em
+/// cada porta: `(linhas emitidas, entrou em pânico)`.
+fn conta_no_instante(
+    reg: &ph2d_node_registry::NodeRegistry,
+    nome: &str,
+    n_entradas: usize,
+    params: &[(String, f32)],
+    t: f64,
+) -> (usize, bool) {
+    let mut g = Graph::new();
+    let n = g.add_node(nome.to_string());
+    for p in 0..(n_entradas as u16) {
+        let f = alimenta(&mut g);
+        let _ = g.connect(Edge {
+            from: (f, 0),
+            to: (n, p),
+            delayed: false,
+        });
+    }
+    for (p, v) in params {
+        g.set_param(n, p.as_str(), *v);
+    }
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        Cook::new()
+            .cook(&g, reg, n, t)
+            .ok()
+            .and_then(|out| out.first().map(|v| v.as_stream().count()))
+            .unwrap_or(0)
+    }));
+    r.map_or((0, true), |c| (c, false))
+}
+
+/// ⭐⭐⭐ **NENHUM CRIADOR PASSA O TECTO — com a contagem levada ao EXTREMO** (ciclo 15, doc 124
+/// §0.1; ordem do dono de 08/10: *«o nó de corpo mole deve ter limite de 32 768»*).
+///
+/// ⚠️⚠️ **O censo de cima mede ao [`VALOR_DA_SONDA`] e por isso NÃO VIA o corpo mole:** cada lado
+/// dele ia a `512` e só o PRODUTO dos dois (`262 144`) passava o tecto — um param de cada vez nunca
+/// lá chega. ⇒ aqui os params que COMANDAM a contagem (dobrar um muda o número) vão ao EXTREMO que
+/// o artista consegue escrever TODOS JUNTOS — o tecto digitável ([`tecto_do_param`]) se a contagem
+/// sobe com ele, o piso ([`piso_do_param`]) se desce (o raio do Poisson) —, num PONTO FIXO: o `max`
+/// do emissor só passa a comandar depois de o `rate` subir. Os outros ficam no valor modesto (os
+/// params de ITERAÇÃO no extremo foram o que matou as duas primeiras corridas do censo).
+///
+/// ⛔ **`1e9` foi medido e recusado como extremo:** o `motion.scatter` honra no `eval` o tecto da
+/// casa mas o algoritmo dele é `O(count²)` (o tecto digitável dele é `3 000`, de recurso), e a
+/// corrida não acabou em `10` minutos. O que o `eval` faz a um número acima do digitável é a
+/// pergunta de cada crate (`the_mesh_never_passes_the_per_node_ceiling` e irmãos).
+///
+/// ⚠️ O cozimento é a `t = 10 s` num `Cook` novo: o emissor é uma janela do relógio (a `t = 0` não
+/// há ninguém vivo) e uma simulação semeia no primeiro cozimento.
+///
+/// ⛔ Os que leem o MUNDO (`motion.path` lê uma curva publicada, `source.table` um ficheiro) emitem
+/// zero sem o canal — o gate deles mora na crate de cada um.
+#[test]
+fn nenhum_criador_passa_o_tecto_com_a_contagem_no_extremo() {
+    const T: f64 = 10.0;
+    // Um param que comanda a contagem e não declara tecto nenhum: só o `eval` o limita.
+    const SEM_TECTO: f32 = 1e9;
+    let m = crate::motion_state::MotionState::new();
+    let reg = &m.registry;
+    let tipos: Vec<(String, ph2d_nodegraph::node::NodeTypeId, Vec<String>, usize)> = reg
+        .manifests()
+        .map(|man| {
+            (
+                man.name.to_string(),
+                man.id,
+                man.params.iter().map(|p| p.name.to_string()).collect(),
+                man.inputs.len(),
+            )
+        })
+        .collect();
+    let anterior = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let (mut criadores, mut acima, mut morreram) = (0usize, Vec::new(), Vec::new());
+    let mut encolheram: Vec<String> = Vec::new();
+    let mut lentos_vistos: Vec<String> = Vec::new();
+    let mut grelha_no_extremo = None;
+    // ⚠️ **Dois arranjos por nó: SEM entradas e com TODAS as portas alimentadas.** Alimentar todas
+    // as portas pôs uma nuvem na porta `shape` do `motion.soft_body`, e um corpo com forma passa a
+    // contagem de montante — o censo não o via como criador, e era ELE o caso da ordem do dono.
+    let arranjos = tipos.iter().flat_map(|(nome, id, params, n)| {
+        std::iter::once(0)
+            .chain((*n > 0).then_some(*n))
+            .map(move |k| (nome, id, params, k))
+    });
+    let mut vistos_corpo_mole = false;
+    for (nome, id, params, n_entradas) in arranjos {
+        let n_entradas = &n_entradas;
+        let mut valores: Vec<(String, f32)> =
+            params.iter().map(|p| (p.clone(), VALOR_DA_SONDA)).collect();
+        let (n0, morreu) = conta_no_instante(reg, nome, *n_entradas, &valores, T);
+        let entrada = if *n_entradas > 0 {
+            LINHAS_DE_ENTRADA
+        } else {
+            0
+        };
+        if morreu || n0 <= entrada {
+            continue;
+        }
+        criadores += 1;
+        vistos_corpo_mole |= nome == "motion.soft_body";
+        eprintln!("  > {nome} ({n_entradas} portas)");
+        let relogio = std::time::Instant::now();
+        // ⛔ **O extremo de um lento NÃO se coze — verifica-se o que ele DECLARA.** Ver
+        // [`LENTOS_NO_EXTREMO`]. (Pôr os params que não comandam a contagem no PISO foi medido e
+        // recusado: o `source.lsystem` caía de `4 095` para `1` e o `motion.trail` de `6` para `3`
+        // — um piso apaga a saída, e a régua leria «abaixo do tecto».)
+        if let Some((_, param)) = LENTOS_NO_EXTREMO.iter().find(|(n, _)| n == nome) {
+            lentos_vistos.push(nome.clone());
+            let tecto = tecto_do_param(reg, *id, param).unwrap_or(f32::INFINITY);
+            #[expect(clippy::cast_precision_loss, reason = "o tecto cabe exacto num f32")]
+            if tecto > TECTO as f32 {
+                acima.push(format!(
+                    "{nome}: o `{param}` declara {tecto} (tecto {TECTO})"
+                ));
+            }
+            continue;
+        }
+        // ⭐ A subida é MONÓTONA: um param só fica no extremo se a contagem não DESCER — uma
+        // contagem que nasce da GEOMETRIA (o comprimento da curva do `distribute_curve`) caía de
+        // `12` para `1` quando cada ponto de controlo ia ao seu extremo por conta própria.
+        let mut levados = vec![false; valores.len()];
+        let mut agora = n0;
+        for _ronda in 0..4 {
+            let mut mudou = false;
+            for k in 0..valores.len() {
+                if levados[k] {
+                    continue;
+                }
+                let mut dobro = valores.clone();
+                dobro[k].1 *= 2.0;
+                let n2 = conta_no_instante(reg, nome, *n_entradas, &dobro, T).0;
+                if n2 == agora {
+                    continue;
+                }
+                levados[k] = true;
+                let alto = tecto_do_param(reg, *id, &valores[k].0).unwrap_or(SEM_TECTO);
+                let baixo = piso_do_param(reg, *id, &valores[k].0);
+                let ordem = if n2 > agora {
+                    [alto, baixo]
+                } else {
+                    [baixo, alto]
+                };
+                for e in ordem {
+                    let mut tenta = valores.clone();
+                    tenta[k].1 = e;
+                    let n = conta_no_instante(reg, nome, *n_entradas, &tenta, T).0;
+                    if n >= agora {
+                        valores = tenta;
+                        agora = n;
+                        mudou = true;
+                        break;
+                    }
+                }
+            }
+            if !mudou {
+                break;
+            }
+        }
+        let (nx, morreu) = conta_no_instante(reg, nome, *n_entradas, &valores, T);
+        eprintln!(
+            "  {nome:<28} {nx:>9} linhas · {:>7.2} s",
+            relogio.elapsed().as_secs_f64()
+        );
+        if morreu {
+            morreram.push(nome.clone());
+            continue;
+        }
+        // ⛔ Um extremo que ENCOLHE a contagem não mediu o extremo (um piso que apagou a saída
+        // lia-se como «abaixo do tecto»): a medição é inválida, e isso reprova.
+        let quais: Vec<String> = valores
+            .iter()
+            .zip(&levados)
+            .filter(|(_, l)| **l)
+            .map(|((p, v), _)| format!("{p}={v:e}"))
+            .collect();
+        if nx < n0 {
+            encolheram.push(format!("{nome}: {n0} -> {nx} ({})", quais.join(" ")));
+        }
+        if nome == "motion.grid" {
+            grelha_no_extremo = Some(nx);
+        }
+        if nx > TECTO {
+            acima.push(format!("{nome}: {nx} ({})", quais.join(" ")));
+        }
+    }
+    std::panic::set_hook(anterior);
+    assert!(
+        criadores >= 20,
+        "o censo tem de ver a familia dos criadores, e viu {criadores}"
+    );
+    assert!(
+        vistos_corpo_mole,
+        "CONTROLO: o `motion.soft_body` (o caso da ordem do dono, 08/10) tem de ser medido"
+    );
+    assert_eq!(
+        grelha_no_extremo,
+        Some(ph2d_nodegraph::node::CELULAS_DE_UMA_GRELHA_CHEIA),
+        "CONTROLO: o `motion.grid` no extremo da' a grelha cheia — sem isto a regua nao leva \
+         nada ao extremo e fica verde por vacuo"
+    );
+    // A outra metade da catraca: um nome da lista que deixou de ser criador sai da lista.
+    let obsoletos: Vec<&str> = LENTOS_NO_EXTREMO
+        .iter()
+        .map(|(n, _)| *n)
+        .filter(|n| !lentos_vistos.iter().any(|v| v == n))
+        .collect();
+    assert!(
+        obsoletos.is_empty(),
+        "estes ja' nao sao criadores e a linha deles sai de `LENTOS_NO_EXTREMO`: {obsoletos:?}"
+    );
+    assert!(
+        encolheram.is_empty(),
+        "o extremo ENCOLHEU a contagem — a regua nao mediu o extremo destes: {encolheram:?}"
+    );
+    assert!(
+        morreram.is_empty(),
+        "criadores que ESTOURAM com a contagem no extremo (um no' tem de ser total): {morreram:?}"
+    );
+    assert!(
+        acima.is_empty(),
+        "criadores acima do tecto de {TECTO} com a contagem no extremo ({}):\n  {}\n\n\
+         ⚠️ Corte o que o no' EMITE pela constante da casa (`MAX_INSTANCIAS_POR_NO`, \
+         `LADO_MAX_DE_GRELHA` para lados de grelha) — nunca um literal.",
+        acima.len(),
+        acima.join("\n  ")
+    );
+}

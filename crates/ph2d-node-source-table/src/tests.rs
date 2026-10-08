@@ -89,3 +89,32 @@ fn the_bookkeeping_columns_carry_their_real_values() {
         other => panic!("Count: {other:?}"),
     }
 }
+
+/// ⭐⭐ **Uma tabela maior que o tecto entrega as PRIMEIRAS `MAX_INSTANCIAS_POR_NO` linhas**
+/// (doc 124 §0.1) — e cada coluna, o `Index` e o `Count` são os do que SAI. O censo
+/// comportamental não vê este nó (sem um ficheiro publicado ele emite zero), logo o gate mora
+/// aqui. O controlo: uma tabela que cabe é entregue inteira (o gate vizinho, a `4`).
+#[test]
+fn a_table_above_the_ceiling_delivers_its_first_rows() {
+    let n = MAX_INSTANCIAS_POR_NO;
+    let s = cooked(Some(table(n + 1_000)), 0.25);
+    assert_eq!(s.count(), n, "o no' corta no tecto");
+    match s.get("vendas") {
+        Some(Column::Scalar(v)) => {
+            assert_eq!(v.len(), n, "a coluna do ficheiro corta com o no'");
+            assert_eq!(
+                v[n - 1],
+                (n - 1) as f32 * 2.0,
+                "as PRIMEIRAS linhas, por ordem"
+            );
+        }
+        other => panic!("vendas: {other:?}"),
+    }
+    match (s.get("Index"), s.get("Count")) {
+        (Some(Column::Scalar(i)), Some(Column::Scalar(c))) => {
+            assert_eq!(i.last().copied(), Some((n - 1) as f32));
+            assert!(c.iter().all(|x| *x == n as f32), "o Count e' o do que sai");
+        }
+        other => panic!("Index/Count: {other:?}"),
+    }
+}

@@ -138,7 +138,13 @@ fn measure_the_source_seam() {
     eprintln!(
         "\n  fonte    │         n │ linhas na placa │ publicar │ cozer+enviar │ quadro │ rota"
     );
-    for n in [10_000usize, 100_000, 1_000_000] {
+    // ⚠️ O tecto por nó (doc 124 §0.1): a `1 000 000` a tabela entrega as primeiras `32 768`
+    // linhas e a grelha `181²` — a linha do milhão mede o FICHEIRO grande, não um milhão de objectos.
+    for n in [
+        10_000usize,
+        ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO,
+        1_000_000,
+    ] {
         for (rotulo, f) in [("grade", Fonte::Grade), ("tabela", Fonte::Tabela)] {
             let l = mede(&gpu, f, n);
             eprintln!(

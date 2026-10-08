@@ -47,7 +47,14 @@ const DT: f64 = 1.0 / 60.0;
 /// A escada dos campos 2D. ⚠️ **`60` é o tecto ANTIGO do `motion.wave`** e fica como degrau de
 /// propósito — é ele que a medição existe para julgar. Um lado acima do tecto vigente **satura**, e
 /// a coluna `linhas` mostra-o (pedir `128` a um campo preso em `60` devolve `3 600`, não `16 384`).
-const LADOS_CAMPO: &[usize] = &[16, 32, 60, 128, 256, 512];
+const LADOS_CAMPO: &[usize] = &[
+    16,
+    32,
+    60,
+    128,
+    ph2d_nodegraph::node::LADO_MAX_DE_GRELHA,
+    512,
+];
 
 /// A escada dos nós de CONTAGEM, e ela é curta **por medição, não por preguiça**.
 ///

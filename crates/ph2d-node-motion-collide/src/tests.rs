@@ -27,7 +27,15 @@ fn push_apart_w(
     strength: f32,
 ) -> Vec<[f32; 2]> {
     let n = p.len();
-    push_apart(p, w, &vec![radius; n], &vec![1.0; n], iterations, strength)
+    push_apart(
+        p,
+        w,
+        &vec![radius; n],
+        &vec![1.0; n],
+        None,
+        iterations,
+        strength,
+    )
 }
 
 /// Relax with every element free (`w = 1`) — the no-pin case, which is what
@@ -352,4 +360,117 @@ fn registers_and_separates_through_the_cook() {
         }
         _ => panic!("P"),
     }
+}
+
+/// Dois discos do MESMO corpo a `0,3` no repouso e na pose, com raio `0,28` (diâmetro `0,56`).
+fn par_do_corpo(body: [f32; 2], rest_d: f32) -> Stream {
+    Stream::new(2)
+        .with("P", Column::Vec2(vec![[0.0, 0.0], [0.3, 0.0]]))
+        .with("rest", Column::Vec2(vec![[0.0, 0.0], [rest_d, 0.0]]))
+        .with("body", Column::Scalar(body.to_vec()))
+}
+
+fn separa(s: &Stream) -> Vec<[f32; 2]> {
+    let n = s.count();
+    let p = match s.get("P") {
+        Some(Column::Vec2(v)) => v.clone(),
+        _ => panic!("P"),
+    };
+    push_apart(
+        &p,
+        &[1.0; 2],
+        &[0.28; 2],
+        &[1.0; 2],
+        Estrutura::de(s, n).as_ref(),
+        8,
+        1.0,
+    )
+}
+
+/// ⭐ **O par que o repouso já sobrepõe não colide** (doc 124 §2, o filtro do FleX): do MESMO
+/// corpo e a `0,3 < 0,56` no repouso, o colisor deixa-o onde está. As três metades que dizem que é
+/// o FILTRO e não outra coisa: o mesmo par afastado no repouso (`0,6`) colide; de corpos
+/// DIFERENTES colide; e sem corpo (`0`, o zero-fill de um `combine`) colide.
+#[test]
+fn a_pair_the_rest_pose_overlaps_is_held_by_the_body_not_the_collider() {
+    let parado = separa(&par_do_corpo([1.0, 1.0], 0.3));
+    assert_eq!(
+        parado,
+        vec![[0.0, 0.0], [0.3, 0.0]],
+        "o par ligado nao se mexe"
+    );
+    for (o_que, s) in [
+        ("longe no repouso", par_do_corpo([1.0, 1.0], 0.6)),
+        ("corpos diferentes", par_do_corpo([1.0, 2.0], 0.3)),
+        ("sem corpo", par_do_corpo([0.0, 0.0], 0.3)),
+    ] {
+        let q = separa(&s);
+        assert!(
+            (dist(q[0], q[1]) - 0.56).abs() < 1e-4,
+            "{o_que}: o par colide ate' ao diametro ({})",
+            dist(q[0], q[1])
+        );
+    }
+}
+
+/// ⭐ **Sem `rest`/`body` o colisor é o de sempre AO BIT** — a `Estrutura` ausente não toca em nada.
+#[test]
+fn without_the_body_columns_the_packing_is_bit_identical() {
+    let p = crowded_cloud(64);
+    let w = vec![1.0; p.len()];
+    let r = vec![0.3; p.len()];
+    let f = vec![1.0; p.len()];
+    let sem = Stream::new(p.len()).with("P", Column::Vec2(p.clone()));
+    assert!(Estrutura::de(&sem, p.len()).is_none());
+    assert_eq!(
+        push_apart(&p, &w, &r, &f, None, 8, 1.0),
+        push_apart(
+            &p,
+            &w,
+            &r,
+            &f,
+            Estrutura::de(&sem, p.len()).as_ref(),
+            8,
+            1.0
+        )
+    );
+}
+
+/// **O preço do colisor da CPU no tecto do corpo mole** (doc 124 §0.2, item 7): `181² = 32 761`
+/// discos de um corpo, `8` varreduras `O(n²)`. A rota do produto é a da placa (a grelha espacial).
+#[test]
+#[ignore = "sonda: o custo O(n²) no tecto — corra à mão em RELEASE"]
+fn sonda_o_custo_do_colisor_da_cpu_no_tecto() {
+    let lado = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA;
+    let mut p = Vec::new();
+    let mut rest = Vec::new();
+    for r in 0..lado {
+        for c in 0..lado {
+            rest.push([c as f32 * 0.3, r as f32 * 0.3]);
+            p.push([c as f32 * 0.27, r as f32 * 0.3]);
+        }
+    }
+    let n = p.len();
+    let s = Stream::new(n)
+        .with("rest", Column::Vec2(rest))
+        .with("body", Column::Scalar(vec![1.0; n]));
+    let e = Estrutura::de(&s, n);
+    let t = std::time::Instant::now();
+    let q = push_apart(
+        &p,
+        &vec![1.0; n],
+        &vec![0.28; n],
+        &vec![1.0; n],
+        e.as_ref(),
+        8,
+        1.0,
+    );
+    eprintln!(
+        "colisor CPU: {n} discos, 8 varreduras: {:.1} ms (load {})",
+        t.elapsed().as_secs_f64() * 1e3,
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+    assert_eq!(q.len(), n);
 }

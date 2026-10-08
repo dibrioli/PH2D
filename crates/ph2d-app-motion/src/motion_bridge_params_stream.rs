@@ -167,6 +167,11 @@ pub(super) const INTERNAL: &[&str] = &[
     // chega ao stream da CPU que este picker lista; e mesmo que chegasse, uma matriz de faixas
     // não é um número em que o artista pense. A linha de atraso DELE é o `lag`.
     "ss_ring0", "ss_ring1", "ss_ring2", "ss_ring3",
+    // ⚠️ **O que um corpo DECLARA ao colisor e o que ele guarda para o passo seguinte** (ciclo 15,
+    // doc 124 §2): o `rest` é a pose de repouso (um `Vec2`: no modo escalar leria zeros), o `body`
+    // a identidade do nó (`node_key + 1`, um número sem sentido para o artista) e o
+    // `sb_pos`/`sb_dt` a posição e o passo que o corpo emitiu. Nenhum é um número em que se pense.
+    "rest", "body", "sb_pos", "sb_dt",
 ];
 
 fn keep_extra_columns<'a>(

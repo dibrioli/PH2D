@@ -38,7 +38,11 @@ fn only_this_file_holds_a_gpu_context_in_a_static() {
             let codigo = l.split("//").next().unwrap_or("").trim_start();
             let declara = codigo.starts_with("static ") || codigo.starts_with("pub static ");
             if declara && codigo.contains("GpuContext") {
-                donos.push(format!("{}:{}", p.file_name().unwrap_or_default().display(), n + 1));
+                donos.push(format!(
+                    "{}:{}",
+                    p.file_name().unwrap_or_default().display(),
+                    n + 1
+                ));
             }
         }
     }

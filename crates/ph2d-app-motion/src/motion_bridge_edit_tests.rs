@@ -254,8 +254,9 @@ fn the_probe_lets_go_of_a_deleted_node() {
 /// still EMPTY afterwards. `sample_probe`'s `cook()` is the cheap memo lookup its
 /// doc-comment describes only while the CPU pump is the one driving; under a GPU
 /// cook the memo is empty, so the SAME call silently becomes a full CPU cook of the
-/// chain — every frame, beside a GPU already drawing it (~50 ms at the emitter
-/// demo's 1,2 M) — and returns a simulation whose `pre` state was never marched.
+/// chain — every frame, beside a GPU already drawing it (~50 ms at the 1,2 M the
+/// emitter demo ran before the per-node ceiling) — and returns a simulation whose `pre`
+/// state was never marched.
 /// Asserting the memo stayed empty is what pins "did not cook"; asserting only the
 /// `None` would stay green with the cook back in.
 #[test]

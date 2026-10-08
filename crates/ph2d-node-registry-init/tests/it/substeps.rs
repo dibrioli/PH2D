@@ -479,7 +479,12 @@ fn reading_another_zone_through_a_pre_does_not_couple_them() {
 /// e no device é o plano inteiro que marcha `n` vezes. Isso é certo para um nó que É a simulação
 /// do objeto — a zona, o integrador — e errado para um solver folha, cujo knob local passaria a
 /// custar `n×` em tudo o que estiver ao lado.
-const CLOCK_DECLARERS: &[&str] = &["motion.integrate", "sim.zone"];
+/// ⚠️ O `motion.soft_body` entrou no ciclo 15 (doc 124 §2.2) e QUER o relógio: o laço de estado
+/// dele leva o colisor e as forças (`force.*` escrevem o `accel` que ele consome), e só o relógio
+/// do grafo os re-coze por sub-passo — um laço dentro do `eval` congelava-os, que é exactamente o
+/// que a corda escolheu (`solver_substeps`). Medido: a `4` o colisor segura o diâmetro, a `1` o
+/// próprio corpo nu atravessa-se.
+const CLOCK_DECLARERS: &[&str] = &["motion.integrate", "motion.soft_body", "sim.zone"];
 
 /// **O CENSO — e o spot-check que ele substitui deixou passar o defeito.**
 ///

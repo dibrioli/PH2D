@@ -26,7 +26,7 @@ fn disc(n: usize, r: f32, centre: [f32; 2]) -> Vec<[f32; 2]> {
 fn a_shape_on_the_port_becomes_the_body() {
     let p = params(4, 4, 9.0, 0.5, true); // 16 partículas se a porta perdesse
     let shape = disc(24, 2.0, [7.0, -3.0]);
-    let out = simulate([1.0, 5.0], &Stream::new(0), &shape, 0.0, &p);
+    let out = simulate([1.0, 5.0], &Stream::new(0), &shape, 0.0, &p, 1.0);
     let pos = vec2_col(&out, "P");
     assert_eq!(
         pos.len(),
@@ -59,8 +59,8 @@ fn the_authored_grid_through_the_port_behaves_like_the_authored_body() {
         for k in 0..90 {
             let t = k as f32 / 60.0;
             let anchor = [(t * 3.0).sin(), 0.0];
-            a = simulate(anchor, &a, &[], t, &p);
-            b = simulate(anchor, &b, &mesh, t, &p);
+            a = simulate(anchor, &a, &[], t, &p, 1.0);
+            b = simulate(anchor, &b, &mesh, t, &p, 1.0);
             let (pa, pb) = (vec2_col(&a, "P"), vec2_col(&b, "P"));
             assert_eq!(pa.len(), pb.len(), "{rows}x{cols}: contagens diferentes");
             for (x, y) in pa.iter().zip(&pb) {
@@ -94,10 +94,10 @@ fn the_port_pins_the_top_of_the_shape() {
         .unwrap();
     let mut state = Stream::new(0);
     for k in 0..150 {
-        state = simulate([0.0, 0.0], &state, &shape, k as f32 / 60.0, &p);
+        state = simulate([0.0, 0.0], &state, &shape, k as f32 / 60.0, &p, 1.0);
     }
     let pos = vec2_col(&state, "P");
-    let start = simulate([0.0, 0.0], &Stream::new(0), &shape, 0.0, &p);
+    let start = simulate([0.0, 0.0], &Stream::new(0), &shape, 0.0, &p, 1.0);
     let start = vec2_col(&start, "P");
     let moved_top = (pos[top][1] - start[top][1]).abs();
     let bottom = (0..shape.len())
@@ -128,7 +128,7 @@ fn the_port_pins_the_top_of_the_shape() {
 fn an_empty_port_falls_back_to_the_authored_mesh() {
     let p = params(3, 4, 9.0, 0.5, true);
     for shape in [vec![], vec![[0.0f32, 0.0]], vec![[0.0f32, 0.0], [1.0, 1.0]]] {
-        let out = simulate([0.0, 0.0], &Stream::new(0), &shape, 0.0, &p);
+        let out = simulate([0.0, 0.0], &Stream::new(0), &shape, 0.0, &p, 1.0);
         assert_eq!(
             vec2_col(&out, "P").len(),
             12,
@@ -145,7 +145,7 @@ fn a_shape_from_the_port_recovers_its_form() {
     let mut p = params(4, 4, 0.0, 0.6, false);
     p.clusters = 1;
     let shape = disc(40, 2.0, [0.0, 0.0]);
-    let mut state = simulate([0.0, 0.0], &Stream::new(0), &shape, 0.0, &p);
+    let mut state = simulate([0.0, 0.0], &Stream::new(0), &shape, 0.0, &p, 1.0);
     // Esmaga a meio no eixo y, mantendo o estado (a velocidade fica zero).
     let squashed: Vec<[f32; 2]> = vec2_col(&state, "P")
         .iter()
@@ -161,7 +161,7 @@ fn a_shape_from_the_port_recovers_its_form() {
     };
     let before = width(&state);
     for k in 1..120 {
-        state = simulate([0.0, 0.0], &state, &shape, k as f32 / 60.0, &p);
+        state = simulate([0.0, 0.0], &state, &shape, k as f32 / 60.0, &p, 1.0);
     }
     let after = width(&state);
     assert!(

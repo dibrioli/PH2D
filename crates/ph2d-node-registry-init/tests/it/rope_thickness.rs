@@ -162,15 +162,135 @@ fn a_collider_in_the_state_loop_gives_the_rope_thickness() {
         "o CONTROLE contem o fenomeno: a corda nua se atravessa ({bare_min:.4} < {DIAMETER:.4})"
     );
 
-    // (2) A ENTREGA: o colisor afasta os nao-vizinhos ate ~o proprio diametro.
+    // (2) A ENTREGA: o colisor afasta os nao-vizinhos para perto do proprio diametro.
+    // ⚠️ A barra era `0,9·D` e passava (`1,05`) porque o colisor ESTICAVA a corda — empurrava os
+    // vizinhos a `< D` no repouso, que a restricao de distancia segura, e a corda chegava a `8,2`
+    // de comprido contra `6,0` (doc 124 §2, a assinatura do Bug #15 na corda). Com os pares que o
+    // repouso sobrepoe filtrados, a pose final medida e' `0,811·D` a um passo por quadro.
     assert!(
-        thick_min >= DIAMETER * 0.9,
+        thick_min >= DIAMETER * 0.75,
         "o colisor da ESPESSURA a corda: {thick_min:.4} contra o diametro {DIAMETER:.4}"
+    );
+    // (2b) ⭐ E a corda NAO ESTICA: o comprimento com o colisor e' o da corda nua (o que o filtro
+    // compra — sem ele, `8,20` contra `6,31`).
+    let (l_nua, l_grossa) = (arco(&bare), arco(&thick));
+    assert!(
+        l_grossa <= l_nua * 1.10,
+        "o colisor ESTICA a corda: {l_grossa:.3} contra {l_nua:.3} na corda nua"
     );
 
     // (3) O feedback nao pode DESTRUIR a corda: um laco que explode nao e' uma
     // corda grossa. (Um `NaN` faria (2) passar por acidente de comparacao.)
     for q in thick.iter().chain(bare.iter()) {
         assert!(q[0].is_finite() && q[1].is_finite(), "pose finita: {q:?}");
+    }
+}
+
+/// Um nó de TESTE que repassa a corrente SEM a identidade do corpo — o colisor de antes do
+/// ciclo 15 (sem filtro), no MESMO binário que o de hoje.
+struct SemCorpo;
+static SEM_CORPO: ph2d_nodegraph::node::NodeManifest = ph2d_nodegraph::node::NodeManifest {
+    id: ph2d_nodegraph::node::NodeTypeId::of("teste.sem_corpo"),
+    name: "teste.sem_corpo",
+    inputs: &[ph2d_nodegraph::node::PortSpec {
+        name: "in",
+        ty: ph2d_nodegraph::port::PortType::new(
+            ph2d_nodegraph::port::Domain::Instances,
+            ph2d_nodegraph::port::Dim::Vec2,
+            ph2d_nodegraph::port::Clock::Frame,
+        ),
+    }],
+    outputs: &[ph2d_nodegraph::node::PortSpec {
+        name: "out",
+        ty: ph2d_nodegraph::port::PortType::new(
+            ph2d_nodegraph::port::Domain::Instances,
+            ph2d_nodegraph::port::Dim::Vec2,
+            ph2d_nodegraph::port::Clock::Frame,
+        ),
+    }],
+    effect: ph2d_nodegraph::effect::Effect::Pure,
+    clock: ph2d_nodegraph::port::Clock::Frame,
+    params: &[],
+    lowerings: &[ph2d_nodegraph::node::LoweringKind::Cpu],
+};
+impl ph2d_nodegraph::node::NodeOp for SemCorpo {
+    fn manifest(&self) -> &'static ph2d_nodegraph::node::NodeManifest {
+        &SEM_CORPO
+    }
+    fn eval(&self, ctx: &mut ph2d_nodegraph::cook::EvalCtx<'_>) {
+        let input = ctx.input(0);
+        let mut out = Stream::new(input.count());
+        for (nome, col) in input.columns() {
+            if nome != "body" {
+                out.set(nome.clone(), col.clone());
+            }
+        }
+        ctx.emit(out);
+    }
+}
+
+/// A corda chicoteada com o colisor, e o filtro do corpo LIGADO (`true`) ou não.
+fn whipped_filtro(filtro: bool) -> (Graph, NodeId) {
+    let (mut g, rope) = whipped(true);
+    if !filtro {
+        let col = NodeId(rope.0 + 2);
+        let sem = g.add_node("teste.sem_corpo");
+        g.disconnect(col, 0);
+        wire(&mut g, rope, 0, sem, 0, true);
+        wire(&mut g, sem, 0, col, 0, false);
+    }
+    (g, rope)
+}
+
+/// O comprimento da corda ao longo da corrente — a régua do INCHAR.
+fn arco(p: &[[f32; 2]]) -> f32 {
+    p.windows(2)
+        .map(|w| (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1]))
+        .sum()
+}
+
+/// ⭐ **A corda com sub-passos, com e sem o filtro** (doc 124 §2): o pior par distante na 2.ª
+/// metade e no fim, e o comprimento, a `1`, `2`, `4` e `8` sub-passos por quadro, pela porta do
+/// produto (`Cook::substep`).
+#[test]
+#[ignore = "sonda: os sub-passos da corda — corra à mão com --nocapture"]
+fn sonda_a_corda_com_sub_passos() {
+    let mut reg = registry();
+    reg.register(Box::new(SemCorpo)).expect("o no' de teste");
+    let variantes: [(&str, (Graph, NodeId)); 3] = [
+        ("nua", whipped(false)),
+        ("colisor SEM filtro", whipped_filtro(false)),
+        ("colisor COM filtro", whipped_filtro(true)),
+    ];
+    for (nome, (g, rope)) in &variantes {
+        for n in [1u32, 2, 4, 8] {
+            let mut cook = Cook::new();
+            let (mut pior, mut fim, mut comp) = (f32::MAX, 0.0f32, 0.0f32);
+            for k in 0..TICKS {
+                let playhead = k as f64 * DT;
+                if let Some(antes) = cook.prev_playhead() {
+                    cook.substep(g, &reg, *rope, antes, playhead, n)
+                        .expect("sub-passos");
+                }
+                let out = cook.cook(g, &reg, *rope, playhead).expect("coze");
+                let CookValue::Instances(s) = &out[0] else {
+                    panic!("stream")
+                };
+                let p = match s.get("P") {
+                    Some(Column::Vec2(v)) => v.clone(),
+                    _ => Vec::new(),
+                };
+                fim = min_far_pair(&p);
+                comp = arco(&p);
+                if k >= TICKS / 2 {
+                    pior = pior.min(fim);
+                }
+                cook.advance_tick(g, &reg, playhead).expect("avanca");
+            }
+            println!(
+                "CORDA {nome} n={n}: par distante 2a metade {pior:.4} · fim {fim:.4} · comprimento \
+                 {comp:.3} (repouso 6,0; diametro {DIAMETER:.1})"
+            );
+        }
     }
 }

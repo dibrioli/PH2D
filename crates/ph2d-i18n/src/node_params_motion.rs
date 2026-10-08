@@ -298,6 +298,7 @@ pub(crate) const ENTRADAS: &[(&str, &str)] = &[
     ("node.motion.soft_body.param.spacing", "Spacing"),
     ("node.motion.soft_body.param.stiffness", "Stiffness"),
     ("node.motion.soft_body.param.stretch", "Stretch"),
+    ("node.motion.soft_body.param.substeps", "Substeps"),
     ("node.motion.sort.param.axis_angle", "Axis Angle"),
     ("node.motion.sort.param.center_x", "Center X"),
     ("node.motion.sort.param.center_y", "Center Y"),

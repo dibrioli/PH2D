@@ -31,7 +31,7 @@ use super::*;
 /// número em dois sítios, que é como ele envelhece. *Um valor sob `cfg(test)` é invisível do
 /// outro lado da fronteira (HOWTO §2.5) — e aqui a cura não é abrir uma feature, é reconhecer
 /// que a constante deixou de ser só do teste.*
-pub const MAX_DEMO_LEVEL: u32 = 128;
+pub const MAX_DEMO_LEVEL: u32 = 129;
 
 /// **As cenas de smoke dos CICLOS** — irmãs pelo tecto de LOC, cortadas por responsabilidade;
 /// ver o cabeçalho delas.
@@ -511,6 +511,13 @@ pub fn build_level(
         Some("128") => {
             let sinks = fio_vortex_demo::build(doc, registry).unwrap_or_default();
             fio_vortex_demo::announce();
+            sinks
+        }
+        // ⭐⭐⭐ **O CORPO MOLE COM COLISOR** — o Bug #15 fechado (doc 124 §2). Ver
+        // [`corpo_com_colisor_demo`].
+        Some("129") => {
+            let sinks = corpo_com_colisor_demo::build(doc, registry).unwrap_or_default();
+            corpo_com_colisor_demo::announce();
             sinks
         }
         // ⭐⭐⭐ **O CAMPO DE ESTRELAS** — a cena do report de 2026-09-14 (*«usando shape (exemplo:

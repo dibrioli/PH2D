@@ -30,6 +30,7 @@
 
 use crate::hash::Draws;
 use ph2d_motion_region::Region;
+use ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO;
 
 /// Bridson's cell size is `r/√2` — see the module doc.
 const SQRT2: f32 = std::f32::consts::SQRT_2;
@@ -61,7 +62,34 @@ const DIR_TRIES: u32 = 8;
 /// so `r ≥ √(2·w·h / MAX_CELLS)`.
 fn clamp_radius(w: f32, h: f32, radius: f32) -> f32 {
     let floor = (2.0 * w * h / MAX_CELLS as f32).sqrt();
-    radius.max(floor).max(MIN_RADIUS)
+    radius
+        .max(floor)
+        .max(floor_by_ceiling(w, h))
+        .max(MIN_RADIUS)
+}
+
+/// ⭐ **O raio mínimo que o TECTO DE INSTÂNCIAS POR NÓ impõe** (doc 124 §0.1) — PROVADO, não
+/// amostrado: pela desigualdade de Oler, pontos a distância `≥ r` num convexo de área `A` e
+/// perímetro `P` são no máximo `(2/√3)·A/r² + P/(2r) + 1`. Com `A = w·h`, `P = 2(w + h)` e
+/// `x = 1/r`, pedir isso `≤ MAX_INSTANCIAS_POR_NO` é `a·x² + b·x + (1 − N) ≤ 0`.
+///
+/// ⛔ **Aparar a frente do Bridson foi recusado:** ele cresce a partir da semente, e cortar a
+/// lista no tecto deixaria um BURACO na distribuição. O piso dá o tecto sem buraco — e paga-o em
+/// densidade (o Bridson enche `~0,7` do máximo de Oler; o número medido está no doc 124 §1).
+fn floor_by_ceiling(w: f32, h: f32) -> f32 {
+    let (w, h) = (f64::from(w), f64::from(h));
+    let a = 2.0 / 3f64.sqrt() * w * h;
+    let b = w + h;
+    #[expect(clippy::cast_precision_loss, reason = "o tecto cabe exacto num f64")]
+    let c = 1.0 - MAX_INSTANCIAS_POR_NO as f64;
+    if a <= 0.0 {
+        return 0.0;
+    }
+    let x = (-b + (b * b - 4.0 * a * c).sqrt()) / (2.0 * a);
+    // Um ulp de folga para cima: o raio em `f32` nunca pode cair abaixo do piso provado.
+    #[expect(clippy::cast_possible_truncation, reason = "um raio de mundo")]
+    let r = (1.0 / x) as f32;
+    r * (1.0 + f32::EPSILON * 4.0)
 }
 
 /// A dart from `center`: uniform direction × area-uniform radius in the annulus `[r, 2r]`.
@@ -376,6 +404,27 @@ mod tests {
         );
     }
 
+    /// ⭐ **O raio no piso nunca passa o tecto de instâncias por nó** (doc 124 §0.1), em
+    /// rectângulos de proporções diferentes — e o CONTROLO de que o piso não é largo demais: o
+    /// Bridson no piso enche uma fracção ALTA do tecto (o número é a sonda; a barra aqui é `½`).
+    #[test]
+    fn the_radius_floor_keeps_every_rectangle_under_the_ceiling() {
+        for (w, h) in [(4.0f32, 4.0f32), (20.0, 10.0), (100.0, 100.0), (300.0, 2.0)] {
+            let pts = sample(&rect(w, h), w, h, 0.0, 0.0, 3);
+            eprintln!(
+                "poisson {w}x{h} no piso: {} pontos ({:.1} % do tecto)",
+                pts.len(),
+                100.0 * pts.len() as f64 / MAX_INSTANCIAS_POR_NO as f64
+            );
+            assert!(pts.len() <= MAX_INSTANCIAS_POR_NO, "{w}x{h}: {}", pts.len());
+            assert!(
+                pts.len() * 2 > MAX_INSTANCIAS_POR_NO,
+                "{w}x{h}: o piso e' largo demais, so' {} pontos",
+                pts.len()
+            );
+        }
+    }
+
     /// Pure function of the seed: a scrub, a re-cook or another machine redraws the
     /// exact same layout — and another seed redraws a different one.
     #[test]
@@ -398,8 +447,8 @@ mod tests {
         for r in [0.0, -1.0, f32::NAN, f32::INFINITY, 1e-30] {
             let pts = sample(&rect(4.0, 4.0), 4.0, 4.0, r, 0.0, 1);
             assert!(
-                pts.len() <= MAX_CELLS,
-                "radius {r} produced {} points",
+                pts.len() <= MAX_INSTANCIAS_POR_NO,
+                "radius {r} produced {} points, above the per-node ceiling",
                 pts.len()
             );
         }

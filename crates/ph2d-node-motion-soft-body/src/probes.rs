@@ -33,7 +33,7 @@ fn what_does_the_area_do_under_load() {
         let mut out = String::new();
         for k in 0..=240usize {
             let t = k as f32 / 60.0;
-            let mut s = simulate(anchor(t), &state, &[], t, p);
+            let mut s = simulate(anchor(t), &state, &[], t, p, 1.0);
             if squeeze != 0.0 {
                 // An inward accel field: every particle pulled toward the
                 // centroid, which is what a `force.attractor` in the state
@@ -149,7 +149,7 @@ fn what_each_pressure_settles_at() {
             } else {
                 [0.0, 0.0]
             };
-            let mut s = simulate(anchor, &state, &[], t, &p);
+            let mut s = simulate(anchor, &state, &[], t, &p, 1.0);
             if squeeze != 0.0 {
                 let pos = vec2_col(&s, "P");
                 let n = pos.len() as f32;
@@ -214,7 +214,7 @@ fn is_the_useful_pressure_coupled_to_stiffness() {
         let mut worst = 1.0f32;
         for k in 0..=300usize {
             let t = k as f32 / 60.0;
-            let s = simulate([0.0, 0.0], &state, &[], t, &p);
+            let s = simulate([0.0, 0.0], &state, &[], t, &p, 1.0);
             let pos = vec2_col(&s, "P");
             let n = pos.len() as f32;
             let c = pos
@@ -366,7 +366,7 @@ fn how_much_can_a_long_body_bend_today() {
         let mut worst = 0.0f32;
         for k in 0..=300usize {
             let t = k as f32 / 60.0;
-            state = simulate([(t * 7.0).sin() * shake, 0.0], &state, &[], t, &p);
+            state = simulate([(t * 7.0).sin() * shake, 0.0], &state, &[], t, &p, 1.0);
             if k > 60 {
                 worst = worst.max(spine_bend(&vec2_col(&state, "P"), rows, cols));
             }
@@ -450,7 +450,7 @@ fn what_clusters_buy_and_what_they_cost() {
             // reason to curve: every cluster sees the same rotation and the spine
             // is straight whatever the model can express. It reported 0,0000 for
             // every cluster count and would have read as the feature being inert.
-            state = simulate([(t * 7.0).sin() * 2.5, 0.0], &state, &[], t, &p);
+            state = simulate([(t * 7.0).sin() * 2.5, 0.0], &state, &[], t, &p, 1.0);
             if k > 60 {
                 worst = worst.max(spine_bend(&vec2_col(&state, "P"), rows, cols));
             }

@@ -301,6 +301,33 @@ fn the_spacing_floor_keeps_a_zero_from_asking_for_everything() {
     );
 }
 
+/// ⭐⭐ **NENHUM DOS DOIS MODOS PASSA O TECTO DE INSTÂNCIAS POR NÓ** (doc 124 §0.1). O censo
+/// comportamental não vê este nó (sem uma curva publicada ele emite zero), logo o gate mora aqui:
+/// uma curva LONGA no piso do espaçamento pediria `10⁶` cópias, e um `count` absurdo também.
+/// O controlo: um pedido que cabe é obedecido ao número.
+#[test]
+fn neither_mode_passes_the_per_node_ceiling() {
+    use ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO;
+    let longa = [[0.0, 0.0], [10_000.0, 0.0]];
+    let (pos, _) = walk(&longa, "Track", &[("mode", MODE_SPACING), ("spacing", 0.0)]);
+    assert_eq!(
+        pos.len(),
+        MAX_INSTANCIAS_POR_NO,
+        "o modo spacing corta no tecto"
+    );
+    let (pos, _) = walk(&longa, "Track", &[("count", 1e9)]);
+    assert_eq!(
+        pos.len(),
+        MAX_INSTANCIAS_POR_NO,
+        "o modo count corta no tecto"
+    );
+    assert_eq!(
+        copies_that_fit(10.0, MIN_SPACING),
+        1000,
+        "CONTROLO: o que cabe e' obedecido"
+    );
+}
+
 /// **A NORMAL É A TANGENTE A UM QUARTO DE VOLTA** — o terceiro modo do `align`.
 ///
 /// ⚠️ O gate mede a RELAÇÃO entre os dois modos, e não dois ângulos escritos à mão.

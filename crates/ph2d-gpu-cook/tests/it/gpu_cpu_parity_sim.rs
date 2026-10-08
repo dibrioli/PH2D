@@ -2243,7 +2243,14 @@ fn emitter_sim_ceiling_probe() {
         ("force.drag", &[("coefficient", 0.12)]),
     ];
     eprintln!("  window │      GPU ms/tick │      CPU ms/tick │ CPU/GPU");
-    for &want in &[4096.0f32, 65536.0, 262144.0, 1048576.0, 4194304.0] {
+    // ⚠️ A escada pára no tecto por nó (doc 124 §0.1): acima dele o emissor corta, e a sonda
+    // mediria `32 768` com o rótulo de outro número. A escada até `4 M` vive no doc 124 §1.
+    for &want in &[
+        4096.0f32,
+        8192.0,
+        16384.0,
+        ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32,
+    ] {
         // `emitter_sim`'s rate is fixed at 400, so in TICKS·FIXED_DT seconds only
         // ~601 particles are ever BORN and every row would report the same window
         // — a perf table that prints one number four times is worse than none.
@@ -2467,7 +2474,11 @@ fn readback_tap_cost_probe() {
     let stride = std::mem::size_of::<RenderInstance>();
     eprintln!("  RenderInstance = {stride} B");
     eprintln!("  window │ cook ms/tick │ readback ms │    MB │   GB/s │ tap total");
-    for &want in &[65536.0f32, 262144.0, 1048576.0, 4194304.0] {
+    for &want in &[
+        8192.0f32,
+        16384.0,
+        ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32,
+    ] {
         let (mut g, _, out) = emitter_sim(&reg, want, forces);
         let em = emitter_of(&g);
         g.set_param(em, "rate", want / (TICKS as f32 * FIXED_DT as f32));
@@ -2570,7 +2581,11 @@ fn bounded_readback_cost_probe() {
         HEAD * stride
     );
     eprintln!("  window │  full ms │  head ms │ full MB │   ratio │ cook ms │ cook+tap │ tap cost");
-    for &want in &[65536.0f32, 262144.0, 1048576.0, 4194304.0] {
+    for &want in &[
+        8192.0f32,
+        16384.0,
+        ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32,
+    ] {
         let (mut g, _, out) = emitter_sim(&reg, want, forces);
         let em = emitter_of(&g);
         g.set_param(em, "rate", want / (TICKS as f32 * FIXED_DT as f32));

@@ -126,11 +126,13 @@ fn the_cost_table_the_rig_tutorial_prints_is_the_one_that_was_measured() {
     // As leituras da §7 do doc 114 (RELEASE, `load 22,88`, 2026-09-17); o campo no tecto de hoje
     // (`181²`, `LADO_MAX_DE_GRELHA`) e o bando re-medidos em 2026-10-08 por
     // `measure_the_soft_body_group` (RELEASE, `load 1,72`, mínimo de 31 quadros: o campo `0,095`, o
-    // bando `10,87` — a leitura de `13,77` era de `load 22,88` e não valia).
+    // bando `10,87` — a leitura de `13,77` era de `load 22,88` e não valia). O corpo mole no tecto
+    // por nó (`181²`, ciclo 15, doc 124 §1): `0,25` (mínimo de 31, `load 55` — o mínimo é o que a
+    // carga não infla; a `512²` ele custava `2,26` e já não se alcança).
     let medidos: &[(&str, &str)] = &[
         ("0,010", "o campo a 60x60"),
         ("0,095", "o campo a 181x181"),
-        ("2,26", "o corpo mole a 512x512"),
+        ("0,25", "o corpo mole a 181x181, o tecto por no'"),
         ("10,87", "o bando de 3 600 na CPU"),
         ("65,2", "a fraccao de um quadro que o bando come"),
     ];

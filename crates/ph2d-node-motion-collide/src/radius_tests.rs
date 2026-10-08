@@ -44,9 +44,9 @@ fn a_stream_without_a_size_column_packs_exactly_as_a_unit_sized_one() {
     let w = vec![1.0; p.len()];
     let fall = vec![1.0; p.len()];
     let radii: Vec<f32> = a.iter().map(|s| 0.3 * s).collect();
-    let out = push_apart(&p, &w, &radii, &fall, 8, 1.0);
+    let out = push_apart(&p, &w, &radii, &fall, None, 8, 1.0);
     // E o número que ela reproduz é o `2·radius` da lei antiga.
-    let uniform = push_apart(&p, &w, &vec![0.3; p.len()], &fall, 8, 1.0);
+    let uniform = push_apart(&p, &w, &vec![0.3; p.len()], &fall, None, 8, 1.0);
     assert_eq!(
         out, uniform,
         "a rota do tamanho reduz LITERALMENTE a de antes"
@@ -66,7 +66,7 @@ fn a_big_disc_and_a_small_one_settle_at_the_sum_of_their_radii() {
     let fall = [1.0, 1.0];
     // base 0.3, escalas 1 e 2 ⇒ raios 0.3 e 0.6.
     let radii = [0.3, 0.6];
-    let out = push_apart(&p, &w, &radii, &fall, 64, 1.0);
+    let out = push_apart(&p, &w, &radii, &fall, None, 64, 1.0);
     let d = dist(out[0], out[1]);
     assert!(
         (d - 0.9).abs() < 1e-3,
@@ -74,7 +74,7 @@ fn a_big_disc_and_a_small_one_settle_at_the_sum_of_their_radii() {
     );
 
     // Simétrica: trocar quem é grande espelha o resultado, não o muda.
-    let swapped = push_apart(&p, &w, &[0.6, 0.3], &fall, 64, 1.0);
+    let swapped = push_apart(&p, &w, &[0.6, 0.3], &fall, None, 64, 1.0);
     let d2 = dist(swapped[0], swapped[1]);
     assert!((d - d2).abs() < 1e-4, "a lei e' simetrica: {d} vs {d2}");
 }
@@ -135,7 +135,7 @@ fn a_non_finite_size_reads_as_the_identity() {
 #[test]
 fn a_set_of_zero_sized_discs_is_returned_untouched() {
     let p = [[0.0, 0.0], [0.01, 0.0]];
-    let out = push_apart(&p, &[1.0, 1.0], &[0.0, 0.0], &[1.0, 1.0], 8, 1.0);
+    let out = push_apart(&p, &[1.0, 1.0], &[0.0, 0.0], &[1.0, 1.0], None, 8, 1.0);
     assert_eq!(out, p);
 }
 
@@ -154,11 +154,11 @@ fn a_falloff_of_zero_makes_the_disc_transparent_which_is_not_being_pinned() {
     let radii = [0.3, 0.3];
 
     // MUDO: o par desaparece — ninguém se mexe.
-    let muted = push_apart(&p, &[1.0, 1.0], &radii, &[0.0, 1.0], 8, 1.0);
+    let muted = push_apart(&p, &[1.0, 1.0], &radii, &[0.0, 1.0], None, 8, 1.0);
     assert_eq!(muted, p, "um disco mudo e' transparente: o par nao existe");
 
     // PINADO: o par existe, o livre leva a penetração inteira.
-    let pinned = push_apart(&p, &[0.0, 1.0], &radii, &[1.0, 1.0], 8, 1.0);
+    let pinned = push_apart(&p, &[0.0, 1.0], &radii, &[1.0, 1.0], None, 8, 1.0);
     assert_eq!(pinned[0], p[0], "o pino nao se move");
     assert!(
         dist(pinned[0], pinned[1]) > 0.5,
@@ -181,8 +181,8 @@ fn a_full_falloff_is_byte_identical_to_no_falloff_column() {
 
     let w = vec![1.0; n];
     let radii = vec![0.3; n];
-    let a = push_apart(&p, &w, &radii, &falloff_col(&bare, n), 8, 1.0);
-    let b = push_apart(&p, &w, &radii, &falloff_col(&full, n), 8, 1.0);
+    let a = push_apart(&p, &w, &radii, &falloff_col(&bare, n), None, 8, 1.0);
+    let b = push_apart(&p, &w, &radii, &falloff_col(&full, n), None, 8, 1.0);
     assert_eq!(a, b);
 }
 
@@ -199,10 +199,10 @@ fn a_muted_pair_does_not_dilute_the_contacts_that_are_alive() {
     let p = [[0.0, 0.0], [0.1, 0.0], [0.0, 0.05], [0.0, -0.05]];
     let w = [1.0; 4];
     let radii = [0.3; 4];
-    let with_mutes = push_apart(&p, &w, &radii, &[1.0, 1.0, 0.0, 0.0], 8, 1.0);
+    let with_mutes = push_apart(&p, &w, &radii, &[1.0, 1.0, 0.0, 0.0], None, 8, 1.0);
 
     // O mesmo par, sozinho no mundo.
-    let alone = push_apart(&p[..2], &[1.0, 1.0], &[0.3, 0.3], &[1.0, 1.0], 8, 1.0);
+    let alone = push_apart(&p[..2], &[1.0, 1.0], &[0.3, 0.3], &[1.0, 1.0], None, 8, 1.0);
 
     let d_mixed = dist(with_mutes[0], with_mutes[1]);
     let d_alone = dist(alone[0], alone[1]);
@@ -221,8 +221,8 @@ fn a_muted_pair_does_not_dilute_the_contacts_that_are_alive() {
 #[test]
 fn the_pair_weight_does_not_care_which_side_carries_it() {
     let p = [[0.0, 0.0], [0.1, 0.0]];
-    let a = push_apart(&p, &[1.0, 1.0], &[0.3, 0.3], &[0.5, 1.0], 8, 1.0);
-    let b = push_apart(&p, &[1.0, 1.0], &[0.3, 0.3], &[1.0, 0.5], 8, 1.0);
+    let a = push_apart(&p, &[1.0, 1.0], &[0.3, 0.3], &[0.5, 1.0], None, 8, 1.0);
+    let b = push_apart(&p, &[1.0, 1.0], &[0.3, 0.3], &[1.0, 0.5], None, 8, 1.0);
     assert!(
         (dist(a[0], a[1]) - dist(b[0], b[1])).abs() < 1e-6,
         "o produto comuta"
@@ -245,7 +245,7 @@ fn the_pair_weight_does_not_care_which_side_carries_it() {
 fn a_partial_falloff_separates_partially() {
     let p = [[0.0, 0.0], [0.1, 0.0]];
     let g = |f: f32| {
-        let out = push_apart(&p, &[1.0, 1.0], &[0.3, 0.3], &[f, f], 1, 1.0);
+        let out = push_apart(&p, &[1.0, 1.0], &[0.3, 0.3], &[f, f], None, 1, 1.0);
         dist(out[0], out[1])
     };
     let (zero, half, full) = (g(0.0), g(0.5), g(1.0));

@@ -10,7 +10,7 @@
 //!
 //! ⚠️ **Contagem modesta de propósito.** Com a probabilidade abaixo de `1` o emitter **recusa
 //! o device** (a contagem passa a depender de dados — ver o `applicable` do kernel dele), e a
-//! cena `=5` corre **1,2 milhões** de partículas. Aqui são ~600 por jacto: a cena existe para
+//! cena `=5` corre o **tecto por nó** (`32 768`) de partículas. Aqui são ~600 por jacto: a cena existe para
 //! mostrar a LEI, e a que existe para mostrar o tecto do hardware é a outra.
 
 use ph2d_motion_doc::MotionDoc;

@@ -584,7 +584,18 @@ impl NodeOp for MotionVerletRope {
             value_head(&scalar_col(ctx.input(1), VALUE_COL)),
         ];
         let state = ctx.input(2);
-        let out = simulate(anchor, state, playhead, &p);
+        let mut out = simulate(anchor, state, playhead, &p);
+        // ⭐ A corda DECLARA ao colisor quem está junto (doc 124 §0.2): o repouso é a corrente
+        // RECTA (a soma dos segmentos, a mesma pose da semente) e o corpo é o nó (`+ 1`: `0` =
+        // nenhum). Os nós a menos de `r_i + r_j` na corda não se empurram — a restrição de
+        // distância segura-os, e o colisor a empurrá-los lutava contra ela.
+        let n = out.count();
+        out.set("rest", Column::Vec2(seed([0.0, 0.0], &p).0));
+        #[expect(clippy::cast_precision_loss, reason = "a chave de um no' e' pequena")]
+        out.set(
+            "body",
+            Column::Scalar(vec![(ctx.node_key() as f32) + 1.0; n]),
+        );
         ctx.emit(out);
     }
 }

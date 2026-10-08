@@ -25,30 +25,22 @@
 //! coluna pelo nome** — é o desenho declarado dele, *"a named attribute and not an enum"* — e o
 //! `motion.drive` leva-a a qualquer canal. Duas ligações fazem o que lá é um param.
 
-//! # ⛔ NÃO HÁ TECTO DE LINHAS, e isso foi MEDIDO (§0.0)
+//! # ⭐ O TECTO É O DA CASA: as primeiras `MAX_INSTANCIAS_POR_NO` linhas
 //!
-//! Antes de escrever um `MAX_ROWS` mediu-se o que ele limitaria
-//! ([`examples/probe_frame_cost.rs`](../examples/probe_frame_cost.rs) e
-//! [`ph2d-table/examples/probe_cost.rs`](../../ph2d-table/examples/probe_cost.rs)):
-//!
-//! | tabela | LER (uma vez, por ficheiro) | COPIAR (todo quadro) |
-//! |---|---|---|
-//! | 10 000 × 16 | `7,9 ms` | `0,06 ms` — **`0,4 %`** de um quadro |
-//! | 100 000 × 16 | `68,8 ms` | `0,67 ms` — `4,0 %` |
-//! | 1 000 000 × 16 | `620 ms` | `6,90 ms` — `41,3 %` |
-//!
-//! ⇒ **um milhão de linhas ainda cabe num quadro.** A leitura é uma vez por ficheiro (o cache
-//! da shell), não por quadro, então os `620 ms` são um soluço ao ESCOLHER o ficheiro, não uma
-//! taxa. Um tecto aqui seria um palpite a limitar um recurso que não está apertado.
-//!
-//! ⚠️ **O que aperta primeiro é o RENDERER** — desenhar um milhão de instâncias —, e esse
-//! limite é dele. §0.0: *nunca deixe o caminho mais lento definir o teto do outro.*
+//! Uma linha é um OBJECTO na tela, e a ordem do dono (*«nenhum nó que cria instâncias pode gerar
+//! mais de»* o tecto por nó) vale aqui como no `motion.grid` — aplicada no ciclo 15 (doc 124
+//! §0.1). O nó entrega as primeiras linhas do ficheiro, e o `Index`/`Count` são os do que SAI; o
+//! cartão mostra a contagem (`N inst`). ⚠️ O `value.table` (cada linha é um MOMENTO, não um
+//! objecto) não muda. A medição de antes — *«um milhão de linhas cabe num quadro»*, LER `620 ms`
+//! uma vez e COPIAR `6,90 ms` por quadro — continua verdadeira e vive no doc 124 §1.
 
 use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
+use ph2d_nodegraph::node::{
+    MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec,
+};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -88,6 +80,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 
 struct SourceTable;
 
+/// As primeiras `n` linhas de uma coluna — a cópia de sempre quando ela já cabe.
+fn primeiras(col: &Column, n: usize) -> Column {
+    match col {
+        Column::Scalar(v) => Column::Scalar(v[..n.min(v.len())].to_vec()),
+        Column::Vec2(v) => Column::Vec2(v[..n.min(v.len())].to_vec()),
+        Column::Vec3(v) => Column::Vec3(v[..n.min(v.len())].to_vec()),
+        Column::Vec4(v) => Column::Vec4(v[..n.min(v.len())].to_vec()),
+    }
+}
+
 impl NodeOp for SourceTable {
     fn manifest(&self) -> &'static NodeManifest {
         &MANIFEST
@@ -97,7 +99,7 @@ impl NodeOp for SourceTable {
         let file = ctx.text_param(FILE_KEY).unwrap_or("").to_string();
         let spacing = ctx.param(param::SPACING);
         let table = ctx.external(&ph2d_node_registry::table_external_key(&file));
-        let n = table.count();
+        let n = table.count().min(MAX_INSTANCIAS_POR_NO);
         // ⚠️ **Sem ficheiro, o nó desenha NADA — e não um ponto na origem.** Um elemento
         // solitário lê-se como *"a tabela carregou e tem uma linha"*, que é a mentira mais cara
         // que este nó pode contar. Zero elementos é a identidade honesta de *ainda não há dado*.
@@ -112,7 +114,7 @@ impl NodeOp for SourceTable {
         let p: Vec<[f32; 2]> = (0..n).map(|i| [(i as f32 - mid) * spacing, 0.0]).collect();
         let mut out = Stream::new(n).with("P", Column::Vec2(p));
         for (name, col) in table.columns() {
-            out.set(name.clone(), col.clone());
+            out.set(name.clone(), primeiras(col, n));
         }
         out.set(
             "Index",

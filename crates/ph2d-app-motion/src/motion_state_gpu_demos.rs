@@ -391,20 +391,22 @@ pub(super) fn build_gpu_emitter_demo_document(
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
     let em = g.add_node("motion.emitter");
-    // Capped: rate·life = 4200 > max, so the window binds at `max` and `first`
+    // Capped: `rate · life > max`, so the window binds at `max` and `first`
     // advances every tick — the gather's whole point. A wide cone gives each id a
     // distinct muzzle velocity, so a mispair would be visible as a boiling arc.
-    // 400.000/s × 3 s = 1,2 MILLION alive. Measured on the RTX: a sim this size
-    // costs ~1 ms/tick — 6% of a 60 fps frame — and the ceiling above it is 4M.
-    // This demo has been 3.000 particles, then 4.200 (silently bounded by
-    // `rate × life`), then 12.000; each of those was a number some CEILING chose,
-    // never the device. This one is what the hardware does.
-    g.set_param(em, "rate", 400_000.0);
+    // ⚠️ `max` é o TECTO DE INSTÂNCIAS POR NÓ da casa (ordem do dono; doc 124 §0.1): a fonte
+    // corria `1,2 M` (`400 000/s × 3 s`) quando o tecto do emissor era o da memória da placa.
+    // `12 000/s × 3 s = 36 000 > 32 768` mantém o regime de janela a deslizar.
+    g.set_param(em, "rate", 12_000.0);
     g.set_param(em, "life", 3.0);
-    g.set_param(em, "max", 1_200_000.0);
-    // Grains, not blobs: a million quads at 0,18 world units would be one solid
-    // sheet of colour.
-    g.set_param(em, "size", 0.012);
+    #[expect(clippy::cast_precision_loss, reason = "o tecto cabe num f32 exacto")]
+    g.set_param(
+        em,
+        "max",
+        ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO as f32,
+    );
+    // Grains, not blobs — but grains the eye still reads at `32 768`.
+    g.set_param(em, "size", 0.04);
     g.set_param(em, "speed", 22.0);
     g.set_param(em, "angle", 90.0); // up (Y-up world)
     g.set_param(em, "spread", 60.0);

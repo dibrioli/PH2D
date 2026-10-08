@@ -198,7 +198,11 @@ fn how_far_does_the_packing_scale() {
     let reg = registry();
     eprintln!("\npush-apart on the GPU — 8 sweeps, grid rebuilt between each:");
     eprintln!("  {:>10}  {:>10}  {:>10}", "discs", "ms/cook", "ns/disc");
-    for &side in &[256u32, 512, 1024, 2048] {
+    // ⚠️ A grelha corta cada lado em `LADO_MAX_DE_GRELHA` (o tecto por nó): acima dele a escada
+    // mediria `181²` com o rótulo de outro número (doc 124 §1).
+    #[expect(clippy::cast_possible_truncation, reason = "um lado de grelha pequeno")]
+    let lado = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as u32;
+    for &side in &[lado / 4, lado / 2, lado] {
         let (g, out) = collide_graph(side as f32, 8.0);
         let plan = plan(&g, &reg, &reg, out);
         assert!(plan.is_fully_gpu());

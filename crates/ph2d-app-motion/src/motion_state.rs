@@ -125,6 +125,10 @@ pub(crate) mod traco_esticado_demo;
 #[path = "motion_state_fio_vortex_demo.rs"]
 mod fio_vortex_demo;
 
+/// A cena `=129` — o corpo mole com colisor (o Bug #15 fechado, doc 124). Ver o cabeçalho dela.
+#[path = "motion_state_corpo_com_colisor_demo.rs"]
+mod corpo_com_colisor_demo;
+
 /// A cena `=122` — o passe sobre uma SIMULAÇÃO a correr (doc 115 §15.2).
 #[path = "motion_state_passe_sim_demo.rs"]
 mod passe_sim_demo;

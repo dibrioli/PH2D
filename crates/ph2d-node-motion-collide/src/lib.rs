@@ -64,6 +64,9 @@ const SIZE_COL: &str = "size";
 /// The MOPs spine: how much this node acts on an element (`1` = fully, `0` = not
 /// at all). Absent reads as `1`, so every pre-falloff packing is unchanged.
 const FALLOFF_COL: &str = "falloff";
+/// O repouso e a identidade do corpo — ver [`Estrutura`].
+const REST_COL: &str = "rest";
+const BODY_COL: &str = "body";
 
 /// Below this a pair is treated as coincident (the normal is undefined).
 const EPS: f32 = 1e-9;
@@ -184,6 +187,47 @@ fn falloff_col(s: &Stream, n: usize) -> Vec<f32> {
     }
 }
 
+/// ⭐ **Quem está junto no REPOUSO não colide** (doc 124 §0.2, Bug #15): o `rest` e o `body` que
+/// um corpo declara (`motion.soft_body`, `motion.verlet_rope`). Um par do MESMO corpo (`body`
+/// igual e não nulo) cujo repouso já o põe a menos de `r_i + r_j` é segurado pela restrição do
+/// corpo, não pelo colisor — o filtro de auto-colisão do FleX (`eNvFlexPhaseSelfCollideFilter`) e
+/// o `collideConnected = false` do Box2D. Empurrá-lo põe o colisor a lutar contra o corpo: medido,
+/// o corpo INCHAVA `1,92 → 2,76` e os pares não ligados chegavam a `0,02` no que se desenha.
+///
+/// `None` sem as DUAS colunas (ou com o tamanho errado) ⇒ nenhum filtro ⇒ byte-idêntico a toda
+/// corrente que não as traz.
+pub(crate) struct Estrutura {
+    rest: Vec<[f32; 2]>,
+    body: Vec<f32>,
+}
+
+impl Estrutura {
+    fn de(s: &Stream, n: usize) -> Option<Self> {
+        match (s.get(REST_COL), s.get(BODY_COL)) {
+            (Some(Column::Vec2(rest)), Some(Column::Scalar(body)))
+                if rest.len() == n && body.len() == n =>
+            {
+                Some(Self {
+                    rest: rest.clone(),
+                    body: body.clone(),
+                })
+            }
+            _ => None,
+        }
+    }
+
+    /// O par `(i, j)` é segurado pelo corpo (e o colisor deixa-o em paz)?
+    fn segura(&self, i: usize, j: usize, min_d2: f32) -> bool {
+        let b = self.body[i];
+        if b == 0.0 || b != self.body[j] {
+            return false;
+        }
+        let dx = self.rest[j][0] - self.rest[i][0];
+        let dy = self.rest[j][1] - self.rest[i][1];
+        dx * dx + dy * dy < min_d2
+    }
+}
+
 fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
     match s.get(name) {
         Some(Column::Scalar(v)) => v.clone(),
@@ -203,11 +247,13 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
 /// pin existed), and against a pinned element (`w = 0`, infinite mass) the free one
 /// takes the whole penetration and the pin does not budge. That is what makes a
 /// pinned disc an OBSTACLE the others pack around.
+#[allow(clippy::too_many_arguments)]
 fn push_apart(
     p: &[[f32; 2]],
     w: &[f32],
     radii: &[f32],
     falloff: &[f32],
+    estrutura: Option<&Estrutura>,
     iterations: usize,
     strength: f32,
 ) -> Vec<[f32; 2]> {
@@ -270,6 +316,9 @@ fn push_apart(
                     continue;
                 }
                 let min_d2 = min_dist * min_dist;
+                if estrutura.is_some_and(|e| e.segura(i, j, min_d2)) {
+                    continue;
+                }
                 let dx = q[j][0] - q[i][0];
                 let dy = q[j][1] - q[i][1];
                 let d2 = dx * dx + dy * dy;
@@ -384,7 +433,15 @@ impl NodeOp for MotionCollide {
             }
             None => out.set(
                 "P",
-                Column::Vec2(push_apart(&p, &w, &radii, &fall, iterations, strength)),
+                Column::Vec2(push_apart(
+                    &p,
+                    &w,
+                    &radii,
+                    &fall,
+                    Estrutura::de(input, n).as_ref(),
+                    iterations,
+                    strength,
+                )),
             ),
         }
         ctx.emit(out);

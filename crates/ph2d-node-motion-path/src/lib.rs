@@ -72,15 +72,19 @@ const MIN_SPACING: f32 = 0.01;
 /// O teto que a MÁQUINA (ou o bom senso) impõe, alcançável por DIGITAÇÃO — o slider fica
 /// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
 /// nada ficou inalcançável, só deixou de ser o que o dedo percorre.
+///
+/// ⚠️ O tecto digitável de `count` é o TECTO DE INSTÂNCIAS POR NÓ da casa, DERIVADO (doc 124
+/// §0.1) — como o do `motion.distribute_curve`. Era um literal `500` sem recurso, enquanto o modo
+/// `spacing` já chegava a `2^24`.
 static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
     param: "count",
-    max: 500.0,
+    max: MAX_INSTANCIAS_POR_NO as f32,
 }];
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{
-    LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
+    LoweringKind, MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec,
     param_as_count,
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
@@ -234,7 +238,7 @@ fn copies_that_fit(length: f32, spacing: f32) -> usize {
     if n.is_finite() {
         // Um negativo satura em 0 no `as usize` (definido desde o Rust 1.45), e
         // um `length` negativo não existe: o `lut` é soma de comprimentos.
-        (n as usize).min(RECOMMENDED_MAX_ELEMENTS)
+        (n as usize).min(MAX_INSTANCIAS_POR_NO)
     } else {
         0
     }
@@ -316,7 +320,7 @@ impl NodeOp for MotionPath {
                 ctx.param("spacing").max(MIN_SPACING),
             )
         } else {
-            param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS)
+            param_as_count(ctx.param("count"), MAX_INSTANCIAS_POR_NO)
         };
 
         // A shape that is not there (not drawn yet, renamed, deleted) is an EMPTY stream — the same

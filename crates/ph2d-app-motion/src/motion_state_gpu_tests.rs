@@ -394,8 +394,8 @@ fn the_emitter_fountain_demo_is_actually_dense() {
     .expect("cpu cook");
     assert_eq!(
         lowered.len(),
-        1_200_000,
-        "the fountain must run the window it advertises"
+        ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO,
+        "the fountain must run the window it advertises — the per-node ceiling"
     );
 }
 

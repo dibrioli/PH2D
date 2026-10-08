@@ -61,7 +61,10 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
+use ph2d_nodegraph::node::{
+    LADO_MAX_DE_GRELHA, LoweringKind, MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId,
+    ParamSpec, PortSpec,
+};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod params_ui;
@@ -89,41 +92,34 @@ const INV_MASS_COL: &str = "inv_mass";
 /// soletrada LOCALMENTE por cada leitor — como `P` / `accel` / `inv_mass`.
 const FALLOFF_COL: &str = "falloff";
 
+/// ⭐ **O corpo DECLARA ao colisor quem está junto** (doc 124 §0.2): o REPOUSO de cada partícula
+/// (o `rest` do Houdini) e o CORPO a que pertence (`node_key + 1`; `0` = nenhum, que é o zero-fill
+/// de um `motion.combine`). O `motion.collide` não separa um par do mesmo corpo que o repouso já
+/// põe a menos de `r_i + r_j` — o filtro de auto-colisão do FleX.
+const REST_COL: &str = "rest";
+const BODY_COL: &str = "body";
+/// A posição que o corpo EMITIU e o passo que a produziu: no tique seguinte, `P − sb_pos` é o
+/// quanto um nó do laço de estado o empurrou, e isso entra na velocidade ([`fold_correction`]).
+const EMITTED_COL: &str = "sb_pos";
+const STEP_DT_COL: &str = "sb_dt";
+
 /// Ceiling on a single step (see `motion.integrate`): guards a playhead jump.
 const MAX_DT: f32 = 0.1;
 /// Below this a magnitude is treated as zero (skip the normalise / division).
 const EPS: f32 = 1e-6;
-/// Grid dimensions are clamped to this many cells per side — **262 144
-/// particles**, and the resource is the **HR-4 soft-physics sub-budget of
-/// 2,0 ms/tick**. MEASURED (`cost_probe`, single-threaded, one tick of the
-/// full `step`): 512² = **1,426 ms = 71% do orçamento** · 724² = 3,296 ms =
-/// 165% (estoura). The mesh cost is `O(rows·cols)` and nothing here is
-/// quadratic — shape matching reduces the whole cloud to 8 scalars.
+/// **O lado da malha — o da CASA** (ordem do dono, 2026-10-08: *«o nó de corpo mole deve ter
+/// limite de 32 768»*): cada lado vai a [`LADO_MAX_DE_GRELHA`] e a malha a `181² = 32 761`,
+/// o molde do `motion.grid` (`d60a8398c`). DERIVADO, nunca um literal.
 ///
-/// ⚠️ **Era 40** (1600 partículas), and that number named no resource: it cost
-/// **0,005 ms**, 0,25% of the budget — 164× below what the same code delivers
-/// (§0.0: measure before you limit). A jelly at 40×40 has the resolution of a
-/// checkerboard; this is the cap the algorithm actually earns.
-///
-/// ⚠️ At the cap the binding constraint is no longer the SIM — it is the
-/// RENDER: 262 144 quads is exactly where the zone scene measured the frame
-/// drop (2026-07-20). Reaching this number is a deliberate act, not a default.
-///
-/// ⚠️ **And this number was measured against ONE shape match, which `clusters`
-/// stops being.** Overlapping regions cover the mesh about four times over, so
-/// the match is paid roughly that many times: MEASURED
-/// (`what_clusters_buy_and_what_they_cost`, one tick) 512² costs **1,77 ms with a
-/// single frame and 5,3–5,9 ms clustered** — 3,4×, or 275-297% of the sub-budget
-/// this cap was chosen to fit. Clustered, the budget holds to about **300 a
-/// side** (256² measures 1,22-1,36 ms = 61-68%).
-///
-/// The cap is NOT lowered when clusters are on, and that is deliberate: a
-/// resolution ceiling that moved with another knob would take a mesh the artist
-/// already authored away from them, and the right value would be a function of
-/// the neighbour — the shape this codebase calls an ergonomics bug. The two
-/// numbers multiply, they are both on the panel, and this is where the product
-/// is written down.
-const MAX_SIDE: i64 = 512;
+/// ⚠️ O tecto de antes era `512` (`262 144` partículas) e era de um RECURSO (o sub-orçamento de
+/// física de `2,0 ms`); a escada medida (`512²` = `1,43 ms` uma moldura · `5,3–5,9 ms` com
+/// `clusters`) vive no [doc 124 §1](../../../docs/Motion%20Nodes/124_ciclo_15_o_tecto_dos_criadores_e_o_colisor_do_corpo_mole.md).
+/// Hoje o tecto é de PRODUTO e o recurso folga muito abaixo dele.
+const MAX_SIDE: i64 = LADO_MAX_DE_GRELHA as i64;
+const _: () = assert!(
+    (MAX_SIDE * MAX_SIDE) as usize <= MAX_INSTANCIAS_POR_NO,
+    "a malha no tecto cabe no tecto de instancias por no"
+);
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -214,6 +210,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // `Params::clusters`.
         ParamSpec {
             name: "clusters",
+            default: 1.0,
+        },
+        // ⭐ **Sub-passos — lidos pelo SEQUENCIADOR, não pelo `eval`** (doc 124 §2): um nó que
+        // oferece um param chamado `ph2d_nodegraph::cook::SUBSTEPS_PARAM` declara *«o meu interior
+        // sub-tica»* e o pump re-coze o laço de estado inteiro `n` vezes por quadro — o colisor
+        // no laço incluído, que é o que um laço dentro deste `eval` não podia dar. `1` = o passo
+        // único de sempre, ao bit. Medido na fixtura do Bug #15: a `4` o colisor segura o
+        // diâmetro (`0,555` contra `0,560`) e o corpo NÃO incha — o número do oráculo.
+        ParamSpec {
+            name: "substeps",
             default: 1.0,
         },
     ],
@@ -435,14 +441,50 @@ fn step(
     (out_pos, out_vel)
 }
 
+/// ⭐ **O CONTACTO ENTRA NA VELOCIDADE** — a do PBD, `v = (x_final − x_antes)/dt`, com o
+/// `x_final` a incluir o que um nó do laço de estado fez à posição (o `motion.collide`). Sem isto
+/// a velocidade do passo seguinte era a de ANTES do contacto e o corpo voltava a entrar no vizinho
+/// a cada tique (Bug #15). `Δ = 0` não toca a velocidade: sem nada no laço, o corpo é o de sempre
+/// AO BIT.
+fn fold_correction(
+    pos: &[[f32; 2]],
+    vel: Vec<[f32; 2]>,
+    state: &Stream,
+    keep: f32,
+) -> Vec<[f32; 2]> {
+    let emitted = vec2_col(state, EMITTED_COL);
+    let dt = scalar_col(state, STEP_DT_COL)
+        .first()
+        .copied()
+        .unwrap_or(0.0);
+    if emitted.len() != pos.len() || dt.is_nan() || dt <= EPS {
+        return vel;
+    }
+    let k = keep / dt;
+    vel.into_iter()
+        .zip(pos.iter().zip(&emitted))
+        .map(|(mut v, (x, e))| {
+            for a in 0..2 {
+                let d = x[a] - e[a];
+                if d != 0.0 && d.is_finite() {
+                    v[a] += d * k;
+                }
+            }
+            v
+        })
+        .collect()
+}
+
 /// The whole node as a pure function: seed on the first tick / a shape change,
-/// else step. Emits `P` + the `sb_vel`/`sim_t` state.
+/// else step. Emits `P` + the `sb_vel`/`sim_t` state, the `sb_pos`/`sb_dt` the next tick
+/// reads its correction from, and the `rest`/`body` the collider reads.
 fn simulate(
     anchor: [f32; 2],
     state: &Stream,
     shape_in: &[[f32; 2]],
     playhead: f32,
     p: &Params,
+    body: f32,
 ) -> Stream {
     // ⚠️ **A porta GANHA quando tem alguma coisa.** Vazia (desligada, ou um
     // montante que ainda não cozinhou) cai na malha autorada — e cair para o
@@ -458,19 +500,32 @@ fn simulate(
     let s_pos = vec2_col(state, "P");
     let s_vel = vec2_col(state, "sb_vel");
 
-    let (pos, vel) = if s_pos.len() == n && s_vel.len() == n {
+    let (pos, vel, emitted, dt) = if s_pos.len() == n && s_vel.len() == n {
         let t_prev = scalar_col(state, "sim_t")
             .first()
             .copied()
             .unwrap_or(playhead);
         let dt = (playhead - t_prev).clamp(0.0, MAX_DT);
         if dt < EPS {
-            (s_pos, s_vel) // loop-wrap / same tick → hold
+            // Loop-wrap / same tick → hold. ⚠️ O `sb_pos`/`sb_dt` de ANTES viajam intactos: um
+            // empurrão recebido num tique parado ainda entra na velocidade do próximo passo.
+            let carried = vec2_col(state, EMITTED_COL);
+            let emitted = if carried.len() == n {
+                carried
+            } else {
+                s_pos.clone()
+            };
+            let dt_prev = scalar_col(state, STEP_DT_COL)
+                .first()
+                .copied()
+                .unwrap_or(0.0);
+            (s_pos, s_vel, emitted, dt_prev)
         } else {
             let accel = accel_col(state, n);
             let w = inv_mass_col(state, n);
             let fall = falloff_col(state, n);
-            step(
+            let s_vel = fold_correction(&s_pos, s_vel, state, 1.0 - p.damping);
+            let (pos, vel) = step(
                 &s_pos,
                 &s_vel,
                 &accel,
@@ -480,7 +535,9 @@ fn simulate(
                 &layout,
                 dt,
                 p,
-            )
+            );
+            let emitted = pos.clone();
+            (pos, vel, emitted, dt)
         }
     } else {
         // Seed the rest mesh at the anchor, at rest (zero velocity).
@@ -488,13 +545,17 @@ fn simulate(
             .iter()
             .map(|q| [q[0] + anchor[0], q[1] + anchor[1]])
             .collect();
-        (seed, vec![[0.0, 0.0]; n])
+        (seed.clone(), vec![[0.0, 0.0]; n], seed, 0.0)
     };
 
     Stream::new(pos.len())
         .with("P", Column::Vec2(pos))
         .with("sb_vel", Column::Vec2(vel))
         .with("sim_t", Column::Scalar(vec![playhead; n]))
+        .with(EMITTED_COL, Column::Vec2(emitted))
+        .with(STEP_DT_COL, Column::Scalar(vec![dt; n]))
+        .with(REST_COL, Column::Vec2(rest.clone()))
+        .with(BODY_COL, Column::Scalar(vec![body; n]))
 }
 
 struct MotionSoftBody;
@@ -525,7 +586,11 @@ impl NodeOp for MotionSoftBody {
         ];
         let state = ctx.input(2);
         let shape_in = vec2_col(ctx.input(3), "P");
-        let out = simulate(anchor, state, &shape_in, playhead, &p);
+        // A identidade do corpo é a do NÓ (estável, nunca reusada), `+ 1` para o `0` ficar
+        // «nenhum corpo». ⚠️ Exacta num `f32` até `2^24` nós num grafo.
+        #[expect(clippy::cast_precision_loss, reason = "a chave de um no' e' pequena")]
+        let body = (ctx.node_key() as f32) + 1.0;
+        let out = simulate(anchor, state, &shape_in, playhead, &p, body);
         ctx.emit(out);
     }
 }
@@ -570,71 +635,10 @@ mod tests;
 #[path = "port_tests.rs"]
 mod port_tests;
 
+/// Os gates do tecto da malha — separados do `lib.rs` pelo tecto de LOC.
 #[cfg(test)]
-mod cap_gates {
-    use super::shape::{rest_shape, shape_goals};
-    use super::{MAX_SIDE, PARAM_HARD_MAX, PARAM_HINTS};
-
-    /// **A CAPACIDADE tem de ser alcançável, e o SLIDER tem de ser arrastável** — duas
-    /// perguntas, e este gate afirmava as duas com um número só.
-    ///
-    /// A preocupação original está inteira e continua gateada: *um controle que para em 40
-    /// sobre um clamp de 512 tem o terço de cima morto, e nada mais notaria*. O que mudou é
-    /// **de que lado do par soft/hard essa igualdade mora**: com o slider preso ao clamp, um
-    /// track de ~154 px movia **3,3 linhas por pixel** sobre um default de 4 — o `MAX_SIDE`
-    /// era alcançável e o DEFAULT não (doc 88 §11). Agora o teto DIGITÁVEL é o clamp (nada
-    /// se perdeu) e o curso do dedo é uma faixa de autoria estritamente abaixo dele.
-    #[test]
-    fn the_mesh_sliders_reach_exactly_the_clamp() {
-        for param in ["rows", "cols"] {
-            let hint = PARAM_HINTS
-                .iter()
-                .find(|h| h.param == param)
-                .unwrap_or_else(|| panic!("{param} has a hint"));
-            let hard = PARAM_HARD_MAX
-                .iter()
-                .find(|h| h.param == param)
-                .unwrap_or_else(|| panic!("{param} has a hard max"));
-            assert_eq!(
-                hard.max, MAX_SIDE as f32,
-                "o teto digitavel de {param} tem de alcancar o clamp, e parar nele"
-            );
-            assert!(
-                hint.max < hard.max,
-                "o slider de {param} e a FAIXA DE AUTORIA, nao o teto: \
-                 soft {} deveria ficar abaixo do hard {}",
-                hint.max,
-                hard.max
-            );
-        }
-    }
-
-    /// **The cap's whole justification is that the cost is LINEAR** — shape
-    /// matching reduces the cloud to 8 scalars, so there is no `N²` anywhere.
-    /// Asserted as a RATIO, never wall-clock: `ci-test` builds at `opt-level=1`
-    /// and a millisecond bar would measure the PROFILE (the ADR-0124 lesson).
-    /// Someone who made this quadratic would take the cap from 71% of the HR-4
-    /// budget to 45× it, and every unit test would stay green.
-    #[test]
-    fn the_shape_match_is_linear_in_the_mesh() {
-        let cost = |side: usize| {
-            let rest = rest_shape(side, side, 1.0);
-            let pred: Vec<[f32; 2]> = rest.iter().map(|p| [p[0] * 1.1, p[1] * 0.9]).collect();
-            let t0 = std::time::Instant::now();
-            for _ in 0..5 {
-                std::hint::black_box(shape_goals(&pred, &rest, 0.3, 1.0));
-            }
-            t0.elapsed().as_secs_f64()
-        };
-        let small = cost(128);
-        let big = cost(256); // 4x the particles
-        let ratio = big / small.max(1e-9);
-        assert!(
-            ratio <= 8.0,
-            "4x the mesh must cost ~4x, not {ratio:.1}x — the cap assumes linear"
-        );
-    }
-}
+#[path = "cap_gates.rs"]
+mod cap_gates;
 
 #[cfg(test)]
 #[path = "probes.rs"]

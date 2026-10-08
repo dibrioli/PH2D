@@ -63,7 +63,9 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::ID_WRAP;
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
+use ph2d_nodegraph::node::{
+    LoweringKind, MAX_INSTANCIAS_POR_NO, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec,
+};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod gpu;
@@ -91,42 +93,16 @@ use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
-/// Hard ceiling on the alive set, whatever `rate × life` asks for.
+/// Hard ceiling on the alive set, whatever `rate × life` asks for — **o tecto de instâncias
+/// por nó da CASA** (ordem do dono de 2026-09-21, aplicada aqui no ciclo 15: doc 124 §0.1).
 ///
-/// **It is a MEMORY budget, and nothing else.** Every earlier number here was
-/// something else wearing that name: 4096 guarded "a stream no renderer would
-/// draw anyway" (the renderer draws 2M instances at 4,02 ms), and 16.384 was the
-/// CPU fallback's frame time — which let the SLOWEST path set the ceiling of the
-/// fastest one, in a module whose entire reason to exist is the fastest one.
+/// ⚠️ Ele foi `4 · 1024²` (um orçamento de MEMÓRIA da placa, `~370 MB` a `4 M`, medido em julho:
+/// `4,19 M` partículas simulavam em `3,6 ms` na RTX) — a tabela vive no doc 124 §1. A ordem do dono
+/// é sobre quantos objectos um nó CRIA, e o emissor cria.
 ///
-/// Measured on the RTX (`emitter_sim_ceiling_probe`, emitter → wind → drag →
-/// integrate, ms per tick):
-///
-/// | window    | GPU   | CPU     |
-/// |-----------|-------|---------|
-/// | 262.144   | 0,277 | 13,060  |
-/// | 1.048.576 | 0,984 | 52,608  |
-/// | 4.194.304 | 3,636 | 227,800 |
-///
-/// **4,19 million particles simulate in 3,6 ms** — 22% of a 60 fps frame. The
-/// CPU cannot follow, and that is the correct division of labour, not a reason
-/// to cap the GPU: the CPU is the canonical REFERENCE (it defines the answer the
-/// parity gates hold the GPU to, and it may take as long as a test needs), while
-/// the product path is the device.
-///
-/// So the number comes from what the device must hold: at `4 × 1024 × 1024`
-/// elements the emitter's eight columns are ~44 B each, double-buffered across
-/// the sim's `pre` loop ⇒ ≈ 370 MB of GPU residency for a maxed-out emitter.
-/// That is a deliberate ceiling on an artist who asks for everything, not an
-/// accident.
-///
-/// ⚠️ **The ceiling stays SHARED between the two paths.** ADR-0130's parity is
-/// by construction from one count law; a GPU-only ceiling would give the two
-/// sides different `n` for the same document, and the scrub, the hybrid seam and
-/// the gather would each be reading a window the other half never had. A CPU too
-/// slow to PLAY a 4M sim is a performance fact; it still computes the same
-/// answer, which is all a reference has to do.
-const MAX_ALIVE: usize = 4 * 1024 * 1024;
+/// ⚠️ **The ceiling stays SHARED between the two paths** (ADR-0130): one count law, so the GPU
+/// `count_law` reads this same constant and the two sides can never disagree about `n`.
+const MAX_ALIVE: usize = MAX_INSTANCIAS_POR_NO;
 
 /// Hash lane for the launch angle draw (see [`hash::rand01`]).
 const LANE_ANGLE: u32 = 0;

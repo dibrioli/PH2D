@@ -82,6 +82,22 @@ static BINDINGS: &[ColumnBinding] = &[
         identity: [1.0, 0.0, 0.0, 0.0],
         port: 0,
     },
+    // O repouso e o corpo que um corpo DECLARA (`crate::Estrutura`, doc 124 §0.2). Ausentes ⇒
+    // `body = 0` ⇒ nenhum par é filtrado, que é a resposta da CPU sem as colunas.
+    ColumnBinding {
+        column: "rest",
+        dim: Dim::Vec2,
+        access: ColumnAccess::Read,
+        identity: [0.0; 4],
+        port: 0,
+    },
+    ColumnBinding {
+        column: "body",
+        dim: Dim::Scalar,
+        access: ColumnAccess::Read,
+        identity: [0.0; 4],
+        port: 0,
+    },
 ];
 
 /// **The largest disc in the set**, which the sweep needs to bound its reach: disc
@@ -163,6 +179,8 @@ const WGSL: &str = r#"
     }
     let fi = clamp(read_in_falloff(i), 0.0, 1.0);
     let wi = collide_w(read_in_inv_mass(i));
+    let bi = read_in_body(i);
+    let resti = read_in_rest(i);
     var delta = vec2<f32>(0.0, 0.0);
     var contacts = 0u;
     // O mais longe que ESTE disco pode tocar alguem: o proprio raio mais o maior do
@@ -211,6 +229,12 @@ const WGSL: &str = r#"
                 let min_dist = ri + base * collide_scale(read_in_size(j));
                 if (min_dist <= 0.0) { continue; }
                 let min_d2 = min_dist * min_dist;
+                // O verbatim do `Estrutura::segura`: um par do MESMO corpo que o repouso ja' poe
+                // a menos de `r_i + r_j` e' segurado pelo corpo, nao pelo colisor.
+                if (bi != 0.0 && read_in_body(j) == bi) {
+                    let dr = read_in_rest(j) - resti;
+                    if (dr.x * dr.x + dr.y * dr.y < min_d2) { continue; }
+                }
                 let d = pj - pi;
                 let d2 = dot(d, d);
                 if (d2 >= min_d2) { continue; }

@@ -11,13 +11,14 @@ use ph2d_node_registry::{
 /// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
 /// nada ficou inalcançável, só deixou de ser o que o dedo percorre.
 pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    // O lado da malha é o da casa (`LADO_MAX_DE_GRELHA`, doc 124 §0.1) — DERIVADO.
     ParamHardMax {
         param: "rows",
-        max: 512.0,
+        max: super::MAX_SIDE as f32,
     },
     ParamHardMax {
         param: "cols",
-        max: 512.0,
+        max: super::MAX_SIDE as f32,
     },
     // MEASURED (`is_the_useful_pressure_coupled_to_stiffness`, a 8x8 body squeezed
     // by a force field for 5 s, worst area ratio reached): the term does what it
@@ -41,7 +42,13 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
     // goes up.
     ParamHardMax {
         param: "clusters",
-        max: 256.0,
+        max: (super::MAX_SIDE / 2) as f32,
+    },
+    // O MESMO tecto do `motion.integrate` e da `sim.zone`: o ritmo é do GRAFO (o maior que
+    // qualquer declarante pede), e um tecto menor aqui seria contornado por um vizinho.
+    ParamHardMax {
+        param: "substeps",
+        max: 64.0,
     },
 ];
 
@@ -126,6 +133,16 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Slider,
     },
+    // Um sub-passo é uma CONTAGEM (o `IntSlider` dá a unidade `Count`); a faixa da mão pára
+    // em `16`, a do `motion.integrate`.
+    ParamUiHint {
+        param: "substeps",
+        label: "node.motion.soft_body.param.substeps",
+        min: 1.0,
+        max: 16.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
     ParamUiHint {
         param: "pin",
         label: "node.motion.soft_body.param.pin",
@@ -177,5 +194,6 @@ pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("damping", "node.group.physics"),
     ParamGroup::new("pressure", "node.group.physics"),
     ParamGroup::new("clusters", "node.group.physics"),
+    ParamGroup::new("substeps", "node.group.physics"),
     ParamGroup::new("pin", "node.group.pin"),
 ];

@@ -210,3 +210,17 @@ fecho correu de novo sobre ela — §12.1):
 | `ph2d-i18n` · `typos` · `cargo machete` | verdes |
 | GPU `frames_paint` (sem «sem adaptador») | 4 / 4 |
 | `ph2d-board-edit` · `ph2d-board-render` (lib) depois do corte | 95 / 95 · 12 / 12 |
+
+### 12.2 O 2.º smoke do dono (08/10): «Restante: Smoke OK»
+
+Dois defeitos, corrigidos em `f7e96b159`:
+
+| report do dono | causa | prova |
+|---|---|---|
+| «quando o zoom está afastado, ao rotacionar os frames, os quadros não rotacionam. Mas ao aproximar estão corretos» | de longe a nota é um bloco ([`Detail::note_blocks`]) e o bloco era o rectângulo de ECRÃ da caixa envolvente (`fill_rect`), sem a rotação; de perto o desenho completo já rodava | pixels `a_far_rotated_note_is_a_rotated_block`; com o `fill_rect` de volta, vermelho |
+| «Arrastar os frames não deve ativar as linhas de alinhamento dos objetos dentro do frame» | os alvos das guias excluíam só a SELECÇÃO; os de dentro andam com o frame e continuavam alvos na posição antiga | `dragging_a_frame_does_not_snap_to_its_own_children`; com os alvos de antes, vermelho |
+
+Verificado de novo: `fmt` limpo, clippy do `ship.sh` saída 0, `architecture_workspace_file_loc_cap` 2/2,
+`ph2d-board-edit` 96/96, `frames_paint` 5/5 pela placa, interface do quadro 58/58.
+⚠️ `ph2d-board-edit/src/gesture.rs` fica em **698/700** linhas — a próxima onda corta antes de acrescentar.
+**O dono deu o smoke da W5 por OK** depois destas duas correcções.

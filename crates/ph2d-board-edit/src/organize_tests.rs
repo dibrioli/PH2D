@@ -300,6 +300,9 @@ fn a_locked_element_cannot_be_moved_deleted_or_written_and_marquee_skips_it() {
         "mas seleccionou-se (para o destravar)"
     );
     assert_eq!(w.ed.take_notice(), Some(Notice::Locked));
+    w.ed.select(&w.doc, [l]);
+    w.cmd(Command::Nudge([10.0, 0.0]));
+    assert_eq!(w.el(l).x, 0.0, "o empurrão das setas moveu o travado");
     assert!(!w.cmd(Command::EditText));
     assert!(!w.cmd(Command::Delete));
     assert!(w.doc.get(l).is_some());
@@ -346,6 +349,10 @@ fn a_drawn_frame_adopts_only_what_is_fully_inside_in_one_step() {
 fn a_drawn_shape_lives_where_the_drag_started() {
     let mut w = world();
     let f = frame(&mut w, [0.0, 0.0], [300.0, 300.0]);
+    let inner = frame(&mut w, [20.0, 20.0], [120.0, 120.0]);
+    assert_eq!(w.el(inner).frame, Some(f));
+    let deep = w.rect([50.0, 50.0, 30.0, 30.0]);
+    assert_eq!(w.el(deep).frame, Some(inner), "vive no frame mais INTERIOR debaixo do início");
     let inside = w.rect([280.0, 280.0, 100.0, 100.0]);
     assert_eq!(w.el(inside).frame, Some(f), "começou dentro, acabou fora");
     let outside = w.rect([-50.0, -50.0, 100.0, 100.0]);
@@ -576,4 +583,27 @@ fn a_style_on_a_selection_skips_the_locked() {
     let z = w.el(l).z.clone();
     w.cmd(Command::Order(Order::Back));
     assert_eq!(w.el(l).z, z, "o travado mudou de ordem");
+}
+
+/// ⭐ Largar no MESMO sítio mas noutro frame (o ponteiro decide a casa) é UM passo de desfazer: a
+/// pose não mudou, a casa sim.
+#[test]
+fn dropping_in_place_but_in_another_frame_is_undoable() {
+    let mut w = world();
+    let f = frame(&mut w, [0.0, 0.0], [300.0, 300.0]);
+    let r = put_rect(&mut w, [250.0, 100.0, 100.0, 50.0]);
+    let mut el = w.el(r).clone();
+    el.frame = Some(f);
+    BoardOp::Put(el).apply(&mut w.doc);
+    w.click([-900.0, -900.0], NONE);
+    // Agarrado pela ponta de FORA do frame, levado longe e trazido de volta ao mesmo ponto.
+    let p = at(330.0, 125.0, CTRL);
+    w.ed.pointer_down(&mut w.doc, &mut w.h, &mut w.ts, p, VIEW);
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, at(600.0, 400.0, CTRL));
+    w.ed.pointer_move(&mut w.doc, &mut w.ts, p);
+    w.ed.pointer_up(&mut w.doc, &mut w.h, p);
+    assert_eq!(w.el(r).x, 250.0, "voltou ao mesmo sítio");
+    assert_eq!(w.el(r).frame, None, "o ponteiro largou-o fora do frame");
+    assert!(w.cmd(Command::Undo));
+    assert_eq!(w.el(r).frame, Some(f), "o desfazer não devolveu a casa");
 }

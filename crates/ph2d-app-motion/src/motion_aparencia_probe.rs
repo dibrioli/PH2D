@@ -36,35 +36,35 @@ pub fn grupo() -> Vec<&'static str> {
 }
 
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn audit_the_fx_group() {
     crate::motion_ciclo_probe::retrato(&grupo());
 }
 
 /// **OS PARAMS DE CADA NÓ DO GRUPO** — o que a auditoria compara contra as referências.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_each_fx_node_offers() {
     crate::motion_ciclo_probe::params_de(&grupo());
 }
 
 /// **O QUE O CARTÃO PINTA**, com o rótulo da tela.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_the_fx_card_shows() {
     crate::motion_ciclo_probe::cartao(&grupo());
 }
 
 /// **OS NOMES dos cartões** — o que o tutorial terá de escrever.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_fx_card_names() {
     crate::motion_ciclo_probe::nomes(&grupo());
 }
 
 /// **O VOCABULÁRIO pelo eixo do artista** — rótulo, e as palavras do enum.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_fx_vocabulary_the_artist_reads() {
     crate::motion_ciclo_probe::vocabulario_do_artista(&grupo());
 }
@@ -237,7 +237,7 @@ fn the_fx_modes_that_leave_the_device_are_named() {
 /// cargo test -p ph2d-app-motion --lib probe_does_an_fx_chain_stay -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao, nao um gate"]
+#[ignore = "sonda: medicao, nao um gate"]
 fn probe_does_an_fx_chain_stay_on_the_device() {
     use ph2d_nodegraph::graph::{Edge, NodeId};
     let liga =

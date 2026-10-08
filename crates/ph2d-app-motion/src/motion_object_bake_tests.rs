@@ -210,7 +210,7 @@ fn the_bake_camera_flips_y_so_a_tile_is_upright() {
 /// the tile inverts (base at top) → `top >= bottom` → RED. Needs an adapter (RTX);
 /// `#[ignore]`, run with `-- --ignored`.
 #[test]
-#[ignore = "needs a GPU adapter (RTX); run with --ignored"]
+#[ignore = "placa: needs a GPU adapter (RTX); run with --ignored"]
 fn the_baked_tile_is_upright() {
     let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
         eprintln!("no GPU adapter; skipping the_baked_tile_is_upright");
@@ -282,7 +282,7 @@ fn the_baked_tile_is_upright() {
 /// ⚠️ A régua é a TINTA em cada extremo, e não a largura sozinha: uma caixa larga com um membro só
 /// passaria numa medida de largura.
 #[test]
-#[ignore = "needs a GPU adapter; run with --ignored"]
+#[ignore = "placa: needs a GPU adapter; run with --ignored"]
 fn a_group_bakes_into_one_tile_with_both_members_in_it() {
     let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
         eprintln!("no GPU adapter; skipping a_group_bakes_into_one_tile_with_both_members_in_it");

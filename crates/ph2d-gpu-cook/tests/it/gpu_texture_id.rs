@@ -23,21 +23,13 @@
 //! `#[ignore]`: needs a real adapter. Run on the GPU lane:
 //!   cargo test -p ph2d-gpu-cook --test gpu_texture_id --release -- --ignored --nocapture
 
-use ph2d_gpu::GpuContext;
+use super::placa::try_headless_gpu;
 use ph2d_gpu_cook::{CookClock, GpuCook, plan, read_instances};
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::graph::{Edge, Graph};
 use ph2d_render::GpuTexRun;
 use ph2d_render::SinkStyle;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();

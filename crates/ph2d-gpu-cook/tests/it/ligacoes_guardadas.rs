@@ -3,19 +3,11 @@
 //! MESMA imagem): a régua é o TAMANHO dela — guarda alguma coisa, não cresce no regime, e o que saiu de
 //! uso morre.
 
-use ph2d_gpu::GpuContext;
+use super::placa::try_headless_gpu;
 use ph2d_gpu_cook::CookClock;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_render::SinkStyle;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn liga(g: &mut Graph, a: NodeId, b: NodeId) {
     g.connect(Edge {

@@ -27,17 +27,10 @@
 //! here would flake on machine load while telling nobody anything they could act
 //! on. The correctness bar lives in `gpu_reduce.rs`, where it is bit-exact.
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::reduce::{Reduce, ReduceOp, ReduceScratch};
 use std::time::Instant;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn sample(len: usize) -> Vec<f32> {
     (0..len)

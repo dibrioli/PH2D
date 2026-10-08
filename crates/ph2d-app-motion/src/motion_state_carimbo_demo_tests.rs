@@ -399,12 +399,14 @@ fn a_galaxia_gira_e_nao_colapsa() {
     let (mut janela2, mut janela10) = (0usize, 0usize);
     for tick in 0..=600u32 {
         let t = f64::from(tick) * dt;
-        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
         let s = cook.cook(&doc.graph, &reg, ig, t).expect("coze");
-        if tick % 60 != 0 {
+        let s = (tick % 60 == 0).then(|| s[0].as_stream().clone());
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
+        let Some(s) = s else {
             continue;
-        }
-        let Some(ph2d_nodegraph::attr::Column::Vec2(p)) = s[0].as_stream().get("P") else {
+        };
+        let Some(ph2d_nodegraph::attr::Column::Vec2(p)) = s.get("P") else {
             panic!("o integrador entrega `P`")
         };
         let base: &Vec<[f32; 2]> = inicio.get_or_insert_with(|| p.clone());
@@ -457,7 +459,7 @@ const JANELA_DE_ARRANQUE: [f32; 2] = [10.9, 3.4];
 /// **SONDA: quanto a galáxia custa por tique** (a simulação, sem o carimbo — o carimbo tem a sua
 /// sonda no `motion_carimbo_relogio_probe`). `--release`, com o `loadavg` ao lado.
 #[test]
-#[ignore = "sonda de relogio, nao um gate"]
+#[ignore = "sonda: relogio, nao um gate"]
 fn sonda_custo_da_galaxia() {
     let (doc, reg, _) = cena();
     let ig = *dos(&doc, "motion.integrate")
@@ -469,8 +471,8 @@ fn sonda_custo_da_galaxia() {
     for tick in 0..240u32 {
         let t = f64::from(tick) * dt;
         let t0 = std::time::Instant::now();
-        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
         let _ = cook.cook(&doc.graph, &reg, ig, t).expect("coze");
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
         if tick >= 60 {
             tempos.push(t0.elapsed().as_secs_f64() * 1e3);
         }
@@ -491,7 +493,7 @@ fn sonda_custo_da_galaxia() {
 /// quantas estrelas caem dentro da janela de arranque (`21,8 × 6,8`, a do cabeçalho da cena) — que
 /// é o que o recorte por câmara NÃO consegue tirar da placa.
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn sonda_a_galaxia_a_longo_prazo() {
     let (doc, reg, _) = cena();
     let ig = *dos(&doc, "motion.integrate")
@@ -501,12 +503,13 @@ fn sonda_a_galaxia_a_longo_prazo() {
     let dt = 1.0 / 60.0;
     for tick in 0..=3600u32 {
         let t = f64::from(tick) * dt;
-        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
         let s = cook.cook(&doc.graph, &reg, ig, t).expect("coze");
-        if tick % 300 != 0 {
+        let s = (tick % 300 == 0).then(|| s[0].as_stream().clone());
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
+        let Some(s) = s else {
             continue;
-        }
-        let Some(ph2d_nodegraph::attr::Column::Vec2(p)) = s[0].as_stream().get("P") else {
+        };
+        let Some(ph2d_nodegraph::attr::Column::Vec2(p)) = s.get("P") else {
             panic!("o integrador entrega `P`")
         };
         let mut r: Vec<f32> = p.iter().map(|q| q[0].hypot(q[1])).collect();

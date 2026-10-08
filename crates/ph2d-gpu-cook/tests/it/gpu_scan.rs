@@ -11,16 +11,9 @@
 //! `#[ignore]`: needs a real adapter. Run on the GPU lane:
 //!   cargo test -p ph2d-gpu-cook --test gpu_scan --release -- --ignored --nocapture
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::scan::{Scan, ScanScratch, cpu_exclusive};
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 /// A deterministic small-valued input (0..256 per element, so the total of a
 /// million stays well under `u32::MAX` — the scan is exact, not modular, in range).

@@ -29,16 +29,19 @@ fn run() -> Vec<Vec<f32>> {
     let sinks = build_rate_demo_document(&mut doc, &reg).expect("a cena monta");
     let mut out = vec![Vec::new(); sinks.len()];
     let mut cook = Cook::new();
+    // ⚠️ A ordem do produto: cozer o quadro e DEPOIS avançar o tique (o doc do `advance_tick`).
+    // Na ordem inversa o `motion.delay` coze DUAS vezes por tique e o passo medido soma dois passos
+    // — era o `0,1678` contra o tecto de `0,0800` na inversão do vaivém (doc 123 §4).
     for k in 0..TICKS {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, &reg, t)
-            .expect("o tique avança o `pre`");
         for (i, s) in sinks.iter().enumerate() {
             let v = cook.cook(&doc.graph, &reg, *s, t).expect("a banda coze");
             if let Some(Column::Vec2(p)) = v[0].as_stream().get("P") {
                 out[i].push(p[0][1]);
             }
         }
+        cook.advance_tick(&doc.graph, &reg, t)
+            .expect("o tique avança o `pre`");
     }
     out
 }
@@ -101,23 +104,12 @@ fn the_capped_row_cannot_keep_up_with_the_sway() {
     );
 }
 
-/// **⚠️ ABERTO — o teto é honrado em regime e NÃO na inversão do vaivém, e o
-/// número está aqui em vez de escondido numa barra folgada.**
+/// **O TETO VALE EM TODO TIQUE, a inversão do vaivém incluída.**
 ///
-/// Medido nesta cena: os passos são `0,0800` **ao dígito** ao longo de toda a
-/// rampa e sobem a **`0,1678` no tique 70** — exactamente onde o alvo INVERTE —,
-/// com os vizinhos irregulares (`−0,0800 · 0,0256 · 0,1678 · 0,0955 · 0,0800`).
-/// A lei do kernel **não pode** produzir isso: ela clampa `|out − prev|`, então
-/// o passo é `≤ max_step` por construção, e os cinco gates de unidade do nó
-/// (que dirigem o produto pelo `Cook`, com mutação provada) concordam.
-///
-/// ⇒ **a diferença tem de estar entre o kernel e o que esta cena monta**, e o
-/// candidato nomeado é o `prev_out` que o gather entrega no tique da inversão.
-/// Fica `#[ignore]` com o mecanismo escrito — o precedente dos dois
-/// `watercolor_app_params_incremental` do Painter: *uma barra afrouxada sobre um
-/// mecanismo que ninguém entendeu é um gate que deixou de perguntar*.
+/// ⚠️ Esteve `#[ignore]` como ABERTO (`0,1678` no tique 70, onde o alvo inverte): o defeito era
+/// deste ARNÊS, que avançava o tique ANTES de cozer e cozia o `motion.delay` duas vezes por tique
+/// (doc 123 §4). Na ordem do produto o passo é `≤ max_step` por construção, como a lei diz.
 #[test]
-#[ignore = "ABERTO: 0,1678 contra um teto de 0,0800, no tique da inversão — ver o doc"]
 fn the_ceiling_is_honoured_on_every_tick_including_the_turn() {
     let p = run();
     let (_, capped) = (&p[0], &p[1]);
@@ -161,7 +153,7 @@ fn the_ramped_row_starts_slower_than_it_ends() {
 
 /// **A SONDA** — imprime os números que a mensagem do smoke cita.
 #[test]
-#[ignore = "sonda"]
+#[ignore = "sonda: imprime, não afirma"]
 fn measure_what_the_scene_shows() {
     let p = run();
     let (max_step, max_accel) = ceilings();

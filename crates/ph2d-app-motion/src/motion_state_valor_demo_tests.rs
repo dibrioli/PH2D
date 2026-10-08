@@ -191,7 +191,7 @@ fn the_counter_feeds_the_flash_through_its_carry_port() {
 /// ⚠️ É o que o tutorial e o anúncio podem nomear: um passo que manda clicar numa linha AFIRMA
 /// que ela está na lista.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn probe_the_cards_of_this_scene() {
     let mut m = MotionState::new();
     let _ = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry);
@@ -324,7 +324,7 @@ fn the_four_figures_the_tutorial_shows_exist_and_differ() {
 /// porta do produto (`coze_o_quadro`), com placa: em cada quadro conta quantas peças de cada pano de
 /// baixo estão ACESAS (o clarão incha o tamanho `0,9`), e compara com a MESMA conta na CPU.
 #[test]
-#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+#[ignore = "placa: requires a GPU adapter; run with --ignored on a dev machine"]
 fn the_bottom_cloths_flash_on_the_device_like_on_the_cpu() {
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
         return;

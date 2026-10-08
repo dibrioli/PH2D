@@ -227,10 +227,8 @@ impl crate::App {
         // voltaram»*). O lowering de CPU cala uma corrente de posições, e o caminho da GPU **nunca
         // perguntava** — ver `lei_da_aparencia::a_arte_desenha`, que responde pela FRONTEIRA e sem
         // ler o dispositivo de volta.
-        let arte_desenha = ph2d_app_motion::lei_da_aparencia::a_arte_desenha(
-            motion,
-            ph2d_eval_motion::so_com_forma_por_ordem(),
-        );
+        let arte_desenha =
+            ph2d_app_motion::lei_da_aparencia::a_arte_desenha(motion, motion.pump.a_lei());
         let motion_gpu: Option<(&wgpu::Buffer, u32, &[ph2d_render::GpuTexRun])> =
             (motion_active && arte_desenha && motion.gpu_live)
                 .then(|| motion.gpu_cook.instances())

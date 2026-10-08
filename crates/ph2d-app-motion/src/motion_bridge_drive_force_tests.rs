@@ -103,7 +103,7 @@ fn a_number_on_the_vortex_strength_moves_the_sim_like_the_card_would() {
 }
 
 #[test]
-#[ignore = "sonda, precisa de adapter"]
+#[ignore = "sonda: precisa de adapter"]
 fn sonda_gpu_number_no_strength_do_vortex() {
     let Some(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()
     else {
@@ -147,7 +147,7 @@ fn sonda_gpu_number_no_strength_do_vortex() {
 
 /// Liga o fio A MEIO da corrida, pela porta do gesto (`subgraph::drive`), e edita o Number depois.
 #[test]
-#[ignore = "sonda, precisa de adapter"]
+#[ignore = "sonda: precisa de adapter"]
 fn sonda_fio_a_meio_da_corrida() {
     let gpu = std::env::var_os("SONDA_PLACA").and_then(|_| {
         ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()
@@ -238,7 +238,7 @@ fn sonda_fio_a_meio_da_corrida() {
 
 /// A cena `=127` do dono (estrelas + galáxia), o fio ligado a meio pela porta do gesto.
 #[test]
-#[ignore = "sonda"]
+#[ignore = "sonda: imprime, não afirma"]
 fn sonda_127_fio_a_meio() {
     use crate::motion_state::traco_esticado_demo as d;
     let gpu = std::env::var_os("SONDA_PLACA").and_then(|_| {
@@ -407,7 +407,7 @@ fn galaxia_127(
 /// bit (medido). CONTROLO: Number `30` tem de mudar o campo; e a rota tem de ser a HÍBRIDA, senão
 /// este gate mediria o ramo que já estava certo.
 #[test]
-#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+#[ignore = "placa: requires a GPU adapter; run with --ignored on a dev machine"]
 fn the_hybrid_route_reads_the_wire_like_the_cpu() {
     let Some(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()
     else {
@@ -441,7 +441,7 @@ fn the_hybrid_route_reads_the_wire_like_the_cpu() {
 /// seu laço, e o híbrido esqueceu a lei que este tinha; este gate fixa o que já estava certo para
 /// os dois não voltarem a divergir. CONTROLO: a rota é a `fully-GPU`, e o fio muda o campo.
 #[test]
-#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+#[ignore = "placa: requires a GPU adapter; run with --ignored on a dev machine"]
 fn the_fully_gpu_route_reads_the_wire_like_the_cpu() {
     let Some(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()
     else {

@@ -24,7 +24,7 @@ use ph2d_nodegraph::graph::Edge;
 ///
 /// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture what_can_drive_the_rotate_angle`
 #[test]
-#[ignore = "sonda de reproducao, nao um gate"]
+#[ignore = "sonda: reproducao, nao um gate"]
 fn what_can_drive_the_rotate_angle() {
     use ph2d_nodegraph::cook::Cook;
     for (fonte, mexer) in [
@@ -148,7 +148,7 @@ fn only_a_value_output_may_drive_a_param() {
 ///
 /// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture what_the_socket_encoding_carries`
 #[test]
-#[ignore = "sonda de censo, nao um gate"]
+#[ignore = "sonda: censo, nao um gate"]
 fn what_the_socket_encoding_carries() {
     use ph2d_nodegraph::port::{Dim, Domain};
     use std::collections::BTreeMap;
@@ -223,7 +223,7 @@ fn what_the_socket_encoding_carries() {
 ///
 /// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture what_our_visual_channels_carry`
 #[test]
-#[ignore = "sonda de censo, nao um gate"]
+#[ignore = "sonda: censo, nao um gate"]
 fn what_our_visual_channels_carry() {
     use std::collections::BTreeMap;
     let motion = MotionState::new();
@@ -274,7 +274,7 @@ fn what_our_visual_channels_carry() {
 ///
 /// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture how_much_reads_writes_we_can_derive`
 #[test]
-#[ignore = "sonda de censo, nao um gate"]
+#[ignore = "sonda: censo, nao um gate"]
 fn how_much_reads_writes_we_can_derive() {
     use ph2d_nodegraph::gpu::KernelResolver;
     let motion = MotionState::new();

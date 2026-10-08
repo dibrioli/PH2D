@@ -71,7 +71,7 @@ fn cook_ms(lado: f32, com_carimbo: bool) -> (f64, usize, bool) {
 }
 
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn measure_the_stamp_at_a_million() {
     eprintln!(
         "\n  load {}",

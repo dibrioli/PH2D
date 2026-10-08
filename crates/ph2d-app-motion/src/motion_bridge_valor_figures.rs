@@ -15,16 +15,8 @@
 //! a mesma imagem debaixo de duas legendas diferentes.
 
 use super::tutorial_draw as draw;
-use ph2d_motion_doc::MotionDoc;
-use ph2d_node_registry::NodeRegistry;
+use crate::motion_state::MotionState;
 use ph2d_nodegraph::attr::Column;
-use ph2d_nodegraph::cook::Cook;
-
-fn registry() -> NodeRegistry {
-    let mut reg = NodeRegistry::new();
-    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
-    reg
-}
 
 /// Quantos instantes cada forma de onda tem. ⚠️ **Denso de propósito**: um degrau só se lê como
 /// degrau se houver amostras suficientes DENTRO dele — com poucas, uma escada e uma onda dão a
@@ -42,23 +34,59 @@ const ESCALA_X: f32 = 2.2;
 ///
 /// ⚠️ **O `advance_tick` está aqui e é load-bearing:** as duas metades de baixo têm `pre` (o
 /// metrónomo e o contador guardam o ciclo anterior), e sem ele elas ficam presas no primeiro tique.
+///
+/// ⚠️ **As membranas publicam-se a cada quadro, como no [`coze_o_quadro`]**: desde 07/10 cada sink
+/// CARIMBA estrelas primeiro (`source.shape` → `motion.duplicator`) e o valor age depois, e uma
+/// `source.shape` sem publicação é zero peças — o `Cook` cru lia `0` valores (doc 123 §2).
+///
+/// [`coze_o_quadro`]: crate::motion_bridge::quadro::coze_o_quadro
 fn colher(ate: f64) -> Vec<Vec<[f32; 2]>> {
-    let reg = registry();
-    let mut doc = MotionDoc::default();
-    let (sinks, _) = crate::motion_demo_legend::monta("117", &mut doc, &reg);
-    let mut cook = Cook::new();
+    let mut m = MotionState::new();
+    let (sinks, _) = crate::motion_demo_legend::monta("117", &mut m.doc, &m.registry);
+    // ⚠️ O que se desenha é a PROPORÇÃO: o `size` que sai do sink sobre o da estrela que o
+    // carimbo pôs (o `motion.duplicator` a montante) — o efeito do valor, `1 ± amplitude`. O
+    // `size` cru é o raio da estrela (`0,16`) vezes isso, e a onda saía quase recta.
+    let carimbos: Vec<_> = sinks
+        .iter()
+        .map(|&s| {
+            let mut n = s;
+            while m.doc.graph.node(n).map(|x| x.type_name.as_str()) != Some("motion.duplicator") {
+                n = m
+                    .doc
+                    .graph
+                    .input_edge(n, 0)
+                    .expect("o sink desce ao carimbo")
+                    .0;
+            }
+            n
+        })
+        .collect();
+    let primeiro = |m: &mut MotionState, n, t| -> Option<f32> {
+        let s = m
+            .pump
+            .cook
+            .cook(&m.doc.graph, &m.registry, n, t)
+            .expect("coze");
+        match s[0].as_stream().get("size") {
+            Some(Column::Vec2(v)) => v.first().map(|p| p[0]),
+            _ => None,
+        }
+    };
     let mut fora: Vec<Vec<[f32; 2]>> = vec![Vec::new(); sinks.len()];
     for k in 0..=AMOSTRAS {
         let t = k as f64 * ate / AMOSTRAS as f64;
-        for (i, s) in sinks.iter().enumerate() {
-            let saida = cook.cook(&doc.graph, &reg, *s, t).expect("coze");
-            if let Some(Column::Vec2(v)) = saida[0].as_stream().get("size")
-                && let Some(p) = v.first()
+        crate::motion_externals::publish_all(&mut m, t);
+        for (i, (&s, &c)) in sinks.iter().zip(&carimbos).enumerate() {
+            if let (Some(sai), Some(base)) = (primeiro(&mut m, s, t), primeiro(&mut m, c, t))
+                && base > 0.0
             {
-                fora[i].push([t as f32 * ESCALA_X, p[0]]);
+                fora[i].push([t as f32 * ESCALA_X, sai / base]);
             }
         }
-        cook.advance_tick(&doc.graph, &reg, t).expect("tique");
+        m.pump
+            .cook
+            .advance_tick(&m.doc.graph, &m.registry, t)
+            .expect("tique");
     }
     fora
 }
@@ -80,19 +108,20 @@ fn acendeu(onda: &[[f32; 2]]) -> usize {
     onda.windows(2).filter(|w| w[1][1] > w[0][1] + 0.05).count()
 }
 
-/// ⭐⭐ **Escreve as duas figuras do tutorial 6, com as asserções que as impedem de contar a
-/// mesma história.**
+/// Escreve as figuras de [`figuras`] no disco.
 ///
 /// ```text
 /// cargo test -p ph2d-app-motion --lib write_the_value_figures -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "gerador de figuras — corra à mão"]
+#[ignore = "gerador: escreve as figuras do tutorial 6 — corra à mão"]
 fn write_the_value_figures() {
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/Motion Nodes/tutoriais/fig");
-    std::fs::create_dir_all(&dir).expect("a pasta");
+    super::tutorial_figuras::escreve(&figuras());
+}
 
+/// ⭐⭐ **Produz as quatro figuras do tutorial 6, com as asserções que as impedem de contar a
+/// mesma história.**
+pub(super) fn figuras() -> super::tutorial_figuras::Figuras {
     // Uma volta inteira do oscilador para o par de cima; quatro batidas e pico para o de baixo.
     let numero = colher(2.4);
     let instante = colher(2.7);
@@ -124,6 +153,7 @@ fn write_the_value_figures() {
     // A escrita, só agora — ⛔ ver o cabeçalho do módulo.
     let quadro_cima = draw::moldura(&[&numero[0], &numero[1]]);
     let quadro_baixo = draw::moldura(&[&instante[2], &instante[3]]);
+    let mut figs: super::tutorial_figuras::Figuras = Vec::new();
     for (nome, fortes, fantasma, quadro) in [
         ("valor_liso", &numero[0], &numero[0], quadro_cima),
         ("valor_degraus", &numero[1], &numero[0], quadro_cima),
@@ -143,8 +173,10 @@ fn write_the_value_figures() {
         // ⚠️ **O FANTASMA da 2.ª de cada par é a 1.ª** — é assim que a figura mostra que os dois
         // lados são o MESMO número e o MESMO ritmo, com um nó pelo meio. Na 1.ª ele é ela própria
         // (nada por baixo), e o `campo: false` mantém as duas sem linhas de ligação.
-        let svg = draw::svg(fortes, fantasma, quadro, false);
-        std::fs::write(dir.join(format!("{nome}.svg")), svg).expect("escreve");
+        figs.push((
+            format!("{nome}.svg"),
+            draw::svg(fortes, fantasma, quadro, false),
+        ));
     }
-    eprintln!("  ✓ 4 figuras em {}", dir.display());
+    figs
 }

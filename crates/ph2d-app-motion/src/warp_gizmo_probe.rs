@@ -49,7 +49,7 @@ fn cena_do_dono(depois_do_mirror: bool) -> (MotionState, NodeId) {
 }
 
 #[test]
-#[ignore = "sonda de diagnóstico — corra à mão"]
+#[ignore = "sonda: diagnóstico — corra à mão"]
 fn why_the_warp_gizmo_is_not_there_in_the_owners_scene() {
     let _trava = fx::trava();
     for (rotulo, depois) in [("ANTES do mirror", false), ("DEPOIS do mirror", true)] {
@@ -93,7 +93,7 @@ fn relatorio(m: &MotionState, no: NodeId) {
 }
 
 #[test]
-#[ignore = "sonda de diagnóstico — corra à mão"]
+#[ignore = "sonda: diagnóstico — corra à mão"]
 fn why_the_warp_gizmo_is_not_there() {
     let _trava = fx::trava();
     for tipo in ["motion.four_point_warp", "motion.bezier_warp"] {

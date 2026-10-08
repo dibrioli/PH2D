@@ -18,6 +18,7 @@
 //! `#[ignore]`: precisa de adapter.
 //!   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity_table_seed --release -- --ignored --nocapture
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::CookClock;
 use ph2d_node_registry::NodeRegistry;
@@ -37,14 +38,6 @@ const EPS_REL: f32 = 2e-4;
 /// Quanto dois casos vizinhos têm de diferir para a comparação significar
 /// alguma coisa — muito acima de [`EPS_REL`], de propósito.
 const MODE_GAP: f32 = 1e-2;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();

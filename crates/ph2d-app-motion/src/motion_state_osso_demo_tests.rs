@@ -161,12 +161,14 @@ fn a_do_meio_e_uma_simulacao_que_move_as_posicoes() {
 
     // ⛔ E as POSIÇÕES têm de andar entre dois instantes.
     let ps = |t: f64, cook: &mut ph2d_nodegraph::cook::Cook| {
-        cook.advance_tick(g, &reg, t).expect("avanca");
         let o = cook.cook(g, &reg, fk, t).expect("coze");
-        match o[0].as_stream().get("P") {
+        let p = match o[0].as_stream().get("P") {
             Some(ph2d_nodegraph::attr::Column::Vec2(v)) => v.clone(),
             _ => panic!("sem P"),
-        }
+        };
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(g, &reg, t).expect("avanca");
+        p
     };
     let mut cook = ph2d_nodegraph::cook::Cook::new();
     let a = ps(0.0, &mut cook);

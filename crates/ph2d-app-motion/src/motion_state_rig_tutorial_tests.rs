@@ -123,13 +123,16 @@ fn the_rig_tutorial_opens_the_scene_this_cycle_built() {
 /// (`CLAUDE.md` §5.0), e o que se defende aqui é a HONESTIDADE do texto, não o relógio.
 #[test]
 fn the_cost_table_the_rig_tutorial_prints_is_the_one_that_was_measured() {
-    // As leituras da §7 do doc 114 (RELEASE, `load 22,88`, 2026-09-17).
+    // As leituras da §7 do doc 114 (RELEASE, `load 22,88`, 2026-09-17); o campo no tecto de hoje
+    // (`181²`, `LADO_MAX_DE_GRELHA`) e o bando re-medidos em 2026-10-08 por
+    // `measure_the_soft_body_group` (RELEASE, `load 1,72`, mínimo de 31 quadros: o campo `0,095`, o
+    // bando `10,87` — a leitura de `13,77` era de `load 22,88` e não valia).
     let medidos: &[(&str, &str)] = &[
         ("0,010", "o campo a 60x60"),
-        ("1,32", "o campo a 512x512"),
+        ("0,095", "o campo a 181x181"),
         ("2,26", "o corpo mole a 512x512"),
-        ("13,77", "o bando de 3 600 na CPU"),
-        ("82,6", "a fraccao de um quadro que o bando come"),
+        ("10,87", "o bando de 3 600 na CPU"),
+        ("65,2", "a fraccao de um quadro que o bando come"),
     ];
     for (n, o_que) in medidos {
         assert!(
@@ -137,7 +140,7 @@ fn the_cost_table_the_rig_tutorial_prints_is_the_one_that_was_measured() {
             "a seccao 7 tem de trazer `{n}` ({o_que}) — o numero saiu da medicao, nao de memoria"
         );
     }
-    // ⭐ E a frase que dá sentido ao maior deles: sem ela `13,77 ms` lê-se como *«este grupo é
+    // ⭐ E a frase que dá sentido ao maior deles: sem ela `10,87 ms` lê-se como *«este grupo é
     // lento»*, quando é o preço de o ÚNICO nó com placa não a estar a usar.
     assert!(
         TUTORIAL.contains("única") || TUTORIAL.contains("único"),

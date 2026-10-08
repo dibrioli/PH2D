@@ -25,49 +25,49 @@ pub fn grupo() -> Vec<&'static str> {
 }
 
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn audit_the_value_group() {
     crate::motion_ciclo_probe::retrato(&grupo());
 }
 
 /// **OS PARAMS DE CADA NÓ DO GRUPO** — o que a auditoria compara contra as referências.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_each_value_node_offers() {
     crate::motion_ciclo_probe::params_de(&grupo());
 }
 
 /// **O QUE O CARTÃO PINTA**, com o rótulo da tela.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_the_value_card_shows() {
     crate::motion_ciclo_probe::cartao(&grupo());
 }
 
 /// **OS NOMES dos cartões** — o que o tutorial terá de escrever.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_value_card_names() {
     crate::motion_ciclo_probe::nomes(&grupo());
 }
 
 /// **O VOCABULÁRIO do grupo** — dois nós que guardam a mesma pergunta chamam-lhe o mesmo nome?
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_value_vocabulary() {
     crate::motion_ciclo_probe::vocabulario(&grupo());
 }
 
 /// ⭐⭐⭐ **O VOCABULÁRIO PELO EIXO DO ARTISTA** — rótulo, e as palavras do enum (ciclo 6, W3).
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_vocabulary_the_artist_reads() {
     crate::motion_ciclo_probe::vocabulario_do_artista(&grupo());
 }
 
 /// ⚠️ **O MESMO, sobre o CATÁLOGO INTEIRO** — uma lei de vocabulário não é do grupo, é do app.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_vocabulary_of_the_whole_catalogue() {
     let m = crate::motion_state::MotionState::new();
     let todos: Vec<&'static str> = m.registry.manifests().map(|man| man.name).collect();
@@ -111,7 +111,7 @@ fn both_value_families_are_derived_and_not_empty() {
 /// cargo test -p ph2d-app-motion --lib probe_does_a_value_chain_stay -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao, nao um gate"]
+#[ignore = "sonda: medicao, nao um gate"]
 fn probe_does_a_value_chain_stay_on_the_device() {
     use ph2d_nodegraph::graph::{Edge, NodeId};
     let liga = |m: &mut crate::motion_state::MotionState, de: NodeId, para: NodeId| {
@@ -204,7 +204,7 @@ fn probe_does_a_value_chain_stay_on_the_device() {
 /// cargo test -p ph2d-app-motion --lib probe_what_the_three_off_device -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao, nao um gate"]
+#[ignore = "sonda: medicao, nao um gate"]
 fn probe_what_the_three_off_device_nodes_cost() {
     use ph2d_nodegraph::graph::{Edge, NodeId};
     let liga =
@@ -340,7 +340,7 @@ const _PRECO: () = ();
 /// cargo test -p ph2d-app-motion --lib probe_the_pulse_lane -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao, nao um gate"]
+#[ignore = "sonda: medicao, nao um gate"]
 fn probe_the_pulse_lane() {
     let mut m = crate::motion_state::MotionState::new();
     // ⚠️ O tipo lê-se do GRAFO depois de o nó nascer (a mesma porta do `retrato`): um
@@ -385,7 +385,7 @@ fn probe_the_pulse_lane() {
 /// cargo test -p ph2d-app-motion --lib probe_where_the_pulse_seam_falls -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao, nao um gate"]
+#[ignore = "sonda: medicao, nao um gate"]
 fn probe_where_the_pulse_seam_falls() {
     use ph2d_nodegraph::graph::{Edge, NodeId};
     let mede = |rotulo: &str, monta: &dyn Fn(&mut crate::motion_state::MotionState) -> NodeId| {

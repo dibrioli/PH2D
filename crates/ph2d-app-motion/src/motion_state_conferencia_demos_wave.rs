@@ -101,23 +101,27 @@ fn injector(g: &mut Graph, w: NodeId, x: f32, y: f32) -> Option<NodeId> {
     g.set_pos(dr, Pos { x: x + 400.0, y });
     g.set_param(dr, "channel", 9.0); // Custom...
     g.set_param(dr, "mode", 0.0); // Add
-    // ⚠️ **0,25 é MEDIDO, e a varredura refutou o alvo óbvio.** A tentação era casar
-    // a amplitude das duas bandas (o precedente do Grupo N: *se elas diferirem, "a de
-    // baixo mexe mais" responde por qualquer coisa*) — mas abaixo de ~0,25 o produtor
-    // injetado **nunca vira o berço**: o centro mantém o pico, e a cena deixaria de
-    // mostrar o item. Medido (`probe_what_the_scene_draws`, 240 tiques):
+    // ⚠️ **0,42 é MEDIDO na ordem do PRODUTO** (cozer, depois avançar — doc 123 §4).
+    // O 0,25 antigo foi calibrado com o arnês ao contrário, que re-cozia o `pre` com
+    // `dt = 0` e DEPOSITAVA DUAS VEZES por tique: no app o produtor sempre teve metade
+    // da força que a cena dizia (0,25 dava −3,00 e 1,24× no arnês, +0,50 e 0,96× no
+    // produto). Abaixo de ~0,37 o injetado **não vira o berço** (o pico fica no centro
+    // ou salta para a borda). `probe_the_drive_scale_in_product_order`, controle
+    // 0,2231 (pico −0,50); peças > passo do controle = 21:
     //
-    // | scale | comp/ctrl | pico | peças > passo |
-    // |-------|-----------|------|---------------|
-    // | 0,20  | 0,97      | +0,50 (o CENTRO) | 21 |
-    // | 0,25  | **1,24**  | −3,00 (a CAIXA)  | **18** |
-    // | 0,60  | 3,61      | −3,00            | 62 |
+    // | scale | comp/ctrl | pico 240 · 360 · 480 tiques | peças > passo |
+    // |-------|-----------|-----------------------------|---------------|
+    // | 0,25  | 0,96      | +0,50 · −5,00 · −5,00       | 17 |
+    // | 0,35  | 1,00      | −5,00 · −3,50 · −5,00       | 20 |
+    // | 0,37  | 1,07      | −3,50 · −3,50 · −3,50       | 20 |
+    // | 0,42  | **1,25**  | **−3,50** (a CAIXA, ½ célula) nos três | **26** |
+    // | 0,45  | 1,36      | −3,50 nos três              | 30 |
+    // | 0,50  | 1,55      | −3,50 nos três              | 34 |
     //
-    // ⇒ 0,25 é o menor valor em que o berço se MOVE, e ali as duas bandas são
-    // *comparáveis* (1,24×, com menos peças estouradas que o próprio controle).
-    // Igualdade exata é inalcançável **por física**, não por afinação: dois produtores
+    // ⇒ 0,42 põe a razão no MEIO da barra `1,0..1,5` e o berço estável na caixa nos
+    // três horizontes. Igualdade exata é inalcançável **por física**: dois produtores
     // de mesma força deixam o pico com quem estiver mais alto naquele instante.
-    g.set_param(dr, "scale", 0.25);
+    g.set_param(dr, "scale", 0.42);
     g.set_text_param(dr, "column", STATE_COLUMN);
     wire(g, bx, 0, dr, 0, false)?;
     wire(g, rd, 0, dr, 1, false)?;

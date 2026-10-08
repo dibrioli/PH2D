@@ -17,7 +17,7 @@ const TIQUE: u64 = 3;
 const DT: f64 = 1.0 / 60.0;
 
 #[test]
-#[ignore = "sonda de medição — precisa de adapter de GPU"]
+#[ignore = "sonda: medição — precisa de adapter de GPU"]
 fn censo_das_rotas_das_cenas_com_formas() {
     let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
         panic!("sem adapter — esta sonda mede a rota do device");

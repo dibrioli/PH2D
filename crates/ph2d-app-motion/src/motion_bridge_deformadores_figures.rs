@@ -42,10 +42,6 @@ use ph2d_nodegraph::attr::{Column, SIZE_IDENTITY};
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::NodeId;
 
-/// ⚠️ **Relativo ao MANIFESTO, não ao processo** — `cargo test` corre com a cwd na raiz do
-/// pacote, e um gerador que escreve no sítio errado diz «ok».
-const DIR: &str = "../../docs/Motion Nodes/tutoriais/fig";
-
 /// O instante em que tudo é cozido. Estes nós são todos `Pure` menos o `look_at` — nenhum deles
 /// depende de `t` —, mas o número fica explícito para a figura não mudar se algum vier a ler o
 /// relógio.
@@ -442,10 +438,13 @@ fn extremos(ms: &[Marca]) -> Vec<[f32; 2]> {
 }
 
 #[test]
-#[ignore = "gerador de figuras do tutorial"]
+#[ignore = "gerador: escreve as figuras e a tabela do tutorial 3 — corra à mão"]
 fn dump_deformadores_figures() {
-    let dir = std::path::Path::new(DIR);
-    std::fs::create_dir_all(dir).expect("a pasta das figuras");
+    super::tutorial_figuras::escreve(&figuras());
+}
+
+/// Produz as figuras e a tabela `params_deformadores.html` do tutorial 3.
+pub(super) fn figuras() -> super::tutorial_figuras::Figuras {
     let colhidas: Vec<(Vec<Marca>, Vec<Marca>)> = FIGS.iter().map(colhe).collect();
 
     // ⚠️ **UMA moldura por FIGURA, e não uma partilhada pelo grupo.** No ciclo 2 as figuras de
@@ -524,22 +523,21 @@ fn dump_deformadores_figures() {
         maus.join("\n  ")
     );
 
+    let mut figs: super::tutorial_figuras::Figuras = Vec::new();
     for (i, fig) in FIGS.iter().enumerate() {
         let (saiu, partida) = &colhidas[i];
         let m = quadrada(moldura(&[
             extremos(saiu).as_slice(),
             extremos(partida).as_slice(),
         ]));
-        let path = dir.join(format!("{}.svg", fig.file));
-        std::fs::write(
-            &path,
+        figs.push((
+            format!("{}.svg", fig.file),
             svg_marcas(saiu, partida, m, fig.como == Como::Emparelha),
-        )
-        .expect("escrever");
-        eprintln!("  escrito │ {}", path.display());
+        ));
     }
-
-    let path = dir.join("params_deformadores.html");
-    std::fs::write(&path, super::tutorial_table::derive(TABELA)).expect("a tabela");
-    eprintln!("  tabela derivada │ {}", path.display());
+    figs.push((
+        "params_deformadores.html".to_string(),
+        super::tutorial_table::derive(TABELA),
+    ));
+    figs
 }

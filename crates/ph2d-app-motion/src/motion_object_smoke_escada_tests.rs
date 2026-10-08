@@ -108,7 +108,7 @@ fn as_portas_da_escada() {
 /// tique parado), com a população CHEIA (`VIDA` segundos de tiques antes de medir). O controlo é a
 /// MESMA simulação sem o carimbo: o `integrate` liga directamente ao `move`.
 #[test]
-#[ignore = "sonda de medição — corra à mão em --release, com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão em --release, com a máquina calma"]
 fn sonda_onde_a_escada_gasta() {
     use ph2d_nodegraph::attr::{Column, Stream};
     use std::time::Instant;

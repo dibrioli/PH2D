@@ -65,12 +65,13 @@ fn run(
     let mut last = Stream::new(0);
     for k in from..from + ticks {
         let playhead = k as f64 * DT;
-        cook.advance_tick(g, reg, playhead).expect("o tique avança");
         let out = cook.cook(g, reg, node, playhead).expect("coze");
         let CookValue::Instances(s) = &out[0] else {
             panic!("a saída é um stream")
         };
         last = s.clone();
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(g, reg, playhead).expect("o tique avança");
     }
     positions(&last)
 }

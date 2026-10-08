@@ -171,7 +171,7 @@ fn sem_o_fio_do_pulso_a_cena_fica_vazia() {
 ///
 /// `cargo test -p ph2d-app-motion --lib probe_cinco_fontes -- --ignored --nocapture`
 #[test]
-#[ignore = "sonda de diagnóstico: imprime, não afirma"]
+#[ignore = "sonda: diagnóstico: imprime, não afirma"]
 fn probe_cinco_fontes() {
     let counts = run(4.0);
     let saltos: Vec<(usize, usize)> = counts

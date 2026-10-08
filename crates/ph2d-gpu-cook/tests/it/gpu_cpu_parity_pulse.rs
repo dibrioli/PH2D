@@ -18,6 +18,7 @@
 //! cargo test -p ph2d-gpu-cook --test it --release -- --ignored --nocapture parity_pulse
 //! ```
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::{CookClock, GpuCook, plan};
 use ph2d_node_registry::NodeRegistry;
@@ -36,14 +37,6 @@ const EPS: f32 = 1e-4;
 /// voltar a atravessá-lo já com história.
 const VOLTAS: usize = 6;
 const DT: f64 = 1.0 / 60.0;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();
@@ -731,6 +724,41 @@ fn parity_pulse_beat_on_the_tick() {
         TIQUES_DO_METRONOMO,
     );
     nao_e_vazio("pulse.beat redondo", &voltas);
+}
+
+/// ⭐ **O FIO DO FMA** (doc 123 §1) — a fixtura em que a linha `11` muda de ciclo no tique `3` se
+/// a placa fundir `frac − i·sc` com o `sc` sem quantizar. Numa placa que funde, a mutação «sem
+/// quantizar» SANGRA aqui; numa que não funde, é o gate de CPU do `ph2d-node-pulse-beat` que a
+/// apanha. ⚠️ A fixtura vem da crate do nó, onde um gate prova que ela está no fio.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn parity_pulse_beat_on_the_fma_edge() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let (period, stagger, offset) = ph2d_node_pulse_beat::FIXTURA_DO_FIO_DO_FMA;
+    let voltas = paridade_por(
+        &gpu,
+        &reg,
+        "pulse.beat no fio do FMA",
+        |g| {
+            let grid = g.add_node("motion.grid");
+            g.set_param(grid, "rows", 8.0);
+            g.set_param(grid, "cols", 8.0);
+            let bt = g.add_node("pulse.beat");
+            g.set_param(bt, "period", period);
+            g.set_param(bt, "phase_stagger", stagger);
+            g.set_param(bt, "offset", offset);
+            liga(g, (grid, 0), (bt, 0), false);
+            liga(g, (bt, 0), (bt, 1), true);
+            bt
+        },
+        "pulse",
+        12,
+    );
+    nao_e_vazio("pulse.beat no fio do FMA", &voltas);
 }
 
 /// ⭐⭐⭐ **A CADEIA QUE ABRIU A W2 É DO DISPOSITIVO** (doc 110 §14.1 (7), 07/10).

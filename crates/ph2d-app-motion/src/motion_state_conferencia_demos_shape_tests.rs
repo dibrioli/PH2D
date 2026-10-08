@@ -115,7 +115,7 @@ fn the_ramp_rolls_and_the_top_moves() {
 
 /// **A SONDA** — imprime os números que a mensagem do smoke cita.
 #[test]
-#[ignore = "sonda"]
+#[ignore = "sonda: imprime, não afirma"]
 fn measure_what_the_scene_shows() {
     let (pw, off) = knobs();
     println!("cena 55 (pulse width {pw}, offset {off}):");

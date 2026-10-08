@@ -116,7 +116,7 @@ fn moving_the_object_does_not_rebake_but_rotating_and_editing_do() {
 /// `#[ignore]`: needs a GPU adapter (none on CI); run on a dev machine with
 /// `--ignored`.
 #[test]
-#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+#[ignore = "placa: requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn a_baked_flip_object_carries_the_composed_two_layer_silhouette() {
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
         eprintln!("no GPU adapter on this machine — nothing to assert");
@@ -250,7 +250,7 @@ fn select_present_bakes_named_and_group_flip_objects_but_not_loose_art() {
 /// Roda com `cargo test -p ph2d-app-motion --lib probe_animated_flip_bake_churn --
 /// --ignored --nocapture`.
 #[test]
-#[ignore = "sonda de medicao; requires a GPU adapter"]
+#[ignore = "sonda: medicao; requires a GPU adapter"]
 fn probe_animated_flip_bake_churn() {
     use ph2d_ecs::{Name, SimWorld};
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
@@ -368,7 +368,7 @@ fn the_eviction_never_takes_a_tile_the_previous_frame_published() {
 /// A sonda reproduz essa ordem: lê o que seria publicado, roda o bake, e pergunta se
 /// o id publicado ainda vive.
 #[test]
-#[ignore = "sonda de medicao; requires a GPU adapter"]
+#[ignore = "sonda: medicao; requires a GPU adapter"]
 fn probe_the_published_tile_survives_the_bake() {
     use ph2d_ecs::{Name, SimWorld};
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {

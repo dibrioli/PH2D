@@ -13,10 +13,12 @@ use crate::motion_state::MotionState;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, NodeId};
 
-/// A fila que todos recebem: `400 × 250` = **100 000** — a mesma contagem da medição da W3, para
-/// as duas tabelas do ciclo se poderem ler juntas.
-const LINHAS: f32 = 400.0;
-const COLUNAS: f32 = 250.0;
+/// A fila que todos recebem: a grade no tecto do produto, `181 × 181` = **32 761**
+/// ([`LADO_MAX_DE_GRELHA`](ph2d_nodegraph::node::LADO_MAX_DE_GRELHA)). Era `400 × 250` (a contagem
+/// da W3) até o tecto por nó: pedir mais satura no lado, e a tabela anunciaria uma população que
+/// a cena não produz.
+const LINHAS: f32 = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
+const COLUNAS: f32 = LINHAS;
 /// Melhor de N cozimentos FRIOS. ⛔ **Um `Cook` novo por corrida** — o `motion.stagger` e o
 /// `motion.delay` são `Effect::Pure`, e no mesmo `Cook` o memo responde: era assim que a
 /// primeira tabela do ciclo 1 leu `0,00 ms` em dez linhas.
@@ -177,7 +179,7 @@ fn mede(caso: Option<&Caso>) -> (f64, f64, usize, bool, usize) {
 }
 
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn measure_the_animator_group() {
     eprintln!(
         "\n  load {}",

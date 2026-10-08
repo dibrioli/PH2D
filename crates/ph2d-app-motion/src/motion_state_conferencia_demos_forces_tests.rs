@@ -27,13 +27,14 @@ fn settle(doc: &MotionDoc, reg: &NodeRegistry, sinks: &[NodeId]) -> Vec<Vec<[f32
     let mut last = vec![Vec::new(); sinks.len()];
     for k in 0..TICKS {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, reg, t).expect("avanca");
         for (i, &s) in sinks.iter().enumerate() {
             let out = cook.cook(&doc.graph, reg, s, t).expect("coze");
             if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
                 last[i] = p.clone();
             }
         }
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&doc.graph, reg, t).expect("avanca");
     }
     last
 }
@@ -69,7 +70,7 @@ fn the_forces_scene_builds_all_eight_bands() {
 
 /// SONDA — imprime o que cada par de facto faz, para as barras saírem de medição.
 #[test]
-#[ignore = "sonda de medicao, nao gate"]
+#[ignore = "sonda: medicao, nao gate"]
 fn measure_the_force_pairs() {
     let (doc, reg, sinks) = scene();
     let poses = settle(&doc, &reg, &sinks);
@@ -96,7 +97,6 @@ fn measure_the_force_pairs() {
     let mut cook = Cook::new();
     for k in 0..TICKS {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
         for &s in &sinks {
             let _ = cook.cook(&doc.graph, &reg, s, t);
         }
@@ -109,6 +109,7 @@ fn measure_the_force_pairs() {
                 }
             }
         }
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
     }
 }
 
@@ -132,7 +133,6 @@ fn speeds(doc: &MotionDoc, reg: &NodeRegistry, sinks: &[NodeId], at: &[usize]) -
     let mut out = vec![Vec::new(); sinks.len()];
     for k in 0..TICKS {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, reg, t).expect("avanca");
         for (i, &s) in sinks.iter().enumerate() {
             let o = cook.cook(&doc.graph, reg, s, t).expect("coze");
             if at.contains(&k)
@@ -141,6 +141,7 @@ fn speeds(doc: &MotionDoc, reg: &NodeRegistry, sinks: &[NodeId], at: &[usize]) -
                 out[i].push(v.iter().map(|q| q[0].hypot(q[1])).fold(0.0_f32, f32::max));
             }
         }
+        cook.advance_tick(&doc.graph, reg, t).expect("avanca");
     }
     out
 }

@@ -355,7 +355,7 @@ fn tap_de_dois_quadros(
 /// nos cartões os números de quando ela conduziu pela última vez. O CONTROLO é o quadro da placa,
 /// que a mantém.
 #[test]
-#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+#[ignore = "placa: requires a GPU adapter; run with --ignored on a dev machine"]
 fn um_quadro_da_cpu_descarta_a_leitura_da_placa() {
     let Some((gpu, mut motion, _osc)) = gpu_driven_fixture() else {
         return;
@@ -399,7 +399,7 @@ fn um_quadro_da_cpu_descarta_a_leitura_da_placa() {
 /// count, not the 48 rows the tap returned. The probe's whole output is a number
 /// the artist quotes, so this is the one place it matters most.
 #[test]
-#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+#[ignore = "placa: requires a GPU adapter; run with --ignored on a dev machine"]
 fn the_probe_reads_the_device_instead_of_announcing_it_cannot() {
     let Some((gpu, mut motion, osc)) = gpu_driven_fixture() else {
         return;
@@ -437,7 +437,7 @@ fn the_probe_reads_the_device_instead_of_announcing_it_cannot() {
 ///
 /// `#[ignore]`: needs a GPU adapter (none on CI); run locally with `--ignored`.
 #[test]
-#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+#[ignore = "placa: requires a GPU adapter; run with --ignored on a dev machine"]
 fn a_gpu_driven_frame_fills_the_cards_and_quotes_the_exact_count() {
     let Some((gpu, mut motion, osc)) = gpu_driven_fixture() else {
         return;

@@ -26,7 +26,8 @@
 //! ```text
 //! cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_fx_group_on_both_engines
 //! ```
-//! (`PH2D_LADO=1000` para o milhão; imprime o `/proc/loadavg` na primeira linha — CLAUDE.md §5.0.)
+//! (O lado nasce no tecto do produto, `LADO_MAX_DE_GRELHA`; `PH2D_LADO` mede menos. Imprime o
+//! `/proc/loadavg` na primeira linha — CLAUDE.md §5.0.)
 
 use crate::motion_state::MotionState;
 use ph2d_gpu::GpuContext;
@@ -41,8 +42,8 @@ const DT: f64 = 1.0 / 60.0;
 /// rasto emite `n × 9` (a cabeça e oito ecos — medido a `24²`: `576 → 5 184`), e uma cauda a meio
 /// de encher leria menos. Quem mudar os hints do rasto relê essa coluna antes de citar o relógio.
 const AQUECE: u64 = 120;
-/// Quadros cronometrados depois do aquecimento; cita-se a MEDIANA.
-const AMOSTRAS: u64 = 9;
+/// Quadros cronometrados depois do aquecimento; imprime-se o MÍNIMO e a mediana.
+const AMOSTRAS: u64 = 31;
 const UV: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const TAMANHO: [f32; 2] = [0.4, 0.4];
 
@@ -97,7 +98,9 @@ struct Linha {
     /// As que o dispositivo emitiu — `None` se o planeador não reivindicou a cadeia.
     disp_linhas: Option<usize>,
     passes: usize,
+    cpu_min: f64,
     cpu_ms: f64,
+    disp_min: Option<f64>,
     disp_ms: Option<f64>,
     tem_pre: bool,
 }
@@ -113,11 +116,15 @@ fn mede(gpu: &GpuContext, lado: f32, no: Option<&str>) -> Linha {
     let tem_pre = m.doc.graph.edges().iter().any(|e| e.delayed);
     let plano = ph2d_gpu_cook::plan(&m.doc.graph, &m.registry, &m.registry, sink);
     let passes = plano.dispatching_stages(&m.registry);
-    let (mut disp_ms, mut disp_linhas) = (None, None);
-    if plano.is_fully_gpu() {
-        let mut gc = GpuCook::new();
-        let mut ms = Vec::new();
-        for f in 0..AQUECE + AMOSTRAS {
+    // ⭐ Os dois motores INTERCALADOS no mesmo quadro (`docs/DevOps/MEDIR_VELOCIDADE.md`): sob
+    // carga, dois blocos em série medem duas máquinas diferentes.
+    let mut gc = plano.is_fully_gpu().then(GpuCook::new);
+    let mut cook = Cook::new();
+    let (mut ms_disp, mut ms_cpu) = (Vec::new(), Vec::new());
+    let (mut disp_linhas, mut cpu_linhas) = (None, 0usize);
+    for f in 0..AQUECE + AMOSTRAS {
+        let t = f as f64 * DT;
+        if let Some(gc) = gc.as_mut() {
             let t0 = std::time::Instant::now();
             gc.cook(
                 gpu,
@@ -127,7 +134,7 @@ fn mede(gpu: &GpuContext, lado: f32, no: Option<&str>) -> Linha {
                 &plano,
                 &[],
                 CookClock {
-                    playhead: f as f64 * DT,
+                    playhead: t,
                     tick: Some(f),
                 },
                 UV,
@@ -137,39 +144,36 @@ fn mede(gpu: &GpuContext, lado: f32, no: Option<&str>) -> Linha {
             .expect("o dispositivo coze a cadeia que o planeador reivindicou");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
             if f >= AQUECE {
-                ms.push(t0.elapsed().as_secs_f64() * 1000.0);
+                ms_disp.push(t0.elapsed().as_secs_f64() * 1000.0);
             }
             disp_linhas = Some(gc.instances().map_or(0, |b| b.len() as usize));
         }
-        disp_ms = Some(mediana(ms));
-    }
-    let mut cook = Cook::new();
-    let (mut ms, mut cpu_linhas) = (Vec::new(), 0usize);
-    for f in 0..AQUECE + AMOSTRAS {
-        let t = f as f64 * DT;
         let t0 = std::time::Instant::now();
         let saida = cook
             .cook(&m.doc.graph, &m.registry, sink, t)
             .expect("a CPU coze a cadeia");
         if f >= AQUECE {
-            ms.push(t0.elapsed().as_secs_f64() * 1000.0);
+            ms_cpu.push(t0.elapsed().as_secs_f64() * 1000.0);
         }
         cpu_linhas = saida[0].as_stream().count();
         cook.advance_tick(&m.doc.graph, &m.registry, t)
             .expect("tique");
     }
+    let minimo = |v: &[f64]| v.iter().copied().fold(f64::INFINITY, f64::min);
     Linha {
         cpu_linhas,
         disp_linhas,
         passes,
-        cpu_ms: mediana(ms),
-        disp_ms,
+        cpu_min: minimo(&ms_cpu),
+        cpu_ms: mediana(ms_cpu),
+        disp_min: gc.is_some().then(|| minimo(&ms_disp)),
+        disp_ms: gc.is_some().then(|| mediana(ms_disp)),
         tem_pre,
     }
 }
 
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE, com adaptador e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE, com adaptador e com a máquina calma"]
 fn measure_the_fx_group_on_both_engines() {
     let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
         panic!("sem adaptador — esta sonda mede a placa e nao tem versao de CPU");
@@ -177,7 +181,7 @@ fn measure_the_fx_group_on_both_engines() {
     let lado: f32 = std::env::var("PH2D_LADO")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(320.0);
+        .unwrap_or(ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32);
     eprintln!(
         "\n  load {}",
         std::fs::read_to_string("/proc/loadavg")
@@ -186,16 +190,16 @@ fn measure_the_fx_group_on_both_engines() {
     );
     let base = mede(&gpu, lado, None);
     eprintln!(
-        "  grid {lado}² -> oscillator -> X -> output · {} objectos · regime = mediana de {AMOSTRAS} \
-         quadros depois de {AQUECE} tiques",
+        "  grid {lado}² -> oscillator -> X -> output · {} objectos · {AMOSTRAS} quadros \
+         intercalados depois de {AQUECE} tiques · ms = minimo / mediana",
         base.cpu_linhas
     );
     eprintln!(
-        "\n  {:<20} │ {:>10} │ {:>6} │ {:>8} │ {:>8} │ {:>6} │ {:>9}",
+        "\n  {:<20} │ {:>10} │ {:>6} │ {:>13} │ {:>13} │ {:>6} │ {:>9}",
         "nó", "linhas", "passes", "disp ms", "CPU ms", "CPU/d", "ns/linha"
     );
     eprintln!(
-        "  ---------------------|------------|--------|----------|----------|--------|----------"
+        "  ---------------------|------------|--------|---------------|---------------|--------|----------"
     );
     let imprime = |rotulo: &str, l: &Linha| {
         let linhas = match l.disp_linhas {
@@ -203,18 +207,18 @@ fn measure_the_fx_group_on_both_engines() {
             Some(d) => format!("⚠️{}≠{d}", l.cpu_linhas),
             None => format!("{}", l.cpu_linhas),
         };
-        let (disp, razao, ns) = match l.disp_ms {
-            Some(d) => (
-                format!("{d:.2}"),
-                format!("{:.1}×", l.cpu_ms / d.max(1e-9)),
-                format!("{:.2}", d * 1e6 / l.disp_linhas.unwrap_or(1).max(1) as f64),
+        let (disp, razao, ns) = match (l.disp_min, l.disp_ms) {
+            (Some(dm), Some(d)) => (
+                format!("{dm:.2} / {d:.2}"),
+                format!("{:.1}×", l.cpu_min / dm.max(1e-9)),
+                format!("{:.2}", dm * 1e6 / l.disp_linhas.unwrap_or(1).max(1) as f64),
             ),
-            None => ("⛔ CPU".to_string(), "—".to_string(), "—".to_string()),
+            _ => ("⛔ CPU".to_string(), "—".to_string(), "—".to_string()),
         };
+        let cpu = format!("{:.2} / {:.2}", l.cpu_min, l.cpu_ms);
         eprintln!(
-            "  {rotulo:<20} │ {linhas:>10} │ {:>6} │ {disp:>8} │ {:>8.2} │ {razao:>6} │ {ns:>9}{}",
+            "  {rotulo:<20} │ {linhas:>10} │ {:>6} │ {disp:>13} │ {cpu:>13} │ {razao:>6} │ {ns:>9}{}",
             l.passes,
-            l.cpu_ms,
             if l.tem_pre { "  (pre)" } else { "" }
         );
     };

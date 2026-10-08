@@ -13,6 +13,7 @@
 //! `#[ignore]`: precisa de adapter real.
 //!   cargo test -p ph2d-gpu-cook --test it -- --ignored gpu_cpu_parity_varias_saidas
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::{CookClock, GpuCook, plan_driven_many, read_instances};
 use ph2d_node_registry::NodeRegistry;
@@ -26,14 +27,6 @@ const DEFAULT_SIZE: [f32; 2] = [0.4, 0.4];
 /// nos dois motores.
 const EPS: f32 = 1e-5;
 const AT: f64 = 0.37;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();

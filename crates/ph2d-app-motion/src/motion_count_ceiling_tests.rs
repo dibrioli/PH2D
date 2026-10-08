@@ -133,7 +133,7 @@ mod tests {
     /// de contagem é a última potência que fica confortavelmente abaixo dele, e é ESSE número que
     /// deve ser escrito no `ParamHardMax`, com esta tabela ao lado.
     #[test]
-    #[ignore = "sonda de medição, não gate"]
+    #[ignore = "sonda: medição, não gate"]
     fn measure_the_count_ceiling() {
         // (nó, param de contagem, soft max de hoje) — os nós cuja contagem carrega um RECURSO.
         // ⚠️ `motion.path` fica FORA: cozinha sozinho e devolve **0 instâncias** (a curva dele vem

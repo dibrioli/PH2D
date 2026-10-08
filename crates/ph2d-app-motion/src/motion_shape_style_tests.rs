@@ -279,7 +279,7 @@ fn a_wire_driven_param_reaches_the_publisher_and_the_geometry_follows_the_clock(
 ///
 /// `cargo test -p ph2d-app-motion --lib measure_shape_store_growth -- --ignored --nocapture`
 #[test]
-#[ignore = "sonda de medição, não gate"]
+#[ignore = "sonda: medição, não gate"]
 fn measure_shape_store_growth() {
     const FRAMES: u32 = 600; // dez segundos a 60 fps
     let mut state = MotionState::new();

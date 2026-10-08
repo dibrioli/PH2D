@@ -76,6 +76,7 @@
 
 use ph2d_render::SinkStyle;
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::CookClock;
 use ph2d_node_registry::NodeRegistry;
@@ -93,14 +94,6 @@ const EPS: f32 = 1e-4;
 /// alguma coisa. Muito acima de [`EPS`] **de propósito**: se um par diferisse por
 /// pouco, o gate estaria a medir ruído e não a lei.
 const MODE_GAP: f32 = 1e-2;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 /// O registry MÍNIMO — só os nós que as fixtures montam. Uma cópia da lista
 /// inteira seria uma segunda tabela a envelhecer ao lado da do irmão.

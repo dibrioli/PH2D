@@ -250,7 +250,7 @@ pub(crate) fn compara(v: &[u8], p: &[u8]) -> (u8, u8, usize, usize, usize) {
 /// `163`). ⇒ as duas barras são `100`, e o que separa o defeito é a CONTAGEM: `5 %` fica entre os
 /// `2,0 %` da rota e os `20,3 %` do defeito. ⭐ E a MESMA área pintada a `1 %`.
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn a_rota_da_placa_desenha_o_que_a_cena_vello_desenha() {
     let Some(gpu) = gpu() else {
         eprintln!("sem adapter — o gate não correu");
@@ -284,7 +284,7 @@ fn a_rota_da_placa_desenha_o_que_a_cena_vello_desenha() {
 /// lei da casa: a geometria transformada, a caneta redonda `w·√|det|` — `stroke_uniform`) e pela
 /// placa (o traço construído no ecrã a partir do eixo). Até à W4 este quadro nem ia à placa.
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn a_rota_da_placa_desenha_o_traco_esticado_como_a_casa() {
     let Some(gpu) = gpu() else {
         eprintln!("sem adapter — o gate não correu");
@@ -335,7 +335,7 @@ fn a_rota_da_placa_desenha_o_traco_esticado_como_a_casa() {
 /// `68` · `685` px** sobre `23 144` (o quarto de pixel das curvas da W1). O CONTROLO é a estrela de
 /// 5 pontas sem cantos, que não tem aresta vertical e lia limpa antes e depois.
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn a_forma_alinhada_aos_eixos_nao_risca_uma_linha() {
     let Some(gpu) = gpu() else {
         eprintln!("sem adapter — o gate não correu");
@@ -493,7 +493,7 @@ pub(crate) fn estrelas_da_sonda(
 /// quase sempre maior»*, com as estrelas GRANDES no ecrã). Estrelas esticadas que enchem o alvo,
 /// desenhadas `N` vezes por cada rota, com o dispositivo drenado entre elas.
 #[test]
-#[ignore = "sonda de relógio"]
+#[ignore = "sonda: relógio"]
 fn sonda_relogio_das_estrelas_grandes() {
     let Some(gpu) = gpu() else { return };
     let modo = std::env::var("PH2D_SONDA_MODO").unwrap_or_default();

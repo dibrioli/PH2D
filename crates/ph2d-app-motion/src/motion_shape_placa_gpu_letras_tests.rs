@@ -55,7 +55,7 @@ fn com_furo(store: &VecPathStore, hs: &[u32]) -> usize {
 /// das formas, um terço PEQUENAS (`~3–20 px` de corpo) e um terço ESTICADAS. As barras são as do
 /// [`super::a_rota_da_placa_desenha_o_que_a_cena_vello_desenha`].
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn a_rota_da_placa_desenha_as_letras_como_a_cena_vello() {
     let Some(gpu) = gpu() else {
         eprintln!("sem adapter — o gate não correu");

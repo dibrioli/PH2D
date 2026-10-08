@@ -53,7 +53,7 @@ fn waking_a_node_takes_it_off_the_identity() {
 /// cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_deformer_group
 /// ```
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn measure_the_deformer_group() {
     let lado: f32 = std::env::var("PH2D_LADO")
         .ok()

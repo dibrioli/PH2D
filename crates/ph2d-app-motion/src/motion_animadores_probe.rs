@@ -23,7 +23,7 @@ pub const GRUPO: [&str; 8] = [
 ];
 
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn audit_the_animator_group() {
     let base = MotionState::new();
     eprintln!("\n  nó                   | params | no cartão | device | portas (in->out) | efeito");
@@ -81,7 +81,7 @@ fn audit_the_animator_group() {
 /// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_each_animator_offers
 /// ```
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_each_animator_offers() {
     let m = MotionState::new();
     for nome in GRUPO {
@@ -271,7 +271,7 @@ fn every_param_the_card_hides_has_a_declared_reason() {
 /// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_the_card_hides_and_why
 /// ```
 #[test]
-#[ignore = "sonda de censo, nao um gate"]
+#[ignore = "sonda: censo, nao um gate"]
 fn what_the_card_hides_and_why() {
     let (total, escondidos, linhas, sem) = census_of_hidden_params();
     for l in &linhas {

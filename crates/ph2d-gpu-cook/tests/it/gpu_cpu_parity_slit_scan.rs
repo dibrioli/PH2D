@@ -11,6 +11,7 @@
 //! cargo test -p ph2d-gpu-cook --test it -- --ignored --nocapture gpu_cpu_parity_slit_scan
 //! ```
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::{CookClock, GpuCook, plan};
 use ph2d_node_registry::NodeRegistry;
@@ -31,14 +32,6 @@ const VOLTAS: usize = 44;
 /// três ordens abaixo do que um anel avançado errado dá (a amplitude da onda, `3`).
 const EPS: f32 = 5e-4;
 const LADO: f32 = 20.0;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();

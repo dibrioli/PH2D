@@ -89,7 +89,7 @@ fn min_med(v: &[f64]) -> (f64, f64) {
 }
 
 #[test]
-#[ignore = "sonda de relógio"]
+#[ignore = "sonda: relógio"]
 fn sonda_intercalada() {
     let Some(gpu) = gpu() else { return };
     ph2d_gpu::pass_profiler::init_forced(&gpu.device, &gpu.queue);

@@ -68,6 +68,15 @@ pub(super) const LIFE: f32 = 1.5;
 /// 10` sobre os `~480 px` do recorte da cena, `48 px` por unidade): `0,07` dava `~3 px` — um ponto
 /// que se lia como «não desenha nada» (Bug #14, doc 122 §1); `0,22` dá `~10 px`.
 pub(super) const ESTRELA: f32 = 0.22;
+/// A força que puxa a cascata para o CENTRO da câmera, e o raio dela (que cobre o recorte inteiro).
+/// **MEDIDA** (`sonda_a_cascata_a_vista_por_variante`, doc 123 §7): sem ela o vento e o `curl`
+/// levavam tudo para cima e para a direita — `0` de `41` à vista aos `6 s`; com ela e o
+/// [`ARRASTO`], `41/41` e `106/106` aos `8 s`, e o vento continua a fazer as centelhas SUBIR.
+pub(super) const ATRACAO: f32 = 6.0;
+pub(super) const ATRACAO_RAIO: f32 = 14.0;
+/// O arrasto que tira a energia que a atração devolve — sem ele as centelhas oscilam através do
+/// centro e metade sai de quadro nas pontas (`69/106` aos `8 s`, medido).
+pub(super) const ARRASTO: f32 = 0.5;
 
 /// **A CENTELHA QUE ESTOURA** (`PH2D_GPU_COOK_DEMO=27`).
 ///
@@ -100,6 +109,12 @@ pub(super) fn build_gpu_death_demo_document(
     let curl = g.add_node("force.curl");
     g.set_param(curl, "strength", 2.6);
     g.set_param(curl, "scale", 0.7);
+    // A cascata FICA à vista: puxada para o centro e freada (doc 123 §7).
+    let centro = g.add_node("force.attractor");
+    g.set_param(centro, "strength", ATRACAO);
+    g.set_param(centro, "radius", ATRACAO_RAIO);
+    let arrasto = g.add_node("force.drag");
+    g.set_param(arrasto, "coefficient", ARRASTO);
     let step = g.add_node("sim.step");
     let life = g.add_node("sim.lifetime");
     g.set_param(life, "life", LIFE);
@@ -137,7 +152,10 @@ pub(super) fn build_gpu_death_demo_document(
             },
         );
     }
-    for (i, n) in [wind, curl, step, life, combine].into_iter().enumerate() {
+    for (i, n) in [wind, curl, centro, arrasto, step, life, combine]
+        .into_iter()
+        .enumerate()
+    {
         g.set_pos(
             n,
             Pos {
@@ -163,7 +181,9 @@ pub(super) fn build_gpu_death_demo_document(
         // do corpo, e a volta ao `state` é aresta normal.
         (zone, 0, wind, 0),
         (wind, 0, curl, 0),
-        (curl, 0, step, 0),
+        (curl, 0, centro, 0),
+        (centro, 0, arrasto, 0),
+        (arrasto, 0, step, 0),
         (step, 0, life, 0),
         // As duas saídas novas: a carga e o gatilho, no mesmo nascimento.
         (life, 1, spawn, 0),

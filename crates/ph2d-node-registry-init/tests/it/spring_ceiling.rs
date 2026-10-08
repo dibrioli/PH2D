@@ -92,7 +92,6 @@ fn run(tension: f32, friction: f32) -> Verdict {
             g.set_param(step, "offset_y", TARGET_Y);
         }
         let playhead = t as f64 * WORST_DT;
-        cook.advance_tick(&g, &reg, playhead).expect("tick");
         let out = cook.cook(&g, &reg, spring, playhead).expect("cook");
         let CookValue::Instances(s) = &out[0] else {
             panic!("a saida da mola e um stream")
@@ -106,6 +105,8 @@ fn run(tension: f32, friction: f32) -> Verdict {
         if t == 11 {
             just_after = y;
         }
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&g, &reg, playhead).expect("tick");
     }
     // A resposta ao degrau de uma mola SEM atrito passa em exactamente 2× o alvo, então `10×`
     // deixa uma ordem inteira de folga entre *oscila muito* e *explode*.

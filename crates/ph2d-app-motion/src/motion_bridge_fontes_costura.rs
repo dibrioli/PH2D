@@ -124,7 +124,7 @@ fn mede(gpu: &GpuContext, fonte: Fonte, n: usize) -> Linha {
 }
 
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE, com adaptador e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE, com adaptador e com a máquina calma"]
 fn measure_the_source_seam() {
     let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
         panic!("sem adaptador — esta sonda mede a placa");

@@ -9,7 +9,9 @@
 //! ⚠️ **Uma célula que diz *"não rodei"* não é uma omissão nem uma recusa: é uma pergunta
 //! sem resposta**, e o veredito dela (`omissão/ergonomia — o teste decide`) estava escrito à
 //! espera de uma medição. Medido aqui: **funciona**. A cadeia corre, o corpo continua a
-//! simular, e as partículas param de se aproximar mais que o diâmetro que o colisor pede.
+//! simular, e o corpo INCHA (`1,92 → 2,76` de extensão). ⚠️ O que ele NÃO garante é a distância
+//! mínima entre partículas: o colisor empurra também os vizinhos de malha, que as molas seguram
+//! mais perto que o diâmetro, e o par mais próximo desce (doc 123 §4, medido em 08/10).
 //!
 //! ⇒ **não falta capacidade, falta o GESTO** — hoje são dois nós e duas arestas ligadas à mão,
 //! exactamente como na corda. É a mesma conclusão e pelo mesmo mecanismo.
@@ -97,13 +99,14 @@ fn settle(g: &Graph, reg: &NodeRegistry, node: NodeId) -> Vec<[f32; 2]> {
     let mut last = Stream::new(0);
     for k in 0..TICKS {
         let playhead = k as f64 * DT;
-        cook.advance_tick(g, reg, playhead)
-            .expect("o tique avanca o `pre`");
         let out = cook.cook(g, reg, node, playhead).expect("o corpo coze");
         let CookValue::Instances(s) = &out[0] else {
             panic!("a saida e um stream")
         };
         last = s.clone();
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(g, reg, playhead)
+            .expect("o tique avanca o `pre`");
     }
     match last.get("P") {
         Some(Column::Vec2(v)) => v.clone(),
@@ -165,17 +168,17 @@ fn the_soft_body_takes_a_particle_radius_through_the_collide_loop() {
         "CONTROLE: as duas poses sairam iguais ({moved:.6}) -- a cadeia nao esta' a correr"
     );
 
-    // A afirmação: o colisor AFASTA as partículas.
+    // ⚠️ **O par mais próximo NÃO é a régua** (o cabeçalho já o dizia): o colisor empurra também
+    // os vizinhos de malha, que as molas seguram a `SPACING < 2·RADIUS`, e no produto (uma
+    // passagem do colisor por tique) o par mais próximo DESCE (`0,3000 → 0,2890`). Ele só subia
+    // (`0,3448`) porque o arnês avançava o tique antes de cozer e corria o colisor DUAS vezes
+    // (doc 123 §4). A régua é a extensão: o corpo INCHA, que é o que um *particle radius* faz.
     let (d0, d1) = (closest_pair(&bare), closest_pair(&thick));
-    assert!(
-        d1 > d0,
-        "o raio de particula tinha de afastar o par mais proximo: {d0:.4} sem, {d1:.4} com"
-    );
-    // E o corpo ocupa mais espaço, que é o que um *particle radius* faz.
     let (e0, e1) = (extent(&bare), extent(&thick));
+    // `+20 %` é o que se lê a olho; o medido é `+43 %` (`1,92 → 2,76`).
     assert!(
-        e1 > e0,
-        "o corpo tinha de INCHAR: {e0:.4} sem o colisor, {e1:.4} com"
+        e1 > e0 * 1.2,
+        "o corpo tinha de INCHAR à vista (+20 %): {e0:.4} sem o colisor, {e1:.4} com"
     );
     println!(
         "soft_body + collide: par mais proximo {d0:.4} -> {d1:.4} · extensao {e0:.4} -> {e1:.4}"
@@ -192,7 +195,6 @@ fn the_body_keeps_simulating_with_the_collider_in_the_loop() {
     let mut poses: Vec<Vec<[f32; 2]>> = Vec::new();
     for k in 0..TICKS {
         let playhead = k as f64 * DT;
-        cook.advance_tick(&g, &reg, playhead).expect("avanca");
         let out = cook.cook(&g, &reg, sb, playhead).expect("coze");
         let CookValue::Instances(s) = &out[0] else {
             panic!("stream")
@@ -203,6 +205,7 @@ fn the_body_keeps_simulating_with_the_collider_in_the_loop() {
                 _ => panic!("P"),
             }
         }
+        cook.advance_tick(&g, &reg, playhead).expect("avanca");
     }
     assert_eq!(poses.len(), 2, "duas fotografias");
     let d = poses[0]

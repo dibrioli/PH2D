@@ -180,7 +180,7 @@ fn the_siblings_of_a_burst_fly_apart() {
 ///
 /// `cargo test -p ph2d-app-motion --lib death_demo::tests::probe -- --ignored --nocapture`
 #[test]
-#[ignore]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_population() {
     let n = population(8.0);
     for (k, c) in n.iter().enumerate() {
@@ -194,7 +194,7 @@ fn probe_population() {
 /// **SONDA do report do Enio** (*"não se dividem, as filhas ficam juntas como uma só"*):
 /// imprime a posição e a velocidade de cada elemento nos tiques em torno do 1º estouro.
 #[test]
-#[ignore]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_siblings() {
     let reg = registry();
     let mut doc = MotionDoc::default();
@@ -240,7 +240,7 @@ const PIXELS_POR_ESTRELA_MIN: usize = 80;
 /// ⚠️ O defeito não era perda nenhuma: as duas rotas entregam as estrelas em todo quadro. Era o
 /// TAMANHO (`~3 px`), e a sonda `PH2D_PAN_DIAG` cega à rota do dispositivo que o «confirmou».
 #[test]
-#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+#[ignore = "placa: requires a GPU adapter; run with --ignored on a dev machine"]
 fn the_sparks_draw_legible_stars_on_both_routes() {
     use crate::motion_shape_placa::PlacaDeFormas;
     use crate::motion_shape_placa::gpu_tests::{LADO, compara, le_a_camada};
@@ -301,5 +301,136 @@ fn the_sparks_draw_legible_stars_on_both_routes() {
                 acesos / n.max(1)
             );
         }
+    }
+}
+
+/// Metade da largura e da altura do que a câmera por omissão mostra, em mundo: `height_world = 10`
+/// num recorte `16:9`.
+const MEIA_CAMERA: [f32; 2] = [5.0 * 16.0 / 9.0, 5.0];
+
+/// Quantas das posições caem dentro da câmera por omissão (centrada na origem).
+fn a_vista(p: &[[f32; 2]]) -> usize {
+    p.iter()
+        .filter(|q| q[0].abs() <= MEIA_CAMERA[0] && q[1].abs() <= MEIA_CAMERA[1])
+        .count()
+}
+
+/// As posições da zona nos tiques `marcas`, do documento `doc`.
+fn posicoes_em(
+    doc: &MotionDoc,
+    sink: ph2d_nodegraph::graph::NodeId,
+    marcas: &[u64],
+) -> Vec<Vec<[f32; 2]>> {
+    let reg = registry();
+    let mut cook = Cook::new();
+    let mut fora = Vec::new();
+    for k in 0..=marcas.iter().copied().max().unwrap_or(0) {
+        let t = k as f64 / 60.0;
+        let s = cook
+            .cook(&doc.graph, &reg, zona(doc, sink), t)
+            .expect("cozinha")[0]
+            .as_stream()
+            .clone();
+        if marcas.contains(&k) {
+            fora.push(match s.get("P") {
+                Some(ph2d_nodegraph::attr::Column::Vec2(v)) => v.clone(),
+                _ => vec![],
+            });
+        }
+        cook.advance_tick(&doc.graph, &reg, t).expect("avança");
+    }
+    fora
+}
+
+/// ⭐ **A CASCATA FICA À VISTA** (doc 123 §7): a `2`, `4`, `6` e `8 s` pelo menos `90 %` das
+/// centelhas estão dentro da câmera por omissão. Até 08/10 o vento e o `curl` levavam-na para
+/// cima e para a direita, e aos `6 s` a tela estava VAZIA (`0/41`). O CONTROLO é a população a
+/// crescer — uma cena que retivesse tudo por não nascer ninguém passaria a primeira metade.
+#[test]
+fn the_cascade_stays_in_view() {
+    let reg = registry();
+    let mut doc = MotionDoc::default();
+    let sinks = build_gpu_death_demo_document(&mut doc, &reg).expect("cena");
+    let fotos = posicoes_em(&doc, sinks[0], &[120, 240, 360, 480]);
+    for (k, p) in fotos.iter().enumerate() {
+        let (v, n) = (a_vista(p), p.len());
+        assert!(
+            v * 10 >= n * 9,
+            "aos {} s só {v} de {n} centelhas estão à vista — a cascata sai da câmera",
+            2 * (k + 1)
+        );
+    }
+    assert!(
+        fotos[3].len() > fotos[0].len() * 4,
+        "controlo: a cascata tem de CRESCER ({} → {})",
+        fotos[0].len(),
+        fotos[3].len()
+    );
+}
+
+/// **SONDA da cascata à vista** (doc 123 §7): a população, a caixa das posições da zona e quantas
+/// caem DENTRO da câmera por omissão, a cada meio segundo.
+#[test]
+#[ignore = "sonda: onde a cascata da =27 esta' a cada meio segundo"]
+fn sonda_onde_a_cascata_esta() {
+    let reg = registry();
+    let mut doc = MotionDoc::default();
+    let sinks = build_gpu_death_demo_document(&mut doc, &reg).expect("cena");
+    let marcas: Vec<u64> = (0..=20).map(|i| i * 30).collect();
+    for (k, p) in posicoes_em(&doc, sinks[0], &marcas).iter().enumerate() {
+        let (mut x0, mut x1, mut y0, mut y1) = (f32::MAX, f32::MIN, f32::MAX, f32::MIN);
+        for q in p {
+            x0 = x0.min(q[0]);
+            x1 = x1.max(q[0]);
+            y0 = y0.min(q[1]);
+            y1 = y1.max(q[1]);
+        }
+        eprintln!(
+            "t={:.1}s n={} dentro={} x=[{x0:.2},{x1:.2}] y=[{y0:.2},{y1:.2}]",
+            k as f64 * 0.5,
+            p.len(),
+            a_vista(p)
+        );
+    }
+}
+
+/// **SONDA do desenho da `=27` à vista** (doc 123 §7): o vento, a atração e o arrasto da cena
+/// variados nos PRÓPRIOS nós dela — quantas centelhas a câmera vê a `2`, `4`, `6` e `8 s`. Uma
+/// rodada, todas as variantes; `(1,4 · 0 · 0)` é a cena de antes de 08/10.
+#[test]
+#[ignore = "sonda: as variantes da =27 a vista"]
+fn sonda_a_cascata_a_vista_por_variante() {
+    let reg = registry();
+    let mut variantes = vec![(1.4_f32, 0.0_f32, 0.0_f32)];
+    for vento in [1.4, 0.7] {
+        for forca in [2.0, 4.0, 6.0] {
+            for arrasto in [0.0, 0.5, 1.0] {
+                variantes.push((vento, forca, arrasto));
+            }
+        }
+    }
+    eprintln!("vento forca arrasto | dentro/n a 2s 4s 6s 8s");
+    for (vento, forca, arrasto) in variantes {
+        let mut doc = MotionDoc::default();
+        let sinks = build_gpu_death_demo_document(&mut doc, &reg).expect("cena");
+        for (tipo, param, v) in [
+            ("force.wind", "strength", vento),
+            ("force.attractor", "strength", forca),
+            ("force.drag", "coefficient", arrasto),
+        ] {
+            let id = doc
+                .graph
+                .nodes()
+                .iter()
+                .find(|n| n.type_name == tipo)
+                .map(|n| n.id)
+                .expect(tipo);
+            doc.graph.set_param(id, param, v);
+        }
+        let linha: String = posicoes_em(&doc, sinks[0], &[120, 240, 360, 480])
+            .iter()
+            .map(|p| format!(" {}/{}", a_vista(p), p.len()))
+            .collect();
+        eprintln!("{vento:>5} {forca:>5} {arrasto:>7} |{linha}");
     }
 }

@@ -306,7 +306,7 @@ mod tests {
     /// segunda avaliação.
     /// `cargo test -p ph2d-app-motion --lib measure_the_gain_knob -- --ignored --nocapture`
     #[test]
-    #[ignore = "sonda de medição, não gate"]
+    #[ignore = "sonda: medição, não gate"]
     fn measure_the_gain_knob() {
         println!("\n=== strength do Gain -> frequency dirigida (t = 0,25 .. 3,0) ===");
         for &s in &[-1.0f32, -0.5, 0.0, 0.5, 1.0] {
@@ -344,7 +344,7 @@ mod tests {
     /// A SONDA: quanto a altura de fato RESPIRA, e quanto o ritmo passeia.
     /// `cargo test -p ph2d-app-motion --lib measure_the_driven_scene -- --ignored --nocapture`
     #[test]
-    #[ignore = "sonda de medição, não gate"]
+    #[ignore = "sonda: medição, não gate"]
     fn measure_the_driven_scene() {
         let st = MotionState::new();
         let mut g = Graph::new();

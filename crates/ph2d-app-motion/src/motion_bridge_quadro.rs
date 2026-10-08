@@ -81,6 +81,8 @@ pub(crate) fn coze_o_quadro(
                 c.instances().map_or(0, |i| i.len() as usize),
                 c.formas().map_or(0, |f| f.len() as usize),
             );
+            // doc 123 §8: o mundo da 1.ª cópia pela leitura dos cartões (zero download novo).
+            ph2d_pan_diag::note_device_world(crate::pan_diag_tap::mundo_lido(motion));
         }
         return;
     }

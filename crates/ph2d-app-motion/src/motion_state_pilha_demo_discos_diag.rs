@@ -315,7 +315,7 @@ pub(super) fn rodada(rolar: f32, extra: &[(&'static str, f32)]) -> (f32, f32, f3
 /// cargo test -p ph2d-app-motion --release probe_avalanche_ou_trava -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_avalanche_ou_trava() {
     use ph2d_node_motion_shape::param;
     let discos = [(param::COLLIDER_SHAPE, 1.0)];
@@ -343,7 +343,7 @@ fn probe_avalanche_ou_trava() {
 /// ⭐ **SONDA — o mecanismo por `Rolling`** (doc 121 §9.23): a realização MEDIANA da queda dos
 /// discos, as réguas do mecanismo na queda e na primeira janela assente.
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_mecanismo_por_rolamento() {
     let discos = [(ph2d_node_motion_shape::param::COLLIDER_SHAPE, 1.0)];
     for rolar in [0.1_f32, 0.15, 0.2] {
@@ -383,7 +383,7 @@ fn probe_o_mecanismo_por_rolamento() {
 /// da direita em cada uma das [`realizacoes`], o centro e o raio da taça, para o
 /// `oraculo_box2d_rolamento` correr a MESMA pilha. E, ao lado, as réguas da nossa lei por `Rolling`.
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn exporta_a_pilha_para_o_oraculo() {
     // ⚠️ O `cargo test` corre na pasta da CRATE: o caminho de omissão é o `target/` da worktree.
     let saida = std::env::var("PH2D_ORACULO_DIR").unwrap_or_else(|_| {

@@ -28,7 +28,7 @@ use ph2d_nodegraph::attr::Column;
 /// cargo test -p ph2d-app-motion --lib probe_o_ruido_entre_realizacoes -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_ruido_entre_realizacoes() {
     eprintln!("\n  desvio do berço | balanço pior (°/tique) | giro líquido pior (°)");
     eprintln!("  ----------------|------------------------|----------------------");
@@ -146,7 +146,7 @@ fn realizacao(eps: f32) -> (f32, f32) {
 /// cargo test -p ph2d-app-motion --lib probe_a_alternancia_iterada -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_a_alternancia_iterada() {
     eprintln!("\n  voltas de alternância | balanço pior (°/tique) | giro líquido pior (°)");
     eprintln!("  ----------------------|------------------------|----------------------");
@@ -321,7 +321,7 @@ fn mede_balanco_e_giro(state: &mut MotionState, sink: NodeId) -> (f32, f32) {
 /// cargo test -p ph2d-app-motion --lib probe_as_alavancas_de_produto -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_as_alavancas_de_produto() {
     eprintln!(
         "\n  atrito peças | arrasto angular | balanço pior (°/tique) | giro líquido pior (°)"
@@ -403,7 +403,7 @@ fn realizacao_de_produto(eps: f32, mu: f32, arrasto: f32) -> (f32, f32) {
 /// cargo test -p ph2d-app-motion --lib probe_quantos_contactos_sao_face_a_face -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_quantos_contactos_sao_face_a_face() {
     for sub in [1_u32, 8] {
         eprintln!("\n=== substeps = {sub} ===");

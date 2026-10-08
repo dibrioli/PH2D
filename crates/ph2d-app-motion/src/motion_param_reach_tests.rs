@@ -6,7 +6,7 @@
 /// cargo test -p ph2d-app-motion --lib probe_unreachable_params -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn probe_unreachable_params() {
     let c = super::censo();
     eprintln!("\n  nó                            | params que NENHUMA combinação revela");
@@ -84,7 +84,7 @@ fn two_controls_in_one_section_never_share_a_name() {
 
 /// **SONDA — que nós nenhuma folha de conferência nomeia.**
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn probe_unconferred_nodes() {
     let c = super::conferencia();
     eprintln!(
@@ -229,7 +229,7 @@ fn nenhum_nome_do_catalogo_e_cortado_numa_capsula() {
 ///
 /// `cargo test -p ph2d-app-motion -- --ignored --nocapture mede_o_corpo_maximo_da_capsula`
 #[test]
-#[ignore = "medicao"]
+#[ignore = "sonda: medicao"]
 fn mede_o_corpo_maximo_da_capsula() {
     const CARD_W: f32 = 190.0;
     const MARGEM_X: f32 = 12.0;

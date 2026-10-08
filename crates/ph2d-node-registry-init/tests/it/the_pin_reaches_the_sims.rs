@@ -130,12 +130,13 @@ fn settle(g: &Graph, reg: &NodeRegistry, node: NodeId) -> Stream {
     let mut last = Stream::new(0);
     for k in 0..TICKS {
         let playhead = k as f64 * DT;
-        cook.advance_tick(g, reg, playhead).expect("o tique avança");
         let out = cook.cook(g, reg, node, playhead).expect("coze");
         let CookValue::Instances(s) = &out[0] else {
             panic!("a saída é um stream")
         };
         last = s.clone();
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(g, reg, playhead).expect("o tique avança");
     }
     last
 }
@@ -166,12 +167,12 @@ fn trail(g: &Graph, reg: &NodeRegistry, node: NodeId, i: usize) -> Vec<[f32; 2]>
     let mut out = Vec::with_capacity(TICKS);
     for k in 0..TICKS {
         let playhead = k as f64 * DT;
-        cook.advance_tick(g, reg, playhead).expect("o tique avança");
         let v = cook.cook(g, reg, node, playhead).expect("coze");
         let CookValue::Instances(s) = &v[0] else {
             panic!("stream")
         };
         out.push(positions(s)[i]);
+        cook.advance_tick(g, reg, playhead).expect("o tique avança");
     }
     out
 }
@@ -464,12 +465,12 @@ fn settle_edit_settle(
         let mut last = Stream::new(0);
         for k in from..from + TICKS {
             let playhead = k as f64 * DT;
-            cook.advance_tick(g, reg, playhead).expect("o tique avança");
             let out = cook.cook(g, reg, node, playhead).expect("coze");
             let CookValue::Instances(st) = &out[0] else {
                 panic!("a saída é um stream")
             };
             last = st.clone();
+            cook.advance_tick(g, reg, playhead).expect("o tique avança");
         }
         positions(&last)
     };

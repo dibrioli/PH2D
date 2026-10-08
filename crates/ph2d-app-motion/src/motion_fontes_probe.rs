@@ -16,7 +16,7 @@ use ph2d_node_registry::NodeUiCategory;
 /// ⚠️ É o instrumento do passo 1: o grupo sai do que o artista VÊ (a categoria e o sub-cluster), e
 /// a linha do doc 103 §5 é uma verificação, não a fonte.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_source_palette_census() {
     let m = crate::motion_state::MotionState::new();
     let mut linhas: Vec<(String, &'static str, String)> = m
@@ -96,28 +96,28 @@ fn the_source_group_is_derived_and_not_empty() {
 }
 
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn audit_the_source_group() {
     crate::motion_ciclo_probe::retrato(&grupo());
 }
 
 /// **OS PARAMS DE CADA NÓ DO GRUPO** — o que a auditoria compara contra as referências.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_each_source_node_offers() {
     crate::motion_ciclo_probe::params_de(&grupo());
 }
 
 /// **O QUE O CARTÃO PINTA**, com o rótulo da tela.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_the_source_card_shows() {
     crate::motion_ciclo_probe::cartao(&grupo());
 }
 
 /// **O VOCABULÁRIO pelo eixo do artista** — rótulo, e as palavras do enum.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_source_vocabulary_the_artist_reads() {
     crate::motion_ciclo_probe::vocabulario(&grupo());
     crate::motion_ciclo_probe::vocabulario_do_artista(&grupo());
@@ -134,7 +134,7 @@ fn the_source_vocabulary_the_artist_reads() {
 /// cargo test -p ph2d-app-motion --lib probe_does_a_source_chain_stay -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao, nao um gate"]
+#[ignore = "sonda: medicao, nao um gate"]
 fn probe_does_a_source_chain_stay_on_the_device() {
     use ph2d_nodegraph::graph::Edge;
     let mede = |no: &str| {

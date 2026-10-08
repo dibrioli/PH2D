@@ -161,19 +161,20 @@ fn espalha_na_coluna(s: &Stream, r: &Stream) -> f32 {
         .fold(0.0, f32::max)
 }
 
-/// ⭐⭐ **Escreve as seis figuras do tutorial 7, com as asserções que as impedem de contar a mesma
-/// história.**
+/// Escreve as figuras de [`figuras`] no disco.
 ///
 /// ```text
 /// cargo test -p ph2d-app-motion --lib write_the_appearance_figures -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "gerador de figuras — corra à mão"]
+#[ignore = "gerador: escreve as figuras do tutorial 7 — corra à mão"]
 fn write_the_appearance_figures() {
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/Motion Nodes/tutoriais/fig");
-    std::fs::create_dir_all(&dir).expect("a pasta");
+    super::tutorial_figuras::escreve(&figuras());
+}
 
+/// ⭐⭐ **Produz as seis figuras do tutorial 7, com as asserções que as impedem de contar a mesma
+/// história.**
+pub(super) fn figuras() -> super::tutorial_figuras::Figuras {
     // 100 tiques: a cauda do meio cheia (44) e a linha de atraso de baixo cheia (30).
     let pan = colher(100);
     assert_eq!(pan.len(), 6, "a cena tem seis sinks");
@@ -238,8 +239,8 @@ fn write_the_appearance_figures() {
             );
         }
     }
-    for (nome, svg) in &figuras {
-        std::fs::write(dir.join(format!("{nome}.svg")), svg).expect("escreve");
-    }
-    eprintln!("  ✓ {} figuras em {}", figuras.len(), dir.display());
+    figuras
+        .into_iter()
+        .map(|(nome, svg)| (format!("{nome}.svg"), svg))
+        .collect()
 }

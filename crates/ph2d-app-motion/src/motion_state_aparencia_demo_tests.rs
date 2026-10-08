@@ -470,7 +470,7 @@ fn each_pair_differs_by_what_the_announcement_says() {
 
 /// **SONDA — os cartões que a cena `=118` pinta, e as medidas de onde saem as bandas.**
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn probe_the_cards_of_the_appearance_scene() {
     let mut m = MotionState::new();
     let _ = crate::motion_demo_legend::monta("118", &mut m.doc, &m.registry);

@@ -76,7 +76,7 @@ fn regime_do_clone(
 /// ⇒ *«quantas das cenas que usam o nó caem no regime que a wave alcança?»* é a pergunta que
 /// decide se ela vale a pena, e nenhuma régua deste repo a respondia.
 #[test]
-#[ignore = "sonda de auditoria (ciclo 10), nao gate"]
+#[ignore = "sonda: auditoria (ciclo 10), nao gate"]
 fn audit_the_stamp_clone_population() {
     let (mut total, mut so_linear, mut com_leque, mut com_taper, mut radiais) = (0, 0, 0, 0, 0);
     let mut cenas: Vec<u32> = Vec::new();
@@ -124,7 +124,7 @@ fn audit_the_stamp_clone_population() {
 /// ⚠️ O `pick` é a cerca §6.4 do doc 116: só o `Off` é o produto cartesiano — os outros dois
 /// emitem exactamente `np` linhas, e uma lei de contagem que o ignore erra em dois dos três.
 #[test]
-#[ignore = "sonda de auditoria (ciclo 10), nao gate"]
+#[ignore = "sonda: auditoria (ciclo 10), nao gate"]
 fn audit_the_stamp_duplicator_population() {
     let tid = ph2d_nodegraph::node::NodeTypeId::of("motion.duplicator");
     let (mut dups, mut pick_off, mut com_escala) = (0, 0, 0);
@@ -198,7 +198,7 @@ fn audit_the_stamp_duplicator_population() {
 /// Cozinha cada cena com carimbo pela porta do produto (o `pump`, três tiques) e conta as linhas
 /// **vectoriais** — que são exactamente as que pagam o encode do §4.3.
 #[test]
-#[ignore = "sonda de auditoria (ciclo 10), nao gate"]
+#[ignore = "sonda: auditoria (ciclo 10), nao gate"]
 fn audit_the_stamp_live_vector_population() {
     let uv = [0.0, 0.0, 1.0, 1.0];
     let tam = [1.0, 1.0];
@@ -281,7 +281,7 @@ fn audit_the_stamp_live_vector_population() {
 /// ⛔ *Sem esta contagem a wave escolhe-se pela pureza da prova outra vez, que é o erro que a
 /// §5.2 já apanhou uma vez.*
 #[test]
-#[ignore = "sonda de auditoria (ciclo 10), nao gate"]
+#[ignore = "sonda: auditoria (ciclo 10), nao gate"]
 fn audit_the_stamp_shape_side() {
     /// Os nomes de tipo a montante de `(no, porta)`, subindo por todas as portas.
     fn montante(
@@ -386,7 +386,7 @@ fn audit_the_stamp_shape_side() {
 /// *A resposta não é adivinhável do manifesto: `Index`/`Count` são escritas por quem gera, e nem
 /// toda cadeia passa por um gerador que as escreve.*
 #[test]
-#[ignore = "sonda de auditoria (ciclo 10), nao gate"]
+#[ignore = "sonda: auditoria (ciclo 10), nao gate"]
 fn audit_the_stamp_index_and_count_reach_the_multipliers() {
     eprintln!("\n=== a entrada de cada multiplicador traz `Index`/`Count`? ===\n");
     eprintln!("  cena | no'               | porta |    n | Index | Count");

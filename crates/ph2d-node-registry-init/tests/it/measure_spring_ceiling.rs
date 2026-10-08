@@ -109,7 +109,6 @@ fn march(
             g.set_param(step, "offset_y", TARGET_Y);
         }
         let playhead = t as f64 * dt;
-        cook.advance_tick(g, reg, playhead).expect("tick");
         let out = cook.cook(g, reg, spring, playhead).expect("cook");
         let CookValue::Instances(s) = &out[0] else {
             panic!("a saida da mola e um stream")
@@ -123,6 +122,8 @@ fn march(
         if t == 11 {
             just_after = last;
         }
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(g, reg, playhead).expect("tick");
     }
     (last, peak, just_after)
 }

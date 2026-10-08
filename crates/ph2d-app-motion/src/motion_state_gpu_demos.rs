@@ -37,13 +37,12 @@ fn eased_preset(preset: GradientPreset) -> String {
 use ph2d_nodegraph::graph::NodeId;
 
 /// The GPU/M5 Fase 1 **ready-to-smoke** document (`PH2D_GPU_COOK_DEMO=1`):
-/// `grid(1250×1600) → oscillator(Y wave) → move → output` — **2.000.000
-/// instances**, every node kernel-covered, so `PH2D_GPU_COOK=1` runs it 100%
-/// GPU-resident (`ph2d_gpu_cook::plan` claims the whole chain; the renderer binds
-/// the lowering's buffer with zero readback). Measured on the RTX at ~4 ms/frame
-/// for the cook (probe `gpu_cook_millions_timing`), i.e. the roadmap's "millions
-/// at 60fps" with headroom. The same chain, at 25.6k, is the parity gate's
-/// fixture. Auto-plays on tool entry like every boot document.
+/// `grid(181×181) → oscillator(Y wave) → move → output` — **32 761 instances**, the
+/// per-node ceiling (`LADO_MAX_DE_GRELHA`, owner's decision 2026-10-08); every node
+/// kernel-covered, so it runs 100% GPU-resident (`ph2d_gpu_cook::plan` claims the whole
+/// chain; zero readback). Measured 2026-10-08 (`cena_1_no_tecto_placa_contra_cpu`, release,
+/// interleaved): cook `0,107 ms` on the RTX against `0,248 ms` on the CPU (doc 123 §3.1).
+/// Auto-plays on tool entry like every boot document.
 pub(super) fn build_gpu_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
@@ -51,7 +50,7 @@ pub(super) fn build_gpu_demo_document(
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
     let grid = g.add_node("motion.grid");
-    // 1250 × 1600 = exactly 2.000.000 cells (well under the grid's 16.7M cap).
+    // The per-node ceiling: 181 × 181 = 32 761 cells.
     g.set_param(
         grid,
         "rows",

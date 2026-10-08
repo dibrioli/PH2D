@@ -26,14 +26,15 @@ fn run(ticks: usize) -> Vec<Vec<[f32; 2]>> {
     let mut out = vec![Vec::new(); sinks.len()];
     for k in 0..ticks {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, &reg, t)
-            .expect("o tique avança o `pre`");
         for (i, s) in sinks.iter().enumerate() {
             let v = cook.cook(&doc.graph, &reg, *s, t).expect("a banda coze");
             if let Some(Column::Vec2(p)) = v[0].as_stream().get("P") {
                 out[i] = p.clone();
             }
         }
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&doc.graph, &reg, t)
+            .expect("o tique avança o `pre`");
     }
     out
 }
@@ -152,7 +153,7 @@ fn the_substepped_rope_keeps_its_length_where_the_single_step_one_stretches() {
 /// **A SONDA** — imprime os números que a mensagem do smoke cita, para nenhum
 /// deles ser escrito de memória.
 #[test]
-#[ignore = "sonda"]
+#[ignore = "sonda: imprime, não afirma"]
 fn measure_what_the_scene_shows() {
     let p = run(150);
     let n = p[0].len();
@@ -235,14 +236,14 @@ fn the_scenes_ropes_read_the_same_through_the_pump_the_app_runs() {
                 .expect("substep");
             }
         }
-        cook.advance_tick(&doc.graph, &reg, t)
-            .expect("o tique avança o `pre`");
         for (i, s) in sinks.iter().enumerate() {
             let v = cook.cook(&doc.graph, &reg, *s, t).expect("a banda coze");
             if let Some(Column::Vec2(p)) = v[0].as_stream().get("P") {
                 out[i] = p.clone();
             }
         }
+        cook.advance_tick(&doc.graph, &reg, t)
+            .expect("o tique avança o `pre`");
     }
 
     // O CONTROLE de que a fixture não está morta: a cena de facto simula.

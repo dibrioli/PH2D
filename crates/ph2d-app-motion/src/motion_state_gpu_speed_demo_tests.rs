@@ -115,7 +115,7 @@ fn the_frame_settles_and_the_control_flies_away() {
 /// O quadro FINAL é o mesmo com e sem teto (o núcleo captura os dois); a pergunta é se o
 /// estilingue ainda leva a nuvem mais longe ANTES de assentar.
 #[test]
-#[ignore]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_reach_during_the_fall() {
     for limit in [LIMIT, 0.0] {
         let reg = registry();
@@ -143,7 +143,7 @@ fn probe_reach_during_the_fall() {
 ///
 /// `cargo test -p ph2d-app-motion --lib probe_speed_ceiling -- --ignored --nocapture`
 #[test]
-#[ignore]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_speed_ceiling() {
     for limit in [0.0f32, LIMIT, 20.0] {
         let (peak, p) = run(limit, 2.0);
@@ -159,7 +159,7 @@ fn probe_speed_ceiling() {
 ///
 /// `cargo test -p ph2d-app-motion --lib probe_cpu_pump_rewind -- --ignored --nocapture`
 #[test]
-#[ignore]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_cpu_pump_rewind() {
     use crate::motion_bridge::ticks_owed;
     use ph2d_eval_motion::MotionCookPump;
@@ -230,7 +230,7 @@ fn probe_cpu_pump_rewind() {
 /// **SONDA — A CENA ASSENTA?** Se a nuvem nunca para, dois Plays interrompidos em instantes
 /// diferentes mostram quadros diferentes — e isso e' DESENHO DE CENA, nao motor.
 #[test]
-#[ignore]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_does_the_scene_settle() {
     let col = |limit: f32, secs: f64| -> (f32, f32, f32) {
         let (peak, p) = run(limit, secs);

@@ -103,7 +103,7 @@ fn diametro(s: &[[f64; 2]]) -> f64 {
 /// ⚠️ **O CONTROLO é o `corner = 0`**: ali as duas silhuetas são a mesma e o desvio tem de ler
 /// `0,000` — sem ele, uma régua partida daria «invisível» a tudo e o limiar sairia de nada.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_when_the_rounding_stops_showing() {
     let _fatia = fatia();
     let afiada = forma_da_cena(0.0);
@@ -212,7 +212,7 @@ fn caixa_comum(a: &[[f64; 2]], b: &[[f64; 2]]) -> ([f64; 2], f64) {
 /// ⚠️ **O CONTROLO é a primeira coluna** (a forma comparada consigo mesma): ela tem de ler `0`
 /// níveis a todo tamanho. Sem ele, uma rasterização partida daria «idêntico» a tudo.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_how_many_levels_the_eye_could_tell() {
     let _fatia = fatia();
     let afiada = silhueta(&forma_da_cena(0.0));
@@ -340,7 +340,7 @@ fn reamostra(img: &[f64], de: usize, para: usize) -> Vec<f64> {
 /// silhueta simplificada fica ao lado: é a comparação entre as DUAS curas que decide, não o valor
 /// absoluto de nenhuma.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_how_much_a_tile_would_err() {
     let _fatia = fatia();
     let arredondada = silhueta(&forma_da_cena(0.5));
@@ -465,7 +465,7 @@ fn forma_do_catalogo(kind: ph2d_node_motion_shape::ShapeKind) -> Option<ph2d_vec
 /// régua), e imprime linha a linha desde a primeira — *o silêncio de um `| tail` lê-se como
 /// pendurada, e não é*.
 #[test]
-#[ignore = "sonda de medição — ~16 min; corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — ~16 min; corra à mão, em RELEASE e com a máquina calma"]
 fn audit_whether_the_bar_holds_for_every_shape() {
     let _fatia = fatia();
     eprintln!(

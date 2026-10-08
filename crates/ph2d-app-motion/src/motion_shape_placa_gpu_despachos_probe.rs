@@ -17,7 +17,7 @@ fn main(@builtin(global_invocation_id) g: vec3<u32>) {
 ";
 
 #[test]
-#[ignore = "sonda de relógio"]
+#[ignore = "sonda: relógio"]
 fn custo_de_um_despacho() {
     let Some(gpu) = gpu() else { return };
     let d = &gpu.device;

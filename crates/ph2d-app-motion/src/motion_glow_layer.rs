@@ -92,10 +92,7 @@ impl Halo<'_> {
 pub fn halo_do_quadro(motion: &MotionState, formas_da_placa: bool) -> Halo<'_> {
     if motion.gpu_live {
         // A MESMA pergunta do passe de sprites (`present.rs`): a arte desenha-se neste quadro?
-        let arte = crate::lei_da_aparencia::a_arte_desenha(
-            motion,
-            ph2d_eval_motion::so_com_forma_por_ordem(),
-        );
+        let arte = crate::lei_da_aparencia::a_arte_desenha(motion, motion.pump.a_lei());
         let placa = arte
             .then(|| motion.gpu_cook.instances())
             .flatten()

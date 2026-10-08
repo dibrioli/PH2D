@@ -221,7 +221,7 @@ fn a_number_wired_to_a_field_strength_drags_below_zero() {
 ///
 /// `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture how_many_params_wear_a_face`
 #[test]
-#[ignore = "sonda de censo, nao um gate"]
+#[ignore = "sonda: censo, nao um gate"]
 fn how_many_params_wear_a_face() {
     use crate::ParamRow;
     let base = MotionState::new();

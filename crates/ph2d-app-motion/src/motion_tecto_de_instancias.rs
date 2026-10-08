@@ -82,7 +82,7 @@ fn alimenta(g: &mut Graph) -> NodeId {
 
 /// ⭐⭐⭐ **QUANTAS LINHAS CADA NÓ PODE EMITIR** — a medição que decide onde o tecto entra.
 #[test]
-#[ignore = "sonda de medição — corra à mão"]
+#[ignore = "sonda: medição — corra à mão"]
 fn censo_de_quem_cria_instancias() {
     let m = crate::motion_state::MotionState::new();
     let reg = &m.registry;

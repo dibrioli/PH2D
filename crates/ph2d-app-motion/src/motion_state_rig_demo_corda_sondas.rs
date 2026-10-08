@@ -42,7 +42,7 @@ use super::{MotionState, build, mede_a_corda, mede_o_osso};
 /// osso dela (o `size` por elemento sai do `len`), que é o que faz a corda ler-se como um cordão
 /// **em qualquer `Count`** e custa o `size` deixar de ser o que o artista escreveu na forma.
 #[test]
-#[ignore = "sonda de medicao, nao gate"]
+#[ignore = "sonda: medicao, nao gate"]
 fn diag_a_peca_contra_o_vao() {
     eprintln!("\n=== a peca DESENHADA contra o vao que ela atravessa ===");
     for count in [10.0f32, 20.0, 30.0, 40.0] {
@@ -69,7 +69,7 @@ fn diag_a_peca_contra_o_vao() {
 /// e é por isso que nenhuma delas podia ver isto: *uma régua que lê um elemento não vê um
 /// GRADIENTE ao longo da lista*. Esta imprime o vão, os dois semi-eixos e a espessura de cada um.
 #[test]
-#[ignore = "sonda de medicao, nao gate"]
+#[ignore = "sonda: medicao, nao gate"]
 fn diag_a_corda_segmento_a_segmento() {
     eprintln!("\n=== quanto a corda AFINA da 1.a peca a' ULTIMA ===");
     // ⚠️⚠️ **A coluna da ESPESSURA é a que responde ao report, e a 1.ª redacção desta sonda não a
@@ -141,7 +141,7 @@ fn diag_a_corda_segmento_a_segmento() {
 /// ⚠️ O `loadavg` vai no fim: nenhuma leitura de relógio desta máquina vale acima de `~5`
 /// (`CLAUDE.md` §5.0).
 #[test]
-#[ignore = "sonda de medicao (relogio), nao gate"]
+#[ignore = "sonda: medicao (relogio), nao gate"]
 fn diag_o_quadro_da_corda() {
     eprintln!("\n=== o quadro do pano da CORDA (cena =120) ===\n");
     eprintln!("  count | pecas |    solver | pano inteiro | % de 16,67 |  ns/peca | FPS");
@@ -212,7 +212,7 @@ fn diag_o_quadro_da_corda() {
 /// *respirar*). ⚠️ *A escolha entre mediana, média e mínimo é medição e não gosto*, e o critério é
 /// a dispersão TEMPORAL de cada uma ao longo de uma corda que balança.
 #[test]
-#[ignore = "sonda de medicao, nao gate"]
+#[ignore = "sonda: medicao, nao gate"]
 fn diag_qual_estatistica_do_len_nao_respira() {
     let mut m = MotionState::new();
     let sinks = build(&mut m.doc, &m.registry).expect("a cena monta");

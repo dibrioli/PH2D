@@ -136,12 +136,13 @@ fn vaos(fotos: &[Vec<[f32; 2]>]) -> Vec<f32> {
 /// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture write_the_sim_figures
 /// ```
 #[test]
-#[ignore = "escreve ficheiros — corra à mão"]
+#[ignore = "gerador: escreve as figuras e a tabela do tutorial 5 — corra à mão"]
 fn write_the_sim_figures() {
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/Motion Nodes/tutoriais/fig");
-    std::fs::create_dir_all(&dir).expect("a pasta");
+    super::tutorial_figuras::escreve(&figuras());
+}
 
+/// Produz as duas figuras e a tabela `params_sim.html` do tutorial 5 (ver o doc acima).
+pub(super) fn figuras() -> super::tutorial_figuras::Figuras {
     let forca = colher(0.0);
     let alvo = colher(1.0);
     let (vf, va) = (vaos(&forca), vaos(&alvo));
@@ -183,22 +184,21 @@ fn write_the_sim_figures() {
         .map(std::vec::Vec::as_slice)
         .collect();
     let quadro = draw::moldura(&todas);
+    let mut figs: super::tutorial_figuras::Figuras = Vec::new();
     for (ficheiro, fotos) in [("sim_force", &forca), ("sim_target", &alvo)] {
         let fantasma: Vec<[f32; 2]> = fotos[..AMOSTRAS - 1].concat();
         let svg = draw::svg(&fotos[AMOSTRAS - 1], &fantasma, quadro, false);
-        std::fs::write(dir.join(format!("{ficheiro}.svg")), svg).expect("escrever");
-        eprintln!("  figura                │ {ficheiro}.svg");
+        figs.push((format!("{ficheiro}.svg"), svg));
     }
 
-    let path = dir.join("params_sim.html");
     // ⚠️ O cartão da FORMA entra com o `Collide` LIGADO — é o estado em que o capítulo 3 o põe, e
     // é onde a secção `Collision` existe. Ver [`tutorial_table::derive_ligado`].
     let tabela = super::tutorial_table::derive_ligado(
         TABELA,
         &[("shape", ph2d_node_motion_shape::param::COLLIDE, 1.0)],
     );
-    std::fs::write(&path, tabela).expect("a tabela");
-    eprintln!("  tabela derivada       │ {}", path.display());
+    figs.push(("params_sim.html".to_string(), tabela));
+    figs
 }
 
 /// As âncoras da tabela «o que cada controlo faz» — a mesma porta dos ciclos 1 a 4.

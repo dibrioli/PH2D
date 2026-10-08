@@ -114,7 +114,7 @@ fn the_loop_pause_drops_the_world_and_the_next_fall_starts_a_new_one() {
 /// A sonda da régua retirada acima: a maior diferença entre as duas voltas no tique `150`. ⚠️ A lei de antes
 /// (`1,5e-2`) correu aqui atrás de uma chave por fio em `e78b2c096` e saiu com o código dela.
 #[test]
-#[ignore = "sonda"]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_a_diferenca_entre_as_voltas() {
     #[expect(
         clippy::cast_possible_truncation,

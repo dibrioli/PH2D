@@ -257,7 +257,7 @@ impl Corrida {
 }
 
 #[test]
-#[ignore = "sonda de relógio, não um gate — `-- --ignored --nocapture`"]
+#[ignore = "sonda: relógio, não um gate — `-- --ignored --nocapture`"]
 fn sonda_o_relogio_do_ciclo_6() {
     let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
         eprintln!("sem placa — a sonda não corre");
@@ -321,7 +321,7 @@ fn sonda_o_relogio_do_ciclo_6() {
 /// («frio», o custo de antes pelo MESMO código), intercalados em blocos rodados; o resumo é o MÍNIMO.
 /// `PH2D_SONDA_SEM_ESPERA=1` para o lado da CPU só.
 #[test]
-#[ignore = "sonda de relógio, não um gate — `-- --ignored --nocapture`"]
+#[ignore = "sonda: relógio, não um gate — `-- --ignored --nocapture`"]
 fn sonda_as_ligacoes_guardadas() {
     let gpu = GpuContext::new(GpuContext::default_instance(), None).expect("placa");
     let nomes = ["condutor caro · placa", "condutor const · placa"];

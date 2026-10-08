@@ -20,7 +20,7 @@
 /// cargo test -p ph2d-app-motion --release probe_o_giro_que_sobra -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_giro_que_sobra() {
     use ph2d_nodegraph::attr::Column as C;
     let sub = {
@@ -95,7 +95,7 @@ fn probe_o_giro_que_sobra() {
 /// agora o `rodopio`, que é um MÁXIMO sobre as peças e não diz sobre qual. *Uma régua que agrega
 /// sobre uma população tem de saber devolver o membro.*
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_quem_leva_o_safanao() {
     use ph2d_nodegraph::attr::Column as C;
     let sub = {
@@ -211,7 +211,7 @@ fn probe_quem_leva_o_safanao() {
 /// ⚠️ **Ela mexe na `duration` da cena** — logo mede uma VARIANTE dela, e é de propósito: a `=114`
 /// reinicia aos `3,0 s` e por construção nunca mostra uma pilha velha.
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_a_pilha_chega_a_parar() {
     imprime_perfil("a lei em vigor, Rolling do cartao", None);
 }
@@ -220,7 +220,7 @@ fn probe_a_pilha_chega_a_parar() {
 /// faz ao monte, janela a janela. ⚠️ O default do cartão é `0`, e com ele a cena é a que o dono
 /// aprovou **ao bit** — as outras linhas são o que ele vê se mexer no botão.
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_rolamento_na_pilha() {
     for rolar in [0.0_f32, 0.1, 0.25, 0.75] {
         imprime_perfil(&format!("Rolling = {rolar}"), Some(rolar));
@@ -274,7 +274,7 @@ pub(super) fn perfil_com(
 /// ⚠️ **Ela varre um PARÂMETRO, logo cabe numa corrida só** — ao contrário das leis do solver de
 /// antes, que eram um `const` e pediam mutação. *Medir o que é barato medir antes de construir o que é caro.*
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_arrasto_angular() {
     use ph2d_nodegraph::attr::Column as C;
     let sub = {
@@ -374,7 +374,7 @@ fn probe_o_arrasto_angular() {
 /// Uma barra escolhida num lado só mede os defeitos desse lado (a lição que o pincel de tecido
 /// pagou com duas barras retiradas).
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_vale_da_deriva() {
     // O tecto de hoje — a varredura abaixo mostra o que acontece a toda a volta dele.
     const QUIETO: f32 = super::salto::QUIETO;

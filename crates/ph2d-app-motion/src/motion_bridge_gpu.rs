@@ -187,6 +187,21 @@ mod dirigidos;
 pub(crate) use dirigidos::plano_do_produto_para;
 pub(crate) use dirigidos::{plano_do_produto, valores_dirigidos};
 
+/// O estilo de cada saída para a rota da placa, com a lei do dono da BOMBA (`a_lei`) — a MESMA
+/// fonte que a rota da CPU usa (`MotionCookPump::pump`). Lida do ambiente aqui, as rotas
+/// discordavam sempre que alguém mudava a lei da bomba (doc 123 §4).
+pub(crate) fn estilos_das_saidas(motion: &MotionState) -> Vec<ph2d_render::SinkStyle> {
+    let lei = motion.pump.a_lei();
+    motion
+        .sinks
+        .iter()
+        .map(|&s| ph2d_render::SinkStyle {
+            so_com_forma: lei,
+            ..ph2d_eval_motion::sink_style(&motion.doc.graph, s)
+        })
+        .collect()
+}
+
 /// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0126).
 ///
 /// Unless `PH2D_GPU_COOK=0`, an unscoped document cooks on the GPU — ONE sink or
@@ -325,11 +340,7 @@ pub(super) fn cook_gpu(
     if motion.sinks.len() > 1 && plan.sinks != motion.sinks {
         return fell(motion, RECUSA_SAIDA_FORA_DA_PLACA);
     }
-    let estilos: Vec<ph2d_render::SinkStyle> = motion
-        .sinks
-        .iter()
-        .map(|&s| ph2d_eval_motion::sink_style(&motion.doc.graph, s))
-        .collect();
+    let estilos = estilos_das_saidas(motion);
     // ⭐ **A ORDEM DE DESENHO** (doc 119 W4): a placa só reproduz a da CPU ordenando FAIXAS, logo a
     // ordem por linha (`stream_order`) em mais de uma saída fica na CPU. A MESMA porta que o cook
     // repete como recusa.

@@ -98,7 +98,6 @@ fn culling_inside_the_pre_loop_never_breaks_the_state_pairing() {
     let mut prev: Vec<(u32, [f32; 2])> = Vec::new();
     for k in 0..180 {
         let t = f64::from(k) / 60.0;
-        cook.advance_tick(&g, &reg, t).expect("avanca");
         let out = cook.cook(&g, &reg, integ, t).expect("coze");
         let s = out[0].as_stream();
         let ids: Vec<u32> = match s.get("id") {
@@ -122,6 +121,8 @@ fn culling_inside_the_pre_loop_never_breaks_the_state_pairing() {
             counts.push(now.len());
         }
         prev = now;
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&g, &reg, t).expect("avanca");
     }
     println!("populacao no integrador a cada 30 tiques: {counts:?} · saltos: {jumps}");
     assert!(

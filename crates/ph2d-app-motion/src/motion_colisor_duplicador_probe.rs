@@ -108,7 +108,7 @@ fn cadeia(tipo: &str) -> Option<Stream> {
 /// e qualquer duplicador»*, e uma lista de três nomes responde por três: o que decide se um nó é
 /// duplicador é o que ele FAZ — recebe uma peça e devolve mais do que uma.
 #[test]
-#[ignore = "sonda de investigação — corra à mão"]
+#[ignore = "sonda: investigação — corra à mão"]
 fn colisor_duplicador_o_censo_derivado() {
     // O CONTROLO, outra vez: a forma sozinha declara o colisor.
     let base = coze(|g| {
@@ -223,7 +223,7 @@ fn colisor_duplicador_o_censo_derivado() {
 /// Ele separa por um `radius` que é param DELE, igual para toda peça: uma caixa comprida declarada
 /// pela forma seria tratada como um disco do tamanho que o artista escreveu noutro cartão.
 #[test]
-#[ignore = "sonda de investigação — corra à mão"]
+#[ignore = "sonda: investigação — corra à mão"]
 fn colisor_duplicador_o_que_a_forma_declara() {
     let s = coze(|g| {
         let f = forma_com_colisor(g);
@@ -240,7 +240,7 @@ fn colisor_duplicador_o_que_a_forma_declara() {
 
 /// ⭐⭐⭐ **O que o botão MUDA, medido nos dois lados** — a sonda que escreveu o gate.
 #[test]
-#[ignore = "sonda de investigação — corra à mão"]
+#[ignore = "sonda: investigação — corra à mão"]
 fn colisor_duplicador_o_botao_ligado_e_desligado() {
     for ligado in [false, true] {
         let s = coze(|g| {

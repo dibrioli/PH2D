@@ -389,10 +389,7 @@ pub fn dispatch(
         // do cozido, e quando o dispositivo desenhou o quadro anterior a resposta já está no
         // registo dele (ver o `ponto_gizmo::taps_for`: sem isto a tomada recozinhava a simulação
         // inteira na CPU, ciclo 12).
-        .chain(super::ponto_gizmo::taps_for(
-            motion,
-            ph2d_eval_motion::so_com_forma_por_ordem(),
-        ))
+        .chain(super::ponto_gizmo::taps_for(motion, motion.pump.a_lei()))
         // ⭐ E o gizmo do PIVÔ (ordem do dono, 2026-09-19): a saída da forma cujo `Pivot X`/`Y`
         // está a ser arrastado AGORA — a forma e o sink dela, e só durante o gesto. ⚠️ Ele pede o
         // sink ELE PRÓPRIO: o irmão acima deixou de pedir os que a placa já desenhou.

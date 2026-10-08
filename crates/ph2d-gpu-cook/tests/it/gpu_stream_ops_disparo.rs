@@ -4,7 +4,7 @@
 //! herdadas ao bit; o `vel` do empurrão dentro do ε do seno parabólico da casa (a placa pode
 //! fundir `a·b + c`; o `motion.emitter` vive com o mesmo).
 
-use super::gpu_stream_ops::try_headless_gpu;
+use super::placa::try_headless_gpu;
 use ph2d_gpu_cook::{CookClock, GpuCook, plan};
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::attr::Column;

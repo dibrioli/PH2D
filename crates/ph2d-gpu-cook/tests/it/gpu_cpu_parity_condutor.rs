@@ -3,7 +3,7 @@
 //! consumidor, e o sequenciador copia 4 bytes (`v[0]`). Aqui a CPU NÃO entrega valor nenhum
 //! (`set_driven` nunca é chamado): se a placa concorda com a CPU, foi ela que leu o fio.
 
-use ph2d_gpu::GpuContext;
+use super::placa::try_headless_gpu;
 use ph2d_gpu_cook::{CookClock, DrivenParams, GpuSource, plan, plan_with_device_drivers};
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::attr::Column;
@@ -16,14 +16,6 @@ const EPS: f32 = 1e-4;
 /// A coluna `size` do sink nas duas rotas, num instante: `(cpu, placa)`.
 type Par = (Vec<[f32; 2]>, Vec<[f32; 2]>);
 const INSTANTES: [f64; 4] = [0.1, 0.37, 0.8, 1.3];
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();

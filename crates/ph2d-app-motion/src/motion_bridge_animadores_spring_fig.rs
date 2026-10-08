@@ -23,7 +23,7 @@ use ph2d_nodegraph::cook::Cook;
 /// ⚠️ **A afirmação da figura é medida antes de ela ser escrita:** com `Bounce = 0` a mola não
 /// pode passar do alvo, e com `Bounce` alto tem de passar. Uma figura que ensinasse o contrário
 /// é pior que nenhuma.
-pub(super) fn dump_spring_curves(dir: &std::path::Path) {
+pub(super) fn spring_curves() -> (String, String) {
     const TIQUES: usize = 260;
     const ALVO: f32 = 90.0;
     let corre = |params: &[(&str, f32)]| -> (Vec<f32>, Vec<f32>) {
@@ -141,13 +141,11 @@ pub(super) fn dump_spring_curves(dir: &std::path::Path) {
     linha(&seco, "#7ee0b0", 2.1, "");
     linha(&salta, "#ffcf7a", 2.1, "");
     s.push_str("</svg>\n");
-    let path = dir.join("spring.svg");
-    std::fs::write(&path, s).expect("escrever a curva da mola");
     eprintln!(
-        "  {:<12} │ pico seco {:.1} · pico com salto {:.1} (alvo {ALVO}) │ {}",
+        "  {:<12} │ pico seco {:.1} · pico com salto {:.1} (alvo {ALVO})",
         "spring",
         pico(&seco),
         pico(&salta),
-        path.display()
     );
+    ("spring.svg".to_string(), s)
 }

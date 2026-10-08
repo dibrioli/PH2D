@@ -25,7 +25,7 @@ use ph2d_nodegraph::attr::Column;
 /// cargo test -p ph2d-app-motion --lib probe_o_dossie_do_salto -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_dossie_do_salto() {
     /// O tecto de «assentada» — a porta do módulo, ver [`super::salto::QUIETO`].
     const QUIETO: f32 = super::salto::QUIETO;
@@ -148,7 +148,7 @@ pub(super) fn stream_final(
 /// cargo test -p ph2d-app-motion --lib probe_os_apoios_face_a_face_no_tempo -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_os_apoios_face_a_face_no_tempo() {
     for sub in [1_u32, 8] {
         let (mut state, sink) = super::obra::com_substeps(0.0, sub);
@@ -231,7 +231,7 @@ fn probe_os_apoios_face_a_face_no_tempo() {
 /// cargo test -p ph2d-app-motion --lib probe_o_arrasto_da_cena -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_arrasto_da_cena() {
     use ph2d_nodegraph::attr::Column as C;
     eprintln!("\n  substeps = 8 · damping 1,0 = SEM arrasto");
@@ -317,7 +317,7 @@ fn probe_o_arrasto_da_cena() {
 /// cargo test -p ph2d-app-motion --lib probe_auditoria_do_atrito_na_cena -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_auditoria_do_atrito_na_cena() {
     eprintln!("\n  substeps = 8 · o Friction do cartao da forma, de 0 a 1");
     eprintln!("  atrito |      desliza / tique       |    largura do monte");
@@ -383,7 +383,7 @@ fn probe_auditoria_do_atrito_na_cena() {
 /// cargo test -p ph2d-app-motion --lib probe_quem_roda_e_quem_nao -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_quem_roda_e_quem_nao() {
     let (mut state, sink) = super::obra::com_substeps_arrasto_atrito(0.0, 8, None, None);
     let serie = marcha(&mut state, sink, 174);

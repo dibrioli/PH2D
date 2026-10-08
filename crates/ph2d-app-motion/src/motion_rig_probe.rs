@@ -93,28 +93,28 @@ pub fn metade_que_age() -> Vec<&'static str> {
 }
 
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn audit_the_rig_group() {
     crate::motion_ciclo_probe::retrato(&grupo());
 }
 
 /// **OS PARAMS DE CADA NÓ** — o que a auditoria compara contra Rive · Spine · Blender · RubberHose.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_each_rig_node_offers() {
     crate::motion_ciclo_probe::params_de(&grupo());
 }
 
 /// **O QUE O CARTÃO PINTA**, com o rótulo da tela.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_the_rig_card_shows() {
     crate::motion_ciclo_probe::cartao(&grupo());
 }
 
 /// **OS NOMES dos cartões** — o que o tutorial terá de escrever.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_rig_card_names() {
     crate::motion_ciclo_probe::nomes(&grupo());
 }
@@ -414,7 +414,7 @@ fn a_caneta_que_a_folha_diz_nao_existir_ja_escreve_o_comprimento_do_osso() {
 
 /// A TABELA da caneta — os números que o doc 114 §3.1 cita.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn print_the_pen_measurement() {
     eprintln!(
         "\n  comprimentos dos ossos (`rig.skeleton(joints=4, length=1)` -> `rig.fk`)\n\

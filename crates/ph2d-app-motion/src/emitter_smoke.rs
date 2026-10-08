@@ -206,7 +206,7 @@ mod tests {
     ///
     /// `cargo test -p ph2d-app-motion --lib emitter_smoke -- --ignored --nocapture`
     #[test]
-    #[ignore = "sonda de diagnostico"]
+    #[ignore = "sonda: diagnostico"]
     fn measure_what_the_fountain_occupies() {
         for (rate, t) in [(40.0, 1.0), (40.0, LIFE_S), (1_200.0, 1.5)] {
             let (n, x, y) = drive(rate, POOL, t);

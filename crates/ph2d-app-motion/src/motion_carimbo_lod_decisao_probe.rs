@@ -11,7 +11,7 @@ use super::{JANELA_PX, cena_do_report};
 
 /// Sonda de diagnóstico: o que o `size` do `source.shape` de facto faz à geometria.
 #[test]
-#[ignore = "sonda de diagnóstico"]
+#[ignore = "sonda: diagnóstico"]
 fn diag_o_que_o_size_faz() {
     let _fatia = fatia();
     eprintln!("\n   size pedido | caixa da forma | size da instância");
@@ -62,7 +62,7 @@ fn diag_o_que_o_size_faz() {
 /// ⚠️ Se ela imprimir `movidas = 0`, o motor está certo e a POPULAÇÃO dele é que não cobre a forma
 /// do dono — que é uma frase sobre arquitectura, não sobre um limiar mal escolhido.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_does_the_existing_lod_ever_arm() {
     let _fatia = fatia();
     let (mut m, _saida) = cena_do_report(0.5);
@@ -124,7 +124,7 @@ fn audit_does_the_existing_lod_ever_arm() {
 /// `24 px` e o LOD **tem** de recusar — se ele armasse ali, a cura teria trocado fidelidade por
 /// velocidade onde o artista está a olhar de perto.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_where_the_shipped_lod_arms() {
     let _fatia = fatia();
     let (m, _saida) = cena_do_report(0.5);

@@ -460,7 +460,7 @@ fn every_caption_is_a_chip_over_its_own_band() {
 /// cargo test -p ph2d-app-motion --lib measure_the_dup_scene -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao, nao um gate"]
+#[ignore = "sonda: medicao, nao um gate"]
 fn measure_the_dup_scene() {
     let (mut state, sinks) = scene();
     let bandas = bake(&mut state, &sinks);
@@ -498,7 +498,7 @@ fn measure_the_dup_scene() {
 /// cargo test -p ph2d-app-motion --lib which_seed_shows_every_shape -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de calibracao, nao um gate"]
+#[ignore = "sonda: calibracao, nao um gate"]
 fn which_seed_shows_every_shape() {
     for seed in 0..24u32 {
         let (mut state, sinks) = scene();

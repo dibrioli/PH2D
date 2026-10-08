@@ -261,7 +261,7 @@ fn a_amostra_varre_a_nuvem_e_nao_uma_faixa_dela() {
 ///
 /// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture mede_o_custo_do_gizmo`
 #[test]
-#[ignore = "sonda de relogio, nao um gate"]
+#[ignore = "sonda: relogio, nao um gate"]
 fn mede_o_custo_do_gizmo_de_pontos() {
     use ph2d_vector::VectorScene;
     eprintln!("\n=== CUSTO DE PINTAR O GIZMO ===");

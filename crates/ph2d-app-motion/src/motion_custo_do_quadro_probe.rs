@@ -47,7 +47,7 @@ fn indice_do_quadrado(_reg: &ph2d_node_registry::NodeRegistry) -> Option<f32> {
 /// mesma rota na CPU é `O(N²)`. ⇒ antes de optimizar seja o que for, a pergunta é qual das duas
 /// rotas a cena dele toma, e o que a decide.
 #[test]
-#[ignore = "sonda de medição, não gate"]
+#[ignore = "sonda: medição, não gate"]
 fn sonda_a_cena_do_dono_corre_na_placa() {
     let m = MotionState::new();
     let reg = &m.registry;
@@ -108,7 +108,7 @@ fn sonda_a_cena_do_dono_corre_na_placa() {
 
 /// ⭐⭐⭐ **O QUADRO DA CENA DO DONO, PEDAÇO A PEDAÇO** — *«algumas poucas centenas já trava»*.
 #[test]
-#[ignore = "sonda de medição, não gate"]
+#[ignore = "sonda: medição, não gate"]
 fn sonda_o_quadro_da_cena_do_dono() {
     use std::time::Instant;
     eprintln!("\n  ═══ O QUADRO, PEDAÇO A PEDAÇO (Boids + Shape + colisão, CPU) ═══\n");
@@ -222,7 +222,7 @@ fn sonda_o_quadro_da_cena_do_dono() {
 /// ⛔ A sonda irmã mede o passe; esta mede o QUADRO pela porta do produto, que é onde uma repetição
 /// escondida apareceria. ⚠️ A tomada é armada **como o gizmo do colisor a arma** (o próprio sink).
 #[test]
-#[ignore = "sonda de medição, não gate"]
+#[ignore = "sonda: medição, não gate"]
 fn sonda_o_quadro_da_foto() {
     use std::time::Instant;
     eprintln!("\n  ═══ O QUADRO DA FOTO (189 discos encostados) ═══\n");
@@ -339,7 +339,7 @@ fn sonda_o_quadro_da_foto() {
 /// exactamente por isso que ela vale: *se o encode for barato, o que sobra é a PLACA*, e aí o que
 /// conta não é o número de formas, é quantos PIXEIS elas cobrem.
 #[test]
-#[ignore = "sonda de medição, não gate"]
+#[ignore = "sonda: medição, não gate"]
 fn quanto_custa_desenhar_as_formas() {
     use std::time::Instant;
     eprintln!("\n  ═══ O ENCODE DAS FORMAS (CPU, sem placa) ═══\n");

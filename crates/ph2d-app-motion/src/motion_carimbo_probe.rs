@@ -70,16 +70,24 @@ fn liga(m: &mut crate::motion_state::MotionState, de: NodeId, dp: u16, para: Nod
         .unwrap_or_else(|e| panic!("aresta {dp}->{pp} recusada: {e:?}"));
 }
 
+/// O lado da grade do [`monta`]: o maior que o `motion.grid` admite.
+const LADO: usize = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA;
+/// As linhas que a cadeia do [`monta`] traz.
+pub(crate) const LINHAS: usize = LADO * LADO;
+
 /// As cadeias que a auditoria mede, montadas por nome — cada uma com o `sink` devolvido.
 ///
-/// ⚠️ **A grade é `320 × 320`** (`102 400`), que é a população do report da estrela — nem o milhão
-/// (onde tudo dói) nem um punhado (onde nada dói).
+/// ⚠️ **A grade é a MAIOR que um nó admite** ([`LINHAS`]): o report da estrela pedia `320 × 320`
+/// (`102 400`), e desde o tecto de `32 768` por nó (`d60a8398c`) o `motion.grid` corta-a em silêncio
+/// a `181²` — pedir `320` media uma população que o controlo já não podia ver (doc 123 §4).
 pub(crate) fn monta(qual: &str) -> (crate::motion_state::MotionState, NodeId) {
     let mut m = crate::motion_state::MotionState::new();
     let estrela = indice_da_forma(ph2d_node_motion_shape::ShapeKind::Star);
     let grade = m.doc.graph.add_node("motion.grid");
-    m.doc.graph.set_param(grade, "rows", 320.0);
-    m.doc.graph.set_param(grade, "cols", 320.0);
+    #[expect(clippy::cast_precision_loss, reason = "o lado da grelha, 181")]
+    let lado = LADO as f32;
+    m.doc.graph.set_param(grade, "rows", lado);
+    m.doc.graph.set_param(grade, "cols", lado);
     let saida = m.doc.graph.add_node("motion.output");
     let forma_com = |m: &mut crate::motion_state::MotionState| {
         let f = m.doc.graph.add_node("source.shape");
@@ -132,7 +140,7 @@ const CADEIAS: [&str; 5] = [
 /// A coluna que decide o ciclo não é um relógio: é o `🔴`. Uma fronteira de CPU no meio da cadeia
 /// desliga o dispositivo para tudo o que vem antes dela.
 #[test]
-#[ignore = "sonda de medição — corra à mão, pelo filtro `audit_the_stamp`"]
+#[ignore = "sonda: medição — corra à mão, pelo filtro `audit_the_stamp`"]
 fn audit_the_stamp_route() {
     eprintln!("\n  ═══ A ROTA DE UMA CADEIA COM CARIMBO (ciclo 10, metade 1) ═══\n");
     eprintln!("  cadeia           | rota      | etapas | fronteira (CPU)      | recusa da ponte");
@@ -191,7 +199,7 @@ fn audit_the_stamp_route() {
 /// ⭐ **E a coluna que nomeia a cura é a das GEOMETRIAS DISTINTAS:** `N` cópias da MESMA estrela
 /// são `N` encodes de uma geometria só.
 #[test]
-#[ignore = "sonda de medição — corra à mão, pelo filtro `audit_the_stamp`"]
+#[ignore = "sonda: medição — corra à mão, pelo filtro `audit_the_stamp`"]
 fn audit_the_stamp_draw() {
     eprintln!("\n  ═══ POR QUE CAMINHO AS PEÇAS DESCEM (ciclo 10, metade 2) ═══\n");
     eprintln!("  cadeia           |      quad |    vector |  geometrias");
@@ -235,7 +243,7 @@ fn audit_the_stamp_draw() {
 /// declara a lei dele ao sequenciador (ADR-0136). O carimbo não está aqui, e é essa a ausência que
 /// o ciclo 10 mede.
 #[test]
-#[ignore = "sonda de medição — corra à mão, pelo filtro `audit_the_stamp`"]
+#[ignore = "sonda: medição — corra à mão, pelo filtro `audit_the_stamp`"]
 fn audit_the_stream_op_family() {
     use ph2d_nodegraph::gpu::{KernelResolver, StreamOp};
     // ⛔ Exaustivo de propósito: um verbo NOVO tem de parar aqui em erro de compilação.
@@ -287,7 +295,7 @@ fn audit_the_stream_op_family() {
 /// ⇒ esta sonda conta, em cada `rig.bones` de cada cena, a dispersão dos `len` que ele entrega.
 /// *Uma decisão de produto tomada sem saber se o caso que a força existe é um palpite.*
 #[test]
-#[ignore = "sonda de auditoria (report da corda), nao gate"]
+#[ignore = "sonda: auditoria (report da corda), nao gate"]
 fn audit_the_bone_lengths_are_uniform() {
     eprintln!("\n=== dispersao dos `len` em cada cadeia de ossos do produto ===\n");
     eprintln!("  cena | cartao |    n |      min |      max |  max/min | mediana");

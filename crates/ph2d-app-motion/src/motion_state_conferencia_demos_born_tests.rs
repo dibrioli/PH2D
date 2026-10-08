@@ -25,8 +25,7 @@ fn scene() -> (MotionDoc, NodeRegistry, Vec<NodeId>) {
 /// As poses de cada sink pedido, num instante.
 fn poses(doc: &MotionDoc, reg: &NodeRegistry, sinks: &[NodeId], t: f64) -> Vec<Vec<[f32; 2]>> {
     let mut cook = Cook::new();
-    cook.advance_tick(&doc.graph, reg, t).expect("avanca");
-    sinks
+    let poses = sinks
         .iter()
         .map(|s| {
             let out = cook.cook(&doc.graph, reg, *s, t).expect("coze");
@@ -35,7 +34,10 @@ fn poses(doc: &MotionDoc, reg: &NodeRegistry, sinks: &[NodeId], t: f64) -> Vec<V
                 _ => Vec::new(),
             }
         })
-        .collect()
+        .collect();
+    // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+    cook.advance_tick(&doc.graph, reg, t).expect("avanca");
+    poses
 }
 
 /// A maior distância entre dois pontos — o quanto a figura ocupa.

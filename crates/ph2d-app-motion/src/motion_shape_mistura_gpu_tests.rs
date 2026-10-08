@@ -257,7 +257,7 @@ fn a_fixtura_distingue_os_tres_alcances() {
 
 /// ⭐⭐⭐ **A MEDIÇÃO** — cada modo × cada alcance × as duas médias, contra a tabela.
 #[test]
-#[ignore = "precisa de GPU"]
+#[ignore = "placa: precisa de GPU"]
 fn a_mistura_em_grupo_pinta_a_tabela_do_doc_118() {
     let Some(gpu) = try_headless_gpu() else {
         println!("sem adaptador — saltado");
@@ -356,7 +356,7 @@ fn grelha(n: usize, alcance: Option<BlendWith>) -> (VecPathStore, Vec<VectorInst
 /// Vello dá a volta a um `u32`: pânico em debug, quadro em branco em release) e o quadro na placa
 /// (render + leitura, a `1920×1080`). ⚠️ Corre em `--release --nocapture`, com a carga ao lado.
 #[test]
-#[ignore = "sonda manual: --release --nocapture, com placa"]
+#[ignore = "sonda: manual — --release --nocapture, com placa"]
 fn o_preco_da_mistura_em_grupo() {
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("\ncarga: {}", carga.trim());
@@ -487,7 +487,7 @@ fn mede_tinta(pass: &mut VelloPass, gpu: &GpuContext, tinta: [f32; 4]) -> [[i32;
 /// sempre, e a tinta de facto muda os píxeis), a metade OPACA (a multiplicação e a alfa) e a metade
 /// MEIO TRANSPARENTE — que é a que reprova a forma ingénua `SrcAtop`, por construção da fixtura.
 #[test]
-#[ignore = "precisa de GPU"]
+#[ignore = "placa: precisa de GPU"]
 fn a_tinta_da_imagem_e_a_conta_da_sprite() {
     let Some(gpu) = try_headless_gpu() else {
         println!("sem adaptador — saltado");
@@ -602,7 +602,7 @@ fn mede_linha(
 ///   sobreposição é `f(Multiply)`, não `f(Screen)`;
 /// - ⚠️ o CONTROLO vem primeiro: sem degrau a fixtura dá a tabela de sempre e não pede o mundo.
 #[test]
-#[ignore = "precisa de GPU"]
+#[ignore = "placa: precisa de GPU"]
 fn o_modo_da_linha_chega_a_cena_vectorial() {
     let Some(gpu) = try_headless_gpu() else {
         println!("sem adaptador — saltado");

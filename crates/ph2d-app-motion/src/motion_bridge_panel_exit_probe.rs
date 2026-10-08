@@ -121,7 +121,7 @@ fn censo() -> Censo {
 }
 
 #[test]
-#[ignore = "sonda de censo — corra à mão"]
+#[ignore = "sonda: censo — corra à mão"]
 fn what_the_card_still_cannot_reach() {
     let (total, veredito, presos) = censo();
     eprintln!("\n  {total} rows de cartão em todo o catálogo:");

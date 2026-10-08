@@ -274,6 +274,13 @@ const _: () = assert!(
     "o tecto de instancias passou o que o `sc` do pulse.beat cobre: baixe SC_BITS"
 );
 
+/// **A FIXTURA DA PLACA NO FIO DO FMA** — `(period, phase_stagger, offset)` em que, sem a
+/// quantização do `sc`, a linha `11` muda de ciclo no tique `3` se a placa FUNDIR (doc 123 §1).
+/// A paridade da placa corre-a para que uma placa que funde morda a mutação «sem quantizar»; um
+/// gate de CPU desta crate prova que ela está de facto no fio.
+#[doc(hidden)]
+pub const FIXTURA_DO_FIO_DO_FMA: (f32, f32, f32) = (0.0537, 0.0031, 159_000.0 * 1e-7);
+
 /// O maior `f32` abaixo de `1` — a fracção de um `u` a um ULP do inteiro seguinte arredondaria
 /// para `1,0` e o `⌊⌋` subiria um ciclo que a divisão em `f64` não subiu.
 const ABAIXO_DE_UM: f32 = 1.0 - f32::EPSILON / 2.0;

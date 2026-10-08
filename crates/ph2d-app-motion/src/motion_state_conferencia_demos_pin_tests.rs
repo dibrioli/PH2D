@@ -51,8 +51,6 @@ fn cook_frames() -> Frames {
     let mut late = vec![Vec::new(); sinks.len()];
     for k in 0..TICKS {
         let playhead = k as f64 * DT;
-        cook.advance_tick(&doc.graph, &reg, playhead)
-            .expect("o tique avanca o `pre`");
         for (lane, sink) in sinks.iter().enumerate() {
             let s = cook
                 .cook(&doc.graph, &reg, *sink, playhead)
@@ -71,6 +69,9 @@ fn cook_frames() -> Frames {
                 }
             }
         }
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&doc.graph, &reg, playhead)
+            .expect("o tique avanca o `pre`");
     }
     Frames { early, late }
 }
@@ -187,7 +188,7 @@ fn three_pinned_agents_hold_while_the_flock_flies() {
 
 /// A SONDA que imprime os números da mensagem do smoke.
 #[test]
-#[ignore = "sonda"]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_the_scene_numbers() {
     let p = cook_all();
     let labels: Vec<&str> = band_labels().map(|(_, l)| l).collect();

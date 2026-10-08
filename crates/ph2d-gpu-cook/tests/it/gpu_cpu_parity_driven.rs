@@ -14,6 +14,7 @@
 //! diferentes têm de produzir campos diferentes. Sem ele, um device que ignorasse o fio e usasse o
 //! default concordaria com uma CPU que fizesse o mesmo — e as duas estariam erradas juntas.
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::{CookClock, DrivenParams};
 use ph2d_node_registry::NodeRegistry;
@@ -27,14 +28,6 @@ const DEFAULT_SIZE: [f32; 2] = [0.4, 0.4];
 const PLAYHEAD: f64 = 0.37;
 /// O orçamento herdado dos gates irmãos (ADR-0126).
 const EPS: f32 = 1e-4;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();

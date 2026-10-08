@@ -253,11 +253,13 @@ fn dispersao_do_tamanho(s: &Stream) -> f32 {
 }
 
 #[test]
-#[ignore = "gerador de figuras — corra à mão"]
+#[ignore = "gerador: escreve as figuras do tutorial 9 — corra à mão"]
 fn write_the_rig_figures() {
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/Motion Nodes/tutoriais/fig");
-    std::fs::create_dir_all(&dir).expect("a pasta");
+    super::tutorial_figuras::escreve(&figuras());
+}
+
+/// Produz as seis figuras do tutorial 9, com as asserções de história.
+pub(super) fn figuras() -> super::tutorial_figuras::Figuras {
     let p = colher();
     assert_eq!(p.len(), 6, "a cena tem seis panos");
 
@@ -342,15 +344,15 @@ fn write_the_rig_figures() {
         Some(9.0),
         Ligacao::Malha(PELE_COLS),
     );
-    for (nome, svg) in [
+    [
         ("rig_corda.svg", cima[0].clone()),
         ("rig_campo.svg", cima[1].clone()),
         ("rig_fk.svg", meio[0].clone()),
         ("rig_ik.svg", meio[1].clone()),
         ("rig_pele_igual.svg", baixo[0].clone()),
         ("rig_pele_quinhao.svg", baixo[1].clone()),
-    ] {
-        std::fs::write(dir.join(nome), &svg).expect("escreve a figura");
-        eprintln!("  ✓ {nome}  ({} bytes)", svg.len());
-    }
+    ]
+    .into_iter()
+    .map(|(nome, svg)| (nome.to_string(), svg))
+    .collect()
 }

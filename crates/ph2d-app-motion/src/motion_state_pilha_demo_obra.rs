@@ -26,7 +26,7 @@ use ph2d_nodegraph::attr::Column;
 /// cargo test -p ph2d-app-motion --lib probe_as_pecas_sao_gelo -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_as_pecas_sao_gelo() {
     let mut state = MotionState::new();
     let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
@@ -76,7 +76,7 @@ fn probe_as_pecas_sao_gelo() {
 /// cargo test -p ph2d-app-motion --lib probe_os_contactos_sobrevivem -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_os_contactos_sobrevivem() {
     let mut state = MotionState::new();
     let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
@@ -144,7 +144,7 @@ fn probe_os_contactos_sobrevivem() {
 /// cargo test -p ph2d-app-motion --lib probe_quantos_encostos_por_peca -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_quantos_encostos_por_peca() {
     let mut state = MotionState::new();
     let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
@@ -210,7 +210,7 @@ fn probe_quantos_encostos_por_peca() {
 /// cargo test -p ph2d-app-motion --lib probe_a_pilha_tem_identidade -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_a_pilha_tem_identidade() {
     let mut state = MotionState::new();
     let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
@@ -261,7 +261,7 @@ fn probe_a_pilha_tem_identidade() {
 /// cargo test -p ph2d-app-motion --lib probe_os_sub_passos -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_os_sub_passos() {
     eprintln!("\n  substeps | balanço pior | giro pior  |  y final | VÃO típico | cook");
     eprintln!("  ---------|--------------|------------|----------|------------|--------");

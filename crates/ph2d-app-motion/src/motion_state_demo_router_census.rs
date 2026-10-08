@@ -75,7 +75,7 @@ fn rotacoes_da_corrente(s: &ph2d_nodegraph::attr::Stream) -> Option<Vec<f32>> {
 /// `PH2D_LAYOUT_LEVEL=73 cargo test -p ph2d-app-motion --lib
 /// measure_scene_layout -- --ignored --nocapture` (sem a env, varre tudo).
 #[test]
-#[ignore = "sonda de layout, não um gate — `-- --ignored --nocapture`"]
+#[ignore = "sonda: layout, não um gate — `-- --ignored --nocapture`"]
 fn measure_scene_layout() {
     let only = std::env::var("PH2D_LAYOUT_LEVEL").ok();
     for level in 1..=MAX_DEMO_LEVEL {
@@ -163,7 +163,7 @@ fn band_box(
 /// `PH2D_LAYOUT_LEVEL=75 cargo test -p ph2d-app-motion --lib
 /// measure_scene_motion -- --ignored --nocapture`
 #[test]
-#[ignore = "sonda de movimento, não um gate — `-- --ignored --nocapture`"]
+#[ignore = "sonda: movimento, não um gate — `-- --ignored --nocapture`"]
 fn measure_scene_motion() {
     /// Quantos tiques a sonda corre — **cinco** segundos a 60 fps.
     ///
@@ -318,7 +318,7 @@ fn measure_feedback_ports() {
 ///
 /// `cargo test -p ph2d-app-motion --lib motion_route_census -- --ignored --nocapture`
 #[test]
-#[ignore = "sonda de rota, não um gate — `-- --ignored --nocapture`"]
+#[ignore = "sonda: rota, não um gate — `-- --ignored --nocapture`"]
 fn motion_route_census() {
     use crate::motion_bridge::gpu::{GpuRoute, gpu_route};
     let (mut full, mut hybrid, mut cpu) = (0u32, 0u32, 0u32);
@@ -432,7 +432,7 @@ fn motion_route_census() {
 ///
 /// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture where_the_drops_note_shows_up`
 #[test]
-#[ignore = "sonda de smoke, nao um gate"]
+#[ignore = "sonda: smoke, nao um gate"]
 fn where_the_drops_note_shows_up() {
     // ⚠️ **A 1.ª versão varria as 109 e PENDUROU** — alguma cena coze algo enorme sob um
     // `Cook` virgem (sem a bomba, sem o orçamento que o produto lhe dá). O alcance é uma env
@@ -490,7 +490,7 @@ fn where_the_drops_note_shows_up() {
 /// cargo test -p ph2d-app-motion --lib what_feeds_every_duplicators_shape_port -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de censo, nao um gate"]
+#[ignore = "sonda: censo, nao um gate"]
 fn what_feeds_every_duplicators_shape_port() {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
@@ -544,7 +544,7 @@ fn what_feeds_every_duplicators_shape_port() {
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture o_que_cada_cena_anima`
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn o_que_cada_cena_anima() {
     let alvo: [u32; 10] = [111, 112, 113, 116, 117, 118, 119, 120, 121, 122];
     eprintln!("\n=== O QUE CADA CENA ANIMA (12 tiques a 60 Hz) ===\n");
@@ -619,7 +619,7 @@ fn o_que_cada_cena_anima() {
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture que_numeros_o_size_tem`
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn que_numeros_o_size_tem() {
     let mut todos: Vec<f32> = Vec::new();
     let mut por_cena: Vec<(u32, usize, f32, f32)> = Vec::new();

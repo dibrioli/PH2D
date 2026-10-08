@@ -15,6 +15,7 @@
 //! `#[ignore]`: needs a real adapter. Run on a dev machine / GPU lane:
 //!   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity --release -- --ignored --nocapture
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::CookClock;
 use ph2d_node_registry::NodeRegistry;
@@ -23,14 +24,6 @@ use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_render::RenderInstance;
 use ph2d_render::SinkStyle;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();
@@ -1611,6 +1604,100 @@ fn gpu_cook_millions_timing() {
     }
     let per = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
     eprintln!("gpu cook of {n} instances: {per:.3} ms/frame (encode+submit+wait)");
+}
+
+/// Sonda do tutorial 01 §5: a cadeia da cena `=1` no TECTO DO PRODUTO (`181 × 181 = 32 761`),
+/// placa e CPU **intercaladas no mesmo processo**, quadro a quadro — mínimo e mediana
+/// (`docs/DevOps/MEDIR_VELOCIDADE.md`). A CPU é a rota do app com `PH2D_GPU_COOK=0`: um `Cook`
+/// que vive entre quadros e o relógio a andar.
+///
+///   PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-gpu-cook --test it --release -- --ignored --nocapture cena_1_no_tecto
+#[test]
+#[ignore = "sonda: medicao; requer placa"]
+fn cena_1_no_tecto_placa_contra_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let lado = ph2d_nodegraph::node::LADO_MAX_DE_GRELHA as f32;
+    let (g, [_, _, _, out]) = chain(&reg, lado);
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(plan.is_fully_gpu());
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    let mut cook = Cook::new();
+    let mut cpu = Vec::new();
+    let gpu_quadro = |gc: &mut ph2d_gpu_cook::GpuCook, t: f64| {
+        let n = gc
+            .cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock::at(t),
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+                SinkStyle::PLAIN,
+            )
+            .unwrap();
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        n
+    };
+    let n = gpu_quadro(&mut gc, 0.0);
+    ph2d_eval_motion::evaluate_motion_into(
+        &mut cook,
+        &g,
+        &reg,
+        out,
+        0.0,
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        &mut cpu,
+    )
+    .expect("cpu cook");
+    assert_eq!(n as usize, cpu.len());
+    let quadros = 200u32;
+    let (mut ms_gpu, mut ms_cpu) = (Vec::new(), Vec::new());
+    for f in 1..=quadros {
+        let t = f64::from(f) / 60.0;
+        let t0 = std::time::Instant::now();
+        gpu_quadro(&mut gc, t);
+        ms_gpu.push(t0.elapsed().as_secs_f64() * 1000.0);
+        let t0 = std::time::Instant::now();
+        ph2d_eval_motion::evaluate_motion_into(
+            &mut cook,
+            &g,
+            &reg,
+            out,
+            t,
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+            &mut cpu,
+        )
+        .expect("cpu cook");
+        ms_cpu.push(t0.elapsed().as_secs_f64() * 1000.0);
+    }
+    let resumo = |v: &mut Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        (v[0], v[v.len() / 2])
+    };
+    let (g_min, g_med) = resumo(&mut ms_gpu);
+    let (c_min, c_med) = resumo(&mut ms_cpu);
+    eprintln!(
+        "  load {} · {n} instancias · {quadros} quadros intercalados",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+    eprintln!("  placa: min {g_min:.3} ms · mediana {g_med:.3} ms");
+    eprintln!("  CPU:   min {c_min:.3} ms · mediana {c_med:.3} ms");
+    eprintln!(
+        "  razao: min {:.1}x · mediana {:.1}x",
+        c_min / g_min,
+        c_med / g_med
+    );
 }
 
 #[test]

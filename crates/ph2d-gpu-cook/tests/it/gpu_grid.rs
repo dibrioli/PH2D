@@ -11,16 +11,9 @@
 //! `#[ignore]`: needs an adapter. Run on the GPU lane:
 //!   cargo test -p ph2d-gpu-cook --test gpu_grid --release -- --ignored --nocapture
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::grid::{Grid, GridScratch, cpu_bucket, num_buckets};
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 /// Deterministic positions in a ±20 box (so cell=1 yields ~1600 cells → many
 /// multi-element buckets and hash collisions, the cases that break a naive build).

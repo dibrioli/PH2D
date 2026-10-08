@@ -107,6 +107,12 @@ mod rig_figures;
 #[path = "motion_bridge_arranjo_figures.rs"]
 mod arranjo_figures;
 
+/// ⭐ O registo dos NOVE geradores, o escritor partilhado e os gates que comparam o disco com
+/// o que eles produzem hoje (doc 123 §0 item 3).
+#[cfg(test)]
+#[path = "motion_bridge_tutorial_figuras.rs"]
+mod tutorial_figuras;
+
 /// ⭐ **A medição que tem de vir ANTES de o painel lateral sair** — o que o cartão pinta e não
 /// abre. Ela mora aqui porque é do protocolo dos ciclos (o substrato do ciclo 1), não da ponte.
 #[cfg(all(test, feature = "panel-motion-graph"))]

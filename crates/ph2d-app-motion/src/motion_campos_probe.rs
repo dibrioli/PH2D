@@ -24,7 +24,7 @@ pub const GRUPO: [&str; 7] = [
 ];
 
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn audit_the_field_group() {
     crate::motion_ciclo_probe::retrato(&GRUPO);
 }
@@ -36,7 +36,7 @@ fn audit_the_field_group() {
 /// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_each_field_offers
 /// ```
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_each_field_offers() {
     crate::motion_ciclo_probe::params_de(&GRUPO);
 }
@@ -47,7 +47,7 @@ fn what_each_field_offers() {
 /// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_the_field_card_shows
 /// ```
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_the_field_card_shows() {
     crate::motion_ciclo_probe::cartao(&GRUPO);
 }
@@ -60,13 +60,13 @@ fn what_the_field_card_shows() {
 /// ```
 /// Os NOMES que os cartões pintam — o que o tutorial tem de escrever.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_field_card_names() {
     crate::motion_ciclo_probe::nomes(&GRUPO);
 }
 
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_field_vocabulary() {
     crate::motion_ciclo_probe::vocabulario(&GRUPO);
 }
@@ -155,7 +155,7 @@ fn the_two_spatial_boxes_group_a_shared_param_the_same_way() {
 /// cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_field_group
 /// ```
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn measure_the_field_group() {
     let lado: f32 = std::env::var("PH2D_LADO")
         .ok()
@@ -350,7 +350,7 @@ fn every_row_the_tutorial_names_is_on_the_card() {
 /// rodada **sem** mexer na ordem, o nó é o `field.box` — fino e rodado —, que desde a W1 tem alça
 /// no canvas.
 #[test]
-#[ignore = "sonda de resposta — corra à mão"]
+#[ignore = "sonda: resposta — corra à mão"]
 fn does_a_sort_axis_turn_the_index_range_band() {
     use ph2d_nodegraph::graph::Edge;
     let colher = |graus: f32| -> Vec<[f32; 2]> {

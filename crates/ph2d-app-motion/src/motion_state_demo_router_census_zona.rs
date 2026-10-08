@@ -9,7 +9,7 @@ use super::*;
 /// de forma o quadro entrega ao passe das formas, e o raio da MENOR em pixels da câmera do
 /// produto (`48 px` por unidade). Sonda, não gate: imprime a tabela do doc.
 #[test]
-#[ignore = "sonda — `PH2D_GPU=1 … -- --ignored --nocapture`"]
+#[ignore = "sonda: `PH2D_GPU=1 … -- --ignored --nocapture`"]
 fn census_stamps_downstream_of_a_zone() {
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
         return;

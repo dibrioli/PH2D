@@ -63,7 +63,7 @@ fn store() -> (VecPathStore, Vec<u32>) {
 
 /// ⭐⭐ **A placa traceja o esticado como a cena Vello** — as barras do traço esticado do produto.
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn a_rota_da_placa_traceja_o_esticado_como_a_casa() {
     let Some(gpu) = gpu() else {
         eprintln!("sem adapter — o gate não correu");
@@ -176,7 +176,7 @@ fn pelo_tracador_do_vello(
 /// polígonos da placa — as marcas numa cópia conforme, o eixo no ecrã numa esticada. ⚠️ O controlo: a
 /// rota de antes, na MESMA cena, morde (senão a família não exercitava a mordida).
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn a_rota_vello_traceja_o_pedaco_rente_como_a_placa() {
     let Some(gpu) = gpu() else {
         eprintln!("sem adapter — o gate não correu");
@@ -229,7 +229,7 @@ fn a_rota_vello_traceja_o_pedaco_rente_como_a_placa() {
 /// cargo test -p ph2d-app-motion --lib --profile smoke -- --ignored --nocapture custo_do_encode_tracejado
 /// ```
 #[test]
-#[ignore = "sonda de relógio"]
+#[ignore = "sonda: relógio"]
 fn custo_do_encode_tracejado() {
     let (store, densas) = super::estrelas_da_sonda("", "2", true);
     let base = densas[0];
@@ -381,7 +381,7 @@ fn do_cartao(kind: ph2d_node_motion_shape::ShapeKind, cap: f32, join: f32) -> Ve
 /// pelo caminho do produto, esticadas e conformes, a rota Vello contra a placa (alfa `≤ 1`). ⚠️ O controlo:
 /// a ponta e a junta MUDAM a imagem (senão a família só provava a omissão nove vezes).
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn a_ponta_e_a_junta_do_cartao_desenham_como_a_placa() {
     use ph2d_node_motion_shape::ShapeKind;
     let Some(gpu) = gpu() else {

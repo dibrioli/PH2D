@@ -106,10 +106,11 @@ fn vello_center() -> [f32; 2] {
 /// `(mundo da 1.ª sprite, mundo do 1.º vector, quantas sprites, quantos vetores)`.
 type Sample = ([f32; 2], [f32; 2], usize, usize);
 static SAMPLE: std::sync::Mutex<Option<Sample>> = std::sync::Mutex::new(None);
-/// `(quantas sprites, quantas formas)` que o cozimento DO DISPOSITIVO escreveu nos buffers dele.
-/// `Some` ⇔ o quadro foi à placa: o mundo dessas cópias não volta à CPU, e sem esta amostra a
-/// linha lia `de 0` e jurava que não havia forma (Bug #14 do Motion, doc 122 §1).
-static DEVICE: std::sync::Mutex<Option<(usize, usize)>> = std::sync::Mutex::new(None);
+/// `(quantas sprites, quantas formas, mundo da 1.ª cópia)` do cozimento DO DISPOSITIVO.
+/// `Some` ⇔ o quadro foi à placa: sem esta amostra a linha lia `de 0` e jurava que não havia
+/// forma (Bug #14 do Motion, doc 122 §1). O mundo vem da leitura dos cartões (doc 123 §8).
+type Device = (usize, usize, Option<[f32; 2]>);
+static DEVICE: std::sync::Mutex<Option<Device>> = std::sync::Mutex::new(None);
 
 /// O quadro foi cozido NA PLACA — ver [`DEVICE`]. Apaga a amostra da CPU, que seria velha.
 pub fn note_device(sprites: usize, formas: usize) {
@@ -117,10 +118,23 @@ pub fn note_device(sprites: usize, formas: usize) {
         return;
     }
     if let Ok(mut g) = DEVICE.lock() {
-        *g = Some((sprites, formas));
+        *g = Some((sprites, formas, None));
     }
     if let Ok(mut g) = SAMPLE.lock() {
         *g = None;
+    }
+}
+
+/// O mundo da 1.ª cópia da placa, lido da leitura dos cartões (`1`–`2` quadros atrás; `None`
+/// sem leitura ainda). Chamado DEPOIS de [`note_device`] no mesmo quadro.
+pub fn note_device_world(mundo: Option<[f32; 2]>) {
+    if !on() {
+        return;
+    }
+    if let Ok(mut g) = DEVICE.lock()
+        && let Some(d) = g.as_mut()
+    {
+        d.2 = mundo;
     }
 }
 
@@ -180,8 +194,17 @@ pub fn frame(
         .lock()
         .ok()
         .and_then(|g| *g)
-        .map_or_else(String::new, |(s, f)| {
-            format!(" · PLACA: {s} sprites e {f} formas no buffer do cozimento (mundo nao lido)")
+        .map_or_else(String::new, |(s, f, mundo)| {
+            let m = mundo.map_or_else(
+                || "sem leitura dos cartoes ainda".to_string(),
+                |p| {
+                    format!(
+                        "({:.4}, {:.4}) pela leitura dos cartoes, 1-2 quadros atras",
+                        p[0], p[1]
+                    )
+                },
+            );
+            format!(" · ROTA PLACA: {s} sprites e {f} formas · MUNDO copia[0] {m}")
         });
     eprintln!(
         "[pan.diag] centro ({:.4}, {:.4}) altura {:.3} | janela {w:.0}x{h:.0} motion={motion_active} \

@@ -191,7 +191,7 @@ fn rota_append(caminho: &ph2d_vec_scene::VecPath, n: usize, cena: &mut ph2d_vect
 /// ela paga o crescimento dos buffers da cena; a QUENTE é o quadro que o artista de facto vê. Ver
 /// o cabeçalho do módulo.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_the_stamp_encode_cost() {
     let _fatia = fatia();
     let caminho = estrela(5.0);
@@ -232,7 +232,7 @@ fn audit_the_stamp_encode_cost() {
 /// [`crate::motion_custo_do_quadro_probe`] já escreve a lei: *se o encode for barato, o que sobra é
 /// a placa, e o que a governa não é o número de formas — é quantos PIXEIS elas cobrem*.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_the_stamp_encode_routes() {
     let _fatia = fatia();
     let caminho = estrela(5.0);
@@ -273,7 +273,7 @@ fn audit_the_stamp_encode_routes() {
 /// ⇒ a rota candidata custa aproximadamente `origem(fill) + inclinação(append)`. *Uma cura desenhada
 /// sem esta partição seria escolhida pela elegância e não pela medição.*
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_the_stamp_encode_split() {
     let _fatia = fatia();
     const N: usize = 102_400;
@@ -337,7 +337,7 @@ fn audit_the_stamp_encode_split() {
 /// corridas na coluna `desenho` é a cura, e a coluna `cozer` tem de ficar igual — se ela se mexer,
 /// a leitura é de carga e não de lei.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_the_stamp_frame_split() {
     let _fatia = fatia();
     let (mut m, saida) = crate::motion_carimbo_probe::monta("grade + carimbo");
@@ -352,9 +352,10 @@ fn audit_the_stamp_frame_split() {
         "controlo: o quadro tem de cozinhar"
     );
     let linhas = m.pump.vector_instances.len();
-    assert!(
-        linhas > 100_000,
-        "controlo: a cadeia do report tem de trazer as 102 400 linhas, e trouxe {linhas}"
+    assert_eq!(
+        linhas,
+        crate::motion_carimbo_probe::LINHAS,
+        "controlo: a cadeia tem de trazer as linhas da grade inteira"
     );
 
     // ⚠️ O `mark_dirty` é obrigatório: sem ele o `pump` bate no MEMO e lê `~0` — a armadilha que o
@@ -449,7 +450,7 @@ fn audit_the_stamp_frame_split() {
 /// env PH2D_CARIMBO_PREPARADO=0 cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture audit_the_corner_radius
 /// ```
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_the_corner_radius_cost() {
     let _fatia = fatia();
     let (mut m, saida) = crate::motion_carimbo_probe::monta("grade + carimbo");
@@ -502,10 +503,10 @@ fn audit_the_corner_radius_cost() {
         }
 
         let insts = &m.pump.vector_instances;
-        assert!(
-            insts.len() > 100_000,
-            "controlo: a cadeia tem de trazer as 102 400 linhas, e trouxe {}",
-            insts.len()
+        assert_eq!(
+            insts.len(),
+            crate::motion_carimbo_probe::LINHAS,
+            "controlo: a cadeia tem de trazer as linhas da grade inteira"
         );
         let store = &m.shape_store;
         let segs = insts

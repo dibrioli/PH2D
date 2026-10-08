@@ -80,7 +80,7 @@ fn the_blend_scene_gives_each_sink_its_own_mode_over_overlapping_paint() {
 /// Sonda: o que a cena `=36` de facto monta. Roda com
 /// `cargo test -p ph2d-app-motion --lib probe_blend_scene -- --ignored --nocapture`.
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_blend_scene() {
     let reg = registry();
     let mut doc = MotionDoc::new();

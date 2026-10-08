@@ -154,7 +154,7 @@ fn the_cloth_actually_breathes() {
 /// cargo test -p ph2d-app-motion --lib --release probe_what_the_shape_costs -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao — corra em RELEASE"]
+#[ignore = "sonda: medicao — corra em RELEASE"]
 fn probe_what_the_shape_costs() {
     eprintln!("\n  caso                   | elementos | cook      | rota");
     eprintln!("  -----------------------|-----------|-----------|------------");

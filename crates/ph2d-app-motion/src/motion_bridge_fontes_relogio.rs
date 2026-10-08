@@ -32,17 +32,16 @@
 //! antes disto o painel, os drenos e as intenções, e nada disso é do grupo.
 //!
 //! ```text
-//! PH2D_MOTION_SO_COM_FORMA=0 cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_source_group
+//! cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_source_group
 //! ```
 //!
-//! ⛔⛔ **O `PH2D_MOTION_SO_COM_FORMA=0` é OBRIGATÓRIO, e a sonda recusa-se a correr sem ele.** Esta
-//! cadeia (`X → scale → output`) não carrega aparência, e desde a lei do dono de 2026-09-19 uma
-//! corrente sem forma desenha MARCAS e **não despacha** linhas: a sonda lia `0` em toda fonte que
-//! só produz posições e reprovava na asserção de população — calada, porque é `#[ignore]` e o CI
-//! nunca a corre (apanhada no fecho da `line/motion-value`, 2026-09-24). ⚠️ **Pôr um
-//! `motion.duplicator` na cadeia NÃO é a cura:** ele mediria o CARIMBO e, com uma forma viva, a
-//! cadeia inteira na CPU — outra pergunta. O que esta sonda mede é o que a fonte custa a FAZER as
-//! linhas, e isso é exactamente o ladrilho de omissão que a variável devolve.
+//! ⚠️ **A lei do dono (só com forma) vai DESLIGADA na bomba desta sonda** (`define_a_lei(false)`,
+//! a porta dos arneses de cozimento): esta cadeia (`X → scale → output`) não carrega aparência, e
+//! com a lei ligada uma corrente sem forma desenha MARCAS e não despacha linhas — a sonda leria
+//! `0`. Até 08/10 ela pedia `PH2D_MOTION_SO_COM_FORMA=0` ao PROCESSO e reprovava sem ele (doc 123
+//! §4). ⚠️ **Pôr um `motion.duplicator` na cadeia NÃO é a cura:** ele mediria o CARIMBO e, com uma
+//! forma viva, a cadeia inteira na CPU — outra pergunta. O que esta sonda mede é o que a fonte
+//! custa a FAZER as linhas.
 //! (imprime o `/proc/loadavg` na primeira linha — CLAUDE.md §5.0.)
 
 use crate::motion_state::MotionState;
@@ -217,6 +216,8 @@ fn mediana(mut v: Vec<f64>) -> f64 {
 /// `lado²`, cuja cadeia inteira vive na placa.
 fn mede(gpu: &GpuContext, tipo: Option<&str>, lado: f32) -> Linha {
     let mut m = MotionState::new();
+    // A lei do dono desligada NESTA bomba — ver o cabeçalho.
+    m.pump.define_a_lei(false);
     let (cabeca, alavanca) = match tipo {
         Some(t) => {
             let n = m.doc.graph.add_node(t.to_string());
@@ -287,14 +288,8 @@ fn mede(gpu: &GpuContext, tipo: Option<&str>, lado: f32) -> Linha {
 }
 
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE, com adaptador e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE, com adaptador e com a máquina calma"]
 fn measure_the_source_group() {
-    assert!(
-        !ph2d_eval_motion::so_com_forma_por_ordem(),
-        "esta sonda mede o COZIMENTO de uma fonte numa cadeia SEM forma, e sob a lei do dono \
-         (so com forma) essa cadeia nao despacha linha nenhuma. Corra-a com \
-         PH2D_MOTION_SO_COM_FORMA=0 (ver o cabecalho)."
-    );
     let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
         panic!("sem adaptador — esta sonda corre a ponte do produto, que coze na placa");
     };

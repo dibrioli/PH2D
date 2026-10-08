@@ -176,6 +176,11 @@ const SP_LIB: &str = "\
                 v = v + a * sub_dt;\n\
                 x = x + v * sub_dt;\n\
             }\n\
+            // And AFTER the step: the diverging frame lands on the target, never NaN/inf.\n\
+            if (!(spring_finite(x) && spring_finite(v))) {\n\
+                x = goal;\n\
+                v = 0.0;\n\
+            }\n\
             sp_x = x;\n\
             sp_v = v;\n\
         }\n\

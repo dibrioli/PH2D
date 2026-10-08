@@ -31,7 +31,7 @@ pub const GRUPO: [&str; 13] = [
 ];
 
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn audit_the_deformer_group() {
     crate::motion_ciclo_probe::retrato(&GRUPO);
 }
@@ -43,7 +43,7 @@ fn audit_the_deformer_group() {
 /// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_each_deformer_offers
 /// ```
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_each_deformer_offers() {
     crate::motion_ciclo_probe::params_de(&GRUPO);
 }
@@ -54,7 +54,7 @@ fn what_each_deformer_offers() {
 /// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture what_the_card_shows
 /// ```
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_the_card_shows() {
     crate::motion_ciclo_probe::cartao(&GRUPO);
 }
@@ -129,7 +129,7 @@ fn scene_bounds(level: u32) -> Option<([f32; 2], [f32; 2], usize)> {
 /// cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture where_each_demo_scene_lives
 /// ```
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn where_each_demo_scene_lives() {
     eprintln!(
         "\n  cena | objectos | x                  | y                  | legenda | cabe em 100?"

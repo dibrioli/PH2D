@@ -120,7 +120,7 @@ fn intermedios(pass: &mut VelloPass, gpu: &GpuContext, sampling: u32, p: ImageFi
 /// uma tag explícita GANHA do projecto nos dois sentidos. ⚠️ O CONTROLO vem primeiro: a fixtura tem
 /// de produzir uma rampa com a lei bilinear, senão «zero intermédios» não distingue nada.
 #[test]
-#[ignore = "precisa de GPU"]
+#[ignore = "placa: precisa de GPU"]
 fn o_filtro_do_sink_chega_ao_pixel_da_imagem() {
     let Some(gpu) = try_headless_gpu() else {
         println!("sem adaptador — saltado");

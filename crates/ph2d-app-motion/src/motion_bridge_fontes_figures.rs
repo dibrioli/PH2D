@@ -185,11 +185,13 @@ fn svg_ecra(camara: &Stream, tabela: &Stream, zoom: f32) -> String {
 }
 
 #[test]
-#[ignore = "gerador de figuras — corra à mão"]
+#[ignore = "gerador: escreve as figuras do tutorial 8 — corra à mão"]
 fn write_the_source_figures() {
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/Motion Nodes/tutoriais/fig");
-    std::fs::create_dir_all(&dir).expect("a pasta");
+    super::tutorial_figuras::escreve(&figuras());
+}
+
+/// Produz as seis figuras do tutorial 8, com as asserções de história.
+pub(super) fn figuras() -> super::tutorial_figuras::Figuras {
     let perto = colher(PERTO);
     let longe = colher(LONGE);
     assert_eq!(perto.len(), 6, "a cena tem seis panos");
@@ -224,7 +226,7 @@ fn write_the_source_figures() {
     // tabela leva o tamanho dos DADOS, porque ali a peça é o quad que o sink desenha.
     let cima = svg_par(&[&perto[0], &perto[1]], 100.0, Some(12.0));
     let meio = svg_par(&[&perto[2], &perto[3]], 100.0, None);
-    for (nome, svg) in [
+    [
         ("fonte_texto.svg", cima[0].clone()),
         ("fonte_forma.svg", cima[1].clone()),
         ("tabela_linhas.svg", meio[0].clone()),
@@ -245,8 +247,8 @@ fn write_the_source_figures() {
                 f32::from(u16::try_from(JANELA_H).expect("janela")) / LONGE,
             ),
         ),
-    ] {
-        std::fs::write(dir.join(nome), svg).expect("escreve a figura");
-        eprintln!("  escrita: {nome}");
-    }
+    ]
+    .into_iter()
+    .map(|(nome, svg)| (nome.to_string(), svg))
+    .collect()
 }

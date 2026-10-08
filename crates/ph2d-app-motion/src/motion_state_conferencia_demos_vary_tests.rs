@@ -21,9 +21,12 @@ fn scene() -> (MotionDoc, NodeRegistry, Vec<NodeId>) {
 /// As colunas de um sink num instante.
 fn at(doc: &MotionDoc, reg: &NodeRegistry, sink: NodeId, t: f64) -> ph2d_nodegraph::attr::Stream {
     let mut cook = Cook::new();
+    let s = cook.cook(&doc.graph, reg, sink, t).expect("coze")[0]
+        .as_stream()
+        .clone();
+    // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
     cook.advance_tick(&doc.graph, reg, t).expect("avanca");
-    let out = cook.cook(&doc.graph, reg, sink, t).expect("coze");
-    out[0].as_stream().clone()
+    s
 }
 
 /// Quantos valores distintos uma leitura produziu.
@@ -176,7 +179,6 @@ fn the_particles_actually_simulate() {
     let mut moved = 0.0_f32;
     for k in 0..40 {
         let t = 1.0 + f64::from(k) / 60.0;
-        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
         let out = cook.cook(&doc.graph, &reg, sinks[2], t).expect("coze");
         if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
             if prev.len() == p.len() {
@@ -186,6 +188,7 @@ fn the_particles_actually_simulate() {
             }
             prev = p.clone();
         }
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
     }
     assert!(
         moved > 0.005,

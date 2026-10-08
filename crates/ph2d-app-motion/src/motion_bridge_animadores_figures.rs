@@ -19,9 +19,6 @@ use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, NodeId};
 
-/// ⚠️ **Relativo ao MANIFESTO, não ao processo** — `cargo test` corre com a cwd na raiz do
-/// pacote, e um gerador que escreve no sítio errado diz «ok».
-const DIR: &str = "../../docs/Motion Nodes/tutoriais/fig";
 /// O instante em que as figuras de `Instante` são cozidas. ⚠️ Não é `0`: em `t = 0` metade
 /// destes nós está no ponto neutro e a figura sairia chapada.
 const T: f64 = 0.37;
@@ -408,10 +405,13 @@ fn colhe(fig: &Fig) -> Colheita {
 }
 
 #[test]
-#[ignore = "gerador de figuras do tutorial"]
+#[ignore = "gerador: escreve as figuras, a mola e a tabela do tutorial 2 — corra à mão"]
 fn dump_animadores_figures() {
-    let dir = std::path::Path::new(DIR);
-    std::fs::create_dir_all(dir).expect("a pasta das figuras");
+    super::tutorial_figuras::escreve(&figuras());
+}
+
+/// Produz as figuras, a curva da mola e a tabela `params_animadores.html` do tutorial 2.
+pub(super) fn figuras() -> super::tutorial_figuras::Figuras {
     let colhidas: Vec<Colheita> = FIGS.iter().map(colhe).collect();
     let grupos: std::collections::BTreeSet<&str> = FIGS.iter().map(|f| f.grupo).collect();
     // A moldura de cada grupo — e ela é também o DENOMINADOR da régua abaixo.
@@ -501,10 +501,10 @@ fn dump_animadores_figures() {
         maus.join("\n  ")
     );
 
+    let mut figs: super::tutorial_figuras::Figuras = Vec::new();
     for grupo in &grupos {
         let m = molduras[grupo];
         for i in (0..FIGS.len()).filter(|&i| FIGS[i].grupo == *grupo) {
-            let path = dir.join(format!("{}.svg", FIGS[i].file));
             // ⚠️ O fantasma **desenha-se** só onde ele é a mensagem (o atraso e o campo); nas
             // outras ele serviu de régua e sai da figura, senão a fila parada rouba a atenção
             // da que anda.
@@ -513,12 +513,16 @@ fn dump_animadores_figures() {
                 Como::Fantasma(_) | Como::Campo => &colhidas[i].1,
                 _ => &[],
             };
-            std::fs::write(&path, svg(&colhidas[i].0, sombra, m, campo)).expect("escrever");
-            eprintln!("  escrito │ {}", path.display());
+            figs.push((
+                format!("{}.svg", FIGS[i].file),
+                svg(&colhidas[i].0, sombra, m, campo),
+            ));
         }
     }
-    super::animadores_spring_fig::dump_spring_curves(dir);
-    let path = dir.join("params_animadores.html");
-    std::fs::write(&path, super::tutorial_table::derive(&TABELA)).expect("a tabela");
-    eprintln!("  tabela derivada │ {}", path.display());
+    figs.push(super::animadores_spring_fig::spring_curves());
+    figs.push((
+        "params_animadores.html".to_string(),
+        super::tutorial_table::derive(&TABELA),
+    ));
+    figs
 }

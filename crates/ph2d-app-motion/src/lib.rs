@@ -34,6 +34,8 @@
 pub mod lei_da_aparencia;
 /// ⭐⭐ O Motion como OBJECTO (doc ObjectsAndComponents 01 §13, F5).
 pub mod motion_objeto;
+/// O mundo da 1.ª cópia da placa para `PH2D_PAN_DIAG` (doc 123 §8).
+pub mod pan_diag_tap;
 pub mod ponto_gizmo;
 pub mod ponto_gizmo_overlay;
 
@@ -120,6 +122,9 @@ pub mod motion_flip_bake;
 #[cfg(test)]
 pub mod motion_fontes_probe;
 pub mod motion_fx_smoke;
+/// O censo das classes de `#[ignore]` — `placa:` · `sonda:` · `gerador:` (doc 123 §5).
+#[cfg(test)]
+mod motion_ignore_census;
 pub mod motion_node_path_smoke;
 pub mod motion_object_bake;
 /// Irmão do acima por RESPONSABILIDADE: ele produz pixels (GPU), este diz quantos (CPU).
@@ -161,6 +166,10 @@ pub mod motion_sim_probe;
 #[cfg(test)]
 pub mod motion_stamp_cost_probe;
 pub mod motion_state;
+/// Os gates «cada linha que o tutorial nomeia está no cartão» dos tutoriais 01–05 (doc 103 §1).
+#[cfg(all(test, feature = "panel-motion-graph"))]
+#[path = "motion_state_tutoriais_01_a_05_tests.rs"]
+mod motion_state_tutoriais_01_a_05_tests;
 /// O censo do comprimento `1` dos consumidores de VALOR (doc 110 §14.1 item 4).
 #[cfg(test)]
 mod motion_valor_comprimento_census;

@@ -101,7 +101,7 @@ fn na_placa(motion: &mut MotionState) -> Option<ph2d_gpu::GpuContext> {
 /// ⚠️ Sem a primeira metade, a mutação que devolve `motion.sinks.clone()` no `taps_for` ficava
 /// verde em todos os gates puros acima — eles não sabem se o produto os chama.
 #[test]
-#[ignore = "precisa de um adaptador de GPU — corra com --ignored e PH2D_GPU=1"]
+#[ignore = "placa: precisa de um adaptador de GPU — corra com --ignored e PH2D_GPU=1"]
 fn a_placa_que_desenhou_o_sink_nao_pede_a_tomada() {
     // O que a placa desenha: `source.object` → carimbo ← grelha.
     let mut m = MotionState::new();

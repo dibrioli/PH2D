@@ -11,7 +11,7 @@ use ph2d_nodegraph::attr::Column;
 /// crescer com a pilha (`medida_de`). Mede os tiques da queda e do contacto (o 2.º segundo de cena).
 /// Ambiente: `PH2D_PILHA_LADOS=32,64,128`.
 #[test]
-#[ignore = "sonda de relógio"]
+#[ignore = "sonda: relógio"]
 fn custo_do_cozimento_da_pilha() {
     let lados: Vec<f32> = std::env::var("PH2D_PILHA_LADOS").ok().map_or_else(
         || vec![32.0, 64.0, 128.0],
@@ -81,7 +81,7 @@ fn custo_do_cozimento_da_pilha() {
 /// (`PH2D_CONTACT_JACOBI=<iterações>`, lido uma vez por processo: uma corrida por variante).
 /// Ambiente: `PH2D_PILHA_LADOS=5,32`.
 #[test]
-#[ignore = "sonda da prova"]
+#[ignore = "sonda: prova"]
 fn prova_dos_impulsos_da_placa() {
     let lados: Vec<f32> = std::env::var("PH2D_PILHA_LADOS").ok().map_or_else(
         || vec![5.0, 32.0],
@@ -159,7 +159,7 @@ fn prova_dos_impulsos_da_placa() {
 /// e sem ele, intercalados por tique. Imprime a mediana, a média, o máximo e os tiques `> 5×` a mediana.
 /// Ambiente: `PH2D_PILHA_LADOS=32,64`.
 #[test]
-#[ignore = "sonda de relógio"]
+#[ignore = "sonda: relógio"]
 fn custo_do_tique_do_app_na_pilha() {
     let lados: Vec<f32> = std::env::var("PH2D_PILHA_LADOS").ok().map_or_else(
         || vec![32.0, 64.0],
@@ -230,7 +230,7 @@ fn custo_do_tique_do_app_na_pilha() {
 /// sobre a taça da DIREITA — vizinho mediano, velocidade média, sobreposição mais funda — e a impressão dos bits
 /// das posições (a 2.ª corrida do rapier tem de dar os MESMOS: o determinismo). Ambiente: `PH2D_PILHA_LADOS=5,32,64`.
 #[test]
-#[ignore = "sonda da prova (doc 121 §9.20)"]
+#[ignore = "sonda: prova (doc 121 §9.20)"]
 fn prova_do_mundo_de_contacto() {
     let lados: Vec<f32> = std::env::var("PH2D_PILHA_LADOS").ok().map_or_else(
         || vec![5.0, 32.0, 64.0],
@@ -378,7 +378,7 @@ fn prova_do_mundo_de_contacto() {
 /// instante em que a taça da DIREITA fica parada `0,5` s seguidos (velocidade média `< 0,05` u/s e a mais rápida
 /// `< 0,3`). Ambiente: `PH2D_PILHA_LADOS=5,16,32,64,128`.
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn quanto_tempo_a_pilha_leva_a_assentar() {
     let lados: Vec<f32> = std::env::var("PH2D_PILHA_LADOS").ok().map_or_else(
         || vec![5.0, 16.0, 32.0, 64.0, 128.0],
@@ -473,7 +473,7 @@ fn quanto_tempo_a_pilha_leva_a_assentar() {
 /// assentar, e a pilha FORMADA tem mais contactos que a queda): mediana e máximo por janela de `3` s, pela porta do
 /// app. Ambiente: `PH2D_PILHA_LADOS=64,128`.
 #[test]
-#[ignore = "sonda de relógio"]
+#[ignore = "sonda: relógio"]
 fn custo_por_fase_da_queda() {
     let lados: Vec<f32> = std::env::var("PH2D_PILHA_LADOS").ok().map_or_else(
         || vec![64.0, 128.0],

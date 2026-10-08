@@ -22,15 +22,30 @@ fn registry() -> NodeRegistry {
 /// comparar duas grades mortas (verde por vácuo, a lição que o `rope_thickness`
 /// pagou duas vezes).
 fn settle() -> Vec<(Vec<f32>, Vec<[f32; 2]>)> {
+    settle_with(TICKS, None)
+}
+
+/// `settle` com `ticks` e, se dado, o `scale` do drive trocado (a sonda de calibração).
+fn settle_with(ticks: usize, scale: Option<f32>) -> Vec<(Vec<f32>, Vec<[f32; 2]>)> {
     let reg = registry();
     let mut doc = MotionDoc::default();
     let sinks = build_wave_demo_document(&mut doc, &reg).expect("a cena monta");
+    if let Some(s) = scale {
+        let dr: Vec<_> = doc
+            .graph
+            .nodes()
+            .iter()
+            .filter(|n| n.type_name == "motion.drive")
+            .map(|n| n.id)
+            .collect();
+        for id in dr {
+            doc.graph.set_param(id, "scale", s);
+        }
+    }
     let mut cook = Cook::new();
     let mut out = vec![(Vec::new(), Vec::new()); sinks.len()];
-    for k in 0..TICKS {
+    for k in 0..ticks {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, &reg, t)
-            .expect("o tique avança");
         for (i, s) in sinks.iter().enumerate() {
             let v = cook.cook(&doc.graph, &reg, *s, t).expect("a banda coze");
             let st = v[0].as_stream();
@@ -44,6 +59,9 @@ fn settle() -> Vec<(Vec<f32>, Vec<[f32; 2]>)> {
             };
             out[i] = (h, p);
         }
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&doc.graph, &reg, t)
+            .expect("o tique avança");
     }
     out
 }
@@ -106,6 +124,47 @@ fn probe_what_the_scene_draws() {
         size_span(comp_h).0,
         size_span(comp_h).1
     );
+}
+
+/// **SONDA — calibração do `scale` do drive na ordem do produto** (cozer, depois
+/// avançar). Imprime, por `scale`: razão, pico aos 240/360/480 tiques, peças > passo,
+/// células movidas longe da caixa.
+#[test]
+#[ignore = "sonda: varre o scale do drive da cena 57, imprime e nao afirma"]
+fn probe_the_drive_scale_in_product_order() {
+    for s in [0.25f32, 0.35, 0.37, 0.38, 0.4, 0.42, 0.43, 0.45, 0.5, 0.6] {
+        let f = settle_with(TICKS, Some(s));
+        let (ch, cp) = &f[0];
+        let (bh, bp) = &f[1];
+        let (c, b) = (max_abs(ch), max_abs(bh));
+        let over = |h: &[f32]| h.iter().filter(|z| 0.22 + 1.4 * z.abs() > 0.5).count();
+        let moved = bh
+            .iter()
+            .zip(ch)
+            .filter(|(a, z)| (*a - *z).abs() > 1e-4)
+            .count();
+        let far = bp
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| (p[0] - BOX_X).abs() > 1.2)
+            .fold(0.0f32, |m, (i, _)| m.max((bh[i] - ch[i]).abs()));
+        let p360 = {
+            let g = settle_with(360, Some(s));
+            peak_x(&g[1].0, &g[1].1)
+        };
+        let p480 = {
+            let g = settle_with(480, Some(s));
+            peak_x(&g[1].0, &g[1].1)
+        };
+        eprintln!(
+            "scale {s:.2}  ctrl {c:.4} (x {:+.2})  comp {b:.4}  razao {:.3}  pico {:+.2} | 360 {p360:+.2} | 480 {p480:+.2}  estouradas {}/{}  movidas {moved}  longe {far:.4}",
+            peak_x(ch, cp),
+            b / c,
+            peak_x(bh, bp),
+            over(ch),
+            over(bh),
+        );
+    }
 }
 
 /// **A CENA MONTA AS DUAS BANDAS E CADA UMA TERMINA NUM OUTPUT.**
@@ -201,9 +260,10 @@ fn what_the_injector_writes_travels_across_the_field() {
 /// ⚠️ É o precedente do **Grupo N** feito executável: *se as duas diferissem muito,
 /// "a de baixo mexe mais" responderia por qualquer coisa*, e a cena provaria um
 /// segundo controle de amplitude em vez de um segundo PRODUTOR. A barra é `1,5×`
-/// contra os **1,24×** medidos — e ⚠️ ela **não pode ser 1,0×**: a varredura do
-/// `scale` mostra que abaixo de ~0,25 o berço injetado deixa de vencer e o pico volta
-/// ao centro, então igualdade exata compraria a leitura ao preço do item.
+/// contra os **1,25×** medidos na ordem do produto (`scale` 0,42; o antigo 1,24× era
+/// o depósito em dobro do arnês invertido) — e ⚠️ ela **não pode ser 1,0×**: a
+/// varredura do `scale` mostra que abaixo de ~0,37 o berço injetado deixa de vencer,
+/// então igualdade exata compraria a leitura ao preço do item.
 #[test]
 fn the_two_bands_are_comparable_in_amplitude() {
     let f = settle();

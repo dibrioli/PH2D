@@ -45,7 +45,7 @@ fn adaptador() -> Option<GpuContext> {
 /// existe. Vermelho antes da cura (provado por mutação: apagar a chamada a `cook_taps_only` na
 /// ponte deixa `tap_streams` vazio e `resolve` em `None`, que é o report do dono à letra).
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn the_fully_gpu_route_cooks_the_taps_it_never_marched() {
     let Some(gpu) = adaptador() else {
         panic!("sem adapter — este gate mede a rota do device e nao tem versao de CPU");
@@ -96,7 +96,7 @@ fn the_fully_gpu_route_cooks_the_taps_it_never_marched() {
 /// doc da porta (*«só se paga enquanto há tomada armada»*) deixaria de ser verdade sem ninguém
 /// ver.
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn the_fully_gpu_route_cooks_nothing_when_no_tap_is_armed() {
     let Some(gpu) = adaptador() else {
         panic!("sem adapter — este gate mede a rota do device e nao tem versao de CPU");

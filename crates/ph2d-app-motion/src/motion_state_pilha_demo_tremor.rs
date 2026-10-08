@@ -33,7 +33,7 @@ use ph2d_nodegraph::attr::Column;
 /// cargo test -p ph2d-app-motion --lib probe_o_que_ainda_treme -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_que_ainda_treme() {
     let (tremor, fim, vel) = tremor_da_direita(2.0, 2.9);
     let lado = LADO;
@@ -149,7 +149,7 @@ pub(super) fn mediana(v: &[f32]) -> f32 {
 /// cargo test -p ph2d-app-motion --lib probe_a_direcao_do_tremor -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_a_direcao_do_tremor() {
     let (tremor, fim, eixo, deriva) = direcao_da_direita(2.0, 2.9);
     let mut ordem: Vec<usize> = (0..tremor.len()).collect();
@@ -235,7 +235,7 @@ fn direcao_da_direita(de: f64, ate: f64) -> (Vec<f32>, Vec<[f32; 2]>, Vec<f32>, 
 /// cargo test -p ph2d-app-motion --lib probe_o_que_cura_o_tremor -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_que_cura_o_tremor() {
     eprintln!("\n  caso                        | baixo p50 | baixo pior | cima p50");
     eprintln!("  ----------------------------|-----------|------------|---------");
@@ -323,7 +323,7 @@ fn tremor_com(de: f64, ate: f64, params: &[(&'static str, f32)]) -> (Vec<f32>, V
 /// cargo test -p ph2d-app-motion --lib probe_o_angulo_tique_a_tique -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_angulo_tique_a_tique() {
     let mut state = MotionState::new();
     let sinks = build(&mut state.doc, &state.registry).expect("a cena monta");
@@ -377,7 +377,7 @@ fn probe_o_angulo_tique_a_tique() {
 /// cargo test -p ph2d-app-motion --lib probe_quem_vibra_toca_a_taca -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_quem_vibra_toca_a_taca() {
     let (tremor, fim, _eixo, deriva) = direcao_da_direita(2.0, 2.9);
     // A taça da DIREITA: centro em (VAO/2 + …, TACA_Y), raio TACA_R. O centro em x sai da própria
@@ -431,7 +431,7 @@ fn probe_quem_vibra_toca_a_taca() {
 /// cargo test -p ph2d-app-motion --lib probe_o_atrito_entre_pecas -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_atrito_entre_pecas() {
     eprintln!("\n  atrito das peças | baixo p50 | baixo pior | cima p50");
     eprintln!("  -----------------|-----------|------------|---------");
@@ -527,7 +527,7 @@ fn marcha_rot(state: &mut MotionState, sink: NodeId, de: u64, ate: u64) -> Vec<V
 /// cargo test -p ph2d-app-motion --lib probe_a_faixa_do_balanco -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_a_faixa_do_balanco() {
     let mut b = balanco_angular(2.0, 2.9);
     b.sort_by(f32::total_cmp);
@@ -553,11 +553,10 @@ fn probe_a_faixa_do_balanco() {
 /// `… 0,38 · 1,24 · 2,53 · 3,50 · 3,96 · 4,16°` — **cinco** peças acima de `1,0` — e a cura tentada
 /// levava a pior a `0,87°`. ⛔ Não é um número escolhido: é o vazio entre os dois lados medidos.
 ///
-/// ⛔ **`#[ignore]` porque o defeito está ABERTO, não porque a régua seja fraca** — ela é
-/// determinística (não divide relógios nem conta alocações) e reprova hoje nomeando as cinco peças.
-/// *Um `#[ignore]` que esconde um vermelho conhecido é uma dívida com endereço; um gate apagado é
-/// uma dívida sem nenhum.* Quem a puser a verde tem de passar também no
-/// [`the_pile_does_not_start_spinning_like_a_ball`], que é a metade que a minha cura partiu.
+/// ✅ Esteve `#[ignore]` enquanto o defeito esteve ABERTO; a cura (os SUB-PASSOS, `e1a16371b`, doc 111
+/// §5.8) pô-lo verde e ele corre na suíte. A régua é determinística (não divide relógios nem conta
+/// alocações), e anda junta com o [`the_pile_does_not_start_spinning_like_a_ball`], que é a metade
+/// que a primeira cura tentada partiu.
 #[test]
 fn the_pile_settles_instead_of_buzzing() {
     /// Graus por tique. Ver o vale acima.
@@ -624,7 +623,7 @@ fn the_pile_does_not_start_spinning_like_a_ball() {
 /// cargo test -p ph2d-app-motion --lib probe_gira_ou_treme -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_gira_ou_treme() {
     let (liquido, total) = giro_liquido(2.0, 2.9);
     let mut ordem: Vec<usize> = (0..total.len()).collect();

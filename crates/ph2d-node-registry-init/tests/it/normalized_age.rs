@@ -80,15 +80,17 @@ fn chain(life: f32) -> (Graph, NodeId, NodeId, NodeId) {
 /// A coluna `v` do nó terminal, depois de `TICKS` tiques.
 fn cook_v(g: &Graph, reg: &NodeRegistry, sink: NodeId) -> Vec<f32> {
     let mut cook = Cook::new();
+    let mut last = Stream::new(0);
     for i in 0..TICKS {
-        cook.advance_tick(g, reg, DT).expect("advance_tick");
         let t = (i + 1) as f64 * DT;
-        cook.cook(g, reg, sink, t).expect("cook");
+        last = cook.cook(g, reg, sink, t).expect("cook")[0]
+            .as_stream()
+            .clone();
+        // A ordem do produto: cozer e DEPOIS avançar o tique, com o MESMO playhead (doc 123 §4).
+        // Um `advance_tick(DT)` fixo deixava o `prev_playhead` parado e o `dt` do tique `i` em `i·DT`.
+        cook.advance_tick(g, reg, t).expect("advance_tick");
     }
-    let out = cook
-        .cook(g, reg, sink, TICKS as f64 * DT)
-        .expect("cook final");
-    match out[0].as_stream().get("v") {
+    match last.get("v") {
         Some(Column::Scalar(v)) => v.clone(),
         _ => panic!("o nó terminal não emitiu `v`"),
     }
@@ -109,14 +111,17 @@ fn normalised_age_is_three_nodes_and_the_lifespan_comes_from_the_emitter() {
     // --- a cadeia dá exactamente `age / life` -------------------------------
     let (g, em, _, div) = chain(4.0);
     let mut cook = Cook::new();
+    let mut emitted = Stream::new(0);
     for i in 0..TICKS {
-        cook.advance_tick(&g, &reg, DT).expect("advance_tick");
-        cook.cook(&g, &reg, div, (i + 1) as f64 * DT).expect("cook");
+        let t = (i + 1) as f64 * DT;
+        cook.cook(&g, &reg, div, t).expect("cook");
+        // O emissor lido no MESMO quadro que o `div` puxou (memo), antes de o tique avançar.
+        emitted = cook.cook(&g, &reg, em, t).expect("cook do emissor")[0]
+            .as_stream()
+            .clone();
+        cook.advance_tick(&g, &reg, t).expect("advance_tick");
     }
-    let emitted = cook
-        .cook(&g, &reg, em, TICKS as f64 * DT)
-        .expect("cook do emissor");
-    let src = emitted[0].as_stream();
+    let src = &emitted;
     let ages = scalar(src, "age");
     let lives = scalar(src, "life");
     let v = cook_v(&g, &reg, div);
@@ -178,9 +183,11 @@ fn the_emitter_publishes_the_lifespan_as_a_readable_column() {
     let reg = registry();
     let (g, em, _, _) = chain(4.0);
     let mut cook = Cook::new();
+    let s = cook.cook(&g, &reg, em, DT).expect("cook")[0]
+        .as_stream()
+        .clone();
     cook.advance_tick(&g, &reg, DT).expect("advance_tick");
-    let out = cook.cook(&g, &reg, em, DT).expect("cook");
-    let s = out[0].as_stream();
+    let s = &s;
     let lives = scalar(s, "life");
     assert!(!lives.is_empty(), "o emissor emitiu instâncias");
     assert!(

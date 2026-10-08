@@ -149,7 +149,7 @@ fn carga() -> String {
 /// cargo test -p ph2d-app-motion --release cozimento_cpu -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medição, não gate"]
+#[ignore = "sonda: medição, não gate"]
 fn cozimento_cpu_da_populacao_do_dono() {
     let m = MotionState::new();
     eprintln!("\n  ═══ O COZIMENTO NA CPU, À POPULAÇÃO DO DONO (doc 115 §10.4) ═══\n");

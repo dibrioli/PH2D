@@ -142,7 +142,7 @@ fn the_sized_row_rests_on_the_floor_the_artist_authored() {
 ///
 /// `cargo test -p ph2d-app-motion --lib radius_demo::tests::probe -- --ignored --nocapture`
 #[test]
-#[ignore]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_radius_rest() {
     let all = settled(4.0);
     let (left, right) = halves(&all);

@@ -72,12 +72,13 @@ fn pose(field: Field) -> Vec<[f32; 2]> {
     let mut out = Vec::new();
     for k in 0..TICKS {
         let t = k as f64 * DT;
-        cook.advance_tick(&g, &reg, t)
-            .expect("o tique avança o `pre`");
         let v = cook.cook(&g, &reg, b, t).expect("o corpo coze");
         if let Some(Column::Vec2(p)) = v[0].as_stream().get("P") {
             out = p.clone();
         }
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&g, &reg, t)
+            .expect("o tique avança o `pre`");
     }
     out
 }

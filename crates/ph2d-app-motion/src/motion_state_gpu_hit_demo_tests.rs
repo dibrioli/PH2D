@@ -125,7 +125,7 @@ fn the_size_is_the_contact_now_and_the_frame_converges() {
 ///
 /// `cargo test -p ph2d-app-motion --lib hit_demo::tests::probe -- --ignored --nocapture`
 #[test]
-#[ignore]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_hit_mark() {
     for (mark, secs) in [
         (0.2f32, 3.0f64),
@@ -151,7 +151,7 @@ fn probe_hit_mark() {
 
 /// **SONDA — A CHUVA ASSENTA?** (o irmao do `probe_does_the_scene_settle` do `=31`.)
 #[test]
-#[ignore]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_does_the_shower_settle() {
     for secs in [1.0f64, 2.0, 3.0, 5.0, 8.0] {
         let (p, sz) = settled(MARK, secs);

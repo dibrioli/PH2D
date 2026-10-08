@@ -288,7 +288,7 @@ fn the_partial_aim_scene_has_a_band_that_aims_and_a_soft_edge() {
 ///
 /// `cargo test -p ph2d-app-motion --lib probe_conferencia_scenes -- --ignored --nocapture`
 #[test]
-#[ignore = "sonda"]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_conferencia_scenes() {
     let reg = registry();
     for (n, build) in [

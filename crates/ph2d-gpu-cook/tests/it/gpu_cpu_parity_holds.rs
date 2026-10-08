@@ -28,6 +28,7 @@
 //! `#[ignore]`: precisa de adapter real.
 //!   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity_holds --release -- --ignored --nocapture
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::CookClock;
 use ph2d_node_registry::NodeRegistry;
@@ -49,14 +50,6 @@ const HOLDS: &str = "1 1 3 1";
 /// MESMA tabela. Não há erro de reconstrução a orçamentar: ou concordam na célula, ou a
 /// tabela foi lida de maneira diferente — e aí a diferença é uma célula inteira, não um ULP.
 const EXACT: f32 = 0.0;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();

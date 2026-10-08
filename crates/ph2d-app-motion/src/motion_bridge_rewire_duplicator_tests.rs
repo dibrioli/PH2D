@@ -23,7 +23,7 @@ use ph2d_nodegraph::graph::Edge;
 ///
 /// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture the_enio_duplicator_after_emitter`
 #[test]
-#[ignore = "sonda de reproducao, nao um gate"]
+#[ignore = "sonda: reproducao, nao um gate"]
 fn the_enio_duplicator_after_emitter() {
     use ph2d_nodegraph::cook::Cook;
     let mut motion = MotionState::new();
@@ -183,7 +183,7 @@ fn a_spliced_wire_enters_the_port_the_type_declares() {
 ///
 /// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture the_enio_sim_died_after_the_duplicator`
 #[test]
-#[ignore = "sonda de reproducao, nao um gate"]
+#[ignore = "sonda: reproducao, nao um gate"]
 fn the_enio_sim_died_after_the_duplicator() {
     use ph2d_nodegraph::cook::Cook;
     const TIQUES: u64 = 40;
@@ -388,7 +388,7 @@ fn a_simulation_survives_a_duplicator_in_the_middle() {
 ///
 /// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture which_emitter_properties_survive`
 #[test]
-#[ignore = "sonda de reproducao, nao um gate"]
+#[ignore = "sonda: reproducao, nao um gate"]
 fn which_emitter_properties_survive() {
     use ph2d_nodegraph::cook::Cook;
     use std::collections::BTreeMap;
@@ -504,7 +504,7 @@ fn which_emitter_properties_survive() {
 ///
 /// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture which_nodes_drop_a_streams_columns`
 #[test]
-#[ignore = "sonda de varredura, nao um gate"]
+#[ignore = "sonda: varredura, nao um gate"]
 fn which_nodes_drop_a_streams_columns() {
     use ph2d_nodegraph::cook::Cook;
     const CANDIDATOS: &[&str] = &[

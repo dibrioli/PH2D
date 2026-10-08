@@ -2,7 +2,8 @@
 //! `sim.lifetime` (`died` = as linhas, `pulse` = o evento) deixaram de derrubar o nó para a CPU.
 //! O lado `Event` é provado ao bit pelo `sim.spawn` que o consome (§14.1 (7)).
 
-use super::gpu_stream_ops::{cpu_frame, parity_over_ticks, registry, try_headless_gpu};
+use super::gpu_stream_ops::{cpu_frame, parity_over_ticks, registry};
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::{CookClock, GpuCook, GpuSource, plan, read_instances};
 use ph2d_nodegraph::cook::Cook;

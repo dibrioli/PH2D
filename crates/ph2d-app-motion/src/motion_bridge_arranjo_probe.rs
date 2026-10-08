@@ -27,7 +27,7 @@ const GRUPO: [(&str, Option<(&str, f32)>); 10] = [
 ];
 
 #[test]
-#[ignore = "medicao"]
+#[ignore = "sonda: medicao"]
 fn measure_the_arranjo_group() {
     eprintln!(
         "  load: {}",

@@ -231,7 +231,7 @@ fn relogio(m: &MotionState, arranjo: Arranjo, iteracoes: f32, pontos: f32) -> f6
 
 /// ⭐⭐⭐ **O RETRATO que responde ao report.**
 #[test]
-#[ignore = "sonda de investigação — corra à mão"]
+#[ignore = "sonda: investigação — corra à mão"]
 fn colisao_probe_o_que_o_grupo_faz_com_um_colisor() {
     let m = MotionState::new();
 

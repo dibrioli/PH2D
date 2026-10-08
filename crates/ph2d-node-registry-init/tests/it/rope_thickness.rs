@@ -103,13 +103,14 @@ fn settle(g: &Graph, reg: &NodeRegistry, node: NodeId) -> Vec<[f32; 2]> {
     let mut last = Stream::new(0);
     for k in 0..TICKS {
         let playhead = k as f64 * DT;
-        cook.advance_tick(g, reg, playhead)
-            .expect("o tique avanca o `pre`");
         let out = cook.cook(g, reg, node, playhead).expect("a corda coze");
         let CookValue::Instances(s) = &out[0] else {
             panic!("a saida e um stream")
         };
         last = s.clone();
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(g, reg, playhead)
+            .expect("o tique avanca o `pre`");
     }
     match last.get("P") {
         Some(Column::Vec2(v)) => v.clone(),

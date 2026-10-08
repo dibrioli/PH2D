@@ -19,7 +19,7 @@
 //!   `PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test -p ph2d-gpu-cook --test it \
 //!        as_formas_no_dispositivo --release -- --ignored --nocapture`
 
-use ph2d_gpu::GpuContext;
+use super::placa::try_headless_gpu;
 use ph2d_gpu_cook::lower_forma::{FORMA_WORDS, SEM_GEOMETRIA};
 use ph2d_gpu_cook::{CookClock, GpuCook, GpuCookError, plan, read_formas, read_instances};
 use ph2d_node_registry::NodeRegistry;
@@ -27,14 +27,6 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_render::SinkStyle;
 use ph2d_shape_gpu::ShapeInstance;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 /// ⭐ **As palavras do baixamento são as do `ShapeInstance`** — uma cópia com um valor diferente
 /// em cada campo, vista como palavras, põe cada campo na palavra que o WGSL escreve.

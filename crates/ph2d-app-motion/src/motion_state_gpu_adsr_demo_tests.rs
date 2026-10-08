@@ -300,7 +300,7 @@ fn sem_o_fio_do_carry_o_ponto_nao_cresce_mas_ainda_pula() {
 ///
 /// `cargo test -p ph2d-app-motion --lib probe_o_compasso -- --ignored --nocapture`
 #[test]
-#[ignore = "sonda de diagnóstico: imprime, não afirma"]
+#[ignore = "sonda: diagnóstico: imprime, não afirma"]
 fn probe_o_compasso() {
     let frames = run(6.0);
     let grow = swells(&frames);

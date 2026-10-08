@@ -15,7 +15,7 @@
 //! `#[ignore]`: needs an adapter. Run on the GPU lane:
 //!   cargo test -p ph2d-gpu-cook --test gpu_neighbor --release -- --ignored --nocapture
 
-use ph2d_gpu::GpuContext;
+use super::placa::try_headless_gpu;
 use ph2d_gpu_cook::{CookClock, GpuCook, plan, read_instances};
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::attr::Column;
@@ -32,14 +32,6 @@ const DEFAULT_UV: [f32; 4] = [0.25, 0.25, 0.75, 0.75];
 const DEFAULT_SIZE: [f32; 2] = [0.4, 0.4];
 const PLAYHEAD: f64 = 0.0;
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 // ── The synthetic node: displace by the within-radius neighbour count ────────
 

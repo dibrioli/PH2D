@@ -224,7 +224,7 @@ const JANELA_PX: (f64, f64) = (1920.0, 1080.0);
 /// descer essa escala; a coluna `px/estrela` é `2 × TAMANHO × escala`, medida da mesma constante
 /// de que a cena é feita, nunca de um número escrito aqui.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_the_zoom_and_the_screen_size() {
     let _fatia = fatia();
     let (m, _saida) = cena_do_report(0.5);
@@ -328,7 +328,7 @@ fn audit_the_zoom_and_the_screen_size() {
 /// no meio (a cena `=126` não tem nenhuma), logo é o mesmo código — o que ela permite é dar a
 /// silhueta por um fecho, sem inventar `geometry_id` nenhum.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_what_a_shape_lod_would_buy() {
     let _fatia = fatia();
     let (m, _saida) = cena_do_report(0.5);
@@ -436,7 +436,7 @@ fn audit_what_a_shape_lod_would_buy() {
 /// ⚠️ **O CONTROLO é a coluna desligada** (a porta devolve vazio antes das passagens): a
 /// diferença entre as duas colunas É o preço da decisão, e nada mais.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_what_the_decision_itself_costs() {
     let _fatia = fatia();
     let (m, _saida) = cena_do_report(0.5);

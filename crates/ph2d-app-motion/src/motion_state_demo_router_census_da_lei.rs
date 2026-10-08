@@ -40,7 +40,7 @@ use super::*;
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture quem_desenha_sem_forma`
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn quem_desenha_sem_forma() {
     /// As origens de aparência. ⚠️ Derivadas da varredura das crates de nó (as únicas que
     /// escrevem uma coluna de aparência sem a receber de uma entrada).
@@ -137,7 +137,7 @@ fn quem_desenha_sem_forma() {
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture colunas_que_chegam_ao_sink`
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn colunas_que_chegam_ao_sink() {
     // As cenas de CICLO (as que o dono segue) mais a `=110`, que é a do carimbo.
     let alvo: [u32; 12] = [110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121];
@@ -193,7 +193,7 @@ fn colunas_que_chegam_ao_sink() {
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture quem_e_como_o_grid`
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn quem_e_como_o_grid() {
     use ph2d_nodegraph::port::Domain;
     let reg = MotionState::new().registry;
@@ -230,7 +230,7 @@ fn quem_e_como_o_grid() {
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture uma_coluna_nova_sobrevive`
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn uma_coluna_nova_sobrevive_a_cadeia() {
     use ph2d_nodegraph::attr::Column;
     use ph2d_nodegraph::graph::{Edge, Graph};
@@ -302,7 +302,7 @@ fn uma_coluna_nova_sobrevive_a_cadeia() {
 ///
 /// `cargo test -p ph2d-app-motion --release --lib -- --ignored --nocapture o_que_a_tomada_custa`
 #[test]
-#[ignore = "sonda de relogio, nao um gate"]
+#[ignore = "sonda: relogio, nao um gate"]
 fn o_que_a_tomada_do_gizmo_custa() {
     eprintln!("\n=== O PRECO DA TOMADA DO GIZMO (cozimento de CPU do sink) ===\n");
     for level in [111u32, 116, 117, 120] {
@@ -350,7 +350,7 @@ fn o_que_a_tomada_do_gizmo_custa() {
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture o_gap_y_ainda_espaca`
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn o_gap_y_ainda_espaca() {
     use ph2d_nodegraph::attr::Column;
     use ph2d_nodegraph::graph::{Edge, Graph};
@@ -407,7 +407,7 @@ fn o_gap_y_ainda_espaca() {
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture o_que_o_cartao_do_grid_pinta`
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn o_que_o_cartao_do_grid_pinta() {
     let m = MotionState::new();
     let tid = ph2d_nodegraph::node::NodeTypeId::of("motion.grid");
@@ -456,7 +456,7 @@ fn o_que_o_cartao_do_grid_pinta() {
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture o_gap_y_na_grelha_do_dono`
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn o_gap_y_na_grelha_do_dono() {
     use ph2d_nodegraph::attr::Column;
     use ph2d_nodegraph::graph::{Edge, Graph};

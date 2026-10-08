@@ -16,11 +16,6 @@ use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::Edge;
 
-/// ⚠️ **Relativo ao MANIFESTO, não ao processo.** `cargo test` corre com a cwd na raiz do
-/// PACOTE (`shells/desktop`), então um caminho relativo à árvore escrevia as figuras em
-/// `shells/desktop/docs/…` — medido em 2026-09-05, e um gerador que escreve no sítio errado é
-/// pior que um que falha: ele diz «ok».
-const DIR: &str = "../../docs/Motion Nodes/tutoriais/fig";
 /// A moldura de uma figura, em unidades de mundo (a nuvem é centrada na origem).
 const VIEW: f32 = 460.0;
 
@@ -189,10 +184,14 @@ fn svg(points: &[[f32; 2]]) -> String {
 }
 
 #[test]
-#[ignore = "gerador de figuras do tutorial"]
+#[ignore = "gerador: escreve as figuras e a tabela do tutorial 1 — corra à mão"]
 fn dump_arranjo_figures() {
-    let dir = std::path::Path::new(DIR);
-    std::fs::create_dir_all(dir).expect("a pasta das figuras");
+    super::tutorial_figuras::escreve(&figuras());
+}
+
+/// Produz as figuras e a tabela `params.html` do tutorial 1 — cozinhando os nós.
+pub(super) fn figuras() -> super::tutorial_figuras::Figuras {
+    let mut figs: super::tutorial_figuras::Figuras = Vec::new();
     for fig in FIGS {
         let pts = cook_points(fig);
         assert!(
@@ -200,9 +199,7 @@ fn dump_arranjo_figures() {
             "a figura `{}` saiu VAZIA — uma figura vazia num tutorial ensina o contrario do que acontece",
             fig.file
         );
-        let path = dir.join(format!("{}.svg", fig.file));
-        std::fs::write(&path, svg(&pts)).expect("escrever a figura");
-        eprintln!("  {:>6} pontos │ {}", pts.len(), path.display());
+        figs.push((format!("{}.svg", fig.file), svg(&pts)));
     }
 
     // ⭐⭐⭐ **A TABELA DOS CONTROLOS SAI DE UMA PORTA SÓ** — `tutorial_table::derive`, que é
@@ -211,10 +208,11 @@ fn dump_arranjo_figures() {
     // saiu antes de existir uma segunda cópia: *uma tabela de referência escrita duas vezes
     // diverge em silêncio, e o lado que envelhece é o que o artista lê.*
     let entradas: Vec<(&str, &str)> = FIGS.iter().map(|f| (f.file, f.node)).collect();
-    let html = super::tutorial_table::derive(&entradas);
-    let path = dir.join("params.html");
-    std::fs::write(&path, html).expect("escrever a tabela");
-    eprintln!("  tabela derivada │ {}", path.display());
+    figs.push((
+        "params.html".to_string(),
+        super::tutorial_table::derive(&entradas),
+    ));
+    figs
 }
 
 /// **A TABELA DO TUTORIAL AINDA DIZ O QUE O CARTÃO MOSTRA?** — a pergunta que a FACE abriu
@@ -226,7 +224,7 @@ fn dump_arranjo_figures() {
 /// cargo test -p ph2d-app-motion --lib does_the_tutorial_table_still_match_the_card -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de censo, nao um gate"]
+#[ignore = "sonda: censo, nao um gate"]
 fn does_the_tutorial_table_still_match_the_card() {
     let mut vestidos: Vec<String> = Vec::new();
     let mut total = 0usize;

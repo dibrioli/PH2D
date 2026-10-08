@@ -296,7 +296,7 @@ fn a_shape_stamped_on_a_grid_lowers_to_sixteen_vectors() {
 /// filled with `Color::new(tint)` (white) ⇒ the centre reads near-white ⇒ this fails.
 /// Needs a GPU adapter (RTX); `#[ignore]`, run with `-- --ignored`.
 #[test]
-#[ignore = "needs a GPU adapter (RTX); run with --ignored"]
+#[ignore = "placa: needs a GPU adapter (RTX); run with --ignored"]
 fn a_live_document_vector_renders_its_authored_fill_not_the_tint() {
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
         eprintln!("no GPU adapter; skipping a_live_document_vector_renders_its_authored_fill");

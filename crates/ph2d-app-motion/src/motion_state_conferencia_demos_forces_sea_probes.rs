@@ -21,7 +21,7 @@ use ph2d_nodegraph::graph::Graph;
 /// superfície tem média estável; uma que foi LANÇADA tem média a subir para sempre, e as
 /// duas podem ter a mesma dispersão.
 #[test]
-#[ignore = "sonda de medicao, nao gate"]
+#[ignore = "sonda: medicao, nao gate"]
 fn measure_the_sea() {
     let (doc, reg, sinks) = scene();
     let mut cook = Cook::new();
@@ -31,7 +31,6 @@ fn measure_the_sea() {
     const LONG: usize = 900;
     for k in 0..LONG {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
         for &s in &sinks {
             let _ = cook.cook(&doc.graph, &reg, s, t);
         }
@@ -52,6 +51,8 @@ fn measure_the_sea() {
                 }
             }
         }
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
     }
     for (j, tr) in trace.iter().enumerate() {
         let drift = tr.windows(2).map(|w| w[1] - w[0]).fold(0.0_f32, f32::max);
@@ -62,7 +63,6 @@ fn measure_the_sea() {
     let mut track: Vec<Vec<Vec<[f32; 2]>>> = vec![Vec::new(); 2];
     for k in LONG..LONG + 300 {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
         for (j, &s) in sinks.iter().enumerate() {
             let o = cook.cook(&doc.graph, &reg, s, t).expect("coze");
             if j >= 6
@@ -72,6 +72,7 @@ fn measure_the_sea() {
                 track[j - 6].push(p.clone());
             }
         }
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
     }
     for (j, frames) in track.iter().enumerate() {
         let n = frames[0].len();
@@ -158,7 +159,6 @@ fn run_sea(
     let mut last = Vec::new();
     for k in 0..1200 {
         let t = f64::from(k) / 60.0;
-        cook.advance_tick(&g, &reg, t).expect("avanca");
         let o = cook.cook(&g, &reg, integ, t).expect("coze");
         if let Some(Column::Vec2(p)) = o[0].as_stream().get("P") {
             if k >= 900 && k % 5 == 0 {
@@ -166,6 +166,7 @@ fn run_sea(
             }
             last = p.clone();
         }
+        cook.advance_tick(&g, &reg, t).expect("avanca");
     }
     (frames, last)
 }
@@ -211,7 +212,7 @@ fn one_sea(density: f32, grav: f32, drag: f32, speed: f32, waves: f32) -> (f32, 
 /// ⛔ **A saída barata é medida PRIMEIRO** (menos camadas), antes de mexer no calado: a 4.ª
 /// camada tem `1/8` da amplitude e pode ser invisível de qualquer maneira.
 #[test]
-#[ignore = "sonda de medicao, nao gate"]
+#[ignore = "sonda: medicao, nao gate"]
 fn measure_the_crest_variety() {
     let (amp, lambda, ..) = sea_authored();
     let t = 1199.0_f32 / 60.0;
@@ -291,7 +292,7 @@ fn measure_the_crest_variety() {
 /// amplitude e metade do comprimento ⇒ o MESMO declive), então a fileira de 4 ondas precisa
 /// de ~4× o arrasto da de 1 — e é ela que manda.
 #[test]
-#[ignore = "sonda de medicao, nao gate"]
+#[ignore = "sonda: medicao, nao gate"]
 fn measure_the_trapping_sweep() {
     // A altura da vaga, que é o que a excursão vertical tem de reproduzir.
     let (_, lambda, ..) = sea_authored();
@@ -330,7 +331,7 @@ fn measure_the_trapping_sweep() {
 /// vezes. Os deslocamentos de fase não o quebram: eles deslocam cada camada, não a mudam de
 /// período.
 #[test]
-#[ignore = "sonda de medicao, nao gate"]
+#[ignore = "sonda: medicao, nao gate"]
 fn measure_the_sea_repeats() {
     let (amp, lambda, speed, ..) = sea_authored();
     let t = 1199.0_f32 / 60.0;

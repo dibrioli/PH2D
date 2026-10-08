@@ -122,7 +122,6 @@ fn sea_poses(
     let mut out = vec![Vec::new(); sinks.len()];
     for k in 0..SEA_TICKS {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, reg, t).expect("avanca");
         for (i, &s) in sinks.iter().enumerate() {
             let o = cook.cook(&doc.graph, reg, s, t).expect("coze");
             if at.contains(&k)
@@ -131,6 +130,8 @@ fn sea_poses(
                 out[i].push(p.clone());
             }
         }
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&doc.graph, reg, t).expect("avanca");
     }
     out
 }
@@ -146,7 +147,6 @@ fn sea_motion(doc: &MotionDoc, reg: &NodeRegistry, sinks: &[NodeId]) -> Vec<(f32
     let mut frames: Vec<Vec<Vec<[f32; 2]>>> = vec![Vec::new(); sinks.len()];
     for k in 0..SEA_TICKS + 300 {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, reg, t).expect("avanca");
         for (i, &s) in sinks.iter().enumerate() {
             let o = cook.cook(&doc.graph, reg, s, t).expect("coze");
             if k >= SEA_TICKS
@@ -156,6 +156,7 @@ fn sea_motion(doc: &MotionDoc, reg: &NodeRegistry, sinks: &[NodeId]) -> Vec<(f32
                 frames[i].push(p.clone());
             }
         }
+        cook.advance_tick(&doc.graph, reg, t).expect("avanca");
     }
     frames
         .iter()

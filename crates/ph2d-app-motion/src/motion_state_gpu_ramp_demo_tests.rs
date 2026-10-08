@@ -122,7 +122,7 @@ fn the_shower_rests_on_the_ramp_it_slid_down() {
 ///
 /// `cargo test -p ph2d-app-motion --lib ramp_demo::tests::probe -- --ignored --nocapture`
 #[test]
-#[ignore]
+#[ignore = "sonda: imprime, não afirma"]
 fn probe_ramp_chute() {
     for (name, deg) in [("chao (angulo 0)", 0.0), ("rampa", RAMP_DEG)] {
         let ps = settled(deg, 4.0);

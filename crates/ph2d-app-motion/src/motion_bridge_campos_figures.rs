@@ -170,17 +170,19 @@ fn svg(cel: &[([f32; 2], f32)]) -> String {
     s
 }
 
-/// ⭐⭐⭐ **ESCREVE AS FIGURAS, e RECUSA uma que não mostre o campo a morder.**
+/// Escreve as figuras de [`figuras`] e a tabela `params_campos.html` no disco.
+#[test]
+#[ignore = "gerador: escreve as figuras e a tabela do tutorial 4 — corra à mão"]
+fn write_the_field_figures() {
+    super::tutorial_figuras::escreve(&figuras());
+}
+
+/// ⭐⭐⭐ **PRODUZ AS FIGURAS, e RECUSA uma que não mostre o campo a morder.**
 ///
 /// A régua é a **DISPERSÃO** dos tamanhos (`maior / menor`), não um deslocamento: *um campo não
 /// move um elemento, pesa-o*. A barra é `1,5×`, o mesmo número que o gate da cena `=112` usa —
 /// abaixo disso a mancha não se distingue do pano a olho na figura de `169 px` do PDF.
-#[test]
-#[ignore = "escreve ficheiros — corra à mão"]
-fn write_the_field_figures() {
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/Motion Nodes/tutoriais/fig");
-    std::fs::create_dir_all(&dir).expect("a pasta");
+pub(super) fn figuras() -> super::tutorial_figuras::Figuras {
     eprintln!("\n  figura              │ células │ maior/menor │ barra │ ");
     let mut maus: Vec<String> = Vec::new();
     let colhidas: Vec<Vec<([f32; 2], f32)>> = FIGS.iter().map(colher).collect();
@@ -234,13 +236,16 @@ fn write_the_field_figures() {
     // diferentes — sem que nada no repositório o dissesse. *Uma sonda que falha não pode deixar
     // o artefacto que ela reprovou.* (Medido: a corrida de mutação escreveu `campo_circle` e
     // `campo_rect` com o MESMO md5, e só o `md5sum` à mão os apanhou.)
-    for (fig, cel) in FIGS.iter().zip(&colhidas) {
-        std::fs::write(dir.join(format!("{}.svg", fig.file)), svg(cel)).expect("escrever");
-    }
-
-    let path = dir.join("params_campos.html");
-    std::fs::write(&path, super::tutorial_table::derive(TABELA)).expect("a tabela");
-    eprintln!("  tabela derivada │ {}", path.display());
+    let mut figs: super::tutorial_figuras::Figuras = FIGS
+        .iter()
+        .zip(&colhidas)
+        .map(|(fig, cel)| (format!("{}.svg", fig.file), svg(cel)))
+        .collect();
+    figs.push((
+        "params_campos.html".to_string(),
+        super::tutorial_table::derive(TABELA),
+    ));
+    figs
 }
 
 /// As âncoras da tabela «o que cada controlo faz» — a mesma porta do ciclo 3.

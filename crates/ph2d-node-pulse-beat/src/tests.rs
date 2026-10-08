@@ -247,3 +247,126 @@ fn the_typed_ceiling_of_the_period_is_far_above_the_slider() {
         slider.max
     );
 }
+
+/// Fracções de quadro no fio do empate da linha `i`: a `f32` mais próxima de `frac(i·sc)` exacto e
+/// os seus dois vizinhos, dentro de `[0, 1)`.
+fn fracs_no_empate(i: usize, sc: f32) -> impl Iterator<Item = f32> {
+    let p = i as f64 * f64::from(sc);
+    let f = (p - p.floor()) as f32;
+    [f.next_down(), f, f.next_up()]
+        .into_iter()
+        .filter(|x| (0.0..=ABAIXO_DE_UM).contains(x))
+}
+
+/// O índice da linha como a placa o faz quando FUNDE `frac − i·sc` num FMA (um arredondamento só).
+fn indice_fundido(frac: f32, i: usize, sc: f32) -> f32 {
+    (-(i as f32)).mul_add(sc, frac).floor()
+}
+
+/// O índice da linha sem fundir — a aritmética da CPU (`cycle_index`) e da WGSL do kernel.
+fn indice_separado(frac: f32, i: usize, sc: f32) -> f32 {
+    (frac - i as f32 * sc).floor()
+}
+
+/// ⭐⭐ **A imunidade do compasso a FMA, com régua que NÃO depende de a placa fundir** (doc 123 §1).
+///
+/// Uma placa pode fundir `frac − i·sc` (a WGSL permite) e arredondar uma vez só; a CPU arredonda
+/// duas. O `sc` com [`SC_BITS`] bits faz `i·sc` EXACTO, e então as duas leituras dão o MESMO
+/// `⌊⌋` em toda linha que o tecto admite — aqui afirmado com o FMA da CPU (`mul_add`), sobre toda
+/// `i < 2^(24 − SC_BITS)` e as fracções no fio do empate de cada uma. O CONTROLO mede o `sc` CRU
+/// (sem quantizar) pela mesma varredura e EXIGE divergência: sem ele, uma varredura que nunca
+/// chegasse a um empate passaria igual.
+#[test]
+fn the_beat_index_is_the_same_fused_or_not() {
+    let cobre = 1usize << (24 - SC_BITS);
+    assert!(cobre >= ph2d_nodegraph::node::MAX_INSTANCIAS_POR_NO);
+    // `(period, phase_stagger)`: as duas fixturas da paridade da placa e razões irracionais.
+    let fixturas = [
+        (0.0537_f32, 0.0031_f32),
+        (0.05, 0.0),
+        (1.0, 0.1),
+        (0.5, 0.0173),
+        (0.0031, 0.0537),
+        (0.7, 0.000_913),
+    ];
+    let mut divergem_sem_quantizar = 0usize;
+    for (period, stagger) in fixturas {
+        let sc = compasso(0.0, period, 0.0, stagger).sc;
+        let sc_cru = (f64::from(stagger) / f64::from(period.max(MIN_PERIOD))) as f32;
+        for i in 0..cobre {
+            for frac in fracs_no_empate(i, sc) {
+                assert_eq!(
+                    indice_fundido(frac, i, sc),
+                    indice_separado(frac, i, sc),
+                    "period {period}, stagger {stagger}: a linha {i} (frac {frac}) muda de \
+                     tique se a placa fundir — o `sc` ({sc}) nao e' exacto"
+                );
+            }
+            divergem_sem_quantizar += fracs_no_empate(i, sc_cru)
+                .filter(|&f| indice_fundido(f, i, sc_cru) != indice_separado(f, i, sc_cru))
+                .count();
+        }
+    }
+    assert!(
+        divergem_sem_quantizar > 0,
+        "controlo: sem quantizar o `sc` a varredura nao achou nenhum empate que o FMA mude — \
+         ela nao chega ao fio e nao mede nada"
+    );
+}
+
+/// **SONDA da fixtura da placa no fio do FMA** (doc 123 §1): procura um `offset` e um tique
+/// `≥ 1` em que, com o `sc` CRU, uma linha `< 64` muda de ciclo se a placa fundir e não mudava no
+/// tique anterior — a fixtura que faz a paridade da placa morder a mutação «sem quantizar».
+#[test]
+#[ignore = "sonda: procura a fixtura da placa no fio do FMA"]
+fn sonda_a_fixtura_do_fio_do_fma() {
+    let (period, stagger) = (0.0537_f32, 0.0031_f32);
+    let sc_cru = (f64::from(stagger) / f64::from(period)) as f32;
+    let mut achadas = 0;
+    for o in 0..200_000u32 {
+        let offset = o as f32 * 1e-7;
+        for tique in 1..12u64 {
+            let c = compasso(tique as f64 / 60.0, period, offset, stagger);
+            for i in 0..64usize {
+                if indice_fundido(c.frac, i, sc_cru) != indice_separado(c.frac, i, sc_cru) {
+                    eprintln!(
+                        "offset {offset:e} ({o}) tique {tique} linha {i} frac {}",
+                        c.frac
+                    );
+                    achadas += 1;
+                }
+            }
+        }
+        if achadas >= 8 {
+            break;
+        }
+    }
+}
+
+/// ⭐ **A fixtura da placa ESTÁ no fio do FMA** (doc 123 §1): com o `sc` CRU a linha `11` muda de
+/// ciclo no tique `3` se fundir (e no tique `2` não muda), e com o `sc` do produto nenhuma das
+/// `64` linhas muda em nenhum dos `12` tiques. Sem isto a paridade da placa sobre
+/// [`FIXTURA_DO_FIO_DO_FMA`] seria uma fixtura qualquer, e voltaria a não morder.
+#[test]
+fn the_device_fixture_sits_on_the_fma_edge() {
+    let (period, stagger, offset) = FIXTURA_DO_FIO_DO_FMA;
+    let sc_cru = (f64::from(stagger) / f64::from(period)) as f32;
+    let fundiu = |tique: u64, i: usize, sc: f32| {
+        let c = compasso(tique as f64 / 60.0, period, offset, stagger);
+        indice_fundido(c.frac, i, sc) != indice_separado(c.frac, i, sc)
+    };
+    assert!(
+        fundiu(3, 11, sc_cru),
+        "a linha 11 no tique 3 nao esta' no fio"
+    );
+    assert!(!fundiu(2, 11, sc_cru), "e no tique 2 ela ja' divergia");
+    for tique in 0..12 {
+        let sc = compasso(tique as f64 / 60.0, period, offset, stagger).sc;
+        for i in 0..64 {
+            assert!(
+                !fundiu(tique, i, sc),
+                "o `sc` do produto diverge: tique {tique}, linha {i}"
+            );
+        }
+    }
+}

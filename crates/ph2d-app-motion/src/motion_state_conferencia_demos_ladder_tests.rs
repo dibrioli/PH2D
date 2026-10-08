@@ -31,13 +31,14 @@ fn settle(doc: &MotionDoc, reg: &NodeRegistry, sinks: &[NodeId]) -> Vec<Vec<[f32
     let mut last = vec![Vec::new(); sinks.len()];
     for k in 0..TICKS {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, reg, t).expect("avanca");
         for (i, &s) in sinks.iter().enumerate() {
             let out = cook.cook(&doc.graph, reg, s, t).expect("coze");
             if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
                 last[i] = p.clone();
             }
         }
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&doc.graph, reg, t).expect("avanca");
     }
     last
 }
@@ -129,7 +130,6 @@ fn the_capped_tail_starts_dimmer_and_the_head_does_not_move() {
     let mut alphas: Vec<Vec<(f32, f32)>> = vec![Vec::new(); 2];
     for k in 0..TICKS {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
         for (i, &s) in sinks[4..6].iter().enumerate() {
             let out = cook.cook(&doc.graph, &reg, s, t).expect("coze");
             let st = out[0].as_stream();
@@ -141,6 +141,7 @@ fn the_capped_tail_starts_dimmer_and_the_head_does_not_move() {
                 alphas[i] = ages.iter().copied().zip(c.iter().map(|q| q[3])).collect();
             }
         }
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
     }
     let newest = |v: &[(f32, f32)]| -> f32 {
         v.iter()

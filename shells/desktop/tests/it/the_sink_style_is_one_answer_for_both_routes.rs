@@ -76,8 +76,10 @@ fn every_blend_the_renderer_can_draw_has_a_name_and_no_more() {
 #[test]
 fn the_gpu_route_reads_the_tag_from_the_one_door() {
     assert!(
-        // ⚠️ Desde o doc 119 W3, UMA pergunta POR SAÍDA — a mesma porta, em cada uma.
-        GPU_BRIDGE.contains(".map(|&s| ph2d_eval_motion::sink_style(&motion.doc.graph, s))"),
+        // ⚠️ Desde o doc 119 W3, UMA pergunta POR SAÍDA — a mesma porta, em cada uma; e desde o
+        // doc 123 §4 com a lei do dono da BOMBA por cima (`estilos_das_saidas`).
+        GPU_BRIDGE.contains("..ph2d_eval_motion::sink_style(&motion.doc.graph, s)")
+            && GPU_BRIDGE.contains("let estilos = estilos_das_saidas(motion);"),
         "a ponte da GPU deixou de perguntar à porta única — o mesmo documento \
          passa a compositar diferente conforme o `PH2D_GPU_COOK`"
     );

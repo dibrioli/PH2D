@@ -68,7 +68,7 @@ impl crate::App {
             motion_tool_active,
             // ⭐ A PORTA DO PRODUTO, lida num sítio só — ver `ponto_gizmo::resolve`: ou se vêem
             // as peças, ou se vê o gizmo.
-            ph2d_eval_motion::so_com_forma_por_ordem(),
+            motion.pump.a_lei(),
         ));
         // ⭐⭐ **O gizmo do PIVÔ da forma** (ordem do dono, 2026-09-19: *«permita visualizar o
         // ponto do pivot ao arrastar os parâmetros de pivot»*) — a mesma janela e a mesma

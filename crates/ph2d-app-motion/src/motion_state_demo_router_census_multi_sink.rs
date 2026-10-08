@@ -77,7 +77,7 @@ fn linhas_do_sink(
 /// DISTRIBUIÇÃO — porque uma média esconderia exactamente o que interessa: se o trabalho está
 /// concentrado em duas cenas grandes ou espalhado por oitenta pequenas, a decisão é OUTRA.
 #[test]
-#[ignore = "sonda de escada, não um gate — `-- --ignored --nocapture`"]
+#[ignore = "sonda: escada, não um gate — `-- --ignored --nocapture`"]
 fn a_escada_do_multi_sink_mede_se_e_alta() {
     /// O instante em que se coze. Não é `0.0`: um emissor a `t = 0` ainda não nasceu ninguém, e
     /// medir a população de uma simulação no tique zero mede o vazio dela.

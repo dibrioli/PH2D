@@ -312,7 +312,7 @@ pub(super) fn pior_salto_com(
 /// cargo test -p ph2d-app-motion --lib probe_os_saltos -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_os_saltos() {
     for sub in [1_u32, 8] {
         eprintln!("\n=== substeps = {sub} ===");
@@ -352,7 +352,7 @@ fn probe_os_saltos() {
 /// cargo test -p ph2d-app-motion --lib probe_o_perfil_no_tempo -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_perfil_no_tempo() {
     for sub in [1_u32, 8] {
         let (mut state, sink) = super::obra::com_substeps(0.0, sub);
@@ -395,7 +395,7 @@ fn probe_o_perfil_no_tempo() {
 /// cargo test -p ph2d-app-motion --lib probe_o_salto_contra_os_substeps -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao"]
+#[ignore = "sonda: medicao"]
 fn probe_o_salto_contra_os_substeps() {
     /// O tecto de `|Δrot|` por tique que ainda conta como «a peça tinha assentado».
     const QUIETO: f32 = 0.2;

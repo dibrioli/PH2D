@@ -253,7 +253,7 @@ fn a_cena_do_grito_e_inteira_na_placa_e_as_tomadas_marcham() {
 /// ⭐⭐ **PELA PONTE, COM PLACA: a `=26` inteira no dispositivo grita o que a CPU grita** — o
 /// quadro do produto (`coze_o_quadro`), quatro segundos, a lista inteira (nome e tique).
 #[test]
-#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+#[ignore = "placa: requires a GPU adapter; run with --ignored on a dev machine"]
 fn a_ponte_na_placa_grita_o_que_a_cpu_grita() {
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
         return;

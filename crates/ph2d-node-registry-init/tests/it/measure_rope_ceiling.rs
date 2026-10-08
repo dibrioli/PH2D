@@ -68,12 +68,13 @@ fn march(g: &Graph, reg: &NodeRegistry, node: NodeId, frames: u64) -> (f32, f32)
     let mut last = Vec::new();
     for t in 0..frames {
         let playhead = t as f64 * WORST_DT;
-        cook.advance_tick(g, reg, playhead).expect("tick");
         let out = cook.cook(g, reg, node, playhead).expect("cook");
         let CookValue::Instances(s) = &out[0] else {
             panic!("a saida da corda e um stream")
         };
         last = positions(s);
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(g, reg, playhead).expect("tick");
     }
     if last.len() < 2 {
         return (f32::NAN, f32::NAN);

@@ -47,7 +47,6 @@ fn tail_drop(g: &Graph, reg: &NodeRegistry, node: NodeId) -> f32 {
     let mut last: Vec<[f32; 2]> = Vec::new();
     for t in 0..60u64 {
         let playhead = t as f64 * WORST_DT;
-        cook.advance_tick(g, reg, playhead).expect("tick");
         let out = cook.cook(g, reg, node, playhead).expect("cook");
         let CookValue::Instances(s) = &out[0] else {
             panic!("a saida da corda e um stream")
@@ -56,6 +55,8 @@ fn tail_drop(g: &Graph, reg: &NodeRegistry, node: NodeId) -> f32 {
             Some(Column::Vec2(v)) => v.clone(),
             _ => Vec::new(),
         };
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(g, reg, playhead).expect("tick");
     }
     let tail = *last.last().expect("a corda tem pontos");
     f64::from(tail[0]).hypot(f64::from(tail[1])) as f32

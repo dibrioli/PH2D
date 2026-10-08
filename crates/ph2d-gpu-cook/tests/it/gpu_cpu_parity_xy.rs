@@ -22,6 +22,7 @@
 //! `#[ignore]`: precisa de adapter real.
 //!   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity_xy --release -- --ignored --nocapture
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::CookClock;
 use ph2d_node_registry::NodeRegistry;
@@ -41,14 +42,6 @@ const EPS_REL: f32 = 1.0e-5;
 /// `0,009` só ao afinar o campo. Medido NO DEVICE nesta fixture: `−0,222` (noise) e
 /// `0,079` (wiggle).
 const MAX_R: f32 = 0.5;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();

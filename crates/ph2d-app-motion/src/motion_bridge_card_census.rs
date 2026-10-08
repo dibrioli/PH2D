@@ -16,7 +16,7 @@ use crate::motion_state::MotionState;
 ///
 /// `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture what_each_card_carries`
 #[test]
-#[ignore = "sonda de censo, nao um gate"]
+#[ignore = "sonda: censo, nao um gate"]
 fn what_each_card_carries() {
     let m = MotionState::new();
     let mut linhas: Vec<(usize, String)> = Vec::new();
@@ -130,7 +130,7 @@ fn what_each_card_carries() {
 ///
 /// `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture what_the_panel_offers_and_the_card_does_not`
 #[test]
-#[ignore = "sonda de censo, nao um gate"]
+#[ignore = "sonda: censo, nao um gate"]
 fn what_the_panel_offers_and_the_card_does_not() {
     let mut faltam: Vec<(String, usize, usize, Vec<String>)> = Vec::new();
     let mut tot_painel = 0usize;
@@ -199,7 +199,7 @@ fn what_the_panel_offers_and_the_card_does_not() {
 ///
 /// `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture what_species_of_control_the_catalogue_has`
 #[test]
-#[ignore = "sonda de censo, nao um gate"]
+#[ignore = "sonda: censo, nao um gate"]
 fn what_species_of_control_the_catalogue_has() {
     use std::collections::BTreeMap;
     let mut por_especie: BTreeMap<&'static str, (usize, usize)> = BTreeMap::new();
@@ -263,7 +263,7 @@ fn what_species_of_control_the_catalogue_has() {
 ///
 /// `cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture what_the_open_cycle_group_needs`
 #[test]
-#[ignore = "sonda de censo, nao um gate"]
+#[ignore = "sonda: censo, nao um gate"]
 fn what_the_open_cycle_group_needs() {
     const GRUPO: [&str; 10] = [
         "motion.grid",

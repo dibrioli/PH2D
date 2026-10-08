@@ -195,7 +195,7 @@ fn da_cpu(m: &mut MotionState) -> Vec<[f32; 2]> {
 }
 
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
     let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
         panic!("sem adapter — este gate mede a rota do device e nao tem versao de CPU");
@@ -358,7 +358,7 @@ fn as_cenas_de_varias_saidas_pela_placa_dao_o_que_a_cpu_da() {
 ///
 ///   cargo test -p ph2d-app-motion --lib -- --ignored --nocapture censo_de_rota_pela_ponte
 #[test]
-#[ignore = "sonda de rota pela ponte (precisa de adapter), não um gate"]
+#[ignore = "sonda: rota pela ponte (precisa de adapter), não um gate"]
 fn censo_de_rota_pela_ponte() {
     let gpu = GpuContext::new(GpuContext::default_instance(), None).expect("adapter");
     let mut porques: std::collections::BTreeMap<String, Vec<u32>> = Default::default();

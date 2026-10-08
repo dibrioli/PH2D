@@ -27,14 +27,15 @@ fn run() -> Vec<Vec<f32>> {
     let mut cook = Cook::new();
     for k in 0..TICKS {
         let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, &reg, t)
-            .expect("o tique avança");
         for (i, s) in sinks.iter().enumerate() {
             let v = cook.cook(&doc.graph, &reg, *s, t).expect("a banda coze");
             if let Some(Column::Vec2(p)) = v[0].as_stream().get("P") {
                 out[i].push(p[0][1]);
             }
         }
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(&doc.graph, &reg, t)
+            .expect("o tique avança");
     }
     out
 }
@@ -118,7 +119,7 @@ fn the_looped_band_returns_and_the_open_one_does_not() {
 
 /// **A SONDA** — imprime os números que a mensagem do smoke cita.
 #[test]
-#[ignore = "sonda"]
+#[ignore = "sonda: imprime, não afirma"]
 fn measure_what_the_scene_shows() {
     let p = run();
     let (oct, amp_mult, loop_len) = knobs();

@@ -83,7 +83,7 @@ fn reading_a_name_nobody_wrote_is_silence() {
 
 /// **A SONDA** — imprime os números que a mensagem do smoke cita.
 #[test]
-#[ignore = "sonda"]
+#[ignore = "sonda: imprime, não afirma"]
 fn measure_what_the_scene_shows() {
     let s = sizes();
     let (col, wrong) = names();

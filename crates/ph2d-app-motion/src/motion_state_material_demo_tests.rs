@@ -490,7 +490,7 @@ fn the_bounce_reaches_the_new_ceiling_in_the_scene() {
 /// cargo test -p ph2d-app-motion --lib probe_the_rolling_ball_on_the_ramp -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "sonda de medicao, nao um gate"]
+#[ignore = "sonda: medicao, nao um gate"]
 fn probe_the_rolling_ball_on_the_ramp() {
     eprintln!("\n  Rolling │ desceu (unidades em 2 s)   [rampa de 12°, tan = 0,213]");
     for rolar in [0.0_f32, 0.1, 0.2, 0.25, 0.3, 0.5, 1.0, 1.5] {

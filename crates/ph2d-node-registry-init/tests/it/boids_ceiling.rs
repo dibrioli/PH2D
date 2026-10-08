@@ -50,7 +50,6 @@ fn cohesion(g: &Graph, reg: &NodeRegistry, node: NodeId, radius: f32) -> f32 {
     let mut last: Vec<[f32; 2]> = Vec::new();
     for t in 0..60u64 {
         let playhead = t as f64 * WORST_DT;
-        cook.advance_tick(g, reg, playhead).expect("tick");
         let out = cook.cook(g, reg, node, playhead).expect("cook");
         let CookValue::Instances(s) = &out[0] else {
             panic!("a saida do boids e um stream")
@@ -59,6 +58,8 @@ fn cohesion(g: &Graph, reg: &NodeRegistry, node: NodeId, radius: f32) -> f32 {
             Some(Column::Vec2(v)) => v.clone(),
             _ => Vec::new(),
         };
+        // A ordem do produto: cozer e DEPOIS avançar o tique (doc 123 §4).
+        cook.advance_tick(g, reg, playhead).expect("tick");
     }
     let n = last.len() as f32;
     let cx = last.iter().map(|q| q[0]).sum::<f32>() / n;

@@ -290,7 +290,7 @@ fn uma_bomba_nasce_neutra_e_o_motion_e_que_liga() {
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture a_bandeira_contra_a_lei`
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn a_bandeira_contra_a_lei() {
     use ph2d_nodegraph::graph::Graph;
     let mut m = MotionState::new();
@@ -344,7 +344,7 @@ fn a_bandeira_contra_a_lei() {
 ///
 /// `cargo test -p ph2d-app-motion --lib -- --ignored --nocapture uma_forma_solta`
 #[test]
-#[ignore = "sonda, nao um gate"]
+#[ignore = "sonda: nao um gate"]
 fn uma_forma_solta_no_grafo() {
     use ph2d_nodegraph::graph::{Edge, Graph};
     let mut m = MotionState::new();
@@ -475,5 +475,72 @@ fn uma_forma_solta_no_grafo() {
         st.get("uv_rect").is_some(),
         st.get("geometry_id").is_some(),
         ph2d_eval_motion::tem_aparencia(st)
+    );
+}
+
+/// ⭐ **A rota da placa lê a lei da BOMBA, a mesma que a rota da CPU** (doc 123 §4). Até 08/10 ela
+/// montava o estilo pelo ambiente, e uma bomba com a lei desligada (`define_a_lei(false)`, a porta
+/// dos arneses de cozimento) cozia na CPU uma coisa e na placa outra.
+#[test]
+fn the_device_route_reads_the_pumps_law() {
+    let mut m = MotionState::new();
+    let g = m.doc.graph.add_node("motion.grid");
+    let o = m.doc.graph.add_node("motion.output");
+    m.doc
+        .graph
+        .connect(ph2d_nodegraph::graph::Edge {
+            from: (g, 0),
+            to: (o, 0),
+            delayed: false,
+        })
+        .expect("liga");
+    m.sinks = vec![o];
+    for lei in [false, true] {
+        m.pump.define_a_lei(lei);
+        let estilos = crate::motion_bridge::gpu::estilos_das_saidas(&m);
+        assert_eq!(estilos.len(), 1, "controlo: um estilo por saída");
+        assert_eq!(
+            estilos[0].so_com_forma, lei,
+            "a placa não leu a lei da bomba"
+        );
+    }
+}
+
+/// ⭐ **A lei do ambiente é lida num sítio só** — o construtor da bomba do Motion
+/// (`motion_state_verbos.rs`). Todo o resto lê a lei DA BOMBA (`a_lei`), ou as rotas e os gizmos
+/// discordam no dia em que alguém a muda (doc 123 §4).
+#[test]
+fn the_environment_law_is_read_in_one_place() {
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut leitores = Vec::new();
+    for dir in [raiz.join("src"), raiz.join("../../shells/desktop/src")] {
+        let mut pilha = vec![dir];
+        while let Some(d) = pilha.pop() {
+            for e in std::fs::read_dir(&d).expect("a pasta").flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    pilha.push(p);
+                } else if p.extension().is_some_and(|x| x == "rs")
+                    && !p.to_string_lossy().ends_with("_tests.rs")
+                {
+                    let t = std::fs::read_to_string(&p).expect("o ficheiro");
+                    for (n, l) in t.lines().enumerate() {
+                        let codigo = l.split("//").next().unwrap_or("");
+                        if codigo.contains("so_com_forma_por_ordem()") {
+                            leitores.push(format!("{}:{}", p.display(), n + 1));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(
+        leitores.len(),
+        1,
+        "a lei do ambiente tem de ser lida SÓ no construtor da bomba: {leitores:#?}"
+    );
+    assert!(
+        leitores[0].contains("motion_state_verbos.rs"),
+        "controlo: o leitor único é o construtor da bomba: {leitores:?}"
     );
 }

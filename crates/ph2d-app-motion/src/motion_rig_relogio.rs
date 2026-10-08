@@ -39,8 +39,8 @@ use std::time::Instant;
 /// Tiques de aquecimento antes de medir — um solver com estado só entra em regime depois de o laço
 /// dar algumas voltas, e medir o transitório mede outra coisa.
 const AQUECE: usize = 60;
-/// Quadros medidos; fica-se com a MEDIANA (a média deixa um pico de escalonador decidir a tabela).
-const AMOSTRAS: usize = 9;
+/// Quadros medidos; imprime-se o MÍNIMO e a mediana (a média deixa um pico de escalonador decidir a tabela).
+const AMOSTRAS: usize = 31;
 /// O passo de tempo de um quadro a 60 fps — o relógio que o artista tem.
 const DT: f64 = 1.0 / 60.0;
 
@@ -143,7 +143,7 @@ fn monta(m: &crate::motion_state::MotionState, mole: &Mole, lado: usize) -> (Gra
 }
 
 /// A mediana de [`AMOSTRAS`] quadros em regime, em milissegundos.
-fn mede(m: &crate::motion_state::MotionState, mole: &Mole, lado: usize) -> (f64, usize) {
+fn mede(m: &crate::motion_state::MotionState, mole: &Mole, lado: usize) -> (f64, f64, usize) {
     let (g, saida) = monta(m, mole, lado);
     let mut cook = Cook::new();
     let mut t = 0.0f64;
@@ -164,12 +164,12 @@ fn mede(m: &crate::motion_state::MotionState, mole: &Mole, lado: usize) -> (f64,
         t += DT;
     }
     ms.sort_by(f64::total_cmp);
-    (ms[ms.len() / 2], linhas)
+    (ms[0], ms[ms.len() / 2], linhas)
 }
 
 /// ⭐⭐⭐ **A ESCADA DO PREÇO** — corra-a à mão, em RELEASE, com a máquina calma.
 #[test]
-#[ignore = "sonda de preço — corra à mão, em RELEASE, com a máquina calma"]
+#[ignore = "sonda: preço — corra à mão, em RELEASE, com a máquina calma"]
 fn measure_the_soft_body_group() {
     eprintln!(
         "\n  load {}",
@@ -178,7 +178,7 @@ fn measure_the_soft_body_group() {
             .trim()
     );
     eprintln!(
-        "  regime = mediana de {AMOSTRAS} quadros depois de {AQUECE} tiques · um quadro de 60 fps tem 16,67 ms\n"
+        "  regime = minimo / mediana de {AMOSTRAS} quadros depois de {AQUECE} tiques · um quadro de 60 fps tem 16,67 ms\n"
     );
     eprintln!(
         "  {:<20} │ {:>5} │ {:>8} │ {:>9} │ {:>9} │ a alavanca",
@@ -201,15 +201,15 @@ fn measure_the_soft_body_group() {
             LADOS_CONTAGEM
         };
         for &lado in escada {
-            let (ms, linhas) = mede(&m, mole, lado);
+            let (min, ms, linhas) = mede(&m, mole, lado);
             #[expect(clippy::cast_precision_loss, reason = "uma contagem de linhas")]
             let ns = if linhas == 0 {
                 "—".to_string()
             } else {
-                format!("{:.1}", ms * 1e6 / linhas as f64)
+                format!("{:.1}", min * 1e6 / linhas as f64)
             };
             eprintln!(
-                "  {:<20} │ {lado:>5} │ {linhas:>8} │ {ms:>9.3} │ {ns:>9} │ {}",
+                "  {:<20} │ {lado:>5} │ {linhas:>8} │ {min:>7.3} / {ms:>7.3} │ {ns:>9} │ {}",
                 mole.tipo, mole.alavanca
             );
         }

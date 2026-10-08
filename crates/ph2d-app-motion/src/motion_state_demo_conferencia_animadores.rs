@@ -131,9 +131,9 @@ pub(super) fn wave(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> 
   (!) 1: os aneis saem do MEIO da grade -- a fonte de Dirichlet que o no' sempre teve
   (medido: pico em x = -0,50, o centro).
   (!) 2: um segundo berco nasce a' ESQUERDA e as duas frentes se cruzam no caminho
-  (medido: pico em x = -3,00, EXATAMENTE onde a caixa esta').
-  (!) As duas tem amplitude COMPARAVEL de proposito -- 0,2231 contra 0,2770, razao 1,24, e a
-  de baixo tem ate' MENOS pecas estouradas (18 contra 21). Se uma fosse muito maior, 'a de
+  (medido: pico em x = -3,50, a meia celula da caixa, que esta' em -3,00).
+  (!) As duas tem amplitude COMPARAVEL de proposito -- 0,2231 contra 0,2793, razao 1,25, e
+  quase o mesmo numero de pecas estouradas (26 contra 21). Se uma fosse muito maior, 'a de
   baixo mexe mais' responderia por qualquer coisa, e a cena provaria um segundo controle de
   amplitude em vez de um segundo PRODUTOR.
   (!) O que ele deposita PROPAGA: 440 das 441 celulas se movem. Um numero escrito na coluna

@@ -13,6 +13,7 @@
 //! cargo test -p ph2d-gpu-cook --test it -- --ignored --nocapture gpu_cpu_parity_trail
 //! ```
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::{CookClock, GpuCook, plan};
 use ph2d_node_registry::NodeRegistry;
@@ -33,14 +34,6 @@ const EPS_ONDA: f32 = 5e-4;
 const EPS: f32 = 1e-5;
 /// As colunas que são CONTAGENS ou etiquetas — iguais ao bit.
 const EXACTAS: &[&str] = &["trail_age", "blend", "id", "Index", "Count"];
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();

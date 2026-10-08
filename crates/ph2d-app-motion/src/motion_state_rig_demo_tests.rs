@@ -582,7 +582,7 @@ fn extensao_da_cena() -> (f32, f32) {
 /// ⚠️ **Ela lê a MESMA [`extensao_da_cena`] que o gate.** Escrita por si própria, seria uma
 /// segunda resposta à mesma pergunta — e a que o humano lê não seria a que o portão mede.
 #[test]
-#[ignore = "sonda de enquadramento"]
+#[ignore = "sonda: enquadramento"]
 fn diag_a_extensao_da_cena() {
     let (lo, hi) = extensao_da_cena();
     for c in captions() {

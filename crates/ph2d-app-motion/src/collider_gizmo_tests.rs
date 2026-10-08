@@ -196,7 +196,7 @@ fn the_gizmo_paints_every_outline_and_the_handles_of_one_piece() {
 /// **A SONDA DO CUSTO DA TINTA** — de onde sai o [`MAX_CONTORNOS`]: quanto custa codificar `n`
 /// contornos de caixa num quadro.
 #[test]
-#[ignore = "sonda de custo — corre com a maquina calma"]
+#[ignore = "sonda: custo — corre com a maquina calma"]
 fn measure_the_outline_paint_cost() {
     use ph2d_vector::VectorScene;
     for n in [256_usize, 1024, 2048, 4096, 16_384] {

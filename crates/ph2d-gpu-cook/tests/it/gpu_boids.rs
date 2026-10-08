@@ -11,6 +11,7 @@
 //! `#[ignore]`: needs an adapter. Run on the GPU lane:
 //!   cargo test -p ph2d-gpu-cook --test gpu_boids --release -- --ignored --nocapture
 
+use super::placa::try_headless_gpu;
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::{CookClock, GpuCook, plan, read_instances};
 use ph2d_node_registry::NodeRegistry;
@@ -22,14 +23,6 @@ use ph2d_render::SinkStyle;
 const DEFAULT_UV: [f32; 4] = [0.25, 0.25, 0.75, 0.75];
 const DEFAULT_SIZE: [f32; 2] = [0.4, 0.4];
 const FIXED_DT: f64 = 1.0 / 60.0;
-
-fn try_headless_gpu() -> Option<GpuContext> {
-    use std::sync::OnceLock;
-    static SHARED: OnceLock<Option<GpuContext>> = OnceLock::new();
-    SHARED
-        .get_or_init(|| GpuContext::new(GpuContext::default_instance(), None).ok())
-        .clone()
-}
 
 fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();

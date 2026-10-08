@@ -387,7 +387,7 @@ fn a_declaracao_da_membrana_mora_numa_porta_so() {
 /// ⚠️ Com o CONTROLO: o mesmo grafo sem o nome não pode sair com esta razão, senão a recusa seria
 /// incondicional e o gate passaria por ela.
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn the_bridge_cooks_a_document_that_names_the_collider_on_the_cpu() {
     use ph2d_nodegraph::graph::Edge;
     let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {

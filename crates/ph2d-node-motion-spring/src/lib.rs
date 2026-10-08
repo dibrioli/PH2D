@@ -296,6 +296,12 @@ fn solve(
                 v += accel * sub_dt;
                 x += v * sub_dt;
             }
+            // E DEPOIS do passo: o quadro em que ela diverge sai no alvo, nunca NaN/∞ (doc 123 §4
+            // — só a guarda de cima deixava UM quadro não finito chegar ao ecrã).
+            if !(x.is_finite() && v.is_finite()) {
+                x = targets[i];
+                v = 0.0;
+            }
             value[i] = x;
             vel[i] = v;
         }

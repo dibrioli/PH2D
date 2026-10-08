@@ -82,7 +82,7 @@ use super::{carga, fatia, melhor_quente, segmentos};
 /// última linha: o que sobrar depois de `cozer + desenho + resolver` é rasterização, e medi-la
 /// pede o dispositivo.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_the_cpu_frame_with_resolve() {
     let _fatia = fatia();
     let (mut m, saida) = crate::motion_carimbo_probe::monta("grade + carimbo");
@@ -227,7 +227,7 @@ const JANELA: [f64; 2] = [21.8, 6.8];
 /// na mesma proporção de OBJECTOS, mas quanto isso vale em milissegundos de rasterização é outra
 /// medição, e ela pede o dispositivo.
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_what_the_camera_can_see() {
     let _fatia = fatia();
     let (mut m, saida) = crate::motion_carimbo_probe::monta("grade + carimbo");
@@ -305,9 +305,13 @@ fn audit_what_the_camera_can_see() {
         })
         .cloned()
         .collect();
+    // O campo da cena é `(LADO_N − 1)·VAO` — derivado das constantes dela e não um literal: era
+    // `~39` com `LADO_N = 300`, e o tecto de `32 768` por nó fê-lo `181` (doc 123 §4).
+    let vao = f64::from(crate::motion_state::carimbo_demo::VAO);
+    let campo = (f64::from(crate::motion_state::carimbo_demo::LADO_N) - 1.0) * vao;
     assert!(
-        (x1 - x0) > 30.0 && (x1 - x0) < 50.0,
-        "controlo: o campo da CENA mede ~39 unidades de lado, e mediu {:.1}",
+        ((x1 - x0) - campo).abs() < vao,
+        "controlo: o campo da CENA mede {campo:.1} unidades de lado, e mediu {:.1}",
         x1 - x0
     );
     assert!(
@@ -431,7 +435,7 @@ fn audit_what_the_camera_can_see() {
 /// da kurbo. *Uma cura cujo teste custa o que ela poupa não é uma cura*, e foi esta tabela que o
 /// disse (o `desenho` caía `2,3×` para `17×` menos cópias).
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn audit_what_the_cull_buys() {
     let _fatia = fatia();
     let (mut m, saida) = crate::motion_carimbo_probe::monta("grade + carimbo");

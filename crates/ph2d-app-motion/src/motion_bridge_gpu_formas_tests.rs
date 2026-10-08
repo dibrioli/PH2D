@@ -76,7 +76,7 @@ fn estado() -> MotionState {
 /// se vejam — um erro de pose (o `basis` com o sinal trocado, um `anchor` sem pivô) move a borda
 /// inteira de uma estrela, que são dezenas de pixels acima de `16`.
 #[test]
-#[ignore = "precisa de adapter de GPU"]
+#[ignore = "placa: precisa de adapter de GPU"]
 fn as_formas_pela_rota_do_dispositivo_desenham_o_que_a_cpu_desenha() {
     let Some(gpu) = GpuContext::new(GpuContext::default_instance(), None).ok() else {
         panic!("sem adapter — este gate mede a rota do device e nao tem versao de CPU");

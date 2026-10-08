@@ -30,35 +30,35 @@ pub fn grupo() -> Vec<&'static str> {
 }
 
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn audit_the_sim_group() {
     crate::motion_ciclo_probe::retrato(&grupo());
 }
 
 /// **OS PARAMS DE CADA NÓ DO GRUPO** — o que a auditoria compara contra as referências.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_each_sim_node_offers() {
     crate::motion_ciclo_probe::params_de(&grupo());
 }
 
 /// **O QUE O CARTÃO PINTA**, com o rótulo da tela.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_the_sim_card_shows() {
     crate::motion_ciclo_probe::cartao(&grupo());
 }
 
 /// **OS NOMES dos cartões** — o que o tutorial terá de escrever.
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_sim_card_names() {
     crate::motion_ciclo_probe::nomes(&grupo());
 }
 
 /// **O VOCABULÁRIO do grupo** — dois nós que guardam a mesma pergunta chamam-lhe o mesmo nome?
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn the_sim_vocabulary() {
     crate::motion_ciclo_probe::vocabulario(&grupo());
 }
@@ -95,7 +95,7 @@ fn the_force_family_is_derived_and_not_empty() {
 /// cargo test -p ph2d-app-motion --lib -- --ignored --nocapture which_sim_nodes_have_a_place
 /// ```
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn which_sim_nodes_have_a_place() {
     use ph2d_nodegraph::cook::OpResolver;
     let m = crate::motion_state::MotionState::new();
@@ -231,7 +231,7 @@ fn every_section_of_this_group_names_a_param_that_exists() {
 /// `Box Width`/`Box Height` onde o default mostraria `Radius`. *Um tutorial nomeia o que o dono
 /// vê, e o que ele vê é a CENA.*
 #[test]
-#[ignore = "sonda de auditoria — corra à mão"]
+#[ignore = "sonda: auditoria — corra à mão"]
 fn what_the_sim_scene_cards_show() {
     let mut m = crate::motion_state::MotionState::new();
     let _ = crate::motion_demo_legend::monta("113", &mut m.doc, &m.registry);
@@ -426,7 +426,7 @@ fn every_row_the_sim_tutorial_names_is_on_the_card() {
 /// cargo test -p ph2d-app-motion --lib --release -- --ignored --nocapture measure_the_sim_group
 /// ```
 #[test]
-#[ignore = "sonda de medição — corra à mão, em RELEASE e com a máquina calma"]
+#[ignore = "sonda: medição — corra à mão, em RELEASE e com a máquina calma"]
 fn measure_the_sim_group() {
     let lado: f32 = std::env::var("PH2D_LADO")
         .ok()

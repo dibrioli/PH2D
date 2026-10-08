@@ -13,10 +13,9 @@ const C: [f32; 2] = [400.0, 300.0];
 fn hero_with(n: usize) -> HeroScreen {
     let mut h = HeroScreen::new(NodeId(1));
     let items: Vec<RadialItem> = (0..n)
-        .map(|i| RadialItem {
-            label: format!("T{i}"),
+        .map(|i| {
             #[allow(clippy::cast_possible_truncation)]
-            id: NodeId(9000 + i as u64),
+            RadialItem::leaf(format!("T{i}"), NodeId(9000 + i as u64))
         })
         .collect();
     assert!(h.store.open_radial(C, items), "a fixture não abriu o menu");
@@ -79,10 +78,9 @@ fn an_empty_menu_refuses_to_open() {
 #[test]
 fn the_overflow_sector_is_not_a_command() {
     let many: Vec<RadialItem> = (0..20)
-        .map(|i| RadialItem {
-            label: format!("T{i}"),
+        .map(|i| {
             #[allow(clippy::cast_possible_truncation)]
-            id: NodeId(9000 + i as u64),
+            RadialItem::leaf(format!("T{i}"), NodeId(9000 + i as u64))
         })
         .collect();
     let fitted = radial::fit(many);

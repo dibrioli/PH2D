@@ -150,7 +150,9 @@ impl App {
             //
             // ⚠️ Sobre o grafo do Motion o `P` é dele: aquele router já devolveu antes deste
             // `match`, e esta lei não o alcança.
-            KeyCode::KeyP if !cmd_chord => {
+            // ⚠️ Com o vetor na mão o `P` é a Caneta e a cadeia dele já devolveu: lá a roda é o `J`
+            // (decisão do dono, 08/10 — D10 F4); o `J` vale em todo o lado, o mesmo gesto.
+            KeyCode::KeyP | KeyCode::KeyJ if !cmd_chord => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     let items = ph2d_editor_core::screens::hero::radial::build_radial_model(hero);
                     let center = [self.last_pointer.0, self.last_pointer.1];

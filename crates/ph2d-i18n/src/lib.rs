@@ -83,6 +83,8 @@ mod shell_media;
 mod timeline;
 mod vector;
 mod vector_bars;
+/// O alcance das barras (D10, F4–F5): o radial por famílias, a paleta que ensina, o toque.
+mod chrome_reach;
 /// As strings que o MOTOR publica para o painel de Vector (efeitos, filtros, misturas).
 mod vector_engine;
 
@@ -520,6 +522,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| quatro_motores::tr(k))
             .or_else(|| vector_engine::tr(k))
             .or_else(|| vector_bars::tr(k))
+            .or_else(|| chrome_reach::tr(k))
             .or_else(|| shell::tr(k))
             .or_else(|| shell_media::tr(k))
             .or_else(|| app_components::tr(k))

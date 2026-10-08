@@ -51,17 +51,65 @@ pub fn build_radial_model(hero: &HeroScreen) -> Vec<RadialItem> {
     // `split(Divider).nth(1)`, e no dia em que os dois toggles de painel saíram da lista para o
     // menu *Ver* o `1` passou a apontar para *espaço/vista*: o radial das FERRAMENTAS passou a
     // oferecer *Frame view*. O gate apanhou-o; a cura foi deixar de haver número.
+    if let Some(bars) = hero.store.tool_bars().filter(|b| !b.column.is_empty()) {
+        return from_column(&bars.column);
+    }
     let entries = super::left_rail::tool_section(&hero.store, hero.rail_shows_painter_tools());
     let tools: Vec<RadialItem> = entries
         .iter()
-        .filter_map(|e| {
-            Some(RadialItem {
-                label: e.label()?.to_string(),
-                id: e.node_id()?,
-            })
-        })
+        .filter_map(|e| Some(RadialItem::leaf(e.label()?, e.node_id()?)))
         .collect();
     fit(tools)
+}
+
+/// **A COLUNA ① DE UM MÓDULO, sob a caneta** (F4) — um sector por GRUPO da coluna (os grupos são as
+/// famílias que o módulo declarou, não uma escolha daqui), e o grupo abre em leque.
+///
+/// ⚠️ **As amostras ficam de fora**: o clique sem Down não as opera (abrem pelo seletor), e o radial
+/// só oferece o que um `Click(id)` executa.
+///
+/// ⚠️ **O último sector é SEMPRE a porta para a paleta**: a roda mostra a ①, e as opções da ② e as
+/// ações da ④ moram na paleta — a porta diz onde está o resto.
+#[must_use]
+pub fn from_column(column: &[Vec<crate::interaction::BarButton>]) -> Vec<RadialItem> {
+    use crate::interaction::BarFace;
+    let mut groups: Vec<RadialItem> = column
+        .iter()
+        .filter_map(|g| {
+            let leaves: Vec<RadialItem> = g
+                .iter()
+                .filter(|b| !matches!(b.face, BarFace::Swatch { .. }))
+                .map(|b| RadialItem::leaf(b.label.clone(), b.id))
+                .collect();
+            let family = g.first()?.family;
+            match leaves.len() {
+                0 => None,
+                1 => leaves.into_iter().next(),
+                _ => Some(RadialItem::family(
+                    ph2d_i18n::tr(family.name_key()),
+                    fit_fan(leaves),
+                )),
+            }
+        })
+        .collect();
+    groups.truncate(MAX_SECTORS - 1);
+    groups.push(more());
+    groups
+}
+
+/// O leque também não corta em silêncio: acima de [`crate::widget::RADIAL_FAN_MAX`] o último filho
+/// é a porta.
+fn fit_fan(mut items: Vec<RadialItem>) -> Vec<RadialItem> {
+    let max = crate::widget::RADIAL_FAN_MAX;
+    if items.len() > max {
+        items.truncate(max - 1);
+        items.push(more());
+    }
+    items
+}
+
+fn more() -> RadialItem {
+    RadialItem::leaf(MORE_LABEL.tr(), RADIAL_MORE)
 }
 
 /// **O QUE CABE, mais a porta para o resto.**
@@ -75,10 +123,7 @@ pub fn fit(mut items: Vec<RadialItem>) -> Vec<RadialItem> {
         return items;
     }
     items.truncate(MAX_SECTORS - 1);
-    items.push(RadialItem {
-        label: MORE_LABEL.tr().to_string(),
-        id: RADIAL_MORE,
-    });
+    items.push(more());
     items
 }
 

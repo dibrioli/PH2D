@@ -4,10 +4,9 @@ use super::*;
 
 fn items(n: usize) -> Vec<RadialItem> {
     (0..n)
-        .map(|i| RadialItem {
-            label: format!("T{i}"),
+        .map(|i| {
             #[allow(clippy::cast_possible_truncation)]
-            id: NodeId(1000 + i as u64),
+            RadialItem::leaf(format!("T{i}"), NodeId(1000 + i as u64))
         })
         .collect()
 }
@@ -93,4 +92,76 @@ fn the_model_takes_the_rails_tool_section() {
         "a secção de ferramentas não chegou ao radial: {:?}",
         model.iter().map(|i| &i.label).collect::<Vec<_>>()
     );
+}
+
+/// ⭐ **A COLUNA DE UM MÓDULO ENTRA INTEIRA, A DOIS GESTOS** (F4) — um sector por grupo, a família
+/// abre em leque, as amostras ficam de fora, e o último sector é a porta para a paleta.
+///
+/// ⚠️ A forma da coluna é a do vetor (2 · 4 · 4 · 4 · 3 · cor), 17 ferramentas: com «as 7 mais
+/// usadas + mais» dez delas iriam para trás da porta; com as famílias, nenhuma.
+#[test]
+fn a_module_column_enters_whole_two_strokes_deep() {
+    use crate::interaction::{BarButton, BarFace, BarFamily};
+    let b = |id: u64, family| BarButton {
+        id: NodeId(id),
+        face: BarFace::Icon(crate::icons::IconId::Select),
+        label: format!("B{id}"),
+        on: false,
+        family,
+    };
+    let sw = |id: u64| BarButton {
+        face: BarFace::Swatch {
+            rgba: None,
+            ring: false,
+        },
+        ..b(id, BarFamily::Colour)
+    };
+    let fams = [
+        (BarFamily::Neutral, 2),
+        (BarFamily::Draw, 4),
+        (BarFamily::Build, 4),
+        (BarFamily::Carve, 4),
+        (BarFamily::Stroke, 3),
+    ];
+    let mut next = 1u64;
+    let mut column: Vec<Vec<BarButton>> = fams
+        .iter()
+        .map(|&(f, k)| {
+            (0..k)
+                .map(|_| {
+                    next += 1;
+                    b(next, f)
+                })
+                .collect()
+        })
+        .collect();
+    column.push(vec![
+        sw(90),
+        sw(91),
+        b(92, BarFamily::Colour),
+        b(93, BarFamily::Colour),
+        b(94, BarFamily::Colour),
+    ]);
+    let model = from_column(&column);
+    assert_eq!(model.len(), 7, "seis grupos e a porta");
+    assert_eq!(model.last().map(|i| i.id), Some(RADIAL_MORE), "a porta não é a última");
+    let leaves: Vec<NodeId> = model
+        .iter()
+        .flat_map(|i| {
+            if i.children.is_empty() {
+                vec![i.id]
+            } else {
+                i.children.iter().map(|c| c.id).collect()
+            }
+        })
+        .collect();
+    for g in &column {
+        for btn in g {
+            let n = leaves.iter().filter(|&&id| id == btn.id).count();
+            let want = usize::from(!matches!(btn.face, BarFace::Swatch { .. }));
+            assert_eq!(n, want, "{} aparece {n}× (esperado {want})", btn.label);
+        }
+    }
+    assert_eq!(model[0].label, ph2d_i18n::tr(BarFamily::Neutral.name_key()));
+    assert_eq!(model[5].label, ph2d_i18n::tr(BarFamily::Colour.name_key()));
 }

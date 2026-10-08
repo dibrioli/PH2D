@@ -42,6 +42,7 @@ mod popover;
 mod progress_bar;
 mod property_box;
 mod radial_menu;
+mod radial_fan;
 mod radio_group;
 mod rect2_editor;
 pub mod scroll_area;
@@ -163,6 +164,12 @@ pub use property_box::{ColunaDoPainel, Seccao, colunas_da_linha};
 pub use radial_menu::{
     MAX_SECTORS as RADIAL_MAX_SECTORS, RadialItem, RadialOpen, dead_zone_px as radial_dead_zone_px,
     item_offset as radial_item_offset, paint_radial_menu, sector_at as radial_sector_at,
+};
+pub use radial_fan::{
+    FAMILY_ID as RADIAL_FAMILY_ID, FAN_MAX as RADIAL_FAN_MAX, RadialFan, fan_center as radial_fan_center,
+    fan_child_at as radial_fan_child_at, fan_offset as radial_fan_offset,
+    fan_radius_px as radial_fan_radius_px,
+    outward as radial_outward, chosen as radial_chosen, point as radial_point,
 };
 pub use radio_group::{
     RadioGroup, RadioOption, RadioOrientation, paint_radio_group, paint_radio_group_with_labels,

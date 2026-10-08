@@ -41,7 +41,10 @@ impl App {
         // separá-las daria a este sítio a chance de fechar sem ler — que é como um menu perde a
         // escolha do artista em silêncio.
         if matches!(
-            (state, PhysicalKey::Code(KeyCode::KeyP) == physical_key),
+            (
+                state,
+                matches!(physical_key, PhysicalKey::Code(KeyCode::KeyP | KeyCode::KeyJ))
+            ),
             (ElementState::Released, true)
         ) {
             self.radial_commit();

@@ -55,6 +55,30 @@ pub struct RadialItem {
     /// O id que o router da paleta reconhece. ⚠️ **Nunca um verbo próprio**: o radial é uma VISTA
     /// da lista que o app já oferece, e quem executa é quem já executava.
     pub id: NodeId,
+    /// Uma FAMÍLIA abre um leque com estes (F4, [`super::radial_fan`]); vazio = um comando.
+    pub children: Vec<RadialItem>,
+}
+
+impl RadialItem {
+    /// Um comando.
+    #[must_use]
+    pub fn leaf(label: impl Into<String>, id: NodeId) -> Self {
+        Self {
+            label: label.into(),
+            id,
+            children: Vec::new(),
+        }
+    }
+
+    /// Uma família: ela própria NÃO é um comando ([`super::radial_fan::FAMILY_ID`]).
+    #[must_use]
+    pub fn family(label: impl Into<String>, children: Vec<RadialItem>) -> Self {
+        Self {
+            label: label.into(),
+            id: super::radial_fan::FAMILY_ID,
+            children,
+        }
+    }
 }
 
 /// **O PIE MENU ABERTO** — onde ele nasceu, o que ele oferece, e o que está aceso.
@@ -67,6 +91,8 @@ pub struct RadialOpen {
     pub items: Vec<RadialItem>,
     /// O sector sob o ponteiro, ou `None` na zona morta (o cancelar).
     pub hot: Option<usize>,
+    /// O leque da família acesa, depois de o ponteiro atravessar o anel.
+    pub fan: Option<super::radial_fan::RadialFan>,
 }
 
 /// **QUE SECTOR ESTÁ SOB O PONTEIRO** — a lei pura do radial, sem tela e sem estado.
@@ -136,9 +162,9 @@ pub fn paint_radial_menu(
     text_system: &mut ph2d_text::TextSystem,
     theme: ph2d_tokens::Theme,
 ) {
-    use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
+    use crate::paint::{fill_rounded_rect, resolve};
     use crate::zones::Rect;
-    use ph2d_tokens::{ColorToken, Radius, StrokeToken, TypeToken};
+    use ph2d_tokens::{ColorToken, StrokeToken};
 
     let n = open.items.len();
     // O disco do centro: a zona morta, desenhada para o artista SABER onde ela acaba.
@@ -161,68 +187,90 @@ pub fn paint_radial_menu(
         resolve(ColorToken::Border, theme),
     );
 
-    // ⭐ Raio e moldura pela porta do TEMA: as etiquetas são planas num tema moderno, e a que
-    //    está acesa diz-se pela tinta.
-    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
     for (i, item) in open.items.iter().enumerate() {
+        // ⭐ Com o leque aberto só fica o PAI: o resto do anel cederia o lugar aos filhos (o menu
+        // hierárquico de marcação esconde o nível de cima — F4).
+        if open.fan.is_some_and(|f| f.parent != i) {
+            continue;
+        }
         let o = item_offset(i, n);
-        let (w, h) = (label_w_px(), label_h_px());
-        let r = Rect::new(
-            open.center[0] + o[0] - w * 0.5,
-            open.center[1] + o[1] - h * 0.5,
-            w,
-            h,
-        );
-        let lit = open.hot == Some(i);
-        fill_rounded_rect(
-            scene,
-            r,
-            radius,
-            resolve(
-                if lit {
-                    ColorToken::AccentSoft
-                } else {
-                    ColorToken::Bg1
-                },
-                theme,
-            ),
-        );
-        crate::paint::stroke_frame(
-            scene,
-            r,
-            radius,
-            theme,
-            if lit {
-                ph2d_tokens::visuals::Feel::Active
-            } else {
-                ph2d_tokens::visuals::Feel::Rest
-            },
-            StrokeToken::Thin.px(),
-            resolve(
-                if lit {
-                    ColorToken::Accent
-                } else {
-                    ColorToken::Border
-                },
-                theme,
-            ),
-        );
-        paint_text_centered(
-            text_system,
-            scene,
-            &item.label,
-            r,
-            TypeToken::Sm.px(),
-            resolve(
-                if lit {
-                    ColorToken::Text1
-                } else {
-                    ColorToken::Text2
-                },
-                theme,
-            ),
-        );
+        let at = [open.center[0] + o[0], open.center[1] + o[1]];
+        paint_label(scene, text_system, theme, at, &item.label, open.hot == Some(i));
     }
+    super::radial_fan::paint_fan(open, scene, text_system, theme);
+}
+
+/// Um rótulo do radial centrado em `at` — o anel e o leque pintam pela MESMA porta.
+///
+/// ⭐ Raio e moldura pela porta do TEMA: as etiquetas são planas num tema moderno, e a que está
+/// acesa diz-se pela tinta.
+pub(super) fn paint_label(
+    scene: &mut ph2d_vector::VectorScene,
+    text_system: &mut ph2d_text::TextSystem,
+    theme: ph2d_tokens::Theme,
+    at: [f32; 2],
+    label: &str,
+    lit: bool,
+) {
+    use crate::paint::{fill_rounded_rect, paint_text_centered, resolve};
+    use ph2d_tokens::{ColorToken, Radius, StrokeToken, TypeToken};
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    let r = label_rect(at);
+    fill_rounded_rect(
+        scene,
+        r,
+        radius,
+        resolve(
+            if lit {
+                ColorToken::AccentSoft
+            } else {
+                ColorToken::Bg1
+            },
+            theme,
+        ),
+    );
+    crate::paint::stroke_frame(
+        scene,
+        r,
+        radius,
+        theme,
+        if lit {
+            ph2d_tokens::visuals::Feel::Active
+        } else {
+            ph2d_tokens::visuals::Feel::Rest
+        },
+        StrokeToken::Thin.px(),
+        resolve(
+            if lit {
+                ColorToken::Accent
+            } else {
+                ColorToken::Border
+            },
+            theme,
+        ),
+    );
+    paint_text_centered(
+        text_system,
+        scene,
+        label,
+        r,
+        TypeToken::Sm.px(),
+        resolve(
+            if lit {
+                ColorToken::Text1
+            } else {
+                ColorToken::Text2
+            },
+            theme,
+        ),
+    );
+}
+
+/// A caixa de um rótulo centrado em `at` — o desenho e o gate de sobreposição medem a mesma.
+#[must_use]
+pub fn label_rect(at: [f32; 2]) -> crate::zones::Rect {
+    let (w, h) = (label_w_px(), label_h_px());
+    crate::zones::Rect::new(at[0] - w * 0.5, at[1] - h * 0.5, w, h)
 }
 
 /// A caixa de um rótulo, em px de tela — do catálogo, como tudo o resto.

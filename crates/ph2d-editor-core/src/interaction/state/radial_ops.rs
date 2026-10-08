@@ -23,6 +23,7 @@ impl WidgetStore {
             center,
             items,
             hot: None,
+            fan: None,
         });
         true
     }
@@ -33,15 +34,14 @@ impl WidgetStore {
     /// faz as duas, e separá-las daria ao chamador a chance de fechar sem ler — que é como um menu
     /// perde a escolha do artista em silêncio.
     pub fn close_radial(&mut self) -> Option<crate::widget::RadialItem> {
-        let open = self.radial.take()?;
-        let i = open.hot?;
-        open.items.get(i).cloned()
+        // ⚠️ Uma FAMÍLIA não sai daqui: só a folha do anel ou o filho aceso do leque (F4).
+        crate::widget::radial_chosen(&self.radial.take()?)
     }
 
     /// O ponteiro mexeu-se: recalcula que sector está aceso. No-op sem menu aberto.
     pub fn radial_point(&mut self, pointer: [f32; 2]) {
         if let Some(r) = self.radial.as_mut() {
-            r.hot = crate::widget::radial_sector_at(r.center, pointer, r.items.len());
+            crate::widget::radial_point(r, pointer);
         }
     }
 

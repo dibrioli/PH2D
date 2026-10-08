@@ -73,7 +73,8 @@ pub fn instantiate_master(
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
     link: ArtLink,
 ) -> Result<Entity, Refusal> {
-    let mut v = instantiate_master_many(sim, registry, master_root, parent, docs, link, 1)?;
+    // ⭐ A porta do EDITOR anuncia a cópia (a Animação segue-a — `ph2d_ecs::SubtreeCopies`).
+    let mut v = instantiate_copies(sim, registry, master_root, parent, docs, link, 1, true)?;
     Ok(v.remove(0))
 }
 
@@ -102,6 +103,21 @@ pub fn instantiate_master_many(
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
     link: ArtLink,
     n: u32,
+) -> Result<Vec<Entity>, Refusal> {
+    instantiate_copies(sim, registry, master_root, parent, docs, link, n, false)
+}
+
+/// O corpo das duas portas; `announce` = a cópia é do EDITOR (ver `ph2d_ecs::SubtreeCopies`).
+#[allow(clippy::too_many_arguments)]
+fn instantiate_copies(
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    master_root: Entity,
+    parent: Option<Entity>,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
+    link: ArtLink,
+    n: u32,
+    announce: bool,
 ) -> Result<Vec<Entity>, Refusal> {
     if n == 0 {
         return Ok(Vec::new());
@@ -153,6 +169,9 @@ pub fn instantiate_master_many(
             .remove::<ph2d_ecs::ObjectInstance>();
         let report = crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy);
         report.warn("instanciar");
+        if announce {
+            ph2d_ecs::announce_copy(sim.world_mut(), &copy);
+        }
         let pieces = copy.copies();
 
         // ⚠️⚠️ **A ORDEM destes dois passos é load-bearing, e o erro é silencioso.**
@@ -288,7 +307,7 @@ pub fn duplicate_subtree(
     src: Entity,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
     step: [f32; 2],
-) -> Option<Duplicated> {
+) -> Option<Entity> {
     let parent = sim.world().get::<ph2d_ecs::ChildOf>(src).map(|c| c.0);
     let base = sim
         .world()
@@ -299,6 +318,8 @@ pub fn duplicate_subtree(
     // ⭐ A mesma metade que a instanciação paga: sem ela, duplicar um GRUPO com formas vetoriais
     // dentro devolve as peças sem geometria (F4.6).
     crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy).warn("duplicar");
+    // ⭐ A cópia leva a Animação PRÓPRIA (doc ObjectsAndComponents 01 §6) — anunciada ao mundo.
+    ph2d_ecs::announce_copy(sim.world_mut(), &copy);
     crate::instance_refs::remap_object_refs(sim.world_mut(), &copy.copies(), &copy.stable_ids);
 
     // ⭐⭐⭐ **A cópia não é uma receita** — ver o doc. É a mesma linha que o `instantiate_master`
@@ -340,25 +361,7 @@ pub fn duplicate_subtree(
     ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
     // A cópia de um mestre é um mestre: as peças dela têm de ser marcadas já.
     ph2d_ecs::assign_master_pieces(sim.world_mut());
-    Some(Duplicated {
-        root: copy.root,
-        pairs: copy
-            .entities
-            .iter()
-            .map(|(s, d)| (s.to_bits(), d.to_bits()))
-            .collect(),
-    })
-}
-
-/// **O que um *Duplicate* devolve**: a raiz da cópia e o par `(original, cópia)` de cada entidade
-/// — o que os documentos POR OBJECTO que vivem fora do mundo (a Animação na Timeline, doc
-/// ObjectsAndComponents 01 §6) precisam para seguir a cópia.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Duplicated {
-    /// A raiz da cópia.
-    pub root: Entity,
-    /// `(bits do original, bits da cópia)`, por entidade da sub-árvore.
-    pub pairs: Vec<(u64, u64)>,
+    Some(copy.root)
 }
 
 /// ⭐⭐ **Materializa UMA peça do mestre dentro de uma instância** (ADR-0164 / F5.1).

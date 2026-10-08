@@ -74,7 +74,6 @@ pub(super) fn drain(
     vec_pen: &mut ph2d_vec_edit::PenTool,
     duplicate_made: &mut Option<(u64, u64)>,
     registry: &ph2d_ecs::scene::ComponentRegistry,
-    timeline: &mut ph2d_timeline::TimelineState,
 ) -> bool {
     // ⚠️ **Uma forma VETORIAL não se duplica clonando a entidade.** O dono da geometria é o
     // documento, e `vec_entities::sync` mantém UMA entidade por path, nas duas direções:
@@ -146,9 +145,6 @@ pub(super) fn drain(
     ) else {
         return false;
     };
-    // ⭐ A cópia leva a Animação PRÓPRIA (doc ObjectsAndComponents 01 §6, escolha do dono 08/10).
-    ph2d_timeline_persist::copy_animations(timeline, &copy.pairs);
-    let copy = copy.root;
     // Report the pair so the caller can fork the copy's texture off the source (independent
     // object) + flush any live paint on the source first. Only matters for sprite entities.
     if sprite {

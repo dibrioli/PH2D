@@ -109,3 +109,33 @@ fn duplicar_da_a_copia_clips_proprios_num_passo_do_undo() {
         "sem Animação, nada"
     );
 }
+
+#[test]
+fn a_copia_que_o_editor_anuncia_leva_a_animacao_no_quadro_seguinte() {
+    let mut sim = SimWorld::new();
+    let e = heroi(&mut sim);
+    let mut reg = ph2d_ecs::scene::ComponentRegistry::new();
+    ph2d_ecs::scene::register_ecs_components(&mut reg);
+    let mut timeline = TimelineState::new();
+    timeline
+        .doc
+        .add_clip_for("andar".into(), e.to_bits())
+        .unwrap();
+    let copia = ph2d_ecs::deep_copy_subtree(sim.world_mut(), &reg, e, None).unwrap();
+    ph2d_ecs::announce_copy(sim.world_mut(), &copia);
+
+    assert!(!upkeep(&mut timeline, sim.world_mut()));
+    assert!(
+        timeline.doc.has_animation(copia.root.to_bits()),
+        "a cópia ganhou clips próprios"
+    );
+    assert!(
+        ph2d_ecs::take_copies(sim.world_mut()).is_empty(),
+        "o anúncio foi drenado"
+    );
+    assert_eq!(
+        timeline.doc.clips_of(e.to_bits()).count(),
+        1,
+        "o original fica como estava"
+    );
+}

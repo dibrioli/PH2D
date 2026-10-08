@@ -129,6 +129,12 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
     // física chama isto em vez de contar com outro sistema. Idempotente e sem alocação quando
     // não há nada a atribuir (`collect` de um iterador vazio não toca no heap).
     ph2d_ecs::assign_missing_stable_ids(world);
+    // ⭐ As cópias do EDITOR (Duplicate, Make, Instantiate, colocar um prefab) levam a Animação
+    // PRÓPRIA (escolha do dono, 08/10) — anunciadas pelas portas de cópia (`SubtreeCopies`).
+    let copias = ph2d_ecs::take_copies(world);
+    if !copias.is_empty() {
+        copy_animations(timeline, &copias);
+    }
     // O DONO de um clip morre com o objecto — a liveness das bindings é do apply; a do dono é
     // daqui, que é quem tem o mundo e a cura (doc_owner.rs).
     for o in timeline.doc.clip_owners_mut() {

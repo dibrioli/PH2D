@@ -108,8 +108,7 @@ fn the_printed_steps_are_what_the_scene_actually_does() {
         },
         [0.4, 0.0],
     )
-    .expect("duplicou o braco")
-    .root;
+    .expect("duplicou o braco");
     // ⚠️ **O nome é o que o smoke IMPRIME no rótulo do botão** — se o `unique_name` mudar de
     // sufixo, o passo 3 manda o dono procurar um botão que não existe.
     assert_eq!(

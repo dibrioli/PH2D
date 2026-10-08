@@ -67,7 +67,6 @@ fn duplicate(
         },
         TEST_STEP,
     )
-    .map(|d| d.root)
 }
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
@@ -535,5 +534,46 @@ fn duplicating_a_recipe_given_piece_gives_an_authored_object() {
         sim.world().get::<InstanceOf>(copy).is_none(),
         "o duplicado herdou o elo — ele e' um segundo pretendente a' mesma peca do mestre, e o \
          sync reescreve os dois"
+    );
+}
+
+/// ⭐ **As portas do EDITOR anunciam a cópia; a da Fábrica não** (doc ObjectsAndComponents 01 §6,
+/// escolha do dono 08/10: a cópia de um prefab leva clips próprios). Quem lê o anúncio é a
+/// Timeline (`ph2d_timeline_persist::upkeep`); uma bala da Fábrica não ganha clips.
+#[test]
+fn o_editor_anuncia_a_copia_e_a_fabrica_nao() {
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let (master, _) = ragdoll(&mut sim, &r);
+    let _ = ph2d_ecs::take_copies(sim.world_mut());
+
+    let inst = instantiate(&mut sim, &r, master, None).expect("instanciou");
+    let pares = ph2d_ecs::take_copies(sim.world_mut());
+    assert!(
+        pares.contains(&(master.to_bits(), inst.to_bits())),
+        "a raiz: {pares:?}"
+    );
+    assert!(pares.len() > 1, "e cada peça da receita");
+
+    let dup = duplicate(&mut sim, &r, inst).expect("duplicou");
+    assert!(ph2d_ecs::take_copies(sim.world_mut()).contains(&(inst.to_bits(), dup.to_bits())));
+
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    super::instantiate_master_many(
+        &mut sim,
+        &r,
+        master,
+        None,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+        crate::instantiate::ArtLink::Own,
+        3,
+    )
+    .expect("a fábrica instanciou");
+    assert!(
+        ph2d_ecs::take_copies(sim.world_mut()).is_empty(),
+        "a Fábrica (cópias de jogo) não anuncia"
     );
 }

@@ -41,6 +41,7 @@ fn full_registry() -> ComponentRegistry {
     ph2d_script::register_script_components(&mut reg);
     ph2d_physics_ecs::register_physics_components(&mut reg);
     ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
+    ph2d_light2d_ecs::register_light2d_components(&mut reg);
     reg
 }
 

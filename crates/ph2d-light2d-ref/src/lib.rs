@@ -198,9 +198,9 @@ pub fn fluencia(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {
         let v = [q.centro[0] - ponto[0], q.centro[1] - ponto[1]];
         let r = v[0].hypot(v[1]);
         if r == 0.0 {
-            for ch in 0..3 {
-                if q.intensidade[ch] > 0.0 {
-                    total[ch] = f64::INFINITY;
+            for (tot, &i) in total.iter_mut().zip(&q.intensidade) {
+                if i > 0.0 {
+                    *tot = f64::INFINITY;
                 }
             }
             continue;
@@ -211,8 +211,8 @@ pub fn fluencia(cena: &CenaDeLuz, ponto: [f64; 2]) -> [f64; 3] {
         }
         // Até ao ponto, só contam as entradas ANTES dele.
         let w = transmissao_ate(&objetos, &buf, r) * queda(r, q.alcance) / r;
-        for ch in 0..3 {
-            total[ch] += q.intensidade[ch] * w;
+        for (tot, &i) in total.iter_mut().zip(&q.intensidade) {
+            *tot += i * w;
         }
     }
     total

@@ -31,6 +31,8 @@ pub mod core;
 /// ⭐⭐⭐ **O HUD** (TOP-20 #20) — a raiz, o rótulo, o botão e o contador.
 pub mod hud;
 pub mod image;
+/// ⭐ **A LUZ 2D** — a fonte, quem bloqueia, quem não recebe.
+pub mod light;
 /// ⭐⭐⭐ **LÓGICA DE JOGO sem script** (TOP-20 #2–#5) — o `Timer` é o primeiro.
 pub mod logic;
 /// ⭐⭐⭐ **O EMISSOR DE PARTÍCULAS** (TOP-20 #18) — a fachada sobre a simulação do Motion.
@@ -51,6 +53,7 @@ const FAMILIES: &[&[ComponentDesc]] = &[
     core::DESCS,
     hud::DESCS,
     image::DESCS,
+    light::DESCS,
     logic::DESCS,
     particles::DESCS,
     physics::DESCS,

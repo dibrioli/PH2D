@@ -43,7 +43,7 @@ pub const fn item_id(canonical_name: &'static str) -> NodeId {
     ph2d_tool_registry::hash_node_id(canonical_name)
 }
 
-/// A tinta de cada categoria. ⚠️ Ver a nota do módulo: **15** categorias, 7 tokens.
+/// A tinta de cada categoria. ⚠️ Ver a nota do módulo: **16** categorias, 7 tokens.
 fn cat_token(c: C) -> ColorToken {
     match c {
         // O que todo objeto É.
@@ -69,6 +69,9 @@ fn cat_token(c: C) -> ColorToken {
         // ⛔ não com a das saídas: uma câmera não produz nada, ela escolhe o que se vê. É a mesma
         // distinção que separou a família Câmera de `Rendering` no catálogo.
         C::Camera => ColorToken::NodeCatFocus,
+        // ⭐ A LUZ fica com a cor de quem ORIGINA: uma lâmpada é uma fonte, não uma saída nem um
+        // enquadramento.
+        C::Light => ColorToken::NodeCatSource,
         // ⭐ O que FAZ ACONTECER — a lógica autorada (`Timer`, e a fila do TOP-20 atrás dele) ao
         // lado do script, porque é a mesma pergunta com e sem código. ⚠️ Este braço dizia «o
         // resto», e a categoria nova obrigou a nomeá-lo: *um braço chamado «o resto» aceita

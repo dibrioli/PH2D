@@ -183,6 +183,8 @@ ph2d-skeleton-live = { path = "../../crates/ph2d-skeleton-live" }
 ph2d-image-import = { path = "../../crates/ph2d-image-import" }
 ph2d-skeleton-render = { path = "../../crates/ph2d-skeleton-render" }
 ph2d-skeleton-ecs = { path = "../../crates/ph2d-skeleton-ecs" }
+# A luz 2D (`docs/Luz2D/01_plano.md`): os componentes e a porta de registo, no molde do esqueleto.
+ph2d-light2d-ecs = { path = "../../crates/ph2d-light2d-ecs" }
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
 # ⭐ O verbo do osso e o pincel de peso (A14: sairam da ferramenta Vector).
 ph2d-tool-bone = { path = "../../crates/ph2d-tool-bone" }

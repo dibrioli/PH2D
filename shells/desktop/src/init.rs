@@ -68,6 +68,8 @@ pub(crate) fn build_component_registry() -> ComponentRegistry {
     // faria crescer uma vez por cliente. Sem esta linha o WorldSnapshot descarta-os EM SILÊNCIO, e
     // o sintoma é o personagem perder o esqueleto ao desfazer.
     ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
+    // A luz 2D (Luz, BloqueiaLuz, NaoRecebeLuz) — sem esta linha o WorldSnapshot a descarta.
+    ph2d_light2d_ecs::register_light2d_components(&mut reg);
     // ⭐⭐⭐ O SCRIPT DO ARTISTA (TOP-20 #16, 2026-09-16) — o sexto registador, que ficou de fora do
     // boot desde o M14 com a consequência escrita no catálogo: um `LuauScript` era descartado EM
     // SILÊNCIO pelo WorldSnapshot. Entrar aqui é o degrau `133 → 134` do `PROJECT_SCHEMA`.

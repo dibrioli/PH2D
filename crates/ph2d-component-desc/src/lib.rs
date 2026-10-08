@@ -556,11 +556,17 @@ pub enum ComponentCategory {
     /// a resposta — um `follow_enabled` dentro da câmera daria o mesmo estado com cinco controlos
     /// mortos à vista de quem só quer uma câmera fixa.*
     Camera,
+    /// ⭐ **A LUZ 2D** (2026-10-08, `docs/Luz2D/01_plano.md`) — quem ilumina, quem bloqueia, quem
+    /// não recebe.
+    ///
+    /// ⛔ **A alternativa era `Rendering`, e seria mentir** pela mesma razão da Câmera: a `Luz` é um
+    /// objecto da CENA (muitas vezes sem pixels), não uma propriedade de como um pixel sai.
+    Light,
 }
 
 impl ComponentCategory {
     /// Todas, na ordem em que a paleta as mostra. ⛔ Fonte única da iteração.
-    pub const ALL: [ComponentCategory; 15] = [
+    pub const ALL: [ComponentCategory; 16] = [
         ComponentCategory::Identity,
         ComponentCategory::Transform,
         ComponentCategory::Ordering,
@@ -574,6 +580,7 @@ impl ComponentCategory {
         ComponentCategory::Logic,
         ComponentCategory::Audio,
         ComponentCategory::Camera,
+        ComponentCategory::Light,
         ComponentCategory::Scripting,
         ComponentCategory::Instancing,
     ];
@@ -596,6 +603,7 @@ impl ComponentCategory {
             ComponentCategory::Logic => "component.category.logic",
             ComponentCategory::Audio => "component.category.audio",
             ComponentCategory::Camera => "component.category.camera",
+            ComponentCategory::Light => "component.category.light",
             ComponentCategory::Instancing => "component.category.instancing",
         }
     }

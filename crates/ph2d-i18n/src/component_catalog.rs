@@ -17,9 +17,9 @@
 //!
 //! | população | esquema | conta |
 //! |---|---|---:|
-//! | o nome de um componente | `component.<snake(tipo)>.name` | 86 |
+//! | o nome de um componente | `component.<snake(tipo)>.name` | 162 |
 //! | o rótulo de um campo | `component.field.<snake(CONST)>.<field_id>` | 128 |
-//! | a família na paleta | `component.category.<snake>` | 15 |
+//! | a família na paleta | `component.category.<snake>` | 16 |
 //! | o tipo de objecto no filtro | `component.object_kind.<snake>` | 5 |
 //!
 //! (As duas últimas eram `16` e `7`: a família *3D* e os tipos *3D Model* e *Sculpt* saíram com o
@@ -54,6 +54,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.audio_listener_2d.name" => "Audio Listener 2D",
         "component.audio_source_2d.name" => "Audio Source 2D",
         "component.blend_mode.name" => "Blend Mode",
+        "component.bloqueia_luz.name" => "Light Occluder",
         "component.bone.name" => "Bone",
         "component.bone_limit.name" => "Angle Limit",
         "component.bone_rest.name" => "Rest Pose",
@@ -67,6 +68,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.category.identity" => "Identity",
         "component.category.image" => "Image",
         "component.category.instancing" => "Instancing",
+        "component.category.light" => "Light",
         "component.category.logic" => "Logic",
         "component.category.ordering" => "Ordering",
         "component.category.physics" => "Physics",
@@ -331,6 +333,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.lock_rotation.name" => "Lock Rotation",
         "component.locked.name" => "Locked",
         "component.luau_script.name" => "Script",
+        "component.luz.name" => "Light 2D",
         "component.mask_2d.name" => "Mask",
         "component.mask_interaction.name" => "Mask Interaction",
         "component.mass_override.name" => "Mass",
@@ -338,6 +341,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.material_combine.name" => "Material Combine",
         "component.name.name" => "Name",
         "component.named_anchor_list.name" => "Anchors",
+        "component.nao_recebe_luz.name" => "Unlit",
         "component.no_wall_cling.name" => "No Wall Cling",
         "component.object_instance.name" => "Overrides",
         "component.object_kind.empty" => "Empty",

@@ -93,14 +93,16 @@ fn a_module_icon_draws_half_again_bigger_inside_the_same_button() {
     // ⚠️ O número do DONO escrito aqui, e não a constante: comparar com a própria constante
     //    aprovava qualquer valor dela (a mutação `1.0` sobrevivia).
     assert!(
-        (depois / antes - 1.5).abs() < 1e-3,
-        "o desenho cresceu {:.3}× (o dono pediu +50 %)",
+        (depois / antes - 1.5 * 1.15).abs() < 1e-3,
+        "o desenho cresceu {:.3}× (o dono pediu +50 % e depois mais 10–20 %: 1,5 × 1,15)",
         depois / antes
     );
-    let f = module_face_rect(r);
+    // O DESENHO com o traço cabe no botão (o quadrado pode passar: é o respiro invisível).
+    let traco = ph2d_tokens::StrokeToken::Default.px();
     assert!(
-        f.x >= r.x && f.y >= r.y && f.x + f.w <= r.x + r.w && f.y + f.h <= r.y + r.h,
-        "a cara passou do botão: {f:?} em {r:?}"
+        depois + traco <= r.w.min(r.h) + 1e-3,
+        "o ícone ({depois:.1} px + traço {traco}) passa do botão de {} px",
+        r.w
     );
     assert_eq!(
         column_rects(area(), &[3])[0].w,

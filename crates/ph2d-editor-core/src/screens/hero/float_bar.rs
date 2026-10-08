@@ -246,18 +246,22 @@ pub fn paint_button(
     resolve(if b.on { ColorToken::Accent } else { b.tint }, theme)
 }
 
-/// ⭐ **Quanto a cara de um botão do MÓDULO cresce sobre o miolo** — `1,5×` o desenho, sem mexer no
-/// botão nem na barra (Enio, 08/10: *«os ícones ficaram pequenos (…) vamos aumentar o tamanho deles
-/// em 50%»*). Num botão de `24 px` o desenho vai de `12,8` a `19,2 px` num quadrado de `23,2`: cabe.
-pub const MODULE_FACE_GROWTH: f32 = 1.5; // LITERAL-PX-OK: a RAZÃO pedida pelo dono (08/10), não um tamanho
+/// ⭐ **Quanto a cara de um botão do MÓDULO cresce sobre o miolo**, sem mexer no botão nem na barra:
+/// `1,5×` (Enio, 08/10: *«vamos aumentar o tamanho deles em 50%»*) e mais `15 %` (o meio do 2.º
+/// pedido, *«mais 10 a 20%»*). Num botão de `24 px` o desenho vai de `12,8` a `22,1 px`.
+pub const MODULE_FACE_GROWTH: f32 = 1.725; // LITERAL-PX-OK: 1,5 × 1,15 — a RAZÃO pedida pelo dono, não um tamanho
 
 /// O quadrado, centrado no botão `r`, em que a cara de um botão do módulo se pinta: o ícone desenha
-/// [`MODULE_FACE_GROWTH`] vezes o que desenharia no [`inner`], e nunca passa do próprio botão.
+/// [`MODULE_FACE_GROWTH`] vezes o que desenharia no [`inner`].
+///
+/// ⚠️ O QUADRADO pode passar do botão — é só o respiro invisível do pintor de ícones; o que nunca
+/// passa é o DESENHO com a espessura do traço (preso a `lado − traço`).
 #[must_use]
 pub fn module_face_rect(r: Rect) -> Rect {
     let m = inner(r);
-    let glyph = crate::paint::icon_glyph_side(m.w.min(m.h)) * MODULE_FACE_GROWTH;
-    let side = crate::paint::icon_side_for_glyph(glyph).min(r.w.min(r.h));
+    let max_glyph = r.w.min(r.h) - StrokeToken::Default.px();
+    let glyph = (crate::paint::icon_glyph_side(m.w.min(m.h)) * MODULE_FACE_GROWTH).min(max_glyph);
+    let side = crate::paint::icon_side_for_glyph(glyph);
     Rect::new(
         r.x + (r.w - side) / 2.0,
         r.y + (r.h - side) / 2.0,

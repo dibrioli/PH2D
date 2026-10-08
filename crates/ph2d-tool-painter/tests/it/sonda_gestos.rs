@@ -90,6 +90,55 @@ pub fn pinta(meio: PaintMedia, size: f32) -> (Vec<u8>, u32, u32) {
     t.run_full()
 }
 
+/// Um só traço recto, horizontal, a pressão 1 e passo de rato (3 px), numa tela branca com altura para
+/// o pincel: o gesto da largura, seguido de `ticks` quadros de 60 Hz (a água corre e seca). Devolve
+/// `run_full()` e a altura da tela (a largura é `W`).
+pub fn traco_recto(meio: PaintMedia, size: f32, ticks: u32) -> (Vec<u8>, u32, u32) {
+    let h = ((size * 6.0) as u32 + 80).max(120);
+    let cy = h as f32 * 0.5;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (W * h * 4) as usize], W, h);
+    t.set_paint_media(meio);
+    t.set_brush_size_px(size);
+    t.set_brush_strength(1.0);
+    t.set_brush_color_srgb8(AZUL);
+    gesto(&mut t, &[[100.0, cy], [900.0, cy]], 3.0, |_| 1.0);
+    for _ in 0..ticks {
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.run_full()
+}
+
+/// A largura de `ferramentas/mede_traco.py`, sobre fundo branco: por coluna, `c = max |px − 255| / 255`
+/// dos três canais, e a largura é a extensão das linhas com `c ≥ 0,5 · max(c)` da coluna; colunas com
+/// `max < 0,08` não contam. Devolve a mediana das colunas do traço.
+pub fn largura_mediana(rgba: &[u8], w: u32, h: u32) -> f32 {
+    let c = |x: u32, y: u32| {
+        let i = ((y * w + x) * 4) as usize;
+        rgba[i..i + 3].iter().map(|&v| 255 - v).max().unwrap_or(0) as f32 / 255.0
+    };
+    let mut larguras: Vec<f32> = (0..w)
+        .filter_map(|x| {
+            let m = (0..h).map(|y| c(x, y)).fold(0.0f32, f32::max);
+            if m < 0.08 {
+                return None;
+            }
+            let ys: Vec<u32> = (0..h).filter(|&y| c(x, y) >= 0.5 * m).collect();
+            Some((ys[ys.len() - 1] - ys[0] + 1) as f32)
+        })
+        .collect();
+    if larguras.is_empty() {
+        return 0.0;
+    }
+    larguras.sort_by(f32::total_cmp);
+    let n = larguras.len();
+    if n % 2 == 1 {
+        larguras[n / 2]
+    } else {
+        0.5 * (larguras[n / 2 - 1] + larguras[n / 2])
+    }
+}
+
 /// FNV-1a de 64 bits — o mesmo hash dos outros gates de pixels desta crate.
 pub fn fnv1a(bytes: &[u8]) -> u64 {
     bytes.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, &b| {

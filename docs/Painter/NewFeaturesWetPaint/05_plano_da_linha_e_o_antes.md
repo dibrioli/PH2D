@@ -21,6 +21,31 @@ determinística ⇒ a cerca «byte-idêntico» é possível). A tamanho 28 os n�
 
 Digital/Watercolor/Impasto a 40: 58 / 68 / 72 px de largura (o mesmo número, quatro larguras).
 
+### §1.1 — A lei raio → largura do Wet Paint (sonda `tests/it/sonda_largura.rs`, 07/10)
+
+⚠️ O «Size» do painel é o **RAIO** (`brush_settings.rs:45`, `set_brush_size_px` grava `radius_px`) e o
+chip mostra o valor NORMALIZADO 0..1 (`paint_brush.rs:176` → `number_chip.rs:149 format_number`), não px;
+o anel do cursor desenha `radius_px` (`dab_spec.rs:155 cursor_dab`). ⇒ a promessa do dono («o tamanho é a
+largura que se vê») lê-se: **largura medida = 2 × raio = o diâmetro do anel**, e o volume *Size px* da W1
+mostra esse diâmetro. A régua em Rust (`sonda_gestos::largura_mediana`) é a de `mede_traco.py` — conferida
+nas mesmas imagens (wetpaint 28 / 140, digital 28, impasto 90: iguais).
+
+| raio | 2 | 4 | 7,8 | 12,2 | 15,3 | 19,1 | 23,8 | 29,8 | 46,6 | 72,8 | 114 | 178 | 278 | 434 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| largura (t = 0 = 8 s = 20 s) | 1 | 3 | 6 | 10 | **10** | **18** | 26 | 30 | 52 | 79 | 127 | 208 | 327 | 524 |
+| largura / (2·raio) | 0,25 | 0,38 | 0,38 | 0,41 | 0,33 | 0,47 | 0,55 | 0,50 | 0,56 | 0,54 | 0,56 | 0,59 | 0,59 | 0,60 |
+
+- **Não muda com o tempo** (a água não alarga o traço — o mesmo que o Rebelle, 03 §3.6).
+- **Degrau 12,5 → 16 px de raio** (largura 10 → 16, larguras 11–15 INALCANÇÁVEIS). O perfil transversal
+  mostra porquê: o traço é um **miolo denso (~25 % do diâmetro) + uma franja rala de cerdas, ASSIMÉTRICA**
+  (maior de um lado); a largura a 50 % salta quando a franja cruza metade do máximo. A assimetria é a da
+  transferência por janela (Gauss-Seidel dependente do sentido — doc 44 §1, mantida pelo dono em 29/09:
+  não se reabre).
+- ⇒ **A largura de hoje é uma propriedade da FRANJA DAS CERDAS**, e as cerdas são o que a W2 substitui. Uma
+  tabela invertida agora deixaria o buraco 11–15 e seria regravada pela W2. Pela §0.10 (mesma família), **a
+  promessa da largura e o seu gate entram COM a W2**, medidos sobre o traço novo; a W1 guarda no preset a
+  tabela raio → largura que a sonda gera (o motor muda ⇒ a tabela regera-se com o corpus de miniaturas).
+
 ## §2 — Onde o código entra (o mapa que decide a cerca)
 
 - O gesto vira carimbos no motor PARTILHADO (`stroke_lifecycle` → `dynamics`/`spec` → `stamp_route.rs:340
@@ -47,9 +72,9 @@ Digital/Watercolor/Impasto a 40: 58 / 68 / 72 px de largura (o mesmo número, qu
 | onda | entrega | gate (barra = vale «antes» ↔ Rebelle) |
 |---|---|---|
 | **cerca** | `the_other_media_are_untouched` (diff vs merge-base) + fixture `fixtures/sonda_28/{digital,watercolor,impasto}.ppm` com cabeçalho | sha256 iguais; mutação num dos três meios reprova |
-| **W0** | sonda com `PH2D_SONDA_PRESET`; as 12 fotos do Rebelle em `fixtures/rebelle/` com cabeçalho (tool, preset, volumes, semente 7); `mede_todos.sh` sem caminho de scratchpad; tabela dos dois lados gravada | largura medida = pedida ± 2 px em todos os presets do Wet Painter (hoje 44 a 40 ✗) |
+| **W0** ✅ | as 12 fotos do Rebelle em `fixtures/rebelle/` com cabeçalho; `mede_todos.sh` sem caminho de scratchpad; a régua em Rust; a lei raio → largura medida e diagnosticada (§1.1). `PH2D_SONDA_PRESET` passa para a W1 (antes dela não há presets) | o gate de largura passa para a W2 (§1.1) |
 | **W1** | crate `ph2d-brush-presets` (`*.ph2d-brush.png`), fábrica em `assets/brushes/WetPainter/`, browser + 5 volumes | round-trip ao byte; presets contados; campo desconhecido não falha; miniatura por hash |
-| **W2** | fios com pressão Perlin, largura ondulante, oscilação, Thin/Thick/Edges, Random Span, ruído HSLuv | a 40 px: **5 ≤ textura ≤ 10 %** (hoje 12–14 ✗; Rebelle óleo 5,9, express 9) · **CV ≤ 0,02** (hoje 0,031 ✗; dele 0,011) · **período < 15 %** (hoje 16 % ✗; dele 9 %) · controlo: knobs a 0 ⇒ PNG de hoje ao byte |
+| **W2** | fios com pressão Perlin, largura ondulante, oscilação, Thin/Thick/Edges, Random Span, ruído HSLuv — e a **largura prometida** (§1.1: o raio do motor sai da tabela do preset, em `stamp_dabs_wetpaint`) | **largura = 2·raio ± 2 px** em raios fora da tabela, de 2 a 300 (hoje 0,25–0,60 × e o buraco 11–15) · a 40 px: **5 ≤ textura ≤ 10 %** (hoje 12–14 ✗; Rebelle óleo 5,9, express 9) · **CV ≤ 0,02** (hoje 0,031 ✗; dele 0,011) · **período < 15 %** (hoje 16 % ✗; dele 9 %) · controlo: knobs a 0 ⇒ PNG de hoje ao byte |
 | **W3** | campo de altura no grid (fios Add/Remove), oleosidade = viscosidade, luz do Impasto por porta livre | óleo: borda/miolo **0,8–0,9** (hoje 0,52 ✗; dele 0,87) e textura na banda da W2; acrílico: largura A = B |
 | **W4** | lei do papel do fluido (força × pressão, contraste, scratch, fundo que fura, `PaperBehaviour` × 5 papéis) | lápis 8B: textura **≥ 8 %**, borda/miolo **< 0,5** (dele 9,1 / 0,32; não temos lápis) |
 | **W5** | Paint / Paint&Mix / Paint&Blend / Blend / Erase por pressão e limiar da queda; Loading+Length; Dirty Brush; Glaze | 1.º a bancada do Rebelle (03 §4, redondo a cruzar + 3.º traço fora); depois o nosso na mesma direcção |
@@ -79,7 +104,18 @@ Digital/Watercolor/Impasto a 40: 58 / 68 / 72 px de largura (o mesmo número, qu
 - A sonda passou para o binário único `tests/it/` (era `tests/*.rs` solto); os gestos vivem em
   `tests/it/sonda_gestos.rs`; os bytes dos quatro meios não mudaram com a mudança de sítio.
 
-## §5 — Ritmo
+## §5 — A próxima janela (W1)
+
+1. Fase 0 do [MODELO_TROCA_DE_AGENTE](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md) e
+   `bash docs/Painter/NewFeaturesWetPaint/ferramentas/cerca.sh` (verde) + o teste
+   `os_outros_meios_nao_mudam` (verde) antes de tocar em produto.
+2. W1 pelo 02 §5: crate `ph2d-brush-presets`; o preset do Wet Painter = `WetKnobs` + o sub-conjunto do
+   `BrushSpec` que `stamp_dabs_wetpaint` lê + os campos das ondas seguintes (desconhecido não falha) + a
+   tabela raio → largura (§1.1). Sonda com `PH2D_SONDA_PRESET`.
+3. As sondas: `sonda_tracos_por_meio` (a cena do 03), `sonda_largura::{a_largura_que_se_ve_por_tamanho,
+   a_lei_densa_do_wet_paint, o_degrau_do_wet_paint}` — todas `--profile smoke --test it … -- --ignored`.
+
+## §6 — Ritmo
 
 Uma janela por onda (CLAUDE.md §2). Esta janela: cerca + W0 (+ W1 se couber). Medições de cada onda numa
 rodada só, intercaladas (§0.10); o oráculo só se reabre para as bancadas novas (W5 cruzamento, W4 papéis,

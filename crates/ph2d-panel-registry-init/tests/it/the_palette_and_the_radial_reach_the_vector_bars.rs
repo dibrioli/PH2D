@@ -49,6 +49,22 @@ fn com_barras(mode: DrawMode, ts: &mut ph2d_text::TextSystem) -> HeroScreen {
     hero
 }
 
+/// O que a ponte do vetor faz a um clique num interruptor do Snap: publica o estado novo — e a linha
+/// do pulldown passa a ter o OUTRO id (o `ON` vira `OFF`). Sem isto o gate não veria o id a trocar.
+fn ponte_do_snap(id: NodeId, pos: &mut (bool, bool)) {
+    use ph2d_panel_vector::ids as v;
+    match id {
+        x if x == ids::VECTOR_SNAP_ON => ph2d_panel_vector::set_current_snap(true),
+        x if x == v::VECTOR_SNAP_OFF => ph2d_panel_vector::set_current_snap(false),
+        x if x == v::VECTOR_SNAP_PATH_ON => pos.0 = true,
+        x if x == v::VECTOR_SNAP_PATH_OFF => pos.0 = false,
+        x if x == v::VECTOR_SNAP_CROSS_ON => pos.1 = true,
+        x if x == v::VECTOR_SNAP_CROSS_OFF => pos.1 = false,
+        _ => {}
+    }
+    ph2d_panel_vector::set_current_snap_position(pos.0, pos.1);
+}
+
 /// As portas onde um comando pode morar e que este quadro pintou.
 fn porta_acesa(hero: &HeroScreen, id: NodeId) -> bool {
     let mut slots = vec![id, ids::TOOL_BAR_OVERFLOW];
@@ -88,6 +104,9 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
             }
         }
         for (label, id) in items {
+            let mut pos = (false, false);
+            ph2d_panel_vector::set_current_snap(false);
+            ph2d_panel_vector::set_current_snap_position(false, false);
             let mut hero = com_barras(mode, &mut ts);
             let model = global_palette::build_global_model(&hero);
             assert!(model.is_item(id), "{mode:?}: «{label}» fora do modelo");
@@ -108,6 +127,7 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
             // ⚠️ O quadro seguinte REPUBLICA as barras, como o app faz: uma linha-interruptor troca
             // de id ao ser executada, e o piscar não pode depender do id de antes (a foto de 08/10).
             hero.store.set_picker_target(None);
+            ponte_do_snap(id, &mut pos);
             let area = hero.last_content;
             let sel = Rect::new(area.x + area.w * 0.5, area.y + area.h * 0.5, 120.0, 90.0);
             publica(&mut hero, mode, 2, Some(sel));

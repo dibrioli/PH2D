@@ -14,8 +14,9 @@ Máquina = workstation ⇒ Modo L (ADR-0107).
 ⛔ ANTES DE ABRIR QUALQUER ARQUIVO: execute o BLOCO de
 docs/IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md com
 MODULO=UIUX — FASE 0 → 1 → 2, na ordem.
-Estado medido em 08/10: line/UIUX = HEAD a38b14fa8, base (merge-base) =
-2a925859d = main; F0–F3 NÃO integradas ainda (9 commits à frente do main).
+Estado medido em 08/10: line/UIUX = HEAD 25a70cfe7 (o commit deste prompt),
+base (merge-base) = 2a925859d = main; F0–F3 NÃO integradas ainda (10 commits
+à frente do main).
 ⇒ `git cherry main HEAD` dá >0 e os commits são DESTA linha: siga sem
 reset. Se o main tiver andado: `git rebase main` (conflito fora dos seus
 ficheiros = PARE e reporte ao Enio).

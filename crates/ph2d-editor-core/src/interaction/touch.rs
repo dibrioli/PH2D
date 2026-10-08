@@ -219,7 +219,8 @@ impl TouchGestures {
     /// por outro evento (um dedo parado pode não mandar nenhum).
     pub fn tick(&mut self, now: u128) -> Option<TouchOut> {
         let f = self.fingers.get(&self.primary?)?;
-        let still = !self.committed && !self.gesture && !self.long_fired && !self.moved;
+        // (Um dedo único que andou além da folga já é traço: o `committed` cobre o «andou».)
+        let still = !self.committed && !self.gesture && !self.long_fired;
         if still && self.fingers.len() == 1 && now.saturating_sub(self.t0) >= LONG_PRESS_NS {
             self.long_fired = true;
             return Some(TouchOut::ContextMenu(f.origin));

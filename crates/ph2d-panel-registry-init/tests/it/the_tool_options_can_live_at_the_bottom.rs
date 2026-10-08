@@ -103,8 +103,17 @@ fn chip_e_linha(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) -> Vec<(R
                 })
                 .unwrap_or_default()
         };
-        if let Some(row) = rows.iter().find_map(|&id| hero.hit_index.rect_for(id)) {
-            out.push((r, row));
+        // ⚠️ O menu INTEIRO (todas as linhas pintadas): a 1.ª linha sozinha deixava passar um menu
+        // que começasse no chip e descesse por cima dele (a mutação M23 sobrevivia).
+        let painted: Vec<Rect> = rows
+            .iter()
+            .filter_map(|&id| hero.hit_index.rect_for(id))
+            .collect();
+        if let (Some(top), Some(bottom)) = (
+            painted.iter().map(|q| q.y).reduce(f32::min),
+            painted.iter().map(|q| q.y + q.h).reduce(f32::max),
+        ) {
+            out.push((r, Rect::new(0.0, top, 0.0, bottom - top)));
         }
         hero.store.close_context_menu();
         pinta(hero, ts);

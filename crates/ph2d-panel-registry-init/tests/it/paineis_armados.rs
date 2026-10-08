@@ -140,6 +140,9 @@ fn arma_a_arvore(store: &mut WidgetStore) {
                     muted: !visivel,
                     locked: trancado,
                     group_locked: grupo,
+                    role: Default::default(),
+                    components: Vec::new(),
+                    content: Vec::new(),
                 },
             )
         })

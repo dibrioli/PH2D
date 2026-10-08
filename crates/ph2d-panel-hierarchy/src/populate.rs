@@ -73,3 +73,15 @@ pub fn repopulate(store: &mut WidgetStore, ids_: &[ph2d_a11y::NodeId]) {
     // `[HIER_PLAYER]`, so live mode would paint zero rows.
     store.set_hierarchy_order(ids_.to_vec());
 }
+
+/// ⭐ **Os ícones de componente são WIDGETS** ([`crate::row_components`]): registados aqui, o clique
+/// neles chega como `Click(id)`. ⚠️ Os companheiros da linha (olho, galo…) dispensam o registo
+/// porque o `pointer_down` os reconhece pelos BITS; estes não têm bits — são um id por família.
+pub(crate) fn register_component_icons(
+    store: &mut WidgetStore,
+    ids_: impl IntoIterator<Item = ph2d_a11y::NodeId>,
+) {
+    for id in ids_ {
+        store.register_if_absent(id, InteractiveState::Plain);
+    }
+}

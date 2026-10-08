@@ -29,6 +29,8 @@ pub(super) fn default_panel_visibility() -> std::collections::BTreeMap<&'static 
 /// reads as `false` and the feature simply never happens.
 pub const PANEL_MOTION_GRAPH: &str = "motion_graph";
 pub const PANEL_TIMELINE: &str = "timeline";
+/// O painel do MUNDO físico — o cartão do componente *World physics* da Cena ([`crate::hier_rows`]).
+pub const PANEL_PHYSICS: &str = "physics";
 
 /// Canonical `&'static str` for known panel ids — keeps the
 /// visibility HashMap keys stable across calls without leaking.
@@ -39,6 +41,7 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         "widget_gallery" => Some("widget_gallery"),
         "grid_snap" => Some("grid_snap"),
         PANEL_TIMELINE => Some(PANEL_TIMELINE),
+        PANEL_PHYSICS => Some(PANEL_PHYSICS),
         // O painel das TAGS (TOP-20 #9). Sem esta entrada o
         // `set_panel_visible` cai no `Box::leak`, o que funciona e mesmo assim é errado quando o
         // nome é conhecido.

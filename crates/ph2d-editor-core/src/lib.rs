@@ -43,6 +43,7 @@ pub mod frame_label;
 pub mod gizmo;
 pub mod grid;
 pub mod grid_snap;
+pub mod hier_rows;
 pub mod icons;
 pub mod ids;
 pub mod image_edit;

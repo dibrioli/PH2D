@@ -10,4 +10,6 @@
 //! literais da workspace inteira — o id não precisa de morar ao lado dele.
 
 mod menus;
+mod rows;
 pub use menus::*;
+pub use rows::*;

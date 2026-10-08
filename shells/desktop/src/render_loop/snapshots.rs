@@ -180,7 +180,14 @@ pub(super) fn publish(
     ray_hits: &[(u64, u64, f32)],
 ) {
     #[cfg(feature = "panel-hierarchy")]
-    publish_hierarchy(hero, hero_live, hovered, sim, bool_badges);
+    publish_hierarchy(
+        hero,
+        hero_live,
+        hovered,
+        sim,
+        bool_badges,
+        component_registry,
+    );
     hud::publish(
         hero,
         sim,

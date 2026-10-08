@@ -32,6 +32,8 @@ pub use kinds::{InteractiveState, NamedPalette};
 mod asset_drag_ops;
 mod dock_width_ops;
 mod graph_ops;
+mod hier_rows_ops;
+pub use hier_rows_ops::InspectorReveal;
 mod notes_ops;
 pub use notes_ops::NoteDrag;
 mod number_scrub;
@@ -549,6 +551,7 @@ pub struct WidgetStore {
     /// descendants in the row list. Click on the chevron toggles
     /// membership.
     pub(super) hierarchy_collapsed: std::collections::BTreeSet<NodeId>,
+    pub(super) hier_rows: hier_rows_ops::HierRowsState,
     /// In-progress hierarchy drag. `Some` when a Primary Down landed
     /// on a hierarchy row and the cursor has moved past the drag
     /// threshold; cleared on Up (with reorder applied) or on Up at

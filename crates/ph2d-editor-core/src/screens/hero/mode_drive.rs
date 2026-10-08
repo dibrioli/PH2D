@@ -80,6 +80,20 @@ pub trait ModeFamily {
     fn keeps_parts_selected(&self, _mode: ObjectMode) -> bool {
         false
     }
+    /// ⭐ **O CONTEÚDO dos objectos desta família** — as sub-linhas da Hierarquia (doc 01 §4.3). A
+    /// família escreve em `out` por `Entity::to_bits`; nenhuma lista na shell.
+    fn content(&mut self, _tools: &mut ToolRegistry, _out: &mut crate::hier_rows::ContentMap) {}
+    /// Põe a peça `key` do conteúdo de `entity` em mãos — chamada com `mode` já aberto sobre ela.
+    /// `false` = a peça já não existe.
+    fn open_content(
+        &mut self,
+        _mode: ObjectMode,
+        _entity: u64,
+        _key: u64,
+        _tools: &mut ToolRegistry,
+    ) -> bool {
+        false
+    }
     /// Abre o módulo sobre `entity` e os `joined` (só chamada quando [`Self::joins`]).
     fn enter_with(
         &mut self,
@@ -209,6 +223,16 @@ pub fn drive(
     // 0. Um objecto que nasceu num modo pede-o (só sem pedido do artista neste quadro). ⚠️ SÓ ele:
     // a selecção de antes não entra junto — a forma desenhada num Edit levaria a anterior com ela.
     let mut born = None;
+    // ⭐ A sub-linha de conteúdo: a selecção é a dona, e o pedido é o modo do grupo.
+    let mut open = None;
+    let request = match request {
+        Some(ModeRequest::OpenContent { entity, mode, key }) => {
+            select_together(hero, entity, &[]);
+            open = Some((entity, mode, key));
+            Some(ModeRequest::Enter(mode))
+        }
+        other => other,
+    };
     let request = request.or_else(|| {
         let (bits, mode) = families.iter_mut().find_map(|f| f.wants(tools))?;
         select_together(hero, bits, &[]);
@@ -354,6 +378,21 @@ pub fn drive(
     for f in families.iter_mut() {
         f.follow(current, tools);
     }
+    if let Some((entity, mode, key)) = open
+        && current.is_some_and(|a| a.entity == entity && a.mode == mode)
+        && let Some(f) = family(families, kind_of(entity), mode)
+    {
+        if !f.open_content(mode, entity, key, tools) {
+            toasts.push(Toast::info(ph2d_i18n::tr("hier_rows.content_gone")));
+        }
+        changed = true;
+    }
+    // 4b. O conteúdo que cada família declara, para a Hierarquia.
+    let mut content = crate::hier_rows::ContentMap::new();
+    for f in families.iter_mut() {
+        f.content(tools, &mut content);
+    }
+    hero.gizmo.mode.publish_content(content);
     // 5. O seletor — em todo quadro, vazio incluído.
     let menu = hero.gizmo.mode.menu(&mut hero.store);
     hero.store.publish_mode_menu(menu);

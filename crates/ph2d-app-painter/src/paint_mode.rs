@@ -9,6 +9,8 @@
 //! barra IMG na mesma fase (dois caminhos para o mesmo módulo divergem — spec/06 §5).
 
 use ph2d_component_desc::ObjectKind;
+use ph2d_editor_core::hier_rows::{ContentGroup, ContentMap};
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::object_mode::ObjectMode;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
@@ -32,6 +34,33 @@ impl ModeFamily for Family {
     fn leave(&mut self, _: ObjectMode, _: u64, tools: &mut ToolRegistry) {
         leave(tools);
     }
+    /// ⭐ As CAMADAS de cada imagem (doc 01 §5: *Imagem ▸ Camadas*), clicáveis para o Paint.
+    fn content(&mut self, tools: &mut ToolRegistry, out: &mut ContentMap) {
+        let Some(painter) = painter(tools) else {
+            return;
+        };
+        let entities: Vec<u64> = painter.layered_entities().collect();
+        for entity in entities {
+            if let Some(items) = painter.layer_outline_of(entity) {
+                out.entry(entity).or_default().push(ContentGroup {
+                    label_key: "hier_rows.content.layers",
+                    icon: IconId::Layers,
+                    item_icon: IconId::Layer,
+                    mode: ObjectMode::Paint,
+                    items,
+                });
+            }
+        }
+    }
+    fn open_content(
+        &mut self,
+        _: ObjectMode,
+        entity: u64,
+        key: u64,
+        tools: &mut ToolRegistry,
+    ) -> bool {
+        painter(tools).is_some_and(|p| p.open_layer_of(entity, key))
+    }
     // ⛔ Sem `parts_take_the_object_gizmo`: no Paint o gizmo fica INVISÍVEL (dono, 06/10: *«melhor
     // deixar o gizmo invisível no paint mode»*) — o pincel ganha-lhe o clique (`chrome_hit::
     // chrome_claims`), e alças que se vêem e não se agarram mentiriam. O Edit da imagem tem-no.
@@ -39,6 +68,14 @@ impl ModeFamily for Family {
 
 /// O id do Painter no registo de ferramentas.
 const PAINTER: &str = "painter";
+
+/// O Painter do registo, em mãos ou não.
+fn painter(tools: &mut ToolRegistry) -> Option<&mut PainterTool> {
+    tools
+        .tool_by_id_mut(&ToolId::new(PAINTER))?
+        .as_any_mut()
+        .downcast_mut::<PainterTool>()
+}
 
 /// O Painter está em mãos **sobre uma imagem**.
 #[must_use]

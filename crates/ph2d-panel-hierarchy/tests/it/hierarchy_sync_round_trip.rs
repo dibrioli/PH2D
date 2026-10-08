@@ -76,6 +76,9 @@ fn make_entry(name: &str) -> HierarchyEntity {
         muted: false,
         locked: false,
         group_locked: false,
+        role: Default::default(),
+        components: Vec::new(),
+        content: Vec::new(),
     }
 }
 
@@ -92,7 +95,9 @@ fn sync_from_hierarchy_caches_entries() {
 
     ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &[id_a, id_b], entries.clone());
     let cached = ph2d_panel_hierarchy::current_live_entries().expect("cache must be Some");
-    assert_eq!(cached.len(), 2);
+    // ⭐ + a raiz Cena, que o painel acrescenta (doc 01 §4.6).
+    assert_eq!(cached.len(), 3);
+    assert!(cached.contains_key(&ph2d_panel_hierarchy::ids::HIER_SCENE_ROW));
     assert_eq!(cached.get(&id_a).unwrap().name, "Alpha");
     assert_eq!(cached.get(&id_b).unwrap().name, "Beta");
 }
@@ -197,7 +202,11 @@ fn sync_overwrites_widget_store_hierarchy_order() {
     entries.insert(id_c, make_entry("C"));
     ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &[id_a, id_b, id_c], entries);
 
-    assert_eq!(hero.store.hierarchy_order(), &[id_a, id_b, id_c]);
+    // ⭐ A raiz Cena à cabeça (doc 01 §4.6).
+    assert_eq!(
+        hero.store.hierarchy_order(),
+        &[ph2d_panel_hierarchy::ids::HIER_SCENE_ROW, id_a, id_b, id_c]
+    );
     assert!(
         !hero.store.hierarchy_order().contains(&HIER_PLAYER),
         "fixture placeholder must be evicted by live sync"
@@ -244,6 +253,9 @@ fn hierarchy_row_click_raises_pending_for_live_entries() {
             muted: false,
             locked: false,
             group_locked: false,
+            role: Default::default(),
+            components: Vec::new(),
+            content: Vec::new(),
         },
     );
     ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &[row_id], entries);

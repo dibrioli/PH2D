@@ -140,6 +140,7 @@ mod populate_vida;
 /// ⭐⭐⭐ O registo dos widgets das secções que chegam por WAVE — ver o cabeçalho.
 mod populate_waves;
 mod populate_weapon;
+mod reveal;
 mod sections;
 pub mod state;
 /// ⭐ Os instantâneos das secções da fila do TOP-20 — irmão do [`state`] por CAP de LOC.

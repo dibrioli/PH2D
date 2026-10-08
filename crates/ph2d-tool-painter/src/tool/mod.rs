@@ -309,6 +309,8 @@ pub struct PainterTool {
     /// Stashed multi-layer documents by sprite id — switching sprites preserves each sprite's layer stack
     /// instead of flattening it. See [`crate::tool::documents`].
     doc_cache: BTreeMap<u64, documents::StashedDoc>,
+    /// A camada que a Hierarquia pediu antes de o documento dela estar ligado ([`outline`]).
+    pending_layer: Option<(u64, RtLayerId)>,
     /// The sprite id a multi-layer **Shape** was captured from ("Use Document Layers"), so editing that
     /// same sprite re-captures the Shape automatically (preserving the per-layer colours) instead of
     /// needing a manual re-capture. `None` until a multi-layer Shape is captured.
@@ -408,6 +410,7 @@ impl Default for PainterTool {
             paint: paint::PaintState::default(),
             bound_doc: None,
             doc_cache: BTreeMap::new(),
+            pending_layer: None,
             shape_source_doc: None,
             shape_source_revision: 0,
             shape_source_preview_dirty: false,
@@ -419,6 +422,7 @@ impl Default for PainterTool {
 // ── Submodules (god-object split, pure mechanical move) ──
 mod documents;
 mod internal;
+mod outline;
 pub(crate) use internal::*;
 mod layers;
 pub(crate) mod paint;

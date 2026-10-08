@@ -96,7 +96,7 @@ fn paint_row_background(
 /// — e nenhum gate de registo o veria, porque o companheiro está vivo e registado; só está grande
 /// demais. ⇒ a folga fica na HORIZONTAL (é lá que os ícones respiram uns dos outros) e a vertical
 /// é a da linha, por construção. É o que o `Tree` do Godot faz: a célula de um botão **é** a linha.
-fn row_tall(row: Rect, x: f32, w: f32) -> Rect {
+pub(crate) fn row_tall(row: Rect, x: f32, w: f32) -> Rect {
     Rect::new(x, row.y, w, row.h)
 }
 
@@ -205,46 +205,32 @@ pub(crate) fn paint_hierarchy_row(
     let icon_cluster_pad = Spacing::Sm.px(); // 8 px da borda direita (Enio 2026-05-26 round 2: "separe os olhos mais 4 pixels da lateral direita (desloque 4 pixels para esquerda)" — antes Xs=4)
     let icon_cluster_gap = 0.0_f32; // LITERAL-PX-OK: Enio 2026-05-26 "reduza a distância entre os ícones"
     let mut right_x = rect.x + rect.w - icon_cluster_pad;
-    let eye_icon = if entity.visible {
-        IconId::Eye
-    } else {
-        IconId::EyeClosed
-    };
-    let eye_color = if entity.visible {
-        ColorToken::Text2
-    } else {
-        ColorToken::TextDisabled
-    };
     let eye_size = Spacing::Xl.px();
-    let eye_rect = Rect::new(
-        right_x - eye_size,
-        rect.y + (rect.h - eye_size) * 0.5,
-        eye_size,
-        eye_size,
-    );
-    paint_icon(
-        scene,
-        eye_icon,
-        eye_rect,
-        resolve(eye_color, theme),
-        StrokeToken::Default.px(),
-    );
-    if let (Some(row_id), Some(idx)) = (row_id, hit_index.as_mut()) {
-        let hit_pad = Spacing::Xs.px();
-        let hit_rect = row_tall(rect, eye_rect.x - hit_pad, eye_rect.w + hit_pad * 2.0);
-        idx.register(ids::hier_eye_companion(row_id), hit_rect);
+    // ⭐ Só um OBJECTO tem olho e travas: a Cena e o conteúdo não se escondem nem se trancam.
+    if entity.role == ph2d_editor_core::hier_rows::RowRole::Object {
+        right_x = paint_row_eye(
+            entity,
+            rect,
+            scene,
+            theme,
+            row_id,
+            hit_index.as_deref_mut(),
+            right_x,
+        );
+        right_x = paint_row_locks(
+            entity,
+            rect,
+            scene,
+            theme,
+            row_id,
+            hit_index.as_deref_mut(),
+            eye_size,
+            icon_cluster_gap,
+            right_x,
+        );
     }
-    right_x -= eye_size + icon_cluster_gap;
-    right_x = paint_row_locks(
-        entity,
-        rect,
-        scene,
-        theme,
-        row_id,
-        hit_index,
-        eye_size,
-        icon_cluster_gap,
-        right_x,
+    right_x = crate::row_components::paint_component_icons(
+        entity, rect, scene, theme, row_id, hit_index, right_x,
     );
     if let Some(swatch) = entity.swatch {
         let sw = INLINE_ICON_PX;
@@ -311,6 +297,44 @@ pub(crate) fn paint_hierarchy_row(
         right_x,
         name_color,
     );
+}
+
+/// **O OLHO** — o companheiro mais à direita. Saiu do [`paint_hierarchy_row`] pelo tecto de 200
+/// LOC quando a linha ganhou os ícones de componente: recebe o `right_x` e devolve onde acaba.
+fn paint_row_eye(
+    entity: &fixture::HierarchyEntity,
+    rect: Rect,
+    scene: &mut VectorScene,
+    theme: Theme,
+    row_id: Option<ph2d_a11y::NodeId>,
+    hit_index: Option<&mut HitIndex>,
+    right_x: f32,
+) -> f32 {
+    let (eye_icon, eye_color) = if entity.visible {
+        (IconId::Eye, ColorToken::Text2)
+    } else {
+        (IconId::EyeClosed, ColorToken::TextDisabled)
+    };
+    let eye_size = Spacing::Xl.px();
+    let eye_rect = Rect::new(
+        right_x - eye_size,
+        rect.y + (rect.h - eye_size) * 0.5,
+        eye_size,
+        eye_size,
+    );
+    paint_icon(
+        scene,
+        eye_icon,
+        eye_rect,
+        resolve(eye_color, theme),
+        StrokeToken::Default.px(),
+    );
+    if let (Some(row_id), Some(idx)) = (row_id, hit_index) {
+        let hit_pad = Spacing::Xs.px();
+        let hit_rect = row_tall(rect, eye_rect.x - hit_pad, eye_rect.w + hit_pad * 2.0);
+        idx.register(ids::hier_eye_companion(row_id), hit_rect);
+    }
+    right_x - eye_size
 }
 
 /// ⭐ **O GRUPO e o CADEADO** — os dois companheiros de trava à esquerda do olho, sempre pintados e

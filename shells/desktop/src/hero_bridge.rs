@@ -175,6 +175,9 @@ impl EntityNodeMap {
                     muted: false,
                     locked: entry.locked,
                     group_locked: entry.group_locked,
+                    role: Default::default(),
+                    components: Vec::new(),
+                    content: Vec::new(),
                 },
             );
         }

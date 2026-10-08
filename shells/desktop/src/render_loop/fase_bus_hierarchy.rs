@@ -128,6 +128,22 @@ impl crate::App {
                 pd.instance_verb_row
                     .get_or_insert((row, ph2d_app_components::instance_verbs::Verb::Apply));
             }
+            // ⭐ Uma sub-linha de conteúdo (doc 01 §4.3): a linha do dono vira a entidade.
+            EditorAction::Hierarchy(ph2d_editor_core::action_bus::HierRequest::OpenContent {
+                owner,
+                mode,
+                key,
+            }) => {
+                let live = self.gfx.as_ref().and_then(|g| g.hero_live.as_ref());
+                if let Some(entity) = live.and_then(|l| l.bridge.entity_for(owner)) {
+                    pd.object_mode_request =
+                        Some(ph2d_editor_core::object_mode::ModeRequest::OpenContent {
+                            entity,
+                            mode,
+                            key,
+                        });
+                }
+            }
             other => return Some(other),
         }
         None

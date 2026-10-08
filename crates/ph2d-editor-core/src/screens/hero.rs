@@ -51,7 +51,7 @@ pub mod radial;
 pub(crate) mod text_style_rows;
 /// ⭐ A tabela `id da linha ⇄ tema` do menu de tema (as duas famílias).
 pub mod theme_menu;
-pub use panel_ids::{PANEL_MOTION_GRAPH, PANEL_TIMELINE};
+pub use panel_ids::{PANEL_MOTION_GRAPH, PANEL_PHYSICS, PANEL_TIMELINE};
 use ph2d_i18n::tr;
 pub mod left_rail;
 pub mod pre_populate;

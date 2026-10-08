@@ -126,6 +126,7 @@ impl<'a> Plano<'a> {
             }
         }
         y = corredor.antes(tela.scene, painel, inner_x, inner_w, y);
+        crate::reveal::record_bands(faixas.iter().map(|(id, y0, _, _)| (*id, *y0)));
         section_plan::conclui(
             tela.scene, store, painel, &faixas, inner_x, inner_w, header_h,
         );

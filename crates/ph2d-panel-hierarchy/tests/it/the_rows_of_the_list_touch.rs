@@ -35,6 +35,9 @@ fn entry(name: &str) -> HierarchyEntity {
         muted: false,
         locked: false,
         group_locked: false,
+        role: Default::default(),
+        components: Vec::new(),
+        content: Vec::new(),
     }
 }
 

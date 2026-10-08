@@ -17,6 +17,8 @@
 //!   verdade, e nenhuma porta deixa a ferramenta na mão sem o seletor o dizer.
 
 use ph2d_component_desc::ObjectKind;
+use ph2d_editor_core::hier_rows::{ContentGroup, ContentItem, ContentMap};
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::object_mode::{ActiveMode, ObjectMode};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
@@ -156,6 +158,54 @@ impl ModeFamily for Family<'_> {
             }
         }
         self.state.following = ours.map(|(m, _)| m);
+    }
+
+    /// ⭐ As CAMADAS de cada desenho, de cima para baixo como na tira (doc 01 §5). ⚠️ Camadas e
+    /// não quadros: os quadros vivem na linha do tempo, e cem desenhos em linhas seriam a árvore
+    /// inchada que o §2 recusa ao Godot.
+    fn content(&mut self, _: &mut ToolRegistry, out: &mut ContentMap) {
+        for (oid, bits) in &self.state.entities {
+            let Some(obj) = self.doc.object(*oid) else {
+                continue;
+            };
+            let target = self.state.target;
+            let items = obj
+                .layers()
+                .iter()
+                .rev()
+                .map(|l| ContentItem {
+                    key: u64::from(l.id.0),
+                    name: l.name.clone(),
+                    depth: 0,
+                    active: target.object == Some(*oid) && target.layer == Some(l.id),
+                })
+                .collect();
+            out.entry(*bits).or_default().push(ContentGroup {
+                label_key: "hier_rows.content.layers",
+                icon: IconId::Layers,
+                item_icon: IconId::Layer,
+                mode: ObjectMode::Draw,
+                items,
+            });
+        }
+    }
+
+    fn open_content(&mut self, _: ObjectMode, entity: u64, key: u64, _: &mut ToolRegistry) -> bool {
+        let Ok(raw) = u32::try_from(key) else {
+            return false;
+        };
+        let layer = ph2d_flip::LayerId(raw);
+        let Some(oid) = self.drawing_of(entity) else {
+            return false;
+        };
+        let there = self
+            .doc
+            .object(oid)
+            .is_some_and(|o| o.layers().iter().any(|l| l.id == layer));
+        if there {
+            self.state.target.layer = Some(layer);
+        }
+        there
     }
 
     fn wants(&mut self, tools: &mut ToolRegistry) -> Option<(u64, ObjectMode)> {

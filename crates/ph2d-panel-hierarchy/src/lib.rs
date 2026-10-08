@@ -18,10 +18,13 @@
 #![forbid(unsafe_code)]
 
 mod event;
+mod event_rows;
 pub mod ids;
 mod paint;
 mod populate;
 mod row;
+mod row_components;
+mod rows;
 mod search;
 pub mod state;
 
@@ -87,12 +90,24 @@ impl Panel for HierarchyPanel {
 /// Call once per frame from the host's `render_frame` loop before
 /// `paint_hero_screen`. Passing an empty `ordered` slice is valid
 /// (renders an empty hierarchy).
+///
+/// ⭐ A lista que fica é a EXPANDIDA ([`rows::expand`]): a raiz Cena e o conteúdo de cada objecto
+/// entram nela aqui, e só aqui.
 pub fn sync_from_hierarchy(
     store: &mut WidgetStore,
     ordered: &[NodeId],
     entries: std::collections::BTreeMap<NodeId, fixture::HierarchyEntity>,
 ) {
-    populate::repopulate(store, ordered);
+    let (ordered, entries) = rows::expand(ordered, entries);
+    populate::repopulate(store, &ordered);
+    populate::register_component_icons(
+        store,
+        entries.iter().flat_map(|(row, e)| {
+            e.components
+                .iter()
+                .map(|c| ids::hier_component_icon(*row, *c))
+        }),
+    );
     state::set_live_entries(Some(entries));
 }
 

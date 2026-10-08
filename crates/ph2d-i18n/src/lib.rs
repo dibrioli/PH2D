@@ -64,6 +64,7 @@ mod ecs_scene;
 mod flip;
 /// As strings do painel Grid Settings.
 mod grid_snap;
+mod hier_rows;
 /// As strings dos cinco painéis das ferramentas de imagem.
 mod image_tools;
 /// ⭐ **A JANELA do Input Map** — irmã por ASSUNTO, cortada do pai pelo tecto de LOC em 2026-09-17.
@@ -501,6 +502,7 @@ fn tr_ingles(key: &str) -> &'static str {
             .or_else(|| chrome_menus::tr(k))
             .or_else(|| object_add::tr(k))
             .or_else(|| object_mode::tr(k))
+            .or_else(|| hier_rows::tr(k))
             .or_else(|| board::tr(k))
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))

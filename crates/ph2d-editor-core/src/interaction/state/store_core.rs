@@ -104,6 +104,7 @@ impl WidgetStore {
             hierarchy_order: Vec::new(),
             hierarchy_parent: BTreeMap::new(),
             hierarchy_collapsed: std::collections::BTreeSet::new(),
+            hier_rows: Default::default(),
             hierarchy_drag: None,
             hierarchy_row_ids: std::collections::BTreeSet::new(),
             multiline_text_ids: std::collections::BTreeSet::new(),

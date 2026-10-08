@@ -347,7 +347,9 @@ fn paint_hierarchy_body(
             continue;
         }
         let has_children = depths.get(i + 1).is_some_and(|&d| d > depth);
-        let is_collapsed = has_children && !search_active && store.is_hierarchy_collapsed(*id);
+        let is_collapsed = has_children
+            && !search_active
+            && crate::rows::is_collapsed(store, *id, entity_template);
         let mut entity = entity_template.clone();
         let indent = (depth as f32) * indent_px;
         let direct_match = search_active && direct_match_mask.get(i).copied().unwrap_or(false);
@@ -437,7 +439,7 @@ fn paint_hierarchy_body(
     // consuma, re-registá-las seria pintar chrome morto sob o dedo.
     let content_h = (y - start_y).max(0.0);
     set_last_hierarchy_content_h(content_h);
-    (order.iter().copied().collect(), area)
+    (crate::rows::object_rows(&order, &entities_by_id), area)
 }
 
 /// **A caixa de renomear de uma linha da Hierarquia.**

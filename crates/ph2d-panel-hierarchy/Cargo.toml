@@ -18,6 +18,8 @@ ph2d-text        = { path = "../ph2d-text" }
 ph2d-vector      = { path = "../ph2d-vector" }
 # A tabela de strings (HR-15): todo rótulo do painel é uma chave `panel.hierarchy.*`.
 ph2d-i18n        = { path = "../ph2d-i18n" }
+# As famílias de componentes cujo ícone a linha mostra (`ph2d_editor_core::hier_rows`).
+ph2d-component-desc = { path = "../ph2d-component-desc" }
 
 [dev-dependencies]
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

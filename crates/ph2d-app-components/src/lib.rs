@@ -177,6 +177,7 @@ pub mod ray_inspector;
 pub mod ray_smoke;
 /// ⭐⭐⭐ **O ABANÃO DA VISTA** (suplente #25) — a cena do dono; ver o cabeçalho.
 pub mod restart_smoke;
+pub mod row_components;
 pub mod scene_ctx;
 pub mod script_bridge;
 /// ⭐ TOP-20 #16 — a secção SCRIPT do Inspector: o instantâneo e o dreno.

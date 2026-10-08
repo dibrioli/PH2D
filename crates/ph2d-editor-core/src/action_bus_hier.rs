@@ -244,4 +244,12 @@ pub enum HierRequest {
     /// ⭐⭐ **Tirar da biblioteca** — a receita deixa de o ser. A lei das duas metades lê-se
     /// inteira em `shells/desktop/src/instance_unmake.rs`.
     RemoveFromLibrary { row: ph2d_a11y::NodeId },
+
+    /// ⭐ Uma sub-linha de CONTEÚDO ([`crate::hier_rows::RowRole::ContentItem`]): a shell troca a
+    /// linha `owner` pela entidade e pede [`crate::object_mode::ModeRequest::OpenContent`].
+    OpenContent {
+        owner: ph2d_a11y::NodeId,
+        mode: crate::object_mode::ObjectMode,
+        key: u64,
+    },
 }

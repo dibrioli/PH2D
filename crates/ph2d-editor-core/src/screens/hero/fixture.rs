@@ -197,6 +197,12 @@ pub struct HierarchyEntity {
     /// locked while THIS entity remains editable. Renders a folder
     /// icon in the right-side cluster.
     pub group_locked: bool,
+    /// O PAPEL da linha — objecto, Cena ou conteúdo ([`crate::hier_rows::RowRole`]).
+    pub role: crate::hier_rows::RowRole,
+    /// As famílias de componentes com ícone que o objecto tem ([`crate::hier_rows::row_categories`]).
+    pub components: Vec<ph2d_component_desc::ComponentCategory>,
+    /// O conteúdo que a família do objecto declara; o painel desdobra-o em sub-linhas.
+    pub content: Vec<crate::hier_rows::ContentGroup>,
 }
 
 /// Placeholder hierarchy until the pilot project wires real entities.
@@ -215,6 +221,9 @@ pub fn hierarchy() -> Vec<HierarchyEntity> {
         muted: false,
         locked: false,
         group_locked: false,
+        role: Default::default(),
+        components: Vec::new(),
+        content: Vec::new(),
     }]
 }
 

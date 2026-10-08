@@ -188,6 +188,9 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    if let Some(outcome) = crate::event_rows::apply(host, &ev) {
+        return outcome;
+    }
     // Drag-reparent (M14.6B) — dispatcher emits one HierReparent per
     // drop; live (ECS) mode reads it via the bus.
     if let WidgetEvent::HierReparent {

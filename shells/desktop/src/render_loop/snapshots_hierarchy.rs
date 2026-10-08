@@ -15,6 +15,7 @@ pub(super) fn publish_hierarchy(
     hovered: Option<u64>,
     sim: &SimWorld,
     bool_badges: &std::collections::BTreeMap<u64, &'static str>,
+    registry: &ph2d_ecs::scene::ComponentRegistry,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -64,6 +65,14 @@ pub(super) fn publish_hierarchy(
             .filter(|id| !hidden_rows.contains(id))
             .collect();
         entries.retain(|id, _| !hidden_rows.contains(id));
+        // ⭐ Os ícones de componente e o conteúdo de cada objecto (doc 01 §7).
+        let icons = ph2d_app_components::row_components::RowComponents::of(sim.world(), registry);
+        for (id, entry) in &mut entries {
+            if let Some(bits) = live.bridge.entity_for(*id) {
+                entry.components = icons.of_entity(sim.world(), bits);
+                entry.content = hero.gizmo.mode.content_of(bits).to_vec();
+            }
+        }
         // Fase 0 hotfix: mark every multi-selection row's
         // `HierarchyEntity.selected` BEFORE the panel paints, so
         // the row painter highlights N rows instead of just the

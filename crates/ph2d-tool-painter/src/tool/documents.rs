@@ -40,6 +40,11 @@ pub(crate) struct StashedDoc {
 }
 
 impl StashedDoc {
+    /// As camadas guardadas — o que a Hierarquia lista sob a imagem ([`super::outline`]).
+    pub(crate) fn layers(&self) -> &LayerStack {
+        &self.layers
+    }
+
     /// The canvas size of a stashed document (the shell needs it before restoring).
     pub(crate) fn size(&self) -> (u32, u32) {
         self.source_size
@@ -143,6 +148,7 @@ impl PainterTool {
             Some(doc) => self.restore_doc(doc), // bring back its cached multi-layer stack
             None => self.abre_a_sprite(rgba, width, height), // fresh (or the sprite's flat texture)
         }
+        self.serve_pending_layer(entity);
     }
 
     /// Does the painter need `entity`'s pixels pushed to it — is it NOT currently holding a usable

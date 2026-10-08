@@ -77,9 +77,23 @@ simplesmente não tem o blob. ⇒ **nenhum componente existente muda de forma.**
 | `ph2d::light2d::NaoRecebeLuz` | — (marcador) | por omissão TUDO recebe; o marcador é o opt-out (HUD, fundo pintado com luz própria) |
 | `SpriteEmissive` (existe) | `f32` — **inalterado** | a COR da emissão é a do próprio sprite (pixels × intensidade); a sprite que já brilha passa a iluminar sem migração |
 
-Contadores que sobem (somam entre linhas — **contar** na integração): `ComponentRegistry` do ECS +
-os dois espelhos (`ph2d-render/src/registry.rs`, `ph2d-script/src/registry.rs`), o catálogo
-`ph2d-component-desc` (ordenado), os rótulos em `ph2d-i18n/src/component_catalog.rs`.
+Contadores que sobem (somam entre linhas — **contar** na integração): as DUAS listas de registo da
+shell (`shells/desktop/src/init.rs` e `tests/it/every_registered_component_is_described.rs`), o
+catálogo `ph2d-component-desc` (família `light.rs`, categoria nova `Light` → `ALL` 16), os rótulos em
+`ph2d-i18n/src/component_catalog.rs`. ⚠️ *Medido na W1:* o `ComponentRegistry` do ECS (105) e os dois
+espelhos (106) contam só os registadores DELES — não sobem.
+
+**Semântica fixada na W1 (a GPU responde à MESMA pergunta — gate G3):**
+- `intensidade` = **fluência a 1 m, no vazio**: radiância do disco `cor·I/(2·tamanho_m)`; crescer a
+  lâmpada amacia a sombra sem mudar o brilho; `tamanho_m = 0` é o ponto exato (`F = I/r`, o caso
+  da C3). `Ambiente`: radiância do céu `cor·I/(2π)`, que chega pelas direções que ESCAPAM.
+- Emissores com área são **opacos** (o raio termina no primeiro).
+- `opacidade` do `BloqueiaLuz` é **por ENTRADA** do raio no objeto (`× (1−α)` por entrada, sem
+  depender da espessura) — no RC isso é detetar a transição fora→dentro, inclusive na fronteira
+  de cada intervalo de cascata.
+- A forma que a coleta vê é o **quad** do sprite (`GlobalTransform` × âncora/tamanho); a cor de um
+  emissor é `tint∘self_tint`·α·k. Os texels e o alfa por texel NÃO estão no `World` (só o
+  `AssetId`): são da captura C0.
 
 ### 2.4 O quadro — onde cada passe entra
 

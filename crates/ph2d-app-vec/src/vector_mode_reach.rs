@@ -3,8 +3,8 @@
 //!
 //! 1. a RODA abre ao meio da área, com o leque de **Draw** aberto e o Lápis aceso — o mesmo estado
 //!    que segurar `J` e apontar dá (o modelo é o `build_radial_model`, o ponteiro o `radial_point`);
-//! 2. ao fim de `RADIAL_S`, a roda fecha SEM escolher, e a PALETA escolhe a 1.ª linha do pulldown
-//!    *Snap* pela porta dela (`route_global_pick`) — o pulldown pisca onde o comando mora, e volta a
+//! 2. ao fim de `RADIAL_S`, a roda fecha SEM escolher, e a PALETA escolhe *Snap ▸ ao caminho*
+//!    pela porta dela (`route_global_pick`) — o pulldown pisca onde o comando mora, e volta a
 //!    piscar até `FLASH_S` para a foto o apanhar;
 //! 3. depois a cena pára e o app é do dono.
 
@@ -63,13 +63,18 @@ pub fn step(stage: u8, hero: &mut HeroScreen) -> Option<u8> {
             // Fecha SEM escolher (a zona morta), e a paleta escolhe pela porta dela.
             hero.store.radial_point(hero.store.radial()?.center);
             let _ = hero.store.close_radial();
+            // ⚠️ Pelo NOME do pulldown, nunca pela posição: o 1.º da área é o seletor de MODO, e a
+            // 1.ª linha dele (Object Mode) tirava o vetor da mão (a 1.ª foto, 08/10).
+            let snap = ph2d_i18n::tr("panel.vector.bar.snap");
             let id = hero
                 .store
                 .area_menus()
-                .first()?
+                .iter()
+                .find(|m| m.label == snap)?
                 .rows
                 .iter()
-                .find_map(ph2d_editor_core::widget::ToolRailEntry::node_id)?;
+                .filter_map(ph2d_editor_core::widget::ToolRailEntry::node_id)
+                .nth(1)?;
             global_palette::route_global_pick(hero, id);
             LAST.with(|c| c.set(Some(id)));
             since(true);

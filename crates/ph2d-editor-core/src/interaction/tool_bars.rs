@@ -139,8 +139,9 @@ pub struct ToolBarsSlot {
     pub(crate) pointer: Option<[f32; 2]>,
     /// O relógio do chrome (ns), posto pelo `dispatch_tick` em todo quadro.
     pub(crate) clock_ns: u128,
-    /// F4: o comando que a paleta mandou PISCAR onde mora, e quando.
-    pub(crate) flash: Option<(NodeId, u128)>,
+    /// F4: o comando que a paleta mandou PISCAR onde mora, o pulldown que o continha NO MOMENTO da
+    /// escolha (um interruptor troca de id ao ser executado), e quando.
+    pub(crate) flash: Option<(NodeId, Option<NodeId>, u128)>,
     /// F5: os dedos no vidro e o widget dos modificadores (flutua sobre a área como as barras).
     pub(crate) touch: crate::interaction::TouchGestures,
     /// F5 (D10 decisão 2): a fila ② EMBAIXO da área — a opção de layout para tablet.

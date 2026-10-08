@@ -15,11 +15,9 @@ use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme};
 #[must_use]
 pub fn level_at(store: &WidgetStore, steady: bool, slot: NodeId) -> Option<f32> {
     let (id, level) = store.flashing(steady)?;
-    let has = |rows: &[crate::widget::ToolRailEntry]| rows.iter().any(|e| e.node_id() == Some(id));
-    // O pulldown que contém o comando — e é ELE que vai para o `⋯` quando a fila não cabe.
-    let pill = (0..ids::MAX_AREA_MENUS)
-        .find(|&s| u8::try_from(s).is_ok_and(|s| has(store.area_menu_rows(s))))
-        .map(ids::area_menu_button);
+    // O pulldown que continha o comando NA ESCOLHA — e é ELE que vai para o `⋯` quando a fila não
+    // cabe.
+    let pill = store.flash_pill();
     let behind_more = store
         .tool_overflow()
         .iter()

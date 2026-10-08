@@ -75,15 +75,33 @@ impl WidgetStore {
 
     /// ⭐ **Faz PISCAR onde `id` mora** (F4, a paleta que ensina): todo pintor que mostra uma porta
     /// para `id` — o botão, o `⋯` que o guarda, o pulldown que o contém — desenha o anel.
+    ///
+    /// ⚠️ O pulldown que o contém lê-se AGORA: uma linha-interruptor (Snap ▸ …) troca de id quando é
+    /// executada, e no quadro seguinte o id escolhido já não está em lado nenhum.
     pub fn flash(&mut self, id: ph2d_a11y::NodeId) {
-        self.tool_bars.flash = Some((id, self.tool_bars.clock_ns));
+        let pill = (0..crate::ids::MAX_AREA_MENUS)
+            .find(|&s| {
+                u8::try_from(s).is_ok_and(|s| {
+                    self.area_menu_rows(s)
+                        .iter()
+                        .any(|e| e.node_id() == Some(id))
+                })
+            })
+            .map(crate::ids::area_menu_button);
+        self.tool_bars.flash = Some((id, pill, self.tool_bars.clock_ns));
+    }
+
+    /// O pulldown que continha o comando a piscar, lido na escolha.
+    #[must_use]
+    pub fn flash_pill(&self) -> Option<ph2d_a11y::NodeId> {
+        self.tool_bars.flash.and_then(|(_, p, _)| p)
     }
 
     /// O comando a piscar e a intensidade agora (`0..=1`); `None` fora do piscar. `steady` = o
     /// movimento reduzido: anel fixo durante o mesmo tempo, sem piscar.
     #[must_use]
     pub fn flashing(&self, steady: bool) -> Option<(ph2d_a11y::NodeId, f32)> {
-        let (id, t0) = self.tool_bars.flash?;
+        let (id, _, t0) = self.tool_bars.flash?;
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let period = (f64::from(ph2d_tokens::Duration::Slow.ms()) * 1e6) as u128;
         let t = self.tool_bars.clock_ns.saturating_sub(t0);

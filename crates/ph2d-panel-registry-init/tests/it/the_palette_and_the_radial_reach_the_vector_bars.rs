@@ -105,6 +105,12 @@ fn every_bar_command_in_the_palette_lands_and_flashes_where_it_lives() {
                     || [ids::SELECTION_ACTIONS_PIN, ids::SELECTION_ACTIONS_OFF].contains(&id)
             };
             assert!(chegou, "{mode:?}: «{label}» escolhido na paleta não chegou ao painel");
+            // ⚠️ O quadro seguinte REPUBLICA as barras, como o app faz: uma linha-interruptor troca
+            // de id ao ser executada, e o piscar não pode depender do id de antes (a foto de 08/10).
+            hero.store.set_picker_target(None);
+            let area = hero.last_content;
+            let sel = Rect::new(area.x + area.w * 0.5, area.y + area.h * 0.5, 120.0, 90.0);
+            publica(&mut hero, mode, 2, Some(sel));
             pinta(&mut hero, &mut ts);
             assert!(
                 porta_acesa(&hero, id),

@@ -406,7 +406,6 @@ pub(crate) use ph2d_app_skeleton::reveal as skeleton_reveal;
 mod skeleton_skin_image;
 /// ⭐ **Os OSSOS INTELIGENTES** — girar um osso percorre uma animação inteira.
 pub(crate) use ph2d_app_skeleton::smart as skeleton_smart;
-mod animacao_smoke;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
 /// **9-slice, lado a lado com o que ele conserta** (`PH2D_SLICE_SMOKE=1`).
@@ -755,7 +754,6 @@ impl App {
             taper_smoke_done: false,
             wetpaint_smoke_done: false,
             stack_smoke_done: false,
-            animacao_smoke_done: false,
             timeline_onion_smoke_done: false,
             harmony_smoke_done: false,
             signal_smoke_done: false,

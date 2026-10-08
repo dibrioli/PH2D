@@ -140,12 +140,22 @@ fn component_click(
     select_row(host, row, entry);
     // O cartão de um componente que se edita num PAINEL é o painel (a Animação → a Timeline, que
     // segue a selecção); o Inspector fica para os que têm cartão.
-    if let Some(panel) = entry.content.iter().find_map(|g| match g.opens {
-        ContentOpens::Panel(p) if category == ph2d_component_desc::ComponentCategory::Animation => {
-            Some(p)
-        }
-        _ => None,
-    }) {
+    // ⚠️ Lido nas SUB-LINHAS e não no `entry.content`: a expansão já tirou o conteúdo da linha do
+    // dono para o fazer linhas (`rows::expand`), então ali ele está sempre vazio.
+    let panel = (category == ph2d_component_desc::ComponentCategory::Animation)
+        .then(state::current_live_entries)
+        .flatten()
+        .and_then(|live| {
+            live.into_iter().find_map(|(_, e)| match e.role {
+                RowRole::ContentItem {
+                    owner,
+                    opens: ContentOpens::Panel(p),
+                    ..
+                } if owner == row => Some(p),
+                _ => None,
+            })
+        });
+    if let Some(panel) = panel {
         host.set_panel_visible(panel, true);
         return Some(EventOutcome::Consumed);
     }

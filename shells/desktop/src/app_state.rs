@@ -283,8 +283,6 @@ pub(crate) struct App {
     pub(crate) wetpaint_smoke_done: bool,
     /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
     pub(crate) stack_smoke_done: bool,
-    /// Latch do `PH2D_ANIMACAO_SMOKE` (a Animação por objecto, doc ObjectsAndComponents 01 §6).
-    pub(crate) animacao_smoke_done: bool,
     /// O smoke do onion da timeline (ADR-0142 W1) já rodou. `PH2D_ONION_SMOKE=1`.
     pub(crate) timeline_onion_smoke_done: bool,
     /// Latch do `PH2D_HARMONY_SMOKE` (abre o picker com Triad, uma vez).

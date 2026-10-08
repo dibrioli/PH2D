@@ -3,6 +3,10 @@
 //! Os roteadores de cena que correm antes do empréstimo do `gfx`, pela ordem de sempre — a ordem é o
 //! contrato, porque duas cenas podem armar a mesma ferramenta e a última a correr ganha.
 
+/// `PH2D_ANIMACAO_SMOKE` — mora sob o roteador que o chama (os tectos da `App` e do `main.rs`).
+#[path = "animacao_smoke.rs"]
+mod animacao_smoke;
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_app_scene_smokes(&mut self) {

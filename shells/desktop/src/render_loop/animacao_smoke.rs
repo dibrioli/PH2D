@@ -11,6 +11,8 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_render::Sprite;
 use ph2d_timeline::PropKind;
 
+static FEITO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 fn key(doc: &mut ph2d_timeline::TimelineDoc, bits: u64, prop: PropKind, t: f64, v: f32) {
     doc.upsert_key(
         bits,
@@ -26,13 +28,13 @@ impl crate::App {
         let Some(nivel) = std::env::var("PH2D_ANIMACAO_SMOKE").ok() else {
             return;
         };
-        if self.animacao_smoke_done {
-            return;
-        }
         let Some(gfx) = self.gfx.as_mut() else {
             return; // ainda sem mundo; tenta no próximo quadro
         };
-        self.animacao_smoke_done = true;
+        // A trava vive aqui e não na `App` (o tecto de campos dela só desce).
+        if FEITO.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            return;
+        }
         let world = gfx.sim.world_mut();
         let sprite = |w: f32, h: f32, rgba: [f32; 4]| Sprite::atlas(0, [w, h], rgba);
         let heroi = world

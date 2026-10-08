@@ -28,18 +28,15 @@ pub fn level_at(store: &WidgetStore, steady: bool, slot: NodeId) -> Option<f32> 
     home.then_some(level)
 }
 
-/// O anel sobre `rect`, pela porta da moldura do tema.
+/// O anel sobre `rect`, na cor do anel de foco e com a intensidade do piscar.
+///
+/// ⚠️ **Não pela porta da moldura** (`stroke_frame`): no tema moderno ela desenha o estilo da tabela
+/// de estados e IGNORA a cor e a intensidade — o anel nunca aparecia (a foto da cena 10, 08/10).
 pub fn paint_ring(scene: &mut ph2d_vector::VectorScene, theme: Theme, rect: Rect, level: f32) {
     let colour = crate::paint::resolve(ColorToken::FocusRing, theme).with_alpha(level);
-    crate::paint::stroke_frame(
-        scene,
-        rect,
-        crate::paint::frame_radius(theme, Radius::Sm.px()),
-        theme,
-        ph2d_tokens::visuals::Feel::Active,
-        StrokeToken::Heavy.px(),
-        colour,
-    );
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    // FRAME-RAW-OK: o PISCAR da paleta (F4) — um realce passageiro POR CIMA do botão, não a moldura dele
+    crate::paint::stroke_rounded_rect(scene, rect, radius, StrokeToken::Heavy.px(), colour);
 }
 
 /// O anel de `slot`, se ele é uma porta para o comando a piscar.
@@ -53,5 +50,24 @@ pub fn ring_if_home(
 ) {
     if let Some(level) = level_at(store, steady, slot) {
         paint_ring(scene, theme, rect, level);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ⭐ **O anel DESENHA em todo tema** — a 1.ª redacção ia pela porta da moldura, que no tema
+    /// moderno ignora a cor e a intensidade: o estado piscava e a tela não (a foto da cena 10).
+    #[test]
+    fn the_ring_paints_in_every_theme() {
+        for theme in Theme::ALL {
+            let mut scene = ph2d_vector::VectorScene::new();
+            paint_ring(&mut scene, theme, Rect::new(10.0, 10.0, 40.0, 24.0), 1.0);
+            assert!(
+                !scene.inner().encoding().is_empty(),
+                "{theme:?}: o anel do piscar não desenhou nada"
+            );
+        }
     }
 }

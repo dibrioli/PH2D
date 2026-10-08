@@ -399,3 +399,95 @@ fn a_child_snaps_to_the_edge_of_its_own_frame() {
     assert_eq!(w.el(c).x, 0.0);
     assert_eq!(w.el(c).frame, Some(f));
 }
+
+/// Um rectângulo rodado FORA do documento (só a geometria).
+fn rotated(w: &World, bx: [f64; 4], angle: f64) -> Element {
+    let mut el = Element::new_shape(
+        ElementId(u64::MAX),
+        w.doc.z_on_top(),
+        Shape {
+            kind: ShapeType::Rectangle,
+            style: Style::new(None, None, Rgba([0, 0, 0, 255])),
+            text: Default::default(),
+        },
+        bx,
+    );
+    el.angle = angle;
+    el
+}
+
+/// Os cinco valores de `el` no eixo x (os quatro cantos rodados, por ordem, e o centro).
+fn xs(el: &Element) -> [f64; 5] {
+    let mut c = el.corners().map(|p| p[0]);
+    c.sort_by(f64::total_cmp);
+    [c[0], c[1], el.center()[0], c[2], c[3]]
+}
+
+/// Nenhum dos valores `mine` está a menos de `tol` dos `theirs`, menos o par de VALORES
+/// (`mine[i]`, `theirs[j]`) — uma caixa direita repete as bordas nos cantos.
+fn only_pair_near(mine: &[f64], theirs: &[f64], (i, j): (usize, usize), tol: f64) -> bool {
+    mine.iter().all(|m| {
+        theirs
+            .iter()
+            .all(|t| (*m == mine[i] && *t == theirs[j]) || (m - t).abs() > tol)
+    })
+}
+
+/// ⭐ tldraw G1b: um RODADO (15°) que se move prende pelos cantos rodados — o de DENTRO (o 2.º
+/// da esquerda), a 3 da borda esquerda de A, encaixa nela; a caixa envolvente está longe.
+#[test]
+fn a_rotated_mover_snaps_by_an_inner_rotated_corner() {
+    let mut w = world();
+    let a = rect(&mut w, [0.0, 0.0, 200.0, 120.0], 0.0, None);
+    let inner = xs(&rotated(
+        &w,
+        centred([0.0, 500.0], [160.0, 100.0]),
+        15.0 * DEG,
+    ))[1];
+    let cb = [3.0 - inner, 500.0];
+    let b = rect(&mut w, centred(cb, [160.0, 100.0]), 15.0 * DEG, None);
+    assert!(
+        only_pair_near(&xs(w.el(b)), &xs(w.el(a)), (1, 0), 12.0),
+        "pré-condição"
+    );
+    drag_by(&mut w, cb, [-4.0, 0.0]);
+    assert!(xs(w.el(b))[1].abs() < 1e-9, "{:?}", xs(w.el(b)));
+}
+
+/// ⭐ tldraw G2: um ALVO rodado (30°) oferece os cantos rodados — a esquerda de um direito, a 3 do
+/// canto de dentro de A, cola nele.
+#[test]
+fn a_rotated_target_offers_its_inner_corners() {
+    let mut w = world();
+    let a = rect(
+        &mut w,
+        centred([0.0, 0.0], [200.0, 120.0]),
+        30.0 * DEG,
+        None,
+    );
+    let inner = xs(w.el(a))[1];
+    let b = rect(&mut w, [inner + 3.0, 400.0, 140.0, 60.0], 0.0, None);
+    assert!(
+        only_pair_near(&xs(w.el(b)), &xs(w.el(a)), (0, 1), 12.0),
+        "pré-condição"
+    );
+    drag_by(&mut w, [inner + 73.0, 430.0], [-4.0, 0.0]);
+    assert!(
+        (w.el(b).x - inner).abs() < 1e-9,
+        "{} contra {inner}",
+        w.el(b).x
+    );
+}
+
+/// ⭐ tldraw G6: um filho alinha-se com os irmãos e o frame, NUNCA com o que está fora do frame —
+/// o topo de C a 3 do de O (solto, fora) não cola.
+#[test]
+fn a_child_does_not_snap_to_what_lives_outside_its_frame() {
+    let mut w = world();
+    let f = board_frame(&mut w, [0.0, 0.0, 1000.0, 800.0], 0.0);
+    rect(&mut w, [1100.0, 200.0, 80.0, 40.0], 0.0, None);
+    let c = rect(&mut w, [100.0, 203.0, 50.0, 50.0], 0.0, Some(f));
+    drag_by(&mut w, [125.0, 228.0], [-4.0, 0.0]);
+    assert_eq!(w.el(c).y, 203.0, "colou no de fora");
+    assert_eq!(w.el(c).x, 96.0);
+}

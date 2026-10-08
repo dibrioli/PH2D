@@ -1,0 +1,17 @@
+{
+  "name": "ph2d-tldraw-oracle",
+  "private": true,
+  "version": "1.0.0",
+  "description": "tldraw como oráculo corrido por script (só API pública do Editor: createShapes, select, user.updateUserPreferences, snaps.getIndicators, getShapePageBounds, dispatch de pointer).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "tldraw": "5.5.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.63.0"
+  }
+}

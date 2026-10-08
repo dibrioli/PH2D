@@ -1,0 +1,21 @@
+{
+  "oracle": "tldraw",
+  "package_version": "5.5.2",
+  "package_license": "SEE LICENSE IN LICENSE.md",
+  "license_note": "tldraw license (LICENCA_tldraw_v5.5.2.md): uso em Development Environment permitido; corrido localmente como oráculo de medição, nenhum código copiado",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-08T20:52:20.969Z",
+  "command": "node docs/MiroClone/ferramentas/tldraw_oracle/corre_guias.mjs --so G2 <saida>",
+  "runner_sha256": "38dfe15b6fee73551f948f0e2b42de7a46bd76efdd92c7880a6c30f533a4a550",
+  "inputs": "as cenas e os gestos de cada sonda estão no próprio .json (campos cena, gesto, descr)",
+  "measured": "editor.snaps.getIndicators() com o botão do rato ainda em baixo (durante.indicadores); geometria das formas depois de soltar (depois); nudge = deslocamento real − deslocamento pedido (unidades de página)",
+  "editor": "<Tldraw hideUi onMount> montado; câmara {x:0,y:0,z}; isSnapMode por sonda; rato/teclado reais do Playwright; janela 1280×800, deviceScaleFactor 1",
+  "external_requests_seen": [
+    "https://cdn.tldraw.com/5.5.2"
+  ],
+  "console": [],
+  "outputs_sha256": {
+    "guias_G2.json": "059ad145bec3a54dbceabb5c80cb9fda6e7fa44850de98a54fb58f9e6a590c19"
+  }
+}

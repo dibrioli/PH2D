@@ -1,0 +1,2306 @@
+{
+  "caso": "G4",
+  "pergunta": "Rodar pelo puxador de rotação: B a 0° perto de A a 30°; rodar a ~28°, ~2°, etc. Prende ao ângulo de outras formas / a 0? Com Shift: o passo.",
+  "sondas": [
+    {
+      "nome": "rot_28",
+      "descr": "arrastar o puxador nesw-rotate em arco 28° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 28,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 28.000003404,
+        "rotacaoDeg": 28.000003404
+      },
+      "depois": {
+        "rotacaoDeg": 28,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 672.8377707105803,
+          "y": 318.2948953341824,
+          "rotation": 0.4886921905584123,
+          "pageRotationDeg": 28,
+          "pageBounds": {
+            "x": 625.8906144319913,
+            "y": 318.2948953341824,
+            "w": 188.21877113601738,
+            "h": 163.41020933163526
+          },
+          "corners": [
+            [
+              672.8377707105803,
+              318.2948953341824
+            ],
+            [
+              814.1093855680086,
+              393.41034537992493
+            ],
+            [
+              767.1622292894195,
+              481.70510466581766
+            ],
+            [
+              625.8906144319913,
+              406.58965462007507
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_29.5",
+      "descr": "arrastar o puxador nesw-rotate em arco 29.5° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 29.5,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 29.499990956,
+        "rotacaoDeg": 29.499990956
+      },
+      "depois": {
+        "rotacaoDeg": 29,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 674.2709044411652,
+          "y": 317.48424502332324,
+          "rotation": 0.5061454830783556,
+          "pageRotationDeg": 29,
+          "pageBounds": {
+            "x": 625.7899424165314,
+            "y": 317.48424502332324,
+            "w": 188.42011516693708,
+            "h": 165.03150995335352
+          },
+          "corners": [
+            [
+              674.2709044411652,
+              317.48424502332324
+            ],
+            [
+              814.2100575834685,
+              395.05378426273717
+            ],
+            [
+              765.7290955588348,
+              482.51575497667676
+            ],
+            [
+              625.7899424165314,
+              404.94621573726283
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_29.7",
+      "descr": "arrastar o puxador nesw-rotate em arco 29.7° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 29.7,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 29.69999278,
+        "rotacaoDeg": 29.69999278
+      },
+      "depois": {
+        "rotacaoDeg": 30,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 675.717967697245,
+          "y": 316.6987298107781,
+          "rotation": 0.5235987755982988,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 625.717967697245,
+            "y": 316.6987298107781,
+            "w": 188.56406460551023,
+            "h": 166.60254037844385
+          },
+          "corners": [
+            [
+              675.717967697245,
+              316.6987298107781
+            ],
+            [
+              814.2820323027552,
+              396.6987298107781
+            ],
+            [
+              764.2820323027552,
+              483.30127018922195
+            ],
+            [
+              625.717967697245,
+              403.301270189222
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_30.3",
+      "descr": "arrastar o puxador nesw-rotate em arco 30.3° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 30.3,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 30.300000724,
+        "rotacaoDeg": 30.300000724
+      },
+      "depois": {
+        "rotacaoDeg": 30,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 675.717967697245,
+          "y": 316.6987298107781,
+          "rotation": 0.5235987755982988,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 625.717967697245,
+            "y": 316.6987298107781,
+            "w": 188.56406460551023,
+            "h": 166.60254037844385
+          },
+          "corners": [
+            [
+              675.717967697245,
+              316.6987298107781
+            ],
+            [
+              814.2820323027552,
+              396.6987298107781
+            ],
+            [
+              764.2820323027552,
+              483.30127018922195
+            ],
+            [
+              625.717967697245,
+              403.301270189222
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_31",
+      "descr": "arrastar o puxador nesw-rotate em arco 31° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 31,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 30.999995418,
+        "rotacaoDeg": 30.999995418
+      },
+      "depois": {
+        "rotacaoDeg": 31,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 677.1785196893337,
+          "y": 315.9385889720901,
+          "rotation": 0.5410520681182421,
+          "pageRotationDeg": 31,
+          "pageBounds": {
+            "x": 625.6747121983283,
+            "y": 315.9385889720901,
+            "w": 188.65057560334344,
+            "h": 168.12282205581988
+          },
+          "corners": [
+            [
+              677.1785196893337,
+              315.9385889720901
+            ],
+            [
+              814.3252878016717,
+              398.34468095769876
+            ],
+            [
+              762.8214803106663,
+              484.06141102790997
+            ],
+            [
+              625.6747121983283,
+              401.6553190423013
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_32",
+      "descr": "arrastar o puxador nesw-rotate em arco 32° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 32,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 31.999992824,
+        "rotacaoDeg": 31.999992824
+      },
+      "depois": {
+        "rotacaoDeg": 32,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 678.6521155191462,
+          "y": 315.2040540535223,
+          "rotation": 0.5585053606381855,
+          "pageRotationDeg": 32,
+          "pageBounds": {
+            "x": 625.6601890958257,
+            "y": 315.2040540535223,
+            "w": 188.67962180834866,
+            "h": 169.59189189295535
+          },
+          "corners": [
+            [
+              678.6521155191462,
+              315.2040540535223
+            ],
+            [
+              814.3398109041743,
+              399.9911363308351
+            ],
+            [
+              761.3478844808538,
+              484.7959459464777
+            ],
+            [
+              625.6601890958257,
+              400.00886366916495
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_2",
+      "descr": "arrastar o puxador nesw-rotate em arco 2° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 2,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 0,
+        "rotacaoDeg": 2.000003991
+      },
+      "depois": {
+        "rotacaoDeg": 2,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 641.7937086735974,
+          "y": 347.23849891284516,
+          "rotation": 0.03490658503988659,
+          "pageRotationDeg": 2,
+          "pageBounds": {
+            "x": 638.3037590033473,
+            "y": 347.23849891284516,
+            "w": 163.3924819933054,
+            "h": 105.52300217430974
+          },
+          "corners": [
+            [
+              641.7937086735974,
+              347.23849891284516
+            ],
+            [
+              801.6962409966527,
+              352.8224183852453
+            ],
+            [
+              798.2062913264026,
+              452.7615010871549
+            ],
+            [
+              638.3037590033473,
+              447.17758161475473
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_1.4",
+      "descr": "arrastar o puxador nesw-rotate em arco 1.4° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 1.4,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 0,
+        "rotacaoDeg": 1.399989788
+      },
+      "depois": {
+        "rotacaoDeg": 1,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 640.8848047093529,
+          "y": 348.61142272719775,
+          "rotation": 0.017453292519943295,
+          "pageRotationDeg": 1,
+          "pageBounds": {
+            "x": 639.1395640656245,
+            "y": 348.61142272719775,
+            "w": 161.72087186875103,
+            "h": 102.7771545456045
+          },
+          "corners": [
+            [
+              640.8848047093529,
+              348.61142272719775
+            ],
+            [
+              800.8604359343756,
+              351.4038077571631
+            ],
+            [
+              799.1151952906472,
+              451.38857727280225
+            ],
+            [
+              639.1395640656245,
+              448.5961922428369
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_0.6",
+      "descr": "arrastar o puxador nesw-rotate em arco 0.6° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 0.6,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 0,
+        "rotacaoDeg": 0.600000741
+      },
+      "depois": {
+        "rotacaoDeg": 1,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 640.8848047093529,
+          "y": 348.61142272719775,
+          "rotation": 0.017453292519943295,
+          "pageRotationDeg": 1,
+          "pageBounds": {
+            "x": 639.1395640656245,
+            "y": 348.61142272719775,
+            "w": 161.72087186875103,
+            "h": 102.7771545456045
+          },
+          "corners": [
+            [
+              640.8848047093529,
+              348.61142272719775
+            ],
+            [
+              800.8604359343756,
+              351.4038077571631
+            ],
+            [
+              799.1151952906472,
+              451.38857727280225
+            ],
+            [
+              639.1395640656245,
+              448.5961922428369
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_0.5",
+      "descr": "arrastar o puxador nesw-rotate em arco 0.5° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 0.5,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 0,
+        "rotacaoDeg": 0.499995863
+      },
+      "depois": {
+        "rotacaoDeg": 0,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 640,
+            "y": 350,
+            "w": 160,
+            "h": 100
+          },
+          "corners": [
+            [
+              640,
+              350
+            ],
+            [
+              800,
+              350
+            ],
+            [
+              800,
+              450
+            ],
+            [
+              640,
+              450
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_0.4",
+      "descr": "arrastar o puxador nesw-rotate em arco 0.4° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 0.4,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 0,
+        "rotacaoDeg": 0.400003138
+      },
+      "depois": {
+        "rotacaoDeg": 0,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 640,
+            "y": 350,
+            "w": 160,
+            "h": 100
+          },
+          "corners": [
+            [
+              640,
+              350
+            ],
+            [
+              800,
+              350
+            ],
+            [
+              800,
+              450
+            ],
+            [
+              640,
+              450
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_-1",
+      "descr": "arrastar o puxador nesw-rotate em arco -1° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": -1,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 0,
+        "rotacaoDeg": 358.999995908
+      },
+      "depois": {
+        "rotacaoDeg": 359,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 639.1395640656245,
+          "y": 351.4038077571631,
+          "rotation": 6.265732014659643,
+          "pageRotationDeg": -1.0000000000000029,
+          "pageBounds": {
+            "x": 639.1395640656245,
+            "y": 348.61142272719775,
+            "w": 161.72087186875092,
+            "h": 102.7771545456045
+          },
+          "corners": [
+            [
+              639.1395640656245,
+              351.4038077571631
+            ],
+            [
+              799.1151952906471,
+              348.61142272719775
+            ],
+            [
+              800.8604359343755,
+              448.5961922428369
+            ],
+            [
+              640.8848047093529,
+              451.38857727280225
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_10.3",
+      "descr": "arrastar o puxador nesw-rotate em arco 10.3° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 10.3,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 10.299996504,
+        "rotacaoDeg": 10.299996504
+      },
+      "depois": {
+        "rotacaoDeg": 10,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 649.8977886423698,
+          "y": 336.86775813603515,
+          "rotation": 0.17453292519943295,
+          "pageRotationDeg": 10,
+          "pageBounds": {
+            "x": 632.5329708756768,
+            "y": 336.86775813603515,
+            "w": 174.93405824864624,
+            "h": 126.26448372792964
+          },
+          "corners": [
+            [
+              649.8977886423698,
+              336.86775813603515
+            ],
+            [
+              807.4670291243231,
+              364.651466562744
+            ],
+            [
+              790.10221135763,
+              463.1322418639648
+            ],
+            [
+              632.5329708756768,
+              435.3485334372559
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_10.7",
+      "descr": "arrastar o puxador nesw-rotate em arco 10.7° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 10.7,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 10.700004189,
+        "rotacaoDeg": 10.700004189
+      },
+      "depois": {
+        "rotacaoDeg": 11,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 651.0102750930141,
+          "y": 335.6539211974932,
+          "rotation": 0.19198621771937624,
+          "pageRotationDeg": 10.999999999999998,
+          "pageBounds": {
+            "x": 631.9293755553597,
+            "y": 335.6539211974932,
+            "w": 176.14124888928063,
+            "h": 128.69215760501356
+          },
+          "corners": [
+            [
+              651.0102750930141,
+              335.6539211974932
+            ],
+            [
+              808.0706244446403,
+              366.1833604577404
+            ],
+            [
+              788.9897249069859,
+              464.3460788025068
+            ],
+            [
+              631.9293755553597,
+              433.8166395422596
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_17.25",
+      "descr": "arrastar o puxador nesw-rotate em arco 17.25° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 17.25,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 17.250000715,
+        "rotacaoDeg": 17.250000715
+      },
+      "depois": {
+        "rotacaoDeg": 17,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 658.114204759094,
+          "y": 328.79502582402927,
+          "rotation": 0.29670597283903605,
+          "pageRotationDeg": 17.000000000000007,
+          "pageBounds": {
+            "x": 628.8770342868204,
+            "y": 328.79502582402927,
+            "w": 182.24593142635933,
+            "h": 142.4099483519414
+          },
+          "corners": [
+            [
+              658.114204759094,
+              328.79502582402927
+            ],
+            [
+              811.1229657131797,
+              375.57449857966714
+            ],
+            [
+              781.885795240906,
+              471.2049741759707
+            ],
+            [
+              628.8770342868204,
+              424.4255014203328
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_44",
+      "descr": "arrastar o puxador nesw-rotate em arco 44° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 44,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 44.000005786,
+        "rotacaoDeg": 44.000005786
+      },
+      "depois": {
+        "rotacaoDeg": 44,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 697.1857344958578,
+          "y": 308.46034034634766,
+          "rotation": 0.767944870877505,
+          "pageRotationDeg": 43.99999999999999,
+          "pageBounds": {
+            "x": 627.7198974499581,
+            "y": 308.46034034634766,
+            "w": 184.56020510008386,
+            "h": 183.07931930730467
+          },
+          "corners": [
+            [
+              697.1857344958578,
+              308.46034034634766
+            ],
+            [
+              812.280102550042,
+              419.6056796197872
+            ],
+            [
+              742.8142655041422,
+              491.53965965365234
+            ],
+            [
+              627.7198974499581,
+              380.3943203802128
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_46",
+      "descr": "arrastar o puxador nesw-rotate em arco 46° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 46,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 46.00000007,
+        "rotacaoDeg": 46.00000007
+      },
+      "depois": {
+        "rotacaoDeg": 46,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700.3943203802128,
+          "y": 307.71989744995807,
+          "rotation": 0.8028514559173916,
+          "pageRotationDeg": 46,
+          "pageBounds": {
+            "x": 628.4603403463477,
+            "y": 307.71989744995807,
+            "w": 183.07931930730456,
+            "h": 184.56020510008392
+          },
+          "corners": [
+            [
+              700.3943203802128,
+              307.71989744995807
+            ],
+            [
+              811.5396596536523,
+              422.8142655041422
+            ],
+            [
+              739.6056796197872,
+              492.280102550042
+            ],
+            [
+              628.4603403463477,
+              377.1857344958578
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_89",
+      "descr": "arrastar o puxador nesw-rotate em arco 89° em torno do centro da selecção",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 89,
+      "shift": false,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 88.999991466,
+        "rotacaoDeg": 88.999991466
+      },
+      "depois": {
+        "rotacaoDeg": 89,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 768.5961922428369,
+          "y": 319.13956406562454,
+          "rotation": 1.5533430342749532,
+          "pageRotationDeg": 89,
+          "pageBounds": {
+            "x": 668.6114227271978,
+            "y": 319.13956406562454,
+            "w": 102.7771545456045,
+            "h": 161.72087186875092
+          },
+          "corners": [
+            [
+              768.5961922428369,
+              319.13956406562454
+            ],
+            [
+              771.3885772728023,
+              479.11519529064714
+            ],
+            [
+              671.4038077571631,
+              480.86043593437546
+            ],
+            [
+              668.6114227271978,
+              320.8848047093529
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_8_shift",
+      "descr": "arrastar o puxador nesw-rotate em arco 8° em torno do centro da selecção com Shift",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 8,
+      "shift": true,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 15,
+        "rotacaoDeg": 15
+      },
+      "depois": {
+        "rotacaoDeg": 15,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 655.6668861520005,
+          "y": 330.99818507734494,
+          "rotation": 0.26179938779914913,
+          "pageRotationDeg": 14.999999999999982,
+          "pageBounds": {
+            "x": 629.7849816417485,
+            "y": 330.99818507734494,
+            "w": 180.43003671650297,
+            "h": 138.00362984531012
+          },
+          "corners": [
+            [
+              655.6668861520005,
+              330.99818507734494
+            ],
+            [
+              810.2150183582514,
+              372.40923229374823
+            ],
+            [
+              784.3331138479994,
+              469.00181492265506
+            ],
+            [
+              629.7849816417485,
+              427.59076770625177
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_20_shift",
+      "descr": "arrastar o puxador nesw-rotate em arco 20° em torno do centro da selecção com Shift",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 20,
+      "shift": true,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 15,
+        "rotacaoDeg": 15
+      },
+      "depois": {
+        "rotacaoDeg": 15,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 655.6668861520005,
+          "y": 330.99818507734494,
+          "rotation": 0.26179938779914913,
+          "pageRotationDeg": 14.999999999999982,
+          "pageBounds": {
+            "x": 629.7849816417485,
+            "y": 330.99818507734494,
+            "w": 180.43003671650297,
+            "h": 138.00362984531012
+          },
+          "corners": [
+            [
+              655.6668861520005,
+              330.99818507734494
+            ],
+            [
+              810.2150183582514,
+              372.40923229374823
+            ],
+            [
+              784.3331138479994,
+              469.00181492265506
+            ],
+            [
+              629.7849816417485,
+              427.59076770625177
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_37_shift",
+      "descr": "arrastar o puxador nesw-rotate em arco 37° em torno do centro da selecção com Shift",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 37,
+      "shift": true,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 30,
+        "rotacaoDeg": 30
+      },
+      "depois": {
+        "rotacaoDeg": 30,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 675.717967697245,
+          "y": 316.69872981077805,
+          "rotation": 0.5235987755982991,
+          "pageRotationDeg": 30.000000000000014,
+          "pageBounds": {
+            "x": 625.717967697245,
+            "y": 316.69872981077805,
+            "w": 188.56406460551023,
+            "h": 166.60254037844385
+          },
+          "corners": [
+            [
+              675.717967697245,
+              316.69872981077805
+            ],
+            [
+              814.2820323027552,
+              396.6987298107781
+            ],
+            [
+              764.282032302755,
+              483.3012701892219
+            ],
+            [
+              625.717967697245,
+              403.3012701892219
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_50_shift",
+      "descr": "arrastar o puxador nesw-rotate em arco 50° em torno do centro da selecção com Shift",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 50,
+      "shift": true,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 45,
+        "rotacaoDeg": 45
+      },
+      "depois": {
+        "rotacaoDeg": 45,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 698.7867965644035,
+          "y": 308.0761184457488,
+          "rotation": 0.7853981633974483,
+          "pageRotationDeg": 45,
+          "pageBounds": {
+            "x": 628.0761184457488,
+            "y": 308.0761184457488,
+            "w": 183.84776310850236,
+            "h": 183.84776310850236
+          },
+          "corners": [
+            [
+              698.7867965644035,
+              308.0761184457488
+            ],
+            [
+              811.9238815542511,
+              421.2132034355964
+            ],
+            [
+              741.2132034355964,
+              491.9238815542512
+            ],
+            [
+              628.0761184457488,
+              378.7867965644036
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    },
+    {
+      "nome": "rot_97_shift",
+      "descr": "arrastar o puxador nesw-rotate em arco 97° em torno do centro da selecção com Shift",
+      "cena": [
+        {
+          "nome": "A",
+          "type": "geo",
+          "x": 200,
+          "y": 150,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 200,
+            "h": 120,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "B",
+          "type": "geo",
+          "x": 640,
+          "y": 350,
+          "rotation": 0,
+          "props": {
+            "w": 160,
+            "h": 100,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "puxadorEcra": [
+        807,
+        343
+      ],
+      "centroEcra": [
+        720,
+        400
+      ],
+      "anguloPedidoDeg": 97,
+      "shift": true,
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.rotating",
+        "selecionados": [
+          "shape:B"
+        ],
+        "cursor": "nesw-rotate",
+        "chegadaRapidaRotacaoDeg": 90,
+        "rotacaoDeg": 90
+      },
+      "depois": {
+        "rotacaoDeg": 90,
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 770,
+          "y": 320,
+          "rotation": 1.5707963267948966,
+          "pageRotationDeg": 90,
+          "pageBounds": {
+            "x": 670,
+            "y": 320,
+            "w": 100,
+            "h": 160
+          },
+          "corners": [
+            [
+              770,
+              320
+            ],
+            [
+              770,
+              480
+            ],
+            [
+              670,
+              480
+            ],
+            [
+              670,
+              320
+            ]
+          ],
+          "center": [
+            720,
+            400
+          ]
+        }
+      },
+      "indicadoresClass": []
+    }
+  ]
+}

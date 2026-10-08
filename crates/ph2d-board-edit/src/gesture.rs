@@ -213,7 +213,14 @@ impl Editor {
                     frame,
                     start: p.world,
                     id: None,
-                    targets: Snapper::new(doc, &BTreeSet::new(), view, &[], None),
+                    targets: Snapper::new(
+                        doc,
+                        &BTreeSet::new(),
+                        view,
+                        &[],
+                        None,
+                        &BTreeSet::from([doc.deepest_frame_at(p.world, &BTreeSet::new())]),
+                    ),
                     guides: Vec::new(),
                 });
                 return Down::Taken;
@@ -277,7 +284,7 @@ impl Editor {
                     Gesture::Rotate {
                         frame,
                         start: p.world,
-                        targets: Snapper::new(doc, &going, view, &[], None),
+                        targets: Snapper::new(doc, &going, view, &[], None, &self.homes(doc)),
                         originals,
                         guides: Vec::new(),
                     }
@@ -286,7 +293,14 @@ impl Editor {
                     dir,
                     frame,
                     originals,
-                    targets: Snapper::new(doc, &self.selection, view, &[], Some(frame.angle)),
+                    targets: Snapper::new(
+                        doc,
+                        &self.selection,
+                        view,
+                        &[],
+                        Some(frame.angle),
+                        &self.homes(doc),
+                    ),
                     guides: Vec::new(),
                 },
             });
@@ -338,7 +352,7 @@ impl Editor {
                     roots.iter().filter(|el| el.connector().is_none()).collect();
                 self.gesture = Some(Gesture::Move {
                     start: p.world,
-                    targets: Snapper::new(doc, &going, view, &movers, None),
+                    targets: Snapper::new(doc, &going, view, &movers, None, &self.homes(doc)),
                     originals,
                     active: false,
                     copies: Vec::new(),
@@ -383,7 +397,8 @@ impl Editor {
                 let id = note.id;
                 live(doc, note.clone());
                 self.selection = BTreeSet::from([id]);
-                let targets = Snapper::new(doc, &self.selection, *view, &[&note], None);
+                let homes = BTreeSet::from([note.frame]);
+                let targets = Snapper::new(doc, &self.selection, *view, &[&note], None, &homes);
                 self.gesture = Some(Gesture::Move {
                     start: *start,
                     originals: vec![note],

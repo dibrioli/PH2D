@@ -1,0 +1,3636 @@
+{
+  "caso": "G8",
+  "pergunta": "Limiar da guia em px de ECRÃ a zoom 1 e 2 (varrimento 0,5..15 px); e os modos: isSnapMode × Ctrl.",
+  "sondas": [
+    {
+      "nome": "z1_o0.5",
+      "z": 1,
+      "ofsEcraPx": 0.5,
+      "ofsPagina": 0.5,
+      "nudge": [
+        -0.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -0.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -0.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -0.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -0.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -0.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -0.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -0.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -0.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -0.5
+        }
+      ]
+    },
+    {
+      "nome": "z1_o1",
+      "z": 1,
+      "ofsEcraPx": 1,
+      "ofsPagina": 1,
+      "nudge": [
+        -1,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -1
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -1
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -1
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -1
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -1
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -1
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -1
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -1
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -1
+        }
+      ]
+    },
+    {
+      "nome": "z1_o1.5",
+      "z": 1,
+      "ofsEcraPx": 1.5,
+      "ofsPagina": 1.5,
+      "nudge": [
+        -1.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -1.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -1.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -1.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -1.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -1.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -1.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -1.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -1.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -1.5
+        }
+      ]
+    },
+    {
+      "nome": "z1_o2",
+      "z": 1,
+      "ofsEcraPx": 2,
+      "ofsPagina": 2,
+      "nudge": [
+        -2,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -2
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -2
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -2
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -2
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -2
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -2
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -2
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -2
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -2
+        }
+      ]
+    },
+    {
+      "nome": "z1_o2.5",
+      "z": 1,
+      "ofsEcraPx": 2.5,
+      "ofsPagina": 2.5,
+      "nudge": [
+        -2.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -2.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -2.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -2.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -2.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -2.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -2.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -2.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -2.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -2.5
+        }
+      ]
+    },
+    {
+      "nome": "z1_o3",
+      "z": 1,
+      "ofsEcraPx": 3,
+      "ofsPagina": 3,
+      "nudge": [
+        -3,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -3
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -3
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -3
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -3
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -3
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -3
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -3
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -3
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -3
+        }
+      ]
+    },
+    {
+      "nome": "z1_o3.5",
+      "z": 1,
+      "ofsEcraPx": 3.5,
+      "ofsPagina": 3.5,
+      "nudge": [
+        -3.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -3.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -3.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -3.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -3.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -3.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -3.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -3.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -3.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -3.5
+        }
+      ]
+    },
+    {
+      "nome": "z1_o4",
+      "z": 1,
+      "ofsEcraPx": 4,
+      "ofsPagina": 4,
+      "nudge": [
+        -4,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -4
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -4
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -4
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -4
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -4
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -4
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -4
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -4
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -4
+        }
+      ]
+    },
+    {
+      "nome": "z1_o4.5",
+      "z": 1,
+      "ofsEcraPx": 4.5,
+      "ofsPagina": 4.5,
+      "nudge": [
+        -4.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -4.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -4.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -4.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -4.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -4.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -4.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -4.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -4.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -4.5
+        }
+      ]
+    },
+    {
+      "nome": "z1_o5",
+      "z": 1,
+      "ofsEcraPx": 5,
+      "ofsPagina": 5,
+      "nudge": [
+        -5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -5
+        }
+      ]
+    },
+    {
+      "nome": "z1_o5.5",
+      "z": 1,
+      "ofsEcraPx": 5.5,
+      "ofsPagina": 5.5,
+      "nudge": [
+        -5.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -5.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -5.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -5.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -5.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -5.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -5.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -5.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -5.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -5.5
+        }
+      ]
+    },
+    {
+      "nome": "z1_o6",
+      "z": 1,
+      "ofsEcraPx": 6,
+      "ofsPagina": 6,
+      "nudge": [
+        -6,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -6
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -6
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -6
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -6
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -6
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -6
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -6
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -6
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -6
+        }
+      ]
+    },
+    {
+      "nome": "z1_o6.5",
+      "z": 1,
+      "ofsEcraPx": 6.5,
+      "ofsPagina": 6.5,
+      "nudge": [
+        -6.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -6.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -6.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -6.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -6.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -6.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -6.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -6.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -6.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -6.5
+        }
+      ]
+    },
+    {
+      "nome": "z1_o7",
+      "z": 1,
+      "ofsEcraPx": 7,
+      "ofsPagina": 7,
+      "nudge": [
+        -7,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -7
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -7
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -7
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -7
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -7
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -7
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -7
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -7
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -7
+        }
+      ]
+    },
+    {
+      "nome": "z1_o7.5",
+      "z": 1,
+      "ofsEcraPx": 7.5,
+      "ofsPagina": 7.5,
+      "nudge": [
+        -7.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -7.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -7.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -7.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -7.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -7.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -7.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -7.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -7.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -7.5
+        }
+      ]
+    },
+    {
+      "nome": "z1_o8",
+      "z": 1,
+      "ofsEcraPx": 8,
+      "ofsPagina": 8,
+      "nudge": [
+        -8,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -8
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -8
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -8
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -8
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -8
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -8
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -8
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -8
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -8
+        }
+      ]
+    },
+    {
+      "nome": "z1_o8.5",
+      "z": 1,
+      "ofsEcraPx": 8.5,
+      "ofsPagina": 8.5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -8.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -8.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -8.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -8.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -8.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -8.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -8.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -8.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -8.5
+        }
+      ]
+    },
+    {
+      "nome": "z1_o9",
+      "z": 1,
+      "ofsEcraPx": 9,
+      "ofsPagina": 9,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o9.5",
+      "z": 1,
+      "ofsEcraPx": 9.5,
+      "ofsPagina": 9.5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o10",
+      "z": 1,
+      "ofsEcraPx": 10,
+      "ofsPagina": 10,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o10.5",
+      "z": 1,
+      "ofsEcraPx": 10.5,
+      "ofsPagina": 10.5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o11",
+      "z": 1,
+      "ofsEcraPx": 11,
+      "ofsPagina": 11,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o11.5",
+      "z": 1,
+      "ofsEcraPx": 11.5,
+      "ofsPagina": 11.5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o12",
+      "z": 1,
+      "ofsEcraPx": 12,
+      "ofsPagina": 12,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o12.5",
+      "z": 1,
+      "ofsEcraPx": 12.5,
+      "ofsPagina": 12.5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o13",
+      "z": 1,
+      "ofsEcraPx": 13,
+      "ofsPagina": 13,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o13.5",
+      "z": 1,
+      "ofsEcraPx": 13.5,
+      "ofsPagina": 13.5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o14",
+      "z": 1,
+      "ofsEcraPx": 14,
+      "ofsPagina": 14,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o14.5",
+      "z": 1,
+      "ofsEcraPx": 14.5,
+      "ofsPagina": 14.5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z1_o15",
+      "z": 1,
+      "ofsEcraPx": 15,
+      "ofsPagina": 15,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 1,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": []
+    },
+    {
+      "nome": "z2_o0.5",
+      "z": 2,
+      "ofsEcraPx": 0.5,
+      "ofsPagina": 0.25,
+      "nudge": [
+        -0.25,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -0.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -0.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -0.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -0.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -0.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -0.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -0.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -0.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -0.25
+        }
+      ]
+    },
+    {
+      "nome": "z2_o1",
+      "z": 2,
+      "ofsEcraPx": 1,
+      "ofsPagina": 0.5,
+      "nudge": [
+        -0.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -0.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -0.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -0.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -0.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -0.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -0.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -0.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -0.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -0.5
+        }
+      ]
+    },
+    {
+      "nome": "z2_o1.5",
+      "z": 2,
+      "ofsEcraPx": 1.5,
+      "ofsPagina": 0.75,
+      "nudge": [
+        -0.75,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -0.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -0.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -0.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -0.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -0.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -0.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -0.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -0.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -0.75
+        }
+      ]
+    },
+    {
+      "nome": "z2_o2",
+      "z": 2,
+      "ofsEcraPx": 2,
+      "ofsPagina": 1,
+      "nudge": [
+        -1,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -1
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -1
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -1
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -1
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -1
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -1
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -1
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -1
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -1
+        }
+      ]
+    },
+    {
+      "nome": "z2_o2.5",
+      "z": 2,
+      "ofsEcraPx": 2.5,
+      "ofsPagina": 1.25,
+      "nudge": [
+        -1.25,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -1.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -1.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -1.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -1.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -1.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -1.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -1.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -1.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -1.25
+        }
+      ]
+    },
+    {
+      "nome": "z2_o3",
+      "z": 2,
+      "ofsEcraPx": 3,
+      "ofsPagina": 1.5,
+      "nudge": [
+        -1.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -1.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -1.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -1.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -1.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -1.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -1.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -1.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -1.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -1.5
+        }
+      ]
+    },
+    {
+      "nome": "z2_o3.5",
+      "z": 2,
+      "ofsEcraPx": 3.5,
+      "ofsPagina": 1.75,
+      "nudge": [
+        -1.75,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -1.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -1.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -1.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -1.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -1.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -1.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -1.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -1.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -1.75
+        }
+      ]
+    },
+    {
+      "nome": "z2_o4",
+      "z": 2,
+      "ofsEcraPx": 4,
+      "ofsPagina": 2,
+      "nudge": [
+        -2,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -2
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -2
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -2
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -2
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -2
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -2
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -2
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -2
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -2
+        }
+      ]
+    },
+    {
+      "nome": "z2_o4.5",
+      "z": 2,
+      "ofsEcraPx": 4.5,
+      "ofsPagina": 2.25,
+      "nudge": [
+        -2.25,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -2.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -2.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -2.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -2.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -2.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -2.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -2.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -2.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -2.25
+        }
+      ]
+    },
+    {
+      "nome": "z2_o5",
+      "z": 2,
+      "ofsEcraPx": 5,
+      "ofsPagina": 2.5,
+      "nudge": [
+        -2.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -2.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -2.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -2.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -2.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -2.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -2.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -2.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -2.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -2.5
+        }
+      ]
+    },
+    {
+      "nome": "z2_o5.5",
+      "z": 2,
+      "ofsEcraPx": 5.5,
+      "ofsPagina": 2.75,
+      "nudge": [
+        -2.75,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -2.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -2.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -2.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -2.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -2.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -2.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -2.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -2.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -2.75
+        }
+      ]
+    },
+    {
+      "nome": "z2_o6",
+      "z": 2,
+      "ofsEcraPx": 6,
+      "ofsPagina": 3,
+      "nudge": [
+        -3,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -3
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -3
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -3
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -3
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -3
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -3
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -3
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -3
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -3
+        }
+      ]
+    },
+    {
+      "nome": "z2_o6.5",
+      "z": 2,
+      "ofsEcraPx": 6.5,
+      "ofsPagina": 3.25,
+      "nudge": [
+        -3.25,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -3.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -3.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -3.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -3.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -3.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -3.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -3.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -3.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -3.25
+        }
+      ]
+    },
+    {
+      "nome": "z2_o7",
+      "z": 2,
+      "ofsEcraPx": 7,
+      "ofsPagina": 3.5,
+      "nudge": [
+        -3.5,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -3.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -3.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -3.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -3.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -3.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -3.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -3.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -3.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -3.5
+        }
+      ]
+    },
+    {
+      "nome": "z2_o7.5",
+      "z": 2,
+      "ofsEcraPx": 7.5,
+      "ofsPagina": 3.75,
+      "nudge": [
+        -3.75,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -3.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -3.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -3.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -3.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -3.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -3.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -3.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -3.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -3.75
+        }
+      ]
+    },
+    {
+      "nome": "z2_o8",
+      "z": 2,
+      "ofsEcraPx": 8,
+      "ofsPagina": 4,
+      "nudge": [
+        -4,
+        0
+      ],
+      "prendeu": true,
+      "nIndicadores": 1,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -4
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -4
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -4
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -4
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -4
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -4
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -4
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -4
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -4
+        }
+      ]
+    },
+    {
+      "nome": "z2_o8.5",
+      "z": 2,
+      "ofsEcraPx": 8.5,
+      "ofsPagina": 4.25,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -4.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -4.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -4.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -4.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -4.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -4.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -4.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -4.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -4.25
+        }
+      ]
+    },
+    {
+      "nome": "z2_o9",
+      "z": 2,
+      "ofsEcraPx": 9,
+      "ofsPagina": 4.5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -4.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -4.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -4.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -4.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -4.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -4.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -4.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -4.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -4.5
+        }
+      ]
+    },
+    {
+      "nome": "z2_o9.5",
+      "z": 2,
+      "ofsEcraPx": 9.5,
+      "ofsPagina": 4.75,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -4.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -4.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -4.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -4.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -4.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -4.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -4.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -4.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -4.75
+        }
+      ]
+    },
+    {
+      "nome": "z2_o10",
+      "z": 2,
+      "ofsEcraPx": 10,
+      "ofsPagina": 5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -5
+        }
+      ]
+    },
+    {
+      "nome": "z2_o10.5",
+      "z": 2,
+      "ofsEcraPx": 10.5,
+      "ofsPagina": 5.25,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -5.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -5.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -5.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -5.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -5.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -5.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -5.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -5.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -5.25
+        }
+      ]
+    },
+    {
+      "nome": "z2_o11",
+      "z": 2,
+      "ofsEcraPx": 11,
+      "ofsPagina": 5.5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -5.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -5.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -5.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -5.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -5.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -5.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -5.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -5.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -5.5
+        }
+      ]
+    },
+    {
+      "nome": "z2_o11.5",
+      "z": 2,
+      "ofsEcraPx": 11.5,
+      "ofsPagina": 5.75,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -5.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -5.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -5.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -5.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -5.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -5.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -5.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -5.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -5.75
+        }
+      ]
+    },
+    {
+      "nome": "z2_o12",
+      "z": 2,
+      "ofsEcraPx": 12,
+      "ofsPagina": 6,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -6
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -6
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -6
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -6
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -6
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -6
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -6
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -6
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -6
+        }
+      ]
+    },
+    {
+      "nome": "z2_o12.5",
+      "z": 2,
+      "ofsEcraPx": 12.5,
+      "ofsPagina": 6.25,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -6.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -6.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -6.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -6.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -6.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -6.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -6.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -6.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -6.25
+        }
+      ]
+    },
+    {
+      "nome": "z2_o13",
+      "z": 2,
+      "ofsEcraPx": 13,
+      "ofsPagina": 6.5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -6.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -6.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -6.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -6.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -6.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -6.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -6.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -6.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -6.5
+        }
+      ]
+    },
+    {
+      "nome": "z2_o13.5",
+      "z": 2,
+      "ofsEcraPx": 13.5,
+      "ofsPagina": 6.75,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -6.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -6.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -6.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -6.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -6.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -6.75
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -6.75
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -6.75
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -6.75
+        }
+      ]
+    },
+    {
+      "nome": "z2_o14",
+      "z": 2,
+      "ofsEcraPx": 14,
+      "ofsPagina": 7,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -7
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -7
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -7
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -7
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -7
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -7
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -7
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -7
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -7
+        }
+      ]
+    },
+    {
+      "nome": "z2_o14.5",
+      "z": 2,
+      "ofsEcraPx": 14.5,
+      "ofsPagina": 7.25,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -7.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -7.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -7.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -7.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -7.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -7.25
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -7.25
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -7.25
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -7.25
+        }
+      ]
+    },
+    {
+      "nome": "z2_o15",
+      "z": 2,
+      "ofsEcraPx": 15,
+      "ofsPagina": 7.5,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "nIndicadores": 0,
+      "camera": {
+        "x": 0,
+        "y": 0,
+        "z": 2,
+        "meta": {},
+        "id": "camera:page:page",
+        "typeName": "camera"
+      },
+      "proximosX": [
+        {
+          "movedor": "aabbL",
+          "alvo": "A.aabbL",
+          "d": -7.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.aabbL",
+          "d": -7.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.aabbL",
+          "d": -7.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v0",
+          "d": -7.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v0",
+          "d": -7.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v0",
+          "d": -7.5
+        },
+        {
+          "movedor": "aabbL",
+          "alvo": "A.v3",
+          "d": -7.5
+        },
+        {
+          "movedor": "v0",
+          "alvo": "A.v3",
+          "d": -7.5
+        },
+        {
+          "movedor": "v3",
+          "alvo": "A.v3",
+          "d": -7.5
+        }
+      ]
+    },
+    {
+      "nome": "modo_snaptrue_ctrlfalse",
+      "isSnapMode": true,
+      "ctrl": false,
+      "nudge": [
+        -3,
+        0
+      ],
+      "prendeu": true,
+      "indicadores": [
+        {
+          "id": "LlM3c1Tc2tHpB1eOgGBR3",
+          "type": "points",
+          "points": [
+            {
+              "x": 60,
+              "y": 60,
+              "z": 1
+            },
+            {
+              "x": 60,
+              "y": 120,
+              "z": 1
+            },
+            {
+              "x": 60,
+              "y": 260,
+              "z": 1
+            },
+            {
+              "x": 60,
+              "y": 310,
+              "z": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "modo_snaptrue_ctrltrue",
+      "isSnapMode": true,
+      "ctrl": true,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "indicadores": []
+    },
+    {
+      "nome": "modo_snapfalse_ctrlfalse",
+      "isSnapMode": false,
+      "ctrl": false,
+      "nudge": [
+        0,
+        0
+      ],
+      "prendeu": false,
+      "indicadores": []
+    },
+    {
+      "nome": "modo_snapfalse_ctrltrue",
+      "isSnapMode": false,
+      "ctrl": true,
+      "nudge": [
+        -3,
+        0
+      ],
+      "prendeu": true,
+      "indicadores": [
+        {
+          "id": "SGYtC9a4yfn_c18W0l1hK",
+          "type": "points",
+          "points": [
+            {
+              "x": 60,
+              "y": 60,
+              "z": 1
+            },
+            {
+              "x": 60,
+              "y": 120,
+              "z": 1
+            },
+            {
+              "x": 60,
+              "y": 260,
+              "z": 1
+            },
+            {
+              "x": 60,
+              "y": 310,
+              "z": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nome": "velocidade_0.5px_por_passo",
+      "pxPorPasso16ms": 0.5,
+      "passos": 80,
+      "prendeuAoChegar": true,
+      "indicadoresAoChegar": 1,
+      "prendeuParado400ms": true,
+      "prendeuAoSoltar": true,
+      "xAoChegar": 60,
+      "xDepoisDeSoltar": 60
+    },
+    {
+      "nome": "velocidade_1px_por_passo",
+      "pxPorPasso16ms": 1,
+      "passos": 40,
+      "prendeuAoChegar": true,
+      "indicadoresAoChegar": 1,
+      "prendeuParado400ms": true,
+      "prendeuAoSoltar": true,
+      "xAoChegar": 60,
+      "xDepoisDeSoltar": 60
+    },
+    {
+      "nome": "velocidade_2px_por_passo",
+      "pxPorPasso16ms": 2,
+      "passos": 20,
+      "prendeuAoChegar": true,
+      "indicadoresAoChegar": 1,
+      "prendeuParado400ms": true,
+      "prendeuAoSoltar": true,
+      "xAoChegar": 60,
+      "xDepoisDeSoltar": 60
+    },
+    {
+      "nome": "velocidade_3px_por_passo",
+      "pxPorPasso16ms": 3,
+      "passos": 13,
+      "prendeuAoChegar": true,
+      "indicadoresAoChegar": 1,
+      "prendeuParado400ms": true,
+      "prendeuAoSoltar": true,
+      "xAoChegar": 60,
+      "xDepoisDeSoltar": 60
+    },
+    {
+      "nome": "velocidade_4px_por_passo",
+      "pxPorPasso16ms": 4,
+      "passos": 10,
+      "prendeuAoChegar": true,
+      "indicadoresAoChegar": 1,
+      "prendeuParado400ms": true,
+      "prendeuAoSoltar": true,
+      "xAoChegar": 60,
+      "xDepoisDeSoltar": 60
+    },
+    {
+      "nome": "velocidade_6px_por_passo",
+      "pxPorPasso16ms": 6,
+      "passos": 7,
+      "prendeuAoChegar": true,
+      "indicadoresAoChegar": 1,
+      "prendeuParado400ms": true,
+      "prendeuAoSoltar": true,
+      "xAoChegar": 60,
+      "xDepoisDeSoltar": 60
+    },
+    {
+      "nome": "velocidade_8px_por_passo",
+      "pxPorPasso16ms": 8,
+      "passos": 5,
+      "prendeuAoChegar": true,
+      "indicadoresAoChegar": 1,
+      "prendeuParado400ms": true,
+      "prendeuAoSoltar": true,
+      "xAoChegar": 60,
+      "xDepoisDeSoltar": 60
+    },
+    {
+      "nome": "velocidade_12px_por_passo",
+      "pxPorPasso16ms": 12,
+      "passos": 3,
+      "prendeuAoChegar": true,
+      "indicadoresAoChegar": 1,
+      "prendeuParado400ms": true,
+      "prendeuAoSoltar": true,
+      "xAoChegar": 60,
+      "xDepoisDeSoltar": 60
+    },
+    {
+      "nome": "velocidade_20px_por_passo",
+      "pxPorPasso16ms": 20,
+      "passos": 2,
+      "prendeuAoChegar": true,
+      "indicadoresAoChegar": 1,
+      "prendeuParado400ms": true,
+      "prendeuAoSoltar": true,
+      "xAoChegar": 60,
+      "xDepoisDeSoltar": 60
+    },
+    {
+      "nome": "velocidade_40px_por_passo",
+      "pxPorPasso16ms": 40,
+      "passos": 1,
+      "prendeuAoChegar": true,
+      "indicadoresAoChegar": 1,
+      "prendeuParado400ms": true,
+      "prendeuAoSoltar": true,
+      "xAoChegar": 60,
+      "xDepoisDeSoltar": 60
+    }
+  ]
+}

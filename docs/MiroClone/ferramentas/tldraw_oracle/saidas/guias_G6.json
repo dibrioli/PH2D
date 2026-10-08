@@ -1,0 +1,5655 @@
+{
+  "caso": "G6",
+  "pergunta": "Molduras: a moldura é alvo? arrastar a moldura; arrastar um FILHO perto do irmão e de formas de fora; moldura RODADA: guias nos eixos locais ou da página?",
+  "sondas": [
+    {
+      "nome": "livre_R_esq_a_dir_da_moldura",
+      "descr": "R.left → F.right + 3 (R fora, à direita)",
+      "z": 1,
+      "snapMode": true,
+      "cena": [
+        {
+          "nome": "F",
+          "type": "frame",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "props": {
+            "w": 400,
+            "h": 300,
+            "name": "F"
+          }
+        },
+        {
+          "nome": "c1",
+          "type": "geo",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "c2",
+          "type": "geo",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "O",
+          "type": "geo",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "props": {
+            "w": 120,
+            "h": 80,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "O2",
+          "type": "geo",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "R",
+          "type": "geo",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "previsto": {
+        "semGuia": {
+          "x": 503,
+          "y": 150,
+          "w": 80,
+          "h": 60
+        },
+        "proximosX": [
+          {
+            "movedor": "aabbL",
+            "alvo": "F.aabbR",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "F.aabbR",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "F.aabbR",
+            "d": -3
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "F.v1",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "F.v1",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "F.v1",
+            "d": -3
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "F.v2",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "F.v2",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "F.v2",
+            "d": -3
+          }
+        ],
+        "proximosY": []
+      },
+      "gesto": {
+        "mover": "R",
+        "deltaPagina": [
+          -397,
+          0
+        ],
+        "agarrePagina": [
+          940,
+          180
+        ],
+        "deEcra": [
+          940,
+          180
+        ],
+        "paraEcra": [
+          543,
+          180
+        ],
+        "ctrl": false,
+        "shift": false
+      },
+      "antes": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              100,
+              100
+            ],
+            [
+              500,
+              100
+            ],
+            [
+              500,
+              400
+            ],
+            [
+              100,
+              400
+            ]
+          ],
+          "center": [
+            300,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 140,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              140,
+              160
+            ],
+            [
+              220,
+              160
+            ],
+            [
+              220,
+              220
+            ],
+            [
+              140,
+              220
+            ]
+          ],
+          "center": [
+            180,
+            190
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 360,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              360,
+              270
+            ],
+            [
+              460,
+              270
+            ],
+            [
+              460,
+              330
+            ],
+            [
+              360,
+              330
+            ]
+          ],
+          "center": [
+            410,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 900,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              900,
+              150
+            ],
+            [
+              980,
+              150
+            ],
+            [
+              980,
+              210
+            ],
+            [
+              900,
+              210
+            ]
+          ],
+          "center": [
+            940,
+            180
+          ]
+        }
+      },
+      "durante": {
+        "indicadores": [
+          {
+            "id": "iLd9HuikjBDHqMYimIqi2",
+            "type": "points",
+            "points": [
+              {
+                "x": 500,
+                "y": 100,
+                "z": 1
+              },
+              {
+                "x": 500,
+                "y": 400,
+                "z": 1
+              },
+              {
+                "x": 500,
+                "y": 150,
+                "z": 1
+              },
+              {
+                "x": 500,
+                "y": 210,
+                "z": 1
+              }
+            ]
+          }
+        ],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.translating",
+        "selecionados": [
+          "shape:R"
+        ],
+        "cursor": "move",
+        "chegadaRapida": {
+          "indicadores": 0,
+          "pageBounds": {
+            "x": 503,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          }
+        },
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 500,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 500,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              500,
+              150
+            ],
+            [
+              580,
+              150
+            ],
+            [
+              580,
+              210
+            ],
+            [
+              500,
+              210
+            ]
+          ],
+          "center": [
+            540,
+            180
+          ]
+        }
+      },
+      "depois": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              100,
+              100
+            ],
+            [
+              500,
+              100
+            ],
+            [
+              500,
+              400
+            ],
+            [
+              100,
+              400
+            ]
+          ],
+          "center": [
+            300,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 140,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              140,
+              160
+            ],
+            [
+              220,
+              160
+            ],
+            [
+              220,
+              220
+            ],
+            [
+              140,
+              220
+            ]
+          ],
+          "center": [
+            180,
+            190
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 360,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              360,
+              270
+            ],
+            [
+              460,
+              270
+            ],
+            [
+              460,
+              330
+            ],
+            [
+              360,
+              330
+            ]
+          ],
+          "center": [
+            410,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 500,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 500,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              500,
+              150
+            ],
+            [
+              580,
+              150
+            ],
+            [
+              580,
+              210
+            ],
+            [
+              500,
+              210
+            ]
+          ],
+          "center": [
+            540,
+            180
+          ]
+        }
+      },
+      "nudge": [
+        -3,
+        0
+      ],
+      "indicadoresClass": [
+        {
+          "type": "points",
+          "n": 4,
+          "linha": "vertical",
+          "dx": 0,
+          "dy": 300
+        }
+      ]
+    },
+    {
+      "nome": "livre_R_alinha_esq_da_moldura",
+      "descr": "R.left → F.left + 3, R por baixo da moldura (top 450)",
+      "z": 1,
+      "snapMode": true,
+      "cena": [
+        {
+          "nome": "F",
+          "type": "frame",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "props": {
+            "w": 400,
+            "h": 300,
+            "name": "F"
+          }
+        },
+        {
+          "nome": "c1",
+          "type": "geo",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "c2",
+          "type": "geo",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "O",
+          "type": "geo",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "props": {
+            "w": 120,
+            "h": 80,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "O2",
+          "type": "geo",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "R",
+          "type": "geo",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "previsto": {
+        "semGuia": {
+          "x": 103,
+          "y": 450,
+          "w": 80,
+          "h": 60
+        },
+        "proximosX": [
+          {
+            "movedor": "aabbR",
+            "alvo": "c1.aabbC",
+            "d": -3
+          },
+          {
+            "movedor": "v1",
+            "alvo": "c1.aabbC",
+            "d": -3
+          },
+          {
+            "movedor": "v2",
+            "alvo": "c1.aabbC",
+            "d": -3
+          },
+          {
+            "movedor": "aabbC",
+            "alvo": "c1.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "aabbC",
+            "alvo": "c1.v0",
+            "d": -3
+          },
+          {
+            "movedor": "aabbC",
+            "alvo": "c1.v3",
+            "d": -3
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "F.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "F.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "F.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "F.v0",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "F.v0",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "F.v0",
+            "d": -3
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "F.v3",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "F.v3",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "F.v3",
+            "d": -3
+          }
+        ],
+        "proximosY": []
+      },
+      "gesto": {
+        "mover": "R",
+        "deltaPagina": [
+          -797,
+          300
+        ],
+        "agarrePagina": [
+          940,
+          180
+        ],
+        "deEcra": [
+          940,
+          180
+        ],
+        "paraEcra": [
+          143,
+          480
+        ],
+        "ctrl": false,
+        "shift": false
+      },
+      "antes": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              100,
+              100
+            ],
+            [
+              500,
+              100
+            ],
+            [
+              500,
+              400
+            ],
+            [
+              100,
+              400
+            ]
+          ],
+          "center": [
+            300,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 140,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              140,
+              160
+            ],
+            [
+              220,
+              160
+            ],
+            [
+              220,
+              220
+            ],
+            [
+              140,
+              220
+            ]
+          ],
+          "center": [
+            180,
+            190
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 360,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              360,
+              270
+            ],
+            [
+              460,
+              270
+            ],
+            [
+              460,
+              330
+            ],
+            [
+              360,
+              330
+            ]
+          ],
+          "center": [
+            410,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 900,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              900,
+              150
+            ],
+            [
+              980,
+              150
+            ],
+            [
+              980,
+              210
+            ],
+            [
+              900,
+              210
+            ]
+          ],
+          "center": [
+            940,
+            180
+          ]
+        }
+      },
+      "durante": {
+        "indicadores": [
+          {
+            "id": "5cTTSKf-Yf5f0y5f9xASB",
+            "type": "points",
+            "points": [
+              {
+                "x": 100,
+                "y": 100,
+                "z": 1
+              },
+              {
+                "x": 100,
+                "y": 400,
+                "z": 1
+              },
+              {
+                "x": 100,
+                "y": 450,
+                "z": 1
+              },
+              {
+                "x": 100,
+                "y": 510,
+                "z": 1
+              }
+            ]
+          }
+        ],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.translating",
+        "selecionados": [
+          "shape:R"
+        ],
+        "cursor": "move",
+        "chegadaRapida": {
+          "indicadores": 0,
+          "pageBounds": {
+            "x": 103,
+            "y": 450,
+            "w": 80,
+            "h": 60
+          }
+        },
+        "geom": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 450,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 450,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              100,
+              450
+            ],
+            [
+              180,
+              450
+            ],
+            [
+              180,
+              510
+            ],
+            [
+              100,
+              510
+            ]
+          ],
+          "center": [
+            140,
+            480
+          ]
+        }
+      },
+      "depois": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              100,
+              100
+            ],
+            [
+              500,
+              100
+            ],
+            [
+              500,
+              400
+            ],
+            [
+              100,
+              400
+            ]
+          ],
+          "center": [
+            300,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 140,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              140,
+              160
+            ],
+            [
+              220,
+              160
+            ],
+            [
+              220,
+              220
+            ],
+            [
+              140,
+              220
+            ]
+          ],
+          "center": [
+            180,
+            190
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 360,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              360,
+              270
+            ],
+            [
+              460,
+              270
+            ],
+            [
+              460,
+              330
+            ],
+            [
+              360,
+              330
+            ]
+          ],
+          "center": [
+            410,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 450,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 450,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              100,
+              450
+            ],
+            [
+              180,
+              450
+            ],
+            [
+              180,
+              510
+            ],
+            [
+              100,
+              510
+            ]
+          ],
+          "center": [
+            140,
+            480
+          ]
+        }
+      },
+      "nudge": [
+        -3,
+        0
+      ],
+      "indicadoresClass": [
+        {
+          "type": "points",
+          "n": 4,
+          "linha": "vertical",
+          "dx": 0,
+          "dy": 410
+        }
+      ]
+    },
+    {
+      "nome": "arrastar_moldura",
+      "descr": "F.right → O.right + 3 (agarrada no interior vazio, F seleccionada antes)",
+      "z": 1,
+      "snapMode": true,
+      "cena": [
+        {
+          "nome": "F",
+          "type": "frame",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "props": {
+            "w": 400,
+            "h": 300,
+            "name": "F"
+          }
+        },
+        {
+          "nome": "c1",
+          "type": "geo",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "c2",
+          "type": "geo",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "O",
+          "type": "geo",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "props": {
+            "w": 120,
+            "h": 80,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "O2",
+          "type": "geo",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "R",
+          "type": "geo",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "previsto": {
+        "semGuia": {
+          "x": 423,
+          "y": 100,
+          "w": 400,
+          "h": 300
+        },
+        "proximosX": [
+          {
+            "movedor": "aabbR",
+            "alvo": "O.aabbR",
+            "d": -3
+          },
+          {
+            "movedor": "v1",
+            "alvo": "O.aabbR",
+            "d": -3
+          },
+          {
+            "movedor": "v2",
+            "alvo": "O.aabbR",
+            "d": -3
+          },
+          {
+            "movedor": "aabbR",
+            "alvo": "O.v1",
+            "d": -3
+          },
+          {
+            "movedor": "v1",
+            "alvo": "O.v1",
+            "d": -3
+          },
+          {
+            "movedor": "v2",
+            "alvo": "O.v1",
+            "d": -3
+          },
+          {
+            "movedor": "aabbR",
+            "alvo": "O.v2",
+            "d": -3
+          },
+          {
+            "movedor": "v1",
+            "alvo": "O.v2",
+            "d": -3
+          },
+          {
+            "movedor": "v2",
+            "alvo": "O.v2",
+            "d": -3
+          }
+        ],
+        "proximosY": []
+      },
+      "gesto": {
+        "mover": "F",
+        "deltaPagina": [
+          323,
+          0
+        ],
+        "agarrePagina": [
+          300,
+          130
+        ],
+        "deEcra": [
+          300,
+          130
+        ],
+        "paraEcra": [
+          623,
+          130
+        ],
+        "ctrl": false,
+        "shift": false
+      },
+      "antes": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              100,
+              100
+            ],
+            [
+              500,
+              100
+            ],
+            [
+              500,
+              400
+            ],
+            [
+              100,
+              400
+            ]
+          ],
+          "center": [
+            300,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 140,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              140,
+              160
+            ],
+            [
+              220,
+              160
+            ],
+            [
+              220,
+              220
+            ],
+            [
+              140,
+              220
+            ]
+          ],
+          "center": [
+            180,
+            190
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 360,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              360,
+              270
+            ],
+            [
+              460,
+              270
+            ],
+            [
+              460,
+              330
+            ],
+            [
+              360,
+              330
+            ]
+          ],
+          "center": [
+            410,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 900,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              900,
+              150
+            ],
+            [
+              980,
+              150
+            ],
+            [
+              980,
+              210
+            ],
+            [
+              900,
+              210
+            ]
+          ],
+          "center": [
+            940,
+            180
+          ]
+        }
+      },
+      "durante": {
+        "indicadores": [
+          {
+            "id": "TUYJm7DGfUGyZbFBKtGp_",
+            "type": "points",
+            "points": [
+              {
+                "x": 820,
+                "y": 500,
+                "z": 1
+              },
+              {
+                "x": 820,
+                "y": 580,
+                "z": 1
+              },
+              {
+                "x": 820,
+                "y": 100,
+                "z": 1
+              },
+              {
+                "x": 820,
+                "y": 400,
+                "z": 1
+              }
+            ]
+          }
+        ],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.translating",
+        "selecionados": [
+          "shape:F"
+        ],
+        "cursor": "move",
+        "chegadaRapida": {
+          "indicadores": 0,
+          "pageBounds": {
+            "x": 423,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          }
+        },
+        "geom": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 420,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 420,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              420,
+              100
+            ],
+            [
+              820,
+              100
+            ],
+            [
+              820,
+              400
+            ],
+            [
+              420,
+              400
+            ]
+          ],
+          "center": [
+            620,
+            250
+          ]
+        }
+      },
+      "depois": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 420,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 420,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              420,
+              100
+            ],
+            [
+              820,
+              100
+            ],
+            [
+              820,
+              400
+            ],
+            [
+              420,
+              400
+            ]
+          ],
+          "center": [
+            620,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 460,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              460,
+              160
+            ],
+            [
+              540,
+              160
+            ],
+            [
+              540,
+              220
+            ],
+            [
+              460,
+              220
+            ]
+          ],
+          "center": [
+            500,
+            190
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 680,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              680,
+              270
+            ],
+            [
+              780,
+              270
+            ],
+            [
+              780,
+              330
+            ],
+            [
+              680,
+              330
+            ]
+          ],
+          "center": [
+            730,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 900,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              900,
+              150
+            ],
+            [
+              980,
+              150
+            ],
+            [
+              980,
+              210
+            ],
+            [
+              900,
+              210
+            ]
+          ],
+          "center": [
+            940,
+            180
+          ]
+        }
+      },
+      "nudge": [
+        -3,
+        0
+      ],
+      "indicadoresClass": [
+        {
+          "type": "points",
+          "n": 4,
+          "linha": "vertical",
+          "dx": 0,
+          "dy": 480
+        }
+      ]
+    },
+    {
+      "nome": "filho_c1_topo_a_irmao",
+      "descr": "c1.top → c2.top + 3 (dentro da moldura)",
+      "z": 1,
+      "snapMode": true,
+      "cena": [
+        {
+          "nome": "F",
+          "type": "frame",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "props": {
+            "w": 400,
+            "h": 300,
+            "name": "F"
+          }
+        },
+        {
+          "nome": "c1",
+          "type": "geo",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "c2",
+          "type": "geo",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "O",
+          "type": "geo",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "props": {
+            "w": 120,
+            "h": 80,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "O2",
+          "type": "geo",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "R",
+          "type": "geo",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "previsto": {
+        "semGuia": {
+          "x": 140,
+          "y": 273,
+          "w": 80,
+          "h": 60
+        },
+        "proximosX": [],
+        "proximosY": [
+          {
+            "movedor": "aabbB",
+            "alvo": "c2.aabbB",
+            "d": -3
+          },
+          {
+            "movedor": "v2",
+            "alvo": "c2.aabbB",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "c2.aabbB",
+            "d": -3
+          },
+          {
+            "movedor": "aabbM",
+            "alvo": "c2.aabbM",
+            "d": -3
+          },
+          {
+            "movedor": "aabbT",
+            "alvo": "c2.aabbT",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "c2.aabbT",
+            "d": -3
+          },
+          {
+            "movedor": "v1",
+            "alvo": "c2.aabbT",
+            "d": -3
+          },
+          {
+            "movedor": "aabbT",
+            "alvo": "c2.v0",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "c2.v0",
+            "d": -3
+          },
+          {
+            "movedor": "v1",
+            "alvo": "c2.v0",
+            "d": -3
+          },
+          {
+            "movedor": "aabbT",
+            "alvo": "c2.v1",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "c2.v1",
+            "d": -3
+          },
+          {
+            "movedor": "v1",
+            "alvo": "c2.v1",
+            "d": -3
+          },
+          {
+            "movedor": "aabbB",
+            "alvo": "c2.v2",
+            "d": -3
+          },
+          {
+            "movedor": "v2",
+            "alvo": "c2.v2",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "c2.v2",
+            "d": -3
+          },
+          {
+            "movedor": "aabbB",
+            "alvo": "c2.v3",
+            "d": -3
+          },
+          {
+            "movedor": "v2",
+            "alvo": "c2.v3",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "c2.v3",
+            "d": -3
+          }
+        ]
+      },
+      "gesto": {
+        "mover": "c1",
+        "deltaPagina": [
+          0,
+          113
+        ],
+        "agarrePagina": [
+          180,
+          190
+        ],
+        "deEcra": [
+          180,
+          190
+        ],
+        "paraEcra": [
+          180,
+          303
+        ],
+        "ctrl": false,
+        "shift": false
+      },
+      "antes": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              100,
+              100
+            ],
+            [
+              500,
+              100
+            ],
+            [
+              500,
+              400
+            ],
+            [
+              100,
+              400
+            ]
+          ],
+          "center": [
+            300,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 140,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              140,
+              160
+            ],
+            [
+              220,
+              160
+            ],
+            [
+              220,
+              220
+            ],
+            [
+              140,
+              220
+            ]
+          ],
+          "center": [
+            180,
+            190
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 360,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              360,
+              270
+            ],
+            [
+              460,
+              270
+            ],
+            [
+              460,
+              330
+            ],
+            [
+              360,
+              330
+            ]
+          ],
+          "center": [
+            410,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 900,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              900,
+              150
+            ],
+            [
+              980,
+              150
+            ],
+            [
+              980,
+              210
+            ],
+            [
+              900,
+              210
+            ]
+          ],
+          "center": [
+            940,
+            180
+          ]
+        }
+      },
+      "durante": {
+        "indicadores": [
+          {
+            "id": "lGDFf44uNz5LIYINKLDkf",
+            "type": "points",
+            "points": [
+              {
+                "x": 360,
+                "y": 270,
+                "z": 1
+              },
+              {
+                "x": 460,
+                "y": 270,
+                "z": 1
+              },
+              {
+                "x": 140,
+                "y": 270,
+                "z": 1
+              },
+              {
+                "x": 220,
+                "y": 270,
+                "z": 1
+              }
+            ]
+          },
+          {
+            "id": "WNRdng5d-_IutcSP8ls1o",
+            "type": "points",
+            "points": [
+              {
+                "x": 410,
+                "y": 300,
+                "z": 1
+              },
+              {
+                "x": 180,
+                "y": 300,
+                "z": 1
+              }
+            ]
+          },
+          {
+            "id": "l8g9hVHjatQDoX5fjvwJS",
+            "type": "points",
+            "points": [
+              {
+                "x": 460,
+                "y": 330,
+                "z": 1
+              },
+              {
+                "x": 360,
+                "y": 330,
+                "z": 1
+              },
+              {
+                "x": 220,
+                "y": 330,
+                "z": 1
+              },
+              {
+                "x": 140,
+                "y": 330,
+                "z": 1
+              }
+            ]
+          }
+        ],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.translating",
+        "selecionados": [
+          "shape:c1"
+        ],
+        "cursor": "move",
+        "chegadaRapida": {
+          "indicadores": 0,
+          "pageBounds": {
+            "x": 140,
+            "y": 273,
+            "w": 80,
+            "h": 60
+          }
+        },
+        "geom": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 40,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 140,
+            "y": 270,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              140,
+              270
+            ],
+            [
+              220,
+              270
+            ],
+            [
+              220,
+              330
+            ],
+            [
+              140,
+              330
+            ]
+          ],
+          "center": [
+            180,
+            300
+          ]
+        }
+      },
+      "depois": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              100,
+              100
+            ],
+            [
+              500,
+              100
+            ],
+            [
+              500,
+              400
+            ],
+            [
+              100,
+              400
+            ]
+          ],
+          "center": [
+            300,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 40,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 140,
+            "y": 270,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              140,
+              270
+            ],
+            [
+              220,
+              270
+            ],
+            [
+              220,
+              330
+            ],
+            [
+              140,
+              330
+            ]
+          ],
+          "center": [
+            180,
+            300
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 360,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              360,
+              270
+            ],
+            [
+              460,
+              270
+            ],
+            [
+              460,
+              330
+            ],
+            [
+              360,
+              330
+            ]
+          ],
+          "center": [
+            410,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 900,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              900,
+              150
+            ],
+            [
+              980,
+              150
+            ],
+            [
+              980,
+              210
+            ],
+            [
+              900,
+              210
+            ]
+          ],
+          "center": [
+            940,
+            180
+          ]
+        }
+      },
+      "nudge": [
+        0,
+        -3
+      ],
+      "indicadoresClass": [
+        {
+          "type": "points",
+          "n": 4,
+          "linha": "horizontal",
+          "dx": 320,
+          "dy": 0
+        },
+        {
+          "type": "points",
+          "n": 2,
+          "linha": "horizontal",
+          "dx": 230,
+          "dy": 0
+        },
+        {
+          "type": "points",
+          "n": 4,
+          "linha": "horizontal",
+          "dx": 320,
+          "dy": 0
+        }
+      ]
+    },
+    {
+      "nome": "filho_c1_esq_a_forma_de_fora",
+      "descr": "c1.left → O2.left + 3 (O2 fora da moldura)",
+      "z": 1,
+      "snapMode": true,
+      "cena": [
+        {
+          "nome": "F",
+          "type": "frame",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "props": {
+            "w": 400,
+            "h": 300,
+            "name": "F"
+          }
+        },
+        {
+          "nome": "c1",
+          "type": "geo",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "c2",
+          "type": "geo",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "O",
+          "type": "geo",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "props": {
+            "w": 120,
+            "h": 80,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "O2",
+          "type": "geo",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "R",
+          "type": "geo",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "previsto": {
+        "semGuia": {
+          "x": 233,
+          "y": 160,
+          "w": 80,
+          "h": 60
+        },
+        "proximosX": [
+          {
+            "movedor": "aabbL",
+            "alvo": "O2.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "O2.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "O2.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "O2.v0",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "O2.v0",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "O2.v0",
+            "d": -3
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "O2.v3",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "O2.v3",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "O2.v3",
+            "d": -3
+          },
+          {
+            "movedor": "aabbC",
+            "alvo": "O2.aabbC",
+            "d": 7
+          }
+        ],
+        "proximosY": []
+      },
+      "gesto": {
+        "mover": "c1",
+        "deltaPagina": [
+          93,
+          0
+        ],
+        "agarrePagina": [
+          180,
+          190
+        ],
+        "deEcra": [
+          180,
+          190
+        ],
+        "paraEcra": [
+          273,
+          190
+        ],
+        "ctrl": false,
+        "shift": false
+      },
+      "antes": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              100,
+              100
+            ],
+            [
+              500,
+              100
+            ],
+            [
+              500,
+              400
+            ],
+            [
+              100,
+              400
+            ]
+          ],
+          "center": [
+            300,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 140,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              140,
+              160
+            ],
+            [
+              220,
+              160
+            ],
+            [
+              220,
+              220
+            ],
+            [
+              140,
+              220
+            ]
+          ],
+          "center": [
+            180,
+            190
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 360,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              360,
+              270
+            ],
+            [
+              460,
+              270
+            ],
+            [
+              460,
+              330
+            ],
+            [
+              360,
+              330
+            ]
+          ],
+          "center": [
+            410,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 900,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              900,
+              150
+            ],
+            [
+              980,
+              150
+            ],
+            [
+              980,
+              210
+            ],
+            [
+              900,
+              210
+            ]
+          ],
+          "center": [
+            940,
+            180
+          ]
+        }
+      },
+      "durante": {
+        "indicadores": [],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.translating",
+        "selecionados": [
+          "shape:c1"
+        ],
+        "cursor": "move",
+        "chegadaRapida": {
+          "indicadores": 0,
+          "pageBounds": {
+            "x": 233,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          }
+        },
+        "geom": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 133,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 233,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              233,
+              160
+            ],
+            [
+              313,
+              160
+            ],
+            [
+              313,
+              220
+            ],
+            [
+              233,
+              220
+            ]
+          ],
+          "center": [
+            273,
+            190
+          ]
+        }
+      },
+      "depois": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              100,
+              100
+            ],
+            [
+              500,
+              100
+            ],
+            [
+              500,
+              400
+            ],
+            [
+              100,
+              400
+            ]
+          ],
+          "center": [
+            300,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 133,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 233,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              233,
+              160
+            ],
+            [
+              313,
+              160
+            ],
+            [
+              313,
+              220
+            ],
+            [
+              233,
+              220
+            ]
+          ],
+          "center": [
+            273,
+            190
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 360,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              360,
+              270
+            ],
+            [
+              460,
+              270
+            ],
+            [
+              460,
+              330
+            ],
+            [
+              360,
+              330
+            ]
+          ],
+          "center": [
+            410,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 900,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              900,
+              150
+            ],
+            [
+              980,
+              150
+            ],
+            [
+              980,
+              210
+            ],
+            [
+              900,
+              210
+            ]
+          ],
+          "center": [
+            940,
+            180
+          ]
+        }
+      },
+      "nudge": [
+        0,
+        0
+      ],
+      "indicadoresClass": []
+    },
+    {
+      "nome": "filho_c1_esq_a_moldura_mae",
+      "descr": "c1.left → F.left + 3 (a própria mãe)",
+      "z": 1,
+      "snapMode": true,
+      "cena": [
+        {
+          "nome": "F",
+          "type": "frame",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "props": {
+            "w": 400,
+            "h": 300,
+            "name": "F"
+          }
+        },
+        {
+          "nome": "c1",
+          "type": "geo",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "c2",
+          "type": "geo",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "F"
+        },
+        {
+          "nome": "O",
+          "type": "geo",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "props": {
+            "w": 120,
+            "h": 80,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "O2",
+          "type": "geo",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        },
+        {
+          "nome": "R",
+          "type": "geo",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          }
+        }
+      ],
+      "previsto": {
+        "semGuia": {
+          "x": 103,
+          "y": 160,
+          "w": 80,
+          "h": 60
+        },
+        "proximosX": [
+          {
+            "movedor": "aabbL",
+            "alvo": "F.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "F.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "F.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "F.v0",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "F.v0",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "F.v0",
+            "d": -3
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "F.v3",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "F.v3",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "F.v3",
+            "d": -3
+          }
+        ],
+        "proximosY": []
+      },
+      "gesto": {
+        "mover": "c1",
+        "deltaPagina": [
+          -37,
+          0
+        ],
+        "agarrePagina": [
+          180,
+          190
+        ],
+        "deEcra": [
+          180,
+          190
+        ],
+        "paraEcra": [
+          143,
+          190
+        ],
+        "ctrl": false,
+        "shift": false
+      },
+      "antes": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              100,
+              100
+            ],
+            [
+              500,
+              100
+            ],
+            [
+              500,
+              400
+            ],
+            [
+              100,
+              400
+            ]
+          ],
+          "center": [
+            300,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 140,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              140,
+              160
+            ],
+            [
+              220,
+              160
+            ],
+            [
+              220,
+              220
+            ],
+            [
+              140,
+              220
+            ]
+          ],
+          "center": [
+            180,
+            190
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 360,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              360,
+              270
+            ],
+            [
+              460,
+              270
+            ],
+            [
+              460,
+              330
+            ],
+            [
+              360,
+              330
+            ]
+          ],
+          "center": [
+            410,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 900,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              900,
+              150
+            ],
+            [
+              980,
+              150
+            ],
+            [
+              980,
+              210
+            ],
+            [
+              900,
+              210
+            ]
+          ],
+          "center": [
+            940,
+            180
+          ]
+        }
+      },
+      "durante": {
+        "indicadores": [
+          {
+            "id": "IWN9Ff8PJhSmmBd8TzPj9",
+            "type": "points",
+            "points": [
+              {
+                "x": 100,
+                "y": 100,
+                "z": 1
+              },
+              {
+                "x": 100,
+                "y": 400,
+                "z": 1
+              },
+              {
+                "x": 100,
+                "y": 160,
+                "z": 1
+              },
+              {
+                "x": 100,
+                "y": 220,
+                "z": 1
+              }
+            ]
+          }
+        ],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.translating",
+        "selecionados": [
+          "shape:c1"
+        ],
+        "cursor": "move",
+        "chegadaRapida": {
+          "indicadores": 1,
+          "pageBounds": {
+            "x": 100,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          }
+        },
+        "geom": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 0,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              100,
+              160
+            ],
+            [
+              180,
+              160
+            ],
+            [
+              180,
+              220
+            ],
+            [
+              100,
+              220
+            ]
+          ],
+          "center": [
+            140,
+            190
+          ]
+        }
+      },
+      "depois": {
+        "F": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 100,
+          "y": 100,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 100,
+            "w": 400,
+            "h": 300
+          },
+          "corners": [
+            [
+              100,
+              100
+            ],
+            [
+              500,
+              100
+            ],
+            [
+              500,
+              400
+            ],
+            [
+              100,
+              400
+            ]
+          ],
+          "center": [
+            300,
+            250
+          ]
+        },
+        "c1": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 0,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 100,
+            "y": 160,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              100,
+              160
+            ],
+            [
+              180,
+              160
+            ],
+            [
+              180,
+              220
+            ],
+            [
+              100,
+              220
+            ]
+          ],
+          "center": [
+            140,
+            190
+          ]
+        },
+        "c2": {
+          "type": "geo",
+          "parentId": "shape:F",
+          "x": 260,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 360,
+            "y": 270,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              360,
+              270
+            ],
+            [
+              460,
+              270
+            ],
+            [
+              460,
+              330
+            ],
+            [
+              360,
+              330
+            ]
+          ],
+          "center": [
+            410,
+            300
+          ]
+        },
+        "O": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 700,
+          "y": 500,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 700,
+            "y": 500,
+            "w": 120,
+            "h": 80
+          },
+          "corners": [
+            [
+              700,
+              500
+            ],
+            [
+              820,
+              500
+            ],
+            [
+              820,
+              580
+            ],
+            [
+              700,
+              580
+            ]
+          ],
+          "center": [
+            760,
+            540
+          ]
+        },
+        "O2": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 230,
+          "y": 600,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 230,
+            "y": 600,
+            "w": 100,
+            "h": 60
+          },
+          "corners": [
+            [
+              230,
+              600
+            ],
+            [
+              330,
+              600
+            ],
+            [
+              330,
+              660
+            ],
+            [
+              230,
+              660
+            ]
+          ],
+          "center": [
+            280,
+            630
+          ]
+        },
+        "R": {
+          "type": "geo",
+          "parentId": "page:page",
+          "x": 900,
+          "y": 150,
+          "rotation": 0,
+          "pageRotationDeg": 0,
+          "pageBounds": {
+            "x": 900,
+            "y": 150,
+            "w": 80,
+            "h": 60
+          },
+          "corners": [
+            [
+              900,
+              150
+            ],
+            [
+              980,
+              150
+            ],
+            [
+              980,
+              210
+            ],
+            [
+              900,
+              210
+            ]
+          ],
+          "center": [
+            940,
+            180
+          ]
+        }
+      },
+      "nudge": [
+        -3,
+        0
+      ],
+      "indicadoresClass": [
+        {
+          "type": "points",
+          "n": 4,
+          "linha": "vertical",
+          "dx": 0,
+          "dy": 300
+        }
+      ]
+    },
+    {
+      "nome": "rodada_d1_topo_local_a_d2",
+      "descr": "d1 deslocado (0, 113) LOCAL: topo local 173 contra o topo local 170 de d2",
+      "z": 1,
+      "snapMode": true,
+      "cena": [
+        {
+          "nome": "Fr",
+          "type": "frame",
+          "x": 300,
+          "y": 120,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 400,
+            "h": 300,
+            "name": "Fr"
+          }
+        },
+        {
+          "nome": "d1",
+          "type": "geo",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "Fr"
+        },
+        {
+          "nome": "d2",
+          "type": "geo",
+          "x": 240,
+          "y": 170,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "Fr"
+        }
+      ],
+      "previsto": {
+        "semGuia": {
+          "x": 218.14101615137753,
+          "y": 289.8223948547079,
+          "w": 99.28203230275511,
+          "h": 91.96152422706632
+        },
+        "proximosX": [],
+        "proximosY": [
+          {
+            "movedor": "aabbB",
+            "alvo": "Fr.v3",
+            "d": -1.976297946
+          },
+          {
+            "movedor": "v2",
+            "alvo": "Fr.v3",
+            "d": -1.976297946
+          },
+          {
+            "movedor": "aabbB",
+            "alvo": "d2.aabbT",
+            "d": 5.440399562
+          },
+          {
+            "movedor": "v2",
+            "alvo": "d2.aabbT",
+            "d": 5.440399562
+          },
+          {
+            "movedor": "aabbB",
+            "alvo": "d2.v0",
+            "d": 5.440399562
+          },
+          {
+            "movedor": "v2",
+            "alvo": "d2.v0",
+            "d": 5.440399562
+          },
+          {
+            "movedor": "v3",
+            "alvo": "Fr.aabbM",
+            "d": 8.119891486
+          }
+        ]
+      },
+      "gesto": {
+        "mover": "d1",
+        "deltaPagina": [
+          -56.5,
+          97.860870628
+        ],
+        "agarrePagina": [
+          324.282032303,
+          237.942286341
+        ],
+        "deEcra": [
+          324.282032303,
+          237.942286341
+        ],
+        "paraEcra": [
+          267.782032303,
+          335.803156968
+        ],
+        "ctrl": false,
+        "shift": false
+      },
+      "antes": {
+        "Fr": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 300,
+          "y": 120,
+          "rotation": 0.5235987755982988,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 150.00000000000003,
+            "y": 120,
+            "w": 496.4101615137755,
+            "h": 459.8076211353316
+          },
+          "corners": [
+            [
+              300,
+              120
+            ],
+            [
+              646.4101615137755,
+              320
+            ],
+            [
+              496.4101615137755,
+              579.8076211353316
+            ],
+            [
+              150.00000000000003,
+              379.8076211353316
+            ]
+          ],
+          "center": [
+            398.20508075688775,
+            349.9038105676658
+          ]
+        },
+        "d1": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 274.6410161513775,
+            "y": 191.96152422706632,
+            "w": 99.28203230275511,
+            "h": 91.96152422706632
+          },
+          "corners": [
+            [
+              304.6410161513775,
+              191.96152422706632
+            ],
+            [
+              373.92304845413264,
+              231.96152422706632
+            ],
+            [
+              343.92304845413264,
+              283.92304845413264
+            ],
+            [
+              274.6410161513775,
+              243.92304845413264
+            ]
+          ],
+          "center": [
+            324.28203230275506,
+            237.94228634059948
+          ]
+        },
+        "d2": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 240,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 392.8460969082653,
+            "y": 387.2243186433546,
+            "w": 116.6025403784439,
+            "h": 101.96152422706632
+          },
+          "corners": [
+            [
+              422.8460969082653,
+              387.2243186433546
+            ],
+            [
+              509.4486372867092,
+              437.2243186433546
+            ],
+            [
+              479.4486372867092,
+              489.1858428704209
+            ],
+            [
+              392.8460969082653,
+              439.1858428704209
+            ]
+          ],
+          "center": [
+            451.14736709748723,
+            438.20508075688775
+          ]
+        }
+      },
+      "durante": {
+        "indicadores": [
+          {
+            "id": "jLRfG47aXpBH9_RBN2ZSo",
+            "type": "points",
+            "points": [
+              {
+                "x": 150.00000000000003,
+                "y": 379.8076211353316,
+                "z": 1
+              },
+              {
+                "x": 287.42304845413264,
+                "y": 379.8076211353316,
+                "z": 1
+              }
+            ]
+          }
+        ],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.translating",
+        "selecionados": [
+          "shape:d1"
+        ],
+        "cursor": "move",
+        "chegadaRapida": {
+          "indicadores": 0,
+          "pageBounds": {
+            "x": 218.14101615137756,
+            "y": 289.82239458839445,
+            "w": 99.28203230275508,
+            "h": 91.96152422706632
+          }
+        },
+        "geom": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 39.011851026778686,
+          "y": 171.28847577293368,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 218.14101615137756,
+            "y": 287.8460969082653,
+            "w": 99.28203230275508,
+            "h": 91.96152422706632
+          },
+          "corners": [
+            [
+              248.14101615137756,
+              287.8460969082653
+            ],
+            [
+              317.42304845413264,
+              327.8460969082653
+            ],
+            [
+              287.42304845413264,
+              379.8076211353316
+            ],
+            [
+              218.14101615137756,
+              339.8076211353316
+            ]
+          ],
+          "center": [
+            267.7820323027551,
+            333.82685902179844
+          ]
+        }
+      },
+      "depois": {
+        "Fr": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 300,
+          "y": 120,
+          "rotation": 0.5235987755982988,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 150.00000000000003,
+            "y": 120,
+            "w": 496.4101615137755,
+            "h": 459.8076211353316
+          },
+          "corners": [
+            [
+              300,
+              120
+            ],
+            [
+              646.4101615137755,
+              320
+            ],
+            [
+              496.4101615137755,
+              579.8076211353316
+            ],
+            [
+              150.00000000000003,
+              379.8076211353316
+            ]
+          ],
+          "center": [
+            398.20508075688775,
+            349.9038105676658
+          ]
+        },
+        "d1": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 39.011851026778686,
+          "y": 171.28847577293368,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 218.14101615137756,
+            "y": 287.8460969082653,
+            "w": 99.28203230275508,
+            "h": 91.96152422706632
+          },
+          "corners": [
+            [
+              248.14101615137756,
+              287.8460969082653
+            ],
+            [
+              317.42304845413264,
+              327.8460969082653
+            ],
+            [
+              287.42304845413264,
+              379.8076211353316
+            ],
+            [
+              218.14101615137756,
+              339.8076211353316
+            ]
+          ],
+          "center": [
+            267.7820323027551,
+            333.82685902179844
+          ]
+        },
+        "d2": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 240,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 392.8460969082653,
+            "y": 387.2243186433546,
+            "w": 116.6025403784439,
+            "h": 101.96152422706632
+          },
+          "corners": [
+            [
+              422.8460969082653,
+              387.2243186433546
+            ],
+            [
+              509.4486372867092,
+              437.2243186433546
+            ],
+            [
+              479.4486372867092,
+              489.1858428704209
+            ],
+            [
+              392.8460969082653,
+              439.1858428704209
+            ]
+          ],
+          "center": [
+            451.14736709748723,
+            438.20508075688775
+          ]
+        }
+      },
+      "nudge": [
+        0,
+        -1.976297946
+      ],
+      "indicadoresClass": [
+        {
+          "type": "points",
+          "n": 2,
+          "linha": "horizontal",
+          "dx": 137.423048454,
+          "dy": 0
+        }
+      ]
+    },
+    {
+      "nome": "rodada_d1_esq_local_a_d2",
+      "descr": "d1 deslocado (203, 0) LOCAL: esquerda local 243 contra 240 de d2",
+      "z": 1,
+      "snapMode": true,
+      "cena": [
+        {
+          "nome": "Fr",
+          "type": "frame",
+          "x": 300,
+          "y": 120,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 400,
+            "h": 300,
+            "name": "Fr"
+          }
+        },
+        {
+          "nome": "d1",
+          "type": "geo",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "Fr"
+        },
+        {
+          "nome": "d2",
+          "type": "geo",
+          "x": 240,
+          "y": 170,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "Fr"
+        }
+      ],
+      "previsto": {
+        "semGuia": {
+          "x": 450.4441731196186,
+          "y": 293.4615242270663,
+          "w": 99.28203230275511,
+          "h": 91.96152422706632
+        },
+        "proximosX": [
+          {
+            "movedor": "aabbL",
+            "alvo": "d2.aabbC",
+            "d": 0.703193978
+          },
+          {
+            "movedor": "v3",
+            "alvo": "d2.aabbC",
+            "d": 0.703193978
+          },
+          {
+            "movedor": "v0",
+            "alvo": "d2.v2",
+            "d": -0.995535833
+          },
+          {
+            "movedor": "aabbC",
+            "alvo": "Fr.v2",
+            "d": -3.675027757
+          }
+        ],
+        "proximosY": [
+          {
+            "movedor": "aabbB",
+            "alvo": "d2.aabbT",
+            "d": 1.801270189
+          },
+          {
+            "movedor": "v2",
+            "alvo": "d2.aabbT",
+            "d": 1.801270189
+          },
+          {
+            "movedor": "aabbB",
+            "alvo": "d2.v0",
+            "d": 1.801270189
+          },
+          {
+            "movedor": "v2",
+            "alvo": "d2.v0",
+            "d": 1.801270189
+          },
+          {
+            "movedor": "v3",
+            "alvo": "Fr.aabbM",
+            "d": 4.480762114
+          },
+          {
+            "movedor": "aabbB",
+            "alvo": "Fr.v3",
+            "d": -5.615427319
+          },
+          {
+            "movedor": "v2",
+            "alvo": "Fr.v3",
+            "d": -5.615427319
+          }
+        ]
+      },
+      "gesto": {
+        "mover": "d1",
+        "deltaPagina": [
+          175.803156968,
+          101.5
+        ],
+        "agarrePagina": [
+          324.282032303,
+          237.942286341
+        ],
+        "deEcra": [
+          324.282032303,
+          237.942286341
+        ],
+        "paraEcra": [
+          500.085189271,
+          339.442286341
+        ],
+        "ctrl": false,
+        "shift": false
+      },
+      "antes": {
+        "Fr": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 300,
+          "y": 120,
+          "rotation": 0.5235987755982988,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 150.00000000000003,
+            "y": 120,
+            "w": 496.4101615137755,
+            "h": 459.8076211353316
+          },
+          "corners": [
+            [
+              300,
+              120
+            ],
+            [
+              646.4101615137755,
+              320
+            ],
+            [
+              496.4101615137755,
+              579.8076211353316
+            ],
+            [
+              150.00000000000003,
+              379.8076211353316
+            ]
+          ],
+          "center": [
+            398.20508075688775,
+            349.9038105676658
+          ]
+        },
+        "d1": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 274.6410161513775,
+            "y": 191.96152422706632,
+            "w": 99.28203230275511,
+            "h": 91.96152422706632
+          },
+          "corners": [
+            [
+              304.6410161513775,
+              191.96152422706632
+            ],
+            [
+              373.92304845413264,
+              231.96152422706632
+            ],
+            [
+              343.92304845413264,
+              283.92304845413264
+            ],
+            [
+              274.6410161513775,
+              243.92304845413264
+            ]
+          ],
+          "center": [
+            324.28203230275506,
+            237.94228634059948
+          ]
+        },
+        "d2": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 240,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 392.8460969082653,
+            "y": 387.2243186433546,
+            "w": 116.6025403784439,
+            "h": 101.96152422706632
+          },
+          "corners": [
+            [
+              422.8460969082653,
+              387.2243186433546
+            ],
+            [
+              509.4486372867092,
+              437.2243186433546
+            ],
+            [
+              479.4486372867092,
+              489.1858428704209
+            ],
+            [
+              392.8460969082653,
+              439.1858428704209
+            ]
+          ],
+          "center": [
+            451.14736709748723,
+            438.20508075688775
+          ]
+        }
+      },
+      "durante": {
+        "indicadores": [
+          {
+            "id": "Thll4RzGIJk0wxHZNAg0n",
+            "type": "points",
+            "points": [
+              {
+                "x": 451.14736709748723,
+                "y": 438.20508075688775,
+                "z": 1
+              },
+              {
+                "x": 451.14736709748723,
+                "y": 347.2243186433546,
+                "z": 1
+              }
+            ]
+          },
+          {
+            "id": "02VmvepCY9Veh9w0Y2ocb",
+            "type": "points",
+            "points": [
+              {
+                "x": 422.8460969082653,
+                "y": 387.2243186433546,
+                "z": 1
+              },
+              {
+                "x": 520.4293994002423,
+                "y": 387.2243186433546,
+                "z": 1
+              }
+            ]
+          }
+        ],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.translating",
+        "selecionados": [
+          "shape:d1"
+        ],
+        "cursor": "move",
+        "chegadaRapida": {
+          "indicadores": 0,
+          "pageBounds": {
+            "x": 450.4441472548932,
+            "y": 293.4615242270663,
+            "w": 99.28203230275506,
+            "h": 91.96152422706632
+          }
+        },
+        "geom": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 244.50961894323336,
+          "y": 61.208348754011496,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 451.1473670974872,
+            "y": 295.2627944162882,
+            "w": 99.28203230275506,
+            "h": 91.96152422706632
+          },
+          "corners": [
+            [
+              481.1473670974872,
+              295.2627944162882
+            ],
+            [
+              550.4293994002422,
+              335.2627944162882
+            ],
+            [
+              520.4293994002422,
+              387.22431864335454
+            ],
+            [
+              451.1473670974872,
+              347.22431864335454
+            ]
+          ],
+          "center": [
+            500.7883832488647,
+            341.2435565298214
+          ]
+        }
+      },
+      "depois": {
+        "Fr": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 300,
+          "y": 120,
+          "rotation": 0.5235987755982988,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 150.00000000000003,
+            "y": 120,
+            "w": 496.4101615137755,
+            "h": 459.8076211353316
+          },
+          "corners": [
+            [
+              300,
+              120
+            ],
+            [
+              646.4101615137755,
+              320
+            ],
+            [
+              496.4101615137755,
+              579.8076211353316
+            ],
+            [
+              150.00000000000003,
+              379.8076211353316
+            ]
+          ],
+          "center": [
+            398.20508075688775,
+            349.9038105676658
+          ]
+        },
+        "d1": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 244.50961894323336,
+          "y": 61.208348754011496,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 451.1473670974872,
+            "y": 295.2627944162882,
+            "w": 99.28203230275506,
+            "h": 91.96152422706632
+          },
+          "corners": [
+            [
+              481.1473670974872,
+              295.2627944162882
+            ],
+            [
+              550.4293994002422,
+              335.2627944162882
+            ],
+            [
+              520.4293994002422,
+              387.22431864335454
+            ],
+            [
+              451.1473670974872,
+              347.22431864335454
+            ]
+          ],
+          "center": [
+            500.7883832488647,
+            341.2435565298214
+          ]
+        },
+        "d2": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 240,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 392.8460969082653,
+            "y": 387.2243186433546,
+            "w": 116.6025403784439,
+            "h": 101.96152422706632
+          },
+          "corners": [
+            [
+              422.8460969082653,
+              387.2243186433546
+            ],
+            [
+              509.4486372867092,
+              437.2243186433546
+            ],
+            [
+              479.4486372867092,
+              489.1858428704209
+            ],
+            [
+              392.8460969082653,
+              439.1858428704209
+            ]
+          ],
+          "center": [
+            451.14736709748723,
+            438.20508075688775
+          ]
+        }
+      },
+      "nudge": [
+        0.703193978,
+        1.801270189
+      ],
+      "indicadoresClass": [
+        {
+          "type": "points",
+          "n": 2,
+          "linha": "vertical",
+          "dx": 0,
+          "dy": 90.980762114
+        },
+        {
+          "type": "points",
+          "n": 2,
+          "linha": "horizontal",
+          "dx": 97.583302492,
+          "dy": 0
+        }
+      ]
+    },
+    {
+      "nome": "rodada_d1_aabbL_pagina_a_d2",
+      "descr": "d1.aabb.left (página) → d2.aabb.left + 3",
+      "z": 1,
+      "snapMode": true,
+      "cena": [
+        {
+          "nome": "Fr",
+          "type": "frame",
+          "x": 300,
+          "y": 120,
+          "rotation": 0.5235987755982988,
+          "props": {
+            "w": 400,
+            "h": 300,
+            "name": "Fr"
+          }
+        },
+        {
+          "nome": "d1",
+          "type": "geo",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "props": {
+            "w": 80,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "Fr"
+        },
+        {
+          "nome": "d2",
+          "type": "geo",
+          "x": 240,
+          "y": 170,
+          "rotation": 0,
+          "props": {
+            "w": 100,
+            "h": 60,
+            "geo": "rectangle",
+            "fill": "solid"
+          },
+          "parent": "Fr"
+        }
+      ],
+      "previsto": {
+        "semGuia": {
+          "x": 395.8460969082653,
+          "y": 191.96152422706632,
+          "w": 99.28203230275511,
+          "h": 91.96152422706632
+        },
+        "proximosX": [
+          {
+            "movedor": "aabbR",
+            "alvo": "Fr.v2",
+            "d": 1.282032303
+          },
+          {
+            "movedor": "v1",
+            "alvo": "Fr.v2",
+            "d": 1.282032303
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "Fr.aabbC",
+            "d": 2.358983849
+          },
+          {
+            "movedor": "v3",
+            "alvo": "Fr.aabbC",
+            "d": 2.358983849
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "d2.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "d2.aabbL",
+            "d": -3
+          },
+          {
+            "movedor": "v0",
+            "alvo": "d2.v0",
+            "d": -3
+          },
+          {
+            "movedor": "aabbL",
+            "alvo": "d2.v3",
+            "d": -3
+          },
+          {
+            "movedor": "v3",
+            "alvo": "d2.v3",
+            "d": -3
+          },
+          {
+            "movedor": "aabbC",
+            "alvo": "d2.aabbC",
+            "d": 5.660254038
+          }
+        ],
+        "proximosY": []
+      },
+      "gesto": {
+        "mover": "d1",
+        "deltaPagina": [
+          121.205080757,
+          0
+        ],
+        "agarrePagina": [
+          324.282032303,
+          237.942286341
+        ],
+        "deEcra": [
+          324.282032303,
+          237.942286341
+        ],
+        "paraEcra": [
+          445.48711306,
+          237.942286341
+        ],
+        "ctrl": false,
+        "shift": false
+      },
+      "antes": {
+        "Fr": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 300,
+          "y": 120,
+          "rotation": 0.5235987755982988,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 150.00000000000003,
+            "y": 120,
+            "w": 496.4101615137755,
+            "h": 459.8076211353316
+          },
+          "corners": [
+            [
+              300,
+              120
+            ],
+            [
+              646.4101615137755,
+              320
+            ],
+            [
+              496.4101615137755,
+              579.8076211353316
+            ],
+            [
+              150.00000000000003,
+              379.8076211353316
+            ]
+          ],
+          "center": [
+            398.20508075688775,
+            349.9038105676658
+          ]
+        },
+        "d1": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 40,
+          "y": 60,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 274.6410161513775,
+            "y": 191.96152422706632,
+            "w": 99.28203230275511,
+            "h": 91.96152422706632
+          },
+          "corners": [
+            [
+              304.6410161513775,
+              191.96152422706632
+            ],
+            [
+              373.92304845413264,
+              231.96152422706632
+            ],
+            [
+              343.92304845413264,
+              283.92304845413264
+            ],
+            [
+              274.6410161513775,
+              243.92304845413264
+            ]
+          ],
+          "center": [
+            324.28203230275506,
+            237.94228634059948
+          ]
+        },
+        "d2": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 240,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 392.8460969082653,
+            "y": 387.2243186433546,
+            "w": 116.6025403784439,
+            "h": 101.96152422706632
+          },
+          "corners": [
+            [
+              422.8460969082653,
+              387.2243186433546
+            ],
+            [
+              509.4486372867092,
+              437.2243186433546
+            ],
+            [
+              479.4486372867092,
+              489.1858428704209
+            ],
+            [
+              392.8460969082653,
+              439.1858428704209
+            ]
+          ],
+          "center": [
+            451.14736709748723,
+            438.20508075688775
+          ]
+        }
+      },
+      "durante": {
+        "indicadores": [
+          {
+            "id": "dXHbEzx-pDdICYl-yF2fq",
+            "type": "points",
+            "points": [
+              {
+                "x": 496.4101615137755,
+                "y": 579.8076211353316,
+                "z": 1
+              },
+              {
+                "x": 496.4101615137755,
+                "y": 231.96152422706632,
+                "z": 1
+              }
+            ]
+          }
+        ],
+        "camera": {
+          "x": 0,
+          "y": 0,
+          "z": 1,
+          "meta": {},
+          "id": "camera:page:page",
+          "typeName": "camera"
+        },
+        "tool": "select.translating",
+        "selecionados": [
+          "shape:d1"
+        ],
+        "cursor": "move",
+        "chegadaRapida": {
+          "indicadores": 0,
+          "pageBounds": {
+            "x": 395.8460942763775,
+            "y": 191.96152422706632,
+            "w": 99.28203230275511,
+            "h": 91.96152422706632
+          }
+        },
+        "geom": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 146.07695154586742,
+          "y": -1.2435565298214044,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 397.12812921102045,
+            "y": 191.96152422706632,
+            "w": 99.28203230275511,
+            "h": 91.96152422706632
+          },
+          "corners": [
+            [
+              427.12812921102045,
+              191.96152422706632
+            ],
+            [
+              496.41016151377556,
+              231.96152422706632
+            ],
+            [
+              466.41016151377556,
+              283.92304845413264
+            ],
+            [
+              397.12812921102045,
+              243.92304845413264
+            ]
+          ],
+          "center": [
+            446.769145362398,
+            237.94228634059948
+          ]
+        }
+      },
+      "depois": {
+        "Fr": {
+          "type": "frame",
+          "parentId": "page:page",
+          "x": 300,
+          "y": 120,
+          "rotation": 0.5235987755982988,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 150.00000000000003,
+            "y": 120,
+            "w": 496.4101615137755,
+            "h": 459.8076211353316
+          },
+          "corners": [
+            [
+              300,
+              120
+            ],
+            [
+              646.4101615137755,
+              320
+            ],
+            [
+              496.4101615137755,
+              579.8076211353316
+            ],
+            [
+              150.00000000000003,
+              379.8076211353316
+            ]
+          ],
+          "center": [
+            398.20508075688775,
+            349.9038105676658
+          ]
+        },
+        "d1": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 146.07695154586742,
+          "y": -1.2435565298214044,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 397.12812921102045,
+            "y": 191.96152422706632,
+            "w": 99.28203230275511,
+            "h": 91.96152422706632
+          },
+          "corners": [
+            [
+              427.12812921102045,
+              191.96152422706632
+            ],
+            [
+              496.41016151377556,
+              231.96152422706632
+            ],
+            [
+              466.41016151377556,
+              283.92304845413264
+            ],
+            [
+              397.12812921102045,
+              243.92304845413264
+            ]
+          ],
+          "center": [
+            446.769145362398,
+            237.94228634059948
+          ]
+        },
+        "d2": {
+          "type": "geo",
+          "parentId": "shape:Fr",
+          "x": 240,
+          "y": 170,
+          "rotation": 0,
+          "pageRotationDeg": 29.999999999999996,
+          "pageBounds": {
+            "x": 392.8460969082653,
+            "y": 387.2243186433546,
+            "w": 116.6025403784439,
+            "h": 101.96152422706632
+          },
+          "corners": [
+            [
+              422.8460969082653,
+              387.2243186433546
+            ],
+            [
+              509.4486372867092,
+              437.2243186433546
+            ],
+            [
+              479.4486372867092,
+              489.1858428704209
+            ],
+            [
+              392.8460969082653,
+              439.1858428704209
+            ]
+          ],
+          "center": [
+            451.14736709748723,
+            438.20508075688775
+          ]
+        }
+      },
+      "nudge": [
+        1.282032303,
+        0
+      ],
+      "indicadoresClass": [
+        {
+          "type": "points",
+          "n": 2,
+          "linha": "vertical",
+          "dx": 0,
+          "dy": 347.846096908
+        }
+      ]
+    }
+  ]
+}

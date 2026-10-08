@@ -10,10 +10,36 @@ pub struct Guide {
     pub b: [f64; 2],
 }
 
-/// Os três valores que alinham numa caixa `[x0, y0, x1, y1]` ao longo de um eixo.
-fn stops(b: &[f64; 4], axis: usize) -> [f64; 3] {
-    let (lo, hi) = (b[axis], b[axis + 2]);
-    [lo, (lo + hi) / 2.0, hi]
+/// Uma caixa que alinha: os limites `b = [x0, y0, x1, y1]` e, por eixo, os dois cantos de DENTRO de
+/// um rodado (o tldraw: um rodado prende pelos quatro cantos e o centro — iguais aos limites numa
+/// caixa direita).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Stops {
+    pub b: [f64; 4],
+    pub inner: [[f64; 2]; 2],
+}
+
+impl Stops {
+    pub(crate) fn rect(b: [f64; 4]) -> Self {
+        Self {
+            b,
+            inner: [[b[0], b[2]], [b[1], b[3]]],
+        }
+    }
+
+    /// Os cinco valores que alinham ao longo de `axis`: as bordas, os cantos de dentro e o centro.
+    fn along(&self, axis: usize) -> [f64; 5] {
+        let (lo, hi) = (self.b[axis], self.b[axis + 2]);
+        let [i0, i1] = self.inner[axis];
+        [lo, i0, (lo + hi) / 2.0, i1, hi]
+    }
+
+    fn moved(mut self, axis: usize, d: f64) -> Self {
+        self.b[axis] += d;
+        self.b[axis + 2] += d;
+        self.inner[axis] = self.inner[axis].map(|v| v + d);
+        self
+    }
 }
 
 /// Um encaixe: o deslocamento, o MENOR dos encaixes por eixo (`INFINITY` sem nenhum — é por ele que
@@ -28,19 +54,19 @@ pub(crate) struct Snap {
 /// O deslocamento que leva `moving` a colar nos `targets` (por eixo, o mais perto dentro de `tol`),
 /// e as guias desse encaixe. `(0, 0)` e nenhuma guia quando nada está perto.
 #[must_use]
-pub(crate) fn snap_box(moving: [f64; 4], targets: &[[f64; 4]], tol: f64) -> Snap {
+pub(crate) fn snap_box(moving: Stops, targets: &[Stops], tol: f64) -> Snap {
     let mut delta = [0.0; 2];
     let mut best = f64::INFINITY;
     let mut guides = Vec::new();
     for (axis, slot) in delta.iter_mut().enumerate() {
-        let mine = stops(&moving, axis);
+        let mine = moving.along(axis);
         let found = targets
             .iter()
-            .flat_map(|t| stops(t, axis))
+            .flat_map(|t| t.along(axis))
             .flat_map(|v| mine.iter().map(move |m| v - m))
             .filter(|d| d.abs() <= tol)
             .min_by(|a, b| a.abs().total_cmp(&b.abs()));
-        let gap = gap_snap(&moving, targets, axis, tol);
+        let gap = gap_snap(&moving.b, targets, axis, tol);
         if let Some((d, g)) = gap.filter(|(g, _)| found.is_none_or(|e| g.abs() < e.abs())) {
             *slot = d;
             best = best.min(d.abs());
@@ -53,16 +79,19 @@ pub(crate) fn snap_box(moving: [f64; 4], targets: &[[f64; 4]], tol: f64) -> Snap
         *slot = d;
         best = best.min(d.abs());
         // A guia vai de uma ponta à outra de TUDO o que se alinha naquela linha.
-        let snapped = moved(moving, axis, d);
+        let snapped = moving.moved(axis, d);
         let other = 1 - axis;
-        for line in stops(&snapped, axis) {
-            let mut lo = snapped[other];
-            let mut hi = snapped[other + 2];
+        let mut lines = snapped.along(axis).to_vec();
+        lines.sort_by(f64::total_cmp);
+        lines.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
+        for line in lines {
+            let mut lo = snapped.b[other];
+            let mut hi = snapped.b[other + 2];
             let mut hit = false;
             for t in targets {
-                if stops(t, axis).iter().any(|v| (v - line).abs() < 1e-9) {
-                    lo = lo.min(t[other]);
-                    hi = hi.max(t[other + 2]);
+                if t.along(axis).iter().any(|v| (v - line).abs() < 1e-9) {
+                    lo = lo.min(t.b[other]);
+                    hi = hi.max(t.b[other + 2]);
                     hit = true;
                 }
             }
@@ -111,15 +140,11 @@ fn mid(a: &[f64; 4], b: &[f64; 4], other: usize) -> f64 {
 /// ⭐ O espaçamento igual de `m` no eixo `axis`, entre os alvos da sua FILA (os que se sobrepõem a
 /// ele no outro eixo): ao meio entre os dois vizinhos, ou ao lado de um par com o vão desse par. O
 /// deslocamento mais pequeno dentro de `tol` e os vãos a mostrar (dois segmentos do mesmo tamanho).
-fn gap_snap(
-    m: &[f64; 4],
-    targets: &[[f64; 4]],
-    axis: usize,
-    tol: f64,
-) -> Option<(f64, Vec<Guide>)> {
+fn gap_snap(m: &[f64; 4], targets: &[Stops], axis: usize, tol: f64) -> Option<(f64, Vec<Guide>)> {
     let (lo, hi, other) = (axis, axis + 2, 1 - axis);
     let row: Vec<&[f64; 4]> = targets
         .iter()
+        .map(|t| &t.b)
         .filter(|t| t[other] < m[other + 2] && m[other] < t[other + 2])
         .collect();
     let before = |edge: f64| {
@@ -174,25 +199,19 @@ fn gap_snap(
         .min_by(|a, b| a.0.abs().total_cmp(&b.0.abs()))
 }
 
-fn moved(mut b: [f64; 4], axis: usize, d: f64) -> [f64; 4] {
-    b[axis] += d;
-    b[axis + 2] += d;
-    b
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn a_box_near_an_edge_snaps_to_it_and_draws_the_guide() {
-        let target = [100.0, 0.0, 200.0, 50.0];
+        let target = Stops::rect([100.0, 0.0, 200.0, 50.0]);
         // A borda esquerda (103) a 3 da borda esquerda do alvo.
         let Snap {
             delta: d,
             best,
             guides: g,
-        } = snap_box([103.0, 100.0, 153.0, 150.0], &[target], 5.0);
+        } = snap_box(Stops::rect([103.0, 100.0, 153.0, 150.0]), &[target], 5.0);
         assert_eq!((d, best), ([-3.0, 0.0], 3.0));
         // As duas bordas da caixa (50 de largo) caem nas bordas 100 e 150 do alvo: duas guias.
         assert_eq!(
@@ -212,10 +231,10 @@ mod tests {
 
     #[test]
     fn centres_snap_too_and_far_boxes_do_not() {
-        let target = [0.0, 0.0, 100.0, 100.0];
-        let s = snap_box([30.0, 200.0, 72.0, 240.0], &[target], 2.0);
+        let target = Stops::rect([0.0, 0.0, 100.0, 100.0]);
+        let s = snap_box(Stops::rect([30.0, 200.0, 72.0, 240.0]), &[target], 2.0);
         assert_eq!(s.delta, [-1.0, 0.0], "o centro 51 cola no centro 50");
-        let far = snap_box([300.0, 300.0, 340.0, 340.0], &[target], 2.0);
+        let far = snap_box(Stops::rect([300.0, 300.0, 340.0, 340.0]), &[target], 2.0);
         assert_eq!(
             (far.delta, far.best, far.guides.len()),
             ([0.0, 0.0], f64::INFINITY, 0)

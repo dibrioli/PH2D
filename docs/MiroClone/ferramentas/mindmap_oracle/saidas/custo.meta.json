@@ -1,0 +1,220 @@
+{
+  "oracle": "mindmap (mind-elixir, simple-mind-map, markmap)",
+  "versions": {
+    "mind-elixir": "6.0.0-next.4",
+    "simple-mind-map": "0.14.0-fix.3",
+    "markmap-view": "0.18.12",
+    "markmap-lib": "0.18.12",
+    "playwright": "1.63.0"
+  },
+  "licenses": "todas MIT (licencas.mjs; simple-mind-map: campo license MIT + LICENSE do repositório, sem ficheiro no artefacto)",
+  "chromium_version": "153.0.8010.12",
+  "node_version": "v24.19.0",
+  "date": "2026-10-08T22:59:49.433Z",
+  "command": "node docs/MiroClone/ferramentas/mindmap_oracle/corre.mjs --so custo <saida>",
+  "runner_sha256": "ca3e7b6b435aa3e72bb078d21d32dc1d9bc031aa5b54609106440f9f6743d8a8",
+  "leis_sha256": "dd74ed0209e9534b289c3a58dbf259316a66358df07cb6b87e2c63972aee156e",
+  "inputs_sha256": {
+    "T1": "2955d98c35f3bcbc290ba9f4e5af535f76d0664cd704536592fb4520d090fd58",
+    "T2": "c6344517c7fe070f70d8a79b4853013e04393ca08916d29effbdcb77fbc7bb26",
+    "T3": "b336dcf46ee933d9baf5ecf0087909114a5ea431ba2474c0b452d77f46916a87",
+    "T4": "95cc077370eb9076ba980219d06bdc158de7b2c88d6c27e8676579926f20b7c6",
+    "T5": "3d33b3e1ea68b23ae5a2b44106350499f1d02d15df47c56d0ee7b527714bfbc6",
+    "T6": "fdaf45b4c6f2862b0161885d2c1ec64c4a812012e68af4e1d1ded8e30a57ab47",
+    "N100": "4cb23042cb3cc3ca382ecc57e820b4463332bc3aabc12737dda8f3188211e3fe",
+    "N1000": "be21a2d7e47f326b68f79f903540d40509f07b8d761a4d9648c255381328f3b7"
+  },
+  "window": "1600×1000, deviceScaleFactor 1, locale en-US, UTC",
+  "normalizacao": "caixas relativas ao CENTRO da raiz, zoom 1 (ME: DOM/scaleVal; SMM: Node.left/top/width/height; markmap: state.rect); números a 1e-3; ids de nós novos → novo1, novo2… (pré-ordem); números no atributo d dos ramos a 1e-3",
+  "external_requests_seen": [],
+  "console": [],
+  "outputs_sha256": {
+    "custo.json": "acfd2526d38a1a76a044536d56ea8f0398da28093af0a0eb3aefbbe5c2c4523d"
+  },
+  "loadavg_1min": [
+    36.07,
+    29.68
+  ],
+  "tempos_ms": {
+    "N100_me_SIDE": {
+      "montarMinMs": 3.6,
+      "refazerMinMs": 2.6,
+      "montarMs": [
+        19.3,
+        3.9,
+        3.7,
+        4.6,
+        3.6
+      ],
+      "refazerMs": [
+        3.3,
+        2.8,
+        2.6,
+        3.8,
+        2.7
+      ]
+    },
+    "N100_me_RIGHT": {
+      "montarMinMs": 3.3,
+      "refazerMinMs": 2.4,
+      "montarMs": [
+        3.3,
+        21,
+        3.5,
+        3.7,
+        3.3
+      ],
+      "refazerMs": [
+        2.7,
+        4.1,
+        2.4,
+        3.2,
+        2.5
+      ]
+    },
+    "N100_smm_mindMap": {
+      "montarMinMs": 19.7,
+      "refazerMinMs": 26.9,
+      "montarMs": [
+        50.2,
+        53.4,
+        49.1,
+        19.7,
+        23.1
+      ],
+      "refazerMs": [
+        34.2,
+        37.6,
+        31.3,
+        26.9,
+        29.2
+      ]
+    },
+    "N100_smm_logicalStructure": {
+      "montarMinMs": 21.2,
+      "refazerMinMs": 26.8,
+      "montarMs": [
+        22.6,
+        27.7,
+        22.3,
+        42,
+        21.2
+      ],
+      "refazerMs": [
+        31.4,
+        29.3,
+        26.8,
+        27.8,
+        29.5
+      ]
+    },
+    "N100_mm_padrao": {
+      "montarMinMs": 9.1,
+      "refazerMinMs": 15.1,
+      "montarMs": [
+        12.3,
+        15.7,
+        14.8,
+        13.2,
+        9.1
+      ],
+      "refazerMs": [
+        21.6,
+        19.4,
+        19.1,
+        18.4,
+        15.1
+      ]
+    },
+    "N1000_me_SIDE": {
+      "montarMinMs": 38,
+      "refazerMinMs": 26.7,
+      "montarMs": [
+        40.1,
+        43.4,
+        40.5,
+        38,
+        42.1
+      ],
+      "refazerMs": [
+        39.4,
+        48.7,
+        35.9,
+        31,
+        26.7
+      ]
+    },
+    "N1000_me_RIGHT": {
+      "montarMinMs": 25.3,
+      "refazerMinMs": 23.3,
+      "montarMs": [
+        28.3,
+        28.9,
+        29.2,
+        26.4,
+        25.3
+      ],
+      "refazerMs": [
+        26.9,
+        29.7,
+        28.2,
+        25.7,
+        23.3
+      ]
+    },
+    "N1000_smm_mindMap": {
+      "montarMinMs": 270.7,
+      "refazerMinMs": 262.7,
+      "montarMs": [
+        335.4,
+        342.6,
+        283.4,
+        270.7,
+        283.4
+      ],
+      "refazerMs": [
+        311.6,
+        297.4,
+        277.9,
+        262.7,
+        281.5
+      ]
+    },
+    "N1000_smm_logicalStructure": {
+      "montarMinMs": 262.2,
+      "refazerMinMs": 274.8,
+      "montarMs": [
+        294,
+        265.7,
+        271,
+        262.2,
+        271.1
+      ],
+      "refazerMs": [
+        337.8,
+        282.9,
+        287.3,
+        278,
+        274.8
+      ]
+    },
+    "N1000_mm_padrao": {
+      "montarMinMs": 38.2,
+      "refazerMinMs": 38.1,
+      "montarMs": [
+        47.3,
+        41.7,
+        38.2,
+        42.6,
+        40.4
+      ],
+      "refazerMs": [
+        47.4,
+        44.8,
+        38.1,
+        42.2,
+        43.4
+      ]
+    }
+  }
+}

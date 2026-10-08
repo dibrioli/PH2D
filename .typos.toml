@@ -1033,6 +1033,8 @@ extend-exclude = [
     "docs/MiroClone/ferramentas/excalidraw_oracle/saidas/**",
     # E as do oráculo tldraw (W5b), pela mesma razão: ids aleatórios dele (`…7DFot…`, `…piCJ2…`).
     "docs/MiroClone/ferramentas/tldraw_oracle/saidas/**",
+    # E as dos oráculos de mapa mental (W6): textos e ids gerados por eles.
+    "docs/MiroClone/ferramentas/mindmap_oracle/saidas/**",
     # `backups/` is a verbatim snapshot of crates+docs taken before the watercolor v2
     # super-simplification (commit `30ecc096`) — NOT active source. Its pt-BR ADR docs
     # (controle, conservativo, fiel, …) trip the en-US dictionary; never lint a backup.

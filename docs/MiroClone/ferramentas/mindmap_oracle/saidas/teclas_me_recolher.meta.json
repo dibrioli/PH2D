@@ -1,0 +1,38 @@
+{
+  "oracle": "mindmap (mind-elixir, simple-mind-map, markmap)",
+  "versions": {
+    "mind-elixir": "6.0.0-next.4",
+    "simple-mind-map": "0.14.0-fix.3",
+    "markmap-view": "0.18.12",
+    "markmap-lib": "0.18.12",
+    "playwright": "1.63.0"
+  },
+  "licenses": "todas MIT (licencas.mjs; simple-mind-map: campo license MIT + LICENSE do repositório, sem ficheiro no artefacto)",
+  "chromium_version": "153.0.8010.12",
+  "node_version": "v24.19.0",
+  "date": "2026-10-08T22:55:47.908Z",
+  "command": "node docs/MiroClone/ferramentas/mindmap_oracle/corre.mjs --so teclas_me_recolher <saida>",
+  "runner_sha256": "ca3e7b6b435aa3e72bb078d21d32dc1d9bc031aa5b54609106440f9f6743d8a8",
+  "leis_sha256": "dd74ed0209e9534b289c3a58dbf259316a66358df07cb6b87e2c63972aee156e",
+  "inputs_sha256": {
+    "T1": "2955d98c35f3bcbc290ba9f4e5af535f76d0664cd704536592fb4520d090fd58",
+    "T2": "c6344517c7fe070f70d8a79b4853013e04393ca08916d29effbdcb77fbc7bb26",
+    "T3": "b336dcf46ee933d9baf5ecf0087909114a5ea431ba2474c0b452d77f46916a87",
+    "T4": "95cc077370eb9076ba980219d06bdc158de7b2c88d6c27e8676579926f20b7c6",
+    "T5": "3d33b3e1ea68b23ae5a2b44106350499f1d02d15df47c56d0ee7b527714bfbc6",
+    "T6": "fdaf45b4c6f2862b0161885d2c1ec64c4a812012e68af4e1d1ded8e30a57ab47",
+    "N100": "4cb23042cb3cc3ca382ecc57e820b4463332bc3aabc12737dda8f3188211e3fe",
+    "N1000": "be21a2d7e47f326b68f79f903540d40509f07b8d761a4d9648c255381328f3b7"
+  },
+  "window": "1600×1000, deviceScaleFactor 1, locale en-US, UTC",
+  "normalizacao": "caixas relativas ao CENTRO da raiz, zoom 1 (ME: DOM/scaleVal; SMM: Node.left/top/width/height; markmap: state.rect); números a 1e-3; ids de nós novos → novo1, novo2… (pré-ordem); números no atributo d dos ramos a 1e-3",
+  "external_requests_seen": [],
+  "console": [],
+  "outputs_sha256": {
+    "teclas_me_recolher.json": "3c4ad99eccf4ab8bc82633fc5072829eb16af92b407b920e8ce8830d203324e3"
+  },
+  "loadavg_1min": [
+    5.4,
+    7.26
+  ]
+}

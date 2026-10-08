@@ -54,7 +54,10 @@ impl Camera {
             return;
         }
         let (bw, bh) = ((x1 - x0).max(f64::EPSILON), (y1 - y0).max(f64::EPSILON));
-        let (w, h) = ((area[2] - 2.0 * margin).max(1.0), (area[3] - 2.0 * margin).max(1.0));
+        let (w, h) = (
+            (area[2] - 2.0 * margin).max(1.0),
+            (area[3] - 2.0 * margin).max(1.0),
+        );
         self.zoom = (w / bw).min(h / bh).clamp(ZOOM_RANGE.0, ZOOM_RANGE.1);
         self.center_x = (x0 + x1) / 2.0;
         self.center_y = (y0 + y1) / 2.0;

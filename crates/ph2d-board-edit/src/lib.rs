@@ -441,6 +441,15 @@ impl Editor {
         v
     }
 
+    /// Os seleccionados que se podem EDITAR (os destravados), em ordem de z — o que muda com um
+    /// estilo, uma marca, a ordem ou uma etiqueta (o Miro: travado = *«not moved, edited, or
+    /// deleted»*).
+    pub(crate) fn editable<'a>(&self, doc: &'a BoardDoc) -> Vec<&'a Element> {
+        let mut v = self.selected(doc);
+        v.retain(|el| !el.locked());
+        v
+    }
+
     /// A moldura das pegas: a caixa rodada de uma forma (ou traço) só, ou a caixa alinhada de
     /// várias. As setas não entram (têm as pegas das pontas).
     #[must_use]
@@ -471,7 +480,7 @@ impl Editor {
     ) {
         change(&mut self.style);
         let ops = self
-            .selected(doc)
+            .editable(doc)
             .into_iter()
             .map(|el| {
                 let mut el = el.clone();
@@ -496,7 +505,7 @@ impl Editor {
         let targets: Vec<&Element> = if whole {
             doc.live_in_z_order()
         } else {
-            self.selected(doc)
+            self.editable(doc)
         }
         .into_iter()
         .filter(|el| sketchable(el))
@@ -541,7 +550,7 @@ impl Editor {
         change: impl Fn(&mut ph2d_board_model::Connector),
     ) {
         let ops = self
-            .selected(doc)
+            .editable(doc)
             .into_iter()
             .filter_map(|el| {
                 let mut el = el.clone();
@@ -555,7 +564,7 @@ impl Editor {
     /// Troca o contorno das formas seleccionadas (UM passo).
     pub fn set_shape_type(&mut self, doc: &mut BoardDoc, history: &mut History, t: ShapeType) {
         let ops = self
-            .selected(doc)
+            .editable(doc)
             .into_iter()
             .filter_map(|el| {
                 let mut el = el.clone();

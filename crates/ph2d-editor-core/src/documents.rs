@@ -13,6 +13,9 @@ pub use ph2d_board_model::BoardSet;
 use ph2d_board_model::{Board, BoardId, History};
 use std::collections::BTreeMap;
 
+#[path = "documents_nav.rs"]
+pub(crate) mod nav;
+
 /// Os quadros e a aba activa.
 #[derive(Debug, Default)]
 pub struct Documents {
@@ -51,7 +54,7 @@ pub(crate) struct BoardLive {
     /// cima dele enquanto é fresca (W5: nunca só o terminal).
     pub(crate) notice: Option<(&'static str, std::time::Instant)>,
     /// A navegação (W5): minimapa, painel de Frames, busca, etiquetas, links.
-    pub(crate) nav: crate::screens::hero::board_nav::Nav,
+    pub(crate) nav: nav::Nav,
 }
 
 impl std::fmt::Debug for BoardLive {

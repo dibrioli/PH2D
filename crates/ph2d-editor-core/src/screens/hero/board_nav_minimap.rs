@@ -8,6 +8,7 @@
 //! desenhados um a um custam ~6 ms por imagem — o minimapa não pode pagar isso a cada quadro.
 
 use super::HeroScreen;
+use crate::documents::nav::{Cache, Map};
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
 use ph2d_board_model::{Board, Rgba};
@@ -32,51 +33,6 @@ pub fn minimap_rect(area: Rect) -> Rect {
     )
 }
 
-/// O mundo `extent` encaixado (com a proporção dele) no rectângulo `r` do ecrã.
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct Map {
-    extent: [f64; 4],
-    scale: f64,
-    origin: [f64; 2],
-}
-
-impl Map {
-    fn new(extent: [f64; 4], r: Rect) -> Self {
-        let (ew, eh) = ((extent[2] - extent[0]).max(1.0), (extent[3] - extent[1]).max(1.0));
-        let scale = (f64::from(r.w) / ew).min(f64::from(r.h) / eh);
-        let origin = [
-            f64::from(r.x) + (f64::from(r.w) - ew * scale) / 2.0,
-            f64::from(r.y) + (f64::from(r.h) - eh * scale) / 2.0,
-        ];
-        Self {
-            extent,
-            scale,
-            origin,
-        }
-    }
-
-    fn to_screen(self, p: [f64; 2]) -> [f64; 2] {
-        [
-            self.origin[0] + (p[0] - self.extent[0]) * self.scale,
-            self.origin[1] + (p[1] - self.extent[1]) * self.scale,
-        ]
-    }
-
-    fn to_world(self, p: [f64; 2]) -> [f64; 2] {
-        [
-            self.extent[0] + (p[0] - self.origin[0]) / self.scale,
-            self.extent[1] + (p[1] - self.origin[1]) / self.scale,
-        ]
-    }
-}
-
-/// As células já rasterizadas, válidas para uma revisão do documento e um rectângulo.
-pub(super) struct Cache {
-    key: (u64, [u32; 4]),
-    map: Map,
-    cells: VectorScene,
-}
-
 fn doc_color(Rgba([r, g, b, a]): Rgba) -> Color {
     Color::from_rgba8(r, g, b, a) // LITERAL-COLOR-OK: cor do DOCUMENTO
 }
@@ -91,14 +47,25 @@ fn build(board: &Board, r: Rect, theme: Theme) -> Option<Cache> {
     let extent = board.doc.extent()?;
     let map = Map::new(extent, r);
     let cell = f64::from(Spacing::Xxs.px());
-    let (cols, rows) = ((f64::from(r.w) / cell) as usize, (f64::from(r.h) / cell) as usize);
+    let (cols, rows) = (
+        (f64::from(r.w) / cell) as usize,
+        (f64::from(r.h) / cell) as usize,
+    );
+    if cols == 0 || rows == 0 {
+        return None;
+    }
     let mut grid: Vec<Option<Color>> = vec![None; cols * rows];
     let frame_edge = resolve(ColorToken::Border, theme);
     let frames = board.doc.frames_in_draw_order();
     let others = board.doc.live_in_z_order();
-    let all = frames.into_iter().chain(others.into_iter().filter(|e| e.as_frame().is_none()));
+    let all = frames
+        .into_iter()
+        .chain(others.into_iter().filter(|e| e.as_frame().is_none()));
     for el in all.filter(|e| e.connector().is_none()) {
-        let Some(c) = mark(el).map(doc_color).or(el.as_frame().map(|_| frame_edge)) else {
+        let Some(c) = mark(el)
+            .map(doc_color)
+            .or(el.as_frame().map(|_| frame_edge))
+        else {
             continue;
         };
         let [x0, y0, x1, y1] = el.aabb();
@@ -154,7 +121,9 @@ pub(super) fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, 
     // A vista: o rectângulo do mundo à vista, na escala do minimapa.
     let a = super::super::board_view::area_of(area);
     let v0 = cache.map.to_screen(board.camera.to_world(a, [a[0], a[1]]));
-    let v1 = cache.map.to_screen(board.camera.to_world(a, [a[0] + a[2], a[1] + a[3]]));
+    let v1 = cache
+        .map
+        .to_screen(board.camera.to_world(a, [a[0] + a[2], a[1] + a[3]]));
     let view = ph2d_vector::Rect::new(v0[0], v0[1], v1[0], v1[1]);
     let line = Stroke::new(f64::from(StrokeToken::Default.px()));
     let accent = Brush::Solid(resolve(ColorToken::Accent, theme));

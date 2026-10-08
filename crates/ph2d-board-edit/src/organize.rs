@@ -214,7 +214,7 @@ impl Editor {
     /// selecção mantém a ordem relativa dela. UM passo.
     pub(crate) fn reorder(&mut self, doc: &mut BoardDoc, history: &mut History, o: Order) -> bool {
         let sel: Vec<Element> = self
-            .selected(doc)
+            .editable(doc)
             .into_iter()
             .filter(|el| el.as_frame().is_none())
             .cloned()
@@ -330,7 +330,7 @@ impl Editor {
     ) -> bool {
         let name = name.trim();
         let notes: Vec<Element> = self
-            .selected(doc)
+            .editable(doc)
             .into_iter()
             .filter(|el| el.shape().is_some_and(|s| s.kind.is_note()))
             .cloned()
@@ -390,7 +390,12 @@ impl Editor {
 
     /// Distribui as unidades com vãos IGUAIS entre caixas, as duas das pontas paradas (oráculo C3:
     /// larguras 41/113/29/87 em 337..787 ⇒ vão 60). Menos de três: nada. UM passo.
-    pub(crate) fn distribute(&mut self, doc: &mut BoardDoc, history: &mut History, ax: Axis) -> bool {
+    pub(crate) fn distribute(
+        &mut self,
+        doc: &mut BoardDoc,
+        history: &mut History,
+        ax: Axis,
+    ) -> bool {
         let mut units = self.units(doc);
         if units.len() < 3 {
             return false;
@@ -401,7 +406,10 @@ impl Editor {
         };
         units.sort_by(|u, v| u.bbox[a0].total_cmp(&v.bbox[a0]));
         let first = units[0].bbox[a0];
-        let last = units.iter().map(|u| u.bbox[a1]).fold(f64::NEG_INFINITY, f64::max);
+        let last = units
+            .iter()
+            .map(|u| u.bbox[a1])
+            .fold(f64::NEG_INFINITY, f64::max);
         let used: f64 = units.iter().map(|u| u.bbox[a1] - u.bbox[a0]).sum();
         let gap = (last - first - used) / (units.len() - 1) as f64;
         let mut at = first;
@@ -557,7 +565,14 @@ fn union_boxes(bs: impl Iterator<Item = [f64; 4]>) -> [f64; 4] {
             f64::NEG_INFINITY,
             f64::NEG_INFINITY,
         ],
-        |a, b| [a[0].min(b[0]), a[1].min(b[1]), a[2].max(b[2]), a[3].max(b[3])],
+        |a, b| {
+            [
+                a[0].min(b[0]),
+                a[1].min(b[1]),
+                a[2].max(b[2]),
+                a[3].max(b[3]),
+            ]
+        },
     )
 }
 
@@ -615,7 +630,11 @@ fn step_slot(
         Some((Some(edge.clone()), next))
     } else {
         let edge = block.iter().map(|e| &e.z).min()?;
-        let prev = others.iter().rev().find(|e| e.z < *edge).map(|e| e.z.clone());
+        let prev = others
+            .iter()
+            .rev()
+            .find(|e| e.z < *edge)
+            .map(|e| e.z.clone());
         Some((prev, Some(edge.clone())))
     }
 }

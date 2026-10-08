@@ -430,7 +430,7 @@ impl Editor {
     /// estilo das próximas formas também — a espessura da caneta é outra escala). UM passo.
     pub fn set_ink_width(&mut self, doc: &mut BoardDoc, history: &mut History, width: f64) {
         let ops = self
-            .selected(doc)
+            .editable(doc)
             .into_iter()
             .filter(|el| el.ink().is_some())
             .map(|el| {

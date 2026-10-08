@@ -88,10 +88,16 @@ fn descendants_reach_every_depth_and_nothing_outside() {
 fn a_frame_cannot_enter_itself_or_its_own_descendant() {
     let n = nest();
     assert!(!n.doc.can_enter(n.outer, n.outer));
-    assert!(!n.doc.can_enter(n.outer, n.inner), "o de fora dentro do neto: ciclo");
+    assert!(
+        !n.doc.can_enter(n.outer, n.inner),
+        "o de fora dentro do neto: ciclo"
+    );
     assert!(n.doc.can_enter(n.inner, n.outer));
     assert!(n.doc.can_enter(n.loose, n.inner));
-    assert!(!n.doc.can_enter(n.loose, n.in_mid), "um rectângulo não é frame");
+    assert!(
+        !n.doc.can_enter(n.loose, n.in_mid),
+        "um rectângulo não é frame"
+    );
 }
 
 /// O frame debaixo do ponteiro é o mais INTERIOR; o que se arrasta (e o que vive nele) não conta.

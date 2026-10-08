@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Connector, End, Frame, FracKey, Ink, Org, RichText};
+use crate::{Connector, End, FracKey, Frame, Ink, Org, RichText};
 
 /// Identidade de um elemento dentro do seu quadro. Nunca reusada (as lápides guardam-na).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -234,7 +234,12 @@ impl Style {
 
 impl Element {
     /// Um elemento de nascença: sem rotação, solto (sem frame, grupo, link nem etiquetas), destravado.
-    pub(crate) fn bare(id: ElementId, z: FracKey, kind: ElementKind, [x, y, w, h]: [f64; 4]) -> Self {
+    pub(crate) fn bare(
+        id: ElementId,
+        z: FracKey,
+        kind: ElementKind,
+        [x, y, w, h]: [f64; 4],
+    ) -> Self {
         Self {
             id,
             kind,

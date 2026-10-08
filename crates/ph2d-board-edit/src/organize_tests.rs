@@ -79,7 +79,11 @@ fn align_takes_the_selection_box_as_reference_like_the_oracle() {
         let ids = three(&mut w);
         w.ed.select(&w.doc, ids);
         assert!(w.cmd(Command::Align(a)), "{a:?} mexeu");
-        let got = if horizontal { xs(&w, &ids) } else { ys(&w, &ids) };
+        let got = if horizontal {
+            xs(&w, &ids)
+        } else {
+            ys(&w, &ids)
+        };
         assert!(near(&got, &want), "{a:?}: {got:?} ≠ oráculo {want:?}");
         assert!(w.cmd(Command::Undo));
         assert!(near(&xs(&w, &ids), &[400.0, 537.0, 459.0]), "UM passo");
@@ -113,9 +117,15 @@ fn distribute_makes_equal_gaps_and_keeps_the_ends() {
     w.ed.select(&w.doc, ids);
     assert!(w.cmd(Command::Distribute(Axis::Horizontal)));
     assert!(near(&xs(&w, &ids), &[337.0, 438.0, 611.0, 700.0]));
-    assert!(near(&ys(&w, &ids), &[300.0, 280.0, 310.0, 295.0]), "só o eixo pedido");
+    assert!(
+        near(&ys(&w, &ids), &[300.0, 280.0, 310.0, 295.0]),
+        "só o eixo pedido"
+    );
     w.ed.select(&w.doc, ids[..2].iter().copied());
-    assert!(!w.cmd(Command::Distribute(Axis::Horizontal)), "com dois não há o que distribuir");
+    assert!(
+        !w.cmd(Command::Distribute(Axis::Horizontal)),
+        "com dois não há o que distribuir"
+    );
 }
 
 /// Oráculo C4: um rodado entra pela caixa ENVOLVENTE.
@@ -130,7 +140,11 @@ fn a_rotated_element_aligns_by_its_bounding_box() {
         let r = put_rect(&mut w, [537.0, 450.0, 80.0, 60.0]);
         w.ed.select(&w.doc, [rot, r]);
         assert!(w.cmd(Command::Align(a)));
-        let got = if a == Align::Left { w.el(r).x } else { w.el(r).y };
+        let got = if a == Align::Left {
+            w.el(r).x
+        } else {
+            w.el(r).y
+        };
         assert!((got - want).abs() < R, "{a:?}: {got} ≠ {want}");
     }
 }
@@ -167,7 +181,10 @@ fn a_step_forward_passes_the_first_one_above_that_touches_it() {
         "E4 passa para trás de E0 (que subiu): o primeiro de baixo que lhe toca; E3, longe, não conta"
     );
     w.ed.select(&w.doc, [e3]);
-    assert!(!w.cmd(Command::Order(Order::Forward)), "E3 não toca ninguém: nada a fazer");
+    assert!(
+        !w.cmd(Command::Order(Order::Forward)),
+        "E3 não toca ninguém: nada a fazer"
+    );
 }
 
 /// Oráculo D5a: um vizinho de um grupo salta-se INTEIRO; à frente/atrás de tudo vai às pontas.
@@ -183,7 +200,11 @@ fn a_step_jumps_a_whole_group_and_front_back_go_to_the_ends() {
     assert!(w.cmd(Command::Group));
     w.ed.select(&w.doc, [e0]);
     assert!(w.cmd(Command::Order(Order::Forward)));
-    assert_eq!(z_order(&w), vec![e2, e3, e0, e1, e4], "o oráculo, número a número");
+    assert_eq!(
+        z_order(&w),
+        vec![e2, e3, e0, e1, e4],
+        "o oráculo, número a número"
+    );
     w.ed.select(&w.doc, [e0]);
     assert!(w.cmd(Command::Order(Order::Front)));
     assert_eq!(*z_order(&w).last().unwrap(), e0);
@@ -212,9 +233,17 @@ fn a_click_picks_the_outer_group_and_a_double_click_enters_one_level() {
     w.click([25.0, 25.0], NONE);
     assert_eq!(w.ed.selection().len(), 3, "o clique apanha o grupo de fora");
     assert!(w.ed.double_click(&mut w.doc, &mut w.h, &mut w.ts, at(25.0, 25.0, NONE)));
-    assert_eq!(*w.ed.selection(), BTreeSet::from([a, b]), "entrou: o grupo de dentro");
+    assert_eq!(
+        *w.ed.selection(),
+        BTreeSet::from([a, b]),
+        "entrou: o grupo de dentro"
+    );
     assert!(w.ed.double_click(&mut w.doc, &mut w.h, &mut w.ts, at(25.0, 25.0, NONE)));
-    assert_eq!(*w.ed.selection(), BTreeSet::from([a]), "mais um: o elemento");
+    assert_eq!(
+        *w.ed.selection(),
+        BTreeSet::from([a]),
+        "mais um: o elemento"
+    );
     w.click([-500.0, -500.0], NONE);
     w.click([25.0, 25.0], NONE);
     assert_eq!(w.ed.selection().len(), 3, "o vazio saiu do grupo");
@@ -265,14 +294,22 @@ fn a_locked_element_cannot_be_moved_deleted_or_written_and_marquee_skips_it() {
     w.click([-500.0, -500.0], NONE);
     w.drag([25.0, 25.0], [25.0, 225.0], CTRL);
     assert_eq!(w.el(l).y, 0.0, "não se moveu");
-    assert_eq!(*w.ed.selection(), BTreeSet::from([l]), "mas seleccionou-se (para o destravar)");
+    assert_eq!(
+        *w.ed.selection(),
+        BTreeSet::from([l]),
+        "mas seleccionou-se (para o destravar)"
+    );
     assert_eq!(w.ed.take_notice(), Some(Notice::Locked));
     assert!(!w.cmd(Command::EditText));
     assert!(!w.cmd(Command::Delete));
     assert!(w.doc.get(l).is_some());
     w.click([-500.0, -500.0], NONE);
     w.drag([-10.0, -10.0], [200.0, 100.0], NONE);
-    assert_eq!(*w.ed.selection(), BTreeSet::from([free]), "o laço salta o travado");
+    assert_eq!(
+        *w.ed.selection(),
+        BTreeSet::from([free]),
+        "o laço salta o travado"
+    );
     assert!(w.cmd(Command::SelectAll));
     assert_eq!(*w.ed.selection(), BTreeSet::from([free]), "o Ctrl+A também");
     w.ed.select(&w.doc, [l]);
@@ -290,10 +327,18 @@ fn a_drawn_frame_adopts_only_what_is_fully_inside_in_one_step() {
     let f = frame(&mut w, [0.0, 0.0], [300.0, 300.0]);
     assert_eq!(w.el(full).frame, Some(f));
     assert_eq!(w.el(half).frame, None);
-    assert_eq!(w.el(center_in).frame, None, "centro dentro mas a caixa atravessa a borda");
+    assert_eq!(
+        w.el(center_in).frame,
+        None,
+        "centro dentro mas a caixa atravessa a borda"
+    );
     assert!(w.cmd(Command::Undo));
     assert!(w.doc.get(f).is_none());
-    assert_eq!(w.el(full).frame, None, "o desfazer leva o frame e a adopção juntos");
+    assert_eq!(
+        w.el(full).frame,
+        None,
+        "o desfazer leva o frame e a adopção juntos"
+    );
 }
 
 /// Oráculo A1b–A1e: uma forma desenhada vive no frame onde o arrasto COMEÇOU.
@@ -334,7 +379,11 @@ fn moving_a_frame_carries_everything_inside_at_any_depth() {
     let mut w = world();
     let outer = frame(&mut w, [0.0, 0.0], [600.0, 600.0]);
     let inner = frame(&mut w, [100.0, 100.0], [300.0, 300.0]);
-    assert_eq!(w.el(inner).frame, Some(outer), "desenhado dentro, aninha-se");
+    assert_eq!(
+        w.el(inner).frame,
+        Some(outer),
+        "desenhado dentro, aninha-se"
+    );
     let r = w.rect([150.0, 150.0, 40.0, 40.0]);
     assert_eq!(w.el(r).frame, Some(inner));
     w.ed.select(&w.doc, [outer]);
@@ -391,7 +440,10 @@ fn shrinking_a_frame_releases_only_what_ends_fully_outside() {
     assert!(near(&[w.el(f).w, w.el(f).h], &[200.0, 200.0]));
     assert_eq!(w.el(far).frame, None);
     assert_eq!(w.el(cross).frame, Some(f));
-    assert!(near(&[w.el(far).x], &[300.0]), "os filhos não escalam com o frame");
+    assert!(
+        near(&[w.el(far).x], &[300.0]),
+        "os filhos não escalam com o frame"
+    );
 }
 
 /// Copiar um frame copia o conteúdo: as cópias vivem no frame COPIADO, em grupos NOVOS.
@@ -423,7 +475,12 @@ fn note(w: &mut World, x: f64) -> ElementId {
         style: Style::new(Some(fill), None, fill.readable_ink()),
         text: Default::default(),
     };
-    let el = Element::new_shape(w.doc.mint_id(), w.doc.z_on_top(), shape, [x, 0.0, 199.0, 199.0]);
+    let el = Element::new_shape(
+        w.doc.mint_id(),
+        w.doc.z_on_top(),
+        shape,
+        [x, 0.0, 199.0, 199.0],
+    );
     let id = el.id;
     BoardOp::Put(el).apply(&mut w.doc);
     id
@@ -444,7 +501,10 @@ fn a_tag_goes_on_the_notes_comes_off_when_all_have_it_and_stops_at_eight() {
     assert_eq!(w.el(b).tags().len(), 1, "entrou na que não a tinha");
     assert!(w.el(r).tags().is_empty(), "uma forma não leva etiquetas");
     assert!(w.ed.toggle_tag(&mut w.doc, &mut w.h, "x", red));
-    assert!(w.el(a).tags().is_empty() && w.el(b).tags().is_empty(), "todas tinham: saiu");
+    assert!(
+        w.el(a).tags().is_empty() && w.el(b).tags().is_empty(),
+        "todas tinham: saiu"
+    );
     assert!(w.cmd(Command::Undo));
     assert_eq!(w.el(a).tags().len(), 1, "UM passo");
     w.ed.select(&w.doc, [a]);
@@ -467,15 +527,25 @@ fn a_link_is_armed_then_made_by_a_click_and_a_gone_target_says_so() {
     assert!(w.ed.is_linking());
     assert_eq!(w.ed.take_notice(), Some(Notice::LinkPick));
     w.click([-900.0, -900.0], NONE);
-    assert!(!w.ed.is_linking() && w.el(a).link().is_none(), "o vazio fecha sem ligar");
+    assert!(
+        !w.ed.is_linking() && w.el(a).link().is_none(),
+        "o vazio fecha sem ligar"
+    );
     w.ed.select(&w.doc, [a]);
     w.cmd(Command::Link);
     w.click([325.0, 25.0], NONE);
     assert_eq!(w.el(a).link(), Some(b));
     assert_eq!(w.ed.follow_link(&w.doc, a), Some(b));
-    assert_eq!(*w.ed.selection(), BTreeSet::from([b]), "seguir selecciona o destino");
+    assert_eq!(
+        *w.ed.selection(),
+        BTreeSet::from([b]),
+        "seguir selecciona o destino"
+    );
     w.ed.select(&w.doc, [a]);
-    assert!(w.cmd(Command::Link), "com o link posto, o mesmo atalho tira-o");
+    assert!(
+        w.cmd(Command::Link),
+        "com o link posto, o mesmo atalho tira-o"
+    );
     assert!(w.el(a).link().is_none());
     assert!(w.cmd(Command::Undo));
     BoardOp::Delete(b).apply(&mut w.doc);
@@ -483,5 +553,27 @@ fn a_link_is_armed_then_made_by_a_click_and_a_gone_target_says_so() {
     assert_eq!(w.ed.take_notice(), Some(Notice::LinkGone));
     w.ed.select(&w.doc, [a]);
     w.cmd(Command::Link);
-    assert!(w.cmd(Command::Escape) && !w.ed.is_linking(), "Esc fecha o modo");
+    assert!(
+        w.cmd(Command::Escape) && !w.ed.is_linking(),
+        "Esc fecha o modo"
+    );
+}
+
+/// Travado não se EDITA (o Miro): um estilo, a ordem ou uma etiqueta sobre uma selecção com um
+/// travado mudam só os outros.
+#[test]
+fn a_style_on_a_selection_skips_the_locked() {
+    let mut w = world();
+    let l = put_rect(&mut w, [0.0, 0.0, 50.0, 50.0]);
+    let f = put_rect(&mut w, [100.0, 0.0, 50.0, 50.0]);
+    w.ed.select(&w.doc, [l]);
+    w.cmd(Command::Lock);
+    w.ed.select(&w.doc, [l, f]);
+    let red = Some(ph2d_board_model::Rgba([200, 0, 0, 255]));
+    w.ed.set_style(&mut w.doc, &mut w.h, |s| s.fill = red);
+    assert_eq!(w.el(f).style().fill, red);
+    assert_ne!(w.el(l).style().fill, red, "o travado mudou de cor");
+    let z = w.el(l).z.clone();
+    w.cmd(Command::Order(Order::Back));
+    assert_eq!(w.el(l).z, z, "o travado mudou de ordem");
 }

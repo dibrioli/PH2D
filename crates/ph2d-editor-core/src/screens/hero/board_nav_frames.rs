@@ -39,7 +39,7 @@ fn of(id: NodeId) -> Option<(ElementId, Part)> {
     if v >> 34 != 0 {
         return None;
     }
-    let (k, e) = ((v >> 32) as usize, v & 0xffff_ffff);
+    let (k, e) = ((v >> 32) as usize, v & u64::from(u32::MAX));
     (e != 0).then_some((ElementId(e), *PARTS.get(k)?))
 }
 
@@ -73,7 +73,12 @@ pub(super) fn paint(
         .doc
         .frames_in_panel_order()
         .iter()
-        .map(|f| (f.id, f.as_frame().map(|x| x.name.clone()).unwrap_or_default()))
+        .map(|f| {
+            (
+                f.id,
+                f.as_frame().map(|x| x.name.clone()).unwrap_or_default(),
+            )
+        })
         .collect();
     let p = panel_rect(area, frames.len());
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
@@ -81,11 +86,29 @@ pub(super) fn paint(
     let (font, pad) = (TypeToken::Sm.px(), Spacing::Md.px());
     let text_y = |y: f32| y + (row_h() - font) / 2.0;
     let title = ph2d_i18n::tr("board.nav.frames_title");
-    paint_text(ts, scene, title, p.x + pad, text_y(p.y), font, p.w - 2.0 * pad, resolve(ColorToken::Text2, theme));
+    paint_text(
+        ts,
+        scene,
+        title,
+        p.x + pad,
+        text_y(p.y),
+        font,
+        p.w - 2.0 * pad,
+        resolve(ColorToken::Text2, theme),
+    );
     if frames.is_empty() {
         let hint = ph2d_i18n::tr("board.nav.frames_empty");
         let y = p.y + row_h();
-        paint_text(ts, scene, hint, p.x + pad, text_y(y), font, p.w - 2.0 * pad, resolve(ColorToken::Text3, theme));
+        paint_text(
+            ts,
+            scene,
+            hint,
+            p.x + pad,
+            text_y(y),
+            font,
+            p.w - 2.0 * pad,
+            resolve(ColorToken::Text3, theme),
+        );
         return;
     }
     let renaming = hero.documents.live.nav.renaming;
@@ -104,13 +127,48 @@ pub(super) fn paint(
         }
         if renaming == Some(*id) {
             let (hit, store) = (&mut hero.hit_index, &hero.store);
-            super::paint_field(crate::ids::BOARD_FRAME_RENAME_INPUT, row, scene, ts, theme, hit, store);
+            super::paint_field(
+                crate::ids::BOARD_FRAME_RENAME_INPUT,
+                row,
+                scene,
+                ts,
+                theme,
+                hit,
+                store,
+            );
         } else {
-            paint_text(ts, scene, name, row.x + pad, text_y(y), font, row.w - 2.0 * pad, resolve(ColorToken::Text1, theme));
+            paint_text(
+                ts,
+                scene,
+                name,
+                row.x + pad,
+                text_y(y),
+                font,
+                row.w - 2.0 * pad,
+                resolve(ColorToken::Text1, theme),
+            );
         }
         let (hit, store) = (&mut hero.hit_index, &hero.store);
-        super::button(scene, hit, store, row_node(*id, Part::Up), IconId::ChevronUp, up, false, theme);
-        super::button(scene, hit, store, row_node(*id, Part::Down), IconId::ChevronDown, down, false, theme);
+        super::button(
+            scene,
+            hit,
+            store,
+            row_node(*id, Part::Up),
+            IconId::ChevronUp,
+            up,
+            false,
+            theme,
+        );
+        super::button(
+            scene,
+            hit,
+            store,
+            row_node(*id, Part::Down),
+            IconId::ChevronDown,
+            down,
+            false,
+            theme,
+        );
     }
 }
 
@@ -145,20 +203,37 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     }
     match part {
         Part::Row if double => {
-            let name = board.doc.get(frame).and_then(|f| f.as_frame()).map(|f| f.name.clone());
+            let name = board
+                .doc
+                .get(frame)
+                .and_then(|f| f.as_frame())
+                .map(|f| f.name.clone());
             live.nav.renaming = Some(frame);
-            super::open_field(&mut hero.store, crate::ids::BOARD_FRAME_RENAME_INPUT, name.unwrap_or_default());
+            super::open_field(
+                &mut hero.store,
+                crate::ids::BOARD_FRAME_RENAME_INPUT,
+                name.unwrap_or_default(),
+            );
         }
         Part::Row => {
             super::go_to(board, area, frame, 1.0);
             super::super::board_view::editor(&mut live.editor, theme).select(&board.doc, [frame]);
         }
         Part::Up | Part::Down => {
-            let order: Vec<ElementId> = board.doc.frames_in_panel_order().iter().map(|f| f.id).collect();
+            let order: Vec<ElementId> = board
+                .doc
+                .frames_in_panel_order()
+                .iter()
+                .map(|f| f.id)
+                .collect();
             let Some(i) = order.iter().position(|x| *x == frame) else {
                 return true;
             };
-            let j = if part == Part::Up { i.checked_sub(1) } else { Some(i + 1) };
+            let j = if part == Part::Up {
+                i.checked_sub(1)
+            } else {
+                Some(i + 1)
+            };
             let Some(other) = j.and_then(|j| order.get(j)).copied() else {
                 return true;
             };
@@ -167,7 +242,10 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             if let (Some(a), Some(b)) = (a.as_mut(), b.as_mut()) {
                 std::mem::swap(&mut a.z, &mut b.z);
                 let history = live.histories.entry(board.id).or_default();
-                history.apply(&mut board.doc, vec![BoardOp::Put(a.clone()), BoardOp::Put(b.clone())]);
+                history.apply(
+                    &mut board.doc,
+                    vec![BoardOp::Put(a.clone()), BoardOp::Put(b.clone())],
+                );
             }
         }
     }
@@ -198,4 +276,3 @@ fn commit_rename(hero: &mut HeroScreen) {
     let history = live.histories.entry(board.id).or_default();
     history.apply(&mut board.doc, vec![BoardOp::Put(el)]);
 }
-

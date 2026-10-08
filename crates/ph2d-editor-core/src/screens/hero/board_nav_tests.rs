@@ -42,7 +42,12 @@ impl T {
             style: Style::new(Some(fill), None, fill.readable_ink()),
             text: text.into(),
         };
-        let el = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [at[0], at[1], 199.0, 199.0]);
+        let el = Element::new_shape(
+            doc.mint_id(),
+            doc.z_on_top(),
+            shape,
+            [at[0], at[1], 199.0, 199.0],
+        );
         self.put(el)
     }
 
@@ -62,17 +67,32 @@ impl T {
     }
 
     fn el(&self, id: ElementId) -> Element {
-        self.hero.documents.active_board().unwrap().doc.get(id).cloned().unwrap()
+        self.hero
+            .documents
+            .active_board()
+            .unwrap()
+            .doc
+            .get(id)
+            .cloned()
+            .unwrap()
     }
 
     /// Down + Up pelo despacho real sobre o id `id` já pintado.
     fn click_id(&mut self, id: NodeId, double: bool) {
-        let (x, y) = self.find(id).unwrap_or_else(|| panic!("{id:?} não está pintado"));
+        let (x, y) = self
+            .find(id)
+            .unwrap_or_else(|| panic!("{id:?} não está pintado"));
         let arena = Bump::new();
-        let mut ev = self.hero.handle_pointer(ptr(PointerKind::Down, x, y), &arena).to_vec();
+        let mut ev = self
+            .hero
+            .handle_pointer(ptr(PointerKind::Down, x, y), &arena)
+            .to_vec();
         ev.extend_from_slice(self.hero.handle_pointer(ptr(PointerKind::Up, x, y), &arena));
         if double {
-            ev.extend_from_slice(self.hero.handle_pointer(ptr(PointerKind::Down, x, y), &arena));
+            ev.extend_from_slice(
+                self.hero
+                    .handle_pointer(ptr(PointerKind::Down, x, y), &arena),
+            );
             ev.extend_from_slice(self.hero.handle_pointer(ptr(PointerKind::Up, x, y), &arena));
         }
         for e in ev {
@@ -126,12 +146,21 @@ fn search_finds_text_frame_names_and_tags_in_reading_order() {
     let other = t.note("outra coisa", [0.0, 0.0]);
     let f = t.frame("Ideias", [2000.0, 2000.0, 400.0, 300.0]);
     let mut tagged = t.el(other);
-    tagged.tags_mut().push(ph2d_board_model::Tag { name: "ideia".into(), color: Rgba([1, 2, 3, 255]) });
+    tagged.tags_mut().push(ph2d_board_model::Tag {
+        name: "ideia".into(),
+        color: Rgba([1, 2, 3, 255]),
+    });
     t.put(tagged);
     let doc = &t.hero.documents.active_board().unwrap().doc;
-    assert_eq!(board_nav::find(doc, "IDEIA", None), vec![other, high, low, f]);
+    assert_eq!(
+        board_nav::find(doc, "IDEIA", None),
+        vec![other, high, low, f]
+    );
     assert_eq!(board_nav::find(doc, "", Some("ideia")), vec![other]);
-    assert!(board_nav::find(doc, "  ", None).is_empty(), "nada pedido, nada achado");
+    assert!(
+        board_nav::find(doc, "  ", None).is_empty(),
+        "nada pedido, nada achado"
+    );
 }
 
 /// `Ctrl+F` abre o campo; escrever acha; `Enter` leva a vista ao primeiro achado e depois ao seguinte.
@@ -142,11 +171,17 @@ fn ctrl_f_finds_and_enter_takes_the_view_to_each_result() {
     let b = t.note("alvo dois", [-80_000.0, 90_000.0]);
     t.paint();
     assert!(t.key(BoardKey::Char('f'), CTRL, None));
-    assert_eq!(t.hero.store.focus_id(), Some(crate::ids::BOARD_SEARCH_INPUT));
+    assert_eq!(
+        t.hero.store.focus_id(),
+        Some(crate::ids::BOARD_SEARCH_INPUT)
+    );
     t.type_into(crate::ids::BOARD_SEARCH_INPUT, "alvo");
     assert_eq!(t.hero.documents.live.nav.results, vec![a, b]);
     t.submit(crate::ids::BOARD_SEARCH_INPUT);
-    assert!(t.on_screen(t.el(a).center()), "o 1.º achado não ficou à vista");
+    assert!(
+        t.on_screen(t.el(a).center()),
+        "o 1.º achado não ficou à vista"
+    );
     t.submit(crate::ids::BOARD_SEARCH_INPUT);
     assert!(t.on_screen(t.el(b).center()), "Enter não foi ao seguinte");
     assert!(!t.on_screen(t.el(a).center()));
@@ -160,11 +195,21 @@ fn the_minimap_moves_the_view_where_it_is_pressed() {
     t.note("longe", [100_000.0, 60_000.0]);
     assert!(t.key(BoardKey::Char('m'), NONE, Some("m")));
     let r = board_nav::minimap_rect(t.hero.last_canvas);
-    let (a, b) = ((r.x + r.w * 0.9, r.y + r.h * 0.5), (r.x + r.w * 0.1, r.y + r.h * 0.5));
+    let (a, b) = (
+        (r.x + r.w * 0.9, r.y + r.h * 0.5),
+        (r.x + r.w * 0.1, r.y + r.h * 0.5),
+    );
     t.drag(a, b);
     let after = t.camera();
-    assert!(after.center_x < 50_000.0, "o arrasto para a esquerda leva a vista para lá: {after:?}");
-    assert_eq!(t.elements().len(), 2, "o arrasto no minimapa não chegou ao editor");
+    assert!(
+        after.center_x < 50_000.0,
+        "o arrasto para a esquerda leva a vista para lá: {after:?}"
+    );
+    assert_eq!(
+        t.elements().len(),
+        2,
+        "o arrasto no minimapa não chegou ao editor"
+    );
     // Um carregar à direita leva a vista para a direita.
     t.drag(a, a);
     assert!(t.camera().center_x > 50_000.0, "{:?}", t.camera());
@@ -217,7 +262,11 @@ fn the_frames_panel_goes_renames_and_reorders() {
     assert_eq!(order, vec![f2, f1]);
     assert!(t.key(BoardKey::Char('z'), CTRL, None));
     assert!(t.key(BoardKey::Char('z'), CTRL, None));
-    assert_eq!(t.el(f1).as_frame().unwrap().name, "Primeiro", "cada um, UM passo");
+    assert_eq!(
+        t.el(f1).as_frame().unwrap().name,
+        "Primeiro",
+        "cada um, UM passo"
+    );
 }
 
 /// ⭐ `Ctrl+Alt+K` e o clique no destino ligam; o ícone de link leva lá; destino apagado = aviso.
@@ -277,4 +326,19 @@ fn a_tag_goes_on_the_selected_note_and_the_search_filters_by_it() {
     assert!(t.key(BoardKey::Char('f'), CTRL, None));
     t.click_id(board_nav::chip_node(0), false);
     assert_eq!(t.hero.documents.live.nav.results, vec![n]);
+}
+
+/// ⛔ Com UMA nota seleccionada a letra `m` escreve nela (o idioma do Miro) — não abre o minimapa.
+#[test]
+fn m_types_into_a_selected_note_instead_of_opening_the_minimap() {
+    let mut t = T::new();
+    let n = t.note("", [0.0, 0.0]);
+    t.paint();
+    board_view::select(&mut t.hero, [n]);
+    assert!(t.key(BoardKey::Char('m'), NONE, Some("m")));
+    assert!(
+        !t.hero.documents.live.nav.minimap_open,
+        "abriu o minimapa em vez de escrever"
+    );
+    assert_eq!(t.el(n).shape().unwrap().text.as_str(), "m");
 }

@@ -59,7 +59,11 @@ impl Editor {
             Command::Mark(m) => self.toggle_mark(doc, history, m),
             Command::SelectAll => {
                 // Os travados ficam de fora (o Miro e o oráculo E).
-                self.selection = doc.live().filter(|el| !el.locked()).map(|el| el.id).collect();
+                self.selection = doc
+                    .live()
+                    .filter(|el| !el.locked())
+                    .map(|el| el.id)
+                    .collect();
                 true
             }
             Command::EditText => {

@@ -9,7 +9,9 @@
 use super::look::stroke;
 use super::{Item, Selected};
 use crate::icons::IconId;
-use crate::paint::{fill_rounded_rect, paint_icon as icon, paint_text_centered, rect_for_label, resolve};
+use crate::paint::{
+    fill_rounded_rect, paint_icon as icon, paint_text_centered, rect_for_label, resolve,
+};
 use crate::zones::Rect;
 use ph2d_board_edit::{Align, Axis, Command, Editor, Order, Tool};
 use ph2d_board_model::{BoardDoc, Dash, History};
@@ -97,9 +99,16 @@ pub(super) struct Now {
 
 impl Now {
     pub(super) fn of(ed: &Editor, doc: &BoardDoc) -> Self {
-        let els: Vec<_> = ed.selection().iter().filter_map(|id| doc.get(*id)).collect();
+        let els: Vec<_> = ed
+            .selection()
+            .iter()
+            .filter_map(|id| doc.get(*id))
+            .collect();
         let mut keys = std::collections::BTreeSet::new();
-        for el in els.iter().filter(|el| el.connector().is_none() && !el.locked()) {
+        for el in els
+            .iter()
+            .filter(|el| el.connector().is_none() && !el.locked())
+        {
             keys.insert(el.outer_group().map_or((0, el.id.0), |g| (1, g.0)));
         }
         Self {
@@ -220,6 +229,32 @@ fn line(r: Rect, a: (f32, f32), b: (f32, f32)) -> BezPath {
     p
 }
 
+/// O «#» do frame: as duas verticais e as duas horizontais, a ¼ e a ¾ do miolo.
+const HASH: [f32; 2] = [0.25, 0.75]; // LITERAL-PX-OK: desenho do glifo
+/// A ordem: o quadrado de trás e o da frente `[x0, y0, x1, y1]`, em fracções do miolo.
+const ORDER_BACK: [f32; 4] = [0.0, 0.0, 0.62, 0.62]; // LITERAL-PX-OK: desenho do glifo
+const ORDER_FRONT: [f32; 4] = [0.38, 0.38, 1.0, 1.0]; // LITERAL-PX-OK: desenho do glifo
+/// O miolo inteiro.
+const WHOLE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+/// Alinhar, na ordem de [`ALIGNS`]: a guia `[x0, y0, x1, y1]` e as barras larga e curta.
+type AlignGlyph = ([f32; 4], [[f32; 4]; 2]);
+#[rustfmt::skip]
+const ALIGN_GLYPHS: [AlignGlyph; 6] = [
+    ([0.0, 0.0, 0.0, 1.0], [[0.0, 0.15, 0.9, 0.4], [0.0, 0.6, 0.55, 0.85]]), // LITERAL-PX-OK: glifo
+    ([0.5, 0.0, 0.5, 1.0], [[0.05, 0.15, 0.95, 0.4], [0.25, 0.6, 0.75, 0.85]]), // LITERAL-PX-OK: glifo
+    ([1.0, 0.0, 1.0, 1.0], [[0.1, 0.15, 1.0, 0.4], [0.45, 0.6, 1.0, 0.85]]), // LITERAL-PX-OK: glifo
+    ([0.0, 0.0, 1.0, 0.0], [[0.15, 0.0, 0.4, 0.9], [0.6, 0.0, 0.85, 0.55]]), // LITERAL-PX-OK: glifo
+    ([0.0, 0.5, 1.0, 0.5], [[0.15, 0.05, 0.4, 0.95], [0.6, 0.25, 0.85, 0.75]]), // LITERAL-PX-OK: glifo
+    ([0.0, 1.0, 1.0, 1.0], [[0.15, 0.1, 0.4, 1.0], [0.6, 0.45, 0.85, 1.0]]), // LITERAL-PX-OK: glifo
+];
+/// Distribuir: as três barras (ao longo do eixo) e a faixa delas (no outro eixo).
+const DIST_SPANS: [[f32; 2]; 3] = [[0.1, 0.25], [0.42, 0.58], [0.75, 0.9]]; // LITERAL-PX-OK: glifo
+const DIST_BAND: [f32; 2] = [0.2, 0.8]; // LITERAL-PX-OK: desenho do glifo
+
+fn box_path(r: Rect, b: [f32; 4]) -> BezPath {
+    rect_path(r, b[0], b[1], b[2], b[3])
+}
+
 /// Os glifos: o frame (o «#» do Miro), a ordem (dois quadrados, o que se move cheio) e os de
 /// alinhar (a guia e as duas barras). `true` = pintou.
 pub(super) fn paint_icon(
@@ -230,11 +265,13 @@ pub(super) fn paint_icon(
     fg: Color,
     w: f64,
 ) -> bool {
-    let solid = |scene: &mut VectorScene, p: &BezPath| scene.fill_path(p, &ph2d_vector::Brush::Solid(fg), ph2d_vector::Affine::IDENTITY);
+    let brush = ph2d_vector::Brush::Solid(fg);
+    let solid = |scene: &mut VectorScene, p: &BezPath| {
+        scene.fill_path(p, &brush, ph2d_vector::Affine::IDENTITY);
+    };
     match it {
         FRAME_TOOL => {
-            // LITERAL-PX-OK: o «#» — duas verticais e duas horizontais a ¼ e ¾, a passar a borda.
-            for f in [0.25, 0.75] {
+            for f in HASH {
                 stroke(scene, &line(inner, (f, 0.0), (f, 1.0)), fg, w, Dash::Solid);
                 stroke(scene, &line(inner, (0.0, f), (1.0, f)), fg, w, Dash::Solid);
             }
@@ -247,43 +284,42 @@ pub(super) fn paint_icon(
             let paper = ph2d_board_model::Rgba(ph2d_board_model::FRAME_FILL);
             let r = crate::paint::frame_radius(theme, Radius::Sm.px());
             fill_rounded_rect(scene, inner, r, super::look::shown(paper, theme));
-            stroke(scene, &rect_path(inner, 0.0, 0.0, 1.0, 1.0), fg, w, Dash::Solid);
+            stroke(scene, &box_path(inner, WHOLE), fg, w, Dash::Solid);
         }
         Item::Organize(OrgItem::Order(o)) => {
-            // LITERAL-PX-OK: os dois quadrados do glifo, em fracções do miolo.
-            let back = rect_path(inner, 0.0, 0.0, 0.62, 0.62);
-            let front = rect_path(inner, 0.38, 0.38, 1.0, 1.0);
-            let moved_on_top = matches!(o, Order::Front | Order::Forward);
-            let (under, over) = if moved_on_top { (back, front) } else { (front, back) };
+            let (back, front) = (box_path(inner, ORDER_BACK), box_path(inner, ORDER_FRONT));
+            let (under, over) = if matches!(o, Order::Front | Order::Forward) {
+                (back, front)
+            } else {
+                (front, back)
+            };
             stroke(scene, &under, fg, w, Dash::Solid);
             solid(scene, &over);
             if matches!(o, Order::Forward | Order::Backward) {
                 // Um passo: o tracejado distingue-o de «à frente/atrás de tudo».
-                stroke(scene, &rect_path(inner, 0.0, 0.0, 1.0, 1.0), fg, w, Dash::Dotted);
+                stroke(scene, &box_path(inner, WHOLE), fg, w, Dash::Dotted);
             }
         }
         Item::Organize(OrgItem::Align(a)) => {
-            // LITERAL-PX-OK: a guia e duas barras (larga e curta), em fracções do miolo.
-            let (guide, bars): ((f32, f32, f32, f32), [(f32, f32, f32, f32); 2]) = match a {
-                Align::Left => ((0.0, 0.0, 0.0, 1.0), [(0.0, 0.15, 0.9, 0.4), (0.0, 0.6, 0.55, 0.85)]),
-                Align::Right => ((1.0, 0.0, 1.0, 1.0), [(0.1, 0.15, 1.0, 0.4), (0.45, 0.6, 1.0, 0.85)]),
-                Align::CenterH => ((0.5, 0.0, 0.5, 1.0), [(0.05, 0.15, 0.95, 0.4), (0.25, 0.6, 0.75, 0.85)]),
-                Align::Top => ((0.0, 0.0, 1.0, 0.0), [(0.15, 0.0, 0.4, 0.9), (0.6, 0.0, 0.85, 0.55)]),
-                Align::Bottom => ((0.0, 1.0, 1.0, 1.0), [(0.15, 0.1, 0.4, 1.0), (0.6, 0.45, 0.85, 1.0)]),
-                Align::CenterV => ((0.0, 0.5, 1.0, 0.5), [(0.15, 0.05, 0.4, 0.95), (0.6, 0.25, 0.85, 0.75)]),
-            };
-            stroke(scene, &line(inner, (guide.0, guide.1), (guide.2, guide.3)), fg, w, Dash::Solid);
+            let i = ALIGNS.iter().position(|x| *x == a).expect("na tabela");
+            let (g, bars) = ALIGN_GLYPHS[i];
+            stroke(
+                scene,
+                &line(inner, (g[0], g[1]), (g[2], g[3])),
+                fg,
+                w,
+                Dash::Solid,
+            );
             for b in bars {
-                solid(scene, &rect_path(inner, b.0, b.1, b.2, b.3));
+                solid(scene, &box_path(inner, b));
             }
         }
         Item::Organize(OrgItem::Distribute(x)) => {
-            // LITERAL-PX-OK: três barras com vãos iguais entre as duas guias das pontas.
-            let spans = [(0.1, 0.25), (0.42, 0.58), (0.75, 0.9)];
-            for (a, b) in spans {
+            let [lo, hi] = DIST_BAND;
+            for [a, b] in DIST_SPANS {
                 let r = match x {
-                    Axis::Horizontal => rect_path(inner, a, 0.2, b, 0.8),
-                    Axis::Vertical => rect_path(inner, 0.2, a, 0.8, b),
+                    Axis::Horizontal => box_path(inner, [a, lo, b, hi]),
+                    Axis::Vertical => box_path(inner, [lo, a, hi, b]),
                 };
                 solid(scene, &r);
             }
@@ -312,13 +348,15 @@ pub(super) fn paint_notice(
     let font = TypeToken::Sm.px();
     let w = rect_for_label(text_system.prefix_width(text, font)).min(area.w);
     let h = Spacing::Xl2.px();
-    let r = Rect::new(
-        area.x + (area.w - w) / 2.0,
-        area.y + Spacing::Md.px(),
-        w,
-        h,
-    );
+    let r = Rect::new(area.x + (area.w - w) / 2.0, area.y + Spacing::Md.px(), w, h);
     let radius = crate::paint::frame_radius(theme, Radius::Md.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
-    paint_text_centered(text_system, scene, text, r, font, resolve(ColorToken::Text1, theme));
+    paint_text_centered(
+        text_system,
+        scene,
+        text,
+        r,
+        font,
+        resolve(ColorToken::Text1, theme),
+    );
 }

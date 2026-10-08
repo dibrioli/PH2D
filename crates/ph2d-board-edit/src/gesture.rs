@@ -8,8 +8,8 @@ use ph2d_board_model::{
 };
 use ph2d_text::TextSystem;
 
-use crate::resize::{axis_angle, drag_box, resize_frame, resized};
 use crate::gesture_end::undo_ops;
+use crate::resize::{axis_angle, drag_box, resize_frame, resized};
 use crate::snap::{Guide, snap_box};
 use crate::{Dir, Editor, Frame, Handle, Mods, Pointer, Tool, live, union_aabb};
 
@@ -428,8 +428,10 @@ impl Editor {
                         })
                         .map(|el| el.id)
                         .collect();
-                    let picked: Vec<ElementId> =
-                        inside.into_iter().flat_map(|id| self.pick(doc, id)).collect();
+                    let picked: Vec<ElementId> = inside
+                        .into_iter()
+                        .flat_map(|id| self.pick(doc, id))
+                        .collect();
                     self.selection = base.iter().copied().chain(picked).collect();
                 }
             }
@@ -676,5 +678,12 @@ pub(crate) fn is_note(el: &Element) -> bool {
 }
 
 pub(crate) fn same_pose(a: &Element, b: &Element) -> bool {
-    a.x == b.x && a.y == b.y && a.w == b.w && a.h == b.h && a.angle == b.angle && a.kind == b.kind
+    // A casa (W5) conta: largar no mesmo sítio mas noutro frame é um passo de desfazer.
+    a.x == b.x
+        && a.y == b.y
+        && a.w == b.w
+        && a.h == b.h
+        && a.angle == b.angle
+        && a.kind == b.kind
+        && a.frame == b.frame
 }

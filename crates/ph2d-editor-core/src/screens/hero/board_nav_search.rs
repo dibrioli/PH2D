@@ -157,10 +157,18 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id) if chip_of(id).is_some() => {
             let i = chip_of(id).expect("visto acima");
-            let tags = hero.documents.active_board().map(|b| board_tags(&b.doc)).unwrap_or_default();
+            let tags = hero
+                .documents
+                .active_board()
+                .map(|b| board_tags(&b.doc))
+                .unwrap_or_default();
             if let Some((name, _)) = tags.get(i) {
                 let n = &mut hero.documents.live.nav;
-                n.tag_filter = if n.tag_filter.as_deref() == Some(name) { None } else { Some(name.clone()) };
+                n.tag_filter = if n.tag_filter.as_deref() == Some(name) {
+                    None
+                } else {
+                    Some(name.clone())
+                };
                 refresh(hero);
             }
         }
@@ -172,7 +180,12 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
 fn field_rect(area: Rect, row: f32) -> Rect {
     let w = (Spacing::Xl4.px() * FIELD_STEPS).min(area.w - 2.0 * Spacing::Md.px());
     let h = Spacing::Xl2.px();
-    Rect::new(area.x + (area.w - w) / 2.0, area.y + Spacing::Md.px() + row * (h + Spacing::Xs.px()), w, h)
+    Rect::new(
+        area.x + (area.w - w) / 2.0,
+        area.y + Spacing::Md.px() + row * (h + Spacing::Xs.px()),
+        w,
+        h,
+    )
 }
 
 pub(super) fn paint_fields(
@@ -191,13 +204,34 @@ pub(super) fn paint_fields(
     if open {
         let r = field_rect(area, row);
         let (hit, store) = (&mut hero.hit_index, &hero.store);
-        super::paint_field(crate::ids::BOARD_SEARCH_INPUT, r, scene, ts, theme, hit, store);
+        super::paint_field(
+            crate::ids::BOARD_SEARCH_INPUT,
+            r,
+            scene,
+            ts,
+            theme,
+            hit,
+            store,
+        );
         let n = &hero.documents.live.nav;
         let count = ph2d_i18n::tr_with("board.nav.search_count", &[("n", &n.results.len())]);
         let pad = Spacing::Md.px();
-        paint_text(ts, scene, &count, r.x + r.w + pad, r.y + (r.h - font) / 2.0, font, area.w, resolve(ColorToken::Text2, theme));
+        paint_text(
+            ts,
+            scene,
+            &count,
+            r.x + r.w + pad,
+            r.y + (r.h - font) / 2.0,
+            font,
+            area.w,
+            resolve(ColorToken::Text2, theme),
+        );
         row += 1.0;
-        let tags = hero.documents.active_board().map(|b| board_tags(&b.doc)).unwrap_or_default();
+        let tags = hero
+            .documents
+            .active_board()
+            .map(|b| board_tags(&b.doc))
+            .unwrap_or_default();
         let filter = hero.documents.live.nav.tag_filter.clone();
         let line = field_rect(area, row);
         let mut x = line.x;
@@ -215,7 +249,9 @@ pub(super) fn paint_fields(
                 let edge = Stroke::new(f64::from(StrokeToken::Thick.px()));
                 let accent = Brush::Solid(resolve(ColorToken::Accent, theme));
                 let r = crate::paint::rect_to_vello(chip);
-                scene.inner_mut().stroke(&edge, Affine::IDENTITY, &accent, None, &r);
+                scene
+                    .inner_mut()
+                    .stroke(&edge, Affine::IDENTITY, &accent, None, &r);
             }
             let ink = color.readable_ink();
             let ink = ph2d_vector::Color::from_rgba8(ink.0[0], ink.0[1], ink.0[2], ink.0[3]); // LITERAL-COLOR-OK: tinta do documento
@@ -235,7 +271,14 @@ pub(super) fn paint_fields(
         let lw = crate::paint::rect_for_label(ts.prefix_width(label, font));
         let lr = Rect::new(r.x - lw, r.y, lw, r.h);
         fill_rounded_rect(scene, lr, radius, resolve(ColorToken::BgElev, theme));
-        crate::paint::paint_text_centered(ts, scene, label, lr, font, resolve(ColorToken::Text2, theme));
+        crate::paint::paint_text_centered(
+            ts,
+            scene,
+            label,
+            lr,
+            font,
+            resolve(ColorToken::Text2, theme),
+        );
         let (hit, store) = (&mut hero.hit_index, &hero.store);
         super::paint_field(crate::ids::BOARD_TAG_INPUT, r, scene, ts, theme, hit, store);
     }
@@ -243,7 +286,12 @@ pub(super) fn paint_fields(
 
 /// ⭐ O realce: o quadro escurece por um véu com BURACOS nos encontrados (regra par-ímpar) — o
 /// encontrado fica com a cor dele, o resto apaga-se; o que está à vista leva o contorno de destaque.
-pub(super) fn paint_highlight(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, theme: Theme) {
+pub(super) fn paint_highlight(
+    hero: &mut HeroScreen,
+    area: Rect,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
     let Some(board) = hero.documents.active_board() else {
         return;
     };
@@ -263,9 +311,9 @@ pub(super) fn paint_highlight(hero: &mut HeroScreen, area: Rect, scene: &mut Vec
     };
     let mut veil = BezPath::new();
     let whole = crate::paint::rect_to_vello(area);
-    veil.extend(ph2d_vector::Shape::path_elements(&whole, 0.1));
+    veil.extend(ph2d_vector::Shape::path_elements(&whole, 0.1)); // LITERAL-PX-OK: tolerância de achatar o rectângulo
     for r in n.results.iter().filter_map(screen) {
-        veil.extend(ph2d_vector::Shape::path_elements(&r, 0.1));
+        veil.extend(ph2d_vector::Shape::path_elements(&r, 0.1)); // LITERAL-PX-OK: tolerância de achatar o rectângulo
     }
     scene.push_clip_with_rule(&veil, Fill::EvenOdd);
     scene.fill_rect(whole, resolve(ColorToken::BgScrim, theme));
@@ -274,6 +322,8 @@ pub(super) fn paint_highlight(hero: &mut HeroScreen, area: Rect, scene: &mut Vec
     if let Some(r) = n.results.get(shown).and_then(screen) {
         let edge = Stroke::new(f64::from(StrokeToken::Thick.px()));
         let accent = Brush::Solid(resolve(ColorToken::Accent, theme));
-        scene.inner_mut().stroke(&edge, Affine::IDENTITY, &accent, None, &r);
+        scene
+            .inner_mut()
+            .stroke(&edge, Affine::IDENTITY, &accent, None, &r);
     }
 }

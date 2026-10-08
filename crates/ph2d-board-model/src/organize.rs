@@ -221,10 +221,8 @@ impl BoardDoc {
     /// baixo) e, na mesma profundidade, pelo `z` (a ordem do painel).
     #[must_use]
     pub fn frames_in_draw_order(&self) -> Vec<&Element> {
-        let mut v: Vec<(usize, &Element)> = self
-            .frames()
-            .map(|e| (self.frame_depth(e.id), e))
-            .collect();
+        let mut v: Vec<(usize, &Element)> =
+            self.frames().map(|e| (self.frame_depth(e.id), e)).collect();
         v.sort_by(|(da, a), (db, b)| da.cmp(db).then(a.z.cmp(&b.z)).then(a.id.cmp(&b.id)));
         v.into_iter().map(|(_, e)| e).collect()
     }
@@ -241,10 +239,18 @@ impl BoardDoc {
     /// vivem entre eles) — o que o minimapa mostra e o «zoom to fit» enquadra. `None` = vazio.
     #[must_use]
     pub fn extent(&self) -> Option<[f64; 4]> {
-        let mut it = self.live().filter(|e| e.connector().is_none()).map(Element::aabb);
+        let mut it = self
+            .live()
+            .filter(|e| e.connector().is_none())
+            .map(Element::aabb);
         let first = it.next()?;
         Some(it.fold(first, |a, b| {
-            [a[0].min(b[0]), a[1].min(b[1]), a[2].max(b[2]), a[3].max(b[3])]
+            [
+                a[0].min(b[0]),
+                a[1].min(b[1]),
+                a[2].max(b[2]),
+                a[3].max(b[3]),
+            ]
         }))
     }
 

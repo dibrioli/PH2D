@@ -329,7 +329,10 @@ fn a_format_4_file_still_opens_and_everything_in_it_is_loose() {
         assert!(e.link().is_none() && e.tags().is_empty());
     }
     let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
-    assert_eq!(back, set, "relido e regravado no formato actual, fica igual");
+    assert_eq!(
+        back, set,
+        "relido e regravado no formato actual, fica igual"
+    );
 }
 
 /// Gravados pelo build do formato 4 (`90856427c`, um teste temporário que escreveu `to_bytes`).
@@ -347,20 +350,38 @@ fn frames_groups_lock_link_and_tags_round_trip_through_the_bytes() {
         name: name.into(),
         style: Style::new(Some(Rgba([255, 255, 255, 255])), None, ink),
     };
-    let outer = Element::new_frame(doc.mint_id(), doc.z_on_top(), frame("fora"), [0.0, 0.0, 500.0, 400.0]);
-    let mut inner = Element::new_frame(doc.mint_id(), doc.z_on_top(), frame("dentro"), [10.0, 10.0, 200.0, 200.0]);
+    let outer = Element::new_frame(
+        doc.mint_id(),
+        doc.z_on_top(),
+        frame("fora"),
+        [0.0, 0.0, 500.0, 400.0],
+    );
+    let mut inner = Element::new_frame(
+        doc.mint_id(),
+        doc.z_on_top(),
+        frame("dentro"),
+        [10.0, 10.0, 200.0, 200.0],
+    );
     inner.frame = Some(outer.id);
     let shape = Shape {
         kind: ShapeType::Sticky,
         style: Style::new(Some(ink), None, ink),
         text: RichText::default(),
     };
-    let mut note = Element::new_shape(doc.mint_id(), doc.z_on_top(), shape, [20.0, 20.0, 50.0, 50.0]);
+    let mut note = Element::new_shape(
+        doc.mint_id(),
+        doc.z_on_top(),
+        shape,
+        [20.0, 20.0, 50.0, 50.0],
+    );
     note.frame = Some(inner.id);
     *note.groups_mut() = vec![doc.mint_group(), doc.mint_group()];
     note.set_locked(true);
     note.set_link(Some(outer.id));
-    *note.tags_mut() = vec![crate::Tag { name: "urgente".into(), color: Rgba([200, 0, 0, 255]) }];
+    *note.tags_mut() = vec![crate::Tag {
+        name: "urgente".into(),
+        color: Rgba([200, 0, 0, 255]),
+    }];
     for e in [outer, inner, note] {
         BoardOp::Put(e).apply(doc);
     }

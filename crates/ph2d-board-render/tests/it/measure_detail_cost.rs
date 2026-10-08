@@ -36,7 +36,12 @@ fn framed(nf: usize) -> BoardSet {
             name: format!("frame {k}"),
             style: Style::new(Some(Rgba([255, 255, 255, 255])), None, ink),
         };
-        let f = Element::new_frame(b.doc.mint_id(), b.doc.z_on_top(), frame, [fx, fy, FRAME_SIDE, FRAME_SIDE]);
+        let f = Element::new_frame(
+            b.doc.mint_id(),
+            b.doc.z_on_top(),
+            frame,
+            [fx, fy, FRAME_SIDE, FRAME_SIDE],
+        );
         let fid = f.id;
         BoardOp::Put(f).apply(&mut b.doc);
         for i in 0..100 {
@@ -118,7 +123,13 @@ fn measure_detail_variants() {
             let b = variants[i].0;
             let t = Instant::now();
             for _ in 0..FRAMES {
-                one_frame(&boards[b].1, &mut scene, &mut ts, &mut caches[i], &routes[b]);
+                one_frame(
+                    &boards[b].1,
+                    &mut scene,
+                    &mut ts,
+                    &mut caches[i],
+                    &routes[b],
+                );
             }
             cpu[i].push(t.elapsed().as_secs_f64() * 1e3 / FRAMES as f64);
             if let (Some(g), Some(p)) = (gpu.as_ref(), pass.as_mut()) {
@@ -138,6 +149,9 @@ fn measure_detail_variants() {
         } else {
             min_med(&wall[k])
         };
-        println!("| {} | {name} | {cm:.3} | {cd:.3} | {wm:.3} | {wd:.3} |", boards[*b].0);
+        println!(
+            "| {} | {name} | {cm:.3} | {cd:.3} | {wm:.3} | {wd:.3} |",
+            boards[*b].0
+        );
     }
 }

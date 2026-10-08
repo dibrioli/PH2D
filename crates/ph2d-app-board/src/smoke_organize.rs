@@ -58,7 +58,14 @@ fn tag(name: &str, i: usize) -> Tag {
 }
 
 /// Notas `keys` numa grelha de `cols` colunas dentro do frame `f` (canto `[x, y]`), na cor `c`.
-fn notes_in(doc: &mut BoardDoc, f: ElementId, [x, y]: [f64; 2], cols: usize, c: usize, keys: &[&str]) -> Vec<ElementId> {
+fn notes_in(
+    doc: &mut BoardDoc,
+    f: ElementId,
+    [x, y]: [f64; 2],
+    cols: usize,
+    c: usize,
+    keys: &[&str],
+) -> Vec<ElementId> {
     keys.iter()
         .enumerate()
         .map(|(i, k)| {
@@ -66,7 +73,13 @@ fn notes_in(doc: &mut BoardDoc, f: ElementId, [x, y]: [f64; 2], cols: usize, c: 
                 x + (i % cols) as f64 * NOTE_STEP * 1.2,
                 y + (i / cols) as f64 * NOTE_STEP * 1.2,
             ];
-            let id = put_note(doc, ShapeType::Sticky, c, super::note_text(k), [at[0], at[1], STICKY_SIDE]);
+            let id = put_note(
+                doc,
+                ShapeType::Sticky,
+                c,
+                super::note_text(k),
+                [at[0], at[1], STICKY_SIDE],
+            );
             edit(doc, id, |el| el.frame = Some(f));
             id
         })
@@ -89,11 +102,19 @@ pub(super) fn scene_organize(hero: &mut HeroScreen) {
         [col(0.0) + pad, pad],
         3,
         3,
-        &["board.smoke.org.rules", "board.smoke.org.r1", "board.smoke.org.r2", "board.smoke.org.r3"],
+        &[
+            "board.smoke.org.rules",
+            "board.smoke.org.r1",
+            "board.smoke.org.r2",
+            "board.smoke.org.r3",
+        ],
     );
     edit(doc, r[0], |el| el.set_locked(true));
     for n in &r[1..3] {
-        edit(doc, *n, |el| el.tags_mut().push(tag(&tr("board.smoke.org.tag_client"), 3)));
+        edit(doc, *n, |el| {
+            el.tags_mut()
+                .push(tag(&tr("board.smoke.org.tag_client"), 3))
+        });
     }
     // 2 · Ideias: duas «urgente» e uma com link para o Plano.
     let ideas = frame(doc, &tr("board.smoke.org.f_ideas"), fr(1.0), None);
@@ -103,10 +124,19 @@ pub(super) fn scene_organize(hero: &mut HeroScreen) {
         [col(1.0) + pad, pad],
         4,
         1,
-        &["board.smoke.org.i1", "board.smoke.org.i2", "board.smoke.org.i3", "board.smoke.org.i4", "board.smoke.org.see_plan"],
+        &[
+            "board.smoke.org.i1",
+            "board.smoke.org.i2",
+            "board.smoke.org.i3",
+            "board.smoke.org.i4",
+            "board.smoke.org.see_plan",
+        ],
     );
     for n in &i[..2] {
-        edit(doc, *n, |el| el.tags_mut().push(tag(&tr("board.smoke.org.tag_urgent"), 1)));
+        edit(doc, *n, |el| {
+            el.tags_mut()
+                .push(tag(&tr("board.smoke.org.tag_urgent"), 1))
+        });
     }
     // 3 · Votação: três caixas AGRUPADAS (movem-se juntas; duplo-clique entra no grupo).
     let vote = frame(doc, &tr("board.smoke.org.f_vote"), fr(2.0), None);
@@ -114,7 +144,14 @@ pub(super) fn scene_organize(hero: &mut HeroScreen) {
     let mut st = default_style();
     st.fill = Some(Rgba(HIGHLIGHTER_RGBA[2]));
     st.text_color = Rgba(HIGHLIGHTER_RGBA[2]).readable_ink();
-    for (k, key) in ["board.smoke.org.v1", "board.smoke.org.v2", "board.smoke.org.v3"].iter().enumerate() {
+    for (k, key) in [
+        "board.smoke.org.v1",
+        "board.smoke.org.v2",
+        "board.smoke.org.v3",
+    ]
+    .iter()
+    .enumerate()
+    {
         let bx = [col(2.0) + pad + k as f64 * 420.0, 300.0, 360.0, 220.0];
         let s = put_shape(doc, ShapeType::Rectangle, st.clone(), key, bx);
         edit(doc, s, |el| {
@@ -130,7 +167,14 @@ pub(super) fn scene_organize(hero: &mut HeroScreen) {
         [col(3.0) + pad, pad, 900.0, 600.0],
         Some(plan),
     );
-    notes_in(doc, week, [col(3.0) + 2.0 * pad, 2.0 * pad], 3, 6, &["board.smoke.org.w1", "board.smoke.org.w2"]);
+    notes_in(
+        doc,
+        week,
+        [col(3.0) + 2.0 * pad, 2.0 * pad],
+        3,
+        6,
+        &["board.smoke.org.w1", "board.smoke.org.w2"],
+    );
     edit(doc, i[4], |el| el.set_link(Some(plan)));
     // 5 · O frame gigante, por baixo: 2 000 notas nas 16 cores.
     let (cols, rows) = BIG;
@@ -138,7 +182,12 @@ pub(super) fn scene_organize(hero: &mut HeroScreen) {
     let big = frame(
         doc,
         &tr("board.smoke.org.f_all"),
-        [0.0, top, cols as f64 * NOTE_STEP + 2.0 * pad, rows as f64 * NOTE_STEP + 2.0 * pad],
+        [
+            0.0,
+            top,
+            cols as f64 * NOTE_STEP + 2.0 * pad,
+            rows as f64 * NOTE_STEP + 2.0 * pad,
+        ],
         None,
     );
     for k in 0..cols * rows {
@@ -147,7 +196,13 @@ pub(super) fn scene_organize(hero: &mut HeroScreen) {
             top + pad + (k / cols) as f64 * NOTE_STEP,
         ];
         let text = ph2d_i18n::tr_with("board.smoke.org.idea_n", &[("n", &(k + 1))]);
-        let n = put_note(doc, ShapeType::Sticky, k % 16, text.into(), [at[0], at[1], STICKY_SIDE]);
+        let n = put_note(
+            doc,
+            ShapeType::Sticky,
+            k % 16,
+            text.into(),
+            [at[0], at[1], STICKY_SIDE],
+        );
         edit(doc, n, |el| el.frame = Some(big));
     }
     document_tabs::load(hero, set);

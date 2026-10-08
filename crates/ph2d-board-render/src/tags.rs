@@ -35,7 +35,10 @@ pub(crate) fn paint(
         let owner = (board ^ OWNER_SALT, (el.id.0 << 4) | i as u64);
         let rich = ph2d_board_model::RichText::plain(&tag.name);
         let layout = text.get_rich(ts, owner, &rich, font as f32, f32::MAX, false);
-        let (w, h) = (f64::from(layout.width()) + 2.0 * pad, f64::from(layout.height()) + pad);
+        let (w, h) = (
+            f64::from(layout.width()) + 2.0 * pad,
+            f64::from(layout.height()) + pad,
+        );
         if x + w > el.w - gap {
             break;
         }
@@ -43,7 +46,12 @@ pub(crate) fn paint(
         let chip = RoundedRect::from_rect(Rect::new(x, y, x + w, y + h), h / 2.0);
         scene.fill_path(&chip.to_path(0.1), &Brush::Solid(doc_color(tag.color)), t);
         let ink = doc_color(tag.color.readable_ink());
-        ph2d_board_layout::paint(scene, layout, t * Affine::translate((x + pad, y + pad / 2.0)), ink);
+        ph2d_board_layout::paint(
+            scene,
+            layout,
+            t * Affine::translate((x + pad, y + pad / 2.0)),
+            ink,
+        );
         x += w + gap;
     }
 }

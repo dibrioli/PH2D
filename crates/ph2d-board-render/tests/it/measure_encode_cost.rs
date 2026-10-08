@@ -321,7 +321,10 @@ fn measure_board_first_frame_cost() {
 #[test]
 #[ignore = "régua: corre-se à mão em --release (ver o cabeçalho)"]
 fn measure_one_pass_over_the_board() {
-    for (name, sc) in [("100 mil à vista", (100_000, Mix::Rects)), ("100 mil de perto", (100_000, Mix::ShapesNear))] {
+    for (name, sc) in [
+        ("100 mil à vista", (100_000, Mix::Rects)),
+        ("100 mil de perto", (100_000, Mix::ShapesNear)),
+    ] {
         println!("== {name}");
         one_pass(board_with(sc));
     }
@@ -355,7 +358,14 @@ fn one_pass(set: BoardSet) {
     }
     let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("loadavg: {}", load.trim());
-    for (name, v) in ["imagem inteira", "uma passagem pelos vivos", "vivos ordenados"].iter().zip(&mut per) {
+    for (name, v) in [
+        "imagem inteira",
+        "uma passagem pelos vivos",
+        "vivos ordenados",
+    ]
+    .iter()
+    .zip(&mut per)
+    {
         v.sort_by(f64::total_cmp);
         println!("| {name} | {:.3} | {:.3} |", v[0], v[v.len() / 2]);
     }

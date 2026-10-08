@@ -45,8 +45,8 @@ pub use notes::{flyout_open, flyout_rects};
 /// Onde fica cada controlo (módulo filho: o ficheiro estava no tecto de LOC).
 #[path = "board_bar_layout.rs"]
 mod layout;
-pub use layout::{shapes_rects, style_rects, toolbar_rects};
 use layout::{btn_px, gap};
+pub use layout::{shapes_rects, style_rects, toolbar_rects};
 
 /// Organizar (W5, módulo filho): o Frame, agrupar, travar, ordem, alinhar e o aviso das recusas.
 #[path = "board_bar_organize.rs"]
@@ -363,7 +363,11 @@ pub fn paint(
     sel.h += knob;
     let groups: Vec<Vec<Item>> = style_groups(what)
         .into_iter()
-        .map(|g| g.into_iter().filter(|it| org.shows(*it) != Some(false)).collect())
+        .map(|g| {
+            g.into_iter()
+                .filter(|it| org.shows(*it) != Some(false))
+                .collect()
+        })
         .filter(|g: &Vec<Item>| !g.is_empty())
         .collect();
     let bar = layout::style_rects_of(area, sel, groups);

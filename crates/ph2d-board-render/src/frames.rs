@@ -48,7 +48,7 @@ pub(crate) fn screen_box(board: &Board, area: [f64; 4], el: &Element) -> Rect {
 }
 
 /// Os frames à vista, na ordem de desenho, com a caixa deles no ecrã.
-pub(crate) fn visible<'a>(board: &'a Board, area: [f64; 4], clip: Rect) -> Vec<(&'a Element, Rect)> {
+pub(crate) fn visible(board: &Board, area: [f64; 4], clip: Rect) -> Vec<(&Element, Rect)> {
     board
         .doc
         .frames_in_draw_order()
@@ -79,7 +79,10 @@ pub(crate) fn paint_backs(
                 let px = st.stroke_width * r.width() / f.w.max(f64::EPSILON);
                 (Stroke::new(px), Brush::Solid(doc_color(c)))
             }
-            None => (hairline.clone(), Brush::Solid(token(ColorToken::Border, theme))),
+            None => (
+                hairline.clone(),
+                Brush::Solid(token(ColorToken::Border, theme)),
+            ),
         };
         scene
             .inner_mut()
@@ -144,7 +147,11 @@ pub(crate) struct Chains {
 }
 
 impl Chains {
-    pub(crate) fn new(doc: &BoardDoc, shown: &BTreeSet<ElementId>, far: &BTreeSet<ElementId>) -> Self {
+    pub(crate) fn new(
+        doc: &BoardDoc,
+        shown: &BTreeSet<ElementId>,
+        far: &BTreeSet<ElementId>,
+    ) -> Self {
         let mut c = Chains::default();
         for f in doc.frames() {
             let mut chain = doc.frame_chain(f.id);
@@ -203,4 +210,3 @@ pub(crate) fn paint_titles(
         scene.pop_layer();
     }
 }
-

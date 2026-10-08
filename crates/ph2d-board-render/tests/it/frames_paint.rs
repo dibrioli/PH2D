@@ -29,7 +29,12 @@ struct Px {
 impl Px {
     fn at(&self, x: u32, y: u32) -> [u8; 4] {
         let i = ((y * SIZE.0 + x) * 4) as usize;
-        [self.rgba[i], self.rgba[i + 1], self.rgba[i + 2], self.rgba[i + 3]]
+        [
+            self.rgba[i],
+            self.rgba[i + 1],
+            self.rgba[i + 2],
+            self.rgba[i + 3],
+        ]
     }
 
     fn is(&self, x: u32, y: u32, c: Rgba) -> bool {
@@ -56,7 +61,16 @@ fn render(g: &mut (GpuContext, VelloPass), set: &BoardSet, detail: Detail) -> Px
     let mut ts = TextSystem::without_system_fonts();
     let mut cache = RenderCache::default();
     cache.detail = detail;
-    ph2d_board_render::paint(board, AREA, &mut scene, Theme::Forge, &mut ts, &mut cache, &routes, None);
+    ph2d_board_render::paint(
+        board,
+        AREA,
+        &mut scene,
+        Theme::Forge,
+        &mut ts,
+        &mut cache,
+        &routes,
+        None,
+    );
     Px {
         rgba: pass
             .render_and_readback(&*gpu, scene.inner(), SIZE)
@@ -74,7 +88,12 @@ fn frame_scene(zoom: f64) -> BoardSet {
         name: String::new(),
         style: Style::new(Some(WHITE), None, RED),
     };
-    let f = Element::new_frame(b.doc.mint_id(), b.doc.z_on_top(), frame, [0.0, 0.0, 200.0, 200.0]);
+    let f = Element::new_frame(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        frame,
+        [0.0, 0.0, 200.0, 200.0],
+    );
     let fid = f.id;
     BoardOp::Put(f).apply(&mut b.doc);
     let shape = Shape {
@@ -82,7 +101,12 @@ fn frame_scene(zoom: f64) -> BoardSet {
         style: Style::new(Some(RED), None, RED),
         text: Default::default(),
     };
-    let mut child = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), shape, [150.0, 50.0, 100.0, 50.0]);
+    let mut child = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        shape,
+        [150.0, 50.0, 100.0, 50.0],
+    );
     child.frame = Some(fid);
     BoardOp::Put(child).apply(&mut b.doc);
     b.camera = Camera {
@@ -101,7 +125,10 @@ fn a_child_is_cut_at_the_frame_border_and_a_far_frame_shows_only_its_back() {
     // Zoom 1: o frame em 220..420 × 140..340; o filho em 370..470 × 190..240.
     let near = render(&mut g, &frame_scene(1.0), Detail::default());
     assert!(near.is(395, 215, RED), "o filho dentro do frame pinta-se");
-    assert!(!near.is(445, 215, RED), "fora da borda o filho é CORTADO (oráculo A10)");
+    assert!(
+        !near.is(445, 215, RED),
+        "fora da borda o filho é CORTADO (oráculo A10)"
+    );
     assert!(near.is(250, 300, WHITE), "o fundo do frame");
     // Sem o recorte de longe, o mesmo frame a 0,4 (80 px de alto) ainda mostra o filho…
     let open = Detail {
@@ -113,7 +140,10 @@ fn a_child_is_cut_at_the_frame_border_and_a_far_frame_shows_only_its_back() {
     assert!(far_open.is(350, 230, RED));
     // …e com o nível de detalhe (80 < 96 px) só o fundo.
     let far = render(&mut g, &frame_scene(0.4), Detail::default());
-    assert!(far.is(350, 230, WHITE), "de longe o frame mostra só o fundo");
+    assert!(
+        far.is(350, 230, WHITE),
+        "de longe o frame mostra só o fundo"
+    );
 }
 
 #[test]
@@ -130,7 +160,12 @@ fn a_far_note_is_a_flat_block_without_shadow() {
         style: Style::new(Some(fill), None, fill.readable_ink()),
         text: "longe".into(),
     };
-    let el = Element::new_shape(b.doc.mint_id(), b.doc.z_on_top(), note, [0.0, 0.0, STICKY_SIDE, STICKY_SIDE]);
+    let el = Element::new_shape(
+        b.doc.mint_id(),
+        b.doc.z_on_top(),
+        note,
+        [0.0, 0.0, STICKY_SIDE, STICKY_SIDE],
+    );
     BoardOp::Put(el).apply(&mut b.doc);
     // Letra de 20 a 0,2 = 4 px (< READ_PX): a nota tem ~40 px; a sombra cairia logo abaixo dela.
     b.camera = Camera {
@@ -154,5 +189,9 @@ fn a_far_note_is_a_flat_block_without_shadow() {
         shadowed.at(320, below),
         "sem o bloco, a sombra escurece a faixa por baixo; com ele não há sombra"
     );
-    assert_eq!(blocks.at(320, below), blocks.at(600, 20), "por baixo do bloco: o fundo do quadro");
+    assert_eq!(
+        blocks.at(320, below),
+        blocks.at(600, 20),
+        "por baixo do bloco: o fundo do quadro"
+    );
 }

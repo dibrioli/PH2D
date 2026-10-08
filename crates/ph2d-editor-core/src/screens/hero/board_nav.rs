@@ -24,33 +24,9 @@ mod minimap;
 #[path = "board_nav_search.rs"]
 mod search;
 
-pub use minimap::minimap_rect;
 pub use frames::{Part as RowPart, row_node};
+pub use minimap::minimap_rect;
 pub use search::{board_tags, chip_node, find, open_tag_field};
-
-/// O estado de SESSÃO da navegação de um quadro.
-#[derive(Default)]
-pub(crate) struct Nav {
-    pub(crate) frames_open: bool,
-    pub(crate) minimap_open: bool,
-    pub(crate) search_open: bool,
-    /// O campo de pôr uma etiqueta nas notas seleccionadas está aberto.
-    pub(crate) tagging: bool,
-    /// A etiqueta por que a busca filtra.
-    pub(crate) tag_filter: Option<String>,
-    /// O que a busca encontrou, por ordem de leitura, e o que está à vista.
-    pub(crate) results: Vec<ElementId>,
-    pub(crate) current: usize,
-    /// O frame cuja linha do painel é, agora, o campo de renomear.
-    pub(crate) renaming: Option<ElementId>,
-    /// Arrastar no minimapa move a vista.
-    pub(crate) minimap_drag: bool,
-    minimap_cache: Option<minimap::Cache>,
-    /// Os elementos com link, refeitos quando o documento muda (revisão).
-    links: Option<(u64, Vec<ElementId>)>,
-    /// Enquadrar tudo na próxima pintura (quando a área já tem o tamanho dela).
-    fit_pending: bool,
-}
 
 /// Abre o painel de Frames e o minimapa e enquadra o quadro inteiro na próxima pintura (as cenas
 /// de smoke abrem assim).
@@ -166,13 +142,23 @@ pub(crate) fn go_to(board: &mut Board, area: [f64; 4], id: ElementId, context: f
         return;
     };
     let [x0, y0, x1, y1] = el.aabb();
-    let (cx, cy, hw, hh) = ((x0 + x1) / 2.0, (y0 + y1) / 2.0, (x1 - x0) / 2.0, (y1 - y0) / 2.0);
-    let bx = [cx - hw * context, cy - hh * context, cx + hw * context, cy + hh * context];
+    let (cx, cy, hw, hh) = (
+        (x0 + x1) / 2.0,
+        (y0 + y1) / 2.0,
+        (x1 - x0) / 2.0,
+        (y1 - y0) / 2.0,
+    );
+    let bx = [
+        cx - hw * context,
+        cy - hh * context,
+        cx + hw * context,
+        cy + hh * context,
+    ];
     board.camera.fit(area, bx, fit_margin());
 }
 
 /// O resto do caminho até um elemento: a caixa dele e mais duas à volta (o contexto).
-const GO_CONTEXT: f64 = 3.0;
+const GO_CONTEXT: f64 = 3.0; // LITERAL-PX-OK: três caixas (a do elemento e duas à volta)
 
 /// ⭐ **As teclas da navegação** — antes das do editor: `M` o minimapa, `Ctrl+F` a busca, `Alt+1`
 /// enquadrar tudo, `Alt+2` a selecção, `Ctrl+Alt+K` o link. `Some` = tomada.
@@ -200,6 +186,15 @@ pub fn key(
     });
     match (k, ctrl, mods.alt) {
         (BoardKey::Char('m'), false, false) => {
+            // Com uma nota seleccionada a letra escreve nela (o idioma do Miro).
+            let (board, live) = hero.documents.active_parts()?;
+            if live
+                .editor
+                .as_ref()
+                .is_some_and(|e| e.would_type_into_note(&board.doc))
+            {
+                return None;
+            }
             let n = &mut hero.documents.live.nav;
             n.minimap_open = !n.minimap_open;
             taken
@@ -297,7 +292,11 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
         [n.frames_open, n.search_open, n.minimap_open, false]
     };
     let rects = button_rects(area);
-    panel(scene, &rects.iter().map(|(_, r)| *r).collect::<Vec<_>>(), theme);
+    panel(
+        scene,
+        &rects.iter().map(|(_, r)| *r).collect::<Vec<_>>(),
+        theme,
+    );
     for ((b, r), on) in rects.into_iter().zip(open) {
         let icon = match b {
             NavButton::Frames => IconId::Layers,
@@ -305,7 +304,16 @@ pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mu
             NavButton::Minimap => IconId::Grid,
             NavButton::Fit => IconId::Maximize,
         };
-        button(scene, &mut hero.hit_index, &hero.store, button_node(b), icon, r, on, theme);
+        button(
+            scene,
+            &mut hero.hit_index,
+            &hero.store,
+            button_node(b),
+            icon,
+            r,
+            on,
+            theme,
+        );
     }
 }
 
@@ -349,7 +357,14 @@ pub(crate) fn button(
     } else if hover {
         fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg2, theme));
     }
-    let fg = resolve(if on { ColorToken::Accent } else { ColorToken::Text2 }, theme);
+    let fg = resolve(
+        if on {
+            ColorToken::Accent
+        } else {
+            ColorToken::Text2
+        },
+        theme,
+    );
     let i = Spacing::Xs.px();
     let inner = Rect::new(r.x + i, r.y + i, r.w - 2.0 * i, r.h - 2.0 * i);
     paint_icon(scene, icon, inner, fg, StrokeToken::Default.px());
@@ -382,7 +397,10 @@ fn paint_links(hero: &mut HeroScreen, area: [f64; 4], scene: &mut VectorScene, t
         };
         // Dentro de um frame visto de longe o elemento não se pinta: o ícone também não.
         let hidden = board.doc.frame_chain(*id).iter().any(|f| {
-            board.doc.get(*f).is_some_and(|f| f.h * board.camera.zoom < far)
+            board
+                .doc
+                .get(*f)
+                .is_some_and(|f| f.h * board.camera.zoom < far)
         });
         if hidden {
             continue;

@@ -156,6 +156,13 @@ impl Editor {
         doc.get(id).filter(|el| writable(el)).map(|el| el.id)
     }
 
+    /// Uma letra agora escreveria na nota seleccionada (e não é atalho) — quem tem atalhos de uma
+    /// letra ANTES do editor (a navegação, W5: `M`) pergunta isto primeiro.
+    #[must_use]
+    pub fn would_type_into_note(&self, doc: &BoardDoc) -> bool {
+        self.editing.is_none() && self.gesture.is_none() && self.the_note(doc).is_some()
+    }
+
     /// ⭐ **Escrever com uma nota seleccionada** começa a escrever nela, no FIM do texto (o que lá
     /// está não se perde por uma tecla). `false` = não há nota seleccionada (a tecla é atalho).
     pub fn type_into_note(&mut self, doc: &mut BoardDoc, ts: &mut TextSystem, s: &str) -> bool {
@@ -343,7 +350,7 @@ impl Editor {
     pub fn set_note_color(&mut self, doc: &mut BoardDoc, history: &mut History, c: Rgba) {
         self.notes.color = c;
         let ops = self
-            .selected(doc)
+            .editable(doc)
             .into_iter()
             .filter(|el| el.shape().is_some_and(|s| s.kind.is_note()))
             .map(|el| {
@@ -363,7 +370,7 @@ impl Editor {
         let size = size.min(NOTE_SCALES.len() - 1);
         self.notes.size = size;
         let ops = self
-            .selected(doc)
+            .editable(doc)
             .into_iter()
             .filter_map(|el| {
                 let s = note_scale(el)?;
@@ -386,7 +393,7 @@ impl Editor {
         self.notes.wide = wide;
         let kind = self.notes.kind();
         let ops = self
-            .selected(doc)
+            .editable(doc)
             .into_iter()
             .filter(|el| writable(el))
             .filter_map(|el| {
@@ -438,7 +445,7 @@ impl Editor {
             return true;
         }
         let texts: Vec<&Element> = self
-            .selected(doc)
+            .editable(doc)
             .into_iter()
             .filter(|el| el.shape().is_some_and(|s| !s.text.is_empty()))
             .collect();
@@ -488,7 +495,7 @@ impl Editor {
             return;
         }
         let ops = self
-            .selected(doc)
+            .editable(doc)
             .into_iter()
             .filter(|el| el.shape().is_some_and(|s| !s.kind.is_note()))
             .map(|el| {

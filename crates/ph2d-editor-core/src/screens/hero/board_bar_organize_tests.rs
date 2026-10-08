@@ -47,12 +47,23 @@ fn the_frame_button_draws_a_frame_that_takes_what_is_drawn_inside() {
     let (a, b) = (t.at(0.2, 0.2), t.at(0.8, 0.8));
     t.drag(a, b);
     let f = t.elements()[0].clone();
-    assert!(f.as_frame().is_some(), "o botão do Frame não desenhou um frame");
+    assert!(
+        f.as_frame().is_some(),
+        "o botão do Frame não desenhou um frame"
+    );
     assert!(t.key(BoardKey::Char('r'), NONE, Some("r")));
     let (a, b) = (t.at(0.4, 0.4), t.at(0.5, 0.5));
     t.drag(a, b);
-    let r = t.elements().into_iter().find(|e| e.shape().is_some()).unwrap();
-    assert_eq!(r.frame, Some(f.id), "a forma desenhada dentro vive no frame");
+    let r = t
+        .elements()
+        .into_iter()
+        .find(|e| e.shape().is_some())
+        .unwrap();
+    assert_eq!(
+        r.frame,
+        Some(f.id),
+        "a forma desenhada dentro vive no frame"
+    );
     // A tecla `F` (a do Miro) também o põe na mão.
     assert!(t.key(BoardKey::Char('f'), NONE, Some("f")));
     assert!(painted(&t, FRAME));
@@ -65,16 +76,25 @@ fn group_and_ungroup_show_only_when_they_would_do_something() {
     let mut t = T::new();
     two_rects(&mut t);
     assert!(painted(&t, org(OrgItem::Group)));
-    assert!(!painted(&t, org(OrgItem::Ungroup)), "desagrupar sem grupo: controlo morto");
+    assert!(
+        !painted(&t, org(OrgItem::Ungroup)),
+        "desagrupar sem grupo: controlo morto"
+    );
     assert!(painted(&t, org(OrgItem::Align(Align::Left))));
-    assert!(!painted(&t, org(OrgItem::Distribute(Axis::Horizontal))), "distribuir pede três");
+    assert!(
+        !painted(&t, org(OrgItem::Distribute(Axis::Horizontal))),
+        "distribuir pede três"
+    );
     t.click_bar(org(OrgItem::Group));
     let els = t.elements();
     assert!(els.iter().all(|e| e.outer_group().is_some()));
     assert_eq!(els[0].outer_group(), els[1].outer_group());
     assert!(painted(&t, org(OrgItem::Ungroup)));
     assert!(!painted(&t, org(OrgItem::Group)));
-    assert!(!painted(&t, org(OrgItem::Align(Align::Left))), "um grupo é uma unidade só");
+    assert!(
+        !painted(&t, org(OrgItem::Align(Align::Left))),
+        "um grupo é uma unidade só"
+    );
     t.click_bar(org(OrgItem::Ungroup));
     assert!(t.elements().iter().all(|e| e.outer_group().is_none()));
 }
@@ -85,10 +105,15 @@ fn the_align_button_lines_up_the_selection() {
     two_rects(&mut t);
     t.click_bar(org(OrgItem::Align(Align::Left)));
     let els = t.elements();
-    assert!((els[0].x - els[1].x).abs() < 1e-9, "{} ≠ {}", els[0].x, els[1].x);
+    assert!(
+        (els[0].x - els[1].x).abs() < 1e-9,
+        "{} ≠ {}",
+        els[0].x,
+        els[1].x
+    );
 }
 
-/// As teclas do Miro: `Ctrl+G`, `Ctrl+Shift+L`, `PgDn`; e a do Excalidraw, `Ctrl+Shift+←`.
+/// As teclas do Miro: `Ctrl+G`, `Ctrl+Shift+L`, `PgDn`; e a do Excalidraw, `Ctrl+Shift+Left`.
 #[test]
 fn the_organize_keys_group_lock_order_and_align() {
     let mut t = T::new();
@@ -96,7 +121,10 @@ fn the_organize_keys_group_lock_order_and_align() {
     let ids: Vec<_> = t.elements().iter().map(|e| e.id).collect();
     assert!(t.key(BoardKey::Left, CTRL_SHIFT, None));
     let els = t.elements();
-    assert!((els[0].x - els[1].x).abs() < 1e-9, "Ctrl+Shift+← alinha à esquerda");
+    assert!(
+        (els[0].x - els[1].x).abs() < 1e-9,
+        "Ctrl+Shift+Left alinha à esquerda"
+    );
     // O de cima vai para trás de tudo.
     board_view::select(&mut t.hero, [ids[1]]);
     assert!(t.key(BoardKey::PageDown, NONE, None));
@@ -132,7 +160,10 @@ fn a_refused_group_paints_its_notice_on_the_board() {
         .collect();
     board_view::select(&mut t.hero, shapes);
     assert!(t.key(BoardKey::Char('g'), CTRL, None));
-    assert!(t.elements().iter().all(|e| e.outer_group().is_none()), "não agrupou");
+    assert!(
+        t.elements().iter().all(|e| e.outer_group().is_none()),
+        "não agrupou"
+    );
     assert_eq!(
         t.hero.documents.live.notice.map(|(k, _)| k),
         Some("board.notice.group_across_frames"),
@@ -149,8 +180,14 @@ fn a_selected_frame_offers_its_colours_and_the_paper_to_go_back() {
     t.drag(a, b);
     t.click_bar(Item::Fill(Some(0)));
     let fill = t.elements()[0].style().fill;
-    assert_ne!(fill, Some(ph2d_board_model::Rgba(ph2d_board_model::FRAME_FILL)));
-    assert!(!painted(&t, org(OrgItem::Order(ph2d_board_edit::Order::Front))), "frames ficam atrás");
+    assert_ne!(
+        fill,
+        Some(ph2d_board_model::Rgba(ph2d_board_model::FRAME_FILL))
+    );
+    assert!(
+        !painted(&t, org(OrgItem::Order(ph2d_board_edit::Order::Front))),
+        "frames ficam atrás"
+    );
     t.click_bar(org(OrgItem::Paper));
     assert_eq!(
         t.elements()[0].style().fill,

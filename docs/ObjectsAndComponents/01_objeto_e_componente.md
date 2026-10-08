@@ -192,6 +192,17 @@ falta é uma REGRA de interface, não um motor.**
 4. **Ícones de componente na linha da Hierarchy** e **sub-linhas de conteúdo** (camadas, ossos,
    quadros, clipes)? — *recomendação: os dois.*
 
+**Respostas do dono (07/10) — as quatro na recomendação:**
+
+| | escolha |
+|---|---|
+| 1 | **A** — a Animação é componente do objecto, com os clipes visíveis debaixo dele |
+| 2 | **sim** — objecto Cena na raiz (animação da cena, mundo físico, mixer) |
+| 3 | **Motion vira objecto** na árvore, com o que cria como filhos; pode haver vários |
+| 4 | **os dois** — ícones de componente na linha e sub-linhas de conteúdo |
+
+⇒ As fases F0–F6 do §8 ficam todas no plano, na ordem.
+
 ## §10 — Recusas (o que NÃO fazer)
 
 - ⛔ **Tornar tudo nó, como o Godot:** devolve a árvore inchada e as regras de pai escondidas.

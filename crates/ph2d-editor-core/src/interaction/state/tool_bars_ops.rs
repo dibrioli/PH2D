@@ -62,3 +62,72 @@ impl WidgetStore {
         self.tool_bars.pointer
     }
 }
+
+/// F4: quanto dura um piscar — TRÊS períodos do token `Slow`: o tecto de três da WCAG 2.3.1, a um
+/// ritmo de 1,25 Hz (bem abaixo dos 3 por segundo da mesma regra).
+pub const FLASH_PULSES: u32 = 3;
+
+impl WidgetStore {
+    /// O relógio do chrome — chamado pelo `dispatch_tick` em todo quadro.
+    pub fn note_clock(&mut self, now_ns: u128) {
+        self.tool_bars.clock_ns = now_ns;
+    }
+
+    /// ⭐ **Faz PISCAR onde `id` mora** (F4, a paleta que ensina): todo pintor que mostra uma porta
+    /// para `id` — o botão, o `⋯` que o guarda, o pulldown que o contém — desenha o anel.
+    pub fn flash(&mut self, id: ph2d_a11y::NodeId) {
+        self.tool_bars.flash = Some((id, self.tool_bars.clock_ns));
+    }
+
+    /// O comando a piscar e a intensidade agora (`0..=1`); `None` fora do piscar. `steady` = o
+    /// movimento reduzido: anel fixo durante o mesmo tempo, sem piscar.
+    #[must_use]
+    pub fn flashing(&self, steady: bool) -> Option<(ph2d_a11y::NodeId, f32)> {
+        let (id, t0) = self.tool_bars.flash?;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let period = (f64::from(ph2d_tokens::Duration::Slow.ms()) * 1e6) as u128;
+        let t = self.tool_bars.clock_ns.saturating_sub(t0);
+        if t >= period * u128::from(FLASH_PULSES) {
+            return None;
+        }
+        if steady {
+            return Some((id, 1.0));
+        }
+        #[allow(clippy::cast_precision_loss)]
+        let phase = (t % period) as f32 / period as f32;
+        // Cada período acende DE GOLPE e esmorece até apagar: três acesas, e acaba apagado.
+        Some((id, (phase * std::f32::consts::FRAC_PI_2).cos()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_a11y::NodeId;
+
+    /// ⭐ **O piscar acende JÁ, pisca TRÊS vezes e apaga**; com movimento reduzido é um anel fixo
+    /// pelo mesmo tempo. Os números são os do token `Slow` (400 ms) e do tecto da WCAG 2.3.1.
+    #[test]
+    fn the_flash_lights_now_pulses_three_times_and_ends() {
+        let ms = 1_000_000u128;
+        let mut s = WidgetStore::default();
+        s.note_clock(5_000 * ms);
+        s.flash(NodeId(7));
+        assert_eq!(s.flashing(false), Some((NodeId(7), 1.0)), "não acendeu já");
+        let mut acesos = 0;
+        let mut antes = 1.0_f32;
+        for t in 1..1_200u128 {
+            s.note_clock(5_000 * ms + t * ms);
+            let (_, l) = s.flashing(false).expect("apagou antes dos 1 200 ms");
+            if l > 0.99 && antes <= 0.99 {
+                acesos += 1;
+            }
+            antes = l;
+            assert_eq!(s.flashing(true), Some((NodeId(7), 1.0)), "o reduzido piscou");
+        }
+        assert_eq!(acesos + 1, 3, "pulsos ≠ 3");
+        s.note_clock(5_000 * ms + 1_200 * ms);
+        assert_eq!(s.flashing(false), None, "não apagou aos 1 200 ms");
+        assert_eq!(s.flashing(true), None, "o reduzido não apagou");
+    }
+}

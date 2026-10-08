@@ -324,6 +324,8 @@ pub fn paint_swatch(
 /// O cliente do Vetor (e de qualquer módulo que publique [`crate::interaction::ToolBars`]).
 #[path = "tool_bars.rs"]
 pub mod tool_bars;
+#[path = "flash.rs"]
+pub mod flash;
 
 #[cfg(test)]
 #[path = "float_bar_tests.rs"]

@@ -137,4 +137,8 @@ pub struct ToolBarsSlot {
     pub(crate) actions_pinned: bool,
     /// ⑤ a última posição do ponteiro no ecrã — as coordenadas do rodapé.
     pub(crate) pointer: Option<[f32; 2]>,
+    /// O relógio do chrome (ns), posto pelo `dispatch_tick` em todo quadro.
+    pub(crate) clock_ns: u128,
+    /// F4: o comando que a paleta mandou PISCAR onde mora, e quando.
+    pub(crate) flash: Option<(NodeId, u128)>,
 }

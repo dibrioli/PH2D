@@ -305,6 +305,8 @@ pub fn paint_tool_bar(
             continue; // o divisor não se clica
         };
         hit_index.register(id, slot.rect);
+        let steady = motion.reduced_motion();
+        super::float_bar::flash::ring_if_home(scene, store, steady, theme, id, slot.rect);
         if id == ids::PAINTER_RAIL_SHAPES {
             shapes_chip = Some(slot.rect);
         } else if id == ids::PAINTER_RAIL_MASK_GROUP {

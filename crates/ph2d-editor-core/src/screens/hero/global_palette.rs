@@ -54,6 +54,9 @@
 //! (`audio_editor` → *Audio Editor*) e **dois saíam feios** (`bgremoval` → *Bgremoval*, e um painel
 //! que saiu com o 3D). Isso é cosmético e tem cura própria; uma tabela paralela não teria.
 
+#[path = "global_palette_bars.rs"]
+pub mod global_palette_bars;
+
 use crate::widget::command_palette::{PaletteGroup, PaletteItem, PaletteModel, PaletteSub};
 use ph2d_a11y::NodeId;
 use ph2d_i18n::TextKey;
@@ -130,6 +133,9 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
             }],
         });
     }
+
+    // ── As BARRAS do módulo na mão (F4): ①, ② com os pulldowns, ④ — pelo nome do LUGAR ──
+    groups.extend(global_palette_bars::groups(&hero.store));
 
     // ── Os PAINÉIS registados: "mostrar/esconder X", o verbo que mais falta ──
     // É aqui que uma paleta se paga: um painel sem chip no rail e sem pill na barra (o editor de
@@ -230,7 +236,19 @@ pub fn route_global_pick(hero: &mut super::HeroScreen, id: NodeId) -> bool {
         <super::HeroScreen as crate::panel::PanelHostInternal>::set_panel_visible(hero, pid, !now);
         return true;
     }
-    hero.apply_event(crate::interaction::WidgetEvent::Click(id))
+    // ⭐ F4: o comando das barras pisca ONDE MORA — a paleta ensina a UI nova. A amostra abre o
+    // seletor pela porta dela (o clique sem Down não a opera).
+    if global_palette_bars::is_swatch(&hero.store, id) {
+        hero.store.open_picker_on(id);
+        hero.store.flash(id);
+        return true;
+    }
+    let teach = global_palette_bars::owns(&hero.store, id);
+    let done = hero.apply_event(crate::interaction::WidgetEvent::Click(id));
+    if teach {
+        hero.store.flash(id);
+    }
+    done
 }
 
 #[cfg(test)]

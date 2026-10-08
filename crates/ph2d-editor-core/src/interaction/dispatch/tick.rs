@@ -29,6 +29,8 @@ pub fn dispatch_tick<'frame>(
     store: &mut WidgetStore,
     now_ns: u128,
 ) -> &'frame [WidgetEvent] {
+    // O relógio do chrome (o piscar da paleta, F4): este é o tick de TODO quadro.
+    store.note_clock(now_ns);
     let mut events = BumpVec::new_in(arena);
     let hold = match store.number_stepper_hold() {
         Some(h) => h,

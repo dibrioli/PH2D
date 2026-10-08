@@ -13,6 +13,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.bars.family.carve" => "Carve",
         "chrome.bars.family.stroke" => "Stroke",
         "chrome.bars.family.colour" => "Colour",
+        "chrome.palette.left_bar" => "Left bar",
+        "chrome.palette.top_bar" => "Top bar",
+        "chrome.palette.near_selection" => "Next to the selection",
         // ph2d-migrar-texto:end
         _ => return None,
     })

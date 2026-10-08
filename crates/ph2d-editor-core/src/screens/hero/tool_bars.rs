@@ -127,6 +127,8 @@ fn face(hero: &mut HeroScreen, scene: &mut VectorScene, theme: Theme, b: &BarBut
             tint: b.family.tint(),
         },
     );
+    let steady = hero.motion.reduced_motion();
+    super::flash::ring_if_home(scene, &hero.store, steady, theme, b.id, r);
     match &b.face {
         BarFace::Icon(icon) => paint_icon(
             scene,

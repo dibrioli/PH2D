@@ -262,7 +262,7 @@ pub fn paint(
         );
     }
     clips.close(scene);
-    frames::paint_titles(scene, ts, cache, board.id.0, &frames, theme);
+    frames::paint_titles(scene, ts, cache, board.id.0, &frames, &chains, theme);
     scene.pop_layer();
     cache.end_frame();
 }

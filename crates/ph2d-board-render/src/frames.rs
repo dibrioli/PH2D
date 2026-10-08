@@ -65,16 +65,25 @@ pub(crate) fn paint_backs(
     theme: Theme,
     detail: Detail,
 ) -> BTreeSet<ElementId> {
-    let border = Brush::Solid(token(ColorToken::Border, theme));
-    let line = Stroke::new(f64::from(StrokeToken::Hairline.px()));
+    let hairline = Stroke::new(f64::from(StrokeToken::Hairline.px()));
     let mut far = BTreeSet::new();
     for (f, r) in frames {
-        if let Some(c) = f.style().fill {
+        let st = f.style();
+        if let Some(c) = st.fill {
             scene.fill_rect(*r, doc_color(c));
         }
+        // A borda: o contorno do estilo do frame (a barra de cores serve-o como às formas), à
+        // escala do quadro; sem contorno, o fio da interface que o separa do fundo.
+        let (line, brush) = match st.stroke.filter(|_| st.stroke_width > 0.0) {
+            Some(c) => {
+                let px = st.stroke_width * r.width() / f.w.max(f64::EPSILON);
+                (Stroke::new(px), Brush::Solid(doc_color(c)))
+            }
+            None => (hairline.clone(), Brush::Solid(token(ColorToken::Border, theme))),
+        };
         scene
             .inner_mut()
-            .stroke(&line, Affine::IDENTITY, &border, None, &r.to_path(0.1));
+            .stroke(&line, Affine::IDENTITY, &brush, None, &r.to_path(0.1));
         if r.height() < detail.frame_title_only_px {
             far.insert(f.id);
         }
@@ -168,6 +177,7 @@ pub(crate) fn paint_titles(
     cache: &mut RenderCache,
     board_id: u64,
     frames: &[(&Element, Rect)],
+    chains: &Chains,
     theme: Theme,
 ) {
     let size = TypeToken::Sm.px();
@@ -177,7 +187,8 @@ pub(crate) fn paint_titles(
         let Some(frame) = f.as_frame() else {
             continue;
         };
-        if frame.name.is_empty() || r.width() <= 0.0 {
+        // Dentro de um frame visto de longe (só o título dele) o título de dentro não se pinta.
+        if frame.name.is_empty() || r.width() <= 0.0 || chains.of(f).is_none() {
             continue;
         }
         let text = RichText::plain(&frame.name);

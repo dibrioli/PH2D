@@ -48,6 +48,17 @@ pub(crate) struct Nav {
     minimap_cache: Option<minimap::Cache>,
     /// Os elementos com link, refeitos quando o documento muda (revisão).
     links: Option<(u64, Vec<ElementId>)>,
+    /// Enquadrar tudo na próxima pintura (quando a área já tem o tamanho dela).
+    fit_pending: bool,
+}
+
+/// Abre o painel de Frames e o minimapa e enquadra o quadro inteiro na próxima pintura (as cenas
+/// de smoke abrem assim).
+pub fn show(hero: &mut HeroScreen, frames: bool, minimap: bool) {
+    let n = &mut hero.documents.live.nav;
+    n.frames_open = frames;
+    n.minimap_open = minimap;
+    n.fit_pending = true;
 }
 
 /// Os botões do canto.
@@ -271,6 +282,11 @@ pub fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
 pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, ts: &mut TextSystem) {
     let theme = hero.theme;
     let a = super::board_view::area_of(area);
+    if std::mem::take(&mut hero.documents.live.nav.fit_pending)
+        && let Some(board) = hero.documents.active_board_mut()
+    {
+        fit_all(board, a);
+    }
     search::paint_highlight(hero, area, scene, theme);
     paint_links(hero, a, scene, theme);
     minimap::paint(hero, area, scene, theme);
@@ -348,26 +364,59 @@ fn paint_links(hero: &mut HeroScreen, area: [f64; 4], scene: &mut VectorScene, t
     };
     let rev = board.doc.rev();
     if live.nav.links.as_ref().is_none_or(|(r, _)| *r != rev) {
-        let ids = board.doc.live().filter(|e| e.link().is_some()).map(|e| e.id).collect();
+        let ids = board
+            .doc
+            .live()
+            .filter(|e| e.link().is_some() || e.locked())
+            .map(|e| e.id)
+            .collect();
         live.nav.links = Some((rev, ids));
     }
     let s = Spacing::Xl.px();
+    let far = live.render_cache.detail.frame_title_only_px;
     let mut drawn = Vec::new();
+    let mut locks = Vec::new();
     for id in live.nav.links.as_ref().map_or(&[][..], |(_, v)| v) {
         let Some(el) = board.doc.get(*id) else {
             continue;
         };
-        let [_, y0, x1, _] = el.aabb();
+        // Dentro de um frame visto de longe o elemento não se pinta: o ícone também não.
+        let hidden = board.doc.frame_chain(*id).iter().any(|f| {
+            board.doc.get(*f).is_some_and(|f| f.h * board.camera.zoom < far)
+        });
+        if hidden {
+            continue;
+        }
+        let [x0, y0, x1, _] = el.aabb();
+        // O cadeado (só um sinal: destrava-se pela barra ou por Ctrl+Shift+L) no canto esquerdo.
+        let inside = |r: &Rect| {
+            r.x + r.w >= area[0] as f32
+                && r.y + r.h >= area[1] as f32
+                && r.x <= (area[0] + area[2]) as f32
+                && r.y <= (area[1] + area[3]) as f32
+        };
+        if el.locked() {
+            let p = board.camera.to_screen(area, [x0, y0]);
+            let r = Rect::new(p[0] as f32 - s / 2.0, p[1] as f32 - s / 2.0, s, s);
+            if inside(&r) {
+                locks.push(r);
+            }
+        }
+        if el.link().is_none() {
+            continue;
+        }
         let p = board.camera.to_screen(area, [x1, y0]);
         let r = Rect::new(p[0] as f32 - s / 2.0, p[1] as f32 - s / 2.0, s, s);
-        if r.x + r.w < area[0] as f32
-            || r.y + r.h < area[1] as f32
-            || r.x > (area[0] + area[2]) as f32
-            || r.y > (area[1] + area[3]) as f32
-        {
+        if !inside(&r) {
             continue;
         }
         drawn.push((*id, r));
+    }
+    let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+    for r in locks {
+        fill_rounded_rect(scene, r, radius, resolve(ColorToken::BgElev, theme));
+        let fg = resolve(ColorToken::Text2, theme);
+        paint_icon(scene, IconId::Lock, r, fg, StrokeToken::Default.px());
     }
     for (id, r) in drawn {
         register(&mut hero.store, link_node(id));

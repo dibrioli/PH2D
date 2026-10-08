@@ -415,3 +415,73 @@ fn duplicating_a_frame_copies_its_contents_into_the_copy() {
         assert_ne!(w.el(id).groups()[0], g, "um grupo novo");
     }
 }
+
+fn note(w: &mut World, x: f64) -> ElementId {
+    let fill = ph2d_board_model::Rgba(ph2d_board_model::STICKY_COLORS[1]);
+    let shape = Shape {
+        kind: ShapeType::Sticky,
+        style: Style::new(Some(fill), None, fill.readable_ink()),
+        text: Default::default(),
+    };
+    let el = Element::new_shape(w.doc.mint_id(), w.doc.z_on_top(), shape, [x, 0.0, 199.0, 199.0]);
+    let id = el.id;
+    BoardOp::Put(el).apply(&mut w.doc);
+    id
+}
+
+/// ⭐ A etiqueta: entra nas notas que não a têm; se todas a têm, sai de todas; só notas; até 8 (o
+/// Miro), com o aviso — cada vez UM passo.
+#[test]
+fn a_tag_goes_on_the_notes_comes_off_when_all_have_it_and_stops_at_eight() {
+    let mut w = world();
+    let (a, b) = (note(&mut w, 0.0), note(&mut w, 300.0));
+    let r = put_rect(&mut w, [600.0, 0.0, 50.0, 50.0]);
+    let red = ph2d_board_model::Rgba([200, 0, 0, 255]);
+    w.ed.select(&w.doc, [a]);
+    assert!(w.ed.toggle_tag(&mut w.doc, &mut w.h, "x", red));
+    w.ed.select(&w.doc, [a, b, r]);
+    assert!(w.ed.toggle_tag(&mut w.doc, &mut w.h, "x", red));
+    assert_eq!(w.el(b).tags().len(), 1, "entrou na que não a tinha");
+    assert!(w.el(r).tags().is_empty(), "uma forma não leva etiquetas");
+    assert!(w.ed.toggle_tag(&mut w.doc, &mut w.h, "x", red));
+    assert!(w.el(a).tags().is_empty() && w.el(b).tags().is_empty(), "todas tinham: saiu");
+    assert!(w.cmd(Command::Undo));
+    assert_eq!(w.el(a).tags().len(), 1, "UM passo");
+    w.ed.select(&w.doc, [a]);
+    for k in 0..10 {
+        w.ed.toggle_tag(&mut w.doc, &mut w.h, &format!("t{k}"), red);
+    }
+    assert_eq!(w.el(a).tags().len(), ph2d_board_model::MAX_TAGS);
+    assert_eq!(w.ed.take_notice(), Some(Notice::TooManyTags));
+}
+
+/// ⭐ O link (o «Link to» do Miro): `Ctrl+Alt+K` arma, o clique no destino liga (UM passo); no
+/// vazio o modo fecha sem mudar nada; de novo com o link posto, tira-o; destino apagado = aviso.
+#[test]
+fn a_link_is_armed_then_made_by_a_click_and_a_gone_target_says_so() {
+    let mut w = world();
+    let a = put_rect(&mut w, [0.0, 0.0, 50.0, 50.0]);
+    let b = put_rect(&mut w, [300.0, 0.0, 50.0, 50.0]);
+    w.ed.select(&w.doc, [a]);
+    assert!(w.cmd(Command::Link));
+    assert!(w.ed.is_linking());
+    assert_eq!(w.ed.take_notice(), Some(Notice::LinkPick));
+    w.click([-900.0, -900.0], NONE);
+    assert!(!w.ed.is_linking() && w.el(a).link().is_none(), "o vazio fecha sem ligar");
+    w.ed.select(&w.doc, [a]);
+    w.cmd(Command::Link);
+    w.click([325.0, 25.0], NONE);
+    assert_eq!(w.el(a).link(), Some(b));
+    assert_eq!(w.ed.follow_link(&w.doc, a), Some(b));
+    assert_eq!(*w.ed.selection(), BTreeSet::from([b]), "seguir selecciona o destino");
+    w.ed.select(&w.doc, [a]);
+    assert!(w.cmd(Command::Link), "com o link posto, o mesmo atalho tira-o");
+    assert!(w.el(a).link().is_none());
+    assert!(w.cmd(Command::Undo));
+    BoardOp::Delete(b).apply(&mut w.doc);
+    assert_eq!(w.ed.follow_link(&w.doc, a), None);
+    assert_eq!(w.ed.take_notice(), Some(Notice::LinkGone));
+    w.ed.select(&w.doc, [a]);
+    w.cmd(Command::Link);
+    assert!(w.cmd(Command::Escape) && !w.ed.is_linking(), "Esc fecha o modo");
+}

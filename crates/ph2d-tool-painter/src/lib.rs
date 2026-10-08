@@ -144,6 +144,10 @@ pub use tool::{
     render_classic_flow_preview, set_pending_select_mods,
 };
 pub use tool::{DICA_DO_PARAMETRO, Dependente, Inercias};
+pub use tool::paint::wetpaint_preset::{
+    CAMPOS_DO_PINCEL, CAMPOS_FORA, DIAMETRO_DA_MINIATURA, MEIO_DO_PRESET, MOTOR_DOS_PRESETS,
+    miniatura_do_preset,
+};
 pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController, history_budget_bytes};
 
 use ph2d_a11y::Role;

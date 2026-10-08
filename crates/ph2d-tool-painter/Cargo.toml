@@ -75,6 +75,10 @@ ph2d-gpu = { path = "../ph2d-gpu", optional = true }
 ph2d-color = { path = "../ph2d-color" }
 # serde for PainterParams + the layer model serialization.
 serde = { version = "1", features = ["derive"] }
+# O preset do Wet Painter (`tool/paint/wetpaint_preset.rs`): o formato `*.ph2d-brush.png` e o JSON
+# dos campos do pincel (`serde_json` já está no grafo).
+ph2d-brush-presets = { path = "../ph2d-brush-presets" }
+serde_json = "1"
 # Data-parallel watercolor composite (ADR-0109 exception to the no-rayon default): the per-pixel optical
 # reconstruction is embarrassingly parallel + byte-identical (disjoint output rows, no reduction, no RNG),
 # so it distributes over the thread pool without touching deterministic replay.

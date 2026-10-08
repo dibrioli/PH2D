@@ -63,26 +63,37 @@ fn curva_s(x0: f32, x1: f32, cy: f32, amp: f32) -> Vec<[f32; 2]> {
 
 /// A cena inteira num meio, com o pincel de fábrica dele a `size` px: devolve `run_full()` (RGBA8).
 pub fn pinta(meio: PaintMedia, size: f32) -> (Vec<u8>, u32, u32) {
-    let mut t = PainterTool::default();
-    t.set_source(vec![255u8; (W * H * 4) as usize], W, H);
+    let mut t = tela();
     t.set_paint_media(meio);
     t.set_brush_size_px(size);
     t.set_brush_strength(1.0);
+    pinta_cena(&mut t)
+}
+
+/// A tela branca da cena, sem pincel escolhido.
+pub fn tela() -> PainterTool {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (W * H * 4) as usize], W, H);
+    t
+}
+
+/// A cena inteira com o pincel que `t` já tem (a cor é a da bancada): devolve `run_full()`.
+pub fn pinta_cena(t: &mut PainterTool) -> (Vec<u8>, u32, u32) {
     t.set_brush_color_srgb8(AZUL);
     let cheio = |_: f32| 1.0f32;
     // Linha 1 — recto a passo de rato · curva em S.
-    gesto(&mut t, &[[60.0, 120.0], [560.0, 120.0]], 3.0, cheio);
-    gesto(&mut t, &curva_s(600.0, 960.0, 120.0, 25.0), 3.0, cheio);
+    gesto(t, &[[60.0, 120.0], [560.0, 120.0]], 3.0, cheio);
+    gesto(t, &curva_s(600.0, 960.0, 120.0, 25.0), 3.0, cheio);
     // Linha 2 — rampa de pressão (0,15 → 1 → 0,15) · traço RÁPIDO (25 px por evento).
-    gesto(&mut t, &[[60.0, 300.0], [560.0, 300.0]], 3.0, |f| {
+    gesto(t, &[[60.0, 300.0], [560.0, 300.0]], 3.0, |f| {
         0.15 + 0.85 * (f * std::f32::consts::PI).sin()
     });
-    gesto(&mut t, &[[600.0, 300.0], [960.0, 300.0]], 25.0, cheio);
+    gesto(t, &[[600.0, 300.0], [960.0, 300.0]], 25.0, cheio);
     // Linha 3 — recto, e um cruzamento vermelho (a mistura / o «dirty brush»).
-    gesto(&mut t, &[[60.0, 480.0], [560.0, 480.0]], 3.0, cheio);
+    gesto(t, &[[60.0, 480.0], [560.0, 480.0]], 3.0, cheio);
     t.set_brush_color_srgb8(VERMELHO);
-    gesto(&mut t, &[[300.0, 400.0], [300.0, 560.0]], 3.0, cheio);
-    gesto(&mut t, &[[700.0, 480.0], [960.0, 480.0]], 3.0, cheio);
+    gesto(t, &[[300.0, 400.0], [300.0, 560.0]], 3.0, cheio);
+    gesto(t, &[[700.0, 480.0], [960.0, 480.0]], 3.0, cheio);
     // O tempo passa (a água corre e seca; nos outros meios é inócuo): 8 s a 60 Hz.
     for _ in 0..480 {
         t.on_tick(1000.0 / 60.0);
@@ -94,13 +105,24 @@ pub fn pinta(meio: PaintMedia, size: f32) -> (Vec<u8>, u32, u32) {
 /// o pincel: o gesto da largura, seguido de `ticks` quadros de 60 Hz (a água corre e seca). Devolve
 /// `run_full()` e a altura da tela (a largura é `W`).
 pub fn traco_recto(meio: PaintMedia, size: f32, ticks: u32) -> (Vec<u8>, u32, u32) {
+    traco_recto_com(size, ticks, |t| {
+        t.set_paint_media(meio);
+        t.set_brush_strength(1.0);
+    })
+}
+
+/// [`traco_recto`] com o pincel que `prepara` escolhe (um preset), ao raio `size`.
+pub fn traco_recto_com(
+    size: f32,
+    ticks: u32,
+    prepara: impl FnOnce(&mut PainterTool),
+) -> (Vec<u8>, u32, u32) {
     let h = ((size * 6.0) as u32 + 80).max(120);
     let cy = h as f32 * 0.5;
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (W * h * 4) as usize], W, h);
-    t.set_paint_media(meio);
+    prepara(&mut t);
     t.set_brush_size_px(size);
-    t.set_brush_strength(1.0);
     t.set_brush_color_srgb8(AZUL);
     gesto(&mut t, &[[100.0, cy], [900.0, cy]], 3.0, |_| 1.0);
     for _ in 0..ticks {

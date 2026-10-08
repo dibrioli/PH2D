@@ -253,6 +253,32 @@ impl FalloffCurve {
             }
         }
     }
+
+    /// Rebuild a curve from its [`Self::points`] (a saved brush preset): ids and handles kept,
+    /// coordinates clamped to `[0,1]²`, re-sorted by `x`. `None` outside `2..=`[`MAX_FALLOFF_POINTS`]
+    /// points or with a repeated id — the two invariants the editor's own mutators keep.
+    #[must_use]
+    pub fn from_points(points: &[FalloffPoint]) -> Option<Self> {
+        let n = points.len();
+        if !(2..=MAX_FALLOFF_POINTS).contains(&n)
+            || (1..n).any(|i| points[..i].iter().any(|p| p.id == points[i].id))
+        {
+            return None;
+        }
+        let mut c = Self {
+            points: [FalloffPoint::default(); MAX_FALLOFF_POINTS],
+            len: n as u8,
+        };
+        for (dst, p) in c.points.iter_mut().zip(points) {
+            *dst = FalloffPoint {
+                x: p.x.clamp(0.0, 1.0),
+                y: p.y.clamp(0.0, 1.0),
+                ..*p
+            };
+        }
+        c.sort_by_x();
+        Some(c)
+    }
 }
 
 /// Secant slope between points `a` and `b` (0 for a vertical/degenerate gap).

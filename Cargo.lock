@@ -5517,6 +5517,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-brush-presets"
+version = "0.0.0"
+dependencies = [
+ "crc32fast",
+ "miniz_oxide 0.8.9",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ph2d-chrome-sync"
 version = "0.0.0"
 
@@ -8964,6 +8974,7 @@ dependencies = [
  "bytemuck",
  "dhat",
  "ph2d-a11y",
+ "ph2d-brush-presets",
  "ph2d-color",
  "ph2d-core",
  "ph2d-editor-core",
@@ -8981,6 +8992,7 @@ dependencies = [
  "postcard",
  "rayon",
  "serde",
+ "serde_json",
  "wgpu",
 ]
 

@@ -399,9 +399,8 @@ impl super::super::PainterTool {
     }
 }
 
-/// A porta dos gates de FÍSICA — e, pela feature `test-support`, do relógio fixo
-/// (`PainterTool::set_wet_relogio_fixo`).
-#[cfg(any(test, feature = "test-support"))]
+/// A porta dos gates de FÍSICA — e do relógio fixo (`PainterTool::set_wet_relogio_fixo`: os gates e
+/// a miniatura de um preset).
 impl super::super::PainterTool {
     /// **`n` passos de sim SINCRONAMENTE, e o composite** — o `on_tick` de
     /// antes desta wave, para os gates cuja afirmação é sobre a FÍSICA (o

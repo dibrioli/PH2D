@@ -134,6 +134,7 @@ mod tiling;
 mod wet_editable;
 mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
 mod wetpaint_commit;
+pub mod wetpaint_preset; // o preset do Wet Painter: aplicar / capturar / miniatura (W1, NewFeaturesWetPaint/02 §5)
 mod wetpaint_settings; // Wet Paint authored state (checkbox + W3 knobs + routing) — LOC-cap sibling // Wet Paint deposit-at-commit door (doc 21) — LOC-cap sibling
 pub use self::{curve_gizmo::TransformGizmo, curve_tangent::TangentHandles};
 pub use curve::CurveOverlay;

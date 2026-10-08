@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-brush-presets"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# ZLIB do PNG. ⚠️ `miniz_oxide` e NÃO `flate2`: no lock o `flate2` tem dois motores (`miniz_oxide` e
+# `zlib-rs`) e a unificação de features escolhe-o pelo CONJUNTO do build — o mesmo preset sairia com
+# bytes diferentes num `-p` e num `--workspace`, e o gate «round-trip ao byte» oscilaria sem mudança.
+# A mesma versão das irmãs (`ph2d-aseprite`, `ph2d-health`); nenhum pacote novo.
+miniz_oxide = "0.8"
+# O CRC-32 dos chunks (já no grafo pelo `flate2`/`png`).
+crc32fast = "1"
+
+[lints]
+workspace = true

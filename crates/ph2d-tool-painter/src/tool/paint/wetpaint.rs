@@ -136,11 +136,11 @@ pub(crate) struct WetPaintState {
     /// Quantas células de FLUIDO medem uma célula de FLUXO (plano 30). `1` = a
     /// grade de fluxo É a fina, que é o motor que sempre shipou.
     pub(super) flow_ratio: u8,
-    /// **O relógio FIXO dos gates** (feature `test-support`): `Some(dívida)` ⇒ o tique avança a água
+    /// **O relógio FIXO** (gates e renderização fora do ecrã): `Some(dívida)` ⇒ o tique avança a água
     /// SINCRONAMENTE pelo [`Self::relogio_fixo`] e nunca a entrega ao worker. O worker anda ao relógio
     /// REAL, e sob carga duas corridas iguais divergiam em 1 148 texels (o censo dos controlos,
     /// 2026-10-03): um gate que pergunta «este controlo muda a tinta?» precisa da mesma tinta duas vezes.
-    #[cfg(any(test, feature = "test-support"))]
+    /// A miniatura de um preset (`wetpaint_preset_miniatura.rs`) pinta por ele pela mesma razão.
     pub(super) relogio_fixo: Option<f64>,
 }
 
@@ -164,17 +164,16 @@ impl Default for WetPaintState {
             tuning_open: false,
             grid_ratio: grid_map::DEFAULT_RATIO,
             flow_ratio: 1,
-            #[cfg(any(test, feature = "test-support"))]
             relogio_fixo: None,
         }
     }
 }
 
-#[cfg(any(test, feature = "test-support"))]
 impl PainterTool {
-    /// **Os gates correm a água num relógio FIXO** — 40 passos por segundo de `on_tick`, síncronos, pela
-    /// mesma porta dos gates de física (`wet_step_sync`). O produto nunca a chama: a água dele anda ao
-    /// relógio real, numa thread própria (`wetpaint/offthread.rs`).
+    /// **A água num relógio FIXO** — 40 passos por segundo de `on_tick`, síncronos, pela mesma porta
+    /// dos gates de física (`wet_step_sync`). Só para quem pinta FORA do ecrã e precisa da mesma tinta
+    /// duas vezes (os gates, a miniatura de um preset); a água do ecrã anda ao relógio real, numa
+    /// thread própria (`wetpaint/offthread.rs`).
     pub fn set_wet_relogio_fixo(&mut self, ligado: bool) {
         self.paint.wetpaint.relogio_fixo = ligado.then_some(0.0);
     }
@@ -233,7 +232,7 @@ impl PainterTool {
     /// novo (atômico, sem trazer o motor), composita se houver, e entrega o
     /// motor de volta. O `dt` do shell deixou de ser entrada da água: era ele
     /// que fechava o laço de realimentação da era do agendamento (doc 28 §5.31).
-    pub(super) fn wetpaint_tick(&mut self, _dt_s: f32) {
+    pub(super) fn wetpaint_tick(&mut self, dt_s: f32) {
         // Doc 21 §F layer 2: the deposit flag must never survive into a tick.
         debug_assert!(!self.paint.wetpaint.deposit_pass);
         if self.paint.wetpaint.session.is_none() {
@@ -274,9 +273,8 @@ impl PainterTool {
             }
             return;
         }
-        #[cfg(any(test, feature = "test-support"))]
         if let Some(divida) = self.paint.wetpaint.relogio_fixo.as_mut() {
-            *divida += f64::from(_dt_s) / offthread::STEP_S;
+            *divida += f64::from(dt_s) / offthread::STEP_S;
             let passos = divida.floor();
             *divida -= passos;
             self.wet_step_sync(passos as usize);

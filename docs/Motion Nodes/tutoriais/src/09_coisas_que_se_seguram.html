@@ -314,6 +314,14 @@ outros, por isso dobrar o bando custa quatro vezes mais. É por isso que um band
 <b>precisa</b> da placa, e os outros nove não: uma corda de 200 pontos gasta três décimos de um
 por cento.</div>
 
+<div class="note"><b>Bolinhas que não se atravessam.</b> Para um corpo mole feito de peças sólidas,
+faça as peças <b>antes</b> do corpo: um <b>Grid</b> e um <b>Shape</b> num <b>Duplicator</b>, ligado à
+porta <b>shape</b> do Soft Body. Depois, no cartão Shape, ligue <b>Collide</b> (e ponha o
+<b>Collider Shape</b> em <b>Circle</b> se as peças forem redondas). O corpo passa a empurrar as
+peças umas para fora das outras a cada passo, e a linha <b>Substeps</b> do Soft Body (4 ou 8) é o que
+o deixa segurar quando ele é sacudido com força. A cena <code>PH2D_GPU_COOK_DEMO=129</code> mostra as
+duas lado a lado.</div>
+
 <div class="note"><b>Nenhum cartão faz mais de 32&nbsp;768 objectos</b> — é o limite por cartão da
 casa. Por isso o <code>Soft Body</code> pára em 181×181 (32&nbsp;761 bolinhas), como o
 <code>Wave</code>: pedir mais não dá mais, e no limite ele gasta um quarto de milésimo de segundo por

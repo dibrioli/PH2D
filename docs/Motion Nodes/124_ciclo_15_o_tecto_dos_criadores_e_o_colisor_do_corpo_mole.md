@@ -260,3 +260,76 @@ catálogo (o artista não o põe no grafo), e a rota da placa faz o mesmo em `1,
 | M8 | sem o param `substeps` | o gate do Bug #15 (colisor `0,4300` contra o oráculo `0,5563`) |
 | M9 | a corda sem `body` | `rope_thickness` (a corda estica `8,199`) |
 | M10 | o censo só com todas as portas | o controlo `vistos_corpo_mole` |
+
+## §6 — O smoke do dono e a decisão: o `Collide` do Shape segura o corpo mole
+
+**O report (08/10):** *«o colisor estava desligado nas duas. ao ligar não vi diferença»*. Medido
+(`sonda_os_botoes_collide_que_o_dono_ve`, pela bomba, o que se DESENHA, mediana da 2.ª metade):
+
+| `Collide` do Shape | `Collide` do Output | laranja | verde |
+|---|---|---|---|
+| não | não | `0,1406` | `0,5403` |
+| sim | não | `0,1406` | `0,5403` |
+| não | sim | `0,1406` | `0,5403` |
+| sim | sim | `0,2194` | `0,5267` |
+
+⇒ os dois botões que o artista VÊ não faziam nada sozinhos, e juntos só afastavam um pouco o
+DESENHO (o passe do fim é acabamento: não realimenta a simulação — doc 115 §15.3). O que segurava a
+verde era o cartão `Collide` fora do catálogo (o dono tirou-o do grafo em 17/09). ⛔ **A cena
+ensinava uma coisa que o artista não consegue fazer** (`CLAUDE.md` §5.0).
+
+**Decisão do dono (08/10):** *o botão `Collide` do Shape segura também as bolinhas de um corpo mole.*
+
+**Desenho (o padrão-ouro da casa: o simulador LÊ o colisor das peças que simula, DENTRO do passo —
+o que o `sim.step` faz; Cavalry põe o Soft Body numa FORMA):**
+- D1. O `motion.soft_body` passa a ser um leitor do colisor declarado: as peças entram pela porta
+  `shape` (`Grid → Duplicator(Shape) → Soft Body`), e com o `Collide` do Shape ligado a separação do
+  motor da casa (`ph2d_contact`) corre em cada passo, depois do casamento de forma e antes de a
+  velocidade ser lida — o contacto fica na velocidade sem coluna nenhuma, e sub-tica com o corpo.
+- D2. Os pares que o REPOUSO sobrepõe não colidem: o `ph2d_contact` ganha o filtro opcional
+  (`Pecas::com_ligados`), ausente ⇒ idêntico.
+- D3. O corpo passa adiante a APARÊNCIA das peças (as colunas da porta `shape`), logo elas
+  desenham-se sem um segundo Duplicator.
+- D4. Sem declaração (o `Collide` do Shape desligado) o corpo é o de hoje ao bit.
+- D5. A cena `=129` refeita assim: o mesmo par, e a diferença entre as duas é SÓ o `Collide` do
+  Shape — o gesto do dono é ligar o da esquerda e vê-la segurar.
+
+**Kill-criteria:** (1) na cena, a esquerda (desligado) atravessa-se (mediana `< 0,5·D`) e a direita
+(ligado) segura (`≥ 0,9·D`), pela bomba; (2) ligar o `Collide` do Shape da ESQUERDA fá-la segurar
+(o gesto do dono, medido); (3) desligado ⇒ byte-idêntico; (4) com a lei, o corpo não incha
+(`≤ 5 %` contra o nu); (5) `49` peças desenhadas como o Shape; (6) o custo no tecto (`32 761`
+peças) medido.
+
+### §6.1 — Construído e medido
+
+| kill-criterion | resultado |
+|---|---|
+| (1) a cena: desligado atravessa-se, ligado segura | `the_left_body_crosses_and_the_right_one_holds`: mediana `0,1043` (desligado) · mínimo `0,5535` (ligado) |
+| (2) o GESTO do dono: ligar o `Collide` do Shape da esquerda | `turning_on_the_left_shapes_collide_makes_it_hold`: a esquerda passa a `0,5535` — IGUAL à direita |
+| (3) desligado ⇒ o corpo de sempre | por construção (o contacto só corre com declaração; a mesma aritmética na mesma ordem) e os gates do corpo (`port_tests`, `tests`) verdes sem uma letra mudada |
+| (4) a lei: não incha | `a_body_of_pieces_holds_the_diameter_and_does_not_swell`: a fixtura do Bug #15 feita de PEÇAS dá `0,5022 → 0,5600` e extensão `1,8026 → 1,8063` — **os MESMOS números da rota do `motion.collide`** (as duas portas confirmam-se) |
+| (5) peças desenhadas | `49` peças em cada saída, sem segundo Duplicator |
+
+**Um achado no caminho:** a 1.ª forma do filtro perguntava pela SOMA DOS ALCANCES, e o `Collider Shape`
+do Shape nasce `Box` — uma caixa `0,28` tem alcance `0,40`, a soma `0,79` tirava do contacto pares a
+`0,6` e `0,67` no repouso, e o corpo atravessava-se com o botão ligado (`0,21`). ⇒ o filtro pergunta
+ao PRÓPRIO motor se os dois colisores já se SOBREPÕEM no repouso (`par::contato`), para qualquer
+forma; e a cena põe o `Collider Shape` em `Circle`, o mesmo disco que se desenha.
+
+**Mutações (pré-voo, alvo verde antes, restauro com `touch`):** M11 o filtro nunca segura → o gate do
+motor (`a_pair_the_body_holds_is_left_alone`) e o do corpo de peças (incha para `2,49`); M12 o corpo
+não chama o contacto → a cena (`0,0129` com o botão ligado) e o gesto do dono.
+
+⚠️ **O que continua a ser do passe do fim e não do corpo:** `Soft Body → Duplicator(Shape) → Output`
+(as formas DEPOIS do corpo) — aí o corpo não tem peças, e o `Collide` do Shape só arruma o
+DESENHO com o `Collide` do Output ligado. O tutorial 09 ensina a ordem que segura: as peças ENTRAM
+no corpo.
+
+**A cena, refeita pela FOTO outra vez:** com o raio `0,28` (maior que meio passo) as vizinhas
+sobrepunham-se por desenho, e a foto da verde parecia um monte de anéis (os contornos do colisor por
+cima). ⇒ peças de raio `0,15` (metade do passo: TOCAM-SE no repouso) e o contorno do colisor
+escondido. Medido pela bomba: desligado a mediana do pior par é **`0,075`** (contas umas sobre as
+outras), ligado o mínimo é **`0,283`** contra o diâmetro `0,30`. A lei do repouso SOBREPOSTO
+continua gateada no raio `0,28` (`a_body_of_pieces…`, `soft_body_radius`). Fotos `5`/`9`/`12 s`,
+`release`, `target/prova/c15/fotos/`.
+

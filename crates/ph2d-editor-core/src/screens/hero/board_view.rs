@@ -60,7 +60,9 @@ pub fn metrics() -> Metrics {
     Metrics {
         handle: f64::from(Spacing::Sm.px()),
         rotate_offset: f64::from(Spacing::Xl.px()),
-        snap: f64::from(Spacing::Sm.px()),
+        // 8 px de ecrã em qualquer zoom: medido no Excalidraw 0.18.1 e no tldraw 5.5.2 (W5b,
+        // `docs/MiroClone/03_guias_e_alinhamento.md` §3).
+        snap: f64::from(Spacing::Md.px()),
         drag: f64::from(crate::interaction::TAB_DRAG_THRESHOLD_PX),
         click_size: ph2d_board_edit::CLICK_SIZE,
         paste_offset: ph2d_board_edit::PASTE_OFFSET,

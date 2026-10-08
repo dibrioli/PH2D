@@ -1,0 +1,119 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-08T21:09:39.232Z",
+  "command": "node corre_guias.mjs guias_casos.json <saidas>",
+  "input": "guias_casos.json",
+  "input_sha256": "12e1890ac61242c929f3d7137dae7e1e04b5df24a54fdac2f584c11b6c13d2ba",
+  "case_sha256": "8af17f01b4d2e68f2045a54a2928f427162c426704a16238a57025bae72d47e2",
+  "inputs": {
+    "cena": [
+      {
+        "id": "A",
+        "type": "rectangle",
+        "x": 350,
+        "y": 190,
+        "width": 200,
+        "height": 120,
+        "angle": 0.5235987755982988,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "#a5d8ff",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1
+      },
+      {
+        "id": "B",
+        "type": "rectangle",
+        "x": 850,
+        "y": 560,
+        "width": 160,
+        "height": 100,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "#a5d8ff",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1
+      }
+    ],
+    "zoom": 1,
+    "sondas": [
+      {
+        "rotulo": "a_aabb_esq",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "b_canto1_de_A",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.cantos.1",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "b2_canto2_de_A",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.cantos.2",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "c_centros",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.c",
+          "a": "A.aabb.c",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "d_aabb_dir",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.r",
+          "a": "A.aabb.r",
+          "mais": 3
+        }
+      }
+    ]
+  },
+  "measured": "Por sonda: a cena montada de novo; arrasto (desce no centro do móvel ou no título da moldura, 2 px, 12 passos, o movimento final repetido e 2 quadros de espera) até a feição `de` ficar a `mais` px de ECRÃ da feição `a`; appState.snapLines e o móvel ANTES de largar; x,y,w,h,ângulo, AABB e cantos de todos DEPOIS; o desvio do encaixe = posição final − posição sem encaixe. Rotação: a pega achada pelo cursor «grab» do canvas.interactive, arco de 16 passos até ao ângulo pedido.",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "case_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "editor": "<Excalidraw> montado (excalidrawAPI público: updateScene para zoom/scroll/objectsSnapModeEnabled/selecção, getSceneElements, getAppState); rato e teclado do Playwright; janela 1280×800, deviceScaleFactor 1",
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "guias_G2_A30.json": "d1c6a3618579c054f55859169bdb0402c6463de1d6b42f52f657b1d09f1a2de6"
+  }
+}

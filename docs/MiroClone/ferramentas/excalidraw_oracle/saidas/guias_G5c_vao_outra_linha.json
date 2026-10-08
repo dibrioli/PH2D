@@ -1,0 +1,217 @@
+{
+  "caso": "G5c_vao_outra_linha",
+  "pergunta": "Vão 43→40 quando C NÃO se sobrepõe em y a A e B (C 220 abaixo): ainda encaixa?",
+  "cena": "g5_outra_linha",
+  "zoom": 1,
+  "sondas": [
+    {
+      "rotulo": "vao_43_outra_linha",
+      "sonda": {
+        "rotulo": "vao_43_outra_linha",
+        "tipo": "arrasta",
+        "mover": "C",
+        "x": {
+          "de": "aabb.l",
+          "a": "B.aabb.r",
+          "mais": 43
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          610,
+          560
+        ],
+        "p1": [
+          533,
+          560
+        ],
+        "delta_cena": [
+          -77,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "B.aabb.r",
+            "valor_alvo": 440,
+            "mais_px_ecra": 43
+          }
+        },
+        "feicoes_perto_no_plano": []
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "C",
+          "type": "rectangle",
+          "x": 483,
+          "y": 520,
+          "width": 100,
+          "height": 80,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 483,
+            "c": 533,
+            "r": 583,
+            "t": 520,
+            "m": 560,
+            "b": 600
+          },
+          "cantos": [
+            [
+              483,
+              520
+            ],
+            [
+              583,
+              520
+            ],
+            [
+              583,
+              600
+            ],
+            [
+              483,
+              600
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 200,
+            "y": 300,
+            "width": 100,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 200,
+              "c": 250,
+              "r": 300,
+              "t": 300,
+              "m": 340,
+              "b": 380
+            },
+            "cantos": [
+              [
+                200,
+                300
+              ],
+              [
+                300,
+                300
+              ],
+              [
+                300,
+                380
+              ],
+              [
+                200,
+                380
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 340,
+            "y": 300,
+            "width": 100,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 340,
+              "c": 390,
+              "r": 440,
+              "t": 300,
+              "m": 340,
+              "b": 380
+            },
+            "cantos": [
+              [
+                340,
+                300
+              ],
+              [
+                440,
+                300
+              ],
+              [
+                440,
+                380
+              ],
+              [
+                340,
+                380
+              ]
+            ]
+          },
+          {
+            "id": "C",
+            "type": "rectangle",
+            "x": 483,
+            "y": 520,
+            "width": 100,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 483,
+              "c": 533,
+              "r": 583,
+              "t": 520,
+              "m": 560,
+              "b": 600
+            },
+            "cantos": [
+              [
+                483,
+                520
+              ],
+              [
+                583,
+                520
+              ],
+              [
+                583,
+                600
+              ],
+              [
+                483,
+                600
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -77,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "C"
+        ],
+        "residuo_x_px_ecra": 43
+      }
+    }
+  ]
+}

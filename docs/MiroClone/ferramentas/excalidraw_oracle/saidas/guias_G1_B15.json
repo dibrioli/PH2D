@@ -1,0 +1,1576 @@
+{
+  "caso": "G1_B15",
+  "pergunta": "A 0° (300..640), B 160×100 a 15°: o encaixe usa a AABB de B ou os cantos rodados?",
+  "cena": "g1_15",
+  "zoom": 1,
+  "sondas": [
+    {
+      "rotulo": "a_aabb_esq",
+      "sonda": {
+        "rotulo": "a_aabb_esq",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 3
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          900,
+          560
+        ],
+        "p1": [
+          393,
+          560
+        ],
+        "delta_cena": [
+          -507,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 300,
+            "mais_px_ecra": 3
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "canto2",
+            "outro": "A.aabb.c",
+            "px_ecra": 12.666886
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.r",
+            "outro": "A.aabb.c",
+            "px_ecra": -13.215018
+          },
+          {
+            "eixo": "x",
+            "movel": "canto1",
+            "outro": "A.aabb.c",
+            "px_ecra": -13.215018
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                300,
+                150
+              ],
+              [
+                300,
+                270
+              ],
+              [
+                300,
+                587.590768
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 310.215018,
+          "y": 510,
+          "width": 160,
+          "height": 100,
+          "angle": 0.2617993877991494,
+          "angulo_graus": 15,
+          "frameId": null,
+          "aabb": {
+            "l": 300,
+            "c": 390.215018,
+            "r": 480.430036,
+            "t": 490.998185,
+            "m": 560,
+            "b": 629.001815
+          },
+          "cantos": [
+            [
+              325.881904,
+              490.998185
+            ],
+            [
+              480.430036,
+              532.409232
+            ],
+            [
+              454.548132,
+              629.001815
+            ],
+            [
+              300,
+              587.590768
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 300,
+            "y": 150,
+            "width": 340,
+            "height": 120,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 300,
+              "c": 470,
+              "r": 640,
+              "t": 150,
+              "m": 210,
+              "b": 270
+            },
+            "cantos": [
+              [
+                300,
+                150
+              ],
+              [
+                640,
+                150
+              ],
+              [
+                640,
+                270
+              ],
+              [
+                300,
+                270
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 310.215018,
+            "y": 510,
+            "width": 160,
+            "height": 100,
+            "angle": 0.2617993877991494,
+            "angulo_graus": 15,
+            "frameId": null,
+            "aabb": {
+              "l": 300,
+              "c": 390.215018,
+              "r": 480.430036,
+              "t": 490.998185,
+              "m": 560,
+              "b": 629.001815
+            },
+            "cantos": [
+              [
+                325.881904,
+                490.998185
+              ],
+              [
+                480.430036,
+                532.409232
+              ],
+              [
+                454.548132,
+                629.001815
+              ],
+              [
+                300,
+                587.590768
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -509.784982,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          -2.784982,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "b_canto1_esq",
+      "sonda": {
+        "rotulo": "b_canto1_esq",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "cantos.1",
+          "a": "A.aabb.l",
+          "mais": 3
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          900,
+          560
+        ],
+        "p1": [
+          367,
+          560
+        ],
+        "delta_cena": [
+          -533,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "cantos.1",
+            "a": "A.aabb.l",
+            "valor_alvo": 300,
+            "mais_px_ecra": 3
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -2.666886
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -2.666886
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -2.666886
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.r",
+            "outro": "A.aabb.c",
+            "px_ecra": 12.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "canto1",
+            "outro": "A.aabb.c",
+            "px_ecra": 12.784982
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                300,
+                150
+              ],
+              [
+                300,
+                270
+              ],
+              [
+                300,
+                490.998185
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 284.333114,
+          "y": 510,
+          "width": 160,
+          "height": 100,
+          "angle": 0.2617993877991494,
+          "angulo_graus": 15,
+          "frameId": null,
+          "aabb": {
+            "l": 274.118096,
+            "c": 364.333114,
+            "r": 454.548132,
+            "t": 490.998185,
+            "m": 560,
+            "b": 629.001815
+          },
+          "cantos": [
+            [
+              300,
+              490.998185
+            ],
+            [
+              454.548132,
+              532.409232
+            ],
+            [
+              428.666228,
+              629.001815
+            ],
+            [
+              274.118096,
+              587.590768
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 300,
+            "y": 150,
+            "width": 340,
+            "height": 120,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 300,
+              "c": 470,
+              "r": 640,
+              "t": 150,
+              "m": 210,
+              "b": 270
+            },
+            "cantos": [
+              [
+                300,
+                150
+              ],
+              [
+                640,
+                150
+              ],
+              [
+                640,
+                270
+              ],
+              [
+                300,
+                270
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 284.333114,
+            "y": 510,
+            "width": 160,
+            "height": 100,
+            "angle": 0.2617993877991494,
+            "angulo_graus": 15,
+            "frameId": null,
+            "aabb": {
+              "l": 274.118096,
+              "c": 364.333114,
+              "r": 454.548132,
+              "t": 490.998185,
+              "m": 560,
+              "b": 629.001815
+            },
+            "cantos": [
+              [
+                300,
+                490.998185
+              ],
+              [
+                454.548132,
+                532.409232
+              ],
+              [
+                428.666228,
+                629.001815
+              ],
+              [
+                274.118096,
+                587.590768
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -535.666886,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          -2.666886,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "b2_canto1_esq_menos",
+      "sonda": {
+        "rotulo": "b2_canto1_esq_menos",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "cantos.1",
+          "a": "A.aabb.l",
+          "mais": -3
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          900,
+          560
+        ],
+        "p1": [
+          361,
+          560
+        ],
+        "delta_cena": [
+          -539,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "cantos.1",
+            "a": "A.aabb.l",
+            "valor_alvo": 300,
+            "mais_px_ecra": -3
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 3.333114
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 3.333114
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 3.333114
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.r",
+            "outro": "A.aabb.c",
+            "px_ecra": 18.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "canto1",
+            "outro": "A.aabb.c",
+            "px_ecra": 18.784982
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                300,
+                150
+              ],
+              [
+                300,
+                270
+              ],
+              [
+                300,
+                490.998185
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 284.333114,
+          "y": 510,
+          "width": 160,
+          "height": 100,
+          "angle": 0.2617993877991494,
+          "angulo_graus": 15,
+          "frameId": null,
+          "aabb": {
+            "l": 274.118096,
+            "c": 364.333114,
+            "r": 454.548132,
+            "t": 490.998185,
+            "m": 560,
+            "b": 629.001815
+          },
+          "cantos": [
+            [
+              300,
+              490.998185
+            ],
+            [
+              454.548132,
+              532.409232
+            ],
+            [
+              428.666228,
+              629.001815
+            ],
+            [
+              274.118096,
+              587.590768
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 300,
+            "y": 150,
+            "width": 340,
+            "height": 120,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 300,
+              "c": 470,
+              "r": 640,
+              "t": 150,
+              "m": 210,
+              "b": 270
+            },
+            "cantos": [
+              [
+                300,
+                150
+              ],
+              [
+                640,
+                150
+              ],
+              [
+                640,
+                270
+              ],
+              [
+                300,
+                270
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 284.333114,
+            "y": 510,
+            "width": 160,
+            "height": 100,
+            "angle": 0.2617993877991494,
+            "angulo_graus": 15,
+            "frameId": null,
+            "aabb": {
+              "l": 274.118096,
+              "c": 364.333114,
+              "r": 454.548132,
+              "t": 490.998185,
+              "m": 560,
+              "b": 629.001815
+            },
+            "cantos": [
+              [
+                300,
+                490.998185
+              ],
+              [
+                454.548132,
+                532.409232
+              ],
+              [
+                428.666228,
+                629.001815
+              ],
+              [
+                274.118096,
+                587.590768
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -535.666886,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          3.333114,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "c_centros",
+      "sonda": {
+        "rotulo": "c_centros",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.c",
+          "a": "A.aabb.c",
+          "mais": 3
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          900,
+          560
+        ],
+        "p1": [
+          473,
+          560
+        ],
+        "delta_cena": [
+          -427,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.c",
+            "a": "A.aabb.c",
+            "valor_alvo": 470,
+            "mais_px_ecra": 3
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.c",
+            "outro": "A.aabb.c",
+            "px_ecra": -3
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                470,
+                210
+              ],
+              [
+                470,
+                560
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 390,
+          "y": 510,
+          "width": 160,
+          "height": 100,
+          "angle": 0.2617993877991494,
+          "angulo_graus": 15,
+          "frameId": null,
+          "aabb": {
+            "l": 379.784982,
+            "c": 470,
+            "r": 560.215018,
+            "t": 490.998185,
+            "m": 560,
+            "b": 629.001815
+          },
+          "cantos": [
+            [
+              405.666886,
+              490.998185
+            ],
+            [
+              560.215018,
+              532.409232
+            ],
+            [
+              534.333114,
+              629.001815
+            ],
+            [
+              379.784982,
+              587.590768
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 300,
+            "y": 150,
+            "width": 340,
+            "height": 120,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 300,
+              "c": 470,
+              "r": 640,
+              "t": 150,
+              "m": 210,
+              "b": 270
+            },
+            "cantos": [
+              [
+                300,
+                150
+              ],
+              [
+                640,
+                150
+              ],
+              [
+                640,
+                270
+              ],
+              [
+                300,
+                270
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 390,
+            "y": 510,
+            "width": 160,
+            "height": 100,
+            "angle": 0.2617993877991494,
+            "angulo_graus": 15,
+            "frameId": null,
+            "aabb": {
+              "l": 379.784982,
+              "c": 470,
+              "r": 560.215018,
+              "t": 490.998185,
+              "m": 560,
+              "b": 629.001815
+            },
+            "cantos": [
+              [
+                405.666886,
+                490.998185
+              ],
+              [
+                560.215018,
+                532.409232
+              ],
+              [
+                534.333114,
+                629.001815
+              ],
+              [
+                379.784982,
+                587.590768
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -430,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          -3,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "a_aabb_esq_sem_encaixe",
+      "sonda": {
+        "rotulo": "a_aabb_esq_sem_encaixe",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 3
+        },
+        "snap": false
+      },
+      "modo_ligado_antes": false,
+      "plano": {
+        "p0": [
+          900,
+          560
+        ],
+        "p1": [
+          393,
+          560
+        ],
+        "delta_cena": [
+          -507,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 300,
+            "mais_px_ecra": 3
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -2.784982
+          },
+          {
+            "eixo": "x",
+            "movel": "canto2",
+            "outro": "A.aabb.c",
+            "px_ecra": 12.666886
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.r",
+            "outro": "A.aabb.c",
+            "px_ecra": -13.215018
+          },
+          {
+            "eixo": "x",
+            "movel": "canto1",
+            "outro": "A.aabb.c",
+            "px_ecra": -13.215018
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": false,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 313,
+          "y": 510,
+          "width": 160,
+          "height": 100,
+          "angle": 0.2617993877991494,
+          "angulo_graus": 15,
+          "frameId": null,
+          "aabb": {
+            "l": 302.784982,
+            "c": 393,
+            "r": 483.215018,
+            "t": 490.998185,
+            "m": 560,
+            "b": 629.001815
+          },
+          "cantos": [
+            [
+              328.666886,
+              490.998185
+            ],
+            [
+              483.215018,
+              532.409232
+            ],
+            [
+              457.333114,
+              629.001815
+            ],
+            [
+              302.784982,
+              587.590768
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 300,
+            "y": 150,
+            "width": 340,
+            "height": 120,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 300,
+              "c": 470,
+              "r": 640,
+              "t": 150,
+              "m": 210,
+              "b": 270
+            },
+            "cantos": [
+              [
+                300,
+                150
+              ],
+              [
+                640,
+                150
+              ],
+              [
+                640,
+                270
+              ],
+              [
+                300,
+                270
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 313,
+            "y": 510,
+            "width": 160,
+            "height": 100,
+            "angle": 0.2617993877991494,
+            "angulo_graus": 15,
+            "frameId": null,
+            "aabb": {
+              "l": 302.784982,
+              "c": 393,
+              "r": 483.215018,
+              "t": 490.998185,
+              "m": 560,
+              "b": 629.001815
+            },
+            "cantos": [
+              [
+                328.666886,
+                490.998185
+              ],
+              [
+                483.215018,
+                532.409232
+              ],
+              [
+                457.333114,
+                629.001815
+              ],
+              [
+                302.784982,
+                587.590768
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -507,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 2.784982
+      }
+    },
+    {
+      "rotulo": "d_aabb_topo",
+      "sonda": {
+        "rotulo": "d_aabb_topo",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.r",
+          "mais": 60
+        },
+        "y": {
+          "de": "aabb.t",
+          "a": "A.aabb.b",
+          "mais": 3
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          900,
+          560
+        ],
+        "p1": [
+          790,
+          342
+        ],
+        "delta_cena": [
+          -110,
+          -218
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.r",
+            "valor_alvo": 640,
+            "mais_px_ecra": 60
+          },
+          "y": {
+            "de": "aabb.t",
+            "a": "A.aabb.b",
+            "valor_alvo": 270,
+            "mais_px_ecra": 3
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "y",
+            "movel": "aabb.t",
+            "outro": "A.aabb.b",
+            "px_ecra": -2.998185
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.t",
+            "outro": "A.canto2",
+            "px_ecra": -2.998185
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.t",
+            "outro": "A.canto3",
+            "px_ecra": -2.998185
+          },
+          {
+            "eixo": "y",
+            "movel": "canto0",
+            "outro": "A.aabb.b",
+            "px_ecra": -2.998185
+          },
+          {
+            "eixo": "y",
+            "movel": "canto0",
+            "outro": "A.canto2",
+            "px_ecra": -2.998185
+          },
+          {
+            "eixo": "y",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -2.998185
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                300,
+                270
+              ],
+              [
+                640,
+                270
+              ],
+              [
+                725.666886,
+                270
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 710,
+          "y": 289.001815,
+          "width": 160,
+          "height": 100,
+          "angle": 0.2617993877991494,
+          "angulo_graus": 15,
+          "frameId": null,
+          "aabb": {
+            "l": 699.784982,
+            "c": 790,
+            "r": 880.215018,
+            "t": 270,
+            "m": 339.001815,
+            "b": 408.00363
+          },
+          "cantos": [
+            [
+              725.666886,
+              270
+            ],
+            [
+              880.215018,
+              311.411047
+            ],
+            [
+              854.333114,
+              408.00363
+            ],
+            [
+              699.784982,
+              366.592583
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 300,
+            "y": 150,
+            "width": 340,
+            "height": 120,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 300,
+              "c": 470,
+              "r": 640,
+              "t": 150,
+              "m": 210,
+              "b": 270
+            },
+            "cantos": [
+              [
+                300,
+                150
+              ],
+              [
+                640,
+                150
+              ],
+              [
+                640,
+                270
+              ],
+              [
+                300,
+                270
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 710,
+            "y": 289.001815,
+            "width": 160,
+            "height": 100,
+            "angle": 0.2617993877991494,
+            "angulo_graus": 15,
+            "frameId": null,
+            "aabb": {
+              "l": 699.784982,
+              "c": 790,
+              "r": 880.215018,
+              "t": 270,
+              "m": 339.001815,
+              "b": 408.00363
+            },
+            "cantos": [
+              [
+                725.666886,
+                270
+              ],
+              [
+                880.215018,
+                311.411047
+              ],
+              [
+                854.333114,
+                408.00363
+              ],
+              [
+                699.784982,
+                366.592583
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -110,
+          -220.998185
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          -2.998185
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 59.784982,
+        "residuo_y_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "e_canto1_topo",
+      "sonda": {
+        "rotulo": "e_canto1_topo",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.r",
+          "mais": 60
+        },
+        "y": {
+          "de": "cantos.1",
+          "a": "A.aabb.b",
+          "mais": 3
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          900,
+          560
+        ],
+        "p1": [
+          790,
+          301
+        ],
+        "delta_cena": [
+          -110,
+          -259
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.r",
+            "valor_alvo": 640,
+            "mais_px_ecra": 60
+          },
+          "y": {
+            "de": "cantos.1",
+            "a": "A.aabb.b",
+            "valor_alvo": 270,
+            "mais_px_ecra": 3
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "y",
+            "movel": "canto1",
+            "outro": "A.aabb.b",
+            "px_ecra": -3.409232
+          },
+          {
+            "eixo": "y",
+            "movel": "canto1",
+            "outro": "A.canto2",
+            "px_ecra": -3.409232
+          },
+          {
+            "eixo": "y",
+            "movel": "canto1",
+            "outro": "A.canto3",
+            "px_ecra": -3.409232
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                300,
+                270
+              ],
+              [
+                640,
+                270
+              ],
+              [
+                880.215018,
+                270
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 710,
+          "y": 247.59076800000003,
+          "width": 160,
+          "height": 100,
+          "angle": 0.2617993877991494,
+          "angulo_graus": 15,
+          "frameId": null,
+          "aabb": {
+            "l": 699.784982,
+            "c": 790,
+            "r": 880.215018,
+            "t": 228.588953,
+            "m": 297.590768,
+            "b": 366.592583
+          },
+          "cantos": [
+            [
+              725.666886,
+              228.588953
+            ],
+            [
+              880.215018,
+              270
+            ],
+            [
+              854.333114,
+              366.592583
+            ],
+            [
+              699.784982,
+              325.181536
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 300,
+            "y": 150,
+            "width": 340,
+            "height": 120,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 300,
+              "c": 470,
+              "r": 640,
+              "t": 150,
+              "m": 210,
+              "b": 270
+            },
+            "cantos": [
+              [
+                300,
+                150
+              ],
+              [
+                640,
+                150
+              ],
+              [
+                640,
+                270
+              ],
+              [
+                300,
+                270
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 710,
+            "y": 247.59076800000003,
+            "width": 160,
+            "height": 100,
+            "angle": 0.2617993877991494,
+            "angulo_graus": 15,
+            "frameId": null,
+            "aabb": {
+              "l": 699.784982,
+              "c": 790,
+              "r": 880.215018,
+              "t": 228.588953,
+              "m": 297.590768,
+              "b": 366.592583
+            },
+            "cantos": [
+              [
+                725.666886,
+                228.588953
+              ],
+              [
+                880.215018,
+                270
+              ],
+              [
+                854.333114,
+                366.592583
+              ],
+              [
+                699.784982,
+                325.181536
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -110,
+          -262.409232
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          -3.409232
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 59.784982,
+        "residuo_y_px_ecra": 0
+      }
+    }
+  ]
+}

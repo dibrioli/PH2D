@@ -1,0 +1,562 @@
+{
+  "caso": "G5b_vao_meio",
+  "pergunta": "A(200..300) e C(500..600): B (100 de largura) posto 3 px fora do meio (vãos 53/47; o meio é 50/50): encaixa no meio?",
+  "cena": "g5_meio",
+  "zoom": 1,
+  "sondas": [
+    {
+      "rotulo": "meio_mais3",
+      "sonda": {
+        "rotulo": "meio_mais3",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.r",
+          "mais": 53
+        },
+        "y": {
+          "de": "aabb.t",
+          "a": "A.aabb.t",
+          "mais": 0
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          430,
+          560
+        ],
+        "p1": [
+          403,
+          340
+        ],
+        "delta_cena": [
+          -27,
+          -220
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.r",
+            "valor_alvo": 300,
+            "mais_px_ecra": 53
+          },
+          "y": {
+            "de": "aabb.t",
+            "a": "A.aabb.t",
+            "valor_alvo": 300,
+            "mais_px_ecra": 0
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "y",
+            "movel": "aabb.b",
+            "outro": "A.aabb.b",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.b",
+            "outro": "A.canto2",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.b",
+            "outro": "A.canto3",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.b",
+            "outro": "C.aabb.b",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.b",
+            "outro": "C.canto2",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.b",
+            "outro": "C.canto3",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.m",
+            "outro": "A.aabb.m",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.m",
+            "outro": "C.aabb.m",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.t",
+            "outro": "A.aabb.t",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.t",
+            "outro": "A.canto0",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.t",
+            "outro": "A.canto1",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.t",
+            "outro": "C.aabb.t",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.t",
+            "outro": "C.canto0",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "aabb.t",
+            "outro": "C.canto1",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto0",
+            "outro": "A.aabb.t",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto0",
+            "outro": "A.canto1",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto0",
+            "outro": "C.aabb.t",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto0",
+            "outro": "C.canto0",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto0",
+            "outro": "C.canto1",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto1",
+            "outro": "A.aabb.t",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto1",
+            "outro": "A.canto0",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto1",
+            "outro": "A.canto1",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto1",
+            "outro": "C.aabb.t",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto1",
+            "outro": "C.canto0",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto1",
+            "outro": "C.canto1",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto2",
+            "outro": "A.aabb.b",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto2",
+            "outro": "A.canto2",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto2",
+            "outro": "A.canto3",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto2",
+            "outro": "C.aabb.b",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto2",
+            "outro": "C.canto2",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto2",
+            "outro": "C.canto3",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto3",
+            "outro": "A.aabb.b",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto3",
+            "outro": "A.canto2",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto3",
+            "outro": "C.aabb.b",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto3",
+            "outro": "C.canto2",
+            "px_ecra": 0
+          },
+          {
+            "eixo": "y",
+            "movel": "canto3",
+            "outro": "C.canto3",
+            "px_ecra": 0
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                200,
+                300
+              ],
+              [
+                300,
+                300
+              ],
+              [
+                350,
+                300
+              ],
+              [
+                450,
+                300
+              ],
+              [
+                500,
+                300
+              ],
+              [
+                600,
+                300
+              ]
+            ]
+          },
+          {
+            "type": "points",
+            "points": [
+              [
+                250,
+                340
+              ],
+              [
+                400,
+                340
+              ],
+              [
+                550,
+                340
+              ]
+            ]
+          },
+          {
+            "type": "points",
+            "points": [
+              [
+                200,
+                380
+              ],
+              [
+                300,
+                380
+              ],
+              [
+                350,
+                380
+              ],
+              [
+                450,
+                380
+              ],
+              [
+                500,
+                380
+              ],
+              [
+                600,
+                380
+              ]
+            ]
+          },
+          {
+            "type": "gap",
+            "direction": "horizontal",
+            "points": [
+              [
+                300,
+                340
+              ],
+              [
+                350,
+                340
+              ]
+            ]
+          },
+          {
+            "type": "gap",
+            "direction": "horizontal",
+            "points": [
+              [
+                450,
+                340
+              ],
+              [
+                500,
+                340
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 350,
+          "y": 300,
+          "width": 100,
+          "height": 80,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 350,
+            "c": 400,
+            "r": 450,
+            "t": 300,
+            "m": 340,
+            "b": 380
+          },
+          "cantos": [
+            [
+              350,
+              300
+            ],
+            [
+              450,
+              300
+            ],
+            [
+              450,
+              380
+            ],
+            [
+              350,
+              380
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 200,
+            "y": 300,
+            "width": 100,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 200,
+              "c": 250,
+              "r": 300,
+              "t": 300,
+              "m": 340,
+              "b": 380
+            },
+            "cantos": [
+              [
+                200,
+                300
+              ],
+              [
+                300,
+                300
+              ],
+              [
+                300,
+                380
+              ],
+              [
+                200,
+                380
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 350,
+            "y": 300,
+            "width": 100,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 350,
+              "c": 400,
+              "r": 450,
+              "t": 300,
+              "m": 340,
+              "b": 380
+            },
+            "cantos": [
+              [
+                350,
+                300
+              ],
+              [
+                450,
+                300
+              ],
+              [
+                450,
+                380
+              ],
+              [
+                350,
+                380
+              ]
+            ]
+          },
+          {
+            "id": "C",
+            "type": "rectangle",
+            "x": 500,
+            "y": 300,
+            "width": 100,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 500,
+              "c": 550,
+              "r": 600,
+              "t": 300,
+              "m": 340,
+              "b": 380
+            },
+            "cantos": [
+              [
+                500,
+                300
+              ],
+              [
+                600,
+                300
+              ],
+              [
+                600,
+                380
+              ],
+              [
+                500,
+                380
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -30,
+          -220
+        ],
+        "encaixe_desvio_cena": [
+          -3,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 50,
+        "residuo_y_px_ecra": 0
+      }
+    }
+  ]
+}

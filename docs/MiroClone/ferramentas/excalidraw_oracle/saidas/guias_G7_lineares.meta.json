@@ -1,0 +1,312 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-08T21:11:14.355Z",
+  "command": "node corre_guias.mjs guias_casos.json <saidas>",
+  "input": "guias_casos.json",
+  "input_sha256": "12e1890ac61242c929f3d7137dae7e1e04b5df24a54fdac2f584c11b6c13d2ba",
+  "case_sha256": "da8c76ac4832edef81de51ac3dd5fc2d6770d1a71a8fb4b06abd493c99e08b32",
+  "inputs": {
+    "cena": [
+      {
+        "id": "L",
+        "type": "line",
+        "x": 100,
+        "y": 150,
+        "width": 200,
+        "height": 110,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            120,
+            110
+          ],
+          [
+            200,
+            50
+          ]
+        ]
+      },
+      {
+        "id": "S",
+        "type": "arrow",
+        "x": 400,
+        "y": 330,
+        "width": 180,
+        "height": 70,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            180,
+            70
+          ]
+        ]
+      },
+      {
+        "id": "L2",
+        "type": "line",
+        "x": 500,
+        "y": 700,
+        "width": 200,
+        "height": 60,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            200,
+            30
+          ],
+          [
+            40,
+            60
+          ]
+        ]
+      },
+      {
+        "id": "D",
+        "type": "freedraw",
+        "x": 760,
+        "y": 120,
+        "width": 70,
+        "height": 140,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1,
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            25,
+            -20
+          ],
+          [
+            70,
+            10
+          ],
+          [
+            25,
+            60
+          ],
+          [
+            0,
+            90
+          ],
+          [
+            70,
+            120
+          ]
+        ],
+        "pressures": [],
+        "simulatePressure": true
+      },
+      {
+        "id": "B",
+        "type": "rectangle",
+        "x": 900,
+        "y": 600,
+        "width": 10,
+        "height": 10,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "#a5d8ff",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1
+      }
+    ],
+    "zoom": 1,
+    "sondas": [
+      {
+        "rotulo": "a_linha_ponta_esq",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "L.aabb.l",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "b_linha_vertice_meio",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "L.ponto.1",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "c_linha_dir",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "L.aabb.r",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "c2_linha_centro_aabb",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "L.aabb.c",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "c3_linha2_vertice_meio_e_extremo",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "L2.ponto.1",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "c4_linha2_ponta_final_interior",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "L2.ponto.2",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "d_seta_ponta_esq",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.r",
+          "a": "S.aabb.l",
+          "mais": -3
+        },
+        "y": {
+          "de": "aabb.t",
+          "a": "S.aabb.b",
+          "mais": 120
+        }
+      },
+      {
+        "rotulo": "e_seta_ponta_dir",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "S.aabb.r",
+          "mais": 3
+        },
+        "y": {
+          "de": "aabb.t",
+          "a": "S.aabb.b",
+          "mais": 120
+        }
+      },
+      {
+        "rotulo": "f_tracolivre_esq",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "D.aabb.l",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "g_tracolivre_dir",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "D.aabb.r",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "h_tracolivre_vertice_meio",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.r",
+          "a": "D.ponto.1",
+          "mais": -3
+        }
+      }
+    ]
+  },
+  "measured": "Por sonda: a cena montada de novo; arrasto (desce no centro do móvel ou no título da moldura, 2 px, 12 passos, o movimento final repetido e 2 quadros de espera) até a feição `de` ficar a `mais` px de ECRÃ da feição `a`; appState.snapLines e o móvel ANTES de largar; x,y,w,h,ângulo, AABB e cantos de todos DEPOIS; o desvio do encaixe = posição final − posição sem encaixe. Rotação: a pega achada pelo cursor «grab» do canvas.interactive, arco de 16 passos até ao ângulo pedido.",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "case_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "editor": "<Excalidraw> montado (excalidrawAPI público: updateScene para zoom/scroll/objectsSnapModeEnabled/selecção, getSceneElements, getAppState); rato e teclado do Playwright; janela 1280×800, deviceScaleFactor 1",
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "guias_G7_lineares.json": "5b79bc87d099b1ec45485bef31bc55b0ca337c102ef392faf629ac29926275f0"
+  }
+}

@@ -7,6 +7,24 @@
 //! 2. alinhar a rotação não existe — rodar perto do ângulo de outro objecto não encaixa nele;
 //! 3. frames: o frame não é alvo, e arrastado alinha a união dos FILHOS (vazio, nada);
 //! 4. dentro de um frame rodado as formas não se alinham entre si (nos eixos do frame).
+//!
+//! Oráculos corridos por script (08/10, duas corridas byte a byte iguais): `@excalidraw/excalidraw`
+//! 0.18.1 (`excalidraw_oracle/corre_guias.mjs`, 30/30) e `tldraw` 5.5.2 (`tldraw_oracle/corre_guias.mjs`,
+//! 16/16). Os números das fixtures `saidas/guias_*.json`, transcritos:
+//!
+//! | caso | Excalidraw | tldraw |
+//! |---|---|---|
+//! | G1 rodado 15/30/37/45° que se move, canto de DENTRO a 3 px | vai ao x do alvo exacto (300), a caixa longe: 274,1 · 250 · 239,8 · 229,3 | encaixa 8/8, desvio −3 |
+//! | G2 alvo a 30° | os 4 x dos cantos: 333,40 · 393,40 · 506,60 · 566,60; centro 450 | cantos (240; 253,92) (300; 150) (413,21; 353,92) (473,21; 250) |
+//! | G3 os dois a 30°, aresta paralela a 3 px | nada; 0 linhas oblíquas em 142 sondas | 0 oblíquas |
+//! | G4 rodar perto de 30° | ângulo do ponteiro (28,02 · 1,64); `Shift`: 28,02 → 30 · 8,25 → 15 | ângulo do ponteiro, arredondado ao grau; `Shift`: 37 → 30 |
+//! | G5 vãos A·40·B, C a 43 | C a 40 (também 37/41/46); meio 53/47 → 50 | 43/37/48 → 40; meio → 50 |
+//! | G6 frames | alvo; arrastado pela caixa dele; o filho alinha com o de FORA | alvo; arrastado pela caixa; o filho NUNCA com o de fora |
+//! | G8 tolerância | 8 px de ecrã, zoom 1 e 2 | 8 px de ecrã, zoom 1 e 2 |
+//!
+//! ⛔ **Divergências escolhidas** (`docs/MiroClone/03_guias_e_alinhamento.md` §2–§3): guias nos eixos
+//! PRÓPRIOS de um rodado e o encaixe do ÂNGULO (o pedido do dono — nenhum dos dois o faz); o filho só
+//! com a casa dele (o tldraw, não o Excalidraw); sem arredondar ao grau ao largar (o tldraw).
 
 use super::*;
 use ph2d_board_model::Frame as BoardFrame;

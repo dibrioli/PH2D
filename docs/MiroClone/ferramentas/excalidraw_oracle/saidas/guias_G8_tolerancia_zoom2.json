@@ -1,0 +1,7398 @@
+{
+  "caso": "G8_tolerancia_zoom2",
+  "pergunta": "Zoom 2: a que distância (px de ECRÃ) da esquerda de A o encaixe deixa de acontecer?",
+  "cena": "g8_z2",
+  "zoom": 2,
+  "sondas": [
+    {
+      "rotulo": "d-15",
+      "sonda": {
+        "rotulo": "d-15",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -15
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          225,
+          540
+        ],
+        "delta_cena": [
+          -307.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -15
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 15
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 15
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 15
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 92.5,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 92.5,
+            "c": 112.5,
+            "r": 132.5,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              92.5,
+              250
+            ],
+            [
+              132.5,
+              250
+            ],
+            [
+              132.5,
+              290
+            ],
+            [
+              92.5,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 92.5,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 92.5,
+              "c": 112.5,
+              "r": 132.5,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                92.5,
+                250
+              ],
+              [
+                132.5,
+                250
+              ],
+              [
+                132.5,
+                290
+              ],
+              [
+                92.5,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -307.5,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": -15
+      }
+    },
+    {
+      "rotulo": "d-14",
+      "sonda": {
+        "rotulo": "d-14",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -14
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          226,
+          540
+        ],
+        "delta_cena": [
+          -307,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -14
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 14
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 14
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 14
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 93,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 93,
+            "c": 113,
+            "r": 133,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              93,
+              250
+            ],
+            [
+              133,
+              250
+            ],
+            [
+              133,
+              290
+            ],
+            [
+              93,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 93,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 93,
+              "c": 113,
+              "r": 133,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                93,
+                250
+              ],
+              [
+                133,
+                250
+              ],
+              [
+                133,
+                290
+              ],
+              [
+                93,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -307,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": -14
+      }
+    },
+    {
+      "rotulo": "d-13",
+      "sonda": {
+        "rotulo": "d-13",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -13
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          227,
+          540
+        ],
+        "delta_cena": [
+          -306.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -13
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 13
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 13
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 13
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 93.5,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 93.5,
+            "c": 113.5,
+            "r": 133.5,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              93.5,
+              250
+            ],
+            [
+              133.5,
+              250
+            ],
+            [
+              133.5,
+              290
+            ],
+            [
+              93.5,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 93.5,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 93.5,
+              "c": 113.5,
+              "r": 133.5,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                93.5,
+                250
+              ],
+              [
+                133.5,
+                250
+              ],
+              [
+                133.5,
+                290
+              ],
+              [
+                93.5,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -306.5,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": -13
+      }
+    },
+    {
+      "rotulo": "d-12",
+      "sonda": {
+        "rotulo": "d-12",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -12
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          228,
+          540
+        ],
+        "delta_cena": [
+          -306,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -12
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 12
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 12
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 12
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 94,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 94,
+            "c": 114,
+            "r": 134,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              94,
+              250
+            ],
+            [
+              134,
+              250
+            ],
+            [
+              134,
+              290
+            ],
+            [
+              94,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 94,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 94,
+              "c": 114,
+              "r": 134,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                94,
+                250
+              ],
+              [
+                134,
+                250
+              ],
+              [
+                134,
+                290
+              ],
+              [
+                94,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -306,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": -12
+      }
+    },
+    {
+      "rotulo": "d-11",
+      "sonda": {
+        "rotulo": "d-11",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -11
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          229,
+          540
+        ],
+        "delta_cena": [
+          -305.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -11
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 11
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 11
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 11
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 94.5,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 94.5,
+            "c": 114.5,
+            "r": 134.5,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              94.5,
+              250
+            ],
+            [
+              134.5,
+              250
+            ],
+            [
+              134.5,
+              290
+            ],
+            [
+              94.5,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 94.5,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 94.5,
+              "c": 114.5,
+              "r": 134.5,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                94.5,
+                250
+              ],
+              [
+                134.5,
+                250
+              ],
+              [
+                134.5,
+                290
+              ],
+              [
+                94.5,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -305.5,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": -11
+      }
+    },
+    {
+      "rotulo": "d-10",
+      "sonda": {
+        "rotulo": "d-10",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -10
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          230,
+          540
+        ],
+        "delta_cena": [
+          -305,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -10
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 10
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 10
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 10
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 95,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 95,
+            "c": 115,
+            "r": 135,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              95,
+              250
+            ],
+            [
+              135,
+              250
+            ],
+            [
+              135,
+              290
+            ],
+            [
+              95,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 95,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 95,
+              "c": 115,
+              "r": 135,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                95,
+                250
+              ],
+              [
+                135,
+                250
+              ],
+              [
+                135,
+                290
+              ],
+              [
+                95,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -305,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": -10
+      }
+    },
+    {
+      "rotulo": "d-9",
+      "sonda": {
+        "rotulo": "d-9",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -9
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          231,
+          540
+        ],
+        "delta_cena": [
+          -304.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -9
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 9
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 9
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 9
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 95.5,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 95.5,
+            "c": 115.5,
+            "r": 135.5,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              95.5,
+              250
+            ],
+            [
+              135.5,
+              250
+            ],
+            [
+              135.5,
+              290
+            ],
+            [
+              95.5,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 95.5,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 95.5,
+              "c": 115.5,
+              "r": 135.5,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                95.5,
+                250
+              ],
+              [
+                135.5,
+                250
+              ],
+              [
+                135.5,
+                290
+              ],
+              [
+                95.5,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -304.5,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": -9
+      }
+    },
+    {
+      "rotulo": "d-8",
+      "sonda": {
+        "rotulo": "d-8",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -8
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          232,
+          540
+        ],
+        "delta_cena": [
+          -304,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -8
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 8
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 8
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 8
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          4,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d-7",
+      "sonda": {
+        "rotulo": "d-7",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -7
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          233,
+          540
+        ],
+        "delta_cena": [
+          -303.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -7
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 7
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 7
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 7
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          3.5,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d-6",
+      "sonda": {
+        "rotulo": "d-6",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -6
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          234,
+          540
+        ],
+        "delta_cena": [
+          -303,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -6
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 6
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 6
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 6
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          3,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d-5",
+      "sonda": {
+        "rotulo": "d-5",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -5
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          235,
+          540
+        ],
+        "delta_cena": [
+          -302.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -5
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 5
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 5
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 5
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          2.5,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d-4",
+      "sonda": {
+        "rotulo": "d-4",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -4
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          236,
+          540
+        ],
+        "delta_cena": [
+          -302,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -4
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 4
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 4
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 4
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          2,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d-3",
+      "sonda": {
+        "rotulo": "d-3",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -3
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          237,
+          540
+        ],
+        "delta_cena": [
+          -301.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -3
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 3
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 3
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 3
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          1.5,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d-2",
+      "sonda": {
+        "rotulo": "d-2",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -2
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          238,
+          540
+        ],
+        "delta_cena": [
+          -301,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -2
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 2
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 2
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 2
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          1,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d-1",
+      "sonda": {
+        "rotulo": "d-1",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -1
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          239,
+          540
+        ],
+        "delta_cena": [
+          -300.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": -1
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": 1
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": 1
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": 1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": 1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": 1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": 1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": 1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": 1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": 1
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0.5,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d+1",
+      "sonda": {
+        "rotulo": "d+1",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 1
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          241,
+          540
+        ],
+        "delta_cena": [
+          -299.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 1
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -1
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -1
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -1
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -1
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          -0.5,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d+2",
+      "sonda": {
+        "rotulo": "d+2",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 2
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          242,
+          540
+        ],
+        "delta_cena": [
+          -299,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 2
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -2
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -2
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -2
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -2
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          -1,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d+3",
+      "sonda": {
+        "rotulo": "d+3",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 3
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          243,
+          540
+        ],
+        "delta_cena": [
+          -298.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 3
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -3
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          -1.5,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d+4",
+      "sonda": {
+        "rotulo": "d+4",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 4
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          244,
+          540
+        ],
+        "delta_cena": [
+          -298,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 4
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -4
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -4
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -4
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -4
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          -2,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d+5",
+      "sonda": {
+        "rotulo": "d+5",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 5
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          245,
+          540
+        ],
+        "delta_cena": [
+          -297.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 5
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -5
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -5
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -5
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -5
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          -2.5,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d+6",
+      "sonda": {
+        "rotulo": "d+6",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 6
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          246,
+          540
+        ],
+        "delta_cena": [
+          -297,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 6
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -6
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -6
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -6
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -6
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          -3,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d+7",
+      "sonda": {
+        "rotulo": "d+7",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 7
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          247,
+          540
+        ],
+        "delta_cena": [
+          -296.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 7
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -7
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -7
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -7
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -7
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          -3.5,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d+8",
+      "sonda": {
+        "rotulo": "d+8",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 8
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          248,
+          540
+        ],
+        "delta_cena": [
+          -296,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 8
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -8
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -8
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -8
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -8
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [
+          {
+            "type": "points",
+            "points": [
+              [
+                100,
+                60
+              ],
+              [
+                100,
+                140
+              ],
+              [
+                100,
+                250
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 100,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 100,
+            "c": 120,
+            "r": 140,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              100,
+              250
+            ],
+            [
+              140,
+              250
+            ],
+            [
+              140,
+              290
+            ],
+            [
+              100,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 100,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 120,
+              "r": 140,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                100,
+                250
+              ],
+              [
+                140,
+                250
+              ],
+              [
+                140,
+                290
+              ],
+              [
+                100,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -300,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          -4,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 0
+      }
+    },
+    {
+      "rotulo": "d+9",
+      "sonda": {
+        "rotulo": "d+9",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 9
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          249,
+          540
+        ],
+        "delta_cena": [
+          -295.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 9
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -9
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -9
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -9
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -9
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 104.5,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 104.5,
+            "c": 124.5,
+            "r": 144.5,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              104.5,
+              250
+            ],
+            [
+              144.5,
+              250
+            ],
+            [
+              144.5,
+              290
+            ],
+            [
+              104.5,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 104.5,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 104.5,
+              "c": 124.5,
+              "r": 144.5,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                104.5,
+                250
+              ],
+              [
+                144.5,
+                250
+              ],
+              [
+                144.5,
+                290
+              ],
+              [
+                104.5,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -295.5,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 9
+      }
+    },
+    {
+      "rotulo": "d+10",
+      "sonda": {
+        "rotulo": "d+10",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 10
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          250,
+          540
+        ],
+        "delta_cena": [
+          -295,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 10
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -10
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -10
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -10
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -10
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 105,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 105,
+            "c": 125,
+            "r": 145,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              105,
+              250
+            ],
+            [
+              145,
+              250
+            ],
+            [
+              145,
+              290
+            ],
+            [
+              105,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 105,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 105,
+              "c": 125,
+              "r": 145,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                105,
+                250
+              ],
+              [
+                145,
+                250
+              ],
+              [
+                145,
+                290
+              ],
+              [
+                105,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -295,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 10
+      }
+    },
+    {
+      "rotulo": "d+11",
+      "sonda": {
+        "rotulo": "d+11",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 11
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          251,
+          540
+        ],
+        "delta_cena": [
+          -294.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 11
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -11
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -11
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -11
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -11
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 105.5,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 105.5,
+            "c": 125.5,
+            "r": 145.5,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              105.5,
+              250
+            ],
+            [
+              145.5,
+              250
+            ],
+            [
+              145.5,
+              290
+            ],
+            [
+              105.5,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 105.5,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 105.5,
+              "c": 125.5,
+              "r": 145.5,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                105.5,
+                250
+              ],
+              [
+                145.5,
+                250
+              ],
+              [
+                145.5,
+                290
+              ],
+              [
+                105.5,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -294.5,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 11
+      }
+    },
+    {
+      "rotulo": "d+12",
+      "sonda": {
+        "rotulo": "d+12",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 12
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          252,
+          540
+        ],
+        "delta_cena": [
+          -294,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 12
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -12
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -12
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -12
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -12
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 106,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 106,
+            "c": 126,
+            "r": 146,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              106,
+              250
+            ],
+            [
+              146,
+              250
+            ],
+            [
+              146,
+              290
+            ],
+            [
+              106,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 106,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 106,
+              "c": 126,
+              "r": 146,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                106,
+                250
+              ],
+              [
+                146,
+                250
+              ],
+              [
+                146,
+                290
+              ],
+              [
+                106,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -294,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 12
+      }
+    },
+    {
+      "rotulo": "d+13",
+      "sonda": {
+        "rotulo": "d+13",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 13
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          253,
+          540
+        ],
+        "delta_cena": [
+          -293.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 13
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -13
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -13
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -13
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -13
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 106.5,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 106.5,
+            "c": 126.5,
+            "r": 146.5,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              106.5,
+              250
+            ],
+            [
+              146.5,
+              250
+            ],
+            [
+              146.5,
+              290
+            ],
+            [
+              106.5,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 106.5,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 106.5,
+              "c": 126.5,
+              "r": 146.5,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                106.5,
+                250
+              ],
+              [
+                146.5,
+                250
+              ],
+              [
+                146.5,
+                290
+              ],
+              [
+                106.5,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -293.5,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 13
+      }
+    },
+    {
+      "rotulo": "d+14",
+      "sonda": {
+        "rotulo": "d+14",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 14
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          254,
+          540
+        ],
+        "delta_cena": [
+          -293,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 14
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -14
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -14
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -14
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -14
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 107,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 107,
+            "c": 127,
+            "r": 147,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              107,
+              250
+            ],
+            [
+              147,
+              250
+            ],
+            [
+              147,
+              290
+            ],
+            [
+              107,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 107,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 107,
+              "c": 127,
+              "r": 147,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                107,
+                250
+              ],
+              [
+                147,
+                250
+              ],
+              [
+                147,
+                290
+              ],
+              [
+                107,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -293,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 14
+      }
+    },
+    {
+      "rotulo": "d+15",
+      "sonda": {
+        "rotulo": "d+15",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 15
+        }
+      },
+      "modo_ligado_antes": true,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          255,
+          540
+        ],
+        "delta_cena": [
+          -292.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 15
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -15
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -15
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -15
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -15
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": true,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 107.5,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 107.5,
+            "c": 127.5,
+            "r": 147.5,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              107.5,
+              250
+            ],
+            [
+              147.5,
+              250
+            ],
+            [
+              147.5,
+              290
+            ],
+            [
+              107.5,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 107.5,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 107.5,
+              "c": 127.5,
+              "r": 147.5,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                107.5,
+                250
+              ],
+              [
+                147.5,
+                250
+              ],
+              [
+                147.5,
+                290
+              ],
+              [
+                107.5,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -292.5,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 15
+      }
+    },
+    {
+      "rotulo": "d+3_sem_encaixe",
+      "sonda": {
+        "rotulo": "d+3_sem_encaixe",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 3
+        },
+        "snap": false
+      },
+      "modo_ligado_antes": false,
+      "plano": {
+        "p0": [
+          840,
+          540
+        ],
+        "p1": [
+          243,
+          540
+        ],
+        "delta_cena": [
+          -298.5,
+          0
+        ],
+        "alvo": {
+          "x": {
+            "de": "aabb.l",
+            "a": "A.aabb.l",
+            "valor_alvo": 100,
+            "mais_px_ecra": 3
+          }
+        },
+        "feicoes_perto_no_plano": [
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.aabb.l",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto0",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "aabb.l",
+            "outro": "A.canto3",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.aabb.l",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto0",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto0",
+            "outro": "A.canto3",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.aabb.l",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto0",
+            "px_ecra": -3
+          },
+          {
+            "eixo": "x",
+            "movel": "canto3",
+            "outro": "A.canto3",
+            "px_ecra": -3
+          }
+        ]
+      },
+      "antes_de_largar": {
+        "snapLines": [],
+        "objectsSnapModeEnabled": false,
+        "movel": {
+          "id": "B",
+          "type": "rectangle",
+          "x": 101.5,
+          "y": 250,
+          "width": 40,
+          "height": 40,
+          "angle": 0,
+          "angulo_graus": 0,
+          "frameId": null,
+          "aabb": {
+            "l": 101.5,
+            "c": 121.5,
+            "r": 141.5,
+            "t": 250,
+            "m": 270,
+            "b": 290
+          },
+          "cantos": [
+            [
+              101.5,
+              250
+            ],
+            [
+              141.5,
+              250
+            ],
+            [
+              141.5,
+              290
+            ],
+            [
+              101.5,
+              290
+            ]
+          ]
+        }
+      },
+      "depois": {
+        "elementos": [
+          {
+            "id": "A",
+            "type": "rectangle",
+            "x": 100,
+            "y": 60,
+            "width": 120,
+            "height": 80,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 100,
+              "c": 160,
+              "r": 220,
+              "t": 60,
+              "m": 100,
+              "b": 140
+            },
+            "cantos": [
+              [
+                100,
+                60
+              ],
+              [
+                220,
+                60
+              ],
+              [
+                220,
+                140
+              ],
+              [
+                100,
+                140
+              ]
+            ]
+          },
+          {
+            "id": "B",
+            "type": "rectangle",
+            "x": 101.5,
+            "y": 250,
+            "width": 40,
+            "height": 40,
+            "angle": 0,
+            "angulo_graus": 0,
+            "frameId": null,
+            "aabb": {
+              "l": 101.5,
+              "c": 121.5,
+              "r": 141.5,
+              "t": 250,
+              "m": 270,
+              "b": 290
+            },
+            "cantos": [
+              [
+                101.5,
+                250
+              ],
+              [
+                141.5,
+                250
+              ],
+              [
+                141.5,
+                290
+              ],
+              [
+                101.5,
+                290
+              ]
+            ]
+          }
+        ],
+        "snapLines": []
+      },
+      "medido": {
+        "arrastou": [
+          -298.5,
+          0
+        ],
+        "encaixe_desvio_cena": [
+          0,
+          0
+        ],
+        "igual_antes_e_depois_de_largar": true,
+        "seleccao_depois": [
+          "B"
+        ],
+        "residuo_x_px_ecra": 3
+      }
+    }
+  ]
+}

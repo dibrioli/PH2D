@@ -176,3 +176,60 @@ casos = **104/104 ficheiros idênticos** (o `.meta.json` sem o campo `date`).
   para o topo, filhos antes dela (`D6b`).
 - **Cadeado** (`E_cadeado`, Ctrl+Shift+L): o trancado **não** se selecciona por clique nem por laço (o
   laço sobre os dois apanha só o outro), arrastar sobre ele **não o move**, e **Ctrl+A o exclui**.
+
+### W5b — guias e encaixe: `corre_guias.mjs`
+
+```bash
+python3 docs/MiroClone/ferramentas/excalidraw_oracle/entradas/gera_guias_casos.py \
+  docs/MiroClone/ferramentas/excalidraw_oracle/entradas/guias_casos.json          # só se mudar as cenas
+PH2D_MEM_MAX=8G bash scripts/ph2d-run.sh node docs/MiroClone/ferramentas/excalidraw_oracle/corre_guias.mjs \
+  [--so <caso>] [--plano] docs/MiroClone/ferramentas/excalidraw_oracle/entradas/guias_casos.json \
+  docs/MiroClone/ferramentas/excalidraw_oracle/saidas
+```
+
+Cada **sonda** monta a cena de novo (1280×800, scroll 0, zoom do caso), liga o modo pelo `updateScene`
+(`objectsSnapModeEnabled`, conferido no `getAppState` antes de arrastar), desce no centro do móvel (na
+moldura: no título), anda 2 px, 12 passos até ao alvo, **repete o movimento final** e espera 2 quadros
+(medido: sob carga o último `pointermove` perdia-se — o móvel ficava 40 px antes), lê o
+`appState.snapLines` ANTES de largar e a cena DEPOIS. O alvo diz-se como «a feição `de` do móvel a
+`mais` px de ECRÃ da feição `a` do outro» (`aabb.l|c|r|t|m|b`, `cantos.k` = k-ésimo canto rodado no
+eixo, `ponto.k` = vértice). `--plano` lista, sem navegador, as feições a ≤ 20 px na posição planeada
+(as cenas foram afinadas para não haver candidato concorrente mais perto que o pedido). Saída:
+`saidas/guias_<caso>.json` (por sonda: plano, `snapLines` completos, móvel antes de largar, x/y/w/h/
+ângulo/AABB/cantos de todos depois, desvio do encaixe = final − sem encaixe) + `.meta.json`.
+**Determinismo:** duas corridas dos 15 casos (142 sondas, uma delas a `load` 155) = **30/30 ficheiros
+idênticos** (o `.meta.json` sem o campo `date`).
+
+- **Tolerância = 8 px de ECRÃ, constante no zoom** (`G8`): a esquerda de B a `d` px da de A encaixa
+  para `|d| ≤ 8` e não para `|d| ≥ 9`, igual a zoom 1 e 2 (⇒ em cena, `8/zoom`). O vão igual encaixa com
+  6 px (`G5` 46 → 40). Modo desligado ⇒ nada encaixa (controlos `*_sem_encaixe`). **Alt+S** alterna o
+  modo (`G0`: falso → verdadeiro → falso).
+- **Rodados encaixam pelos 4 CANTOS RODADOS + centro, não pela AABB** (`G1`, B 160×100 a 15/30/37/45°,
+  A 0°): um canto **interior** de B posto a 3 px da esquerda de A (x 300) vai a x **300 exacto** com a
+  AABB de B longe (AABB esq. 274,1 · 250 · 239,8 · 229,3 nos quatro ângulos); igual a −3 px; os
+  centros encaixam; em y o mesmo. Nos `snapLines` o ponto do móvel é o canto rodado verdadeiro (ex.
+  `[300, 587,59]`), não um canto da AABB. **Alvo rodado** (`G2`, A a 30°): os 4 cantos de A são alvos
+  — a aresta de B encaixa em x 333,40 / 393,40 / 506,60 / 566,60 (os quatro x dos cantos de A, dois deles interiores) e o centro em 450.
+- **Só guias de EIXO** (`G3`, A e B a 30°): B com a aresta PARALELA à de A e desviada 3 px ao longo
+  dela ⇒ **nada** encaixa, `snapLines` vazio. Em todas as 142 sondas os tipos são só `points` (todos os
+  pontos com o mesmo x ou o mesmo y: 72 em x, 24 em y) e `gap` (`direction: "horizontal"`, 10) — zero
+  linhas oblíquas.
+- **Rotação não encaixa em ângulo nenhum** (`G4`, B 0° ao lado de A a 30°, modo ligado): o ângulo final
+  é o do ponteiro (28,02° · 1,64° · 358,36° · 31,66° · 44,42°), nem 30 nem 0; nenhum `snapLines`
+  durante a rotação. **Shift = múltiplo de 15° mais PRÓXIMO** (arredonda, não trunca): 8,25 → 15 ·
+  21,80 → 15 · 28,02 → 30 · 36,87 → 30 · 50,19 → 45 · 99,87 → 105. A pega fica **16..24 px** de ecrã
+  acima da aresta de cima (cursor `grab`).
+- **Vãos** (`G5`): A|40|B e C posto a 43 / 37 / 41 / 46 de B ⇒ C vai a **40** nos quatro; os
+  `snapLines` trazem os dois vãos como `gap` (`[[300,340],[340,340]]` e `[[440,340],[480,340]]`, à
+  altura do meio da faixa comum). **Meio** (`G5b`): B a 53/47 entre A e C ⇒ 50/50, também `gap`. Sem
+  sobreposição em y (`G5c`, C noutra linha) ⇒ **não** há encaixe de vão (fica 43).
+- **Molduras** (`G6`): a caixa da moldura é alvo (um livre encaixa na esquerda 400 e na direita 800,
+  pontos `[400,200]`/`[400,500]`); a moldura arrastada pelo título encaixa pela **sua caixa** (esq. →
+  T, baixo → topo de R; os filhos não aparecem nos `snapLines`); um **filho** encaixa no irmão, nas
+  bordas da moldura **e** num elemento de FORA dela (U acima). **A moldura não roda:** nenhum cursor
+  `grab` de 0 a 60 px acima dela, e o arrasto ali deixa ângulo 0 e a posição; um filho roda (29,98°).
+- **Lineares e traço livre encaixam pela AABB** (`G7`): linha — esquerda, direita e centro da caixa
+  encaixam; o vértice do meio **interior** em x (220) **não**; numa linha cujo vértice do meio é o
+  extremo (L2) ele encaixa e a ponta final interior **não**. Seta: as duas pontas (= a caixa). Traço
+  livre: esquerda/direita da caixa sim, vértice interior não. Os pontos nos `snapLines` são os cantos
+  da caixa (`[100,260]` não é vértice da linha).

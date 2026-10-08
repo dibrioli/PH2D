@@ -1,0 +1,2398 @@
+{
+ "cenas": {
+  "g1_15": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 300,
+     "y": 150,
+     "width": 340,
+     "height": 120,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 820.0,
+     "y": 510.0,
+     "width": 160,
+     "height": 100,
+     "angle": 0.2617993877991494,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g1_30": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 300,
+     "y": 150,
+     "width": 340,
+     "height": 120,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 820.0,
+     "y": 510.0,
+     "width": 160,
+     "height": 100,
+     "angle": 0.5235987755982988,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g1_45": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 300,
+     "y": 150,
+     "width": 340,
+     "height": 120,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 820.0,
+     "y": 510.0,
+     "width": 160,
+     "height": 100,
+     "angle": 0.7853981633974483,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g1_37": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 300,
+     "y": 150,
+     "width": 340,
+     "height": 120,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 820.0,
+     "y": 510.0,
+     "width": 160,
+     "height": 100,
+     "angle": 0.6457718232379019,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g2": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 350.0,
+     "y": 190.0,
+     "width": 200,
+     "height": 120,
+     "angle": 0.5235987755982988,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 850,
+     "y": 560,
+     "width": 160,
+     "height": 100,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g3": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 320.0,
+     "y": 160.0,
+     "width": 200,
+     "height": 120,
+     "angle": 0.5235987755982988,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 820.0,
+     "y": 510.0,
+     "width": 160,
+     "height": 100,
+     "angle": 0.5235987755982988,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g4": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 250.0,
+     "y": 240.0,
+     "width": 200,
+     "height": 120,
+     "angle": 0.5235987755982988,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 620,
+     "y": 330,
+     "width": 160,
+     "height": 100,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g5": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 200,
+     "y": 300,
+     "width": 100,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 340,
+     "y": 300,
+     "width": 100,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "C",
+     "type": "rectangle",
+     "x": 560,
+     "y": 300,
+     "width": 100,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g5_meio": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 200,
+     "y": 300,
+     "width": 100,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 380,
+     "y": 520,
+     "width": 100,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "C",
+     "type": "rectangle",
+     "x": 500,
+     "y": 300,
+     "width": 100,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g5_outra_linha": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 200,
+     "y": 300,
+     "width": 100,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 340,
+     "y": 300,
+     "width": 100,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "C",
+     "type": "rectangle",
+     "x": 560,
+     "y": 520,
+     "width": 100,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g6": {
+   "elements": [
+    {
+     "id": "c1",
+     "type": "rectangle",
+     "x": 520,
+     "y": 250,
+     "width": 60,
+     "height": 60,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "c2",
+     "type": "rectangle",
+     "x": 640,
+     "y": 370,
+     "width": 90,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": "F",
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "F",
+     "type": "frame",
+     "x": 400,
+     "y": 200,
+     "width": 400,
+     "height": 300,
+     "angle": 0.0,
+     "strokeColor": "#bbb",
+     "backgroundColor": "transparent",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1,
+     "name": "Moldura"
+    },
+    {
+     "id": "R",
+     "type": "rectangle",
+     "x": 950,
+     "y": 600,
+     "width": 40,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "T",
+     "type": "rectangle",
+     "x": 100,
+     "y": 700,
+     "width": 80,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "U",
+     "type": "rectangle",
+     "x": 490,
+     "y": 60,
+     "width": 60,
+     "height": 60,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g7": {
+   "elements": [
+    {
+     "id": "L",
+     "type": "line",
+     "x": 100,
+     "y": 150,
+     "width": 200,
+     "height": 110,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "transparent",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       120,
+       110
+      ],
+      [
+       200,
+       50
+      ]
+     ]
+    },
+    {
+     "id": "S",
+     "type": "arrow",
+     "x": 400,
+     "y": 330,
+     "width": 180,
+     "height": 70,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "transparent",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       180,
+       70
+      ]
+     ]
+    },
+    {
+     "id": "L2",
+     "type": "line",
+     "x": 500,
+     "y": 700,
+     "width": 200,
+     "height": 60,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "transparent",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       200,
+       30
+      ],
+      [
+       40,
+       60
+      ]
+     ]
+    },
+    {
+     "id": "D",
+     "type": "freedraw",
+     "x": 760,
+     "y": 120,
+     "width": 70,
+     "height": 140,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "transparent",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1,
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       25,
+       -20
+      ],
+      [
+       70,
+       10
+      ],
+      [
+       25,
+       60
+      ],
+      [
+       0,
+       90
+      ],
+      [
+       70,
+       120
+      ]
+     ],
+     "pressures": [],
+     "simulatePressure": true
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 900,
+     "y": 600,
+     "width": 10,
+     "height": 10,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g8_z1": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 200,
+     "y": 150,
+     "width": 200,
+     "height": 120,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 600,
+     "y": 400,
+     "width": 60,
+     "height": 60,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  },
+  "g8_z2": {
+   "elements": [
+    {
+     "id": "A",
+     "type": "rectangle",
+     "x": 100,
+     "y": 60,
+     "width": 120,
+     "height": 80,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    },
+    {
+     "id": "B",
+     "type": "rectangle",
+     "x": 400,
+     "y": 250,
+     "width": 40,
+     "height": 40,
+     "angle": 0.0,
+     "strokeColor": "#1e1e1e",
+     "backgroundColor": "#a5d8ff",
+     "fillStyle": "solid",
+     "strokeWidth": 2,
+     "roughness": 0,
+     "groupIds": [],
+     "frameId": null,
+     "version": 1,
+     "versionNonce": 1,
+     "seed": 1
+    }
+   ]
+  }
+ },
+ "casos": [
+  {
+   "nome": "G1_B15",
+   "cena": "g1_15",
+   "pergunta": "A 0° (300..640), B 160×100 a 15°: o encaixe usa a AABB de B ou os cantos rodados?",
+   "sondas": [
+    {
+     "rotulo": "a_aabb_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b_canto1_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "cantos.1",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b2_canto1_esq_menos",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "cantos.1",
+      "a": "A.aabb.l",
+      "mais": -3
+     }
+    },
+    {
+     "rotulo": "c_centros",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.c",
+      "a": "A.aabb.c",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "a_aabb_esq_sem_encaixe",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     },
+     "snap": false
+    },
+    {
+     "rotulo": "d_aabb_topo",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.r",
+      "mais": 60
+     },
+     "y": {
+      "de": "aabb.t",
+      "a": "A.aabb.b",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "e_canto1_topo",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.r",
+      "mais": 60
+     },
+     "y": {
+      "de": "cantos.1",
+      "a": "A.aabb.b",
+      "mais": 3
+     }
+    }
+   ]
+  },
+  {
+   "nome": "G1_B30",
+   "cena": "g1_30",
+   "pergunta": "A 0° (300..640), B 160×100 a 30°: o encaixe usa a AABB de B ou os cantos rodados?",
+   "sondas": [
+    {
+     "rotulo": "a_aabb_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b_canto1_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "cantos.1",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b2_canto1_esq_menos",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "cantos.1",
+      "a": "A.aabb.l",
+      "mais": -3
+     }
+    },
+    {
+     "rotulo": "c_centros",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.c",
+      "a": "A.aabb.c",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "a_aabb_esq_sem_encaixe",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     },
+     "snap": false
+    },
+    {
+     "rotulo": "d_aabb_topo",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.r",
+      "mais": 60
+     },
+     "y": {
+      "de": "aabb.t",
+      "a": "A.aabb.b",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "e_canto1_topo",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.r",
+      "mais": 60
+     },
+     "y": {
+      "de": "cantos.1",
+      "a": "A.aabb.b",
+      "mais": 3
+     }
+    }
+   ]
+  },
+  {
+   "nome": "G1_B45",
+   "cena": "g1_45",
+   "pergunta": "A 0° (300..640), B 160×100 a 45°: o encaixe usa a AABB de B ou os cantos rodados?",
+   "sondas": [
+    {
+     "rotulo": "a_aabb_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b_canto1_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "cantos.1",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b2_canto1_esq_menos",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "cantos.1",
+      "a": "A.aabb.l",
+      "mais": -3
+     }
+    },
+    {
+     "rotulo": "c_centros",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.c",
+      "a": "A.aabb.c",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "a_aabb_esq_sem_encaixe",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     },
+     "snap": false
+    },
+    {
+     "rotulo": "d_aabb_topo",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.r",
+      "mais": 60
+     },
+     "y": {
+      "de": "aabb.t",
+      "a": "A.aabb.b",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "e_canto1_topo",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.r",
+      "mais": 60
+     },
+     "y": {
+      "de": "cantos.1",
+      "a": "A.aabb.b",
+      "mais": 3
+     }
+    }
+   ]
+  },
+  {
+   "nome": "G1_B37",
+   "cena": "g1_37",
+   "pergunta": "A 0° (300..640), B 160×100 a 37°: o encaixe usa a AABB de B ou os cantos rodados?",
+   "sondas": [
+    {
+     "rotulo": "a_aabb_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b_canto1_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "cantos.1",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b2_canto1_esq_menos",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "cantos.1",
+      "a": "A.aabb.l",
+      "mais": -3
+     }
+    },
+    {
+     "rotulo": "c_centros",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.c",
+      "a": "A.aabb.c",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "a_aabb_esq_sem_encaixe",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     },
+     "snap": false
+    },
+    {
+     "rotulo": "d_aabb_topo",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.r",
+      "mais": 60
+     },
+     "y": {
+      "de": "aabb.t",
+      "a": "A.aabb.b",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "e_canto1_topo",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.r",
+      "mais": 60
+     },
+     "y": {
+      "de": "cantos.1",
+      "a": "A.aabb.b",
+      "mais": 3
+     }
+    }
+   ]
+  },
+  {
+   "nome": "G2_A30",
+   "cena": "g2",
+   "pergunta": "A 200×120 a 30°, B 0°: o alvo é a AABB de A ou os cantos rodados de A?",
+   "sondas": [
+    {
+     "rotulo": "a_aabb_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b_canto1_de_A",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.cantos.1",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b2_canto2_de_A",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.cantos.2",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "c_centros",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.c",
+      "a": "A.aabb.c",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "d_aabb_dir",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.r",
+      "a": "A.aabb.r",
+      "mais": 3
+     }
+    }
+   ]
+  },
+  {
+   "nome": "G3_os_dois_30",
+   "cena": "g3",
+   "pergunta": "A e B a 30°: aparece alguma guia paralela às arestas rodadas, ou só guias de eixo?",
+   "sondas": [
+    {
+     "rotulo": "a_aresta_esq_colinear_3",
+     "tipo": "arrasta",
+     "mover": "B",
+     "centro_em": [
+      283.778,
+      421.944
+     ]
+    },
+    {
+     "rotulo": "b_aresta_inf_colinear_3",
+     "tipo": "arrasta",
+     "mover": "B",
+     "centro_em": [
+      662.915,
+      375.258
+     ]
+    },
+    {
+     "rotulo": "c_aabb_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "d_canto1_com_canto1",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "cantos.1",
+      "a": "A.cantos.1",
+      "mais": 3
+     }
+    }
+   ]
+  },
+  {
+   "nome": "G4_rotacao",
+   "cena": "g4",
+   "pergunta": "Rodar B (0°) perto de A (30°) pela pega: encaixa no ângulo de A, em 0, ou nada? E com Shift (passo)?",
+   "sondas": [
+    {
+     "rotulo": "a_28",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 28
+    },
+    {
+     "rotulo": "b_2",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 2
+    },
+    {
+     "rotulo": "c_menos2",
+     "tipo": "roda",
+     "el": "B",
+     "graus": -2
+    },
+    {
+     "rotulo": "d_31_5",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 31.5
+    },
+    {
+     "rotulo": "e_44",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 44
+    },
+    {
+     "rotulo": "f_28_sem_encaixe",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 28,
+     "snap": false
+    },
+    {
+     "rotulo": "g_2_sem_encaixe",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 2,
+     "snap": false
+    },
+    {
+     "rotulo": "h_shift_8",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 8,
+     "shift": true
+    },
+    {
+     "rotulo": "i_shift_22",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 22,
+     "shift": true
+    },
+    {
+     "rotulo": "j_shift_28",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 28,
+     "shift": true
+    },
+    {
+     "rotulo": "k_shift_37",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 37,
+     "shift": true
+    },
+    {
+     "rotulo": "l_shift_50",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 50,
+     "shift": true
+    },
+    {
+     "rotulo": "m_shift_100",
+     "tipo": "roda",
+     "el": "B",
+     "graus": 100,
+     "shift": true
+    }
+   ]
+  },
+  {
+   "nome": "G5_vaos",
+   "cena": "g5",
+   "pergunta": "A|40|B e C arrastado para um vão de 43 / 37 / 41 / 46 depois de B: encaixa no vão igual (40)?",
+   "sondas": [
+    {
+     "rotulo": "vao_43",
+     "tipo": "arrasta",
+     "mover": "C",
+     "x": {
+      "de": "aabb.l",
+      "a": "B.aabb.r",
+      "mais": 43
+     }
+    },
+    {
+     "rotulo": "vao_37",
+     "tipo": "arrasta",
+     "mover": "C",
+     "x": {
+      "de": "aabb.l",
+      "a": "B.aabb.r",
+      "mais": 37
+     }
+    },
+    {
+     "rotulo": "vao_41",
+     "tipo": "arrasta",
+     "mover": "C",
+     "x": {
+      "de": "aabb.l",
+      "a": "B.aabb.r",
+      "mais": 41
+     }
+    },
+    {
+     "rotulo": "vao_46",
+     "tipo": "arrasta",
+     "mover": "C",
+     "x": {
+      "de": "aabb.l",
+      "a": "B.aabb.r",
+      "mais": 46
+     }
+    },
+    {
+     "rotulo": "vao_43_sem_encaixe",
+     "tipo": "arrasta",
+     "mover": "C",
+     "x": {
+      "de": "aabb.l",
+      "a": "B.aabb.r",
+      "mais": 43
+     },
+     "snap": false
+    }
+   ]
+  },
+  {
+   "nome": "G5b_vao_meio",
+   "cena": "g5_meio",
+   "pergunta": "A(200..300) e C(500..600): B (100 de largura) posto 3 px fora do meio (vãos 53/47; o meio é 50/50): encaixa no meio?",
+   "sondas": [
+    {
+     "rotulo": "meio_mais3",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.r",
+      "mais": 53
+     },
+     "y": {
+      "de": "aabb.t",
+      "a": "A.aabb.t",
+      "mais": 0
+     }
+    }
+   ]
+  },
+  {
+   "nome": "G5c_vao_outra_linha",
+   "cena": "g5_outra_linha",
+   "pergunta": "Vão 43→40 quando C NÃO se sobrepõe em y a A e B (C 220 abaixo): ainda encaixa?",
+   "sondas": [
+    {
+     "rotulo": "vao_43_outra_linha",
+     "tipo": "arrasta",
+     "mover": "C",
+     "x": {
+      "de": "aabb.l",
+      "a": "B.aabb.r",
+      "mais": 43
+     }
+    }
+   ]
+  },
+  {
+   "nome": "G6_molduras",
+   "cena": "g6",
+   "pergunta": "Moldura F (400,200,400×300) com c1,c2: é alvo? o que encaixa ao arrastá-la? um filho encaixa em quem? roda?",
+   "sondas": [
+    {
+     "rotulo": "a_livre_na_esq_da_moldura",
+     "tipo": "arrasta",
+     "mover": "R",
+     "x": {
+      "de": "aabb.l",
+      "a": "F.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b_livre_na_dir_da_moldura",
+     "tipo": "arrasta",
+     "mover": "R",
+     "x": {
+      "de": "aabb.r",
+      "a": "F.aabb.r",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "c_moldura_pelo_titulo_ao_T",
+     "tipo": "arrasta",
+     "mover": "F",
+     "pega": "titulo",
+     "x": {
+      "de": "aabb.l",
+      "a": "T.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "c2_moldura_topo_ao_R",
+     "tipo": "arrasta",
+     "mover": "F",
+     "pega": "titulo",
+     "y": {
+      "de": "aabb.b",
+      "a": "R.aabb.t",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "d_filho_ao_irmao",
+     "tipo": "arrasta",
+     "mover": "c1",
+     "x": {
+      "de": "aabb.l",
+      "a": "c2.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "e_filho_a_borda_da_moldura",
+     "tipo": "arrasta",
+     "mover": "c1",
+     "x": {
+      "de": "aabb.l",
+      "a": "F.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "f_filho_a_um_de_fora",
+     "tipo": "arrasta",
+     "mover": "c1",
+     "x": {
+      "de": "aabb.l",
+      "a": "U.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "h_roda_a_moldura",
+     "tipo": "roda",
+     "el": "F",
+     "graus": 30
+    },
+    {
+     "rotulo": "i_roda_um_filho",
+     "tipo": "roda",
+     "el": "c2",
+     "graus": 30
+    }
+   ]
+  },
+  {
+   "nome": "G7_lineares",
+   "cena": "g7",
+   "pergunta": "Linha, seta e traço livre servem de alvo? (pontas, vértice do meio, caixa)",
+   "sondas": [
+    {
+     "rotulo": "a_linha_ponta_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "L.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "b_linha_vertice_meio",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "L.ponto.1",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "c_linha_dir",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "L.aabb.r",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "c2_linha_centro_aabb",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "L.aabb.c",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "c3_linha2_vertice_meio_e_extremo",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "L2.ponto.1",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "c4_linha2_ponta_final_interior",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "L2.ponto.2",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "d_seta_ponta_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.r",
+      "a": "S.aabb.l",
+      "mais": -3
+     },
+     "y": {
+      "de": "aabb.t",
+      "a": "S.aabb.b",
+      "mais": 120
+     }
+    },
+    {
+     "rotulo": "e_seta_ponta_dir",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "S.aabb.r",
+      "mais": 3
+     },
+     "y": {
+      "de": "aabb.t",
+      "a": "S.aabb.b",
+      "mais": 120
+     }
+    },
+    {
+     "rotulo": "f_tracolivre_esq",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "D.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "g_tracolivre_dir",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "D.aabb.r",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "h_tracolivre_vertice_meio",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.r",
+      "a": "D.ponto.1",
+      "mais": -3
+     }
+    }
+   ]
+  },
+  {
+   "nome": "G8_tolerancia_zoom1",
+   "cena": "g8_z1",
+   "zoom": 1,
+   "pergunta": "Zoom 1: a que distância (px de ECRÃ) da esquerda de A o encaixe deixa de acontecer?",
+   "sondas": [
+    {
+     "rotulo": "d-15",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -15
+     }
+    },
+    {
+     "rotulo": "d-14",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -14
+     }
+    },
+    {
+     "rotulo": "d-13",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -13
+     }
+    },
+    {
+     "rotulo": "d-12",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -12
+     }
+    },
+    {
+     "rotulo": "d-11",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -11
+     }
+    },
+    {
+     "rotulo": "d-10",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -10
+     }
+    },
+    {
+     "rotulo": "d-9",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -9
+     }
+    },
+    {
+     "rotulo": "d-8",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -8
+     }
+    },
+    {
+     "rotulo": "d-7",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -7
+     }
+    },
+    {
+     "rotulo": "d-6",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -6
+     }
+    },
+    {
+     "rotulo": "d-5",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -5
+     }
+    },
+    {
+     "rotulo": "d-4",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -4
+     }
+    },
+    {
+     "rotulo": "d-3",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -3
+     }
+    },
+    {
+     "rotulo": "d-2",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -2
+     }
+    },
+    {
+     "rotulo": "d-1",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -1
+     }
+    },
+    {
+     "rotulo": "d+1",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 1
+     }
+    },
+    {
+     "rotulo": "d+2",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 2
+     }
+    },
+    {
+     "rotulo": "d+3",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "d+4",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 4
+     }
+    },
+    {
+     "rotulo": "d+5",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 5
+     }
+    },
+    {
+     "rotulo": "d+6",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 6
+     }
+    },
+    {
+     "rotulo": "d+7",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 7
+     }
+    },
+    {
+     "rotulo": "d+8",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 8
+     }
+    },
+    {
+     "rotulo": "d+9",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 9
+     }
+    },
+    {
+     "rotulo": "d+10",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 10
+     }
+    },
+    {
+     "rotulo": "d+11",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 11
+     }
+    },
+    {
+     "rotulo": "d+12",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 12
+     }
+    },
+    {
+     "rotulo": "d+13",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 13
+     }
+    },
+    {
+     "rotulo": "d+14",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 14
+     }
+    },
+    {
+     "rotulo": "d+15",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 15
+     }
+    },
+    {
+     "rotulo": "d+3_sem_encaixe",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     },
+     "snap": false
+    }
+   ]
+  },
+  {
+   "nome": "G8_tolerancia_zoom2",
+   "cena": "g8_z2",
+   "zoom": 2,
+   "pergunta": "Zoom 2: a que distância (px de ECRÃ) da esquerda de A o encaixe deixa de acontecer?",
+   "sondas": [
+    {
+     "rotulo": "d-15",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -15
+     }
+    },
+    {
+     "rotulo": "d-14",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -14
+     }
+    },
+    {
+     "rotulo": "d-13",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -13
+     }
+    },
+    {
+     "rotulo": "d-12",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -12
+     }
+    },
+    {
+     "rotulo": "d-11",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -11
+     }
+    },
+    {
+     "rotulo": "d-10",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -10
+     }
+    },
+    {
+     "rotulo": "d-9",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -9
+     }
+    },
+    {
+     "rotulo": "d-8",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -8
+     }
+    },
+    {
+     "rotulo": "d-7",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -7
+     }
+    },
+    {
+     "rotulo": "d-6",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -6
+     }
+    },
+    {
+     "rotulo": "d-5",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -5
+     }
+    },
+    {
+     "rotulo": "d-4",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -4
+     }
+    },
+    {
+     "rotulo": "d-3",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -3
+     }
+    },
+    {
+     "rotulo": "d-2",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -2
+     }
+    },
+    {
+     "rotulo": "d-1",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": -1
+     }
+    },
+    {
+     "rotulo": "d+1",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 1
+     }
+    },
+    {
+     "rotulo": "d+2",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 2
+     }
+    },
+    {
+     "rotulo": "d+3",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     }
+    },
+    {
+     "rotulo": "d+4",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 4
+     }
+    },
+    {
+     "rotulo": "d+5",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 5
+     }
+    },
+    {
+     "rotulo": "d+6",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 6
+     }
+    },
+    {
+     "rotulo": "d+7",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 7
+     }
+    },
+    {
+     "rotulo": "d+8",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 8
+     }
+    },
+    {
+     "rotulo": "d+9",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 9
+     }
+    },
+    {
+     "rotulo": "d+10",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 10
+     }
+    },
+    {
+     "rotulo": "d+11",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 11
+     }
+    },
+    {
+     "rotulo": "d+12",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 12
+     }
+    },
+    {
+     "rotulo": "d+13",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 13
+     }
+    },
+    {
+     "rotulo": "d+14",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 14
+     }
+    },
+    {
+     "rotulo": "d+15",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 15
+     }
+    },
+    {
+     "rotulo": "d+3_sem_encaixe",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     },
+     "snap": false
+    }
+   ]
+  },
+  {
+   "nome": "G0_atalho_alt_s",
+   "cena": "g8_z1",
+   "pergunta": "Alt+S liga/desliga o encaixe a objectos? (o mesmo arrasto a 3 px com o modo desligado, ligado por Alt+S, desligado por Alt+S)",
+   "sondas": [
+    {
+     "rotulo": "a_desligado",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     },
+     "snap": false
+    },
+    {
+     "rotulo": "b_alt_s_1x",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     },
+     "snap": false,
+     "teclas_antes": [
+      "Alt+S"
+     ]
+    },
+    {
+     "rotulo": "c_alt_s_2x",
+     "tipo": "arrasta",
+     "mover": "B",
+     "x": {
+      "de": "aabb.l",
+      "a": "A.aabb.l",
+      "mais": 3
+     },
+     "snap": false,
+     "teclas_antes": [
+      "Alt+S",
+      "Alt+S"
+     ]
+    }
+   ]
+  }
+ ]
+}

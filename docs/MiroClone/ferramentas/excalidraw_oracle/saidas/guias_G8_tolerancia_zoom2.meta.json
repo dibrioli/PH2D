@@ -1,0 +1,380 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-08T21:12:41.345Z",
+  "command": "node corre_guias.mjs guias_casos.json <saidas>",
+  "input": "guias_casos.json",
+  "input_sha256": "12e1890ac61242c929f3d7137dae7e1e04b5df24a54fdac2f584c11b6c13d2ba",
+  "case_sha256": "0025562f2888844c8bfdb5533c1a76db4558e76a92ea61cc0e0884acfbdc0fa5",
+  "inputs": {
+    "cena": [
+      {
+        "id": "A",
+        "type": "rectangle",
+        "x": 100,
+        "y": 60,
+        "width": 120,
+        "height": 80,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "#a5d8ff",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1
+      },
+      {
+        "id": "B",
+        "type": "rectangle",
+        "x": 400,
+        "y": 250,
+        "width": 40,
+        "height": 40,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "#a5d8ff",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1
+      }
+    ],
+    "zoom": 2,
+    "sondas": [
+      {
+        "rotulo": "d-15",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -15
+        }
+      },
+      {
+        "rotulo": "d-14",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -14
+        }
+      },
+      {
+        "rotulo": "d-13",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -13
+        }
+      },
+      {
+        "rotulo": "d-12",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -12
+        }
+      },
+      {
+        "rotulo": "d-11",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -11
+        }
+      },
+      {
+        "rotulo": "d-10",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -10
+        }
+      },
+      {
+        "rotulo": "d-9",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -9
+        }
+      },
+      {
+        "rotulo": "d-8",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -8
+        }
+      },
+      {
+        "rotulo": "d-7",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -7
+        }
+      },
+      {
+        "rotulo": "d-6",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -6
+        }
+      },
+      {
+        "rotulo": "d-5",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -5
+        }
+      },
+      {
+        "rotulo": "d-4",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -4
+        }
+      },
+      {
+        "rotulo": "d-3",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -3
+        }
+      },
+      {
+        "rotulo": "d-2",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -2
+        }
+      },
+      {
+        "rotulo": "d-1",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": -1
+        }
+      },
+      {
+        "rotulo": "d+1",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 1
+        }
+      },
+      {
+        "rotulo": "d+2",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 2
+        }
+      },
+      {
+        "rotulo": "d+3",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "d+4",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 4
+        }
+      },
+      {
+        "rotulo": "d+5",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 5
+        }
+      },
+      {
+        "rotulo": "d+6",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 6
+        }
+      },
+      {
+        "rotulo": "d+7",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 7
+        }
+      },
+      {
+        "rotulo": "d+8",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 8
+        }
+      },
+      {
+        "rotulo": "d+9",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 9
+        }
+      },
+      {
+        "rotulo": "d+10",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 10
+        }
+      },
+      {
+        "rotulo": "d+11",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 11
+        }
+      },
+      {
+        "rotulo": "d+12",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 12
+        }
+      },
+      {
+        "rotulo": "d+13",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 13
+        }
+      },
+      {
+        "rotulo": "d+14",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 14
+        }
+      },
+      {
+        "rotulo": "d+15",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 15
+        }
+      },
+      {
+        "rotulo": "d+3_sem_encaixe",
+        "tipo": "arrasta",
+        "mover": "B",
+        "x": {
+          "de": "aabb.l",
+          "a": "A.aabb.l",
+          "mais": 3
+        },
+        "snap": false
+      }
+    ]
+  },
+  "measured": "Por sonda: a cena montada de novo; arrasto (desce no centro do móvel ou no título da moldura, 2 px, 12 passos, o movimento final repetido e 2 quadros de espera) até a feição `de` ficar a `mais` px de ECRÃ da feição `a`; appState.snapLines e o móvel ANTES de largar; x,y,w,h,ângulo, AABB e cantos de todos DEPOIS; o desvio do encaixe = posição final − posição sem encaixe. Rotação: a pega achada pelo cursor «grab» do canvas.interactive, arco de 16 passos até ao ângulo pedido.",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "case_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "editor": "<Excalidraw> montado (excalidrawAPI público: updateScene para zoom/scroll/objectsSnapModeEnabled/selecção, getSceneElements, getAppState); rato e teclado do Playwright; janela 1280×800, deviceScaleFactor 1",
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "guias_G8_tolerancia_zoom2.json": "5145f12a22d9b1b8874932b93ce163217eaf1ead9940723c44da6f81f75c3b9f"
+  }
+}

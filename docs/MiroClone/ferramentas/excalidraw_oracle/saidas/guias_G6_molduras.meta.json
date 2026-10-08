@@ -1,0 +1,230 @@
+{
+  "oracle": "@excalidraw/excalidraw",
+  "package_version": "0.18.1",
+  "package_license": "MIT",
+  "chromium_version": "153.0.8010.12",
+  "playwright_version": "1.63.0",
+  "date": "2026-10-08T21:10:58.841Z",
+  "command": "node corre_guias.mjs guias_casos.json <saidas>",
+  "input": "guias_casos.json",
+  "input_sha256": "12e1890ac61242c929f3d7137dae7e1e04b5df24a54fdac2f584c11b6c13d2ba",
+  "case_sha256": "002d3d38abc4dbe6aedcf46e537af08470f7a488b49443b2ed1b5132264f2644",
+  "inputs": {
+    "cena": [
+      {
+        "id": "c1",
+        "type": "rectangle",
+        "x": 520,
+        "y": 250,
+        "width": 60,
+        "height": 60,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "#a5d8ff",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": "F",
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1
+      },
+      {
+        "id": "c2",
+        "type": "rectangle",
+        "x": 640,
+        "y": 370,
+        "width": 90,
+        "height": 80,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "#a5d8ff",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": "F",
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1
+      },
+      {
+        "id": "F",
+        "type": "frame",
+        "x": 400,
+        "y": 200,
+        "width": 400,
+        "height": 300,
+        "angle": 0,
+        "strokeColor": "#bbb",
+        "backgroundColor": "transparent",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1,
+        "name": "Moldura"
+      },
+      {
+        "id": "R",
+        "type": "rectangle",
+        "x": 950,
+        "y": 600,
+        "width": 40,
+        "height": 80,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "#a5d8ff",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1
+      },
+      {
+        "id": "T",
+        "type": "rectangle",
+        "x": 100,
+        "y": 700,
+        "width": 80,
+        "height": 80,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "#a5d8ff",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1
+      },
+      {
+        "id": "U",
+        "type": "rectangle",
+        "x": 490,
+        "y": 60,
+        "width": 60,
+        "height": 60,
+        "angle": 0,
+        "strokeColor": "#1e1e1e",
+        "backgroundColor": "#a5d8ff",
+        "fillStyle": "solid",
+        "strokeWidth": 2,
+        "roughness": 0,
+        "groupIds": [],
+        "frameId": null,
+        "version": 1,
+        "versionNonce": 1,
+        "seed": 1
+      }
+    ],
+    "zoom": 1,
+    "sondas": [
+      {
+        "rotulo": "a_livre_na_esq_da_moldura",
+        "tipo": "arrasta",
+        "mover": "R",
+        "x": {
+          "de": "aabb.l",
+          "a": "F.aabb.l",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "b_livre_na_dir_da_moldura",
+        "tipo": "arrasta",
+        "mover": "R",
+        "x": {
+          "de": "aabb.r",
+          "a": "F.aabb.r",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "c_moldura_pelo_titulo_ao_T",
+        "tipo": "arrasta",
+        "mover": "F",
+        "pega": "titulo",
+        "x": {
+          "de": "aabb.l",
+          "a": "T.aabb.l",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "c2_moldura_topo_ao_R",
+        "tipo": "arrasta",
+        "mover": "F",
+        "pega": "titulo",
+        "y": {
+          "de": "aabb.b",
+          "a": "R.aabb.t",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "d_filho_ao_irmao",
+        "tipo": "arrasta",
+        "mover": "c1",
+        "x": {
+          "de": "aabb.l",
+          "a": "c2.aabb.l",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "e_filho_a_borda_da_moldura",
+        "tipo": "arrasta",
+        "mover": "c1",
+        "x": {
+          "de": "aabb.l",
+          "a": "F.aabb.l",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "f_filho_a_um_de_fora",
+        "tipo": "arrasta",
+        "mover": "c1",
+        "x": {
+          "de": "aabb.l",
+          "a": "U.aabb.l",
+          "mais": 3
+        }
+      },
+      {
+        "rotulo": "h_roda_a_moldura",
+        "tipo": "roda",
+        "el": "F",
+        "graus": 30
+      },
+      {
+        "rotulo": "i_roda_um_filho",
+        "tipo": "roda",
+        "el": "c2",
+        "graus": 30
+      }
+    ]
+  },
+  "measured": "Por sonda: a cena montada de novo; arrasto (desce no centro do móvel ou no título da moldura, 2 px, 12 passos, o movimento final repetido e 2 quadros de espera) até a feição `de` ficar a `mais` px de ECRÃ da feição `a`; appState.snapLines e o móvel ANTES de largar; x,y,w,h,ângulo, AABB e cantos de todos DEPOIS; o desvio do encaixe = posição final − posição sem encaixe. Rotação: a pega achada pelo cursor «grab» do canvas.interactive, arco de 16 passos até ao ângulo pedido.",
+  "deterministic_env": {
+    "prng": "mulberry32",
+    "seed_from": "case_sha256[0..8]",
+    "fixed_time_utc": "2026-01-01T00:00:00.000Z"
+  },
+  "editor": "<Excalidraw> montado (excalidrawAPI público: updateScene para zoom/scroll/objectsSnapModeEnabled/selecção, getSceneElements, getAppState); rato e teclado do Playwright; janela 1280×800, deviceScaleFactor 1",
+  "external_requests_blocked": [],
+  "console": [],
+  "outputs_sha256": {
+    "guias_G6_molduras.json": "7aef8a9e1fd248ab8f8fd7c8c79d6c2f143c088ae4e78ca91f345c05e5dbb44c"
+  }
+}

@@ -9,9 +9,9 @@ use ph2d_wet_paint::painter::Engine;
 use ph2d_wet_paint::tuning::Knob;
 use std::time::Instant;
 
-/// O dial do painter no máximo (anel 8 = escala 2 sobre a gravidade da tela, `0,01`), para baixo.
+/// O dial do painter no máximo (anel 8 = escala 2 sobre a gravidade da tela, `0,02`), para baixo.
 fn inclina(e: &mut Engine, ligada: bool) {
-    e.set_knob(Knob::Gravity, 0.01);
+    e.set_knob(Knob::Gravity, 0.02);
     e.sim.tilt_on = ligada;
     e.sim.tilt_dir_x = 0.0;
     e.sim.tilt_dir_y = 1.0;

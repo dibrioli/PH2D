@@ -358,3 +358,53 @@ fn com_easy_drips_o_wet_round_de_fabrica_pinga_como_o_round_do_rebelle() {
     assert_eq!(meio, 0, "a meia inclinação nada pinga, nem com Easy Drips");
     assert_eq!(seco, 0, "o Dry Brush não tem água para pingar");
 }
+
+/// ⛔ **A mancha guarda a forma do traço** (report do dono 08/10, a foto do S: *«a tinta se assenta
+/// formando bases retas e degraus»*). Na cena do report (o S e o L, Wet Round largo e muito molhado), com a
+/// tela no máximo e sem gotas, a orla de baixo de cada coluna fica onde estava com a tela direita (a água
+/// desce DENTRO da mancha); e com as gotas, poucos fios — nos pontos baixos, nunca um pente (eram 20).
+/// Mutação que sangra: a linha de contacto a cortar só a componente de descida (a 1.ª forma).
+#[test]
+fn com_a_tela_inclinada_a_mancha_guarda_a_forma_e_nao_faz_pente() {
+    use super::sonda_gotas_do_dono::{cena_com, fios_na_linha};
+    const W1: usize = super::sonda_gotas_do_dono::W as usize;
+    use ph2d_wet_paint::drips::DripPaper;
+    let sem = DripPaper {
+        create: false,
+        ..DripPaper::DEFAULT
+    };
+    let direita = cena_com("Wet Round", 140.0, 1.0, None, sem);
+    let inclinada = cena_com("Wet Round", 140.0, 1.0, Some(8), sem);
+    // A tinta da tela inclinada FORA da mancha da direita alargada 4 px (acima da linha 640): pêlos
+    // soltos da franja somam poucos px; um degrau, milhares. Medido: 5 px agora, 26 433 com a 1.ª forma
+    // da linha de contacto (o report do dono) — a barra 300 fica no vale.
+    let tinta = |px: &[u8], x: usize, y: usize| {
+        let i = (y * W1 + x) * 4;
+        255 - px[i..i + 3].iter().copied().min().unwrap_or(255) > 25
+    };
+    let fora = (4..636usize)
+        .flat_map(|y| (4..W1 - 4).map(move |x| (x, y)))
+        .filter(|&(x, y)| {
+            tinta(&inclinada, x, y)
+                && !(y - 4..=y + 4).any(|yy| (x - 4..=x + 4).any(|xx| tinta(&direita, xx, yy)))
+        })
+        .count();
+    if let Ok(out) = std::env::var("PH2D_SONDA_OUT") {
+        for (nome, px) in [("s_direita", &direita), ("s_inclinada", &inclinada)] {
+            let (w, h) = (super::sonda_gotas_do_dono::W, super::sonda_gotas_do_dono::H);
+            let mut f = format!("P6\n{w} {h}\n255\n").into_bytes();
+            for p in px.as_chunks::<4>().0 {
+                f.extend_from_slice(&p[..3]);
+            }
+            std::fs::write(format!("{out}/{nome}.ppm"), f).unwrap();
+        }
+    }
+    let com = cena_com("Wet Round", 140.0, 1.0, Some(8), DripPaper::DEFAULT);
+    let fios = fios_na_linha(&com, 700);
+    println!("[gotas] o S: {fora} px de tinta fora da mancha · {fios} fios a y = 700");
+    assert!(
+        fora <= 300,
+        "{fora} px de tinta fora da mancha da tela direita (degraus/bases planas)"
+    );
+    assert!((1..=6).contains(&fios), "{fios} fios na cena do S (pente?)");
+}

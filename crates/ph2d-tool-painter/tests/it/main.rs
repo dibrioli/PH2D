@@ -15,5 +15,6 @@ mod os_outros_meios_nao_mudam;
 mod presets_de_fabrica;
 mod sonda_gestos;
 mod sonda_gotas;
+mod sonda_gotas_do_dono;
 mod sonda_largura;
 mod sonda_tracos_por_meio;

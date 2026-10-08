@@ -45,8 +45,9 @@ const fn painter_default_knobs() -> [f64; KNOB_COUNT] {
     k[Knob::BristleSize as usize] = 2.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 1.0
     k[Knob::BristleCount as usize] = 2000.0; // LITERAL-OK: wet-paint product default (Enio), engine boot 950
     // A gravidade da TELA (W1b): o dial no máximo (anel 8 = ×2) = a inclinação máxima do Rebelle, medida
-    // pela orla sem gotas (doc 05 §4b: baixo/cima 3,03 / 2,11 contra 3,07 / 2,28). Não é do pincel.
-    k[Knob::Gravity as usize] = 0.01; // LITERAL-OK: canvas tilt calibration (W1b), engine boot 0.005
+    // pela orla sem gotas com a linha de contacto final (doc 05 §4b: baixo/cima 3,03 / 2,12 contra
+    // 3,07 / 2,28). Não é do pincel.
+    k[Knob::Gravity as usize] = 0.02; // LITERAL-OK: canvas tilt calibration (W1b), engine boot 0.005
     k
 }
 

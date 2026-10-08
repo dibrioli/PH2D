@@ -506,10 +506,9 @@ impl Engine {
     /// [`Self::action_dry_canvas`] without the history capture (product door).
     pub fn dry_canvas_now(&mut self) {
         self.drain_step();
-        let p = self.sim.gather_params(&self.tuning);
-        let mix = p.mix;
+        let mix = self.sim.gather_params(&self.tuning).mix;
         let g = self.active_grid_mut();
-        crate::drips::settle_all(g, &p);
+        crate::drips::end_episode(g);
         dry_canvas(g, mix);
         g.bloom.fill(0); // backrun budgets recharge on dry
         self.mark_dirty_full();
@@ -524,8 +523,7 @@ impl Engine {
     pub fn fast_dry_now(&mut self) {
         self.drain_step();
         let idx = self.active_layer;
-        let p = self.sim.gather_params(&self.tuning);
-        crate::drips::settle_all(&mut self.layers[idx].grid, &p);
+        crate::drips::end_episode(&mut self.layers[idx].grid);
         sim_fast_dry(&mut self.sim, &mut self.layers[idx].grid, &self.tuning);
         self.mark_dirty_full();
     }

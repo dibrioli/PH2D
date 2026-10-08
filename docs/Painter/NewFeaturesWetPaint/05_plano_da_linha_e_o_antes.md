@@ -263,6 +263,32 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   - **Censo dos controlos**: as três rows esmaecem com a tela abaixo do ângulo mínimo (`GotasDaTela`) e
     Size/Length com Create Drips off (`FormaDaGota`); a linha «o ângulo do carimbo não muda a tinta da
     água» saiu — com a tela direita ele MUDA (a água a correr apagava a diferença).
+- ✅ **2.ª ronda das gotas, pelo smoke do dono** (08/10, duas fotos: *«ficou invertido: sem easy drips
+  escorre… a tinta se assenta formando bases retas e degraus… o escorrimento fino parece artificial
+  demais»*). A cena dele vive em `tests/it/sonda_gotas_do_dono.rs` (o S e o L, Wet Round a 140 px, água
+  1,0). Os quatro defeitos e a cura de cada um:
+  - **Degraus e bases planas** — a 1.ª linha de contacto cortava só a DESCIDA no papel seco, e a água
+    entrava de LADO por baixo das encostas (26 433 px de tinta fora da mancha na cena do dono). Agora o
+    papel seco POR FORA da mancha (seco a jusante, `FRONT_DRY`) não recebe água de lado nenhum; os buracos
+    de DENTRO (a franja, com água por baixo) deixam-na passar. ⛔ Fechar também os de dentro prendia a
+    água (orla 1,0×, nenhuma gota). Gate `com_a_tela_inclinada_a_mancha_guarda_a_forma_e_nao_faz_pente`:
+    0 px fora da mancha (barra 300), mutação da 1.ª forma ✗ 24 848.
+  - **O pente** (20 fios) — cada degrau de uma encosta era uma orla. A gota nasce só no PONTO BAIXO com
+    água da bacia (`LOW_SLACK`, a caminhada com `EDGE_SEARCH` 12), e a bacia é ±`30·Size` px (Size 5 ⇒ 1
+    fio num traço de 150, o Rebelle). A cena do dono: 4 fios (gate: 1–6; a 1.ª forma ✗ 8).
+  - **Invertido** — no papel que segura menos a gota nascia cedo e esvaziava a orla rasa, e a tinta dela
+    vinha da orla (16–22 de escuro contra 76–116). A tinta do fio é agora uma fração da OPACIDADE do
+    traço (`TRAIL_ALPHA` 0,4, pela curva do motor: imune ao amontoado da orla e à franja) e SAI da orla
+    e do traço acima dela fileira a fileira; a orla só dá água. Na cena do dono: 4 fios com e sem Easy, ~93
+    de escuro nos dois.
+  - **Artificial** — o fio ganhou ombros macios (0,35), um desvio lento (0,7 px, onda de 70 px, fase pelo
+    hash da origem), um pescoço (3 células a afinar em 12 px) e a contra-gota (disco de raio 2).
+  - **Recalibrado pela linha de contacto final** (a gota já não incha para fora da mancha): gravidade da
+    tela `0,02` (orla 3,03 / 2,12 contra 3,07 / 2,28 do Rebelle), `SLIDE 0,0283` (meio entre a meia e a
+    máxima), `HOLD 0,337` (meio entre 0,7 = 0,91 e 0,4 = 0,125), `HOLD_EASY 0,012` (meio entre o traço de
+    0,2 = 0,006 e o Wet Round = 0,025). Bancada: 265 / 258 px na máxima, 464 / 464 no 10/10, 0 a meio, o
+    Wet Round com Easy 258 px. Custo a 4096² (load 32–56, inflado): pior 1,13 ms (poças) / 1,51 ms (a tela
+    inteira molhada).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   ⚠️ Para o integrador: o degrau 187 → 188 tem migração (`ProjectFileV187`, braço `187 =>` em
   `project_load_read.rs`) — se o main passar de 187 antes, os dois movem-se à mão (o `schema-recount.py`

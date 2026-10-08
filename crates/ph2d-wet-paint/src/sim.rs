@@ -262,10 +262,8 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             if n.is_multiple_of(2) {
                 rebuild_active_region(g);
                 if !g.has_fluid {
-                    // A água secou: o episódio das gotas acaba (as em voo assentam onde estão).
-                    if !g.drips.is_empty() {
-                        crate::drips::settle_all(g, &c.p);
-                    }
+                    // A água secou: o episódio das gotas acaba.
+                    crate::drips::end_episode(g);
                     // Aborta o passo: nada de cadência, nada de cursor.
                     return Some(false);
                 }

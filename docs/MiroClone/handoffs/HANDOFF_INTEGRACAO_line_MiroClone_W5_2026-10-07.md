@@ -185,3 +185,28 @@ com a câmara mudada só para a foto. O que a foto apanhou está no commit `bbb1
 `target/*/incremental` reclamado (39 G + 4,6 G); binário `smoke` quente — 2.ª corrida:
 `Finished \`smoke\` profile [optimized] target(s) in 0.23s`; `pgrep -af 'ph2d|cargo|rustc'` sem
 processos da linha (os que aparecem são de `line-motion-value` e de um slot do pincel).
+
+## 12. Depois do fecho — o 1.º smoke do dono (08/10), corrigido na linha
+
+O dono testou a cena 6 e pediu quatro coisas; as quatro estão em `eb58a1b2f` (o portão de
+fecho correu de novo sobre ela — §12.1):
+
+| pedido (palavras do dono) | o que mudou | prova |
+|---|---|---|
+| «A nota com o cadeado não segue o frame» | `Editor::moving` levava só os destravados de DENTRO; o frame leva tudo o que é dele (travar impede de mover SOZINHO). Apagar o frame continua a deixar o travado (§5). | `pressing_the_empty_inside_of_a_frame_grabs_it_and_it_carries_even_the_locked` (arrasto e empurrão); mutação LOCKFOLLOW sangra |
+| «Permita rotacionar também os frames e transformar como as outras shapes clicando e arrastando dentro deles, desde que num espaço vazio» | `frame_hit` agarra o miolo vazio (o que está dentro ganha o clique) — **substitui** a lei do Miro «só borda e título» da W5; rodar leva os de dentro à volta do mesmo centro (`moving` no `Handle::Rotate`); a pertença e o clique lêem a caixa RODADA (`box_contains`, `box_contains_all_of`, com atalho exacto a 0°); desenho, recorte e título rodados (`frames::screen_shape`). Redimensionar continua sem escalar filhos (oráculo A8). | `rotating_a_frame_turns_its_contents_with_it`; pixels `a_rotated_frame_paints_rotated`; mutações INSIDE e ROTKIDS sangram |
+| «Para setas e shapes não temos a opção de cor preta para o stroke» | amostra PRETO do documento `[0,0,0,255]` no grupo do contorno (`board_bar::BLACK`, depois das cores do marcador). **E a causa provável:** a tinta de nascença (`DEFAULT_INK`) desenha-se CLARA num tema escuro e sumia dentro de um frame BRANCO — `ThemeInk::over(fundo)`: a tinta lê-se contra o frame mais interior onde o elemento vive; uma seta, contra o frame debaixo do meio dela (`frames::ink_inside`/`ink_at`). | `the_stroke_offers_black_and_it_is_document_black`; pixels `the_default_ink_reads_against_the_frame_it_lives_in` (dentro escura, fora clara no tema escuro); mutação INK sangra |
+| «No campo de busca … setas de navegação além da tecla enter assim com um x para limpar o campo» | ↑ anterior · ↓ seguinte · × limpa, à direita do campo (`BOARD_SEARCH_{PREV,NEXT,CLEAR}`); `search::go(forward)` com o índice do que está à vista coerente nos dois sentidos. | `the_search_field_arrows_walk_the_results_and_the_x_clears_it`; a mutação PREV só sangrou com TRÊS resultados (com dois, anterior e seguinte coincidem) |
+
+### 12.1 Portão de novo (1×, `2a925859d..eb58a1b2f`)
+
+| portão | resultado |
+|---|---|
+| `PH2D_GPU=1 BASE=2a925859d NO_FAIL_FAST=1 bash scripts/nextest-impacted.sh` | 16 967 / 16 968 — a falha era o tecto de LOC de `ph2d-board-edit/src/organize.rs` (704 > 700): links e etiquetas foram para `links_tags.rs` (`2f1922a13`), re-corrida `architecture_workspace_file_loc_cap` 2/2 |
+| clippy do `ship.sh` (`-D warnings`) | 1.ª: `too_many_arguments` em `frames::paint_titles` (8) — a licença que o `paint` já tem; re-corrida saída 0 |
+| `cargo fmt --all -- --check` | limpo |
+| `ph2d-editor-core --test it` | 535 / 536 → a mesma falha do tecto, curada |
+| shell `file_loc_caps`, `fn_loc_caps`, `arch*` | 22 / 22 |
+| `ph2d-i18n` · `typos` · `cargo machete` | verdes |
+| GPU `frames_paint` (sem «sem adaptador») | 4 / 4 |
+| `ph2d-board-edit` · `ph2d-board-render` (lib) depois do corte | 95 / 95 · 12 / 12 |

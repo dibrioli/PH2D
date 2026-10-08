@@ -18,9 +18,8 @@ ph2d-board-edit = { path = "../ph2d-board-edit" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-tokens = { path = "../ph2d-tokens" }
-
-[dev-dependencies]
-# O gate da cena 7 conduz o editor do quadro (o texto das formas mede-se).
+# A cena 8 (W6) faz o mapa mental com o editor do quadro, que mede o texto dos nós; o gate da cena 7
+# também conduz o editor.
 ph2d-text = { path = "../ph2d-text" }
 
 [lints]

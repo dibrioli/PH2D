@@ -37,9 +37,9 @@ pub(super) const MIND_TOOL: Item = Item::Tool(Tool::MindMap);
 /// O botão dos Modelos na barra curta.
 pub(super) const TEMPLATES: Item = Item::Mind(MindItem::Templates);
 
-/// A largura de uma linha da galeria, em botões da barra (o nome mais longo — «Customer journey
-/// map» — cabe a `Sm`).
-const GALLERY_W: f32 = 6.0;
+/// A largura de uma linha da galeria, em botões da barra: o nome mais longo — «Customer journey
+/// map» — cabe a `Sm` (a 6 lia-se «Customer journey…» na foto da cena 8).
+const GALLERY_W: f32 = 8.0;
 
 /// Os itens da galeria (registados na tabela da barra).
 pub(super) fn flyout_items() -> Vec<Item> {

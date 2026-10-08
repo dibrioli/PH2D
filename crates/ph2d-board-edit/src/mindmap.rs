@@ -110,6 +110,14 @@ fn lighter_side(doc: &BoardDoc, root: ElementId) -> Side {
     }
 }
 
+/// A casa (o frame) de um nó novo: a do pai; a raiz, a do frame onde nasce.
+fn home_of(doc: &BoardDoc, mind: &Mind, at: [f64; 2]) -> Option<ElementId> {
+    match mind.parent.and_then(|p| doc.get(p)) {
+        Some(p) => p.frame,
+        None => doc.deepest_frame_at(at, &BTreeSet::new()),
+    }
+}
+
 pub(crate) fn order_of(doc: &BoardDoc, id: Option<&ElementId>) -> Option<FracKey> {
     id.and_then(|c| doc.get(*c))
         .and_then(Element::mind)
@@ -165,6 +173,7 @@ impl Editor {
             shape,
             [at[0], at[1], 0.0, 0.0],
         );
+        el.frame = home_of(doc, &mind, at);
         el.set_mind(Some(mind));
         let [w, h] = node_size(&el, text_size(ts, &el));
         (el.x, el.y, el.w, el.h) = (at[0] - w / 2.0, at[1] - h / 2.0, w, h);
@@ -189,6 +198,7 @@ impl Editor {
             shape,
             [at[0], at[1], 0.0, 0.0],
         );
+        el.frame = home_of(doc, &mind, at);
         el.set_mind(Some(mind));
         let guess = [
             (EMPTY_EMS * font).max(text.chars().count() as f64 * font / 2.0),

@@ -459,3 +459,20 @@ fn a_note_has_no_mind_child() {
     assert!(!w.cmd(Command::MindChild));
     assert!(!w.cmd(Command::MindNav([1.0, 0.0])));
 }
+
+/// Um nó nasce na casa do pai — e a raiz na do frame onde é posta (o frame leva o mapa ao mexer-se).
+#[test]
+fn a_new_node_lives_in_its_parents_frame() {
+    let (mut w, _) = W::new();
+    w.ed.commit_text(&mut w.doc, &mut w.h);
+    w.ed.tool = Tool::Frame;
+    w.drag([1_000.0, 1_000.0], [1_600.0, 1_400.0], NONE);
+    let f = *w.sel().iter().next().unwrap();
+    assert!(w.doc.get(f).unwrap().as_frame().is_some());
+    w.ed.tool = Tool::MindMap;
+    w.click([1_200.0, 1_200.0], NONE);
+    let root = w.focus();
+    assert_eq!(w.el(root).frame, Some(f));
+    let a = w.child("A");
+    assert_eq!(w.el(a).frame, Some(f), "o filho mora no frame do pai");
+}

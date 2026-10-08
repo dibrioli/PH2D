@@ -228,6 +228,29 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "board.smoke.guide.space_me" => "Drag me left: equal spacing",
         "board.notice.link_pick" => "Click the object to link to — Esc cancels",
         "board.notice.link_gone" => "The linked object has been deleted from this board",
+        "board.smoke.mind.frame" => "Try a mind map",
+        "board.smoke.mind.root" => "Plan",
+        "board.smoke.mind.ideas" => "Ideas",
+        "board.smoke.mind.sketch" => "Sketch",
+        "board.smoke.mind.proto" => "Prototype",
+        "board.smoke.mind.risks" => "Risks",
+        "board.smoke.mind.r1" => "Time",
+        "board.smoke.mind.r2" => "Budget",
+        "board.smoke.mind.r3" => "People",
+        "board.smoke.mind.next" => "Next steps",
+        "board.smoke.mind.ask" => "Ask the team",
+        "board.smoke.mind.l1" => "1. Select «{node}» and press Tab: a child is born, ready to type",
+        "board.smoke.mind.l2" => {
+            "2. While typing, Enter adds the next sibling right below; Shift+Enter, a new line"
+        }
+        "board.smoke.mind.l3" => "3. The arrow keys walk the tree; Delete takes the whole branch",
+        "board.smoke.mind.l4" => {
+            "4. Click the number next to «{node}»: the branch opens (Ctrl+Up folds it again)"
+        }
+        "board.smoke.mind.l5" => "5. Drag «{node}» onto «{to}»: it moves there, with its colour",
+        "board.smoke.mind.l6" => {
+            "6. Templates: the button under the mind map one, on the left bar — one click, a whole board"
+        }
         "board.tool.mindmap" => {
             "Mind map — click to start one; Tab adds a child, Enter a sibling, the arrows walk the tree"
         }

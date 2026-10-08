@@ -350,6 +350,8 @@ impl ModeFamily for Family<'_> {
 /// uma elipse, as DUAS seleccionadas, e a Caneta escolhida pelo MESMO clique que o botão dela na
 /// coluna ① dá — a foto mostra a coluna com a caneta acesa, a fila com as opções dela, a barra de
 /// ações por cima das duas formas e a dica da caneta no rodapé. Corre uma vez.
+/// `PH2D_OBJECT_MODE_SMOKE=10` (F4, 08/10): a 9, e depois a RODA com o leque de Draw aberto e a
+/// PALETA a fazer piscar o pulldown Snap — ver [`crate::vector_mode_reach`].
 pub fn smoke_step(
     vec: &mut VecState,
     scene: &mut ph2d_vec_scene::VecScene,
@@ -363,15 +365,17 @@ pub fn smoke_step(
     static STAGE: AtomicU8 = AtomicU8::new(0);
     static WELD: AtomicU8 = AtomicU8::new(0);
     static BARS: AtomicU8 = AtomicU8::new(0);
+    static REACH: AtomicU8 = AtomicU8::new(0);
     let stage = match STAGE.load(Ordering::Relaxed) {
         0 => {
             let scene = std::env::var("PH2D_OBJECT_MODE_SMOKE");
             let want = match scene.as_deref() {
-                Ok("6" | "7" | "9") => 1,
+                Ok("6" | "7" | "9" | "10") => 1,
                 _ => 9,
             };
             WELD.store(u8::from(scene.as_deref() == Ok("7")), Ordering::Relaxed);
-            BARS.store(u8::from(scene.as_deref() == Ok("9")), Ordering::Relaxed);
+            BARS.store(u8::from(matches!(scene.as_deref(), Ok("9" | "10"))), Ordering::Relaxed);
+            REACH.store(u8::from(scene.as_deref() == Ok("10")), Ordering::Relaxed);
             STAGE.store(want, Ordering::Relaxed);
             want
         }
@@ -447,7 +451,13 @@ pub fn smoke_step(
         {
             let both: Vec<VecPathId> = vec.entities.keys().copied().collect();
             vec.pen.select_many(&both);
-            go(9);
+            go(if REACH.load(Ordering::Relaxed) == 1 { 30 } else { 9 });
+        }
+        // A cena 10 (F4): a roda e a paleta que ensina — `vector_mode_reach`.
+        s @ 30..=32 => {
+            if let Some(next) = crate::vector_mode_reach::step(s, hero) {
+                go(next);
+            }
         }
         5 if edit && shapes == 2 && vec.edit.objects.first().copied() == newest => {
             let both: Vec<VecPathId> = vec.entities.keys().copied().collect();

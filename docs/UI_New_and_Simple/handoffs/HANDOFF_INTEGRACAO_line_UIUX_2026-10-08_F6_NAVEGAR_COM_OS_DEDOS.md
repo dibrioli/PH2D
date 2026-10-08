@@ -82,11 +82,29 @@ só a saída é gravada), sem resposta até ao fecho. Nada escrito. Comportament
 
 ## §6 — Gate final
 
-(a preencher no fecho)
+Uma corrida do `verificador` sobre o diff acumulado (`BASE=2a925859d`), outras linhas a compilar ao lado:
+- fmt: **✗ 1×** (o gate novo da shell, por formatar) → `cargo fmt --all`, commit `d08e96186`; depois ✓.
+- warnings-deny sobre o workspace inteiro com todos os alvos ✓ · o lint como o `ship.sh`
+  (`--features ph2d-spike/bevy_ecs -- -D warnings`) ✓ · `machete` ✓ · standalone-optional ✓ ·
+  workflow-packages ✓ · censos da árvore combinada ✓ · `doc-index --check` ✓.
+- `nextest-impacted` (`NO_FAIL_FAST=1`): **16 778 / 16 778** (0 vermelhos, 9 966 pulados) — sem
+  re-corridas.
+- Catracas: `the_shell_only_shrinks` ✓ (185 603 de 189 041) · `the_app_only_sheds_fields` 3/3 ✓ ·
+  `file_loc_caps` 4/4 ✓.
+- ⚠️ O que só a árvore combinada pega: quem chame `TouchGestures::tick` (`Option` → `Vec`), faça
+  `match` em `TouchOut`, ou use `touch_input::toggle_focus` (apagado) noutra linha.
 
 ### Mutação (agente `mutacao`, verde visto antes de cada uma, árvore limpa no fim)
 
-(a preencher)
+**18 mutações, 18 sangraram à primeira**, nenhuma sem compilar, 4 controlos verdes (população > 0,
+âncora casa 1×, compila, testes > 0). No reconhecedor (M1–M10): tirar o `nav_dirty`, as duas
+re-semeaduras (dedo a mais / a menos), `< 2` → `is_empty()` no `NavEnd` (apanhado pelo gate
+«levanta no PRIMEIRO dedo a sair», escrito para ela), o `factor != 1`, o factor invertido, o `!moved`
+do toque, o `moved` da navegação, o `navigate()` do `tick`, a escala dos sintéticos. `ZenMode` (M11): o
+`try_toggle` tirado — apanhado pelo gate do `Ctrl+Space` na shell (os testes `zen` da crate não o vêem).
+Câmera (M12–M14): o sinal da âncora, o `×16` da inversa, o sinal da roda. Shell (M15–M18): a janela já
+cortada na porta do pan, `Left` no `NavBegin`, a compensação apagada, a pinça por `LineDelta`.
+⚠️ 12 delas são apanhadas por UM só teste cada — relaxar esse teste deixa a cláusula sem guarda.
 
 ## §7 — Smoke do dono
 
@@ -105,8 +123,26 @@ Ver o relatório ao dono (passos numerados). Foto:
 
 ## §9 — Binário de smoke (2.ª corrida)
 
-(a preencher)
+Depois do `rm -rf target/*/incremental` (23 GB) — `bash scripts/ph2d-run.sh cargo build -p
+ph2d-host-desktop --profile smoke`, 1.ª corrida 27 s; a 2.ª:
+
+```
+▸ linha line_uiux · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.20s
+```
+
+Varredura no fecho: zero processos meus; o `ph2d-host-desktop` vivo é do dono (worktree
+`line-PainterWatercolor`, terminal do VS Code, ecrã real) — não se toca.
 
 ## §10 — `agent-loop-profile.sh`
 
-(a preencher)
+```
+  ✗ paralelismo de ferramenta              1.15/passo   alvo: >= 1,5  (9% dos passos com 2+ chamadas)
+  ✓ respostas por sessao (mediana)                211   alvo: <= 800
+  ✗ cargo test : cargo check                406 : 251   alvo: <= 1,0  razao 1.6x (baseline: 4,3x)
+  ✗ edicoes pela ferramenta Edit                  35%   alvo: >= 80%
+  ✗ contexto relido por passo (media)         493 mil   alvo: <= 250 mil
+  ✓ contexto no inicio da sessao               64 mil   alvo: <= 80 mil
+```
+(As 20 sessões mais recentes; nesta jornada as edições foram todas pela `Edit`/`Write`, e os testes
+correram por scripts batched no `ph2d-run.sh`.)

@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**134 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**135 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -138,6 +138,7 @@
 | 121 |   | [121_as_formas_na_placa.md](121_as_formas_na_placa.md) | — | 121 — AS FORMAS NA PLACA: toda forma do Motion desenhada pelo dispositivo, nítida e sem custo por cópia |
 | 122 |   | [122_ciclo_13_os_abertos_do_modulo.md](122_ciclo_13_os_abertos_do_modulo.md) | — | 122 — CICLO 13: os cinco abertos do módulo, num ciclo |
 | 123 |   | [123_ciclo_14_os_oito_abertos.md](123_ciclo_14_os_oito_abertos.md) | — | 123 — CICLO 14: os oito abertos que o ciclo 13 deixou, num ciclo |
+| 124 |   | [124_ciclo_15_o_tecto_dos_criadores_e_o_colisor_do_corpo_mole.md](124_ciclo_15_o_tecto_dos_criadores_e_o_colisor_do_corpo_mole.md) | — | 124 — CICLO 15: o tecto por nó em TODO criador, e o colisor que respeita o corpo mole |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

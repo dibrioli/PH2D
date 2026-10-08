@@ -23,6 +23,10 @@ erradas sobre o estado da máquina, seguidas.
 - Para esperar por um processo, use o **PID**: `tail --pid=$PID -f /dev/null` com `timeout`, ou o
   `wait` do próprio job — nunca um padrão de linha de comando.
 - Para CONTAR, pergunte ao que não se auto-inclui: `ls -l /proc/*/exe | grep -c <binário>`.
+- ⭐ **Para ACHAR um binário de teste, `pgrep -x <comm>`** (o nome do processo, ≤ 15 caracteres:
+  `pgrep -x ph2d_app_motion`) — o `comm` do shell é `zsh`, então ele não se auto-apanha. ⛔
+  **Reincidência medida (2026-10-08, ciclo 15): `P=$(pgrep -f '<binário> <teste>'); kill $P` matou
+  o PRÓPRIO shell DUAS vezes na mesma jornada (saída `144`)** — o padrão estava no cmdline dele.
 - Se o padrão for mesmo necessário, exclua-se: `pgrep -f "<padrão>" | grep -v "^$$\$"` — mas é mais
   frágil do que usar o PID.
 - ⛔ E um vigia que devolve o mesmo resultado quer o processo esteja vivo quer esteja morto **não é

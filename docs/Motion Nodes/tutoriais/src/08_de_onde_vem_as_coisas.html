@@ -265,15 +265,17 @@ para a placa gráfica. O segundo é o que faz um ficheiro grande pesar mesmo qua
 muda — e foi o que esta volta de trabalho corrigiu.</p>
 
 <table>
-  <tr><th>uma tabela de <b>um milhão</b> de linhas, por quadro</th><th class="n">antes</th><th class="n">agora</th></tr>
-  <tr><td>voltar a ler a tabela</td><td class="n">6,05&nbsp;ms</td><td class="n">0,01&nbsp;ms</td></tr>
-  <tr><td>preparar e enviar para a placa</td><td class="n">3,57&nbsp;ms</td><td class="n">1,61&nbsp;ms</td></tr>
-  <tr><td><b>o quadro inteiro</b></td><td class="n"><b>9,62&nbsp;ms</b></td><td class="n"><b>1,62&nbsp;ms</b></td></tr>
+  <tr><th>um ficheiro de <b>um milhão</b> de linhas, por quadro</th><th class="n">antes</th><th class="n">agora</th></tr>
+  <tr><td>voltar a ler a tabela</td><td class="n">6,05&nbsp;ms</td><td class="n">0,00&nbsp;ms</td></tr>
+  <tr><td>preparar e enviar para a placa</td><td class="n">3,57&nbsp;ms</td><td class="n">0,04&nbsp;ms</td></tr>
+  <tr><td><b>o quadro inteiro</b></td><td class="n"><b>9,62&nbsp;ms</b></td><td class="n"><b>0,04&nbsp;ms</b></td></tr>
 </table>
 
-<div class="note"><b>Um milhão de linhas de um ficheiro custa hoje 1,6 milésimos de segundo por
-quadro</b> — e um quadro tem 16,7. Antes, a mesma tabela era seis vezes mais cara só por estar lá: o programa relia-a e reenviava-a a cada quadro, mesmo
-parada. Agora o preço é pago <b>quando alguma coisa muda</b>, e não por quadro.</div>
+<div class="note"><b>O cartão <code>Table</code> entrega as primeiras 32&nbsp;768 linhas</b> — é o
+limite de objectos por cartão da casa, o mesmo do <code>Grid</code>. Um ficheiro de um milhão de
+linhas lê-se uma vez (ao escolhê-lo) e depois custa 0,04 milésimos de segundo por quadro; o cartão
+mostra quantas peças saíram. Antes, a tabela inteira era relida e reenviada a cada quadro, mesmo
+parada: agora o preço é pago <b>quando alguma coisa muda</b>, e não por quadro.</div>
 
 <h2>8 · Se algo não bater</h2>
 

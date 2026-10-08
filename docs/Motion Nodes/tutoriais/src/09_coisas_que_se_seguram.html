@@ -301,8 +301,8 @@ só têm caminho no processador. Isso não é um defeito escondido — é uma co
       <td class="n">0,010&nbsp;ms</td><td class="n">0,06&nbsp;%</td></tr>
   <tr><td><code>Wave</code></td><td>181×181 (o limite de hoje)</td>
       <td class="n">0,095&nbsp;ms</td><td class="n">0,6&nbsp;%</td></tr>
-  <tr><td><code>Soft Body</code></td><td>512×512</td>
-      <td class="n">2,26&nbsp;ms</td><td class="n">13,6&nbsp;%</td></tr>
+  <tr><td><code>Soft Body</code></td><td>181×181 (o limite de hoje)</td>
+      <td class="n">0,25&nbsp;ms</td><td class="n">1,5&nbsp;%</td></tr>
   <tr><td><code>Boids</code></td><td>3 600 no processador</td>
       <td class="n"><b>10,87&nbsp;ms</b></td><td class="n"><b>65,2&nbsp;%</b></td></tr>
 </table>
@@ -313,6 +313,11 @@ aquele número é o que ele custa quando cai para o processador. Cada agente olh
 outros, por isso dobrar o bando custa quatro vezes mais. É por isso que um bando grande
 <b>precisa</b> da placa, e os outros nove não: uma corda de 200 pontos gasta três décimos de um
 por cento.</div>
+
+<div class="note"><b>Nenhum cartão faz mais de 32&nbsp;768 objectos</b> — é o limite por cartão da
+casa. Por isso o <code>Soft Body</code> pára em 181×181 (32&nbsp;761 bolinhas), como o
+<code>Wave</code>: pedir mais não dá mais, e no limite ele gasta um quarto de milésimo de segundo por
+quadro.</div>
 
 <h2>8 · Se algo não bater</h2>
 

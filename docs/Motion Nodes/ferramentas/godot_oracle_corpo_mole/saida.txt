@@ -1,0 +1,6 @@
+# oraculo: 4.7.2.stable.arch_linux.ed1daf0bf · licenca MIT
+# fixtura: soft_body_radius (5x5, passo 0,30, raio 0,28, ancora ±2,0 / 0,7 s), 3 s a 960 Hz
+# data: 2026-10-08
+ORACULO modo=nu quadros=2881 hz=960 pares_ligados=72 pior_nao_ligado_fim=0.5162 pior_nao_ligado_2a_metade=0.4877 par_ligado_min=0.2459 extensao=1.8094 diametro=0.5600
+ORACULO modo=lei quadros=2881 hz=960 pares_ligados=72 pior_nao_ligado_fim=0.5603 pior_nao_ligado_2a_metade=0.5563 par_ligado_min=0.2673 extensao=1.8005 diametro=0.5600
+ORACULO modo=todos quadros=2881 hz=960 pares_ligados=72 pior_nao_ligado_fim=0.6000 pior_nao_ligado_2a_metade=0.6000 par_ligado_min=0.3000 extensao=2.7601 diametro=0.5600

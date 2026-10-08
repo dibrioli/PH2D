@@ -1389,7 +1389,7 @@ censo da família: `1` cena com carimbo a jusante de uma zona (a `=27`).
 - ⛔ **«Não aparece» tem um suspeito barato antes do caro: o tamanho EM PIXELS na câmera do produto.**
   Um gate em unidades de mundo aprova uma forma de `3 px`; o gate desta cura mede pixels acesos.
 
-## Bug #15 — o colisor no laço de um corpo mole não segura a distância mínima entre partículas (ABERTO — achado do ciclo 14)
+## Bug #15 — o colisor no laço de um corpo mole não segura a distância mínima entre partículas (✅ FECHADO 08/10, ciclo 15 — e o «inchar» era o defeito)
 
 ### O que se vê
 `motion.soft_body --pre--> motion.collide → soft_body.state` (o «raio de partícula» do doc 89, folha 03,
@@ -1410,7 +1410,43 @@ molas seguram a `spacing < 2·radius` de propósito. As `8` iterações do colis
 mais um passo de molas.
 
 ### Estado
-⏳ **Aberto.** O gate passou a medir a lei que vale no produto (a extensão, `+20 %`); a distância
-mínima não é garantida, nem nunca foi. A cura de padrão-ouro é o colisor ignorar os pares ligados
-por restrição (o que os solvers de partículas com restrições fazem), e isso é um desenho do
-`motion.collide`, fora do âmbito do ciclo 14.
+✅ **Fechado no ciclo 15** ([doc 124 §2](124_ciclo_15_o_tecto_dos_criadores_e_o_colisor_do_corpo_mole.md)).
+Três peças, cada uma medida: (1) a LEI — os pares do mesmo corpo que o repouso já sobrepõe não
+colidem (o filtro de auto-colisão do FleX; o corpo publica `rest` + `body`, o colisor lê-os na CPU e
+no WGSL); (2) o contacto entra na VELOCIDADE do corpo (`sb_pos`/`sb_dt`, o `v = (x_final −
+x_antes)/dt` do PBD); (3) o TEMPO — o corpo declara `substeps` ao relógio do grafo (a `1` sub-passo
+o próprio corpo nu se atravessa nesta fixtura). A `4`: colisor `0,5600`, desenhado `0,5414`,
+extensão `+0,2 %` contra o nu — o número do oráculo (Godot, MIT, a NOSSA fixtura: `0,5563`, sem
+inchar).
+
+### Lições
+- ⛔ **O «inchar» que o ciclo 14 leu como *«o que um particle radius faz»* era a ASSINATURA do
+  defeito.** O oráculo com «todos os pares colidem» deu exactamente o `2,76`; com a lei, o corpo
+  não incha. *Uma régua escolhida porque «a outra não passa» mede o que o defeito produz.*
+- ⛔ **E o gémeo tinha o MESMO defeito escondido:** o `rope_thickness` passava (`1,05`) com a
+  corda ESTICADA `37 %` (`8,2` contra `6,0`). *Um gate de espessura sem régua de COMPRIMENTO
+  aprova o colisor a desfazer a restrição.*
+- ⚠️ **O critério escrito antes também errou, e a medição corrigiu-o:** o par ligado `≥ 0,27`
+  (absoluto) foi refutado pelo corpo NU (`0,2511`) — a régua de uma propriedade do corpo é relativa
+  ao corpo sem o nó sob teste.
+
+## Bug #16 — a corda com colisor atravessa-se durante um chicote a 60 Hz (ABERTO — resíduo do ciclo 15)
+
+### O que se vê
+`motion.verlet_rope --pre--> motion.collide → rope.state` (a fixtura `rope_thickness`: `24` nós,
+raio `0,5`, a cabeça a chicotear `±3,0` em `0,6 s`): na pose final os nós distantes ficam a
+`0,811·D`, mas DURANTE o chicote chegam a `0,0497` — a cabeça move-se `~0,5` por quadro e os nós
+atravessam-se num só passo.
+
+### Mecanismo (medido, doc 124 §2.3)
+Com sub-passos do grafo a corda segura `0,52`/`0,81`/`0,80` a `2`/`4`/`8`. Mas a corda NÃO declara o
+ritmo do grafo: o `solver_substeps` dela é LOCAL de propósito (um `substeps` de grafo fazia uma
+`sim.zone` vizinha custar `8×` — medido), e um laço local não inclui o colisor. Antes do ciclo 15 a
+corda «tinha espessura» porque o colisor a esticava `37 %` (o Bug #15 na corda).
+
+### Estado
+⏳ **Aberto, nomeado.** O `motion.collide` está fora do catálogo (o artista não monta este laço);
+existe em documentos antigos e cenas. A cura é o ritmo do grafo para a corda (rever a decisão do
+`solver_substeps` com a medição do vizinho ao lado) ou um limite de velocidade por partícula (o
+`maxSpeed` do FleX). Decisão a tomar com a próxima linha que tocar na corda.
+

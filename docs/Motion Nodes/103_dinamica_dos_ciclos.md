@@ -137,6 +137,17 @@ inventada. Contagens do registry em 2026-09-05.
 | 11 ✅ ([doc 119](119_ciclo_11_a_placa_com_varias_saidas.md)) | ⚡ **A AVALIAÇÃO GERAL DE PERFORMANCE** — o alvo medido (doc 117) era a cerca de ÂMBITO do multi-sink; ela SAIU (W1–W4) e a varredura achou **três** defeitos de produto que ela escondia, curados. Pela porta do produto, **`95` de `126`** cenas vão à placa. ✅ smoke do dono aprovado na cena `PH2D_MOTION_OBJ_SMOKE=16` (2026-09-23) | (varredura) | — |
 | **12** ([doc 120](120_ciclo_12_os_tectos_confortaveis.md)) | ⚡ **OS TETOS CONFORTÁVEIS** — medido com FORMA e SIMULAÇÃO, nas duas placas (a integrada é o proxy de telemóvel), cena `PH2D_MOTION_OBJ_SMOKE=17`: confortável ≥`65 536` imagens / `32 768` estrelas no desktop, ~`49 152` / ~`16 384` no proxy; acima do limite há um **penhasco** (dívida de tiques). Recomendação técnica: **ficar em `32 768`** até o carimbo ir à placa. ⭐ **E o carimbo FOI à placa** (§8.4–§8.6): o custo das imagens deixou de crescer com o número, e no proxy de telemóvel o Motion a `32 768` foi de `7,30` para **`0,72 ms`** | ✅ **o tecto fica em `32 768`** (o dono mandou seguir sem o mudar) · smokes do dono **aprovados** (§8.5 as imagens e as marcas das posições · §8.6 os cartões, `0,56 ms` de Motion na máquina dele) | — |
 
+> ⚠️ **Estado em 2026-10-08 (noite) — CICLO 15, o tecto em todo criador e o Bug #15**
+> ([doc 124](124_ciclo_15_o_tecto_dos_criadores_e_o_colisor_do_corpo_mole.md)). O tecto de `32 768`
+> por nó vale agora em TODO criador: o corpo mole (lado `181`), o emissor (`4 M → 32 768`, as duas
+> rotas), o caminho (os dois modos), o Poisson (piso do raio pela desigualdade de Oler: `~17 400`
+> pontos no piso) e a tabela (as primeiras linhas); um gate de censo leva ao extremo os params que
+> comandam a contagem de cada criador, nos dois arranjos de entradas. ⭐ O Bug #15 fechou pelo
+> padrão-ouro, com o oráculo (Godot) corrido sobre a nossa fixtura: os pares que o repouso sobrepõe
+> não colidem (o filtro do FleX), o contacto entra na velocidade, e o corpo declara `substeps` ao
+> relógio do grafo — o corpo NÃO incha (o «inchar» do ciclo 14 era o defeito, e a corda gémea
+> passava o gate ESTICADA `37 %`). Cena `=129`. Aberto: Bug #16 (a corda a `60 Hz` sem sub-passos).
+>
 > ⚠️ **Estado em 2026-10-08 — CICLO 14, os oito abertos que o ciclo 13 deixou**
 > ([doc 123](123_ciclo_14_os_oito_abertos.md)). A imunidade do `pulse.beat` a FMA ganhou régua de CPU
 > (o FMA da CPU) e uma fixtura na placa no fio; os nove geradores de figuras dos tutoriais partem-se em

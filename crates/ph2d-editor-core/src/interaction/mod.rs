@@ -42,6 +42,7 @@ pub mod flip_strip;
 pub mod hit;
 pub mod state;
 mod tool_bars;
+pub mod touch;
 pub mod types;
 mod types_blender;
 mod types_menu;
@@ -82,5 +83,6 @@ pub use types::{
 // `ContextMenuKind`/`Request` live with `TrackMenuKind` (the menu-kind vocabulary).
 pub use area_menu::{AreaMenu, AreaMenus};
 pub use tool_bars::{BarButton, BarFace, BarFamily, ToolBars, ToolBarsSlot};
+pub use touch::{TouchGestures, TouchMods, TouchOut, TouchPhase};
 pub use types_menu::{ContextMenuKind, ContextMenuRequest, TrackMenuKind};
 pub use util::{format_number, hsv_to_color_value};

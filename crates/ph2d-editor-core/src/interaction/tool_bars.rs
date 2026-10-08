@@ -141,4 +141,6 @@ pub struct ToolBarsSlot {
     pub(crate) clock_ns: u128,
     /// F4: o comando que a paleta mandou PISCAR onde mora, e quando.
     pub(crate) flash: Option<(NodeId, u128)>,
+    /// F5: os dedos no vidro e o widget dos modificadores (flutua sobre a área como as barras).
+    pub(crate) touch: crate::interaction::TouchGestures,
 }

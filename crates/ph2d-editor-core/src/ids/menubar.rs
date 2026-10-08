@@ -82,6 +82,8 @@ pub const MENUBAR_VIEW_SELECTION_ACTIONS: NodeId = hash_node_id("menubar_view_se
 /// ⛔ **É um VERBO, não um estado:** ele não tem marca de «ligado» e clicá-lo duas vezes é o mesmo
 /// que uma. Por isso não entra no `MODULE_TRUTHS`, que é a tabela dos alternadores.
 pub const MENUBAR_VIEW_RESET_LAYOUT: NodeId = hash_node_id("menubar_view_reset_layout");
+/// F5: *Ver ▸ Modo foco* — a porta VISÍVEL do toque de 4 dedos e do `Ctrl+Space` (um verbo).
+pub const MENUBAR_VIEW_FOCUS: NodeId = hash_node_id("menubar_view_focus");
 
 /// ⭐⭐⭐ **A COLUNA ESQUERDA — fechar e reabrir**, o verbo que o dono mandou mudar de sítio.
 ///

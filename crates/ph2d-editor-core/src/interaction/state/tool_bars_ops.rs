@@ -100,6 +100,18 @@ impl WidgetStore {
     }
 }
 
+impl WidgetStore {
+    /// F5: o estado do toque.
+    #[must_use]
+    pub fn touch(&self) -> &crate::interaction::TouchGestures {
+        &self.tool_bars.touch
+    }
+
+    pub fn touch_mut(&mut self) -> &mut crate::interaction::TouchGestures {
+        &mut self.tool_bars.touch
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

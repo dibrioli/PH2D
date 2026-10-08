@@ -15,6 +15,7 @@ mod frac;
 mod history;
 mod ink;
 mod legacy;
+mod mind;
 mod ops;
 mod organize;
 mod rich;
@@ -28,6 +29,10 @@ pub use element::{
 pub use frac::FracKey;
 pub use history::{History, MAX_STEPS};
 pub use ink::{Ink, Pen};
+pub use mind::{
+    MIND_ARM, MIND_BRANCH_WIDTH, MIND_COLORS, MIND_FONT, MIND_LEVEL_GAP, MIND_PAD, MIND_ROOT_PAD_Y,
+    MIND_ROOT_STROKE, MIND_SIBLING_GAP, Mind, Side, layout as mind_layout, settle as mind_settle,
+};
 pub use ops::{BoardOp, apply_batch};
 pub use organize::{FRAME_FILL, Frame, GroupId, MAX_TAGS, Org, Tag};
 pub use rich::{Mark, Marks, RichText, Span};

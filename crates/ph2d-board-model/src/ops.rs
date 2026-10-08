@@ -43,7 +43,16 @@ impl BoardOp {
                 } else {
                     doc.frames.remove(&id);
                 }
+                let veil = prev.as_ref().and_then(|p| {
+                    p.mind()
+                        .filter(|_| !p.deleted)
+                        .map(|m| m.hidden || m.collapsed)
+                });
+                if let Some(p) = &prev {
+                    doc.mind_unlink(p);
+                }
                 doc.elements.insert(id, el);
+                doc.mind_link(id, veil);
                 Some(match prev {
                     Some(p) if !p.deleted => BoardOp::Put(p),
                     _ => BoardOp::Delete(id),
@@ -55,15 +64,43 @@ impl BoardOp {
                 el.deleted = true;
                 el.version += 1;
                 doc.frames.remove(&id);
+                doc.mind_unlink(&before);
+                doc.mind_link(id, before.mind().map(|m| m.hidden || m.collapsed));
                 Some(BoardOp::Put(before))
             }
         }
     }
 }
 
-/// Aplica um lote (um gesto) e devolve o lote inverso, já na ordem de desfazer.
+impl BoardOp {
+    /// O id do elemento que a operação muda.
+    #[must_use]
+    pub fn id(&self) -> ElementId {
+        match self {
+            BoardOp::Put(el) => el.id,
+            BoardOp::Delete(id) => *id,
+        }
+    }
+}
+
+/// Aplica um lote (um gesto) e devolve o lote inverso, já na ordem de desfazer. Os mapas mentais que
+/// o lote tocou (antes ou depois) saem arrumados, no MESMO passo ([`crate::mind::settle`], M17).
 pub fn apply_batch(doc: &mut BoardDoc, ops: Vec<BoardOp>) -> Vec<BoardOp> {
-    let mut inverse: Vec<BoardOp> = ops.into_iter().filter_map(|op| op.apply(doc)).collect();
+    let mut roots = std::collections::BTreeSet::new();
+    let mut touched = Vec::with_capacity(ops.len());
+    let mut inverse: Vec<BoardOp> = Vec::with_capacity(ops.len());
+    for op in ops {
+        let id = op.id();
+        crate::mind::roots_of(doc, id, &mut roots);
+        touched.push(id);
+        inverse.extend(op.apply(doc));
+    }
+    for id in touched {
+        crate::mind::roots_of(doc, id, &mut roots);
+    }
+    if !roots.is_empty() {
+        inverse.extend(crate::mind::settle(doc, &roots));
+    }
     inverse.reverse();
     inverse
 }

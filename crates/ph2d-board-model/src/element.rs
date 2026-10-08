@@ -452,6 +452,9 @@ pub struct BoardDoc {
     /// refaz-se ao ler ([`BoardDoc::reindex`]).
     #[serde(skip)]
     pub(crate) frames: std::collections::BTreeSet<ElementId>,
+    /// W6 — os filhos de cada nó de mapa mental, mantidos pelas ops (refaz-se ao ler).
+    #[serde(skip)]
+    pub(crate) minds: crate::mind::MindIndex,
 }
 
 /// ⭐ **Revisão de um documento nesta sessão** — o «mudou alguma coisa?» em O(1) dos caches
@@ -501,23 +504,26 @@ impl BoardDoc {
         self.elements.get(&id).filter(|e| !e.deleted)
     }
 
-    /// Os elementos vivos, por id (sem ordenar por z).
+    /// Os elementos vivos e À VISTA, por id (sem ordenar por z). Um nó de mapa mental escondido por um
+    /// ramo recolhido (W6) não entra: é a porta única do desenho, do clique, do laço e da busca.
     pub fn live(&self) -> impl Iterator<Item = &Element> {
-        self.elements.values().filter(|e| !e.deleted)
+        self.elements
+            .values()
+            .filter(|e| !e.deleted && !e.is_hidden())
     }
 
-    /// Os elementos vivos, de trás para a frente (ordem de desenho).
+    /// Os elementos vivos e à vista, de trás para a frente (ordem de desenho).
     #[must_use]
     pub fn live_in_z_order(&self) -> Vec<&Element> {
-        let mut v: Vec<&Element> = self.elements.values().filter(|e| !e.deleted).collect();
+        let mut v: Vec<&Element> = self.live().collect();
         v.sort_by(|a, b| a.z.cmp(&b.z).then(a.id.cmp(&b.id)));
         v
     }
 
-    /// Quantos elementos vivos.
+    /// Quantos elementos vivos e à vista.
     #[must_use]
     pub fn live_len(&self) -> usize {
-        self.elements.values().filter(|e| !e.deleted).count()
+        self.live().count()
     }
 
     /// A chave de z para pôr um elemento novo à frente de todos.

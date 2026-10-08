@@ -6,6 +6,7 @@
 //! - 2 (W1–W2): o texto das formas era uma `String` — vira um [`RichText`] sem trechos.
 //! - 3 (W3): sem rascunho (`Style::sketch`, `Board::sketch`) nem traços da caneta — tudo final.
 //! - 4 (W4): sem os campos de organizar (`frame`, `groups`, `locked`, `link`, `tags`) — tudo solto.
+//! - 5 (W5): sem o nó de mapa mental (`Org::mind`, W6) — nada é mapa.
 //!
 //! Do 1 ao 3 o elemento, o documento e o quadro têm a mesma forma a menos do que o elemento É:
 //! [`Old`] é genérico nisso.
@@ -196,6 +197,7 @@ fn doc_old<E>(d: DocOld<E>, element: &impl Fn(E) -> Element) -> BoardDoc {
         rev: Default::default(),
         // Os formatos 1–4 não tinham frames.
         frames: Default::default(),
+        minds: Default::default(),
     }
 }
 
@@ -234,6 +236,87 @@ pub(crate) fn read_v4(bytes: &[u8]) -> Result<BoardSet, String> {
         })
         .collect();
     Ok(BoardSet::from_parts(boards, old.next_id))
+}
+
+/// O `Org` do formato 5: sem o nó de mapa mental.
+#[derive(Deserialize)]
+struct OrgV5 {
+    groups: Vec<crate::GroupId>,
+    locked: bool,
+    link: Option<ElementId>,
+    tags: Vec<crate::Tag>,
+}
+
+/// O elemento do formato 5: o de hoje com o `Org` antigo.
+#[derive(Deserialize)]
+struct ElementV5 {
+    id: ElementId,
+    kind: ElementKind,
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+    angle: f64,
+    z: FracKey,
+    frame: Option<ElementId>,
+    org: Option<Box<OrgV5>>,
+    version: u64,
+    nonce: u32,
+    deleted: bool,
+}
+
+#[derive(Deserialize)]
+struct BoardV5 {
+    id: BoardId,
+    name: String,
+    camera: Camera,
+    doc: DocOld<ElementV5>,
+    sketch: bool,
+}
+
+#[derive(Deserialize)]
+struct SetV5 {
+    _version: u32,
+    boards: Vec<BoardV5>,
+    next_id: u64,
+}
+
+/// Os bytes de um `BoardSet` no formato 5 (W5), já no formato actual: nenhum elemento é nó de mapa.
+pub(crate) fn read_v5(bytes: &[u8]) -> Result<BoardSet, String> {
+    let old: SetV5 = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
+    let boards = old
+        .boards
+        .into_iter()
+        .map(|b| {
+            let mut doc = doc_old(b.doc, &element_v5);
+            doc.reindex();
+            Board {
+                id: b.id,
+                name: b.name,
+                camera: b.camera,
+                doc,
+                sketch: b.sketch,
+            }
+        })
+        .collect();
+    Ok(BoardSet::from_parts(boards, old.next_id))
+}
+
+fn element_v5(e: ElementV5) -> Element {
+    let mut el = Element::bare(e.id, e.z, e.kind, [e.x, e.y, e.w, e.h]);
+    el.angle = e.angle;
+    el.frame = e.frame;
+    el.org = e.org.map(|o| {
+        Box::new(crate::Org {
+            groups: o.groups,
+            locked: o.locked,
+            link: o.link,
+            tags: o.tags,
+            mind: None,
+        })
+    });
+    (el.version, el.nonce, el.deleted) = (e.version, e.nonce, e.deleted);
+    el
 }
 
 fn element_old<K: Into<ElementKind>>(e: ElementOld<K>) -> Element {

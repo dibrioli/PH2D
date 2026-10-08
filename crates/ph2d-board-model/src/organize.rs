@@ -35,6 +35,8 @@ pub struct Org {
     pub link: Option<ElementId>,
     /// As etiquetas (só as notas as mostram; até [`MAX_TAGS`]).
     pub tags: Vec<Tag>,
+    /// W6 — o nó de mapa mental ([`crate::Mind`]), se é um.
+    pub mind: Option<crate::Mind>,
 }
 
 /// A cor de nascença de um frame (o Miro: *«The default color of a frame is white»*).
@@ -153,6 +155,7 @@ impl BoardDoc {
             .filter(|e| !e.deleted && e.as_frame().is_some())
             .map(|e| e.id)
             .collect();
+        self.reindex_minds();
     }
 
     /// Há algum frame vivo? (O desenho salta o andaime dos frames num quadro sem nenhum.)

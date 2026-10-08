@@ -141,6 +141,17 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   - **Disco** — `ph2d-app-painter/src/painter_bridge_presets.rs` (feature do painel): o tool regista o
     `PedidoPreset`, a ponte executa (biblioteca, `estado.json`, política, Save/Reset, avisos visíveis).
   - **Sonda** `PH2D_SONDA_PRESET=<nome>|todos` em `tests/it/sonda_tracos_por_meio.rs`.
+  - **Mutações (13/13 sangram, controlos verdes antes):** `serde(flatten)`→`skip` no `extra` ✗ campo
+    desconhecido · `NIVEL_ZLIB` 9→8 ✗ ao byte · utilizador não sobrepõe ✗ biblioteca · `paper_depth` não
+    escrito ✗ 3 153 px · máscara da forma não instalada ✗ 4 550 px · Size sem ½ ✗ volumes + 2 seams ·
+    `QUADROS_DEPOIS` 120→119 ✗ miniatura · guarda do clique do navegador ✗ seam · decoder da política
+    trocado ✗ seam · popovers não pintados ✗ 3 seams · ponte sem «lembrar» ✗ política · Reset sem apagar ✗
+    ponte · fábrica com 3 ✗ contagem.
+  - **Portão batched** (07/10): cerca ✓ · fmt ✓ · clippy `-D warnings` ✓ (apanhou `chunks_exact` e um tipo
+    complexo — curados) · nextest das 8 crates tocadas ✓ (apanhou a secção do «On preset change», que
+    elidia a 220 px ⇒ «On switch», e «Watercolor»/«User» no HR-15 ⇒ excepção declarada: são PASTAS) ·
+    `check --workspace --all-targets` ✓ · `architecture_*` ✓.
+  - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
 
 ## §5 — A próxima janela (W2)
 

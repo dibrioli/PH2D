@@ -148,8 +148,14 @@ const CATCH_PER_SIZE: f64 = 30.0;
 const TINT_REACH: i32 = 8;
 /// A coluna (células) acima da orla onde se lê o traço para a tinta do fio.
 const BODY_REACH: i32 = 24;
-/// O peso do ombro de cada lado do fio (a borda macia).
-const SHOULDER: f64 = 0.35;
+/// ⛔ **Recusa MEDIDA (08/10):** uma faixa de transição na borda (o papel seco por fora a receber uma
+/// fração do fluxo — 12 %; só a 1.ª fila vizinha de água; com tecto de película) INUNDA a folha em riscos
+/// verticais nas quatro formas tentadas (106 000–127 000 px de tinta fora da mancha na cena do dono, contra
+/// 0 com a barreira firme): qualquer água que passa vira caminho. A borda é firme, à célula.
+/// O perfil transversal do fio: a largura cheia alarga-se por esta margem (células) de cada lado, com
+/// a descida suave — e o centro é posto ao DÉCIMO de célula (a cabeça não está em inteiros), logo a
+/// borda do fio é anti-serrilhada por construção.
+const SOFT_EDGE: f64 = 0.9;
 /// O desvio lateral do fio (px) e o comprimento da onda dele (px), e a semente da fase por gota.
 const MEANDER_PX: f64 = 0.7;
 const MEANDER_WAVE_PX: f64 = 70.0;
@@ -585,10 +591,8 @@ fn advance(
     let fase = crate::rng::hash2(d.ox as i32, d.oy as i32, MEANDER_SEED);
     let desvio =
         MEANDER_PX * libm::sin(2.0 * std::f64::consts::PI * (andou / MEANDER_WAVE_PX + fase));
-    let (cx, cy) = (
-        (d.x - ny * desvio).round() as i32,
-        (d.y + nx * desvio).round() as i32,
-    );
+    let (hx, hy) = (d.x - ny * desvio, d.y + nx * desvio);
+    let (cx, cy) = (hx.round() as i32, hy.round() as i32);
     if !inside(g, cx, cy) {
         d.run_left = 0.0;
         return;
@@ -620,9 +624,10 @@ fn advance(
             coluna_acima(g, (x, y), nx, ny).collect::<Vec<_>>()
         })
         .collect();
-    let (dm, rgb) = tira_da_orla(g, &reserva, d.tint * (f64::from(w) + 2.0 * SHOULDER));
+    let (dm, rgb) = tira_da_orla(g, &reserva, d.tint * (f64::from(w) + SOFT_EDGE));
     d.run_left = (d.run_left - 1.0).max(0.0);
-    settle(g, p, cx, cy, w, nx, ny, dm, rgb);
+    let sub = (hx - f64::from(cx)) * -ny + (hy - f64::from(cy)) * nx;
+    settle(g, p, cx, cy, sub, w, nx, ny, dm, rgb);
     d.water -= pelicula;
     if d.run_left == 0.0 {
         // A contra-gota: uma pequena gota redonda na ponta do fio.
@@ -675,13 +680,14 @@ fn settle_cell(g: &mut Grid, p: &Params, x: i32, y: i32, mass: f64, rgb: [f64; 3
     note_dirty(g, x, y);
 }
 
-/// Assenta `mass` de pigmento numa fileira transversal de `w` células centrada em `(cx, cy)`, com um
-/// OMBRO de cada lado a [`SHOULDER`] do peso (a borda do fio é macia, não um risco de régua).
+/// Assenta `mass` de pigmento numa fileira transversal centrada em `(cx, cy) + sub`, `w` células cheias
+/// e a descida suave de [`SOFT_EDGE`] (a borda do fio é macia e anti-serrilhada, não um risco de régua).
 fn settle(
     g: &mut Grid,
     p: &Params,
     cx: i32,
     cy: i32,
+    sub: f64,
     w: i32,
     nx: f64,
     ny: f64,
@@ -691,17 +697,36 @@ fn settle(
     if mass <= 0.0 {
         return;
     }
-    // `w` células cheias e um ombro de cada lado: o total é `mass`.
-    let per = mass / (f64::from(w) + 2.0 * SHOULDER);
-    let half = (w - 1) as f64 / 2.0;
-    for k in -1..=w {
-        let peso = if k < 0 || k >= w { SHOULDER } else { 1.0 };
-        let t = f64::from(k) - half;
+    // O perfil: 1 no miolo (meia-largura `w/2`), a descer suavemente a 0 em `SOFT_EDGE` células, centrado
+    // em `sub` (a posição transversal da cabeça dentro da célula). Normalizado ao total `mass`.
+    let half = f64::from(w) / 2.0;
+    let reach = (half + SOFT_EDGE).ceil() as i32 + 1;
+    let peso = |k: i32| -> f64 {
+        let dist = (f64::from(k) - sub).abs();
+        let r = (dist - half + SOFT_EDGE / 2.0) / SOFT_EDGE;
+        if r <= 0.0 {
+            1.0
+        } else if r >= 1.0 {
+            0.0
+        } else {
+            1.0 - r * r * (3.0 - 2.0 * r)
+        }
+    };
+    let soma: f64 = (-reach..=reach).map(peso).sum();
+    if soma <= 0.0 {
+        return;
+    }
+    for k in -reach..=reach {
+        let wk = peso(k);
+        if wk <= 0.0 {
+            continue;
+        }
+        let t = f64::from(k);
         let (x, y) = (
             (f64::from(cx) - ny * t).round() as i32,
             (f64::from(cy) + nx * t).round() as i32,
         );
-        settle_cell(g, p, x, y, per * peso, rgb);
+        settle_cell(g, p, x, y, mass * wk / soma, rgb);
     }
 }
 

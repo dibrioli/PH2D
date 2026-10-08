@@ -289,6 +289,16 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
     0,2 = 0,006 e o Wet Round = 0,025). Bancada: 265 / 258 px na máxima, 464 / 464 no 10/10, 0 a meio, o
     Wet Round com Easy 258 px. Custo a 4096² (load 32–56, inflado): pior 1,13 ms (poças) / 1,51 ms (a tela
     inteira molhada).
+- 🔎 **3.ª ronda, pelo smoke do dono** (08/10, foto ampliada ~3×: *«borda inferior pixelada/quadriculada
+  assim como escorrimento… isso não acontecia antes»*). O fio: perfil transversal contínuo com o centro ao
+  décimo de célula (`SOFT_EDGE`), anti-serrilhado por construção — feito. A borda: é a barreira firme da
+  linha de contacto, à célula; antes de hoje a água corria livre e a borda era difusa (e fazia os degraus).
+  ⛔ **Recusa MEDIDA:** uma faixa de transição (fração do fluxo para o papel seco de fora, em quatro formas:
+  12 % a todas; só a 1.ª fila vizinha de água de verdade; com tecto de película; a faixa a contar como
+  seca) inunda a folha em riscos verticais — 106–127 mil px de tinta fora da mancha na cena do dono, contra
+  0 com a barreira firme. ABERTO: suavizar a borda sem a abrir (p. ex. difusão lateral do pigmento
+  SUSPENSO ao longo da orla, `ExtDiffusion` do solver, ou um dente da borda à meia-célula) — decisão do
+  dono se vale a 3.ª tentativa.
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   ⚠️ Para o integrador: o degrau 187 → 188 tem migração (`ProjectFileV187`, braço `187 =>` em
   `project_load_read.rs`) — se o main passar de 187 antes, os dois movem-se à mão (o `schema-recount.py`

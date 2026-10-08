@@ -497,8 +497,14 @@ que já se paga ou flutuam.
 
 **D10.1 (2026-10-08, F4):** com o vetor na mão o `P` é a Caneta (padrão Illustrator), e segurá-lo é
 a Caneta temporária — a roda (segurar `P`) ficava inalcançável. Perguntado ao dono com as letras
-livres medidas (`H J U`): ⭐ **`J` abre a roda** (*«J (Recomendado)»*). O `J` vale em todo o app;
-fora do vetor o `P` continua igual.
+livres medidas (`H J U`): ⭐ **`J` abre a roda** (*«J (Recomendado)»*). ⛔ Superada pela D10.2.
+
+**D10.2 (2026-10-08, depois do smoke de F4):** ⛔ **o menu de roda SAI do app inteiro** — o `P` (de
+2026-08-23, estudo de UI viva E4) e o `J` do vetor. Enio: *«não gostei desse menu. Por enquanto vamos
+retirá-lo. Ele não só ficou esteticamente ruim. ele mistura ferramentas de forma inadequadas. melhor
+eliminar ele»*; perguntado se só a roda do vetor ou a inteira: *«Retirar a roda inteira»*. Saiu com
+ela a poeira de UI (as faíscas), cujo único gatilho era escolher na roda. O `Ctrl+K` (a paleta que faz
+piscar onde o comando mora) fica. ⛔ **Não reconstruir uma roda sem nova ordem do dono.**
 
 ---
 

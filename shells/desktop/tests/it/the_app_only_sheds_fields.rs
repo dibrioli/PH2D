@@ -27,7 +27,10 @@
 ///
 /// ⭐ **178 → 174 em 2026-10-05** (`line/poda-3d`, ADR-0179): o 3D saiu, e com ele os quatro campos
 /// da escultura e da doação de forma (`sculpt3d_req` · `sculpt_doc` · `sculpt3d` · `donated_form`).
-const TETO_CAMPOS: usize = 174;
+///
+/// ⭐ **174 → 173 em 2026-10-08** (`line/UIUX`, D10.2): o menu de roda saiu por ordem do dono, e com
+/// ele a poeira de UI (`ui_burst`), cujo único gatilho era a roda.
+const TETO_CAMPOS: usize = 173;
 
 const APP_STATE: &str = include_str!("../../src/app_state.rs");
 

@@ -8,7 +8,7 @@
 
 - **Branch** `line/UIUX` (worktree `Worktrees/line-UIUX`) · **base (merge-base = `main`)** `2a925859d`
   · F0–F3 (11 commits, `f6217180a..1746cb0d5`) continuam por integrar e vão JUNTOS com esta jornada.
-- Commits desta jornada: `cc01e2272..e35761382` (19 + o deste doc).
+- Commits desta jornada: `cc01e2272..HEAD` — inclui a retirada da roda (`61e5ce36c`) depois do smoke.
 
 ## §0 — Para o `CLAUDE.md` §5.1 (≤ 700 bytes)
 
@@ -18,26 +18,18 @@ UI/UX: «Último:» → este ficheiro; `PH2D_OBJECT_MODE_SMOKE=1|4|6|7|8|9` → 
 
 | peça | o que é | onde mora |
 |---|---|---|
-| **F4.1 roda por famílias** | com um módulo de barras na mão, a roda projecta a coluna ①: **um sector por GRUPO** (Select · Draw · Build · Carve · Stroke · Colour — os grupos que a tabela já declara), e **atravessar o anel abre o LEQUE** da família (filhos virados para fora, em passos de 45°); soltar numa família ou na zona morta CANCELA; o último sector é sempre a porta para o `Ctrl+K` (a ② e a ④ moram lá). Sem módulo, a roda de sempre | `widget/radial_fan.rs` (lei + pintura), `screens/hero/radial.rs::from_column`, `BarFamily::{Colour, name_key}` |
-| **J abre a roda (com o vetor na mão)** | o `P` é a Caneta (e segurá-lo a Caneta temporária) ⇒ a roda era inalcançável. **Decisão do dono (08/10): `J`** (D10.1). ⚠️ O `J` vive SÓ na cadeia de teclas do vetor: fora dele é a tecla do VENENO da cena da vida (gate `a_tecla_do_veneno_nao_e_reclamada_pelo_editor` — a 1.ª redacção pô-lo global e o gate reprovou) | `keyboard_cadeia.rs`, `radial_input::open` (a porta do `P` e do `J`), `keyboard_tail.rs` |
+| ⛔ **RETIRADO: o menu de roda** | a roda inteira (o `P` fora do vetor, de 2026-08-23, e o `J` + o leque por famílias do vetor desta jornada) **saiu do app por ordem do dono** depois do smoke (08/10: *«não gostei desse menu… ele mistura ferramentas de forma inadequadas… melhor eliminar ele»*), e com ela a **poeira de UI** (as faíscas), cujo ÚNICO gatilho era escolher na roda — sem ela seria código morto. O som de clique fica (outros gestos o armam). Registo: `00_DECISOES_DO_ENIO.md` D10.2 | apagados: `widget/{radial_menu,radial_fan}.rs`, `screens/hero/radial*.rs`, `interaction/state/radial_ops.rs`, `motion_burst*.rs`; shell `radial_input*.rs`, `ui_burst_paint.rs`, `render_loop/fase_ui_burst_paint.rs` |
 | **F4.2 paleta que ensina** | o `Ctrl+K` projecta as barras do módulo em grupos com o NOME DO LUGAR (*Left bar* = ① + flyout · *Top bar* = ② + um sub por pulldown · *Next to the selection* = ④); o mesmo id, a mesma porta (`apply_event(Click)`); amostras abrem o seletor (`open_picker_on`), campos numéricos ficam FORA; escolher faz **PISCAR onde o comando mora** — o botão, o pulldown que o contém, ou o `⋯` que guarda um dos dois | `screens/hero/global_palette_bars.rs`, `flash.rs`, `WidgetStore::{flash, flashing, flash_pill, note_clock}` |
 | **F5.3 modificadores** | +1 dedo = Shift, +2 = Shift+Alt enquanto o primeiro arrasta; widget **Shift · Alt · Ctrl** no canto de baixo do lado da mão livre (segurar = segurar, tocar = travar; travado SEMPRE à vista; o rato também trava); modificadores efectivos = teclado OU toque | `interaction/touch.rs`, `screens/hero/touch_mods.rs`, `chrome/touch_mods.rs`, shell `touch_input.rs` |
 | **F5.4 gestos** | toque de 2/3/4 dedos = desfazer/refazer/foco; tocar e segurar = menu de contexto (clique direito no ponto). Portas visíveis: *Edit ▸ Undo/Redo* (já existiam), **_View ▸ Focus mode · Ctrl+Space_** (nova), o widget, o próprio menu | idem + `EditorAction::FocusMode`, `MENUBAR_VIEW_FOCUS` |
 | **F5.6 tablet** | ③ **recolhido = faixa de ícones FLUTUANTE** abaixo da janela de referência (iPad 11" e mini), dentro da área do lado da coluna (0 px de layout, como a ①; a alça de 6 px fica); cada ícone é a ABA do painel — o clique reabre a coluna com ele à frente (`slot_tabs::apply_event` → `dock_reopen::reopen_for`), com a dica do nome; **Left-handed** (era *Mirror UI*, mesmo interruptor) leva também a ① e o widget para a direita e grava-se no `prefs.txt`; **_View ▸ Tool options at the bottom_** (por layout) põe a ② por baixo da área; o `⋯` e os pulldowns sobem pelo encaixe ao ecrã que JÁ existia (`clamp_menu_to_viewport` — a mutação mostrou que a 1.ª redacção, que os ancorava à mão, era redundante, e saiu), e o flyout de grupo do Painter (posto à mão) sobe pela lei nova | `dock_reopen::{strip_icons, paint_strip_icons, reopen_for}`, `HeroLayout::{compact, move_tool_bar_to_bottom}`, `tool_bars::placed(.., left_handed)`, `prefs.rs`, `layout_persist.rs` |
-| **cena 10** | a 9 (layout Vetor, rectângulo + elipse, Caneta) e depois a roda com o leque de Draw aberto (6 s), e a paleta a escolher *Snap ▸ ao caminho* — o pulldown pisca até 8 s depois | `ph2d-app-vec/src/vector_mode_reach.rs` |
+| **cena 10** | a 9 (layout Vetor, rectângulo + elipse, Caneta) e depois a paleta a escolher *Snap ▸ ao caminho* — o pulldown pisca até 8 s depois | `ph2d-app-vec/src/vector_mode_reach.rs` |
 
 ## §2 — Medido e decidido (técnico, delegado)
 
-- **A roda: famílias com leque, e não «as 7 mais usadas + mais».** 17 ferramentas: as 7 deixariam
-  **10 (59 %)** atrás da porta, e «mais usadas» é uma estatística que não temos (seria inventada). As
-  famílias põem **0** atrás da porta, a dois gestos, com a divisão que a tabela já declara: 6 sectores
-  + a porta, leques de 2–4 filhos (máximo `FAN_MAX = 5`: meia volta em passos de 45°). É o menu de
-  marcação hierárquico (Kurtenbach & Buxton, CHI '93: largura 8 × profundidade 2 ainda dentro do erro
-  aceitável). Fora do leque, o anel ESCONDE os vizinhos (o nível de cima cede o lugar).
-- **O raio do leque é DERIVADO: `diagonal do rótulo / (2 sen 22,5°)` ≈ 125 px.** O raio do anel (96)
-  sobrepunha os filhos do meio num leque vertical (73 px de corda, 92 de rótulo); a 1.ª derivação, só
-  pela largura, ainda sobrepunha um par inclinado — o gate `no_fan_label_covers_another` achou-o
-  (`n=3 família=1 k=4`).
+- (A roda por famílias — 6 sectores + a porta, leque com raio derivado da diagonal do rótulo — foi
+  construída, medida e provada por mutação, e RETIRADA pelo dono no smoke: ver §1. ⛔ Não reconstruir
+  sem ler o D10.2.)
 - **O piscar: 3 períodos do token `Slow` (400 ms)**, cada um acende de golpe e esmorece (3 acesas, acaba
   apagado) — o tecto de três da WCAG 2.3.1, a 1,25 Hz; com movimento reduzido, anel fixo pelo mesmo
   tempo. Relógio: `dispatch_tick` (todo quadro) → `note_clock`.
@@ -81,10 +73,10 @@ L205 (Concepts).
 
 ## §4 — Foundational tocado e contratos
 
-- **`ph2d-editor-core`**: `RadialItem.children` (campo NOVO — todo literal `RadialItem {..}` noutra linha
-  parte ALTO; use `RadialItem::leaf`), `RadialOpen.fan`; `widget::radial_fan` (`FAMILY_ID =
-  0x0052_4144_4641_4D21`, `FAN_MAX = 5`); `BarFamily::Colour` (variante NOVA) + `name_key`;
-  `ToolBarsSlot` +4 campos (`clock_ns`, `flash`, `touch`, `row_bottom`) e as portas em
+- **`ph2d-editor-core`** — ⛔ **APAGADOS** (ALTO para toda linha que os use): `widget::{RadialItem,
+  RadialOpen, paint_radial_menu, radial_*}`, `screens::hero::radial` (`RADIAL_MORE`, `fit`),
+  `WidgetStore::{open_radial, close_radial, radial_point, radial}`, `motion_burst` (`BurstField`) — e
+  na shell `App::ui_burst` e `radial_input`. **Novos**: `ToolBarsSlot` +4 campos (`clock_ns`, `flash`, `touch`, `row_bottom`) e as portas em
   `tool_bars_ops.rs`; `interaction::touch` (novo); `ids`: `TOUCH_MOD_{SHIFT,ALT,CTRL}`,
   `MENUBAR_VIEW_FOCUS`, `MENUBAR_VIEW_TOOL_ROW_BOTTOM`; `ModuleTruth::ToolRowBottom`;
   `EditorAction::FocusMode` (o enum é `#[non_exhaustive]`); o `HeroScreen::new` passou a
@@ -94,14 +86,15 @@ L205 (Concepts).
   quem mexa nesse braço); `tool_bars::placed` ganhou o 5.º
   parâmetro `left_handed` (ALTO para chamadores noutra linha); chrome `touch_mods` (z=47, `dispatch_all`
   regenerado pelo `ph2d-chrome-sync`: 42 handlers); `left_rail` regista os 3 botões do widget.
-- **`ph2d-i18n`**: `chrome_reach.rs` (novo, na cadeia); `chrome.menu.mirror_ui` = «— Left-handed».
+- **`ph2d-i18n`**: `chrome_reach.rs` (novo, na cadeia); `chrome.menu.mirror_ui` = «— Left-handed»;
+  **apagadas** `chrome.radial.more` e `shell.input_handlers.no_tools_to_show_here`.
 - **Contratos congelados (§6): nenhum.** `Tool=12`/`PanelEvent=4` intocados (o toque são cliques e
   modificadores pelas portas que já existiam).
 
 ## §5 — Superfície de colisão e contadores (DELTA sobre `2a925859d`, somando F0–F3)
 
 - `MODULE_TRUTHS` 18 → **19** · `OWN_ROWS` 9 → **11** (F0–F3 tinham levado 17→18 e 8→9).
-- `BarFamily` 5 → **6** variantes · ícones: 0 novos nesta jornada (os painéis usam o `icon` do manifesto).
+- `BarFamily` inalterado · ícones: 0 novos nesta jornada · o `App` perde 1 campo (`ui_burst`).
 - Cenas `PH2D_OBJECT_MODE_SMOKE`: **+10**. `PROJECT_SCHEMA`: inalterado (`layout.txt`/`prefs.txt` são por
   máquina).
 - **`layout.txt` +1 campo por layout** (`tool_row_bottom`) · **`prefs.txt` +1** (`left_handed`) —
@@ -110,11 +103,13 @@ L205 (Concepts).
   área do lado do ③ recolhido num tablet estreito (a faixa); um menu novo aberto por um chip da fila ② que
   não pergunte `tool_row_bottom` abre para baixo do ecrã com a fila embaixo.
 - Shell: `touch_input.rs` (novo; o teclado num `thread_local` — o `App` só larga campos),
-  `input_handlers` (o `P` pela porta `radial_input::open`; o `Ctrl+Space` pela `toggle_focus`),
-  `keyboard_cadeia` (o `J` do vetor), `keyboard_tail`, `main.rs` (arm `Touch`, tick, `mod`; um
+  `input_handlers` (o braço do `P` SAIU; o `Ctrl+Space` pela `toggle_focus`), `keyboard_tail` (a
+  soltura do `P` saiu), `despacho_mover`, `render_loop/{mod, fase_chrome_clock}`, `main.rs` (arm `Touch`, tick, `mod`; um
   comentário condensado para o tecto), `despacho_metodos_janela_e_vetor` (modificadores efectivos),
   `fase_bus_chrome` (`FocusMode`), `prefs`, `forwarding_persist`, `init`, `layout_persist` (+ testes, e os
-  gates `the_mode_keys_are_wired` e o do menu). **Delta da shell (linhas, `numstat`): esta jornada `src +224 −30` (net **+194**, com ~25 de teste em
+  gates `the_mode_keys_are_wired`, o do menu, `the_highlight_has_one_source` (o som do pie menu saiu da
+  lista) e `a_tecla_do_gatilho…` (o controlo do canvas passa do `P` ao `M`); `the_ui_burst_is_wired`
+  apagado com a feature). **Delta da shell (linhas, `numstat`): esta jornada `src +224 −30` (net **+194**, com ~25 de teste em
   `src`) · `tests +8 −2`; somado a F0–F3 sobre a base: `src` net **+240**, `tests` net +97.** Dentro da
   folga medida a 07/10 (3 367); o grosso é o `touch_input.rs` (a ponte do toque) — candidato a descer
   para a crate se outra família a usar.
@@ -131,13 +126,17 @@ lint, todos meus e curados acima; a 3.ª é o atestado), `load` 30–110 com out
 - `nextest-impacted` (`BASE=2a925859d`, `NO_FAIL_FAST=1`): **16 794 / 16 795** — o vermelho é
   `ph2d-physics-ecs::measure_player_budget::the_cost_of_a_player_is_linear_in_their_number` (relógio,
   sem diff nesta linha), **3/3 verde sozinho** com `load 72–84` ⇒ flake de carga (FLAKES_DE_CARGA.md).
-- ⚠️ O que só a árvore combinada pega: quem constrói `RadialItem {..}` ou chama `tool_bars::placed`
-  noutra linha (ALTO); `MODULE_TRUTHS`/`OWN_ROWS`/`OUTSIDE_WINDOW_TOGGLES` somam com qualquer linha
+- **4.ª corrida, depois da retirada da roda (D10.2):** tudo ✓ menos duas catracas que a remoção deixou
+  OBSOLETAS (o gate exige que desçam): `TETO_CAMPOS` 174 → **173** (`ui_burst` saiu) e
+  `FN_OVERAGE_OK` `main.rs::new` 213 → **212** — baixadas e verdes; `nextest-impacted` 16 767 / 16 769,
+  os 2 vermelhos eram essas duas.
+- ⚠️ O que só a árvore combinada pega: quem use a roda ou a poeira noutra linha, ou chame
+  `tool_bars::placed` (ALTO); `MODULE_TRUTHS`/`OWN_ROWS`/`OUTSIDE_WINDOW_TOGGLES` somam com qualquer linha
   que acrescente linhas ao menu *View*.
 
 ### Mutação (agente `mutacao`, verde visto antes de cada uma, árvore limpa no fim)
 
-**24 + 1 mutações; 21 sangraram à primeira.** Os três sobreviventes e o que se fez:
+**24 + 1 mutações; 21 sangraram à primeira** (M1–M5 eram da roda, que saiu). Os três sobreviventes e o que se fez:
 - **M14** (tirar `!moved` do tocar-e-segurar): a cláusula era MORTA (um dedo único que anda além da
   folga já é traço — o `committed` cobre) ⇒ saiu.
 - **M16** (o 2.º dedo nunca vira gesto): sobreviveu no teste dos dedos extra e sangrou no dos toques —
@@ -151,7 +150,7 @@ lint, todos meus e curados acima; a 3.ª é o atestado), `load` 30–110 com out
 
 ## §7 — Smoke do dono
 
-Ver o relatório ao dono (passos numerados). Fotos: [`f4_01`](../vetor_nova_ui/fotos/f4_01_cena10_a_roda_com_o_leque_de_draw.png) (a roda, leque de Draw, Lápis aceso) · [`f4_02`](../vetor_nova_ui/fotos/f4_02_cena10_a_paleta_faz_piscar_o_snap.png) (o *Snap ✓* com o anel).
+Ver o relatório ao dono (passos numerados). Foto: [`f4_02`](../vetor_nova_ui/fotos/f4_02_cena10_a_paleta_faz_piscar_o_snap.png) (o *Snap ✓* com o anel).
 
 ## §8 — O que fica ABERTO
 

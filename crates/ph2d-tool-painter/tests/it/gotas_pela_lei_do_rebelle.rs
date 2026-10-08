@@ -417,3 +417,40 @@ fn com_a_tela_inclinada_a_mancha_guarda_a_forma_e_nao_faz_pente() {
     );
     assert!((1..=6).contains(&fios), "{fios} fios na cena do S (pente?)");
 }
+
+/// As BRECHAS da faixa escura da orla de baixo do traço `c`: no NÚCLEO da faixa (as linhas onde ≥ 80 %
+/// das colunas do miolo são escuras, `> 180`), as colunas com um pixel claro (`< 116`) — as cunhas que os
+/// buracos da franja abriam na faixa.
+pub fn brechas(px: &[u8], c: usize) -> usize {
+    let x0 = 60 + c * 240;
+    let xs = x0 + 20..x0 + 130;
+    let n = xs.len();
+    let nucleo: Vec<usize> = (Y as usize - 10..BASE + 3)
+        .filter(|&y| xs.clone().filter(|&x| escuro(px, x, y) > 180).count() * 5 >= n * 4)
+        .collect();
+    if nucleo.is_empty() {
+        return n;
+    }
+    xs.filter(|&x| nucleo.iter().any(|&y| escuro(px, x, y) < 116))
+        .count()
+}
+
+/// ⛔ **A orla de baixo é contínua** (report do dono 08/10: *«borda inferior pixelada/quadriculada»*): com
+/// a lei das gotas e a tela no máximo, a faixa escura da orla não tem brechas claras — as brechas
+/// estreitas da franja das cerdas enchem (a tensão superficial). Mutação que sangra: `NOTCH_W = 0`.
+#[test]
+fn a_orla_de_baixo_e_continua_sem_brechas() {
+    let px = bancada(30, &|t| inclina(t, Some(8)));
+    let b: Vec<usize> = (0..2).map(|c| brechas(&px, c)).collect();
+    println!("[gotas] brechas na orla de baixo (água 1,0 / 0,7): {b:?}");
+    for (c, n) in b.iter().enumerate() {
+        assert!(
+            *n <= BRECHAS_MAX,
+            "água {}: {n} brechas na orla de baixo",
+            AGUAS[c]
+        );
+    }
+}
+
+/// O vale medido (colunas com brecha, água 1,0 / 0,7): 4 / 12 fechando as brechas, 23 / 26 sem fechar.
+const BRECHAS_MAX: usize = 17;

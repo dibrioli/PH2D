@@ -134,8 +134,10 @@ const RUN_LEN: f64 = 1.6;
 /// px da água 0,7 para a 1,0).
 const RUN_WATER: f64 = 0.1;
 /// A água que uma célula de rasto bebe (o papel absorve o fio por onde passa). Não depende da largura:
-/// a largura é como o fio se ESPALHA, a água é quanto ele corre.
-const TRAIL_FILM: f64 = 0.1;
+/// a largura é como o fio se ESPALHA, a água é quanto ele corre. Medido: a `0,1` o funil 10/10 da água
+/// 0,7 ficava sem água a 394 px depois que a orla passou a fechar as brechas da franja (Rebelle: 465, o
+/// fundo da tela); só alonga as gotas que a água limita, as outras param pelo Length.
+const TRAIL_FILM: f64 = 0.07;
 /// Quantas células ao longo da gravidade a caminhada da orla procura em cada coluna, à volta da da coluna
 /// anterior (a orla de um traço oblíquo sobe e desce).
 const EDGE_SEARCH: i32 = 12;
@@ -154,6 +156,9 @@ const CATCH_PER_SIZE: f64 = 30.0;
 const TINT_REACH: i32 = 8;
 /// A coluna (células) acima da orla onde se lê o traço para a tinta do fio.
 const BODY_REACH: i32 = 24;
+/// A brecha mais larga da franja que a orla fecha (células de cada lado): os dentes das cerdas, não
+/// a abertura de um arco.
+const NOTCH_W: i32 = 4;
 /// ⛔ **Recusa MEDIDA (08/10):** uma faixa de transição na borda (o papel seco por fora a receber uma
 /// fração do fluxo — 12 %; só a 1.ª fila vizinha de água; com tecto de película) INUNDA a folha em riscos
 /// verticais nas quatro formas tentadas (106 000–127 000 px de tinta fora da mancha na cena do dono, contra
@@ -243,7 +248,27 @@ pub fn pin_downhill(g: &mut Grid, grav: [f64; 2], mode: Rows) {
                     || cy > gh
                     || film[cx as usize + cy as usize * s] as f64 <= DRY_FILM
             });
-            if por_fora {
+            // Uma BRECHA estreita da franja (água dos dois lados na transversal, a até `NOTCH_W`) enche:
+            // a tensão superficial fecha-a. Debaixo de uma encosta (água de um lado só) ou de um arco
+            // (abertura larga) não — os degraus não voltam. Medido: sem isto, os buracos da franja junto
+            // à orla ficavam brechas claras na faixa escura (report do dono, «borda quadriculada»).
+            let molhada = |cx: i32, cy: i32| {
+                cx >= 1
+                    && cy >= 1
+                    && cx <= gw
+                    && cy <= gh
+                    && film[cx as usize + cy as usize * s] as f64 > DRY_FILM
+            };
+            let lado = |sinal: f64| {
+                (1..=NOTCH_W).any(|k| {
+                    let t = sinal * f64::from(k);
+                    molhada(
+                        (x as f64 - ny * t).round() as i32,
+                        (f64::from(y) + nx * t).round() as i32,
+                    )
+                })
+            };
+            if por_fora && !(lado(-1.0) && lado(1.0)) {
                 row[x] = [0.0, 0.0];
             }
         }

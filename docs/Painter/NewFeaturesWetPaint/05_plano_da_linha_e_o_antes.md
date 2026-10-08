@@ -310,6 +310,18 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   A prova dos degraus corre agora com as gotas ligadas e conta só corridas largas (≥ 8 px) fora da
   mancha. Mutações: a barreira sem a caixa ✗ natural; a força da lei a 1× ✗ 4 da bancada.
   ⚠️ Pendente do dono: qual nasce ligado — hoje Create Drips nasce LIGADO (a lei do Rebelle).
+- ✅ **5.ª ronda — a orla de baixo sem brechas** (dono, 08/10: *«vamos tentar corrigir a borda
+  inferior»*). A causa, vista de perto: os buracos da franja junto à orla têm papel seco por baixo, e a
+  linha de contacto tratava-os como FORA da mancha — a faixa escura ficava cortada por cunhas claras
+  verticais. Cura: uma brecha estreita (água dos dois lados na transversal, a até `NOTCH_W` = 4 células)
+  enche — a tensão superficial; debaixo de uma encosta (água de um lado só) ou de um arco (abertura
+  larga) continua fechada, logo os degraus não voltam (o gate da forma continua a 0 px). Gate
+  `a_orla_de_baixo_e_continua_sem_brechas` (colunas com um pixel claro no NÚCLEO da faixa): 4 / 12 agora,
+  23 / 26 com `NOTCH_W = 0` (mutação ✗), barra 17. ⛔ Recusa medida: a difusão do pigmento
+  (`ExtDiffusion` 0,05 e 0,15) não muda a orla (o pigmento da faixa já está ASSENTE; a difusão só mexe
+  no suspenso). `TRAIL_FILM` 0,1 → 0,07: com as brechas a encher a orla dá menos água à gota e o funil
+  10/10 da água 0,7 parava a 394 px (Rebelle 465). Custo a 4096² (load 46, inflado): estágio das gotas
+  p99 1,34 ms, um pico de 2,1 ms.
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   ⚠️ Para o integrador: o degrau 187 → 188 tem migração (`ProjectFileV187`, braço `187 =>` em
   `project_load_read.rs`) — se o main passar de 187 antes, os dois movem-se à mão (o `schema-recount.py`

@@ -211,3 +211,20 @@ falta é uma REGRA de interface, não um motor.**
 - ⛔ **Guardar o tipo num campo:** o tipo continua derivado do marcador (spec/06 §5).
 - ⛔ **Trocar o motor ECS:** o problema é de lugar na interface, não de armazenamento (§3).
 - ⛔ **Uma segunda Timeline global ao lado da por-objecto:** a global é a da Cena, e só há uma porta.
+
+## §11 — Onda 1 entregue (08/10): F0 + F1 + F2 + F3, e o que a medição corrigiu neste plano
+
+Handoff: [`HANDOFF_INTEGRACAO_line_ObjectsAndComponents_2026-10-08.md`](handoffs/HANDOFF_INTEGRACAO_line_ObjectsAndComponents_2026-10-08.md).
+
+| plano | o que ficou | porquê (medido) |
+|---|---|---|
+| §4.6 Cena = objecto com Mundo físico e **Mixer** | raiz **sintética** (`RowRole::Scene`), com **dois** componentes: Mundo físico (abre o painel `physics`) e Animação da cena (abre a `timeline`) | ⛔ **Não há Mixer**: o `SceneAudio` é o livro das vozes que tocam, não dado do artista (não é persistido). ⛔ **Entidade real recusada**: o `PhysicsSettings` fica FORA do undo de propósito (`project.rs:52`) — como componente de uma entidade, o Ctrl+Z do canvas rebobinaria a gravidade |
+| §8 F1 «`PROJECT_SCHEMA` sobe» | **não sobe** | nada novo se guarda: a Cena é linha, o mundo físico continua em `ProjectFile.physics` |
+| §8 F3 «ponto de extensão como o `ObjectTypeDecl`» | `ModeFamily::content` / `open_content` (default vazio) | o `ObjectTypeDecl` **não existe no código** (só na spec/06); as famílias com conteúdo já estão compostas como `ModeFamily` — a shell não ganhou lista nova |
+| §5 Flip ▸ *Quadros* | Flip ▸ **Camadas** | os quadros vivem na linha do tempo; cem desenhos em linhas são a árvore inchada do §2 |
+| §5 Esqueleto ▸ *Ossos* | **já estava**: os ossos são entidades filhas, linhas desde antes | um cabeçalho «Ossos» acrescentaria uma linha e um nível sem informação nova |
+| §7.1 ícone por componente | ícone por **FAMÍLIA** presente (`hier_rows::component_icon`: Animation · Anchors · Physics · Logic · Audio · Camera · Scripting) | 107 tipos não cabem numa linha; as famílias que dizem o que o objecto É (Transform, Rendering, Image…) não distinguem ninguém |
+
+**O custo que a Cena cobra:** todo objecto desce um nível (12 px de nome). É o do Godot e do Outliner
+do Blender; os censos de rótulo continuam verdes porque a fixtura armada perdeu a «Scene Root» falsa
+que já simulava esta raiz.

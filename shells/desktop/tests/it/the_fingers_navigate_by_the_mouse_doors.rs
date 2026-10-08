@@ -13,7 +13,9 @@ fn bridge() -> String {
 }
 
 fn arm<'a>(src: &'a str, head: &str) -> &'a str {
-    let i = src.find(head).unwrap_or_else(|| panic!("o braço `{head}` sumiu da ponte do toque"));
+    let i = src
+        .find(head)
+        .unwrap_or_else(|| panic!("o braço `{head}` sumiu da ponte do toque"));
     &src[i..(i + 420).min(src.len())]
 }
 
@@ -59,7 +61,12 @@ fn the_pinch_is_a_wheel_notch_plus_a_pan_through_the_pan_door() {
 #[test]
 fn the_touch_bridge_never_writes_the_camera_itself() {
     let src = bridge();
-    for forbidden in ["camera.zoom(", "camera.center", "pan_screen_delta(", "height_world ="] {
+    for forbidden in [
+        "camera.zoom(",
+        "camera.center",
+        "pan_screen_delta(",
+        "height_world =",
+    ] {
         assert!(
             !src.contains(forbidden),
             "a ponte do toque escreve a camera a mao (`{forbidden}`): e' uma 2.a camera"

@@ -683,5 +683,8 @@ mod census_da_lei;
 #[path = "motion_state_demo_router_census_multi_sink.rs"]
 mod census_multi_sink;
 #[cfg(test)]
+#[path = "motion_state_demo_router_census_zona.rs"]
+mod census_zona;
+#[cfg(test)]
 #[path = "motion_state_demo_router_census_portas.rs"]
 mod census_portas;

@@ -20,7 +20,10 @@ use ph2d_editor_core::screens::hero::document_tabs;
 use ph2d_editor_core::widget::panel_chrome::HIGHLIGHTER_RGBA;
 
 /// O que se arrasta em cada lição (o gate conduz estes).
-#[cfg_attr(not(test), expect(dead_code, reason = "só o gate da cena lê as lições"))]
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "só o gate da cena lê as lições")
+)]
 pub(crate) struct Lessons {
     pub tilt_a: ElementId,
     pub tilt_b: ElementId,

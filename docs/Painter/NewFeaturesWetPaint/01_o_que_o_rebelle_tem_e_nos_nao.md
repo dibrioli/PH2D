@@ -144,6 +144,10 @@ rotação do carimbo + `precise_tip_tilt`. Medido: `penciltilt` (8B a 55°) **37
 
 ### L7 — A água é um volume do pincel, e o papel decide como corre
 
+> ✅ **As gotas mediram-se em 08/10** ([06](06_gotas_rebelle_x_ph2d.md)): o escorrimento é da TELA (Tilt,
+> desligado por omissão), a forma das gotas é do PAPEL (Create Drips · Size · Length), o pincel só leva a
+> água. Decisão do dono: seguir esta lei (onda W1b do 05).
+
 `Water` 0–100 na aquarela/tinta/acrílico (`volume_params.water`) + `length_water_reduction` (acaba ao
 longo do traço) + os parâmetros por papel (Absorbency, Re-wet, Diffusion speed, Edge darkening, Drips,
 Granulation). Medido: *Round* a água 80 e opacidade 60: cobertura 0,37, `borda 0,83`, cruzamento roxo

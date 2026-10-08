@@ -84,6 +84,7 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
 | **cerca** | `the_other_media_are_untouched` (diff vs merge-base) + fixture `fixtures/sonda_28/{digital,watercolor,impasto}.ppm` com cabeçalho | sha256 iguais; mutação num dos três meios reprova |
 | **W0** ✅ | as 12 fotos do Rebelle em `fixtures/rebelle/` com cabeçalho; `mede_todos.sh` sem caminho de scratchpad; a régua em Rust; a lei raio → largura medida e diagnosticada (§1.1). `PH2D_SONDA_PRESET` passa para a W1 (antes dela não há presets) | o gate de largura passa para a W2 (§1.1) |
 | **W1** ✅ | crate `ph2d-brush-presets` (`*.ph2d-brush.png`), fábrica em `assets/brushes/WetPainter/`, navegador + os volumes VIVOS (Size px, Water; Opacity/Pressure/Length sem leitor ⇒ fora) | round-trip ao byte; presets contados; campo desconhecido não falha; miniatura = a do motor; o pincel guardado pinta o mesmo traço ao byte |
+| **W1b** (08/10) | **as gotas pela lei do Rebelle** ([06](06_gotas_rebelle_x_ph2d.md)): a gravidade sai do pincel e vai para a TELA (o dial de inclinação, **desligado** de fábrica); Create Drips · Drip Size · Drip Length passam a ser do PAPEL (a obra); a água de fábrica dos presets desce para a faixa do Rebelle; o MECANISMO da gota no motor (ficheiro irmão do solver) | a bancada do 06 (`sonda_gotas` + `ferramentas/gota*`): tela direita ou inclinação a meio ⇒ **0**; inclinação máx. ⇒ gota **≥ 250 px** nos traços de água ≥ 0,7 e **0** nos de 0,4 e 0,2, **1–2 gotas por traço, ≤ 4 px de largura** (Rebelle 249–283 px, 1–3 px); Create Drips off ⇒ 0 e a orla de baixo escura; Size/Length 10/10 ⇒ ≥ 450 px em funil (Rebelle 463–465) · nenhum preset leva `gravity` · controlo: knobs das gotas no neutro e inclinação desligada ⇒ o traço de hoje ao byte |
 | **W2** | fios com pressão Perlin, largura ondulante, oscilação, Thin/Thick/Edges, Random Span, ruído HSLuv — e a **largura prometida** (§1.1: o raio do motor sai da tabela do preset, em `stamp_dabs_wetpaint`) | **largura = 2·raio ± 2 px** em raios fora da tabela, de 2 a 300 (hoje 0,25–0,60 × e o buraco 11–15) · a 40 px: **5 ≤ textura ≤ 10 %** (hoje 12–14 ✗; Rebelle óleo 5,9, express 9) · **CV ≤ 0,02** (hoje 0,031 ✗; dele 0,011) · **período < 15 %** (hoje 16 % ✗; dele 9 %) · controlo: knobs a 0 ⇒ PNG de hoje ao byte |
 | **W3** | campo de altura no grid (fios Add/Remove), oleosidade = viscosidade, luz do Impasto por porta livre | óleo: borda/miolo **0,8–0,9** (hoje 0,52 ✗; dele 0,87) e textura na banda da W2; acrílico: largura A = B |
 | **W4** | lei do papel do fluido (força × pressão, contraste, scratch, fundo que fura, `PaperBehaviour` × 5 papéis) | lápis 8B: textura **≥ 8 %**, borda/miolo **< 0,5** (dele 9,1 / 0,32; não temos lápis) |
@@ -92,7 +93,7 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
 | **W7** | caminho água 0 sem solver (lápis, carvão, pastel, giz, marcador, airbrush); Water como volume | a prancha dos 8 meios dentro do vale nas 7 métricas (barra com os dois lados) |
 | **W8** | painel: browser + volumes + Stroke/Bristles/Paint/Paper + Tilt + Blow, i18n, tokens | censo sem controlo morto; cada knob com mutação que «morde» |
 
-## §4 — Decisões do dono (07/10)
+## §4 — Decisões do dono (07–08/10)
 
 1. ✅ **A largura prometida vale para TODAS as mídias, secas incluídas** (dono: «SIM»). O Rebelle, a
    `size_px 40`, entrega 41–42 px nos meios de tinta mas **30 (lápis 8B), 17 (pastel), 18 (marcador), 26
@@ -102,6 +103,11 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
    (contrato congelado) não muda; a W6 entrega None / FollowTrajectory / PenTilt. A mesa de teste do dono
    é uma **Wacom Intuos5 Touch** (pressão 2048 níveis + inclinação; sem barrel — a única caneta Wacom com
    barrel, a Art Pen, está descontinuada; Huion/XP-Pen não o têm). Reabrir = ADR próprio.
+3. ✅ **As gotas seguem a lei do Rebelle, as quatro partes do 06 §5** (dono, 08/10: «vamos seguir esse
+   caminho»): a gravidade sai do pincel para a TELA, que vem **direita de fábrica** (não escorre até se
+   ligar a inclinação); as gotas são do PAPEL (criar sim/não, tamanho, comprimento); a água de fábrica dos
+   pincéis desce para a do Rebelle; e o motor ganha o mecanismo da gota fina e longa. ⇒ onda **W1b**,
+   ANTES da W2 (mesma família: a água; §0.10 — as quatro partes num bloco, uma bancada).
 
 ## §4b — Estado
 
@@ -170,10 +176,16 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   Rebelle a gravidade NÃO é do pincel (0 de 281 presets); o escorrimento é da TELA (Tilt, desligado por
   omissão) e a forma das gotas é do PAPEL (Create Drips/Size/Length); a água de fábrica da aquarela é 9–49.
   O nosso: Gravity por pincel, dial ligado por omissão, pente de dedos curtos em vez de 1–2 gotas longas; os
-  knobs escondidos `extFingering`/`extRivulets` não fazem gotas. A proposta (§5) espera a decisão do dono.
+  knobs escondidos `extFingering`/`extRivulets` não fazem gotas. ✅ **Decidido** (§4.3): onda W1b.
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
 
-## §5 — A próxima janela (W2)
+## §5 — A próxima janela (W1b — as gotas; depois a W2)
+
+O prompt inteiro: [07_PROMPT_janela_W1b_gotas.md](07_PROMPT_janela_W1b_gotas.md). Em resumo: as quatro
+partes do 06 §5 num bloco, com a bancada do 06 como gate, a fábrica regerada e as fixtures do Rebelle já
+gravadas (o oráculo só se reabre se uma medição nova for precisa — pelos `gotas_*.sh`).
+
+Depois da W1b, a W2:
 
 1. Fase 0 do [MODELO_TROCA_DE_AGENTE](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md), a
    cerca e `os_outros_meios_nao_mudam` verdes antes de tocar em produto.

@@ -103,6 +103,9 @@ append-only (foundational, Modo L: projecte para isolamento, reporte se a integr
 0,15→1→0,15 dá taper `≥ 60 %` nas pontas (Rebelle 35/42/33); 8B a 55° dá largura `≥ 1,2×` e textura menor
 (37/30; 5,2 % vs 9,1 %).
 
+> ⚠️ **As gotas e a inclinação da tela saíram desta lista para a W1b** (05 §3, 06 — decisão do dono 08/10):
+> gravidade na TELA (direita de fábrica), gotas no PAPEL, água de fábrica baixa, o mecanismo da gota no motor.
+
 **W7 — As mídias secas e a água como volume.** Caminho **água 0** barato (sem solver) para lápis, carvão,
 pastel, giz, marcador, airbrush, com a lei do papel e «não difunde sobre tinta pouco molhada» (manual);
 **Water** como volume do pincel (0–100) na aquarela/tinta/acrílico com `length_water_reduction`; marcador =

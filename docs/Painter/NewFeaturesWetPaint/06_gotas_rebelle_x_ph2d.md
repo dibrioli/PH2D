@@ -66,9 +66,10 @@ Mesmos traços, água 1,0 · 0,7 · 0,4 · 0,2, relógio fixo, 30 s:
 | forma | 1–2 gotas por traço molhado, finas e longas (ou funil com 10/10) | pente de dedos curtos e grossos; gotas longas só de poças |
 | dentro do traço | o pigmento desce para a orla de baixo mesmo sem gotas | (não medido em separado) |
 
-## §5 — Proposta (decisão do dono)
+## §5 — Proposta — ✅ DECIDIDA pelo dono (08/10: «vamos seguir esse caminho»; onda W1b do 05)
 
-Seguir a lei do Rebelle, por partes, cada uma com a sua barra tirada deste vale:
+Seguir a lei do Rebelle, as quatro partes, com a tela **direita de fábrica**; cada uma com a sua barra tirada
+deste vale:
 
 1. **A gravidade sai do pincel e vai para a TELA**: o nosso dial de inclinação já existe e passa a ser o
    único dono do «corre ou não», com o Rebelle **desligado por omissão**; o knob `gravity` deixa o preset
@@ -81,8 +82,8 @@ Seguir a lei do Rebelle, por partes, cada uma com a sua barra tirada deste vale:
    como gate: inclinado máx. ⇒ gota ≥ 250 px nos traços de água ≥ 0,7 e 0 nos de 0,4; Tilt desligado ou a
    meio ⇒ 0; Create Drips off ⇒ 0 com a orla de baixo escura.
 
-Cabe na **W7** do plano (água como volume, «gotas, blow, tilt da tela» — 03 §3.9 dava-as como não
-medidas); os pontos 1–3 podem vir antes, por serem leves.
+Entra como **W1b**, antes da W2: as quatro partes num bloco (mesma família — a água; §0.10). A W7 fica com
+o resto da água (água como volume com `length_water_reduction`, Blow).
 
 ## §6 — Como repetir
 

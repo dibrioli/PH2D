@@ -139,6 +139,7 @@ mod the_emissive_ceiling_is_one_law;
 mod the_expr_blend_smoke_authors_clip_durations;
 mod the_file_menu_reaches_the_disk;
 mod the_filter_segmented_tells_the_truth;
+mod the_fingers_navigate_by_the_mouse_doors;
 mod the_flip_preview_bakes_through_the_same_door;
 mod the_frame_draws_the_live_offset_geometry;
 mod the_frame_labels_reach_the_canvas;

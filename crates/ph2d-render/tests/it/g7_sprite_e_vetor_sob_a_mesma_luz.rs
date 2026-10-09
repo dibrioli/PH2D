@@ -328,3 +328,117 @@ fn g7_sem_o_caminho_do_vetor_os_dois_diferem() {
         "sem o caminho do vetor o quadrado vetorial devia sair na cor de sempre (diferença {pior} B)"
     );
 }
+
+/// ⭐ **O passe ISOLADO não recebe a luz** (o brilho do `present_fx`: a emissão É luz). Com a luz
+/// acesa no renderer, `render_lifted_instances(.., com_luz = false)` tem de dar os bytes de um
+/// renderer que nunca a viu; o controlo (`com_luz = true`) tem de diferir. Apanha a guarda
+/// `com_luz` do grupo (mutação M2 da W3, que nenhum outro gate via).
+#[test]
+fn o_passe_isolado_do_brilho_nao_recebe_a_luz() {
+    let Some(gpu) = gpu() else {
+        eprintln!("g7: sem placa — saltado");
+        return;
+    };
+    let fluencia = textura_de_fluencia(&gpu, true);
+    let vista = fluencia.create_view(&Default::default());
+    let ninguem = BTreeSet::new();
+    let luz = LuzRecebida {
+        fluencia: &vista,
+        origem_m: ORIGEM,
+        texel_m: TEXEL,
+        tamanho: TAM,
+        sem_luz: &ninguem,
+    };
+    let desenhar = |acesa: bool, com_luz: bool| {
+        let game = GameRt::new(&gpu, (W, H));
+        let mut r = SpriteRenderer::new(
+            gpu.clone(),
+            wgpu::TextureFormat::Rgba16Float,
+            TextureAtlas::new(&gpu, 256),
+            8,
+        );
+        let tex = r.acquire_individual(1, 1, &COR).expect("textura");
+        let mut inst = RenderInstance {
+            world_pos: [0.0, 0.0],
+            size: [2.0, 1.5],
+            atlas_uv: [0.0, 0.0, 1.0, 1.0],
+            tint: [1.0; 4],
+            basis: RenderInstance::IDENTITY_BASIS,
+            premultiplied: 0.0,
+            anchor: [0.0, 0.0],
+            per_corner_tint: [[1.0; 4]; 4],
+            opacity: 1.0,
+            flip_uv: 0,
+            texture_id: tex,
+            z_order: 0,
+            sampling: RenderInstance::SAMPLING_DEFAULT,
+            uv_xform: RenderInstance::IDENTITY_UV_XFORM,
+            clip_group: RenderInstance::CLIP_GROUP_NONE,
+            clip_meta: 0,
+            sub_order: 0,
+        };
+        inst.flip_uv = 0;
+        let mut levantadas = LiftedInstances::default();
+        levantadas.push(inst, None);
+        if acesa {
+            r.receber_luz(Some(&luz));
+        }
+        r.render_lifted_instances(
+            game.view(),
+            &Camera2d::new([0.0, 0.0], 2.0),
+            WindowSize::new(W, H),
+            wgpu::Color::TRANSPARENT,
+            &levantadas,
+            None,
+            com_luz,
+        );
+        ler_bytes(&gpu, game.texture(), 8)
+    };
+    let nunca = desenhar(false, false);
+    assert_eq!(
+        desenhar(true, false),
+        nunca,
+        "o passe isolado (com_luz = false) recebeu a luz acesa no renderer"
+    );
+    assert_ne!(
+        desenhar(true, true),
+        nunca,
+        "controlo: com_luz = true sob a luz acesa tem de mudar os bytes"
+    );
+}
+
+/// Lê uma textura de `bpp` bytes por texel (linhas contíguas).
+fn ler_bytes(gpu: &GpuContext, t: &wgpu::Texture, bpp: u32) -> Vec<u8> {
+    let (w, h) = (t.width(), t.height());
+    let padded =
+        (w * bpp).div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    let buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("g7 leitura isolada"),
+        size: u64::from(padded * h),
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut enc = gpu.device.create_command_encoder(&Default::default());
+    enc.copy_texture_to_buffer(
+        t.as_image_copy(),
+        wgpu::TexelCopyBufferInfo {
+            buffer: &buf,
+            layout: wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(padded),
+                rows_per_image: Some(h),
+            },
+        },
+        t.size(),
+    );
+    gpu.queue.submit([enc.finish()]);
+    let fatia = buf.slice(..);
+    fatia.map_async(wgpu::MapMode::Read, |_| {});
+    gpu.device
+        .poll(wgpu::PollType::wait_indefinitely())
+        .expect("poll");
+    let m = fatia.get_mapped_range();
+    (0..h as usize)
+        .flat_map(|y| m[y * padded as usize..][..(w * bpp) as usize].to_vec())
+        .collect()
+}

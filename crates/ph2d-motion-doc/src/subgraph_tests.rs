@@ -126,6 +126,7 @@ fn subgraphs_round_trip_through_the_text_format() {
         // A bypassed group rides the SAME round trip (the `yg` record); dropping the
         // write or the parse of it, or losing it in `validate`, sangra this assert.
         bypassed_subgraphs: BTreeSet::from([1]),
+        owners: crate::Owners::new(),
     };
     let back = MotionDoc::from_text(&doc.to_text()).unwrap();
     assert_eq!(back, doc, "the whole nesting survives a round trip");

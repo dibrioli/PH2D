@@ -263,3 +263,20 @@ JOGO da Fábrica não (`ph2d_ecs::SubtreeCopies`).
 | F5.2 | a forma copiada (a «Bola») **vira filha do objecto Motion e não se desenha sozinha** — só as cópias (como no Cavalry) |
 | F6.1 | a busca por intenção do *Add Component* entende **só inglês** (a língua da interface): «fall» ⇒ Corpo físico |
 | F6.2 | o filtro da Hierarquia por componente é um **botão ▾ ao lado da busca**, que lista só os componentes presentes na cena, com contagem |
+
+**O desenho do F5 (decisão técnica, padrão-ouro):**
+
+| peça | lei | onde |
+|---|---|---|
+| objecto | entidade com o marcador `MotionGenerator` (registado ⇒ grava-se com a cena); `ObjectKind::Motion`; nasce pelo menu Add | `ph2d-ecs`, `ph2d-component-desc`, `ph2d-app-motion` |
+| dono por nó | `MotionDoc.owners: nó → StableId`, secção `[owner]` escrita só quando não vazia (documento antigo grava byte a byte o mesmo) | `ph2d-motion-doc/src/owner.rs` |
+| nó novo | entra pelo funil único (`reconcile` → `adopt_new`) com o dono em edição, como já entra no nível do subgrafo | `motion_bridge_subgraph.rs` |
+| nó sem dono / dono que nunca existiu | **migração**: nasce um objecto «Motion» e adopta-os (o `MotionDoc` global de hoje vira UM objecto) | `motion_objeto` |
+| dono que MORRE (estava vivo) | os nós dele saem num passo do undo do Motion (molde da Animação, onda 2); nunca durante o Play | `motion_objeto` |
+| cópia do editor | Duplicate/prefab copiam os nós do dono para a cópia; `SubtreeCopies` passa a ter um LEITOR por consumidor (Timeline, Motion) | `ph2d-ecs/src/subtree_copies.rs` |
+| modo | o Motion é Object · **Edit** (o Edit do Blender = editar o grafo); entrar liga a ferramenta Motion com o dono em edição; o editor de nós só mostra os nós dele | família em `ph2d-app-motion`, filtro no `fold` |
+| conteúdo | linha «Nodes (n)» sob o objecto, abre o Edit | `ModeFamily::content` |
+| sempre visível | cozinha e desenha sem a ferramenta quando há um objecto Motion visível; o olho esconde os sinks dele | `motion_bridge.rs` (1 linha), `present.rs` |
+| origem | a posição/rotação/escala do objecto é a origem do que os sinks dele geram: um passe afim por faixa de sink, fora do cozido (CPU e placa), num buffer de desenho próprio (o cozido memoizado nunca é transformado duas vezes); identidade = caminho de hoje, byte a byte | `motion_objeto`, `ph2d-gpu-cook` |
+| espaço | o grafo pensa no espaço do OBJECTO (o *layer space* do Cavalry/AE); o que vem do mundo (cursor, colisores) chega em coordenadas de mundo — com o objecto na origem as duas coincidem | — |
+| molde | filho de um objecto Motion não se desenha sozinho (`off_canvas`), mas continua publicado ao cozido; vira filho no momento da ligação (migração, ou o nó passa a nomeá-lo) — arrastá-lo para fora é escolha do artista e é respeitada | `ph2d-entity-visibility`, `motion_objeto` |

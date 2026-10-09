@@ -37,7 +37,10 @@
 //! end (no-op if nothing changed), or `push_undo` for an atomic op.
 
 pub mod layout;
+/// ⭐ O DONO de cada nó — o objecto Motion da cena (doc ObjectsAndComponents 01 §13, F5).
+pub mod owner;
 pub mod subgraph;
+pub use owner::Owners;
 pub use subgraph::{Holder, Members, Subgraph};
 
 use ph2d_nodegraph::format::ParseError;
@@ -92,6 +95,10 @@ pub struct MotionDoc {
     /// shell rewires a bypassed group's boundary before the cook), so it is
     /// serialized (`yg` record) and every id in it is a real subgraph.
     pub bypassed_subgraphs: BTreeSet<u32>,
+    /// ⭐ node → the `StableId` of the Motion OBJECT that owns it ([`owner`]). SEMANTIC (the object's
+    /// transform is the origin of what its sinks make, its eye hides them), serialized as the
+    /// `[owner]` section, written LAST and only when non-empty.
+    pub owners: Owners,
 }
 
 impl MotionDoc {
@@ -129,6 +136,7 @@ impl MotionDoc {
             &self.backdrop_members,
             &self.bypassed_subgraphs,
         );
+        owner::write_section(&mut out, &self.owners);
         out
     }
 
@@ -141,6 +149,11 @@ impl MotionDoc {
         // avoids a stray match inside a (whitespace-free) type name. Peel the
         // sections off the tail first: `[subgraph]` is the last one written, and a
         // document that has none simply never mentions it.
+        // `[owner]` is written after everything else, so it is peeled off first.
+        let (text, owner_part) = match text.split_once(owner::HEADER) {
+            Some((h, o)) => (h, o),
+            None => (text, ""),
+        };
         let (head, subgraph_part) = match text.split_once("\n[subgraph]") {
             Some((h, s)) => (h, s),
             None => (text, ""),
@@ -222,6 +235,8 @@ impl MotionDoc {
             &backdrops.iter().map(|b| b.id).collect(),
             &bypassed_subgraphs,
         )?;
+        let owners = owner::parse_section(owner_part)?;
+        owner::validate(&graph, &owners)?;
         Ok(Self {
             graph,
             backdrops,
@@ -230,6 +245,7 @@ impl MotionDoc {
             members,
             backdrop_members,
             bypassed_subgraphs,
+            owners,
         })
     }
 
@@ -257,6 +273,7 @@ impl MotionDoc {
     pub fn forget_nodes(&mut self, dead: &[ph2d_nodegraph::graph::NodeId]) {
         for n in dead {
             self.members.remove(n);
+            self.owners.remove(n);
         }
     }
 }

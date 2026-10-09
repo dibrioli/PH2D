@@ -38,6 +38,22 @@ pub struct Origem {
     aplicada: BTreeMap<NodeId, Afim>,
 }
 
+/// O objecto Motion vivo dono de `no` (`MotionDoc::owner_of`), ou `None` sem dono vivo.
+#[must_use]
+pub fn dono_do_no(motion: &MotionState, no: NodeId) -> Option<&super::Dono> {
+    motion
+        .doc
+        .owner_of(no)
+        .and_then(|o| motion.objeto.donos.get(&o))
+}
+
+/// ⭐ A afim local → mundo do que `no` gera: a do dono dele, identidade sem dono vivo. Porta única —
+/// os sinks (aqui) e as legendas das demos (`motion_demo_legend`) leem a mesma.
+#[must_use]
+pub fn afim_do_no(motion: &MotionState, no: NodeId) -> Afim {
+    dono_do_no(motion, no).map_or(IDENTIDADE, |d| d.afim)
+}
+
 /// A afim de cada sink: a do dono dele, identidade sem dono vivo.
 #[must_use]
 pub fn afins_dos_sinks(motion: &MotionState) -> BTreeMap<NodeId, Afim> {
@@ -45,14 +61,7 @@ pub fn afins_dos_sinks(motion: &MotionState) -> BTreeMap<NodeId, Afim> {
         .pump
         .faixas
         .iter()
-        .map(|f| {
-            let afim = motion
-                .doc
-                .owner_of(f.sink)
-                .and_then(|o| motion.objeto.donos.get(&o))
-                .map_or(IDENTIDADE, |d| d.afim);
-            (f.sink, afim)
-        })
+        .map(|f| (f.sink, afim_do_no(motion, f.sink)))
         .collect()
 }
 

@@ -48,7 +48,7 @@ pub fn is_cycle_scene(n: &str) -> bool {
 /// Os sinks da cena que o ambiente pediu — vazio quando ele não pediu nada, que é a TELA
 /// VAZIA com que o editor abre.
 pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
-    build_level(
+    crate::motion_demo_legend::monta_cena(
         std::env::var("PH2D_GPU_COOK_DEMO").ok().as_deref(),
         doc,
         registry,

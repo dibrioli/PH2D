@@ -262,6 +262,7 @@ pub(super) fn captions() -> Vec<Caption> {
     let ficha = |x: f32, k: usize, t: &str| Caption {
         text: t.to_string(),
         world: [x, fileira_y(k) + FICHA_Y],
+        no: None,
     };
     vec![
         ficha(-COL_X, 0, "O QUE EU FIZ: uma palavra"),

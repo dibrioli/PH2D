@@ -16,6 +16,7 @@ impl crate::App {
     ) -> Option<ph2d_vector::Affine> {
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let gfx = self.gfx.as_mut()?;
+        let legenda = ph2d_app_motion::motion_demo_legend::no_mundo(&gfx.motion);
         let FrameGfx {
             doc_guides,
             sim,
@@ -127,7 +128,7 @@ impl crate::App {
             // smoke"*) — o rótulo pousa em cima do caso que ele explica. No-op quando
             // nenhuma cena publicou, que é todo arranque normal do editor.
             super::render_loop::demo_legend::draw(
-                &ph2d_app_motion::motion_demo_legend::captions(),
+                &legenda,
                 cam_affine,
                 hero.theme,
                 paint_ctx.text,

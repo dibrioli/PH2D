@@ -100,11 +100,7 @@ pub fn motion_objeto_smoke(cx: &mut crate::motion_scene_ctx::MotionSceneCtx<'_>)
     let sid = |e| world.get::<StableId>(e).map_or(0, |s| s.0);
     let (s_pilha, s_enxame) = (sid(pilha), sid(enxame_e));
     let antes: Vec<NodeId> = cx.motion.doc.graph.nodes().iter().map(|n| n.id).collect();
-    crate::motion_state::demo_router::build_level(
-        Some("114"),
-        &mut cx.motion.doc,
-        &cx.motion.registry,
-    );
+    crate::motion_demo_legend::monta_cena(Some("114"), &mut cx.motion.doc, &cx.motion.registry);
     let novos: Vec<NodeId> = cx
         .motion
         .doc

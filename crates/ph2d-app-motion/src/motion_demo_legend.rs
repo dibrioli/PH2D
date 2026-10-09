@@ -37,6 +37,9 @@ pub struct Caption {
     pub world: [f32; 2],
     /// O que se lê. **Curto** — é uma ficha, não um parágrafo; a frase longa vive no terminal.
     pub text: String,
+    /// O nó da cena que a legenda explica: o `world` é do espaço do objecto Motion DONO dele e segue
+    /// a origem desse objecto ([`no_mundo`]). `None` até a cena ser montada ([`monta_cena`]).
+    pub no: Option<ph2d_nodegraph::graph::NodeId>,
 }
 
 impl Caption {
@@ -44,6 +47,7 @@ impl Caption {
         Self {
             world,
             text: text.into(),
+            no: None,
         }
     }
 }
@@ -90,7 +94,7 @@ pub fn monta(
 ) -> (Vec<ph2d_nodegraph::graph::NodeId>, Vec<Caption>) {
     let _t = trava();
     publish(Vec::new());
-    let sinks = crate::motion_state::demo_router::build_level(Some(level), doc, reg);
+    let sinks = monta_cena(Some(level), doc, reg);
     (sinks, captions())
 }
 
@@ -105,6 +109,11 @@ pub fn publish(captions: Vec<Caption>) {
 pub fn captions() -> Vec<Caption> {
     LEGEND.lock().map(|s| s.clone()).unwrap_or_default()
 }
+
+/// A legenda presa ao DONO dos nós que a geram — irmã por responsabilidade.
+#[path = "motion_demo_legend_dono.rs"]
+mod dono;
+pub use dono::{ancora_em, monta_cena, no_mundo, no_mundo_de};
 
 #[cfg(test)]
 #[path = "motion_demo_legend_tests.rs"]

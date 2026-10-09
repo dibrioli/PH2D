@@ -328,6 +328,83 @@ NÃO os fixa (fica o do artista) — nada inventado. Receitas em `tests/it/prese
   [08_PROMPT_janela_W1c_borda.md](08_PROMPT_janela_W1c_borda.md). Dono: os controlos das gotas FICAM no
   Paper; «cuidado para não piorar nossa engine» ⇒ as quatro cercas (incluindo o escorrimento natural ao
   byte) do princípio ao fim.
+- ✅ **W1c — a borda e as gotas pela auditoria** (08/10, prompt [08](08_PROMPT_janela_W1c_borda.md); commits
+  `4ffbc7432` física · `b6d0b21e0` costuras · `6abfef287` censo). A régua: `ferramentas/borda.py`, portada para
+  `tests/it/borda_do_s.rs` (`mede_borda`, `fios_do_s`) — a descida do S (x 440–632), tudo em proporção ao corpo
+  com a tela DIREITA do mesmo motor (Rebelle ~102, Wet Round ~213: pigmentam diferente, compara-se a forma).
+  Reproduz o README das fixtures (orla do Rebelle 4 / 1,10 · 5 / 0,92 · 8 / 2,0).
+  - **L1-1 — a causa da escada não é a força, é a POÇA.** Aos 3 s o nosso S já é o do Rebelle (corpo claro,
+    rampa, linha fina); de 3 a 30 s o pigmento SUSPENSO espreme-se atrás da linha de contacto numa faixa de
+    cor pura (o nosso pigmento já está a 0,92 da saturação com a tela direita) cujo topo serrilhado é a escada.
+    Cura: a gota escoa a orla da sua bacia até `DripLaw::recede` e o canal CONTINUA a escoar depois de o fio
+    acabar (`drain_after`) — a água sai, o pigmento fica na linha (o anel). A força fica 4×.
+
+    | S, tela no máximo | degraus | faixa ≥ B0 | rampa | corpo | orla salto / rms | fios a y 330 |
+    |---|---|---|---|---|---|---|
+    | antes (W1b) | 84–88 % | 11–12 px | 14 | 0,43 | 5 / 0,9 | 2 (1–2 px) |
+    | força ×2 · ×1,5 · ×1 | 39 · 23 · 3 % | 12 · 12 · 0 | 16 · 17 · 20 | 0,56 · 0,62 · **0,76** | — | — |
+    | `recede` 0,003, sem canal | 31 % | 7 | 19 | 0,43 | 5 / 1,0 | — |
+    | **W1c** (`recede` 0,001, `feed` 0,5, canal) | **8 %** | **3** | **23** | 0,44 | 7 / 1,1 | **12 (3 px)** |
+    | Rebelle `s_inclinado` | 8 % | 0 | 28 | 0,25 | 4 / 1,1 | 11 (3–4 px) |
+
+    ⚠️ ABERTO: o corpo não clareou para o do Rebelle (0,44 contra 0,25) — é a carga de pigmento do Wet Round e
+    a textura das cerdas, fora desta onda.
+  - **L1-3 — gotas de toda a orla.** Saiu a regra «só o ponto baixo» (`LOW_SLACK`). A bacia de uma gota é a orla
+    que recolhe `basin_water` = 3000 (película × px²) atrás de si — um alcance FIXO não dá os dois oráculos (9 px
+    por Size: 9 fios no S e 3 por traço recto; o Rebelle dá 10–11 e 1). Fio ≥ 3 px (`trail_min_px`), funil
+    escuro (`neck_dark` 2: raiz ÷ fio 1,69, Rebelle ~2, antes 1,1). A reserva de tinta do fio é a MAIOR orla
+    que a bacia teve (escoada, a orla seca aos bocados e o fio clareava: água 0,7 a 189 px < 250).
+    S: 12 fios, 9 em encostas (Rebelle 6–8), ~280 px (228–430). Bancada: 259 / 258 px, 1 fio por traço, 10/10
+    464 / 464 — todos os portões de antes verdes sem mexer na barra.
+  - **L1-2 — `NOTCH_W` fica.** Orla recta: brechas 0 / 10 com ele, 110 / 110 sem (barra 17). Encosta do S, com a
+    lei nova: inerte (37 contra 40 colunas com um claro na linha da orla; patamares 1 contra 2) — a
+    regularização da escada que a auditoria mediu (2 → 9 patamares) era da escada, que já não existe.
+  - **L1-4 — um predicado**, `Folha::por_fora` (edge.rs), para a linha de contacto e a orla de baixo
+    (`is_front(e)` ⟺ a célula de baixo está presa). Teste-propriedade com a corrida de 8, o fundo da folha, o
+    buraco da franja e a brecha — visto vermelho: «corrida de 8 secas: orla = true, presa = false». A linha de
+    contacto ficou a mesma conta; fora da folha conta como seco nos dois (a água cai dela).
+  - **L1-5 — a lei em px**: `DripLaw` em dados (`Sim::drip_law`; a calibração varia-a no mesmo processo por
+    `PainterTool::set_wet_drip_law`, `#[doc(hidden)]`), convertida por `Sim::drip_px_per_cell` (a razão do tool,
+    posta ao nascer a sessão). Grade 2: fios de 275 px contra 280 na grade 1 (antes 352 contra 296, e só não
+    mais porque batia no fundo da tela).
+  - **L2-2** — o Wet Drip de fábrica: água 0,49 → 0,7 (0,49 → 0 px; 0,6 → 260; 0,7 → 259; 1,0 → 278); a fábrica
+    regerada — só o Wet Drip mudou de bytes (com a tela direita a lei não age, as miniaturas são iguais).
+  - **L2-1, L2-3..L2-9** (costuras, agente próprio): set_source repõe as gotas e a selecção (censo que
+    destrutura `StashedDoc` sem `..`); a dica de Create Drips diz o anel da lei (`wet_primeiro_anel_das_gotas`);
+    Create Drips esmaece pela gravidade EFECTIVA; o Tilt tem a dica que aponta o Paper; o Reset do Paper repõe as
+    gotas; o Ctrl+Z desfaz as gotas (`ModelSnapshot.gotas`, um passo por clique, arrasto coalescido); os campos
+    Drip Size/Length arrastam inteiros (`set_number_integer`); nenhum id da Gravity é encaminhado. 21/21
+    mutações sangram. ⚠️ Aberto: as gotas de uma sprite desmontada vivem só na sessão (persistir pedia degrau).
+  - **O censo dos controlos** arma o Length no mínimo no anel 8: com a água da bacia a gota corre o Length
+    inteiro e, a 128², 5 e 8 davam fios além do fundo da tela («esmaecida=false mas a tinta NÃO mudou»).
+  - **Portões novos** (vistos VERMELHOS no `bb2bb1bf4`, numa worktree própria): `a_borda_do_s_e_a_do_rebelle`
+    (87 % de degraus), `as_gotas_saem_de_toda_a_orla_do_s` (1 fio), `a_grade_2_da_os_mesmos_fios_em_px` (51 %
+    de degraus), `o_wet_drip_de_fabrica_pinga_na_tela_no_maximo` (0 px). Reescrito DE PROPÓSITO:
+    `com_a_tela_inclinada_a_mancha_guarda_a_forma_e_nao_faz_pente` — a barra 1–6 fios era a regra do ponto
+    baixo, que contradiz o oráculo; agora 4–17 (hoje 14; o pente era 20).
+  - ⛔ **Recusas MEDIDAS (W1c):** baixar a força da lei (tira os degraus e o corpo deixa de clarear: 0,76) ·
+    assentamento do suspenso na água parada (`sediment` 0,02–0,2: degraus 0 % mas o corpo congela escuro,
+    0,76–1,05) · `EdgeDarkening` 100 / 200 (degraus 88 %) · gotas de toda a orla SEM o canal (a poça volta,
+    degraus 84 %) · funil `neck_dark` ≥ 3 (brechas 0 → 21 na orla recta) · alcance fixo da bacia (ver L1-3).
+  - **Mutações (9 de 10 sangram, controlos verdes antes; agente numa worktree própria):** `drain_after` falso ✗
+    27,5 % de degraus · `recede` = `hold` ✗ 86,5 % (e a grade 2, 46,6 %) · `basin_water` 1e9 ✗ 2 fios no S ·
+    `trail_min_px` 1 ✗ fios de 1 px · `neck_dark` 0 ✗ funil 1,10 · `Cells::c` sem a razão ✗ grade 2 a 398 px
+    contra 280 · a reserva = a última orla ✗ água 0,7 a 194 px · `is_front` sem a brecha ✗ propriedade ·
+    `notch_w` 0 ✗ 110 brechas. Sobreviveu `FRONT_DRY` 8 → 7 nos DOIS lados do predicado (a consistência
+    fica, e nenhuma cena mede 7 contra 8): constante da W1b, onde 8 → 1 sangrava — tolerância, não lei nova.
+  - **Custo a 4096²** (`measure_drip_pass_cost`, `smoke`, Size/Length 10/10):
+
+    | tentativa | três poças: estágio das gotas p50 / p99 / máx | tela molhada máx | load |
+    |---|---|---|---|
+    | W1b final | 0,27 / 0,74 / 0,76 ms | 1,49 | 6,6 → 11 |
+    | W1c 1.ª (bacia por volume, soma o alcance inteiro) | 0,94 / 1,53 / **141 ms** ✗ | 1,93 | 6,5 → 14 |
+    | W1c 2.ª (bacia nos dois lados até juntar a água) | 0,91–0,93 / 1,27–1,49 / **3,9–4,3 ms** ✗ | 1,6–3,0 | 3,6 → 13 (3 corridas) |
+
+    ⛔ **Kill-criterion atingido** (> 2 ms depois da 2.ª tentativa): PARADO e reportado ao dono antes da 3.ª.
+    O pico é raro (p99 ≤ 1,5 ms) e repete-se no mesmo tique das poças (544 gotas vivas, 3× a W1b). Hipótese
+    para a 3.ª, NÃO medida: o `na_bacia` do `spawn` compara cada candidata com TODAS as gotas (O(orla × gotas))
+    — um índice das gotas pela coordenada transversal tira-o.
+  - Pranchas: [antes · depois · Rebelle, a 3×](prancha_borda_w1c.png) · [o S inteiro](prancha_s_w1c.png).
 - **Falta (só com ordem do dono):** o smoke dele e o fecho da linha (`/pd-linha-fechar`, handoff).
   ⚠️ Para o integrador: o degrau 187 → 188 tem migração (`ProjectFileV187`, braço `187 =>` em
   `project_load_read.rs`) — se o main passar de 187 antes, os dois movem-se à mão (o `schema-recount.py`

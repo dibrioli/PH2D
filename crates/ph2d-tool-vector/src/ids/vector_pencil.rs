@@ -42,3 +42,10 @@ pub const VECTOR_PENCIL_W_SPEED: NodeId = hash_node_id("vector.pencil.w_speed");
 
 /// Ver [`VECTOR_PENCIL_W_UNIFORM`].
 pub const VECTOR_PENCIL_W_PRESSURE: NodeId = hash_node_id("vector.pencil.w_pressure");
+
+/// **QuickShape** (F7) — segurar no fim do traço = forma perfeita. O par troca como o da Simetria:
+/// o chip pintado é a ACÇÃO (`_OFF` aceso quando ligado), e o clique nunca é ambíguo.
+pub const VECTOR_PENCIL_QUICKSHAPE_ON: NodeId = hash_node_id("vector.pencil.quickshape.on");
+
+/// Ver [`VECTOR_PENCIL_QUICKSHAPE_ON`].
+pub const VECTOR_PENCIL_QUICKSHAPE_OFF: NodeId = hash_node_id("vector.pencil.quickshape.off");

@@ -114,6 +114,8 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             || x == ph2d_tool_vector::ids::VECTOR_PENCIL_W_UNIFORM
             || x == ph2d_tool_vector::ids::VECTOR_PENCIL_W_SPEED
             || x == ph2d_tool_vector::ids::VECTOR_PENCIL_W_PRESSURE
+            || x == ph2d_tool_vector::ids::VECTOR_PENCIL_QUICKSHAPE_ON
+            || x == ph2d_tool_vector::ids::VECTOR_PENCIL_QUICKSHAPE_OFF
     )
 }
 

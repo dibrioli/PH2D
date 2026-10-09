@@ -270,6 +270,7 @@ fn the_pencil_knobs_live_in_the_pencil_row() {
         t::VECTOR_PENCIL_W_UNIFORM,
         t::VECTOR_PENCIL_W_SPEED,
         t::VECTOR_PENCIL_W_PRESSURE,
+        t::VECTOR_PENCIL_QUICKSHAPE_OFF,
     ] {
         assert!(ids.contains(&id), "{id:?} fora da fila do lápis");
     }
@@ -528,4 +529,31 @@ fn the_panel_no_longer_holds_the_gesture_sections() {
     ] {
         assert!(!p::VECTOR_SECTIONS.contains(&id), "{id:?} voltou ao painel");
     }
+}
+
+/// ⭐ **O QuickShape (F7): a porta visível e a dica que diz o gesto** — ligado por omissão, o chip
+/// aceso é o que DESLIGA e o rodapé ⑤ ensina a segurar; desligado, o chip é o que liga e a dica
+/// não promete o que não acontece.
+#[test]
+fn the_quickshape_switch_and_its_hint_follow_the_tool() {
+    use ph2d_tool_vector::VectorStyleSnapshot;
+    let barras = |quick: bool| {
+        ph2d_panel_vector::set_current_vector_style(Some(VectorStyleSnapshot {
+            mode: DrawMode::Pencil,
+            pencil_quickshape: quick,
+            ..VectorStyleSnapshot::default()
+        }));
+        bars::tool_bars(crate::host_aberto().store(), None, Vec::new())
+    };
+    let lit = |b: &ToolBars, id| {
+        b.row_lead.iter().chain(&b.row_tail).any(|e| {
+            matches!(e, ToolRailEntry::Icon { id: x, active: true, .. } | ToolRailEntry::Compound { id: x, active: true, .. } if *x == id)
+        })
+    };
+    let on = barras(true);
+    assert!(lit(&on, t::VECTOR_PENCIL_QUICKSHAPE_OFF), "ligado: o chip aceso é o que desliga");
+    assert!(on.hint.contains("Hold"), "a dica ensina a segurar: {}", on.hint);
+    let off = barras(false);
+    assert!(row_ids(&off).contains(&t::VECTOR_PENCIL_QUICKSHAPE_ON) && !lit(&off, t::VECTOR_PENCIL_QUICKSHAPE_ON));
+    assert!(!off.hint.contains("Hold"), "desligado, a dica não promete o gesto: {}", off.hint);
 }

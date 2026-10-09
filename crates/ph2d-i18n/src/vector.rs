@@ -250,6 +250,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.pencil.width.uniform" => "Uniform",
         "panel.vector.pencil.width.speed" => "Speed",
         "panel.vector.pencil.width.pressure" => "Pen",
+        "panel.vector.pencil.quickshape" => "QuickShape",
         "panel.vector.width.preset.uniform" => "Uniform",
         "panel.vector.width.preset.taper" => "Taper",
         "panel.vector.width.preset.both" => "Both",

@@ -21,6 +21,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Click: corner \u{00b7} Drag: curve \u{00b7} Alt: free handle \u{00b7} Esc: finish"
         }
         "panel.vector.hint.pencil" => "Drag: draw \u{00b7} Right-click or Esc: cancel",
+        "panel.vector.hint.pencil_quickshape" => {
+            "Drag: draw \u{00b7} Hold at the end: perfect shape \u{00b7} Right-click or Esc: cancel"
+        }
         "panel.vector.hint.shape" => {
             "Drag: size \u{00b7} Shift: even \u{00b7} Alt: from the centre \u{00b7} Esc: cancel"
         }

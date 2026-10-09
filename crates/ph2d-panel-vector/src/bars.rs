@@ -157,6 +157,15 @@ pub fn mode_id(mode: DrawMode) -> Option<NodeId> {
     TOOLS.iter().find(|r| r.0 == mode).map(|r| r.1)
 }
 
+/// ⑤ A dica do estado: a do modo, e a do Lápis diz o «segurar» só com o QuickShape ligado.
+#[must_use]
+pub fn hint_key_for(snap: &VectorStyleSnapshot) -> &'static str {
+    if snap.mode == DrawMode::Pencil && snap.pencil_quickshape {
+        return "panel.vector.hint.pencil_quickshape";
+    }
+    hint_key(snap.mode)
+}
+
 /// ⑤ A chave da dica de um modo.
 #[must_use]
 pub fn hint_key(mode: DrawMode) -> &'static str {
@@ -455,7 +464,7 @@ pub fn tool_bars(store: &WidgetStore, selection: Option<Rect>, readout: Vec<Stri
         row_tail: sym_chips,
         actions: actions(snap.mode, sel),
         selection,
-        hint: tr(hint_key(snap.mode)).to_owned(),
+        hint: tr(hint_key_for(&snap)).to_owned(),
         readout,
     }
 }

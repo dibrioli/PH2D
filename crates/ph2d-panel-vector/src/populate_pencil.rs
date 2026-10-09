@@ -19,6 +19,8 @@ pub(super) fn pencil_knobs(store: &mut WidgetStore) {
         ph2d_tool_vector::ids::VECTOR_PENCIL_W_UNIFORM,
         ph2d_tool_vector::ids::VECTOR_PENCIL_W_SPEED,
         ph2d_tool_vector::ids::VECTOR_PENCIL_W_PRESSURE,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_QUICKSHAPE_ON,
+        ph2d_tool_vector::ids::VECTOR_PENCIL_QUICKSHAPE_OFF,
     ] {
         store.register(
             id,

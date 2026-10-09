@@ -74,3 +74,37 @@ fn the_pencil_width_source_chips_are_absent_outside_pencil_mode() {
         );
     }
 }
+
+/// ⭐ **O par do QuickShape chega à ferramenta** (F7) — consumido pelo painel, virado
+/// `ToolPanelEvent`, e o `draw_config` (o que o laço de frame da shell lê) muda. Os três degraus:
+/// sair do `populate` não deixa o clique ser consumido, sair do `event_clicks` não o leva ao
+/// barramento, sair do `tool_panel_event` não muda o que a shell lê.
+#[test]
+fn the_quickshape_pair_reaches_what_the_frame_reads() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::panel::EventOutcome;
+    use ph2d_editor_core::tool::Tool;
+    publish_mode(ph2d_tool_vector::DrawMode::Pencil);
+    let mut host = crate::host_aberto();
+    let mut tool = ph2d_tool_vector::VectorTool::default();
+    assert!(tool.draw_config().pencil_quickshape, "ligado por omissão (o Procreate também)");
+    for (id, want) in [
+        (ph2d_tool_vector::ids::VECTOR_PENCIL_QUICKSHAPE_OFF, false),
+        (ph2d_tool_vector::ids::VECTOR_PENCIL_QUICKSHAPE_ON, true),
+    ] {
+        let mut st = VectorPanelState;
+        let out = host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::Click(id));
+        assert_eq!(out, EventOutcome::Consumed, "{id:?} não foi consumido");
+        let mut forwarded = false;
+        for action in host.drained_actions() {
+            if let EditorAction::ToolPanelEvent(pe) = action {
+                tool.handle_panel_event(pe);
+                forwarded = true;
+            }
+        }
+        assert!(forwarded, "o clique em {id:?} nunca virou ToolPanelEvent");
+        assert_eq!(tool.draw_config().pencil_quickshape, want, "{id:?}");
+        assert_eq!(tool.ui_snapshot().pencil_quickshape, want, "o painel pinta a partir do snapshot");
+    }
+}

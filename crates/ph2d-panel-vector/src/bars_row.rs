@@ -150,6 +150,12 @@ pub(super) fn gesture_chips(
                 "panel.vector.pencil.width.pressure",
                 src == Ws::Pressure,
             ));
+            let quick = if snap.pencil_quickshape {
+                ids::VECTOR_PENCIL_QUICKSHAPE_OFF
+            } else {
+                ids::VECTOR_PENCIL_QUICKSHAPE_ON
+            };
+            v.push(chip(quick, "panel.vector.pencil.quickshape", snap.pencil_quickshape));
         }
         DrawMode::Cut if crate::state::cut_line_exists() => {
             v.push(chip(

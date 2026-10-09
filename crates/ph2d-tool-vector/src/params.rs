@@ -394,6 +394,9 @@ pub struct VectorDrawConfig {
     /// estabilizador: quem a consome é o laço de frame da shell, e alcançar o tool por downcast
     /// para ler um enum seria trabalho por frame para uma pergunta que o espelho já responde.
     pub pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource,
+    /// **QuickShape** (F7): segurar no fim do traço dá a forma perfeita. Viaja no config porque
+    /// quem segura o relógio é o laço de frame da shell.
+    pub pencil_quickshape: bool,
     /// **O estilo da SIMETRIA de desenho** (W6.3). Viaja no config pela MESMA razão do
     /// estabilizador do lápis: quem o consome é o laço de frame da shell (para ARMAR o componente
     /// da forma), e alcançar o tool por downcast para ler quatro campos seria trabalho por frame
@@ -420,6 +423,7 @@ impl Default for VectorDrawConfig {
             values: ShapeKind::Rectangle.defaults(),
             pencil_stabilizer: PENCIL_STABILIZER_DEFAULT,
             pencil_width_source: ph2d_vec_edit::pencil_width::WidthSource::default(),
+            pencil_quickshape: true,
             symmetry: ph2d_symmetry::SymmetryStyle::default(),
             marquee: MarqueeShape::default(),
         }

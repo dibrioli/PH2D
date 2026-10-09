@@ -114,6 +114,8 @@ impl VectorTool {
             PanelEvent::Click(id) if id == crate::ids::VECTOR_PENCIL_W_PRESSURE => {
                 self.pencil_width_source = ph2d_vec_edit::pencil_width::WidthSource::Pressure;
             }
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_PENCIL_QUICKSHAPE_ON => self.pencil_quickshape = true,
+            PanelEvent::Click(id) if id == crate::ids::VECTOR_PENCIL_QUICKSHAPE_OFF => self.pencil_quickshape = false,
             // **A FORMA do marquee** — o par pegajoso. Escolher um NÃO arma o modo Node: a row só
             // é pintada nele, então já se está lá (a mesma lei da fonte de largura acima).
             PanelEvent::Click(id) if id == crate::ids::VECTOR_MARQUEE_BOX => {

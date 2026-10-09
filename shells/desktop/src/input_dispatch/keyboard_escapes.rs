@@ -110,6 +110,17 @@ impl App {
             return true;
         }
 
+        // O LÁPIS (F7): com a forma do QuickShape, o Esc devolve o traço livre; sem ela, desiste do
+        // traço — o que a dica dele sempre disse.
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && self.vector_keys_live()
+            && let Some(gfx) = self.gfx.as_mut()
+            && ph2d_app_vec::quickshape_frame::escape(&mut self.vec, &mut gfx.vec_scene)
+        {
+            return true;
+        }
         // Vector: Escape ends an in-progress path (it stays in the scene, open).
         // Consumed only while the Vector tool is active and the Pen is drawing,
         // so Escape otherwise falls through to widget blur.

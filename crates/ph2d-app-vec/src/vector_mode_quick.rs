@@ -3,7 +3,7 @@
 //! círculo tosco, uma linha trémula —, cada um SEGURADO no fim. Quem mede o segurar é a SHELL, a cada
 //! quadro, com o relógio do ponteiro (o `clock_ns` do chrome é esse relógio): a cena só carimba as
 //! amostras e espera, e cada traço vira a forma perfeita pela mesma porta da mão. No fim as três
-//! ficam seleccionadas no modo Node, com os nós à vista.
+//! ficam seleccionadas com o Lápis ainda na mão: os nós à vista, o QuickShape aceso, a dica no ⑤.
 
 use crate::state::VecState;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -66,8 +66,8 @@ fn stroke(k: usize) -> Vec<[f64; 2]> {
 }
 
 /// Um passo da cena 12; devolve o próximo estágio, se mudou. `50` = o Lápis pelo botão · `51` =
-/// aceso · `52` = um traço desenhado e SEGURO · `53` = à espera da forma, depois solta · `54` = o
-/// modo Node · `55` = as três seleccionadas · `9` = feito.
+/// aceso · `52` = um traço desenhado e SEGURO · `53` = à espera da forma, depois solta · `54` =
+/// as três seleccionadas, com o Lápis ainda na mão · `9` = feito.
 pub fn step(stage: u8, vec: &mut VecState, scene: &mut ph2d_vec_scene::VecScene, hero: &mut HeroScreen) -> Option<u8> {
     let lit = |hero: &HeroScreen, id| hero.store.tool_bars().is_some_and(|b| b.column.iter().flatten().any(|x| x.on && x.id == id));
     let now = hero.store.clock_ns();
@@ -102,12 +102,9 @@ pub fn step(stage: u8, vec: &mut VecState, scene: &mut ph2d_vec_scene::VecScene,
             });
             Some(if k < STROKES { 52 } else { 54 })
         }
+        // O Lápis FICA na mão (a fila mostra o QuickShape aceso e o rodapé ⑤ a dica); as três
+        // seleccionadas mostram os nós.
         54 => {
-            hero.apply_event(WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_NODE));
-            Some(55)
-        }
-        // A troca de ferramenta reduz a seleção — por isso as três vêm DEPOIS (a lição da cena 9).
-        55 if lit(hero, ph2d_tool_vector::ids::VECTOR_MODE_NODE) => {
             let all: Vec<ph2d_vec_scene::VecPathId> = vec.entities.keys().copied().collect();
             vec.pen.select_many(&all);
             Some(9)

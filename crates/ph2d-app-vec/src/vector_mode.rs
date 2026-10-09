@@ -488,7 +488,7 @@ pub fn smoke_step(
             }
         }
         // A cena 12 (F7): três traços seguros viram formas perfeitas — `vector_mode_quick`.
-        s @ 50..=55 => {
+        s @ 50..=54 => {
             if let Some(next) = crate::vector_mode_quick::step(s, vec, scene, hero) {
                 go(next);
             }

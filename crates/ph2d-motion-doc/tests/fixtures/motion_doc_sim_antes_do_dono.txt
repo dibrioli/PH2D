@@ -1,0 +1,44 @@
+v2
+n 0 motion.grid
+n 1 motion.color_ramp
+n 2 motion.integrate
+n 3 motion.output
+n 4 force.vortex
+n 5 force.attractor
+n 6 force.drag
+n 7 force.curl
+e 0 0 1 0 fwd
+e 1 0 2 0 fwd
+e 2 0 3 0 fwd
+e 2 0 4 0 pre
+e 4 0 5 0 fwd
+e 5 0 6 0 fwd
+e 6 0 7 0 fwd
+e 7 0 2 1 fwd
+p 0 cols 181
+p 0 gap_x 0.12
+p 0 gap_y 0.12
+p 0 rows 181
+p 4 clockwise 1
+p 4 radius 46
+p 4 strength 14
+p 5 curve 0
+p 5 radius 46
+p 5 strength 9
+p 6 coefficient 0.35
+p 7 octaves 2
+p 7 scale 0.06
+p 7 speed 0.4
+p 7 strength 6
+x 1 ramp g1 0 0:1,0,0 0.16666667:1,1,0 0.33333334:0,1,0 0.5:0,1,1 0.6666667:0,0,1 0.8333333:1,0,1 1:1,0,0
+[layout]
+l 0 80 120
+l 1 300 120
+l 2 520 120
+l 3 740 120
+l 4 80 300
+l 5 260 300
+l 6 440 300
+l 7 620 300
+[backdrop]
+z 0

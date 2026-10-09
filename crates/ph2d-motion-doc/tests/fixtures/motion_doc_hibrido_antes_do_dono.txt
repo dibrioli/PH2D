@@ -1,0 +1,28 @@
+v1
+n 0 motion.grid
+n 1 motion.sort
+n 2 motion.oscillator
+n 3 motion.scale
+n 4 motion.output
+e 0 0 1 0 fwd
+e 1 0 2 0 fwd
+e 2 0 3 0 fwd
+e 3 0 4 0 fwd
+p 0 cols 181
+p 0 gap_x 1
+p 0 gap_y 1
+p 0 rows 181
+p 1 key 1
+p 2 amplitude 5
+p 2 channel 1
+p 2 frequency 0.5
+p 2 phase_stagger 0.003
+p 3 amount 1.6
+[layout]
+l 0 80 120
+l 1 260 120
+l 2 440 120
+l 3 620 120
+l 4 800 120
+[backdrop]
+z 0

@@ -245,7 +245,9 @@ pub fn ler(gpu: &GpuContext, t: &wgpu::Texture, bpp: u32) -> Vec<u8> {
 /// A fluência rgb de um solver, lida de volta (`Rgba16Float`).
 pub fn fluencia_lida(gpu: &GpuContext, s: &ph2d_light2d_gpu::Solver) -> Vec<[f32; 3]> {
     ler(gpu, s.fluencia(), 8)
-        .chunks_exact(8)
+        .as_chunks::<8>()
+        .0
+        .iter()
         .map(|c| {
             let h = |k: usize| half::f16::from_le_bytes([c[2 * k], c[2 * k + 1]]).to_f32();
             [h(0), h(1), h(2)]

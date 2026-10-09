@@ -124,7 +124,7 @@ impl SpriteRenderer {
             extra,
             rank_window,
             held_back,
-            Some(&self.sem_luz).filter(|_| self.luz.aceso()),
+            self.luz.aceso().then_some(&self.sem_luz),
         );
         self.draw_scratch(
             target,

@@ -109,12 +109,11 @@ fn cena_do_editor(
         let (t, g) = pose(x, y, 0.3 * k as f32);
         let sprite = Sprite::atlas(0, [0.6, 0.6], [1.0; 4]);
         let e = if k < bloqueiam {
-            w.spawn((sprite.clone(), BloqueiaLuz { opacidade: 1.0 }, t, g))
-                .id()
+            w.spawn((sprite, BloqueiaLuz { opacidade: 1.0 }, t, g)).id()
         } else if k < bloqueiam + brilham {
-            w.spawn((sprite.clone(), SpriteEmissive(3.0), t, g)).id()
+            w.spawn((sprite, SpriteEmissive(3.0), t, g)).id()
         } else {
-            w.spawn((sprite.clone(), t, g)).id()
+            w.spawn((sprite, t, g)).id()
         };
         let [ax, ay, bx, by, tx, ty] = g.affine();
         let mut i = quad(tex, [tx, ty]);

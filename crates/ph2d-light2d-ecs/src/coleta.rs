@@ -148,7 +148,7 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
     let mut vetores: BTreeMap<Chave, VetorDeLuz> = BTreeMap::new();
     if let Some(mut q) = world.try_query::<(Entity, &ph2d_ecs::VecPathRef, &BloqueiaLuz)>() {
         for (e, caminho, b) in q.iter(world) {
-            if is_hidden_in_tree(world, e) || !(b.opacidade > 0.0) {
+            if is_hidden_in_tree(world, e) || b.opacidade.is_nan() || b.opacidade <= 0.0 {
                 continue;
             }
             vetores.insert(

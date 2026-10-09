@@ -64,7 +64,8 @@ const MOTOR: [&str; 11] = [
 /// (F9 W2, `f53d48138`) — **a placa posa**, e o `SpriteMesh` que vive no mundo traz o REPOUSO.
 /// ⇒ o que esta lista mede deixou de ser *«o que cada costura vai precisar quando isso acontecer»*
 /// e passou a ser **quem paga o `SpriteMesh::posado` por PERGUNTA**. ⭐ *O custo não desapareceu:
-/// deixou de ser pago por QUADRO para ser pago por PERGUNTA* — e as `10` linhas abaixo são
+/// deixou de ser pago por QUADRO para ser pago por PERGUNTA* — e as `10` linhas abaixo que respondem
+/// UM PONTO ou MALHA são (a da luz 2D, de 2026-10-09, hoje só pergunta se HÁ malha e fica com o quad)
 /// exactamente a população que o paga.
 ///
 /// ⚠️ **As respostas continuam a ser de DUAS espécies, e a distinção continua a decidir o preço:**
@@ -73,7 +74,7 @@ const MOTOR: [&str; 11] = [
 ///   precisam da malha inteira: o custo é `O(1)`, não `O(vértices)`.
 /// - **A MALHA INTEIRA** — quem precisa de todos os vértices posados (os fantasmas do onion, que
 ///   posam a mesma malha com OUTRA pose). Esses ou continuam na CPU, ou pedem leitura da GPU.
-const COSTURAS: [(&str, &str); 10] = [
+const COSTURAS: [(&str, &str); 11] = [
     (
         "crates/ph2d-app-painter/src/canvas_map.rs",
         "UM PONTO: o mapa de canvas resolve o texel sob um ponto",
@@ -81,6 +82,10 @@ const COSTURAS: [(&str, &str); 10] = [
     (
         "crates/ph2d-app-painter/src/painter_bridge_brush_ring.rs",
         "UM PONTO: o anel do pincel segue o cursor sobre a arte",
+    ),
+    (
+        "crates/ph2d-app-light2d/src/captura.rs",
+        "MALHA: a captura da luz 2D deixa a sprite com malha no QUAD; deformada pediria a malha posada",
     ),
     (
         "crates/ph2d-sprite-screen/src/anel_do_pincel.rs",

@@ -138,9 +138,7 @@ fn cena_com_oclusor(
     let (t, g) = pose(0.0, 0.0, rot);
     let mut sprite = Sprite::atlas(0, [0.5, 1.5], [1.0; 4]);
     sprite.anchor = [0.05, -0.1];
-    let e = w
-        .spawn((sprite.clone(), BloqueiaLuz { opacidade: 1.0 }, t, g))
-        .id();
+    let e = w.spawn((sprite, BloqueiaLuz { opacidade: 1.0 }, t, g)).id();
     let tex = r.acquire_individual(lado, lado, rgba).expect("textura");
     let mut present = PresentWorld::new();
     present
@@ -244,7 +242,7 @@ fn um_emissor_de_duas_cores_emite_cada_cor_no_seu_lado() {
     ));
     let (t, g) = pose(-1.0, 0.0, 0.0);
     let sprite = Sprite::atlas(0, [1.0, 0.5], [1.0; 4]);
-    let e = w.spawn((sprite.clone(), SpriteEmissive(2.0), t, g)).id();
+    let e = w.spawn((sprite, SpriteEmissive(2.0), t, g)).id();
     // ⭐ Duas vezes: direito e ESPELHADO — o espelho troca o lado das cores.
     for espelho in [false, true] {
         // 32×1: vermelho à esquerda, azul à direita (sRGB 255 = linear 1). ⚠️ A captura amostra

@@ -13,7 +13,7 @@ fn as_formas_na_placa_entram_entre_o_mundo_e_o_chrome() {
     let present = include_str!("present.rs");
     assert!(present.contains("plan.banded |= self.motion_shell.placa.ativa();"));
     let bandas = include_str!("fase_vector_bands.rs");
-    assert!(bandas.contains("doc_bands_of(frame_order, placa)"));
+    assert!(bandas.contains("doc_bands_of(frame_order, placa || luz_acesa)"));
     let overlays = include_str!("fase_vector_overlays.rs");
     assert!(overlays.contains("if motion_tool_active && !self.motion_shell.placa.ativa() {"));
     let chrome = include_str!("present_chrome.rs");

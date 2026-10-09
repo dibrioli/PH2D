@@ -139,11 +139,8 @@ impl crate::App {
                 cam_affine,
             ),
         };
-        // ⭐ A LUZ 2D (W3): acesa, o documento vai às FAIXAS — é a colagem delas que o acende com a
-        //    mesma conta do sprite. ⛔ Sem `Luz` na cena, `false`: o quadro de sempre.
-        let alvo = surface.size();
-        let luz_acesa = luz2d.preparar(sim.world(), cam_affine, (alvo.width, alvo.height));
-        luz2d.desenhar_vetores(surface.gpu(), vec_scene, &vec_xf);
+        // ⭐ A LUZ 2D (W3): acesa, o documento vai às FAIXAS (a colagem acende-o); sem `Luz`, `false`.
+        let luz_acesa = luz2d.codificar(sim.world_mut(), surface, cam_affine, (vec_scene, &vec_xf));
         let doc_bands = crate::draw_bands::doc_bands_of(frame_order, placa || luz_acesa);
         for band in &doc_bands {
             let keep = frame_order.vector_ids_in(*band);

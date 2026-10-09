@@ -263,9 +263,7 @@ fn sem_ids(mut c: CenaDeLuz) -> CenaDeLuz {
     for s in &mut c.sprites {
         s.entidade = bevy_ecs::entity::Entity::PLACEHOLDER;
     }
-    for e in &mut c.nao_recebem {
-        *e = bevy_ecs::entity::Entity::PLACEHOLDER;
-    }
+    c.nao_recebem.fill(bevy_ecs::entity::Entity::PLACEHOLDER);
     c
 }
 

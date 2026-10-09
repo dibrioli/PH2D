@@ -126,6 +126,8 @@ postcard = { version = "1", default-features = false, features = ["use-std"] }
 # **em silêncio e a verde**, que é precisamente o defeito que esta família
 # inteira existe para apanhar.
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
+# A luz 2D: o catálogo das fixturas é o do produto (`component_registry_for_tests`).
+ph2d-light2d-ecs = { path = "../ph2d-light2d-ecs" }
 
 [dev-dependencies]
 # ⚠️ **As duas que só os TESTES dos assets pedem, e só o `--all-targets` as revelou** (HOWTO §2.5):

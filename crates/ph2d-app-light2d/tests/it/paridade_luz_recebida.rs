@@ -92,7 +92,9 @@ fn mundo_do_pixel(x: u32, y: u32) -> [f64; 2] {
 
 fn ler_rgba16(gpu: &ph2d_gpu::GpuContext, t: &wgpu::Texture) -> Vec<[f64; 3]> {
     ler(gpu, t, 8)
-        .chunks_exact(8)
+        .as_chunks::<8>()
+        .0
+        .iter()
         .map(|c| {
             let h = |k: usize| f64::from(f16::from_le_bytes([c[2 * k], c[2 * k + 1]]).to_f32());
             [h(0), h(1), h(2)]
@@ -202,9 +204,8 @@ fn paridade_no_degrau(gpu: &ph2d_gpu::GpuContext, nome: &str, degrau: ph2d_app_l
     for y in 0..ALVO.1 {
         for x in 0..ALVO.0 {
             let p = mundo_do_pixel(x, y);
-            for k in 0..3 {
+            for (k, gpu_v) in placa[(y * ALVO.0 + x) as usize].iter().enumerate() {
                 let cpu = bilinear(p, k);
-                let gpu_v = placa[(y * ALVO.0 + x) as usize][k];
                 pior_conta = pior_conta.max((gpu_v - cpu).abs() / cpu.max(0.02));
             }
         }
@@ -219,10 +220,10 @@ fn paridade_no_degrau(gpu: &ph2d_gpu::GpuContext, nome: &str, degrau: ph2d_app_l
                 continue;
             }
             let r = ph2d_light2d_ref::luz_em(luz.cena(), p);
-            for k in 0..3 {
-                let e = placa[(y * ALVO.0 + x) as usize][k] - r[k];
+            for (gk, rk) in placa[(y * ALVO.0 + x) as usize].iter().zip(r) {
+                let e = gk - rk;
                 soma_err2 += e * e;
-                soma_ref += r[k];
+                soma_ref += rk;
             }
             n += 3;
         }

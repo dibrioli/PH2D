@@ -36,6 +36,8 @@ pub struct LuzDoQuadro {
     sprites_por_texel: (usize, usize),
     /// ⭐ Os caminhos vetoriais que bloqueiam, desenhados na grade (W3).
     vetores: crate::vetor::CamadaVetorial,
+    /// A cena de smoke armada já foi encenada (uma vez por sessão).
+    smoke_encenado: bool,
 }
 
 impl Default for LuzDoQuadro {
@@ -64,6 +66,7 @@ impl LuzDoQuadro {
             erro: None,
             sprites_por_texel: (0, 0),
             vetores: crate::vetor::CamadaVetorial::default(),
+            smoke_encenado: false,
         }
     }
 
@@ -88,6 +91,28 @@ impl LuzDoQuadro {
             self.sem_luz.extend(self.cena.nao_recebem.iter().copied());
         }
         self.grade.is_some()
+    }
+
+    /// ⭐ **As portas 1 e 1b numa chamada** — o que a codificação da shell faz por quadro: encena a
+    /// cena de smoke armada (uma vez), prepara e desenha os vetores que bloqueiam. Devolve se a luz
+    /// está acesa (a shell força então o documento às faixas).
+    pub fn codificar(
+        &mut self,
+        world: &mut World,
+        superficie: &ph2d_gpu::SurfaceContext,
+        mundo_para_tela: Affine,
+        vetores: (&ph2d_vec_scene::VecScene, &ph2d_vec_scene::VecXforms),
+    ) -> bool {
+        if !self.smoke_encenado {
+            self.smoke_encenado = true;
+            if let Some(n) = crate::smoke::nivel_armado() {
+                crate::smoke::encenar(world, n);
+            }
+        }
+        let alvo = superficie.size();
+        let acesa = self.preparar(world, mundo_para_tela, (alvo.width, alvo.height));
+        self.desenhar_vetores(superficie.gpu(), vetores.0, vetores.1);
+        acesa
     }
 
     /// **Porta 1b** — desenha na grade os caminhos VETORIAIS que bloqueiam (os afins `xforms` do

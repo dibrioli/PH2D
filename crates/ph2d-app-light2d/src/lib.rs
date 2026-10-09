@@ -13,14 +13,14 @@
 mod captura;
 mod grade;
 mod quadro;
+pub mod smoke;
 mod vetor;
 
 pub use grade::{DEGRAU_PADRAO, Degrau, grade_do_quadro, tela_para_mundo};
 pub use quadro::LuzDoQuadro;
 
-/// A declaração da família à shell. ⚠️ Sem roteador de smoke ainda: as cenas
-/// `PH2D_LIGHT2D_SMOKE=1..4` são da W4 (o artista).
+/// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "light2d",
-    routers: &[],
+    routers: smoke::ROUTERS,
 };

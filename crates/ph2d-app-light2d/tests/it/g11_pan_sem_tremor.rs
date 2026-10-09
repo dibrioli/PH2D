@@ -88,7 +88,9 @@ fn amostrar(f: &[[f32; 3]], g: Grade, p: [f64; 2]) -> f64 {
 
 fn ler_fluencia(gpu: &GpuContext, s: &Solver) -> Vec<[f32; 3]> {
     ler(gpu, s.fluencia(), 8)
-        .chunks_exact(8)
+        .as_chunks::<8>()
+        .0
+        .iter()
         .map(|c| {
             let h = |k: usize| f16::from_le_bytes([c[2 * k], c[2 * k + 1]]).to_f32();
             [h(0), h(1), h(2)]

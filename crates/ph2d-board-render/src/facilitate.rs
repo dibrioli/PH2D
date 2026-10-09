@@ -99,20 +99,27 @@ pub(crate) const STAMP_SVG: [(Stamp, &[&str]); 8] = [
     ),
 ];
 
-/// ⭐ O desenho de um carimbo: o ícone Lucide num quadrado de 24 (traço de 2, pontas redondas).
+/// ⭐ O desenho de um carimbo: o ícone Lucide num quadrado de 24 (traço de 2, pontas redondas). Lido
+/// UMA vez: ⛔ medido (09/10, `measure_facilitate_cost`) — ler o SVG por ficha e por imagem levava
+/// 10 mil notas com 3 carimbos, no limiar da leitura, de 0,72 a 5,4 ms de encode.
 #[must_use]
-pub fn stamp_path(s: Stamp) -> BezPath {
-    let mut out = BezPath::new();
-    let svg = STAMP_SVG
-        .iter()
-        .find(|(k, _)| *k == s)
-        .map_or(&[][..], |(_, d)| *d);
-    for d in svg {
-        if let Ok(p) = BezPath::from_svg(d) {
-            out.extend(p);
-        }
-    }
-    out
+pub fn stamp_path(s: Stamp) -> &'static BezPath {
+    static PATHS: std::sync::OnceLock<Vec<(Stamp, BezPath)>> = std::sync::OnceLock::new();
+    let all = PATHS.get_or_init(|| {
+        STAMP_SVG
+            .iter()
+            .map(|(k, svg)| {
+                let mut out = BezPath::new();
+                for d in *svg {
+                    if let Ok(p) = BezPath::from_svg(d) {
+                        out.extend(p);
+                    }
+                }
+                (*k, out)
+            })
+            .collect()
+    });
+    &all.iter().find(|(k, _)| *k == s).expect("os oito carimbos").1
 }
 
 /// A cor de um carimbo (a do emoji que ele substitui) — DADO do documento, a mesma em qualquer tema.
@@ -140,7 +147,7 @@ pub fn paint_stamp(scene: &mut VectorScene, s: Stamp, at: [f64; 2], side: f64, t
         .with_join(ph2d_vector::Join::Round);
     let into = t * Affine::translate((at[0], at[1])) * Affine::scale(k);
     let brush = Brush::Solid(doc_color(stamp_color(s)));
-    scene.inner_mut().stroke(&stroke, into, &brush, None, &path);
+    scene.inner_mut().stroke(&stroke, into, &brush, None, path);
 }
 
 /// Um número centrado em `c` (referencial de `t`), na cache de texto sob `key`.

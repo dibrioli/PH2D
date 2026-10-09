@@ -207,7 +207,36 @@ variantes no MESMO processo, intercaladas, o mínimo de 7 rodadas, `--release`):
 Nenhum tecto entra sem a tabela; o cronómetro não pede régua própria (o ecrã já se redesenha a cada quadro,
 e o cartão é um desenho de interface de tamanho fixo).
 
-*(números no §4.1, escritos quando a régua corre — antes do fecho)*
+### §4.1 — O que a régua mediu (09/10, `--release`, `load` 12–15 na máquina partilhada: os números são um TECTO)
+
+**Agrupar** (a operação inteira pelo editor):
+
+| N notas | por cor | por etiqueta | por palavra |
+|---|---|---|---|
+| 100 | 0,09 ms (med 0,10) | 0,08 (0,08) | 0,43 (0,44) |
+| 1 000 | 0,77 (0,78) | 0,75 (0,75) | 4,31 (4,33) |
+| 10 000 | 8,74 (9,02) | 8,33 (8,43) | 79,9 (81,8) |
+
+⇒ **nenhum tecto de notas.** Agrupar é um GESTO (um clique), não um quadro de animação: 80 ms por 10 mil
+notas por palavra (dez vezes o maior brainstorm de uma equipa) é um clique que se sente, e as 1 000 de
+um workshop grande custam 4 ms. A palavra é ~10× a cor: a segmentação e a raiz de cada palavra.
+
+**Desenhar** 10 mil notas (encode na CPU · parede da placa, mínimos):
+
+| vista | nada | selos em todas | 3 carimbos em todas |
+|---|---|---|---|
+| letra a 6 px (o limiar da leitura: o máximo de notas com marcas à vista) | 0,71 · 1,05 | 1,30 · 1,21 | **2,03** · 1,85 |
+| zoom 1 | 0,46 · 0,46 | 0,53 · 0,49 | 0,60 · 0,55 |
+| de longe (blocos: sem marcas — o controlo) | 1,21 · 0,52 | 1,21 · 0,53 | — |
+
+⛔ **Medido e curado na mesma rodada:** a 1.ª versão lia o SVG do ícone por ficha e por imagem — 3
+carimbos em todas no limiar da leitura davam **5,44 ms** de encode; com os caminhos lidos uma vez
+(`stamp_path` em `OnceLock`), **2,03**. ⛔ E a 1.ª corrida da régua usou a vista «a meio» da régua do
+encode (letra a 5 px), que é de BLOCOS: as três variantes deram o mesmo número porque não se desenhava
+marca nenhuma — a régua passou a ter a vista no limiar e a de longe como controlo.
+
+⇒ **nenhum tecto de selos nem de carimbos**: o pior caso cabe com folga num quadro de 60 Hz. O
+cronómetro não pede régua: o ecrã já se redesenha a cada quadro e o cartão é um desenho de tamanho fixo.
 
 ## §5 — O que o dono vê (cena 9)
 

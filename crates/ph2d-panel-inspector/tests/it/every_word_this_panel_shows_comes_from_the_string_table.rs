@@ -46,6 +46,8 @@ const TABLES: &[&str] = &[
     // ⭐ **A QUINTA, pela mesma lei:** as secções NAV REGION e NAV AGENT (plano 30, W4) — a
     //    região, o agente, as oito queixas e a leitura viva. O corte é por ASSUNTO.
     "crates/ph2d-i18n/src/inspector_nav.rs",
+    // ⭐ **A SEXTA:** a secção LUZ (Luz 2D, W4) — mora com as palavras da família da luz.
+    "crates/ph2d-i18n/src/luz2d.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — `(ficheiro relativo a src/, texto exacto, porquê)`.

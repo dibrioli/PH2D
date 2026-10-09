@@ -825,6 +825,10 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "os INSTANTANEOS das seccoes da cauda numa struct — ele nao pinta e nao regista um unico id: 0 ocorrencias de NodeId / hit_index. / register(",
     ),
     (
+        "ph2d-panel-inspector/src/paint_optional_luz.rs",
+        "a MOLDURA da seccao LUZ (Luz 2D, W4); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — cada widget e' pintado pela seccao (sections/luz.rs), a moldura pelo paint_frame",
+    ),
+    (
         "ph2d-panel-inspector/src/paint_optional_shake.rs",
         "as DUAS MOLDURAS do abanao (a da camera e a de quem explode, que nunca aparecem juntas na tela); nao regista um unico id — 0 ocorrencias de NodeId / hit_index. / register( — e cada widget e' pintado pela seccao que ele chama, a moldura pelo paint_frame",
     ),

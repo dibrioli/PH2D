@@ -877,6 +877,23 @@ fn arma_o_top20() {
         clock_playing: true,
         selected_count: selecionados(),
     }));
+    insp::set_current_inspector_luz(Some(ph2d_editor_core::luz_edits::InspectorLuzInfo {
+        entity_bits: BITS,
+        cor_srgb: [255, 220, 180],
+        intensidade: 6.25,
+        tamanho_m: 0.25,
+        alcance_m: 10.0,
+        tipo: 0,
+        luz_a_1m: 1.0,
+        avisos: vec![
+            ph2d_editor_core::luz_edits::AvisoDaLuz::PequenaDemaisParaOZoom,
+            ph2d_editor_core::luz_edits::AvisoDaLuz::SpritesPeloQuad {
+                com_quad: 2,
+                total: 5,
+            },
+        ],
+        selected_count: selecionados(),
+    }));
     insp::set_current_inspector_shake(Some(InspectorShakeInfo {
         entity_bits: BITS,
         amplitude: 0.35,
@@ -1190,6 +1207,7 @@ pub fn desarma_tudo() {
     insp::set_current_inspector_parallax(None);
     insp::set_current_inspector_sequence(None);
     insp::set_current_inspector_shake(None);
+    insp::set_current_inspector_luz(None);
     insp::set_current_inspector_tween(None);
     insp::set_current_inspector_weapon(None);
     insp::set_current_inspector_vida(None);
@@ -1252,6 +1270,7 @@ pub const PORTAS: &[(&str, fn())] = &[
     ("ray", || insp::set_current_inspector_ray(None)),
     ("sequence", || insp::set_current_inspector_sequence(None)),
     ("shake", || insp::set_current_inspector_shake(None)),
+    ("luz", || insp::set_current_inspector_luz(None)),
     ("tween", || insp::set_current_inspector_tween(None)),
     ("weapon", || insp::set_current_inspector_weapon(None)),
     ("name", || insp::set_current_inspector_name(None)),

@@ -35,6 +35,10 @@ mod script_commits;
 #[path = "fase_inspector_commits_top20.rs"]
 mod top20_commits;
 
+#[cfg(test)]
+#[path = "fase_inspector_commits_luz_tests.rs"]
+mod luz_tests;
+
 /// ⭐⭐⭐ A fase-filha das edições da secção TAGS — irmã das de cima, e pelo mesmo tecto.
 #[path = "fase_tags_commits.rs"]
 mod tags_commits;

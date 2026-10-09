@@ -177,8 +177,11 @@ pub fn vaga_lumes(world: &mut World, n: usize) {
             .wrapping_add(1_442_695_040_888_963_407);
         ((semente >> 40) as f32) / ((1u64 << 24) as f32)
     };
-    for k in 0..ENXAMES {
-        let (cx, cy) = (CENTROS_DOS_ENXAMES[0][k], CENTROS_DOS_ENXAMES[1][k]);
+    for (k, (&cx, &cy)) in CENTROS_DOS_ENXAMES[0]
+        .iter()
+        .zip(&CENTROS_DOS_ENXAMES[1])
+        .enumerate()
+    {
         let arvore = quadrado(
             world,
             &format!("Árvore {}", k + 1),

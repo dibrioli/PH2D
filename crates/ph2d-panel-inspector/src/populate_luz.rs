@@ -20,9 +20,9 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 3] = [
         ids::INSP_LUZ_INTENSIDADE,
         std::f64::consts::TAU,
         0.0,
-        65504.0,
-        0.1,
-    ), // LITERAL-PX-OK: fluência, tecto = f16
+        65504.0, // LITERAL-PX-OK: o maior finito do f16 (a grade da fluência)
+        0.1,     // LITERAL-PX-OK: passo da fluência
+    ),
     (ids::INSP_LUZ_TAMANHO, 0.25, 0.0, 200.0, 0.01), // LITERAL-PX-OK: metros
     (ids::INSP_LUZ_ALCANCE, 10.0, 0.1, 200.0, 0.1),  // LITERAL-PX-OK: metros
 ];

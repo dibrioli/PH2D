@@ -578,3 +578,7 @@ impl crate::App {
         None
     }
 }
+
+#[cfg(test)]
+#[path = "fase_bus_inspector_luz_tests.rs"]
+mod luz_tests;

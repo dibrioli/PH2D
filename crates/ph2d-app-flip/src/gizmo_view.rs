@@ -157,6 +157,7 @@ pub fn view(
             window_size.height as f32,
         ),
         cursor_screen: Some(last_pointer),
+        model: ph2d_editor_core::gizmo::MODEL_IDENTITY,
     })
 }
 

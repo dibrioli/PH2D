@@ -25,6 +25,7 @@ fn gizmo_fisico() -> crate::gizmo::GizmoView {
         cursor_screen: Some((700.0, 400.0)),
         pivot_world: [0.25, 0.25],
         pivot_tool_active: false,
+        model: crate::gizmo::MODEL_IDENTITY,
     }
 }
 

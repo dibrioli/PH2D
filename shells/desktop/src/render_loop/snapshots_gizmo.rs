@@ -67,12 +67,8 @@ pub(super) fn global_view(
             pivot_world: [new_cx, new_cy],
             pivot_tool_active: false,
             rotation: delta_rot,
-            camera_center: start.camera_center,
-            camera_height_world: start.camera_height_world,
-            window_w: start.window_w,
-            window_h: start.window_h,
-            canvas: start.canvas,
             cursor_screen: Some(last_pointer),
+            ..start
         })
     } else {
         None
@@ -115,12 +111,7 @@ pub(super) fn global_view(
                 pivot_world: [(min_x + max_x) * 0.5, (min_y + max_y) * 0.5],
                 pivot_tool_active: false,
                 rotation: 0.0,
-                camera_center: first.camera_center,
-                camera_height_world: first.camera_height_world,
-                window_w: first.window_w,
-                window_h: first.window_h,
-                canvas: first.canvas,
-                cursor_screen: first.cursor_screen,
+                ..*first
             }
         })
     } else {
@@ -214,5 +205,6 @@ pub(super) fn sprite_view(
             window_size.height as f32,
         ),
         cursor_screen: Some(last_pointer),
+        model: ph2d_editor_core::gizmo::MODEL_IDENTITY,
     })
 }

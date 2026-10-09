@@ -32,7 +32,9 @@
 pub mod camera;
 pub mod drag;
 pub mod hit;
+pub mod model;
 pub mod paint;
+mod paint_geom;
 pub mod point;
 pub mod readout;
 pub mod transform;
@@ -45,6 +47,7 @@ pub use drag::{
     GizmoDragKind, GizmoDragState, GizmoHit, GizmoTarget, GroupDragSnapshot, TransformSnapshot,
 };
 pub use hit::{gizmo_kind_for_id, ids, is_gizmo_handle_id, is_gizmo_id};
+pub use model::{MODEL_IDENTITY, model_apply, model_inverse};
 pub use paint::{
     GizmoView, HANDLE_SIZE_PX, paint_gizmo_outline, paint_sprite_gizmo, paint_sprite_gizmo_keyed,
 };

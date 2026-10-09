@@ -368,6 +368,7 @@ fn make_drag(
         node,
         spec,
         intrinsic_half,
+        model: crate::motion_objeto::IDENTIDADE,
     }
 }
 
@@ -556,45 +557,4 @@ fn a_drag_pixel_moves_the_world_by_what_a_scene_pixel_is_worth() {
         (cam.center[0].abs() - expect_full).abs() < 1e-4,
         "um split VERTICAL nao mexe na altura — o mundo-por-pixel e' o de sempre"
     );
-}
-
-/// ⭐ **O campo de um objecto Motion deslocado e rodado** (doc ObjectsAndComponents 01 §13): o gizmo
-/// mostra-o no MUNDO — o pivô na afim do dono, a rotação somada. (Mutação: `field_view` sem a afim
-/// do dono ⇒ o pivô fica na origem do grafo — RED.)
-#[test]
-fn the_field_of_a_moved_motion_object_shows_where_the_object_put_it() {
-    let mut motion = MotionState::new();
-    let bid = motion.doc.graph.add_node("field.box");
-    motion.doc.set_owner(bid, 7);
-    let pose = ph2d_editor_core::TransformSnapshot {
-        translation: [10.0, 4.0],
-        rotation: std::f32::consts::FRAC_PI_2,
-        scale: [1.0, 1.0],
-    };
-    motion.objeto.donos.insert(
-        7,
-        crate::motion_objeto::Dono {
-            entity: 1,
-            visible: true,
-            afim: [0.0, 1.0, -1.0, 0.0, 10.0, 4.0],
-            pose,
-        },
-    );
-    motion.objeto.editing = Some(7);
-    let cam = Camera2d::new([0.0, 0.0], 20.0);
-    set_graph_selection(vec![bid.0]);
-    let local = field_view(&MotionState::new(), &cam, 800.0, 600.0, (0.0, 0.0));
-    let v = field_view(&motion, &cam, 800.0, 600.0, (0.0, 0.0)).expect("campo seleccionado");
-    set_graph_selection(vec![]);
-    assert!(local.is_none(), "sem o nó no grafo, nada");
-    let p = crate::motion_bridge::params::param_value;
-    let c = [p(&motion, bid, "center_x"), p(&motion, bid, "center_y")];
-    let esperado = [10.0 - c[1], 4.0 + c[0]];
-    assert!(
-        (v.pivot_world[0] - esperado[0]).abs() < 1e-4
-            && (v.pivot_world[1] - esperado[1]).abs() < 1e-4,
-        "{:?} ≠ {esperado:?}",
-        v.pivot_world
-    );
-    assert!((v.rotation - std::f32::consts::FRAC_PI_2).abs() < 1e-4);
 }

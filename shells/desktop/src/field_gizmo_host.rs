@@ -11,7 +11,7 @@
 
 use ph2d_app_motion::field_gizmo::*;
 use ph2d_editor_core::screens::layout::CenterSplit;
-use ph2d_editor_core::{GizmoCamera, GizmoDragState, GizmoModifiers, GizmoSnap, GizmoTarget};
+use ph2d_editor_core::{GizmoCamera, GizmoModifiers, GizmoSnap, GizmoTarget};
 use ph2d_host::WindowSize;
 
 /// **A JANELA DA CENA deste quadro** — o atalho que põe um consumidor na porta sem ele ter
@@ -54,22 +54,8 @@ impl crate::App {
             if hit.target != GizmoTarget::MotionField {
                 return false;
             }
-            let Some((nid, spec)) = selected_field(&gfx.motion) else {
-                return false;
-            };
-            let p = |name: &str| {
-                ph2d_app_motion::motion_bridge::params::param_value(&gfx.motion, nid, name)
-            };
-            let intrinsic_half = spec.size.half(p);
-            let start = seed_start(
-                p(spec.center_x),
-                p(spec.center_y),
-                spec.rotation.map_or(0.0, p),
-            );
-            // ⚠️ O `world_pos` do drag TEM de usar as dims da CENA (o sub-retângulo do
-            // split), não a janela cheia — senão o cursor mapeia pra um mundo diferente do
-            // que o gizmo é PINTADO (o mesmo drift do chrome). A `GizmoCamera` do
-            // sub-retângulo espelha o `set_viewport` do render.
+            // ⚠️ As dims da CENA (o sub-retângulo do split), não a janela cheia — senão o cursor
+            // mapeia para um mundo diferente do que o gizmo é PINTADO (o drift do chrome).
             let (sw, sh) = scene_window_wh(hero.view.center_split, gfx.surface.size());
             let scene_cam = GizmoCamera {
                 center: gfx.camera.center,
@@ -77,47 +63,11 @@ impl crate::App {
                 window_w: sw,
                 window_h: sh,
             };
-            let world_pos = scene_cam.screen_to_world((x, y));
-            // Rotate pivota no centro; scale, no canto/borda OPOSTOS (ou no centro com
-            // Ctrl) — a mesma política do sprite/pose. `parent_world` = identidade: um
-            // field não tem pai, e o param JÁ é de mundo, então o `world_snap` é o `start`.
-            // `anchor = [0, 0]`: o `start` de um field É o centro dele — a caixa está
-            // centrada no próprio pivô, e o termo reduz literalmente ao de antes.
-            // ⭐ Os params do campo são do espaço do objecto Motion em edição (doc ObjectsAndComponents
-            // 01 §13): ele é o PAI do arrasto, e o pivô (calculado no local) vai para o mundo.
-            let pai = ph2d_app_motion::motion_objeto::pai_em_edicao(&gfx.motion);
-            let pivot = ph2d_app_motion::motion_objeto::origem::ponto(
-                &ph2d_app_motion::motion_objeto::afim_em_edicao(&gfx.motion),
-                ph2d_editor_core::anchor_pivot_world(
-                    hit.kind,
-                    [0.0, 0.0],
-                    intrinsic_half,
-                    start,
-                    ctrl,
-                ),
-            );
-            FieldGizmoDrag {
-                drag: GizmoDragState {
-                    kind: hit.kind,
-                    // Sentinela: o writeback é por-param (`field_gizmo_move`), então este
-                    // drag NUNCA lê nem escreve uma entidade. Só existe para o dispatch
-                    // reconhecer que há um field-drag aberto.
-                    entity_bits: 0,
-                    start_screen: (x, y),
-                    cursor_screen: (x, y),
-                    start_transform: start,
-                    pivot_world: pivot,
-                    start_cursor_world: world_pos,
-                    sprite_half_intrinsic: intrinsic_half,
-                    anchor_is_center: ctrl,
-                    target: GizmoTarget::MotionField,
-                    parent_world: pai,
-                    turns: 0,
-                },
-                node: nid,
-                spec,
-                intrinsic_half,
-            }
+            // ⭐ A semente (no espaço do objecto Motion em edição) é da crate: [`drag_do_down`].
+            let Some(fgd) = drag_do_down(&gfx.motion, hit.kind, &scene_cam, (x, y), ctrl) else {
+                return false;
+            };
+            fgd
         };
         self.field_gizmo_drag = Some(fgd);
         if let Some(gfx) = self.gfx.as_mut() {

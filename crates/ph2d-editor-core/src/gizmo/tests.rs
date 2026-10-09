@@ -1,4 +1,5 @@
-use super::paint::{ROTATE_HANDLE_OFFSET, corner_outer_rect, world_to_screen};
+use super::paint::{ROTATE_HANDLE_OFFSET, world_to_screen};
+use super::paint_geom::corner_outer_rect;
 use super::transform::{quantize, rescale_about_pivot};
 use super::*;
 use crate::interaction::HitIndex;
@@ -23,6 +24,7 @@ fn view(bbox_min: [f32; 2], bbox_max: [f32; 2]) -> GizmoView {
             (bbox_min[1] + bbox_max[1]) * 0.5,
         ],
         pivot_tool_active: false,
+        model: MODEL_IDENTITY,
     }
 }
 

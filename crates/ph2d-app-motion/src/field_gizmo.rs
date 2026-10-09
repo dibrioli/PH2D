@@ -310,6 +310,7 @@ fn view_from_params(
     win_w: f32,
     win_h: f32,
     last_pointer: (f32, f32),
+    model: [f32; 6],
 ) -> GizmoView {
     GizmoView {
         bbox_min_world: [cx - half[0], cy - half[1]],
@@ -323,6 +324,7 @@ fn view_from_params(
         window_h: win_h,
         canvas: ph2d_editor_core::zones::Rect::new(0.0, 0.0, win_w, win_h),
         cursor_screen: Some(last_pointer),
+        model,
     }
 }
 
@@ -364,23 +366,19 @@ pub fn field_view(
 ) -> Option<GizmoView> {
     let (nid, spec) = selected_field(motion)?;
     let p = |name: &str| crate::motion_bridge::params::param_value(motion, nid, name);
-    let half = spec.size.half(p);
     // ⭐ Os params do campo são do espaço do objecto Motion em edição (doc ObjectsAndComponents 01
-    // §13): o gizmo mostra-os no mundo — o centro pela afim dele, a rotação e a escala pela pose.
-    let pai = crate::motion_objeto::pai_em_edicao(motion);
-    let [cx, cy] = crate::motion_objeto::origem::ponto(
-        &crate::motion_objeto::afim_em_edicao(motion),
-        [p(spec.center_x), p(spec.center_y)],
-    );
+    // §13): a caixa fica LOCAL e a afim dele vai na `model` — escala não uniforme × campo rodado
+    // pinta o paralelogramo exacto, e o arrasto lê o cursor pela inversa ([`drag_do_down`]).
     Some(view_from_params(
-        cx,
-        cy,
-        [half[0] * pai.scale[0], half[1] * pai.scale[1]],
-        spec.rotation.map_or(0.0, p) + pai.rotation.to_degrees(),
+        p(spec.center_x),
+        p(spec.center_y),
+        spec.size.half(p),
+        spec.rotation.map_or(0.0, p),
         camera,
         win_w,
         win_h,
         last_pointer,
+        crate::motion_objeto::afim_em_edicao(motion),
     ))
 }
 
@@ -393,7 +391,15 @@ pub struct FieldGizmoDrag {
     pub node: NodeId,
     pub spec: FieldGizmoSpec,
     pub intrinsic_half: [f32; 2],
+    /// A afim do objecto Motion no Down — o cursor entra no espaço dele por
+    /// [`GizmoCamera::screen_in_model`], e o drag inteiro corre no espaço LOCAL dos params.
+    pub model: [f32; 6],
 }
+
+/// O Down do arrasto (o prólogo que era da shell) — irmão por responsabilidade.
+#[path = "field_gizmo_down.rs"]
+mod down;
+pub use down::drag_do_down;
 
 /// O núcleo do writeback de um arrasto de field, SEM a janela: avança o cursor pelo drag
 /// (o contador de voltas do Rotate mora aí), recomputa o TRS pelo motor canônico e escreve
@@ -411,7 +417,8 @@ pub fn apply_field_drag(
     mods: GizmoModifiers,
     snap: GizmoSnap,
 ) -> TransformSnapshot {
-    fgd.drag.advance_cursor(cursor, cam);
+    fgd.drag
+        .advance_cursor(cam.screen_in_model(&fgd.model, cursor), cam);
     let new_t = ph2d_editor_core::compute_gizmo_transform(&fgd.drag, cam, mods, snap, None);
     let g = &mut motion.doc.graph;
     g.set_param(fgd.node, fgd.spec.center_x, new_t.translation[0]);

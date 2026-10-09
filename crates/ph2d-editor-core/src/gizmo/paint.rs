@@ -4,6 +4,7 @@
 
 use super::drag::{GizmoDragKind, GizmoHit, GizmoTarget};
 use super::hit::{gizmo_kind_for_id, ids};
+use super::paint_geom::{corners_screen, midpoint, paint_oriented_bbox, rotate_rects};
 use crate::interaction::HitIndex;
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
@@ -114,6 +115,10 @@ pub struct GizmoView {
     /// selection — the painter emphasizes the pivot dot (filled, slightly
     /// larger) so the user sees the grabbable handle.
     pub pivot_tool_active: bool,
+    /// The PARENT's affine (local → world, `[a, b, c, d, tx, ty]`) the bbox and the pivot live
+    /// under — [`super::model::MODEL_IDENTITY`] for every world-space gizmo. Applied before the
+    /// camera, so a non-uniformly scaled parent paints the exact parallelogram (`gizmo/model.rs`).
+    pub model: [f32; 6],
 }
 
 /// Side length of the square handle hit + visual rects.
@@ -141,16 +146,15 @@ pub(super) const ROTATE_HANDLE_OFFSET: f32 = 20.0;
 /// themes for unambiguous rotation-anchor identity.
 const PIVOT_DOT_SIZE: f32 = 12.0;
 
-/// Project a world-space point to screen pixels using the same Y-flip
-/// math the grid painter uses ([`crate::grid`]). Inlined here so the
-/// gizmo module has no cross-imports against the grid painter.
+/// Project a point of the gizmo's space to screen pixels: `view.model` first (the parent's
+/// affine), then the same Y-flip camera math the grid painter uses ([`crate::grid`]).
 pub(super) fn world_to_screen(view: &GizmoView, world_pos: [f32; 2]) -> [f32; 2] {
     super::camera::world_to_screen_px(
         view.camera_center,
         view.camera_height_world,
         view.window_w,
         view.window_h,
-        world_pos,
+        super::model::model_apply(&view.model, world_pos),
     )
 }
 
@@ -167,34 +171,9 @@ pub fn paint_sprite_gizmo(
     theme: Theme,
     hit_index: &mut HitIndex,
 ) {
-    // World-space center + half-extents of the unrotated rect.
-    let cx_w = (view.bbox_min_world[0] + view.bbox_max_world[0]) * 0.5;
-    let cy_w = (view.bbox_min_world[1] + view.bbox_max_world[1]) * 0.5;
-    let hx_w = (view.bbox_max_world[0] - view.bbox_min_world[0]) * 0.5;
-    let hy_w = (view.bbox_max_world[1] - view.bbox_min_world[1]) * 0.5;
-
-    // Rotate the 4 corners around the world-space center by
-    // `view.rotation`, then project each to screen pixels. Local
-    // offsets in (x, y) world coords: TL = (-hx, +hy), TR = (+hx,
-    // +hy), BL = (-hx, -hy), BR = (+hx, -hy). The y axis here is
-    // world-Y up; `world_to_screen` does the Y flip.
-    let cos_r = view.rotation.cos();
-    let sin_r = view.rotation.sin();
-    let rotate_world = |lx: f32, ly: f32| -> [f32; 2] {
-        [
-            cx_w + lx * cos_r - ly * sin_r,
-            cy_w + lx * sin_r + ly * cos_r,
-        ]
-    };
-    let tl_w = rotate_world(-hx_w, hy_w);
-    let tr_w = rotate_world(hx_w, hy_w);
-    let bl_w = rotate_world(-hx_w, -hy_w);
-    let br_w = rotate_world(hx_w, -hy_w);
-
-    let tl = world_to_screen(view, tl_w);
-    let tr = world_to_screen(view, tr_w);
-    let bl = world_to_screen(view, bl_w);
-    let br = world_to_screen(view, br_w);
+    // The 4 corners rotated around the bbox center and projected (`paint_geom`).
+    let corners_s = corners_screen(view);
+    let [tl, tr, bl, br] = corners_s;
 
     // Interior hit: axis-aligned bounding box of the 4 rotated
     // corners. Picking precision suffers slightly at high rotation
@@ -218,30 +197,9 @@ pub fn paint_sprite_gizmo(
     );
 
     // 4 rotate-hover hit rects, registered BEFORE the corner handle
-    // so the corner handle's hit takes priority on overlap. The
-    // outer-rect helper takes a SCREEN-space corner pos + the local
-    // sign (+/-1 along each axis). For a rotated bbox we want the
-    // outer offset to be along the bbox's LOCAL axes; we approximate
-    // by using the unit corner direction (cos/sin of rotation) so
-    // the hover region sits "past" the corner on the rotated rect.
-    let rotate_rects = [
-        (
-            ids::GIZMO_ROTATE_TL,
-            corner_outer_rect_oriented(tl, view.rotation, -1.0, 1.0),
-        ),
-        (
-            ids::GIZMO_ROTATE_TR,
-            corner_outer_rect_oriented(tr, view.rotation, 1.0, 1.0),
-        ),
-        (
-            ids::GIZMO_ROTATE_BL,
-            corner_outer_rect_oriented(bl, view.rotation, -1.0, -1.0),
-        ),
-        (
-            ids::GIZMO_ROTATE_BR,
-            corner_outer_rect_oriented(br, view.rotation, 1.0, -1.0),
-        ),
-    ];
+    // so the corner handle's hit takes priority on overlap — each sits
+    // "past" its corner along the bbox's LOCAL axes on screen.
+    let rotate_rects = rotate_rects(view, corners_s);
     for (id, r) in rotate_rects {
         hit_index.register(id, r);
     }
@@ -377,84 +335,6 @@ pub fn paint_sprite_gizmo(
     }
 }
 
-/// Rect for the rotate-hover region just outside a corner handle.
-/// `dx`/`dy` are unit-direction signs indicating which way "outside"
-/// is for that corner (-1 = up/left, +1 = down/right). Kept as a
-/// legacy helper used by the gizmo's tests + axis-aligned smoke
-/// path before M14.7 polish added the oriented variant.
-#[allow(dead_code)]
-pub(super) fn corner_outer_rect(cx: f32, cy: f32, dx: f32, dy: f32) -> Rect {
-    let half_handle = HANDLE_SIZE_PX * 0.5;
-    let offset = half_handle + ROTATE_HANDLE_OFFSET;
-    // 24×24 square anchored at (cx + dx*half_handle, cy + dy*half_handle)
-    // and extended ROTATE_HANDLE_OFFSET pixels outward in (dx, dy).
-    let x = if dx < 0.0 {
-        cx - offset
-    } else {
-        cx + half_handle
-    };
-    let y = if dy < 0.0 {
-        cy - offset
-    } else {
-        cy + half_handle
-    };
-    Rect::new(x, y, ROTATE_HANDLE_OFFSET, ROTATE_HANDLE_OFFSET)
-}
-
-/// Oriented version of [`corner_outer_rect`]: places the rotate-hover
-/// rect "past" a corner along the BBOX's local axes (which themselves
-/// rotated by `rotation`). For a heavy rotation the local +X axis no
-/// longer matches screen +X, so a fixed-axis offset would put the
-/// hover region in the wrong place.
-///
-/// The shape stays an AABB in screen coords (no rotated hit rect —
-/// HitIndex tests against axis-aligned `Rect::contains`), but we
-/// center it on a point that's been rotated into the local-frame
-/// "outside" direction. Trade-off: at 45° the AABB hover region
-/// overlaps slightly with the adjacent corner's rotate region; for
-/// the user it just means rotation gestures stay live across a small
-/// dead zone between corners.
-fn corner_outer_rect_oriented(
-    corner_screen: [f32; 2],
-    rotation: f32,
-    lx_sign: f32,
-    ly_sign: f32,
-) -> Rect {
-    let half_handle = HANDLE_SIZE_PX * 0.5;
-    let offset = half_handle + ROTATE_HANDLE_OFFSET * 0.5;
-    // Local axes in SCREEN space. `world_to_screen` flips Y (world
-    // +Y → screen -Y), so each world-Y component picks up a sign
-    // flip when projected.
-    //   World local +X = (cos r, sin r)  → screen (cos r, -sin r)
-    //   World local +Y = (-sin r, cos r) → screen (-sin r, -cos r)
-    // The earlier version dropped the negation on local_x; at any
-    // non-zero rotation the hover rect drifted ROTATE_HANDLE_OFFSET
-    // px off the visible corner — user reported "área que detecta a
-    // rot não ficou bem posicionada na quina".
-    let cos_r = rotation.cos();
-    let sin_r = rotation.sin();
-    let local_x_screen = (cos_r, -sin_r);
-    let local_y_screen = (-sin_r, -cos_r);
-    let off_x = lx_sign * offset;
-    let off_y = ly_sign * offset;
-    let center_x = corner_screen[0] + local_x_screen.0 * off_x + local_y_screen.0 * off_y;
-    let center_y = corner_screen[1] + local_x_screen.1 * off_x + local_y_screen.1 * off_y;
-    Rect::new(
-        center_x - ROTATE_HANDLE_OFFSET * 0.5,
-        center_y - ROTATE_HANDLE_OFFSET * 0.5,
-        ROTATE_HANDLE_OFFSET,
-        ROTATE_HANDLE_OFFSET,
-    )
-}
-
-fn midpoint(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
-    [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5]
-}
-
-/// Stroke a 4-corner closed polygon as the gizmo's oriented bbox
-/// outline. Replaces the rounded-rect draw the axis-aligned painter
-/// used; with rotation, the rect's edges no longer align with screen
-/// axes so we walk the corner sequence directly via `BezPath`.
 /// Onda 2: paint a non-interactive gizmo outline — just the rotated
 /// bbox rectangle, no handles, no hit registration. Used by the shell
 /// to mark every EXTRA member of a multi-selection (the primary still
@@ -463,22 +343,7 @@ fn midpoint(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
 /// lets the caller distinguish extras (1.0 px) from global (2.0 px)
 /// from the primary (1.5 px) without three separate functions.
 pub fn paint_gizmo_outline(scene: &mut VectorScene, view: &GizmoView, theme: Theme, stroke_w: f32) {
-    let cx_w = (view.bbox_min_world[0] + view.bbox_max_world[0]) * 0.5;
-    let cy_w = (view.bbox_min_world[1] + view.bbox_max_world[1]) * 0.5;
-    let hx_w = (view.bbox_max_world[0] - view.bbox_min_world[0]) * 0.5;
-    let hy_w = (view.bbox_max_world[1] - view.bbox_min_world[1]) * 0.5;
-    let cos_r = view.rotation.cos();
-    let sin_r = view.rotation.sin();
-    let rotate_world = |lx: f32, ly: f32| -> [f32; 2] {
-        [
-            cx_w + lx * cos_r - ly * sin_r,
-            cy_w + lx * sin_r + ly * cos_r,
-        ]
-    };
-    let tl = world_to_screen(view, rotate_world(-hx_w, hy_w));
-    let tr = world_to_screen(view, rotate_world(hx_w, hy_w));
-    let bl = world_to_screen(view, rotate_world(-hx_w, -hy_w));
-    let br = world_to_screen(view, rotate_world(hx_w, -hy_w));
+    let [tl, tr, bl, br] = corners_screen(view);
     paint_oriented_bbox(
         scene,
         [tl, tr, br, bl],
@@ -504,22 +369,8 @@ pub fn paint_sprite_gizmo_keyed(
     target: GizmoTarget,
     outline_stroke_w: f32,
 ) {
-    let cx_w = (view.bbox_min_world[0] + view.bbox_max_world[0]) * 0.5;
-    let cy_w = (view.bbox_min_world[1] + view.bbox_max_world[1]) * 0.5;
-    let hx_w = (view.bbox_max_world[0] - view.bbox_min_world[0]) * 0.5;
-    let hy_w = (view.bbox_max_world[1] - view.bbox_min_world[1]) * 0.5;
-    let cos_r = view.rotation.cos();
-    let sin_r = view.rotation.sin();
-    let rotate_world = |lx: f32, ly: f32| -> [f32; 2] {
-        [
-            cx_w + lx * cos_r - ly * sin_r,
-            cy_w + lx * sin_r + ly * cos_r,
-        ]
-    };
-    let tl = world_to_screen(view, rotate_world(-hx_w, hy_w));
-    let tr = world_to_screen(view, rotate_world(hx_w, hy_w));
-    let bl = world_to_screen(view, rotate_world(-hx_w, -hy_w));
-    let br = world_to_screen(view, rotate_world(hx_w, -hy_w));
+    let corners_s = corners_screen(view);
+    let [tl, tr, bl, br] = corners_s;
 
     // Onda 2C hotfix: do NOT register a BBOX_INTERIOR hit for extras
     // or the global. Their bbox AABBs are big (and the global covers
@@ -542,24 +393,7 @@ pub fn paint_sprite_gizmo_keyed(
 
     // 4 rotate-hover rects (registered BEFORE corner handles so the
     // tighter corner hits outrank them on overlap).
-    let rotate_rects = [
-        (
-            ids::GIZMO_ROTATE_TL,
-            corner_outer_rect_oriented(tl, view.rotation, -1.0, 1.0),
-        ),
-        (
-            ids::GIZMO_ROTATE_TR,
-            corner_outer_rect_oriented(tr, view.rotation, 1.0, 1.0),
-        ),
-        (
-            ids::GIZMO_ROTATE_BL,
-            corner_outer_rect_oriented(bl, view.rotation, -1.0, -1.0),
-        ),
-        (
-            ids::GIZMO_ROTATE_BR,
-            corner_outer_rect_oriented(br, view.rotation, 1.0, -1.0),
-        ),
-    ];
+    let rotate_rects = rotate_rects(view, corners_s);
     for (id, r) in rotate_rects {
         register_keyed_handle(hit_index, hit_map, target, id, GizmoDragKind::Rotate, r);
     }
@@ -671,25 +505,4 @@ pub fn paint_sprite_gizmo_keyed(
         // FRAME-RAW-OK: as ALCAS de um gizmo sobre o CANVAS: o contorno e' o que as separa da imagem por baixo
         stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
     }
-}
-
-fn paint_oriented_bbox(
-    scene: &mut VectorScene,
-    corners: [[f32; 2]; 4],
-    width: f32,
-    color: ph2d_vector::Color,
-) {
-    let mut path = ph2d_vector::BezPath::new();
-    path.move_to((corners[0][0] as f64, corners[0][1] as f64));
-    for c in corners.iter().skip(1) {
-        path.line_to((c[0] as f64, c[1] as f64));
-    }
-    path.close_path();
-    scene.inner_mut().stroke(
-        &ph2d_vector::Stroke::new(width as f64),
-        ph2d_vector::Affine::IDENTITY,
-        color,
-        None,
-        &path,
-    );
 }

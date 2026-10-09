@@ -76,7 +76,10 @@ impl GpuContext {
                 // regra: onde falta, o módulo sai sem ele e o passe usa o de
                 // memória de grupo (a mesma cobertura, bit a bit).
                 | wgpu::Features::SUBGROUP
-                | wgpu::Features::TIMESTAMP_QUERY);
+                | wgpu::Features::TIMESTAMP_QUERY
+                // A aritmética f16 das cascatas da luz 2D (`ph2d-light2d-gpu`, `real_f16.wgsl`).
+                // A mesma regra: onde falta, o solver usa o caminho f32 (o mesmo algoritmo).
+                | wgpu::Features::SHADER_F16);
 
         // Limits::default() (desktop tier) is required by Vello's
         // compute pipelines (M11 widget paint) — downlevel_defaults

@@ -6298,6 +6298,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-light2d-gpu"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "half",
+ "ph2d-gpu",
+ "ph2d-light2d-ecs",
+ "ph2d-light2d-ref",
+ "wgpu",
+]
+
+[[package]]
 name = "ph2d-light2d-ref"
 version = "0.0.0"
 dependencies = [

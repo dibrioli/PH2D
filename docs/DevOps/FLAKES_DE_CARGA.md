@@ -72,6 +72,7 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `tres_bonecos_tres_amplitudes_e_o_rapido_acende_a_lampada` | [`ph2d-app-components`](../../crates/ph2d-app-components/src/script_smoke_tests.rs) | prazo de um quadro por gancho (Luau) |
 | `riding_the_path_costs_about_twice_the_straight_layout` | [`shells/desktop`](../../shells/desktop/src/text_path_smoke.rs) | razão de relógios |
 | `crossing_the_reach_boundary_does_not_step_the_cost` | [`ph2d-gpu-cook`](../../crates/ph2d-gpu-cook/tests/it/gpu_collide.rs) | razão de relógios (vermelho na suíte da placa no fecho da `line/motion-value` de 07/10 a `load ~35`, zero linhas da onda no teste ou no nó; sozinho `2/2` a `load 9` e `35`) |
+| `g4_o_custo_do_rc_nao_depende_do_numero_de_luzes` | [`ph2d-light2d-gpu`](../../crates/ph2d-light2d-gpu/tests/it/g4_custo_independe_das_luzes.rs) | razão de relógios da PLACA (K3 da luz 2D: variação ≤ 5 % entre 1 e 10 000 luzes; medido `0,42`–`1,37 %` a `load 25–42`, perfil smoke e dev) |
 
 Uma família entra por padrão e não por nome: `test(/orcamento::the_fit_/)` (`ph2d-app-flip`).
 

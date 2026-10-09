@@ -34,6 +34,8 @@ pub struct LuzDoQuadro {
     erro: Option<ErroSolver>,
     /// `(por texel, sprites da cena)` no último quadro — os outros ficaram com o quad.
     sprites_por_texel: (usize, usize),
+    /// ⭐ Os caminhos vetoriais que bloqueiam, desenhados na grade (W3).
+    vetores: crate::vetor::CamadaVetorial,
 }
 
 impl Default for LuzDoQuadro {
@@ -61,6 +63,7 @@ impl LuzDoQuadro {
             relatorio: None,
             erro: None,
             sprites_por_texel: (0, 0),
+            vetores: crate::vetor::CamadaVetorial::default(),
         }
     }
 
@@ -85,6 +88,21 @@ impl LuzDoQuadro {
             self.sem_luz.extend(self.cena.nao_recebem.iter().copied());
         }
         self.grade.is_some()
+    }
+
+    /// **Porta 1b** — desenha na grade os caminhos VETORIAIS que bloqueiam (os afins `xforms` do
+    /// quadro). Apagada, ou sem nenhum, não faz nada.
+    pub fn desenhar_vetores(
+        &mut self,
+        gpu: &GpuContext,
+        doc: &ph2d_vec_scene::VecScene,
+        xforms: &ph2d_vec_scene::VecXforms,
+    ) {
+        if let Some(g) = self.grade {
+            let fator = self.degrau.vetor_px_por_texel;
+            self.vetores
+                .desenhar(gpu, (g, fator), &self.cena, doc, xforms);
+        }
     }
 
     /// A luz está acesa neste quadro (a cena tem `Luz` e o solver não recusou)?
@@ -137,7 +155,12 @@ impl LuzDoQuadro {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("luz2d quadro do editor"),
             });
-        let sprites = crate::captura::sprites_da_cena(&self.cena, present, renderer);
+        let mut sprites = crate::captura::sprites_da_cena(&self.cena, present, renderer);
+        for (vista, mut s) in self.vetores.sprites() {
+            sprites.texturas.push(vista);
+            s.textura = sprites.texturas.len() - 1;
+            sprites.sprites.push(s);
+        }
         self.sprites_por_texel = (sprites.substituidos.len(), self.cena.sprites.len());
         self.relatorio = Some(
             r.solver

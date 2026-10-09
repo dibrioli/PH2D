@@ -12,7 +12,7 @@ pub mod cena;
 pub mod coleta;
 mod componentes;
 
-pub use cena::{CenaDeLuz, Emissor, FormaDoSprite, Oclusor, Rgb, SpriteDeLuz};
+pub use cena::{CenaDeLuz, Emissor, FormaDoSprite, Oclusor, Rgb, SpriteDeLuz, VetorDeLuz};
 pub use componentes::{BloqueiaLuz, Luz, NaoRecebeLuz, TipoDeLuz};
 use ph2d_ecs::scene::ComponentRegistry;
 

@@ -52,6 +52,19 @@ pub struct CenaDeLuz {
     /// ⭐ Os sprites que emitem ou bloqueiam, com o QUAD que os representa acima (W3): a C0 da placa
     /// troca esse quad pelo alfa de cada texel da textura; o gabarito continua a ver o quad.
     pub sprites: Vec<SpriteDeLuz>,
+    /// ⭐ Os caminhos VETORIAIS que bloqueiam (W3) — a geometria não está no `World` (vive na
+    /// `VecScene`): a C0 da placa desenha-os pelo Vello na grade; o gabarito NÃO os vê.
+    pub vetores: Vec<VetorDeLuz>,
+}
+
+/// Um caminho vetorial que bloqueia a luz (W3).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct VetorDeLuz {
+    pub entidade: bevy_ecs::entity::Entity,
+    /// O `VecPathId` do caminho (o `VecPathRef` da entidade).
+    pub caminho: u64,
+    /// A opacidade por entrada (`BloqueiaLuz`).
+    pub opacidade: f32,
 }
 
 /// Um sprite que entra na luz (W3) — a ponte entre o quad da cena e a textura que a C0 amostra.

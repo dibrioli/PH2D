@@ -143,6 +143,7 @@ impl crate::App {
         //    mesma conta do sprite. ⛔ Sem `Luz` na cena, `false`: o quadro de sempre.
         let alvo = surface.size();
         let luz_acesa = luz2d.preparar(sim.world(), cam_affine, (alvo.width, alvo.height));
+        luz2d.desenhar_vetores(surface.gpu(), vec_scene, &vec_xf);
         let doc_bands = crate::draw_bands::doc_bands_of(frame_order, placa || luz_acesa);
         for band in &doc_bands {
             let keep = frame_order.vector_ids_in(*band);

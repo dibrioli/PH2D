@@ -3,7 +3,9 @@
 //! §2.1, §2.4). A shell guarda UMA [`LuzDoQuadro`] e chama três portas:
 //!
 //! 1. [`LuzDoQuadro::preparar`] — antes de codificar o documento: coleta, GUARDA e grade. `false` =
-//!    a cena não tem `Luz`, nada mais corre e o quadro é o de sempre, byte a byte (G6).
+//!    a cena não tem `Luz`, nada mais corre e o quadro é o de sempre, byte a byte (G6). Logo a
+//!    seguir, [`LuzDoQuadro::desenhar_vetores`]: os caminhos que bloqueiam, na grade (onde a cena
+//!    vetorial e os afins do quadro existem).
 //! 2. [`LuzDoQuadro::gravar`] — antes do passe de sprite: o solver, encoder e submit próprios.
 //! 3. [`LuzDoQuadro::ligar`] — acende (ou apaga) os dois receptores: o passe de sprite e a colagem
 //!    do vetor.
@@ -11,6 +13,7 @@
 mod captura;
 mod grade;
 mod quadro;
+mod vetor;
 
 pub use grade::{DEGRAU_PADRAO, Degrau, grade_do_quadro, tela_para_mundo};
 pub use quadro::LuzDoQuadro;

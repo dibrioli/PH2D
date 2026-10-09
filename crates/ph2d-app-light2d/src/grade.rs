@@ -20,12 +20,16 @@ pub struct Degrau {
     /// A margem fora da vista, em fração da vista, de CADA lado (emissores fora da tela iluminam
     /// dentro dela).
     pub margem: f64,
+    /// Píxeis do alvo do Vello por texel da grade na camada do vetor que bloqueia (a C0 amostra-a
+    /// bilinear em 8×8 subamostras por texel).
+    pub vetor_px_por_texel: u32,
 }
 
 /// O degrau por omissão (ver a tabela da rodada no handoff W3).
 pub const DEGRAU_PADRAO: Degrau = Degrau {
     c0_px: 2.0,
     margem: 0.25,
+    vetor_px_por_texel: 2,
 };
 
 /// O afim píxel → mundo: o INVERSO do mundo → tela que o Vello usou, nas duas linhas que o

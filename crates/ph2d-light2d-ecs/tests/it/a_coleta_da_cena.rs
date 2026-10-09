@@ -363,3 +363,34 @@ fn cada_sprite_aponta_o_quad_que_o_representa() {
         "ordem estável"
     );
 }
+
+/// ⭐ (W3) Um caminho VETORIAL que bloqueia entra pela identidade (a geometria é da `VecScene`); um
+/// escondido ou com opacidade zero não entra.
+#[test]
+fn o_vetor_que_bloqueia_vem_pela_identidade_do_caminho() {
+    use ph2d_ecs::VecPathRef;
+    let mut w = World::new();
+    let (t, g) = pose(0.0, 0.0, 0.0);
+    let e = w
+        .spawn((
+            VecPathRef(42),
+            BloqueiaLuz { opacidade: 0.6 },
+            t,
+            g,
+            StableId(1),
+        ))
+        .id();
+    w.spawn((VecPathRef(7), BloqueiaLuz { opacidade: 0.0 }, t, g));
+    w.spawn((
+        VecPathRef(8),
+        BloqueiaLuz { opacidade: 1.0 },
+        t,
+        g,
+        Visibility::hidden(),
+    ));
+    w.spawn((VecPathRef(9), t, g));
+    let c = cena_de_luz(&w);
+    assert_eq!(c.vetores.len(), 1, "{c:#?}");
+    assert_eq!((c.vetores[0].entidade, c.vetores[0].caminho), (e, 42));
+    assert!((c.vetores[0].opacidade - 0.6).abs() < TOL);
+}

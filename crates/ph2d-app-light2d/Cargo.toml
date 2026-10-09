@@ -28,8 +28,14 @@ bevy_ecs = "0.19"
 wgpu = "29.0.4"
 # O afim mundo → tela que o Vello usou (o vetor recebe a luz pelo inverso dele).
 kurbo = "0.13.1"
+# O vetor que bloqueia (W3): a cena vetorial e os afins, e a porta que desenha UM caminho (a mesma
+# do tile de uma forma). Só LÊ — o contrato congelado `ph2d-vector-doc` não é tocado.
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+ph2d-vec-render = { path = "../ph2d-vec-render" }
+ph2d-vector = { path = "../ph2d-vector" }
 
 [dev-dependencies]
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-host = { path = "../ph2d-host" }
 # O quadrado vetorial dos gates desenha-se pela porta do documento (o Vello de verdade).

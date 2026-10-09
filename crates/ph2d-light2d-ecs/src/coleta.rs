@@ -19,7 +19,7 @@ use bevy_ecs::world::World;
 use ph2d_ecs::{GlobalTransform, SpriteEmissive, StableId, is_hidden_in_tree};
 use ph2d_render::Sprite;
 
-use crate::cena::{CenaDeLuz, Emissor, FormaDoSprite, Oclusor, Rgb, SpriteDeLuz};
+use crate::cena::{CenaDeLuz, Emissor, FormaDoSprite, Oclusor, Rgb, SpriteDeLuz, VetorDeLuz};
 use crate::componentes::{BloqueiaLuz, Luz, NaoRecebeLuz, TipoDeLuz};
 
 /// Chave de ordem: o `StableId` (sobrevive a undo e save), depois a `Entity`.
@@ -144,6 +144,24 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
         }
     }
 
+    // Os caminhos vetoriais que bloqueiam: só a identidade — a geometria é da `VecScene`.
+    let mut vetores: BTreeMap<Chave, VetorDeLuz> = BTreeMap::new();
+    if let Some(mut q) = world.try_query::<(Entity, &ph2d_ecs::VecPathRef, &BloqueiaLuz)>() {
+        for (e, caminho, b) in q.iter(world) {
+            if is_hidden_in_tree(world, e) || !(b.opacidade > 0.0) {
+                continue;
+            }
+            vetores.insert(
+                chave(world, e),
+                VetorDeLuz {
+                    entidade: e,
+                    caminho: caminho.0,
+                    opacidade: b.opacidade.min(1.0),
+                },
+            );
+        }
+    }
+
     let mut nao_recebem: BTreeMap<Chave, Entity> = BTreeMap::new();
     if let Some(mut q) = world.try_query_filtered::<Entity, bevy_ecs::query::With<NaoRecebeLuz>>() {
         for e in q.iter(world) {
@@ -180,5 +198,6 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
         luzes,
         nao_recebem: nao_recebem.into_values().collect(),
         sprites,
+        vetores: vetores.into_values().collect(),
     }
 }

@@ -155,3 +155,9 @@ por script com `assert` de contagem) · contexto relido 398 mil (alvo ≤ 250 mi
 build -p ph2d-host-desktop --profile smoke`, 2.ª corrida: `Finished \`smoke\` profile [optimized]
 target(s) in 0.20s` (zero «Compiling»). Nenhum processo da linha a correr; os agentes de pesquisa,
 oráculo, auditoria, mutação e portão terminaram.
+
+## 12. Smoke do dono — OK (09/10)
+
+O dono correu a cena 8 (`PH2D_BOARD_SMOKE=8`) e aprovou: *«smoke ok. Vamos seguir»*. Sem correcções. A
+ordem é seguir para a W7 na mesma branch, por cima de W5/W5b/W6 ainda por integrar
+([briefing W7](HANDOFF_CONTINUACAO_W7_2026-10-09.md)).

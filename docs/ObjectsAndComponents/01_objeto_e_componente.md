@@ -293,3 +293,31 @@ JOGO da Fábrica não (`ph2d_ecs::SubtreeCopies`).
 | — | `SubtreeCopies` com um LEITOR por consumidor | drenar por um só deixava o Motion sem as cópias que a Timeline já tinha lido |
 | «a posição do objecto é a origem» | afim por faixa de sink depois do cozido — CPU sobre a cópia local, placa por passe de cálculo; gizmos pela `Camera2d.model`; o campo pelo `parent_world` do gizmo genérico | ~25 sítios sem ponto comum; recozinhar o tick avança a simulação (CPU), a placa reescreve tudo a cada quadro |
 | — | as formas do Motion (passe vectorial) desenham sem a ferramenta | a foto do smoke apanhou-as presas ao `motion_tool_active` em `fase_hero_scene` |
+
+## §14 — Onda 4 (09/10): fechar TUDO o que ficou aberto antes de integrar (ordem do dono)
+
+> *«Antes de integrar vamos fazer tudo o que está em aberto.»* — a lista junta os §10 dos três handoffs.
+
+**Escolhas do dono (09/10):**
+
+| | escolha |
+|---|---|
+| 4.1 Play | cada Animação tem um **clipe de entrada** que começa sozinho no Play (por omissão o 1.º), como o *Autoplay* do Godot; os outros tocam quando algo pedir (estado, sinal, script) |
+| 4.2 Motion fora do centro | o que vem do mundo (rato, colisores da cena, câmara, poses de objectos) é convertido **sozinho** para o espaço do objecto Motion — nada a configurar |
+| 4.3 Caminhos | uma curva usada como CAMINHO (`motion.path`, spline-wrap) **fica onde está** — é guia visível; só a forma COPIADA vira molde |
+
+**A lista (cada item fecha com teste de costura e, se o artista o vê, foto):**
+
+| # | o quê | origem |
+|---|---|---|
+| 1 | clipe de entrada por Animação + cada objecto toca a SUA no Play, no relógio dele | onda 2 §10 (a), escolha 4.1 |
+| 2 | nomes de clip únicos POR animação; o osso inteligente resolve o clipe dentro da animação onde vive (a cópia deixa de tocar o «andar» do original) | onda 2 §10 (b) |
+| 3 | UM Ctrl+Z devolve o objecto apagado COM os clipes e os nós | onda 2 (c), onda 3 (d) |
+| 4 | Add Clip acima do tecto: recusa VISÍVEL (não em silêncio) | onda 2 (d) |
+| 5 | o seletor de clips do Arrange oferece os clipes de TODAS as animações, agrupados por dono | onda 2 (e) |
+| 6 | entradas de mundo no espaço do objecto Motion (escolha 4.2) | onda 3 (a) |
+| 7 | gizmo de campo exacto com escala não uniforme (o cisalhamento) | onda 3 (b) |
+| 8 | legendas das demos do Motion seguem a origem do dono | onda 3 (c) |
+| 9 | lista do filtro ▾ com rolagem quando não cabe no ecrã | onda 3 (f) |
+| 10 | o pedido ao Inspector casa pela IDENTIDADE, não pelo nome · camada pendente de um Paint recusado é largada | onda 1 §10 |
+| — | caminhos: nada a construir (escolha 4.3) | onda 3 (e) |

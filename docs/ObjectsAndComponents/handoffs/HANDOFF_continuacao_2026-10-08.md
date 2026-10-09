@@ -25,3 +25,12 @@
 - **F6 — busca por intenção** no *Add Component* + **filtro da Hierarquia por componente**.
 - Antes de construir: MEÇA se a composição já exprime o item (CLAUDE.md §5.0) e confira o código.
 - `PROJECT_SCHEMA` = 187 hoje; se a onda 3 gravar algo novo, recontar com `python3 scripts/schema-recount.py`.
+
+## Onda 4 (09/10) — fechar o que ficou aberto, ANTES de integrar
+
+Ordem do dono: *«antes de integrar vamos fazer tudo o que está em aberto»*. A lista (10 itens) e as três
+escolhas dele estão no [doc 01 §14](../01_objeto_e_componente.md). As ondas 1–3 continuam fora do `main`
+(smoke das três aprovado; onda 3 em `497bae316`); a onda 4 segue POR CIMA, na mesma branch, e o integrador
+leva as quatro juntas. ⚠️ Os itens 6–8 tocam `ph2d-app-motion` — `line/motion-value` viva: colisão primeiro
+(`collision-surface.sh` nas duas worktrees). O item 1 sobe o `DOC_VERSION` da timeline (19 → 20, com
+migração provada contra fixtura gravada ANTES).

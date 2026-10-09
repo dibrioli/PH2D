@@ -232,7 +232,9 @@ que já simulava esta raiz.
 ## §12 — Onda 2 entregue (08/10): F4, a Animação por objecto
 
 Handoff: [`HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda2_2026-10-08.md`](handoffs/HANDOFF_INTEGRACAO_line_ObjectsAndComponents_onda2_2026-10-08.md).
-Escolhas do dono (08/10): **a chave vai para a animação do cabeçalho**; **a cópia leva clips próprios**.
+Escolhas do dono (08/10): **a chave vai para a animação do cabeçalho**; **a cópia leva clips próprios** — no
+Duplicate e, depois do smoke, também na cópia de um **Prefab** (Make, Instantiate, colocar); as cópias de
+JOGO da Fábrica não (`ph2d_ecs::SubtreeCopies`).
 
 | plano | o que ficou | porquê (medido) |
 |---|---|---|

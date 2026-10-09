@@ -14,8 +14,8 @@
   migração) · `3c0b095f1` (a Timeline segue a selecção, chip «Animation: X ▾») · `7ea12b13c` (Hierarquia,
   paleta, cópia) · `f14b9f320` (Cargo.lock) · `420a8cbe8` (dope sheet filtrado + smoke) · `76ab44cb7`
   (selector de acções do osso) · `596975c89` (curas do portão) · `5dbfa1540` (teste M8 + doc 01 §12)
-  + o commit deste handoff.
-- Diff da onda 2: 75 arquivos, `+2662 −143` (testes incluídos). **Shell: `+205 −3`** (o smoke
+  · `b128b38e9` (a cópia de um PREFAB leva clips próprios — pedido do dono no smoke) + os commits deste handoff.
+- Diff da onda 2: 76 arquivos, `+3004 −159` (testes e docs incluídos). **Shell: `+197 −3`** (o smoke
   `render_loop/animacao_smoke.rs` ~100 linhas + plumbing); `the_shell_only_shrinks` verde.
 
 ## 2. O que entrou (F4 do doc 01 §6, escolha 9.1 = A)
@@ -67,7 +67,8 @@ Escolhas do DONO (08/10): (1) a chave vai para a animação do CABEÇALHO; (2) d
 | `ph2d-editor-core/src/hier_rows.rs` | `ContentOpens{Mode(ObjectMode), Panel(&'static str)}`; `ContentGroup.mode` → `opens`; `RowRole::ContentItem.mode` → `opens` (construir com `opens: ContentOpens::Mode(..)`) |
 | `action_bus_hier.rs` | variante NOVA `HierRequest::OpenContentInPanel{owner, panel, key}` |
 | `widget/dropdown/mod.rs` + `widget/mod.rs` | `popover_width_for(text_w, has_icon)` (a lista do ▾ toma a largura do rótulo mais largo) |
-| `ph2d-app-components` | `instantiate::duplicate_subtree` devolve `Option<Duplicated{root, pairs}>` (antes `Option<Entity>`; chamadores: `.root`) · `component_palette::ANIMATION_ITEM` + `offer_animation` · `component_attach::open_palette_if_asked` / `refresh_palette_on_toggle` ganham `has_animation: &dyn Fn(u64)->bool` · `take_animation_pick` |
+| `ph2d-ecs/src/subtree_copies.rs` (**novo**, irmão) | recurso `SubtreeCopies` + `announce_copy` / `take_copies`: os pares `(original, cópia)` que o EDITOR fez; a Timeline drena-os no `upkeep` (`copy_animations`). Anunciam `instantiate_master` (Make, Instantiate, colocar um prefab) e `duplicate_subtree`; **não** anuncia `instantiate_master_many` (a Fábrica — cópias de jogo) |
+| `ph2d-app-components` | `instantiate_master`/`_many` passam por um corpo privado `instantiate_copies(.., announce)` (assinaturas públicas INALTERADAS) · `component_palette::ANIMATION_ITEM` + `offer_animation` · `component_attach::open_palette_if_asked` / `refresh_palette_on_toggle` ganham `has_animation: &dyn Fn(u64)->bool` · `take_animation_pick` |
 | `ph2d-panel-hierarchy` | `scene_entry()` público; a Cena recebe conteúdo pela entrada `HIER_SCENE_ROW`; o 🎞 lê as SUB-LINHAS (o `entry.content` já foi expandido) |
 | `Cargo.lock` | arestas internas `ph2d-panel-timeline → ph2d-component-desc` (folha sem deps) e `ph2d-timeline-persist → ph2d-core` (de dev a `[dependencies]`); nenhum pacote externo |
 
@@ -80,15 +81,14 @@ Escolhas do DONO (08/10): (1) a chave vai para a animação do CABEÇALHO; (2) d
 - **Shell (composição):** `fase_timeline_drain` (+`follow_selection` antes dos pedidos, +`publish_animation_header`) ·
   `fase_bus_hierarchy` (`OpenContentInPanel` → `AnimationIntent::Show` + `SetActiveClip`) ·
   `snapshots` / `snapshots_hierarchy` (+parâmetro timeline; `declare_in_row`; conteúdo da Cena) ·
-  `fase_component_palette` (Animation → `AnimationIntent::Add`) · `hierarchy` / `hierarchy_duplicate` /
-  `fase_hierarchy_dispatch` (+timeline; `copy_animations`) · `fase_selection_mirror_bone_focus` (osso no
+  `fase_component_palette` (Animation → `AnimationIntent::Add`) · `fase_selection_mirror_bone_focus` (osso no
   `actions_for`) · `render_loop/animacao_smoke.rs` (módulo do roteador `fase_app_scene_smokes`; trava
   `static AtomicBool` — a `App` estava no tecto de 174 campos).
-- `the_shell_only_shrinks` soma entre linhas: esta onda põe **+202 líquidos** além dos +35 da onda 1.
+- `the_shell_only_shrinks` soma entre linhas: esta onda põe **+194 líquidos** além dos +35 da onda 1.
 
 ## 5. Portão de fecho (batched, sobre o diff inteiro, 2.ª corrida depois das curas)
 
-- `nextest-impacted` **16788/16788** · censos de rótulo `--workspace` **14/14** ·
+- `nextest-impacted` **16791/16791** (3.ª corrida, depois de `b128b38e9`; a 2.ª deu 16788/16788) · censos de rótulo `--workspace` **14/14** ·
   `CARGO_BUILD_WARNINGS=deny cargo check --workspace --all-targets` ✓ · `clippy --all-targets -D warnings` ✓ ·
   `fmt` ✓ · `machete` ✓ · `check-standalone-optional` ✓ · `check-workflow-packages` ✓.
 - A 1.ª corrida reprovou 4 (16783/16787): tectos da shell (`app_state` 933>931, `main` 1063>1061,
@@ -107,11 +107,16 @@ Escolhas do DONO (08/10): (1) a chave vai para a animação do CABEÇALHO; (2) d
 | M6 | `animation_of = SCENE` | SANGROU |
 | M7 | 🎞 sem painel | SANGROU |
 | M8 | `AddClip` na Cena | **SOBREVIVIA** (a suíte toda corria com a vista na Cena) ⇒ teste novo `animation_chip_seam::o_mais_cria_o_clip_na_animacao_em_vista` (`5dbfa1540`); re-mutado: SANGROU |
+| M9 | `instantiate_master` não anuncia | SANGROU (`o_editor_anuncia_a_copia_e_a_fabrica_nao`) |
+| M10 | a Fábrica anuncia | SANGROU (idem) |
+| M11 | o `upkeep` não drena | SANGROU (`a_copia_que_o_editor_anuncia_leva_a_animacao_no_quadro_seguinte`) |
 
 ## 7. Testes novos
 
 - `ph2d-timeline` `clip_owner` (7: migração v18 contra a fixtura em JSON campo a campo, dono, tecto por
   animação, tirar, último da Cena, cópia própria, dope sheet).
+- Cópia de prefab (`b128b38e9`): `ph2d-app-components` `instantiate::tests::o_editor_anuncia_a_copia_e_a_fabrica_nao`
+  · `ph2d-timeline-persist` `owner_tests::a_copia_que_o_editor_anuncia_leva_a_animacao_no_quadro_seguinte`.
 - `ph2d-timeline-persist` `owner_tests` (3: atravessa o ficheiro, apagar+undo, duplicar num passo).
 - `ph2d-panel-timeline` `animation_chip_seam` (5, cliques reais: segue / menu volta à Cena e o `pin`,
   clip pelo índice do documento, oferta+chave vai para a do cabeçalho, remove+undo, o «+»).
@@ -146,8 +151,10 @@ Medidos com foto (`fotografa_cena.sh`):
 
 ## 10. O que fica ABERTO
 
-- (a) Instanciar um PREFAB **não** copia a Animação do mestre (só o Duplicate copia) — decisão de
-  produto para o dono.
+- (a) ~~Instanciar um PREFAB não copia a Animação~~ — **feito** (`b128b38e9`, dono no smoke de 08/10:
+  «Prefab também deve levar clipes próprios»). As cópias de JOGO (Fábrica) continuam sem clips, de
+  propósito: e tocar a animação de um objecto no relógio dele durante o Play é outra peça (hoje toca
+  o clip activo da vista ou o Arrange da Cena, como antes do F4).
 - (b) Clip copiado ganha nome único «andar 2» (nomes de clip são únicos no documento porque o osso
   inteligente referencia pelo nome): um osso da cópia que diga «andar» toca o do original.
 - (c) O undo de apagar um objecto com Animação são DOIS Ctrl+Z (o global devolve o objecto, o da
@@ -165,7 +172,7 @@ Medidos com foto (`fotografa_cena.sh`):
 `rm -rf target/*/incremental` feito; `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`, 2.ª corrida:
 
 ```text
-    Finished `smoke` profile [optimized] target(s) in 0.41s
+    Finished `smoke` profile [optimized] target(s) in 0.24s
 ```
 
 - `bash scripts/agent-loop-profile.sh` (20 sessões):
